@@ -32,8 +32,12 @@ namespace dd
   {
   public:
     MLLib(const TMLModel &mlmodel)
-      :_mlmodel(mlmodel)
-    {}
+      :_mlmodel(mlmodel) {}
+    
+    MLLib(MLLib &&mll) noexcept
+      :_mlmodel(mll._mlmodel)
+      {}
+    
     ~MLLib() {}
 
     int train(const APIData &ad);

@@ -35,8 +35,8 @@ int main(int argc, char *argv[])
   std::string def = "/home/beniz/projects/deepdetect/datasets/imagenet/models/refnet/deploy.prototxt";
   std::string weights = "/home/beniz/projects/deepdetect/datasets/imagenet/models/refnet/ilsvrc2011_mine_train_iter_450000.caffemodel";
   CaffeModel cmodel(def,weights);
-  //CaffeLib<ImgInputFileConn,NoOutputConn> cafl(cmodel);
-  //dd.add_service(MLService(cafl));
-  dd.add_service(MLService<CaffeLib,ImgInputFileConn,NoOutputConn,CaffeModel>(cmodel));
+  
+  dd.add_service(std::move(MLService<CaffeLib,ImgInputFileConn,NoOutputConn,CaffeModel>(cmodel)));
+  std::cout << "booting\n";
   dd.boot(argc,argv);
 }

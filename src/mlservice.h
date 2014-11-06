@@ -25,6 +25,7 @@
 #include "mllibstrategy.h"
 #include "mlmodel.h"
 #include <string>
+#include <iostream>
 
 namespace dd
 {
@@ -34,8 +35,11 @@ namespace dd
   public:
     MLService(const TMLModel &mlmodel)
       :TMLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>(mlmodel)
-      {}; //TODO: pass model and dataset if needed.
-    ~MLService() {};
+      {}
+    MLService(MLService &&mls) noexcept
+      :TMLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>(std::move(mls)),_sid(std::move(mls._sid)),_sname(std::move(mls._sname))
+      {}
+    ~MLService() {}
     
     int _sid; /**< service id, hash from name. */
     std::string _sname; /**< service name. */

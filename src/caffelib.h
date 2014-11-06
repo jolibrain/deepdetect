@@ -35,15 +35,20 @@ namespace dd
     {
     public:
       CaffeLib(const CaffeModel &cmodel);
+      CaffeLib(CaffeLib &&cl) noexcept;
       ~CaffeLib();
-      
+    
+    /*CaffeLib& operator=(CaffeLib&& other)
+    {
+      return *this;
+      }*/
+  
       int train(const APIData &ad) { return 1; }
       int predict(const APIData &ad);
 
       caffe::Net<float> *_net = nullptr;
       bool _gpu = false; /**< whether to use GPU. */
       int _gpuid = 1; /**< GPU id. */
-      //CaffeModel _cmodel;
     };
   
 }

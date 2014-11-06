@@ -30,6 +30,7 @@
 #include "outputconnectorstrategy.h"
 #include "caffelib.h"
 #include <vector>
+#include <iostream>
 
 namespace dd
 {
@@ -56,7 +57,11 @@ namespace dd
     Services() {};
     ~Services() {};
     
-    void add_service(const mls_variant_type &mls) { _mlservices.emplace_back(mls); }
+    void add_service(mls_variant_type &&mls) 
+    {
+      _mlservices.push_back(std::move(mls)); 
+    }
+    
     int predict(const APIData &ad, const int &pos)
     {
       visitor_predict vp;
