@@ -24,6 +24,7 @@
 
 #include "inputconnectorstrategy.h"
 #include <opencv2/core/core.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
 namespace dd
@@ -40,8 +41,14 @@ namespace dd
 
     int transform(const APIData &ad)
     {
-      std::string imgfname = ad.get(_imgfname).get<std::string>();
-      _image = cv::imread(_imgfname,CV_LOAD_IMAGE_COLOR);
+      _imgfname = ad.get(_imgfname).get<std::string>();
+      std::cout << "opening image=" << _imgfname << std::endl;
+      cv::Mat imaget = cv::imread(_imgfname,CV_LOAD_IMAGE_COLOR); //TODO: catch errors (size = 0 for file not found)
+      /*cv::namedWindow( "Display window", cv::WINDOW_AUTOSIZE );
+      cv::imshow( "Display window", imaget);
+      cv::waitKey(0);*/
+      cv::Size size(227,227);
+      cv::resize(imaget,_image,size);
       return 0;
     }
 

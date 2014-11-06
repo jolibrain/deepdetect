@@ -21,8 +21,9 @@
 
 #include "commandlineapi.h"
 #include <gflags/gflags.h>
+#include <iostream>
 
-DEFINE_string(imgname,"","image file name");
+DEFINE_string(imgfname,"","image file name");
 
 namespace dd
 {
@@ -40,7 +41,13 @@ namespace dd
   {
     google::ParseCommandLineFlags(&argc, &argv, true);
     
-    
+    if (!FLAGS_imgfname.empty())
+      {
+	std::cout << FLAGS_imgfname << std::endl;
+	APIData ad;
+	ad.add("imgfname",FLAGS_imgfname);
+	predict(ad,0);
+      }
 
     return 0;
   }

@@ -78,13 +78,24 @@ namespace dd
     TInputConnectorStrategy inputc;
     inputc.transform(ad);
     Datum datum;
-    //ReadImageToDatum(this->_inputc._imgfname,10,227,227,&datum);
-    CVMatToDatum(this->_inputc._image,&datum);
+    //ReadImageToDatum(inputc._imgfname,1,227,227,&datum);
+    CVMatToDatum(inputc._image,&datum);
     Blob<float> blob(1,datum.channels(),datum.height(),datum.width());
     std::vector<Blob<float>*> bottom = {&blob};
     float loss = 0.0;
     std::vector<Blob<float>*> results = _net->Forward(bottom,&loss);
     std::cout << "accuracy=" << results[0]->cpu_data()[0] << std::endl;
+    int bcat = -1;
+    double bprob = -1.0;
+    for (int i=0;i<1000;i++)
+      {
+	if (results[0]->cpu_data()[i] > bprob)
+	  {
+	    bcat = i;
+	    bprob = results[0]->cpu_data()[i];
+	  }
+      }
+    std::cout << "bcat=" << bcat << std::endl;
     
     /*int startl = 0;
     int endl = _net.layers().size()-1;
