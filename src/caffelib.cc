@@ -46,8 +46,19 @@ namespace dd
       Caffe::set_phase(Caffe::TEST); // XXX: static within Caffe, cannot go along with training across services.
     _net = new Net<float>(this->_mlmodel._def);
     _net->CopyTrainedLayersFrom(this->_mlmodel._weights);
+    
+    if (!this->_mlmodel._mean.empty())
+      {
+	std::cout << "setting mean\n";
+	caffe::BlobProto blob_proto;
+	std::cout << "mean file=" << this->_mlmodel._mean << std::endl;
+	std::cout << "protoloading=" << ReadProtoFromBinaryFile(this->_mlmodel._mean,&blob_proto) << std::endl;
+	std::cout << "blob proto data=" << blob_proto.data(0) << std::endl;
+	_data_mean.FromProto(blob_proto);
+	std::cout << "loaded mean cpu data=" << _data_mean.cpu_data() << std::endl;
+      }
   }
-
+  
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::CaffeLib(CaffeLib &&cl) noexcept
     :MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,CaffeModel>(std::move(cl))
@@ -55,6 +66,11 @@ namespace dd
     _gpu = cl._gpu;
     _gpuid = cl._gpuid;
     _net = cl._net;
+    if (cl._data_mean.num())
+      {
+	std::cout << "copying mean\n";
+	_data_mean.CopyFrom(cl._data_mean,false,true);
+      }
     cl._net = nullptr;
   }
 
@@ -80,22 +96,39 @@ namespace dd
     Datum datum;
     //ReadImageToDatum(inputc._imgfname,1,227,227,&datum);
     CVMatToDatum(inputc._image,&datum);
-    Blob<float> blob(1,datum.channels(),datum.height(),datum.width());
-    std::vector<Blob<float>*> bottom = {&blob};
+    //std::cout << "datum height=" << datum.height() << std::endl;
+    //Blob<float> *blob = new Blob<float>(1,datum.channels(),datum.height(),datum.width()); 
+    /*if (!this->_mlmodel._mean.empty())
+      {
+	std::cout << "sub mean\n";
+	std::cout << "input num=" << blob.num() << std::endl;
+	std::cout << "data mean num=" << _data_mean.num() << std::endl;
+	std::cout << "data mean count=" << _data_mean.count() << std::endl;
+	int offset = blob.offset(0);
+	std::cout << "offset=" << offset << std::endl;
+	std::cout << _data_mean.cpu_data() << std::endl;
+	caffe::caffe_sub(_data_mean.count(),blob.mutable_cpu_data()+offset,
+			 _data_mean.cpu_data(),blob.mutable_cpu_data()+offset);
+			 }*/
+    //std::vector<Blob<float>*> bottom = {blob};
+    //std::cout << blob << std::endl;
     float loss = 0.0;
-    std::vector<Blob<float>*> results = _net->Forward(bottom,&loss);
-    std::cout << "accuracy=" << results[0]->cpu_data()[0] << std::endl;
+    std::vector<Datum> dv = {datum};
+    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(dv);
+    //std::vector<Blob<float>*> results = _net->Forward(bottom,&loss);
+    std::vector<Blob<float>*> results = _net->ForwardPrefilled(&loss);
+    //std::cout << "accuracy=" << results[1]->cpu_data()[0] << std::endl;
     int bcat = -1;
     double bprob = -1.0;
     for (int i=0;i<1000;i++)
       {
-	if (results[0]->cpu_data()[i] > bprob)
+	if (results[1]->cpu_data()[i] > bprob)
 	  {
 	    bcat = i;
-	    bprob = results[0]->cpu_data()[i];
+	    bprob = results[1]->cpu_data()[i];
 	  }
       }
-    std::cout << "bcat=" << bcat << std::endl;
+    std::cout << "bcat=" << bcat << " -- accuracy=" << bprob << std::endl;
     
     /*int startl = 0;
     int endl = _net.layers().size()-1;

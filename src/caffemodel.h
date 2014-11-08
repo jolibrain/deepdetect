@@ -39,6 +39,7 @@ namespace dd
 
     std::string _def; /**< file name of the model definition in the form of a protocol buffer message description. */
     std::string _weights; /**< file name of the network's weights. */
+    std::string _mean; /**< file name of the mean of images, if needed. */
   };
   
 }

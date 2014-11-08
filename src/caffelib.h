@@ -28,6 +28,8 @@
 #include "caffemodel.h"
 #include "caffe/caffe.hpp"
 
+using caffe::Blob;
+
 namespace dd
 {
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel=CaffeModel>
@@ -49,6 +51,8 @@ namespace dd
       caffe::Net<float> *_net = nullptr;
       bool _gpu = false; /**< whether to use GPU. */
       int _gpuid = 1; /**< GPU id. */
+
+      Blob<float> _data_mean; /**< mean data if applicable, subtracted from inputs. */
     };
   
 }
