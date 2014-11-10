@@ -22,6 +22,9 @@
 #ifndef OUTPUTCONNECTORSTRATEGY_H
 #define OUTPUTCONNECTORSTRATEGY_H
 
+#include <map>
+#include <iostream>
+
 namespace dd
 {
 
@@ -38,8 +41,41 @@ namespace dd
   {
   public:
     NoOutputConn()
-      : OutputConnectorStrategy() {}
+      :OutputConnectorStrategy() {}
     ~NoOutputConn() {}
+  };
+
+  class SupervisedOutput : public OutputConnectorStrategy
+  {
+  public:
+    SupervisedOutput()
+      :OutputConnectorStrategy()
+      {}
+    ~SupervisedOutput() {}
+
+    inline void add_cat(const double &prob, const std::string &cat)
+    {
+      _cats.insert(std::pair<double,std::string>(prob,cat));
+    }
+
+    void best_cats(const int &num, SupervisedOutput &bcats) const
+    {
+      std::copy_n(_cats.begin(),num,std::inserter(bcats._cats,bcats._cats.end()));
+    }
+
+    //TODO: e.g. to_json, print, ...
+    void to_str(std::string &out) const
+      {
+	auto mit = _cats.begin();
+	while(mit!=_cats.end())
+	  {
+	    out += "accuracy=" + std::to_string((*mit).first) + " -- cat=" + (*mit).second + "\n";
+	    ++mit;
+	  }
+      }
+
+    double _loss = 0.0;
+    std::map<double,std::string,std::greater<double>> _cats; /**< classes as finite set of categories. */
   };
   
 }

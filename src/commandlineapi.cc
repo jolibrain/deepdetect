@@ -46,7 +46,9 @@ namespace dd
 	std::cout << FLAGS_imgfname << std::endl;
 	APIData ad;
 	ad.add("imgfname",FLAGS_imgfname);
-	predict(ad,0);
+	std::string out;
+	predict(ad,0,out);
+	std::cout << "response=\n" << out << std::endl;
       }
 
     return 0;

@@ -41,7 +41,7 @@ namespace dd
     ~MLLib() {}
 
     int train(const APIData &ad);
-    int predict(const APIData &ad);
+    int predict(const APIData &ad, std::string &output);
     int status() const;
     
     TInputConnectorStrategy _inputc;

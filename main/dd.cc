@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
   CaffeModel cmodel(def,weights,corresp);
   //cmodel._mean = mean;
   
-  dd.add_service(std::move(MLService<CaffeLib,ImgInputFileConn,NoOutputConn,CaffeModel>(cmodel)));
+  dd.add_service(std::move(MLService<CaffeLib,ImgInputFileConn,SupervisedOutput,CaffeModel>(cmodel)));
   std::cout << "booting\n";
   dd.boot(argc,argv);
 }

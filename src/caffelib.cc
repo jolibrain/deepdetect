@@ -82,7 +82,8 @@ namespace dd
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::predict(const APIData &ad)
+  int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::predict(const APIData &ad,
+										   std::string &output)
   {
     TInputConnectorStrategy inputc;
     inputc.transform(ad);
@@ -101,7 +102,7 @@ namespace dd
     std::vector<Blob<float>*> results = _net->ForwardPrefilled(&loss);
     //std::cout << "accuracy=" << results[1]->cpu_data()[0] << std::endl;
     //TODO: best 5 or best 'x'
-    int bcat = -1;
+    /*int bcat = -1;
     double bprob = -1.0;
     for (int i=0;i<1000;i++)
       {
@@ -111,10 +112,18 @@ namespace dd
 	    bprob = results[1]->cpu_data()[i];
 	  }
       }
-    std::cout << "accuracy=" << bprob << " -- bcat=" << bcat << " -- " << this->_mlmodel._hcorresp[bcat] << std::endl;
+      std::cout << "accuracy=" << bprob << " -- bcat=" << bcat << " -- " << this->_mlmodel._hcorresp[bcat] << std::endl;*/
+    TOutputConnectorStrategy tout;
+    for (int i=0;i<1000;i++)
+      {
+	tout.add_cat(results[1]->cpu_data()[i],this->_mlmodel._hcorresp[i]);
+      }
+    TOutputConnectorStrategy btout;
+    tout.best_cats(5,btout);
+    btout.to_str(output);
         
     return 0;
   }
 
-  template class CaffeLib<ImgInputFileConn,NoOutputConn,CaffeModel>;
+  template class CaffeLib<ImgInputFileConn,SupervisedOutput,CaffeModel>;
 }
