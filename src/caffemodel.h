@@ -25,6 +25,7 @@
 #include "mlmodel.h"
 #include "caffemodel.h"
 #include <string>
+#include <unordered_map>
 
 namespace dd
 {
@@ -32,14 +33,16 @@ namespace dd
   {
   public:
     CaffeModel(const std::string &def,
-	       const std::string &weights)
-      :MLModel(),_def(def),_weights(weights)
-    {}
+	       const std::string &weights,
+	       const std::string &corresp);
+    
     ~CaffeModel() {};
 
     std::string _def; /**< file name of the model definition in the form of a protocol buffer message description. */
     std::string _weights; /**< file name of the network's weights. */
     std::string _mean; /**< file name of the mean of images, if needed. */
+    std::string _corresp; /**< file name of the class correspondences (e.g. house / 23) */
+    std::unordered_map<int,std::string> _hcorresp; /**< table of class correspondences. */
   };
   
 }

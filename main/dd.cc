@@ -33,7 +33,8 @@ int main(int argc, char *argv[])
   std::string def = "/home/beniz/projects/deepdetect/datasets/imagenet/models/nin/deploy.prototxt";
   std::string weights = "/home/beniz/projects/deepdetect/datasets/imagenet/models/nin/ilsvrc2011_mine_train_iter_370000.caffemodel";
   //std::string mean = "/home/beniz/projects/deepdetect/datasets/imagenet/ilsvrc2011_mine_mean.binaryproto";
-  CaffeModel cmodel(def,weights);
+  std::string corresp = "/home/beniz/projects/deepdetect/datasets/imagenet/corresp.txt";
+  CaffeModel cmodel(def,weights,corresp);
   //cmodel._mean = mean;
   
   dd.add_service(std::move(MLService<CaffeLib,ImgInputFileConn,NoOutputConn,CaffeModel>(cmodel)));

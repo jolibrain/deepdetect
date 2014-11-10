@@ -100,6 +100,7 @@ namespace dd
     //std::vector<Blob<float>*> results = _net->Forward(bottom,&loss);
     std::vector<Blob<float>*> results = _net->ForwardPrefilled(&loss);
     //std::cout << "accuracy=" << results[1]->cpu_data()[0] << std::endl;
+    //TODO: best 5 or best 'x'
     int bcat = -1;
     double bprob = -1.0;
     for (int i=0;i<1000;i++)
@@ -110,7 +111,7 @@ namespace dd
 	    bprob = results[1]->cpu_data()[i];
 	  }
       }
-    std::cout << "bcat=" << bcat << " -- accuracy=" << bprob << std::endl;
+    std::cout << "accuracy=" << bprob << " -- bcat=" << bcat << " -- " << this->_mlmodel._hcorresp[bcat] << std::endl;
         
     return 0;
   }
