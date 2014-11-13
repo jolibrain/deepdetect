@@ -19,16 +19,33 @@
  * along with deepdetect.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "deepdetect.h"
-#include "commandlineapi.h"
-#include "caffelib.h"
-#include "imginputfileconn.h"
-#include "outputconnectorstrategy.h"
+#ifndef FILEOPS_H
+#define FILEOPS_H
 
-using namespace dd;
+#include <dirent.h>
+#include <unordered_set>
 
-int main(int argc, char *argv[])
+namespace dd
 {
-  DeepDetect<CommandLineAPI> dd;
-  dd.boot(argc,argv);
+  int list_directory_files(const std::string &repo,
+			   std::unordered_set<std::string> &lfiles)
+  {
+    DIR *dir;
+    struct dirent *ent;
+    if ((dir = opendir(repo.c_str())) != NULL) {
+      /* print all the files and directories within directory */
+      while ((ent = readdir(dir)) != NULL) {
+	lfiles.insert(std::string(repo) + "/" + std::string(ent->d_name));
+      }
+      closedir(dir);
+      return 0;
+    } 
+    else 
+      {
+	return 1;
+      }
+  }
+  
 }
+
+#endif

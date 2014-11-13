@@ -23,6 +23,9 @@
 #include <gflags/gflags.h>
 #include <iostream>
 
+DEFINE_string(service,"","service string (e.g. caffe)");
+DEFINE_bool(predict,true,"run service in predict mode");
+DEFINE_string(model_repo,"","model repository");
 DEFINE_string(imgfname,"","image file name");
 
 namespace dd
@@ -41,6 +44,21 @@ namespace dd
   {
     google::ParseCommandLineFlags(&argc, &argv, true);
     
+    // create service.
+    if (FLAGS_service.empty())
+      {
+	std::cout << "service required\n";
+	return 1;
+      }
+
+    if (FLAGS_predict)
+      {
+	if (FLAGS_service == "caffe")
+	  {
+	    CaffeModel cmodel = CaffeModel::read_from_repository(FLAGS_model_repo);
+	    add_service(std::move(MLService<CaffeLib,ImgInputFileConn,SupervisedOutput,CaffeModel>(cmodel)));
+	  }
+      }
     if (!FLAGS_imgfname.empty())
       {
 	std::cout << FLAGS_imgfname << std::endl;

@@ -32,17 +32,23 @@ namespace dd
   class CaffeModel : public MLModel
   {
   public:
+    CaffeModel() {}
+    
     CaffeModel(const std::string &def,
 	       const std::string &weights,
 	       const std::string &corresp);
     
+    CaffeModel(const std::string &repo);
+
     ~CaffeModel() {};
+
+    static CaffeModel read_from_repository(const std::string &repo);
 
     std::string _def; /**< file name of the model definition in the form of a protocol buffer message description. */
     std::string _weights; /**< file name of the network's weights. */
-    std::string _mean; /**< file name of the mean of images, if needed. */
     std::string _corresp; /**< file name of the class correspondences (e.g. house / 23) */
     std::unordered_map<int,std::string> _hcorresp; /**< table of class correspondences. */
+    std::string _snapshot; /**< model snapshot file, used for resuming / finetuning an existing model. */
   };
   
 }

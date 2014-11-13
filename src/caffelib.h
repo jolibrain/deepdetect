@@ -40,19 +40,12 @@ namespace dd
       CaffeLib(CaffeLib &&cl) noexcept;
       ~CaffeLib();
     
-    /*CaffeLib& operator=(CaffeLib&& other)
-    {
-      return *this;
-      }*/
-  
-      int train(const APIData &ad) { return 1; }
+      int train(const APIData &ad);
       int predict(const APIData &ad, std::string &output);
 
       caffe::Net<float> *_net = nullptr;
       bool _gpu = false; /**< whether to use GPU. */
       int _gpuid = 1; /**< GPU id. */
-
-      Blob<float> _data_mean; /**< mean data if applicable, subtracted from inputs. */
     };
   
 }

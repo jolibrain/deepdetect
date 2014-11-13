@@ -60,7 +60,7 @@ namespace dd
 
     void best_cats(const int &num, SupervisedOutput &bcats) const
     {
-      std::copy_n(_cats.begin(),num,std::inserter(bcats._cats,bcats._cats.end()));
+      std::copy_n(_cats.begin(),std::min(num,static_cast<int>(_cats.size())),std::inserter(bcats._cats,bcats._cats.end()));
     }
 
     //TODO: e.g. to_json, print, ...

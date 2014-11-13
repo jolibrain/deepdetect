@@ -46,17 +46,6 @@ namespace dd
       Caffe::set_phase(Caffe::TEST); // XXX: static within Caffe, cannot go along with training across services.
     _net = new Net<float>(this->_mlmodel._def);
     _net->CopyTrainedLayersFrom(this->_mlmodel._weights);
-    
-    if (!this->_mlmodel._mean.empty())
-      {
-	std::cout << "setting mean\n";
-	caffe::BlobProto blob_proto;
-	std::cout << "mean file=" << this->_mlmodel._mean << std::endl;
-	std::cout << "protoloading=" << ReadProtoFromBinaryFile(this->_mlmodel._mean,&blob_proto) << std::endl;
-	std::cout << "blob proto data=" << blob_proto.data(0) << std::endl;
-	_data_mean.FromProto(blob_proto);
-	std::cout << "loaded mean cpu data=" << _data_mean.cpu_data() << std::endl;
-      }
   }
   
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -66,11 +55,6 @@ namespace dd
     _gpu = cl._gpu;
     _gpuid = cl._gpuid;
     _net = cl._net;
-    if (cl._data_mean.num())
-      {
-	std::cout << "copying mean\n";
-	_data_mean.CopyFrom(cl._data_mean,false,true);
-      }
     cl._net = nullptr;
   }
 
@@ -79,6 +63,32 @@ namespace dd
   {
     if (_net)
       delete _net; // XXX: for now, crashes.
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::train(const APIData &ad)
+  {
+    static std::string solverf = "solver";
+    static std::string snapshotf = "snapshot";
+    //XXX: for now, inputc not used, will be if we run the learning loop from within here in order to collect stats along the way
+    //TODO: get solver param (from ad?)
+    std::string solver_file = ad.get(solverf).get<std::string>();
+    caffe::SolverParameter solver_param;
+    caffe::ReadProtoFromTextFileOrDie(solver_file,&solver_param); //TODO: no die
+    
+    // optimize
+    std::shared_ptr<caffe::Solver<float>> solver(caffe::GetSolver<float>(solver_param));
+    std::string snapshot_file = ad.get(snapshotf).get<std::string>();
+    if (!snapshot_file.empty())
+      solver->Solve(snapshot_file);
+    else if (!this->_mlmodel._weights.empty())
+      {
+	solver->net()->CopyTrainedLayersFrom(this->_mlmodel._weights);
+	solver->Solve();
+      }
+    else solver->Solve();
+
+    return 0;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -99,24 +109,16 @@ namespace dd
     boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddMatVector(dv,dvl);
     
     //std::vector<Blob<float>*> results = _net->Forward(bottom,&loss);
+    //TODO: loss ?
     std::vector<Blob<float>*> results = _net->ForwardPrefilled(&loss);
-    //std::cout << "accuracy=" << results[1]->cpu_data()[0] << std::endl;
-    //TODO: best 5 or best 'x'
-    /*int bcat = -1;
-    double bprob = -1.0;
-    for (int i=0;i<1000;i++)
-      {
-	if (results[1]->cpu_data()[i] > bprob)
-	  {
-	    bcat = i;
-	    bprob = results[1]->cpu_data()[i];
-	  }
-      }
-      std::cout << "accuracy=" << bprob << " -- bcat=" << bcat << " -- " << this->_mlmodel._hcorresp[bcat] << std::endl;*/
+    int slot = results.size() - 1;
+    std::cout << "results size=" << results.size() << std::endl;
+    std::cout << "count=" << results[slot]->count() << std::endl;
     TOutputConnectorStrategy tout;
-    for (int i=0;i<1000;i++)
+    for (int i=0;i<results[slot]->count();i++)
       {
-	tout.add_cat(results[1]->cpu_data()[i],this->_mlmodel._hcorresp[i]);
+	//std::cout << results[4]->cpu_data()[i] << std::endl;
+	tout.add_cat(results[slot]->cpu_data()[i],this->_mlmodel._hcorresp[i]);
       }
     TOutputConnectorStrategy btout;
     tout.best_cats(5,btout);
