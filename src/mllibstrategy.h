@@ -40,7 +40,7 @@ namespace dd
     
     ~MLLib() {}
 
-    int train(const APIData &ad);
+    int train(const APIData &ad, std::string &output);
     int predict(const APIData &ad, std::string &output);
     int status() const;
     

@@ -44,8 +44,11 @@ namespace dd
     else Caffe::set_mode(Caffe::CPU);
     if (this->_has_predict)
       Caffe::set_phase(Caffe::TEST); // XXX: static within Caffe, cannot go along with training across services.
-    _net = new Net<float>(this->_mlmodel._def);
-    _net->CopyTrainedLayersFrom(this->_mlmodel._weights);
+    if (!this->_mlmodel._def.empty()) // whether in prediction mode...
+      {
+	_net = new Net<float>(this->_mlmodel._def);
+	_net->CopyTrainedLayersFrom(this->_mlmodel._weights);
+      }
   }
   
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -66,15 +69,21 @@ namespace dd
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::train(const APIData &ad)
+  int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::train(const APIData &ad,
+										 std::string &output)
   {
-    static std::string solverf = "solver";
     static std::string snapshotf = "snapshot";
     //XXX: for now, inputc not used, will be if we run the learning loop from within here in order to collect stats along the way
     //TODO: get solver param (from ad?)
-    std::string solver_file = ad.get(solverf).get<std::string>();
+    //std::string solver_file = ad.get(solverf).get<std::string>();
+    if (this->_mlmodel._solver.empty())
+      {
+	LOG(ERROR) << "missing solver file";
+	return 1;
+      }
+
     caffe::SolverParameter solver_param;
-    caffe::ReadProtoFromTextFileOrDie(solver_file,&solver_param); //TODO: no die
+    caffe::ReadProtoFromTextFileOrDie(this->_mlmodel._solver,&solver_param); //TODO: no die
     
     // optimize
     std::shared_ptr<caffe::Solver<float>> solver(caffe::GetSolver<float>(solver_param));
@@ -86,8 +95,12 @@ namespace dd
 	solver->net()->CopyTrainedLayersFrom(this->_mlmodel._weights);
 	solver->Solve();
       }
-    else solver->Solve();
-
+    else 
+      {
+	LOG(INFO) << "Optimizing model";
+	solver->Solve();
+      }
+    output = "Optimization done.";
     return 0;
   }
 

@@ -40,7 +40,7 @@ namespace dd
       CaffeLib(CaffeLib &&cl) noexcept;
       ~CaffeLib();
     
-      int train(const APIData &ad);
+      int train(const APIData &ad, std::string &output);
       int predict(const APIData &ad, std::string &output);
 
       caffe::Net<float> *_net = nullptr;

@@ -36,30 +36,47 @@ namespace dd
 {
   typedef mapbox::util::variant<MLService<CaffeLib,ImgInputFileConn,SupervisedOutput,CaffeModel>> mls_variant_type;
   
-  class predict_output
+  class output
   {
   public:
-    predict_output(const int &status, const std::string out)
+    output(const int &status, const std::string out)
       :_status(status),_out(out)
     {}
-    ~predict_output() 
+    ~output() 
       {}
     
     int _status = 0;
     std::string _out;
   };
 
-  class visitor_predict : public mapbox::util::static_visitor<predict_output>
+  class visitor_predict : public mapbox::util::static_visitor<output>
   {
   public:
     visitor_predict() {}
     ~visitor_predict() {}
     
     template<typename T>
-      predict_output operator() (T &mllib)
+      output operator() (T &mllib)
       {
         int r = mllib.predict(_ad,_out);
-	return predict_output(r,_out);
+	return output(r,_out);
+      }
+    
+    APIData _ad;
+    std::string _out;
+  };
+
+  class visitor_train : public mapbox::util::static_visitor<output>
+  {
+  public:
+    visitor_train() {}
+    ~visitor_train() {}
+    
+    template<typename T>
+      output operator() (T &mllib)
+      {
+        int r = mllib.train(_ad,_out);
+	return output(r,_out);
       }
     
     APIData _ad;
@@ -76,12 +93,21 @@ namespace dd
     {
       _mlservices.push_back(std::move(mls)); 
     }
+
+    int train(const APIData &ad, const int &pos, std::string &out)
+    {
+      visitor_train vt;
+      vt._ad = ad;
+      output pout = mapbox::util::apply_visitor(vt,_mlservices.at(pos));
+      out = pout._out;
+      return pout._status;
+    }
     
     int predict(const APIData &ad, const int &pos, std::string &out)
     {
       visitor_predict vp;
       vp._ad = ad;
-      predict_output pout = mapbox::util::apply_visitor(vp,_mlservices.at(pos));
+      output pout = mapbox::util::apply_visitor(vp,_mlservices.at(pos));
       out = pout._out;
       return pout._status;
     }
