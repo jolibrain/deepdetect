@@ -30,6 +30,7 @@
 #include "outputconnectorstrategy.h"
 #include "caffelib.h"
 #include <vector>
+#include <mutex>
 #include <iostream>
 
 namespace dd
@@ -93,12 +94,14 @@ namespace dd
     void add_service(const std::string &sname,
 		     mls_variant_type &&mls) 
     {
+      std::lock_guard<std::mutex> lock(_mlservices_mtx);
       _mlservices.push_back(std::move(mls));
       _mlservidx.insert(std::pair<std::string,int>(sname,_mlservices.size()-1));
     }
 
     void remove_service(const std::string &sname)
     {
+      std::lock_guard<std::mutex> lock(_mlservices_mtx);
       auto hit = _mlservidx.begin();
       if ((hit=_mlservidx.find(sname))!=_mlservidx.end())
 	{
@@ -144,6 +147,8 @@ namespace dd
 
     std::vector<mls_variant_type> _mlservices;
     std::unordered_map<std::string,int> _mlservidx;
+    
+    std::mutex _mlservices_mtx; /**< mutex around adding/removing services. */
   };
   
 }
