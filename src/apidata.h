@@ -27,10 +27,14 @@
 
 namespace dd
 {
-  typedef mapbox::util::variant<std::string,int,double,bool> ad_variant_type;
+  struct ndata;
+  typedef mapbox::util::variant<std::string,int,double,bool,
+    std::unordered_map<std::string,mapbox::util::recursive_wrapper<ndata>>> ad_variant_type;
+  struct ndata
+  {
+    std::unordered_map<std::string,ad_variant_type> _ndata;
+  };
 
-  //class visitor_get : public mapbox::util::static_visitor<
-  
   class APIData
   {
   public:
