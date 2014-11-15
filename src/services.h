@@ -90,9 +90,22 @@ namespace dd
     Services() {};
     ~Services() {};
     
-    void add_service(mls_variant_type &&mls) 
+    void add_service(const std::string &sname,
+		     mls_variant_type &&mls) 
     {
-      _mlservices.push_back(std::move(mls)); 
+      _mlservices.push_back(std::move(mls));
+      _mlservidx.insert(std::pair<std::string,int>(sname,_mlservices.size()-1));
+    }
+
+    void remove_service(const std::string &sname)
+    {
+      auto hit = _mlservidx.begin();
+      if ((hit=_mlservidx.find(sname))!=_mlservidx.end())
+	{
+	  _mlservices.erase(_mlservices.begin()+(*hit).second);
+	  _mlservidx.erase(hit);
+	}
+      else LOG(ERROR) << "cannot find service " << sname << " for removal\n";
     }
 
     int train(const APIData &ad, const int &pos, std::string &out)
@@ -130,6 +143,7 @@ namespace dd
     }
 
     std::vector<mls_variant_type> _mlservices;
+    std::unordered_map<std::string,int> _mlservidx;
   };
   
 }
