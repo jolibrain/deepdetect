@@ -39,6 +39,7 @@ namespace dd
   class output
   {
   public:
+    output() {}
     output(const int &status, const std::string out)
       :_status(status),_out(out)
     {}
@@ -98,7 +99,15 @@ namespace dd
     {
       visitor_train vt;
       vt._ad = ad;
-      output pout = mapbox::util::apply_visitor(vt,_mlservices.at(pos));
+      output pout;
+      try
+	{
+	  pout = mapbox::util::apply_visitor(vt,_mlservices.at(pos));
+	}
+      catch(...)
+	{
+	  LOG(ERROR) << "service #" << pos << " training call failed\n";
+	}
       out = pout._out;
       return pout._status;
     }
@@ -107,7 +116,15 @@ namespace dd
     {
       visitor_predict vp;
       vp._ad = ad;
-      output pout = mapbox::util::apply_visitor(vp,_mlservices.at(pos));
+      output pout;
+      try
+	{
+	  pout = mapbox::util::apply_visitor(vp,_mlservices.at(pos));
+	}
+      catch(...)
+	{
+	  LOG(ERROR) << "service #" << pos << " prediction call failed\n";
+	}
       out = pout._out;
       return pout._status;
     }
