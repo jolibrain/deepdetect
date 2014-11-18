@@ -41,14 +41,14 @@ namespace dd
   {
   public:
     output() {}
-    output(const int &status, const std::string out)
+    output(const int &status, const APIData &out)
       :_status(status),_out(out)
     {}
     ~output() 
       {}
     
     int _status = 0;
-    std::string _out;
+    APIData _out;
   };
 
   class visitor_predict : public mapbox::util::static_visitor<output>
@@ -65,7 +65,7 @@ namespace dd
       }
     
     APIData _ad;
-    std::string _out;
+    APIData _out;
   };
 
   class visitor_train : public mapbox::util::static_visitor<output>
@@ -82,7 +82,7 @@ namespace dd
       }
     
     APIData _ad;
-    std::string _out;
+    APIData _out;
   };
   
   class Services
@@ -111,7 +111,7 @@ namespace dd
       else LOG(ERROR) << "cannot find service " << sname << " for removal\n";
     }
 
-    int train(const APIData &ad, const int &pos, std::string &out)
+    int train(const APIData &ad, const int &pos, APIData &out)
     {
       visitor_train vt;
       vt._ad = ad;
@@ -128,7 +128,7 @@ namespace dd
       return pout._status;
     }
     
-    int predict(const APIData &ad, const int &pos, std::string &out)
+    int predict(const APIData &ad, const int &pos, APIData &out)
     {
       visitor_predict vp;
       vp._ad = ad;

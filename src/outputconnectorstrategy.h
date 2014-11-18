@@ -65,14 +65,54 @@ namespace dd
 
     //TODO: e.g. to_json, print, ...
     void to_str(std::string &out) const
-      {
+    {
 	auto mit = _cats.begin();
 	while(mit!=_cats.end())
 	  {
 	    out += "accuracy=" + std::to_string((*mit).first) + " -- cat=" + (*mit).second + "\n";
 	    ++mit;
 	  }
-      }
+    }
+
+    void to_ad(APIData &out) const
+    {
+      static std::string cl = "classes";
+      static std::string phead = "prob";
+      static std::string chead = "cat";
+      //std::vector<APIData> v;
+     
+      //debug
+      /*std::string str;
+      to_str(str);
+      std::cout << "witness=\n" << str << std::endl;*/
+      //debug
+      
+      int i = 0;
+      auto mit = _cats.begin();
+      while(mit!=_cats.end())
+	{
+	  /*APIData nad;
+	  nad.add(chead,(*mit).second);
+	  nad.add(phead,(*mit).first);
+	  v.push_back(nad);*/
+	  /*std::vector<std::pair<std::string,std::string>> v;
+	  v.push_back(std::pair<std::string,std::string>(cchead,(*mit).second));
+	  v.push_back(std::pair<std::string,std::string>(phead,std::to_string((*mit).first)));
+	  ad_classes.*/
+	  std::string s = std::to_string(i);
+	  out.add(chead + s,(*mit).second);
+	  out.add(phead + s,static_cast<double>((*mit).first));
+	  ++i;
+	  ++mit;
+	}
+      //out.add(cl,ad_classes);
+      //out.add(cl,v);
+      out.add("loss",_loss);
+      /*out.add("bool",true);
+      out.add("string","bla");
+      out.add("int",3);
+      out.add("double",8.0);*/
+    }
 
     double _loss = 0.0;
     std::map<double,std::string,std::greater<double>> _cats; /**< classes as finite set of categories. */

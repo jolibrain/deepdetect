@@ -70,7 +70,8 @@ namespace dd
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::train(const APIData &ad,
-										 std::string &output)
+										 APIData &out)
+  //std::string &output)
   {
     static std::string snapshotf = "snapshot";
     //XXX: for now, inputc not used, will be if we run the learning loop from within here in order to collect stats along the way
@@ -100,13 +101,15 @@ namespace dd
 	LOG(INFO) << "Optimizing model";
 	solver->Solve();
       }
-    output = "Optimization done.";
+    //TODO: output connector.
+    //output = "Optimization done.";
     return 0;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::predict(const APIData &ad,
-										   std::string &output)
+										   APIData &out)
+  //std::string &output)
   {
     TInputConnectorStrategy inputc;
     inputc.transform(ad);
@@ -135,8 +138,10 @@ namespace dd
       }
     TOutputConnectorStrategy btout;
     tout.best_cats(5,btout);
-    btout.to_str(output);
-        
+    //btout.to_str(output);
+    btout.to_ad(out);
+    out.add("status",0);
+  
     return 0;
   }
 

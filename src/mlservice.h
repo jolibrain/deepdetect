@@ -33,16 +33,17 @@ namespace dd
     class MLService : public TMLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>
   {
   public:
-    MLService(const TMLModel &mlmodel)
-      :TMLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>(mlmodel)
+    MLService(const std::string &sname,
+	      const TMLModel &mlmodel)
+      :TMLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>(mlmodel),_sname(sname)
       {}
     MLService(MLService &&mls) noexcept
-      :TMLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>(std::move(mls)),_sid(std::move(mls._sid)),_sname(std::move(mls._sname))
+      :TMLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>(std::move(mls)),_sname(std::move(mls._sname)),_description(std::move(mls._description))
       {}
     ~MLService() {}
     
-    int _sid; /**< service id, hash from name. */
     std::string _sname; /**< service name. */
+    std::string _description; /**< optional description of the service. */
   };
 }
 

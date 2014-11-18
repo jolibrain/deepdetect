@@ -64,9 +64,11 @@ namespace dd
 	    std::cout << FLAGS_imgfname << std::endl;
 	    APIData ad;
 	    ad.add("imgfname",FLAGS_imgfname);
-	    std::string out;
+	    APIData out;
 	    predict(ad,0,out);
-	    std::cout << "response=\n" << out << std::endl;
+	    //std::cout << "witness=\n" << out.to_str() << std::endl;
+	    std::string tpl = "status={{status}}\n{{cat0}} --> {{prob0}}\n{{cat1}} --> {{prob1}}\n{{cat2}} --> {{prob2}}\n";
+	    std::cout << "response=\n" << out.render_template(tpl) << std::endl;
 	    remove_service(FLAGS_service);
 	  }
       }
@@ -76,10 +78,10 @@ namespace dd
 	  {
 	    CaffeModel cmodel = CaffeModel::read_from_repository(FLAGS_model_repo);
 	    add_service(FLAGS_service,std::move(MLService<CaffeLib,ImgInputFileConn,SupervisedOutput,CaffeModel>(FLAGS_service,cmodel)));
-	    APIData ad;
-	    std::string out;
+	    APIData ad, out;
 	    train(ad,0,out);
-	    std::cout << "response=\n" << out << std::endl;
+	    std::string tpl = "status={{status}}\n";
+	    std::cout << "response=\n" << out.render_template(tpl) << std::endl;
 	    remove_service(FLAGS_service);
 	  }
       }

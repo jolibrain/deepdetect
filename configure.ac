@@ -1,7 +1,7 @@
 # configure for deepdetect
 AC_INIT(deepdetect,0.1)
 AC_CONFIG_SRCDIR(Makefile.am)
-AM_INIT_AUTOMAKE
+AM_INIT_AUTOMAKE([subdir-objects])
 AM_CONFIG_HEADER([dd_config.h])
 
 AC_PROG_INSTALL
@@ -37,4 +37,8 @@ fi
 AC_SUBST(GFLAGS_LIBS)
 AM_CONDITIONAL(HAVE_GFLAGS, test x"$ac_cv_have_libgflags" = x"1")
 
-AC_OUTPUT(Makefile src/Makefile main/Makefile)
+# Check for gtest.
+AC_CHECK_HEADER([gtest/gtest.h], gtest_header_avail=yes,)
+AM_CONDITIONAL(HAVE_GTEST, test x"$gtest_header_avail" = xyes)
+
+AC_OUTPUT(Makefile src/Makefile main/Makefile tests/Makefile)

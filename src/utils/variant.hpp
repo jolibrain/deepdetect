@@ -9,6 +9,7 @@
 #include <cstddef> // size_t
 #include <iosfwd>
 #include <string>
+#include <iostream>
 
 #include "recursive_wrapper.hpp"
 
@@ -591,7 +592,7 @@ public:
     template<typename T>
     VARIANT_INLINE T& get()
     {
-        if (type_index == detail::direct_type<T, Types...>::index)
+      if (type_index == detail::direct_type<T, Types...>::index)
         {
             return *reinterpret_cast<T*>(&data);
         }
@@ -604,8 +605,8 @@ public:
     template<typename T>
     VARIANT_INLINE T const& get() const
     {
-        if (type_index == detail::direct_type<T, Types...>::index)
-        {
+      if (type_index == detail::direct_type<T, Types...>::index)
+	{
             return *reinterpret_cast<T const*>(&data);
         }
         else
