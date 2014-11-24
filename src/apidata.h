@@ -26,6 +26,7 @@
 #include "ext/plustache/template.hpp"
 //#include "ext/plustache/context.hpp"
 #include <unordered_map>
+#include <typeinfo>
 
 namespace dd
 {
@@ -38,24 +39,47 @@ namespace dd
    * 2: int
    * 3: string
    */
-  typedef mapbox::util::variant<std::string,int,double,bool> ad_variant_type;
-    //mapbox::util::recursive_wrapper<APIData>> ad_variant_type;
+  class APIData;
+  //typedef mapbox::util::variant<std::string,int,double,bool> ad_variant_type;
+  typedef mapbox::util::variant<std::string,int,double,bool,
+    mapbox::util::recursive_wrapper<APIData>> ad_variant_type;
     //mapbox::util::recursive_wrapper<std::vector<APIData>>> ad_variant_type;
   
-  /*class visitor_stache : public mapbox::util::static_visitor<>
+  class visitor_stache : public mapbox::util::static_visitor<>
   {
   public:
-    visitor_vad() {}
-    ~visitor_vad() {}
+    visitor_stache(Plustache::Context *ctx):_ctx(ctx) {}
+    ~visitor_stache() {}
+    
+    std::string to_string(const std::string &str)
+      {
+	return str;
+      }
+    std::string to_string(const int &i)
+      {
+	return std::to_string(i);
+      }
+    std::string to_string(const double &d)
+      {
+	return std::to_string(d);
+      }
+    std::string to_string(const bool &b)
+      {
+	return std::to_string(b);
+      }
+    std::string to_string(const APIData &ad)
+      {
+	return "ad"; //TODO.
+      }
 
     template<typename T>
       void operator() (T &t)
       {
-	_ctx.add(_key,std::to_string(t));
+	_ctx->add(_key,to_string(t));
       }
     std::string _key;
-    Plustache::Context _ctx;
-    };*/
+    Plustache::Context *_ctx = nullptr;
+  };
 
   class APIData
   {
@@ -90,24 +114,12 @@ namespace dd
 
     void to_plustache_ctx(Plustache::Context &ctx) const
     {
-      //TODO: iterate _data and fill up context.
-      //visitor_stache vs;
+      visitor_stache vs(&ctx);
       auto hit = _data.begin();
       while(hit!=_data.end())
 	{
-	  //TODO: detect when nested type. get_type_index() ?
-	  size_t vti = (*hit).second.get_type_index();
-	  //std::cout << (*hit).first << " / " << vti << " / " << typeid((*hit).second).name() << std::endl;
-	  //vs._key = (*hit).first;
-	  //mapbox::util::apply_visitor(vs,(*hit).second);
-	  if (vti == 0)
-	    ctx.add((*hit).first,std::to_string((*hit).second.get<bool>()));
-	  if (vti == 1)
-	    ctx.add((*hit).first,std::to_string((*hit).second.get<double>()));
-	  if (vti == 2)
-	    ctx.add((*hit).first,std::to_string((*hit).second.get<int>()));
-	  if (vti == 3)
-	    ctx.add((*hit).first,(*hit).second.get<std::string>());
+	  vs._key = (*hit).first;
+	  mapbox::util::apply_visitor(vs,(*hit).second);
 	  ++hit;
 	}
     }
