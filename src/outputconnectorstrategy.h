@@ -79,7 +79,7 @@ namespace dd
       static std::string cl = "classes";
       static std::string phead = "prob";
       static std::string chead = "cat";
-      //std::vector<APIData> v;
+      std::vector<APIData> v;
      
       //debug
       /*std::string str;
@@ -91,22 +91,23 @@ namespace dd
       auto mit = _cats.begin();
       while(mit!=_cats.end())
 	{
-	  /*APIData nad;
+	  APIData nad;
 	  nad.add(chead,(*mit).second);
 	  nad.add(phead,(*mit).first);
-	  v.push_back(nad);*/
+	  v.push_back(nad);
 	  /*std::vector<std::pair<std::string,std::string>> v;
 	  v.push_back(std::pair<std::string,std::string>(cchead,(*mit).second));
 	  v.push_back(std::pair<std::string,std::string>(phead,std::to_string((*mit).first)));
 	  ad_classes.*/
-	  std::string s = std::to_string(i);
+	  
+	  /*std::string s = std::to_string(i);
 	  out.add(chead + s,(*mit).second);
-	  out.add(phead + s,static_cast<double>((*mit).first));
+	  out.add(phead + s,static_cast<double>((*mit).first));*/
 	  ++i;
 	  ++mit;
 	}
       //out.add(cl,ad_classes);
-      //out.add(cl,v);
+      out.add(cl,v);
       out.add("loss",_loss);
       /*out.add("bool",true);
       out.add("string","bla");

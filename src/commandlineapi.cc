@@ -67,7 +67,8 @@ namespace dd
 	    APIData out;
 	    predict(ad,0,out);
 	    //std::cout << "witness=\n" << out.to_str() << std::endl;
-	    std::string tpl = "status={{status}}\n{{cat0}} --> {{prob0}}\n{{cat1}} --> {{prob1}}\n{{cat2}} --> {{prob2}}\n";
+	    //std::string tpl = "status={{status}}\n{{cat0}} --> {{prob0}}\n{{cat1}} --> {{prob1}}\n{{cat2}} --> {{prob2}}\n";
+	    std::string tpl = "status={{status}}\n{{# classes}}/\n{{cat}} --> {{prob}}\n{{/ classes}}\n";
 	    std::cout << "response=\n" << out.render_template(tpl) << std::endl;
 	    remove_service(FLAGS_service);
 	  }
