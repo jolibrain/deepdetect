@@ -1,8 +1,9 @@
 
 if HAVE_GTEST
 TESTS = $(check_PROGRAMS)
-check_PROGRAMS = ut_apidata
+check_PROGRAMS = ut_apidata ut_jsonapi
 ut_apidata_SOURCES = ut-apidata.cc
+ut_jsonapi_SOURCES = ut-jsonapi.cc
 endif
 
 AM_CPPFLAGS=-I../src

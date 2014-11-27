@@ -23,7 +23,7 @@
 #define CAFFEMODEL_H
 
 #include "mlmodel.h"
-#include "caffemodel.h"
+#include "apidata.h"
 #include <string>
 #include <unordered_map>
 
@@ -32,18 +32,19 @@ namespace dd
   class CaffeModel : public MLModel
   {
   public:
-    CaffeModel() {}
+    CaffeModel():MLModel() {}
+    CaffeModel(const APIData &ad);
     
-    CaffeModel(const std::string &def,
+    /*CaffeModel(const std::string &def,
 	       const std::string &weights,
 	       const std::string &corresp,
-	       const std::string &solver="");
+	       const std::string &solver="");*/
     
     CaffeModel(const std::string &repo);
 
     ~CaffeModel() {};
 
-    static CaffeModel read_from_repository(const std::string &repo);
+    int read_from_repository(const std::string &repo);
 
     std::string _def; /**< file name of the model definition in the form of a protocol buffer message description. */
     std::string _weights; /**< file name of the network's weights. */

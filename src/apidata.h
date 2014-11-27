@@ -24,7 +24,7 @@
 
 #include "utils/variant.hpp"
 #include "ext/plustache/template.hpp"
-//#include "ext/plustache/context.hpp"
+#include "dd_types.h"
 #include <unordered_map>
 #include <typeinfo>
 
@@ -32,9 +32,8 @@ namespace dd
 {
   class APIData;
   
-  //typedef mapbox::util::variant<std::string,int,double,bool> ad_variant_type;
   typedef mapbox::util::variant<std::string,double,bool,
-    //mapbox::util::recursive_wrapper<APIData>> ad_variant_type;
+    std::vector<std::string>,std::vector<double>,
     mapbox::util::recursive_wrapper<std::vector<APIData>>> ad_variant_type;
 
   class visitor_stache;
@@ -43,6 +42,7 @@ namespace dd
   {
   public:
     APIData() {}
+    APIData(const JVal &jval);
     ~APIData() {}
 
     inline void add(const std::string &key, const ad_variant_type &val)
@@ -55,12 +55,20 @@ namespace dd
       std::unordered_map<std::string,ad_variant_type>::const_iterator hit;
       if ((hit=_data.find(key))!=_data.end())
 	return (*hit).second;
-      else return "";
+      else return ""; // beware
+    }
+
+    inline bool has(const std::string &key) const
+    {
+      std::unordered_map<std::string,ad_variant_type>::const_iterator hit;
+      if ((hit=_data.find(key))!=_data.end())
+	return true;
+      else return false;
     }
 
     //TODO: convert in and out from json.
-
-    //TODO: convert out to custom template.
+    void fromJVal(const JVal &jval);
+    
   public:
     inline std::string render_template(const std::string &tpl)
     {
@@ -99,6 +107,12 @@ namespace dd
       if (_ctx)
 	_ctx->add(_key,std::to_string(b));
       else (*_ot)[_key] = std::to_string(b);
+    }
+    void process(const std::vector<double> &vd)
+    {
+    }
+    void process(const std::vector<std::string> &vs)
+    {
     }
     void process(const std::vector<APIData> &vad)
     {

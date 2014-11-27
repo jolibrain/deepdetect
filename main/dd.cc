@@ -21,14 +21,27 @@
 
 #include "deepdetect.h"
 #include "commandlineapi.h"
+#include "commandlinejsonapi.h"
 #include "caffelib.h"
 #include "imginputfileconn.h"
 #include "outputconnectorstrategy.h"
 
 using namespace dd;
 
+DEFINE_bool(jsonapi,false,"whether to use the JSON command line API");
+
 int main(int argc, char *argv[])
 {
-  DeepDetect<CommandLineAPI> dd;
-  dd.boot(argc,argv);
+  google::ParseCommandLineFlags(&argc, &argv, true);
+
+  if (!FLAGS_jsonapi)
+    {
+      DeepDetect<CommandLineAPI> dd;
+      dd.boot(argc,argv);
+    }
+  else
+    {
+      DeepDetect<CommandLineJsonAPI> dd;
+      dd.boot(argc,argv);
+    }
 }

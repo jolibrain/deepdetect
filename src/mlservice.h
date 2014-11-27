@@ -41,6 +41,15 @@ namespace dd
       :TMLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>(std::move(mls)),_sname(std::move(mls._sname)),_description(std::move(mls._description))
       {}
     ~MLService() {}
+
+    APIData info() const
+    {
+      APIData ad;
+      ad.add("name",_sname);
+      ad.add("description",_description);
+      ad.add("mllib",this->_libname);
+      return ad;
+    }
     
     std::string _sname; /**< service name. */
     std::string _description; /**< optional description of the service. */

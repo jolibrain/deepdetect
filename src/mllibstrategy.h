@@ -51,6 +51,7 @@ namespace dd
     bool _has_predict = true; /**< whether prediction is available. */
 
     TMLModel _mlmodel;
+    std::string _libname; /**< ml lib name. */
   };  
   
 }

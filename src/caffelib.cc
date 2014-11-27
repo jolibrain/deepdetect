@@ -36,6 +36,7 @@ namespace dd
   CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::CaffeLib(const CaffeModel &cmodel)
     :MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,CaffeModel>(cmodel)
   {
+    this->_libname = "caffe";
     if (_gpu)
       {
 	Caffe::SetDevice(_gpuid);
@@ -55,6 +56,7 @@ namespace dd
   CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::CaffeLib(CaffeLib &&cl) noexcept
     :MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,CaffeModel>(std::move(cl))
   {
+    this->_libname = "caffe";
     _gpu = cl._gpu;
     _gpuid = cl._gpuid;
     _net = cl._net;

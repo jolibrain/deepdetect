@@ -21,6 +21,7 @@
 
 #include "deepdetect.h"
 #include "commandlineapi.h"
+#include "commandlinejsonapi.h"
 
 namespace dd
 {
@@ -36,5 +37,5 @@ namespace dd
   }
 
   template class DeepDetect<CommandLineAPI>;
-  
+  template class DeepDetect<CommandLineJsonAPI>;
 }

@@ -90,6 +90,11 @@ namespace dd
   public:
     Services() {};
     ~Services() {};
+
+    size_t services_size() const
+    {
+      return _mlservices.size();
+    }
     
     void add_service(const std::string &sname,
 		     mls_variant_type &&mls) 
