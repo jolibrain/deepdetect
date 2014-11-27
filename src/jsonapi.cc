@@ -91,14 +91,7 @@ namespace dd
 
   std::string JsonAPI::info() const
   {
-    /*rapidjson::Document d;
-    d.Parse(jstr.c_str());
-    if (d.HasParseError())
-      {
-	//TODO. -> generic error function
-	return jrender(dd_bad_request_400());
-	}*/
-    //TODO: answer info call.
+    // answer info call.
     JDoc jinfo = dd_ok_200();
     JVal jhead(rapidjson::kObjectType);
     jhead.AddMember("method","/info",jinfo.GetAllocator());

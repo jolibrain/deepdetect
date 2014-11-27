@@ -23,12 +23,9 @@
 #include <gflags/gflags.h>
 #include <iostream>
 
-/*DEFINE_string(service,"","service string (e.g. caffe)");
-DEFINE_bool(predict,false,"run service in predict mode");
-DEFINE_bool(train,false,"run servince in train mode");
-DEFINE_string(model_repo,"","model repository");
-DEFINE_string(imgfname,"","image file name");*/
-DEFINE_bool(info,false,"/info call JSON string");
+DEFINE_bool(info,false,"/info JSON call");
+DEFINE_string(service_create,"","/service/service_name call JSON string");
+DEFINE_string(service_name,"","service name string for JSON call /service/service_name");
 
 namespace dd
 {
@@ -46,6 +43,15 @@ namespace dd
   {
     google::ParseCommandLineFlags(&argc, &argv, true);
 
+    if (!FLAGS_service_create.empty())
+      {
+	if (FLAGS_service_name.empty())
+	  {
+	    //TODO: error.
+	  }
+	std::string janswer = service_create(FLAGS_service_name,FLAGS_service_create);
+	std::cout << janswer << std::endl;
+      }
     if (FLAGS_info)
       {
 	std::string janswer = info();
