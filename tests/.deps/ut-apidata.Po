@@ -558,11 +558,404 @@ ut-apidata.o: ut-apidata.cc /usr/include/stdc-predef.h ../src/apidata.h \
  /usr/include/boost/regex/v4/regex_merge.hpp \
  /usr/include/boost/regex/v4/regex_split.hpp \
  ../src/ext/plustache/plustache_types.hpp \
- ../src/ext/plustache/context.hpp /usr/include/c++/4.9/unordered_map \
- /usr/include/c++/4.9/bits/hashtable.h \
+ ../src/ext/plustache/context.hpp ../src/dd_types.h \
+ ../src/ext/rapidjson/document.h ../src/ext/rapidjson/reader.h \
+ ../src/ext/rapidjson/rapidjson.h /usr/include/inttypes.h \
+ ../src/ext/rapidjson/allocators.h ../src/ext/rapidjson/encodings.h \
+ ../src/ext/rapidjson/internal/meta.h \
+ ../src/ext/rapidjson/internal/pow10.h \
+ ../src/ext/rapidjson/internal/stack.h ../src/ext/rapidjson/error/error.h \
+ ../src/ext/rapidjson/internal/strfunc.h \
+ /usr/include/c++/4.9/unordered_map /usr/include/c++/4.9/bits/hashtable.h \
  /usr/include/c++/4.9/bits/hashtable_policy.h \
- /usr/include/c++/4.9/bits/unordered_map.h /usr/include/gtest/gtest.h \
- /usr/include/gtest/internal/gtest-internal.h \
+ /usr/include/c++/4.9/bits/unordered_map.h ../src/jsonapi.h \
+ ../src/apistrategy.h ../src/services.h ../src/mlservice.h \
+ ../src/mllibstrategy.h ../src/apidata.h ../src/mlmodel.h \
+ ../src/inputconnectorstrategy.h ../src/imginputfileconn.h \
+ /usr/include/opencv2/core/core.hpp /usr/include/opencv2/core/types_c.h \
+ /usr/lib/gcc/x86_64-linux-gnu/4.9/include/float.h \
+ /usr/include/opencv2/core/version.hpp \
+ /usr/include/opencv2/core/operations.hpp \
+ /usr/include/opencv2/core/mat.hpp \
+ /usr/include/opencv2/imgproc/imgproc.hpp \
+ /usr/include/opencv2/imgproc/types_c.h \
+ /usr/include/opencv2/core/core_c.h \
+ /usr/include/opencv2/highgui/highgui.hpp \
+ /usr/include/opencv2/highgui/highgui_c.h \
+ ../src/outputconnectorstrategy.h ../src/caffelib.h ../src/caffemodel.h \
+ /home/beniz/projects/deepdetect/apps/caffe/include/caffe/caffe.hpp \
+ /home/beniz/projects/deepdetect/apps/caffe/include/caffe/blob.hpp \
+ /home/beniz/projects/deepdetect/apps/caffe/include/caffe/common.hpp \
+ /usr/include/gflags/gflags.h /usr/include/gflags/gflags_declare.h \
+ /usr/include/glog/logging.h /usr/include/glog/log_severity.h \
+ /usr/include/glog/vlog_is_on.h \
+ /home/beniz/projects/deepdetect/apps/caffe/include/caffe/util/device_alternate.hpp \
+ /home/beniz/projects/deepdetect/apps/caffe/.build_release/src/caffe/proto/caffe.pb.h \
+ /usr/include/google/protobuf/stubs/common.h \
+ /usr/include/google/protobuf/generated_message_util.h \
+ /usr/include/google/protobuf/message.h \
+ /usr/include/google/protobuf/message_lite.h \
+ /usr/include/google/protobuf/descriptor.h \
+ /usr/include/google/protobuf/repeated_field.h \
+ /usr/include/google/protobuf/stubs/type_traits.h \
+ /usr/include/google/protobuf/stubs/template_util.h \
+ /usr/include/google/protobuf/extension_set.h \
+ /usr/include/google/protobuf/generated_enum_reflection.h \
+ /usr/include/google/protobuf/unknown_field_set.h \
+ /home/beniz/projects/deepdetect/apps/caffe/include/caffe/syncedmem.hpp \
+ /home/beniz/projects/deepdetect/apps/caffe/include/caffe/util/math_functions.hpp \
+ /home/beniz/projects/deepdetect/apps/caffe/include/caffe/util/mkl_alternate.hpp \
+ /usr/include/cblas.h \
+ /home/beniz/projects/deepdetect/apps/caffe/include/caffe/filler.hpp \
+ /home/beniz/projects/deepdetect/apps/caffe/include/caffe/layer.hpp \
+ /home/beniz/projects/deepdetect/apps/caffe/include/caffe/layer_factory.hpp \
+ /home/beniz/projects/deepdetect/apps/caffe/include/caffe/net.hpp \
+ /home/beniz/projects/deepdetect/apps/caffe/include/caffe/solver.hpp \
+ /home/beniz/projects/deepdetect/apps/caffe/include/caffe/util/benchmark.hpp \
+ /usr/include/boost/date_time/posix_time/posix_time.hpp \
+ /usr/include/boost/date_time/compiler_config.hpp \
+ /usr/include/boost/date_time/locale_config.hpp \
+ /usr/include/boost/date_time/posix_time/ptime.hpp \
+ /usr/include/boost/date_time/posix_time/posix_time_system.hpp \
+ /usr/include/boost/date_time/posix_time/posix_time_config.hpp \
+ /usr/include/boost/date_time/time_duration.hpp \
+ /usr/include/boost/operators.hpp \
+ /usr/include/boost/date_time/time_defs.hpp \
+ /usr/include/boost/date_time/special_defs.hpp \
+ /usr/include/boost/date_time/time_resolution_traits.hpp \
+ /usr/include/boost/date_time/int_adapter.hpp \
+ /usr/include/boost/date_time/gregorian/gregorian_types.hpp \
+ /usr/include/boost/date_time/date.hpp \
+ /usr/include/boost/date_time/year_month_day.hpp \
+ /usr/include/boost/date_time/period.hpp \
+ /usr/include/boost/date_time/gregorian/greg_calendar.hpp \
+ /usr/include/boost/date_time/gregorian/greg_weekday.hpp \
+ /usr/include/boost/date_time/constrained_value.hpp \
+ /usr/include/boost/type_traits/is_base_of.hpp \
+ /usr/include/boost/type_traits/is_base_and_derived.hpp \
+ /usr/include/boost/date_time/date_defs.hpp \
+ /usr/include/boost/date_time/gregorian/greg_day_of_year.hpp \
+ /usr/include/boost/date_time/gregorian_calendar.hpp \
+ /usr/include/boost/date_time/gregorian_calendar.ipp \
+ /usr/include/boost/date_time/gregorian/greg_ymd.hpp \
+ /usr/include/boost/date_time/gregorian/greg_day.hpp \
+ /usr/include/boost/date_time/gregorian/greg_year.hpp \
+ /usr/include/boost/date_time/gregorian/greg_month.hpp \
+ /usr/include/boost/date_time/gregorian/greg_duration.hpp \
+ /usr/include/boost/date_time/date_duration.hpp \
+ /usr/include/boost/date_time/date_duration_types.hpp \
+ /usr/include/boost/date_time/gregorian/greg_duration_types.hpp \
+ /usr/include/boost/date_time/gregorian/greg_date.hpp \
+ /usr/include/boost/date_time/adjust_functors.hpp \
+ /usr/include/boost/date_time/wrapping_int.hpp \
+ /usr/include/boost/date_time/date_generators.hpp \
+ /usr/include/boost/date_time/date_clock_device.hpp \
+ /usr/include/boost/date_time/c_time.hpp \
+ /usr/include/x86_64-linux-gnu/sys/time.h \
+ /usr/include/boost/date_time/date_iterator.hpp \
+ /usr/include/boost/date_time/time_system_split.hpp \
+ /usr/include/boost/date_time/time_system_counted.hpp \
+ /usr/include/boost/date_time/time.hpp \
+ /usr/include/boost/date_time/posix_time/date_duration_operators.hpp \
+ /usr/include/boost/date_time/posix_time/time_formatters.hpp \
+ /usr/include/boost/date_time/gregorian/gregorian.hpp \
+ /usr/include/boost/date_time/gregorian/conversion.hpp \
+ /usr/include/boost/date_time/gregorian/formatters.hpp \
+ /usr/include/boost/date_time/date_formatting.hpp \
+ /usr/include/boost/date_time/iso_format.hpp \
+ /usr/include/boost/date_time/parse_format_base.hpp \
+ /usr/include/c++/4.9/iomanip \
+ /usr/include/boost/date_time/date_format_simple.hpp \
+ /usr/include/boost/date_time/gregorian/gregorian_io.hpp \
+ /usr/include/boost/io/ios_state.hpp /usr/include/boost/io_fwd.hpp \
+ /usr/include/boost/date_time/date_facet.hpp \
+ /usr/include/boost/algorithm/string/replace.hpp \
+ /usr/include/boost/algorithm/string/find_format.hpp \
+ /usr/include/boost/algorithm/string/concept.hpp \
+ /usr/include/boost/algorithm/string/detail/find_format.hpp \
+ /usr/include/boost/algorithm/string/detail/find_format_store.hpp \
+ /usr/include/boost/algorithm/string/detail/replace_storage.hpp \
+ /usr/include/boost/algorithm/string/sequence_traits.hpp \
+ /usr/include/boost/algorithm/string/yes_no_type.hpp \
+ /usr/include/boost/algorithm/string/detail/sequence.hpp \
+ /usr/include/boost/mpl/logical.hpp \
+ /usr/include/boost/algorithm/string/detail/find_format_all.hpp \
+ /usr/include/boost/algorithm/string/finder.hpp \
+ /usr/include/boost/algorithm/string/constants.hpp \
+ /usr/include/boost/algorithm/string/detail/finder.hpp \
+ /usr/include/boost/algorithm/string/compare.hpp \
+ /usr/include/boost/algorithm/string/formatter.hpp \
+ /usr/include/boost/algorithm/string/detail/formatter.hpp \
+ /usr/include/boost/algorithm/string/detail/util.hpp \
+ /usr/include/boost/date_time/special_values_formatter.hpp \
+ /usr/include/boost/date_time/period_formatter.hpp \
+ /usr/include/boost/date_time/period_parser.hpp \
+ /usr/include/boost/date_time/string_parse_tree.hpp \
+ /usr/include/boost/lexical_cast.hpp \
+ /usr/include/boost/detail/lcast_precision.hpp \
+ /usr/include/boost/array.hpp /usr/include/boost/swap.hpp \
+ /usr/include/boost/utility/swap.hpp \
+ /usr/include/boost/functional/hash_fwd.hpp \
+ /usr/include/boost/numeric/conversion/cast.hpp \
+ /usr/include/boost/type.hpp \
+ /usr/include/boost/numeric/conversion/converter.hpp \
+ /usr/include/boost/numeric/conversion/conversion_traits.hpp \
+ /usr/include/boost/numeric/conversion/detail/conversion_traits.hpp \
+ /usr/include/boost/numeric/conversion/detail/meta.hpp \
+ /usr/include/boost/mpl/equal_to.hpp \
+ /usr/include/boost/mpl/aux_/comparison_op.hpp \
+ /usr/include/boost/mpl/aux_/numeric_op.hpp \
+ /usr/include/boost/mpl/numeric_cast.hpp /usr/include/boost/mpl/tag.hpp \
+ /usr/include/boost/mpl/aux_/has_tag.hpp \
+ /usr/include/boost/mpl/aux_/numeric_cast_utils.hpp \
+ /usr/include/boost/mpl/aux_/config/forwarding.hpp \
+ /usr/include/boost/mpl/aux_/msvc_eti_base.hpp \
+ /usr/include/boost/mpl/aux_/is_msvc_eti_arg.hpp \
+ /usr/include/boost/mpl/aux_/preprocessed/gcc/equal_to.hpp \
+ /usr/include/boost/numeric/conversion/detail/int_float_mixture.hpp \
+ /usr/include/boost/numeric/conversion/int_float_mixture_enum.hpp \
+ /usr/include/boost/numeric/conversion/detail/sign_mixture.hpp \
+ /usr/include/boost/numeric/conversion/sign_mixture_enum.hpp \
+ /usr/include/boost/numeric/conversion/detail/udt_builtin_mixture.hpp \
+ /usr/include/boost/numeric/conversion/udt_builtin_mixture_enum.hpp \
+ /usr/include/boost/numeric/conversion/detail/is_subranged.hpp \
+ /usr/include/boost/mpl/multiplies.hpp /usr/include/boost/mpl/times.hpp \
+ /usr/include/boost/mpl/aux_/arithmetic_op.hpp \
+ /usr/include/boost/mpl/aux_/largest_int.hpp \
+ /usr/include/boost/mpl/aux_/preprocessed/gcc/times.hpp \
+ /usr/include/boost/mpl/aux_/preprocessor/default_params.hpp \
+ /usr/include/boost/mpl/less.hpp \
+ /usr/include/boost/mpl/aux_/preprocessed/gcc/less.hpp \
+ /usr/include/boost/numeric/conversion/converter_policies.hpp \
+ /usr/include/boost/numeric/conversion/detail/converter.hpp \
+ /usr/include/boost/numeric/conversion/bounds.hpp \
+ /usr/include/boost/numeric/conversion/detail/bounds.hpp \
+ /usr/include/boost/numeric/conversion/numeric_cast_traits.hpp \
+ /usr/include/boost/numeric/conversion/detail/numeric_cast_traits.hpp \
+ /usr/include/boost/numeric/conversion/detail/preprocessed/numeric_cast_traits_common.hpp \
+ /usr/include/boost/numeric/conversion/detail/preprocessed/numeric_cast_traits_long_long.hpp \
+ /usr/include/boost/type_traits/has_left_shift.hpp \
+ /usr/include/boost/type_traits/detail/has_binary_operator.hpp \
+ /usr/include/boost/type_traits/is_fundamental.hpp \
+ /usr/include/boost/type_traits/has_right_shift.hpp \
+ /usr/include/boost/math/special_functions/sign.hpp \
+ /usr/include/boost/math/tools/config.hpp /usr/include/c++/4.9/cfloat \
+ /usr/include/boost/math/tools/user.hpp \
+ /usr/include/boost/detail/fenv.hpp /usr/include/c++/4.9/fenv.h \
+ /usr/include/fenv.h /usr/include/x86_64-linux-gnu/bits/fenv.h \
+ /usr/include/boost/math/special_functions/math_fwd.hpp \
+ /usr/include/boost/math/special_functions/detail/round_fwd.hpp \
+ /usr/include/boost/math/tools/promotion.hpp \
+ /usr/include/boost/type_traits/is_floating_point.hpp \
+ /usr/include/boost/math/policies/policy.hpp \
+ /usr/include/boost/mpl/list.hpp /usr/include/boost/mpl/limits/list.hpp \
+ /usr/include/boost/mpl/list/list20.hpp \
+ /usr/include/boost/mpl/list/list10.hpp \
+ /usr/include/boost/mpl/list/list0.hpp /usr/include/boost/mpl/long.hpp \
+ /usr/include/boost/mpl/long_fwd.hpp \
+ /usr/include/boost/mpl/list/aux_/push_front.hpp \
+ /usr/include/boost/mpl/push_front_fwd.hpp \
+ /usr/include/boost/mpl/list/aux_/item.hpp \
+ /usr/include/boost/mpl/list/aux_/tag.hpp \
+ /usr/include/boost/mpl/list/aux_/pop_front.hpp \
+ /usr/include/boost/mpl/pop_front_fwd.hpp \
+ /usr/include/boost/mpl/list/aux_/push_back.hpp \
+ /usr/include/boost/mpl/push_back_fwd.hpp \
+ /usr/include/boost/mpl/list/aux_/front.hpp \
+ /usr/include/boost/mpl/front_fwd.hpp \
+ /usr/include/boost/mpl/list/aux_/clear.hpp \
+ /usr/include/boost/mpl/clear_fwd.hpp \
+ /usr/include/boost/mpl/list/aux_/O1_size.hpp \
+ /usr/include/boost/mpl/O1_size_fwd.hpp \
+ /usr/include/boost/mpl/list/aux_/size.hpp \
+ /usr/include/boost/mpl/size_fwd.hpp \
+ /usr/include/boost/mpl/list/aux_/empty.hpp \
+ /usr/include/boost/mpl/empty_fwd.hpp \
+ /usr/include/boost/mpl/list/aux_/begin_end.hpp \
+ /usr/include/boost/mpl/begin_end_fwd.hpp \
+ /usr/include/boost/mpl/list/aux_/iterator.hpp \
+ /usr/include/boost/mpl/iterator_tags.hpp \
+ /usr/include/boost/mpl/deref.hpp \
+ /usr/include/boost/mpl/aux_/msvc_type.hpp \
+ /usr/include/boost/mpl/aux_/lambda_spec.hpp \
+ /usr/include/boost/mpl/list/aux_/include_preprocessed.hpp \
+ /usr/include/boost/mpl/list/aux_/preprocessed/plain/list10.hpp \
+ /usr/include/boost/mpl/list/aux_/preprocessed/plain/list20.hpp \
+ /usr/include/boost/mpl/aux_/preprocessed/gcc/list.hpp \
+ /usr/include/boost/mpl/contains.hpp \
+ /usr/include/boost/mpl/contains_fwd.hpp \
+ /usr/include/boost/mpl/sequence_tag.hpp \
+ /usr/include/boost/mpl/sequence_tag_fwd.hpp \
+ /usr/include/boost/mpl/aux_/has_begin.hpp \
+ /usr/include/boost/mpl/aux_/contains_impl.hpp \
+ /usr/include/boost/mpl/begin_end.hpp \
+ /usr/include/boost/mpl/aux_/begin_end_impl.hpp \
+ /usr/include/boost/mpl/aux_/traits_lambda_spec.hpp \
+ /usr/include/boost/mpl/find.hpp /usr/include/boost/mpl/find_if.hpp \
+ /usr/include/boost/mpl/aux_/find_if_pred.hpp \
+ /usr/include/boost/mpl/aux_/iter_apply.hpp \
+ /usr/include/boost/mpl/iter_fold_if.hpp /usr/include/boost/mpl/pair.hpp \
+ /usr/include/boost/mpl/aux_/iter_fold_if_impl.hpp \
+ /usr/include/boost/mpl/aux_/preprocessed/gcc/iter_fold_if_impl.hpp \
+ /usr/include/boost/mpl/same_as.hpp /usr/include/boost/mpl/remove_if.hpp \
+ /usr/include/boost/mpl/fold.hpp /usr/include/boost/mpl/O1_size.hpp \
+ /usr/include/boost/mpl/aux_/O1_size_impl.hpp \
+ /usr/include/boost/mpl/aux_/has_size.hpp \
+ /usr/include/boost/mpl/aux_/fold_impl.hpp \
+ /usr/include/boost/mpl/aux_/preprocessed/gcc/fold_impl.hpp \
+ /usr/include/boost/mpl/reverse_fold.hpp \
+ /usr/include/boost/mpl/aux_/reverse_fold_impl.hpp \
+ /usr/include/boost/mpl/aux_/preprocessed/gcc/reverse_fold_impl.hpp \
+ /usr/include/boost/mpl/aux_/inserter_algorithm.hpp \
+ /usr/include/boost/mpl/back_inserter.hpp \
+ /usr/include/boost/mpl/push_back.hpp \
+ /usr/include/boost/mpl/aux_/push_back_impl.hpp \
+ /usr/include/boost/mpl/inserter.hpp \
+ /usr/include/boost/mpl/front_inserter.hpp \
+ /usr/include/boost/mpl/push_front.hpp \
+ /usr/include/boost/mpl/aux_/push_front_impl.hpp \
+ /usr/include/boost/mpl/clear.hpp \
+ /usr/include/boost/mpl/aux_/clear_impl.hpp \
+ /usr/include/boost/mpl/vector.hpp \
+ /usr/include/boost/mpl/limits/vector.hpp \
+ /usr/include/boost/mpl/vector/vector20.hpp \
+ /usr/include/boost/mpl/vector/vector10.hpp \
+ /usr/include/boost/mpl/vector/vector0.hpp \
+ /usr/include/boost/mpl/vector/aux_/at.hpp \
+ /usr/include/boost/mpl/at_fwd.hpp \
+ /usr/include/boost/mpl/vector/aux_/tag.hpp \
+ /usr/include/boost/mpl/aux_/config/typeof.hpp \
+ /usr/include/boost/mpl/vector/aux_/front.hpp \
+ /usr/include/boost/mpl/vector/aux_/push_front.hpp \
+ /usr/include/boost/mpl/vector/aux_/item.hpp \
+ /usr/include/boost/mpl/vector/aux_/pop_front.hpp \
+ /usr/include/boost/mpl/vector/aux_/push_back.hpp \
+ /usr/include/boost/mpl/vector/aux_/pop_back.hpp \
+ /usr/include/boost/mpl/pop_back_fwd.hpp \
+ /usr/include/boost/mpl/vector/aux_/back.hpp \
+ /usr/include/boost/mpl/back_fwd.hpp \
+ /usr/include/boost/mpl/vector/aux_/clear.hpp \
+ /usr/include/boost/mpl/vector/aux_/vector0.hpp \
+ /usr/include/boost/mpl/vector/aux_/iterator.hpp \
+ /usr/include/boost/mpl/plus.hpp \
+ /usr/include/boost/mpl/aux_/preprocessed/gcc/plus.hpp \
+ /usr/include/boost/mpl/minus.hpp \
+ /usr/include/boost/mpl/aux_/preprocessed/gcc/minus.hpp \
+ /usr/include/boost/mpl/advance_fwd.hpp \
+ /usr/include/boost/mpl/distance_fwd.hpp /usr/include/boost/mpl/prior.hpp \
+ /usr/include/boost/mpl/vector/aux_/O1_size.hpp \
+ /usr/include/boost/mpl/vector/aux_/size.hpp \
+ /usr/include/boost/mpl/vector/aux_/empty.hpp \
+ /usr/include/boost/mpl/vector/aux_/begin_end.hpp \
+ /usr/include/boost/mpl/vector/aux_/include_preprocessed.hpp \
+ /usr/include/boost/mpl/vector/aux_/preprocessed/typeof_based/vector10.hpp \
+ /usr/include/boost/mpl/vector/aux_/preprocessed/typeof_based/vector20.hpp \
+ /usr/include/boost/mpl/aux_/preprocessed/gcc/vector.hpp \
+ /usr/include/boost/mpl/at.hpp /usr/include/boost/mpl/aux_/at_impl.hpp \
+ /usr/include/boost/mpl/advance.hpp /usr/include/boost/mpl/negate.hpp \
+ /usr/include/boost/mpl/aux_/advance_forward.hpp \
+ /usr/include/boost/mpl/aux_/preprocessed/gcc/advance_forward.hpp \
+ /usr/include/boost/mpl/aux_/advance_backward.hpp \
+ /usr/include/boost/mpl/aux_/preprocessed/gcc/advance_backward.hpp \
+ /usr/include/boost/mpl/size.hpp \
+ /usr/include/boost/mpl/aux_/size_impl.hpp \
+ /usr/include/boost/mpl/distance.hpp /usr/include/boost/mpl/iter_fold.hpp \
+ /usr/include/boost/mpl/aux_/iter_fold_impl.hpp \
+ /usr/include/boost/mpl/aux_/preprocessed/gcc/iter_fold_impl.hpp \
+ /usr/include/boost/mpl/iterator_range.hpp \
+ /usr/include/boost/mpl/comparison.hpp \
+ /usr/include/boost/mpl/not_equal_to.hpp \
+ /usr/include/boost/mpl/aux_/preprocessed/gcc/not_equal_to.hpp \
+ /usr/include/boost/mpl/greater.hpp \
+ /usr/include/boost/mpl/aux_/preprocessed/gcc/greater.hpp \
+ /usr/include/boost/mpl/less_equal.hpp \
+ /usr/include/boost/mpl/aux_/preprocessed/gcc/less_equal.hpp \
+ /usr/include/boost/mpl/greater_equal.hpp \
+ /usr/include/boost/mpl/aux_/preprocessed/gcc/greater_equal.hpp \
+ /usr/include/boost/config/no_tr1/complex.hpp \
+ /usr/include/boost/math/special_functions/detail/fp_traits.hpp \
+ /usr/include/boost/detail/endian.hpp \
+ /usr/include/boost/math/special_functions/fpclassify.hpp \
+ /usr/include/boost/math/tools/real_cast.hpp \
+ /usr/include/boost/container/container_fwd.hpp \
+ /usr/include/boost/algorithm/string/case_conv.hpp \
+ /usr/include/boost/iterator/transform_iterator.hpp \
+ /usr/include/boost/type_traits/function_traits.hpp \
+ /usr/include/boost/utility/result_of.hpp \
+ /usr/include/boost/preprocessor/iteration/iterate.hpp \
+ /usr/include/boost/preprocessor/slot/slot.hpp \
+ /usr/include/boost/preprocessor/slot/detail/def.hpp \
+ /usr/include/boost/preprocessor/repetition/enum_binary_params.hpp \
+ /usr/include/boost/preprocessor/repetition/enum_shifted_params.hpp \
+ /usr/include/boost/preprocessor/facilities/intercept.hpp \
+ /usr/include/boost/utility/declval.hpp \
+ /usr/include/boost/preprocessor/iteration/detail/iter/forward1.hpp \
+ /usr/include/boost/preprocessor/iteration/detail/bounds/lower1.hpp \
+ /usr/include/boost/preprocessor/slot/detail/shared.hpp \
+ /usr/include/boost/preprocessor/iteration/detail/bounds/upper1.hpp \
+ /usr/include/boost/utility/detail/result_of_iterate.hpp \
+ /usr/include/boost/algorithm/string/detail/case_conv.hpp \
+ /usr/include/boost/date_time/string_convert.hpp \
+ /usr/include/boost/date_time/date_generator_formatter.hpp \
+ /usr/include/boost/date_time/date_generator_parser.hpp \
+ /usr/include/boost/date_time/format_date_parser.hpp \
+ /usr/include/boost/date_time/strings_from_facet.hpp \
+ /usr/include/boost/date_time/special_values_parser.hpp \
+ /usr/include/boost/date_time/gregorian/parsers.hpp \
+ /usr/include/boost/date_time/date_parsing.hpp \
+ /usr/include/boost/tokenizer.hpp /usr/include/boost/token_iterator.hpp \
+ /usr/include/boost/iterator/detail/minimum_category.hpp \
+ /usr/include/boost/token_functions.hpp \
+ /usr/include/boost/date_time/posix_time/posix_time_types.hpp \
+ /usr/include/boost/date_time/time_clock.hpp \
+ /usr/include/boost/date_time/microsec_time_clock.hpp \
+ /usr/include/boost/date_time/filetime_functions.hpp \
+ /usr/include/boost/date_time/posix_time/posix_time_duration.hpp \
+ /usr/include/boost/date_time/posix_time/time_period.hpp \
+ /usr/include/boost/date_time/time_iterator.hpp \
+ /usr/include/boost/date_time/dst_rules.hpp \
+ /usr/include/boost/date_time/time_formatting_streams.hpp \
+ /usr/include/boost/date_time/date_formatting_locales.hpp \
+ /usr/include/boost/date_time/date_names_put.hpp \
+ /usr/include/boost/date_time/time_parsing.hpp \
+ /usr/include/boost/date_time/posix_time/posix_time_io.hpp \
+ /usr/include/boost/date_time/time_facet.hpp \
+ /usr/include/boost/algorithm/string/erase.hpp \
+ /usr/include/boost/date_time/posix_time/conversion.hpp \
+ /usr/include/boost/date_time/posix_time/time_parsers.hpp \
+ /home/beniz/projects/deepdetect/apps/caffe/include/caffe/util/io.hpp \
+ /usr/include/hdf5.h /usr/include/H5public.h /usr/include/H5pubconf.h \
+ /usr/include/H5version.h /usr/include/H5api_adpt.h \
+ /usr/include/H5Apublic.h /usr/include/H5Ipublic.h \
+ /usr/include/H5Opublic.h /usr/include/H5Lpublic.h \
+ /usr/include/H5Tpublic.h /usr/include/H5ACpublic.h \
+ /usr/include/H5Cpublic.h /usr/include/H5Dpublic.h \
+ /usr/include/H5Epublic.h /usr/include/H5Epubgen.h \
+ /usr/include/H5Fpublic.h /usr/include/H5FDpublic.h \
+ /usr/include/H5Gpublic.h /usr/include/H5MMpublic.h \
+ /usr/include/H5Ppublic.h /usr/include/H5Zpublic.h \
+ /usr/include/H5Rpublic.h /usr/include/H5Spublic.h \
+ /usr/include/H5FDcore.h /usr/include/H5FDfamily.h /usr/include/H5FDlog.h \
+ /usr/include/H5FDmpi.h /usr/include/H5FDmpio.h \
+ /usr/include/H5FDmpiposix.h /usr/include/H5FDmulti.h \
+ /usr/include/H5FDsec2.h /usr/include/H5FDstdio.h \
+ /usr/include/H5FDdirect.h /usr/include/hdf5_hl.h \
+ /usr/include/H5DOpublic.h /usr/include/H5DSpublic.h \
+ /usr/include/H5LTpublic.h /usr/include/H5IMpublic.h \
+ /usr/include/H5TBpublic.h /usr/include/H5PTpublic.h \
+ /home/beniz/projects/deepdetect/apps/caffe/include/caffe/vision_layers.hpp \
+ /home/beniz/projects/deepdetect/apps/caffe/include/caffe/common_layers.hpp \
+ /home/beniz/projects/deepdetect/apps/caffe/include/caffe/data_layers.hpp \
+ /home/beniz/projects/deepdetect/apps/caffe/include/caffe/data_transformer.hpp \
+ /home/beniz/projects/deepdetect/apps/caffe/include/caffe/dataset.hpp \
+ /home/beniz/projects/deepdetect/apps/caffe/include/caffe/internal_thread.hpp \
+ /home/beniz/projects/deepdetect/apps/caffe/include/caffe/loss_layers.hpp \
+ /home/beniz/projects/deepdetect/apps/caffe/include/caffe/neuron_layers.hpp \
+ /usr/include/c++/4.9/mutex /usr/include/c++/4.9/chrono \
+ /usr/include/c++/4.9/ratio /usr/include/c++/4.9/bits/parse_numbers.h \
+ /usr/include/c++/4.9/system_error \
+ /usr/include/x86_64-linux-gnu/c++/4.9/bits/error_constants.h \
+ /usr/include/gtest/gtest.h /usr/include/gtest/internal/gtest-internal.h \
  /usr/include/gtest/internal/gtest-port.h \
  /usr/include/x86_64-linux-gnu/sys/stat.h \
  /usr/include/x86_64-linux-gnu/bits/stat.h /usr/include/strings.h \
@@ -575,7 +968,7 @@ ut-apidata.o: ut-apidata.cc /usr/include/stdc-predef.h ../src/apidata.h \
  /usr/include/x86_64-linux-gnu/bits/sigstack.h \
  /usr/include/x86_64-linux-gnu/sys/ucontext.h \
  /usr/include/x86_64-linux-gnu/bits/sigthread.h \
- /usr/include/c++/4.9/iomanip /usr/include/gtest/internal/gtest-string.h \
+ /usr/include/gtest/internal/gtest-string.h \
  /usr/include/gtest/internal/gtest-filepath.h \
  /usr/include/gtest/internal/gtest-type-util.h \
  /usr/include/c++/4.9/cxxabi.h \
@@ -1865,6 +2258,30 @@ ut-apidata.o: ut-apidata.cc /usr/include/stdc-predef.h ../src/apidata.h \
 
 ../src/ext/plustache/context.hpp:
 
+../src/dd_types.h:
+
+../src/ext/rapidjson/document.h:
+
+../src/ext/rapidjson/reader.h:
+
+../src/ext/rapidjson/rapidjson.h:
+
+/usr/include/inttypes.h:
+
+../src/ext/rapidjson/allocators.h:
+
+../src/ext/rapidjson/encodings.h:
+
+../src/ext/rapidjson/internal/meta.h:
+
+../src/ext/rapidjson/internal/pow10.h:
+
+../src/ext/rapidjson/internal/stack.h:
+
+../src/ext/rapidjson/error/error.h:
+
+../src/ext/rapidjson/internal/strfunc.h:
+
 /usr/include/c++/4.9/unordered_map:
 
 /usr/include/c++/4.9/bits/hashtable.h:
@@ -1872,6 +2289,882 @@ ut-apidata.o: ut-apidata.cc /usr/include/stdc-predef.h ../src/apidata.h \
 /usr/include/c++/4.9/bits/hashtable_policy.h:
 
 /usr/include/c++/4.9/bits/unordered_map.h:
+
+../src/jsonapi.h:
+
+../src/apistrategy.h:
+
+../src/services.h:
+
+../src/mlservice.h:
+
+../src/mllibstrategy.h:
+
+../src/apidata.h:
+
+../src/mlmodel.h:
+
+../src/inputconnectorstrategy.h:
+
+../src/imginputfileconn.h:
+
+/usr/include/opencv2/core/core.hpp:
+
+/usr/include/opencv2/core/types_c.h:
+
+/usr/lib/gcc/x86_64-linux-gnu/4.9/include/float.h:
+
+/usr/include/opencv2/core/version.hpp:
+
+/usr/include/opencv2/core/operations.hpp:
+
+/usr/include/opencv2/core/mat.hpp:
+
+/usr/include/opencv2/imgproc/imgproc.hpp:
+
+/usr/include/opencv2/imgproc/types_c.h:
+
+/usr/include/opencv2/core/core_c.h:
+
+/usr/include/opencv2/highgui/highgui.hpp:
+
+/usr/include/opencv2/highgui/highgui_c.h:
+
+../src/outputconnectorstrategy.h:
+
+../src/caffelib.h:
+
+../src/caffemodel.h:
+
+/home/beniz/projects/deepdetect/apps/caffe/include/caffe/caffe.hpp:
+
+/home/beniz/projects/deepdetect/apps/caffe/include/caffe/blob.hpp:
+
+/home/beniz/projects/deepdetect/apps/caffe/include/caffe/common.hpp:
+
+/usr/include/gflags/gflags.h:
+
+/usr/include/gflags/gflags_declare.h:
+
+/usr/include/glog/logging.h:
+
+/usr/include/glog/log_severity.h:
+
+/usr/include/glog/vlog_is_on.h:
+
+/home/beniz/projects/deepdetect/apps/caffe/include/caffe/util/device_alternate.hpp:
+
+/home/beniz/projects/deepdetect/apps/caffe/.build_release/src/caffe/proto/caffe.pb.h:
+
+/usr/include/google/protobuf/stubs/common.h:
+
+/usr/include/google/protobuf/generated_message_util.h:
+
+/usr/include/google/protobuf/message.h:
+
+/usr/include/google/protobuf/message_lite.h:
+
+/usr/include/google/protobuf/descriptor.h:
+
+/usr/include/google/protobuf/repeated_field.h:
+
+/usr/include/google/protobuf/stubs/type_traits.h:
+
+/usr/include/google/protobuf/stubs/template_util.h:
+
+/usr/include/google/protobuf/extension_set.h:
+
+/usr/include/google/protobuf/generated_enum_reflection.h:
+
+/usr/include/google/protobuf/unknown_field_set.h:
+
+/home/beniz/projects/deepdetect/apps/caffe/include/caffe/syncedmem.hpp:
+
+/home/beniz/projects/deepdetect/apps/caffe/include/caffe/util/math_functions.hpp:
+
+/home/beniz/projects/deepdetect/apps/caffe/include/caffe/util/mkl_alternate.hpp:
+
+/usr/include/cblas.h:
+
+/home/beniz/projects/deepdetect/apps/caffe/include/caffe/filler.hpp:
+
+/home/beniz/projects/deepdetect/apps/caffe/include/caffe/layer.hpp:
+
+/home/beniz/projects/deepdetect/apps/caffe/include/caffe/layer_factory.hpp:
+
+/home/beniz/projects/deepdetect/apps/caffe/include/caffe/net.hpp:
+
+/home/beniz/projects/deepdetect/apps/caffe/include/caffe/solver.hpp:
+
+/home/beniz/projects/deepdetect/apps/caffe/include/caffe/util/benchmark.hpp:
+
+/usr/include/boost/date_time/posix_time/posix_time.hpp:
+
+/usr/include/boost/date_time/compiler_config.hpp:
+
+/usr/include/boost/date_time/locale_config.hpp:
+
+/usr/include/boost/date_time/posix_time/ptime.hpp:
+
+/usr/include/boost/date_time/posix_time/posix_time_system.hpp:
+
+/usr/include/boost/date_time/posix_time/posix_time_config.hpp:
+
+/usr/include/boost/date_time/time_duration.hpp:
+
+/usr/include/boost/operators.hpp:
+
+/usr/include/boost/date_time/time_defs.hpp:
+
+/usr/include/boost/date_time/special_defs.hpp:
+
+/usr/include/boost/date_time/time_resolution_traits.hpp:
+
+/usr/include/boost/date_time/int_adapter.hpp:
+
+/usr/include/boost/date_time/gregorian/gregorian_types.hpp:
+
+/usr/include/boost/date_time/date.hpp:
+
+/usr/include/boost/date_time/year_month_day.hpp:
+
+/usr/include/boost/date_time/period.hpp:
+
+/usr/include/boost/date_time/gregorian/greg_calendar.hpp:
+
+/usr/include/boost/date_time/gregorian/greg_weekday.hpp:
+
+/usr/include/boost/date_time/constrained_value.hpp:
+
+/usr/include/boost/type_traits/is_base_of.hpp:
+
+/usr/include/boost/type_traits/is_base_and_derived.hpp:
+
+/usr/include/boost/date_time/date_defs.hpp:
+
+/usr/include/boost/date_time/gregorian/greg_day_of_year.hpp:
+
+/usr/include/boost/date_time/gregorian_calendar.hpp:
+
+/usr/include/boost/date_time/gregorian_calendar.ipp:
+
+/usr/include/boost/date_time/gregorian/greg_ymd.hpp:
+
+/usr/include/boost/date_time/gregorian/greg_day.hpp:
+
+/usr/include/boost/date_time/gregorian/greg_year.hpp:
+
+/usr/include/boost/date_time/gregorian/greg_month.hpp:
+
+/usr/include/boost/date_time/gregorian/greg_duration.hpp:
+
+/usr/include/boost/date_time/date_duration.hpp:
+
+/usr/include/boost/date_time/date_duration_types.hpp:
+
+/usr/include/boost/date_time/gregorian/greg_duration_types.hpp:
+
+/usr/include/boost/date_time/gregorian/greg_date.hpp:
+
+/usr/include/boost/date_time/adjust_functors.hpp:
+
+/usr/include/boost/date_time/wrapping_int.hpp:
+
+/usr/include/boost/date_time/date_generators.hpp:
+
+/usr/include/boost/date_time/date_clock_device.hpp:
+
+/usr/include/boost/date_time/c_time.hpp:
+
+/usr/include/x86_64-linux-gnu/sys/time.h:
+
+/usr/include/boost/date_time/date_iterator.hpp:
+
+/usr/include/boost/date_time/time_system_split.hpp:
+
+/usr/include/boost/date_time/time_system_counted.hpp:
+
+/usr/include/boost/date_time/time.hpp:
+
+/usr/include/boost/date_time/posix_time/date_duration_operators.hpp:
+
+/usr/include/boost/date_time/posix_time/time_formatters.hpp:
+
+/usr/include/boost/date_time/gregorian/gregorian.hpp:
+
+/usr/include/boost/date_time/gregorian/conversion.hpp:
+
+/usr/include/boost/date_time/gregorian/formatters.hpp:
+
+/usr/include/boost/date_time/date_formatting.hpp:
+
+/usr/include/boost/date_time/iso_format.hpp:
+
+/usr/include/boost/date_time/parse_format_base.hpp:
+
+/usr/include/c++/4.9/iomanip:
+
+/usr/include/boost/date_time/date_format_simple.hpp:
+
+/usr/include/boost/date_time/gregorian/gregorian_io.hpp:
+
+/usr/include/boost/io/ios_state.hpp:
+
+/usr/include/boost/io_fwd.hpp:
+
+/usr/include/boost/date_time/date_facet.hpp:
+
+/usr/include/boost/algorithm/string/replace.hpp:
+
+/usr/include/boost/algorithm/string/find_format.hpp:
+
+/usr/include/boost/algorithm/string/concept.hpp:
+
+/usr/include/boost/algorithm/string/detail/find_format.hpp:
+
+/usr/include/boost/algorithm/string/detail/find_format_store.hpp:
+
+/usr/include/boost/algorithm/string/detail/replace_storage.hpp:
+
+/usr/include/boost/algorithm/string/sequence_traits.hpp:
+
+/usr/include/boost/algorithm/string/yes_no_type.hpp:
+
+/usr/include/boost/algorithm/string/detail/sequence.hpp:
+
+/usr/include/boost/mpl/logical.hpp:
+
+/usr/include/boost/algorithm/string/detail/find_format_all.hpp:
+
+/usr/include/boost/algorithm/string/finder.hpp:
+
+/usr/include/boost/algorithm/string/constants.hpp:
+
+/usr/include/boost/algorithm/string/detail/finder.hpp:
+
+/usr/include/boost/algorithm/string/compare.hpp:
+
+/usr/include/boost/algorithm/string/formatter.hpp:
+
+/usr/include/boost/algorithm/string/detail/formatter.hpp:
+
+/usr/include/boost/algorithm/string/detail/util.hpp:
+
+/usr/include/boost/date_time/special_values_formatter.hpp:
+
+/usr/include/boost/date_time/period_formatter.hpp:
+
+/usr/include/boost/date_time/period_parser.hpp:
+
+/usr/include/boost/date_time/string_parse_tree.hpp:
+
+/usr/include/boost/lexical_cast.hpp:
+
+/usr/include/boost/detail/lcast_precision.hpp:
+
+/usr/include/boost/array.hpp:
+
+/usr/include/boost/swap.hpp:
+
+/usr/include/boost/utility/swap.hpp:
+
+/usr/include/boost/functional/hash_fwd.hpp:
+
+/usr/include/boost/numeric/conversion/cast.hpp:
+
+/usr/include/boost/type.hpp:
+
+/usr/include/boost/numeric/conversion/converter.hpp:
+
+/usr/include/boost/numeric/conversion/conversion_traits.hpp:
+
+/usr/include/boost/numeric/conversion/detail/conversion_traits.hpp:
+
+/usr/include/boost/numeric/conversion/detail/meta.hpp:
+
+/usr/include/boost/mpl/equal_to.hpp:
+
+/usr/include/boost/mpl/aux_/comparison_op.hpp:
+
+/usr/include/boost/mpl/aux_/numeric_op.hpp:
+
+/usr/include/boost/mpl/numeric_cast.hpp:
+
+/usr/include/boost/mpl/tag.hpp:
+
+/usr/include/boost/mpl/aux_/has_tag.hpp:
+
+/usr/include/boost/mpl/aux_/numeric_cast_utils.hpp:
+
+/usr/include/boost/mpl/aux_/config/forwarding.hpp:
+
+/usr/include/boost/mpl/aux_/msvc_eti_base.hpp:
+
+/usr/include/boost/mpl/aux_/is_msvc_eti_arg.hpp:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/equal_to.hpp:
+
+/usr/include/boost/numeric/conversion/detail/int_float_mixture.hpp:
+
+/usr/include/boost/numeric/conversion/int_float_mixture_enum.hpp:
+
+/usr/include/boost/numeric/conversion/detail/sign_mixture.hpp:
+
+/usr/include/boost/numeric/conversion/sign_mixture_enum.hpp:
+
+/usr/include/boost/numeric/conversion/detail/udt_builtin_mixture.hpp:
+
+/usr/include/boost/numeric/conversion/udt_builtin_mixture_enum.hpp:
+
+/usr/include/boost/numeric/conversion/detail/is_subranged.hpp:
+
+/usr/include/boost/mpl/multiplies.hpp:
+
+/usr/include/boost/mpl/times.hpp:
+
+/usr/include/boost/mpl/aux_/arithmetic_op.hpp:
+
+/usr/include/boost/mpl/aux_/largest_int.hpp:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/times.hpp:
+
+/usr/include/boost/mpl/aux_/preprocessor/default_params.hpp:
+
+/usr/include/boost/mpl/less.hpp:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/less.hpp:
+
+/usr/include/boost/numeric/conversion/converter_policies.hpp:
+
+/usr/include/boost/numeric/conversion/detail/converter.hpp:
+
+/usr/include/boost/numeric/conversion/bounds.hpp:
+
+/usr/include/boost/numeric/conversion/detail/bounds.hpp:
+
+/usr/include/boost/numeric/conversion/numeric_cast_traits.hpp:
+
+/usr/include/boost/numeric/conversion/detail/numeric_cast_traits.hpp:
+
+/usr/include/boost/numeric/conversion/detail/preprocessed/numeric_cast_traits_common.hpp:
+
+/usr/include/boost/numeric/conversion/detail/preprocessed/numeric_cast_traits_long_long.hpp:
+
+/usr/include/boost/type_traits/has_left_shift.hpp:
+
+/usr/include/boost/type_traits/detail/has_binary_operator.hpp:
+
+/usr/include/boost/type_traits/is_fundamental.hpp:
+
+/usr/include/boost/type_traits/has_right_shift.hpp:
+
+/usr/include/boost/math/special_functions/sign.hpp:
+
+/usr/include/boost/math/tools/config.hpp:
+
+/usr/include/c++/4.9/cfloat:
+
+/usr/include/boost/math/tools/user.hpp:
+
+/usr/include/boost/detail/fenv.hpp:
+
+/usr/include/c++/4.9/fenv.h:
+
+/usr/include/fenv.h:
+
+/usr/include/x86_64-linux-gnu/bits/fenv.h:
+
+/usr/include/boost/math/special_functions/math_fwd.hpp:
+
+/usr/include/boost/math/special_functions/detail/round_fwd.hpp:
+
+/usr/include/boost/math/tools/promotion.hpp:
+
+/usr/include/boost/type_traits/is_floating_point.hpp:
+
+/usr/include/boost/math/policies/policy.hpp:
+
+/usr/include/boost/mpl/list.hpp:
+
+/usr/include/boost/mpl/limits/list.hpp:
+
+/usr/include/boost/mpl/list/list20.hpp:
+
+/usr/include/boost/mpl/list/list10.hpp:
+
+/usr/include/boost/mpl/list/list0.hpp:
+
+/usr/include/boost/mpl/long.hpp:
+
+/usr/include/boost/mpl/long_fwd.hpp:
+
+/usr/include/boost/mpl/list/aux_/push_front.hpp:
+
+/usr/include/boost/mpl/push_front_fwd.hpp:
+
+/usr/include/boost/mpl/list/aux_/item.hpp:
+
+/usr/include/boost/mpl/list/aux_/tag.hpp:
+
+/usr/include/boost/mpl/list/aux_/pop_front.hpp:
+
+/usr/include/boost/mpl/pop_front_fwd.hpp:
+
+/usr/include/boost/mpl/list/aux_/push_back.hpp:
+
+/usr/include/boost/mpl/push_back_fwd.hpp:
+
+/usr/include/boost/mpl/list/aux_/front.hpp:
+
+/usr/include/boost/mpl/front_fwd.hpp:
+
+/usr/include/boost/mpl/list/aux_/clear.hpp:
+
+/usr/include/boost/mpl/clear_fwd.hpp:
+
+/usr/include/boost/mpl/list/aux_/O1_size.hpp:
+
+/usr/include/boost/mpl/O1_size_fwd.hpp:
+
+/usr/include/boost/mpl/list/aux_/size.hpp:
+
+/usr/include/boost/mpl/size_fwd.hpp:
+
+/usr/include/boost/mpl/list/aux_/empty.hpp:
+
+/usr/include/boost/mpl/empty_fwd.hpp:
+
+/usr/include/boost/mpl/list/aux_/begin_end.hpp:
+
+/usr/include/boost/mpl/begin_end_fwd.hpp:
+
+/usr/include/boost/mpl/list/aux_/iterator.hpp:
+
+/usr/include/boost/mpl/iterator_tags.hpp:
+
+/usr/include/boost/mpl/deref.hpp:
+
+/usr/include/boost/mpl/aux_/msvc_type.hpp:
+
+/usr/include/boost/mpl/aux_/lambda_spec.hpp:
+
+/usr/include/boost/mpl/list/aux_/include_preprocessed.hpp:
+
+/usr/include/boost/mpl/list/aux_/preprocessed/plain/list10.hpp:
+
+/usr/include/boost/mpl/list/aux_/preprocessed/plain/list20.hpp:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/list.hpp:
+
+/usr/include/boost/mpl/contains.hpp:
+
+/usr/include/boost/mpl/contains_fwd.hpp:
+
+/usr/include/boost/mpl/sequence_tag.hpp:
+
+/usr/include/boost/mpl/sequence_tag_fwd.hpp:
+
+/usr/include/boost/mpl/aux_/has_begin.hpp:
+
+/usr/include/boost/mpl/aux_/contains_impl.hpp:
+
+/usr/include/boost/mpl/begin_end.hpp:
+
+/usr/include/boost/mpl/aux_/begin_end_impl.hpp:
+
+/usr/include/boost/mpl/aux_/traits_lambda_spec.hpp:
+
+/usr/include/boost/mpl/find.hpp:
+
+/usr/include/boost/mpl/find_if.hpp:
+
+/usr/include/boost/mpl/aux_/find_if_pred.hpp:
+
+/usr/include/boost/mpl/aux_/iter_apply.hpp:
+
+/usr/include/boost/mpl/iter_fold_if.hpp:
+
+/usr/include/boost/mpl/pair.hpp:
+
+/usr/include/boost/mpl/aux_/iter_fold_if_impl.hpp:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/iter_fold_if_impl.hpp:
+
+/usr/include/boost/mpl/same_as.hpp:
+
+/usr/include/boost/mpl/remove_if.hpp:
+
+/usr/include/boost/mpl/fold.hpp:
+
+/usr/include/boost/mpl/O1_size.hpp:
+
+/usr/include/boost/mpl/aux_/O1_size_impl.hpp:
+
+/usr/include/boost/mpl/aux_/has_size.hpp:
+
+/usr/include/boost/mpl/aux_/fold_impl.hpp:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/fold_impl.hpp:
+
+/usr/include/boost/mpl/reverse_fold.hpp:
+
+/usr/include/boost/mpl/aux_/reverse_fold_impl.hpp:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/reverse_fold_impl.hpp:
+
+/usr/include/boost/mpl/aux_/inserter_algorithm.hpp:
+
+/usr/include/boost/mpl/back_inserter.hpp:
+
+/usr/include/boost/mpl/push_back.hpp:
+
+/usr/include/boost/mpl/aux_/push_back_impl.hpp:
+
+/usr/include/boost/mpl/inserter.hpp:
+
+/usr/include/boost/mpl/front_inserter.hpp:
+
+/usr/include/boost/mpl/push_front.hpp:
+
+/usr/include/boost/mpl/aux_/push_front_impl.hpp:
+
+/usr/include/boost/mpl/clear.hpp:
+
+/usr/include/boost/mpl/aux_/clear_impl.hpp:
+
+/usr/include/boost/mpl/vector.hpp:
+
+/usr/include/boost/mpl/limits/vector.hpp:
+
+/usr/include/boost/mpl/vector/vector20.hpp:
+
+/usr/include/boost/mpl/vector/vector10.hpp:
+
+/usr/include/boost/mpl/vector/vector0.hpp:
+
+/usr/include/boost/mpl/vector/aux_/at.hpp:
+
+/usr/include/boost/mpl/at_fwd.hpp:
+
+/usr/include/boost/mpl/vector/aux_/tag.hpp:
+
+/usr/include/boost/mpl/aux_/config/typeof.hpp:
+
+/usr/include/boost/mpl/vector/aux_/front.hpp:
+
+/usr/include/boost/mpl/vector/aux_/push_front.hpp:
+
+/usr/include/boost/mpl/vector/aux_/item.hpp:
+
+/usr/include/boost/mpl/vector/aux_/pop_front.hpp:
+
+/usr/include/boost/mpl/vector/aux_/push_back.hpp:
+
+/usr/include/boost/mpl/vector/aux_/pop_back.hpp:
+
+/usr/include/boost/mpl/pop_back_fwd.hpp:
+
+/usr/include/boost/mpl/vector/aux_/back.hpp:
+
+/usr/include/boost/mpl/back_fwd.hpp:
+
+/usr/include/boost/mpl/vector/aux_/clear.hpp:
+
+/usr/include/boost/mpl/vector/aux_/vector0.hpp:
+
+/usr/include/boost/mpl/vector/aux_/iterator.hpp:
+
+/usr/include/boost/mpl/plus.hpp:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/plus.hpp:
+
+/usr/include/boost/mpl/minus.hpp:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/minus.hpp:
+
+/usr/include/boost/mpl/advance_fwd.hpp:
+
+/usr/include/boost/mpl/distance_fwd.hpp:
+
+/usr/include/boost/mpl/prior.hpp:
+
+/usr/include/boost/mpl/vector/aux_/O1_size.hpp:
+
+/usr/include/boost/mpl/vector/aux_/size.hpp:
+
+/usr/include/boost/mpl/vector/aux_/empty.hpp:
+
+/usr/include/boost/mpl/vector/aux_/begin_end.hpp:
+
+/usr/include/boost/mpl/vector/aux_/include_preprocessed.hpp:
+
+/usr/include/boost/mpl/vector/aux_/preprocessed/typeof_based/vector10.hpp:
+
+/usr/include/boost/mpl/vector/aux_/preprocessed/typeof_based/vector20.hpp:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/vector.hpp:
+
+/usr/include/boost/mpl/at.hpp:
+
+/usr/include/boost/mpl/aux_/at_impl.hpp:
+
+/usr/include/boost/mpl/advance.hpp:
+
+/usr/include/boost/mpl/negate.hpp:
+
+/usr/include/boost/mpl/aux_/advance_forward.hpp:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/advance_forward.hpp:
+
+/usr/include/boost/mpl/aux_/advance_backward.hpp:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/advance_backward.hpp:
+
+/usr/include/boost/mpl/size.hpp:
+
+/usr/include/boost/mpl/aux_/size_impl.hpp:
+
+/usr/include/boost/mpl/distance.hpp:
+
+/usr/include/boost/mpl/iter_fold.hpp:
+
+/usr/include/boost/mpl/aux_/iter_fold_impl.hpp:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/iter_fold_impl.hpp:
+
+/usr/include/boost/mpl/iterator_range.hpp:
+
+/usr/include/boost/mpl/comparison.hpp:
+
+/usr/include/boost/mpl/not_equal_to.hpp:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/not_equal_to.hpp:
+
+/usr/include/boost/mpl/greater.hpp:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/greater.hpp:
+
+/usr/include/boost/mpl/less_equal.hpp:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/less_equal.hpp:
+
+/usr/include/boost/mpl/greater_equal.hpp:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/greater_equal.hpp:
+
+/usr/include/boost/config/no_tr1/complex.hpp:
+
+/usr/include/boost/math/special_functions/detail/fp_traits.hpp:
+
+/usr/include/boost/detail/endian.hpp:
+
+/usr/include/boost/math/special_functions/fpclassify.hpp:
+
+/usr/include/boost/math/tools/real_cast.hpp:
+
+/usr/include/boost/container/container_fwd.hpp:
+
+/usr/include/boost/algorithm/string/case_conv.hpp:
+
+/usr/include/boost/iterator/transform_iterator.hpp:
+
+/usr/include/boost/type_traits/function_traits.hpp:
+
+/usr/include/boost/utility/result_of.hpp:
+
+/usr/include/boost/preprocessor/iteration/iterate.hpp:
+
+/usr/include/boost/preprocessor/slot/slot.hpp:
+
+/usr/include/boost/preprocessor/slot/detail/def.hpp:
+
+/usr/include/boost/preprocessor/repetition/enum_binary_params.hpp:
+
+/usr/include/boost/preprocessor/repetition/enum_shifted_params.hpp:
+
+/usr/include/boost/preprocessor/facilities/intercept.hpp:
+
+/usr/include/boost/utility/declval.hpp:
+
+/usr/include/boost/preprocessor/iteration/detail/iter/forward1.hpp:
+
+/usr/include/boost/preprocessor/iteration/detail/bounds/lower1.hpp:
+
+/usr/include/boost/preprocessor/slot/detail/shared.hpp:
+
+/usr/include/boost/preprocessor/iteration/detail/bounds/upper1.hpp:
+
+/usr/include/boost/utility/detail/result_of_iterate.hpp:
+
+/usr/include/boost/algorithm/string/detail/case_conv.hpp:
+
+/usr/include/boost/date_time/string_convert.hpp:
+
+/usr/include/boost/date_time/date_generator_formatter.hpp:
+
+/usr/include/boost/date_time/date_generator_parser.hpp:
+
+/usr/include/boost/date_time/format_date_parser.hpp:
+
+/usr/include/boost/date_time/strings_from_facet.hpp:
+
+/usr/include/boost/date_time/special_values_parser.hpp:
+
+/usr/include/boost/date_time/gregorian/parsers.hpp:
+
+/usr/include/boost/date_time/date_parsing.hpp:
+
+/usr/include/boost/tokenizer.hpp:
+
+/usr/include/boost/token_iterator.hpp:
+
+/usr/include/boost/iterator/detail/minimum_category.hpp:
+
+/usr/include/boost/token_functions.hpp:
+
+/usr/include/boost/date_time/posix_time/posix_time_types.hpp:
+
+/usr/include/boost/date_time/time_clock.hpp:
+
+/usr/include/boost/date_time/microsec_time_clock.hpp:
+
+/usr/include/boost/date_time/filetime_functions.hpp:
+
+/usr/include/boost/date_time/posix_time/posix_time_duration.hpp:
+
+/usr/include/boost/date_time/posix_time/time_period.hpp:
+
+/usr/include/boost/date_time/time_iterator.hpp:
+
+/usr/include/boost/date_time/dst_rules.hpp:
+
+/usr/include/boost/date_time/time_formatting_streams.hpp:
+
+/usr/include/boost/date_time/date_formatting_locales.hpp:
+
+/usr/include/boost/date_time/date_names_put.hpp:
+
+/usr/include/boost/date_time/time_parsing.hpp:
+
+/usr/include/boost/date_time/posix_time/posix_time_io.hpp:
+
+/usr/include/boost/date_time/time_facet.hpp:
+
+/usr/include/boost/algorithm/string/erase.hpp:
+
+/usr/include/boost/date_time/posix_time/conversion.hpp:
+
+/usr/include/boost/date_time/posix_time/time_parsers.hpp:
+
+/home/beniz/projects/deepdetect/apps/caffe/include/caffe/util/io.hpp:
+
+/usr/include/hdf5.h:
+
+/usr/include/H5public.h:
+
+/usr/include/H5pubconf.h:
+
+/usr/include/H5version.h:
+
+/usr/include/H5api_adpt.h:
+
+/usr/include/H5Apublic.h:
+
+/usr/include/H5Ipublic.h:
+
+/usr/include/H5Opublic.h:
+
+/usr/include/H5Lpublic.h:
+
+/usr/include/H5Tpublic.h:
+
+/usr/include/H5ACpublic.h:
+
+/usr/include/H5Cpublic.h:
+
+/usr/include/H5Dpublic.h:
+
+/usr/include/H5Epublic.h:
+
+/usr/include/H5Epubgen.h:
+
+/usr/include/H5Fpublic.h:
+
+/usr/include/H5FDpublic.h:
+
+/usr/include/H5Gpublic.h:
+
+/usr/include/H5MMpublic.h:
+
+/usr/include/H5Ppublic.h:
+
+/usr/include/H5Zpublic.h:
+
+/usr/include/H5Rpublic.h:
+
+/usr/include/H5Spublic.h:
+
+/usr/include/H5FDcore.h:
+
+/usr/include/H5FDfamily.h:
+
+/usr/include/H5FDlog.h:
+
+/usr/include/H5FDmpi.h:
+
+/usr/include/H5FDmpio.h:
+
+/usr/include/H5FDmpiposix.h:
+
+/usr/include/H5FDmulti.h:
+
+/usr/include/H5FDsec2.h:
+
+/usr/include/H5FDstdio.h:
+
+/usr/include/H5FDdirect.h:
+
+/usr/include/hdf5_hl.h:
+
+/usr/include/H5DOpublic.h:
+
+/usr/include/H5DSpublic.h:
+
+/usr/include/H5LTpublic.h:
+
+/usr/include/H5IMpublic.h:
+
+/usr/include/H5TBpublic.h:
+
+/usr/include/H5PTpublic.h:
+
+/home/beniz/projects/deepdetect/apps/caffe/include/caffe/vision_layers.hpp:
+
+/home/beniz/projects/deepdetect/apps/caffe/include/caffe/common_layers.hpp:
+
+/home/beniz/projects/deepdetect/apps/caffe/include/caffe/data_layers.hpp:
+
+/home/beniz/projects/deepdetect/apps/caffe/include/caffe/data_transformer.hpp:
+
+/home/beniz/projects/deepdetect/apps/caffe/include/caffe/dataset.hpp:
+
+/home/beniz/projects/deepdetect/apps/caffe/include/caffe/internal_thread.hpp:
+
+/home/beniz/projects/deepdetect/apps/caffe/include/caffe/loss_layers.hpp:
+
+/home/beniz/projects/deepdetect/apps/caffe/include/caffe/neuron_layers.hpp:
+
+/usr/include/c++/4.9/mutex:
+
+/usr/include/c++/4.9/chrono:
+
+/usr/include/c++/4.9/ratio:
+
+/usr/include/c++/4.9/bits/parse_numbers.h:
+
+/usr/include/c++/4.9/system_error:
+
+/usr/include/x86_64-linux-gnu/c++/4.9/bits/error_constants.h:
 
 /usr/include/gtest/gtest.h:
 
@@ -1908,8 +3201,6 @@ ut-apidata.o: ut-apidata.cc /usr/include/stdc-predef.h ../src/apidata.h \
 /usr/include/x86_64-linux-gnu/sys/ucontext.h:
 
 /usr/include/x86_64-linux-gnu/bits/sigthread.h:
-
-/usr/include/c++/4.9/iomanip:
 
 /usr/include/gtest/internal/gtest-string.h:
 

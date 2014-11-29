@@ -66,8 +66,9 @@ namespace dd
       else return false;
     }
 
-    //TODO: convert in and out from json.
+    // convert in and out from json.
     void fromJVal(const JVal &jval);
+    void toJDoc(JDoc &jd) const;
     
   public:
     inline std::string render_template(const std::string &tpl)
@@ -145,6 +146,97 @@ namespace dd
     std::string _key;
     Plustache::Context *_ctx = nullptr;
     PlustacheTypes::ObjectType *_ot = nullptr;
+  };
+
+  class visitor_rjson : public mapbox::util::static_visitor<>
+  {
+  public:    
+    visitor_rjson(JDoc *jd):_jd(jd) {}
+    visitor_rjson(JDoc *jd, JVal *jv):_jd(jd),_jv(jv) {}
+    visitor_rjson(const visitor_rjson &vrj):_jd(vrj._jd),_jv(vrj._jv)
+      { _jvkey.CopyFrom(vrj._jvkey,_jd->GetAllocator()); }
+    ~visitor_rjson() {}
+
+    void set_key(const std::string &key)
+    {
+      _jvkey.SetString(key.c_str(),_jd->GetAllocator());
+    }
+
+    void process(const std::string &str)
+    {
+      if (!_jv)
+	_jd->AddMember(_jvkey,JVal().SetString(str.c_str(),_jd->GetAllocator()),_jd->GetAllocator());
+      else _jv->AddMember(_jvkey,JVal().SetString(str.c_str(),_jd->GetAllocator()),_jd->GetAllocator());
+    }
+    void process(const double &d)
+    {
+      if (!_jv)
+	_jd->AddMember(_jvkey,JVal(d),_jd->GetAllocator());
+      else _jv->AddMember(_jvkey,JVal(d),_jd->GetAllocator());
+    }
+    void process(const bool &b)
+    {
+      if (!_jv)
+	_jd->AddMember(_jvkey,JVal(b),_jd->GetAllocator());
+      else _jv->AddMember(_jvkey,JVal(b),_jd->GetAllocator());
+    }
+    void process(const std::vector<double> &vd)
+    {
+      JVal jarr(rapidjson::kArrayType);
+      for (size_t i=0;i<vd.size();i++)
+	{
+	  jarr.PushBack(JVal(vd.at(i)),_jd->GetAllocator());
+	}
+      if (!_jv)
+	_jd->AddMember(_jvkey,jarr,_jd->GetAllocator());
+      else _jv->AddMember(_jvkey,jarr,_jd->GetAllocator());
+    }
+    void process(const std::vector<std::string> &vs)
+    {
+      JVal jarr(rapidjson::kArrayType);
+      for (size_t i=0;i<vs.size();i++)
+	{
+	  jarr.PushBack(JVal().SetString(vs.at(i).c_str(),_jd->GetAllocator()),_jd->GetAllocator());
+	}
+      if (!_jv)
+	_jd->AddMember(_jvkey,jarr,_jd->GetAllocator());
+      else _jv->AddMember(_jvkey,jarr,_jd->GetAllocator());
+    }
+    void process(const std::vector<APIData> &vad)
+    {
+      JVal jov(rapidjson::kObjectType);
+      if (vad.size() > 1)
+	jov = JVal(rapidjson::kArrayType);
+      for (size_t i=0;i<vad.size();i++)
+	{
+	  JVal jv(rapidjson::kObjectType); 
+	  visitor_rjson vrj(_jd,&jv);
+	  APIData ad = vad.at(i);
+	  auto hit = ad._data.begin();
+	  while(hit!=ad._data.end())
+	    {
+	      vrj.set_key((*hit).first);
+	      mapbox::util::apply_visitor(vrj,(*hit).second);
+	      ++hit;
+	    }
+	  if (vad.size() > 1)
+	    jov.PushBack(jv,_jd->GetAllocator());
+	  else jov = jv;
+	}
+      if (!_jv)
+	_jd->AddMember(_jvkey,jov,_jd->GetAllocator());
+      else _jv->AddMember(_jvkey,jov,_jd->GetAllocator());
+    }
+
+    template<typename T>
+      void operator() (T &t)
+      {
+	process(t);
+      }
+
+    JVal _jvkey;
+    JDoc *_jd = nullptr;
+    JVal *_jv = nullptr;
   };
   
 }

@@ -51,6 +51,16 @@ namespace dd
       return ad;
     }
     
+    // To be surcharged in related classes
+    APIData status() const
+    {
+      APIData ad;
+      ad.add("name",_sname);
+      ad.add("description",_description);
+      ad.add("mllib",this->_libname);
+      return ad;
+    }
+
     std::string _sname; /**< service name. */
     std::string _description; /**< optional description of the service. */
   };

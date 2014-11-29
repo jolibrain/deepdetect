@@ -53,8 +53,13 @@ namespace dd
     jsv.AddMember("code",JVal(code).Move(),jst.GetAllocator());
     if (!msg.empty())
       jsv.AddMember("msg",JVal().SetString(msg.c_str(),jst.GetAllocator()),jst.GetAllocator());
+    if (dd_code > 0)
+      {
+	jsv.AddMember("dd_code",JVal(dd_code).Move(),jst.GetAllocator());
+	if (!dd_msg.empty())
+	  jsv.AddMember("dd_msg",JVal().SetString(dd_msg.c_str(),jst.GetAllocator()),jst.GetAllocator());
+      }
     jst.AddMember("status",jsv,jst.GetAllocator());
-    //TODO: internal codes
   }
 
   JDoc JsonAPI::dd_ok_200() const
@@ -80,7 +85,39 @@ namespace dd
     render_status(jd,400,"BadRequest");
     return jd;
   }
+  
+  JDoc JsonAPI::dd_forbidden_403() const
+  {
+    JDoc jd;
+    jd.SetObject();
+    render_status(jd,400,"Forbidden");
+    return jd;
+  }
 
+  JDoc JsonAPI::dd_not_found_404() const
+  {
+    JDoc jd;
+    jd.SetObject();
+    render_status(jd,404,"NotFound");
+    return jd;
+  }
+  
+  JDoc JsonAPI::dd_unknown_library_1000() const
+  {
+    JDoc jd;
+    jd.SetObject();
+    render_status(jd,404,"NotFound",1000,"Unknown Library");
+    return jd;
+  }
+
+  JDoc JsonAPI::dd_no_data_1001() const
+  {
+    JDoc jd;
+    jd.SetObject();
+    render_status(jd,400,"BadRequest",1001,"No Data");
+    return jd;
+  }
+  
   std::string JsonAPI::jrender(const JDoc &jst) const
   {
     rapidjson::StringBuffer buffer;
@@ -129,7 +166,7 @@ namespace dd
     // model parameters.
     APIData ad_model(d["model"]);
     
-    //TODO: create service.
+    // create service.
     if (mllib == "caffe")
       {
 	CaffeModel cmodel(ad_model);
@@ -137,21 +174,30 @@ namespace dd
       }
     else
       {
-	//TODO: error unknown service lib.
+	return jrender(dd_unknown_library_1000());
       }
 
     JDoc jsc = dd_created_201();
     return jrender(jsc);
   }
   
-  std::string JsonAPI::service_info() const
+  std::string JsonAPI::service_status(const std::string &sname)
   {
-
+    int pos = this->get_service_pos(sname);
+    if (pos < 0)
+      return jrender(dd_not_found_404());
+    APIData ad = mapbox::util::apply_visitor(visitor_status(),_mlservices.at(pos));
+    //TODO: turn ad into json
+    JDoc jst = dd_ok_200();
+    
+    
   }
 
-  std::string JsonAPI::service_delete()
+  std::string JsonAPI::service_delete(const std::string &sname)
   {
-    
+    if (remove_service(sname))
+      return jrender(dd_ok_200());
+    return jrender(dd_not_found_404());
   }
 
 }

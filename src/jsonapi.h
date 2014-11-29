@@ -44,6 +44,11 @@ namespace dd
     JDoc dd_ok_200() const;
     JDoc dd_created_201() const;
     JDoc dd_bad_request_400() const;
+    JDoc dd_forbidden_403() const;
+    JDoc dd_not_found_404() const;
+
+    JDoc dd_unknown_library_1000() const;
+    JDoc dd_no_data_1001() const;
 
     // JSON rendering
     std::string jrender(const JDoc &jst) const;
@@ -52,8 +57,8 @@ namespace dd
     std::string info() const;
     
     std::string service_create(const std::string &sname, const std::string &jstr);
-    std::string service_info() const;
-    std::string service_delete();
+    std::string service_status(const std::string &sname);
+    std::string service_delete(const std::string &sname);
   };
 
   class visitor_info : public mapbox::util::static_visitor<APIData>
@@ -66,6 +71,19 @@ namespace dd
       APIData operator() (T &mllib)
       {
 	return mllib.info();
+      }
+  };
+
+  class visitor_status : public mapbox::util::static_visitor<APIData>
+  {
+  public:
+    visitor_status() {}
+    ~visitor_status() {}
+
+    template<typename T>
+      APIData operator() (T &mllib)
+      {
+	return mllib.status();
       }
   };
 

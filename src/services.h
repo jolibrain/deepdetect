@@ -104,7 +104,7 @@ namespace dd
       _mlservidx.insert(std::pair<std::string,int>(sname,_mlservices.size()-1));
     }
 
-    void remove_service(const std::string &sname)
+    bool remove_service(const std::string &sname)
     {
       std::lock_guard<std::mutex> lock(_mlservices_mtx);
       auto hit = _mlservidx.begin();
@@ -112,8 +112,19 @@ namespace dd
 	{
 	  _mlservices.erase(_mlservices.begin()+(*hit).second);
 	  _mlservidx.erase(hit);
+	  return true;
 	}
-      else LOG(ERROR) << "cannot find service " << sname << " for removal\n";
+      LOG(ERROR) << "cannot find service " << sname << " for removal\n";
+      return false;
+    }
+
+    int get_service_pos(const std::string &sname)
+    {
+       std::lock_guard<std::mutex> lock(_mlservices_mtx);
+       std::unordered_map<std::string,int>::const_iterator hit;
+       if ((hit=_mlservidx.find(sname))!=_mlservidx.end())
+	 return (*hit).second;
+       else return -1;
     }
 
     int train(const APIData &ad, const int &pos, APIData &out)
