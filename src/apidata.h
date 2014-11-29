@@ -69,6 +69,7 @@ namespace dd
     // convert in and out from json.
     void fromJVal(const JVal &jval);
     void toJDoc(JDoc &jd) const;
+    void toJVal(JDoc &jd, JVal &jv) const;
     
   public:
     inline std::string render_template(const std::string &tpl)

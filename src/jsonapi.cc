@@ -137,13 +137,8 @@ namespace dd
     for (size_t i=0;i<services_size();i++)
       {
 	APIData ad = mapbox::util::apply_visitor(visitor_info(),_mlservices.at(i));
-	std::string sname = ad.get("name").get<std::string>();
-	std::string sdesc = ad.get("description").get<std::string>();
-	std::string smllib = ad.get("mllib").get<std::string>();
 	JVal jserv(rapidjson::kObjectType);
-	jserv.AddMember("service_name",JVal().SetString(sname.c_str(),jinfo.GetAllocator()),jinfo.GetAllocator());
-	jserv.AddMember("description",JVal().SetString(sdesc.c_str(),jinfo.GetAllocator()),jinfo.GetAllocator());
-	jserv.AddMember("mllib",JVal().SetString(smllib.c_str(),jinfo.GetAllocator()),jinfo.GetAllocator());
+	ad.toJVal(jinfo,jserv);
 	jservs.PushBack(jserv,jinfo.GetAllocator());
       }
     jhead.AddMember("services",jservs,jinfo.GetAllocator());
@@ -187,10 +182,9 @@ namespace dd
     if (pos < 0)
       return jrender(dd_not_found_404());
     APIData ad = mapbox::util::apply_visitor(visitor_status(),_mlservices.at(pos));
-    //TODO: turn ad into json
     JDoc jst = dd_ok_200();
-    
-    
+    ad.toJDoc(jst);
+    return jrender(jst);
   }
 
   std::string JsonAPI::service_delete(const std::string &sname)

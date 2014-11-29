@@ -57,6 +57,11 @@ namespace dd
 	std::string janswer = info();
 	std::cout << janswer << std::endl;
       }
+    if (!FLAGS_service_name.empty())
+      {
+	std::string janswer = service_status(FLAGS_service_name);
+	std::cout << janswer << std::endl;
+      }
 
     return 0;
   }
