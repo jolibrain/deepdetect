@@ -162,6 +162,7 @@ namespace dd
       catch(...)
 	{
 	  LOG(ERROR) << "service #" << pos << " prediction call failed\n";
+	  pout._status = -1;
 	}
       out = pout._out;
       std::chrono::time_point<std::chrono::system_clock> tstop = std::chrono::system_clock::now();

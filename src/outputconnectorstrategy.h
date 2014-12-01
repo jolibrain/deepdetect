@@ -50,21 +50,26 @@ namespace dd
   public:
     SupervisedOutput()
       :OutputConnectorStrategy()
-      {}
+      {
+      }
     ~SupervisedOutput() {}
 
-    inline void add_cat(const double &prob, const std::string &cat)
+    inline void add_cat(const int &pos, const double &prob, const std::string &cat)
     {
-      _cats.insert(std::pair<double,std::string>(prob,cat));
+      if (pos >= static_cast<int>(_vcats.size()))
+	_vcats.resize(pos+1);
+      _vcats.at(pos).insert(std::pair<double,std::string>(prob,cat));
     }
 
     void best_cats(const int &num, SupervisedOutput &bcats) const
     {
-      std::copy_n(_cats.begin(),std::min(num,static_cast<int>(_cats.size())),std::inserter(bcats._cats,bcats._cats.end()));
+      bcats._vcats.resize(_vcats.size());
+      for (size_t i=0;i<_vcats.size();i++)
+	std::copy_n(_vcats.at(i).begin(),std::min(num,static_cast<int>(_vcats.at(i).size())),std::inserter(bcats._vcats.at(i),bcats._vcats.at(i).end()));
     }
 
     //TODO: e.g. to_json, print, ...
-    void to_str(std::string &out) const
+    /*void to_str(std::string &out) const
     {
 	auto mit = _cats.begin();
 	while(mit!=_cats.end())
@@ -72,54 +77,45 @@ namespace dd
 	    out += "accuracy=" + std::to_string((*mit).first) + " -- cat=" + (*mit).second + "\n";
 	    ++mit;
 	  }
-    }
+	  }*/
 
     void to_ad(APIData &out) const
     {
       static std::string cl = "classes";
       static std::string phead = "prob";
       static std::string chead = "cat";
-      std::vector<APIData> v;
-     
+      std::vector<APIData> vpred;
+      
       //debug
       /*std::string str;
       to_str(str);
       std::cout << "witness=\n" << str << std::endl;*/
       //debug
       
-      int i = 0;
-      auto mit = _cats.begin();
-      while(mit!=_cats.end())
+      for (size_t j=0;j<_vcats.size();j++)
 	{
-	  APIData nad;
-	  nad.add(chead,(*mit).second);
-	  nad.add(phead,(*mit).first);
-	  v.push_back(nad);
-	  /*std::vector<std::pair<std::string,std::string>> v;
-	  v.push_back(std::pair<std::string,std::string>(cchead,(*mit).second));
-	  v.push_back(std::pair<std::string,std::string>(phead,std::to_string((*mit).first)));
-	  ad_classes.*/
-	  
-	  /*std::string s = std::to_string(i);
-	  out.add(chead + s,(*mit).second);
-	  out.add(phead + s,static_cast<double>((*mit).first));*/
-	  ++i;
-	  ++mit;
+	  int i = 0;
+	  std::vector<APIData> v;
+	  auto mit = _vcats.at(j).begin();
+	  while(mit!=_vcats.at(j).end())
+	    {
+	      APIData nad;
+	      nad.add(chead,(*mit).second);
+	      nad.add(phead,(*mit).first);
+	      v.push_back(nad);
+	      ++i;
+	      ++mit;
+	    }
+	  APIData adpred;
+	  adpred.add(cl,v);
+	  adpred.add("loss",_loss);
+	  vpred.push_back(adpred);
 	}
-      //out.add(cl,ad_classes);
-      APIData adpred;
-      adpred.add(cl,v);
-      adpred.add("loss",_loss);
-      std::vector<APIData> vpred = { adpred };
       out.add("predictions",vpred);
-      /*out.add("bool",true);
-      out.add("string","bla");
-      out.add("int",3);
-      out.add("double",8.0);*/
     }
 
     double _loss = 0.0;
-    std::map<double,std::string,std::greater<double>> _cats; /**< classes as finite set of categories. */
+    std::vector<std::map<double,std::string,std::greater<double>>> _vcats; /**< classes as finite set of categories. */
   };
   
 }

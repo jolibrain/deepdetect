@@ -43,19 +43,24 @@ namespace dd
     {
       std::vector<std::string> vdata = ad.get("data").get<std::vector<std::string>>();
       //_imgfname = ad.get(_imgfname).get<std::string>();
-      _imgfname = vdata.at(0);
-      std::cout << "opening image=" << _imgfname << std::endl;
-      cv::Mat imaget = cv::imread(_imgfname,CV_LOAD_IMAGE_COLOR); //TODO: catch errors (size = 0 for file not found)
-      /*cv::namedWindow( "Display window", cv::WINDOW_AUTOSIZE );
-      cv::imshow( "Display window", imaget);
-      cv::waitKey(0);*/
-      cv::Size size(227,227);
-      cv::resize(imaget,_image,size);
+      //_imgfname = vdata.at(0);
+      //std::cout << "opening image=" << _imgfname << std::endl;
+      for (size_t i=0;i<vdata.size();i++)
+	{
+	  cv::Mat imaget = cv::imread(vdata.at(i),CV_LOAD_IMAGE_COLOR); //TODO: catch errors (size = 0 for file not found)
+	  /*cv::namedWindow( "Display window", cv::WINDOW_AUTOSIZE );
+	    cv::imshow( "Display window", imaget);
+	    cv::waitKey(0);*/
+	  cv::Size size(227,227);
+	  cv::Mat image;
+	  cv::resize(imaget,image,size);
+	  _images.push_back(image);
+	}
       return 0;
     }
 
-    cv::Mat _image;
-    std::string _imgfname = "imgfname";
+    std::vector<cv::Mat> _images;
+    //std::string _imgfname = "imgfname";
   };
 }
 

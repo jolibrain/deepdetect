@@ -22,6 +22,7 @@
 #include "caffelib.h"
 #include "imginputfileconn.h"
 #include "outputconnectorstrategy.h"
+#include <chrono>
 #include <iostream>
 
 using caffe::Caffe;
@@ -121,26 +122,36 @@ namespace dd
     //std::vector<Blob<float>*> bottom = {blob};
     float loss = 0.0;
     //std::vector<Datum> dv = {datum};
-    std::vector<cv::Mat> dv = {inputc._image};
-    std::vector<int> dvl = {0};
+    //std::vector<cv::Mat> dv = {inputc._images.at(0),inputc._images.at(1)};
+    int batch_size = inputc._images.size();
+    std::vector<int> dvl(batch_size,0.0);
     //boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(dv);
-    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddMatVector(dv,dvl);
-    
+    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddMatVector(inputc._images,dvl);
+
     //std::vector<Blob<float>*> results = _net->Forward(bottom,&loss);
     //TODO: loss ?
+    std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();
     std::vector<Blob<float>*> results = _net->ForwardPrefilled(&loss);
+    std::chrono::time_point<std::chrono::system_clock> tstop = std::chrono::system_clock::now();
+    double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(tstop-tstart).count();
+    std::cout << "Caffe prediction time=" << elapsed << std::endl;
     int slot = results.size() - 1;
-    std::cout << "results size=" << results.size() << std::endl;
-    std::cout << "count=" << results[slot]->count() << std::endl;
+    /*std::cout << "results size=" << results.size() << std::endl;
+      std::cout << "count=" << results[slot]->count() << std::endl;*/
+    int scount = results[slot]->count();
+    int scperel = scount / batch_size;
     TOutputConnectorStrategy tout;
-    for (int i=0;i<results[slot]->count();i++)
+    tout._vcats.resize(batch_size);
+    for (int j=0;j<batch_size;j++)
       {
-	//std::cout << results[4]->cpu_data()[i] << std::endl;
-	tout.add_cat(results[slot]->cpu_data()[i],this->_mlmodel._hcorresp[i]);
+	for (int i=0;i<scperel;i++)
+	  {
+	    //std::cout << this->_mlmodel._hcorresp[i] << " / " << results[slot]->cpu_data()[j*scperel+i] << std::endl;
+	    tout.add_cat(j,results[slot]->cpu_data()[j*scperel+i],this->_mlmodel._hcorresp[i]);
+	  }
       }
     TOutputConnectorStrategy btout;
     tout.best_cats(5,btout);
-    //btout.to_str(output);
     btout.to_ad(out);
     out.add("status",0);
   
