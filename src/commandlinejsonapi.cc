@@ -26,6 +26,7 @@
 DEFINE_bool(info,false,"/info JSON call");
 DEFINE_string(service_create,"","/service/service_name call JSON string");
 DEFINE_string(service_name,"","service name string for JSON call /service/service_name");
+DEFINE_bool(service_delete,false,"/service/service_name DELETE call JSON string");
 
 namespace dd
 {
@@ -47,7 +48,8 @@ namespace dd
       {
 	if (FLAGS_service_name.empty())
 	  {
-	    //TODO: error.
+	    std::string janswer = jrender(dd_not_found_404());
+	    std::cout << janswer << std::endl;
 	  }
 	std::string janswer = service_create(FLAGS_service_name,FLAGS_service_create);
 	std::cout << janswer << std::endl;
@@ -55,6 +57,16 @@ namespace dd
     if (FLAGS_info)
       {
 	std::string janswer = info();
+	std::cout << janswer << std::endl;
+      }
+    if (!FLAGS_service_name.empty())
+      {
+	std::string janswer = service_status(FLAGS_service_name);
+	std::cout << janswer << std::endl;
+      }
+    if (FLAGS_service_delete)
+      {
+	std::string janswer = service_delete(FLAGS_service_name);
 	std::cout << janswer << std::endl;
       }
     if (!FLAGS_service_name.empty())

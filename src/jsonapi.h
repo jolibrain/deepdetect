@@ -47,6 +47,7 @@ namespace dd
     JDoc dd_forbidden_403() const;
     JDoc dd_not_found_404() const;
 
+    // specific errors
     JDoc dd_unknown_library_1000() const;
     JDoc dd_no_data_1001() const;
 

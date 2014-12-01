@@ -149,6 +149,9 @@ namespace dd
   std::string JsonAPI::service_create(const std::string &sname,
 				      const std::string &jstr)
   {
+    if (sname.empty())
+      return jrender(dd_not_found_404());
+    
     rapidjson::Document d;
     d.Parse(jstr.c_str());
     if (d.HasParseError())
@@ -178,6 +181,8 @@ namespace dd
   
   std::string JsonAPI::service_status(const std::string &sname)
   {
+    if (sname.empty())
+      return jrender(dd_not_found_404());
     int pos = this->get_service_pos(sname);
     if (pos < 0)
       return jrender(dd_not_found_404());
@@ -189,6 +194,8 @@ namespace dd
 
   std::string JsonAPI::service_delete(const std::string &sname)
   {
+    if (sname.empty())
+      return jrender(dd_not_found_404());
     if (remove_service(sname))
       return jrender(dd_ok_200());
     return jrender(dd_not_found_404());
