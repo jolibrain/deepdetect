@@ -34,8 +34,9 @@ namespace dd
   {
   public:
     MLService(const std::string &sname,
-	      const TMLModel &mlmodel)
-      :TMLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>(mlmodel),_sname(sname)
+	      const TMLModel &mlmodel,
+	      const std::string &description="")
+      :TMLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>(mlmodel),_sname(sname),_description(description)
       {}
     MLService(MLService &&mls) noexcept
       :TMLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>(std::move(mls)),_sname(std::move(mls._sname)),_description(std::move(mls._description))

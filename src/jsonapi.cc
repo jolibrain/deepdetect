@@ -160,6 +160,7 @@ namespace dd
     std::string mllib = d["mllib"].GetString();
     if (mllib.empty())
       return jrender(dd_bad_request_400());
+    std::string description = d["description"].GetString();
 
     // model parameters.
     APIData ad_model(d["model"]);
@@ -168,7 +169,7 @@ namespace dd
     if (mllib == "caffe")
       {
 	CaffeModel cmodel(ad_model);
-	add_service(sname,std::move(MLService<CaffeLib,ImgInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel)));
+	add_service(sname,std::move(MLService<CaffeLib,ImgInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)));
       }
     else
       {
