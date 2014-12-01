@@ -46,6 +46,7 @@ namespace dd
     JDoc dd_bad_request_400() const;
     JDoc dd_forbidden_403() const;
     JDoc dd_not_found_404() const;
+    JDoc dd_internal_error_500() const;
 
     // specific errors
     JDoc dd_unknown_library_1000() const;
@@ -53,13 +54,15 @@ namespace dd
 
     // JSON rendering
     std::string jrender(const JDoc &jst) const;
-    
+    std::string jrender(const JVal &jval) const;
+
     // resources
     std::string info() const;
-    
     std::string service_create(const std::string &sname, const std::string &jstr);
     std::string service_status(const std::string &sname);
     std::string service_delete(const std::string &sname);
+    
+    std::string service_predict(const std::string &jstr);
   };
 
   class visitor_info : public mapbox::util::static_visitor<APIData>

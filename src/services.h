@@ -31,6 +31,7 @@
 #include "caffelib.h"
 #include <vector>
 #include <mutex>
+#include <chrono>
 #include <iostream>
 
 namespace dd
@@ -129,6 +130,7 @@ namespace dd
 
     int train(const APIData &ad, const int &pos, APIData &out)
     {
+      std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();
       visitor_train vt;
       vt._ad = ad;
       output pout;
@@ -141,11 +143,15 @@ namespace dd
 	  LOG(ERROR) << "service #" << pos << " training call failed\n";
 	}
       out = pout._out;
+      std::chrono::time_point<std::chrono::system_clock> tstop = std::chrono::system_clock::now();
+      double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(tstop-tstart).count();
+      out.add("time",elapsed);
       return pout._status;
     }
     
     int predict(const APIData &ad, const int &pos, APIData &out)
     {
+      std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();
       visitor_predict vp;
       vp._ad = ad;
       output pout;
@@ -158,6 +164,9 @@ namespace dd
 	  LOG(ERROR) << "service #" << pos << " prediction call failed\n";
 	}
       out = pout._out;
+      std::chrono::time_point<std::chrono::system_clock> tstop = std::chrono::system_clock::now();
+      double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(tstop-tstart).count();
+      out.add("time",elapsed);
       return pout._status;
     }
 

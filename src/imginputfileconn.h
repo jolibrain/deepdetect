@@ -41,7 +41,9 @@ namespace dd
 
     int transform(const APIData &ad)
     {
-      _imgfname = ad.get(_imgfname).get<std::string>();
+      std::vector<std::string> vdata = ad.get("data").get<std::vector<std::string>>();
+      //_imgfname = ad.get(_imgfname).get<std::string>();
+      _imgfname = vdata.at(0);
       std::cout << "opening image=" << _imgfname << std::endl;
       cv::Mat imaget = cv::imread(_imgfname,CV_LOAD_IMAGE_COLOR); //TODO: catch errors (size = 0 for file not found)
       /*cv::namedWindow( "Display window", cv::WINDOW_AUTOSIZE );

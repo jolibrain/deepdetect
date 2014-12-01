@@ -107,8 +107,11 @@ namespace dd
 	  ++mit;
 	}
       //out.add(cl,ad_classes);
-      out.add(cl,v);
-      out.add("loss",_loss);
+      APIData adpred;
+      adpred.add(cl,v);
+      adpred.add("loss",_loss);
+      std::vector<APIData> vpred = { adpred };
+      out.add("predictions",vpred);
       /*out.add("bool",true);
       out.add("string","bla");
       out.add("int",3);

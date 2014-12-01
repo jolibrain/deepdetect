@@ -101,6 +101,14 @@ namespace dd
     render_status(jd,404,"NotFound");
     return jd;
   }
+
+  JDoc JsonAPI::dd_internal_error_500() const
+  {
+    JDoc jd;
+    jd.SetObject();
+    render_status(jd,500,"InternalError");
+    return jd;
+  }
   
   JDoc JsonAPI::dd_unknown_library_1000() const
   {
@@ -123,6 +131,14 @@ namespace dd
     rapidjson::StringBuffer buffer;
     rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
     jst.Accept(writer);
+    return buffer.GetString();
+  }
+
+  std::string JsonAPI::jrender(const JVal &jval) const
+  {
+    rapidjson::StringBuffer buffer;
+    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+    jval.Accept(writer);
     return buffer.GetString();
   }
 
@@ -200,6 +216,39 @@ namespace dd
     if (remove_service(sname))
       return jrender(dd_ok_200());
     return jrender(dd_not_found_404());
+  }
+
+  std::string JsonAPI::service_predict(const std::string &jstr)
+  {
+    rapidjson::Document d;
+    d.Parse(jstr.c_str());
+    if (d.HasParseError())
+      return jrender(dd_bad_request_400());
+    
+    // service
+    std::string sname = d["service"].GetString();
+    int pos = this->get_service_pos(sname);
+    if (pos < 0)
+      return jrender(dd_not_found_404());
+
+    // data
+    APIData ad_data(d);
+  
+    // prediction
+    APIData out;
+    int status = this->predict(ad_data,pos,out);
+    if (status < 0)
+      return jrender(dd_internal_error_500());
+    JDoc jpred = dd_ok_200();
+    JVal jout(rapidjson::kObjectType);
+    out.toJVal(jpred,jout);
+    JVal jhead(rapidjson::kObjectType);
+    jhead.AddMember("method","/predict",jpred.GetAllocator());
+    jhead.AddMember("time",jout["time"],jpred.GetAllocator());
+    jhead.AddMember("service",d["service"],jpred.GetAllocator());
+    jpred.AddMember("head",jhead,jpred.GetAllocator());
+    jpred.AddMember("predictions",jout["predictions"],jpred.GetAllocator());
+    return jrender(jpred);
   }
 
 }

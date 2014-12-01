@@ -65,7 +65,9 @@ namespace dd
 	  {
 	    std::cout << FLAGS_imgfname << std::endl;
 	    APIData ad;
-	    ad.add("imgfname",FLAGS_imgfname);
+	    //ad.add("imgfname",FLAGS_imgfname);
+	    std::vector<std::string> vdata = { FLAGS_imgfname };
+	    ad.add("data",vdata);
 	    APIData out;
 	    predict(ad,0,out);
 	    //std::cout << "witness=\n" << out.to_str() << std::endl;
