@@ -42,6 +42,8 @@ namespace dd
     
       int train(const APIData &ad, APIData &out);//std::string &output);
       int predict(const APIData &ad, APIData &out);//std::string &output);
+    
+      void update_solver_data_paths(caffe::SolverParameter &sp);
 
       caffe::Net<float> *_net = nullptr;
       bool _gpu = false; /**< whether to use GPU. */

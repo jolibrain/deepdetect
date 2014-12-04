@@ -88,8 +88,11 @@ namespace dd
 
     caffe::SolverParameter solver_param;
     caffe::ReadProtoFromTextFileOrDie(this->_mlmodel._solver,&solver_param); //TODO: no die
+    //solver_param.set_net(this->_mlmodel._repo + "/" + solver_param.net());
+    update_solver_data_paths(solver_param);
     
     // optimize
+    std::cout << "loading solver\n";
     std::shared_ptr<caffe::Solver<float>> solver(caffe::GetSolver<float>(solver_param));
     std::string snapshot_file = ad.get(snapshotf).get<std::string>();
     if (!snapshot_file.empty())
@@ -156,6 +159,29 @@ namespace dd
     out.add("status",0);
   
     return 0;
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_solver_data_paths(caffe::SolverParameter &sp)
+  {
+    // fix net model path.
+    sp.set_net(this->_mlmodel._repo + "/" + sp.net());
+    // fix source paths in the model.
+    caffe::NetParameter *np = sp.mutable_net_param();
+    caffe::ReadProtoFromTextFile(sp.net().c_str(),np); //TODO: error on read + use internal caffe ReadOrDie procedure
+    for (int i=0;i<np->layers_size();i++)
+      {
+	caffe::LayerParameter *lp = np->mutable_layers(i);
+	if (lp->has_data_param())
+	  {
+	    caffe::DataParameter *dp = lp->mutable_data_param();
+	    if (dp->has_source())
+	      {
+		dp->set_source(this->_mlmodel._repo + "/" + dp->source());
+	      }
+	  }
+      }
+    sp.clear_net();
   }
 
   template class CaffeLib<ImgInputFileConn,SupervisedOutput,CaffeModel>;

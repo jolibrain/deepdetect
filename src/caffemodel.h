@@ -46,6 +46,7 @@ namespace dd
 
     int read_from_repository(const std::string &repo);
 
+    std::string _repo; /** model repository. */
     std::string _def; /**< file name of the model definition in the form of a protocol buffer message description. */
     std::string _weights; /**< file name of the network's weights. */
     std::string _corresp; /**< file name of the class correspondences (e.g. house / 23) */
