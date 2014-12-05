@@ -79,8 +79,18 @@ namespace dd
       Plustache::template_t t;
       return t.render(tpl,ctx);
     }
+    inline std::string render_template(const std::string &tpl,
+				       const std::string &key)
+    {
+      Plustache::Context ctx;
+      to_plustache_ctx(ctx,key);
+      Plustache::template_t t;
+      return t.render(tpl,ctx);
+    }
 
     void to_plustache_ctx(Plustache::Context &ctx) const;
+    void to_plustache_ctx(Plustache::Context &ctx,
+			  const std::string &key) const;
     
     std::unordered_map<std::string,ad_variant_type> _data;
   };
@@ -88,25 +98,26 @@ namespace dd
   class visitor_stache : public mapbox::util::static_visitor<>
   {
   public:
+    visitor_stache() {}
     visitor_stache(Plustache::Context *ctx):_ctx(ctx) {}
-    visitor_stache(PlustacheTypes::ObjectType *ot):_ot(ot) {}
+    visitor_stache(Plustache::Context *ctx, PlustacheTypes::ObjectType *ot):_ctx(ctx),_ot(ot) {}
     ~visitor_stache() {}
     
     void process(const std::string &str)
     {
-      if (_ctx)
+      if (!_ot)
 	_ctx->add(_key,str);
       else (*_ot)[_key] = str;
     }
     void process(const double &d)
     {
-      if (_ctx)
+      if (!_ot)
 	_ctx->add(_key,std::to_string(d));
       else (*_ot)[_key] = std::to_string(d);
     }
     void process(const bool &b)
     {
-      if (_ctx)
+      if (!_ot)
 	_ctx->add(_key,std::to_string(b));
       else (*_ot)[_key] = std::to_string(b);
     }
@@ -116,27 +127,31 @@ namespace dd
     void process(const std::vector<std::string> &vs)
     {
     }
-    void process(const std::vector<APIData> &vad)
+    void process(const std::vector<APIData> &vad) // XXX: hack, that flattens all objects below first level as plustache does not support nested objects
     {
-      if (_ctx) // only one level, as supported by mustache anyways.
+      PlustacheTypes::CollectionType c;
+      for (size_t i=0;i<vad.size();i++)
 	{
-	  PlustacheTypes::CollectionType c;
-	  for (size_t i=0;i<vad.size();i++)
+	  visitor_stache vs;
+	  PlustacheTypes::ObjectType ot;
+	  if (!_ot)
 	    {
-	      PlustacheTypes::ObjectType ot;
-	      visitor_stache vs(&ot);
-	      APIData ad = vad.at(i);
-	      auto hit = ad._data.begin();
-	      while(hit!=ad._data.end())
-		{
-		  vs._key = (*hit).first;
-		  mapbox::util::apply_visitor(vs,(*hit).second);
-		  ++hit;
-		}
-	      c.push_back(ot);
+	      vs = visitor_stache(_ctx,&ot);
 	    }
-	  _ctx->add(_key,c);
+	  else vs = visitor_stache(_ctx,_ot);
+	  APIData ad = vad.at(i);
+	  auto hit = ad._data.begin();
+	  while(hit!=ad._data.end())
+	    {
+	      vs._key = (*hit).first;
+	      mapbox::util::apply_visitor(vs,(*hit).second);
+	      ++hit;
+	    }
+	  if (_ctx)
+	    c.push_back(*vs._ot);
 	}
+      if (_ctx)
+	_ctx->add(_key,c);
     }
 
     template<typename T>

@@ -63,6 +63,8 @@ namespace dd
     std::string service_delete(const std::string &sname);
     
     std::string service_predict(const std::string &jstr);
+
+    std::string service_train(const std::string &jstr);
   };
 
   class visitor_info : public mapbox::util::static_visitor<APIData>

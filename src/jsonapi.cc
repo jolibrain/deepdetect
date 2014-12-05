@@ -251,4 +251,9 @@ namespace dd
     return jrender(jpred);
   }
 
+  std::string JsonAPI::service_train(const std::string &jstr)
+  {
+
+  }
+
 }

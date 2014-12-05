@@ -68,16 +68,22 @@ namespace dd
 	std::copy_n(_vcats.at(i).begin(),std::min(num,static_cast<int>(_vcats.at(i).size())),std::inserter(bcats._vcats.at(i),bcats._vcats.at(i).end()));
     }
 
-    //TODO: e.g. to_json, print, ...
-    /*void to_str(std::string &out) const
+    // for debugging purposes.
+    void to_str(std::string &out) const
     {
-	auto mit = _cats.begin();
-	while(mit!=_cats.end())
+      auto vit = _vcats.begin();
+      while(vit!=_vcats.end())
+	{
+	  out += "-------------\n";
+	  auto mit = (*vit).begin();
+	  while(mit!=(*vit).end())
 	  {
 	    out += "accuracy=" + std::to_string((*mit).first) + " -- cat=" + (*mit).second + "\n";
 	    ++mit;
 	  }
-	  }*/
+	  ++vit;
+	}
+    }
 
     void to_ad(APIData &out) const
     {
@@ -115,7 +121,7 @@ namespace dd
     }
 
     double _loss = 0.0;
-    std::vector<std::map<double,std::string,std::greater<double>>> _vcats; /**< classes as finite set of categories. */
+    std::vector<std::map<double,std::string,std::greater<double>>> _vcats; /**< vector of classes as finite set of categories. */
   };
   
 }

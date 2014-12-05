@@ -78,8 +78,6 @@ namespace dd
   {
     static std::string snapshotf = "snapshot";
     //XXX: for now, inputc not used, will be if we run the learning loop from within here in order to collect stats along the way
-    //TODO: get solver param (from ad?)
-    //std::string solver_file = ad.get(solverf).get<std::string>();
     if (this->_mlmodel._solver.empty())
       {
 	LOG(ERROR) << "missing solver file";
@@ -88,7 +86,6 @@ namespace dd
 
     caffe::SolverParameter solver_param;
     caffe::ReadProtoFromTextFileOrDie(this->_mlmodel._solver,&solver_param); //TODO: no die
-    //solver_param.set_net(this->_mlmodel._repo + "/" + solver_param.net());
     update_solver_data_paths(solver_param);
     
     // optimize
