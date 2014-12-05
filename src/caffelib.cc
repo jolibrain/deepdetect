@@ -74,10 +74,8 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::train(const APIData &ad,
 										 APIData &out)
-  //std::string &output)
   {
     static std::string snapshotf = "snapshot";
-    //XXX: for now, inputc not used, will be if we run the learning loop from within here in order to collect stats along the way
     if (this->_mlmodel._solver.empty())
       {
 	LOG(ERROR) << "missing solver file";
@@ -87,6 +85,18 @@ namespace dd
     caffe::SolverParameter solver_param;
     caffe::ReadProtoFromTextFileOrDie(this->_mlmodel._solver,&solver_param); //TODO: no die
     update_solver_data_paths(solver_param);
+    
+    // parameters
+    std::vector<APIData> ad_param = ad.getv("parameters");
+    for (size_t i=0;i<ad_param.size();i++)
+      {
+	APIData adp = ad_param.at(i);
+	if (adp.has("iterations"))
+	  {
+	    int max_iter = static_cast<int>(adp.get("iterations").get<double>());
+	    solver_param.set_max_iter(max_iter);
+	  }
+      }
     
     // optimize
     std::cout << "loading solver\n";

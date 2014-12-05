@@ -26,6 +26,30 @@
 
 using namespace dd;
 
+TEST(apidata,visitor_vad)
+{
+  double loss = 1.17;
+  double prob1 = 0.67;
+  double prob2 = 0.29;
+  
+  APIData ad;
+  std::vector<APIData> vad;
+  APIData ivad1;
+  ivad1.add("cat","car");
+  ivad1.add("prob",prob1);
+  vad.push_back(ivad1);
+  APIData ivad2;
+  ivad2.add("cat","wolf");
+  ivad2.add("prob",prob2);
+  vad.push_back(ivad2);
+  ad.add("classes",vad);
+  ad.add("loss",loss);
+
+  std::vector<APIData> ad_cl = ad.getv("classes");
+  std::cout << "prob=" << ad_cl.at(0).get("prob").get<double>() << std::endl;
+  ASSERT_EQ(prob1,ad_cl.at(0).get("prob").get<double>());
+}
+
 TEST(apidata,to_plustache_ctx)
 {
   double loss = 1.17;

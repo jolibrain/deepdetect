@@ -36,8 +36,31 @@ namespace dd
     std::vector<std::string>,std::vector<double>,
     mapbox::util::recursive_wrapper<std::vector<APIData>>> ad_variant_type;
 
-  class visitor_stache;
-  
+  class vout
+  {
+  public:
+    vout() {}
+    vout(const std::vector<APIData> &vad):_vad(vad) {}
+    ~vout() {}
+    std::vector<APIData> _vad;
+  };
+  class visitor_vad : public mapbox::util::static_visitor<vout>
+  {
+  public:
+    visitor_vad() {}
+    ~visitor_vad() {};
+    
+    vout process(const std::string &str);
+    vout process(const double &d);
+    vout process(const bool &b);
+    vout process(const std::vector<double> &vd);
+    vout process(const std::vector<std::string> &vs);
+    vout process(const std::vector<APIData> &vad);
+    
+    template<typename T>
+      vout operator() (T &t);
+  };
+
   class APIData
   {
   public:
@@ -56,6 +79,13 @@ namespace dd
       if ((hit=_data.find(key))!=_data.end())
 	return (*hit).second;
       else return ""; // beware
+    }
+
+    inline std::vector<APIData> getv(const std::string &key) const
+    {
+      visitor_vad vv;
+      vout v = mapbox::util::apply_visitor(vv,get(key));
+      return v._vad;
     }
 
     inline bool has(const std::string &key) const
