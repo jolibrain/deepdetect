@@ -253,7 +253,27 @@ namespace dd
 
   std::string JsonAPI::service_train(const std::string &jstr)
   {
+    rapidjson::Document d;
+    d.Parse(jstr.c_str());
+    if (d.HasParseError())
+      return jrender(dd_bad_request_400());
+  
+    // service
+    std::string sname = d["service"].GetString();
+    int pos = this->get_service_pos(sname);
+    if (pos < 0)
+      return jrender(dd_not_found_404());
+  
+    // parameters and data
+    APIData ad(d);
 
+    // training
+    APIData out;
+    int status = this->train(ad,pos,out);
+    if (status < 0)
+      return jrender(dd_internal_error_500());
+    JDoc jtrain = dd_ok_200();
+    return jrender(jtrain);
   }
 
 }
