@@ -26,8 +26,6 @@
 #include "ext/rapidjson/writer.h"
 #include <glog/logging.h>
 
-//using namespace rapidjson;
-
 namespace dd
 {
   
@@ -123,6 +121,14 @@ namespace dd
     JDoc jd;
     jd.SetObject();
     render_status(jd,400,"BadRequest",1001,"No Data");
+    return jd;
+  }
+
+  JDoc JsonAPI::dd_job_not_found_1003() const
+  {
+    JDoc jd;
+    jd.SetObject();
+    render_status(jd,400,"BadRequest",1003,"Job Not Found");
     return jd;
   }
   
@@ -273,6 +279,49 @@ namespace dd
     if (status < 0)
       return jrender(dd_internal_error_500());
     JDoc jtrain = dd_ok_200();
+    //TODO: head.
+    return jrender(jtrain);
+  }
+
+  std::string JsonAPI::service_train_status(const std::string &jstr)
+  {
+    rapidjson::Document d;
+    d.Parse(jstr.c_str());
+    if (d.HasParseError())
+      return jrender(dd_bad_request_400());
+  
+    // service
+    std::string sname = d["service"].GetString();
+    int pos = this->get_service_pos(sname);
+    if (pos < 0)
+      return jrender(dd_not_found_404());
+  
+    // parameters
+    /*if (!d.HasMember("job"))
+      return jrender(dd_job_not_found_1003());
+      int j = d["job"].GetInt();*/
+    APIData ad(d);
+    if (!ad.has("job"))
+      return jrender(dd_job_not_found_1003());
+    
+    // training status
+    APIData out;
+    int status = this->train_status(ad,pos,out);
+    JDoc jtrain;
+    if (status == 1)
+      jtrain = dd_job_not_found_1003();
+    else jtrain = dd_ok_200();
+    JVal jout(rapidjson::kObjectType);
+    out.toJVal(jtrain,jout);
+    JVal jhead(rapidjson::kObjectType);
+    jhead.AddMember("method","/train",jtrain.GetAllocator());
+    jhead.AddMember("job",static_cast<int>(ad.get("job").get<double>()),jtrain.GetAllocator());
+    if (status == 0)
+      {
+	//TODO: elapsed time til the job was started.
+	jhead.AddMember("status",jout["status"],jtrain.GetAllocator());
+      }
+    jtrain.AddMember("head",jhead,jtrain.GetAllocator());
     return jrender(jtrain);
   }
 

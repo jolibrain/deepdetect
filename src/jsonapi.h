@@ -51,6 +51,7 @@ namespace dd
     // specific errors
     JDoc dd_unknown_library_1000() const;
     JDoc dd_no_data_1001() const;
+    JDoc dd_job_not_found_1003() const;
 
     // JSON rendering
     std::string jrender(const JDoc &jst) const;
@@ -65,6 +66,7 @@ namespace dd
     std::string service_predict(const std::string &jstr);
 
     std::string service_train(const std::string &jstr);
+    std::string service_train_status(const std::string &jstr);
   };
 
   class visitor_info : public mapbox::util::static_visitor<APIData>

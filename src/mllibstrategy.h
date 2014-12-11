@@ -40,8 +40,8 @@ namespace dd
     
     ~MLLib() {}
 
-    int train(const APIData &ad, APIData &out);//std::string &output);
-    int predict(const APIData &ad, APIData &out);//std::string &output);
+    int train(const APIData &ad, APIData &out);
+    int predict(const APIData &ad, APIData &out);
     int status() const;
     
     TInputConnectorStrategy _inputc;

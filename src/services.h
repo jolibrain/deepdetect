@@ -78,7 +78,24 @@ namespace dd
     template<typename T>
       output operator() (T &mllib)
       {
-        int r = mllib.train(_ad,_out);
+        int r = mllib.train_job(_ad,_out);
+	return output(r,_out);
+      }
+    
+    APIData _ad;
+    APIData _out;
+  };
+
+  class visitor_train_status : public mapbox::util::static_visitor<output>
+  {
+  public:
+    visitor_train_status() {}
+    ~visitor_train_status() {}
+    
+    template<typename T>
+      output operator() (T &mllib)
+      {
+        int r = mllib.training_job_status(_ad,_out);
 	return output(r,_out);
       }
     
@@ -141,6 +158,7 @@ namespace dd
       catch(...)
 	{
 	  LOG(ERROR) << "service #" << pos << " training call failed\n";
+	  pout._status = -1;
 	}
       out = pout._out;
       std::chrono::time_point<std::chrono::system_clock> tstop = std::chrono::system_clock::now();
@@ -149,6 +167,24 @@ namespace dd
       return pout._status;
     }
     
+    int train_status(const APIData &ad, const int &pos, APIData &out)
+    {
+      visitor_train_status vt;
+      vt._ad = ad;
+      output pout;
+      try
+	{
+	  pout = mapbox::util::apply_visitor(vt,_mlservices.at(pos));
+	}
+      catch(...)
+	{
+	  LOG(ERROR) << "service #" << pos << " training status call failed\n";
+	  pout._status = -1;
+	}
+      out = pout._out;
+      return pout._status;
+    }
+
     int predict(const APIData &ad, const int &pos, APIData &out)
     {
       std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();

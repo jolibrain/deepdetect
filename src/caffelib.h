@@ -40,8 +40,8 @@ namespace dd
       CaffeLib(CaffeLib &&cl) noexcept;
       ~CaffeLib();
     
-      int train(const APIData &ad, APIData &out);//std::string &output);
-      int predict(const APIData &ad, APIData &out);//std::string &output);
+      int train(const APIData &ad, APIData &out);
+      int predict(const APIData &ad, APIData &out);
     
       void update_solver_data_paths(caffe::SolverParameter &sp);
 

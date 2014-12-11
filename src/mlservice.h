@@ -25,6 +25,9 @@
 #include "mllibstrategy.h"
 #include "mlmodel.h"
 #include <string>
+#include <future>
+#include <mutex>
+#include <unordered_map>
 #include <iostream>
 
 namespace dd
@@ -62,9 +65,55 @@ namespace dd
       return ad;
     }
 
+    int train_job(const APIData &ad, APIData &out)
+    {
+      if (ad.has("async") && ad.get("async").get<bool>())
+	{
+	  std::lock_guard<std::mutex> lock(_tjobs_mutex);
+	  _training_jobs.emplace(++_tjobs_counter,
+				 std::async(std::launch::async,
+					    [this,ad,&out]{ return this->train(ad,out); }));
+	  std::cout << "launched training job\n";
+	  return _tjobs_counter;
+	}
+	else return this->train(ad,out);
+    }
+
+    int training_job_status(const APIData &ad, APIData &out)
+    {
+      int j = static_cast<int>(ad.get("job").get<double>());
+      int secs = 1;
+      if (ad.has("timeout"))
+	secs = static_cast<int>(ad.get("timeout").get<double>());
+      std::unordered_map<int,std::future<int>>::iterator hit;
+      if ((hit=_training_jobs.find(j))!=_training_jobs.end())
+	{
+	  std::future_status status = (*hit).second.wait_for(std::chrono::seconds(secs));
+	  if (status == std::future_status::timeout)
+	    {
+	      out.add("status","running");
+	    }
+	  else if (status == std::future_status::ready)
+	    {
+	      int st = (*hit).second.get(); //TODO: exception handling ?
+	      out.add("status",st);
+	    }
+	  return 0;
+	}
+      else
+	{
+	  return 1;
+	}
+    }
+
     std::string _sname; /**< service name. */
     std::string _description; /**< optional description of the service. */
+  
+    int _tjobs_counter = 0; /**< training jobs counter. */
+    std::mutex _tjobs_mutex;
+    std::unordered_map<int,std::future<int>> _training_jobs; // XXX: the futures' dtor blocks if the object is being terminated
   };
+  
 }
 
 #endif
