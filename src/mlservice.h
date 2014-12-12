@@ -93,7 +93,6 @@ namespace dd
 				 std::move(tjob(std::async(std::launch::async,
 							   [this,ad,&out]{ return this->train(ad,out); }),
 						tstart)));
-	  std::cout << "launched training job\n";
 	  return _tjobs_counter;
 	}
 	else return this->train(ad,out);
@@ -145,6 +144,8 @@ namespace dd
 	      this->_tjob_running.store(false); // signals the process
 	      (*hit).second._ft.wait(); // XXX: default timeout in case the process does not return ?
 	      out.add("status","terminated");
+	      std::chrono::time_point<std::chrono::system_clock> trun = std::chrono::system_clock::now();
+	      out.add("time",std::chrono::duration_cast<std::chrono::seconds>(trun-(*hit).second._tstart).count());
 	      _training_jobs.erase(hit);
 	    }
 	  else if ((*hit).second._status == 0)

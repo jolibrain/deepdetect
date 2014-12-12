@@ -178,9 +178,18 @@ namespace dd
 	  pout._status = -1;
 	}
       out = pout._out;
-      std::chrono::time_point<std::chrono::system_clock> tstop = std::chrono::system_clock::now();
-      double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(tstop-tstart).count();
-      out.add("time",elapsed);
+      if (ad.has("async") && ad.get("async").get<bool>())
+	{
+	  out.add("job",pout._status); // status holds the job id...
+	  out.add("status","running");
+	  return 0; // status is OK i.e. the job has started.
+	}
+      else
+	{
+	  std::chrono::time_point<std::chrono::system_clock> tstop = std::chrono::system_clock::now();
+	  double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(tstop-tstart).count();
+	  out.add("time",elapsed);
+	}
       return pout._status;
     }
     

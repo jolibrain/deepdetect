@@ -280,6 +280,12 @@ namespace dd
       return jrender(dd_internal_error_500());
     JDoc jtrain = dd_ok_200();
     //TODO: head.
+    JVal jout(rapidjson::kObjectType);
+    out.toJVal(jtrain,jout);
+    if (jout.HasMember("job"))
+      jout["job"].SetInt(static_cast<int>(jout["job"].GetDouble())); // XXX: APIData variant need to support int explicitely, for now only double
+    jout.AddMember("method","/train",jtrain.GetAllocator());
+    jtrain.AddMember("head",jout,jtrain.GetAllocator());
     return jrender(jtrain);
   }
 
