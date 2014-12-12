@@ -33,10 +33,10 @@ namespace dd
   {
   public:
     MLLib(const TMLModel &mlmodel)
-      :_mlmodel(mlmodel),_loss(0.0) {}
+      :_mlmodel(mlmodel),_loss(0.0),_tjob_running(false) {}
     
     MLLib(MLLib &&mll) noexcept
-      :_mlmodel(mll._mlmodel),_loss(mll._loss.load())
+      :_mlmodel(mll._mlmodel),_loss(mll._loss.load()),_tjob_running(mll._tjob_running.load())
       {}
     
     ~MLLib() {}
@@ -55,6 +55,7 @@ namespace dd
     std::string _libname; /**< ml lib name. */
     
     std::atomic<float> _loss = 0.0; /**< model loss, used as a per service value. */
+    std::atomic<bool> _tjob_running = false; /**< whether a training job is running with this lib instance. */
   };  
   
 }

@@ -30,6 +30,7 @@ DEFINE_bool(service_delete,false,"/service/service_name DELETE call JSON string"
 DEFINE_string(service_predict,"","/predict POST call JSON string");
 DEFINE_string(service_train,"","/train POST call JSON string");
 DEFINE_string(service_train_status,"","/train GET call JSON string");
+DEFINE_string(service_train_delete,"","/train DELETE call JSON string");
 
 namespace dd
 {
@@ -76,7 +77,11 @@ namespace dd
       {
 	std::string janswer = service_train_status(FLAGS_service_train_status);
 	std::cout << janswer << std::endl;
-	//exit(1);
+      }
+    if (!FLAGS_service_train_delete.empty())
+      {
+	std::string janswer = service_train_delete(FLAGS_service_train_delete);
+	std::cout << janswer << std::endl;
       }
     /*    std::cout << "next command\n";
     if (!FLAGS_service_predict.empty())

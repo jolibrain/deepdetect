@@ -297,9 +297,6 @@ namespace dd
       return jrender(dd_not_found_404());
   
     // parameters
-    /*if (!d.HasMember("job"))
-      return jrender(dd_job_not_found_1003());
-      int j = d["job"].GetInt();*/
     APIData ad(d);
     if (!ad.has("job"))
       return jrender(dd_job_not_found_1003());
@@ -324,6 +321,45 @@ namespace dd
     jout.AddMember("job",static_cast<int>(ad.get("job").get<double>()),jtrain.GetAllocator());
     jtrain.AddMember("head",jout,jtrain.GetAllocator());
     return jrender(jtrain);
+  }
+
+  std::string JsonAPI::service_train_delete(const std::string &jstr)
+  {
+    rapidjson::Document d;
+    d.Parse(jstr.c_str());
+    if (d.HasParseError())
+      return jrender(dd_bad_request_400());
+  
+    // service
+    std::string sname = d["service"].GetString();
+    int pos = this->get_service_pos(sname);
+    if (pos < 0)
+      return jrender(dd_not_found_404());
+  
+    // parameters
+    APIData ad(d);
+    if (!ad.has("job"))
+      return jrender(dd_job_not_found_1003());
+    
+    // delete training job
+    APIData out;
+    int status = this->train_delete(ad,pos,out);
+    JDoc jd;
+    if (status == 1)
+      {
+	JVal jhead(rapidjson::kObjectType);
+	jhead.AddMember("method","/train",jd.GetAllocator());
+	jhead.AddMember("job",static_cast<int>(ad.get("job").get<double>()),jd.GetAllocator());
+	jd.AddMember("head",jhead,jd.GetAllocator());
+	return jrender(jd);
+      }
+    jd = dd_ok_200();
+    JVal jout(rapidjson::kObjectType);
+    out.toJVal(jd,jout);
+    jout.AddMember("method","/train",jd.GetAllocator());
+    jout.AddMember("job",static_cast<int>(ad.get("job").get<double>()),jd.GetAllocator());
+    jd.AddMember("head",jout,jd.GetAllocator());
+    return jrender(jd);
   }
 
 }

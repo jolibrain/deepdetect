@@ -102,6 +102,23 @@ namespace dd
     APIData _ad;
     APIData _out;
   };
+
+  class visitor_train_delete : public mapbox::util::static_visitor<output>
+  {
+  public:
+    visitor_train_delete() {}
+    ~visitor_train_delete() {}
+    
+    template<typename T>
+      output operator() (T &mllib)
+      {
+        int r = mllib.training_job_delete(_ad,_out);
+	return output(r,_out);
+      }
+    
+    APIData _ad;
+    APIData _out;
+  };
   
   class Services
   {
@@ -184,7 +201,25 @@ namespace dd
       out = pout._out;
       return pout._status;
     }
-
+    
+    int train_delete(const APIData &ad, const int &pos, APIData &out)
+    {
+      visitor_train_delete vt;
+      vt._ad = ad;
+      output pout;
+      try
+	{
+	  pout = mapbox::util::apply_visitor(vt,_mlservices.at(pos));
+	}
+      catch(...)
+	{
+	  LOG(ERROR) << "service #" << pos << " training delete call failed\n";
+	  pout._status = -1;
+	}
+      out = pout._out;
+      return pout._status;
+    }
+    
     int predict(const APIData &ad, const int &pos, APIData &out)
     {
       std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();

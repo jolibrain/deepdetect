@@ -39,13 +39,14 @@ namespace dd
   public:
     tjob(std::future<int> &&ft,
 	 const std::chrono::time_point<std::chrono::system_clock> &tstart)
-      :_ft(std::move(ft)),_tstart(tstart) {}
+      :_ft(std::move(ft)),_tstart(tstart),_status(1) {}
     tjob(tjob &&tj)
-      :_ft(std::move(tj._ft)),_tstart(std::move(tj._tstart)) {}
+      :_ft(std::move(tj._ft)),_tstart(std::move(tj._tstart)),_status(std::move(tj._status)) {}
     ~tjob() {}
 
     std::future<int> _ft;
     std::chrono::time_point<std::chrono::system_clock> _tstart;
+    int _status = 0; // 0: not started, 1: running, 2: finished or terminated
   };
 
   /* mlservice */
@@ -86,7 +87,6 @@ namespace dd
     {
       if (ad.has("async") && ad.get("async").get<bool>())
 	{
-	  //std::lock_guard<std::mutex> lock(_tjobs_mutex);
 	  std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();
 	  _training_jobs.emplace(++_tjobs_counter,
 				 std::move(tjob(std::async(std::launch::async,
@@ -125,15 +125,38 @@ namespace dd
 	}
       else
 	{
-	  return 1;
+	  return 1; // job not found
 	}
+    }
+
+    int training_job_delete(const APIData &ad, APIData &out)
+    {
+      int j = static_cast<int>(ad.get("job").get<double>());
+      std::unordered_map<int,tjob>::iterator hit;
+      if ((hit=_training_jobs.find(j))!=_training_jobs.end())
+	{
+	  std::future_status status = (*hit).second._ft.wait_for(std::chrono::seconds(0));
+	  if (status == std::future_status::timeout
+	      && (*hit).second._status == 1) // process is running, terminate it
+	    {
+	      this->_tjob_running.store(false); // signals the process
+	      (*hit).second._ft.wait(); // XXX: default timeout in case the process does not return ?
+	      out.add("status","terminated");
+	      //TODO: clear up record in training_jobs.
+	    }
+	  else if ((*hit).second._status == 0)
+	    {
+	      out.add("status","not started");
+	    }
+	  return 0;
+	}
+      else return 1; // job not found
     }
 
     std::string _sname; /**< service name. */
     std::string _description; /**< optional description of the service. */
   
     std::atomic<int> _tjobs_counter = 0; /**< training jobs counter. */
-    //std::mutex _tjobs_mutex;
     std::unordered_map<int,tjob> _training_jobs; // XXX: the futures' dtor blocks if the object is being terminated
   };
   

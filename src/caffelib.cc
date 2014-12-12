@@ -99,6 +99,7 @@ namespace dd
       }
     
     // optimize
+    this->_tjob_running = true;
     std::shared_ptr<caffe::Solver<float>> solver(caffe::GetSolver<float>(solver_param));
     bool async = !ad.has("async") ? false : ad.get("async").get<bool>();
     if (!async)
@@ -137,7 +138,8 @@ namespace dd
 	std::vector<float> losses;
 	float smoothed_loss = 0.0;
 	std::vector<Blob<float>*> bottom_vec;
-	for (; solver->iter_ < solver->param_.max_iter(); ++solver->iter_) 
+	while(solver->iter_ < solver->param_.max_iter()
+	      && this->_tjob_running.load())
 	  {
 	    // Save a snapshot if needed.
 	    if (solver->param_.snapshot() && solver->iter_ > start_iter &&
@@ -167,6 +169,8 @@ namespace dd
 	    
 	    solver->ComputeUpdateValue();
 	    solver->net_->Update();
+	  
+	    solver->iter_++;
 	  }
 	// always save final snapshot.
 	if (solver->param_.snapshot_after_train())
