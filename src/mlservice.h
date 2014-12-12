@@ -87,6 +87,7 @@ namespace dd
     {
       if (ad.has("async") && ad.get("async").get<bool>())
 	{
+	  std::lock_guard<std::mutex> lock(_tjobs_mutex);
 	  std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();
 	  _training_jobs.emplace(++_tjobs_counter,
 				 std::move(tjob(std::async(std::launch::async,
@@ -104,6 +105,7 @@ namespace dd
       int secs = 0;
       if (ad.has("timeout"))
 	secs = static_cast<int>(ad.get("timeout").get<double>());
+      std::lock_guard<std::mutex> lock(_tjobs_mutex);
       std::unordered_map<int,tjob>::iterator hit;
       if ((hit=_training_jobs.find(j))!=_training_jobs.end())
 	{
@@ -119,7 +121,7 @@ namespace dd
 	    {
 	      int st = (*hit).second._ft.get(); //TODO: exception handling ?
 	      out.add("status",st);
-	      //TODO: clear up record in training_jobs.
+	      _training_jobs.erase(hit);
 	    }
 	  return 0;
 	}
@@ -132,6 +134,7 @@ namespace dd
     int training_job_delete(const APIData &ad, APIData &out)
     {
       int j = static_cast<int>(ad.get("job").get<double>());
+      std::lock_guard<std::mutex> lock(_tjobs_mutex);
       std::unordered_map<int,tjob>::iterator hit;
       if ((hit=_training_jobs.find(j))!=_training_jobs.end())
 	{
@@ -142,7 +145,7 @@ namespace dd
 	      this->_tjob_running.store(false); // signals the process
 	      (*hit).second._ft.wait(); // XXX: default timeout in case the process does not return ?
 	      out.add("status","terminated");
-	      //TODO: clear up record in training_jobs.
+	      _training_jobs.erase(hit);
 	    }
 	  else if ((*hit).second._status == 0)
 	    {
@@ -155,7 +158,8 @@ namespace dd
 
     std::string _sname; /**< service name. */
     std::string _description; /**< optional description of the service. */
-  
+
+    std::mutex _tjobs_mutex;
     std::atomic<int> _tjobs_counter = 0; /**< training jobs counter. */
     std::unordered_map<int,tjob> _training_jobs; // XXX: the futures' dtor blocks if the object is being terminated
   };
