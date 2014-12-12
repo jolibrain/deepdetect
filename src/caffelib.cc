@@ -99,21 +99,81 @@ namespace dd
       }
     
     // optimize
-    std::cout << "loading solver\n";
     std::shared_ptr<caffe::Solver<float>> solver(caffe::GetSolver<float>(solver_param));
-    std::string snapshot_file = ad.get(snapshotf).get<std::string>();
-    if (!snapshot_file.empty())
-      solver->Solve(snapshot_file);
-    else if (!this->_mlmodel._weights.empty())
+    bool async = !ad.has("async") ? false : ad.get("async").get<bool>();
+    if (!async)
       {
-	solver->net()->CopyTrainedLayersFrom(this->_mlmodel._weights);
-	solver->Solve();
+	std::cout << "loading solver\n";
+	
+	std::string snapshot_file = ad.get(snapshotf).get<std::string>();
+	if (!snapshot_file.empty())
+	  solver->Solve(snapshot_file);
+	else if (!this->_mlmodel._weights.empty())
+	  {
+	    solver->net()->CopyTrainedLayersFrom(this->_mlmodel._weights);
+	    solver->Solve();
+	  }
+	else 
+	  {
+	    LOG(INFO) << "Optimizing model";
+	    solver->Solve();
+	  }
       }
-    else 
+    else
       {
-	LOG(INFO) << "Optimizing model";
-	solver->Solve();
+	Caffe::set_phase(Caffe::TRAIN);
+	solver->PreSolve();
+	
+	solver->iter_ = 0;
+	solver->current_step_ = 0;
+	//TODO: resume file from ad
+	/*if (resume_file) {
+	  LOG(INFO) << "Restoring previous solver status from " << resume_file;
+	  Restore(resume_file);
+	  }*/
+	
+	const int start_iter = solver->iter_;
+	int average_loss = solver->param_.average_loss();
+	std::vector<float> losses;
+	float smoothed_loss = 0.0;
+	std::vector<Blob<float>*> bottom_vec;
+	for (; solver->iter_ < solver->param_.max_iter(); ++solver->iter_) 
+	  {
+	    // Save a snapshot if needed.
+	    if (solver->param_.snapshot() && solver->iter_ > start_iter &&
+		solver->iter_ % solver->param_.snapshot() == 0) {
+	      solver->Snapshot();
+	    }
+	    if (solver->param_.test_interval() && solver->iter_ % solver->param_.test_interval() == 0
+		&& (solver->iter_ > 0 || solver->param_.test_initialization())) 
+	      {
+		solver->TestAll();
+	      }
+	    float loss = solver->net_->ForwardBackward(bottom_vec);
+	    if (static_cast<int>(losses.size()) < average_loss) 
+	      {
+		losses.push_back(loss);
+		int size = losses.size();
+		smoothed_loss = (smoothed_loss * (size - 1) + loss) / size;
+	    } 
+	    else 
+	      {
+		int idx = (solver->iter_ - start_iter) % average_loss;
+		smoothed_loss += (loss - losses[idx]) / average_loss;
+		losses[idx] = loss;
+	      }
+	    this->_loss.store(smoothed_loss);
+	    //std::cout << "smoothed_loss=" << smoothed_loss << std::endl;
+	    
+	    solver->ComputeUpdateValue();
+	    solver->net_->Update();
+	  }
+	// always save final snapshot.
+	if (solver->param_.snapshot_after_train())
+	  solver->Snapshot();
       }
+    
+    
     //TODO: output connector.
     //output = "Optimization done.";
     return 0;

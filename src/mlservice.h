@@ -28,10 +28,27 @@
 #include <future>
 #include <mutex>
 #include <unordered_map>
+#include <chrono>
 #include <iostream>
 
 namespace dd
 {
+  /* training job */
+  class tjob
+  {
+  public:
+    tjob(std::future<int> &&ft,
+	 const std::chrono::time_point<std::chrono::system_clock> &tstart)
+      :_ft(std::move(ft)),_tstart(tstart) {}
+    tjob(tjob &&tj)
+      :_ft(std::move(tj._ft)),_tstart(std::move(tj._tstart)) {}
+    ~tjob() {}
+
+    std::future<int> _ft;
+    std::chrono::time_point<std::chrono::system_clock> _tstart;
+  };
+
+  /* mlservice */
   template<template <class U,class V,class W> class TMLLib, class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
     class MLService : public TMLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>
   {
@@ -39,10 +56,10 @@ namespace dd
     MLService(const std::string &sname,
 	      const TMLModel &mlmodel,
 	      const std::string &description="")
-      :TMLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>(mlmodel),_sname(sname),_description(description)
+      :TMLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>(mlmodel),_sname(sname),_description(description),_tjobs_counter(0)
       {}
     MLService(MLService &&mls) noexcept
-      :TMLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>(std::move(mls)),_sname(std::move(mls._sname)),_description(std::move(mls._description))
+      :TMLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>(std::move(mls)),_sname(std::move(mls._sname)),_description(std::move(mls._description)),_tjobs_counter(mls._tjobs_counter.load()),_training_jobs(std::move(mls._training_jobs))
       {}
     ~MLService() {}
 
@@ -69,10 +86,12 @@ namespace dd
     {
       if (ad.has("async") && ad.get("async").get<bool>())
 	{
-	  std::lock_guard<std::mutex> lock(_tjobs_mutex);
+	  //std::lock_guard<std::mutex> lock(_tjobs_mutex);
+	  std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();
 	  _training_jobs.emplace(++_tjobs_counter,
-				 std::async(std::launch::async,
-					    [this,ad,&out]{ return this->train(ad,out); }));
+				 std::move(tjob(std::async(std::launch::async,
+							   [this,ad,&out]{ return this->train(ad,out); }),
+						tstart)));
 	  std::cout << "launched training job\n";
 	  return _tjobs_counter;
 	}
@@ -85,18 +104,22 @@ namespace dd
       int secs = 0;
       if (ad.has("timeout"))
 	secs = static_cast<int>(ad.get("timeout").get<double>());
-      std::unordered_map<int,std::future<int>>::iterator hit;
+      std::unordered_map<int,tjob>::iterator hit;
       if ((hit=_training_jobs.find(j))!=_training_jobs.end())
 	{
-	  std::future_status status = (*hit).second.wait_for(std::chrono::seconds(secs));
+	  std::future_status status = (*hit).second._ft.wait_for(std::chrono::seconds(secs));
 	  if (status == std::future_status::timeout)
 	    {
 	      out.add("status","running");
+	      out.add("loss",this->_loss.load());
+	      std::chrono::time_point<std::chrono::system_clock> trun = std::chrono::system_clock::now();
+	      out.add("time",std::chrono::duration_cast<std::chrono::seconds>(trun-(*hit).second._tstart).count());
 	    }
 	  else if (status == std::future_status::ready)
 	    {
-	      int st = (*hit).second.get(); //TODO: exception handling ?
+	      int st = (*hit).second._ft.get(); //TODO: exception handling ?
 	      out.add("status",st);
+	      //TODO: clear up record in training_jobs.
 	    }
 	  return 0;
 	}
@@ -109,9 +132,9 @@ namespace dd
     std::string _sname; /**< service name. */
     std::string _description; /**< optional description of the service. */
   
-    int _tjobs_counter = 0; /**< training jobs counter. */
-    std::mutex _tjobs_mutex;
-    std::unordered_map<int,std::future<int>> _training_jobs; // XXX: the futures' dtor blocks if the object is being terminated
+    std::atomic<int> _tjobs_counter = 0; /**< training jobs counter. */
+    //std::mutex _tjobs_mutex;
+    std::unordered_map<int,tjob> _training_jobs; // XXX: the futures' dtor blocks if the object is being terminated
   };
   
 }

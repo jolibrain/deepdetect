@@ -309,19 +309,20 @@ namespace dd
     int status = this->train_status(ad,pos,out);
     JDoc jtrain;
     if (status == 1)
-      jtrain = dd_job_not_found_1003();
-    else jtrain = dd_ok_200();
+      {
+	jtrain = dd_job_not_found_1003();
+	JVal jhead(rapidjson::kObjectType);
+	jhead.AddMember("method","/train",jtrain.GetAllocator());
+	jhead.AddMember("job",static_cast<int>(ad.get("job").get<double>()),jtrain.GetAllocator());
+	jtrain.AddMember("head",jhead,jtrain.GetAllocator());
+	return jrender(jtrain);
+      }
+    jtrain = dd_ok_200();
     JVal jout(rapidjson::kObjectType);
     out.toJVal(jtrain,jout);
-    JVal jhead(rapidjson::kObjectType);
-    jhead.AddMember("method","/train",jtrain.GetAllocator());
-    jhead.AddMember("job",static_cast<int>(ad.get("job").get<double>()),jtrain.GetAllocator());
-    if (status == 0)
-      {
-	//TODO: elapsed time til the job was started.
-	jhead.AddMember("status",jout["status"],jtrain.GetAllocator());
-      }
-    jtrain.AddMember("head",jhead,jtrain.GetAllocator());
+    jout.AddMember("method","/train",jtrain.GetAllocator());
+    jout.AddMember("job",static_cast<int>(ad.get("job").get<double>()),jtrain.GetAllocator());
+    jtrain.AddMember("head",jout,jtrain.GetAllocator());
     return jrender(jtrain);
   }
 

@@ -23,6 +23,7 @@
 #define MLLIBSTRATEGY_H
 
 #include "apidata.h"
+#include <atomic>
 
 namespace dd
 {
@@ -32,10 +33,10 @@ namespace dd
   {
   public:
     MLLib(const TMLModel &mlmodel)
-      :_mlmodel(mlmodel) {}
+      :_mlmodel(mlmodel),_loss(0.0) {}
     
     MLLib(MLLib &&mll) noexcept
-      :_mlmodel(mll._mlmodel)
+      :_mlmodel(mll._mlmodel),_loss(mll._loss.load())
       {}
     
     ~MLLib() {}
@@ -52,6 +53,8 @@ namespace dd
 
     TMLModel _mlmodel;
     std::string _libname; /**< ml lib name. */
+    
+    std::atomic<float> _loss = 0.0; /**< model loss, used as a per service value. */
   };  
   
 }
