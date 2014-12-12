@@ -180,6 +180,7 @@ namespace dd
       out = pout._out;
       if (ad.has("async") && ad.get("async").get<bool>())
 	{
+	  //TODO: beware out is a ref that might be lost
 	  out.add("job",pout._status); // status holds the job id...
 	  out.add("status","running");
 	  return 0; // status is OK i.e. the job has started.
@@ -187,7 +188,7 @@ namespace dd
       else
 	{
 	  std::chrono::time_point<std::chrono::system_clock> tstop = std::chrono::system_clock::now();
-	  double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(tstop-tstart).count();
+	  double elapsed = std::chrono::duration_cast<std::chrono::seconds>(tstop-tstart).count();
 	  out.add("time",elapsed);
 	}
       return pout._status;

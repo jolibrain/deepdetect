@@ -104,8 +104,6 @@ namespace dd
     bool async = !ad.has("async") ? false : ad.get("async").get<bool>();
     if (!async)
       {
-	std::cout << "loading solver\n";
-	
 	std::string snapshot_file = ad.get(snapshotf).get<std::string>();
 	if (!snapshot_file.empty())
 	  solver->Solve(snapshot_file);
@@ -118,6 +116,12 @@ namespace dd
 	  {
 	    LOG(INFO) << "Optimizing model";
 	    solver->Solve();
+	    delete _net;
+	    _net = solver->net().get(); // setting up the new model
+	    std::vector<Blob<float>*> bottom_vec; // dummy
+	    float lloss = 0.0;
+	    _net->Forward(bottom_vec,&lloss);
+	    this->_loss.store(lloss);
 	  }
       }
     else

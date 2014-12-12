@@ -95,7 +95,12 @@ namespace dd
 						tstart)));
 	  return _tjobs_counter;
 	}
-	else return this->train(ad,out);
+	else 
+	  {
+	    int status = this->train(ad,out);
+	    out.add("loss",this->_loss.load());
+	    return status;
+	  }
     }
 
     int training_job_status(const APIData &ad, APIData &out)
