@@ -82,7 +82,7 @@ namespace dd
     int training_job_status(const APIData &ad, APIData &out)
     {
       int j = static_cast<int>(ad.get("job").get<double>());
-      int secs = 1;
+      int secs = 0;
       if (ad.has("timeout"))
 	secs = static_cast<int>(ad.get("timeout").get<double>());
       std::unordered_map<int,std::future<int>>::iterator hit;
