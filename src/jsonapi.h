@@ -51,6 +51,7 @@ namespace dd
     // specific errors
     JDoc dd_unknown_library_1000() const;
     JDoc dd_no_data_1001() const;
+    JDoc dd_service_not_found_1002() const;
     JDoc dd_job_not_found_1003() const;
 
     // JSON rendering

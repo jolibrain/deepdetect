@@ -124,6 +124,14 @@ namespace dd
     return jd;
   }
 
+  JDoc JsonAPI::dd_service_not_found_1002() const
+  {
+    JDoc jd;
+    jd.SetObject();
+    render_status(jd,400,"NotFound",1002,"Service Not Found");
+    return jd;
+  }
+  
   JDoc JsonAPI::dd_job_not_found_1003() const
   {
     JDoc jd;
@@ -205,7 +213,7 @@ namespace dd
   std::string JsonAPI::service_status(const std::string &sname)
   {
     if (sname.empty())
-      return jrender(dd_not_found_404());
+      return jrender(dd_service_not_found_1002());
     int pos = this->get_service_pos(sname);
     if (pos < 0)
       return jrender(dd_not_found_404());
@@ -218,7 +226,7 @@ namespace dd
   std::string JsonAPI::service_delete(const std::string &sname)
   {
     if (sname.empty())
-      return jrender(dd_not_found_404());
+      return jrender(dd_service_not_found_1002());
     if (remove_service(sname))
       return jrender(dd_ok_200());
     return jrender(dd_not_found_404());
@@ -235,7 +243,7 @@ namespace dd
     std::string sname = d["service"].GetString();
     int pos = this->get_service_pos(sname);
     if (pos < 0)
-      return jrender(dd_not_found_404());
+      return jrender(dd_service_not_found_1002());
 
     // data
     APIData ad_data(d);
@@ -268,7 +276,7 @@ namespace dd
     std::string sname = d["service"].GetString();
     int pos = this->get_service_pos(sname);
     if (pos < 0)
-      return jrender(dd_not_found_404());
+      return jrender(dd_service_not_found_1002());
   
     // parameters and data
     APIData ad(d);
@@ -300,7 +308,7 @@ namespace dd
     std::string sname = d["service"].GetString();
     int pos = this->get_service_pos(sname);
     if (pos < 0)
-      return jrender(dd_not_found_404());
+      return jrender(dd_service_not_found_1002());
   
     // parameters
     APIData ad(d);
@@ -340,7 +348,7 @@ namespace dd
     std::string sname = d["service"].GetString();
     int pos = this->get_service_pos(sname);
     if (pos < 0)
-      return jrender(dd_not_found_404());
+      return jrender(dd_service_not_found_1002());
   
     // parameters
     APIData ad(d);
