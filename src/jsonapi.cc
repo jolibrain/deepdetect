@@ -128,7 +128,7 @@ namespace dd
   {
     JDoc jd;
     jd.SetObject();
-    render_status(jd,400,"BadRequest",1003,"Job Not Found");
+    render_status(jd,404,"NotFound",1003,"Job Not Found");
     return jd;
   }
   
@@ -353,6 +353,7 @@ namespace dd
     JDoc jd;
     if (status == 1)
       {
+	jd = dd_job_not_found_1003();
 	JVal jhead(rapidjson::kObjectType);
 	jhead.AddMember("method","/train",jd.GetAllocator());
 	jhead.AddMember("job",static_cast<int>(ad.get("job").get<double>()),jd.GetAllocator());
