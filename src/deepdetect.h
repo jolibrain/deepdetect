@@ -23,6 +23,7 @@
 #define DEEPDETECT_H
 
 #include "apistrategy.h"
+#include "githash.h"
 #include <vector>
 
 namespace dd
@@ -35,7 +36,7 @@ namespace dd
       DeepDetect();
       ~DeepDetect();
 
-      //TAPIStrategy<TMLLibStrategy> _api;
+      std::string _commit_version = VERSION_GHASH;
     };
   
 }

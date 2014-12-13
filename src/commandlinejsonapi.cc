@@ -47,7 +47,7 @@ namespace dd
   int CommandLineJsonAPI::boot(int argc, char *argv[])
   {
     google::ParseCommandLineFlags(&argc, &argv, true);
-
+    
     if (!FLAGS_service_create.empty())
       {
 	if (FLAGS_service_name.empty())

@@ -8,3 +8,11 @@ libddetect_la_SOURCES=deepdetect.h deepdetect.cc caffelib.h caffelib.cc mllibstr
 #libddetectinclude_SOURCES=deepdetect.h
 
 AM_CXXFLAGS=-Wall -Wextra -g -fopenmp
+
+BUILT_SOURCES=githash.h
+
+githash.h:
+	git log -1 --format="#define VERSION_GHASH \"%H\"" > githash.h
+
+clean-local:
+	rm githash.h

@@ -29,6 +29,7 @@ namespace dd
   template<class TAPIStrategy>
   DeepDetect<TAPIStrategy>::DeepDetect()
   {
+    std::cout << "DeepDetect [ commit " << _commit_version << " ]\n";
   }
 
   template<class TAPIStrategy>
