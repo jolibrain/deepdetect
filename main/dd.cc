@@ -45,5 +45,4 @@ int main(int argc, char *argv[])
       DeepDetect<CommandLineJsonAPI> dd;
       dd.boot(argc,argv);
     }
-  std::cout << "done with dd\n";
 }

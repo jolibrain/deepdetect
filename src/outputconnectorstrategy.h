@@ -54,11 +54,15 @@ namespace dd
       }
     ~SupervisedOutput() {}
 
-    inline void add_cat(const int &pos, const double &prob, const std::string &cat)
+    inline void add_cat(const int &pos, const double &prob, const std::string &cat, const double &loss=0.0)
     {
       if (pos >= static_cast<int>(_vcats.size()))
-	_vcats.resize(pos+1);
+	{
+	  _vcats.resize(pos+1);
+	  _losses.resize(pos+1);
+	}
       _vcats.at(pos).insert(std::pair<double,std::string>(prob,cat));
+      _losses.at(pos) = loss;
     }
 
     void best_cats(const int &num, SupervisedOutput &bcats) const
@@ -66,6 +70,7 @@ namespace dd
       bcats._vcats.resize(_vcats.size());
       for (size_t i=0;i<_vcats.size();i++)
 	std::copy_n(_vcats.at(i).begin(),std::min(num,static_cast<int>(_vcats.at(i).size())),std::inserter(bcats._vcats.at(i),bcats._vcats.at(i).end()));
+      bcats._losses = _losses;
     }
 
     // for debugging purposes.
@@ -114,13 +119,13 @@ namespace dd
 	    }
 	  APIData adpred;
 	  adpred.add(cl,v);
-	  adpred.add("loss",_loss);
+	  adpred.add("loss",_losses.at(j));
 	  vpred.push_back(adpred);
 	}
       out.add("predictions",vpred);
     }
 
-    double _loss = 0.0;
+    std::vector<double> _losses;
     std::vector<std::map<double,std::string,std::greater<double>>> _vcats; /**< vector of classes as finite set of categories. */
   };
   

@@ -83,7 +83,6 @@ namespace dd
 	std::string janswer = service_train_delete(FLAGS_service_train_delete);
 	std::cout << janswer << std::endl;
       }
-    /*    std::cout << "next command\n";
     if (!FLAGS_service_predict.empty())
       {
 	std::string janswer = service_predict(FLAGS_service_predict);
@@ -96,13 +95,9 @@ namespace dd
       }
     if (!FLAGS_service_name.empty())
       {
-	std::cout << "asking for status\n";
 	std::string janswer = service_status(FLAGS_service_name);
 	std::cout << janswer << std::endl;
       }
-
-      std::cout << "done with boot\n";*/
-
     return 0;
   }
 

@@ -210,10 +210,10 @@ namespace dd
     //std::vector<Blob<float>*> results = _net->Forward(bottom,&loss);
     //TODO: loss ?
     std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();
-    std::vector<Blob<float>*> results = _net->ForwardPrefilled(&loss);
+    std::vector<Blob<float>*> results = _net->ForwardPrefilled(&loss); // XXX: on a batch, are we getting the average loss ?
     std::chrono::time_point<std::chrono::system_clock> tstop = std::chrono::system_clock::now();
     double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(tstop-tstart).count();
-    std::cout << "Caffe prediction time=" << elapsed << std::endl;
+    //std::cout << "Caffe prediction time=" << elapsed << std::endl;
     int slot = results.size() - 1;
     /*std::cout << "results size=" << results.size() << std::endl;
       std::cout << "count=" << results[slot]->count() << std::endl;*/
@@ -221,19 +221,20 @@ namespace dd
     int scperel = scount / batch_size;
     TOutputConnectorStrategy tout;
     tout._vcats.resize(batch_size);
+    tout._losses.resize(batch_size);
     for (int j=0;j<batch_size;j++)
       {
 	for (int i=0;i<scperel;i++)
 	  {
 	    //std::cout << this->_mlmodel._hcorresp[i] << " / " << results[slot]->cpu_data()[j*scperel+i] << std::endl;
-	    tout.add_cat(j,results[slot]->cpu_data()[j*scperel+i],this->_mlmodel._hcorresp[i]);
+	    tout.add_cat(j,results[slot]->cpu_data()[j*scperel+i],this->_mlmodel._hcorresp[i],loss);
 	  }
       }
     TOutputConnectorStrategy btout;
     tout.best_cats(5,btout);
     btout.to_ad(out);
     out.add("status",0);
-  
+    
     return 0;
   }
 
