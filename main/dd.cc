@@ -33,6 +33,7 @@ DEFINE_bool(jsonapi,false,"whether to use the JSON command line API");
 int main(int argc, char *argv[])
 {
   google::ParseCommandLineFlags(&argc, &argv, true);
+  ::google::InitGoogleLogging(argv[0]);
 
   if (!FLAGS_jsonapi)
     {
