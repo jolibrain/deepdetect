@@ -124,7 +124,10 @@ namespace dd
 	  else if (status == std::future_status::ready)
 	    {
 	      int st = (*hit).second._ft.get(); //TODO: exception handling ?
-	      out.add("status",st);
+	      if (st == 0)
+		out.add("status","finished");
+	      else out.add("status","unknown error");
+	      out.add("loss",this->_loss.load()); // XXX: beware if there was a queue, since the job has finished, there might be a new one running.
 	      _training_jobs.erase(hit);
 	    }
 	  return 0;
