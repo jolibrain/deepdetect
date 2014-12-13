@@ -47,7 +47,7 @@ namespace dd
 
       caffe::Net<float> *_net = nullptr;
       bool _gpu = false; /**< whether to use GPU. */
-      int _gpuid = 1; /**< GPU id. */
+      int _gpuid = 0; /**< GPU id. */
     };
   
 }
