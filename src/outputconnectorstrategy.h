@@ -48,29 +48,54 @@ namespace dd
   class SupervisedOutput : public OutputConnectorStrategy
   {
   public:
+    class sup_result
+    {
+    public:
+      sup_result(const double &loss=0.0)
+	:_loss(loss) {}
+      ~sup_result() {}
+      inline void add_cat(const double &prob, const std::string &cat)
+      {
+	_cats.insert(std::pair<double,std::string>(prob,cat));
+      }
+      double _loss = 0.0;
+      std::map<double,std::string,std::greater<double>> _cats;
+    };
+
+  public:
     SupervisedOutput()
       :OutputConnectorStrategy()
       {
       }
     ~SupervisedOutput() {}
 
-    inline void add_cat(const int &pos, const double &prob, const std::string &cat, const double &loss=0.0)
+    inline void add_result(const std::string &uri, const double &loss)
     {
-      if (pos >= static_cast<int>(_vcats.size()))
-	{
-	  _vcats.resize(pos+1);
-	  _losses.resize(pos+1);
-	}
-      _vcats.at(pos).insert(std::pair<double,std::string>(prob,cat));
-      _losses.at(pos) = loss;
+      std::unordered_map<std::string,sup_result>::iterator hit;
+      if ((hit=_vcats.find(uri))==_vcats.end())
+	_vcats.insert(std::pair<std::string,sup_result>(uri,sup_result(loss)));
+      else (*hit).second._loss = loss;
+    }
+
+    inline void add_cat(const std::string &uri, const double &prob, const std::string &cat)
+    {
+      std::unordered_map<std::string,sup_result>::iterator hit;
+      if ((hit=_vcats.find(uri))!=_vcats.end())
+	(*hit).second.add_cat(prob,cat);
+      // XXX: else error ?
     }
 
     void best_cats(const int &num, SupervisedOutput &bcats) const
     {
-      bcats._vcats.resize(_vcats.size());
-      for (size_t i=0;i<_vcats.size();i++)
-	std::copy_n(_vcats.at(i).begin(),std::min(num,static_cast<int>(_vcats.at(i).size())),std::inserter(bcats._vcats.at(i),bcats._vcats.at(i).end()));
-      bcats._losses = _losses;
+      auto hit = _vcats.begin();
+      while(hit!=_vcats.end())
+	{
+	  sup_result bsresult((*hit).second._loss);
+	  std::copy_n((*hit).second._cats.begin(),std::min(num,static_cast<int>((*hit).second._cats.size())),
+		      std::inserter(bsresult._cats,bsresult._cats.end()));
+	  bcats._vcats.insert(std::pair<std::string,sup_result>((*hit).first,bsresult));
+	  ++hit;
+	}
     }
 
     // for debugging purposes.
@@ -80,8 +105,9 @@ namespace dd
       while(vit!=_vcats.end())
 	{
 	  out += "-------------\n";
-	  auto mit = (*vit).begin();
-	  while(mit!=(*vit).end())
+	  out += (*vit).first + "\n";
+	  auto mit = (*vit).second._cats.begin();
+	  while(mit!=(*vit).second._cats.end())
 	  {
 	    out += "accuracy=" + std::to_string((*mit).first) + " -- cat=" + (*mit).second + "\n";
 	    ++mit;
@@ -103,12 +129,13 @@ namespace dd
       std::cout << "witness=\n" << str << std::endl;*/
       //debug
       
-      for (size_t j=0;j<_vcats.size();j++)
+      auto hit = _vcats.begin();
+      while(hit!=_vcats.end())
 	{
 	  int i = 0;
 	  std::vector<APIData> v;
-	  auto mit = _vcats.at(j).begin();
-	  while(mit!=_vcats.at(j).end())
+	  auto mit = (*hit).second._cats.begin();
+	  while(mit!=(*hit).second._cats.end())
 	    {
 	      APIData nad;
 	      nad.add(chead,(*mit).second);
@@ -119,14 +146,15 @@ namespace dd
 	    }
 	  APIData adpred;
 	  adpred.add(cl,v);
-	  adpred.add("loss",_losses.at(j));
+	  adpred.add("loss",(*hit).second._loss);
+	  adpred.add("uri",(*hit).first);
 	  vpred.push_back(adpred);
+	  ++hit;
 	}
       out.add("predictions",vpred);
     }
-
-    std::vector<double> _losses;
-    std::vector<std::map<double,std::string,std::greater<double>>> _vcats; /**< vector of classes as finite set of categories. */
+    
+    std::unordered_map<std::string,sup_result> _vcats; /** batch of results, per uri. */
   };
   
 }

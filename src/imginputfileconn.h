@@ -41,13 +41,13 @@ namespace dd
 
     int transform(const APIData &ad)
     {
-      std::vector<std::string> vdata = ad.get("data").get<std::vector<std::string>>();
+      _uris = ad.get("data").get<std::vector<std::string>>();
       //_imgfname = ad.get(_imgfname).get<std::string>();
       //_imgfname = vdata.at(0);
       //std::cout << "opening image=" << _imgfname << std::endl;
-      for (size_t i=0;i<vdata.size();i++)
+      for (size_t i=0;i<_uris.size();i++)
 	{
-	  cv::Mat imaget = cv::imread(vdata.at(i),CV_LOAD_IMAGE_COLOR); //TODO: catch errors (size = 0 for file not found)
+	  cv::Mat imaget = cv::imread(_uris.at(i),CV_LOAD_IMAGE_COLOR); //TODO: catch errors (size = 0 for file not found)
 	  /*cv::namedWindow( "Display window", cv::WINDOW_AUTOSIZE );
 	    cv::imshow( "Display window", imaget);
 	    cv::waitKey(0);*/
@@ -59,6 +59,7 @@ namespace dd
       return 0;
     }
 
+    std::vector<std::string> _uris;
     std::vector<cv::Mat> _images;
     //std::string _imgfname = "imgfname";
   };

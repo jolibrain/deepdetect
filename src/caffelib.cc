@@ -170,7 +170,6 @@ namespace dd
 		losses[idx] = loss;
 	      }
 	    this->_loss.store(smoothed_loss);
-	    //std::cout << "smoothed_loss=" << smoothed_loss << std::endl;
 	    
 	    solver->ComputeUpdateValue();
 	    solver->net_->Update();
@@ -180,11 +179,8 @@ namespace dd
 	// always save final snapshot.
 	if (solver->param_.snapshot_after_train())
 	  solver->Snapshot();
-      }
-    
-    
-    //TODO: output connector.
-    //output = "Optimization done.";
+      }    
+    //TODO: output connector ?
     return 0;
   }
 
@@ -220,14 +216,13 @@ namespace dd
     int scount = results[slot]->count();
     int scperel = scount / batch_size;
     TOutputConnectorStrategy tout;
-    tout._vcats.resize(batch_size);
-    tout._losses.resize(batch_size);
     for (int j=0;j<batch_size;j++)
       {
+	tout.add_result(inputc._uris.at(j),loss);
 	for (int i=0;i<scperel;i++)
 	  {
 	    //std::cout << this->_mlmodel._hcorresp[i] << " / " << results[slot]->cpu_data()[j*scperel+i] << std::endl;
-	    tout.add_cat(j,results[slot]->cpu_data()[j*scperel+i],this->_mlmodel._hcorresp[i],loss);
+	    tout.add_cat(inputc._uris.at(j),results[slot]->cpu_data()[j*scperel+i],this->_mlmodel._hcorresp[i]);
 	  }
       }
     TOutputConnectorStrategy btout;
