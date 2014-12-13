@@ -38,14 +38,15 @@ namespace dd
     :MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,CaffeModel>(cmodel)
   {
     this->_libname = "caffe";
-    if (_gpu)
-      {
-	Caffe::SetDevice(_gpuid);
-	Caffe::set_mode(Caffe::GPU);
-      }
+    /*if (_gpu)
+    {
+    Caffe::SetDevice(_gpuid);
+    Caffe::set_mode(Caffe::GPU);
+    }
     else Caffe::set_mode(Caffe::CPU);
     if (this->_has_predict)
-      Caffe::set_phase(Caffe::TEST); // XXX: static within Caffe, cannot go along with training across services.
+    Caffe::set_phase(Caffe::TEST); // XXX: static within Caffe, cannot go along with training across services.
+    else Caffe::set_phase(Caffe::TRAIN);*/
     if (!this->_mlmodel._def.empty()) // whether in prediction mode...
       {
 	_net = new Net<float>(this->_mlmodel._def);
@@ -100,7 +101,7 @@ namespace dd
     
     // optimize
     this->_tjob_running = true;
-    std::shared_ptr<caffe::Solver<float>> solver(caffe::GetSolver<float>(solver_param));
+    caffe::Solver<float> *solver = caffe::GetSolver<float>(solver_param);
     bool async = !ad.has("async") ? false : ad.get("async").get<bool>();
     if (!async)
       {
@@ -116,11 +117,11 @@ namespace dd
 	  {
 	    LOG(INFO) << "Optimizing model";
 	    solver->Solve();
-	    delete _net;
-	    _net = solver->net().get(); // setting up the new model
+	    /*delete _net;
+	      _net = solver->net().get();*/ // setting up the new model
 	    std::vector<Blob<float>*> bottom_vec; // dummy
 	    float lloss = 0.0;
-	    _net->Forward(bottom_vec,&lloss);
+	    solver->net()->Forward(bottom_vec,&lloss);
 	    this->_loss.store(lloss);
 	  }
       }
