@@ -22,14 +22,17 @@
 #include "deepdetect.h"
 #include "commandlineapi.h"
 #include "commandlinejsonapi.h"
+#include "githash.h"
 
 namespace dd
 {
+  template<class TAPIStrategy>
+  std::string DeepDetect<TAPIStrategy>::_commit_version = VERSION_GHASH;
 
   template<class TAPIStrategy>
   DeepDetect<TAPIStrategy>::DeepDetect()
   {
-    std::cout << "DeepDetect [ commit " << _commit_version << " ]\n";
+    std::cout << "DeepDetect [ commit " << DeepDetect::_commit_version << " ]\n";
   }
 
   template<class TAPIStrategy>

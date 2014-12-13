@@ -20,6 +20,7 @@
  */
 
 #include "jsonapi.h"
+#include "githash.h"
 #include "ext/rapidjson/document.h"
 #include "ext/rapidjson/stringbuffer.h"
 #include "ext/rapidjson/reader.h"
@@ -163,6 +164,7 @@ namespace dd
     JVal jhead(rapidjson::kObjectType);
     jhead.AddMember("method","/info",jinfo.GetAllocator());
     //TODO: server version.
+    jhead.AddMember("commit",JVal().SetString(VERSION_GHASH,jinfo.GetAllocator()),jinfo.GetAllocator());
     JVal jservs(rapidjson::kArrayType);
     for (size_t i=0;i<services_size();i++)
       {
@@ -287,7 +289,6 @@ namespace dd
     if (status < 0)
       return jrender(dd_internal_error_500());
     JDoc jtrain = dd_ok_200();
-    //TODO: head.
     JVal jout(rapidjson::kObjectType);
     out.toJVal(jtrain,jout);
     if (jout.HasMember("job"))

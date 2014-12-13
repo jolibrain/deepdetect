@@ -23,7 +23,6 @@
 #define DEEPDETECT_H
 
 #include "apistrategy.h"
-#include "githash.h"
 #include <vector>
 
 namespace dd
@@ -36,7 +35,7 @@ namespace dd
       DeepDetect();
       ~DeepDetect();
 
-      std::string _commit_version = VERSION_GHASH;
+      static std::string _commit_version;
     };
   
 }
