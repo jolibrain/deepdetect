@@ -38,11 +38,13 @@ namespace dd
     :MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,CaffeModel>(cmodel)
   {
     this->_libname = "caffe";
+    
+    // XXX: setting the GPU outside of Caffe appears to fuss with the static pointers
     /*if (_gpu)
-    {
-    Caffe::SetDevice(_gpuid);
-    Caffe::set_mode(Caffe::GPU);
-    }
+      {
+	Caffe::SetDevice(_gpuid);
+	Caffe::set_mode(Caffe::GPU);
+      }
     else Caffe::set_mode(Caffe::CPU);
     if (this->_has_predict)
     Caffe::set_phase(Caffe::TEST); // XXX: static within Caffe, cannot go along with training across services.
