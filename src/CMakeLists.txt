@@ -1,0 +1,2 @@
+# main library
+add_library(ddetect deepdetect.h deepdetect.cc caffelib.h caffelib.cc mllibstrategy.h mlmodel.h mlservice.h caffemodel.h caffemodel.cc inputconnectorstrategy.h imginputfileconn.h commandlineapi.h commandlineapi.cc commandlinejsonapi.h commandlinejsonapi.cc apidata.h apidata.cc jsonapi.h jsonapi.cc ext/plustache/context.hpp ext/plustache/template.hpp ext/plustache/plustache_types.hpp ext/plustache/context.cpp ext/plustache/template.cpp)
