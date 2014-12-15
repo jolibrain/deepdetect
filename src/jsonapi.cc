@@ -20,6 +20,7 @@
  */
 
 #include "jsonapi.h"
+#include "dd_config.h"
 #include "githash.h"
 #include "ext/rapidjson/document.h"
 #include "ext/rapidjson/stringbuffer.h"
@@ -163,8 +164,10 @@ namespace dd
     JDoc jinfo = dd_ok_200();
     JVal jhead(rapidjson::kObjectType);
     jhead.AddMember("method","/info",jinfo.GetAllocator());
-    //TODO: server version.
-    jhead.AddMember("commit",JVal().SetString(VERSION_GHASH,jinfo.GetAllocator()),jinfo.GetAllocator());
+    std::string sversion = std::to_string(VERSION_MAJOR) + "." + std::to_string(VERSION_MINOR);
+    jhead.AddMember("version",JVal().SetString(sversion.c_str(),jinfo.GetAllocator()),jinfo.GetAllocator());
+    jhead.AddMember("branch",JVal().SetString(GIT_BRANCH,jinfo.GetAllocator()),jinfo.GetAllocator());
+    jhead.AddMember("commit",JVal().SetString(GIT_COMMIT_HASH,jinfo.GetAllocator()),jinfo.GetAllocator());
     JVal jservs(rapidjson::kArrayType);
     for (size_t i=0;i<services_size();i++)
       {
