@@ -33,6 +33,7 @@ namespace dd
     InputConnectorStrategy() {}
     ~InputConnectorStrategy() {}
 
+    size_t size() const;
     int transform(const APIData &ap);
   };
   

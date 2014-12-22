@@ -39,6 +39,11 @@ namespace dd
     
     ~ImgInputFileConn() {}
 
+    size_t size() const
+    {
+      return _images.size();
+    }
+    
     int transform(const APIData &ad)
     {
       _uris = ad.get("data").get<std::vector<std::string>>();
