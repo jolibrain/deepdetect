@@ -124,9 +124,9 @@ namespace dd
       std::vector<APIData> vpred;
       
       //debug
-      /*std::string str;
+      std::string str;
       to_str(str);
-      std::cout << "witness=\n" << str << std::endl;*/
+      std::cout << "witness=\n" << str << std::endl;
       //debug
       
       auto hit = _vcats.begin();

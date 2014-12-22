@@ -200,7 +200,7 @@ namespace dd
     float loss = 0.0;
     //std::vector<Datum> dv = {datum};
     //std::vector<cv::Mat> dv = {inputc._images.at(0),inputc._images.at(1)};
-    int batch_size = inputc._images.size();
+    int batch_size = inputc.size();
     std::vector<int> dvl(batch_size,0.0);
     //boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(dv);
     boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddMatVector(inputc._images,dvl);

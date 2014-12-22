@@ -23,9 +23,14 @@
 #define APIDATA_H
 
 #include "utils/variant.hpp"
-#include "ext/plustache/template.hpp"
+#include "ext/rmustache/mustache.h"
+#include "ext/rapidjson/rapidjson.h"
+#include "ext/rapidjson/stringbuffer.h"
+#include "ext/rapidjson/writer.h"
 #include "dd_types.h"
 #include <unordered_map>
+#include <vector>
+#include <sstream>
 #include <typeinfo>
 
 namespace dd
@@ -104,94 +109,22 @@ namespace dd
   public:
     inline std::string render_template(const std::string &tpl)
     {
-      Plustache::Context ctx;
-      to_plustache_ctx(ctx);
-      Plustache::template_t t;
-      return t.render(tpl,ctx);
-    }
-    inline std::string render_template(const std::string &tpl,
-				       const std::string &key)
-    {
-      Plustache::Context ctx;
-      to_plustache_ctx(ctx,key);
-      Plustache::template_t t;
-      return t.render(tpl,ctx);
-    }
+      std::stringstream ss;
+      JDoc d;
+      d.SetObject();
+      toJDoc(d);
 
-    void to_plustache_ctx(Plustache::Context &ctx) const;
-    void to_plustache_ctx(Plustache::Context &ctx,
-			  const std::string &key) const;
+      rapidjson::StringBuffer buffer;
+      rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+      d.Accept(writer);
+      std::string reststring = buffer.GetString();
+      //std::cout << "to jdoc=" << reststring << std::endl;
+      
+      mustache::RenderTemplate(tpl, "", d, &ss);
+      return ss.str();
+    }
     
     std::unordered_map<std::string,ad_variant_type> _data;
-  };
-  
-  class visitor_stache : public mapbox::util::static_visitor<>
-  {
-  public:
-    visitor_stache() {}
-    visitor_stache(Plustache::Context *ctx):_ctx(ctx) {}
-    visitor_stache(Plustache::Context *ctx, PlustacheTypes::ObjectType *ot):_ctx(ctx),_ot(ot) {}
-    ~visitor_stache() {}
-    
-    void process(const std::string &str)
-    {
-      if (!_ot)
-	_ctx->add(_key,str);
-      else (*_ot)[_key] = str;
-    }
-    void process(const double &d)
-    {
-      if (!_ot)
-	_ctx->add(_key,std::to_string(d));
-      else (*_ot)[_key] = std::to_string(d);
-    }
-    void process(const bool &b)
-    {
-      if (!_ot)
-	_ctx->add(_key,std::to_string(b));
-      else (*_ot)[_key] = std::to_string(b);
-    }
-    void process(const std::vector<double> &vd)
-    {
-    }
-    void process(const std::vector<std::string> &vs)
-    {
-    }
-    void process(const std::vector<APIData> &vad) // XXX: hack, that flattens all objects below first level as plustache does not support nested objects
-    {
-      PlustacheTypes::CollectionType c;
-      for (size_t i=0;i<vad.size();i++)
-	{
-	  visitor_stache vs;
-	  PlustacheTypes::ObjectType ot;
-	  if (!_ot)
-	    {
-	      vs = visitor_stache(_ctx,&ot);
-	    }
-	  else vs = visitor_stache(_ctx,_ot);
-	  APIData ad = vad.at(i);
-	  auto hit = ad._data.begin();
-	  while(hit!=ad._data.end())
-	    {
-	      vs._key = (*hit).first;
-	      mapbox::util::apply_visitor(vs,(*hit).second);
-	      ++hit;
-	    }
-	  if (_ctx)
-	    c.push_back(*vs._ot);
-	}
-      if (_ctx)
-	_ctx->add(_key,c);
-    }
-
-    template<typename T>
-      void operator() (T &t)
-      {
-	process(t);
-      }
-    std::string _key;
-    Plustache::Context *_ctx = nullptr;
-    PlustacheTypes::ObjectType *_ot = nullptr;
   };
 
   class visitor_rjson : public mapbox::util::static_visitor<>

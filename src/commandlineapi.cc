@@ -25,7 +25,7 @@
 
 DEFINE_string(service,"","service string (e.g. caffe)");
 DEFINE_bool(predict,false,"run service in predict mode");
-DEFINE_bool(train,false,"run servince in train mode");
+DEFINE_bool(train,false,"run service in train mode");
 DEFINE_string(model_repo,"","model repository");
 DEFINE_string(imgfname,"","image file name");
 
@@ -72,9 +72,9 @@ namespace dd
 	    predict(ad,0,out);
 	    //std::cout << "witness=\n" << out.to_str() << std::endl;
 	    //std::string tpl = "status={{status}}\n{{cat0}} --> {{prob0}}\n{{cat1}} --> {{prob1}}\n{{cat2}} --> {{prob2}}\n";
-	    std::string tpl = "status={{status}}\n{{# predictions}}loss={{loss}}\n{{/ predictions}}{{# classes}}/\n{{cat}} --> {{prob}}\n{{/ classes}}\n";
+	    std::string tpl = "status={{status}}\n{{# predictions}}loss={{loss}}\n{{# classes}}{{cat}} --> {{prob}}\n{{/classes}}{{/predictions}}\n";
 	    //std::string tpl = "{{# predictions}}\nloss --> {{loss}}\n{{/ predictions}}\n";
-	    std::cout << "response=\n" << out.render_template(tpl,"predictions") << std::endl;
+	    std::cout << "response=\n" << out.render_template(tpl) << std::endl;//,"predictions") << std::endl;
 	    //APIData pred = out.get("predictions").get<std::vector<APIData>>().at(0);
 	    //std::cout << "response=\n" << pred.render_template(tpl) << std::endl;
 	    remove_service(FLAGS_service);

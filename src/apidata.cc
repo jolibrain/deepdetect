@@ -83,7 +83,7 @@ namespace dd
 	    std::vector<APIData> vad = { ad };
 	    add(cit->name.GetString(),vad);
 	  }
-	else if (cit->value.IsArray()) // only support arrays that bear a single type, number, string or object
+	else if (cit->value.IsArray()) // only supports array that bears a single type, number, string or object
 	  {
 	    const JVal &jarr = jval[cit->name.GetString()];
 	    if (jarr.Size() != 0)
@@ -155,29 +155,4 @@ namespace dd
       }
   }
   
-  void APIData::to_plustache_ctx(Plustache::Context &ctx) const
-  {
-    visitor_stache vs(&ctx);
-    auto hit = _data.begin();
-    while(hit!=_data.end())
-      {
-	vs._key = (*hit).first;
-	mapbox::util::apply_visitor(vs,(*hit).second);
-	++hit;
-      }
-  }
-
-  void APIData::to_plustache_ctx(Plustache::Context &ctx,
-				 const std::string &key) const
-  {
-    auto hit = _data.find(key);
-    if (hit!=_data.end())
-      {
-	visitor_stache vs(&ctx);
-	vs._key = key;
-	mapbox::util::apply_visitor(vs,(*hit).second);
-      }
-    else std::cout << "key not found when rendering template=" << key << std::endl;//TODO: else log error.
-  }
-
 }
