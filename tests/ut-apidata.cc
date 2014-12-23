@@ -50,33 +50,6 @@ TEST(apidata,visitor_vad)
   ASSERT_EQ(prob1,ad_cl.at(0).get("prob").get<double>());
 }
 
-TEST(apidata,to_plustache_ctx)
-{
-  double loss = 1.17;
-  double prob1 = 0.67;
-  double prob2 = 0.29;
-  
-  APIData ad;
-  std::vector<APIData> vad;
-  APIData ivad1;
-  ivad1.add("cat","car");
-  ivad1.add("prob",prob1);
-  vad.push_back(ivad1);
-  APIData ivad2;
-  ivad2.add("cat","wolf");
-  ivad2.add("prob",prob2);
-  vad.push_back(ivad2);
-  ad.add("classes",vad);
-  ad.add("loss",loss);
-  
-  std::string tpl = "loss={{loss}}\nclasses={{# classes}}/\n{{cat}} --> {{prob}}\n{{/ classes}}\n";
-  std::string rstr = ad.render_template(tpl);
-  std::cout << rstr << std::endl;
-  ASSERT_TRUE(rstr.find("car --> 0.67")!=std::string::npos);
-  ASSERT_TRUE(rstr.find("wolf --> 0.29")!=std::string::npos);
-  ASSERT_TRUE(rstr.find("loss=1.17")!=std::string::npos);
-}
-
 TEST(apidata,to_from_json)
 {
   double prob1 = 0.67;
