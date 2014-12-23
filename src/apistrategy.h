@@ -22,6 +22,7 @@
 #ifndef APISTRATEGY_H
 #define APISTRATEGY_H
 
+#include "dd_types.h"
 #include "services.h"
 
 namespace dd

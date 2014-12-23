@@ -146,7 +146,23 @@ namespace dd
   {
     JDoc jd;
     jd.SetObject();
-    render_status(jd,404,"NotFound",1003,"Input Connector Not Found");
+    render_status(jd,404,"NotFound",1004,"Input Connector Not Found");
+    return jd;
+  }
+
+  JDoc JsonAPI::dd_service_input_bad_request_1005() const
+  {
+    JDoc jd;
+    jd.SetObject();
+    render_status(jd,400,"BadRequest",1005,"Service Input Error");
+    return jd;
+  }
+  
+  JDoc JsonAPI::dd_service_bad_request_1006() const
+  {
+    JDoc jd;
+    jd.SetObject();
+    render_status(jd,400,"BadRequest",1006,"Service Bad Request Error");
     return jd;
   }
   
@@ -289,9 +305,29 @@ namespace dd
   
     // prediction
     APIData out;
-    int status = this->predict(ad_data,pos,out);
-    if (status < 0)
-      return jrender(dd_internal_error_500());
+    int status = -1;
+    try
+      {
+	status = this->predict(ad_data,pos,out);
+      }
+    catch (InputConnectorBadParamException &e)
+      {
+	return jrender(dd_service_input_bad_request_1005());
+      }
+    catch (MLLibBadParamException &e)
+      {
+	return jrender(dd_service_bad_request_1006());
+      }
+    catch (InputConnectorInternalException &e)
+      {
+	return jrender(dd_internal_error_500());
+      }
+    catch (MLLibInternalException &e)
+      {
+	return jrender(dd_internal_error_500());
+      }
+    /*if (status < 0)
+      return jrender(dd_internal_error_500());*/
     JDoc jpred = dd_ok_200();
     JVal jout(rapidjson::kObjectType);
     out.toJVal(jpred,jout);
@@ -331,9 +367,29 @@ namespace dd
 
     // training
     APIData out;
-    int status = this->train(ad,pos,out);
-    if (status < 0)
-      return jrender(dd_internal_error_500());
+    int status = -1;
+    try
+      {
+	status = this->train(ad,pos,out);
+      }
+    catch (InputConnectorBadParamException &e)
+      {
+	return jrender(dd_service_input_bad_request_1005());
+      }
+    catch (MLLibBadParamException &e)
+      {
+	return jrender(dd_service_bad_request_1006());
+      }
+    catch (InputConnectorInternalException &e)
+      {
+	return jrender(dd_internal_error_500());
+      }
+    catch (MLLibInternalException &e)
+      {
+	return jrender(dd_internal_error_500());
+      }
+    /*if (status < 0)
+      return jrender(dd_internal_error_500());*/
     JDoc jtrain = dd_ok_200();
     JVal jout(rapidjson::kObjectType);
     out.toJVal(jtrain,jout);

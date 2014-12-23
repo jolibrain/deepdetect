@@ -172,10 +172,29 @@ namespace dd
 	{
 	  pout = mapbox::util::apply_visitor(vt,_mlservices.at(pos));
 	}
+      catch (InputConnectorBadParamException &e)
+	{
+	  LOG(ERROR) << "service #" << pos << " mllib bad param: " << e.what() << std::endl;
+	  pout._status = -2;
+	  throw;
+	}
+      catch (MLLibBadParamException &e)
+	{
+	  LOG(ERROR) << "service #" << pos << " mllib bad param: " << e.what() << std::endl;
+	  pout._status = -2;
+	  throw;
+	}
+      catch (MLLibInternalException &e)
+	{
+	  LOG(ERROR) << "service #" << pos << " mllib internal error: " << e.what() << std::endl;
+	  pout._status = -1;
+	  throw;
+	}
       catch(...)
 	{
 	  LOG(ERROR) << "service #" << pos << " training call failed\n";
 	  pout._status = -1;
+	  throw;
 	}
       out = pout._out;
       if (ad.has("async") && ad.get("async").get<bool>())
@@ -240,10 +259,29 @@ namespace dd
 	{
 	  pout = mapbox::util::apply_visitor(vp,_mlservices.at(pos));
 	}
+      catch (InputConnectorBadParamException &e)
+	{
+	  LOG(ERROR) << "service #" << pos << " mllib bad param: " << e.what() << std::endl;
+	  pout._status = -2;
+	  throw;
+	}
+      catch (MLLibBadParamException &e)
+	{
+	  LOG(ERROR) << "service #" << pos << " mllib bad param: " << e.what() << std::endl;
+	  pout._status = -2;
+	  throw;
+	}
+      catch (MLLibInternalException &e)
+	{
+	  LOG(ERROR) << "service #" << pos << " mllib internal error: " << e.what() << std::endl;
+	  pout._status = -1;
+	  throw;
+	}
       catch(...)
 	{
 	  LOG(ERROR) << "service #" << pos << " prediction call failed\n";
 	  pout._status = -1;
+	  throw;
 	}
       out = pout._out;
       std::chrono::time_point<std::chrono::system_clock> tstop = std::chrono::system_clock::now();

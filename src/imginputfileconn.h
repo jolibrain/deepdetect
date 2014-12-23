@@ -47,6 +47,11 @@ namespace dd
     int transform(const APIData &ad)
     {
       _uris = ad.get("data").get<std::vector<std::string>>();
+      if (_uris.empty())
+	{
+	  throw InputConnectorBadParamException("missing data");
+	}
+      
       //_imgfname = ad.get(_imgfname).get<std::string>();
       //_imgfname = vdata.at(0);
       //std::cout << "opening image=" << _imgfname << std::endl;

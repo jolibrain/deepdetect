@@ -24,9 +24,31 @@
 
 #include "apidata.h"
 #include <atomic>
+#include <exception>
 
 namespace dd
 {
+  class MLLibBadParamException : public std::exception
+  {
+  public:
+    MLLibBadParamException(const std::string &s)
+      :_s(s) {}
+    ~MLLibBadParamException() {}
+    const char* what() const noexcept { return _s.c_str(); }
+  private:
+    std::string _s;
+  };
+  
+  class MLLibInternalException : public std::exception
+  {
+  public:
+    MLLibInternalException(const std::string &s)
+      :_s(s) {}
+    ~MLLibInternalException() {}
+    const char* what() const noexcept { return _s.c_str(); }
+  private:
+    std::string _s;
+  };
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
     class MLLib

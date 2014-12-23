@@ -23,9 +23,32 @@
 #define INPUTCONNECTORSTRATEGY_H
 
 #include "apidata.h"
+#include <exception>
 
 namespace dd
 {
+
+  class InputConnectorBadParamException : public std::exception
+  {
+  public:
+    InputConnectorBadParamException(const std::string &s)
+      :_s(s) {}
+    ~InputConnectorBadParamException() {}
+    const char* what() const noexcept { return _s.c_str(); }
+  private:
+    std::string _s;
+  };
+
+  class InputConnectorInternalException : public std::exception
+  {
+  public:
+    InputConnectorInternalException(const std::string &s)
+      :_s(s) {}
+    ~InputConnectorInternalException() {}
+    const char* what() const noexcept { return _s.c_str(); }
+  private:
+    std::string _s;
+  };
 
   class InputConnectorStrategy
   {

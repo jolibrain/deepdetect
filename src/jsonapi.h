@@ -54,6 +54,8 @@ namespace dd
     JDoc dd_service_not_found_1002() const;
     JDoc dd_job_not_found_1003() const;
     JDoc dd_input_connector_not_found_1004() const;
+    JDoc dd_service_input_bad_request_1005() const;
+    JDoc dd_service_bad_request_1006() const;
 
     // JSON rendering
     std::string jrender(const JDoc &jst) const;

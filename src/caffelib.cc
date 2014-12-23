@@ -191,7 +191,7 @@ namespace dd
 										   APIData &out)
   {
     TInputConnectorStrategy inputc;
-    inputc.transform(ad); //TODO: catch errors
+    inputc.transform(ad); //TODO: catch errors ?
     Datum datum;
     //ReadImageToDatum(inputc._imgfname,1,227,227,&datum);
     //CVMatToDatum(inputc._image,&datum);
