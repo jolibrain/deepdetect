@@ -141,6 +141,14 @@ namespace dd
     render_status(jd,404,"NotFound",1003,"Job Not Found");
     return jd;
   }
+
+  JDoc JsonAPI::dd_input_connector_not_found_1004() const
+  {
+    JDoc jd;
+    jd.SetObject();
+    render_status(jd,404,"NotFound",1003,"Input Connector Not Found");
+    return jd;
+  }
   
   std::string JsonAPI::jrender(const JDoc &jst) const
   {
@@ -192,19 +200,36 @@ namespace dd
     if (d.HasParseError())
       return jrender(dd_bad_request_400());
     
-    std::string mllib = d["mllib"].GetString();
-    if (mllib.empty())
-      return jrender(dd_bad_request_400());
-    std::string description = d["description"].GetString();
+    std::string mllib,input;
+    std::string type,description;
+    APIData ad_model;
+    try
+      {
+	// mandatory parameters.
+	mllib = d["mllib"].GetString();
+	input = d["input"].GetString();
 
-    // model parameters.
-    APIData ad_model(d["model"]);
-    
+	// optional parameters.
+	if (d.HasMember("type"))
+	  type = d["type"].GetString();
+	if (d.HasMember("description"))
+	  description = d["description"].GetString();
+	
+	// model parameters (mandatory).
+	ad_model = APIData(d["model"]);
+      }
+    catch(...)
+      {
+	return jrender(dd_bad_request_400());
+      }
+        
     // create service.
     if (mllib == "caffe")
       {
 	CaffeModel cmodel(ad_model);
-	add_service(sname,std::move(MLService<CaffeLib,ImgInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)));
+	if (input == "image")
+	  add_service(sname,std::move(MLService<CaffeLib,ImgInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)));
+	else return jrender(dd_input_connector_not_found_1004());
       }
     else
       {
@@ -245,10 +270,19 @@ namespace dd
       return jrender(dd_bad_request_400());
     
     // service
-    std::string sname = d["service"].GetString();
-    int pos = this->get_service_pos(sname);
-    if (pos < 0)
-      return jrender(dd_service_not_found_1002());
+    std::string sname;
+    int pos = -1;
+    try
+      {
+	sname = d["service"].GetString();
+	pos = this->get_service_pos(sname);
+	if (pos < 0)
+	  return jrender(dd_service_not_found_1002());
+      }
+    catch(...)
+      {
+	return jrender(dd_bad_request_400());
+      }
 
     // data
     APIData ad_data(d);
@@ -278,11 +312,20 @@ namespace dd
       return jrender(dd_bad_request_400());
   
     // service
-    std::string sname = d["service"].GetString();
-    int pos = this->get_service_pos(sname);
-    if (pos < 0)
-      return jrender(dd_service_not_found_1002());
-  
+    std::string sname;
+    int pos = -1;
+    try
+      {
+	sname = d["service"].GetString();
+	pos = this->get_service_pos(sname);
+	if (pos < 0)
+	  return jrender(dd_service_not_found_1002());
+      }
+    catch(...)
+      {
+	return jrender(dd_bad_request_400());
+      }
+    
     // parameters and data
     APIData ad(d);
 
@@ -309,11 +352,20 @@ namespace dd
       return jrender(dd_bad_request_400());
   
     // service
-    std::string sname = d["service"].GetString();
-    int pos = this->get_service_pos(sname);
-    if (pos < 0)
-      return jrender(dd_service_not_found_1002());
-  
+    std::string sname;
+    int pos = -1;
+    try
+      {
+	sname = d["service"].GetString();
+	pos = this->get_service_pos(sname);
+	if (pos < 0)
+	  return jrender(dd_service_not_found_1002());
+      }
+    catch(...)
+      {
+	return jrender(dd_bad_request_400());
+      }
+    
     // parameters
     APIData ad(d);
     if (!ad.has("job"))
@@ -349,11 +401,20 @@ namespace dd
       return jrender(dd_bad_request_400());
   
     // service
-    std::string sname = d["service"].GetString();
-    int pos = this->get_service_pos(sname);
-    if (pos < 0)
-      return jrender(dd_service_not_found_1002());
-  
+    std::string sname;
+    int pos = -1;
+    try
+      {
+	sname = d["service"].GetString();
+	pos = this->get_service_pos(sname);
+	if (pos < 0)
+	  return jrender(dd_service_not_found_1002());
+      }
+    catch(...)
+      {
+	return jrender(dd_bad_request_400());
+      }
+    
     // parameters
     APIData ad(d);
     if (!ad.has("job"))

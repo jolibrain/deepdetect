@@ -302,6 +302,22 @@ RAPIDJSON_NAMESPACE_END
 ///////////////////////////////////////////////////////////////////////////////
 // RAPIDJSON_ASSERT
 
+// custom
+#include <exception>
+class RapidjsonException : public std::exception
+{
+ public:
+  RapidjsonException(const char *s)
+    :_s(s) {}
+  ~RapidjsonException() {}
+
+  const char* what() const noexcept { return _s; }
+ private:
+  const char *_s;
+};
+
+#define RAPIDJSON_ASSERT(x) if (!(x)) throw RapidjsonException(RAPIDJSON_STRINGIFY(x))
+
 //! Assertion.
 /*! \ingroup RAPIDJSON_CONFIG
     By default, rapidjson uses C \c assert() for internal assertions.

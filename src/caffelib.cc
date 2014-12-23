@@ -189,10 +189,9 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::predict(const APIData &ad,
 										   APIData &out)
-  //std::string &output)
   {
     TInputConnectorStrategy inputc;
-    inputc.transform(ad);
+    inputc.transform(ad); //TODO: catch errors
     Datum datum;
     //ReadImageToDatum(inputc._imgfname,1,227,227,&datum);
     //CVMatToDatum(inputc._image,&datum);
