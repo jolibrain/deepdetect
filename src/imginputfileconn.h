@@ -33,10 +33,7 @@ namespace dd
   {
   public:
   ImgInputFileConn()
-    :InputConnectorStrategy()
-    {
-    }
-    
+    :InputConnectorStrategy(){}
     ~ImgInputFileConn() {}
 
     size_t size() const
@@ -46,7 +43,14 @@ namespace dd
     
     int transform(const APIData &ad)
     {
-      _uris = ad.get("data").get<std::vector<std::string>>();
+      try
+	{
+	  _uris = ad.get("data").get<std::vector<std::string>>();
+	}
+      catch(...)
+	{
+	  throw InputConnectorBadParamException("missing data");
+	}
       if (_uris.empty())
 	{
 	  throw InputConnectorBadParamException("missing data");

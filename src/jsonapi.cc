@@ -328,8 +328,10 @@ namespace dd
       {
 	return jrender(dd_internal_error_500());
       }
-    /*if (status < 0)
-      return jrender(dd_internal_error_500());*/
+    catch (...)
+      {
+	return jrender(dd_internal_error_500());
+      }
     JDoc jpred = dd_ok_200();
     JVal jout(rapidjson::kObjectType);
     out.toJVal(jpred,jout);
@@ -338,7 +340,9 @@ namespace dd
     jhead.AddMember("time",jout["time"],jpred.GetAllocator());
     jhead.AddMember("service",d["service"],jpred.GetAllocator());
     jpred.AddMember("head",jhead,jpred.GetAllocator());
-    jpred.AddMember("predictions",jout["predictions"],jpred.GetAllocator());
+    JVal jbody(rapidjson::kObjectType);
+    jbody.AddMember("predictions",jout["predictions"],jpred.GetAllocator());
+    jpred.AddMember("body",jbody,jpred.GetAllocator());
     return jrender(jpred);
   }
 
@@ -390,8 +394,10 @@ namespace dd
       {
 	return jrender(dd_internal_error_500());
       }
-    /*if (status < 0)
-      return jrender(dd_internal_error_500());*/
+    catch (...)
+      {
+	return jrender(dd_internal_error_500());
+      }
     JDoc jtrain = dd_ok_200();
     JVal jout(rapidjson::kObjectType);
     out.toJVal(jtrain,jout);
