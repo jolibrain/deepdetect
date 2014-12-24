@@ -26,6 +26,7 @@
 
 using namespace dd;
 
+static std::string ok_str = "{\"status\":{\"code\":200,\"msg\":\"OK\"}}";
 static std::string created_str = "{\"status\":{\"code\":201,\"msg\":\"Created\"}}";
 static std::string bad_param_str = "{\"status\":{\"code\":400,\"msg\":\"BadRequest\"}}";
 static std::string not_found_str = "{\"status\":{\"code\":404,\"msg\":\"NotFound\"}}";
@@ -91,7 +92,7 @@ TEST(jsonapi,info)
 
   // info
   std::string jinfostr = japi.info();
-  std::cout << "jinfostr=" << jinfostr << std::endl;
+  //std::cout << "jinfostr=" << jinfostr << std::endl;
   JDoc jd;
   jd.Parse(jinfostr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
@@ -106,4 +107,26 @@ TEST(jsonapi,info)
   ASSERT_EQ("caffe",jd["head"]["services"][0]["mllib"]);
   ASSERT_EQ("my classifier",jd["head"]["services"][0]["description"]);
   ASSERT_EQ("my_service",jd["head"]["services"][0]["name"]);
+}
+
+TEST(jsonapi,service_delete)
+{
+  // create service.
+  JsonAPI japi;
+  std::string sname = "my_service";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"here/\"},\"input\":\"image\"}";
+  std::string joutstr = japi.service_create(sname,jstr);
+  ASSERT_EQ(created_str,joutstr);
+  
+  // delete service.
+  std::string jdelstr = japi.service_delete(sname);
+  ASSERT_EQ(ok_str,jdelstr);
+  std::string jinfostr = japi.info();
+  JDoc jd;
+  jd.Parse(jinfostr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_TRUE(jd.HasMember("status"));
+  ASSERT_EQ(200,jd["status"]["code"]);
+  ASSERT_EQ("OK",jd["status"]["msg"]);
+  ASSERT_EQ(0,jd["head"]["services"].Size());
 }
