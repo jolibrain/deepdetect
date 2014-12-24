@@ -130,3 +130,25 @@ TEST(jsonapi,service_delete)
   ASSERT_EQ("OK",jd["status"]["msg"]);
   ASSERT_EQ(0,jd["head"]["services"].Size());
 }
+
+TEST(jsonapi,service_status)
+{
+  // create service.
+  JsonAPI japi;
+  std::string sname = "my_service";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"here/\"},\"input\":\"image\"}";
+  std::string joutstr = japi.service_create(sname,jstr);
+  ASSERT_EQ(created_str,joutstr);
+
+  // service status.
+  std::string jstatstr = japi.service_status(sname);
+  //std::cout << "jstatstr=" << jstatstr << std::endl;
+  JDoc jd;
+  jd.Parse(jstatstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_TRUE(jd.HasMember("status"));
+  ASSERT_EQ(200,jd["status"]["code"]);
+  ASSERT_EQ("OK",jd["status"]["msg"]);
+  ASSERT_TRUE(jd.HasMember("body"));
+  ASSERT_TRUE(jd["body"].HasMember("description"));
+}

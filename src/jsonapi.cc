@@ -265,7 +265,9 @@ namespace dd
       return jrender(dd_not_found_404());
     APIData ad = mapbox::util::apply_visitor(visitor_status(),_mlservices.at(pos));
     JDoc jst = dd_ok_200();
-    ad.toJDoc(jst);
+    JVal jbody(rapidjson::kObjectType);
+    ad.toJVal(jst,jbody);
+    jst.AddMember("body",jbody,jst.GetAllocator());
     return jrender(jst);
   }
 
