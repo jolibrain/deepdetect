@@ -193,7 +193,7 @@ namespace dd
   int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::predict(const APIData &ad,
 										   APIData &out)
   {
-    TInputConnectorStrategy inputc;
+    TInputConnectorStrategy inputc(this->_inputc);
     inputc.transform(ad); //TODO: catch errors ?
     Datum datum;
     //ReadImageToDatum(inputc._imgfname,1,227,227,&datum);
@@ -205,8 +205,7 @@ namespace dd
     int batch_size = inputc.size();
     std::vector<int> dvl(batch_size,0.0);
     //boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(dv);
-    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddMatVector(inputc._images,dvl);
-
+    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddMatVector(inputc._images,dvl); // Caffe will crash with gtest or sigsegv here if input size is incorrect.
     //std::vector<Blob<float>*> results = _net->Forward(bottom,&loss);
     //TODO: loss ?
     std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();

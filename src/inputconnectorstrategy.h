@@ -55,9 +55,10 @@ namespace dd
   public:
     InputConnectorStrategy() {}
     ~InputConnectorStrategy() {}
-
-    size_t size() const;
+    
+    void init(const APIData &ad);
     int transform(const APIData &ap);
+    size_t size() const;
   };
   
 }

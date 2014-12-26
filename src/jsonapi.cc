@@ -218,7 +218,7 @@ namespace dd
     
     std::string mllib,input;
     std::string type,description;
-    APIData ad_model;
+    APIData ad,ad_model;
     try
       {
 	// mandatory parameters.
@@ -232,7 +232,8 @@ namespace dd
 	  description = d["description"].GetString();
 	
 	// model parameters (mandatory).
-	ad_model = APIData(d["model"]);
+	ad = APIData(d);
+	ad_model = ad.getobj("model");//APIData(d["model"]);
       }
     catch(...)
       {
@@ -244,7 +245,7 @@ namespace dd
       {
 	CaffeModel cmodel(ad_model);
 	if (input == "image")
-	  add_service(sname,std::move(MLService<CaffeLib,ImgInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)));
+	  add_service(sname,std::move(MLService<CaffeLib,ImgInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
 	else return jrender(dd_input_connector_not_found_1004());
       }
     else

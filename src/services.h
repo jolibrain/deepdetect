@@ -119,6 +119,22 @@ namespace dd
     APIData _ad;
     APIData _out;
   };
+
+  class visitor_init : public mapbox::util::static_visitor<>
+  {
+  public:
+    visitor_init(const APIData &ad)
+      :_ad(ad) {}
+    ~visitor_init() {}
+    
+    template<typename T>
+      void operator() (T &mllib)
+      {
+	mllib.init(_ad);
+      }
+    
+    APIData _ad;
+  };
   
   class Services
   {
@@ -132,8 +148,11 @@ namespace dd
     }
     
     void add_service(const std::string &sname,
-		     mls_variant_type &&mls) 
+		     mls_variant_type &&mls,
+		     const APIData &ad=APIData()) 
     {
+      visitor_init vi(ad);
+      mapbox::util::apply_visitor(vi,mls);
       std::lock_guard<std::mutex> lock(_mlservices_mtx);
       _mlservices.push_back(std::move(mls));
       _mlservidx.insert(std::pair<std::string,int>(sname,_mlservices.size()-1));

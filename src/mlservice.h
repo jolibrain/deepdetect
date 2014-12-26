@@ -64,6 +64,11 @@ namespace dd
       {}
     ~MLService() {}
 
+    void init(const APIData &ad)
+    {
+      this->_inputc.init(ad.getobj("parameters").getobj("input"));
+    }
+
     APIData info() const
     {
       APIData ad;

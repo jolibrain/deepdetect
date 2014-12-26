@@ -34,8 +34,27 @@ namespace dd
   public:
   ImgInputFileConn()
     :InputConnectorStrategy(){}
+    ImgInputFileConn(const ImgInputFileConn &i)
+      :InputConnectorStrategy(),_width(i._width),_height(i._height),_bw(i._bw) {}
     ~ImgInputFileConn() {}
 
+    void init(const APIData &ad)
+    {
+      fillup_parameters(ad,_width,_height);
+    }
+
+    void fillup_parameters(const APIData &ad,
+			   int &width, int &height)
+    {
+      // optional parameters.
+      if (ad.has("width"))
+	width = static_cast<int>(ad.get("width").get<double>());
+      if (ad.has("height"))
+	height = static_cast<int>(ad.get("height").get<double>());
+      if (ad.has("bw"))
+	_bw = ad.get("bw").get<bool>();
+    }
+    
     size_t size() const
     {
       return _images.size();
@@ -55,17 +74,25 @@ namespace dd
 	{
 	  throw InputConnectorBadParamException("missing data");
 	}
-      
-      //_imgfname = ad.get(_imgfname).get<std::string>();
-      //_imgfname = vdata.at(0);
-      //std::cout << "opening image=" << _imgfname << std::endl;
+    
+      int width = _width;
+      int height = _height;
+      if (ad.has("parameters")) // hotplug of parameters, overriding the defaults
+	{
+	  APIData ad_param = ad.getobj("parameters");
+	  if (ad_param.has("input"))
+	    {
+	      fillup_parameters(ad_param.getobj("input"),width,height);
+	    }
+	}
       for (size_t i=0;i<_uris.size();i++)
 	{
-	  cv::Mat imaget = cv::imread(_uris.at(i),CV_LOAD_IMAGE_COLOR); //TODO: catch errors (size = 0 for file not found)
+	  cv::Mat imaget = cv::imread(_uris.at(i),_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR); //TODO: catch errors (size = 0 for file not found)
 	  /*cv::namedWindow( "Display window", cv::WINDOW_AUTOSIZE );
 	    cv::imshow( "Display window", imaget);
 	    cv::waitKey(0);*/
-	  cv::Size size(227,227);
+	  //cv::Size size(227,227);
+	  cv::Size size(width,height);
 	  cv::Mat image;
 	  cv::resize(imaget,image,size);
 	  _images.push_back(image);
@@ -75,7 +102,11 @@ namespace dd
 
     std::vector<std::string> _uris;
     std::vector<cv::Mat> _images;
-    //std::string _imgfname = "imgfname";
+    
+    // resizing images
+    int _width = 227;
+    int _height = 227;
+    bool _bw = false;
   };
 }
 

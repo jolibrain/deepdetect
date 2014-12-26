@@ -58,7 +58,7 @@ namespace dd
       :_mlmodel(mlmodel),_loss(0.0),_tjob_running(false) {}
     
     MLLib(MLLib &&mll) noexcept
-      :_mlmodel(mll._mlmodel),_loss(mll._loss.load()),_tjob_running(mll._tjob_running.load())
+      :_mlmodel(mll._mlmodel),_inputc(mll._inputc),_loss(mll._loss.load()),_tjob_running(mll._tjob_running.load())
       {}
     
     ~MLLib() {}
