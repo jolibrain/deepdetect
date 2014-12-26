@@ -93,12 +93,36 @@ namespace dd
       return v._vad;
     }
 
+    inline APIData getobj(const std::string &key) const
+    {
+      visitor_vad vv;
+      vout v = mapbox::util::apply_visitor(vv,get(key));
+      if (v._vad.empty())
+	return APIData();
+      return v._vad.at(0);
+    }
+
+    static APIData findv(const std::vector<APIData> &vad, const std::string &key)
+    {
+      for (const APIData &v : vad)
+	{
+	  if (v.has(key))
+	    return v;
+	}
+      return APIData();
+    }
+
     inline bool has(const std::string &key) const
     {
       std::unordered_map<std::string,ad_variant_type>::const_iterator hit;
       if ((hit=_data.find(key))!=_data.end())
 	return true;
       else return false;
+    }
+
+    inline size_t size() const
+    {
+      return _data.size();
     }
 
     // convert in and out from json.

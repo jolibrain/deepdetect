@@ -398,13 +398,25 @@ namespace dd
       {
 	return jrender(dd_internal_error_500());
       }
-    JDoc jtrain = dd_ok_200();
+    JDoc jtrain = dd_created_201();
+    JVal jhead(rapidjson::kObjectType);
+    jhead.AddMember("method","/train",jtrain.GetAllocator());
     JVal jout(rapidjson::kObjectType);
     out.toJVal(jtrain,jout);
-    if (jout.HasMember("job"))
-      jout["job"].SetInt(static_cast<int>(jout["job"].GetDouble())); // XXX: APIData variant need to support int explicitely, for now only double
-    jout.AddMember("method","/train",jtrain.GetAllocator());
-    jtrain.AddMember("head",jout,jtrain.GetAllocator());
+    if (jout.HasMember("job")) // async job
+      {
+	jhead.AddMember("job",static_cast<int>(jout["job"].GetDouble()),jtrain.GetAllocator());
+	jout.RemoveMember("job");
+	jhead.AddMember("status",JVal().SetString(jout["status"].GetString(),jtrain.GetAllocator()),jtrain.GetAllocator());
+	jout.RemoveMember("status");
+      }
+    else
+      {
+	jhead.AddMember("time",jout["time"].GetDouble(),jtrain.GetAllocator());
+	jout.RemoveMember("time");
+	jtrain.AddMember("body",jout,jtrain.GetAllocator());
+      }
+    jtrain.AddMember("head",jhead,jtrain.GetAllocator());
     return jrender(jtrain);
   }
 
@@ -414,7 +426,7 @@ namespace dd
     d.Parse(jstr.c_str());
     if (d.HasParseError())
       return jrender(dd_bad_request_400());
-  
+    
     // service
     std::string sname;
     int pos = -1;
@@ -449,11 +461,17 @@ namespace dd
 	return jrender(jtrain);
       }
     jtrain = dd_ok_200();
+    JVal jhead(rapidjson::kObjectType);
+    jhead.AddMember("method","/train",jtrain.GetAllocator());
+    jhead.AddMember("job",static_cast<int>(ad.get("job").get<double>()),jtrain.GetAllocator());
     JVal jout(rapidjson::kObjectType);
     out.toJVal(jtrain,jout);
-    jout.AddMember("method","/train",jtrain.GetAllocator());
-    jout.AddMember("job",static_cast<int>(ad.get("job").get<double>()),jtrain.GetAllocator());
-    jtrain.AddMember("head",jout,jtrain.GetAllocator());
+    jhead.AddMember("status",JVal().SetString(jout["status"].GetString(),jtrain.GetAllocator()),jtrain.GetAllocator());
+    jhead.AddMember("time",jout["time"].GetDouble(),jtrain.GetAllocator());
+    jout.RemoveMember("time");
+    jout.RemoveMember("status");
+    jtrain.AddMember("head",jhead,jtrain.GetAllocator());
+    jtrain.AddMember("body",jout,jtrain.GetAllocator());
     return jrender(jtrain);
   }
 

@@ -90,15 +90,16 @@ namespace dd
     update_solver_data_paths(solver_param);
     
     // parameters
-    std::vector<APIData> ad_param = ad.getv("parameters");
-    for (size_t i=0;i<ad_param.size();i++)
+    // solver's parameters
+    APIData ad_solver = ad.getobj("parameters").getobj("mllib").getobj("solver");
+    if (ad_solver.size())
       {
-	APIData adp = ad_param.at(i);
-	if (adp.has("iterations"))
+	if (ad_solver.has("iterations"))
 	  {
-	    int max_iter = static_cast<int>(adp.get("iterations").get<double>());
+	    int max_iter = static_cast<int>(ad_solver.get("iterations").get<double>());
 	    solver_param.set_max_iter(max_iter);
 	  }
+	//TODO: add support for more parameters
       }
     
     // optimize
@@ -172,6 +173,8 @@ namespace dd
 		losses[idx] = loss;
 	      }
 	    this->_loss.store(smoothed_loss);
+
+	    //std::cout << "loss=" << this->_loss << std::endl;
 	    
 	    solver->ComputeUpdateValue();
 	    solver->net_->Update();

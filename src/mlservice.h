@@ -128,6 +128,8 @@ namespace dd
 		out.add("status","finished");
 	      else out.add("status","unknown error");
 	      out.add("loss",this->_loss.load()); // XXX: beware if there was a queue, since the job has finished, there might be a new one running.
+	      std::chrono::time_point<std::chrono::system_clock> trun = std::chrono::system_clock::now();
+	      out.add("time",std::chrono::duration_cast<std::chrono::seconds>(trun-(*hit).second._tstart).count());
 	      _training_jobs.erase(hit);
 	    }
 	  return 0;

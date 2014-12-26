@@ -14,3 +14,10 @@ add_test(
   NAME ut_jsonapi
   COMMAND ut_jsonapi
 )
+
+add_executable(ut_caffeapi ut-caffeapi.cc)
+target_link_libraries(ut_caffeapi ${CAFFE_STATIC_LINK} ${CAFFE_LIB_DEPS} ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc)
+add_test(
+  NAME ut_caffeapi
+  COMMAND ut_caffeapi
+)
