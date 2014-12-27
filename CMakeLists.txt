@@ -39,8 +39,10 @@ configure_file(
 include_directories("${PROJECT_BINARY_DIR}")
 include_directories("${CAFFE_INC_DIR}")
 
-# main library
+# optional packages
+find_package(CUDA)
 
+# main library, main & tests
 include_directories ("${PROJECT_SOURCE_DIR}/src")
 add_subdirectory (src) 
 add_subdirectory(main)
