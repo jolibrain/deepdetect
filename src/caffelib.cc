@@ -224,8 +224,7 @@ namespace dd
 	tout.add_result(inputc._uris.at(j),loss);
 	for (int i=0;i<scperel;i++)
 	  {
-	    //std::cout << this->_mlmodel._hcorresp[i] << " / " << results[slot]->cpu_data()[j*scperel+i] << std::endl;
-	    tout.add_cat(inputc._uris.at(j),results[slot]->cpu_data()[j*scperel+i],this->_mlmodel._hcorresp[i]);
+	    tout.add_cat(inputc._uris.at(j),results[slot]->cpu_data()[j*scperel+i],this->_mlmodel.get_hcorresp(i));
 	  }
       }
     TOutputConnectorStrategy btout;
