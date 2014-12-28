@@ -39,6 +39,8 @@ namespace dd
       CaffeLib(const CaffeModel &cmodel);
       CaffeLib(CaffeLib &&cl) noexcept;
       ~CaffeLib();
+
+      int create_model();
     
       int train(const APIData &ad, APIData &out);
       int predict(const APIData &ad, APIData &out);

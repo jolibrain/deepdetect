@@ -49,11 +49,7 @@ namespace dd
     if (this->_has_predict)
     Caffe::set_phase(Caffe::TEST); // XXX: static within Caffe, cannot go along with training across services.
     else Caffe::set_phase(Caffe::TRAIN);*/
-    if (!this->_mlmodel._def.empty() && !this->_mlmodel._weights.empty()) // whether in prediction mode...
-      {
-	_net = new Net<float>(this->_mlmodel._def);
-	_net->CopyTrainedLayersFrom(this->_mlmodel._weights);
-      }
+    create_model();
   }
   
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -72,6 +68,18 @@ namespace dd
   {
     if (_net)
       delete _net; // XXX: for now, crashes.
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::create_model()
+  {
+    if (!this->_mlmodel._def.empty() && !this->_mlmodel._weights.empty()) // whether in prediction mode...
+      {
+	_net = new Net<float>(this->_mlmodel._def);
+	_net->CopyTrainedLayersFrom(this->_mlmodel._weights);
+	return 0;
+      }
+    return 1;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -193,6 +201,14 @@ namespace dd
   int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::predict(const APIData &ad,
 										   APIData &out)
   {
+    if (!_net)
+      {
+	// re-read service's model repository in case there's a model now
+	this->_mlmodel.read_from_repository(this->_mlmodel._repo);
+	// create the net if there's a model, otherwise, get out with bad param error.
+	if (!create_model())
+	  throw MLLibBadParamException("no model in " + this->_mlmodel._repo + " for initializing net");
+      }
     TInputConnectorStrategy inputc(this->_inputc);
     inputc.transform(ad); //TODO: catch errors ?
     Datum datum;
