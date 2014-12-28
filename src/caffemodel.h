@@ -34,14 +34,7 @@ namespace dd
   public:
     CaffeModel():MLModel() {}
     CaffeModel(const APIData &ad);
-    
-    /*CaffeModel(const std::string &def,
-	       const std::string &weights,
-	       const std::string &corresp,
-	       const std::string &solver="");*/
-    
     CaffeModel(const std::string &repo);
-
     ~CaffeModel() {};
 
     int read_from_repository(const std::string &repo);
@@ -60,6 +53,7 @@ namespace dd
     std::unordered_map<int,std::string> _hcorresp; /**< table of class correspondences. */
     std::string _snapshot; /**< model snapshot file, used for resuming / finetuning an existing model. */
     std::string _solver; /**< solver description file, included here as part of the model, very specific to Caffe. */
+    std::string _sstate; /**< current solver state, useful for resuming training. */
   };
   
 }

@@ -70,6 +70,7 @@ namespace dd
   {
     static std::string deploy = "deploy.prototxt";
     static std::string weights = ".caffemodel";
+    static std::string sstate = ".solverstate";
     static std::string corresp = "corresp.txt";
     static std::string solver = "solver";
     _repo = repo;
@@ -79,14 +80,22 @@ namespace dd
       {
 	LOG(ERROR) << "error reading caffe model repository\n";
       }
-    std::string deployf,weightsf,correspf,solverf;
+    std::string deployf,weightsf,correspf,solverf,sstatef;
     auto hit = lfiles.begin();
     while(hit!=lfiles.end())
       {
-	if ((*hit).find(deploy)!=std::string::npos)
-	  deployf = (*hit);
+	if ((*hit).find(sstate)!=std::string::npos)
+	  sstatef = (*hit);
 	else if ((*hit).find(weights)!=std::string::npos)
 	  weightsf = (*hit);
+	else if ((*hit).find("~")!=std::string::npos 
+	    || (*hit).find(".prototxt")==std::string::npos)
+	  {
+	    ++hit;
+	    continue;
+	  }
+	else if ((*hit).find(deploy)!=std::string::npos)
+	  deployf = (*hit);
 	else if ((*hit).find(corresp)!=std::string::npos)
 	  correspf = (*hit);
 	else if ((*hit).find(solver)!=std::string::npos)
@@ -97,7 +106,8 @@ namespace dd
     _weights = weightsf;
     _corresp = correspf;
     _solver = solverf;
-    
+    _sstate = sstatef;
+
     /*    if (deployf.empty() || weightsf.empty())
       {
 	LOG(ERROR) << "missing caffe model file(s) in repository\n";

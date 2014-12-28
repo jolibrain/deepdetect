@@ -49,7 +49,7 @@ namespace dd
     if (this->_has_predict)
     Caffe::set_phase(Caffe::TEST); // XXX: static within Caffe, cannot go along with training across services.
     else Caffe::set_phase(Caffe::TRAIN);*/
-    if (!this->_mlmodel._def.empty()) // whether in prediction mode...
+    if (!this->_mlmodel._def.empty() && !this->_mlmodel._weights.empty()) // whether in prediction mode...
       {
 	_net = new Net<float>(this->_mlmodel._def);
 	_net->CopyTrainedLayersFrom(this->_mlmodel._weights);
