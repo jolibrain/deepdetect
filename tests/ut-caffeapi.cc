@@ -48,7 +48,7 @@ TEST(caffeapi,service_train)
   // create service
   JsonAPI japi;
   std::string sname = "my_service";
-  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  mnist_repo + "\"},\"input\":\"image\"}";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  mnist_repo + "\"},\"parameters\":{\"input\":{\"connector\":\"image\"}}}";
   std::string joutstr = japi.service_create(sname,jstr);
   ASSERT_EQ(created_str,joutstr);
 
@@ -75,7 +75,7 @@ TEST(caffeapi,service_train_async_status_delete)
   // create service
   JsonAPI japi;
   std::string sname = "my_service";
-  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  mnist_repo + "\"},\"input\":\"image\"}";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  mnist_repo + "\"},\"parameters\":{\"input\":{\"connector\":\"image\"}}}";
   std::string joutstr = japi.service_create(sname,jstr);
   ASSERT_EQ(created_str,joutstr);
 
@@ -135,7 +135,7 @@ TEST(caffeapi,service_train_async_final_status)
   // create service
   JsonAPI japi;
   std::string sname = "my_service";
-  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  mnist_repo + "\"},\"input\":\"image\"}";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  mnist_repo + "\"},\"parameters\":{\"input\":{\"connector\":\"image\"}}}";
   std::string joutstr = japi.service_create(sname,jstr);
   ASSERT_EQ(created_str,joutstr);
 
@@ -182,3 +182,6 @@ TEST(caffeapi,service_train_async_final_status)
 	}
     }
 }
+
+
+//TODO: predict

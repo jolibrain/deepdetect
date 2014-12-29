@@ -223,7 +223,7 @@ namespace dd
       {
 	// mandatory parameters.
 	mllib = d["mllib"].GetString();
-	input = d["input"].GetString();
+	input = d["parameters"]["input"]["connector"].GetString();
 
 	// optional parameters.
 	if (d.HasMember("type"))

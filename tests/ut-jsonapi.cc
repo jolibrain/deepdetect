@@ -35,7 +35,7 @@ TEST(jsonapi,service_create)
 {
   JsonAPI japi;
   std::string sname = "my_service";
-  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"here/\"},\"input\":\"image\"}";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"here/\"},\"parameters\":{\"input\":{\"connector\":\"image\"}}}";
   std::string joutstr = japi.service_create(sname,jstr);
   ASSERT_EQ(created_str,joutstr);
 
@@ -74,11 +74,10 @@ TEST(jsonapi,service_create)
   // model
   
   // input
-  jd.RemoveMember("input");
+  jd["parameters"].RemoveMember("input");
   jstrt = japi.jrender(jd);
   joutstr = japi.service_create(sname,jstrt);
   ASSERT_EQ(bad_param_str,joutstr);
-  jd.Parse(jstr.c_str());  
 }
 
 TEST(jsonapi,info)
@@ -86,7 +85,7 @@ TEST(jsonapi,info)
   // create service
   JsonAPI japi;
   std::string sname = "my_service";
-  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"here/\"},\"input\":\"image\"}";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"here/\"},\"parameters\":{\"input\":{\"connector\":\"image\"}}}";
   std::string joutstr = japi.service_create(sname,jstr);
   ASSERT_EQ(created_str,joutstr);
 
@@ -114,7 +113,7 @@ TEST(jsonapi,service_delete)
   // create service.
   JsonAPI japi;
   std::string sname = "my_service";
-  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"here/\"},\"input\":\"image\"}";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"here/\"},\"parameters\":{\"input\":{\"connector\":\"image\"}}}";
   std::string joutstr = japi.service_create(sname,jstr);
   ASSERT_EQ(created_str,joutstr);
   
@@ -136,7 +135,7 @@ TEST(jsonapi,service_status)
   // create service.
   JsonAPI japi;
   std::string sname = "my_service";
-  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"here/\"},\"input\":\"image\"}";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"here/\"},\"parameters\":{\"input\":{\"connector\":\"image\"}}}";
   std::string joutstr = japi.service_create(sname,jstr);
   ASSERT_EQ(created_str,joutstr);
 
