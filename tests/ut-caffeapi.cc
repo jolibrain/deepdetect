@@ -60,7 +60,7 @@ TEST(caffeapi,service_train)
   jd.Parse(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
-  ASSERT_EQ(201,jd["status"]["code"]);
+  ASSERT_EQ(201,jd["status"]["code"].GetInt());
   ASSERT_EQ("Created",jd["status"]["msg"]);
   ASSERT_TRUE(jd.HasMember("head"));
   ASSERT_EQ("/train",jd["head"]["method"]);

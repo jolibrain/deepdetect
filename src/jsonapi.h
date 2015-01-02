@@ -56,6 +56,7 @@ namespace dd
     JDoc dd_input_connector_not_found_1004() const;
     JDoc dd_service_input_bad_request_1005() const;
     JDoc dd_service_bad_request_1006() const;
+    JDoc dd_internal_mllib_error_1007(const std::string &what) const;
 
     // JSON rendering
     std::string jrender(const JDoc &jst) const;

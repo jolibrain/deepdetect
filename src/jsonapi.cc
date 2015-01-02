@@ -166,6 +166,14 @@ namespace dd
     return jd;
   }
   
+  JDoc JsonAPI::dd_internal_mllib_error_1007(const std::string &what) const
+  {
+    JDoc jd;
+    jd.SetObject();
+    render_status(jd,500,"InternalError",1007,what);
+    return jd;
+  }
+
   std::string JsonAPI::jrender(const JDoc &jst) const
   {
     rapidjson::StringBuffer buffer;
@@ -329,9 +337,9 @@ namespace dd
       {
 	return jrender(dd_internal_error_500());
       }
-    catch (...)
+    catch (std::exception &e)
       {
-	return jrender(dd_internal_error_500());
+	return jrender(dd_internal_mllib_error_1007(e.what()));
       }
     JDoc jpred = dd_ok_200();
     JVal jout(rapidjson::kObjectType);
@@ -395,9 +403,9 @@ namespace dd
       {
 	return jrender(dd_internal_error_500());
       }
-    catch (...)
+    catch (std::exception &e)
       {
-	return jrender(dd_internal_error_500());
+	return jrender(dd_internal_mllib_error_1007(e.what()));
       }
     JDoc jtrain = dd_created_201();
     JVal jhead(rapidjson::kObjectType);
