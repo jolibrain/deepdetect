@@ -104,6 +104,9 @@ namespace dd
 	  {
 	    int status = this->train(ad,out);
 	    out.add("loss",this->_loss.load());
+	    APIData ad_params_out = ad.getobj("parameters").getobj("output");
+	    if (ad_params_out.has("loss_hist") && ad_params_out.get("loss_hist").get<bool>())
+	      out.add("loss_hist",this->_loss_per_iter);
 	    return status;
 	  }
     }
@@ -114,6 +117,7 @@ namespace dd
       int secs = 0;
       if (ad.has("timeout"))
 	secs = static_cast<int>(ad.get("timeout").get<double>());
+      APIData ad_params_out = ad.getobj("parameters").getobj("output");
       std::lock_guard<std::mutex> lock(_tjobs_mutex);
       std::unordered_map<int,tjob>::iterator hit;
       if ((hit=_training_jobs.find(j))!=_training_jobs.end())
@@ -125,6 +129,8 @@ namespace dd
 	      out.add("loss",this->_loss.load());
 	      std::chrono::time_point<std::chrono::system_clock> trun = std::chrono::system_clock::now();
 	      out.add("time",std::chrono::duration_cast<std::chrono::seconds>(trun-(*hit).second._tstart).count());
+	      if (ad_params_out.has("loss_hist") && ad_params_out.get("loss_hist").get<bool>())
+		out.add("loss_hist",this->_loss_per_iter);
 	    }
 	  else if (status == std::future_status::ready)
 	    {
@@ -135,6 +141,8 @@ namespace dd
 	      out.add("loss",this->_loss.load()); // XXX: beware if there was a queue, since the job has finished, there might be a new one running.
 	      std::chrono::time_point<std::chrono::system_clock> trun = std::chrono::system_clock::now();
 	      out.add("time",std::chrono::duration_cast<std::chrono::seconds>(trun-(*hit).second._tstart).count());
+	      if (ad.has("loss_hist") && ad.get("loss_hist").get<bool>())
+		out.add("loss_hist",this->_loss_per_iter);
 	      _training_jobs.erase(hit);
 	    }
 	  return 0;
