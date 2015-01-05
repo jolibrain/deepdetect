@@ -35,9 +35,9 @@ static std::string not_found_str = "{\"status\":{\"code\":404,\"msg\":\"NotFound
 
 static std::string mnist_repo = "../examples/caffe/mnist/";
 
-TEST(caffeapi,service_train)
+/*TEST(caffeapi,service_train)
 {
-  ::google::InitGoogleLogging("ut_caffeapi");
+::google::InitGoogleLogging("ut_caffeapi");*/
   /*char current_path[FILENAME_MAX]; // FILENAME_MAX in stdio.h
   if (!getcwd(current_path, sizeof(current_path)))
     {
@@ -46,7 +46,7 @@ TEST(caffeapi,service_train)
     std::cout << current_path << std::endl;*/
 
   // create service
-  JsonAPI japi;
+  /*  JsonAPI japi;
   std::string sname = "my_service";
   std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  mnist_repo + "\"},\"parameters\":{\"input\":{\"connector\":\"image\"}}}";
   std::string joutstr = japi.service_create(sname,jstr);
@@ -68,9 +68,9 @@ TEST(caffeapi,service_train)
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"].HasMember("loss"));
   ASSERT_TRUE(jd["body"]["loss"].GetDouble() > 0);
-}
+}*/
 
-TEST(caffeapi,service_train_async_status_delete)
+/*TEST(caffeapi,service_train_async_status_delete)
 {
   // create service
   JsonAPI japi;
@@ -181,7 +181,50 @@ TEST(caffeapi,service_train_async_final_status)
 	  ASSERT_TRUE(jd2["body"]["loss"].GetDouble() > 0);
 	}
     }
+    } */
+
+TEST(caffeapi,service_predict)
+{
+  // create service
+  JsonAPI japi;
+  std::string sname = "my_service";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  mnist_repo + "\"},\"parameters\":{\"input\":{\"connector\":\"image\"}}}";
+  std::string joutstr = japi.service_create(sname,jstr);
+  ASSERT_EQ(created_str,joutstr);
+
+  // train
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"mllib\":{\"solver\":{\"iterations\":200,\"snapshot\":200,\"snapshot_prefix\":\"" + mnist_repo + "/mylenet\"}}}}";
+  joutstr = japi.service_train(jtrainstr);
+  std::cout << "joutstr=" << joutstr << std::endl;
+  JDoc jd;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_TRUE(jd.HasMember("status"));
+  ASSERT_EQ(201,jd["status"]["code"].GetInt());
+  ASSERT_EQ("Created",jd["status"]["msg"]);
+  ASSERT_TRUE(jd.HasMember("head"));
+  ASSERT_EQ("/train",jd["head"]["method"]);
+  ASSERT_TRUE(jd["head"]["time"].GetDouble() > 0);
+  ASSERT_TRUE(jd.HasMember("body"));
+  ASSERT_TRUE(jd["body"].HasMember("loss"));
+  ASSERT_TRUE(jd["body"]["loss"].GetDouble() > 0);
+
+  // predict
+  std::string jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"bw\":true}},\"data\":[\"" + mnist_repo + "/sample_digit.png\"]}";
+  joutstr = japi.service_predict(jpredictstr);
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(500,jd["status"]["code"]);
+  ASSERT_EQ(1007,jd["status"]["dd_code"]);
+  
+  // predict with image size (could be set at service creation)
+  jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"bw\":true,\"width\":28,\"height\":28}},\"data\":[\"" + mnist_repo + "/sample_digit.png\",\"" + mnist_repo + "/sample_digit2.png\"]}";
+  joutstr = japi.service_predict(jpredictstr);
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200,jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble() > 0);
+  ASSERT_TRUE(jd["body"]["predictions"][1]["classes"][0]["prob"].GetDouble() > 0);
 }
-
-
-//TODO: predict

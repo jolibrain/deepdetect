@@ -91,7 +91,6 @@ namespace dd
 	  /*cv::namedWindow( "Display window", cv::WINDOW_AUTOSIZE );
 	    cv::imshow( "Display window", imaget);
 	    cv::waitKey(0);*/
-	  //cv::Size size(227,227);
 	  cv::Size size(width,height);
 	  cv::Mat image;
 	  cv::resize(imaget,image,size);

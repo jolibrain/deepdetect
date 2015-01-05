@@ -51,7 +51,6 @@ namespace dd
     std::string _weights; /**< file name of the network's weights. */
     std::string _corresp; /**< file name of the class correspondences (e.g. house / 23) */
     std::unordered_map<int,std::string> _hcorresp; /**< table of class correspondences. */
-    std::string _snapshot; /**< model snapshot file, used for resuming / finetuning an existing model. */
     std::string _solver; /**< solver description file, included here as part of the model, very specific to Caffe. */
     std::string _sstate; /**< current solver state, useful for resuming training. */
   };

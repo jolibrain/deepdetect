@@ -107,6 +107,16 @@ namespace dd
 	    int max_iter = static_cast<int>(ad_solver.get("iterations").get<double>());
 	    solver_param.set_max_iter(max_iter);
 	  }
+	if (ad_solver.has("snapshot")) // iterations between snapshots
+	  {
+	    int snapshot = static_cast<int>(ad_solver.get("snapshot").get<double>());
+	    solver_param.set_snapshot(snapshot);
+	  }
+	if (ad_solver.has("snapshot_prefix"))
+	  {
+	    std::string snapshot_prefix = ad_solver.get("snapshot_prefix").get<std::string>();
+	    solver_param.set_snapshot_prefix(snapshot_prefix);
+	  }
 	//TODO: add support for more parameters
       }
     
@@ -123,17 +133,19 @@ namespace dd
 	  {
 	    solver->net()->CopyTrainedLayersFrom(this->_mlmodel._weights);
 	    solver->Solve();
+	    float loss = 0.0;
+	    solver->net()->ForwardPrefilled(&loss);
+	    this->_loss.store(loss);
 	  }
 	else 
 	  {
 	    LOG(INFO) << "Optimizing model";
 	    solver->Solve();
+	    float loss = 0.0;
+	    solver->net()->ForwardPrefilled(&loss);
+	    this->_loss.store(loss);
 	    /*delete _net;
 	      _net = solver->net().get();*/ // setting up the new model
-	    std::vector<Blob<float>*> bottom_vec; // dummy
-	    float lloss = 0.0;
-	    solver->net()->Forward(bottom_vec,&lloss);
-	    this->_loss.store(lloss);
 	  }
       }
     else
@@ -192,8 +204,13 @@ namespace dd
 	// always save final snapshot.
 	if (solver->param_.snapshot_after_train())
 	  solver->Snapshot();
-      }    
-    //TODO: output connector ?
+      }
+    if (_net)
+      delete _net;
+    this->_mlmodel.read_from_repository(this->_mlmodel._repo);
+    if (create_model())
+      throw MLLibBadParamException("no model in " + this->_mlmodel._repo + " for initializing net");
+    //_net = solver->net_.get();//().get(); // setting up the new model
     return 0;
   }
 
@@ -201,14 +218,6 @@ namespace dd
   int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::predict(const APIData &ad,
 										   APIData &out)
   {
-    if (!_net)
-      {
-	// re-read service's model repository in case there's a model now
-	this->_mlmodel.read_from_repository(this->_mlmodel._repo);
-	// create the net if there's a model, otherwise, get out with bad param error.
-	if (!create_model())
-	  throw MLLibBadParamException("no model in " + this->_mlmodel._repo + " for initializing net");
-      }
     TInputConnectorStrategy inputc(this->_inputc);
     inputc.transform(ad); //TODO: catch errors ?
     Datum datum;
