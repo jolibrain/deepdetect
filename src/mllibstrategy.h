@@ -25,6 +25,7 @@
 #include "apidata.h"
 #include <atomic>
 #include <exception>
+#include <mutex>
 
 namespace dd
 {
@@ -67,6 +68,18 @@ namespace dd
     int predict(const APIData &ad, APIData &out);
     int status() const;
     
+    void clear_loss_per_iter()
+    {
+      std::lock_guard<std::mutex> lock(_loss_per_iter_mutex);
+      _loss_per_iter.clear();
+    }
+
+    void add_loss_per_iter(const double &l)
+    {
+      std::lock_guard<std::mutex> lock(_loss_per_iter_mutex);
+      _loss_per_iter.push_back(l);
+    }
+
     TInputConnectorStrategy _inputc;
     TOutputConnectorStrategy _outputc;
 
@@ -76,7 +89,9 @@ namespace dd
     TMLModel _mlmodel;
     std::string _libname; /**< ml lib name. */
     
-    std::atomic<float> _loss = 0.0; /**< model loss, used as a per service value. */
+    std::atomic<double> _loss = 0.0; /**< model loss, used as a per service value. */
+    std::vector<double> _loss_per_iter; /**< model loss per iteration. */
+    std::mutex _loss_per_iter_mutex;
     std::atomic<bool> _tjob_running = false; /**< whether a training job is running with this lib instance. */
   };  
   

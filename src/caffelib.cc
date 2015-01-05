@@ -86,7 +86,6 @@ namespace dd
   int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::train(const APIData &ad,
 										 APIData &out)
   {
-    static std::string snapshotf = "snapshot";
     if (this->_mlmodel._solver.empty())
       {
 	LOG(ERROR) << "missing solver file";
@@ -123,94 +122,73 @@ namespace dd
     // optimize
     this->_tjob_running = true;
     caffe::Solver<float> *solver = caffe::GetSolver<float>(solver_param);
-    bool async = !ad.has("async") ? false : ad.get("async").get<bool>();
-    if (!async)
+    if (!this->_mlmodel._weights.empty())
       {
-	std::string snapshot_file = ad.get(snapshotf).get<std::string>();
-	if (!snapshot_file.empty())
-	  solver->Solve(snapshot_file);
-	else if (!this->_mlmodel._weights.empty())
+	solver->net()->CopyTrainedLayersFrom(this->_mlmodel._weights);
+      }
+    Caffe::set_phase(Caffe::TRAIN);
+    solver->PreSolve();
+    
+    std::string snapshot_file = ad.get("snapshot_file").get<std::string>();
+    if (!snapshot_file.empty())
+      solver->Restore(snapshot_file.c_str());
+    
+    
+    solver->iter_ = 0;
+    solver->current_step_ = 0;
+    
+    const int start_iter = solver->iter_;
+    int average_loss = solver->param_.average_loss();
+    std::vector<float> losses;
+    this->clear_loss_per_iter();
+    float smoothed_loss = 0.0;
+    std::vector<Blob<float>*> bottom_vec;
+    while(solver->iter_ < solver->param_.max_iter()
+	  && this->_tjob_running.load())
+      {
+	// Save a snapshot if needed.
+	if (solver->param_.snapshot() && solver->iter_ > start_iter &&
+	    solver->iter_ % solver->param_.snapshot() == 0) {
+	  solver->Snapshot();
+	}
+	if (solver->param_.test_interval() && solver->iter_ % solver->param_.test_interval() == 0
+	    && (solver->iter_ > 0 || solver->param_.test_initialization())) 
 	  {
-	    solver->net()->CopyTrainedLayersFrom(this->_mlmodel._weights);
-	    solver->Solve();
-	    float loss = 0.0;
-	    solver->net()->ForwardPrefilled(&loss);
-	    this->_loss.store(loss);
+	    solver->TestAll();
 	  }
+	float loss = solver->net_->ForwardBackward(bottom_vec);
+	if (static_cast<int>(losses.size()) < average_loss) 
+	  {
+	    losses.push_back(loss);
+	    int size = losses.size();
+	    smoothed_loss = (smoothed_loss * (size - 1) + loss) / size;
+	  } 
 	else 
 	  {
-	    LOG(INFO) << "Optimizing model";
-	    solver->Solve();
-	    float loss = 0.0;
-	    solver->net()->ForwardPrefilled(&loss);
-	    this->_loss.store(loss);
-	    /*delete _net;
-	      _net = solver->net().get();*/ // setting up the new model
+	    int idx = (solver->iter_ - start_iter) % average_loss;
+	    smoothed_loss += (loss - losses[idx]) / average_loss;
+	    losses[idx] = loss;
 	  }
-      }
-    else
-      {
-	Caffe::set_phase(Caffe::TRAIN);
-	solver->PreSolve();
+	this->_loss.store(smoothed_loss);
 	
-	solver->iter_ = 0;
-	solver->current_step_ = 0;
-	//TODO: resume file from ad
-	/*if (resume_file) {
-	  LOG(INFO) << "Restoring previous solver status from " << resume_file;
-	  Restore(resume_file);
-	  }*/
+	if (solver->param_.test_interval() && solver->iter_ % solver->param_.test_interval() == 0)
+	  this->add_loss_per_iter(loss); // to avoid filling up with possibly millions of entries...
 	
-	const int start_iter = solver->iter_;
-	int average_loss = solver->param_.average_loss();
-	std::vector<float> losses;
-	float smoothed_loss = 0.0;
-	std::vector<Blob<float>*> bottom_vec;
-	while(solver->iter_ < solver->param_.max_iter()
-	      && this->_tjob_running.load())
-	  {
-	    // Save a snapshot if needed.
-	    if (solver->param_.snapshot() && solver->iter_ > start_iter &&
-		solver->iter_ % solver->param_.snapshot() == 0) {
-	      solver->Snapshot();
-	    }
-	    if (solver->param_.test_interval() && solver->iter_ % solver->param_.test_interval() == 0
-		&& (solver->iter_ > 0 || solver->param_.test_initialization())) 
-	      {
-		solver->TestAll();
-	      }
-	    float loss = solver->net_->ForwardBackward(bottom_vec);
-	    if (static_cast<int>(losses.size()) < average_loss) 
-	      {
-		losses.push_back(loss);
-		int size = losses.size();
-		smoothed_loss = (smoothed_loss * (size - 1) + loss) / size;
-	    } 
-	    else 
-	      {
-		int idx = (solver->iter_ - start_iter) % average_loss;
-		smoothed_loss += (loss - losses[idx]) / average_loss;
-		losses[idx] = loss;
-	      }
-	    this->_loss.store(smoothed_loss);
-
-	    //std::cout << "loss=" << this->_loss << std::endl;
-	    
-	    solver->ComputeUpdateValue();
-	    solver->net_->Update();
-	  
-	    solver->iter_++;
-	  }
-	// always save final snapshot.
-	if (solver->param_.snapshot_after_train())
-	  solver->Snapshot();
+	//std::cout << "loss=" << this->_loss << std::endl;
+	
+	solver->ComputeUpdateValue();
+	solver->net_->Update();
+	
+	solver->iter_++;
       }
+    // always save final snapshot.
+    if (solver->param_.snapshot_after_train())
+      solver->Snapshot();
     if (_net)
       delete _net;
     this->_mlmodel.read_from_repository(this->_mlmodel._repo);
     if (create_model())
       throw MLLibBadParamException("no model in " + this->_mlmodel._repo + " for initializing net");
-    //_net = solver->net_.get();//().get(); // setting up the new model
     return 0;
   }
 

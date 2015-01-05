@@ -35,9 +35,9 @@ static std::string not_found_str = "{\"status\":{\"code\":404,\"msg\":\"NotFound
 
 static std::string mnist_repo = "../examples/caffe/mnist/";
 
-/*TEST(caffeapi,service_train)
+TEST(caffeapi,service_train)
 {
-::google::InitGoogleLogging("ut_caffeapi");*/
+::google::InitGoogleLogging("ut_caffeapi");
   /*char current_path[FILENAME_MAX]; // FILENAME_MAX in stdio.h
   if (!getcwd(current_path, sizeof(current_path)))
     {
@@ -46,7 +46,7 @@ static std::string mnist_repo = "../examples/caffe/mnist/";
     std::cout << current_path << std::endl;*/
 
   // create service
-  /*  JsonAPI japi;
+  JsonAPI japi;
   std::string sname = "my_service";
   std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  mnist_repo + "\"},\"parameters\":{\"input\":{\"connector\":\"image\"}}}";
   std::string joutstr = japi.service_create(sname,jstr);
@@ -68,9 +68,9 @@ static std::string mnist_repo = "../examples/caffe/mnist/";
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"].HasMember("loss"));
   ASSERT_TRUE(jd["body"]["loss"].GetDouble() > 0);
-}*/
+}
 
-/*TEST(caffeapi,service_train_async_status_delete)
+TEST(caffeapi,service_train_async_status_delete)
 {
   // create service
   JsonAPI japi;
@@ -181,7 +181,7 @@ TEST(caffeapi,service_train_async_final_status)
 	  ASSERT_TRUE(jd2["body"]["loss"].GetDouble() > 0);
 	}
     }
-    } */
+}
 
 TEST(caffeapi,service_predict)
 {
@@ -193,7 +193,7 @@ TEST(caffeapi,service_predict)
   ASSERT_EQ(created_str,joutstr);
 
   // train
-  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"mllib\":{\"solver\":{\"iterations\":200,\"snapshot\":200,\"snapshot_prefix\":\"" + mnist_repo + "/mylenet\"}}}}";
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"mllib\":{\"solver\":{\"iterations\":200,\"snapshot\":200,\"snapshot_prefix\":\"" + mnist_repo + "/mylenet\"}},\"output\":{\"loss_hist\":true}}}";
   joutstr = japi.service_train(jtrainstr);
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
@@ -208,6 +208,7 @@ TEST(caffeapi,service_predict)
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"].HasMember("loss"));
   ASSERT_TRUE(jd["body"]["loss"].GetDouble() > 0);
+  ASSERT_TRUE(jd["body"]["loss_hist"].Size() > 0);
 
   // predict
   std::string jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"bw\":true}},\"data\":[\"" + mnist_repo + "/sample_digit.png\"]}";
