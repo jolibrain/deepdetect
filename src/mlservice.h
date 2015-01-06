@@ -67,6 +67,7 @@ namespace dd
     void init(const APIData &ad)
     {
       this->_inputc.init(ad.getobj("parameters").getobj("input"));
+      this->_outputc.init(ad.getobj("parameters").getobj("output"));
     }
 
     APIData info() const

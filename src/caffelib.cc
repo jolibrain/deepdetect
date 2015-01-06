@@ -218,7 +218,7 @@ namespace dd
       delete _net;
     this->_mlmodel.read_from_repository(this->_mlmodel._repo);
     if (create_model())
-      throw MLLibBadParamException("no model in " + this->_mlmodel._repo + " for initializing net");
+      throw MLLibInternalException("no model in " + this->_mlmodel._repo + " for initializing net");
     return 0;
   }
 
@@ -260,8 +260,8 @@ namespace dd
 	    tout.add_cat(inputc._uris.at(j),results[slot]->cpu_data()[j*scperel+i],this->_mlmodel.get_hcorresp(i));
 	  }
       }
-    TOutputConnectorStrategy btout;
-    tout.best_cats(5,btout); //TODO: use output parameter for best cat
+    TOutputConnectorStrategy btout(this->_outputc);
+    tout.best_cats(ad,btout); //TODO: use output parameter for best cat
     btout.to_ad(out);
     out.add("status",0);
     

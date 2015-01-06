@@ -35,6 +35,9 @@ namespace dd
     ~OutputConnectorStrategy() {}
 
     int transform() { return 1; }
+    void init(const APIData &ad);
+
+    //TODO: output templating.
   };
 
   class NoOutputConn : public OutputConnectorStrategy
@@ -67,7 +70,18 @@ namespace dd
       :OutputConnectorStrategy()
       {
       }
+    SupervisedOutput(const SupervisedOutput &sout)
+      :OutputConnectorStrategy(),_best(sout._best)
+      {
+      }
     ~SupervisedOutput() {}
+
+    void init(const APIData &ad)
+    {
+      APIData ad_out = ad.getobj("parameters").getobj("output");
+      if (ad_out.has("best"))
+	_best = static_cast<int>(ad_out.get("best").get<double>());
+    }
 
     inline void add_result(const std::string &uri, const double &loss)
     {
@@ -85,13 +99,17 @@ namespace dd
       // XXX: else error ?
     }
 
-    void best_cats(const int &num, SupervisedOutput &bcats) const
+    void best_cats(const APIData &ad, SupervisedOutput &bcats) const
     {
+      int best = _best;
+      APIData ad_out = ad.getobj("parameters").getobj("output");
+      if (ad_out.has("best"))
+	best = static_cast<int>(ad_out.get("best").get<double>());
       auto hit = _vcats.begin();
       while(hit!=_vcats.end())
 	{
 	  sup_result bsresult((*hit).second._loss);
-	  std::copy_n((*hit).second._cats.begin(),std::min(num,static_cast<int>((*hit).second._cats.size())),
+	  std::copy_n((*hit).second._cats.begin(),std::min(best,static_cast<int>((*hit).second._cats.size())),
 		      std::inserter(bsresult._cats,bsresult._cats.end()));
 	  bcats._vcats.insert(std::pair<std::string,sup_result>((*hit).first,bsresult));
 	  ++hit;
@@ -155,6 +173,9 @@ namespace dd
     }
     
     std::unordered_map<std::string,sup_result> _vcats; /** batch of results, per uri. */
+    
+    // options
+    int _best = 1;
   };
   
 }
