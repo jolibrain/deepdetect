@@ -117,6 +117,36 @@ namespace dd
 	    solver_param.set_snapshot_prefix(snapshot_prefix);
 	  }
 	//TODO: add support for more parameters
+	if (ad_solver.has("solver_type"))
+	  {
+	    std::string solver_type = ad_solver.get("solver_type").get<std::string>();
+	    if (strcasecmp(solver_type.c_str(),"SGD"))
+	      solver_param.set_solver_type(caffe::SolverParameter_SolverType_SGD);
+	    else if (strcasecmp(solver_type.c_str(),"ADAGRAD"))
+	      solver_param.set_solver_type(caffe::SolverParameter_SolverType_ADAGRAD);
+	    else if (strcasecmp(solver_type.c_str(),"NESTEROV"))
+	      solver_param.set_solver_type(caffe::SolverParameter_SolverType_NESTEROV);
+	  }
+	else if (ad_solver.has("test_iter"))
+	  solver_param.set_test_iter(0,static_cast<int>(ad_solver.get("test_iter").get<double>())); // XXX: 0 might not always be the correct index here.
+	else if (ad_solver.has("test_interval"))
+	  solver_param.set_test_interval(static_cast<int>(ad_solver.get("test_interval").get<double>()));
+	else if (ad_solver.has("test_initialization"))
+	  solver_param.set_test_initialization(ad_solver.get("test_initialization").get<bool>());
+	else if (ad_solver.has("lr_policy"))
+	  solver_param.set_lr_policy(ad_solver.get("lr_policy").get<std::string>());
+	else if (ad_solver.has("base_lr"))
+	  solver_param.set_base_lr(ad_solver.get("base_lr").get<float>());
+	else if (ad_solver.has("gamma"))
+	  solver_param.set_gamma(ad_solver.get("gamma").get<float>());
+	else if (ad_solver.has("step_size"))
+	  solver_param.set_stepsize(static_cast<int>(ad_solver.get("stepsize").get<double>()));
+	else if (ad_solver.has("max_iter"))
+	  solver_param.set_max_iter(static_cast<int>(ad_solver.get("max_iter").get<double>()));
+	else if (ad_solver.has("momentum"))
+	  solver_param.set_momentum(ad_solver.get("momentum").get<double>());
+	else if (ad_solver.has("power"))
+	  solver_param.set_power(ad_solver.get("power").get<double>());
       }
     
     // optimize
@@ -231,7 +261,7 @@ namespace dd
 	  }
       }
     TOutputConnectorStrategy btout;
-    tout.best_cats(5,btout);
+    tout.best_cats(5,btout); //TODO: use output parameter for best cat
     btout.to_ad(out);
     out.add("status",0);
     
