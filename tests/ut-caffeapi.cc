@@ -220,7 +220,7 @@ TEST(caffeapi,service_predict)
   ASSERT_EQ(1007,jd["status"]["dd_code"]);
   
   // predict with image size (could be set at service creation)
-  jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"bw\":true,\"width\":28,\"height\":28}},\"data\":[\"" + mnist_repo + "/sample_digit.png\",\"" + mnist_repo + "/sample_digit2.png\"]}";
+  jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"bw\":true,\"width\":28,\"height\":28},\"output\":{\"best\":3}},\"data\":[\"" + mnist_repo + "/sample_digit.png\",\"" + mnist_repo + "/sample_digit2.png\"]}";
   joutstr = japi.service_predict(jpredictstr);
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse(joutstr.c_str());

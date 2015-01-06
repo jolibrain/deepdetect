@@ -111,7 +111,7 @@ namespace dd
 	    int snapshot = static_cast<int>(ad_solver.get("snapshot").get<double>());
 	    solver_param.set_snapshot(snapshot);
 	  }
-	if (ad_solver.has("snapshot_prefix"))
+	if (ad_solver.has("snapshot_prefix")) // overrides default internal dd prefix which is model repo
 	  {
 	    std::string snapshot_prefix = ad_solver.get("snapshot_prefix").get<std::string>();
 	    solver_param.set_snapshot_prefix(snapshot_prefix);
@@ -273,6 +273,10 @@ namespace dd
   {
     // fix net model path.
     sp.set_net(this->_mlmodel._repo + "/" + sp.net());
+    
+    // fix net snapshot path.
+    sp.set_snapshot_prefix(this->_mlmodel._repo + "/model");
+    
     // fix source paths in the model.
     caffe::NetParameter *np = sp.mutable_net_param();
     caffe::ReadProtoFromTextFile(sp.net().c_str(),np); //TODO: error on read + use internal caffe ReadOrDie procedure
