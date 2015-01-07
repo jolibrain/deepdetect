@@ -59,7 +59,7 @@ namespace dd
 	    APIData model_ad;
 	    model_ad.add("repository",FLAGS_model_repo);
 	    CaffeModel cmodel(model_ad);
-	    add_service(FLAGS_service,std::move(MLService<CaffeLib,ImgInputFileConn,SupervisedOutput,CaffeModel>(FLAGS_service,cmodel)));
+	    add_service(FLAGS_service,std::move(MLService<CaffeLib,ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(FLAGS_service,cmodel)));
 	  }
 	if (!FLAGS_imgfname.empty())
 	  {
@@ -87,7 +87,7 @@ namespace dd
 	    APIData model_ad;
 	    model_ad.add("repository",FLAGS_model_repo);
 	    CaffeModel cmodel(model_ad);
-	    add_service(FLAGS_service,std::move(MLService<CaffeLib,ImgInputFileConn,SupervisedOutput,CaffeModel>(FLAGS_service,cmodel)));
+	    add_service(FLAGS_service,std::move(MLService<CaffeLib,ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(FLAGS_service,cmodel)));
 	    APIData ad, out;
 	    train(ad,0,out);
 	    std::string tpl = "status={{status}}\n";

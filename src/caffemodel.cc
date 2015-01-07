@@ -71,7 +71,7 @@ namespace dd
     static std::string deploy = "deploy.prototxt";
     static std::string weights = ".caffemodel";
     static std::string sstate = ".solverstate";
-    static std::string corresp = "corresp.txt";
+    static std::string corresp = "corresp";
     static std::string solver = "solver";
     _repo = repo;
     std::unordered_set<std::string> lfiles;
@@ -88,6 +88,8 @@ namespace dd
 	  sstatef = (*hit);
 	else if ((*hit).find(weights)!=std::string::npos)
 	  weightsf = (*hit);
+	else if ((*hit).find(corresp)!=std::string::npos)
+	  correspf = (*hit);
 	else if ((*hit).find("~")!=std::string::npos 
 	    || (*hit).find(".prototxt")==std::string::npos)
 	  {
@@ -96,8 +98,6 @@ namespace dd
 	  }
 	else if ((*hit).find(deploy)!=std::string::npos)
 	  deployf = (*hit);
-	else if ((*hit).find(corresp)!=std::string::npos)
-	  correspf = (*hit);
 	else if ((*hit).find(solver)!=std::string::npos)
 	  solverf = (*hit);
 	++hit;

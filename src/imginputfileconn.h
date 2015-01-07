@@ -109,4 +109,7 @@ namespace dd
   };
 }
 
+#define CPU_ONLY // TODO: elsewhere
+#include "caffeinputconns.h"
+
 #endif
