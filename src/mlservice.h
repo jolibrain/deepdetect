@@ -114,10 +114,10 @@ namespace dd
 
     int training_job_status(const APIData &ad, APIData &out)
     {
-      int j = static_cast<int>(ad.get("job").get<double>());
+      int j = ad.get("job").get<int>();
       int secs = 0;
       if (ad.has("timeout"))
-	secs = static_cast<int>(ad.get("timeout").get<double>());
+	secs = ad.get("timeout").get<int>();
       APIData ad_params_out = ad.getobj("parameters").getobj("output");
       std::lock_guard<std::mutex> lock(_tjobs_mutex);
       std::unordered_map<int,tjob>::iterator hit;
@@ -156,7 +156,7 @@ namespace dd
 
     int training_job_delete(const APIData &ad, APIData &out)
     {
-      int j = static_cast<int>(ad.get("job").get<double>());
+      int j = ad.get("job").get<int>();
       std::lock_guard<std::mutex> lock(_tjobs_mutex);
       std::unordered_map<int,tjob>::iterator hit;
       if ((hit=_training_jobs.find(j))!=_training_jobs.end())

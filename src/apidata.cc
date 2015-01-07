@@ -33,6 +33,11 @@ namespace dd
   {
     return vout();
   }
+
+  vout visitor_vad::process(const int &i)
+  {
+    return vout();
+  }
   
   vout visitor_vad::process(const bool &b)
   {
@@ -40,6 +45,11 @@ namespace dd
   }
   
   vout visitor_vad::process(const std::vector<double> &vd)
+  {
+    return vout();
+  }
+  
+  vout visitor_vad::process(const std::vector<int> &vd)
   {
     return vout();
   }
@@ -88,15 +98,21 @@ namespace dd
 	    const JVal &jarr = jval[cit->name.GetString()];
 	    if (jarr.Size() != 0)
 	      {
-		if (jarr[0].IsNumber())
+		if (jarr[0].IsDouble())
 		  {
 		    std::vector<double> vd;
 		    for (rapidjson::SizeType i=0;i<jarr.Size();i++)
 		      {
-			if (jarr[i].IsDouble())
-			  vd.push_back(jarr[i].GetDouble());
-			else if (jarr[i].IsInt())
-			  vd.push_back(static_cast<double>(jarr[i].GetInt()));
+			vd.push_back(jarr[i].GetDouble());
+		      }
+		    add(cit->name.GetString(),vd);
+		  }
+		if (jarr[0].IsInt())
+		  {
+		    std::vector<int> vd;
+		    for (rapidjson::SizeType i=0;i<jarr.Size();i++)
+		      {
+			vd.push_back(jarr[i].GetInt());
 		      }
 		    add(cit->name.GetString(),vd);
 		  }
@@ -124,9 +140,13 @@ namespace dd
 	  {
 	    add(cit->name.GetString(),cit->value.GetString());
 	  }
-	else if (cit->value.IsNumber())
+	else if (cit->value.IsDouble())
 	  {
 	    add(cit->name.GetString(),cit->value.GetDouble());
+	  }
+	else if (cit->value.IsInt())
+	  {
+	    add(cit->name.GetString(),cit->value.GetInt());
 	  }
       }
   }

@@ -48,9 +48,9 @@ namespace dd
     {
       // optional parameters.
       if (ad.has("width"))
-	width = static_cast<int>(ad.get("width").get<double>());
+	width = ad.get("width").get<int>();
       if (ad.has("height"))
-	height = static_cast<int>(ad.get("height").get<double>());
+	height = ad.get("height").get<int>();
       if (ad.has("bw"))
 	_bw = ad.get("bw").get<bool>();
     }

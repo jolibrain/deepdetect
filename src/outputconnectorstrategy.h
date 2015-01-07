@@ -80,7 +80,7 @@ namespace dd
     {
       APIData ad_out = ad.getobj("parameters").getobj("output");
       if (ad_out.has("best"))
-	_best = static_cast<int>(ad_out.get("best").get<double>());
+	_best = ad_out.get("best").get<int>();
     }
 
     inline void add_result(const std::string &uri, const double &loss)
@@ -104,7 +104,7 @@ namespace dd
       int best = _best;
       APIData ad_out = ad.getobj("parameters").getobj("output");
       if (ad_out.has("best"))
-	best = static_cast<int>(ad_out.get("best").get<double>());
+	best = ad_out.get("best").get<int>();
       auto hit = _vcats.begin();
       while(hit!=_vcats.end())
 	{

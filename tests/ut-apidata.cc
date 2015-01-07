@@ -61,6 +61,7 @@ TEST(apidata,to_from_json)
   APIData ad;
   ad.add("string","string");
   ad.add("double",2.3);
+  ad.add("int",3);
   ad.add("bool",true);
   std::vector<double> vd = {1.1,2.2,3.3};
   ad.add("vdouble",vd);
@@ -82,6 +83,7 @@ TEST(apidata,to_from_json)
   std::cout << jrstr << std::endl;
   ASSERT_TRUE(jd["string"].GetString()==std::string("string"));
   ASSERT_EQ(2.3,jd["double"]);
+  ASSERT_EQ(3,jd["int"]);
   ASSERT_EQ(true,jd["bool"]);
   ASSERT_TRUE(jd["vdouble"].IsArray());
   ASSERT_EQ(1.1,jd["vdouble"][0]);
@@ -107,6 +109,7 @@ TEST(apidata,to_from_json)
   nad.toJDoc(njd);
   ASSERT_TRUE(njd["string"].GetString()==std::string("string"));
   ASSERT_EQ(2.3,njd["double"]);
+  ASSERT_EQ(3,njd["int"]);
   ASSERT_EQ(true,njd["bool"]);
   ASSERT_TRUE(njd["vdouble"].IsArray());
   ASSERT_EQ(1.1,njd["vdouble"][0]);

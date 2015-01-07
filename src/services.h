@@ -152,10 +152,33 @@ namespace dd
 		     const APIData &ad=APIData()) 
     {
       visitor_init vi(ad);
-      mapbox::util::apply_visitor(vi,mls);
-      std::lock_guard<std::mutex> lock(_mlservices_mtx);
-      _mlservices.push_back(std::move(mls));
-      _mlservidx.insert(std::pair<std::string,int>(sname,_mlservices.size()-1));
+      try
+	{
+	  mapbox::util::apply_visitor(vi,mls);
+	  std::lock_guard<std::mutex> lock(_mlservices_mtx);
+	  _mlservices.push_back(std::move(mls));
+	  _mlservidx.insert(std::pair<std::string,int>(sname,_mlservices.size()-1));
+	}
+      catch (InputConnectorBadParamException &e)
+	{
+	  LOG(ERROR) << "service creation input connector bad param: " << e.what() << std::endl;
+	  throw;
+	}
+      catch (MLLibBadParamException &e)
+	{
+	  LOG(ERROR) << "service creation mllib bad param: " << e.what() << std::endl;
+	  throw;
+	}
+      catch (MLLibInternalException &e)
+	{
+	  LOG(ERROR) << "service creation mllib internal error: " << e.what() << std::endl;
+	  throw;
+	}
+      catch(...)
+	{
+	  LOG(ERROR) << "service creation call failed\n";
+	  throw;
+	}
     }
 
     bool remove_service(const std::string &sname)

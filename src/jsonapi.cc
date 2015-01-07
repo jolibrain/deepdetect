@@ -249,18 +249,40 @@ namespace dd
       }
         
     // create service.
-    if (mllib == "caffe")
+    try
       {
-	CaffeModel cmodel(ad_model);
-	if (input == "image")
-	  add_service(sname,std::move(MLService<CaffeLib,ImgInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
-	else return jrender(dd_input_connector_not_found_1004());
+	if (mllib == "caffe")
+	  {
+	    CaffeModel cmodel(ad_model);
+	    if (input == "image")
+	      add_service(sname,std::move(MLService<CaffeLib,ImgInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
+	    else return jrender(dd_input_connector_not_found_1004());
+	  }
+	else
+	  {
+	    return jrender(dd_unknown_library_1000());
+	  }
       }
-    else
+    catch (InputConnectorBadParamException &e)
       {
-	return jrender(dd_unknown_library_1000());
+	return jrender(dd_service_input_bad_request_1005());
       }
-
+    catch (MLLibBadParamException &e)
+      {
+	return jrender(dd_service_bad_request_1006());
+      }
+    catch (InputConnectorInternalException &e)
+      {
+	return jrender(dd_internal_error_500());
+      }
+    catch (MLLibInternalException &e)
+      {
+	return jrender(dd_internal_error_500());
+      }
+    catch (std::exception &e)
+      {
+	return jrender(dd_internal_mllib_error_1007(e.what()));
+      }
     JDoc jsc = dd_created_201();
     return jrender(jsc);
   }
@@ -414,7 +436,7 @@ namespace dd
     out.toJVal(jtrain,jout);
     if (jout.HasMember("job")) // async job
       {
-	jhead.AddMember("job",static_cast<int>(jout["job"].GetDouble()),jtrain.GetAllocator());
+	jhead.AddMember("job",jout["job"].GetInt(),jtrain.GetAllocator());
 	jout.RemoveMember("job");
 	jhead.AddMember("status",JVal().SetString(jout["status"].GetString(),jtrain.GetAllocator()),jtrain.GetAllocator());
 	jout.RemoveMember("status");
@@ -465,14 +487,14 @@ namespace dd
 	jtrain = dd_job_not_found_1003();
 	JVal jhead(rapidjson::kObjectType);
 	jhead.AddMember("method","/train",jtrain.GetAllocator());
-	jhead.AddMember("job",static_cast<int>(ad.get("job").get<double>()),jtrain.GetAllocator());
+	jhead.AddMember("job",ad.get("job").get<int>(),jtrain.GetAllocator());
 	jtrain.AddMember("head",jhead,jtrain.GetAllocator());
 	return jrender(jtrain);
       }
     jtrain = dd_ok_200();
     JVal jhead(rapidjson::kObjectType);
     jhead.AddMember("method","/train",jtrain.GetAllocator());
-    jhead.AddMember("job",static_cast<int>(ad.get("job").get<double>()),jtrain.GetAllocator());
+    jhead.AddMember("job",ad.get("job").get<int>(),jtrain.GetAllocator());
     JVal jout(rapidjson::kObjectType);
     out.toJVal(jtrain,jout);
     jhead.AddMember("status",JVal().SetString(jout["status"].GetString(),jtrain.GetAllocator()),jtrain.GetAllocator());
@@ -520,7 +542,7 @@ namespace dd
 	jd = dd_job_not_found_1003();
 	JVal jhead(rapidjson::kObjectType);
 	jhead.AddMember("method","/train",jd.GetAllocator());
-	jhead.AddMember("job",static_cast<int>(ad.get("job").get<double>()),jd.GetAllocator());
+	jhead.AddMember("job",ad.get("job").get<int>(),jd.GetAllocator());
 	jd.AddMember("head",jhead,jd.GetAllocator());
 	return jrender(jd);
       }
@@ -528,7 +550,7 @@ namespace dd
     JVal jout(rapidjson::kObjectType);
     out.toJVal(jd,jout);
     jout.AddMember("method","/train",jd.GetAllocator());
-    jout.AddMember("job",static_cast<int>(ad.get("job").get<double>()),jd.GetAllocator());
+    jout.AddMember("job",ad.get("job").get<int>(),jd.GetAllocator());
     jd.AddMember("head",jout,jd.GetAllocator());
     return jrender(jd);
   }

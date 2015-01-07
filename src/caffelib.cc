@@ -103,12 +103,12 @@ namespace dd
       {
 	if (ad_solver.has("iterations"))
 	  {
-	    int max_iter = static_cast<int>(ad_solver.get("iterations").get<double>());
+	    int max_iter = ad_solver.get("iterations").get<int>();
 	    solver_param.set_max_iter(max_iter);
 	  }
 	if (ad_solver.has("snapshot")) // iterations between snapshots
 	  {
-	    int snapshot = static_cast<int>(ad_solver.get("snapshot").get<double>());
+	    int snapshot = ad_solver.get("snapshot").get<int>();
 	    solver_param.set_snapshot(snapshot);
 	  }
 	if (ad_solver.has("snapshot_prefix")) // overrides default internal dd prefix which is model repo
@@ -128,9 +128,9 @@ namespace dd
 	      solver_param.set_solver_type(caffe::SolverParameter_SolverType_NESTEROV);
 	  }
 	else if (ad_solver.has("test_iter"))
-	  solver_param.set_test_iter(0,static_cast<int>(ad_solver.get("test_iter").get<double>())); // XXX: 0 might not always be the correct index here.
+	  solver_param.set_test_iter(0,ad_solver.get("test_iter").get<int>()); // XXX: 0 might not always be the correct index here.
 	else if (ad_solver.has("test_interval"))
-	  solver_param.set_test_interval(static_cast<int>(ad_solver.get("test_interval").get<double>()));
+	  solver_param.set_test_interval(ad_solver.get("test_interval").get<int>());
 	else if (ad_solver.has("test_initialization"))
 	  solver_param.set_test_initialization(ad_solver.get("test_initialization").get<bool>());
 	else if (ad_solver.has("lr_policy"))
@@ -140,9 +140,9 @@ namespace dd
 	else if (ad_solver.has("gamma"))
 	  solver_param.set_gamma(ad_solver.get("gamma").get<float>());
 	else if (ad_solver.has("step_size"))
-	  solver_param.set_stepsize(static_cast<int>(ad_solver.get("stepsize").get<double>()));
+	  solver_param.set_stepsize(ad_solver.get("stepsize").get<int>());
 	else if (ad_solver.has("max_iter"))
-	  solver_param.set_max_iter(static_cast<int>(ad_solver.get("max_iter").get<double>()));
+	  solver_param.set_max_iter(ad_solver.get("max_iter").get<int>());
 	else if (ad_solver.has("momentum"))
 	  solver_param.set_momentum(ad_solver.get("momentum").get<double>());
 	else if (ad_solver.has("power"))

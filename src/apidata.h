@@ -37,8 +37,8 @@ namespace dd
 {
   class APIData;
   
-  typedef mapbox::util::variant<std::string,double,bool,
-    std::vector<std::string>,std::vector<double>,
+  typedef mapbox::util::variant<std::string,double,int,bool,
+    std::vector<std::string>,std::vector<double>,std::vector<int>,
     mapbox::util::recursive_wrapper<std::vector<APIData>>> ad_variant_type;
 
   class vout
@@ -57,8 +57,10 @@ namespace dd
     
     vout process(const std::string &str);
     vout process(const double &d);
+    vout process(const int &i);
     vout process(const bool &b);
     vout process(const std::vector<double> &vd);
+    vout process(const std::vector<int> &vd);
     vout process(const std::vector<std::string> &vs);
     vout process(const std::vector<APIData> &vad);
     
@@ -171,6 +173,12 @@ namespace dd
 	_jd->AddMember(_jvkey,JVal().SetString(str.c_str(),_jd->GetAllocator()),_jd->GetAllocator());
       else _jv->AddMember(_jvkey,JVal().SetString(str.c_str(),_jd->GetAllocator()),_jd->GetAllocator());
     }
+    void process(const int &i)
+    {
+      if (!_jv)
+	_jd->AddMember(_jvkey,JVal(i),_jd->GetAllocator());
+      else _jv->AddMember(_jvkey,JVal(i),_jd->GetAllocator());
+    }
     void process(const double &d)
     {
       if (!_jv)
@@ -184,6 +192,17 @@ namespace dd
       else _jv->AddMember(_jvkey,JVal(b),_jd->GetAllocator());
     }
     void process(const std::vector<double> &vd)
+    {
+      JVal jarr(rapidjson::kArrayType);
+      for (size_t i=0;i<vd.size();i++)
+	{
+	  jarr.PushBack(JVal(vd.at(i)),_jd->GetAllocator());
+	}
+      if (!_jv)
+	_jd->AddMember(_jvkey,jarr,_jd->GetAllocator());
+      else _jv->AddMember(_jvkey,jarr,_jd->GetAllocator());
+    }
+    void process(const std::vector<int> &vd)
     {
       JVal jarr(rapidjson::kArrayType);
       for (size_t i=0;i<vd.size();i++)
