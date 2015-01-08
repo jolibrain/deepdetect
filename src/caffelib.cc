@@ -79,6 +79,8 @@ namespace dd
 	_net->CopyTrainedLayersFrom(this->_mlmodel._weights);
 	return 0;
       }
+    else if (this->_mlmodel._def.empty())
+      return 2; // missing 'deploy' file.
     return 1;
   }
 
@@ -217,8 +219,11 @@ namespace dd
     if (_net)
       delete _net;
     this->_mlmodel.read_from_repository(this->_mlmodel._repo);
-    if (create_model())
-      throw MLLibInternalException("no model in " + this->_mlmodel._repo + " for initializing net");
+    int cm = create_model();
+    if (cm == 1)
+      throw MLLibInternalException("no model in " + this->_mlmodel._repo + " for initializing the net");
+    else if (cm == 2)
+      throw MLLibBadParamException("no deploy file in " + this->_mlmodel._repo + " for initializing the net");
     return 0;
   }
 
