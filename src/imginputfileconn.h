@@ -88,6 +88,10 @@ namespace dd
       for (size_t i=0;i<_uris.size();i++)
 	{
 	  cv::Mat imaget = cv::imread(_uris.at(i),_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR); //TODO: catch errors (size = 0 for file not found)
+	  if (!imaget.data)
+	    {
+	      throw InputConnectorBadParamException("no data for image " + _uris.at(i));
+	    }
 	  /*cv::namedWindow( "Display window", cv::WINDOW_AUTOSIZE );
 	    cv::imshow( "Display window", imaget);
 	    cv::waitKey(0);*/
