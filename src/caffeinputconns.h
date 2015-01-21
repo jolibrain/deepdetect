@@ -23,6 +23,7 @@
 #define CAFFEINPUTCONNS_H
 
 #include "imginputfileconn.h"
+#include "csvinputfileconn.h"
 #include "caffe/caffe.hpp"
 
 namespace dd
@@ -53,6 +54,48 @@ namespace dd
       return 0;
     }
     
+    std::vector<caffe::Datum> _dv;
+  };
+
+  class CSVCaffeInputFileConn : public CSVInputFileConn
+  {
+  public:
+    CSVCaffeInputFileConn()
+      :CSVInputFileConn() {}
+    ~CSVCaffeInputFileConn() {}
+
+    void init(const APIData &ad)
+    {
+      CSVInputFileConn::init(ad);
+    }
+    
+    int transform(const APIData &ad)
+    {
+      CSVInputFileConn::transform(ad);
+      
+      // transform to datum by filling up float_data
+      auto hit = _csvdata.cbegin();
+      while(hit!=_csvdata.cend())
+	{
+	  _dv.push_back(to_datum((*hit).second));
+	  ++hit;
+	}
+      
+      return 0;
+    }
+
+    caffe::Datum to_datum(const std::vector<double> &vf)
+    {
+      caffe::Datum datum;
+      datum.set_channels(vf.size());
+      datum.set_height(1);
+      datum.set_width(1);
+      int datum_channels = datum.channels();
+      for (int i=0;i<datum_channels;i++)
+	datum.add_float_data(static_cast<float>(vf.at(i)));
+      return datum;
+    }
+
     std::vector<caffe::Datum> _dv;
   };
 
