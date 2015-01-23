@@ -50,11 +50,13 @@ namespace dd
 	caffe::Datum datum;
 	caffe::CVMatToDatum(this->_images.at(i),&datum);
 	_dv.push_back(datum);
+	_ids.push_back(this->_uris.at(i));
       }
       return 0;
     }
     
     std::vector<caffe::Datum> _dv;
+    std::vector<std::string> _ids;
   };
 
   class CSVCaffeInputFileConn : public CSVInputFileConn
@@ -78,6 +80,7 @@ namespace dd
       while(hit!=_csvdata.cend())
 	{
 	  _dv.push_back(to_datum((*hit).second));
+	  _ids.push_back((*hit).first);
 	  ++hit;
 	}
       
@@ -87,16 +90,34 @@ namespace dd
     caffe::Datum to_datum(const std::vector<double> &vf)
     {
       caffe::Datum datum;
-      datum.set_channels(vf.size());
+      int datum_channels = vf.size();
+      if (!_label.empty())
+	datum_channels--;
+      if (!_id.empty())
+	datum_channels--;
+      datum.set_channels(datum_channels);
       datum.set_height(1);
       datum.set_width(1);
-      int datum_channels = datum.channels();
-      for (int i=0;i<datum_channels;i++)
-	datum.add_float_data(static_cast<float>(vf.at(i)));
+      for (int i=0;i<(int)vf.size();i++)
+	{
+	  if (i == _label_pos)
+	    {
+	      datum.set_label(static_cast<int>(vf.at(i))); //TODO: labels from 0 onward
+	    }
+	  else if (_columns.at(i) == _id)
+	    {
+	      continue;
+	    }
+	  else 
+	    {
+	      datum.add_float_data(static_cast<float>(vf.at(i)));
+	    }
+	}
       return datum;
     }
 
     std::vector<caffe::Datum> _dv;
+    std::vector<std::string> _ids;
   };
 
 }

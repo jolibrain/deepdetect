@@ -36,7 +36,8 @@
 
 namespace dd
 {
-  typedef mapbox::util::variant<MLService<CaffeLib,ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>> mls_variant_type;
+  typedef mapbox::util::variant<MLService<CaffeLib,ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>,
+    MLService<CaffeLib,CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>> mls_variant_type;
   
   class output
   {

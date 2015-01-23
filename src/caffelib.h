@@ -46,7 +46,7 @@ namespace dd
       int predict(const APIData &ad, APIData &out);
     
       void update_solver_data_paths(caffe::SolverParameter &sp);
-
+    
       caffe::Net<float> *_net = nullptr;
       bool _gpu = false; /**< whether to use GPU. */
       int _gpuid = 0; /**< GPU id. */

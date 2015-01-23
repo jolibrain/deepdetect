@@ -90,9 +90,11 @@ namespace dd
   {
     if (this->_mlmodel._solver.empty())
       {
-	LOG(ERROR) << "missing solver file";
-	return 1;
+	throw MLLibBadParamException("missing solver file in " + this->_mlmodel._repo);
       }
+
+    TInputConnectorStrategy inputc(this->_inputc);
+    inputc.transform(ad);
 
     caffe::SolverParameter solver_param;
     caffe::ReadProtoFromTextFileOrDie(this->_mlmodel._solver,&solver_param); //TODO: no die
@@ -154,6 +156,11 @@ namespace dd
     // optimize
     this->_tjob_running = true;
     caffe::Solver<float> *solver = caffe::GetSolver<float>(solver_param);
+    if (!inputc._dv.empty())
+      {
+	boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->net()->layers()[0])->AddDatumVector(inputc._dv);
+	boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->test_nets().at(0)->layers()[0])->AddDatumVector(inputc._dv);
+      }
     if (!this->_mlmodel._weights.empty())
       {
 	solver->net()->CopyTrainedLayersFrom(this->_mlmodel._weights);
@@ -163,8 +170,7 @@ namespace dd
     
     std::string snapshot_file = ad.get("snapshot_file").get<std::string>();
     if (!snapshot_file.empty())
-      solver->Restore(snapshot_file.c_str());
-    
+      solver->Restore(snapshot_file.c_str());    
     
     solver->iter_ = 0;
     solver->current_step_ = 0;
@@ -264,10 +270,10 @@ namespace dd
     TOutputConnectorStrategy tout;
     for (int j=0;j<batch_size;j++)
       {
-	tout.add_result(inputc._uris.at(j),loss);
+	tout.add_result(inputc._ids.at(j),loss);
 	for (int i=0;i<scperel;i++)
 	  {
-	    tout.add_cat(inputc._uris.at(j),results[slot]->cpu_data()[j*scperel+i],this->_mlmodel.get_hcorresp(i));
+	    tout.add_cat(inputc._ids.at(j),results[slot]->cpu_data()[j*scperel+i],this->_mlmodel.get_hcorresp(i));
 	  }
       }
     TOutputConnectorStrategy btout(this->_outputc);
@@ -306,4 +312,5 @@ namespace dd
   }
 
   template class CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>;
+  template class CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>;
 }

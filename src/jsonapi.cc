@@ -256,6 +256,8 @@ namespace dd
 	    CaffeModel cmodel(ad_model);
 	    if (input == "image")
 	      add_service(sname,std::move(MLService<CaffeLib,ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
+	    else if (input == "csv")
+	      add_service(sname,std::move(MLService<CaffeLib,CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
 	    else return jrender(dd_input_connector_not_found_1004());
 	  }
 	else
