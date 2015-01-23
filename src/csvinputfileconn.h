@@ -45,30 +45,75 @@ namespace dd
     void fillup_parameters(const APIData &ad,
 			   std::string &fname)
     {
-      //TODO: anything ?
     }
     
     int transform(const APIData &ad)
     {
-      //TODO: iterate csv file and fill up the csvdata object.
-      if (ad.has("filename"))
-	_csv_fname = ad.get("filename").get<std::string>();
+      APIData ad_input = ad.getobj("parameters").getobj("input");
+      if (ad_input.has("filename"))
+	_csv_fname = ad_input.get("filename").get<std::string>();
       else throw InputConnectorBadParamException("no CSV filename");
-      if (ad.has("label"))
-	_label = ad.get("label").get<std::string>();
-      else throw InputConnectorBadParamException("missing label column parameter");
-      if (ad.has("ignore"))
+      if (ad_input.has("label"))
+	_label = ad_input.get("label").get<std::string>();
+      //else throw InputConnectorBadParamException("missing label column parameter"); //TODO: should throw only at training in lower sublayers...
+      if (ad_input.has("ignore"))
 	{
-	  std::vector<std::string> vignore = ad.get("ignore").get<std::vector<std::string>>();
+	  std::vector<std::string> vignore = ad_input.get("ignore").get<std::vector<std::string>>();
 	  for (std::string s: vignore)
 	    _ignored_columns.insert(s);
 	}
-      if (ad.has("id"))
-	_id = ad.get("id").get<std::string>();
-      read_csv(ad,_csv_fname);
-      
+      if (ad_input.has("id"))
+	_id = ad_input.get("id").get<std::string>();
+      read_csv(ad_input,_csv_fname);
+      // data should already be loaded.
+      return 0;
     }
 
+    void read_csv_line(const std::string &hline,
+		       const std::string &delim,
+		       std::vector<double> &vals,
+		       std::string &column_id,
+		       int &nlines)
+    {
+      std::string col;
+      auto hit = _ignored_columns.begin();
+      std::stringstream sh(hline);
+      int c = -1;
+      while(std::getline(sh,col,delim[0]))
+	{
+	  ++c;
+	  
+	  // detect strings by looking for characters and for quotes
+	  // convert to float unless it is string (ignore strings, aka categorical fields, for now)
+	  if ((hit=_ignored_columns.find(_columns.at(c)))!=_ignored_columns.end())
+	    {
+	      std::cout << "ignoring column: " << col << std::endl;
+	      continue;
+	    }
+	  if (_columns.at(c) == _id)
+	    {
+	      column_id = col;
+	      //std::cout << "id column detected: " << col << std::endl;
+	      //continue;
+	    }
+	  try
+	    {
+	      double val = std::stod(col);
+	      vals.push_back(val);
+	    }
+	  catch (std::invalid_argument &e)
+	    {
+	      // not a number, skip for now
+	      std::cout << "not a number: " << col << std::endl;
+	    }
+	}
+      if (!_id.empty())
+	_csvdata.insert(std::pair<std::string,std::vector<double>>(column_id,vals));
+      else _csvdata.insert(std::pair<std::string,std::vector<double>>(std::to_string(nlines),vals));
+      //std::cout << "vals size=" << vals.size() << std::endl;
+      ++nlines;
+    }
+    
     void read_csv(const APIData &ad,
 		  const std::string &fname)
     {
@@ -96,7 +141,7 @@ namespace dd
 	  ++i;
 	}
       if (_label_pos < 0)
-	throw InputConnectorBadParamException("cannot find label column " + _label);
+	throw InputConnectorBadParamException("cannot find label column " + _label); //TODO: only for training...
       
       //debug
       std::cout << "label=" << _label << " / pos=" << _label_pos << std::endl;
@@ -106,40 +151,71 @@ namespace dd
       std::cout << std::endl;
       //debug
 
+      // scaling to [0,1]
+      int nlines = 0;
+      bool scale = false;
+      std::vector<double> min_vals, max_vals;
+      if (ad.has("scale") && ad.get("scale").get<bool>())
+	{
+	  scale = true;
+	  while(std::getline(csv_file,hline))
+	    {
+	      std::vector<double> vals;
+	      std::string cid;
+	      read_csv_line(hline,delim,vals,cid,nlines);
+	      if (nlines == 1)
+		min_vals = max_vals = vals;
+	      else
+		{
+		  for (size_t j=0;j<vals.size();j++)
+		    {
+		      min_vals.at(j) = std::min(vals.at(j),min_vals.at(j));
+		      max_vals.at(j) = std::max(vals.at(j),max_vals.at(j));
+		    }
+		}
+	    }
+	  
+	  //debug
+	  std::cout << "min/max scales:\n";
+	  std::copy(min_vals.begin(),min_vals.end(),std::ostream_iterator<double>(std::cout," "));
+	  std::cout << std::endl;
+	  std::copy(max_vals.begin(),max_vals.end(),std::ostream_iterator<double>(std::cout," "));
+	  std::cout << std::endl;
+	  //debug
+	  
+	  csv_file.clear();
+	  csv_file.seekg(0,std::ios::beg);
+	  std::getline(csv_file,hline); // skip header line
+	  nlines = 0;
+	}
+
       // read data
-      i = 0;
       while(std::getline(csv_file,hline))
 	{
 	  std::vector<double> vals;
-	  std::stringstream sh(hline);
 	  std::string cid;
-	  int c = -1;
-	  while(++c && std::getline(sh,col,delim[0]))
+	  read_csv_line(hline,delim,vals,cid,nlines);
+	  if (scale)
 	    {
-	      // detect strings by looking for characters and for quotes
-	      // convert to float unless it is string (ignore strings, aka categorical fields, for now)
-	      if ((hit=_ignored_columns.find(_columns.at(c)))!=_ignored_columns.end())
-		continue;
-	      if (_columns.at(c) == _id)
+	      for (size_t j=0;j<vals.size();j++)
 		{
-		  cid = col;
-		  continue;
-		}
-	      try
-		{
-		  double val = std::stod(col);
-		  vals.push_back(val);
-		}
-	      catch (std::invalid_argument &e)
-		{
-		  // not a number, skip for now
+		  if (_columns.at(j) != _id && j != _label_pos && max_vals.at(j) != min_vals.at(j))
+		    vals.at(j) = (vals.at(j) - min_vals.at(j)) / (max_vals.at(j) - min_vals.at(j));
 		}
 	    }
 	  if (!_id.empty())
 	    _csvdata.insert(std::pair<std::string,std::vector<double>>(cid,vals));
 	  else _csvdata.insert(std::pair<std::string,std::vector<double>>(std::to_string(i),vals));
-	  ++i;
+	  
+	  //debug
+	  /*std::cout << "csv data line=";
+	  std::copy(vals.begin(),vals.end(),std::ostream_iterator<double>(std::cout," "));
+	  std::cout << std::endl;*/
+	  //debug
 	}
+      std::cout << "read " << i << " lines from " << _csv_fname << std::endl;
+      //if (_id.empty())
+      //_id = _columns.at(0); // default to first column
       csv_file.close();
     }
 
