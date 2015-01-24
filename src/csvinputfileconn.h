@@ -53,6 +53,8 @@ namespace dd
       if (ad_input.has("filename"))
 	_csv_fname = ad_input.get("filename").get<std::string>();
       else throw InputConnectorBadParamException("no CSV filename");
+      if (ad_input.has("test_filename"))
+	_csv_test_fname = ad_input.get("test_filename").get<std::string>();
       if (ad_input.has("label"))
 	_label = ad_input.get("label").get<std::string>();
       //else throw InputConnectorBadParamException("missing label column parameter"); //TODO: should throw only at training in lower sublayers...
@@ -107,9 +109,9 @@ namespace dd
 	      std::cout << "not a number: " << col << std::endl;
 	    }
 	}
-      if (!_id.empty())
+      /*if (!_id.empty())
 	_csvdata.insert(std::pair<std::string,std::vector<double>>(column_id,vals));
-      else _csvdata.insert(std::pair<std::string,std::vector<double>>(std::to_string(nlines),vals));
+	else _csvdata.insert(std::pair<std::string,std::vector<double>>(std::to_string(nlines),vals));*/
       //std::cout << "vals size=" << vals.size() << std::endl;
       ++nlines;
     }
@@ -205,18 +207,53 @@ namespace dd
 	    }
 	  if (!_id.empty())
 	    _csvdata.insert(std::pair<std::string,std::vector<double>>(cid,vals));
-	  else _csvdata.insert(std::pair<std::string,std::vector<double>>(std::to_string(i),vals));
+	  else _csvdata.insert(std::pair<std::string,std::vector<double>>(std::to_string(nlines),vals));
 	  
 	  //debug
-	  /*std::cout << "csv data line=";
+	  /*std::cout << "csv data line #" << nlines << "=";
 	  std::copy(vals.begin(),vals.end(),std::ostream_iterator<double>(std::cout," "));
 	  std::cout << std::endl;*/
 	  //debug
 	}
-      std::cout << "read " << i << " lines from " << _csv_fname << std::endl;
+      std::cout << "read " << nlines << " lines from " << _csv_fname << std::endl;
       //if (_id.empty())
       //_id = _columns.at(0); // default to first column
       csv_file.close();
+      
+      // test file, if any.
+      if (!_csv_test_fname.empty())
+	{
+	  nlines = 0;
+	  std::ifstream csv_test_file(_csv_test_fname);
+	  if (!csv_test_file.is_open())
+	    throw InputConnectorBadParamException("cannot open test file " + fname);
+	  std::getline(csv_test_file,hline); // skip header line
+	  while(std::getline(csv_test_file,hline))
+	    {
+	      std::vector<double> vals;
+	      std::string cid;
+	      read_csv_line(hline,delim,vals,cid,nlines);
+	      if (scale)
+		{
+		  for (size_t j=0;j<vals.size();j++)
+		    {
+		      if (_columns.at(j) != _id && j != _label_pos && max_vals.at(j) != min_vals.at(j))
+			vals.at(j) = (vals.at(j) - min_vals.at(j)) / (max_vals.at(j) - min_vals.at(j));
+		    }
+		}
+	      if (!_id.empty())
+		_csvdata_test.insert(std::pair<std::string,std::vector<double>>(cid,vals));
+	      else _csvdata_test.insert(std::pair<std::string,std::vector<double>>(std::to_string(nlines),vals));
+	      
+	      //debug
+	      /*std::cout << "csv test data line=";
+	      std::copy(vals.begin(),vals.end(),std::ostream_iterator<double>(std::cout," "));
+	      std::cout << std::endl;*/
+	      //debug
+	    }
+	  std::cout << "read " << nlines << " lines from " << _csv_test_fname << std::endl;
+	  csv_test_file.close();
+	}
     }
 
     int size() const
@@ -227,12 +264,14 @@ namespace dd
     }
 
     std::string _csv_fname;
+    std::string _csv_test_fname;
     std::vector<std::string> _columns; //TODO: unordered map to int as pos of the column
     std::string _label;
     int _label_pos = -1;
     std::unordered_set<std::string> _ignored_columns;
     std::string _id;
     std::unordered_map<std::string,std::vector<double>> _csvdata;
+    std::unordered_map<std::string,std::vector<double>> _csvdata_test;
   };
 }
 

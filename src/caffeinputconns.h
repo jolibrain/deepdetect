@@ -56,6 +56,7 @@ namespace dd
     }
     
     std::vector<caffe::Datum> _dv;
+    std::vector<caffe::Datum> _dv_test; //TODO
     std::vector<std::string> _ids;
   };
 
@@ -81,6 +82,13 @@ namespace dd
 	{
 	  _dv.push_back(to_datum((*hit).second));
 	  _ids.push_back((*hit).first);
+	  ++hit;
+	}
+      hit = _csvdata_test.cbegin();
+      while(hit!=_csvdata_test.cend())
+	{
+	  _dv_test.push_back(to_datum((*hit).second));
+	  //_ids.push_back((*hit).first);
 	  ++hit;
 	}
       
@@ -117,6 +125,7 @@ namespace dd
     }
 
     std::vector<caffe::Datum> _dv;
+    std::vector<caffe::Datum> _dv_test;
     std::vector<std::string> _ids;
   };
 
