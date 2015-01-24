@@ -254,6 +254,30 @@ namespace dd
 	  std::cout << "read " << nlines << " lines from " << _csv_test_fname << std::endl;
 	  csv_test_file.close();
 	}
+      else if (ad.has("test_split"))
+	{
+	  double split = ad.get("test_split").get<double>();
+	  if (split > 0.0)
+	    {
+	      int split_size = std::floor(_csvdata.size() * (1.0-split));
+	      auto chit = _csvdata.begin();
+	      auto dchit = chit;
+	      int cpos = 0;
+	      while(chit!=_csvdata.end())
+		{
+		  if (cpos == split_size)
+		    {
+		      if (dchit == _csvdata.begin())
+			dchit = chit;
+		      _csvdata_test.insert(std::pair<std::string,std::vector<double>>((*chit).first,(*chit).second));
+		    }
+		  else ++cpos;
+		  ++chit;
+		}
+	      _csvdata.erase(dchit,_csvdata.end());
+	      std::cout << "data split test size=" << _csvdata_test.size() << " / remaining data size=" << _csvdata.size() << std::endl;
+	    }
+	}
     }
 
     int size() const
