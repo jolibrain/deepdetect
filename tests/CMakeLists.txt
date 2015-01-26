@@ -1,6 +1,8 @@
 set(CAFFE_STATIC_LINK -Wl,--whole-archive /home/beniz/projects/deepdetect/apps/caffe/build/lib/libcaffe.a -Wl,--no-whole-archive)
 if (CUDA_FOUND)
   set(CUDA_LIB_DEPS -lcudart -lcublas -lcurand -lcudnn)
+else()
+  add_definitions(-DCPU_ONLY)
 endif()
 set(CAFFE_LIB_DEPS -lprotobuf -lleveldb -lsnappy -llmdb -lboost_system -lhdf5_hl -lhdf5 -lboost_thread -lopenblas)
 link_directories(${CAFFE_LIB_DIR})
