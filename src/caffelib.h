@@ -22,8 +22,6 @@
 #ifndef CAFFELIB_H
 #define CAFFELIB_H
 
-#define CPU_ONLY // TODO: in configure, and add gpu flag
-
 #include "mllibstrategy.h"
 #include "caffemodel.h"
 #include "caffe/caffe.hpp"
@@ -41,7 +39,8 @@ namespace dd
       ~CaffeLib();
 
       int create_model();
-    
+
+      void init(const APIData &ad);
       int train(const APIData &ad, APIData &out);
       int predict(const APIData &ad, APIData &out);
     

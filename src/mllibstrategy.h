@@ -64,6 +64,8 @@ namespace dd
     
     ~MLLib() {}
 
+    void init(const APIData &ad);
+
     int train(const APIData &ad, APIData &out);
     int predict(const APIData &ad, APIData &out);
     int status() const;

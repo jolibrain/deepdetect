@@ -38,17 +38,6 @@ namespace dd
     :MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,CaffeModel>(cmodel)
   {
     this->_libname = "caffe";
-    
-    // XXX: setting the GPU outside of Caffe appears to fuss with the static pointers
-    /*if (_gpu)
-      {
-	Caffe::SetDevice(_gpuid);
-	Caffe::set_mode(Caffe::GPU);
-      }
-    else Caffe::set_mode(Caffe::CPU);
-    if (this->_has_predict)
-    Caffe::set_phase(Caffe::TEST); // XXX: static within Caffe, cannot go along with training across services.
-    else Caffe::set_phase(Caffe::TRAIN);*/
     create_model();
   }
   
@@ -85,6 +74,15 @@ namespace dd
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::init(const APIData &ad)
+  {
+    if (ad.has("gpu"))
+      _gpu = ad.get("gpu").get<bool>();
+    if (ad.has("gpuid"))
+      _gpuid = ad.get("gpuid").get<int>();
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::train(const APIData &ad,
 										 APIData &out)
   {
@@ -102,8 +100,30 @@ namespace dd
     update_solver_data_paths(solver_param);
     
     // parameters
+    APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
+    if (ad_mllib.has("gpu"))
+      {
+	bool gpu = ad_mllib.get("gpu").get<bool>();
+	if (gpu)
+	  {
+	    if (ad_mllib.has("gpuid"))
+	      Caffe::SetDevice(ad_mllib.get("gpuid").get<int>());
+	    Caffe::set_mode(Caffe::GPU);
+	  }
+	else Caffe::set_mode(Caffe::CPU);
+      }
+    else
+      {
+	if (_gpu)
+	  {
+	    Caffe::SetDevice(_gpuid);
+	    Caffe::set_mode(Caffe::GPU);
+	  }
+	else Caffe::set_mode(Caffe::GPU);
+      }
+    
     // solver's parameters
-    APIData ad_solver = ad.getobj("parameters").getobj("mllib").getobj("solver");
+    APIData ad_solver = ad_mllib.getobj("solver");
     if (ad_solver.size())
       {
 	if (ad_solver.has("iterations"))
@@ -121,7 +141,6 @@ namespace dd
 	    std::string snapshot_prefix = ad_solver.get("snapshot_prefix").get<std::string>();
 	    solver_param.set_snapshot_prefix(snapshot_prefix);
 	  }
-	//TODO: add support for more parameters
 	if (ad_solver.has("solver_type"))
 	  {
 	    std::string solver_type = ad_solver.get("solver_type").get<std::string>();
@@ -240,6 +259,29 @@ namespace dd
   int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::predict(const APIData &ad,
 										   APIData &out)
   {
+    // parameters
+    APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
+    if (ad_mllib.has("gpu"))
+      {
+	bool gpu = ad_mllib.get("gpu").get<bool>();
+	if (gpu)
+	  {
+	    if (ad_mllib.has("gpuid"))
+	      Caffe::SetDevice(ad_mllib.get("gpuid").get<int>());
+	    Caffe::set_mode(Caffe::GPU);
+	  }
+	else Caffe::set_mode(Caffe::CPU);       
+      }
+    else
+      {
+	if (_gpu)
+	  {
+	    Caffe::SetDevice(_gpuid);
+	    Caffe::set_mode(Caffe::GPU);
+	  }
+	else Caffe::set_mode(Caffe::GPU);
+      }
+
     TInputConnectorStrategy inputc(this->_inputc);
     inputc.transform(ad); //TODO: catch errors ?
     int batch_size = inputc.size();
