@@ -101,6 +101,7 @@ namespace dd
     
     // parameters
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
+#ifndef CPU_ONLY
     if (ad_mllib.has("gpu"))
       {
 	bool gpu = ad_mllib.get("gpu").get<bool>();
@@ -121,6 +122,9 @@ namespace dd
 	  }
 	else Caffe::set_mode(Caffe::CPU);
       }
+#else
+    Caffe::set_mode(Caffe::CPU);
+#endif
     
     // solver's parameters
     APIData ad_solver = ad_mllib.getobj("solver");
@@ -261,6 +265,7 @@ namespace dd
   {
     // parameters
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
+#ifndef CPU_ONLY
     if (ad_mllib.has("gpu"))
       {
 	bool gpu = ad_mllib.get("gpu").get<bool>();
@@ -281,6 +286,9 @@ namespace dd
 	  }
 	else Caffe::set_mode(Caffe::CPU);
       }
+#else
+      Caffe::set_mode(Caffe::CPU);
+#endif
 
     TInputConnectorStrategy inputc(this->_inputc);
     inputc.transform(ad); //TODO: catch errors ?
