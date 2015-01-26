@@ -40,7 +40,7 @@ namespace dd
 
       int create_model();
 
-      void init(const APIData &ad);
+      void init_mllib(const APIData &ad);
       int train(const APIData &ad, APIData &out);
       int predict(const APIData &ad, APIData &out);
     

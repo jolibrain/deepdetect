@@ -68,7 +68,7 @@ namespace dd
     {
       this->_inputc.init(ad.getobj("parameters").getobj("input"));
       this->_outputc.init(ad.getobj("parameters").getobj("output"));
-      this->init(ad.getobj("parameters").getobj("mllib"));
+      this->init_mllib(ad.getobj("parameters").getobj("mllib"));
     }
 
     APIData info() const

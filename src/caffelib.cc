@@ -74,7 +74,7 @@ namespace dd
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::init(const APIData &ad)
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::init_mllib(const APIData &ad)
   {
     if (ad.has("gpu"))
       _gpu = ad.get("gpu").get<bool>();
@@ -119,7 +119,7 @@ namespace dd
 	    Caffe::SetDevice(_gpuid);
 	    Caffe::set_mode(Caffe::GPU);
 	  }
-	else Caffe::set_mode(Caffe::GPU);
+	else Caffe::set_mode(Caffe::CPU);
       }
     
     // solver's parameters
@@ -279,7 +279,7 @@ namespace dd
 	    Caffe::SetDevice(_gpuid);
 	    Caffe::set_mode(Caffe::GPU);
 	  }
-	else Caffe::set_mode(Caffe::GPU);
+	else Caffe::set_mode(Caffe::CPU);
       }
 
     TInputConnectorStrategy inputc(this->_inputc);
