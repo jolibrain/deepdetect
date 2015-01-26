@@ -57,7 +57,7 @@ namespace dd
 	_csv_test_fname = ad_input.get("test_filename").get<std::string>();
       if (ad_input.has("label"))
 	_label = ad_input.get("label").get<std::string>();
-      //else throw InputConnectorBadParamException("missing label column parameter"); //TODO: should throw only at training in lower sublayers...
+      else if (_train) throw InputConnectorBadParamException("missing label column parameter");
       if (ad_input.has("ignore"))
 	{
 	  std::vector<std::string> vignore = ad_input.get("ignore").get<std::vector<std::string>>();
@@ -142,8 +142,8 @@ namespace dd
 	    _label_pos = i;
 	  ++i;
 	}
-      if (_label_pos < 0)
-	throw InputConnectorBadParamException("cannot find label column " + _label); //TODO: only for training...
+      if (_label_pos < 0 && _train)
+	throw InputConnectorBadParamException("cannot find label column " + _label);
       
       //debug
       std::cout << "label=" << _label << " / pos=" << _label_pos << std::endl;

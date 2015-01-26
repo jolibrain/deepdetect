@@ -59,6 +59,8 @@ namespace dd
     void init(const APIData &ad);
     int transform(const APIData &ap);
     size_t size() const;
+    
+    bool _train = false; /**< whether in train or predict mode. */
   };
   
 }

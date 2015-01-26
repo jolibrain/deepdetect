@@ -94,6 +94,7 @@ namespace dd
       }
 
     TInputConnectorStrategy inputc(this->_inputc);
+    inputc._train = true;
     inputc.transform(ad);
 
     caffe::SolverParameter solver_param;

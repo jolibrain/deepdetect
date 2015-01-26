@@ -44,7 +44,15 @@ namespace dd
 
     int transform(const APIData &ad)
     {
-      ImgInputFileConn::transform(ad);
+      try
+	{
+	  ImgInputFileConn::transform(ad);
+	}
+      catch (InputConnectorBadParamException &e)
+	{
+	  if (!(_train && _uris.empty())) // Caffe model files can reference the source to the image training data 
+	    throw;
+	}
       for (int i=0;i<this->size();i++)
       {      
 	caffe::Datum datum;
