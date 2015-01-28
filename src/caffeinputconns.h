@@ -88,14 +88,14 @@ namespace dd
       auto hit = _csvdata.cbegin();
       while(hit!=_csvdata.cend())
 	{
-	  _dv.push_back(to_datum((*hit).second));
-	  _ids.push_back((*hit).first);
+	  _dv.push_back(to_datum((*hit)._v));
+	  _ids.push_back((*hit)._str);
 	  ++hit;
 	}
       hit = _csvdata_test.cbegin();
       while(hit!=_csvdata_test.cend())
 	{
-	  _dv_test.push_back(to_datum((*hit).second));
+	  _dv_test.push_back(to_datum((*hit)._v));
 	  //_ids.push_back((*hit).first);
 	  ++hit;
 	}

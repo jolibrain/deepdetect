@@ -23,12 +23,22 @@
 #define CSVINPUTFILECONN_H
 
 #include "inputconnectorstrategy.h"
-//#include "ext/csv.h"
 #include <fstream>
 #include <unordered_set>
 
 namespace dd
 {
+  class CSVline
+  {
+  public:
+    CSVline(const std::string &str,
+	    const std::vector<double> &v)
+      :_str(str),_v(v) {}
+    ~CSVline() {}
+    std::string _str;
+    std::vector<double> _v;
+  };
+  
   class CSVInputFileConn : public InputConnectorStrategy
   {
   public:
@@ -95,8 +105,6 @@ namespace dd
 	  if (_columns.at(c) == _id)
 	    {
 	      column_id = col;
-	      //std::cout << "id column detected: " << col << std::endl;
-	      //continue;
 	    }
 	  try
 	    {
@@ -109,10 +117,6 @@ namespace dd
 	      std::cout << "not a number: " << col << std::endl;
 	    }
 	}
-      /*if (!_id.empty())
-	_csvdata.insert(std::pair<std::string,std::vector<double>>(column_id,vals));
-	else _csvdata.insert(std::pair<std::string,std::vector<double>>(std::to_string(nlines),vals));*/
-      //std::cout << "vals size=" << vals.size() << std::endl;
       ++nlines;
     }
     
@@ -206,8 +210,8 @@ namespace dd
 		}
 	    }
 	  if (!_id.empty())
-	    _csvdata.insert(std::pair<std::string,std::vector<double>>(cid,vals));
-	  else _csvdata.insert(std::pair<std::string,std::vector<double>>(std::to_string(nlines),vals));
+	    _csvdata.emplace_back(cid,vals);
+	  else _csvdata.emplace_back(std::to_string(nlines),vals); 
 	  
 	  //debug
 	  /*std::cout << "csv data line #" << nlines << "=";
@@ -216,8 +220,6 @@ namespace dd
 	  //debug
 	}
       std::cout << "read " << nlines << " lines from " << _csv_fname << std::endl;
-      //if (_id.empty())
-      //_id = _columns.at(0); // default to first column
       csv_file.close();
       
       // test file, if any.
@@ -242,8 +244,8 @@ namespace dd
 		    }
 		}
 	      if (!_id.empty())
-		_csvdata_test.insert(std::pair<std::string,std::vector<double>>(cid,vals));
-	      else _csvdata_test.insert(std::pair<std::string,std::vector<double>>(std::to_string(nlines),vals));
+		_csvdata_test.emplace_back(cid,vals);
+	      else _csvdata_test.emplace_back(std::to_string(nlines),vals);
 	      
 	      //debug
 	      /*std::cout << "csv test data line=";
@@ -254,7 +256,16 @@ namespace dd
 	  std::cout << "read " << nlines << " lines from " << _csv_test_fname << std::endl;
 	  csv_test_file.close();
 	}
-      else if (ad.has("test_split"))
+
+      // shuffle before possible test data selection.
+      if (ad.has("shuffle") && ad.get("shuffle").get<bool>())
+	{
+	  std::random_device rd;
+	  std::mt19937 g(rd());
+	  std::shuffle(_csvdata.begin(),_csvdata.end(),g);
+	}
+      
+      if (_csv_test_fname.empty() && ad.has("test_split"))
 	{
 	  double split = ad.get("test_split").get<double>();
 	  if (split > 0.0)
@@ -269,7 +280,8 @@ namespace dd
 		    {
 		      if (dchit == _csvdata.begin())
 			dchit = chit;
-		      _csvdata_test.insert(std::pair<std::string,std::vector<double>>((*chit).first,(*chit).second));
+		      //_csvdata_test.insert(std::pair<std::string,std::vector<double>>((*chit).first,(*chit).second));
+		      _csvdata_test.push_back((*chit));
 		    }
 		  else ++cpos;
 		  ++chit;
@@ -294,8 +306,8 @@ namespace dd
     int _label_pos = -1;
     std::unordered_set<std::string> _ignored_columns;
     std::string _id;
-    std::unordered_map<std::string,std::vector<double>> _csvdata;
-    std::unordered_map<std::string,std::vector<double>> _csvdata_test;
+    std::vector<CSVline> _csvdata;
+    std::vector<CSVline> _csvdata_test;
   };
 }
 
