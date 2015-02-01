@@ -1,6 +1,6 @@
 /**
  * DeepDetect
- * Copyright (c) 2014 Emmanuel Benazera
+ * Copyright (c) 2014-2015 Emmanuel Benazera
  * Author: Emmanuel Benazera <beniz@droidnik.fr>
  *
  * This file is part of deepdetect.
@@ -28,6 +28,9 @@
 namespace dd
 {
 
+  /**
+   * \brief bad parameter exception
+   */
   class InputConnectorBadParamException : public std::exception
   {
   public:
@@ -39,6 +42,9 @@ namespace dd
     std::string _s;
   };
 
+  /**
+   * \brief internal error exception
+   */
   class InputConnectorInternalException : public std::exception
   {
   public:
@@ -50,15 +56,36 @@ namespace dd
     std::string _s;
   };
 
+  /**
+   * \brief main input connector class
+   */
   class InputConnectorStrategy
   {
   public:
     InputConnectorStrategy() {}
     ~InputConnectorStrategy() {}
     
+    /**
+     * \brief initializsation of input connector
+     * @param ad data object for "parameters/input"
+     */
     void init(const APIData &ad);
-    int transform(const APIData &ap);
-    size_t size() const;
+    
+    /**
+     * \brief input data reading, called from ML library
+     * @param ap root data object (requires access to "data" and "parameters/input")
+     */
+    void transform(const APIData &ap);
+    
+    /**
+     * \brief input feature size
+     */
+    int feature_size() const;
+
+    /**
+     * \brief input batch size
+     */
+    int batch_size() const;
     
     bool _train = false; /**< whether in train or predict mode. */
   };

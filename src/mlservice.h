@@ -33,7 +33,9 @@
 
 namespace dd
 {
-  /* training job */
+  /**
+   * \brief training job 
+   */
   class tjob
   {
   public:
@@ -44,26 +46,50 @@ namespace dd
       :_ft(std::move(tj._ft)),_tstart(std::move(tj._tstart)),_status(std::move(tj._status)) {}
     ~tjob() {}
 
-    std::future<int> _ft;
-    std::chrono::time_point<std::chrono::system_clock> _tstart;
-    int _status = 0; // 0: not started, 1: running, 2: finished or terminated
+    std::future<int> _ft; /**< training job output status upon termination. */
+    std::chrono::time_point<std::chrono::system_clock> _tstart; /**< date at which the training job has started*/
+    int _status = 0; /**< 0: not started, 1: running, 2: finished or terminated */
   };
 
-  /* mlservice */
+  /**
+   * \brief main machine learning service encapsulation
+   */
   template<template <class U,class V,class W> class TMLLib, class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
     class MLService : public TMLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>
   {
   public:
+    /**
+     * \brief machine learning service creation
+     * @param sname service name
+     * @param mlmodel model object
+     * @param description optional string
+     */
     MLService(const std::string &sname,
 	      const TMLModel &mlmodel,
 	      const std::string &description="")
       :TMLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>(mlmodel),_sname(sname),_description(description),_tjobs_counter(0)
       {}
+    
+    /**
+     * \brief copy-constructor
+     * @param mls ML service
+     */
     MLService(MLService &&mls) noexcept
       :TMLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>(std::move(mls)),_sname(std::move(mls._sname)),_description(std::move(mls._description)),_tjobs_counter(mls._tjobs_counter.load()),_training_jobs(std::move(mls._training_jobs))
       {}
+    
+    /**
+     * \brief destructor
+     */
     ~MLService() {}
 
+    /**
+     * \brief machine learning service initialization:
+     *        - init of input connector
+     *        - init of output conector
+     *        - init of ML library
+     * @param ad root data object
+     */
     void init(const APIData &ad)
     {
       this->_inputc.init(ad.getobj("parameters").getobj("input"));
@@ -71,6 +97,10 @@ namespace dd
       this->init_mllib(ad.getobj("parameters").getobj("mllib"));
     }
 
+    /**
+     * \brief get info about the service
+     * @return info data object
+     */
     APIData info() const
     {
       APIData ad;
@@ -80,7 +110,12 @@ namespace dd
       return ad;
     }
     
-    // To be surcharged in related classes
+    // 
+    /**
+     * \brief get status of the service
+     *        To be surcharged in related classes
+     * @return status data object
+     */
     APIData status() const
     {
       APIData ad;
@@ -90,6 +125,12 @@ namespace dd
       return ad;
     }
 
+    /**
+     * \brief starts a possibly asynchronous trainin job and returns status or job number (async job).
+     * @param ad root data object
+     * @param out output data object
+     * @return training job number if async, otherwise status upon termination
+     */
     int train_job(const APIData &ad, APIData &out)
     {
       if (ad.has("async") && ad.get("async").get<bool>())
@@ -113,6 +154,12 @@ namespace dd
 	  }
     }
 
+    /**
+     * \brief get status of an asynchronous training job
+     * @param ad root data object
+     * @param out output data object
+     * @return 0 if OK, 1 if job not found
+     */
     int training_job_status(const APIData &ad, APIData &out)
     {
       int j = ad.get("job").get<int>();
@@ -155,6 +202,12 @@ namespace dd
 	}
     }
 
+    /**
+     * \brief terminate a training job
+     * @param ad root data object
+     * @param out output data object
+     * @return 0 if OK, 1 if job not found
+     */
     int training_job_delete(const APIData &ad, APIData &out)
     {
       int j = ad.get("job").get<int>();
@@ -185,7 +238,7 @@ namespace dd
     std::string _sname; /**< service name. */
     std::string _description; /**< optional description of the service. */
 
-    std::mutex _tjobs_mutex;
+    std::mutex _tjobs_mutex; /**< mutex around training jobs. */
     std::atomic<int> _tjobs_counter = 0; /**< training jobs counter. */
     std::unordered_map<int,tjob> _training_jobs; // XXX: the futures' dtor blocks if the object is being terminated
   };

@@ -37,6 +37,20 @@ namespace dd
       :ImgInputFileConn(i),_dv(i._dv) {}
     ~ImgCaffeInputFileConn() {}
 
+    //TODO:
+    // size of each element in Caffe jargon
+    int channels() const
+    {
+    }
+    
+    int height() const
+    {
+    }
+    
+    int width() const
+    {
+    }
+
     void init(const APIData &ad)
     {
       ImgInputFileConn::init(ad);
@@ -53,7 +67,7 @@ namespace dd
 	  if (!(_train && _uris.empty())) // Caffe model files can reference the source to the image training data 
 	    throw;
 	}
-      for (int i=0;i<this->size();i++)
+      for (int i=0;i<this->batch_size();i++)
       {      
 	caffe::Datum datum;
 	caffe::CVMatToDatum(this->_images.at(i),&datum);
@@ -78,6 +92,23 @@ namespace dd
     void init(const APIData &ad)
     {
       CSVInputFileConn::init(ad);
+    }
+
+    //TODO:
+    // size of each element in Caffe jargon
+    int channels() const
+    {
+      
+    }
+    
+    int height() const
+    {
+      return 1;
+    }
+    
+    int width() const
+    {
+      return 1;
     }
     
     int transform(const APIData &ad)

@@ -1,6 +1,6 @@
 /**
  * DeepDetect
- * Copyright (c) 2014 Emmanuel Benazera
+ * Copyright (c) 2014-2015 Emmanuel Benazera
  * Author: Emmanuel Benazera <beniz@droidnik.fr>
  *
  * This file is part of deepdetect.
@@ -28,12 +28,18 @@
 namespace dd
 {
 
+  /**
+   * \brief main API class, built on top of Services
+   */
   class APIStrategy : public Services
     {
     public:
       APIStrategy() {};
       ~APIStrategy() {};
       
+      /**
+       * \brief handling of command line parameters
+       */
       int boot(int argc, char *argv[]) { return 1; }
     };
 }

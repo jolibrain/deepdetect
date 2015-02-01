@@ -1,6 +1,6 @@
 /**
  * DeepDetect
- * Copyright (c) 2014 Emmanuel Benazera
+ * Copyright (c) 2014-2015 Emmanuel Benazera
  * Author: Emmanuel Benazera <beniz@droidnik.fr>
  *
  * This file is part of deepdetect.
@@ -36,6 +36,7 @@
 
 namespace dd
 {
+  /* service types as variant type. */
   typedef mapbox::util::variant<MLService<CaffeLib,ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>,
     MLService<CaffeLib,CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>> mls_variant_type;
   
@@ -70,6 +71,9 @@ namespace dd
     APIData _out;
   };
 
+  /**
+   * \brief training job visitor class
+   */
   class visitor_train : public mapbox::util::static_visitor<output>
   {
   public:
@@ -87,6 +91,9 @@ namespace dd
     APIData _out;
   };
 
+  /**
+   * \brief training job status visitor class
+   */
   class visitor_train_status : public mapbox::util::static_visitor<output>
   {
   public:
@@ -104,6 +111,9 @@ namespace dd
     APIData _out;
   };
 
+  /**
+   * \brief training job deletion class
+   */
   class visitor_train_delete : public mapbox::util::static_visitor<output>
   {
   public:
@@ -121,6 +131,9 @@ namespace dd
     APIData _out;
   };
 
+  /**
+   * \brief service initialization visitor class
+   */
   class visitor_init : public mapbox::util::static_visitor<>
   {
   public:
@@ -137,17 +150,33 @@ namespace dd
     APIData _ad;
   };
   
+  /**
+   * \brief class for deepetect machine learning services.
+   *        Each service instanciates a machine learning library and channels
+   *        data for training and prediction along with parameters from API
+   *        Service uses a variant type and store instances in a single iterable container.
+   */
   class Services
   {
   public:
-    Services() {};
-    ~Services() {};
+    Services() {}
+    ~Services() {}
 
+    /**
+     * \brief get number of services
+     * @return number of service instances
+     */
     size_t services_size() const
     {
       return _mlservices.size();
     }
     
+    /**
+     * \brief add a new service
+     * @param sname service name
+     * @param mls service object as variant
+     * @param ad optional root data object holding service's parameters
+     */
     void add_service(const std::string &sname,
 		     mls_variant_type &&mls,
 		     const APIData &ad=APIData()) 
@@ -182,6 +211,11 @@ namespace dd
 	}
     }
 
+    /**
+     * \brief removes and destroys a service
+     * @param sname service name
+     * @return true if service was removed, false otherwise (i.e. not found)
+     */
     bool remove_service(const std::string &sname)
     {
       std::lock_guard<std::mutex> lock(_mlservices_mtx);
@@ -196,6 +230,10 @@ namespace dd
       return false;
     }
 
+    /**
+     * \brief get a service's position in the services container
+     * @return service position, -1 if not found
+     */
     int get_service_pos(const std::string &sname)
     {
        std::lock_guard<std::mutex> lock(_mlservices_mtx);
@@ -205,6 +243,12 @@ namespace dd
        else return -1;
     }
 
+    /**
+     * \brief train a statistical model using a service
+     * @param ad root data object
+     * @param pos service position
+     * @param out output data object
+     */
     int train(const APIData &ad, const int &pos, APIData &out)
     {
       std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();
@@ -256,6 +300,12 @@ namespace dd
       return pout._status;
     }
     
+    /**
+     * \brief access to training job status
+     * @param ad root data object
+     * @param pos service position
+     * @param out output data object
+     */
     int train_status(const APIData &ad, const int &pos, APIData &out)
     {
       visitor_train_status vt;
@@ -292,6 +342,12 @@ namespace dd
       return pout._status;
     }
     
+    /**
+     * \brief prediction from statistical model
+     * @param ad root data object
+     * @param pos service position
+     * @param out output data object
+     */
     int predict(const APIData &ad, const int &pos, APIData &out)
     {
       std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();
@@ -333,9 +389,10 @@ namespace dd
       return pout._status;
     }
 
-    std::vector<mls_variant_type> _mlservices;
-    std::unordered_map<std::string,int> _mlservidx;
+    std::vector<mls_variant_type> _mlservices; /**< container of instanciated services. */
+    std::unordered_map<std::string,int> _mlservidx; /**< services position per service name. */
     
+  protected:
     std::mutex _mlservices_mtx; /**< mutex around adding/removing services. */
   };
   

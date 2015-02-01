@@ -292,7 +292,12 @@ namespace dd
 	}
     }
 
-    int size() const
+    int batch_size() const
+    {
+      return _csvdata.size(); // XXX: what about test data size ?
+    }
+
+    int feature_size() const
     {
       if (!_id.empty())
 	return _columns.size() - 2; // minus label and id

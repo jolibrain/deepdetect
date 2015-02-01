@@ -1,6 +1,6 @@
 /**
  * DeepDetect
- * Copyright (c) 2014 Emmanuel Benazera
+ * Copyright (c) 2014-2015 Emmanuel Benazera
  * Author: Emmanuel Benazera <beniz@droidnik.fr>
  *
  * This file is part of deepdetect.
@@ -36,11 +36,15 @@
 namespace dd
 {
   class APIData;
-  
+
+  // recursive variant container, see utils/variant.hpp and utils/recursive_wrapper.hpp
   typedef mapbox::util::variant<std::string,double,int,bool,
     std::vector<std::string>,std::vector<double>,std::vector<int>,
     mapbox::util::recursive_wrapper<std::vector<APIData>>> ad_variant_type;
 
+  /**
+   * \brief object for visitor output
+   */
   class vout
   {
   public:
@@ -49,6 +53,10 @@ namespace dd
     ~vout() {}
     std::vector<APIData> _vad;
   };
+
+  /**
+   * \brief visitor class for easy access to variant vector container
+   */
   class visitor_vad : public mapbox::util::static_visitor<vout>
   {
   public:
@@ -68,18 +76,44 @@ namespace dd
       vout operator() (T &t);
   };
 
+  /**
+   * \brief main deepdetect API data object, uses recursive variant types
+   */
   class APIData
   {
   public:
+    /**
+     * \brief empty constructor
+     */
     APIData() {}
+    
+    /**
+     * \brief constructor from rapidjson JSON object, see dd_types.h
+     */
     APIData(const JVal &jval);
+
+    /**
+     * \brief destructor
+     */
     ~APIData() {}
 
+    /**
+     * \brief add key / object to data object
+     * @param key string unique key
+     * @param val variant value
+     */
     inline void add(const std::string &key, const ad_variant_type &val)
     {
       _data.insert(std::pair<std::string,ad_variant_type>(key,val));
     }
 
+    /**
+     * \brief get value from data object
+     *        at this stage, type of value is unknown and the typed object 
+     *        must be later acquired with e.g. 'get<std::string>(val)
+     * @param key string unique key
+     * @return variant value
+     */
     inline ad_variant_type get(const std::string &key) const
     {
       std::unordered_map<std::string,ad_variant_type>::const_iterator hit;
@@ -87,7 +121,12 @@ namespace dd
 	return (*hit).second;
       else return ""; // beware
     }
-
+    
+    /**
+     * \brief get vector container as variant value
+     * @param key string unique value
+     * @return vector of APIData as recursive variant value object
+     */
     inline std::vector<APIData> getv(const std::string &key) const
     {
       visitor_vad vv;
@@ -95,6 +134,11 @@ namespace dd
       return v._vad;
     }
 
+    /**
+     * \brief get data object value as variant value
+     * @param key string unique value
+     * @return APIData as recursive variant value object
+     */
     inline APIData getobj(const std::string &key) const
     {
       visitor_vad vv;
@@ -104,6 +148,12 @@ namespace dd
       return v._vad.at(0);
     }
 
+    /**
+     * \brief find APIData object from vector, and that has a given key
+     * @param vad vector of objects to search
+     * @param key string unique key to look for
+     * @return APIData as recursive variant value object
+     */
     static APIData findv(const std::vector<APIData> &vad, const std::string &key)
     {
       for (const APIData &v : vad)
@@ -114,6 +164,11 @@ namespace dd
       return APIData();
     }
 
+    /**
+     * \brief test whether the object contains a key at first level
+     * @param key string unique key to look for
+     * @return true if key is present, false otherwise
+     */
     inline bool has(const std::string &key) const
     {
       std::unordered_map<std::string,ad_variant_type>::const_iterator hit;
@@ -122,17 +177,40 @@ namespace dd
       else return false;
     }
 
+    /**
+     * \brief number of hosted keys at this level of the object
+     * @return size
+     */
     inline size_t size() const
     {
       return _data.size();
     }
 
     // convert in and out from json.
+    /**
+     * \brief converts rapidjson JSON to APIData
+     * @param jval JSON object
+     */
     void fromJVal(const JVal &jval);
+
+    /**
+     * \brief converts APIData to rapidjson JSON document
+     * @param jd destination JSON Document
+     */
     void toJDoc(JDoc &jd) const;
+
+    /**
+     * \brief converts APIData to rapidjson JSON value
+     * @param jd JSON Document hosting the destination JSON value
+     * @param jval destination JSON value
+     */
     void toJVal(JDoc &jd, JVal &jv) const;
     
   public:
+    /**
+     * \brief render Mustache template based on this APIData object
+     * @param tp template string
+     */
     inline std::string render_template(const std::string &tpl)
     {
       std::stringstream ss;
@@ -150,9 +228,12 @@ namespace dd
       return ss.str();
     }
     
-    std::unordered_map<std::string,ad_variant_type> _data;
+    std::unordered_map<std::string,ad_variant_type> _data; /**< data as hashtable of variant types. */
   };
 
+  /**
+   * \brief visitor class for conversion to JSON
+   */
   class visitor_rjson : public mapbox::util::static_visitor<>
   {
   public:    

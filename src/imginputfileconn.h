@@ -55,12 +55,18 @@ namespace dd
 	_bw = ad.get("bw").get<bool>();
     }
     
-    size_t size() const
+    int feature_size() const
+    {
+      if (_bw) return _width*_height;
+      else return _width*_height*3; // RGB
+    }
+
+    int batch_size() const
     {
       return _images.size();
     }
     
-    int transform(const APIData &ad)
+    void transform(const APIData &ad)
     {
       try
 	{
@@ -100,16 +106,15 @@ namespace dd
 	  cv::resize(imaget,image,size);
 	  _images.push_back(image);
 	}
-      return 0;
     }
 
     std::vector<std::string> _uris;
     std::vector<cv::Mat> _images;
     
-    // resizing images
+    // image parameters
     int _width = 227;
     int _height = 227;
-    bool _bw = false;
+    bool _bw = false; /**< whether to convert to black & white. */
   };
 }
 

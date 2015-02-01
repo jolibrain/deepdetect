@@ -1,6 +1,6 @@
 /**
  * DeepDetect
- * Copyright (c) 2014 Emmanuel Benazera
+ * Copyright (c) 2014-2015 Emmanuel Benazera
  * Author: Emmanuel Benazera <beniz@droidnik.fr>
  *
  * This file is part of deepdetect.
@@ -29,6 +29,9 @@
 
 namespace dd
 {
+  /**
+   * \brief ML library bad parameter exception
+   */
   class MLLibBadParamException : public std::exception
   {
   public:
@@ -40,6 +43,9 @@ namespace dd
     std::string _s;
   };
   
+  /**
+   * \brief ML library internal error exception
+   */
   class MLLibInternalException : public std::exception
   {
   public:
@@ -51,50 +57,93 @@ namespace dd
     std::string _s;
   };
 
+  /**
+   * \brief main class for machine learning library encapsulation
+   */
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
     class MLLib
   {
   public:
+    /**
+     * \brief constructor from model
+     */
     MLLib(const TMLModel &mlmodel)
       :_mlmodel(mlmodel),_loss(0.0),_tjob_running(false) {}
     
+    /**
+     * \brief copy-constructor
+     */
     MLLib(MLLib &&mll) noexcept
       :_mlmodel(mll._mlmodel),_inputc(mll._inputc),_outputc(mll._outputc),_loss(mll._loss.load()),_tjob_running(mll._tjob_running.load())
       {}
     
+    /**
+     * \brief destructor
+     */
     ~MLLib() {}
 
+    /**
+     * \brief initializes ML lib
+     * @param ad data object for "parameters/mllib"
+     */
     void init_mllib(const APIData &ad);
 
+    /**
+     * \brief train new model
+     * @param ad root data object
+     * @param out output data object (e.g. loss, ...)
+     * @return 0 if OK, 1 otherwise
+     */
     int train(const APIData &ad, APIData &out);
+
+    /**
+     * \brief predicts from model
+     * @param ad root data object
+     * @param out output data object (e.g. predictions, ...)
+     * @return 0 if OK, 1 otherwise
+     */
     int predict(const APIData &ad, APIData &out);
+    
+    /**
+     * \brief ML library status
+     */
     int status() const;
     
+    /**
+     * \brief clear loss history
+     */
     void clear_loss_per_iter()
     {
       std::lock_guard<std::mutex> lock(_loss_per_iter_mutex);
       _loss_per_iter.clear();
     }
 
+    /**
+     * \brief add value to loss history
+     * @param l loss value
+     */
     void add_loss_per_iter(const double &l)
     {
       std::lock_guard<std::mutex> lock(_loss_per_iter_mutex);
       _loss_per_iter.push_back(l);
     }
 
-    TInputConnectorStrategy _inputc;
-    TOutputConnectorStrategy _outputc;
+    TInputConnectorStrategy _inputc; /**< input connector strategy for channeling data in. */
+    TOutputConnectorStrategy _outputc; /**< output connector strategy for passing results back to API. */
 
     bool _has_train = false; /**< whether training is available. */
     bool _has_predict = true; /**< whether prediction is available. */
 
-    TMLModel _mlmodel;
+    TMLModel _mlmodel; /**< statistical model template. */
     std::string _libname; /**< ml lib name. */
     
     std::atomic<double> _loss = 0.0; /**< model loss, used as a per service value. */
     std::vector<double> _loss_per_iter; /**< model loss per iteration. */
-    std::mutex _loss_per_iter_mutex;
+
     std::atomic<bool> _tjob_running = false; /**< whether a training job is running with this lib instance. */
+
+  protected:
+    std::mutex _loss_per_iter_mutex; /**< mutex over loss history. */
   };  
   
 }
