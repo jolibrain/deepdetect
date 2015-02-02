@@ -1,6 +1,6 @@
 /**
  * DeepDetect
- * Copyright (c) 2014 Emmanuel Benazera
+ * Copyright (c) 2014-2015 Emmanuel Benazera
  * Author: Emmanuel Benazera <beniz@droidnik.fr>
  *
  * This file is part of deepdetect.
@@ -28,18 +28,32 @@
 namespace dd
 {
 
+  /**
+   * \brief main output connector class
+   */
   class OutputConnectorStrategy
   {
   public:
     OutputConnectorStrategy() {}
     ~OutputConnectorStrategy() {}
 
-    int transform() { return 1; }
+    /**
+     * \brief output data reading
+     */
+    //int transform() { return 1; }
+    
+    /**
+     * \brief initialization of output data connector
+     * @param ad data object for "parameters/output"
+     */
     void init(const APIData &ad);
 
     //TODO: output templating.
   };
 
+  /**
+   * \brief no output connector class
+   */
   class NoOutputConn : public OutputConnectorStrategy
   {
   public:
@@ -48,34 +62,69 @@ namespace dd
     ~NoOutputConn() {}
   };
 
+  /**
+   * \brief supervised machine learning output connector class
+   */
   class SupervisedOutput : public OutputConnectorStrategy
   {
   public:
+
+    /**
+     * \brief supervised result
+     */
     class sup_result
     {
     public:
+      /**
+       * \brief constructor
+       * @param loss result loss
+       */
       sup_result(const double &loss=0.0)
 	:_loss(loss) {}
+      
+      /**
+       * \brief destructor
+       */
       ~sup_result() {}
+
+      /**
+       * \brief add category to result
+       * @param prob category predicted probability
+       * @Param cat category name
+       */
       inline void add_cat(const double &prob, const std::string &cat)
       {
 	_cats.insert(std::pair<double,std::string>(prob,cat));
       }
-      double _loss = 0.0;
-      std::map<double,std::string,std::greater<double>> _cats;
+      
+      double _loss = 0.0; /**< result loss. */
+      std::map<double,std::string,std::greater<double>> _cats; /**< categories and probabilities for this result */
     };
 
   public:
-    SupervisedOutput()
+    /**
+     * \brief supervised output connector constructor
+     */
+  SupervisedOutput()
       :OutputConnectorStrategy()
       {
       }
+    
+    /**
+     * \brief supervised output connector copy-constructor
+     * @param sout supervised output connector
+     */
     SupervisedOutput(const SupervisedOutput &sout)
       :OutputConnectorStrategy(),_best(sout._best)
       {
       }
+    
     ~SupervisedOutput() {}
 
+    /**
+     * \brief supervised output connector initialization
+     * @param ad data object for "parameters/output"
+     */
     void init(const APIData &ad)
     {
       APIData ad_out = ad.getobj("parameters").getobj("output");
@@ -83,6 +132,11 @@ namespace dd
 	_best = ad_out.get("best").get<int>();
     }
 
+    /**
+     * \brief add prediction result to supervised connector output
+     * @param uri result uri
+     * @param loss result loss
+     */
     inline void add_result(const std::string &uri, const double &loss)
     {
       std::unordered_map<std::string,sup_result>::iterator hit;
@@ -91,6 +145,12 @@ namespace dd
       else (*hit).second._loss = loss;
     }
 
+    /**
+     * \brief add predicted category and probability to existing result
+     * @param uri result uri
+     * @param prob  category probability
+     * @param cat category name
+     */
     inline void add_cat(const std::string &uri, const double &prob, const std::string &cat)
     {
       std::unordered_map<std::string,sup_result>::iterator hit;
@@ -99,10 +159,15 @@ namespace dd
       // XXX: else error ?
     }
 
-    void best_cats(const APIData &ad, SupervisedOutput &bcats) const
+    /**
+     * \brief best categories selection from results
+     * @param ad_out output data object
+     * @param bcats supervised output connector
+     */
+    void best_cats(const APIData &ad_out, SupervisedOutput &bcats) const
     {
       int best = _best;
-      APIData ad_out = ad.getobj("parameters").getobj("output");
+      //APIData ad_out = ad.getobj("parameters").getobj("output");
       if (ad_out.has("best"))
 	best = ad_out.get("best").get<int>();
       auto hit = _vcats.begin();
@@ -117,6 +182,9 @@ namespace dd
     }
 
     // for debugging purposes.
+    /**
+     * \brief print supervised output to string
+     */
     void to_str(std::string &out) const
     {
       auto vit = _vcats.begin();
@@ -134,6 +202,10 @@ namespace dd
 	}
     }
 
+    /**
+     * \brief write supervised output object to data object
+     * @param out data destination
+     */
     void to_ad(APIData &out) const
     {
       static std::string cl = "classes";
@@ -172,7 +244,7 @@ namespace dd
       out.add("predictions",vpred);
     }
     
-    std::unordered_map<std::string,sup_result> _vcats; /** batch of results, per uri. */
+    std::unordered_map<std::string,sup_result> _vcats; /**< batch of results, per uri. */
     
     // options
     int _best = 1;

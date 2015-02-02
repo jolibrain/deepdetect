@@ -1,6 +1,6 @@
 /**
  * DeepDetect
- * Copyright (c) 2014 Emmanuel Benazera
+ * Copyright (c) 2014-2015 Emmanuel Benazera
  * Author: Emmanuel Benazera <beniz@droidnik.fr>
  *
  * This file is part of deepdetect.
@@ -27,15 +27,28 @@
 
 namespace dd
 {
+  /**
+   * \brief JSON API class
+   */
   class JsonAPI : public APIStrategy
   {
   public:
     JsonAPI();
     ~JsonAPI();
 
+    /**
+     * \brief command line handling
+     */
     int boot(int argc, char *argv[]);
 
-    // error status
+    /**
+     * \brief error status generation
+     * @param jst JSON document object
+     * @param code error HTTP code
+     * @param msg error message
+     * @param dd_code deepdetect custom error code
+     * @param dd_msg deepdetect custom error message
+     */
     void render_status(JDoc &jst,
 		       const uint32_t &code, const std::string &msg,
 		       const uint32_t &dd_code=0, const std::string &dd_msg="") const;
@@ -63,6 +76,7 @@ namespace dd
     std::string jrender(const JVal &jval) const;
 
     // resources
+    // return a JSON string for every API call
     std::string info() const;
     std::string service_create(const std::string &sname, const std::string &jstr);
     std::string service_status(const std::string &sname);
@@ -75,6 +89,9 @@ namespace dd
     std::string service_train_delete(const std::string &jstr);
   };
 
+  /**
+   * \brief visitor class for service info call
+   */
   class visitor_info : public mapbox::util::static_visitor<APIData>
   {
   public:
@@ -88,6 +105,9 @@ namespace dd
       }
   };
 
+  /**
+   * \brief visitor class for service status call
+   */
   class visitor_status : public mapbox::util::static_visitor<APIData>
   {
   public:
