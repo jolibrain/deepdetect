@@ -90,17 +90,29 @@ namespace dd
 
     /*- local functions -*/
     /**
-     * \brief updates solver's paths to data according to current Caffe model
+     * \brief updates: - solver's paths to data according to current Caffe model
+     *                 - net's batch size and data sources (e.g. lmdb sources)
      *        XXX: As for now, everything in the solver is volatile, and not written back to model file
      * @param sp Caffe's solver's parameters
+     * @param ad the root data object
      */
-    void update_solver_data_paths(caffe::SolverParameter &sp);
+      void update_in_memory_net_and_solver(caffe::SolverParameter &sp,
+					   const APIData &ad);
 
-    //TODO
-      void update_net_input_proto(const std::string &net_file,
-				  const std::string &deploy_file,
-				  const TInputConnectorStrategy &inputc,
-				  const APIData &ad);
+      /**
+       * \brief updates the protocol buffer text file of the net directly at training time
+       *        i.e. changes are permanent. This is against the rules of training calls that 
+       *        should not make hard changes to service configuration but this is the only way
+       *        to transparently use the data in input in order to shape a net's template.
+       * 
+       * @param net_file the file containing the net template, as copied from the template itself
+       *                 at service creation
+       * @param deploy_file the deploy file, same remark as net_file
+       * @param inputc the current input constructor that holds the training data
+       */
+      void update_protofile_net(const std::string &net_file,
+				const std::string &deploy_file,
+				const TInputConnectorStrategy &inputc);
       
     caffe::Net<float> *_net = nullptr; /**< neural net. */
     bool _gpu = false; /**< whether to use GPU. */

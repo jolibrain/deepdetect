@@ -131,15 +131,15 @@ namespace dd
     if (!this->_mlmodel._model_template.empty())
       {
 	// modifies model structure, template must have been copied at service creation with instantiate_template
-	update_net_input_proto(this->_mlmodel._repo + '/' + this->_mlmodel._model_template + ".prototxt",
-			       this->_mlmodel._repo + "/deploy.prototxt",
-			       inputc,ad);
+	update_protofile_net(this->_mlmodel._repo + '/' + this->_mlmodel._model_template + ".prototxt",
+			     this->_mlmodel._repo + "/deploy.prototxt",
+			     inputc);
 	create_model(); // creates initial net.
       }
 
     caffe::SolverParameter solver_param;
     caffe::ReadProtoFromTextFileOrDie(this->_mlmodel._solver,&solver_param); //TODO: no die
-    update_solver_data_paths(solver_param);
+    update_in_memory_net_and_solver(solver_param,ad);
 
     // parameters
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
@@ -374,7 +374,8 @@ namespace dd
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_solver_data_paths(caffe::SolverParameter &sp)
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_in_memory_net_and_solver(caffe::SolverParameter &sp,
+													    const APIData &ad)
   {
     // fix net model path.
     sp.set_net(this->_mlmodel._repo + "/" + sp.net());
@@ -382,6 +383,12 @@ namespace dd
     // fix net snapshot path.
     sp.set_snapshot_prefix(this->_mlmodel._repo + "/model");
     
+    // acquire custom batch size if any
+    APIData ad_net = ad.getobj("parameters").getobj("mllib").getobj("net");
+    int batch_size = -1;
+    if (ad_net.has("batch_size"))
+      batch_size = ad_net.get("batch_size").get<int>();
+
     // fix source paths in the model.
     caffe::NetParameter *np = sp.mutable_net_param();
     caffe::ReadProtoFromTextFile(sp.net().c_str(),np); //TODO: error on read + use internal caffe ReadOrDie procedure
@@ -393,7 +400,19 @@ namespace dd
 	    caffe::DataParameter *dp = lp->mutable_data_param();
 	    if (dp->has_source())
 	      {
-		dp->set_source(this->_mlmodel._repo + "/" + dp->source());
+		dp->set_source(this->_mlmodel._repo + "/" + dp->source()); // this updates in-memory net
+	      }
+	    if (dp->has_batch_size() && batch_size > 0)
+	      {
+		dp->set_batch_size(batch_size);
+	      }
+	  }
+	else if (lp->has_memory_data_param())
+	  {
+	    caffe::MemoryDataParameter *mdp = lp->mutable_memory_data_param();
+	    if (mdp->has_batch_size() && batch_size > 0)
+	      {
+		mdp->set_batch_size(batch_size);
 	      }
 	  }
       }
@@ -401,10 +420,9 @@ namespace dd
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_net_input_proto(const std::string &net_file,
-												   const std::string &deploy_file,
-												   const TInputConnectorStrategy &inputc,
-												   const APIData &ad)
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofile_net(const std::string &net_file,
+												 const std::string &deploy_file,
+												 const TInputConnectorStrategy &inputc)
   {
     //TODO: get "parameters/mllib/net" from ad (e.g. for batch_size).
 
