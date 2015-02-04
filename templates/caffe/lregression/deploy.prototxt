@@ -1,0 +1,37 @@
+name: "lregression"
+layers {
+  name: "inputl"
+  type: MEMORY_DATA
+  top: "data"
+  top: "label"
+  memory_data_param {
+    batch_size: 100
+    channels: 10
+    height: 1
+    width: 1
+  }
+}
+layers {
+  name: "ip1"
+  type: INNER_PRODUCT
+  bottom: "data"
+  top: "ip1"
+  blobs_lr: 1
+  blobs_lr: 2
+  inner_product_param {
+    num_output: 64
+    weight_filler {
+      type: "gaussian"
+      std: 0.1
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layers {
+  name: "loss"
+  type: SOFTMAX
+  bottom: "ip1"
+  top: "loss"
+}

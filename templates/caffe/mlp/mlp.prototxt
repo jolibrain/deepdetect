@@ -1,0 +1,93 @@
+name: "mlp"
+layers {
+  name: "inputl"
+  type: MEMORY_DATA
+  top: "data"
+  top: "label"
+  memory_data_param {
+    batch_size: 1000
+    channels: 54
+    height: 1
+    width: 1
+  }
+  include: { phase: TRAIN }
+}
+layers {
+  name: "inputlt"
+  type: MEMORY_DATA
+  top: "data"
+  top: "label"
+  memory_data_param {
+    batch_size: 1000
+    channels: 54
+    height: 1
+    width: 1
+  }
+  include: { phase: TEST }
+}
+layers {
+  name: "ip1"
+  type: INNER_PRODUCT
+  bottom: "data"
+  top: "ip1"
+  blobs_lr: 1
+  blobs_lr: 2
+  inner_product_param {
+    num_output: 50
+    weight_filler {
+      type: "gaussian"
+      std: 0.1
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layers {
+       name: "act"
+       type: RELU
+       bottom: "ip1"
+       top: "ip1"
+}
+layers {
+  name: "drop1"
+  type: DROPOUT
+  bottom: "ip1"
+  top: "ip1"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+}
+layers {
+  name: "ip2"
+  type: INNER_PRODUCT
+  bottom: "ip1"
+  top: "ip2"
+  blobs_lr: 1
+  blobs_lr: 2
+  inner_product_param {
+    num_output: 20
+    weight_filler {
+      type: "gaussian"
+      std: 0.1
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layers {
+  name: "accuracy"
+  type: ACCURACY
+  bottom: "ip2"
+  bottom: "label"
+  top: "accuracy"
+  include: { phase: TEST }
+}
+layers {
+  name: "loss"
+  type: SOFTMAX_LOSS
+  bottom: "ip2"
+  bottom: "label"
+  top: "loss"
+}
