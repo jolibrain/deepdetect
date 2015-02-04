@@ -111,7 +111,7 @@ TEST(caffeapi,service_train_async_status_delete)
   ASSERT_EQ(1,jd2["head"]["job"]);
   ASSERT_TRUE(jd2.HasMember("body"));
   ASSERT_TRUE(jd2["body"].HasMember("loss"));
-  ASSERT_TRUE(jd2["body"]["loss"].GetDouble() > 0); // may fail on a slow machine
+  ASSERT_TRUE(jd2["body"]["loss"].GetDouble() >= 0);
 
   // delete job.
   std::string jdelstr = "{\"service\":\"" + sname + "\",\"job\":1}";
@@ -140,7 +140,7 @@ TEST(caffeapi,service_train_async_final_status)
   ASSERT_EQ(created_str,joutstr);
 
   // train
-  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":true,\"parameters\":{\"mllib\":{\"solver\":{\"iterations\":150}}}}";
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":true,\"parameters\":{\"mllib\":{\"solver\":{\"iterations\":250}}}}";
   joutstr = japi.service_train(jtrainstr);
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
