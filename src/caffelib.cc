@@ -88,7 +88,10 @@ namespace dd
     if (!this->_mlmodel._def.empty() && !this->_mlmodel._weights.empty()) // whether in prediction mode...
       {
 	if (_net)
-	  delete _net;
+	  {
+	    delete _net;
+	    _net == nullptr;
+	  }
 	_net = new Net<float>(this->_mlmodel._def);
 	_net->CopyTrainedLayersFrom(this->_mlmodel._weights);
 	return 0;
@@ -294,7 +297,10 @@ namespace dd
     if (solver->param_.snapshot_after_train())
       solver->Snapshot();
     if (_net)
-      delete _net;
+      {
+	delete _net;
+	_net = nullptr;
+      }
     this->_mlmodel.read_from_repository(this->_mlmodel._repo);
     int cm = create_model();
     if (cm == 1)
