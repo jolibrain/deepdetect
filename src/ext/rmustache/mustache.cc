@@ -88,7 +88,7 @@ void FindJsonPathComponents(const string& path, vector<string>* components) {
   bool in_quote = false;
   bool escape_this_char = false;
   int start = 0;
-  for (int i = start; i < path.size(); ++i) {
+  for (int i = start; i < (int)path.size(); ++i) {
     if (path[i] == '"' && !escape_this_char) in_quote = !in_quote;
     if (path[i] == '.' && !escape_this_char && !in_quote) {
       // Current char == delimiter and not escaped and not in a quote pair => found a
@@ -145,8 +145,8 @@ void ResolveJsonContext(const string& path, const Value& parent_context,
 int FindNextTag(const string& document, int idx, TagOperator* tag_op, string* tag_name,
     bool* is_triple, stringstream* out) {
   *tag_op = NONE;
-  while (idx < document.size()) {
-    if (document[idx] == '{' && idx < (document.size() - 3) && document[idx + 1] == '{') {
+  while (idx < (int)document.size()) {
+    if (document[idx] == '{' && idx < (int)(document.size() - 3) && document[idx + 1] == '{') {
       if (document[idx + 2] == '{') {
         idx += 3;
         *is_triple = true;
@@ -155,15 +155,15 @@ int FindNextTag(const string& document, int idx, TagOperator* tag_op, string* ta
         idx += 2; // Now at start of template expression
       }
       stringstream expr;
-      while (idx < document.size()) {
+      while (idx < (int)document.size()) {
         if (document[idx] != '}') {
           expr << document[idx];
           ++idx;
         } else {
-          if (!*is_triple && idx < document.size() - 1 && document[idx + 1] == '}') {
+          if (!*is_triple && idx < (int)document.size() - 1 && document[idx + 1] == '}') {
             ++idx;
             break;
-          } else if (*is_triple && idx < document.size() - 2 && document[idx + 1] == '}'
+          } else if (*is_triple && idx < (int)document.size() - 2 && document[idx + 1] == '}'
               && document[idx + 2] == '}') {
             idx += 2;
             break;
@@ -222,7 +222,7 @@ int EvaluateSection(const string& document, const string& document_root, int idx
 
   vector<const Value*> values;
   if (!skip_contents && context != NULL && context->IsArray()) {
-    for (int i = 0; i < context->Size(); ++i) {
+    for (int i = 0; i < (int)context->Size(); ++i) {
       values.push_back(&(*context)[i]);
     }
   } else {
@@ -236,14 +236,14 @@ int EvaluateSection(const string& document, const string& document_root, int idx
   int start_idx = idx;
   BOOST_FOREACH(const Value* v, values) {
     idx = start_idx;
-    while (idx < document.size()) {
+    while (idx < (int)document.size()) {
       TagOperator tag_op;
       string next_tag_name;
       bool is_triple;
       idx = FindNextTag(document, idx, &tag_op, &next_tag_name, &is_triple,
           skip_contents ? NULL : out);
 
-      if (idx > document.size()) return idx;
+      if (idx > (int)document.size()) return idx;
       if (tag_op == SECTION_END && next_tag_name == tag_name) {
         break;
       }
@@ -263,6 +263,7 @@ int EvaluateSection(const string& document, const string& document_root, int idx
 int EvaluateSubstitution(const string& document, const int idx,
     const Value* parent_context, const string& tag_name, bool is_triple,
     stringstream* out) {
+  (void)document;
   const Value* context;
   ResolveJsonContext(tag_name, *parent_context, &context);
   if (context == NULL) return idx;
@@ -333,7 +334,7 @@ int EvaluateTag(const string& document, const string& document_root, int idx,
 void RenderTemplate(const string& document, const string& document_root,
     const Value& context, stringstream* out) {
   int idx = 0;
-  while (idx < document.size() && idx != -1) {
+  while (idx < (int)document.size() && idx != -1) {
     string tag_name;
     TagOperator tag_op;
     bool is_triple;

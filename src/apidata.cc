@@ -26,36 +26,43 @@ namespace dd
   /*- visitor_vad -*/
   vout visitor_vad::process(const std::string &str)
   {
+    (void)str;
     return vout();
   }
   
   vout visitor_vad::process(const double &d)
   {
+    (void)d;
     return vout();
   }
 
   vout visitor_vad::process(const int &i)
   {
+    (void)i;
     return vout();
   }
   
   vout visitor_vad::process(const bool &b)
   {
+    (void)b;
     return vout();
   }
   
   vout visitor_vad::process(const std::vector<double> &vd)
   {
+    (void)vd;
     return vout();
   }
   
   vout visitor_vad::process(const std::vector<int> &vd)
   {
+    (void)vd;
     return vout();
   }
   
   vout visitor_vad::process(const std::vector<std::string> &vs)
   {
+    (void)vs;
     return vout();
   }
   

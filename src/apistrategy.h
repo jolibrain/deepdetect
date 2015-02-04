@@ -40,7 +40,7 @@ namespace dd
       /**
        * \brief handling of command line parameters
        */
-      int boot(int argc, char *argv[]) { return 1; }
+      int boot(int argc, char *argv[]);
     };
 }
 

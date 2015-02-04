@@ -55,6 +55,8 @@ namespace dd
     void fillup_parameters(const APIData &ad,
 			   std::string &fname)
     {
+      (void)ad;
+      (void)fname;
     }
     
     int transform(const APIData &ad)
@@ -203,7 +205,7 @@ namespace dd
 	  read_csv_line(hline,delim,vals,cid,nlines);
 	  if (scale)
 	    {
-	      for (size_t j=0;j<vals.size();j++)
+	      for (int j=0;j<(int)vals.size();j++)
 		{
 		  if (_columns.at(j) != _id && j != _label_pos && max_vals.at(j) != min_vals.at(j))
 		    vals.at(j) = (vals.at(j) - min_vals.at(j)) / (max_vals.at(j) - min_vals.at(j));
@@ -237,7 +239,7 @@ namespace dd
 	      read_csv_line(hline,delim,vals,cid,nlines);
 	      if (scale)
 		{
-		  for (size_t j=0;j<vals.size();j++)
+		  for (int j=0;j<(int)vals.size();j++)
 		    {
 		      if (_columns.at(j) != _id && j != _label_pos && max_vals.at(j) != min_vals.at(j))
 			vals.at(j) = (vals.at(j) - min_vals.at(j)) / (max_vals.at(j) - min_vals.at(j));

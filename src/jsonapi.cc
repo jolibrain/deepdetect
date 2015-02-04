@@ -42,6 +42,8 @@ namespace dd
 
   int JsonAPI::boot(int argc, char *argv[])
   {
+    (void)argc;
+    (void)argv;
     return 0; // does nothing, in practice, class should be derived.
   }
 
@@ -340,10 +342,9 @@ namespace dd
   
     // prediction
     APIData out;
-    int status = -1;
     try
       {
-	status = this->predict(ad_data,pos,out);
+	this->predict(ad_data,pos,out); // we ignore returned status, stored in out data object
       }
     catch (InputConnectorBadParamException &e)
       {
@@ -406,10 +407,9 @@ namespace dd
 
     // training
     APIData out;
-    int status = -1;
     try
       {
-	status = this->train(ad,pos,out);
+	this->train(ad,pos,out); // we ignore return status, stored in out data object
       }
     catch (InputConnectorBadParamException &e)
       {

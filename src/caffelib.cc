@@ -346,10 +346,10 @@ namespace dd
     //std::vector<Blob<float>*> results = _net->Forward(bottom,&loss);
     
     float loss = 0.0;
-    std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();
+    //std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();
     std::vector<Blob<float>*> results = _net->ForwardPrefilled(&loss); // XXX: on a batch, are we getting the average loss ?
-    std::chrono::time_point<std::chrono::system_clock> tstop = std::chrono::system_clock::now();
-    double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(tstop-tstart).count();
+    /*std::chrono::time_point<std::chrono::system_clock> tstop = std::chrono::system_clock::now();
+      double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(tstop-tstart).count();*/
     //std::cout << "Caffe prediction time=" << elapsed << std::endl;
     int slot = results.size() - 1;
     /*std::cout << "results size=" << results.size() << std::endl;

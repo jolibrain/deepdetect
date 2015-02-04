@@ -74,7 +74,7 @@ namespace dd
      * \brief copy-constructor
      */
     MLLib(MLLib &&mll) noexcept
-      :_mlmodel(mll._mlmodel),_inputc(mll._inputc),_outputc(mll._outputc),_loss(mll._loss.load()),_tjob_running(mll._tjob_running.load())
+      :_inputc(mll._inputc),_outputc(mll._outputc),_mlmodel(mll._mlmodel),_loss(mll._loss.load()),_tjob_running(mll._tjob_running.load())
       {}
     
     /**

@@ -41,14 +41,17 @@ namespace dd
     // size of each element in Caffe jargon
     int channels() const
     {
+      return feature_size();
     }
     
     int height() const
     {
+      return _height;
     }
     
     int width() const
     {
+      return _width;
     }
 
     void init(const APIData &ad)
@@ -98,7 +101,7 @@ namespace dd
     // size of each element in Caffe jargon
     int channels() const
     {
-      
+      return feature_size();
     }
     
     int height() const
