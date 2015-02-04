@@ -110,7 +110,9 @@ namespace dd
 	    }
 	  try
 	    {
-	      double val = std::stod(col);
+	      double val = 0.0;
+	      if (!col.empty())
+		val = std::stod(col);
 	      vals.push_back(val);
 	    }
 	  catch (std::invalid_argument &e)
