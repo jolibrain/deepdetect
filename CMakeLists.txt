@@ -46,4 +46,6 @@ find_package(CUDA)
 include_directories ("${PROJECT_SOURCE_DIR}/src")
 add_subdirectory (src) 
 add_subdirectory(main)
-add_subdirectory(tests)
+
+# templates
+file(COPY "templates" DESTINATION ".")

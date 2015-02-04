@@ -22,6 +22,7 @@
 #include "caffelib.h"
 #include "imginputfileconn.h"
 #include "outputconnectorstrategy.h"
+#include "utils/fileops.hpp"
 #include <chrono>
 #include <iostream>
 
@@ -38,7 +39,6 @@ namespace dd
     :MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,CaffeModel>(cmodel)
   {
     this->_libname = "caffe";
-    create_model();
   }
   
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -60,10 +60,35 @@ namespace dd
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::instantiate_template(const APIData &ad)
+  {
+    // - locate template repository
+    std::string model_tmpl = ad.get("template").get<std::string>();
+    this->_mlmodel._model_template = model_tmpl;
+    std::cout << "instantiating model template " << model_tmpl << std::endl;
+
+    // - copy files to model repository
+    std::string source = std::string(MLMODEL_TEMPLATE_REPO) + "caffe/" + model_tmpl + "/";
+    std::cout << "source=" << source << std::endl;
+    std::cout << "dest=" << this->_mlmodel._repo + '/' + model_tmpl + ".prototxt" << std::endl;
+    if (fileops::copy_file(source + model_tmpl + ".prototxt",
+			   this->_mlmodel._repo + '/' + model_tmpl + ".prototxt"))
+      throw MLLibBadParamException("failed to locate model template " + source + ".prototxt");
+    if (fileops::copy_file(source + model_tmpl + "_solver.prototxt",
+			   this->_mlmodel._repo + '/' + model_tmpl + "_solver.prototxt"))
+      throw MLLibBadParamException("failed to locate solver template " + source + "_solver.prototxt");
+    fileops::copy_file(source + "deploy.prototxt",
+		       this->_mlmodel._repo + "/deploy.prototxt");
+    this->_mlmodel.read_from_repository(this->_mlmodel._repo);
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::create_model()
   {
     if (!this->_mlmodel._def.empty() && !this->_mlmodel._weights.empty()) // whether in prediction mode...
       {
+	if (_net)
+	  delete _net;
 	_net = new Net<float>(this->_mlmodel._def);
 	_net->CopyTrainedLayersFrom(this->_mlmodel._weights);
 	return 0;
@@ -80,6 +105,12 @@ namespace dd
       _gpu = ad.get("gpu").get<bool>();
     if (ad.has("gpuid"))
       _gpuid = ad.get("gpuid").get<int>();
+    
+    // instantiate model template here, if any
+    if (ad.has("template"))
+      instantiate_template(ad);
+    else // model template instantiation is defered until training call
+      create_model();
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -95,10 +126,21 @@ namespace dd
     inputc._train = true;
     inputc.transform(ad);
 
+    // instantiate model template here, as a defered from service initialization
+    // since inputs are necessary in order to fit the inner net input dimension.
+    if (!this->_mlmodel._model_template.empty())
+      {
+	// modifies model structure, template must have been copied at service creation with instantiate_template
+	update_net_input_proto(this->_mlmodel._repo + '/' + this->_mlmodel._model_template + ".prototxt",
+			       this->_mlmodel._repo + "/deploy.prototxt",
+			       inputc,ad);
+	create_model(); // creates initial net.
+      }
+
     caffe::SolverParameter solver_param;
     caffe::ReadProtoFromTextFileOrDie(this->_mlmodel._solver,&solver_param); //TODO: no die
     update_solver_data_paths(solver_param);
-    
+
     // parameters
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
 #ifndef CPU_ONLY
@@ -180,6 +222,7 @@ namespace dd
     // optimize
     this->_tjob_running = true;
     caffe::Solver<float> *solver = caffe::GetSolver<float>(solver_param);
+
     if (!inputc._dv.empty())
       {
 	boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->net()->layers()[0])->AddDatumVector(inputc._dv);
@@ -245,6 +288,8 @@ namespace dd
 	
 	solver->iter_++;
       }
+    //TODO: output data object
+
     // always save final snapshot.
     if (solver->param_.snapshot_after_train())
       solver->Snapshot();
@@ -292,16 +337,7 @@ namespace dd
 
     TInputConnectorStrategy inputc(this->_inputc);
     inputc.transform(ad); //TODO: catch errors ?
-    int batch_size = inputc.size();
-    
-    // with datum
-    /*std::vector<Datum> dv;
-    for (int i=0;i<batch_size;i++)
-      {      
-	Datum datum;
-	CVMatToDatum(inputc._images.at(i),&datum);
-	dv.push_back(datum);
-	}*/
+    int batch_size = inputc.batch_size();
     boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(inputc._dv);
     
     // with addmat (PR)
@@ -330,7 +366,7 @@ namespace dd
 	  }
       }
     TOutputConnectorStrategy btout(this->_outputc);
-    tout.best_cats(ad,btout); //TODO: use output parameter for best cat
+    tout.best_cats(ad.getobj("parameters").getobj("output"),btout);
     btout.to_ad(out);
     out.add("status",0);
     
@@ -362,6 +398,25 @@ namespace dd
 	  }
       }
     sp.clear_net();
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_net_input_proto(const std::string &net_file,
+												   const std::string &deploy_file,
+												   const TInputConnectorStrategy &inputc,
+												   const APIData &ad)
+  {
+    //TODO: get "parameters/mllib/net" from ad (e.g. for batch_size).
+
+    caffe::NetParameter net_param;
+    caffe::ReadProtoFromTextFile(net_file,&net_param);
+    net_param.mutable_layers(0)->mutable_memory_data_param()->set_channels(inputc.feature_size());
+    net_param.mutable_layers(1)->mutable_memory_data_param()->set_channels(inputc.feature_size()); // test layer
+    caffe::WriteProtoToTextFile(net_param,net_file);
+    
+    caffe::ReadProtoFromTextFile(deploy_file,&net_param);
+    net_param.mutable_layers(0)->mutable_memory_data_param()->set_channels(inputc.feature_size());
+    caffe::WriteProtoToTextFile(net_param,deploy_file);
   }
 
   template class CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>;

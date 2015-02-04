@@ -53,6 +53,7 @@ namespace dd
     std::unordered_map<int,std::string> _hcorresp; /**< table of class correspondences. */
     std::string _solver; /**< solver description file, included here as part of the model, very specific to Caffe. */
     std::string _sstate; /**< current solver state, useful for resuming training. */
+    std::string _model_template; /**< model template name, if any. */
   };
   
 }

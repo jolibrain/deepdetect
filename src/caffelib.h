@@ -1,6 +1,6 @@
 /**
  * DeepDetect
- * Copyright (c) 2014 Emmanuel Benazera
+ * Copyright (c) 2014-2015 Emmanuel Benazera
  * Author: Emmanuel Benazera <beniz@droidnik.fr>
  *
  * This file is part of deepdetect.
@@ -30,25 +30,81 @@ using caffe::Blob;
 
 namespace dd
 {
+  /**
+   * \brief Caffe library wrapper for deepdetect
+   */
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel=CaffeModel>
     class CaffeLib : public MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>
     {
+      friend class caffe::MemoryDataLayer<float>;
     public:
-      CaffeLib(const CaffeModel &cmodel);
-      CaffeLib(CaffeLib &&cl) noexcept;
-      ~CaffeLib();
-
-      int create_model();
-
-      void init_mllib(const APIData &ad);
-      int train(const APIData &ad, APIData &out);
-      int predict(const APIData &ad, APIData &out);
+    /**
+     * \brief constructor from model
+     * @param model Caffe model
+     */
+    CaffeLib(const CaffeModel &cmodel);
     
-      void update_solver_data_paths(caffe::SolverParameter &sp);
+    /**
+     * \brief copy-constructor
+     */
+    CaffeLib(CaffeLib &&cl) noexcept;
     
-      caffe::Net<float> *_net = nullptr;
-      bool _gpu = false; /**< whether to use GPU. */
-      int _gpuid = 0; /**< GPU id. */
+    /**
+     * \brief destructor
+     */
+    ~CaffeLib();
+
+    //TODO: instanciate from model template
+    void instantiate_template(const APIData &ad);
+    
+    /**
+     * \brief creates neural net instance based on model
+     * @return 0 if OK, 2, if missing 'deploy' file, 1 otherwise
+     */
+    int create_model();
+    
+    /*- from mllib -*/
+    /**
+     * \brief init this instance (e.g. sets GPU/CPU) and creates model
+     * @param ad data object for "parameters/mllib"
+     */
+    void init_mllib(const APIData &ad);
+
+    /**
+     * \brief train new model
+     * @param ad root data object
+     * @param out output data object (e.g. loss, ...)
+     * @return 0 if OK, 1 otherwise
+     */
+    int train(const APIData &ad, APIData &out);
+    
+    /**
+     * \brief predicts from model
+     * @param ad root data object
+     * @param out output data object (e.g. predictions, ...)
+     * @return 0 if OK, 1 otherwise
+     */
+    int predict(const APIData &ad, APIData &out);
+    
+    //TODO: status ?
+
+    /*- local functions -*/
+    /**
+     * \brief updates solver's paths to data according to current Caffe model
+     *        XXX: As for now, everything in the solver is volatile, and not written back to model file
+     * @param sp Caffe's solver's parameters
+     */
+    void update_solver_data_paths(caffe::SolverParameter &sp);
+
+    //TODO
+      void update_net_input_proto(const std::string &net_file,
+				  const std::string &deploy_file,
+				  const TInputConnectorStrategy &inputc,
+				  const APIData &ad);
+      
+    caffe::Net<float> *_net = nullptr; /**< neural net. */
+    bool _gpu = false; /**< whether to use GPU. */
+    int _gpuid = 0; /**< GPU id. */
     };
   
 }

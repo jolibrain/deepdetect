@@ -1,6 +1,6 @@
 /**
  * DeepDetect
- * Copyright (c) 2014 Emmanuel Benazera
+ * Copyright (c) 2014-2015 Emmanuel Benazera
  * Author: Emmanuel Benazera <beniz@droidnik.fr>
  *
  * This file is part of deepdetect.
@@ -21,6 +21,10 @@
 
 #ifndef MODEL_H
 #define MODEL_H
+
+#ifndef MLMODEL_TEMPLATE_REPO
+#define MLMODEL_TEMPLATE_REPO "templates/"
+#endif
 
 namespace dd
 {

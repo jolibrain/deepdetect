@@ -241,7 +241,7 @@ namespace dd
 	
 	// model parameters (mandatory).
 	ad = APIData(d);
-	ad_model = ad.getobj("model");//APIData(d["model"]);
+	ad_model = ad.getobj("model");
       }
     catch(...)
       {
@@ -253,7 +253,7 @@ namespace dd
       {
 	if (mllib == "caffe")
 	  {
-	    CaffeModel cmodel(ad_model);
+	    CaffeModel cmodel(ad_model); //TODO: pass generic ad, in order to fetch templates from parameters/mllib
 	    if (input == "image")
 	      add_service(sname,std::move(MLService<CaffeLib,ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
 	    else if (input == "csv")

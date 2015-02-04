@@ -75,7 +75,7 @@ namespace dd
     static std::string solver = "solver";
     _repo = repo;
     std::unordered_set<std::string> lfiles;
-    int e = list_directory_files(repo,lfiles);
+    int e = fileops::list_directory_files(repo,lfiles);
     if (e != 0)
       {
 	LOG(ERROR) << "error reading caffe model repository\n";
