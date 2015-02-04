@@ -127,11 +127,12 @@ namespace dd
     void read_csv(const APIData &ad,
 		  const std::string &fname)
     {
-      std::ifstream csv_file(fname);
+      std::ifstream csv_file(fname,std::ios::binary);
       if (!csv_file.is_open())
 	throw InputConnectorBadParamException("cannot open file " + fname);
       std::string hline;
       std::getline(csv_file,hline);
+      hline.erase(std::remove(hline.begin(),hline.end(),'\r'),hline.end()); // remove ^M if any
       std::stringstream sg(hline);
       std::string col;
       std::string delim = ",";
@@ -143,8 +144,8 @@ namespace dd
       auto hit = _ignored_columns.begin();
       while(std::getline(sg,col,delim[0]))
 	{
-	  if ((hit=_ignored_columns.find(col))!=_ignored_columns.end())
-	    continue;
+	  /*if ((hit=_ignored_columns.find(col))!=_ignored_columns.end())
+	    continue;*/
 	  _columns.push_back(col);
 	  if (col == _label)
 	    _label_pos = i;
@@ -170,6 +171,7 @@ namespace dd
 	  scale = true;
 	  while(std::getline(csv_file,hline))
 	    {
+	      hline.erase(std::remove(hline.begin(),hline.end(),'\r'),hline.end());
 	      std::vector<double> vals;
 	      std::string cid;
 	      read_csv_line(hline,delim,vals,cid,nlines);
@@ -202,6 +204,7 @@ namespace dd
       // read data
       while(std::getline(csv_file,hline))
 	{
+	  hline.erase(std::remove(hline.begin(),hline.end(),'\r'),hline.end());
 	  std::vector<double> vals;
 	  std::string cid;
 	  read_csv_line(hline,delim,vals,cid,nlines);
@@ -230,12 +233,13 @@ namespace dd
       if (!_csv_test_fname.empty())
 	{
 	  nlines = 0;
-	  std::ifstream csv_test_file(_csv_test_fname);
+	  std::ifstream csv_test_file(_csv_test_fname,std::ios::binary);
 	  if (!csv_test_file.is_open())
 	    throw InputConnectorBadParamException("cannot open test file " + fname);
 	  std::getline(csv_test_file,hline); // skip header line
 	  while(std::getline(csv_test_file,hline))
 	    {
+	      hline.erase(std::remove(hline.begin(),hline.end(),'\r'),hline.end());
 	      std::vector<double> vals;
 	      std::string cid;
 	      read_csv_line(hline,delim,vals,cid,nlines);
