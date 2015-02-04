@@ -90,7 +90,7 @@ namespace dd
 	if (_net)
 	  {
 	    delete _net;
-	    _net == nullptr;
+	    _net = nullptr;
 	  }
 	_net = new Net<float>(this->_mlmodel._def);
 	_net->CopyTrainedLayersFrom(this->_mlmodel._weights);
