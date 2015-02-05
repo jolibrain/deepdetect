@@ -296,11 +296,14 @@ namespace dd
     // always save final snapshot.
     if (solver->param_.snapshot_after_train())
       solver->Snapshot();
+    
     if (_net)
       {
 	delete _net;
 	_net = nullptr;
       }
+    solver_param = caffe::SolverParameter();
+    delete solver;
     this->_mlmodel.read_from_repository(this->_mlmodel._repo);
     int cm = create_model();
     if (cm == 1)
