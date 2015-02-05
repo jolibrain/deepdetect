@@ -12,18 +12,6 @@ layers {
   }
 }
 layers {
-  name: "inputlt"
-  type: MEMORY_DATA
-  top: "data"
-  top: "label"
-  memory_data_param {
-    batch_size: 1000
-    channels: 54
-    height: 1
-    width: 1
-  }
-}
-layers {
   name: "ip1"
   type: INNER_PRODUCT
   bottom: "data"
