@@ -317,6 +317,16 @@ namespace dd
   int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::predict(const APIData &ad,
 										   APIData &out)
   {
+    // check for net
+    if (!_net)
+      {
+	int cm = create_model();
+	if (cm == 1)
+	  throw MLLibInternalException("no model in " + this->_mlmodel._repo + " for initializing the net");
+	else if (cm == 2)
+	  throw MLLibBadParamException("no deploy file in " + this->_mlmodel._repo + " for initializing the net");
+      }
+    
     // parameters
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
 #ifndef CPU_ONLY
