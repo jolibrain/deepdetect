@@ -49,6 +49,7 @@ namespace dd
     _gpu = cl._gpu;
     _gpuid = cl._gpuid;
     _net = cl._net;
+    _nclasses = cl._nclasses;
     cl._net = nullptr;
   }
 
@@ -108,7 +109,9 @@ namespace dd
       _gpu = ad.get("gpu").get<bool>();
     if (ad.has("gpuid"))
       _gpuid = ad.get("gpuid").get<int>();
-    
+    if (ad.has("nclasses"))
+      _nclasses = ad.get("nclasses").get<int>();
+    else std::cerr << "[Warning]: number of classes is undetermined in Caffe\n";
     // instantiate model template here, if any
     if (ad.has("template"))
       instantiate_template(ad);
@@ -375,11 +378,12 @@ namespace dd
       std::cout << "count=" << results[slot]->count() << std::endl;*/
     int scount = results[slot]->count();
     int scperel = scount / batch_size;
+    int nclasses = _nclasses > 0 ? _nclasses : scperel; // XXX: beware of scperel as it can refer to the number of neurons is last layer before softmax, which is replaced 'in-place' with probabilities after softmax. Weird by Caffe... */
     TOutputConnectorStrategy tout;
     for (int j=0;j<batch_size;j++)
       {
 	tout.add_result(inputc._ids.at(j),loss);
-	for (int i=0;i<scperel;i++)
+	for (int i=0;i<nclasses;i++)
 	  {
 	    tout.add_cat(inputc._ids.at(j),results[slot]->cpu_data()[j*scperel+i],this->_mlmodel.get_hcorresp(i));
 	  }

@@ -117,6 +117,7 @@ namespace dd
     caffe::Net<float> *_net = nullptr; /**< neural net. */
     bool _gpu = false; /**< whether to use GPU. */
     int _gpuid = 0; /**< GPU id. */
+      int _nclasses = 0; /**< required, as difficult to acquire from Caffe's internals. */
     };
   
 }
