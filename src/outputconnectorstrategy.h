@@ -181,6 +181,50 @@ namespace dd
 	}
     }
 
+    struct PredictionAndAnswer {
+      float prediction;
+      unsigned char answer; //this is either 0 or 1
+    };
+
+    //On input, p[] should be in ascending order by prediction, and _count^2
+    //must be less than 2^33 (int is 32-bit so it won't overflow).
+    //double auc(const PredictionAndAnswer*p, unsigned int _count)
+    double auc(const std::vector<double> &pred, const std::vector<int> &targets)
+    {
+      class PredictionAndAnswer {
+      public:
+	PredictionAndAnswer(const float &f, const int &i)
+	  :prediction(f),answer(i) {}
+	~PredictionAndAnswer() {}
+	float prediction;
+	int answer; //this is either 0 or 1
+      };
+      std::vector<PredictionAndAnswer> p;
+      for (size_t i=0;i<pred.size();i++)
+	p.emplace_back(pred.at(i),targets.at(i));
+      int count = p.size();
+      
+      int i,truePos,tp0,accum,tn,ones=0;
+      float threshold; //predictions <= threshold are classified as zeros
+
+      for (i=0;i<count;i++) ones+=p[i].answer;
+      if (0==ones || count==ones) return 1;
+
+      truePos=tp0=ones; accum=tn=0; threshold=p[0].prediction;
+      for (i=0;i<count;i++) {
+        if (p[i].prediction!=threshold) { //threshold changes
+	  threshold=p[i].prediction;
+	  accum+=tn*(truePos+tp0); //2* the area of trapezoid
+	  tp0=truePos;
+	  tn=0;
+        }
+        tn+= 1- p[i].answer; //x-distance between adjacent points
+        truePos-= p[i].answer;            
+      }
+      accum+=tn*(truePos+tp0); //2* the area of trapezoid
+      return (double)accum/(2*ones*(count-ones));
+    }
+    
     // for debugging purposes.
     /**
      * \brief print supervised output to string

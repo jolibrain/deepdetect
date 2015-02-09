@@ -313,6 +313,46 @@ namespace dd
       throw MLLibInternalException("no model in " + this->_mlmodel._repo + " for initializing the net");
     else if (cm == 2)
       throw MLLibBadParamException("no deploy file in " + this->_mlmodel._repo + " for initializing the net");
+    
+
+    // test
+    APIData ad_out = ad.getobj("parameters").getobj("output");
+    if (ad_out.has("measure"))
+      {
+	boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(inputc._dv_test);
+	float loss = 0.0;
+	std::vector<Blob<float>*> results = _net->ForwardPrefilled(&loss);
+	int batch_size = inputc._dv_test.size();
+	int slot = results.size() - 1;
+	int scount = results[slot]->count();
+	int scperel = scount / batch_size;
+	std::vector<double> predictions;
+	std::vector<int> targets;
+	for (int j=0;j<batch_size;j++)
+	  {
+	    int max_cl = -1;
+	    double max_pr = -1.0;
+	    for (int i=0;i<_nclasses;i++)
+	      {
+		double pr = results[slot]->cpu_data()[j*scperel+i];
+		//std::cout << "pr=" << pr << std::endl;
+		if (max_pr < pr)
+		  {
+		    max_pr = pr;
+		    max_cl = i;
+		  }
+	      }
+	    //std::cout << "max_cl=" << max_cl << " / label=" << inputc._dv_test.at(j).label() << std::endl;
+	    predictions.push_back(max_pr);
+	    targets.push_back(inputc._dv_test.at(j).label());
+	  }
+	if (ad_out.get("measure").get<std::string>() == "auc")
+	  {
+	    double auc = this->_outputc.auc(predictions,targets);
+	    //std::cerr << "AUC=" << auc << std::endl;
+	    out.add("auc",auc);
+	  }
+      }
     return 0;
   }
 
