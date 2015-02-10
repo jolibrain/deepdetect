@@ -17,6 +17,13 @@ if (GTEST_FOUND)
     COMMAND ut_apidata
     )
 
+  add_executable(ut_conn ut-conn.cc)
+  target_link_libraries(ut_conn ${CAFFE_STATIC_LINK} ${CAFFE_LIB_DEPS} ${CUDA_LIB_DEPS} ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc)
+  add_test(
+    NAME ut_conn
+    COMMAND ut_conn
+    )
+
   add_executable(ut_jsonapi ut-jsonapi.cc)
   target_link_libraries(ut_jsonapi ${CAFFE_STATIC_LINK} ${CAFFE_LIB_DEPS} ${CUDA_LIB_DEPS} ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc)
   add_test(

@@ -23,6 +23,7 @@
 #define OUTPUTCONNECTORSTRATEGY_H
 
 #include <map>
+#include <algorithm>
 #include <iostream>
 
 namespace dd
@@ -205,7 +206,7 @@ namespace dd
       int count = p.size();
       
       std::sort(p.begin(),p.end(),
-		[](const PredictionAndAnswer &p1, const PredictionAndAnswer &p2){return p1.prediction > p2.prediction;});
+		[](const PredictionAndAnswer &p1, const PredictionAndAnswer &p2){return p1.prediction < p2.prediction;});
 
       int i,truePos,tp0,accum,tn,ones=0;
       float threshold; //predictions <= threshold are classified as zeros
