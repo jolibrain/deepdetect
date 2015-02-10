@@ -204,6 +204,9 @@ namespace dd
 	p.emplace_back(pred.at(i),targets.at(i));
       int count = p.size();
       
+      std::sort(p.begin(),p.end(),
+		[](const PredictionAndAnswer &p1, const PredictionAndAnswer &p2){return p1.prediction > p2.prediction;});
+
       int i,truePos,tp0,accum,tn,ones=0;
       float threshold; //predictions <= threshold are classified as zeros
 
