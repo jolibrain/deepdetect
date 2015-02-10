@@ -319,6 +319,9 @@ namespace dd
     APIData ad_out = ad.getobj("parameters").getobj("output");
     if (ad_out.has("measure"))
       {
+	bool auc = (ad_out.get("measure").get<std::string>() == "auc");
+	if (auc && _nclasses != 2) // AUC for binary classes only
+	  return 0;
 	boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(inputc._dv_test);
 	float loss = 0.0;
 	std::vector<Blob<float>*> results = _net->ForwardPrefilled(&loss);
@@ -332,18 +335,8 @@ namespace dd
 	  {
 	    int max_cl = -1;
 	    double max_pr = -1.0;
-	    for (int i=0;i<_nclasses;i++)
-	      {
-		double pr = results[slot]->cpu_data()[j*scperel+i];
-		//std::cout << "pr=" << pr << std::endl;
-		if (max_pr < pr)
-		  {
-		    max_pr = pr;
-		    max_cl = i;
-		  }
-	      }
-	    //std::cout << "max_cl=" << max_cl << " / label=" << inputc._dv_test.at(j).label() << std::endl;
-	    predictions.push_back(max_pr);
+	    if (auc)
+	      predictions.push_back(results[slot]->cpu_data()[j*scperel+1]);
 	    targets.push_back(inputc._dv_test.at(j).label());
 	  }
 	if (ad_out.get("measure").get<std::string>() == "auc")
