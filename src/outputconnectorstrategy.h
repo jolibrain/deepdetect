@@ -168,7 +168,6 @@ namespace dd
     void best_cats(const APIData &ad_out, SupervisedOutput &bcats) const
     {
       int best = _best;
-      //APIData ad_out = ad.getobj("parameters").getobj("output");
       if (ad_out.has("best"))
 	best = ad_out.get("best").get<int>();
       auto hit = _vcats.begin();
@@ -187,8 +186,26 @@ namespace dd
       unsigned char answer; //this is either 0 or 1
     };
 
-    // metrix: ACC
-    double acc(const APIData ad)
+    // measure
+    void measure(const APIData &ad_res, const APIData &ad_out, APIData &out)
+    {
+      std::vector<std::string> measures = ad_out.get("measure").get<std::vector<std::string>>();
+      bool bauc = (std::find(measures.begin(),measures.end(),"auc")!=measures.end());
+      bool bacc = (std::find(measures.begin(),measures.end(),"acc")!=measures.end());
+      if (bauc) // XXX: applies two binary classification problems only
+	  {
+	    double mauc = auc(ad_res);
+	    out.add("auc",mauc);
+	  }
+	if (bacc)
+	  {
+	    double macc = acc(ad_res);
+	    out.add("acc",macc);
+	  }
+    }
+
+    // measure: ACC
+    double acc(const APIData &ad)
     {
       double acc = 0.0;
       int batch_size = ad.get("batch_size").get<int>();
@@ -203,7 +220,9 @@ namespace dd
       return acc / static_cast<double>(batch_size);
     }
 
-    // metric: AUC
+    //TODO: measure: F1
+
+    // measure: AUC
     double auc(const APIData &ad)
     {
       std::vector<double> pred1;
@@ -256,6 +275,8 @@ namespace dd
       return (double)accum/(2*ones*(count-ones));
     }
     
+    //TODO: measure: multiclass logarithmic loss
+
     // for debugging purposes.
     /**
      * \brief print supervised output to string

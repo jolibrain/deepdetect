@@ -319,9 +319,6 @@ namespace dd
     APIData ad_out = ad.getobj("parameters").getobj("output");
     if (ad_out.has("measure"))
       {
-	std::vector<std::string> measures = ad_out.get("measure").get<std::vector<std::string>>();
-	bool bauc = (std::find(measures.begin(),measures.end(),"auc")!=measures.end());
-	bool bacc = (std::find(measures.begin(),measures.end(),"acc")!=measures.end());
 	boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(inputc._dv_test);
 	float loss = 0.0;
 	std::vector<Blob<float>*> results = _net->ForwardPrefilled(&loss);
@@ -331,8 +328,8 @@ namespace dd
 	int scperel = scount / batch_size;
 	std::vector<double> predictions;
 	std::vector<int> targets;
-	APIData res_ad;
-	res_ad.add("batch_size",batch_size);
+	APIData ad_res;
+	ad_res.add("batch_size",batch_size);
 	for (int j=0;j<batch_size;j++)
 	  {
 	    APIData bad;
@@ -345,18 +342,9 @@ namespace dd
 	    bad.add("target",target);
 	    bad.add("pred",predictions);
 	    std::vector<APIData> vad = { bad };
-	    res_ad.add(std::to_string(j),vad);
+	    ad_res.add(std::to_string(j),vad);
 	  }
-	if (bauc && _nclasses == 2)
-	  {
-	    double auc = this->_outputc.auc(res_ad);
-	    out.add("auc",auc);
-	  }
-	if (bacc)
-	  {
-	    double acc = this->_outputc.acc(res_ad);
-	    out.add("acc",acc);
-	  }
+	this->_outputc.measure(ad_res,ad_out,out);
       }
     return 0;
   }
