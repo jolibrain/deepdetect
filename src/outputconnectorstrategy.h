@@ -25,9 +25,11 @@
 #include <map>
 #include <algorithm>
 #include <iostream>
+#include <Eigen/Dense>
 
 namespace dd
 {
+  typedef Eigen::MatrixXd dMat;
 
   /**
    * \brief main output connector class
@@ -192,6 +194,8 @@ namespace dd
       std::vector<std::string> measures = ad_out.get("measure").get<std::vector<std::string>>();
       bool bauc = (std::find(measures.begin(),measures.end(),"auc")!=measures.end());
       bool bacc = (std::find(measures.begin(),measures.end(),"acc")!=measures.end());
+      bool bf1 = (std::find(measures.begin(),measures.end(),"f1")!=measures.end());
+      bool bmcll = (std::find(measures.begin(),measures.end(),"mcll")!=measures.end());
       if (bauc) // XXX: applies two binary classification problems only
 	  {
 	    double mauc = auc(ad_res);
@@ -201,6 +205,21 @@ namespace dd
 	  {
 	    double macc = acc(ad_res);
 	    out.add("acc",macc);
+	  }
+	if (bf1)
+	  {
+	    double f1,precision,recall,acc;
+	    f1 = mf1(ad_res,precision,recall,acc);
+	    out.add("f1",f1);
+	    out.add("precision",precision);
+	    out.add("recall",recall);
+	    out.add("accp",acc);
+	    //TODO: confusion matrix ?
+	  }
+	if (bmcll)
+	  {
+	    double mmcll = mcll(ad_res);
+	    out.add("mcll",mmcll);
 	  }
     }
 
@@ -220,8 +239,32 @@ namespace dd
       return acc / static_cast<double>(batch_size);
     }
 
-    //TODO: measure: F1
-
+    // measure: F1
+    double mf1(const APIData &ad, double &precision, double &recall, double &acc)
+    {
+      int nclasses = ad.get("nclasses").get<int>();
+      double f1=0.0;
+      dMat conf_matrix = dMat::Zero(nclasses,nclasses);
+      int batch_size = ad.get("batch_size").get<int>();
+      for (int i=0;i<batch_size;i++)
+	{
+	  APIData bad = ad.getobj(std::to_string(i));
+	  std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
+	  int maxpr = std::distance(predictions.begin(),std::max_element(predictions.begin(),predictions.end()));
+	  int target = bad.get("target").get<int>();
+	  conf_matrix(maxpr,target) += 1.0;
+	}
+      dMat conf_diag = conf_matrix.diagonal();
+      dMat conf_csum = conf_matrix.colwise().sum();
+      dMat conf_rsum = conf_matrix.rowwise().sum();
+      dMat eps = dMat::Constant(nclasses,1,1e-8);
+      acc = conf_diag.sum() / conf_matrix.sum();
+      precision = conf_diag.transpose().cwiseQuotient(conf_csum + eps.transpose()).sum() / static_cast<double>(nclasses);
+      recall = conf_diag.cwiseQuotient(conf_rsum + eps).sum() / static_cast<double>(nclasses);
+      f1 = (2.0*precision*recall) / (precision+recall);
+      return f1;
+    }
+    
     // measure: AUC
     double auc(const APIData &ad)
     {
@@ -275,7 +318,20 @@ namespace dd
       return (double)accum/(2*ones*(count-ones));
     }
     
-    //TODO: measure: multiclass logarithmic loss
+    // measure: multiclass logarithmic loss
+    double mcll(const APIData &ad)
+    {
+      double ll=0.0;
+      int batch_size = ad.get("batch_size").get<int>();
+      for (int i=0;i<batch_size;i++)
+	{
+	  APIData bad = ad.getobj(std::to_string(i));
+	  std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
+	  int target = bad.get("target").get<int>();
+	  ll -= std::log(predictions.at(target));
+	}
+      return ll / static_cast<double>(batch_size);
+    }
 
     // for debugging purposes.
     /**

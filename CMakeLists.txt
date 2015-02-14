@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8.8)
 project(deepdetect)
 
+set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+
 set (deepdetect_VERSION_MAJOR 0)
 set (deepdetect_VERSION_MINOR 1)
  
@@ -33,6 +35,10 @@ configure_file(
   "${PROJECT_SOURCE_DIR}/src/githash.h.in"
   "${PROJECT_BINARY_DIR}/githash.h"
 )
+
+# dependency to Eigen for confusion matrix fast computation
+find_package(Eigen3 REQUIRED)
+include_directories("${EIGEN3_INCLUDE_DIR}")
 
 # add the binary tree to the search path for include files
 # so that we will find dd_config.h

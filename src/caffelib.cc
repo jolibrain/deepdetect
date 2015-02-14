@@ -314,7 +314,6 @@ namespace dd
     else if (cm == 2)
       throw MLLibBadParamException("no deploy file in " + this->_mlmodel._repo + " for initializing the net");
     
-
     // test
     APIData ad_out = ad.getobj("parameters").getobj("output");
     if (ad_out.has("measure"))
@@ -330,6 +329,7 @@ namespace dd
 	std::vector<int> targets;
 	APIData ad_res;
 	ad_res.add("batch_size",batch_size);
+	ad_res.add("nclasses",_nclasses);
 	for (int j=0;j<batch_size;j++)
 	  {
 	    APIData bad;
