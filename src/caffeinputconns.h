@@ -152,7 +152,7 @@ namespace dd
 	{
 	  if (i == _label_pos)
 	    {
-	      datum.set_label(static_cast<int>(vf.at(i))); //TODO: labels from 0 onward
+	      datum.set_label(static_cast<int>(vf.at(i))); //TODO: labels from 0 onward, requires label offset
 	    }
 	  else if (_columns.at(i) == _id)
 	    {

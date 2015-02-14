@@ -187,9 +187,36 @@ namespace dd
       unsigned char answer; //this is either 0 or 1
     };
 
-    //On input, p[] should be in ascending order by prediction, and _count^2
-    //must be less than 2^33 (int is 32-bit so it won't overflow).
-    //double auc(const PredictionAndAnswer*p, unsigned int _count)
+    // metrix: ACC
+    double acc(const APIData ad)
+    {
+      double acc = 0.0;
+      int batch_size = ad.get("batch_size").get<int>();
+      for (int i=0;i<batch_size;i++)
+	{
+	  APIData bad = ad.getobj(std::to_string(i));
+	  std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
+	  int maxpr = std::distance(predictions.begin(),std::max_element(predictions.begin(),predictions.end()));
+	  if (maxpr == bad.get("target").get<int>())
+	    acc++;
+	}
+      return acc / static_cast<double>(batch_size);
+    }
+
+    // metric: AUC
+    double auc(const APIData &ad)
+    {
+      std::vector<double> pred1;
+      std::vector<int> targets;
+      int batch_size = ad.get("batch_size").get<int>();
+      for (int i=0;i<batch_size;i++)
+	{
+	  APIData bad = ad.getobj(std::to_string(i));
+	  pred1.push_back(bad.get("pred").get<std::vector<double>>().at(1));
+	  targets.push_back(bad.get("target").get<int>());
+	}
+      return auc(pred1,targets);
+    }
     double auc(const std::vector<double> &pred, const std::vector<int> &targets)
     {
       class PredictionAndAnswer {

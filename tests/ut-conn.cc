@@ -26,11 +26,48 @@
 
 using namespace dd;
 
-TEST(inputconn,auc)
+TEST(outputconn,acc)
 {
   std::vector<int> targets = {0, 0, 1, 1};
-  std::vector<double> preds = {0.1, 0.4, 0.35, 0.8};
+  std::vector<double> pred1 = {0.7, 0.3};
+  std::vector<double> pred2 = {0.4, 0.5};
+  std::vector<double> pred3 = {0.1, 0.9};
+  std::vector<double> pred4 = {0.2, 0.8};
+  std::vector<std::vector<double>> preds = { pred1, pred2, pred3, pred4 };
+  APIData res_ad;
+  res_ad.add("batch_size",static_cast<int>(targets.size()));
+  for (size_t i=0;i<targets.size();i++)
+    {
+      APIData bad;
+      bad.add("pred",preds.at(i));
+      bad.add("target",targets.at(i));
+      std::vector<APIData> vad = {bad};
+      res_ad.add(std::to_string(i),vad);
+    }
   SupervisedOutput so;
-  double auc = so.auc(preds,targets);
+  double acc = so.acc(res_ad);
+  ASSERT_EQ(0.75,acc);
+}
+
+TEST(outputconn,auc)
+{
+  std::vector<int> targets = {0, 0, 1, 1};
+  std::vector<double> pred1 = {0.9, 0.1};
+  std::vector<double> pred2 = {0.6, 0.4};
+  std::vector<double> pred3 = {0.65, 0.35};
+  std::vector<double> pred4 = {0.2, 0.8};
+  std::vector<std::vector<double>> preds = { pred1, pred2, pred3, pred4 };
+  APIData res_ad;
+  res_ad.add("batch_size",static_cast<int>(targets.size()));
+  for (size_t i=0;i<targets.size();i++)
+    {
+      APIData bad;
+      bad.add("pred",preds.at(i));
+      bad.add("target",targets.at(i));
+      std::vector<APIData> vad = {bad};
+      res_ad.add(std::to_string(i),vad);
+    }
+  SupervisedOutput so;
+  double auc = so.auc(res_ad);
   ASSERT_EQ(0.75,auc);
 }

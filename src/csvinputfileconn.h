@@ -90,7 +90,7 @@ namespace dd
 		       int &nlines)
     {
       std::string col;
-      auto hit = _ignored_columns.begin();
+      std::unordered_set<std::string>::const_iterator hit;
       std::stringstream sh(hline);
       int c = -1;
       while(std::getline(sh,col,delim[0]))
@@ -141,7 +141,7 @@ namespace dd
       
       // read header
       int i = 0;
-      auto hit = _ignored_columns.begin();
+      //auto hit = _ignored_columns.begin();
       while(std::getline(sg,col,delim[0]))
 	{
 	  /*if ((hit=_ignored_columns.find(col))!=_ignored_columns.end())
