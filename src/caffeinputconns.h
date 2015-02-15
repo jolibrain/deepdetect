@@ -70,7 +70,7 @@ namespace dd
 	  if (!(_train && _uris.empty())) // Caffe model files can reference the source to the image training data 
 	    throw;
 	}
-      for (int i=0;i<this->batch_size();i++)
+      for (int i=0;i<this->batch_size();i++) //TODO: test set
       {      
 	caffe::Datum datum;
 	caffe::CVMatToDatum(this->_images.at(i),&datum);
@@ -152,7 +152,7 @@ namespace dd
 	{
 	  if (i == _label_pos)
 	    {
-	      datum.set_label(static_cast<int>(vf.at(i))); //TODO: labels from 0 onward, requires label offset
+	      datum.set_label(static_cast<int>(vf.at(i)+this->_label_offset)); //TODO: labels from 0 onward, requires label offset
 	    }
 	  else if (_columns.at(i) == _id)
 	    {

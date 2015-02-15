@@ -65,6 +65,11 @@ namespace dd
     {
       return _images.size();
     }
+
+    int test_batch_size() const
+    {
+      return 0; //TODO
+    }
     
     void transform(const APIData &ad)
     {
@@ -109,7 +114,7 @@ namespace dd
     }
 
     std::vector<std::string> _uris;
-    std::vector<cv::Mat> _images;
+    std::vector<cv::Mat> _images; //TODO: test set
     
     // image parameters
     int _width = 227;

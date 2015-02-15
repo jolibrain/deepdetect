@@ -228,9 +228,12 @@ namespace dd
     // optimize
     this->_tjob_running = true;
     caffe::Solver<float> *solver = caffe::GetSolver<float>(solver_param);
+    //shared_ptr<caffe::Solver<float>> solver(caffe::GetSolver<float>(solver_param));
 
     if (!inputc._dv.empty())
       {
+	std::cout << "solver net=" << solver->net() << std::endl;
+	std::cout << "net layers size=" << solver->net()->layers().size() << std::endl;
 	boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->net()->layers()[0])->AddDatumVector(inputc._dv);
 	if (!inputc._dv_test.empty())
 	  boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->test_nets().at(0)->layers()[0])->AddDatumVector(inputc._dv_test);
@@ -392,8 +395,10 @@ namespace dd
 
     TInputConnectorStrategy inputc(this->_inputc);
     inputc.transform(ad); //TODO: catch errors ?
-    int batch_size = inputc.batch_size();
+    int batch_size = inputc.batch_size(); //TODO: could set a multiple, beware of memory overflow
+    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->set_batch_size(batch_size);
     boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(inputc._dv);
+    
     
     // with addmat (PR)
     //std::vector<int> dvl(batch_size,0.0);
@@ -448,9 +453,9 @@ namespace dd
     // fix source paths in the model.
     caffe::NetParameter *np = sp.mutable_net_param();
     caffe::ReadProtoFromTextFile(sp.net().c_str(),np); //TODO: error on read + use internal caffe ReadOrDie procedure
-    for (int i=0;i<np->layers_size();i++)
+    for (int i=0;i<np->layer_size();i++)
       {
-	caffe::LayerParameter *lp = np->mutable_layers(i);
+	caffe::LayerParameter *lp = np->mutable_layer(i);
 	if (lp->has_data_param())
 	  {
 	    caffe::DataParameter *dp = lp->mutable_data_param();
@@ -484,12 +489,17 @@ namespace dd
 
     caffe::NetParameter net_param;
     caffe::ReadProtoFromTextFile(net_file,&net_param);
-    net_param.mutable_layers(0)->mutable_memory_data_param()->set_channels(inputc.feature_size());
-    net_param.mutable_layers(1)->mutable_memory_data_param()->set_channels(inputc.feature_size()); // test layer
+    net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.feature_size());
+    net_param.mutable_layer(1)->mutable_memory_data_param()->set_channels(inputc.feature_size()); // test layer
+    
+    //set train and test batch sizes as multiples of the train and test dataset sizes
+    net_param.mutable_layer(0)->mutable_memory_data_param()->set_batch_size(inputc.batch_size()); //TODO: smart multiple of training set size...
+    net_param.mutable_layer(1)->mutable_memory_data_param()->set_batch_size(inputc.test_batch_size());
     caffe::WriteProtoToTextFile(net_param,net_file);
     
     caffe::ReadProtoFromTextFile(deploy_file,&net_param);
-    net_param.mutable_layers(0)->mutable_memory_data_param()->set_channels(inputc.feature_size());
+    net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.feature_size());
+    net_param.mutable_layer(0)->mutable_memory_data_param()->set_batch_size(inputc.test_batch_size()); // XXX: beware in prediction, batch_size needs to be set properly.
     caffe::WriteProtoToTextFile(net_param,deploy_file);
   }
 

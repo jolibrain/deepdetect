@@ -1,7 +1,7 @@
 name: "mlp"
-layers {
+layer {
   name: "inputl"
-  type: MEMORY_DATA
+  type: "MemoryData"
   top: "data"
   top: "label"
   memory_data_param {
@@ -11,13 +11,11 @@ layers {
     width: 1
   }
 }
-layers {
+layer {
   name: "ip1"
-  type: INNER_PRODUCT
+  type: "InnerProduct"
   bottom: "data"
   top: "ip1"
-  blobs_lr: 1
-  blobs_lr: 2
   inner_product_param {
     num_output: 50
     weight_filler {
@@ -29,28 +27,26 @@ layers {
     }
   }
 }
-layers {
+layer {
        name: "act"
-       type: RELU
+       type: "ReLU"
        bottom: "ip1"
        top: "ip1"
 }
-#layers {
+#layer {
 #  name: "drop1"
-#  type: DROPOUT
+#  type: "dropout"
 #  bottom: "ip1"
 #  top: "ip1"
 #  dropout_param {
 #    dropout_ratio: 0.5
 #  }
 #}
-layers {
+layer {
   name: "ip2"
-  type: INNER_PRODUCT
+  type: "InnerProduct"
   bottom: "ip1"
   top: "ip2"
-  blobs_lr: 1
-  blobs_lr: 2
   inner_product_param {
     num_output: 20
     weight_filler {
@@ -62,9 +58,9 @@ layers {
     }
   }
 }
-layers {
+layer {
   name: "loss"
-  type: SOFTMAX
+  type: "Softmax"
   bottom: "ip2"
   top: "loss"
 }

@@ -1,7 +1,7 @@
 name: "lregression"
-layers {
+layer {
   name: "inputl"
-  type: MEMORY_DATA
+  type: "MemoryData"
   top: "data"
   top: "label"
   memory_data_param {
@@ -11,13 +11,11 @@ layers {
     width: 1
   }
 }
-layers {
+layer {
   name: "ip1"
-  type: INNER_PRODUCT
+  type: "InnerProduct"
   bottom: "data"
   top: "ip1"
-  blobs_lr: 1
-  blobs_lr: 2
   inner_product_param {
     num_output: 64
     weight_filler {
@@ -29,9 +27,9 @@ layers {
     }
   }
 }
-layers {
+layer {
   name: "loss"
-  type: SOFTMAX
+  type: "Softmax"
   bottom: "ip1"
   top: "loss"
 }

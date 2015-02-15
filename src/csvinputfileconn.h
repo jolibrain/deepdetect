@@ -70,6 +70,8 @@ namespace dd
       if (ad_input.has("label"))
 	_label = ad_input.get("label").get<std::string>();
       else if (_train) throw InputConnectorBadParamException("missing label column parameter");
+      if (ad_input.has("label_offset"))
+	_label_offset = ad_input.get("label_offset").get<int>();
       if (ad_input.has("ignore"))
 	{
 	  std::vector<std::string> vignore = ad_input.get("ignore").get<std::vector<std::string>>();
@@ -305,6 +307,11 @@ namespace dd
       return _csvdata.size(); // XXX: what about test data size ?
     }
 
+    int test_batch_size() const
+    {
+      return _csvdata_test.size();
+    }
+
     int feature_size() const
     {
       if (!_id.empty())
@@ -317,6 +324,7 @@ namespace dd
     std::vector<std::string> _columns; //TODO: unordered map to int as pos of the column
     std::string _label;
     int _label_pos = -1;
+    int _label_offset = 0; /**< negative offset so that labels range from 0 onward. */
     std::unordered_set<std::string> _ignored_columns;
     std::string _id;
     std::vector<CSVline> _csvdata;

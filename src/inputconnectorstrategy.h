@@ -83,10 +83,15 @@ namespace dd
     int feature_size() const;
 
     /**
-     * \brief input batch size
+     * \brief input batch size (also used for training set)
      */
     int batch_size() const;
     
+    /**
+     * \brief input test batch size, when applicable
+     */
+    int test_batch_size() const;
+
     bool _train = false; /**< whether in train or predict mode. */
   };
   
