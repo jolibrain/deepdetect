@@ -232,8 +232,6 @@ namespace dd
 
     if (!inputc._dv.empty())
       {
-	std::cout << "solver net=" << solver->net() << std::endl;
-	std::cout << "net layers size=" << solver->net()->layers().size() << std::endl;
 	boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->net()->layers()[0])->AddDatumVector(inputc._dv);
 	if (!inputc._dv_test.empty())
 	  boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->test_nets().at(0)->layers()[0])->AddDatumVector(inputc._dv_test);
