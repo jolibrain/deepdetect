@@ -95,9 +95,11 @@ namespace dd
      *        XXX: As for now, everything in the solver is volatile, and not written back to model file
      * @param sp Caffe's solver's parameters
      * @param ad the root data object
+     * @param inputc the current input constructor that holds the training data
      */
       void update_in_memory_net_and_solver(caffe::SolverParameter &sp,
-					   const APIData &ad);
+					   const APIData &ad,
+					   const TInputConnectorStrategy &inputc);
 
       /**
        * \brief updates the protocol buffer text file of the net directly at training time

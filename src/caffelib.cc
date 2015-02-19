@@ -145,7 +145,7 @@ namespace dd
 
     caffe::SolverParameter solver_param;
     caffe::ReadProtoFromTextFileOrDie(this->_mlmodel._solver,&solver_param); //TODO: no die
-    update_in_memory_net_and_solver(solver_param,ad);
+    update_in_memory_net_and_solver(solver_param,ad,inputc);
 
     // parameters
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
@@ -203,8 +203,6 @@ namespace dd
 	    else if (strcasecmp(solver_type.c_str(),"NESTEROV"))
 	      solver_param.set_solver_type(caffe::SolverParameter_SolverType_NESTEROV);
 	  }
-	else if (ad_solver.has("test_iter"))
-	  solver_param.set_test_iter(0,ad_solver.get("test_iter").get<int>()); // XXX: 0 might not always be the correct index here.
 	else if (ad_solver.has("test_interval"))
 	  solver_param.set_test_interval(ad_solver.get("test_interval").get<int>());
 	else if (ad_solver.has("test_initialization"))
@@ -434,7 +432,8 @@ namespace dd
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_in_memory_net_and_solver(caffe::SolverParameter &sp,
-													    const APIData &ad)
+													    const APIData &ad,
+													    const TInputConnectorStrategy &inputc)
   {
     // fix net model path.
     sp.set_net(this->_mlmodel._repo + "/" + sp.net());
@@ -444,10 +443,34 @@ namespace dd
     
     // acquire custom batch size if any
     APIData ad_net = ad.getobj("parameters").getobj("mllib").getobj("net");
-    int batch_size = -1;
+    int batch_size = inputc.batch_size();
+    int test_batch_size = inputc.test_batch_size();
+    int test_iter = 1;
     if (ad_net.has("batch_size"))
-      batch_size = ad_net.get("batch_size").get<int>();
-
+      {
+	// adjust batch size so that it is a multiple of the number of training samples (Caffe requirement)
+	batch_size = test_batch_size = ad_net.get("batch_size").get<int>();
+	if (batch_size < inputc.batch_size())
+	  {
+	    for (int i=batch_size;i>1;i--)
+	      if (inputc.batch_size() % i == 0)
+		{
+		  batch_size = i;
+		  break;
+		}
+	    for (int i=test_batch_size;i>1;i--)
+	      if (inputc.test_batch_size() % i == 0)
+		{
+		  test_batch_size = i;
+		  break;
+		}
+	    test_iter = inputc.test_batch_size() / test_batch_size;
+	  }
+	else batch_size = inputc.batch_size();
+      }
+    sp.set_test_iter(0,test_iter);
+    //std::cout << "batch_size=" << batch_size << " / test_iter=" << test_iter << std::endl;
+    
     // fix source paths in the model.
     caffe::NetParameter *np = sp.mutable_net_param();
     caffe::ReadProtoFromTextFile(sp.net().c_str(),np); //TODO: error on read + use internal caffe ReadOrDie procedure
@@ -471,7 +494,9 @@ namespace dd
 	    caffe::MemoryDataParameter *mdp = lp->mutable_memory_data_param();
 	    if (mdp->has_batch_size() && batch_size > 0)
 	      {
-		mdp->set_batch_size(batch_size);
+		if (i == 0) // training
+		  mdp->set_batch_size(batch_size);
+		else mdp->set_batch_size(test_batch_size);
 	      }
 	  }
       }
