@@ -93,7 +93,7 @@ namespace dd
 	    delete _net;
 	    _net = nullptr;
 	  }
-	_net = new Net<float>(this->_mlmodel._def);
+	_net = new Net<float>(this->_mlmodel._def,caffe::TRAIN); //TODO: change phase in predict or if model is available
 	_net->CopyTrainedLayersFrom(this->_mlmodel._weights);
 	return 0;
       }
@@ -241,7 +241,7 @@ namespace dd
       {
 	solver->net()->CopyTrainedLayersFrom(this->_mlmodel._weights);
       }
-    Caffe::set_phase(Caffe::TRAIN);
+    //Caffe::set_phase(Caffe::TRAIN);
     solver->PreSolve();
     
     std::string snapshot_file = ad.get("snapshot_file").get<std::string>();
