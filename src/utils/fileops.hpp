@@ -33,6 +33,8 @@ namespace dd
   public:
 
     static int list_directory_files(const std::string &repo,
+				    const bool &files,
+				    const bool &dirs,
 				    std::unordered_set<std::string> &lfiles)
     {
       DIR *dir;
@@ -40,7 +42,9 @@ namespace dd
       if ((dir = opendir(repo.c_str())) != NULL) {
 	/* print all the files and directories within directory */
 	while ((ent = readdir(dir)) != NULL) {
-	  lfiles.insert(std::string(repo) + "/" + std::string(ent->d_name));
+	  if ((files && ent->d_type == DT_REG)
+	      || (dirs && ent->d_type == DT_DIR))
+	    lfiles.insert(std::string(repo) + "/" + std::string(ent->d_name));
 	}
 	closedir(dir);
 	return 0;
