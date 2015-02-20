@@ -53,6 +53,10 @@ namespace dd
 	height = ad.get("height").get<int>();
       if (ad.has("bw"))
 	_bw = ad.get("bw").get<bool>();
+      if (ad.has("shuffle"))
+	_shuffle = ad.get("shuffle").get<bool>();
+      if (ad.has("test_split"))
+	_test_split = ad.get("test_split").get<double>();
     }
     
     int feature_size() const
@@ -68,7 +72,7 @@ namespace dd
 
     int test_batch_size() const
     {
-      return 0; //TODO
+      return _test_images.size();
     }
     
     void transform(const APIData &ad)
@@ -111,15 +115,46 @@ namespace dd
 	  cv::resize(imaget,image,size);
 	  _images.push_back(image);
 	}
+      // shuffle before possible split
+      if (_shuffle)
+	{
+	  std::random_device rd;
+	  std::mt19937 g(rd());
+	  std::shuffle(_images.begin(),_images.end(),g);
+	}
+      // split as required
+      if (_test_split > 0)
+	{
+	  int split_size = std::floor(_images.size() * (1.0-_test_split));
+	  auto chit = _images.begin();
+	  auto dchit = chit;
+	  int cpos = 0;
+	  while(chit!=_images.end())
+	    {
+	      if (cpos == split_size)
+		{
+		  if (dchit == _images.begin())
+		    dchit = chit;
+		  _test_images.push_back((*chit));
+		}
+	      else ++cpos;
+	      ++chit;
+	    }
+	  _images.erase(dchit,_images.end());
+	  std::cout << "data split test size=" << _test_images.size() << " / remaining data size=" << _images.size() << std::endl;
+	}
     }
 
     std::vector<std::string> _uris;
-    std::vector<cv::Mat> _images; //TODO: test set
+    std::vector<cv::Mat> _images;
+    std::vector<cv::Mat> _test_images;
     
     // image parameters
     int _width = 227;
     int _height = 227;
     bool _bw = false; /**< whether to convert to black & white. */
+    double _test_split = 0.0; /**< auto-split of the dataset. */
+    bool _shuffle = false; /**< whether to shuffle the dataset, usually before splitting. */
   };
 }
 
