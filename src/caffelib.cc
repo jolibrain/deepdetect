@@ -546,7 +546,6 @@ namespace dd
 		if (ad.has("db"))
 		  tp->set_mean_file(ad.getobj("db").get("meanfile").get<std::string>());
 		else tp->set_mean_file(this->_mlmodel._repo + "/" + tp->mean_file());
-		std::cerr << "mean file=" << tp->mean_file() << std::endl;
 	      }
 	  }
       }
@@ -581,16 +580,8 @@ namespace dd
     caffe::ReadProtoFromTextFile(deploy_file,&net_param);
     if (net_param.mutable_layer(0)->has_memory_data_param())
       {
+	// no batch size set on deploy model since it is adjusted for every prediction batch
 	net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.feature_size());
-	net_param.mutable_layer(0)->mutable_memory_data_param()->set_batch_size(inputc.test_batch_size());
-	net_param.mutable_layer(1)->mutable_memory_data_param()->set_channels(inputc.feature_size());
-	net_param.mutable_layer(1)->mutable_memory_data_param()->set_batch_size(inputc.test_batch_size());
-	caffe::WriteProtoToTextFile(net_param,deploy_file);
-      }
-    else if (net_param.mutable_layer(0)->has_data_param())
-      {
-	net_param.mutable_layer(0)->mutable_data_param()->set_batch_size(inputc.test_batch_size());
-	net_param.mutable_layer(1)->mutable_data_param()->set_batch_size(inputc.test_batch_size());
 	caffe::WriteProtoToTextFile(net_param,deploy_file);
       }
   }
