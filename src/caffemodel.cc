@@ -41,29 +41,8 @@ namespace dd
 	_corresp = ad.get("corresp").get<std::string>();
 	_solver = ad.get("solver").get<std::string>();
       }
-    
-    if (!_corresp.empty()) //TODO: test for supervised.
-      {
-	std::ifstream ff(_corresp);
-	if (!ff.is_open())
-	  LOG(ERROR) << "cannot open Caffe model corresp file=" << _corresp << std::endl;
-	else{
-	  std::string line;
-	  while(!ff.eof())
-	    {
-	      std::getline(ff,line);
-	      std::string key = line.substr(0,line.find(' '));
-	      if (!key.empty())
-		{
-		  std::string value = line.substr(line.find(' ')+1);
-		  _hcorresp.insert(std::pair<int,std::string>(std::stoi(key),value));
-		}
-	    }
-	}
-      }
-    else // TODO: training, requires solver.
-      {
-      }
+
+    read_corresp_file();
   }
   
   int CaffeModel::read_from_repository(const std::string &repo)
@@ -75,7 +54,7 @@ namespace dd
     static std::string solver = "solver";
     _repo = repo;
     std::unordered_set<std::string> lfiles;
-    int e = fileops::list_directory_files(repo,true,false,lfiles);
+    int e = fileops::list_directory(repo,true,false,lfiles);
     if (e != 0)
       {
 	LOG(ERROR) << "error reading caffe model repository\n";
@@ -115,4 +94,29 @@ namespace dd
 	}*/
     return 0;
   }
+
+  int CaffeModel::read_corresp_file()
+  {
+    if (!_corresp.empty()) //TODO: test for supervised.
+      {
+	std::ifstream ff(_corresp);
+	if (!ff.is_open())
+	  LOG(ERROR) << "cannot open Caffe model corresp file=" << _corresp << std::endl;
+	else{
+	  std::string line;
+	  while(!ff.eof())
+	    {
+	      std::getline(ff,line);
+	      std::string key = line.substr(0,line.find(' '));
+	      if (!key.empty())
+		{
+		  std::string value = line.substr(line.find(' ')+1);
+		  _hcorresp.insert(std::pair<int,std::string>(std::stoi(key),value));
+		}
+	    }
+	}
+      }
+    return 0;
+  }
+
 }

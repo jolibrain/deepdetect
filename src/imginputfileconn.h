@@ -40,17 +40,16 @@ namespace dd
 
     void init(const APIData &ad)
     {
-      fillup_parameters(ad,_width,_height);
+      fillup_parameters(ad);
     }
 
-    void fillup_parameters(const APIData &ad,
-			   int &width, int &height)
+    void fillup_parameters(const APIData &ad)
     {
       // optional parameters.
       if (ad.has("width"))
-	width = ad.get("width").get<int>();
+	_width = ad.get("width").get<int>();
       if (ad.has("height"))
-	height = ad.get("height").get<int>();
+	_height = ad.get("height").get<int>();
       if (ad.has("bw"))
 	_bw = ad.get("bw").get<bool>();
       if (ad.has("shuffle"))
@@ -77,27 +76,14 @@ namespace dd
     
     void transform(const APIData &ad)
     {
-      try
-	{
-	  _uris = ad.get("data").get<std::vector<std::string>>();
-	}
-      catch(...)
-	{
-	  throw InputConnectorBadParamException("missing data");
-	}
-      if (_uris.empty())
-	{
-	  throw InputConnectorBadParamException("missing data");
-	}
-    
-      int width = _width;
-      int height = _height;
+      get_data(ad);
+      
       if (ad.has("parameters")) // hotplug of parameters, overriding the defaults
 	{
 	  APIData ad_param = ad.getobj("parameters");
 	  if (ad_param.has("input"))
 	    {
-	      fillup_parameters(ad_param.getobj("input"),width,height);
+	      fillup_parameters(ad_param.getobj("input"));
 	    }
 	}
       for (size_t i=0;i<_uris.size();i++)
@@ -110,7 +96,7 @@ namespace dd
 	  /*cv::namedWindow( "Display window", cv::WINDOW_AUTOSIZE );
 	    cv::imshow( "Display window", imaget);
 	    cv::waitKey(0);*/
-	  cv::Size size(width,height);
+	  cv::Size size(_width,_height);
 	  cv::Mat image;
 	  cv::resize(imaget,image,size);
 	  _images.push_back(image);
@@ -142,6 +128,22 @@ namespace dd
 	    }
 	  _images.erase(dchit,_images.end());
 	  std::cout << "data split test size=" << _test_images.size() << " / remaining data size=" << _images.size() << std::endl;
+	}
+    }
+
+    void get_data(const APIData &ad)
+    {
+      try
+	{
+	  _uris = ad.get("data").get<std::vector<std::string>>();
+	}
+      catch(...)
+	{
+	  throw InputConnectorBadParamException("missing data");
+	}
+      if (_uris.empty())
+	{
+	  throw InputConnectorBadParamException("missing data");
 	}
     }
 

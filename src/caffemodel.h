@@ -38,6 +38,8 @@ namespace dd
     ~CaffeModel() {};
 
     int read_from_repository(const std::string &repo);
+    
+    int read_corresp_file();
 
     inline std::string get_hcorresp(const int &i)
       {

@@ -130,7 +130,9 @@ namespace dd
 
     TInputConnectorStrategy inputc(this->_inputc);
     inputc._train = true;
-    inputc.transform(ad);
+    APIData cad = ad;
+    cad.add("model_repo",this->_mlmodel._repo); // pass the model repo so that in case of images, it is known where to save the db
+    inputc.transform(cad);
 
     // instantiate model template here, as a defered from service initialization
     // since inputs are necessary in order to fit the inner net input dimension.
@@ -144,8 +146,9 @@ namespace dd
       }
 
     caffe::SolverParameter solver_param;
-    caffe::ReadProtoFromTextFileOrDie(this->_mlmodel._solver,&solver_param); //TODO: no die
-    update_in_memory_net_and_solver(solver_param,ad,inputc);
+    caffe::ReadProtoFromTextFile(this->_mlmodel._solver,&solver_param);
+    bool has_mean_file = false;
+    update_in_memory_net_and_solver(solver_param,cad,inputc,has_mean_file);
 
     // parameters
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
@@ -203,31 +206,30 @@ namespace dd
 	    else if (strcasecmp(solver_type.c_str(),"NESTEROV"))
 	      solver_param.set_solver_type(caffe::SolverParameter_SolverType_NESTEROV);
 	  }
-	else if (ad_solver.has("test_interval"))
+	if (ad_solver.has("test_interval"))
 	  solver_param.set_test_interval(ad_solver.get("test_interval").get<int>());
-	else if (ad_solver.has("test_initialization"))
+	if (ad_solver.has("test_initialization"))
 	  solver_param.set_test_initialization(ad_solver.get("test_initialization").get<bool>());
-	else if (ad_solver.has("lr_policy"))
+	if (ad_solver.has("lr_policy"))
 	  solver_param.set_lr_policy(ad_solver.get("lr_policy").get<std::string>());
-	else if (ad_solver.has("base_lr"))
+	if (ad_solver.has("base_lr"))
 	  solver_param.set_base_lr(ad_solver.get("base_lr").get<float>());
-	else if (ad_solver.has("gamma"))
-	  solver_param.set_gamma(ad_solver.get("gamma").get<float>());
-	else if (ad_solver.has("step_size"))
+	if (ad_solver.has("gamma"))
+	  solver_param.set_gamma(ad_solver.get("gamma").get<double>());
+	if (ad_solver.has("stepsize"))
 	  solver_param.set_stepsize(ad_solver.get("stepsize").get<int>());
-	else if (ad_solver.has("max_iter"))
+	if (ad_solver.has("max_iter"))
 	  solver_param.set_max_iter(ad_solver.get("max_iter").get<int>());
-	else if (ad_solver.has("momentum"))
+	if (ad_solver.has("momentum"))
 	  solver_param.set_momentum(ad_solver.get("momentum").get<double>());
-	else if (ad_solver.has("power"))
+	if (ad_solver.has("power"))
 	  solver_param.set_power(ad_solver.get("power").get<double>());
       }
     
     // optimize
     this->_tjob_running = true;
     caffe::Solver<float> *solver = caffe::GetSolver<float>(solver_param);
-    //shared_ptr<caffe::Solver<float>> solver(caffe::GetSolver<float>(solver_param));
-
+    
     if (!inputc._dv.empty())
       {
 	boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->net()->layers()[0])->AddDatumVector(inputc._dv);
@@ -239,7 +241,6 @@ namespace dd
       {
 	solver->net()->CopyTrainedLayersFrom(this->_mlmodel._weights);
       }
-    //Caffe::set_phase(Caffe::TRAIN);
     solver->PreSolve();
     
     std::string snapshot_file = ad.get("snapshot_file").get<std::string>();
@@ -293,8 +294,7 @@ namespace dd
 	
 	solver->iter_++;
       }
-    //TODO: output data object
-
+    
     // always save final snapshot.
     if (solver->param_.snapshot_after_train())
       solver->Snapshot();
@@ -317,33 +317,69 @@ namespace dd
     APIData ad_out = ad.getobj("parameters").getobj("output");
     if (ad_out.has("measure"))
       {
-	boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(inputc._dv_test);
-	float loss = 0.0;
-	std::vector<Blob<float>*> results = _net->ForwardPrefilled(&loss);
-	int batch_size = inputc._dv_test.size();
-	int slot = results.size() - 1;
-	int scount = results[slot]->count();
-	int scperel = scount / batch_size;
-	std::vector<double> predictions;
-	std::vector<int> targets;
-	APIData ad_res;
-	ad_res.add("batch_size",batch_size);
-	ad_res.add("nclasses",_nclasses);
-	for (int j=0;j<batch_size;j++)
+	if (!inputc._dv_test.empty())
 	  {
-	    APIData bad;
-	    std::vector<double> predictions;
-	    int target = inputc._dv_test.at(j).label();
-	    for (int k=0;k<_nclasses;k++)
+	    std::vector<Blob<float>*> results;
+	    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(inputc._dv_test);
+	    float loss = 0.0;
+	    results = _net->ForwardPrefilled(&loss);
+	    int batch_size = inputc.test_batch_size();
+	    int slot = results.size() - 1;
+	    int scount = results[slot]->count();
+	    int scperel = scount / batch_size;
+	    APIData ad_res;
+	    ad_res.add("batch_size",batch_size);
+	    ad_res.add("nclasses",_nclasses);
+	    for (int j=0;j<batch_size;j++)
 	      {
-		predictions.push_back(results[slot]->cpu_data()[j*scperel+k]);
+		APIData bad;
+		std::vector<double> predictions;
+		int target = inputc._test_labels.at(j);
+		for (int k=0;k<_nclasses;k++)
+		  {
+		    predictions.push_back(results[slot]->cpu_data()[j*scperel+k]);
+		  }
+		bad.add("target",target);
+		bad.add("pred",predictions);
+		std::vector<APIData> vad = { bad };
+		ad_res.add(std::to_string(j),vad);
 	      }
-	    bad.add("target",target);
-	    bad.add("pred",predictions);
-	    std::vector<APIData> vad = { bad };
-	    ad_res.add(std::to_string(j),vad);
+	    this->_outputc.measure(ad_res,ad_out,out);
 	  }
-	this->_outputc.measure(ad_res,ad_out,out);
+	else // dealing with Caffe db
+	  {
+	    APIData ad_res;
+	    int tresults = 0;
+	    ad_res.add("nclasses",_nclasses);
+	    std::vector<caffe::Datum> dv;
+	    while(!(dv=inputc.get_dv_test(100,has_mean_file)).empty())
+	      {
+		boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->set_batch_size(dv.size());
+		boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(dv);
+		float loss = 0.0;
+		std::vector<Blob<float>*> lresults = _net->ForwardPrefilled(&loss);
+		int slot = lresults.size() - 1;
+		int scount = lresults[slot]->count();
+		int scperel = scount / dv.size();
+		for (int j=0;j<(int)dv.size();j++)
+		  {
+		    APIData bad;
+		    std::vector<double> predictions;
+		    int target = inputc._test_labels.at(tresults+j);
+		    for (int k=0;k<_nclasses;k++)
+		      {
+			predictions.push_back(lresults[slot]->cpu_data()[j*scperel+k]);
+		      }
+		    bad.add("target",target);
+		    bad.add("pred",predictions);
+		    std::vector<APIData> vad = { bad };
+		    ad_res.add(std::to_string(tresults+j),vad);
+		  }
+		tresults += dv.size();
+	      }
+	    ad_res.add("batch_size",tresults);
+	    this->_outputc.measure(ad_res,ad_out,out);
+	  }
       }
     return 0;
   }
@@ -391,25 +427,14 @@ namespace dd
 
     TInputConnectorStrategy inputc(this->_inputc);
     inputc.transform(ad); //TODO: catch errors ?
-    int batch_size = inputc.batch_size(); //TODO: could set a multiple, beware of memory overflow
+    int batch_size = inputc.batch_size();
+    std::cout << "predict batch size=" << batch_size << std::endl;
     boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->set_batch_size(batch_size);
     boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(inputc._dv);
     
-    
-    // with addmat (PR)
-    //std::vector<int> dvl(batch_size,0.0);
-    //boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddMatVector(inputc._images,dvl); // Caffe will crash with gtest or sigsegv here if input size is incorrect.
-    //std::vector<Blob<float>*> results = _net->Forward(bottom,&loss);
-    
     float loss = 0.0;
-    //std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();
     std::vector<Blob<float>*> results = _net->ForwardPrefilled(&loss); // XXX: on a batch, are we getting the average loss ?
-    /*std::chrono::time_point<std::chrono::system_clock> tstop = std::chrono::system_clock::now();
-      double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(tstop-tstart).count();*/
-    //std::cout << "Caffe prediction time=" << elapsed << std::endl;
     int slot = results.size() - 1;
-    /*std::cout << "results size=" << results.size() << std::endl;
-      std::cout << "count=" << results[slot]->count() << std::endl;*/
     int scount = results[slot]->count();
     int scperel = scount / batch_size;
     int nclasses = _nclasses > 0 ? _nclasses : scperel; // XXX: beware of scperel as it can refer to the number of neurons is last layer before softmax, which is replaced 'in-place' with probabilities after softmax. Weird by Caffe... */
@@ -433,7 +458,8 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_in_memory_net_and_solver(caffe::SolverParameter &sp,
 													    const APIData &ad,
-													    const TInputConnectorStrategy &inputc)
+													    const TInputConnectorStrategy &inputc,
+													    bool &has_mean_file)
   {
     // fix net model path.
     sp.set_net(this->_mlmodel._repo + "/" + sp.net());
@@ -450,6 +476,7 @@ namespace dd
       {
 	// adjust batch size so that it is a multiple of the number of training samples (Caffe requirement)
 	batch_size = test_batch_size = ad_net.get("batch_size").get<int>();
+	std::cerr << "batch_size=" << batch_size << " / inputc batch_size=" << inputc.batch_size() << std::endl;
 	if (batch_size < inputc.batch_size())
 	  {
 	    for (int i=batch_size;i>1;i--)
@@ -469,20 +496,31 @@ namespace dd
 	else batch_size = inputc.batch_size();
       }
     sp.set_test_iter(0,test_iter);
-    //std::cout << "batch_size=" << batch_size << " / test_iter=" << test_iter << std::endl;
+    std::cerr << "batch_size=" << batch_size << " / test_batch_size=" << test_batch_size << " / test_iter=" << test_iter << std::endl;
     
     // fix source paths in the model.
+    std::cerr << "sp net file=" << sp.net() << std::endl;
     caffe::NetParameter *np = sp.mutable_net_param();
     caffe::ReadProtoFromTextFile(sp.net().c_str(),np); //TODO: error on read + use internal caffe ReadOrDie procedure
     for (int i=0;i<np->layer_size();i++)
       {
 	caffe::LayerParameter *lp = np->mutable_layer(i);
+	if (i == 0)
+	  std::cout << "has transform param=" << lp->has_transform_param() << std::endl;
 	if (lp->has_data_param())
 	  {
 	    caffe::DataParameter *dp = lp->mutable_data_param();
 	    if (dp->has_source())
 	      {
-		dp->set_source(this->_mlmodel._repo + "/" + dp->source()); // this updates in-memory net
+		if (i == 0 && ad.has("db")) // training
+		  {
+		    dp->set_source(ad.getobj("db").get("train_db").get<std::string>());
+		  }
+		else if (i == 1 && ad.has("db"))
+		  {
+		    dp->set_source(ad.getobj("db").get("test_db").get<std::string>());
+		  }
+		else dp->set_source(this->_mlmodel._repo + "/" + dp->source()); // this updates in-memory net
 	      }
 	    if (dp->has_batch_size() && batch_size > 0)
 	      {
@@ -499,6 +537,18 @@ namespace dd
 		else mdp->set_batch_size(test_batch_size);
 	      }
 	  }
+	if (lp->has_transform_param())
+	  {
+	    caffe::TransformationParameter *tp = lp->mutable_transform_param();
+	    has_mean_file = tp->has_mean_file();
+	    if (tp->has_mean_file())
+	      {
+		if (ad.has("db"))
+		  tp->set_mean_file(ad.getobj("db").get("meanfile").get<std::string>());
+		else tp->set_mean_file(this->_mlmodel._repo + "/" + tp->mean_file());
+		std::cerr << "mean file=" << tp->mean_file() << std::endl;
+	      }
+	  }
       }
     sp.clear_net();
   }
@@ -508,22 +558,41 @@ namespace dd
 												 const std::string &deploy_file,
 												 const TInputConnectorStrategy &inputc)
   {
-    //TODO: get "parameters/mllib/net" from ad (e.g. for batch_size).
-
     caffe::NetParameter net_param;
     caffe::ReadProtoFromTextFile(net_file,&net_param);
-    net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.feature_size());
-    net_param.mutable_layer(1)->mutable_memory_data_param()->set_channels(inputc.feature_size()); // test layer
-    
-    //set train and test batch sizes as multiples of the train and test dataset sizes
-    net_param.mutable_layer(0)->mutable_memory_data_param()->set_batch_size(inputc.batch_size()); //TODO: smart multiple of training set size...
-    net_param.mutable_layer(1)->mutable_memory_data_param()->set_batch_size(inputc.test_batch_size());
-    caffe::WriteProtoToTextFile(net_param,net_file);
+    if (net_param.mutable_layer(0)->has_memory_data_param()) //TODO: test layer 1
+      {
+	net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.feature_size());
+	net_param.mutable_layer(1)->mutable_memory_data_param()->set_channels(inputc.feature_size()); // test layer
+	
+	//set train and test batch sizes as multiples of the train and test dataset sizes
+	net_param.mutable_layer(0)->mutable_memory_data_param()->set_batch_size(inputc.batch_size());
+	net_param.mutable_layer(1)->mutable_memory_data_param()->set_batch_size(inputc.test_batch_size());
+	caffe::WriteProtoToTextFile(net_param,net_file);
+      }
+    else if (net_param.mutable_layer(0)->has_data_param())
+      {
+	//set train and test batch sizes as multiples of the train and test dataset sizes
+	net_param.mutable_layer(0)->mutable_data_param()->set_batch_size(inputc.batch_size());
+	net_param.mutable_layer(1)->mutable_data_param()->set_batch_size(inputc.test_batch_size());
+	caffe::WriteProtoToTextFile(net_param,net_file);
+      }
     
     caffe::ReadProtoFromTextFile(deploy_file,&net_param);
-    net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.feature_size());
-    net_param.mutable_layer(0)->mutable_memory_data_param()->set_batch_size(inputc.test_batch_size()); // XXX: beware in prediction, batch_size needs to be set properly.
-    caffe::WriteProtoToTextFile(net_param,deploy_file);
+    if (net_param.mutable_layer(0)->has_memory_data_param())
+      {
+	net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.feature_size());
+	net_param.mutable_layer(0)->mutable_memory_data_param()->set_batch_size(inputc.test_batch_size());
+	net_param.mutable_layer(1)->mutable_memory_data_param()->set_channels(inputc.feature_size());
+	net_param.mutable_layer(1)->mutable_memory_data_param()->set_batch_size(inputc.test_batch_size());
+	caffe::WriteProtoToTextFile(net_param,deploy_file);
+      }
+    else if (net_param.mutable_layer(0)->has_data_param())
+      {
+	net_param.mutable_layer(0)->mutable_data_param()->set_batch_size(inputc.test_batch_size());
+	net_param.mutable_layer(1)->mutable_data_param()->set_batch_size(inputc.test_batch_size());
+	caffe::WriteProtoToTextFile(net_param,deploy_file);
+      }
   }
 
   template class CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>;

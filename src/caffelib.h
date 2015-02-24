@@ -96,10 +96,12 @@ namespace dd
      * @param sp Caffe's solver's parameters
      * @param ad the root data object
      * @param inputc the current input constructor that holds the training data
+     * @param has_mean_file whether the current net uses a mean file (i.e. for images)
      */
       void update_in_memory_net_and_solver(caffe::SolverParameter &sp,
 					   const APIData &ad,
-					   const TInputConnectorStrategy &inputc);
+					   const TInputConnectorStrategy &inputc,
+					   bool &has_mean_file);
 
       /**
        * \brief updates the protocol buffer text file of the net directly at training time

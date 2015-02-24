@@ -25,6 +25,7 @@
 #include <dirent.h>
 #include <fstream>
 #include <unordered_set>
+#include <sys/stat.h>
 
 namespace dd
 {
@@ -32,10 +33,16 @@ namespace dd
   {
   public:
 
-    static int list_directory_files(const std::string &repo,
-				    const bool &files,
-				    const bool &dirs,
-				    std::unordered_set<std::string> &lfiles)
+    static bool file_exists(const std::string &fname)
+    {
+      struct stat bstat;
+      return (stat(fname.c_str(),&bstat)==0);
+    }
+
+    static int list_directory(const std::string &repo,
+			      const bool &files,
+			      const bool &dirs,
+			      std::unordered_set<std::string> &lfiles)
     {
       DIR *dir;
       struct dirent *ent;
@@ -43,7 +50,7 @@ namespace dd
 	/* print all the files and directories within directory */
 	while ((ent = readdir(dir)) != NULL) {
 	  if ((files && ent->d_type == DT_REG)
-	      || (dirs && ent->d_type == DT_DIR))
+	      || (dirs && ent->d_type == DT_DIR && ent->d_name[0] != '.'))
 	    lfiles.insert(std::string(repo) + "/" + std::string(ent->d_name));
 	}
 	closedir(dir);
