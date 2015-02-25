@@ -233,9 +233,12 @@ namespace dd
     if (!inputc._dv.empty())
       {
 	boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->net()->layers()[0])->AddDatumVector(inputc._dv);
-	if (!inputc._dv_test.empty())
-	  boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->test_nets().at(0)->layers()[0])->AddDatumVector(inputc._dv_test);
-	else boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->test_nets().at(0)->layers()[0])->AddDatumVector(inputc._dv);
+	if (!solver->test_nets().empty())
+	  {
+	    if (!inputc._dv_test.empty())
+	      boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->test_nets().at(0)->layers()[0])->AddDatumVector(inputc._dv_test);
+	    else boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->test_nets().at(0)->layers()[0])->AddDatumVector(inputc._dv);
+	  }
       }
     if (!this->_mlmodel._weights.empty())
       {
@@ -468,35 +471,11 @@ namespace dd
     sp.set_snapshot_prefix(this->_mlmodel._repo + "/model");
     
     // acquire custom batch size if any
-    APIData ad_net = ad.getobj("parameters").getobj("mllib").getobj("net");
     int batch_size = inputc.batch_size();
     int test_batch_size = inputc.test_batch_size();
     int test_iter = 1;
-    if (ad_net.has("batch_size"))
-      {
-	// adjust batch size so that it is a multiple of the number of training samples (Caffe requirement)
-	batch_size = test_batch_size = ad_net.get("batch_size").get<int>();
-	std::cerr << "batch_size=" << batch_size << " / inputc batch_size=" << inputc.batch_size() << std::endl;
-	if (batch_size < inputc.batch_size())
-	  {
-	    for (int i=batch_size;i>1;i--)
-	      if (inputc.batch_size() % i == 0)
-		{
-		  batch_size = i;
-		  break;
-		}
-	    for (int i=test_batch_size;i>1;i--)
-	      if (inputc.test_batch_size() % i == 0)
-		{
-		  test_batch_size = i;
-		  break;
-		}
-	    test_iter = inputc.test_batch_size() / test_batch_size;
-	  }
-	else batch_size = inputc.batch_size();
-      }
+    fix_batch_size(ad,inputc,batch_size,test_batch_size,test_iter);
     sp.set_test_iter(0,test_iter);
-    std::cerr << "batch_size=" << batch_size << " / test_batch_size=" << test_batch_size << " / test_iter=" << test_iter << std::endl;
     
     // fix source paths in the model.
     std::cerr << "sp net file=" << sp.net() << std::endl;
@@ -561,8 +540,8 @@ namespace dd
     caffe::ReadProtoFromTextFile(net_file,&net_param);
     if (net_param.mutable_layer(0)->has_memory_data_param())
       {
-	net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.feature_size());
-	net_param.mutable_layer(1)->mutable_memory_data_param()->set_channels(inputc.feature_size()); // test layer
+	net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels());
+	net_param.mutable_layer(1)->mutable_memory_data_param()->set_channels(inputc.channels()); // test layer
 	
 	//set train and test batch sizes as multiples of the train and test dataset sizes
 	net_param.mutable_layer(0)->mutable_memory_data_param()->set_batch_size(inputc.batch_size());
@@ -580,7 +559,7 @@ namespace dd
     if (deploy_net_param.mutable_layer(0)->has_memory_data_param())
       {
 	// no batch size set on deploy model since it is adjusted for every prediction batch
-	deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.feature_size());
+	deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels());
       }
 
     // adapt number of neuron output
@@ -597,7 +576,6 @@ namespace dd
     // fix class numbers
     // this procedure looks for the first bottom layer with a 'num_output' field and
     // set it to the number of classes defined by the supervised service.
-    std::cerr << "fixing class number, checking layer size=" << net_param.layer_size() << std::endl;
     for (int l=net_param.layer_size()-1;l>0;l--)
       {
 	caffe::LayerParameter *lparam = net_param.mutable_layer(l);
@@ -619,6 +597,47 @@ namespace dd
 	      }
 	  }
       }
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::fix_batch_size(const APIData &ad,
+											   const TInputConnectorStrategy &inputc,
+											   int &batch_size,
+											   int &test_batch_size,
+											   int &test_iter)
+  {
+    // acquire custom batch size if any
+    APIData ad_net = ad.getobj("parameters").getobj("mllib").getobj("net");
+    batch_size = inputc.batch_size();
+    test_batch_size = inputc.test_batch_size();
+    test_iter = 1;
+    if (ad_net.has("batch_size"))
+      {
+	// adjust batch size so that it is a multiple of the number of training samples (Caffe requirement)
+	batch_size = test_batch_size = ad_net.get("batch_size").get<int>();
+	std::cerr << "batch_size=" << batch_size << " / inputc batch_size=" << inputc.batch_size() << std::endl;
+	if (batch_size < inputc.batch_size())
+	  {
+	    for (int i=batch_size;i>1;i--)
+	      if (inputc.batch_size() % i == 0)
+		{
+		  batch_size = i;
+		  break;
+		}
+	    for (int i=test_batch_size;i>1;i--)
+	      if (inputc.test_batch_size() % i == 0)
+		{
+		  test_batch_size = i;
+		  break;
+		}
+	    test_iter = inputc.test_batch_size() / test_batch_size;
+	  }
+	else batch_size = inputc.batch_size();
+      }
+
+    //debug
+    std::cerr << "batch_size=" << batch_size << " / test_batch_size=" << test_batch_size << " / test_iter=" << test_iter << std::endl;
+    //debug
   }
 
   template class CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>;

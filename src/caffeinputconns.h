@@ -70,13 +70,14 @@ namespace dd
     ImgCaffeInputFileConn()
       :ImgInputFileConn() {}
     ImgCaffeInputFileConn(const ImgCaffeInputFileConn &i)
-      :ImgInputFileConn(i),CaffeInputInterface(i) {}//,_dv(i._dv) {}
+      :ImgInputFileConn(i),CaffeInputInterface(i) {}
     ~ImgCaffeInputFileConn() {}
 
     // size of each element in Caffe jargon
     int channels() const
     {
-      return feature_size();
+      if (_bw) return 1;
+      else return 3; // RGB
     }
     
     int height() const

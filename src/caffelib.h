@@ -120,6 +120,12 @@ namespace dd
 
     private:
       void update_protofile_classes(caffe::NetParameter &net_param);
+
+      void fix_batch_size(const APIData &ad,
+			  const TInputConnectorStrategy &inputc,
+			  int &batch_size,
+			  int &test_batch_size,
+			  int &test_iter);
       
     public:
       caffe::Net<float> *_net = nullptr; /**< neural net. */

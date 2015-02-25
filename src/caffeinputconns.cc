@@ -141,8 +141,7 @@ namespace dd
     _db_testbatchsize = test_lfiles.size();
     
     LOG(INFO) << "A total of " << lfiles.size() << " images.";
-    //std::cerr << "width=" << _width << " / height=" << _height << std::endl;
-
+    
     // write files to dbs (i.e. train and possibly test)
     std::vector<int> labels; // XXX: useless
     write_image_to_db(dbfullname,lfiles,labels,backend,encoded,encode_type);
