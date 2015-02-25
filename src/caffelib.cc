@@ -213,7 +213,7 @@ namespace dd
 	if (ad_solver.has("lr_policy"))
 	  solver_param.set_lr_policy(ad_solver.get("lr_policy").get<std::string>());
 	if (ad_solver.has("base_lr"))
-	  solver_param.set_base_lr(ad_solver.get("base_lr").get<float>());
+	  solver_param.set_base_lr(ad_solver.get("base_lr").get<double>());
 	if (ad_solver.has("gamma"))
 	  solver_param.set_gamma(ad_solver.get("gamma").get<double>());
 	if (ad_solver.has("stepsize"))
@@ -577,11 +577,10 @@ namespace dd
     
     caffe::NetParameter deploy_net_param;
     caffe::ReadProtoFromTextFile(deploy_file,&deploy_net_param);
-    if (net_param.mutable_layer(0)->has_memory_data_param())
+    if (deploy_net_param.mutable_layer(0)->has_memory_data_param())
       {
 	// no batch size set on deploy model since it is adjusted for every prediction batch
-	net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.feature_size());
-
+	deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.feature_size());
       }
 
     // adapt number of neuron output
