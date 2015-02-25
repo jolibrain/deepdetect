@@ -61,12 +61,12 @@ namespace dd
     
     int transform(const APIData &ad)
     {
+      get_data(ad);
+
       APIData ad_input = ad.getobj("parameters").getobj("input");
-      if (ad_input.has("filename"))
-	_csv_fname = ad_input.get("filename").get<std::string>();
-      else throw InputConnectorBadParamException("no CSV filename");
-      if (ad_input.has("test_filename"))
-	_csv_test_fname = ad_input.get("test_filename").get<std::string>();
+      _csv_fname = _uris.at(0);
+      if (_uris.size() > 1)
+	_csv_test_fname = _uris.at(1);
       if (ad_input.has("label"))
 	_label = ad_input.get("label").get<std::string>();
       else if (_train) throw InputConnectorBadParamException("missing label column parameter");

@@ -92,7 +92,29 @@ namespace dd
      */
     int test_batch_size() const;
 
+    /**
+     * \brief try to acquire the input data from the main 'data' field
+     *        that is mandatory for /train and /predict calls
+     * @param ad root data object
+     */
+    void get_data(const APIData &ad)
+    {
+      try
+	{
+	  _uris = ad.get("data").get<std::vector<std::string>>();
+	}
+      catch(...)
+	{
+	  throw InputConnectorBadParamException("missing data");
+	}
+      if (_uris.empty())
+	{
+	  throw InputConnectorBadParamException("missing data");
+	}
+    }
+
     bool _train = false; /**< whether in train or predict mode. */
+    std::vector<std::string> _uris;
   };
   
 }

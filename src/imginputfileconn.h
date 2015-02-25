@@ -131,23 +131,6 @@ namespace dd
 	}
     }
 
-    void get_data(const APIData &ad)
-    {
-      try
-	{
-	  _uris = ad.get("data").get<std::vector<std::string>>();
-	}
-      catch(...)
-	{
-	  throw InputConnectorBadParamException("missing data");
-	}
-      if (_uris.empty())
-	{
-	  throw InputConnectorBadParamException("missing data");
-	}
-    }
-
-    std::vector<std::string> _uris;
     std::vector<cv::Mat> _images;
     std::vector<cv::Mat> _test_images;
     
