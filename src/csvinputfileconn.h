@@ -120,7 +120,9 @@ namespace dd
 	  catch (std::invalid_argument &e)
 	    {
 	      // not a number, skip for now
-	      std::cout << "not a number: " << col << std::endl;
+	      //std::cout << "not a number: " << col << std::endl;
+	      if (column_id == col) // if id is string, replace with number / TODO: better scheme
+		vals.push_back(c);
 	    }
 	}
       ++nlines;
