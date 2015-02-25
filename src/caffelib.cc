@@ -319,11 +319,11 @@ namespace dd
       {
 	if (!inputc._dv_test.empty())
 	  {
-	    std::vector<Blob<float>*> results;
+	    int batch_size = inputc.test_batch_size();
+	    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->set_batch_size(batch_size); //TODO: use get_dv_test instead
 	    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(inputc._dv_test);
 	    float loss = 0.0;
-	    results = _net->ForwardPrefilled(&loss);
-	    int batch_size = inputc.test_batch_size();
+	    std::vector<Blob<float>*> results = _net->ForwardPrefilled(&loss);
 	    int slot = results.size() - 1;
 	    int scount = results[slot]->count();
 	    int scperel = scount / batch_size;
@@ -559,7 +559,7 @@ namespace dd
   {
     caffe::NetParameter net_param;
     caffe::ReadProtoFromTextFile(net_file,&net_param);
-    if (net_param.mutable_layer(0)->has_memory_data_param()) //TODO: test layer 1
+    if (net_param.mutable_layer(0)->has_memory_data_param())
       {
 	net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.feature_size());
 	net_param.mutable_layer(1)->mutable_memory_data_param()->set_channels(inputc.feature_size()); // test layer
@@ -567,22 +567,58 @@ namespace dd
 	//set train and test batch sizes as multiples of the train and test dataset sizes
 	net_param.mutable_layer(0)->mutable_memory_data_param()->set_batch_size(inputc.batch_size());
 	net_param.mutable_layer(1)->mutable_memory_data_param()->set_batch_size(inputc.test_batch_size());
-	caffe::WriteProtoToTextFile(net_param,net_file);
       }
     else if (net_param.mutable_layer(0)->has_data_param())
       {
 	//set train and test batch sizes as multiples of the train and test dataset sizes
 	net_param.mutable_layer(0)->mutable_data_param()->set_batch_size(inputc.batch_size());
 	net_param.mutable_layer(1)->mutable_data_param()->set_batch_size(inputc.test_batch_size());
-	caffe::WriteProtoToTextFile(net_param,net_file);
       }
     
-    caffe::ReadProtoFromTextFile(deploy_file,&net_param);
+    caffe::NetParameter deploy_net_param;
+    caffe::ReadProtoFromTextFile(deploy_file,&deploy_net_param);
     if (net_param.mutable_layer(0)->has_memory_data_param())
       {
 	// no batch size set on deploy model since it is adjusted for every prediction batch
 	net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.feature_size());
-	caffe::WriteProtoToTextFile(net_param,deploy_file);
+
+      }
+
+    // adapt number of neuron output
+    update_protofile_classes(net_param);
+    update_protofile_classes(deploy_net_param);
+    
+    caffe::WriteProtoToTextFile(net_param,net_file);
+    caffe::WriteProtoToTextFile(deploy_net_param,deploy_file);
+  }
+  
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofile_classes(caffe::NetParameter &net_param)
+  {
+    // fix class numbers
+    // this procedure looks for the first bottom layer with a 'num_output' field and
+    // set it to the number of classes defined by the supervised service.
+    std::cerr << "fixing class number, checking layer size=" << net_param.layer_size() << std::endl;
+    for (int l=net_param.layer_size()-1;l>0;l--)
+      {
+	caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+	std::cerr << "layer type=" << lparam->type() << std::endl;
+	if (lparam->type() == "Convolution")
+	  {
+	    if (lparam->has_convolution_param())
+	      {
+		lparam->mutable_convolution_param()->set_num_output(_nclasses);
+		break;
+	      }
+	  }
+	else if (lparam->type() == "InnerProduct")
+	  {
+	    if (lparam->has_inner_product_param())
+	      {
+		lparam->mutable_inner_product_param()->set_num_output(_nclasses);
+		break;
+	      }
+	  }
       }
   }
 

@@ -117,10 +117,14 @@ namespace dd
       void update_protofile_net(const std::string &net_file,
 				const std::string &deploy_file,
 				const TInputConnectorStrategy &inputc);
+
+    private:
+      void update_protofile_classes(caffe::NetParameter &net_param);
       
-    caffe::Net<float> *_net = nullptr; /**< neural net. */
-    bool _gpu = false; /**< whether to use GPU. */
-    int _gpuid = 0; /**< GPU id. */
+    public:
+      caffe::Net<float> *_net = nullptr; /**< neural net. */
+      bool _gpu = false; /**< whether to use GPU. */
+      int _gpuid = 0; /**< GPU id. */
       int _nclasses = 0; /**< required, as difficult to acquire from Caffe's internals. */
     };
   
