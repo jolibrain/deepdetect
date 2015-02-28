@@ -148,7 +148,8 @@ namespace dd
     caffe::SolverParameter solver_param;
     caffe::ReadProtoFromTextFile(this->_mlmodel._solver,&solver_param);
     bool has_mean_file = false;
-    update_in_memory_net_and_solver(solver_param,cad,inputc,has_mean_file);
+    int batch_size, test_batch_size, test_iter;
+    update_in_memory_net_and_solver(solver_param,cad,inputc,has_mean_file,batch_size,test_batch_size,test_iter);
 
     // parameters
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
@@ -288,10 +289,11 @@ namespace dd
 	this->_loss.store(smoothed_loss);
 	
 	if (solver->param_.test_interval() && solver->iter_ % solver->param_.test_interval() == 0)
-	  this->add_loss_per_iter(loss); // to avoid filling up with possibly millions of entries...
-	
-	//std::cout << "loss=" << this->_loss << std::endl;
-	
+	  {
+	    this->add_loss_per_iter(loss); // to avoid filling up with possibly millions of entries...
+	    LOG(INFO) << "loss=" << this->_loss;
+	  }	
+
 	solver->ComputeUpdateValue();
 	solver->net_->Update();
 	
@@ -320,69 +322,37 @@ namespace dd
     APIData ad_out = ad.getobj("parameters").getobj("output");
     if (ad_out.has("measure"))
       {
-	if (!inputc._dv_test.empty())
+	APIData ad_res;
+	int tresults = 0;
+	ad_res.add("nclasses",_nclasses);
+	std::vector<caffe::Datum> dv;
+	while(!(dv=inputc.get_dv_test(test_batch_size,has_mean_file)).empty())
 	  {
-	    int batch_size = inputc.test_batch_size();
-	    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->set_batch_size(batch_size); //TODO: use get_dv_test instead
-	    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(inputc._dv_test);
+	    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->set_batch_size(dv.size());
+	    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(dv);
 	    float loss = 0.0;
-	    std::vector<Blob<float>*> results = _net->ForwardPrefilled(&loss);
-	    int slot = results.size() - 1;
-	    int scount = results[slot]->count();
-	    int scperel = scount / batch_size;
-	    APIData ad_res;
-	    ad_res.add("batch_size",batch_size);
-	    ad_res.add("nclasses",_nclasses);
-	    for (int j=0;j<batch_size;j++)
+	    std::vector<Blob<float>*> lresults = _net->ForwardPrefilled(&loss);
+	    int slot = lresults.size() - 1;
+	    int scount = lresults[slot]->count();
+	    int scperel = scount / dv.size();
+	    for (int j=0;j<(int)dv.size();j++)
 	      {
 		APIData bad;
 		std::vector<double> predictions;
-		int target = inputc._test_labels.at(j);
+		int target = inputc._test_labels.at(tresults+j);
 		for (int k=0;k<_nclasses;k++)
 		  {
-		    predictions.push_back(results[slot]->cpu_data()[j*scperel+k]);
+		    predictions.push_back(lresults[slot]->cpu_data()[j*scperel+k]);
 		  }
 		bad.add("target",target);
 		bad.add("pred",predictions);
 		std::vector<APIData> vad = { bad };
-		ad_res.add(std::to_string(j),vad);
+		ad_res.add(std::to_string(tresults+j),vad);
 	      }
-	    this->_outputc.measure(ad_res,ad_out,out);
+	    tresults += dv.size();
 	  }
-	else // dealing with Caffe db
-	  {
-	    APIData ad_res;
-	    int tresults = 0;
-	    ad_res.add("nclasses",_nclasses);
-	    std::vector<caffe::Datum> dv;
-	    while(!(dv=inputc.get_dv_test(100,has_mean_file)).empty())
-	      {
-		boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->set_batch_size(dv.size());
-		boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(dv);
-		float loss = 0.0;
-		std::vector<Blob<float>*> lresults = _net->ForwardPrefilled(&loss);
-		int slot = lresults.size() - 1;
-		int scount = lresults[slot]->count();
-		int scperel = scount / dv.size();
-		for (int j=0;j<(int)dv.size();j++)
-		  {
-		    APIData bad;
-		    std::vector<double> predictions;
-		    int target = inputc._test_labels.at(tresults+j);
-		    for (int k=0;k<_nclasses;k++)
-		      {
-			predictions.push_back(lresults[slot]->cpu_data()[j*scperel+k]);
-		      }
-		    bad.add("target",target);
-		    bad.add("pred",predictions);
-		    std::vector<APIData> vad = { bad };
-		    ad_res.add(std::to_string(tresults+j),vad);
-		  }
-		tresults += dv.size();
-	      }
-	    ad_res.add("batch_size",tresults);
-	    this->_outputc.measure(ad_res,ad_out,out);
-	  }
+	ad_res.add("batch_size",tresults);
+	this->_outputc.measure(ad_res,ad_out,out);
       }
     return 0;
   }
@@ -462,7 +432,10 @@ namespace dd
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_in_memory_net_and_solver(caffe::SolverParameter &sp,
 													    const APIData &ad,
 													    const TInputConnectorStrategy &inputc,
-													    bool &has_mean_file)
+													    bool &has_mean_file,
+													    int &batch_size,
+													    int &test_batch_size,
+													    int &test_iter)
   {
     // fix net model path.
     sp.set_net(this->_mlmodel._repo + "/" + sp.net());
@@ -471,9 +444,9 @@ namespace dd
     sp.set_snapshot_prefix(this->_mlmodel._repo + "/model");
     
     // acquire custom batch size if any
-    int batch_size = inputc.batch_size();
-    int test_batch_size = inputc.test_batch_size();
-    int test_iter = 1;
+    batch_size = inputc.batch_size();
+    test_batch_size = inputc.test_batch_size();
+    test_iter = 1;
     fix_batch_size(ad,inputc,batch_size,test_batch_size,test_iter);
     sp.set_test_iter(0,test_iter);
     
@@ -537,7 +510,7 @@ namespace dd
 												 const TInputConnectorStrategy &inputc)
   {
     caffe::NetParameter net_param;
-    caffe::ReadProtoFromTextFile(net_file,&net_param);
+    caffe::ReadProtoFromTextFile(net_file,&net_param); //TODO: catch parsing error
     if (net_param.mutable_layer(0)->has_memory_data_param())
       {
 	net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels());
@@ -563,7 +536,9 @@ namespace dd
       }
 
     // adapt number of neuron output
+    std::cerr << "updating model file\n";
     update_protofile_classes(net_param);
+    std::cout << "updating deploy file\n";
     update_protofile_classes(deploy_net_param);
     
     caffe::WriteProtoToTextFile(net_param,net_file);

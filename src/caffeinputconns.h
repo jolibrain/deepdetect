@@ -272,6 +272,23 @@ namespace dd
       return 0;
     }
 
+    std::vector<caffe::Datum> get_dv_test(const int &num,
+					  const bool &has_mean_file)
+      {
+	static std::vector<caffe::Datum>::const_iterator vit = _dv_test.begin();
+	(void)has_mean_file;
+	int i = 0;
+	std::vector<caffe::Datum> dv;
+	while(vit!=_dv_test.end()
+	      && i < num)
+	  {
+	    dv.push_back((*vit));
+	    ++i;
+	    ++vit;
+	  }
+	return dv;
+      }
+
     /**
      * \brief turns a vector of values into a Caffe Datum structure
      * @param vector of values

@@ -101,7 +101,10 @@ namespace dd
       void update_in_memory_net_and_solver(caffe::SolverParameter &sp,
 					   const APIData &ad,
 					   const TInputConnectorStrategy &inputc,
-					   bool &has_mean_file);
+					   bool &has_mean_file,
+					   int &batch_size,
+					   int &test_batch_size,
+					   int &test_iter);
 
       /**
        * \brief updates the protocol buffer text file of the net directly at training time
