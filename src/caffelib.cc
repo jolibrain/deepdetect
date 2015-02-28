@@ -257,7 +257,7 @@ namespace dd
     const int start_iter = solver->iter_;
     int average_loss = solver->param_.average_loss();
     std::vector<float> losses;
-    this->clear_loss_per_iter();
+    this->clear_all_meas_per_iter();
     float smoothed_loss = 0.0;
     std::vector<Blob<float>*> bottom_vec;
     while(solver->iter_ < solver->param_.max_iter()
@@ -286,12 +286,12 @@ namespace dd
 	    smoothed_loss += (loss - losses[idx]) / average_loss;
 	    losses[idx] = loss;
 	  }
-	this->_loss.store(smoothed_loss);
-	
+	this->add_meas("loss",smoothed_loss);
+
 	if (solver->param_.test_interval() && solver->iter_ % solver->param_.test_interval() == 0)
 	  {
-	    this->add_loss_per_iter(loss); // to avoid filling up with possibly millions of entries...
-	    LOG(INFO) << "loss=" << this->_loss;
+	    this->add_meas_per_iter("loss",loss); // to avoid filling up with possibly millions of entries...
+	    LOG(INFO) << "loss=" << this->get_meas("loss");
 	  }	
 
 	solver->ComputeUpdateValue();

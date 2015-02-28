@@ -68,13 +68,13 @@ namespace dd
      * \brief constructor from model
      */
     MLLib(const TMLModel &mlmodel)
-      :_mlmodel(mlmodel),_loss(0.0),_tjob_running(false) {}
+      :_mlmodel(mlmodel),_tjob_running(false) {}
     
     /**
      * \brief copy-constructor
      */
     MLLib(MLLib &&mll) noexcept
-      :_inputc(mll._inputc),_outputc(mll._outputc),_mlmodel(mll._mlmodel),_loss(mll._loss.load()),_tjob_running(mll._tjob_running.load())
+      :_inputc(mll._inputc),_outputc(mll._outputc),_mlmodel(mll._mlmodel),_meas(mll._meas),_tjob_running(mll._tjob_running.load())
       {}
     
     /**
@@ -110,22 +110,88 @@ namespace dd
     int status() const;
     
     /**
-     * \brief clear loss history
+     * \brief clear all measures history
      */
-    void clear_loss_per_iter()
+    void clear_all_meas_per_iter()
     {
-      std::lock_guard<std::mutex> lock(_loss_per_iter_mutex);
-      _loss_per_iter.clear();
+      std::lock_guard<std::mutex> lock(_meas_per_iter_mutex);
+      _meas_per_iter.clear();
     }
 
     /**
-     * \brief add value to loss history
-     * @param l loss value
+     * \brief add value to measure history
+     * @param meas measure name
+     * @param l measure value
      */
-    void add_loss_per_iter(const double &l)
+    void add_meas_per_iter(const std::string &meas, const double &l)
     {
-      std::lock_guard<std::mutex> lock(_loss_per_iter_mutex);
-      _loss_per_iter.push_back(l);
+      std::lock_guard<std::mutex> lock(_meas_per_iter_mutex);
+      auto hit = _meas_per_iter.find(meas);
+      if (hit!=_meas_per_iter.end())
+	(*hit).second.push_back(l);
+      else
+	{
+	  std::vector<double> vmeas = {l};
+	  _meas_per_iter.insert(std::pair<std::string,std::vector<double>>(meas,vmeas));
+	}
+    }
+
+    /**
+     * \brief collect current measures history into a data object
+     * 
+     */
+    void collect_measures_history(APIData &ad)
+    {
+      std::lock_guard<std::mutex> lock(_meas_per_iter_mutex);
+      auto hit = _meas_per_iter.begin();
+      while(hit!=_meas_per_iter.end())
+	{
+	  ad.add((*hit).first+"_hist",(*hit).second);
+	  ++hit;
+	}
+    }
+
+    /**
+     * \brief sets current value of a measure
+     * @param meas measure name
+     * @param l measure value
+     */
+    void add_meas(const std::string &meas, const double &l)
+    {
+      std::lock_guard<std::mutex> lock(_meas_mutex);
+      auto hit = _meas.find(meas);
+      if (hit!=_meas.end())
+	(*hit).second = l;
+      else _meas.insert(std::pair<std::string,double>(meas,l));
+    }
+
+    /**
+     * \brief get currentvalue of argument measure
+     * @param meas measure name
+     * @return current value of measure
+     */
+    double get_meas(const std::string &meas)
+    {
+      std::lock_guard<std::mutex> lock(_meas_mutex);
+      auto hit = _meas.find(meas);
+      if (hit!=_meas.end())
+	return (*hit).second;
+      else return std::numeric_limits<double>::quiet_NaN();
+    }
+
+    /**
+     * \brief collect current measures into a data object
+     * @param ad data object to hold the measures
+     */
+    void collect_measures(APIData &ad)
+    {
+      std::lock_guard<std::mutex> lock(_meas_mutex);
+      auto hit = _meas.begin();
+      while(hit!=_meas.end())
+	{
+	  ad.add((*hit).first,(*hit).second);
+	  ++hit;
+	}
     }
 
     TInputConnectorStrategy _inputc; /**< input connector strategy for channeling data in. */
@@ -137,13 +203,14 @@ namespace dd
     TMLModel _mlmodel; /**< statistical model template. */
     std::string _libname; /**< ml lib name. */
     
-    std::atomic<double> _loss = 0.0; /**< model loss, used as a per service value. */
-    std::vector<double> _loss_per_iter; /**< model loss per iteration. */
+    std::unordered_map<std::string,double> _meas; /**< model measures, used as a per service value. */
+    std::unordered_map<std::string,std::vector<double>> _meas_per_iter; /**< model measures per iteration. */
 
     std::atomic<bool> _tjob_running = false; /**< whether a training job is running with this lib instance. */
 
   protected:
-    std::mutex _loss_per_iter_mutex; /**< mutex over loss history. */
+    std::mutex _meas_per_iter_mutex; /**< mutex over measures history. */
+    std::mutex _meas_mutex; /** mutex around current measures. */
   };  
   
 }
