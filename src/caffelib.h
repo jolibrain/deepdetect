@@ -89,6 +89,20 @@ namespace dd
     //TODO: status ?
 
     /*- local functions -*/
+     /**
+      * \brief test net
+      * @param ad root data object
+      * @param inputc input connector
+      * @param test_batch_size current size of the test batches
+      * @param has_mean_file whereas testing set uses a mean file (for images)
+      * @param out output data object
+      */
+    void test(const APIData &ad,
+	      TInputConnectorStrategy &inputc,
+	      const int &test_batch_size,
+	      const bool &has_mean_file,
+	      APIData &out);
+
     /**
      * \brief updates: - solver's paths to data according to current Caffe model
      *                 - net's batch size and data sources (e.g. lmdb sources)

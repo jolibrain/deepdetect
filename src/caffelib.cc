@@ -319,6 +319,18 @@ namespace dd
       throw MLLibBadParamException("no deploy file in " + this->_mlmodel._repo + " for initializing the net");
     
     // test
+    test(ad,inputc,test_batch_size,has_mean_file,out);
+    
+    return 0;
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::test(const APIData &ad,
+										 TInputConnectorStrategy &inputc,
+										 const int &test_batch_size,
+										 const bool &has_mean_file,
+										 APIData &out)
+  {
     APIData ad_out = ad.getobj("parameters").getobj("output");
     if (ad_out.has("measure"))
       {
@@ -354,9 +366,8 @@ namespace dd
 	ad_res.add("batch_size",tresults);
 	this->_outputc.measure(ad_res,ad_out,out);
       }
-    return 0;
   }
-
+  
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::predict(const APIData &ad,
 										   APIData &out)
