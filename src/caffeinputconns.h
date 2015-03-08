@@ -54,6 +54,8 @@ namespace dd
 	(void)has_mean_file;
 	return std::vector<caffe::Datum>(num);
       }
+
+    void reset_dv_test() {}
     
     std::vector<caffe::Datum> _dv; /**< main input datum vector, used for training or prediction */
     std::vector<caffe::Datum> _dv_test; /**< test input datum vector, when applicable in training mode */
@@ -71,7 +73,11 @@ namespace dd
       :ImgInputFileConn() {}
     ImgCaffeInputFileConn(const ImgCaffeInputFileConn &i)
       :ImgInputFileConn(i),CaffeInputInterface(i) {}
-    ~ImgCaffeInputFileConn() {}
+    ~ImgCaffeInputFileConn() 
+      {
+	if (_test_db)
+	  _test_db->Close();
+      }
 
     // size of each element in Caffe jargon
     int channels() const
@@ -183,6 +189,8 @@ namespace dd
     std::vector<caffe::Datum> get_dv_test(const int &num,
 					  const bool &has_mean_file);
 
+    void reset_dv_test();
+    
   private:
     int images_to_db(const std::string &rfolder,
 		     const std::string &traindbname,
@@ -224,7 +232,10 @@ namespace dd
   {
   public:
     CSVCaffeInputFileConn()
-      :CSVInputFileConn() {}
+      :CSVInputFileConn() 
+      {
+	reset_dv_test();
+      }
     ~CSVCaffeInputFileConn() {}
 
     void init(const APIData &ad)
@@ -275,19 +286,23 @@ namespace dd
     std::vector<caffe::Datum> get_dv_test(const int &num,
 					  const bool &has_mean_file)
       {
-	static std::vector<caffe::Datum>::const_iterator vit = _dv_test.begin();
 	(void)has_mean_file;
 	int i = 0;
 	std::vector<caffe::Datum> dv;
-	while(vit!=_dv_test.end()
+	while(_dt_vit!=_dv_test.end()
 	      && i < num)
 	  {
-	    dv.push_back((*vit));
+	    dv.push_back((*_dt_vit));
 	    ++i;
-	    ++vit;
+	    ++_dt_vit;
 	  }
 	return dv;
       }
+
+    void reset_dv_test()
+    {
+      _dt_vit = _dv_test.begin();
+    }
 
     /**
      * \brief turns a vector of values into a Caffe Datum structure
@@ -322,6 +337,8 @@ namespace dd
 	}
       return datum;
     }
+
+    std::vector<caffe::Datum>::const_iterator _dt_vit;
   };
 
 }

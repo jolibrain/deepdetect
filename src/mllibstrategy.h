@@ -142,13 +142,16 @@ namespace dd
      */
     void collect_measures_history(APIData &ad)
     {
+      APIData meas_hist;
       std::lock_guard<std::mutex> lock(_meas_per_iter_mutex);
       auto hit = _meas_per_iter.begin();
       while(hit!=_meas_per_iter.end())
 	{
-	  ad.add((*hit).first+"_hist",(*hit).second);
+	  meas_hist.add((*hit).first+"_hist",(*hit).second);
 	  ++hit;
 	}
+      std::vector<APIData> vad = { meas_hist };
+      ad.add("measure_hist",vad);
     }
 
     /**
@@ -185,13 +188,16 @@ namespace dd
      */
     void collect_measures(APIData &ad)
     {
+      APIData meas;
       std::lock_guard<std::mutex> lock(_meas_mutex);
       auto hit = _meas.begin();
       while(hit!=_meas.end())
 	{
-	  ad.add((*hit).first,(*hit).second);
+	  meas.add((*hit).first,(*hit).second);
 	  ++hit;
 	}
+      std::vector<APIData> vad = {meas};
+      ad.add("measure",vad);
     }
 
     TInputConnectorStrategy _inputc; /**< input connector strategy for channeling data in. */

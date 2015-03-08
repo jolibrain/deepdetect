@@ -97,7 +97,8 @@ namespace dd
       * @param has_mean_file whereas testing set uses a mean file (for images)
       * @param out output data object
       */
-    void test(const APIData &ad,
+      void test(caffe::Net<float> *net,
+	      const APIData &ad,
 	      TInputConnectorStrategy &inputc,
 	      const int &test_batch_size,
 	      const bool &has_mean_file,

@@ -191,36 +191,45 @@ namespace dd
     // measure
     void measure(const APIData &ad_res, const APIData &ad_out, APIData &out)
     {
-      std::vector<std::string> measures = ad_out.get("measure").get<std::vector<std::string>>();
-      bool bauc = (std::find(measures.begin(),measures.end(),"auc")!=measures.end());
-      bool bacc = (std::find(measures.begin(),measures.end(),"acc")!=measures.end());
-      bool bf1 = (std::find(measures.begin(),measures.end(),"f1")!=measures.end());
-      bool bmcll = (std::find(measures.begin(),measures.end(),"mcll")!=measures.end());
-      if (bauc) // XXX: applies two binary classification problems only
-	  {
-	    double mauc = auc(ad_res);
-	    out.add("auc",mauc);
-	  }
-	if (bacc)
-	  {
-	    double macc = acc(ad_res);
-	    out.add("acc",macc);
-	  }
-	if (bf1)
-	  {
-	    double f1,precision,recall,acc;
-	    f1 = mf1(ad_res,precision,recall,acc);
-	    out.add("f1",f1);
-	    out.add("precision",precision);
-	    out.add("recall",recall);
-	    out.add("accp",acc);
-	    //TODO: confusion matrix ?
-	  }
-	if (bmcll)
-	  {
-	    double mmcll = mcll(ad_res);
-	    out.add("mcll",mmcll);
-	  }
+      APIData meas_out;
+      bool loss = ad_res.has("loss");
+      if (ad_out.has("measures"))
+	{
+	  std::vector<std::string> measures = ad_out.get("measure").get<std::vector<std::string>>();
+      	  bool bauc = (std::find(measures.begin(),measures.end(),"auc")!=measures.end());
+	  bool bacc = (std::find(measures.begin(),measures.end(),"acc")!=measures.end());
+	  bool bf1 = (std::find(measures.begin(),measures.end(),"f1")!=measures.end());
+	  bool bmcll = (std::find(measures.begin(),measures.end(),"mcll")!=measures.end());
+	  if (bauc) // XXX: applies two binary classification problems only
+	    {
+	      double mauc = auc(ad_res);
+	      meas_out.add("auc",mauc);
+	    }
+	  if (bacc)
+	    {
+	      double macc = acc(ad_res);
+	      meas_out.add("acc",macc);
+	    }
+	  if (bf1)
+	    {
+	      double f1,precision,recall,acc;
+	      f1 = mf1(ad_res,precision,recall,acc);
+	      meas_out.add("f1",f1);
+	      meas_out.add("precision",precision);
+	      meas_out.add("recall",recall);
+	      meas_out.add("accp",acc);
+	      //TODO: confusion matrix ?
+	    }
+	  if (bmcll)
+	    {
+	      double mmcll = mcll(ad_res);
+	      meas_out.add("mcll",mmcll);
+	    }
+	}
+	if (loss)
+	  meas_out.add("loss",ad_res.get("loss").get<double>()); // 'universal', comes from algorithm
+	std::vector<APIData> vad = { meas_out };
+	out.add("measure",vad);
     }
 
     // measure: ACC

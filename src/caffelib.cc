@@ -234,12 +234,12 @@ namespace dd
     if (!inputc._dv.empty())
       {
 	boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->net()->layers()[0])->AddDatumVector(inputc._dv);
-	if (!solver->test_nets().empty())
+	/*if (!solver->test_nets().empty())
 	  {
 	    if (!inputc._dv_test.empty())
 	      boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->test_nets().at(0)->layers()[0])->AddDatumVector(inputc._dv_test);
 	    else boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->test_nets().at(0)->layers()[0])->AddDatumVector(inputc._dv);
-	  }
+	    }*/
       }
     if (!this->_mlmodel._weights.empty())
       {
@@ -271,7 +271,28 @@ namespace dd
 	if (solver->param_.test_interval() && solver->iter_ % solver->param_.test_interval() == 0
 	    && (solver->iter_ > 0 || solver->param_.test_initialization())) 
 	  {
-	    solver->TestAll();
+	    //solver->TestAll();
+	    /*if (_net)
+	      {
+		delete _net;
+		_net = nullptr;
+		}*/
+	    if (!_net)
+	      {
+		_net = new Net<float>(this->_mlmodel._def,caffe::TEST);
+	      }
+	    _net->ShareTrainedLayersWith(solver->net().get());
+	    APIData meas_out;
+	    test(_net,ad,inputc,test_batch_size,has_mean_file,meas_out);
+	    APIData meas_obj = meas_out.getobj("measure");
+	    std::vector<std::string> meas_str = meas_obj.list_keys();
+	    for (auto m: meas_str)
+	      {
+		double mval = meas_obj.get(m).get<double>();
+		LOG(INFO) << m << "=" << mval;
+		this->add_meas(m,mval);
+		this->add_meas_per_iter(m,mval);
+	      }
 	  }
 	float loss = solver->net_->ForwardBackward(bottom_vec);
 	if (static_cast<int>(losses.size()) < average_loss) 
@@ -287,7 +308,6 @@ namespace dd
 	    losses[idx] = loss;
 	  }
 	this->add_meas("loss",smoothed_loss);
-
 	if (solver->param_.test_interval() && solver->iter_ % solver->param_.test_interval() == 0)
 	  {
 	    this->add_meas_per_iter("loss",loss); // to avoid filling up with possibly millions of entries...
@@ -319,31 +339,35 @@ namespace dd
       throw MLLibBadParamException("no deploy file in " + this->_mlmodel._repo + " for initializing the net");
     
     // test
-    test(ad,inputc,test_batch_size,has_mean_file,out);
+    test(_net,ad,inputc,test_batch_size,has_mean_file,out);
     
     return 0;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::test(const APIData &ad,
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::test(caffe::Net<float> *net,
+										 const APIData &ad,
 										 TInputConnectorStrategy &inputc,
 										 const int &test_batch_size,
 										 const bool &has_mean_file,
 										 APIData &out)
   {
+    APIData ad_res;
+    ad_res.add("loss",this->get_meas("loss"));
     APIData ad_out = ad.getobj("parameters").getobj("output");
     if (ad_out.has("measure"))
       {
-	APIData ad_res;
+	float mean_loss = 0.0;
 	int tresults = 0;
 	ad_res.add("nclasses",_nclasses);
+	inputc.reset_dv_test();
 	std::vector<caffe::Datum> dv;
 	while(!(dv=inputc.get_dv_test(test_batch_size,has_mean_file)).empty())
 	  {
-	    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->set_batch_size(dv.size());
-	    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(dv);
+	    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(net->layers()[0])->set_batch_size(dv.size());
+	    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(net->layers()[0])->AddDatumVector(dv);
 	    float loss = 0.0;
-	    std::vector<Blob<float>*> lresults = _net->ForwardPrefilled(&loss);
+	    std::vector<Blob<float>*> lresults = net->ForwardPrefilled(&loss);
 	    int slot = lresults.size() - 1;
 	    int scount = lresults[slot]->count();
 	    int scperel = scount / dv.size();
@@ -362,10 +386,11 @@ namespace dd
 		ad_res.add(std::to_string(tresults+j),vad);
 	      }
 	    tresults += dv.size();
+	    mean_loss += loss;
 	  }
 	ad_res.add("batch_size",tresults);
-	this->_outputc.measure(ad_res,ad_out,out);
       }
+    this->_outputc.measure(ad_res,ad_out,out);
   }
   
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>

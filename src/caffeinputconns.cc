@@ -312,10 +312,8 @@ namespace dd
   std::vector<caffe::Datum> ImgCaffeInputFileConn::get_dv_test(const int &num,
 							       const bool &has_mean_file)
   {
-    static int pass = 0;
-    static std::vector<float> mean_values;
-    static Blob<float> data_mean;
-    static float *mean = nullptr;
+    Blob<float> data_mean;
+    float *mean = nullptr;
     if (!_test_db_cursor)
       {
 	// open db and create cursor
@@ -368,8 +366,13 @@ namespace dd
 	_test_db_cursor->Next();
 	++i;
       }
-    ++pass;
     return dv;
+  }
+  
+  void ImgCaffeInputFileConn::reset_dv_test()
+  {
+    //_test_db = std::unique_ptr<caffe::db::DB>();
+    _test_db_cursor = std::unique_ptr<caffe::db::Cursor>();
   }
 
 }

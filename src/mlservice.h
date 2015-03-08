@@ -146,7 +146,7 @@ namespace dd
 	else 
 	  {
 	    int status = this->train(ad,out);
-	    this->collect_measures(out);
+	    //this->collect_measures(out);
 	    APIData ad_params_out = ad.getobj("parameters").getobj("output");
 	    if (ad_params_out.has("measure_hist") && ad_params_out.get("measure_hist").get<bool>())
 	      this->collect_measures_history(out);
@@ -187,7 +187,7 @@ namespace dd
 	      if (st == 0)
 		out.add("status","finished");
 	      else out.add("status","unknown error");
-	      this->collect_measures(out); // XXX: beware if there was a queue, since the job has finished, there might be a new one running.
+	      //this->collect_measures(out); // XXX: beware if there was a queue, since the job has finished, there might be a new one running.
 	      std::chrono::time_point<std::chrono::system_clock> trun = std::chrono::system_clock::now();
 	      out.add("time",std::chrono::duration_cast<std::chrono::seconds>(trun-(*hit).second._tstart).count());
 	      if (ad.has("measure_hist") && ad.get("measure_hist").get<bool>())
