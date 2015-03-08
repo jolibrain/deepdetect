@@ -177,6 +177,16 @@ namespace dd
       else return false;
     }
 
+    std::vector<std::string> list_keys() const
+      {
+	std::vector<std::string> keys;
+	for (auto kv: _data)
+	  {
+	    keys.push_back(kv.first);
+	  }
+	return keys;
+      }
+
     /**
      * \brief number of hosted keys at this level of the object
      * @return size
