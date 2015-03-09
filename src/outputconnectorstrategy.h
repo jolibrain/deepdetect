@@ -193,7 +193,7 @@ namespace dd
     {
       APIData meas_out;
       bool loss = ad_res.has("loss");
-      if (ad_out.has("measures"))
+      if (ad_out.has("measure"))
 	{
 	  std::vector<std::string> measures = ad_out.get("measure").get<std::vector<std::string>>();
       	  bool bauc = (std::find(measures.begin(),measures.end(),"auc")!=measures.end());
