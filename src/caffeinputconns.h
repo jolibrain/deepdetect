@@ -75,8 +75,8 @@ namespace dd
       :ImgInputFileConn(i),CaffeInputInterface(i) {}
     ~ImgCaffeInputFileConn() 
       {
-	if (_test_db)
-	  _test_db->Close();
+	//if (_test_db)
+	//_test_db->Close();
       }
 
     // size of each element in Caffe jargon
