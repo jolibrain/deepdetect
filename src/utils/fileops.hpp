@@ -49,7 +49,7 @@ namespace dd
       if ((dir = opendir(repo.c_str())) != NULL) {
 	/* print all the files and directories within directory */
 	while ((ent = readdir(dir)) != NULL) {
-	  if ((files && ent->d_type == DT_REG)
+	  if ((files && (ent->d_type == DT_REG || ent->d_type == DT_LNK))
 	      || (dirs && ent->d_type == DT_DIR && ent->d_name[0] != '.'))
 	    lfiles.insert(std::string(repo) + "/" + std::string(ent->d_name));
 	}
