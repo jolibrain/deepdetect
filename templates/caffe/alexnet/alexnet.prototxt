@@ -18,23 +18,38 @@ layer {
     backend: LMDB
   }
 }
+#layer {
+#  name: "data"
+#  type: "Data"
+#  top: "data"
+#  top: "label"
+#  include {
+#    phase: TEST
+#  }
+#  transform_param {
+#    mirror: false
+#    crop_size: 227
+#    mean_file: "mean.binaryproto"
+#  }
+#  data_param {
+#    source: "test.lmdb"
+#    batch_size: 50
+#    backend: LMDB
+#  }
+#}
 layer {
-  name: "data"
-  type: "Data"
+  name: "alexnet"
+  type: "MemoryData"
   top: "data"
   top: "label"
+  memory_data_param {
+    batch_size: 256
+    channels: 3
+    height: 227
+    width: 227
+  }
   include {
     phase: TEST
-  }
-  transform_param {
-    mirror: false
-    crop_size: 227
-    mean_file: "mean.binaryproto"
-  }
-  data_param {
-    source: "test.lmdb"
-    batch_size: 50
-    backend: LMDB
   }
 }
 layer {
@@ -366,11 +381,10 @@ layer {
   }
 }
 layer {
-  name: "accuracy"
-  type: "Accuracy"
+  name: "losst"
+  type: "Softmax"
   bottom: "fc8"
-  bottom: "label"
-  top: "accuracy"
+  top: "losst"
   include {
     phase: TEST
   }

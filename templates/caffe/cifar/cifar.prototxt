@@ -18,19 +18,17 @@ layer {
 }
 layer {
   name: "cifar"
-  type: "Data"
+  type: "MemoryData"
   top: "data"
   top: "label"
+  memory_data_param {
+    batch_size: 100
+    channels: 3
+    height: 32
+    width: 32
+  }
   include {
     phase: TEST
-  }
-  transform_param {
-    mean_file: "mean.binaryproto"
-  }
-  data_param {
-    source: "test_lmdb"
-    batch_size: 100
-    backend: LMDB
   }
 }
 layer {
@@ -202,14 +200,10 @@ layer {
   }
 }
 layer {
-  name: "accuracy"
-  type: "Accuracy"
+  name: "losst"
+  type: "Softmax"
   bottom: "ip1"
-  bottom: "label"
-  top: "accuracy"
-  include {
-    phase: TEST
-  }
+  top: "losst"
 }
 layer {
   name: "loss"

@@ -22,25 +22,18 @@ layer {
   }
 }
 layer {
-  name: "data"
-  type: "Data"
+  name: "googlenet"
+  type: "MemoryData"
   top: "data"
   top: "label"
-  include {
+  memory_data_param {
+    batch_size: 32
+    channels: 3
+    height: 224
+    width: 224
+  }
+ include {
     phase: TEST
-  }
-  transform_param {
-    mirror: false
-    crop_size: 224
-#    mean_value: 104
-#    mean_value: 117
-#    mean_value: 123
-     mean_file: "mean.binaryproto"
-  }
-  data_param {
-    source: "test.lmdb"
-    batch_size: 50
-    backend: LMDB
   }
 }
 layer {
@@ -2483,16 +2476,25 @@ layer {
     phase: TEST
   }
 }
+#layer {
+#  name: "loss3/top-5"
+#  type: "Accuracy"
+#  bottom: "loss3/classifier"
+#  bottom: "label"
+#  top: "loss3/top-5"
+#  include {
+#    phase: TEST
+#  }
+#  accuracy_param {
+#    top_k: 5
+#  }
+#}
 layer {
-  name: "loss3/top-5"
-  type: "Accuracy"
+  name: "probt"
+  type: "Softmax"
   bottom: "loss3/classifier"
-  bottom: "label"
-  top: "loss3/top-5"
+  top: "probt"
   include {
     phase: TEST
-  }
-  accuracy_param {
-    top_k: 5
   }
 }

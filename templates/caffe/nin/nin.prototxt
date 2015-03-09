@@ -21,17 +21,13 @@ layer {
 layer {
   top: "data"
   top: "label"
-  name: "nin"
-  type: "Data"
-  data_param {
-    source: "train.lmdb"
-    backend: LMDB
-    batch_size: 89
-  }
-  transform_param {
-    crop_size: 224
-    mirror: false
-    mean_file: "mean.binaryproto"
+  name: "data"
+  type: "MemoryData"
+  memory_data_param {
+    batch_size: 64
+    channels: 3
+    height: 224
+    width: 224
   }
   include: { phase: TEST }
 }
@@ -500,18 +496,15 @@ layer {
   }
 }
 layer {
-  name: "accuracy"
-  type: "Accuracy"
   bottom: "pool4"
-  bottom: "label"
-  top: "accuracy"
-  include: { phase: TEST }
+  name: "losst"
+  type: "Softmax"
+  top: "losst"
 }
 layer {
   bottom: "pool4"
   bottom: "label"
   name: "loss"
   type: "SoftmaxWithLoss"
-  include: { phase: TRAIN }
   top: "loss"
 }

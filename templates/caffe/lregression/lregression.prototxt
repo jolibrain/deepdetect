@@ -42,11 +42,10 @@ layer {
   }
 }
 layer {
-  name: "accuracy"
-  type: "Accuracy"
+  name: "losst"
+  type: "Softmax"
   bottom: "ip1"
-  bottom: "label"
-  top: "accuracy"
+  top: "losst"
   include: { phase: TEST }
 }
 layer {
