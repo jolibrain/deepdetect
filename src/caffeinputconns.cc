@@ -372,7 +372,9 @@ namespace dd
   void ImgCaffeInputFileConn::reset_dv_test()
   {
     //_test_db = std::unique_ptr<caffe::db::DB>();
-    _test_db_cursor = std::unique_ptr<caffe::db::Cursor>();
+    if (_test_db)
+      _test_db_cursor = std::unique_ptr<db::Cursor>(_test_db->NewCursor());
+    else _test_db_cursor = std::unique_ptr<caffe::db::Cursor>();
   }
 
 }
