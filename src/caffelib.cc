@@ -307,11 +307,11 @@ namespace dd
 	    smoothed_loss += (loss - losses[idx]) / average_loss;
 	    losses[idx] = loss;
 	  }
-	this->add_meas("loss",smoothed_loss);
+	this->add_meas("train_loss",smoothed_loss);
 	if (solver->param_.test_interval() && solver->iter_ % solver->param_.test_interval() == 0)
 	  {
-	    this->add_meas_per_iter("loss",loss); // to avoid filling up with possibly millions of entries...
-	    LOG(INFO) << "loss=" << this->get_meas("loss");
+	    this->add_meas_per_iter("train_loss",loss); // to avoid filling up with possibly millions of entries...
+	    //LOG(INFO) << "loss=" << this->get_meas("loss");
 	  }	
 
 	solver->ComputeUpdateValue();
@@ -353,7 +353,7 @@ namespace dd
 										 APIData &out)
   {
     APIData ad_res;
-    ad_res.add("loss",this->get_meas("loss"));
+    ad_res.add("train_loss",this->get_meas("train_loss"));
     APIData ad_out = ad.getobj("parameters").getobj("output");
     if (ad_out.has("measure"))
       {
@@ -389,6 +389,7 @@ namespace dd
 	    mean_loss += loss;
 	  }
 	ad_res.add("batch_size",tresults);
+	//ad_res.add("loss",mean_loss / static_cast<double>(tresults)); // XXX: Caffe ForwardPrefilled call above return loss = 0.0
       }
     this->_outputc.measure(ad_res,ad_out,out);
   }
