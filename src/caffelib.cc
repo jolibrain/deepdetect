@@ -111,7 +111,7 @@ namespace dd
       _gpuid = ad.get("gpuid").get<int>();
     if (ad.has("nclasses"))
       _nclasses = ad.get("nclasses").get<int>();
-    else std::cerr << "[Warning]: number of classes is undetermined in Caffe\n";
+    else LOG(WARNING) << "[Warning]: number of classes is undetermined in Caffe\n";
     // instantiate model template here, if any
     if (ad.has("template"))
       instantiate_template(ad);
@@ -279,7 +279,7 @@ namespace dd
 		}*/
 	    if (!_net)
 	      {
-		_net = new Net<float>(this->_mlmodel._def,caffe::TEST);
+		_net = new Net<float>(this->_mlmodel._def,caffe::TEST); //TODO: this is loading deploy file, we could use the test net when it exists and if its source is memory data
 	      }
 	    _net->ShareTrainedLayersWith(solver->net().get());
 	    APIData meas_out;
@@ -311,7 +311,7 @@ namespace dd
 	if (solver->param_.test_interval() && solver->iter_ % solver->param_.test_interval() == 0)
 	  {
 	    this->add_meas_per_iter("train_loss",loss); // to avoid filling up with possibly millions of entries...
-	    //LOG(INFO) << "loss=" << this->get_meas("loss");
+	    LOG(INFO) << "smoothed_loss=" << this->get_meas("train_loss");
 	  }	
 
 	solver->ComputeUpdateValue();
@@ -488,7 +488,6 @@ namespace dd
     sp.set_test_iter(0,test_iter);
     
     // fix source paths in the model.
-    std::cerr << "sp net file=" << sp.net() << std::endl;
     caffe::NetParameter *np = sp.mutable_net_param();
     caffe::ReadProtoFromTextFile(sp.net().c_str(),np); //TODO: error on read + use internal caffe ReadOrDie procedure
     for (int i=0;i<np->layer_size();i++)
@@ -573,9 +572,7 @@ namespace dd
       }
 
     // adapt number of neuron output
-    std::cerr << "updating model file\n";
     update_protofile_classes(net_param);
-    std::cout << "updating deploy file\n";
     update_protofile_classes(deploy_net_param);
     
     caffe::WriteProtoToTextFile(net_param,net_file);
@@ -591,7 +588,6 @@ namespace dd
     for (int l=net_param.layer_size()-1;l>0;l--)
       {
 	caffe::LayerParameter *lparam = net_param.mutable_layer(l);
-	std::cerr << "layer type=" << lparam->type() << std::endl;
 	if (lparam->type() == "Convolution")
 	  {
 	    if (lparam->has_convolution_param())
@@ -628,14 +624,27 @@ namespace dd
 	// adjust batch size so that it is a multiple of the number of training samples (Caffe requirement)
 	batch_size = test_batch_size = ad_net.get("batch_size").get<int>();
 	std::cerr << "batch_size=" << batch_size << " / inputc batch_size=" << inputc.batch_size() << std::endl;
-	if (batch_size < inputc.batch_size())
+	/*if (batch_size < inputc.batch_size())
 	  {
+	    int min_batch_size = 0;
 	    for (int i=batch_size;i>1;i--)
 	      if (inputc.batch_size() % i == 0)
 		{
-		  batch_size = i;
+		  min_batch_size = i;
 		  break;
 		}
+	    int max_batch_size = 0;
+	    for (int i=batch_size;i<inputc.batch_size();i++)
+	      {
+		if (inputc.batch_size() % i == 0)
+		  {
+		    max_batch_size = i;
+		    break;
+		  }
+	      }
+	    if (fabs(batch_size-min_batch_size) < fabs(max_batch_size-batch_size))
+	      batch_size = min_batch_size;
+	    else batch_size = max_batch_size;
 	    for (int i=test_batch_size;i>1;i--)
 	      if (inputc.test_batch_size() % i == 0)
 		{
@@ -644,9 +653,9 @@ namespace dd
 		}
 	    test_iter = inputc.test_batch_size() / test_batch_size;
 	  }
-	else batch_size = inputc.batch_size();
+	  else batch_size = inputc.batch_size();*/
       }
-
+    
     //debug
     std::cerr << "batch_size=" << batch_size << " / test_batch_size=" << test_batch_size << " / test_iter=" << test_iter << std::endl;
     //debug
