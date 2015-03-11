@@ -291,7 +291,8 @@ namespace dd
 		double mval = meas_obj.get(m).get<double>();
 		LOG(INFO) << m << "=" << mval;
 		this->add_meas(m,mval);
-		this->add_meas_per_iter(m,mval);
+		if (!std::isnan(mval)) // if testing occurs once before training even starts, loss is unknown and we don't add it to history.
+		  this->add_meas_per_iter(m,mval);
 	      }
 	  }
 	float loss = solver->net_->ForwardBackward(bottom_vec);
@@ -308,6 +309,7 @@ namespace dd
 	    losses[idx] = loss;
 	  }
 	this->add_meas("train_loss",smoothed_loss);
+
 	if (solver->param_.test_interval() && solver->iter_ % solver->param_.test_interval() == 0)
 	  {
 	    this->add_meas_per_iter("train_loss",loss); // to avoid filling up with possibly millions of entries...
@@ -323,6 +325,10 @@ namespace dd
     // always save final snapshot.
     if (solver->param_.snapshot_after_train())
       solver->Snapshot();
+    
+    // bail on forced stop, i.e. not testing the net further.
+    if (!this->_tjob_running.load())
+      return 0;
     
     if (_net)
       {

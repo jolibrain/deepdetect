@@ -35,7 +35,7 @@ static std::string not_found_str = "{\"status\":{\"code\":404,\"msg\":\"NotFound
 
 static std::string mnist_repo = "../examples/caffe/mnist/";
 
-/*TEST(caffeapi,service_train)
+TEST(caffeapi,service_train)
 {
 ::google::InitGoogleLogging("ut_caffeapi");
 // create service
@@ -59,8 +59,8 @@ static std::string mnist_repo = "../examples/caffe/mnist/";
   ASSERT_EQ("/train",jd["head"]["method"]);
   ASSERT_TRUE(jd["head"]["time"].GetDouble() > 0);
   ASSERT_TRUE(jd.HasMember("body"));
-  ASSERT_TRUE(jd["body"].HasMember("loss"));
-  ASSERT_TRUE(jd["body"]["loss"].GetDouble() > 0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
+  ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() > 0);
 }
 
 TEST(caffeapi,service_train_async_status_delete)
@@ -90,7 +90,7 @@ TEST(caffeapi,service_train_async_status_delete)
   // status.
   std::string jstatusstr = "{\"service\":\"" + sname + "\",\"job\":1,\"timeout\":5}";
   joutstr = japi.service_train_status(jstatusstr);
-  std::cout << "joutstr=" << joutstr << std::endl;
+  std::cout << "status joutstr=" << joutstr << std::endl;
   JDoc jd2;
   jd2.Parse(joutstr.c_str());
   ASSERT_TRUE(!jd2.HasParseError());
@@ -103,8 +103,8 @@ TEST(caffeapi,service_train_async_status_delete)
   ASSERT_EQ("running",jd2["head"]["status"]);
   ASSERT_EQ(1,jd2["head"]["job"]);
   ASSERT_TRUE(jd2.HasMember("body"));
-  ASSERT_TRUE(jd2["body"].HasMember("loss"));
-  ASSERT_TRUE(jd2["body"]["loss"].GetDouble() >= 0);
+  ASSERT_TRUE(jd2["body"]["measure"].HasMember("train_loss"));
+  ASSERT_TRUE(jd2["body"]["measure"]["train_loss"].GetDouble() >= 0);
 
   // delete job.
   std::string jdelstr = "{\"service\":\"" + sname + "\",\"job\":1}";
@@ -170,11 +170,11 @@ TEST(caffeapi,service_train_async_final_status)
 	  ASSERT_EQ("finished",jd2["head"]["status"]);
 	  ASSERT_EQ(1,jd2["head"]["job"]);
 	  ASSERT_TRUE(jd2.HasMember("body"));
-	  ASSERT_TRUE(jd2["body"].HasMember("loss"));
-	  ASSERT_TRUE(jd2["body"]["loss"].GetDouble() > 0);
+	  ASSERT_TRUE(jd2["body"]["measure"].HasMember("train_loss"));
+	  ASSERT_TRUE(jd2["body"]["measure"]["train_loss"].GetDouble() > 0);
 	}
     }
-}*/
+}
 
 TEST(caffeapi,service_predict)
 {
@@ -200,11 +200,11 @@ TEST(caffeapi,service_predict)
   ASSERT_TRUE(jd["head"]["time"].GetDouble() > 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"].HasMember("measure"));
-  ASSERT_TRUE(jd["body"]["measure"]["loss"].GetDouble() > 0);
-  ASSERT_TRUE(jd["body"]["measure_hist"]["loss_hist"].Size() > 0);
+  ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() > 0);
+  ASSERT_TRUE(jd["body"]["measure_hist"]["train_loss_hist"].Size() > 0);
 
   // predict
-  /*std::string jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"bw\":true}},\"data\":[\"" + mnist_repo + "/sample_digit.png\"]}";
+  std::string jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"bw\":true}},\"data\":[\"" + mnist_repo + "/sample_digit.png\"]}";
   joutstr = japi.service_predict(jpredictstr);
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse(joutstr.c_str());
@@ -220,5 +220,5 @@ TEST(caffeapi,service_predict)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200,jd["status"]["code"]);
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble() > 0);
-  ASSERT_TRUE(jd["body"]["predictions"][1]["classes"][0]["prob"].GetDouble() > 0);*/
+  ASSERT_TRUE(jd["body"]["predictions"][1]["classes"][0]["prob"].GetDouble() > 0);
 }

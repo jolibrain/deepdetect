@@ -56,3 +56,9 @@ add_subdirectory(tests)
 
 # templates
 file(COPY "templates" DESTINATION ".")
+
+# examples
+file(COPY "examples" DESTINATION ".")
+
+# unit testing
+enable_testing()
