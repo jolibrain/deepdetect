@@ -92,6 +92,10 @@ namespace dd
      */
     APIData(const JVal &jval);
 
+    APIData(const APIData &ad)
+      :_data(ad._data)
+    {}
+    
     /**
      * \brief destructor
      */

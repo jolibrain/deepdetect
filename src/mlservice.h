@@ -137,9 +137,18 @@ namespace dd
 	{
 	  std::lock_guard<std::mutex> lock(_tjobs_mutex);
 	  std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();
-	  _training_jobs.emplace(++_tjobs_counter,
+	  ++_tjobs_counter;
+	  int local_tcounter = _tjobs_counter;
+	  _training_jobs.emplace(local_tcounter,
 				 std::move(tjob(std::async(std::launch::async,
-							   [this,ad,&out]{ return this->train(ad,out); }),
+							   [this,ad,local_tcounter]
+							   {
+							     APIData out;
+							     int run_code = this->train(ad,out);
+							     std::pair<int,APIData> p(local_tcounter,std::move(out));
+							     _training_out.insert(std::move(p));
+							     return run_code;
+							   }),
 						tstart)));
 	  return _tjobs_counter;
 	}
@@ -184,6 +193,12 @@ namespace dd
 	  else if (status == std::future_status::ready)
 	    {
 	      int st = (*hit).second._ft.get(); //TODO: exception handling ?
+	      auto ohit = _training_out.find((*hit).first);
+	      if (ohit!=_training_out.end())
+		{
+		  out = std::move((*ohit).second); // get async process output object
+		  _training_out.erase(ohit);
+		}
 	      if (st == 0)
 		out.add("status","finished");
 	      else out.add("status","unknown error");
@@ -225,6 +240,9 @@ namespace dd
 	      std::chrono::time_point<std::chrono::system_clock> trun = std::chrono::system_clock::now();
 	      out.add("time",std::chrono::duration_cast<std::chrono::seconds>(trun-(*hit).second._tstart).count());
 	      _training_jobs.erase(hit);
+	      auto ohit = _training_out.find((*hit).first);
+	      if (ohit!=_training_out.end())
+		_training_out.erase(ohit);
 	    }
 	  else if ((*hit).second._status == 0)
 	    {
@@ -241,6 +259,7 @@ namespace dd
     std::mutex _tjobs_mutex; /**< mutex around training jobs. */
     std::atomic<int> _tjobs_counter = 0; /**< training jobs counter. */
     std::unordered_map<int,tjob> _training_jobs; // XXX: the futures' dtor blocks if the object is being terminated
+    std::unordered_map<int,APIData> _training_out;
   };
   
 }
