@@ -294,6 +294,8 @@ namespace dd
 		if (!std::isnan(mval)) // if testing occurs once before training even starts, loss is unknown and we don't add it to history.
 		  this->add_meas_per_iter(m,mval);
 	      }
+	    this->add_meas("iteration",solver->iter_);
+	    this->add_meas_per_iter("iteration",solver->iter_);
 	  }
 	float loss = solver->net_->ForwardBackward(bottom_vec);
 	if (static_cast<int>(losses.size()) < average_loss) 
@@ -359,6 +361,7 @@ namespace dd
 										 APIData &out)
   {
     APIData ad_res;
+    ad_res.add("iteration",this->get_meas("iteration"));
     ad_res.add("train_loss",this->get_meas("train_loss"));
     APIData ad_out = ad.getobj("parameters").getobj("output");
     if (ad_out.has("measure"))

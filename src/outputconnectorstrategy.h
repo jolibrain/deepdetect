@@ -194,6 +194,7 @@ namespace dd
       APIData meas_out;
       bool tloss = ad_res.has("train_loss");
       bool loss = ad_res.has("loss");
+      bool iter = ad_res.has("iteration");
       if (ad_out.has("measure"))
 	{
 	  std::vector<std::string> measures = ad_out.get("measure").get<std::vector<std::string>>();
@@ -231,6 +232,8 @@ namespace dd
 	  meas_out.add("loss",ad_res.get("loss").get<double>()); // 'universal', comes from algorithm
 	if (tloss)
 	  meas_out.add("train_loss",ad_res.get("train_loss").get<double>());
+	if (iter)
+	  meas_out.add("iteration",ad_res.get("iteration").get<double>());
 	std::vector<APIData> vad = { meas_out };
 	out.add("measure",vad);
     }
