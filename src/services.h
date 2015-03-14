@@ -328,7 +328,7 @@ namespace dd
      * \brief kills a training job
      * @param ad root data object
      * @param pos service position
-     * @out output data object
+     * @param output data object
      */
     int train_delete(const APIData &ad, const int &pos, APIData &out)
     {
