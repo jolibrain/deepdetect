@@ -52,7 +52,7 @@ namespace dd
     static std::string sstate = ".solverstate";
     static std::string corresp = "corresp";
     static std::string solver = "solver";
-    _repo = repo;
+    this->_repo = repo;
     std::unordered_set<std::string> lfiles;
     int e = fileops::list_directory(repo,true,false,lfiles);
     if (e != 0)

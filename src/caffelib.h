@@ -71,6 +71,12 @@ namespace dd
     void init_mllib(const APIData &ad);
 
     /**
+     * \brief removes caffe model weight files and states from repository
+     * @param ad root data object
+     */
+    void clear_mllib(const APIData &ad);
+
+    /**
      * \brief train new model
      * @param ad root data object
      * @param out output data object (e.g. loss, ...)

@@ -26,14 +26,19 @@
 #define MLMODEL_TEMPLATE_REPO "templates/"
 #endif
 
+#include <string>
+
 namespace dd
 {
   class MLModel
   {
   public:
     MLModel() {};
+    MLModel(const std::string &repo)
+      :_repo(repo) {}
     ~MLModel() {};
 
+    std::string _repo; /** model repository. */
   };
 }
 

@@ -61,6 +61,13 @@ TEST(caffeapi,service_train)
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
   ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() > 0);
+
+  // remove service
+  jstr = "{\"clear\":\"lib\"}";
+  joutstr = japi.service_delete(sname,jstr);
+  ASSERT_EQ(ok_str,joutstr);
+  ASSERT_TRUE(!fileops::file_exists(mnist_repo + "mylenet_iter_101.caffemodel"));
+  ASSERT_TRUE(!fileops::file_exists(mnist_repo + "mylenet_iter_101.solverstate"));
 }
 
 TEST(caffeapi,service_train_async_status_delete)
@@ -121,6 +128,11 @@ TEST(caffeapi,service_train_async_status_delete)
   ASSERT_TRUE(jd3["head"]["time"].GetDouble() > 0);
   ASSERT_EQ("terminated",jd3["head"]["status"]);
   ASSERT_EQ(1,jd3["head"]["job"].GetInt());
+
+  // remove service
+  jstr = "{\"clear\":\"lib\"}";
+  joutstr = japi.service_delete(sname,jstr);
+  ASSERT_EQ(ok_str,joutstr);
 }
 
 TEST(caffeapi,service_train_async_final_status)
@@ -174,6 +186,11 @@ TEST(caffeapi,service_train_async_final_status)
 	  ASSERT_TRUE(jd2["body"]["measure"]["train_loss"].GetDouble() > 0);
 	}
     }
+
+   // remove service
+  jstr = "{\"clear\":\"lib\"}";
+  joutstr = japi.service_delete(sname,jstr);
+  ASSERT_EQ(ok_str,joutstr);
 }
 
 TEST(caffeapi,service_predict)
@@ -221,4 +238,9 @@ TEST(caffeapi,service_predict)
   ASSERT_EQ(200,jd["status"]["code"]);
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble() > 0);
   ASSERT_TRUE(jd["body"]["predictions"][1]["classes"][0]["prob"].GetDouble() > 0);
+
+   // remove service
+  jstr = "{\"clear\":\"lib\"}";
+  joutstr = japi.service_delete(sname,jstr);
+  ASSERT_EQ(ok_str,joutstr);
 }

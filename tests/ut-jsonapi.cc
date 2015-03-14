@@ -118,7 +118,8 @@ TEST(jsonapi,service_delete)
   ASSERT_EQ(created_str,joutstr);
   
   // delete service.
-  std::string jdelstr = japi.service_delete(sname);
+  jstr = "{\"clear\":\"mem\"}";
+  std::string jdelstr = japi.service_delete(sname,jstr);
   ASSERT_EQ(ok_str,jdelstr);
   std::string jinfostr = japi.info();
   JDoc jd;

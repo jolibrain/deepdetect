@@ -120,6 +120,14 @@ namespace dd
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::clear_mllib(const APIData &ad)
+  {
+    //TODO
+    std::vector<std::string> extensions = {".solverstate",".caffemodel"};
+    fileops::remove_directory_files(this->_mlmodel._repo,extensions);
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::train(const APIData &ad,
 										 APIData &out)
   {

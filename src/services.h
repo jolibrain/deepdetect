@@ -151,6 +151,32 @@ namespace dd
   };
   
   /**
+   * \brief service deletion visitor class
+   */
+  class visitor_clear : public mapbox::util::static_visitor<>
+  {
+  public:
+    visitor_clear(const APIData &ad)
+      :_ad(ad) {}
+    ~visitor_clear() {}
+    
+    template<typename T>
+      void operator() (T &mllib)
+      {
+	if (_ad.has("clear"))
+	  {
+	    std::string clear = _ad.get("clear").get<std::string>();
+	    if (clear == "full")
+	      mllib.clear_full();
+	    else if (clear == "lib")
+	      mllib.clear_mllib(_ad);
+	  }
+      }
+    
+    APIData _ad;
+  };
+
+  /**
    * \brief class for deepetect machine learning services.
    *        Each service instanciates a machine learning library and channels
    *        data for training and prediction along with parameters from API
@@ -214,14 +240,39 @@ namespace dd
     /**
      * \brief removes and destroys a service
      * @param sname service name
+     * @param ad root data object
      * @return true if service was removed, false otherwise (i.e. not found)
      */
-    bool remove_service(const std::string &sname)
+    bool remove_service(const std::string &sname,
+			const APIData &ad)
     {
       std::lock_guard<std::mutex> lock(_mlservices_mtx);
       auto hit = _mlservidx.begin();
       if ((hit=_mlservidx.find(sname))!=_mlservidx.end())
 	{
+	  if (ad.has("clear"))
+	    {
+	      visitor_clear vc(ad);
+	      try
+		{
+		  mapbox::util::apply_visitor(vc,_mlservices.at((*hit).second));
+		}
+	      catch (MLLibBadParamException &e)
+		{
+		  LOG(ERROR) << "service " << sname << " mllib bad param: " << e.what() << std::endl;
+		  throw;
+		}
+	      catch (MLLibInternalException &e)
+		{
+		  LOG(ERROR) << "service " << sname << " mllib internal error: " << e.what() << std::endl;
+	  	  throw;
+		}
+	      catch(...)
+		{
+		  LOG(ERROR) << "service " << sname << " delete service call failed\n";
+	  	  throw;
+		}
+	    }
 	  _mlservices.erase(_mlservices.begin()+(*hit).second);
 	  _mlservidx.erase(hit);
 	  return true;

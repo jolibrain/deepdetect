@@ -306,11 +306,22 @@ namespace dd
     return jrender(jst);
   }
 
-  std::string JsonAPI::service_delete(const std::string &sname)
+  std::string JsonAPI::service_delete(const std::string &sname,
+				      const std::string &jstr)
   {
     if (sname.empty())
       return jrender(dd_service_not_found_1002());
-    if (remove_service(sname))
+    
+    rapidjson::Document d;
+    if (!jstr.empty())
+      {
+	d.Parse(jstr.c_str());
+	if (d.HasParseError())
+	  return jrender(dd_bad_request_400());
+      }
+
+    APIData ad(d);
+    if (remove_service(sname,ad))
       return jrender(dd_ok_200());
     return jrender(dd_not_found_404());
   }

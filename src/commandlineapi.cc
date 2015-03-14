@@ -77,7 +77,8 @@ namespace dd
 	    std::cout << "response=\n" << out.render_template(tpl) << std::endl;//,"predictions") << std::endl;
 	    //APIData pred = out.get("predictions").get<std::vector<APIData>>().at(0);
 	    //std::cout << "response=\n" << pred.render_template(tpl) << std::endl;
-	    remove_service(FLAGS_service);
+	    APIData adr;
+	    remove_service(FLAGS_service,adr);
 	  }
       }
     else if (FLAGS_train)
@@ -92,7 +93,8 @@ namespace dd
 	    train(ad,0,out);
 	    std::string tpl = "status={{status}}\n";
 	    std::cout << "response=\n" << out.render_template(tpl) << std::endl;
-	    remove_service(FLAGS_service);
+	    APIData adr;
+	    remove_service(FLAGS_service,adr);
 	  }
       }
 

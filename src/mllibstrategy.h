@@ -23,6 +23,7 @@
 #define MLLIBSTRATEGY_H
 
 #include "apidata.h"
+#include "utils/fileops.hpp"
 #include <atomic>
 #include <exception>
 #include <mutex>
@@ -87,6 +88,24 @@ namespace dd
      * @param ad data object for "parameters/mllib"
      */
     void init_mllib(const APIData &ad);
+
+    /**
+     * \brief clear the lib service from local model files etc...
+     * @param ad root data object
+     */
+    void clear_mllib(const APIData &ad);
+
+    /**
+     * \brief removes everything in model repository
+     */
+    void clear_full()
+    {
+      int err = fileops::clear_directory(_mlmodel._repo);
+      if (err > 0)
+	throw MLLibBadParamException("Failed opening directory " + _mlmodel._repo + " for deleting files within");
+      else if (err < 0)
+	throw MLLibInternalException("Failed deleting all files in directory " + _mlmodel._repo);
+    }
 
     /**
      * \brief train new model

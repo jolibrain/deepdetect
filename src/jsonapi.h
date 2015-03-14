@@ -80,7 +80,8 @@ namespace dd
     std::string info() const;
     std::string service_create(const std::string &sname, const std::string &jstr);
     std::string service_status(const std::string &sname);
-    std::string service_delete(const std::string &sname);
+    std::string service_delete(const std::string &sname,
+			       const std::string &jstr);
     
     std::string service_predict(const std::string &jstr);
 

@@ -34,7 +34,8 @@ namespace dd
   public:
     CaffeModel():MLModel() {}
     CaffeModel(const APIData &ad);
-    CaffeModel(const std::string &repo);
+    CaffeModel(const std::string &repo)
+      :MLModel(repo) {}
     ~CaffeModel() {};
 
     int read_from_repository(const std::string &repo);
@@ -47,8 +48,7 @@ namespace dd
 	  return std::to_string(i);
 	else return _hcorresp[i];
       }
-
-    std::string _repo; /** model repository. */
+    
     std::string _def; /**< file name of the model definition in the form of a protocol buffer message description. */
     std::string _weights; /**< file name of the network's weights. */
     std::string _corresp; /**< file name of the class correspondences (e.g. house / 23) */

@@ -26,6 +26,7 @@
 #include <fstream>
 #include <unordered_set>
 #include <sys/stat.h>
+#include <stdio.h>
 
 namespace dd
 {
@@ -47,7 +48,6 @@ namespace dd
       DIR *dir;
       struct dirent *ent;
       if ((dir = opendir(repo.c_str())) != NULL) {
-	/* print all the files and directories within directory */
 	while ((ent = readdir(dir)) != NULL) {
 	  if ((files && (ent->d_type == DT_REG || ent->d_type == DT_LNK))
 	      || (dirs && ent->d_type == DT_DIR && ent->d_name[0] != '.'))
@@ -61,7 +61,54 @@ namespace dd
 	  return 1;
 	}
     }
-    
+
+    static int clear_directory(const std::string &repo)
+    {
+      int err = 0;
+      DIR *dir;
+      struct dirent *ent;
+      if ((dir = opendir(repo.c_str())) != NULL) {
+	while ((ent = readdir(dir)) != NULL) 
+	  {
+	    std::string f = std::string(repo) + "/" + std::string(ent->d_name);
+	    err += remove(f.c_str());
+	  }
+	closedir(dir);
+	return err;
+      } 
+      else 
+	{
+	  return 1;
+	}
+    }
+
+    static int remove_directory_files(const std::string &repo,
+				      const std::vector<std::string> &extensions)
+    {
+      int err = 0;
+      DIR *dir;
+      struct dirent *ent;
+      if ((dir = opendir(repo.c_str())) != NULL) {
+	while ((ent = readdir(dir)) != NULL) 
+	  {
+	    std::string lf = std::string(ent->d_name);
+	    for (std::string s : extensions)
+	      if (lf.find(s) != std::string::npos)
+		{
+		  std::string f = std::string(repo) + "/" + lf;
+		  err += remove(f.c_str());
+		  break;
+		}
+	  }
+	closedir(dir);
+	return err;
+      } 
+      else 
+	{
+	  return 1;
+	}
+    }
+
     static int copy_file(const std::string &fin,
 			 const std::string &fout)
     {
@@ -74,6 +121,16 @@ namespace dd
       dst.close();
       return 0;
     }
+
+    static int remove_file(const std::string &repo,
+			   const std::string &f)
+    {
+      std::string fn = repo + "/" + f;
+      if (remove(fn.c_str()))
+	return -1; // error.
+      return 0;
+    }
+    
   };
   
 }
