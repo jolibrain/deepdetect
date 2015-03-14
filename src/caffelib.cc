@@ -630,7 +630,7 @@ namespace dd
 	// adjust batch size so that it is a multiple of the number of training samples (Caffe requirement)
 	batch_size = test_batch_size = ad_net.get("batch_size").get<int>();
 	std::cerr << "batch_size=" << batch_size << " / inputc batch_size=" << inputc.batch_size() << std::endl;
-	/*if (batch_size < inputc.batch_size())
+	if (batch_size < inputc.batch_size())
 	  {
 	    int min_batch_size = 0;
 	    for (int i=batch_size;i>1;i--)
@@ -659,7 +659,7 @@ namespace dd
 		}
 	    test_iter = inputc.test_batch_size() / test_batch_size;
 	  }
-	  else batch_size = inputc.batch_size();*/
+	  else batch_size = inputc.batch_size();
       }
     
     //debug
