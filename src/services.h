@@ -324,6 +324,12 @@ namespace dd
       return pout._status;
     }
     
+    /**
+     * \brief kills a training job
+     * @param ad root data object
+     * @param pos service position
+     * @out output data object
+     */
     int train_delete(const APIData &ad, const int &pos, APIData &out)
     {
       visitor_train_delete vt;
