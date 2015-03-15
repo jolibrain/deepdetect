@@ -103,6 +103,14 @@ namespace dd
     render_status(jd,404,"NotFound");
     return jd;
   }
+  
+  JDoc JsonAPI::dd_conflict_409() const
+  {
+    JDoc jd;
+    jd.SetObject();
+    render_status(jd,409,"Conflict");
+    return jd;
+  }
 
   JDoc JsonAPI::dd_internal_error_500() const
   {
@@ -173,6 +181,14 @@ namespace dd
     JDoc jd;
     jd.SetObject();
     render_status(jd,500,"InternalError",1007,what);
+    return jd;
+  }
+
+  JDoc JsonAPI::dd_train_predict_conflict_1008() const
+  {
+    JDoc jd;
+    jd.SetObject();
+    render_status(jd,409,"Conflict",1008,"Train / Predict Conflict");
     return jd;
   }
 
@@ -372,6 +388,10 @@ namespace dd
     catch (MLLibInternalException &e)
       {
 	return jrender(dd_internal_error_500());
+      }
+    catch (MLServiceLockException &e)
+      {
+	return jrender(dd_train_predict_conflict_1008());
       }
     catch (std::exception &e)
       {

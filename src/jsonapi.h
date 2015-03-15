@@ -59,6 +59,7 @@ namespace dd
     JDoc dd_bad_request_400() const;
     JDoc dd_forbidden_403() const;
     JDoc dd_not_found_404() const;
+    JDoc dd_conflict_409() const;
     JDoc dd_internal_error_500() const;
 
     // specific errors
@@ -70,6 +71,7 @@ namespace dd
     JDoc dd_service_input_bad_request_1005() const;
     JDoc dd_service_bad_request_1006() const;
     JDoc dd_internal_mllib_error_1007(const std::string &what) const;
+    JDoc dd_train_predict_conflict_1008() const;
 
     // JSON rendering
     std::string jrender(const JDoc &jst) const;

@@ -27,12 +27,27 @@
 #include <string>
 #include <future>
 #include <mutex>
+#include <shared_mutex>
 #include <unordered_map>
 #include <chrono>
 #include <iostream>
 
 namespace dd
 {
+  /**
+   * \brief lock exception
+   */
+  class MLServiceLockException : public std::exception
+  {
+  public:
+    MLServiceLockException(const std::string &s)
+      :_s(s) {}
+    ~MLServiceLockException() {}
+    const char* what() const noexcept { return _s.c_str(); }
+  private:
+    std::string _s;
+  };
+
   /**
    * \brief training job 
    */
@@ -143,6 +158,7 @@ namespace dd
 				 std::move(tjob(std::async(std::launch::async,
 							   [this,ad,local_tcounter]
 							   {
+							     std::lock_guard<std::shared_timed_mutex> lock(_train_mutex);
 							     APIData out;
 							     int run_code = this->train(ad,out);
 							     std::pair<int,APIData> p(local_tcounter,std::move(out));
@@ -154,6 +170,7 @@ namespace dd
 	}
 	else 
 	  {
+	    std::lock_guard<std::shared_timed_mutex> lock(_train_mutex);
 	    int status = this->train(ad,out);
 	    //this->collect_measures(out);
 	    APIData ad_params_out = ad.getobj("parameters").getobj("output");
@@ -253,6 +270,30 @@ namespace dd
       else return 1; // job not found
     }
 
+    /**
+     * \brief starts a predict job, makes sure no training call is running.
+     * @param ad root data object
+     * @param out output data object
+     * @return predict job status
+     */
+    int predict_job(const APIData &ad, APIData &out)
+    {
+      if (!this->_online)
+	{
+	  if (!_train_mutex.try_lock_shared())
+	    throw MLServiceLockException("Predict call while training with an offline learning algorithm");
+	  int err = this->predict(ad,out);
+	  _train_mutex.unlock_shared();
+	  return err;
+	}
+      else // wait til a lock can be acquired
+	{
+	  std::shared_lock<std::shared_timed_mutex> lock(_train_mutex);
+	  return this->predict(ad,out);
+	}
+      return 0;
+    }
+
     std::string _sname; /**< service name. */
     std::string _description; /**< optional description of the service. */
 
@@ -260,6 +301,8 @@ namespace dd
     std::atomic<int> _tjobs_counter = 0; /**< training jobs counter. */
     std::unordered_map<int,tjob> _training_jobs; // XXX: the futures' dtor blocks if the object is being terminated
     std::unordered_map<int,APIData> _training_out;
+
+    std::shared_timed_mutex _train_mutex; /**< mutex around training call, to protect from predictions. XXX: use a shared_mutex when available in C++14. */
   };
   
 }

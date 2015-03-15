@@ -63,7 +63,7 @@ namespace dd
     template<typename T>
       output operator() (T &mllib)
       {
-        int r = mllib.predict(_ad,_out);
+        int r = mllib.predict_job(_ad,_out);
 	return output(r,_out);
       }
     
@@ -431,6 +431,12 @@ namespace dd
 	{
 	  LOG(ERROR) << "service #" << pos << " mllib internal error: " << e.what() << std::endl;
 	  pout._status = -1;
+	  throw;
+	}
+      catch (MLServiceLockException &e)
+	{
+	  LOG(ERROR) << "service #" << pos << " mllib lock error: " << e.what() << std::endl;
+	  pout._status = -3;
 	  throw;
 	}
       catch(...)

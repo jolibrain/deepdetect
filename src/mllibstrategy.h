@@ -233,6 +233,9 @@ namespace dd
 
     std::atomic<bool> _tjob_running = false; /**< whether a training job is running with this lib instance. */
 
+    bool _online = false; /**< whether the algorithm is online, i.e. it interleaves training and prediction calls.
+			     When not, prediction calls are rejected while training is running. */
+
   protected:
     std::mutex _meas_per_iter_mutex; /**< mutex over measures history. */
     std::mutex _meas_mutex; /** mutex around current measures. */
