@@ -96,7 +96,20 @@ namespace dd
     /**
      * \brief destructor
      */
-    ~MLService() {}
+    ~MLService() 
+      {
+	auto hit = _training_jobs.begin();
+	while(hit!=_training_jobs.end())
+	  {
+	    std::future_status status = (*hit).second._ft.wait_for(std::chrono::seconds(0));
+	    if (status == std::future_status::timeout)
+	      {
+		this->_tjob_running.store(false);
+		(*hit).second._ft.wait();
+	      }
+	    ++hit;
+	  }
+      }
 
     /**
      * \brief machine learning service initialization:

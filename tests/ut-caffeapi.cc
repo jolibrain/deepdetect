@@ -193,6 +193,51 @@ TEST(caffeapi,service_train_async_final_status)
   ASSERT_EQ(ok_str,joutstr);
 }
 
+// predict while training
+TEST(caffeapi,service_train_async_and_predict)
+{
+  // create service
+  JsonAPI japi;
+  std::string sname = "my_service";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  mnist_repo + "\"},\"parameters\":{\"input\":{\"connector\":\"image\"}}}";
+  std::string joutstr = japi.service_create(sname,jstr);
+  ASSERT_EQ(created_str,joutstr);
+
+  // train
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":true,\"parameters\":{\"mllib\":{\"solver\":{\"iterations\":250}}}}";
+  joutstr = japi.service_train(jtrainstr);
+  std::cout << "joutstr=" << joutstr << std::endl;
+  JDoc jd;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_TRUE(jd.HasMember("status"));
+  ASSERT_EQ(201,jd["status"]["code"]);
+  ASSERT_EQ("Created",jd["status"]["msg"]);
+  ASSERT_TRUE(jd.HasMember("head"));
+  ASSERT_EQ("/train",jd["head"]["method"]);
+  ASSERT_EQ(1,jd["head"]["job"].GetInt());
+  ASSERT_EQ("running",jd["head"]["status"]);
+  
+  // status
+  std::string jstatusstr = "{\"service\":\"" + sname + "\",\"job\":1,\"timeout\":2}";
+  joutstr = japi.service_train_status(jstatusstr);
+  std::cout << "joutstr=" << joutstr << std::endl;
+    
+  // predict call
+  std::string jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"bw\":true,\"width\":28,\"height\":28}},\"data\":[\"" + mnist_repo + "/sample_digit.png\"]}";
+  joutstr = japi.service_predict(jpredictstr);
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(409,jd["status"]["code"]);
+  ASSERT_EQ(1008,jd["status"]["dd_code"]);
+  
+  // remove service
+  jstr = "{\"clear\":\"lib\"}";
+  joutstr = japi.service_delete(sname,jstr);
+  ASSERT_EQ(ok_str,joutstr);
+}
+
 TEST(caffeapi,service_predict)
 {
   // create service
