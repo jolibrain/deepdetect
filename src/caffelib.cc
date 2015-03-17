@@ -122,7 +122,7 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::clear_mllib(const APIData &ad)
   {
-    //TODO
+    (void)ad;
     std::vector<std::string> extensions = {".solverstate",".caffemodel"};
     fileops::remove_directory_files(this->_mlmodel._repo,extensions);
   }
@@ -136,6 +136,7 @@ namespace dd
 	throw MLLibBadParamException("missing solver file in " + this->_mlmodel._repo);
       }
 
+    std::lock_guard<std::mutex> lock(_net_mutex); // XXX: not mandatory as train calls are locking resources from above
     TInputConnectorStrategy inputc(this->_inputc);
     inputc._train = true;
     APIData cad = ad;
@@ -415,6 +416,8 @@ namespace dd
   int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::predict(const APIData &ad,
 										   APIData &out)
   {
+    std::lock_guard<std::mutex> lock(_net_mutex); // no concurrent calls since the net is not re-instantiated
+
     // check for net
     if (!_net)
       {

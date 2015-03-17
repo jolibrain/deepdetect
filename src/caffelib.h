@@ -156,6 +156,7 @@ namespace dd
       bool _gpu = false; /**< whether to use GPU. */
       int _gpuid = 0; /**< GPU id. */
       int _nclasses = 0; /**< required, as difficult to acquire from Caffe's internals. */
+      std::mutex _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as net is not re-instantiated. Use batches instead. */
     };
   
 }
