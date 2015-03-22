@@ -5,6 +5,9 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 set (deepdetect_VERSION_MAJOR 0)
 set (deepdetect_VERSION_MINOR 1)
+
+# options
+OPTION(BUILD_TESTS "Should the tests be built")
  
 # Get the current working branch
 execute_process(
@@ -22,7 +25,7 @@ execute_process(
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
-set (CMAKE_CXX_FLAGS "-g -Wall -Wextra -fopenmp -fPIC -std=c++11")
+set (CMAKE_CXX_FLAGS "-g -Wall -Wextra -fopenmp -fPIC -std=c++1y")
 
 # configure a header file to pass some of the CMake settings
 # to the source code
@@ -52,7 +55,6 @@ find_package(CUDA)
 include_directories ("${PROJECT_SOURCE_DIR}/src")
 add_subdirectory (src) 
 add_subdirectory(main)
-add_subdirectory(tests)
 
 # templates
 file(COPY "templates" DESTINATION ".")
@@ -61,4 +63,10 @@ file(COPY "templates" DESTINATION ".")
 file(COPY "examples" DESTINATION ".")
 
 # unit testing
-enable_testing()
+if (BUILD_TESTS)
+  enable_testing()
+  add_subdirectory(tests)
+endif()
+
+# status
+MESSAGE(STATUS "Build Tests          : ${BUILD_TESTS}")
