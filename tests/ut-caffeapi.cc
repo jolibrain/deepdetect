@@ -46,7 +46,7 @@ TEST(caffeapi,service_train)
   ASSERT_EQ(created_str,joutstr);
 
   // train
-  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"mllib\":{\"solver\":{\"iterations\":100}}}}";
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":100}}}}";
   joutstr = japi.service_train(jtrainstr);
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
@@ -80,7 +80,7 @@ TEST(caffeapi,service_train_async_status_delete)
   ASSERT_EQ(created_str,joutstr);
 
   // train
-  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":true,\"parameters\":{\"mllib\":{\"solver\":{\"iterations\":10000}}}}";
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":10000}}}}";
   joutstr = japi.service_train(jtrainstr);
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
@@ -145,7 +145,7 @@ TEST(caffeapi,service_train_async_final_status)
   ASSERT_EQ(created_str,joutstr);
 
   // train
-  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":true,\"parameters\":{\"mllib\":{\"solver\":{\"iterations\":250}}}}";
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":250}}}}";
   joutstr = japi.service_train(jtrainstr);
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
@@ -204,7 +204,7 @@ TEST(caffeapi,service_train_async_and_predict)
   ASSERT_EQ(created_str,joutstr);
 
   // train
-  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":true,\"parameters\":{\"mllib\":{\"solver\":{\"iterations\":250}}}}";
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":250}}}}";
   joutstr = japi.service_train(jtrainstr);
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
@@ -248,7 +248,7 @@ TEST(caffeapi,service_predict)
   ASSERT_EQ(created_str,joutstr);
 
   // train
-  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"mllib\":{\"solver\":{\"iterations\":200,\"snapshot\":200,\"snapshot_prefix\":\"" + mnist_repo + "/mylenet\"}},\"output\":{\"measure_hist\":true}}}";
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":200,\"snapshot\":200,\"snapshot_prefix\":\"" + mnist_repo + "/mylenet\"}},\"output\":{\"measure_hist\":true}}}";
   joutstr = japi.service_train(jtrainstr);
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
