@@ -228,8 +228,6 @@ namespace dd
 	  solver_param.set_gamma(ad_solver.get("gamma").get<double>());
 	if (ad_solver.has("stepsize"))
 	  solver_param.set_stepsize(ad_solver.get("stepsize").get<int>());
-	if (ad_solver.has("iterations"))
-	  solver_param.set_max_iter(ad_solver.get("iterations").get<int>());
 	if (ad_solver.has("momentum"))
 	  solver_param.set_momentum(ad_solver.get("momentum").get<double>());
 	if (ad_solver.has("power"))
@@ -303,9 +301,9 @@ namespace dd
 		if (!std::isnan(mval)) // if testing occurs once before training even starts, loss is unknown and we don't add it to history.
 		  this->add_meas_per_iter(m,mval);
 	      }
-	    this->add_meas("iteration",solver->iter_);
 	    this->add_meas_per_iter("iteration",solver->iter_);
 	  }
+	this->add_meas("iteration",solver->iter_);
 	float loss = solver->net_->ForwardBackward(bottom_vec);
 	if (static_cast<int>(losses.size()) < average_loss) 
 	  {
