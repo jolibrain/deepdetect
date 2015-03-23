@@ -34,6 +34,8 @@ static std::string bad_param_str = "{\"status\":{\"code\":400,\"msg\":\"BadReque
 static std::string not_found_str = "{\"status\":{\"code\":404,\"msg\":\"NotFound\"}}";
 
 static std::string mnist_repo = "../examples/caffe/mnist/";
+static std::string forest_repo = "../examples/all/forest_type/";
+static std::string model_templates_repo = "../templates/caffe/";
 
 TEST(caffeapi,service_train)
 {
@@ -287,6 +289,41 @@ TEST(caffeapi,service_predict)
   ASSERT_TRUE(jd["body"]["predictions"][1]["classes"][0]["prob"].GetDouble() > 0);
 
    // remove service
+  jstr = "{\"clear\":\"lib\"}";
+  joutstr = japi.service_delete(sname,jstr);
+  ASSERT_EQ(ok_str,joutstr);
+}
+
+TEST(caffeapi,service_train_csv)
+{
+  // create service
+  JsonAPI japi;
+  std::string sname = "my_service";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  forest_repo + "\",\"templates\":\"" + model_templates_repo  + "\"},\"parameters\":{\"input\":{\"connector\":\"csv\"},\"mllib\":{\"template\":\"mlp\",\"nclasses\":7}}}";
+  std::string joutstr = japi.service_create(sname,jstr);
+  ASSERT_EQ(created_str,joutstr);
+
+  // train
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"label\":\"Cover_Type\",\"id\":\"Id\",\"scale\":true,\"test_split\":0.1,\"label_offset\":-1,\"shuffle\":true},\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":2000},\"net\":{\"batch_size\":500}},\"output\":{\"measure\":[\"acc\",\"mcll\",\"f1\"]}},\"data\":[\"" + forest_repo + "train.csv\"]}";
+  joutstr = japi.service_train(jtrainstr);
+  std::cout << "joutstr=" << joutstr << std::endl;
+  JDoc jd;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_TRUE(jd.HasMember("status"));
+  ASSERT_EQ(201,jd["status"]["code"].GetInt());
+  ASSERT_EQ("Created",jd["status"]["msg"]);
+  ASSERT_TRUE(jd.HasMember("head"));
+  ASSERT_EQ("/train",jd["head"]["method"]);
+  ASSERT_TRUE(jd["head"]["time"].GetDouble() > 0);
+  ASSERT_TRUE(jd.HasMember("body"));
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
+  ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() > 0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("f1"));
+  ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() > 0.7);
+  ASSERT_EQ(jd["body"]["measure"]["accp"].GetDouble(),jd["body"]["measure"]["acc"].GetDouble());
+
+  // remove service
   jstr = "{\"clear\":\"lib\"}";
   joutstr = japi.service_delete(sname,jstr);
   ASSERT_EQ(ok_str,joutstr);

@@ -43,6 +43,16 @@ if (GTEST_FOUND)
     execute_process(COMMAND ${CMAKE_COMMAND} -E rename ${MNIST_EXAMPLE_TRAIN_OUT} ${MNIST_EXAMPLE_PATH}${MNIST_EXAMPLE_TRAIN_OUT})
     execute_process(COMMAND ${CMAKE_COMMAND} -E rename ${MNIST_EXAMPLE_TEST_OUT} ${MNIST_EXAMPLE_PATH}${MNIST_EXAMPLE_TEST_OUT})
   endif()
+  
+  set(FOREST_EXAMPLE_PATH "examples/all/forest_type/")
+  set(FOREST_EXAMPLE_TRAIN_ARCHIVE "train.csv.tar.bz2")
+  set(FOREST_EXAMPLE_TRAIN_OUT "train.csv")
+  if (NOT EXISTS "${FOREST_EXAMPLE_PATH}${FOREST_EXAMPLE_TRAIN_ARCHIVE}")
+    file(DOWNLOAD "http://juban.free.fr/dd/examples/all/forest_type/train.csv.tar.bz2" "${FOREST_EXAMPLE_PATH}${FOREST_EXAMPLE_TRAIN_ARCHIVE}")
+    execute_process(COMMAND ${CMAKE_COMMAND} -E tar xvjf ${FOREST_EXAMPLE_PATH}${FOREST_EXAMPLE_TRAIN_ARCHIVE} -C ${FOREST_EXAMPLE_PATH})
+    execute_process(COMMAND ${CMAKE_COMMAND} -E rename ${FOREST_EXAMPLE_TRAIN_OUT} ${FOREST_EXAMPLE_PATH}${FOREST_EXAMPLE_TRAIN_OUT})
+  endif()
+  
   add_executable(ut_caffeapi ut-caffeapi.cc)
   target_link_libraries(ut_caffeapi ${CUDA_LIB_DEPS} ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc ${CAFFE_LIB_DEPS})
   add_test(
