@@ -22,9 +22,9 @@
 #ifndef MODEL_H
 #define MODEL_H
 
-#ifndef MLMODEL_TEMPLATE_REPO
+/*#ifndef MLMODEL_TEMPLATE_REPO
 #define MLMODEL_TEMPLATE_REPO "templates/"
-#endif
+#endif*/
 
 #include <string>
 
@@ -38,7 +38,8 @@ namespace dd
       :_repo(repo) {}
     ~MLModel() {};
 
-    std::string _repo; /** model repository. */
+    std::string _repo; /**< model repository. */
+    std::string _mlmodel_template_repo = "templates/";
   };
 }
 
