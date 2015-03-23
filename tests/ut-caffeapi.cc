@@ -46,7 +46,7 @@ TEST(caffeapi,service_train)
   ASSERT_EQ(created_str,joutstr);
 
   // train
-  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"mllib\":{\"solver\":{\"iterations\":100}}}}";
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":100}}}}";
   joutstr = japi.service_train(jtrainstr);
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
@@ -184,6 +184,8 @@ TEST(caffeapi,service_train_async_final_status)
 	  ASSERT_TRUE(jd2.HasMember("body"));
 	  ASSERT_TRUE(jd2["body"]["measure"].HasMember("train_loss"));
 	  ASSERT_TRUE(jd2["body"]["measure"]["train_loss"].GetDouble() > 0);
+	  ASSERT_TRUE(jd2["body"]["measure"].HasMember("iteration"));
+	  ASSERT_TRUE(jd2["body"]["measure"]["iteration"].GetDouble() > 0);
 	}
     }
 
