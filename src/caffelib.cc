@@ -228,8 +228,8 @@ namespace dd
 	  solver_param.set_gamma(ad_solver.get("gamma").get<double>());
 	if (ad_solver.has("stepsize"))
 	  solver_param.set_stepsize(ad_solver.get("stepsize").get<int>());
-	if (ad_solver.has("max_iter"))
-	  solver_param.set_max_iter(ad_solver.get("max_iter").get<int>());
+	if (ad_solver.has("iterations"))
+	  solver_param.set_max_iter(ad_solver.get("iterations").get<int>());
 	if (ad_solver.has("momentum"))
 	  solver_param.set_momentum(ad_solver.get("momentum").get<double>());
 	if (ad_solver.has("power"))
