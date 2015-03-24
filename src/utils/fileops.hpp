@@ -40,6 +40,14 @@ namespace dd
       return (stat(fname.c_str(),&bstat)==0);
     }
 
+    static long int file_last_modif(const std::string &fname)
+    {
+      struct stat bstat;
+      if (stat(fname.c_str(),&bstat)==0)
+	return bstat.st_mtim.tv_sec;
+      else return -1;
+    }
+
     static int list_directory(const std::string &repo,
 			      const bool &files,
 			      const bool &dirs,

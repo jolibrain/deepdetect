@@ -63,13 +63,30 @@ namespace dd
 	LOG(ERROR) << "error reading caffe model repository\n";
       }
     std::string deployf,weightsf,correspf,solverf,sstatef;
+    long int state_t=-1, weight_t=-1;
     auto hit = lfiles.begin();
     while(hit!=lfiles.end())
       {
 	if ((*hit).find(sstate)!=std::string::npos)
-	  sstatef = (*hit);
+	  {
+	    // stat file to pick the latest one
+	    long int st = fileops::file_last_modif((*hit));
+	    if (st > state_t)
+	      {
+		sstatef = (*hit);
+		state_t = st;
+	      }
+	  }
 	else if ((*hit).find(weights)!=std::string::npos)
-	  weightsf = (*hit);
+	  {
+	    // stat file to pick the latest one
+	    long int wt = fileops::file_last_modif((*hit));
+	    if (wt > weight_t)
+	      {
+		weightsf = (*hit);
+		weight_t = wt;
+	      }
+	  }
 	else if ((*hit).find(corresp)!=std::string::npos)
 	  correspf = (*hit);
 	else if ((*hit).find("~")!=std::string::npos 
