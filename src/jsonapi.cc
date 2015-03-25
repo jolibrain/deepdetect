@@ -92,7 +92,7 @@ namespace dd
   {
     JDoc jd;
     jd.SetObject();
-    render_status(jd,400,"Forbidden");
+    render_status(jd,403,"Forbidden");
     return jd;
   }
 
@@ -208,7 +208,7 @@ namespace dd
     return buffer.GetString();
   }
 
-  std::string JsonAPI::info() const
+  JDoc JsonAPI::info() const
   {
     // answer info call.
     JDoc jinfo = dd_ok_200();
@@ -228,20 +228,23 @@ namespace dd
       }
     jhead.AddMember("services",jservs,jinfo.GetAllocator());
     jinfo.AddMember("head",jhead,jinfo.GetAllocator());
-    return jrender(jinfo);
+    return jinfo;
   }
 
-  std::string JsonAPI::service_create(const std::string &sname,
-				      const std::string &jstr)
+  JDoc JsonAPI::service_create(const std::string &sname,
+			       const std::string &jstr)
   {
     if (sname.empty())
-      return jrender(dd_not_found_404());
+      return dd_not_found_404();
     
     rapidjson::Document d;
     d.Parse(jstr.c_str());
     if (d.HasParseError())
-      return jrender(dd_bad_request_400());
-    
+      {
+	LOG(ERROR) << "JSON parsing error on string: " << jstr << std::endl;
+	return dd_bad_request_400();
+      }
+
     std::string mllib,input;
     std::string type,description;
     APIData ad,ad_model;
@@ -263,7 +266,7 @@ namespace dd
       }
     catch(...)
       {
-	return jrender(dd_bad_request_400());
+	return dd_bad_request_400();
       }
         
     // create service.
@@ -276,78 +279,84 @@ namespace dd
 	      add_service(sname,std::move(MLService<CaffeLib,ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
 	    else if (input == "csv")
 	      add_service(sname,std::move(MLService<CaffeLib,CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
-	    else return jrender(dd_input_connector_not_found_1004());
+	    else return dd_input_connector_not_found_1004();
 	  }
 	else
 	  {
-	    return jrender(dd_unknown_library_1000());
+	    return dd_unknown_library_1000();
 	  }
+      }
+    catch (ServiceForbiddenException &e)
+      {
+	return dd_forbidden_403();
       }
     catch (InputConnectorBadParamException &e)
       {
-	return jrender(dd_service_input_bad_request_1005());
+	return dd_service_input_bad_request_1005();
       }
     catch (MLLibBadParamException &e)
       {
-	return jrender(dd_service_bad_request_1006());
+	return dd_service_bad_request_1006();
       }
     catch (InputConnectorInternalException &e)
       {
-	return jrender(dd_internal_error_500());
+	return dd_internal_error_500();
       }
     catch (MLLibInternalException &e)
       {
-	return jrender(dd_internal_error_500());
+	return dd_internal_error_500();
       }
     catch (std::exception &e)
       {
-	return jrender(dd_internal_mllib_error_1007(e.what()));
+	return dd_internal_mllib_error_1007(e.what());
       }
     JDoc jsc = dd_created_201();
-    return jrender(jsc);
+    return jsc;
   }
   
-  std::string JsonAPI::service_status(const std::string &sname)
+  JDoc JsonAPI::service_status(const std::string &sname)
   {
     if (sname.empty())
-      return jrender(dd_service_not_found_1002());
+      return dd_service_not_found_1002();
     int pos = this->get_service_pos(sname);
     if (pos < 0)
-      return jrender(dd_not_found_404());
+      return dd_not_found_404();
     APIData ad = mapbox::util::apply_visitor(visitor_status(),_mlservices.at(pos));
     JDoc jst = dd_ok_200();
     JVal jbody(rapidjson::kObjectType);
     ad.toJVal(jst,jbody);
     jst.AddMember("body",jbody,jst.GetAllocator());
-    return jrender(jst);
+    return jst;
   }
 
-  std::string JsonAPI::service_delete(const std::string &sname,
-				      const std::string &jstr)
+  JDoc JsonAPI::service_delete(const std::string &sname,
+			       const std::string &jstr)
   {
     if (sname.empty())
-      return jrender(dd_service_not_found_1002());
+      return dd_service_not_found_1002();
     
     rapidjson::Document d;
     if (!jstr.empty())
       {
 	d.Parse(jstr.c_str());
 	if (d.HasParseError())
-	  return jrender(dd_bad_request_400());
+	  return dd_bad_request_400();
       }
 
-    APIData ad(d);
+    APIData ad;
+    if (!jstr.empty())
+      ad = APIData(d);
     if (remove_service(sname,ad))
-      return jrender(dd_ok_200());
-    return jrender(dd_not_found_404());
+      return dd_ok_200();
+    return dd_not_found_404();
   }
 
-  std::string JsonAPI::service_predict(const std::string &jstr)
+  JDoc JsonAPI::service_predict(const std::string &jstr)
   {
     rapidjson::Document d;
     d.Parse(jstr.c_str());
     if (d.HasParseError())
-      return jrender(dd_bad_request_400());
+      return dd_bad_request_400();
     
     // service
     std::string sname;
@@ -357,11 +366,11 @@ namespace dd
 	sname = d["service"].GetString();
 	pos = this->get_service_pos(sname);
 	if (pos < 0)
-	  return jrender(dd_service_not_found_1002());
+	  return dd_service_not_found_1002();
       }
     catch(...)
       {
-	return jrender(dd_bad_request_400());
+	return dd_bad_request_400();
       }
 
     // data
@@ -375,27 +384,27 @@ namespace dd
       }
     catch (InputConnectorBadParamException &e)
       {
-	return jrender(dd_service_input_bad_request_1005());
+	return dd_service_input_bad_request_1005();
       }
     catch (MLLibBadParamException &e)
       {
-	return jrender(dd_service_bad_request_1006());
+	return dd_service_bad_request_1006();
       }
     catch (InputConnectorInternalException &e)
       {
-	return jrender(dd_internal_error_500());
+	return dd_internal_error_500();
       }
     catch (MLLibInternalException &e)
       {
-	return jrender(dd_internal_error_500());
+	return dd_internal_error_500();
       }
     catch (MLServiceLockException &e)
       {
-	return jrender(dd_train_predict_conflict_1008());
+	return dd_train_predict_conflict_1008();
       }
     catch (std::exception &e)
       {
-	return jrender(dd_internal_mllib_error_1007(e.what()));
+	return dd_internal_mllib_error_1007(e.what());
       }
     JDoc jpred = dd_ok_200();
     JVal jout(rapidjson::kObjectType);
@@ -408,15 +417,15 @@ namespace dd
     JVal jbody(rapidjson::kObjectType);
     jbody.AddMember("predictions",jout["predictions"],jpred.GetAllocator());
     jpred.AddMember("body",jbody,jpred.GetAllocator());
-    return jrender(jpred);
+    return jpred;
   }
 
-  std::string JsonAPI::service_train(const std::string &jstr)
+  JDoc JsonAPI::service_train(const std::string &jstr)
   {
     rapidjson::Document d;
     d.Parse(jstr.c_str());
     if (d.HasParseError())
-      return jrender(dd_bad_request_400());
+      return dd_bad_request_400();
   
     // service
     std::string sname;
@@ -426,11 +435,11 @@ namespace dd
 	sname = d["service"].GetString();
 	pos = this->get_service_pos(sname);
 	if (pos < 0)
-	  return jrender(dd_service_not_found_1002());
+	  return dd_service_not_found_1002();
       }
     catch(...)
       {
-	return jrender(dd_bad_request_400());
+	return dd_bad_request_400();
       }
     
     // parameters and data
@@ -444,23 +453,23 @@ namespace dd
       }
     catch (InputConnectorBadParamException &e)
       {
-	return jrender(dd_service_input_bad_request_1005());
+	return dd_service_input_bad_request_1005();
       }
     catch (MLLibBadParamException &e)
       {
-	return jrender(dd_service_bad_request_1006());
+	return dd_service_bad_request_1006();
       }
     catch (InputConnectorInternalException &e)
       {
-	return jrender(dd_internal_error_500());
+	return dd_internal_error_500();
       }
     catch (MLLibInternalException &e)
       {
-	return jrender(dd_internal_error_500());
+	return dd_internal_error_500();
       }
     catch (std::exception &e)
       {
-	return jrender(dd_internal_mllib_error_1007(e.what()));
+	return dd_internal_mllib_error_1007(e.what());
       }
     JDoc jtrain = dd_created_201();
     JVal jhead(rapidjson::kObjectType);
@@ -481,15 +490,15 @@ namespace dd
 	jtrain.AddMember("body",jout,jtrain.GetAllocator());
       }
     jtrain.AddMember("head",jhead,jtrain.GetAllocator());
-    return jrender(jtrain);
+    return jtrain;
   }
 
-  std::string JsonAPI::service_train_status(const std::string &jstr)
+  JDoc JsonAPI::service_train_status(const std::string &jstr)
   {
     rapidjson::Document d;
     d.Parse(jstr.c_str());
     if (d.HasParseError())
-      return jrender(dd_bad_request_400());
+      return dd_bad_request_400();
     
     // service
     std::string sname;
@@ -499,17 +508,17 @@ namespace dd
 	sname = d["service"].GetString();
 	pos = this->get_service_pos(sname);
 	if (pos < 0)
-	  return jrender(dd_service_not_found_1002());
+	  return dd_service_not_found_1002();
       }
     catch(...)
       {
-	return jrender(dd_bad_request_400());
+	return dd_bad_request_400();
       }
     
     // parameters
     APIData ad(d);
     if (!ad.has("job"))
-      return jrender(dd_job_not_found_1003());
+      return dd_job_not_found_1003();
     
     // training status
     APIData out;
@@ -522,7 +531,7 @@ namespace dd
 	jhead.AddMember("method","/train",jtrain.GetAllocator());
 	jhead.AddMember("job",ad.get("job").get<int>(),jtrain.GetAllocator());
 	jtrain.AddMember("head",jhead,jtrain.GetAllocator());
-	return jrender(jtrain);
+	return jtrain;
       }
     jtrain = dd_ok_200();
     JVal jhead(rapidjson::kObjectType);
@@ -536,15 +545,15 @@ namespace dd
     jout.RemoveMember("status");
     jtrain.AddMember("head",jhead,jtrain.GetAllocator());
     jtrain.AddMember("body",jout,jtrain.GetAllocator());
-    return jrender(jtrain);
+    return jtrain;
   }
 
-  std::string JsonAPI::service_train_delete(const std::string &jstr)
+  JDoc JsonAPI::service_train_delete(const std::string &jstr)
   {
     rapidjson::Document d;
     d.Parse(jstr.c_str());
     if (d.HasParseError())
-      return jrender(dd_bad_request_400());
+      return dd_bad_request_400();
   
     // service
     std::string sname;
@@ -554,17 +563,17 @@ namespace dd
 	sname = d["service"].GetString();
 	pos = this->get_service_pos(sname);
 	if (pos < 0)
-	  return jrender(dd_service_not_found_1002());
+	  return dd_service_not_found_1002();
       }
     catch(...)
       {
-	return jrender(dd_bad_request_400());
+	return dd_bad_request_400();
       }
     
     // parameters
     APIData ad(d);
     if (!ad.has("job"))
-      return jrender(dd_job_not_found_1003());
+      return dd_job_not_found_1003();
     
     // delete training job
     APIData out;
@@ -577,7 +586,7 @@ namespace dd
 	jhead.AddMember("method","/train",jd.GetAllocator());
 	jhead.AddMember("job",ad.get("job").get<int>(),jd.GetAllocator());
 	jd.AddMember("head",jhead,jd.GetAllocator());
-	return jrender(jd);
+	return jd;
       }
     jd = dd_ok_200();
     JVal jout(rapidjson::kObjectType);
@@ -585,7 +594,7 @@ namespace dd
     jout.AddMember("method","/train",jd.GetAllocator());
     jout.AddMember("job",ad.get("job").get<int>(),jd.GetAllocator());
     jd.AddMember("head",jout,jd.GetAllocator());
-    return jrender(jd);
+    return jd;
   }
 
 }

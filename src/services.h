@@ -39,6 +39,17 @@ namespace dd
   /* service types as variant type. */
   typedef mapbox::util::variant<MLService<CaffeLib,ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>,
     MLService<CaffeLib,CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>> mls_variant_type;
+
+  class ServiceForbiddenException : public std::exception
+  {
+  public:
+    ServiceForbiddenException(const std::string &s)
+      :_s(s) {}
+    ~ServiceForbiddenException() {}
+    const char* what() const noexcept { return _s.c_str(); }
+  private:
+    std::string _s;
+  };
   
   class output
   {
@@ -207,6 +218,12 @@ namespace dd
 		     mls_variant_type &&mls,
 		     const APIData &ad=APIData()) 
     {
+      std::unordered_map<std::string,int>::const_iterator hit;
+      if ((hit=_mlservidx.find(sname))!=_mlservidx.end()) // check whether service already exists
+	{
+	  throw ServiceForbiddenException("Service already exists");
+	}
+
       visitor_init vi(ad);
       try
 	{

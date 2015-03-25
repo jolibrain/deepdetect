@@ -78,18 +78,18 @@ namespace dd
     std::string jrender(const JVal &jval) const;
 
     // resources
-    // return a JSON string for every API call
-    std::string info() const;
-    std::string service_create(const std::string &sname, const std::string &jstr);
-    std::string service_status(const std::string &sname);
-    std::string service_delete(const std::string &sname,
-			       const std::string &jstr);
+    // return a JSON document for every API call
+    JDoc info() const;
+    JDoc service_create(const std::string &sname, const std::string &jstr);
+    JDoc service_status(const std::string &sname);
+    JDoc service_delete(const std::string &sname,
+			const std::string &jstr);
     
-    std::string service_predict(const std::string &jstr);
+    JDoc service_predict(const std::string &jstr);
 
-    std::string service_train(const std::string &jstr);
-    std::string service_train_status(const std::string &jstr);
-    std::string service_train_delete(const std::string &jstr);
+    JDoc service_train(const std::string &jstr);
+    JDoc service_train_status(const std::string &jstr);
+    JDoc service_train_delete(const std::string &jstr);
   };
 
   /**

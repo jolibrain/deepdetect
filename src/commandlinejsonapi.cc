@@ -55,48 +55,48 @@ namespace dd
 	    std::string janswer = jrender(dd_not_found_404());
 	    std::cout << janswer << std::endl;
 	  }
-	std::string janswer = service_create(FLAGS_service_name,FLAGS_service_create);
+	std::string janswer = jrender(service_create(FLAGS_service_name,FLAGS_service_create));
 	std::cout << janswer << std::endl;
       }
     if (FLAGS_info)
       {
-	std::string janswer = info();
+	std::string janswer = jrender(info());
 	std::cout << janswer << std::endl;
       }
     if (!FLAGS_service_name.empty())
       {
-	std::string janswer = service_status(FLAGS_service_name);
+	std::string janswer = jrender(service_status(FLAGS_service_name));
 	std::cout << janswer << std::endl;
       }
     if (!FLAGS_service_train.empty())
       {
-	std::string janswer = service_train(FLAGS_service_train);
+	std::string janswer = jrender(service_train(FLAGS_service_train));
 	std::cout << janswer << std::endl;
       }
     if (!FLAGS_service_train_status.empty())
       {
-	std::string janswer = service_train_status(FLAGS_service_train_status);
+	std::string janswer = jrender(service_train_status(FLAGS_service_train_status));
 	std::cout << janswer << std::endl;
       }
     if (!FLAGS_service_train_delete.empty())
       {
-	std::string janswer = service_train_delete(FLAGS_service_train_delete);
+	std::string janswer = jrender(service_train_delete(FLAGS_service_train_delete));
 	std::cout << janswer << std::endl;
       }
     if (!FLAGS_service_predict.empty())
       {
-	std::string janswer = service_predict(FLAGS_service_predict);
+	std::string janswer = jrender(service_predict(FLAGS_service_predict));
 	std::cout << janswer << std::endl;
       }
     if (!FLAGS_service_delete.empty())
       {
-	std::string janswer = service_delete(FLAGS_service_name,
-					     FLAGS_service_delete);
+	std::string janswer = jrender(service_delete(FLAGS_service_name,
+						     FLAGS_service_delete));
 	std::cout << janswer << std::endl;
       }
     if (!FLAGS_service_name.empty())
       {
-	std::string janswer = service_status(FLAGS_service_name);
+	std::string janswer = jrender(service_status(FLAGS_service_name));
 	std::cout << janswer << std::endl;
       }
     return 0;

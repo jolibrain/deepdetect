@@ -29,6 +29,9 @@ if (GTEST_FOUND)
     NAME ut_jsonapi
     COMMAND ut_jsonapi
     )
+
+  add_executable(test_server test-server.cc)
+  target_link_libraries(test_server boost_system)
   
   set(MNIST_EXAMPLE_PATH "examples/caffe/mnist/")
   set(MNIST_EXAMPLE_TRAIN_ARCHIVE "mnist_train_lmdb.tar.bz2")

@@ -78,6 +78,8 @@ namespace dd
       if ((dir = opendir(repo.c_str())) != NULL) {
 	while ((ent = readdir(dir)) != NULL) 
 	  {
+	    if (ent->d_type == DT_DIR && ent->d_name[0] == '.')
+	      continue;
 	    std::string f = std::string(repo) + "/" + std::string(ent->d_name);
 	    err += remove(f.c_str());
 	  }
