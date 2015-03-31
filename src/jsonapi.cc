@@ -235,8 +235,11 @@ namespace dd
 			       const std::string &jstr)
   {
     if (sname.empty())
-      return dd_not_found_404();
-    
+      {
+	LOG(ERROR) << "missing service name\n";
+	return dd_not_found_404();
+      }    
+
     rapidjson::Document d;
     d.Parse(jstr.c_str());
     if (d.HasParseError())
@@ -340,7 +343,10 @@ namespace dd
       {
 	d.Parse(jstr.c_str());
 	if (d.HasParseError())
-	  return dd_bad_request_400();
+	  {
+	    LOG(ERROR) << "JSON parsing error on string: " << jstr << std::endl;
+	    return dd_bad_request_400();
+	  }
       }
 
     APIData ad;
@@ -356,7 +362,10 @@ namespace dd
     rapidjson::Document d;
     d.Parse(jstr.c_str());
     if (d.HasParseError())
-      return dd_bad_request_400();
+      {
+	LOG(ERROR) << "JSON parsing error on string: " << jstr << std::endl;
+	return dd_bad_request_400();
+      }
     
     // service
     std::string sname;
@@ -425,7 +434,10 @@ namespace dd
     rapidjson::Document d;
     d.Parse(jstr.c_str());
     if (d.HasParseError())
-      return dd_bad_request_400();
+      {
+	LOG(ERROR) << "JSON parsing error on string: " << jstr << std::endl;
+	return dd_bad_request_400();
+      }
   
     // service
     std::string sname;
@@ -498,8 +510,11 @@ namespace dd
     rapidjson::Document d;
     d.Parse(jstr.c_str());
     if (d.HasParseError())
-      return dd_bad_request_400();
-    
+      {
+	LOG(ERROR) << "JSON parsing error on string: " << jstr << std::endl;
+	return dd_bad_request_400();
+      }
+
     // service
     std::string sname;
     int pos = -1;
@@ -553,7 +568,10 @@ namespace dd
     rapidjson::Document d;
     d.Parse(jstr.c_str());
     if (d.HasParseError())
-      return dd_bad_request_400();
+      {
+	LOG(ERROR) << "JSON parsing error on string: " << jstr << std::endl;
+	return dd_bad_request_400();
+      }
   
     // service
     std::string sname;
