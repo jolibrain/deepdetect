@@ -45,12 +45,12 @@ TEST(caffeapi,service_train)
   JsonAPI japi;
   std::string sname = "my_service";
   std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  mnist_repo + "\"},\"parameters\":{\"input\":{\"connector\":\"image\"}}}";
-  std::string joutstr = japi.service_create(sname,jstr);
+  std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
   ASSERT_EQ(created_str,joutstr);
 
   // train
   std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":100}}}}";
-  joutstr = japi.service_train(jtrainstr);
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
   jd.Parse(joutstr.c_str());
@@ -67,7 +67,7 @@ TEST(caffeapi,service_train)
 
   // remove service
   jstr = "{\"clear\":\"lib\"}";
-  joutstr = japi.service_delete(sname,jstr);
+  joutstr = japi.jrender(japi.service_delete(sname,jstr));
   ASSERT_EQ(ok_str,joutstr);
   ASSERT_TRUE(!fileops::file_exists(mnist_repo + "mylenet_iter_101.caffemodel"));
   ASSERT_TRUE(!fileops::file_exists(mnist_repo + "mylenet_iter_101.solverstate"));
@@ -79,12 +79,12 @@ TEST(caffeapi,service_train_async_status_delete)
   JsonAPI japi;
   std::string sname = "my_service";
   std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  mnist_repo + "\"},\"parameters\":{\"input\":{\"connector\":\"image\"}}}";
-  std::string joutstr = japi.service_create(sname,jstr);
+  std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
   ASSERT_EQ(created_str,joutstr);
 
   // train
   std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":10000}}}}";
-  joutstr = japi.service_train(jtrainstr);
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
   jd.Parse(joutstr.c_str());
@@ -99,7 +99,7 @@ TEST(caffeapi,service_train_async_status_delete)
   
   // status.
   std::string jstatusstr = "{\"service\":\"" + sname + "\",\"job\":1,\"timeout\":5}";
-  joutstr = japi.service_train_status(jstatusstr);
+  joutstr = japi.jrender(japi.service_train_status(jstatusstr));
   std::cout << "status joutstr=" << joutstr << std::endl;
   JDoc jd2;
   jd2.Parse(joutstr.c_str());
@@ -118,7 +118,7 @@ TEST(caffeapi,service_train_async_status_delete)
 
   // delete job.
   std::string jdelstr = "{\"service\":\"" + sname + "\",\"job\":1}";
-  joutstr = japi.service_train_delete(jdelstr);
+  joutstr = japi.jrender(japi.service_train_delete(jdelstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd3;
   jd3.Parse(joutstr.c_str());
@@ -134,7 +134,7 @@ TEST(caffeapi,service_train_async_status_delete)
 
   // remove service
   jstr = "{\"clear\":\"lib\"}";
-  joutstr = japi.service_delete(sname,jstr);
+  joutstr = japi.jrender(japi.service_delete(sname,jstr));
   ASSERT_EQ(ok_str,joutstr);
 }
 
@@ -144,12 +144,12 @@ TEST(caffeapi,service_train_async_final_status)
   JsonAPI japi;
   std::string sname = "my_service";
   std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  mnist_repo + "\"},\"parameters\":{\"input\":{\"connector\":\"image\"}}}";
-  std::string joutstr = japi.service_create(sname,jstr);
+  std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
   ASSERT_EQ(created_str,joutstr);
 
   // train
   std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":250}}}}";
-  joutstr = japi.service_train(jtrainstr);
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
   jd.Parse(joutstr.c_str());
@@ -168,7 +168,7 @@ TEST(caffeapi,service_train_async_final_status)
     {
       //sleep(1);
       std::string jstatusstr = "{\"service\":\"" + sname + "\",\"job\":1,\"timeout\":1}";
-      joutstr = japi.service_train_status(jstatusstr);
+      joutstr = japi.jrender(japi.service_train_status(jstatusstr));
       std::cout << "joutstr=" << joutstr << std::endl;
       running = joutstr.find("running") != std::string::npos;
       if (!running)
@@ -194,7 +194,7 @@ TEST(caffeapi,service_train_async_final_status)
 
    // remove service
   jstr = "{\"clear\":\"lib\"}";
-  joutstr = japi.service_delete(sname,jstr);
+  joutstr = japi.jrender(japi.service_delete(sname,jstr));
   ASSERT_EQ(ok_str,joutstr);
 }
 
@@ -205,12 +205,12 @@ TEST(caffeapi,service_train_async_and_predict)
   JsonAPI japi;
   std::string sname = "my_service";
   std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  mnist_repo + "\"},\"parameters\":{\"input\":{\"connector\":\"image\"}}}";
-  std::string joutstr = japi.service_create(sname,jstr);
+  std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
   ASSERT_EQ(created_str,joutstr);
 
   // train
   std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":250}}}}";
-  joutstr = japi.service_train(jtrainstr);
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
   jd.Parse(joutstr.c_str());
@@ -225,12 +225,12 @@ TEST(caffeapi,service_train_async_and_predict)
   
   // status
   std::string jstatusstr = "{\"service\":\"" + sname + "\",\"job\":1,\"timeout\":2}";
-  joutstr = japi.service_train_status(jstatusstr);
+  joutstr = japi.jrender(japi.service_train_status(jstatusstr));
   std::cout << "joutstr=" << joutstr << std::endl;
     
   // predict call
   std::string jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"bw\":true,\"width\":28,\"height\":28}},\"data\":[\"" + mnist_repo + "/sample_digit.png\"]}";
-  joutstr = japi.service_predict(jpredictstr);
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
@@ -239,7 +239,7 @@ TEST(caffeapi,service_train_async_and_predict)
   
   // remove service
   jstr = "{\"clear\":\"lib\"}";
-  joutstr = japi.service_delete(sname,jstr);
+  joutstr = japi.jrender(japi.service_delete(sname,jstr));
   ASSERT_EQ(ok_str,joutstr);
 }
 
@@ -249,12 +249,12 @@ TEST(caffeapi,service_predict)
   JsonAPI japi;
   std::string sname = "my_service";
   std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  mnist_repo + "\"},\"parameters\":{\"input\":{\"connector\":\"image\"}}}";
-  std::string joutstr = japi.service_create(sname,jstr);
+  std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
   ASSERT_EQ(created_str,joutstr);
 
   // train
   std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":200,\"snapshot\":200,\"snapshot_prefix\":\"" + mnist_repo + "/mylenet\"}},\"output\":{\"measure_hist\":true}}}";
-  joutstr = japi.service_train(jtrainstr);
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
   jd.Parse(joutstr.c_str());
@@ -272,7 +272,7 @@ TEST(caffeapi,service_predict)
 
   // predict
   std::string jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"bw\":true}},\"data\":[\"" + mnist_repo + "/sample_digit.png\"]}";
-  joutstr = japi.service_predict(jpredictstr);
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
@@ -281,7 +281,7 @@ TEST(caffeapi,service_predict)
   
   // predict with image size (could be set at service creation)
   jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"bw\":true,\"width\":28,\"height\":28},\"output\":{\"best\":3}},\"data\":[\"" + mnist_repo + "/sample_digit.png\",\"" + mnist_repo + "/sample_digit2.png\"]}";
-  joutstr = japi.service_predict(jpredictstr);
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
@@ -291,7 +291,7 @@ TEST(caffeapi,service_predict)
 
    // remove service
   jstr = "{\"clear\":\"lib\"}";
-  joutstr = japi.service_delete(sname,jstr);
+  joutstr = japi.jrender(japi.service_delete(sname,jstr));
   ASSERT_EQ(ok_str,joutstr);
 }
 
@@ -301,12 +301,12 @@ TEST(caffeapi,service_train_imgs)
   JsonAPI japi;
   std::string sname = "my_service";
   std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  forest_repo + "\",\"templates\":\"" + model_templates_repo  + "\"},\"parameters\":{\"input\":{\"connector\":\"csv\"},\"mllib\":{\"template\":\"mlp\",\"nclasses\":7}}}";
-  std::string joutstr = japi.service_create(sname,jstr);
+  std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
   ASSERT_EQ(created_str,joutstr);
 
   // train
   std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"label\":\"Cover_Type\",\"id\":\"Id\",\"scale\":true,\"test_split\":0.1,\"label_offset\":-1,\"shuffle\":true},\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":2000},\"net\":{\"batch_size\":500}},\"output\":{\"measure\":[\"acc\",\"mcll\",\"f1\"]}},\"data\":[\"" + forest_repo + "train.csv\"]}";
-  joutstr = japi.service_train(jtrainstr);
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
   jd.Parse(joutstr.c_str());
@@ -326,7 +326,7 @@ TEST(caffeapi,service_train_imgs)
 
   // remove service
   jstr = "{\"clear\":\"lib\"}";
-  joutstr = japi.service_delete(sname,jstr);
+  joutstr = japi.jrender(japi.service_delete(sname,jstr));
   ASSERT_EQ(ok_str,joutstr);
 }
 
@@ -336,12 +336,12 @@ TEST(caffeapi,service_train_csv)
   JsonAPI japi;
   std::string sname = "my_service";
   std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  plank_repo + "\",\"templates\":\"" + model_templates_repo  + "\"},\"parameters\":{\"input\":{\"connector\":\"image\"},\"mllib\":{\"template\":\"cifar\",\"nclasses\":121}}}";
-  std::string joutstr = japi.service_create(sname,jstr);
+  std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
   ASSERT_EQ(created_str,joutstr);
 
   // train
   std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"width\":32,\"height\":32,\"test_split\":0.2,\"shuffle\":true,\"bw\":false},\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":2000,\"test_interval\":500,\"base_lr\":0.0001,\"snapshot\":2000},\"net\":{\"batch_size\":300}},\"output\":{\"measure\":[\"acc\",\"mcll\",\"f1\"]}},\"data\":[\"" + plank_repo + "train\"]}";
-  joutstr = japi.service_train(jtrainstr);
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
   jd.Parse(joutstr.c_str());
@@ -361,6 +361,6 @@ TEST(caffeapi,service_train_csv)
 
   // remove service
   jstr = "{\"clear\":\"lib\"}";
-  joutstr = japi.service_delete(sname,jstr);
+  joutstr = japi.jrender(japi.service_delete(sname,jstr));
   ASSERT_EQ(ok_str,joutstr);
 }
