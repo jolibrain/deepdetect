@@ -7,4 +7,4 @@ endif()
 set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lboost_system -lhdf5_hl -lhdf5 -lboost_thread -lopenblas -lcaffe -lprotobuf)
 
 add_executable (dd dd.cc)
-target_link_libraries (dd ${CUDA_LIB_DEPS} ddetect glog gflags opencv_core opencv_highgui opencv_imgproc cppnetlib-uri ${CAFFE_LIB_DEPS})
+target_link_libraries (dd ${CUDA_LIB_DEPS} ddetect glog gflags opencv_core opencv_highgui opencv_imgproc cppnetlib-uri crypto ssl ${CAFFE_LIB_DEPS})

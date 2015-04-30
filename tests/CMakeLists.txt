@@ -31,7 +31,7 @@ if (GTEST_FOUND)
     )
 
   add_executable(test_server test-server.cc)
-  target_link_libraries(test_server boost_system)
+  target_link_libraries(test_server boost_system crypto ssl)
   
   set(MNIST_EXAMPLE_PATH "examples/caffe/mnist/")
   set(MNIST_EXAMPLE_TRAIN_ARCHIVE "mnist_train_lmdb.tar.bz2")
