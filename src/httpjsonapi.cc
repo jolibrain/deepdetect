@@ -106,6 +106,7 @@ public:
     std::vector<std::string> rscs = dd::dd_utils::split(req_path,'/');
     if (rscs.empty())
       {
+	LOG(ERROR) << "empty resource\n";
 	response = http_server::response::stock_reply(http_server::response::not_found,_hja->jrender(_hja->dd_not_found_404()));
 	return;
       }
