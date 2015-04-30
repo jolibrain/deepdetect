@@ -35,7 +35,7 @@ namespace dd
     else this->_mlmodel_template_repo += "caffe/"; // default
     if (ad.has("repository"))
       {
-	read_from_repository(ad.get("repository").get<std::string>());
+	read_from_repository(ad.get("repository").get<std::string>()); // XXX: beware, error not caught
       }
     else
       {
@@ -60,7 +60,8 @@ namespace dd
     int e = fileops::list_directory(repo,true,false,lfiles);
     if (e != 0)
       {
-	LOG(ERROR) << "error reading caffe model repository\n";
+	LOG(ERROR) << "error reading or listing caffe models in repository " << repo << std::endl;
+	return 1;
       }
     std::string deployf,weightsf,correspf,solverf,sstatef;
     long int state_t=-1, weight_t=-1;
