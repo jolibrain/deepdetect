@@ -35,6 +35,7 @@ typedef http::server<APIHandler> http_server;
 
 DEFINE_string(host,"localhost","host for running the server");
 DEFINE_string(port,"8080","server port");
+DEFINE_int32(nthreads,10,"number of HTTP server threads");
 
 class APIHandler
 {
@@ -44,6 +45,41 @@ public:
   
   ~APIHandler() { }
 
+  static std::string uri_query_to_json(const std::string &req_query)
+  {
+    std::string jstr;
+    if (!req_query.empty())
+      {
+	jstr = "{";
+	std::vector<std::string> voptions = dd::dd_utils::split(req_query,'&');
+	for (const std::string o: voptions)
+	  {
+	    std::vector<std::string> vopt = dd::dd_utils::split(o,'=');
+	    if (vopt.size() == 2)
+	      {
+		if (jstr != "{")
+		  jstr += ",";
+		jstr += "\"" + vopt.at(0) + "\":";
+		bool is_word = true;
+		for (size_t i=0;i<vopt.at(1).size();i++)
+		  {
+		    if (isalpha(vopt.at(1)[i]) == 0)
+		      {
+			is_word = false;
+			break;
+		      }
+		  }
+		if (is_word) 
+		  jstr += "\"" + vopt.at(1) + "\"";
+		else jstr += vopt.at(1);
+	      }
+	  }
+	jstr += "}";
+      }
+    std::cout << "jstr=" << jstr << std::endl;
+    return jstr;
+  }
+  
   void fillup_response(http_server::response &response,
 		       const JDoc &janswer)
   {
@@ -80,8 +116,8 @@ public:
     std::cerr << "path=" << req_path << std::endl;
     std::cerr << "query=" << req_query << std::endl;
     std::cerr << "rscs size=" << rscs.size() << std::endl;
-    std::cerr << "path1=" << rscs[1] << std::endl;*/
-    LOG(INFO) << "HTTP " << req_method << " / call / uri=" << ur << std::endl;
+    std::cerr << "path1=" << rscs[1] << std::endl;
+    LOG(INFO) << "HTTP " << req_method << " / call / uri=" << ur << std::endl;*/
     //debug
     
     if (rscs.at(0) == _rsc_info)
@@ -108,13 +144,7 @@ public:
 	else if (req_method == "DELETE")
 	  {
 	    // DELETE does not accept body so query options are turned into JSON for internal processing
-	    std::string jstr;
-	    if (!req_query.empty())
-	      {
-		std::vector<std::string> vclear = dd::dd_utils::split(req_query,'=');
-		if (vclear.size() == 2)
-		  jstr = "{\"" + vclear.at(0) + "\":\"" + vclear.at(1) + "\"}";
-	      }
+	    std::string jstr = uri_query_to_json(req_query);
 	    fillup_response(response,_hja->service_delete(sname,jstr));
 	  }
       }
@@ -131,7 +161,8 @@ public:
       {
 	if (req_method == "GET")
 	  {
-	    fillup_response(response,_hja->service_train_status(body));
+	    std::string jstr = uri_query_to_json(req_query);
+	    fillup_response(response,_hja->service_train_status(jstr));
 	  }
 	else if (req_method == "PUT" || req_method == "POST")
 	  {
@@ -140,24 +171,7 @@ public:
 	else if (req_method == "DELETE")
 	  {
 	    // DELETE does not accept body so query options are turned into JSON for internal processing
-	    std::string jstr;
-	    if (!req_query.empty())
-	      {
-		jstr = "{";
-		std::vector<std::string> voptions = dd::dd_utils::split(req_query,'&');
-		for (const std::string o: voptions)
-		  {
-		    std::vector<std::string> vopt = dd::dd_utils::split(o,'=');
-		    if (vopt.size() == 2)
-		      {
-			if (!jstr.empty())
-			  jstr += ",";
-			jstr += "\"" + vopt.at(0) + "\":\"" + vopt.at(1) + "\"";
-		      }
-		  }
-		jstr += "}";
-	      }
-	    std::cout << "jstr=" << jstr << std::endl;
+	    std::string jstr = uri_query_to_json(req_query);
 	    fillup_response(response,_hja->service_train_delete(jstr));
 	  }
       }
@@ -200,7 +214,13 @@ namespace dd
     http_server dd_server(options.address(FLAGS_host)
 			  .port(FLAGS_port));
     LOG(INFO) << "Running DeepDetect HTTP server on " << FLAGS_host << ":" << FLAGS_port << std::endl;
+    //dd_server.run();
+
+    std::thread t1(std::bind(&http_server::run,&dd_server));
+    std::thread t2(std::bind(&http_server::run,&dd_server));
     dd_server.run();
+    t1.join();
+    t2.join();
 
     //TODO: capture Ctrl-C signal
 
