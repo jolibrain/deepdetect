@@ -235,7 +235,10 @@ namespace dd
 			       const std::string &jstr)
   {
     if (sname.empty())
-      return dd_not_found_404();
+      {
+	LOG(ERROR) << "missing service ressource name: " << sname << std::endl;
+	return dd_not_found_404();
+      }
     
     rapidjson::Document d;
     d.Parse(jstr.c_str());
