@@ -72,17 +72,172 @@ namespace dd
     std::string source = this->_mlmodel._mlmodel_template_repo + model_tmpl + "/";
     std::cout << "source=" << source << std::endl;
     std::cout << "dest=" << this->_mlmodel._repo + '/' + model_tmpl + ".prototxt" << std::endl;
-    if (fileops::copy_file(source + model_tmpl + ".prototxt",
-			   this->_mlmodel._repo + '/' + model_tmpl + ".prototxt"))
+    std::string dest_net = this->_mlmodel._repo + '/' + model_tmpl + ".prototxt";
+    std::string dest_deploy_net = this->_mlmodel._repo + "/deploy.prototxt";
+    if (fileops::copy_file(source + model_tmpl + ".prototxt", dest_net))
       throw MLLibBadParamException("failed to locate model template " + source + ".prototxt");
     if (fileops::copy_file(source + model_tmpl + "_solver.prototxt",
 			   this->_mlmodel._repo + '/' + model_tmpl + "_solver.prototxt"))
       throw MLLibBadParamException("failed to locate solver template " + source + "_solver.prototxt");
-    fileops::copy_file(source + "deploy.prototxt",
-		       this->_mlmodel._repo + "/deploy.prototxt");
+    fileops::copy_file(source + "deploy.prototxt", dest_deploy_net);		       
+
+    //TODO: if mlp template, set the net structure as number of layers etc ?
+    if (model_tmpl == "mlp")
+      {
+	caffe::NetParameter net_param,deploy_net_param;
+	caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
+	caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
+	configure_mlp_template(ad,net_param,deploy_net_param);
+	caffe::WriteProtoToTextFile(net_param,dest_net);
+	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
+      }
+    
     this->_mlmodel.read_from_repository(this->_mlmodel._repo);
   }
 
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_mlp_template(const APIData &ad,
+												   caffe::NetParameter &net_param,
+												   caffe::NetParameter &deploy_net_param)
+  {
+    //- get relevant configuration elements
+    std::vector<int> layers;
+    std::string activation = "ReLU";
+    double dropout = 0.5;
+    if (ad.has("layers"))
+      layers = ad.get("layers").get<std::vector<int>>();
+    if (ad.has("activation"))
+      activation = ad.get("activation").get<std::string>();
+    if (ad.has("dropout"))
+      dropout = ad.get("dropout").get<double>();
+    if (layers.empty() && activation == "ReLU" && dropout == 0.5)
+      return; // nothing to do
+
+    //TODO: deploy net
+    //- find template first and unique layer (i.e. layer + dropout), update it.
+    for (int l=1;l<5;l++)
+      {
+	caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+	if (lparam->type() == "InnerProduct")
+	  {
+	    lparam->mutable_inner_product_param()->set_num_output(layers.at(0));
+	  }
+	if (lparam->type() == "ReLU" && activation != "ReLU")
+	  {
+	    lparam->set_type(activation);
+	  }
+	if (lparam->type() == "Dropout" && dropout != 0.5)
+	  {
+	    lparam->mutable_dropout_param()->set_dropout_ratio(dropout);
+	  }
+      }
+    
+    //- add as many other layers as requested.
+    if (layers.size() == 1)
+      return; // nothing to do
+    int nclasses;
+    int rl = 5;
+    for (size_t l=1;l<layers.size();l++)
+      {
+	std::cerr << "l=" << l << std::endl;
+	if (l == 1) // replacing two existing layers
+	  {
+	    //std::cerr << "second inner product layer\n";
+	    caffe::LayerParameter *lparam = net_param.mutable_layer(rl);
+	    nclasses = lparam->mutable_inner_product_param()->num_output();
+	    lparam->mutable_inner_product_param()->set_num_output(layers.at(l));
+	    ++rl;
+
+	    //std::cerr << "second activation layer\n";
+	    lparam = net_param.mutable_layer(rl);
+	    lparam->clear_include();
+	    lparam->clear_top();
+	    lparam->clear_bottom();
+	    lparam->set_name("act2");
+	    lparam->set_type(activation);
+	    lparam->add_bottom("ip2");
+	    lparam->add_top("ip2");
+	    ++rl;
+
+	    //std::cerr << "second dropout layer\n";
+	    //TODO: no dropout, requires to use last existing layer with l > 1
+	    lparam = net_param.mutable_layer(rl);
+	    lparam->clear_bottom();
+	    lparam->clear_top();
+	    lparam->set_name("drop2");
+	    lparam->set_type("Dropout");
+	    lparam->add_bottom("ip2");
+	    lparam->add_top("ip2");
+	    lparam->mutable_dropout_param()->set_dropout_ratio(dropout);
+	  }
+	else
+	  {
+	    //std::cerr << "n inner product layer\n";
+	    std::string prec_ip = "ip" + std::to_string(l);
+	    std::string curr_ip = "ip" + std::to_string(l+1);
+	    caffe::LayerParameter *lparam = net_param.add_layer(); // inner product layer
+	    lparam->set_name(curr_ip);
+	    lparam->set_type("InnerProduct");
+	    lparam->add_bottom(prec_ip);
+	    lparam->add_top(curr_ip);
+	    caffe::InnerProductParameter *ipp = lparam->mutable_inner_product_param();
+	    ipp->set_num_output(layers.at(l));
+	    ipp->mutable_weight_filler()->set_type("gaussian");
+	    ipp->mutable_weight_filler()->set_std(0.1);
+	    ipp->mutable_bias_filler()->set_type("constant");
+
+	    //std::cerr << "n activation layer\n";
+	    lparam = net_param.add_layer(); // activation layer
+	    std::string act = "act" + std::to_string(l+1);
+	    lparam->set_name(act);
+	    lparam->set_type(activation);
+	    lparam->add_bottom(curr_ip);
+	    lparam->add_top(curr_ip);
+
+	    //std::cerr << "n dropout layer\n";
+	    lparam = net_param.add_layer(); // dropout layer
+	    std::string drop = "drop" + std::to_string(l+1);
+	    lparam->set_name(drop);
+	    lparam->set_type("Dropout");
+	    lparam->add_bottom(curr_ip);
+	    lparam->add_top(curr_ip);
+	    lparam->mutable_dropout_param()->set_dropout_ratio(dropout);
+	  }
+      }
+
+    // add remaining softmax layers
+    //std::cerr << "last inner product layer\n";
+    std::string prec_ip = "ip" + std::to_string(layers.size());
+    std::string last_ip = "ip" + std::to_string(layers.size()+1);
+    caffe::LayerParameter *lparam = net_param.add_layer(); // last inner product before softmax
+    lparam->set_name(last_ip);
+    lparam->set_type("InnerProduct");
+    lparam->add_bottom(prec_ip);
+    lparam->add_top(last_ip);
+    caffe::InnerProductParameter *ipp = lparam->mutable_inner_product_param();
+    ipp->set_num_output(nclasses);
+    ipp->mutable_weight_filler()->set_type("gaussian");
+    ipp->mutable_weight_filler()->set_std(0.1);
+    ipp->mutable_bias_filler()->set_type("constant");
+
+    //std::cerr << "test loss layer\n";
+    lparam = net_param.add_layer(); // test loss
+    lparam->set_name("losst");
+    lparam->set_type("Softmax");
+    lparam->add_bottom(last_ip);
+    lparam->add_top("losst");
+    caffe::NetStateRule *nsr = lparam->add_include();
+    nsr->set_phase(caffe::TEST);
+
+    //std::cerr << "loss layer\n";
+    lparam = net_param.add_layer(); // training loss
+    lparam->set_name("loss");
+    lparam->set_type("SoftmaxWithLoss");
+    lparam->add_bottom(last_ip);
+    lparam->add_bottom("label");
+    lparam->add_top("loss");
+  }
+  
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::create_model()
   {
@@ -564,7 +719,7 @@ namespace dd
 												 const TInputConnectorStrategy &inputc)
   {
     caffe::NetParameter net_param;
-    caffe::ReadProtoFromTextFile(net_file,&net_param); //TODO: catch parsing error
+    caffe::ReadProtoFromTextFile(net_file,&net_param); //TODO: catch parsing error (returns bool true on success)
     if (net_param.mutable_layer(0)->has_memory_data_param())
       {
 	net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels());
@@ -592,6 +747,9 @@ namespace dd
     // adapt number of neuron output
     update_protofile_classes(net_param);
     update_protofile_classes(deploy_net_param);
+
+    //TODO: if mlp template, set the net structure as number of layers etc ?
+    //configure_mlp_template(ad,net_param,deploy_net_param);
     
     caffe::WriteProtoToTextFile(net_param,net_file);
     caffe::WriteProtoToTextFile(deploy_net_param,deploy_file);

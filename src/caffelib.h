@@ -54,9 +54,17 @@ namespace dd
      */
     ~CaffeLib();
 
-    //TODO: instanciate from model template
+    /**
+     * \brief instanciate a model from template
+     * @param ad mllib data object
+     */
     void instantiate_template(const APIData &ad);
-    
+
+    //TODO
+    static void configure_mlp_template(const APIData &ad,
+				       caffe::NetParameter &net_param,
+				       caffe::NetParameter &deploy_net_param);
+      
     /**
      * \brief creates neural net instance based on model
      * @return 0 if OK, 2, if missing 'deploy' file, 1 otherwise
@@ -132,7 +140,7 @@ namespace dd
        *        i.e. changes are permanent. This is against the rules of training calls that 
        *        should not make hard changes to service configuration but this is the only way
        *        to transparently use the data in input in order to shape a net's template.
-       * 
+       *
        * @param net_file the file containing the net template, as copied from the template itself
        *                 at service creation
        * @param deploy_file the deploy file, same remark as net_file

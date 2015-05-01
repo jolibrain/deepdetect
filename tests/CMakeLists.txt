@@ -32,6 +32,13 @@ if (GTEST_FOUND)
 
   add_executable(test_server test-server.cc)
   target_link_libraries(test_server boost_system crypto ssl)
+
+  add_executable(ut_caffe_mlp ut-caffe-mlp.cc)
+  target_link_libraries(ut_caffe_mlp ${CUDA_LIB_DEPS} ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc ${CAFFE_LIB_DEPS})
+  add_test(
+    NAME ut_caffe_mlp
+    COMMAND ut_caffe_mlp
+    )
   
   set(MNIST_EXAMPLE_PATH "examples/caffe/mnist/")
   set(MNIST_EXAMPLE_TRAIN_ARCHIVE "mnist_train_lmdb.tar.bz2")
