@@ -118,17 +118,26 @@ namespace dd
     for (int l=1;l<5;l++)
       {
 	caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+	caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(l);
 	if (lparam->type() == "InnerProduct")
 	  {
 	    lparam->mutable_inner_product_param()->set_num_output(layers.at(0));
 	  }
-	if (lparam->type() == "ReLU" && activation != "ReLU")
+	else if (lparam->type() == "ReLU" && activation != "ReLU")
 	  {
 	    lparam->set_type(activation);
 	  }
-	if (lparam->type() == "Dropout" && dropout != 0.5)
+	else if (lparam->type() == "Dropout" && dropout != 0.5)
 	  {
 	    lparam->mutable_dropout_param()->set_dropout_ratio(dropout);
+	  }
+	if (dlparam->type() == "InnerProduct")
+	  {
+	    dlparam->mutable_inner_product_param()->set_num_output(layers.at(0));
+	  }
+	else if (dlparam->type() == "ReLU" && activation != "ReLU")
+	  {
+	    dlparam->set_type(activation);
 	  }
       }
     
@@ -137,9 +146,9 @@ namespace dd
       return; // nothing to do
     int nclasses;
     int rl = 5;
+    int drl = 3;
     for (size_t l=1;l<layers.size();l++)
       {
-	std::cerr << "l=" << l << std::endl;
 	if (l == 1) // replacing two existing layers
 	  {
 	    //std::cerr << "second inner product layer\n";
@@ -147,7 +156,10 @@ namespace dd
 	    nclasses = lparam->mutable_inner_product_param()->num_output();
 	    lparam->mutable_inner_product_param()->set_num_output(layers.at(l));
 	    ++rl;
-
+	    caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(drl);
+	    dlparam->mutable_inner_product_param()->set_num_output(layers.at(l));
+	    ++drl;
+	    
 	    //std::cerr << "second activation layer\n";
 	    lparam = net_param.mutable_layer(rl);
 	    lparam->clear_include();
@@ -158,6 +170,14 @@ namespace dd
 	    lparam->add_bottom("ip2");
 	    lparam->add_top("ip2");
 	    ++rl;
+	    dlparam = deploy_net_param.mutable_layer(drl);
+	    dlparam->clear_top();
+	    dlparam->clear_bottom();
+	    dlparam->set_name("act2");
+	    dlparam->set_type(activation);
+	    dlparam->add_bottom("ip2");
+	    dlparam->add_top("ip2");
+	    ++drl;
 
 	    //std::cerr << "second dropout layer\n";
 	    //TODO: no dropout, requires to use last existing layer with l > 1
@@ -186,6 +206,17 @@ namespace dd
 	    ipp->mutable_weight_filler()->set_std(0.1);
 	    ipp->mutable_bias_filler()->set_type("constant");
 
+	    caffe::LayerParameter *dlparam = deploy_net_param.add_layer();
+	    dlparam->set_name(curr_ip);
+	    dlparam->set_type("InnerProduct");
+	    dlparam->add_bottom(prec_ip);
+	    dlparam->add_top(curr_ip);
+	    caffe::InnerProductParameter *dipp = dlparam->mutable_inner_product_param();
+	    dipp->set_num_output(layers.at(l));
+	    dipp->mutable_weight_filler()->set_type("gaussian");
+	    dipp->mutable_weight_filler()->set_std(0.1);
+	    dipp->mutable_bias_filler()->set_type("constant");
+	    
 	    //std::cerr << "n activation layer\n";
 	    lparam = net_param.add_layer(); // activation layer
 	    std::string act = "act" + std::to_string(l+1);
@@ -194,6 +225,12 @@ namespace dd
 	    lparam->add_bottom(curr_ip);
 	    lparam->add_top(curr_ip);
 
+	    dlparam = deploy_net_param.add_layer();
+	    dlparam->set_name(act);
+	    dlparam->set_type(activation);
+	    dlparam->add_bottom(curr_ip);
+	    dlparam->add_top(curr_ip);
+	    
 	    //std::cerr << "n dropout layer\n";
 	    lparam = net_param.add_layer(); // dropout layer
 	    std::string drop = "drop" + std::to_string(l+1);
@@ -220,6 +257,17 @@ namespace dd
     ipp->mutable_weight_filler()->set_std(0.1);
     ipp->mutable_bias_filler()->set_type("constant");
 
+    caffe::LayerParameter *dlparam = deploy_net_param.add_layer();
+    dlparam->set_name(last_ip);
+    dlparam->set_type("InnerProduct");
+    dlparam->add_bottom(prec_ip);
+    dlparam->add_top(last_ip);
+    caffe::InnerProductParameter *dipp = dlparam->mutable_inner_product_param();
+    dipp->set_num_output(nclasses);
+    dipp->mutable_weight_filler()->set_type("gaussian");
+    dipp->mutable_weight_filler()->set_std(0.1);
+    dipp->mutable_bias_filler()->set_type("constant");
+    
     //std::cerr << "test loss layer\n";
     lparam = net_param.add_layer(); // test loss
     lparam->set_name("losst");
@@ -236,6 +284,12 @@ namespace dd
     lparam->add_bottom(last_ip);
     lparam->add_bottom("label");
     lparam->add_top("loss");
+    
+    dlparam = deploy_net_param.add_layer();
+    dlparam->set_name("loss");
+    dlparam->set_type("Softmax");
+    dlparam->add_bottom(last_ip);
+    dlparam->add_top("loss");
   }
   
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
