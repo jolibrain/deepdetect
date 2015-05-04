@@ -29,6 +29,7 @@
 DEFINE_string(host,"localhost","host for running the server");
 DEFINE_string(port,"8080","server port");
 DEFINE_int32(nthreads,10,"number of HTTP server threads");
+DEFINE_bool(daemon,false,"server daemon mode");
 
 class APIHandler
 {
@@ -279,8 +280,12 @@ namespace dd
   int HttpJsonAPI::boot(int argc, char *argv[])
   {
     google::ParseCommandLineFlags(&argc, &argv, true);
-    std::signal(SIGINT,terminate);
-    return start_server(FLAGS_host,FLAGS_port,FLAGS_nthreads);
+    if (!FLAGS_daemon)
+      {
+	std::signal(SIGINT,terminate);
+	return start_server(FLAGS_host,FLAGS_port,FLAGS_nthreads);
+      }
+    else return start_server_daemon(FLAGS_host,FLAGS_port,FLAGS_nthreads);
   }
 
 }
