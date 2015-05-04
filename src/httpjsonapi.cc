@@ -25,6 +25,7 @@
 #include "httpjsonapi.h"
 #include "utils/utils.hpp"
 #include <algorithm>
+#include <csignal>
 #include <iostream>
 #include <gflags/gflags.h>
 
@@ -185,7 +186,7 @@ public:
   
   void log(http_server::string_type const &info)
   {
-    std::cerr << "ERROR: " << info << "\n"; //TODO
+    LOG(ERROR) << info << std::endl;
   }
 
   dd::HttpJsonAPI *_hja;
@@ -197,6 +198,17 @@ public:
 
 namespace dd
 {
+  volatile std::sig_atomic_t _sigstatus;
+  http_server *_dd_server;
+  
+  void sig_handler(int signal)
+  {
+    _sigstatus = signal;
+    LOG(INFO) << "catching termination signal " << _sigstatus << std::endl;;
+    _dd_server->stop(); // stops acceptor and waits for pending requests to finish
+    exit(1); // beware, does not cleanly kill all jobs, async jobs should be killed cleanly through API
+  }
+  
   HttpJsonAPI::HttpJsonAPI()
     :JsonAPI()
   {
@@ -205,26 +217,25 @@ namespace dd
   HttpJsonAPI::~HttpJsonAPI()
   {
   }
-  
+
   int HttpJsonAPI::boot(int argc, char *argv[])
   {
     google::ParseCommandLineFlags(&argc, &argv, true);
+    std::signal(SIGINT,sig_handler);
     
     APIHandler ahandler(this);
     http_server::options options(ahandler);
     http_server dd_server(options.address(FLAGS_host)
 			  .port(FLAGS_port));
+    _dd_server = &dd_server;
     LOG(INFO) << "Running DeepDetect HTTP server on " << FLAGS_host << ":" << FLAGS_port << std::endl;
-    //dd_server.run();
 
-    std::thread t1(std::bind(&http_server::run,&dd_server));
-    std::thread t2(std::bind(&http_server::run,&dd_server));
+    std::vector<std::thread> ts;
+    for (int i=0;i<FLAGS_nthreads;i++)
+      ts.push_back(std::thread(std::bind(&http_server::run,&dd_server)));
     dd_server.run();
-    t1.join();
-    t2.join();
-
-    //TODO: capture Ctrl-C signal
-
+    for (int i=0;i<FLAGS_nthreads;i++)
+      ts.at(i).join();
     return 0;
   }
 
