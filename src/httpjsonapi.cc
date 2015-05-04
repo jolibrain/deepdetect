@@ -19,20 +19,12 @@
  * along with deepdetect.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <boost/network/protocol/http/server.hpp>
-#include <boost/network/uri.hpp>
-#include <boost/network/uri/uri_io.hpp>
 #include "httpjsonapi.h"
 #include "utils/utils.hpp"
 #include <algorithm>
 #include <csignal>
 #include <iostream>
 #include <gflags/gflags.h>
-
-namespace http = boost::network::http;
-namespace uri = boost::network::uri;
-class APIHandler;
-typedef http::server<APIHandler> http_server;
 
 DEFINE_string(host,"localhost","host for running the server");
 DEFINE_string(port,"8080","server port");
@@ -77,9 +69,22 @@ public:
 	  }
 	jstr += "}";
       }
-    std::cout << "jstr=" << jstr << std::endl;
     return jstr;
   }
+  
+  /*static boost::network::http::basic_response<std::string> cstock_reply(int status,
+									std::string const& content) {
+    using boost::lexical_cast;
+    boost::network::http::basic_response<std::string> rep;
+    rep.status = status;
+    rep.content = content;
+    rep.headers.resize(2);
+    rep.headers[0].name = "Content-Length";
+    rep.headers[0].value = lexical_cast<std::string>(rep.content.size());
+    rep.headers[1].name = "Content-Type";
+    rep.headers[1].value = "text/html";
+    return rep;
+    }*/
   
   void fillup_response(http_server::response &response,
 		       const JDoc &janswer)
@@ -87,16 +92,19 @@ public:
     int code = janswer["status"]["code"].GetInt();
     std::string stranswer = _hja->jrender(janswer);
     response = http_server::response::stock_reply(http_server::response::status_type(code),stranswer);
-    //TODO: 409 not built-in cpp netlib
+    response.status = static_cast<http_server::response::status_type>(code);
   }
 
   void operator()(http_server::request const &request,
 		  http_server::response &response)
   {
+    //debug
     /*std::cerr << "uri=" << request.destination << std::endl;
     std::cerr << "method=" << request.method << std::endl;
     std::cerr << "source=" << request.source << std::endl;
     std::cerr << "body=" << request.body << std::endl;*/
+    //debug
+
     uri::uri ur("http://"+request.source+request.destination);
     
     std::string req_method = request.method;
@@ -199,15 +207,10 @@ public:
 namespace dd
 {
   volatile std::sig_atomic_t _sigstatus;
-  http_server *_dd_server;
-  
-  void sig_handler(int signal)
-  {
-    _sigstatus = signal;
-    LOG(INFO) << "catching termination signal " << _sigstatus << std::endl;;
-    _dd_server->stop(); // stops acceptor and waits for pending requests to finish
-    exit(1); // beware, does not cleanly kill all jobs, async jobs should be killed cleanly through API
-  }
+
+  /* variables for C-like signal handling */
+  HttpJsonAPI *_ghja = nullptr;
+  http_server *_gdd_server = nullptr;
   
   HttpJsonAPI::HttpJsonAPI()
     :JsonAPI()
@@ -218,25 +221,66 @@ namespace dd
   {
   }
 
+  int HttpJsonAPI::start_server(const std::string &host,
+				const std::string &port,
+				const int &nthreads)
+  {
+    APIHandler ahandler(this);
+    http_server::options options(ahandler);
+    _dd_server = new http_server(options.address(host)
+				 .port(port));
+    _ghja = this;
+    _gdd_server = _dd_server;
+    LOG(INFO) << "Running DeepDetect HTTP server on " << host << ":" << port << std::endl;
+
+    std::vector<std::thread> ts;
+    for (int i=0;i<nthreads;i++)
+      ts.push_back(std::thread(std::bind(&http_server::run,_dd_server)));
+    _dd_server->run();
+    for (int i=0;i<nthreads;i++)
+      ts.at(i).join();
+    return 0;
+  }
+
+  int HttpJsonAPI::start_server_daemon(const std::string &host,
+				       const std::string &port,
+				       const int &nthreads)
+  {
+    _ft = std::async(&HttpJsonAPI::start_server,this,host,port,nthreads);
+    return 0;
+  }
+  
+  void HttpJsonAPI::stop_server()
+  {
+    LOG(INFO) << "stopping HTTP server\n";
+    if (_dd_server)
+      {
+	try
+	  {
+	    _dd_server->stop();
+	    _ft.wait();
+	    delete _dd_server;
+	    _gdd_server = nullptr;
+	  }
+	catch (std::exception &e)
+	  {
+	    LOG(ERROR) << e.what() << std::endl;
+	  }
+      }
+  }
+
+  void HttpJsonAPI::terminate(int param)
+  {
+    (void)param;
+    if (_ghja)
+      _ghja->stop_server();
+  }
+  
   int HttpJsonAPI::boot(int argc, char *argv[])
   {
     google::ParseCommandLineFlags(&argc, &argv, true);
-    std::signal(SIGINT,sig_handler);
-    
-    APIHandler ahandler(this);
-    http_server::options options(ahandler);
-    http_server dd_server(options.address(FLAGS_host)
-			  .port(FLAGS_port));
-    _dd_server = &dd_server;
-    LOG(INFO) << "Running DeepDetect HTTP server on " << FLAGS_host << ":" << FLAGS_port << std::endl;
-
-    std::vector<std::thread> ts;
-    for (int i=0;i<FLAGS_nthreads;i++)
-      ts.push_back(std::thread(std::bind(&http_server::run,&dd_server)));
-    dd_server.run();
-    for (int i=0;i<FLAGS_nthreads;i++)
-      ts.at(i).join();
-    return 0;
+    std::signal(SIGINT,terminate);
+    return start_server(FLAGS_host,FLAGS_port,FLAGS_nthreads);
   }
 
 }

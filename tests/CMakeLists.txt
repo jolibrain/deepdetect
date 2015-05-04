@@ -78,4 +78,12 @@ if (GTEST_FOUND)
     NAME ut_caffeapi
     COMMAND ut_caffeapi
     )
+  
+  add_executable(ut_httpapi ut-httpapi.cc)
+  target_link_libraries(ut_httpapi ${CUDA_LIB_DEPS} ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc ${CAFFE_LIB_DEPS} cppnetlib-uri boost_system crypto ssl)
+  add_test(
+    NAME ut_httpapi
+    COMMAND ut_httpapi
+    )
+
 endif()

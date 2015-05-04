@@ -23,6 +23,14 @@
 #define HTTPJSONAPI_H
 
 #include "jsonapi.h"
+#include <boost/network/protocol/http/server.hpp>
+#include <boost/network/uri.hpp>
+#include <boost/network/uri/uri_io.hpp>
+
+namespace http = boost::network::http;
+namespace uri = boost::network::uri;
+class APIHandler;
+typedef http::server<APIHandler> http_server;
 
 namespace dd
 {
@@ -31,8 +39,19 @@ namespace dd
   public:
     HttpJsonAPI();
     ~HttpJsonAPI();
-    
+
+    void stop_server();
+    int start_server_daemon(const std::string &host,
+			    const std::string &port,
+			    const int &nthreads);
+    int start_server(const std::string &host,
+		     const std::string &port,
+		     const int &nthreads);
     int boot(int argc, char *argv[]);
+    static void terminate(int param);
+    
+    http_server *_dd_server = nullptr; /**< main reusable pointer to server object */
+    std::future<int> _ft; /**< holds the results from the main server thread */
   };
 }
 
