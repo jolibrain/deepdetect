@@ -29,7 +29,6 @@
 DEFINE_string(host,"localhost","host for running the server");
 DEFINE_string(port,"8080","server port");
 DEFINE_int32(nthreads,10,"number of HTTP server threads");
-DEFINE_bool(daemon,false,"server daemon mode");
 
 class APIHandler
 {
@@ -220,6 +219,8 @@ namespace dd
 
   HttpJsonAPI::~HttpJsonAPI()
   {
+    if (_dd_server)
+      delete _dd_server;
   }
 
   int HttpJsonAPI::start_server(const std::string &host,
@@ -232,7 +233,7 @@ namespace dd
 				 .port(port));
     _ghja = this;
     _gdd_server = _dd_server;
-    LOG(INFO) << "Running DeepDetect HTTP server on " << host << ":" << port << std::endl;
+    std::cerr << "Running DeepDetect HTTP server on " << host << ":" << port << std::endl;
 
     std::vector<std::thread> ts;
     for (int i=0;i<nthreads;i++)
@@ -247,7 +248,9 @@ namespace dd
 				       const std::string &port,
 				       const int &nthreads)
   {
-    _ft = std::async(&HttpJsonAPI::start_server,this,host,port,nthreads);
+    //_ft = std::async(&HttpJsonAPI::start_server,this,host,port,nthreads);
+    std::thread t(&HttpJsonAPI::start_server,this,host,port,nthreads);
+    t.detach();
     return 0;
   }
   
@@ -271,21 +274,19 @@ namespace dd
   }
 
   void HttpJsonAPI::terminate(int param)
-  {
+   {
     (void)param;
     if (_ghja)
-      _ghja->stop_server();
-  }
-  
+      {
+	_ghja->stop_server();
+      }
+   }
+   
   int HttpJsonAPI::boot(int argc, char *argv[])
   {
     google::ParseCommandLineFlags(&argc, &argv, true);
-    if (!FLAGS_daemon)
-      {
-	std::signal(SIGINT,terminate);
-	return start_server(FLAGS_host,FLAGS_port,FLAGS_nthreads);
-      }
-    else return start_server_daemon(FLAGS_host,FLAGS_port,FLAGS_nthreads);
+    std::signal(SIGINT,terminate);
+    return start_server(FLAGS_host,FLAGS_port,FLAGS_nthreads);
   }
 
 }
