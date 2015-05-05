@@ -31,7 +31,7 @@ if (GTEST_FOUND)
     )
 
   add_executable(test_server test-server.cc)
-  target_link_libraries(test_server boost_system crypto ssl)
+  target_link_libraries(test_server boost_thread cppnetlib-uri cppnetlib-client-connections boost_system crypto ssl)
 
   add_executable(ut_caffe_mlp ut-caffe-mlp.cc)
   target_link_libraries(ut_caffe_mlp ${CUDA_LIB_DEPS} ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc ${CAFFE_LIB_DEPS})
@@ -80,7 +80,7 @@ if (GTEST_FOUND)
     )
   
   add_executable(ut_httpapi ut-httpapi.cc)
-  target_link_libraries(ut_httpapi ${CUDA_LIB_DEPS} ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc ${CAFFE_LIB_DEPS} cppnetlib-uri boost_system crypto ssl)
+  target_link_libraries(ut_httpapi ${CUDA_LIB_DEPS} ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc ${CAFFE_LIB_DEPS} cppnetlib-uri curlpp curl boost_system crypto ssl)
   add_test(
     NAME ut_httpapi
     COMMAND ut_httpapi
