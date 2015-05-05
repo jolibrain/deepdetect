@@ -74,12 +74,22 @@ namespace dd
     std::cout << "dest=" << this->_mlmodel._repo + '/' + model_tmpl + ".prototxt" << std::endl;
     std::string dest_net = this->_mlmodel._repo + '/' + model_tmpl + ".prototxt";
     std::string dest_deploy_net = this->_mlmodel._repo + "/deploy.prototxt";
-    if (fileops::copy_file(source + model_tmpl + ".prototxt", dest_net))
+    int err = fileops::copy_file(source + model_tmpl + ".prototxt", dest_net);
+    if (err == 1)
       throw MLLibBadParamException("failed to locate model template " + source + ".prototxt");
-    if (fileops::copy_file(source + model_tmpl + "_solver.prototxt",
-			   this->_mlmodel._repo + '/' + model_tmpl + "_solver.prototxt"))
+    else if (err == 2)
+      throw MLLibBadParamException("failed to create model template destination " + dest_net);
+    err = fileops::copy_file(source + model_tmpl + "_solver.prototxt",
+			     this->_mlmodel._repo + '/' + model_tmpl + "_solver.prototxt");
+    if (err == 1)
       throw MLLibBadParamException("failed to locate solver template " + source + "_solver.prototxt");
-    fileops::copy_file(source + "deploy.prototxt", dest_deploy_net);		       
+    else if (err == 2)
+      throw MLLibBadParamException("failed to create destination template solver file " + this->_mlmodel._repo + '/' + model_tmpl + "_solver.prototxt");
+    err = fileops::copy_file(source + "deploy.prototxt", dest_deploy_net);
+    if (err == 1)
+      throw MLLibBadParamException("failed to locate deploy template " + source + "deploy.prototxt");
+    else if (err == 2)
+      throw MLLibBadParamException("failed to create destination deploy solver file " + dest_deploy_net);
 
     //TODO: if mlp template, set the net structure as number of layers etc ?
     if (model_tmpl == "mlp")

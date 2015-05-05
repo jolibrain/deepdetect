@@ -126,6 +126,8 @@ namespace dd
       if (!src.is_open())
 	return 1;
       std::ofstream dst(fout,std::ios::binary);
+      if (!dst.is_open())
+	return 2;
       dst << src.rdbuf();
       src.close();
       dst.close();
