@@ -34,7 +34,7 @@ std::string host = "127.0.0.1";
 int port = 8080;
 int nthreads = 10;
 std::string serv = "myserv";
-std::string serv_put = "{\"mllib\":\"caffe\",\"description\":\"example classification service\",\"type\":\"supervised\",\"parameters\":{\"input\":{\"connector\":\"csv\"},\"mllib\":{\"template\":\"mlp\",\"nclasses\":2,\"layers\":[50,50,50],\"activation\":\"PReLU\"}},\"model\":{\"repository\":\".\"}}";
+std::string serv_put = "{\"mllib\":\"caffe\",\"description\":\"example classification service\",\"type\":\"supervised\",\"parameters\":{\"input\":{\"connector\":\"csv\"},\"mllib\":{\"template\":\"mlp\",\"nclasses\":2,\"layers\":[50,50,50],\"activation\":\"PReLU\"}},\"model\":{\"templates\":\"../templates/caffe/\",\"repository\":\".\"}}";
 
 void get_call(const std::string &url,
 	      const std::string &http_method,
@@ -144,7 +144,7 @@ TEST(httpjsonapi,services)
 
   // delete call
   get_call(luri+"/services/"+serv,"DELETE",code,jstr);
-  d.Parse(jstr.c_str());
+  //d.Parse(jstr.c_str());
   ASSERT_EQ(200,code);
 
   // info call
@@ -154,6 +154,99 @@ TEST(httpjsonapi,services)
   ASSERT_EQ(200,code);
   ASSERT_TRUE(d["head"].HasMember("services"));
   ASSERT_EQ(0,d["head"]["services"].Size());
+
+  // service info
+  get_call(luri+"/services/"+serv,"GET",code,jstr);
+  d = rapidjson::Document();
+  d.Parse(jstr.c_str());
+  ASSERT_EQ(404,code);
+  
+  hja.stop_server();
+}
+
+TEST(httpjsonapi,train)
+{
+  HttpJsonAPI hja;
+  hja.start_server_daemon(host,std::to_string(++port),nthreads);
+  std::string luri = "http://" + host + ":" + std::to_string(port);
+  sleep(2);
+
+  // service definition
+  std::string mnist_repo = "../examples/caffe/mnist/";
+  std::string serv_put2 = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  mnist_repo + "\"},\"parameters\":{\"input\":{\"connector\":\"image\"}}}";
+  
+  // service creation
+  int code = 1;
+  std::string jstr;
+  post_call(luri+"/services/"+serv,serv_put2,"PUT",
+	    code,jstr);  
+  ASSERT_EQ(201,code);
+  rapidjson::Document d;
+  d.Parse(jstr.c_str());
+  ASSERT_FALSE(d.HasParseError());
+  ASSERT_TRUE(d.HasMember("status"));
+  ASSERT_EQ(201,d["status"]["code"].GetInt());
+
+  //train blocking
+  std::string train_post = "{\"service\":\"" + serv + "\",\"async\":false,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":100}}}}";
+  post_call(luri+"/train",train_post,"POST",code,jstr);
+  ASSERT_EQ(201,code);
+  d.Parse(jstr.c_str());
+  ASSERT_TRUE(d.HasMember("body"));
+  ASSERT_TRUE(d["body"].HasMember("measure"));
+  ASSERT_EQ(99,d["body"]["measure"]["iteration"].GetDouble());
+  ASSERT_TRUE(d["body"]["measure"]["train_loss"].GetDouble()>0.0);
+  
+  // remove service and trained model files
+  get_call(luri+"/services/"+serv+"?clear=lib","DELETE",code,jstr);
+  ASSERT_EQ(200,code);
+
+  // service creation
+  post_call(luri+"/services/"+serv,serv_put2,"PUT",
+	    code,jstr);  
+  ASSERT_EQ(201,code);
+  d.Parse(jstr.c_str());
+  ASSERT_FALSE(d.HasParseError());
+  ASSERT_TRUE(d.HasMember("status"));
+  ASSERT_EQ(201,d["status"]["code"].GetInt());
+  
+  //train async
+  train_post = "{\"service\":\"" + serv + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":100}}}}";
+  post_call(luri+"/train",train_post,"POST",code,jstr);
+  ASSERT_EQ(201,code);
+  d.Parse(jstr.c_str());
+  ASSERT_FALSE(d.HasMember("body"));
+  
+  // get info on training job
+  bool running = true;
+  while(running)
+    {
+      get_call(luri+"/train?service="+serv+"&job=1&timeout=1","GET",code,jstr);
+      running = jstr.find("running") != std::string::npos;
+      if (!running)
+	{
+	  JDoc jd2;
+	  jd2.Parse(jstr.c_str());
+	  ASSERT_TRUE(!jd2.HasParseError());
+	  ASSERT_TRUE(jd2.HasMember("status"));
+	  ASSERT_EQ(200,jd2["status"]["code"]);
+	  ASSERT_EQ("OK",jd2["status"]["msg"]);
+	  ASSERT_TRUE(jd2.HasMember("head"));
+	  ASSERT_EQ("/train",jd2["head"]["method"]);
+	  ASSERT_TRUE(jd2["head"]["time"].GetDouble() > 0);
+	  ASSERT_EQ("finished",jd2["head"]["status"]);
+	  ASSERT_EQ(1,jd2["head"]["job"]);
+	  ASSERT_TRUE(jd2.HasMember("body"));
+	  ASSERT_TRUE(jd2["body"]["measure"].HasMember("train_loss"));
+	  ASSERT_TRUE(jd2["body"]["measure"]["train_loss"].GetDouble() > 0);
+	  ASSERT_TRUE(jd2["body"]["measure"].HasMember("iteration"));
+	  ASSERT_TRUE(jd2["body"]["measure"]["iteration"].GetDouble() > 0);
+	}
+    }
+  
+  // remove service and trained model files
+  get_call(luri+"/services/"+serv+"?clear=lib","DELETE",code,jstr);
+  ASSERT_EQ(200,code);
   
   hja.stop_server();
 }
