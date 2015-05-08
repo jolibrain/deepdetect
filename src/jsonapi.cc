@@ -219,12 +219,14 @@ namespace dd
     jhead.AddMember("branch",JVal().SetString(GIT_BRANCH,jinfo.GetAllocator()),jinfo.GetAllocator());
     jhead.AddMember("commit",JVal().SetString(GIT_COMMIT_HASH,jinfo.GetAllocator()),jinfo.GetAllocator());
     JVal jservs(rapidjson::kArrayType);
-    for (size_t i=0;i<services_size();i++)
+    auto hit = _mlservices.begin();
+    while(hit!=_mlservices.end())
       {
-	APIData ad = mapbox::util::apply_visitor(visitor_info(),_mlservices.at(i));
+	APIData ad = mapbox::util::apply_visitor(visitor_info(),(*hit).second);
 	JVal jserv(rapidjson::kObjectType);
 	ad.toJVal(jinfo,jserv);
 	jservs.PushBack(jserv,jinfo.GetAllocator());
+	++hit;
       }
     jhead.AddMember("services",jservs,jinfo.GetAllocator());
     jinfo.AddMember("head",jhead,jinfo.GetAllocator());
@@ -236,7 +238,7 @@ namespace dd
   {
     if (sname.empty())
       {
-	LOG(ERROR) << "missing service ressource name: " << sname << std::endl;
+	LOG(ERROR) << "missing service resource name: " << sname << std::endl;
 	return dd_not_found_404();
       }
 
@@ -321,10 +323,10 @@ namespace dd
   {
     if (sname.empty())
       return dd_service_not_found_1002();
-    int pos = this->get_service_pos(sname);
-    if (pos < 0)
+    if (!this->service_exists(sname))
       return dd_not_found_404();
-    APIData ad = mapbox::util::apply_visitor(visitor_status(),_mlservices.at(pos));
+    auto hit = this->get_service_it(sname);
+    APIData ad = mapbox::util::apply_visitor(visitor_status(),(*hit).second);
     JDoc jst = dd_ok_200();
     JVal jbody(rapidjson::kObjectType);
     ad.toJVal(jst,jbody);
@@ -369,12 +371,10 @@ namespace dd
     
     // service
     std::string sname;
-    int pos = -1;
     try
       {
 	sname = d["service"].GetString();
-	pos = this->get_service_pos(sname);
-	if (pos < 0)
+	if (!this->service_exists(sname))
 	  return dd_service_not_found_1002();
       }
     catch(...)
@@ -389,7 +389,7 @@ namespace dd
     APIData out;
     try
       {
-	this->predict(ad_data,pos,out); // we ignore returned status, stored in out data object
+	this->predict(ad_data,sname,out); // we ignore returned status, stored in out data object
       }
     catch (InputConnectorBadParamException &e)
       {
@@ -441,12 +441,10 @@ namespace dd
   
     // service
     std::string sname;
-    int pos = -1;
     try
       {
 	sname = d["service"].GetString();
-	pos = this->get_service_pos(sname);
-	if (pos < 0)
+	if (!this->service_exists(sname))
 	  return dd_service_not_found_1002();
       }
     catch(...)
@@ -461,7 +459,7 @@ namespace dd
     APIData out;
     try
       {
-	this->train(ad,pos,out); // we ignore return status, stored in out data object
+	this->train(ad,sname,out); // we ignore return status, stored in out data object
       }
     catch (InputConnectorBadParamException &e)
       {
@@ -517,12 +515,10 @@ namespace dd
 
     // service
     std::string sname;
-    int pos = -1;
     try
       {
 	sname = d["service"].GetString();
-	pos = this->get_service_pos(sname);
-	if (pos < 0)
+	if (!this->service_exists(sname))
 	  return dd_service_not_found_1002();
       }
     catch(...)
@@ -537,7 +533,7 @@ namespace dd
     
     // training status
     APIData out;
-    int status = this->train_status(ad,pos,out);
+    int status = this->train_status(ad,sname,out);
     JDoc jtrain;
     if (status == 1)
       {
@@ -575,12 +571,10 @@ namespace dd
   
     // service
     std::string sname;
-    int pos = -1;
     try
       {
 	sname = d["service"].GetString();
-	pos = this->get_service_pos(sname);
-	if (pos < 0)
+	if (!this->service_exists(sname))
 	  return dd_service_not_found_1002();
       }
     catch(...)
@@ -595,7 +589,7 @@ namespace dd
     
     // delete training job
     APIData out;
-    int status = this->train_delete(ad,pos,out);
+    int status = this->train_delete(ad,sname,out);
     JDoc jd;
     if (status == 1)
       {

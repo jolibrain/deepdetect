@@ -218,8 +218,8 @@ namespace dd
 		     mls_variant_type &&mls,
 		     const APIData &ad=APIData()) 
     {
-      std::unordered_map<std::string,int>::const_iterator hit;
-      if ((hit=_mlservidx.find(sname))!=_mlservidx.end()) // check whether service already exists
+      std::unordered_map<std::string,mls_variant_type>::const_iterator hit;
+      if ((hit=_mlservices.find(sname))!=_mlservices.end())
 	{
 	  throw ServiceForbiddenException("Service already exists");
 	}
@@ -229,8 +229,7 @@ namespace dd
 	{
 	  mapbox::util::apply_visitor(vi,mls);
 	  std::lock_guard<std::mutex> lock(_mlservices_mtx);
-	  _mlservices.push_back(std::move(mls));
-	  _mlservidx.insert(std::pair<std::string,int>(sname,_mlservices.size()-1));
+	  _mlservices.insert(std::pair<std::string,mls_variant_type>(sname,std::move(mls)));
 	}
       catch (InputConnectorBadParamException &e)
 	{
@@ -264,15 +263,16 @@ namespace dd
 			const APIData &ad)
     {
       std::lock_guard<std::mutex> lock(_mlservices_mtx);
-      auto hit = _mlservidx.begin();
-      if ((hit=_mlservidx.find(sname))!=_mlservidx.end())
+      auto hit = _mlservices.begin();
+      if ((hit=_mlservices.find(sname))!=_mlservices.end())
 	{
 	  if (ad.has("clear"))
 	    {
 	      visitor_clear vc(ad);
 	      try
 		{
-		  mapbox::util::apply_visitor(vc,_mlservices.at((*hit).second));
+		  //mapbox::util::apply_visitor(vc,_mlservices.at((*hit).second));
+		  mapbox::util::apply_visitor(vc,(*hit).second);
 		}
 	      catch (MLLibBadParamException &e)
 		{
@@ -290,8 +290,7 @@ namespace dd
 	  	  throw;
 		}
 	    }
-	  _mlservices.erase(_mlservices.begin()+(*hit).second);
-	  _mlservidx.erase(hit);
+	  _mlservices.erase(hit);
 	  return true;
 	}
       LOG(ERROR) << "cannot find service " << sname << " for removal\n";
@@ -299,25 +298,38 @@ namespace dd
     }
 
     /**
-     * \brief get a service's position in the services container
-     * @return service position, -1 if not found
+     * \brief get a service position as iterator
+     * @param sname service name
+     * @return service position, end of container if not found
      */
-    int get_service_pos(const std::string &sname)
-    {
-       std::lock_guard<std::mutex> lock(_mlservices_mtx);
-       std::unordered_map<std::string,int>::const_iterator hit;
-       if ((hit=_mlservidx.find(sname))!=_mlservidx.end())
-	 return (*hit).second;
-       else return -1;
-    }
+    std::unordered_map<std::string,mls_variant_type>::iterator get_service_it(const std::string &sname)
+      {
+	std::unordered_map<std::string,mls_variant_type>::iterator hit;
+	if ((hit=_mlservices.find(sname))!=_mlservices.end())
+	  return hit;
+	return _mlservices.end();
+      }
 
+    /**
+     * \brief checks whether a service exists
+     * @param sname service name
+     * return true if service exists, false otherwise
+     */
+    bool service_exists(const std::string &sname)
+    {
+      auto hit = get_service_it(sname);
+      if (hit == _mlservices.end())
+	return false;
+      return true;
+    }
+    
     /**
      * \brief train a statistical model using a service
      * @param ad root data object
-     * @param pos service position
+     * @param sname service name
      * @param out output data object
      */
-    int train(const APIData &ad, const int &pos, APIData &out)
+    int train(const APIData &ad, const std::string &sname, APIData &out)
     {
       std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();
       visitor_train vt;
@@ -325,29 +337,30 @@ namespace dd
       output pout;
       try
 	{
-	  pout = mapbox::util::apply_visitor(vt,_mlservices.at(pos));
+	  auto hit = get_service_it(sname);
+	  pout = mapbox::util::apply_visitor(vt,(*hit).second);
 	}
       catch (InputConnectorBadParamException &e)
 	{
-	  LOG(ERROR) << "service #" << pos << " mllib bad param: " << e.what() << std::endl;
+	  LOG(ERROR) << "service " << sname << " mllib bad param: " << e.what() << std::endl;
 	  pout._status = -2;
 	  throw;
 	}
       catch (MLLibBadParamException &e)
 	{
-	  LOG(ERROR) << "service #" << pos << " mllib bad param: " << e.what() << std::endl;
+	  LOG(ERROR) << "service " << sname << " mllib bad param: " << e.what() << std::endl;
 	  pout._status = -2;
 	  throw;
 	}
       catch (MLLibInternalException &e)
 	{
-	  LOG(ERROR) << "service #" << pos << " mllib internal error: " << e.what() << std::endl;
+	  LOG(ERROR) << "service " << sname << " mllib internal error: " << e.what() << std::endl;
 	  pout._status = -1;
 	  throw;
 	}
       catch(...)
 	{
-	  LOG(ERROR) << "service #" << pos << " training call failed\n";
+	  LOG(ERROR) << "service " << sname << " training call failed\n";
 	  pout._status = -1;
 	  throw;
 	}
@@ -371,21 +384,22 @@ namespace dd
     /**
      * \brief access to training job status
      * @param ad root data object
-     * @param pos service position
+     * @param sname service name
      * @param out output data object
      */
-    int train_status(const APIData &ad, const int &pos, APIData &out)
+    int train_status(const APIData &ad, const std::string &sname, APIData &out)
     {
       visitor_train_status vt;
       vt._ad = ad;
       output pout;
       try
 	{
-	  pout = mapbox::util::apply_visitor(vt,_mlservices.at(pos));
+	  auto hit = get_service_it(sname);
+	  pout = mapbox::util::apply_visitor(vt,(*hit).second);
 	}
       catch(...)
 	{
-	  LOG(ERROR) << "service #" << pos << " training status call failed\n";
+	  LOG(ERROR) << "service " << sname << " training status call failed\n";
 	  pout._status = -1;
 	}
       out = pout._out;
@@ -395,21 +409,22 @@ namespace dd
     /**
      * \brief kills a training job
      * @param ad root data object
-     * @param pos service position
+     * @param sname service name
      * @param output data object
      */
-    int train_delete(const APIData &ad, const int &pos, APIData &out)
+    int train_delete(const APIData &ad, const std::string &sname, APIData &out)
     {
       visitor_train_delete vt;
       vt._ad = ad;
       output pout;
       try
 	{
-	  pout = mapbox::util::apply_visitor(vt,_mlservices.at(pos));
+	  auto hit = get_service_it(sname);
+	  pout = mapbox::util::apply_visitor(vt,(*hit).second);
 	}
       catch(...)
 	{
-	  LOG(ERROR) << "service #" << pos << " training delete call failed\n";
+	  LOG(ERROR) << "service " << sname << " training delete call failed\n";
 	  pout._status = -1;
 	}
       out = pout._out;
@@ -419,10 +434,10 @@ namespace dd
     /**
      * \brief prediction from statistical model
      * @param ad root data object
-     * @param pos service position
+     * @param sname service name
      * @param out output data object
      */
-    int predict(const APIData &ad, const int &pos, APIData &out)
+    int predict(const APIData &ad, const std::string &sname, APIData &out)
     {
       std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();
       visitor_predict vp;
@@ -430,35 +445,36 @@ namespace dd
       output pout;
       try
 	{
-	  pout = mapbox::util::apply_visitor(vp,_mlservices.at(pos));
+	  auto hit = get_service_it(sname);
+	  pout = mapbox::util::apply_visitor(vp,(*hit).second);
 	}
       catch (InputConnectorBadParamException &e)
 	{
-	  LOG(ERROR) << "service #" << pos << " mllib bad param: " << e.what() << std::endl;
+	  LOG(ERROR) << "service " << sname << " mllib bad param: " << e.what() << std::endl;
 	  pout._status = -2;
 	  throw;
 	}
       catch (MLLibBadParamException &e)
 	{
-	  LOG(ERROR) << "service #" << pos << " mllib bad param: " << e.what() << std::endl;
+	  LOG(ERROR) << "service " << sname << " mllib bad param: " << e.what() << std::endl;
 	  pout._status = -2;
 	  throw;
 	}
       catch (MLLibInternalException &e)
 	{
-	  LOG(ERROR) << "service #" << pos << " mllib internal error: " << e.what() << std::endl;
+	  LOG(ERROR) << "service " << sname << " mllib internal error: " << e.what() << std::endl;
 	  pout._status = -1;
 	  throw;
 	}
       catch (MLServiceLockException &e)
 	{
-	  LOG(ERROR) << "service #" << pos << " mllib lock error: " << e.what() << std::endl;
+	  LOG(ERROR) << "service " << sname << " mllib lock error: " << e.what() << std::endl;
 	  pout._status = -3;
 	  throw;
 	}
       catch(...)
 	{
-	  LOG(ERROR) << "service #" << pos << " prediction call failed\n";
+	  LOG(ERROR) << "service " << sname << " prediction call failed\n";
 	  pout._status = -1;
 	  throw;
 	}
@@ -469,8 +485,7 @@ namespace dd
       return pout._status;
     }
 
-    std::vector<mls_variant_type> _mlservices; /**< container of instanciated services. */
-    std::unordered_map<std::string,int> _mlservidx; /**< services position per service name. */
+    std::unordered_map<std::string,mls_variant_type> _mlservices; /**< container of instanciated services. */
     
   protected:
     std::mutex _mlservices_mtx; /**< mutex around adding/removing services. */
