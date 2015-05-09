@@ -80,7 +80,7 @@ void post_call(const std::string &url,
   outcode = curlpp::infos::ResponseCode::get(request_put);
 }
 
-/*TEST(httpjsonapi,info)
+TEST(httpjsonapi,info)
 {
   ::google::InitGoogleLogging("ut_httpapi");
   HttpJsonAPI hja;
@@ -133,6 +133,7 @@ TEST(httpjsonapi,services)
   ASSERT_TRUE(d.HasMember("body"));
   ASSERT_EQ("caffe",d["body"]["mllib"]);
   ASSERT_EQ("myserv",d["body"]["name"]);
+  ASSERT_TRUE(d["body"].HasMember("jobs"));
   
   // info call
   get_call(luri+"/info","GET",code,jstr);
@@ -216,6 +217,20 @@ TEST(httpjsonapi,train)
   ASSERT_EQ(201,code);
   d.Parse(jstr.c_str());
   ASSERT_FALSE(d.HasMember("body"));
+
+  sleep(1);
+
+  // service info
+  get_call(luri+"/services/"+serv,"GET",code,jstr);
+  d = rapidjson::Document();
+  d.Parse(jstr.c_str());
+  ASSERT_EQ(200,code);
+  ASSERT_TRUE(d.HasMember("status"));
+  ASSERT_TRUE(d.HasMember("body"));
+  ASSERT_EQ("caffe",d["body"]["mllib"]);
+  ASSERT_EQ("myserv",d["body"]["name"]);
+  ASSERT_TRUE(d["body"].HasMember("jobs"));
+  ASSERT_EQ("running",d["body"]["jobs"]["status"]);
   
   // get info on training job
   bool running = true;
@@ -249,7 +264,7 @@ TEST(httpjsonapi,train)
   ASSERT_EQ(200,code);
   
   hja.stop_server();
-}*/
+}
 
 TEST(httpjsonapi,multiservices)
 {
@@ -326,26 +341,6 @@ TEST(httpjsonapi,concurrency)
   ASSERT_TRUE(d.HasMember("status"));
   ASSERT_EQ(201,d["status"]["code"].GetInt());
 
-  // service creation
-  /*std::string serv2 = "myserv2";
-  post_call(luri+"/services/"+serv2,serv_put2,"PUT",
-	    code,jstr);  
-  ASSERT_EQ(201,code);
-  d.Parse(jstr.c_str());
-  ASSERT_FALSE(d.HasParseError());
-  ASSERT_TRUE(d.HasMember("status"));
-  ASSERT_EQ(201,d["status"]["code"].GetInt());*/
-
-  // info call
-  /*get_call(luri+"/info","GET",code,jstr);
-  d = rapidjson::Document();
-  d.Parse(jstr.c_str());
-  ASSERT_EQ(200,code);
-  ASSERT_TRUE(d["head"].HasMember("services"));
-  ASSERT_EQ(2,d["head"]["services"].Size());
-  ASSERT_TRUE(jstr.find("\"name\":\"myserv\"")!=std::string::npos);
-  ASSERT_TRUE(jstr.find("\"name\":\"myserv2\"")!=std::string::npos);*/
-  
   //train async
   std::string train_post = "{\"service\":\"" + serv + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":100}}}}";
   post_call(luri+"/train",train_post,"POST",code,jstr);

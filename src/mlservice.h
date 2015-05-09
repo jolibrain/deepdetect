@@ -144,12 +144,30 @@ namespace dd
      *        To be surcharged in related classes
      * @return status data object
      */
-    APIData status() const
+    APIData status()
     {
       APIData ad;
       ad.add("name",_sname);
       ad.add("description",_description);
       ad.add("mllib",this->_libname);
+      std::vector<APIData> vad;
+      std::lock_guard<std::mutex> lock(_tjobs_mutex);
+      auto hit = _training_jobs.begin();
+      while(hit!=_training_jobs.end())
+	{
+	  APIData jad;
+	  jad.add("job",(*hit).first);
+	  int jstatus = (*hit).second._status;
+	  if (jstatus == 0)
+	    jad.add("status","not started");
+	  else if (jstatus == 1)
+	    jad.add("status","running");
+	  else if (jstatus == 2)
+	    jad.add("status","finished");
+	  vad.push_back(jad);
+	  ++hit;
+	}
+      ad.add("jobs",vad);
       return ad;
     }
 
@@ -171,7 +189,8 @@ namespace dd
 				 std::move(tjob(std::async(std::launch::async,
 							   [this,ad,local_tcounter]
 							   {
-							     std::lock_guard<std::shared_timed_mutex> lock(_train_mutex);
+							     // XXX: due to lock below, queued jobs may not start in requested order
+							     std::lock_guard<std::shared_timed_mutex> lock(_train_mutex); // job is pending until lock from another train is freed
 							     APIData out;
 							     int run_code = this->train(ad,out);
 							     std::pair<int,APIData> p(local_tcounter,std::move(out));
