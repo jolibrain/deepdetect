@@ -43,7 +43,7 @@ TEST(caffelib,configure_mlp_template_1)
   std::vector<int> layers = {200};
   APIData ad;
   ad.add("layers",layers);
-  ad.add("activation","PReLU");
+  ad.add("activation","prelu");
   ad.add("dropout",0.6);
   
   CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_mlp_template(ad,net_param,deploy_net_param);
@@ -84,7 +84,7 @@ TEST(caffelib,configure_mlp_template_n)
   std::vector<int> layers = {200,150,75};
   APIData ad;
   ad.add("layers",layers);
-  ad.add("activation","PReLU");
+  ad.add("activation","prelu");
   ad.add("dropout",0.6);
   
   CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_mlp_template(ad,net_param,deploy_net_param);

@@ -23,6 +23,7 @@
 #include "imginputfileconn.h"
 #include "outputconnectorstrategy.h"
 #include "utils/fileops.hpp"
+#include "utils/utils.hpp"
 #include <chrono>
 #include <iostream>
 
@@ -117,7 +118,13 @@ namespace dd
     if (ad.has("layers"))
       layers = ad.get("layers").get<std::vector<int>>();
     if (ad.has("activation"))
-      activation = ad.get("activation").get<std::string>();
+      {
+	activation = ad.get("activation").get<std::string>();
+	if (dd_utils::iequals(activation,"relu"))
+	  activation = "ReLU";
+	else if (dd_utils::iequals(activation,"prelu"))
+	  activation = "PReLU";
+      }
     if (ad.has("dropout"))
       dropout = ad.get("dropout").get<double>();
     if (layers.empty() && activation == "ReLU" && dropout == 0.5)
