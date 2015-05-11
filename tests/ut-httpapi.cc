@@ -367,12 +367,26 @@ TEST(httpjsonapi,concurrency)
   ASSERT_EQ(2,d["head"]["services"].Size());
   ASSERT_TRUE(jstr.find("\"name\":\"myserv\"")!=std::string::npos);
   ASSERT_TRUE(jstr.find("\"name\":\"myserv2\"")!=std::string::npos);
+
+  //train async second job
+  train_post = "{\"service\":\"" + serv2 + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":100}}}}";
+  post_call(luri+"/train",train_post,"POST",code,jstr);
+  ASSERT_EQ(201,code);
+  d.Parse(jstr.c_str());
+  ASSERT_FALSE(d.HasMember("body"));
+
+  sleep(1);
+
+  // get info on job2
+  get_call(luri+"/train?service="+serv2+"&job=1","GET",code,jstr);
+  ASSERT_EQ(200,code);
   
-  // get info on training job
+  // get info on first training job
+  int tmax = 10, t = 0;
   bool running = true;
   while(running)
     {
-      get_call(luri+"/train?service="+serv+"&job=1&timeout=20","GET",code,jstr);
+      get_call(luri+"/train?service="+serv+"&job=1&timeout=1","GET",code,jstr);
       running = jstr.find("running") != std::string::npos;
       if (!running)
 	{
@@ -393,7 +407,38 @@ TEST(httpjsonapi,concurrency)
 	  ASSERT_TRUE(jd2["body"]["measure"].HasMember("iteration"));
 	  ASSERT_TRUE(jd2["body"]["measure"]["iteration"].GetDouble() > 0);
 	}
+      ++t;
+      if (t > tmax)
+	break;
     }
+
+  // delete job1
+  get_call(luri+"/train?service="+serv+"&job=1","DELETE",code,jstr);
+  ASSERT_EQ(200,code);
+  d.Parse(jstr.c_str());
+  ASSERT_TRUE(d.HasMember("head"));
+  ASSERT_TRUE(d["head"].HasMember("status"));
+  ASSERT_EQ("terminated",d["head"]["status"]);
+
+  sleep(1);
+  
+  // get info on job1
+  get_call(luri+"/train?service="+serv+"&job=1","GET",code,jstr);
+  ASSERT_EQ(404,code);
+
+  // delete job2
+  get_call(luri+"/train?service="+serv2+"&job=1","DELETE",code,jstr);
+  ASSERT_EQ(200,code);
+  d.Parse(jstr.c_str());
+  ASSERT_TRUE(d.HasMember("head"));
+  ASSERT_TRUE(d["head"].HasMember("status"));
+  ASSERT_EQ("terminated",d["head"]["status"]);
+
+  sleep(1);
+  
+  // get info on job2
+  get_call(luri+"/train?service="+serv2+"&job=1","GET",code,jstr);
+  ASSERT_EQ(404,code);
   
   // remove services and trained model files
   get_call(luri+"/services/"+serv+"?clear=lib","DELETE",code,jstr);
