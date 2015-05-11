@@ -53,12 +53,12 @@ public:
 		if (jstr != "{")
 		  jstr += ",";
 		jstr += "\"" + vopt.at(0) + "\":";
-		bool is_word = true;
+		bool is_word = false;
 		for (size_t i=0;i<vopt.at(1).size();i++)
 		  {
-		    if (isalpha(vopt.at(1)[i]) == 0)
+		    if (isalpha(vopt.at(1)[i]))
 		      {
-			is_word = false;
+			is_word = true;
 			break;
 		      }
 		  }
