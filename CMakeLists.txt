@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 2.8.8)
 project(deepdetect)
+include(ExternalProject)
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
@@ -43,13 +44,31 @@ configure_file(
 find_package(Eigen3 REQUIRED)
 include_directories("${EIGEN3_INCLUDE_DIR}")
 
+# optional packages
+find_package(CUDA)
+
+# customized Caffe as external project
+message(STATUS "Fetching and compiling customized caffe")
+ExternalProject_Add(
+  caffe_dd
+  PREFIX caffe_dd
+  INSTALL_DIR ${CMAKE_BINARY_DIR}
+  URL https://github.com/beniz/caffe/archive/master_dd_integ.tar.gz
+  CONFIGURE_COMMAND ln -sf Makefile.config.cpu Makefile.config && make
+  INSTALL_COMMAND ""
+  BUILD_IN_SOURCE 1
+  )
+if (CUDA_FOUND)
+  set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${CUDA_INCLUDE_DIRS})
+else()
+  set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src /usr/include/hdf5/serial)
+endif()
+set(CAFFE_LIB_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src /usr/lib/x86_64-linux-gnu/hdf5/serial)
+
 # add the binary tree to the search path for include files
 # so that we will find dd_config.h
 include_directories("${PROJECT_BINARY_DIR}")
 include_directories("${CAFFE_INC_DIR}")
-
-# optional packages
-find_package(CUDA)
 
 # main library, main & tests
 include_directories ("${PROJECT_SOURCE_DIR}/src")
