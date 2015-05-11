@@ -448,3 +448,60 @@ TEST(httpjsonapi,concurrency)
   
   hja.stop_server();
 }
+
+TEST(httpjsonapi,predict)
+{
+  HttpJsonAPI hja;
+  hja.start_server_daemon(host,std::to_string(++port),nthreads);
+  std::string luri = "http://" + host + ":" + std::to_string(port);
+  sleep(2);
+
+  std::string mnist_repo = "../examples/caffe/mnist/";
+  std::string serv_put2 = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  mnist_repo + "\"},\"parameters\":{\"input\":{\"connector\":\"image\"}}}";
+  
+  // service creation
+  int code = 1;
+  std::string jstr;
+  post_call(luri+"/services/"+serv,serv_put2,"PUT",
+	    code,jstr);  
+  ASSERT_EQ(201,code);
+  rapidjson::Document d;
+  d.Parse(jstr.c_str());
+  ASSERT_FALSE(d.HasParseError());
+  ASSERT_TRUE(d.HasMember("status"));
+  ASSERT_EQ(201,d["status"]["code"].GetInt());
+
+  // train sync
+  std::string train_post = "{\"service\":\"" + serv + "\",\"sync\":true,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":200,\"snapshot_prefix\":\""+mnist_repo+"/mylenet\"}},\"output\":{\"measure_hist\":true}}}";
+  post_call(luri+"/train",train_post,"POST",code,jstr);
+  ASSERT_EQ(201,code);
+  JDoc jd;
+  jd.Parse(jstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_TRUE(jd.HasMember("status"));
+  ASSERT_EQ(201,jd["status"]["code"].GetInt());
+  ASSERT_EQ("Created",jd["status"]["msg"]);
+  ASSERT_TRUE(jd.HasMember("head"));
+  ASSERT_EQ("/train",jd["head"]["method"]);
+  ASSERT_TRUE(jd["head"]["time"].GetDouble() > 0);
+  ASSERT_TRUE(jd.HasMember("body"));
+  ASSERT_TRUE(jd["body"].HasMember("measure"));
+  ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() > 0);
+  ASSERT_TRUE(jd["body"]["measure_hist"]["train_loss_hist"].Size() > 0);
+
+  // predict
+  std::string predict_post = "{\"service\":\""+ serv + "\",\"parameters\":{\"input\":{\"bw\":true,\"width\":28,\"height\":28},\"output\":{\"best\":3}},\"data\":[\"" + mnist_repo + "/sample_digit.png\",\"" + mnist_repo + "/sample_digit2.png\"]}";
+  post_call(luri+"/predict",predict_post,"POST",code,jstr);
+  ASSERT_EQ(200,code);
+  jd.Parse(jstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200,jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble() > 0);
+  ASSERT_TRUE(jd["body"]["predictions"][1]["classes"][0]["prob"].GetDouble() > 0);
+
+  // remove services and trained model files
+  get_call(luri+"/services/"+serv+"?clear=lib","DELETE",code,jstr);
+  ASSERT_EQ(200,code);
+  
+  hja.stop_server();
+}
