@@ -342,7 +342,7 @@ TEST(httpjsonapi,concurrency)
   ASSERT_EQ(201,d["status"]["code"].GetInt());
 
   //train async
-  std::string train_post = "{\"service\":\"" + serv + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":100}}}}";
+  std::string train_post = "{\"service\":\"" + serv + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":1000}}}}";
   post_call(luri+"/train",train_post,"POST",code,jstr);
   ASSERT_EQ(201,code);
   d.Parse(jstr.c_str());
@@ -369,7 +369,7 @@ TEST(httpjsonapi,concurrency)
   ASSERT_TRUE(jstr.find("\"name\":\"myserv2\"")!=std::string::npos);
 
   //train async second job
-  train_post = "{\"service\":\"" + serv2 + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":100}}}}";
+  train_post = "{\"service\":\"" + serv2 + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":1000}}}}";
   post_call(luri+"/train",train_post,"POST",code,jstr);
   ASSERT_EQ(201,code);
   d.Parse(jstr.c_str());
