@@ -21,11 +21,8 @@
 
 #include "deepdetect.h"
 #include "httpjsonapi.h"
+#include "utils/httpclient.hpp"
 #include <gtest/gtest.h>
-#include <curlpp/cURLpp.hpp>
-#include <curlpp/Easy.hpp>
-#include <curlpp/Options.hpp>
-#include <curlpp/Infos.hpp>
 #include <iostream>
 
 using namespace dd;
@@ -35,50 +32,6 @@ int port = 8080;
 int nthreads = 10;
 std::string serv = "myserv";
 std::string serv_put = "{\"mllib\":\"caffe\",\"description\":\"example classification service\",\"type\":\"supervised\",\"parameters\":{\"input\":{\"connector\":\"csv\"},\"mllib\":{\"template\":\"mlp\",\"nclasses\":2,\"layers\":[50,50,50],\"activation\":\"PReLU\"}},\"model\":{\"templates\":\"../templates/caffe/\",\"repository\":\".\"}}";
-
-void get_call(const std::string &url,
-	      const std::string &http_method,
-	      int &outcode,
-	      std::string &outstr)
-{
-  curlpp::Cleanup cl;
-  std::ostringstream os;
-  curlpp::Easy request;
-  curlpp::options::WriteStream ws(&os);
-  curlpp::options::CustomRequest pr(http_method);
-  request.setOpt(curlpp::options::Url(url));
-  request.setOpt(ws);
-  request.setOpt(pr);
-  request.perform();
-  outstr = os.str();
-  std::cout << "outstr=" << outstr << std::endl;
-  outcode = curlpp::infos::ResponseCode::get(request);
-}
-
-void post_call(const std::string &url,
-	       const std::string &jcontent,
-	       const std::string &http_method,
-	       int &outcode,
-	       std::string &outstr)
-{
-  curlpp::Cleanup cl;
-  std::ostringstream os;
-  curlpp::Easy request_put;
-  curlpp::options::WriteStream ws(&os);
-  curlpp::options::CustomRequest pr(http_method);
-  request_put.setOpt(curlpp::options::Url(url));
-  request_put.setOpt(ws);
-  request_put.setOpt(pr);
-  std::list<std::string> header;
-  header.push_back("Content-Type: application/json");
-  request_put.setOpt(curlpp::options::HttpHeader(header));
-  request_put.setOpt(curlpp::options::PostFields(jcontent));
-  request_put.setOpt(curlpp::options::PostFieldSize(jcontent.length()));
-  request_put.perform();
-  outstr = os.str();
-  std::cout << "outstr=" << outstr << std::endl;
-  outcode = curlpp::infos::ResponseCode::get(request_put);
-}
 
 TEST(httpjsonapi,info)
 {
@@ -90,7 +43,7 @@ TEST(httpjsonapi,info)
   
   int code = -1;
   std::string jstr;
-  get_call(luri+"/info","GET",code,jstr);
+  httpclient::get_call(luri+"/info","GET",code,jstr);
   
   ASSERT_EQ(200,code);
   rapidjson::Document d;
@@ -115,7 +68,7 @@ TEST(httpjsonapi,services)
   // service creation
   int code = 1;
   std::string jstr;
-  post_call(luri+"/services/"+serv,serv_put,"PUT",
+  httpclient::post_call(luri+"/services/"+serv,serv_put,"PUT",
 	    code,jstr);  
   ASSERT_EQ(201,code);
   rapidjson::Document d;
@@ -125,7 +78,7 @@ TEST(httpjsonapi,services)
   ASSERT_EQ(201,d["status"]["code"].GetInt());
 
   // service info
-  get_call(luri+"/services/"+serv,"GET",code,jstr);
+  httpclient::get_call(luri+"/services/"+serv,"GET",code,jstr);
   d = rapidjson::Document();
   d.Parse(jstr.c_str());
   ASSERT_EQ(200,code);
@@ -136,7 +89,7 @@ TEST(httpjsonapi,services)
   ASSERT_TRUE(d["body"].HasMember("jobs"));
   
   // info call
-  get_call(luri+"/info","GET",code,jstr);
+  httpclient::get_call(luri+"/info","GET",code,jstr);
   d = rapidjson::Document();
   d.Parse(jstr.c_str());
   ASSERT_EQ(200,code);
@@ -144,12 +97,11 @@ TEST(httpjsonapi,services)
   ASSERT_EQ(1,d["head"]["services"].Size());
 
   // delete call
-  get_call(luri+"/services/"+serv,"DELETE",code,jstr);
-  //d.Parse(jstr.c_str());
+  httpclient::get_call(luri+"/services/"+serv,"DELETE",code,jstr);
   ASSERT_EQ(200,code);
 
   // info call
-  get_call(luri+"/info","GET",code,jstr);
+  httpclient::get_call(luri+"/info","GET",code,jstr);
   d = rapidjson::Document();
   d.Parse(jstr.c_str());
   ASSERT_EQ(200,code);
@@ -157,7 +109,7 @@ TEST(httpjsonapi,services)
   ASSERT_EQ(0,d["head"]["services"].Size());
 
   // service info
-  get_call(luri+"/services/"+serv,"GET",code,jstr);
+  httpclient::get_call(luri+"/services/"+serv,"GET",code,jstr);
   d = rapidjson::Document();
   d.Parse(jstr.c_str());
   ASSERT_EQ(404,code);
@@ -179,8 +131,8 @@ TEST(httpjsonapi,train)
   // service creation
   int code = 1;
   std::string jstr;
-  post_call(luri+"/services/"+serv,serv_put2,"PUT",
-	    code,jstr);  
+  httpclient::post_call(luri+"/services/"+serv,serv_put2,"PUT",
+			 code,jstr);  
   ASSERT_EQ(201,code);
   rapidjson::Document d;
   d.Parse(jstr.c_str());
@@ -190,7 +142,7 @@ TEST(httpjsonapi,train)
 
   //train blocking
   std::string train_post = "{\"service\":\"" + serv + "\",\"async\":false,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":100}}}}";
-  post_call(luri+"/train",train_post,"POST",code,jstr);
+  httpclient::post_call(luri+"/train",train_post,"POST",code,jstr);
   ASSERT_EQ(201,code);
   d.Parse(jstr.c_str());
   ASSERT_TRUE(d.HasMember("body"));
@@ -199,12 +151,12 @@ TEST(httpjsonapi,train)
   ASSERT_TRUE(d["body"]["measure"]["train_loss"].GetDouble()>0.0);
   
   // remove service and trained model files
-  get_call(luri+"/services/"+serv+"?clear=lib","DELETE",code,jstr);
+  httpclient::get_call(luri+"/services/"+serv+"?clear=lib","DELETE",code,jstr);
   ASSERT_EQ(200,code);
 
   // service creation
-  post_call(luri+"/services/"+serv,serv_put2,"PUT",
-	    code,jstr);  
+  httpclient::post_call(luri+"/services/"+serv,serv_put2,"PUT",
+			 code,jstr);  
   ASSERT_EQ(201,code);
   d.Parse(jstr.c_str());
   ASSERT_FALSE(d.HasParseError());
@@ -213,7 +165,7 @@ TEST(httpjsonapi,train)
   
   //train async
   train_post = "{\"service\":\"" + serv + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":100}}}}";
-  post_call(luri+"/train",train_post,"POST",code,jstr);
+  httpclient::post_call(luri+"/train",train_post,"POST",code,jstr);
   ASSERT_EQ(201,code);
   d.Parse(jstr.c_str());
   ASSERT_FALSE(d.HasMember("body"));
@@ -221,7 +173,7 @@ TEST(httpjsonapi,train)
   sleep(1);
 
   // service info
-  get_call(luri+"/services/"+serv,"GET",code,jstr);
+  httpclient::get_call(luri+"/services/"+serv,"GET",code,jstr);
   d = rapidjson::Document();
   d.Parse(jstr.c_str());
   ASSERT_EQ(200,code);
@@ -236,7 +188,7 @@ TEST(httpjsonapi,train)
   bool running = true;
   while(running)
     {
-      get_call(luri+"/train?service="+serv+"&job=1&timeout=1","GET",code,jstr);
+      httpclient::get_call(luri+"/train?service="+serv+"&job=1&timeout=1","GET",code,jstr);
       running = jstr.find("running") != std::string::npos;
       if (!running)
 	{
@@ -260,7 +212,7 @@ TEST(httpjsonapi,train)
     }
   
   // remove service and trained model files
-  get_call(luri+"/services/"+serv+"?clear=lib","DELETE",code,jstr);
+  httpclient::get_call(luri+"/services/"+serv+"?clear=lib","DELETE",code,jstr);
   ASSERT_EQ(200,code);
   
   hja.stop_server();
@@ -280,8 +232,8 @@ TEST(httpjsonapi,multiservices)
   // service creation
   int code = 1;
   std::string jstr;
-  post_call(luri+"/services/"+serv,serv_put2,"PUT",
-	    code,jstr);  
+  httpclient::post_call(luri+"/services/"+serv,serv_put2,"PUT",
+			 code,jstr);  
   ASSERT_EQ(201,code);
   rapidjson::Document d;
   d.Parse(jstr.c_str());
@@ -291,8 +243,8 @@ TEST(httpjsonapi,multiservices)
 
   // service creation
   std::string serv2 = "myserv2";
-  post_call(luri+"/services/"+serv2,serv_put2,"PUT",
-	    code,jstr);  
+  httpclient::post_call(luri+"/services/"+serv2,serv_put2,"PUT",
+			 code,jstr);  
   ASSERT_EQ(201,code);
   d.Parse(jstr.c_str());
   ASSERT_FALSE(d.HasParseError());
@@ -300,7 +252,7 @@ TEST(httpjsonapi,multiservices)
   ASSERT_EQ(201,d["status"]["code"].GetInt());
 
   // info call
-  get_call(luri+"/info","GET",code,jstr);
+  httpclient::get_call(luri+"/info","GET",code,jstr);
   d = rapidjson::Document();
   d.Parse(jstr.c_str());
   ASSERT_EQ(200,code);
@@ -310,9 +262,9 @@ TEST(httpjsonapi,multiservices)
   ASSERT_TRUE(jstr.find("\"name\":\"myserv2\"")!=std::string::npos);
   
   // remove services and trained model files
-  get_call(luri+"/services/"+serv+"?clear=lib","DELETE",code,jstr);
+  httpclient::get_call(luri+"/services/"+serv+"?clear=lib","DELETE",code,jstr);
   ASSERT_EQ(200,code);
-  get_call(luri+"/services/"+serv2+"?clear=lib","DELETE",code,jstr);
+  httpclient::get_call(luri+"/services/"+serv2+"?clear=lib","DELETE",code,jstr);
   ASSERT_EQ(200,code);
   
   hja.stop_server();
@@ -332,8 +284,8 @@ TEST(httpjsonapi,concurrency)
   // service creation
   int code = 1;
   std::string jstr;
-  post_call(luri+"/services/"+serv,serv_put2,"PUT",
-	    code,jstr);  
+  httpclient::post_call(luri+"/services/"+serv,serv_put2,"PUT",
+			 code,jstr);  
   ASSERT_EQ(201,code);
   rapidjson::Document d;
   d.Parse(jstr.c_str());
@@ -343,15 +295,15 @@ TEST(httpjsonapi,concurrency)
 
   //train async
   std::string train_post = "{\"service\":\"" + serv + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":1000}}}}";
-  post_call(luri+"/train",train_post,"POST",code,jstr);
+  httpclient::post_call(luri+"/train",train_post,"POST",code,jstr);
   ASSERT_EQ(201,code);
   d.Parse(jstr.c_str());
   ASSERT_FALSE(d.HasMember("body"));
   
   // service creation
   std::string serv2 = "myserv2";
-  post_call(luri+"/services/"+serv2,serv_put2,"PUT",
-	    code,jstr);  
+  httpclient::post_call(luri+"/services/"+serv2,serv_put2,"PUT",
+			 code,jstr);  
   ASSERT_EQ(201,code);
   d.Parse(jstr.c_str());
   ASSERT_FALSE(d.HasParseError());
@@ -359,7 +311,7 @@ TEST(httpjsonapi,concurrency)
   ASSERT_EQ(201,d["status"]["code"].GetInt());
 
   // info call
-  get_call(luri+"/info","GET",code,jstr);
+  httpclient::get_call(luri+"/info","GET",code,jstr);
   d = rapidjson::Document();
   d.Parse(jstr.c_str());
   ASSERT_EQ(200,code);
@@ -370,7 +322,7 @@ TEST(httpjsonapi,concurrency)
 
   //train async second job
   train_post = "{\"service\":\"" + serv2 + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":1000}}}}";
-  post_call(luri+"/train",train_post,"POST",code,jstr);
+  httpclient::post_call(luri+"/train",train_post,"POST",code,jstr);
   ASSERT_EQ(201,code);
   d.Parse(jstr.c_str());
   ASSERT_FALSE(d.HasMember("body"));
@@ -378,7 +330,7 @@ TEST(httpjsonapi,concurrency)
   sleep(1);
 
   // get info on job2
-  get_call(luri+"/train?service="+serv2+"&job=1","GET",code,jstr);
+  httpclient::get_call(luri+"/train?service="+serv2+"&job=1","GET",code,jstr);
   ASSERT_EQ(200,code);
   
   // get info on first training job
@@ -386,7 +338,7 @@ TEST(httpjsonapi,concurrency)
   bool running = true;
   while(running)
     {
-      get_call(luri+"/train?service="+serv+"&job=1&timeout=1","GET",code,jstr);
+      httpclient::get_call(luri+"/train?service="+serv+"&job=1&timeout=1","GET",code,jstr);
       running = jstr.find("running") != std::string::npos;
       if (!running)
 	{
@@ -413,7 +365,7 @@ TEST(httpjsonapi,concurrency)
     }
 
   // delete job1
-  get_call(luri+"/train?service="+serv+"&job=1","DELETE",code,jstr);
+  httpclient::get_call(luri+"/train?service="+serv+"&job=1","DELETE",code,jstr);
   ASSERT_EQ(200,code);
   d.Parse(jstr.c_str());
   ASSERT_TRUE(d.HasMember("head"));
@@ -423,11 +375,11 @@ TEST(httpjsonapi,concurrency)
   sleep(1);
   
   // get info on job1
-  get_call(luri+"/train?service="+serv+"&job=1","GET",code,jstr);
+  httpclient::get_call(luri+"/train?service="+serv+"&job=1","GET",code,jstr);
   ASSERT_EQ(404,code);
 
   // delete job2
-  get_call(luri+"/train?service="+serv2+"&job=1","DELETE",code,jstr);
+  httpclient::get_call(luri+"/train?service="+serv2+"&job=1","DELETE",code,jstr);
   ASSERT_EQ(200,code);
   d.Parse(jstr.c_str());
   ASSERT_TRUE(d.HasMember("head"));
@@ -437,13 +389,13 @@ TEST(httpjsonapi,concurrency)
   sleep(1);
   
   // get info on job2
-  get_call(luri+"/train?service="+serv2+"&job=1","GET",code,jstr);
+  httpclient::get_call(luri+"/train?service="+serv2+"&job=1","GET",code,jstr);
   ASSERT_EQ(404,code);
   
   // remove services and trained model files
-  get_call(luri+"/services/"+serv+"?clear=lib","DELETE",code,jstr);
+  httpclient::get_call(luri+"/services/"+serv+"?clear=lib","DELETE",code,jstr);
   ASSERT_EQ(200,code);
-  get_call(luri+"/services/"+serv2+"?clear=lib","DELETE",code,jstr);
+  httpclient::get_call(luri+"/services/"+serv2+"?clear=lib","DELETE",code,jstr);
   ASSERT_EQ(200,code);
   
   hja.stop_server();
@@ -462,8 +414,8 @@ TEST(httpjsonapi,predict)
   // service creation
   int code = 1;
   std::string jstr;
-  post_call(luri+"/services/"+serv,serv_put2,"PUT",
-	    code,jstr);  
+  httpclient::post_call(luri+"/services/"+serv,serv_put2,"PUT",
+			 code,jstr);  
   ASSERT_EQ(201,code);
   rapidjson::Document d;
   d.Parse(jstr.c_str());
@@ -473,7 +425,7 @@ TEST(httpjsonapi,predict)
 
   // train sync
   std::string train_post = "{\"service\":\"" + serv + "\",\"sync\":true,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":200,\"snapshot_prefix\":\""+mnist_repo+"/mylenet\"}},\"output\":{\"measure_hist\":true}}}";
-  post_call(luri+"/train",train_post,"POST",code,jstr);
+  httpclient::post_call(luri+"/train",train_post,"POST",code,jstr);
   ASSERT_EQ(201,code);
   JDoc jd;
   jd.Parse(jstr.c_str());
@@ -491,7 +443,7 @@ TEST(httpjsonapi,predict)
 
   // predict
   std::string predict_post = "{\"service\":\""+ serv + "\",\"parameters\":{\"input\":{\"bw\":true,\"width\":28,\"height\":28},\"output\":{\"best\":3}},\"data\":[\"" + mnist_repo + "/sample_digit.png\",\"" + mnist_repo + "/sample_digit2.png\"]}";
-  post_call(luri+"/predict",predict_post,"POST",code,jstr);
+  httpclient::post_call(luri+"/predict",predict_post,"POST",code,jstr);
   ASSERT_EQ(200,code);
   jd.Parse(jstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
@@ -500,7 +452,7 @@ TEST(httpjsonapi,predict)
   ASSERT_TRUE(jd["body"]["predictions"][1]["classes"][0]["prob"].GetDouble() > 0);
 
   // remove services and trained model files
-  get_call(luri+"/services/"+serv+"?clear=lib","DELETE",code,jstr);
+  httpclient::get_call(luri+"/services/"+serv+"?clear=lib","DELETE",code,jstr);
   ASSERT_EQ(200,code);
   
   hja.stop_server();

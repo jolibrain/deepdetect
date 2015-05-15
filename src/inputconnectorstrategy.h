@@ -23,11 +23,45 @@
 #define INPUTCONNECTORSTRATEGY_H
 
 #include "apidata.h"
+#include "utils/httpclient.hpp"
 #include <exception>
 
 namespace dd
 {
 
+  /**
+   * \brief fetched data element
+   * Note: functions read_mem and read_file must be defined in template type DDT
+   */
+  template <class DDT> class DataEl
+  {
+  public:
+    DataEl() {}
+    ~DataEl() {}
+    
+    int read_element(const std::string &uri)
+    {
+      if (uri.find("https://") != std::string::npos
+	  || uri.find("http://") != std::string::npos
+	  || uri.find("file://") != std::string::npos)
+	{
+	  int outcode = -1;
+	  httpclient::get_call(uri,"GET",outcode,_content);
+	  if (outcode != 200)
+	    return -1;
+	  return _ctype.read_mem(_content);
+	}
+      else
+	{
+	  return _ctype.read_file(uri);
+	}
+      return 0;
+    }
+    
+    std::string _content;
+    DDT _ctype;
+  };
+  
   /**
    * \brief bad parameter exception
    */
@@ -55,7 +89,7 @@ namespace dd
   private:
     std::string _s;
   };
-
+  
   /**
    * \brief main input connector class
    */

@@ -10,21 +10,21 @@ find_package(GTest)
 include_directories(${GTEST_INCLUDE_DIRS})
 if (GTEST_FOUND)
   add_executable(ut_apidata ut-apidata.cc)
-  target_link_libraries(ut_apidata ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc ${CAFFE_LIB_DEPS})
+  target_link_libraries(ut_apidata ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc curlpp curl ${CAFFE_LIB_DEPS})
   add_test(
     NAME ut_apidata
     COMMAND ut_apidata
     )
   
   add_executable(ut_conn ut-conn.cc)
-  target_link_libraries(ut_conn ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc ${CAFFE_LIB_DEPS})
+  target_link_libraries(ut_conn ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc curlpp curl ${CAFFE_LIB_DEPS})
   add_test(
     NAME ut_conn
     COMMAND ut_conn
     )
   
   add_executable(ut_jsonapi ut-jsonapi.cc)
-  target_link_libraries(ut_jsonapi ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc ${CAFFE_LIB_DEPS})
+  target_link_libraries(ut_jsonapi ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc curlpp curl ${CAFFE_LIB_DEPS})
   add_test(
     NAME ut_jsonapi
     COMMAND ut_jsonapi
@@ -34,7 +34,7 @@ if (GTEST_FOUND)
   target_link_libraries(test_server boost_thread cppnetlib-uri cppnetlib-client-connections boost_system crypto ssl)
 
   add_executable(ut_caffe_mlp ut-caffe-mlp.cc)
-  target_link_libraries(ut_caffe_mlp ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc ${CAFFE_LIB_DEPS})
+  target_link_libraries(ut_caffe_mlp ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc curlpp curl ${CAFFE_LIB_DEPS})
   add_test(
     NAME ut_caffe_mlp
     COMMAND ut_caffe_mlp
@@ -73,7 +73,7 @@ if (GTEST_FOUND)
   endif()
   
   add_executable(ut_caffeapi ut-caffeapi.cc)
-  target_link_libraries(ut_caffeapi ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc ${CAFFE_LIB_DEPS})
+  target_link_libraries(ut_caffeapi ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc curlpp curl ${CAFFE_LIB_DEPS})
   add_test(
     NAME ut_caffeapi
     COMMAND ut_caffeapi

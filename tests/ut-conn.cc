@@ -20,6 +20,7 @@
  */
 
 #include "apidata.h"
+#include "imginputfileconn.h"
 #include "outputconnectorstrategy.h"
 #include <gtest/gtest.h>
 #include <iostream>
@@ -70,4 +71,29 @@ TEST(outputconn,auc)
   SupervisedOutput so;
   double auc = so.auc(res_ad);
   ASSERT_EQ(0.75,auc);
+}
+
+TEST(inputconn,img)
+{
+  std::string mnist_repo = "../examples/caffe/mnist/";
+  APIData ad;
+  std::vector<std::string> uris = {mnist_repo + "/sample_digit.png","http://juban.free.fr/dd/examples/caffe/mnist/sample_digit.png"};
+  ad.add("data",uris);
+  ImgInputFileConn iifc;
+  try
+    {
+      iifc.transform(ad);
+    }
+  catch (InputConnectorBadParamException &e)
+    {
+      ASSERT_FALSE(true); // trigger
+    }
+  ASSERT_EQ(2,iifc._uris.size());
+  ASSERT_EQ(2,iifc._images.size());
+  cv::Mat diff;
+  cv::compare(iifc._images.at(0),iifc._images.at(1),diff,cv::CMP_NE);
+  std::vector<cv::Mat> channels(3);
+  cv::split(diff,channels);
+  for (int i=0;i<3;i++)
+    ASSERT_TRUE(cv::countNonZero(channels.at(i))==0); // the two images must be identical
 }

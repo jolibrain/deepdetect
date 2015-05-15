@@ -29,6 +29,35 @@
 
 namespace dd
 {
+  
+  class DDImg
+  {
+  public:
+    DDImg() {}
+    ~DDImg() {}
+
+    int read_file(const std::string &fname)
+    {
+      _img = cv::imread(fname,_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR);
+      if (_img.empty())
+	return -1;
+      return 0;
+    }
+
+    int read_mem(const std::string &content)
+    {
+      std::vector<unsigned char> vdat(content.begin(),content.end());
+      cv::Mat timg(vdat,true);
+      _img = cv::Mat(cv::imdecode(timg,_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR));
+      if (_img.empty())
+	return -1;
+      return 0;
+    }
+    
+    cv::Mat _img;      
+    bool _bw = false;
+  };
+  
   class ImgInputFileConn : public InputConnectorStrategy
   {
   public:
@@ -86,10 +115,14 @@ namespace dd
 	      fillup_parameters(ad_param.getobj("input"));
 	    }
 	}
+      //TODO: could parallelize the reading then push
       for (size_t i=0;i<_uris.size();i++)
 	{
-	  cv::Mat imaget = cv::imread(_uris.at(i),_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR); //TODO: catch errors (size = 0 for file not found)
-	  if (!imaget.data)
+	  //cv::Mat imaget = cv::imread(_uris.at(i),_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR); //TODO: catch errors (size = 0 for file not found)
+	  DataEl<DDImg> dimg;
+	  dimg._ctype._bw = _bw;
+	  if (dimg.read_element(_uris.at(i)))
+	  //if (!imaget.data)
 	    {
 	      throw InputConnectorBadParamException("no data for image " + _uris.at(i));
 	    }
@@ -98,7 +131,8 @@ namespace dd
 	    cv::waitKey(0);*/
 	  cv::Size size(_width,_height);
 	  cv::Mat image;
-	  cv::resize(imaget,image,size);
+	  //cv::resize(imaget,image,size);
+	  cv::resize(dimg._ctype._img,image,size);
 	  _images.push_back(image);
 	}
       // shuffle before possible split
