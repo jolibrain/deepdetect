@@ -9,12 +9,13 @@ DeepDetect implements support for supervised deep learning of images and other d
 Current features include:
 
 - high-level API for machine learning
+- JSON commnunication format
 - dedicated server with support for asynchronous training calls
 - high performances, benefit from multicores and GPU
 - connector to handle large collections of images
 - connector to handle CSV files with preprocessing capabilities
-- support for a range of built-in model assessment measures (e.g. F1, multiclass log loss, ...)
-- no database, all information stored on the filesystem
+- range of built-in model assessment measures (e.g. F1, multiclass log loss, ...)
+- no database dependency and sync, all information organized on the filesystem
 - flexible template output format to simplify connection to external applications
 - templates for the most useful neural architectures (e.g. Googlenet, Alexnet, mlp, logistic regression)
 
@@ -30,6 +31,8 @@ Dependencies:
 - OpenCV >= 2.4
 - [cppnetlib](http://cpp-netlib.org/)
 - Boost
+- [curl](http://curl.haxx.se/)
+- [curlpp](http://www.curlpp.org/)
 - [gtest](https://code.google.com/p/googletest/) for unit testing (optional);
 
 Caffe Dependencies:
@@ -52,7 +55,7 @@ Below are instructions for Linux systems.
 
 Beware of dependencies, typically on Debian/Ubuntu Linux, do:
 ```
-sudo apt-get install build-essential libgoogle-glog-dev libgflags-dev libeigen3-dev libopencv-dev libcppnetlib-dev libboost-dev
+sudo apt-get install build-essential libgoogle-glog-dev libgflags-dev libeigen3-dev libopencv-dev libcppnetlib-dev libboost-dev libcurlpp-dev libcurl4-openssl-dev
 ```
 and for Caffe:
 ```
@@ -75,6 +78,16 @@ To prepare for tests, compile with:
 ```
 cmake -DBUILD_TESTS=ON ..
 make
+```
+
+### Start the server
+
+```
+cd build/main
+./dede
+
+DeepDetect [ commit 73d4e638498d51254862572fe577a21ab8de2ef1 ]
+Running DeepDetect HTTP server on localhost:8080
 ```
 
 ### Run examples
