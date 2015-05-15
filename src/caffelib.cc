@@ -696,7 +696,6 @@ namespace dd
     TInputConnectorStrategy inputc(this->_inputc);
     inputc.transform(ad); //TODO: catch errors ?
     int batch_size = inputc.batch_size();
-    std::cout << "predict batch size=" << batch_size << std::endl;
     boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->set_batch_size(batch_size);
     boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(inputc._dv);
     
