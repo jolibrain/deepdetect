@@ -92,13 +92,14 @@ namespace dd
     else if (err == 2)
       throw MLLibBadParamException("failed to create destination deploy solver file " + dest_deploy_net);
 
-    //TODO: if mlp template, set the net structure as number of layers etc ?
+    // if mlp template, set the net structure as number of layers.
+    //TODO: support for regression
     if (model_tmpl == "mlp")
       {
 	caffe::NetParameter net_param,deploy_net_param;
 	caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
 	caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
-	configure_mlp_template(ad,net_param,deploy_net_param);
+	configure_mlp_template(ad,_nclasses,net_param,deploy_net_param);
 	caffe::WriteProtoToTextFile(net_param,dest_net);
 	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
       }
@@ -108,6 +109,7 @@ namespace dd
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_mlp_template(const APIData &ad,
+												   const int &cnclasses,
 												   caffe::NetParameter &net_param,
 												   caffe::NetParameter &deploy_net_param)
   {
@@ -160,7 +162,18 @@ namespace dd
     
     //- add as many other layers as requested.
     if (layers.size() == 1)
-      return; // nothing to do
+      {
+	if (!cnclasses) // leave classes unchanged
+	  return;
+	else // adapt classes number
+	  {
+	    caffe::LayerParameter *lparam = net_param.mutable_layer(5);
+	    caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(3);
+	    lparam->mutable_inner_product_param()->set_num_output(cnclasses);
+	    dlparam->mutable_inner_product_param()->set_num_output(cnclasses);
+	    return;
+	  }
+      }
     int nclasses;
     int rl = 5;
     int drl = 3;
@@ -170,7 +183,9 @@ namespace dd
 	  {
 	    //std::cerr << "second inner product layer\n";
 	    caffe::LayerParameter *lparam = net_param.mutable_layer(rl);
-	    nclasses = lparam->mutable_inner_product_param()->num_output();
+	    if (!cnclasses) // if unknown we keep the default one
+	      nclasses = lparam->mutable_inner_product_param()->num_output();
+	    else nclasses = cnclasses;
 	    lparam->mutable_inner_product_param()->set_num_output(layers.at(l));
 	    ++rl;
 	    caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(drl);
@@ -260,7 +275,6 @@ namespace dd
       }
 
     // add remaining softmax layers
-    //std::cerr << "last inner product layer\n";
     std::string prec_ip = "ip" + std::to_string(layers.size());
     std::string last_ip = "ip" + std::to_string(layers.size()+1);
     caffe::LayerParameter *lparam = net_param.add_layer(); // last inner product before softmax

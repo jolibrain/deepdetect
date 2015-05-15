@@ -60,8 +60,16 @@ namespace dd
      */
     void instantiate_template(const APIData &ad);
 
-    //TODO
+    /**
+     * \brief configure an MLP template
+     * @param ad the template data object
+     * @param cnclasses the number of output classes, if any
+     * @param net_param the training net object
+     * @param deploy_net_param the deploy net object
+     */
+      //TODO: template support for regression
     static void configure_mlp_template(const APIData &ad,
+				       const int &cnclasses,
 				       caffe::NetParameter &net_param,
 				       caffe::NetParameter &deploy_net_param);
       
