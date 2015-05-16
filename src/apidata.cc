@@ -71,12 +71,6 @@ namespace dd
     return vout(vad);
   }
   
-  template<typename T>
-  vout visitor_vad::operator() (T &t)
-  {
-    return process(t);
-  }
-
   /*- APIData -*/
   APIData::APIData(const JVal &jval)
   {

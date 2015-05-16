@@ -330,7 +330,7 @@ namespace dd
     std::string _description; /**< optional description of the service. */
 
     std::mutex _tjobs_mutex; /**< mutex around training jobs. */
-    std::atomic<int> _tjobs_counter = 0; /**< training jobs counter. */
+    std::atomic<int> _tjobs_counter = {0}; /**< training jobs counter. */
     std::unordered_map<int,tjob> _training_jobs; // XXX: the futures' dtor blocks if the object is being terminated
     std::unordered_map<int,APIData> _training_out;
 

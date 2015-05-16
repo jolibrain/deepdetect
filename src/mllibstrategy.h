@@ -231,7 +231,7 @@ namespace dd
     std::unordered_map<std::string,double> _meas; /**< model measures, used as a per service value. */
     std::unordered_map<std::string,std::vector<double>> _meas_per_iter; /**< model measures per iteration. */
 
-    std::atomic<bool> _tjob_running = false; /**< whether a training job is running with this lib instance. */
+    std::atomic<bool> _tjob_running = {false}; /**< whether a training job is running with this lib instance. */
 
     bool _online = false; /**< whether the algorithm is online, i.e. it interleaves training and prediction calls.
 			     When not, prediction calls are rejected while training is running. */

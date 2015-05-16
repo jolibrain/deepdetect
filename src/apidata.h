@@ -73,7 +73,10 @@ namespace dd
     vout process(const std::vector<APIData> &vad);
     
     template<typename T>
-      vout operator() (T &t);
+      vout operator() (const T &t)
+      {
+	return process(t);
+      }
   };
 
   /**
