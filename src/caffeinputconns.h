@@ -326,7 +326,7 @@ namespace dd
 	    {
 	      datum.set_label(static_cast<int>(vf.at(i)+this->_label_offset));
 	    }
-	  else if (_columns.at(i) == _id)
+	  else if (!_columns.empty() && _columns.at(i) == _id) // skip id
 	    {
 	      continue;
 	    }

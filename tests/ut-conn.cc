@@ -27,7 +27,7 @@
 
 using namespace dd;
 
-TEST(outputconn,acc)
+/*TEST(outputconn,acc)
 {
   std::vector<int> targets = {0, 0, 1, 1};
   std::vector<double> pred1 = {0.7, 0.3};
@@ -96,4 +96,60 @@ TEST(inputconn,img)
   cv::split(diff,channels);
   for (int i=0;i<3;i++)
     ASSERT_TRUE(cv::countNonZero(channels.at(i))==0); // the two images must be identical
+}*/
+
+//TODO: test csv scale, separator, ...
+TEST(inputconn,csv_mem1)
+{
+  std::string no_header = "2590,56,2,212,5";
+  std::vector<std::string> vdata = { no_header };
+  APIData ad;
+  ad.add("data",vdata);
+  CSVInputFileConn cifc;
+  cifc._train = false; // prediction mode
+  try
+    {
+      cifc.transform(ad);
+    }
+  catch (std::exception &e)
+    {
+      std::cerr << "exception=" << e.what() << std::endl;
+      ASSERT_FALSE(true);
+    }
+  ASSERT_EQ(1,cifc._uris.size());
+  ASSERT_EQ(1,cifc._csvdata.size());
+  ASSERT_EQ(5,cifc._csvdata.at(0)._v.size());
+  ASSERT_EQ(2590,cifc._csvdata.at(0)._v.at(0));
+}
+
+TEST(inputconn,csv_mem2)
+{
+  std::string header = "id,val1,val2,val3,val4,val5";
+  std::string d1 = "2,2590,56,2,212,5";
+  std::vector<std::string> vdata = { header, d1 };
+  APIData ad;
+  ad.add("data",vdata);
+  APIData pad,pinp;
+  pinp.add("id","id");
+  std::vector<APIData> vpinp = { pinp };
+  pad.add("input",vpinp);
+  std::vector<APIData> vpad = { pad };
+  ad.add("parameters",vpad);
+  CSVInputFileConn cifc;
+  cifc._train = false;
+  try
+    {
+      cifc.transform(ad);
+    }
+  catch (std::exception &e)
+    {
+      std::cerr << "exception=" << e.what() << std::endl;
+      ASSERT_FALSE(true);
+    }
+  ASSERT_EQ(2,cifc._uris.size());
+  ASSERT_EQ(1,cifc._csvdata.size());
+  ASSERT_TRUE(!cifc._columns.empty());
+  ASSERT_EQ(6,cifc._csvdata.at(0)._v.size());
+  ASSERT_EQ(2,cifc._csvdata.at(0)._v.at(0));
+  ASSERT_EQ(2590,cifc._csvdata.at(0)._v.at(1));
 }

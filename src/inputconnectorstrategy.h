@@ -23,6 +23,7 @@
 #define INPUTCONNECTORSTRATEGY_H
 
 #include "apidata.h"
+#include "utils/fileops.hpp"
 #include "utils/httpclient.hpp"
 #include <exception>
 
@@ -38,7 +39,7 @@ namespace dd
   public:
     DataEl() {}
     ~DataEl() {}
-    
+
     int read_element(const std::string &uri)
     {
       if (uri.find("https://") != std::string::npos
@@ -51,10 +52,11 @@ namespace dd
 	    return -1;
 	  return _ctype.read_mem(_content);
 	}
-      else
+      else if (fileops::file_exists(uri))
 	{
 	  return _ctype.read_file(uri);
 	}
+      else return _ctype.read_mem(uri);
       return 0;
     }
     
