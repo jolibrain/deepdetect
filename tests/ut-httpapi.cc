@@ -33,7 +33,19 @@ int nthreads = 10;
 std::string serv = "myserv";
 std::string serv_put = "{\"mllib\":\"caffe\",\"description\":\"example classification service\",\"type\":\"supervised\",\"parameters\":{\"input\":{\"connector\":\"csv\"},\"mllib\":{\"template\":\"mlp\",\"nclasses\":2,\"layers\":[50,50,50],\"activation\":\"PReLU\"}},\"model\":{\"templates\":\"../templates/caffe/\",\"repository\":\".\"}}";
 
-TEST(httpjsonapi,info)
+//TODO: unit tests for uri_query_to_json
+
+TEST(httpjsonapi,uri_query_to_json)
+{
+  std::string q = "service=myserv&job=1";
+  std::string p = uri_query_to_json(q);
+  ASSERT_EQ("{\"service\":\"myserv\",\"job\":1}",p);
+  q += "&parameters.output.measure_hist=true";
+  p = uri_query_to_json(q);
+  ASSERT_EQ("{\"service\":\"myserv\",\"job\":1,\"parameters\":{\"output\":{\"measure_hist\":true}}}",p);
+}
+
+/*TEST(httpjsonapi,info)
 {
   ::google::InitGoogleLogging("ut_httpapi");
   HttpJsonAPI hja;
@@ -115,7 +127,7 @@ TEST(httpjsonapi,services)
   ASSERT_EQ(404,code);
   
   hja.stop_server();
-}
+}*/
 
 TEST(httpjsonapi,train)
 {
@@ -141,13 +153,13 @@ TEST(httpjsonapi,train)
   ASSERT_EQ(201,d["status"]["code"].GetInt());
 
   //train blocking
-  std::string train_post = "{\"service\":\"" + serv + "\",\"async\":false,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":100}}}}";
+  std::string train_post = "{\"service\":\"" + serv + "\",\"async\":false,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":10}}}}";
   httpclient::post_call(luri+"/train",train_post,"POST",code,jstr);
   ASSERT_EQ(201,code);
   d.Parse(jstr.c_str());
   ASSERT_TRUE(d.HasMember("body"));
   ASSERT_TRUE(d["body"].HasMember("measure"));
-  ASSERT_EQ(99,d["body"]["measure"]["iteration"].GetDouble());
+  ASSERT_EQ(9,d["body"]["measure"]["iteration"].GetDouble());
   ASSERT_TRUE(d["body"]["measure"]["train_loss"].GetDouble()>0.0);
   
   // remove service and trained model files
@@ -164,7 +176,7 @@ TEST(httpjsonapi,train)
   ASSERT_EQ(201,d["status"]["code"].GetInt());
   
   //train async
-  train_post = "{\"service\":\"" + serv + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":100}}}}";
+  train_post = "{\"service\":\"" + serv + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":20}}}}";
   httpclient::post_call(luri+"/train",train_post,"POST",code,jstr);
   ASSERT_EQ(201,code);
   d.Parse(jstr.c_str());
@@ -188,10 +200,11 @@ TEST(httpjsonapi,train)
   bool running = true;
   while(running)
     {
-      httpclient::get_call(luri+"/train?service="+serv+"&job=1&timeout=1","GET",code,jstr);
+      httpclient::get_call(luri+"/train?service="+serv+"&job=1&timeout=1&parameters.output.measure_hist=true","GET",code,jstr);
       running = jstr.find("running") != std::string::npos;
-      if (!running)
+      if (running)
 	{
+	  std::cerr << "jstr=" << jstr << std::endl;
 	  JDoc jd2;
 	  jd2.Parse(jstr.c_str());
 	  ASSERT_TRUE(!jd2.HasParseError());
@@ -201,14 +214,16 @@ TEST(httpjsonapi,train)
 	  ASSERT_TRUE(jd2.HasMember("head"));
 	  ASSERT_EQ("/train",jd2["head"]["method"]);
 	  ASSERT_TRUE(jd2["head"]["time"].GetDouble() > 0);
-	  ASSERT_EQ("finished",jd2["head"]["status"]);
+	  ASSERT_EQ("running",jd2["head"]["status"]);
 	  ASSERT_EQ(1,jd2["head"]["job"]);
 	  ASSERT_TRUE(jd2.HasMember("body"));
 	  ASSERT_TRUE(jd2["body"]["measure"].HasMember("train_loss"));
 	  ASSERT_TRUE(jd2["body"]["measure"]["train_loss"].GetDouble() > 0);
 	  ASSERT_TRUE(jd2["body"]["measure"].HasMember("iteration"));
 	  ASSERT_TRUE(jd2["body"]["measure"]["iteration"].GetDouble() > 0);
+	  ASSERT_TRUE(jd2["body"].HasMember("measure_hist"));
 	}
+      else ASSERT_TRUE(jstr.find("finished")!=std::string::npos);
     }
   
   // remove service and trained model files
@@ -218,7 +233,7 @@ TEST(httpjsonapi,train)
   hja.stop_server();
 }
 
-TEST(httpjsonapi,multiservices)
+/*TEST(httpjsonapi,multiservices)
 {
   HttpJsonAPI hja;
   hja.start_server_daemon(host,std::to_string(++port),nthreads);
@@ -456,4 +471,4 @@ TEST(httpjsonapi,predict)
   ASSERT_EQ(200,code);
   
   hja.stop_server();
-}
+  }*/

@@ -24,35 +24,31 @@
 #include <algorithm>
 #include <csignal>
 #include <iostream>
+#include "ext/rapidjson/document.h"
+#include "ext/rapidjson/stringbuffer.h"
+#include "ext/rapidjson/reader.h"
+#include "ext/rapidjson/writer.h"
 #include <gflags/gflags.h>
 
 DEFINE_string(host,"localhost","host for running the server");
 DEFINE_string(port,"8080","server port");
 DEFINE_int32(nthreads,10,"number of HTTP server threads");
 
-class APIHandler
+namespace dd
 {
-public:
-  APIHandler(dd::HttpJsonAPI *hja)
-    :_hja(hja) { }
-  
-  ~APIHandler() { }
-
-  static std::string uri_query_to_json(const std::string &req_query)
+  std::string uri_query_to_json(const std::string &req_query)
   {
-    std::string jstr;
     if (!req_query.empty())
       {
-	jstr = "{";
+	JDoc jd;
+	JVal jsv(rapidjson::kObjectType);
+	jd.SetObject();
 	std::vector<std::string> voptions = dd::dd_utils::split(req_query,'&');
 	for (const std::string o: voptions)
 	  {
 	    std::vector<std::string> vopt = dd::dd_utils::split(o,'=');
 	    if (vopt.size() == 2)
 	      {
-		if (jstr != "{")
-		  jstr += ",";
-		jstr += "\"" + vopt.at(0) + "\":";
 		bool is_word = false;
 		for (size_t i=0;i<vopt.at(1).size();i++)
 		  {
@@ -62,16 +58,62 @@ public:
 			break;
 		      }
 		  }
-		if (is_word) 
-		  jstr += "\"" + vopt.at(1) + "\"";
-		else jstr += vopt.at(1);
+		// we break '.' into JSON sub-objects
+		std::vector<std::string> vpt = dd::dd_utils::split(vopt.at(0),'.');
+		JVal jobj(rapidjson::kObjectType);
+		if (vpt.size() > 1)
+		  {
+		    bool bt = dd::dd_utils::iequals(vopt.at(1),"true");
+		    bool bf = dd::dd_utils::iequals(vopt.at(1),"false");
+		    if (is_word && !bt && !bf)
+		      {
+			jobj.AddMember(JVal().SetString(vpt.back().c_str(),jd.GetAllocator()),JVal().SetString(vopt.at(1).c_str(),jd.GetAllocator()),jd.GetAllocator());
+		      }
+		    else if (bt || bf)
+		      {
+			jobj.AddMember(JVal().SetString(vpt.back().c_str(),jd.GetAllocator()),JVal(bt ? bt : bf),jd.GetAllocator());
+		      }
+		    else jobj.AddMember(JVal().SetString(vpt.back().c_str(),jd.GetAllocator()),JVal(atoi(vopt.at(1).c_str())),jd.GetAllocator());
+		    for (int b=vpt.size()-2;b>0;b--)
+		      {
+			JVal jnobj(rapidjson::kObjectType);
+			jobj = jnobj.AddMember(JVal().SetString(vpt.at(b).c_str(),jd.GetAllocator()),jobj,jd.GetAllocator());
+		      }
+		    jsv.AddMember(JVal().SetString(vpt.at(0).c_str(),jd.GetAllocator()),jobj,jd.GetAllocator());
+		  }
+		else
+		  {
+		    bool bt = dd::dd_utils::iequals(vopt.at(1),"true");
+		    bool bf = dd::dd_utils::iequals(vopt.at(1),"false");
+		    if (is_word && !bt && !bf)
+		      {
+			jsv.AddMember(JVal().SetString(vopt.at(0).c_str(),jd.GetAllocator()),JVal().SetString(vopt.at(1).c_str(),jd.GetAllocator()),jd.GetAllocator());
+		      }
+		    else if (bt || bf)
+		      {
+			jsv.AddMember(JVal().SetString(vopt.at(0).c_str(),jd.GetAllocator()),JVal(bt ? bt : bf),jd.GetAllocator());
+		      }
+		    else jsv.AddMember(JVal().SetString(vopt.at(0).c_str(),jd.GetAllocator()),JVal(atoi(vopt.at(1).c_str())),jd.GetAllocator());
+		  }
 	      }
 	  }
-	jstr += "}";
+	rapidjson::StringBuffer buffer;
+	rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+	jsv.Accept(writer);
+	return buffer.GetString();
       }
-    return jstr;
+    else return "";
   }
+}
+
+class APIHandler
+{
+public:
+  APIHandler(dd::HttpJsonAPI *hja)
+    :_hja(hja) { }
   
+  ~APIHandler() { }
+
   /*static boost::network::http::basic_response<std::string> cstock_reply(int status,
 									std::string const& content) {
     using boost::lexical_cast;
@@ -154,7 +196,7 @@ public:
 	else if (req_method == "DELETE")
 	  {
 	    // DELETE does not accept body so query options are turned into JSON for internal processing
-	    std::string jstr = uri_query_to_json(req_query);
+	    std::string jstr = dd::uri_query_to_json(req_query);
 	    fillup_response(response,_hja->service_delete(sname,jstr));
 	  }
       }
@@ -171,7 +213,7 @@ public:
       {
 	if (req_method == "GET")
 	  {
-	    std::string jstr = uri_query_to_json(req_query);
+	    std::string jstr = dd::uri_query_to_json(req_query);
 	    fillup_response(response,_hja->service_train_status(jstr));
 	  }
 	else if (req_method == "PUT" || req_method == "POST")
@@ -181,7 +223,7 @@ public:
 	else if (req_method == "DELETE")
 	  {
 	    // DELETE does not accept body so query options are turned into JSON for internal processing
-	    std::string jstr = uri_query_to_json(req_query);
+	    std::string jstr = dd::uri_query_to_json(req_query);
 	    fillup_response(response,_hja->service_train_delete(jstr));
 	  }
       }

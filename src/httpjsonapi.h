@@ -34,6 +34,8 @@ typedef http::server<APIHandler> http_server;
 
 namespace dd
 {
+  std::string uri_query_to_json(const std::string &req_query);
+  
   class HttpJsonAPI : public JsonAPI
   {
   public:
