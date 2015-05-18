@@ -510,6 +510,8 @@ namespace dd
     while(solver->iter_ < solver->param_.max_iter()
 	  && this->_tjob_running.load())
       {
+	this->add_meas("iteration",solver->iter_);
+	
 	// Save a snapshot if needed.
 	if (solver->param_.snapshot() && solver->iter_ > start_iter &&
 	    solver->iter_ % solver->param_.snapshot() == 0) {
@@ -518,7 +520,6 @@ namespace dd
 	if (solver->param_.test_interval() && solver->iter_ % solver->param_.test_interval() == 0
 	    && (solver->iter_ > 0 || solver->param_.test_initialization())) 
 	  {
-	    //solver->TestAll();
 	    /*if (_net)
 	      {
 		delete _net;
@@ -541,9 +542,7 @@ namespace dd
 		if (!std::isnan(mval)) // if testing occurs once before training even starts, loss is unknown and we don't add it to history.
 		  this->add_meas_per_iter(m,mval);
 	      }
-	    this->add_meas_per_iter("iteration",solver->iter_);
 	  }
-	this->add_meas("iteration",solver->iter_);
 	float loss = solver->net_->ForwardBackward(bottom_vec);
 	if (static_cast<int>(losses.size()) < average_loss) 
 	  {
