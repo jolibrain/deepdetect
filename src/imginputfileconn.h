@@ -118,11 +118,9 @@ namespace dd
       //TODO: could parallelize the reading then push
       for (size_t i=0;i<_uris.size();i++)
 	{
-	  //cv::Mat imaget = cv::imread(_uris.at(i),_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR); //TODO: catch errors (size = 0 for file not found)
 	  DataEl<DDImg> dimg;
 	  dimg._ctype._bw = _bw;
 	  if (dimg.read_element(_uris.at(i)))
-	  //if (!imaget.data)
 	    {
 	      throw InputConnectorBadParamException("no data for image " + _uris.at(i));
 	    }
@@ -131,7 +129,6 @@ namespace dd
 	    cv::waitKey(0);*/
 	  cv::Size size(_width,_height);
 	  cv::Mat image;
-	  //cv::resize(imaget,image,size);
 	  cv::resize(dimg._ctype._img,image,size);
 	  _images.push_back(image);
 	}
