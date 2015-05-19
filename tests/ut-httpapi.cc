@@ -444,8 +444,9 @@ TEST(httpjsonapi,predict)
   ASSERT_EQ(201,d["status"]["code"].GetInt());
 
   // train sync
-  std::string train_post = "{\"service\":\"" + serv + "\",\"sync\":true,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":200,\"snapshot_prefix\":\""+mnist_repo+"/mylenet\"}},\"output\":{\"measure_hist\":true}}}";
+  std::string train_post = "{\"service\":\"" + serv + "\",\"async\":false,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":200,\"snapshot_prefix\":\""+mnist_repo+"/mylenet\"}},\"output\":{\"measure_hist\":true}}}";
   httpclient::post_call(luri+"/train",train_post,"POST",code,jstr);
+  std::cerr << "jstr=" << jstr << std::endl;
   ASSERT_EQ(201,code);
   JDoc jd;
   jd.Parse(jstr.c_str());
@@ -464,7 +465,9 @@ TEST(httpjsonapi,predict)
   // predict
   std::string predict_post = "{\"service\":\""+ serv + "\",\"parameters\":{\"input\":{\"bw\":true,\"width\":28,\"height\":28},\"output\":{\"best\":3}},\"data\":[\"" + mnist_repo + "/sample_digit.png\",\"" + mnist_repo + "/sample_digit2.png\"]}";
   httpclient::post_call(luri+"/predict",predict_post,"POST",code,jstr);
+  std::cerr << "code=" << code << std::endl;
   ASSERT_EQ(200,code);
+  std::cerr << "jstr=" << jstr << std::endl;
   jd.Parse(jstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200,jd["status"]["code"]);
