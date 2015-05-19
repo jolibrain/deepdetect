@@ -179,7 +179,7 @@ namespace dd
      */
     int train_job(const APIData &ad, APIData &out)
     {
-      if (ad.has("async") && ad.get("async").get<bool>())
+      if (!ad.has("async") || (ad.has("async") && ad.get("async").get<bool>()))
 	{
 	  std::lock_guard<std::mutex> lock(_tjobs_mutex);
 	  std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();
