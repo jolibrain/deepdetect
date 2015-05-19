@@ -33,19 +33,24 @@ int nthreads = 10;
 std::string serv = "myserv";
 std::string serv_put = "{\"mllib\":\"caffe\",\"description\":\"example classification service\",\"type\":\"supervised\",\"parameters\":{\"input\":{\"connector\":\"csv\"},\"mllib\":{\"template\":\"mlp\",\"nclasses\":2,\"layers\":[50,50,50],\"activation\":\"PReLU\"}},\"model\":{\"templates\":\"../templates/caffe/\",\"repository\":\".\"}}";
 
-//TODO: unit tests for uri_query_to_json
-
 TEST(httpjsonapi,uri_query_to_json)
 {
   std::string q = "service=myserv&job=1";
-  std::string p = uri_query_to_json(q);
-  ASSERT_EQ("{\"service\":\"myserv\",\"job\":1}",p);
-  q += "&parameters.output.measure_hist=true";
-  p = uri_query_to_json(q);
+  std::string q1 = q + "&test=true";
+  std::string p = uri_query_to_json(q1);
+  ASSERT_EQ("{\"service\":\"myserv\",\"job\":1,\"test\":true}",p);
+  std::string q1b = q + "&test=false";
+  p = uri_query_to_json(q1b);
+  ASSERT_EQ("{\"service\":\"myserv\",\"job\":1,\"test\":false}",p);
+  std::string q2 = q + "&parameters.output.measure_hist=true";
+  p = uri_query_to_json(q2);
   ASSERT_EQ("{\"service\":\"myserv\",\"job\":1,\"parameters\":{\"output\":{\"measure_hist\":true}}}",p);
+  std::string q3 = q + "&parameters.output.measure_hist=false";
+  p = uri_query_to_json(q3);
+  ASSERT_EQ("{\"service\":\"myserv\",\"job\":1,\"parameters\":{\"output\":{\"measure_hist\":false}}}",p);
 }
 
-/*TEST(httpjsonapi,info)
+TEST(httpjsonapi,info)
 {
   ::google::InitGoogleLogging("ut_httpapi");
   HttpJsonAPI hja;
@@ -127,7 +132,7 @@ TEST(httpjsonapi,services)
   ASSERT_EQ(404,code);
   
   hja.stop_server();
-}*/
+}
 
 TEST(httpjsonapi,train)
 {
@@ -153,7 +158,7 @@ TEST(httpjsonapi,train)
   ASSERT_EQ(201,d["status"]["code"].GetInt());
 
   //train blocking
-  std::string train_post = "{\"service\":\"" + serv + "\",\"async\":false,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":10}}}}";
+  std::string train_post = "{\"service\":\"" + serv + "\",\"async\":false,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":100}}}}";
   httpclient::post_call(luri+"/train",train_post,"POST",code,jstr);
   ASSERT_EQ(201,code);
   d.Parse(jstr.c_str());
@@ -176,7 +181,7 @@ TEST(httpjsonapi,train)
   ASSERT_EQ(201,d["status"]["code"].GetInt());
   
   //train async
-  train_post = "{\"service\":\"" + serv + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":20}}}}";
+  train_post = "{\"service\":\"" + serv + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":100}}}}";
   httpclient::post_call(luri+"/train",train_post,"POST",code,jstr);
   ASSERT_EQ(201,code);
   d.Parse(jstr.c_str());
@@ -233,7 +238,7 @@ TEST(httpjsonapi,train)
   hja.stop_server();
 }
 
-/*TEST(httpjsonapi,multiservices)
+TEST(httpjsonapi,multiservices)
 {
   HttpJsonAPI hja;
   hja.start_server_daemon(host,std::to_string(++port),nthreads);
@@ -471,4 +476,4 @@ TEST(httpjsonapi,predict)
   ASSERT_EQ(200,code);
   
   hja.stop_server();
-  }*/
+}

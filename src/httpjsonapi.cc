@@ -71,7 +71,7 @@ namespace dd
 		      }
 		    else if (bt || bf)
 		      {
-			jobj.AddMember(JVal().SetString(vpt.back().c_str(),jd.GetAllocator()),JVal(bt ? bt : bf),jd.GetAllocator());
+			jobj.AddMember(JVal().SetString(vpt.back().c_str(),jd.GetAllocator()),JVal(bt ? true : false),jd.GetAllocator());
 		      }
 		    else jobj.AddMember(JVal().SetString(vpt.back().c_str(),jd.GetAllocator()),JVal(atoi(vopt.at(1).c_str())),jd.GetAllocator());
 		    for (int b=vpt.size()-2;b>0;b--)
@@ -91,7 +91,7 @@ namespace dd
 		      }
 		    else if (bt || bf)
 		      {
-			jsv.AddMember(JVal().SetString(vopt.at(0).c_str(),jd.GetAllocator()),JVal(bt ? bt : bf),jd.GetAllocator());
+			jsv.AddMember(JVal().SetString(vopt.at(0).c_str(),jd.GetAllocator()),JVal(bt ? true : false),jd.GetAllocator());
 		      }
 		    else jsv.AddMember(JVal().SetString(vopt.at(0).c_str(),jd.GetAllocator()),JVal(atoi(vopt.at(1).c_str())),jd.GetAllocator());
 		  }
