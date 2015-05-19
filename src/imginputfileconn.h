@@ -160,6 +160,8 @@ namespace dd
 	  _images.erase(dchit,_images.end());
 	  std::cout << "data split test size=" << _test_images.size() << " / remaining data size=" << _images.size() << std::endl;
 	}
+      if (_images.empty())
+	throw InputConnectorBadParamException("no image could be found");
     }
 
     std::vector<cv::Mat> _images;

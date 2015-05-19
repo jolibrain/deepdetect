@@ -119,7 +119,7 @@ namespace dd
       ImgInputFileConn::init(ad);
     }
 
-    int transform(const APIData &ad)
+    void transform(const APIData &ad)
     {
       // in prediction mode, convert the images to Datum, a Caffe data structure
       if (!_train)
@@ -155,7 +155,7 @@ namespace dd
 	      // So for now, this check is kept disabled.
 	      /*if (!fileops::file_exists(_model_repo + "/" + _dbname))
 		throw ex;*/
-	      return 0;
+	      return;
 	    }
 	  if (ad.has("parameters")) // hotplug of parameters, overriding the defaults
 	    {
@@ -183,7 +183,6 @@ namespace dd
 	  std::vector<APIData> vdbad = {dbad};
 	  const_cast<APIData&>(ad).add("db",vdbad);
 	}
-      return 0;
     }
 
     std::vector<caffe::Datum> get_dv_test(const int &num,
@@ -259,9 +258,16 @@ namespace dd
       return 1;
     }
     
-    int transform(const APIData &ad)
+    void transform(const APIData &ad)
     {
-      CSVInputFileConn::transform(ad);
+      try
+	{
+	  CSVInputFileConn::transform(ad);
+	}
+      catch (std::exception &e)
+	{
+	  throw;
+	}
       
       // transform to datum by filling up float_data
       auto hit = _csvdata.cbegin();
@@ -280,7 +286,6 @@ namespace dd
 	  _test_labels.push_back(dat.label());
 	  ++hit;
 	}
-      return 0;
     }
 
     std::vector<caffe::Datum> get_dv_test(const int &num,

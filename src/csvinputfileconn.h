@@ -74,7 +74,7 @@ namespace dd
       (void)fname;
     }
     
-    int transform(const APIData &ad)
+    void transform(const APIData &ad)
     {
       get_data(ad);
 
@@ -121,7 +121,8 @@ namespace dd
 	      ddcsv.read_element(_uris.at(i));
 	    }
 	}
-      return 0;
+      if (_csvdata.empty())
+	throw InputConnectorBadParamException("no data could be found");
     }
 
     void read_header(std::string &hline);

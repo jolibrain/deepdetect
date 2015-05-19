@@ -693,7 +693,14 @@ namespace dd
 #endif
 
     TInputConnectorStrategy inputc(this->_inputc);
-    inputc.transform(ad); //TODO: catch errors ?
+    try
+      {
+	inputc.transform(ad); //TODO: catch errors ?
+      }
+    catch (std::exception &e)
+      {
+	throw;
+      }
     int batch_size = inputc.batch_size();
     boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->set_batch_size(batch_size);
     boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(inputc._dv);
