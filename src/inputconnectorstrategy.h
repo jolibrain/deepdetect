@@ -149,6 +149,17 @@ namespace dd
 	}
     }
 
+    /**
+     * \brief input parameters to return to user through API,
+     *        especially when they have been automatically modified,
+     *        and may be of use at prediction time
+     * @param out output data object
+     */
+    void response_params(APIData &out)
+    {
+      (void)out;
+    }
+    
     bool _train = false; /**< whether in train or predict mode. */
     std::vector<std::string> _uris;
   };

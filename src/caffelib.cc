@@ -594,6 +594,10 @@ namespace dd
     
     // test
     test(_net,ad,inputc,test_batch_size,has_mean_file,out);
+
+    //TODO: return batch_size value if it was changed
+    
+    inputc.response_params(out);
     
     return 0;
   }

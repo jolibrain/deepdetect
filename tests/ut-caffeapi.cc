@@ -45,7 +45,7 @@ static std::string iterations_forest = "2000";
 #else
 static std::string iterations_mnist = "50";
 static std::string iterations_plank = "200";
-static std::string iterations_forest = "200";
+static std::string iterations_forest = "500";
 #endif
 
 TEST(caffeapi,service_train)
@@ -337,7 +337,13 @@ TEST(caffeapi,service_train_csv)
   ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() > 0.0);
 #endif
   ASSERT_EQ(jd["body"]["measure"]["accp"].GetDouble(),jd["body"]["measure"]["acc"].GetDouble());
-
+  ASSERT_TRUE(jd["body"].HasMember("parameters"));
+  ASSERT_TRUE(jd["body"]["parameters"].HasMember("input"));
+  ASSERT_TRUE(jd["body"]["parameters"]["input"].HasMember("min_vals"));
+  ASSERT_TRUE(jd["body"]["parameters"]["input"].HasMember("max_vals"));
+  ASSERT_EQ(56,jd["body"]["parameters"]["input"]["min_vals"].Size());
+  ASSERT_EQ(56,jd["body"]["parameters"]["input"]["max_vals"].Size());
+  
   // remove service
   jstr = "{\"clear\":\"lib\"}";
   joutstr = japi.jrender(japi.service_delete(sname,jstr));

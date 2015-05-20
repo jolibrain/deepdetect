@@ -22,6 +22,7 @@
 #include "csvinputfileconn.h"
 #include <random>
 #include <algorithm>
+#include <glog/logging.h>
 
 namespace dd
 {
@@ -45,7 +46,11 @@ namespace dd
     std::string cid;
     int nlines = 0;
     _cifc->read_csv_line(content,_cifc->_delim,vals,cid,nlines);
-    //TODO: scaling
+    if (_cifc->_scale)
+      {
+	std::cerr << "scaling in mem vals\n";
+	_cifc->scale_vals(vals);
+      }
     if (!cid.empty())
       _cifc->_csvdata.emplace_back(cid,vals);
     else _cifc->_csvdata.emplace_back(std::to_string(vals.size()+1),vals);
@@ -73,7 +78,7 @@ namespace dd
 	    {
 	      if ((hit=_ignored_columns.find(_columns.at(c)))!=_ignored_columns.end())
 		{
-		  std::cout << "ignoring column: " << col << std::endl;
+		  LOG(INFO) << "ignoring column: " << col << std::endl;
 		  continue;
 		}
 	      if (_columns.at(c) == _id)
@@ -129,21 +134,6 @@ namespace dd
 	throw InputConnectorBadParamException("cannot open file " + fname);
       std::string hline;
       std::getline(csv_file,hline);
-      /*hline.erase(std::remove(hline.begin(),hline.end(),'\r'),hline.end()); // remove ^M if any
-      std::stringstream sg(hline);
-      std::string col;
-      
-      // read header
-      int i = 0;
-      while(std::getline(sg,col,_delim[0]))
-	    {
-	    _columns.push_back(col);
-	  if (col == _label)
-	    _label_pos = i;
-	  ++i;
-	}
-      if (_label_pos < 0 && _train)
-	throw InputConnectorBadParamException("cannot find label column " + _label);*/
       read_header(hline);
       
       //debug
@@ -156,11 +146,8 @@ namespace dd
 
       // scaling to [0,1]
       int nlines = 0;
-      bool scale = false;
-      std::vector<double> min_vals, max_vals;
-      if (ad.has("scale") && ad.get("scale").get<bool>())
+      if (_scale && _min_vals.empty() && _max_vals.empty())
 	{
-	  scale = true;
 	  while(std::getline(csv_file,hline))
 	    {
 	      hline.erase(std::remove(hline.begin(),hline.end(),'\r'),hline.end());
@@ -168,22 +155,22 @@ namespace dd
 	      std::string cid;
 	      read_csv_line(hline,_delim,vals,cid,nlines);
 	      if (nlines == 1)
-		min_vals = max_vals = vals;
+		_min_vals = _max_vals = vals;
 	      else
 		{
 		  for (size_t j=0;j<vals.size();j++)
 		    {
-		      min_vals.at(j) = std::min(vals.at(j),min_vals.at(j));
-		      max_vals.at(j) = std::max(vals.at(j),max_vals.at(j));
+		      _min_vals.at(j) = std::min(vals.at(j),_min_vals.at(j));
+		      _max_vals.at(j) = std::max(vals.at(j),_max_vals.at(j));
 		    }
 		}
 	    }
 	  
 	  //debug
 	  std::cout << "min/max scales:\n";
-	  std::copy(min_vals.begin(),min_vals.end(),std::ostream_iterator<double>(std::cout," "));
+	  std::copy(_min_vals.begin(),_min_vals.end(),std::ostream_iterator<double>(std::cout," "));
 	  std::cout << std::endl;
-	  std::copy(max_vals.begin(),max_vals.end(),std::ostream_iterator<double>(std::cout," "));
+	  std::copy(_max_vals.begin(),_max_vals.end(),std::ostream_iterator<double>(std::cout," "));
 	  std::cout << std::endl;
 	  //debug
 	  
@@ -200,25 +187,27 @@ namespace dd
 	  std::vector<double> vals;
 	  std::string cid;
 	  read_csv_line(hline,_delim,vals,cid,nlines);
-	  if (scale)
+	  if (_scale)
 	    {
-	      for (int j=0;j<(int)vals.size();j++)
+	      /*for (int j=0;j<(int)vals.size();j++)
 		{
-		  if (_columns.at(j) != _id && j != _label_pos && max_vals.at(j) != min_vals.at(j))
-		    vals.at(j) = (vals.at(j) - min_vals.at(j)) / (max_vals.at(j) - min_vals.at(j));
-		}
+		  if ((!_columns.empty() && _columns.at(j) != _id) && j != _label_pos && _max_vals.at(j) != _min_vals.at(j))
+		    vals.at(j) = (vals.at(j) - _min_vals.at(j)) / (_max_vals.at(j) - _min_vals.at(j));
+		    }*/
+	      scale_vals(vals);
 	    }
 	  if (!_id.empty())
 	    _csvdata.emplace_back(cid,vals);
 	  else _csvdata.emplace_back(std::to_string(nlines),vals); 
 	  
 	  //debug
-	  /*std::cout << "csv data line #" << nlines << "=";
+	  std::cout << "csv data line #" << nlines << "=";
 	  std::copy(vals.begin(),vals.end(),std::ostream_iterator<double>(std::cout," "));
-	  std::cout << std::endl;*/
+	  std::cout << std::endl;
 	  //debug
 	}
-      std::cout << "read " << nlines << " lines from " << _csv_fname << std::endl;
+      std::cerr << "read " << nlines << " lines from " << fname << std::endl;
+      std::cerr << "id=" << _id << std::endl;
       csv_file.close();
       
       // test file, if any.
@@ -235,25 +224,26 @@ namespace dd
 	      std::vector<double> vals;
 	      std::string cid;
 	      read_csv_line(hline,_delim,vals,cid,nlines);
-	      if (scale)
+	      if (_scale)
 		{
-		  for (int j=0;j<(int)vals.size();j++)
+		  /*for (int j=0;j<(int)vals.size();j++)
 		    {
-		      if (_columns.at(j) != _id && j != _label_pos && max_vals.at(j) != min_vals.at(j))
-			vals.at(j) = (vals.at(j) - min_vals.at(j)) / (max_vals.at(j) - min_vals.at(j));
-		    }
+		      if (_columns.at(j) != _id && j != _label_pos && _max_vals.at(j) != _min_vals.at(j))
+			vals.at(j) = (vals.at(j) - _min_vals.at(j)) / (_max_vals.at(j) - _min_vals.at(j));
+			}*/
+		  scale_vals(vals);
 		}
 	      if (!_id.empty())
 		_csvdata_test.emplace_back(cid,vals);
 	      else _csvdata_test.emplace_back(std::to_string(nlines),vals);
 	      
 	      //debug
-	      /*std::cout << "csv test data line=";
+	      std::cout << "csv test data line=";
 	      std::copy(vals.begin(),vals.end(),std::ostream_iterator<double>(std::cout," "));
-	      std::cout << std::endl;*/
+	      std::cout << std::endl;
 	      //debug
 	    }
-	  std::cout << "read " << nlines << " lines from " << _csv_test_fname << std::endl;
+	  std::cerr << "read " << nlines << " lines from " << _csv_test_fname << std::endl;
 	  csv_test_file.close();
 	}
 
@@ -280,7 +270,6 @@ namespace dd
 		    {
 		      if (dchit == _csvdata.begin())
 			dchit = chit;
-		      //_csvdata_test.insert(std::pair<std::string,std::vector<double>>((*chit).first,(*chit).second));
 		      _csvdata_test.push_back((*chit));
 		    }
 		  else ++cpos;
