@@ -38,6 +38,16 @@ static std::string forest_repo = "../examples/all/forest_type/";
 static std::string plank_repo = "../examples/caffe/plankton/";
 static std::string model_templates_repo = "../templates/caffe/";
 
+#ifndef CPU_ONLY
+static std::string iterations_mnist = "100";
+static std::string interations_plank = "2000";
+static std::string iterations_forest = "2000";
+#else
+static std::string iterations_mnist = "50";
+static std::string iterations_plank = "200";
+static std::string iterations_forest = "200";
+#endif
+
 TEST(caffeapi,service_train)
 {
 ::google::InitGoogleLogging("ut_caffeapi");
@@ -49,7 +59,7 @@ TEST(caffeapi,service_train)
   ASSERT_EQ(created_str,joutstr);
 
   // train
-  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":100}}}}";
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":" + iterations_mnist + "}}}}";
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
@@ -148,7 +158,7 @@ TEST(caffeapi,service_train_async_final_status)
   ASSERT_EQ(created_str,joutstr);
 
   // train
-  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":250}}}}";
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":" + iterations_mnist + "}}}}";
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
@@ -209,7 +219,7 @@ TEST(caffeapi,service_train_async_and_predict)
   ASSERT_EQ(created_str,joutstr);
 
   // train
-  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":250}}}}";
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":" + iterations_mnist + "}}}}";
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
@@ -253,7 +263,7 @@ TEST(caffeapi,service_predict)
   ASSERT_EQ(created_str,joutstr);
 
   // train
-  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":200,\"snapshot\":200,\"snapshot_prefix\":\"" + mnist_repo + "/mylenet\"}},\"output\":{\"measure_hist\":true}}}";
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":" + iterations_mnist + ",\"snapshot\":200,\"snapshot_prefix\":\"" + mnist_repo + "/mylenet\"}},\"output\":{\"measure_hist\":true}}}";
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
@@ -295,7 +305,7 @@ TEST(caffeapi,service_predict)
   ASSERT_EQ(ok_str,joutstr);
 }
 
-TEST(caffeapi,service_train_imgs)
+TEST(caffeapi,service_train_csv)
 {
   // create service
   JsonAPI japi;
@@ -305,7 +315,7 @@ TEST(caffeapi,service_train_imgs)
   ASSERT_EQ(created_str,joutstr);
 
   // train
-  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"label\":\"Cover_Type\",\"id\":\"Id\",\"scale\":true,\"test_split\":0.1,\"label_offset\":-1,\"shuffle\":true},\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":2000},\"net\":{\"batch_size\":500}},\"output\":{\"measure\":[\"acc\",\"mcll\",\"f1\"]}},\"data\":[\"" + forest_repo + "train.csv\"]}";
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"label\":\"Cover_Type\",\"id\":\"Id\",\"scale\":true,\"test_split\":0.1,\"label_offset\":-1,\"shuffle\":true},\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":" + iterations_forest + "},\"net\":{\"batch_size\":500}},\"output\":{\"measure\":[\"acc\",\"mcll\",\"f1\"]}},\"data\":[\"" + forest_repo + "train.csv\"]}";
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
@@ -319,9 +329,13 @@ TEST(caffeapi,service_train_imgs)
   ASSERT_TRUE(jd["head"]["time"].GetDouble() > 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
-  ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() > 0);
+  ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() > 0.0);
   ASSERT_TRUE(jd["body"]["measure"].HasMember("f1"));
+#ifndef CPU_ONLY
   ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() > 0.7);
+#else
+  ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() > 0.0);
+#endif
   ASSERT_EQ(jd["body"]["measure"]["accp"].GetDouble(),jd["body"]["measure"]["acc"].GetDouble());
 
   // remove service
@@ -330,7 +344,7 @@ TEST(caffeapi,service_train_imgs)
   ASSERT_EQ(ok_str,joutstr);
 }
 
-TEST(caffeapi,service_train_csv)
+TEST(caffeapi,service_train_images)
 {
   // create service
   JsonAPI japi;
@@ -340,7 +354,7 @@ TEST(caffeapi,service_train_csv)
   ASSERT_EQ(created_str,joutstr);
 
   // train
-  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"width\":32,\"height\":32,\"test_split\":0.2,\"shuffle\":true,\"bw\":false},\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":2000,\"test_interval\":500,\"base_lr\":0.0001,\"snapshot\":2000},\"net\":{\"batch_size\":300}},\"output\":{\"measure\":[\"acc\",\"mcll\",\"f1\"]}},\"data\":[\"" + plank_repo + "train\"]}";
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"width\":32,\"height\":32,\"test_split\":0.2,\"shuffle\":true,\"bw\":false},\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":" + iterations_plank + ",\"test_interval\":500,\"base_lr\":0.0001,\"snapshot\":2000},\"net\":{\"batch_size\":300}},\"output\":{\"measure\":[\"acc\",\"mcll\",\"f1\"]}},\"data\":[\"" + plank_repo + "train\"]}";
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
@@ -356,7 +370,7 @@ TEST(caffeapi,service_train_csv)
   ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
   ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() > 0);
   ASSERT_TRUE(jd["body"]["measure"].HasMember("f1"));
-  ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() > 0.2);
+  ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() > 0.0);
   ASSERT_EQ(jd["body"]["measure"]["accp"].GetDouble(),jd["body"]["measure"]["acc"].GetDouble());
 
   // remove service
