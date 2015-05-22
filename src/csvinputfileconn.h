@@ -23,6 +23,7 @@
 #define CSVINPUTFILECONN_H
 
 #include "inputconnectorstrategy.h"
+#include "utils/fileops.hpp"
 #include <fstream>
 #include <unordered_set>
 
@@ -128,17 +129,19 @@ namespace dd
 	    }
 	  
 	  //debug
-	  std::cout << "loaded min/max scales:\n";
-	  std::copy(_min_vals.begin(),_min_vals.end(),std::ostream_iterator<double>(std::cout," "));
-	  std::cout << std::endl;
-	  std::copy(_max_vals.begin(),_max_vals.end(),std::ostream_iterator<double>(std::cout," "));
-	  std::cout << std::endl;
+	  /*std::cout << "loaded min/max scales:\n";
+	    std::copy(_min_vals.begin(),_min_vals.end(),std::ostream_iterator<double>(std::cout," "));
+	    std::cout << std::endl;
+	    std::copy(_max_vals.begin(),_max_vals.end(),std::ostream_iterator<double>(std::cout," "));
+	    std::cout << std::endl;*/
 	  //debug
 	}
       
       if (_train)
 	{
 	  _csv_fname = _uris.at(0); // training only from file
+	  if (!fileops::file_exists(_csv_fname))
+	    throw InputConnectorBadParamException("training CSV file " + _csv_fname + " does not exist");
 	  if (_uris.size() > 1)
 	    _csv_test_fname = _uris.at(1);
 	  if (ad_input.has("label"))

@@ -132,6 +132,7 @@ namespace dd
 				  const std::string &fname)
   {
       std::ifstream csv_file(fname,std::ios::binary);
+      std::cerr << "fname=" << fname << " / open=" << csv_file.is_open() << std::endl;
       if (!csv_file.is_open())
 	throw InputConnectorBadParamException("cannot open file " + fname);
       std::string hline;
@@ -169,11 +170,11 @@ namespace dd
 	    }
 	  
 	  //debug
-	  std::cout << "min/max scales:\n";
+	  /*std::cout << "min/max scales:\n";
 	  std::copy(_min_vals.begin(),_min_vals.end(),std::ostream_iterator<double>(std::cout," "));
 	  std::cout << std::endl;
 	  std::copy(_max_vals.begin(),_max_vals.end(),std::ostream_iterator<double>(std::cout," "));
-	  std::cout << std::endl;
+	  std::cout << std::endl;*/
 	  //debug
 	  
 	  csv_file.clear();
