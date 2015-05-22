@@ -58,7 +58,10 @@ namespace dd
   CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::~CaffeLib()
   {
     if (_net)
-      delete _net; // XXX: for now, crashes.
+      {
+	delete _net; // XXX: for now, crashes.
+	_net = nullptr;
+      }
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -574,15 +577,18 @@ namespace dd
     if (solver->param_.snapshot_after_train())
       solver->Snapshot();
     
-    // bail on forced stop, i.e. not testing the net further.
-    if (!this->_tjob_running.load())
-      return 0;
-    
+    // destroy the net
     if (_net)
       {
 	delete _net;
 	_net = nullptr;
+	delete solver;
       }
+    
+    // bail on forced stop, i.e. not testing the net further.
+    if (!this->_tjob_running.load())
+      return 0;
+    
     solver_param = caffe::SolverParameter();
     delete solver;
     this->_mlmodel.read_from_repository(this->_mlmodel._repo);
@@ -893,7 +899,7 @@ namespace dd
       {
 	// adjust batch size so that it is a multiple of the number of training samples (Caffe requirement)
 	batch_size = test_batch_size = ad_net.get("batch_size").get<int>();
-	std::cerr << "batch_size=" << batch_size << " / inputc batch_size=" << inputc.batch_size() << std::endl;
+	std::cerr << "user batch_size=" << batch_size << " / inputc batch_size=" << inputc.batch_size() << std::endl;
 	if (batch_size < inputc.batch_size())
 	  {
 	    int min_batch_size = 0;
@@ -915,6 +921,8 @@ namespace dd
 	    if (fabs(batch_size-min_batch_size) < fabs(max_batch_size-batch_size))
 	      batch_size = min_batch_size;
 	    else batch_size = max_batch_size;
+	    /*if (batch_size == 0)
+	      batch_size = ad_net.get("batch_size").get<int>();*/
 	    for (int i=test_batch_size;i>1;i--)
 	      if (inputc.test_batch_size() % i == 0)
 		{
