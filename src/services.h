@@ -401,6 +401,7 @@ namespace dd
 	{
 	  LOG(ERROR) << "service " << sname << " training status call failed\n";
 	  pout._status = -1;
+	  throw;
 	}
       out = pout._out;
       return pout._status;
@@ -426,6 +427,7 @@ namespace dd
 	{
 	  LOG(ERROR) << "service " << sname << " training delete call failed\n";
 	  pout._status = -1;
+	  throw;
 	}
       out = pout._out;
       return pout._status;
