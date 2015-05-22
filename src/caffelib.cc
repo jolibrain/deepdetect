@@ -351,7 +351,8 @@ namespace dd
       _gpuid = ad.get("gpuid").get<int>();
     if (ad.has("nclasses"))
       _nclasses = ad.get("nclasses").get<int>();
-    else LOG(WARNING) << "[Warning]: number of classes is undetermined in Caffe\n";
+    if (_nclasses == 0)
+      throw MLLibBadParamException("number of classes is unknown (nclasses == 0)");
     // instantiate model template here, if any
     if (ad.has("template"))
       instantiate_template(ad);
@@ -382,7 +383,7 @@ namespace dd
     APIData cad = ad;
     cad.add("model_repo",this->_mlmodel._repo); // pass the model repo so that in case of images, it is known where to save the db
     inputc.transform(cad);
-
+    
     // instantiate model template here, as a defered from service initialization
     // since inputs are necessary in order to fit the inner net input dimension.
     if (!this->_mlmodel._model_template.empty())
@@ -827,7 +828,7 @@ namespace dd
       {
 	//set train and test batch sizes as multiples of the train and test dataset sizes
 	net_param.mutable_layer(0)->mutable_data_param()->set_batch_size(inputc.batch_size());
-	net_param.mutable_layer(1)->mutable_data_param()->set_batch_size(inputc.test_batch_size());
+	//net_param.mutable_layer(1)->mutable_data_param()->set_batch_size(inputc.test_batch_size());
       }
     
     caffe::NetParameter deploy_net_param;
