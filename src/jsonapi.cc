@@ -269,6 +269,11 @@ namespace dd
 	ad = APIData(d);
 	ad_model = ad.getobj("model");
       }
+    catch(RapidjsonException &e)
+      {
+	LOG(ERROR) << "JSON error " << e.what() << std::endl;
+	return dd_bad_request_400();
+      }
     catch(...)
       {
 	return dd_bad_request_400();
@@ -352,8 +357,21 @@ namespace dd
       }
 
     APIData ad;
-    if (!jstr.empty())
-      ad = APIData(d);
+    try
+      {
+	if (!jstr.empty())
+	  ad = APIData(d);
+      }
+    catch(RapidjsonException &e)
+      {
+	LOG(ERROR) << "JSON error " << e.what() << std::endl;
+	return dd_bad_request_400();
+      }
+    catch(...)
+      {
+	return dd_bad_request_400();
+      }
+    
     if (remove_service(sname,ad))
       return dd_ok_200();
     return dd_not_found_404();
@@ -368,7 +386,7 @@ namespace dd
 	LOG(ERROR) << "JSON parsing error on string: " << jstr << std::endl;
 	return dd_bad_request_400();
       }
-    
+
     // service
     std::string sname;
     try
@@ -383,8 +401,21 @@ namespace dd
       }
 
     // data
-    APIData ad_data(d);
-  
+    APIData ad_data;
+    try
+      {
+	ad_data = APIData(d);
+      }
+    catch(RapidjsonException &e)
+      {
+	LOG(ERROR) << "JSON error " << e.what() << std::endl;
+	return dd_bad_request_400();
+      }
+    catch(...)
+      {
+	return dd_bad_request_400();
+      }
+    
     // prediction
     APIData out;
     try
@@ -453,8 +484,21 @@ namespace dd
       }
     
     // parameters and data
-    APIData ad(d);
-
+    APIData ad;
+    try
+      {
+	ad = APIData(d);
+      }
+    catch(RapidjsonException &e)
+      {
+	LOG(ERROR) << "JSON error " << e.what() << std::endl;
+	return dd_bad_request_400();
+      }
+    catch(...)
+      {
+	return dd_bad_request_400();
+      }
+    
     // training
     APIData out;
     try
@@ -527,7 +571,20 @@ namespace dd
       }
     
     // parameters
-    APIData ad(d);
+    APIData ad;
+    try
+      {
+	ad = APIData(d);
+      }
+    catch(RapidjsonException &e)
+      {
+	LOG(ERROR) << "JSON error " << e.what() << std::endl;
+	return dd_bad_request_400();
+      }
+    catch(...)
+      {
+	return dd_bad_request_400();
+      }
     if (!ad.has("job"))
       return dd_job_not_found_1003();
     
@@ -583,7 +640,20 @@ namespace dd
       }
     
     // parameters
-    APIData ad(d);
+    APIData ad;
+    try
+      {
+	ad = APIData(d);
+      }
+    catch(RapidjsonException &e)
+      {
+	LOG(ERROR) << "JSON error " << e.what() << std::endl;
+	return dd_bad_request_400();
+      }
+    catch(...)
+      {
+	return dd_bad_request_400();
+      }
     if (!ad.has("job"))
       return dd_job_not_found_1003();
     
