@@ -33,7 +33,7 @@ int nthreads = 10;
 std::string serv = "myserv";
 std::string serv_put = "{\"mllib\":\"caffe\",\"description\":\"example classification service\",\"type\":\"supervised\",\"parameters\":{\"input\":{\"connector\":\"csv\"},\"mllib\":{\"template\":\"mlp\",\"nclasses\":2,\"layers\":[50,50,50],\"activation\":\"PReLU\"}},\"model\":{\"templates\":\"../templates/caffe/\",\"repository\":\".\"}}";
 
-/*TEST(httpjsonapi,uri_query_to_json)
+TEST(httpjsonapi,uri_query_to_json)
 {
   std::string q = "service=myserv&job=1";
   std::string q1 = q + "&test=true";
@@ -288,7 +288,7 @@ TEST(httpjsonapi,multiservices)
   ASSERT_EQ(200,code);
   
   hja.stop_server();
-}*/
+}
 
 TEST(httpjsonapi,concurrency)
 {
