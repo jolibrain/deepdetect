@@ -77,7 +77,7 @@ namespace dd
     {
       for (int j=0;j<(int)vals.size();j++)
 	{
-	  if ((!_columns.empty() && _columns.at(j) != _id) && (_label_pos >= 0 && j != _label_pos) && _max_vals.at(j) != _min_vals.at(j))
+	  if ((_columns.empty() || _columns.at(j) != _id) && (_label_pos < 0 || j != _label_pos) && _max_vals.at(j) != _min_vals.at(j))
 	    vals.at(j) = (vals.at(j) - _min_vals.at(j)) / (_max_vals.at(j) - _min_vals.at(j));
 	}
     }
@@ -85,9 +85,7 @@ namespace dd
     void transform(const APIData &ad)
     {
       get_data(ad);
-
       APIData ad_input = ad.getobj("parameters").getobj("input");
-
       if (ad_input.has("id"))
 	_id = ad_input.get("id").get<std::string>();
       if (ad_input.has("separator"))
@@ -99,15 +97,43 @@ namespace dd
 	  for (std::string s: vignore)
 	    _ignored_columns.insert(s);
 	}
-      
+
       // read scaling parameters, if any.
       if (ad_input.has("scale") && ad_input.get("scale").get<bool>())
 	{
 	  _scale = true;
-	  if (ad.has("min_vals"))
-	    _min_vals = ad.get("min_vals").get<std::vector<double>>();
-	  if (ad.has("max_vals"))
-	    _max_vals = ad.get("max_vals").get<std::vector<double>>();
+	  if (ad_input.has("min_vals"))
+	    {
+	      try
+		{
+		  _min_vals = ad_input.get("min_vals").get<std::vector<double>>();
+		}
+	      catch(...)
+		{
+		  std::vector<int> vi = ad_input.get("min_vals").get<std::vector<int>>();
+		  _min_vals = std::vector<double>(vi.begin(),vi.end());
+		}
+	    }
+	  if (ad_input.has("max_vals"))
+	    {
+	      try
+		{
+		  _max_vals = ad_input.get("max_vals").get<std::vector<double>>();
+		}
+	      catch(...)
+		{
+		  std::vector<int> vi = ad_input.get("max_vals").get<std::vector<int>>();
+		  _max_vals = std::vector<double>(vi.begin(),vi.end());
+		}
+	    }
+	  
+	  //debug
+	  std::cout << "loaded min/max scales:\n";
+	  std::copy(_min_vals.begin(),_min_vals.end(),std::ostream_iterator<double>(std::cout," "));
+	  std::cout << std::endl;
+	  std::copy(_max_vals.begin(),_max_vals.end(),std::ostream_iterator<double>(std::cout," "));
+	  std::cout << std::endl;
+	  //debug
 	}
       
       if (_train)

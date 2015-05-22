@@ -47,13 +47,10 @@ namespace dd
     int nlines = 0;
     _cifc->read_csv_line(content,_cifc->_delim,vals,cid,nlines);
     if (_cifc->_scale)
-      {
-	std::cerr << "scaling in mem vals\n";
-	_cifc->scale_vals(vals);
-      }
+      _cifc->scale_vals(vals);
     if (!cid.empty())
       _cifc->_csvdata.emplace_back(cid,vals);
-    else _cifc->_csvdata.emplace_back(std::to_string(vals.size()+1),vals);
+    else _cifc->_csvdata.emplace_back(std::to_string(_cifc->_csvdata.size()+1),vals);
     return 0;
   }
 
@@ -112,6 +109,7 @@ namespace dd
     
     // read header
     int i = 0;
+    bool has_id = false;
     //auto hit = _ignored_columns.begin();
     while(std::getline(sg,col,_delim[0]))
       {
@@ -120,10 +118,14 @@ namespace dd
 	_columns.push_back(col);
 	if (col == _label)
 	  _label_pos = i;
+	if (!has_id && !_id.empty() && col == _id)
+	  has_id = true;
 	++i;
       }
     if (_label_pos < 0 && _train)
       throw InputConnectorBadParamException("cannot find label column " + _label);
+    if (!_id.empty() && !has_id)
+      throw InputConnectorBadParamException("cannot find id column " + _id);
   }
   
   void CSVInputFileConn::read_csv(const APIData &ad,
@@ -201,13 +203,12 @@ namespace dd
 	  else _csvdata.emplace_back(std::to_string(nlines),vals); 
 	  
 	  //debug
-	  std::cout << "csv data line #" << nlines << "=";
-	  std::copy(vals.begin(),vals.end(),std::ostream_iterator<double>(std::cout," "));
-	  std::cout << std::endl;
+	  /*std::cout << "csv data line #" << nlines << "=";
+	    std::copy(vals.begin(),vals.end(),std::ostream_iterator<double>(std::cout," "));
+	    std::cout << std::endl;*/
 	  //debug
 	}
       std::cerr << "read " << nlines << " lines from " << fname << std::endl;
-      std::cerr << "id=" << _id << std::endl;
       csv_file.close();
       
       // test file, if any.
@@ -238,9 +239,9 @@ namespace dd
 	      else _csvdata_test.emplace_back(std::to_string(nlines),vals);
 	      
 	      //debug
-	      std::cout << "csv test data line=";
-	      std::copy(vals.begin(),vals.end(),std::ostream_iterator<double>(std::cout," "));
-	      std::cout << std::endl;
+	      /*std::cout << "csv test data line=";
+		std::copy(vals.begin(),vals.end(),std::ostream_iterator<double>(std::cout," "));
+		std::cout << std::endl;*/
 	      //debug
 	    }
 	  std::cerr << "read " << nlines << " lines from " << _csv_test_fname << std::endl;
