@@ -40,7 +40,7 @@ static std::string model_templates_repo = "../templates/caffe/";
 
 #ifndef CPU_ONLY
 static std::string iterations_mnist = "100";
-static std::string interations_plank = "2000";
+static std::string iterations_plank = "2000";
 static std::string iterations_forest = "2000";
 #else
 static std::string iterations_mnist = "50";
