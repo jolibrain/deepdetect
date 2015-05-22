@@ -385,7 +385,15 @@ namespace dd
     inputc._train = true;
     APIData cad = ad;
     cad.add("model_repo",this->_mlmodel._repo); // pass the model repo so that in case of images, it is known where to save the db
-    inputc.transform(cad);
+
+    try
+      {
+	inputc.transform(cad);
+      }
+    catch (...)
+      {
+	throw;
+      }
     
     // instantiate model template here, as a defered from service initialization
     // since inputs are necessary in order to fit the inner net input dimension.
@@ -899,6 +907,8 @@ namespace dd
       {
 	// adjust batch size so that it is a multiple of the number of training samples (Caffe requirement)
 	batch_size = test_batch_size = ad_net.get("batch_size").get<int>();
+	if (batch_size == 0)
+	  throw MLLibBadParamException("batch size set to zero");
 	std::cerr << "user batch_size=" << batch_size << " / inputc batch_size=" << inputc.batch_size() << std::endl;
 	if (batch_size < inputc.batch_size())
 	  {
