@@ -827,15 +827,15 @@ namespace dd
 	net_param.mutable_layer(1)->mutable_memory_data_param()->set_channels(inputc.channels()); // test layer
 	
 	//set train and test batch sizes as multiples of the train and test dataset sizes
-	net_param.mutable_layer(0)->mutable_memory_data_param()->set_batch_size(inputc.batch_size());
-	net_param.mutable_layer(1)->mutable_memory_data_param()->set_batch_size(inputc.test_batch_size());
+	//net_param.mutable_layer(0)->mutable_memory_data_param()->set_batch_size(inputc.batch_size());
+	//net_param.mutable_layer(1)->mutable_memory_data_param()->set_batch_size(inputc.test_batch_size());
       }
-    else if (net_param.mutable_layer(0)->has_data_param())
+    /*else if (net_param.mutable_layer(0)->has_data_param())
       {
 	//set train and test batch sizes as multiples of the train and test dataset sizes
 	net_param.mutable_layer(0)->mutable_data_param()->set_batch_size(inputc.batch_size());
-	//net_param.mutable_layer(1)->mutable_data_param()->set_batch_size(inputc.test_batch_size());
-      }
+	net_param.mutable_layer(1)->mutable_data_param()->set_batch_size(inputc.test_batch_size());
+	}*/
     
     caffe::NetParameter deploy_net_param;
     caffe::ReadProtoFromTextFile(deploy_file,&deploy_net_param);
