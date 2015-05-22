@@ -241,7 +241,19 @@ namespace dd
 	    }
 	  else if (status == std::future_status::ready)
 	    {
-	      int st = (*hit).second._ft.get(); //TODO: exception handling ?
+	      int st;
+	      try
+		{
+		  st = (*hit).second._ft.get();
+		}
+	      catch (std::exception &e)
+		{
+		  auto ohit = _training_out.find((*hit).first);
+		  if (ohit!=_training_out.end())
+		    _training_out.erase(ohit);
+		  _training_jobs.erase(hit);
+		  throw;
+		}
 	      auto ohit = _training_out.find((*hit).first);
 	      if (ohit!=_training_out.end())
 		{
