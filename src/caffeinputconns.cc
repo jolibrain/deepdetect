@@ -54,6 +54,7 @@ namespace dd
     // provide a db size operator, we iterate and count elements.
     if (fileops::file_exists(dbfullname))
       {
+	LOG(WARNING) << "image db file " << dbfullname << " already exists, bypassing creation but checking on records, may take a while...\n";
 	std::unique_ptr<db::DB> db(db::GetDB(backend));
 	db->Open(dbfullname.c_str(), db::READ);
 	std::unique_ptr<db::Cursor> cursor(db->NewCursor());
@@ -63,9 +64,10 @@ namespace dd
 	    ++_db_batchsize;
 	    cursor->Next();
 	  }
-	LOG(WARNING) << "image db file " << dbfullname << " already exists with " << _db_batchsize << " records, bypassing creation\n";
+	LOG(WARNING) << "image db file " << dbfullname << " with " << _db_batchsize << " records\n";
 	if (!testdbname.empty() && fileops::file_exists(testdbfullname))
 	  {
+	    LOG(WARNING) << "image db file " << testdbfullname << " already exists, bypassing creation but checking on records, may take a while...\n";
 	    _test_labels.clear();
 	    std::unique_ptr<db::DB> tdb(db::GetDB(backend));
 	    tdb->Open(testdbfullname.c_str(), db::READ);
@@ -79,7 +81,7 @@ namespace dd
 		++_db_testbatchsize;
 		tcursor->Next();
 	      }
-	    LOG(WARNING) << "image db file " << testdbfullname << " already exists with " << _db_testbatchsize << " records, bypassing creation\n";
+	    LOG(WARNING) << "image db file " << testdbfullname << " with " << _db_testbatchsize << " records\n";
 	  }
 	return 0;
       }
