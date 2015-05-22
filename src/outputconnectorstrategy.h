@@ -403,7 +403,8 @@ namespace dd
 	    }
 	  APIData adpred;
 	  adpred.add(cl,v);
-	  adpred.add("loss",(*hit).second._loss);
+	  if ((*hit).second._loss > 0.0) // XXX: not set by caffe in prediction mode for now
+	    adpred.add("loss",(*hit).second._loss);
 	  adpred.add("uri",(*hit).first);
 	  vpred.push_back(adpred);
 	  ++hit;
