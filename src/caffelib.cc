@@ -591,7 +591,6 @@ namespace dd
       return 0;
     
     solver_param = caffe::SolverParameter();
-    delete solver;
     this->_mlmodel.read_from_repository(this->_mlmodel._repo);
     int cm = create_model();
     if (cm == 1)
