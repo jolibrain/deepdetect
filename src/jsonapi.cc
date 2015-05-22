@@ -590,7 +590,38 @@ namespace dd
     
     // training status
     APIData out;
-    int status = this->train_status(ad,sname,out);
+    int status = -2;
+    JDoc dout; // this is to store any error message associated with the training job (e.g. if it has died)
+    dout.SetObject();
+    try
+      {
+	status = this->train_status(ad,sname,out);
+      }
+    catch (InputConnectorBadParamException &e)
+      {
+	dout = dd_service_input_bad_request_1005();
+      }
+    catch (MLLibBadParamException &e)
+      {
+	dout = dd_service_bad_request_1006();
+      }
+    catch (InputConnectorInternalException &e)
+      {
+	dout = dd_internal_error_500();
+      }
+    catch (MLLibInternalException &e)
+      {
+	dout = dd_internal_error_500();
+      }
+    catch(RapidjsonException &e)
+      {
+	LOG(ERROR) << "JSON error " << e.what() << std::endl;
+	dout = dd_bad_request_400();
+      }
+    catch (std::exception &e)
+      {
+	dout = dd_internal_mllib_error_1007(e.what());
+      }
     JDoc jtrain;
     if (status == 1)
       {
@@ -606,11 +637,19 @@ namespace dd
     jhead.AddMember("method","/train",jtrain.GetAllocator());
     jhead.AddMember("job",ad.get("job").get<int>(),jtrain.GetAllocator());
     JVal jout(rapidjson::kObjectType);
-    out.toJVal(jtrain,jout);
-    jhead.AddMember("status",JVal().SetString(jout["status"].GetString(),jtrain.GetAllocator()),jtrain.GetAllocator());
-    jhead.AddMember("time",jout["time"].GetDouble(),jtrain.GetAllocator());
-    jout.RemoveMember("time");
-    jout.RemoveMember("status");
+    if (status != -2) // on failure, the output object from the async job is empty
+      {
+	out.toJVal(jtrain,jout);
+	jhead.AddMember("status",JVal().SetString(jout["status"].GetString(),jtrain.GetAllocator()),jtrain.GetAllocator());
+        jhead.AddMember("time",jout["time"].GetDouble(),jtrain.GetAllocator());
+	jout.RemoveMember("time");
+	jout.RemoveMember("status");
+      }
+    if (dout.HasMember("status"))
+      {
+	jhead.AddMember("status",JVal().SetString("error",jtrain.GetAllocator()),jtrain.GetAllocator());
+	jout.AddMember("Error",dout["status"],jtrain.GetAllocator()); // XXX: beware, acquiring the status appears to lead to corrupted rapidjson strings
+      }
     jtrain.AddMember("head",jhead,jtrain.GetAllocator());
     jtrain.AddMember("body",jout,jtrain.GetAllocator());
     return jtrain;
