@@ -1,6 +1,6 @@
 /**
  * DeepDetect
- * Copyright (c) 2014 Emmanuel Benazera
+ * Copyright (c) 2014-2015 Emmanuel Benazera
  * Author: Emmanuel Benazera <beniz@droidnik.fr>
  *
  * This file is part of deepdetect.
@@ -135,7 +135,6 @@ namespace dd
     if (layers.empty() && activation == "ReLU" && dropout == 0.5)
       return; // nothing to do
 
-    //TODO: deploy net
     //- find template first and unique layer (i.e. layer + dropout), update it.
     for (int l=1;l<5;l++)
       {
@@ -184,7 +183,6 @@ namespace dd
       {
 	if (l == 1) // replacing two existing layers
 	  {
-	    //std::cerr << "second inner product layer\n";
 	    caffe::LayerParameter *lparam = net_param.mutable_layer(rl);
 	    if (!cnclasses) // if unknown we keep the default one
 	      nclasses = lparam->mutable_inner_product_param()->num_output();
@@ -195,7 +193,6 @@ namespace dd
 	    dlparam->mutable_inner_product_param()->set_num_output(layers.at(l));
 	    ++drl;
 	    
-	    //std::cerr << "second activation layer\n";
 	    lparam = net_param.mutable_layer(rl);
 	    lparam->clear_include();
 	    lparam->clear_top();
@@ -214,7 +211,6 @@ namespace dd
 	    dlparam->add_top("ip2");
 	    ++drl;
 
-	    //std::cerr << "second dropout layer\n";
 	    //TODO: no dropout, requires to use last existing layer with l > 1
 	    lparam = net_param.mutable_layer(rl);
 	    lparam->clear_bottom();
@@ -227,7 +223,6 @@ namespace dd
 	  }
 	else
 	  {
-	    //std::cerr << "n inner product layer\n";
 	    std::string prec_ip = "ip" + std::to_string(l);
 	    std::string curr_ip = "ip" + std::to_string(l+1);
 	    caffe::LayerParameter *lparam = net_param.add_layer(); // inner product layer
@@ -252,7 +247,6 @@ namespace dd
 	    dipp->mutable_weight_filler()->set_std(0.1);
 	    dipp->mutable_bias_filler()->set_type("constant");
 	    
-	    //std::cerr << "n activation layer\n";
 	    lparam = net_param.add_layer(); // activation layer
 	    std::string act = "act" + std::to_string(l+1);
 	    lparam->set_name(act);
@@ -266,7 +260,6 @@ namespace dd
 	    dlparam->add_bottom(curr_ip);
 	    dlparam->add_top(curr_ip);
 	    
-	    //std::cerr << "n dropout layer\n";
 	    lparam = net_param.add_layer(); // dropout layer
 	    std::string drop = "drop" + std::to_string(l+1);
 	    lparam->set_name(drop);
@@ -302,7 +295,6 @@ namespace dd
     dipp->mutable_weight_filler()->set_std(0.1);
     dipp->mutable_bias_filler()->set_type("constant");
     
-    //std::cerr << "test loss layer\n";
     lparam = net_param.add_layer(); // test loss
     lparam->set_name("losst");
     lparam->set_type("Softmax");
@@ -311,7 +303,6 @@ namespace dd
     caffe::NetStateRule *nsr = lparam->add_include();
     nsr->set_phase(caffe::TEST);
 
-    //std::cerr << "loss layer\n";
     lparam = net_param.add_layer(); // training loss
     lparam->set_name("loss");
     lparam->set_type("SoftmaxWithLoss");
@@ -608,8 +599,6 @@ namespace dd
     
     // test
     test(_net,ad,inputc,test_batch_size,has_mean_file,out);
-
-    //TODO: return batch_size value if it was changed
     
     inputc.response_params(out);
     
@@ -855,9 +844,6 @@ namespace dd
     // adapt number of neuron output
     update_protofile_classes(net_param);
     update_protofile_classes(deploy_net_param);
-
-    //TODO: if mlp template, set the net structure as number of layers etc ?
-    //configure_mlp_template(ad,net_param,deploy_net_param);
     
     caffe::WriteProtoToTextFile(net_param,net_file);
     caffe::WriteProtoToTextFile(deploy_net_param,deploy_file);
@@ -931,8 +917,6 @@ namespace dd
 	    if (fabs(batch_size-min_batch_size) < fabs(max_batch_size-batch_size))
 	      batch_size = min_batch_size;
 	    else batch_size = max_batch_size;
-	    /*if (batch_size == 0)
-	      batch_size = ad_net.get("batch_size").get<int>();*/
 	    for (int i=test_batch_size;i>1;i--)
 	      if (inputc.test_batch_size() % i == 0)
 		{
