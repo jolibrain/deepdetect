@@ -763,8 +763,6 @@ namespace dd
     for (int i=0;i<np->layer_size();i++)
       {
 	caffe::LayerParameter *lp = np->mutable_layer(i);
-	if (i == 0)
-	  std::cout << "has transform param=" << lp->has_transform_param() << std::endl;
 	if (lp->has_data_param())
 	  {
 	    caffe::DataParameter *dp = lp->mutable_data_param();
@@ -886,17 +884,21 @@ namespace dd
   {
     // acquire custom batch size if any
     APIData ad_net = ad.getobj("parameters").getobj("mllib").getobj("net");
-    batch_size = inputc.batch_size();
-    test_batch_size = inputc.test_batch_size();
-    test_iter = 1;
+    //batch_size = inputc.batch_size();
+    //test_batch_size = inputc.test_batch_size();
+    //test_iter = 1;
     if (ad_net.has("batch_size"))
       {
 	// adjust batch size so that it is a multiple of the number of training samples (Caffe requirement)
 	batch_size = test_batch_size = ad_net.get("batch_size").get<int>();
 	if (batch_size == 0)
 	  throw MLLibBadParamException("batch size set to zero");
-	std::cerr << "user batch_size=" << batch_size << " / inputc batch_size=" << inputc.batch_size() << std::endl;
-	if (batch_size < inputc.batch_size())
+	LOG(INFO) << "user batch_size=" << batch_size << " / inputc batch_size=" << inputc.batch_size() << std::endl;
+
+	// code below was required when Caffe (weirdly) required the batch size 
+	// to be a multiple of the training dataset size.
+	// left here until confirmed as fully deperecated.
+	/*if (batch_size < inputc.batch_size())
 	  {
 	    int min_batch_size = 0;
 	    for (int i=batch_size;i>1;i--)
@@ -925,11 +927,12 @@ namespace dd
 		}
 	    test_iter = inputc.test_batch_size() / test_batch_size;
 	  }
-	  else batch_size = inputc.batch_size();
+	  else batch_size = inputc.batch_size();*/
       }
+    test_iter = inputc.test_batch_size() / test_batch_size;
     
     //debug
-    std::cerr << "batch_size=" << batch_size << " / test_batch_size=" << test_batch_size << " / test_iter=" << test_iter << std::endl;
+    //std::cerr << "batch_size=" << batch_size << " / test_batch_size=" << test_batch_size << " / test_iter=" << test_iter << std::endl;
     //debug
   }
 
