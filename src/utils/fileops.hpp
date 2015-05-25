@@ -58,7 +58,7 @@ namespace dd
       if ((dir = opendir(repo.c_str())) != NULL) {
 	while ((ent = readdir(dir)) != NULL) {
 	  if ((files && (ent->d_type == DT_REG || ent->d_type == DT_LNK))
-	      || (dirs && ent->d_type == DT_DIR && ent->d_name[0] != '.'))
+	      || (dirs && (ent->d_type == DT_DIR || ent->d_type == DT_LNK) && ent->d_name[0] != '.'))
 	    lfiles.insert(std::string(repo) + "/" + std::string(ent->d_name));
 	}
 	closedir(dir);

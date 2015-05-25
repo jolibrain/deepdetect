@@ -143,6 +143,8 @@ namespace dd
     _db_testbatchsize = test_lfiles.size();
     
     LOG(INFO) << "A total of " << lfiles.size() << " images.";
+    if (lfiles.empty())
+      throw InputConnectorBadParamException("no image data found in repository");
     
     // write files to dbs (i.e. train and possibly test)
     std::vector<int> labels; // XXX: useless
