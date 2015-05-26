@@ -20,8 +20,8 @@ Current features include:
 - templates for the most useful neural architectures (e.g. Googlenet, Alexnet, mlp, logistic regression)
 
 Documentation:
-- Full documentation is available from
-- API documentation is available from
+- Full documentation is available from http://www.deepdetect.com/overview/introduction/
+- API documentation is available from http://www.deepdetect.com/api/
 
 Dependencies:
 
@@ -47,7 +47,7 @@ Implementation:
 The code makes use of C++ policy design for modularity, performance and putting the maximum burden on the checks at compile time. The implementation uses many features from C++11.
 
 ### Authors
-DeepDetect is designed and implemented by Emmanuel Benazera.
+DeepDetect is designed and implemented by Emmanuel Benazera <beniz@droidnik.fr>.
 
 ### Build
 
