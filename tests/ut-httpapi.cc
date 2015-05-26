@@ -445,7 +445,7 @@ TEST(httpjsonapi,predict)
   ASSERT_EQ(201,d["status"]["code"].GetInt());
 
   // train sync
-  std::string train_post = "{\"service\":\"" + serv + "\",\"async\":false,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":50,\"snapshot_prefix\":\""+mnist_repo+"/mylenet\"}},\"output\":{\"measure_hist\":true}}}";
+  std::string train_post = "{\"service\":\"" + serv + "\",\"async\":false,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":200,\"snapshot_prefix\":\""+mnist_repo+"/mylenet\"}},\"output\":{\"measure_hist\":true}}}";
   httpclient::post_call(luri+"/train",train_post,"POST",code,jstr);
   std::cerr << "jstr=" << jstr << std::endl;
   ASSERT_EQ(201,code);
