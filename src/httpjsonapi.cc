@@ -280,7 +280,14 @@ namespace dd
     std::vector<std::thread> ts;
     for (int i=0;i<nthreads;i++)
       ts.push_back(std::thread(std::bind(&http_server::run,_dd_server)));
-    _dd_server->run();
+    try {
+      _dd_server->run();
+    }
+    catch(std::exception &e)
+      {
+	LOG(ERROR) << e.what() << std::endl;
+	return 1;
+      }
     for (int i=0;i<nthreads;i++)
       ts.at(i).join();
     return 0;
