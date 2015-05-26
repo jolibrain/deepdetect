@@ -27,7 +27,7 @@
 
 using namespace dd;
 
-/*TEST(outputconn,acc)
+TEST(outputconn,acc)
 {
   std::vector<int> targets = {0, 0, 1, 1};
   std::vector<double> pred1 = {0.7, 0.3};
@@ -77,7 +77,7 @@ TEST(inputconn,img)
 {
   std::string mnist_repo = "../examples/caffe/mnist/";
   APIData ad;
-  std::vector<std::string> uris = {mnist_repo + "/sample_digit.png","http://juban.free.fr/dd/examples/caffe/mnist/sample_digit.png"};
+  std::vector<std::string> uris = {mnist_repo + "/sample_digit.png","http://www.deepdetect.com/dd/examples/caffe/mnist/sample_digit.png"};
   ad.add("data",uris);
   ImgInputFileConn iifc;
   try
@@ -96,7 +96,7 @@ TEST(inputconn,img)
   cv::split(diff,channels);
   for (int i=0;i<3;i++)
     ASSERT_TRUE(cv::countNonZero(channels.at(i))==0); // the two images must be identical
-}*/
+}
 
 //TODO: test csv scale, separator, ...
 TEST(inputconn,csv_mem1)
