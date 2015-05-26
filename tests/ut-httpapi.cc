@@ -445,7 +445,7 @@ TEST(httpjsonapi,predict)
   ASSERT_EQ(201,d["status"]["code"].GetInt());
 
   // train sync
-  std::string train_post = "{\"service\":\"" + serv + "\",\"async\":false,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":200,\"snapshot_prefix\":\""+mnist_repo+"/mylenet\"}},\"output\":{\"measure_hist\":true}}}";
+  std::string train_post = "{\"service\":\"" + serv + "\",\"async\":false,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":50,\"snapshot_prefix\":\""+mnist_repo+"/mylenet\"}},\"output\":{\"measure_hist\":true}}}";
   httpclient::post_call(luri+"/train",train_post,"POST",code,jstr);
   std::cerr << "jstr=" << jstr << std::endl;
   ASSERT_EQ(201,code);
@@ -464,7 +464,7 @@ TEST(httpjsonapi,predict)
   ASSERT_TRUE(jd["body"]["measure_hist"]["train_loss_hist"].Size() > 0);
 
   // predict
-  std::string predict_post = "{\"service\":\""+ serv + "\",\"parameters\":{\"input\":{\"bw\":true,\"width\":28,\"height\":28},\"output\":{\"best\":3}},\"data\":[\"" + mnist_repo + "/sample_digit.png\",\"" + mnist_repo + "/sample_digit2.png\"]}";
+  std::string predict_post = "{\"service\":\""+ serv + "\",\"parameters\":{\"mllib\":{\"gpu\":true},\"input\":{\"bw\":true,\"width\":28,\"height\":28},\"output\":{\"best\":3}},\"data\":[\"" + mnist_repo + "/sample_digit.png\",\"" + mnist_repo + "/sample_digit2.png\"]}";
   httpclient::post_call(luri+"/predict",predict_post,"POST",code,jstr);
   std::cerr << "code=" << code << std::endl;
   ASSERT_EQ(200,code);
@@ -475,6 +475,14 @@ TEST(httpjsonapi,predict)
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble() > 0);
   ASSERT_TRUE(jd["body"]["predictions"][1]["classes"][0]["prob"].GetDouble() > 0);
 
+  // predict with output template
+  std::string ot = "{{#status}}{{code}}{{/status}}\\n{{#body}}{{#predictions}}*{{uri}}:\\n{{#classes}}{{cat}}->{{prob}}\\n{{/classes}}{{/predictions}}{{/body}}";
+  predict_post = "{\"service\":\""+ serv + "\",\"parameters\":{\"mllib\":{\"gpu\":true},\"input\":{\"bw\":true,\"width\":28,\"height\":28},\"output\":{\"best\":3,\"output_template\":\"" + ot + "\"}},\"data\":[\"" + mnist_repo + "/sample_digit.png\",\"" + mnist_repo + "/sample_digit2.png\"]}";
+  httpclient::post_call(luri+"/predict",predict_post,"POST",code,jstr);
+  std::cerr << "code=" << code << std::endl;
+  ASSERT_EQ(200,code);
+  std::cerr << "jstr=" << jstr << std::endl;
+  
   // remove services and trained model files
   httpclient::get_call(luri+"/services/"+serv+"?clear=lib","DELETE",code,jstr);
   ASSERT_EQ(200,code);
