@@ -134,9 +134,9 @@ public:
   {
     int code = janswer["status"]["code"].GetInt();
     std::string stranswer;
-    if (janswer.HasMember("output_template")) // if output template, fillup with rendered template.
+    if (janswer.HasMember("template")) // if output template, fillup with rendered template.
       {
-	std::string tpl = janswer["output_template"].GetString();
+	std::string tpl = janswer["template"].GetString();
 	std::stringstream sg;
 	mustache::RenderTemplate(tpl," ",janswer,&sg);
 	stranswer = sg.str();

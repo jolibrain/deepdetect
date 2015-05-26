@@ -477,7 +477,7 @@ TEST(httpjsonapi,predict)
 
   // predict with output template
   std::string ot = "{{#status}}{{code}}{{/status}}\\n{{#body}}{{#predictions}}*{{uri}}:\\n{{#classes}}{{cat}}->{{prob}}\\n{{/classes}}{{/predictions}}{{/body}}";
-  predict_post = "{\"service\":\""+ serv + "\",\"parameters\":{\"mllib\":{\"gpu\":true},\"input\":{\"bw\":true,\"width\":28,\"height\":28},\"output\":{\"best\":3,\"output_template\":\"" + ot + "\"}},\"data\":[\"" + mnist_repo + "/sample_digit.png\",\"" + mnist_repo + "/sample_digit2.png\"]}";
+  predict_post = "{\"service\":\""+ serv + "\",\"parameters\":{\"mllib\":{\"gpu\":true},\"input\":{\"bw\":true,\"width\":28,\"height\":28},\"output\":{\"best\":3,\"template\":\"" + ot + "\"}},\"data\":[\"" + mnist_repo + "/sample_digit.png\",\"" + mnist_repo + "/sample_digit2.png\"]}";
   httpclient::post_call(luri+"/predict",predict_post,"POST",code,jstr);
   std::cerr << "code=" << code << std::endl;
   ASSERT_EQ(200,code);
