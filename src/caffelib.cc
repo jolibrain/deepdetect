@@ -400,8 +400,8 @@ namespace dd
     caffe::SolverParameter solver_param;
     caffe::ReadProtoFromTextFile(this->_mlmodel._solver,&solver_param);
     bool has_mean_file = false;
-    int batch_size, test_batch_size, test_iter;
-    update_in_memory_net_and_solver(solver_param,cad,inputc,has_mean_file,batch_size,test_batch_size,test_iter);
+    int user_batch_size, batch_size, test_batch_size, test_iter;
+    update_in_memory_net_and_solver(solver_param,cad,inputc,has_mean_file,user_batch_size,batch_size,test_batch_size,test_iter);
 
     // parameters
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
@@ -523,11 +523,6 @@ namespace dd
 	if (solver->param_.test_interval() && solver->iter_ % solver->param_.test_interval() == 0
 	    && (solver->iter_ > 0 || solver->param_.test_initialization())) 
 	  {
-	    /*if (_net)
-	      {
-		delete _net;
-		_net = nullptr;
-		}*/
 	    if (!_net)
 	      {
 		_net = new Net<float>(this->_mlmodel._def,caffe::TEST); //TODO: this is loading deploy file, we could use the test net when it exists and if its source is memory data
@@ -600,7 +595,30 @@ namespace dd
     // test
     test(_net,ad,inputc,test_batch_size,has_mean_file,out);
     
+    // add whatever the input connector needs to transmit out
     inputc.response_params(out);
+
+    // if batch_size has been recomputed, let the user know
+    if (user_batch_size != batch_size)
+      {
+	APIData advb;
+	advb.add("batch_size",batch_size);
+	std::vector<APIData> vb = { advb };
+	if (!out.has("parameters"))
+	  {
+	    APIData adparams;
+	    adparams.add("mllib",vb);
+	    std::vector<APIData> vab = { adparams };
+	    out.add("parameters",vab);
+	  }
+	else
+	  {
+	    APIData adparams = out.getobj("parameters");
+	    adparams.add("mllib",vb);
+	    std::vector<APIData> vad = { adparams };
+	    out.add("parameters",vad);
+	  }
+      }
     
     return 0;
   }
@@ -740,6 +758,7 @@ namespace dd
 													    const APIData &ad,
 													    const TInputConnectorStrategy &inputc,
 													    bool &has_mean_file,
+													    int &user_batch_size,
 													    int &batch_size,
 													    int &test_batch_size,
 													    int &test_iter)
@@ -751,10 +770,10 @@ namespace dd
     sp.set_snapshot_prefix(this->_mlmodel._repo + "/model");
     
     // acquire custom batch size if any
-    batch_size = inputc.batch_size();
+    user_batch_size = batch_size = inputc.batch_size();
     test_batch_size = inputc.test_batch_size();
     test_iter = -1;
-    fix_batch_size(ad,inputc,batch_size,test_batch_size,test_iter);
+    fix_batch_size(ad,inputc,user_batch_size,batch_size,test_batch_size,test_iter);
     if (test_iter != -1) // has changed
       sp.set_test_iter(0,test_iter);
     
@@ -781,7 +800,7 @@ namespace dd
 	      }
 	    if (dp->has_batch_size() && batch_size != inputc.batch_size() && batch_size > 0)
 	      {
-		dp->set_batch_size(batch_size);
+		dp->set_batch_size(user_batch_size); // data params seem to handle batch_size that are no multiple of the training set
 	      }
 	  }
 	else if (lp->has_memory_data_param())
@@ -880,6 +899,7 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::fix_batch_size(const APIData &ad,
 											   const TInputConnectorStrategy &inputc,
+											   int &user_batch_size,
 											   int &batch_size,
 											   int &test_batch_size,
 											   int &test_iter)
@@ -892,7 +912,7 @@ namespace dd
     if (ad_net.has("batch_size"))
       {
 	// adjust batch size so that it is a multiple of the number of training samples (Caffe requirement)
-	batch_size = test_batch_size = ad_net.get("batch_size").get<int>();
+	user_batch_size = batch_size = test_batch_size = ad_net.get("batch_size").get<int>();
 	if (batch_size == 0)
 	  throw MLLibBadParamException("batch size set to zero");
 	LOG(INFO) << "user batch_size=" << batch_size << " / inputc batch_size=" << inputc.batch_size() << std::endl;

@@ -283,7 +283,7 @@ TEST(caffeapi,service_predict)
   // predict
   std::string jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"bw\":true}},\"data\":[\"" + mnist_repo + "/sample_digit.png\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
-  std::cout << "joutstr=" << joutstr << std::endl;
+  std::cout << "joutstr predict=" << joutstr << std::endl;
   jd.Parse(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(500,jd["status"]["code"]);
@@ -315,7 +315,7 @@ TEST(caffeapi,service_train_csv)
   ASSERT_EQ(created_str,joutstr);
 
   // train
-  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"label\":\"Cover_Type\",\"id\":\"Id\",\"scale\":true,\"test_split\":0.1,\"label_offset\":-1,\"shuffle\":true},\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":" + iterations_forest + "},\"net\":{\"batch_size\":500}},\"output\":{\"measure\":[\"acc\",\"mcll\",\"f1\"]}},\"data\":[\"" + forest_repo + "train.csv\"]}";
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"label\":\"Cover_Type\",\"id\":\"Id\",\"scale\":true,\"test_split\":0.1,\"label_offset\":-1,\"shuffle\":true},\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":" + iterations_forest + "},\"net\":{\"batch_size\":512}},\"output\":{\"measure\":[\"acc\",\"mcll\",\"f1\"]}},\"data\":[\"" + forest_repo + "train.csv\"]}";
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
@@ -343,6 +343,7 @@ TEST(caffeapi,service_train_csv)
   ASSERT_TRUE(jd["body"]["parameters"]["input"].HasMember("max_vals"));
   ASSERT_EQ(56,jd["body"]["parameters"]["input"]["min_vals"].Size());
   ASSERT_EQ(56,jd["body"]["parameters"]["input"]["max_vals"].Size());
+  ASSERT_EQ(504,jd["body"]["parameters"]["mllib"]["batch_size"].GetInt());
   
   // remove service
   jstr = "{\"clear\":\"lib\"}";

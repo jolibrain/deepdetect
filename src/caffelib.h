@@ -133,12 +133,17 @@ namespace dd
      * @param sp Caffe's solver's parameters
      * @param ad the root data object
      * @param inputc the current input constructor that holds the training data
+     * @param user_batch_size the user specified batch size
+     * @param batch_size the automatically computed batch size, since some input Caffe layers do require it to divide cleanly the size of the training set
+     * @param test_batch_size automatically computed value for the test batch size
+     * @param test_iter automatically computed number of iterations of batches to cover the full test set
      * @param has_mean_file whether the current net uses a mean file (i.e. for images)
      */
       void update_in_memory_net_and_solver(caffe::SolverParameter &sp,
 					   const APIData &ad,
 					   const TInputConnectorStrategy &inputc,
 					   bool &has_mean_file,
+					   int &user_batch_size,
 					   int &batch_size,
 					   int &test_batch_size,
 					   int &test_iter);
@@ -163,6 +168,7 @@ namespace dd
 
       void fix_batch_size(const APIData &ad,
 			  const TInputConnectorStrategy &inputc,
+			  int &user_batch_size,
 			  int &batch_size,
 			  int &test_batch_size,
 			  int &test_iter);

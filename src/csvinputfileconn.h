@@ -220,8 +220,9 @@ namespace dd
 	    }
 	  else
 	    {
-	      std::vector<APIData> vad = out.get("parameters").get<std::vector<APIData>>();
-	      vad.at(0).add("input",vip);
+	      APIData adparams = out.getobj("parameters");
+	      adparams.add("input",vip);
+	      std::vector<APIData> vad = { adparams };
 	      out.add("parameters",vad);
 	    }
 	}
