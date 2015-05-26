@@ -654,7 +654,8 @@ namespace dd
     if (dout.HasMember("status"))
       {
 	jhead.AddMember("status",JVal().SetString("error",jtrain.GetAllocator()),jtrain.GetAllocator());
-	//jout.AddMember("Error",dout["status"],jtrain.GetAllocator()); // XXX: beware, acquiring the status appears to lead to corrupted rapidjson strings
+	JVal &jvout = dout["status"];
+	jout.AddMember("Error",jvout,jtrain.GetAllocator()); // XXX: beware, acquiring the status appears to lead to corrupted rapidjson strings
       }
     jtrain.AddMember("head",jhead,jtrain.GetAllocator());
     jtrain.AddMember("body",jout,jtrain.GetAllocator());
