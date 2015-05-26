@@ -753,9 +753,10 @@ namespace dd
     // acquire custom batch size if any
     batch_size = inputc.batch_size();
     test_batch_size = inputc.test_batch_size();
-    test_iter = 1;
+    test_iter = -1;
     fix_batch_size(ad,inputc,batch_size,test_batch_size,test_iter);
-    sp.set_test_iter(0,test_iter);
+    if (test_iter != -1) // has changed
+      sp.set_test_iter(0,test_iter);
     
     // fix source paths in the model.
     caffe::NetParameter *np = sp.mutable_net_param();
@@ -928,8 +929,8 @@ namespace dd
 	    test_iter = inputc.test_batch_size() / test_batch_size;
 	  }
 	  else batch_size = inputc.batch_size();*/
+	test_iter = inputc.test_batch_size() / test_batch_size;
       }
-    test_iter = inputc.test_batch_size() / test_batch_size;
     
     //debug
     //std::cerr << "batch_size=" << batch_size << " / test_batch_size=" << test_batch_size << " / test_iter=" << test_iter << std::endl;
