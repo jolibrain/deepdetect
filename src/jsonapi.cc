@@ -457,11 +457,11 @@ namespace dd
     JVal jbody(rapidjson::kObjectType);
     jbody.AddMember("predictions",jout["predictions"],jpred.GetAllocator());
     jpred.AddMember("body",jbody,jpred.GetAllocator());
-    if (ad_data.getobj("parameters").getobj("output").has("output_template"))
+    if (ad_data.getobj("parameters").getobj("output").has("template"))
       {
 	APIData ad_params = ad_data.getobj("parameters");
 	APIData ad_output = ad_params.getobj("output");
-	jpred.AddMember("output_template",JVal().SetString(ad_output.get("output_template").get<std::string>().c_str(),jpred.GetAllocator()),jpred.GetAllocator());
+	jpred.AddMember("template",JVal().SetString(ad_output.get("template").get<std::string>().c_str(),jpred.GetAllocator()),jpred.GetAllocator());
       }
     return jpred;
   }
@@ -654,7 +654,7 @@ namespace dd
     if (dout.HasMember("status"))
       {
 	jhead.AddMember("status",JVal().SetString("error",jtrain.GetAllocator()),jtrain.GetAllocator());
-	jout.AddMember("Error",dout["status"],jtrain.GetAllocator()); // XXX: beware, acquiring the status appears to lead to corrupted rapidjson strings
+	//jout.AddMember("Error",dout["status"],jtrain.GetAllocator()); // XXX: beware, acquiring the status appears to lead to corrupted rapidjson strings
       }
     jtrain.AddMember("head",jhead,jtrain.GetAllocator());
     jtrain.AddMember("body",jout,jtrain.GetAllocator());
