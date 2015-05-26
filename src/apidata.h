@@ -235,11 +235,11 @@ namespace dd
       d.SetObject();
       toJDoc(d);
 
-      rapidjson::StringBuffer buffer;
+      /*rapidjson::StringBuffer buffer;
       rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
       d.Accept(writer);
       std::string reststring = buffer.GetString();
-      //std::cout << "to jdoc=" << reststring << std::endl;
+      std::cout << "to jdoc=" << reststring << std::endl;*/
       
       mustache::RenderTemplate(tpl, "", d, &ss);
       return ss.str();
