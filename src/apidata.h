@@ -111,6 +111,9 @@ namespace dd
      */
     inline void add(const std::string &key, const ad_variant_type &val)
     {
+      auto hit = _data.begin();
+      if ((hit=_data.find(key))!=_data.end())
+	_data.erase(hit);
       _data.insert(std::pair<std::string,ad_variant_type>(key,val));
     }
 
