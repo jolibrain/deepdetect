@@ -779,7 +779,7 @@ namespace dd
 		  }
 		else dp->set_source(this->_mlmodel._repo + "/" + dp->source()); // this updates in-memory net
 	      }
-	    if (dp->has_batch_size() && batch_size > 0)
+	    if (dp->has_batch_size() && batch_size != inputc.batch_size() && batch_size > 0)
 	      {
 		dp->set_batch_size(batch_size);
 	      }
@@ -787,7 +787,7 @@ namespace dd
 	else if (lp->has_memory_data_param())
 	  {
 	    caffe::MemoryDataParameter *mdp = lp->mutable_memory_data_param();
-	    if (mdp->has_batch_size() && batch_size > 0)
+	    if (mdp->has_batch_size() && batch_size != inputc.batch_size() && batch_size > 0)
 	      {
 		if (i == 0) // training
 		  mdp->set_batch_size(batch_size);
@@ -809,6 +809,7 @@ namespace dd
     sp.clear_net();
   }
 
+  // XXX: we are no more pre-setting the batch_size to the data set values (e.g. number of samples)
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofile_net(const std::string &net_file,
 												 const std::string &deploy_file,
@@ -896,10 +897,9 @@ namespace dd
 	  throw MLLibBadParamException("batch size set to zero");
 	LOG(INFO) << "user batch_size=" << batch_size << " / inputc batch_size=" << inputc.batch_size() << std::endl;
 
-	// code below was required when Caffe (weirdly) required the batch size 
+	// code below is required when Caffe (weirdly) requires the batch size 
 	// to be a multiple of the training dataset size.
-	// left here until confirmed as fully deperecated.
-	/*if (batch_size < inputc.batch_size())
+	if (batch_size < inputc.batch_size())
 	  {
 	    int min_batch_size = 0;
 	    for (int i=batch_size;i>1;i--)
@@ -928,13 +928,13 @@ namespace dd
 		}
 	    test_iter = inputc.test_batch_size() / test_batch_size;
 	  }
-	  else batch_size = inputc.batch_size();*/
+	else batch_size = inputc.batch_size();
 	test_iter = inputc.test_batch_size() / test_batch_size;
+	
+	//debug
+	LOG(INFO) << "batch_size=" << batch_size << " / test_batch_size=" << test_batch_size << " / test_iter=" << test_iter << std::endl;
+	//debug
       }
-    
-    //debug
-    //std::cerr << "batch_size=" << batch_size << " / test_batch_size=" << test_batch_size << " / test_iter=" << test_iter << std::endl;
-    //debug
   }
 
   template class CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>;
