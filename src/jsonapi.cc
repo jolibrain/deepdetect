@@ -457,6 +457,12 @@ namespace dd
     JVal jbody(rapidjson::kObjectType);
     jbody.AddMember("predictions",jout["predictions"],jpred.GetAllocator());
     jpred.AddMember("body",jbody,jpred.GetAllocator());
+    if (ad_data.getobj("parameters").getobj("output").has("output_template"))
+      {
+	APIData ad_params = ad_data.getobj("parameters");
+	APIData ad_output = ad_params.getobj("output");
+	jpred.AddMember("output_template",JVal().SetString(ad_output.get("output_template").get<std::string>().c_str(),jpred.GetAllocator()),jpred.GetAllocator());
+      }
     return jpred;
   }
 

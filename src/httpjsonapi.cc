@@ -24,6 +24,7 @@
 #include <algorithm>
 #include <csignal>
 #include <iostream>
+#include "ext/rmustache/mustache.h"
 #include "ext/rapidjson/document.h"
 #include "ext/rapidjson/stringbuffer.h"
 #include "ext/rapidjson/reader.h"
@@ -132,7 +133,18 @@ public:
 		       const JDoc &janswer)
   {
     int code = janswer["status"]["code"].GetInt();
-    std::string stranswer = _hja->jrender(janswer);
+    std::string stranswer;
+    if (janswer.HasMember("output_template")) // if output template, fillup with rendered template.
+      {
+	std::string tpl = janswer["output_template"].GetString();
+	std::stringstream sg;
+	mustache::RenderTemplate(tpl," ",janswer,&sg);
+	stranswer = sg.str();
+      }
+    else
+      {
+	stranswer = _hja->jrender(janswer);
+      }
     response = http_server::response::stock_reply(http_server::response::status_type(code),stranswer);
     response.status = static_cast<http_server::response::status_type>(code);
   }
