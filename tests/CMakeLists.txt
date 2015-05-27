@@ -1,30 +1,31 @@
+include_directories(${Boost_INCLUDE_DIRS})
 if (CUDA_FOUND)
   set(CUDA_LIB_DEPS -lcudart -lcublas -lcurand)# -lcudnn)
 else()
   add_definitions(-DCPU_ONLY)
 endif()
-set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lboost_system -lhdf5_hl -lhdf5 -lboost_thread -lopenblas -lcaffe -lprotobuf)
+set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lhdf5_hl -lhdf5 -lopenblas -lcaffe -lprotobuf)
 link_directories(${CAFFE_LIB_DIR})
 
 find_package(GTest)
 include_directories(${GTEST_INCLUDE_DIRS})
 if (GTEST_FOUND)
   add_executable(ut_apidata ut-apidata.cc)
-  target_link_libraries(ut_apidata ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc curlpp curl ${CAFFE_LIB_DEPS})
+  target_link_libraries(ut_apidata ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS})
   add_test(
     NAME ut_apidata
     COMMAND ut_apidata
     )
   
   add_executable(ut_conn ut-conn.cc)
-  target_link_libraries(ut_conn ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc curlpp curl ${CAFFE_LIB_DEPS})
+  target_link_libraries(ut_conn ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS})
   add_test(
     NAME ut_conn
     COMMAND ut_conn
     )
   
   add_executable(ut_jsonapi ut-jsonapi.cc)
-  target_link_libraries(ut_jsonapi ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc curlpp curl ${CAFFE_LIB_DEPS})
+  target_link_libraries(ut_jsonapi ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS})
   add_test(
     NAME ut_jsonapi
     COMMAND ut_jsonapi
@@ -34,7 +35,7 @@ if (GTEST_FOUND)
   target_link_libraries(test_server boost_thread cppnetlib-uri cppnetlib-client-connections boost_system crypto ssl)
 
   add_executable(ut_caffe_mlp ut-caffe-mlp.cc)
-  target_link_libraries(ut_caffe_mlp ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc curlpp curl ${CAFFE_LIB_DEPS})
+  target_link_libraries(ut_caffe_mlp ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS})
   add_test(
     NAME ut_caffe_mlp
     COMMAND ut_caffe_mlp
@@ -73,14 +74,14 @@ if (GTEST_FOUND)
   endif()
   
   add_executable(ut_caffeapi ut-caffeapi.cc)
-  target_link_libraries(ut_caffeapi ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc curlpp curl ${CAFFE_LIB_DEPS})
+  target_link_libraries(ut_caffeapi ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS})
   add_test(
     NAME ut_caffeapi
     COMMAND ut_caffeapi
     )
   
   add_executable(ut_httpapi ut-httpapi.cc)
-  target_link_libraries(ut_httpapi ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc ${CAFFE_LIB_DEPS} cppnetlib-uri curlpp curl boost_system crypto ssl)
+  target_link_libraries(ut_httpapi ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} cppnetlib-uri curlpp curl crypto ssl)
   add_test(
     NAME ut_httpapi
     COMMAND ut_httpapi

@@ -40,9 +40,12 @@ configure_file(
   "${PROJECT_BINARY_DIR}/githash.h"
 )
 
-# dependency to Eigen for confusion matrix fast computation
+# dependency on Eigen for confusion matrix fast computation
 find_package(Eigen3 REQUIRED)
 include_directories("${EIGEN3_INCLUDE_DIR}")
+
+# dependency on Boost
+find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system)
 
 # optional packages
 find_package(CUDA)
