@@ -27,7 +27,8 @@
 #include <string>
 #include <future>
 #include <mutex>
-#include <shared_mutex>
+//#include <shared_mutex>
+#include <boost/thread/shared_mutex.hpp>
 #include <unordered_map>
 #include <chrono>
 #include <iostream>
@@ -190,7 +191,7 @@ namespace dd
 							   [this,ad,local_tcounter]
 							   {
 							     // XXX: due to lock below, queued jobs may not start in requested order
-							     std::lock_guard<std::shared_timed_mutex> lock(_train_mutex); // job is pending until lock from another train is freed
+							     boost::unique_lock< boost::shared_mutex > lock(_train_mutex);
 							     APIData out;
 							     int run_code = this->train(ad,out);
 							     std::pair<int,APIData> p(local_tcounter,std::move(out));
@@ -202,7 +203,7 @@ namespace dd
 	}
 	else 
 	  {
-	    std::lock_guard<std::shared_timed_mutex> lock(_train_mutex);
+	    boost::unique_lock< boost::shared_mutex > lock(_train_mutex);
 	    int status = this->train(ad,out);
 	    //this->collect_measures(out);
 	    APIData ad_params_out = ad.getobj("parameters").getobj("output");
@@ -332,7 +333,7 @@ namespace dd
 	}
       else // wait til a lock can be acquired
 	{
-	  std::shared_lock<std::shared_timed_mutex> lock(_train_mutex);
+	  boost::shared_lock< boost::shared_mutex > lock(_train_mutex);
 	  return this->predict(ad,out);
 	}
       return 0;
@@ -346,7 +347,7 @@ namespace dd
     std::unordered_map<int,tjob> _training_jobs; // XXX: the futures' dtor blocks if the object is being terminated
     std::unordered_map<int,APIData> _training_out;
 
-    std::shared_timed_mutex _train_mutex; /**< mutex around training call, to protect from predictions. XXX: use a shared_mutex when available in C++14. */
+    boost::shared_mutex _train_mutex;
   };
   
 }
