@@ -88,7 +88,7 @@ Running DeepDetect HTTP server on localhost:8080
 
 ### Run examples
 
-See tutorials from 
+See tutorials from http://www.deepdetect.com/tutorials/tutorials/
 
 ### References
 
