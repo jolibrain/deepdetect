@@ -25,7 +25,7 @@ Documentation:
 
 Dependencies:
 
-- C++, gcc >= 4.9 or clang with support for C++11 (there are issues with Clang + Boost)
+- C++, gcc >= 4.8 or clang with support for C++11 (there are issues with Clang + Boost)
 - [eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page) for all matrix operations;
 - [glog](https://code.google.com/p/google-glog/) for logging events and debug;
 - [gflags](https://code.google.com/p/gflags/) for command line parsing;
