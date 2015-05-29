@@ -99,17 +99,7 @@ namespace dd
      */
     ~MLService() 
       {
-	auto hit = _training_jobs.begin();
-	while(hit!=_training_jobs.end())
-	  {
-	    std::future_status status = (*hit).second._ft.wait_for(std::chrono::seconds(0));
-	    if (status == std::future_status::timeout)
-	      {
-		this->_tjob_running.store(false);
-		(*hit).second._ft.wait();
-	      }
-	    ++hit;
-	  }
+	kill_jobs();
       }
 
     /**
@@ -126,6 +116,24 @@ namespace dd
       this->init_mllib(ad.getobj("parameters").getobj("mllib"));
     }
 
+    /**
+     * \brief terminates all service's jobs
+     */ 
+    void kill_jobs()
+    {
+      auto hit = _training_jobs.begin();
+      while(hit!=_training_jobs.end())
+	{
+	  std::future_status status = (*hit).second._ft.wait_for(std::chrono::seconds(0));
+	  if (status == std::future_status::timeout)
+	    {
+	      this->_tjob_running.store(false);
+	      (*hit).second._ft.wait();
+	    }
+	  ++hit;
+	}
+    }
+    
     /**
      * \brief get info about the service
      * @return info data object

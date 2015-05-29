@@ -174,6 +174,7 @@ namespace dd
     template<typename T>
       void operator() (T &mllib)
       {
+	mllib.kill_jobs();
 	if (_ad.has("clear"))
 	  {
 	    std::string clear = _ad.get("clear").get<std::string>();
@@ -271,7 +272,6 @@ namespace dd
 	      visitor_clear vc(ad);
 	      try
 		{
-		  //mapbox::util::apply_visitor(vc,_mlservices.at((*hit).second));
 		  mapbox::util::apply_visitor(vc,(*hit).second);
 		}
 	      catch (MLLibBadParamException &e)
