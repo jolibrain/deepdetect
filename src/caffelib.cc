@@ -495,7 +495,6 @@ namespace dd
       {
 	solver->net()->CopyTrainedLayersFrom(this->_mlmodel._weights);
       }
-    solver->PreSolve();
     
     std::string snapshot_file = ad.get("snapshot_file").get<std::string>();
     if (!snapshot_file.empty())
@@ -561,10 +560,7 @@ namespace dd
 	    this->add_meas_per_iter("train_loss",loss); // to avoid filling up with possibly millions of entries...
 	    LOG(INFO) << "smoothed_loss=" << this->get_meas("train_loss");
 	  }	
-
-	solver->ComputeUpdateValue();
-	solver->net_->Update();
-	
+	solver->ApplyUpdate();
 	solver->iter_++;
       }
     
