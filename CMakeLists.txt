@@ -51,34 +51,38 @@ find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system)
 find_package(CUDA)
 
 # customized Caffe as external project
-message(STATUS "Fetching and compiling customized caffe")
-if (CUDA_FOUND)
-  ExternalProject_Add(
-    caffe_dd
-    PREFIX caffe_dd
-    INSTALL_DIR ${CMAKE_BINARY_DIR}
-    URL https://github.com/beniz/caffe/archive/master_dd_integ.tar.gz
-    CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && make
-    INSTALL_COMMAND ""
-    BUILD_IN_SOURCE 1
-    )
+if (CAFFE_INC_DIR AND CAFFE_LIB_DIR)
+  # do nothing
 else()
-  ExternalProject_Add(
-    caffe_dd
-    PREFIX caffe_dd
-    INSTALL_DIR ${CMAKE_BINARY_DIR}
-    URL https://github.com/beniz/caffe/archive/master_dd_integ.tar.gz
-    CONFIGURE_COMMAND ln -sf Makefile.config.cpu Makefile.config && make
-    INSTALL_COMMAND ""
-    BUILD_IN_SOURCE 1
-    )
-endif()
-if (CUDA_FOUND)
-  set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${CUDA_INCLUDE_DIRS})
-  set(CAFFE_LIB_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src /usr/lib/x86_64-linux-gnu/hdf5/serial ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY})
-else()
-  set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src /usr/include/hdf5/serial)
-  set(CAFFE_LIB_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src /usr/lib/x86_64-linux-gnu/hdf5/serial)
+  message(STATUS "Fetching and compiling customized caffe")
+  if (CUDA_FOUND)
+    ExternalProject_Add(
+      caffe_dd
+      PREFIX caffe_dd
+      INSTALL_DIR ${CMAKE_BINARY_DIR}
+      URL https://github.com/beniz/caffe/archive/master_dd_integ.tar.gz
+      CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && make
+      INSTALL_COMMAND ""
+      BUILD_IN_SOURCE 1
+      )
+  else()
+    ExternalProject_Add(
+      caffe_dd
+      PREFIX caffe_dd
+      INSTALL_DIR ${CMAKE_BINARY_DIR}
+      URL https://github.com/beniz/caffe/archive/master_dd_integ.tar.gz
+      CONFIGURE_COMMAND ln -sf Makefile.config.cpu Makefile.config && make
+      INSTALL_COMMAND ""
+      BUILD_IN_SOURCE 1
+      )
+  endif()
+  if (CUDA_FOUND)
+    set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${CUDA_INCLUDE_DIRS})
+    set(CAFFE_LIB_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src /usr/lib/x86_64-linux-gnu/hdf5/serial ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY})
+  else()
+    set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src /usr/include/hdf5/serial)
+    set(CAFFE_LIB_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src /usr/lib/x86_64-linux-gnu/hdf5/serial)
+  endif()
 endif()
 
 # add the binary tree to the search path for include files
