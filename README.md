@@ -61,7 +61,8 @@ sudo apt-get install build-essential libgoogle-glog-dev libgflags-dev libeigen3-
 
 For compiling along with Caffe:
 ```
-mkdir build
+git clone git@github.com:beniz/deepdetect.git
+cd deepdetect/build
 cmake ..
 make
 ```
