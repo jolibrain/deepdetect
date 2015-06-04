@@ -176,7 +176,7 @@ namespace dd
 	    return;
 	  }
       }
-    int nclasses;
+    int nclasses = 0;
     int rl = 5;
     int drl = 3;
     for (size_t l=1;l<layers.size();l++)
