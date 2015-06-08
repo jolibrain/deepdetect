@@ -43,6 +43,9 @@ Caffe Dependencies:
 - [protobuf](https://github.com/google/protobuf)
 - IO libraries hdf5, leveldb, snappy, lmdb
 
+Caffe version :
+
+By default DeepDetect relies on a modified version of Caffe, https://github.com/beniz/caffe/tree/master_dd_integ
 
 Implementation:
 The code makes use of C++ policy design for modularity, performance and putting the maximum burden on the checks at compile time. The implementation uses many features from C++11.
