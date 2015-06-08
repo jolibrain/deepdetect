@@ -98,7 +98,7 @@ TEST(inputconn,img)
     ASSERT_TRUE(cv::countNonZero(channels.at(i))==0); // the two images must be identical
 }
 
-//TODO: test csv scale, separator, ...
+//TODO: test csv scale, separator, categorical, ...
 TEST(inputconn,csv_mem1)
 {
   std::string no_header = "2590,56,2,212,5";
@@ -152,4 +152,25 @@ TEST(inputconn,csv_mem2)
   ASSERT_EQ(6,cifc._csvdata.at(0)._v.size());
   ASSERT_EQ(2,cifc._csvdata.at(0)._v.at(0));
   ASSERT_EQ(2590,cifc._csvdata.at(0)._v.at(1));
+}
+
+TEST(inputconn,csv_copy)
+{
+  std::string header = "id,val1,val2,val3,val4,val5";
+  std::string d1 = "2,2590,56,2,212,5";
+  std::vector<std::string> vdata = { header, d1 };
+  APIData ad;
+  ad.add("data",vdata);
+  APIData pad,pinp;
+  pinp.add("id","id");
+  pinp.add("label","val5");
+  std::vector<APIData> vpinp = { pinp };
+  pad.add("input",vpinp);
+  std::vector<APIData> vpad = { pad };
+  ad.add("parameters",vpad);
+  CSVInputFileConn cifc;
+  cifc.init(ad.getobj("parameters").getobj("input"));
+  CSVInputFileConn cifc2 = cifc;
+  ASSERT_EQ("val5",cifc2._label);
+  ASSERT_EQ("id",cifc2._id);
 }

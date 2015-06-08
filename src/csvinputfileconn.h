@@ -69,24 +69,8 @@ namespace dd
     }
 
     // unused for now, receptacle for any generic option
-    void fillup_parameters(const APIData &ad)
+    void fillup_parameters(const APIData &ad_input)
     {
-      (void)ad;
-    }
-
-    void scale_vals(std::vector<double> &vals)
-    {
-      for (int j=0;j<(int)vals.size();j++)
-	{
-	  if ((_columns.empty() || _columns.at(j) != _id) && (_label_pos < 0 || j != _label_pos) && _max_vals.at(j) != _min_vals.at(j))
-	    vals.at(j) = (vals.at(j) - _min_vals.at(j)) / (_max_vals.at(j) - _min_vals.at(j));
-	}
-    }
-    
-    void transform(const APIData &ad)
-    {
-      get_data(ad);
-      APIData ad_input = ad.getobj("parameters").getobj("input");
       if (ad_input.has("id"))
 	_id = ad_input.get("id").get<std::string>();
       if (ad_input.has("separator"))
@@ -100,6 +84,25 @@ namespace dd
 	}
 
       // read scaling parameters, if any.
+      read_scale_vals(ad_input);
+
+      if (ad_input.has("label"))
+	_label = ad_input.get("label").get<std::string>();
+      if (ad_input.has("label_offset"))
+	_label_offset = ad_input.get("label_offset").get<int>();
+    }
+
+    void scale_vals(std::vector<double> &vals)
+    {
+      for (int j=0;j<(int)vals.size();j++)
+	{
+	  if ((_columns.empty() || _columns.at(j) != _id) && (_label_pos < 0 || j != _label_pos) && _max_vals.at(j) != _min_vals.at(j))
+	    vals.at(j) = (vals.at(j) - _min_vals.at(j)) / (_max_vals.at(j) - _min_vals.at(j));
+	}
+    }
+
+    void read_scale_vals(const APIData &ad_input)
+    {
       if (ad_input.has("scale") && ad_input.get("scale").get<bool>())
 	{
 	  _scale = true;
@@ -136,7 +139,15 @@ namespace dd
 	    std::cout << std::endl;*/
 	  //debug
 	}
+    }
+    
+    void transform(const APIData &ad)
+    {
+      get_data(ad);
+      APIData ad_input = ad.getobj("parameters").getobj("input");
       
+      fillup_parameters(ad_input);
+
       if (_train)
 	{
 	  _csv_fname = _uris.at(0); // training only from file
@@ -146,7 +157,7 @@ namespace dd
 	    _csv_test_fname = _uris.at(1);
 	  if (ad_input.has("label"))
 	    _label = ad_input.get("label").get<std::string>();
-	  else if (_train) throw InputConnectorBadParamException("missing label column parameter");
+	  else if (_train && _label.empty()) throw InputConnectorBadParamException("missing label column parameter");
 	  if (ad_input.has("label_offset"))
 	    _label_offset = ad_input.get("label_offset").get<int>();
 	  

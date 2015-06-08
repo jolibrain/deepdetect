@@ -75,7 +75,7 @@ namespace dd
 	    {
 	      if ((hit=_ignored_columns.find(_columns.at(c)))!=_ignored_columns.end())
 		{
-		  LOG(INFO) << "ignoring column: " << col << std::endl;
+		  //LOG(INFO) << "ignoring column: " << col << std::endl;
 		  continue;
 		}
 	      if (_columns.at(c) == _id)
@@ -132,7 +132,7 @@ namespace dd
 				  const std::string &fname)
   {
       std::ifstream csv_file(fname,std::ios::binary);
-      std::cerr << "fname=" << fname << " / open=" << csv_file.is_open() << std::endl;
+      LOG(INFO) << "fname=" << fname << " / open=" << csv_file.is_open() << std::endl;
       if (!csv_file.is_open())
 	throw InputConnectorBadParamException("cannot open file " + fname);
       std::string hline;
@@ -209,7 +209,7 @@ namespace dd
 	    std::cout << std::endl;*/
 	  //debug
 	}
-      std::cerr << "read " << nlines << " lines from " << fname << std::endl;
+      LOG(INFO) << "read " << nlines << " lines from " << fname << std::endl;
       csv_file.close();
       
       // test file, if any.
@@ -245,7 +245,7 @@ namespace dd
 		std::cout << std::endl;*/
 	      //debug
 	    }
-	  std::cerr << "read " << nlines << " lines from " << _csv_test_fname << std::endl;
+	  LOG(INFO) << "read " << nlines << " lines from " << _csv_test_fname << std::endl;
 	  csv_test_file.close();
 	}
 
@@ -278,7 +278,7 @@ namespace dd
 		  ++chit;
 		}
 	      _csvdata.erase(dchit,_csvdata.end());
-	      std::cout << "data split test size=" << _csvdata_test.size() << " / remaining data size=" << _csvdata.size() << std::endl;
+	      LOG(INFO) << "data split test size=" << _csvdata_test.size() << " / remaining data size=" << _csvdata.size() << std::endl;
 	    }
 	}
     }
