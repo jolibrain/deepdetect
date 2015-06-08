@@ -9,6 +9,7 @@ typedef http::server<handler> http_server;
 struct handler {
   void operator() (http_server::request const &request,
 		   http_server::response &response) {
+    (void)request;
     response = http_server::response::stock_reply(
 						  http_server::response::ok, "Hello, world!");
   }
@@ -18,7 +19,7 @@ struct handler {
   }
 };
 
-int main(int arg, char * argv[]) {
+int main() {
   handler handler_;
   http_server::options options(handler_);
   http_server server_(
