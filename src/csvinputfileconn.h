@@ -54,6 +54,36 @@ namespace dd
     std::string _str; /**< csv line id */
     std::vector<double> _v; /**< csv line data */
   };
+
+  class CCategorical
+  {
+  public:
+    CCategorical() {}
+    ~CCategorical() {}
+
+    void add_cat(const std::string &v,
+		 const int &val)
+    {
+      std::unordered_map<std::string,int>::iterator hit;
+      if ((hit=_vals.find(v))==_vals.end())
+	_vals.insert(std::pair<std::string,int>(v,val));
+    }
+
+    void add_cat(const std::string &v)
+    {
+      add_cat(v,_vals.size());
+    }
+    
+    int get_cat_num(const std::string &v)
+    {
+      std::unordered_map<std::string,int>::iterator hit;
+      if ((hit=_vals.find(v))!=_vals.end())
+	return (*hit).second;
+      return -1;
+    }
+    
+    std::unordered_map<std::string,int> _vals; /**< categorical value mapping. */
+  };
   
   class CSVInputFileConn : public InputConnectorStrategy
   {
@@ -83,21 +113,53 @@ namespace dd
 	    _ignored_columns.insert(s);
 	}
 
-      // read scaling parameters, if any.
+      // read categorical mapping, if any
+      read_categoricals(ad_input);
+      
+      // read scaling parameters, if any
       read_scale_vals(ad_input);
 
       if (ad_input.has("label"))
 	_label = ad_input.get("label").get<std::string>();
       if (ad_input.has("label_offset"))
 	_label_offset = ad_input.get("label_offset").get<int>();
+
+      if (ad_input.has("categoricals"))
+	{
+	  std::vector<std::string> vcats = ad_input.get("categoricals").get<std::vector<std::string>>();
+	  for (std::string v: vcats)
+	    _categoricals.emplace(std::make_pair(v,CCategorical()));
+	}
     }
 
+    void read_categoricals(const APIData &ad_input)
+    {
+      if (ad_input.has("categoricals_mapping"))
+	{
+	  APIData ad_cats = ad_input.getobj("categoricals_mapping");
+	  std::vector<std::string> vcats = ad_cats.list_keys();
+	  for (std::string c: vcats)
+	    {
+	      APIData ad_cat = ad_cats.getobj(c);
+	      CCategorical cc;
+	      std::vector<std::string> vcvals = ad_cat.list_keys();
+	      for (std::string v: vcvals)
+		{
+		  cc.add_cat(v,ad_cat.get(v).get<int>());
+		}
+	      _categoricals.insert(std::pair<std::string,CCategorical>(c,cc));
+	    }
+	}
+    }
+    
     void scale_vals(std::vector<double> &vals)
     {
+      auto lit = _columns.begin();
       for (int j=0;j<(int)vals.size();j++)
 	{
-	  if ((_columns.empty() || _columns.at(j) != _id) && (_label_pos < 0 || j != _label_pos) && _max_vals.at(j) != _min_vals.at(j))
+	  if ((_columns.empty() || (*lit) != _id) && (_label_pos < 0 || j != _label_pos) && _max_vals.at(j) != _min_vals.at(j))
 	    vals.at(j) = (vals.at(j) - _min_vals.at(j)) / (_max_vals.at(j) - _min_vals.at(j));
+	  ++lit;
 	}
     }
 
@@ -175,6 +237,8 @@ namespace dd
 		  read_header(_uris.at(0));
 		  continue;
 		}
+	      else if (!_categoricals.empty())
+		throw InputConnectorBadParamException("use of categoricals_mapping requires a CSV header");
 	      DataEl<DDCsv> ddcsv;
 	      ddcsv._ctype._cifc = this;
 	      ddcsv._ctype._adconf = ad_input;
@@ -212,36 +276,80 @@ namespace dd
 	return _columns.size() - 2; // minus label and id
       else return _columns.size() - 1; // minus label
     }
-
     void response_params(APIData &out)
     {
-      if (_scale)
+      APIData adparams;
+      if (_scale || !_categoricals.empty())
 	{
-	  APIData adinput;
-	  adinput.add("connector","csv");
-	  adinput.add("min_vals",_min_vals);
-	  adinput.add("max_vals",_max_vals);
-	  std::vector<APIData> vip = { adinput };
-	  if (!out.has("parameters"))
+	  if (out.has("parameters"))
 	    {
-	      APIData adparams;
-	      adparams.add("input",vip);
-	      std::vector<APIData> vadp = { adparams };
-	      out.add("parameters",vadp);
+	      adparams = out.getobj("parameters");
 	    }
-	  else
+	  if (!adparams.has("input"))
 	    {
-	      APIData adparams = out.getobj("parameters");
+	      APIData adinput;
+	      adinput.add("connector","csv");
+	      std::vector<APIData> vip = { adinput };
 	      adparams.add("input",vip);
-	      std::vector<APIData> vad = { adparams };
-	      out.add("parameters",vad);
 	    }
 	}
+      APIData adinput = adparams.getobj("input");
+      if (_scale)
+	{
+	  adinput.add("min_vals",_min_vals);
+	  adinput.add("max_vals",_max_vals);
+	}
+      if (!_categoricals.empty())
+	{
+	  APIData cats;
+	  auto hit = _categoricals.begin();
+	  while(hit!=_categoricals.end())
+	    {
+	      APIData adcat;
+	      auto chit = (*hit).second._vals.begin();
+	      while(chit!=(*hit).second._vals.end())
+		{
+		  adcat.add((*chit).first,(*chit).second);
+		  ++chit;
+		}
+	      std::vector<APIData> vadcat = { adcat };
+	      cats.add((*hit).first,vadcat);
+	      ++hit;
+	    }
+	  std::vector<APIData> vcats = { cats };
+	  adinput.add("categoricals_mapping",vcats);
+	}
+      std::vector<APIData> vip = { adinput };
+      adparams.add("input",vip);
+      std::vector<APIData> vad = { adparams };
+      out.add("parameters",vad);
     }
+
+    bool is_category(const std::string &c)
+    {
+      std::unordered_map<std::string,CCategorical>::const_iterator hit;
+      if ((hit=_categoricals.find(c))!=_categoricals.end())
+	return true;
+      return false;
+    }
+
+    void update_category(const std::string &c,
+			 const std::string &val);
+
+    void update_columns();
     
+    std::vector<double> one_hot_vector(const int &cnum,
+				       const int &size)
+      {
+	std::vector<double> v(size,0.0);
+	v.at(cnum) = 1.0;
+	return v;
+      }
+
+    // options
     std::string _csv_fname;
     std::string _csv_test_fname;
-    std::vector<std::string> _columns; //TODO: unordered map to int as pos of the column
+    std::list<std::string> _columns;
     std::string _label;
     std::string _delim = ",";
     int _label_pos = -1;
@@ -251,6 +359,9 @@ namespace dd
     bool _scale = false; /**< whether to scale all data between 0 and 1 */
     std::vector<double> _min_vals; /**< upper bound used for auto-scaling data */
     std::vector<double> _max_vals; /**< lower bound used for auto-scaling data */
+    std::unordered_map<std::string,CCategorical> _categoricals; /**< auto-converted categorical variables */
+    
+    // data
     std::vector<CSVline> _csvdata;
     std::vector<CSVline> _csvdata_test;
   };

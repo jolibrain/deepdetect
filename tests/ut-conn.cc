@@ -174,3 +174,85 @@ TEST(inputconn,csv_copy)
   ASSERT_EQ("val5",cifc2._label);
   ASSERT_EQ("id",cifc2._id);
 }
+
+TEST(inputconn,csv_categoricals1)
+{
+  std::string header = "target,cap-shape,cap-surface,cap-color,bruises";
+  std::string d1 = "p,x,s,n,t";
+  std::ofstream of("test.csv");
+  of << header << std::endl;
+  of << d1 << std::endl;
+  std::vector<std::string> vdata = { "test.csv" };
+  APIData ad;
+  ad.add("data",vdata);
+  APIData pad,pinp;
+  pinp.add("label","target");
+  std::vector<std::string> vcats = {"target","cap-shape","cap-surface","cap-color","bruises"};
+  pinp.add("categoricals",vcats);
+  std::vector<APIData> vpinp = { pinp };
+  pad.add("input",vpinp);
+  std::vector<APIData> vpad = { pad };
+  ad.add("parameters",vpad);
+  CSVInputFileConn cifc;
+  cifc._train = true;
+  cifc.transform(ad);
+  ASSERT_EQ(1,cifc._csvdata.size());
+  ASSERT_EQ(5,cifc._csvdata.at(0)._v.size());
+  for (double e: cifc._csvdata.at(0)._v)
+    ASSERT_EQ(1.0,e);
+  ASSERT_EQ(5,cifc._columns.size());
+  ASSERT_EQ("target_p",(*cifc._columns.begin()));
+  remove("test.csv");
+}
+
+TEST(inputconn,csv_categoricals2)
+{
+  std::string header = "target,cap-shape,cap-surface,cap-color,bruises";
+  std::string d1 = "p,x,s,n,t\ne,x,s,y,t\ne,b,s,w,t";
+  std::ofstream of("test.csv");
+  of << header << std::endl;
+  of << d1 << std::endl;
+  std::vector<std::string> vdata = { "test.csv" };
+  APIData ad;
+  ad.add("data",vdata);
+  APIData pad,pinp;
+  pinp.add("label","target");
+  std::vector<std::string> vcats = {"target","cap-shape","cap-surface","cap-color","bruises"};
+  pinp.add("categoricals",vcats);
+  std::vector<APIData> vpinp = { pinp };
+  pad.add("input",vpinp);
+  std::vector<APIData> vpad = { pad };
+  ad.add("parameters",vpad);
+  CSVInputFileConn cifc;
+  cifc._train = true;
+  cifc.transform(ad);
+  ASSERT_EQ(3,cifc._csvdata.size());
+  ASSERT_EQ(9,cifc._csvdata.at(0)._v.size());
+  std::vector<double> v1 = {1,0,1,0,1,1,0,0,1};
+  std::vector<double> v2 = {0,1,1,0,1,0,1,0,1};
+  std::vector<double> v3 = {0,1,0,1,1,0,0,1,1};
+  ASSERT_EQ(v1,cifc._csvdata.at(0)._v);
+  ASSERT_EQ(v2,cifc._csvdata.at(1)._v);
+  ASSERT_EQ(v3,cifc._csvdata.at(2)._v);
+  ASSERT_EQ(9,cifc._columns.size());
+  ASSERT_EQ("target_p",(*cifc._columns.begin()));
+  remove("test.csv");
+}
+
+TEST(inputconn,csv_read_categoricals)
+{
+  std::string json_categorical_mapping = "{\"categoricals_mapping\":{\"bruises\":{\"t\":0,\"f\":1},\"cap-color\":{\"n\":0,\"y\":1,\"p\":5,\"c\":8,\"r\":9,\"w\":2,\"g\":3,\"e\":4,\"b\":6,\"u\":7},\"ring-number\":{\"o\":0,\"t\":1,\"n\":2},\"odor\":{\"p\":0,\"c\":5,\"y\":6,\"s\":7,\"a\":1,\"l\":2,\"n\":3,\"f\":4,\"m\":8},\"stalk-shape\":{\"e\":0,\"t\":1},\"stalk-surface-above-ring\":{\"s\":0,\"y\":3,\"f\":1,\"k\":2},\"gill-size\":{\"n\":0,\"b\":1},\"veil-type\":{\"p\":0},\"ring-type\":{\"p\":0,\"e\":1,\"l\":2,\"f\":3,\"n\":4},\"spore-print-color\":{\"k\":0,\"n\":1,\"u\":2,\"h\":3,\"w\":4,\"r\":5,\"y\":7,\"o\":6,\"b\":8},\"gill-color\":{\"b\":8,\"e\":7,\"o\":11,\"k\":0,\"n\":1,\"y\":10,\"g\":2,\"r\":9,\"w\":4,\"p\":3,\"h\":5,\"u\":6},\"gill-spacing\":{\"c\":0,\"w\":1},\"habitat\":{\"u\":0,\"d\":3,\"l\":6,\"g\":1,\"m\":2,\"p\":4,\"w\":5},\"cap-surface\":{\"s\":0,\"y\":1,\"f\":2,\"g\":3},\"gill-attachment\":{\"f\":0,\"a\":1},\"cap-shape\":{\"x\":0,\"s\":2,\"c\":5,\"b\":1,\"f\":3,\"k\":4},\"target\":{\"p\":0,\"e\":1},\"stalk-root\":{\"e\":0,\"b\":2,\"c\":1,\"r\":3,\"?\":4},\"stalk-surface-below-ring\":{\"s\":0,\"y\":2,\"f\":1,\"k\":3},\"veil-color\":{\"w\":0,\"n\":1,\"o\":2,\"y\":3},\"population\":{\"s\":0,\"y\":4,\"c\":5,\"n\":1,\"a\":2,\"v\":3},\"stalk-color-above-ring\":{\"w\":0,\"g\":1,\"p\":2,\"c\":7,\"y\":8,\"n\":3,\"b\":4,\"e\":5,\"o\":6},\"stalk-color-below-ring\":{\"w\":0,\"p\":1,\"y\":6,\"c\":8,\"g\":2,\"b\":3,\"e\":5,\"n\":4,\"o\":7}}}";
+  JDoc d;
+  d.Parse(json_categorical_mapping.c_str());
+  ASSERT_FALSE(d.HasParseError());
+  APIData ap(d);
+  ASSERT_EQ(1,ap.size());
+  ASSERT_TRUE(ap.has("categoricals_mapping"));
+  APIData ap_cm = ap.getobj("categoricals_mapping");
+  CSVInputFileConn cifc;
+  cifc._train = true;
+  cifc.read_categoricals(ap);
+  ASSERT_EQ(23,cifc._categoricals.size());
+  CCategorical cc = cifc._categoricals["odor"];
+  ASSERT_EQ(9,cc._vals.size());
+}

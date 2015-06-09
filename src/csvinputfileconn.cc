@@ -55,6 +55,49 @@ namespace dd
   }
 
   /*- CSVInputFileConn -*/
+  void CSVInputFileConn::update_category(const std::string &c,
+					 const std::string &val)
+  {
+    std::unordered_map<std::string,CCategorical>::iterator hit;
+    if ((hit=_categoricals.find(c))!=_categoricals.end())
+      (*hit).second.add_cat(val);
+  }
+
+  void CSVInputFileConn::update_columns()
+  {
+    std::unordered_map<std::string,CCategorical>::iterator chit;
+    auto lit = _columns.begin();
+    std::list<std::string> ncolumns = _columns;
+    auto nlit = ncolumns.begin();
+    while(lit!=_columns.end())
+      {
+	if (is_category((*lit)))
+	  {
+	    chit = _categoricals.find((*lit));
+	    auto hit = (*chit).second._vals.begin();
+	    while(hit!=(*chit).second._vals.end())
+	      {
+		std::string ncolname = (*lit) + "_" + (*hit).first;
+		auto nlit2 = nlit;
+		nlit = ncolumns.insert(nlit,ncolname);
+		if (hit == (*chit).second._vals.begin())
+		  ncolumns.erase(nlit2);
+		++hit;
+	      }
+	  }
+	++lit;
+	++nlit;
+      }
+    _columns = ncolumns;
+
+    //debug
+    std::cout << "new CSV columns:\n";
+    std::copy(_columns.begin(),_columns.end(),
+	      std::ostream_iterator<std::string>(std::cout," "));
+    std::cout << std::endl;
+    //debug
+  }
+  
   void CSVInputFileConn::read_csv_line(const std::string &hline,
 				       const std::string &delim,
 				       std::vector<double> &vals,
@@ -65,20 +108,22 @@ namespace dd
       std::unordered_set<std::string>::const_iterator hit;
       std::stringstream sh(hline);
       int c = -1;
+      auto lit = _columns.begin();
       while(std::getline(sh,col,delim[0]))
 	{
 	  ++c;
+	  std::string col_name = (*lit);
 	  
 	  // detect strings by looking for characters and for quotes
 	  // convert to float unless it is string (ignore strings, aka categorical fields, for now)
 	  if (!_columns.empty()) // in prediction mode, columns from header are not mandatory
 	    {
-	      if ((hit=_ignored_columns.find(_columns.at(c)))!=_ignored_columns.end())
+	      if ((hit=_ignored_columns.find(col_name))!=_ignored_columns.end()) //TODO: doesn't ignore categorical columns
 		{
 		  //LOG(INFO) << "ignoring column: " << col << std::endl;
 		  continue;
 		}
-	      if (_columns.at(c) == _id)
+	      if (col_name == _id)
 		{
 		  column_id = col;
 		}
@@ -96,7 +141,24 @@ namespace dd
 	      //std::cout << "not a number: " << col << std::endl;
 	      if (column_id == col) // if id is string, replace with number / TODO: better scheme
 		vals.push_back(c);
+
+	      // one-hot vector encoding as required
+	      if (!_columns.empty() && is_category(col_name))
+		{
+		  // - look up category
+		  int cnum = _categoricals[col_name].get_cat_num(col);
+		  if (cnum < 0)
+		    {
+		      throw InputConnectorBadParamException("unknown category " + col + " for variable " + col_name);
+		    }
+
+		  // - create one-hot vector
+		  int csize = _categoricals[col_name]._vals.size();
+		  std::vector<double> ohv = one_hot_vector(cnum,csize);
+		  vals.insert(vals.end(),ohv.begin(),ohv.end());
+		}
 	    }
+	  ++lit;
 	}
       ++nlines;
     }
@@ -110,11 +172,8 @@ namespace dd
     // read header
     int i = 0;
     bool has_id = false;
-    //auto hit = _ignored_columns.begin();
     while(std::getline(sg,col,_delim[0]))
       {
-	/*if ((hit=_ignored_columns.find(col))!=_ignored_columns.end())
-	  continue;*/
 	_columns.push_back(col);
 	if (col == _label)
 	  _label_pos = i;
@@ -146,6 +205,30 @@ namespace dd
 		std::ostream_iterator<std::string>(std::cout," "));
       std::cout << std::endl;
       //debug
+
+      // categorical variables
+      if (!_categoricals.empty())
+	{
+	  std::cerr << "setting up categorical variables\n";
+	  while(std::getline(csv_file,hline))
+	    {
+	      hline.erase(std::remove(hline.begin(),hline.end(),'\r'),hline.end());
+	      std::vector<double> vals;
+	      std::string cid;
+	      std::string col;
+	      auto lit = _columns.begin();
+	      std::stringstream sh(hline);
+	      while(std::getline(sh,col,_delim[0]))
+		{
+		  update_category((*lit),col);
+		  ++lit;
+		}
+	    }
+	  csv_file.clear();
+	  csv_file.seekg(0,std::ios::beg);
+	  std::getline(csv_file,hline); // skip header line
+	  std::cerr << "successfully updated categories\n";
+	}
 
       // scaling to [0,1]
       int nlines = 0;
@@ -182,7 +265,7 @@ namespace dd
 	  std::getline(csv_file,hline); // skip header line
 	  nlines = 0;
 	}
-
+      
       // read data
       while(std::getline(csv_file,hline))
 	{
@@ -192,11 +275,6 @@ namespace dd
 	  read_csv_line(hline,_delim,vals,cid,nlines);
 	  if (_scale)
 	    {
-	      /*for (int j=0;j<(int)vals.size();j++)
-		{
-		  if ((!_columns.empty() && _columns.at(j) != _id) && j != _label_pos && _max_vals.at(j) != _min_vals.at(j))
-		    vals.at(j) = (vals.at(j) - _min_vals.at(j)) / (_max_vals.at(j) - _min_vals.at(j));
-		    }*/
 	      scale_vals(vals);
 	    }
 	  if (!_id.empty())
@@ -228,11 +306,6 @@ namespace dd
 	      read_csv_line(hline,_delim,vals,cid,nlines);
 	      if (_scale)
 		{
-		  /*for (int j=0;j<(int)vals.size();j++)
-		    {
-		      if (_columns.at(j) != _id && j != _label_pos && _max_vals.at(j) != _min_vals.at(j))
-			vals.at(j) = (vals.at(j) - _min_vals.at(j)) / (_max_vals.at(j) - _min_vals.at(j));
-			}*/
 		  scale_vals(vals);
 		}
 	      if (!_id.empty())
@@ -255,6 +328,7 @@ namespace dd
 	  std::random_device rd;
 	  std::mt19937 g(rd());
 	  std::shuffle(_csvdata.begin(),_csvdata.end(),g);
+	  std::cerr << "done with shuffling\n";
 	}
       
       if (_csv_test_fname.empty() && ad.has("test_split"))
@@ -281,6 +355,8 @@ namespace dd
 	      LOG(INFO) << "data split test size=" << _csvdata_test.size() << " / remaining data size=" << _csvdata.size() << std::endl;
 	    }
 	}
-    }
+      if (!_categoricals.empty())
+	update_columns();
+  }
   
 }

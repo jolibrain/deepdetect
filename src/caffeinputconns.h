@@ -325,20 +325,23 @@ namespace dd
       datum.set_channels(datum_channels);
       datum.set_height(1);
       datum.set_width(1);
+      auto lit = _columns.begin();
       for (int i=0;i<(int)vf.size();i++)
 	{
 	  if (i == _label_pos)
 	    {
 	      datum.set_label(static_cast<int>(vf.at(i)+this->_label_offset));
 	    }
-	  else if (!_columns.empty() && _columns.at(i) == _id) // skip id
+	  else if (!_columns.empty() && (*lit) == _id) // skip id
 	    {
+	      ++lit;
 	      continue;
 	    }
 	  else 
 	    {
 	      datum.add_float_data(static_cast<float>(vf.at(i)));
 	    }
+	  ++lit;
 	}
       return datum;
     }
