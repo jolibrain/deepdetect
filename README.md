@@ -3,13 +3,15 @@ DeepDetect (http://www.deepdetect.com/) is a machine learning API and server wri
 
 DeepDetect relies on external machine learning libraries through a very generic and flexible API. At the moment it has support for the deep learning library [Caffe](https://github.com/BVLC/caffe).
 
-Main functionalities:
+#### Main functionalities:
 
 DeepDetect implements support for supervised deep learning of images and other data, with focus on simplicity and ease of use, test and connection into existing applications.
 
-Typically, setup an image classifier API service in a few minutes:
+#### Quickstart
+Setup an image classifier API service in a few minutes:
 http://www.deepdetect.com/tutorials/imagenet-classifier/
 
+#### Features and Documentation
 Current features include:
 
 - high-level API for machine learning
@@ -49,7 +51,7 @@ Caffe Dependencies:
 
 Caffe version :
 
-By default DeepDetect relies on a modified version of Caffe, https://github.com/beniz/caffe/tree/master_dd_integ
+By default DeepDetect automatically relies on a modified version of Caffe, https://github.com/beniz/caffe/tree/master_dd_integ
 
 Implementation:
 The code makes use of C++ policy design for modularity, performance and putting the maximum burden on the checks at compile time. The implementation uses many features from C++11.
