@@ -91,10 +91,11 @@ namespace dd
     _columns = ncolumns;
 
     //debug
+    /*std::cout << "number of new columns=" << _columns.size() << std::endl;
     std::cout << "new CSV columns:\n";
     std::copy(_columns.begin(),_columns.end(),
 	      std::ostream_iterator<std::string>(std::cout," "));
-    std::cout << std::endl;
+	      std::cout << std::endl;*/
     //debug
   }
   
@@ -132,8 +133,30 @@ namespace dd
 	    {
 	      double val = 0.0;
 	      if (!col.empty())
-		val = std::stod(col);
-	      vals.push_back(val);
+		{
+		  // one-hot vector encoding as required
+		  if (!_columns.empty() && is_category(col_name))
+		    {
+		      // - look up category
+		      std::unordered_map<std::string,CCategorical>::const_iterator chit
+			= _categoricals.find(col_name);
+		      int cnum = (*chit).second.get_cat_num(col);
+		      if (cnum < 0)
+			{
+			  throw InputConnectorBadParamException("unknown category " + col + " for variable " + col_name);
+			}
+		      
+		      // - create one-hot vector
+		      int csize = (*chit).second._vals.size();
+		      std::vector<double> ohv = one_hot_vector(cnum,csize);
+		      vals.insert(vals.end(),ohv.begin(),ohv.end());
+		    }
+		  else
+		    {
+		      val = std::stod(col);
+		      vals.push_back(val);
+		    }
+		}
 	    }
 	  catch (std::invalid_argument &e)
 	    {
@@ -141,22 +164,6 @@ namespace dd
 	      //std::cout << "not a number: " << col << std::endl;
 	      if (column_id == col) // if id is string, replace with number / TODO: better scheme
 		vals.push_back(c);
-
-	      // one-hot vector encoding as required
-	      if (!_columns.empty() && is_category(col_name))
-		{
-		  // - look up category
-		  int cnum = _categoricals[col_name].get_cat_num(col);
-		  if (cnum < 0)
-		    {
-		      throw InputConnectorBadParamException("unknown category " + col + " for variable " + col_name);
-		    }
-
-		  // - create one-hot vector
-		  int csize = _categoricals[col_name]._vals.size();
-		  std::vector<double> ohv = one_hot_vector(cnum,csize);
-		  vals.insert(vals.end(),ohv.begin(),ohv.end());
-		}
 	    }
 	  ++lit;
 	}

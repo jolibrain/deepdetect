@@ -74,9 +74,9 @@ namespace dd
       add_cat(v,_vals.size());
     }
     
-    int get_cat_num(const std::string &v)
+    int get_cat_num(const std::string &v) const
     {
-      std::unordered_map<std::string,int>::iterator hit;
+      std::unordered_map<std::string,int>::const_iterator hit;
       if ((hit=_vals.find(v))!=_vals.end())
 	return (*hit).second;
       return -1;
