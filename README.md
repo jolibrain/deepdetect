@@ -4,7 +4,11 @@ DeepDetect (http://www.deepdetect.com/) is a machine learning API and server wri
 DeepDetect relies on external machine learning libraries through a very generic and flexible API. At the moment it has support for the deep learning library [Caffe](https://github.com/BVLC/caffe).
 
 Main functionalities:
+
 DeepDetect implements support for supervised deep learning of images and other data, with focus on simplicity and ease of use, test and connection into existing applications.
+
+Typically, setup an image classifier API service in a few minutes:
+http://www.deepdetect.com/tutorials/imagenet-classifier/
 
 Current features include:
 
