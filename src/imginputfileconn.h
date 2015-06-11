@@ -53,6 +53,11 @@ namespace dd
 	return -1;
       return 0;
     }
+
+    int read_dir(const std::string &dir)
+    {
+      throw InputConnectorBadParamException("uri " + dir + " is a directory, requires an image file");
+    }
     
     cv::Mat _img;      
     bool _bw = false;
@@ -116,13 +121,13 @@ namespace dd
 	    }
 	}
       //TODO: could parallelize the reading then push
-      for (size_t i=0;i<_uris.size();i++)
+      for (std::string u: _uris)
 	{
 	  DataEl<DDImg> dimg;
 	  dimg._ctype._bw = _bw;
-	  if (dimg.read_element(_uris.at(i)))
+	  if (dimg.read_element(u))
 	    {
-	      throw InputConnectorBadParamException("no data for image " + _uris.at(i));
+	      throw InputConnectorBadParamException("no data for image " + u);
 	    }
 	  /*cv::namedWindow( "Display window", cv::WINDOW_AUTOSIZE );
 	    cv::imshow( "Display window", imaget);
@@ -164,6 +169,7 @@ namespace dd
 	throw InputConnectorBadParamException("no image could be found");
     }
 
+    // data
     std::vector<cv::Mat> _images;
     std::vector<cv::Mat> _test_images;
     

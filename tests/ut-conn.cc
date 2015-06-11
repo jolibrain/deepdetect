@@ -21,6 +21,8 @@
 
 #include "apidata.h"
 #include "imginputfileconn.h"
+#include "csvinputfileconn.h"
+#include "txtinputfileconn.h"
 #include "outputconnectorstrategy.h"
 #include <gtest/gtest.h>
 #include <iostream>
@@ -86,6 +88,7 @@ TEST(inputconn,img)
     }
   catch (InputConnectorBadParamException &e)
     {
+      std::cerr << e.what() << std::endl;
       ASSERT_FALSE(true); // trigger
     }
   ASSERT_EQ(2,iifc._uris.size());
@@ -195,7 +198,16 @@ TEST(inputconn,csv_categoricals1)
   ad.add("parameters",vpad);
   CSVInputFileConn cifc;
   cifc._train = true;
-  cifc.transform(ad);
+  try
+    {
+      std::cout << "trying to transform\n";
+      cifc.transform(ad);
+    }
+  catch(InputConnectorBadParamException &e)
+    {
+      std::cerr << "exception=" << e.what() << std::endl;
+      ASSERT_FALSE(true);
+    }
   ASSERT_EQ(1,cifc._csvdata.size());
   ASSERT_EQ(5,cifc._csvdata.at(0)._v.size());
   for (double e: cifc._csvdata.at(0)._v)
@@ -255,4 +267,21 @@ TEST(inputconn,csv_read_categoricals)
   ASSERT_EQ(23,cifc._categoricals.size());
   CCategorical cc = cifc._categoricals["odor"];
   ASSERT_EQ(9,cc._vals.size());
+}
+
+TEST(inputconn,txt_parse_content)
+{
+  std::string str = "everything runs fine, right?";
+  TxtInputFileConn tifc;
+  tifc.parse_content(str,1);
+  ASSERT_EQ(4,tifc._vocab.size());
+  ASSERT_EQ(4,tifc._rvocab.size());
+  Word w = tifc._vocab["fine"];
+  ASSERT_EQ(2,w._pos);
+  ASSERT_EQ(1,w._total_count);
+  ASSERT_EQ(1,w._total_classes);
+  ASSERT_EQ(1,tifc._txt.size());
+  TxtBowEntry tbe = tifc._txt.at(0);
+  ASSERT_EQ(4,tbe._v.size());
+  ASSERT_EQ(1,tbe._target);
 }

@@ -27,6 +27,7 @@
 #include "apidata.h"
 #include "inputconnectorstrategy.h"
 #include "imginputfileconn.h"
+#include "txtinputfileconn.h"
 #include "outputconnectorstrategy.h"
 #include "caffelib.h"
 #include <vector>
@@ -38,7 +39,8 @@ namespace dd
 {
   /* service types as variant type. */
   typedef mapbox::util::variant<MLService<CaffeLib,ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>,
-    MLService<CaffeLib,CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>> mls_variant_type;
+    MLService<CaffeLib,CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>,
+    MLService<CaffeLib,TxtCaffeInputFileConn,SupervisedOutput,CaffeModel>> mls_variant_type;
 
   class ServiceForbiddenException : public std::exception
   {

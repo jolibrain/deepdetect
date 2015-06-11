@@ -24,6 +24,7 @@
 
 #include "imginputfileconn.h"
 #include "csvinputfileconn.h"
+#include "txtinputfileconn.h"
 #include "caffe/caffe.hpp"
 #include "utils/fileops.hpp"
 
@@ -349,6 +350,105 @@ namespace dd
     std::vector<caffe::Datum>::const_iterator _dt_vit;
   };
 
+  /**
+   * \brief Caffe text connector
+   */
+  class TxtCaffeInputFileConn : public TxtInputFileConn, public CaffeInputInterface
+  {
+  public:
+    TxtCaffeInputFileConn()
+      :TxtInputFileConn()
+      {
+      }
+    ~TxtCaffeInputFileConn() {}
+
+    void init(const APIData &ad)
+    {
+      TxtInputFileConn::init(ad);
+    }
+
+    int channels() const
+    {
+      return feature_size();
+    }
+
+    int height() const
+    {
+      return 1;
+    }
+
+    int width() const
+    {
+      return 1;
+    }
+
+    void transform(const APIData &ad)
+    {
+      TxtInputFileConn::transform(ad);
+
+      // transform to one-hot vector datum
+      int n = 0;
+      auto hit = _txt.cbegin();
+      while(hit!=_txt.cend())
+	{
+	  _dv.push_back(to_datum((*hit)));
+	  _ids.push_back(std::to_string(n));
+	  ++hit;
+	  ++n;
+	}
+      hit = _test_txt.cbegin();
+      while(hit!=_test_txt.cend())
+	{
+	  _dv_test.push_back(to_datum((*hit)));
+	  _test_labels.push_back((*hit)._target);
+	  ++hit;
+	  ++n;
+	}
+    }
+    
+    std::vector<caffe::Datum> get_dv_test(const int &num,
+					  const bool &has_mean_file)
+      {
+	(void)has_mean_file;
+	int i = 0;
+	std::vector<caffe::Datum> dv;
+	while(_dt_vit!=_dv_test.end()
+	      && i < num)
+	  {
+	    dv.push_back((*_dt_vit));
+	    ++i;
+	    ++_dt_vit;
+	  }
+	return dv;
+      }
+
+    void reset_dv_test()
+    {
+      _dt_vit = _dv_test.begin();
+    }
+    
+    caffe::Datum to_datum(const TxtBowEntry &tbe)
+      {
+	caffe::Datum datum;
+	int datum_channels = _vocab.size(); // XXX: may be very large
+	datum.set_channels(datum_channels);
+	datum.set_height(1);
+	datum.set_width(1);
+	datum.set_label(tbe._target);
+	for (int i=0;i<datum_channels;i++) // XXX: expected to be slow
+	  datum.add_float_data(0.0);
+	auto hit = tbe._v.cbegin();
+	while(hit!=tbe._v.cend())
+	  {
+	    datum.set_float_data((*hit).first,static_cast<float>((*hit).second));
+	    ++hit;
+	  }
+	return datum;
+      }
+
+    std::vector<caffe::Datum>::const_iterator _dt_vit;
+  };
+  
 }
 
 #endif

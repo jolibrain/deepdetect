@@ -39,7 +39,11 @@ namespace dd
 
     int read_file(const std::string &fname);
     int read_mem(const std::string &content);
-
+    int read_dir(const std::string &dir)
+    {
+      throw InputConnectorBadParamException("uri " + dir + " is a directory, requires a CSV file");
+    }
+    
     CSVInputFileConn *_cifc = nullptr;
     APIData _adconf;
   };
@@ -98,7 +102,6 @@ namespace dd
       fillup_parameters(ad);
     }
 
-    // unused for now, receptacle for any generic option
     void fillup_parameters(const APIData &ad_input)
     {
       if (ad_input.has("id"))
@@ -222,7 +225,7 @@ namespace dd
 	  else if (_train && _label.empty()) throw InputConnectorBadParamException("missing label column parameter");
 	  if (ad_input.has("label_offset"))
 	    _label_offset = ad_input.get("label_offset").get<int>();
-	  
+
 	  DataEl<DDCsv> ddcsv;
 	  ddcsv._ctype._cifc = this;
 	  ddcsv._ctype._adconf = ad_input;
