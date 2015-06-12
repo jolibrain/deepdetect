@@ -289,6 +289,8 @@ namespace dd
 	      add_service(sname,std::move(MLService<CaffeLib,ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
 	    else if (input == "csv")
 	      add_service(sname,std::move(MLService<CaffeLib,CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
+	    else if (input == "txt")
+	      add_service(sname,std::move(MLService<CaffeLib,TxtCaffeInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
 	    else return dd_input_connector_not_found_1004();
 	  }
 	else
