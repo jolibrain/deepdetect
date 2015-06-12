@@ -696,7 +696,7 @@ namespace dd
 	else if (cm == 2)
 	  throw MLLibBadParamException("no deploy file in " + this->_mlmodel._repo + " for initializing the net");
       }
-    
+
     // parameters
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
 #ifndef CPU_ONLY
@@ -725,9 +725,11 @@ namespace dd
 #endif
 
     TInputConnectorStrategy inputc(this->_inputc);
+    APIData cad = ad;
+    cad.add("model_repo",this->_mlmodel._repo);
     try
       {
-	inputc.transform(ad); //TODO: catch errors ?
+	inputc.transform(cad);
       }
     catch (std::exception &e)
       {

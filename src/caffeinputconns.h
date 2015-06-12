@@ -236,6 +236,8 @@ namespace dd
       {
 	reset_dv_test();
       }
+    CSVCaffeInputFileConn(const CSVCaffeInputFileConn &i)
+      :CSVInputFileConn(i),CaffeInputInterface(i) {}
     ~CSVCaffeInputFileConn() {}
 
     void init(const APIData &ad)
@@ -357,9 +359,9 @@ namespace dd
   {
   public:
     TxtCaffeInputFileConn()
-      :TxtInputFileConn()
-      {
-      }
+      :TxtInputFileConn() {}
+    TxtCaffeInputFileConn(const TxtCaffeInputFileConn &i)
+      :TxtInputFileConn(i),CaffeInputInterface(i) {}
     ~TxtCaffeInputFileConn() {}
 
     void init(const APIData &ad)

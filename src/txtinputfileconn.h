@@ -48,6 +48,10 @@ namespace dd
     Word() {}
     Word(const int &pos)
       :_pos(pos) {}
+    Word(const int &pos,
+	 const int &tcount,
+	 const int &tclasses)
+      :_pos(pos),_total_count(tcount),_total_classes(tclasses) {}
     ~Word() {}
     
     int _pos = -1;
@@ -141,6 +145,13 @@ namespace dd
 	    }
 	}
 
+      if (ad.has("model_repo"))
+	_model_repo = ad.get("model_repo").get<std::string>();
+      
+      std::cerr << "train=" << _train << " / vocab size=" << _vocab.size() << std::endl;
+      if (!_train && _vocab.empty())
+	deserialize_vocab();
+      
       for (std::string u: _uris)
 	{
 	  DataEl<DDTxt> dtxt;
@@ -150,9 +161,12 @@ namespace dd
 	      throw InputConnectorBadParamException("no data for text in " + u);
 	    }
 	}
-
+      
+      if (_train)
+	serialize_vocab();
+      
       // split for test set
-      if (_test_split > 0)
+      if (_train && _test_split > 0)
 	{
 	  int split_size = std::floor(_txt.size() * (1.0-_test_split));
 	  auto chit = _txt.begin();
@@ -179,7 +193,11 @@ namespace dd
     // text tokenization for BOW
     void parse_content(const std::string &content,
 		       const int &target=-1);
-    
+
+    // serialization of vocabulary
+    void serialize_vocab();
+    void deserialize_vocab();
+
     // options
     std::string _iterator = "document";
     std::string _tokenizer = "bow";
@@ -191,6 +209,9 @@ namespace dd
     // internals
     std::unordered_map<std::string,Word> _vocab; /**< string to word stats, including pos */
     std::unordered_map<int,std::string> _rvocab; /**< pos to string */
+    std::string _vocabfname = "vocab.dat";
+    std::string _model_repo;
+    std::string _correspname = "corresp.txt";
     
     // data
     std::vector<TxtBowEntry> _txt;

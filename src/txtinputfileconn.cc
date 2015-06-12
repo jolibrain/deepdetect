@@ -33,10 +33,16 @@ namespace dd
   int DDTxt::read_file(const std::string &fname)
   {
     if (!_ctfc)
-      return -1;
+      {
+	std::cerr << "not ctfc\n";
+	return -1;
+      }
     std::ifstream txt_file(fname);
     if (!txt_file.is_open())
-      throw InputConnectorBadParamException("cannot open file " + fname);
+      {
+	std::cerr << "cannot open file\n";
+	throw InputConnectorBadParamException("cannot open file " + fname);
+      }
     std::stringstream buffer;
     buffer << txt_file.rdbuf();
     _ctfc->parse_content(buffer.str());
@@ -101,7 +107,6 @@ namespace dd
 	std::stringstream buffer;
 	buffer << txt_file.rdbuf();
 	std::string ct = buffer.str();
-	std::transform(ct.begin(),ct.end(),ct.begin(),::tolower);
 	_ctfc->parse_content(ct,p.second);
       }
 
@@ -125,6 +130,16 @@ namespace dd
 	  }
       }
 
+    // write corresp file
+    std::ofstream correspf(_ctfc->_model_repo + "/" + _ctfc->_correspname,std::ios::binary);
+    auto hit = hcorresp.begin();
+    while(hit!=hcorresp.end())
+      {
+	correspf << (*hit).first << " " << (*hit).second << std::endl;
+	++hit;
+      }
+    correspf.close();
+    
     LOG(INFO) << "vocabulary size=" << _ctfc->_vocab.size() << std::endl;
     //_ctfc->_vocab.clear(); //TODO: serialize to disk / db
     
@@ -139,10 +154,12 @@ namespace dd
     // - sentence separator
     // - non bow parsing
     
+    std::string ct = content;
+    std::transform(ct.begin(),ct.end(),ct.begin(),::tolower);
     TxtBowEntry tbe(target);
     std::unordered_map<std::string,Word>::iterator vhit;
     boost::char_separator<char> sep("\n\t\f\r ,.;:`'!?)(-|><^·&\"\\/{}#$–");
-    boost::tokenizer<boost::char_separator<char>> tokens(content,sep);
+    boost::tokenizer<boost::char_separator<char>> tokens(ct,sep);
     for (std::string w : tokens)
       {
 	//std::cout << w << std::endl;
@@ -151,21 +168,62 @@ namespace dd
 	int pos = -1;
 	if ((vhit=_vocab.find(w))==_vocab.end())
 	  {
-	    pos = _vocab.size();
-	    _vocab.emplace(std::make_pair(w,Word(pos)));
-	    if (_tfidf)
-	      _rvocab.insert(std::pair<int,std::string>(pos,w));
+	    if (_train)
+	      {
+		pos = _vocab.size();
+		_vocab.emplace(std::make_pair(w,Word(pos)));
+		if (_tfidf)
+		  _rvocab.insert(std::pair<int,std::string>(pos,w));
+	      }
 	  }
 	else
 	  {
 	    pos = (*vhit).second._pos;
-	    (*vhit).second._total_count++;
-	    if (!tbe.has_word(pos))
-	      (*vhit).second._total_classes++;
+	    if (_train)
+	      {
+		(*vhit).second._total_count++;
+		if (!tbe.has_word(pos))
+		  (*vhit).second._total_classes++;
+	      }
 	  }
-	tbe.add_word(pos,1.0,_count);
+	if (pos >= 0)
+	  tbe.add_word(pos,1.0,_count);
       }
     _txt.push_back(tbe);
+  }
+
+  void TxtInputFileConn::serialize_vocab()
+  {
+    std::string vocabfname = _model_repo + "/" + _vocabfname;
+    std::string delim=",";
+    std::ofstream out;
+    out.open(vocabfname);
+    if (!out.is_open())
+      throw InputConnectorBadParamException("failed opening vocabulary file " + vocabfname);
+    for (auto const &p: _vocab)
+      {
+	out << p.first << delim << p.second._pos << std::endl; // << p.second._total_count << p.second._total_classes;
+      }
+  }
+
+  void TxtInputFileConn::deserialize_vocab()
+  {
+    std::string vocabfname = _model_repo + "/" + _vocabfname;
+    if (!fileops::file_exists(vocabfname))
+      throw InputConnectorBadParamException("cannot find vocabulary file " + vocabfname);
+    std::ifstream in;
+    in.open(vocabfname);
+    if (!in.is_open())
+      throw InputConnectorBadParamException("failed opening vocabulary file " + vocabfname);
+    std::string line;
+    while(getline(in,line))
+      {
+	std::vector<std::string> tokens = dd_utils::split(line,',');
+	std::string key = tokens.at(0);
+	int pos = atoi(tokens.at(1).c_str());
+	_vocab.emplace(std::make_pair(key,Word(pos)));
+      }
+    std::cerr << "loaded vocabulary of size=" << _vocab.size() << std::endl;
   }
   
 }
