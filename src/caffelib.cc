@@ -59,7 +59,7 @@ namespace dd
   {
     if (_net)
       {
-	delete _net; // XXX: for now, crashes.
+	delete _net;
 	_net = nullptr;
       }
   }
@@ -373,6 +373,9 @@ namespace dd
 
     std::lock_guard<std::mutex> lock(_net_mutex); // XXX: not mandatory as train calls are locking resources from above
     TInputConnectorStrategy inputc(this->_inputc);
+    this->_inputc._dv.clear();
+    this->_inputc._dv_test.clear();
+    this->_inputc._ids.clear();
     inputc._train = true;
     APIData cad = ad;
     cad.add("model_repo",this->_mlmodel._repo); // pass the model repo so that in case of images, it is known where to save the db
@@ -490,6 +493,8 @@ namespace dd
 	      boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->test_nets().at(0)->layers()[0])->AddDatumVector(inputc._dv_test);
 	    else boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->test_nets().at(0)->layers()[0])->AddDatumVector(inputc._dv);
 	    }*/
+	inputc._dv.clear();
+	inputc._ids.clear();
       }
     if (!this->_mlmodel._weights.empty())
       {
@@ -573,12 +578,16 @@ namespace dd
       {
 	delete _net;
 	_net = nullptr;
-	delete solver;
       }
+    delete solver;
     
     // bail on forced stop, i.e. not testing the net further.
     if (!this->_tjob_running.load())
-      return 0;
+      {
+	inputc._dv_test.clear();
+	inputc._test_labels.clear();
+	return 0;
+      }
     
     solver_param = caffe::SolverParameter();
     this->_mlmodel.read_from_repository(this->_mlmodel._repo);
@@ -590,6 +599,8 @@ namespace dd
     
     // test
     test(_net,ad,inputc,test_batch_size,has_mean_file,out);
+    inputc._dv_test.clear();
+    inputc._test_labels.clear();
     
     // add whatever the input connector needs to transmit out
     inputc.response_params(out);
