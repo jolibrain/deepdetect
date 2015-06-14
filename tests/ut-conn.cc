@@ -269,7 +269,43 @@ TEST(inputconn,csv_read_categoricals)
   ASSERT_EQ(9,cc._vals.size());
 }
 
-TEST(inputconn,txt_parse_content)
+TEST(inputconn,csv_ignore)
+{
+  std::string header = "target,cap-shape,cap-surface,cap-color,bruises";
+  std::string d1 = "1,2,3,4,5";
+  std::ofstream of("test.csv");
+  of << header << std::endl;
+  of << d1 << std::endl;
+  std::vector<std::string> vdata = { "test.csv" };
+  APIData ad;
+  ad.add("data",vdata);
+  APIData pad,pinp;
+  pinp.add("label","target");
+  std::vector<std::string> vign = {"cap-shape"};
+  pinp.add("ignore",vign);
+  std::vector<APIData> vpinp = { pinp };
+  pad.add("input",vpinp);
+  std::vector<APIData> vpad = { pad };
+  ad.add("parameters",vpad);
+  CSVInputFileConn cifc;
+  cifc._train = true;
+  try
+    {
+      cifc.transform(ad);
+    }
+  catch(InputConnectorBadParamException &e)
+    {
+      std::cerr << "exception=" << e.what() << std::endl;
+      ASSERT_FALSE(true);
+    }
+  ASSERT_EQ(1,cifc._csvdata.size());
+  ASSERT_EQ(4,cifc._csvdata.at(0)._v.size());
+  ASSERT_EQ(4,cifc._columns.size());
+  ASSERT_EQ("target",(*cifc._columns.begin()));
+  remove("test.csv");
+}
+
+/*TEST(inputconn,txt_parse_content)
 {
   std::string str = "everything runs fine, right?";
   TxtInputFileConn tifc;
@@ -284,4 +320,4 @@ TEST(inputconn,txt_parse_content)
   TxtBowEntry tbe = tifc._txt.at(0);
   ASSERT_EQ(4,tbe._v.size());
   ASSERT_EQ(1,tbe._target);
-}
+  }*/
