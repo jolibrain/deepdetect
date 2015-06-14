@@ -260,6 +260,16 @@ namespace dd
     {
       return 1;
     }
+
+    int batch_size() const
+    {
+      return _dv.size();
+    }
+
+    int test_batch_size() const
+    {
+      return _dv_test.size();
+    }
     
     void transform(const APIData &ad)
     {
@@ -273,15 +283,16 @@ namespace dd
 	}
       
       // transform to datum by filling up float_data
-      auto hit = _csvdata.cbegin();
-      while(hit!=_csvdata.cend())
+      auto hit = _csvdata.begin();
+      while(hit!=_csvdata.end())
 	{
 	  _dv.push_back(to_datum((*hit)._v));
 	  _ids.push_back((*hit)._str);
 	  ++hit;
 	}
-      hit = _csvdata_test.cbegin();
-      while(hit!=_csvdata_test.cend())
+      _csvdata.clear();
+      hit = _csvdata_test.begin();
+      while(hit!=_csvdata_test.end())
 	{
 	  // no ids taken on the test set
 	  caffe::Datum dat = to_datum((*hit)._v);
@@ -289,6 +300,7 @@ namespace dd
 	  _test_labels.push_back(dat.label());
 	  ++hit;
 	}
+      _csvdata_test.clear();
     }
 
     std::vector<caffe::Datum> get_dv_test(const int &num,
