@@ -90,6 +90,19 @@ namespace dd
       }
     _columns = ncolumns;
 
+    // update label_pos and id_pos
+    int i = 0;
+    lit = _columns.begin();
+    while(lit!=_columns.end())
+      {
+	if ((*lit) == _id)
+	  _id_pos = i;
+	else if ((*lit) == _label)
+	  _label_pos = i;
+	++i;
+	++lit;
+      }
+
     //debug
     /*std::cout << "number of new columns=" << _columns.size() << std::endl;
     std::cout << "new CSV columns:\n";
@@ -106,7 +119,7 @@ namespace dd
 				       int &nlines)
     {
       std::string col;
-      std::unordered_set<std::string>::const_iterator hit;
+      std::unordered_set<int>::const_iterator hit;
       std::stringstream sh(hline);
       int c = -1;
       auto lit = _columns.begin();
@@ -119,9 +132,10 @@ namespace dd
 	  // convert to float unless it is string (ignore strings, aka categorical fields, for now)
 	  if (!_columns.empty()) // in prediction mode, columns from header are not mandatory
 	    {
-	      if ((hit=_ignored_columns.find(col_name))!=_ignored_columns.end()) //TODO: doesn't ignore categorical columns
+	      if ((hit=_ignored_columns_pos.find(c))!=_ignored_columns_pos.end())
 		{
-		  //LOG(INFO) << "ignoring column: " << col << std::endl;
+		  LOG(INFO) << "ignoring column " << col_name << " / " << col << std::endl;
+		  ++lit;
 		  continue;
 		}
 	      if (col_name == _id)
@@ -161,7 +175,6 @@ namespace dd
 	  catch (std::invalid_argument &e)
 	    {
 	      // not a number, skip for now
-	      //std::cout << "not a number: " << col << std::endl;
 	      if (column_id == col) // if id is string, replace with number / TODO: better scheme
 		vals.push_back(c);
 	    }
@@ -177,15 +190,24 @@ namespace dd
     std::string col;
     
     // read header
+    std::unordered_set<std::string>::const_iterator hit;
     int i = 0;
     bool has_id = false;
     while(std::getline(sg,col,_delim[0]))
       {
-	_columns.push_back(col);
+	if ((hit=_ignored_columns.find(col))!=_ignored_columns.end())
+	  {
+	    _ignored_columns_pos.insert(i);
+	  }
+	else _columns.push_back(col);
+	
 	if (col == _label)
 	  _label_pos = i;
 	if (!has_id && !_id.empty() && col == _id)
-	  has_id = true;
+	  {
+	    _id_pos = i;
+	    has_id = true;
+	  }
 	++i;
       }
     if (_label_pos < 0 && _train)
@@ -223,12 +245,12 @@ namespace dd
 	      std::vector<double> vals;
 	      std::string cid;
 	      std::string col;
-	      auto lit = _columns.begin();
+	      auto hit = _columns.begin();
 	      std::stringstream sh(hline);
 	      while(std::getline(sh,col,_delim[0]))
 		{
-		  update_category((*lit),col);
-		  ++lit;
+		  update_category((*hit),col);
+		  ++hit;
 		}
 	    }
 	  csv_file.clear();
