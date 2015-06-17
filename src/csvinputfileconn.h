@@ -352,9 +352,11 @@ namespace dd
     std::list<std::string> _columns;
     std::string _label;
     std::string _delim = ",";
+    int _id_pos = -1;
     int _label_pos = -1;
     int _label_offset = 0; /**< negative offset so that labels range from 0 onward */
     std::unordered_set<std::string> _ignored_columns;
+    std::unordered_set<int> _ignored_columns_pos;
     std::string _id;
     bool _scale = false; /**< whether to scale all data between 0 and 1 */
     std::vector<double> _min_vals; /**< upper bound used for auto-scaling data */
