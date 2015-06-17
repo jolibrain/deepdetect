@@ -277,6 +277,7 @@ namespace dd
 	  _ids.push_back((*hit)._str);
 	  ++hit;
 	}
+      _csvdata.clear();
       hit = _csvdata_test.cbegin();
       while(hit!=_csvdata_test.cend())
 	{
@@ -286,6 +287,7 @@ namespace dd
 	  _test_labels.push_back(dat.label());
 	  ++hit;
 	}
+      _csvdata_test.clear();
     }
 
     std::vector<caffe::Datum> get_dv_test(const int &num,
