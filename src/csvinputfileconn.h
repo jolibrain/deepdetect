@@ -116,6 +116,9 @@ namespace dd
 	    _ignored_columns.insert(s);
 	}
 
+      if (ad_input.has("test_split"))
+	_test_split = ad_input.get("test_split").get<double>();
+      
       // read categorical mapping, if any
       read_categoricals(ad_input);
       
@@ -365,6 +368,7 @@ namespace dd
     std::vector<double> _min_vals; /**< upper bound used for auto-scaling data */
     std::vector<double> _max_vals; /**< lower bound used for auto-scaling data */
     std::unordered_map<std::string,CCategorical> _categoricals; /**< auto-converted categorical variables */
+    double _test_split = -1;
     
     // data
     std::vector<CSVline> _csvdata;

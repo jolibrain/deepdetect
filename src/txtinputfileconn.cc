@@ -34,7 +34,6 @@ namespace dd
   {
     if (!_ctfc)
       {
-	std::cerr << "not ctfc\n";
 	return -1;
       }
     std::ifstream txt_file(fname);

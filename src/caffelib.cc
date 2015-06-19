@@ -86,7 +86,7 @@ namespace dd
     err = fileops::copy_file(source + model_tmpl + "_solver.prototxt",
 			     this->_mlmodel._repo + '/' + model_tmpl + "_solver.prototxt");
     if (err == 1)
-      throw MLLibBadParamException("failed to locate solver template " + source + "_solver.prototxt");
+      throw MLLibBadParamException("failed to locate solver template " + source + model_tmpl + "_solver.prototxt");
     else if (err == 2)
       throw MLLibBadParamException("failed to create destination template solver file " + this->_mlmodel._repo + '/' + model_tmpl + "_solver.prototxt");
     err = fileops::copy_file(source + "deploy.prototxt", dest_deploy_net);
@@ -97,7 +97,7 @@ namespace dd
 
     // if mlp template, set the net structure as number of layers.
     //TODO: support for regression
-    if (model_tmpl == "mlp")
+    if (model_tmpl == "mlp" || model_tmpl == "mlp_db")
       {
 	caffe::NetParameter net_param,deploy_net_param;
 	caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
@@ -486,6 +486,7 @@ namespace dd
     
     if (!inputc._dv.empty())
       {
+	LOG(INFO) << "filling up net prior to training\n";
 	boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->net()->layers()[0])->AddDatumVector(inputc._dv);
 	/*if (!solver->test_nets().empty())
 	  {
@@ -678,7 +679,7 @@ namespace dd
 	ad_res.add("batch_size",tresults);
 	//ad_res.add("loss",mean_loss / static_cast<double>(tresults)); // XXX: Caffe ForwardPrefilled call above return loss = 0.0
       }
-    this->_outputc.measure(ad_res,ad_out,out);
+    SupervisedOutput::measure(ad_res,ad_out,out);
   }
   
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -788,6 +789,7 @@ namespace dd
     
     // fix source paths in the model.
     caffe::NetParameter *np = sp.mutable_net_param();
+    std::cerr << "sp net=" << sp.net() << std::endl;
     caffe::ReadProtoFromTextFile(sp.net().c_str(),np); //TODO: error on read + use internal caffe ReadOrDie procedure
     for (int i=0;i<np->layer_size();i++)
       {
@@ -805,7 +807,10 @@ namespace dd
 		  {
 		    dp->set_source(ad.getobj("db").get("test_db").get<std::string>());
 		  }
-		else dp->set_source(this->_mlmodel._repo + "/" + dp->source()); // this updates in-memory net
+		else 
+		  {
+		    dp->set_source(this->_mlmodel._repo + "/" + dp->source()); // this updates in-memory net
+		  }
 	      }
 	    if (dp->has_batch_size() && batch_size != inputc.batch_size() && batch_size > 0)
 	      {

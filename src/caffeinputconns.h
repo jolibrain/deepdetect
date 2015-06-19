@@ -263,12 +263,16 @@ namespace dd
 
     int batch_size() const
     {
-      return _dv.size();
+      if (_db_batchsize > 0)
+	return _db_batchsize;
+      else return _dv.size();
     }
 
     int test_batch_size() const
     {
-      return _dv_test.size();
+      if (_db_testbatchsize > 0)
+	return _db_testbatchsize;
+      else return _dv_test.size();
     }
     
     void transform(const APIData &ad)
@@ -281,48 +285,70 @@ namespace dd
 	{
 	  throw;
 	}
+      APIData ad_param = ad.getobj("parameters");
+      APIData ad_input = ad_param.getobj("input");
       
-      // transform to datum by filling up float_data
-      auto hit = _csvdata.begin();
-      while(hit!=_csvdata.end())
+      if (ad_input.has("db") && ad_input.get("db").get<bool>())
 	{
-	  _dv.push_back(to_datum((*hit)._v));
-	  _ids.push_back((*hit)._str);
-	  ++hit;
+	  _db = true;
+	  _model_repo = ad.get("model_repo").get<std::string>();
+	  csv_to_db(_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname);
+	  
+	  // enrich data object with db files location
+	  APIData dbad;
+	  dbad.add("train_db",_model_repo + "/" + _dbfullname);
+	  if (_test_split > 0.0)
+	    dbad.add("test_db",_model_repo + "/" + _test_dbfullname);
+	  std::vector<APIData> vdbad = {dbad};
+	  const_cast<APIData&>(ad).add("db",vdbad);
 	}
-      _csvdata.clear();
-      hit = _csvdata_test.begin();
-      while(hit!=_csvdata_test.end())
+      else
 	{
-	  // no ids taken on the test set
-	  caffe::Datum dat = to_datum((*hit)._v);
-	  _dv_test.push_back(dat);
-	  _test_labels.push_back(dat.label());
-	  ++hit;
+	  // transform to datum by filling up float_data
+	  auto hit = _csvdata.begin();
+	  while(hit!=_csvdata.end())
+	    {
+	      _dv.push_back(to_datum((*hit)._v));
+	      _ids.push_back((*hit)._str);
+	      ++hit;
+	    }
+	  _csvdata.clear();
+	  hit = _csvdata_test.begin();
+	  while(hit!=_csvdata_test.end())
+	    {
+	      // no ids taken on the test set
+	      caffe::Datum dat = to_datum((*hit)._v);
+	      _dv_test.push_back(dat);
+	      _test_labels.push_back(dat.label());
+	      ++hit;
+	    }
+	  _csvdata_test.clear();
 	}
-      _csvdata_test.clear();
     }
 
     std::vector<caffe::Datum> get_dv_test(const int &num,
 					  const bool &has_mean_file)
       {
 	(void)has_mean_file;
-	int i = 0;
-	std::vector<caffe::Datum> dv;
-	while(_dt_vit!=_dv_test.end()
-	      && i < num)
+	if (!_db)
 	  {
-	    dv.push_back((*_dt_vit));
-	    ++i;
-	    ++_dt_vit;
+	    int i = 0;
+	    std::vector<caffe::Datum> dv;
+	    while(_dt_vit!=_dv_test.end()
+		  && i < num)
+	      {
+		dv.push_back((*_dt_vit));
+		++i;
+		++_dt_vit;
+	      }
+	    return dv;
 	  }
-	return dv;
+	else return get_dv_test_db(num);
       }
+    
+    std::vector<caffe::Datum> get_dv_test_db(const int &num);
 
-    void reset_dv_test()
-    {
-      _dt_vit = _dv_test.begin();
-    }
+    void reset_dv_test();
 
     /**
      * \brief turns a vector of values into a Caffe Datum structure
@@ -361,7 +387,30 @@ namespace dd
       return datum;
     }
 
+  private:
+    int csv_to_db(const std::string &traindbname,
+		  const std::string &testdbname,
+		  const std::string &backend="lmdb"); // lmdb, leveldb
+
+    void write_csvline_to_db(const std::string &dbfullname,
+			     std::vector<CSVline> &csvdata,
+			     const bool &test=false,
+			     const std::string &backend="lmdb");
+    
+  public:
     std::vector<caffe::Datum>::const_iterator _dt_vit;
+    
+    bool _db = false;
+    int _db_batchsize = -1;
+    int _db_testbatchsize = -1;
+    std::unique_ptr<caffe::db::DB> _test_db;
+    std::unique_ptr<caffe::db::Cursor> _test_db_cursor;
+    std::string _dbname = "train";
+    std::string _test_dbname = "test";
+    std::string _dbfullname = "train.lmdb";
+    std::string _test_dbfullname = "test.lmdb";
+    std::string _model_repo;
+    std::string _correspname = "corresp.txt";
   };
 
   /**

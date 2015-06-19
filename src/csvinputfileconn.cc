@@ -238,7 +238,6 @@ namespace dd
       // categorical variables
       if (!_categoricals.empty())
 	{
-	  std::cerr << "setting up categorical variables\n";
 	  while(std::getline(csv_file,hline))
 	    {
 	      hline.erase(std::remove(hline.begin(),hline.end(),'\r'),hline.end());
@@ -256,7 +255,6 @@ namespace dd
 	  csv_file.clear();
 	  csv_file.seekg(0,std::ios::beg);
 	  std::getline(csv_file,hline); // skip header line
-	  std::cerr << "successfully updated categories\n";
 	}
 
       // scaling to [0,1]
@@ -357,15 +355,13 @@ namespace dd
 	  std::random_device rd;
 	  std::mt19937 g(rd());
 	  std::shuffle(_csvdata.begin(),_csvdata.end(),g);
-	  std::cerr << "done with shuffling\n";
 	}
       
-      if (_csv_test_fname.empty() && ad.has("test_split"))
+      if (_csv_test_fname.empty() && _test_split > 0)
 	{
-	  double split = ad.get("test_split").get<double>();
-	  if (split > 0.0)
+	  if (_test_split > 0.0)
 	    {
-	      int split_size = std::floor(_csvdata.size() * (1.0-split));
+	      int split_size = std::floor(_csvdata.size() * (1.0-_test_split));
 	      auto chit = _csvdata.begin();
 	      auto dchit = chit;
 	      int cpos = 0;
