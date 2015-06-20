@@ -305,8 +305,10 @@ namespace dd
 	      scale_vals(vals);
 	    }
 	  if (!_id.empty())
-	    _csvdata.emplace_back(cid,vals);
-	  else _csvdata.emplace_back(std::to_string(nlines),vals); 
+	    add_train_csvline(cid,vals);
+	  //_csvdata.emplace_back(cid,std::move(vals));
+	  else add_train_csvline(std::to_string(nlines),vals); 
+	    //_csvdata.emplace_back(std::to_string(nlines),std::move(vals)); 
 	  
 	  //debug
 	  /*std::cout << "csv data line #" << nlines << "=";
@@ -318,6 +320,7 @@ namespace dd
       csv_file.close();
       
       // test file, if any.
+      std::cerr << "csv test fname=" << _csv_test_fname << std::endl;
       if (!_csv_test_fname.empty())
 	{
 	  nlines = 0;
@@ -336,8 +339,10 @@ namespace dd
 		  scale_vals(vals);
 		}
 	      if (!_id.empty())
-		_csvdata_test.emplace_back(cid,vals);
-	      else _csvdata_test.emplace_back(std::to_string(nlines),vals);
+		add_test_csvline(cid,vals);
+	      //_csvdata_test.emplace_back(cid,vals);
+	      else add_test_csvline(std::to_string(nlines),vals);
+	      //_csvdata_test.emplace_back(std::to_string(nlines),vals);
 	      
 	      //debug
 	      /*std::cout << "csv test data line=";

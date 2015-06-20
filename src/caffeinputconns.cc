@@ -381,9 +381,37 @@ namespace dd
   }
 
 
+  /*- DDCCsv -*/
+  int DDCCsv::read_file(const std::string &fname)
+  {
+    if (_cifc)
+      {
+	_cifc->read_csv(_adconf,fname);
+	return 0;
+      }
+    else return -1;
+  }
+  
+  int DDCCsv::read_mem(const std::string &content)
+  {
+    if (!_cifc)
+      return -1;
+    std::vector<double> vals;
+    std::string cid;
+    int nlines = 0;
+    _cifc->read_csv_line(content,_cifc->_delim,vals,cid,nlines);
+    if (_cifc->_scale)
+      _cifc->scale_vals(vals);
+    if (!cid.empty())
+      _cifc->_csvdata.emplace_back(cid,vals);
+    else _cifc->_csvdata.emplace_back(std::to_string(_cifc->_csvdata.size()+1),vals);
+    return 0;
+  }
+
   /*- CSVCaffeInputFileConn -*/
   int CSVCaffeInputFileConn::csv_to_db(const std::string &traindbname,
 				       const std::string &testdbname,
+				       const APIData &ad_input,
 				       const std::string &backend)
   {
     std::cerr << "CSV db\n";
@@ -407,10 +435,16 @@ namespace dd
 	_db_batchsize = 0;
 	while(cursor->valid())
 	  {
+	    if (_channels == 0)
+	      {
+		Datum datum;
+		datum.ParseFromString(cursor->value());
+		_channels = datum.channels();
+	      }
 	    ++_db_batchsize;
 	    cursor->Next();
 	  }
-	_csvdata.clear();
+	//_csvdata.clear();
 	LOG(WARNING) << "CSV db train file " << dbfullname << " with " << _db_batchsize << " records\n";
 	if (!testdbname.empty() && fileops::file_exists(testdbfullname))
 	  {
@@ -424,29 +458,33 @@ namespace dd
 	      {
 		Datum datum;
 		datum.ParseFromString(tcursor->value());
+		//_dv_test.push_back(datum);
 		_test_labels.push_back(datum.label());
 		++_db_testbatchsize;
 		tcursor->Next();
 	      }
+	    std::cerr << "dv_test size=" << _dv_test.size() << std::endl;
 	    LOG(WARNING) << "CSV db test file " << testdbfullname << " with " << _db_testbatchsize << " records\n";
-	    _csvdata_test.clear();
-	  }
-	
+	    //_csvdata_test.clear();
+	  }	
 	return 0;
       }
     
-    _db_batchsize = _csvdata.size();
-    _db_testbatchsize = _csvdata_test.size();
+    //_db_batchsize = _csvdata.size();
+    //_db_testbatchsize = _csvdata_test.size();
     
     // write files to dbs (i.e. train and possibly test)
-    std::vector<int> labels; // XXX: useless
-    write_csvline_to_db(dbfullname,_csvdata);
-    _csvdata.clear();
+    //std::vector<int> labels; // XXX: useless
+    _db_batchsize = 0;
+    _db_testbatchsize = 0;
+    write_csvline_to_db(dbfullname,testdbfullname,ad_input);
+    //TODO: test db...
+    /*_csvdata.clear();
     if (!_csvdata_test.empty())
       {
-	write_csvline_to_db(testdbfullname,_csvdata_test,true);
+	write_csvline_to_db(testdbfullname,ad_input,_csvdata_test,true);
 	_csvdata_test.clear();
-      }
+	}*/
     
     // write corresp file
     /*std::ofstream correspf(_model_repo + "/" + _correspname,std::ios::binary);
@@ -461,61 +499,119 @@ namespace dd
     return 0;
   }
 
+  void CSVCaffeInputFileConn::add_train_csvline(const std::string &id,
+						std::vector<double> &vals)
+  {
+    if (!_db)
+      {
+	CSVInputFileConn::add_train_csvline(id,vals);
+	return;
+      }
+
+    static int count = 0;
+    
+    const int kMaxKeyLength = 256;
+    char key_cstr[kMaxKeyLength];
+    
+    Datum d = to_datum(vals);
+    
+    // sequential
+    int length = snprintf(key_cstr,kMaxKeyLength,"%s",std::to_string(count).c_str()); // XXX: using appeared to confuse the training (maybe because sorted)
+    
+    // put in db
+    std::string out;
+    if(!d.SerializeToString(&out))
+      {
+	LOG(INFO) << "Failed serialization of datum for db storage";
+	return;
+      }
+    _txn->Put(std::string(key_cstr, length), out);
+    _db_batchsize++;
+    
+    if (++count % 10000 == 0) {
+      // commit db
+      _txn->Commit();
+      _txn.reset(_tdb->NewTransaction());
+      LOG(INFO) << "Processed " << count << " records";
+    }
+  }
+
+  void CSVCaffeInputFileConn::add_test_csvline(const std::string &id,
+					       std::vector<double> &vals)
+  {
+    if (!_db)
+      {
+	CSVInputFileConn::add_test_csvline(id,vals);
+	return;
+      }
+    
+      static int count = 0;
+    
+    const int kMaxKeyLength = 256;
+    char key_cstr[kMaxKeyLength];
+    
+    Datum d = to_datum(vals);
+    
+    // sequential
+    int length = snprintf(key_cstr,kMaxKeyLength,"%s",std::to_string(count).c_str()); // XXX: using id appeared to confuse the training (maybe because sorted)
+    
+    // put in db
+    std::string out;
+    if(!d.SerializeToString(&out))
+      {
+	LOG(INFO) << "Failed serialization of datum for db storage";
+	return;
+      }
+    _ttxn->Put(std::string(key_cstr, length), out);
+    _test_labels.push_back(d.label());
+    _db_testbatchsize++;
+
+    if (++count % 10000 == 0) {
+      // commit db
+      _ttxn->Commit();
+      _ttxn.reset(_ttdb->NewTransaction());
+      LOG(INFO) << "Processed " << count << " records";
+    }
+  }
+  
   void CSVCaffeInputFileConn::write_csvline_to_db(const std::string &dbfullname,
-						  std::vector<CSVline> &csvdata,
-						  const bool &test,
+						  const std::string &testdbfullname,
+						  const APIData &ad_input,
 						  const std::string &backend)
   {
     std::cerr << "CVS line to db\n";
     std::cerr << "dbfullname=" << dbfullname << std::endl;
 
     // Create new DB
-    std::unique_ptr<db::DB> db(db::GetDB(backend));
-    db->Open(dbfullname.c_str(), db::NEW);
-    std::unique_ptr<db::Transaction> txn(db->NewTransaction());
-
+    _tdb = std::unique_ptr<db::DB>(db::GetDB(backend));
+    _tdb->Open(dbfullname.c_str(), db::NEW);
+    _txn = std::unique_ptr<db::Transaction>(_tdb->NewTransaction());
+    _ttdb = std::unique_ptr<db::DB>(db::GetDB(backend));
+    _ttdb->Open(testdbfullname.c_str(), db::NEW);
+    _ttxn = std::unique_ptr<db::Transaction>(_ttdb->NewTransaction());
     std::cerr << "db is opened\n";
 
-    // Storing to db
-    int count = 0;
-    const int kMaxKeyLength = 256;
-    char key_cstr[kMaxKeyLength];
-    int i = 0;
-    auto hit = csvdata.begin();
-    while(hit!=csvdata.end())
-      {
-	Datum d = to_datum((*hit)._v);
-	
-	// sequential
-	int length = snprintf(key_cstr,kMaxKeyLength,"%s",std::to_string(i).c_str());
-	
-	// put in db
-	std::string out;
-	if(!d.SerializeToString(&out))
-	  {
-	    LOG(INFO) << "Failed serialization of datum for db storage";
-	    continue;
-	  }
-	txn->Put(std::string(key_cstr, length), out);
-	if (test)
-	  _test_labels.push_back(d.label());
-	
-	if (++count % 1000 == 0) {
-	  // commit db
-	  txn->Commit();
-	  txn.reset(db->NewTransaction());
-	  LOG(INFO) << "Processed " << count << " records.";
-	}
-	
-	++hit;
-	++i;
-      }
-    // write the last batch
-    if (count % 1000 != 0) {
-      txn->Commit();
-      LOG(INFO) << "Processed " << count << " records.";
-    }
-    db->Close();
+    _csv_fname = _uris.at(0); // training only from file
+    if (!fileops::file_exists(_csv_fname))
+      throw InputConnectorBadParamException("training CSV file " + _csv_fname + " does not exist");
+    if (_uris.size() > 1)
+      _csv_test_fname = _uris.at(1);
+    if (ad_input.has("label"))
+      _label = ad_input.get("label").get<std::string>();
+    else if (_train && _label.empty()) throw InputConnectorBadParamException("missing label column parameter");
+    if (ad_input.has("label_offset"))
+      _label_offset = ad_input.get("label_offset").get<int>();
+    
+    DataEl<DDCCsv> ddcsv;
+    ddcsv._ctype._cifc = this;
+    ddcsv._ctype._adconf = ad_input;
+    ddcsv.read_element(_csv_fname);
+
+    _txn->Commit();
+    _ttxn->Commit();
+    
+    _tdb->Close();
+    _ttdb->Close();
   }
 
   std::vector<caffe::Datum> CSVCaffeInputFileConn::get_dv_test_db(const int &num)

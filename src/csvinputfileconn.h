@@ -208,7 +208,19 @@ namespace dd
 	  //debug
 	}
     }
-    
+
+    virtual void add_train_csvline(const std::string &id,
+				   std::vector<double> &vals)
+    {
+      _csvdata.emplace_back(id,std::move(vals));
+    }
+
+    virtual void add_test_csvline(const std::string &id,
+				  std::vector<double> &vals)
+    {
+      _csvdata_test.emplace_back(id,std::move(vals));
+    }
+
     void transform(const APIData &ad)
     {
       get_data(ad);

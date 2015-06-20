@@ -228,6 +228,24 @@ namespace dd
    * \brief Caffe CSV connector
    * \note use 'label_offset' in API to make sure that labels start at 0
    */
+  class CSVCaffeInputFileConn;
+  class DDCCsv
+  {
+  public:
+    DDCCsv() {}
+    ~DDCCsv() {}
+
+    int read_file(const std::string &fname);
+    int read_mem(const std::string &content);
+    int read_dir(const std::string &dir)
+    {
+      throw InputConnectorBadParamException("uri " + dir + " is a directory, requires a CSV file");
+    }
+    
+    CSVCaffeInputFileConn *_cifc = nullptr;
+    APIData _adconf;
+  };
+  
   class CSVCaffeInputFileConn : public CSVInputFileConn, public CaffeInputInterface
   {
   public:
@@ -248,6 +266,8 @@ namespace dd
     // size of each element in Caffe jargon
     int channels() const
     {
+      if (_channels > 0)
+	return _channels;
       return feature_size();
     }
     
@@ -274,25 +294,34 @@ namespace dd
 	return _db_testbatchsize;
       else return _dv_test.size();
     }
+
+    virtual void add_train_csvline(const std::string &id,
+				   std::vector<double> &vals);
+
+    virtual void add_test_csvline(const std::string &id,
+				  std::vector<double> &vals);
     
     void transform(const APIData &ad)
     {
-      try
+      /*try
 	{
 	  CSVInputFileConn::transform(ad);
 	}
       catch (std::exception &e)
 	{
 	  throw;
-	}
+	  }*/
       APIData ad_param = ad.getobj("parameters");
       APIData ad_input = ad_param.getobj("input");
+      fillup_parameters(ad_input);
       
-      if (ad_input.has("db") && ad_input.get("db").get<bool>())
+      if (_train && ad_input.has("db") && ad_input.get("db").get<bool>())
 	{
+	  get_data(ad);
 	  _db = true;
 	  _model_repo = ad.get("model_repo").get<std::string>();
-	  csv_to_db(_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname);
+	  csv_to_db(_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname,
+		    ad_input);
 	  
 	  // enrich data object with db files location
 	  APIData dbad;
@@ -304,6 +333,15 @@ namespace dd
 	}
       else
 	{
+	  try
+	    {
+	      CSVInputFileConn::transform(ad);
+	    }
+	  catch (std::exception &e)
+	    {
+	      throw;
+	    }
+	  
 	  // transform to datum by filling up float_data
 	  auto hit = _csvdata.begin();
 	  while(hit!=_csvdata.end())
@@ -343,7 +381,7 @@ namespace dd
 	      }
 	    return dv;
 	  }
-	else return get_dv_test_db(num);
+	  else return get_dv_test_db(num);
       }
     
     std::vector<caffe::Datum> get_dv_test_db(const int &num);
@@ -390,11 +428,12 @@ namespace dd
   private:
     int csv_to_db(const std::string &traindbname,
 		  const std::string &testdbname,
+		  const APIData &ad_input,
 		  const std::string &backend="lmdb"); // lmdb, leveldb
 
     void write_csvline_to_db(const std::string &dbfullname,
-			     std::vector<CSVline> &csvdata,
-			     const bool &test=false,
+			     const std::string &testdbfullname,
+			     const APIData &ad_input,
 			     const std::string &backend="lmdb");
     
   public:
@@ -411,6 +450,13 @@ namespace dd
     std::string _test_dbfullname = "test.lmdb";
     std::string _model_repo;
     std::string _correspname = "corresp.txt";
+
+  private:
+    std::unique_ptr<caffe::db::Transaction> _txn;
+    std::unique_ptr<caffe::db::DB> _tdb;
+    std::unique_ptr<caffe::db::Transaction> _ttxn;
+    std::unique_ptr<caffe::db::DB> _ttdb;
+    int _channels = 0;
   };
 
   /**
