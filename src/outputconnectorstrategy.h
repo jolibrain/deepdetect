@@ -215,12 +215,20 @@ namespace dd
 	  if (bf1)
 	    {
 	      double f1,precision,recall,acc;
-	      f1 = mf1(ad_res,precision,recall,acc);
+	      dMat conf_diag;
+	      f1 = mf1(ad_res,precision,recall,acc,conf_diag);
 	      meas_out.add("f1",f1);
 	      meas_out.add("precision",precision);
 	      meas_out.add("recall",recall);
 	      meas_out.add("accp",acc);
 	      //TODO: confusion matrix ?
+	      if (std::find(measures.begin(),measures.end(),"cmdiag")!=measures.end())
+		{
+		  std::vector<double> cmdiagv;
+		  for (int i=0;i<conf_diag.rows();i++)
+		    cmdiagv.push_back(conf_diag(i,0));
+		  meas_out.add("cmdiag",cmdiagv);
+		}
 	    }
 	  if (bmcll)
 	    {
@@ -255,7 +263,7 @@ namespace dd
     }
 
     // measure: F1
-    double mf1(const APIData &ad, double &precision, double &recall, double &acc)
+    double mf1(const APIData &ad, double &precision, double &recall, double &acc, dMat &conf_diag)
     {
       int nclasses = ad.get("nclasses").get<int>();
       double f1=0.0;
@@ -269,7 +277,7 @@ namespace dd
 	  int target = bad.get("target").get<int>();
 	  conf_matrix(maxpr,target) += 1.0;
 	}
-      dMat conf_diag = conf_matrix.diagonal();
+      conf_diag = conf_matrix.diagonal();
       dMat conf_csum = conf_matrix.colwise().sum();
       dMat conf_rsum = conf_matrix.rowwise().sum();
       dMat eps = dMat::Constant(nclasses,1,1e-8);
@@ -277,6 +285,7 @@ namespace dd
       precision = conf_diag.transpose().cwiseQuotient(conf_csum + eps.transpose()).sum() / static_cast<double>(nclasses);
       recall = conf_diag.cwiseQuotient(conf_rsum + eps).sum() / static_cast<double>(nclasses);
       f1 = (2.0*precision*recall) / (precision+recall);
+      conf_diag = conf_diag.transpose().cwiseQuotient(conf_csum+eps.transpose()).transpose();
       return f1;
     }
     

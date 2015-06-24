@@ -533,11 +533,14 @@ namespace dd
 	    std::vector<std::string> meas_str = meas_obj.list_keys();
 	    for (auto m: meas_str)
 	      {
-		double mval = meas_obj.get(m).get<double>();
-		LOG(INFO) << m << "=" << mval;
-		this->add_meas(m,mval);
-		if (!std::isnan(mval)) // if testing occurs once before training even starts, loss is unknown and we don't add it to history.
-		  this->add_meas_per_iter(m,mval);
+		if (m != "cmdiag") // do not report confusion matrix in server logs
+		  {
+		    double mval = meas_obj.get(m).get<double>();
+		    LOG(INFO) << m << "=" << mval;
+		    this->add_meas(m,mval);
+		    if (!std::isnan(mval)) // if testing occurs once before training even starts, loss is unknown and we don't add it to history.
+		      this->add_meas_per_iter(m,mval);
+		  }
 	      }
 	  }
 	float loss = solver->net_->ForwardBackward(bottom_vec);
