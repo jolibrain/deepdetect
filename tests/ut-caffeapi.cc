@@ -24,6 +24,8 @@
 #include <gtest/gtest.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <iostream>
 
 using namespace dd;
@@ -44,7 +46,7 @@ static std::string iterations_plank = "2000";
 static std::string iterations_forest = "2000";
 #else
 static std::string iterations_mnist = "50";
-static std::string iterations_plank = "200";
+static std::string iterations_plank = "20";
 static std::string iterations_forest = "500";
 #endif
 
@@ -355,13 +357,15 @@ TEST(caffeapi,service_train_images)
 {
   // create service
   JsonAPI japi;
+  std::string plank_repo_loc = "plank";
+  mkdir(plank_repo_loc.c_str(),0777);
   std::string sname = "my_service";
-  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  plank_repo + "\",\"templates\":\"" + model_templates_repo  + "\"},\"parameters\":{\"input\":{\"connector\":\"image\"},\"mllib\":{\"template\":\"cifar\",\"nclasses\":121}}}";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  plank_repo_loc + "\",\"templates\":\"" + model_templates_repo  + "\"},\"parameters\":{\"input\":{\"connector\":\"image\"},\"mllib\":{\"template\":\"cifar\",\"nclasses\":121}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
   ASSERT_EQ(created_str,joutstr);
 
   // train
-  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"width\":32,\"height\":32,\"test_split\":0.2,\"shuffle\":true,\"bw\":false},\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":" + iterations_plank + ",\"test_interval\":500,\"base_lr\":0.0001,\"snapshot\":2000},\"net\":{\"batch_size\":300}},\"output\":{\"measure\":[\"acc\",\"mcll\",\"f1\"]}},\"data\":[\"" + plank_repo + "train\"]}";
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"width\":32,\"height\":32,\"test_split\":0.001,\"shuffle\":true,\"bw\":false},\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":" + iterations_plank + ",\"test_interval\":500,\"base_lr\":0.0001,\"snapshot\":2000,\"test_initialization\":false},\"net\":{\"batch_size\":100}},\"output\":{\"measure\":[\"acc\",\"mcll\",\"f1\"]}},\"data\":[\"" + plank_repo + "train\"]}";
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
@@ -372,16 +376,17 @@ TEST(caffeapi,service_train_images)
   ASSERT_EQ("Created",jd["status"]["msg"]);
   ASSERT_TRUE(jd.HasMember("head"));
   ASSERT_EQ("/train",jd["head"]["method"]);
-  ASSERT_TRUE(jd["head"]["time"].GetDouble() > 0);
+  ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
   ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() > 0);
   ASSERT_TRUE(jd["body"]["measure"].HasMember("f1"));
-  ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() > 0.0);
+  ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() >= 0.0);
   ASSERT_EQ(jd["body"]["measure"]["accp"].GetDouble(),jd["body"]["measure"]["acc"].GetDouble());
 
   // remove service
-  jstr = "{\"clear\":\"lib\"}";
+  jstr = "{\"clear\":\"full\"}";
   joutstr = japi.jrender(japi.service_delete(sname,jstr));
   ASSERT_EQ(ok_str,joutstr);
-  }
+  rmdir(plank_repo_loc.c_str());
+}

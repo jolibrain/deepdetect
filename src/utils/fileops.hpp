@@ -27,6 +27,7 @@
 #include <unordered_set>
 #include <sys/stat.h>
 #include <stdio.h>
+#include <unistd.h>
 
 namespace dd
 {
@@ -70,6 +71,7 @@ namespace dd
 	}
     }
 
+    // remove everything, including first level directories within directory
     static int clear_directory(const std::string &repo)
     {
       int err = 0;
@@ -80,8 +82,17 @@ namespace dd
 	  {
 	    if (ent->d_type == DT_DIR && ent->d_name[0] == '.')
 	      continue;
-	    std::string f = std::string(repo) + "/" + std::string(ent->d_name);
-	    err += remove(f.c_str());
+	    else
+	      {
+		std::string f = std::string(repo) + "/" + std::string(ent->d_name);
+		if (ent->d_type == DT_DIR)
+		  {
+		    int errdf = remove_directory_files(f,std::vector<std::string>());
+		    int errd = rmdir(f.c_str());
+		    err += errdf + errd;
+		  }
+		else err += remove(f.c_str());
+	      }
 	  }
 	closedir(dir);
 	return err;
@@ -92,6 +103,7 @@ namespace dd
 	}
     }
 
+    // empty extensions means a wildcard
     static int remove_directory_files(const std::string &repo,
 				      const std::vector<std::string> &extensions)
     {
@@ -102,13 +114,23 @@ namespace dd
 	while ((ent = readdir(dir)) != NULL) 
 	  {
 	    std::string lf = std::string(ent->d_name);
-	    for (std::string s : extensions)
-	      if (lf.find(s) != std::string::npos)
-		{
-		  std::string f = std::string(repo) + "/" + lf;
-		  err += remove(f.c_str());
-		  break;
-		}
+	    if (ent->d_type == DT_DIR && ent->d_name[0] == '.')
+	      continue;
+	    if (extensions.empty())
+	      {
+		std::string f = std::string(repo) + "/" + lf;
+		err += remove(f.c_str());
+	      }
+	    else
+	      {
+		for (std::string s : extensions)
+		  if (lf.find(s) != std::string::npos)
+		    {
+		      std::string f = std::string(repo) + "/" + lf;
+		      err += remove(f.c_str());
+		      break;
+		    }
+	      }
 	  }
 	closedir(dir);
 	return err;
