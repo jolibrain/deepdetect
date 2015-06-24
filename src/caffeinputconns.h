@@ -257,6 +257,16 @@ namespace dd
     {
       return 1;
     }
+
+    int batch_size() const
+    {
+      return _dv.size();
+    }
+
+    int test_batch_size() const
+    {
+      return _dv_test.size();
+    }
     
     void transform(const APIData &ad)
     {
