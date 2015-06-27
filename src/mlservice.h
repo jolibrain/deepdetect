@@ -188,6 +188,10 @@ namespace dd
      */
     int train_job(const APIData &ad, APIData &out)
     {
+      APIData jmrepo;
+      jmrepo.add("repository",this->_mlmodel._repo);
+      std::vector<APIData> vobj = {jmrepo};
+      out.add("model",vobj);
       if (!ad.has("async") || (ad.has("async") && ad.get("async").get<bool>()))
 	{
 	  std::lock_guard<std::mutex> lock(_tjobs_mutex);

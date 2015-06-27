@@ -90,6 +90,11 @@ namespace dd
     JDoc service_train(const std::string &jstr);
     JDoc service_train_status(const std::string &jstr);
     JDoc service_train_delete(const std::string &jstr);
+
+    static int store_json_blob(const std::string &model_repo,
+			       const std::string &jstr);
+
+    static std::string _json_blob_fname;
   };
 
   /**

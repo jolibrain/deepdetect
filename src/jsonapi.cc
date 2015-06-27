@@ -30,6 +30,7 @@
 
 namespace dd
 {
+  std::string JsonAPI::_json_blob_fname = "model.json";
   
   JsonAPI::JsonAPI()
     :APIStrategy()
@@ -284,12 +285,14 @@ namespace dd
       {
 	if (mllib == "caffe")
 	  {
-	    CaffeModel cmodel(ad_model); //TODO: pass generic ad, in order to fetch templates from parameters/mllib
+	    CaffeModel cmodel(ad_model);
 	    if (input == "image")
 	      add_service(sname,std::move(MLService<CaffeLib,ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
 	    else if (input == "csv")
 	      add_service(sname,std::move(MLService<CaffeLib,CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
 	    else return dd_input_connector_not_found_1004();
+	    if (JsonAPI::store_json_blob(cmodel._repo,jstr)) // store successful call json blob
+	      LOG(ERROR) << "couldn't write " << JsonAPI::_json_blob_fname << " file in model repository " << cmodel._repo << std::endl;
 	  }
 	else
 	  {
@@ -506,10 +509,14 @@ namespace dd
       }
     
     // training
+    std::string mrepo;
     APIData out;
     try
       {
 	this->train(ad,sname,out); // we ignore return status, stored in out data object
+	mrepo = out.getobj("model").get("repository").get<std::string>();
+	if (JsonAPI::store_json_blob(mrepo,jstr)) // store successful call json blob
+	  LOG(ERROR) << "couldn't write to" << JsonAPI::_json_blob_fname << " file in model repository " << mrepo << std::endl;
       }
     catch (InputConnectorBadParamException &e)
       {
@@ -550,6 +557,8 @@ namespace dd
 	jtrain.AddMember("body",jout,jtrain.GetAllocator());
       }
     jtrain.AddMember("head",jhead,jtrain.GetAllocator());
+    if (JsonAPI::store_json_blob(mrepo,jrender(jtrain))) // store successful call json blob
+      LOG(ERROR) << "couldn't write to " << JsonAPI::_json_blob_fname << " file in model repository " << mrepo << std::endl;
     return jtrain;
   }
 
@@ -725,5 +734,16 @@ namespace dd
     jd.AddMember("head",jout,jd.GetAllocator());
     return jd;
   }
-
+  
+  int JsonAPI::store_json_blob(const std::string &model_repo,
+			       const std::string &jstr)
+  {
+    std::ofstream outf;
+    outf.open(model_repo + "/" + JsonAPI::_json_blob_fname,std::ofstream::out|std::ofstream::app);
+    if (!outf.is_open())
+      return 1;
+    outf << jstr << std::endl;
+    return 0;
+  }
+  
 }

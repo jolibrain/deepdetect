@@ -358,7 +358,7 @@ namespace dd
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::clear_mllib(const APIData &ad)
   {
     (void)ad;
-    std::vector<std::string> extensions = {".solverstate",".caffemodel"};
+    std::vector<std::string> extensions = {".solverstate",".caffemodel",".json"};
     fileops::remove_directory_files(this->_mlmodel._repo,extensions);
   }
 

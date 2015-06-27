@@ -367,7 +367,6 @@ namespace dd
       out = pout._out;
       if (ad.has("async") && ad.get("async").get<bool>())
 	{
-	  //TODO: beware out is a ref that might be lost
 	  out.add("job",pout._status); // status holds the job id...
 	  out.add("status","running");
 	  return 0; // status is OK i.e. the job has started.

@@ -21,7 +21,7 @@ Current features include:
 - connector to handle large collections of images
 - connector to handle CSV files with preprocessing capabilities
 - range of built-in model assessment measures (e.g. F1, multiclass log loss, ...)
-- no database dependency and sync, all information organized on the filesystem
+- no database dependency and sync, all information and model parameters organized and available from the filesystem
 - flexible template output format to simplify connection to external applications
 - templates for the most useful neural architectures (e.g. Googlenet, Alexnet, mlp, logistic regression)
 

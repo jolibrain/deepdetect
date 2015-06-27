@@ -316,6 +316,9 @@ TEST(caffeapi,service_train_csv)
   std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
   ASSERT_EQ(created_str,joutstr);
 
+  // assert json blob file
+  ASSERT_TRUE(fileops::file_exists(forest_repo + "/" + JsonAPI::_json_blob_fname));
+  
   // train
   std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"label\":\"Cover_Type\",\"id\":\"Id\",\"scale\":true,\"test_split\":0.1,\"label_offset\":-1,\"shuffle\":true},\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":" + iterations_forest + ",\"base_lr\":0.05},\"net\":{\"batch_size\":512}},\"output\":{\"measure\":[\"acc\",\"mcll\",\"f1\",\"cmdiag\"]}},\"data\":[\"" + forest_repo + "train.csv\"]}";
   joutstr = japi.jrender(japi.service_train(jtrainstr));
@@ -349,11 +352,14 @@ TEST(caffeapi,service_train_csv)
   ASSERT_EQ(56,jd["body"]["parameters"]["input"]["min_vals"].Size());
   ASSERT_EQ(56,jd["body"]["parameters"]["input"]["max_vals"].Size());
   ASSERT_EQ(504,jd["body"]["parameters"]["mllib"]["batch_size"].GetInt());
-    
+  
   // remove service
   jstr = "{\"clear\":\"lib\"}";
   joutstr = japi.jrender(japi.service_delete(sname,jstr));
   ASSERT_EQ(ok_str,joutstr);
+
+  // assert json blob file is still there (or gone if clear=full)
+  ASSERT_TRUE(!fileops::file_exists(forest_repo + "/" + JsonAPI::_json_blob_fname));
 }
 
 TEST(caffeapi,service_train_images)
