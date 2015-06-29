@@ -2,6 +2,14 @@ In order for this demo to work, you'll need to serve the static
 index.html file in a webserver, and redirect a request to your
 deepdetect server.
 
+## Bower
+
+You'll need to use [bower.io](http://bower.io) to load required js
+libraries :
+
+    cd demo/imgdetect/
+    bower install
+
 ## nginx configuration
 
 Here is an nginx configuration example you can use to serve the
