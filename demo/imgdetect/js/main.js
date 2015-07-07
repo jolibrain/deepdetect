@@ -56,6 +56,7 @@ $(document).ready(function() {
         $('#imageList').prepend($('#emptyImage').clone().attr('id', '').removeClass('hidden'));
         $('.loading').addClass('hidden');
 
+        $('#emptyImage .predictions').html('');
         $('input#url').val('');
       }
     });
