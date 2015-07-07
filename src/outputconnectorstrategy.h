@@ -189,7 +189,7 @@ namespace dd
     };
 
     // measure
-    void measure(const APIData &ad_res, const APIData &ad_out, APIData &out)
+    static void measure(const APIData &ad_res, const APIData &ad_out, APIData &out)
     {
       APIData meas_out;
       bool tloss = ad_res.has("train_loss");
@@ -247,7 +247,7 @@ namespace dd
     }
 
     // measure: ACC
-    double acc(const APIData &ad)
+    static double acc(const APIData &ad)
     {
       double acc = 0.0;
       int batch_size = ad.get("batch_size").get<int>();
@@ -263,7 +263,7 @@ namespace dd
     }
 
     // measure: F1
-    double mf1(const APIData &ad, double &precision, double &recall, double &acc, dMat &conf_diag)
+    static double mf1(const APIData &ad, double &precision, double &recall, double &acc, dMat &conf_diag)
     {
       int nclasses = ad.get("nclasses").get<int>();
       double f1=0.0;
@@ -290,7 +290,7 @@ namespace dd
     }
     
     // measure: AUC
-    double auc(const APIData &ad)
+    static double auc(const APIData &ad)
     {
       std::vector<double> pred1;
       std::vector<int> targets;
@@ -303,7 +303,7 @@ namespace dd
 	}
       return auc(pred1,targets);
     }
-    double auc(const std::vector<double> &pred, const std::vector<int> &targets)
+    static double auc(const std::vector<double> &pred, const std::vector<int> &targets)
     {
       class PredictionAndAnswer {
       public:
@@ -343,7 +343,7 @@ namespace dd
     }
     
     // measure: multiclass logarithmic loss
-    double mcll(const APIData &ad)
+    static double mcll(const APIData &ad)
     {
       double ll=0.0;
       int batch_size = ad.get("batch_size").get<int>();

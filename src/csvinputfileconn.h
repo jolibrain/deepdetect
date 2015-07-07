@@ -39,7 +39,11 @@ namespace dd
 
     int read_file(const std::string &fname);
     int read_mem(const std::string &content);
-
+    int read_dir(const std::string &dir)
+    {
+      throw InputConnectorBadParamException("uri " + dir + " is a directory, requires a CSV file");
+    }
+    
     CSVInputFileConn *_cifc = nullptr;
     APIData _adconf;
   };
@@ -98,7 +102,6 @@ namespace dd
       fillup_parameters(ad);
     }
 
-    // unused for now, receptacle for any generic option
     void fillup_parameters(const APIData &ad_input)
     {
       if (ad_input.has("id"))
@@ -113,6 +116,9 @@ namespace dd
 	    _ignored_columns.insert(s);
 	}
 
+      if (ad_input.has("test_split"))
+	_test_split = ad_input.get("test_split").get<double>();
+      
       // read categorical mapping, if any
       read_categoricals(ad_input);
       
@@ -202,7 +208,19 @@ namespace dd
 	  //debug
 	}
     }
-    
+
+    virtual void add_train_csvline(const std::string &id,
+				   std::vector<double> &vals)
+    {
+      _csvdata.emplace_back(id,std::move(vals));
+    }
+
+    virtual void add_test_csvline(const std::string &id,
+				  std::vector<double> &vals)
+    {
+      _csvdata_test.emplace_back(id,std::move(vals));
+    }
+
     void transform(const APIData &ad)
     {
       get_data(ad);
@@ -222,7 +240,7 @@ namespace dd
 	  else if (_train && _label.empty()) throw InputConnectorBadParamException("missing label column parameter");
 	  if (ad_input.has("label_offset"))
 	    _label_offset = ad_input.get("label_offset").get<int>();
-	  
+
 	  DataEl<DDCsv> ddcsv;
 	  ddcsv._ctype._cifc = this;
 	  ddcsv._ctype._adconf = ad_input;
@@ -362,6 +380,7 @@ namespace dd
     std::vector<double> _min_vals; /**< upper bound used for auto-scaling data */
     std::vector<double> _max_vals; /**< lower bound used for auto-scaling data */
     std::unordered_map<std::string,CCategorical> _categoricals; /**< auto-converted categorical variables */
+    double _test_split = -1;
     
     // data
     std::vector<CSVline> _csvdata;

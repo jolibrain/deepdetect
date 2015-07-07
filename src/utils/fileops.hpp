@@ -41,6 +41,22 @@ namespace dd
       return (stat(fname.c_str(),&bstat)==0);
     }
 
+    static bool file_exists(const std::string &fname,
+			    bool &directory)
+    {
+      struct stat bstat;
+      int r = stat(fname.c_str(),&bstat);
+      if (r != 0)
+	{
+	  directory = false;
+	  return false;
+	}
+      if (S_ISDIR(bstat.st_mode))
+	directory = true;
+      else directory = false;
+      return r == 0; 
+    }
+    
     static long int file_last_modif(const std::string &fname)
     {
       struct stat bstat;

@@ -238,7 +238,6 @@ namespace dd
       // categorical variables
       if (!_categoricals.empty())
 	{
-	  std::cerr << "setting up categorical variables\n";
 	  while(std::getline(csv_file,hline))
 	    {
 	      hline.erase(std::remove(hline.begin(),hline.end(),'\r'),hline.end());
@@ -256,7 +255,6 @@ namespace dd
 	  csv_file.clear();
 	  csv_file.seekg(0,std::ios::beg);
 	  std::getline(csv_file,hline); // skip header line
-	  std::cerr << "successfully updated categories\n";
 	}
 
       // scaling to [0,1]
@@ -307,8 +305,10 @@ namespace dd
 	      scale_vals(vals);
 	    }
 	  if (!_id.empty())
-	    _csvdata.emplace_back(cid,vals);
-	  else _csvdata.emplace_back(std::to_string(nlines),vals); 
+	    add_train_csvline(cid,vals);
+	  //_csvdata.emplace_back(cid,std::move(vals));
+	  else add_train_csvline(std::to_string(nlines),vals); 
+	    //_csvdata.emplace_back(std::to_string(nlines),std::move(vals)); 
 	  
 	  //debug
 	  /*std::cout << "csv data line #" << nlines << "=";
@@ -320,6 +320,7 @@ namespace dd
       csv_file.close();
       
       // test file, if any.
+      std::cerr << "csv test fname=" << _csv_test_fname << std::endl;
       if (!_csv_test_fname.empty())
 	{
 	  nlines = 0;
@@ -338,8 +339,10 @@ namespace dd
 		  scale_vals(vals);
 		}
 	      if (!_id.empty())
-		_csvdata_test.emplace_back(cid,vals);
-	      else _csvdata_test.emplace_back(std::to_string(nlines),vals);
+		add_test_csvline(cid,vals);
+	      //_csvdata_test.emplace_back(cid,vals);
+	      else add_test_csvline(std::to_string(nlines),vals);
+	      //_csvdata_test.emplace_back(std::to_string(nlines),vals);
 	      
 	      //debug
 	      /*std::cout << "csv test data line=";
@@ -357,15 +360,13 @@ namespace dd
 	  std::random_device rd;
 	  std::mt19937 g(rd());
 	  std::shuffle(_csvdata.begin(),_csvdata.end(),g);
-	  std::cerr << "done with shuffling\n";
 	}
       
-      if (_csv_test_fname.empty() && ad.has("test_split"))
+      if (_csv_test_fname.empty() && _test_split > 0)
 	{
-	  double split = ad.get("test_split").get<double>();
-	  if (split > 0.0)
+	  if (_test_split > 0.0)
 	    {
-	      int split_size = std::floor(_csvdata.size() * (1.0-split));
+	      int split_size = std::floor(_csvdata.size() * (1.0-_test_split));
 	      auto chit = _csvdata.begin();
 	      auto dchit = chit;
 	      int cpos = 0;

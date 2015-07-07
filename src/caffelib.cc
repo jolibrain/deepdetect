@@ -59,7 +59,7 @@ namespace dd
   {
     if (_net)
       {
-	delete _net; // XXX: for now, crashes.
+	delete _net;
 	_net = nullptr;
       }
   }
@@ -86,7 +86,7 @@ namespace dd
     err = fileops::copy_file(source + model_tmpl + "_solver.prototxt",
 			     this->_mlmodel._repo + '/' + model_tmpl + "_solver.prototxt");
     if (err == 1)
-      throw MLLibBadParamException("failed to locate solver template " + source + "_solver.prototxt");
+      throw MLLibBadParamException("failed to locate solver template " + source + model_tmpl + "_solver.prototxt");
     else if (err == 2)
       throw MLLibBadParamException("failed to create destination template solver file " + this->_mlmodel._repo + '/' + model_tmpl + "_solver.prototxt");
     err = fileops::copy_file(source + "deploy.prototxt", dest_deploy_net);
@@ -97,7 +97,7 @@ namespace dd
 
     // if mlp template, set the net structure as number of layers.
     //TODO: support for regression
-    if (model_tmpl == "mlp")
+    if (model_tmpl == "mlp" || model_tmpl == "mlp_db")
       {
 	caffe::NetParameter net_param,deploy_net_param;
 	caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
@@ -373,6 +373,9 @@ namespace dd
 
     std::lock_guard<std::mutex> lock(_net_mutex); // XXX: not mandatory as train calls are locking resources from above
     TInputConnectorStrategy inputc(this->_inputc);
+    this->_inputc._dv.clear();
+    this->_inputc._dv_test.clear();
+    this->_inputc._ids.clear();
     inputc._train = true;
     APIData cad = ad;
     cad.add("model_repo",this->_mlmodel._repo); // pass the model repo so that in case of images, it is known where to save the db
@@ -483,6 +486,7 @@ namespace dd
     
     if (!inputc._dv.empty())
       {
+	LOG(INFO) << "filling up net prior to training\n";
 	boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->net()->layers()[0])->AddDatumVector(inputc._dv);
 	/*if (!solver->test_nets().empty())
 	  {
@@ -490,6 +494,8 @@ namespace dd
 	      boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->test_nets().at(0)->layers()[0])->AddDatumVector(inputc._dv_test);
 	    else boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->test_nets().at(0)->layers()[0])->AddDatumVector(inputc._dv);
 	    }*/
+	inputc._dv.clear();
+	inputc._ids.clear();
       }
     if (!this->_mlmodel._weights.empty())
       {
@@ -576,12 +582,16 @@ namespace dd
       {
 	delete _net;
 	_net = nullptr;
-	delete solver;
       }
+    delete solver;
     
     // bail on forced stop, i.e. not testing the net further.
     if (!this->_tjob_running.load())
-      return 0;
+      {
+	inputc._dv_test.clear();
+	inputc._test_labels.clear();
+	return 0;
+      }
     
     solver_param = caffe::SolverParameter();
     this->_mlmodel.read_from_repository(this->_mlmodel._repo);
@@ -593,6 +603,8 @@ namespace dd
     
     // test
     test(_net,ad,inputc,test_batch_size,has_mean_file,out);
+    inputc._dv_test.clear();
+    inputc._test_labels.clear();
     
     // add whatever the input connector needs to transmit out
     inputc.response_params(out);
@@ -670,7 +682,7 @@ namespace dd
 	ad_res.add("batch_size",tresults);
 	//ad_res.add("loss",mean_loss / static_cast<double>(tresults)); // XXX: Caffe ForwardPrefilled call above return loss = 0.0
       }
-    this->_outputc.measure(ad_res,ad_out,out);
+    SupervisedOutput::measure(ad_res,ad_out,out);
   }
   
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -688,7 +700,7 @@ namespace dd
 	else if (cm == 2)
 	  throw MLLibBadParamException("no deploy file in " + this->_mlmodel._repo + " for initializing the net");
       }
-    
+
     // parameters
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
 #ifndef CPU_ONLY
@@ -717,9 +729,11 @@ namespace dd
 #endif
 
     TInputConnectorStrategy inputc(this->_inputc);
+    APIData cad = ad;
+    cad.add("model_repo",this->_mlmodel._repo);
     try
       {
-	inputc.transform(ad); //TODO: catch errors ?
+	inputc.transform(cad);
       }
     catch (std::exception &e)
       {
@@ -778,6 +792,7 @@ namespace dd
     
     // fix source paths in the model.
     caffe::NetParameter *np = sp.mutable_net_param();
+    std::cerr << "sp net=" << sp.net() << std::endl;
     caffe::ReadProtoFromTextFile(sp.net().c_str(),np); //TODO: error on read + use internal caffe ReadOrDie procedure
     for (int i=0;i<np->layer_size();i++)
       {
@@ -795,7 +810,10 @@ namespace dd
 		  {
 		    dp->set_source(ad.getobj("db").get("test_db").get<std::string>());
 		  }
-		else dp->set_source(this->_mlmodel._repo + "/" + dp->source()); // this updates in-memory net
+		else 
+		  {
+		    dp->set_source(this->_mlmodel._repo + "/" + dp->source()); // this updates in-memory net
+		  }
 	      }
 	    if (dp->has_batch_size() && batch_size != inputc.batch_size() && batch_size > 0)
 	      {
@@ -958,4 +976,5 @@ namespace dd
 
   template class CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>;
   template class CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>;
+  template class CaffeLib<TxtCaffeInputFileConn,SupervisedOutput,CaffeModel>;
 }

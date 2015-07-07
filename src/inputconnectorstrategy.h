@@ -42,6 +42,7 @@ namespace dd
 
     int read_element(const std::string &uri)
     {
+      bool dir = false;
       if (uri.find("https://") != std::string::npos
 	  || uri.find("http://") != std::string::npos
 	  || uri.find("file://") != std::string::npos)
@@ -52,9 +53,11 @@ namespace dd
 	    return -1;
 	  return _ctype.read_mem(_content);
 	}
-      else if (fileops::file_exists(uri))
+      else if (fileops::file_exists(uri,dir))
 	{
-	  return _ctype.read_file(uri);
+	  if (dir)
+	    return _ctype.read_dir(uri);
+	  else return _ctype.read_file(uri);
 	}
       else return _ctype.read_mem(uri);
       return 0;

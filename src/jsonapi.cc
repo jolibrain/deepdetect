@@ -290,6 +290,8 @@ namespace dd
 	      add_service(sname,std::move(MLService<CaffeLib,ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
 	    else if (input == "csv")
 	      add_service(sname,std::move(MLService<CaffeLib,CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
+	    else if (input == "txt")
+	      add_service(sname,std::move(MLService<CaffeLib,TxtCaffeInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
 	    else return dd_input_connector_not_found_1004();
 	    if (JsonAPI::store_json_blob(cmodel._repo,jstr)) // store successful call json blob
 	      LOG(ERROR) << "couldn't write " << JsonAPI::_json_blob_fname << " file in model repository " << cmodel._repo << std::endl;
