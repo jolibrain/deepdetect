@@ -134,7 +134,7 @@ namespace dd
 	    {
 	      if ((hit=_ignored_columns_pos.find(c))!=_ignored_columns_pos.end())
 		{
-		  LOG(INFO) << "ignoring column " << col_name << " / " << col << std::endl;
+		  //LOG(INFO) << "ignoring column " << col_name << " / " << col << std::endl;
 		  ++lit;
 		  continue;
 		}
