@@ -63,12 +63,13 @@ namespace dd
     /**
      * \brief configure an MLP template
      * @param ad the template data object
+     * @param regression whether the net is a regressor
      * @param cnclasses the number of output classes, if any
      * @param net_param the training net object
      * @param deploy_net_param the deploy net object
      */
-      //TODO: template support for regression
     static void configure_mlp_template(const APIData &ad,
+				       const bool &regression,
 				       const int &cnclasses,
 				       caffe::NetParameter &net_param,
 				       caffe::NetParameter &deploy_net_param);
@@ -178,6 +179,7 @@ namespace dd
       bool _gpu = false; /**< whether to use GPU. */
       int _gpuid = 0; /**< GPU id. */
       int _nclasses = 0; /**< required, as difficult to acquire from Caffe's internals. */
+      bool _regression = false; /**< whether the net acts as a regressor. */
       std::mutex _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as net is not re-instantiated. Use batches instead. */
     };
   
