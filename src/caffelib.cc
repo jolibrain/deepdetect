@@ -131,6 +131,10 @@ namespace dd
 	  activation = "ReLU";
 	else if (dd_utils::iequals(activation,"prelu"))
 	  activation = "PReLU";
+	else if (dd_utils::iequals(activation,"sigmoid"))
+	  activation = "Sigmoid";
+	else if (dd_utils::iequals(activation,"tanh"))
+	  activation = "TanH";
       }
     if (ad.has("dropout"))
       dropout = ad.get("dropout").get<double>();
@@ -760,6 +764,8 @@ namespace dd
     float loss = 0.0;
     std::vector<Blob<float>*> results = _net->ForwardPrefilled(&loss); // XXX: on a batch, are we getting the average loss ?
     int slot = results.size() - 1;
+    if (_regression)
+      slot = 0; // XXX: more in-depth testing required
     int scount = results[slot]->count();
     int scperel = scount / batch_size;
     int nclasses = _nclasses > 0 ? _nclasses : scperel; // XXX: beware of scperel as it can refer to the number of neurons is last layer before softmax, which is replaced 'in-place' with probabilities after softmax. Weird by Caffe... */
