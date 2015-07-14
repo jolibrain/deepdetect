@@ -25,12 +25,14 @@
 #include <map>
 #include <algorithm>
 #include <iostream>
+#include <numeric>
 #include <Eigen/Dense>
 
 namespace dd
 {
   typedef Eigen::MatrixXd dMat;
-
+  typedef Eigen::VectorXd dVec;
+  
   /**
    * \brief main output connector class
    */
@@ -50,8 +52,6 @@ namespace dd
      * @param ad data object for "parameters/output"
      */
     void init(const APIData &ad);
-
-    //TODO: output templating.
   };
 
   /**
@@ -202,6 +202,7 @@ namespace dd
 	  bool bacc = (std::find(measures.begin(),measures.end(),"acc")!=measures.end());
 	  bool bf1 = (std::find(measures.begin(),measures.end(),"f1")!=measures.end());
 	  bool bmcll = (std::find(measures.begin(),measures.end(),"mcll")!=measures.end());
+	  bool bgini = (std::find(measures.begin(),measures.end(),"gini")!=measures.end());
 	  if (bauc) // XXX: applies two binary classification problems only
 	    {
 	      double mauc = auc(ad_res);
@@ -234,6 +235,11 @@ namespace dd
 	    {
 	      double mmcll = mcll(ad_res);
 	      meas_out.add("mcll",mmcll);
+	    }
+	  if (bgini)
+	    {
+	      double mgini = gini(ad_res);
+	      meas_out.add("gini",mgini);
 	    }
 	}
 	if (loss)
@@ -357,6 +363,57 @@ namespace dd
       return ll / static_cast<double>(batch_size);
     }
 
+    static std::vector<double> linspace(double start, double end, double num)
+    {
+      double delta = (end - start) / (num - 1);
+      std::vector<double> linspaced(num - 1);
+      for(int i=0; i < num-1; ++i)
+	{
+	  linspaced[i] = start + delta * i;
+	}
+      linspaced.push_back(end);
+      return linspaced;
+    };
+    
+    // measure: gini coefficient
+    static double gini(const APIData &ad)
+    {
+      int batch_size = ad.get("batch_size").get<int>();
+      dVec vtrue(batch_size);
+      dVec vpred(batch_size);
+      for (int i=0;i<batch_size;i++)
+	{
+	  APIData bad = ad.getobj(std::to_string(i));
+	  vtrue(i) = bad.get("target").get<int>();
+	  vpred(i) = bad.get("pred").get<std::vector<double>>().at(0); //XXX: could be vector for multi-dimensional regression
+	}
+      std::sort(vtrue.data(),vtrue.data()+vtrue.size(),std::greater<double>());
+      std::sort(vpred.data(),vpred.data()+vpred.size(),std::greater<double>());
+
+      std::vector<double> ltrue(batch_size),lpred(batch_size),lones;
+      std::partial_sum(vtrue.data(),vtrue.data()+vtrue.size(),ltrue.begin(),std::plus<double>());
+      std::partial_sum(vpred.data(),vpred.data()+vpred.size(),lpred.begin(),std::plus<double>());
+      dVec lvtrue = Eigen::Map<dVec>(const_cast<double*>(&ltrue[0]),ltrue.size());
+      dVec lvpred = Eigen::Map<dVec>(const_cast<double*>(&lpred[0]),lpred.size());
+      double ltrue_sum = vtrue.sum();
+      double lpred_sum = vpred.sum();
+      lvtrue /= ltrue_sum;
+      lvpred /= lpred_sum;
+      lones = linspace(0.0,1.0,batch_size);
+      dVec lvones = Eigen::Map<dVec>(const_cast<double*>(&lones[0]),lones.size());
+
+      /*std::cerr << "lvtrue=" << lvtrue.transpose() << std::endl;
+      std::cerr << "lvpred=" << lvpred.transpose() << std::endl;
+      std::cerr << "lvones=" << lvones.transpose() << std::endl;*/
+      
+      double G_true = (lvones - lvtrue).sum();
+      double G_pred = (lvones - lvpred).sum();
+
+      //std::cerr << "G_true=" << G_true << " / G_pred=" << G_pred << std::endl;
+      
+      return G_pred / G_true;
+    }
+    
     // for debugging purposes.
     /**
      * \brief print supervised output to string
