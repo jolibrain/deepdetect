@@ -255,8 +255,8 @@ namespace dd
 		  read_header(_uris.at(0));
 		  continue;
 		}
-	      else if (!_categoricals.empty())
-		throw InputConnectorBadParamException("use of categoricals_mapping requires a CSV header");
+	      /*else if (!_categoricals.empty())
+		throw InputConnectorBadParamException("use of categoricals_mapping requires a CSV header");*/
 	      DataEl<DDCsv> ddcsv;
 	      ddcsv._ctype._cifc = this;
 	      ddcsv._ctype._adconf = ad_input;

@@ -51,6 +51,7 @@ namespace dd
     _gpuid = cl._gpuid;
     _net = cl._net;
     _nclasses = cl._nclasses;
+    _regression = cl._regression;
     cl._net = nullptr;
   }
 
@@ -102,7 +103,7 @@ namespace dd
 	caffe::NetParameter net_param,deploy_net_param;
 	caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
 	caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
-	configure_mlp_template(ad,_nclasses,net_param,deploy_net_param);
+	configure_mlp_template(ad,_regression,_nclasses,net_param,deploy_net_param);
 	caffe::WriteProtoToTextFile(net_param,dest_net);
 	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
       }
@@ -112,6 +113,7 @@ namespace dd
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_mlp_template(const APIData &ad,
+												   const bool &regression,
 												   const int &cnclasses,
 												   caffe::NetParameter &net_param,
 												   caffe::NetParameter &deploy_net_param)
@@ -129,6 +131,10 @@ namespace dd
 	  activation = "ReLU";
 	else if (dd_utils::iequals(activation,"prelu"))
 	  activation = "PReLU";
+	else if (dd_utils::iequals(activation,"sigmoid"))
+	  activation = "Sigmoid";
+	else if (dd_utils::iequals(activation,"tanh"))
+	  activation = "TanH";
       }
     if (ad.has("dropout"))
       dropout = ad.get("dropout").get<double>();
@@ -294,27 +300,35 @@ namespace dd
     dipp->mutable_weight_filler()->set_type("gaussian");
     dipp->mutable_weight_filler()->set_std(0.1);
     dipp->mutable_bias_filler()->set_type("constant");
-    
-    lparam = net_param.add_layer(); // test loss
-    lparam->set_name("losst");
-    lparam->set_type("Softmax");
-    lparam->add_bottom(last_ip);
-    lparam->add_top("losst");
-    caffe::NetStateRule *nsr = lparam->add_include();
-    nsr->set_phase(caffe::TEST);
+
+    if (!regression)
+      {
+	lparam = net_param.add_layer(); // test loss
+	lparam->set_name("losst");
+        lparam->set_type("Softmax");
+	lparam->add_bottom(last_ip);
+	lparam->add_top("losst");
+	caffe::NetStateRule *nsr = lparam->add_include();
+	nsr->set_phase(caffe::TEST);
+      }
 
     lparam = net_param.add_layer(); // training loss
     lparam->set_name("loss");
-    lparam->set_type("SoftmaxWithLoss");
+    if (regression)
+      lparam->set_type("EuclideanLoss");
+    else lparam->set_type("SoftmaxWithLoss");
     lparam->add_bottom(last_ip);
     lparam->add_bottom("label");
     lparam->add_top("loss");
-    
-    dlparam = deploy_net_param.add_layer();
-    dlparam->set_name("loss");
-    dlparam->set_type("Softmax");
-    dlparam->add_bottom(last_ip);
-    dlparam->add_top("loss");
+
+    if (!regression)
+      {
+	dlparam = deploy_net_param.add_layer();
+	dlparam->set_name("loss");
+	dlparam->set_type("Softmax");
+	dlparam->add_bottom(last_ip);
+	dlparam->add_top("loss");
+      }
   }
   
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -345,6 +359,8 @@ namespace dd
       _gpuid = ad.get("gpuid").get<int>();
     if (ad.has("nclasses"))
       _nclasses = ad.get("nclasses").get<int>();
+    if (ad.has("regression") && ad.get("regression").get<bool>())
+      _regression = true;
     if (_nclasses == 0)
       throw MLLibBadParamException("number of classes is unknown (nclasses == 0)");
     // instantiate model template here, if any
@@ -660,6 +676,8 @@ namespace dd
 	    float loss = 0.0;
 	    std::vector<Blob<float>*> lresults = net->ForwardPrefilled(&loss);
 	    int slot = lresults.size() - 1;
+	    if (_regression)
+	      slot = 0; // XXX: more in-depth testing required
 	    int scount = lresults[slot]->count();
 	    int scperel = scount / dv.size();
 	    for (int j=0;j<(int)dv.size();j++)
@@ -680,6 +698,8 @@ namespace dd
 	    mean_loss += loss;
 	  }
 	ad_res.add("batch_size",tresults);
+	if (_regression)
+	  ad_res.add("regression",_regression);
 	//ad_res.add("loss",mean_loss / static_cast<double>(tresults)); // XXX: Caffe ForwardPrefilled call above return loss = 0.0
       }
     SupervisedOutput::measure(ad_res,ad_out,out);
@@ -746,6 +766,8 @@ namespace dd
     float loss = 0.0;
     std::vector<Blob<float>*> results = _net->ForwardPrefilled(&loss); // XXX: on a batch, are we getting the average loss ?
     int slot = results.size() - 1;
+    if (_regression)
+      slot = 0; // XXX: more in-depth testing required
     int scount = results[slot]->count();
     int scperel = scount / batch_size;
     int nclasses = _nclasses > 0 ? _nclasses : scperel; // XXX: beware of scperel as it can refer to the number of neurons is last layer before softmax, which is replaced 'in-place' with probabilities after softmax. Weird by Caffe... */
