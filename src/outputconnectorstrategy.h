@@ -195,6 +195,7 @@ namespace dd
       bool tloss = ad_res.has("train_loss");
       bool loss = ad_res.has("loss");
       bool iter = ad_res.has("iteration");
+      bool regression = ad_res.has("regression");
       if (ad_out.has("measure"))
 	{
 	  std::vector<std::string> measures = ad_out.get("measure").get<std::vector<std::string>>();
@@ -238,7 +239,7 @@ namespace dd
 	    }
 	  if (bgini)
 	    {
-	      double mgini = gini(ad_res);
+	      double mgini = gini(ad_res,regression);
 	      meas_out.add("gini",mgini);
 	    }
 	}
@@ -376,42 +377,43 @@ namespace dd
     };
     
     // measure: gini coefficient
-    static double gini(const APIData &ad)
+    static double comp_gini(const std::vector<double> &a, const std::vector<double> &p) {
+      struct K {double a, p;} k[a.size()];
+      for (size_t i = 0; i != a.size(); ++i) k[i] = {a[i], p[i]};
+      std::stable_sort(k, k+a.size(), [](const K &a, const K &b) {return a.p > b.p;});
+      double accPopPercSum=0, accLossPercSum=0, giniSum=0, sum=0;
+      for (auto &i: a) sum += i;
+      for (auto &i: k) 
+	{
+	  accLossPercSum += i.a/sum;
+	  accPopPercSum += 1.0/a.size();
+	  giniSum += accLossPercSum-accPopPercSum;
+	}
+      return giniSum/a.size();
+    }
+    static double comp_gini_normalized(const std::vector<double> &a, const std::vector<double> &p) {
+      return comp_gini(a, p)/comp_gini(a, a);
+    }
+    
+    static double gini(const APIData &ad,
+		       const bool &regression)
     {
       int batch_size = ad.get("batch_size").get<int>();
-      dVec vtrue(batch_size);
-      dVec vpred(batch_size);
+      std::vector<double> a(batch_size);
+      std::vector<double> p(batch_size);
       for (int i=0;i<batch_size;i++)
 	{
 	  APIData bad = ad.getobj(std::to_string(i));
-	  vtrue(i) = bad.get("target").get<int>();
-	  vpred(i) = bad.get("pred").get<std::vector<double>>().at(0); //XXX: could be vector for multi-dimensional regression
+	  a.at(i) = bad.get("target").get<int>();
+	  if (regression)
+	    p.at(i) = bad.get("pred").get<std::vector<double>>().at(0); //XXX: could be vector for multi-dimensional regression -> TODO: in supervised mode, get best pred index ?
+	  else
+	    {
+	      std::vector<double> allpreds = bad.get("pred").get<std::vector<double>>();
+	      a.at(i) = std::distance(allpreds.begin(),std::max_element(allpreds.begin(),allpreds.end()));
+	    }
 	}
-      std::sort(vtrue.data(),vtrue.data()+vtrue.size(),std::greater<double>());
-      std::sort(vpred.data(),vpred.data()+vpred.size(),std::greater<double>());
-
-      std::vector<double> ltrue(batch_size),lpred(batch_size),lones;
-      std::partial_sum(vtrue.data(),vtrue.data()+vtrue.size(),ltrue.begin(),std::plus<double>());
-      std::partial_sum(vpred.data(),vpred.data()+vpred.size(),lpred.begin(),std::plus<double>());
-      dVec lvtrue = Eigen::Map<dVec>(const_cast<double*>(&ltrue[0]),ltrue.size());
-      dVec lvpred = Eigen::Map<dVec>(const_cast<double*>(&lpred[0]),lpred.size());
-      double ltrue_sum = vtrue.sum();
-      double lpred_sum = vpred.sum();
-      lvtrue /= ltrue_sum;
-      lvpred /= lpred_sum;
-      lones = linspace(0.0,1.0,batch_size);
-      dVec lvones = Eigen::Map<dVec>(const_cast<double*>(&lones[0]),lones.size());
-
-      /*std::cerr << "lvtrue=" << lvtrue.transpose() << std::endl;
-      std::cerr << "lvpred=" << lvpred.transpose() << std::endl;
-      std::cerr << "lvones=" << lvones.transpose() << std::endl;*/
-      
-      double G_true = (lvones - lvtrue).sum();
-      double G_pred = (lvones - lvpred).sum();
-
-      //std::cerr << "G_true=" << G_true << " / G_pred=" << G_pred << std::endl;
-      
-      return G_pred / G_true;
+      return comp_gini_normalized(a,p);
     }
     
     // for debugging purposes.

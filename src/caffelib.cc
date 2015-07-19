@@ -698,6 +698,8 @@ namespace dd
 	    mean_loss += loss;
 	  }
 	ad_res.add("batch_size",tresults);
+	if (_regression)
+	  ad_res.add("regression",_regression);
 	//ad_res.add("loss",mean_loss / static_cast<double>(tresults)); // XXX: Caffe ForwardPrefilled call above return loss = 0.0
       }
     SupervisedOutput::measure(ad_res,ad_out,out);

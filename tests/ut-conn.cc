@@ -79,11 +79,11 @@ TEST(outputconn,gini)
 {
   //std::vector<double> lones = SupervisedOutput::linspace(0.0,1.0,100);
   
-  std::vector<int> targets = {1,2,3,4};
-  std::vector<double> pred1 = {0.9};
-  std::vector<double> pred2 = {0.6};
-  std::vector<double> pred3 = {3.2};
-  std::vector<double> pred4 = {8.0};
+  std::vector<int> targets = {1,1,0,1};
+  std::vector<double> pred1 = {0.86};
+  std::vector<double> pred2 = {0.26};
+  std::vector<double> pred3 = {0.52};
+  std::vector<double> pred4 = {0.32};
   std::vector<std::vector<double>> preds = { pred1, pred2, pred3, pred4 };
   APIData res_ad;
   res_ad.add("batch_size",static_cast<int>(targets.size()));
@@ -95,10 +95,9 @@ TEST(outputconn,gini)
       std::vector<APIData> vad = {bad};
       res_ad.add(std::to_string(i),vad);
     }
-  SupervisedOutput so;
-  double gini = so.gini(res_ad);
+  double gini = SupervisedOutput::gini(res_ad,true);
   std::cout << "gini=" << gini << std::endl;
-  ASSERT_NEAR(1.46457,gini,1e-5);
+  ASSERT_NEAR(-0.333,gini,1e-3);
 }
 
 TEST(inputconn,img)
