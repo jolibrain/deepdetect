@@ -33,6 +33,12 @@ int nthreads = 10;
 std::string serv = "myserv";
 std::string serv_put = "{\"mllib\":\"caffe\",\"description\":\"example classification service\",\"type\":\"supervised\",\"parameters\":{\"input\":{\"connector\":\"csv\"},\"mllib\":{\"template\":\"mlp\",\"nclasses\":2,\"layers\":[50,50,50],\"activation\":\"PReLU\"}},\"model\":{\"templates\":\"../templates/caffe/\",\"repository\":\".\"}}";
 
+#ifndef CPU_ONLY
+static std::string iterations_mnist = "250";
+#else
+static std::string iterations_mnist = "10";
+#endif
+
 TEST(httpjsonapi,uri_query_to_json)
 {
   std::string q = "service=myserv&job=1";
@@ -158,13 +164,13 @@ TEST(httpjsonapi,train)
   ASSERT_EQ(201,d["status"]["code"].GetInt());
 
   //train blocking
-  std::string train_post = "{\"service\":\"" + serv + "\",\"async\":false,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":100}}}}";
+  std::string train_post = "{\"service\":\"" + serv + "\",\"async\":false,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":" + iterations_mnist + "}}}}";
   httpclient::post_call(luri+"/train",train_post,"POST",code,jstr);
   ASSERT_EQ(201,code);
   d.Parse(jstr.c_str());
   ASSERT_TRUE(d.HasMember("body"));
   ASSERT_TRUE(d["body"].HasMember("measure"));
-  ASSERT_EQ(99,d["body"]["measure"]["iteration"].GetDouble());
+  ASSERT_EQ(9,d["body"]["measure"]["iteration"].GetDouble());
   ASSERT_TRUE(d["body"]["measure"]["train_loss"].GetDouble()>0.0);
   
   // remove service and trained model files
@@ -181,7 +187,7 @@ TEST(httpjsonapi,train)
   ASSERT_EQ(201,d["status"]["code"].GetInt());
   
   //train async
-  train_post = "{\"service\":\"" + serv + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":100}}}}";
+  train_post = "{\"service\":\"" + serv + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":" + iterations_mnist + "}}}}";
   httpclient::post_call(luri+"/train",train_post,"POST",code,jstr);
   ASSERT_EQ(201,code);
   d.Parse(jstr.c_str());
@@ -445,7 +451,7 @@ TEST(httpjsonapi,predict)
   ASSERT_EQ(201,d["status"]["code"].GetInt());
 
   // train sync
-  std::string train_post = "{\"service\":\"" + serv + "\",\"async\":false,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":200,\"snapshot_prefix\":\""+mnist_repo+"/mylenet\"}},\"output\":{\"measure_hist\":true}}}";
+  std::string train_post = "{\"service\":\"" + serv + "\",\"async\":false,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":" + iterations_mnist + ",\"snapshot_prefix\":\""+mnist_repo+"/mylenet\"}},\"output\":{\"measure_hist\":true}}}";
   httpclient::post_call(luri+"/train",train_post,"POST",code,jstr);
   std::cerr << "jstr=" << jstr << std::endl;
   ASSERT_EQ(201,code);

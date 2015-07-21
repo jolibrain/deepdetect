@@ -45,8 +45,8 @@ static std::string iterations_mnist = "250";
 static std::string iterations_plank = "2000";
 static std::string iterations_forest = "2000";
 #else
-static std::string iterations_mnist = "50";
-static std::string iterations_plank = "20";
+static std::string iterations_mnist = "10";
+static std::string iterations_plank = "10";
 static std::string iterations_forest = "500";
 #endif
 
