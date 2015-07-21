@@ -85,7 +85,7 @@ namespace dd
     }
     
     std::unordered_map<int,double> _v; /**< words as (<pos,val>). */
-    int _target = -1; /**< class target in training mode. */
+    float _target = -1; /**< class target in training mode. */
   };
   
   class TxtInputFileConn : public InputConnectorStrategy

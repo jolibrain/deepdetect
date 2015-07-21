@@ -61,7 +61,7 @@ namespace dd
     std::vector<caffe::Datum> _dv; /**< main input datum vector, used for training or prediction */
     std::vector<caffe::Datum> _dv_test; /**< test input datum vector, when applicable in training mode */
     std::vector<std::string> _ids; /**< input ids (e.g. image ids) */
-    std::vector<int> _test_labels; /**< vector of test labels, kept aside for measuring net output. */
+    std::vector<float> _test_labels; /**< vector of test labels, kept aside for measuring net output. */
   };
 
   /**
@@ -201,7 +201,7 @@ namespace dd
 
     void write_image_to_db(const std::string &dbfullname,
 			   const std::vector<std::pair<std::string,int>> &lfiles,
-			   std::vector<int> &datum_labels,
+			   std::vector<float> &datum_labels,
 			   const std::string &backend,
 			   const bool &encoded,
 			   const std::string &encode_type);

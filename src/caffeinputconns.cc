@@ -147,7 +147,7 @@ namespace dd
       throw InputConnectorBadParamException("no image data found in repository");
     
     // write files to dbs (i.e. train and possibly test)
-    std::vector<int> labels; // XXX: useless
+    std::vector<float> labels; // XXX: useless
     write_image_to_db(dbfullname,lfiles,labels,backend,encoded,encode_type);
     if (!test_lfiles.empty())
       write_image_to_db(testdbfullname,test_lfiles,_test_labels,backend,encoded,encode_type);
@@ -167,7 +167,7 @@ namespace dd
 
   void ImgCaffeInputFileConn::write_image_to_db(const std::string &dbfullname,
 						const std::vector<std::pair<std::string,int>> &lfiles,
-						std::vector<int> &datum_labels,
+						std::vector<float> &datum_labels,
 						const std::string &backend,
 						const bool &encoded,
 						const std::string &encode_type)
