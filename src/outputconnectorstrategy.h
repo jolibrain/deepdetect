@@ -25,12 +25,14 @@
 #include <map>
 #include <algorithm>
 #include <iostream>
+#include <numeric>
 #include <Eigen/Dense>
 
 namespace dd
 {
   typedef Eigen::MatrixXd dMat;
-
+  typedef Eigen::VectorXd dVec;
+  
   /**
    * \brief bad parameter exception
    */
@@ -78,8 +80,6 @@ namespace dd
      * @param ad data object for "parameters/output"
      */
     void init(const APIData &ad);
-
-    //TODO: output templating.
   };
 
   /**
@@ -223,6 +223,7 @@ namespace dd
       bool tloss = ad_res.has("train_loss");
       bool loss = ad_res.has("loss");
       bool iter = ad_res.has("iteration");
+      bool regression = ad_res.has("regression");
       if (ad_out.has("measure"))
 	{
 	  std::vector<std::string> measures = ad_out.get("measure").get<std::vector<std::string>>();
@@ -230,6 +231,7 @@ namespace dd
 	  bool bacc = (std::find(measures.begin(),measures.end(),"acc")!=measures.end());
 	  bool bf1 = (std::find(measures.begin(),measures.end(),"f1")!=measures.end());
 	  bool bmcll = (std::find(measures.begin(),measures.end(),"mcll")!=measures.end());
+	  bool bgini = (std::find(measures.begin(),measures.end(),"gini")!=measures.end());
 	  if (bauc) // XXX: applies two binary classification problems only
 	    {
 	      double mauc = auc(ad_res);
@@ -262,6 +264,11 @@ namespace dd
 	    {
 	      double mmcll = mcll(ad_res);
 	      meas_out.add("mcll",mmcll);
+	    }
+	  if (bgini)
+	    {
+	      double mgini = gini(ad_res,regression);
+	      meas_out.add("gini",mgini);
 	    }
 	}
 	if (loss)
@@ -387,6 +394,58 @@ namespace dd
       return ll / static_cast<double>(batch_size);
     }
 
+    static std::vector<double> linspace(double start, double end, double num)
+    {
+      double delta = (end - start) / (num - 1);
+      std::vector<double> linspaced(num - 1);
+      for(int i=0; i < num-1; ++i)
+	{
+	  linspaced[i] = start + delta * i;
+	}
+      linspaced.push_back(end);
+      return linspaced;
+    };
+    
+    // measure: gini coefficient
+    static double comp_gini(const std::vector<double> &a, const std::vector<double> &p) {
+      struct K {double a, p;} k[a.size()];
+      for (size_t i = 0; i != a.size(); ++i) k[i] = {a[i], p[i]};
+      std::stable_sort(k, k+a.size(), [](const K &a, const K &b) {return a.p > b.p;});
+      double accPopPercSum=0, accLossPercSum=0, giniSum=0, sum=0;
+      for (auto &i: a) sum += i;
+      for (auto &i: k) 
+	{
+	  accLossPercSum += i.a/sum;
+	  accPopPercSum += 1.0/a.size();
+	  giniSum += accLossPercSum-accPopPercSum;
+	}
+      return giniSum/a.size();
+    }
+    static double comp_gini_normalized(const std::vector<double> &a, const std::vector<double> &p) {
+      return comp_gini(a, p)/comp_gini(a, a);
+    }
+    
+    static double gini(const APIData &ad,
+		       const bool &regression)
+    {
+      int batch_size = ad.get("batch_size").get<int>();
+      std::vector<double> a(batch_size);
+      std::vector<double> p(batch_size);
+      for (int i=0;i<batch_size;i++)
+	{
+	  APIData bad = ad.getobj(std::to_string(i));
+	  a.at(i) = bad.get("target").get<int>();
+	  if (regression)
+	    p.at(i) = bad.get("pred").get<std::vector<double>>().at(0); //XXX: could be vector for multi-dimensional regression -> TODO: in supervised mode, get best pred index ?
+	  else
+	    {
+	      std::vector<double> allpreds = bad.get("pred").get<std::vector<double>>();
+	      a.at(i) = std::distance(allpreds.begin(),std::max_element(allpreds.begin(),allpreds.end()));
+	    }
+	}
+      return comp_gini_normalized(a,p);
+    }
+    
     // for debugging purposes.
     /**
      * \brief print supervised output to string

@@ -75,6 +75,31 @@ TEST(outputconn,auc)
   ASSERT_EQ(0.75,auc);
 }
 
+TEST(outputconn,gini)
+{
+  //std::vector<double> lones = SupervisedOutput::linspace(0.0,1.0,100);
+  
+  std::vector<int> targets = {1,1,0,1};
+  std::vector<double> pred1 = {0.86};
+  std::vector<double> pred2 = {0.26};
+  std::vector<double> pred3 = {0.52};
+  std::vector<double> pred4 = {0.32};
+  std::vector<std::vector<double>> preds = { pred1, pred2, pred3, pred4 };
+  APIData res_ad;
+  res_ad.add("batch_size",static_cast<int>(targets.size()));
+  for (size_t i=0;i<targets.size();i++)
+    {
+      APIData bad;
+      bad.add("pred",preds.at(i));
+      bad.add("target",targets.at(i));
+      std::vector<APIData> vad = {bad};
+      res_ad.add(std::to_string(i),vad);
+    }
+  double gini = SupervisedOutput::gini(res_ad,true);
+  std::cout << "gini=" << gini << std::endl;
+  ASSERT_NEAR(-0.333,gini,1e-3);
+}
+
 TEST(inputconn,img)
 {
   std::string mnist_repo = "../examples/caffe/mnist/";
