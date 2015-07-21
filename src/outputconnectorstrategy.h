@@ -291,7 +291,7 @@ namespace dd
 	  APIData bad = ad.getobj(std::to_string(i));
 	  std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
 	  int maxpr = std::distance(predictions.begin(),std::max_element(predictions.begin(),predictions.end()));
-	  if (maxpr == bad.get("target").get<int>())
+	  if (maxpr == bad.get("target").get<double>())
 	    acc++;
 	}
       return acc / static_cast<double>(batch_size);
@@ -309,7 +309,7 @@ namespace dd
 	  APIData bad = ad.getobj(std::to_string(i));
 	  std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
 	  int maxpr = std::distance(predictions.begin(),std::max_element(predictions.begin(),predictions.end()));
-	  int target = bad.get("target").get<int>();
+	  double target = bad.get("target").get<double>();
 	  if (target < 0)
 	    throw OutputConnectorBadParamException("negative supervised discrete target (e.g. wrong use of label_offset ?");
 	  conf_matrix(maxpr,target) += 1.0;
@@ -330,17 +330,17 @@ namespace dd
     static double auc(const APIData &ad)
     {
       std::vector<double> pred1;
-      std::vector<int> targets;
+      std::vector<double> targets;
       int batch_size = ad.get("batch_size").get<int>();
       for (int i=0;i<batch_size;i++)
 	{
 	  APIData bad = ad.getobj(std::to_string(i));
 	  pred1.push_back(bad.get("pred").get<std::vector<double>>().at(1));
-	  targets.push_back(bad.get("target").get<int>());
+	  targets.push_back(bad.get("target").get<double>());
 	}
       return auc(pred1,targets);
     }
-    static double auc(const std::vector<double> &pred, const std::vector<int> &targets)
+    static double auc(const std::vector<double> &pred, const std::vector<double> &targets)
     {
       class PredictionAndAnswer {
       public:
@@ -388,7 +388,7 @@ namespace dd
 	{
 	  APIData bad = ad.getobj(std::to_string(i));
 	  std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
-	  int target = bad.get("target").get<int>();
+	  double target = bad.get("target").get<double>();
 	  ll -= std::log(predictions.at(target));
 	}
       return ll / static_cast<double>(batch_size);
@@ -434,7 +434,7 @@ namespace dd
       for (int i=0;i<batch_size;i++)
 	{
 	  APIData bad = ad.getobj(std::to_string(i));
-	  a.at(i) = bad.get("target").get<int>();
+	  a.at(i) = bad.get("target").get<double>();
 	  if (regression)
 	    p.at(i) = bad.get("pred").get<std::vector<double>>().at(0); //XXX: could be vector for multi-dimensional regression -> TODO: in supervised mode, get best pred index ?
 	  else

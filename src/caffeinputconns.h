@@ -410,7 +410,7 @@ namespace dd
 	{
 	  if (i == _label_pos)
 	    {
-	      datum.set_label(static_cast<int>(vf.at(i)+this->_label_offset));
+	      datum.set_label(static_cast<float>(vf.at(i)+this->_label_offset));
 	    }
 	  else if (i == _id_pos)
 	    {

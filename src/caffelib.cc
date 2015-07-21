@@ -684,7 +684,7 @@ namespace dd
 	      {
 		APIData bad;
 		std::vector<double> predictions;
-		int target = inputc._test_labels.at(tresults+j);
+		double target = inputc._test_labels.at(tresults+j);
 		for (int k=0;k<_nclasses;k++)
 		  {
 		    predictions.push_back(lresults[slot]->cpu_data()[j*scperel+k]);
