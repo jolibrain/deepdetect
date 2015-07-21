@@ -32,6 +32,34 @@ namespace dd
   typedef Eigen::MatrixXd dMat;
 
   /**
+   * \brief bad parameter exception
+   */
+  class OutputConnectorBadParamException : public std::exception
+  {
+  public:
+    OutputConnectorBadParamException(const std::string &s)
+      :_s(s) {}
+    ~OutputConnectorBadParamException() {}
+    const char* what() const noexcept { return _s.c_str(); }
+  private:
+    std::string _s;
+  };
+
+  /**
+   * \brief internal error exception
+   */
+  class OutputConnectorInternalException : public std::exception
+  {
+  public:
+    OutputConnectorInternalException(const std::string &s)
+      :_s(s) {}
+    ~OutputConnectorInternalException() {}
+    const char* what() const noexcept { return _s.c_str(); }
+  private:
+    std::string _s;
+  };
+  
+  /**
    * \brief main output connector class
    */
   class OutputConnectorStrategy
@@ -275,6 +303,8 @@ namespace dd
 	  std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
 	  int maxpr = std::distance(predictions.begin(),std::max_element(predictions.begin(),predictions.end()));
 	  int target = bad.get("target").get<int>();
+	  if (target < 0)
+	    throw OutputConnectorBadParamException("negative supervised discrete target (e.g. wrong use of label_offset ?");
 	  conf_matrix(maxpr,target) += 1.0;
 	}
       conf_diag = conf_matrix.diagonal();
