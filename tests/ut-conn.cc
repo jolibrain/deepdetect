@@ -31,7 +31,7 @@ using namespace dd;
 
 TEST(outputconn,acc)
 {
-  std::vector<int> targets = {0, 0, 1, 1};
+  std::vector<double> targets = {0, 0, 1, 1};
   std::vector<double> pred1 = {0.7, 0.3};
   std::vector<double> pred2 = {0.4, 0.5};
   std::vector<double> pred3 = {0.1, 0.9};
@@ -54,7 +54,7 @@ TEST(outputconn,acc)
 
 TEST(outputconn,auc)
 {
-  std::vector<int> targets = {0, 0, 1, 1};
+  std::vector<double> targets = {0, 0, 1, 1};
   std::vector<double> pred1 = {0.9, 0.1};
   std::vector<double> pred2 = {0.6, 0.4};
   std::vector<double> pred3 = {0.65, 0.35};
@@ -79,7 +79,7 @@ TEST(outputconn,gini)
 {
   //std::vector<double> lones = SupervisedOutput::linspace(0.0,1.0,100);
   
-  std::vector<int> targets = {1,1,0,1};
+  std::vector<double> targets = {1,1,0,1};
   std::vector<double> pred1 = {0.86};
   std::vector<double> pred2 = {0.26};
   std::vector<double> pred3 = {0.52};
