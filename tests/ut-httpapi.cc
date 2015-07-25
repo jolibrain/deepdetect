@@ -170,7 +170,11 @@ TEST(httpjsonapi,train)
   d.Parse(jstr.c_str());
   ASSERT_TRUE(d.HasMember("body"));
   ASSERT_TRUE(d["body"].HasMember("measure"));
+#ifndef CPU_ONLY
+  ASSERT_EQ(249,d["body"]["measure"]["iteration"].GetDouble());
+#else
   ASSERT_EQ(9,d["body"]["measure"]["iteration"].GetDouble());
+#endif
   ASSERT_TRUE(d["body"]["measure"]["train_loss"].GetDouble()>0.0);
   
   // remove service and trained model files
