@@ -134,11 +134,9 @@ namespace dd
 	    {
 	      if ((hit=_ignored_columns_pos.find(c))!=_ignored_columns_pos.end())
 		{
-		  //LOG(INFO) << "ignoring column " << col_name << " / " << col << std::endl;
-		  ++lit;
 		  continue;
 		}
-	      if (col_name == _id)
+	      if (_id_pos == c)
 		{
 		  column_id = col;
 		}
@@ -305,15 +303,17 @@ namespace dd
 	      scale_vals(vals);
 	    }
 	  if (!_id.empty())
-	    add_train_csvline(cid,vals);
+	    {
+	      add_train_csvline(cid,vals);
+	    }
 	  //_csvdata.emplace_back(cid,std::move(vals));
 	  else add_train_csvline(std::to_string(nlines),vals); 
 	    //_csvdata.emplace_back(std::to_string(nlines),std::move(vals)); 
 	  
 	  //debug
 	  /*std::cout << "csv data line #" << nlines << "=";
-	    std::copy(vals.begin(),vals.end(),std::ostream_iterator<double>(std::cout," "));
-	    std::cout << std::endl;*/
+	  std::copy(vals.begin(),vals.end(),std::ostream_iterator<double>(std::cout," "));
+	  std::cout << std::endl;*/
 	  //debug
 	}
       LOG(INFO) << "read " << nlines << " lines from " << fname << std::endl;
