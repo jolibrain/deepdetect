@@ -196,6 +196,8 @@ namespace dd
 	if ((hit=_ignored_columns.find(col))!=_ignored_columns.end())
 	  {
 	    _ignored_columns_pos.insert(i);
+	    ++i;
+	    continue;
 	  }
 	else _columns.push_back(col);
 	
@@ -385,7 +387,7 @@ namespace dd
 	      LOG(INFO) << "data split test size=" << _csvdata_test.size() << " / remaining data size=" << _csvdata.size() << std::endl;
 	    }
 	}
-      if (!_categoricals.empty())
+      if (!_ignored_columns.empty() || !_categoricals.empty())
 	update_columns();
   }
   
