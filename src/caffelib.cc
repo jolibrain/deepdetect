@@ -471,11 +471,14 @@ namespace dd
 	if (ad_solver.has("solver_type"))
 	  {
 	    std::string solver_type = ad_solver.get("solver_type").get<std::string>();
-	    if (strcasecmp(solver_type.c_str(),"SGD"))
+	    if (strcasecmp(solver_type.c_str(),"SGD") == 0)
 	      solver_param.set_solver_type(caffe::SolverParameter_SolverType_SGD);
-	    else if (strcasecmp(solver_type.c_str(),"ADAGRAD"))
-	      solver_param.set_solver_type(caffe::SolverParameter_SolverType_ADAGRAD);
-	    else if (strcasecmp(solver_type.c_str(),"NESTEROV"))
+	    else if (strcasecmp(solver_type.c_str(),"ADAGRAD") == 0)
+	      {
+		solver_param.set_solver_type(caffe::SolverParameter_SolverType_ADAGRAD);
+		solver_param.set_momentum(0.0); // cannot be used with adagrad
+	      }
+	    else if (strcasecmp(solver_type.c_str(),"NESTEROV") == 0)
 	      solver_param.set_solver_type(caffe::SolverParameter_SolverType_NESTEROV);
 	  }
 	if (ad_solver.has("test_interval"))
@@ -490,7 +493,7 @@ namespace dd
 	  solver_param.set_gamma(ad_solver.get("gamma").get<double>());
 	if (ad_solver.has("stepsize"))
 	  solver_param.set_stepsize(ad_solver.get("stepsize").get<int>());
-	if (ad_solver.has("momentum"))
+	if (ad_solver.has("momentum") && solver_param.solver_type() != caffe::SolverParameter_SolverType_ADAGRAD)
 	  solver_param.set_momentum(ad_solver.get("momentum").get<double>());
 	if (ad_solver.has("power"))
 	  solver_param.set_power(ad_solver.get("power").get<double>());
