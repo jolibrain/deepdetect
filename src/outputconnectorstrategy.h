@@ -376,7 +376,7 @@ namespace dd
         truePos-= p[i].answer;            
       }
       accum+=tn*(truePos+tp0); //2* the area of trapezoid
-      return (double)accum/(2*ones*(count-ones));
+      return accum/static_cast<double>((2*ones*(count-ones)));
     }
     
     // measure: multiclass logarithmic loss
