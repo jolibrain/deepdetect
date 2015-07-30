@@ -480,6 +480,8 @@ namespace dd
 	      }
 	    else if (strcasecmp(solver_type.c_str(),"NESTEROV") == 0)
 	      solver_param.set_solver_type(caffe::SolverParameter_SolverType_NESTEROV);
+	    else if (strcasecmp(solver_type.c_str(),"RMSPROP") == 0)
+		solver_param.set_solver_type(caffe::SolverParameter_SolverType_RMSPROP);
 	  }
 	if (ad_solver.has("test_interval"))
 	  solver_param.set_test_interval(ad_solver.get("test_interval").get<int>());
@@ -497,6 +499,8 @@ namespace dd
 	  solver_param.set_momentum(ad_solver.get("momentum").get<double>());
 	if (ad_solver.has("power"))
 	  solver_param.set_power(ad_solver.get("power").get<double>());
+	if (ad_solver.has("rms_decay"))
+	  solver_param.set_rms_decay(ad_solver.get("rms_decay").get<double>());
       }
     
     // optimize
