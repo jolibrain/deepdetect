@@ -298,6 +298,8 @@ TEST(caffeapi,service_predict)
   jd.Parse(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200,jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+  ASSERT_EQ(mnist_repo + "/sample_digit.png",jd["body"]["predictions"][0]["uri"].GetString());
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble() > 0);
   ASSERT_TRUE(jd["body"]["predictions"][1]["classes"][0]["prob"].GetDouble() > 0);
 
