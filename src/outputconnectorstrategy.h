@@ -492,7 +492,6 @@ namespace dd
 
       for (size_t i=0;i<_vvcats.size();i++)
 	{
-	  std::cerr << "to_ad label=" << _vvcats.at(i)._label << std::endl;
 	  std::vector<APIData> v;
 	  auto mit = _vvcats.at(i)._cats.begin();
 	  while(mit!=_vvcats.at(i)._cats.end())
