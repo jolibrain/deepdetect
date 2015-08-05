@@ -228,23 +228,60 @@ namespace dd
       
       fillup_parameters(ad_input);
 
+      /**
+       * Training from either file or memory.
+       */
       if (_train)
 	{
-	  _csv_fname = _uris.at(0); // training only from file
-	  if (!fileops::file_exists(_csv_fname))
-	    throw InputConnectorBadParamException("training CSV file " + _csv_fname + " does not exist");
-	  if (_uris.size() > 1)
-	    _csv_test_fname = _uris.at(1);
+	  if (fileops::file_exists(_uris.at(0))) // training from file
+	    {
+	      _csv_fname = _uris.at(0);
+	      if (_uris.size() > 1)
+		_csv_test_fname = _uris.at(1);
+	      if (_uris.at(0).find(_delim)!=std::string::npos) // first line might be the header if we have some options to consider
+		read_header(_uris.at(0));
+	      else
+		{
+		  throw InputConnectorBadParamException("training CSV file " + _csv_fname + " does not exist or in-memory data are missing a CSV header");
+		}
+	    }
+	  else // training from memory
+	    {
+	      if (_uris.at(0).find(_delim)!=std::string::npos) // first line might be the header if we have some options to consider
+		read_header(_uris.at(0));
+	    }
+
+	  // check on common and required parameters
 	  if (ad_input.has("label"))
 	    _label = ad_input.get("label").get<std::string>();
 	  else if (_train && _label.empty()) throw InputConnectorBadParamException("missing label column parameter");
 	  if (ad_input.has("label_offset"))
 	    _label_offset = ad_input.get("label_offset").get<int>();
 
-	  DataEl<DDCsv> ddcsv;
-	  ddcsv._ctype._cifc = this;
-	  ddcsv._ctype._adconf = ad_input;
-	  ddcsv.read_element(_csv_fname);
+	  if (!_csv_fname.empty()) // when training from file
+	    {
+	      DataEl<DDCsv> ddcsv;
+	      ddcsv._ctype._cifc = this;
+	      ddcsv._ctype._adconf = ad_input;
+	      ddcsv.read_element(_csv_fname);
+	    }
+	  else // training from posted data (in-memory)
+	    {
+	      for (size_t i=1;i<_uris.size();i++)
+		{
+		  DataEl<DDCsv> ddcsv;
+		  ddcsv._ctype._cifc = this;
+		  ddcsv._ctype._adconf = ad_input;
+		  ddcsv.read_element(_uris.at(i));
+		}
+	      if (_scale)
+		{
+		  for (auto d: _csvdata)
+		    {
+		      scale_vals(d._v);
+		    }
+		}
+	    }
 	}
       else // prediction mode
 	{

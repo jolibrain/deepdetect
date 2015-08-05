@@ -47,7 +47,22 @@ namespace dd
     int nlines = 0;
     _cifc->read_csv_line(content,_cifc->_delim,vals,cid,nlines);
     if (_cifc->_scale)
-      _cifc->scale_vals(vals);
+      {
+	if (!_cifc->_train) // in prediction mode, on-the-fly scaling
+	  {
+	    _cifc->scale_vals(vals);
+	  }
+	else // in training mode, collect bounds, then scale in another pass over the data
+	  {
+	    if (_cifc->_min_vals.empty() && _cifc->_max_vals.empty())
+	      _cifc->_min_vals = _cifc->_max_vals = vals;
+	    for (size_t j=0;j<vals.size();j++)
+	      {
+		_cifc->_min_vals.at(j) = std::min(vals.at(j),_cifc->_min_vals.at(j));
+		_cifc->_max_vals.at(j) = std::max(vals.at(j),_cifc->_max_vals.at(j));
+	      }
+	  }
+      }
     if (!cid.empty())
       _cifc->_csvdata.emplace_back(cid,vals);
     else _cifc->_csvdata.emplace_back(std::to_string(_cifc->_csvdata.size()+1),vals);
@@ -127,7 +142,7 @@ namespace dd
 	{
 	  ++c;
 	  std::string col_name = (*lit);
-	  
+
 	  // detect strings by looking for characters and for quotes
 	  // convert to float unless it is string (ignore strings, aka categorical fields, for now)
 	  if (!_columns.empty()) // in prediction mode, columns from header are not mandatory
@@ -322,7 +337,6 @@ namespace dd
       csv_file.close();
       
       // test file, if any.
-      std::cerr << "csv test fname=" << _csv_test_fname << std::endl;
       if (!_csv_test_fname.empty())
 	{
 	  nlines = 0;
