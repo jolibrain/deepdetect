@@ -341,7 +341,75 @@ TEST(caffeapi,service_train_csv)
 #ifndef CPU_ONLY
   ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() > 0.7);
 #else
-  ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() > 0.0);
+  ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() > 0.5);
+#endif
+  ASSERT_EQ(jd["body"]["measure"]["accp"].GetDouble(),jd["body"]["measure"]["acc"].GetDouble());
+  ASSERT_TRUE(jd["body"].HasMember("parameters"));
+  ASSERT_TRUE(jd["body"]["parameters"].HasMember("input"));
+  ASSERT_TRUE(jd["body"]["parameters"]["input"].HasMember("min_vals"));
+  ASSERT_TRUE(jd["body"]["parameters"]["input"].HasMember("max_vals"));
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("cmdiag"));
+  ASSERT_EQ(7,jd["body"]["measure"]["cmdiag"].Size());
+  ASSERT_TRUE(jd["body"]["measure"]["cmdiag"][0].GetDouble() >= 0);
+  ASSERT_EQ(56,jd["body"]["parameters"]["input"]["min_vals"].Size());
+  ASSERT_EQ(56,jd["body"]["parameters"]["input"]["max_vals"].Size());
+  ASSERT_EQ(504,jd["body"]["parameters"]["mllib"]["batch_size"].GetInt());
+  
+  // remove service
+  jstr = "{\"clear\":\"lib\"}";
+  joutstr = japi.jrender(japi.service_delete(sname,jstr));
+  ASSERT_EQ(ok_str,joutstr);
+
+  // assert json blob file is still there (or gone if clear=full)
+  ASSERT_TRUE(!fileops::file_exists(forest_repo + "/" + JsonAPI::_json_blob_fname));
+}
+
+TEST(caffeapi,service_train_csv_in_memory)
+{
+  // create service
+  JsonAPI japi;
+  std::string sname = "my_service2";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  forest_repo + "\",\"templates\":\"" + model_templates_repo  + "\"},\"parameters\":{\"input\":{\"connector\":\"csv\"},\"mllib\":{\"template\":\"mlp\",\"nclasses\":7}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
+  ASSERT_EQ(created_str,joutstr);
+
+  // assert json blob file
+  ASSERT_TRUE(fileops::file_exists(forest_repo + "/" + JsonAPI::_json_blob_fname));
+
+  // read CSV file
+  std::string mem_data_str;
+  std::ifstream inf(forest_repo + "train.csv");
+  std::string line;
+  int nlines = 0;
+  while(std::getline(inf,line))
+    {
+      if (nlines > 0)
+	mem_data_str += ",";
+      mem_data_str += "\"" + line + "\"";
+      ++nlines;
+    }
+  
+  // train
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"label\":\"Cover_Type\",\"id\":\"Id\",\"scale\":true,\"test_split\":0.1,\"label_offset\":-1,\"shuffle\":true},\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":" + iterations_forest + ",\"base_lr\":0.05},\"net\":{\"batch_size\":512}},\"output\":{\"measure\":[\"acc\",\"mcll\",\"f1\",\"cmdiag\"]}},\"data\":[" + mem_data_str + "]}";
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  JDoc jd;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_TRUE(jd.HasMember("status"));
+  ASSERT_EQ(201,jd["status"]["code"].GetInt());
+  ASSERT_EQ("Created",jd["status"]["msg"]);
+  ASSERT_TRUE(jd.HasMember("head"));
+  ASSERT_EQ("/train",jd["head"]["method"]);
+  ASSERT_TRUE(jd["head"]["time"].GetDouble() > 0);
+  ASSERT_TRUE(jd.HasMember("body"));
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
+  ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() > 0.0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("f1"));
+#ifndef CPU_ONLY
+  ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() > 0.7);
+#else
+  ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() > 0.5);
 #endif
   ASSERT_EQ(jd["body"]["measure"]["accp"].GetDouble(),jd["body"]["measure"]["acc"].GetDouble());
   ASSERT_TRUE(jd["body"].HasMember("parameters"));

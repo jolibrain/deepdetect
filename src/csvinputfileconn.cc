@@ -20,8 +20,6 @@
  */
 
 #include "csvinputfileconn.h"
-#include <random>
-#include <algorithm>
 #include <glog/logging.h>
 
 namespace dd
@@ -64,8 +62,8 @@ namespace dd
 	  }
       }
     if (!cid.empty())
-      _cifc->_csvdata.emplace_back(cid,vals);
-    else _cifc->_csvdata.emplace_back(std::to_string(_cifc->_csvdata.size()+1),vals);
+      _cifc->add_train_csvline(cid,vals);
+    else _cifc->add_train_csvline(std::to_string(_cifc->_csvdata.size()+1),vals);
     return 0;
   }
 
@@ -371,35 +369,12 @@ namespace dd
 	}
 
       // shuffle before possible test data selection.
-      if (ad.has("shuffle") && ad.get("shuffle").get<bool>())
-	{
-	  std::random_device rd;
-	  std::mt19937 g(rd());
-	  std::shuffle(_csvdata.begin(),_csvdata.end(),g);
-	}
+      shuffle_data(ad);
       
       if (_csv_test_fname.empty() && _test_split > 0)
 	{
-	  if (_test_split > 0.0)
-	    {
-	      int split_size = std::floor(_csvdata.size() * (1.0-_test_split));
-	      auto chit = _csvdata.begin();
-	      auto dchit = chit;
-	      int cpos = 0;
-	      while(chit!=_csvdata.end())
-		{
-		  if (cpos == split_size)
-		    {
-		      if (dchit == _csvdata.begin())
-			dchit = chit;
-		      _csvdata_test.push_back((*chit));
-		    }
-		  else ++cpos;
-		  ++chit;
-		}
-	      _csvdata.erase(dchit,_csvdata.end());
-	      LOG(INFO) << "data split test size=" << _csvdata_test.size() << " / remaining data size=" << _csvdata.size() << std::endl;
-	    }
+	  split_data();
+	  LOG(INFO) << "data split test size=" << _csvdata_test.size() << " / remaining data size=" << _csvdata.size() << std::endl;
 	}
       if (!_ignored_columns.empty() || !_categoricals.empty())
 	update_columns();

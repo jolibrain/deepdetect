@@ -26,6 +26,8 @@
 #include "utils/fileops.hpp"
 #include <fstream>
 #include <unordered_set>
+#include <algorithm>
+#include <random>
 
 namespace dd
 {
@@ -209,6 +211,39 @@ namespace dd
 	}
     }
 
+    void shuffle_data(const APIData &ad)
+    {
+      if (ad.has("shuffle") && ad.get("shuffle").get<bool>())
+	{
+	  std::random_device rd;
+	  std::mt19937 g(rd());
+	  std::shuffle(_csvdata.begin(),_csvdata.end(),g);
+	}
+    }
+
+    void split_data()
+    {
+      if (_test_split > 0.0)
+	{
+	  int split_size = std::floor(_csvdata.size() * (1.0-_test_split));
+	  auto chit = _csvdata.begin();
+	  auto dchit = chit;
+	  int cpos = 0;
+	  while(chit!=_csvdata.end())
+	    {
+	      if (cpos == split_size)
+		{
+		  if (dchit == _csvdata.begin())
+		    dchit = chit;
+		  _csvdata_test.push_back((*chit));
+		}
+	      else ++cpos;
+	      ++chit;
+	    }
+	  _csvdata.erase(dchit,_csvdata.end());
+	}
+    }
+    
     virtual void add_train_csvline(const std::string &id,
 				   std::vector<double> &vals)
     {
@@ -272,13 +307,20 @@ namespace dd
 		  ddcsv._ctype._adconf = ad_input;
 		  ddcsv.read_element(_uris.at(i));
 		}
+	      //TODO: categoricals
 	      if (_scale)
 		{
-		  for (auto d: _csvdata)
+		  for (size_t j=0;j<_csvdata.size();j++)
 		    {
-		      scale_vals(d._v);
+		      scale_vals(_csvdata.at(j)._v);
 		    }
 		}
+	      shuffle_data(ad_input);
+	      if (_test_split > 0.0)
+		split_data();
+	      //std::cerr << "data split test size=" << _csvdata_test.size() << " / remaining data size=" << _csvdata.size() << std::endl;
+	      if (!_ignored_columns.empty() || !_categoricals.empty())
+		update_columns();
 	    }
 	}
       else // prediction mode
@@ -329,6 +371,7 @@ namespace dd
 	return _columns.size() - 2; // minus label and id
       else return _columns.size() - 1; // minus label
     }
+
     void response_params(APIData &out)
     {
       APIData adparams;
