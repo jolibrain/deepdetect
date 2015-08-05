@@ -121,8 +121,7 @@ namespace dd
 	      {
 		std::string ws = _ctfc->_rvocab[(*hit).first];
 		Word w = _ctfc->_vocab[ws];
-		//std::cerr << "txt size=" << _ctfc->_txt.size() << " / total_classes=" << w._total_classes << std::endl;
-		(*hit).second = ((*hit).second / static_cast<double>(w._total_count)) * std::log(_ctfc->_txt.size() / static_cast<double>(w._total_classes));
+		(*hit).second = (std::log(1.0+(*hit).second / static_cast<double>(w._total_count))) * std::log(_ctfc->_txt.size() / static_cast<double>(w._total_docs) + 1.0);
 		//std::cerr << "tfidf feature w=" << ws << " / val=" << (*hit).second << std::endl;
 		++hit;
 	      }
@@ -182,7 +181,7 @@ namespace dd
 	      {
 		(*vhit).second._total_count++;
 		if (!tbe.has_word(pos))
-		  (*vhit).second._total_classes++;
+		  (*vhit).second._total_docs++;
 	      }
 	  }
 	if (pos >= 0)
@@ -201,7 +200,7 @@ namespace dd
       throw InputConnectorBadParamException("failed opening vocabulary file " + vocabfname);
     for (auto const &p: _vocab)
       {
-	out << p.first << delim << p.second._pos << std::endl; // << p.second._total_count << p.second._total_classes;
+	out << p.first << delim << p.second._pos << std::endl;
       }
   }
 
