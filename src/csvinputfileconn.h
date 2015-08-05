@@ -238,17 +238,15 @@ namespace dd
 	      _csv_fname = _uris.at(0);
 	      if (_uris.size() > 1)
 		_csv_test_fname = _uris.at(1);
+	    }
+	  else // training from memory
+	    {
 	      if (_uris.at(0).find(_delim)!=std::string::npos) // first line might be the header if we have some options to consider
 		read_header(_uris.at(0));
 	      else
 		{
 		  throw InputConnectorBadParamException("training CSV file " + _csv_fname + " does not exist or in-memory data are missing a CSV header");
 		}
-	    }
-	  else // training from memory
-	    {
-	      if (_uris.at(0).find(_delim)!=std::string::npos) // first line might be the header if we have some options to consider
-		read_header(_uris.at(0));
 	    }
 
 	  // check on common and required parameters
