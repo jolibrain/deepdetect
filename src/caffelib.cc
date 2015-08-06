@@ -481,7 +481,10 @@ namespace dd
 	    else if (strcasecmp(solver_type.c_str(),"NESTEROV") == 0)
 	      solver_param.set_solver_type(caffe::SolverParameter_SolverType_NESTEROV);
 	    else if (strcasecmp(solver_type.c_str(),"RMSPROP") == 0)
+	      {
 		solver_param.set_solver_type(caffe::SolverParameter_SolverType_RMSPROP);
+		solver_param.set_momentum(0.0); // not supported by Caffe PR
+	      }
 	  }
 	if (ad_solver.has("test_interval"))
 	  solver_param.set_test_interval(ad_solver.get("test_interval").get<int>());
