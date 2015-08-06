@@ -821,7 +821,6 @@ namespace dd
     
     // fix source paths in the model.
     caffe::NetParameter *np = sp.mutable_net_param();
-    std::cerr << "sp net=" << sp.net() << std::endl;
     caffe::ReadProtoFromTextFile(sp.net().c_str(),np); //TODO: error on read + use internal caffe ReadOrDie procedure
     for (int i=0;i<np->layer_size();i++)
       {
@@ -968,7 +967,7 @@ namespace dd
 	if (batch_size < inputc.batch_size())
 	  {
 	    int min_batch_size = 0;
-	    for (int i=batch_size;i>1;i--)
+	    for (int i=batch_size;i>=1;i--)
 	      if (inputc.batch_size() % i == 0)
 		{
 		  min_batch_size = i;

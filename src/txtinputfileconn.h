@@ -50,13 +50,13 @@ namespace dd
       :_pos(pos) {}
     Word(const int &pos,
 	 const int &tcount,
-	 const int &tclasses)
-      :_pos(pos),_total_count(tcount),_total_classes(tclasses) {}
+	 const int &tdocs)
+      :_pos(pos),_total_count(tcount),_total_docs(tdocs) {}
     ~Word() {}
     
     int _pos = -1;
     int _total_count = 1;
-    int _total_classes = 1;
+    int _total_docs = 1;
   };
   
   class TxtBowEntry

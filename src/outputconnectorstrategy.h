@@ -110,8 +110,8 @@ namespace dd
        * \brief constructor
        * @param loss result loss
        */
-      sup_result(const double &loss=0.0)
-	:_loss(loss) {}
+      sup_result(const std::string &label, const double &loss=0.0)
+	:_label(label),_loss(loss) {}
       
       /**
        * \brief destructor
@@ -127,7 +127,8 @@ namespace dd
       {
 	_cats.insert(std::pair<double,std::string>(prob,cat));
       }
-      
+
+      std::string _label;
       double _loss = 0.0; /**< result loss. */
       std::map<double,std::string,std::greater<double>> _cats; /**< categories and probabilities for this result */
     };
@@ -170,10 +171,13 @@ namespace dd
      */
     inline void add_result(const std::string &uri, const double &loss)
     {
-      std::unordered_map<std::string,sup_result>::iterator hit;
+      std::unordered_map<std::string,int>::iterator hit;
       if ((hit=_vcats.find(uri))==_vcats.end())
-	_vcats.insert(std::pair<std::string,sup_result>(uri,sup_result(loss)));
-      else (*hit).second._loss = loss;
+	{
+	  _vcats.insert(std::pair<std::string,int>(uri,_vvcats.size()));
+	  _vvcats.push_back(sup_result(uri,loss));
+	}
+      else _vvcats.at((*hit).second)._loss = loss;
     }
 
     /**
@@ -184,9 +188,11 @@ namespace dd
      */
     inline void add_cat(const std::string &uri, const double &prob, const std::string &cat)
     {
-      std::unordered_map<std::string,sup_result>::iterator hit;
+      std::unordered_map<std::string,int>::iterator hit;
       if ((hit=_vcats.find(uri))!=_vcats.end())
-	(*hit).second.add_cat(prob,cat);
+	{
+	  _vvcats.at((*hit).second).add_cat(prob,cat);
+	}
       // XXX: else error ?
     }
 
@@ -200,14 +206,14 @@ namespace dd
       int best = _best;
       if (ad_out.has("best"))
 	best = ad_out.get("best").get<int>();
-      auto hit = _vcats.begin();
-      while(hit!=_vcats.end())
+      for (size_t i=0;i<_vvcats.size();i++)
 	{
-	  sup_result bsresult((*hit).second._loss);
-	  std::copy_n((*hit).second._cats.begin(),std::min(best,static_cast<int>((*hit).second._cats.size())),
+	  sup_result sresult = _vvcats.at(i);
+	  sup_result bsresult(sresult._label,sresult._loss);
+	  std::copy_n(sresult._cats.begin(),std::min(best,static_cast<int>(sresult._cats.size())),
 		      std::inserter(bsresult._cats,bsresult._cats.end()));
-	  bcats._vcats.insert(std::pair<std::string,sup_result>((*hit).first,bsresult));
-	  ++hit;
+	  bcats._vcats.insert(std::pair<std::string,int>(sresult._label,bcats._vvcats.size()));
+	  bcats._vvcats.push_back(bsresult);
 	}
     }
 
@@ -457,8 +463,8 @@ namespace dd
 	{
 	  out += "-------------\n";
 	  out += (*vit).first + "\n";
-	  auto mit = (*vit).second._cats.begin();
-	  while(mit!=(*vit).second._cats.end())
+	  auto mit = _vvcats.at((*vit).second)._cats.begin();
+	  while(mit!=_vvcats.at((*vit).second)._cats.end())
 	  {
 	    out += "accuracy=" + std::to_string((*mit).first) + " -- cat=" + (*mit).second + "\n";
 	    ++mit;
@@ -483,34 +489,31 @@ namespace dd
       to_str(str);
       std::cout << "witness=\n" << str << std::endl;*/
       //debug
-      
-      auto hit = _vcats.begin();
-      while(hit!=_vcats.end())
+
+      for (size_t i=0;i<_vvcats.size();i++)
 	{
-	  int i = 0;
 	  std::vector<APIData> v;
-	  auto mit = (*hit).second._cats.begin();
-	  while(mit!=(*hit).second._cats.end())
+	  auto mit = _vvcats.at(i)._cats.begin();
+	  while(mit!=_vvcats.at(i)._cats.end())
 	    {
 	      APIData nad;
 	      nad.add(chead,(*mit).second);
 	      nad.add(phead,(*mit).first);
 	      v.push_back(nad);
-	      ++i;
 	      ++mit;
 	    }
 	  APIData adpred;
 	  adpred.add(cl,v);
-	  if ((*hit).second._loss > 0.0) // XXX: not set by caffe in prediction mode for now
-	    adpred.add("loss",(*hit).second._loss);
-	  adpred.add("uri",(*hit).first);
+	  if (_vvcats.at(i)._loss > 0.0) // XXX: not set by Caffe in prediction mode for now
+	    adpred.add("loss",_vvcats.at(i)._loss);
+	  adpred.add("uri",_vvcats.at(i)._label);
 	  vpred.push_back(adpred);
-	  ++hit;
 	}
       out.add("predictions",vpred);
     }
     
-    std::unordered_map<std::string,sup_result> _vcats; /**< batch of results, per uri. */
+    std::unordered_map<std::string,int> _vcats; /**< batch of results, per uri. */
+    std::vector<sup_result> _vvcats; /**< ordered results, per uri. */
     
     // options
     int _best = 1;
