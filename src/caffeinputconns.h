@@ -595,7 +595,7 @@ namespace dd
 	auto hit = tbe._v.cbegin();
 	while(hit!=tbe._v.cend())
 	  {
-	    datum.set_float_data((*hit).first,static_cast<float>((*hit).second));
+	    datum.set_float_data(_vocab[(*hit).first]._pos,static_cast<float>((*hit).second));
 	    ++hit;
 	  }
 	return datum;

@@ -66,25 +66,25 @@ namespace dd
     TxtBowEntry(const float &target):_target(target) {}
     ~TxtBowEntry() {}
 
-    void add_word(const int &pos,
+    void add_word(const std::string &str,
 		  const double &v,
 		  const bool &count)
     {
-      std::unordered_map<int,double>::iterator hit;
-      if ((hit=_v.find(pos))!=_v.end())
+      std::unordered_map<std::string,double>::iterator hit;
+      if ((hit=_v.find(str))!=_v.end())
 	{
 	  if (count)
 	    (*hit).second += v;
 	}
-      else _v.insert(std::pair<int,double>(pos,v));
+      else _v.insert(std::pair<std::string,double>(str,v));
     }
 
-    bool has_word(const int &pos)
+    bool has_word(const std::string &str)
     {
-      return _v.count(pos);
+      return _v.count(str);
     }
     
-    std::unordered_map<int,double> _v; /**< words as (<pos,val>). */
+    std::unordered_map<std::string,double> _v; /**< words as (<pos,val>). */
     float _target = -1; /**< class target in training mode. */
   };
   
@@ -92,10 +92,7 @@ namespace dd
   {
   public:
     TxtInputFileConn()
-      :InputConnectorStrategy() 
-      { 
-	//_vocab = std::unordered_map<std::string,Word>(1e5);
-      }
+      :InputConnectorStrategy() {}
 
     ~TxtInputFileConn() {}
 
@@ -114,6 +111,10 @@ namespace dd
 	_count = ad_input.get("count").get<bool>();
       if (ad_input.has("tfidf"))
 	_tfidf = ad_input.get("tfidf").get<bool>();
+      if (ad_input.has("min_count"))
+	_min_count = ad_input.get("min_count").get<int>();
+      if (ad_input.has("min_word_length"))
+	_min_word_length = ad_input.get("min_word_length").get<int>();
     }
 
     int feature_size() const
@@ -148,7 +149,6 @@ namespace dd
       if (ad.has("model_repo"))
 	_model_repo = ad.get("model_repo").get<std::string>();
       
-      std::cerr << "train=" << _train << " / vocab size=" << _vocab.size() << std::endl;
       if (!_train && _vocab.empty())
 	deserialize_vocab();
       
@@ -185,6 +185,7 @@ namespace dd
 	    }
 	  _txt.erase(dchit,_txt.end());
 	  std::cout << "data split test size=" << _test_txt.size() << " / remaining data size=" << _txt.size() << std::endl;
+	  std::cout << "vocab size=" << _vocab.size() << std::endl;
 	}
       if (_txt.empty())
 	throw InputConnectorBadParamException("no text could be found");
@@ -205,10 +206,11 @@ namespace dd
     double _test_split = 0.0;
     bool _count = true; /**< whether to add up word counters */
     bool _tfidf = false; /**< whether to use TF/IDF */
+    int _min_count = 5; /**< min word occurence. */
+    int _min_word_length = 5; /**< min word length. */
     
     // internals
-    std::unordered_map<std::string,Word> _vocab; /**< string to word stats, including pos */
-    std::unordered_map<int,std::string> _rvocab; /**< pos to string */
+    std::unordered_map<std::string,Word> _vocab; /**< string to word stats, including word */
     std::string _vocabfname = "vocab.dat";
     std::string _model_repo;
     std::string _correspname = "corresp.txt";

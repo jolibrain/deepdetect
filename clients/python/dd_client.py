@@ -17,7 +17,7 @@ import json
 import uuid
 import datetime
 
-VERBOSE=True
+VERBOSE=False
 DD_TIMEOUT = 2000 # seconds, for long blocking training alls, as needed
 
 def LOG(msg):
