@@ -515,11 +515,10 @@ namespace dd
       // transform to one-hot vector datum
       if (_train && _db)
 	{
-	  std::string dbfullname = _dbname + ".lmdb";
+	  _model_repo = ad.get("model_repo").get<std::string>();
+	  std::string dbfullname = _model_repo + "/" + _dbname + ".lmdb";
 	  if (!fileops::file_exists(dbfullname)) // if no existing db, preprocess from txt files
 	    TxtInputFileConn::transform(ad);
-	  
-	  _model_repo = ad.get("model_repo").get<std::string>();
 	  txt_to_db(_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname,
 		    ad_input);
 	  
