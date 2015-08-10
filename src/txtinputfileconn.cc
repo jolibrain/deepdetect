@@ -110,20 +110,51 @@ namespace dd
       }
 
     // post-processing
-    if (_ctfc->_tfidf)
+    size_t initial_vocab_size = _ctfc->_vocab.size();
+    auto vhit = _ctfc->_vocab.begin();
+    while(vhit!=_ctfc->_vocab.end())
       {
-	//std::unordered_map<std::string,Word>::const_iterator vhit;
-	//std::unordered_map<int,std::string>::const_iterator rvhit;
+	if ((*vhit).second._total_count < _ctfc->_min_count)
+	  vhit = _ctfc->_vocab.erase(vhit);
+	else ++vhit;
+      }
+    if (initial_vocab_size != _ctfc->_vocab.size())
+      {
+	// update pos
+	int pos = 0;
+	vhit = _ctfc->_vocab.begin();
+	while(vhit!=_ctfc->_vocab.end())
+	  {
+	    (*vhit).second._pos = pos;
+	    ++pos;
+	    ++vhit;
+	  }
+      }
+
+    if (initial_vocab_size != _ctfc->_vocab.size() || _ctfc->_tfidf)
+      {
+	// clearing up the corpus + tfidf
+	std::unordered_map<std::string,Word>::iterator whit;
 	for (TxtBowEntry &tbe: _ctfc->_txt)
 	  {
 	    auto hit = tbe._v.begin();
 	    while(hit!=tbe._v.end())
 	      {
-		std::string ws = _ctfc->_rvocab[(*hit).first];
-		Word w = _ctfc->_vocab[ws];
-		(*hit).second = (std::log(1.0+(*hit).second / static_cast<double>(w._total_count))) * std::log(_ctfc->_txt.size() / static_cast<double>(w._total_docs) + 1.0);
-		//std::cerr << "tfidf feature w=" << ws << " / val=" << (*hit).second << std::endl;
-		++hit;
+		if ((whit=_ctfc->_vocab.find((*hit).first))!=_ctfc->_vocab.end())
+		  {
+		    if (_ctfc->_tfidf)
+		      {
+			Word w = (*whit).second;
+			(*hit).second = (std::log(1.0+(*hit).second / static_cast<double>(w._total_count))) * std::log(_ctfc->_txt.size() / static_cast<double>(w._total_docs) + 1.0);
+			//std::cerr << "tfidf feature w=" << (*hit).first << " / val=" << (*hit).second << std::endl;
+		      }
+		    ++hit;
+		  }
+		else 
+		  {
+		    //std::cerr << "removing ws=" << (*hit).first << std::endl;
+		    hit = tbe._v.erase(hit);
+		  }
 	      }
 	  }
       }
@@ -139,8 +170,7 @@ namespace dd
     correspf.close();
     
     LOG(INFO) << "vocabulary size=" << _ctfc->_vocab.size() << std::endl;
-    //_ctfc->_vocab.clear(); //TODO: serialize to disk / db
-    
+        
     return 0;
   }
   
@@ -160,7 +190,8 @@ namespace dd
     boost::tokenizer<boost::char_separator<char>> tokens(ct,sep);
     for (std::string w : tokens)
       {
-	//std::cout << w << std::endl;
+	if (static_cast<int>(w.length()) < _min_word_length)
+	  continue;
 
 	// check and fillup vocab.
 	int pos = -1;
@@ -170,22 +201,18 @@ namespace dd
 	      {
 		pos = _vocab.size();
 		_vocab.emplace(std::make_pair(w,Word(pos)));
-		if (_tfidf)
-		  _rvocab.insert(std::pair<int,std::string>(pos,w));
 	      }
 	  }
 	else
 	  {
-	    pos = (*vhit).second._pos;
 	    if (_train)
 	      {
 		(*vhit).second._total_count++;
-		if (!tbe.has_word(pos))
+		if (!tbe.has_word(w))
 		  (*vhit).second._total_docs++;
 	      }
 	  }
-	if (pos >= 0)
-	  tbe.add_word(pos,1.0,_count);
+	tbe.add_word(w,1.0,_count);
       }
     _txt.push_back(tbe);
   }
