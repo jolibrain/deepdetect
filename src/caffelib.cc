@@ -563,6 +563,7 @@ namespace dd
 	    test(_net,ad,inputc,test_batch_size,has_mean_file,meas_out);
 	    APIData meas_obj = meas_out.getobj("measure");
 	    std::vector<std::string> meas_str = meas_obj.list_keys();
+	    LOG(INFO) << "batch size=" << batch_size;
 	    for (auto m: meas_str)
 	      {
 		if (m != "cmdiag") // do not report confusion matrix in server logs
@@ -615,7 +616,6 @@ namespace dd
     if (!this->_tjob_running.load())
       {
 	inputc._dv_test.clear();
-	inputc._test_labels.clear();
 	return 0;
       }
     
@@ -630,8 +630,7 @@ namespace dd
     // test
     test(_net,ad,inputc,test_batch_size,has_mean_file,out);
     inputc._dv_test.clear();
-    inputc._test_labels.clear();
-    
+        
     // add whatever the input connector needs to transmit out
     inputc.response_params(out);
 
@@ -694,7 +693,7 @@ namespace dd
 	      {
 		APIData bad;
 		std::vector<double> predictions;
-		double target = inputc._test_labels.at(tresults+j);
+		double target = dv.at(j).label();
 		for (int k=0;k<_nclasses;k++)
 		  {
 		    predictions.push_back(lresults[slot]->cpu_data()[j*scperel+k]);

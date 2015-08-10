@@ -63,7 +63,7 @@ namespace dd
   {
   public:
     TxtBowEntry() {}
-    TxtBowEntry(const int &target):_target(target) {}
+    TxtBowEntry(const float &target):_target(target) {}
     ~TxtBowEntry() {}
 
     void add_word(const int &pos,
@@ -192,7 +192,7 @@ namespace dd
 
     // text tokenization for BOW
     void parse_content(const std::string &content,
-		       const int &target=-1);
+		       const float &target=-1);
 
     // serialization of vocabulary
     void serialize_vocab();

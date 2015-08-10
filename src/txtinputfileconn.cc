@@ -146,7 +146,7 @@ namespace dd
   
   /*- TxtInputFileConn -*/
   void TxtInputFileConn::parse_content(const std::string &content,
-				       const int &target)
+				       const float &target)
   {
     // Coming up:
     // - sentence separator

@@ -38,7 +38,7 @@ namespace dd
   public:
     CaffeInputInterface() {}
     CaffeInputInterface(const CaffeInputInterface &cii)
-      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_test_labels(cii._test_labels) {}
+      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids) {} //,_test_labels(cii._test_labels) {}
     ~CaffeInputInterface() {}
 
     /**
@@ -61,7 +61,6 @@ namespace dd
     std::vector<caffe::Datum> _dv; /**< main input datum vector, used for training or prediction */
     std::vector<caffe::Datum> _dv_test; /**< test input datum vector, when applicable in training mode */
     std::vector<std::string> _ids; /**< input ids (e.g. image ids) */
-    std::vector<float> _test_labels; /**< vector of test labels, kept aside for measuring net output. */
   };
 
   /**
@@ -74,11 +73,7 @@ namespace dd
       :ImgInputFileConn() {}
     ImgCaffeInputFileConn(const ImgCaffeInputFileConn &i)
       :ImgInputFileConn(i),CaffeInputInterface(i) {}
-    ~ImgCaffeInputFileConn() 
-      {
-	//if (_test_db)
-	//_test_db->Close();
-      }
+    ~ImgCaffeInputFileConn() {}
 
     // size of each element in Caffe jargon
     int channels() const
@@ -201,7 +196,6 @@ namespace dd
 
     void write_image_to_db(const std::string &dbfullname,
 			   const std::vector<std::pair<std::string,int>> &lfiles,
-			   std::vector<float> &datum_labels,
 			   const std::string &backend,
 			   const bool &encoded,
 			   const std::string &encode_type);
@@ -303,14 +297,6 @@ namespace dd
     
     void transform(const APIData &ad)
     {
-      /*try
-	{
-	  CSVInputFileConn::transform(ad);
-	}
-      catch (std::exception &e)
-	{
-	  throw;
-	  }*/
       APIData ad_param = ad.getobj("parameters");
       APIData ad_input = ad_param.getobj("input");
       fillup_parameters(ad_input);
@@ -357,7 +343,6 @@ namespace dd
 	      // no ids taken on the test set
 	      caffe::Datum dat = to_datum((*hit)._v);
 	      _dv_test.push_back(dat);
-	      _test_labels.push_back(dat.label());
 	      ++hit;
 	    }
 	  _csvdata_test.clear();
@@ -467,7 +452,10 @@ namespace dd
   {
   public:
     TxtCaffeInputFileConn()
-      :TxtInputFileConn() {}
+      :TxtInputFileConn()
+      {
+	reset_dv_test();
+      }
     TxtCaffeInputFileConn(const TxtCaffeInputFileConn &i)
       :TxtInputFileConn(i),CaffeInputInterface(i) {}
     ~TxtCaffeInputFileConn() {}
@@ -479,6 +467,8 @@ namespace dd
 
     int channels() const
     {
+      if (_channels > 0)
+	return _channels;
       return feature_size();
     }
 
@@ -492,49 +482,105 @@ namespace dd
       return 1;
     }
 
+    int batch_size() const
+    {
+      if (_db_batchsize > 0)
+	return _db_batchsize;
+      else return _dv.size();
+    }
+
+    int test_batch_size() const
+    {
+      if (_db_testbatchsize > 0)
+	return _db_testbatchsize;
+      else return _dv_test.size();
+    }
+    
+    int txt_to_db(const std::string &traindbname,
+		  const std::string &testdbname,
+		  const APIData &ad_input,
+		  const std::string &backend="lmdb");
+
+    void write_txt_to_db(const std::string &dbname,
+			 std::vector<TxtBowEntry> &txt,
+			 const std::string &backend="lmdb");
+    
     void transform(const APIData &ad)
     {
-      TxtInputFileConn::transform(ad);
+      APIData ad_param = ad.getobj("parameters");
+      APIData ad_input = ad_param.getobj("input");
+      if (ad_input.has("db") && ad_input.get("db").get<bool>())
+	_db = true;
 
       // transform to one-hot vector datum
-      int n = 0;
-      auto hit = _txt.cbegin();
-      while(hit!=_txt.cend())
+      if (_train && _db)
 	{
-	  _dv.push_back(to_datum((*hit)));
-	  _ids.push_back(std::to_string(n));
-	  ++hit;
-	  ++n;
+	  std::string dbfullname = _dbname + ".lmdb";
+	  if (!fileops::file_exists(dbfullname)) // if no existing db, preprocess from txt files
+	    TxtInputFileConn::transform(ad);
+	  
+	  _model_repo = ad.get("model_repo").get<std::string>();
+	  txt_to_db(_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname,
+		    ad_input);
+	  
+	  // enrich data object with db files location
+	  APIData dbad;
+	  dbad.add("train_db",_model_repo + "/" + _dbfullname);
+	  if (_test_split > 0.0)
+	    dbad.add("test_db",_model_repo + "/" + _test_dbfullname);
+	  std::vector<APIData> vdbad = {dbad};
+	  const_cast<APIData&>(ad).add("db",vdbad);
 	}
-      hit = _test_txt.cbegin();
-      while(hit!=_test_txt.cend())
+      else
 	{
-	  _dv_test.push_back(to_datum((*hit)));
-	  _test_labels.push_back((*hit)._target);
-	  ++hit;
-	  ++n;
+	  TxtInputFileConn::transform(ad);
+	  
+	  int n = 0;
+	  auto hit = _txt.cbegin();
+	  while(hit!=_txt.cend())
+	    {
+	      _dv.push_back(to_datum((*hit)));
+	      _ids.push_back(std::to_string(n));
+	      ++hit;
+	      ++n;
+	    }
+	  hit = _test_txt.cbegin();
+	  while(hit!=_test_txt.cend())
+	    {
+	      _dv_test.push_back(to_datum((*hit)));
+	      ++hit;
+	      ++n;
+	    }
 	}
     }
+
+    std::vector<caffe::Datum> get_dv_test_db(const int &num);
     
     std::vector<caffe::Datum> get_dv_test(const int &num,
 					  const bool &has_mean_file)
       {
 	(void)has_mean_file;
-	int i = 0;
-	std::vector<caffe::Datum> dv;
-	while(_dt_vit!=_dv_test.end()
-	      && i < num)
+	if (!_db)
 	  {
-	    dv.push_back((*_dt_vit));
-	    ++i;
-	    ++_dt_vit;
+	    int i = 0;
+	    std::vector<caffe::Datum> dv;
+	    while(_dt_vit!=_dv_test.end()
+		  && i < num)
+	      {
+		dv.push_back((*_dt_vit));
+		++i;
+		++_dt_vit;
+	      }
+	    return dv;
 	  }
-	return dv;
+	else return get_dv_test_db(num);
       }
 
     void reset_dv_test()
     {
       _dt_vit = _dv_test.begin();
+      _test_db_cursor = std::unique_ptr<caffe::db::Cursor>();
+      _test_db = std::unique_ptr<caffe::db::DB>();
     }
     
     caffe::Datum to_datum(const TxtBowEntry &tbe)
@@ -557,6 +603,18 @@ namespace dd
       }
 
     std::vector<caffe::Datum>::const_iterator _dt_vit;
+
+  public:
+    bool _db = false;
+    int _db_batchsize = -1;
+    int _db_testbatchsize = -1;
+    std::unique_ptr<caffe::db::DB> _test_db;
+    std::unique_ptr<caffe::db::Cursor> _test_db_cursor;
+    std::string _dbname = "train";
+    std::string _test_dbname = "test";
+    std::string _dbfullname = "train.lmdb";
+    std::string _test_dbfullname = "test.lmdb";
+    int _channels = 0;
   };
   
 }
