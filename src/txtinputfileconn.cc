@@ -68,26 +68,40 @@ namespace dd
     std::cerr << "list subdirs size=" << subdirs.size() << std::endl;
     
     // list files and classes
-    int cl = 0;
-    std::unordered_map<int,std::string> hcorresp; // correspondence class number / class name
     std::vector<std::pair<std::string,int>> lfiles; // labeled files
-    auto uit = subdirs.begin();
-    while(uit!=subdirs.end())
+    std::unordered_map<int,std::string> hcorresp; // correspondence class number / class name
+    if (_ctfc->_train)
       {
-	std::unordered_set<std::string> subdir_files;
-	if (fileops::list_directory((*uit),true,false,subdir_files))
-	  throw InputConnectorBadParamException("failed reading image data sub-directory " + (*uit));
-	hcorresp.insert(std::pair<int,std::string>(cl,dd_utils::split((*uit),'/').back()));
-	auto fit = subdir_files.begin();
-	while(fit!=subdir_files.end()) // XXX: re-iterating the file is not optimal
+	int cl = 0;
+	auto uit = subdirs.begin();
+	while(uit!=subdirs.end())
 	  {
-	    lfiles.push_back(std::pair<std::string,int>((*fit),cl));
+	    std::unordered_set<std::string> subdir_files;
+	    if (fileops::list_directory((*uit),true,false,subdir_files))
+	      throw InputConnectorBadParamException("failed reading image data sub-directory " + (*uit));
+	    hcorresp.insert(std::pair<int,std::string>(cl,dd_utils::split((*uit),'/').back()));
+	    auto fit = subdir_files.begin();
+	    while(fit!=subdir_files.end()) // XXX: re-iterating the file is not optimal
+	      {
+		lfiles.push_back(std::pair<std::string,int>((*fit),cl));
+		++fit;
+	      }
+	    ++cl;
+	    ++uit;
+	  }
+      }
+    else
+      {
+	std::unordered_set<std::string> test_files;
+	fileops::list_directory(dir,true,false,test_files);
+	auto fit = test_files.begin();
+	while(fit!=test_files.end())
+	  {
+	    lfiles.push_back(std::pair<std::string,int>((*fit),0)); // 0 but no class really
 	    ++fit;
 	  }
-	++cl;
-	++uit;
       }
-
+    
     // shuffle files if requested
     if (_ctfc->_shuffle)
       {
@@ -160,15 +174,18 @@ namespace dd
       }
 
     // write corresp file
-    std::ofstream correspf(_ctfc->_model_repo + "/" + _ctfc->_correspname,std::ios::binary);
-    auto hit = hcorresp.begin();
-    while(hit!=hcorresp.end())
+    if (_ctfc->_train)
       {
-	correspf << (*hit).first << " " << (*hit).second << std::endl;
-	++hit;
-      }
-    correspf.close();
-    
+	std::ofstream correspf(_ctfc->_model_repo + "/" + _ctfc->_correspname,std::ios::binary);
+	auto hit = hcorresp.begin();
+	while(hit!=hcorresp.end())
+	  {
+	    correspf << (*hit).first << " " << (*hit).second << std::endl;
+	    ++hit;
+	  }
+	correspf.close();
+      }    
+
     LOG(INFO) << "vocabulary size=" << _ctfc->_vocab.size() << std::endl;
         
     return 0;
@@ -186,7 +203,7 @@ namespace dd
     std::transform(ct.begin(),ct.end(),ct.begin(),::tolower);
     TxtBowEntry tbe(target);
     std::unordered_map<std::string,Word>::iterator vhit;
-    boost::char_separator<char> sep("\n\t\f\r ,.;:`'!?)(-|><^·&\"\\/{}#$–");
+    boost::char_separator<char> sep("\n\t\f\r ,.;:`'!?)(-|><^·&\"\\/{}#$–=+");
     boost::tokenizer<boost::char_separator<char>> tokens(ct,sep);
     for (std::string w : tokens)
       {
