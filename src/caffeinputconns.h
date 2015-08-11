@@ -538,7 +538,7 @@ namespace dd
 	  auto hit = _txt.cbegin();
 	  while(hit!=_txt.cend())
 	    {
-	      _dv.push_back(to_datum((*hit)));
+	      _dv.push_back(std::move(to_datum((*hit))));
 	      _ids.push_back(std::to_string(n));
 	      ++hit;
 	      ++n;
@@ -546,7 +546,7 @@ namespace dd
 	  hit = _test_txt.cbegin();
 	  while(hit!=_test_txt.cend())
 	    {
-	      _dv_test.push_back(to_datum((*hit)));
+	      _dv_test.push_back(std::move(to_datum((*hit))));
 	      ++hit;
 	      ++n;
 	    }
@@ -584,6 +584,7 @@ namespace dd
     
     caffe::Datum to_datum(const TxtBowEntry &tbe)
       {
+	std::unordered_map<std::string,Word>::const_iterator wit;
 	caffe::Datum datum;
 	int datum_channels = _vocab.size(); // XXX: may be very large
 	datum.set_channels(datum_channels);
@@ -595,7 +596,8 @@ namespace dd
 	auto hit = tbe._v.cbegin();
 	while(hit!=tbe._v.cend())
 	  {
-	    datum.set_float_data(_vocab[(*hit).first]._pos,static_cast<float>((*hit).second));
+	    if ((wit = _vocab.find((*hit).first))!=_vocab.end())
+	      datum.set_float_data(_vocab[(*hit).first]._pos,static_cast<float>((*hit).second));
 	    ++hit;
 	  }
 	return datum;
