@@ -485,6 +485,10 @@ namespace dd
 		solver_param.set_solver_type(caffe::SolverParameter_SolverType_RMSPROP);
 		solver_param.set_momentum(0.0); // not supported by Caffe PR
 	      }
+	    else if (strcasecmp(solver_type.c_str(),"ADADELTA") == 0)
+	      solver_param.set_solver_type(caffe::SolverParameter_SolverType_ADADELTA);
+	    else if (strcasecmp(solver_type.c_str(),"ADAM") == 0)
+	      solver_param.set_solver_type(caffe::SolverParameter_SolverType_ADAM);
 	  }
 	if (ad_solver.has("test_interval"))
 	  solver_param.set_test_interval(ad_solver.get("test_interval").get<int>());
@@ -513,7 +517,13 @@ namespace dd
     if (!inputc._dv.empty())
       {
 	LOG(INFO) << "filling up net prior to training\n";
-	boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->net()->layers()[0])->AddDatumVector(inputc._dv);
+	try {
+	  boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->net()->layers()[0])->AddDatumVector(inputc._dv);
+	}
+	catch(std::exception &e)
+	  {
+	    throw;
+	  }
 	/*if (!solver->test_nets().empty())
 	  {
 	    if (!inputc._dv_test.empty())
