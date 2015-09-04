@@ -358,17 +358,18 @@ class DD(object):
 
     # POST /predict
 
-    def post_predict(self,sname,data,parameters_input,parameters_output):
+    def post_predict(self,sname,data,parameters_input,parameters_mllib,parameters_output):
         """
         Makes prediction from data and model
         Parameters:
         sname -- service name as a resource
         data -- array of data URI to predict from
         parameters_input -- dict of input parameters
+        parameters_mllib -- dict ML library parameters
         parameters_output -- dict of output parameters
         """
         body={"service":sname,
-              "parameters":{"input":parameters_input,"output":parameters_output},
+              "parameters":{"input":parameters_input,"mllib":parameters_mllib,"output":parameters_output},
               "data":data}
         return self.post(self.__urls["predict"],json.dumps(body))
     
