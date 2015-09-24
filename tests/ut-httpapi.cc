@@ -175,7 +175,7 @@ TEST(httpjsonapi,train)
 #else
   ASSERT_EQ(9,d["body"]["measure"]["iteration"].GetDouble());
 #endif
-  ASSERT_TRUE(d["body"]["measure"]["train_loss"].GetDouble()>0.0);
+  ASSERT_TRUE(fabs(d["body"]["measure"]["train_loss"].GetDouble()>0.0));
   
   // remove service and trained model files
   httpclient::get_call(luri+"/services/"+serv+"?clear=lib","DELETE",code,jstr);
@@ -233,7 +233,7 @@ TEST(httpjsonapi,train)
 	  ASSERT_EQ(1,jd2["head"]["job"]);
 	  ASSERT_TRUE(jd2.HasMember("body"));
 	  ASSERT_TRUE(jd2["body"]["measure"].HasMember("train_loss"));
-	  ASSERT_TRUE(jd2["body"]["measure"]["train_loss"].GetDouble() > 0);
+	  ASSERT_TRUE(fabs(jd2["body"]["measure"]["train_loss"].GetDouble() > 0));
 	  ASSERT_TRUE(jd2["body"]["measure"].HasMember("iteration"));
 	  ASSERT_TRUE(jd2["body"]["measure"]["iteration"].GetDouble() >= 0);
 	  ASSERT_TRUE(jd2["body"].HasMember("measure_hist"));
@@ -386,7 +386,7 @@ TEST(httpjsonapi,concurrency)
 	  ASSERT_EQ(1,jd2["head"]["job"]);
 	  ASSERT_TRUE(jd2.HasMember("body"));
 	  ASSERT_TRUE(jd2["body"]["measure"].HasMember("train_loss"));
-	  ASSERT_TRUE(jd2["body"]["measure"]["train_loss"].GetDouble() > 0);
+	  ASSERT_TRUE(fabs(jd2["body"]["measure"]["train_loss"].GetDouble() > 0));
 	  ASSERT_TRUE(jd2["body"]["measure"].HasMember("iteration"));
 	  ASSERT_TRUE(jd2["body"]["measure"]["iteration"].GetDouble() > 0);
 	}
@@ -470,7 +470,7 @@ TEST(httpjsonapi,predict)
   ASSERT_TRUE(jd["head"]["time"].GetDouble() > 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"].HasMember("measure"));
-  ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() > 0);
+  ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble() > 0));
   ASSERT_TRUE(jd["body"]["measure_hist"]["train_loss_hist"].Size() > 0);
 
   // predict

@@ -75,7 +75,7 @@ TEST(caffeapi,service_train)
   ASSERT_TRUE(jd["head"]["time"].GetDouble() > 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
-  ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() > 0);
+  ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble() > 0));
 
   // remove service
   jstr = "{\"clear\":\"lib\"}";
@@ -126,7 +126,7 @@ TEST(caffeapi,service_train_async_status_delete)
   ASSERT_EQ(1,jd2["head"]["job"]);
   ASSERT_TRUE(jd2.HasMember("body"));
   ASSERT_TRUE(jd2["body"]["measure"].HasMember("train_loss"));
-  ASSERT_TRUE(jd2["body"]["measure"]["train_loss"].GetDouble() >= 0);
+  ASSERT_TRUE(fabs(jd2["body"]["measure"]["train_loss"].GetDouble() > 0));
 
   // delete job.
   std::string jdelstr = "{\"service\":\"" + sname + "\",\"job\":1}";
@@ -198,7 +198,7 @@ TEST(caffeapi,service_train_async_final_status)
 	  ASSERT_EQ(1,jd2["head"]["job"]);
 	  ASSERT_TRUE(jd2.HasMember("body"));
 	  ASSERT_TRUE(jd2["body"]["measure"].HasMember("train_loss"));
-	  ASSERT_TRUE(jd2["body"]["measure"]["train_loss"].GetDouble() > 0);
+	  ASSERT_TRUE(fabs(jd2["body"]["measure"]["train_loss"].GetDouble() > 0));
 	  ASSERT_TRUE(jd2["body"]["measure"].HasMember("iteration"));
 	  ASSERT_TRUE(jd2["body"]["measure"]["iteration"].GetDouble() > 0);
 	}
@@ -279,7 +279,7 @@ TEST(caffeapi,service_predict)
   ASSERT_TRUE(jd["head"]["time"].GetDouble() > 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"].HasMember("measure"));
-  ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() > 0);
+  ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble() > 0));
   ASSERT_TRUE(jd["body"]["measure_hist"]["train_loss_hist"].Size() > 0);
 
   // predict
@@ -336,7 +336,7 @@ TEST(caffeapi,service_train_csv)
   ASSERT_TRUE(jd["head"]["time"].GetDouble() > 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
-  ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() > 0.0);
+  ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble() > 0.0));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("f1"));
 #ifndef CPU_ONLY
   ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() > 0.7);
@@ -404,7 +404,7 @@ TEST(caffeapi,service_train_csv_in_memory)
   ASSERT_TRUE(jd["head"]["time"].GetDouble() > 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
-  ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() > 0.0);
+  ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble() > 0.0));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("f1"));
 #ifndef CPU_ONLY
   ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() > 0.7);
@@ -458,7 +458,7 @@ TEST(caffeapi,service_train_images)
   ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
-  ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() > 0);
+  ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble() > 0));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("f1"));
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() >= 0.0);
   ASSERT_EQ(jd["body"]["measure"]["accp"].GetDouble(),jd["body"]["measure"]["acc"].GetDouble());
