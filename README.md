@@ -19,6 +19,7 @@ Current features include:
 
 - high-level API for machine learning
 - JSON commnunication format
+- remote Python client library
 - dedicated server with support for asynchronous training calls
 - high performances, benefit from multicores and GPU
 - connector to handle large collections of images
