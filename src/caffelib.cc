@@ -512,8 +512,15 @@ namespace dd
     
     // optimize
     this->_tjob_running = true;
-    caffe::Solver<float> *solver = caffe::GetSolver<float>(solver_param);
-    
+    caffe::Solver<float> *solver = nullptr;
+    try
+      {
+	solver = caffe::GetSolver<float>(solver_param);
+      }
+    catch(std::exception &e)
+      {
+	throw;
+      }
     if (!inputc._dv.empty())
       {
 	LOG(INFO) << "filling up net prior to training\n";
