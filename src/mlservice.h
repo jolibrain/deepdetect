@@ -121,14 +121,19 @@ namespace dd
      */ 
     void kill_jobs()
     {
+      std::lock_guard<std::mutex> lock(_tjobs_mutex);
       auto hit = _training_jobs.begin();
       while(hit!=_training_jobs.end())
 	{
 	  std::future_status status = (*hit).second._ft.wait_for(std::chrono::seconds(0));
-	  if (status == std::future_status::timeout)
+	  if (status == std::future_status::timeout
+	      && (*hit).second._status == 1) // process is running, terminate it
 	    {
 	      this->_tjob_running.store(false);
 	      (*hit).second._ft.wait();
+	      auto ohit = _training_out.find((*hit).first);
+	      if (ohit!=_training_out.end())
+		_training_out.erase(ohit);
 	    }
 	  ++hit;
 	}
