@@ -191,7 +191,7 @@ namespace dd
 		     const std::string &traindbname,
 		     const std::string &testdbname,
 		     const std::string &backend="lmdb", // lmdb, leveldb
-		     const bool &encoded=false, // save the encoded image in datum
+		     const bool &encoded=true, // save the encoded image in datum
 		     const std::string &encode_type=""); // 'png', 'jpg', ...
 
     void write_image_to_db(const std::string &dbfullname,
