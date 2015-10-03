@@ -107,7 +107,7 @@ namespace dd
     _corresp = correspf;
     _solver = solverf;
     _sstate = sstatef;
-
+    
     /*    if (deployf.empty() || weightsf.empty())
       {
 	LOG(ERROR) << "missing caffe model file(s) in repository\n";

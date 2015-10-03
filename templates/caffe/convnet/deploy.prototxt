@@ -1,0 +1,67 @@
+name: "convnet"
+layer {
+  name: "data"
+  type: "MemoryData"
+  top: "data"
+  top: "label"
+  memory_data_param {
+    batch_size: 64
+    channels: 3
+    height: 64
+    width: 64
+  }
+}
+layer {
+  name: "conv1"
+  type: "Convolution"
+  bottom: "data"
+  top: "conv1"
+  convolution_param {
+    num_output: 32
+    kernel_size: 3
+    weight_filler {
+      type: "xavier"
+     }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  name: "relu0"
+  type: "ReLU"
+  bottom: "conv1"
+  top: "conv1"
+}
+layer {
+  name: "pool0"
+  type: "Pooling"
+  bottom: "conv1"
+  top: "pool0"
+  pooling_param {
+    pool: MAX
+    kernel_size: 2
+    stride: 2
+  }
+}
+layer {
+  name: "inn0"
+  type: "InnerProduct"
+  bottom: "pool0"
+  top: "inn0"
+  inner_product_param {
+    num_output: 1000
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  name: "probt"
+  type: "Softmax"
+  bottom: "inn0"
+  top: "probt"
+}

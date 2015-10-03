@@ -107,6 +107,15 @@ namespace dd
 	caffe::WriteProtoToTextFile(net_param,dest_net);
 	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
       }
+    else if (model_tmpl == "convnet")
+      {
+	caffe::NetParameter net_param,deploy_net_param;
+	caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
+	caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
+	configure_convnet_template(ad,_regression,_nclasses,net_param,deploy_net_param);
+	caffe::WriteProtoToTextFile(net_param,dest_net);
+	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
+      }
     
     this->_mlmodel.read_from_repository(this->_mlmodel._repo);
   }
@@ -331,6 +340,417 @@ namespace dd
       }
   }
   
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_convnet_template(const APIData &ad,
+												       const bool &regression,
+												       const int &cnclasses,
+												       caffe::NetParameter &net_param,
+												       caffe::NetParameter &deploy_net_param)
+  {
+    //- get relevant configuration elements
+    std::vector<std::string> layers;
+    std::string activation = "ReLU";
+    double dropout = 0.5;
+    if (ad.has("layers"))
+      try
+	{
+	  layers = ad.get("layers").get<std::vector<std::string>>();
+	}
+      catch(std::exception &e)
+	{
+	  throw MLLibBadParamException("convnet template requires specifying a string array of layers");
+	}
+    if (ad.has("activation"))
+      {
+	activation = ad.get("activation").get<std::string>();
+	if (dd_utils::iequals(activation,"relu"))
+	  activation = "ReLU";
+	else if (dd_utils::iequals(activation,"prelu"))
+	  activation = "PReLU";
+	else if (dd_utils::iequals(activation,"sigmoid"))
+	  activation = "Sigmoid";
+	else if (dd_utils::iequals(activation,"tanh"))
+	  activation = "TanH";
+      }
+    if (ad.has("dropout"))
+      dropout = ad.get("dropout").get<double>();
+    if (layers.empty() && activation == "ReLU" && dropout == 0.5)
+      return; // nothing to do
+
+    const std::string cr_str = "CR";
+    const std::string p_str = "P";
+    std::vector<std::pair<int,int>> cr_layers; // conv + activation
+    std::vector<int> fc_layers; // fully connected
+    for (auto s: layers)
+      {
+	size_t pos = 0;
+	if ((pos=s.find(cr_str))!=std::string::npos)
+	  {
+	    std::string ncr = s.substr(0,pos);
+	    std::string crs = s.substr(pos+cr_str.size());
+	    cr_layers.push_back(std::pair<int,int>(std::atoi(ncr.c_str()),std::atoi(crs.c_str())));
+	  }
+	else
+	  {
+	    try
+	      {
+		//std::cerr << "fc=" << std::atoi(s.c_str()) << std::endl;
+		fc_layers.push_back(std::atoi(s.c_str()));
+	      }
+	    catch(std::exception &e)
+	      {
+		throw MLLibBadParamException("convnet template requires fully connected layers size to be specified as a string");
+	      }
+	  }
+      }
+
+    // default params
+    uint32_t conv_kernel_size = 3;
+    std::string conv_wfill_type = "gaussian";
+    double conv_wfill_std = 0.001;
+    std::string conv_b_type = "constant";
+    caffe::PoolingParameter_PoolMethod pool_type = caffe::PoolingParameter_PoolMethod_MAX;
+    int pool_kernel_size = 2;
+    int pool_stride = 2;
+    int nclasses = 0;
+    int rl = 2;
+    int drl = 1;
+    int max_rl = 9;
+    int max_drl = 6;
+    caffe::LayerParameter *lparam = nullptr;
+    caffe::LayerParameter *dlparam = nullptr;
+    int ccount = 0;
+    std::string prec_ip = "data";
+    std::string last_ip = "conv0";
+    for (size_t l=0;l<cr_layers.size();l++)
+      {
+	if (l == 0)
+	  {
+	    lparam = net_param.mutable_layer(6);
+	    if (!cnclasses) // if unknown we keep the default one
+	      nclasses = lparam->mutable_inner_product_param()->num_output();
+	    else nclasses = cnclasses;
+	  }
+	int nconv = cr_layers.at(l).first;
+	for (int c=0;c<nconv;c++)
+	  {
+	    if (rl < max_rl)
+	      {
+		lparam = net_param.mutable_layer(rl);
+		lparam->clear_include();
+		lparam->clear_top();
+		lparam->clear_bottom();
+		lparam->clear_inner_product_param();
+		lparam->clear_pooling_param();
+	      }
+	    else lparam = net_param.add_layer();
+	    lparam->set_name(last_ip);
+	    lparam->set_type("Convolution");
+	    lparam->add_bottom(prec_ip);
+	    lparam->add_top(last_ip);
+	    lparam->mutable_convolution_param()->set_num_output(cr_layers.at(l).second);
+	    if (!lparam->mutable_convolution_param()->kernel_size_size())
+	      lparam->mutable_convolution_param()->add_kernel_size(conv_kernel_size);
+	    lparam->mutable_convolution_param()->mutable_weight_filler()->set_type(conv_wfill_type);
+	    lparam->mutable_convolution_param()->mutable_weight_filler()->set_std(conv_wfill_std);
+	    lparam->mutable_convolution_param()->mutable_bias_filler()->set_type(conv_b_type);
+	    //TODO: auto compute best padding value
+	    ++rl;
+	    
+	    if (drl < max_drl)
+	      {
+		dlparam = deploy_net_param.mutable_layer(drl);
+		dlparam->clear_include();
+		dlparam->clear_top();
+		dlparam->clear_bottom();
+		dlparam->clear_inner_product_param();
+		dlparam->clear_pooling_param();
+	      }
+	    else dlparam = deploy_net_param.add_layer();
+	    dlparam->set_name(last_ip);
+	    dlparam->set_type("Convolution");
+	    dlparam->add_top(last_ip);
+	    dlparam->add_bottom(prec_ip);
+	    dlparam->mutable_convolution_param()->set_num_output(cr_layers.at(l).second);
+	    if (!dlparam->mutable_convolution_param()->kernel_size_size())
+	      dlparam->mutable_convolution_param()->add_kernel_size(conv_kernel_size);
+	    dlparam->mutable_convolution_param()->mutable_weight_filler()->set_type(conv_wfill_type);
+	    dlparam->mutable_convolution_param()->mutable_weight_filler()->set_std(conv_wfill_std);
+	    dlparam->mutable_convolution_param()->mutable_bias_filler()->set_type(conv_b_type);
+	    ++drl;
+	    
+	    if (rl < max_rl)
+	      {
+		lparam = net_param.mutable_layer(rl);
+		lparam->clear_include();
+		lparam->clear_top();
+		lparam->clear_bottom();
+		lparam->clear_loss_weight();
+	      }
+	    else lparam = net_param.add_layer();
+	    lparam->set_name("act"+std::to_string(ccount));
+	    lparam->set_type(activation);
+	    lparam->add_bottom("conv"+std::to_string(ccount));
+	    lparam->add_top("conv"+std::to_string(ccount));
+	    ++rl;
+	    
+	    if (drl < max_drl)
+	      {
+		dlparam = deploy_net_param.mutable_layer(drl);
+		dlparam->clear_include();
+		dlparam->clear_top();
+		dlparam->clear_bottom();
+		dlparam->clear_loss_weight();
+	      }
+	    else dlparam = deploy_net_param.add_layer();
+	    dlparam->set_name("act"+std::to_string(ccount));
+	    dlparam->set_type(activation);
+	    dlparam->add_bottom("conv"+std::to_string(ccount));
+	    dlparam->add_top("conv"+std::to_string(ccount));
+	    ++drl;
+	    
+	    prec_ip = "conv" + std::to_string(ccount);
+	    ++ccount;
+	    last_ip = "conv" + std::to_string(ccount);
+	  }
+	
+	std::string cum = std::to_string(ccount-1);
+	std::string lcum = std::to_string(l);
+	if (rl < max_rl)
+	  {
+	    lparam = net_param.mutable_layer(rl);
+	    lparam->clear_inner_product_param();
+	    lparam->clear_bottom();
+	    lparam->clear_top();
+	    lparam->clear_include();
+	  }
+	else lparam = net_param.add_layer();
+	lparam->set_name("pool"+lcum);
+	lparam->set_type("Pooling");
+	lparam->add_bottom("conv"+cum);
+	lparam->add_top("pool"+lcum);
+	lparam->mutable_pooling_param()->set_pool(pool_type);
+	lparam->mutable_pooling_param()->set_kernel_size(pool_kernel_size);
+	lparam->mutable_pooling_param()->set_stride(pool_stride);
+	++rl;
+	
+	if (drl < max_drl)
+	  {
+	    dlparam = deploy_net_param.mutable_layer(drl);
+	    dlparam->clear_inner_product_param();
+	    dlparam->clear_bottom();
+	    dlparam->clear_top();
+	    dlparam->clear_include();
+	  }
+	else dlparam = deploy_net_param.add_layer(); // pooling
+	dlparam->set_name("pool"+lcum);
+	dlparam->set_type("Pooling");
+	dlparam->add_bottom("conv"+cum);
+	dlparam->add_top("pool"+lcum);
+	dlparam->mutable_pooling_param()->set_pool(pool_type);
+	dlparam->mutable_pooling_param()->set_kernel_size(pool_kernel_size);
+	dlparam->mutable_pooling_param()->set_stride(pool_stride);
+	++drl;
+	
+	if (rl < max_rl)
+	  {
+	    lparam = net_param.mutable_layer(rl);
+	    lparam->clear_bottom();
+	    lparam->clear_top();
+	  }
+	else lparam = net_param.add_layer(); // dropout layer
+	lparam->set_name("drop"+lcum);
+	lparam->set_type("Dropout");
+	lparam->add_bottom("pool"+lcum);
+	lparam->add_top("pool"+lcum);
+	lparam->mutable_dropout_param()->set_dropout_ratio(dropout);
+	++rl;
+      }
+
+    prec_ip = "pool" + std::to_string(cr_layers.size()-1);
+    last_ip = "ip" + std::to_string(cr_layers.size());
+    int lfc = cr_layers.size();
+    int cact = ccount + 1;
+    for (auto fc: fc_layers)
+      {
+	if (rl < max_rl)
+	  {
+	    lparam = net_param.mutable_layer(rl);
+	    lparam->clear_bottom();
+	    lparam->clear_top();
+	    lparam->clear_include();
+	  }
+	else lparam = net_param.add_layer();
+	lparam->set_name(last_ip);
+	lparam->set_type("InnerProduct");
+	lparam->add_bottom(prec_ip);
+	lparam->add_top(last_ip);
+	caffe::InnerProductParameter *ipp = lparam->mutable_inner_product_param();
+	ipp->set_num_output(fc);
+	ipp->mutable_weight_filler()->set_type("xavier");
+	ipp->mutable_bias_filler()->set_type("constant");
+	++rl;
+	
+	if (drl < max_drl)
+	  {
+	    dlparam = deploy_net_param.mutable_layer(drl);
+	    dlparam->clear_bottom();
+	    dlparam->clear_top();
+	    dlparam->clear_include();
+	  }
+	else dlparam = deploy_net_param.add_layer();
+	dlparam->set_name(last_ip);
+	dlparam->set_type("InnerProduct");
+	dlparam->add_bottom(prec_ip);
+	dlparam->add_top(last_ip);
+	caffe::InnerProductParameter *dipp = dlparam->mutable_inner_product_param();
+	dipp->set_num_output(fc);
+	dipp->mutable_weight_filler()->set_type("xavier");
+	dipp->mutable_bias_filler()->set_type("constant");
+	++drl;
+
+	if (rl < max_rl)
+	  {
+	    lparam = net_param.mutable_layer(rl);
+	    lparam->clear_include();
+	    lparam->clear_top();
+	    lparam->clear_bottom();
+	    lparam->clear_loss_weight();
+	  }
+	else lparam = net_param.add_layer();
+	lparam->set_name("act"+std::to_string(cact));
+	lparam->set_type(activation);
+	lparam->add_bottom(last_ip);
+	lparam->add_top(last_ip);
+	++rl;
+
+	if (drl < max_drl)
+	  {
+	    dlparam = deploy_net_param.mutable_layer(drl);
+	    dlparam->clear_include();
+	    dlparam->clear_top();
+	    dlparam->clear_bottom();
+	    dlparam->clear_loss_weight();
+	  }
+	else dlparam = deploy_net_param.add_layer();
+	dlparam->set_name("act"+std::to_string(cact));
+	dlparam->set_type(activation);
+	dlparam->add_bottom(last_ip);
+	dlparam->add_top(last_ip);
+	++drl;
+	
+	if (rl < max_rl)
+	  {
+	    lparam = net_param.mutable_layer(rl);
+	    lparam->clear_bottom();
+	    lparam->clear_top();
+	  }
+	else lparam = net_param.add_layer(); // dropout layer
+	std::string drop = "drop" + std::to_string(lfc);
+	lparam->set_name(drop);
+	lparam->set_type("Dropout");
+	lparam->add_bottom(last_ip);
+	lparam->add_top(last_ip);
+	lparam->mutable_dropout_param()->set_dropout_ratio(dropout);
+	++rl;
+	
+	++lfc;
+	++cact;
+	prec_ip = last_ip;
+	last_ip = "ip" + std::to_string(lfc);
+      }
+
+    // add remaining inner product softmax layers    
+    if (rl < max_rl)
+      {
+	lparam = net_param.mutable_layer(rl);
+	lparam->clear_bottom();
+	lparam->clear_top();
+	lparam->clear_include();
+      }
+    else lparam = net_param.add_layer(); // last inner product before softmax
+    lparam->set_name(last_ip);
+    lparam->set_type("InnerProduct");
+    lparam->add_bottom(prec_ip);
+    lparam->add_top(last_ip);
+    caffe::InnerProductParameter *ipp = lparam->mutable_inner_product_param();
+    ipp->set_num_output(nclasses);
+    ipp->mutable_weight_filler()->set_type("xavier");
+    ipp->mutable_bias_filler()->set_type("constant");
+    ++rl;
+
+    if (drl < max_drl)
+      {
+	dlparam = deploy_net_param.mutable_layer(drl);
+	dlparam->clear_bottom();
+	dlparam->clear_top();
+	dlparam->clear_include();
+      }
+    else dlparam = deploy_net_param.add_layer();
+    dlparam->set_name(last_ip);
+    dlparam->set_type("InnerProduct");
+    dlparam->add_bottom(prec_ip);
+    dlparam->add_top(last_ip);
+    caffe::InnerProductParameter *dipp = dlparam->mutable_inner_product_param();
+    dipp->set_num_output(nclasses);
+    dipp->mutable_weight_filler()->set_type("xavier");
+    dipp->mutable_bias_filler()->set_type("constant");
+    ++drl;
+
+    if (!regression)
+      {
+	if (rl < max_rl)
+	  {
+	    lparam = net_param.mutable_layer(rl);
+	    lparam->clear_bottom();
+	    lparam->clear_top();
+	    lparam->clear_include();
+	  }
+	else lparam = net_param.add_layer(); // test loss
+	lparam->set_name("losst");
+        lparam->set_type("Softmax");
+	lparam->add_bottom(last_ip);
+	lparam->add_top("losst");
+	caffe::NetStateRule *nsr = lparam->add_include();
+	nsr->set_phase(caffe::TEST);
+	++rl;
+      }
+
+    if (rl < max_rl)
+      {
+	lparam = net_param.mutable_layer(rl);
+	lparam->clear_bottom();
+	lparam->clear_top();
+	lparam->clear_include();
+      }
+    else lparam = net_param.add_layer(); // training loss
+    lparam->set_name("loss");
+    if (regression)
+      lparam->set_type("EuclideanLoss");
+    else lparam->set_type("SoftmaxWithLoss");
+    lparam->add_bottom(last_ip);
+    lparam->add_bottom("label");
+    lparam->add_top("loss");
+    ++rl;
+    
+    if (!regression)
+      {
+	if (drl < max_drl)
+	  {
+	    dlparam = deploy_net_param.mutable_layer(drl);
+	    dlparam->clear_bottom();
+	    dlparam->clear_top();
+	    dlparam->clear_include();
+	  }
+	else dlparam = deploy_net_param.add_layer();
+	dlparam->set_name("loss");
+	dlparam->set_type("Softmax");
+	dlparam->add_bottom(last_ip);
+	dlparam->add_top("loss");
+	++drl;
+      }
+  }
+
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::create_model()
   {

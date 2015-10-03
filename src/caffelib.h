@@ -73,6 +73,20 @@ namespace dd
 				       const int &cnclasses,
 				       caffe::NetParameter &net_param,
 				       caffe::NetParameter &deploy_net_param);
+
+    /**
+     * \brief configure a convnet template
+     * @param ad the template data object
+     * @param regression whether the net is a regressor
+     * @param cnclasses the number of output classes, if any
+     * @param net_param the training net object
+     * @param deploy_net_param the deploy net object
+     */
+    static void configure_convnet_template(const APIData &ad,
+					   const bool &regression,
+					   const int &cnclasses,
+					   caffe::NetParameter &net_param,
+					   caffe::NetParameter &deploy_net_param);
       
     /**
      * \brief creates neural net instance based on model
