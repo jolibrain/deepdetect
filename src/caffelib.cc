@@ -75,8 +75,8 @@ namespace dd
 
     // - copy files to model repository
     std::string source = this->_mlmodel._mlmodel_template_repo + model_tmpl + "/";
-    std::cout << "source=" << source << std::endl;
-    std::cout << "dest=" << this->_mlmodel._repo + '/' + model_tmpl + ".prototxt" << std::endl;
+    LOG(INFO) << "source=" << source << std::endl;
+    LOG(INFO) << "dest=" << this->_mlmodel._repo + '/' + model_tmpl + ".prototxt" << std::endl;
     std::string dest_net = this->_mlmodel._repo + '/' + model_tmpl + ".prototxt";
     std::string dest_deploy_net = this->_mlmodel._repo + "/deploy.prototxt";
     int err = fileops::copy_file(source + model_tmpl + ".prototxt", dest_net);
@@ -394,7 +394,6 @@ namespace dd
 	  {
 	    try
 	      {
-		//std::cerr << "fc=" << std::atoi(s.c_str()) << std::endl;
 		fc_layers.push_back(std::atoi(s.c_str()));
 	      }
 	    catch(std::exception &e)
@@ -402,6 +401,13 @@ namespace dd
 		throw MLLibBadParamException("convnet template requires fully connected layers size to be specified as a string");
 	      }
 	  }
+      }
+
+    if (ad.has("rotate") || ad.has("mirror"))
+      {
+	caffe::LayerParameter *lparam = net_param.mutable_layer(0); // data input layer
+	lparam->mutable_transform_param()->set_mirror(ad.get("mirror").get<bool>());
+	lparam->mutable_transform_param()->set_rotate(ad.get("rotate").get<bool>());
       }
 
     // default params
