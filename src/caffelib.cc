@@ -431,6 +431,11 @@ namespace dd
 	      nclasses = lparam->mutable_inner_product_param()->num_output();
 	    else nclasses = cnclasses;
 	  }
+	else if (l > 0)
+	  {
+	    prec_ip = "pool" + std::to_string(l-1);
+	    last_ip = "conv" + std::to_string(ccount);
+	  }
 	int nconv = cr_layers.at(l).first;
 	for (int c=0;c<nconv;c++)
 	  {
@@ -486,6 +491,8 @@ namespace dd
 		lparam->clear_top();
 		lparam->clear_bottom();
 		lparam->clear_loss_weight();
+		lparam->clear_dropout_param();
+		lparam->clear_inner_product_param();
 	      }
 	    else lparam = net_param.add_layer();
 	    lparam->set_name("act"+std::to_string(ccount));
@@ -501,6 +508,8 @@ namespace dd
 		dlparam->clear_top();
 		dlparam->clear_bottom();
 		dlparam->clear_loss_weight();
+		dlparam->clear_dropout_param();
+		dlparam->clear_inner_product_param();
 	      }
 	    else dlparam = deploy_net_param.add_layer();
 	    dlparam->set_name("act"+std::to_string(ccount));
@@ -557,6 +566,7 @@ namespace dd
 	    lparam = net_param.mutable_layer(rl);
 	    lparam->clear_bottom();
 	    lparam->clear_top();
+	    lparam->clear_loss_weight();
 	  }
 	else lparam = net_param.add_layer(); // dropout layer
 	lparam->set_name("drop"+lcum);
@@ -616,6 +626,7 @@ namespace dd
 	    lparam->clear_top();
 	    lparam->clear_bottom();
 	    lparam->clear_loss_weight();
+	    lparam->clear_inner_product_param();
 	  }
 	else lparam = net_param.add_layer();
 	lparam->set_name("act"+std::to_string(cact));
@@ -631,6 +642,7 @@ namespace dd
 	    dlparam->clear_top();
 	    dlparam->clear_bottom();
 	    dlparam->clear_loss_weight();
+	    dlparam->clear_inner_product_param();
 	  }
 	else dlparam = deploy_net_param.add_layer();
 	dlparam->set_name("act"+std::to_string(cact));
