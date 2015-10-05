@@ -58,6 +58,7 @@ $(document).ready(function() {
         $('input#url').val('');
       },
       error: function(jqXHR, textStatus, errorThrown) {
+        $('input#url').val('');
         $('.loading').addClass('hidden');
         $('#submitAlert').removeClass('hidden').find('.error').html(errorThrown);
         window.setTimeout(function() { $("#submitAlert").addClass('hidden'); }, 4000);
