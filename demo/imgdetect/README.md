@@ -26,3 +26,9 @@ index.html file and redirect api request to your deepdetect server:
         proxy_redirect off;
       }
     }
+
+If you find a 'bad gateway' error after this modification, you can try
+to bind deepdetect server to 127.0.0.1 host :
+
+     ./dede -host 127.0.0.1
+
