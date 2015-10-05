@@ -2,6 +2,10 @@ In order for this demo to work, you'll need to serve the static
 index.html file in a webserver, and redirect a request to your
 deepdetect server.
 
+## image classification service setup
+
+Follow instructions from http://www.deepdetect.com/tutorials/imagenet-classifier/
+
 ## nginx configuration
 
 Here is an nginx configuration example you can use to serve the
