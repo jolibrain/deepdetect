@@ -14,8 +14,6 @@ $(document).ready(function() {
       data: [$('input#url').val()]
     };
 
-    console.log(JSON.stringify(post_data));
-
     $.ajax({
       type: "POST",
       url: post_url,
@@ -58,6 +56,11 @@ $(document).ready(function() {
 
         $('#emptyImage .predictions').html('');
         $('input#url').val('');
+      },
+      error: function(jqXHR, textStatus, errorThrown) {
+        $('.loading').addClass('hidden');
+        $('#submitAlert').removeClass('hidden').find('.error').html(errorThrown);
+        window.setTimeout(function() { $("#submitAlert").addClass('hidden'); }, 4000);
       }
     });
 
