@@ -24,6 +24,7 @@ Current features include:
 - high performances, benefit from multicores and GPU
 - connector to handle large collections of images
 - connector to handle CSV files with preprocessing capabilities
+- connector to handle text files
 - range of built-in model assessment measures (e.g. F1, multiclass log loss, ...)
 - no database dependency and sync, all information and model parameters organized and available from the filesystem
 - flexible template output format to simplify connection to external applications
@@ -53,12 +54,17 @@ Caffe Dependencies:
 - [protobuf](https://github.com/google/protobuf)
 - IO libraries hdf5, leveldb, snappy, lmdb
 
-Caffe version :
+Caffe version:
 
 By default DeepDetect automatically relies on a modified version of Caffe, https://github.com/beniz/caffe/tree/master_dd_integ
 
 Implementation:
+
 The code makes use of C++ policy design for modularity, performance and putting the maximum burden on the checks at compile time. The implementation uses many features from C++11.
+
+Visual Demo:
+
+HTML and javascript classification image demo in demo/imgdetect
 
 ### Authors
 DeepDetect is designed and implemented by Emmanuel Benazera <beniz@droidnik.fr>.
