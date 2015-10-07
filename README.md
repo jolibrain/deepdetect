@@ -28,7 +28,7 @@ Current features include:
 - range of built-in model assessment measures (e.g. F1, multiclass log loss, ...)
 - no database dependency and sync, all information and model parameters organized and available from the filesystem
 - flexible template output format to simplify connection to external applications
-- templates for the most useful neural architectures (e.g. Googlenet, Alexnet, mlp, logistic regression)
+- templates for the most useful neural architectures (e.g. Googlenet, Alexnet, convnet, mlp, logistic regression)
 
 Documentation:
 - Full documentation is available from http://www.deepdetect.com/overview/introduction/
