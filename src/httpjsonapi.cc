@@ -284,7 +284,8 @@ namespace dd
     APIHandler ahandler(this);
     http_server::options options(ahandler);
     _dd_server = new http_server(options.address(host)
-				 .port(port));
+				 .port(port)
+				 .linger(false));
     _ghja = this;
     _gdd_server = _dd_server;
     std::cerr << "Running DeepDetect HTTP server on " << host << ":" << port << std::endl;
