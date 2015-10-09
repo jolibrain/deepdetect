@@ -1021,7 +1021,7 @@ namespace dd
 	    LOG(INFO) << "batch size=" << batch_size;
 	    for (auto m: meas_str)
 	      {
-		if (m != "cmdiag") // do not report confusion matrix in server logs
+		if (m != "cmdiag" && m != "cmfull") // do not report confusion matrix in server logs
 		  {
 		    double mval = meas_obj.get(m).get<double>();
 		    LOG(INFO) << m << "=" << mval;
@@ -1161,6 +1161,10 @@ namespace dd
 	    tresults += dv.size();
 	    mean_loss += loss;
 	  }
+	std::vector<std::string> clnames;
+	for (int i=0;i<_nclasses;i++)
+	  clnames.push_back(this->_mlmodel.get_hcorresp(i));
+	ad_res.add("clnames",clnames);
 	ad_res.add("batch_size",tresults);
 	if (_regression)
 	  ad_res.add("regression",_regression);

@@ -251,19 +251,32 @@ namespace dd
 	  if (bf1)
 	    {
 	      double f1,precision,recall,acc;
-	      dMat conf_diag;
-	      f1 = mf1(ad_res,precision,recall,acc,conf_diag);
+	      dMat conf_diag,conf_matrix;
+	      f1 = mf1(ad_res,precision,recall,acc,conf_diag,conf_matrix);
 	      meas_out.add("f1",f1);
 	      meas_out.add("precision",precision);
 	      meas_out.add("recall",recall);
 	      meas_out.add("accp",acc);
-	      //TODO: confusion matrix ?
 	      if (std::find(measures.begin(),measures.end(),"cmdiag")!=measures.end())
 		{
 		  std::vector<double> cmdiagv;
 		  for (int i=0;i<conf_diag.rows();i++)
 		    cmdiagv.push_back(conf_diag(i,0));
 		  meas_out.add("cmdiag",cmdiagv);
+		}
+	      if (std::find(measures.begin(),measures.end(),"cmfull")!=measures.end())
+		{
+		  std::vector<std::string> clnames = ad_res.get("clnames").get<std::vector<std::string>>();
+		  APIData cad;
+		  for (int i=0;i<conf_matrix.cols();i++)
+		    {
+		      std::vector<double> cmcol;
+		      for (int j=0;j<conf_matrix.rows();j++)
+			cmcol.push_back(conf_matrix(j,i));
+		      cad.add(clnames.at(i),cmcol);
+		    }
+		  std::vector<APIData> vad = {cad};
+		  meas_out.add("cmfull",vad);
 		}
 	    }
 	  if (bmcll)
@@ -304,11 +317,11 @@ namespace dd
     }
 
     // measure: F1
-    static double mf1(const APIData &ad, double &precision, double &recall, double &acc, dMat &conf_diag)
+    static double mf1(const APIData &ad, double &precision, double &recall, double &acc, dMat &conf_diag, dMat &conf_matrix)
     {
       int nclasses = ad.get("nclasses").get<int>();
       double f1=0.0;
-      dMat conf_matrix = dMat::Zero(nclasses,nclasses);
+      conf_matrix = dMat::Zero(nclasses,nclasses);
       int batch_size = ad.get("batch_size").get<int>();
       for (int i=0;i<batch_size;i++)
 	{
@@ -329,6 +342,8 @@ namespace dd
       recall = conf_diag.cwiseQuotient(conf_rsum + eps).sum() / static_cast<double>(nclasses);
       f1 = (2.0*precision*recall) / (precision+recall);
       conf_diag = conf_diag.transpose().cwiseQuotient(conf_csum+eps.transpose()).transpose();
+      for (int i=0;i<conf_matrix.cols();i++)
+	conf_matrix.col(i) = conf_matrix.col(i).transpose().cwiseQuotient(conf_csum+eps.transpose()).transpose();
       return f1;
     }
     
