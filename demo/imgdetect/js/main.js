@@ -9,6 +9,7 @@ $(document).ready(function() {
       service: "imageserv",
       parameters: {
         input: {width: 224, height: 224},
+	mllib: {gpu: true},
         output: {best: 3}
       },
       data: [$('input#url').val()]
