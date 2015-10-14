@@ -181,6 +181,8 @@ namespace dd
     private:
       void update_protofile_classes(caffe::NetParameter &net_param);
 
+      void update_protofile_finetune(caffe::NetParameter &net_param);
+
       void fix_batch_size(const APIData &ad,
 			  const TInputConnectorStrategy &inputc,
 			  int &user_batch_size,

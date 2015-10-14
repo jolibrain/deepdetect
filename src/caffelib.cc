@@ -118,7 +118,8 @@ namespace dd
       }
     else
       {
-	if (ad.has("rotate") || ad.has("mirror"))
+	if ((ad.has("rotate") && ad.get("rotate").get<bool>()) 
+	    || (ad.has("mirror") && ad.get("mirror").get<bool>()))
 	  {
 	    caffe::NetParameter net_param;
 	    caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
@@ -127,6 +128,18 @@ namespace dd
 	    lparam->mutable_transform_param()->set_rotate(ad.get("rotate").get<bool>());
 	    caffe::WriteProtoToTextFile(net_param,dest_net);
 	  }
+      }
+    if (ad.has("finetuning") && ad.get("finetuning").get<bool>())
+      {
+	if (!ad.has("weights"))
+	  throw MLLibBadParamException("finetuning requires specifying an existing weights file");	
+	caffe::NetParameter net_param,deploy_net_param;
+	caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
+	caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
+	update_protofile_finetune(net_param);
+	update_protofile_finetune(deploy_net_param);
+	caffe::WriteProtoToTextFile(net_param,dest_net);
+	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
       }
     
     this->_mlmodel.read_from_repository(this->_mlmodel._repo);
@@ -1411,6 +1424,47 @@ namespace dd
 		break;
 	      }
 	  }
+      }
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofile_finetune(caffe::NetParameter &net_param)
+  {
+    // fix class numbers
+    // this procedure looks for the first bottom layer with a 'num_output' field and
+    // rename the layer so that its weights can be reinitialized and the net finetuned
+    int k = net_param.layer_size();
+    std::string ft_lname, ft_oldname;
+    for (int l=net_param.layer_size()-1;l>0;l--)
+      {
+	caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+	if (lparam->type() == "Convolution")
+	  {
+	    ft_oldname = lparam->name();
+	    ft_lname = lparam->name() + "_ftune";
+	    lparam->set_name(ft_lname);
+	    lparam->set_top(0,ft_lname);
+	    k = l;
+	    break;
+	  }
+	else if (lparam->type() == "InnerProduct")
+	  {
+	    ft_oldname = lparam->name();
+	    ft_lname = lparam->name() + "_ftune";
+	    lparam->set_name(ft_lname);
+	    lparam->set_top(0,ft_lname);
+	    k = l;
+	    break;
+	  }
+      }
+    // update relations from other layers
+    for (int l=net_param.layer_size()-1;l>k;l--)
+      {
+	caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+	if (lparam->top(0) == ft_oldname)
+	  lparam->set_top(0,ft_lname);
+	if (lparam->bottom(0) == ft_oldname)
+	  lparam->set_bottom(0,ft_lname);
       }
   }
 
