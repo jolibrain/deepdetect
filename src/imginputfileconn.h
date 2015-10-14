@@ -134,7 +134,7 @@ namespace dd
 	    cv::waitKey(0);*/
 	  cv::Size size(_width,_height);
 	  cv::Mat image;
-	  cv::resize(dimg._ctype._img,image,size);
+	  cv::resize(dimg._ctype._img,image,size,0,0,CV_INTER_CUBIC);
 	  _images.push_back(image);
 	}
       // shuffle before possible split
