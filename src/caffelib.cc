@@ -116,6 +116,18 @@ namespace dd
 	caffe::WriteProtoToTextFile(net_param,dest_net);
 	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
       }
+    else
+      {
+	if (ad.has("rotate") || ad.has("mirror"))
+	  {
+	    caffe::NetParameter net_param;
+	    caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
+	    caffe::LayerParameter *lparam = net_param.mutable_layer(0); // data input layer
+	    lparam->mutable_transform_param()->set_mirror(ad.get("mirror").get<bool>());
+	    lparam->mutable_transform_param()->set_rotate(ad.get("rotate").get<bool>());
+	    caffe::WriteProtoToTextFile(net_param,dest_net);
+	  }
+      }
     
     this->_mlmodel.read_from_repository(this->_mlmodel._repo);
   }
