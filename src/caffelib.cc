@@ -1332,6 +1332,7 @@ namespace dd
 	    if (dp->has_batch_size() && batch_size != inputc.batch_size() && batch_size > 0)
 	      {
 		dp->set_batch_size(user_batch_size); // data params seem to handle batch_size that are no multiple of the training set
+		batch_size = user_batch_size;
 	      }
 	  }
 	else if (lp->has_memory_data_param())
