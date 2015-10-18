@@ -19,6 +19,9 @@
  * along with deepdetect.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef DD_UTILS
+#define DD_UTILS
+
 namespace dd
 {
   class dd_utils
@@ -48,3 +51,5 @@ namespace dd
     }
   };
 }
+
+#endif
