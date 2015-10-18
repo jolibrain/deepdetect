@@ -27,6 +27,7 @@
 #include <iostream>
 #include <numeric>
 #include <Eigen/Dense>
+#include "utils/utils.hpp"
 
 namespace dd
 {
@@ -245,8 +246,13 @@ namespace dd
 	    }
 	  if (bacc)
 	    {
-	      double macc = acc(ad_res);
-	      meas_out.add("acc",macc);
+	      std::map<std::string,double> accs = acc(ad_res,measures);
+	      auto mit = accs.begin();
+	      while(mit!=accs.end())
+		{
+		  meas_out.add((*mit).first,(*mit).second);
+		  ++mit;
+		}
 	    }
 	  if (bf1)
 	    {
@@ -301,19 +307,56 @@ namespace dd
     }
 
     // measure: ACC
-    static double acc(const APIData &ad)
+    static std::map<std::string,double> acc(const APIData &ad,
+					    const std::vector<std::string> &measures)
     {
-      double acc = 0.0;
+      struct acc_comp
+      {
+        acc_comp(const std::vector<double> &v)
+	:_v(v) {}
+	bool operator()(double a, double b) { return _v[a] > _v[b]; }
+	const std::vector<double> _v;
+      };
+      std::map<std::string,double> accs;
+      std::vector<int> vacck;
+      for(auto s: measures)
+	if (s.find("acc")!=std::string::npos)
+	  {
+	    std::vector<std::string> sv = dd_utils::split(s,'-');
+	    if (sv.size() == 2)
+	      {
+		vacck.push_back(std::atoi(sv.at(1).c_str()));
+	      }
+	    else vacck.push_back(1);
+	  }
+
       int batch_size = ad.get("batch_size").get<int>();
-      for (int i=0;i<batch_size;i++)
+      for (auto k: vacck)
 	{
-	  APIData bad = ad.getobj(std::to_string(i));
-	  std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
-	  int maxpr = std::distance(predictions.begin(),std::max_element(predictions.begin(),predictions.end()));
-	  if (maxpr == bad.get("target").get<double>())
-	    acc++;
+	  double acc = 0.0;
+	  for (int i=0;i<batch_size;i++)
+	    {
+	      APIData bad = ad.getobj(std::to_string(i));
+	      std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
+	      if (k-1 >= static_cast<int>(predictions.size()))
+		continue; // ignore instead of error
+	      std::vector<int> predk(predictions.size());
+	      for (size_t j=0;j<predictions.size();j++)
+		predk[j] = j;
+	      std::partial_sort(predk.begin(),predk.begin()+k-1,predk.end(),acc_comp(predictions));
+	      for (int l=0;l<k;l++)
+		if (predk.at(l) == bad.get("target").get<double>())
+		  {
+		    acc++;
+		    break;
+		  }
+	    }
+	  std::string key = "acc";
+	  if (k>1)
+	    key += "-" + std::to_string(k);
+	  accs.insert(std::pair<std::string,double>(key,acc / static_cast<double>(batch_size)));
 	}
-      return acc / static_cast<double>(batch_size);
+      return accs;
     }
 
     // measure: F1

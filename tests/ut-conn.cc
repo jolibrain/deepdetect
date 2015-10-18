@@ -48,8 +48,35 @@ TEST(outputconn,acc)
       res_ad.add(std::to_string(i),vad);
     }
   SupervisedOutput so;
-  double acc = so.acc(res_ad);
-  ASSERT_EQ(0.75,acc);
+  std::vector<std::string> measures = {"acc"};
+  std::map<std::string,double> accs = so.acc(res_ad,measures);
+  ASSERT_EQ(0.75,accs["acc"]);
+}
+
+TEST(outputconn,acck)
+{
+  std::vector<double> targets = {0, 0, 1, 2};
+  std::vector<double> pred1 = {0.7, 0.1, 0.1, 0.1};
+  std::vector<double> pred2 = {0.3, 0.5, 0.1, 0.2};
+  std::vector<double> pred3 = {0.1, 0.9, 0.0, 0.0};
+  std::vector<double> pred4 = {0.1, 0.7, 0.05, 0.15};
+  std::vector<std::vector<double>> preds = { pred1, pred2, pred3, pred4 };
+  APIData res_ad;
+  res_ad.add("batch_size",static_cast<int>(targets.size()));
+  for (size_t i=0;i<targets.size();i++)
+    {
+      APIData bad;
+      bad.add("pred",preds.at(i));
+      bad.add("target",targets.at(i));
+      std::vector<APIData> vad = {bad};
+      res_ad.add(std::to_string(i),vad);
+    }
+  SupervisedOutput so;
+  std::vector<std::string> measures = {"acc","acc-2","acc-3"};
+  std::map<std::string,double> accs = so.acc(res_ad,measures);
+  ASSERT_EQ(0.5,accs["acc"]);
+  ASSERT_EQ(0.75,accs["acc-2"]);
+  ASSERT_EQ(1.0,accs["acc-3"]);
 }
 
 TEST(outputconn,auc)
