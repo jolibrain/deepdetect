@@ -215,8 +215,16 @@ namespace dd
     {
       if (ad.has("shuffle") && ad.get("shuffle").get<bool>())
 	{
-	  std::random_device rd;
-	  std::mt19937 g(rd());
+	  std::mt19937 g;
+	  if (ad.has("seed") && ad.get("seed").get<int>() >= 0)
+	    {
+	      g = std::mt19937(ad.get("seed").get<int>());
+	    }
+	  else
+	    {
+	      std::random_device rd;
+	      g = std::mt19937(rd());
+	    }
 	  std::shuffle(_csvdata.begin(),_csvdata.end(),g);
 	}
     }

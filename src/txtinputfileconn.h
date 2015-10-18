@@ -105,6 +105,8 @@ namespace dd
     {
       if (ad_input.has("shuffle"))
 	_shuffle = ad_input.get("shuffle").get<bool>();
+      if (ad_input.has("seed"))
+	_seed = ad_input.get("seed").get<int>();
       if (ad_input.has("test_split"))
 	_test_split = ad_input.get("test_split").get<double>();
       if (ad_input.has("count"))
@@ -203,6 +205,7 @@ namespace dd
     std::string _iterator = "document";
     std::string _tokenizer = "bow";
     bool _shuffle = false;
+    int _seed = -1;
     double _test_split = 0.0;
     bool _count = true; /**< whether to add up word counters */
     bool _tfidf = false; /**< whether to use TF/IDF */

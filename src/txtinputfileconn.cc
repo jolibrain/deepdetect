@@ -105,8 +105,14 @@ namespace dd
     // shuffle files if requested
     if (_ctfc->_shuffle)
       {
-	std::random_device rd;
-	std::mt19937 g(rd());
+	std::mt19937 g;
+	if (_ctfc->_seed >= 0)
+	  g =std::mt19937(_ctfc->_seed);
+	else
+	  {
+	    std::random_device rd;
+	    g = std::mt19937(rd());
+	  }
 	std::shuffle(lfiles.begin(),lfiles.end(),g);
       }
 

@@ -111,8 +111,14 @@ namespace dd
       }
     if (_shuffle)
       {
-	std::random_device rd;
-	std::mt19937 g(rd());
+	std::mt19937 g;
+	if (_seed >= 0)
+	  g = std::mt19937(_seed);
+	else
+	  {
+	    std::random_device rd;
+	    g = std::mt19937(rd());
+	  }
 	std::shuffle(lfiles.begin(),lfiles.end(),g);
       }
     

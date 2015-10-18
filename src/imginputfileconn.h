@@ -88,6 +88,8 @@ namespace dd
 	_bw = ad.get("bw").get<bool>();
       if (ad.has("shuffle"))
 	_shuffle = ad.get("shuffle").get<bool>();
+      if (ad.has("seed"))
+	_seed = ad.get("seed").get<int>();
       if (ad.has("test_split"))
 	_test_split = ad.get("test_split").get<double>();
     }
@@ -140,8 +142,14 @@ namespace dd
       // shuffle before possible split
       if (_shuffle)
 	{
-	  std::random_device rd;
-	  std::mt19937 g(rd());
+	  std::mt19937 g;
+	  if (_seed >= 0)
+	    g = std::mt19937(_seed);
+	  else
+	    {
+	      std::random_device rd;
+	      g = std::mt19937(rd());
+	    }
 	  std::shuffle(_images.begin(),_images.end(),g);
 	}
       // split as required
@@ -179,6 +187,7 @@ namespace dd
     bool _bw = false; /**< whether to convert to black & white. */
     double _test_split = 0.0; /**< auto-split of the dataset. */
     bool _shuffle = false; /**< whether to shuffle the dataset, usually before splitting. */
+    int _seed = -1; /**< shuffling seed. */
   };
 }
 
