@@ -978,7 +978,7 @@ namespace dd
     caffe::Solver<float> *solver = nullptr;
     try
       {
-	solver = caffe::GetSolver<float>(solver_param);
+	solver = caffe::SolverRegistry<float>::CreateSolver(solver_param);
       }
     catch(std::exception &e)
       {
