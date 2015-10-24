@@ -375,7 +375,7 @@ namespace dd
 	  if (target < 0)
 	    throw OutputConnectorBadParamException("negative supervised discrete target (e.g. wrong use of label_offset ?");
 	  else if (target >= nclasses)
-	    throw OutputConnectorBadParamException("target class has id higher than the number of classes (e.g. wrong number of classes specified with nclasses");
+	    throw OutputConnectorBadParamException("target class has id " + std::to_string(target) + " is higher than the number of classes " + std::to_string(nclasses) + " (e.g. wrong number of classes specified with nclasses");
 	  conf_matrix(maxpr,target) += 1.0;
 	}
       conf_diag = conf_matrix.diagonal();
