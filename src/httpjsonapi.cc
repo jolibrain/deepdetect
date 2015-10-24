@@ -285,7 +285,8 @@ namespace dd
     http_server::options options(ahandler);
     _dd_server = new http_server(options.address(host)
 				 .port(port)
-				 .linger(false));
+				 .linger(false)
+				 .reuse_address(true));
     _ghja = this;
     _gdd_server = _dd_server;
     std::cerr << "Running DeepDetect HTTP server on " << host << ":" << port << std::endl;
