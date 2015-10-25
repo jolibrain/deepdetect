@@ -235,7 +235,13 @@ namespace dd
 	{
 	  std::vector<std::string> measures = ad_out.get("measure").get<std::vector<std::string>>();
       	  bool bauc = (std::find(measures.begin(),measures.end(),"auc")!=measures.end());
-	  bool bacc = (std::find(measures.begin(),measures.end(),"acc")!=measures.end());
+	  bool bacc = false;
+	  for (auto s: measures)
+	    if (s.find("acc")!=std::string::npos)
+	      {
+		bacc = true;
+		break;
+	      }
 	  bool bf1 = (std::find(measures.begin(),measures.end(),"f1")!=measures.end());
 	  bool bmcll = (std::find(measures.begin(),measures.end(),"mcll")!=measures.end());
 	  bool bgini = (std::find(measures.begin(),measures.end(),"gini")!=measures.end());
@@ -329,7 +335,7 @@ namespace dd
 	      }
 	    else vacck.push_back(1);
 	  }
-
+      
       int batch_size = ad.get("batch_size").get<int>();
       for (auto k: vacck)
 	{
