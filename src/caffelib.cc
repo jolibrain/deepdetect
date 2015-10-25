@@ -795,7 +795,7 @@ namespace dd
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::create_model()
+  int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::create_model(const bool &test)
   {
     if (!this->_mlmodel._def.empty() && !this->_mlmodel._weights.empty()) // whether in prediction mode...
       {
@@ -804,7 +804,9 @@ namespace dd
 	    delete _net;
 	    _net = nullptr;
 	  }
-	_net = new Net<float>(this->_mlmodel._def,caffe::TRAIN); //TODO: change phase in predict or if model is available
+	if (!test)
+	  _net = new Net<float>(this->_mlmodel._def,caffe::TRAIN);
+	else _net = new Net<float>(this->_mlmodel._def,caffe::TEST);
 	_net->CopyTrainedLayersFrom(this->_mlmodel._weights);
 	return 0;
       }
@@ -1205,15 +1207,15 @@ namespace dd
     std::lock_guard<std::mutex> lock(_net_mutex); // no concurrent calls since the net is not re-instantiated
 
     // check for net
-    if (!_net)
+    if (!_net || _net->phase() == caffe::TRAIN)
       {
-	int cm = create_model();
+	int cm = create_model(true);
 	if (cm == 1)
 	  throw MLLibInternalException("no model in " + this->_mlmodel._repo + " for initializing the net");
 	else if (cm == 2)
 	  throw MLLibBadParamException("no deploy file in " + this->_mlmodel._repo + " for initializing the net");
       }
-
+    
     // parameters
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
 #ifndef CPU_ONLY

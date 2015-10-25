@@ -92,7 +92,7 @@ namespace dd
      * \brief creates neural net instance based on model
      * @return 0 if OK, 2, if missing 'deploy' file, 1 otherwise
      */
-    int create_model();
+    int create_model(const bool &test=false);
     
     /*- from mllib -*/
     /**
