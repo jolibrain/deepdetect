@@ -22,7 +22,7 @@ Current features include:
 - remote Python client library
 - dedicated server with support for asynchronous training calls
 - high performances, benefit from multicores and GPU
-- connector to handle large collections of images
+- connector to handle large collections of images with on-the-fly data augmentation (e.g. rotations, mirroring)
 - connector to handle CSV files with preprocessing capabilities
 - connector to handle text files
 - range of built-in model assessment measures (e.g. F1, multiclass log loss, ...)
