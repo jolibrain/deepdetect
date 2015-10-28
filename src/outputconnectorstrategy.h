@@ -548,6 +548,7 @@ namespace dd
       static std::string cl = "classes";
       static std::string phead = "prob";
       static std::string chead = "cat";
+      static std::string last = "last";
       std::vector<APIData> vpred;
       
       //debug
@@ -565,8 +566,10 @@ namespace dd
 	      APIData nad;
 	      nad.add(chead,(*mit).second);
 	      nad.add(phead,(*mit).first);
-	      v.push_back(nad);
 	      ++mit;
+	      if (mit == _vvcats.at(i)._cats.end())
+		nad.add(last,true);
+	      v.push_back(nad);
 	    }
 	  APIData adpred;
 	  adpred.add(cl,v);

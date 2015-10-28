@@ -193,6 +193,14 @@ namespace dd
     return jd;
   }
 
+  JDoc JsonAPI::dd_output_connector_network_error_1009() const
+  {
+    JDoc jd;
+    jd.SetObject();
+    render_status(jd,404,"Not Found",1009,"Output Connector Network Error");
+    return jd;
+  }
+  
   std::string JsonAPI::jrender(const JDoc &jst) const
   {
     rapidjson::StringBuffer buffer;
@@ -467,6 +475,15 @@ namespace dd
 	APIData ad_params = ad_data.getobj("parameters");
 	APIData ad_output = ad_params.getobj("output");
 	jpred.AddMember("template",JVal().SetString(ad_output.get("template").get<std::string>().c_str(),jpred.GetAllocator()),jpred.GetAllocator());
+      }
+    if (ad_data.getobj("parameters").getobj("output").has("network"))
+      {
+	APIData ad_params = ad_data.getobj("parameters");
+	APIData ad_output = ad_params.getobj("output");
+	APIData ad_net = ad_output.getobj("network");
+	JVal jnet(rapidjson::kObjectType);
+	ad_net.toJVal(jpred,jnet);
+	jpred.AddMember("network",jnet,jpred.GetAllocator());
       }
     return jpred;
   }

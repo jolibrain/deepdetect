@@ -30,6 +30,7 @@
 #include "ext/rapidjson/reader.h"
 #include "ext/rapidjson/writer.h"
 #include <gflags/gflags.h>
+#include "utils/httpclient.hpp"
 
 DEFINE_string(host,"localhost","host for running the server");
 DEFINE_string(port,"8080","server port");
@@ -133,6 +134,7 @@ public:
 		       const JDoc &janswer)
   {
     int code = janswer["status"]["code"].GetInt();
+    int outcode = code;
     std::string stranswer;
     if (janswer.HasMember("template")) // if output template, fillup with rendered template.
       {
@@ -145,7 +147,32 @@ public:
       {
 	stranswer = _hja->jrender(janswer);
       }
-    response = http_server::response::stock_reply(http_server::response::status_type(code),stranswer);
+    if (janswer.HasMember("network"))
+      {
+	//- grab network call parameters
+	std::string url,http_method="POST",content_type="Content-Type: application/json";
+	if (janswer["network"].HasMember("url"))
+	  url = janswer["network"]["url"].GetString();
+	if (janswer["network"].HasMember("http_method"))
+	  http_method = janswer["network"]["http_method"].GetString();
+	if (janswer["network"].HasMember("content_type"))
+	  content_type = janswer["network"]["content_type"].GetString();
+	
+	//- make call
+	std::string outstr;
+	try
+	  {
+	    dd::httpclient::post_call(url,stranswer,http_method,outcode,outstr,content_type);
+	    stranswer = outstr;
+	  }
+	catch (std::runtime_error &e)
+	  {
+	    LOG(ERROR) << e.what() << std::endl;
+	    LOG(INFO) << stranswer << std::endl;
+	    stranswer = _hja->jrender(_hja->dd_output_connector_network_error_1009());
+	  }
+      }
+    response = http_server::response::stock_reply(http_server::response::status_type(outcode),stranswer);
     response.status = static_cast<http_server::response::status_type>(code);
   }
 
