@@ -153,23 +153,32 @@ public:
 	std::string url,http_method="POST",content_type="Content-Type: application/json";
 	if (janswer["network"].HasMember("url"))
 	  url = janswer["network"]["url"].GetString();
-	if (janswer["network"].HasMember("http_method"))
-	  http_method = janswer["network"]["http_method"].GetString();
-	if (janswer["network"].HasMember("content_type"))
-	  content_type = janswer["network"]["content_type"].GetString();
-	
-	//- make call
-	std::string outstr;
-	try
+	if (url.empty())
 	  {
-	    dd::httpclient::post_call(url,stranswer,http_method,outcode,outstr,content_type);
-	    stranswer = outstr;
+	    LOG(ERROR) << "missing url in network output connector";
+	    stranswer = _hja->jrender(_hja->dd_bad_request_400());
+	    code = 400;
 	  }
-	catch (std::runtime_error &e)
+	else
 	  {
-	    LOG(ERROR) << e.what() << std::endl;
-	    LOG(INFO) << stranswer << std::endl;
-	    stranswer = _hja->jrender(_hja->dd_output_connector_network_error_1009());
+	    if (janswer["network"].HasMember("http_method"))
+	      http_method = janswer["network"]["http_method"].GetString();
+	    if (janswer["network"].HasMember("content_type"))
+	      content_type = janswer["network"]["content_type"].GetString();
+	    
+	    //- make call
+	    std::string outstr;
+	    try
+	      {
+		dd::httpclient::post_call(url,stranswer,http_method,outcode,outstr,content_type);
+		stranswer = outstr;
+	      }
+	    catch (std::runtime_error &e)
+	      {
+		LOG(ERROR) << e.what() << std::endl;
+		LOG(INFO) << stranswer << std::endl;
+		stranswer = _hja->jrender(_hja->dd_output_connector_network_error_1009());
+	      }
 	  }
       }
     response = http_server::response::stock_reply(http_server::response::status_type(outcode),stranswer);
