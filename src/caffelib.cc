@@ -797,7 +797,7 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::create_model(const bool &test)
   {
-    if (!this->_mlmodel._def.empty() && !this->_mlmodel._weights.empty()) // whether in prediction mode...
+    if (!this->_mlmodel._def.empty() && !this->_mlmodel._weights.empty())
       {
 	if (_net)
 	  {
@@ -1005,18 +1005,23 @@ namespace dd
 	inputc._dv.clear();
 	inputc._ids.clear();
       }
-    if (!this->_mlmodel._weights.empty())
+    if (ad_mllib.has("resume") && ad_mllib.get("resume").get<bool>())
+      {
+	this->_mlmodel.read_from_repository(this->_mlmodel._repo);
+	if (this->_mlmodel._sstate.empty())
+	  throw MLLibBadParamException("resuming a model requires a .solverstate file in model repository");
+	else solver->Restore(this->_mlmodel._sstate.c_str());
+      }
+    else if (!this->_mlmodel._weights.empty())
       {
 	solver->net()->CopyTrainedLayersFrom(this->_mlmodel._weights);
       }
-    
-    std::string snapshot_file = ad.get("snapshot_file").get<std::string>();
-    if (!snapshot_file.empty())
-      solver->Restore(snapshot_file.c_str());    
-    
-    solver->iter_ = 0;
-    solver->current_step_ = 0;
-    
+    else
+      {
+	solver->iter_ = 0;
+	solver->current_step_ = 0;
+      }
+	
     const int start_iter = solver->iter_;
     int average_loss = solver->param_.average_loss();
     std::vector<float> losses;
