@@ -226,7 +226,7 @@ TEST(inputconn,csv_copy)
   CSVInputFileConn cifc;
   cifc.init(ad.getobj("parameters").getobj("input"));
   CSVInputFileConn cifc2 = cifc;
-  ASSERT_EQ("val5",cifc2._label);
+  ASSERT_EQ("val5",cifc2._label[0]);
   ASSERT_EQ("id",cifc2._id);
 }
 

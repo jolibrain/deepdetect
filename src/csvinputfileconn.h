@@ -128,9 +128,46 @@ namespace dd
       read_scale_vals(ad_input);
 
       if (ad_input.has("label"))
-	_label = ad_input.get("label").get<std::string>();
+	{
+	  try
+	    {
+	      std::string label = ad_input.get("label").get<std::string>();
+	      _label.push_back(label);
+	    }
+	  catch(std::exception &e)
+	    {
+	      try
+		{
+		  _label = ad_input.get("label").get<std::vector<std::string>>();
+		}
+	      catch(std::exception &e)
+		{
+		  throw InputConnectorBadParamException("wrong type for label parameter");
+		}
+	    }
+	  for (size_t l=0;l<_label.size();l++)
+	    _label_pos.push_back(-1);
+	}
+      //TODO: array
       if (ad_input.has("label_offset"))
-	_label_offset = ad_input.get("label_offset").get<int>();
+	{
+	  try
+	    {
+	      int label_offset = ad_input.get("label_offset").get<int>();
+	      _label_offset.push_back(label_offset);
+	    }
+	  catch(std::exception &e)
+	    {
+	      try
+		{
+		  _label_offset = ad_input.get("label_offset").get<std::vector<int>>();
+		}
+	      catch(std::exception &e)
+		{
+		  throw InputConnectorBadParamException("wrong type for label_offset parameter");
+		}
+	    }
+	}
 
       if (ad_input.has("categoricals"))
 	{
@@ -165,7 +202,7 @@ namespace dd
       auto lit = _columns.begin();
       for (int j=0;j<(int)vals.size();j++)
 	{
-	  if ((_columns.empty() || (*lit) != _id) && (_label_pos < 0 || j != _label_pos) && _max_vals.at(j) != _min_vals.at(j))
+	  if ((_columns.empty() || (*lit) != _id) && (_label_pos[0] < 0 || j != _label_pos[0]) && _max_vals.at(j) != _min_vals.at(j))
 	    vals.at(j) = (vals.at(j) - _min_vals.at(j)) / (_max_vals.at(j) - _min_vals.at(j));
 	  ++lit;
 	}
@@ -293,11 +330,13 @@ namespace dd
 	    }
 
 	  // check on common and required parameters
-	  if (ad_input.has("label"))
+	  /*if (ad_input.has("label"))
 	    _label = ad_input.get("label").get<std::string>();
-	  else if (_train && _label.empty()) throw InputConnectorBadParamException("missing label column parameter");
-	  if (ad_input.has("label_offset"))
-	    _label_offset = ad_input.get("label_offset").get<int>();
+	    else*/
+	  if (!ad_input.has("label") && _train && _label.empty())
+	    throw InputConnectorBadParamException("missing label column parameter");
+	  /*if (ad_input.has("label_offset"))
+	    _label_offset = ad_input.get("label_offset").get<int>();*/
 
 	  if (!_csv_fname.empty()) // when training from file
 	    {
@@ -376,8 +415,8 @@ namespace dd
     int feature_size() const
     {
       if (!_id.empty())
-	return _columns.size() - 2; // minus label and id
-      else return _columns.size() - 1; // minus label
+	return _columns.size() - 1 - _label.size(); // minus label and id
+      else return _columns.size() - _label.size(); // minus label
     }
 
     void response_params(APIData &out)
@@ -454,11 +493,11 @@ namespace dd
     std::string _csv_fname;
     std::string _csv_test_fname;
     std::list<std::string> _columns;
-    std::string _label;
+    std::vector<std::string> _label;
     std::string _delim = ",";
     int _id_pos = -1;
-    int _label_pos = -1;
-    int _label_offset = 0; /**< negative offset so that labels range from 0 onward */
+    std::vector<int> _label_pos;// = -1;
+    std::vector<int> _label_offset; /**< negative offset so that labels range from 0 onward */
     std::unordered_set<std::string> _ignored_columns;
     std::unordered_set<int> _ignored_columns_pos;
     std::string _id;

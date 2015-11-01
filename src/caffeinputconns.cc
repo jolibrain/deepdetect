@@ -568,11 +568,11 @@ namespace dd
       throw InputConnectorBadParamException("training CSV file " + _csv_fname + " does not exist");
     if (_uris.size() > 1)
       _csv_test_fname = _uris.at(1);
-    if (ad_input.has("label"))
+    /*if (ad_input.has("label"))
       _label = ad_input.get("label").get<std::string>();
     else if (_train && _label.empty()) throw InputConnectorBadParamException("missing label column parameter");
     if (ad_input.has("label_offset"))
-      _label_offset = ad_input.get("label_offset").get<int>();
+    _label_offset = ad_input.get("label_offset").get<int>();*/
     
     DataEl<DDCCsv> ddcsv;
     ddcsv._ctype._cifc = this;

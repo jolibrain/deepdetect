@@ -384,7 +384,7 @@ namespace dd
       caffe::Datum datum;
       int datum_channels = vf.size();
       if (!_label.empty())
-	datum_channels--;
+	datum_channels -= _label.size();
       if (!_id.empty())
 	datum_channels--;
       datum.set_channels(datum_channels);
@@ -393,9 +393,9 @@ namespace dd
       auto lit = _columns.begin();
       for (int i=0;i<(int)vf.size();i++)
 	{
-	  if (i == _label_pos)
+	  if (i == _label_pos[0])
 	    {
-	      datum.set_label(static_cast<float>(vf.at(i)+this->_label_offset));
+	      datum.set_label(static_cast<float>(vf.at(i)+this->_label_offset[0]));
 	    }
 	  else if (i == _id_pos)
 	    {

@@ -110,8 +110,8 @@ namespace dd
       {
 	if ((*lit) == _id)
 	  _id_pos = i;
-	else if ((*lit) == _label)
-	  _label_pos = i;
+	else if ((*lit) == _label[0])
+	  _label_pos[0] = i;
 	++i;
 	++lit;
       }
@@ -214,8 +214,8 @@ namespace dd
 	  }
 	else _columns.push_back(col);
 	
-	if (col == _label)
-	  _label_pos = i;
+	if (col == _label[0])
+	  _label_pos[0] = i;
 	if (!has_id && !_id.empty() && col == _id)
 	  {
 	    _id_pos = i;
@@ -223,8 +223,8 @@ namespace dd
 	  }
 	++i;
       }
-    if (_label_pos < 0 && _train)
-      throw InputConnectorBadParamException("cannot find label column " + _label);
+    if (_label_pos[0] < 0 && _train)
+      throw InputConnectorBadParamException("cannot find label column " + _label[0]);
     if (!_id.empty() && !has_id)
       throw InputConnectorBadParamException("cannot find id column " + _id);
   }
@@ -241,7 +241,7 @@ namespace dd
       read_header(hline);
       
       //debug
-      std::cout << "label=" << _label << " / pos=" << _label_pos << std::endl;
+      std::cout << "label=" << _label[0] << " / pos=" << _label_pos[0] << std::endl;
       std::cout << "CSV columns:\n";
       std::copy(_columns.begin(),_columns.end(),
 		std::ostream_iterator<std::string>(std::cout," "));
