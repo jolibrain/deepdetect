@@ -146,7 +146,10 @@ namespace dd
 		}
 	    }
 	  for (size_t l=0;l<_label.size();l++)
-	    _label_pos.push_back(-1);
+	    {
+	      _label_pos.push_back(-1);
+	      _label_set.insert(std::pair<std::string,int>(_label.at(l),l));
+	    }
 	}
       //TODO: array
       if (ad_input.has("label_offset"))
@@ -494,6 +497,7 @@ namespace dd
     std::string _csv_test_fname;
     std::list<std::string> _columns;
     std::vector<std::string> _label;
+    std::unordered_map<std::string,int> _label_set;
     std::string _delim = ",";
     int _id_pos = -1;
     std::vector<int> _label_pos;// = -1;

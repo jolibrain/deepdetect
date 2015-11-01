@@ -299,10 +299,10 @@ namespace dd
     {
       APIData ad_param = ad.getobj("parameters");
       APIData ad_input = ad_param.getobj("input");
-      fillup_parameters(ad_input);
       
       if (_train && ad_input.has("db") && ad_input.get("db").get<bool>())
 	{
+	  fillup_parameters(ad_input);
 	  get_data(ad);
 	  _db = true;
 	  _model_repo = ad.get("model_repo").get<std::string>();
@@ -332,7 +332,18 @@ namespace dd
 	  auto hit = _csvdata.begin();
 	  while(hit!=_csvdata.end())
 	    {
-	      _dv.push_back(to_datum((*hit)._v));
+	      if (_label.size() == 1)
+		_dv.push_back(to_datum((*hit)._v));
+	      else // multi labels
+		{
+		  caffe::Datum dat = to_datum((*hit)._v,true);
+		  for (size_t i=0;i<_label_pos.size();i++) // concat labels and slice them out in the network itself
+		    {
+		      dat.add_float_data(static_cast<float>((*hit)._v.at(_label_pos[i])));
+		    }
+		  dat.set_channels(dat.channels()+_label.size());
+		  _dv.push_back(dat);
+		}
 	      _ids.push_back((*hit)._str);
 	      ++hit;
 	    }
@@ -341,8 +352,18 @@ namespace dd
 	  while(hit!=_csvdata_test.end())
 	    {
 	      // no ids taken on the test set
-	      caffe::Datum dat = to_datum((*hit)._v);
-	      _dv_test.push_back(dat);
+	      if (_label.size() == 1)
+		_dv_test.push_back(to_datum((*hit)._v));
+	      else
+		{
+		  caffe::Datum dat = to_datum((*hit)._v,true);
+		  for (size_t i=0;i<_label_pos.size();i++)
+		    {
+		      dat.add_float_data(static_cast<float>((*hit)._v.at(_label_pos[i])));
+		    }
+		  dat.set_channels(dat.channels()+_label.size());
+		  _dv_test.push_back(dat);
+		}
 	      ++hit;
 	    }
 	  _csvdata_test.clear();
@@ -379,7 +400,8 @@ namespace dd
      * @param vector of values
      * @return datum
      */
-    caffe::Datum to_datum(const std::vector<double> &vf)
+    caffe::Datum to_datum(const std::vector<double> &vf,
+			  const bool &multi_label=false)
     {
       caffe::Datum datum;
       int datum_channels = vf.size();
@@ -393,7 +415,7 @@ namespace dd
       auto lit = _columns.begin();
       for (int i=0;i<(int)vf.size();i++)
 	{
-	  if (i == _label_pos[0])
+	  if (!multi_label && i == _label_pos[0])
 	    {
 	      datum.set_label(static_cast<float>(vf.at(i)+this->_label_offset[0]));
 	    }
@@ -402,8 +424,8 @@ namespace dd
 	      ++lit;
 	      continue;
 	    }
-	  else 
-	    {
+	  else if (std::find(_label_pos.begin(),_label_pos.end(),i)==_label_pos.end()) // XXX: could do a faster lookup
+	  {
 	      datum.add_float_data(static_cast<float>(vf.at(i)));
 	    }
 	  ++lit;

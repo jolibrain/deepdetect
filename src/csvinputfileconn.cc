@@ -202,6 +202,7 @@ namespace dd
     
     // read header
     std::unordered_set<std::string>::const_iterator hit;
+    std::unordered_map<std::string,int>::const_iterator hit2;
     int i = 0;
     bool has_id = false;
     while(std::getline(sg,col,_delim[0]))
@@ -214,8 +215,8 @@ namespace dd
 	  }
 	else _columns.push_back(col);
 	
-	if (col == _label[0])
-	  _label_pos[0] = i;
+	if ((hit2=_label_set.find(col))!=_label_set.end())
+	  _label_pos.at((*hit2).second) = i;
 	if (!has_id && !_id.empty() && col == _id)
 	  {
 	    _id_pos = i;
@@ -223,8 +224,9 @@ namespace dd
 	  }
 	++i;
       }
-    if (_label_pos[0] < 0 && _train)
-      throw InputConnectorBadParamException("cannot find label column " + _label[0]);
+    for (size_t j=0;j<_label_pos.size();j++)
+      if (_label_pos.at(j) < 0 && _train)
+	throw InputConnectorBadParamException("cannot find label column " + _label[j]);
     if (!_id.empty() && !has_id)
       throw InputConnectorBadParamException("cannot find id column " + _id);
   }
@@ -241,7 +243,7 @@ namespace dd
       read_header(hline);
       
       //debug
-      std::cout << "label=" << _label[0] << " / pos=" << _label_pos[0] << std::endl;
+      std::cerr << "label size=" << _label.size() << " / label_pos size=" << _label_pos.size() << std::endl;
       std::cout << "CSV columns:\n";
       std::copy(_columns.begin(),_columns.end(),
 		std::ostream_iterator<std::string>(std::cout," "));
