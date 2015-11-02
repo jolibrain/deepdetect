@@ -14,6 +14,9 @@ DeepDetect implements support for supervised deep learning of images and other d
 Setup an image classifier API service in a few minutes:
 http://www.deepdetect.com/tutorials/imagenet-classifier/
 
+#### Tutorials
+List of tutorials, training from text, data and images, setup of prediction services, and export to external software (e.g. ElasticSearch): http://www.deepdetect.com/tutorials/tutorials/
+
 #### Features and Documentation
 Current features include:
 
