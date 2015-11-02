@@ -994,6 +994,7 @@ namespace dd
 	}
 	catch(std::exception &e)
 	  {
+	    delete solver;
 	    throw;
 	  }
 	/*if (!solver->test_nets().empty())
@@ -1009,12 +1010,23 @@ namespace dd
       {
 	this->_mlmodel.read_from_repository(this->_mlmodel._repo);
 	if (this->_mlmodel._sstate.empty())
-	  throw MLLibBadParamException("resuming a model requires a .solverstate file in model repository");
+	  {
+	    delete solver;
+	    throw MLLibBadParamException("resuming a model requires a .solverstate file in model repository");
+	  }
 	else solver->Restore(this->_mlmodel._sstate.c_str());
       }
     else if (!this->_mlmodel._weights.empty())
       {
-	solver->net()->CopyTrainedLayersFrom(this->_mlmodel._weights);
+	try
+	  {
+	    solver->net()->CopyTrainedLayersFrom(this->_mlmodel._weights);
+	  }
+	catch(std::exception &e)
+	  {
+	    delete solver;
+	    throw;
+	  }
       }
     else
       {
