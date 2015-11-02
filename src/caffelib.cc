@@ -152,7 +152,6 @@ namespace dd
 												   caffe::NetParameter &net_param,
 												   caffe::NetParameter &deploy_net_param)
   {
-    //- get relevant configuration elements
     std::vector<int> layers;
     std::string activation = "ReLU";
     double dropout = 0.5;
@@ -172,148 +171,143 @@ namespace dd
       }
     if (ad.has("dropout"))
       dropout = ad.get("dropout").get<double>();
-    if (layers.empty() && activation == "ReLU" && dropout == 0.5)
+    if (layers.empty() && activation == "ReLU" && dropout == 0.5) //TODO: and no multi-label
       return; // nothing to do
 
-    //- find template first and unique layer (i.e. layer + dropout), update it.
-    for (int l=1;l<5;l++)
-      {
-	caffe::LayerParameter *lparam = net_param.mutable_layer(l);
-	caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(l);
-	if (lparam->type() == "InnerProduct")
-	  {
-	    lparam->mutable_inner_product_param()->set_num_output(layers.at(0));
-	  }
-	else if (lparam->type() == "ReLU" && activation != "ReLU")
-	  {
-	    lparam->set_type(activation);
-	  }
-	else if (lparam->type() == "Dropout" && dropout != 0.5)
-	  {
-	    lparam->mutable_dropout_param()->set_dropout_ratio(dropout);
-	  }
-	if (dlparam->type() == "InnerProduct")
-	  {
-	    dlparam->mutable_inner_product_param()->set_num_output(layers.at(0));
-	  }
-	else if (dlparam->type() == "ReLU" && activation != "ReLU")
-	  {
-	    dlparam->set_type(activation);
-	  }
-      }
-    
-    //- add as many other layers as requested.
-    if (layers.size() == 1)
-      {
-	if (!cnclasses) // leave classes unchanged
-	  return;
-	else // adapt classes number
-	  {
-	    caffe::LayerParameter *lparam = net_param.mutable_layer(5);
-	    caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(3);
-	    lparam->mutable_inner_product_param()->set_num_output(cnclasses);
-	    dlparam->mutable_inner_product_param()->set_num_output(cnclasses);
-	    return;
-	  }
-      }
     int nclasses = 0;
-    int rl = 5;
-    int drl = 3;
-    for (size_t l=1;l<layers.size();l++)
+    int rl = 2;
+    int drl = 1;
+    int max_rl = 8;
+    int max_drl = 5;
+    caffe::LayerParameter *lparam = nullptr;
+    caffe::LayerParameter *dlparam = nullptr;
+    std::string prec_ip = "data";
+    std::string last_ip = "ip1";
+    for (size_t l=0;l<layers.size();l++)
       {
-	if (l == 1) // replacing two existing layers
+	if (l == 0)
 	  {
-	    caffe::LayerParameter *lparam = net_param.mutable_layer(rl);
+	    lparam = net_param.mutable_layer(6);
 	    if (!cnclasses) // if unknown we keep the default one
 	      nclasses = lparam->mutable_inner_product_param()->num_output();
 	    else nclasses = cnclasses;
-	    lparam->mutable_inner_product_param()->set_num_output(layers.at(l));
-	    ++rl;
-	    caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(drl);
-	    dlparam->mutable_inner_product_param()->set_num_output(layers.at(l));
-	    ++drl;
-	    
+	  }
+	else if (l > 0)
+	  {
+	    prec_ip = "ip" + std::to_string(l-1);
+	    last_ip = "ip" + std::to_string(l);
+	  }
+
+	if (rl < max_rl)
+	  {
 	    lparam = net_param.mutable_layer(rl);
 	    lparam->clear_include();
 	    lparam->clear_top();
 	    lparam->clear_bottom();
-	    lparam->set_name("act2");
-	    lparam->set_type(activation);
-	    lparam->add_bottom("ip2");
-	    lparam->add_top("ip2");
-	    ++rl;
+	    lparam->clear_inner_product_param();
+	    lparam->clear_dropout_param();
+	    lparam->clear_loss_weight();
+	  }
+	else lparam = net_param.add_layer();
+	lparam->set_name(last_ip);
+	lparam->set_type("InnerProduct");
+	lparam->add_bottom(prec_ip);
+	lparam->add_top(last_ip);
+	caffe::InnerProductParameter *ipp = lparam->mutable_inner_product_param();
+	ipp->set_num_output(layers.at(l));
+	ipp->mutable_weight_filler()->set_type("xavier");
+	ipp->mutable_bias_filler()->set_type("constant");
+	++rl;
+	
+	if (drl < max_drl)
+	  {
 	    dlparam = deploy_net_param.mutable_layer(drl);
+	    dlparam->clear_include();
 	    dlparam->clear_top();
 	    dlparam->clear_bottom();
-	    dlparam->set_name("act2");
-	    dlparam->set_type(activation);
-	    dlparam->add_bottom("ip2");
-	    dlparam->add_top("ip2");
-	    ++drl;
-
-	    //TODO: no dropout, requires to use last existing layer with l > 1
+	    dlparam->clear_inner_product_param();
+	    dlparam->clear_dropout_param();
+	    dlparam->clear_loss_weight();
+	  }
+	else dlparam = deploy_net_param.add_layer();
+	dlparam->set_name(last_ip);
+	dlparam->set_type("InnerProduct");
+	dlparam->add_bottom(prec_ip);
+	dlparam->add_top(last_ip);
+	ipp = dlparam->mutable_inner_product_param();
+	ipp->set_num_output(layers.at(l));
+	ipp->mutable_weight_filler()->set_type("xavier");
+	ipp->mutable_bias_filler()->set_type("constant");
+	++drl;
+	
+	if (rl < max_rl)
+	  {
 	    lparam = net_param.mutable_layer(rl);
+	    lparam->clear_include();
+	    lparam->clear_top();
+	    lparam->clear_bottom();
+	    lparam->clear_loss_weight();
+	    lparam->clear_dropout_param();
+	    lparam->clear_inner_product_param();
+	  }
+	else lparam = net_param.add_layer();
+	lparam->set_name("act"+std::to_string(l));
+	lparam->set_type(activation);
+	lparam->add_bottom(last_ip);
+	lparam->add_top(last_ip);
+	++rl;
+
+	if (drl < max_drl)
+	  {
+	    dlparam = deploy_net_param.mutable_layer(drl);
+	    dlparam->clear_include();
+	    dlparam->clear_top();
+	    dlparam->clear_bottom();
+	    dlparam->clear_loss_weight();
+	    dlparam->clear_dropout_param();
+	    dlparam->clear_inner_product_param();
+	  }
+	else dlparam = deploy_net_param.add_layer();
+	dlparam->set_name("act"+std::to_string(l));
+	dlparam->set_type(activation);
+	dlparam->add_bottom(last_ip);
+	dlparam->add_top(last_ip);
+	++drl;
+	
+	//TODO: if dropout ratio != 0 and != 1
+	if (rl < max_rl)
+	  {
+	    lparam = net_param.mutable_layer(rl);
+	    lparam->clear_include();
 	    lparam->clear_bottom();
 	    lparam->clear_top();
-	    lparam->set_name("drop2");
-	    lparam->set_type("Dropout");
-	    lparam->add_bottom("ip2");
-	    lparam->add_top("ip2");
-	    lparam->mutable_dropout_param()->set_dropout_ratio(dropout);
+	    lparam->clear_loss_weight();
+	    lparam->clear_dropout_param();
+	    lparam->clear_inner_product_param();
 	  }
-	else
-	  {
-	    std::string prec_ip = "ip" + std::to_string(l);
-	    std::string curr_ip = "ip" + std::to_string(l+1);
-	    caffe::LayerParameter *lparam = net_param.add_layer(); // inner product layer
-	    lparam->set_name(curr_ip);
-	    lparam->set_type("InnerProduct");
-	    lparam->add_bottom(prec_ip);
-	    lparam->add_top(curr_ip);
-	    caffe::InnerProductParameter *ipp = lparam->mutable_inner_product_param();
-	    ipp->set_num_output(layers.at(l));
-	    ipp->mutable_weight_filler()->set_type("gaussian");
-	    ipp->mutable_weight_filler()->set_std(0.1);
-	    ipp->mutable_bias_filler()->set_type("constant");
-
-	    caffe::LayerParameter *dlparam = deploy_net_param.add_layer();
-	    dlparam->set_name(curr_ip);
-	    dlparam->set_type("InnerProduct");
-	    dlparam->add_bottom(prec_ip);
-	    dlparam->add_top(curr_ip);
-	    caffe::InnerProductParameter *dipp = dlparam->mutable_inner_product_param();
-	    dipp->set_num_output(layers.at(l));
-	    dipp->mutable_weight_filler()->set_type("gaussian");
-	    dipp->mutable_weight_filler()->set_std(0.1);
-	    dipp->mutable_bias_filler()->set_type("constant");
-	    
-	    lparam = net_param.add_layer(); // activation layer
-	    std::string act = "act" + std::to_string(l+1);
-	    lparam->set_name(act);
-	    lparam->set_type(activation);
-	    lparam->add_bottom(curr_ip);
-	    lparam->add_top(curr_ip);
-
-	    dlparam = deploy_net_param.add_layer();
-	    dlparam->set_name(act);
-	    dlparam->set_type(activation);
-	    dlparam->add_bottom(curr_ip);
-	    dlparam->add_top(curr_ip);
-	    
-	    lparam = net_param.add_layer(); // dropout layer
-	    std::string drop = "drop" + std::to_string(l+1);
-	    lparam->set_name(drop);
-	    lparam->set_type("Dropout");
-	    lparam->add_bottom(curr_ip);
-	    lparam->add_top(curr_ip);
-	    lparam->mutable_dropout_param()->set_dropout_ratio(dropout);
-	  }
+	else lparam = net_param.add_layer(); // dropout layer
+	lparam->set_name("drop"+std::to_string(l));
+	lparam->set_type("Dropout");
+	lparam->add_bottom("pool"+std::to_string(l));
+	lparam->add_top("pool"+std::to_string(l));
+	lparam->mutable_dropout_param()->set_dropout_ratio(dropout);
+	++rl;
       }
 
     // add remaining softmax layers
-    std::string prec_ip = "ip" + std::to_string(layers.size());
-    std::string last_ip = "ip" + std::to_string(layers.size()+1);
-    caffe::LayerParameter *lparam = net_param.add_layer(); // last inner product before softmax
+    prec_ip = "ip" + std::to_string(layers.size());
+    last_ip = "ip" + std::to_string(layers.size()+1);
+    if (rl < max_rl)
+      {
+	lparam = net_param.mutable_layer(rl); // last inner product before softmax
+	lparam->clear_include();
+	lparam->clear_bottom();
+	lparam->clear_top();
+	lparam->clear_loss_weight();
+	lparam->clear_dropout_param();
+	lparam->clear_inner_product_param();
+      }
+    else lparam = net_param.add_layer();
     lparam->set_name(last_ip);
     lparam->set_type("InnerProduct");
     lparam->add_bottom(prec_ip);
@@ -323,8 +317,19 @@ namespace dd
     ipp->mutable_weight_filler()->set_type("gaussian");
     ipp->mutable_weight_filler()->set_std(0.1);
     ipp->mutable_bias_filler()->set_type("constant");
+    ++rl;
 
-    caffe::LayerParameter *dlparam = deploy_net_param.add_layer();
+    if (drl < max_drl)
+      {
+	dlparam = deploy_net_param.mutable_layer(drl);
+	dlparam->clear_include();
+	dlparam->clear_top();
+	dlparam->clear_bottom();
+	dlparam->clear_loss_weight();
+	dlparam->clear_dropout_param();
+	dlparam->clear_inner_product_param();
+      }
+    else dlparam = deploy_net_param.add_layer();
     dlparam->set_name(last_ip);
     dlparam->set_type("InnerProduct");
     dlparam->add_bottom(prec_ip);
@@ -334,19 +339,41 @@ namespace dd
     dipp->mutable_weight_filler()->set_type("gaussian");
     dipp->mutable_weight_filler()->set_std(0.1);
     dipp->mutable_bias_filler()->set_type("constant");
+    ++drl;
 
     if (!regression)
       {
-	lparam = net_param.add_layer(); // test loss
+	if (rl < max_rl)
+	  {
+	    lparam = net_param.mutable_layer(rl);
+	    lparam->clear_include();
+	    lparam->clear_bottom();
+	    lparam->clear_top();
+	    lparam->clear_loss_weight();
+	    lparam->clear_dropout_param();
+	    lparam->clear_inner_product_param();
+	  }
+	else lparam = net_param.add_layer(); // test loss
 	lparam->set_name("losst");
         lparam->set_type("Softmax");
 	lparam->add_bottom(last_ip);
 	lparam->add_top("losst");
 	caffe::NetStateRule *nsr = lparam->add_include();
 	nsr->set_phase(caffe::TEST);
+	++rl;
       }
 
-    lparam = net_param.add_layer(); // training loss
+    if (rl < max_rl)
+      {
+	lparam = net_param.mutable_layer(rl);
+	lparam->clear_include();
+	lparam->clear_bottom();
+	lparam->clear_top();
+	lparam->clear_loss_weight();
+	lparam->clear_dropout_param();
+	lparam->clear_inner_product_param();
+      }
+    else lparam = net_param.add_layer(); // training loss
     lparam->set_name("loss");
     if (regression)
       lparam->set_type("EuclideanLoss");
@@ -354,10 +381,21 @@ namespace dd
     lparam->add_bottom(last_ip);
     lparam->add_bottom("label");
     lparam->add_top("loss");
-
+    ++rl;
+    
     if (!regression)
       {
-	dlparam = deploy_net_param.add_layer();
+	if (drl < max_drl)
+	  {
+	    dlparam = deploy_net_param.mutable_layer(drl);
+	    dlparam->clear_include();
+	    dlparam->clear_top();
+	    dlparam->clear_bottom();
+	    dlparam->clear_loss_weight();
+	    dlparam->clear_dropout_param();
+	    dlparam->clear_inner_product_param();
+	  }
+	else dlparam = deploy_net_param.add_layer();
 	dlparam->set_name("loss");
 	dlparam->set_type("Softmax");
 	dlparam->add_bottom(last_ip);
@@ -681,7 +719,8 @@ namespace dd
 	dlparam->add_bottom(last_ip);
 	dlparam->add_top(last_ip);
 	++drl;
-	
+
+	//TODO: remove if no dropout
 	if (rl < max_rl)
 	  {
 	    lparam = net_param.mutable_layer(rl);
