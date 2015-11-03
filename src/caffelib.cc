@@ -274,7 +274,7 @@ namespace dd
 	dlparam->add_top(last_ip);
 	++drl;
 	
-	//TODO: if dropout ratio != 0 and != 1
+	//TODO: if dropout ratio != 0 and != 1	
 	if (rl < max_rl)
 	  {
 	    lparam = net_param.mutable_layer(rl);
@@ -288,8 +288,6 @@ namespace dd
 	else lparam = net_param.add_layer(); // dropout layer
 	lparam->set_name("drop"+std::to_string(l));
 	lparam->set_type("Dropout");
-	lparam->add_bottom("pool"+std::to_string(l));
-	lparam->add_top("pool"+std::to_string(l));
 	lparam->mutable_dropout_param()->set_dropout_ratio(dropout);
 	++rl;
       }
