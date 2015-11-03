@@ -274,22 +274,24 @@ namespace dd
 	dlparam->add_top(last_ip);
 	++drl;
 	
-	//TODO: if dropout ratio != 0 and != 1	
-	if (rl < max_rl)
+	if (dropout > 0.0 && dropout < 1.0)
 	  {
-	    lparam = net_param.mutable_layer(rl);
-	    lparam->clear_include();
-	    lparam->clear_bottom();
-	    lparam->clear_top();
-	    lparam->clear_loss_weight();
-	    lparam->clear_dropout_param();
-	    lparam->clear_inner_product_param();
+	    if (rl < max_rl)
+	      {
+		lparam = net_param.mutable_layer(rl);
+		lparam->clear_include();
+		lparam->clear_bottom();
+		lparam->clear_top();
+		lparam->clear_loss_weight();
+		lparam->clear_dropout_param();
+		lparam->clear_inner_product_param();
+	      }
+	    else lparam = net_param.add_layer(); // dropout layer
+	    lparam->set_name("drop"+std::to_string(l));
+	    lparam->set_type("Dropout");
+	    lparam->mutable_dropout_param()->set_dropout_ratio(dropout);
+	    ++rl;
 	  }
-	else lparam = net_param.add_layer(); // dropout layer
-	lparam->set_name("drop"+std::to_string(l));
-	lparam->set_type("Dropout");
-	lparam->mutable_dropout_param()->set_dropout_ratio(dropout);
-	++rl;
       }
 
     // add remaining softmax layers
@@ -627,21 +629,24 @@ namespace dd
 	dlparam->mutable_pooling_param()->set_kernel_size(pool_kernel_size);
 	dlparam->mutable_pooling_param()->set_stride(pool_stride);
 	++drl;
-	
-	if (rl < max_rl)
+
+	if (dropout > 0.0 && dropout < 1.0)
 	  {
-	    lparam = net_param.mutable_layer(rl);
-	    lparam->clear_bottom();
-	    lparam->clear_top();
-	    lparam->clear_loss_weight();
+	    if (rl < max_rl)
+	      {
+		lparam = net_param.mutable_layer(rl);
+		lparam->clear_bottom();
+		lparam->clear_top();
+		lparam->clear_loss_weight();
+	      }
+	    else lparam = net_param.add_layer(); // dropout layer
+	    lparam->set_name("drop"+lcum);
+	    lparam->set_type("Dropout");
+	    lparam->add_bottom("pool"+lcum);
+	    lparam->add_top("pool"+lcum);
+	    lparam->mutable_dropout_param()->set_dropout_ratio(dropout);
+	    ++rl;
 	  }
-	else lparam = net_param.add_layer(); // dropout layer
-	lparam->set_name("drop"+lcum);
-	lparam->set_type("Dropout");
-	lparam->add_bottom("pool"+lcum);
-	lparam->add_top("pool"+lcum);
-	lparam->mutable_dropout_param()->set_dropout_ratio(dropout);
-	++rl;
       }
 
     prec_ip = "pool" + std::to_string(cr_layers.size()-1);
@@ -718,21 +723,23 @@ namespace dd
 	dlparam->add_top(last_ip);
 	++drl;
 
-	//TODO: remove if no dropout
-	if (rl < max_rl)
+	if (dropout > 0.0 && dropout < 1.0)
 	  {
-	    lparam = net_param.mutable_layer(rl);
-	    lparam->clear_bottom();
-	    lparam->clear_top();
+	    if (rl < max_rl)
+	      {
+		lparam = net_param.mutable_layer(rl);
+		lparam->clear_bottom();
+		lparam->clear_top();
+	      }
+	    else lparam = net_param.add_layer(); // dropout layer
+	    std::string drop = "drop" + std::to_string(lfc);
+	    lparam->set_name(drop);
+	    lparam->set_type("Dropout");
+	    lparam->add_bottom(last_ip);
+	    lparam->add_top(last_ip);
+	    lparam->mutable_dropout_param()->set_dropout_ratio(dropout);
+	    ++rl;
 	  }
-	else lparam = net_param.add_layer(); // dropout layer
-	std::string drop = "drop" + std::to_string(lfc);
-	lparam->set_name(drop);
-	lparam->set_type("Dropout");
-	lparam->add_bottom(last_ip);
-	lparam->add_top(last_ip);
-	lparam->mutable_dropout_param()->set_dropout_ratio(dropout);
-	++rl;
 	
 	++lfc;
 	++cact;
