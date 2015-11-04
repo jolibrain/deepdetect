@@ -245,6 +245,7 @@ namespace dd
 	  bool bf1 = (std::find(measures.begin(),measures.end(),"f1")!=measures.end());
 	  bool bmcll = (std::find(measures.begin(),measures.end(),"mcll")!=measures.end());
 	  bool bgini = (std::find(measures.begin(),measures.end(),"gini")!=measures.end());
+	  bool beucll = (std::find(measures.begin(),measures.end(),"eucll")!=measures.end());
 	  if (bauc) // XXX: applies two binary classification problems only
 	    {
 	      double mauc = auc(ad_res);
@@ -300,6 +301,12 @@ namespace dd
 	    {
 	      double mgini = gini(ad_res,regression);
 	      meas_out.add("gini",mgini);
+	    }
+	  if (beucll)
+	    {
+	      //TODO: euclidean distance
+	      double meucll = eucll(ad_res);
+	      meas_out.add("eucll",meucll);
 	    }
 	}
 	if (loss)
@@ -466,7 +473,25 @@ namespace dd
       return ll / static_cast<double>(batch_size);
     }
 
-    static std::vector<double> linspace(double start, double end, double num)
+    static double eucll(const APIData &ad)
+    {
+      double eucl = 0.0;
+      int batch_size = ad.get("batch_size").get<int>();
+      for (int i=0;i<batch_size;i++)
+	{
+	  APIData bad = ad.getobj(std::to_string(i));
+	  std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
+	  std::vector<double> target;
+	  if (predictions.size() > 1)
+	    target = bad.get("target").get<std::vector<double>>();
+	  else target.push_back(bad.get("target").get<double>());
+	  for (size_t i=0;i<target.size();i++)
+	    eucl += (predictions.at(i)-target.at(i))*(predictions.at(i)-target.at(i));
+	}
+	return eucl / static_cast<double>(batch_size);
+    }
+    
+    /*static std::vector<double> linspace(double start, double end, double num)
     {
       double delta = (end - start) / (num - 1);
       std::vector<double> linspaced(num - 1);
@@ -476,7 +501,7 @@ namespace dd
 	}
       linspaced.push_back(end);
       return linspaced;
-    };
+      };*/
     
     // measure: gini coefficient
     static double comp_gini(const std::vector<double> &a, const std::vector<double> &p) {

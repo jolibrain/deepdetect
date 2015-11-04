@@ -70,6 +70,7 @@ namespace dd
      */
     static void configure_mlp_template(const APIData &ad,
 				       const bool &regression,
+				       const int &targets,
 				       const int &cnclasses,
 				       caffe::NetParameter &net_param,
 				       caffe::NetParameter &deploy_net_param);
@@ -84,6 +85,7 @@ namespace dd
      */
     static void configure_convnet_template(const APIData &ad,
 					   const bool &regression,
+					   const int &targets,
 					   const int &cnclasses,
 					   caffe::NetParameter &net_param,
 					   caffe::NetParameter &deploy_net_param);
@@ -196,6 +198,7 @@ namespace dd
       int _gpuid = 0; /**< GPU id. */
       int _nclasses = 0; /**< required, as difficult to acquire from Caffe's internals. */
       bool _regression = false; /**< whether the net acts as a regressor. */
+      int _ntargets = 1; /**< number of classification or regression targets. */
       std::mutex _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as net is not re-instantiated. Use batches instead. */
     };
   

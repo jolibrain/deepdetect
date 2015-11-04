@@ -171,6 +171,7 @@ namespace dd
 		}
 	    }
 	}
+      else _label_offset = std::vector<int>(_label.size(),0);
 
       if (ad_input.has("categoricals"))
 	{

@@ -52,6 +52,7 @@ namespace dd
     _net = cl._net;
     _nclasses = cl._nclasses;
     _regression = cl._regression;
+    _ntargets = cl._ntargets;
     cl._net = nullptr;
   }
 
@@ -97,13 +98,12 @@ namespace dd
       throw MLLibBadParamException("failed to create destination deploy solver file " + dest_deploy_net);
 
     // if mlp template, set the net structure as number of layers.
-    //TODO: support for regression
     if (model_tmpl == "mlp" || model_tmpl == "mlp_db")
       {
 	caffe::NetParameter net_param,deploy_net_param;
 	caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
 	caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
-	configure_mlp_template(ad,_regression,_nclasses,net_param,deploy_net_param);
+	configure_mlp_template(ad,_regression,_ntargets,_nclasses,net_param,deploy_net_param);
 	caffe::WriteProtoToTextFile(net_param,dest_net);
 	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
       }
@@ -112,7 +112,7 @@ namespace dd
 	caffe::NetParameter net_param,deploy_net_param;
 	caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
 	caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
-	configure_convnet_template(ad,_regression,_nclasses,net_param,deploy_net_param);
+	configure_convnet_template(ad,_regression,_ntargets,_nclasses,net_param,deploy_net_param);
 	caffe::WriteProtoToTextFile(net_param,dest_net);
 	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
       }
@@ -148,6 +148,7 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_mlp_template(const APIData &ad,
 												   const bool &regression,
+												   const int &targets,
 												   const int &cnclasses,
 												   caffe::NetParameter &net_param,
 												   caffe::NetParameter &deploy_net_param)
@@ -171,7 +172,7 @@ namespace dd
       }
     if (ad.has("dropout"))
       dropout = ad.get("dropout").get<double>();
-    if (layers.empty() && activation == "ReLU" && dropout == 0.5) //TODO: and no multi-label
+    if (layers.empty() && activation == "ReLU" && dropout == 0.5 && targets == 1)
       return; // nothing to do
 
     int nclasses = 0;
@@ -182,7 +183,7 @@ namespace dd
     caffe::LayerParameter *lparam = nullptr;
     caffe::LayerParameter *dlparam = nullptr;
     std::string prec_ip = "data";
-    std::string last_ip = "ip1";
+    std::string last_ip = "ip0";
     for (size_t l=0;l<layers.size();l++)
       {
 	if (l == 0)
@@ -191,6 +192,55 @@ namespace dd
 	    if (!cnclasses) // if unknown we keep the default one
 	      nclasses = lparam->mutable_inner_product_param()->num_output();
 	    else nclasses = cnclasses;
+	    if (targets > 1)
+	      {
+		lparam = net_param.mutable_layer(0);
+		lparam->set_top(0,"fulldata");
+		lparam->set_top(1,"fake_label");
+		lparam->mutable_memory_data_param()->set_channels(targets); // XXX: temporary value, set at training time
+		lparam = net_param.mutable_layer(1);
+		lparam->set_top(0,"fulldata");
+		lparam->set_top(1,"fake_label");
+		lparam->mutable_memory_data_param()->set_channels(targets);
+		dlparam = deploy_net_param.mutable_layer(0);
+		dlparam->set_top(0,"fulldata");
+		dlparam->set_top(1,"fake_label");
+		dlparam->mutable_memory_data_param()->set_channels(targets);
+		
+		lparam = net_param.mutable_layer(rl);
+		lparam->clear_include();
+		lparam->clear_top();
+		lparam->clear_bottom();
+		lparam->clear_inner_product_param();
+		lparam->clear_dropout_param();
+		lparam->clear_loss_weight();
+		lparam->set_name("slice_labels");
+		lparam->set_type("Slice");
+		lparam->add_bottom("fulldata");
+		lparam->add_top("data");
+		lparam->add_top("label");
+		caffe::SliceParameter *spp = lparam->mutable_slice_param();
+		spp->set_slice_dim(1);
+		spp->add_slice_point(nclasses);
+		++rl;
+
+		dlparam = deploy_net_param.mutable_layer(drl);
+		dlparam->clear_include();
+		dlparam->clear_top();
+		dlparam->clear_bottom();
+		dlparam->clear_inner_product_param();
+		dlparam->clear_dropout_param();
+		dlparam->clear_loss_weight();
+		dlparam->set_name("slice_labels");
+		dlparam->set_type("Slice");
+		dlparam->add_bottom("fulldata");
+		dlparam->add_top("data");
+		dlparam->add_top("label");
+		spp = dlparam->mutable_slice_param();
+		spp->set_slice_dim(1);
+		spp->add_slice_point(nclasses); // XXX: temporary value
+		++drl;
+	      }
 	  }
 	else if (l > 0)
 	  {
@@ -289,14 +339,16 @@ namespace dd
 	    else lparam = net_param.add_layer(); // dropout layer
 	    lparam->set_name("drop"+std::to_string(l));
 	    lparam->set_type("Dropout");
+	    lparam->add_bottom(last_ip);
+	    lparam->add_top(last_ip);
 	    lparam->mutable_dropout_param()->set_dropout_ratio(dropout);
 	    ++rl;
 	  }
       }
 
     // add remaining softmax layers
-    prec_ip = "ip" + std::to_string(layers.size());
-    last_ip = "ip" + std::to_string(layers.size()+1);
+    prec_ip = "ip" + std::to_string(layers.size()-1);
+    last_ip = "ip" + std::to_string(layers.size());
     if (rl < max_rl)
       {
 	lparam = net_param.mutable_layer(rl); // last inner product before softmax
@@ -313,7 +365,9 @@ namespace dd
     lparam->add_bottom(prec_ip);
     lparam->add_top(last_ip);
     caffe::InnerProductParameter *ipp = lparam->mutable_inner_product_param();
-    ipp->set_num_output(nclasses);
+    if (!regression || targets == 1)
+      ipp->set_num_output(nclasses);
+    else ipp->set_num_output(targets);
     ipp->mutable_weight_filler()->set_type("gaussian");
     ipp->mutable_weight_filler()->set_std(0.1);
     ipp->mutable_bias_filler()->set_type("constant");
@@ -335,7 +389,9 @@ namespace dd
     dlparam->add_bottom(prec_ip);
     dlparam->add_top(last_ip);
     caffe::InnerProductParameter *dipp = dlparam->mutable_inner_product_param();
-    dipp->set_num_output(nclasses);
+    if (!regression || targets == 1)
+      dipp->set_num_output(nclasses);
+    else dipp->set_num_output(targets);
     dipp->mutable_weight_filler()->set_type("gaussian");
     dipp->mutable_weight_filler()->set_std(0.1);
     dipp->mutable_bias_filler()->set_type("constant");
@@ -406,6 +462,7 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_convnet_template(const APIData &ad,
 												       const bool &regression,
+												       const int &targets,
 												       const int &cnclasses,
 												       caffe::NetParameter &net_param,
 												       caffe::NetParameter &deploy_net_param)
@@ -499,6 +556,55 @@ namespace dd
 	    if (!cnclasses) // if unknown we keep the default one
 	      nclasses = lparam->mutable_inner_product_param()->num_output();
 	    else nclasses = cnclasses;
+	    if (targets > 1)
+	      {
+		lparam = net_param.mutable_layer(0);
+		lparam->set_top(0,"fulldata");
+		lparam->set_top(1,"fake_label");
+		lparam->mutable_memory_data_param()->set_channels(targets); // XXX: temporary value
+		lparam = net_param.mutable_layer(1);
+		lparam->set_top(0,"fulldata");
+		lparam->set_top(1,"fake_label");
+		lparam->mutable_memory_data_param()->set_channels(targets);
+		dlparam = deploy_net_param.mutable_layer(0);
+		dlparam->set_top(0,"fulldata");
+		dlparam->set_top(1,"fake_label");
+		dlparam->mutable_memory_data_param()->set_channels(targets);
+		
+		lparam = net_param.mutable_layer(rl);
+		lparam->clear_include();
+		lparam->clear_top();
+		lparam->clear_bottom();
+		lparam->clear_inner_product_param();
+		lparam->clear_dropout_param();
+		lparam->clear_loss_weight();
+		lparam->set_name("slice_labels");
+		lparam->set_type("Slice");
+		lparam->add_bottom("fulldata");
+		lparam->add_top("data");
+		lparam->add_top("label");
+		caffe::SliceParameter *spp = lparam->mutable_slice_param();
+		spp->set_slice_dim(1);
+		spp->add_slice_point(nclasses); // XXX: temporary value
+		++rl;
+
+		dlparam = deploy_net_param.mutable_layer(drl);
+		dlparam->clear_include();
+		dlparam->clear_top();
+		dlparam->clear_bottom();
+		dlparam->clear_inner_product_param();
+		dlparam->clear_dropout_param();
+		dlparam->clear_loss_weight();
+		dlparam->set_name("slice_labels");
+		dlparam->set_type("Slice");
+		dlparam->add_bottom("fulldata");
+		dlparam->add_top("data");
+		dlparam->add_top("label");
+		spp = dlparam->mutable_slice_param();
+		spp->set_slice_dim(1);
+		spp->add_slice_point(nclasses);
+		++drl;
+	      }
 	  }
 	else if (l > 0)
 	  {
@@ -761,7 +867,9 @@ namespace dd
     lparam->add_bottom(prec_ip);
     lparam->add_top(last_ip);
     caffe::InnerProductParameter *ipp = lparam->mutable_inner_product_param();
-    ipp->set_num_output(nclasses);
+    if (!regression || targets == 1)
+      ipp->set_num_output(nclasses);
+    else ipp->set_num_output(targets);
     ipp->mutable_weight_filler()->set_type("xavier");
     ipp->mutable_bias_filler()->set_type("constant");
     ++rl;
@@ -779,7 +887,9 @@ namespace dd
     dlparam->add_bottom(prec_ip);
     dlparam->add_top(last_ip);
     caffe::InnerProductParameter *dipp = dlparam->mutable_inner_product_param();
-    dipp->set_num_output(nclasses);
+    if (!regression || targets == 1)
+      dipp->set_num_output(nclasses);
+    else dipp->set_num_output(targets);
     dipp->mutable_weight_filler()->set_type("xavier");
     dipp->mutable_bias_filler()->set_type("constant");
     ++drl;
@@ -870,6 +980,8 @@ namespace dd
       _nclasses = ad.get("nclasses").get<int>();
     if (ad.has("regression") && ad.get("regression").get<bool>())
       _regression = true;
+    if (ad.has("targets"))
+      _ntargets = ad.get("targets").get<int>();
     if (_nclasses == 0)
       throw MLLibBadParamException("number of classes is unknown (nclasses == 0)");
     // instantiate model template here, if any
@@ -1218,6 +1330,9 @@ namespace dd
       {
 	float mean_loss = 0.0;
 	int tresults = 0;
+	int nout = _nclasses;
+	if (_regression && _ntargets > 1)
+	  nout = _ntargets;
 	ad_res.add("nclasses",_nclasses);
 	inputc.reset_dv_test();
 	std::vector<caffe::Datum> dv;
@@ -1229,19 +1344,35 @@ namespace dd
 	    std::vector<Blob<float>*> lresults = net->ForwardPrefilled(&loss);
 	    int slot = lresults.size() - 1;
 	    if (_regression)
-	      slot = 0; // XXX: more in-depth testing required
+	      if (_ntargets > 1)
+		slot = 1; // XXX: more in-depth testing required
+	      else slot = 0;
 	    int scount = lresults[slot]->count();
 	    int scperel = scount / dv.size();
 	    for (int j=0;j<(int)dv.size();j++)
 	      {
 		APIData bad;
 		std::vector<double> predictions;
-		double target = dv.at(j).label();
-		for (int k=0;k<_nclasses;k++)
+		if (!_regression || _ntargets == 1)
 		  {
-		    predictions.push_back(lresults[slot]->cpu_data()[j*scperel+k]);
+		    double target = dv.at(j).label();
+		    for (int k=0;k<nout;k++)
+		      {
+			predictions.push_back(lresults[slot]->cpu_data()[j*scperel+k]);
+		      }
+		    bad.add("target",target);
 		  }
-		bad.add("target",target);
+		else
+		  {
+		    std::vector<double> target;
+		    for (int k=inputc.channels();k<dv.at(j).float_data_size();k++)
+		      target.push_back(dv.at(j).float_data(k));
+		    for (int k=0;k<nout;k++)
+		      {
+			predictions.push_back(lresults[slot]->cpu_data()[j*scperel+k]);
+		      }
+		    bad.add("target",target);
+		  }
 		bad.add("pred",predictions);
 		std::vector<APIData> vad = { bad };
 		ad_res.add(std::to_string(tresults+j),vad);
@@ -1250,7 +1381,7 @@ namespace dd
 	    mean_loss += loss;
 	  }
 	std::vector<std::string> clnames;
-	for (int i=0;i<_nclasses;i++)
+	for (int i=0;i<nout;i++)
 	  clnames.push_back(this->_mlmodel.get_hcorresp(i));
 	ad_res.add("clnames",clnames);
 	ad_res.add("batch_size",tresults);
@@ -1326,6 +1457,7 @@ namespace dd
       slot = 0; // XXX: more in-depth testing required
     int scount = results[slot]->count();
     int scperel = scount / batch_size;
+    //TODO: accomodate for regression and multi-target
     int nclasses = _nclasses > 0 ? _nclasses : scperel; // XXX: beware of scperel as it can refer to the number of neurons is last layer before softmax, which is replaced 'in-place' with probabilities after softmax. Weird by Caffe... */
     TOutputConnectorStrategy tout;
     for (int j=0;j<batch_size;j++)
@@ -1433,26 +1565,31 @@ namespace dd
     caffe::ReadProtoFromTextFile(net_file,&net_param); //TODO: catch parsing error (returns bool true on success)
     if (net_param.mutable_layer(0)->has_memory_data_param())
       {
-	net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels());
-	net_param.mutable_layer(1)->mutable_memory_data_param()->set_channels(inputc.channels()); // test layer
-	
-	//set train and test batch sizes as multiples of the train and test dataset sizes
-	//net_param.mutable_layer(0)->mutable_memory_data_param()->set_batch_size(inputc.batch_size());
-	//net_param.mutable_layer(1)->mutable_memory_data_param()->set_batch_size(inputc.test_batch_size());
+	if (_ntargets == 1)
+	  {
+	    net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels());
+	    net_param.mutable_layer(1)->mutable_memory_data_param()->set_channels(inputc.channels()); // test layer
+	  }
+	else
+	  {
+	    net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels()+_ntargets);
+	    net_param.mutable_layer(1)->mutable_memory_data_param()->set_channels(inputc.channels()+_ntargets);
+	    net_param.mutable_layer(2)->mutable_slice_param()->set_slice_point(0,inputc.channels());
+	  }
       }
-    /*else if (net_param.mutable_layer(0)->has_data_param())
-      {
-	//set train and test batch sizes as multiples of the train and test dataset sizes
-	net_param.mutable_layer(0)->mutable_data_param()->set_batch_size(inputc.batch_size());
-	net_param.mutable_layer(1)->mutable_data_param()->set_batch_size(inputc.test_batch_size());
-	}*/
     
     caffe::NetParameter deploy_net_param;
     caffe::ReadProtoFromTextFile(deploy_file,&deploy_net_param);
     if (deploy_net_param.mutable_layer(0)->has_memory_data_param())
       {
 	// no batch size set on deploy model since it is adjusted for every prediction batch
-	deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels());
+	if (_ntargets == 1)
+	  deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels());
+	else
+	  {
+	    deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels()+_ntargets);
+	    deploy_net_param.mutable_layer(1)->mutable_slice_param()->set_slice_point(0,inputc.channels());
+	  }
       }
 
     // adapt number of neuron output
@@ -1484,7 +1621,9 @@ namespace dd
 	  {
 	    if (lparam->has_inner_product_param())
 	      {
-		lparam->mutable_inner_product_param()->set_num_output(_nclasses);
+		if (!_regression || _ntargets == 1)
+		  lparam->mutable_inner_product_param()->set_num_output(_nclasses);
+		else lparam->mutable_inner_product_param()->set_num_output(_ntargets);
 		break;
 	      }
 	  }
