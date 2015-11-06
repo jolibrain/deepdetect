@@ -38,7 +38,8 @@ static std::string not_found_str = "{\"status\":{\"code\":404,\"msg\":\"NotFound
 static std::string mnist_repo = "../examples/caffe/mnist/";
 static std::string forest_repo = "../examples/all/forest_type/";
 static std::string plank_repo = "../examples/caffe/plankton/";
-static std::string n20_repo = "../examples/caffe/n20/";
+static std::string n20_repo = "../examples/all/n20/";
+static std::string sflare_repo = "../examples/all/sflare/";
 static std::string model_templates_repo = "../templates/caffe/";
 
 #ifndef CPU_ONLY
@@ -46,11 +47,13 @@ static std::string iterations_mnist = "250";
 static std::string iterations_plank = "2000";
 static std::string iterations_forest = "2000";
 static std::string iterations_n20 = "2000";
+static std::string iteratoins_sflare = "5000";
 #else
 static std::string iterations_mnist = "10";
 static std::string iterations_plank = "10";
 static std::string iterations_forest = "500";
 static std::string iterations_n20 = "1000";
+static std::string iterations_sflare = "2000";
 #endif
 
 TEST(caffeapi,service_train)
@@ -511,4 +514,42 @@ TEST(caffeapi,service_train_txt)
   joutstr = japi.jrender(japi.service_delete(sname,jstr));
   ASSERT_EQ(ok_str,joutstr);
   rmdir(n20_repo_loc.c_str());
+}
+
+TEST(caffeapi,service_train_csv_mt_regression)
+{
+  // create service
+  JsonAPI japi;
+  std::string sflare_repo_loc = "sflare";
+  mkdir(sflare_repo_loc.c_str(),0777);
+  std::string sname = "my_service";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  sflare_repo_loc + "\",\"templates\":\"" + model_templates_repo  + "\"},\"parameters\":{\"input\":{\"connector\":\"csv\"},\"mllib\":{\"template\":\"mlp\",\"regression\":true,\"targets\":3,\"layers\":[150,150]}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
+  ASSERT_EQ(created_str,joutstr);
+
+  // train
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"test_split\":0.1,\"shuffle\":true,\"label\":[\"c_class\",\"m_class\",\"x_class\"],\"separator\":\",\",\"scale\":true,\"categoricals\":[\"class_code\",\"code_spot\",\"code_spot_distr\"]},\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":" + iterations_sflare + ",\"test_interval\":200,\"base_lr\":0.001,\"snapshot\":2000,\"test_initialization\":true},\"net\":{\"batch_size\":100}},\"output\":{\"measure\":[\"eucll\"]}},\"data\":[\"" + sflare_repo + "flare.csv\"]}";
+  std::cerr << "jtrainstr=" << jtrainstr << std::endl;
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  JDoc jd;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_TRUE(jd.HasMember("status"));
+  ASSERT_EQ(201,jd["status"]["code"].GetInt());
+  ASSERT_EQ("Created",jd["status"]["msg"]);
+  ASSERT_TRUE(jd.HasMember("head"));
+  ASSERT_EQ("/train",jd["head"]["method"]);
+  ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
+  ASSERT_TRUE(jd.HasMember("body"));
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
+  ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("eucll"));
+  ASSERT_TRUE(jd["body"]["measure"]["eucll"].GetDouble() > 0.0);
+  
+  // remove service
+  jstr = "{\"clear\":\"full\"}";
+  joutstr = japi.jrender(japi.service_delete(sname,jstr));
+  ASSERT_EQ(ok_str,joutstr);
+  rmdir(sflare_repo_loc.c_str());
 }

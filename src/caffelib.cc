@@ -979,7 +979,10 @@ namespace dd
     if (ad.has("nclasses"))
       _nclasses = ad.get("nclasses").get<int>();
     if (ad.has("regression") && ad.get("regression").get<bool>())
-      _regression = true;
+      {
+	_regression = true;
+	_nclasses = 1;
+      }
     if (ad.has("targets"))
       _ntargets = ad.get("targets").get<int>();
     if (_nclasses == 0)
