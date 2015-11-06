@@ -198,7 +198,7 @@ namespace dd
       int _gpuid = 0; /**< GPU id. */
       int _nclasses = 0; /**< required, as difficult to acquire from Caffe's internals. */
       bool _regression = false; /**< whether the net acts as a regressor. */
-      int _ntargets = 1; /**< number of classification or regression targets. */
+      int _ntargets = 0; /**< number of classification or regression targets. */
       std::mutex _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as net is not re-instantiated. Use batches instead. */
     };
   

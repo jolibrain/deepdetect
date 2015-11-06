@@ -320,7 +320,7 @@ TEST(caffeapi,service_train_csv)
   // create service
   JsonAPI japi;
   std::string sname = "my_service";
-  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  forest_repo + "\",\"templates\":\"" + model_templates_repo  + "\"},\"parameters\":{\"input\":{\"connector\":\"csv\"},\"mllib\":{\"template\":\"mlp\",\"nclasses\":7}}}";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  forest_repo + "\",\"templates\":\"" + model_templates_repo  + "\"},\"parameters\":{\"input\":{\"connector\":\"csv\"},\"mllib\":{\"template\":\"mlp\",\"nclasses\":7,\"activation\":\"prelu\"}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
   ASSERT_EQ(created_str,joutstr);
 
@@ -523,7 +523,7 @@ TEST(caffeapi,service_train_csv_mt_regression)
   std::string sflare_repo_loc = "sflare";
   mkdir(sflare_repo_loc.c_str(),0777);
   std::string sname = "my_service";
-  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  sflare_repo_loc + "\",\"templates\":\"" + model_templates_repo  + "\"},\"parameters\":{\"input\":{\"connector\":\"csv\"},\"mllib\":{\"template\":\"mlp\",\"regression\":true,\"targets\":3,\"layers\":[150,150]}}}";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  sflare_repo_loc + "\",\"templates\":\"" + model_templates_repo  + "\"},\"parameters\":{\"input\":{\"connector\":\"csv\"},\"mllib\":{\"template\":\"mlp\",\"regression\":true,\"ntargets\":3,\"layers\":[150,150]}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
   ASSERT_EQ(created_str,joutstr);
 

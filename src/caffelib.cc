@@ -153,7 +153,7 @@ namespace dd
 												   caffe::NetParameter &net_param,
 												   caffe::NetParameter &deploy_net_param)
   {
-    std::vector<int> layers;
+    std::vector<int> layers = {50};
     std::string activation = "ReLU";
     double dropout = 0.5;
     if (ad.has("layers"))
@@ -172,9 +172,9 @@ namespace dd
       }
     if (ad.has("dropout"))
       dropout = ad.get("dropout").get<double>();
-    if (layers.empty() && activation == "ReLU" && dropout == 0.5 && targets == 1)
+    if (layers.empty() && activation == "ReLU" && dropout == 0.5 && targets == 0)
       return; // nothing to do
-
+    
     int nclasses = 0;
     int rl = 2;
     int drl = 1;
@@ -217,7 +217,7 @@ namespace dd
 		lparam->set_name("slice_labels");
 		lparam->set_type("Slice");
 		lparam->add_bottom("fulldata");
-		lparam->add_top("data");
+		lparam->add_top(prec_ip);
 		lparam->add_top("label");
 		caffe::SliceParameter *spp = lparam->mutable_slice_param();
 		spp->set_slice_dim(1);
@@ -234,7 +234,7 @@ namespace dd
 		dlparam->set_name("slice_labels");
 		dlparam->set_type("Slice");
 		dlparam->add_bottom("fulldata");
-		dlparam->add_top("data");
+		dlparam->add_top(prec_ip);
 		dlparam->add_top("label");
 		spp = dlparam->mutable_slice_param();
 		spp->set_slice_dim(1);
@@ -365,7 +365,7 @@ namespace dd
     lparam->add_bottom(prec_ip);
     lparam->add_top(last_ip);
     caffe::InnerProductParameter *ipp = lparam->mutable_inner_product_param();
-    if (!regression || targets == 1)
+    if (!regression || targets == 0)
       ipp->set_num_output(nclasses);
     else ipp->set_num_output(targets);
     ipp->mutable_weight_filler()->set_type("gaussian");
@@ -389,7 +389,7 @@ namespace dd
     dlparam->add_bottom(prec_ip);
     dlparam->add_top(last_ip);
     caffe::InnerProductParameter *dipp = dlparam->mutable_inner_product_param();
-    if (!regression || targets == 1)
+    if (!regression || targets == 0)
       dipp->set_num_output(nclasses);
     else dipp->set_num_output(targets);
     dipp->mutable_weight_filler()->set_type("gaussian");
@@ -867,7 +867,7 @@ namespace dd
     lparam->add_bottom(prec_ip);
     lparam->add_top(last_ip);
     caffe::InnerProductParameter *ipp = lparam->mutable_inner_product_param();
-    if (!regression || targets == 1)
+    if (!regression || targets == 0)
       ipp->set_num_output(nclasses);
     else ipp->set_num_output(targets);
     ipp->mutable_weight_filler()->set_type("xavier");
@@ -887,7 +887,7 @@ namespace dd
     dlparam->add_bottom(prec_ip);
     dlparam->add_top(last_ip);
     caffe::InnerProductParameter *dipp = dlparam->mutable_inner_product_param();
-    if (!regression || targets == 1)
+    if (!regression || targets == 0)
       dipp->set_num_output(nclasses);
     else dipp->set_num_output(targets);
     dipp->mutable_weight_filler()->set_type("xavier");
@@ -983,10 +983,12 @@ namespace dd
 	_regression = true;
 	_nclasses = 1;
       }
-    if (ad.has("targets"))
-      _ntargets = ad.get("targets").get<int>();
+    if (ad.has("ntargets"))
+      _ntargets = ad.get("ntargets").get<int>();
     if (_nclasses == 0)
       throw MLLibBadParamException("number of classes is unknown (nclasses == 0)");
+    if (_regression && _ntargets == 0)
+      throw MLLibBadParamException("number of regression targets is unknown (ntargets == 0)");
     // instantiate model template here, if any
     if (ad.has("template"))
       instantiate_template(ad);
@@ -1356,7 +1358,7 @@ namespace dd
 	      {
 		APIData bad;
 		std::vector<double> predictions;
-		if (!_regression || _ntargets == 1)
+		if (!_regression || _ntargets == 0)
 		  {
 		    double target = dv.at(j).label();
 		    for (int k=0;k<nout;k++)
@@ -1568,7 +1570,7 @@ namespace dd
     caffe::ReadProtoFromTextFile(net_file,&net_param); //TODO: catch parsing error (returns bool true on success)
     if (net_param.mutable_layer(0)->has_memory_data_param())
       {
-	if (_ntargets == 1)
+	if (_ntargets == 0)
 	  {
 	    net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels());
 	    net_param.mutable_layer(1)->mutable_memory_data_param()->set_channels(inputc.channels()); // test layer
@@ -1586,7 +1588,7 @@ namespace dd
     if (deploy_net_param.mutable_layer(0)->has_memory_data_param())
       {
 	// no batch size set on deploy model since it is adjusted for every prediction batch
-	if (_ntargets == 1)
+	if (_ntargets == 0)
 	  deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels());
 	else
 	  {
@@ -1624,7 +1626,7 @@ namespace dd
 	  {
 	    if (lparam->has_inner_product_param())
 	      {
-		if (!_regression || _ntargets == 1)
+		if (!_regression || _ntargets == 0)
 		  lparam->mutable_inner_product_param()->set_num_output(_nclasses);
 		else lparam->mutable_inner_product_param()->set_num_output(_ntargets);
 		break;

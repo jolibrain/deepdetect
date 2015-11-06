@@ -52,7 +52,7 @@ TEST(caffelib,configure_mlp_template_1)
   ad.add("activation","prelu");
   ad.add("dropout",0.6);
   
-  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_mlp_template(ad,false,1,nclasses,net_param,deploy_net_param);
+  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_mlp_template(ad,false,0,nclasses,net_param,deploy_net_param);
 
   caffe::WriteProtoToTextFile(net_param,onet_file);
   caffe::WriteProtoToTextFile(deploy_net_param,donet_file);
@@ -100,7 +100,7 @@ TEST(caffelib,configure_mlp_template_n)
   ad.add("activation","prelu");
   ad.add("dropout",0.6);
   
-  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_mlp_template(ad,false,1,nclasses,net_param,deploy_net_param);
+  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_mlp_template(ad,false,0,nclasses,net_param,deploy_net_param);
 
   caffe::WriteProtoToTextFile(net_param,onet_file);
   caffe::WriteProtoToTextFile(deploy_net_param,donet_file);
@@ -217,7 +217,7 @@ TEST(caffelib,configure_convnet_template_1)
   ad.add("activation","prelu");
   ad.add("dropout",0.2);
   
-  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,1,nclasses,net_param,deploy_net_param);
+  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,0,nclasses,net_param,deploy_net_param);
 
   caffe::WriteProtoToTextFile(net_param,oconvnet_file);
   caffe::WriteProtoToTextFile(deploy_net_param,doconvnet_file);
@@ -271,7 +271,7 @@ TEST(caffelib,configure_convnet_template_2)
   ad.add("activation","prelu");
   ad.add("dropout",0.2);
   
-  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,1,nclasses,net_param,deploy_net_param);
+  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,0,nclasses,net_param,deploy_net_param);
 
   caffe::WriteProtoToTextFile(net_param,oconvnet_file);
   caffe::WriteProtoToTextFile(deploy_net_param,doconvnet_file);
@@ -359,7 +359,7 @@ TEST(caffelib,configure_convnet_template_3)
   ad.add("activation","prelu");
   ad.add("dropout",0.2);
   
-  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,1,nclasses,net_param,deploy_net_param);
+  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,0,nclasses,net_param,deploy_net_param);
 
   caffe::WriteProtoToTextFile(net_param,oconvnet_file);
   caffe::WriteProtoToTextFile(deploy_net_param,doconvnet_file);
@@ -422,7 +422,7 @@ TEST(caffelib,configure_convnet_template_n)
   ad.add("activation","prelu");
   ad.add("dropout",0.2);
   
-  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,1,nclasses,net_param,deploy_net_param);
+  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,0,nclasses,net_param,deploy_net_param);
 
   caffe::WriteProtoToTextFile(net_param,oconvnet_file);
   caffe::WriteProtoToTextFile(deploy_net_param,doconvnet_file);
