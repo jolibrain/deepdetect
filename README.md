@@ -88,6 +88,11 @@ cmake ..
 make
 ```
 
+If you are building for one or more GPUs, you may need to add CUDA to your ld path:
+```
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64
+```
+
 ### Run tests
 
 Note: running tests requires the automated download of ~75Mb of datasets, and computations may take around thirty minutes on a CPU-only machines.
