@@ -1349,9 +1349,11 @@ namespace dd
 	    std::vector<Blob<float>*> lresults = net->ForwardPrefilled(&loss);
 	    int slot = lresults.size() - 1;
 	    if (_regression)
-	      if (_ntargets > 1)
-		slot = 1; // XXX: more in-depth testing required
-	      else slot = 0;
+	      {
+		if (_ntargets > 1)
+		  slot = 1; // XXX: more in-depth testing required
+		else slot = 0;
+	      }
 	    int scount = lresults[slot]->count();
 	    int scperel = scount / dv.size();
 	    for (int j=0;j<(int)dv.size();j++)
