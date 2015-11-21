@@ -118,16 +118,21 @@ namespace dd
       }
     else
       {
+	caffe::NetParameter net_param,deploy_net_param;
+	caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
+	caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
 	if ((ad.has("rotate") && ad.get("rotate").get<bool>()) 
 	    || (ad.has("mirror") && ad.get("mirror").get<bool>()))
 	  {
-	    caffe::NetParameter net_param;
-	    caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
 	    caffe::LayerParameter *lparam = net_param.mutable_layer(0); // data input layer
 	    lparam->mutable_transform_param()->set_mirror(ad.get("mirror").get<bool>());
 	    lparam->mutable_transform_param()->set_rotate(ad.get("rotate").get<bool>());
-	    caffe::WriteProtoToTextFile(net_param,dest_net);
 	  }
+	// adapt number of neuron output
+	update_protofile_classes(net_param);
+	update_protofile_classes(deploy_net_param);
+	caffe::WriteProtoToTextFile(net_param,dest_net);
+	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
       }
     if (ad.has("finetuning") && ad.get("finetuning").get<bool>())
       {
@@ -1598,11 +1603,6 @@ namespace dd
 	    deploy_net_param.mutable_layer(1)->mutable_slice_param()->set_slice_point(0,inputc.channels());
 	  }
       }
-
-    // adapt number of neuron output
-    update_protofile_classes(net_param);
-    update_protofile_classes(deploy_net_param);
-    
     caffe::WriteProtoToTextFile(net_param,net_file);
     caffe::WriteProtoToTextFile(deploy_net_param,deploy_file);
   }
