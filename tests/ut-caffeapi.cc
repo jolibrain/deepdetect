@@ -309,7 +309,25 @@ TEST(caffeapi,service_predict)
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble() > 0);
   ASSERT_TRUE(jd["body"]["predictions"][1]["classes"][0]["prob"].GetDouble() > 0);
 
-   // remove service
+  // base64 predict
+  std::string img_str;
+  std::fstream fimg(mnist_repo + "/sample_digit.png");
+  std::stringstream buffer;
+  buffer << fimg.rdbuf();
+  img_str = buffer.str();
+  std::string b64_str;
+  Base64::Encode(img_str,&b64_str);
+  jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"bw\":true,\"width\":28,\"height\":28},\"output\":{\"best\":3}},\"data\":[\"" + b64_str + "\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200,jd["status"]["code"]);
+  std::string uri = jd["body"]["predictions"]["uri"].GetString();
+  std::cerr << "uri=" << uri << std::endl;
+  ASSERT_EQ("0",uri);
+  
+  // remove service
   jstr = "{\"clear\":\"lib\"}";
   joutstr = japi.jrender(japi.service_delete(sname,jstr));
   ASSERT_EQ(ok_str,joutstr);

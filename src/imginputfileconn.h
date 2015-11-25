@@ -26,6 +26,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include "ext/base64/base64.h"
 
 namespace dd
 {
@@ -36,6 +37,61 @@ namespace dd
     DDImg() {}
     ~DDImg() {}
 
+    // base64 detection
+    bool is_within_base64_range(char c) const
+    {
+      if ((c >= 'A' && c <= 'Z')
+	  || (c >= 'a' && c <= 'z')
+	  || (c >= '0' && c <= '9')
+	  || (c == '+' || c=='/' || c=='='))
+	return true;
+      else return false;
+    }
+
+    bool possibly_base64(const std::string &s) const
+    {
+      bool ism = is_multiple_four(s);
+      if (!ism)
+	return false;
+      for (char c: s)
+	{
+	  bool within_64 = is_within_base64_range(c);
+	  if (!within_64)
+	    return false;
+	}
+      return true;
+    }
+    
+    bool is_multiple_four(const std::string &s) const
+    {
+      if (s.length() % 4 == 0)
+	return true;
+      else return false;
+    }
+
+    // decode image
+    void decode(const std::string &str)
+      {
+	std::vector<unsigned char> vdat(str.begin(),str.end());
+	cv::Mat timg = cv::Mat(vdat,true);
+	_img = cv::Mat(cv::imdecode(timg,_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR));
+      }
+    
+    // deserialize image, independent of format
+    void deserialize(std::stringstream &input)
+      {
+	size_t size = 0;
+	input.seekg(0,input.end);
+	size = input.tellg();
+	input.seekg(0,input.beg);
+	char* data = new char[size];
+	input.read(data, size);
+	std::string str(data,data+size);
+	delete[]data;
+	decode(str);
+      }
+    
+    // data acquisition
     int read_file(const std::string &fname)
     {
       _img = cv::imread(fname,_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR);
@@ -46,9 +102,20 @@ namespace dd
 
     int read_mem(const std::string &content)
     {
-      std::vector<unsigned char> vdat(content.begin(),content.end());
-      cv::Mat timg(vdat,true);
-      _img = cv::Mat(cv::imdecode(timg,_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR));
+      cv::Mat timg;
+      _b64 = possibly_base64(content);
+      if (_b64)
+	{
+	  std::string ccontent;
+	  Base64::Decode(content,&ccontent);
+	  std::stringstream sstr;
+	  sstr << ccontent;
+	  deserialize(sstr);
+	}
+      else
+	{
+	  decode(content);
+	}
       if (_img.empty())
 	return -1;
       return 0;
@@ -61,6 +128,7 @@ namespace dd
     
     cv::Mat _img;      
     bool _bw = false;
+    bool _b64 = false;
   };
   
   class ImgInputFileConn : public InputConnectorStrategy
@@ -123,6 +191,8 @@ namespace dd
 	    }
 	}
       //TODO: could parallelize the reading then push
+      int img_count = 0;
+      std::vector<std::string> uris;
       for (std::string u: _uris)
 	{
 	  DataEl<DDImg> dimg;
@@ -134,11 +204,17 @@ namespace dd
 	  /*cv::namedWindow( "Display window", cv::WINDOW_AUTOSIZE );
 	    cv::imshow( "Display window", imaget);
 	    cv::waitKey(0);*/
+	  //TODO: resize only if necessary
 	  cv::Size size(_width,_height);
 	  cv::Mat image;
 	  cv::resize(dimg._ctype._img,image,size,0,0,CV_INTER_CUBIC);
 	  _images.push_back(image);
+	  if (!dimg._ctype._b64)
+	    uris.push_back(u);
+	  else uris.push_back(std::to_string(img_count));
+	  ++img_count;
 	}
+      _uris = uris;
       // shuffle before possible split
       if (_shuffle)
 	{
