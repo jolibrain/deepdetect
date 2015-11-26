@@ -1470,7 +1470,7 @@ namespace dd
     int scount = results[slot]->count();
     int scperel = scount / batch_size;
     //TODO: accomodate for regression and multi-target
-    int nclasses = _nclasses > 0 ? _nclasses : scperel; // XXX: beware of scperel as it can refer to the number of neurons is last layer before softmax, which is replaced 'in-place' with probabilities after softmax. Weird by Caffe... */
+    int nclasses = scperel;
     TOutputConnectorStrategy tout;
     for (int j=0;j<batch_size;j++)
       {
