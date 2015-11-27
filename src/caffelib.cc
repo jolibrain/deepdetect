@@ -956,6 +956,7 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::create_model(const bool &test)
   {
+    // create net and fill it up
     if (!this->_mlmodel._def.empty() && !this->_mlmodel._weights.empty())
       {
 	if (_net)
@@ -969,6 +970,7 @@ namespace dd
 	_net->CopyTrainedLayersFrom(this->_mlmodel._weights);
 	return 0;
       }
+    // net definition is missing
     else if (this->_mlmodel._def.empty())
       return 2; // missing 'deploy' file.
     return 1;
@@ -1463,26 +1465,29 @@ namespace dd
     boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(inputc._dv);
     
     float loss = 0.0;
-    std::vector<Blob<float>*> results = _net->ForwardPrefilled(&loss); // XXX: on a batch, are we getting the average loss ?
+    std::vector<Blob<float>*> results = _net->ForwardPrefilled(&loss);
     int slot = results.size() - 1;
     if (_regression)
-      slot = 0; // XXX: more in-depth testing required
+      {
+	if (_ntargets > 1)
+	  slot = 1;
+	else slot = 0; // XXX: more in-depth testing required
+      }
     int scount = results[slot]->count();
     int scperel = scount / batch_size;
-    //TODO: accomodate for regression and multi-target
     int nclasses = scperel;
     TOutputConnectorStrategy tout;
     for (int j=0;j<batch_size;j++)
       {
 	tout.add_result(inputc._ids.at(j),loss);
 	for (int i=0;i<nclasses;i++)
-	  {
-	    tout.add_cat(inputc._ids.at(j),results[slot]->cpu_data()[j*scperel+i],this->_mlmodel.get_hcorresp(i));
-	  }
+	  tout.add_cat(inputc._ids.at(j),results[slot]->cpu_data()[j*scperel+i],this->_mlmodel.get_hcorresp(i));
       }
     TOutputConnectorStrategy btout(this->_outputc);
+    if (_regression)
+      tout._best = nclasses;
     tout.best_cats(ad.getobj("parameters").getobj("output"),btout);
-    btout.to_ad(out);
+    btout.to_ad(out,_regression);
     out.add("status",0);
     
     return 0;

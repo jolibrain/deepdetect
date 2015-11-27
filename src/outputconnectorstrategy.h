@@ -568,36 +568,35 @@ namespace dd
      * \brief write supervised output object to data object
      * @param out data destination
      */
-    void to_ad(APIData &out) const
+    void to_ad(APIData &out, const bool &regression) const
     {
       static std::string cl = "classes";
+      static std::string ve = "vector";
       static std::string phead = "prob";
       static std::string chead = "cat";
+      static std::string vhead = "val";
       static std::string last = "last";
       std::vector<APIData> vpred;
-      
-      //debug
-      /*std::string str;
-      to_str(str);
-      std::cout << "witness=\n" << str << std::endl;*/
-      //debug
-
       for (size_t i=0;i<_vvcats.size();i++)
 	{
+	  APIData adpred;
 	  std::vector<APIData> v;
 	  auto mit = _vvcats.at(i)._cats.begin();
 	  while(mit!=_vvcats.at(i)._cats.end())
 	    {
 	      APIData nad;
 	      nad.add(chead,(*mit).second);
-	      nad.add(phead,(*mit).first);
+	      if (regression)
+		nad.add(vhead,(*mit).first);
+	      else nad.add(phead,(*mit).first);
 	      ++mit;
 	      if (mit == _vvcats.at(i)._cats.end())
 		nad.add(last,true);
 	      v.push_back(nad);
 	    }
-	  APIData adpred;
-	  adpred.add(cl,v);
+	  if (regression)
+	    adpred.add(ve,v);
+	  else adpred.add(cl,v);
 	  if (_vvcats.at(i)._loss > 0.0) // XXX: not set by Caffe in prediction mode for now
 	    adpred.add("loss",_vvcats.at(i)._loss);
 	  adpred.add("uri",_vvcats.at(i)._label);
