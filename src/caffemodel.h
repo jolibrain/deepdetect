@@ -50,6 +50,7 @@ namespace dd
       }
     
     std::string _def; /**< file name of the model definition in the form of a protocol buffer message description. */
+    std::string _trainf; /**< file name of the training model definition. */
     std::string _weights; /**< file name of the network's weights. */
     std::string _corresp; /**< file name of the class correspondences (e.g. house / 23) */
     std::unordered_map<int,std::string> _hcorresp; /**< table of class correspondences. */

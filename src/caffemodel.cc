@@ -40,6 +40,7 @@ namespace dd
     else
       {
 	_def = ad.get("def").get<std::string>();
+	_trainf = ad.get("trainf").get<std::string>();
 	_weights = ad.get("weights").get<std::string>();
 	_corresp = ad.get("corresp").get<std::string>();
 	_solver = ad.get("solver").get<std::string>();
@@ -51,6 +52,7 @@ namespace dd
   int CaffeModel::read_from_repository(const std::string &repo)
   {
     static std::string deploy = "deploy.prototxt";
+    static std::string train = ".prototxt";
     static std::string weights = ".caffemodel";
     static std::string sstate = ".solverstate";
     static std::string corresp = "corresp";
@@ -63,7 +65,7 @@ namespace dd
 	LOG(ERROR) << "error reading or listing caffe models in repository " << repo << std::endl;
 	return 1;
       }
-    std::string deployf,weightsf,correspf,solverf,sstatef;
+    std::string deployf,trainf,weightsf,correspf,solverf,sstatef;
     long int state_t=-1, weight_t=-1;
     auto hit = lfiles.begin();
     while(hit!=lfiles.end())
@@ -100,9 +102,12 @@ namespace dd
 	  deployf = (*hit);
 	else if ((*hit).find(solver)!=std::string::npos)
 	  solverf = (*hit);
+	else if ((*hit).find(train)!=std::string::npos)
+	  trainf = (*hit);
 	++hit;
       }
     _def = deployf;
+    _trainf = trainf;
     _weights = weightsf;
     _corresp = correspf;
     _solver = solverf;

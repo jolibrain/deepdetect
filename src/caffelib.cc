@@ -437,7 +437,10 @@ namespace dd
     else lparam = net_param.add_layer(); // training loss
     lparam->set_name("loss");
     if (regression)
-      lparam->set_type("EuclideanLoss");
+      {
+	lparam->set_type("EuclideanLoss");
+	lparam->add_include()->set_phase(caffe::TRAIN);
+      }
     else lparam->set_type("SoftmaxWithLoss");
     lparam->add_bottom(last_ip);
     lparam->add_bottom("label");
@@ -1222,9 +1225,7 @@ namespace dd
 	    && (solver->iter_ > 0 || solver->param_.test_initialization())) 
 	  {
 	    if (!_net)
-	      {
-		_net = new Net<float>(this->_mlmodel._def,caffe::TEST); //TODO: this is loading deploy file, we could use the test net when it exists and if its source is memory data
-	      }
+	      _net = new Net<float>(this->_mlmodel._trainf,caffe::TEST); //XXX: needs to be memory data input layer
 	    _net->ShareTrainedLayersWith(solver->net().get());
 	    APIData meas_out;
 	    test(_net,ad,inputc,test_batch_size,has_mean_file,meas_out);

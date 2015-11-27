@@ -11,26 +11,24 @@ layer {
     scale: 0.00390625
   }
   data_param {
-    source: "mnist_train_lmdb"
+    source: "train.lmdb"
     batch_size: 64
     backend: LMDB
   }
 }
 layer {
   name: "mnist"
-  type: "Data"
+  type: "MemoryData"
   top: "data"
   top: "label"
   include {
     phase: TEST
   }
-  transform_param {
-    scale: 0.00390625
-  }
-  data_param {
-    source: "mnist_test_lmdb"
-    batch_size: 100
-    backend: LMDB
+  memory_data_param {
+    batch_size: 64
+    channels: 1
+    height: 28
+    width: 28
   }
 }
 layer {
