@@ -33,11 +33,12 @@ Current features include:
 - flexible template output format to simplify connection to external applications
 - templates for the most useful neural architectures (e.g. Googlenet, Alexnet, convnet, mlp, logistic regression)
 
-Documentation:
+##### Documentation
+
 - Full documentation is available from http://www.deepdetect.com/overview/introduction/
 - API documentation is available from http://www.deepdetect.com/api/
 
-Dependencies:
+##### Dependencies
 
 - C++, gcc >= 4.8 or clang with support for C++11 (there are issues with Clang + Boost)
 - [eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page) for all matrix operations;
@@ -50,24 +51,28 @@ Dependencies:
 - [curlpp](http://www.curlpp.org/)
 - [gtest](https://code.google.com/p/googletest/) for unit testing (optional);
 
-Caffe Dependencies:
+##### Caffe Dependencies
 
 - CUDA 7 or 6.5 is required for GPU mode.
 - BLAS via ATLAS, MKL, or OpenBLAS.
 - [protobuf](https://github.com/google/protobuf)
 - IO libraries hdf5, leveldb, snappy, lmdb
 
-Caffe version:
+##### Caffe version
 
 By default DeepDetect automatically relies on a modified version of Caffe, https://github.com/beniz/caffe/tree/master_dd_integ
 
-Implementation:
+##### Implementation
 
 The code makes use of C++ policy design for modularity, performance and putting the maximum burden on the checks at compile time. The implementation uses many features from C++11.
 
-Visual Demo:
+##### Visual Demo
 
 HTML and javascript classification image demo in demo/imgdetect
+
+##### Models
+
+- List of free, even for commercial use, deep neural nets for image classification: http://www.deepdetect.com/applications/model/
 
 ### Authors
 DeepDetect is designed and implemented by Emmanuel Benazera <beniz@droidnik.fr>.
