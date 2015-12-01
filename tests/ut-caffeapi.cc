@@ -379,6 +379,36 @@ TEST(caffeapi,service_train_csv)
   ASSERT_EQ(56,jd["body"]["parameters"]["input"]["min_vals"].Size());
   ASSERT_EQ(56,jd["body"]["parameters"]["input"]["max_vals"].Size());
   ASSERT_EQ(504,jd["body"]["parameters"]["mllib"]["batch_size"].GetInt());
+
+  std::string str_min_vals = japi.jrender(jd["body"]["parameters"]["input"]["min_vals"]);
+  std::string str_max_vals = japi.jrender(jd["body"]["parameters"]["input"]["max_vals"]);
+  std::cerr << "str_min_vals=" << str_min_vals << std::endl;
+  std::cerr << "str_max_vals=" << str_max_vals << std::endl;
+  
+  // predict from data, with header and id
+  std::string mem_data_head = "Id,Elevation,Aspect,Slope,Horizontal_Distance_To_Hydrology,Vertical_Distance_To_Hydrology,Horizontal_Distance_To_Roadways,Hillshade_9am,Hillshade_Noon,Hillshade_3pm,Horizontal_Distance_To_Fire_Points,Wilderness_Area1,Wilderness_Area2,Wilderness_Area3,Wilderness_Area4,Soil_Type1,Soil_Type2,Soil_Type3,Soil_Type4,Soil_Type5,Soil_Type6,Soil_Type7,Soil_Type8,Soil_Type9,Soil_Type10,Soil_Type11,Soil_Type12,Soil_Type13,Soil_Type14,Soil_Type15,Soil_Type16,Soil_Type17,Soil_Type18,Soil_Type19,Soil_Type20,Soil_Type21,Soil_Type22,Soil_Type23,Soil_Type24,Soil_Type25,Soil_Type26,Soil_Type27,Soil_Type28,Soil_Type29,Soil_Type30,Soil_Type31,Soil_Type32,Soil_Type33,Soil_Type34,Soil_Type35,Soil_Type36,Soil_Type37,Soil_Type38,Soil_Type39,Soil_Type40";
+  std::string mem_data = "0,2499,326,7,300,88,480,202,232,169,1676,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0";
+  std::string jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"connector\":\"csv\",\"id\":\"Id\",\"scale\":true,\"min_vals\":" + str_min_vals + ",\"max_vals\":" + str_max_vals + "},\"output\":{\"best\":3}},\"data\":[\"" + mem_data_head + "\",\"" + mem_data + "\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_TRUE(jd.HasMember("status"));
+  ASSERT_EQ(200,jd["status"]["code"].GetInt());
+  ASSERT_EQ("2",jd["body"]["predictions"]["classes"][0]["cat"]); // XXX: true cat is 3, which is 2 here with the label offset
+  
+  // predict from data, omitting header and sample id
+  std::string mem_data2 = "2499,326,7,300,88,480,202,232,169,1676,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0";
+  std::string str_min_vals2="[1863.0,0.0,0.0,0.0,-146.0,0.0,0.0,99.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0]";
+  std::string str_max_vals2="[3849.0,360.0,52.0,1343.0,554.0,6890.0,254.0,254.0,248.0,6993.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,7.0]";
+  jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"connector\":\"csv\",\"scale\":true,\"min_vals\":" + str_min_vals2 + ",\"max_vals\":" + str_max_vals2 + "},\"output\":{\"best\":3}},\"data\":[\"" + mem_data2 + "\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_TRUE(jd.HasMember("status"));
+  ASSERT_EQ(200,jd["status"]["code"].GetInt());
+  ASSERT_EQ("2",jd["body"]["predictions"]["classes"][0]["cat"]); // XXX: true cat is 3, which is 2 here with the label offset
   
   // remove service
   jstr = "{\"clear\":\"lib\"}";
@@ -564,6 +594,28 @@ TEST(caffeapi,service_train_csv_mt_regression)
   ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
   ASSERT_TRUE(jd["body"]["measure"].HasMember("eucll"));
   ASSERT_TRUE(jd["body"]["measure"]["eucll"].GetDouble() > 0.0);
+  ASSERT_TRUE(jd["body"]["parameters"]["input"].HasMember("max_vals"));
+  ASSERT_TRUE(jd["body"]["parameters"]["input"].HasMember("min_vals"));
+
+  std::string str_min_vals = japi.jrender(jd["body"]["parameters"]["input"]["min_vals"]);
+  std::string str_max_vals = japi.jrender(jd["body"]["parameters"]["input"]["max_vals"]);
+  std::string str_categoricals = japi.jrender(jd["body"]["parameters"]["input"]["categoricals_mapping"]);
+  std::cerr << "categoricals=" << str_categoricals << std::endl;
+  
+  // predict
+  std::string sflare_data_head = "class_code,code_spot,code_spot_distr,act,evo,prev_act,hist,reg,area,larg_area,x,y,z";
+  std::string sflare_data = "B,X,O,1,2,1,1,2,1,1,0,0,0";
+  //std::string jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"connector\":\"csv\",\"scale\":true,\"min_vals\":[" + str_min_vals + "],\"max_vals\":[" + str_max_vals + "]},\"output\":{}},\"data\":[\"" + sflare_data + "\"]}";
+  std::string jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"connector\":\"csv\",\"scale\":false,\"categoricals_mapping\":[" + str_categoricals + "]},\"output\":{}},\"data\":[\"" + sflare_data_head + "\",\"" + sflare_data + "\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200,jd["status"]["code"]);
+  std::string uri = jd["body"]["predictions"]["uri"].GetString();
+  ASSERT_EQ("1",uri);
+  ASSERT_TRUE(jd["body"]["predictions"]["vector"].IsArray());
+  ASSERT_TRUE(jd["body"]["predictions"]["vector"][0]["val"].GetDouble() > 0.0);
   
   // remove service
   jstr = "{\"clear\":\"full\"}";
