@@ -43,6 +43,20 @@ namespace dd
     mapbox::util::recursive_wrapper<std::vector<APIData>>> ad_variant_type;
 
   /**
+   * \brief data conversion exception
+   */
+  class DataConversionException : public std::exception
+  {
+  public:
+    DataConversionException(const std::string &s)
+      :_s(s) {}
+    ~DataConversionException() {}
+    const char *what() const noexcept { return _s.c_str(); }
+  private:
+    std::string _s;
+  };
+  
+  /**
    * \brief object for visitor output
    */
   class vout

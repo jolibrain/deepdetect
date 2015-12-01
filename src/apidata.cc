@@ -108,7 +108,7 @@ namespace dd
 		      }
 		    add(cit->name.GetString(),vd);
 		  }
-		if (jarr[0].IsInt())
+		else if (jarr[0].IsInt())
 		  {
 		    std::vector<int> vd;
 		    for (rapidjson::SizeType i=0;i<jarr.Size();i++)
@@ -134,6 +134,10 @@ namespace dd
 			vad.push_back(nad);
 		      }
 		    add(cit->name.GetString(),vad);
+		  }
+		else
+		  {
+		    throw DataConversionException("conversion error: unknown type of array");
 		  }
 	      }
 	  }
