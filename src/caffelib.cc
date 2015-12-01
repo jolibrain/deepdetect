@@ -1701,6 +1701,8 @@ namespace dd
       {
 	// adjust batch size so that it is a multiple of the number of training samples (Caffe requirement)
 	user_batch_size = batch_size = test_batch_size = ad_net.get("batch_size").get<int>();
+	if (ad_net.has("test_batch_size"))
+	  test_batch_size = ad_net.get("test_batch_size").get<int>();
 	if (batch_size == 0)
 	  throw MLLibBadParamException("batch size set to zero");
 	LOG(INFO) << "user batch_size=" << batch_size << " / inputc batch_size=" << inputc.batch_size() << std::endl;
