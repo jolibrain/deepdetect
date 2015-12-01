@@ -206,8 +206,28 @@ namespace dd
       auto lit = _columns.begin();
       for (int j=0;j<(int)vals.size();j++)
 	{
-	  if ((_columns.empty() || (*lit) != _id) && (_label_pos[0] < 0 || j != _label_pos[0]) && _max_vals.at(j) != _min_vals.at(j))
-	    vals.at(j) = (vals.at(j) - _min_vals.at(j)) / (_max_vals.at(j) - _min_vals.at(j));
+	  bool j_is_id = _columns.empty() ? false : (*lit) == _id;
+	  if (j_is_id)
+	    {
+	      ++lit;
+	      continue;
+	    }
+	  bool equal_bounds = (_max_vals.at(j) == _min_vals.at(j));
+	  if (equal_bounds)
+	    {
+	      ++lit;
+	      continue;
+	    }
+	  bool j_is_label = false;
+	  if (!_columns.empty() && std::find(_label_pos.begin(),_label_pos.end(),j)!=_label_pos.end())
+	    j_is_label = true;
+	  if (j_is_label)
+	    {
+	      ++lit;
+	      continue;
+	    }
+	  
+	  vals.at(j) = (vals.at(j) - _min_vals.at(j)) / (_max_vals.at(j) - _min_vals.at(j));
 	  ++lit;
 	}
     }
@@ -244,11 +264,14 @@ namespace dd
 	  
 	  //debug
 	  /*std::cout << "loaded min/max scales:\n";
-	    std::copy(_min_vals.begin(),_min_vals.end(),std::ostream_iterator<double>(std::cout," "));
-	    std::cout << std::endl;
-	    std::copy(_max_vals.begin(),_max_vals.end(),std::ostream_iterator<double>(std::cout," "));
-	    std::cout << std::endl;*/
+	  std::copy(_min_vals.begin(),_min_vals.end(),std::ostream_iterator<double>(std::cout," "));
+	  std::cout << std::endl;
+	  std::copy(_max_vals.begin(),_max_vals.end(),std::ostream_iterator<double>(std::cout," "));
+	  std::cout << std::endl;*/
 	  //debug
+
+	  if (!_train && (_max_vals.empty() || _min_vals.empty()))
+	    throw InputConnectorBadParamException("predict: failed acquiring scaling min_vals or max_vals");
 	}
     }
 
@@ -309,7 +332,6 @@ namespace dd
     {
       get_data(ad);
       APIData ad_input = ad.getobj("parameters").getobj("input");
-      
       fillup_parameters(ad_input);
 
       /**
@@ -334,14 +356,9 @@ namespace dd
 	    }
 
 	  // check on common and required parameters
-	  /*if (ad_input.has("label"))
-	    _label = ad_input.get("label").get<std::string>();
-	    else*/
 	  if (!ad_input.has("label") && _train && _label.empty())
 	    throw InputConnectorBadParamException("missing label column parameter");
-	  /*if (ad_input.has("label_offset"))
-	    _label_offset = ad_input.get("label_offset").get<int>();*/
-
+	  
 	  if (!_csv_fname.empty()) // when training from file
 	    {
 	      DataEl<DDCsv> ddcsv;
@@ -358,7 +375,6 @@ namespace dd
 		  ddcsv._ctype._adconf = ad_input;
 		  ddcsv.read_element(_uris.at(i));
 		}
-	      //TODO: categoricals
 	      if (_scale)
 		{
 		  for (size_t j=0;j<_csvdata.size();j++)
@@ -378,7 +394,7 @@ namespace dd
 	{
 	  for (size_t i=0;i<_uris.size();i++)
 	    {
-	      if (i == 0 && ad_input.size() && !_id.empty() && _uris.at(0).find(_delim)!=std::string::npos) // first line might be the header if we have some options to consider
+	      if (i ==0 && (!_categoricals.empty() || (ad_input.size() && !_id.empty() && _uris.at(0).find(_delim)!=std::string::npos))) // first line might be the header if we have some options to consider
 		{
 		  read_header(_uris.at(0));
 		  continue;
@@ -501,7 +517,7 @@ namespace dd
     std::unordered_map<std::string,int> _label_set;
     std::string _delim = ",";
     int _id_pos = -1;
-    std::vector<int> _label_pos;// = -1;
+    std::vector<int> _label_pos;
     std::vector<int> _label_offset; /**< negative offset so that labels range from 0 onward */
     std::unordered_set<std::string> _ignored_columns;
     std::unordered_set<int> _ignored_columns_pos;
