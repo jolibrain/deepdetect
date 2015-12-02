@@ -1155,6 +1155,8 @@ namespace dd
       }
     catch(std::exception &e)
       {
+	if (solver)
+	  delete solver;
 	throw;
       }
     if (!inputc._dv.empty())
@@ -1185,7 +1187,19 @@ namespace dd
 	    delete solver;
 	    throw MLLibBadParamException("resuming a model requires a .solverstate file in model repository");
 	  }
-	else solver->Restore(this->_mlmodel._sstate.c_str());
+	else 
+	  {
+	    try
+	      {
+		solver->Restore(this->_mlmodel._sstate.c_str());
+	      }
+	    catch(std::exception &e)
+	      {
+		LOG(ERROR) << "Failed restoring network state\n";
+		delete solver;
+		throw;
+	      }
+	  }
       }
     else if (!this->_mlmodel._weights.empty())
       {
@@ -1244,7 +1258,18 @@ namespace dd
 		  }
 	      }
 	  }
-	float loss = solver->net_->ForwardBackward(bottom_vec);
+	
+	float loss;
+	try
+	  {
+	    loss = solver->net_->ForwardBackward(bottom_vec);
+	  }
+	catch(std::exception &e)
+	  {
+	    LOG(ERROR) << "exception while forward/backward pass through the network\n";
+	    delete solver;
+	    throw;
+	  }
 	if (static_cast<int>(losses.size()) < average_loss) 
 	  {
 	    losses.push_back(loss);
@@ -1263,8 +1288,17 @@ namespace dd
 	  {
 	    this->add_meas_per_iter("train_loss",loss); // to avoid filling up with possibly millions of entries...
 	    LOG(INFO) << "smoothed_loss=" << this->get_meas("train_loss");
-	  }	
-	solver->ApplyUpdate();
+	  }
+	try
+	  {
+	    solver->ApplyUpdate();
+	  }
+	catch (std::exception &e)
+	  {
+	    LOG(ERROR) << "exception while updating network\n";
+	    delete solver;
+	    throw;
+	  }
 	solver->iter_++;
       }
     
