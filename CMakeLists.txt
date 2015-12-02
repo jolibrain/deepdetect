@@ -1,8 +1,11 @@
 cmake_minimum_required(VERSION 2.8.8)
 project(deepdetect)
-include(ExternalProject)
+
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+
+include(ExternalProject)
 
 set (deepdetect_VERSION_MAJOR 0)
 set (deepdetect_VERSION_MINOR 1)
@@ -48,7 +51,7 @@ include_directories("${EIGEN3_INCLUDE_DIR}")
 find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system)
 
 # optional packages
-find_package(CUDA)
+include(cmake/Cuda.cmake) # cuda + cudnn
 
 # customized Caffe as external project
 if (CAFFE_INC_DIR AND CAFFE_LIB_DIR)
@@ -56,15 +59,27 @@ if (CAFFE_INC_DIR AND CAFFE_LIB_DIR)
 else()
   message(STATUS "Fetching and compiling customized caffe")
   if (CUDA_FOUND)
-    ExternalProject_Add(
-      caffe_dd
-      PREFIX caffe_dd
-      INSTALL_DIR ${CMAKE_BINARY_DIR}
-      URL https://github.com/beniz/caffe/archive/master_dd_integ.tar.gz
-      CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && make
-      INSTALL_COMMAND ""
-      BUILD_IN_SOURCE 1
-      )
+    if (HAVE_CUDNN)
+      ExternalProject_Add(
+	caffe_dd
+	PREFIX caffe_dd
+	INSTALL_DIR ${CMAKE_BINARY_DIR}
+	URL https://github.com/beniz/caffe/archive/master_dd_integ.tar.gz
+	CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn Makefile.config && make
+	INSTALL_COMMAND ""
+	BUILD_IN_SOURCE 1
+	)
+    else()
+ExternalProject_Add(
+	caffe_dd
+	PREFIX caffe_dd
+	INSTALL_DIR ${CMAKE_BINARY_DIR}
+	URL https://github.com/beniz/caffe/archive/master_dd_integ.tar.gz
+	CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && make
+	INSTALL_COMMAND ""
+	BUILD_IN_SOURCE 1
+	)
+    endif()
   else()
     ExternalProject_Add(
       caffe_dd
