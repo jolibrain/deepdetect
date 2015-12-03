@@ -395,7 +395,9 @@ TEST(caffeapi,service_train_csv)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(200,jd["status"]["code"].GetInt());
-  ASSERT_EQ("2",jd["body"]["predictions"]["classes"][0]["cat"]); // XXX: true cat is 3, which is 2 here with the label offset
+  std::string cat0 = jd["body"]["predictions"]["classes"][0]["cat"].GetString(); // XXX: true cat is 3, which is 2 here with the label offset
+  std::string cat1 = jd["body"]["predictions"]["classes"][1]["cat"].GetString();
+  ASSERT_TRUE("2"==cat0||"2"==cat1);
   
   // predict from data, omitting header and sample id
   std::string mem_data2 = "2499,326,7,300,88,480,202,232,169,1676,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0";
@@ -408,7 +410,9 @@ TEST(caffeapi,service_train_csv)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(200,jd["status"]["code"].GetInt());
-  ASSERT_EQ("2",jd["body"]["predictions"]["classes"][0]["cat"]); // XXX: true cat is 3, which is 2 here with the label offset
+  cat0 = jd["body"]["predictions"]["classes"][0]["cat"].GetString(); // XXX: true cat is 3, which is 2 here with the label offset
+  cat1 = jd["body"]["predictions"]["classes"][1]["cat"].GetString();
+  ASSERT_TRUE("2"==cat0||"2"==cat1);
   
   // remove service
   jstr = "{\"clear\":\"lib\"}";
@@ -605,8 +609,7 @@ TEST(caffeapi,service_train_csv_mt_regression)
   // predict
   std::string sflare_data_head = "class_code,code_spot,code_spot_distr,act,evo,prev_act,hist,reg,area,larg_area,x,y,z";
   std::string sflare_data = "B,X,O,1,2,1,1,2,1,1,0,0,0";
-  //std::string jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"connector\":\"csv\",\"scale\":true,\"min_vals\":[" + str_min_vals + "],\"max_vals\":[" + str_max_vals + "]},\"output\":{}},\"data\":[\"" + sflare_data + "\"]}";
-  std::string jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"connector\":\"csv\",\"scale\":false,\"categoricals_mapping\":[" + str_categoricals + "]},\"output\":{}},\"data\":[\"" + sflare_data_head + "\",\"" + sflare_data + "\"]}";
+  std::string jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"connector\":\"csv\",\"scale\":true,\"min_vals\":" + str_min_vals + ",\"max_vals\":" + str_max_vals + ",\"categoricals_mapping\":" + str_categoricals + "},\"output\":{}},\"data\":[\"" + sflare_data_head + "\",\"" + sflare_data + "\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse(joutstr.c_str());

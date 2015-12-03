@@ -1390,19 +1390,15 @@ namespace dd
 	    float loss = 0.0;
 	    std::vector<Blob<float>*> lresults = net->ForwardPrefilled(&loss);
 	    int slot = lresults.size() - 1;
-	    if (_regression)
-	      {
-		if (_ntargets > 1)
-		  slot = 1; // XXX: more in-depth testing required
-		else slot = 0;
-	      }
+	    if (_regression && _ntargets > 1) // slicing is involved
+	      slot--; // labels appear to be last
 	    int scount = lresults[slot]->count();
 	    int scperel = scount / dv.size();
 	    for (int j=0;j<(int)dv.size();j++)
 	      {
 		APIData bad;
 		std::vector<double> predictions;
-		if (!_regression || _ntargets == 0)
+		if (!_regression || _ntargets == 1)
 		  {
 		    double target = dv.at(j).label();
 		    for (int k=0;k<nout;k++)
