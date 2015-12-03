@@ -117,6 +117,8 @@ namespace dd
 	_min_count = ad_input.get("min_count").get<int>();
       if (ad_input.has("min_word_length"))
 	_min_word_length = ad_input.get("min_word_length").get<int>();
+      if (ad_input.has("sentences"))
+	_sentences = ad_input.get("sentences").get<bool>();
     }
 
     int feature_size() const
@@ -211,6 +213,7 @@ namespace dd
     bool _tfidf = false; /**< whether to use TF/IDF */
     int _min_count = 5; /**< min word occurence. */
     int _min_word_length = 5; /**< min word length. */
+    bool _sentences = false; /**< whether to consider every sentence (\n separated) as a document. */
     
     // internals
     std::unordered_map<std::string,Word> _vocab; /**< string to word stats, including word */
