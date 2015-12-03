@@ -206,7 +206,7 @@ namespace dd
       auto lit = _columns.begin();
       for (int j=0;j<(int)vals.size();j++)
 	{
-	  bool j_is_id = _columns.empty() ? false : (*lit) == _id;
+	  bool j_is_id = (_columns.empty() || _id.empty()) ? false : (*lit) == _id;
 	  if (j_is_id)
 	    {
 	      ++lit;

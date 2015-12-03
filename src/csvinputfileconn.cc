@@ -139,12 +139,13 @@ namespace dd
       while(std::getline(sh,col,delim[0]))
 	{
 	  ++c;
-	  std::string col_name = (*lit);
+	  std::string col_name;
 
 	  // detect strings by looking for characters and for quotes
 	  // convert to float unless it is string (ignore strings, aka categorical fields, for now)
 	  if (!_columns.empty()) // in prediction mode, columns from header are not mandatory
 	    {
+	      col_name = (*lit);
 	      if ((hit=_ignored_columns_pos.find(c))!=_ignored_columns_pos.end())
 		{
 		  continue;
