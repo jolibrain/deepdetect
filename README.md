@@ -98,6 +98,11 @@ If you are building for one or more GPUs, you may need to add CUDA to your ld pa
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64
 ```
 
+If you would like to build with cuDNN, your `cmake` line should be:
+```
+cmake .. -DUSE_CUDNN=ON
+```
+
 ### Run tests
 
 Note: running tests requires the automated download of ~75Mb of datasets, and computations may take around thirty minutes on a CPU-only machines.
