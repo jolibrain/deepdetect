@@ -23,6 +23,7 @@
 #define TXTINPUTFILECONN_H
 
 #include "inputconnectorstrategy.h"
+#include <algorithm>
 #include <cmath>
 
 namespace dd
@@ -168,6 +169,20 @@ namespace dd
       
       if (_train)
 	serialize_vocab();
+
+      // shuffle entries if requested
+      if (_train && _shuffle)
+	{
+	  std::mt19937 g;
+	  if (_seed >= 0)
+	    g =std::mt19937(_seed);
+	  else
+	    {
+	      std::random_device rd;
+	      g = std::mt19937(rd());
+	    }
+	  std::shuffle(_txt.begin(),_txt.end(),g);
+	}
       
       // split for test set
       if (_train && _test_split > 0)

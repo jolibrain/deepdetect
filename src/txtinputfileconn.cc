@@ -102,20 +102,6 @@ namespace dd
 	  }
       }
     
-    // shuffle files if requested
-    if (_ctfc->_shuffle)
-      {
-	std::mt19937 g;
-	if (_ctfc->_seed >= 0)
-	  g =std::mt19937(_ctfc->_seed);
-	else
-	  {
-	    std::random_device rd;
-	    g = std::mt19937(rd());
-	  }
-	std::shuffle(lfiles.begin(),lfiles.end(),g);
-      }
-
     // parse content
     // XXX: parallelize with openmp -> requires thread safe parse_content
     for (std::pair<std::string,int> &p: lfiles)
