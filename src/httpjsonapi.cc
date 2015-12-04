@@ -195,8 +195,14 @@ public:
     std::cerr << "body=" << request.body << std::endl;*/
     //debug
 
-    uri::uri ur("http://"+request.source+request.destination);
-    
+    std::string source = request.source;
+    if (source == "::1")
+      source = "127.0.0.1";
+    uri::uri ur;
+    ur << uri::scheme("http")
+       << uri::host(source)
+       << uri::path(request.destination);
+
     std::string req_method = request.method;
     std::string req_path = uri::path(ur);
     std::string req_query = uri::query(ur);
