@@ -70,6 +70,11 @@ The code makes use of C++ policy design for modularity, performance and putting 
 
 HTML and javascript classification image demo in demo/imgdetect
 
+##### Examples
+
+- List of examples, from MLP for data, text, multi-target regression to CNN and GoogleNet, finetuning, etc...:
+http://www.deepdetect.com/overview/examples/
+
 ##### Models
 
 - List of free, even for commercial use, deep neural nets for image classification: http://www.deepdetect.com/applications/model/
