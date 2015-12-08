@@ -57,7 +57,8 @@ namespace dd
       }
 
     void reset_dv_test() {}
-    
+
+    bool _db = false; /**< whether to use a db. */
     std::vector<caffe::Datum> _dv; /**< main input datum vector, used for training or prediction */
     std::vector<caffe::Datum> _dv_test; /**< test input datum vector, when applicable in training mode */
     std::vector<std::string> _ids; /**< input ids (e.g. image ids) */
@@ -447,7 +448,6 @@ namespace dd
   public:
     std::vector<caffe::Datum>::const_iterator _dt_vit;
     
-    bool _db = false;
     int _db_batchsize = -1;
     int _db_testbatchsize = -1;
     std::unique_ptr<caffe::db::DB> _test_db;
@@ -628,7 +628,6 @@ namespace dd
     std::vector<caffe::Datum>::const_iterator _dt_vit;
 
   public:
-    bool _db = false;
     int _db_batchsize = -1;
     int _db_testbatchsize = -1;
     std::unique_ptr<caffe::db::DB> _test_db;
