@@ -102,20 +102,6 @@ namespace dd
 	  }
       }
     
-    // shuffle files if requested
-    if (_ctfc->_shuffle)
-      {
-	std::mt19937 g;
-	if (_ctfc->_seed >= 0)
-	  g =std::mt19937(_ctfc->_seed);
-	else
-	  {
-	    std::random_device rd;
-	    g = std::mt19937(rd());
-	  }
-	std::shuffle(lfiles.begin(),lfiles.end(),g);
-      }
-
     // parse content
     // XXX: parallelize with openmp -> requires thread safe parse_content
     for (std::pair<std::string,int> &p: lfiles)
@@ -205,39 +191,53 @@ namespace dd
     // - sentence separator
     // - non bow parsing
     
-    std::string ct = content;
-    std::transform(ct.begin(),ct.end(),ct.begin(),::tolower);
-    TxtBowEntry tbe(target);
-    std::unordered_map<std::string,Word>::iterator vhit;
-    boost::char_separator<char> sep("\n\t\f\r ,.;:`'!?)(-|><^·&\"\\/{}#$–=+");
-    boost::tokenizer<boost::char_separator<char>> tokens(ct,sep);
-    for (std::string w : tokens)
+    std::vector<std::string> cts;
+    if (_sentences)
       {
-	if (static_cast<int>(w.length()) < _min_word_length)
-	  continue;
-
-	// check and fillup vocab.
-	int pos = -1;
-	if ((vhit=_vocab.find(w))==_vocab.end())
-	  {
-	    if (_train)
-	      {
-		pos = _vocab.size();
-		_vocab.emplace(std::make_pair(w,Word(pos)));
-	      }
-	  }
-	else
-	  {
-	    if (_train)
-	      {
-		(*vhit).second._total_count++;
-		if (!tbe.has_word(w))
-		  (*vhit).second._total_docs++;
-	      }
-	  }
-	tbe.add_word(w,1.0,_count);
+	boost::char_separator<char> sep("\n");
+	boost::tokenizer<boost::char_separator<char>> tokens(content,sep);
+	for (std::string s: tokens)
+	  cts.push_back(s);
       }
-    _txt.push_back(tbe);
+    else
+      {
+	cts.push_back(content);
+      }
+    for (std::string ct: cts)
+      {
+	std::transform(ct.begin(),ct.end(),ct.begin(),::tolower);
+	TxtBowEntry tbe(target);
+	std::unordered_map<std::string,Word>::iterator vhit;
+	boost::char_separator<char> sep("\n\t\f\r ,.;:`'!?)(-|><^·&\"\\/{}#$–=+");
+	boost::tokenizer<boost::char_separator<char>> tokens(ct,sep);
+	for (std::string w : tokens)
+	  {
+	    if (static_cast<int>(w.length()) < _min_word_length)
+	      continue;
+	    
+	    // check and fillup vocab.
+	    int pos = -1;
+	    if ((vhit=_vocab.find(w))==_vocab.end())
+	      {
+		if (_train)
+		  {
+		    pos = _vocab.size();
+		    _vocab.emplace(std::make_pair(w,Word(pos)));
+		  }
+	      }
+	    else
+	      {
+		if (_train)
+		  {
+		    (*vhit).second._total_count++;
+		    if (!tbe.has_word(w))
+		      (*vhit).second._total_docs++;
+		  }
+	      }
+	    tbe.add_word(w,1.0,_count);
+	  }
+	_txt.push_back(tbe);
+      }
   }
 
   void TxtInputFileConn::serialize_vocab()

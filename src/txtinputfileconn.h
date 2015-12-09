@@ -23,6 +23,7 @@
 #define TXTINPUTFILECONN_H
 
 #include "inputconnectorstrategy.h"
+#include <algorithm>
 #include <cmath>
 
 namespace dd
@@ -117,6 +118,8 @@ namespace dd
 	_min_count = ad_input.get("min_count").get<int>();
       if (ad_input.has("min_word_length"))
 	_min_word_length = ad_input.get("min_word_length").get<int>();
+      if (ad_input.has("sentences"))
+	_sentences = ad_input.get("sentences").get<bool>();
     }
 
     int feature_size() const
@@ -166,6 +169,20 @@ namespace dd
       
       if (_train)
 	serialize_vocab();
+
+      // shuffle entries if requested
+      if (_train && _shuffle)
+	{
+	  std::mt19937 g;
+	  if (_seed >= 0)
+	    g =std::mt19937(_seed);
+	  else
+	    {
+	      std::random_device rd;
+	      g = std::mt19937(rd());
+	    }
+	  std::shuffle(_txt.begin(),_txt.end(),g);
+	}
       
       // split for test set
       if (_train && _test_split > 0)
@@ -211,6 +228,7 @@ namespace dd
     bool _tfidf = false; /**< whether to use TF/IDF */
     int _min_count = 5; /**< min word occurence. */
     int _min_word_length = 5; /**< min word length. */
+    bool _sentences = false; /**< whether to consider every sentence (\n separated) as a document. */
     
     // internals
     std::unordered_map<std::string,Word> _vocab; /**< string to word stats, including word */

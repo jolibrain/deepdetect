@@ -1613,17 +1613,22 @@ namespace dd
   {
     caffe::NetParameter net_param;
     caffe::ReadProtoFromTextFile(net_file,&net_param); //TODO: catch parsing error (returns bool true on success)
-    if (net_param.mutable_layer(0)->has_memory_data_param())
+    if (net_param.mutable_layer(0)->has_memory_data_param()
+	|| net_param.mutable_layer(1)->has_memory_data_param())
       {
 	if (_ntargets == 0)
 	  {
-	    net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels());
-	    net_param.mutable_layer(1)->mutable_memory_data_param()->set_channels(inputc.channels()); // test layer
+	    if (net_param.mutable_layer(0)->has_memory_data_param())
+	      net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels());
+	    if (net_param.mutable_layer(1)->has_memory_data_param())
+	      net_param.mutable_layer(1)->mutable_memory_data_param()->set_channels(inputc.channels()); // test layer
 	  }
 	else
 	  {
-	    net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels()+_ntargets);
-	    net_param.mutable_layer(1)->mutable_memory_data_param()->set_channels(inputc.channels()+_ntargets);
+	    if (net_param.mutable_layer(0)->has_memory_data_param())
+	      net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels()+_ntargets);
+	    if (net_param.mutable_layer(1)->has_memory_data_param())
+	      net_param.mutable_layer(1)->mutable_memory_data_param()->set_channels(inputc.channels()+_ntargets);
 	    net_param.mutable_layer(2)->mutable_slice_param()->set_slice_point(0,inputc.channels());
 	  }
       }
