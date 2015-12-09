@@ -524,7 +524,7 @@ namespace dd
 		  const std::string &backend="lmdb");
 
     void write_txt_to_db(const std::string &dbname,
-			 std::vector<TxtBowEntry> &txt,
+			 std::vector<TxtEntry<double>*> &txt,
 			 const std::string &backend="lmdb");
     
     void transform(const APIData &ad)
@@ -557,18 +557,22 @@ namespace dd
 	  TxtInputFileConn::transform(ad);
 	  
 	  int n = 0;
-	  auto hit = _txt.cbegin();
-	  while(hit!=_txt.cend())
+	  auto hit = _txt.begin();
+	  while(hit!=_txt.end())
 	    {
-	      _dv.push_back(std::move(to_datum((*hit))));
+	      if (_characters)
+		_dv.push_back(std::move(to_datum<TxtCharEntry>(static_cast<TxtCharEntry*>((*hit)))));
+	      else _dv.push_back(std::move(to_datum<TxtBowEntry>(static_cast<TxtBowEntry*>((*hit)))));
 	      _ids.push_back(std::to_string(n));
 	      ++hit;
 	      ++n;
 	    }
-	  hit = _test_txt.cbegin();
-	  while(hit!=_test_txt.cend())
+	  hit = _test_txt.begin();
+	  while(hit!=_test_txt.end())
 	    {
-	      _dv_test.push_back(std::move(to_datum((*hit))));
+	      if (_characters)
+		_dv_test.push_back(std::move(to_datum<TxtCharEntry>(static_cast<TxtCharEntry*>((*hit)))));
+	      else _dv_test.push_back(std::move(to_datum<TxtBowEntry>(static_cast<TxtBowEntry*>((*hit)))));
 	      ++hit;
 	      ++n;
 	    }
@@ -604,7 +608,7 @@ namespace dd
       _test_db = std::unique_ptr<caffe::db::DB>();
     }
     
-    caffe::Datum to_datum(const TxtBowEntry &tbe)
+    template<class TEntry> caffe::Datum to_datum(TEntry *tbe)
       {
 	std::unordered_map<std::string,Word>::const_iterator wit;
 	caffe::Datum datum;
@@ -612,15 +616,24 @@ namespace dd
 	datum.set_channels(datum_channels);
 	datum.set_height(1);
 	datum.set_width(1);
-	datum.set_label(tbe._target);
+	datum.set_label(tbe->_target);
 	for (int i=0;i<datum_channels;i++) // XXX: expected to be slow
 	  datum.add_float_data(0.0);
-	auto hit = tbe._v.cbegin();
+	/*auto hit = tbe._v.cbegin();
 	while(hit!=tbe._v.cend())
 	  {
 	    if ((wit = _vocab.find((*hit).first))!=_vocab.end())
 	      datum.set_float_data(_vocab[(*hit).first]._pos,static_cast<float>((*hit).second));
 	    ++hit;
+	    }*/
+	tbe->reset();
+	while(tbe->has_elt())
+	  {
+	    std::string key;
+	    double val;
+	    tbe->get_next_elt(key,val);
+	    if ((wit = _vocab.find(key))!=_vocab.end())
+	      datum.set_float_data(_vocab[key]._pos,static_cast<float>(val));
 	  }
 	return datum;
       }

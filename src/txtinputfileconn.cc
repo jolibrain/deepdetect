@@ -137,14 +137,15 @@ namespace dd
 	  }
       }
 
-    if (initial_vocab_size != _ctfc->_vocab.size() || _ctfc->_tfidf)
+    if (!_ctfc->_characters && (initial_vocab_size != _ctfc->_vocab.size() || _ctfc->_tfidf))
       {
 	// clearing up the corpus + tfidf
 	std::unordered_map<std::string,Word>::iterator whit;
-	for (TxtBowEntry &tbe: _ctfc->_txt)
+	for (TxtEntry<double> *te: _ctfc->_txt)
 	  {
-	    auto hit = tbe._v.begin();
-	    while(hit!=tbe._v.end())
+	    TxtBowEntry *tbe = static_cast<TxtBowEntry*>(te);
+	    auto hit = tbe->_v.begin();
+	    while(hit!=tbe->_v.end())
 	      {
 		if ((whit=_ctfc->_vocab.find((*hit).first))!=_ctfc->_vocab.end())
 		  {
@@ -159,7 +160,7 @@ namespace dd
 		else 
 		  {
 		    //std::cerr << "removing ws=" << (*hit).first << std::endl;
-		    hit = tbe._v.erase(hit);
+		    hit = tbe->_v.erase(hit);
 		  }
 	      }
 	  }
@@ -187,10 +188,6 @@ namespace dd
   void TxtInputFileConn::parse_content(const std::string &content,
 				       const float &target)
   {
-    // Coming up:
-    // - sentence separator
-    // - non bow parsing
-    
     std::vector<std::string> cts;
     if (_sentences)
       {
@@ -206,37 +203,55 @@ namespace dd
     for (std::string ct: cts)
       {
 	std::transform(ct.begin(),ct.end(),ct.begin(),::tolower);
-	TxtBowEntry tbe(target);
-	std::unordered_map<std::string,Word>::iterator vhit;
-	boost::char_separator<char> sep("\n\t\f\r ,.;:`'!?)(-|><^·&\"\\/{}#$–=+");
-	boost::tokenizer<boost::char_separator<char>> tokens(ct,sep);
-	for (std::string w : tokens)
+	if (!_characters)
 	  {
-	    if (static_cast<int>(w.length()) < _min_word_length)
-	      continue;
-	    
-	    // check and fillup vocab.
-	    int pos = -1;
-	    if ((vhit=_vocab.find(w))==_vocab.end())
+	    TxtBowEntry *tbe = new TxtBowEntry(target);
+	    std::unordered_map<std::string,Word>::iterator vhit;
+	    boost::char_separator<char> sep("\n\t\f\r ,.;:`'!?)(-|><^·&\"\\/{}#$–=+");
+	    boost::tokenizer<boost::char_separator<char>> tokens(ct,sep);
+	    for (std::string w : tokens)
 	      {
-		if (_train)
+		if (static_cast<int>(w.length()) < _min_word_length)
+		  continue;
+		
+		// check and fillup vocab.
+		int pos = -1;
+		if ((vhit=_vocab.find(w))==_vocab.end())
 		  {
-		    pos = _vocab.size();
-		    _vocab.emplace(std::make_pair(w,Word(pos)));
+		    if (_train)
+		      {
+			pos = _vocab.size();
+			_vocab.emplace(std::make_pair(w,Word(pos)));
+		      }
 		  }
-	      }
-	    else
-	      {
-		if (_train)
+		else
 		  {
-		    (*vhit).second._total_count++;
-		    if (!tbe.has_word(w))
-		      (*vhit).second._total_docs++;
+		    if (_train)
+		      {
+			(*vhit).second._total_count++;
+			if (!tbe->has_word(w))
+			  (*vhit).second._total_docs++;
+		      }
 		  }
+		tbe->add_word(w,1.0,_count);
 	      }
-	    tbe.add_word(w,1.0,_count);
+	    _txt.push_back(tbe);
 	  }
-	_txt.push_back(tbe);
+	else // character-level features
+	  {
+	    TxtCharEntry *tce = new TxtCharEntry(target);
+	    std::unordered_map<char,int>::const_iterator whit;
+	    boost::char_separator<char> sep("\n\t\f\r ");
+	    boost::tokenizer<boost::char_separator<char>> tokens(ct,sep);
+	    for (std::string w: tokens)
+	      {
+		if ((whit=_alphabet.find(w[0]))==_alphabet.end())
+		  continue;
+		tce->add_char(w);
+	      }
+	    _txt.push_back(tce);
+	  }
+
       }
   }
 
@@ -272,6 +287,25 @@ namespace dd
 	_vocab.emplace(std::make_pair(key,Word(pos)));
       }
     std::cerr << "loaded vocabulary of size=" << _vocab.size() << std::endl;
+  }
+
+  void TxtInputFileConn::build_alphabet()
+  {
+    static std::string alphabet = "abcdefghijklmnopqrstuvwxyz0123456789-,;.!?:'\"/\\|_@#$%^&*~`+-=<>()[]{}";
+    _alphabet.clear();
+    int pos = 0;
+    for (char c: alphabet)
+      {
+	_alphabet.insert(std::pair<char,int>(c,pos));
+	++pos;
+      }
+  }
+
+  void TxtInputFileConn::destroy_txt_entries(std::vector<TxtEntry<double>*> &v)
+  {
+    for (auto e: v)
+      delete e;
+    v.clear();
   }
   
 }
