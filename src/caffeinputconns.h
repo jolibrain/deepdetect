@@ -644,7 +644,7 @@ namespace dd
 		std::string key;
 		double val = -1.0;
 		tbe->get_next_elt(key,val);
-		vals.push_back(static_cast<int>(val));
+		vals.push_back(_alphabet[key[0]]);
 	      }
 	    for (int c=0;c<_sequence;c++)
 	      {
