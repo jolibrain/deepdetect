@@ -612,28 +612,51 @@ namespace dd
       {
 	std::unordered_map<std::string,Word>::const_iterator wit;
 	caffe::Datum datum;
-	int datum_channels = _vocab.size(); // XXX: may be very large
+	int datum_channels;
+	if (_characters)
+	  datum_channels = _sequence;
+	else datum_channels = _vocab.size(); // XXX: may be very large
 	datum.set_channels(datum_channels);
-	datum.set_height(1);
+       	datum.set_height(1);
 	datum.set_width(1);
 	datum.set_label(tbe->_target);
-	for (int i=0;i<datum_channels;i++) // XXX: expected to be slow
-	  datum.add_float_data(0.0);
-	/*auto hit = tbe._v.cbegin();
-	while(hit!=tbe._v.cend())
+	if (!_characters)
 	  {
-	    if ((wit = _vocab.find((*hit).first))!=_vocab.end())
-	      datum.set_float_data(_vocab[(*hit).first]._pos,static_cast<float>((*hit).second));
-	    ++hit;
-	    }*/
-	tbe->reset();
-	while(tbe->has_elt())
+	    for (int i=0;i<datum_channels;i++) // XXX: expected to be slow
+	      datum.add_float_data(0.0);
+	    tbe->reset();
+	    while(tbe->has_elt())
+	      {
+		std::string key;
+		double val;
+		tbe->get_next_elt(key,val);
+		if ((wit = _vocab.find(key))!=_vocab.end())
+		  datum.set_float_data(_vocab[key]._pos,static_cast<float>(val));
+	      }
+	  }
+	else // character-level features
 	  {
-	    std::string key;
-	    double val;
-	    tbe->get_next_elt(key,val);
-	    if ((wit = _vocab.find(key))!=_vocab.end())
-	      datum.set_float_data(_vocab[key]._pos,static_cast<float>(val));
+	    tbe->reset();
+	    int c = 0;
+	    std::vector<int> vals;
+	    while(tbe->has_elt())
+	      {
+		std::string key;
+		double val = -1.0;
+		tbe->get_next_elt(key,val);
+		vals.push_back(static_cast<int>(val));
+	      }
+	    for (int c=0;c<_sequence;c++)
+	      {
+		std::vector<float> v(_alphabet.size(),0.0);
+		if (c<vals.size())
+		  v[vals[c]] = 1.0;
+		for (float f: v)
+		  datum.add_float_data(f);
+	      }
+	    datum.set_height(_alphabet.size());
+	    /*std::cerr << "datum_channels=" << datum_channels << std::endl;
+	      std::cerr << "float data size=" << datum.float_data_size() << std::endl;*/
 	  }
 	return datum;
       }

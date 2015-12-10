@@ -196,7 +196,8 @@ namespace dd
 	_sentences = ad_input.get("sentences").get<bool>();
       if (ad_input.has("characters"))
 	_characters = ad_input.get("characters").get<bool>();
-      //TODO: not sentences and characters on together
+      if (ad_input.has("sequence"))
+	_sequence = ad_input.get("sequence").get<int>();
     }
 
     int feature_size() const
@@ -317,6 +318,7 @@ namespace dd
     bool _sentences = false; /**< whether to consider every sentence (\n separated) as a document. */
     bool _characters = false; /**< whether to use character-level input features. */
     std::unordered_map<char,int> _alphabet; /**< character-level alphabet. */
+    int _sequence = 60; /**< sequence size when using character-level features. */
     
     // internals
     std::unordered_map<std::string,Word> _vocab; /**< string to word stats, including word */
