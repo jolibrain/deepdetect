@@ -112,7 +112,7 @@ namespace dd
 	caffe::NetParameter net_param,deploy_net_param;
 	caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
 	caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
-	configure_convnet_template(ad,_regression,_ntargets,_nclasses,net_param,deploy_net_param);
+	configure_convnet_template(ad,_regression,_ntargets,_nclasses,this->_inputc,net_param,deploy_net_param);
 	caffe::WriteProtoToTextFile(net_param,dest_net);
 	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
       }
@@ -472,6 +472,7 @@ namespace dd
 												       const bool &regression,
 												       const int &targets,
 												       const int &cnclasses,
+												       const TInputConnectorStrategy &inputc,
 												       caffe::NetParameter &net_param,
 												       caffe::NetParameter &deploy_net_param)
   {
@@ -637,7 +638,13 @@ namespace dd
 	    lparam->add_bottom(prec_ip);
 	    lparam->add_top(last_ip);
 	    lparam->mutable_convolution_param()->set_num_output(cr_layers.at(l).second);
-	    if (!lparam->mutable_convolution_param()->kernel_size_size())
+	    if (inputc.height() > 1 && inputc.width() == 1) // flat 1-D conv
+	      {
+		lparam->mutable_convolution_param()->clear_kernel_size();
+		lparam->mutable_convolution_param()->set_kernel_h(inputc.height());
+		lparam->mutable_convolution_param()->set_kernel_w(inputc.width());
+	      }
+	    else if (!lparam->mutable_convolution_param()->kernel_size_size())
 	      lparam->mutable_convolution_param()->add_kernel_size(conv_kernel_size);
 	    lparam->mutable_convolution_param()->mutable_weight_filler()->set_type(conv_wfill_type);
 	    lparam->mutable_convolution_param()->mutable_weight_filler()->set_std(conv_wfill_std);
@@ -660,7 +667,13 @@ namespace dd
 	    dlparam->add_top(last_ip);
 	    dlparam->add_bottom(prec_ip);
 	    dlparam->mutable_convolution_param()->set_num_output(cr_layers.at(l).second);
-	    if (!dlparam->mutable_convolution_param()->kernel_size_size())
+	    if (inputc.height() > 1 && inputc.width() == 1) // flat 1-D conv
+	      {
+		dlparam->mutable_convolution_param()->clear_kernel_size();
+		dlparam->mutable_convolution_param()->set_kernel_h(inputc.height());
+		dlparam->mutable_convolution_param()->set_kernel_w(inputc.width());
+	      }
+	    else if (!dlparam->mutable_convolution_param()->kernel_size_size())
 	      dlparam->mutable_convolution_param()->add_kernel_size(conv_kernel_size);
 	    dlparam->mutable_convolution_param()->mutable_weight_filler()->set_type(conv_wfill_type);
 	    dlparam->mutable_convolution_param()->mutable_weight_filler()->set_std(conv_wfill_std);
@@ -722,7 +735,13 @@ namespace dd
 	lparam->add_bottom("conv"+cum);
 	lparam->add_top("pool"+lcum);
 	lparam->mutable_pooling_param()->set_pool(pool_type);
-	lparam->mutable_pooling_param()->set_kernel_size(pool_kernel_size);
+	if (inputc.height() > 1 && inputc.width() == 1) // flat 1-D pool
+	  {
+	    lparam->mutable_pooling_param()->clear_kernel_size();
+	    lparam->mutable_pooling_param()->set_kernel_h(pool_kernel_size);
+	    lparam->mutable_pooling_param()->set_kernel_w(1);
+	  }
+	else lparam->mutable_pooling_param()->set_kernel_size(pool_kernel_size);
 	lparam->mutable_pooling_param()->set_stride(pool_stride);
 	++rl;
 	
@@ -740,7 +759,13 @@ namespace dd
 	dlparam->add_bottom("conv"+cum);
 	dlparam->add_top("pool"+lcum);
 	dlparam->mutable_pooling_param()->set_pool(pool_type);
-	dlparam->mutable_pooling_param()->set_kernel_size(pool_kernel_size);
+	if (inputc.height() > 1 && inputc.width() == 1) // flat 1-D pool
+	  {
+	    dlparam->mutable_pooling_param()->clear_kernel_size();
+	    dlparam->mutable_pooling_param()->set_kernel_h(pool_kernel_size);
+	    dlparam->mutable_pooling_param()->set_kernel_w(1);
+	  }
+	else dlparam->mutable_pooling_param()->set_kernel_size(pool_kernel_size);
 	dlparam->mutable_pooling_param()->set_stride(pool_stride);
 	++drl;
 

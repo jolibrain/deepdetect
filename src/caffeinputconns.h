@@ -496,7 +496,9 @@ namespace dd
 
     int height() const
     {
-      return 1;
+      if (_characters)
+	return _alphabet.size();
+      else return 1;
     }
 
     int width() const

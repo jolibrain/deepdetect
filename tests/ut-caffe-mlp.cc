@@ -217,7 +217,7 @@ TEST(caffelib,configure_convnet_template_1)
   ad.add("activation","prelu");
   ad.add("dropout",0.2);
   
-  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,0,nclasses,net_param,deploy_net_param);
+  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,0,nclasses,CSVCaffeInputFileConn(),net_param,deploy_net_param);
 
   caffe::WriteProtoToTextFile(net_param,oconvnet_file);
   caffe::WriteProtoToTextFile(deploy_net_param,doconvnet_file);
@@ -271,7 +271,7 @@ TEST(caffelib,configure_convnet_template_2)
   ad.add("activation","prelu");
   ad.add("dropout",0.2);
   
-  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,0,nclasses,net_param,deploy_net_param);
+  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,0,nclasses,CSVCaffeInputFileConn(),net_param,deploy_net_param);
 
   caffe::WriteProtoToTextFile(net_param,oconvnet_file);
   caffe::WriteProtoToTextFile(deploy_net_param,doconvnet_file);
@@ -359,7 +359,7 @@ TEST(caffelib,configure_convnet_template_3)
   ad.add("activation","prelu");
   ad.add("dropout",0.2);
   
-  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,0,nclasses,net_param,deploy_net_param);
+  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,0,nclasses,CSVCaffeInputFileConn(),net_param,deploy_net_param);
 
   caffe::WriteProtoToTextFile(net_param,oconvnet_file);
   caffe::WriteProtoToTextFile(deploy_net_param,doconvnet_file);
@@ -422,7 +422,38 @@ TEST(caffelib,configure_convnet_template_n)
   ad.add("activation","prelu");
   ad.add("dropout",0.2);
   
-  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,0,nclasses,net_param,deploy_net_param);
+  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,0,nclasses,CSVCaffeInputFileConn(),net_param,deploy_net_param);
+
+  caffe::WriteProtoToTextFile(net_param,oconvnet_file);
+  caffe::WriteProtoToTextFile(deploy_net_param,doconvnet_file);
+  succ = caffe::ReadProtoFromTextFile(oconvnet_file,&net_param);
+  ASSERT_TRUE(succ);
+  succ = caffe::ReadProtoFromTextFile(doconvnet_file,&deploy_net_param);
+  ASSERT_TRUE(succ);
+
+  ASSERT_EQ(29,net_param.layer_size());
+  ASSERT_EQ(22,deploy_net_param.layer_size());
+}
+
+TEST(caffelib,configure_convnet_template_n_1D)
+{
+  int nclasses = 18;
+  caffe::NetParameter net_param, deploy_net_param;
+  bool succ = caffe::ReadProtoFromTextFile(convnet_file,&net_param);
+  ASSERT_TRUE(succ);
+  succ = caffe::ReadProtoFromTextFile(dconvnet_file,&deploy_net_param);
+  ASSERT_TRUE(succ);
+
+  std::vector<std::string> layers = {"1CR256","1CR256","4CR256","1024","1024"};
+  APIData ad;
+  ad.add("layers",layers);
+  ad.add("activation","prelu");
+  ad.add("dropout",0.2);
+
+  TxtCaffeInputFileConn tcif;
+  tcif._characters = true;
+  tcif.build_alphabet();
+  CaffeLib<TxtCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,0,nclasses,tcif,net_param,deploy_net_param);
 
   caffe::WriteProtoToTextFile(net_param,oconvnet_file);
   caffe::WriteProtoToTextFile(deploy_net_param,doconvnet_file);
