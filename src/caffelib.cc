@@ -541,6 +541,7 @@ namespace dd
 
     // default params
     uint32_t conv_kernel_size = 3;
+    uint32_t conv1d_early_kernel_size = 7;
     std::string conv_wfill_type = "gaussian";
     double conv_wfill_std = 0.001;
     std::string conv_b_type = "constant";
@@ -641,7 +642,7 @@ namespace dd
 	    if (inputc.height() > 1 && inputc.width() == 1) // flat 1-D conv
 	      {
 		lparam->mutable_convolution_param()->clear_kernel_size();
-		lparam->mutable_convolution_param()->set_kernel_h(inputc.height());
+		lparam->mutable_convolution_param()->set_kernel_h(ccount < 2 ? conv1d_early_kernel_size : conv_kernel_size);
 		lparam->mutable_convolution_param()->set_kernel_w(inputc.width());
 	      }
 	    else if (!lparam->mutable_convolution_param()->kernel_size_size())
@@ -670,7 +671,7 @@ namespace dd
 	    if (inputc.height() > 1 && inputc.width() == 1) // flat 1-D conv
 	      {
 		dlparam->mutable_convolution_param()->clear_kernel_size();
-		dlparam->mutable_convolution_param()->set_kernel_h(inputc.height());
+		dlparam->mutable_convolution_param()->set_kernel_h(ccount < 2 ? conv1d_early_kernel_size : conv_kernel_size);
 		dlparam->mutable_convolution_param()->set_kernel_w(inputc.width());
 	      }
 	    else if (!dlparam->mutable_convolution_param()->kernel_size_size())
