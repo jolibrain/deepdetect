@@ -177,7 +177,10 @@ namespace dd
       }
     if (ad.has("dropout"))
       dropout = ad.get("dropout").get<double>();
-    if (layers.empty() && activation == "ReLU" && dropout == 0.5 && targets == 0)
+    bool db = false;
+    if (ad.has("db") && ad.get("db").get<bool>())
+      db = true;
+    if (!db && layers.empty() && activation == "ReLU" && dropout == 0.5 && targets == 0)
       return; // nothing to do
     
     int nclasses = 0;
@@ -202,7 +205,17 @@ namespace dd
 		lparam = net_param.mutable_layer(0);
 		lparam->set_top(0,"fulldata");
 		lparam->set_top(1,"fake_label");
-		lparam->mutable_memory_data_param()->set_channels(targets); // XXX: temporary value, set at training time
+		if (!db)
+		  lparam->mutable_memory_data_param()->set_channels(targets); // XXX: temporary value, set at training time
+		else
+		  {
+		    lparam->clear_memory_data_param();
+		    lparam->set_type("Data");
+		    caffe::DataParameter *ldparam = lparam->mutable_data_param();
+		    ldparam->set_source("train.lmdb");
+		    ldparam->set_batch_size(1000); // dummy value, updated before training
+		    ldparam->set_backend(caffe::DataParameter_DB_LMDB);
+		  }
 		lparam = net_param.mutable_layer(1);
 		lparam->set_top(0,"fulldata");
 		lparam->set_top(1,"fake_label");
@@ -245,6 +258,17 @@ namespace dd
 		spp->set_slice_dim(1);
 		spp->add_slice_point(nclasses); // XXX: temporary value
 		++drl;
+	      }
+	    else if (db)
+	      {
+		// fixing input layer so that it takes data in from db
+		lparam = net_param.mutable_layer(0);
+		lparam->clear_memory_data_param();
+		lparam->set_type("Data");
+		caffe::DataParameter *ldparam = lparam->mutable_data_param();
+		ldparam->set_source("train.lmdb");
+		ldparam->set_batch_size(1000); // dummy value, updated before training
+		ldparam->set_backend(caffe::DataParameter_DB_LMDB);
 	      }
 	  }
 	else if (l > 0)
@@ -502,7 +526,10 @@ namespace dd
       }
     if (ad.has("dropout"))
       dropout = ad.get("dropout").get<double>();
-    if (layers.empty() && activation == "ReLU" && dropout == 0.5)
+    bool db = false;
+    if (ad.has("db") && ad.get("db").get<bool>())
+      db = true;
+    if (!db && layers.empty() && activation == "ReLU" && dropout == 0.5)
       return; // nothing to do
 
     const std::string cr_str = "CR";
@@ -569,7 +596,17 @@ namespace dd
 		lparam = net_param.mutable_layer(0);
 		lparam->set_top(0,"fulldata");
 		lparam->set_top(1,"fake_label");
-		lparam->mutable_memory_data_param()->set_channels(targets); // XXX: temporary value
+		if (!db)
+		  lparam->mutable_memory_data_param()->set_channels(targets); // XXX: temporary value
+		else
+		  {
+		    lparam->clear_memory_data_param();
+		    lparam->set_type("Data");
+		    caffe::DataParameter *ldparam = lparam->mutable_data_param();
+		    ldparam->set_source("train.lmdb");
+		    ldparam->set_batch_size(1000); // dummy value, updated before training
+		    ldparam->set_backend(caffe::DataParameter_DB_LMDB);
+		  }
 		lparam = net_param.mutable_layer(1);
 		lparam->set_top(0,"fulldata");
 		lparam->set_top(1,"fake_label");
@@ -612,6 +649,17 @@ namespace dd
 		spp->set_slice_dim(1);
 		spp->add_slice_point(nclasses);
 		++drl;
+	      }
+	    else if (db)
+	      {
+		// fixing input layer so that it takes data in from db
+		lparam = net_param.mutable_layer(0);
+		lparam->clear_memory_data_param();
+		lparam->set_type("Data");
+		caffe::DataParameter *ldparam = lparam->mutable_data_param();
+		ldparam->set_source("train.lmdb");
+		ldparam->set_batch_size(1000); // dummy value, updated before training
+		ldparam->set_backend(caffe::DataParameter_DB_LMDB);
 	      }
 	  }
 	else if (l > 0)
