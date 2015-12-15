@@ -196,6 +196,8 @@ namespace dd
 	_sentences = ad_input.get("sentences").get<bool>();
       if (ad_input.has("characters"))
 	_characters = ad_input.get("characters").get<bool>();
+      if (_characters)
+	build_alphabet();
       if (ad_input.has("sequence"))
 	_sequence = ad_input.get("sequence").get<int>();
     }
@@ -229,7 +231,7 @@ namespace dd
 	    }
 	}
 
-      if (_characters)
+      if (_alphabet.empty() && _characters)
 	build_alphabet();
       
       if (ad.has("model_repo"))
