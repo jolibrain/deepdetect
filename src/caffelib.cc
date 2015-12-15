@@ -630,6 +630,7 @@ namespace dd
 		lparam->clear_bottom();
 		lparam->clear_inner_product_param();
 		lparam->clear_pooling_param();
+		lparam->clear_dropout_param();
 	      }
 	    else lparam = net_param.add_layer();
 	    lparam->set_name(last_ip);
@@ -653,6 +654,7 @@ namespace dd
 		dlparam->clear_bottom();
 		dlparam->clear_inner_product_param();
 		dlparam->clear_pooling_param();
+		dlparam->clear_dropout_param();
 	      }
 	    else dlparam = deploy_net_param.add_layer();
 	    dlparam->set_name(last_ip);
@@ -744,7 +746,7 @@ namespace dd
 	dlparam->mutable_pooling_param()->set_stride(pool_stride);
 	++drl;
 
-	if (dropout > 0.0 && dropout < 1.0)
+	/*if (dropout > 0.0 && dropout < 1.0)
 	  {
 	    if (rl < max_rl)
 	      {
@@ -760,7 +762,7 @@ namespace dd
 	    lparam->add_top("pool"+lcum);
 	    lparam->mutable_dropout_param()->set_dropout_ratio(dropout);
 	    ++rl;
-	  }
+	    }*/
       }
 
     prec_ip = "pool" + std::to_string(cr_layers.size()-1);
