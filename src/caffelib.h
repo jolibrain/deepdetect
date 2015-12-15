@@ -25,6 +25,7 @@
 #include "mllibstrategy.h"
 #include "caffemodel.h"
 #include "caffe/caffe.hpp"
+#include "caffe/layers/memory_data_layer.hpp"
 
 using caffe::Blob;
 
