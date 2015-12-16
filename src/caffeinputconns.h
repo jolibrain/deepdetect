@@ -26,6 +26,7 @@
 #include "csvinputfileconn.h"
 #include "txtinputfileconn.h"
 #include "caffe/caffe.hpp"
+#include "caffe/util/db.hpp"
 #include "utils/fileops.hpp"
 
 namespace dd

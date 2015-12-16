@@ -190,11 +190,13 @@ namespace dd
 	      fillup_parameters(ad_param.getobj("input"));
 	    }
 	}
-      //TODO: could parallelize the reading then push
       int img_count = 0;
-      std::vector<std::string> uris;
-      for (std::string u: _uris)
+      std::vector<std::string> uris(_uris.size());
+      _images = std::vector<cv::Mat>(_uris.size());
+#pragma omp parallel for
+      for (size_t i=0;i<_uris.size();i++)
 	{
+	  std::string u = _uris.at(i);
 	  DataEl<DDImg> dimg;
 	  dimg._ctype._bw = _bw;
 	  if (dimg.read_element(u))
@@ -208,10 +210,10 @@ namespace dd
 	  cv::Size size(_width,_height);
 	  cv::Mat image;
 	  cv::resize(dimg._ctype._img,image,size,0,0,CV_INTER_CUBIC);
-	  _images.push_back(image);
+	  _images[i] = image;
 	  if (!dimg._ctype._b64)
-	    uris.push_back(u);
-	  else uris.push_back(std::to_string(img_count));
+	    uris[i] = u;
+	  else uris[i] = std::to_string(img_count);
 	  ++img_count;
 	}
       _uris = uris;
