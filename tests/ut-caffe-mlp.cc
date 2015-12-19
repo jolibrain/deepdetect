@@ -322,7 +322,7 @@ TEST(caffelib,configure_convnet_template_1_db)
   ad.add("dropout",0.2);
   ad.add("db",true);
   
-  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,0,nclasses,net_param,deploy_net_param);
+  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,0,nclasses,CSVCaffeInputFileConn(),net_param,deploy_net_param);
 
   caffe::WriteProtoToTextFile(net_param,oconvnet_file);
   caffe::WriteProtoToTextFile(deploy_net_param,doconvnet_file);
