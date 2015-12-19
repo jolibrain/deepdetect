@@ -130,7 +130,7 @@ namespace dd
   TxtCharEntry(const float &target):TxtEntry<double>(target) {}
     ~TxtCharEntry() {}
 
-    void add_char(const std::string &c)
+    void add_char(const char &c)
     {
       _v.push_back(c);
     }
@@ -144,7 +144,7 @@ namespace dd
     {
       if (_vit!=_v.end())
 	{
-	  key = (*_vit);
+	  key = std::string(1,(*_vit));
 	  val = 1;
 	  ++_vit;
 	}
@@ -155,8 +155,8 @@ namespace dd
       return _vit != _v.end();
     }
     
-    std::vector<std::string> _v;
-    std::vector<std::string>::iterator _vit;
+    std::vector<char> _v;
+    std::vector<char>::iterator _vit;
   };
   
   class TxtInputFileConn : public InputConnectorStrategy

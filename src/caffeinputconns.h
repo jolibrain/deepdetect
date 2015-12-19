@@ -617,7 +617,7 @@ namespace dd
 	caffe::Datum datum;
 	int datum_channels;
 	if (_characters)
-	  datum_channels = _sequence;
+	  datum_channels = 1;
 	else datum_channels = _vocab.size(); // XXX: may be very large
 	datum.set_channels(datum_channels);
        	datum.set_height(1);
@@ -649,6 +649,9 @@ namespace dd
 		tbe->get_next_elt(key,val);
 		vals.push_back(_alphabet[key[0]]);
 	      }
+	    std::reverse(vals.begin(),vals.end()); // reverse quantization helps
+	    /*if (vals.size() > _sequence)
+	      std::cerr << "more characters than sequence / " << vals.size() << " / sequence=" << _sequence << std::endl;*/
 	    for (int c=0;c<_sequence;c++)
 	      {
 		std::vector<float> v(_alphabet.size(),0.0);
@@ -657,9 +660,8 @@ namespace dd
 		for (float f: v)
 		  datum.add_float_data(f);
 	      }
-	    datum.set_height(_alphabet.size());
-	    /*std::cerr << "datum_channels=" << datum_channels << std::endl;
-	      std::cerr << "float data size=" << datum.float_data_size() << std::endl;*/
+	    datum.set_height(_sequence);
+	    datum.set_width(_alphabet.size());
 	  }
 	return datum;
       }

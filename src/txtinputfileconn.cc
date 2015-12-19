@@ -241,13 +241,16 @@ namespace dd
 	  {
 	    TxtCharEntry *tce = new TxtCharEntry(target);
 	    std::unordered_map<char,int>::const_iterator whit;
-	    boost::char_separator<char> sep("\n\t\f\r ");
+	    boost::char_separator<char> sep("\n\t\f\r");
 	    boost::tokenizer<boost::char_separator<char>> tokens(ct,sep);
 	    for (std::string w: tokens)
 	      {
-		if ((whit=_alphabet.find(w[0]))==_alphabet.end())
-		  continue;
-		tce->add_char(w);
+		for (char c: w)
+		  {
+		    if ((whit=_alphabet.find(c))==_alphabet.end())
+		      continue;
+		    tce->add_char(c);
+		  }
 	      }
 	    _txt.push_back(tce);
 	  }
