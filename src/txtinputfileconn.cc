@@ -248,8 +248,8 @@ namespace dd
 		for (char c: w)
 		  {
 		    if ((whit=_alphabet.find(c))==_alphabet.end())
-		      continue;
-		    tce->add_char(c);
+		      tce->add_char(' ');
+		    else tce->add_char(c);
 		  }
 	      }
 	    _txt.push_back(tce);

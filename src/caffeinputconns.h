@@ -640,14 +640,16 @@ namespace dd
 	else // character-level features
 	  {
 	    tbe->reset();
-	    int c = 0;
 	    std::vector<int> vals;
+	    std::unordered_map<char,int>::const_iterator whit;
 	    while(tbe->has_elt())
 	      {
 		std::string key;
 		double val = -1.0;
 		tbe->get_next_elt(key,val);
-		vals.push_back(_alphabet[key[0]]);
+		if ((whit=_alphabet.find(key[0]))!=_alphabet.end())
+		  vals.push_back((*whit).second);
+		else vals.push_back(-1);
 	      }
 	    std::reverse(vals.begin(),vals.end()); // reverse quantization helps
 	    /*if (vals.size() > _sequence)
@@ -655,7 +657,7 @@ namespace dd
 	    for (int c=0;c<_sequence;c++)
 	      {
 		std::vector<float> v(_alphabet.size(),0.0);
-		if (c<vals.size())
+		if (c<vals.size() && vals[c] != -1)
 		  v[vals[c]] = 1.0;
 		for (float f: v)
 		  datum.add_float_data(f);
