@@ -1437,8 +1437,16 @@ namespace dd
 	std::vector<caffe::Datum> dv;
 	while(!(dv=inputc.get_dv_test(test_batch_size,has_mean_file)).empty())
 	  {
-	    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(net->layers()[0])->set_batch_size(dv.size());
-	    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(net->layers()[0])->AddDatumVector(dv);
+	    try
+	      {
+		boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(net->layers()[0])->set_batch_size(dv.size());
+		boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(net->layers()[0])->AddDatumVector(dv);
+	      }
+	    catch(std::exception &e)
+	      {
+		// XXX: might want to clean up here...
+		throw e;
+	      }
 	    float loss = 0.0;
 	    std::vector<Blob<float>*> lresults = net->ForwardPrefilled(&loss);
 	    int slot = lresults.size() - 1;
@@ -1494,7 +1502,7 @@ namespace dd
 										   APIData &out)
   {
     std::lock_guard<std::mutex> lock(_net_mutex); // no concurrent calls since the net is not re-instantiated
-
+        
     // check for net
     if (!_net || _net->phase() == caffe::TRAIN)
       {
@@ -1544,8 +1552,15 @@ namespace dd
 	throw;
       }
     int batch_size = inputc.batch_size();
-    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->set_batch_size(batch_size);
-    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(inputc._dv);
+    try
+      {
+	boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->set_batch_size(batch_size);
+	boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(inputc._dv);
+      }
+    catch(std::exception &e)
+      {
+	throw e;
+      }
     
     float loss = 0.0;
     std::vector<Blob<float>*> results = _net->ForwardPrefilled(&loss);
