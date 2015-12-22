@@ -3,7 +3,6 @@ layer {
   name: "googlenet"
   type: "MemoryData"
   top: "data"
-  top: "label"
   memory_data_param {
     batch_size: 32
     channels: 3
