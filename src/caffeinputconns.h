@@ -122,6 +122,7 @@ namespace dd
       // in prediction mode, convert the images to Datum, a Caffe data structure
       if (!_train)
 	{
+	  _model_repo = ad.get("model_repo").get<std::string>();
 	  try
 	    {
 	      ImgInputFileConn::transform(ad);
@@ -131,10 +132,34 @@ namespace dd
 	      if (!(_train && _uris.empty())) // Caffe model files can reference the source to the image training data 
 		throw;
 	    }
+	  float *mean = nullptr;
+	  std::string meanfullname = _model_repo + "/" + _meanfname;
+	  if (_data_mean.count() == 0 && fileops::file_exists(meanfullname))
+	    {
+	      caffe::BlobProto blob_proto;
+	      caffe::ReadProtoFromBinaryFile(meanfullname.c_str(),&blob_proto);
+	      _data_mean.FromProto(blob_proto);
+	      mean = _data_mean.mutable_cpu_data();
+	    }
 	  for (int i=0;i<(int)this->_images.size();i++)
 	    {      
 	      caffe::Datum datum;
 	      caffe::CVMatToDatum(this->_images.at(i),&datum);
+	      if (_data_mean.count() != 0)
+		{
+		  int height = datum.height();
+		  int width = datum.width();
+		  for (int c=0;c<datum.channels();++c)
+		    for (int h=0;h<height;++h)
+		      for (int w=0;w<width;++w)
+			{
+			  int data_index = (c*height+h)*width+w;
+			  float datum_element;
+			  datum_element = static_cast<float>(static_cast<uint8_t>(datum.data()[data_index]));
+			  datum.add_float_data(datum_element - mean[data_index]);
+			}
+		  datum.clear_data();
+		}
 	      _dv.push_back(datum);
 	      _ids.push_back(this->_uris.at(i));
 	    }
@@ -218,6 +243,7 @@ namespace dd
     std::string _meanfname = "mean.binaryproto";
     std::string _model_repo;
     std::string _correspname = "corresp.txt";
+    caffe::Blob<float> _data_mean; // mean binary image if available.
   };
 
   /**
