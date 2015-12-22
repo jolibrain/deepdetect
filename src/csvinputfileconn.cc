@@ -261,11 +261,16 @@ namespace dd
 	      std::string cid;
 	      std::string col;
 	      auto hit = _columns.begin();
+	      std::unordered_set<int>::const_iterator igit;
 	      std::stringstream sh(hline);
+	      int cu = 0;
 	      while(std::getline(sh,col,_delim[0]))
 		{
+		  if ((igit=_ignored_columns_pos.find(cu))!=_ignored_columns_pos.end())
+		    continue;
 		  update_category((*hit),col);
 		  ++hit;
+		  ++cu;
 		}
 	    }
 	  csv_file.clear();
