@@ -24,7 +24,6 @@
  */
 
 #include "caffeinputconns.h"
-#include "utils/fileops.hpp"
 #include "utils/utils.hpp"
 #include <memory>
 #include <glog/logging.h>
