@@ -571,6 +571,7 @@ namespace dd
     uint32_t conv1d_early_kernel_size = 7;
     std::string conv_wfill_type = "gaussian";
     double conv_wfill_std = 0.001;
+    bool flat1dconv = inputc._flat1dconv; // whether the model uses 1d-conv (e.g. character-level convnet for text)
     std::string conv_b_type = "constant";
     caffe::PoolingParameter_PoolMethod pool_type = caffe::PoolingParameter_PoolMethod_MAX;
     int pool_kernel_size = 2;
@@ -688,7 +689,7 @@ namespace dd
 	    lparam->add_bottom(prec_ip);
 	    lparam->add_top(last_ip);
 	    lparam->mutable_convolution_param()->set_num_output(cr_layers.at(l).second);
-	    if (inputc.height() > 1 && inputc.width() == 1) // flat 1-D conv
+	    if (flat1dconv)
 	      {
 		lparam->mutable_convolution_param()->clear_kernel_size();
 		lparam->mutable_convolution_param()->set_kernel_h(ccount < 2 ? conv1d_early_kernel_size : conv_kernel_size);
@@ -718,7 +719,7 @@ namespace dd
 	    dlparam->add_top(last_ip);
 	    dlparam->add_bottom(prec_ip);
 	    dlparam->mutable_convolution_param()->set_num_output(cr_layers.at(l).second);
-	    if (inputc.height() > 1 && inputc.width() == 1) // flat 1-D conv
+	    if (flat1dconv)
 	      {
 		dlparam->mutable_convolution_param()->clear_kernel_size();
 		dlparam->mutable_convolution_param()->set_kernel_h(ccount < 2 ? conv1d_early_kernel_size : conv_kernel_size);
@@ -786,7 +787,7 @@ namespace dd
 	lparam->add_bottom("conv"+cum);
 	lparam->add_top("pool"+lcum);
 	lparam->mutable_pooling_param()->set_pool(pool_type);
-	if (inputc.height() > 1 && inputc.width() == 1) // flat 1-D pool
+	if (flat1dconv)
 	  {
 	    lparam->mutable_pooling_param()->clear_kernel_size();
 	    lparam->mutable_pooling_param()->set_kernel_h(pool_kernel_size);
@@ -810,7 +811,7 @@ namespace dd
 	dlparam->add_bottom("conv"+cum);
 	dlparam->add_top("pool"+lcum);
 	dlparam->mutable_pooling_param()->set_pool(pool_type);
-	if (inputc.height() > 1 && inputc.width() == 1) // flat 1-D pool
+	if (flat1dconv)
 	  {
 	    dlparam->mutable_pooling_param()->clear_kernel_size();
 	    dlparam->mutable_pooling_param()->set_kernel_h(pool_kernel_size);

@@ -63,6 +63,7 @@ namespace dd
     std::vector<caffe::Datum> _dv; /**< main input datum vector, used for training or prediction */
     std::vector<caffe::Datum> _dv_test; /**< test input datum vector, when applicable in training mode */
     std::vector<std::string> _ids; /**< input ids (e.g. image ids) */
+    bool _flat1dconv = false; /**< whether a 1D convolution model. */
   };
 
   /**
@@ -498,12 +499,14 @@ namespace dd
     int height() const
     {
       if (_characters)
-	return _alphabet.size();
+	return _sequence;
       else return 1;
     }
 
     int width() const
     {
+      if (_characters)
+	return _alphabet.size();
       return 1;
     }
 
@@ -537,6 +540,9 @@ namespace dd
       if (ad_input.has("db") && ad_input.get("db").get<bool>())
 	_db = true;
 
+      if (_characters)
+	_flat1dconv = true;
+      
       // transform to one-hot vector datum
       if (_train && _db)
 	{
