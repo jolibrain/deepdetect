@@ -529,7 +529,7 @@ TEST(caffelib,configure_convnet_template_n)
   succ = caffe::ReadProtoFromTextFile(doconvnet_file,&deploy_net_param);
   ASSERT_TRUE(succ);
 
-  ASSERT_EQ(29,net_param.layer_size());
+  ASSERT_EQ(26,net_param.layer_size());
   ASSERT_EQ(22,deploy_net_param.layer_size());
 }
 
