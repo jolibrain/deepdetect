@@ -73,9 +73,9 @@ namespace dd
   {
   public:
     ImgCaffeInputFileConn()
-      :ImgInputFileConn() {}
+      :ImgInputFileConn() { _db = true; }
     ImgCaffeInputFileConn(const ImgCaffeInputFileConn &i)
-      :ImgInputFileConn(i),CaffeInputInterface(i) {}
+      :ImgInputFileConn(i),CaffeInputInterface(i) { _db = true; }
     ~ImgCaffeInputFileConn() {}
 
     // size of each element in Caffe jargon
@@ -663,7 +663,7 @@ namespace dd
 	    for (int c=0;c<_sequence;c++)
 	      {
 		std::vector<float> v(_alphabet.size(),0.0);
-		if (c<vals.size() && vals[c] != -1)
+		if (c<(int)vals.size() && vals[c] != -1)
 		  v[vals[c]] = 1.0;
 		for (float f: v)
 		  datum.add_float_data(f);

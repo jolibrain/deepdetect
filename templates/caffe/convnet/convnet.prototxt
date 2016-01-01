@@ -1,21 +1,17 @@
 name: "convnet"
 layer{
-  name: "convnet"
-  type: "Data"
+  name: "data"
+  type: "MemoryData"
   top: "data"
   top: "label"
   include {
     phase: TRAIN
   }
-  transform_param {
-     rotate: false
-     mirror: false
-     mean_file: "mean.binaryproto"
-  }
-  data_param {
-    source: "train.lmdb"
+  memory_data_param {
     batch_size: 64
-    backend: LMDB
+    channels: 3
+    height: 64
+    width: 64
   }
 }
 layer {

@@ -527,7 +527,7 @@ namespace dd
       }
     if (ad.has("dropout"))
       dropout = ad.get("dropout").get<double>();
-    bool db = false;
+    bool db = inputc._db;
     if (ad.has("db") && ad.get("db").get<bool>())
       db = true;
     if (!db && layers.empty() && activation == "ReLU" && dropout == 0.5)
@@ -559,21 +559,14 @@ namespace dd
 	  }
       }
 
-    if (ad.has("rotate") || ad.has("mirror"))
-      {
-	caffe::LayerParameter *lparam = net_param.mutable_layer(0); // data input layer
-	lparam->mutable_transform_param()->set_mirror(ad.get("mirror").get<bool>());
-	lparam->mutable_transform_param()->set_rotate(ad.get("rotate").get<bool>());
-      }
-
     // default params
     uint32_t conv_kernel_size = 3;
     uint32_t conv1d_early_kernel_size = 7;
     std::string conv_wfill_type = "gaussian";
     double conv_wfill_std = 0.001;
-    bool flat1dconv = inputc._flat1dconv; // whether the model uses 1d-conv (e.g. character-level convnet for text)
     std::string conv_b_type = "constant";
     caffe::PoolingParameter_PoolMethod pool_type = caffe::PoolingParameter_PoolMethod_MAX;
+    bool flat1dconv = inputc._flat1dconv; // whether the model uses 1d-conv (e.g. character-level convnet for text)
     int pool_kernel_size = 2;
     int pool_stride = 2;
     int nclasses = 0;
@@ -603,6 +596,8 @@ namespace dd
 		  lparam->mutable_memory_data_param()->set_channels(targets); // XXX: temporary value
 		else
 		  {
+		    if (flat1dconv) // not dealing with images
+		      lparam->clear_transform_param();
 		    lparam->clear_memory_data_param();
 		    lparam->set_type("Data");
 		    caffe::DataParameter *ldparam = lparam->mutable_data_param();
@@ -657,12 +652,36 @@ namespace dd
 	      {
 		// fixing input layer so that it takes data in from db
 		lparam = net_param.mutable_layer(0);
+		if (!flat1dconv)
+		  {
+		    if (ad.has("rotate") || ad.has("mirror"))
+		      {
+			lparam->mutable_transform_param()->set_mirror(ad.get("mirror").get<bool>());
+			lparam->mutable_transform_param()->set_rotate(ad.get("rotate").get<bool>());
+		      }
+		    std::string mf = "mean.binaryproto";
+		    lparam->mutable_transform_param()->set_mean_file(mf.c_str());
+		  }
+		else if (flat1dconv) // not dealing with images
+		  lparam->clear_transform_param();
 		lparam->clear_memory_data_param();
 		lparam->set_type("Data");
 		caffe::DataParameter *ldparam = lparam->mutable_data_param();
 		ldparam->set_source("train.lmdb");
 		ldparam->set_batch_size(1000); // dummy value, updated before training
 		ldparam->set_backend(caffe::DataParameter_DB_LMDB);
+
+		if (flat1dconv)
+		  {
+		    lparam = net_param.mutable_layer(1);
+		    lparam->mutable_memory_data_param()->set_channels(1);
+		    lparam->mutable_memory_data_param()->set_height(inputc.height());
+		    lparam->mutable_memory_data_param()->set_width(inputc.width());
+		    lparam = deploy_net_param.mutable_layer(0);
+		    lparam->mutable_memory_data_param()->set_channels(1);
+		    lparam->mutable_memory_data_param()->set_height(inputc.height());
+		    lparam->mutable_memory_data_param()->set_width(inputc.width());
+		  }
 	      }
 	  }
 	else if (l > 0)
