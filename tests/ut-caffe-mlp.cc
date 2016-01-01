@@ -550,6 +550,7 @@ TEST(caffelib,configure_convnet_template_n_1D)
 
   TxtCaffeInputFileConn tcif;
   tcif._characters = true;
+  tcif._flat1dconv = true;
   tcif.build_alphabet();
   CaffeLib<TxtCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,0,nclasses,tcif,net_param,deploy_net_param);
 
@@ -561,5 +562,38 @@ TEST(caffelib,configure_convnet_template_n_1D)
   ASSERT_TRUE(succ);
 
   ASSERT_EQ(26,net_param.layer_size());
+  caffe::LayerParameter *lparam = net_param.mutable_layer(2);
+  ASSERT_EQ("Convolution",lparam->type());
+  ASSERT_EQ(256,lparam->mutable_convolution_param()->num_output());
+  ASSERT_EQ(7,lparam->mutable_convolution_param()->kernel_h());
+  ASSERT_EQ(1,lparam->mutable_convolution_param()->kernel_w());
+  lparam = net_param.mutable_layer(4);
+  ASSERT_EQ("Pooling",lparam->type());
+  ASSERT_EQ(3,lparam->mutable_pooling_param()->stride_h());
+  ASSERT_EQ(1,lparam->mutable_pooling_param()->stride_w());
+  ASSERT_EQ(3,lparam->mutable_pooling_param()->kernel_h());
+  ASSERT_EQ(1,lparam->mutable_pooling_param()->kernel_w());
+  lparam = net_param.mutable_layer(8);
+  ASSERT_EQ("Convolution",lparam->type());
+  ASSERT_EQ(256,lparam->mutable_convolution_param()->num_output());
+  ASSERT_EQ(3,lparam->mutable_convolution_param()->kernel_h());
+  ASSERT_EQ(1,lparam->mutable_convolution_param()->kernel_w());
+  
   ASSERT_EQ(22,deploy_net_param.layer_size());
+  lparam = deploy_net_param.mutable_layer(1);
+  ASSERT_EQ("Convolution",lparam->type());
+  ASSERT_EQ(256,lparam->mutable_convolution_param()->num_output());
+  ASSERT_EQ(7,lparam->mutable_convolution_param()->kernel_h());
+  ASSERT_EQ(1,lparam->mutable_convolution_param()->kernel_w());
+  lparam = deploy_net_param.mutable_layer(3);
+  ASSERT_EQ("Pooling",lparam->type());
+  ASSERT_EQ(3,lparam->mutable_pooling_param()->stride_h());
+  ASSERT_EQ(1,lparam->mutable_pooling_param()->stride_w());
+  ASSERT_EQ(3,lparam->mutable_pooling_param()->kernel_h());
+  ASSERT_EQ(1,lparam->mutable_pooling_param()->kernel_w());
+  lparam = deploy_net_param.mutable_layer(7);
+  ASSERT_EQ("Convolution",lparam->type());
+  ASSERT_EQ(256,lparam->mutable_convolution_param()->num_output());
+  ASSERT_EQ(3,lparam->mutable_convolution_param()->kernel_h());
+  ASSERT_EQ(1,lparam->mutable_convolution_param()->kernel_w());
 }

@@ -693,7 +693,7 @@ namespace dd
 	      {
 		lparam->mutable_convolution_param()->clear_kernel_size();
 		lparam->mutable_convolution_param()->set_kernel_h(ccount < 2 ? conv1d_early_kernel_size : conv_kernel_size);
-		lparam->mutable_convolution_param()->set_kernel_w(inputc.width());
+		lparam->mutable_convolution_param()->set_kernel_w(1);
 	      }
 	    else if (!lparam->mutable_convolution_param()->kernel_size_size())
 	      lparam->mutable_convolution_param()->add_kernel_size(conv_kernel_size);
@@ -723,7 +723,7 @@ namespace dd
 	      {
 		dlparam->mutable_convolution_param()->clear_kernel_size();
 		dlparam->mutable_convolution_param()->set_kernel_h(ccount < 2 ? conv1d_early_kernel_size : conv_kernel_size);
-		dlparam->mutable_convolution_param()->set_kernel_w(inputc.width());
+		dlparam->mutable_convolution_param()->set_kernel_w(1);
 	      }
 	    else if (!dlparam->mutable_convolution_param()->kernel_size_size())
 	      dlparam->mutable_convolution_param()->add_kernel_size(conv_kernel_size);
@@ -789,8 +789,11 @@ namespace dd
 	lparam->mutable_pooling_param()->set_pool(pool_type);
 	if (flat1dconv)
 	  {
+	    lparam->mutable_pooling_param()->clear_stride();
 	    lparam->mutable_pooling_param()->clear_kernel_size();
-	    lparam->mutable_pooling_param()->set_kernel_h(pool_kernel_size);
+	    lparam->mutable_pooling_param()->set_stride_h(3);
+	    lparam->mutable_pooling_param()->set_stride_w(1);
+	    lparam->mutable_pooling_param()->set_kernel_h(3);
 	    lparam->mutable_pooling_param()->set_kernel_w(1);
 	  }
 	else lparam->mutable_pooling_param()->set_kernel_size(pool_kernel_size);
@@ -813,8 +816,11 @@ namespace dd
 	dlparam->mutable_pooling_param()->set_pool(pool_type);
 	if (flat1dconv)
 	  {
+	    dlparam->mutable_pooling_param()->clear_stride();
 	    dlparam->mutable_pooling_param()->clear_kernel_size();
-	    dlparam->mutable_pooling_param()->set_kernel_h(pool_kernel_size);
+	    dlparam->mutable_pooling_param()->set_stride_h(3);
+	    dlparam->mutable_pooling_param()->set_stride_w(1);
+	    dlparam->mutable_pooling_param()->set_kernel_h(3);
 	    dlparam->mutable_pooling_param()->set_kernel_w(1);
 	  }
 	else dlparam->mutable_pooling_param()->set_kernel_size(pool_kernel_size);
