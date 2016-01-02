@@ -294,10 +294,9 @@ namespace dd
 
   void TxtInputFileConn::build_alphabet()
   {
-    static std::string alphabet = "abcdefghijklmnopqrstuvwxyz0123456789-,;.!?:'\"/\\|_@#$%^&*~`+-=<>()[]{}";
     _alphabet.clear();
     int pos = 0;
-    for (char c: alphabet)
+    for (char c: _alphabet_str)
       {
 	_alphabet.insert(std::pair<char,int>(c,pos));
 	++pos;
