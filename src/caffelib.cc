@@ -562,7 +562,7 @@ namespace dd
     // default params
     uint32_t conv_kernel_size = 3;
     uint32_t conv1d_early_kernel_size = 7;
-    std::string conv_wfill_type = "gaussian";
+    std::string conv_wfill_type = "xavier";
     double conv_wfill_std = 0.001;
     std::string conv_b_type = "constant";
     caffe::PoolingParameter_PoolMethod pool_type = caffe::PoolingParameter_PoolMethod_MAX;
@@ -670,18 +670,27 @@ namespace dd
 		ldparam->set_source("train.lmdb");
 		ldparam->set_batch_size(1000); // dummy value, updated before training
 		ldparam->set_backend(caffe::DataParameter_DB_LMDB);
-
-		if (flat1dconv)
-		  {
-		    lparam = net_param.mutable_layer(1);
-		    lparam->mutable_memory_data_param()->set_channels(1);
-		    lparam->mutable_memory_data_param()->set_height(inputc.height());
-		    lparam->mutable_memory_data_param()->set_width(inputc.width());
-		    lparam = deploy_net_param.mutable_layer(0);
-		    lparam->mutable_memory_data_param()->set_channels(1);
-		    lparam->mutable_memory_data_param()->set_height(inputc.height());
-		    lparam->mutable_memory_data_param()->set_width(inputc.width());
-		  }
+	      }
+	    else if (!db && flat1dconv)
+	      {
+		// train
+		lparam = net_param.mutable_layer(0);
+		lparam->mutable_memory_data_param()->set_channels(1);
+		lparam->mutable_memory_data_param()->set_height(inputc.height());
+		lparam->mutable_memory_data_param()->set_width(inputc.width());
+	      }
+	    if (flat1dconv)
+	      {
+		// test
+		lparam = net_param.mutable_layer(1);
+		lparam->mutable_memory_data_param()->set_channels(1);
+		lparam->mutable_memory_data_param()->set_height(inputc.height());
+		lparam->mutable_memory_data_param()->set_width(inputc.width());
+		// deploy
+		lparam = deploy_net_param.mutable_layer(0);
+		lparam->mutable_memory_data_param()->set_channels(1);
+		lparam->mutable_memory_data_param()->set_height(inputc.height());
+		lparam->mutable_memory_data_param()->set_width(inputc.width());
 	      }
 	  }
 	else if (l > 0)
@@ -799,6 +808,7 @@ namespace dd
 	    lparam->clear_bottom();
 	    lparam->clear_top();
 	    lparam->clear_include();
+	    lparam->clear_loss_weight();
 	  }
 	else lparam = net_param.add_layer();
 	lparam->set_name("pool"+lcum);
@@ -815,8 +825,11 @@ namespace dd
 	    lparam->mutable_pooling_param()->set_kernel_h(3);
 	    lparam->mutable_pooling_param()->set_kernel_w(1);
 	  }
-	else lparam->mutable_pooling_param()->set_kernel_size(pool_kernel_size);
-	lparam->mutable_pooling_param()->set_stride(pool_stride);
+	else 
+	  {
+	    lparam->mutable_pooling_param()->set_kernel_size(pool_kernel_size);
+	    lparam->mutable_pooling_param()->set_stride(pool_stride);
+	  }
 	++rl;
 	
 	if (drl < max_drl)
@@ -826,6 +839,7 @@ namespace dd
 	    dlparam->clear_bottom();
 	    dlparam->clear_top();
 	    dlparam->clear_include();
+	    dlparam->clear_loss_weight();
 	  }
 	else dlparam = deploy_net_param.add_layer(); // pooling
 	dlparam->set_name("pool"+lcum);
@@ -842,8 +856,11 @@ namespace dd
 	    dlparam->mutable_pooling_param()->set_kernel_h(3);
 	    dlparam->mutable_pooling_param()->set_kernel_w(1);
 	  }
-	else dlparam->mutable_pooling_param()->set_kernel_size(pool_kernel_size);
-	dlparam->mutable_pooling_param()->set_stride(pool_stride);
+	else 
+	  {
+	    dlparam->mutable_pooling_param()->set_kernel_size(pool_kernel_size);
+	    dlparam->mutable_pooling_param()->set_stride(pool_stride);
+	  }
 	++drl;
 
 	/*if (dropout > 0.0 && dropout < 1.0)

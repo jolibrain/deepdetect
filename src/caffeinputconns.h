@@ -39,7 +39,7 @@ namespace dd
   public:
     CaffeInputInterface() {}
     CaffeInputInterface(const CaffeInputInterface &cii)
-      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids) {} //,_test_labels(cii._test_labels) {}
+      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv) {}
     ~CaffeInputInterface() {}
 
     /**
@@ -487,6 +487,8 @@ namespace dd
     void init(const APIData &ad)
     {
       TxtInputFileConn::init(ad);
+      if (_characters)
+	_flat1dconv = true;
     }
 
     int channels() const
@@ -539,9 +541,6 @@ namespace dd
       APIData ad_input = ad_param.getobj("input");
       if (ad_input.has("db") && ad_input.get("db").get<bool>())
 	_db = true;
-
-      if (_characters)
-	_flat1dconv = true;
       
       // transform to one-hot vector datum
       if (_train && _db)
