@@ -599,6 +599,7 @@ namespace dd
 		    if (flat1dconv) // not dealing with images
 		      lparam->clear_transform_param();
 		    lparam->clear_memory_data_param();
+		    lparam->clear_loss_weight();
 		    lparam->set_type("Data");
 		    caffe::DataParameter *ldparam = lparam->mutable_data_param();
 		    ldparam->set_source("train.lmdb");
@@ -665,6 +666,7 @@ namespace dd
 		else if (flat1dconv) // not dealing with images
 		  lparam->clear_transform_param();
 		lparam->clear_memory_data_param();
+		lparam->clear_loss_weight();
 		lparam->set_type("Data");
 		caffe::DataParameter *ldparam = lparam->mutable_data_param();
 		ldparam->set_source("train.lmdb");
@@ -710,6 +712,7 @@ namespace dd
 		lparam->clear_inner_product_param();
 		lparam->clear_pooling_param();
 		lparam->clear_dropout_param();
+		lparam->clear_loss_weight();
 	      }
 	    else lparam = net_param.add_layer();
 	    lparam->set_name(last_ip);
@@ -740,6 +743,7 @@ namespace dd
 		dlparam->clear_inner_product_param();
 		dlparam->clear_pooling_param();
 		dlparam->clear_dropout_param();
+		dlparam->clear_loss_weight();
 	      }
 	    else dlparam = deploy_net_param.add_layer();
 	    dlparam->set_name(last_ip);
@@ -894,6 +898,7 @@ namespace dd
 	    lparam->clear_bottom();
 	    lparam->clear_top();
 	    lparam->clear_include();
+	    lparam->clear_loss_weight();
 	  }
 	else lparam = net_param.add_layer();
 	lparam->set_name(last_ip);
@@ -912,6 +917,7 @@ namespace dd
 	    dlparam->clear_bottom();
 	    dlparam->clear_top();
 	    dlparam->clear_include();
+	    dlparam->clear_loss_weight();
 	  }
 	else dlparam = deploy_net_param.add_layer();
 	dlparam->set_name(last_ip);
@@ -987,6 +993,7 @@ namespace dd
 	lparam->clear_bottom();
 	lparam->clear_top();
 	lparam->clear_include();
+	lparam->clear_loss_weight();
       }
     else lparam = net_param.add_layer(); // last inner product before softmax
     lparam->set_name(last_ip);
@@ -1007,6 +1014,7 @@ namespace dd
 	dlparam->clear_bottom();
 	dlparam->clear_top();
 	dlparam->clear_include();
+	dlparam->clear_loss_weight();
       }
     else dlparam = deploy_net_param.add_layer();
     dlparam->set_name(last_ip);
