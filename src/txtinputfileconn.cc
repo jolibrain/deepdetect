@@ -295,11 +295,15 @@ namespace dd
   void TxtInputFileConn::build_alphabet()
   {
     _alphabet.clear();
+    auto hit = _alphabet.begin();
     int pos = 0;
     for (char c: _alphabet_str)
       {
-	_alphabet.insert(std::pair<char,int>(c,pos));
-	++pos;
+	if ((hit=_alphabet.find(c))==_alphabet.end())
+	  {
+	    _alphabet.insert(std::pair<char,int>(c,pos));
+	    ++pos;
+	  }
       }
   }
 
