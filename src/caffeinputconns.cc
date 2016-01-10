@@ -606,7 +606,6 @@ namespace dd
 	  break;
 	Datum datum;
 	datum.ParseFromString(_test_db_cursor->value());
-	DecodeDatumNative(&datum);
 	dv.push_back(datum);
 	_test_db_cursor->Next();
 	++i;
@@ -776,7 +775,6 @@ namespace dd
 	  break;
 	Datum datum;
 	datum.ParseFromString(_test_db_cursor->value());
-	DecodeDatumNative(&datum);
 	dv.push_back(datum);
 	_test_db_cursor->Next();
 	++i;
