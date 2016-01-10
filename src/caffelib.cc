@@ -1226,6 +1226,8 @@ namespace dd
 	  solver_param.set_power(ad_solver.get("power").get<double>());
 	if (ad_solver.has("rms_decay"))
 	  solver_param.set_rms_decay(ad_solver.get("rms_decay").get<double>());
+	if (ad_solver.has("iter_size"))
+	  solver_param.set_iter_size(ad_solver.get("iter_size").get<int>());
       }
     
     // optimize
@@ -1311,6 +1313,8 @@ namespace dd
 	  && this->_tjob_running.load())
       {
 	this->add_meas("iteration",solver->iter_);
+
+	solver->net_->ClearParamDiffs();
 	
 	// Save a snapshot if needed.
 	if (solver->param_.snapshot() && solver->iter_ > start_iter &&
@@ -1320,11 +1324,9 @@ namespace dd
 	if (solver->param_.test_interval() && solver->iter_ % solver->param_.test_interval() == 0
 	    && (solver->iter_ > 0 || solver->param_.test_initialization())) 
 	  {
-	    if (!_net)
-	      _net = new Net<float>(this->_mlmodel._trainf,caffe::TEST); //XXX: needs to be memory data input layer
-	    _net->ShareTrainedLayersWith(solver->net().get());
 	    APIData meas_out;
-	    test(_net,ad,inputc,test_batch_size,has_mean_file,meas_out);
+	    solver->test_nets().at(0).get()->ShareTrainedLayersWith(solver->net().get());
+	    test(solver->test_nets().at(0).get(),ad,inputc,test_batch_size,has_mean_file,meas_out);
 	    APIData meas_obj = meas_out.getobj("measure");
 	    std::vector<std::string> meas_str = meas_obj.list_keys();
 	    LOG(INFO) << "batch size=" << batch_size;
@@ -1341,10 +1343,15 @@ namespace dd
 	      }
 	  }
 	
-	float loss;
+	float loss = 0.0;
 	try
 	  {
-	    loss = solver->net_->ForwardBackward(bottom_vec);
+	    for (int i = 0; i < solver->callbacks().size(); ++i) {
+	      solver->callbacks()[i]->on_start();
+	    }
+	    for (int i = 0; i < solver->param_.iter_size(); ++i)
+	      loss += solver->net_->ForwardBackward(bottom_vec);
+	    loss /= solver->param_.iter_size();
 	  }
 	catch(std::exception &e)
 	  {
@@ -1373,6 +1380,9 @@ namespace dd
 	  }
 	try
 	  {
+	    for (int i = 0; i < solver->callbacks().size(); ++i) {
+	      solver->callbacks()[i]->on_gradients_ready();
+	    }
 	    solver->ApplyUpdate();
 	  }
 	catch (std::exception &e)
