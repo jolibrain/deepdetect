@@ -480,6 +480,8 @@ namespace dd
     lparam->add_bottom(last_ip);
     lparam->add_bottom("label");
     lparam->add_top("loss");
+    caffe::NetStateRule *nsr = lparam->add_include();
+    nsr->set_phase(caffe::TRAIN);
     ++rl;
     
     if (!regression)
@@ -1012,6 +1014,8 @@ namespace dd
     lparam->add_bottom(last_ip);
     lparam->add_bottom("label");
     lparam->add_top("loss");
+    caffe::NetStateRule *nsr = lparam->add_include();
+    nsr->set_phase(caffe::TRAIN);
     ++rl;
     
     if (!regression)
