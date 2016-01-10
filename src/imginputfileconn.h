@@ -27,6 +27,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include "ext/base64/base64.h"
+#include <glog/logging.h>
 
 namespace dd
 {
@@ -192,7 +193,6 @@ namespace dd
 	}
       int img_count = 0;
       std::vector<std::string> uris(_uris.size());
-      _images = std::vector<cv::Mat>(_uris.size());
 #pragma omp parallel for
       for (size_t i=0;i<_uris.size();i++)
 	{
@@ -201,7 +201,8 @@ namespace dd
 	  dimg._ctype._bw = _bw;
 	  if (dimg.read_element(u))
 	    {
-	      throw InputConnectorBadParamException("no data for image " + u);
+	      LOG(ERROR) << "no data for image " << u;
+	      continue;
 	    }
 	  /*cv::namedWindow( "Display window", cv::WINDOW_AUTOSIZE );
 	    cv::imshow( "Display window", imaget);
@@ -210,7 +211,7 @@ namespace dd
 	  cv::Size size(_width,_height);
 	  cv::Mat image;
 	  cv::resize(dimg._ctype._img,image,size,0,0,CV_INTER_CUBIC);
-	  _images[i] = image;
+	  _images.push_back(image);
 	  if (!dimg._ctype._b64)
 	    uris[i] = u;
 	  else uris[i] = std::to_string(img_count);
@@ -249,7 +250,7 @@ namespace dd
 	      ++chit;
 	    }
 	  _images.erase(dchit,_images.end());
-	  std::cout << "data split test size=" << _test_images.size() << " / remaining data size=" << _images.size() << std::endl;
+	  LOG(INFO) << "data split test size=" << _test_images.size() << " / remaining data size=" << _images.size() << std::endl;
 	}
       if (_images.empty())
 	throw InputConnectorBadParamException("no image could be found");

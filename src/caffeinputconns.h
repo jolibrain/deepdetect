@@ -129,8 +129,7 @@ namespace dd
 	    }
 	  catch (InputConnectorBadParamException &e)
 	    {
-	      if (!(_train && _uris.empty())) // Caffe model files can reference the source to the image training data 
-		throw;
+	      throw;
 	    }
 	  float *mean = nullptr;
 	  std::string meanfullname = _model_repo + "/" + _meanfname;

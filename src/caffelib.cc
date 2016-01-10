@@ -1471,7 +1471,7 @@ namespace dd
 	    catch(std::exception &e)
 	      {
 		// XXX: might want to clean up here...
-		throw e;
+		throw;
 	      }
 	    float loss = 0.0;
 	    std::vector<Blob<float>*> lresults = net->ForwardPrefilled(&loss);
@@ -1585,7 +1585,7 @@ namespace dd
       }
     catch(std::exception &e)
       {
-	throw e;
+	throw;
       }
     
     float loss = 0.0;
