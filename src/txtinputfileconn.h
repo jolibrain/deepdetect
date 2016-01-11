@@ -239,7 +239,7 @@ namespace dd
       if (ad.has("model_repo"))
 	_model_repo = ad.get("model_repo").get<std::string>();
       
-      if (!_train && _vocab.empty())
+      if (!_characters && !_train && _vocab.empty())
 	deserialize_vocab();
       
       for (std::string u: _uris)

@@ -724,7 +724,9 @@ namespace dd
 	      {
 		lparam->mutable_convolution_param()->clear_kernel_size();
 		lparam->mutable_convolution_param()->set_kernel_h(ccount < 2 ? conv1d_early_kernel_size : conv_kernel_size);
-		lparam->mutable_convolution_param()->set_kernel_w(1);
+		if (prec_ip == "data")
+		  lparam->mutable_convolution_param()->set_kernel_w(inputc.width());
+		else lparam->mutable_convolution_param()->set_kernel_w(1);
 	      }
 	    else if (!lparam->mutable_convolution_param()->kernel_size_size())
 	      lparam->mutable_convolution_param()->add_kernel_size(conv_kernel_size);
@@ -755,7 +757,9 @@ namespace dd
 	      {
 		dlparam->mutable_convolution_param()->clear_kernel_size();
 		dlparam->mutable_convolution_param()->set_kernel_h(ccount < 2 ? conv1d_early_kernel_size : conv_kernel_size);
-		dlparam->mutable_convolution_param()->set_kernel_w(1);
+		if (prec_ip == "data")
+		  dlparam->mutable_convolution_param()->set_kernel_w(inputc.width());
+		else dlparam->mutable_convolution_param()->set_kernel_w(1);
 	      }
 	    else if (!dlparam->mutable_convolution_param()->kernel_size_size())
 	      dlparam->mutable_convolution_param()->add_kernel_size(conv_kernel_size);
@@ -890,8 +894,47 @@ namespace dd
     last_ip = "ip" + std::to_string(cr_layers.size());
     int lfc = cr_layers.size();
     int cact = ccount + 1;
+    bool reshaped = false;
     for (auto fc: fc_layers)
       {
+	if (flat1dconv && !reshaped)
+	  {
+	    reshaped = true;
+	    if (rl < max_rl)
+	      {
+		lparam = net_param.mutable_layer(rl);
+		lparam->clear_bottom();
+		lparam->clear_top();
+		lparam->clear_include();
+		lparam->clear_loss_weight();
+	      }
+	    else lparam = net_param.add_layer();
+	    lparam->set_name("reshape0");
+	    lparam->set_type("Reshape");
+	    lparam->add_bottom(prec_ip);
+	    lparam->add_top("reshape0");
+	    lparam->mutable_reshape_param()->mutable_shape()->add_dim(0);
+	    lparam->mutable_reshape_param()->mutable_shape()->add_dim(-1);
+	    ++rl;
+	
+	    if (drl < max_drl)
+	      {
+		dlparam = deploy_net_param.mutable_layer(drl);
+		dlparam->clear_bottom();
+		dlparam->clear_top();
+		dlparam->clear_include();
+		dlparam->clear_loss_weight();
+	      }
+	    else dlparam = deploy_net_param.add_layer();
+	    dlparam->set_name("resphape0");
+	    dlparam->set_type("Reshape");
+	    dlparam->add_bottom(prec_ip);
+	    dlparam->add_top("reshape0");
+	    dlparam->mutable_reshape_param()->mutable_shape()->add_dim(0);
+	    dlparam->mutable_reshape_param()->mutable_shape()->add_dim(-1);
+	    ++drl;
+	  }
+
 	if (rl < max_rl)
 	  {
 	    lparam = net_param.mutable_layer(rl);
@@ -903,7 +946,9 @@ namespace dd
 	else lparam = net_param.add_layer();
 	lparam->set_name(last_ip);
 	lparam->set_type("InnerProduct");
-	lparam->add_bottom(prec_ip);
+	if (flat1dconv)
+	  lparam->add_bottom("reshape0");
+	else lparam->add_bottom(prec_ip);
 	lparam->add_top(last_ip);
 	caffe::InnerProductParameter *ipp = lparam->mutable_inner_product_param();
 	ipp->set_num_output(fc);
@@ -922,7 +967,9 @@ namespace dd
 	else dlparam = deploy_net_param.add_layer();
 	dlparam->set_name(last_ip);
 	dlparam->set_type("InnerProduct");
-	dlparam->add_bottom(prec_ip);
+	if (flat1dconv)
+	  dlparam->add_bottom("reshape0");
+	else dlparam->add_bottom(prec_ip);
 	dlparam->add_top(last_ip);
 	caffe::InnerProductParameter *dipp = dlparam->mutable_inner_product_param();
 	dipp->set_num_output(fc);
