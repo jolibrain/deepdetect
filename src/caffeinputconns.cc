@@ -672,8 +672,8 @@ namespace dd
 	    LOG(INFO) << "Txt db test file " << testdbfullname << " with " << _db_testbatchsize << " records\n";
 	  }
 	// XXX: remove in-memory data, which pre-processing is useless and should be avoided
-	_txt.clear();
-	_test_txt.clear();
+	destroy_txt_entries(_txt);
+	destroy_txt_entries(_test_txt);
 	
 	return 0;
       }
@@ -685,11 +685,11 @@ namespace dd
     
     // write to dbs (i.e. train and possibly test)
     write_txt_to_db(dbfullname,_txt);
-    _txt.clear();
+    destroy_txt_entries(_txt);
     if (!_test_txt.empty())
       {
 	write_txt_to_db(testdbfullname,_test_txt);
-	_test_txt.clear();
+	destroy_txt_entries(_test_txt);
       }
     
     // write corresp file
@@ -706,7 +706,7 @@ namespace dd
   }
 
   void TxtCaffeInputFileConn::write_txt_to_db(const std::string &dbfullname,
-					      std::vector<TxtBowEntry> &txt,
+					      std::vector<TxtEntry<double>*> &txt,
 					      const std::string &backend)
   {
     // Create new DB
@@ -720,10 +720,12 @@ namespace dd
     const int kMaxKeyLength = 256;
     char key_cstr[kMaxKeyLength];
     int n = 0;
-    auto hit = txt.cbegin();
-    while(hit!=txt.cend())
+    auto hit = txt.begin();
+    while(hit!=txt.end())
       {
-	datum = to_datum((*hit));
+	if (_characters)
+	  datum = to_datum<TxtCharEntry>(static_cast<TxtCharEntry*>((*hit)));
+	else datum = to_datum<TxtBowEntry>(static_cast<TxtBowEntry*>((*hit)));
 	if (_channels == 0)
 	  _channels = datum.channels();
 	int length = snprintf(key_cstr,kMaxKeyLength,"%s",std::to_string(n).c_str());

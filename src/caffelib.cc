@@ -112,7 +112,7 @@ namespace dd
 	caffe::NetParameter net_param,deploy_net_param;
 	caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
 	caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
-	configure_convnet_template(ad,_regression,_ntargets,_nclasses,net_param,deploy_net_param);
+	configure_convnet_template(ad,_regression,_ntargets,_nclasses,this->_inputc,net_param,deploy_net_param);
 	caffe::WriteProtoToTextFile(net_param,dest_net);
 	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
       }
@@ -509,6 +509,7 @@ namespace dd
 												       const bool &regression,
 												       const int &targets,
 												       const int &cnclasses,
+												       const TInputConnectorStrategy &inputc,
 												       caffe::NetParameter &net_param,
 												       caffe::NetParameter &deploy_net_param)
   {
@@ -546,7 +547,7 @@ namespace dd
       }
     if (ad.has("dropout"))
       dropout = ad.get("dropout").get<double>();
-    bool db = false;
+    bool db = inputc._db;
     if (ad.has("db") && ad.get("db").get<bool>())
       db = true;
     if (!db && layers.empty() && activation == "ReLU" && dropout == 0.5)
@@ -578,19 +579,14 @@ namespace dd
 	  }
       }
 
-    if (ad.has("rotate") || ad.has("mirror"))
-      {
-	caffe::LayerParameter *lparam = net_param.mutable_layer(0); // data input layer
-	lparam->mutable_transform_param()->set_mirror(ad.get("mirror").get<bool>());
-	lparam->mutable_transform_param()->set_rotate(ad.get("rotate").get<bool>());
-      }
-
     // default params
     uint32_t conv_kernel_size = 3;
-    std::string conv_wfill_type = "gaussian";
+    uint32_t conv1d_early_kernel_size = 7;
+    std::string conv_wfill_type = "xavier";
     double conv_wfill_std = 0.001;
     std::string conv_b_type = "constant";
     caffe::PoolingParameter_PoolMethod pool_type = caffe::PoolingParameter_PoolMethod_MAX;
+    bool flat1dconv = inputc._flat1dconv; // whether the model uses 1d-conv (e.g. character-level convnet for text)
     int pool_kernel_size = 2;
     int pool_stride = 2;
     int nclasses = 0;
@@ -620,7 +616,10 @@ namespace dd
 		  lparam->mutable_memory_data_param()->set_channels(targets); // XXX: temporary value
 		else
 		  {
+		    if (flat1dconv) // not dealing with images
+		      lparam->clear_transform_param();
 		    lparam->clear_memory_data_param();
+		    lparam->clear_loss_weight();
 		    lparam->set_type("Data");
 		    caffe::DataParameter *ldparam = lparam->mutable_data_param();
 		    ldparam->set_source("train.lmdb");
@@ -674,12 +673,46 @@ namespace dd
 	      {
 		// fixing input layer so that it takes data in from db
 		lparam = net_param.mutable_layer(0);
+		if (!flat1dconv)
+		  {
+		    if (ad.has("rotate") || ad.has("mirror"))
+		      {
+			lparam->mutable_transform_param()->set_mirror(ad.get("mirror").get<bool>());
+			lparam->mutable_transform_param()->set_rotate(ad.get("rotate").get<bool>());
+		      }
+		    std::string mf = "mean.binaryproto";
+		    lparam->mutable_transform_param()->set_mean_file(mf.c_str());
+		  }
+		else if (flat1dconv) // not dealing with images
+		  lparam->clear_transform_param();
 		lparam->clear_memory_data_param();
+		lparam->clear_loss_weight();
 		lparam->set_type("Data");
 		caffe::DataParameter *ldparam = lparam->mutable_data_param();
 		ldparam->set_source("train.lmdb");
 		ldparam->set_batch_size(1000); // dummy value, updated before training
 		ldparam->set_backend(caffe::DataParameter_DB_LMDB);
+	      }
+	    else if (!db && flat1dconv)
+	      {
+		// train
+		lparam = net_param.mutable_layer(0);
+		lparam->mutable_memory_data_param()->set_channels(1);
+		lparam->mutable_memory_data_param()->set_height(inputc.height());
+		lparam->mutable_memory_data_param()->set_width(inputc.width());
+	      }
+	    if (flat1dconv)
+	      {
+		// test
+		lparam = net_param.mutable_layer(1);
+		lparam->mutable_memory_data_param()->set_channels(1);
+		lparam->mutable_memory_data_param()->set_height(inputc.height());
+		lparam->mutable_memory_data_param()->set_width(inputc.width());
+		// deploy
+		lparam = deploy_net_param.mutable_layer(0);
+		lparam->mutable_memory_data_param()->set_channels(1);
+		lparam->mutable_memory_data_param()->set_height(inputc.height());
+		lparam->mutable_memory_data_param()->set_width(inputc.width());
 	      }
 	  }
 	else if (l > 0)
@@ -699,6 +732,7 @@ namespace dd
 		lparam->clear_inner_product_param();
 		lparam->clear_pooling_param();
 		lparam->clear_dropout_param();
+		lparam->clear_loss_weight();
 	      }
 	    else lparam = net_param.add_layer();
 	    lparam->set_name(last_ip);
@@ -706,7 +740,15 @@ namespace dd
 	    lparam->add_bottom(prec_ip);
 	    lparam->add_top(last_ip);
 	    lparam->mutable_convolution_param()->set_num_output(cr_layers.at(l).second);
-	    if (!lparam->mutable_convolution_param()->kernel_size_size())
+	    if (flat1dconv)
+	      {
+		lparam->mutable_convolution_param()->clear_kernel_size();
+		lparam->mutable_convolution_param()->set_kernel_h(ccount < 2 ? conv1d_early_kernel_size : conv_kernel_size);
+		if (prec_ip == "data")
+		  lparam->mutable_convolution_param()->set_kernel_w(inputc.width());
+		else lparam->mutable_convolution_param()->set_kernel_w(1);
+	      }
+	    else if (!lparam->mutable_convolution_param()->kernel_size_size())
 	      lparam->mutable_convolution_param()->add_kernel_size(conv_kernel_size);
 	    lparam->mutable_convolution_param()->mutable_weight_filler()->set_type(conv_wfill_type);
 	    lparam->mutable_convolution_param()->mutable_weight_filler()->set_std(conv_wfill_std);
@@ -723,6 +765,7 @@ namespace dd
 		dlparam->clear_inner_product_param();
 		dlparam->clear_pooling_param();
 		dlparam->clear_dropout_param();
+		dlparam->clear_loss_weight();
 	      }
 	    else dlparam = deploy_net_param.add_layer();
 	    dlparam->set_name(last_ip);
@@ -730,7 +773,15 @@ namespace dd
 	    dlparam->add_top(last_ip);
 	    dlparam->add_bottom(prec_ip);
 	    dlparam->mutable_convolution_param()->set_num_output(cr_layers.at(l).second);
-	    if (!dlparam->mutable_convolution_param()->kernel_size_size())
+	    if (flat1dconv)
+	      {
+		dlparam->mutable_convolution_param()->clear_kernel_size();
+		dlparam->mutable_convolution_param()->set_kernel_h(ccount < 2 ? conv1d_early_kernel_size : conv_kernel_size);
+		if (prec_ip == "data")
+		  dlparam->mutable_convolution_param()->set_kernel_w(inputc.width());
+		else dlparam->mutable_convolution_param()->set_kernel_w(1);
+	      }
+	    else if (!dlparam->mutable_convolution_param()->kernel_size_size())
 	      dlparam->mutable_convolution_param()->add_kernel_size(conv_kernel_size);
 	    dlparam->mutable_convolution_param()->mutable_weight_filler()->set_type(conv_wfill_type);
 	    dlparam->mutable_convolution_param()->mutable_weight_filler()->set_std(conv_wfill_std);
@@ -789,6 +840,7 @@ namespace dd
 	    lparam->clear_bottom();
 	    lparam->clear_top();
 	    lparam->clear_include();
+	    lparam->clear_loss_weight();
 	  }
 	else lparam = net_param.add_layer();
 	lparam->set_name("pool"+lcum);
@@ -796,8 +848,20 @@ namespace dd
 	lparam->add_bottom("conv"+cum);
 	lparam->add_top("pool"+lcum);
 	lparam->mutable_pooling_param()->set_pool(pool_type);
-	lparam->mutable_pooling_param()->set_kernel_size(pool_kernel_size);
-	lparam->mutable_pooling_param()->set_stride(pool_stride);
+	if (flat1dconv)
+	  {
+	    lparam->mutable_pooling_param()->clear_stride();
+	    lparam->mutable_pooling_param()->clear_kernel_size();
+	    lparam->mutable_pooling_param()->set_stride_h(3);
+	    lparam->mutable_pooling_param()->set_stride_w(1);
+	    lparam->mutable_pooling_param()->set_kernel_h(3);
+	    lparam->mutable_pooling_param()->set_kernel_w(1);
+	  }
+	else 
+	  {
+	    lparam->mutable_pooling_param()->set_kernel_size(pool_kernel_size);
+	    lparam->mutable_pooling_param()->set_stride(pool_stride);
+	  }
 	++rl;
 	
 	if (drl < max_drl)
@@ -807,6 +871,7 @@ namespace dd
 	    dlparam->clear_bottom();
 	    dlparam->clear_top();
 	    dlparam->clear_include();
+	    dlparam->clear_loss_weight();
 	  }
 	else dlparam = deploy_net_param.add_layer(); // pooling
 	dlparam->set_name("pool"+lcum);
@@ -814,8 +879,20 @@ namespace dd
 	dlparam->add_bottom("conv"+cum);
 	dlparam->add_top("pool"+lcum);
 	dlparam->mutable_pooling_param()->set_pool(pool_type);
-	dlparam->mutable_pooling_param()->set_kernel_size(pool_kernel_size);
-	dlparam->mutable_pooling_param()->set_stride(pool_stride);
+	if (flat1dconv)
+	  {
+	    dlparam->mutable_pooling_param()->clear_stride();
+	    dlparam->mutable_pooling_param()->clear_kernel_size();
+	    dlparam->mutable_pooling_param()->set_stride_h(3);
+	    dlparam->mutable_pooling_param()->set_stride_w(1);
+	    dlparam->mutable_pooling_param()->set_kernel_h(3);
+	    dlparam->mutable_pooling_param()->set_kernel_w(1);
+	  }
+	else 
+	  {
+	    dlparam->mutable_pooling_param()->set_kernel_size(pool_kernel_size);
+	    dlparam->mutable_pooling_param()->set_stride(pool_stride);
+	  }
 	++drl;
 
 	/*if (dropout > 0.0 && dropout < 1.0)
@@ -841,19 +918,61 @@ namespace dd
     last_ip = "ip" + std::to_string(cr_layers.size());
     int lfc = cr_layers.size();
     int cact = ccount + 1;
+    bool reshaped = false;
     for (auto fc: fc_layers)
       {
+	if (flat1dconv && !reshaped)
+	  {
+	    reshaped = true;
+	    if (rl < max_rl)
+	      {
+		lparam = net_param.mutable_layer(rl);
+		lparam->clear_bottom();
+		lparam->clear_top();
+		lparam->clear_include();
+		lparam->clear_loss_weight();
+	      }
+	    else lparam = net_param.add_layer();
+	    lparam->set_name("reshape0");
+	    lparam->set_type("Reshape");
+	    lparam->add_bottom(prec_ip);
+	    lparam->add_top("reshape0");
+	    lparam->mutable_reshape_param()->mutable_shape()->add_dim(0);
+	    lparam->mutable_reshape_param()->mutable_shape()->add_dim(-1);
+	    ++rl;
+	
+	    if (drl < max_drl)
+	      {
+		dlparam = deploy_net_param.mutable_layer(drl);
+		dlparam->clear_bottom();
+		dlparam->clear_top();
+		dlparam->clear_include();
+		dlparam->clear_loss_weight();
+	      }
+	    else dlparam = deploy_net_param.add_layer();
+	    dlparam->set_name("resphape0");
+	    dlparam->set_type("Reshape");
+	    dlparam->add_bottom(prec_ip);
+	    dlparam->add_top("reshape0");
+	    dlparam->mutable_reshape_param()->mutable_shape()->add_dim(0);
+	    dlparam->mutable_reshape_param()->mutable_shape()->add_dim(-1);
+	    ++drl;
+	  }
+
 	if (rl < max_rl)
 	  {
 	    lparam = net_param.mutable_layer(rl);
 	    lparam->clear_bottom();
 	    lparam->clear_top();
 	    lparam->clear_include();
+	    lparam->clear_loss_weight();
 	  }
 	else lparam = net_param.add_layer();
 	lparam->set_name(last_ip);
 	lparam->set_type("InnerProduct");
-	lparam->add_bottom(prec_ip);
+	if (flat1dconv)
+	  lparam->add_bottom("reshape0");
+	else lparam->add_bottom(prec_ip);
 	lparam->add_top(last_ip);
 	caffe::InnerProductParameter *ipp = lparam->mutable_inner_product_param();
 	ipp->set_num_output(fc);
@@ -867,11 +986,14 @@ namespace dd
 	    dlparam->clear_bottom();
 	    dlparam->clear_top();
 	    dlparam->clear_include();
+	    dlparam->clear_loss_weight();
 	  }
 	else dlparam = deploy_net_param.add_layer();
 	dlparam->set_name(last_ip);
 	dlparam->set_type("InnerProduct");
-	dlparam->add_bottom(prec_ip);
+	if (flat1dconv)
+	  dlparam->add_bottom("reshape0");
+	else dlparam->add_bottom(prec_ip);
 	dlparam->add_top(last_ip);
 	caffe::InnerProductParameter *dipp = dlparam->mutable_inner_product_param();
 	dipp->set_num_output(fc);
@@ -946,6 +1068,7 @@ namespace dd
 	lparam->clear_bottom();
 	lparam->clear_top();
 	lparam->clear_include();
+	lparam->clear_loss_weight();
       }
     else lparam = net_param.add_layer(); // last inner product before softmax
     lparam->set_name(last_ip);
@@ -966,6 +1089,7 @@ namespace dd
 	dlparam->clear_bottom();
 	dlparam->clear_top();
 	dlparam->clear_include();
+	dlparam->clear_loss_weight();
       }
     else dlparam = deploy_net_param.add_layer();
     dlparam->set_name(last_ip);

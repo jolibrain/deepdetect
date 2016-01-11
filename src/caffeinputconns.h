@@ -39,7 +39,7 @@ namespace dd
   public:
     CaffeInputInterface() {}
     CaffeInputInterface(const CaffeInputInterface &cii)
-      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids) {} //,_test_labels(cii._test_labels) {}
+      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv) {}
     ~CaffeInputInterface() {}
 
     /**
@@ -63,6 +63,7 @@ namespace dd
     std::vector<caffe::Datum> _dv; /**< main input datum vector, used for training or prediction */
     std::vector<caffe::Datum> _dv_test; /**< test input datum vector, when applicable in training mode */
     std::vector<std::string> _ids; /**< input ids (e.g. image ids) */
+    bool _flat1dconv = false; /**< whether a 1D convolution model. */
   };
 
   /**
@@ -72,9 +73,9 @@ namespace dd
   {
   public:
     ImgCaffeInputFileConn()
-      :ImgInputFileConn() {}
+      :ImgInputFileConn() { _db = true; }
     ImgCaffeInputFileConn(const ImgCaffeInputFileConn &i)
-      :ImgInputFileConn(i),CaffeInputInterface(i) {}
+      :ImgInputFileConn(i),CaffeInputInterface(i) { _db = true; }
     ~ImgCaffeInputFileConn() {}
 
     // size of each element in Caffe jargon
@@ -511,6 +512,8 @@ namespace dd
     void init(const APIData &ad)
     {
       TxtInputFileConn::init(ad);
+      if (_characters)
+	_flat1dconv = true;
     }
 
     int channels() const
@@ -522,11 +525,15 @@ namespace dd
 
     int height() const
     {
-      return 1;
+      if (_characters)
+	return _sequence;
+      else return 1;
     }
 
     int width() const
     {
+      if (_characters)
+	return _alphabet.size();
       return 1;
     }
 
@@ -550,7 +557,7 @@ namespace dd
 		  const std::string &backend="lmdb");
 
     void write_txt_to_db(const std::string &dbname,
-			 std::vector<TxtBowEntry> &txt,
+			 std::vector<TxtEntry<double>*> &txt,
 			 const std::string &backend="lmdb");
     
     void transform(const APIData &ad)
@@ -559,7 +566,7 @@ namespace dd
       APIData ad_input = ad_param.getobj("input");
       if (ad_input.has("db") && ad_input.get("db").get<bool>())
 	_db = true;
-
+      
       // transform to one-hot vector datum
       if (_train && _db)
 	{
@@ -583,18 +590,22 @@ namespace dd
 	  TxtInputFileConn::transform(ad);
 	  
 	  int n = 0;
-	  auto hit = _txt.cbegin();
-	  while(hit!=_txt.cend())
+	  auto hit = _txt.begin();
+	  while(hit!=_txt.end())
 	    {
-	      _dv.push_back(std::move(to_datum((*hit))));
+	      if (_characters)
+		_dv.push_back(std::move(to_datum<TxtCharEntry>(static_cast<TxtCharEntry*>((*hit)))));
+	      else _dv.push_back(std::move(to_datum<TxtBowEntry>(static_cast<TxtBowEntry*>((*hit)))));
 	      _ids.push_back(std::to_string(n));
 	      ++hit;
 	      ++n;
 	    }
-	  hit = _test_txt.cbegin();
-	  while(hit!=_test_txt.cend())
+	  hit = _test_txt.begin();
+	  while(hit!=_test_txt.end())
 	    {
-	      _dv_test.push_back(std::move(to_datum((*hit))));
+	      if (_characters)
+		_dv_test.push_back(std::move(to_datum<TxtCharEntry>(static_cast<TxtCharEntry*>((*hit)))));
+	      else _dv_test.push_back(std::move(to_datum<TxtBowEntry>(static_cast<TxtBowEntry*>((*hit)))));
 	      ++hit;
 	      ++n;
 	    }
@@ -630,23 +641,59 @@ namespace dd
       _test_db = std::unique_ptr<caffe::db::DB>();
     }
     
-    caffe::Datum to_datum(const TxtBowEntry &tbe)
+    template<class TEntry> caffe::Datum to_datum(TEntry *tbe)
       {
 	std::unordered_map<std::string,Word>::const_iterator wit;
 	caffe::Datum datum;
-	int datum_channels = _vocab.size(); // XXX: may be very large
+	int datum_channels;
+	if (_characters)
+	  datum_channels = 1;
+	else datum_channels = _vocab.size(); // XXX: may be very large
 	datum.set_channels(datum_channels);
-	datum.set_height(1);
+       	datum.set_height(1);
 	datum.set_width(1);
-	datum.set_label(tbe._target);
-	for (int i=0;i<datum_channels;i++) // XXX: expected to be slow
-	  datum.add_float_data(0.0);
-	auto hit = tbe._v.cbegin();
-	while(hit!=tbe._v.cend())
+	datum.set_label(tbe->_target);
+	if (!_characters)
 	  {
-	    if ((wit = _vocab.find((*hit).first))!=_vocab.end())
-	      datum.set_float_data(_vocab[(*hit).first]._pos,static_cast<float>((*hit).second));
-	    ++hit;
+	    for (int i=0;i<datum_channels;i++) // XXX: expected to be slow
+	      datum.add_float_data(0.0);
+	    tbe->reset();
+	    while(tbe->has_elt())
+	      {
+		std::string key;
+		double val;
+		tbe->get_next_elt(key,val);
+		if ((wit = _vocab.find(key))!=_vocab.end())
+		  datum.set_float_data(_vocab[key]._pos,static_cast<float>(val));
+	      }
+	  }
+	else // character-level features
+	  {
+	    tbe->reset();
+	    std::vector<int> vals;
+	    std::unordered_map<char,int>::const_iterator whit;
+	    while(tbe->has_elt())
+	      {
+		std::string key;
+		double val = -1.0;
+		tbe->get_next_elt(key,val);
+		if ((whit=_alphabet.find(key[0]))!=_alphabet.end())
+		  vals.push_back((*whit).second);
+		else vals.push_back(-1);
+	      }
+	    std::reverse(vals.begin(),vals.end()); // reverse quantization helps
+	    /*if (vals.size() > _sequence)
+	      std::cerr << "more characters than sequence / " << vals.size() << " / sequence=" << _sequence << std::endl;*/
+	    for (int c=0;c<_sequence;c++)
+	      {
+		std::vector<float> v(_alphabet.size(),0.0);
+		if (c<(int)vals.size() && vals[c] != -1)
+		  v[vals[c]] = 1.0;
+		for (float f: v)
+		  datum.add_float_data(f);
+	      }
+	    datum.set_height(_sequence);
+	    datum.set_width(_alphabet.size());
 	  }
 	return datum;
       }

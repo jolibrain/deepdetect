@@ -59,12 +59,26 @@ namespace dd
     int _total_count = 1;
     int _total_docs = 1;
   };
-  
-  class TxtBowEntry
+
+  template<typename T> class TxtEntry
   {
   public:
-    TxtBowEntry() {}
-    TxtBowEntry(const float &target):_target(target) {}
+    TxtEntry() {}
+    TxtEntry(const float &target): _target(target) {}
+    ~TxtEntry() {}
+
+    void reset() {}
+    void get_elt(std::string &key, T &val) const {}
+    bool has_elt() const { return false; }
+    
+    float _target = -1; /**< class target in training mode. */
+  };
+  
+  class TxtBowEntry: public TxtEntry<double>
+  {
+  public:
+  TxtBowEntry():TxtEntry<double>() {};
+  TxtBowEntry(const float &target):TxtEntry<double>(target) {}
     ~TxtBowEntry() {}
 
     void add_word(const std::string &str,
@@ -84,9 +98,65 @@ namespace dd
     {
       return _v.count(str);
     }
+
+    void reset()
+    {
+      _vit = _v.begin();
+    }
+
+    void get_next_elt(std::string &key, double &val)
+    {
+      if (_vit!=_v.end())
+	{
+	  key = (*_vit).first;
+	  val = (*_vit).second;
+	  ++_vit;
+	}
+    }
+
+    bool has_elt() const
+    {
+      return _vit != _v.end();
+    }
     
     std::unordered_map<std::string,double> _v; /**< words as (<pos,val>). */
-    float _target = -1; /**< class target in training mode. */
+    std::unordered_map<std::string,double>::iterator _vit;
+  };
+
+  class TxtCharEntry: public TxtEntry<double>
+  {
+  public:
+  TxtCharEntry():TxtEntry<double>() {}
+  TxtCharEntry(const float &target):TxtEntry<double>(target) {}
+    ~TxtCharEntry() {}
+
+    void add_char(const char &c)
+    {
+      _v.push_back(c);
+    }
+
+    void reset()
+    {
+      _vit = _v.begin();
+    }
+
+    void get_next_elt(std::string &key, double &val)
+    {
+      if (_vit!=_v.end())
+	{
+	  key = std::string(1,(*_vit));
+	  val = 1;
+	  ++_vit;
+	}
+    }
+
+    bool has_elt() const
+    {
+      return _vit != _v.end();
+    }
+    
+    std::vector<char> _v;
+    std::vector<char>::iterator _vit;
   };
   
   class TxtInputFileConn : public InputConnectorStrategy
@@ -95,7 +165,11 @@ namespace dd
     TxtInputFileConn()
       :InputConnectorStrategy() {}
 
-    ~TxtInputFileConn() {}
+    ~TxtInputFileConn()
+      {
+	destroy_txt_entries(_txt);
+	destroy_txt_entries(_test_txt);
+      }
 
     void init(const APIData &ad)
     {
@@ -120,6 +194,14 @@ namespace dd
 	_min_word_length = ad_input.get("min_word_length").get<int>();
       if (ad_input.has("sentences"))
 	_sentences = ad_input.get("sentences").get<bool>();
+      if (ad_input.has("characters"))
+	_characters = ad_input.get("characters").get<bool>();
+      if (ad_input.has("alphabet"))
+	_alphabet_str = ad_input.get("alphabet").get<std::string>();
+      if (_characters)
+	build_alphabet();
+      if (ad_input.has("sequence"))
+	_sequence = ad_input.get("sequence").get<int>();
     }
 
     int feature_size() const
@@ -151,10 +233,13 @@ namespace dd
 	    }
 	}
 
+      if (_alphabet.empty() && _characters)
+	build_alphabet();
+      
       if (ad.has("model_repo"))
 	_model_repo = ad.get("model_repo").get<std::string>();
       
-      if (!_train && _vocab.empty())
+      if (!_characters && !_train && _vocab.empty())
 	deserialize_vocab();
       
       for (std::string u: _uris)
@@ -218,6 +303,12 @@ namespace dd
     void serialize_vocab();
     void deserialize_vocab();
 
+    // alphabet for character-level features
+    void build_alphabet();
+
+    // clearing up memory
+    void destroy_txt_entries(std::vector<TxtEntry<double>*> &v);
+    
     // options
     std::string _iterator = "document";
     std::string _tokenizer = "bow";
@@ -229,6 +320,10 @@ namespace dd
     int _min_count = 5; /**< min word occurence. */
     int _min_word_length = 5; /**< min word length. */
     bool _sentences = false; /**< whether to consider every sentence (\n separated) as a document. */
+    bool _characters = false; /**< whether to use character-level input features. */
+    std::string _alphabet_str = "abcdefghijklmnopqrstuvwxyz0123456789,;.!?:'\"/\\|_@#$%^&*~`+-=<>()[]{}";
+    std::unordered_map<char,int> _alphabet; /**< character-level alphabet. */
+    int _sequence = 60; /**< sequence size when using character-level features. */
     
     // internals
     std::unordered_map<std::string,Word> _vocab; /**< string to word stats, including word */
@@ -237,8 +332,8 @@ namespace dd
     std::string _correspname = "corresp.txt";
     
     // data
-    std::vector<TxtBowEntry> _txt;
-    std::vector<TxtBowEntry> _test_txt;
+    std::vector<TxtEntry<double>*> _txt;
+    std::vector<TxtEntry<double>*> _test_txt;
   };
   
 }

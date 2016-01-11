@@ -270,7 +270,7 @@ TEST(caffelib,configure_convnet_template_1)
   ad.add("activation","prelu");
   ad.add("dropout",0.2);
   
-  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,0,nclasses,net_param,deploy_net_param);
+  CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,0,nclasses,ImgCaffeInputFileConn(),net_param,deploy_net_param);
 
   caffe::WriteProtoToTextFile(net_param,oconvnet_file);
   caffe::WriteProtoToTextFile(deploy_net_param,doconvnet_file);
@@ -322,7 +322,7 @@ TEST(caffelib,configure_convnet_template_1_db)
   ad.add("dropout",0.2);
   ad.add("db",true);
   
-  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,0,nclasses,net_param,deploy_net_param);
+  CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,0,nclasses,ImgCaffeInputFileConn(),net_param,deploy_net_param);
 
   caffe::WriteProtoToTextFile(net_param,oconvnet_file);
   caffe::WriteProtoToTextFile(deploy_net_param,doconvnet_file);
@@ -377,7 +377,7 @@ TEST(caffelib,configure_convnet_template_2)
   ad.add("activation","prelu");
   ad.add("dropout",0.2);
   
-  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,0,nclasses,net_param,deploy_net_param);
+  CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,0,nclasses,ImgCaffeInputFileConn(),net_param,deploy_net_param);
 
   caffe::WriteProtoToTextFile(net_param,oconvnet_file);
   caffe::WriteProtoToTextFile(deploy_net_param,doconvnet_file);
@@ -459,7 +459,7 @@ TEST(caffelib,configure_convnet_template_3)
   ad.add("activation","prelu");
   ad.add("dropout",0.2);
   
-  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,0,nclasses,net_param,deploy_net_param);
+  CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,0,nclasses,ImgCaffeInputFileConn(),net_param,deploy_net_param);
 
   caffe::WriteProtoToTextFile(net_param,oconvnet_file);
   caffe::WriteProtoToTextFile(deploy_net_param,doconvnet_file);
@@ -520,7 +520,7 @@ TEST(caffelib,configure_convnet_template_n)
   ad.add("activation","prelu");
   ad.add("dropout",0.2);
   
-  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,0,nclasses,net_param,deploy_net_param);
+  CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,0,nclasses,ImgCaffeInputFileConn(),net_param,deploy_net_param);
 
   caffe::WriteProtoToTextFile(net_param,oconvnet_file);
   caffe::WriteProtoToTextFile(deploy_net_param,doconvnet_file);
@@ -530,5 +530,88 @@ TEST(caffelib,configure_convnet_template_n)
   ASSERT_TRUE(succ);
 
   ASSERT_EQ(26,net_param.layer_size());
+  caffe::LayerParameter *lparam = net_param.mutable_layer(0);
+  ASSERT_EQ("Data",lparam->type());
+  ASSERT_EQ("mean.binaryproto",lparam->mutable_transform_param()->mean_file());
   ASSERT_EQ(22,deploy_net_param.layer_size());
+}
+
+TEST(caffelib,configure_convnet_template_n_1D)
+{
+  int nclasses = 18;
+  caffe::NetParameter net_param, deploy_net_param;
+  bool succ = caffe::ReadProtoFromTextFile(convnet_file,&net_param);
+  ASSERT_TRUE(succ);
+  succ = caffe::ReadProtoFromTextFile(dconvnet_file,&deploy_net_param);
+  ASSERT_TRUE(succ);
+
+  std::vector<std::string> layers = {"1CR256","1CR256","4CR256","1024","1024"};
+  APIData ad;
+  ad.add("layers",layers);
+  ad.add("activation","prelu");
+  ad.add("dropout",0.2);
+
+  TxtCaffeInputFileConn tcif;
+  tcif._characters = true;
+  tcif._flat1dconv = true;
+  tcif._db = true;
+  tcif.build_alphabet();
+  tcif._sequence = 1014;
+  CaffeLib<TxtCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,0,nclasses,tcif,net_param,deploy_net_param);
+
+  caffe::WriteProtoToTextFile(net_param,oconvnet_file);
+  caffe::WriteProtoToTextFile(deploy_net_param,doconvnet_file);
+  succ = caffe::ReadProtoFromTextFile(oconvnet_file,&net_param);
+  ASSERT_TRUE(succ);
+  succ = caffe::ReadProtoFromTextFile(doconvnet_file,&deploy_net_param);
+  ASSERT_TRUE(succ);
+
+  ASSERT_EQ(26,net_param.layer_size());
+  caffe::LayerParameter *lparam = net_param.mutable_layer(0);
+  ASSERT_EQ("Data",lparam->type());
+  ASSERT_TRUE(lparam->mutable_transform_param()->mean_file().empty());
+  lparam = net_param.mutable_layer(1);
+  ASSERT_EQ("MemoryData",lparam->type());
+  ASSERT_EQ(1,lparam->mutable_memory_data_param()->channels());
+  ASSERT_EQ(tcif._sequence,lparam->mutable_memory_data_param()->height());
+  ASSERT_EQ(tcif._alphabet.size(),lparam->mutable_memory_data_param()->width());
+  lparam = net_param.mutable_layer(2);
+  ASSERT_EQ("Convolution",lparam->type());
+  ASSERT_EQ(256,lparam->mutable_convolution_param()->num_output());
+  ASSERT_EQ(7,lparam->mutable_convolution_param()->kernel_h());
+  ASSERT_EQ(1,lparam->mutable_convolution_param()->kernel_w());
+  lparam = net_param.mutable_layer(4);
+  ASSERT_EQ("Pooling",lparam->type());
+  ASSERT_EQ(3,lparam->mutable_pooling_param()->stride_h());
+  ASSERT_EQ(1,lparam->mutable_pooling_param()->stride_w());
+  ASSERT_EQ(3,lparam->mutable_pooling_param()->kernel_h());
+  ASSERT_EQ(1,lparam->mutable_pooling_param()->kernel_w());
+  lparam = net_param.mutable_layer(8);
+  ASSERT_EQ("Convolution",lparam->type());
+  ASSERT_EQ(256,lparam->mutable_convolution_param()->num_output());
+  ASSERT_EQ(3,lparam->mutable_convolution_param()->kernel_h());
+  ASSERT_EQ(1,lparam->mutable_convolution_param()->kernel_w());
+  
+  ASSERT_EQ(22,deploy_net_param.layer_size());
+  lparam = deploy_net_param.mutable_layer(0);
+  ASSERT_EQ("MemoryData",lparam->type());
+  ASSERT_EQ(1,lparam->mutable_memory_data_param()->channels());
+  ASSERT_EQ(tcif._sequence,lparam->mutable_memory_data_param()->height());
+  ASSERT_EQ(tcif._alphabet.size(),lparam->mutable_memory_data_param()->width());
+  lparam = deploy_net_param.mutable_layer(1);
+  ASSERT_EQ("Convolution",lparam->type());
+  ASSERT_EQ(256,lparam->mutable_convolution_param()->num_output());
+  ASSERT_EQ(7,lparam->mutable_convolution_param()->kernel_h());
+  ASSERT_EQ(1,lparam->mutable_convolution_param()->kernel_w());
+  lparam = deploy_net_param.mutable_layer(3);
+  ASSERT_EQ("Pooling",lparam->type());
+  ASSERT_EQ(3,lparam->mutable_pooling_param()->stride_h());
+  ASSERT_EQ(1,lparam->mutable_pooling_param()->stride_w());
+  ASSERT_EQ(3,lparam->mutable_pooling_param()->kernel_h());
+  ASSERT_EQ(1,lparam->mutable_pooling_param()->kernel_w());
+  lparam = deploy_net_param.mutable_layer(7);
+  ASSERT_EQ("Convolution",lparam->type());
+  ASSERT_EQ(256,lparam->mutable_convolution_param()->num_output());
+  ASSERT_EQ(3,lparam->mutable_convolution_param()->kernel_h());
+  ASSERT_EQ(1,lparam->mutable_convolution_param()->kernel_w());
 }
