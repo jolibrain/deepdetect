@@ -25,6 +25,7 @@
 #include "inputconnectorstrategy.h"
 #include <algorithm>
 #include <cmath>
+#include "utf8.h"
 
 namespace dd
 {
@@ -130,7 +131,7 @@ namespace dd
   TxtCharEntry(const float &target):TxtEntry<double>(target) {}
     ~TxtCharEntry() {}
 
-    void add_char(const char &c)
+    void add_char(const uint32_t &c)
     {
       _v.push_back(c);
     }
@@ -144,7 +145,7 @@ namespace dd
     {
       if (_vit!=_v.end())
 	{
-	  key = std::string(1,(*_vit));
+	  key = std::to_string((*_vit));
 	  val = 1;
 	  ++_vit;
 	}
@@ -155,8 +156,8 @@ namespace dd
       return _vit != _v.end();
     }
     
-    std::vector<char> _v;
-    std::vector<char>::iterator _vit;
+    std::vector<uint32_t> _v;
+    std::vector<uint32_t>::iterator _vit;
   };
   
   class TxtInputFileConn : public InputConnectorStrategy
@@ -322,7 +323,7 @@ namespace dd
     bool _sentences = false; /**< whether to consider every sentence (\n separated) as a document. */
     bool _characters = false; /**< whether to use character-level input features. */
     std::string _alphabet_str = "abcdefghijklmnopqrstuvwxyz0123456789,;.!?:'\"/\\|_@#$%^&*~`+-=<>()[]{}";
-    std::unordered_map<char,int> _alphabet; /**< character-level alphabet. */
+    std::unordered_map<uint32_t,int> _alphabet; /**< character-level alphabet. */
     int _sequence = 60; /**< sequence size when using character-level features. */
     
     // internals

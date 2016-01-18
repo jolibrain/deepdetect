@@ -240,17 +240,24 @@ namespace dd
 	else // character-level features
 	  {
 	    TxtCharEntry *tce = new TxtCharEntry(target);
-	    std::unordered_map<char,int>::const_iterator whit;
+	    std::unordered_map<uint32_t,int>::const_iterator whit;
 	    boost::char_separator<char> sep("\n\t\f\r");
 	    boost::tokenizer<boost::char_separator<char>> tokens(ct,sep);
 	    for (std::string w: tokens)
 	      {
-		for (char c: w)
-		  {
-		    if ((whit=_alphabet.find(c))==_alphabet.end())
-		      tce->add_char(' ');
-		    else tce->add_char(c);
-		  }
+		char *str = (char*)w.c_str();
+		char *str_i = str;
+		char *end = str+strlen(str)+1;
+		do
+		{
+		  uint32_t c = utf8::next(str_i,end);
+		  if (c == 0)
+		    continue;
+		  if ((whit=_alphabet.find(c))==_alphabet.end())
+		    tce->add_char(' ');
+		  else tce->add_char(c);
+		}
+		while(str_i<end);
 	      }
 	    _txt.push_back(tce);
 	  }
@@ -297,14 +304,19 @@ namespace dd
     _alphabet.clear();
     auto hit = _alphabet.begin();
     int pos = 0;
-    for (char c: _alphabet_str)
+    char *str = (char*)_alphabet_str.c_str();
+    char *str_i = str;
+    char *end = str+strlen(str)+1;
+    do
       {
+	uint32_t c = utf8::next(str_i,end);
 	if ((hit=_alphabet.find(c))==_alphabet.end())
 	  {
-	    _alphabet.insert(std::pair<char,int>(c,pos));
+	    _alphabet.insert(std::pair<uint32_t,int>(c,pos));
 	    ++pos;
 	  }
       }
+    while(str_i<end);
   }
 
   void TxtInputFileConn::destroy_txt_entries(std::vector<TxtEntry<double>*> &v)

@@ -671,13 +671,14 @@ namespace dd
 	  {
 	    tbe->reset();
 	    std::vector<int> vals;
-	    std::unordered_map<char,int>::const_iterator whit;
+	    std::unordered_map<uint32_t,int>::const_iterator whit;
 	    while(tbe->has_elt())
 	      {
 		std::string key;
 		double val = -1.0;
 		tbe->get_next_elt(key,val);
-		if ((whit=_alphabet.find(key[0]))!=_alphabet.end())
+		uint32_t c = std::strtoul(key.c_str(),0,10);
+		if ((whit=_alphabet.find(c))!=_alphabet.end())
 		  vals.push_back((*whit).second);
 		else vals.push_back(-1);
 	      }
