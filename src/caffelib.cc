@@ -1516,6 +1516,7 @@ namespace dd
 	    for (size_t i = 0; i < solver->callbacks().size(); ++i) {
 	      solver->callbacks()[i]->on_gradients_ready();
 	    }
+	    solver->iter_++;
 	    solver->ApplyUpdate();
 	  }
 	catch (std::exception &e)
@@ -1524,7 +1525,6 @@ namespace dd
 	    delete solver;
 	    throw;
 	  }
-	solver->iter_++;
       }
     
     // always save final snapshot.
