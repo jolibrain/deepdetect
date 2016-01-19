@@ -238,7 +238,6 @@ public:
 	    return;
 	  }
 	std::string sname = rscs.at(1);
-	std::cerr << "sname=" << sname << std::endl;
 	if (req_method == "GET")
 	  {
 	    fillup_response(response,_hja->service_status(sname));
