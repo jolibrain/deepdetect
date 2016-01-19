@@ -1479,7 +1479,7 @@ namespace dd
 	float loss = 0.0;
 	try
 	  {
-	    for (int i = 0; i < solver->callbacks().size(); ++i) {
+	    for (size_t i = 0; i < solver->callbacks().size(); ++i) {
 	      solver->callbacks()[i]->on_start();
 	    }
 	    for (int i = 0; i < solver->param_.iter_size(); ++i)
@@ -1513,7 +1513,7 @@ namespace dd
 	  }
 	try
 	  {
-	    for (int i = 0; i < solver->callbacks().size(); ++i) {
+	    for (size_t i = 0; i < solver->callbacks().size(); ++i) {
 	      solver->callbacks()[i]->on_gradients_ready();
 	    }
 	    solver->ApplyUpdate();
