@@ -1387,9 +1387,10 @@ namespace dd
 	inputc._dv.clear();
 	inputc._ids.clear();
       }
+    this->_mlmodel.read_from_repository(this->_mlmodel._repo);
+    this->_mlmodel.read_corresp_file();
     if (ad_mllib.has("resume") && ad_mllib.get("resume").get<bool>())
       {
-	this->_mlmodel.read_from_repository(this->_mlmodel._repo);
 	if (this->_mlmodel._sstate.empty())
 	  {
 	    delete solver;
@@ -1463,6 +1464,14 @@ namespace dd
 		    this->add_meas(m,mval);
 		    if (!std::isnan(mval)) // if testing occurs once before training even starts, loss is unknown and we don't add it to history.
 		      this->add_meas_per_iter(m,mval);
+		  }
+		else if (m == "cmdiag")
+		  {
+		    std::vector<double> mdiag = meas_obj.get(m).get<std::vector<double>>();
+		    std::string mdiag_str;
+		    for (size_t i=0;i<mdiag.size();i++)
+		      mdiag_str += this->_mlmodel.get_hcorresp(i) + ":" + std::to_string(mdiag.at(i)) + " ";
+		    LOG(INFO) << m << "=[" << mdiag_str << "]";
 		  }
 	      }
 	  }
