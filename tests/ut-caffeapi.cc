@@ -326,7 +326,15 @@ TEST(caffeapi,service_predict)
   std::string uri = jd["body"]["predictions"]["uri"].GetString();
   std::cerr << "uri=" << uri << std::endl;
   ASSERT_EQ("0",uri);
-  
+
+  // predict non existing image
+  jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"bw\":true,\"width\":28,\"height\":28},\"output\":{\"best\":3}},\"data\":[\"http://example.com/my_image.png\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(400,jd["status"]["code"]);
+    
   // remove service
   jstr = "{\"clear\":\"lib\"}";
   joutstr = japi.jrender(japi.service_delete(sname,jstr));

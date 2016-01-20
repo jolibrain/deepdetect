@@ -192,21 +192,35 @@ namespace dd
 	    }
 	}
       int img_count = 0;
+      int catch_read = 0;
+      std::string catch_msg;
       std::vector<std::string> uris(_uris.size());
 #pragma omp parallel for
       for (size_t i=0;i<_uris.size();i++)
 	{
+	  bool no_img = false;
 	  std::string u = _uris.at(i);
 	  DataEl<DDImg> dimg;
 	  dimg._ctype._bw = _bw;
-	  if (dimg.read_element(u))
+	  try
 	    {
-	      LOG(ERROR) << "no data for image " << u;
-	      continue;
+	      if (dimg.read_element(u))
+		{
+		  LOG(ERROR) << "no data for image " << u;
+		  no_img = true;
+		}
 	    }
-	  /*cv::namedWindow( "Display window", cv::WINDOW_AUTOSIZE );
-	    cv::imshow( "Display window", imaget);
-	    cv::waitKey(0);*/
+	  catch(std::exception &e)
+	    {
+#pragma omp critical
+	      {
+		++catch_read;
+		catch_msg = e.what();
+		no_img = true;
+	      }
+	    }
+	  if (no_img)
+	    continue;
 	  //TODO: resize only if necessary
 	  cv::Size size(_width,_height);
 	  cv::Mat image;
@@ -217,6 +231,8 @@ namespace dd
 	  else uris[i] = std::to_string(img_count);
 	  ++img_count;
 	}
+      if (catch_read)
+	throw InputConnectorBadParamException(catch_msg);
       _uris = uris;
       // shuffle before possible split
       if (_shuffle)
