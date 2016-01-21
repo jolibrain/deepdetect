@@ -534,4 +534,6 @@ namespace dd
   };
 }
 
+#include "xgbinputconns.h"
+
 #endif

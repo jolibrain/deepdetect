@@ -304,6 +304,11 @@ namespace dd
 	    if (JsonAPI::store_json_blob(cmodel._repo,jstr)) // store successful call json blob
 	      LOG(ERROR) << "couldn't write " << JsonAPI::_json_blob_fname << " file in model repository " << cmodel._repo << std::endl;
 	  }
+	else if (mllib == "xgboost")
+	  {
+	    XGBModel xmodel(ad_model);
+	    add_service(sname,std::move(MLService<XGBLib,CSVXGBInputFileConn,SupervisedOutput,XGBModel>(sname,xmodel,description)),ad);
+	  }
 	else
 	  {
 	    return dd_unknown_library_1000();
