@@ -188,6 +188,8 @@ namespace dd
   void TxtInputFileConn::parse_content(const std::string &content,
 				       const float &target)
   {
+    if (!_train && content.empty())
+      throw InputConnectorBadParamException("no text data found");
     std::vector<std::string> cts;
     if (_sentences)
       {
