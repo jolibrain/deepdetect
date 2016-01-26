@@ -27,6 +27,8 @@ namespace dd
   XGBModel::XGBModel::XGBModel(const APIData &ad)
     :MLModel()
   {
+    if (ad.has("repository"))
+      this->_repo = ad.get("repository").get<std::string>();
   }
   
 }
