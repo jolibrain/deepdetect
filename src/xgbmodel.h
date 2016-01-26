@@ -39,6 +39,7 @@ namespace dd
     ~XGBModel() {};
 
     //TODO
+    std::string _weights; /**< file with model weights. */
   };
   
 }

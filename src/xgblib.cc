@@ -49,6 +49,8 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   XGBLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::~XGBLib()
   {
+    if (_learner)
+      delete _learner;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -185,8 +187,8 @@ namespace dd
       add_cfg_param("lambda_bias",lambda_bias);
       
       // data setup
-      std::vector<xgboost::DMatrix*> mats = { inputc._mtrain };
-      xgboost::DMatrix *dtrain(inputc._mtrain);
+      std::vector<xgboost::DMatrix*> mats = { inputc._m };
+      xgboost::DMatrix *dtrain(inputc._m);
       std::vector<xgboost::DMatrix*> deval;
       std::vector<xgboost::DMatrix*> eval_datasets;
       for (size_t i = 0; i < _params.eval_data_names.size(); ++i) {
@@ -315,9 +317,56 @@ namespace dd
   int XGBLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::predict(const APIData &ad,
 										   APIData &out)
   {
-    //TODO
-  }
+    //TODO: mutex since using in-memory learner
 
+    //TODO: parameters
+
+
+    //TODO: data
+    TInputConnectorStrategy inputc(this->_inputc);
+    try
+      {
+	inputc.transform(ad);
+      }
+    catch (...)
+      {
+	throw;
+      }
+    
+    // load existing model as needed
+    if (!_learner)
+      {
+	_learner = xgboost::Learner::Create({});
+	//TODO: read model filename from repository
+	this->_mlmodel._weights = "0010.model";
+	std::string model_in = this->_mlmodel._repo + "/" + this->_mlmodel._weights; //TODO: weights
+	std::unique_ptr<dmlc::Stream> fi(dmlc::Stream::Create(model_in.c_str(),"r"));
+	_learner->Load(fi.get());
+      }
+
+    // predict
+    std::vector<float> preds;
+    _learner->Predict(inputc._m,_params.pred_margin,&preds,_params.ntree_limit);
+
+    // results
+    float loss = 0.0; //TODO: acquire loss ?
+    int batch_size = preds.size() / _nclasses;
+    TOutputConnectorStrategy tout;
+    for (int j=0;j<batch_size;j++)
+      {
+	tout.add_result(inputc._ids.at(j),loss);
+	for (int i=0;i<_nclasses;i++)
+	  tout.add_cat(inputc._ids.at(j),preds.at(j*_nclasses+i),std::to_string(i));
+      }
+    TOutputConnectorStrategy btout(this->_outputc);
+    if (_regression)
+      tout._best = _nclasses;
+    tout.best_cats(ad.getobj("parameters").getobj("output"),btout);
+    btout.to_ad(out,_regression);
+    out.add("status",0);
+    return 0;
+  }
+  
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void XGBLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::test(const APIData &ad,
 									       std::unique_ptr<xgboost::Learner> &learner,

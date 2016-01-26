@@ -34,7 +34,7 @@ namespace dd
     CSVXGBInputFileConn()
       :CSVInputFileConn() {}
     CSVXGBInputFileConn(const CSVXGBInputFileConn &i)
-      :CSVInputFileConn(i) {}
+      :CSVInputFileConn(i),_missing(i._missing),_direct_csv(i._direct_csv),_ids(i._ids) {}
     ~CSVXGBInputFileConn() {}
 
     void init(const APIData &ad)
@@ -47,12 +47,14 @@ namespace dd
     xgboost::DMatrix* create_from_mat(const std::vector<CSVline> &csvl);
 
   public:
-    xgboost::DMatrix *_mtrain = nullptr;
+    xgboost::DMatrix *_m = nullptr;
     xgboost::DMatrix *_mtest = nullptr; 
 
     // parameters
     float _missing;// = std::NAN; /**< represents missing values. */
     bool _direct_csv = false; /**< whether to use the xgboost built-in CSV reader. */
+
+    std::vector<std::string> _ids; /**< input ids. */
   };
   
 }

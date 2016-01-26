@@ -60,9 +60,9 @@ namespace xgboost
     /*! \brief data split mode */
     int dsplit;
     /*!\brief limit number of trees in prediction */
-    int ntree_limit;
+    int ntree_limit = 0;
     /*!\brief whether to directly output margin value */
-    bool pred_margin;
+    bool pred_margin = false;
     /*! \brief whether dump statistics along with model */
     //int dump_stats;
     /*! \brief name of feature map */
@@ -135,7 +135,8 @@ namespace dd
     int _ntargets = 0; /**< number of classification or regression targets. */
     std::string _booster = "gbtree"; /**< xgb booster, optional. */
     
-    xgboost::CLIParam _params; //TODO: redo parameter structure
+    xgboost::CLIParam _params;
+    xgboost::Learner *_learner = nullptr; /**< learner for prediction. */
     };
 
 }

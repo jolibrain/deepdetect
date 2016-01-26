@@ -30,10 +30,6 @@ namespace dd
 
   xgboost::DMatrix* CSVXGBInputFileConn::create_from_mat(const std::vector<CSVline> &csvl)
   {
-    //TODO:
-    //- convert data to in-memory CSR source object
-    //- DMatrix::Load(csr_object)
-    //cf XGDMatrixCreateFromMat()
     if (csvl.empty())
       return nullptr;
     std::unique_ptr<xgboost::data::SimpleCSRSource> source(new xgboost::data::SimpleCSRSource());
@@ -41,7 +37,6 @@ namespace dd
     bool nan_missing = xgboost::common::CheckNAN(_missing);
     mat.info.num_row = csvl.size();
     mat.info.num_col = feature_size();
-    std::cerr << "csvl size=" << csvl.size() << std::endl;
     auto hit = csvl.begin();
     while(hit!=csvl.end())
       {
@@ -52,7 +47,7 @@ namespace dd
 	    double v = (*hit)._v.at(i);
 	    if (xgboost::common::CheckNAN(v) && !nan_missing)
 	      throw InputConnectorBadParamException("NaN value in input data matrix, and missing != NaN");
-	    if (i == _label_pos[0]) //TODO: multilabel ?
+	    if (!_label_pos.empty() && i == _label_pos[0]) //TODO: multilabel ?
 	      {
 		mat.info.labels.push_back(v+_label_offset[0]);
 	      }
@@ -65,18 +60,16 @@ namespace dd
 	      {
 		if (nan_missing || v != _missing)
 		  {
-		    mat.row_data_.push_back(xgboost::RowBatch::Entry(i,v)); //XXX: beware, i ?
+		    mat.row_data_.push_back(xgboost::RowBatch::Entry(i,v));
 		    ++nelem;
 		  }
 	      }
 	  }
 	mat.row_ptr_.push_back(mat.row_ptr_.back()+nelem);
-      	++hit;
-      }
-    std::cerr << "row size=" << mat.row_ptr_.size() << std::endl;
-    std::cerr << "label size=" << mat.info.labels.size() << std::endl;
+	_ids.push_back((*hit)._str);
+	++hit;
+      }    
     mat.info.num_nonzero = mat.row_data_.size();
-    std::cerr << "nonzero=" << mat.info.num_nonzero << std::endl;
     xgboost::DMatrix *out = xgboost::DMatrix::Create(std::move(source));
     return out;
   }
@@ -92,15 +85,16 @@ namespace dd
 	throw;
       }    
 
-    std::cerr << "feature size=" << feature_size() << std::endl;
     if (!_direct_csv)
       {
-	if (_mtrain)
-	  delete _mtrain;
-	_mtrain = create_from_mat(_csvdata);
+	if (_m)
+	  delete _m;
+	_m = create_from_mat(_csvdata);
+	_csvdata.clear();
 	if (_mtest)
 	  delete _mtest;
 	_mtest = create_from_mat(_csvdata_test);
+	_csvdata_test.clear();
       }
     else
       {
