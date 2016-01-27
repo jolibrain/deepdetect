@@ -252,7 +252,17 @@ namespace dd
 		char *end = str+strlen(str)+1;
 		do
 		{
-		  uint32_t c = utf8::next(str_i,end);
+		  uint32_t c = 0;
+		  try
+		    {
+		      c = utf8::next(str_i,end);
+		    }
+		  catch(...)
+		    {
+		      LOG(ERROR) << "Invalid UTF-8 character in " << w << std::endl;
+		      c = 0;
+		      ++str_i;
+		    }
 		  if (c == 0)
 		    continue;
 		  if ((whit=_alphabet.find(c))==_alphabet.end())
