@@ -314,8 +314,7 @@ namespace dd
 
   HttpJsonAPI::~HttpJsonAPI()
   {
-    if (_dd_server)
-      delete _dd_server;
+    delete _dd_server;
   }
 
   int HttpJsonAPI::start_server(const std::string &host,
