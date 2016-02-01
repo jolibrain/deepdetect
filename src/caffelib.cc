@@ -1174,6 +1174,7 @@ namespace dd
 	if (!test)
 	  _net = new Net<float>(this->_mlmodel._def,caffe::TRAIN);
 	else _net = new Net<float>(this->_mlmodel._def,caffe::TEST);
+	LOG(INFO) << "Using pre-trained weights from " << this->_mlmodel._weights << std::endl;
 	_net->CopyTrainedLayersFrom(this->_mlmodel._weights);
 	return 0;
       }
