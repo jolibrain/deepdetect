@@ -1740,13 +1740,26 @@ namespace dd
     int scount = results[slot]->count();
     int scperel = scount / batch_size;
     int nclasses = scperel;
+    std::vector<APIData> vrad;
     TOutputConnectorStrategy tout;
     for (int j=0;j<batch_size;j++)
       {
-	tout.add_result(inputc._ids.at(j),loss);
+	APIData rad;
+	rad.add("uri",inputc._ids.at(j));
+	rad.add("loss",loss);
+	std::vector<double> probs;
+	std::vector<std::string> cats;
 	for (int i=0;i<nclasses;i++)
-	  tout.add_cat(inputc._ids.at(j),results[slot]->cpu_data()[j*scperel+i],this->_mlmodel.get_hcorresp(i));
+	  {
+	    probs.push_back(results[slot]->cpu_data()[j*scperel+i]);
+	    cats.push_back(this->_mlmodel.get_hcorresp(i));
+	  }
+	rad.add("probs",probs);
+	rad.add("cats",cats);
+	vrad.push_back(rad);
       }
+    tout.add_results(vrad);
+    
     TOutputConnectorStrategy btout(this->_outputc);
     if (_regression)
       tout._best = nclasses;
@@ -1756,7 +1769,7 @@ namespace dd
     
     return 0;
   }
-
+  
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_in_memory_net_and_solver(caffe::SolverParameter &sp,
 													    const APIData &ad,
@@ -2014,7 +2027,7 @@ namespace dd
 	//debug
       }
   }
-
+  
   template class CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>;
   template class CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>;
   template class CaffeLib<TxtCaffeInputFileConn,SupervisedOutput,CaffeModel>;

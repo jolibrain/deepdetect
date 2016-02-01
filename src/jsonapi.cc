@@ -271,6 +271,7 @@ namespace dd
 	// optional parameters.
 	if (d.HasMember("type"))
 	  type = d["type"].GetString();
+	else type == "supervised"; // default
 	if (d.HasMember("description"))
 	  description = d["description"].GetString();
 	
@@ -294,15 +295,27 @@ namespace dd
 	if (mllib == "caffe")
 	  {
 	    CaffeModel cmodel(ad_model);
-	    if (input == "image")
-	      add_service(sname,std::move(MLService<CaffeLib,ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
-	    else if (input == "csv")
-	      add_service(sname,std::move(MLService<CaffeLib,CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
-	    else if (input == "txt")
-	      add_service(sname,std::move(MLService<CaffeLib,TxtCaffeInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
-	    else return dd_input_connector_not_found_1004();
-	    if (JsonAPI::store_json_blob(cmodel._repo,jstr)) // store successful call json blob
-	      LOG(ERROR) << "couldn't write " << JsonAPI::_json_blob_fname << " file in model repository " << cmodel._repo << std::endl;
+	    if (type == "supervised")
+	      {
+		if (input == "image")
+		  add_service(sname,std::move(MLService<CaffeLib,ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
+		else if (input == "csv")
+		  add_service(sname,std::move(MLService<CaffeLib,CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
+		else if (input == "txt")
+		  add_service(sname,std::move(MLService<CaffeLib,TxtCaffeInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
+		else return dd_input_connector_not_found_1004();
+		if (JsonAPI::store_json_blob(cmodel._repo,jstr)) // store successful call json blob
+		  LOG(ERROR) << "couldn't write " << JsonAPI::_json_blob_fname << " file in model repository " << cmodel._repo << std::endl;
+	      }
+	    else if (type == "unsupervised")
+	      {
+		//TODO
+	      }
+	    else
+	      {
+		// unknown service type
+		return dd_service_bad_request_1006();
+	      }
 	  }
 	else
 	  {
