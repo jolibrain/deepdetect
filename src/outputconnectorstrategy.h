@@ -491,18 +491,6 @@ namespace dd
 	return eucl / static_cast<double>(batch_size);
     }
     
-    /*static std::vector<double> linspace(double start, double end, double num)
-    {
-      double delta = (end - start) / (num - 1);
-      std::vector<double> linspaced(num - 1);
-      for(int i=0; i < num-1; ++i)
-	{
-	  linspaced[i] = start + delta * i;
-	}
-      linspaced.push_back(end);
-      return linspaced;
-      };*/
-    
     // measure: gini coefficient
     static double comp_gini(const std::vector<double> &a, const std::vector<double> &p) {
       struct K {double a, p;} k[a.size()];
