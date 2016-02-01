@@ -1341,6 +1341,8 @@ namespace dd
 	  solver_param.set_stepsize(ad_solver.get("stepsize").get<int>());
 	if (ad_solver.has("momentum") && solver_param.solver_type() != caffe::SolverParameter_SolverType_ADAGRAD)
 	  solver_param.set_momentum(ad_solver.get("momentum").get<double>());
+	if (ad_solver.has("weight_decay"))
+	  solver_param.set_weight_decay(ad_solver.get("weight_decay").get<double>());
 	if (ad_solver.has("power"))
 	  solver_param.set_power(ad_solver.get("power").get<double>());
 	if (ad_solver.has("rms_decay"))
