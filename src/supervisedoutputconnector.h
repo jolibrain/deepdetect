@@ -127,7 +127,7 @@ namespace dd
 	    }
 	}
     }
-
+    
     /**
      * \brief best categories selection from results
      * @param ad_out output data object
@@ -149,6 +149,25 @@ namespace dd
 	}
     }
 
+    /**
+     * \brief finalize output supervised connector data
+     * @param ad_in data output object from the API call
+     * @param ad_out data object as the call response
+     */
+    void finalize(const APIData &ad_in, APIData &ad_out)
+    {
+      SupervisedOutput bcats(*this);
+      bool regression = false;
+      if (ad_out.has("regression"))
+	{
+	  if (ad_out.get("regression").get<bool>())
+	    regression = true;
+	  ad_out.erase("regression");
+	}
+      best_cats(ad_in,bcats);
+      bcats.to_ad(ad_out,regression);
+    }
+    
     struct PredictionAndAnswer {
       float prediction;
       unsigned char answer; //this is either 0 or 1

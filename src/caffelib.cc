@@ -1742,6 +1742,7 @@ namespace dd
     int nclasses = scperel;
     std::vector<APIData> vrad;
     TOutputConnectorStrategy tout;
+    //TODO: if extracting layer, act here.
     for (int j=0;j<batch_size;j++)
       {
 	APIData rad;
@@ -1759,12 +1760,12 @@ namespace dd
 	vrad.push_back(rad);
       }
     tout.add_results(vrad);
-    
-    TOutputConnectorStrategy btout(this->_outputc);
     if (_regression)
-      tout._best = nclasses;
-    tout.best_cats(ad.getobj("parameters").getobj("output"),btout);
-    btout.to_ad(out,_regression);
+      {
+	out.add("regression",true);
+	tout._best = nclasses;
+      }
+    tout.finalize(ad.getobj("parameters").getobj("output"),out);
     out.add("status",0);
     
     return 0;

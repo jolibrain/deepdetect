@@ -132,6 +132,17 @@ namespace dd
     }
 
     /**
+     * \brief erase key / object from data object
+     * @param key string unique key
+     */
+    inline void erase(const std::string &key)
+    {
+      auto hit = _data.begin();
+      if ((hit=_data.find(key))!=_data.end())
+	_data.erase(hit);
+    }
+    
+    /**
      * \brief get value from data object
      *        at this stage, type of value is unknown and the typed object 
      *        must be later acquired with e.g. 'get<std::string>(val)

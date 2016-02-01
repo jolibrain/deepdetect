@@ -87,6 +87,13 @@ namespace dd
      * @param vrad vector of data objects
      */
     void add_results(const std::vector<APIData> &vrad);
+
+    /**
+     * \brief finalize output connector data
+     * @param ad_in data output object from the API call
+     * @param ad_out data object as the call response
+     */
+    void finalize(const APIData &ad_in, APIData &ad_out);
   };
 
   /**
