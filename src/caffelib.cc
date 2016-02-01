@@ -59,11 +59,8 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::~CaffeLib()
   {
-    if (_net)
-      {
-	delete _net;
-	_net = nullptr;
-      }
+    delete _net;
+    _net = nullptr;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -1166,11 +1163,8 @@ namespace dd
     // create net and fill it up
     if (!this->_mlmodel._def.empty() && !this->_mlmodel._weights.empty())
       {
-	if (_net)
-	  {
-	    delete _net;
-	    _net = nullptr;
-	  }
+	delete _net;
+	_net = nullptr;
 	if (!test)
 	  _net = new Net<float>(this->_mlmodel._def,caffe::TRAIN);
 	else _net = new Net<float>(this->_mlmodel._def,caffe::TEST);
@@ -1364,8 +1358,7 @@ namespace dd
       }
     catch(std::exception &e)
       {
-	if (solver)
-	  delete solver;
+	delete solver;
 	throw;
       }
     if (!inputc._dv.empty())
@@ -1533,11 +1526,8 @@ namespace dd
       solver->Snapshot();
     
     // destroy the net
-    if (_net)
-      {
-	delete _net;
-	_net = nullptr;
-      }
+    delete _net;
+    _net = nullptr;
     delete solver;
     
     // bail on forced stop, i.e. not testing the net further.

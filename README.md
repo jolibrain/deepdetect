@@ -27,11 +27,11 @@ Current features include:
 - high performances, benefit from multicores and GPU
 - connector to handle large collections of images with on-the-fly data augmentation (e.g. rotations, mirroring)
 - connector to handle CSV files with preprocessing capabilities
-- connector to handle text files
+- connector to handle text files, sentences, and character-based models
 - range of built-in model assessment measures (e.g. F1, multiclass log loss, ...)
 - no database dependency and sync, all information and model parameters organized and available from the filesystem
 - flexible template output format to simplify connection to external applications
-- templates for the most useful neural architectures (e.g. Googlenet, Alexnet, convnet, mlp, logistic regression)
+- templates for the most useful neural architectures (e.g. Googlenet, Alexnet, convnet, character-based convnet, mlp, logistic regression)
 
 ##### Documentation
 
