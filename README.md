@@ -21,7 +21,7 @@ List of tutorials, training from text, data and images, setup of prediction serv
 Current features include:
 
 - high-level API for machine learning
-- JSON commnunication format
+- JSON communication format
 - remote Python client library
 - dedicated server with support for asynchronous training calls
 - high performances, benefit from multicores and GPU
@@ -69,7 +69,7 @@ The code makes use of C++ policy design for modularity, performance and putting 
 
 ##### Visual Demo
 
-HTML and javascript classification image demo in demo/imgdetect
+HTML and javascript classification image demo in [demo/imgdetect](https://github.com/beniz/deepdetect/tree/master/demo/imgdetect)
 
 ##### Examples
 
