@@ -19,6 +19,21 @@ layer {
   }
 }
 layer {
+  name: "resnet_101"
+  type: "MemoryData"
+  top: "data"
+  top: "label"
+  memory_data_param {
+    batch_size: 32
+    channels: 3
+    height: 224
+    width: 224
+  }
+ include {
+    phase: TEST
+  }
+}
+layer {
 	bottom: "data"
 	top: "conv1"
 	name: "conv1"
