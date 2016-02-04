@@ -78,7 +78,7 @@ http://www.deepdetect.com/overview/examples/
 
 ##### Models
 
-- List of free, even for commercial use, deep neural nets for image classification: http://www.deepdetect.com/applications/model/
+- List of free, even for commercial use, deep neural nets for image classification, and character-based convolutional nets for text classification: http://www.deepdetect.com/applications/list_models/
 
 ### Authors
 DeepDetect is designed and implemented by Emmanuel Benazera <beniz@droidnik.fr>.
