@@ -1706,6 +1706,10 @@ namespace dd
       Caffe::set_mode(Caffe::CPU);
 #endif
 
+      std::string extract_layer;
+      if (ad_mllib.has("extract_layer"))
+	extract_layer = ad_mllib.get("extract_layer").get<std::string>();
+      
     TInputConnectorStrategy inputc(this->_inputc);
     APIData cad = ad;
     cad.add("model_repo",this->_mlmodel._repo);
@@ -1729,41 +1733,76 @@ namespace dd
       }
     
     float loss = 0.0;
-    std::vector<Blob<float>*> results = _net->ForwardPrefilled(&loss);
-    int slot = results.size() - 1;
-    if (_regression)
-      {
-	if (_ntargets > 1)
-	  slot = 1;
-	else slot = 0; // XXX: more in-depth testing required
-      }
-    int scount = results[slot]->count();
-    int scperel = scount / batch_size;
-    int nclasses = scperel;
-    std::vector<APIData> vrad;
     TOutputConnectorStrategy tout;
-    //TODO: if extracting layer, act here.
-    for (int j=0;j<batch_size;j++)
+    if (extract_layer.empty())
       {
-	APIData rad;
-	rad.add("uri",inputc._ids.at(j));
-	rad.add("loss",loss);
-	std::vector<double> probs;
-	std::vector<std::string> cats;
-	for (int i=0;i<nclasses;i++)
+	std::vector<Blob<float>*> results = _net->ForwardPrefilled(&loss);
+	int slot = results.size() - 1;
+	if (_regression)
 	  {
-	    probs.push_back(results[slot]->cpu_data()[j*scperel+i]);
-	    cats.push_back(this->_mlmodel.get_hcorresp(i));
+	    if (_ntargets > 1)
+	      slot = 1;
+	    else slot = 0; // XXX: more in-depth testing required
 	  }
-	rad.add("probs",probs);
-	rad.add("cats",cats);
-	vrad.push_back(rad);
+	int scount = results[slot]->count();
+	int scperel = scount / batch_size;
+	int nclasses = scperel;
+	std::vector<APIData> vrad;
+	for (int j=0;j<batch_size;j++)
+	  {
+	    APIData rad;
+	    rad.add("uri",inputc._ids.at(j));
+	    rad.add("loss",loss);
+	    std::vector<double> probs;
+	    std::vector<std::string> cats;
+	    for (int i=0;i<nclasses;i++)
+	      {
+		probs.push_back(results[slot]->cpu_data()[j*scperel+i]);
+		cats.push_back(this->_mlmodel.get_hcorresp(i));
+	      }
+	    rad.add("probs",probs);
+	    rad.add("cats",cats);
+	    vrad.push_back(rad);
+	  }
+	tout.add_results(vrad);
+	if (_regression)
+	  {
+	    out.add("regression",true);
+	    out.add("nclasses",nclasses);
+	  }
       }
-    tout.add_results(vrad);
-    if (_regression)
+    else // unsupervised
       {
-	out.add("regression",true);
-	tout._best = nclasses;
+	std::map<std::string,int> n_layer_names_index = _net->layer_names_index();
+	std::map<std::string,int>::const_iterator lit;
+	if ((lit=n_layer_names_index.find(extract_layer))==n_layer_names_index.end())
+	  throw MLLibBadParamException("unknown extract layer " + extract_layer);
+	int li = (*lit).second;
+	loss = _net->ForwardFromTo(0,li);
+	const std::vector<std::vector<Blob<float>*>>& rresults = _net->top_vecs();
+	std::vector<Blob<float>*> results = rresults.at(li);
+	std::vector<APIData> vrad;
+	int slot = 0;
+	int scount = results[slot]->count();
+	int scperel = scount / batch_size;
+	std::vector<int> vshape = {batch_size,scperel};
+	results[slot]->Reshape(vshape); // reshaping into a rectangle, first side = batch size
+	for (int j=0;j<batch_size;j++)
+	  {
+	    APIData rad;
+	    rad.add("uri",inputc._ids.at(j));
+	    rad.add("loss",loss);
+	    std::vector<double> vals;
+	    int cpos = 0;
+	    for (int c=0;c<results.at(slot)->shape(1);c++)
+	      {
+		vals.push_back(results.at(slot)->cpu_data()[j*scperel+cpos]);
+		++cpos;
+	      }
+	    rad.add("vals",vals);
+	    vrad.push_back(rad);
+	  }
+	tout.add_results(vrad);
       }
     tout.finalize(ad.getobj("parameters").getobj("output"),out);
     out.add("status",0);
@@ -2032,4 +2071,7 @@ namespace dd
   template class CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>;
   template class CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>;
   template class CaffeLib<TxtCaffeInputFileConn,SupervisedOutput,CaffeModel>;
+  template class CaffeLib<ImgCaffeInputFileConn,UnsupervisedOutput,CaffeModel>;
+  template class CaffeLib<CSVCaffeInputFileConn,UnsupervisedOutput,CaffeModel>;
+  template class CaffeLib<TxtCaffeInputFileConn,UnsupervisedOutput,CaffeModel>;
 }

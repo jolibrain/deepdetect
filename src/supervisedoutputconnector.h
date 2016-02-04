@@ -161,8 +161,12 @@ namespace dd
       if (ad_out.has("regression"))
 	{
 	  if (ad_out.get("regression").get<bool>())
-	    regression = true;
+	    {
+	      regression = true;
+	      _best = ad_out.get("nclasses").get<int>();
+	    }
 	  ad_out.erase("regression");
+	  ad_out.erase("nclasses");
 	}
       best_cats(ad_in,bcats);
       bcats.to_ad(ad_out,regression);

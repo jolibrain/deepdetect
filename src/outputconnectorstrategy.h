@@ -110,5 +110,6 @@ namespace dd
 }
 
 #include "supervisedoutputconnector.h"
+#include "unsupervisedoutputconnector.h"
 
 #endif
