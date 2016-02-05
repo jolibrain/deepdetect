@@ -1165,11 +1165,27 @@ namespace dd
       {
 	delete _net;
 	_net = nullptr;
-	if (!test)
-	  _net = new Net<float>(this->_mlmodel._def,caffe::TRAIN);
-	else _net = new Net<float>(this->_mlmodel._def,caffe::TEST);
+	try
+	  {
+	    if (!test)
+	      _net = new Net<float>(this->_mlmodel._def,caffe::TRAIN);
+	    else _net = new Net<float>(this->_mlmodel._def,caffe::TEST);
+	  }
+	catch (std::exception &e)
+	  {
+	    throw;
+	  }
 	LOG(INFO) << "Using pre-trained weights from " << this->_mlmodel._weights << std::endl;
-	_net->CopyTrainedLayersFrom(this->_mlmodel._weights);
+	try
+	  {
+	    _net->CopyTrainedLayersFrom(this->_mlmodel._weights);
+	  }
+	catch (std::exception &e)
+	  {
+	    delete _net;
+	    _net = nullptr;
+	    throw;
+	  }
 	return 0;
       }
     // net definition is missing
@@ -1725,11 +1741,24 @@ namespace dd
       }
     catch(std::exception &e)
       {
+	delete _net;
+	_net = nullptr;
 	throw;
       }
     
     float loss = 0.0;
-    std::vector<Blob<float>*> results = _net->ForwardPrefilled(&loss);
+    std::vector<Blob<float>*> results;
+    
+    try
+      {
+	results = _net->ForwardPrefilled(&loss);
+      }
+    catch (std::exception &e)
+      {
+	delete _net; // because empirical analysis reveals that the net is left in an unusable state
+	_net = nullptr;
+	throw;
+      }
     int slot = results.size() - 1;
     if (_regression)
       {
