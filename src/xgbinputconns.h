@@ -43,6 +43,8 @@ namespace dd
 
     void init(const APIData &ad)
     {
+      if (ad.has("direct_csv") && ad.get("direct_csv").get<bool>())
+	_direct_csv = true;
       CSVInputFileConn::init(ad);
     }
 

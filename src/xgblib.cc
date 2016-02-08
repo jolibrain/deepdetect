@@ -85,7 +85,8 @@ namespace dd
   {
     
     //TODO: any check on model here
-
+    this->_mlmodel.read_from_repository();
+    
     //TODO: mutex if train and predict calls need to be isolated
 
     TInputConnectorStrategy inputc(this->_inputc);
@@ -318,6 +319,9 @@ namespace dd
 
       // test
       test(ad,learner,inputc._mtest,out);
+
+      // prepare model
+      this->_mlmodel.read_from_repository();
       
       // add whatever the input connector needs to transmit out
       //inputc.response_params(out);
@@ -332,7 +336,6 @@ namespace dd
     //TODO: mutex since using in-memory learner
 
     //TODO: parameters
-
 
     //TODO: data
     TInputConnectorStrategy inputc(this->_inputc);
@@ -349,9 +352,7 @@ namespace dd
     if (!_learner)
       {
 	_learner = xgboost::Learner::Create({});
-	//TODO: read model filename from repository
-	this->_mlmodel._weights = "0010.model";
-	std::string model_in = this->_mlmodel._repo + "/" + this->_mlmodel._weights; //TODO: weights
+	std::string model_in = this->_mlmodel._weights;
 	std::unique_ptr<dmlc::Stream> fi(dmlc::Stream::Create(model_in.c_str(),"r"));
 	_learner->Load(fi.get());
       }

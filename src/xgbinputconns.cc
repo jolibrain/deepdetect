@@ -99,7 +99,12 @@ namespace dd
       }
     else
       {
-	//TODO
+	// Not robust enough from within XGBoost
+	/*bool silent = false;
+	int dsplit = 2;
+	_m = xgboost::DMatrix::Load(_csv_fname,silent,dsplit==2);
+	if (!_csv_test_fname.empty())
+	_mtest = xgboost::DMatrix::Load(_csv_test_fname,silent,dsplit==2);*/
       }
   }
   

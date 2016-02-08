@@ -36,8 +36,10 @@ namespace dd
     XGBModel(const APIData &ad);
     XGBModel(const std::string &repo)
       :MLModel(repo) {}
-    ~XGBModel() {};
+    ~XGBModel() {}
 
+    int read_from_repository();
+    
     //TODO
     std::string _weights; /**< file with model weights. */
   };
