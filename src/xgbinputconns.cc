@@ -36,7 +36,7 @@ namespace dd
     xgboost::data::SimpleCSRSource& mat = *source;
     bool nan_missing = xgboost::common::CheckNAN(_missing);
     mat.info.num_row = csvl.size();
-    mat.info.num_col = feature_size();
+    mat.info.num_col = feature_size()+1; // XXX: +1 otherwise there's a mismatch in xgnoost's simple_dmatrix.cc:151
     auto hit = csvl.begin();
     while(hit!=csvl.end())
       {
@@ -64,11 +64,12 @@ namespace dd
 		    ++nelem;
 		  }
 	      }
+	    ++lit;
 	  }
 	mat.row_ptr_.push_back(mat.row_ptr_.back()+nelem);
 	_ids.push_back((*hit)._str);
 	++hit;
-      }    
+      }
     mat.info.num_nonzero = mat.row_data_.size();
     xgboost::DMatrix *out = xgboost::DMatrix::Create(std::move(source));
     return out;

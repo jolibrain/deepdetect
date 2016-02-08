@@ -108,4 +108,11 @@ if (GTEST_FOUND)
     COMMAND ut_httpapi
     )
 
+  add_executable(ut_xgbapi ut-xgbapi.cc)
+  target_link_libraries(ut_xgbapi ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS}  ${XGBOOST_LIB_DEPS})
+  add_test(
+    NAME ut_xgbapi
+    COMMAND ut_xgbapi
+    )
+  
 endif()

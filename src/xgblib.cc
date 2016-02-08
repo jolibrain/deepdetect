@@ -104,6 +104,7 @@ namespace dd
       std::string objective = "reg:linear";
       double base_score = 0.5;
       std::string eval_metric = "merror";
+      int test_interval = 1;
       int seed = 0;
       
       APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
@@ -119,8 +120,10 @@ namespace dd
 	eval_metric = ad_mllib.get("eval_metric").get<std::string>();
       if (ad_mllib.has("seed"))
 	seed = ad_mllib.get("seed").get<int>();
-      if (ad_mllib.has("num_round"))
-	_params.num_round = ad_mllib.get("num_round").get<int>();
+      if (ad_mllib.has("iterations"))
+	_params.num_round = ad_mllib.get("iterations").get<int>();
+      if (ad_mllib.has("test_interval"))
+	test_interval = ad_mllib.get("test_interval").get<int>();
       if (ad_mllib.has("save_period"))
 	_params.save_period = ad_mllib.get("save_period").get<int>();
       
@@ -251,27 +254,30 @@ namespace dd
 	}*/
 
 	// measures for dd
-	APIData meas_out;
-	test(ad,learner,eval_datasets.at(0),meas_out);
-	APIData meas_obj = meas_out.getobj("measure");
-	std::vector<std::string> meas_str = meas_obj.list_keys();
-	for (auto m: meas_str)
+	if (i > 0 && i % test_interval == 0)
 	  {
-	    if (m != "cmdiag" && m != "cmfull") // do not report confusion matrix in server logs
+	    APIData meas_out;
+	    test(ad,learner,eval_datasets.at(0),meas_out);
+	    APIData meas_obj = meas_out.getobj("measure");
+	    std::vector<std::string> meas_str = meas_obj.list_keys();
+	    for (auto m: meas_str)
 	      {
-		double mval = meas_obj.get(m).get<double>();
-		LOG(INFO) << m << "=" << mval;
-		this->add_meas(m,mval);
-		if (!std::isnan(mval)) // if testing occurs once before training even starts, loss is unknown and we don't add it to history.
-		  this->add_meas_per_iter(m,mval);
-	      }
-	    else if (m == "cmdiag")
-	      {
-		std::vector<double> mdiag = meas_obj.get(m).get<std::vector<double>>();
-		std::string mdiag_str;
-		for (size_t i=0;i<mdiag.size();i++)
-		  mdiag_str += std::to_string(i) + ":" + std::to_string(mdiag.at(i)) + " ";
-		LOG(INFO) << m << "=[" << mdiag_str << "]";
+		if (m != "cmdiag" && m != "cmfull") // do not report confusion matrix in server logs
+		  {
+		    double mval = meas_obj.get(m).get<double>();
+		    LOG(INFO) << m << "=" << mval;
+		    this->add_meas(m,mval);
+		    if (!std::isnan(mval)) // if testing occurs once before training even starts, loss is unknown and we don't add it to history.
+		      this->add_meas_per_iter(m,mval);
+		  }
+		else if (m == "cmdiag")
+		  {
+		    std::vector<double> mdiag = meas_obj.get(m).get<std::vector<double>>();
+		    std::string mdiag_str;
+		    for (size_t i=0;i<mdiag.size();i++)
+		      mdiag_str += std::to_string(i) + ":" + std::to_string(mdiag.at(i)) + " ";
+		    LOG(INFO) << m << "=[" << mdiag_str << "]";
+		  }
 	      }
 	  }
 	
@@ -306,10 +312,16 @@ namespace dd
 	} else {
 	  os << _params.model_out;
 	}
-	std::unique_ptr<dmlc::Stream> fo(
-					 dmlc::Stream::Create(os.str().c_str(), "w"));
+	std::unique_ptr<dmlc::Stream> fo(dmlc::Stream::Create(os.str().c_str(), "w"));
 	learner->Save(fo.get());
       }
+
+      // test
+      test(ad,learner,inputc._mtest,out);
+      
+      // add whatever the input connector needs to transmit out
+      //inputc.response_params(out);
+      
       return 0;
   }
 
@@ -375,7 +387,7 @@ namespace dd
   {
     APIData ad_res;
     ad_res.add("iteration",this->get_meas("iteration"));
-    ad_res.add("train_loss",this->get_meas("train_loss"));
+    //ad_res.add("train_loss",this->get_meas("train_loss")); //TODO: can't acquire the loss yet.
     APIData ad_out = ad.getobj("parameters").getobj("output");
     if (ad_out.has("measure"))
       {

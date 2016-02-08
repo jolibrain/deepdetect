@@ -35,7 +35,11 @@ namespace dd
       :CSVInputFileConn() {}
     CSVXGBInputFileConn(const CSVXGBInputFileConn &i)
       :CSVInputFileConn(i),_missing(i._missing),_direct_csv(i._direct_csv),_ids(i._ids) {}
-    ~CSVXGBInputFileConn() {}
+    ~CSVXGBInputFileConn()
+      {
+	delete _m;
+	delete _mtest;
+      }
 
     void init(const APIData &ad)
     {
