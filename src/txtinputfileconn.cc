@@ -245,6 +245,7 @@ namespace dd
 	    std::unordered_map<uint32_t,int>::const_iterator whit;
 	    boost::char_separator<char> sep("\n\t\f\r");
 	    boost::tokenizer<boost::char_separator<char>> tokens(ct,sep);
+	    bool prev_space = false;
 	    for (std::string w: tokens)
 	      {
 		char *str = (char*)w.c_str();
@@ -266,8 +267,18 @@ namespace dd
 		  if (c == 0)
 		    continue;
 		  if ((whit=_alphabet.find(c))==_alphabet.end())
-		    tce->add_char(' ');
-		  else tce->add_char(c);
+		    {
+		      if (!prev_space)
+			{
+			  tce->add_char(' ');
+			  prev_space = true;
+			}
+		    }
+		  else 
+		    {
+		      tce->add_char(c);
+		      prev_space = false;
+		    }
 		}
 		while(str_i<end);
 	      }
