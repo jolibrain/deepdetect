@@ -29,6 +29,7 @@ using namespace dd;
 static std::string ok_str = "{\"status\":{\"code\":200,\"msg\":\"OK\"}}";
 static std::string created_str = "{\"status\":{\"code\":201,\"msg\":\"Created\"}}";
 static std::string bad_param_str = "{\"status\":{\"code\":400,\"msg\":\"BadRequest\"}}";
+static std::string bad_request_str = "{\"status\":{\"code\":400,\"msg\":\"BadRequest\",\"dd_code\":1006,\"dd_msg\":\"Service Bad Request Error\"}}";
 static std::string not_found_str = "{\"status\":{\"code\":404,\"msg\":\"NotFound\"}}";
 
 TEST(jsonapi,service_delete)
@@ -96,12 +97,9 @@ TEST(jsonapi,service_create)
   jd.RemoveMember("type");
   jstrt = japi.jrender(jd);
   joutstr = japi.jrender(japi.service_create(sname,jstrt));
-  ASSERT_EQ(created_str,joutstr);
+  ASSERT_EQ(bad_request_str,joutstr);
   jd.Parse(jstr.c_str());
-  deljstr = "{\"clear\":\"mem\"}";
-  jdelstr = japi.jrender(japi.service_delete(sname,deljstr));
-  ASSERT_EQ(ok_str,jdelstr);
-
+  
   // for Caffe
   // model
   
