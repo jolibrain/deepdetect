@@ -34,6 +34,12 @@ namespace dd
 
     ~unsup_result() {}
 
+    void binarized()
+    {
+      for (size_t i=0;i<_vals.size();i++)
+	_vals.at(i) = _vals.at(i) <= 0.0 ? 0.0 : 1.0;
+    }
+    
     std::string _uri;
     std::vector<double> _vals;
   };
@@ -58,12 +64,13 @@ namespace dd
 
     void init(const APIData &ad)
     {
-      //TODO: output connector parameters, if any
+      APIData ad_out = ad.getobj("parameters").getobj("output");
+      if (ad_out.has("binarized"))
+	_binarized = ad_out.get("binarized").get<bool>();
     }
-
+    
     void add_results(const std::vector<APIData> &vrad)
     {
-      //TODO
       std::unordered_map<std::string,int>::iterator hit;
       for (APIData ad: vrad)
 	{
@@ -80,7 +87,15 @@ namespace dd
 
     void finalize(const APIData &ad_in, APIData &ad_out)
     {
-      //TODO
+      if (ad_in.has("binarized"))
+	_binarized = ad_in.get("binarized").get<bool>();
+      if (_binarized)
+	{
+	  for (size_t i=0;i<_vvres.size();i++)
+	    {
+	      _vvres.at(i).binarized();
+	    }
+	}
       to_ad(ad_out);
     }
 
@@ -101,6 +116,7 @@ namespace dd
     
     std::unordered_map<std::string,int> _vres; /**< batch of results index, per uri. */
     std::vector<unsup_result> _vvres; /**< ordered results, per uri. */
+    bool _binarized = false; /**< binary representation of output values. */
   };
 
 }

@@ -22,8 +22,6 @@
 #ifndef SUPERVISEDOUTPUTCONNECTOR_H
 #define SUPERVISEDOUTPUTCONNECTOR_H
 
-//#include "outputconnectorstrategy.h"
-
 namespace dd
 {
 
