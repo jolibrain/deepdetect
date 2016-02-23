@@ -113,17 +113,13 @@ namespace dd
 	  std::vector<std::string> cats = ad.get("cats").get<std::vector<std::string>>();
 	  if ((hit=_vcats.find(uri))==_vcats.end())
 	    {
-	      _vcats.insert(std::pair<std::string,int>(uri,_vvcats.size()));
+	      auto resit = _vcats.insert(std::pair<std::string,int>(uri,_vvcats.size()));
 	      _vvcats.push_back(sup_result(uri,loss));
-	    }
-	  else
-	    {
-	      _vvcats.at((*hit).second)._loss = loss;
-	    }
-	  hit=_vcats.find(uri);
-	  for (size_t i=0;i<probs.size();i++)
-	    {
-	      _vvcats.at((*hit).second).add_cat(probs.at(i),cats.at(i));
+	      hit = resit.first;
+	      for (size_t i=0;i<probs.size();i++)
+		{
+		  _vvcats.at((*hit).second).add_cat(probs.at(i),cats.at(i));
+		}
 	    }
 	}
     }
@@ -489,18 +485,20 @@ namespace dd
     /**
      * \brief print supervised output to string
      */
-    void to_str(std::string &out) const
+    void to_str(std::string &out, const int &rmax) const
     {
       auto vit = _vcats.begin();
       while(vit!=_vcats.end())
 	{
+	  int count = 0;
 	  out += "-------------\n";
 	  out += (*vit).first + "\n";
 	  auto mit = _vvcats.at((*vit).second)._cats.begin();
-	  while(mit!=_vvcats.at((*vit).second)._cats.end())
+	  while(mit!=_vvcats.at((*vit).second)._cats.end()&&count<rmax)
 	  {
 	    out += "accuracy=" + std::to_string((*mit).first) + " -- cat=" + (*mit).second + "\n";
 	    ++mit;
+	    ++count;
 	  }
 	  ++vit;
 	}
