@@ -276,7 +276,7 @@ class DD(object):
     # - PUT services
     # - GET services
     # - DELETE services
-    def put_service(self,sname,model,description,mllib,parameters_input,parameters_mllib,parameters_output):
+    def put_service(self,sname,model,description,mllib,parameters_input,parameters_mllib,parameters_output,mltype='supervised'):
         """
         Create a service
         Parameters:
@@ -288,7 +288,7 @@ class DD(object):
         parameters_mllib -- dict ML library parameters
         parameters_output -- dict of output parameters
         """
-        body={"description":description,"mllib":mllib,"type":"supervised",
+        body={"description":description,"mllib":mllib,"type":mltype,
               "parameters":{"input":parameters_input,"mllib":parameters_mllib,"output":parameters_output},
               "model":model}
         return self.put(self.__urls["services"] + '/%s'%sname,json.dumps(body))
