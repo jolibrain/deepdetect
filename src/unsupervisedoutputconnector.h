@@ -40,8 +40,24 @@ namespace dd
 	_vals.at(i) = _vals.at(i) <= 0.0 ? 0.0 : 1.0;
     }
     
+    void bool_binarized()
+    {
+      for (size_t i=0;i<_vals.size();i++)
+	_bvals.push_back(_vals.at(i) <= 0.0 ? false : true);
+      _vals.clear();
+    }
+
+    void string_binarized()
+    {
+       for (size_t i=0;i<_vals.size();i++)
+	_str += _vals.at(i) <= 0.0 ? "0" : "1";
+      _vals.clear();
+    }
+
     std::string _uri;
     std::vector<double> _vals;
+    std::vector<bool> _bvals;
+    std::string _str;
   };
   
   /**
@@ -67,6 +83,10 @@ namespace dd
       APIData ad_out = ad.getobj("parameters").getobj("output");
       if (ad_out.has("binarized"))
 	_binarized = ad_out.get("binarized").get<bool>();
+      else if (ad_out.has("bool_binarized"))
+	_bool_binarized = ad_out.get("bool_binarized").get<bool>();
+      else if (ad_out.has("string_binarized"))
+	_string_binarized = ad_out.get("string_binarized").get<bool>();
     }
     
     void add_results(const std::vector<APIData> &vrad)
@@ -89,11 +109,29 @@ namespace dd
     {
       if (ad_in.has("binarized"))
 	_binarized = ad_in.get("binarized").get<bool>();
+      else if (ad_in.has("bool_binarized"))
+	_bool_binarized = ad_in.get("bool_binarized").get<bool>();
+      else if (ad_in.has("string_binarized"))
+	_string_binarized = ad_in.get("string_binarized").get<bool>();
       if (_binarized)
 	{
 	  for (size_t i=0;i<_vvres.size();i++)
 	    {
 	      _vvres.at(i).binarized();
+	    }
+	}
+      else if (_bool_binarized)
+	{
+	  for (size_t i=0;i<_vvres.size();i++)
+	    {
+	      _vvres.at(i).bool_binarized();
+	    }
+	}
+      else if (_string_binarized)
+	{
+	  for (size_t i=0;i<_vvres.size();i++)
+	    {
+	      _vvres.at(i).string_binarized();
 	    }
 	}
       to_ad(ad_out);
@@ -106,7 +144,11 @@ namespace dd
 	{
 	  APIData adpred;
 	  adpred.add("uri",_vvres.at(i)._uri);
-	  adpred.add("vals",_vvres.at(i)._vals);
+	  if (_bool_binarized)
+	    adpred.add("vals",_vvres.at(i)._bvals);
+	  else if (_string_binarized)
+	    adpred.add("vals",_vvres.at(i)._str);
+	  else adpred.add("vals",_vvres.at(i)._vals);
 	  if (i == _vvres.size()-1)
 	    adpred.add("last",true);
 	  vpred.push_back(adpred);
@@ -117,6 +159,8 @@ namespace dd
     std::unordered_map<std::string,int> _vres; /**< batch of results index, per uri. */
     std::vector<unsup_result> _vvres; /**< ordered results, per uri. */
     bool _binarized = false; /**< binary representation of output values. */
+    bool _bool_binarized = false; /**< boolean binary representation of output values. */
+    bool _string_binarized = false; /**< boolean string as binary representation of output values. */
   };
 
 }
