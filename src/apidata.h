@@ -39,7 +39,7 @@ namespace dd
 
   // recursive variant container, see utils/variant.hpp and utils/recursive_wrapper.hpp
   typedef mapbox::util::variant<std::string,double,int,bool,
-    std::vector<std::string>,std::vector<double>,std::vector<int>,
+    std::vector<std::string>,std::vector<double>,std::vector<int>,std::vector<bool>,
     mapbox::util::recursive_wrapper<std::vector<APIData>>> ad_variant_type;
 
   /**
@@ -83,6 +83,7 @@ namespace dd
     vout process(const bool &b);
     vout process(const std::vector<double> &vd);
     vout process(const std::vector<int> &vd);
+    vout process(const std::vector<bool> &vd);
     vout process(const std::vector<std::string> &vs);
     vout process(const std::vector<APIData> &vad);
     
@@ -329,6 +330,17 @@ namespace dd
       else _jv->AddMember(_jvkey,jarr,_jd->GetAllocator());
     }
     void process(const std::vector<int> &vd)
+    {
+      JVal jarr(rapidjson::kArrayType);
+      for (size_t i=0;i<vd.size();i++)
+	{
+	  jarr.PushBack(JVal(vd.at(i)),_jd->GetAllocator());
+	}
+      if (!_jv)
+	_jd->AddMember(_jvkey,jarr,_jd->GetAllocator());
+      else _jv->AddMember(_jvkey,jarr,_jd->GetAllocator());
+    }
+    void process(const std::vector<bool> &vd)
     {
       JVal jarr(rapidjson::kArrayType);
       for (size_t i=0;i<vd.size();i++)
