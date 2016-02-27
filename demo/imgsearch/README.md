@@ -22,7 +22,8 @@ To run the code on your own collection of images:
   cd model
   wget http://www.deepdetect.com/models/ggnet/bvlc_googlenet.caffemodel
   ```
-  **make sure that the `model` repository is in the same repository as the script `imgsearch.py`
+  
+  **make sure that the `model` repository is in the same repository as the script `imgsearch.py`**
 
 - start a DeepDetect server:
   ```
@@ -35,6 +36,7 @@ To run the code on your own collection of images:
   ```
   Here `index-batch-size` controls the number of images that are processed at once.
   The index file is then `index.ann` in the repository. `names.bin` indexes the filenames.
+  
   **Index and name files are erased upon every new indexing call**
 
 - search for similar images:
