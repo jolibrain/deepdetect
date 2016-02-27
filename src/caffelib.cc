@@ -1445,7 +1445,6 @@ namespace dd
     std::vector<float> losses;
     this->clear_all_meas_per_iter();
     float smoothed_loss = 0.0;
-    std::vector<Blob<float>*> bottom_vec;
     while(solver->iter_ < solver->param_.max_iter()
 	  && this->_tjob_running.load())
       {
@@ -1495,7 +1494,7 @@ namespace dd
 	      solver->callbacks()[i]->on_start();
 	    }
 	    for (int i = 0; i < solver->param_.iter_size(); ++i)
-	      loss += solver->net_->ForwardBackward(bottom_vec);
+	      loss += solver->net_->ForwardBackward();
 	    loss /= solver->param_.iter_size();
 	  }
 	catch(std::exception &e)
@@ -1630,7 +1629,7 @@ namespace dd
 		throw;
 	      }
 	    float loss = 0.0;
-	    std::vector<Blob<float>*> lresults = net->ForwardPrefilled(&loss);
+	    std::vector<Blob<float>*> lresults = net->Forward(&loss);
 	    int slot = lresults.size() - 1;
 	    if (_regression && _ntargets > 1) // slicing is involved
 	      slot--; // labels appear to be last
@@ -1674,7 +1673,6 @@ namespace dd
 	ad_res.add("batch_size",tresults);
 	if (_regression)
 	  ad_res.add("regression",_regression);
-	//ad_res.add("loss",mean_loss / static_cast<double>(tresults)); // XXX: Caffe ForwardPrefilled call above return loss = 0.0
       }
     SupervisedOutput::measure(ad_res,ad_out,out);
   }
@@ -1754,7 +1752,7 @@ namespace dd
     TOutputConnectorStrategy tout;
     if (extract_layer.empty())
       {
-	std::vector<Blob<float>*> results = _net->ForwardPrefilled(&loss);
+	std::vector<Blob<float>*> results = _net->Forward(&loss);
 	int slot = results.size() - 1;
 	if (_regression)
 	  {
