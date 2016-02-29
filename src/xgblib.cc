@@ -365,17 +365,31 @@ namespace dd
     float loss = 0.0; //TODO: acquire loss ?
     int batch_size = preds.size() / _nclasses;
     TOutputConnectorStrategy tout;
+    std::vector<APIData> vrad;
     for (int j=0;j<batch_size;j++)
       {
-	tout.add_result(inputc._ids.at(j),loss);
+	APIData rad;
+	rad.add("uri",inputc._ids.at(j));
+	rad.add("loss",0.0); // XXX: truely, unreported.
+	std::vector<double> probs;
+	std::vector<std::string> cats;
 	for (int i=0;i<_nclasses;i++)
-	  tout.add_cat(inputc._ids.at(j),preds.at(j*_nclasses+i),std::to_string(i));
+	  {
+	    probs.push_back(preds.at(j*+_nclasses+i));
+	    cats.push_back(std::to_string(i));
+	  }
+	rad.add("probs",probs);
+	rad.add("cats",cats);
+	vrad.push_back(rad);
       }
+    tout.add_results(vrad);
     TOutputConnectorStrategy btout(this->_outputc);
     if (_regression)
-      tout._best = _nclasses;
-    tout.best_cats(ad.getobj("parameters").getobj("output"),btout);
-    btout.to_ad(out,_regression);
+      {
+	out.add("regression",true);
+	out.add("nclasses",_nclasses);
+      }
+    tout.finalize(ad.getobj("parameters").getobj("output"),out);
     out.add("status",0);
     return 0;
   }
