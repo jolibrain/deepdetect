@@ -1406,6 +1406,7 @@ namespace dd
 	if (this->_mlmodel._sstate.empty())
 	  {
 	    delete solver;
+	    LOG(ERROR) << "resuming a model requires a .solverstate file in model repository\n";
 	    throw MLLibBadParamException("resuming a model requires a .solverstate file in model repository");
 	  }
 	else 
@@ -1682,7 +1683,7 @@ namespace dd
 										   APIData &out)
   {
     std::lock_guard<std::mutex> lock(_net_mutex); // no concurrent calls since the net is not re-instantiated
-        
+    
     // check for net
     if (!_net || _net->phase() == caffe::TRAIN)
       {
