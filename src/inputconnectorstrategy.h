@@ -48,7 +48,14 @@ namespace dd
 	  || uri.find("file://") != std::string::npos)
 	{
 	  int outcode = -1;
-	  httpclient::get_call(uri,"GET",outcode,_content);
+	  try
+	    {
+	      httpclient::get_call(uri,"GET",outcode,_content);
+	    }
+	  catch(...)
+	    {
+	      throw;
+	    }
 	  if (outcode != 200)
 	    return -1;
 	  return _ctype.read_mem(_content);

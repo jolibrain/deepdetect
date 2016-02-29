@@ -21,17 +21,17 @@ List of tutorials, training from text, data and images, setup of prediction serv
 Current features include:
 
 - high-level API for machine learning
-- JSON commnunication format
+- JSON communication format
 - remote Python client library
 - dedicated server with support for asynchronous training calls
 - high performances, benefit from multicores and GPU
 - connector to handle large collections of images with on-the-fly data augmentation (e.g. rotations, mirroring)
 - connector to handle CSV files with preprocessing capabilities
-- connector to handle text files
+- connector to handle text files, sentences, and character-based models
 - range of built-in model assessment measures (e.g. F1, multiclass log loss, ...)
 - no database dependency and sync, all information and model parameters organized and available from the filesystem
 - flexible template output format to simplify connection to external applications
-- templates for the most useful neural architectures (e.g. Googlenet, Alexnet, convnet, mlp, logistic regression)
+- templates for the most useful neural architectures (e.g. Googlenet, Alexnet, ResNet, convnet, character-based convnet, mlp, logistic regression)
 
 ##### Documentation
 
@@ -69,7 +69,7 @@ The code makes use of C++ policy design for modularity, performance and putting 
 
 ##### Visual Demo
 
-HTML and javascript classification image demo in demo/imgdetect
+HTML and javascript classification image demo in [demo/imgdetect](https://github.com/beniz/deepdetect/tree/master/demo/imgdetect)
 
 ##### Examples
 
@@ -78,7 +78,7 @@ http://www.deepdetect.com/overview/examples/
 
 ##### Models
 
-- List of free, even for commercial use, deep neural nets for image classification: http://www.deepdetect.com/applications/model/
+- List of free, even for commercial use, deep neural nets for image classification, and character-based convolutional nets for text classification: http://www.deepdetect.com/applications/list_models/
 
 ### Authors
 DeepDetect is designed and implemented by Emmanuel Benazera <beniz@droidnik.fr>.
