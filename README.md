@@ -6,9 +6,13 @@ DeepDetect (http://www.deepdetect.com/) is a machine learning API and server wri
 
 DeepDetect relies on external machine learning libraries through a very generic and flexible API. At the moment it has support for the deep learning library [Caffe](https://github.com/BVLC/caffe).
 
-#### Main functionalities:
+#### Main functionalities
 
 DeepDetect implements support for supervised deep learning of images and other data, with focus on simplicity and ease of use, test and connection into existing applications.
+
+#### Supportd Platforms
+
+The reference platform with support is **Ubuntu 14.04 LTS**. 
 
 #### Quickstart
 Setup an image classifier API service in a few minutes:
@@ -85,7 +89,7 @@ DeepDetect is designed and implemented by Emmanuel Benazera <beniz@droidnik.fr>.
 
 ### Build
 
-Below are instructions for Linux systems.
+Below are instructions for Ubuntu 14.04 LTS. For other Linux and Unix systems, steps may differ, CUDA, Caffe and other libraries may prove difficult to setup.
 
 Beware of dependencies, typically on Debian/Ubuntu Linux, do:
 ```
