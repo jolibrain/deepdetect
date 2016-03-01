@@ -102,7 +102,7 @@ namespace dd
     
       // parameters
       int num_feature = 0; /**< feature dimension used in boosting, optional. */
-      std::string objective = "reg:linear";
+      std::string objective = "multi:softprob";
       double base_score = 0.5;
       std::string eval_metric = "merror";
       int test_interval = 1;
@@ -258,7 +258,7 @@ namespace dd
 	if (i > 0 && i % test_interval == 0)
 	  {
 	    APIData meas_out;
-	    test(ad,learner,eval_datasets.at(0),meas_out);
+	    test(ad,objective,learner,eval_datasets.at(0),meas_out);
 	    APIData meas_obj = meas_out.getobj("measure");
 	    std::vector<std::string> meas_str = meas_obj.list_keys();
 	    for (auto m: meas_str)
@@ -318,8 +318,8 @@ namespace dd
       }
 
       // test
-      test(ad,learner,inputc._mtest,out);
-
+      test(ad,objective,learner,inputc._mtest,out);
+      
       // prepare model
       this->_mlmodel.read_from_repository();
       
@@ -396,6 +396,7 @@ namespace dd
   
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void XGBLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::test(const APIData &ad,
+									       const std::string &objective,
 									       std::unique_ptr<xgboost::Learner> &learner,
 									       xgboost::DMatrix *dtest,
 									       APIData &out)
@@ -414,17 +415,22 @@ namespace dd
 	std::vector<float> out_preds;
 	learner->Predict(dtest,output_margin,&out_preds);
 
-	//XXX: only with softprob objective
-	//TODO: other objectives
-	int batch_size = out_preds.size() / _nclasses;
+	int nclasses = _nclasses;
+	int batch_size = out_preds.size();
+	if (objective == "multi:softprob")
+	  batch_size /= _nclasses;
+	else if (objective == "binary:logistic")
+	  nclasses--;
 	for (int k=0;k<batch_size;k++)
 	  {
 	    APIData bad;
 	    std::vector<double> predictions;
-	    for (int c=0;c<_nclasses;c++)
+	    for (int c=0;c<nclasses;c++)
 	      {
-		predictions.push_back(out_preds.at(k*_nclasses+c));
+		predictions.push_back(out_preds.at(k*nclasses+c));
 	      }
+	    if (objective == "binary:logistic")
+	      predictions.insert(predictions.begin(),1.0-predictions.back());
 	    bad.add("target",dtest->info().labels.at(k));
 	    bad.add("pred",predictions);
 	    std::vector<APIData> vad = { bad };
@@ -442,5 +448,5 @@ namespace dd
   }
   
   template class XGBLib<CSVXGBInputFileConn,SupervisedOutput,XGBModel>;
-  
+  template class XGBLib<SVMXGBInputFileConn,SupervisedOutput,XGBModel>;
 }

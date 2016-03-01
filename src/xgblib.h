@@ -58,7 +58,7 @@ namespace xgboost
     /*! \brief name of predict file */
     std::string name_pred;
     /*! \brief data split mode */
-    int dsplit;
+    //int dsplit;
     /*!\brief limit number of trees in prediction */
     int ntree_limit = 0;
     /*!\brief whether to directly output margin value */
@@ -117,6 +117,7 @@ namespace dd
 
     /*- local functions -*/
     void test(const APIData &ad,
+	      const std::string &objective,
 	      std::unique_ptr<xgboost::Learner> &learner,
 	      xgboost::DMatrix *dtest,
 	      APIData &out);

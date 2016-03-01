@@ -28,6 +28,54 @@
 namespace dd
 {
 
+  // XXX: Adapted from XGBoost c_api.cc, pretty much sub-optimal memory wise,
+  // and not very much adapted to large data...
+  xgboost::DMatrix* XGDMatrixSliceDMatrix(xgboost::DMatrix* handle,
+					  const int* idxset,
+					  unsigned long len)
+  {
+    std::unique_ptr<xgboost::data::SimpleCSRSource> source(new xgboost::data::SimpleCSRSource());
+    
+    xgboost::data::SimpleCSRSource src;
+    src.CopyFrom(handle);
+    xgboost::data::SimpleCSRSource& ret = *source;
+    
+    CHECK_EQ(src.info.group_ptr.size(), 0)
+      << "slice does not support group structure";
+    
+    ret.Clear();
+    ret.info.num_row = len;
+    ret.info.num_col = src.info.num_col;
+    
+    dmlc::DataIter<xgboost::RowBatch>* iter = &src;
+    iter->BeforeFirst();
+    CHECK(iter->Next());
+    
+    const xgboost::RowBatch& batch = iter->Value();
+    for (unsigned long i = 0; i < len; ++i) {
+      const int ridx = idxset[i];
+      xgboost::RowBatch::Inst inst = batch[ridx];
+      CHECK_LT(static_cast<unsigned long>(ridx), batch.size);
+      ret.row_data_.resize(ret.row_data_.size() + inst.length);
+      std::memcpy(dmlc::BeginPtr(ret.row_data_) + ret.row_ptr_.back(), inst.data,
+		  sizeof(xgboost::RowBatch::Entry) * inst.length);
+      ret.row_ptr_.push_back(ret.row_ptr_.back() + inst.length);
+      ret.info.num_nonzero += inst.length;
+      
+      if (src.info.labels.size() != 0) {
+	ret.info.labels.push_back(src.info.labels[ridx]);
+      }
+      if (src.info.weights.size() != 0) {
+	ret.info.weights.push_back(src.info.weights[ridx]);
+      }
+      if (src.info.root_index.size() != 0) {
+	ret.info.root_index.push_back(src.info.root_index[ridx]);
+      }
+    }
+    xgboost::DMatrix *out = xgboost::DMatrix::Create(std::move(source));
+    return out;
+  }
+  
   xgboost::DMatrix* CSVXGBInputFileConn::create_from_mat(const std::vector<CSVline> &csvl)
   {
     if (csvl.empty())
@@ -105,6 +153,64 @@ namespace dd
 	_m = xgboost::DMatrix::Load(_csv_fname,silent,dsplit==2);
 	if (!_csv_test_fname.empty())
 	_mtest = xgboost::DMatrix::Load(_csv_test_fname,silent,dsplit==2);*/
+      }
+  }
+
+  void SVMXGBInputFileConn::transform(const APIData &ad)
+  {
+    //TODO:
+    //- get data
+    InputConnectorStrategy::get_data(ad);
+    
+    //- load lsvm file(s)
+    bool silent = false;
+    int dsplit = 2;
+    if (_uris.size() == 1)
+      {
+	//- shuffle & split matrix as required (read parameters -> fillup_parameters or init ?)
+	APIData ad_input = ad.getobj("parameters").getobj("input");
+	fillup_parameters(ad_input);
+	_m = xgboost::DMatrix::Load(_uris.at(0),silent,dsplit);
+	size_t rsize = _m->info().num_row;
+	
+	std::vector<int> rindex(rsize);
+	std::iota(std::begin(rindex),std::end(rindex),0);
+	if (_shuffle)
+	  {
+	    std::mt19937 g;
+	    if (_seed != -1)
+	      g = std::mt19937(_seed);
+	    else
+	      {
+		std::random_device rd;
+		g = std::mt19937(rd());
+	      }
+	    std::shuffle(rindex.begin(),rindex.end(),g);
+	  }
+	if (_test_split > 0.0)
+	  {
+	    // XXX: not optimal memory-wise, due to the XGDMatrixSlice op
+	    int split_size = std::floor(rsize * (1.0-_test_split));
+	    std::vector<int> train_rindex(rindex.begin(),rindex.begin()+split_size);
+	    std::vector<int> test_rindex(rindex.begin()+split_size,rindex.end());
+	    rindex.clear();
+	    xgboost::DMatrix *mtrain = XGDMatrixSliceDMatrix(_m,&train_rindex[0],train_rindex.size());
+	    _mtest = XGDMatrixSliceDMatrix(_m,&test_rindex[0],test_rindex.size());
+	    delete _m;
+	    _m = mtrain;
+	  }
+	else
+	  {
+	    xgboost::DMatrix *mtrain = XGDMatrixSliceDMatrix(_m,&rindex[0],rindex.size());
+	    delete _m;
+	    _m = mtrain;
+	  }
+	
+      }
+    else if (_uris.size() == 2) // with test file
+      {
+	_m = xgboost::DMatrix::Load(_uris.at(0),silent,dsplit);
+	_mtest = xgboost::DMatrix::Load(_uris.at(1),silent,dsplit);
       }
   }
   

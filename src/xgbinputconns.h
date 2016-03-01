@@ -28,13 +28,30 @@
 
 namespace dd
 {
-  class CSVXGBInputFileConn : public CSVInputFileConn
+  class XGBInputInterface
+  {
+  public:
+    XGBInputInterface() {}
+    XGBInputInterface(const XGBInputInterface &xii)
+      :_missing(xii._missing),_ids(xii._ids) {}
+    ~XGBInputInterface() {}
+
+  public:
+    xgboost::DMatrix *_m = nullptr;
+    xgboost::DMatrix *_mtest = nullptr; 
+
+    // parameters
+    float _missing;// = std::NAN; /**< represents missing values. */
+    std::vector<std::string> _ids; /**< input ids. */
+  };
+  
+  class CSVXGBInputFileConn : public CSVInputFileConn, public XGBInputInterface
   {
   public:
     CSVXGBInputFileConn()
       :CSVInputFileConn() {}
     CSVXGBInputFileConn(const CSVXGBInputFileConn &i)
-      :CSVInputFileConn(i),_missing(i._missing),_direct_csv(i._direct_csv),_ids(i._ids) {}
+      :CSVInputFileConn(i),XGBInputInterface(i),_direct_csv(i._direct_csv) {}
     ~CSVXGBInputFileConn()
       {
 	delete _m;
@@ -53,14 +70,42 @@ namespace dd
     xgboost::DMatrix* create_from_mat(const std::vector<CSVline> &csvl);
 
   public:
-    xgboost::DMatrix *_m = nullptr;
-    xgboost::DMatrix *_mtest = nullptr; 
-
-    // parameters
-    float _missing;// = std::NAN; /**< represents missing values. */
     bool _direct_csv = false; /**< whether to use the xgboost built-in CSV reader. */
+  };
 
-    std::vector<std::string> _ids; /**< input ids. */
+  class SVMXGBInputFileConn : public InputConnectorStrategy, public XGBInputInterface
+  {
+  public:
+    SVMXGBInputFileConn()
+      :InputConnectorStrategy() {}
+    SVMXGBInputFileConn(const SVMXGBInputFileConn &i)
+      :InputConnectorStrategy(i),XGBInputInterface(i) {}
+    ~SVMXGBInputFileConn() {}
+
+    void fillup_parameters(const APIData &ad_input)
+    {
+      if (ad_input.has("shuffle"))
+	_shuffle = ad_input.get("shuffle").get<bool>();
+      if (ad_input.has("seed"))
+	_seed = ad_input.get("seed").get<int>();
+      if (ad_input.has("test_split"))
+	_test_split = ad_input.get("test_split").get<double>();
+    }
+    
+    void init(const APIData &ad)
+    {
+      //TODO:
+      //- shuffle
+      //- split
+    }
+    
+    void transform(const APIData &ad);
+    
+  public:
+    //TODO
+    bool _shuffle = false;
+    int _seed = -1;
+    double _test_split = -1;
   };
   
 }
