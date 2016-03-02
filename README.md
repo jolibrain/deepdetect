@@ -10,7 +10,7 @@ DeepDetect relies on external machine learning libraries through a very generic 
 
 DeepDetect implements support for supervised deep learning of images and other data, with focus on simplicity and ease of use, test and connection into existing applications.
 
-#### Supportd Platforms
+#### Supported Platforms
 
 The reference platform with support is **Ubuntu 14.04 LTS**. 
 
