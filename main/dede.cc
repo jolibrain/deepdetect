@@ -26,6 +26,7 @@
 #include "caffelib.h"
 #include "imginputfileconn.h"
 #include "outputconnectorstrategy.h"
+#include <rabit/rabit.h>
 
 using namespace dd;
 
@@ -35,6 +36,7 @@ int main(int argc, char *argv[])
 {
   google::ParseCommandLineFlags(&argc, &argv, true);
   //::google::InitGoogleLogging(argv[0]);
+  rabit::Init(argc,argv);
     
   if (FLAGS_jsonapi == 0)
     {
@@ -51,4 +53,5 @@ int main(int argc, char *argv[])
       DeepDetect<CommandLineJsonAPI> dd;
       dd.boot(argc,argv);
     }
+  rabit::Finalize();
 }

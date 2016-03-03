@@ -214,7 +214,6 @@ namespace dd
       std::unique_ptr<xgboost::Learner> learner(xgboost::Learner::Create(mats));
       learner->Configure(_params.cfg);
       int version = rabit::LoadCheckPoint(learner.get());
-      //std::cerr << "version=" << version << " / model_in=" << _params.model_in << std::endl;
       if (version == 0) {
 	// initialize the model if needed.
 	if (_params.model_in != "NULL") { //TODO: if a model already exists
@@ -231,7 +230,7 @@ namespace dd
 	this->add_meas("iteration",i);
 	if (version % 2 == 0) {
 	  if (_params.silent == 0) {
-	    LOG(INFO) << "boosting round " << i;// << ", " << elapsed << " sec elapsed";
+	    LOG(INFO) << "boosting round " << i;
 	  }
 	  learner->UpdateOneIter(i, dtrain);
 	  if (learner->AllowLazyCheckPoint()) {
@@ -241,7 +240,8 @@ namespace dd
 	  }
 	  version += 1;
 	}
-	CHECK_EQ(version, rabit::VersionNumber());
+	std::cerr << "version=" << version << " / rabit version=" << rabit::VersionNumber() << std::endl;
+	//CHECK_EQ(version, rabit::VersionNumber());
 	/*std::string res = learner->EvalOneIter(i, eval_datasets, eval_data_names);
 	  if (rabit::IsDistributed()) {
 	  if (rabit::GetRank() == 0) {
@@ -301,7 +301,7 @@ namespace dd
 	  rabit::CheckPoint(learner.get());
 	}
 	version += 1;
-	CHECK_EQ(version, rabit::VersionNumber());
+	//CHECK_EQ(version, rabit::VersionNumber());
       }
       
       // always save final round
@@ -327,7 +327,7 @@ namespace dd
       
       // add whatever the input connector needs to transmit out
       //inputc.response_params(out);
-      
+
       return 0;
   }
 
