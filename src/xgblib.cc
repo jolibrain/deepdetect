@@ -128,7 +128,7 @@ namespace dd
       if (ad_mllib.has("save_period"))
 	_params.save_period = ad_mllib.get("save_period").get<int>();
       
-      _params.eval_train = true;
+      _params.eval_train = false;
       _params.eval_data_names.clear();
       _params.eval_data_names.push_back("test");      
       
@@ -196,9 +196,12 @@ namespace dd
       std::vector<xgboost::DMatrix*> deval;
       std::vector<xgboost::DMatrix*> eval_datasets;
       for (size_t i = 0; i < _params.eval_data_names.size(); ++i) {
-	deval.emplace_back(inputc._mtest);
-	eval_datasets.push_back(deval.back());
-	mats.push_back(deval.back());
+	if (inputc._mtest)
+	  {
+	    deval.emplace_back(inputc._mtest);
+	    eval_datasets.push_back(deval.back());
+	    mats.push_back(deval.back());
+	  }
       }
       std::vector<std::string> eval_data_names = _params.eval_data_names;
       //TODO: as needed, whether to report accuracy on training set
@@ -215,7 +218,6 @@ namespace dd
       if (version == 0) {
 	// initialize the model if needed.
 	if (_params.model_in != "NULL") { //TODO: if a model already exists
-	  std::cerr << "loading existing model\n";
 	  std::unique_ptr<dmlc::Stream> fi(dmlc::Stream::Create(_params.model_in.c_str(), "r")); //TODO: update the model path (repo)
 	  learner->Load(fi.get());
 	} else {
@@ -255,7 +257,7 @@ namespace dd
 	}*/
 
 	// measures for dd
-	if (i > 0 && i % test_interval == 0)
+	if (i > 0 && i % test_interval == 0 && !eval_datasets.empty())
 	  {
 	    APIData meas_out;
 	    test(ad,objective,learner,eval_datasets.at(0),meas_out);
@@ -401,6 +403,8 @@ namespace dd
 									       xgboost::DMatrix *dtest,
 									       APIData &out)
   {
+    if (!dtest)
+      return;
     APIData ad_res;
     ad_res.add("iteration",this->get_meas("iteration"));
     //ad_res.add("train_loss",this->get_meas("train_loss")); //TODO: can't acquire the loss yet.
