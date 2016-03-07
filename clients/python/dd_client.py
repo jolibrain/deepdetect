@@ -27,7 +27,7 @@ import os.path
 import json
 import uuid
 import datetime
-from builtins import str as text
+
 
 VERBOSE=False
 DD_TIMEOUT = 2000 # seconds, for long blocking training alls, as needed
@@ -91,19 +91,6 @@ class DDCommunicationError(Exception):
             msg += "\n"
             return msg
 
-# hack for wrongly encoded json
-# input : s : str object 
-# output ; unicode object
-def hack_decode(s):
-    if isinstance(s, text):
-        return s
-    while True:
-        try:
-            return s.decode('utf-8')
-        except UnicodeDecodeError as e :
-            s = s[:e.start]+'?'+s[e.end:]
-
-
 API_METHODS_URL = {
     "0.1" : {
         "info":"/info",
@@ -151,7 +138,7 @@ class DD(object):
 
     def __return_format(self,js):
         if self.__returntype == self.RETURN_PYTHON:
-            return json.loads(hack_decode(js))
+            return json.loads(js.decode('utf-8'))
         elif self.__returntype == self.RETURN_JSON:
             return js
         else:
