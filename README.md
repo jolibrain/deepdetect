@@ -1,4 +1,4 @@
-## DeepDetect : Open Source API & Deep Learning Server
+## DeepDetect : Open Source Deep Learning Server & API
 
 [![Join the chat at https://gitter.im/beniz/deepdetect](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/beniz/deepdetect?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
@@ -12,7 +12,12 @@ DeepDetect implements support for supervised deep learning of images and other d
 
 #### Supported Platforms
 
-The reference platform with support is **Ubuntu 14.04 LTS**. 
+The reference platform with support is **Ubuntu 14.04 LTS**.
+
+Supported images that come with pre-trained image classification deep (residual) neural nets:
+
+- docker images for CPU and GPU machines are available at https://hub.docker.com/r/beniz/deepdetect_gpu/, see https://github.com/beniz/deepdetect/tree/master/docker/README.md for details on how to use them.
+- For Amazon AMI see https://github.com/beniz/deepdetect/issues/5#issuecomment-188464262
 
 #### Quickstart
 Setup an image classifier API service in a few minutes:
