@@ -12,13 +12,22 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 """
 
-import ConfigParser
-import urllib2
-import httplib
+try:
+    import urllib.request as urllib2
+except ImportError:
+    import urllib2
+
+try:
+    import http.client as httplib
+except ImportError:
+    import httplib
+
+
 import os.path
 import json
 import uuid
 import datetime
+
 
 VERBOSE=False
 DD_TIMEOUT = 2000 # seconds, for long blocking training alls, as needed
@@ -28,7 +37,7 @@ def LOG(msg):
     # XXX: may want to use python log manager classes instead of this stupid print
     if VERBOSE:
         msg = str(datetime.datetime.now()) + ' ' + msg
-        print msg
+        print (msg)
 
 ### Exception classes :
 
@@ -56,44 +65,30 @@ class DDCommunicationError(Exception):
         msg += "\n"
         return msg
 
-    class DDDataError(Exception):
-        def __init__(self, url, http_method,  headers, body, data=None):
-            self.msg = "DeepDetect Data Error"
-            self.http_method = http_method
-            self.req_headers = headers
-            self.req_body = body
-            self.url = url
-            self.data = data
+class DDDataError(Exception):
+    def __init__(self, url, http_method,  headers, body, data=None):
+        self.msg = "DeepDetect Data Error"
+        self.http_method = http_method
+        self.req_headers = headers
+        self.req_body = body
+        self.url = url
+        self.data = data
 
-        def __str__(self):
-            msg = "%s %s\n"%(str(self.http_method),str(self.url))
-            if self.data is not None:
-                msg += str(self.data)[:100]
-                msg += "\n"
-            return msg
-            for h,v in self.req_headers.iteritems():
-                msg += "%s:%s\n"%(h,v)
-            msg += "\n"
-            if self.req_body is not None:
-                msg += str(self.req_body)
-            msg += "\n"
-            msg += "--\n"
-            msg += str(self.data)
-            msg += "\n"
-            return msg
-
-# hack for wrongly encoded json
-# input : s : str object 
-# output ; unicode object
-def hack_decode(s):
-    if isinstance(s, unicode):
-        return s
-    while True:
-        try:
-            return s.decode('utf-8')
-        except UnicodeDecodeError, e :
-            s = s[:e.start]+'?'+s[e.end:]
-
+    def __str__(self):
+        msg = "%s %s\n"%(str(self.http_method),str(self.url))
+        if self.data is not None:
+            msg += str(self.data)[:100]
+        msg += "\n"
+        for h,v in self.req_headers.iteritems():
+            msg += "%s:%s\n"%(h,v)
+        msg += "\n"
+        if self.req_body is not None:
+            msg += str(self.req_body)
+        msg += "\n"
+        msg += "--\n"
+        msg += str(self.data)
+        msg += "\n"
+        return msg
 
 API_METHODS_URL = {
     "0.1" : {
@@ -142,7 +137,7 @@ class DD(object):
 
     def __return_format(self,js):
         if self.__returntype == self.RETURN_PYTHON:
-            return json.loads(hack_decode(js))
+            return json.loads(js.decode('utf-8'))
         elif self.__returntype == self.RETURN_JSON:
             return js
         else:
@@ -235,7 +230,7 @@ class DD(object):
             return self.__return_format(data)
         except:
             import traceback
-            print traceback.format_exc()
+            print (traceback.format_exc())
 
             raise DDDataError(u,"POST",headers,body,data)
         
@@ -293,7 +288,7 @@ class DD(object):
               "model":model}
         return self.put(self.__urls["services"] + '/%s'%sname,json.dumps(body))
 
-    def get_services(self,sname):
+    def get_service(self,sname):
         """
         Get information about a service
         Parameters:
@@ -381,4 +376,4 @@ if __name__ == '__main__':
     dd = DD()
     dd.set_return_format(dd.RETURN_PYTHON)
     inf = dd.info()
-    print inf
+    print (inf)
