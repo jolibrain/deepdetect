@@ -65,31 +65,30 @@ class DDCommunicationError(Exception):
         msg += "\n"
         return msg
 
-    class DDDataError(Exception):
-        def __init__(self, url, http_method,  headers, body, data=None):
-            self.msg = "DeepDetect Data Error"
-            self.http_method = http_method
-            self.req_headers = headers
-            self.req_body = body
-            self.url = url
-            self.data = data
+class DDDataError(Exception):
+    def __init__(self, url, http_method,  headers, body, data=None):
+        self.msg = "DeepDetect Data Error"
+        self.http_method = http_method
+        self.req_headers = headers
+        self.req_body = body
+        self.url = url
+        self.data = data
 
-        def __str__(self):
-            msg = "%s %s\n"%(str(self.http_method),str(self.url))
-            if self.data is not None:
-                msg += str(self.data)[:100]
-                msg += "\n"
-            return msg
-            for h,v in self.req_headers.iteritems():
-                msg += "%s:%s\n"%(h,v)
-            msg += "\n"
-            if self.req_body is not None:
-                msg += str(self.req_body)
-            msg += "\n"
-            msg += "--\n"
-            msg += str(self.data)
-            msg += "\n"
-            return msg
+    def __str__(self):
+        msg = "%s %s\n"%(str(self.http_method),str(self.url))
+        if self.data is not None:
+            msg += str(self.data)[:100]
+        msg += "\n"
+        for h,v in self.req_headers.iteritems():
+            msg += "%s:%s\n"%(h,v)
+        msg += "\n"
+        if self.req_body is not None:
+            msg += str(self.req_body)
+        msg += "\n"
+        msg += "--\n"
+        msg += str(self.data)
+        msg += "\n"
+        return msg
 
 API_METHODS_URL = {
     "0.1" : {
