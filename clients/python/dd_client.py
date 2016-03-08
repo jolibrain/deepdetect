@@ -12,13 +12,22 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 """
 
-import ConfigParser
-import urllib2
-import httplib
+try:
+    import urllib.request as urllib2
+except ImportError:
+    import urllib2
+
+try:
+    import http.client as httplib
+except ImportError:
+    import httplib
+
+
 import os.path
 import json
 import uuid
 import datetime
+
 
 VERBOSE=False
 DD_TIMEOUT = 2000 # seconds, for long blocking training alls, as needed
@@ -28,7 +37,7 @@ def LOG(msg):
     # XXX: may want to use python log manager classes instead of this stupid print
     if VERBOSE:
         msg = str(datetime.datetime.now()) + ' ' + msg
-        print msg
+        print (msg)
 
 ### Exception classes :
 
@@ -82,19 +91,6 @@ class DDCommunicationError(Exception):
             msg += "\n"
             return msg
 
-# hack for wrongly encoded json
-# input : s : str object 
-# output ; unicode object
-def hack_decode(s):
-    if isinstance(s, unicode):
-        return s
-    while True:
-        try:
-            return s.decode('utf-8')
-        except UnicodeDecodeError, e :
-            s = s[:e.start]+'?'+s[e.end:]
-
-
 API_METHODS_URL = {
     "0.1" : {
         "info":"/info",
@@ -142,7 +138,7 @@ class DD(object):
 
     def __return_format(self,js):
         if self.__returntype == self.RETURN_PYTHON:
-            return json.loads(hack_decode(js))
+            return json.loads(js.decode('utf-8'))
         elif self.__returntype == self.RETURN_JSON:
             return js
         else:
@@ -235,7 +231,7 @@ class DD(object):
             return self.__return_format(data)
         except:
             import traceback
-            print traceback.format_exc()
+            print (traceback.format_exc())
 
             raise DDDataError(u,"POST",headers,body,data)
         
@@ -293,7 +289,7 @@ class DD(object):
               "model":model}
         return self.put(self.__urls["services"] + '/%s'%sname,json.dumps(body))
 
-    def get_services(self,sname):
+    def get_service(self,sname):
         """
         Get information about a service
         Parameters:
@@ -381,4 +377,4 @@ if __name__ == '__main__':
     dd = DD()
     dd.set_return_format(dd.RETURN_PYTHON)
     inf = dd.info()
-    print inf
+    print (inf)
