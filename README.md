@@ -71,9 +71,13 @@ By default DeepDetect automatically relies on a modified version of Caffe, https
 
 The code makes use of C++ policy design for modularity, performance and putting the maximum burden on the checks at compile time. The implementation uses many features from C++11.
 
-##### Visual Demo
+##### Demo
 
+- Image classification Web interface:
 HTML and javascript classification image demo in [demo/imgdetect](https://github.com/beniz/deepdetect/tree/master/demo/imgdetect)
+
+- Image similarity search:
+Python script for indexing and searching images is in [demo/imgsearch](https://github.com/beniz/deepdetect/tree/master/demo/imgsearch)
 
 ##### Examples
 
