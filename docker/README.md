@@ -1,4 +1,4 @@
-### DeepDetect Docker images
+## DeepDetect Docker images
 
 This repository contains the Dockerfiles for building the CPU and GPU images for deepdetect.
 
@@ -10,7 +10,7 @@ The docker images contain:
 
 This allows to run the container and set an image classification model based on deep (residual) nets in two short command line calls.
 
-#### Getting and running official images
+### Getting and running official images
 
 ```
 docker pull beniz/deepdetect_cpu
@@ -20,7 +20,7 @@ or
 docker pull beniz/deepdetect_gpu
 ```
 
-- Running the CPU image
+#### Running the CPU image
 
 ```
 docker run -d -p 8080:8080 beniz/deepdetect_cpu
@@ -45,7 +45,7 @@ curl -X POST "http://localhost:8080/predict" -d "{\"service\":\"imageserv\",\"pa
 {"status":{"code":200,"msg":"OK"},"head":{"method":"/predict","time":852.0,"service":"imageserv"},"body":{"predictions":{"uri":"http://i.ytimg.com/vi/0vxOhd4qlnA/maxresdefault.jpg","classes":[{"prob":0.2255125343799591,"cat":"n03868863 oxygen mask"},{"prob":0.20917612314224244,"cat":"n03127747 crash helmet"},{"last":true,"prob":0.07399296760559082,"cat":"n03379051 football helmet"}]}}}
 ```
 
-- Running the GPU image
+#### Running the GPU image
 
 This requires [nvidia-docker](https://github.com/NVIDIA/nvidia-docker) in order for the local GPUs to be made accessible by the container.
 
