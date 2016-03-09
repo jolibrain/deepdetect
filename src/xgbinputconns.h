@@ -94,15 +94,12 @@ namespace dd
     
     void init(const APIData &ad)
     {
-      //TODO:
-      //- shuffle
-      //- split
+      fillup_parameters(ad);
     }
     
     void transform(const APIData &ad);
     
   public:
-    //TODO
     bool _shuffle = false;
     int _seed = -1;
     double _test_split = -1;
