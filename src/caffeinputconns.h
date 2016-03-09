@@ -682,7 +682,6 @@ namespace dd
 		  vals.push_back((*whit).second);
 		else vals.push_back(-1);
 	      }
-	    std::reverse(vals.begin(),vals.end()); // reverse quantization helps
 	    /*if (vals.size() > _sequence)
 	      std::cerr << "more characters than sequence / " << vals.size() << " / sequence=" << _sequence << std::endl;*/
 	    for (int c=0;c<_sequence;c++)
