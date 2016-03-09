@@ -1683,7 +1683,7 @@ namespace dd
 										   APIData &out)
   {
     std::lock_guard<std::mutex> lock(_net_mutex); // no concurrent calls since the net is not re-instantiated
-    
+
     // check for net
     if (!_net || _net->phase() == caffe::TRAIN)
       {
@@ -1692,6 +1692,34 @@ namespace dd
 	  throw MLLibInternalException("no model in " + this->_mlmodel._repo + " for initializing the net");
 	else if (cm == 2)
 	  throw MLLibBadParamException("no deploy file in " + this->_mlmodel._repo + " for initializing the net");
+      }
+
+    TInputConnectorStrategy inputc(this->_inputc);
+    APIData ad_output = ad.getobj("parameters").getobj("output");
+    if (ad_output.has("measure"))
+      {
+	APIData cad = ad;
+	cad.add("model_repo",this->_mlmodel._repo);
+	try
+	  {
+	    inputc.transform(cad);
+	  }
+	catch (std::exception &e)
+	  {
+	    throw;
+	  }
+	int test_batch_size = inputc.test_batch_size();
+	APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
+	if (ad_mllib.has("net"))
+	  {
+	    APIData ad_net = ad_mllib.getobj("net");
+	    if (ad_net.has("test_batch_size"))
+	      test_batch_size = ad_net.get("test_batch_size").get<int>();
+	  }
+	
+	bool has_mean_file = false;
+	test(_net,ad,inputc,test_batch_size,has_mean_file,out);
+	return 0;
       }
     
     // parameters
@@ -1725,7 +1753,6 @@ namespace dd
       if (ad_mllib.has("extract_layer"))
 	extract_layer = ad_mllib.get("extract_layer").get<std::string>();
       
-    TInputConnectorStrategy inputc(this->_inputc);
     APIData cad = ad;
     cad.add("model_repo",this->_mlmodel._repo);
     try
@@ -1736,11 +1763,11 @@ namespace dd
       {
 	throw;
       }
-    int batch_size = inputc.batch_size();
+    int batch_size = inputc.test_batch_size();
     try
       {
 	boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->set_batch_size(batch_size);
-	boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(inputc._dv);
+	boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(inputc._dv_test);
       }
     catch(std::exception &e)
       {
@@ -1751,7 +1778,7 @@ namespace dd
     
     float loss = 0.0;
     TOutputConnectorStrategy tout;
-    if (extract_layer.empty())
+    if (extract_layer.empty()) // supervised
       {
 	std::vector<Blob<float>*> results = _net->Forward(&loss);
 	int slot = results.size() - 1;
