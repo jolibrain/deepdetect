@@ -241,10 +241,13 @@ namespace dd
 	  }
 	else // character-level features
 	  {
+	    if (_seq_forward)
+	      std::reverse(ct.begin(),ct.end());
 	    TxtCharEntry *tce = new TxtCharEntry(target);
 	    std::unordered_map<uint32_t,int>::const_iterator whit;
 	    boost::char_separator<char> sep("\n\t\f\r");
 	    boost::tokenizer<boost::char_separator<char>> tokens(ct,sep);
+	    int seq = 0;
 	    for (std::string w: tokens)
 	      {
 		char *str = (char*)w.c_str();
@@ -268,10 +271,12 @@ namespace dd
 		  if ((whit=_alphabet.find(c))==_alphabet.end())
 		    tce->add_char(' ');
 		  else tce->add_char(c);
+		  seq++;
 		}
-		while(str_i<end);
+		while(str_i<end && seq < _sequence);
 	      }
 	    _txt.push_back(tce);
+	    std::cerr << "\rloaded text samples=" << _txt.size();
 	  }
 
       }

@@ -203,6 +203,8 @@ namespace dd
 	build_alphabet();
       if (ad_input.has("sequence"))
 	_sequence = ad_input.get("sequence").get<int>();
+      if (ad_input.has("read_forward"))
+	_seq_forward = ad_input.get("read_forward").get<bool>();
     }
 
     int feature_size() const
@@ -325,6 +327,7 @@ namespace dd
     std::string _alphabet_str = "abcdefghijklmnopqrstuvwxyz0123456789,;.!?:'\"/\\|_@#$%^&*~`+-=<>()[]{}";
     std::unordered_map<uint32_t,int> _alphabet; /**< character-level alphabet. */
     int _sequence = 60; /**< sequence size when using character-level features. */
+    bool _seq_forward = false; /**< whether to read character-based sequences forward. */
     
     // internals
     std::unordered_map<std::string,Word> _vocab; /**< string to word stats, including word */
