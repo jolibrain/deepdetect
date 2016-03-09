@@ -173,6 +173,7 @@ namespace dd
 	  if (p.second >= 0)
 	    _label = p.second;
 	}
+      return 0;
     }
     
     cv::Mat _img;

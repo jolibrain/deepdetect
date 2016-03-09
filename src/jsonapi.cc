@@ -485,7 +485,6 @@ namespace dd
     out.toJVal(jpred,jout);
     JVal jhead(rapidjson::kObjectType);
     jhead.AddMember("method","/predict",jpred.GetAllocator());
-    jhead.AddMember("time",jout["time"],jpred.GetAllocator());
     jhead.AddMember("service",d["service"],jpred.GetAllocator());
     jpred.AddMember("head",jhead,jpred.GetAllocator());
     if (ad_data.getobj("parameters").getobj("output").has("measure"))
@@ -493,6 +492,7 @@ namespace dd
 	jpred.AddMember("body",jout,jpred.GetAllocator());
 	return jpred;
       }
+    jhead.AddMember("time",jout["time"],jpred.GetAllocator());
     JVal jbody(rapidjson::kObjectType);
     if (jout.HasMember("predictions"))
       jbody.AddMember("predictions",jout["predictions"],jpred.GetAllocator());

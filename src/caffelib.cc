@@ -1717,8 +1717,13 @@ namespace dd
 	      test_batch_size = ad_net.get("test_batch_size").get<int>();
 	  }
 	
-	bool has_mean_file = false;
+	bool has_mean_file = false; //TODO
 	test(_net,ad,inputc,test_batch_size,has_mean_file,out);
+	APIData out_meas = out.getobj("measure");
+	out_meas.erase("train_loss");
+	out_meas.erase("iteration");
+	std::vector<APIData> vad = {out_meas};
+	out.add("measure",vad);
 	return 0;
       }
     
