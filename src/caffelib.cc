@@ -1695,15 +1695,7 @@ namespace dd
       }
 
     TInputConnectorStrategy inputc(this->_inputc);
-    int batch_size = inputc.test_batch_size();
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
-    if (ad_mllib.has("net"))
-      {
-	APIData ad_net = ad_mllib.getobj("net");
-	if (ad_net.has("test_batch_size"))
-	  batch_size = ad_net.get("test_batch_size").get<int>();
-      }
-    
     APIData ad_output = ad.getobj("parameters").getobj("output");
     if (ad_output.has("measure"))
       {
@@ -1717,6 +1709,14 @@ namespace dd
 	catch (std::exception &e)
 	  {
 	    throw;
+	  }
+
+	int batch_size = inputc.test_batch_size();
+	if (ad_mllib.has("net"))
+	  {
+	    APIData ad_net = ad_mllib.getobj("net");
+	    if (ad_net.has("test_batch_size"))
+	  batch_size = ad_net.get("test_batch_size").get<int>();
 	  }
 
 	bool has_mean_file = this->_mlmodel._has_mean_file;
@@ -1770,7 +1770,13 @@ namespace dd
       {
 	throw;
       }
-
+    int batch_size = inputc.test_batch_size();
+    if (ad_mllib.has("net"))
+      {
+	APIData ad_net = ad_mllib.getobj("net");
+	if (ad_net.has("test_batch_size"))
+	  batch_size = ad_net.get("test_batch_size").get<int>();
+      }
     try
       {
 	boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->set_batch_size(batch_size);

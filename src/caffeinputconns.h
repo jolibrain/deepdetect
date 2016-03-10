@@ -137,7 +137,7 @@ namespace dd
 	    }
 	  float *mean = nullptr;
 	  std::string meanfullname = _model_repo + "/" + _meanfname;
-	  if (_data_mean.count() == 0 && _has_mean_file)//fileops::file_exists(meanfullname)) //TODO: replace with flag for inputconnector instance, since it is not due to change during service life, nor is it allowed
+	  if (_data_mean.count() == 0 && _has_mean_file)
 	    {
 	      caffe::BlobProto blob_proto;
 	      caffe::ReadProtoFromBinaryFile(meanfullname.c_str(),&blob_proto);
