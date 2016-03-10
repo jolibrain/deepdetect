@@ -483,16 +483,18 @@ namespace dd
     JDoc jpred = dd_ok_200();
     JVal jout(rapidjson::kObjectType);
     out.toJVal(jpred,jout);
+    bool has_measure = ad_data.getobj("parameters").getobj("output").has("measure");
     JVal jhead(rapidjson::kObjectType);
     jhead.AddMember("method","/predict",jpred.GetAllocator());
     jhead.AddMember("service",d["service"],jpred.GetAllocator());
+    if (!has_measure)
+      jhead.AddMember("time",jout["time"],jpred.GetAllocator());
     jpred.AddMember("head",jhead,jpred.GetAllocator());
-    if (ad_data.getobj("parameters").getobj("output").has("measure"))
+    if (has_measure)
       {
 	jpred.AddMember("body",jout,jpred.GetAllocator());
 	return jpred;
       }
-    jhead.AddMember("time",jout["time"],jpred.GetAllocator());
     JVal jbody(rapidjson::kObjectType);
     if (jout.HasMember("predictions"))
       jbody.AddMember("predictions",jout["predictions"],jpred.GetAllocator());
