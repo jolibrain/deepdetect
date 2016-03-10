@@ -64,6 +64,7 @@ namespace dd
     std::vector<caffe::Datum> _dv_test; /**< test input datum vector, when applicable in training mode */
     std::vector<std::string> _ids; /**< input ids (e.g. image ids) */
     bool _flat1dconv = false; /**< whether a 1D convolution model. */
+    bool _has_mean_file = false; /**< image model mean.binaryproto. */
   };
 
   /**
@@ -124,6 +125,8 @@ namespace dd
       if (!_train)
 	{
 	  _model_repo = ad.get("model_repo").get<std::string>();
+	  if (ad.has("has_mean_file"))
+	    _has_mean_file = ad.get("has_mean_file").get<bool>();
 	  try
 	    {
 	      ImgInputFileConn::transform(ad);
@@ -134,7 +137,7 @@ namespace dd
 	    }
 	  float *mean = nullptr;
 	  std::string meanfullname = _model_repo + "/" + _meanfname;
-	  if (_data_mean.count() == 0 && fileops::file_exists(meanfullname))
+	  if (_data_mean.count() == 0 && _has_mean_file)//fileops::file_exists(meanfullname)) //TODO: replace with flag for inputconnector instance, since it is not due to change during service life, nor is it allowed
 	    {
 	      caffe::BlobProto blob_proto;
 	      caffe::ReadProtoFromBinaryFile(meanfullname.c_str(),&blob_proto);

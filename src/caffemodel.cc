@@ -57,6 +57,7 @@ namespace dd
     static std::string sstate = ".solverstate";
     static std::string corresp = "corresp";
     static std::string solver = "solver";
+    static std::string meanf = "mean.binaryproto";
     this->_repo = repo;
     std::unordered_set<std::string> lfiles;
     int e = fileops::list_directory(repo,true,false,lfiles);
@@ -70,7 +71,11 @@ namespace dd
     auto hit = lfiles.begin();
     while(hit!=lfiles.end())
       {
-	if ((*hit).find(sstate)!=std::string::npos)
+	if ((*hit) == meanf)
+	  {
+	    _has_mean_file = true;
+	  }
+	else if ((*hit).find(sstate)!=std::string::npos)
 	  {
 	    // stat file to pick the latest one
 	    long int st = fileops::file_last_modif((*hit));

@@ -1248,7 +1248,7 @@ namespace dd
     inputc._train = true;
     APIData cad = ad;
     cad.add("model_repo",this->_mlmodel._repo); // pass the model repo so that in case of images, it is known where to save the db
-
+    cad.add("has_mean_file",this->_mlmodel._has_mean_file);
     try
       {
 	inputc.transform(cad);
@@ -1695,11 +1695,21 @@ namespace dd
       }
 
     TInputConnectorStrategy inputc(this->_inputc);
+    int batch_size = inputc.test_batch_size();
+    APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
+    if (ad_mllib.has("net"))
+      {
+	APIData ad_net = ad_mllib.getobj("net");
+	if (ad_net.has("test_batch_size"))
+	  batch_size = ad_net.get("test_batch_size").get<int>();
+      }
+    
     APIData ad_output = ad.getobj("parameters").getobj("output");
     if (ad_output.has("measure"))
       {
 	APIData cad = ad;
 	cad.add("model_repo",this->_mlmodel._repo);
+	cad.add("has_mean_file",this->_mlmodel._has_mean_file);
 	try
 	  {
 	    inputc.transform(cad);
@@ -1708,17 +1718,9 @@ namespace dd
 	  {
 	    throw;
 	  }
-	int test_batch_size = inputc.test_batch_size();
-	APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
-	if (ad_mllib.has("net"))
-	  {
-	    APIData ad_net = ad_mllib.getobj("net");
-	    if (ad_net.has("test_batch_size"))
-	      test_batch_size = ad_net.get("test_batch_size").get<int>();
-	  }
-	
-	bool has_mean_file = false; //TODO
-	test(_net,ad,inputc,test_batch_size,has_mean_file,out);
+
+	bool has_mean_file = this->_mlmodel._has_mean_file;
+	test(_net,ad,inputc,batch_size,has_mean_file,out);
 	APIData out_meas = out.getobj("measure");
 	out_meas.erase("train_loss");
 	out_meas.erase("iteration");
@@ -1726,9 +1728,8 @@ namespace dd
 	out.add("measure",vad);
 	return 0;
       }
-    
+
     // parameters
-    APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
 #ifndef CPU_ONLY
     if (ad_mllib.has("gpu"))
       {
@@ -1760,6 +1761,7 @@ namespace dd
       
     APIData cad = ad;
     cad.add("model_repo",this->_mlmodel._repo);
+    cad.add("has_mean_file",this->_mlmodel._has_mean_file);
     try
       {
 	inputc.transform(cad);
@@ -1768,7 +1770,7 @@ namespace dd
       {
 	throw;
       }
-    int batch_size = inputc.test_batch_size();
+
     try
       {
 	boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->set_batch_size(batch_size);
