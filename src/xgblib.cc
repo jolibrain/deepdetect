@@ -69,6 +69,7 @@ namespace dd
       throw MLLibBadParamException("number of classes is unknown (nclasses == 0)");
     if (_regression && _ntargets == 0)
       throw MLLibBadParamException("number of regression targets is unknown (ntargets == 0)");
+    this->_mlmodel.read_from_repository();
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -91,9 +92,11 @@ namespace dd
 
     TInputConnectorStrategy inputc(this->_inputc);
     inputc._train = true;    
+    APIData cad = ad;
+    cad.add("model_repo",this->_mlmodel._repo);
     try
       {
-	inputc.transform(ad);
+	inputc.transform(cad);
       }
     catch (...)
       {
@@ -339,11 +342,13 @@ namespace dd
 
     //TODO: parameters
 
-    //TODO: data
+    // data
     TInputConnectorStrategy inputc(this->_inputc);
+    APIData cad = ad;
+    cad.add("model_repo",this->_mlmodel._repo);
     try
       {
-	inputc.transform(ad);
+	inputc.transform(cad);
       }
     catch (...)
       {
@@ -355,6 +360,7 @@ namespace dd
       {
 	_learner = xgboost::Learner::Create({});
 	std::string model_in = this->_mlmodel._weights;
+	std::cerr << "model file=" << model_in << std::endl;
 	std::unique_ptr<dmlc::Stream> fi(dmlc::Stream::Create(model_in.c_str(),"r"));
 	_learner->Load(fi.get());
       }
@@ -378,7 +384,7 @@ namespace dd
 	for (int i=0;i<_nclasses;i++)
 	  {
 	    probs.push_back(preds.at(j*+_nclasses+i));
-	    cats.push_back(std::to_string(i));
+	    cats.push_back(this->_mlmodel.get_hcorresp(i));//std::to_string(i)); //TODO: corresp
 	  }
 	rad.add("probs",probs);
 	rad.add("cats",cats);
@@ -453,4 +459,5 @@ namespace dd
   
   template class XGBLib<CSVXGBInputFileConn,SupervisedOutput,XGBModel>;
   template class XGBLib<SVMXGBInputFileConn,SupervisedOutput,XGBModel>;
+  template class XGBLib<TxtXGBInputFileConn,SupervisedOutput,XGBModel>;
 }

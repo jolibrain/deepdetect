@@ -46,7 +46,8 @@ namespace dd
     MLService<CaffeLib,CSVCaffeInputFileConn,UnsupervisedOutput,CaffeModel>,
     MLService<CaffeLib,TxtCaffeInputFileConn,UnsupervisedOutput,CaffeModel>,
     MLService<XGBLib,CSVXGBInputFileConn,SupervisedOutput,XGBModel>,
-    MLService<XGBLib,SVMXGBInputFileConn,SupervisedOutput,XGBModel>> mls_variant_type;
+    MLService<XGBLib,SVMXGBInputFileConn,SupervisedOutput,XGBModel>,
+    MLService<XGBLib,TxtXGBInputFileConn,SupervisedOutput,XGBModel>> mls_variant_type;
 
   class ServiceForbiddenException : public std::exception
   {

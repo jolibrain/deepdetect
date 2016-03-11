@@ -37,11 +37,11 @@ static std::string bad_param_str = "{\"status\":{\"code\":400,\"msg\":\"BadReque
 static std::string not_found_str = "{\"status\":{\"code\":404,\"msg\":\"NotFound\"}}";
 
 static std::string forest_repo = "../examples/all/forest_type/";
-static std::string n20_repo = "../examples/all/n20/"; //TODO
-static std::string sflare_repo = "../examples/all/sflare/"; //TODO
+static std::string n20_repo = "../examples/all/n20/";
+//static std::string sflare_repo = "../examples/all/sflare/";
 
 static std::string iterations_forest = "10";
-//static std::string iterations_n20 = "2000";
+static std::string iterations_n20 = "10";
 //static std::string iterations_sflare = "5000";
 
 TEST(xgbapi,service_train_csv)
@@ -115,5 +115,43 @@ TEST(xgbapi,service_train_csv)
   ASSERT_EQ(ok_str,joutstr);
 
   // assert json blob file is still there (or gone if clear=full)
-  //ASSERT_TRUE(!fileops::file_exists(forest_repo + "/" + JsonAPI::_json_blob_fname));
+  ASSERT_TRUE(fileops::file_exists(forest_repo + "/" + JsonAPI::_json_blob_fname));
+}
+
+TEST(xgbapi,service_train_txt)
+{
+  // create service
+  JsonAPI japi;
+  std::string n20_repo_loc = "n20";
+  mkdir(n20_repo_loc.c_str(),0777);
+  std::string sname = "my_service";
+  std::string jstr = "{\"mllib\":\"xgboost\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  n20_repo_loc + "\"},\"parameters\":{\"input\":{\"connector\":\"txt\"},\"mllib\":{\"nclasses\":20}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
+  ASSERT_EQ(created_str,joutstr);
+
+  // train
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"test_split\":0.2,\"shuffle\":true,\"min_count\":10,\"min_word_length\":3,\"count\":false},\"mllib\":{\"iterations\":" + iterations_n20 + ",\"objective\":\"multi:softprob\"},\"output\":{\"measure\":[\"acc\",\"mcll\",\"f1\"]}},\"data\":[\"" + n20_repo + "news20\"]}";
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  JDoc jd;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_TRUE(jd.HasMember("status"));
+  ASSERT_EQ(201,jd["status"]["code"].GetInt());
+  ASSERT_EQ("Created",jd["status"]["msg"]);
+  ASSERT_TRUE(jd.HasMember("head"));
+  ASSERT_EQ("/train",jd["head"]["method"]);
+  ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
+  ASSERT_TRUE(jd.HasMember("body"));
+  //ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
+  //ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("f1"));
+  ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() >= 0.7);
+  ASSERT_EQ(jd["body"]["measure"]["accp"].GetDouble(),jd["body"]["measure"]["acc"].GetDouble());
+
+  // remove service
+  jstr = "{\"clear\":\"full\"}";
+  joutstr = japi.jrender(japi.service_delete(sname,jstr));
+  ASSERT_EQ(ok_str,joutstr);
+  rmdir(n20_repo_loc.c_str());
 }

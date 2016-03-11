@@ -22,11 +22,10 @@
 #ifndef MODEL_H
 #define MODEL_H
 
-/*#ifndef MLMODEL_TEMPLATE_REPO
-#define MLMODEL_TEMPLATE_REPO "templates/"
-#endif*/
-
 #include <string>
+#include <fstream>
+#include <iostream>
+#include <unordered_map>
 
 namespace dd
 {
@@ -38,8 +37,40 @@ namespace dd
       :_repo(repo) {}
     ~MLModel() {};
 
+    void read_corresp_file()
+    {
+      if (!_corresp.empty())
+      {
+	std::ifstream ff(_corresp);
+	if (!ff.is_open())
+	  std::cerr << "cannot open model corresp file=" << _corresp << std::endl;
+	else{
+	  std::string line;
+	  while(!ff.eof())
+	    {
+	      std::getline(ff,line);
+	      std::string key = line.substr(0,line.find(' '));
+	      if (!key.empty())
+		{
+		  std::string value = line.substr(line.find(' ')+1);
+		  _hcorresp.insert(std::pair<int,std::string>(std::stoi(key),value));
+		}
+	    }
+	}
+      }
+    }
+
+    inline std::string get_hcorresp(const int &i)
+      {
+	if (_hcorresp.empty())
+	  return std::to_string(i);
+	else return _hcorresp[i];
+      }
+    
     std::string _repo; /**< model repository. */
     std::string _mlmodel_template_repo = "templates/";
+    std::unordered_map<int,std::string> _hcorresp; /**< table of class correspondences. */
+    std::string _corresp; /**< file name of the class correspondences (e.g. house / 23) */
   };
 }
 

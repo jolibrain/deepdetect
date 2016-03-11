@@ -31,11 +31,14 @@ namespace dd
   {
     if (ad.has("repository"))
       this->_repo = ad.get("repository").get<std::string>();
+    read_from_repository();
+    read_corresp_file();
   }
 
   int XGBModel::read_from_repository()
   {
     static std::string weights = ".model";
+    static std::string corresp = "corresp";
     std::unordered_set<std::string> lfiles;
     int e = fileops::list_directory(_repo,true,false,lfiles);
     if (e != 0)
@@ -43,7 +46,7 @@ namespace dd
 	LOG(ERROR) << "error reading or listing XGBoost models in repository " << _repo << std::endl;
 	return 1;
       }
-    std::string weightsf;
+    std::string weightsf,correspf;
     int weight_t=-1;
     auto hit = lfiles.begin();
     while(hit!=lfiles.end())
@@ -58,9 +61,12 @@ namespace dd
 		weight_t = wt;
 	      }
 	  }
+	else if ((*hit).find(corresp)!=std::string::npos)
+	  correspf = (*hit);
 	++hit;
       }
     _weights = weightsf;
+    _corresp = correspf;
     return 0;
   }
   

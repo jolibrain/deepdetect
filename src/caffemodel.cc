@@ -120,29 +120,4 @@ namespace dd
 	}*/
     return 0;
   }
-
-  int CaffeModel::read_corresp_file()
-  {
-    if (!_corresp.empty()) //TODO: test for supervised.
-      {
-	std::ifstream ff(_corresp);
-	if (!ff.is_open())
-	  LOG(ERROR) << "cannot open Caffe model corresp file=" << _corresp << std::endl;
-	else{
-	  std::string line;
-	  while(!ff.eof())
-	    {
-	      std::getline(ff,line);
-	      std::string key = line.substr(0,line.find(' '));
-	      if (!key.empty())
-		{
-		  std::string value = line.substr(line.find(' ')+1);
-		  _hcorresp.insert(std::pair<int,std::string>(std::stoi(key),value));
-		}
-	    }
-	}
-      }
-    return 0;
-  }
-
 }

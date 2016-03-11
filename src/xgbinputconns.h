@@ -23,6 +23,7 @@
 #define XGBINPUTCONNS_H
 
 #include "csvinputfileconn.h"
+#include "txtinputfileconn.h"
 #include <data/parser.h> // dmlc
 #include <xgboost/data.h>
 
@@ -34,7 +35,11 @@ namespace dd
     XGBInputInterface() {}
     XGBInputInterface(const XGBInputInterface &xii)
       :_missing(xii._missing),_ids(xii._ids) {}
-    ~XGBInputInterface() {}
+    ~XGBInputInterface()
+      {
+	delete _m;
+	delete _mtest;
+      }
 
   public:
     xgboost::DMatrix *_m = nullptr;
@@ -52,12 +57,8 @@ namespace dd
       :CSVInputFileConn() {}
     CSVXGBInputFileConn(const CSVXGBInputFileConn &i)
       :CSVInputFileConn(i),XGBInputInterface(i),_direct_csv(i._direct_csv) {}
-    ~CSVXGBInputFileConn()
-      {
-	delete _m;
-	delete _mtest;
-      }
-
+    ~CSVXGBInputFileConn() {}
+    
     void init(const APIData &ad)
     {
       if (ad.has("direct_csv") && ad.get("direct_csv").get<bool>())
@@ -81,7 +82,7 @@ namespace dd
     SVMXGBInputFileConn(const SVMXGBInputFileConn &i)
       :InputConnectorStrategy(i),XGBInputInterface(i) {}
     ~SVMXGBInputFileConn() {}
-
+    
     void fillup_parameters(const APIData &ad_input)
     {
       if (ad_input.has("shuffle"))
@@ -103,6 +104,26 @@ namespace dd
     bool _shuffle = false;
     int _seed = -1;
     double _test_split = -1;
+  };
+
+  class TxtXGBInputFileConn : public TxtInputFileConn, public XGBInputInterface
+  {
+  public:
+    TxtXGBInputFileConn()
+      :TxtInputFileConn() {}
+    TxtXGBInputFileConn(const TxtXGBInputFileConn &i)
+      :TxtInputFileConn(i),XGBInputInterface(i) {}
+    ~TxtXGBInputFileConn() {}
+
+    void init(const APIData &ad)
+    {
+      TxtInputFileConn::init(ad);
+    }
+
+    void transform(const APIData &ad);
+
+    xgboost::DMatrix* create_from_mat(const std::vector<TxtEntry<double>*> &txt);
+    
   };
   
 }

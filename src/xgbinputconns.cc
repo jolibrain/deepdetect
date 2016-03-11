@@ -213,5 +213,64 @@ namespace dd
 	_mtest = xgboost::DMatrix::Load(_uris.at(1),silent,dsplit);
       }
   }
+
+  void TxtXGBInputFileConn::transform(const APIData &ad)
+  {
+    try
+      {
+	TxtInputFileConn::transform(ad);
+      }
+    catch (std::exception &e)
+      {
+	throw;
+      }
+
+    if (_m)
+      delete _m;
+    _m = create_from_mat(_txt);
+    destroy_txt_entries(_txt);
+    if (_mtest)
+      delete _mtest;
+    if (!_test_txt.empty())
+      _mtest = create_from_mat(_test_txt);
+    destroy_txt_entries(_test_txt);
+  }
+  
+  xgboost::DMatrix* TxtXGBInputFileConn::create_from_mat(const std::vector<TxtEntry<double>*> &txt)
+  {
+    if (txt.empty())
+      return nullptr;
+    std::unique_ptr<xgboost::data::SimpleCSRSource> source(new xgboost::data::SimpleCSRSource());
+    xgboost::data::SimpleCSRSource& mat = *source;
+    bool nan_missing = xgboost::common::CheckNAN(_missing);
+    mat.info.num_row = txt.size();
+    mat.info.num_col = feature_size()+1; // XXX: +1 otherwise there's a mismatch in xgnoost's simple_dmatrix.cc:151
+    int nid = 0;
+    auto hit = txt.begin();
+    while(hit!=txt.end())
+      {
+	long nelem = 0;
+	TxtBowEntry *tbe = static_cast<TxtBowEntry*>((*hit));
+	mat.info.labels.push_back(tbe->_target);
+	tbe->reset();
+	while(tbe->has_elt())
+	  {
+	    std::string key;
+	    double v;
+	    tbe->get_next_elt(key,v);
+	    if (xgboost::common::CheckNAN(v) && !nan_missing)
+	      throw InputConnectorBadParamException("NaN value in input data matrix, and missing != NaN");
+	    mat.row_data_.push_back(xgboost::RowBatch::Entry(_vocab[key]._pos,v));
+	    ++nelem;
+	  }
+	mat.row_ptr_.push_back(mat.row_ptr_.back()+nelem);
+	_ids.push_back(std::to_string(nid));
+	++nid;
+	++hit;
+      }
+    mat.info.num_nonzero = mat.row_data_.size();
+    xgboost::DMatrix *out = xgboost::DMatrix::Create(std::move(source));
+    return out;
+  }
   
 }
