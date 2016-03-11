@@ -596,7 +596,7 @@ namespace dd
 	      if (_characters)
 		_dv.push_back(std::move(to_datum<TxtCharEntry>(static_cast<TxtCharEntry*>((*hit)))));
 	      else _dv.push_back(std::move(to_datum<TxtBowEntry>(static_cast<TxtBowEntry*>((*hit)))));
-	      _ids.push_back(std::to_string(n));
+	      _ids.push_back((*hit)->_uri);
 	      ++hit;
 	      ++n;
 	    }
