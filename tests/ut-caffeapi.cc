@@ -80,7 +80,7 @@ TEST(caffeapi,service_train)
   ASSERT_EQ("Created",jd["status"]["msg"]);
   ASSERT_TRUE(jd.HasMember("head"));
   ASSERT_EQ("/train",jd["head"]["method"]);
-  ASSERT_TRUE(jd["head"]["time"].GetDouble() > 0);
+  ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
   ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
@@ -148,7 +148,7 @@ TEST(caffeapi,service_train_async_status_delete)
   ASSERT_EQ("OK",jd3["status"]["msg"]);
   ASSERT_TRUE(jd3.HasMember("head"));
   ASSERT_EQ("/train",jd3["head"]["method"]);
-  ASSERT_TRUE(jd3["head"]["time"].GetDouble() > 0);
+  ASSERT_TRUE(jd3["head"]["time"].GetDouble() >= 0);
   ASSERT_EQ("terminated",jd3["head"]["status"]);
   ASSERT_EQ(1,jd3["head"]["job"].GetInt());
 
@@ -201,7 +201,7 @@ TEST(caffeapi,service_train_async_final_status)
 	  ASSERT_EQ("OK",jd2["status"]["msg"]);
 	  ASSERT_TRUE(jd2.HasMember("head"));
 	  ASSERT_EQ("/train",jd2["head"]["method"]);
-	  ASSERT_TRUE(jd2["head"]["time"].GetDouble() > 0);
+	  ASSERT_TRUE(jd2["head"]["time"].GetDouble() >= 0);
 	  ASSERT_EQ("finished",jd2["head"]["status"]);
 	  ASSERT_EQ(1,jd2["head"]["job"]);
 	  ASSERT_TRUE(jd2.HasMember("body"));
@@ -229,7 +229,11 @@ TEST(caffeapi,service_train_async_and_predict)
   ASSERT_EQ(created_str,joutstr);
 
   // train
-  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":" + iterations_mnist + "}}}}";
+  std::string iterations = iterations_mnist;
+#ifndef CPU_ONLY
+  iterations = "1500";
+#endif
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":" + iterations + "}}}}";
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
@@ -284,7 +288,7 @@ TEST(caffeapi,service_predict)
   ASSERT_EQ("Created",jd["status"]["msg"]);
   ASSERT_TRUE(jd.HasMember("head"));
   ASSERT_EQ("/train",jd["head"]["method"]);
-  ASSERT_TRUE(jd["head"]["time"].GetDouble() > 0);
+  ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"].HasMember("measure"));
   ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
@@ -368,7 +372,7 @@ TEST(caffeapi,service_train_csv)
   ASSERT_EQ("Created",jd["status"]["msg"]);
   ASSERT_TRUE(jd.HasMember("head"));
   ASSERT_EQ("/train",jd["head"]["method"]);
-  ASSERT_TRUE(jd["head"]["time"].GetDouble() > 0);
+  ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
   ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0.0);
@@ -471,7 +475,7 @@ TEST(caffeapi,service_train_csv_in_memory)
   ASSERT_EQ("Created",jd["status"]["msg"]);
   ASSERT_TRUE(jd.HasMember("head"));
   ASSERT_EQ("/train",jd["head"]["method"]);
-  ASSERT_TRUE(jd["head"]["time"].GetDouble() > 0);
+  ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
   ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0.0);

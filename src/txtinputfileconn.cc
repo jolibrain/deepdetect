@@ -248,6 +248,7 @@ namespace dd
 	    boost::char_separator<char> sep("\n\t\f\r");
 	    boost::tokenizer<boost::char_separator<char>> tokens(ct,sep);
 	    int seq = 0;
+	    bool prev_space = false;
 	    for (std::string w: tokens)
 	      {
 		char *str = (char*)w.c_str();
@@ -269,9 +270,20 @@ namespace dd
 		  if (c == 0)
 		    continue;
 		  if ((whit=_alphabet.find(c))==_alphabet.end())
-		    tce->add_char(' ');
-		  else tce->add_char(c);
-		  seq++;
+		    {
+		      if (!prev_space)
+			{
+			  tce->add_char(' ');
+			  seq++;
+			  prev_space = true;
+			}
+		    }
+		  else 
+		    {
+		      tce->add_char(c);
+		      seq++;
+		      prev_space = false;
+		    }
 		}
 		while(str_i<end && seq < _sequence);
 	      }

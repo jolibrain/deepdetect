@@ -30,6 +30,7 @@ docker run -d -p 8080:8080 beniz/deepdetect_cpu
 
 ```
 curl http://localhost:8080/info
+
 {"status":{"code":200,"msg":"OK"},"head":{"method":"/info","version":"0.1","branch":"master","commit":"c8556f0b3e7d970bcd9861b910f9eae87cfd4b0c","services":[]}}
 ```
 
@@ -37,11 +38,13 @@ Here is how to do a simple image classification service and prediction test:
 - service creation
 ```
 curl -X PUT "http://localhost:8080/services/imageserv" -d "{\"mllib\":\"caffe\",\"description\":\"image classification service\",\"type\":\"supervised\",\"parameters\":{\"input\":{\"connector\":\"image\"},\"mllib\":{\"nclasses\":1000,\"template\":\"googlenet\"}},\"model\":{\"templates\":\"../templates/caffe/\",\"repository\":\"/opt/models/ggnet/\"}}"
+
 {"status":{"code":201,"msg":"Created"}}
 ```
 - image classification
 ```
 curl -X POST "http://localhost:8080/predict" -d "{\"service\":\"imageserv\",\"parameters\":{\"input\":{\"width\":224,\"height\":224},\"output\":{\"best\":3},\"mllib\":{\"gpu\":false}},\"data\":[\"http://i.ytimg.com/vi/0vxOhd4qlnA/maxresdefault.jpg\"]}"
+
 {"status":{"code":200,"msg":"OK"},"head":{"method":"/predict","time":852.0,"service":"imageserv"},"body":{"predictions":{"uri":"http://i.ytimg.com/vi/0vxOhd4qlnA/maxresdefault.jpg","classes":[{"prob":0.2255125343799591,"cat":"n03868863 oxygen mask"},{"prob":0.20917612314224244,"cat":"n03127747 crash helmet"},{"last":true,"prob":0.07399296760559082,"cat":"n03379051 football helmet"}]}}}
 ```
 
