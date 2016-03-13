@@ -1165,11 +1165,27 @@ namespace dd
       {
 	delete _net;
 	_net = nullptr;
-	if (!test)
-	  _net = new Net<float>(this->_mlmodel._def,caffe::TRAIN);
-	else _net = new Net<float>(this->_mlmodel._def,caffe::TEST);
+	try
+	  {
+	    if (!test)
+	      _net = new Net<float>(this->_mlmodel._def,caffe::TRAIN);
+	    else _net = new Net<float>(this->_mlmodel._def,caffe::TEST);
+	  }
+	catch (std::exception &e)
+	  {
+	    throw;
+	  }
 	LOG(INFO) << "Using pre-trained weights from " << this->_mlmodel._weights << std::endl;
-	_net->CopyTrainedLayersFrom(this->_mlmodel._weights);
+	try
+	  {
+	    _net->CopyTrainedLayersFrom(this->_mlmodel._weights);
+	  }
+	catch (std::exception &e)
+	  {
+	    delete _net;
+	    _net = nullptr;
+	    throw;
+	  }
 	return 0;
       }
     // net definition is missing
@@ -1390,6 +1406,7 @@ namespace dd
 	if (this->_mlmodel._sstate.empty())
 	  {
 	    delete solver;
+	    LOG(ERROR) << "resuming a model requires a .solverstate file in model repository\n";
 	    throw MLLibBadParamException("resuming a model requires a .solverstate file in model repository");
 	  }
 	else 
@@ -1429,7 +1446,6 @@ namespace dd
     std::vector<float> losses;
     this->clear_all_meas_per_iter();
     float smoothed_loss = 0.0;
-    std::vector<Blob<float>*> bottom_vec;
     while(solver->iter_ < solver->param_.max_iter()
 	  && this->_tjob_running.load())
       {
@@ -1479,7 +1495,7 @@ namespace dd
 	      solver->callbacks()[i]->on_start();
 	    }
 	    for (int i = 0; i < solver->param_.iter_size(); ++i)
-	      loss += solver->net_->ForwardBackward(bottom_vec);
+	      loss += solver->net_->ForwardBackward();
 	    loss /= solver->param_.iter_size();
 	  }
 	catch(std::exception &e)
@@ -1614,7 +1630,7 @@ namespace dd
 		throw;
 	      }
 	    float loss = 0.0;
-	    std::vector<Blob<float>*> lresults = net->ForwardPrefilled(&loss);
+	    std::vector<Blob<float>*> lresults = net->Forward(&loss);
 	    int slot = lresults.size() - 1;
 	    if (_regression && _ntargets > 1) // slicing is involved
 	      slot--; // labels appear to be last
@@ -1658,7 +1674,6 @@ namespace dd
 	ad_res.add("batch_size",tresults);
 	if (_regression)
 	  ad_res.add("regression",_regression);
-	//ad_res.add("loss",mean_loss / static_cast<double>(tresults)); // XXX: Caffe ForwardPrefilled call above return loss = 0.0
       }
     SupervisedOutput::measure(ad_res,ad_out,out);
   }
@@ -1668,7 +1683,7 @@ namespace dd
 										   APIData &out)
   {
     std::lock_guard<std::mutex> lock(_net_mutex); // no concurrent calls since the net is not re-instantiated
-        
+    
     // check for net
     if (!_net || _net->phase() == caffe::TRAIN)
       {
@@ -1706,6 +1721,10 @@ namespace dd
       Caffe::set_mode(Caffe::CPU);
 #endif
 
+      std::string extract_layer;
+      if (ad_mllib.has("extract_layer"))
+	extract_layer = ad_mllib.get("extract_layer").get<std::string>();
+      
     TInputConnectorStrategy inputc(this->_inputc);
     APIData cad = ad;
     cad.add("model_repo",this->_mlmodel._repo);
@@ -1725,38 +1744,89 @@ namespace dd
       }
     catch(std::exception &e)
       {
+	delete _net;
+	_net = nullptr;
 	throw;
       }
     
     float loss = 0.0;
-    std::vector<Blob<float>*> results = _net->ForwardPrefilled(&loss);
-    int slot = results.size() - 1;
-    if (_regression)
-      {
-	if (_ntargets > 1)
-	  slot = 1;
-	else slot = 0; // XXX: more in-depth testing required
-      }
-    int scount = results[slot]->count();
-    int scperel = scount / batch_size;
-    int nclasses = scperel;
     TOutputConnectorStrategy tout;
-    for (int j=0;j<batch_size;j++)
+    if (extract_layer.empty())
       {
-	tout.add_result(inputc._ids.at(j),loss);
-	for (int i=0;i<nclasses;i++)
-	  tout.add_cat(inputc._ids.at(j),results[slot]->cpu_data()[j*scperel+i],this->_mlmodel.get_hcorresp(i));
+	std::vector<Blob<float>*> results = _net->Forward(&loss);
+	int slot = results.size() - 1;
+	if (_regression)
+	  {
+	    if (_ntargets > 1)
+	      slot = 1;
+	    else slot = 0; // XXX: more in-depth testing required
+	  }
+	int scount = results[slot]->count();
+	int scperel = scount / batch_size;
+	int nclasses = scperel;
+	std::vector<APIData> vrad;
+	for (int j=0;j<batch_size;j++)
+	  {
+	    APIData rad;
+	    rad.add("uri",inputc._ids.at(j));
+	    rad.add("loss",loss);
+	    std::vector<double> probs;
+	    std::vector<std::string> cats;
+	    for (int i=0;i<nclasses;i++)
+	      {
+		probs.push_back(results[slot]->cpu_data()[j*scperel+i]);
+		cats.push_back(this->_mlmodel.get_hcorresp(i));
+	      }
+	    rad.add("probs",probs);
+	    rad.add("cats",cats);
+	    vrad.push_back(rad);
+	  }
+	tout.add_results(vrad);
+	if (_regression)
+	  {
+	    out.add("regression",true);
+	    out.add("nclasses",nclasses);
+	  }
       }
-    TOutputConnectorStrategy btout(this->_outputc);
-    if (_regression)
-      tout._best = nclasses;
-    tout.best_cats(ad.getobj("parameters").getobj("output"),btout);
-    btout.to_ad(out,_regression);
+    else // unsupervised
+      {
+	std::map<std::string,int> n_layer_names_index = _net->layer_names_index();
+	std::map<std::string,int>::const_iterator lit;
+	if ((lit=n_layer_names_index.find(extract_layer))==n_layer_names_index.end())
+	  throw MLLibBadParamException("unknown extract layer " + extract_layer);
+	int li = (*lit).second;
+	loss = _net->ForwardFromTo(0,li);
+	const std::vector<std::vector<Blob<float>*>>& rresults = _net->top_vecs();
+	std::vector<Blob<float>*> results = rresults.at(li);
+	std::vector<APIData> vrad;
+	int slot = 0;
+	int scount = results[slot]->count();
+	int scperel = scount / batch_size;
+	std::vector<int> vshape = {batch_size,scperel};
+	results[slot]->Reshape(vshape); // reshaping into a rectangle, first side = batch size
+	for (int j=0;j<batch_size;j++)
+	  {
+	    APIData rad;
+	    rad.add("uri",inputc._ids.at(j));
+	    rad.add("loss",loss);
+	    std::vector<double> vals;
+	    int cpos = 0;
+	    for (int c=0;c<results.at(slot)->shape(1);c++)
+	      {
+		vals.push_back(results.at(slot)->cpu_data()[j*scperel+cpos]);
+		++cpos;
+	      }
+	    rad.add("vals",vals);
+	    vrad.push_back(rad);
+	  }
+	tout.add_results(vrad);
+      }
+    tout.finalize(ad.getobj("parameters").getobj("output"),out);
     out.add("status",0);
     
     return 0;
   }
-
+  
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_in_memory_net_and_solver(caffe::SolverParameter &sp,
 													    const APIData &ad,
@@ -2014,8 +2084,11 @@ namespace dd
 	//debug
       }
   }
-
+  
   template class CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>;
   template class CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>;
   template class CaffeLib<TxtCaffeInputFileConn,SupervisedOutput,CaffeModel>;
+  template class CaffeLib<ImgCaffeInputFileConn,UnsupervisedOutput,CaffeModel>;
+  template class CaffeLib<CSVCaffeInputFileConn,UnsupervisedOutput,CaffeModel>;
+  template class CaffeLib<TxtCaffeInputFileConn,UnsupervisedOutput,CaffeModel>;
 }

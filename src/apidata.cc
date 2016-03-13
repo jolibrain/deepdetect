@@ -60,6 +60,12 @@ namespace dd
     return vout();
   }
   
+  vout visitor_vad::process(const std::vector<bool> &vd)
+  {
+    (void)vd;
+    return vout();
+  }
+
   vout visitor_vad::process(const std::vector<std::string> &vs)
   {
     (void)vs;
@@ -114,6 +120,15 @@ namespace dd
 		    for (rapidjson::SizeType i=0;i<jarr.Size();i++)
 		      {
 			vd.push_back(jarr[i].GetInt());
+		      }
+		    add(cit->name.GetString(),vd);
+		  }
+		else if (jarr[0].IsBool())
+		  {
+		    std::vector<bool> vd;
+		    for (rapidjson::SizeType i=0;i<jarr.Size();i++)
+		      {
+			vd.push_back(jarr[i].GetBool());
 		      }
 		    add(cit->name.GetString(),vd);
 		  }

@@ -40,7 +40,10 @@ namespace dd
   /* service types as variant type. */
   typedef mapbox::util::variant<MLService<CaffeLib,ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>,
     MLService<CaffeLib,CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>,
-    MLService<CaffeLib,TxtCaffeInputFileConn,SupervisedOutput,CaffeModel>> mls_variant_type;
+    MLService<CaffeLib,TxtCaffeInputFileConn,SupervisedOutput,CaffeModel>,
+    MLService<CaffeLib,ImgCaffeInputFileConn,UnsupervisedOutput,CaffeModel>,
+    MLService<CaffeLib,CSVCaffeInputFileConn,UnsupervisedOutput,CaffeModel>,
+    MLService<CaffeLib,TxtCaffeInputFileConn,UnsupervisedOutput,CaffeModel>> mls_variant_type;
 
   class ServiceForbiddenException : public std::exception
   {

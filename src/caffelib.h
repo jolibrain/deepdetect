@@ -130,7 +130,7 @@ namespace dd
     //TODO: status ?
 
     /*- local functions -*/
-     /**
+      /**
       * \brief test net
       * @param ad root data object
       * @param inputc input connector
@@ -203,7 +203,7 @@ namespace dd
       int _ntargets = 0; /**< number of classification or regression targets. */
       std::mutex _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as net is not re-instantiated. Use batches instead. */
     };
-  
+
 }
 
 #endif

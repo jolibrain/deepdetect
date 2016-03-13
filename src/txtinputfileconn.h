@@ -73,6 +73,7 @@ namespace dd
     bool has_elt() const { return false; }
     
     float _target = -1; /**< class target in training mode. */
+    std::string _uri;
   };
   
   class TxtBowEntry: public TxtEntry<double>
@@ -251,6 +252,7 @@ namespace dd
 	    {
 	      throw InputConnectorBadParamException("no data for text in " + u);
 	    }
+	  _txt.back()->_uri = u;
 	}
       
       if (_train)
