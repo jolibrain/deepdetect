@@ -138,6 +138,7 @@ namespace dd
     
     xgboost::CLIParam _params;
     xgboost::Learner *_learner = nullptr; /**< learner for prediction. */
+    std::mutex _learner_mutex; /**< mutex around the learner, e.g.. no concurrent predict calls as learner is not re-instantiated. Use batches instead. */
     };
 
 }

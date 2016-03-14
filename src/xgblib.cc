@@ -84,12 +84,12 @@ namespace dd
   int XGBLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::train(const APIData &ad,
 									       APIData &out)
   {
-    
     //TODO: any check on model here
     this->_mlmodel.read_from_repository();
     
-    //TODO: mutex if train and predict calls need to be isolated
-
+    // mutex if train and predict calls need to be isolated
+    std::lock_guard<std::mutex> lock(_learner_mutex);
+    
     TInputConnectorStrategy inputc(this->_inputc);
     inputc._train = true;    
     APIData cad = ad;
@@ -338,10 +338,9 @@ namespace dd
   int XGBLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::predict(const APIData &ad,
 										   APIData &out)
   {
-    //TODO: mutex since using in-memory learner
-
-    //TODO: parameters
-
+    // mutex since using in-memory learner
+    std::lock_guard<std::mutex> lock(_learner_mutex);
+    
     // data
     TInputConnectorStrategy inputc(this->_inputc);
     APIData cad = ad;
