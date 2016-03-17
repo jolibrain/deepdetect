@@ -95,7 +95,7 @@ namespace dd
       throw MLLibBadParamException("failed to create destination deploy solver file " + dest_deploy_net);
 
     // if mlp template, set the net structure as number of layers.
-    if (model_tmpl == "mlp" || model_tmpl == "mlp_db")
+    if (model_tmpl == "mlp" || model_tmpl == "mlp_db" || model_tmpl == "lregression")
       {
 	caffe::NetParameter net_param,deploy_net_param;
 	caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
@@ -155,6 +155,7 @@ namespace dd
 												   caffe::NetParameter &net_param,
 												   caffe::NetParameter &deploy_net_param)
   {
+    std::string model_tmpl = ad.get("template").get<std::string>();
     std::vector<int> layers = {50};
     std::string activation = "ReLU";
     double elu_alpha = 1.0;
@@ -200,7 +201,9 @@ namespace dd
       {
 	if (l == 0)
 	  {
-	    lparam = net_param.mutable_layer(6);
+	    if (model_tmpl != "lregression")
+	      lparam = net_param.mutable_layer(6);
+	    else lparam = net_param.mutable_layer(2);
 	    if (!cnclasses) // if unknown we keep the default one
 	      nclasses = lparam->mutable_inner_product_param()->num_output();
 	    else nclasses = cnclasses;
@@ -275,10 +278,14 @@ namespace dd
 		ldparam->set_backend(caffe::DataParameter_DB_LMDB);
 	      }
 	  }
-	else if (l > 0)
+	else if (l > 0 && model_tmpl != "lregression")
 	  {
 	    prec_ip = "ip" + std::to_string(l-1);
 	    last_ip = "ip" + std::to_string(l);
+	  }
+	if (model_tmpl == "lregression") // one pass for lregression
+	  {
+	    return;
 	  }
 
 	if (rl < max_rl)
