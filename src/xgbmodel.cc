@@ -26,7 +26,7 @@
 namespace dd
 {
 
-  XGBModel::XGBModel::XGBModel(const APIData &ad)
+  XGBModel::XGBModel(const APIData &ad)
     :MLModel()
   {
     if (ad.has("repository"))
