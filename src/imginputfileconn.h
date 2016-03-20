@@ -290,5 +290,6 @@ namespace dd
 }
 
 #include "caffeinputconns.h"
+#include "tfinputconns.h"
 
 #endif

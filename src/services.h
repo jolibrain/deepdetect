@@ -30,6 +30,7 @@
 #include "txtinputfileconn.h"
 #include "outputconnectorstrategy.h"
 #include "caffelib.h"
+#include "tflib.h"
 #include <vector>
 #include <mutex>
 #include <chrono>
@@ -43,7 +44,9 @@ namespace dd
     MLService<CaffeLib,TxtCaffeInputFileConn,SupervisedOutput,CaffeModel>,
     MLService<CaffeLib,ImgCaffeInputFileConn,UnsupervisedOutput,CaffeModel>,
     MLService<CaffeLib,CSVCaffeInputFileConn,UnsupervisedOutput,CaffeModel>,
-    MLService<CaffeLib,TxtCaffeInputFileConn,UnsupervisedOutput,CaffeModel>> mls_variant_type;
+    MLService<CaffeLib,TxtCaffeInputFileConn,UnsupervisedOutput,CaffeModel>,
+    MLService<TFLib,ImgTFInputFileConn,SupervisedOutput,TFModel>,
+    MLService<TFLib,ImgTFInputFileConn,UnsupervisedOutput,TFModel>> mls_variant_type;
 
   class ServiceForbiddenException : public std::exception
   {

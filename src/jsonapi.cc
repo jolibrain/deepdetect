@@ -325,6 +325,10 @@ namespace dd
 		return dd_service_bad_request_1006();
 	      }
 	  }
+	else if (mllib == "tensorflow" || mllib == "tf")
+	  {
+	    TFModel tfmodel(ad_model);
+	  }
 	else
 	  {
 	    return dd_unknown_library_1000();
