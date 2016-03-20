@@ -194,7 +194,7 @@ namespace dd
       int img_count = 0;
       int catch_read = 0;
       std::string catch_msg;
-      std::vector<std::string> uris(_uris.size());
+      std::vector<std::string> uris;
 #pragma omp parallel for
       for (size_t i=0;i<_uris.size();i++)
 	{
@@ -225,11 +225,14 @@ namespace dd
 	  cv::Size size(_width,_height);
 	  cv::Mat image;
 	  cv::resize(dimg._ctype._img,image,size,0,0,CV_INTER_CUBIC);
-	  _images.push_back(image);
-	  if (!dimg._ctype._b64)
-	    uris[i] = u;
-	  else uris[i] = std::to_string(img_count);
-	  ++img_count;
+#pragma omp critical
+	  {
+	    _images.push_back(image);
+	    if (!dimg._ctype._b64)
+	      uris.push_back(u);
+	    else uris.push_back(std::to_string(img_count));
+	    ++img_count;
+	  }
 	}
       if (catch_read)
 	throw InputConnectorBadParamException(catch_msg);
@@ -287,5 +290,6 @@ namespace dd
 }
 
 #include "caffeinputconns.h"
+#include "tfinputconns.h"
 
 #endif

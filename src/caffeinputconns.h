@@ -596,7 +596,7 @@ namespace dd
 	      if (_characters)
 		_dv.push_back(std::move(to_datum<TxtCharEntry>(static_cast<TxtCharEntry*>((*hit)))));
 	      else _dv.push_back(std::move(to_datum<TxtBowEntry>(static_cast<TxtBowEntry*>((*hit)))));
-	      _ids.push_back(std::to_string(n));
+	      _ids.push_back((*hit)->_uri);
 	      ++hit;
 	      ++n;
 	    }
@@ -682,7 +682,6 @@ namespace dd
 		  vals.push_back((*whit).second);
 		else vals.push_back(-1);
 	      }
-	    std::reverse(vals.begin(),vals.end()); // reverse quantization helps
 	    /*if (vals.size() > _sequence)
 	      std::cerr << "more characters than sequence / " << vals.size() << " / sequence=" << _sequence << std::endl;*/
 	    for (int c=0;c<_sequence;c++)

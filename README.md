@@ -1,4 +1,4 @@
-## DeepDetect : Open Source API & Deep Learning Server
+## DeepDetect : Open Source Deep Learning Server & API
 
 [![Join the chat at https://gitter.im/beniz/deepdetect](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/beniz/deepdetect?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
@@ -6,9 +6,18 @@ DeepDetect (http://www.deepdetect.com/) is a machine learning API and server wri
 
 DeepDetect relies on external machine learning libraries through a very generic and flexible API. At the moment it has support for the deep learning library [Caffe](https://github.com/BVLC/caffe).
 
-#### Main functionalities:
+#### Main functionalities
 
 DeepDetect implements support for supervised deep learning of images and other data, with focus on simplicity and ease of use, test and connection into existing applications.
+
+#### Supported Platforms
+
+The reference platform with support is **Ubuntu 14.04 LTS**.
+
+Supported images that come with pre-trained image classification deep (residual) neural nets:
+
+- **docker images** for CPU and GPU machines are available at https://hub.docker.com/r/beniz/deepdetect_gpu/, see https://github.com/beniz/deepdetect/tree/master/docker/README.md for details on how to use them.
+- For **Amazon AMI** see https://github.com/beniz/deepdetect/issues/5#issuecomment-188464262
 
 #### Quickstart
 Setup an image classifier API service in a few minutes:
@@ -31,7 +40,7 @@ Current features include:
 - range of built-in model assessment measures (e.g. F1, multiclass log loss, ...)
 - no database dependency and sync, all information and model parameters organized and available from the filesystem
 - flexible template output format to simplify connection to external applications
-- templates for the most useful neural architectures (e.g. Googlenet, Alexnet, convnet, character-based convnet, mlp, logistic regression)
+- templates for the most useful neural architectures (e.g. Googlenet, Alexnet, ResNet, convnet, character-based convnet, mlp, logistic regression)
 
 ##### Documentation
 
@@ -67,9 +76,13 @@ By default DeepDetect automatically relies on a modified version of Caffe, https
 
 The code makes use of C++ policy design for modularity, performance and putting the maximum burden on the checks at compile time. The implementation uses many features from C++11.
 
-##### Visual Demo
+##### Demo
 
+- Image classification Web interface:
 HTML and javascript classification image demo in [demo/imgdetect](https://github.com/beniz/deepdetect/tree/master/demo/imgdetect)
+
+- Image similarity search:
+Python script for indexing and searching images is in [demo/imgsearch](https://github.com/beniz/deepdetect/tree/master/demo/imgsearch)
 
 ##### Examples
 
@@ -85,7 +98,7 @@ DeepDetect is designed and implemented by Emmanuel Benazera <beniz@droidnik.fr>.
 
 ### Build
 
-Below are instructions for Linux systems.
+Below are instructions for Ubuntu 14.04 LTS. For other Linux and Unix systems, steps may differ, CUDA, Caffe and other libraries may prove difficult to setup.
 
 Beware of dependencies, typically on Debian/Ubuntu Linux, do:
 ```
