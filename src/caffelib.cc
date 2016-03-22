@@ -119,11 +119,16 @@ namespace dd
 	caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
 	caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
 	if ((ad.has("rotate") && ad.get("rotate").get<bool>()) 
-	    || (ad.has("mirror") && ad.get("mirror").get<bool>()))
+	    || (ad.has("mirror") && ad.get("mirror").get<bool>())
+	    || (ad.has("crop_size")))
 	  {
 	    caffe::LayerParameter *lparam = net_param.mutable_layer(0); // data input layer
-	    lparam->mutable_transform_param()->set_mirror(ad.get("mirror").get<bool>());
-	    lparam->mutable_transform_param()->set_rotate(ad.get("rotate").get<bool>());
+	    if (ad.has("rotate"))
+	      lparam->mutable_transform_param()->set_mirror(ad.get("mirror").get<bool>());
+	    if (ad.has("mirror"))
+	      lparam->mutable_transform_param()->set_rotate(ad.get("rotate").get<bool>());
+	    if (ad.has("crop_size"))
+	      lparam->mutable_transform_param()->set_crop_size(ad.get("crop_size").get<int>());
 	  }
 	// adapt number of neuron output
 	update_protofile_classes(net_param);
