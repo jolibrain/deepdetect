@@ -64,6 +64,7 @@ namespace dd
     std::vector<caffe::Datum> _dv_test; /**< test input datum vector, when applicable in training mode */
     std::vector<std::string> _ids; /**< input ids (e.g. image ids) */
     bool _flat1dconv = false; /**< whether a 1D convolution model. */
+    bool _has_mean_file = false; /**< image model mean.binaryproto. */
   };
 
   /**
@@ -124,6 +125,8 @@ namespace dd
       if (!_train)
 	{
 	  _model_repo = ad.get("model_repo").get<std::string>();
+	  if (ad.has("has_mean_file"))
+	    _has_mean_file = ad.get("has_mean_file").get<bool>();
 	  try
 	    {
 	      ImgInputFileConn::transform(ad);
@@ -134,7 +137,7 @@ namespace dd
 	    }
 	  float *mean = nullptr;
 	  std::string meanfullname = _model_repo + "/" + _meanfname;
-	  if (_data_mean.count() == 0 && fileops::file_exists(meanfullname))
+	  if (_data_mean.count() == 0 && _has_mean_file)
 	    {
 	      caffe::BlobProto blob_proto;
 	      caffe::ReadProtoFromBinaryFile(meanfullname.c_str(),&blob_proto);
@@ -145,6 +148,8 @@ namespace dd
 	    {      
 	      caffe::Datum datum;
 	      caffe::CVMatToDatum(this->_images.at(i),&datum);
+	      if (!_test_labels.empty())
+		datum.set_label(_test_labels.at(i));
 	      if (_data_mean.count() != 0)
 		{
 		  int height = datum.height();
@@ -160,7 +165,7 @@ namespace dd
 			}
 		  datum.clear_data();
 		}
-	      _dv.push_back(datum);
+	      _dv_test.push_back(datum);
 	      _ids.push_back(this->_uris.at(i));
 	    }
 	}
@@ -357,26 +362,31 @@ namespace dd
 	    }
 	  
 	  // transform to datum by filling up float_data
-	  auto hit = _csvdata.begin();
-	  while(hit!=_csvdata.end())
+	  if (_train)
 	    {
-	      if (_label.size() == 1)
-		_dv.push_back(to_datum((*hit)._v));
-	      else // multi labels
+	      auto hit = _csvdata.begin();
+	      while(hit!=_csvdata.end())
 		{
-		  caffe::Datum dat = to_datum((*hit)._v,true);
-		  for (size_t i=0;i<_label_pos.size();i++) // concat labels and slice them out in the network itself
+		  if (_label.size() == 1)
+		    _dv.push_back(to_datum((*hit)._v));
+		  else // multi labels
 		    {
-		      dat.add_float_data(static_cast<float>((*hit)._v.at(_label_pos[i])));
+		      caffe::Datum dat = to_datum((*hit)._v,true);
+		      for (size_t i=0;i<_label_pos.size();i++) // concat labels and slice them out in the network itself
+			{
+			  dat.add_float_data(static_cast<float>((*hit)._v.at(_label_pos[i])));
+			}
+		      dat.set_channels(dat.channels()+_label.size());
+		      _dv.push_back(dat);
 		    }
-		  dat.set_channels(dat.channels()+_label.size());
-		  _dv.push_back(dat);
+		  _ids.push_back((*hit)._str);
+		  ++hit;
 		}
-	      _ids.push_back((*hit)._str);
-	      ++hit;
 	    }
-	  _csvdata.clear();
-	  hit = _csvdata_test.begin();
+	  if (!_train)
+	    _csvdata_test = std::move(_csvdata);
+	  else _csvdata.clear();
+	  auto hit = _csvdata_test.begin();
 	  while(hit!=_csvdata_test.end())
 	    {
 	      // no ids taken on the test set
@@ -392,6 +402,8 @@ namespace dd
 		  dat.set_channels(dat.channels()+_label.size());
 		  _dv_test.push_back(dat);
 		}
+	      if (!_train)
+		_ids.push_back((*hit)._str);
 	      ++hit;
 	    }
 	  _csvdata_test.clear();
@@ -589,23 +601,30 @@ namespace dd
 	{
 	  TxtInputFileConn::transform(ad);
 	  
-	  int n = 0;
-	  auto hit = _txt.begin();
-	  while(hit!=_txt.end())
+	  if (_train)
 	    {
-	      if (_characters)
-		_dv.push_back(std::move(to_datum<TxtCharEntry>(static_cast<TxtCharEntry*>((*hit)))));
-	      else _dv.push_back(std::move(to_datum<TxtBowEntry>(static_cast<TxtBowEntry*>((*hit)))));
-	      _ids.push_back(std::to_string(n));
-	      ++hit;
-	      ++n;
+	      auto hit = _txt.begin();
+	      while(hit!=_txt.end())
+		{
+		  if (_characters)
+		    _dv.push_back(std::move(to_datum<TxtCharEntry>(static_cast<TxtCharEntry*>((*hit)))));
+		  else _dv.push_back(std::move(to_datum<TxtBowEntry>(static_cast<TxtBowEntry*>((*hit)))));
+		  _ids.push_back((*hit)->_uri);
+		  ++hit;
+		}
 	    }
-	  hit = _test_txt.begin();
+	  if (!_train)
+	    _test_txt = std::move(_txt);
+
+	  int n = 0;
+	  auto hit = _test_txt.begin();
 	  while(hit!=_test_txt.end())
 	    {
 	      if (_characters)
 		_dv_test.push_back(std::move(to_datum<TxtCharEntry>(static_cast<TxtCharEntry*>((*hit)))));
 	      else _dv_test.push_back(std::move(to_datum<TxtBowEntry>(static_cast<TxtBowEntry*>((*hit)))));
+	      if (!_train)
+		_ids.push_back(std::to_string(n));
 	      ++hit;
 	      ++n;
 	    }
@@ -682,7 +701,6 @@ namespace dd
 		  vals.push_back((*whit).second);
 		else vals.push_back(-1);
 	      }
-	    std::reverse(vals.begin(),vals.end()); // reverse quantization helps
 	    /*if (vals.size() > _sequence)
 	      std::cerr << "more characters than sequence / " << vals.size() << " / sequence=" << _sequence << std::endl;*/
 	    for (int c=0;c<_sequence;c++)

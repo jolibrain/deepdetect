@@ -95,7 +95,7 @@ namespace dd
       throw MLLibBadParamException("failed to create destination deploy solver file " + dest_deploy_net);
 
     // if mlp template, set the net structure as number of layers.
-    if (model_tmpl == "mlp" || model_tmpl == "mlp_db")
+    if (model_tmpl == "mlp" || model_tmpl == "mlp_db" || model_tmpl == "lregression")
       {
 	caffe::NetParameter net_param,deploy_net_param;
 	caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
@@ -119,11 +119,16 @@ namespace dd
 	caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
 	caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
 	if ((ad.has("rotate") && ad.get("rotate").get<bool>()) 
-	    || (ad.has("mirror") && ad.get("mirror").get<bool>()))
+	    || (ad.has("mirror") && ad.get("mirror").get<bool>())
+	    || (ad.has("crop_size")))
 	  {
 	    caffe::LayerParameter *lparam = net_param.mutable_layer(0); // data input layer
-	    lparam->mutable_transform_param()->set_mirror(ad.get("mirror").get<bool>());
-	    lparam->mutable_transform_param()->set_rotate(ad.get("rotate").get<bool>());
+	    if (ad.has("rotate"))
+	      lparam->mutable_transform_param()->set_mirror(ad.get("mirror").get<bool>());
+	    if (ad.has("mirror"))
+	      lparam->mutable_transform_param()->set_rotate(ad.get("rotate").get<bool>());
+	    if (ad.has("crop_size"))
+	      lparam->mutable_transform_param()->set_crop_size(ad.get("crop_size").get<int>());
 	  }
 	// adapt number of neuron output
 	update_protofile_classes(net_param);
@@ -155,6 +160,7 @@ namespace dd
 												   caffe::NetParameter &net_param,
 												   caffe::NetParameter &deploy_net_param)
   {
+    std::string model_tmpl = ad.get("template").get<std::string>();
     std::vector<int> layers = {50};
     std::string activation = "ReLU";
     double elu_alpha = 1.0;
@@ -200,7 +206,9 @@ namespace dd
       {
 	if (l == 0)
 	  {
-	    lparam = net_param.mutable_layer(6);
+	    if (model_tmpl != "lregression")
+	      lparam = net_param.mutable_layer(6);
+	    else lparam = net_param.mutable_layer(2);
 	    if (!cnclasses) // if unknown we keep the default one
 	      nclasses = lparam->mutable_inner_product_param()->num_output();
 	    else nclasses = cnclasses;
@@ -275,10 +283,14 @@ namespace dd
 		ldparam->set_backend(caffe::DataParameter_DB_LMDB);
 	      }
 	  }
-	else if (l > 0)
+	else if (l > 0 && model_tmpl != "lregression")
 	  {
 	    prec_ip = "ip" + std::to_string(l-1);
 	    last_ip = "ip" + std::to_string(l);
+	  }
+	if (model_tmpl == "lregression") // one pass for lregression
+	  {
+	    return;
 	  }
 
 	if (rl < max_rl)
@@ -1248,7 +1260,7 @@ namespace dd
     inputc._train = true;
     APIData cad = ad;
     cad.add("model_repo",this->_mlmodel._repo); // pass the model repo so that in case of images, it is known where to save the db
-
+    cad.add("has_mean_file",this->_mlmodel._has_mean_file);
     try
       {
 	inputc.transform(cad);
@@ -1683,7 +1695,7 @@ namespace dd
 										   APIData &out)
   {
     std::lock_guard<std::mutex> lock(_net_mutex); // no concurrent calls since the net is not re-instantiated
-    
+
     // check for net
     if (!_net || _net->phase() == caffe::TRAIN)
       {
@@ -1693,9 +1705,43 @@ namespace dd
 	else if (cm == 2)
 	  throw MLLibBadParamException("no deploy file in " + this->_mlmodel._repo + " for initializing the net");
       }
-    
-    // parameters
+
+    TInputConnectorStrategy inputc(this->_inputc);
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
+    APIData ad_output = ad.getobj("parameters").getobj("output");
+    if (ad_output.has("measure"))
+      {
+	APIData cad = ad;
+	cad.add("model_repo",this->_mlmodel._repo);
+	cad.add("has_mean_file",this->_mlmodel._has_mean_file);
+	try
+	  {
+	    inputc.transform(cad);
+	  }
+	catch (std::exception &e)
+	  {
+	    throw;
+	  }
+
+	int batch_size = inputc.test_batch_size();
+	if (ad_mllib.has("net"))
+	  {
+	    APIData ad_net = ad_mllib.getobj("net");
+	    if (ad_net.has("test_batch_size"))
+	  batch_size = ad_net.get("test_batch_size").get<int>();
+	  }
+
+	bool has_mean_file = this->_mlmodel._has_mean_file;
+	test(_net,ad,inputc,batch_size,has_mean_file,out);
+	APIData out_meas = out.getobj("measure");
+	out_meas.erase("train_loss");
+	out_meas.erase("iteration");
+	std::vector<APIData> vad = {out_meas};
+	out.add("measure",vad);
+	return 0;
+      }
+
+    // parameters
 #ifndef CPU_ONLY
     if (ad_mllib.has("gpu"))
       {
@@ -1725,9 +1771,9 @@ namespace dd
       if (ad_mllib.has("extract_layer"))
 	extract_layer = ad_mllib.get("extract_layer").get<std::string>();
       
-    TInputConnectorStrategy inputc(this->_inputc);
     APIData cad = ad;
     cad.add("model_repo",this->_mlmodel._repo);
+    cad.add("has_mean_file",this->_mlmodel._has_mean_file);
     try
       {
 	inputc.transform(cad);
@@ -1736,11 +1782,17 @@ namespace dd
       {
 	throw;
       }
-    int batch_size = inputc.batch_size();
+    int batch_size = inputc.test_batch_size();
+    if (ad_mllib.has("net"))
+      {
+	APIData ad_net = ad_mllib.getobj("net");
+	if (ad_net.has("test_batch_size"))
+	  batch_size = ad_net.get("test_batch_size").get<int>();
+      }
     try
       {
 	boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->set_batch_size(batch_size);
-	boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(inputc._dv);
+	boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(inputc._dv_test);
       }
     catch(std::exception &e)
       {
@@ -1751,7 +1803,7 @@ namespace dd
     
     float loss = 0.0;
     TOutputConnectorStrategy tout;
-    if (extract_layer.empty())
+    if (extract_layer.empty()) // supervised
       {
 	std::vector<Blob<float>*> results = _net->Forward(&loss);
 	int slot = results.size() - 1;

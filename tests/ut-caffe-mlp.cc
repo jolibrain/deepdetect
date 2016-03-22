@@ -566,7 +566,7 @@ TEST(caffelib,configure_convnet_template_n_1D)
   succ = caffe::ReadProtoFromTextFile(doconvnet_file,&deploy_net_param);
   ASSERT_TRUE(succ);
 
-  ASSERT_EQ(26,net_param.layer_size());
+  ASSERT_EQ(27,net_param.layer_size());
   caffe::LayerParameter *lparam = net_param.mutable_layer(0);
   ASSERT_EQ("Data",lparam->type());
   ASSERT_TRUE(lparam->mutable_transform_param()->mean_file().empty());
@@ -579,7 +579,7 @@ TEST(caffelib,configure_convnet_template_n_1D)
   ASSERT_EQ("Convolution",lparam->type());
   ASSERT_EQ(256,lparam->mutable_convolution_param()->num_output());
   ASSERT_EQ(7,lparam->mutable_convolution_param()->kernel_h());
-  ASSERT_EQ(1,lparam->mutable_convolution_param()->kernel_w());
+  ASSERT_EQ(69,lparam->mutable_convolution_param()->kernel_w());
   lparam = net_param.mutable_layer(4);
   ASSERT_EQ("Pooling",lparam->type());
   ASSERT_EQ(3,lparam->mutable_pooling_param()->stride_h());
@@ -592,7 +592,7 @@ TEST(caffelib,configure_convnet_template_n_1D)
   ASSERT_EQ(3,lparam->mutable_convolution_param()->kernel_h());
   ASSERT_EQ(1,lparam->mutable_convolution_param()->kernel_w());
   
-  ASSERT_EQ(22,deploy_net_param.layer_size());
+  ASSERT_EQ(23,deploy_net_param.layer_size());
   lparam = deploy_net_param.mutable_layer(0);
   ASSERT_EQ("MemoryData",lparam->type());
   ASSERT_EQ(1,lparam->mutable_memory_data_param()->channels());
@@ -602,7 +602,7 @@ TEST(caffelib,configure_convnet_template_n_1D)
   ASSERT_EQ("Convolution",lparam->type());
   ASSERT_EQ(256,lparam->mutable_convolution_param()->num_output());
   ASSERT_EQ(7,lparam->mutable_convolution_param()->kernel_h());
-  ASSERT_EQ(1,lparam->mutable_convolution_param()->kernel_w());
+  ASSERT_EQ(69,lparam->mutable_convolution_param()->kernel_w());
   lparam = deploy_net_param.mutable_layer(3);
   ASSERT_EQ("Pooling",lparam->type());
   ASSERT_EQ(3,lparam->mutable_pooling_param()->stride_h());

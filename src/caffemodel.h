@@ -45,6 +45,7 @@ namespace dd
     std::string _solver; /**< solver description file, included here as part of the model, very specific to Caffe. */
     std::string _sstate; /**< current solver state, useful for resuming training. */
     std::string _model_template; /**< model template name, if any. */
+    bool _has_mean_file = false; /**< whether a mean.binaryproto file is available, for image models only. */
   };
   
 }
