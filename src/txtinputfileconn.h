@@ -73,6 +73,7 @@ namespace dd
     bool has_elt() const { return false; }
     
     float _target = -1; /**< class target in training mode. */
+    std::string _uri;
   };
   
   class TxtBowEntry: public TxtEntry<double>
@@ -203,6 +204,8 @@ namespace dd
 	build_alphabet();
       if (ad_input.has("sequence"))
 	_sequence = ad_input.get("sequence").get<int>();
+      if (ad_input.has("read_forward"))
+	_seq_forward = ad_input.get("read_forward").get<bool>();
     }
 
     int feature_size() const
@@ -251,6 +254,7 @@ namespace dd
 	    {
 	      throw InputConnectorBadParamException("no data for text in " + u);
 	    }
+	  _txt.back()->_uri = u;
 	}
       
       if (_train)
@@ -325,6 +329,7 @@ namespace dd
     std::string _alphabet_str = "abcdefghijklmnopqrstuvwxyz0123456789,;.!?:'\"/\\|_@#$%^&*~`+-=<>()[]{}";
     std::unordered_map<uint32_t,int> _alphabet; /**< character-level alphabet. */
     int _sequence = 60; /**< sequence size when using character-level features. */
+    bool _seq_forward = false; /**< whether to read character-based sequences forward. */
     
     // internals
     std::unordered_map<std::string,Word> _vocab; /**< string to word stats, including word */

@@ -426,6 +426,7 @@ namespace dd
     try
       {
 	sname = d["service"].GetString();
+	std::transform(sname.begin(),sname.end(),sname.begin(),::tolower);
 	if (!this->service_exists(sname))
 	  return dd_service_not_found_1002();
       }
@@ -532,6 +533,7 @@ namespace dd
     try
       {
 	sname = d["service"].GetString();
+	std::transform(sname.begin(),sname.end(),sname.begin(),::tolower);
 	if (!this->service_exists(sname))
 	  return dd_service_not_found_1002();
       }
@@ -625,6 +627,7 @@ namespace dd
     try
       {
 	sname = d["service"].GetString();
+	std::transform(sname.begin(),sname.end(),sname.begin(),::tolower);
 	if (!this->service_exists(sname))
 	  return dd_service_not_found_1002();
       }
@@ -735,6 +738,7 @@ namespace dd
     try
       {
 	sname = d["service"].GetString();
+	std::transform(sname.begin(),sname.end(),sname.begin(),::tolower);
 	if (!this->service_exists(sname))
 	  return dd_service_not_found_1002();
       }
