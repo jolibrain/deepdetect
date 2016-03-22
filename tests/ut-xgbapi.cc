@@ -72,8 +72,6 @@ TEST(xgbapi,service_train_csv)
   ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"].HasMember("measure"));
-  /*ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
-    ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0.0);*/
   ASSERT_TRUE(jd["body"]["measure"].HasMember("f1"));
   ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() > 0.7);
   ASSERT_EQ(jd["body"]["measure"]["accp"].GetDouble(),jd["body"]["measure"]["acc"].GetDouble());
@@ -143,12 +141,22 @@ TEST(xgbapi,service_train_txt)
   ASSERT_EQ("/train",jd["head"]["method"]);
   ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
   ASSERT_TRUE(jd.HasMember("body"));
-  //ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
-  //ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
   ASSERT_TRUE(jd["body"]["measure"].HasMember("f1"));
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() >= 0.7);
   ASSERT_EQ(jd["body"]["measure"]["accp"].GetDouble(),jd["body"]["measure"]["acc"].GetDouble());
 
+  // predict with measure
+  std::string jpredictstr = "{\"service\":\"" + sname + "\",\"parameters\":{\"mllib\":{\"gpu\":true,\"net\":{\"test_batch_size\":10}},\"output\":{\"measure\":[\"f1\"]}},\"data\":[\"" + n20_repo +"news20\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_TRUE(jd.HasMember("status"));
+  ASSERT_EQ(200,jd["status"]["code"].GetInt());
+  ASSERT_TRUE(jd.HasMember("body"));
+  ASSERT_TRUE(jd["body"].HasMember("measure"));
+  ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() >= 0.6);
+  
   // remove service
   jstr = "{\"clear\":\"full\"}";
   joutstr = japi.jrender(japi.service_delete(sname,jstr));

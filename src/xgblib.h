@@ -135,6 +135,7 @@ namespace dd
     bool _regression = false; /**< whether the net acts as a regressor. */
     int _ntargets = 0; /**< number of classification or regression targets. */
     std::string _booster = "gbtree"; /**< xgb booster, optional. */
+    std::string _objective = "multi:softprob"; /**< xgb service objective. */
     
     xgboost::CLIParam _params;
     xgboost::Learner *_learner = nullptr; /**< learner for prediction. */

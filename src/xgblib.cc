@@ -105,7 +105,7 @@ namespace dd
     
       // parameters
       int num_feature = 0; /**< feature dimension used in boosting, optional. */
-      std::string objective = "multi:softprob";
+      _objective = "multi:softprob";
       double base_score = 0.5;
       std::string eval_metric = "merror";
       int test_interval = 1;
@@ -115,7 +115,7 @@ namespace dd
       if (ad_mllib.has("booster"))
 	_booster = ad_mllib.get("booster").get<std::string>();
       if (ad_mllib.has("objective"))
-	objective = ad_mllib.get("objective").get<std::string>();
+	_objective = ad_mllib.get("objective").get<std::string>();
       if (ad_mllib.has("num_feature"))
 	num_feature = ad_mllib.get("num_feature").get<int>();
       if (ad_mllib.has("base_score"))
@@ -136,14 +136,14 @@ namespace dd
       _params.eval_data_names.push_back("test");      
       
       add_cfg_param("booster",_booster);
-      add_cfg_param("objective",objective);
+      add_cfg_param("objective",_objective);
       add_cfg_param("num_feature",num_feature);
       add_cfg_param("base_score",base_score);
       add_cfg_param("eval_metric",eval_metric);
       add_cfg_param("seed",seed);
-      if (objective == "multi:softmax")
+      if (_objective == "multi:softmax")
 	throw MLLibBadParamException("use multi:softprob objective instead of multi:softmax");
-      if (!_regression && objective == "multi:softprob")
+      if (!_regression && _objective == "multi:softprob")
 	add_cfg_param("num_class",_nclasses);
       
       // booster parameters
@@ -263,7 +263,7 @@ namespace dd
 	if (i > 0 && i % test_interval == 0 && !eval_datasets.empty())
 	  {
 	    APIData meas_out;
-	    test(ad,objective,learner,eval_datasets.at(0),meas_out);
+	    test(ad,_objective,learner,eval_datasets.at(0),meas_out);
 	    APIData meas_obj = meas_out.getobj("measure");
 	    std::vector<std::string> meas_str = meas_obj.list_keys();
 	    for (auto m: meas_str)
@@ -323,7 +323,7 @@ namespace dd
       }
 
       // test
-      test(ad,objective,learner,inputc._mtest,out);
+      test(ad,_objective,learner,inputc._mtest,out);
       
       // prepare model
       this->_mlmodel.read_from_repository();
@@ -364,6 +364,21 @@ namespace dd
 	_learner->Load(fi.get());
       }
 
+    // test
+    APIData ad_out = ad.getobj("parameters").getobj("output");
+    if (ad_out.has("measure"))
+      {
+	std::vector<xgboost::DMatrix*> eval_datasets = { inputc._m };
+	APIData meas_out;
+	std::unique_ptr<xgboost::Learner> learner(_learner);
+	test(ad,_objective,learner,eval_datasets.at(0),meas_out);
+	learner.release();
+	meas_out.erase("iteration");
+	std::vector<APIData> vad = {meas_out.getobj("measure")};
+	out.add("measure",vad);
+	return 0;
+      }
+    
     // predict
     std::vector<float> preds;
     _learner->Predict(inputc._m,_params.pred_margin,&preds,_params.ntree_limit);
@@ -383,7 +398,7 @@ namespace dd
 	for (int i=0;i<_nclasses;i++)
 	  {
 	    probs.push_back(preds.at(j*+_nclasses+i));
-	    cats.push_back(this->_mlmodel.get_hcorresp(i));//std::to_string(i)); //TODO: corresp
+	    cats.push_back(this->_mlmodel.get_hcorresp(i));
 	  }
 	rad.add("probs",probs);
 	rad.add("cats",cats);
