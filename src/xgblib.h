@@ -131,7 +131,7 @@ namespace dd
 
     public:
     // general parameters
-    int _nclasses = 0; /**< required, as difficult to acquire from Caffe's internals. */
+    int _nclasses = 0; /**< required. */
     bool _regression = false; /**< whether the net acts as a regressor. */
     int _ntargets = 0; /**< number of classification or regression targets. */
     std::string _booster = "gbtree"; /**< xgb booster, optional. */
