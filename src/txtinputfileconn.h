@@ -167,7 +167,7 @@ namespace dd
     TxtInputFileConn()
       :InputConnectorStrategy() {}
     TxtInputFileConn(const TxtInputFileConn &i)
-      :InputConnectorStrategy(),_iterator(i._iterator),_tokenizer(i._tokenizer),_vocab(i._vocab) {}
+      :InputConnectorStrategy(),_iterator(i._iterator),_tokenizer(i._tokenizer),_sentences(i._sentences),_characters(i._characters),_seq_forward(i._seq_forward),_vocab(i._vocab) {}
     ~TxtInputFileConn()
       {
 	destroy_txt_entries(_txt);
