@@ -188,7 +188,7 @@ namespace dd
   ImgInputFileConn()
     :InputConnectorStrategy(){}
     ImgInputFileConn(const ImgInputFileConn &i)
-      :InputConnectorStrategy(),_width(i._width),_height(i._height),_bw(i._bw) {}
+      :InputConnectorStrategy(i),_width(i._width),_height(i._height),_bw(i._bw) {}
     ~ImgInputFileConn() {}
 
     void init(const APIData &ad)
