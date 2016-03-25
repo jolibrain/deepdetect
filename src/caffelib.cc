@@ -1259,7 +1259,6 @@ namespace dd
     this->_inputc._ids.clear();
     inputc._train = true;
     APIData cad = ad;
-    cad.add("model_repo",this->_mlmodel._repo); // pass the model repo so that in case of images, it is known where to save the db
     cad.add("has_mean_file",this->_mlmodel._has_mean_file);
     try
       {
@@ -1712,7 +1711,6 @@ namespace dd
     if (ad_output.has("measure"))
       {
 	APIData cad = ad;
-	cad.add("model_repo",this->_mlmodel._repo);
 	cad.add("has_mean_file",this->_mlmodel._has_mean_file);
 	try
 	  {
@@ -1772,7 +1770,6 @@ namespace dd
 	extract_layer = ad_mllib.get("extract_layer").get<std::string>();
       
     APIData cad = ad;
-    cad.add("model_repo",this->_mlmodel._repo);
     cad.add("has_mean_file",this->_mlmodel._has_mean_file);
     try
       {

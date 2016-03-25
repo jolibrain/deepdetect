@@ -111,6 +111,7 @@ namespace dd
      */
     void init(const APIData &ad)
     {
+      this->_inputc._model_repo = ad.getobj("model").get("repository").get<std::string>();
       this->_inputc.init(ad.getobj("parameters").getobj("input"));
       this->_outputc.init(ad.getobj("parameters").getobj("output"));
       this->init_mllib(ad.getobj("parameters").getobj("mllib"));

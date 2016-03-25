@@ -96,7 +96,6 @@ namespace dd
   public:
     CSVInputFileConn()
       :InputConnectorStrategy() {}
-    
     ~CSVInputFileConn() {}
   
     void init(const APIData &ad)

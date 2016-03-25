@@ -109,6 +109,8 @@ namespace dd
   {
   public:
     InputConnectorStrategy() {}
+    InputConnectorStrategy(const InputConnectorStrategy &i)
+      :_model_repo(i._model_repo) {}
     ~InputConnectorStrategy() {}
     
     /**
@@ -172,6 +174,7 @@ namespace dd
     
     bool _train = false; /**< whether in train or predict mode. */
     std::vector<std::string> _uris;
+    std::string _model_repo; /**< model repository, useful when connector needs to read from saved data (e.g. vocabulary). */
   };
   
 }

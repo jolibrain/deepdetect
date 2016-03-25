@@ -167,7 +167,7 @@ namespace dd
     TxtInputFileConn()
       :InputConnectorStrategy() {}
     TxtInputFileConn(const TxtInputFileConn &i)
-      :InputConnectorStrategy(),_iterator(i._iterator),_tokenizer(i._tokenizer),_sentences(i._sentences),_characters(i._characters),_seq_forward(i._seq_forward),_vocab(i._vocab) {}
+      :InputConnectorStrategy(i),_iterator(i._iterator),_tokenizer(i._tokenizer),_sentences(i._sentences),_characters(i._characters),_seq_forward(i._seq_forward),_vocab(i._vocab) {}
     ~TxtInputFileConn()
       {
 	destroy_txt_entries(_txt);
@@ -177,6 +177,8 @@ namespace dd
     void init(const APIData &ad)
     {
       fillup_parameters(ad);
+      if (!_characters && !_train)
+	deserialize_vocab(false);
     }
 
     void fillup_parameters(const APIData &ad_input)
@@ -241,9 +243,6 @@ namespace dd
       if (_alphabet.empty() && _characters)
 	build_alphabet();
       
-      if (ad.has("model_repo"))
-	_model_repo = ad.get("model_repo").get<std::string>();
-      
       if (!_characters && !_train && _vocab.empty())
 	deserialize_vocab();
       
@@ -307,7 +306,7 @@ namespace dd
 
     // serialization of vocabulary
     void serialize_vocab();
-    void deserialize_vocab();
+    void deserialize_vocab(const bool &required=true);
 
     // alphabet for character-level features
     void build_alphabet();
@@ -335,7 +334,6 @@ namespace dd
     // internals
     std::unordered_map<std::string,Word> _vocab; /**< string to word stats, including word */
     std::string _vocabfname = "vocab.dat";
-    std::string _model_repo;
     std::string _correspname = "corresp.txt";
     
     // data
