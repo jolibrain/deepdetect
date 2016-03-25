@@ -211,8 +211,9 @@ namespace dd
 	eval_datasets.push_back(dtrain);
 	eval_data_names.push_back(std::string("train"));
       }
-      
+
       //initialize the learner
+      this->_tjob_running = true;
       std::unique_ptr<xgboost::Learner> learner(xgboost::Learner::Create(mats));
       learner->Configure(_params.cfg);
       int version = rabit::LoadCheckPoint(learner.get());
@@ -229,6 +230,8 @@ namespace dd
       
       //start training
       for (int i = version / 2; i < _params.num_round; ++i) {
+	if (!this->_tjob_running.load())
+	  break;
 	this->add_meas("iteration",i);
 	if (version % 2 == 0) {
 	  if (_params.silent == 0) {
@@ -307,7 +310,7 @@ namespace dd
       }
       
       // always save final round
-      if ((_params.save_period == 0 || _params.num_round % _params.save_period != 0) &&
+      if (!this->_tjob_running.load() || (_params.save_period == 0 || _params.num_round % _params.save_period != 0) &&
 	  _params.model_out != "NONE") {
 	std::ostringstream os;
 	if (_params.model_out == "NULL") {
@@ -321,6 +324,12 @@ namespace dd
 	learner->Save(fo.get());
       }
 
+      // bail on forced stop, i.e. not testing the model further.
+      if (!this->_tjob_running.load())
+	{
+	  return 0;
+	}
+      
       // test
       test(ad,_objective,learner,inputc._mtest,out);
       
