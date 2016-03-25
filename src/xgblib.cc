@@ -93,7 +93,6 @@ namespace dd
     TInputConnectorStrategy inputc(this->_inputc);
     inputc._train = true;    
     APIData cad = ad;
-    cad.add("model_repo",this->_mlmodel._repo);
     try
       {
 	inputc.transform(cad);
@@ -344,7 +343,6 @@ namespace dd
     // data
     TInputConnectorStrategy inputc(this->_inputc);
     APIData cad = ad;
-    cad.add("model_repo",this->_mlmodel._repo);
     try
       {
 	inputc.transform(cad);
