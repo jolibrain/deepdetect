@@ -312,11 +312,15 @@ namespace dd
       }
   }
 
-  void TxtInputFileConn::deserialize_vocab()
+  void TxtInputFileConn::deserialize_vocab(const bool &required)
   {
     std::string vocabfname = _model_repo + "/" + _vocabfname;
     if (!fileops::file_exists(vocabfname))
-      throw InputConnectorBadParamException("cannot find vocabulary file " + vocabfname);
+      {
+	if (required)
+	  throw InputConnectorBadParamException("cannot find vocabulary file " + vocabfname);
+	else return;
+      }
     std::ifstream in;
     in.open(vocabfname);
     if (!in.is_open())

@@ -124,7 +124,6 @@ namespace dd
       // in prediction mode, convert the images to Datum, a Caffe data structure
       if (!_train)
 	{
-	  _model_repo = ad.get("model_repo").get<std::string>();
 	  if (ad.has("has_mean_file"))
 	    _has_mean_file = ad.get("has_mean_file").get<bool>();
 	  try
@@ -195,7 +194,6 @@ namespace dd
 	    }
 	  
 	  // create db
-	  _model_repo = ad.get("model_repo").get<std::string>();
 	  images_to_db(_uris.at(0),_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname);
 	  
 	  // compute mean of images, not forcely used, depends on net, see has_mean_file
@@ -246,7 +244,6 @@ namespace dd
     std::string _dbfullname = "train.lmdb";
     std::string _test_dbfullname = "test.lmdb";
     std::string _meanfname = "mean.binaryproto";
-    std::string _model_repo;
     std::string _correspname = "corresp.txt";
     caffe::Blob<float> _data_mean; // mean binary image if available.
   };
@@ -338,7 +335,6 @@ namespace dd
 	  fillup_parameters(ad_input);
 	  get_data(ad);
 	  _db = true;
-	  _model_repo = ad.get("model_repo").get<std::string>();
 	  csv_to_db(_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname,
 		    ad_input);
 	  
@@ -495,7 +491,6 @@ namespace dd
     std::string _test_dbname = "test";
     std::string _dbfullname = "train.lmdb";
     std::string _test_dbfullname = "test.lmdb";
-    std::string _model_repo;
     std::string _correspname = "corresp.txt";
 
   private:
@@ -582,7 +577,6 @@ namespace dd
       // transform to one-hot vector datum
       if (_train && _db)
 	{
-	  _model_repo = ad.get("model_repo").get<std::string>();
 	  std::string dbfullname = _model_repo + "/" + _dbname + ".lmdb";
 	  if (!fileops::file_exists(dbfullname)) // if no existing db, preprocess from txt files
 	    TxtInputFileConn::transform(ad);
