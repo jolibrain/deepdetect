@@ -74,7 +74,7 @@ namespace dd
     // - copy files to model repository
     std::string source = this->_mlmodel._mlmodel_template_repo + model_tmpl + "/";
     LOG(INFO) << "source=" << source << std::endl;
-    LOG(INFO) << "dest=" << this->_mlmodel._repo + '/' + model_tmpl + ".prototxt" << std::endl;
+    LOG(INFO) << "dest=" << this->_mlmodel._repo + '/' + model_tmpl + ".prototxt";
     std::string dest_net = this->_mlmodel._repo + '/' + model_tmpl + ".prototxt";
     std::string dest_deploy_net = this->_mlmodel._repo + "/deploy.prototxt";
     int err = fileops::copy_file(source + model_tmpl + ".prototxt", dest_net);
@@ -148,7 +148,7 @@ namespace dd
 	caffe::WriteProtoToTextFile(net_param,dest_net);
 	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
       }
-    
+
     this->_mlmodel.read_from_repository(this->_mlmodel._repo);
   }
 
