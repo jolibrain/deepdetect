@@ -56,7 +56,7 @@ namespace dd
     static std::string weights = ".caffemodel";
     static std::string sstate = ".solverstate";
     static std::string corresp = "corresp";
-    static std::string solver = "solver";
+    static std::string solver = "_solver.prototxt";
     static std::string meanf = "mean.binaryproto";
     this->_repo = repo;
     std::unordered_set<std::string> lfiles;
