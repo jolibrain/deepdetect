@@ -1485,8 +1485,7 @@ namespace dd
 		    double mval = meas_obj.get(m).get<double>();
 		    LOG(INFO) << m << "=" << mval;
 		    this->add_meas(m,mval);
-		    if (!std::isnan(mval)) // if testing occurs once before training even starts, loss is unknown and we don't add it to history.
-		      this->add_meas_per_iter(m,mval);
+		    this->add_meas_per_iter(m,mval);
 		  }
 		else if (m == "cmdiag")
 		  {
@@ -1531,7 +1530,6 @@ namespace dd
 
 	if (solver->param_.test_interval() && solver->iter_ % solver->param_.test_interval() == 0)
 	  {
-	    this->add_meas_per_iter("train_loss",loss); // to avoid filling up with possibly millions of entries...
 	    LOG(INFO) << "smoothed_loss=" << this->get_meas("train_loss");
 	  }
 	try
