@@ -74,7 +74,7 @@ namespace dd
     // - copy files to model repository
     std::string source = this->_mlmodel._mlmodel_template_repo + model_tmpl + "/";
     LOG(INFO) << "source=" << source << std::endl;
-    LOG(INFO) << "dest=" << this->_mlmodel._repo + '/' + model_tmpl + ".prototxt" << std::endl;
+    LOG(INFO) << "dest=" << this->_mlmodel._repo + '/' + model_tmpl + ".prototxt";
     std::string dest_net = this->_mlmodel._repo + '/' + model_tmpl + ".prototxt";
     std::string dest_deploy_net = this->_mlmodel._repo + "/deploy.prototxt";
     int err = fileops::copy_file(source + model_tmpl + ".prototxt", dest_net);
@@ -148,7 +148,7 @@ namespace dd
 	caffe::WriteProtoToTextFile(net_param,dest_net);
 	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
       }
-    
+
     this->_mlmodel.read_from_repository(this->_mlmodel._repo);
   }
 
@@ -1485,8 +1485,7 @@ namespace dd
 		    double mval = meas_obj.get(m).get<double>();
 		    LOG(INFO) << m << "=" << mval;
 		    this->add_meas(m,mval);
-		    if (!std::isnan(mval)) // if testing occurs once before training even starts, loss is unknown and we don't add it to history.
-		      this->add_meas_per_iter(m,mval);
+		    this->add_meas_per_iter(m,mval);
 		  }
 		else if (m == "cmdiag")
 		  {
@@ -1531,7 +1530,6 @@ namespace dd
 
 	if (solver->param_.test_interval() && solver->iter_ % solver->param_.test_interval() == 0)
 	  {
-	    this->add_meas_per_iter("train_loss",loss); // to avoid filling up with possibly millions of entries...
 	    LOG(INFO) << "smoothed_loss=" << this->get_meas("train_loss");
 	  }
 	try
