@@ -73,8 +73,8 @@ namespace dd
 	    _db_testbatchsize = 0;
 	    while(tcursor->valid())
 	      {
-		Datum datum;
-		datum.ParseFromString(tcursor->value());
+		//Datum datum;
+		//datum.ParseFromString(tcursor->value());
 		++_db_testbatchsize;
 		tcursor->Next();
 	      }

@@ -1,11 +1,13 @@
-include_directories(${Boost_INCLUDE_DIRS})
+include_directories(${Boost_INCLUDE_DIRS})# ${PROTOBUF_INCLUDE_DIRS})
 if (CUDA_FOUND)
   set(CUDA_LIB_DEPS -lcudart -lcublas -lcurand)# -lcudnn)
 else()
   add_definitions(-DCPU_ONLY)
 endif()
 set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lhdf5_hl -lhdf5 -lopenblas -lcaffe -lprotobuf)
+set(TF_LIB_DEPS -ltensorflow)
 link_directories(${CAFFE_LIB_DIR})
+link_directories(${TF_LIB_DIR})
 
 find_package(GTest)
 include_directories(${GTEST_INCLUDE_DIRS})
@@ -31,6 +33,9 @@ if (GTEST_FOUND)
     COMMAND ut_jsonapi
     )
 
+  add_executable(opencv_tensor opencv_tensor.cc)
+  target_link_libraries(opencv_tensor opencv_core opencv_highgui opencv_imgproc boost_thread boost_system crypto ssl ${TF_LIB_DEPS})
+  
   add_executable(test_server test-server.cc)
   target_link_libraries(test_server boost_thread cppnetlib-uri cppnetlib-client-connections boost_system crypto ssl)
 
