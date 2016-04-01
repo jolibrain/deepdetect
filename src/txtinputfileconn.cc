@@ -39,7 +39,7 @@ namespace dd
     std::ifstream txt_file(fname);
     if (!txt_file.is_open())
       {
-	std::cerr << "cannot open file\n";
+	LOG(ERROR) << "cannot open file=" << fname;
 	throw InputConnectorBadParamException("cannot open file " + fname);
       }
     std::stringstream buffer;
