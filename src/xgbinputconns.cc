@@ -158,7 +158,6 @@ namespace dd
 
   void SVMXGBInputFileConn::transform(const APIData &ad)
   {
-    //TODO:
     //- get data
     InputConnectorStrategy::get_data(ad);
     
@@ -204,6 +203,10 @@ namespace dd
 	    xgboost::DMatrix *mtrain = XGDMatrixSliceDMatrix(_m,&rindex[0],rindex.size());
 	    delete _m;
 	    _m = mtrain;
+	    std::vector<int> ids(_m->info().num_row);
+	    std::iota(std::begin(ids),std::end(ids),0);
+	    for (int i: ids)
+	      _ids.push_back(std::to_string(i));
 	  }
 	
       }
