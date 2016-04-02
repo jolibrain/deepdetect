@@ -404,7 +404,7 @@ namespace dd
 	std::vector<std::string> cats;
 	for (int i=0;i<_nclasses;i++)
 	  {
-	    probs.push_back(preds.at(j*+_nclasses+i));
+	    probs.push_back(preds.at(j*_nclasses+i));
 	    cats.push_back(this->_mlmodel.get_hcorresp(i));
 	  }
 	rad.add("probs",probs);
