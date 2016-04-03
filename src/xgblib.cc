@@ -223,7 +223,7 @@ namespace dd
 	  std::unique_ptr<dmlc::Stream> fi(dmlc::Stream::Create(_params.model_in.c_str(), "r")); //TODO: update the model path (repo)
 	  learner->Load(fi.get());
 	} else {
-	  LOG(INFO) << "initializing model\n";
+	  LOG(INFO) << "initializing model";
 	  learner->InitModel();
 	}
       }    

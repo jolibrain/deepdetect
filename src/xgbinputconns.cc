@@ -169,9 +169,11 @@ namespace dd
 	//- shuffle & split matrix as required (read parameters -> fillup_parameters or init ?)
 	APIData ad_input = ad.getobj("parameters").getobj("input");
 	fillup_parameters(ad_input);
+	LOG(INFO) << "loading " << _uris.at(0);
 	_m = xgboost::DMatrix::Load(_uris.at(0),silent,dsplit);
 	size_t rsize = _m->info().num_row;
-	
+	LOG(INFO) << "successfully read " << rsize << " rows";
+
 	std::vector<int> rindex(rsize);
 	std::iota(std::begin(rindex),std::end(rindex),0);
 	if (_shuffle)
@@ -189,6 +191,7 @@ namespace dd
 	if (_test_split > 0.0)
 	  {
 	    // XXX: not optimal memory-wise, due to the XGDMatrixSlice op
+	    LOG(INFO) << "splitting dataset";
 	    int split_size = std::floor(rsize * (1.0-_test_split));
 	    std::vector<int> train_rindex(rindex.begin(),rindex.begin()+split_size);
 	    std::vector<int> test_rindex(rindex.begin()+split_size,rindex.end());
@@ -197,6 +200,7 @@ namespace dd
 	    _mtest = XGDMatrixSliceDMatrix(_m,&test_rindex[0],test_rindex.size());
 	    delete _m;
 	    _m = mtrain;
+	    LOG(INFO) << "dataset sucessfully splitted";
 	  }
 	else
 	  {
@@ -212,8 +216,10 @@ namespace dd
       }
     else if (_uris.size() == 2) // with test file
       {
+	LOG(INFO) << "reading train and test matrices";
 	_m = xgboost::DMatrix::Load(_uris.at(0),silent,dsplit);
 	_mtest = xgboost::DMatrix::Load(_uris.at(1),silent,dsplit);
+	LOG(INFO) << "Successfully acquired data";
       }
   }
 
