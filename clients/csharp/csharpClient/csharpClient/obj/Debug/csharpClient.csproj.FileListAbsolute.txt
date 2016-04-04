@@ -1,0 +1,6 @@
+C:\myproject\csharpClient\csharpClient\bin\Debug\csharpClient.exe.config
+C:\myproject\csharpClient\csharpClient\bin\Debug\csharpClient.exe
+C:\myproject\csharpClient\csharpClient\bin\Debug\csharpClient.pdb
+C:\myproject\csharpClient\csharpClient\bin\Debug\Newtonsoft.Json.dll
+C:\myproject\csharpClient\csharpClient\obj\Debug\csharpClient.exe
+C:\myproject\csharpClient\csharpClient\obj\Debug\csharpClient.pdb
