@@ -106,12 +106,13 @@ Below are instructions for Ubuntu 14.04 LTS. For other Linux and Unix systems, s
 
 Beware of dependencies, typically on Debian/Ubuntu Linux, do:
 ```
-sudo apt-get install build-essential libgoogle-glog-dev libgflags-dev libeigen3-dev libopencv-dev libcppnetlib-dev libboost-dev libcurlpp-dev libcurl4-openssl-dev protobuf-compiler libopenblas-dev libhdf5-dev libprotobuf-dev libleveldb-dev libsnappy-dev liblmdb-dev libutfcpp-dev
+sudo apt-get install build-essential libgoogle-glog-dev libgflags-dev libeigen3-dev libopencv-dev libcppnetlib-dev libboost-dev libcurlpp-dev libcurl4-openssl-dev protobuf-compiler libopenblas-dev libhdf5-dev libprotobuf-dev libleveldb-dev libsnappy-dev liblmdb-dev libutfcpp-dev cmake
 ```
 
 For compiling along with Caffe:
 ```
 mkdir build
+cd build
 cmake ..
 make
 ```
