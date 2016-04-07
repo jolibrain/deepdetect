@@ -5,6 +5,7 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<!-- Bootstrap -->
 		<link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.5/css/bootstrap.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.2/css/select2.min.css" rel="stylesheet" />
 		<link href="./css/jumbotron-narrow.css" rel="stylesheet">
 	</head>
 	<body>
@@ -18,7 +19,12 @@
       <div class="jumbotron">
         <h1>Image Classifier</h1>
         <p class="lead">Demo of <a href="http://deepdetect.com" target="_blank">DeepDetect</a> server with an image classification service based on a deep neural network pre-trained on a subset of Imagenet (ILSVRC12). The classification service will distinguish among 1000 different image tags, from 'ambulance' to 'paddlock' and more!</p>
-        <p>
+
+        <p id='serviceForm' class='bg-info'> 
+          <span>Loading services...</span>
+          <select id="service_select" class='hidden'><select/>
+        </p>
+        <p class='hidden' id='uploadForm'>
           <label for="url">Image URL : </label> <input type="text" id="url"/><br>
           <a id="urlSubmit" class="btn btn-lg btn-success" href="#" role="button">Classify <img src="./images/loading.gif" class="loading hidden"></a>
         </p>
@@ -67,6 +73,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
     <!-- Include all compiled plugins (below), or include individual files as needed -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.5/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.2/js/select2.min.js"></script>
     <script src="./js/main.js"></script>
   </body>
 </html>
