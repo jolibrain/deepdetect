@@ -26,7 +26,7 @@ $(document).ready(function() {
         } else {
           $('#serviceForm').removeClass('bg-info')
             .addClass('bg-danger')
-            .html('No service found, please set a service on DeepDetect server.');
+            .html('No service found, set a service on DeepDetect server.');
         }
       }
     });
@@ -67,16 +67,25 @@ $(document).ready(function() {
             style = 'danger';
           }
 
-          var predictionHtml = '<div class="row"><div class="col-lg-4"><div class="progress">';
-          predictionHtml += '<div class="progress-bar progress-bar-' + style + '" role="progressbar" ';
-          predictionHtml += 'aria-valuenow="' + percent + '" aria-valuemin="0" aria-valuemax="100" ';
-          predictionHtml += 'style="width: ' + percent + '%;">' + percent + '%</div></div></div>';
-          predictionHtml += '<div class="col-lg-8">' + this.cat + '</div></div>';
+          var predictionHtml = '<div class="row"><div class="col-lg-4">';
+          predictionHtml    += '<div class="progress">';
+          predictionHtml    += '<div class="progress-bar ';
+          predictionHtml    += 'progress-bar-' + style + '" ';
+          predictionHtml    += 'role="progressbar" ';
+          predictionHtml    += 'aria-valuenow="' + percent + '" ';
+          predictionHtml    += 'aria-valuemin="0" ';
+          predictionHtml    += 'aria-valuemax="100" ';
+          predictionHtml    += 'style="width: ' + percent + '%;">';
+          predictionHtml    += percent + '%</div></div></div>';
+          predictionHtml    += '<div class="col-lg-8">';
+          predictionHtml    += this.cat + '</div></div>';
           $('#emptyImage .predictions').append(predictionHtml);
         });
 
         $('#imageList').prepend('<hr>');
-        $('#imageList').prepend($('#emptyImage').clone().attr('id', '').removeClass('hidden'));
+        $('#imageList').prepend(
+          $('#emptyImage').clone().attr('id', '').removeClass('hidden')
+        );
         $('.loading').addClass('hidden');
 
         $('#emptyImage .predictions').html('');
@@ -85,8 +94,12 @@ $(document).ready(function() {
       error: function(jqXHR, textStatus, errorThrown) {
         $('input#url').val('');
         $('.loading').addClass('hidden');
-        $('#submitAlert').removeClass('hidden').find('.error').html(errorThrown);
-        window.setTimeout(function() { $("#submitAlert").addClass('hidden'); }, 4000);
+        $('#submitAlert').removeClass('hidden')
+          .find('.error')
+          .html(errorThrown);
+        window.setTimeout(function() {
+          $("#submitAlert").addClass('hidden');
+        }, 4000);
       }
     });
 
