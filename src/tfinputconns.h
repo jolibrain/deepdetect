@@ -23,52 +23,130 @@
 #define TFINPUTCONNS_H
 
 #include "imginputfileconn.h"
+#include "tensorflow/core/public/session.h"
+#include "tensorflow/core/platform/env.h"
+#include "tensorflow/core/framework/tensor.h"
+#include <opencv2/opencv.hpp>
 
-namespace dd
-{
+ namespace dd
+ {
   class TFInputInterface
   {
   public:
     TFInputInterface() {}
-    TFInputInterface(const TFInputInterface &tii) {}
+    TFInputInterface(const TFInputInterface &tii)
+    :_dv(tii._dv),_ids(tii._ids){}
     ~TFInputInterface() {}
 
   public:
     //TODO: parameters common to all TF input connectors
+    std::vector<tensorflow::Tensor> _dv; // main tensor for prediction.
+    std::vector<std::string> _ids; // input ids (eg. Image Ids).
+
+
   };
 
   class ImgTFInputFileConn : public ImgInputFileConn, public TFInputInterface
   {
   public:
     ImgTFInputFileConn()
-      :ImgInputFileConn() {}
+    :ImgInputFileConn() {}
     ImgTFInputFileConn(const ImgTFInputFileConn &i)
-      :ImgInputFileConn(i),TFInputInterface(i) {}
+    :ImgInputFileConn(i),TFInputInterface(i) {}
     ~ImgTFInputFileConn() {}
 
-    void init(const APIData &ad)
+  // size of each element in tensorflow 
+    int channels() const
     {
-      ImgInputFileConn::init(ad);
+      if (_bw) return 1;
+      else return 3; // RGB
     }
     
-    void transform(const APIData &ad)
+    int height() const
     {
-      try
-	{
-	  ImgInputFileConn::transform(ad);
-	}
-      catch(InputConnectorBadParamException &e)
-	{
-	  throw;
-	}
-      //TODO: convert acquired images to TF input format
+      return _height;
+    }
+    
+    int width() const
+    {
+      return _width;
     }
 
-  public:
-    //TODO: image connector parameters
+    int batch_size() const
+    {
+     if (!_dv.empty())
+      return _dv.size();
+    else return ImgInputFileConn::batch_size();
+  }
 
-  };
-  
+
+  void init(const APIData &ad)
+  {
+    ImgInputFileConn::init(ad);
+  }
+
+  void transform(const APIData &ad)
+  { 
+    try
+    {
+      ImgInputFileConn::transform(ad);
+    }
+    catch(InputConnectorBadParamException &e)
+    {
+      throw;
+    }
+      // converting the input dataFrame into Tensor a Tensorflow DataStructure 
+    _model_repo = ad.get("model_repo").get<std::string>();
+    try{
+      ImgInputFileConn::transform(ad);      
+    }
+    catch (InputConnectorBadParamException &e){
+      throw;
+    }
+
+        // parameter for doing the Image Manipulation
+
+
+    for (int i=0; i<(int)this->_images.size();i++){
+      tensorflow::Tensor input_tensor(tensorflow::DT_FLOAT, tensorflow::TensorShape({1,_height,_width,channels()}));
+      auto input_tensor_mapped = input_tensor.tensor<float, 4>();
+
+      cv::Mat Image;
+
+      Image = this->_images.at(i);
+      cv::Mat Image2;
+      Image.convertTo(Image2, CV_32FC1);
+      Image = Image2;
+      Image = Image-_mean;
+      Image = Image/_std;
+
+      const float * source_data = (float*) Image.data;
+
+                // copying the data into the corresponding tensor
+      for (int y = 0; y < height(); ++y) {
+        const float* source_row = source_data + (y * width()  * channels());
+        for (int x = 0; x < width(); ++x) {
+          const float* source_pixel = source_row + (x * channels());
+          for (int c = 0; c < channels(); ++c) {
+            const float* source_value = source_pixel + c;
+            input_tensor_mapped(0, y, x, c) = *source_value;
+          }
+        }
+      }
+      _dv.push_back(input_tensor);
+      _ids.push_back(this->_uris.at(i));
+
+    }
+  }
+
+public:
+    //TODO: image connector parameters
+  int _mean = 128;
+  int _std = 128;
+  std::string _graphFile;
+  std:: string _model_repo;
+};
+
 }
 
 #endif

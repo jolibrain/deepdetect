@@ -24,7 +24,7 @@
 
 #include "mlmodel.h"
 #include "apidata.h"
-
+#include <string>
 namespace dd
 {
   class TFModel : public MLModel
@@ -35,12 +35,19 @@ namespace dd
     TFModel(const std::string &repo)
       :MLModel(repo) {}
     ~TFModel() {}
-
-    int read_from_repository();
-    
     //TODO: model files
+
+    int read_from_repository(const std:: string &repo);
+    
+
+    std::string _graphName;// Name of the graph 
+    std::string _labelName; // Name of the Label File 
+    std::string _modelRepo; // Model Template
+    
+    
     
   };
+
 }
 
 #endif

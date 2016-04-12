@@ -25,6 +25,11 @@
 #include "mllibstrategy.h"
 #include "tfmodel.h"
 
+# include <string>
+#include "tensorflow/core/public/session.h"
+#include "tensorflow/core/platform/env.h"
+#include "tensorflow/core/framework/tensor.h"
+
 namespace dd
 {
   template<class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel=TFModel>
@@ -44,6 +49,7 @@ namespace dd
 
     int predict(const APIData &ad, APIData &out);
 
+    int generatedLabel(const tensorflow::Tensor output, std::vector<APIData> result);
     /*- local functions -*/
     //TODO: test()
     
@@ -54,7 +60,8 @@ namespace dd
     int _nclasses = 0; /**< required. */
     bool _regression = false; /**< whether the net acts as a regressor. */
     int _ntargets = 0; /**< number of classification or regression targets. */
-    
+    std::string _inputLayer; // Input Layer of the Tensorflow Model
+    std::string _outputLayer; // OutPut layer of the tensorflow Model
     };
   
 }
