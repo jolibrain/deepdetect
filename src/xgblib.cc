@@ -79,7 +79,7 @@ namespace dd
     std::vector<std::string> extensions = {".model"};
     fileops::remove_directory_files(this->_mlmodel._repo,extensions);
   }
-  
+
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   int XGBLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::train(const APIData &ad,
 									       APIData &out)
@@ -265,7 +265,7 @@ namespace dd
 	if (i > 0 && i % test_interval == 0 && !eval_datasets.empty())
 	  {
 	    APIData meas_out;
-	    test(ad,_objective,learner,eval_datasets.at(0),meas_out);
+	    test(ad,learner,eval_datasets.at(0),meas_out);
 	    APIData meas_obj = meas_out.getobj("measure");
 	    std::vector<std::string> meas_str = meas_obj.list_keys();
 	    for (auto m: meas_str)
@@ -310,8 +310,8 @@ namespace dd
       }
       
       // always save final round
-      if (!this->_tjob_running.load() || (_params.save_period == 0 || _params.num_round % _params.save_period != 0) &&
-	  _params.model_out != "NONE") {
+      if ((!this->_tjob_running.load() || _params.save_period == 0 || _params.num_round % _params.save_period != 0)
+	  && _params.model_out != "NONE") {
 	std::ostringstream os;
 	if (_params.model_out == "NULL") {
 	  os << this->_mlmodel._repo << '/'
@@ -331,7 +331,7 @@ namespace dd
 	}
       
       // test
-      test(ad,_objective,learner,inputc._mtest,out);
+      test(ad,learner,inputc._mtest,out);
       
       // prepare model
       this->_mlmodel.read_from_repository();
@@ -369,6 +369,11 @@ namespace dd
 	std::cerr << "model file=" << model_in << std::endl;
 	std::unique_ptr<dmlc::Stream> fi(dmlc::Stream::Create(model_in.c_str(),"r"));
 	_learner->Load(fi.get());
+	// we can't read the objective function string name from the xgboost in-memory model,
+	// so let's read it from file
+	_objective = this->_mlmodel.lookup_objective(model_in);
+	if (_objective == "")
+	  throw MLLibInternalException("failed to read the objective from XGBoost model file " + model_in);
       }
 
     // test
@@ -378,7 +383,7 @@ namespace dd
 	std::vector<xgboost::DMatrix*> eval_datasets = { inputc._m };
 	APIData meas_out;
 	std::unique_ptr<xgboost::Learner> learner(_learner);
-	test(ad,_objective,learner,eval_datasets.at(0),meas_out);
+	test(ad,learner,eval_datasets.at(0),meas_out);
 	learner.release();
 	meas_out.erase("iteration");
 	std::vector<APIData> vad = {meas_out.getobj("measure")};
@@ -392,7 +397,12 @@ namespace dd
 
     // results
     float loss = 0.0; //TODO: acquire loss ?
-    int batch_size = preds.size() / _nclasses;
+    int batch_size = preds.size();
+    int nclasses = _nclasses;
+    if (_objective == "multi:softprob")
+      batch_size /= nclasses;
+    else if (_objective == "binary:logistic")
+      nclasses--;
     TOutputConnectorStrategy tout;
     std::vector<APIData> vrad;
     for (int j=0;j<batch_size;j++)
@@ -402,10 +412,15 @@ namespace dd
 	rad.add("loss",0.0); // XXX: truely, unreported.
 	std::vector<double> probs;
 	std::vector<std::string> cats;
-	for (int i=0;i<_nclasses;i++)
+	for (int i=0;i<nclasses;i++)
 	  {
-	    probs.push_back(preds.at(j*_nclasses+i));
+	    probs.push_back(preds.at(j*nclasses+i));
 	    cats.push_back(this->_mlmodel.get_hcorresp(i));
+	  }
+	if (_objective == "binary:logistic")
+	  {
+	    probs.insert(probs.begin(),1.0-probs.back());
+	    cats.insert(cats.begin(),this->_mlmodel.get_hcorresp(1));
 	  }
 	rad.add("probs",probs);
 	rad.add("cats",cats);
@@ -416,7 +431,7 @@ namespace dd
     if (_regression)
       {
 	out.add("regression",true);
-	out.add("nclasses",_nclasses);
+	out.add("nclasses",nclasses);
       }
     tout.finalize(ad.getobj("parameters").getobj("output"),out);
     out.add("status",0);
@@ -425,7 +440,6 @@ namespace dd
   
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void XGBLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::test(const APIData &ad,
-									       const std::string &objective,
 									       std::unique_ptr<xgboost::Learner> &learner,
 									       xgboost::DMatrix *dtest,
 									       APIData &out)
@@ -448,9 +462,9 @@ namespace dd
 
 	int nclasses = _nclasses;
 	int batch_size = out_preds.size();
-	if (objective == "multi:softprob")
+	if (_objective == "multi:softprob")
 	  batch_size /= _nclasses;
-	else if (objective == "binary:logistic")
+	else if (_objective == "binary:logistic")
 	  nclasses--;
 	for (int k=0;k<batch_size;k++)
 	  {
@@ -460,7 +474,7 @@ namespace dd
 	      {
 		predictions.push_back(out_preds.at(k*nclasses+c));
 	      }
-	    if (objective == "binary:logistic")
+	    if (_objective == "binary:logistic")
 	      predictions.insert(predictions.begin(),1.0-predictions.back());
 	    bad.add("target",dtest->info().labels.at(k));
 	    bad.add("pred",predictions);

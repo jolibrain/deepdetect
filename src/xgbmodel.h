@@ -39,6 +39,8 @@ namespace dd
     ~XGBModel() {}
 
     int read_from_repository();
+
+    std::string lookup_objective(const std::string &modelfile);
     
     //TODO
     std::string _weights; /**< file with model weights. */

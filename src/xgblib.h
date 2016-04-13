@@ -117,7 +117,6 @@ namespace dd
 
     /*- local functions -*/
     void test(const APIData &ad,
-	      const std::string &objective,
 	      std::unique_ptr<xgboost::Learner> &learner,
 	      xgboost::DMatrix *dtest,
 	      APIData &out);

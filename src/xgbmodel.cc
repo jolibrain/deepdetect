@@ -69,5 +69,27 @@ namespace dd
     _corresp = correspf;
     return 0;
   }
+
+  std::string XGBModel::lookup_objective(const std::string &modelfile)
+  {
+    static std::string objective_softprob = "multi:softprob";
+    static std::string objective_binary = "binary:logistic";
+    std::ifstream ff(modelfile);
+    if (!ff.is_open())
+      {
+	LOG(ERROR) << "cannot open xgb model file " << modelfile << " for looking objective up";
+	return "";
+      }
+    std::string line;
+    while(!ff.eof())
+      {
+	std::getline(ff,line);
+	if (line.find(objective_softprob,0)!=std::string::npos)
+	  return objective_softprob;
+	else if (line.find(objective_binary,0)!=std::string::npos)
+	  return objective_binary;
+      }
+    return "";
+  }
   
 }
