@@ -24,6 +24,11 @@
 
 #include "csvinputfileconn.h"
 #include "txtinputfileconn.h"
+
+#define DMLC_THROW_EXCEPTION noexcept(false)
+#define DMLC_NO_EXCEPTION  noexcept(true)
+
+#include <dmlc/base.h>
 #include <data/parser.h> // dmlc
 #include <xgboost/data.h>
 
