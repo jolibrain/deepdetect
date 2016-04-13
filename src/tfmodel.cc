@@ -38,8 +38,8 @@ namespace dd
   {
     std::string graphName = ".pb";
     std::string labelFile = ".txt";
-  	this->repo = repo;
-
+  	this->_repo = repo;
+    std::unordered_set<std::string> lfiles;
   	int e = fileops::list_directory(repo,true,false,lfiles);
     if (e != 0)
       {
@@ -48,7 +48,6 @@ namespace dd
       }
       
   	auto hit = lfiles.begin();
-  	std::unordered_set<std::string> lfiles;
   	std::string graphf,labelf;
   	long int state_t=-1;
   	while(hit!=lfiles.end())

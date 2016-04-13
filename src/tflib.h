@@ -49,7 +49,7 @@ namespace dd
 
     int predict(const APIData &ad, APIData &out);
 
-    int generatedLabel(const tensorflow::Tensor output, std::vector<APIData> result);
+    void generatedLabel( const tensorflow::Tensor &output, APIData &result);
     /*- local functions -*/
     //TODO: test()
     

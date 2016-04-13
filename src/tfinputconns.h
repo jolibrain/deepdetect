@@ -145,6 +145,8 @@ public:
   int _std = 128;
   std::string _graphFile;
   std:: string _model_repo;
+  std::vector<tensorflow::Tensor> _dv;
+  std::vector<std::string> _ids;
 };
 
 }

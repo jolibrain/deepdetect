@@ -123,7 +123,7 @@ namespace dd
   int batch_size = inputc.batch_size();
 
   tensorflow::GraphDef graph_def;
-  std::string graphFile this->_mlmodel._modelRepo + "/" + this->mlmodel._graphName;
+  std::string graphFile = this->_mlmodel._modelRepo + "/" + this->_mlmodel._graphName;
 
   // Loading the graph to the given variable
   tensorflow::Status graphLoadedStatus = ReadBinaryProto(tensorflow::Env::Default(),graphFile,&graph_def);
@@ -144,14 +144,14 @@ namespace dd
   // vector for storing  the outputAPI of the file 
   std::vector<APIData> vrad;
   // running the loded graph and saving the generated output 
-  it = this->mlmodel.begin();
-  for (std::vector<int i =0  ; i<batch_size; i++){
+  std::vector<tensorflow::Tensor>::iterator it = inputc._dv.begin();
+  for (int i =0  ; i<batch_size; i++){
     std::vector<tensorflow::Tensor> finalOutput; // To save the final Output genereated by the tensorflow 
     tensorflow::Status run_status  = session_inception->Run({{_inputLayer,*it}},{_outputLayer},{},&finalOutput);
     tensorflow::Tensor output = std::move(finalOutput.at(0));
     APIData rad;
     rad.add("uri",inputc._ids.at(i));
-    generatedLabel(const tensorflow::Tensor &output, APIData &rad);
+    generatedLabel(output,rad);
     vrad.push_back(rad);
     ++it;
   }
@@ -163,10 +163,10 @@ namespace dd
   }
   
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  int TFLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::std::string generatedLabel(const tensorflow::Tensor &output, APIData &out)
+  void TFLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::generatedLabel(const tensorflow::Tensor &output, APIData &out)
   {
     // file for reading the label file and marking the output accordingly
-    std::string labelfile this->_mlmodel._repo + "/" + this->_mlmodel._labelName;
+    std::string labelfile = this->_mlmodel._repo + "/" + this->_mlmodel._labelName;
     std::ifstream label(labelfile); 
     std::string line;
 
