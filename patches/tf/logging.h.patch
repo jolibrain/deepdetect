@@ -1,0 +1,22 @@
+diff --git a/tensorflow/core/platform/default/logging.h b/tensorflow/core/platform/default/logging.h
+index 3d9a63b..3114efd 100644
+--- a/tensorflow/core/platform/default/logging.h
++++ b/tensorflow/core/platform/default/logging.h
+@@ -201,7 +201,7 @@ TF_DEFINE_CHECK_OP_IMPL(Check_GT, > )
+ 
+ // In optimized mode, use CheckOpString to hint to compiler that
+ // the while condition is unlikely.
+-#define CHECK_OP_LOG(name, op, val1, val2)                            \
++#define CHECK_OP_LOG(name, op, val1, val2, log)			      \
+   while (::tensorflow::internal::CheckOpString _result =              \
+              ::tensorflow::internal::name##Impl(                      \
+                  ::tensorflow::internal::GetReferenceableValue(val1), \
+@@ -209,7 +209,7 @@ TF_DEFINE_CHECK_OP_IMPL(Check_GT, > )
+                  #val1 " " #op " " #val2))                            \
+   ::tensorflow::internal::LogMessageFatal(__FILE__, __LINE__) << *(_result.str_)
+ 
+-#define CHECK_OP(name, op, val1, val2) CHECK_OP_LOG(name, op, val1, val2)
++#define CHECK_OP(name, op, val1, val2) CHECK_OP_LOG(name, op, val1, val2, "")
+ 
+ // CHECK_EQ/NE/...
+ #define CHECK_EQ(val1, val2) CHECK_OP(Check_EQ, ==, val1, val2)
