@@ -46,15 +46,13 @@ configure_file(
 # dependency on Eigen for confusion matrix fast computation
 #find_package(Eigen3 REQUIRED)
 #include_directories("${EIGEN3_INCLUDE_DIR}")
-#set(EIGEN3_INCLUDE_DIR "/home/beniz/projects/deepdetect/apps/tensorflow/third_party/eigen3/")
-#set(EIGEN3_INCLUDE_DIR "/home/beniz/.cache/bazel/_bazel_beniz/76a9d509b2947cbb5b663a99d5a0affd/external/eigen_archive/eigen-eigen-3d9f227afae2/")
 #include_directories("${EIGEN3_INCLUDE_DIR}")
 
-set(eigen_archive_hash "3d9f227afae2")
+set(eigen_archive_hash "3f653ace7d28")
 
 include_directories("$ENV{HOME}/include")
 
-set(EIGEN3_INCLUDE_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/1db5bf4ce0dd490c18a575be002fa398/external/eigen_archive/eigen-eigen-${eigen_archive_hash} ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/1db5bf4ce0dd490c18a575be002fa398/external/eigen_archive)
+set(EIGEN3_INCLUDE_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/external/eigen_archive/eigen-eigen-${eigen_archive_hash} ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/external/eigen_archive)
 include_directories("${EIGEN3_INCLUDE_DIR}")
 
 # dependency on Boost
@@ -70,16 +68,16 @@ ExternalProject_Add(
   PREFIX tensorflow
   INSTALL_DIR ${CMAKE_BINARY_DIR}
   DOWNLOAD_COMMAND git clone --recurse-submodules https://github.com/tensorflow/tensorflow
-  CONFIGURE_COMMAND mkdir dbuild && patch -p1 < ../../../../patches/tf/logging.h.patch && ./configure && bazel --output_user_root dbuild/ build //tensorflow:libtensorflow.so && cd google/protobuf && ./autogen.sh && ./configure --prefix=$ENV{HOME} && make && make install
+  CONFIGURE_COMMAND mkdir dbuild && patch -p1 < ../../../../patches/tf/logging.h.patch && ./configure && bazel --output_base dbuild/ build //tensorflow:libtensorflow.so && cd google/protobuf && ./autogen.sh && ./configure --prefix=$ENV{HOME} && make && make install
   INSTALL_COMMAND ""
   BUILD_COMMAND ""
   BUILD_IN_SOURCE 1
   )
-set(TF_INC_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/1db5bf4ce0dd490c18a575be002fa398/tensorflow/ ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/1db5bf4ce0dd490c18a575be002fa398/tensorflow/bazel-out/local_linux-fastbuild/genfiles/)
-set(TF_LIB_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/1db5bf4ce0dd490c18a575be002fa398/tensorflow/bazel-out/local_linux-fastbuild/bin/tensorflow/)
+set(TF_INC_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/tensorflow/ ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/tensorflow/bazel-out/local_linux-fastbuild/genfiles/)
+set(TF_LIB_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/tensorflow/bazel-out/local_linux-fastbuild/bin/tensorflow/)
 include_directories("${TF_INC_DIR}")
 
-set(CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/1db5bf4ce0dd490c18a575be002fa398/tensorflow/bazel-out/host/bin/google/protobuf/)
+set(CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/tensorflow/bazel-out/host/bin/google/protobuf/)
 
 # customized Caffe as external project
 if (CAFFE_INC_DIR AND CAFFE_LIB_DIR)
@@ -124,7 +122,7 @@ ExternalProject_Add(
     set(CAFFE_LIB_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src /usr/lib/x86_64-linux-gnu/hdf5/serial ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY})
   else()
     set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src /usr/include/hdf5/serial)
-    set(CAFFE_LIB_DIR /home/beniz/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src /usr/lib/x86_64-linux-gnu/hdf5/serial)
+    set(CAFFE_LIB_DIR $ENV{HOME}/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src /usr/lib/x86_64-linux-gnu/hdf5/serial)
   endif()
 endif()
 
