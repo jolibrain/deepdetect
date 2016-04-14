@@ -106,14 +106,18 @@
 
         // parameter for doing the Image Manipulation
 
-
-    for (int i=0; i<(int)this->_images.size();i++){
+    std::cout << "size of the _image is " << this->_images.size()<< std::endl;
+    for (int i=0; i<(int)this->_images.size()-1;i++){
       tensorflow::Tensor input_tensor(tensorflow::DT_FLOAT, tensorflow::TensorShape({1,_height,_width,channels()}));
       auto input_tensor_mapped = input_tensor.tensor<float, 4>();
 
-      cv::Mat Image;
+      cv::Mat readImage;
 
-      Image = this->_images.at(i);
+      readImage = this->_images.at(i);
+      //std::cout <<"Image is empty or not ?? " <<Image.empty()<<std::endl;
+      cv::Size s(_height,_width);
+      cv::Mat Image;
+      cv::resize(readImage,Image,s,0,0,cv::INTER_CUBIC);
       cv::Mat Image2;
       Image.convertTo(Image2, CV_32FC1);
       Image = Image2;
@@ -133,16 +137,20 @@
           }
         }
       }
+      std::cout << "I am here !!"<<std::endl;
       _dv.push_back(input_tensor);
       _ids.push_back(this->_uris.at(i));
-
+      std::cout << "size of _dv in tfinput is " <<_dv.size()<< std::endl;
     }
+    
   }
 
 public:
     //TODO: image connector parameters
   int _mean = 128;
   int _std = 128;
+  int _height = 299;
+  int _width = 299;
   std::string _graphFile;
   std:: string _model_repo;
   std::vector<tensorflow::Tensor> _dv;

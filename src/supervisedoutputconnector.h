@@ -102,13 +102,18 @@ namespace dd
      */
     inline void add_results(const std::vector<APIData> &vrad)
     {
+      //std::cout << " IN the SupervisedOutput" << std::endl;
       std::unordered_map<std::string,int>::iterator hit;
       for (APIData ad: vrad)
-	{
+	{ //std::cout <<"In the for loop" <<std::endl;
 	  std::string uri = ad.get("uri").get<std::string>();
+	  //std::cout << "The value of the uri is " << uri <<std::endl;
 	  double loss = ad.get("loss").get<double>();
+	  //std::cout << "The value of the loss is " << loss <<std::endl;
 	  std::vector<double> probs = ad.get("probs").get<std::vector<double>>();
+	  //std::cout << "value of probs is " << probs.at(0) <<std::endl;
 	  std::vector<std::string> cats = ad.get("cats").get<std::vector<std::string>>();
+	  //std::cout << "value of cats is " << cats.at(0) <<std::endl;
 	  if ((hit=_vcats.find(uri))==_vcats.end())
 	    {
 	      auto resit = _vcats.insert(std::pair<std::string,int>(uri,_vvcats.size()));
