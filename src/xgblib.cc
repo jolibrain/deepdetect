@@ -245,7 +245,7 @@ namespace dd
 	  }
 	  version += 1;
 	}
-	std::cerr << "version=" << version << " / rabit version=" << rabit::VersionNumber() << std::endl;
+	//std::cerr << "version=" << version << " / rabit version=" << rabit::VersionNumber() << std::endl;
 	//CHECK_EQ(version, rabit::VersionNumber());
 	/*std::string res = learner->EvalOneIter(i, eval_datasets, eval_data_names);
 	  if (rabit::IsDistributed()) {
@@ -366,7 +366,7 @@ namespace dd
       {
 	_learner = xgboost::Learner::Create({});
 	std::string model_in = this->_mlmodel._weights;
-	std::cerr << "model file=" << model_in << std::endl;
+        LOG(INFO) << "loading XGBoost model file=" << model_in;
 	std::unique_ptr<dmlc::Stream> fi(dmlc::Stream::Create(model_in.c_str(),"r"));
 	_learner->Load(fi.get());
 	// we can't read the objective function string name from the xgboost in-memory model,
