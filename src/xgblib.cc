@@ -396,7 +396,7 @@ namespace dd
     _learner->Predict(inputc._m,_params.pred_margin,&preds,_params.ntree_limit);
 
     // results
-    float loss = 0.0; //TODO: acquire loss ?
+    //float loss = 0.0; // XXX: how to acquire loss ?
     int batch_size = preds.size();
     int nclasses = _nclasses;
     if (_objective == "multi:softprob")
