@@ -74,6 +74,7 @@ namespace dd
     UnsupervisedOutput(const UnsupervisedOutput &uout)
       :OutputConnectorStrategy()
       {
+	(void)uout;
       }
 
     ~UnsupervisedOutput() {}
@@ -95,7 +96,7 @@ namespace dd
       for (APIData ad: vrad)
 	{
 	  std::string uri = ad.get("uri").get<std::string>();
-	  double loss = ad.get("loss").get<double>();
+	  //double loss = ad.get("loss").get<double>();
 	  std::vector<double> vals = ad.get("vals").get<std::vector<double>>();
 	  if ((hit=_vres.find(uri))==_vres.end())
 	    {
