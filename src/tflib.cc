@@ -19,9 +19,14 @@
  * along with deepdetect.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <string>
 #include "tflib.h"
 #include "imginputfileconn.h"
 #include "outputconnectorstrategy.h"
+
+#include "tensorflow/core/public/session.h"
+#include "tensorflow/core/platform/env.h"
+#include "tensorflow/core/framework/tensor.h"
 
 namespace dd
 {
@@ -59,13 +64,30 @@ namespace dd
 	_regression = true;
 	_nclasses = 1;
       }
+    // setting the value of Input Layer for Tensorflow graph
+    if (ad.has("inputlayer"))
+    {
+      _inputLayer = ad.get("inputlayer").get<std::string>();
+
+    }else{
+        _inputLayer = "Mul"; // Default Input Layer Name of TensorFlow          
+    }
+    // setting the final Output Layer for Tensorflow graph
+    if (ad.has("outputlayer"))
+    {
+      _outputLayer = ad.get("outputlayer").get<std::string>();
+
+    }else{
+        _outputLayer = "softmax"; // Default Input Layer Name of TensorFlow
+              
+    }
     if (ad.has("ntargets"))
       _ntargets = ad.get("ntargets").get<int>();
     if (_nclasses == 0)
       throw MLLibBadParamException("number of classes is unknown (nclasses == 0)");
     if (_regression && _ntargets == 0)
       throw MLLibBadParamException("number of regression targets is unknown (ntargets == 0)");
-    this->_mlmodel.read_from_repository();
+    this->_mlmodel.read_from_repository(this->_mlmodel._repo);
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -85,8 +107,114 @@ namespace dd
   int TFLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::predict(const APIData &ad,
 										   APIData &out)
   {
-    //TODO
+    init_mllib(ad);
+    //std::cout << "I am in tflib :)" <<std::endl;
+    TInputConnectorStrategy inputc(this->_inputc);
+    TOutputConnectorStrategy tout;
+    APIData cad = ad;
+    inputc.init(cad);
+    //std::cout <<"inputc._dv is empty ?? "<< inputc._dv.empty() << "inputc._ids is empty ??" << inputc._ids.empty()<<std::endl;
+
+    cad.add("model_repo",this->_mlmodel._repo);
+    try
+      {
+  inputc.transform(cad);
+      }
+    catch (std::exception &e)
+      {
+  throw;
+      }
+
+  int batch_size = inputc.batch_size();
+
+  tensorflow::GraphDef graph_def;
+  std::string graphFile = this->_mlmodel._graphName;
+  //std::cout << "graphFile dir " << graphFile<< std::endl;
+  // Loading the graph to the given variable
+  tensorflow::Status graphLoadedStatus = ReadBinaryProto(tensorflow::Env::Default(),graphFile,&graph_def);
+  if (!graphLoadedStatus.ok()){
+    std::cout << graphLoadedStatus.ToString()<<std::endl;
+    return 1;
   }
+
+  // creating a session with the graph
+  std::unique_ptr<tensorflow::Session> session_inception(tensorflow::NewSession(tensorflow::SessionOptions()));
+  //session->reset(tensorflow::NewSession(tensorflow::SessionOptions()));
+  tensorflow::Status session_create_status = session_inception->Create(graph_def);
+  
+  if (!session_create_status.ok()){
+    std::cout <<session_create_status.ToString()<<std::endl;
+    return 1;
+  }
+
+  //std::cout << " Batch size of the file is "<< batch_size << std::endl;
+  // vector for storing  the outputAPI of the file 
+  std::vector<APIData> vrad;
+  // running the loded graph and saving the generated output 
+  std::vector<tensorflow::Tensor>::iterator it = inputc._dv.begin();
+  for (int i =0  ; i<batch_size; i++){
+    //std::cout << "In the loop " << std::endl;
+    std::vector<tensorflow::Tensor> finalOutput; // To save the final Output genereated by the tensorflow 
+    tensorflow::Status run_status  = session_inception->Run({{_inputLayer,*it}},{_outputLayer},{},&finalOutput);
+    if (!run_status.ok()){
+    std::cout <<run_status.ToString()<<std::endl;
+    //std::cout << "file name :" << _inputLayer << _outputLayer <<std::endl;
+    return 1;
+  }
+    tensorflow::Tensor output = std::move(finalOutput.at(0));
+    APIData rad;
+    rad.add("uri",inputc._ids.at(i));
+    generatedLabel(output,rad);
+    rad.add("loss",0.0);
+    vrad.push_back(rad);
+    
+    ++it;
+  }
+  //std::cout << "called add_results" <<std::endl;
+  //std::cout << " Batch size of the file is "<< batch_size << std::endl;
+  tout.add_results(vrad);
+  tout.finalize(ad.getobj("parameters").getobj("output"),out);
+  out.add("status",0);  
+
+
+  }
+  
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void TFLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::generatedLabel(const tensorflow::Tensor &output, APIData &out)
+  {
+    // file for reading the label file and marking the output accordingly
+    std::string labelfile = this->_mlmodel._labelName;
+    //std::cout << "labelFile here is " <<labelfile<<std::endl;
+    std::ifstream label(labelfile); 
+    std::string line;
+
+  auto scores = output.flat<float>();
+
+    // sorting the file to find the top labels
+  std::vector<std::pair<float,std::string>> sorted;
+
+  for (unsigned int i =0; i<=_nclasses ;++i){
+    std::getline(label,line);
+    sorted.emplace_back(scores(i),line);
+    //std::cout << scores(i) << " / line=" << line << std::endl;
+  }
+
+  std::sort(sorted.begin(),sorted.end());
+  std::reverse(sorted.begin(),sorted.end());
+  //selecting the output with top 5 probability
+  std::vector<double> probs;
+  std::vector<std::string> cats;
+  for(unsigned int i =0 ; i< 5;++i){
+    //std::cout << sorted[i].first << " "<<sorted[i].second <<std::endl;
+    probs.push_back(sorted[i].first);
+    cats.push_back(sorted[i].second);  
+  }
+  out.add("probs",probs);
+  out.add("cats",cats);
+
+
+  }
+
 
   template class TFLib<ImgTFInputFileConn,SupervisedOutput,TFModel>;
   template class TFLib<ImgTFInputFileConn,UnsupervisedOutput,TFModel>;

@@ -22,16 +22,54 @@
 #include "tfmodel.h"
 #include <utils/fileops.hpp>
 #include <glog/logging.h>
-
+#include <string>
 namespace dd
 {
   TFModel::TFModel(const APIData &ad)
   {
-    //TODO
+   if (ad.has("repository"))
+      {
+	read_from_repository(ad.get("repository").get<std::string>()); // XXX: beware, error not caught
+	this-> _modelRepo = ad.get("repository").get<std::string>();
+      } 
   }
 
-  int TFModel::read_from_repository()
+  int TFModel::read_from_repository(const std::string &repo)
   {
-    //TODO
+    std::string graphName = ".pb";
+    std::string labelFile = ".txt";
+  	this->_repo = repo;
+    std::unordered_set<std::string> lfiles;
+  	int e = fileops::list_directory(repo,true,false,lfiles);
+    if (e != 0)
+      {
+	LOG(ERROR) << "error reading or listing caffe models in repository " << repo << std::endl;
+	return 1;
+      }
+      
+  	auto hit = lfiles.begin();
+  	std::string graphf,labelf;
+  	long int state_t=-1;
+  	while(hit!=lfiles.end())
+      {
+	if ((*hit).find(graphName)!=std::string::npos)
+	  {
+	    // stat file to pick the latest one
+	    long int st = fileops::file_last_modif((*hit));
+	    if (st > state_t)
+	      {
+			graphf = (*hit);
+			state_t = st;
+	      }
+	  }
+	else if ((*hit).find(labelFile)!=std::string::npos)
+		labelf = (*hit);
+
+	++hit;
+	}
+	_graphName = graphf;
+	_labelName = labelf;
+
+	return 0;
   }
 }
