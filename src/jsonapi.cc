@@ -271,7 +271,7 @@ namespace dd
 	// optional parameters.
 	if (d.HasMember("type"))
 	  type = d["type"].GetString();
-	else type == "supervised"; // default
+	else type = "supervised"; // default
 	if (d.HasMember("description"))
 	  description = d["description"].GetString();
 	

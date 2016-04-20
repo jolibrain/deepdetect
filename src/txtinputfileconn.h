@@ -69,7 +69,7 @@ namespace dd
     ~TxtEntry() {}
 
     void reset() {}
-    void get_elt(std::string &key, T &val) const {}
+    void get_elt(std::string &key, T &val) const { (void)key; (void)val; }
     bool has_elt() const { return false; }
     
     float _target = -1; /**< class target in training mode. */
