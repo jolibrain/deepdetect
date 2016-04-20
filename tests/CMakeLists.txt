@@ -6,7 +6,11 @@ else()
 endif()
 set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lhdf5_hl -lhdf5 -lopenblas -lcaffe -lprotobuf)
 link_directories(${CAFFE_LIB_DIR} ${XGBOOST_LIB_DIR})
-set(XGBOOST_LIB_DEPS -lxgboost -ldmlc)
+if (USE_XGBOOST)
+  set(XGBOOST_LIB_DEPS -lxgboost -ldmlc)
+else()
+  set(XGBOOST_LIB_DEPS)
+endif()
 
 find_package(GTest)
 include_directories(${GTEST_INCLUDE_DIRS})
@@ -108,11 +112,13 @@ if (GTEST_FOUND)
     COMMAND ut_httpapi
     )
 
+if (USE_XGBOOST)
   add_executable(ut_xgbapi ut-xgbapi.cc)
   target_link_libraries(ut_xgbapi ddetect glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS}  ${XGBOOST_LIB_DEPS})
   add_test(
     NAME ut_xgbapi
     COMMAND ut_xgbapi
     )
+endif()
   
 endif()

@@ -533,6 +533,8 @@ namespace dd
   };
 }
 
+#ifdef USE_XGBOOST
 #include "xgbinputconns.h"
+#endif
 
 #endif

@@ -57,7 +57,7 @@ include(cmake/Cuda.cmake) # cuda + cudnn
 if (CAFFE_INC_DIR AND CAFFE_LIB_DIR)
   # do nothing
 else()
-  message(STATUS "Fetching and compiling customized caffe")
+  message(STATUS "Configuring customized caffe")
   if (CUDA_FOUND)
     if (HAVE_CUDNN)
       ExternalProject_Add(
@@ -101,20 +101,23 @@ ExternalProject_Add(
 endif()
 
 # XGBoost
-message(STATUS "Fetching XGBoost")
-ExternalProject_Add(
-  xgboost
-  PREFIX xgboost
-  INSTALL_DIR ${CMAKE_BINARY_DIR}
-  DOWNLOAD_COMMAND git clone --recursive https://github.com/dmlc/xgboost.git
-  UPDATE_COMMAND git submodule foreach git pull origin master
-  CONFIGURE_COMMAND pwd && make
-  INSTALL_COMMAND ""
-  BUILD_IN_SOURCE 1
-  )
-set(XGBOOST_INC_DIR ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/include ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/src ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/rabit/include ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/dmlc-core/include ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/dmlc-core/src/)
-set(XGBOOST_LIB_DIR ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/lib ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/dmlc-core/ ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/rabit/lib/)
-
+message(STATUS "Configuring XGBoost")
+if (USE_XGBOOST)
+  add_definitions(-DUSE_XGBOOST)
+  ExternalProject_Add(
+    xgboost
+    PREFIX xgboost
+    INSTALL_DIR ${CMAKE_BINARY_DIR}
+    DOWNLOAD_COMMAND git clone --recursive https://github.com/dmlc/xgboost.git
+    UPDATE_COMMAND git submodule foreach git pull origin master
+    CONFIGURE_COMMAND pwd && make
+    INSTALL_COMMAND ""
+    BUILD_IN_SOURCE 1
+    )
+  set(XGBOOST_INC_DIR ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/include ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/src ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/rabit/include ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/dmlc-core/include ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/dmlc-core/src/)
+  set(XGBOOST_LIB_DIR ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/lib ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/dmlc-core/ ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/rabit/lib/)
+endif()
+  
 # add the binary tree to the search path for include files
 # so that we will find dd_config.h
 include_directories("${PROJECT_BINARY_DIR}")

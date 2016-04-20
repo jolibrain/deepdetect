@@ -6,7 +6,11 @@ else()
   add_definitions(-DCPU_ONLY)
 endif()
 set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lhdf5_hl -lhdf5 -lopenblas -lcaffe -lprotobuf)
-set(XGBOOST_LIB_DEPS -lxgboost -ldmlc)
-
+if (USE_XGBOOST)
+  set(XGBOOST_LIB_DEPS -lxgboost -ldmlc)
+else()
+  set(XGBOOST_LIB_DEPS)
+endif()
+  
 add_executable (dede dede.cc)
 target_link_libraries (dede ddetect glog gflags opencv_core opencv_highgui opencv_imgproc cppnetlib-uri curlpp curl crypto ssl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${XGBOOST_LIB_DEPS})

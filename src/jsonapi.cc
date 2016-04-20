@@ -325,6 +325,7 @@ namespace dd
 		return dd_service_bad_request_1006();
 	      }
 	  }
+#ifdef USE_XGBOOST
 	else if (mllib == "xgboost")
 	  {
 	    XGBModel xmodel(ad_model);
@@ -338,6 +339,7 @@ namespace dd
 	    if (JsonAPI::store_json_blob(xmodel._repo,jstr)) // store successful call json blob
 	      LOG(ERROR) << "couldn't write " << JsonAPI::_json_blob_fname << " file in model repository " << xmodel._repo << std::endl;
 	  }
+#endif
 	else
 	  {
 	    return dd_unknown_library_1000();
