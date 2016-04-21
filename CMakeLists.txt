@@ -48,7 +48,7 @@ configure_file(
 #include_directories("${EIGEN3_INCLUDE_DIR}")
 #include_directories("${EIGEN3_INCLUDE_DIR}")
 
-set(eigen_archive_hash "3f653ace7d28")
+set(eigen_archive_hash "4c94692de3e5")
 
 include_directories("$ENV{HOME}/include")
 
@@ -68,7 +68,7 @@ ExternalProject_Add(
   PREFIX tensorflow
   INSTALL_DIR ${CMAKE_BINARY_DIR}
   DOWNLOAD_COMMAND git clone --recurse-submodules https://github.com/tensorflow/tensorflow
-  CONFIGURE_COMMAND mkdir -p dbuild && ../../../../patches/test_patch.sh ../../../../patches/tf/logging.h.patch && ./configure && bazel --output_base dbuild/ build //tensorflow:libtensorflow.so && cd google/protobuf && ./autogen.sh && ./configure --prefix=$ENV{HOME} && make && make install
+  CONFIGURE_COMMAND mkdir -p dbuild && ../../../../patches/test_patch.sh ../../../../patches/tf/logging.h.patch && ./configure && bazel --output_base dbuild/ build //tensorflow:libtensorflow.so //tensorflow/examples/label_image && cd google/protobuf && ./autogen.sh && ./configure --prefix=$ENV{HOME} && make && make install
   INSTALL_COMMAND ""
   BUILD_COMMAND ""
   BUILD_IN_SOURCE 1
