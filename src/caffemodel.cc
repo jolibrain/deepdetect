@@ -22,6 +22,7 @@
 #include "caffemodel.h"
 #include "utils/fileops.hpp"
 #include <glog/logging.h>
+#include <exception>
 #include <fstream>
 #include <iostream>
 
@@ -35,7 +36,7 @@ namespace dd
     else this->_mlmodel_template_repo += "caffe/"; // default
     if (ad.has("repository"))
       {
-	read_from_repository(ad.get("repository").get<std::string>()); // XXX: beware, error not caught
+       	read_from_repository(ad.get("repository").get<std::string>());
       }
     else
       {
