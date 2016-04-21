@@ -5,6 +5,8 @@ project(deepdetect)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
+include(ProcessorCount)
+ProcessorCount(N)
 include(ExternalProject)
 
 set (deepdetect_VERSION_MAJOR 0)
@@ -65,7 +67,7 @@ else()
 	PREFIX caffe_dd
 	INSTALL_DIR ${CMAKE_BINARY_DIR}
 	URL https://github.com/beniz/caffe/archive/master_dd_integ.tar.gz
-	CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn Makefile.config && make
+	CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn Makefile.config && make -j${N}
 	INSTALL_COMMAND ""
 	BUILD_IN_SOURCE 1
 	)
@@ -75,7 +77,7 @@ ExternalProject_Add(
 	PREFIX caffe_dd
 	INSTALL_DIR ${CMAKE_BINARY_DIR}
 	URL https://github.com/beniz/caffe/archive/master_dd_integ.tar.gz
-	CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && make
+	CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && make -j${N}
 	INSTALL_COMMAND ""
 	BUILD_IN_SOURCE 1
 	)
@@ -86,7 +88,7 @@ ExternalProject_Add(
       PREFIX caffe_dd
       INSTALL_DIR ${CMAKE_BINARY_DIR}
       URL https://github.com/beniz/caffe/archive/master_dd_integ.tar.gz
-      CONFIGURE_COMMAND ln -sf Makefile.config.cpu Makefile.config && make
+      CONFIGURE_COMMAND ln -sf Makefile.config.cpu Makefile.config && make -j${N}
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
       )
