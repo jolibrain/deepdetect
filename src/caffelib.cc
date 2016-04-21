@@ -2112,7 +2112,7 @@ namespace dd
 		    break;
 		  }
 	      }
-	    if (fabs(batch_size-min_batch_size) < fabs(max_batch_size-batch_size))
+	    if (std::abs(batch_size-min_batch_size) < std::abs(max_batch_size-batch_size))
 	      batch_size = min_batch_size;
 	    else batch_size = max_batch_size;
 	    for (int i=test_batch_size;i>1;i--)
