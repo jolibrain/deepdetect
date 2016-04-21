@@ -158,7 +158,8 @@ namespace dd
       double lambda = 1.0;
       double alpha = 0.0;
       double lambda_bias = 0.0; // linear booster parameters
-
+      std::string tree_method = "auto";
+      
       APIData ad_booster = ad_mllib.getobj("booster_params");
       if (ad_booster.size())
 	{
@@ -182,6 +183,8 @@ namespace dd
 	    alpha = ad_booster.get("alpha").get<double>();
 	  if (ad_booster.has("lambda_bias"))
 	    lambda_bias = ad_booster.get("lambda_bias").get<double>();
+	  if (ad_booster.has("tree_method"))
+	    tree_method = ad_booster.get("tree_method").get<std::string>();
 	}
       add_cfg_param("eta",eta);
       add_cfg_param("gamma",gamma);
@@ -193,6 +196,7 @@ namespace dd
       add_cfg_param("lambda",lambda);
       add_cfg_param("alpha",alpha);
       add_cfg_param("lambda_bias",lambda_bias);
+      add_cfg_param("tree_method",tree_method);
       
       // data setup
       std::vector<xgboost::DMatrix*> mats = { inputc._m };
