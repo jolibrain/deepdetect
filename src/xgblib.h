@@ -28,15 +28,7 @@
 
 namespace xgboost
 {
-  /*enum CLITask {
-    kTrain = 0,
-    kDump2Text = 1,
-    kPredict = 2
-    };*/
-  
   struct CLIParam : public dmlc::Parameter<CLIParam> {
-    /*! \brief the task name */
-    //int task;
     /*! \brief whether silent */
     int silent = 0;
     /*! \brief whether evaluate training statistics */
@@ -45,30 +37,16 @@ namespace xgboost
     int num_round = 100;
     /*! \brief the period to save the model, 0 means only save the final round model */
     int save_period;
-    /*! \brief the path of training set */
-    //std::string train_path;
-    /*! \brief path of test dataset */
-    //std::string test_path;
     /*! \brief the path of test model file, or file to restart training */
     std::string model_in = "NULL";
     /*! \brief the path of final model file, to be saved */
     std::string model_out = "NULL";
-    /*! \brief the path of directory containing the saved models */
-    //std::string model_dir;
     /*! \brief name of predict file */
     std::string name_pred;
-    /*! \brief data split mode */
-    //int dsplit;
     /*!\brief limit number of trees in prediction */
     int ntree_limit = 0;
     /*!\brief whether to directly output margin value */
     bool pred_margin = false;
-    /*! \brief whether dump statistics along with model */
-    //int dump_stats;
-    /*! \brief name of feature map */
-    //std::string name_fmap;
-    /*! \brief name of dump file */
-    //std::string name_dump;
     /*! \brief the paths of validation data sets */
     std::vector<std::string> eval_data_paths;
     /*! \brief the names of the evaluation data used in output log */
