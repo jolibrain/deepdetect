@@ -84,7 +84,7 @@ namespace dd
     xgboost::data::SimpleCSRSource& mat = *source;
     bool nan_missing = xgboost::common::CheckNAN(_missing);
     mat.info.num_row = csvl.size();
-    mat.info.num_col = feature_size()+1; // XXX: +1 otherwise there's a mismatch in xgnoost's simple_dmatrix.cc:151
+    mat.info.num_col = feature_size()+1; // XXX: +1 otherwise there's a mismatch in xgboost's simple_dmatrix.cc:151
     auto hit = csvl.begin();
     while(hit!=csvl.end())
       {
@@ -95,9 +95,12 @@ namespace dd
 	    double v = (*hit)._v.at(i);
 	    if (xgboost::common::CheckNAN(v) && !nan_missing)
 	      throw InputConnectorBadParamException("NaN value in input data matrix, and missing != NaN");
-	    if (!_label_pos.empty() && i == _label_pos[0]) //TODO: multilabel ?
+	    std::vector<int>::iterator ipos;
+	    if (!_label_pos.empty()
+		&& (ipos = std::find(_label_pos.begin(),_label_pos.end(),i))!=_label_pos.end())
 	      {
-		mat.info.labels.push_back(v+_label_offset[0]);
+		int pos = std::distance(_label_pos.begin(),ipos);
+		mat.info.labels.push_back(v+_label_offset[pos]);
 	      }
 	    else if (i == _id_pos)
 	      {

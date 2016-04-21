@@ -142,6 +142,8 @@ namespace dd
       add_cfg_param("seed",seed);
       if (_objective == "multi:softmax")
 	throw MLLibBadParamException("use multi:softprob objective instead of multi:softmax");
+      else if (_objective == "reg:linear" || _objective == "reg:logistic")
+	eval_metric = "rmse";
       if (!_regression && _objective == "multi:softprob")
 	add_cfg_param("num_class",_nclasses);
       
@@ -337,8 +339,8 @@ namespace dd
       this->_mlmodel.read_from_repository();
       
       // add whatever the input connector needs to transmit out
-      //inputc.response_params(out);
-
+      inputc.response_params(out);
+      
       return 0;
   }
 

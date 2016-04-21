@@ -74,6 +74,8 @@ namespace dd
   {
     static std::string objective_softprob = "multi:softprob";
     static std::string objective_binary = "binary:logistic";
+    static std::string objective_reg_linear = "reg:linear";
+    static std::string objective_reg_logistic = "reg:logistic";
     std::ifstream ff(modelfile);
     if (!ff.is_open())
       {
@@ -88,6 +90,10 @@ namespace dd
 	  return objective_softprob;
 	else if (line.find(objective_binary,0)!=std::string::npos)
 	  return objective_binary;
+	else if (line.find(objective_reg_linear,0)!=std::string::npos)
+	  return objective_reg_linear;
+	else if (line.find(objective_reg_logistic,0)!=std::string::npos)
+	  return objective_reg_logistic;
       }
     return "";
   }
