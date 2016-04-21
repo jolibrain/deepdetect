@@ -4,7 +4,7 @@
 
 DeepDetect (http://www.deepdetect.com/) is a machine learning API and server written in C++11. It makes state of the art machine learning easy to work with and integrate into existing applications.
 
-DeepDetect relies on external machine learning libraries through a very generic and flexible API. At the moment it has support for the deep learning library [Caffe](https://github.com/BVLC/caffe).
+DeepDetect relies on external machine learning libraries through a very generic and flexible API. At the moment it has support for the deep learning library [Caffe](https://github.com/BVLC/caffe) and distributed gradient boosting library [XGBoost](https://github.com/dmlc/xgboost).
 
 #### Main functionalities
 
@@ -34,6 +34,7 @@ List of tutorials, training from text, data and images, setup of prediction serv
 Current features include:
 
 - high-level API for machine learning
+- Support for Caffe and XGBoost
 - JSON communication format
 - remote Python client library
 - dedicated server with support for asynchronous training calls
@@ -71,6 +72,10 @@ Current features include:
 - BLAS via ATLAS, MKL, or OpenBLAS.
 - [protobuf](https://github.com/google/protobuf)
 - IO libraries hdf5, leveldb, snappy, lmdb
+
+##### XGBoost Dependencies
+
+None outside of C++ compiler and make
 
 ##### Caffe version
 
@@ -127,6 +132,11 @@ If you would like to build with cuDNN, your `cmake` line should be:
 cmake .. -DUSE_CUDNN=ON
 ```
 
+If you would like to build with XGBoost, include the `-DUSE_XGBOOST=ON` parameter to `cmake`:
+```
+cmake .. -DUSE_XGBOOST=ON
+```
+
 ### Run tests
 
 Note: running tests requires the automated download of ~75Mb of datasets, and computations may take around thirty minutes on a CPU-only machines.
@@ -155,3 +165,4 @@ See tutorials from http://www.deepdetect.com/tutorials/tutorials/
 
 - DeepDetect (http://www.deepdetect.com/)
 - Caffe (https://github.com/BVLC/caffe)
+- XGBoost (https://github.com/dmlc/xgboost)
