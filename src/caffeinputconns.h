@@ -525,6 +525,8 @@ namespace dd
 
     int channels() const
     {
+      if (_characters)
+	return 1;
       if (_channels > 0)
 	return _channels;
       return feature_size();

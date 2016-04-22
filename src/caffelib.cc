@@ -711,19 +711,16 @@ namespace dd
 		lparam->mutable_memory_data_param()->set_height(inputc.height());
 		lparam->mutable_memory_data_param()->set_width(inputc.width());
 	      }
-	    if (flat1dconv)
-	      {
-		// test
-		lparam = net_param.mutable_layer(1);
-		lparam->mutable_memory_data_param()->set_channels(1);
-		lparam->mutable_memory_data_param()->set_height(inputc.height());
-		lparam->mutable_memory_data_param()->set_width(inputc.width());
-		// deploy
-		lparam = deploy_net_param.mutable_layer(0);
-		lparam->mutable_memory_data_param()->set_channels(1);
-		lparam->mutable_memory_data_param()->set_height(inputc.height());
-		lparam->mutable_memory_data_param()->set_width(inputc.width());
-	      }
+	    // test
+	    lparam = net_param.mutable_layer(1);
+	    lparam->mutable_memory_data_param()->set_channels(inputc.channels());
+	    lparam->mutable_memory_data_param()->set_height(inputc.height());
+	    lparam->mutable_memory_data_param()->set_width(inputc.width());
+	    // deploy
+	    lparam = deploy_net_param.mutable_layer(0);
+	    lparam->mutable_memory_data_param()->set_channels(inputc.channels());
+	    lparam->mutable_memory_data_param()->set_height(inputc.height());
+	    lparam->mutable_memory_data_param()->set_width(inputc.width());
 	  }
 	else if (l > 0)
 	  {
