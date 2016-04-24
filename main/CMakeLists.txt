@@ -7,7 +7,7 @@ else()
   add_definitions(-DCPU_ONLY)
 endif()
 set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lhdf5_hl -lhdf5 -lopenblas -lcaffe -lprotobuf)
-set(TF_LIB_DEPS -ltensorflow)
+set(TF_LIB_DEPS -ltensorflow ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/tensorflow/bazel-out/local_linux-fastbuild/bin/tensorflow/cc/libcc_ops.lo)
 
 add_executable (dede dede.cc)
 target_link_libraries (dede ddetect glog gflags opencv_core opencv_highgui opencv_imgproc cppnetlib-uri curlpp curl crypto ssl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS})

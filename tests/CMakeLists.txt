@@ -5,7 +5,7 @@ else()
   add_definitions(-DCPU_ONLY)
 endif()
 set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lhdf5_hl -lhdf5 -lopenblas -lcaffe -lprotobuf)
-set(TF_LIB_DEPS -ltensorflow)
+set(TF_LIB_DEPS -ltensorflow ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/tensorflow/bazel-out/local_linux-fastbuild/bin/tensorflow/cc/libcc_ops.lo)
 link_directories(${CAFFE_LIB_DIR})
 link_directories(${TF_LIB_DIR})
 
@@ -34,7 +34,7 @@ if (GTEST_FOUND)
     )
 
   add_executable(opencv_tensor opencv_tensor.cc)
-  target_link_libraries(opencv_tensor opencv_core opencv_highgui opencv_imgproc boost_thread boost_system crypto ssl ${TF_LIB_DEPS} ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/tensorflow/bazel-out/local_linux-fastbuild/bin/tensorflow/cc/libcc_ops.lo)
+  target_link_libraries(opencv_tensor opencv_core opencv_highgui opencv_imgproc boost_thread boost_system crypto ssl ${TF_LIB_DEPS})
   
   add_executable(test_server test-server.cc)
   target_link_libraries(test_server boost_thread cppnetlib-uri cppnetlib-client-connections boost_system crypto ssl)
