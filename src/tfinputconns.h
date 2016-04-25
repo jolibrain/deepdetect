@@ -1,6 +1,4 @@
-/**
- * DeepDetect
- * Copyright (c) 2016 Emmanuel Benazera
+/*copyright (c) 2016 Emmanuel Benazera
  * Author: Emmanuel Benazera <beniz@droidnik.fr>
  *
  * This file is part of deepdetect.
@@ -35,6 +33,11 @@
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/graph/graph_def_builder.h"
 
+
+#include "inputconnectorstrategy.h"
+#include "ext/base64/base64.h"
+#include <glog/logging.h>
+
  namespace dd
  {
   class TFInputInterface
@@ -53,13 +56,14 @@
 
   };
 
-  class ImgTFInputFileConn : public ImgInputFileConn, public TFInputInterface
-  {
+  class ImgTFInputFileConn : public InputConnectorStrategy, public TFInputInterface
+
+ {
   public:
     ImgTFInputFileConn()
-    :ImgInputFileConn() {}
+    :InputConnectorStrategy() {}
     ImgTFInputFileConn(const ImgTFInputFileConn &i)
-    :ImgInputFileConn(i),TFInputInterface(i) {}
+    :InputConnectorStrategy(),TFInputInterface(i) {}
     ~ImgTFInputFileConn() {}
 
   // size of each element in tensorflow 
@@ -83,15 +87,13 @@
     {
      if (!_dv.empty())
       return _dv.size();
-    else return ImgInputFileConn::batch_size();
+    else return 0;
   }
 
-
-  void init(const APIData &ad)
-  {
-    ImgInputFileConn::init(ad);
-  }
-  
+void init(const APIData &ad)
+    {
+      fillup_parameters(ad);
+    }
   // COde for reading an Image file and converting it into tensor
 int ReadTensorFromImageFile(std::string file_name, const int input_height,
                                const int input_width, const float input_mean,
@@ -159,29 +161,49 @@ tensorflow::Node* file_reader =
   }
   return 0;
 }
+
+//file to fill Parameter
+void fillup_parameters(const APIData &ad)
+    {
+      // optional parameters.
+      if (ad.has("width"))
+  _width = ad.get("width").get<int>();
+      if (ad.has("height"))
+  _height = ad.get("height").get<int>();
+      if (ad.has("bw"))
+  _bw = ad.get("bw").get<bool>();
+      if (ad.has("shuffle"))
+  _shuffle = ad.get("shuffle").get<bool>();
+      if (ad.has("seed"))
+  _seed = ad.get("seed").get<int>();
+      if (ad.has("test_split"))
+  _test_split = ad.get("test_split").get<double>();
+    }
   void transform(const APIData &ad)
   { 
-    try
-    {
-      ImgInputFileConn::transform(ad);
-    }
-    catch(InputConnectorBadParamException &e)
-    {
-      throw;
-    }
+    // try
+    // {
+    //   ImgInputFileConn::transform(ad);
+    // }
+    // catch(InputConnectorBadParamException &e)
+    // {
+    //   throw;
+    // }
+
+    //File to make tfindependent of opencv files
+  InputConnectorStrategy::get_data(ad);
+  
+
+
+
+
       // converting the input dataFrame into Tensor a Tensorflow DataStructure 
     _model_repo = ad.get("model_repo").get<std::string>();
-    try{
-      ImgInputFileConn::transform(ad);      
-    }
-    catch (InputConnectorBadParamException &e){
-      throw;
-    }
-
+    
         // parameter for doing the Image Manipulation
 
-    std::cout << "size of the _image is " << this->_uris.size()<< std::endl;
-    for (int i=0; i<(int)this->_uris.size();i++){
+    std::cout << "size of the _image is " << _uris.size()<< std::endl;
+    for (int i=0; i<(int)_uris.size();i++){
       // tensorflow::Tensor input_tensor(tensorflow::DT_FLOAT, tensorflow::TensorShape({1,_height,_width,channels()}));
       // auto input_tensor_mapped = input_tensor.tensor<float, 4>();
 
@@ -214,13 +236,13 @@ tensorflow::Node* file_reader =
       // std::cout << "I am here !!"<<std::endl;
 
       std::vector<tensorflow::Tensor> input_tensor_vector;
-      int readTensorStatus = ReadTensorFromImageFile(this->_uris.at(i), _height,
+      int readTensorStatus = ReadTensorFromImageFile(_uris.at(i), _height,
                                _width, _mean,
                                _std,
                                 &input_tensor_vector);
       
       _dv.push_back(input_tensor_vector[0]);
-      _ids.push_back(this->_uris.at(i));
+      _ids.push_back(_uris.at(i));
       std::cout << "size of _dv in tfinput is " <<_dv.size()<< std::endl;
     }
     
@@ -232,6 +254,10 @@ public:
   int _std = 128;
   int _height = 299;
   int _width = 299;
+  bool _bw = false; /**< whether to convert to black & white. */
+  double _test_split = 0.0; /**< auto-split of the dataset. */
+  bool _shuffle = false; /**< whether to shuffle the dataset, usually before splitting. */
+  int _seed = -1; /**< shuffling seed. */
   std::string _graphFile;
   std:: string _model_repo;
   std::vector<tensorflow::Tensor> _dv;
@@ -241,3 +267,4 @@ public:
 }
 
 #endif
+

@@ -112,7 +112,7 @@ namespace dd
     TInputConnectorStrategy inputc(this->_inputc);
     TOutputConnectorStrategy tout;
     APIData cad = ad;
-    inputc.init(cad);
+    //inputc.init(cad);
     //std::cout <<"inputc._dv is empty ?? "<< inputc._dv.empty() << "inputc._ids is empty ??" << inputc._ids.empty()<<std::endl;
 
     cad.add("model_repo",this->_mlmodel._repo);
@@ -129,7 +129,7 @@ namespace dd
 
   tensorflow::GraphDef graph_def;
   std::string graphFile = this->_mlmodel._graphName;
-  //std::cout << "graphFile dir " << graphFile<< std::endl;
+  std::cout << "graphFile dir " << graphFile<< std::endl;
   // Loading the graph to the given variable
   tensorflow::Status graphLoadedStatus = ReadBinaryProto(tensorflow::Env::Default(),graphFile,&graph_def);
   if (!graphLoadedStatus.ok()){
@@ -153,7 +153,7 @@ namespace dd
   // running the loded graph and saving the generated output 
   std::vector<tensorflow::Tensor>::iterator it = inputc._dv.begin();
   for (int i =0  ; i<batch_size; i++){
-    //std::cout << "In the loop " << std::endl;
+    std::cout << "In the loop " << std::endl;
     std::vector<tensorflow::Tensor> finalOutput; // To save the final Output genereated by the tensorflow 
     tensorflow::Status run_status  = session_inception->Run({{_inputLayer,*it}},{_outputLayer},{},&finalOutput);
     if (!run_status.ok()){
