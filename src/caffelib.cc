@@ -66,6 +66,19 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::instantiate_template(const APIData &ad)
   {
+    // - check whether there's a risk of erasing model files
+    if (this->_mlmodel.read_from_repository(this->_mlmodel._repo))
+      throw MLLibBadParamException("error reading or listing caffe models in repository " + this->_mlmodel._repo);
+    if (!this->_mlmodel._weights.empty())
+      {
+	if (ad.has("finetuning") && ad.get("finetuning").get<bool>()
+	    && !this->_mlmodel._trainf.empty()) // may want to finetune from a template only if no neural net definition present
+	  throw MLLibBadParamException("using template for finetuning but model prototxt already exists, remove 'template' from 'mllib', or remove existing 'prototxt' files ?");
+	else if (ad.has("resume") && ad.get("resume").get<bool>()) // resuming from state, may not want to override the exiting network definition (e.g. after finetuning)
+	  throw MLLibBadParamException("using template while resuming from existing model, remove 'template' from 'mllib' ?");
+	else throw MLLibBadParamException("using template while network weights exist, remove 'template' from 'mllib' or would you like to 'finetune' instead ?");
+      }
+      
     // - locate template repository
     std::string model_tmpl = ad.get("template").get<std::string>();
     this->_mlmodel._model_template = model_tmpl;
