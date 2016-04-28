@@ -6,6 +6,8 @@ deepdetect server.
 
 Follow instructions from http://www.deepdetect.com/tutorials/imagenet-classifier/
 
+This should look like this ![dd_sshot](https://cloud.githubusercontent.com/assets/3530657/13314070/4ea6aad6-dba3-11e5-889c-120cfe15ce6f.png)
+
 ## nginx configuration
 
 Here is an nginx configuration example you can use to serve the
