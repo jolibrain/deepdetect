@@ -1405,6 +1405,11 @@ namespace dd
       {
 	LOG(INFO) << "filling up net prior to training\n";
 	try {
+	  if (boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->net()->layers()[0]) == 0)
+	    {
+	      delete solver;
+	      throw MLLibBadParamException("solver's net's first layer is required to be of MemoryData type");
+	    }
 	  boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->net()->layers()[0])->AddDatumVector(inputc._dv);
 	}
 	catch(std::exception &e)
@@ -1643,6 +1648,8 @@ namespace dd
 	  {
 	    try
 	      {
+		if (boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0]) == 0)
+		  throw MLLibBadParamException("test net's first layer is required to be of MemoryData type");
 		boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(net->layers()[0])->set_batch_size(dv.size());
 		boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(net->layers()[0])->AddDatumVector(dv);
 	      }
@@ -1799,6 +1806,12 @@ namespace dd
       }
     try
       {
+	if (boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0]) == 0)
+	  {
+	    delete _net;
+	    _net = nullptr;
+	    throw MLLibBadParamException("deploy net's first layer is required to be of MemoryData type");
+	  }
 	boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->set_batch_size(batch_size);
 	boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(inputc._dv_test);
       }
