@@ -48,7 +48,7 @@ configure_file(
 #include_directories("${EIGEN3_INCLUDE_DIR}")
 #include_directories("${EIGEN3_INCLUDE_DIR}")
 
-set(eigen_archive_hash "0823d98fdde7")
+set(eigen_archive_hash "50812b426b7c")
 
 include_directories("$ENV{HOME}/include")
 
