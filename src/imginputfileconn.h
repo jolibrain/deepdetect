@@ -241,7 +241,6 @@ namespace dd
 	      fillup_parameters(ad_param.getobj("input"));
 	    }
 	}
-      int img_count = 0;
       int catch_read = 0;
       std::string catch_msg;
       std::vector<std::string> uris;
@@ -282,8 +281,7 @@ namespace dd
 	      _test_labels.push_back(dimg._ctype._label);
 	    if (!dimg._ctype._b64)
 	      uris.push_back(u);
-	    else uris.push_back(std::to_string(img_count));
-	    ++img_count;
+	    else uris.push_back(std::to_string(i));
 	  }
 	}
       if (catch_read)
