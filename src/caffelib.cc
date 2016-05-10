@@ -76,7 +76,8 @@ namespace dd
 	  throw MLLibBadParamException("using template for finetuning but model prototxt already exists, remove 'template' from 'mllib', or remove existing 'prototxt' files ?");
 	else if (ad.has("resume") && ad.get("resume").get<bool>()) // resuming from state, may not want to override the exiting network definition (e.g. after finetuning)
 	  throw MLLibBadParamException("using template while resuming from existing model, remove 'template' from 'mllib' ?");
-	else throw MLLibBadParamException("using template while network weights exist, remove 'template' from 'mllib' or would you like to 'finetune' instead ?");
+	else if (!this->_mlmodel._trainf.empty())
+	  throw MLLibBadParamException("using template while network weights exist, remove 'template' from 'mllib' or would you like to 'finetune' instead ?");
       }
       
     // - locate template repository
