@@ -146,6 +146,10 @@ To prepare for tests, compile with:
 cmake -DBUILD_TESTS=ON ..
 make
 ```
+Run tests with:
+```
+ctest
+```
 
 ### Start the server
 
@@ -155,6 +159,16 @@ cd build/main
 
 DeepDetect [ commit 73d4e638498d51254862572fe577a21ab8de2ef1 ]
 Running DeepDetect HTTP server on localhost:8080
+```
+
+Main options are:
+- `-host` to select which host to run on, default is `localhost`, use `0.0.0.0` to listen on all interfaces
+- `-port` to select which port to listen to, default is `8080`
+- `-nthreads` to select the number of HTTP threads, default is `10`
+
+To see all options, do:
+```
+./dede --help
 ```
 
 ### Run examples
