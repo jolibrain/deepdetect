@@ -6,6 +6,9 @@ MAINTAINER Emmanuel Benazera "beniz@droidnik.fr"
 
 LABEL description="DeepDetect deep learning server & API / GPU version"
 
+RUN ln -sf /dev/stdout /var/log/deepdetect.log
+RUN ln -sf /dev/stderr /var/log/deepdetect.log
+
 RUN useradd -ms /bin/bash dd
 
 RUN apt-get update && apt-get install -y git cmake build-essential libgoogle-glog-dev libgflags-dev libeigen3-dev libopencv-dev libcppnetlib-dev libboost-dev libcurlpp-dev libcurl4-openssl-dev protobuf-compiler libopenblas-dev libhdf5-dev libprotobuf-dev libleveldb-dev libsnappy-dev liblmdb-dev libutfcpp-dev wget
@@ -14,7 +17,7 @@ WORKDIR /opt
 RUN git clone https://github.com/beniz/deepdetect.git && cd deepdetect && mkdir build
 
 WORKDIR /opt/deepdetect/build
-RUN cmake .. -DUSE_CUDNN=ON
+RUN cmake .. -DUSE_CUDNN=ON -DUSE_XGBOOST=ON
 RUN make
 
 # external volume to be mapped, e.g. for models or training data
