@@ -37,7 +37,7 @@ curl http://localhost:8080/info
 Here is how to do a simple image classification service and prediction test:
 - service creation
 ```
-curl -X PUT "http://localhost:8080/services/imageserv" -d "{\"mllib\":\"caffe\",\"description\":\"image classification service\",\"type\":\"supervised\",\"parameters\":{\"input\":{\"connector\":\"image\"},\"mllib\":{\"nclasses\":1000,\"template\":\"googlenet\"}},\"model\":{\"templates\":\"../templates/caffe/\",\"repository\":\"/opt/models/ggnet/\"}}"
+curl -X PUT "http://localhost:8080/services/imageserv" -d "{\"mllib\":\"caffe\",\"description\":\"image classification service\",\"type\":\"supervised\",\"parameters\":{\"input\":{\"connector\":\"image\"},\"mllib\":{\"nclasses\":1000}},\"model\":{\"repository\":\"/opt/models/ggnet/\"}}"
 
 {"status":{"code":201,"msg":"Created"}}
 ```
@@ -65,7 +65,7 @@ Notes:
 
 To test on image classification on GPU:
 ```
-curl -X PUT "http://localhost:8080/services/imageserv" -d "{\"mllib\":\"caffe\",\"description\":\"image classification service\",\"type\":\"supervised\",\"parameters\":{\"input\":{\"connector\":\"image\"},\"mllib\":{\"nclasses\":1000,\"template\":\"googlenet\"}},\"model\":{\"templates\":\"../templates/caffe/\",\"repository\":\"/opt/models/ggnet/\"}}"
+curl -X PUT "http://localhost:8080/services/imageserv" -d "{\"mllib\":\"caffe\",\"description\":\"image classification service\",\"type\":\"supervised\",\"parameters\":{\"input\":{\"connector\":\"image\"},\"mllib\":{\"nclasses\":1000}},\"model\":{\"repository\":\"/opt/models/ggnet/\"}}"
 {"status":{"code":201,"msg":"Created"}}
 ```
 and
