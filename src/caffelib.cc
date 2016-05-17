@@ -68,7 +68,7 @@ namespace dd
   {
     // - check whether there's a risk of erasing model files
     if (this->_mlmodel.read_from_repository(this->_mlmodel._repo))
-      throw MLLibBadParamException("error reading or listing caffe models in repository " + this->_mlmodel._repo);
+      throw MLLibBadParamException("error reading or listing Caffe models in repository " + this->_mlmodel._repo);
     if (!this->_mlmodel._weights.empty())
       {
 	if (ad.has("finetuning") && ad.get("finetuning").get<bool>()
@@ -164,7 +164,7 @@ namespace dd
       }
 
     if (this->_mlmodel.read_from_repository(this->_mlmodel._repo))
-      throw MLLibBadParamException("error reading or listing caffe models in repository " + this->_mlmodel._repo);
+      throw MLLibBadParamException("error reading or listing Caffe models in repository " + this->_mlmodel._repo);
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -1431,7 +1431,7 @@ namespace dd
 	inputc._ids.clear();
       }
     if (this->_mlmodel.read_from_repository(this->_mlmodel._repo))
-      throw MLLibBadParamException("error reading or listing caffe models in repository " + this->_mlmodel._repo);
+      throw MLLibBadParamException("error reading or listing Caffe models in repository " + this->_mlmodel._repo);
     this->_mlmodel.read_corresp_file();
     if (ad_mllib.has("resume") && ad_mllib.get("resume").get<bool>())
       {
@@ -1587,7 +1587,7 @@ namespace dd
     
     solver_param = caffe::SolverParameter();
     if (this->_mlmodel.read_from_repository(this->_mlmodel._repo))
-      throw MLLibBadParamException("error reading or listing caffe models in repository " + this->_mlmodel._repo);
+      throw MLLibBadParamException("error reading or listing Caffe models in repository " + this->_mlmodel._repo);
     int cm = create_model();
     if (cm == 1)
       throw MLLibInternalException("no model in " + this->_mlmodel._repo + " for initializing the net");
