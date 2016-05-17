@@ -1197,6 +1197,7 @@ namespace dd
 	  }
 	catch (std::exception &e)
 	  {
+	    LOG(ERROR) << "Error creating network";
 	    throw;
 	  }
 	LOG(INFO) << "Using pre-trained weights from " << this->_mlmodel._weights << std::endl;
@@ -1206,6 +1207,7 @@ namespace dd
 	  }
 	catch (std::exception &e)
 	  {
+	    LOG(ERROR) << "Error copying pre-trained weights";
 	    delete _net;
 	    _net = nullptr;
 	    throw;
@@ -1659,11 +1661,22 @@ namespace dd
 	      }
 	    catch(std::exception &e)
 	      {
+		LOG(ERROR) << "Error while filling up network for testing";
 		// XXX: might want to clean up here...
 		throw;
 	      }
 	    float loss = 0.0;
-	    std::vector<Blob<float>*> lresults = net->Forward(&loss);
+	    std::vector<Blob<float>*> lresults;
+	    try
+	      {
+		lresults = net->Forward(&loss);
+	      }
+	    catch(std::exception &e)
+	      {
+		LOG(ERROR) << "Error while proceeding with test forward pass";
+		// XXX: might want to clean up here...
+		throw;
+	      }
 	    int slot = lresults.size() - 1;
 	    if (_regression && _ntargets > 1) // slicing is involved
 	      slot--; // labels appear to be last
@@ -1721,12 +1734,14 @@ namespace dd
     if (!_net || _net->phase() == caffe::TRAIN)
       {
 	int cm = create_model(true);
+	if (cm != 0)
+	  LOG(ERROR) << "Error creating model for prediction";
 	if (cm == 1)
 	  throw MLLibInternalException("no model in " + this->_mlmodel._repo + " for initializing the net");
 	else if (cm == 2)
 	  throw MLLibBadParamException("no deploy file in " + this->_mlmodel._repo + " for initializing the net");
       }
-
+    
     TInputConnectorStrategy inputc(this->_inputc);
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
     APIData ad_output = ad.getobj("parameters").getobj("output");
@@ -1812,6 +1827,7 @@ namespace dd
       {
 	if (boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0]) == 0)
 	  {
+	    LOG(ERROR) << "deploy net's first layer is required to be of MemoryData type (predict)";
 	    delete _net;
 	    _net = nullptr;
 	    throw MLLibBadParamException("deploy net's first layer is required to be of MemoryData type");
@@ -1821,6 +1837,7 @@ namespace dd
       }
     catch(std::exception &e)
       {
+	LOG(ERROR) << "exception while filling up network for prediction";
 	delete _net;
 	_net = nullptr;
 	throw;
@@ -1830,7 +1847,18 @@ namespace dd
     TOutputConnectorStrategy tout;
     if (extract_layer.empty()) // supervised
       {
-	std::vector<Blob<float>*> results = _net->Forward(&loss);
+	std::vector<Blob<float>*> results;
+	try
+	  {
+	    results = _net->Forward(&loss);
+	  }
+	catch(std::exception &e)
+	  {
+	    LOG(ERROR) << "Error while proceeding with prediction forward pass, not enough memory?";
+	    delete _net;
+	    _net = nullptr;
+	    throw;
+	  }
 	int slot = results.size() - 1;
 	if (_regression)
 	  {
