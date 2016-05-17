@@ -143,6 +143,7 @@ namespace dd
 	      lparam->mutable_transform_param()->set_rotate(ad.get("rotate").get<bool>());
 	    if (ad.has("crop_size"))
 	      lparam->mutable_transform_param()->set_crop_size(ad.get("crop_size").get<int>());
+	    else lparam->mutable_transform_param()->clear_crop_size();
 	  }
 	// adapt number of neuron output
 	update_protofile_classes(net_param);
