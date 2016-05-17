@@ -1224,7 +1224,10 @@ namespace dd
     if (ad.has("gpu"))
       _gpu = ad.get("gpu").get<bool>();
     if (ad.has("gpuid"))
-      _gpuid = ad.get("gpuid").get<int>();
+      {
+	_gpuid = ad.get("gpuid").get<int>();
+	_gpu = true;
+      }
     if (ad.has("nclasses"))
       _nclasses = ad.get("nclasses").get<int>();
     if (ad.has("regression") && ad.get("regression").get<bool>())
