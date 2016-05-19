@@ -11,7 +11,7 @@ from PIL import ExifTags
 from scipy import spatial
 
 
-class DeepdetectImageClient(object):
+class DDImage(object):
 
     mllib = 'caffe'
 
@@ -293,7 +293,7 @@ class DeepdetectImageClient(object):
 # ----------------
 
 # create the dede client with the appropriate host
-client = DeepdetectImageClient('host')
+client = DDImage('host')
 
 # Initlize for classification and classify images from local file system
 client.init_for_classification("googlenet",PATH_TO_MODEL_REPO)
