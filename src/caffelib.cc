@@ -86,7 +86,7 @@ namespace dd
     std::cout << "instantiating model template " << model_tmpl << std::endl;
 
     // - copy files to model repository
-    std::string source = this->_mlmodel._mlmodel_template_repo + model_tmpl + "/";
+    std::string source = this->_mlmodel._mlmodel_template_repo + '/' + model_tmpl + "/";
     LOG(INFO) << "source=" << source << std::endl;
     LOG(INFO) << "dest=" << this->_mlmodel._repo + '/' + model_tmpl + ".prototxt";
     std::string dest_net = this->_mlmodel._repo + '/' + model_tmpl + ".prototxt";
