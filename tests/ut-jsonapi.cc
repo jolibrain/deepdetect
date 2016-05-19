@@ -22,6 +22,8 @@
 #include "deepdetect.h"
 #include "jsonapi.h"
 #include <gtest/gtest.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <iostream>
 
 using namespace dd;
@@ -34,6 +36,10 @@ static std::string not_found_str = "{\"status\":{\"code\":404,\"msg\":\"NotFound
 
 TEST(jsonapi,service_delete)
 {
+  // fake model repository
+  std::string here = "here";
+  mkdir(here.c_str(),0777);
+  
   // create service.
   JsonAPI japi;
   std::string sname = "my_service";
@@ -151,4 +157,7 @@ TEST(jsonapi,service_status)
   ASSERT_EQ("OK",jd["status"]["msg"]);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"].HasMember("description"));
+
+  std::string here = "here";
+  rmdir(here.c_str());
 }
