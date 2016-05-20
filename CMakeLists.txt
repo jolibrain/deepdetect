@@ -55,6 +55,12 @@ find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system)
 # optional packages
 include(cmake/Cuda.cmake) # cuda + cudnn
 
+# OpenCV
+find_package(OpenCV REQUIRED)
+set(OPENCV_VERSION ${OpenCV_VERSION_MAJOR})
+include_directories(${OpenCV_INCLUDE_DIRS})
+message(STATUS "OpenCV ${OPENCV_VERSION} (${OpenCV_VERSION}) found (${OpenCV_CONFIG_PATH})")
+
 # customized Caffe as external project
 if (CAFFE_INC_DIR AND CAFFE_LIB_DIR)
   # do nothing
@@ -67,7 +73,7 @@ else()
 	PREFIX caffe_dd
 	INSTALL_DIR ${CMAKE_BINARY_DIR}
 	URL https://github.com/beniz/caffe/archive/master_dd_integ.tar.gz
-	CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn Makefile.config && make -j${N}
+	CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && make -j${N}
 	INSTALL_COMMAND ""
 	BUILD_IN_SOURCE 1
 	)
@@ -77,7 +83,7 @@ ExternalProject_Add(
 	PREFIX caffe_dd
 	INSTALL_DIR ${CMAKE_BINARY_DIR}
 	URL https://github.com/beniz/caffe/archive/master_dd_integ.tar.gz
-	CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && make -j${N}
+	CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && make -j${N}
 	INSTALL_COMMAND ""
 	BUILD_IN_SOURCE 1
 	)
@@ -88,7 +94,7 @@ ExternalProject_Add(
       PREFIX caffe_dd
       INSTALL_DIR ${CMAKE_BINARY_DIR}
       URL https://github.com/beniz/caffe/archive/master_dd_integ.tar.gz
-      CONFIGURE_COMMAND ln -sf Makefile.config.cpu Makefile.config && make -j${N}
+      CONFIGURE_COMMAND ln -sf Makefile.config.cpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && make -j${N}
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
       )
