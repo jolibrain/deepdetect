@@ -499,7 +499,6 @@ namespace dd
     if (regression)
       {
 	lparam->set_type("EuclideanLoss");
-	lparam->add_include()->set_phase(caffe::TRAIN);
       }
     else lparam->set_type("SoftmaxWithLoss");
     lparam->add_bottom(last_ip);
@@ -1995,7 +1994,7 @@ namespace dd
     if (net_param.mutable_layer(0)->has_memory_data_param()
 	|| net_param.mutable_layer(1)->has_memory_data_param())
       {
-	if (_ntargets == 0)
+	if (_ntargets == 0 || _ntargets == 1)
 	  {
 	    if (net_param.mutable_layer(0)->has_memory_data_param())
 	      net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels());
@@ -2017,7 +2016,7 @@ namespace dd
     if (deploy_net_param.mutable_layer(0)->has_memory_data_param())
       {
 	// no batch size set on deploy model since it is adjusted for every prediction batch
-	if (_ntargets == 0)
+	if (_ntargets == 0 || _ntargets == 1)
 	  deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels());
 	else
 	  {
