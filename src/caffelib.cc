@@ -68,7 +68,7 @@ namespace dd
   {
     // - check whether there's a risk of erasing model files
     if (this->_mlmodel.read_from_repository(this->_mlmodel._repo))
-      throw MLLibBadParamException("error reading or listing caffe models in repository " + this->_mlmodel._repo);
+      throw MLLibBadParamException("error reading or listing Caffe models in repository " + this->_mlmodel._repo);
     if (!this->_mlmodel._weights.empty())
       {
 	if (ad.has("finetuning") && ad.get("finetuning").get<bool>()
@@ -86,7 +86,7 @@ namespace dd
     std::cout << "instantiating model template " << model_tmpl << std::endl;
 
     // - copy files to model repository
-    std::string source = this->_mlmodel._mlmodel_template_repo + model_tmpl + "/";
+    std::string source = this->_mlmodel._mlmodel_template_repo + '/' + model_tmpl + "/";
     LOG(INFO) << "source=" << source << std::endl;
     LOG(INFO) << "dest=" << this->_mlmodel._repo + '/' + model_tmpl + ".prototxt";
     std::string dest_net = this->_mlmodel._repo + '/' + model_tmpl + ".prototxt";
@@ -143,6 +143,7 @@ namespace dd
 	      lparam->mutable_transform_param()->set_rotate(ad.get("rotate").get<bool>());
 	    if (ad.has("crop_size"))
 	      lparam->mutable_transform_param()->set_crop_size(ad.get("crop_size").get<int>());
+	    else lparam->mutable_transform_param()->clear_crop_size();
 	  }
 	// adapt number of neuron output
 	update_protofile_classes(net_param);
@@ -164,7 +165,7 @@ namespace dd
       }
 
     if (this->_mlmodel.read_from_repository(this->_mlmodel._repo))
-      throw MLLibBadParamException("error reading or listing caffe models in repository " + this->_mlmodel._repo);
+      throw MLLibBadParamException("error reading or listing Caffe models in repository " + this->_mlmodel._repo);
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -498,7 +499,6 @@ namespace dd
     if (regression)
       {
 	lparam->set_type("EuclideanLoss");
-	lparam->add_include()->set_phase(caffe::TRAIN);
       }
     else lparam->set_type("SoftmaxWithLoss");
     lparam->add_bottom(last_ip);
@@ -1433,7 +1433,7 @@ namespace dd
 	inputc._ids.clear();
       }
     if (this->_mlmodel.read_from_repository(this->_mlmodel._repo))
-      throw MLLibBadParamException("error reading or listing caffe models in repository " + this->_mlmodel._repo);
+      throw MLLibBadParamException("error reading or listing Caffe models in repository " + this->_mlmodel._repo);
     this->_mlmodel.read_corresp_file();
     if (ad_mllib.has("resume") && ad_mllib.get("resume").get<bool>())
       {
@@ -1589,7 +1589,7 @@ namespace dd
     
     solver_param = caffe::SolverParameter();
     if (this->_mlmodel.read_from_repository(this->_mlmodel._repo))
-      throw MLLibBadParamException("error reading or listing caffe models in repository " + this->_mlmodel._repo);
+      throw MLLibBadParamException("error reading or listing Caffe models in repository " + this->_mlmodel._repo);
     int cm = create_model();
     if (cm == 1)
       throw MLLibInternalException("no model in " + this->_mlmodel._repo + " for initializing the net");
@@ -2022,7 +2022,7 @@ namespace dd
     if (net_param.mutable_layer(0)->has_memory_data_param()
 	|| net_param.mutable_layer(1)->has_memory_data_param())
       {
-	if (_ntargets == 0)
+	if (_ntargets == 0 || _ntargets == 1)
 	  {
 	    if (net_param.mutable_layer(0)->has_memory_data_param())
 	      net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels());
@@ -2044,7 +2044,7 @@ namespace dd
     if (deploy_net_param.mutable_layer(0)->has_memory_data_param())
       {
 	// no batch size set on deploy model since it is adjusted for every prediction batch
-	if (_ntargets == 0)
+	if (_ntargets == 0 || _ntargets == 1)
 	  deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels());
 	else
 	  {

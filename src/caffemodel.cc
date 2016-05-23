@@ -20,6 +20,7 @@
  */
 
 #include "caffemodel.h"
+#include "mllibstrategy.h"
 #include "utils/fileops.hpp"
 #include <glog/logging.h>
 #include <exception>
@@ -36,7 +37,8 @@ namespace dd
     else this->_mlmodel_template_repo += "caffe/"; // default
     if (ad.has("repository"))
       {
-       	read_from_repository(ad.get("repository").get<std::string>());
+       	if (read_from_repository(ad.get("repository").get<std::string>()))
+	  throw MLLibBadParamException("error reading or listing Caffe models in repository " + _repo);
       }
     else
       {
