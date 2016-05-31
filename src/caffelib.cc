@@ -114,7 +114,7 @@ namespace dd
 	caffe::NetParameter net_param,deploy_net_param;
 	caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
 	caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
-	configure_mlp_template(ad,_regression,_ntargets,_nclasses,net_param,deploy_net_param);
+	configure_mlp_template(ad,_regression,this->_inputc._sparse,_ntargets,_nclasses,net_param,deploy_net_param);
 	caffe::WriteProtoToTextFile(net_param,dest_net);
 	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
       }
@@ -171,6 +171,7 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_mlp_template(const APIData &ad,
 												   const bool &regression,
+												   const bool &sparse,
 												   const int &targets,
 												   const int &cnclasses,
 												   caffe::NetParameter &net_param,
@@ -292,11 +293,30 @@ namespace dd
 		// fixing input layer so that it takes data in from db
 		lparam = net_param.mutable_layer(0);
 		lparam->clear_memory_data_param();
-		lparam->set_type("Data");
+		if (!sparse)
+		  lparam->set_type("Data");
+		else lparam->set_type("SparseData");
 		caffe::DataParameter *ldparam = lparam->mutable_data_param();
 		ldparam->set_source("train.lmdb");
 		ldparam->set_batch_size(1000); // dummy value, updated before training
 		ldparam->set_backend(caffe::DataParameter_DB_LMDB);
+	      }
+	    if (sparse)
+	      {
+		if (!db)
+		  {
+		    lparam = net_param.mutable_layer(0);
+		    lparam->set_type("MemorySparseData");
+		    //lparam->mutable_memory_data_param()->set_channels(1);
+		  }	
+		
+		lparam = net_param.mutable_layer(1); // test layer
+		lparam->set_type("MemorySparseData");
+		//lparam->mutable_memory_data_param()->set_channels(1);
+		
+		dlparam = deploy_net_param.mutable_layer(0);
+		dlparam->set_type("MemorySparseData");
+		//dlparam->mutable_memory_data_param()->set_channels(1);
 	      }
 	  }
 	else if (l > 0 && model_tmpl != "lregression")
@@ -306,6 +326,7 @@ namespace dd
 	  }
 	if (model_tmpl == "lregression") // one pass for lregression
 	  {
+	    //TODO: in case sparse, SparseInnerProduct
 	    return;
 	  }
 
@@ -321,7 +342,9 @@ namespace dd
 	  }
 	else lparam = net_param.add_layer();
 	lparam->set_name(last_ip);
-	lparam->set_type("InnerProduct");
+	if (rl == 2 && sparse)
+	  lparam->set_type("SparseInnerProduct");
+	else lparam->set_type("InnerProduct");
 	lparam->add_bottom(prec_ip);
 	lparam->add_top(last_ip);
 	caffe::InnerProductParameter *ipp = lparam->mutable_inner_product_param();
@@ -342,7 +365,9 @@ namespace dd
 	  }
 	else dlparam = deploy_net_param.add_layer();
 	dlparam->set_name(last_ip);
-	dlparam->set_type("InnerProduct");
+	if (drl == 1 && sparse)
+	  dlparam->set_type("SparseInnerProduct");
+	else dlparam->set_type("InnerProduct");
 	dlparam->add_bottom(prec_ip);
 	dlparam->add_top(last_ip);
 	ipp = dlparam->mutable_inner_product_param();
@@ -1272,6 +1297,8 @@ namespace dd
     TInputConnectorStrategy inputc(this->_inputc);
     this->_inputc._dv.clear();
     this->_inputc._dv_test.clear();
+    this->_inputc._dv_sparse.clear();
+    this->_inputc._dv_test_sparse.clear();
     this->_inputc._ids.clear();
     inputc._train = true;
     APIData cad = ad;
@@ -1406,29 +1433,36 @@ namespace dd
 	delete solver;
 	throw;
       }
-    if (!inputc._dv.empty())
+    if (!inputc._dv.empty() || !inputc._dv_sparse.empty())
       {
 	LOG(INFO) << "filling up net prior to training\n";
 	try {
-	  if (boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->net()->layers()[0]) == 0)
+	  if (!inputc._sparse)
 	    {
-	      delete solver;
-	      throw MLLibBadParamException("solver's net's first layer is required to be of MemoryData type");
+	      if (boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->net()->layers()[0]) == 0)
+		{
+		  delete solver;
+		  throw MLLibBadParamException("solver's net's first layer is required to be of MemoryData type");
+		}
+	      boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->net()->layers()[0])->AddDatumVector(inputc._dv);
 	    }
-	  boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->net()->layers()[0])->AddDatumVector(inputc._dv);
+	  else
+	    {
+	      if (boost::dynamic_pointer_cast<caffe::MemorySparseDataLayer<float>>(solver->net()->layers()[0]) == 0)
+		{
+		  delete solver;
+		  throw MLLibBadParamException("solver's net's first layer is required to be of MemorySparseData type");
+		}
+	      boost::dynamic_pointer_cast<caffe::MemorySparseDataLayer<float>>(solver->net()->layers()[0])->AddDatumVector(inputc._dv_sparse);
+	    }
 	}
 	catch(std::exception &e)
 	  {
 	    delete solver;
 	    throw;
 	  }
-	/*if (!solver->test_nets().empty())
-	  {
-	    if (!inputc._dv_test.empty())
-	      boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->test_nets().at(0)->layers()[0])->AddDatumVector(inputc._dv_test);
-	    else boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->test_nets().at(0)->layers()[0])->AddDatumVector(inputc._dv);
-	    }*/
 	inputc._dv.clear();
+	inputc._dv_sparse.clear();
 	inputc._ids.clear();
       }
     if (this->_mlmodel.read_from_repository(this->_mlmodel._repo))
@@ -1583,6 +1617,7 @@ namespace dd
     if (!this->_tjob_running.load())
       {
 	inputc._dv_test.clear();
+	inputc._dv_test_sparse.clear();
 	return 0;
       }
     
@@ -1598,7 +1633,8 @@ namespace dd
     // test
     test(_net,ad,inputc,test_batch_size,has_mean_file,out);
     inputc._dv_test.clear();
-        
+    inputc._dv_test_sparse.clear();
+
     // add whatever the input connector needs to transmit out
     inputc.response_params(out);
 
@@ -1648,35 +1684,91 @@ namespace dd
 	  nout = _ntargets;
 	ad_res.add("nclasses",_nclasses);
 	inputc.reset_dv_test();
-	std::vector<caffe::Datum> dv;
-	while(!(dv=inputc.get_dv_test(test_batch_size,has_mean_file)).empty())
+	//std::vector<caffe::Datum> dv;
+	//while(!(dv=inputc.get_dv_test(test_batch_size,has_mean_file)).empty()) //TODO: dv_test_sparse
+	while(true)
 	  {
+	    size_t dv_size = 0;
+	    std::vector<float> dv_labels;
+	    std::vector<std::vector<double>> dv_float_data;
 	    try
 	      {
-		if (boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(net->layers()[0]) == 0)
-		  throw MLLibBadParamException("test net's first layer is required to be of MemoryData type");
-		boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(net->layers()[0])->set_batch_size(dv.size());
-		boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(net->layers()[0])->AddDatumVector(dv);
+		if (!inputc._sparse)
+		  {
+		    std::vector<caffe::Datum> dv = inputc.get_dv_test(test_batch_size,has_mean_file);
+		    if (dv.empty())
+		      break;
+		    dv_size = dv.size();
+		    for (size_t s=0;s<dv_size;s++)
+		      {
+			dv_labels.push_back(dv.at(s).label());
+			if (_ntargets > 1)
+			  {
+			    std::vector<double> vals;
+			    for (int k=inputc.channels();k<dv.at(s).float_data_size();k++)
+			      vals.push_back(dv.at(s).float_data(k));
+			    dv_float_data.push_back(vals);
+			  }
+		      }
+		    if (boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(net->layers()[0]) == 0)
+		      throw MLLibBadParamException("test net's first layer is required to be of MemoryData type");
+		    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(net->layers()[0])->set_batch_size(dv.size());
+		    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(net->layers()[0])->AddDatumVector(dv);
+		  }
+		else
+		  {
+		    std::vector<caffe::SparseDatum> dv = inputc.get_dv_test_sparse(test_batch_size);
+		    if (dv.empty())
+		      break;
+		    dv_size = dv.size();
+		    for (size_t s=0;s<dv_size;s++)
+		      {
+			dv_labels.push_back(dv.at(s).label());
+			//TODO: no float_data in SparseDatum (since it is not sparse...)
+			/*if (_ntargets > 1)
+			  {
+			    std::vector<double> vals;
+			    for (int k=inputc.channels();k<dv.at(s).float_data_size();k++)
+			      vals.push_back(dv.at(s).float_data(k));
+			    dv_float_data.push_back(vals);
+			    }*/
+		      }
+		    if (boost::dynamic_pointer_cast<caffe::MemorySparseDataLayer<float>>(net->layers()[0]) == 0)
+		      throw MLLibBadParamException("test net's first layer is required to be of MemorySparseData type");
+		    boost::dynamic_pointer_cast<caffe::MemorySparseDataLayer<float>>(net->layers()[0])->set_batch_size(dv.size());
+		    boost::dynamic_pointer_cast<caffe::MemorySparseDataLayer<float>>(net->layers()[0])->AddDatumVector(dv);
+		  }
 	      }
 	    catch(std::exception &e)
 	      {
 		// XXX: might want to clean up here...
+		std::cerr << "exception while filling up test input layer\n";
 		throw;
 	      }
 	    float loss = 0.0;
-	    std::vector<Blob<float>*> lresults = net->Forward(&loss);
+	    std::vector<Blob<float>*> lresults;
+	    try
+	      {
+		lresults = net->Forward(&loss);
+	      }
+	    catch(std::exception &e)
+	      {
+		std::cerr << "exception in test forward pass\n";
+		throw;
+	      }
 	    int slot = lresults.size() - 1;
 	    if (_regression && _ntargets > 1) // slicing is involved
 	      slot--; // labels appear to be last
 	    int scount = lresults[slot]->count();
-	    int scperel = scount / dv.size();
-	    for (int j=0;j<(int)dv.size();j++)
+	    int scperel = scount / dv_size;
+	    for (int j=0;j<(int)dv_size;j++)
 	      {
 		APIData bad;
 		std::vector<double> predictions;
 		if (!_regression || _ntargets == 1)
 		  {
-		    double target = dv.at(j).label();
+		    //double target = dv.at(j).label();
+		    double target = dv_labels.at(j);
 		    for (int k=0;k<nout;k++)
 		      {
 			predictions.push_back(lresults[slot]->cpu_data()[j*scperel+k]);
@@ -1686,8 +1778,10 @@ namespace dd
 		else
 		  {
 		    std::vector<double> target;
-		    for (int k=inputc.channels();k<dv.at(j).float_data_size();k++)
-		      target.push_back(dv.at(j).float_data(k));
+		    /*for (int k=inputc.channels();k<dv.at(j).float_data_size();k++)
+		      target.push_back(dv.at(j).float_data(k));*/ //TODO: reactivate
+		    for (size_t k=0;k<dv_float_data.at(j).size();k++)
+		      target.push_back(dv_float_data.at(j).at(k));
 		    for (int k=0;k<nout;k++)
 		      {
 			predictions.push_back(lresults[slot]->cpu_data()[j*scperel+k]);
@@ -1698,7 +1792,7 @@ namespace dd
 		std::vector<APIData> vad = { bad };
 		ad_res.add(std::to_string(tresults+j),vad);
 	      }
-	    tresults += dv.size();
+	    tresults += dv_size;
 	    mean_loss += loss;
 	  }
 	std::vector<std::string> clnames;
@@ -1733,6 +1827,7 @@ namespace dd
     APIData ad_output = ad.getobj("parameters").getobj("output");
     if (ad_output.has("measure"))
       {
+	std::cerr << "\ntest measure sparsity=" << inputc._sparse << std::endl;
 	APIData cad = ad;
 	cad.add("has_mean_file",this->_mlmodel._has_mean_file);
 	try
@@ -1749,7 +1844,7 @@ namespace dd
 	  {
 	    APIData ad_net = ad_mllib.getobj("net");
 	    if (ad_net.has("test_batch_size"))
-	  batch_size = ad_net.get("test_batch_size").get<int>();
+	      batch_size = ad_net.get("test_batch_size").get<int>();
 	  }
 
 	bool has_mean_file = this->_mlmodel._has_mean_file;
@@ -1811,14 +1906,29 @@ namespace dd
       }
     try
       {
-	if (boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0]) == 0)
+	if (!inputc._sparse)
 	  {
-	    delete _net;
-	    _net = nullptr;
-	    throw MLLibBadParamException("deploy net's first layer is required to be of MemoryData type");
+	    if (boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0]) == 0)
+	      {
+		delete _net;
+		_net = nullptr;
+		throw MLLibBadParamException("deploy net's first layer is required to be of MemoryData type");
+	      }
+	    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->set_batch_size(batch_size);
+	    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(inputc._dv_test);
 	  }
-	boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->set_batch_size(batch_size);
-	boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(inputc._dv_test);
+	else
+	  {
+	    if (boost::dynamic_pointer_cast<caffe::MemorySparseDataLayer<float>>(_net->layers()[0]) == 0)
+	      {
+		delete _net;
+		_net = nullptr;
+		throw MLLibBadParamException("deploy net's first layer is required to be of MemorySparseData type");
+	      }
+	    std::cerr << "predict with sparse data\n";
+	    boost::dynamic_pointer_cast<caffe::MemorySparseDataLayer<float>>(_net->layers()[0])->set_batch_size(batch_size);
+	    boost::dynamic_pointer_cast<caffe::MemorySparseDataLayer<float>>(_net->layers()[0])->AddDatumVector(inputc._dv_test_sparse);
+	  }
       }
     catch(std::exception &e)
       {
@@ -2046,7 +2156,7 @@ namespace dd
 		break;
 	      }
 	  }
-	else if (lparam->type() == "InnerProduct")
+	else if (lparam->type() == "InnerProduct" || lparam->type() == "SparseInnerProduct")
 	  {
 	    if (lparam->has_inner_product_param())
 	      {

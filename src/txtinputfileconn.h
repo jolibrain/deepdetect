@@ -71,6 +71,7 @@ namespace dd
     void reset() {}
     void get_elt(std::string &key, T &val) const { (void)key; (void)val; }
     bool has_elt() const { return false; }
+    size_t size() const { return 0; }
     
     float _target = -1; /**< class target in training mode. */
     std::string _uri;
@@ -121,6 +122,11 @@ namespace dd
       return _vit != _v.end();
     }
     
+    size_t size() const
+    {
+      return _v.size();
+    }
+
     std::unordered_map<std::string,double> _v; /**< words as (<pos,val>). */
     std::unordered_map<std::string,double>::iterator _vit;
   };
@@ -155,6 +161,11 @@ namespace dd
     bool has_elt() const
     {
       return _vit != _v.end();
+    }
+
+    size_t size() const 
+    {
+      return _v.size();
     }
     
     std::vector<uint32_t> _v;

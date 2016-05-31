@@ -684,11 +684,15 @@ namespace dd
     std::cerr << "db_batchsize=" << _db_batchsize << " / db_testbatchsize=" << _db_testbatchsize << std::endl;
     
     // write to dbs (i.e. train and possibly test)
-    write_txt_to_db(dbfullname,_txt);
+    if (!_sparse)
+      write_txt_to_db(dbfullname,_txt);
+    else write_sparse_txt_to_db(dbfullname,_txt);
     destroy_txt_entries(_txt);
     if (!_test_txt.empty())
       {
-	write_txt_to_db(testdbfullname,_test_txt);
+	if (!_sparse)
+	  write_txt_to_db(testdbfullname,_test_txt);
+	else write_sparse_txt_to_db(testdbfullname,_test_txt);
 	destroy_txt_entries(_test_txt);
       }
     
@@ -756,6 +760,56 @@ namespace dd
     db->Close();
   }
 
+  void TxtCaffeInputFileConn::write_sparse_txt_to_db(const std::string &dbfullname,
+						     std::vector<TxtEntry<double>*> &txt,
+						     const std::string &backend)
+  {
+    // Create new DB
+    std::unique_ptr<db::DB> db(db::GetDB(backend));
+    db->Open(dbfullname.c_str(), db::NEW);
+    std::unique_ptr<db::Transaction> txn(db->NewTransaction());
+
+    // Storing to db
+    SparseDatum datum;
+    int count = 0;
+    const int kMaxKeyLength = 256;
+    char key_cstr[kMaxKeyLength];
+    int n = 0;
+    auto hit = txt.begin();
+    while(hit!=txt.end())
+      {
+	/*if (_characters)
+	  datum = to_datum<TxtCharEntry>(static_cast<TxtCharEntry*>((*hit)));
+	  else*/
+	datum = to_sparse_datum(static_cast<TxtBowEntry*>((*hit)));
+	int length = snprintf(key_cstr,kMaxKeyLength,"%s",std::to_string(n).c_str());
+	
+	// put in db
+	std::string out;
+	if (!datum.SerializeToString(&out))
+	  LOG(ERROR) << "Failed serialization of datum for db storage";
+	txn->Put(string(key_cstr,length),out);
+
+	if (++count % 1000 == 0) {
+	  // commit db
+	  txn->Commit();
+	  txn.reset(db->NewTransaction());
+	  LOG(INFO) << "Processed " << count << " text entries";
+	}
+	
+	++hit;
+	++n;
+      }
+
+    // write the last batch
+    if (count % 1000 != 0) {
+      txn->Commit();
+      LOG(INFO) << "Processed " << count << " text entries";
+    }
+
+    db->Close();
+  }
+
   std::vector<caffe::Datum> TxtCaffeInputFileConn::get_dv_test_db(const int &num)
   {
     if (!_test_db_cursor)
@@ -768,8 +822,8 @@ namespace dd
 	  }
 	_test_db_cursor = std::unique_ptr<db::Cursor>(_test_db->NewCursor());
       }
-    std::vector<caffe::Datum> dv;
     int i =0;
+    std::vector<caffe::Datum> dv;
     while(_test_db_cursor->valid())
       {
 	// fill up a vector up to 'num' elements.
@@ -783,5 +837,32 @@ namespace dd
       }
     return dv;
   }
-  
+   
+  std::vector<caffe::SparseDatum> TxtCaffeInputFileConn::get_dv_test_sparse_db(const int &num)
+  {
+    if (!_test_db_cursor)
+      {
+	// open db and create cursor
+	if (!_test_db)
+	  {
+	    _test_db = std::unique_ptr<db::DB>(db::GetDB("lmdb"));
+	    _test_db->Open(_model_repo + "/" + _test_dbfullname.c_str(),db::READ);
+	  }
+	_test_db_cursor = std::unique_ptr<db::Cursor>(_test_db->NewCursor());
+      }
+    int i =0;
+    std::vector<caffe::SparseDatum> dv;
+    while(_test_db_cursor->valid())
+      {
+	// fill up a vector up to 'num' elements.
+	if (i == num)
+	  break;
+	SparseDatum datum;
+	datum.ParseFromString(_test_db_cursor->value());
+	dv.push_back(datum);
+	_test_db_cursor->Next();
+	++i;
+      }
+    return dv;
+  }
 }

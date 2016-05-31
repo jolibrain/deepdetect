@@ -39,7 +39,7 @@ namespace dd
   public:
     CaffeInputInterface() {}
     CaffeInputInterface(const CaffeInputInterface &cii)
-      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv) {}
+      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_sparse(cii._sparse) {}
     ~CaffeInputInterface() {}
 
     /**
@@ -54,7 +54,12 @@ namespace dd
 					  const bool &has_mean_file)
       {
 	(void)has_mean_file;
-	return std::vector<caffe::Datum>(num);
+	  return std::vector<caffe::Datum>(num);
+      }
+    
+    std::vector<caffe::SparseDatum> get_dv_test_sparse(const int &num)
+      {
+	return std::vector<caffe::SparseDatum>(num);
       }
 
     void reset_dv_test() {}
@@ -62,9 +67,12 @@ namespace dd
     bool _db = false; /**< whether to use a db. */
     std::vector<caffe::Datum> _dv; /**< main input datum vector, used for training or prediction */
     std::vector<caffe::Datum> _dv_test; /**< test input datum vector, when applicable in training mode */
+    std::vector<caffe::SparseDatum> _dv_sparse;
+    std::vector<caffe::SparseDatum> _dv_test_sparse;
     std::vector<std::string> _ids; /**< input ids (e.g. image ids) */
     bool _flat1dconv = false; /**< whether a 1D convolution model. */
     bool _has_mean_file = false; /**< image model mean.binaryproto. */
+    bool _sparse = false; /**< whether to use sparse representation. */
   };
 
   /**
@@ -521,6 +529,8 @@ namespace dd
       TxtInputFileConn::init(ad);
       if (_characters)
 	_flat1dconv = true;
+      if (ad.has("sparse") && ad.get("sparse").get<bool>())
+	_sparse = true;
     }
 
     int channels() const
@@ -550,14 +560,18 @@ namespace dd
     {
       if (_db_batchsize > 0)
 	return _db_batchsize;
-      else return _dv.size();
+      else if (!_sparse)
+	return _dv.size();
+      else return _dv_sparse.size();
     }
 
     int test_batch_size() const
     {
       if (_db_testbatchsize > 0)
 	return _db_testbatchsize;
-      else return _dv_test.size();
+      else if (!_sparse)
+	return _dv_test.size();
+      else return _dv_test_sparse.size();
     }
     
     int txt_to_db(const std::string &traindbname,
@@ -568,6 +582,10 @@ namespace dd
     void write_txt_to_db(const std::string &dbname,
 			 std::vector<TxtEntry<double>*> &txt,
 			 const std::string &backend="lmdb");
+    
+    void write_sparse_txt_to_db(const std::string &dbname,
+				std::vector<TxtEntry<double>*> &txt,
+				const std::string &backend="lmdb");
     
     void transform(const APIData &ad)
     {
@@ -602,9 +620,20 @@ namespace dd
 	      auto hit = _txt.begin();
 	      while(hit!=_txt.end())
 		{
-		  if (_characters)
-		    _dv.push_back(std::move(to_datum<TxtCharEntry>(static_cast<TxtCharEntry*>((*hit)))));
-		  else _dv.push_back(std::move(to_datum<TxtBowEntry>(static_cast<TxtBowEntry*>((*hit)))));
+		  if (!_sparse)
+		    {
+		      if (_characters)
+			_dv.push_back(std::move(to_datum<TxtCharEntry>(static_cast<TxtCharEntry*>((*hit)))));
+		      else _dv.push_back(std::move(to_datum<TxtBowEntry>(static_cast<TxtBowEntry*>((*hit)))));
+		    }
+		  else
+		    {
+		      if (_characters)
+			{
+			  //TODO
+			}
+		      else _dv_sparse.push_back(std::move(to_sparse_datum(static_cast<TxtBowEntry*>((*hit)))));
+		    }
 		  _ids.push_back((*hit)->_uri);
 		  ++hit;
 		}
@@ -616,9 +645,20 @@ namespace dd
 	  auto hit = _test_txt.begin();
 	  while(hit!=_test_txt.end())
 	    {
-	      if (_characters)
-		_dv_test.push_back(std::move(to_datum<TxtCharEntry>(static_cast<TxtCharEntry*>((*hit)))));
-	      else _dv_test.push_back(std::move(to_datum<TxtBowEntry>(static_cast<TxtBowEntry*>((*hit)))));
+	      if (!_sparse)
+		{
+		  if (_characters)
+		    _dv_test.push_back(std::move(to_datum<TxtCharEntry>(static_cast<TxtCharEntry*>((*hit)))));
+		  else _dv_test.push_back(std::move(to_datum<TxtBowEntry>(static_cast<TxtBowEntry*>((*hit)))));
+		}
+	      else
+		{
+		  if (_characters)
+		    {
+		      //TODO
+		    }
+		  else _dv_test_sparse.push_back(std::move(to_sparse_datum(static_cast<TxtBowEntry*>((*hit)))));
+		}
 	      if (!_train)
 		_ids.push_back(std::to_string(n));
 	      ++hit;
@@ -628,6 +668,7 @@ namespace dd
     }
 
     std::vector<caffe::Datum> get_dv_test_db(const int &num);
+    std::vector<caffe::SparseDatum> get_dv_test_sparse_db(const int &num);
     
     std::vector<caffe::Datum> get_dv_test(const int &num,
 					  const bool &has_mean_file)
@@ -649,16 +690,35 @@ namespace dd
 	else return get_dv_test_db(num);
       }
 
+    std::vector<caffe::SparseDatum> get_dv_test_sparse(const int &num)
+      {
+	if (!_db)
+	  {
+	    int i = 0;
+	    std::vector<caffe::SparseDatum> dv;
+	    while(_dt_vit_sparse!=_dv_test_sparse.end()
+		  && i < num)
+	      {
+		dv.push_back((*_dt_vit_sparse));
+		++i;
+		++_dt_vit_sparse;
+	      }
+	    return dv;
+	  }
+      	else return get_dv_test_sparse_db(num);
+      }
+
     void reset_dv_test()
     {
-      _dt_vit = _dv_test.begin();
+      if (!_sparse)
+	_dt_vit = _dv_test.begin();
+      else _dt_vit_sparse = _dv_test_sparse.begin();
       _test_db_cursor = std::unique_ptr<caffe::db::Cursor>();
       _test_db = std::unique_ptr<caffe::db::DB>();
     }
     
     template<class TEntry> caffe::Datum to_datum(TEntry *tbe)
       {
-	std::unordered_map<std::string,Word>::const_iterator wit;
 	caffe::Datum datum;
 	int datum_channels;
 	if (_characters)
@@ -670,6 +730,7 @@ namespace dd
 	datum.set_label(tbe->_target);
 	if (!_characters)
 	  {
+	    std::unordered_map<std::string,Word>::const_iterator wit;
 	    for (int i=0;i<datum_channels;i++) // XXX: expected to be slow
 	      datum.add_float_data(0.0);
 	    tbe->reset();
@@ -713,7 +774,39 @@ namespace dd
 	return datum;
       }
 
+    caffe::SparseDatum to_sparse_datum(TxtBowEntry *tbe)
+      {
+	caffe::SparseDatum datum;
+	/*int datum_channels = _vocab.size(); // XXX: may be very large
+	datum.set_channels(datum_channels);
+       	datum.set_height(1);
+	datum.set_width(1);*/
+	datum.set_label(tbe->_target);
+	std::unordered_map<std::string,Word>::const_iterator wit;
+	/*for (int i=0;i<datum_channels;i++) // XXX: expected to be slow
+	  datum.add_float_data(0.0);*/
+	tbe->reset();
+	int nwords = 0;
+	while(tbe->has_elt())
+	  {
+	    std::string key;
+	    double val;
+	    tbe->get_next_elt(key,val);
+	    if ((wit = _vocab.find(key))!=_vocab.end())
+	      {
+		int word_pos = _vocab[key]._pos;
+		datum.add_data(static_cast<float>(val));
+		datum.add_indices(word_pos);
+		++nwords;
+	      }
+	  }
+	datum.set_nnz(nwords);
+	datum.set_size(_vocab.size());
+	return datum;
+      }
+
     std::vector<caffe::Datum>::const_iterator _dt_vit;
+    std::vector<caffe::SparseDatum>::const_iterator _dt_vit_sparse;
 
   public:
     int _db_batchsize = -1;
