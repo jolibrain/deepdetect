@@ -84,7 +84,7 @@ namespace dd
   int XGBLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::train(const APIData &ad,
 									       APIData &out)
   {
-    //TODO: any check on model here
+    // any check on model here
     this->_mlmodel.read_from_repository();
     
     // mutex if train and predict calls need to be isolated
@@ -341,6 +341,7 @@ namespace dd
       
       // prepare model
       this->_mlmodel.read_from_repository();
+      this->_mlmodel.read_corresp_file();
       
       // add whatever the input connector needs to transmit out
       inputc.response_params(out);
