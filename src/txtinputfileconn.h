@@ -250,7 +250,7 @@ namespace dd
 	{
 	  DataEl<DDTxt> dtxt;
 	  dtxt._ctype._ctfc = this;
-	  if (dtxt.read_element(u))
+	  if (dtxt.read_element(u) || _txt.empty())
 	    {
 	      throw InputConnectorBadParamException("no data for text in " + u);
 	    }
