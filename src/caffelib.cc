@@ -307,16 +307,13 @@ namespace dd
 		  {
 		    lparam = net_param.mutable_layer(0);
 		    lparam->set_type("MemorySparseData");
-		    //lparam->mutable_memory_data_param()->set_channels(1);
 		  }	
 		
 		lparam = net_param.mutable_layer(1); // test layer
 		lparam->set_type("MemorySparseData");
-		//lparam->mutable_memory_data_param()->set_channels(1);
 		
 		dlparam = deploy_net_param.mutable_layer(0);
 		dlparam->set_type("MemorySparseData");
-		//dlparam->mutable_memory_data_param()->set_channels(1);
 	      }
 	  }
 	else if (l > 0 && model_tmpl != "lregression")
@@ -326,7 +323,13 @@ namespace dd
 	  }
 	if (model_tmpl == "lregression") // one pass for lregression
 	  {
-	    //TODO: in case sparse, SparseInnerProduct
+	    if (sparse)
+	      {
+		lparam = net_param.mutable_layer(2);
+		lparam->set_type("SparseInnerProduct");
+		dlparam = deploy_net_param.mutable_layer(1);
+		dlparam->set_type("SparseInnerProduct");
+	      }
 	    return;
 	  }
 
@@ -1685,8 +1688,6 @@ namespace dd
 	  nout = _ntargets;
 	ad_res.add("nclasses",_nclasses);
 	inputc.reset_dv_test();
-	//std::vector<caffe::Datum> dv;
-	//while(!(dv=inputc.get_dv_test(test_batch_size,has_mean_file)).empty()) //TODO: dv_test_sparse
 	while(true)
 	  {
 	    size_t dv_size = 0;
@@ -1781,8 +1782,6 @@ namespace dd
 		else
 		  {
 		    std::vector<double> target;
-		    /*for (int k=inputc.channels();k<dv.at(j).float_data_size();k++)
-		      target.push_back(dv.at(j).float_data(k));*/ //TODO: reactivate
 		    for (size_t k=0;k<dv_float_data.at(j).size();k++)
 		      target.push_back(dv_float_data.at(j).at(k));
 		    for (int k=0;k<nout;k++)
