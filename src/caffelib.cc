@@ -1726,14 +1726,11 @@ namespace dd
 		    for (size_t s=0;s<dv_size;s++)
 		      {
 			dv_labels.push_back(dv.at(s).label());
-			//TODO: no float_data in SparseDatum (since it is not sparse...)
-			/*if (_ntargets > 1)
+			if (_ntargets > 1)
 			  {
-			    std::vector<double> vals;
-			    for (int k=inputc.channels();k<dv.at(s).float_data_size();k++)
-			      vals.push_back(dv.at(s).float_data(k));
-			    dv_float_data.push_back(vals);
-			    }*/
+			    // SparseDatum has no float_data and source cannot be sliced
+			    throw MLLibBadParamException("sparse inputs cannot accomodate multi-target objectives, use single target instead");
+			  }
 		      }
 		    if (boost::dynamic_pointer_cast<caffe::MemorySparseDataLayer<float>>(net->layers()[0]) == 0)
 		      throw MLLibBadParamException("test net's first layer is required to be of MemorySparseData type");
@@ -1745,7 +1742,6 @@ namespace dd
 	      {
 		LOG(ERROR) << "Error while filling up network for testing";
 		// XXX: might want to clean up here...
-		std::cerr << "exception while filling up test input layer\n";
 		throw;
 	      }
 	    float loss = 0.0;
@@ -1771,7 +1767,6 @@ namespace dd
 		std::vector<double> predictions;
 		if (!_regression || _ntargets == 1)
 		  {
-		    //double target = dv.at(j).label();
 		    double target = dv_labels.at(j);
 		    for (int k=0;k<nout;k++)
 		      {
