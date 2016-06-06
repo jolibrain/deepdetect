@@ -143,6 +143,8 @@ namespace dd
 	  delete _m;
 	_m = create_from_mat(_csvdata);
 	_csvdata.clear();
+	if (_m->info().num_nonzero == 0)
+	  throw InputConnectorBadParamException("no data could be found processing XGBoost CSV input");
 	if (_mtest)
 	  delete _mtest;
 	_mtest = create_from_mat(_csvdata_test);

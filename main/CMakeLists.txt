@@ -13,4 +13,4 @@ else()
 endif()
   
 add_executable (dede dede.cc)
-target_link_libraries (dede ddetect glog gflags opencv_core opencv_highgui opencv_imgproc cppnetlib-uri curlpp curl crypto ssl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${XGBOOST_LIB_DEPS})
+target_link_libraries (dede ddetect glog gflags ${OpenCV_LIBS} cppnetlib-uri curlpp curl crypto ssl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${XGBOOST_LIB_DEPS})
