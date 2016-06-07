@@ -66,7 +66,7 @@ namespace dd
   public:
     TxtEntry() {}
     TxtEntry(const float &target): _target(target) {}
-    ~TxtEntry() {}
+    virtual ~TxtEntry() {}
 
     void reset() {}
     void get_elt(std::string &key, T &val) const { (void)key; (void)val; }
@@ -81,7 +81,7 @@ namespace dd
   public:
   TxtBowEntry():TxtEntry<double>() {};
   TxtBowEntry(const float &target):TxtEntry<double>(target) {}
-    ~TxtBowEntry() {}
+    virtual ~TxtBowEntry() {}
 
     void add_word(const std::string &str,
 		  const double &v,
@@ -130,7 +130,7 @@ namespace dd
   public:
   TxtCharEntry():TxtEntry<double>() {}
   TxtCharEntry(const float &target):TxtEntry<double>(target) {}
-    ~TxtCharEntry() {}
+    virtual ~TxtCharEntry() {}
 
     void add_char(const uint32_t &c)
     {
