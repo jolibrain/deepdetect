@@ -2282,13 +2282,18 @@ namespace dd
 	//debug
 	LOG(INFO) << "batch_size=" << batch_size << " / test_batch_size=" << test_batch_size << " / test_iter=" << test_iter << std::endl;
 	//debug
+
+	if (batch_size == 0)
+	  throw MLLibBadParamException("auto batch size set to zero: MemoryData input requires batch size to be a multiple of training set");
       }
   }
   
   template class CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>;
   template class CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>;
   template class CaffeLib<TxtCaffeInputFileConn,SupervisedOutput,CaffeModel>;
+  template class CaffeLib<SVMCaffeInputFileConn,SupervisedOutput,CaffeModel>;
   template class CaffeLib<ImgCaffeInputFileConn,UnsupervisedOutput,CaffeModel>;
   template class CaffeLib<CSVCaffeInputFileConn,UnsupervisedOutput,CaffeModel>;
   template class CaffeLib<TxtCaffeInputFileConn,UnsupervisedOutput,CaffeModel>;
+  template class CaffeLib<SVMCaffeInputFileConn,UnsupervisedOutput,CaffeModel>;
 }

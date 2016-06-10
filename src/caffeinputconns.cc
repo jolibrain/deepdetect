@@ -20,7 +20,7 @@
  */
 
 /**
- * This code is adapted from Caffe's convert_imageset tool
+ * Part of this code is adapted from Caffe's convert_imageset tool
  */
 
 #include "caffeinputconns.h"
@@ -550,7 +550,7 @@ namespace dd
 						  const APIData &ad_input,
 						  const std::string &backend)
   {
-    std::cerr << "CVS line to db\n";
+    std::cerr << "CSV line to db\n";
     std::cerr << "dbfullname=" << dbfullname << std::endl;
 
     // Create new DB
@@ -865,4 +865,239 @@ namespace dd
       }
     return dv;
   }
+
+  /*- SVMCaffeInputFileConn -*/
+  int SVMCaffeInputFileConn::svm_to_db(const std::string &traindbname,
+				       const std::string &testdbname,
+				       const APIData &ad_input,
+				       const std::string &backend)
+  {
+    std::string dbfullname = traindbname + "." + backend;
+    std::string testdbfullname = testdbname + "." + backend;
+
+    // test whether the train / test dbs are already in
+    // since they may be long to build, we pass on them if there already
+    // in the model repository.
+    // however, some generic values need to be acquired, and since Caffe does not
+    // provide a db size operator, we iterate and count elements.
+    if (fileops::file_exists(dbfullname))
+      {
+	LOG(WARNING) << "SVM db file " << dbfullname << " already exists, bypassing creation but checking on records, may take a while...\n";
+	std::unique_ptr<db::DB> db(db::GetDB(backend));
+	db->Open(dbfullname.c_str(), db::READ);
+	std::unique_ptr<db::Cursor> cursor(db->NewCursor());
+	_db_batchsize = 0;
+	while(cursor->valid())
+	  {
+	    if (_channels == 0)
+	      {
+		SparseDatum datum;
+		datum.ParseFromString(cursor->value());
+		_channels = datum.size();
+		std::cerr << "acquired channels=" << _channels << std::endl;
+		exit(1);
+	      }
+	    ++_db_batchsize;
+	    cursor->Next();
+	  }
+	LOG(INFO) << "SVM db train file " << dbfullname << " with " << _db_batchsize << " records\n";
+	if (!testdbname.empty() && fileops::file_exists(testdbfullname))
+	  {
+	    LOG(WARNING) << "SVM db file " << testdbfullname << " already exists, bypassing creation but checking on records, may take a while...\n";
+	    std::unique_ptr<db::DB> tdb(db::GetDB(backend));
+	    tdb->Open(testdbfullname.c_str(), db::READ);
+	    std::unique_ptr<db::Cursor> tcursor(tdb->NewCursor());
+	    _db_testbatchsize = 0;
+	    while(tcursor->valid())
+	      {
+		SparseDatum datum;
+		datum.ParseFromString(tcursor->value());
+		++_db_testbatchsize;
+		tcursor->Next();
+	      }
+	    LOG(INFO) << "SVM db test file " << testdbfullname << " with " << _db_testbatchsize << " records\n";
+	  }	
+	return 0;
+      }
+    
+    // write files to dbs (i.e. train and possibly test)
+    _db_batchsize = 0;
+    _db_testbatchsize = 0;
+    write_svmline_to_db(dbfullname,testdbfullname,ad_input);
+    
+    //TODO: setup channels in all records as the total number of dims is missing -> should preproc file...
+    /*std::unique_ptr<db::DB> db(db::GetDB(backend));
+    db->Open(dbfullname.c_str(), db::READ);
+    std::unique_ptr<db::Cursor> cursor(db->NewCursor());
+    _db_batchsize = 0;
+    while(cursor->valid())
+      {
+	if (_channels == 0)
+	  {
+	    SparseDatum datum;
+	    datum.ParseFromString(cursor->value());
+	    datum.set_size(channels());
+    
+	    // put back into db
+	    std::string out;
+	    if(!datum.SerializeToString(&out))
+	      {
+		LOG(INFO) << "Failed serialization of datum for db storage";
+		return 0;
+	      }
+	    _txn->Put(cursor->key(), out);
+	  }
+	++_db_batchsize;
+	cursor->Next();
+      }
+    _txn->Commit();
+    db->Close();*/
+    
+    return 0;
+  }
+
+  void SVMCaffeInputFileConn::add_train_svmline(const int &label,
+						const std::unordered_map<int,double> &vals)
+  {
+    if (!_db)
+      {
+	SVMInputFileConn::add_train_svmline(label,vals);
+	return;
+      }
+
+    static int count = 0;
+    
+    const int kMaxKeyLength = 256;
+    char key_cstr[kMaxKeyLength];
+    
+    SparseDatum d = to_sparse_datum(SVMline(label,vals));
+    
+    // sequential
+    int length = snprintf(key_cstr,kMaxKeyLength,"%s",std::to_string(count).c_str()); // XXX: using appeared to confuse the training (maybe because sorted)
+    
+    // put in db
+    std::string out;
+    if(!d.SerializeToString(&out))
+      {
+	LOG(INFO) << "Failed serialization of datum for db storage";
+	return;
+      }
+    _txn->Put(std::string(key_cstr, length), out);
+    _db_batchsize++;
+    
+    if (++count % 10000 == 0) {
+      // commit db
+      _txn->Commit();
+      _txn.reset(_tdb->NewTransaction());
+      LOG(INFO) << "Processed " << count << " records";
+    }
+  }
+
+  void SVMCaffeInputFileConn::add_test_svmline(const int &label,
+					       const std::unordered_map<int,double> &vals)
+  {
+    if (!_db)
+      {
+	SVMInputFileConn::add_test_svmline(label,vals);
+	return;
+      }
+    
+      static int count = 0;
+    
+    const int kMaxKeyLength = 256;
+    char key_cstr[kMaxKeyLength];
+    
+    SparseDatum d = to_sparse_datum(SVMline(label,vals));
+    
+    // sequential
+    int length = snprintf(key_cstr,kMaxKeyLength,"%s",std::to_string(count).c_str()); // XXX: using id appeared to confuse the training (maybe because sorted)
+    
+    // put in db
+    std::string out;
+    if(!d.SerializeToString(&out))
+      {
+	LOG(INFO) << "Failed serialization of datum for db storage";
+	return;
+      }
+    _ttxn->Put(std::string(key_cstr, length), out);
+    _db_testbatchsize++;
+
+    if (++count % 10000 == 0) {
+      // commit db
+      _ttxn->Commit();
+      _ttxn.reset(_ttdb->NewTransaction());
+      LOG(INFO) << "Processed " << count << " records";
+    }
+  }
+  
+  void SVMCaffeInputFileConn::write_svmline_to_db(const std::string &dbfullname,
+						  const std::string &testdbfullname,
+						  const APIData &ad_input,
+						  const std::string &backend)
+  {
+    std::cerr << "SVM line to db\n";
+    std::cerr << "dbfullname=" << dbfullname << std::endl;
+
+    // Create new DB
+    _tdb = std::unique_ptr<db::DB>(db::GetDB(backend));
+    _tdb->Open(dbfullname.c_str(), db::NEW);
+    _txn = std::unique_ptr<db::Transaction>(_tdb->NewTransaction());
+    _ttdb = std::unique_ptr<db::DB>(db::GetDB(backend));
+    _ttdb->Open(testdbfullname.c_str(), db::NEW);
+    _ttxn = std::unique_ptr<db::Transaction>(_ttdb->NewTransaction());
+    std::cerr << "db is opened\n";
+
+    _svm_fname = _uris.at(0); // training only from file
+    if (!fileops::file_exists(_svm_fname))
+      throw InputConnectorBadParamException("training SVM file " + _svm_fname + " does not exist");
+    if (_uris.size() > 1)
+      _svm_test_fname = _uris.at(1);
+
+    DataEl<DDSvm> ddsvm;
+    ddsvm._ctype._cifc = this;
+    ddsvm._ctype._adconf = ad_input;
+    ddsvm.read_element(_svm_fname);
+
+    _txn->Commit();
+    _ttxn->Commit();
+    
+    _tdb->Close();
+    _ttdb->Close();
+  }
+
+  std::vector<caffe::SparseDatum> SVMCaffeInputFileConn::get_dv_test_sparse_db(const int &num)
+  {
+    if (!_test_db_cursor)
+      {
+	// open db and create cursor
+	if (!_test_db)
+	  {
+	    _test_db = std::unique_ptr<db::DB>(db::GetDB("lmdb"));
+	    _test_db->Open(_model_repo + "/" + _test_dbfullname.c_str(),db::READ);
+	  }
+	_test_db_cursor = std::unique_ptr<db::Cursor>(_test_db->NewCursor());
+      }
+    std::vector<caffe::SparseDatum> dv;
+    int i =0;
+    while(_test_db_cursor->valid())
+      {
+	// fill up a vector up to 'num' elements.
+	if (i == num)
+	  break;
+	SparseDatum datum;
+	datum.ParseFromString(_test_db_cursor->value());
+	dv.push_back(datum);
+	_test_db_cursor->Next();
+	++i;
+      }
+    return dv;
+  }
+
+  void SVMCaffeInputFileConn::reset_dv_test()
+  {
+    _dt_vit = _dv_test_sparse.begin();
+    _test_db_cursor = std::unique_ptr<caffe::db::Cursor>();
+    _test_db = std::unique_ptr<caffe::db::DB>();
+  }
+
 }

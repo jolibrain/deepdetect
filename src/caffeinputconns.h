@@ -25,6 +25,7 @@
 #include "imginputfileconn.h"
 #include "csvinputfileconn.h"
 #include "txtinputfileconn.h"
+#include "svminputfileconn.h"
 #include "caffe/caffe.hpp"
 #include "caffe/util/db.hpp"
 #include "utils/fileops.hpp"
@@ -817,6 +818,187 @@ namespace dd
     std::string _test_dbname = "test";
     std::string _dbfullname = "train.lmdb";
     std::string _test_dbfullname = "test.lmdb";
+    int _channels = 0;
+  };
+
+  /**
+   * \brief Caffe SVM connector
+   */
+  class SVMCaffeInputFileConn : public SVMInputFileConn, public CaffeInputInterface
+  {
+  public:
+    SVMCaffeInputFileConn()
+      :SVMInputFileConn()
+      {
+	_sparse = true;
+	reset_dv_test();
+      }
+    SVMCaffeInputFileConn(const SVMCaffeInputFileConn &i)
+      :SVMInputFileConn(i),CaffeInputInterface(i) {}
+    ~SVMCaffeInputFileConn() {}
+
+    void init(const APIData &ad)
+    {
+      SVMInputFileConn::init(ad);
+    }
+
+    int channels() const
+    {
+      if (_channels > 0)
+	return _channels;
+      else return feature_size();
+    }
+
+    int height() const
+    {
+      return 1;
+    }
+
+    int width() const
+    {
+      return 1;
+    }
+
+    int batch_size() const
+    {
+      if (_db_batchsize > 0)
+	return _db_batchsize;
+      else return _dv_sparse.size();
+    }
+
+    int test_batch_size() const
+    {
+      if (_db_testbatchsize > 0)
+	return _db_testbatchsize;
+      else return _dv_test_sparse.size();
+    }
+
+    virtual void add_train_svmline(const int &label,
+				   const std::unordered_map<int,double> &vals);
+    virtual void add_test_svmline(const int &label,
+				  const std::unordered_map<int,double> &vals);
+
+    void transform(const APIData &ad)
+    {
+      APIData ad_param = ad.getobj("parameters");
+      APIData ad_input = ad_param.getobj("input");
+      
+      if (_train && ad_input.has("db") && ad_input.get("db").get<bool>())
+	{
+	  fillup_parameters(ad_input);
+	  get_data(ad);
+	  _db = true;
+	  svm_to_db(_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname,ad_input);
+	  
+	  // enrich data object with db files location
+	  APIData dbad;
+	  dbad.add("train_db",_model_repo + "/" + _dbfullname);
+	  if (_test_split > 0.0)
+	    dbad.add("test_db",_model_repo + "/" + _test_dbfullname);
+	  std::vector<APIData> vdbad = {dbad};
+	  const_cast<APIData&>(ad).add("db",vdbad);
+	}
+      else
+	{
+	  try
+	    {
+	      SVMInputFileConn::transform(ad);
+	    }
+	  catch(std::exception &e)
+	    {
+	      throw;
+	    }
+	
+	  if (_train)
+	    {
+	      auto hit = _svmdata.begin();
+	      while(hit!=_svmdata.end())
+		{
+		  _dv_sparse.push_back(to_sparse_datum((*hit)));
+		  ++hit;
+		}
+	    }
+	  if (!_train)
+	    _svmdata_test = std::move(_svmdata);
+	  else _svmdata.clear();
+	  auto hit = _svmdata_test.begin();
+	  while(hit!=_svmdata_test.end())
+	    {
+	      _dv_test_sparse.push_back(to_sparse_datum((*hit)));
+	      ++hit;
+	    }
+	}
+    }
+
+    caffe::SparseDatum to_sparse_datum(const SVMline &svml)
+      {
+	caffe::SparseDatum datum;
+	datum.set_label(svml._label);
+	auto hit = svml._v.begin();
+	int nelts = 0;
+	while(hit!=svml._v.end())
+	  {
+	    datum.add_data(static_cast<float>((*hit).second));
+	    datum.add_indices((*hit).first);
+	    ++nelts;
+	    ++hit;
+	  }
+	datum.set_nnz(nelts);
+	//std::cerr << "datum size=" << channels() << std::endl;
+	datum.set_size(channels());
+	return datum;
+      }
+
+    //TODO: get_dv_test & get_dv_test_db
+    
+    std::vector<caffe::SparseDatum> get_dv_test_sparse_db(const int &num);
+    std::vector<caffe::SparseDatum> get_dv_test_sparse(const int &num)
+      {
+	if (!_db)
+	  {
+	    int i = 0;
+	    std::vector<caffe::SparseDatum> dv;
+	    while(_dt_vit!=_dv_test_sparse.end()
+		  && i < num)
+	      {
+		dv.push_back((*_dt_vit));
+		++i;
+		++_dt_vit;
+	      }
+	    return dv;
+	  }
+	  else return get_dv_test_sparse_db(num);
+      }
+
+    void reset_dv_test();
+
+  private:
+    int svm_to_db(const std::string &traindbname,
+		  const std::string &testdbname,
+		  const APIData &ad_input,
+		  const std::string &backend="lmdb"); // lmdb, leveldb
+
+    void write_svmline_to_db(const std::string &dbfullname,
+			     const std::string &testdbfullname,
+			     const APIData &ad_input,
+			     const std::string &backend="lmdb");
+
+  public:
+    std::vector<caffe::SparseDatum>::const_iterator _dt_vit;
+    int _db_batchsize = -1;
+    int _db_testbatchsize = -1;
+    std::unique_ptr<caffe::db::DB> _test_db;
+    std::unique_ptr<caffe::db::Cursor> _test_db_cursor;
+    std::string _dbname = "train";
+    std::string _test_dbname = "test";
+    std::string _dbfullname = "train.lmdb";
+    std::string _test_dbfullname = "test.lmdb";
+ 
+  private:
+    std::unique_ptr<caffe::db::Transaction> _txn;
+    std::unique_ptr<caffe::db::DB> _tdb;
+    std::unique_ptr<caffe::db::Transaction> _ttxn;
+    std::unique_ptr<caffe::db::DB> _ttdb;
     int _channels = 0;
   };
   
