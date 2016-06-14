@@ -87,7 +87,7 @@ namespace dd
 	      {
 		int fid = std::stoi(res.at(0));
 		vals.insert(std::pair<int,double>(fid,std::stod(res.at(1))));
-		_fids.insert(fid);
+		//_fids.insert(fid);
 	      }
 	  }
 	catch (std::invalid_argument &e)
@@ -104,13 +104,36 @@ namespace dd
     LOG(INFO) << "SVM fname=" << fname << " / open=" << svm_file.is_open() << std::endl;
     if (!svm_file.is_open())
       throw InputConnectorBadParamException("cannot open file " + fname);
-  
-    // read data
-    int nlines = 0;
     std::string hline;
+
+    // first pass to get max index
+    std::string col;
     while(std::getline(svm_file,hline))
       {
-	//hline.erase(std::remove(hline.begin(),hline.end(),'\r'),hline.end());
+	bool fpos = true;
+      	std::stringstream sh(hline);
+	while(std::getline(sh,col,' '))
+	  {
+	    if (fpos)
+	      {
+		fpos = false;
+		continue;
+	      }
+	    std::vector<std::string> res = dd_utils::split(col,':');
+	    if (res.size() == 2)
+	      {
+		int fid = std::stoi(res.at(0));
+		_fids.insert(fid);
+	      }
+	  }
+      }
+    svm_file.clear();
+    svm_file.seekg(0,std::ios::beg);
+
+    // read data
+    int nlines = 0;
+    while(std::getline(svm_file,hline))
+      {
 	std::unordered_map<int,double> vals;
 	int label;
 	read_svm_line(hline,vals,label);

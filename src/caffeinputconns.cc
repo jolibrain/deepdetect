@@ -894,8 +894,6 @@ namespace dd
 		SparseDatum datum;
 		datum.ParseFromString(cursor->value());
 		_channels = datum.size();
-		std::cerr << "acquired channels=" << _channels << std::endl;
-		exit(1);
 	      }
 	    ++_db_batchsize;
 	    cursor->Next();
