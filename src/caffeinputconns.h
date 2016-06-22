@@ -874,9 +874,11 @@ namespace dd
     }
 
     virtual void add_train_svmline(const int &label,
-				   const std::unordered_map<int,double> &vals);
+				   const std::unordered_map<int,double> &vals,
+				   const int &count);
     virtual void add_test_svmline(const int &label,
-				  const std::unordered_map<int,double> &vals);
+				  const std::unordered_map<int,double> &vals,
+				  const int &count);
 
     void transform(const APIData &ad)
     {
@@ -897,6 +899,7 @@ namespace dd
 	    dbad.add("test_db",_model_repo + "/" + _test_dbfullname);
 	  std::vector<APIData> vdbad = {dbad};
 	  const_cast<APIData&>(ad).add("db",vdbad);
+	  serialize_vocab();
 	}
       else
 	{
@@ -944,13 +947,10 @@ namespace dd
 	    ++hit;
 	  }
 	datum.set_nnz(nelts);
-	//std::cerr << "datum size=" << channels() << std::endl;
 	datum.set_size(channels());
 	return datum;
       }
 
-    //TODO: get_dv_test & get_dv_test_db
-    
     std::vector<caffe::SparseDatum> get_dv_test_sparse_db(const int &num);
     std::vector<caffe::SparseDatum> get_dv_test_sparse(const int &num)
       {

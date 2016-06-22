@@ -955,16 +955,15 @@ namespace dd
   }
 
   void SVMCaffeInputFileConn::add_train_svmline(const int &label,
-						const std::unordered_map<int,double> &vals)
+						const std::unordered_map<int,double> &vals,
+						const int &count)
   {
     if (!_db)
       {
-	SVMInputFileConn::add_train_svmline(label,vals);
+	SVMInputFileConn::add_train_svmline(label,vals,count);
 	return;
       }
 
-    static int count = 0;
-    
     const int kMaxKeyLength = 256;
     char key_cstr[kMaxKeyLength];
     
@@ -983,7 +982,7 @@ namespace dd
     _txn->Put(std::string(key_cstr, length), out);
     _db_batchsize++;
     
-    if (++count % 10000 == 0) {
+    if (count % 10000 == 0) {
       // commit db
       _txn->Commit();
       _txn.reset(_tdb->NewTransaction());
@@ -992,16 +991,15 @@ namespace dd
   }
 
   void SVMCaffeInputFileConn::add_test_svmline(const int &label,
-					       const std::unordered_map<int,double> &vals)
+					       const std::unordered_map<int,double> &vals,
+					       const int &count)
   {
     if (!_db)
       {
-	SVMInputFileConn::add_test_svmline(label,vals);
+	SVMInputFileConn::add_test_svmline(label,vals,count);
 	return;
       }
-    
-      static int count = 0;
-    
+
     const int kMaxKeyLength = 256;
     char key_cstr[kMaxKeyLength];
     
@@ -1020,7 +1018,7 @@ namespace dd
     _ttxn->Put(std::string(key_cstr, length), out);
     _db_testbatchsize++;
 
-    if (++count % 10000 == 0) {
+    if (count % 10000 == 0) {
       // commit db
       _ttxn->Commit();
       _ttxn.reset(_ttdb->NewTransaction());

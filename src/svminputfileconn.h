@@ -159,9 +159,12 @@ namespace dd
 	      if (_test_split > 0.0)
 		split_data();
 	    }
+	  serialize_vocab();
 	}
       else // prediction mode
 	{
+	  if (_fids.empty())
+	    deserialize_vocab();
 	  for (size_t i=0;i<_uris.size();i++)
 	    {
 	      DataEl<DDSvm> ddsvm;
@@ -175,13 +178,15 @@ namespace dd
     }
 
     virtual void add_train_svmline(const int &label,
-				   const std::unordered_map<int,double> &vals)
+				   const std::unordered_map<int,double> &vals,
+				   const int &count)
     {
       _svmdata.emplace_back(label,std::move(vals));
     }
     
     virtual void add_test_svmline(const int &label,
-				  const std::unordered_map<int,double> &vals)
+				  const std::unordered_map<int,double> &vals,
+				  const int &count)
     {
       _svmdata.emplace_back(label,std::move(vals));
     }
@@ -205,8 +210,12 @@ namespace dd
     int feature_size() const
     {
       // total number of indices
-      return _fids.size();
+      return _max_id;
     }
+
+    // serialization of vocabulary
+    void serialize_vocab();
+    void deserialize_vocab(const bool &required=true);
 
     // options
     std::string _svm_fname;
@@ -217,6 +226,8 @@ namespace dd
     std::vector<SVMline> _svmdata;
     std::vector<SVMline> _svmdata_test;
     std::unordered_set<int> _fids; /**< feature ids. */
+    int _max_id = -1;
+    std::string _vocabfname = "vocab.dat";
   };
 
 }

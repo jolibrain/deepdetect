@@ -62,7 +62,7 @@ namespace dd
 	      }
 	  }
 	  }*/
-    _cifc->add_train_svmline(label,vals);
+    _cifc->add_train_svmline(label,vals,0);
     return 0;
   }
 
@@ -73,6 +73,7 @@ namespace dd
     bool fpos = true;
     std::string col;
     std::stringstream sh(content);
+    std::unordered_set<int>::const_iterator fit;
     while(std::getline(sh,col,' '))
       {
 	try
@@ -86,8 +87,8 @@ namespace dd
 	    if (res.size() == 2)
 	      {
 		int fid = std::stoi(res.at(0));
-		vals.insert(std::pair<int,double>(fid,std::stod(res.at(1))));
-		//_fids.insert(fid);
+		if ((fit=_fids.find(fid))!=_fids.end())
+		  vals.insert(std::pair<int,double>(fid,std::stod(res.at(1))));
 	      }
 	  }
 	catch (std::invalid_argument &e)
@@ -123,12 +124,16 @@ namespace dd
 	    if (res.size() == 2)
 	      {
 		int fid = std::stoi(res.at(0));
+		if (fid > _max_id)
+		  _max_id = fid;
 		_fids.insert(fid);
 	      }
 	  }
       }
     svm_file.clear();
     svm_file.seekg(0,std::ios::beg);
+
+    LOG(INFO) << "total number of dimensions=" << _fids.size() << std::endl;
 
     // read data
     int nlines = 0;
@@ -137,7 +142,7 @@ namespace dd
 	std::unordered_map<int,double> vals;
 	int label;
 	read_svm_line(hline,vals,label);
-	add_train_svmline(label,vals);
+	add_train_svmline(label,vals,nlines);
 	++nlines;
       }
       svm_file.close();
@@ -145,17 +150,18 @@ namespace dd
 
       if (!_svm_test_fname.empty())
 	{
+	  int tnlines = 0;
 	  std::ifstream svm_test_file(_svm_test_fname,std::ios::binary);
 	  if (!svm_test_file.is_open())
 	    throw InputConnectorBadParamException("cannot open SVM test file " + fname);
-	  std::getline(svm_test_file,hline); // skip header line
 	  while(std::getline(svm_test_file,hline))
 	    {
 	      hline.erase(std::remove(hline.begin(),hline.end(),'\r'),hline.end());
 	      std::unordered_map<int,double> vals;
 	      int label;
 	      read_svm_line(hline,vals,label);
-	      add_test_svmline(label,vals);
+	      add_test_svmline(label,vals,tnlines);
+	      ++tnlines;
 	    }
 	  svm_test_file.close();
 	}
@@ -169,6 +175,47 @@ namespace dd
 	  split_data();
 	  LOG(INFO) << "data split test size=" << _svmdata_test.size() << " / remaining data size=" << _svmdata.size() << std::endl;
 	}
+  }
+
+  void SVMInputFileConn::serialize_vocab()
+  {
+    std::string vocabfname = _model_repo + "/" + _vocabfname;
+    std::string delim=",";
+    std::ofstream out;
+    out.open(vocabfname);
+    if (!out.is_open())
+      throw InputConnectorBadParamException("failed opening SVM vocabulary file " + vocabfname);
+    auto fit = _fids.begin();
+    while(fit!=_fids.end())
+      {
+	out << (*fit) << std::endl;
+	++fit;
+      }
+  }
+
+  void SVMInputFileConn::deserialize_vocab(const bool &required)
+  {
+    std::string vocabfname = _model_repo + "/" + _vocabfname;
+    if (!fileops::file_exists(vocabfname))
+      {
+	if (required)
+	  throw InputConnectorBadParamException("cannot find vocabulary file " + vocabfname);
+	else return;
+      }
+    std::ifstream in;
+    in.open(vocabfname);
+    if (!in.is_open())
+      throw InputConnectorBadParamException("failed opening vocabulary file " + vocabfname);
+    std::string line;
+    while(getline(in,line))
+      {
+	std::string cline = line.substr(0,line.size()-1);
+	int fid = std::atoi(cline.c_str());
+	if (fid > _max_id)
+	  _max_id = fid;
+	_fids.insert(fid);
+      }
+    std::cerr << "loaded SVM vocabulary of size=" << _fids.size() << std::endl;
   }
   
 }

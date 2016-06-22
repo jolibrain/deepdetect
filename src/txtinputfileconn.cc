@@ -330,7 +330,7 @@ namespace dd
       {
 	std::vector<std::string> tokens = dd_utils::split(line,',');
 	std::string key = tokens.at(0);
-	int pos = atoi(tokens.at(1).c_str());
+	int pos = std::atoi(tokens.at(1).c_str());
 	_vocab.emplace(std::make_pair(key,Word(pos)));
       }
     std::cerr << "loaded vocabulary of size=" << _vocab.size() << std::endl;
