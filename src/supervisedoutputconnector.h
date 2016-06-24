@@ -349,7 +349,7 @@ namespace dd
       f1 = (2.0*precision*recall) / (precision+recall);
       conf_diag = conf_diag.transpose().cwiseQuotient(conf_csum+eps.transpose()).transpose();
       for (int i=0;i<conf_matrix.cols();i++)
-	conf_matrix.col(i) = conf_matrix.col(i).transpose().cwiseQuotient(conf_csum+eps.transpose()).transpose();
+	conf_matrix.col(i) /= conf_csum(i);
       return f1;
     }
     
