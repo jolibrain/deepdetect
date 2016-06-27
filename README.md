@@ -51,6 +51,7 @@ Current features include:
 
 - Full documentation is available from http://www.deepdetect.com/overview/introduction/
 - API documentation is available from http://www.deepdetect.com/api/
+- FAQ is available from http://www.deepdetect.com/overview/faq/
 
 ##### Dependencies
 
