@@ -25,6 +25,7 @@
 #include "imginputfileconn.h"
 #include "csvinputfileconn.h"
 #include "txtinputfileconn.h"
+#include "svminputfileconn.h"
 #include "caffe/caffe.hpp"
 #include "caffe/util/db.hpp"
 #include "utils/fileops.hpp"
@@ -39,7 +40,7 @@ namespace dd
   public:
     CaffeInputInterface() {}
     CaffeInputInterface(const CaffeInputInterface &cii)
-      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv) {}
+      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_sparse(cii._sparse) {}
     ~CaffeInputInterface() {}
 
     /**
@@ -54,7 +55,12 @@ namespace dd
 					  const bool &has_mean_file)
       {
 	(void)has_mean_file;
-	return std::vector<caffe::Datum>(num);
+	  return std::vector<caffe::Datum>(num);
+      }
+    
+    std::vector<caffe::SparseDatum> get_dv_test_sparse(const int &num)
+      {
+	return std::vector<caffe::SparseDatum>(num);
       }
 
     void reset_dv_test() {}
@@ -62,9 +68,12 @@ namespace dd
     bool _db = false; /**< whether to use a db. */
     std::vector<caffe::Datum> _dv; /**< main input datum vector, used for training or prediction */
     std::vector<caffe::Datum> _dv_test; /**< test input datum vector, when applicable in training mode */
+    std::vector<caffe::SparseDatum> _dv_sparse;
+    std::vector<caffe::SparseDatum> _dv_test_sparse;
     std::vector<std::string> _ids; /**< input ids (e.g. image ids) */
     bool _flat1dconv = false; /**< whether a 1D convolution model. */
     bool _has_mean_file = false; /**< image model mean.binaryproto. */
+    bool _sparse = false; /**< whether to use sparse representation. */
   };
 
   /**
@@ -521,6 +530,8 @@ namespace dd
       TxtInputFileConn::init(ad);
       if (_characters)
 	_flat1dconv = true;
+      if (ad.has("sparse") && ad.get("sparse").get<bool>())
+	_sparse = true;
     }
 
     int channels() const
@@ -550,14 +561,18 @@ namespace dd
     {
       if (_db_batchsize > 0)
 	return _db_batchsize;
-      else return _dv.size();
+      else if (!_sparse)
+	return _dv.size();
+      else return _dv_sparse.size();
     }
 
     int test_batch_size() const
     {
       if (_db_testbatchsize > 0)
 	return _db_testbatchsize;
-      else return _dv_test.size();
+      else if (!_sparse)
+	return _dv_test.size();
+      else return _dv_test_sparse.size();
     }
     
     int txt_to_db(const std::string &traindbname,
@@ -568,6 +583,10 @@ namespace dd
     void write_txt_to_db(const std::string &dbname,
 			 std::vector<TxtEntry<double>*> &txt,
 			 const std::string &backend="lmdb");
+    
+    void write_sparse_txt_to_db(const std::string &dbname,
+				std::vector<TxtEntry<double>*> &txt,
+				const std::string &backend="lmdb");
     
     void transform(const APIData &ad)
     {
@@ -602,9 +621,20 @@ namespace dd
 	      auto hit = _txt.begin();
 	      while(hit!=_txt.end())
 		{
-		  if (_characters)
-		    _dv.push_back(std::move(to_datum<TxtCharEntry>(static_cast<TxtCharEntry*>((*hit)))));
-		  else _dv.push_back(std::move(to_datum<TxtBowEntry>(static_cast<TxtBowEntry*>((*hit)))));
+		  if (!_sparse)
+		    {
+		      if (_characters)
+			_dv.push_back(std::move(to_datum<TxtCharEntry>(static_cast<TxtCharEntry*>((*hit)))));
+		      else _dv.push_back(std::move(to_datum<TxtBowEntry>(static_cast<TxtBowEntry*>((*hit)))));
+		    }
+		  else
+		    {
+		      if (_characters)
+			{
+			  //TODO
+			}
+		      else _dv_sparse.push_back(std::move(to_sparse_datum(static_cast<TxtBowEntry*>((*hit)))));
+		    }
 		  _ids.push_back((*hit)->_uri);
 		  ++hit;
 		}
@@ -616,9 +646,20 @@ namespace dd
 	  auto hit = _test_txt.begin();
 	  while(hit!=_test_txt.end())
 	    {
-	      if (_characters)
-		_dv_test.push_back(std::move(to_datum<TxtCharEntry>(static_cast<TxtCharEntry*>((*hit)))));
-	      else _dv_test.push_back(std::move(to_datum<TxtBowEntry>(static_cast<TxtBowEntry*>((*hit)))));
+	      if (!_sparse)
+		{
+		  if (_characters)
+		    _dv_test.push_back(std::move(to_datum<TxtCharEntry>(static_cast<TxtCharEntry*>((*hit)))));
+		  else _dv_test.push_back(std::move(to_datum<TxtBowEntry>(static_cast<TxtBowEntry*>((*hit)))));
+		}
+	      else
+		{
+		  if (_characters)
+		    {
+		      //TODO
+		    }
+		  else _dv_test_sparse.push_back(std::move(to_sparse_datum(static_cast<TxtBowEntry*>((*hit)))));
+		}
 	      if (!_train)
 		_ids.push_back(std::to_string(n));
 	      ++hit;
@@ -628,6 +669,7 @@ namespace dd
     }
 
     std::vector<caffe::Datum> get_dv_test_db(const int &num);
+    std::vector<caffe::SparseDatum> get_dv_test_sparse_db(const int &num);
     
     std::vector<caffe::Datum> get_dv_test(const int &num,
 					  const bool &has_mean_file)
@@ -649,16 +691,35 @@ namespace dd
 	else return get_dv_test_db(num);
       }
 
+    std::vector<caffe::SparseDatum> get_dv_test_sparse(const int &num)
+      {
+	if (!_db)
+	  {
+	    int i = 0;
+	    std::vector<caffe::SparseDatum> dv;
+	    while(_dt_vit_sparse!=_dv_test_sparse.end()
+		  && i < num)
+	      {
+		dv.push_back((*_dt_vit_sparse));
+		++i;
+		++_dt_vit_sparse;
+	      }
+	    return dv;
+	  }
+      	else return get_dv_test_sparse_db(num);
+      }
+
     void reset_dv_test()
     {
-      _dt_vit = _dv_test.begin();
+      if (!_sparse)
+	_dt_vit = _dv_test.begin();
+      else _dt_vit_sparse = _dv_test_sparse.begin();
       _test_db_cursor = std::unique_ptr<caffe::db::Cursor>();
       _test_db = std::unique_ptr<caffe::db::DB>();
     }
     
     template<class TEntry> caffe::Datum to_datum(TEntry *tbe)
       {
-	std::unordered_map<std::string,Word>::const_iterator wit;
 	caffe::Datum datum;
 	int datum_channels;
 	if (_characters)
@@ -670,6 +731,7 @@ namespace dd
 	datum.set_label(tbe->_target);
 	if (!_characters)
 	  {
+	    std::unordered_map<std::string,Word>::const_iterator wit;
 	    for (int i=0;i<datum_channels;i++) // XXX: expected to be slow
 	      datum.add_float_data(0.0);
 	    tbe->reset();
@@ -713,7 +775,39 @@ namespace dd
 	return datum;
       }
 
+    caffe::SparseDatum to_sparse_datum(TxtBowEntry *tbe)
+      {
+	caffe::SparseDatum datum;
+	/*int datum_channels = _vocab.size(); // XXX: may be very large
+	datum.set_channels(datum_channels);
+       	datum.set_height(1);
+	datum.set_width(1);*/
+	datum.set_label(tbe->_target);
+	std::unordered_map<std::string,Word>::const_iterator wit;
+	/*for (int i=0;i<datum_channels;i++) // XXX: expected to be slow
+	  datum.add_float_data(0.0);*/
+	tbe->reset();
+	int nwords = 0;
+	while(tbe->has_elt())
+	  {
+	    std::string key;
+	    double val;
+	    tbe->get_next_elt(key,val);
+	    if ((wit = _vocab.find(key))!=_vocab.end())
+	      {
+		int word_pos = _vocab[key]._pos;
+		datum.add_data(static_cast<float>(val));
+		datum.add_indices(word_pos);
+		++nwords;
+	      }
+	  }
+	datum.set_nnz(nwords);
+	datum.set_size(_vocab.size());
+	return datum;
+      }
+
     std::vector<caffe::Datum>::const_iterator _dt_vit;
+    std::vector<caffe::SparseDatum>::const_iterator _dt_vit_sparse;
 
   public:
     int _db_batchsize = -1;
@@ -724,6 +818,187 @@ namespace dd
     std::string _test_dbname = "test";
     std::string _dbfullname = "train.lmdb";
     std::string _test_dbfullname = "test.lmdb";
+    int _channels = 0;
+  };
+
+  /**
+   * \brief Caffe SVM connector
+   */
+  class SVMCaffeInputFileConn : public SVMInputFileConn, public CaffeInputInterface
+  {
+  public:
+    SVMCaffeInputFileConn()
+      :SVMInputFileConn()
+      {
+	_sparse = true;
+	reset_dv_test();
+      }
+    SVMCaffeInputFileConn(const SVMCaffeInputFileConn &i)
+      :SVMInputFileConn(i),CaffeInputInterface(i) {}
+    ~SVMCaffeInputFileConn() {}
+
+    void init(const APIData &ad)
+    {
+      SVMInputFileConn::init(ad);
+    }
+
+    int channels() const
+    {
+      if (_channels > 0)
+	return _channels;
+      else return feature_size();
+    }
+
+    int height() const
+    {
+      return 1;
+    }
+
+    int width() const
+    {
+      return 1;
+    }
+
+    int batch_size() const
+    {
+      if (_db_batchsize > 0)
+	return _db_batchsize;
+      else return _dv_sparse.size();
+    }
+
+    int test_batch_size() const
+    {
+      if (_db_testbatchsize > 0)
+	return _db_testbatchsize;
+      else return _dv_test_sparse.size();
+    }
+
+    virtual void add_train_svmline(const int &label,
+				   const std::unordered_map<int,double> &vals,
+				   const int &count);
+    virtual void add_test_svmline(const int &label,
+				  const std::unordered_map<int,double> &vals,
+				  const int &count);
+
+    void transform(const APIData &ad)
+    {
+      APIData ad_param = ad.getobj("parameters");
+      APIData ad_input = ad_param.getobj("input");
+      
+      if (_train && ad_input.has("db") && ad_input.get("db").get<bool>())
+	{
+	  fillup_parameters(ad_input);
+	  get_data(ad);
+	  _db = true;
+	  svm_to_db(_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname,ad_input);
+	  
+	  // enrich data object with db files location
+	  APIData dbad;
+	  dbad.add("train_db",_model_repo + "/" + _dbfullname);
+	  if (_test_split > 0.0)
+	    dbad.add("test_db",_model_repo + "/" + _test_dbfullname);
+	  std::vector<APIData> vdbad = {dbad};
+	  const_cast<APIData&>(ad).add("db",vdbad);
+	  serialize_vocab();
+	}
+      else
+	{
+	  try
+	    {
+	      SVMInputFileConn::transform(ad);
+	    }
+	  catch(std::exception &e)
+	    {
+	      throw;
+	    }
+	
+	  if (_train)
+	    {
+	      auto hit = _svmdata.begin();
+	      while(hit!=_svmdata.end())
+		{
+		  _dv_sparse.push_back(to_sparse_datum((*hit)));
+		  ++hit;
+		}
+	    }
+	  if (!_train)
+	    _svmdata_test = std::move(_svmdata);
+	  else _svmdata.clear();
+	  auto hit = _svmdata_test.begin();
+	  while(hit!=_svmdata_test.end())
+	    {
+	      _dv_test_sparse.push_back(to_sparse_datum((*hit)));
+	      ++hit;
+	    }
+	}
+    }
+
+    caffe::SparseDatum to_sparse_datum(const SVMline &svml)
+      {
+	caffe::SparseDatum datum;
+	datum.set_label(svml._label);
+	auto hit = svml._v.begin();
+	int nelts = 0;
+	while(hit!=svml._v.end())
+	  {
+	    datum.add_data(static_cast<float>((*hit).second));
+	    datum.add_indices((*hit).first);
+	    ++nelts;
+	    ++hit;
+	  }
+	datum.set_nnz(nelts);
+	datum.set_size(channels());
+	return datum;
+      }
+
+    std::vector<caffe::SparseDatum> get_dv_test_sparse_db(const int &num);
+    std::vector<caffe::SparseDatum> get_dv_test_sparse(const int &num)
+      {
+	if (!_db)
+	  {
+	    int i = 0;
+	    std::vector<caffe::SparseDatum> dv;
+	    while(_dt_vit!=_dv_test_sparse.end()
+		  && i < num)
+	      {
+		dv.push_back((*_dt_vit));
+		++i;
+		++_dt_vit;
+	      }
+	    return dv;
+	  }
+	  else return get_dv_test_sparse_db(num);
+      }
+
+    void reset_dv_test();
+
+  private:
+    int svm_to_db(const std::string &traindbname,
+		  const std::string &testdbname,
+		  const APIData &ad_input,
+		  const std::string &backend="lmdb"); // lmdb, leveldb
+
+    void write_svmline_to_db(const std::string &dbfullname,
+			     const std::string &testdbfullname,
+			     const APIData &ad_input,
+			     const std::string &backend="lmdb");
+
+  public:
+    std::vector<caffe::SparseDatum>::const_iterator _dt_vit;
+    int _db_batchsize = -1;
+    int _db_testbatchsize = -1;
+    std::unique_ptr<caffe::db::DB> _test_db;
+    std::unique_ptr<caffe::db::Cursor> _test_db_cursor;
+    std::string _dbname = "train";
+    std::string _test_dbname = "test";
+    std::string _dbfullname = "train.lmdb";
+    std::string _test_dbfullname = "test.lmdb";
+ 
+  private:
+    std::unique_ptr<caffe::db::Transaction> _txn;
+    std::unique_ptr<caffe::db::DB> _tdb;
+    std::unique_ptr<caffe::db::Transaction> _ttxn;
+    std::unique_ptr<caffe::db::DB> _ttdb;
     int _channels = 0;
   };
   
