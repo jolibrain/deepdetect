@@ -46,6 +46,7 @@ Current features include:
 - no database dependency and sync, all information and model parameters organized and available from the filesystem
 - flexible template output format to simplify connection to external applications
 - templates for the most useful neural architectures (e.g. Googlenet, Alexnet, ResNet, convnet, character-based convnet, mlp, logistic regression)
+- support for sparse features and computations on both GPU and CPU
 
 ##### Documentation
 
@@ -79,7 +80,7 @@ None outside of C++ compiler and make
 
 ##### Caffe version
 
-By default DeepDetect automatically relies on a modified version of Caffe, https://github.com/beniz/caffe/tree/master_dd_integ
+By default DeepDetect automatically relies on a modified version of Caffe, https://github.com/beniz/caffe/tree/master
 
 ##### Implementation
 
