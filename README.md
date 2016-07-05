@@ -8,7 +8,7 @@ DeepDetect relies on external machine learning libraries through a very generic 
 
 #### Main functionalities
 
-DeepDetect implements support for supervised deep learning of images and other data, with focus on simplicity and ease of use, test and connection into existing applications.
+DeepDetect implements support for supervised deep learning of images, text and other data, with focus on simplicity and ease of use, test and connection into existing applications.
 
 #### Support
 
@@ -42,6 +42,7 @@ Current features include:
 - connector to handle large collections of images with on-the-fly data augmentation (e.g. rotations, mirroring)
 - connector to handle CSV files with preprocessing capabilities
 - connector to handle text files, sentences, and character-based models
+- connector to handle SVM file format for sparse data
 - range of built-in model assessment measures (e.g. F1, multiclass log loss, ...)
 - no database dependency and sync, all information and model parameters organized and available from the filesystem
 - flexible template output format to simplify connection to external applications
