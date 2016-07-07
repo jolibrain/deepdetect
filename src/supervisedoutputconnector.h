@@ -234,7 +234,7 @@ namespace dd
 		      std::vector<double> cmcol;
 		      for (int j=0;j<conf_matrix.rows();j++)
 			cmcol.push_back(conf_matrix(j,i));
-		      cad.add(clnames.at(i),cmcol);
+		      cad.add(std::to_string(i) + '_' + clnames.at(i),cmcol);
 		    }
 		  std::vector<APIData> vad = {cad};
 		  meas_out.add("cmfull",vad);
