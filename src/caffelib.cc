@@ -83,7 +83,7 @@ namespace dd
     // - locate template repository
     std::string model_tmpl = ad.get("template").get<std::string>();
     this->_mlmodel._model_template = model_tmpl;
-    std::cout << "instantiating model template " << model_tmpl << std::endl;
+    LOG(INFO) << "instantiating model template " << model_tmpl << std::endl;
 
     // - copy files to model repository
     std::string source = this->_mlmodel._mlmodel_template_repo + '/' + model_tmpl + "/";
