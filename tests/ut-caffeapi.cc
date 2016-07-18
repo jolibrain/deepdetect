@@ -390,7 +390,7 @@ TEST(caffeapi,service_train_csv)
   ASSERT_TRUE(jd["body"]["measure"].HasMember("cmdiag"));
   ASSERT_EQ(7,jd["body"]["measure"]["cmdiag"].Size());
   ASSERT_TRUE(jd["body"]["measure"]["cmdiag"][0].GetDouble() >= 0);
-  ASSERT_TRUE(jd["body"]["measure"]["cmfull"]["1"].Size());
+  ASSERT_TRUE(jd["body"]["measure"]["cmfull"].Size()); //TODO: update
   ASSERT_EQ(56,jd["body"]["parameters"]["input"]["min_vals"].Size());
   ASSERT_EQ(56,jd["body"]["parameters"]["input"]["max_vals"].Size());
   ASSERT_EQ(504,jd["body"]["parameters"]["mllib"]["batch_size"].GetInt());
