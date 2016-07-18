@@ -228,16 +228,20 @@ namespace dd
 	      if (std::find(measures.begin(),measures.end(),"cmfull")!=measures.end())
 		{
 		  std::vector<std::string> clnames = ad_res.get("clnames").get<std::vector<std::string>>();
-		  APIData cad;
+		  APIData cmobj;
+		  cmobj.add("labels",clnames);
+		  std::vector<APIData> cmdata;
 		  for (int i=0;i<conf_matrix.cols();i++)
 		    {
-		      std::vector<double> cmcol;
+		      std::vector<double> cmrow;
 		      for (int j=0;j<conf_matrix.rows();j++)
-			cmcol.push_back(conf_matrix(j,i));
-		      cad.add(std::to_string(i) + '_' + clnames.at(i),cmcol);
+			cmrow.push_back(conf_matrix(j,i));
+		      APIData adrow;
+		      adrow.add(clnames.at(i),cmrow);
+		      cmdata.push_back(adrow);
 		    }
-		  std::vector<APIData> vad = {cad};
-		  meas_out.add("cmfull",vad);
+		  std::vector<APIData> vcmdata = {cmdata};
+		  meas_out.add("cmfull",vcmdata);
 		}
 	    }
 	  if (bmcll)
@@ -252,7 +256,6 @@ namespace dd
 	    }
 	  if (beucll)
 	    {
-	      //TODO: euclidean distance
 	      double meucll = eucll(ad_res);
 	      meas_out.add("eucll",meucll);
 	    }
