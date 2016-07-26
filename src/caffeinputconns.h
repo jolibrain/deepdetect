@@ -374,7 +374,7 @@ namespace dd
 		{
 		  if (_label.size() == 1)
 		    _dv.push_back(to_datum((*hit)._v));
-		  else // multi labels
+		  else // multi labels or autoencoder
 		    {
 		      caffe::Datum dat = to_datum((*hit)._v,true);
 		      for (size_t i=0;i<_label_pos.size();i++) // concat labels and slice them out in the network itself
@@ -460,7 +460,7 @@ namespace dd
       auto lit = _columns.begin();
       for (int i=0;i<(int)vf.size();i++)
 	{
-	  if (!multi_label && i == _label_pos[0])
+	  if (!multi_label && !this->_label.empty() && i == _label_pos[0])
 	    {
 	      datum.set_label(static_cast<float>(vf.at(i)+this->_label_offset[0]));
 	    }

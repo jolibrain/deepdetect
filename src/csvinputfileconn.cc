@@ -110,7 +110,7 @@ namespace dd
       {
 	if ((*lit) == _id)
 	  _id_pos = i;
-	else if ((*lit) == _label[0])
+	else if (!_label.empty() && (*lit) == _label[0])
 	  _label_pos[0] = i;
 	++i;
 	++lit;
@@ -145,11 +145,11 @@ namespace dd
 	  // convert to float unless it is string (ignore strings, aka categorical fields, for now)
 	  if (!_columns.empty()) // in prediction mode, columns from header are not mandatory
 	    {
-	      col_name = (*lit);
 	      if ((hit=_ignored_columns_pos.find(c))!=_ignored_columns_pos.end())
 		{
 		  continue;
 		}
+	      col_name = (*lit);
 	      if (_id_pos == c)
 		{
 		  column_id = col;
@@ -329,9 +329,7 @@ namespace dd
 	    {
 	      add_train_csvline(cid,vals);
 	    }
-	  //_csvdata.emplace_back(cid,std::move(vals));
 	  else add_train_csvline(std::to_string(nlines),vals); 
-	    //_csvdata.emplace_back(std::to_string(nlines),std::move(vals)); 
 	  
 	  //debug
 	  /*std::cout << "csv data line #" << nlines << "=";

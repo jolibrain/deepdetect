@@ -53,6 +53,7 @@ namespace dd
     _nclasses = cl._nclasses;
     _regression = cl._regression;
     _ntargets = cl._ntargets;
+    _autoencoder = cl._autoencoder;
     cl._net = nullptr;
   }
 
@@ -207,7 +208,10 @@ namespace dd
     bool db = false;
     if (ad.has("db") && ad.get("db").get<bool>())
       db = true;
-    if (!db && layers.empty() && activation == "ReLU" && dropout == 0.5 && targets == 0)
+    bool autoencoder = false;
+    if (ad.has("autoencoder") && ad.get("autoencoder").get<bool>())
+      autoencoder = true;
+    if (!autoencoder && !db && layers.empty() && activation == "ReLU" && dropout == 0.5 && targets == 0)
       return; // nothing to do
     
     int nclasses = 0;
@@ -379,6 +383,9 @@ namespace dd
 	ipp->mutable_bias_filler()->set_type("constant");
 	++drl;
 	
+	/*if (autoencoder && l == layers.size()-1) //TODO: not for MSE
+	  break;*/
+
 	if (rl < max_rl)
 	  {
 	    lparam = net_param.mutable_layer(rl);
@@ -417,6 +424,9 @@ namespace dd
 	dlparam->add_top(last_ip);
 	++drl;
 	
+	if (autoencoder && l == layers.size()-1) //TODO: for MSE
+	  break;
+
 	if (dropout > 0.0 && dropout < 1.0)
 	  {
 	    if (rl < max_rl)
@@ -442,6 +452,7 @@ namespace dd
     // add remaining softmax layers
     prec_ip = "ip" + std::to_string(layers.size()-1);
     last_ip = "ip" + std::to_string(layers.size());
+    
     if (rl < max_rl)
       {
 	lparam = net_param.mutable_layer(rl); // last inner product before softmax
@@ -450,7 +461,7 @@ namespace dd
 	lparam->clear_top();
 	lparam->clear_loss_weight();
 	lparam->clear_dropout_param();
-	lparam->clear_inner_product_param();
+	    lparam->clear_inner_product_param();
       }
     else lparam = net_param.add_layer();
     lparam->set_name(last_ip);
@@ -460,12 +471,15 @@ namespace dd
     caffe::InnerProductParameter *ipp = lparam->mutable_inner_product_param();
     if (!regression || targets == 0)
       ipp->set_num_output(nclasses);
-    else ipp->set_num_output(targets);
-    ipp->mutable_weight_filler()->set_type("gaussian");
-    ipp->mutable_weight_filler()->set_std(0.1);
+    else if (autoencoder)
+      ipp->set_num_output(targets); // XXX: temporary value, set at training time
+    else
+      ipp->set_num_output(targets);
+    ipp->mutable_weight_filler()->set_type("xavier");
+    //ipp->mutable_weight_filler()->set_std(0.1);
     ipp->mutable_bias_filler()->set_type("constant");
     ++rl;
-
+    
     if (drl < max_drl)
       {
 	dlparam = deploy_net_param.mutable_layer(drl);
@@ -485,13 +499,35 @@ namespace dd
     if (!regression || targets == 0)
       dipp->set_num_output(nclasses);
     else dipp->set_num_output(targets);
-    dipp->mutable_weight_filler()->set_type("gaussian");
-    dipp->mutable_weight_filler()->set_std(0.1);
+    dipp->mutable_weight_filler()->set_type("xavier");
+    //dipp->mutable_weight_filler()->set_std(0.1);
     dipp->mutable_bias_filler()->set_type("constant");
     ++drl;
-
-    if (!regression)
-      {
+    
+    if (!autoencoder)
+      {	
+	if (!regression)
+	  {
+	    if (rl < max_rl)
+	      {
+		lparam = net_param.mutable_layer(rl);
+		lparam->clear_include();
+		lparam->clear_bottom();
+		lparam->clear_top();
+		lparam->clear_loss_weight();
+		lparam->clear_dropout_param();
+		lparam->clear_inner_product_param();
+	      }
+	    else lparam = net_param.add_layer(); // test loss
+	    lparam->set_name("losst");
+	    lparam->set_type("Softmax");
+	    lparam->add_bottom(last_ip);
+	    lparam->add_top("losst");
+	    caffe::NetStateRule *nsr = lparam->add_include();
+	    nsr->set_phase(caffe::TEST);
+	    ++rl;
+	  }
+	
 	if (rl < max_rl)
 	  {
 	    lparam = net_param.mutable_layer(rl);
@@ -502,57 +538,109 @@ namespace dd
 	    lparam->clear_dropout_param();
 	    lparam->clear_inner_product_param();
 	  }
-	else lparam = net_param.add_layer(); // test loss
+	else lparam = net_param.add_layer(); // training loss
+	lparam->set_name("loss");
+	if (regression)
+	  {
+	    lparam->set_type("EuclideanLoss");
+	  }
+	else lparam->set_type("SoftmaxWithLoss");
+	lparam->add_bottom(last_ip);
+	lparam->add_bottom("label");
+	lparam->add_top("loss");
+	caffe::NetStateRule *nsr = lparam->add_include();
+	nsr->set_phase(caffe::TRAIN);
+	++rl;
+	
+	if (!regression)
+	  {
+	    if (drl < max_drl)
+	      {
+		dlparam = deploy_net_param.mutable_layer(drl);
+		dlparam->clear_include();
+		dlparam->clear_top();
+		dlparam->clear_bottom();
+		dlparam->clear_loss_weight();
+		dlparam->clear_dropout_param();
+		dlparam->clear_inner_product_param();
+	      }
+	    else dlparam = deploy_net_param.add_layer();
+	    dlparam->set_name("loss");
+	    dlparam->set_type("Softmax");
+	    dlparam->add_bottom(last_ip);
+	    dlparam->add_top("loss");
+	  }
+      }
+    else
+      {
+	if (rl < max_rl)
+	  {
+	    lparam = net_param.mutable_layer(rl); // last inner product before softmax
+	    lparam->clear_include();
+	    lparam->clear_bottom();
+	    lparam->clear_top();
+	    lparam->clear_loss_weight();
+	    lparam->clear_dropout_param();
+	    lparam->clear_inner_product_param();
+	  }
+	else lparam = net_param.add_layer();
+	lparam->set_name("loss");
+	lparam->set_type("SigmoidCrossEntropyLoss"); //TODO: option for MSE
+	lparam->add_bottom(last_ip);
+	lparam->add_bottom("data");
+	lparam->add_top("loss");
+	caffe::NetStateRule *nsr = lparam->add_include();
+	nsr->set_phase(caffe::TRAIN);
+	++rl;
+
+	if (rl < max_rl)
+	  {
+	    lparam = net_param.mutable_layer(rl); // last inner product before softmax
+	    lparam->clear_include();
+	    lparam->clear_bottom();
+	    lparam->clear_top();
+	    lparam->clear_loss_weight();
+	    lparam->clear_dropout_param();
+	    lparam->clear_inner_product_param();
+	  }
+	else lparam = net_param.add_layer();
 	lparam->set_name("losst");
-        lparam->set_type("Softmax");
+	lparam->set_type("Sigmoid");
 	lparam->add_bottom(last_ip);
 	lparam->add_top("losst");
-	caffe::NetStateRule *nsr = lparam->add_include();
+	nsr = lparam->add_include();
 	nsr->set_phase(caffe::TEST);
 	++rl;
-      }
-
-    if (rl < max_rl)
-      {
-	lparam = net_param.mutable_layer(rl);
-	lparam->clear_include();
-	lparam->clear_bottom();
-	lparam->clear_top();
-	lparam->clear_loss_weight();
-	lparam->clear_dropout_param();
-	lparam->clear_inner_product_param();
-      }
-    else lparam = net_param.add_layer(); // training loss
-    lparam->set_name("loss");
-    if (regression)
-      {
-	lparam->set_type("EuclideanLoss");
-      }
-    else lparam->set_type("SoftmaxWithLoss");
-    lparam->add_bottom(last_ip);
-    lparam->add_bottom("label");
-    lparam->add_top("loss");
-    caffe::NetStateRule *nsr = lparam->add_include();
-    nsr->set_phase(caffe::TRAIN);
-    ++rl;
-    
-    if (!regression)
-      {
-	if (drl < max_drl)
+	
+	//TODO: add sigmoid to deploy
+		
+	/*if (drl < max_drl)
 	  {
-	    dlparam = deploy_net_param.mutable_layer(drl);
+	    dlparam = deploy_net_param.mutable_layer(rl); // last inner product before softmax
 	    dlparam->clear_include();
-	    dlparam->clear_top();
 	    dlparam->clear_bottom();
+	    dlparam->clear_top();
 	    dlparam->clear_loss_weight();
 	    dlparam->clear_dropout_param();
 	    dlparam->clear_inner_product_param();
 	  }
 	else dlparam = deploy_net_param.add_layer();
 	dlparam->set_name("loss");
-	dlparam->set_type("Softmax");
+	dlparam->set_type("SigmoidCrossEntropyLoss"); //TODO: option for MSE
 	dlparam->add_bottom(last_ip);
-	dlparam->add_top("loss");
+	dlparam->add_bottom("data");
+	dlparam->add_top("loss");*/
+
+	while (rl < max_rl)
+	  {
+	    net_param.mutable_layer()->RemoveLast();
+	    ++rl;
+	  }
+	while (drl < max_drl)
+	  {
+	    deploy_net_param.mutable_layer()->RemoveLast();
+	    ++drl;
+	  }
       }
   }
   
@@ -1267,7 +1355,9 @@ namespace dd
       }
     if (ad.has("ntargets"))
       _ntargets = ad.get("ntargets").get<int>();
-    if (_nclasses == 0)
+    if (ad.has("autoencoder") && ad.get("autoencoder").get<bool>())
+      _autoencoder = true;
+    if (!_autoencoder && _nclasses == 0)
       throw MLLibBadParamException("number of classes is unknown (nclasses == 0)");
     if (_regression && _ntargets == 0)
       throw MLLibBadParamException("number of regression targets is unknown (ntargets == 0)");
@@ -1686,6 +1776,8 @@ namespace dd
 	int nout = _nclasses;
 	if (_regression && _ntargets > 1)
 	  nout = _ntargets;
+	if (_autoencoder)
+	  nout = inputc.channels();
 	ad_res.add("nclasses",_nclasses);
 	inputc.reset_dv_test();
 	while(true)
@@ -1703,12 +1795,26 @@ namespace dd
 		    dv_size = dv.size();
 		    for (size_t s=0;s<dv_size;s++)
 		      {
-			dv_labels.push_back(dv.at(s).label());
-			if (_ntargets > 1)
+			if (!_autoencoder)
+			  {
+			    dv_labels.push_back(dv.at(s).label());
+			    if (_ntargets > 1)
+			      {
+				std::vector<double> vals;
+				for (int k=inputc.channels();k<dv.at(s).float_data_size();k++)
+				  vals.push_back(dv.at(s).float_data(k));
+				dv_float_data.push_back(vals);
+			      }
+			  }
+			else
 			  {
 			    std::vector<double> vals;
-			    for (int k=inputc.channels();k<dv.at(s).float_data_size();k++)
-			      vals.push_back(dv.at(s).float_data(k));
+			    for (int k=0;k<inputc.channels();k++)
+			      {
+				vals.push_back(dv.at(s).float_data(k));
+				//std::cerr << dv.at(s).float_data(k) << " ";
+			      }
+			    //std::cerr << std::endl;
 			    dv_float_data.push_back(vals);
 			  }
 		      }
@@ -1757,15 +1863,20 @@ namespace dd
 		throw;
 	      }
 	    int slot = lresults.size() - 1;
+	    //std::cerr << "\nslot=" << slot << std::endl;
+	    
 	    if (_regression && _ntargets > 1) // slicing is involved
 	      slot--; // labels appear to be last
 	    int scount = lresults[slot]->count();
 	    int scperel = scount / dv_size;
+	    
+	    //std::cerr << "scount=" << scount << " / scperel=" << scperel << std::endl;
+	    
 	    for (int j=0;j<(int)dv_size;j++)
 	      {
 		APIData bad;
 		std::vector<double> predictions;
-		if (!_regression || _ntargets == 1)
+		if ((!_regression && !_autoencoder)|| _ntargets == 1)
 		  {
 		    double target = dv_labels.at(j);
 		    for (int k=0;k<nout;k++)
@@ -1774,14 +1885,16 @@ namespace dd
 		      }
 		    bad.add("target",target);
 		  }
-		else
+		else // regression with ntargets > 1 or autoencoder
 		  {
+		    //std::cerr << "regression or autoencoder\n";
 		    std::vector<double> target;
 		    for (size_t k=0;k<dv_float_data.at(j).size();k++)
 		      target.push_back(dv_float_data.at(j).at(k));
 		    for (int k=0;k<nout;k++)
 		      {
 			predictions.push_back(lresults[slot]->cpu_data()[j*scperel+k]);
+			//std::cerr << "prediction=" << lresults[slot]->cpu_data()[j*scperel+k] << " / target=" << target.at(k) << std::endl;
 		      }
 		    bad.add("target",target);
 		  }
@@ -2134,8 +2247,48 @@ namespace dd
 	  }
       }
     
+    // if autoencoder, set the last inner product layer output number to input size (i.e. inputc.channels())
+    if (_autoencoder)
+      {
+	int k = net_param.layer_size();
+	std::string bottom;
+	for (int l=k-1;l>0;l--)
+	  {
+	    caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+	    if (lparam->type() == "SigmoidCrossEntropyLoss")
+	      {
+		bottom = lparam->bottom(0);
+	      }
+	    if (!bottom.empty() && lparam->type() == "InnerProduct")
+	      {
+		lparam->mutable_inner_product_param()->set_num_output(inputc.channels());
+		break;
+	      }
+	  }
+      }
+
     caffe::NetParameter deploy_net_param;
     caffe::ReadProtoFromTextFile(deploy_file,&deploy_net_param);
+    
+    if (_autoencoder)
+      {
+	int k = deploy_net_param.layer_size();
+	std::string bottom = "";
+	for (int l=k-1;l>0;l--)
+	  {
+	    caffe::LayerParameter *lparam = deploy_net_param.mutable_layer(l);
+	    /*if (lparam->type() == "SigmoidCrossEntropyLoss")
+	      {
+		bottom = lparam->bottom(0);
+		}*/
+	    if (/*!bottom.empty() && */lparam->type() == "InnerProduct")
+	      {
+		lparam->mutable_inner_product_param()->set_num_output(inputc.channels());
+		break;
+	      }
+	  }
+      }
+
     if (deploy_net_param.mutable_layer(0)->has_memory_data_param())
       {
 	// no batch size set on deploy model since it is adjusted for every prediction batch
