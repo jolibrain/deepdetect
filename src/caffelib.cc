@@ -211,6 +211,12 @@ namespace dd
     bool autoencoder = false;
     if (ad.has("autoencoder") && ad.get("autoencoder").get<bool>())
       autoencoder = true;
+    std::string init = "xavier";
+    if (ad.has("init"))
+      init = ad.get("init").get<std::string>();
+    double init_std = 0.1;
+    if (ad.has("init_std"))
+      init_std = ad.get("init_std").get<double>();
     if (!autoencoder && !db && layers.empty() && activation == "ReLU" && dropout == 0.5 && targets == 0)
       return; // nothing to do
     
@@ -356,7 +362,9 @@ namespace dd
 	lparam->add_top(last_ip);
 	caffe::InnerProductParameter *ipp = lparam->mutable_inner_product_param();
 	ipp->set_num_output(layers.at(l));
-	ipp->mutable_weight_filler()->set_type("xavier");
+	ipp->mutable_weight_filler()->set_type(init);
+	if (init == "gaussian")
+	  ipp->mutable_weight_filler()->set_std(init_std);
 	ipp->mutable_bias_filler()->set_type("constant");
 	++rl;
 	
@@ -379,7 +387,9 @@ namespace dd
 	dlparam->add_top(last_ip);
 	ipp = dlparam->mutable_inner_product_param();
 	ipp->set_num_output(layers.at(l));
-	ipp->mutable_weight_filler()->set_type("xavier");
+	ipp->mutable_weight_filler()->set_type(init);
+	if (init == "gaussian")
+	  ipp->mutable_weight_filler()->set_std(init_std);
 	ipp->mutable_bias_filler()->set_type("constant");
 	++drl;
 	
@@ -475,8 +485,9 @@ namespace dd
       ipp->set_num_output(targets); // XXX: temporary value, set at training time
     else
       ipp->set_num_output(targets);
-    ipp->mutable_weight_filler()->set_type("xavier");
-    //ipp->mutable_weight_filler()->set_std(0.1);
+    ipp->mutable_weight_filler()->set_type(init);
+    if (init == "gaussian")
+      ipp->mutable_weight_filler()->set_std(init_std);
     ipp->mutable_bias_filler()->set_type("constant");
     ++rl;
     
@@ -499,8 +510,9 @@ namespace dd
     if (!regression || targets == 0)
       dipp->set_num_output(nclasses);
     else dipp->set_num_output(targets);
-    dipp->mutable_weight_filler()->set_type("xavier");
-    //dipp->mutable_weight_filler()->set_std(0.1);
+    dipp->mutable_weight_filler()->set_type(init);
+    if (init == "gaussian")
+      dipp->mutable_weight_filler()->set_std(init_std);
     dipp->mutable_bias_filler()->set_type("constant");
     ++drl;
     
@@ -614,7 +626,7 @@ namespace dd
 	
 	//TODO: add sigmoid to deploy
 		
-	/*if (drl < max_drl)
+	if (drl < max_drl)
 	  {
 	    dlparam = deploy_net_param.mutable_layer(rl); // last inner product before softmax
 	    dlparam->clear_include();
@@ -625,11 +637,10 @@ namespace dd
 	    dlparam->clear_inner_product_param();
 	  }
 	else dlparam = deploy_net_param.add_layer();
-	dlparam->set_name("loss");
-	dlparam->set_type("SigmoidCrossEntropyLoss"); //TODO: option for MSE
+	dlparam->set_name("sig");
+	dlparam->set_type("Sigmoid"); //TODO: option for MSE
 	dlparam->add_bottom(last_ip);
-	dlparam->add_bottom("data");
-	dlparam->add_top("loss");*/
+	dlparam->add_top("sig");
 
 	while (rl < max_rl)
 	  {
