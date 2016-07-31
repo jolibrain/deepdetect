@@ -587,7 +587,7 @@ namespace dd
       {
 	if (rl < max_rl)
 	  {
-	    lparam = net_param.mutable_layer(rl); // last inner product before softmax
+	    lparam = net_param.mutable_layer(rl);
 	    lparam->clear_include();
 	    lparam->clear_bottom();
 	    lparam->clear_top();
@@ -607,7 +607,7 @@ namespace dd
 
 	if (rl < max_rl)
 	  {
-	    lparam = net_param.mutable_layer(rl); // last inner product before softmax
+	    lparam = net_param.mutable_layer(rl);
 	    lparam->clear_include();
 	    lparam->clear_bottom();
 	    lparam->clear_top();
@@ -624,11 +624,10 @@ namespace dd
 	nsr->set_phase(caffe::TEST);
 	++rl;
 	
-	//TODO: add sigmoid to deploy
-		
+	// add decoupled sigmoid and cross entropy loss to deploy
 	if (drl < max_drl)
 	  {
-	    dlparam = deploy_net_param.mutable_layer(rl); // last inner product before softmax
+	    dlparam = deploy_net_param.mutable_layer(drl);
 	    dlparam->clear_include();
 	    dlparam->clear_bottom();
 	    dlparam->clear_top();
@@ -642,6 +641,23 @@ namespace dd
 	dlparam->add_bottom(last_ip);
 	dlparam->add_top("sig");
 
+	if (drl < max_drl)
+	  {
+	    dlparam = deploy_net_param.mutable_layer(drl);
+	    dlparam->clear_include();
+	    dlparam->clear_bottom();
+	    dlparam->clear_top();
+	    dlparam->clear_loss_weight();
+	    dlparam->clear_dropout_param();
+	    dlparam->clear_inner_product_param();
+	  }
+	else dlparam = deploy_net_param.add_layer();
+	dlparam->set_name("loss");
+	dlparam->set_type("SigmoidCrossEntropyLoss"); //TODO: option for MSE
+	dlparam->mutable_cross_entropy_param()->set_use_sigmoid(false);
+	dlparam->add_bottom("sig");
+	dlparam->add_top("loss");
+	
 	while (rl < max_rl)
 	  {
 	    net_param.mutable_layer()->RemoveLast();
