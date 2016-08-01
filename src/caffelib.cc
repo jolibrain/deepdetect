@@ -653,8 +653,7 @@ namespace dd
 	  }
 	else dlparam = deploy_net_param.add_layer();
 	dlparam->set_name("loss");
-	dlparam->set_type("SigmoidCrossEntropyLoss"); //TODO: option for MSE
-	dlparam->mutable_cross_entropy_param()->set_use_sigmoid(false);
+	dlparam->set_type("CrossEntropy"); //TODO: option for MSE
 	dlparam->add_bottom("sig");
 	dlparam->add_bottom("data");
 	dlparam->add_top("loss");
@@ -1840,9 +1839,7 @@ namespace dd
 			    for (int k=0;k<inputc.channels();k++)
 			      {
 				vals.push_back(dv.at(s).float_data(k));
-				//std::cerr << dv.at(s).float_data(k) << " ";
 			      }
-			    //std::cerr << std::endl;
 			    dv_float_data.push_back(vals);
 			  }
 		      }
@@ -1891,14 +1888,11 @@ namespace dd
 		throw;
 	      }
 	    int slot = lresults.size() - 1;
-	    //std::cerr << "\nslot=" << slot << std::endl;
 	    
 	    if (_regression && _ntargets > 1) // slicing is involved
 	      slot--; // labels appear to be last
 	    int scount = lresults[slot]->count();
 	    int scperel = scount / dv_size;
-	    
-	    //std::cerr << "scount=" << scount << " / scperel=" << scperel << std::endl;
 	    
 	    for (int j=0;j<(int)dv_size;j++)
 	      {
@@ -1915,14 +1909,12 @@ namespace dd
 		  }
 		else // regression with ntargets > 1 or autoencoder
 		  {
-		    //std::cerr << "regression or autoencoder\n";
 		    std::vector<double> target;
 		    for (size_t k=0;k<dv_float_data.at(j).size();k++)
 		      target.push_back(dv_float_data.at(j).at(k));
 		    for (int k=0;k<nout;k++)
 		      {
 			predictions.push_back(lresults[slot]->cpu_data()[j*scperel+k]);
-			//std::cerr << "prediction=" << lresults[slot]->cpu_data()[j*scperel+k] << " / target=" << target.at(k) << std::endl;
 		      }
 		    bad.add("target",target);
 		  }
@@ -1967,7 +1959,6 @@ namespace dd
     APIData ad_output = ad.getobj("parameters").getobj("output");
     if (ad_output.has("measure"))
       {
-	std::cerr << "\ntest measure sparsity=" << inputc._sparse << std::endl;
 	APIData cad = ad;
 	cad.add("has_mean_file",this->_mlmodel._has_mean_file);
 	try
@@ -2105,6 +2096,8 @@ namespace dd
 	int scount = results[slot]->count();
 	int scperel = scount / batch_size;
 	int nclasses = scperel;
+	if (_autoencoder)
+	  nclasses = scperel = 1;
 	std::vector<APIData> vrad;
 	for (int j=0;j<batch_size;j++)
 	  {
@@ -2127,6 +2120,10 @@ namespace dd
 	  {
 	    out.add("regression",true);
 	    out.add("nclasses",nclasses);
+	  }
+	else if (_autoencoder)
+	  {
+	    out.add("autoencoder",true);
 	  }
       }
     else // unsupervised
