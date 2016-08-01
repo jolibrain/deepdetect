@@ -656,6 +656,7 @@ namespace dd
 	dlparam->set_type("SigmoidCrossEntropyLoss"); //TODO: option for MSE
 	dlparam->mutable_cross_entropy_param()->set_use_sigmoid(false);
 	dlparam->add_bottom("sig");
+	dlparam->add_bottom("data");
 	dlparam->add_top("loss");
 	
 	while (rl < max_rl)
