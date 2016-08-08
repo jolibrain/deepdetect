@@ -188,7 +188,7 @@ namespace dd
 				  const std::unordered_map<int,double> &vals,
 				  const int &count)
     {
-      _svmdata.emplace_back(label,std::move(vals));
+      _svmdata_test.emplace_back(label,std::move(vals));
     }
 
     void read_svm(const APIData &ad,
