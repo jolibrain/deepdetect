@@ -914,20 +914,27 @@ namespace dd
 	
 	  if (_train)
 	    {
+	      int n = 0;
 	      auto hit = _svmdata.begin();
 	      while(hit!=_svmdata.end())
 		{
 		  _dv_sparse.push_back(to_sparse_datum((*hit)));
+		  _ids.push_back(std::to_string(n));
+		  ++n;
 		  ++hit;
 		}
 	    }
 	  if (!_train)
 	    _svmdata_test = std::move(_svmdata);
 	  else _svmdata.clear();
+	  int n = 0;
 	  auto hit = _svmdata_test.begin();
 	  while(hit!=_svmdata_test.end())
 	    {
 	      _dv_test_sparse.push_back(to_sparse_datum((*hit)));
+	      if (!_train)
+		_ids.push_back(std::to_string(n));
+	      ++n;
 	      ++hit;
 	    }
 	}
