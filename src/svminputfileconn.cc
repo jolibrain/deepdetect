@@ -121,7 +121,7 @@ namespace dd
 		continue;
 	      }
 	    std::vector<std::string> res = dd_utils::split(col,':');
-	    if (res.size() == 2)
+	    if (_train && res.size() == 2)
 	      {
 		int fid = std::stoi(res.at(0));
 		if (fid > _max_id)
