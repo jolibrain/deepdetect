@@ -424,9 +424,20 @@ namespace dd
       {
 	return dd_bad_request_400();
       }
-    
-    if (remove_service(sname,ad))
-      return dd_ok_200();
+
+    try
+      {
+	if (remove_service(sname,ad))
+	  return dd_ok_200();
+      }
+    catch (MLLibInternalException &e)
+      {
+	return dd_internal_error_500();
+      }
+    catch (std::exception &e)
+      {
+	return dd_internal_mllib_error_1007(e.what());
+      }
     return dd_not_found_404();
   }
 
