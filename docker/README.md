@@ -106,6 +106,12 @@ DeepDetect [ commit 4e2c9f4cbd55eeba3a93fae71d9d62377e91ffa5 ]
 Running DeepDetect HTTP server on 0.0.0.0:8080
 ```
 
+- share a volume with the image:
+```
+docker run -d -p 8080:8080 -v /path/to/volume:/opt/deepdetect beniz/deepdetect_cpu
+```
+where `path/to/volume` is the path to your local volume that you'd like to attach to `/opt/deepdetect/`. This is useful for sharing / saving models, etc...
+
 #### Building an image
 
 Example goes with the CPU image:
