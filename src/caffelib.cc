@@ -653,7 +653,7 @@ namespace dd
 	  }
 	else dlparam = deploy_net_param.add_layer();
 	dlparam->set_name("loss");
-	dlparam->set_type("CrossEntropy"); //TODO: option for MSE
+	dlparam->set_type("CrossEntropyLoss"); //TODO: option for MSE
 	dlparam->add_bottom("sig");
 	dlparam->add_bottom("data");
 	dlparam->add_top("loss");
