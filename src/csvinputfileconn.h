@@ -96,7 +96,6 @@ namespace dd
   public:
     CSVInputFileConn()
       :InputConnectorStrategy() {}
-    
     ~CSVInputFileConn() {}
   
     void init(const APIData &ad)
@@ -424,7 +423,7 @@ namespace dd
 
     int batch_size() const
     {
-      return _csvdata.size(); // XXX: what about test data size ?
+      return _csvdata.size();
     }
 
     int test_batch_size() const
@@ -533,5 +532,9 @@ namespace dd
     std::vector<CSVline> _csvdata_test;
   };
 }
+
+#ifdef USE_XGBOOST
+#include "xgbinputconns.h"
+#endif
 
 #endif

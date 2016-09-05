@@ -28,8 +28,12 @@
 #include "inputconnectorstrategy.h"
 #include "imginputfileconn.h"
 #include "txtinputfileconn.h"
+#include "svminputfileconn.h"
 #include "outputconnectorstrategy.h"
 #include "caffelib.h"
+#ifdef USE_XGBOOST
+#include "xgblib.h"
+#endif
 #include <vector>
 #include <mutex>
 #include <chrono>
@@ -40,7 +44,18 @@ namespace dd
   /* service types as variant type. */
   typedef mapbox::util::variant<MLService<CaffeLib,ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>,
     MLService<CaffeLib,CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>,
-    MLService<CaffeLib,TxtCaffeInputFileConn,SupervisedOutput,CaffeModel>> mls_variant_type;
+    MLService<CaffeLib,TxtCaffeInputFileConn,SupervisedOutput,CaffeModel>,
+    MLService<CaffeLib,SVMCaffeInputFileConn,SupervisedOutput,CaffeModel>,
+    MLService<CaffeLib,ImgCaffeInputFileConn,UnsupervisedOutput,CaffeModel>,
+    MLService<CaffeLib,CSVCaffeInputFileConn,UnsupervisedOutput,CaffeModel>,
+    MLService<CaffeLib,TxtCaffeInputFileConn,UnsupervisedOutput,CaffeModel>,
+    MLService<CaffeLib,SVMCaffeInputFileConn,UnsupervisedOutput,CaffeModel>
+#ifdef USE_XGBOOST
+    ,MLService<XGBLib,CSVXGBInputFileConn,SupervisedOutput,XGBModel>,
+    MLService<XGBLib,SVMXGBInputFileConn,SupervisedOutput,XGBModel>,
+    MLService<XGBLib,TxtXGBInputFileConn,SupervisedOutput,XGBModel>
+#endif
+    > mls_variant_type;
 
   class ServiceForbiddenException : public std::exception
   {

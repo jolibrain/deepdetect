@@ -26,6 +26,7 @@
 #include "caffemodel.h"
 #include "caffe/caffe.hpp"
 #include "caffe/layers/memory_data_layer.hpp"
+#include "caffe/layers/memory_sparse_data_layer.hpp"
 
 using caffe::Blob;
 
@@ -65,12 +66,14 @@ namespace dd
      * \brief configure an MLP template
      * @param ad the template data object
      * @param regression whether the net is a regressor
+     * @param sparse whether the inputs are sparse
      * @param cnclasses the number of output classes, if any
      * @param net_param the training net object
      * @param deploy_net_param the deploy net object
      */
     static void configure_mlp_template(const APIData &ad,
 				       const bool &regression,
+				       const bool &sparse,
 				       const int &targets,
 				       const int &cnclasses,
 				       caffe::NetParameter &net_param,
@@ -130,7 +133,7 @@ namespace dd
     //TODO: status ?
 
     /*- local functions -*/
-     /**
+      /**
       * \brief test net
       * @param ad root data object
       * @param inputc input connector
@@ -203,7 +206,7 @@ namespace dd
       int _ntargets = 0; /**< number of classification or regression targets. */
       std::mutex _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as net is not re-instantiated. Use batches instead. */
     };
-  
+
 }
 
 #endif

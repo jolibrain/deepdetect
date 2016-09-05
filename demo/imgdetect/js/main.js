@@ -1,15 +1,46 @@
 $(document).ready(function() {
 
+  $('#service_select').select2();
+
+  var listServices = function() {
+
+    var service_url = "/api/info";
+
+    $.ajax({
+      type: "GET",
+      url: service_url,
+      dataType: 'json',
+      success: function(data) {
+
+        if(data.head.services && data.head.services.length > 0) {
+          $('#serviceForm').removeClass('bg-info')
+            .find('span').html('Select a service: ');
+
+          $('#service_select').select2({
+            data: data.head.services.map(function(item) {
+              return {id: item.name, text: item.name};
+            })
+          });
+          $('#service_select').show();
+          $('#uploadForm').removeClass('hidden');
+        } else {
+          $('#serviceForm').removeClass('bg-info')
+            .addClass('bg-danger')
+            .html('No service found, set a service on DeepDetect server.');
+        }
+      }
+    });
+  };
+
   $('a#urlSubmit').click(function() {
 
     $('.loading').removeClass('hidden');
 
     var post_url = "/api/predict";
     var post_data = {
-      service: "imageserv",
+      service: $('#service_select').val(),
       parameters: {
-        input: {width: 224, height: 224},
-	mllib: {gpu: true},
+        mllib: {gpu: true},
         output: {best: 3}
       },
       data: [$('input#url').val()]
@@ -36,23 +67,25 @@ $(document).ready(function() {
             style = 'danger';
           }
 
-          var re = /(n\d+) (.*)/;
-          var md = this.cat.match(re);
-          if(md.length == 3) {
-            var nid = md[1];
-            var name = md[2];
-
-            var predictionHtml = '<div class="row"><div class="col-lg-4"><div class="progress">';
-            predictionHtml += '<div class="progress-bar progress-bar-' + style + '" role="progressbar" ';
-            predictionHtml += 'aria-valuenow="' + percent + '" aria-valuemin="0" aria-valuemax="100" ';
-            predictionHtml += 'style="width: ' + percent + '%;">' + percent + '%</div></div></div>';
-            predictionHtml += '<div class="col-lg-8"><a target="_blank" href="http://www.image-net.org/synset?wnid=' + nid + '">' + name + '</a></div></div>';
-            $('#emptyImage .predictions').append(predictionHtml);
-          }
+          var predictionHtml = '<div class="row"><div class="col-lg-4">';
+          predictionHtml    += '<div class="progress">';
+          predictionHtml    += '<div class="progress-bar ';
+          predictionHtml    += 'progress-bar-' + style + '" ';
+          predictionHtml    += 'role="progressbar" ';
+          predictionHtml    += 'aria-valuenow="' + percent + '" ';
+          predictionHtml    += 'aria-valuemin="0" ';
+          predictionHtml    += 'aria-valuemax="100" ';
+          predictionHtml    += 'style="width: ' + percent + '%;">';
+          predictionHtml    += percent + '%</div></div></div>';
+          predictionHtml    += '<div class="col-lg-8">';
+          predictionHtml    += this.cat + '</div></div>';
+          $('#emptyImage .predictions').append(predictionHtml);
         });
 
         $('#imageList').prepend('<hr>');
-        $('#imageList').prepend($('#emptyImage').clone().attr('id', '').removeClass('hidden'));
+        $('#imageList').prepend(
+          $('#emptyImage').clone().attr('id', '').removeClass('hidden')
+        );
         $('.loading').addClass('hidden');
 
         $('#emptyImage .predictions').html('');
@@ -61,12 +94,18 @@ $(document).ready(function() {
       error: function(jqXHR, textStatus, errorThrown) {
         $('input#url').val('');
         $('.loading').addClass('hidden');
-        $('#submitAlert').removeClass('hidden').find('.error').html(errorThrown);
-        window.setTimeout(function() { $("#submitAlert").addClass('hidden'); }, 4000);
+        $('#submitAlert').removeClass('hidden')
+          .find('.error')
+          .html(errorThrown);
+        window.setTimeout(function() {
+          $("#submitAlert").addClass('hidden');
+        }, 4000);
       }
     });
 
   });
 
   $('input#url').val('');
+
+  listServices();
 });

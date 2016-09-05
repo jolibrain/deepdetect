@@ -25,7 +25,6 @@
 #include "mlmodel.h"
 #include "apidata.h"
 #include <string>
-#include <unordered_map>
 
 namespace dd
 {
@@ -40,23 +39,13 @@ namespace dd
 
     int read_from_repository(const std::string &repo);
     
-    int read_corresp_file();
-
-    inline std::string get_hcorresp(const int &i)
-      {
-	if (_hcorresp.empty())
-	  return std::to_string(i);
-	else return _hcorresp[i];
-      }
-    
     std::string _def; /**< file name of the model definition in the form of a protocol buffer message description. */
     std::string _trainf; /**< file name of the training model definition. */
     std::string _weights; /**< file name of the network's weights. */
-    std::string _corresp; /**< file name of the class correspondences (e.g. house / 23) */
-    std::unordered_map<int,std::string> _hcorresp; /**< table of class correspondences. */
     std::string _solver; /**< solver description file, included here as part of the model, very specific to Caffe. */
     std::string _sstate; /**< current solver state, useful for resuming training. */
     std::string _model_template; /**< model template name, if any. */
+    bool _has_mean_file = false; /**< whether a mean.binaryproto file is available, for image models only. */
   };
   
 }
