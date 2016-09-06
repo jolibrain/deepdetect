@@ -209,7 +209,7 @@ namespace dd
     std::string line;
     while(getline(in,line))
       {
-	std::string cline = line.substr(0,line.size()-1);
+	std::string cline = line.substr(0,line.size());
 	int fid = std::atoi(cline.c_str());
 	if (fid > _max_id)
 	  _max_id = fid;
