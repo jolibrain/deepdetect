@@ -43,7 +43,7 @@ namespace dd
       return -1;
     std::unordered_map<int,double> vals;
     int label = -1;
-    int nlines = 0;
+    //int nlines = 0;
     _cifc->read_svm_line(content,vals,label);
     /*if (_cifc->_scale)
       {
@@ -169,7 +169,6 @@ namespace dd
       // shuffle before test selection, if any
       shuffle_data(ad);
       
-      std::cerr << "test_split=" << _test_split << std::endl;
       if (_svm_test_fname.empty() && _test_split > 0)
 	{
 	  split_data();
@@ -191,6 +190,7 @@ namespace dd
 	out << (*fit) << std::endl;
 	++fit;
       }
+    out.close();
   }
 
   void SVMInputFileConn::deserialize_vocab(const bool &required)
@@ -215,7 +215,8 @@ namespace dd
 	  _max_id = fid;
 	_fids.insert(fid);
       }
-    std::cerr << "loaded SVM vocabulary of size=" << _fids.size() << std::endl;
+    in.close();
+    LOG(INFO) << "loaded SVM vocabulary of size=" << _fids.size() << std::endl;
   }
   
 }

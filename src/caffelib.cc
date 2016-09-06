@@ -1826,7 +1826,6 @@ namespace dd
     APIData ad_output = ad.getobj("parameters").getobj("output");
     if (ad_output.has("measure"))
       {
-	std::cerr << "\ntest measure sparsity=" << inputc._sparse << std::endl;
 	APIData cad = ad;
 	cad.add("has_mean_file",this->_mlmodel._has_mean_file);
 	try

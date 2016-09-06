@@ -310,6 +310,7 @@ namespace dd
       {
 	out << p.first << delim << p.second._pos << std::endl;
       }
+    out.close();
   }
 
   void TxtInputFileConn::deserialize_vocab(const bool &required)
