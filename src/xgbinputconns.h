@@ -42,13 +42,11 @@ namespace dd
       :_missing(xii._missing),_ids(xii._ids) {}
     ~XGBInputInterface()
       {
-	delete _m;
-	delete _mtest;
       }
 
   public:
-    xgboost::DMatrix *_m = nullptr;
-    xgboost::DMatrix *_mtest = nullptr; 
+    std::shared_ptr<xgboost::DMatrix>_m;
+    std::shared_ptr<xgboost::DMatrix> _mtest;
 
     // parameters
     float _missing;// = std::NAN; /**< represents missing values. */
