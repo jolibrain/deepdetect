@@ -115,7 +115,7 @@ namespace dd
 	caffe::NetParameter net_param,deploy_net_param;
 	caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
 	caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
-	configure_mlp_template(ad,_regression,this->_inputc._sparse,_ntargets,_nclasses,net_param,deploy_net_param);
+	configure_mlp_template(ad,_regression,this->_inputc._sparse,_ntargets,_nclasses,this->_inputc,net_param,deploy_net_param);
 	caffe::WriteProtoToTextFile(net_param,dest_net);
 	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
       }
@@ -175,6 +175,7 @@ namespace dd
 												   const bool &sparse,
 												   const int &targets,
 												   const int &cnclasses,
+												   const TInputConnectorStrategy &inputc,
 												   caffe::NetParameter &net_param,
 												   caffe::NetParameter &deploy_net_param)
   {
@@ -183,6 +184,7 @@ namespace dd
     std::string activation = "ReLU";
     double elu_alpha = 1.0;
     double dropout = 0.5;
+    bool embedding = false;
     if (ad.has("layers"))
       layers = ad.get("layers").get<std::vector<int>>();
     if (ad.has("activation"))
@@ -217,7 +219,9 @@ namespace dd
     double init_std = 0.1;
     if (ad.has("init_std"))
       init_std = ad.get("init_std").get<double>();
-    if (!autoencoder && !db && layers.empty() && activation == "ReLU" && dropout == 0.5 && targets == 0)
+    if (ad.has("embedding"))
+      embedding = ad.get("embedding").get<bool>();
+    if (!embedding && !autoencoder && !db && layers.empty() && activation == "ReLU" && dropout == 0.5 && targets == 0)
       return; // nothing to do
     
     int nclasses = 0;
@@ -356,16 +360,39 @@ namespace dd
 	else lparam = net_param.add_layer();
 	lparam->set_name(last_ip);
 	if (rl == 2 && sparse)
-	  lparam->set_type("SparseInnerProduct");
-	else lparam->set_type("InnerProduct");
+	  {
+	    lparam->set_type("SparseInnerProduct");
+	    caffe::InnerProductParameter *ipp = lparam->mutable_inner_product_param();
+	    ipp->set_num_output(layers.at(l));
+	    ipp->mutable_weight_filler()->set_type(init);
+	    if (init == "gaussian")
+	      ipp->mutable_weight_filler()->set_std(init_std);
+	    ipp->mutable_bias_filler()->set_type("constant");
+	  }
+	else if (rl == 2 && embedding)
+	  {
+	    lparam->clear_inner_product_param();
+	    lparam->set_type("Embed");
+	    caffe::EmbedParameter *ipp = lparam->mutable_embed_param();
+	    ipp->set_input_dim(inputc.feature_size());
+	    ipp->set_num_output(layers.at(l));
+	    ipp->mutable_weight_filler()->set_type(init);
+	    if (init == "gaussian")
+	      ipp->mutable_weight_filler()->set_std(init_std);
+	    ipp->mutable_bias_filler()->set_type("constant");
+	  }
+	else
+	  {
+	    lparam->set_type("InnerProduct");
+	    caffe::InnerProductParameter *ipp = lparam->mutable_inner_product_param();
+	    ipp->set_num_output(layers.at(l));
+	    ipp->mutable_weight_filler()->set_type(init);
+	    if (init == "gaussian")
+	      ipp->mutable_weight_filler()->set_std(init_std);
+	    ipp->mutable_bias_filler()->set_type("constant");
+	  }
 	lparam->add_bottom(prec_ip);
 	lparam->add_top(last_ip);
-	caffe::InnerProductParameter *ipp = lparam->mutable_inner_product_param();
-	ipp->set_num_output(layers.at(l));
-	ipp->mutable_weight_filler()->set_type(init);
-	if (init == "gaussian")
-	  ipp->mutable_weight_filler()->set_std(init_std);
-	ipp->mutable_bias_filler()->set_type("constant");
 	++rl;
 	
 	if (drl < max_drl)
@@ -381,81 +408,113 @@ namespace dd
 	else dlparam = deploy_net_param.add_layer();
 	dlparam->set_name(last_ip);
 	if (drl == 1 && sparse)
-	  dlparam->set_type("SparseInnerProduct");
-	else dlparam->set_type("InnerProduct");
+	  {
+	    dlparam->set_type("SparseInnerProduct");
+	    caffe::InnerProductParameter *ipp = dlparam->mutable_inner_product_param();
+	    ipp->set_num_output(layers.at(l));
+	    ipp->mutable_weight_filler()->set_type(init);
+	    if (init == "gaussian")
+	      ipp->mutable_weight_filler()->set_std(init_std);
+	    ipp->mutable_bias_filler()->set_type("constant");
+	  }
+	else if (drl == 1 && embedding)
+	  {
+	    dlparam->clear_inner_product_param();
+	    dlparam->set_type("Embed");
+	    caffe::EmbedParameter *ipp = dlparam->mutable_embed_param();
+	    ipp->set_input_dim(inputc.feature_size());
+	    ipp->set_num_output(layers.at(l));
+	    ipp->mutable_weight_filler()->set_type(init);
+	    if (init == "gaussian")
+	      ipp->mutable_weight_filler()->set_std(init_std);
+	    ipp->mutable_bias_filler()->set_type("constant");
+	  }
+	else 
+	  {
+	    dlparam->set_type("InnerProduct");
+	    caffe::InnerProductParameter *ipp = dlparam->mutable_inner_product_param();
+	    ipp->set_num_output(layers.at(l));
+	    ipp->mutable_weight_filler()->set_type(init);
+	    if (init == "gaussian")
+	      ipp->mutable_weight_filler()->set_std(init_std);
+	    ipp->mutable_bias_filler()->set_type("constant");
+	  }
 	dlparam->add_bottom(prec_ip);
 	dlparam->add_top(last_ip);
-	ipp = dlparam->mutable_inner_product_param();
-	ipp->set_num_output(layers.at(l));
-	ipp->mutable_weight_filler()->set_type(init);
-	if (init == "gaussian")
-	  ipp->mutable_weight_filler()->set_std(init_std);
-	ipp->mutable_bias_filler()->set_type("constant");
 	++drl;
 	
 	/*if (autoencoder && l == layers.size()-1) //TODO: not for MSE
 	  break;*/
 
-	if (rl < max_rl)
+	if (rl-1 > 2 || !embedding)
 	  {
-	    lparam = net_param.mutable_layer(rl);
-	    lparam->clear_include();
-	    lparam->clear_top();
-	    lparam->clear_bottom();
-	    lparam->clear_loss_weight();
-	    lparam->clear_dropout_param();
-	    lparam->clear_inner_product_param();
+	    if (rl < max_rl)
+	      {
+		lparam = net_param.mutable_layer(rl);
+		lparam->clear_include();
+		lparam->clear_top();
+		lparam->clear_bottom();
+		lparam->clear_loss_weight();
+		lparam->clear_dropout_param();
+		lparam->clear_inner_product_param();
+	      }
+	    else lparam = net_param.add_layer();
+	    lparam->set_name("act"+std::to_string(l));
+	    lparam->set_type(activation);
+	    if (activation == "ELU" && elu_alpha != 1.0)
+	      lparam->mutable_elu_param()->set_alpha(elu_alpha);
+	    lparam->add_bottom(last_ip);
+	    lparam->add_top(last_ip);
+	    ++rl;
 	  }
-	else lparam = net_param.add_layer();
-	lparam->set_name("act"+std::to_string(l));
-	lparam->set_type(activation);
-	if (activation == "ELU" && elu_alpha != 1.0)
-	  lparam->mutable_elu_param()->set_alpha(elu_alpha);
-	lparam->add_bottom(last_ip);
-	lparam->add_top(last_ip);
-	++rl;
 
-	if (drl < max_drl)
+	if (drl-1 > 1 || !embedding)
 	  {
-	    dlparam = deploy_net_param.mutable_layer(drl);
-	    dlparam->clear_include();
-	    dlparam->clear_top();
-	    dlparam->clear_bottom();
-	    dlparam->clear_loss_weight();
-	    dlparam->clear_dropout_param();
-	    dlparam->clear_inner_product_param();
+	    if (drl < max_drl)
+	      {
+		dlparam = deploy_net_param.mutable_layer(drl);
+		dlparam->clear_include();
+		dlparam->clear_top();
+		dlparam->clear_bottom();
+		dlparam->clear_loss_weight();
+		dlparam->clear_dropout_param();
+		dlparam->clear_inner_product_param();
+	      }
+	    else dlparam = deploy_net_param.add_layer();
+	    dlparam->set_name("act"+std::to_string(l));
+	    dlparam->set_type(activation);
+	    if (activation == "ELU" && elu_alpha != 1.0)
+	      lparam->mutable_elu_param()->set_alpha(elu_alpha);
+	    dlparam->add_bottom(last_ip);
+	    dlparam->add_top(last_ip);
+	    ++drl;
 	  }
-	else dlparam = deploy_net_param.add_layer();
-	dlparam->set_name("act"+std::to_string(l));
-	dlparam->set_type(activation);
-	if (activation == "ELU" && elu_alpha != 1.0)
-	  lparam->mutable_elu_param()->set_alpha(elu_alpha);
-	dlparam->add_bottom(last_ip);
-	dlparam->add_top(last_ip);
-	++drl;
 	
 	if (autoencoder && l == layers.size()-1) //TODO: for MSE
 	  break;
 
 	if (dropout > 0.0 && dropout < 1.0)
 	  {
-	    if (rl < max_rl)
+	    if (rl-2 > 2 || !embedding)
 	      {
-		lparam = net_param.mutable_layer(rl);
-		lparam->clear_include();
-		lparam->clear_bottom();
-		lparam->clear_top();
-		lparam->clear_loss_weight();
-		lparam->clear_dropout_param();
-		lparam->clear_inner_product_param();
+		if (rl < max_rl)
+		  {
+		    lparam = net_param.mutable_layer(rl);
+		    lparam->clear_include();
+		    lparam->clear_bottom();
+		    lparam->clear_top();
+		    lparam->clear_loss_weight();
+		    lparam->clear_dropout_param();
+		    lparam->clear_inner_product_param();
+		  }
+		else lparam = net_param.add_layer(); // dropout layer
+		lparam->set_name("drop"+std::to_string(l));
+		lparam->set_type("Dropout");
+		lparam->add_bottom(last_ip);
+		lparam->add_top(last_ip);
+		lparam->mutable_dropout_param()->set_dropout_ratio(dropout);
+		++rl;
 	      }
-	    else lparam = net_param.add_layer(); // dropout layer
-	    lparam->set_name("drop"+std::to_string(l));
-	    lparam->set_type("Dropout");
-	    lparam->add_bottom(last_ip);
-	    lparam->add_top(last_ip);
-	    lparam->mutable_dropout_param()->set_dropout_ratio(dropout);
-	    ++rl;
 	  }
       }
 
@@ -1565,7 +1624,10 @@ namespace dd
 		  delete solver;
 		  throw MLLibBadParamException("solver's net's first layer is required to be of MemoryData type");
 		}
+	      std::cerr << "adding input data\n";
+	      std::cerr << "dv size=" << inputc._dv.size() << " / datum channels=" << inputc._dv.at(0).channels() << " / heigh=" << inputc._dv.at(0).height() << " / width=" << inputc._dv.at(0).height() << std::endl;
 	      boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->net()->layers()[0])->AddDatumVector(inputc._dv);
+	      std::cerr << "done with adding input data\n";
 	    }
 	  else
 	    {
@@ -2271,6 +2333,11 @@ namespace dd
 	    net_param.mutable_layer(2)->mutable_slice_param()->set_slice_point(0,inputc.channels());
 	  }
       }
+
+    if (net_param.mutable_layer(2)->type() == "Embed")
+      {
+	net_param.mutable_layer(2)->mutable_embed_param()->set_input_dim(inputc.feature_size());
+      }
     
     // if autoencoder, set the last inner product layer output number to input size (i.e. inputc.channels())
     if (_autoencoder)
@@ -2294,6 +2361,11 @@ namespace dd
 
     caffe::NetParameter deploy_net_param;
     caffe::ReadProtoFromTextFile(deploy_file,&deploy_net_param);
+
+    if (deploy_net_param.mutable_layer(1)->type() == "Embed")
+      {
+	deploy_net_param.mutable_layer(1)->mutable_embed_param()->set_input_dim(inputc.feature_size());
+      }
     
     if (_autoencoder)
       {

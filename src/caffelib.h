@@ -76,6 +76,7 @@ namespace dd
 				       const bool &sparse,
 				       const int &targets,
 				       const int &cnclasses,
+				       const TInputConnectorStrategy &inputc,
 				       caffe::NetParameter &net_param,
 				       caffe::NetParameter &deploy_net_param);
 
