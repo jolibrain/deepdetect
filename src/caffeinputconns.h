@@ -778,14 +778,8 @@ namespace dd
     caffe::SparseDatum to_sparse_datum(TxtBowEntry *tbe)
       {
 	caffe::SparseDatum datum;
-	/*int datum_channels = _vocab.size(); // XXX: may be very large
-	datum.set_channels(datum_channels);
-       	datum.set_height(1);
-	datum.set_width(1);*/
 	datum.set_label(tbe->_target);
 	std::unordered_map<std::string,Word>::const_iterator wit;
-	/*for (int i=0;i<datum_channels;i++) // XXX: expected to be slow
-	  datum.add_float_data(0.0);*/
 	tbe->reset();
 	int nwords = 0;
 	while(tbe->has_elt())
