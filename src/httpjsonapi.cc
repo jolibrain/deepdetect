@@ -182,6 +182,7 @@ public:
 	  }
       }
     response = http_server::response::stock_reply(http_server::response::status_type(outcode),stranswer);
+    response.headers[1].value = "application/json";
     response.status = static_cast<http_server::response::status_type>(code);
   }
 
