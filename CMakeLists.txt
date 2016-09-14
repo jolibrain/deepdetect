@@ -50,7 +50,7 @@ find_package(Eigen3 REQUIRED)
 include_directories("${EIGEN3_INCLUDE_DIR}")
 
 # dependency on Boost
-find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system)
+find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system iostreams)
 
 # optional packages
 include(cmake/Cuda.cmake) # cuda + cudnn

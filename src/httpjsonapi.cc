@@ -31,10 +31,15 @@
 #include "ext/rapidjson/writer.h"
 #include <gflags/gflags.h>
 #include "utils/httpclient.hpp"
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <boost/iostreams/copy.hpp>
 
 DEFINE_string(host,"localhost","host for running the server");
 DEFINE_string(port,"8080","server port");
 DEFINE_int32(nthreads,10,"number of HTTP server threads");
+
+using namespace boost::iostreams;
 
 namespace dd
 {
@@ -131,7 +136,8 @@ public:
     }*/
   
   void fillup_response(http_server::response &response,
-		       const JDoc &janswer)
+		       const JDoc &janswer,
+		       const std::string &encoding="")
   {
     int code = janswer["status"]["code"].GetInt();
     int outcode = code;
@@ -181,8 +187,24 @@ public:
 	      }
 	  }
       }
+    if (!encoding.empty())
+      {
+	std::string gzstr;
+	filtering_ostream gzout;
+	gzout.push( gzip_compressor() );
+	gzout.push(boost::iostreams::back_inserter(gzstr));
+	gzout << stranswer;
+	boost::iostreams::close(gzout);
+	stranswer = gzstr;
+      }
     response = http_server::response::stock_reply(http_server::response::status_type(outcode),stranswer);
     response.headers[1].value = "application/json";
+    if (!encoding.empty())
+      {
+	response.headers.resize(3);
+	response.headers[2].name = "Content-Encoding";
+	response.headers[2].value = "gzip";
+      }
     response.status = static_cast<http_server::response::status_type>(code);
   }
 
@@ -226,10 +248,27 @@ public:
     std::cerr << "path1=" << rscs[1] << std::endl;
     LOG(INFO) << "HTTP " << req_method << " / call / uri=" << ur << std::endl;*/
     //debug
+
+    //TODO: check on request headers.
+    //std::cerr << "headers size=" << request.headers.size() << std::endl;
+    //string content_type, content_length, content_accept;
+    std::string encoding;
+    for (const auto& header : request.headers) {
+      /*if (header.name == "Content-Type") content_type = header.value;
+      if (header.name == "Content-Length") content_length = header.value;
+      if (header.name == "Accept-Encoding") content_accept = header.value;*/
+      //if (!content_type.empty() && !content_length.empty() && !content_accept.empty()) break;
+      //std::cerr << header.name << "=" << header.value << std::endl;
+      if (header.name == "Accept-Encoding")
+	{
+	  encoding = header.value;
+	  break;
+	}
+    }
     
     if (rscs.at(0) == _rsc_info)
       {
-	fillup_response(response,_hja->info());
+	fillup_response(response,_hja->info(),encoding);
       }
     else if (rscs.at(0) == _rsc_services)
       {
@@ -241,17 +280,17 @@ public:
 	std::string sname = rscs.at(1);
 	if (req_method == "GET")
 	  {
-	    fillup_response(response,_hja->service_status(sname));
+	    fillup_response(response,_hja->service_status(sname),encoding);
 	  }
 	else if (req_method == "PUT" || req_method == "POST") // tolerance to using POST
 	  {
-	    fillup_response(response,_hja->service_create(sname,body));
+	    fillup_response(response,_hja->service_create(sname,body),encoding);
 	  }
 	else if (req_method == "DELETE")
 	  {
 	    // DELETE does not accept body so query options are turned into JSON for internal processing
 	    std::string jstr = dd::uri_query_to_json(req_query);
-	    fillup_response(response,_hja->service_delete(sname,jstr));
+	    fillup_response(response,_hja->service_delete(sname,jstr),encoding);
 	  }
       }
     else if (rscs.at(0) == _rsc_predict)
@@ -261,18 +300,18 @@ public:
 	    fillup_response(response,_hja->dd_bad_request_400());
 	    return;
 	  }
-	fillup_response(response,_hja->service_predict(body));
+	fillup_response(response,_hja->service_predict(body),encoding);
       }
     else if (rscs.at(0) == _rsc_train)
       {
 	if (req_method == "GET")
 	  {
 	    std::string jstr = dd::uri_query_to_json(req_query);
-	    fillup_response(response,_hja->service_train_status(jstr));
+	    fillup_response(response,_hja->service_train_status(jstr),encoding);
 	  }
 	else if (req_method == "PUT" || req_method == "POST")
 	  {
-	    fillup_response(response,_hja->service_train(body));
+	    fillup_response(response,_hja->service_train(body),encoding);
 	  }
 	else if (req_method == "DELETE")
 	  {
