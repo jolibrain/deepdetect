@@ -365,8 +365,7 @@ namespace dd
     void process(const std::vector<APIData> &vad)
     {
       JVal jov(rapidjson::kObjectType);
-      if (vad.size() > 1)
-	jov = JVal(rapidjson::kArrayType);
+      jov = JVal(rapidjson::kArrayType);
       for (size_t i=0;i<vad.size();i++)
 	{
 	  JVal jv(rapidjson::kObjectType); 
@@ -379,9 +378,7 @@ namespace dd
 	      mapbox::util::apply_visitor(vrj,(*hit).second);
 	      ++hit;
 	    }
-	  if (vad.size() > 1)
-	    jov.PushBack(jv,_jd->GetAllocator());
-	  else jov = jv;
+	  jov.PushBack(jv,_jd->GetAllocator());
 	}
       if (!_jv)
 	_jd->AddMember(_jvkey,jov,_jd->GetAllocator());
