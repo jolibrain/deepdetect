@@ -191,7 +191,7 @@ public:
       {
 	std::string gzstr;
 	filtering_ostream gzout;
-	gzout.push( gzip_compressor() );
+	gzout.push(gzip_compressor());
 	gzout.push(boost::iostreams::back_inserter(gzstr));
 	gzout << stranswer;
 	boost::iostreams::close(gzout);
@@ -249,26 +249,36 @@ public:
     LOG(INFO) << "HTTP " << req_method << " / call / uri=" << ur << std::endl;*/
     //debug
 
-    //TODO: check on request headers.
-    //std::cerr << "headers size=" << request.headers.size() << std::endl;
-    //string content_type, content_length, content_accept;
-    std::string encoding;
+    std::string content_encoding;
+    std::string accept_encoding;
     for (const auto& header : request.headers) {
-      /*if (header.name == "Content-Type") content_type = header.value;
-      if (header.name == "Content-Length") content_length = header.value;
-      if (header.name == "Accept-Encoding") content_accept = header.value;*/
-      //if (!content_type.empty() && !content_length.empty() && !content_accept.empty()) break;
-      //std::cerr << header.name << "=" << header.value << std::endl;
       if (header.name == "Accept-Encoding")
-	{
-	  encoding = header.value;
-	  break;
-	}
+	  accept_encoding = header.value;
+      else if (header.name == "Content-Encoding")
+	content_encoding = header.value;
     }
+    if (!content_encoding.empty())
+      {
+	if (content_encoding == "gzip")
+	  {
+	    if (!body.empty())
+	      {
+		std::string gzstr;
+		filtering_ostream gzin;
+		gzin.push(gzip_decompressor());
+		gzin.push(boost::iostreams::back_inserter(gzstr));
+		gzin << body;
+		boost::iostreams::close(gzin);
+		body = gzstr;
+	      }
+	  }
+	else LOG(ERROR) << "Unsupported content-encoding:" << content_encoding << std::endl;
+	fillup_response(response,_hja->dd_bad_request_400());
+      }
     
     if (rscs.at(0) == _rsc_info)
       {
-	fillup_response(response,_hja->info(),encoding);
+	fillup_response(response,_hja->info(),accept_encoding);
       }
     else if (rscs.at(0) == _rsc_services)
       {
@@ -280,17 +290,17 @@ public:
 	std::string sname = rscs.at(1);
 	if (req_method == "GET")
 	  {
-	    fillup_response(response,_hja->service_status(sname),encoding);
+	    fillup_response(response,_hja->service_status(sname),accept_encoding);
 	  }
 	else if (req_method == "PUT" || req_method == "POST") // tolerance to using POST
 	  {
-	    fillup_response(response,_hja->service_create(sname,body),encoding);
+	    fillup_response(response,_hja->service_create(sname,body),accept_encoding);
 	  }
 	else if (req_method == "DELETE")
 	  {
 	    // DELETE does not accept body so query options are turned into JSON for internal processing
 	    std::string jstr = dd::uri_query_to_json(req_query);
-	    fillup_response(response,_hja->service_delete(sname,jstr),encoding);
+	    fillup_response(response,_hja->service_delete(sname,jstr),accept_encoding);
 	  }
       }
     else if (rscs.at(0) == _rsc_predict)
@@ -300,18 +310,18 @@ public:
 	    fillup_response(response,_hja->dd_bad_request_400());
 	    return;
 	  }
-	fillup_response(response,_hja->service_predict(body),encoding);
+	fillup_response(response,_hja->service_predict(body),accept_encoding);
       }
     else if (rscs.at(0) == _rsc_train)
       {
 	if (req_method == "GET")
 	  {
 	    std::string jstr = dd::uri_query_to_json(req_query);
-	    fillup_response(response,_hja->service_train_status(jstr),encoding);
+	    fillup_response(response,_hja->service_train_status(jstr),accept_encoding);
 	  }
 	else if (req_method == "PUT" || req_method == "POST")
 	  {
-	    fillup_response(response,_hja->service_train(body),encoding);
+	    fillup_response(response,_hja->service_train(body),accept_encoding);
 	  }
 	else if (req_method == "DELETE")
 	  {
