@@ -187,7 +187,7 @@ public:
 	      }
 	  }
       }
-    if (!encoding.empty())
+    if (!encoding.empty() && encoding == "gzip")
       {
 	std::string gzstr;
 	filtering_ostream gzout;
