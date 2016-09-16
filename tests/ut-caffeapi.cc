@@ -330,7 +330,7 @@ TEST(caffeapi,service_predict)
   jd.Parse(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200,jd["status"]["code"]);
-  std::string uri = jd["body"]["predictions"]["uri"].GetString();
+  std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
   std::cerr << "uri=" << uri << std::endl;
   ASSERT_EQ("0",uri);
 
@@ -410,8 +410,8 @@ TEST(caffeapi,service_train_csv)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(200,jd["status"]["code"].GetInt());
-  std::string cat0 = jd["body"]["predictions"]["classes"][0]["cat"].GetString(); // XXX: true cat is 3, which is 2 here with the label offset
-  std::string cat1 = jd["body"]["predictions"]["classes"][1]["cat"].GetString();
+  std::string cat0 = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString(); // XXX: true cat is 3, which is 2 here with the label offset
+  std::string cat1 = jd["body"]["predictions"][0]["classes"][1]["cat"].GetString();
   ASSERT_TRUE("2"==cat0||"2"==cat1);
   
   // predict from data, omitting header and sample id
@@ -425,8 +425,8 @@ TEST(caffeapi,service_train_csv)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(200,jd["status"]["code"].GetInt());
-  cat0 = jd["body"]["predictions"]["classes"][0]["cat"].GetString(); // XXX: true cat is 3, which is 2 here with the label offset
-  cat1 = jd["body"]["predictions"]["classes"][1]["cat"].GetString();
+  cat0 = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString(); // XXX: true cat is 3, which is 2 here with the label offset
+  cat1 = jd["body"]["predictions"][0]["classes"][1]["cat"].GetString();
   ASSERT_TRUE("2"==cat0||"2"==cat1);
   
   // remove service
@@ -782,10 +782,10 @@ TEST(caffeapi,service_train_csv_mt_regression)
   jd.Parse(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200,jd["status"]["code"]);
-  std::string uri = jd["body"]["predictions"]["uri"].GetString();
+  std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
   ASSERT_EQ("1",uri);
-  ASSERT_TRUE(jd["body"]["predictions"]["vector"].IsArray());
-  ASSERT_TRUE(jd["body"]["predictions"]["vector"][0]["val"].GetDouble() > 0.0);
+  ASSERT_TRUE(jd["body"]["predictions"][0]["vector"].IsArray());
+  ASSERT_TRUE(jd["body"]["predictions"][0]["vector"][0]["val"].GetDouble() > 0.0);
   
   // remove service
   jstr = "{\"clear\":\"full\"}";

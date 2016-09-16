@@ -247,8 +247,7 @@ namespace dd
 		      adrow.add(clnames.at(i),cmrow);
 		      cmdata.push_back(adrow);
 		    }
-		  std::vector<APIData> vcmdata = {cmdata};
-		  meas_out.add("cmfull",vcmdata);
+		  meas_out.add("cmfull",cmdata);
 		}
 	    }
 	  if (bmcll)
@@ -273,8 +272,7 @@ namespace dd
 	  meas_out.add("train_loss",ad_res.get("train_loss").get<double>());
 	if (iter)
 	  meas_out.add("iteration",ad_res.get("iteration").get<double>());
-	std::vector<APIData> vad = { meas_out };
-	out.add("measure",vad);
+	out.add("measure",meas_out);
     }
 
     // measure: ACC

@@ -198,8 +198,7 @@ namespace dd
     {
       APIData jmrepo;
       jmrepo.add("repository",this->_mlmodel._repo);
-      std::vector<APIData> vobj = {jmrepo};
-      out.add("model",vobj);
+      out.add("model",jmrepo);
       if (!ad.has("async") || (ad.has("async") && ad.get("async").get<bool>()))
 	{
 	  std::lock_guard<std::mutex> lock(_tjobs_mutex);

@@ -40,6 +40,7 @@ namespace dd
   // recursive variant container, see utils/variant.hpp and utils/recursive_wrapper.hpp
   typedef mapbox::util::variant<std::string,double,int,bool,
     std::vector<std::string>,std::vector<double>,std::vector<int>,std::vector<bool>,
+    mapbox::util::recursive_wrapper<APIData>,
     mapbox::util::recursive_wrapper<std::vector<APIData>>> ad_variant_type;
 
   /**
@@ -63,6 +64,7 @@ namespace dd
   {
   public:
     vout() {}
+    vout(const APIData &ad) { _vad.push_back(ad); }
     vout(const std::vector<APIData> &vad):_vad(vad) {}
     ~vout() {}
     std::vector<APIData> _vad;
@@ -85,6 +87,7 @@ namespace dd
     vout process(const std::vector<int> &vd);
     vout process(const std::vector<bool> &vd);
     vout process(const std::vector<std::string> &vs);
+    vout process(const APIData &ad);
     vout process(const std::vector<APIData> &vad);
     
     template<typename T>
@@ -273,6 +276,11 @@ namespace dd
       mustache::RenderTemplate(tpl, "", d, &ss);
       return ss.str();
     }
+
+    inline bool empty() const
+    {
+      return _data.empty();
+    }
     
     std::unordered_map<std::string,ad_variant_type> _data; /**< data as hashtable of variant types. */
   };
@@ -317,6 +325,21 @@ namespace dd
       if (!_jv)
 	_jd->AddMember(_jvkey,JVal(b),_jd->GetAllocator());
       else _jv->AddMember(_jvkey,JVal(b),_jd->GetAllocator());
+    }
+    void process(const APIData &ad)
+    {
+      JVal jv(rapidjson::kObjectType); 
+      visitor_rjson vrj(_jd,&jv);
+      auto hit = ad._data.begin();
+      while(hit!=ad._data.end())
+	{
+	  vrj.set_key((*hit).first);
+	  mapbox::util::apply_visitor(vrj,(*hit).second);
+	  ++hit;
+	}
+      if (!_jv)
+	_jd->AddMember(_jvkey,jv,_jd->GetAllocator());
+      else _jv->AddMember(_jvkey,jv,_jd->GetAllocator());
     }
     void process(const std::vector<double> &vd)
     {
