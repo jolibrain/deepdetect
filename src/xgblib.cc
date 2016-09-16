@@ -393,8 +393,7 @@ namespace dd
 	test(ad,learner,eval_datasets.at(0).get(),meas_out);
 	learner.release();
 	meas_out.erase("iteration");
-	std::vector<APIData> vad = {meas_out.getobj("measure")};
-	out.add("measure",vad);
+	out.add("measure",meas_out.getobj("measure"));
 	return 0;
       }
     
@@ -485,8 +484,7 @@ namespace dd
 	      predictions.insert(predictions.begin(),1.0-predictions.back());
 	    bad.add("target",dtest->info().labels.at(k));
 	    bad.add("pred",predictions);
-	    std::vector<APIData> vad = { bad };
-	    ad_res.add(std::to_string(k),vad);
+	    ad_res.add(std::to_string(k),bad);
 	  }
 	std::vector<std::string> clnames;
 	for (int i=0;i<nout;i++)

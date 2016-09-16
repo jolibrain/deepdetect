@@ -215,8 +215,7 @@ namespace dd
 	  if (_test_split > 0.0)
 	    dbad.add("test_db",_model_repo + "/" + _test_dbfullname);
 	  dbad.add("meanfile",_model_repo + "/" + _meanfname);
-	  std::vector<APIData> vdbad = {dbad};
-	  const_cast<APIData&>(ad).add("db",vdbad);
+	  const_cast<APIData&>(ad).add("db",dbad);
 	}
     }
 
@@ -352,8 +351,7 @@ namespace dd
 	  dbad.add("train_db",_model_repo + "/" + _dbfullname);
 	  if (_test_split > 0.0)
 	    dbad.add("test_db",_model_repo + "/" + _test_dbfullname);
-	  std::vector<APIData> vdbad = {dbad};
-	  const_cast<APIData&>(ad).add("db",vdbad);
+	  const_cast<APIData&>(ad).add("db",dbad);
 	}
       else
 	{
@@ -609,8 +607,7 @@ namespace dd
 	  dbad.add("train_db",_model_repo + "/" + _dbfullname);
 	  if (_test_split > 0.0)
 	    dbad.add("test_db",_model_repo + "/" + _test_dbfullname);
-	  std::vector<APIData> vdbad = {dbad};
-	  const_cast<APIData&>(ad).add("db",vdbad);
+	  const_cast<APIData&>(ad).add("db",dbad);
 	}
       else
 	{
@@ -891,8 +888,7 @@ namespace dd
 	  dbad.add("train_db",_model_repo + "/" + _dbfullname);
 	  if (_test_split > 0.0)
 	    dbad.add("test_db",_model_repo + "/" + _test_dbfullname);
-	  std::vector<APIData> vdbad = {dbad};
-	  const_cast<APIData&>(ad).add("db",vdbad);
+	  const_cast<APIData&>(ad).add("db",dbad);
 	  serialize_vocab();
 	}
       else

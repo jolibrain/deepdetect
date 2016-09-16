@@ -1764,20 +1764,17 @@ namespace dd
       {
 	APIData advb;
 	advb.add("batch_size",batch_size);
-	std::vector<APIData> vb = { advb };
 	if (!out.has("parameters"))
 	  {
 	    APIData adparams;
-	    adparams.add("mllib",vb);
-	    std::vector<APIData> vab = { adparams };
-	    out.add("parameters",vab);
+	    adparams.add("mllib",advb);
+	    out.add("parameters",adparams);
 	  }
 	else
 	  {
 	    APIData adparams = out.getobj("parameters");
-	    adparams.add("mllib",vb);
-	    std::vector<APIData> vad = { adparams };
-	    out.add("parameters",vad);
+	    adparams.add("mllib",advb);
+	    out.add("parameters",adparams);
 	  }
       }
     
@@ -1919,8 +1916,7 @@ namespace dd
 		    bad.add("target",target);
 		  }
 		bad.add("pred",predictions);
-		std::vector<APIData> vad = { bad };
-		ad_res.add(std::to_string(tresults+j),vad);
+		ad_res.add(std::to_string(tresults+j),bad);
 	      }
 	    tresults += dv_size;
 	    mean_loss += loss;
@@ -1983,8 +1979,7 @@ namespace dd
 	APIData out_meas = out.getobj("measure");
 	out_meas.erase("train_loss");
 	out_meas.erase("iteration");
-	std::vector<APIData> vad = {out_meas};
-	out.add("measure",vad);
+	out.add("measure",out_meas);
 	return 0;
       }
 

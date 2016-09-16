@@ -169,8 +169,7 @@ namespace dd
 	  meas_hist.add((*hit).first+"_hist",(*hit).second);
 	  ++hit;
 	}
-      std::vector<APIData> vad = { meas_hist };
-      ad.add("measure_hist",vad);
+      ad.add("measure_hist",meas_hist);
     }
 
     /**
@@ -215,8 +214,7 @@ namespace dd
 	  meas.add((*hit).first,(*hit).second);
 	  ++hit;
 	}
-      std::vector<APIData> vad = {meas};
-      ad.add("measure",vad);
+      ad.add("measure",meas);
     }
 
     TInputConnectorStrategy _inputc; /**< input connector strategy for channeling data in. */
