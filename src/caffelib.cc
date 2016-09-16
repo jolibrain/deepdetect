@@ -2064,7 +2064,8 @@ namespace dd
 	_net = nullptr;
 	throw;
       }
-    
+
+    int nclasses = -1;
     float loss = 0.0;
     TOutputConnectorStrategy tout;
     if (extract_layer.empty()) // supervised
@@ -2090,7 +2091,7 @@ namespace dd
 	  }
 	int scount = results[slot]->count();
 	int scperel = scount / batch_size;
-	int nclasses = scperel;
+	nclasses = scperel;
 	if (_autoencoder)
 	  nclasses = scperel = 1;
 	std::vector<APIData> vrad;
@@ -2114,7 +2115,6 @@ namespace dd
 	if (_regression)
 	  {
 	    out.add("regression",true);
-	    out.add("nclasses",nclasses);
 	  }
 	else if (_autoencoder)
 	  {
@@ -2154,6 +2154,7 @@ namespace dd
 	  }
 	tout.add_results(vrad);
       }
+    out.add("nclasses",nclasses);
     tout.finalize(ad.getobj("parameters").getobj("output"),out);
     out.add("status",0);
     

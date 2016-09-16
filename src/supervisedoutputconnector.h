@@ -94,6 +94,8 @@ namespace dd
       APIData ad_out = ad.getobj("parameters").getobj("output");
       if (ad_out.has("best"))
 	_best = ad_out.get("best").get<int>();
+      if (_best == -1)
+	_best = ad_out.get("nclasses").get<int>();
     }
 
     /**
@@ -127,11 +129,13 @@ namespace dd
      * @param ad_out output data object
      * @param bcats supervised output connector
      */
-    void best_cats(const APIData &ad_out, SupervisedOutput &bcats) const
+    void best_cats(const APIData &ad_out, SupervisedOutput &bcats, const int &nclasses) const
     {
       int best = _best;
       if (ad_out.has("best"))
 	best = ad_out.get("best").get<int>();
+      if (best == -1)
+	best = nclasses;
       for (size_t i=0;i<_vvcats.size();i++)
 	{
 	  sup_result sresult = _vvcats.at(i);
@@ -153,6 +157,9 @@ namespace dd
       SupervisedOutput bcats(*this);
       bool regression = false;
       bool autoencoder = false;
+      int nclasses = -1;
+      if (ad_out.has("nclasses"))
+	nclasses = ad_out.get("nclasses").get<int>();
       if (ad_out.has("regression"))
 	{
 	  if (ad_out.get("regression").get<bool>())
@@ -169,7 +176,7 @@ namespace dd
 	  _best = 1;
 	  ad_out.erase("autoencoder");
 	}
-      best_cats(ad_in,bcats);
+      best_cats(ad_in,bcats,nclasses);
       bcats.to_ad(ad_out,regression,autoencoder);
     }
     

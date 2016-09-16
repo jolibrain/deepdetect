@@ -439,6 +439,7 @@ namespace dd
 	out.add("regression",true);
 	out.add("nclasses",nclasses);
       }
+    out.add("nclasses",nclasses);
     tout.finalize(ad.getobj("parameters").getobj("output"),out);
     out.add("status",0);
     return 0;
