@@ -5,7 +5,7 @@ else()
   add_definitions(-DCPU_ONLY)
 endif()
 set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lhdf5_hl -lhdf5 -lopenblas -lcaffe -lprotobuf)
-set(TF_LIB_DEPS -ltensorflow ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/tensorflow/bazel-out/local_linux-fastbuild/bin/tensorflow/cc/libcc_ops.lo)
+set(TF_LIB_DEPS -ltensorflow ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/tensorflow/bazel-out/local-fastbuild/bin/tensorflow/cc/libcc_ops.lo ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/tensorflow/bazel-out/local-fastbuild/bin/tensorflow/cc/libconst_op.a ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/tensorflow/bazel-out/local-fastbuild/bin/tensorflow/cc/libops.a ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/tensorflow/bazel-out/local-fastbuild/bin/tensorflow/cc/libscope.a)
 link_directories(${CAFFE_LIB_DIR})
 link_directories(${TF_LIB_DIR})
 

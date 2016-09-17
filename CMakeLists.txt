@@ -68,13 +68,13 @@ ExternalProject_Add(
   PREFIX tensorflow
   INSTALL_DIR ${CMAKE_BINARY_DIR}
   DOWNLOAD_COMMAND git clone --recurse-submodules https://github.com/tensorflow/tensorflow
-  CONFIGURE_COMMAND mkdir -p dbuild && ../../../../patches/test_patch.sh ../../../../patches/tf/logging.h.patch && ./configure && bazel --output_base dbuild/ build //tensorflow:libtensorflow.so //tensorflow/examples/label_image && cd google/protobuf && ./autogen.sh && ./configure --prefix=$ENV{HOME} && make && make install
+  CONFIGURE_COMMAND mkdir -p dbuild && ../../../../patches/test_patch.sh ../../../../patches/tf/logging.h.patch && ./configure && bazel --output_base dbuild/ build //tensorflow:libtensorflow.so //tensorflow/examples/label_image && cd dbuild/external/protobuf && ./autogen.sh && ./configure --prefix=$ENV{HOME} && make && make install
   INSTALL_COMMAND ""
   BUILD_COMMAND ""
   BUILD_IN_SOURCE 1
   )
-set(TF_INC_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/tensorflow/ ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/tensorflow/bazel-out/local_linux-fastbuild/genfiles/)
-set(TF_LIB_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/tensorflow/bazel-out/local_linux-fastbuild/bin/tensorflow/)
+set(TF_INC_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/ ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/tensorflow/ ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/tensorflow/bazel-out/local-fastbuild/genfiles/)
+set(TF_LIB_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/tensorflow/bazel-out/local-fastbuild/bin/tensorflow/)
 include_directories("${TF_INC_DIR}")
 
 set(CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/tensorflow/bazel-out/host/bin/google/protobuf/)
