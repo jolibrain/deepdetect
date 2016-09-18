@@ -1,0 +1,120 @@
+name: "fasttext"
+layer {
+  name: "inputl"
+  type: "MemoryData"
+  top: "data"
+  top: "label"
+  include {
+    phase: TRAIN
+  }
+  memory_data_param {
+    batch_size: 1000
+    channels: 100
+    height: 1
+    width: 1
+  }
+}
+layer {
+  name: "inputlt"
+  type: "MemoryData"
+  top: "data"
+  top: "label"
+  include {
+    phase: TEST
+  }
+  memory_data_param {
+    batch_size: 1000
+    channels: 100
+    height: 1
+    width: 1
+  }
+}
+layer {
+  name: "ip0"
+  type: "Embed"
+  bottom: "data"
+  top: "ip0"
+  embed_param {
+    num_output: 10
+    input_dim: 28494
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  name: "re1"
+  type: "Reshape"
+  bottom: "ip0"
+  top: "ip0r"
+  reshape_param {
+    shape {
+      dim: 0
+      dim: 1
+      dim: 100
+      dim: -1
+    }
+  }
+}
+layer {
+  name: "p1"
+  type: "Pooling"
+  bottom: "ip0r"
+  top: "p1"
+  pooling_param {
+    pool: AVE
+    kernel_h: 100
+    kernel_w: 1
+    stride_h: 1
+    stride_w: 1
+  }
+}
+layer {
+  name: "re2"
+  type: "Reshape"
+  bottom: "p1"
+  top: "p1r"
+  reshape_param {
+    shape {
+      dim: 0
+      dim: -1
+    }
+  }
+}
+layer {
+  name: "ip3"
+  type: "InnerProduct"
+  bottom: "p1r"
+  top: "ip3"
+  inner_product_param {
+    num_output: 4
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  name: "losst"
+  type: "Softmax"
+  bottom: "ip3"
+  top: "losst"
+  include {
+    phase: TEST
+  }
+}
+layer {
+  name: "loss"
+  type: "SoftmaxWithLoss"
+  bottom: "ip3"
+  bottom: "label"
+  top: "loss"
+  include {
+    phase: TRAIN
+  }
+}
