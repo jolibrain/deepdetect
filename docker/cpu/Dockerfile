@@ -12,6 +12,8 @@ RUN useradd -ms /bin/bash dd
 
 RUN apt-get update && apt-get install -y git cmake build-essential libgoogle-glog-dev libgflags-dev libeigen3-dev libopencv-dev libcppnetlib-dev libboost-dev libcurlpp-dev libcurl4-openssl-dev protobuf-compiler libopenblas-dev libhdf5-dev libprotobuf-dev libleveldb-dev libsnappy-dev liblmdb-dev libutfcpp-dev wget
 
+RUN apt-get install libboost-iostreams-dev -y
+
 WORKDIR /opt
 RUN git clone https://github.com/beniz/deepdetect.git && cd deepdetect && mkdir build
 
@@ -32,6 +34,9 @@ RUN cp /opt/deepdetect/datasets/imagenet/corresp_ilsvrc12.txt /opt/models/ggnet/
 RUN cp /opt/deepdetect/datasets/imagenet/corresp_ilsvrc12.txt /opt/models/resnet_50/corresp.txt
 RUN cp /opt/deepdetect/templates/caffe/googlenet/*prototxt /opt/models/ggnet/
 RUN cp /opt/deepdetect/templates/caffe/resnet_50/*prototxt /opt/models/resnet_50/
+
+# include python-pip and pip annoy so we can use the demo script
+RUN apt-get install --no-install-recommends -y python-pip python-dev && pip install annoy
 
 # permissions
 RUN chown -R dd:dd /opt/deepdetect
