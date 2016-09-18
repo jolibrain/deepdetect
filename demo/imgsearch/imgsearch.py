@@ -49,8 +49,13 @@ model_repo = args.model_repo
 
 model = {'repository':model_repo,'templates':'../templates/caffe/'}
 parameters_input = {'connector':'image','width':width,'height':height}
-#parameters_mllib = {'nclasses':nclasses,'template':'googlenet'}
+
 parameters_mllib = {'nclasses':nclasses}
+
+template_name = 'googlenet'
+if not os.path.isfile(model_repo + '/' + template_name + '.prototxt'):
+    parameters_mllib['template'] = 'googlenet'
+
 parameters_output = {}
 dd.put_service(sname,model,description,mllib,
                parameters_input,parameters_mllib,parameters_output,mltype)
