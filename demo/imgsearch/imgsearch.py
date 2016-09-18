@@ -12,6 +12,8 @@ parser.add_argument("--index",help="repository of images to be indexed")
 parser.add_argument("--index-batch-size",type=int,help="size of image batch when indexing",default=1)
 parser.add_argument("--search",help="image input file for similarity search")
 parser.add_argument("--search-size",help="number of nearest neighbors",type=int,default=10)
+parser.add_argument("--model_repo",help="path to model",default=os.getcwd() + '/model')
+
 args = parser.parse_args()
 
 def batch(iterable, n=1):
@@ -43,10 +45,12 @@ ntrees = 100
 metric = 'angular'  # or 'euclidean'
 
 # creating ML service
-model_repo = os.getcwd() + '/model'
+model_repo = args.model_repo
+
 model = {'repository':model_repo,'templates':'../templates/caffe/'}
 parameters_input = {'connector':'image','width':width,'height':height}
-parameters_mllib = {'nclasses':nclasses,'template':'googlenet'}
+#parameters_mllib = {'nclasses':nclasses,'template':'googlenet'}
+parameters_mllib = {'nclasses':nclasses}
 parameters_output = {}
 dd.put_service(sname,model,description,mllib,
                parameters_input,parameters_mllib,parameters_output,mltype)
@@ -97,7 +101,7 @@ if args.search:
     u.load('index.ann')
     data = [args.search]
     classif = dd.post_predict(sname,data,parameters_input,parameters_mllib,parameters_output)
-    near = u.get_nns_by_vector(classif['body']['predictions']['vals'],args.search_size,include_distances=True)
+    near = u.get_nns_by_vector(classif['body']['predictions'][0]['vals'],args.search_size,include_distances=True)
     print near
     near_names = []
     for n in near[0]:
