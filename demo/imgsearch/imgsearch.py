@@ -54,7 +54,7 @@ parameters_mllib = {'nclasses':nclasses}
 
 template_name = 'googlenet'
 if not os.path.isfile(model_repo + '/' + template_name + '.prototxt'):
-    parameters_mllib['template'] = 'googlenet'
+    parameters_mllib['template'] = template_name
 
 parameters_output = {}
 dd.put_service(sname,model,description,mllib,
