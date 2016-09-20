@@ -76,6 +76,7 @@ namespace dd
 				       const bool &sparse,
 				       const int &targets,
 				       const int &cnclasses,
+				       const TInputConnectorStrategy &inputc,
 				       caffe::NetParameter &net_param,
 				       caffe::NetParameter &deploy_net_param);
 
@@ -204,6 +205,7 @@ namespace dd
       int _nclasses = 0; /**< required, as difficult to acquire from Caffe's internals. */
       bool _regression = false; /**< whether the net acts as a regressor. */
       int _ntargets = 0; /**< number of classification or regression targets. */
+      bool _autoencoder = false; /**< whether an autoencoder. */
       std::mutex _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as net is not re-instantiated. Use batches instead. */
     };
 

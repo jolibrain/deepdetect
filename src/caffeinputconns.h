@@ -374,7 +374,7 @@ namespace dd
 		{
 		  if (_label.size() == 1)
 		    _dv.push_back(to_datum((*hit)._v));
-		  else // multi labels
+		  else // multi labels or autoencoder
 		    {
 		      caffe::Datum dat = to_datum((*hit)._v,true);
 		      for (size_t i=0;i<_label_pos.size();i++) // concat labels and slice them out in the network itself
@@ -460,7 +460,7 @@ namespace dd
       auto lit = _columns.begin();
       for (int i=0;i<(int)vf.size();i++)
 	{
-	  if (!multi_label && i == _label_pos[0])
+	  if (!multi_label && !this->_label.empty() && i == _label_pos[0])
 	    {
 	      datum.set_label(static_cast<float>(vf.at(i)+this->_label_offset[0]));
 	    }
@@ -538,6 +538,8 @@ namespace dd
     {
       if (_characters)
 	return 1;
+      if (_embed)
+	return _sequence;
       if (_channels > 0)
 	return _channels;
       return feature_size();
@@ -594,6 +596,11 @@ namespace dd
       APIData ad_input = ad_param.getobj("input");
       if (ad_input.has("db") && ad_input.get("db").get<bool>())
 	_db = true;
+      if (ad_input.has("embedding") && ad_input.get("embedding").get<bool>())
+	{
+	  std::cerr << "Using sequence=" << _sequence << " with embedding\n";
+	  _embed = true;
+	}
       
       // transform to one-hot vector datum
       if (_train && _db)
@@ -724,6 +731,8 @@ namespace dd
 	int datum_channels;
 	if (_characters)
 	  datum_channels = 1;
+	else if (_embed)
+	  datum_channels = _sequence;
 	else datum_channels = _vocab.size(); // XXX: may be very large
 	datum.set_channels(datum_channels);
        	datum.set_height(1);
@@ -732,16 +741,37 @@ namespace dd
 	if (!_characters)
 	  {
 	    std::unordered_map<std::string,Word>::const_iterator wit;
-	    for (int i=0;i<datum_channels;i++) // XXX: expected to be slow
-	      datum.add_float_data(0.0);
-	    tbe->reset();
-	    while(tbe->has_elt())
+	    if (!_embed)
 	      {
-		std::string key;
-		double val;
-		tbe->get_next_elt(key,val);
-		if ((wit = _vocab.find(key))!=_vocab.end())
-		  datum.set_float_data(_vocab[key]._pos,static_cast<float>(val));
+		for (int i=0;i<datum_channels;i++) // XXX: expected to be slow
+		  datum.add_float_data(0.0);
+		tbe->reset();
+		while(tbe->has_elt())
+		  {
+		    std::string key;
+		    double val;
+		    tbe->get_next_elt(key,val);
+		    if ((wit = _vocab.find(key))!=_vocab.end())
+		      datum.set_float_data(_vocab[key]._pos,static_cast<float>(val));
+		  }
+	      }
+	    else
+	      {
+		tbe->reset();
+		int i = 0;
+		while(tbe->has_elt())
+		  {
+		    std::string key;
+		    double val;
+		    tbe->get_next_elt(key,val);
+		    if ((wit = _vocab.find(key))!=_vocab.end())
+		      datum.add_float_data(static_cast<float>(_vocab[key]._pos));
+		    ++i;
+		    if (i == _sequence) // tmp limit on sequence length
+		      break;
+		  }
+		while (datum.float_data_size() < _sequence)
+		  datum.add_float_data(0.0);
 	      }
 	  }
 	else // character-level features
@@ -778,14 +808,8 @@ namespace dd
     caffe::SparseDatum to_sparse_datum(TxtBowEntry *tbe)
       {
 	caffe::SparseDatum datum;
-	/*int datum_channels = _vocab.size(); // XXX: may be very large
-	datum.set_channels(datum_channels);
-       	datum.set_height(1);
-	datum.set_width(1);*/
 	datum.set_label(tbe->_target);
 	std::unordered_map<std::string,Word>::const_iterator wit;
-	/*for (int i=0;i<datum_channels;i++) // XXX: expected to be slow
-	  datum.add_float_data(0.0);*/
 	tbe->reset();
 	int nwords = 0;
 	while(tbe->has_elt())
@@ -819,6 +843,7 @@ namespace dd
     std::string _dbfullname = "train.lmdb";
     std::string _test_dbfullname = "test.lmdb";
     int _channels = 0;
+    bool _embed = false; /**< whether model is using an input embedding layer. */
   };
 
   /**
