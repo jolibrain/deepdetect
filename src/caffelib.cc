@@ -1540,6 +1540,8 @@ namespace dd
 	  solver_param.set_rms_decay(ad_solver.get("rms_decay").get<double>());
 	if (ad_solver.has("iter_size"))
 	  solver_param.set_iter_size(ad_solver.get("iter_size").get<int>());
+	if (ad_solver.has("plateau_winsize"))
+	  solver_param.add_plateau_winsize(ad_solver.get("plateau_winsize").get<int>());
       }
     
     // optimize
