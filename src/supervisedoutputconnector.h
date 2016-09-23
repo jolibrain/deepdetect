@@ -208,6 +208,7 @@ namespace dd
 	  bool bmcll = (std::find(measures.begin(),measures.end(),"mcll")!=measures.end());
 	  bool bgini = (std::find(measures.begin(),measures.end(),"gini")!=measures.end());
 	  bool beucll = (std::find(measures.begin(),measures.end(),"eucll")!=measures.end());
+	  bool bmcc = (std::find(measures.begin(),measures.end(),"mcc")!=measures.end());
 	  if (bauc) // XXX: applies two binary classification problems only
 	    {
 	      double mauc = auc(ad_res);
@@ -271,6 +272,12 @@ namespace dd
 	    {
 	      double meucll = eucll(ad_res);
 	      meas_out.add("eucll",meucll);
+	    }
+	  if (bmcc)
+	    {
+	      double mmcc = mcc(ad_res);
+	      meas_out.add("mcc",mmcc);
+	      
 	    }
 	}
 	if (loss)
@@ -436,6 +443,35 @@ namespace dd
       return ll / static_cast<double>(batch_size);
     }
 
+    // measure: Mathew correlation coefficient for binary classes
+    static double mcc(const APIData &ad)
+    {
+      int nclasses = ad.get("nclasses").get<int>();
+      dMat conf_matrix = dMat::Zero(nclasses,nclasses);
+      int batch_size = ad.get("batch_size").get<int>();
+      for (int i=0;i<batch_size;i++)
+	{
+	  APIData bad = ad.getobj(std::to_string(i));
+	  std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
+	  int maxpr = std::distance(predictions.begin(),std::max_element(predictions.begin(),predictions.end()));
+	  double target = bad.get("target").get<double>();
+	  if (target < 0)
+	    throw OutputConnectorBadParamException("negative supervised discrete target (e.g. wrong use of label_offset ?");
+	  else if (target >= nclasses)
+	    throw OutputConnectorBadParamException("target class has id " + std::to_string(target) + " is higher than the number of classes " + std::to_string(nclasses) + " (e.g. wrong number of classes specified with nclasses");
+	  conf_matrix(maxpr,target) += 1.0;
+	}
+      double tp = conf_matrix(0,0);
+      double tn = conf_matrix(1,1);
+      double fn = conf_matrix(0,1);
+      double fp = conf_matrix(1,0);
+      double den = (tp+fp)*(tp+fn)*(tn+fp)*(tn+fn);
+      if (den == 0.0)
+	den = 1.0;
+      double mcc = (tp*tn-fp*fn) / std::sqrt(den);
+      return mcc;
+    }
+    
     static double eucll(const APIData &ad)
     {
       double eucl = 0.0;
