@@ -307,7 +307,7 @@ namespace dd
     return 0;
   }
 
-  std::vector<caffe::Datum> ImgCaffeInputFileConn::get_dv_test(const int &num,
+  std::vector<caffe::Datum> ImgCaffeInputFileConn::get_dv_test_db(const int &num,
 							       const bool &has_mean_file)
   {
     static Blob<float> data_mean;
@@ -369,6 +369,7 @@ namespace dd
   
   void ImgCaffeInputFileConn::reset_dv_test()
   {
+    _dt_vit = _dv_test.begin();
     _test_db_cursor = std::unique_ptr<caffe::db::Cursor>();
     _test_db = std::unique_ptr<caffe::db::DB>();
   }

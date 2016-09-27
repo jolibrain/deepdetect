@@ -1951,6 +1951,7 @@ namespace dd
       }
     
     TInputConnectorStrategy inputc(this->_inputc);
+    TOutputConnectorStrategy tout;
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
     APIData ad_output = ad.getobj("parameters").getobj("output");
     if (ad_output.has("measure"))
@@ -2014,7 +2015,8 @@ namespace dd
 	extract_layer = ad_mllib.get("extract_layer").get<std::string>();
       
     APIData cad = ad;
-    cad.add("has_mean_file",this->_mlmodel._has_mean_file);
+    bool has_mean_file = this->_mlmodel._has_mean_file;
+    cad.add("has_mean_file",has_mean_file);
     try
       {
 	inputc.transform(cad);
@@ -2030,88 +2032,138 @@ namespace dd
 	if (ad_net.has("test_batch_size"))
 	  batch_size = ad_net.get("test_batch_size").get<int>();
       }
-    try
-      {
-	if (!inputc._sparse)
-	  {
-	    if (boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0]) == 0)
-	      {
-		LOG(ERROR) << "deploy net's first layer is required to be of MemoryData type (predict)";
-		delete _net;
-		_net = nullptr;
-		throw MLLibBadParamException("deploy net's first layer is required to be of MemoryData type");
-	      }
-	    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->set_batch_size(batch_size);
-	    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(inputc._dv_test);
-	  }
-	else
-	  {
-	    if (boost::dynamic_pointer_cast<caffe::MemorySparseDataLayer<float>>(_net->layers()[0]) == 0)
-	      {
-		LOG(ERROR) << "deploy net's first layer is required to be of MemoryData type (predict)";
-		delete _net;
-		_net = nullptr;
-		throw MLLibBadParamException("deploy net's first layer is required to be of MemorySparseData type");
-	      }
-	    boost::dynamic_pointer_cast<caffe::MemorySparseDataLayer<float>>(_net->layers()[0])->set_batch_size(batch_size);
-	    boost::dynamic_pointer_cast<caffe::MemorySparseDataLayer<float>>(_net->layers()[0])->AddDatumVector(inputc._dv_test_sparse);
-	  }
-      }
-    catch(std::exception &e)
-      {
-	LOG(ERROR) << "exception while filling up network for prediction";
-	delete _net;
-	_net = nullptr;
-	throw;
-      }
-
+    inputc.reset_dv_test();
+    std::vector<APIData> vrad;
     int nclasses = -1;
-    float loss = 0.0;
-    TOutputConnectorStrategy tout;
-    if (extract_layer.empty()) // supervised
+    int pass = 0;
+    int idoffset = 0;
+    while(true)
       {
-	std::vector<Blob<float>*> results;
 	try
 	  {
-	    results = _net->Forward(&loss);
+	    if (!inputc._sparse)
+	      {
+		std::vector<Datum> dv = inputc.get_dv_test(batch_size,has_mean_file);
+		if (dv.empty())
+		  break;
+		batch_size = dv.size();
+		if (boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0]) == 0)
+		    {
+		      LOG(ERROR) << "deploy net's first layer is required to be of MemoryData type (predict)";
+		      delete _net;
+		      _net = nullptr;
+		      throw MLLibBadParamException("deploy net's first layer is required to be of MemoryData type");
+		    }
+		boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->set_batch_size(batch_size);
+		boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0])->AddDatumVector(dv);
+	      }
+	    else
+	      {
+		std::vector<caffe::SparseDatum> dv = inputc.get_dv_test_sparse(batch_size);
+		if (dv.empty())
+		  break;
+		batch_size = dv.size();
+		if (boost::dynamic_pointer_cast<caffe::MemorySparseDataLayer<float>>(_net->layers()[0]) == 0)
+		  {
+		    LOG(ERROR) << "deploy net's first layer is required to be of MemoryData type (predict)";
+		    delete _net;
+		    _net = nullptr;
+		    throw MLLibBadParamException("deploy net's first layer is required to be of MemorySparseData type");
+		  }
+		boost::dynamic_pointer_cast<caffe::MemorySparseDataLayer<float>>(_net->layers()[0])->set_batch_size(batch_size);
+		boost::dynamic_pointer_cast<caffe::MemorySparseDataLayer<float>>(_net->layers()[0])->AddDatumVector(dv);
+	      }
 	  }
 	catch(std::exception &e)
 	  {
-	    LOG(ERROR) << "Error while proceeding with prediction forward pass, not enough memory?";
+	    LOG(ERROR) << "exception while filling up network for prediction";
 	    delete _net;
 	    _net = nullptr;
 	    throw;
 	  }
-	int slot = results.size() - 1;
-	if (_regression)
+	
+	float loss = 0.0;
+	if (extract_layer.empty()) // supervised
 	  {
-	    if (_ntargets > 1)
-	      slot = 1;
-	    else slot = 0; // XXX: more in-depth testing required
-	  }
-	int scount = results[slot]->count();
-	int scperel = scount / batch_size;
-	nclasses = scperel;
-	if (_autoencoder)
-	  nclasses = scperel = 1;
-	std::vector<APIData> vrad;
-	for (int j=0;j<batch_size;j++)
-	  {
-	    APIData rad;
-	    rad.add("uri",inputc._ids.at(j));
-	    rad.add("loss",loss);
-	    std::vector<double> probs;
-	    std::vector<std::string> cats;
-	    for (int i=0;i<nclasses;i++)
+	    std::vector<Blob<float>*> results;
+	    try
 	      {
-		probs.push_back(results[slot]->cpu_data()[j*scperel+i]);
-		cats.push_back(this->_mlmodel.get_hcorresp(i));
+		results = _net->Forward(&loss);
 	      }
-	    rad.add("probs",probs);
-	    rad.add("cats",cats);
-	    vrad.push_back(rad);
+	    catch(std::exception &e)
+	      {
+		LOG(ERROR) << "Error while proceeding with prediction forward pass, not enough memory?";
+		delete _net;
+		_net = nullptr;
+		throw;
+	      }
+	    int slot = results.size() - 1;
+	    if (_regression)
+	      {
+		if (_ntargets > 1)
+		  slot = 1;
+		else slot = 0; // XXX: more in-depth testing required
+	      }
+	    int scount = results[slot]->count();
+	    int scperel = scount / batch_size;
+	    nclasses = scperel;
+	    if (_autoencoder)
+	      nclasses = scperel = 1;
+	    for (int j=0;j<batch_size;j++)
+	      {
+		APIData rad;
+		rad.add("uri",inputc._ids.at(idoffset+j));
+		rad.add("loss",loss);
+		std::vector<double> probs;
+		std::vector<std::string> cats;
+		for (int i=0;i<nclasses;i++)
+		  {
+		    probs.push_back(results[slot]->cpu_data()[j*scperel+i]);
+		    cats.push_back(this->_mlmodel.get_hcorresp(i));
+		  }
+		rad.add("probs",probs);
+		rad.add("cats",cats);
+		vrad.push_back(rad);
+	      }
 	  }
-	tout.add_results(vrad);
+	else // unsupervised
+	  {
+	    std::map<std::string,int> n_layer_names_index = _net->layer_names_index();
+	    std::map<std::string,int>::const_iterator lit;
+	    if ((lit=n_layer_names_index.find(extract_layer))==n_layer_names_index.end())
+	      throw MLLibBadParamException("unknown extract layer " + extract_layer);
+	    int li = (*lit).second;
+	    loss = _net->ForwardFromTo(0,li);
+	    const std::vector<std::vector<Blob<float>*>>& rresults = _net->top_vecs();
+	    std::vector<Blob<float>*> results = rresults.at(li);
+	    int slot = 0;
+	    int scount = results[slot]->count();
+	    int scperel = scount / batch_size;
+	    std::vector<int> vshape = {batch_size,scperel};
+	    results[slot]->Reshape(vshape); // reshaping into a rectangle, first side = batch size
+	    for (int j=0;j<batch_size;j++)
+	      {
+		APIData rad;
+		rad.add("uri",inputc._ids.at(idoffset+j));
+		rad.add("loss",loss);
+		std::vector<double> vals;
+		int cpos = 0;
+		for (int c=0;c<results.at(slot)->shape(1);c++)
+		  {
+		    vals.push_back(results.at(slot)->cpu_data()[j*scperel+cpos]);
+		    ++cpos;
+		  }
+		rad.add("vals",vals);
+		vrad.push_back(rad);
+	      }
+	  }
+	idoffset += batch_size;
+	++pass;
+      } // end prediction loop over batches
+
+    tout.add_results(vrad);
+    if (extract_layer.empty())
+      {
 	if (_regression)
 	  {
 	    out.add("regression",true);
@@ -2121,39 +2173,7 @@ namespace dd
 	    out.add("autoencoder",true);
 	  }
       }
-    else // unsupervised
-      {
-	std::map<std::string,int> n_layer_names_index = _net->layer_names_index();
-	std::map<std::string,int>::const_iterator lit;
-	if ((lit=n_layer_names_index.find(extract_layer))==n_layer_names_index.end())
-	  throw MLLibBadParamException("unknown extract layer " + extract_layer);
-	int li = (*lit).second;
-	loss = _net->ForwardFromTo(0,li);
-	const std::vector<std::vector<Blob<float>*>>& rresults = _net->top_vecs();
-	std::vector<Blob<float>*> results = rresults.at(li);
-	std::vector<APIData> vrad;
-	int slot = 0;
-	int scount = results[slot]->count();
-	int scperel = scount / batch_size;
-	std::vector<int> vshape = {batch_size,scperel};
-	results[slot]->Reshape(vshape); // reshaping into a rectangle, first side = batch size
-	for (int j=0;j<batch_size;j++)
-	  {
-	    APIData rad;
-	    rad.add("uri",inputc._ids.at(j));
-	    rad.add("loss",loss);
-	    std::vector<double> vals;
-	    int cpos = 0;
-	    for (int c=0;c<results.at(slot)->shape(1);c++)
-	      {
-		vals.push_back(results.at(slot)->cpu_data()[j*scperel+cpos]);
-		++cpos;
-	      }
-	    rad.add("vals",vals);
-	    vrad.push_back(rad);
-	  }
-	tout.add_results(vrad);
-      }
+    
     out.add("nclasses",nclasses);
     tout.finalize(ad.getobj("parameters").getobj("output"),out);
     out.add("status",0);

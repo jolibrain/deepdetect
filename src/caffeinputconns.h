@@ -83,7 +83,10 @@ namespace dd
   {
   public:
     ImgCaffeInputFileConn()
-      :ImgInputFileConn() { _db = true; }
+      :ImgInputFileConn() {
+      _db = true;
+      reset_dv_test();
+    }
     ImgCaffeInputFileConn(const ImgCaffeInputFileConn &i)
       :ImgInputFileConn(i),CaffeInputInterface(i) { _db = true; }
     ~ImgCaffeInputFileConn() {}
@@ -220,7 +223,26 @@ namespace dd
     }
 
     std::vector<caffe::Datum> get_dv_test(const int &num,
-					  const bool &has_mean_file);
+					  const bool &has_mean_file)
+      {
+	if (!_train)
+	  {
+	    int i = 0;
+	    std::vector<caffe::Datum> dv;
+	    while(_dt_vit!=_dv_test.end()
+		  && i < num)
+	      {
+		dv.push_back((*_dt_vit));
+		++i;
+		++_dt_vit;
+	      }
+	    return dv;
+	  }
+	else return get_dv_test_db(num,has_mean_file);
+      }
+    
+    std::vector<caffe::Datum> get_dv_test_db(const int &num,
+					     const bool &has_mean_file);
 
     void reset_dv_test();
     
@@ -254,6 +276,7 @@ namespace dd
     std::string _meanfname = "mean.binaryproto";
     std::string _correspname = "corresp.txt";
     caffe::Blob<float> _data_mean; // mean binary image if available.
+    std::vector<caffe::Datum>::const_iterator _dt_vit;
   };
 
   /**
