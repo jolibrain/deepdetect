@@ -176,7 +176,7 @@ namespace dd
   tout.finalize(ad.getobj("parameters").getobj("output"),out);
   out.add("status",0);  
 
-
+  return 0;
   }
   
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
