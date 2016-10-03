@@ -50,7 +50,7 @@ configure_file(
 
 set(eigen_archive_hash "50812b426b7c")
 
-include_directories("$ENV{HOME}/include")
+#include_directories("$ENV{HOME}/include")
 
 set(EIGEN3_INCLUDE_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/external/eigen_archive/eigen-eigen-${eigen_archive_hash} ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/external/eigen_archive)
 include_directories("${EIGEN3_INCLUDE_DIR}")
@@ -61,6 +61,11 @@ find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system)
 # optional packages -> deactivated in current state of having TF + Caffe in the same boat
 #include(cmake/Cuda.cmake) # cuda + cudnn
 
+# protobuf with tf
+set(PROTOBUF_INCLUDE_DIR ${CMAKE_BINARY_DIR}/protobuf/include/)
+set(PROTOBUF_LIB_DIR ${CMAKE_BINARY_DIR}/protobuf/lib/)
+include_directories("${PROTOBUF_INCLUDE_DIR}")
+
 # Tensorflow
 message(STATUS "Fetching Tensorflow")
 ExternalProject_Add(
@@ -68,7 +73,8 @@ ExternalProject_Add(
   PREFIX tensorflow
   INSTALL_DIR ${CMAKE_BINARY_DIR}
   DOWNLOAD_COMMAND git clone --recurse-submodules https://github.com/tensorflow/tensorflow
-  CONFIGURE_COMMAND mkdir -p dbuild && ../../../../patches/test_patch.sh ../../../../patches/tf/logging.h.patch && ./configure && bazel --output_base dbuild/ build //tensorflow:libtensorflow.so //tensorflow/examples/label_image && cd dbuild/external/protobuf && ./autogen.sh && ./configure --prefix=$ENV{HOME} && make && make install
+  #CONFIGURE_COMMAND mkdir -p dbuild && ../../../../patches/test_patch.sh ../../../../patches/tf/logging.h.patch &&
+  CONFIGURE_COMMAND mkdir -p ${CMAKE_BINARY_DIR}/protobuf && mkdir -p dbuild && ./configure && bazel --output_base dbuild/ build //tensorflow:libtensorflow.so //tensorflow/examples/label_image && cd dbuild/external/protobuf && ./autogen.sh && ./configure --prefix=${CMAKE_BINARY_DIR}/protobuf && make && make install
   INSTALL_COMMAND ""
   BUILD_COMMAND ""
   BUILD_IN_SOURCE 1
@@ -90,7 +96,7 @@ else()
 	caffe_dd
 	PREFIX caffe_dd
 	INSTALL_DIR ${CMAKE_BINARY_DIR}
-	URL https://github.com/beniz/caffe/archive/master_dd_integ.tar.gz
+	URL https://github.com/beniz/caffe/archive/caffe_tf.tar.gz
 	CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn Makefile.config && make
 	INSTALL_COMMAND ""
 	BUILD_IN_SOURCE 1
@@ -100,7 +106,7 @@ ExternalProject_Add(
 	caffe_dd
 	PREFIX caffe_dd
 	INSTALL_DIR ${CMAKE_BINARY_DIR}
-	URL https://github.com/beniz/caffe/archive/master_dd_integ.tar.gz
+	URL https://github.com/beniz/caffe/archive/caffe_tf.tar.gz
 	CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && make
 	INSTALL_COMMAND ""
 	BUILD_IN_SOURCE 1
@@ -111,18 +117,18 @@ ExternalProject_Add(
       caffe_dd
       PREFIX caffe_dd
       INSTALL_DIR ${CMAKE_BINARY_DIR}
-      URL https://github.com/beniz/caffe/archive/master_dd_integ.tar.gz
-      CONFIGURE_COMMAND ln -sf Makefile.config.cpu Makefile.config && make
+      URL https://github.com/beniz/caffe/archive/caffe_tf.tar.gz
+      CONFIGURE_COMMAND ln -sf Makefile.config.cpu Makefile.config && export PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$PATH make
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
       )
   endif()
   if (CUDA_FOUND)
-    set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${CUDA_INCLUDE_DIRS})
-    set(CAFFE_LIB_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src /usr/lib/x86_64-linux-gnu/hdf5/serial ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY})
+    set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${CUDA_INCLUDE_DIRS} ${PROTOBUF_INCLUDE_DIR})
+    set(CAFFE_LIB_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src /usr/lib/x86_64-linux-gnu/hdf5/serial ${PROTOBUF_LIB_DIR} ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY})
   else()
-    set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src /usr/include/hdf5/serial)
-    set(CAFFE_LIB_DIR $ENV{HOME}/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src /usr/lib/x86_64-linux-gnu/hdf5/serial)
+    set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src /usr/include/hdf5/serial ${PROTOBUF_INCLUDE_DIR})
+    set(CAFFE_LIB_DIR $ENV{HOME}/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src /usr/lib/x86_64-linux-gnu/hdf5/serial ${PROTOBUF_LIB_DIR})
   endif()
 endif()
 
