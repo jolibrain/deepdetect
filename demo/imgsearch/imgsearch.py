@@ -97,7 +97,7 @@ if args.search:
     u.load('index.ann')
     data = [args.search]
     classif = dd.post_predict(sname,data,parameters_input,parameters_mllib,parameters_output)
-    near = u.get_nns_by_vector(classif['body']['predictions']['vals'],args.search_size,include_distances=True)
+    near = u.get_nns_by_vector(classif['body']['predictions'][0]['vals'],args.search_size,include_distances=True)
     print near
     near_names = []
     for n in near[0]:
