@@ -187,7 +187,8 @@ public:
 	      }
 	  }
       }
-    if (!encoding.empty() && encoding == "gzip")
+    bool has_gzip = (encoding.find("gzip") != std::string::npos);
+    if (!encoding.empty() && has_gzip)
       {
 	std::string gzstr;
 	filtering_ostream gzout;
@@ -199,7 +200,7 @@ public:
       }
     response = http_server::response::stock_reply(http_server::response::status_type(outcode),stranswer);
     response.headers[1].value = "application/json";
-    if (!encoding.empty())
+    if (!encoding.empty() && has_gzip)
       {
 	response.headers.resize(3);
 	response.headers[2].name = "Content-Encoding";
