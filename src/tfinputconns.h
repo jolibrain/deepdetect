@@ -197,7 +197,7 @@ void fillup_parameters(const APIData &ad)
     
         // parameter for doing the Image Manipulation
 
-    std::cout << "size of the _image is " << _uris.size()<< std::endl;
+    std::cout << "number of images is " << _uris.size()<< std::endl;
     for (int i=0; i<(int)_uris.size();i++){
       // tensorflow::Tensor input_tensor(tensorflow::DT_FLOAT, tensorflow::TensorShape({1,_height,_width,channels()}));
       // auto input_tensor_mapped = input_tensor.tensor<float, 4>();

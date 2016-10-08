@@ -38,7 +38,7 @@ namespace dd
   {
     std::string graphName = ".pb";
     std::string labelFile = ".txt";
-  	this->_repo = repo;
+    this->_repo = repo;
     std::unordered_set<std::string> lfiles;
   	int e = fileops::list_directory(repo,true,false,lfiles);
     if (e != 0)
