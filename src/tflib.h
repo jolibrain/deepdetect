@@ -49,19 +49,18 @@ namespace dd
 
     int predict(const APIData &ad, APIData &out);
 
-    void generatedLabel( const tensorflow::Tensor &output, APIData &result);
     /*- local functions -*/
     //TODO: test()
     
 
     public:
     // general parameters
-    //TODO
     int _nclasses = 0; /**< required. */
     bool _regression = false; /**< whether the net acts as a regressor. */
     int _ntargets = 0; /**< number of classification or regression targets. */
     std::string _inputLayer; // Input Layer of the Tensorflow Model
     std::string _outputLayer; // OutPut layer of the tensorflow Model
+    std::unique_ptr<tensorflow::Session> _session = nullptr;
     };
   
 }

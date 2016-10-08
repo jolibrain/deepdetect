@@ -105,6 +105,7 @@ namespace dd
 									       APIData &out)
   {
     //TODO
+    return 0;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -170,7 +171,18 @@ namespace dd
     tensorflow::Tensor output = std::move(finalOutput.at(0));
     APIData rad;
     rad.add("uri",inputc._ids.at(i));
-    generatedLabel(output,rad);
+    //generatedLabel(output,rad);
+    auto scores = output.flat<float>();
+    std::vector<double> probs;
+    std::vector<std::string> cats;
+    for (int i=0;i<_nclasses;i++)
+      {
+	//std::cerr << "score=" << scores(i) << " / i=" << i << std::endl;
+	probs.push_back(scores(i));
+	cats.push_back(this->_mlmodel.get_hcorresp(i));
+      }
+    rad.add("probs",probs);
+    rad.add("cats",cats);
     rad.add("loss",0.0);
     vrad.push_back(rad);
     
@@ -183,38 +195,6 @@ namespace dd
   return 0;
   }
   
-  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  void TFLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::generatedLabel(const tensorflow::Tensor &output, APIData &out)
-  {
-    // file for reading the label file and marking the output accordingly
-    std::string labelfile = this->_mlmodel._labelName;
-    std::ifstream label(labelfile); 
-    std::string line;
-
-    auto scores = output.flat<float>();
-    
-    // sorting the file to find the top labels
-    std::vector<std::pair<float,std::string>> sorted;
-
-    for (unsigned int i =0; i<_nclasses ;++i){
-      std::getline(label,line);
-      sorted.emplace_back(scores(i),line);
-    }
-    
-    std::sort(sorted.begin(),sorted.end());
-    std::reverse(sorted.begin(),sorted.end());
-    //selecting the output with top 5 probability
-    std::vector<double> probs;
-    std::vector<std::string> cats;
-    for(unsigned int i =0 ; i< 5;++i){
-      //std::cout << sorted[i].first << " "<<sorted[i].second <<std::endl;
-      probs.push_back(sorted[i].first);
-      cats.push_back(sorted[i].second);  
-    }
-  out.add("probs",probs);
-  out.add("cats",cats);
-  }
-
   template class TFLib<ImgTFInputFileConn,SupervisedOutput,TFModel>;
   template class TFLib<ImgTFInputFileConn,UnsupervisedOutput,TFModel>;
 }

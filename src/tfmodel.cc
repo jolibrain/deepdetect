@@ -31,7 +31,8 @@ namespace dd
       {
 	read_from_repository(ad.get("repository").get<std::string>()); // XXX: beware, error not caught
 	this-> _modelRepo = ad.get("repository").get<std::string>();
-      } 
+      }
+   read_corresp_file();
   }
 
   int TFModel::read_from_repository(const std::string &repo)
@@ -63,13 +64,37 @@ namespace dd
 	      }
 	  }
 	else if ((*hit).find(labelFile)!=std::string::npos)
-		labelf = (*hit);
+	  labelf = (*hit);
 
 	++hit;
 	}
 	_graphName = graphf;
-	_labelName = labelf;
+	_corresp = labelf;
 
 	return 0;
+  }
+
+  int TFModel::read_corresp_file()
+  {
+    if (!_corresp.empty())
+      {
+	std::ifstream ff(_corresp);
+	if (!ff.is_open())
+	  LOG(ERROR) << "cannot open TF model corresp file=" << _corresp << std::endl;
+	else{
+	  std::string line;
+	  while(!ff.eof())
+	    {
+	      std::getline(ff,line);
+	      std::string key = line.substr(0,line.find(' '));
+	      if (!key.empty())
+		{
+		  std::string value = line.substr(line.find(' ')+1);
+		  _hcorresp.insert(std::pair<int,std::string>(std::stoi(key),value));
+		}
+	    }
+	}
+      }
+    return 0;
   }
 }

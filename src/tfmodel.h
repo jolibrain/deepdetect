@@ -35,17 +35,22 @@ namespace dd
     TFModel(const std::string &repo)
       :MLModel(repo) {}
     ~TFModel() {}
-    //TODO: model files
-
+    
     int read_from_repository(const std:: string &repo);
-    
 
-    std::string _graphName;// Name of the graph 
-    std::string _labelName; // Name of the Label File 
-    std::string _modelRepo; // Model Template
+    int read_corresp_file();
+
+    inline std::string get_hcorresp(const int &i)
+    {
+      if (_hcorresp.empty())
+	return std::to_string(i);
+      else return _hcorresp[i];
+    }
     
-    
-    
+    std::string _graphName; // Name of the graph 
+    std::string _modelRepo;
+    std::string _corresp; /**< file name of the class correspondences (e.g. house / 23) */
+    std::unordered_map<int,std::string> _hcorresp; /**< table of class correspondences. */
   };
 
 }
