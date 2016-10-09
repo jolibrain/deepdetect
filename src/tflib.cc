@@ -153,6 +153,7 @@ namespace dd
       if (!session_create_status.ok())
 	{
 	  std::cout << session_create_status.ToString()<<std::endl;
+	  _session = nullptr;
 	  throw MLLibInternalException(session_create_status.ToString());
 	}
     }
