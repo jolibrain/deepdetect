@@ -98,8 +98,8 @@ namespace dd
   void TFLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::clear_mllib(const APIData &ad)
   {
     //TODO
-    /*if (_session)
-      _session.Close();*/
+    if (_session)
+      _session->Close();
   }
   
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
