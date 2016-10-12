@@ -49,24 +49,21 @@
     ~TFInputInterface() {}
 
   public:
-    //TODO: parameters common to all TF input connectors
+    // parameters common to all TF input connectors
     std::vector<tensorflow::Tensor> _dv; // main tensor for prediction.
+    std::vector<tensorflow::Tensor> _dv_test;
     std::vector<std::string> _ids; // input ids (eg. Image Ids).
-
-
   };
 
-  class ImgTFInputFileConn : public InputConnectorStrategy, public TFInputInterface
-
- {
+  class ImgTFInputFileConn : public ImgInputFileConn, public TFInputInterface
+  {
   public:
     ImgTFInputFileConn()
-    :InputConnectorStrategy() {}
+      :ImgInputFileConn() {}
     ImgTFInputFileConn(const ImgTFInputFileConn &i)
-    :InputConnectorStrategy(),TFInputInterface(i) {}
+      :ImgInputFileConn(i),TFInputInterface(i) {}
     ~ImgTFInputFileConn() {}
 
-  // size of each element in tensorflow 
     int channels() const
     {
       if (_bw) return 1;
@@ -85,179 +82,71 @@
 
     int batch_size() const
     {
-     if (!_dv.empty())
+      if (!_dv.empty())
       return _dv.size();
-    else return 0;
-  }
-
-void init(const APIData &ad)
-    {
-      fillup_parameters(ad);
-    }
-  // COde for reading an Image file and converting it into tensor
-int ReadTensorFromImageFile(std::string file_name, const int input_height,
-                               const int input_width, const float input_mean,
-                               const float input_std,
-                               std::vector<tensorflow::Tensor>* out_tensors)
-{
-  auto root = tensorflow::Scope::NewRootScope();
-  using namespace ::tensorflow::ops;  // NOLINT(build/namespaces)
-
-  std::string input_name = "file_reader";
-  std::string output_name = "normalized";
-
-  auto file_reader = ReadFile(root.WithOpName(input_name), file_name);
-  // Now try to figure out what kind of file it is and decode it.
-  const int wanted_channels = 3;
-  Output image_reader;
-  if (tensorflow::StringPiece(file_name).ends_with(".png")) {
-    image_reader = DecodePng(root.WithOpName("png_reader"), file_reader,
-                             DecodePng::Channels(wanted_channels));
-  } else if (tensorflow::StringPiece(file_name).ends_with(".gif")) {
-    image_reader = DecodeGif(root.WithOpName("gif_reader"), file_reader);
-  } else {
-    // Assume if it's neither a PNG nor a GIF then it must be a JPEG.
-    image_reader = DecodeJpeg(root.WithOpName("jpeg_reader"), file_reader,
-                              DecodeJpeg::Channels(wanted_channels));
-  }
-  // Now cast the image data to float so we can do normal math on it.
-  auto float_caster =
-      Cast(root.WithOpName("float_caster"), image_reader, tensorflow::DT_FLOAT);
-  // The convention for image ops in TensorFlow is that all images are expected
-  // to be in batches, so that they're four-dimensional arrays with indices of
-  // [batch, height, width, channel]. Because we only have a single image, we
-  // have to add a batch dimension of 1 to the start with ExpandDims().
-  auto dims_expander = ExpandDims(root, float_caster, 0);
-  // Bilinearly resize the image to fit the required dimensions.
-  auto resized = ResizeBilinear(
-      root, dims_expander,
-      Const(root.WithOpName("size"), {input_height, input_width}));
-  // Subtract the mean and divide by the scale.
-  Div(root.WithOpName(output_name), Sub(root, resized, {input_mean}),
-      {input_std});
-
-  // This runs the GraphDef network definition that we've just constructed, and
-  // returns the results in the output tensor.
-  tensorflow::GraphDef graph;
-  //tensorflow::Status toGraph_status = b.ToGraphDef(&graph);
-  tensorflow::Status toGraph_status = root.ToGraphDef(&graph);
-  if(!toGraph_status.ok()){
-    return 1;
-  }
-  std::unique_ptr<tensorflow::Session> session(
-      tensorflow::NewSession(tensorflow::SessionOptions()));
-  tensorflow::Status createGraph_status = session->Create(graph);
-  if(!createGraph_status.ok()){
-    return 1;
-  }
-  tensorflow::Status run_status = session->Run({}, {output_name}, {}, out_tensors);
-  if (!run_status.ok()){
-  return 1;
-  }
-  return 0;
-}
-
-//file to fill Parameter
-void fillup_parameters(const APIData &ad)
-    {
-      // optional parameters.
-      if (ad.has("width"))
-  _width = ad.get("width").get<int>();
-      if (ad.has("height"))
-  _height = ad.get("height").get<int>();
-      if (ad.has("bw"))
-  _bw = ad.get("bw").get<bool>();
-      if (ad.has("shuffle"))
-  _shuffle = ad.get("shuffle").get<bool>();
-      if (ad.has("seed"))
-  _seed = ad.get("seed").get<int>();
-      if (ad.has("test_split"))
-  _test_split = ad.get("test_split").get<double>();
-    }
-  void transform(const APIData &ad)
-  { 
-    // try
-    // {
-    //   ImgInputFileConn::transform(ad);
-    // }
-    // catch(InputConnectorBadParamException &e)
-    // {
-    //   throw;
-    // }
-
-    //File to make tfindependent of opencv files
-  InputConnectorStrategy::get_data(ad);
-  
-
-
-
-
-      // converting the input dataFrame into Tensor a Tensorflow DataStructure 
-    _model_repo = ad.get("model_repo").get<std::string>();
-    
-        // parameter for doing the Image Manipulation
-
-    std::cout << "number of images is " << _uris.size()<< std::endl;
-    for (int i=0; i<(int)_uris.size();i++){
-      // tensorflow::Tensor input_tensor(tensorflow::DT_FLOAT, tensorflow::TensorShape({1,_height,_width,channels()}));
-      // auto input_tensor_mapped = input_tensor.tensor<float, 4>();
-
-      // cv::Mat readImage;
-
-      // readImage = this->_images.at(i);
-      // //std::cout <<"Image is empty or not ?? " <<Image.empty()<<std::endl;
-      // cv::Size s(_height,_width);
-      // cv::Mat Image;
-      // cv::resize(readImage,Image,s,0,0,cv::INTER_CUBIC);
-      // cv::Mat Image2;
-      // Image.convertTo(Image2, CV_32FC1);
-      // Image = Image2;
-      // Image = Image-_mean;
-      // Image = Image/_std;
-
-      // const float * source_data = (float*) Image.data;
-
-      //           // copying the data into the corresponding tensor
-      // for (int y = 0; y < height(); ++y) {
-      //   const float* source_row = source_data + (y * width()  * channels());
-      //   for (int x = 0; x < width(); ++x) {
-      //     const float* source_pixel = source_row + (x * channels());
-      //     for (int c = 0; c < channels(); ++c) {
-      //       const float* source_value = source_pixel + c;
-      //       input_tensor_mapped(0, y, x, c) = *source_value;
-      //     }
-      //   }
-      // }
-      // std::cout << "I am here !!"<<std::endl;
-
-      std::vector<tensorflow::Tensor> input_tensor_vector;
-      int readTensorStatus = ReadTensorFromImageFile(_uris.at(i), _height,
-                               _width, _mean,
-                               _std,
-                                &input_tensor_vector);
-      
-      _dv.push_back(input_tensor_vector[0]);
-      _ids.push_back(_uris.at(i));
-      std::cout << "size of _dv in tfinput is " <<_dv.size()<< std::endl;
+      else return ImgInputFileConn::batch_size();
     }
     
-  }
+    int test_batch_size() const
+    {
+      if (!_dv_test.empty())
+	return _dv_test.size();
+      else return ImgInputFileConn::test_batch_size();
+    }
 
-public:
-    //TODO: image connector parameters
-  int _mean = 128;
-  int _std = 128;
-  int _height = 299;
-  int _width = 299;
-  bool _bw = false; /**< whether to convert to black & white. */
-  double _test_split = 0.0; /**< auto-split of the dataset. */
-  bool _shuffle = false; /**< whether to shuffle the dataset, usually before splitting. */
-  int _seed = -1; /**< shuffling seed. */
-  std::string _graphFile;
-  std:: string _model_repo;
-  std::vector<tensorflow::Tensor> _dv;
-  std::vector<std::string> _ids;
-};
+    void init(const APIData &ad)
+    {
+      ImgInputFileConn::init(ad);
+    }
+
+    void transform(const APIData &ad)
+    { 
+      try
+	{
+	  ImgInputFileConn::transform(ad);
+	}
+      catch (InputConnectorBadParamException &e)
+	{
+	  throw;
+	}
+
+      std::cerr << "number of images is " << _uris.size()<< std::endl;
+      for (size_t i=0; i<_uris.size();i++)
+	{
+	  tensorflow::Tensor input_tensor(tensorflow::DT_FLOAT, tensorflow::TensorShape({1,_height,_width,channels()}));
+	  auto input_tensor_mapped = input_tensor.tensor<float, 4>();
+
+	  cv::Mat Image;
+	  this->_images.at(i).convertTo(Image, CV_32FC1);
+	  cv::Mat Image2;
+	  cv::cvtColor(Image,Image2,CV_BGR2RGB); // because OpenCV defaults to BGR
+	  Image = (Image2 - _mean) / _std;
+	  const float * source_data = (float*) Image.data;
+
+	  // copying the data into the corresponding tensor
+	  for (int y = 0; y < height(); ++y) {
+	    const float* source_row = source_data + (y * width()  * channels());
+	    for (int x = 0; x < width(); ++x) {
+	      const float* source_pixel = source_row + (x * channels());
+	      for (int c = 0; c < channels(); ++c) {
+		const float* source_value = source_pixel + c;
+		input_tensor_mapped(0, y, x, c) = *source_value;
+	      }
+	    }
+	  }
+	  
+	  _dv.push_back(input_tensor);
+	  _ids.push_back(_uris.at(i));
+	  std::cout << "size of _dv in tfinput is " <<_dv.size()<< std::endl;
+	}
+    }
+    
+  public:
+    int _mean = 128;
+    int _std = 128;
+    std::string _graphFile;
+    std:: string _model_repo;
+  };
 
 }
 
