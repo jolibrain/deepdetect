@@ -73,8 +73,7 @@ ExternalProject_Add(
   PREFIX tensorflow
   INSTALL_DIR ${CMAKE_BINARY_DIR}
   DOWNLOAD_COMMAND git clone --recurse-submodules https://github.com/tensorflow/tensorflow
-  #CONFIGURE_COMMAND mkdir -p dbuild && ../../../../patches/test_patch.sh ../../../../patches/tf/logging.h.patch &&
-  CONFIGURE_COMMAND mkdir -p ${CMAKE_BINARY_DIR}/protobuf && mkdir -p dbuild && ./configure && bazel --output_base dbuild/ build //tensorflow:libtensorflow.so //tensorflow/examples/label_image //tensorflow/python/tools:freeze_graph && cd dbuild/external/protobuf && ./autogen.sh && ./configure --prefix=${CMAKE_BINARY_DIR}/protobuf && make && make install
+  CONFIGURE_COMMAND mkdir -p ${CMAKE_BINARY_DIR}/protobuf && mkdir -p dbuild && ../../../../patches/test_patch.sh ../../../../patches/tf/libtf_link.patch && ./configure && bazel --output_base dbuild/ build //tensorflow:libtensorflow.so //tensorflow/examples/label_image //tensorflow/python/tools:freeze_graph && cd dbuild/external/protobuf && ./autogen.sh && ./configure --prefix=${CMAKE_BINARY_DIR}/protobuf && make && make install
   INSTALL_COMMAND ""
   BUILD_COMMAND ""
   BUILD_IN_SOURCE 1
@@ -116,7 +115,7 @@ ExternalProject_Add(
       PREFIX caffe_dd
       INSTALL_DIR ${CMAKE_BINARY_DIR}
       URL https://github.com/beniz/caffe/archive/caffe_tf.tar.gz
-      CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make
+      CONFIGURE_COMMAND ln -sf Makefile.config.cpu Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
       )
