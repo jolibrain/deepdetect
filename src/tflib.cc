@@ -69,21 +69,13 @@ namespace dd
       }
     // setting the value of Input Layer for Tensorflow graph
     if (ad.has("inputlayer"))
-    {
-      _inputLayer = ad.get("inputlayer").get<std::string>();
-
-    }else{
-        _inputLayer = "Mul"; // Default Input Layer Name of TensorFlow          
-    }
-    std::cerr << "inputlayer=" << _inputLayer << std::endl;
+      {
+	_inputLayer = ad.get("inputlayer").get<std::string>();
+      }
     // setting the final Output Layer for Tensorflow graph
     if (ad.has("outputlayer"))
     {
       _outputLayer = ad.get("outputlayer").get<std::string>();
-
-    }else{
-        _outputLayer = "softmax"; // Default Input Layer Name of TensorFlow
-              
     }
     if (ad.has("ntargets"))
       _ntargets = ad.get("ntargets").get<int>();
@@ -139,14 +131,27 @@ namespace dd
 	// Loading the graph to the given variable
 	tensorflow::Status graphLoadedStatus = ReadBinaryProto(tensorflow::Env::Default(),graphFile,&graph_def);
 	
-	if (!graphLoadedStatus.ok()){
-	  std::cerr << graphLoadedStatus.ToString()<<std::endl;
-	  return 1;
-	}
+	if (!graphLoadedStatus.ok())
+	  {
+	    std::cerr << graphLoadedStatus.ToString()<<std::endl;
+	    LOG(ERROR) << "failed loading tensorflow graph with status=" << graphLoadedStatus.ToString() << std::endl;
+	    throw MLLibBadParamException("failed loading tensorflow graph with status=" + graphLoadedStatus.ToString());
+	  }
 	/*std::cerr << "graph load status=" << graphLoadedStatus.ToString() << std::endl;
 	  std::cerr << "graph def node size=" << graph_def.node_size() << std::endl;
 	  for (size_t i=0;i<graph_def.node_size();i++)
 	  std::cerr << graph_def.node(i).name() << std::endl;*/
+
+	if (_inputLayer.empty())
+	  {
+	    _inputLayer = graph_def.node(0).name();
+	    LOG(INFO) << "using input layer=" << _inputLayer << std::endl;
+	  }
+	if (_outputLayer.empty())
+	  {
+	    _outputLayer = graph_def.node(graph_def.node_size()-1).name();
+	    LOG(INFO) << "using output layer=" << _outputLayer << std::endl;
+	  }
 	
 	// creating a session with the graph
 	_session = std::unique_ptr<tensorflow::Session>(tensorflow::NewSession(tensorflow::SessionOptions()));
