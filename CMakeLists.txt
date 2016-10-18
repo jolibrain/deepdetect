@@ -59,7 +59,7 @@ include_directories("${EIGEN3_INCLUDE_DIR}")
 find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system)
 
 # optional packages -> deactivated in current state of having TF + Caffe in the same boat
-#include(cmake/Cuda.cmake) # cuda + cudnn
+include(cmake/Cuda.cmake) # cuda + cudnn
 
 # protobuf with tf
 set(PROTOBUF_INCLUDE_DIR ${CMAKE_BINARY_DIR}/protobuf/include/)
@@ -94,7 +94,7 @@ else()
 	PREFIX caffe_dd
 	INSTALL_DIR ${CMAKE_BINARY_DIR}
 	URL https://github.com/beniz/caffe/archive/caffe_tf.tar.gz
-	CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn Makefile.config && make
+	CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make
 	INSTALL_COMMAND ""
 	BUILD_IN_SOURCE 1
 	)
@@ -104,7 +104,7 @@ ExternalProject_Add(
 	PREFIX caffe_dd
 	INSTALL_DIR ${CMAKE_BINARY_DIR}
 	URL https://github.com/beniz/caffe/archive/caffe_tf.tar.gz
-	CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && make
+	CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make
 	INSTALL_COMMAND ""
 	BUILD_IN_SOURCE 1
 	)
