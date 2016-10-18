@@ -68,18 +68,31 @@ include_directories("${PROTOBUF_INCLUDE_DIR}")
 
 # Tensorflow
 message(STATUS "Fetching Tensorflow")
-ExternalProject_Add(
-  tensorflow
-  PREFIX tensorflow
-  INSTALL_DIR ${CMAKE_BINARY_DIR}
-  DOWNLOAD_COMMAND git clone --recurse-submodules https://github.com/tensorflow/tensorflow
-  CONFIGURE_COMMAND mkdir -p ${CMAKE_BINARY_DIR}/protobuf && mkdir -p dbuild && ../../../../patches/test_patch.sh ../../../../patches/tf/libtf_link.patch && ./configure && bazel --output_base dbuild/ build //tensorflow:libtensorflow.so //tensorflow/examples/label_image //tensorflow/python/tools:freeze_graph && cd dbuild/external/protobuf && ./autogen.sh && ./configure --prefix=${CMAKE_BINARY_DIR}/protobuf && make && make install
-  INSTALL_COMMAND ""
-  BUILD_COMMAND ""
-  BUILD_IN_SOURCE 1
-  )
-set(TF_INC_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/ ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/tensorflow/ ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/tensorflow/bazel-out/local-fastbuild/genfiles/)
-set(TF_LIB_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/tensorflow/bazel-out/local-fastbuild/bin/tensorflow/)
+if (CUDA_FOUND)
+  ExternalProject_Add(
+    tensorflow
+    PREFIX tensorflow
+    INSTALL_DIR ${CMAKE_BINARY_DIR}
+    DOWNLOAD_COMMAND git clone --recurse-submodules https://github.com/tensorflow/tensorflow
+    CONFIGURE_COMMAND mkdir -p ${CMAKE_BINARY_DIR}/protobuf && mkdir -p dbuild && ../../../../patches/test_patch.sh ../../../../patches/tf/libtf_link.patch && sed "s/bazel /bazel --output_base=dbuild /" < configure > configure.new && mv configure configure.bak && mv configure.new configure && chmod +x configure && ./configure && bazel --output_base dbuild/ build -c opt --config=cuda //tensorflow/tools/pip_package:build_pip_package //tensorflow:libtensorflow.so //tensorflow/examples/label_image //tensorflow/python/tools:freeze_graph && cd dbuild/external/protobuf && ./autogen.sh && ./configure --prefix=${CMAKE_BINARY_DIR}/protobuf && make -j6 && make install
+    INSTALL_COMMAND ""
+    BUILD_COMMAND ""
+    BUILD_IN_SOURCE 1
+    )
+else()
+  ExternalProject_Add(
+    tensorflow
+    PREFIX tensorflow
+    INSTALL_DIR ${CMAKE_BINARY_DIR}
+    DOWNLOAD_COMMAND git clone --recurse-submodules https://github.com/tensorflow/tensorflow
+    CONFIGURE_COMMAND mkdir -p ${CMAKE_BINARY_DIR}/protobuf && mkdir -p dbuild && ../../../../patches/test_patch.sh ../../../../patches/tf/libtf_link.patch && sed "s/bazel /bazel --output_base=dbuild /" < configure > configure.new && mv configure configure.bak && mv configure.new configure && chmod +x configure && ./configure && bazel --output_base dbuild/ build -c opt //tensorflow:libtensorflow.so //tensorflow/examples/label_image //tensorflow/python/tools:freeze_graph && cd dbuild/external/protobuf && ./autogen.sh && ./configure --prefix=${CMAKE_BINARY_DIR}/protobuf && make && make install
+    INSTALL_COMMAND ""
+    BUILD_COMMAND ""
+    BUILD_IN_SOURCE 1
+    )
+endif()
+set(TF_INC_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/ ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/tensorflow/ ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/tensorflow/bazel-out/host/genfiles/ ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/tensorflow/bazel-out/local_linux-fastbuild/genfiles)
+set(TF_LIB_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/tensorflow/bazel-out/local_linux-fastbuild/bin/tensorflow/)
 include_directories("${TF_INC_DIR}")
 
 # customized Caffe as external project
@@ -94,7 +107,7 @@ else()
 	PREFIX caffe_dd
 	INSTALL_DIR ${CMAKE_BINARY_DIR}
 	URL https://github.com/beniz/caffe/archive/caffe_tf.tar.gz
-	CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make
+	CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make -j6
 	INSTALL_COMMAND ""
 	BUILD_IN_SOURCE 1
 	)
@@ -104,7 +117,7 @@ ExternalProject_Add(
 	PREFIX caffe_dd
 	INSTALL_DIR ${CMAKE_BINARY_DIR}
 	URL https://github.com/beniz/caffe/archive/caffe_tf.tar.gz
-	CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make
+	CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make -j6
 	INSTALL_COMMAND ""
 	BUILD_IN_SOURCE 1
 	)
