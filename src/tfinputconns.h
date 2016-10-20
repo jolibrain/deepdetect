@@ -59,7 +59,10 @@
   {
   public:
     ImgTFInputFileConn()
-      :ImgInputFileConn() {}
+      :ImgInputFileConn() 
+      {
+	reset_dv();
+      }
     ImgTFInputFileConn(const ImgTFInputFileConn &i)
       :ImgInputFileConn(i),TFInputInterface(i) {}
     ~ImgTFInputFileConn() {}
@@ -137,15 +140,38 @@
 	  
 	  _dv.push_back(input_tensor);
 	  _ids.push_back(_uris.at(i));
-	  std::cout << "size of _dv in tfinput is " <<_dv.size()<< std::endl;
 	}
     }
     
+    std::vector<tensorflow::Tensor> get_dv(const int &num)
+      {
+	if (!_train)
+	  {
+	    int i = 0;
+	    std::vector<tensorflow::Tensor> dv;
+	    while(_dt_vit!=_dv.end()
+		  && i < num)
+	      {
+		dv.push_back((*_dt_vit));
+		++i;
+		++_dt_vit;
+	      }
+	    return dv;
+	  }
+	return std::vector<tensorflow::Tensor>(); // unused
+      }
+
+  void reset_dv()
+  {
+    _dt_vit = _dv.begin();
+  }
+
   public:
     int _mean = 128;
     int _std = 128;
     std::string _graphFile;
     std:: string _model_repo;
+    std::vector<tensorflow::Tensor>::const_iterator _dt_vit;
   };
 
 }
