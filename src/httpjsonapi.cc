@@ -137,9 +137,17 @@ public:
   
   void fillup_response(http_server::response &response,
 		       const JDoc &janswer,
+		       std::string &access_log,
+		       int &code,
 		       const std::string &encoding="")
   {
-    int code = janswer["status"]["code"].GetInt();
+    code = janswer["status"]["code"].GetInt();
+    access_log += " " + std::to_string(code);
+    if (janswer.HasMember("head") && janswer["head"].HasMember("time"))
+      {
+	int proctime = janswer["head"]["time"].GetDouble();
+	access_log += " " + std::to_string(proctime);
+      }
     int outcode = code;
     std::string stranswer;
     if (janswer.HasMember("template")) // if output template, fillup with rendered template.
@@ -219,6 +227,9 @@ public:
     std::cerr << "body=" << request.body << std::endl;*/
     //debug
 
+    std::string access_log = request.source + " \"" + request.method + " " + request.destination + "\"";
+    int code;
+    
     std::string source = request.source;
     if (source == "::1")
       source = "127.0.0.1";
@@ -274,70 +285,75 @@ public:
 	      }
 	  }
 	else LOG(ERROR) << "Unsupported content-encoding:" << content_encoding << std::endl;
-	fillup_response(response,_hja->dd_bad_request_400());
+	fillup_response(response,_hja->dd_bad_request_400(),access_log,code);
       }
     
     if (rscs.at(0) == _rsc_info)
       {
-	fillup_response(response,_hja->info(),accept_encoding);
+	fillup_response(response,_hja->info(),access_log,code,accept_encoding);
       }
     else if (rscs.at(0) == _rsc_services)
       {
 	if (rscs.size() < 2)
 	  {
-	    fillup_response(response,_hja->dd_bad_request_400());
+	    fillup_response(response,_hja->dd_bad_request_400(),access_log,code);
+	    LOG(ERROR) << access_log << std::endl;
 	    return;
 	  }
 	std::string sname = rscs.at(1);
 	if (req_method == "GET")
 	  {
-	    fillup_response(response,_hja->service_status(sname),accept_encoding);
+	    fillup_response(response,_hja->service_status(sname),access_log,code,accept_encoding);
 	  }
 	else if (req_method == "PUT" || req_method == "POST") // tolerance to using POST
 	  {
-	    fillup_response(response,_hja->service_create(sname,body),accept_encoding);
+	    fillup_response(response,_hja->service_create(sname,body),access_log,code,accept_encoding);
 	  }
 	else if (req_method == "DELETE")
 	  {
 	    // DELETE does not accept body so query options are turned into JSON for internal processing
 	    std::string jstr = dd::uri_query_to_json(req_query);
-	    fillup_response(response,_hja->service_delete(sname,jstr),accept_encoding);
+	    fillup_response(response,_hja->service_delete(sname,jstr),access_log,code,accept_encoding);
 	  }
       }
     else if (rscs.at(0) == _rsc_predict)
       {
 	if (req_method != "POST")
 	  {
-	    fillup_response(response,_hja->dd_bad_request_400());
+	    fillup_response(response,_hja->dd_bad_request_400(),access_log,code);
+	    LOG(ERROR) << access_log << std::endl;
 	    return;
 	  }
-	fillup_response(response,_hja->service_predict(body),accept_encoding);
+	fillup_response(response,_hja->service_predict(body),access_log,code,accept_encoding);
       }
     else if (rscs.at(0) == _rsc_train)
       {
 	if (req_method == "GET")
 	  {
 	    std::string jstr = dd::uri_query_to_json(req_query);
-	    fillup_response(response,_hja->service_train_status(jstr),accept_encoding);
+	    fillup_response(response,_hja->service_train_status(jstr),access_log,code,accept_encoding);
 	  }
 	else if (req_method == "PUT" || req_method == "POST")
 	  {
-	    fillup_response(response,_hja->service_train(body),accept_encoding);
+	    fillup_response(response,_hja->service_train(body),access_log,code,accept_encoding);
 	  }
 	else if (req_method == "DELETE")
 	  {
 	    // DELETE does not accept body so query options are turned into JSON for internal processing
 	    std::string jstr = dd::uri_query_to_json(req_query);
-	    fillup_response(response,_hja->service_train_delete(jstr));
+	    fillup_response(response,_hja->service_train_delete(jstr),access_log,code);
 	  }
       }
     else
       {
 	LOG(ERROR) << "Unknown Service=" << rscs.at(0) << std::endl;
 	response = http_server::response::stock_reply(http_server::response::not_found,_hja->jrender(_hja->dd_not_found_404()));
+	code = 404;
       }
+    if (code == 200 || code == 201)
+      LOG(INFO) << access_log << std::endl;
+    else LOG(ERROR) << access_log << std::endl;
   }
-  
   void log(http_server::string_type const &info)
   {
     LOG(ERROR) << info << std::endl;
