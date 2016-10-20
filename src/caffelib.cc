@@ -2035,7 +2035,6 @@ namespace dd
     inputc.reset_dv_test();
     std::vector<APIData> vrad;
     int nclasses = -1;
-    int pass = 0;
     int idoffset = 0;
     while(true)
       {
@@ -2158,7 +2157,6 @@ namespace dd
 	      }
 	  }
 	idoffset += batch_size;
-	++pass;
       } // end prediction loop over batches
 
     tout.add_results(vrad);
