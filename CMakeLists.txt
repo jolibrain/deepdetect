@@ -81,7 +81,7 @@ include_directories("${PROTOBUF_INCLUDE_DIR}")
       PREFIX tensorflow
       INSTALL_DIR ${CMAKE_BINARY_DIR}
       DOWNLOAD_COMMAND git clone --recurse-submodules https://github.com/tensorflow/tensorflow
-      CONFIGURE_COMMAND mkdir -p ${CMAKE_BINARY_DIR}/protobuf && mkdir -p dbuild && ../../../../patches/test_patch.sh ../../../../patches/tf/libtf_link.patch && sed "s/bazel /bazel --output_base=dbuild /" < configure > configure.new && mv configure configure.bak && mv configure.new configure && chmod +x configure && ./configure && bazel --output_base dbuild/ build -c opt --config=cuda //tensorflow/tools/pip_package:build_pip_package //tensorflow:libtensorflow.so //tensorflow/examples/label_image //tensorflow/python/tools:freeze_graph && cd dbuild/external/protobuf && ./autogen.sh && ./configure --prefix=${CMAKE_BINARY_DIR}/protobuf && make -j${N} && make install
+      CONFIGURE_COMMAND mkdir -p ${CMAKE_BINARY_DIR}/protobuf && mkdir -p dbuild && ../../../../patches/test_patch.sh ../../../../patches/tf/libtf_link.patch && sed "s/bazel /bazel --output_base=dbuild /" < configure > configure.new && mv configure configure.bak && mv configure.new configure && chmod +x configure && ./configure && bazel --output_base dbuild/ build -c opt --config=cuda //tensorflow/tools/pip_package:build_pip_package //tensorflow:libtensorflow.so //tensorflow/examples/label_image //tensorflow/python/tools:freeze_graph && ln -s ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/bazel-out/local-opt ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/bazel-out/local_linux-opt && cd dbuild/external/protobuf && ./autogen.sh && ./configure --prefix=${CMAKE_BINARY_DIR}/protobuf && make -j${N} && make install
       INSTALL_COMMAND ""
       BUILD_COMMAND ""
       BUILD_IN_SOURCE 1
@@ -92,7 +92,7 @@ include_directories("${PROTOBUF_INCLUDE_DIR}")
       PREFIX tensorflow
       INSTALL_DIR ${CMAKE_BINARY_DIR}
       DOWNLOAD_COMMAND git clone --recurse-submodules https://github.com/tensorflow/tensorflow
-      CONFIGURE_COMMAND mkdir -p ${CMAKE_BINARY_DIR}/protobuf && mkdir -p dbuild && ../../../../patches/test_patch.sh ../../../../patches/tf/libtf_link.patch && sed "s/bazel /bazel --output_base=dbuild /" < configure > configure.new && mv configure configure.bak && mv configure.new configure && chmod +x configure && ./configure && bazel --output_base dbuild/ build -c opt //tensorflow:libtensorflow.so //tensorflow/examples/label_image //tensorflow/python/tools:freeze_graph && cd dbuild/external/protobuf && ./autogen.sh && ./configure --prefix=${CMAKE_BINARY_DIR}/protobuf && make -j${N} && make install
+      CONFIGURE_COMMAND mkdir -p ${CMAKE_BINARY_DIR}/protobuf && mkdir -p dbuild && ../../../../patches/test_patch.sh ../../../../patches/tf/libtf_link.patch && sed "s/bazel /bazel --output_base=dbuild /" < configure > configure.new && mv configure configure.bak && mv configure.new configure && chmod +x configure && ./configure && bazel --output_base dbuild/ build -c opt //tensorflow:libtensorflow.so //tensorflow/examples/label_image //tensorflow/python/tools:freeze_graph && ln -s ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/bazel-out/local-opt ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/bazel-out/local_linux-opt && cd dbuild/external/protobuf && ./autogen.sh && ./configure --prefix=${CMAKE_BINARY_DIR}/protobuf && make -j${N} && make install
       INSTALL_COMMAND ""
       BUILD_COMMAND ""
       BUILD_IN_SOURCE 1
