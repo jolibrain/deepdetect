@@ -271,7 +271,7 @@ namespace dd
 	// optional parameters.
 	if (d.HasMember("type"))
 	  type = d["type"].GetString();
-	else type == "supervised"; // default
+	else type = "supervised"; // default
 	if (d.HasMember("description"))
 	  description = d["description"].GetString();
 	
@@ -303,6 +303,8 @@ namespace dd
 		  add_service(sname,std::move(MLService<CaffeLib,CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
 		else if (input == "txt")
 		  add_service(sname,std::move(MLService<CaffeLib,TxtCaffeInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
+		else if (input == "svm")
+		  add_service(sname,std::move(MLService<CaffeLib,SVMCaffeInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
 		else return dd_input_connector_not_found_1004();
 		if (JsonAPI::store_json_blob(cmodel._repo,jstr)) // store successful call json blob
 		  LOG(ERROR) << "couldn't write " << JsonAPI::_json_blob_fname << " file in model repository " << cmodel._repo << std::endl;
@@ -315,6 +317,8 @@ namespace dd
 		  add_service(sname,std::move(MLService<CaffeLib,CSVCaffeInputFileConn,UnsupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
 		else if (input == "txt")
 		  add_service(sname,std::move(MLService<CaffeLib,TxtCaffeInputFileConn,UnsupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
+		else if (input == "svm")
+		  add_service(sname,std::move(MLService<CaffeLib,SVMCaffeInputFileConn,UnsupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
 		else return dd_input_connector_not_found_1004();
 		if (JsonAPI::store_json_blob(cmodel._repo,jstr)) // store successful call json blob
 		  LOG(ERROR) << "couldn't write " << JsonAPI::_json_blob_fname << " file in model repository " << cmodel._repo << std::endl;
@@ -325,6 +329,7 @@ namespace dd
 		return dd_service_bad_request_1006();
 	      }
 	  }
+#ifdef USE_TF
 	else if (mllib == "tensorflow" || mllib == "tf")
 	  {
 	    TFModel tfmodel(ad_model);
@@ -334,6 +339,22 @@ namespace dd
 	    if (JsonAPI::store_json_blob(tfmodel._repo,jstr)) // store successful call json blob
 	      LOG(ERROR) << "couldn't write " << JsonAPI::_json_blob_fname << " file in model repository " << tfmodel._repo << std::endl;
 	  }
+#endif
+#ifdef USE_XGBOOST
+	else if (mllib == "xgboost")
+	  {
+	    XGBModel xmodel(ad_model);
+	    if (input == "csv")
+	      add_service(sname,std::move(MLService<XGBLib,CSVXGBInputFileConn,SupervisedOutput,XGBModel>(sname,xmodel,description)),ad);
+	    else if (input == "svm")
+	      add_service(sname,std::move(MLService<XGBLib,SVMXGBInputFileConn,SupervisedOutput,XGBModel>(sname,xmodel,description)),ad);
+	    else if (input == "txt")
+	      add_service(sname,std::move(MLService<XGBLib,TxtXGBInputFileConn,SupervisedOutput,XGBModel>(sname,xmodel,description)),ad);
+	    else return dd_input_connector_not_found_1004();
+	    if (JsonAPI::store_json_blob(xmodel._repo,jstr)) // store successful call json blob
+	      LOG(ERROR) << "couldn't write " << JsonAPI::_json_blob_fname << " file in model repository " << xmodel._repo << std::endl;
+	  }
+#endif
 	else
 	  {
 	    return dd_unknown_library_1000();
@@ -414,9 +435,20 @@ namespace dd
       {
 	return dd_bad_request_400();
       }
-    
-    if (remove_service(sname,ad))
-      return dd_ok_200();
+
+    try
+      {
+	if (remove_service(sname,ad))
+	  return dd_ok_200();
+      }
+    catch (MLLibInternalException &e)
+      {
+	return dd_internal_error_500();
+      }
+    catch (std::exception &e)
+      {
+	return dd_internal_mllib_error_1007(e.what());
+      }
     return dd_not_found_404();
   }
 
@@ -435,6 +467,7 @@ namespace dd
     try
       {
 	sname = d["service"].GetString();
+	std::transform(sname.begin(),sname.end(),sname.begin(),::tolower);
 	if (!this->service_exists(sname))
 	  return dd_service_not_found_1002();
       }
@@ -492,11 +525,18 @@ namespace dd
     JDoc jpred = dd_ok_200();
     JVal jout(rapidjson::kObjectType);
     out.toJVal(jpred,jout);
+    bool has_measure = ad_data.getobj("parameters").getobj("output").has("measure");
     JVal jhead(rapidjson::kObjectType);
     jhead.AddMember("method","/predict",jpred.GetAllocator());
-    jhead.AddMember("time",jout["time"],jpred.GetAllocator());
     jhead.AddMember("service",d["service"],jpred.GetAllocator());
+    if (!has_measure)
+      jhead.AddMember("time",jout["time"],jpred.GetAllocator());
     jpred.AddMember("head",jhead,jpred.GetAllocator());
+    if (has_measure)
+      {
+	jpred.AddMember("body",jout,jpred.GetAllocator());
+	return jpred;
+      }
     JVal jbody(rapidjson::kObjectType);
     if (jout.HasMember("predictions"))
       jbody.AddMember("predictions",jout["predictions"],jpred.GetAllocator());
@@ -534,6 +574,7 @@ namespace dd
     try
       {
 	sname = d["service"].GetString();
+	std::transform(sname.begin(),sname.end(),sname.begin(),::tolower);
 	if (!this->service_exists(sname))
 	  return dd_service_not_found_1002();
       }
@@ -627,6 +668,7 @@ namespace dd
     try
       {
 	sname = d["service"].GetString();
+	std::transform(sname.begin(),sname.end(),sname.begin(),::tolower);
 	if (!this->service_exists(sname))
 	  return dd_service_not_found_1002();
       }
@@ -737,6 +779,7 @@ namespace dd
     try
       {
 	sname = d["service"].GetString();
+	std::transform(sname.begin(),sname.end(),sname.begin(),::tolower);
 	if (!this->service_exists(sname))
 	  return dd_service_not_found_1002();
       }

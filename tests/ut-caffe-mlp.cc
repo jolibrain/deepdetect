@@ -52,7 +52,7 @@ TEST(caffelib,configure_mlp_template_1)
   ad.add("activation","prelu");
   ad.add("dropout",0.6);
   
-  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_mlp_template(ad,false,0,nclasses,net_param,deploy_net_param);
+  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_mlp_template(ad,false,false,0,nclasses,net_param,deploy_net_param);
 
   caffe::WriteProtoToTextFile(net_param,onet_file);
   caffe::WriteProtoToTextFile(deploy_net_param,donet_file);
@@ -85,6 +85,61 @@ TEST(caffelib,configure_mlp_template_1)
   ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
 }
 
+TEST(caffelib,configure_mlp_template_sparse_1)
+{
+  int nclasses = 7;
+  caffe::NetParameter net_param, deploy_net_param;
+  bool succ = caffe::ReadProtoFromTextFile(net_file,&net_param);
+  ASSERT_TRUE(succ);
+  succ = caffe::ReadProtoFromTextFile(dnet_file,&deploy_net_param);
+  ASSERT_TRUE(succ);
+
+  std::vector<int> layers = {200};
+  APIData ad;
+  ad.add("layers",layers);
+  ad.add("activation","prelu");
+  ad.add("dropout",0.6);
+  ad.add("sparse",true);
+  
+  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_mlp_template(ad,false,true,0,nclasses,net_param,deploy_net_param);
+
+  caffe::WriteProtoToTextFile(net_param,onet_file);
+  caffe::WriteProtoToTextFile(deploy_net_param,donet_file);
+  succ = caffe::ReadProtoFromTextFile(onet_file,&net_param);
+  ASSERT_TRUE(succ);
+  succ = caffe::ReadProtoFromTextFile(donet_file,&deploy_net_param);
+  ASSERT_TRUE(succ);
+  
+  ASSERT_EQ(8,net_param.layer_size());
+  caffe::LayerParameter *lparam = net_param.mutable_layer(0);
+  ASSERT_EQ("MemorySparseData",lparam->type());
+  lparam = net_param.mutable_layer(1);
+  ASSERT_EQ("MemorySparseData",lparam->type());
+  lparam = net_param.mutable_layer(2);
+  ASSERT_EQ("SparseInnerProduct",lparam->type());
+  ASSERT_EQ(layers.at(0),lparam->mutable_inner_product_param()->num_output());
+  lparam = net_param.mutable_layer(3);
+  ASSERT_EQ("PReLU",lparam->type());
+  lparam = net_param.mutable_layer(4);
+  ASSERT_EQ("Dropout",lparam->type());
+  ASSERT_NEAR(0.6,lparam->mutable_dropout_param()->dropout_ratio(),1e-5); // near as there seems to be a slight conversion issue from protobufs
+  lparam = net_param.mutable_layer(5);
+  ASSERT_EQ("InnerProduct",lparam->type());
+  ASSERT_EQ(nclasses,lparam->mutable_inner_product_param()->num_output());
+  
+  ASSERT_EQ(5,deploy_net_param.layer_size());
+  caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(0);
+  ASSERT_EQ("MemorySparseData",dlparam->type());
+  dlparam = deploy_net_param.mutable_layer(1);
+  ASSERT_EQ("SparseInnerProduct",dlparam->type());
+  ASSERT_EQ(layers.at(0),dlparam->mutable_inner_product_param()->num_output());
+  dlparam = deploy_net_param.mutable_layer(2);
+  ASSERT_EQ("PReLU",dlparam->type());
+  dlparam = deploy_net_param.mutable_layer(3);
+  ASSERT_EQ("InnerProduct",dlparam->type());
+  ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
+}
+
 TEST(caffelib,configure_mlp_template_1_db)
 {
   int nclasses = 7;
@@ -101,7 +156,7 @@ TEST(caffelib,configure_mlp_template_1_db)
   ad.add("dropout",0.2);
   ad.add("db",true);
   
-  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_mlp_template(ad,false,0,nclasses,net_param,deploy_net_param);
+  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_mlp_template(ad,false,false,0,nclasses,net_param,deploy_net_param);
 
   caffe::WriteProtoToTextFile(net_param,onet_file);
   caffe::WriteProtoToTextFile(deploy_net_param,donet_file);
@@ -153,7 +208,7 @@ TEST(caffelib,configure_mlp_template_n)
   ad.add("activation","prelu");
   ad.add("dropout",0.6);
   
-  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_mlp_template(ad,false,0,nclasses,net_param,deploy_net_param);
+  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_mlp_template(ad,false,false,0,nclasses,net_param,deploy_net_param);
 
   caffe::WriteProtoToTextFile(net_param,onet_file);
   caffe::WriteProtoToTextFile(deploy_net_param,donet_file);
@@ -209,7 +264,7 @@ TEST(caffelib,configure_mlp_template_n_mt)
   ad.add("activation","prelu");
   ad.add("dropout",0.6);
   
-  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_mlp_template(ad,false,targets,nclasses,net_param,deploy_net_param);
+  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_mlp_template(ad,false,false,targets,nclasses,net_param,deploy_net_param);
 
   caffe::WriteProtoToTextFile(net_param,onet_file);
   caffe::WriteProtoToTextFile(deploy_net_param,donet_file);

@@ -44,10 +44,14 @@ TEST(apidata,visitor_vad)
   vad.push_back(ivad2);
   ad.add("classes",vad);
   ad.add("loss",loss);
+  APIData tad;
+  tad.add("test",1);
+  ad.add("tad",tad);
 
   std::vector<APIData> ad_cl = ad.getv("classes");
   std::cout << "prob=" << ad_cl.at(0).get("prob").get<double>() << std::endl;
   ASSERT_EQ(prob1,ad_cl.at(0).get("prob").get<double>());
+  ASSERT_EQ(1,ad.getobj("tad").get("test").get<int>());
 }
 
 TEST(apidata,to_from_json)
@@ -77,6 +81,9 @@ TEST(apidata,to_from_json)
   ivad2.add("prob",prob2);
   vad.push_back(ivad2);
   ad.add("classes",vad);
+  APIData tad;
+  tad.add("test",1);
+  ad.add("tad",tad);
   ad.toJDoc(jd);
   JsonAPI japi;
   std::string jrstr = japi.jrender(jd);

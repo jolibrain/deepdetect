@@ -3,9 +3,8 @@ test_iter: 1
 test_interval: 100
 base_lr: 0.1
 momentum: 0.9
-#weight_decay: 0.00001
+weight_decay: 0.00001
 #lr_policy: "fixed"
-weight_decay: 0.0005
 lr_policy: "inv"
 gamma: 0.0001
 power: 0.75

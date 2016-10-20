@@ -45,7 +45,7 @@ static std::string model_templates_repo = "../templates/caffe/";
 #ifndef CPU_ONLY
 static std::string iterations_mnist = "250";
 static std::string iterations_plank = "2000";
-static std::string iterations_forest = "2000";
+static std::string iterations_forest = "3000";
 static std::string iterations_n20 = "2000";
 static std::string iterations_n20_char = "1000";
 static std::string iterations_sflare = "5000";
@@ -277,7 +277,7 @@ TEST(caffeapi,service_predict)
   ASSERT_EQ(created_str,joutstr);
 
   // train
-  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":" + iterations_mnist + ",\"snapshot\":200,\"snapshot_prefix\":\"" + mnist_repo + "/mylenet\"}},\"output\":{\"measure_hist\":true}}}";
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":" + iterations_mnist + ",\"snapshot\":200,\"snapshot_prefix\":\"" + mnist_repo + "/mylenet\",\"test_interval\":2}},\"output\":{\"measure_hist\":true,\"measure\":[\"f1\"]}}}";
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
@@ -292,7 +292,7 @@ TEST(caffeapi,service_predict)
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"].HasMember("measure"));
   ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
-  ASSERT_TRUE(jd["body"]["measure_hist"]["train_loss_hist"].Size() > 0);
+  ASSERT_EQ(jd["body"]["measure_hist"]["iteration_hist"].Size(),jd["body"]["measure_hist"]["train_loss_hist"].Size());
 
   // predict
   std::string jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"bw\":true}},\"data\":[\"" + mnist_repo + "/sample_digit.png\"]}";
@@ -330,7 +330,7 @@ TEST(caffeapi,service_predict)
   jd.Parse(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200,jd["status"]["code"]);
-  std::string uri = jd["body"]["predictions"]["uri"].GetString();
+  std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
   std::cerr << "uri=" << uri << std::endl;
   ASSERT_EQ("0",uri);
 
@@ -390,7 +390,7 @@ TEST(caffeapi,service_train_csv)
   ASSERT_TRUE(jd["body"]["measure"].HasMember("cmdiag"));
   ASSERT_EQ(7,jd["body"]["measure"]["cmdiag"].Size());
   ASSERT_TRUE(jd["body"]["measure"]["cmdiag"][0].GetDouble() >= 0);
-  ASSERT_TRUE(jd["body"]["measure"]["cmfull"]["1"].Size());
+  ASSERT_TRUE(jd["body"]["measure"]["cmfull"].Size()); //TODO: update
   ASSERT_EQ(56,jd["body"]["parameters"]["input"]["min_vals"].Size());
   ASSERT_EQ(56,jd["body"]["parameters"]["input"]["max_vals"].Size());
   ASSERT_EQ(504,jd["body"]["parameters"]["mllib"]["batch_size"].GetInt());
@@ -410,8 +410,8 @@ TEST(caffeapi,service_train_csv)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(200,jd["status"]["code"].GetInt());
-  std::string cat0 = jd["body"]["predictions"]["classes"][0]["cat"].GetString(); // XXX: true cat is 3, which is 2 here with the label offset
-  std::string cat1 = jd["body"]["predictions"]["classes"][1]["cat"].GetString();
+  std::string cat0 = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString(); // XXX: true cat is 3, which is 2 here with the label offset
+  std::string cat1 = jd["body"]["predictions"][0]["classes"][1]["cat"].GetString();
   ASSERT_TRUE("2"==cat0||"2"==cat1);
   
   // predict from data, omitting header and sample id
@@ -425,8 +425,8 @@ TEST(caffeapi,service_train_csv)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(200,jd["status"]["code"].GetInt());
-  cat0 = jd["body"]["predictions"]["classes"][0]["cat"].GetString(); // XXX: true cat is 3, which is 2 here with the label offset
-  cat1 = jd["body"]["predictions"]["classes"][1]["cat"].GetString();
+  cat0 = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString(); // XXX: true cat is 3, which is 2 here with the label offset
+  cat1 = jd["body"]["predictions"][0]["classes"][1]["cat"].GetString();
   ASSERT_TRUE("2"==cat0||"2"==cat1);
   
   // remove service
@@ -576,6 +576,120 @@ TEST(caffeapi,service_train_txt)
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() >= 0.5);
   ASSERT_EQ(jd["body"]["measure"]["accp"].GetDouble(),jd["body"]["measure"]["acc"].GetDouble());
 
+  // predict with measure
+  std::string jpredictstr = "{\"service\":\"" + sname + "\",\"parameters\":{\"mllib\":{\"gpu\":true,\"net\":{\"test_batch_size\":10}},\"output\":{\"measure\":[\"f1\"]}},\"data\":[\"" + n20_repo +"news20\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_TRUE(jd.HasMember("status"));
+  ASSERT_EQ(200,jd["status"]["code"].GetInt());
+  ASSERT_TRUE(jd.HasMember("body"));
+  ASSERT_TRUE(jd["body"].HasMember("measure"));
+  ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() >= 0.6);
+  
+  // remove service
+  jstr = "{\"clear\":\"full\"}";
+  joutstr = japi.jrender(japi.service_delete(sname,jstr));
+  ASSERT_EQ(ok_str,joutstr);
+  rmdir(n20_repo_loc.c_str());
+  }
+
+TEST(caffeapi,service_train_txt_sparse)
+{
+  // create service
+  JsonAPI japi;
+  std::string n20_repo_loc = "n20";
+  mkdir(n20_repo_loc.c_str(),0777);
+  std::string sname = "my_service";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  n20_repo_loc + "\",\"templates\":\"" + model_templates_repo  + "\"},\"parameters\":{\"input\":{\"connector\":\"txt\",\"sparse\":true},\"mllib\":{\"template\":\"mlp\",\"nclasses\":20,\"db\":false}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
+  ASSERT_EQ(created_str,joutstr);
+
+  // train
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"test_split\":0.2,\"shuffle\":true,\"min_count\":10,\"min_word_length\":3,\"count\":false,\"db\":false},\"mllib\":{\"gpu\":false,\"solver\":{\"iterations\":" + iterations_n20 + ",\"test_interval\":200,\"base_lr\":0.01,\"snapshot\":2000,\"test_initialization\":true},\"net\":{\"batch_size\":100}},\"output\":{\"measure\":[\"acc\",\"mcll\",\"f1\",\"cmdiag\"]}},\"data\":[\"" + n20_repo + "news20\"]}";
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  JDoc jd;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_TRUE(jd.HasMember("status"));
+  ASSERT_EQ(201,jd["status"]["code"].GetInt());
+  ASSERT_EQ("Created",jd["status"]["msg"]);
+  ASSERT_TRUE(jd.HasMember("head"));
+  ASSERT_EQ("/train",jd["head"]["method"]);
+  ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
+  ASSERT_TRUE(jd.HasMember("body"));
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
+  ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("f1"));
+  ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() >= 0.5);
+  ASSERT_EQ(jd["body"]["measure"]["accp"].GetDouble(),jd["body"]["measure"]["acc"].GetDouble());
+
+  // predict with measure
+  std::string jpredictstr = "{\"service\":\"" + sname + "\",\"parameters\":{\"mllib\":{\"gpu\":false,\"net\":{\"test_batch_size\":10}},\"output\":{\"measure\":[\"f1\"]}},\"data\":[\"" + n20_repo +"news20\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_TRUE(jd.HasMember("status"));
+  ASSERT_EQ(200,jd["status"]["code"].GetInt());
+  ASSERT_TRUE(jd.HasMember("body"));
+  ASSERT_TRUE(jd["body"].HasMember("measure"));
+  ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() >= 0.6);
+  ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() <= 1.0);
+
+  // remove service
+  jstr = "{\"clear\":\"full\"}";
+  joutstr = japi.jrender(japi.service_delete(sname,jstr));
+  ASSERT_EQ(ok_str,joutstr);
+  rmdir(n20_repo_loc.c_str());
+}
+
+TEST(caffeapi,service_train_txt_sparse_lr)
+{
+  // create service
+  JsonAPI japi;
+  std::string n20_repo_loc = "n20";
+  mkdir(n20_repo_loc.c_str(),0777);
+  std::string sname = "my_service";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  n20_repo_loc + "\",\"templates\":\"" + model_templates_repo  + "\"},\"parameters\":{\"input\":{\"connector\":\"txt\",\"sparse\":true},\"mllib\":{\"template\":\"lregression\",\"nclasses\":20,\"db\":true}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
+  ASSERT_EQ(created_str,joutstr);
+
+  // train
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"test_split\":0.2,\"shuffle\":true,\"min_count\":10,\"min_word_length\":3,\"count\":false,\"db\":true},\"mllib\":{\"gpu\":true,\"solver\":{\"iterations\":" + iterations_n20 + ",\"test_interval\":200,\"base_lr\":0.01,\"snapshot\":2000,\"test_initialization\":true},\"net\":{\"batch_size\":100}},\"output\":{\"measure\":[\"acc\",\"mcll\",\"f1\",\"cmdiag\"]}},\"data\":[\"" + n20_repo + "news20\"]}";
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  JDoc jd;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_TRUE(jd.HasMember("status"));
+  ASSERT_EQ(201,jd["status"]["code"].GetInt());
+  ASSERT_EQ("Created",jd["status"]["msg"]);
+  ASSERT_TRUE(jd.HasMember("head"));
+  ASSERT_EQ("/train",jd["head"]["method"]);
+  ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
+  ASSERT_TRUE(jd.HasMember("body"));
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
+  ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("f1"));
+  ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() >= 0.5);
+  ASSERT_EQ(jd["body"]["measure"]["accp"].GetDouble(),jd["body"]["measure"]["acc"].GetDouble());
+
+  // predict with measure
+  std::string jpredictstr = "{\"service\":\"" + sname + "\",\"parameters\":{\"mllib\":{\"gpu\":false,\"net\":{\"test_batch_size\":10}},\"output\":{\"measure\":[\"f1\"]}},\"data\":[\"" + n20_repo +"news20\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_TRUE(jd.HasMember("status"));
+  ASSERT_EQ(200,jd["status"]["code"].GetInt());
+  ASSERT_TRUE(jd.HasMember("body"));
+  ASSERT_TRUE(jd["body"].HasMember("measure"));
+  ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() >= 0.6);
+  ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() <= 1.0);
+
   // remove service
   jstr = "{\"clear\":\"full\"}";
   joutstr = japi.jrender(japi.service_delete(sname,jstr));
@@ -668,10 +782,10 @@ TEST(caffeapi,service_train_csv_mt_regression)
   jd.Parse(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200,jd["status"]["code"]);
-  std::string uri = jd["body"]["predictions"]["uri"].GetString();
+  std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
   ASSERT_EQ("1",uri);
-  ASSERT_TRUE(jd["body"]["predictions"]["vector"].IsArray());
-  ASSERT_TRUE(jd["body"]["predictions"]["vector"][0]["val"].GetDouble() > 0.0);
+  ASSERT_TRUE(jd["body"]["predictions"][0]["vector"].IsArray());
+  ASSERT_TRUE(jd["body"]["predictions"][0]["vector"][0]["val"].GetDouble() > 0.0);
   
   // remove service
   jstr = "{\"clear\":\"full\"}";

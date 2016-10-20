@@ -124,12 +124,62 @@ namespace dd
 
     int read_dir(const std::string &dir)
     {
-      throw InputConnectorBadParamException("uri " + dir + " is a directory, requires an image file");
+      //throw InputConnectorBadParamException("uri " + dir + " is a directory, requires an image file");
+      
+      // list directories in dir
+      std::unordered_set<std::string> subdirs;
+      if (fileops::list_directory(dir,false,true,subdirs))
+	throw InputConnectorBadParamException("failed reading text subdirectories in data directory " + dir);
+      std::cerr << "list subdirs size=" << subdirs.size() << std::endl;
+
+      // list files and classes
+      std::vector<std::pair<std::string,int>> lfiles; // labeled files
+      std::unordered_map<int,std::string> hcorresp; // correspondence class number / class name
+      if (!subdirs.empty())
+	{
+	  int cl = 0;
+	  auto uit = subdirs.begin();
+	  while(uit!=subdirs.end())
+	    {
+	      std::unordered_set<std::string> subdir_files;
+	      if (fileops::list_directory((*uit),true,false,subdir_files))
+		throw InputConnectorBadParamException("failed reading image data sub-directory " + (*uit));
+	      auto fit = subdir_files.begin();
+	      while(fit!=subdir_files.end()) // XXX: re-iterating the file is not optimal
+		{
+		  lfiles.push_back(std::pair<std::string,int>((*fit),cl));
+		  ++fit;
+		}
+	      ++cl;
+	      ++uit;
+	    }
+	}
+      else
+	{
+	  std::unordered_set<std::string> test_files;
+	  fileops::list_directory(dir,true,false,test_files);
+	  auto fit = test_files.begin();
+	  while(fit!=test_files.end())
+	    {
+	      lfiles.push_back(std::pair<std::string,int>((*fit),-1)); // -1 for no class
+	      ++fit;
+	    }
+	}
+      
+      // read images
+      for (std::pair<std::string,int> &p: lfiles)
+	{
+	  _img = cv::imread(p.first,_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR);
+	  if (p.second >= 0)
+	    _label = p.second;
+	}
+      return 0;
     }
     
-    cv::Mat _img;      
+    cv::Mat _img;
     bool _bw = false;
     bool _b64 = false;
+    int _label = -1;
   };
   
   class ImgInputFileConn : public InputConnectorStrategy
@@ -138,7 +188,7 @@ namespace dd
   ImgInputFileConn()
     :InputConnectorStrategy(){}
     ImgInputFileConn(const ImgInputFileConn &i)
-      :InputConnectorStrategy(),_width(i._width),_height(i._height),_bw(i._bw) {}
+      :InputConnectorStrategy(i),_width(i._width),_height(i._height),_bw(i._bw) {}
     ~ImgInputFileConn() {}
 
     void init(const APIData &ad)
@@ -191,7 +241,6 @@ namespace dd
 	      fillup_parameters(ad_param.getobj("input"));
 	    }
 	}
-      int img_count = 0;
       int catch_read = 0;
       std::string catch_msg;
       std::vector<std::string> uris;
@@ -228,10 +277,11 @@ namespace dd
 #pragma omp critical
 	  {
 	    _images.push_back(image);
+	    if (dimg._ctype._label >= 0)
+	      _test_labels.push_back(dimg._ctype._label);
 	    if (!dimg._ctype._b64)
 	      uris.push_back(u);
-	    else uris.push_back(std::to_string(img_count));
-	    ++img_count;
+	    else uris.push_back(std::to_string(i));
 	  }
 	}
       if (catch_read)
@@ -278,6 +328,7 @@ namespace dd
     // data
     std::vector<cv::Mat> _images;
     std::vector<cv::Mat> _test_images;
+    std::vector<int> _test_labels;
     
     // image parameters
     int _width = 227;
@@ -290,6 +341,9 @@ namespace dd
 }
 
 #include "caffeinputconns.h"
+
+#ifdef USE_TF
 #include "tfinputconns.h"
+#endif
 
 #endif

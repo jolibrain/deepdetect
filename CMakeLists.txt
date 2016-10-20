@@ -5,6 +5,8 @@ project(deepdetect)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
+include(ProcessorCount)
+ProcessorCount(N)
 include(ExternalProject)
 
 set (deepdetect_VERSION_MAJOR 0)
@@ -44,9 +46,12 @@ configure_file(
 )
 
 # dependency on Eigen for confusion matrix fast computation
-#find_package(Eigen3 REQUIRED)
-#include_directories("${EIGEN3_INCLUDE_DIR}")
-#include_directories("${EIGEN3_INCLUDE_DIR}")
+if (USE_TF)
+else()
+  find_package(Eigen3 REQUIRED)
+  include_directories("${EIGEN3_INCLUDE_DIR}")
+  include_directories("${EIGEN3_INCLUDE_DIR}")
+endif()
 
 set(eigen_archive_hash "50812b426b7c")
 
@@ -56,82 +61,127 @@ set(EIGEN3_INCLUDE_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/exte
 include_directories("${EIGEN3_INCLUDE_DIR}")
 
 # dependency on Boost
-find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system)
+find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system iostreams)
 
 # optional packages -> deactivated in current state of having TF + Caffe in the same boat
 include(cmake/Cuda.cmake) # cuda + cudnn
 
+if (USE_TF)
 # protobuf with tf
 set(PROTOBUF_INCLUDE_DIR ${CMAKE_BINARY_DIR}/protobuf/include/)
 set(PROTOBUF_LIB_DIR ${CMAKE_BINARY_DIR}/protobuf/lib/)
 include_directories("${PROTOBUF_INCLUDE_DIR}")
 
 # Tensorflow
-message(STATUS "Fetching Tensorflow")
-if (CUDA_FOUND)
-  ExternalProject_Add(
-    tensorflow
-    PREFIX tensorflow
-    INSTALL_DIR ${CMAKE_BINARY_DIR}
-    DOWNLOAD_COMMAND git clone --recurse-submodules https://github.com/tensorflow/tensorflow
-    CONFIGURE_COMMAND mkdir -p ${CMAKE_BINARY_DIR}/protobuf && mkdir -p dbuild && ../../../../patches/test_patch.sh ../../../../patches/tf/libtf_link.patch && sed "s/bazel /bazel --output_base=dbuild /" < configure > configure.new && mv configure configure.bak && mv configure.new configure && chmod +x configure && ./configure && bazel --output_base dbuild/ build -c opt --config=cuda //tensorflow/tools/pip_package:build_pip_package //tensorflow:libtensorflow.so //tensorflow/examples/label_image //tensorflow/python/tools:freeze_graph && cd dbuild/external/protobuf && ./autogen.sh && ./configure --prefix=${CMAKE_BINARY_DIR}/protobuf && make && make install
-    INSTALL_COMMAND ""
-    BUILD_COMMAND ""
-    BUILD_IN_SOURCE 1
-    )
-else()
-  ExternalProject_Add(
-    tensorflow
-    PREFIX tensorflow
-    INSTALL_DIR ${CMAKE_BINARY_DIR}
-    DOWNLOAD_COMMAND git clone --recurse-submodules https://github.com/tensorflow/tensorflow
-    CONFIGURE_COMMAND mkdir -p ${CMAKE_BINARY_DIR}/protobuf && mkdir -p dbuild && ../../../../patches/test_patch.sh ../../../../patches/tf/libtf_link.patch && sed "s/bazel /bazel --output_base=dbuild /" < configure > configure.new && mv configure configure.bak && mv configure.new configure && chmod +x configure && ./configure && bazel --output_base dbuild/ build -c opt //tensorflow:libtensorflow.so //tensorflow/examples/label_image //tensorflow/python/tools:freeze_graph && cd dbuild/external/protobuf && ./autogen.sh && ./configure --prefix=${CMAKE_BINARY_DIR}/protobuf && make && make install
-    INSTALL_COMMAND ""
-    BUILD_COMMAND ""
-    BUILD_IN_SOURCE 1
-    )
-endif()
-set(TF_INC_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/ ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/tensorflow/ ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/tensorflow/bazel-out/host/genfiles/ ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/tensorflow/bazel-out/local_linux-opt/genfiles)
-set(TF_LIB_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/tensorflow/bazel-out/local_linux-opt/bin/tensorflow/)
-include_directories("${TF_INC_DIR}")
+  message(STATUS "Fetching Tensorflow")
+  add_definitions(-DUSE_TF)
+  if (CUDA_FOUND)
+    ExternalProject_Add(
+      tensorflow
+      PREFIX tensorflow
+      INSTALL_DIR ${CMAKE_BINARY_DIR}
+      DOWNLOAD_COMMAND git clone --recurse-submodules https://github.com/tensorflow/tensorflow
+      CONFIGURE_COMMAND mkdir -p ${CMAKE_BINARY_DIR}/protobuf && mkdir -p dbuild && ../../../../patches/test_patch.sh ../../../../patches/tf/libtf_link.patch && sed "s/bazel /bazel --output_base=dbuild /" < configure > configure.new && mv configure configure.bak && mv configure.new configure && chmod +x configure && ./configure && bazel --output_base dbuild/ build -c opt --config=cuda //tensorflow/tools/pip_package:build_pip_package //tensorflow:libtensorflow.so //tensorflow/examples/label_image //tensorflow/python/tools:freeze_graph && cd dbuild/external/protobuf && ./autogen.sh && ./configure --prefix=${CMAKE_BINARY_DIR}/protobuf && make -j${N} && make install
+      INSTALL_COMMAND ""
+      BUILD_COMMAND ""
+      BUILD_IN_SOURCE 1
+      )
+  else()
+    ExternalProject_Add(
+      tensorflow
+      PREFIX tensorflow
+      INSTALL_DIR ${CMAKE_BINARY_DIR}
+      DOWNLOAD_COMMAND git clone --recurse-submodules https://github.com/tensorflow/tensorflow
+      CONFIGURE_COMMAND mkdir -p ${CMAKE_BINARY_DIR}/protobuf && mkdir -p dbuild && ../../../../patches/test_patch.sh ../../../../patches/tf/libtf_link.patch && sed "s/bazel /bazel --output_base=dbuild /" < configure > configure.new && mv configure configure.bak && mv configure.new configure && chmod +x configure && ./configure && bazel --output_base dbuild/ build -c opt //tensorflow:libtensorflow.so //tensorflow/examples/label_image //tensorflow/python/tools:freeze_graph && cd dbuild/external/protobuf && ./autogen.sh && ./configure --prefix=${CMAKE_BINARY_DIR}/protobuf && make -j${N} && make install
+      INSTALL_COMMAND ""
+      BUILD_COMMAND ""
+      BUILD_IN_SOURCE 1
+      )
+  endif()
+  set(TF_INC_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/ ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/tensorflow/ ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/tensorflow/bazel-out/host/genfiles/ ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/tensorflow/bazel-out/local_linux-opt/genfiles)
+  set(TF_LIB_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/tensorflow/bazel-out/local_linux-opt/bin/tensorflow/)
+  include_directories("${TF_INC_DIR}")
+endif() # USE_TF
+
+# OpenCV
+find_package(OpenCV REQUIRED)
+set(OPENCV_VERSION ${OpenCV_VERSION_MAJOR})
+include_directories(${OpenCV_INCLUDE_DIRS})
+message(STATUS "OpenCV ${OPENCV_VERSION} (${OpenCV_VERSION}) found (${OpenCV_CONFIG_PATH})")
 
 # customized Caffe as external project
 if (CAFFE_INC_DIR AND CAFFE_LIB_DIR)
   # do nothing
 else()
-  message(STATUS "Fetching and compiling customized caffe")
+  message(STATUS "Configuring customized caffe")
   if (CUDA_FOUND)
     if (HAVE_CUDNN)
+      if (USE_TF)
+	ExternalProject_Add(
+	  caffe_dd
+	  PREFIX caffe_dd
+	  INSTALL_DIR ${CMAKE_BINARY_DIR}
+	  URL https://github.com/beniz/caffe/archive/caffe_tf.tar.gz
+	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make -j${N}
+	  INSTALL_COMMAND ""
+	  BUILD_IN_SOURCE 1
+	  )
+      else() # USE_TF
+	ExternalProject_Add(
+	  caffe_dd
+	  PREFIX caffe_dd
+	  INSTALL_DIR ${CMAKE_BINARY_DIR}
+	  URL https://github.com/beniz/caffe/archive/master.tar.gz
+	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && make -j${N}
+	  INSTALL_COMMAND ""
+	  BUILD_IN_SOURCE 1
+	  )
+      endif()
+    else() # HAVE_CUDNN
+      if (USE_TF)
+	ExternalProject_Add(
+	  caffe_dd
+	  PREFIX caffe_dd
+	  INSTALL_DIR ${CMAKE_BINARY_DIR}
+	  URL https://github.com/beniz/caffe/archive/caffe_tf.tar.gz
+	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make -j${N}
+	  INSTALL_COMMAND ""
+	  BUILD_IN_SOURCE 1
+	  )
+      else() # USE_TF
+	ExternalProject_Add(
+	  caffe_dd
+	  PREFIX caffe_dd
+	  INSTALL_DIR ${CMAKE_BINARY_DIR}
+	  URL https://github.com/beniz/caffe/archive/master.tar.gz
+	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && make -j${N}
+	  INSTALL_COMMAND ""
+	  BUILD_IN_SOURCE 1
+	  )
+      endif()
+    endif() # USE_CUDNN
+  else()
+    if (USE_TF)
       ExternalProject_Add(
 	caffe_dd
 	PREFIX caffe_dd
 	INSTALL_DIR ${CMAKE_BINARY_DIR}
 	URL https://github.com/beniz/caffe/archive/caffe_tf.tar.gz
-	CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make 
+	CONFIGURE_COMMAND ln -sf Makefile.config.cpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make -j${N}
 	INSTALL_COMMAND ""
 	BUILD_IN_SOURCE 1
 	)
-    else()
-ExternalProject_Add(
+    else() # USE_TF
+      ExternalProject_Add(
 	caffe_dd
 	PREFIX caffe_dd
 	INSTALL_DIR ${CMAKE_BINARY_DIR}
-	URL https://github.com/beniz/caffe/archive/caffe_tf.tar.gz
-	CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make 
+	URL https://github.com/beniz/caffe/archive/master.tar.gz
+	CONFIGURE_COMMAND ln -sf Makefile.config.cpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && make -j${N}
 	INSTALL_COMMAND ""
 	BUILD_IN_SOURCE 1
 	)
     endif()
-  else()
-    ExternalProject_Add(
-      caffe_dd
-      PREFIX caffe_dd
-      INSTALL_DIR ${CMAKE_BINARY_DIR}
-      URL https://github.com/beniz/caffe/archive/caffe_tf.tar.gz
-      CONFIGURE_COMMAND ln -sf Makefile.config.cpu Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make
-      INSTALL_COMMAND ""
-      BUILD_IN_SOURCE 1
-      )
   endif()
   if (CUDA_FOUND)
     set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${CUDA_INCLUDE_DIRS} ${PROTOBUF_INCLUDE_DIR})
@@ -142,12 +192,33 @@ ExternalProject_Add(
   endif()
 endif()
 
-add_dependencies(caffe_dd tensorflow)
+if (USE_TF)
+  add_dependencies(caffe_dd tensorflow)
+endif()
+
+# XGBoost
+if (USE_XGBOOST)
+  message(STATUS "Configuring XGBoost")
+  add_definitions(-DUSE_XGBOOST)
+  ExternalProject_Add(
+    xgboost
+    PREFIX xgboost
+    INSTALL_DIR ${CMAKE_BINARY_DIR}
+    DOWNLOAD_COMMAND git clone --recursive https://github.com/dmlc/xgboost.git
+    UPDATE_COMMAND git submodule foreach git pull origin master
+    CONFIGURE_COMMAND pwd && make
+    INSTALL_COMMAND ""
+    BUILD_IN_SOURCE 1
+    )
+  set(XGBOOST_INC_DIR ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/include ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/src ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/rabit/include ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/dmlc-core/include ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/dmlc-core/src/)
+  set(XGBOOST_LIB_DIR ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/lib ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/dmlc-core/ ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/rabit/lib/)
+endif()
+  
 
 # add the binary tree to the search path for include files
 # so that we will find dd_config.h
 include_directories("${PROJECT_BINARY_DIR}")
-include_directories("${CAFFE_INC_DIR}")
+include_directories(${CAFFE_INC_DIR} ${XGBOOST_INC_DIR})
 
 # main library, main & tests
 include_directories ("${PROJECT_SOURCE_DIR}/src")

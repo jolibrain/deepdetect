@@ -66,11 +66,12 @@ namespace dd
   public:
     TxtEntry() {}
     TxtEntry(const float &target): _target(target) {}
-    ~TxtEntry() {}
+    virtual ~TxtEntry() {}
 
     void reset() {}
-    void get_elt(std::string &key, T &val) const {}
+    void get_elt(std::string &key, T &val) const { (void)key; (void)val; }
     bool has_elt() const { return false; }
+    size_t size() const { return 0; }
     
     float _target = -1; /**< class target in training mode. */
     std::string _uri;
@@ -81,7 +82,7 @@ namespace dd
   public:
   TxtBowEntry():TxtEntry<double>() {};
   TxtBowEntry(const float &target):TxtEntry<double>(target) {}
-    ~TxtBowEntry() {}
+    virtual ~TxtBowEntry() {}
 
     void add_word(const std::string &str,
 		  const double &v,
@@ -121,6 +122,11 @@ namespace dd
       return _vit != _v.end();
     }
     
+    size_t size() const
+    {
+      return _v.size();
+    }
+
     std::unordered_map<std::string,double> _v; /**< words as (<pos,val>). */
     std::unordered_map<std::string,double>::iterator _vit;
   };
@@ -130,7 +136,7 @@ namespace dd
   public:
   TxtCharEntry():TxtEntry<double>() {}
   TxtCharEntry(const float &target):TxtEntry<double>(target) {}
-    ~TxtCharEntry() {}
+    virtual ~TxtCharEntry() {}
 
     void add_char(const uint32_t &c)
     {
@@ -156,6 +162,11 @@ namespace dd
     {
       return _vit != _v.end();
     }
+
+    size_t size() const 
+    {
+      return _v.size();
+    }
     
     std::vector<uint32_t> _v;
     std::vector<uint32_t>::iterator _vit;
@@ -166,7 +177,8 @@ namespace dd
   public:
     TxtInputFileConn()
       :InputConnectorStrategy() {}
-
+    TxtInputFileConn(const TxtInputFileConn &i)
+      :InputConnectorStrategy(i),_iterator(i._iterator),_tokenizer(i._tokenizer),_count(i._count),_tfidf(i._tfidf),_min_count(i._min_count),_min_word_length(i._min_word_length),_sentences(i._sentences),_characters(i._characters),_alphabet_str(i._alphabet_str),_alphabet(i._alphabet),_sequence(i._sequence),_seq_forward(i._seq_forward),_vocab(i._vocab) {}
     ~TxtInputFileConn()
       {
 	destroy_txt_entries(_txt);
@@ -176,6 +188,8 @@ namespace dd
     void init(const APIData &ad)
     {
       fillup_parameters(ad);
+      if (!_characters && !_train)
+	deserialize_vocab(false);
     }
 
     void fillup_parameters(const APIData &ad_input)
@@ -240,9 +254,6 @@ namespace dd
       if (_alphabet.empty() && _characters)
 	build_alphabet();
       
-      if (ad.has("model_repo"))
-	_model_repo = ad.get("model_repo").get<std::string>();
-      
       if (!_characters && !_train && _vocab.empty())
 	deserialize_vocab();
       
@@ -250,7 +261,7 @@ namespace dd
 	{
 	  DataEl<DDTxt> dtxt;
 	  dtxt._ctype._ctfc = this;
-	  if (dtxt.read_element(u))
+	  if (dtxt.read_element(u) || _txt.empty())
 	    {
 	      throw InputConnectorBadParamException("no data for text in " + u);
 	    }
@@ -306,7 +317,7 @@ namespace dd
 
     // serialization of vocabulary
     void serialize_vocab();
-    void deserialize_vocab();
+    void deserialize_vocab(const bool &required=true);
 
     // alphabet for character-level features
     void build_alphabet();
@@ -334,7 +345,6 @@ namespace dd
     // internals
     std::unordered_map<std::string,Word> _vocab; /**< string to word stats, including word */
     std::string _vocabfname = "vocab.dat";
-    std::string _model_repo;
     std::string _correspname = "corresp.txt";
     
     // data

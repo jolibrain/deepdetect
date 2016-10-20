@@ -39,7 +39,7 @@ namespace dd
     std::ifstream txt_file(fname);
     if (!txt_file.is_open())
       {
-	std::cerr << "cannot open file\n";
+	LOG(ERROR) << "cannot open file=" << fname;
 	throw InputConnectorBadParamException("cannot open file " + fname);
       }
     std::stringstream buffer;
@@ -70,7 +70,7 @@ namespace dd
     // list files and classes
     std::vector<std::pair<std::string,int>> lfiles; // labeled files
     std::unordered_map<int,std::string> hcorresp; // correspondence class number / class name
-    if (_ctfc->_train)
+    if (!subdirs.empty())
       {
 	int cl = 0;
 	auto uit = subdirs.begin();
@@ -78,8 +78,9 @@ namespace dd
 	  {
 	    std::unordered_set<std::string> subdir_files;
 	    if (fileops::list_directory((*uit),true,false,subdir_files))
-	      throw InputConnectorBadParamException("failed reading image data sub-directory " + (*uit));
-	    hcorresp.insert(std::pair<int,std::string>(cl,dd_utils::split((*uit),'/').back()));
+	      throw InputConnectorBadParamException("failed reading text data sub-directory " + (*uit));
+	    if (_ctfc->_train)
+	      hcorresp.insert(std::pair<int,std::string>(cl,dd_utils::split((*uit),'/').back()));
 	    auto fit = subdir_files.begin();
 	    while(fit!=subdir_files.end()) // XXX: re-iterating the file is not optimal
 	      {
@@ -117,18 +118,21 @@ namespace dd
 
     // post-processing
     size_t initial_vocab_size = _ctfc->_vocab.size();
-    auto vhit = _ctfc->_vocab.begin();
-    while(vhit!=_ctfc->_vocab.end())
+    if (_ctfc->_train)
       {
-	if ((*vhit).second._total_count < _ctfc->_min_count)
-	  vhit = _ctfc->_vocab.erase(vhit);
-	else ++vhit;
+	auto vhit = _ctfc->_vocab.begin();
+	while(vhit!=_ctfc->_vocab.end())
+	  {
+	    if ((*vhit).second._total_count < _ctfc->_min_count)
+	      vhit = _ctfc->_vocab.erase(vhit);
+	    else ++vhit;
+	  }
       }
-    if (initial_vocab_size != _ctfc->_vocab.size())
+    if (_ctfc->_train && initial_vocab_size != _ctfc->_vocab.size())
       {
 	// update pos
 	int pos = 0;
-	vhit = _ctfc->_vocab.begin();
+	auto vhit = _ctfc->_vocab.begin();
 	while(vhit!=_ctfc->_vocab.end())
 	  {
 	    (*vhit).second._pos = pos;
@@ -306,13 +310,18 @@ namespace dd
       {
 	out << p.first << delim << p.second._pos << std::endl;
       }
+    out.close();
   }
 
-  void TxtInputFileConn::deserialize_vocab()
+  void TxtInputFileConn::deserialize_vocab(const bool &required)
   {
     std::string vocabfname = _model_repo + "/" + _vocabfname;
     if (!fileops::file_exists(vocabfname))
-      throw InputConnectorBadParamException("cannot find vocabulary file " + vocabfname);
+      {
+	if (required)
+	  throw InputConnectorBadParamException("cannot find vocabulary file " + vocabfname);
+	else return;
+      }
     std::ifstream in;
     in.open(vocabfname);
     if (!in.is_open())
@@ -322,7 +331,7 @@ namespace dd
       {
 	std::vector<std::string> tokens = dd_utils::split(line,',');
 	std::string key = tokens.at(0);
-	int pos = atoi(tokens.at(1).c_str());
+	int pos = std::atoi(tokens.at(1).c_str());
 	_vocab.emplace(std::make_pair(key,Word(pos)));
       }
     std::cerr << "loaded vocabulary of size=" << _vocab.size() << std::endl;

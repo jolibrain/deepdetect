@@ -94,6 +94,8 @@ namespace dd
       APIData ad_out = ad.getobj("parameters").getobj("output");
       if (ad_out.has("best"))
 	_best = ad_out.get("best").get<int>();
+      if (_best == -1)
+	_best = ad_out.get("nclasses").get<int>();
     }
 
     /**
@@ -132,11 +134,13 @@ namespace dd
      * @param ad_out output data object
      * @param bcats supervised output connector
      */
-    void best_cats(const APIData &ad_out, SupervisedOutput &bcats) const
+    void best_cats(const APIData &ad_out, SupervisedOutput &bcats, const int &nclasses) const
     {
       int best = _best;
       if (ad_out.has("best"))
 	best = ad_out.get("best").get<int>();
+      if (best == -1)
+	best = nclasses;
       for (size_t i=0;i<_vvcats.size();i++)
 	{
 	  sup_result sresult = _vvcats.at(i);
@@ -157,6 +161,10 @@ namespace dd
     {
       SupervisedOutput bcats(*this);
       bool regression = false;
+      bool autoencoder = false;
+      int nclasses = -1;
+      if (ad_out.has("nclasses"))
+	nclasses = ad_out.get("nclasses").get<int>();
       if (ad_out.has("regression"))
 	{
 	  if (ad_out.get("regression").get<bool>())
@@ -167,8 +175,14 @@ namespace dd
 	  ad_out.erase("regression");
 	  ad_out.erase("nclasses");
 	}
-      best_cats(ad_in,bcats);
-      bcats.to_ad(ad_out,regression);
+      if (ad_out.has("autoencoder") && ad_out.get("autoencoder").get<bool>())
+	{
+	  autoencoder = true;
+	  _best = 1;
+	  ad_out.erase("autoencoder");
+	}
+      best_cats(ad_in,bcats,nclasses);
+      bcats.to_ad(ad_out,regression,autoencoder);
     }
     
     struct PredictionAndAnswer {
@@ -233,16 +247,19 @@ namespace dd
 	      if (std::find(measures.begin(),measures.end(),"cmfull")!=measures.end())
 		{
 		  std::vector<std::string> clnames = ad_res.get("clnames").get<std::vector<std::string>>();
-		  APIData cad;
+		  APIData cmobj;
+		  cmobj.add("labels",clnames);
+		  std::vector<APIData> cmdata;
 		  for (int i=0;i<conf_matrix.cols();i++)
 		    {
-		      std::vector<double> cmcol;
+		      std::vector<double> cmrow;
 		      for (int j=0;j<conf_matrix.rows();j++)
-			cmcol.push_back(conf_matrix(j,i));
-		      cad.add(clnames.at(i),cmcol);
+			cmrow.push_back(conf_matrix(j,i));
+		      APIData adrow;
+		      adrow.add(clnames.at(i),cmrow);
+		      cmdata.push_back(adrow);
 		    }
-		  std::vector<APIData> vad = {cad};
-		  meas_out.add("cmfull",vad);
+		  meas_out.add("cmfull",cmdata);
 		}
 	    }
 	  if (bmcll)
@@ -257,7 +274,6 @@ namespace dd
 	    }
 	  if (beucll)
 	    {
-	      //TODO: euclidean distance
 	      double meucll = eucll(ad_res);
 	      meas_out.add("eucll",meucll);
 	    }
@@ -268,8 +284,7 @@ namespace dd
 	  meas_out.add("train_loss",ad_res.get("train_loss").get<double>());
 	if (iter)
 	  meas_out.add("iteration",ad_res.get("iteration").get<double>());
-	std::vector<APIData> vad = { meas_out };
-	out.add("measure",vad);
+	out.add("measure",meas_out);
     }
 
     // measure: ACC
@@ -354,7 +369,7 @@ namespace dd
       f1 = (2.0*precision*recall) / (precision+recall);
       conf_diag = conf_diag.transpose().cwiseQuotient(conf_csum+eps.transpose()).transpose();
       for (int i=0;i<conf_matrix.cols();i++)
-	conf_matrix.col(i) = conf_matrix.col(i).transpose().cwiseQuotient(conf_csum+eps.transpose()).transpose();
+	conf_matrix.col(i) /= conf_csum(i);
       return f1;
     }
     
@@ -511,13 +526,15 @@ namespace dd
      * \brief write supervised output object to data object
      * @param out data destination
      */
-    void to_ad(APIData &out, const bool &regression) const
+    void to_ad(APIData &out, const bool &regression, const bool &autoencoder) const
     {
       static std::string cl = "classes";
       static std::string ve = "vector";
+      static std::string ae = "losses";
       static std::string phead = "prob";
       static std::string chead = "cat";
       static std::string vhead = "val";
+      static std::string ahead = "loss";
       static std::string last = "last";
       std::vector<APIData> vpred;
       for (size_t i=0;i<_vvcats.size();i++)
@@ -528,9 +545,12 @@ namespace dd
 	  while(mit!=_vvcats.at(i)._cats.end())
 	    {
 	      APIData nad;
-	      nad.add(chead,(*mit).second);
+	      if (!autoencoder)
+		nad.add(chead,(*mit).second);
 	      if (regression)
 		nad.add(vhead,(*mit).first);
+	      else if (autoencoder)
+		nad.add(ahead,(*mit).first);
 	      else nad.add(phead,(*mit).first);
 	      ++mit;
 	      if (mit == _vvcats.at(i)._cats.end())
@@ -539,6 +559,8 @@ namespace dd
 	    }
 	  if (regression)
 	    adpred.add(ve,v);
+	  else if (autoencoder)
+	    adpred.add(ae,v);
 	  else adpred.add(cl,v);
 	  if (_vvcats.at(i)._loss > 0.0) // XXX: not set by Caffe in prediction mode for now
 	    adpred.add("loss",_vvcats.at(i)._loss);
