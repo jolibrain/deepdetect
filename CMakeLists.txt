@@ -53,7 +53,10 @@ include_directories("${EIGEN3_INCLUDE_DIR}")
 find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system iostreams)
 
 # optional packages
+if (USE_CPU_ONLY)
+else()
 include(cmake/Cuda.cmake) # cuda + cudnn
+endif()
 
 # OpenCV
 find_package(OpenCV REQUIRED)

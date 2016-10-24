@@ -135,6 +135,11 @@ If you would like to build with cuDNN, your `cmake` line should be:
 cmake .. -DUSE_CUDNN=ON
 ```
 
+If you would like a CPU only build, use:
+```
+cmake .. -DUSE_CPU_ONLY=ON
+```
+
 If you would like to build with XGBoost, include the `-DUSE_XGBOOST=ON` parameter to `cmake`:
 ```
 cmake .. -DUSE_XGBOOST=ON
