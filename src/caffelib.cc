@@ -1462,12 +1462,14 @@ namespace dd
     
     // instantiate model template here, as a defered from service initialization
     // since inputs are necessary in order to fit the inner net input dimension.
+    APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
     if (!this->_mlmodel._model_template.empty())
       {
 	// modifies model structure, template must have been copied at service creation with instantiate_template
+	bool has_class_weights = ad_mllib.has("class_weights");
 	update_protofile_net(this->_mlmodel._repo + '/' + this->_mlmodel._model_template + ".prototxt",
 			     this->_mlmodel._repo + "/deploy.prototxt",
-			     inputc);
+			     inputc, has_class_weights);
 	create_model(); // creates initial net.
       }
 
@@ -1478,7 +1480,6 @@ namespace dd
     update_in_memory_net_and_solver(solver_param,cad,inputc,has_mean_file,user_batch_size,batch_size,test_batch_size,test_iter);
 
     // parameters
-    APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
     bool gpu = _gpu;
 #ifndef CPU_ONLY
     if (ad_mllib.has("gpu"))
@@ -2289,7 +2290,8 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofile_net(const std::string &net_file,
 												 const std::string &deploy_file,
-												 const TInputConnectorStrategy &inputc)
+												 const TInputConnectorStrategy &inputc,
+												 const bool &has_class_weights)
   {
     caffe::NetParameter net_param;
     caffe::ReadProtoFromTextFile(net_file,&net_param); //TODO: catch parsing error (returns bool true on success)
@@ -2333,6 +2335,21 @@ namespace dd
 	  }
       }
 
+    if (has_class_weights) //TODO
+      {
+	int k = net_param.layer_size();
+	for (int l=k-1;l>0;l--)
+	  {
+	    caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+	    if (lparam->type() == "SoftmaxWithLoss")
+	      {
+		lparam->set_type("SoftmaxWithInfogainLoss");
+		lparam->mutable_infogain_loss_param()->set_source(this->_mlmodel._repo + "/class_weights.binaryproto");
+		break;
+	      }
+	  }
+      }
+
     caffe::NetParameter deploy_net_param;
     caffe::ReadProtoFromTextFile(deploy_file,&deploy_net_param);
     
@@ -2343,11 +2360,7 @@ namespace dd
 	for (int l=k-1;l>0;l--)
 	  {
 	    caffe::LayerParameter *lparam = deploy_net_param.mutable_layer(l);
-	    /*if (lparam->type() == "SigmoidCrossEntropyLoss")
-	      {
-		bottom = lparam->bottom(0);
-		}*/
-	    if (/*!bottom.empty() && */lparam->type() == "InnerProduct")
+	    if (lparam->type() == "InnerProduct")
 	      {
 		lparam->mutable_inner_product_param()->set_num_output(inputc.channels());
 		break;

@@ -1,6 +1,6 @@
 /**
  * DeepDetect
- * Copyright (c) 2014-2015 Emmanuel Benazera
+ * Copyright (c) 2014-2016 Emmanuel Benazera
  * Author: Emmanuel Benazera <beniz@droidnik.fr>
  *
  * This file is part of deepdetect.
@@ -64,6 +64,10 @@ namespace dd
       }
 
     void reset_dv_test() {}
+
+    // write class weights to binary proto
+    void write_class_weights(const std::string &model_repo,
+			     const APIData &ad_mllib);
 
     bool _db = false; /**< whether to use a db. */
     std::vector<caffe::Datum> _dv; /**< main input datum vector, used for training or prediction */
@@ -898,6 +902,7 @@ namespace dd
     {
       APIData ad_param = ad.getobj("parameters");
       APIData ad_input = ad_param.getobj("input");
+      APIData ad_mllib = ad_param.getobj("mllib");
       
       if (_train && ad_input.has("db") && ad_input.get("db").get<bool>())
 	{
@@ -905,6 +910,7 @@ namespace dd
 	  get_data(ad);
 	  _db = true;
 	  svm_to_db(_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname,ad_input);
+	  write_class_weights(_model_repo,ad_mllib);
 	  
 	  // enrich data object with db files location
 	  APIData dbad;
@@ -927,6 +933,7 @@ namespace dd
 	
 	  if (_train)
 	    {
+	      write_class_weights(_model_repo,ad_mllib);
 	      int n = 0;
 	      auto hit = _svmdata.begin();
 	      while(hit!=_svmdata.end())

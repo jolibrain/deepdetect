@@ -32,6 +32,33 @@ using namespace caffe;
 
 namespace dd
 {
+
+  void CaffeInputInterface::write_class_weights(const std::string &model_repo,
+						const APIData &ad_mllib)
+  {
+    std::string cl_file = model_repo + "/class_weights.binaryproto";
+    if (ad_mllib.has("class_weights"))
+      {
+	std::vector<double> cw = ad_mllib.get("class_weights").get<std::vector<double>>();
+	int nclasses = cw.size();
+	BlobProto cw_blob;
+	cw_blob.set_num(1);
+	cw_blob.set_channels(1);
+	cw_blob.set_height(nclasses);
+	cw_blob.set_width(nclasses);
+	for (int i=0;i<nclasses;i++)
+	  {
+	    for (int j=0;j<nclasses;j++)
+	      {
+		if (i == j)
+		  cw_blob.add_data(cw.at(i));
+		else cw_blob.add_data(0.);
+	      }
+	  }
+	LOG(INFO) << "Write class weights to " << cl_file;
+	WriteProtoToBinaryFile(cw_blob,cl_file.c_str());
+      }
+  }
   
   // convert images into db entries
   // a root folder must contain directories as classes holding image
