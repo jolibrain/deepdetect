@@ -212,6 +212,8 @@ namespace dd
 	_sentences = ad_input.get("sentences").get<bool>();
       if (ad_input.has("characters"))
 	_characters = ad_input.get("characters").get<bool>();
+      if (ad_input.has("lstm"))
+  _lstm = ad_input.get("lstm").get<bool>();
       if (ad_input.has("alphabet"))
 	_alphabet_str = ad_input.get("alphabet").get<std::string>();
       if (_characters)
@@ -341,7 +343,7 @@ namespace dd
     std::unordered_map<uint32_t,int> _alphabet; /**< character-level alphabet. */
     int _sequence = 60; /**< sequence size when using character-level features. */
     bool _seq_forward = false; /**< whether to read character-based sequences forward. */
-    
+    bool _lstm = false;
     // internals
     std::unordered_map<std::string,Word> _vocab; /**< string to word stats, including word */
     std::string _vocabfname = "vocab.dat";
