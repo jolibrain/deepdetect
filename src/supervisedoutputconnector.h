@@ -152,6 +152,7 @@ namespace dd
     {
       SupervisedOutput bcats(*this);
       bool regression = false;
+      bool autoencoder = false;
       if (ad_out.has("regression"))
 	{
 	  if (ad_out.get("regression").get<bool>())
@@ -162,8 +163,14 @@ namespace dd
 	  ad_out.erase("regression");
 	  ad_out.erase("nclasses");
 	}
+      if (ad_out.has("autoencoder") && ad_out.get("autoencoder").get<bool>())
+	{
+	  autoencoder = true;
+	  _best = 1;
+	  ad_out.erase("autoencoder");
+	}
       best_cats(ad_in,bcats);
-      bcats.to_ad(ad_out,regression);
+      bcats.to_ad(ad_out,regression,autoencoder);
     }
     
     struct PredictionAndAnswer {
@@ -509,13 +516,15 @@ namespace dd
      * \brief write supervised output object to data object
      * @param out data destination
      */
-    void to_ad(APIData &out, const bool &regression) const
+    void to_ad(APIData &out, const bool &regression, const bool &autoencoder) const
     {
       static std::string cl = "classes";
       static std::string ve = "vector";
+      static std::string ae = "losses";
       static std::string phead = "prob";
       static std::string chead = "cat";
       static std::string vhead = "val";
+      static std::string ahead = "loss";
       static std::string last = "last";
       std::vector<APIData> vpred;
       for (size_t i=0;i<_vvcats.size();i++)
@@ -526,9 +535,12 @@ namespace dd
 	  while(mit!=_vvcats.at(i)._cats.end())
 	    {
 	      APIData nad;
-	      nad.add(chead,(*mit).second);
+	      if (!autoencoder)
+		nad.add(chead,(*mit).second);
 	      if (regression)
 		nad.add(vhead,(*mit).first);
+	      else if (autoencoder)
+		nad.add(ahead,(*mit).first);
 	      else nad.add(phead,(*mit).first);
 	      ++mit;
 	      if (mit == _vvcats.at(i)._cats.end())
@@ -537,6 +549,8 @@ namespace dd
 	    }
 	  if (regression)
 	    adpred.add(ve,v);
+	  else if (autoencoder)
+	    adpred.add(ae,v);
 	  else adpred.add(cl,v);
 	  if (_vvcats.at(i)._loss > 0.0) // XXX: not set by Caffe in prediction mode for now
 	    adpred.add("loss",_vvcats.at(i)._loss);

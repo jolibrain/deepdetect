@@ -355,7 +355,8 @@ namespace dd
 	    }
 
 	  // check on common and required parameters
-	  if (!ad_input.has("label") && _train && _label.empty())
+	  bool autoencoder = ad_input.has("autoencoder") && ad_input.get("autoencoder").get<bool>();
+	  if (!ad_input.has("label") && _train && _label.empty() && !autoencoder)
 	    throw InputConnectorBadParamException("missing label column parameter");
 	  
 	  if (!_csv_fname.empty()) // when training from file
