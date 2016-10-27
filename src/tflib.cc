@@ -96,7 +96,36 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void TFLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::clear_mllib(const APIData &ad)
   {
-    //TODO
+    // NOT IMPLEMENTED
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void TFLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::tf_concat(const std::vector<tensorflow::Tensor> &dv,
+										   std::vector<tensorflow::Tensor> &vtfinputs)
+  {
+    /*
+      as incredible as it seems, code below is the bloated tf way of concatenating
+      tensors to produce the intput to the neural net graph.
+    */
+    int rbatch_size = dv.size();
+    auto root = tensorflow::Scope::NewRootScope();
+    std::string concat_name = "concatenated";
+    std::vector<tensorflow::ops::Input> ops_inputs;
+    for (int i=0;i<rbatch_size;i++)
+      ops_inputs.push_back(std::move(tensorflow::ops::Input(dv[i])));
+    tensorflow::gtl::ArraySlice<tensorflow::ops::Input> ipl(&ops_inputs[0],ops_inputs.size());
+    tensorflow::ops::InputList toil(ipl);
+    auto concatout = tensorflow::ops::Concat(root.WithOpName(concat_name),0,toil);
+    std::unique_ptr<tensorflow::Session> concat_session(tensorflow::NewSession(tensorflow::SessionOptions()));
+    tensorflow::GraphDef graph;
+    root.ToGraphDef(&graph);
+    concat_session->Create(graph);
+    tensorflow::Status concat_run_status = concat_session->Run({}, {concat_name}, {}, &vtfinputs);
+    if (!concat_run_status.ok())
+      {
+	std::cout << concat_run_status.ToString() << std::endl;
+	throw MLLibInternalException(concat_run_status.ToString());
+      }
   }
   
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -108,9 +137,17 @@ namespace dd
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  int TFLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::predict(const APIData &ad,
-										   APIData &out)
+  void TFLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::test(const APIData &ad,
+									      APIData &out)
   {
+    APIData ad_out = ad.getobj("parameters").getobj("output");
+    if (!ad_out.has("measure"))
+      {
+	APIData ad_res;
+	SupervisedOutput::measure(ad_res,ad_out,out);
+	return;
+      }
+    
     TInputConnectorStrategy inputc(this->_inputc);
     TOutputConnectorStrategy tout;
     APIData cad = ad;
@@ -132,27 +169,146 @@ namespace dd
 	batch_size = ad_mllib.get("test_batch_size").get<int>();
       }
 
+    tensorflow::GraphDef graph_def;
+    std::string graphFile = this->_mlmodel._graphName;
+    if (graphFile.empty())
+      throw MLLibBadParamException("No pre-trained model found in model repository");
+    LOG(INFO) << "test: using graphFile dir=" << graphFile;
+    // Loading the graph to the given variable
+    tensorflow::Status graphLoadedStatus = ReadBinaryProto(tensorflow::Env::Default(),graphFile,&graph_def);
+    
+    if (!graphLoadedStatus.ok())
+      {
+	std::cerr << graphLoadedStatus.ToString()<<std::endl;
+	LOG(ERROR) << "failed loading tensorflow graph with status=" << graphLoadedStatus.ToString() << std::endl;
+	throw MLLibBadParamException("failed loading tensorflow graph with status=" + graphLoadedStatus.ToString());
+      }
+    std::string inputLayer = _inputLayer;
+    std::string outputLayer = _outputLayer;
+    if (inputLayer.empty())
+      {
+	inputLayer = graph_def.node(0).name();
+	LOG(INFO) << "testing: using input layer=" << inputLayer << std::endl;
+      }
+    if (outputLayer.empty())
+      {
+	outputLayer = graph_def.node(graph_def.node_size()-1).name();
+	LOG(INFO) << "testing: using output layer=" << outputLayer << std::endl;
+      }
+    
+    // creating a session with the graph
+    tensorflow::SessionOptions options;
+    tensorflow::ConfigProto &config = options.config;
+    config.mutable_gpu_options()->set_allow_growth(true); // default is we prevent tf from holding all memory across all GPUs
+    auto session = std::unique_ptr<tensorflow::Session>(tensorflow::NewSession(options));
+    tensorflow::Status session_create_status = session->Create(graph_def);
+    
+    if (!session_create_status.ok())
+      {
+	std::cout << session_create_status.ToString()<<std::endl;
+	throw MLLibInternalException(session_create_status.ToString());
+      }
+    
+    // vector for storing  the outputAPI of the file 
+    APIData ad_res;
+    ad_res.add("nclasses",_nclasses);
+    int tresults = 0;
+    
+    inputc.reset_dv();
+    int idoffset = 0;
+    while(true)
+      {
+	std::vector<int> dv_labels = inputc._test_labels;
+	std::vector<tensorflow::Tensor> dv = inputc.get_dv(batch_size);
+	if (dv.empty())
+	  break;
+	std::vector<tensorflow::Tensor> vtfinputs;
+	if (dv.size() > 1)
+	  tf_concat(dv,vtfinputs);
+	else vtfinputs = dv;
+	
+	// running the loded graph and saving the generated output 
+	std::vector<tensorflow::Tensor> finalOutput; // To save the final Output generated by the tensorflow
+	tensorflow::Status run_status  = session->Run({{inputLayer,*(vtfinputs.begin())}},{outputLayer},{},&finalOutput);
+	if (!run_status.ok())
+	  {
+	    std::cout << run_status.ToString() << std::endl;
+	    throw MLLibInternalException(run_status.ToString()); //XXX: does not separate bad param from internal errors
+	  }
+	tensorflow::Tensor output = std::move(finalOutput.at(0));
+	
+	auto scores = output.flat<float>();
+	std::vector<double> predictions;
+	for (size_t i=0;i<dv.size();i++)
+	  {
+	    APIData bad;
+	    for (int c=0;c<_nclasses;c++)
+	      predictions.push_back(scores(i*_nclasses+c));
+	    double target = dv_labels.at(i);
+	    bad.add("target",target);
+	    bad.add("pred",predictions);
+	    ad_res.add(std::to_string(tresults+i),bad);
+	  }
+	tresults += dv.size();
+      } // end prediction loop over batches
+    
+    std::vector<std::string> clnames;
+    for (int i=0;i<_nclasses;i++)
+      clnames.push_back(this->_mlmodel.get_hcorresp(i));
+    ad_res.add("clnames",clnames);
+    ad_res.add("batch_size",tresults);
+    
+    SupervisedOutput::measure(ad_res,ad_out,out);
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  int TFLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::predict(const APIData &ad,
+										APIData &out)
+  {
+    APIData ad_output = ad.getobj("parameters").getobj("output");
+    if (ad_output.has("measure"))
+      {
+	test(ad,out);
+	APIData out_meas = out.getobj("measure");
+	out.add("measure",out_meas);
+	return 0;
+      }
+    
+    TInputConnectorStrategy inputc(this->_inputc);
+    TOutputConnectorStrategy tout;
+    APIData cad = ad;
+    cad.add("model_repo",this->_mlmodel._repo);
+    try
+      {
+	inputc.transform(cad);
+      }
+    catch (std::exception &e)
+      {
+	throw;
+      }
+    
+    APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
+    int batch_size = inputc.batch_size();
+    if (ad_mllib.has("test_batch_size"))
+      {
+	batch_size = ad_mllib.get("test_batch_size").get<int>();
+      }
+
     if (!_session)
       {
 	tensorflow::GraphDef graph_def;
 	std::string graphFile = this->_mlmodel._graphName;
 	if (graphFile.empty())
 	  throw MLLibBadParamException("No pre-trained model found in model repository");
-	std::cout << "graphFile dir=" << graphFile<< std::endl;
+	LOG(INFO) << "predict: using graphFile dir=" << graphFile;
 	// Loading the graph to the given variable
 	tensorflow::Status graphLoadedStatus = ReadBinaryProto(tensorflow::Env::Default(),graphFile,&graph_def);
 	
 	if (!graphLoadedStatus.ok())
 	  {
-	    std::cerr << graphLoadedStatus.ToString()<<std::endl;
 	    LOG(ERROR) << "failed loading tensorflow graph with status=" << graphLoadedStatus.ToString() << std::endl;
 	    throw MLLibBadParamException("failed loading tensorflow graph with status=" + graphLoadedStatus.ToString());
 	  }
-	/*std::cerr << "graph load status=" << graphLoadedStatus.ToString() << std::endl;
-	  std::cerr << "graph def node size=" << graph_def.node_size() << std::endl;
-	  for (size_t i=0;i<graph_def.node_size();i++)
-	  std::cerr << graph_def.node(i).name() << std::endl;*/
-
 	if (_inputLayer.empty())
 	  {
 	    _inputLayer = graph_def.node(0).name();
@@ -163,7 +319,6 @@ namespace dd
 	    _outputLayer = graph_def.node(graph_def.node_size()-1).name();
 	    LOG(INFO) << "using output layer=" << _outputLayer << std::endl;
 	  }
-
 	//tensorflow::graph::SetDefaultDevice(device, &graph_def);
 	
 	// creating a session with the graph
@@ -192,30 +347,7 @@ namespace dd
 	  break;
 	std::vector<tensorflow::Tensor> vtfinputs;
 	if (dv.size() > 1)
-	  {
-	    /*
-	      as incredible as it seems, code below is the bloated tf way of concatenating
-	      tensors to produce the intput to the neural net graph.
-	    */
-	    auto root = tensorflow::Scope::NewRootScope();
-	    std::string concat_name = "concatenated";
-	    std::vector<tensorflow::ops::Input> ops_inputs;
-	    for (int i=0;i<batch_size;i++)
-	      ops_inputs.push_back(tensorflow::ops::Input(dv[i]));//inputc._dv[i]));
-	    tensorflow::gtl::ArraySlice<tensorflow::ops::Input> ipl(&ops_inputs[0],ops_inputs.size());
-	    tensorflow::ops::InputList toil(ipl);
-	    auto concatout = tensorflow::ops::Concat(root.WithOpName(concat_name),0,toil);
-	    std::unique_ptr<tensorflow::Session> concat_session(tensorflow::NewSession(tensorflow::SessionOptions()));
-	    tensorflow::GraphDef graph;
-	    root.ToGraphDef(&graph);
-	    concat_session->Create(graph);
-	    tensorflow::Status concat_run_status = concat_session->Run({}, {concat_name}, {}, &vtfinputs);
-	    if (!concat_run_status.ok())
-	      {
-		std::cout << concat_run_status.ToString() << std::endl;
-		throw MLLibInternalException(concat_run_status.ToString());
-	      }
-	  }
+	  tf_concat(dv,vtfinputs);
 	else vtfinputs = dv;
 	
 	// running the loded graph and saving the generated output 
@@ -245,7 +377,7 @@ namespace dd
 	    rad.add("loss",0.0);
 	    vrad.push_back(rad);
 	  }
-	idoffset += batch_size;
+	idoffset += dv.size();
       } // end prediction loop over batches
     tout.add_results(vrad);
     tout.finalize(ad.getobj("parameters").getobj("output"),out);

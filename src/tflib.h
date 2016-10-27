@@ -47,10 +47,13 @@ namespace dd
 
     int train(const APIData &ad, APIData &out);
 
+    void test(const APIData &ad, APIData &out);
+    
     int predict(const APIData &ad, APIData &out);
 
     /*- local functions -*/
-    //TODO: test()
+    void tf_concat(const std::vector<tensorflow::Tensor> &dv,
+		   std::vector<tensorflow::Tensor> &vtfinputs);
     
 
     public:

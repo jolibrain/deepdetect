@@ -113,14 +113,14 @@
 	  throw;
 	}
 
-      std::cerr << "number of images is " << _uris.size()<< std::endl;
-      for (size_t i=0; i<_uris.size();i++)
+      for (size_t i=0;i<_images.size();i++)
 	{
 	  tensorflow::Tensor input_tensor(tensorflow::DT_FLOAT, tensorflow::TensorShape({1,_height,_width,channels()}));
 	  auto input_tensor_mapped = input_tensor.tensor<float, 4>();
 
+	  cv::Mat CImage = std::move(this->_images.at(i));
 	  cv::Mat Image;
-	  this->_images.at(i).convertTo(Image, CV_32FC1);
+	  CImage.convertTo(Image, CV_32FC1);
 	  cv::Mat Image2;
 	  cv::cvtColor(Image,Image2,CV_BGR2RGB); // because OpenCV defaults to BGR
 	  Image = (Image2 - _mean) / _std;
@@ -141,6 +141,7 @@
 	  _dv.push_back(input_tensor);
 	  _ids.push_back(_uris.at(i));
 	}
+      _images.clear();
     }
     
     std::vector<tensorflow::Tensor> get_dv(const int &num)
