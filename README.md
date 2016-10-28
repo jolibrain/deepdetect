@@ -20,7 +20,8 @@ The reference platform with support is **Ubuntu 14.04 LTS**.
 
 Supported images that come with pre-trained image classification deep (residual) neural nets:
 
-- **docker images** for CPU and GPU machines are available at https://hub.docker.com/r/beniz/deepdetect_gpu/, see https://github.com/beniz/deepdetect/tree/master/docker/README.md for details on how to use them.
+- **docker images** for CPU and GPU machines are available at https://hub.docker.com/r/beniz/deepdetect_cpu/ and https://hub.docker.com/r/beniz/deepdetect_gpu/ respectively. See https://github.com/beniz/deepdetect/tree/master/docker/README.md for details on how to use them.
+
 - For **Amazon AMI** see https://github.com/beniz/deepdetect/issues/5#issuecomment-199952341 and [performance report](https://github.com/beniz/deepdetect/issues/5#issuecomment-200806618)
 
 #### Quickstart
