@@ -4,11 +4,31 @@
 
 DeepDetect (http://www.deepdetect.com/) is a machine learning API and server written in C++11. It makes state of the art machine learning easy to work with and integrate into existing applications.
 
-DeepDetect relies on external machine learning libraries through a very generic and flexible API. At the moment it has support for the deep learning library [Caffe](https://github.com/BVLC/caffe) and distributed gradient boosting library [XGBoost](https://github.com/dmlc/xgboost).
+DeepDetect relies on external machine learning libraries through a very generic and flexible API. At the moment it has support for:
+
+- the deep learning library [Caffe](https://github.com/BVLC/caffe)
+- distributed gradient boosting library [XGBoost](https://github.com/dmlc/xgboost)
+- the deep learning and other usages library [Tensorflow](https://tensorflow.org)
+
+#### Machine Learning functionalities per library (current):
+
+|            | Training | Prediction | Classification | Regression | Autoencoder |
+|------------|----------|------------|----------------|------------|-------------|
+| Caffe      | Y        | Y          | Y              | Y          | Y           |
+| XGBoost    | Y        | Y          | Y              | Y          | N/A         |
+| Tensorflow | N        | Y          | Y              | N          | N           |
+
+#### Input data support per library (current):
+
+|            | CSV | SVM | Text words | Text characters | Images |
+|------------|-----|-----|------------|-----------------|--------|
+| Caffe      | Y   | Y   | Y          | Y               | Y      |
+| XGBoost    | Y   | Y   | Y          | N               | N      |
+| Tensorflow | N   | N   | N          | N               | Y      |
 
 #### Main functionalities
 
-DeepDetect implements support for supervised deep learning of images, text and other data, with focus on simplicity and ease of use, test and connection into existing applications.
+DeepDetect implements support for supervised and unsupervised deep learning of images, text and other data, with focus on simplicity and ease of use, test and connection into existing applications.
 
 #### Support
 
@@ -33,12 +53,12 @@ List of tutorials, training from text, data and images, setup of prediction serv
 #### Features and Documentation
 Current features include:
 
-- high-level API for machine learning
-- Support for Caffe and XGBoost
+- high-level API for machine learning and deep learning
+- Support for Caffe, Tensorflow and XGBoost
 - JSON communication format
 - remote Python client library
 - dedicated server with support for asynchronous training calls
-- high performances, benefit from multicores and GPU
+- high performances, benefit from multicore CPU and GPU
 - connector to handle large collections of images with on-the-fly data augmentation (e.g. rotations, mirroring)
 - connector to handle CSV files with preprocessing capabilities
 - connector to handle text files, sentences, and character-based models
@@ -80,9 +100,15 @@ Current features include:
 
 None outside of C++ compiler and make
 
+#### Tensorflow Dependencies
+
+- Cmake > 3
+- [Bazel](https://www.bazel.io/versions/master/docs/install.html#install-on-ubuntu)
+
 ##### Caffe version
 
 By default DeepDetect automatically relies on a modified version of Caffe, https://github.com/beniz/caffe/tree/master
+This version includes many improvements over the original Caffe, such as sparse input data support, exception handling, various additional losses and layers.
 
 ##### Implementation
 
@@ -117,6 +143,7 @@ Beware of dependencies, typically on Debian/Ubuntu Linux, do:
 sudo apt-get install build-essential libgoogle-glog-dev libgflags-dev libeigen3-dev libopencv-dev libcppnetlib-dev libboost-dev libboost-iostreams-dev libcurlpp-dev libcurl4-openssl-dev protobuf-compiler libopenblas-dev libhdf5-dev libprotobuf-dev libleveldb-dev libsnappy-dev liblmdb-dev libutfcpp-dev cmake
 ```
 
+#### Default build with Caffe
 For compiling along with Caffe:
 ```
 mkdir build
@@ -135,9 +162,23 @@ If you would like to build with cuDNN, your `cmake` line should be:
 cmake .. -DUSE_CUDNN=ON
 ```
 
+#### Build with XGBoost support
 If you would like to build with XGBoost, include the `-DUSE_XGBOOST=ON` parameter to `cmake`:
 ```
 cmake .. -DUSE_XGBOOST=ON
+```
+
+#### Build with Tensorflow support
+First you must install [Bazel](https://www.bazel.io/versions/master/docs/install.html#install-on-ubuntu) and Cmake with version > 3.
+
+If you would like to build with Tensorflow, include the `-DUSE_TF=ON` paramter to `cmake`:
+```
+cmake .. -DUSE_TF=ON
+```
+
+You can combine with XGBoost support with:
+```
+cmake .. -DUSE_TF=on -DUSE_XGBOOST=ON
 ```
 
 ### Run tests
