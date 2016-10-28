@@ -54,6 +54,7 @@ namespace dd
     MLService<CaffeLib,TxtCaffeInputFileConn,UnsupervisedOutput,CaffeModel>,
 #ifdef USE_TF
     MLService<TFLib,ImgTFInputFileConn,SupervisedOutput,TFModel>,
+    MLService<TFLib,ImgTFInputFileConn,UnsupervisedOutput,TFModel>,
 #endif
     MLService<CaffeLib,SVMCaffeInputFileConn,UnsupervisedOutput,CaffeModel>
 #ifdef USE_XGBOOST

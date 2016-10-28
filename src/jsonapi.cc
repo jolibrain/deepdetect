@@ -333,11 +333,27 @@ namespace dd
 	else if (mllib == "tensorflow" || mllib == "tf")
 	  {
 	    TFModel tfmodel(ad_model);
-	    if (input == "image")
-	      add_service(sname,std::move(MLService<TFLib,ImgTFInputFileConn,SupervisedOutput,TFModel>(sname,tfmodel,description)),ad);
-	    else return dd_input_connector_not_found_1004();
-	    if (JsonAPI::store_json_blob(tfmodel._repo,jstr)) // store successful call json blob
-	      LOG(ERROR) << "couldn't write " << JsonAPI::_json_blob_fname << " file in model repository " << tfmodel._repo << std::endl;
+	    if (type == "supervised")
+	      {
+		if (input == "image")
+		  add_service(sname,std::move(MLService<TFLib,ImgTFInputFileConn,SupervisedOutput,TFModel>(sname,tfmodel,description)),ad);
+		else return dd_input_connector_not_found_1004();
+		if (JsonAPI::store_json_blob(tfmodel._repo,jstr)) // store successful call json blob
+		  LOG(ERROR) << "couldn't write " << JsonAPI::_json_blob_fname << " file in model repository " << tfmodel._repo << std::endl;
+	      }
+	    else if (type == "unsupervised")
+	      {
+		if (input == "image")
+		  add_service(sname,std::move(MLService<TFLib,ImgTFInputFileConn,UnsupervisedOutput,TFModel>(sname,tfmodel,description)),ad);
+		else return dd_input_connector_not_found_1004();
+		if (JsonAPI::store_json_blob(tfmodel._repo,jstr)) // store successful call json blob
+		  LOG(ERROR) << "couldn't write " << JsonAPI::_json_blob_fname << " file in model repository " << tfmodel._repo << std::endl;
+	      }
+	    else
+	      {
+		// unknown type
+		return dd_service_bad_request_1006();
+	      }
 	  }
 #endif
 #ifdef USE_XGBOOST

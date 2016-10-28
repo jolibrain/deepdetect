@@ -290,10 +290,15 @@ namespace dd
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
     int batch_size = inputc.batch_size();
     if (ad_mllib.has("test_batch_size"))
-      {
-	batch_size = ad_mllib.get("test_batch_size").get<int>();
-      }
+      batch_size = ad_mllib.get("test_batch_size").get<int>();
 
+    std::string extract_layer;
+    if (ad_mllib.has("extract_layer"))
+      {
+       	_outputLayer = ad_mllib.get("extract_layer").get<std::string>();
+	extract_layer = _outputLayer;
+      }
+      
     if (!_session)
       {
 	tensorflow::GraphDef graph_def;
@@ -309,6 +314,12 @@ namespace dd
 	    LOG(ERROR) << "failed loading tensorflow graph with status=" << graphLoadedStatus.ToString() << std::endl;
 	    throw MLLibBadParamException("failed loading tensorflow graph with status=" + graphLoadedStatus.ToString());
 	  }
+
+	/*for (int l=0;l<graph_def.node_size();l++)
+	  {
+	    std::cerr << graph_def.node(l).name() << std::endl;
+	    }*/
+	
 	if (_inputLayer.empty())
 	  {
 	    _inputLayer = graph_def.node(0).name();
@@ -359,25 +370,39 @@ namespace dd
 	    throw MLLibInternalException(run_status.ToString()); //TODO: separate bad param and internal errors
 	  }
 	tensorflow::Tensor output = std::move(finalOutput.at(0));
+
 	APIData rad;
-	auto scores = output.flat<float>();
-	for (size_t i=0;i<dv.size();i++)
+	if (extract_layer.empty()) // supervised setting
 	  {
-	    rad.add("uri",inputc._ids.at(idoffset+i));
-	    std::vector<double> probs;
-	    std::vector<std::string> cats;
-	    for (int c=0;c<_nclasses;c++)
+	    auto scores = output.flat<float>();
+	    for (size_t i=0;i<dv.size();i++)
 	      {
-		//std::cerr << "score=" << scores(c) << " / c=" << c << std::endl;
-		probs.push_back(scores(i*_nclasses+c));
-		cats.push_back(this->_mlmodel.get_hcorresp(c));
+		rad.add("uri",inputc._ids.at(idoffset+i));
+		std::vector<double> probs;
+		std::vector<std::string> cats;
+		for (int c=0;c<_nclasses;c++)
+		  {
+		    //std::cerr << "score=" << scores(c) << " / c=" << c << std::endl;
+		    probs.push_back(scores(i*_nclasses+c));
+		    cats.push_back(this->_mlmodel.get_hcorresp(c));
+		  }
+		rad.add("probs",probs);
+		rad.add("cats",cats);
+		rad.add("loss",0.0);
+		vrad.push_back(rad);
 	      }
-	    rad.add("probs",probs);
-	    rad.add("cats",cats);
-	    rad.add("loss",0.0);
+	    idoffset += dv.size();
+	  }
+	else // unsupervised
+	  {
+	    auto layer_vals = output.flat<float>();
+	    std::vector<double> vals;
+	    vals.reserve(layer_vals.size());
+	    for (int c=0;c<layer_vals.size();c++)
+	      vals.push_back(layer_vals.data()[c]);
+	    rad.add("vals",vals);
 	    vrad.push_back(rad);
 	  }
-	idoffset += dv.size();
       } // end prediction loop over batches
     tout.add_results(vrad);
     tout.finalize(ad.getobj("parameters").getobj("output"),out);

@@ -55,3 +55,23 @@ TEST(tfapi,service_predict)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200,jd["status"]["code"]);
 }
+
+TEST(tfapi,service_predict_unsup)
+{
+  // create service
+  JsonAPI japi;
+  std::string sname = "imgserv";
+  std::string jstr = "{\"mllib\":\"tensorflow\",\"description\":\"my classifier\",\"type\":\"unsupervised\",\"model\":{\"repository\":\"" +  incept_repo + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":224,\"width\":224,\"inputlayer\":\"InputImage\"},\"mllib\":{\"nclasses\":1001}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
+  ASSERT_EQ(created_str,joutstr);
+
+  // predict
+  std::string jpredictstr = "{\"service\":\"imgserv\",\"parameters\":{\"mllib\":{\"extract_layer\":\"InceptionV1/InceptionV1/Mixed_5c/concat\"}},\"data\":[\"" + incept_repo + "grace_hopper.jpg\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  JDoc jd;
+  //std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200,jd["status"]["code"]);
+  ASSERT_EQ(50176,jd["body"]["predictions"][0]["vals"].Size());
+}
