@@ -209,7 +209,7 @@ TEST(httpjsonapi,train)
   ASSERT_EQ("caffe",d["body"]["mllib"]);
   ASSERT_EQ("myserv",d["body"]["name"]);
   ASSERT_TRUE(d["body"].HasMember("jobs"));
-  ASSERT_EQ("running",d["body"]["jobs"]["status"]);
+  ASSERT_EQ("running",d["body"]["jobs"][0]["status"]);
   
   // get info on training job
   bool running = true;
