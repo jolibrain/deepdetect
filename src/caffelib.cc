@@ -2335,7 +2335,7 @@ namespace dd
 	  }
       }
 
-    if (has_class_weights) //TODO
+    if (has_class_weights)
       {
 	int k = net_param.layer_size();
 	for (int l=k-1;l>0;l--)
