@@ -70,7 +70,7 @@ namespace dd
       _nclasses = ad.get("nclasses").get<int>();
     if (ad.has("regression") && ad.get("regression").get<bool>())
       {
-	_regression = true;
+	_regression = true; // XXX: unsupported
 	_nclasses = 1;
       }
     // setting the value of Input Layer for Tensorflow graph
@@ -83,7 +83,7 @@ namespace dd
     {
       _outputLayer = ad.get("outputlayer").get<std::string>();
     }
-    if (ad.has("ntargets"))
+    if (ad.has("ntargets")) // XXX: unsupported
       _ntargets = ad.get("ntargets").get<int>();
     if (_nclasses == 0)
       throw MLLibBadParamException("number of classes is unknown (nclasses == 0)");
