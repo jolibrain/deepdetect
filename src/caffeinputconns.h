@@ -200,6 +200,7 @@ namespace dd
 		throw ex;*/
 	      return;
 	    }
+	  APIData ad_mllib;
 	  if (ad.has("parameters")) // hotplug of parameters, overriding the defaults
 	    {
 	      APIData ad_param = ad.getobj("parameters");
@@ -207,6 +208,7 @@ namespace dd
 		{
 		  fillup_parameters(ad_param.getobj("input"));
 		}
+	      ad_mllib = ad_param.getobj("mllib");
 	    }
 	  
 	  // create db
@@ -216,6 +218,9 @@ namespace dd
 	  compute_images_mean(_model_repo + "/" + _dbname,
 			      _model_repo + "/" + _meanfname);
 
+	  // class weights if any
+	  write_class_weights(_model_repo,ad_mllib);
+	  
 	  // enrich data object with db files location
 	  APIData dbad;
 	  dbad.add("train_db",_model_repo + "/" + _dbfullname);
@@ -364,6 +369,7 @@ namespace dd
     {
       APIData ad_param = ad.getobj("parameters");
       APIData ad_input = ad_param.getobj("input");
+      APIData ad_mllib = ad_param.getobj("mllib");
       
       if (_train && ad_input.has("db") && ad_input.get("db").get<bool>())
 	{
@@ -372,6 +378,7 @@ namespace dd
 	  _db = true;
 	  csv_to_db(_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname,
 		    ad_input);
+	  write_class_weights(_model_repo,ad_mllib);
 	  
 	  // enrich data object with db files location
 	  APIData dbad;
@@ -617,6 +624,7 @@ namespace dd
     {
       APIData ad_param = ad.getobj("parameters");
       APIData ad_input = ad_param.getobj("input");
+      APIData ad_mllib = ad_param.getobj("mllib");
       if (ad_input.has("db") && ad_input.get("db").get<bool>())
 	_db = true;
       
@@ -628,6 +636,8 @@ namespace dd
 	    TxtInputFileConn::transform(ad);
 	  txt_to_db(_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname,
 		    ad_input);
+	  write_class_weights(_model_repo,ad_mllib);
+
 	  
 	  // enrich data object with db files location
 	  APIData dbad;
