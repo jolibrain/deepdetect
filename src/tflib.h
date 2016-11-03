@@ -64,6 +64,7 @@ namespace dd
     std::string _inputLayer; // Input Layer of the Tensorflow Model
     std::string _outputLayer; // OutPut layer of the tensorflow Model
     std::unique_ptr<tensorflow::Session> _session = nullptr;
+    std::mutex _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as net is not re-instantiated. Use batches instead. */
     };
   
 }

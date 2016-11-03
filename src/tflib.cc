@@ -55,8 +55,7 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   TFLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::~TFLib()
   {
-    //TODO: mutex in case of concurrent session Run calls ?
-    //TODO: delete structures, if any
+    std::lock_guard<std::mutex> lock(_net_mutex);
     if (_session)
       {
 	_session->Close();
@@ -132,7 +131,7 @@ namespace dd
   int TFLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::train(const APIData &ad,
 									       APIData &out)
   {
-    //TODO
+    // NOT IMPLEMENTED
     return 0;
   }
 
@@ -179,7 +178,6 @@ namespace dd
     
     if (!graphLoadedStatus.ok())
       {
-	std::cerr << graphLoadedStatus.ToString()<<std::endl;
 	LOG(ERROR) << "failed loading tensorflow graph with status=" << graphLoadedStatus.ToString() << std::endl;
 	throw MLLibBadParamException("failed loading tensorflow graph with status=" + graphLoadedStatus.ToString());
       }
@@ -265,6 +263,12 @@ namespace dd
   int TFLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::predict(const APIData &ad,
 										APIData &out)
   {
+    // TF sessions support concurrent calls, however server design enforces
+    // preference for using batches to max out resources instead of 
+    // cumulated calls that may overflow the resources.
+    // This policy may be subjected to futur changes.
+    std::lock_guard<std::mutex> lock(_net_mutex);
+
     APIData ad_output = ad.getobj("parameters").getobj("output");
     if (ad_output.has("measure"))
       {
