@@ -64,7 +64,7 @@
 	reset_dv();
       }
     ImgTFInputFileConn(const ImgTFInputFileConn &i)
-      :ImgInputFileConn(i),TFInputInterface(i) {}
+      :ImgInputFileConn(i),TFInputInterface(i),_mean(i._mean),_std(i._std) {}
     ~ImgTFInputFileConn() {}
 
     int channels() const
@@ -100,6 +100,10 @@
     void init(const APIData &ad)
     {
       ImgInputFileConn::init(ad);
+      if (ad.has("mean"))
+	_mean = ad.get("mean").get<double>();
+      if (ad.has("std"))
+	_std = ad.get("std").get<double>();
     }
 
     void transform(const APIData &ad)
@@ -113,6 +117,16 @@
 	  throw;
 	}
 
+      APIData ad_param = ad.getobj("parameters");
+      if (ad_param.has("input"))
+	{
+	  APIData ad_input = ad_param.getobj("input");
+	  if (ad_input.has("mean"))
+	    _mean = ad_input.get("mean").get<double>();
+	  if (ad_input.has("std"))
+	    _std = ad_input.get("std").get<double>();
+	}
+      
       for (size_t i=0;i<_images.size();i++)
 	{
 	  tensorflow::Tensor input_tensor(tensorflow::DT_FLOAT, tensorflow::TensorShape({1,_height,_width,channels()}));
@@ -170,8 +184,6 @@
   public:
     int _mean = 128;
     int _std = 128;
-    std::string _graphFile;
-    std:: string _model_repo;
     std::vector<tensorflow::Tensor>::const_iterator _dt_vit;
   };
 
