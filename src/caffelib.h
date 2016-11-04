@@ -180,10 +180,12 @@ namespace dd
        *                 at service creation
        * @param deploy_file the deploy file, same remark as net_file
        * @param inputc the current input constructor that holds the training data
+       * @param has_class_weights whether training uses class weights
        */
       void update_protofile_net(const std::string &net_file,
 				const std::string &deploy_file,
-				const TInputConnectorStrategy &inputc);
+				const TInputConnectorStrategy &inputc,
+				const bool &has_class_weights);
 
     private:
       void update_protofile_classes(caffe::NetParameter &net_param);
