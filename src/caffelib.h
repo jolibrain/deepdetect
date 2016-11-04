@@ -196,11 +196,13 @@ namespace dd
 			  int &batch_size,
 			  int &test_batch_size,
 			  int &test_iter);
+
+      void set_gpuid(const APIData &ad);
       
     public:
       caffe::Net<float> *_net = nullptr; /**< neural net. */
       bool _gpu = false; /**< whether to use GPU. */
-      int _gpuid = 0; /**< GPU id. */
+      std::vector<int> _gpuid = {0}; /**< GPU id. */
       int _nclasses = 0; /**< required, as difficult to acquire from Caffe's internals. */
       bool _regression = false; /**< whether the net acts as a regressor. */
       int _ntargets = 0; /**< number of classification or regression targets. */

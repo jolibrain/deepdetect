@@ -65,6 +65,37 @@ namespace dd
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::set_gpuid(const APIData &ad)
+  {
+#ifndef CPU_ONLY
+    if (ad.has("gpuid"))
+      {
+	try
+	  {
+	    int gpuid = ad.get("gpuid").get<int>();
+	    _gpuid = {gpuid};
+	    _gpu = true;
+	  }
+	catch(std::exception &e)
+	  {
+	    std::vector<int> gpuid = ad.get("gpuid").get<std::vector<int>>();
+	    if (gpuid.size()== 1 && gpuid.at(0) == -1)
+	      {
+		int count_gpus = 0;
+		cudaGetDeviceCount(&count_gpus);
+		for (int i =0;i<count_gpus;i++)
+		  _gpuid.push_back(i);
+	      }
+	    else _gpuid = gpuid;
+	    _gpu = true;
+	  }
+	for (auto i: _gpuid)
+	  LOG(INFO) << "Using GPU " << i << std::endl;
+      }
+#endif
+  }
+  
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::instantiate_template(const APIData &ad)
   {
     // - check whether there's a risk of erasing model files
@@ -1368,11 +1399,7 @@ namespace dd
   {
     if (ad.has("gpu"))
       _gpu = ad.get("gpu").get<bool>();
-    if (ad.has("gpuid"))
-      {
-	_gpuid = ad.get("gpuid").get<int>();
-	_gpu = true;
-      }
+    set_gpuid(ad);
     if (ad.has("nclasses"))
       _nclasses = ad.get("nclasses").get<int>();
     if (ad.has("regression") && ad.get("regression").get<bool>())
@@ -1452,27 +1479,26 @@ namespace dd
 
     // parameters
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
+    bool gpu = _gpu;
 #ifndef CPU_ONLY
     if (ad_mllib.has("gpu"))
       {
-	bool gpu = ad_mllib.get("gpu").get<bool>();
+	gpu = ad_mllib.get("gpu").get<bool>();
 	if (gpu)
 	  {
-	    if (ad_mllib.has("gpuid"))
-	      Caffe::SetDevice(ad_mllib.get("gpuid").get<int>());
-	    Caffe::set_mode(Caffe::GPU);
+	    set_gpuid(ad_mllib);
 	  }
-	else Caffe::set_mode(Caffe::CPU);
       }
-    else
+    if (gpu)
       {
-	if (_gpu)
+	for (auto i: _gpuid)
 	  {
-	    Caffe::SetDevice(_gpuid);
-	    Caffe::set_mode(Caffe::GPU);
+	    Caffe::SetDevice(i);
+	    Caffe::DeviceQuery();
 	  }
-	else Caffe::set_mode(Caffe::CPU);
+	Caffe::set_mode(Caffe::GPU);
       }
+    else Caffe::set_mode(Caffe::CPU);
 #else
     Caffe::set_mode(Caffe::CPU);
 #endif
@@ -1986,26 +2012,25 @@ namespace dd
 
     // parameters
 #ifndef CPU_ONLY
+    bool gpu = _gpu;
     if (ad_mllib.has("gpu"))
       {
-	bool gpu = ad_mllib.get("gpu").get<bool>();
+	gpu = ad_mllib.get("gpu").get<bool>();
 	if (gpu)
 	  {
-	    if (ad_mllib.has("gpuid"))
-	      Caffe::SetDevice(ad_mllib.get("gpuid").get<int>());
-	    Caffe::set_mode(Caffe::GPU);
+	    set_gpuid(ad_mllib);
 	  }
-	else Caffe::set_mode(Caffe::CPU);       
       }
-    else
+    if (gpu)
       {
-	if (_gpu)
+	for (auto i: _gpuid)
 	  {
-	    Caffe::SetDevice(_gpuid);
-	    Caffe::set_mode(Caffe::GPU);
+	    Caffe::SetDevice(i);
+	    Caffe::DeviceQuery();
 	  }
-	else Caffe::set_mode(Caffe::CPU);
+	Caffe::set_mode(Caffe::GPU);
       }
+    else Caffe::set_mode(Caffe::CPU);
 #else
       Caffe::set_mode(Caffe::CPU);
 #endif

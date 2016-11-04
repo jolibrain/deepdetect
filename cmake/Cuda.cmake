@@ -1,6 +1,6 @@
 # Known NVIDIA GPU achitectures deepdetect can be compiled for.
 # This list will be used for CUDA_ARCH_NAME = All option
-set(deepdetect_known_gpu_archs "20 21(20) 30 35 50")
+set(deepdetect_known_gpu_archs "20 21(20) 30 35 50 61")
 
 ################################################################################################
 # A function for automatic detection of GPUs installed  (if autodetection is enabled)
