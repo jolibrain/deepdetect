@@ -124,7 +124,7 @@ TEST(outputconn,mcc)
     }
   SupervisedOutput so;
   double mcc = so.mcc(res_ad);
-  ASSERT_EQ(0.57735,mcc);
+  ASSERT_NEAR(0.57735,mcc,1e-3);
 }
 
 TEST(outputconn,gini)
@@ -200,7 +200,7 @@ TEST(inputconn,img)
 {
   std::string mnist_repo = "../examples/caffe/mnist/";
   APIData ad;
-  std::vector<std::string> uris = {mnist_repo + "/sample_digit.png","http://www.deepdetect.com/dd/examples/caffe/mnist/sample_digit.png"};
+  std::vector<std::string> uris = {mnist_repo + "/sample_digit.png","https://deepdetect.com/dd/examples/caffe/mnist/sample_digit.png"};
   ad.add("data",uris);
   ImgInputFileConn iifc;
   try
@@ -212,6 +212,8 @@ TEST(inputconn,img)
       std::cerr << e.what() << std::endl;
       ASSERT_FALSE(true); // trigger
     }
+  for (auto u: iifc._uris)
+    std::cerr << u << std::endl;
   ASSERT_EQ(2,iifc._uris.size());
   ASSERT_EQ(2,iifc._images.size());
   cv::Mat diff;
