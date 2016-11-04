@@ -63,8 +63,11 @@ include_directories("${EIGEN3_INCLUDE_DIR}")
 # dependency on Boost
 find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system iostreams)
 
-# optional packages -> deactivated in current state of having TF + Caffe in the same boat
+# optional packages
+if (USE_CPU_ONLY)
+else()
 include(cmake/Cuda.cmake) # cuda + cudnn
+endif()
 
 if (USE_TF)
 # protobuf with tf

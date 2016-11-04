@@ -63,11 +63,15 @@ namespace dd
   public:
     SVMInputFileConn()
       :InputConnectorStrategy() {}
+    SVMInputFileConn(const SVMInputFileConn &i)
+      :InputConnectorStrategy(i),_fids(i._fids),_max_id(i._max_id) {}
     ~SVMInputFileConn() {}
 
     void init(const APIData &ad)
     {
       fillup_parameters(ad);
+      if (_fids.empty() && !_train)
+	deserialize_vocab(false);
     }
 
     void fillup_parameters(const APIData &ad_input)
