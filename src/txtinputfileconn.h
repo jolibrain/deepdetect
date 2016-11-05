@@ -25,6 +25,7 @@
 #include "inputconnectorstrategy.h"
 #include <algorithm>
 #include <cmath>
+#include <random>
 #include "utf8.h"
 
 namespace dd

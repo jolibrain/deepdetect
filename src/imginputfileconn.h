@@ -28,6 +28,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include "ext/base64/base64.h"
 #include <glog/logging.h>
+#include <random>
 
 namespace dd
 {
