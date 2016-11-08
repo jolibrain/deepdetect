@@ -196,7 +196,7 @@ First you must install [Bazel](https://www.bazel.io/versions/master/docs/install
 
 And other dependencies:
 ```
-sudo apt-get install python-numpy swig python-dev python-wheel
+sudo apt-get install python-numpy swig python-dev python-wheel unzip
 ```
 
 If you would like to build with Tensorflow, include the `-DUSE_TF=ON` paramter to `cmake`:
