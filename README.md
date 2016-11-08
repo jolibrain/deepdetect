@@ -194,6 +194,11 @@ cmake .. -DUSE_XGBOOST=ON
 #### Build with Tensorflow support
 First you must install [Bazel](https://www.bazel.io/versions/master/docs/install.html#install-on-ubuntu) and Cmake with version > 3.
 
+And other dependencies:
+```
+sudo apt-get install python-numpy swig python-dev python-wheel
+```
+
 If you would like to build with Tensorflow, include the `-DUSE_TF=ON` paramter to `cmake`:
 ```
 cmake .. -DUSE_TF=ON
