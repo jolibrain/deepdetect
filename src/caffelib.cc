@@ -1365,9 +1365,10 @@ namespace dd
 	_net = nullptr;
 	try
 	  {
-	    if (!test)
-	      _net = new Net<float>(this->_mlmodel._def,caffe::TRAIN);
-	    else _net = new Net<float>(this->_mlmodel._def,caffe::TEST);
+	    //if (!test)
+	    //_net = new Net<float>(this->_mlmodel._def,caffe::TRAIN);
+	    //else
+	    _net = new Net<float>(this->_mlmodel._def,caffe::TEST);
 	  }
 	catch (std::exception &e)
 	  {
@@ -1981,6 +1982,9 @@ namespace dd
     TOutputConnectorStrategy tout;
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
     APIData ad_output = ad.getobj("parameters").getobj("output");
+    bool bbox = false;
+    if (ad_output.has("bbox") && ad_output.get("bbox").get<bool>())
+      bbox = true;
     if (ad_output.has("measure"))
       {
 	APIData cad = ad;
@@ -2122,33 +2126,83 @@ namespace dd
 		_net = nullptr;
 		throw;
 	      }
-	    int slot = results.size() - 1;
-	    if (_regression)
+	    //TODO: bbox here ?
+	    if (bbox) // in-image object detection
 	      {
-		if (_ntargets > 1)
-		  slot = 1;
-		else slot = 0; // XXX: more in-depth testing required
-	      }
-	    int scount = results[slot]->count();
-	    int scperel = scount / batch_size;
-	    nclasses = scperel;
-	    if (_autoencoder)
-	      nclasses = scperel = 1;
-	    for (int j=0;j<batch_size;j++)
-	      {
-		APIData rad;
-		rad.add("uri",inputc._ids.at(idoffset+j));
-		rad.add("loss",loss);
+		//TODO: with batch_size > 1
+		const int det_size = 7;
+		const float *outr = results[0]->cpu_data();
+		const int num_det = results[0]->height();
+		//std::vector<std::vector<float>> detections;
 		std::vector<double> probs;
 		std::vector<std::string> cats;
-		for (int i=0;i<nclasses;i++)
+		std::vector<APIData> bboxes;
+		APIData rad;
+		for (int k=0;k<num_det;k++)
 		  {
-		    probs.push_back(results[slot]->cpu_data()[j*scperel+i]);
-		    cats.push_back(this->_mlmodel.get_hcorresp(i));
+		    if (outr[0] == -1)
+		      {
+			// skipping invalid detection
+			outr += det_size;
+			continue;
+		      }
+		    std::vector<float> detection(outr, outr + det_size);
+		    //detections.push_back(detection);
+		    outr += det_size;
+
+		    // debug
+		    for (auto d: detection)
+		      std::cerr << d << " ";
+		    std::cerr << std::endl;
+		    //debug
+		    
+		    probs.push_back(detection[2]);
+		    cats.push_back(this->_mlmodel.get_hcorresp(detection[1]));
+		    //TODO: bounding box and scale (need image cols/rows!)
+		    APIData ad_bbox;
+		    ad_bbox.add("xmin",detection[3]);
+		    ad_bbox.add("ymax",detection[4]);
+		    ad_bbox.add("xmax",detection[5]);
+		    ad_bbox.add("ymin",detection[6]);
+		    bboxes.push_back(ad_bbox);
 		  }
+		rad.add("uri",inputc._ids.at(idoffset)); //TODO: +j with j batch iterator
+		rad.add("loss",0.0); // XXX: unused
 		rad.add("probs",probs);
 		rad.add("cats",cats);
+		rad.add("bboxes",bboxes);
 		vrad.push_back(rad);
+	      }
+	    else // classification
+	      {
+		int slot = results.size() - 1;
+		if (_regression)
+		  {
+		    if (_ntargets > 1)
+		      slot = 1;
+		    else slot = 0; // XXX: more in-depth testing required
+		  }
+		int scount = results[slot]->count();
+		int scperel = scount / batch_size;
+		nclasses = scperel;
+		if (_autoencoder)
+		  nclasses = scperel = 1;
+		for (int j=0;j<batch_size;j++)
+		  {
+		    APIData rad;
+		    rad.add("uri",inputc._ids.at(idoffset+j));
+		    rad.add("loss",loss);
+		    std::vector<double> probs;
+		    std::vector<std::string> cats;
+		    for (int i=0;i<nclasses;i++)
+		      {
+			probs.push_back(results[slot]->cpu_data()[j*scperel+i]);
+			cats.push_back(this->_mlmodel.get_hcorresp(i));
+		      }
+		    rad.add("probs",probs);
+		    rad.add("cats",cats);
+		    vrad.push_back(rad);
+		  }
 	      }
 	  }
 	else // unsupervised
@@ -2185,7 +2239,9 @@ namespace dd
 	idoffset += batch_size;
       } // end prediction loop over batches
 
+    std::cerr << "adding results\n";
     tout.add_results(vrad);
+    std::cerr << "added results\n";
     if (extract_layer.empty())
       {
 	if (_regression)
@@ -2199,6 +2255,7 @@ namespace dd
       }
     
     out.add("nclasses",nclasses);
+    out.add("bbox",bbox);
     tout.finalize(ad.getobj("parameters").getobj("output"),out);
     out.add("status",0);
     
@@ -2408,6 +2465,14 @@ namespace dd
 		break;
 	      }
 	  }
+	/*else if (lparam->type() == "DetectionOutput")
+	  {
+	    if (lparam->has_detection_output_param())
+	      {
+		lparam->mutable_detection_output_param()->set_num_classes(_nclasses);
+		break;
+		}
+	      }*/
       }
   }
 

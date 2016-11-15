@@ -104,18 +104,13 @@ namespace dd
      */
     inline void add_results(const std::vector<APIData> &vrad)
     {
-      //std::cout << " IN the SupervisedOutput" << std::endl;
       std::unordered_map<std::string,int>::iterator hit;
       for (APIData ad: vrad)
-	{ //std::cout <<"In the for loop" <<std::endl;
+	{ 
 	  std::string uri = ad.get("uri").get<std::string>();
-	  //std::cout << "The value of the uri is " << uri <<std::endl;
 	  double loss = ad.get("loss").get<double>();
-	  //std::cout << "The value of the loss is " << loss <<std::endl;
 	  std::vector<double> probs = ad.get("probs").get<std::vector<double>>();
-	  //std::cout << "value of probs is " << probs.at(0) <<std::endl;
 	  std::vector<std::string> cats = ad.get("cats").get<std::vector<std::string>>();
-	  //std::cout << "value of cats is " << cats.at(0) <<std::endl;
 	  if ((hit=_vcats.find(uri))==_vcats.end())
 	    {
 	      auto resit = _vcats.insert(std::pair<std::string,int>(uri,_vvcats.size()));
@@ -145,6 +140,8 @@ namespace dd
 	{
 	  sup_result sresult = _vvcats.at(i);
 	  sup_result bsresult(sresult._label,sresult._loss);
+	  if (_best == -2)
+	    best = sresult._cats.size();
 	  std::copy_n(sresult._cats.begin(),std::min(best,static_cast<int>(sresult._cats.size())),
 		      std::inserter(bsresult._cats,bsresult._cats.end()));
 	  bcats._vcats.insert(std::pair<std::string,int>(sresult._label,bcats._vvcats.size()));
@@ -180,6 +177,12 @@ namespace dd
 	  autoencoder = true;
 	  _best = 1;
 	  ad_out.erase("autoencoder");
+	}
+      if (ad_out.has("bbox"))
+	{
+	  _best = -2;
+	  ad_out.erase("nclasses");
+	  ad_out.erase("bbox");
 	}
       best_cats(ad_in,bcats,nclasses);
       bcats.to_ad(ad_out,regression,autoencoder);
