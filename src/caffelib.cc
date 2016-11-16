@@ -1365,10 +1365,10 @@ namespace dd
 	_net = nullptr;
 	try
 	  {
-	    //if (!test)
-	    //_net = new Net<float>(this->_mlmodel._def,caffe::TRAIN);
-	    //else
-	    _net = new Net<float>(this->_mlmodel._def,caffe::TEST);
+	    if (!test)
+	      _net = new Net<float>(this->_mlmodel._def,caffe::TRAIN);
+	    else
+	      _net = new Net<float>(this->_mlmodel._def,caffe::TEST);
 	  }
 	catch (std::exception &e)
 	  {
