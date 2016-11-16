@@ -60,9 +60,15 @@ namespace dd
 	_cats.insert(std::pair<double,std::string>(prob,cat));
       }
 
+      inline void add_extra(const double &prob, const APIData &ad)
+      {
+	_extra.insert(std::pair<double,APIData>(prob,ad));
+      }
+      
       std::string _label;
       double _loss = 0.0; /**< result loss. */
       std::map<double,std::string,std::greater<double>> _cats; /**< categories and probabilities for this result */
+      std::map<double,APIData,std::greater<double>> _extra; /**< extra data or information added to output, e.g. bboxes. */
     };
 
   public:
@@ -111,6 +117,9 @@ namespace dd
 	  double loss = ad.get("loss").get<double>();
 	  std::vector<double> probs = ad.get("probs").get<std::vector<double>>();
 	  std::vector<std::string> cats = ad.get("cats").get<std::vector<std::string>>();
+	  std::vector<APIData> vextra;
+	  if (ad.has("bboxes"))
+	    vextra = ad.getv("bboxes");
 	  if ((hit=_vcats.find(uri))==_vcats.end())
 	    {
 	      auto resit = _vcats.insert(std::pair<std::string,int>(uri,_vvcats.size()));
@@ -119,6 +128,8 @@ namespace dd
 	      for (size_t i=0;i<probs.size();i++)
 		{
 		  _vvcats.at((*hit).second).add_cat(probs.at(i),cats.at(i));
+		  if (!vextra.empty())
+		    _vvcats.at((*hit).second).add_extra(probs.at(i),vextra.at(i));
 		}
 	    }
 	}
@@ -140,10 +151,13 @@ namespace dd
 	{
 	  sup_result sresult = _vvcats.at(i);
 	  sup_result bsresult(sresult._label,sresult._loss);
-	  if (_best == -2)
+	  if (_best == -2) // e.g. bboxes
 	    best = sresult._cats.size();
 	  std::copy_n(sresult._cats.begin(),std::min(best,static_cast<int>(sresult._cats.size())),
 		      std::inserter(bsresult._cats,bsresult._cats.end()));
+	  if (!sresult._extra.empty())
+	    std::copy_n(sresult._extra.begin(),std::min(best,static_cast<int>(sresult._extra.size())),
+			std::inserter(bsresult._extra,bsresult._extra.end()));
 	  bcats._vcats.insert(std::pair<std::string,int>(sresult._label,bcats._vvcats.size()));
 	  bcats._vvcats.push_back(bsresult);
 	}
@@ -570,6 +584,7 @@ namespace dd
       static std::string cl = "classes";
       static std::string ve = "vector";
       static std::string ae = "losses";
+      static std::string bb = "bbox";
       static std::string phead = "prob";
       static std::string chead = "cat";
       static std::string vhead = "val";
@@ -580,6 +595,8 @@ namespace dd
 	{
 	  APIData adpred;
 	  std::vector<APIData> v;
+	  auto bit = _vvcats.at(i)._extra.begin();
+	  bool has_bbox = (bit!=_vvcats.at(i)._extra.end());
 	  auto mit = _vvcats.at(i)._cats.begin();
 	  while(mit!=_vvcats.at(i)._cats.end())
 	    {
@@ -591,6 +608,11 @@ namespace dd
 	      else if (autoencoder)
 		nad.add(ahead,(*mit).first);
 	      else nad.add(phead,(*mit).first);
+	      if (has_bbox)
+		{
+		  nad.add(bb,(*bit).second);
+		  ++bit;
+		}
 	      ++mit;
 	      if (mit == _vvcats.at(i)._cats.end())
 		nad.add(last,true);

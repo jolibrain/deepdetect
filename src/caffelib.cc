@@ -2126,18 +2126,25 @@ namespace dd
 		_net = nullptr;
 		throw;
 	      }
-	    //TODO: bbox here ?
 	    if (bbox) // in-image object detection
 	      {
 		//TODO: with batch_size > 1
 		const int det_size = 7;
 		const float *outr = results[0]->cpu_data();
 		const int num_det = results[0]->height();
-		//std::vector<std::vector<float>> detections;
 		std::vector<double> probs;
 		std::vector<std::string> cats;
 		std::vector<APIData> bboxes;
 		APIData rad;
+		std::string uri = inputc._ids.at(idoffset); //TODO: +j with j batch iterator
+		auto bit = inputc._imgs_size.find(uri);
+		int rows = 1;
+		int cols = 1;
+		if (bit != inputc._imgs_size.end())
+		  {
+		    rows = (*bit).second.first;
+		    cols = (*bit).second.second;
+		  }
 		for (int k=0;k<num_det;k++)
 		  {
 		    if (outr[0] == -1)
@@ -2147,30 +2154,21 @@ namespace dd
 			continue;
 		      }
 		    std::vector<float> detection(outr, outr + det_size);
-		    //detections.push_back(detection);
 		    outr += det_size;
-
-		    // debug
-		    for (auto d: detection)
-		      std::cerr << d << " ";
-		    std::cerr << std::endl;
-		    //debug
-		    
 		    probs.push_back(detection[2]);
 		    cats.push_back(this->_mlmodel.get_hcorresp(detection[1]));
-		    //TODO: bounding box and scale (need image cols/rows!)
 		    APIData ad_bbox;
-		    ad_bbox.add("xmin",detection[3]);
-		    ad_bbox.add("ymax",detection[4]);
-		    ad_bbox.add("xmax",detection[5]);
-		    ad_bbox.add("ymin",detection[6]);
+		    ad_bbox.add("xmin",detection[3]*cols);
+		    ad_bbox.add("ymax",detection[4]*rows);
+		    ad_bbox.add("xmax",detection[5]*cols);
+		    ad_bbox.add("ymin",detection[6]*rows);
 		    bboxes.push_back(ad_bbox);
 		  }
-		rad.add("uri",inputc._ids.at(idoffset)); //TODO: +j with j batch iterator
+		rad.add("uri",uri);
 		rad.add("loss",0.0); // XXX: unused
 		rad.add("probs",probs);
 		rad.add("cats",cats);
-		rad.add("bboxes",bboxes);
+		rad.add("bboxes",bboxes); 
 		vrad.push_back(rad);
 	      }
 	    else // classification
@@ -2239,9 +2237,7 @@ namespace dd
 	idoffset += batch_size;
       } // end prediction loop over batches
 
-    std::cerr << "adding results\n";
     tout.add_results(vrad);
-    std::cerr << "added results\n";
     if (extract_layer.empty())
       {
 	if (_regression)

@@ -78,6 +78,7 @@ namespace dd
     bool _flat1dconv = false; /**< whether a 1D convolution model. */
     bool _has_mean_file = false; /**< image model mean.binaryproto. */
     bool _sparse = false; /**< whether to use sparse representation. */
+    std::unordered_map<std::string,std::pair<int,int>> _imgs_size; /**< image sizes, used in detection. */
   };
 
   /**
@@ -182,7 +183,9 @@ namespace dd
 		}
 	      _dv_test.push_back(datum);
 	      _ids.push_back(this->_uris.at(i));
+	      _imgs_size.insert(std::pair<std::string,std::pair<int,int>>(this->_uris.at(i),std::pair<int,int>(this->_images.at(i).rows,this->_images.at(i).cols)));
 	    }
+	  this->_images.clear();
 	}
       else // more complicated, since images can be heavy, a db is built so that it is less costly to iterate than the filesystem
 	{
