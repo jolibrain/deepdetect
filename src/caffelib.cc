@@ -2128,48 +2128,60 @@ namespace dd
 	      }
 	    if (bbox) // in-image object detection
 	      {
-		//TODO: with batch_size > 1
 		const int det_size = 7;
 		const float *outr = results[0]->cpu_data();
-		const int num_det = results[0]->height();
-		std::vector<double> probs;
-		std::vector<std::string> cats;
-		std::vector<APIData> bboxes;
-		APIData rad;
-		std::string uri = inputc._ids.at(idoffset); //TODO: +j with j batch iterator
-		auto bit = inputc._imgs_size.find(uri);
-		int rows = 1;
-		int cols = 1;
-		if (bit != inputc._imgs_size.end())
+		const int num_det = results[0]->height(); // total number of detections across batch
+		int k = 0;
+		for (int j=0;j<batch_size;j++)
 		  {
-		    rows = (*bit).second.first;
-		    cols = (*bit).second.second;
-		  }
-		for (int k=0;k<num_det;k++)
-		  {
-		    if (outr[0] == -1)
+		    std::vector<double> probs;
+		    std::vector<std::string> cats;
+		    std::vector<APIData> bboxes;
+		    APIData rad;
+		    std::string uri = inputc._ids.at(idoffset+j);
+		    auto bit = inputc._imgs_size.find(uri);
+		    int rows = 1;
+		    int cols = 1;
+		    if (bit != inputc._imgs_size.end())
 		      {
-			// skipping invalid detection
-			outr += det_size;
-			continue;
+			rows = (*bit).second.first;
+			cols = (*bit).second.second;
 		      }
-		    std::vector<float> detection(outr, outr + det_size);
-		    outr += det_size;
-		    probs.push_back(detection[2]);
-		    cats.push_back(this->_mlmodel.get_hcorresp(detection[1]));
-		    APIData ad_bbox;
-		    ad_bbox.add("xmin",detection[3]*cols);
-		    ad_bbox.add("ymax",detection[4]*rows);
-		    ad_bbox.add("xmax",detection[5]*cols);
-		    ad_bbox.add("ymin",detection[6]*rows);
-		    bboxes.push_back(ad_bbox);
+		    bool leave = false;
+		    double last_prob = 1.0;
+		    while(k<num_det)
+		      {
+			if (outr[0] == -1)
+			  {
+			    // skipping invalid detection
+			    outr += det_size;
+			    leave = true;
+			    break;
+			  }
+			std::vector<float> detection(outr, outr + det_size);
+			if (detection[2] > last_prob)
+			  break; // belongs to next detection
+			++k;
+			last_prob = detection[2];
+			outr += det_size;
+			probs.push_back(detection[2]);
+			cats.push_back(this->_mlmodel.get_hcorresp(detection[1]));
+			APIData ad_bbox;
+			ad_bbox.add("xmin",detection[3]*cols);
+			ad_bbox.add("ymax",detection[4]*rows);
+			ad_bbox.add("xmax",detection[5]*cols);
+			ad_bbox.add("ymin",detection[6]*rows);
+			bboxes.push_back(ad_bbox);
+		      }
+		    if (leave)
+		      continue;
+		    rad.add("uri",uri);
+		    rad.add("loss",0.0); // XXX: unused
+		    rad.add("probs",probs);
+		    rad.add("cats",cats);
+		    rad.add("bboxes",bboxes); 
+		    vrad.push_back(rad);
 		  }
-		rad.add("uri",uri);
-		rad.add("loss",0.0); // XXX: unused
-		rad.add("probs",probs);
-		rad.add("cats",cats);
-		rad.add("bboxes",bboxes); 
-		vrad.push_back(rad);
 	      }
 	    else // classification
 	      {
