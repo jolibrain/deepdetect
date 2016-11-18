@@ -1983,6 +1983,9 @@ namespace dd
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
     APIData ad_output = ad.getobj("parameters").getobj("output");
     bool bbox = false;
+    double confidence_threshold = 0.0;
+    if (ad_output.has("confidence_threshold"))
+      confidence_threshold = ad_output.get("confidence_threshold").get<double>();
     if (ad_output.has("bbox") && ad_output.get("bbox").get<bool>())
       bbox = true;
     if (ad_output.has("measure"))
@@ -2164,6 +2167,11 @@ namespace dd
 			++k;
 			last_prob = detection[2];
 			outr += det_size;
+			if (detection[2] < confidence_threshold)
+			  {
+			    outr += det_size;
+			    continue;
+			  }
 			probs.push_back(detection[2]);
 			cats.push_back(this->_mlmodel.get_hcorresp(detection[1]));
 			APIData ad_bbox;
@@ -2206,7 +2214,8 @@ namespace dd
 		    std::vector<std::string> cats;
 		    for (int i=0;i<nclasses;i++)
 		      {
-			probs.push_back(results[slot]->cpu_data()[j*scperel+i]);
+			double prob = results[slot]->cpu_data()[j*scperel+i];
+			probs.push_back(prob);
 			cats.push_back(this->_mlmodel.get_hcorresp(i));
 		      }
 		    rad.add("probs",probs);
