@@ -76,6 +76,7 @@ namespace dd
       {
 	std::vector<unsigned char> vdat(str.begin(),str.end());
 	cv::Mat img = cv::Mat(cv::imdecode(cv::Mat(vdat,true),_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR));
+	_imgs_size.push_back(std::pair<int,int>(img.rows,img.cols));
 	cv::Size size(_width,_height);
 	cv::Mat rimg;
 	cv::resize(img,rimg,size,0,0,CV_INTER_CUBIC);
@@ -102,6 +103,7 @@ namespace dd
       cv::Mat img = cv::imread(fname,_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR);
       if (img.empty())
 	return -1;
+      _imgs_size.push_back(std::pair<int,int>(img.rows,img.cols));
       cv::Size size(_width,_height);
       cv::Mat rimg;
       cv::resize(img,rimg,size,0,0,CV_INTER_CUBIC);
@@ -182,6 +184,7 @@ namespace dd
       for (std::pair<std::string,int> &p: lfiles)
 	{
 	  cv::Mat img = cv::imread(p.first,_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR);
+	  _imgs_size.push_back(std::pair<int,int>(img.rows,img.cols));
 	  cv::Mat rimg;
 	  cv::resize(img,rimg,size,0,0,CV_INTER_CUBIC);
 	  _imgs.push_back(rimg);
@@ -196,6 +199,7 @@ namespace dd
     
     std::vector<cv::Mat> _imgs;
     std::vector<std::string> _img_files;
+    std::vector<std::pair<int,int>> _imgs_size;
     bool _bw = false;
     bool _b64 = false;
     std::vector<int> _labels;
@@ -299,6 +303,9 @@ namespace dd
 	    _images.insert(_images.end(),
 	      std::make_move_iterator(dimg._ctype._imgs.begin()),
 	      std::make_move_iterator(dimg._ctype._imgs.end()));
+	    _images_size.insert(_images_size.end(),
+				std::make_move_iterator(dimg._ctype._imgs_size.begin()),
+				std::make_move_iterator(dimg._ctype._imgs_size.end()));
 	    if (!dimg._ctype._labels.empty())
 	      _test_labels.insert(_test_labels.end(),
 	      std::make_move_iterator(dimg._ctype._labels.begin()),
@@ -357,7 +364,7 @@ namespace dd
     std::vector<cv::Mat> _images;
     std::vector<cv::Mat> _test_images;
     std::vector<int> _test_labels;
-    
+    std::vector<std::pair<int,int>> _images_size;
     // image parameters
     int _width = 227;
     int _height = 227;

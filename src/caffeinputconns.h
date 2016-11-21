@@ -183,9 +183,11 @@ namespace dd
 		}
 	      _dv_test.push_back(datum);
 	      _ids.push_back(this->_uris.at(i));
-	      _imgs_size.insert(std::pair<std::string,std::pair<int,int>>(this->_uris.at(i),std::pair<int,int>(this->_images.at(i).rows,this->_images.at(i).cols)));
+	      //_imgs_size.insert(std::pair<std::string,std::pair<int,int>>(this->_uris.at(i),std::pair<int,int>(this->_images.at(i).rows,this->_images.at(i).cols)));
+	      _imgs_size.insert(std::pair<std::string,std::pair<int,int>>(this->_uris.at(i),this->_images_size.at(i)));
 	    }
 	  this->_images.clear();
+	  this->_images_size.clear();
 	}
       else // more complicated, since images can be heavy, a db is built so that it is less costly to iterate than the filesystem
 	{
