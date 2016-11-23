@@ -2133,10 +2133,10 @@ namespace dd
 	      {
 		const int det_size = 7;
 		const float *outr = results[0]->cpu_data();
-		const int num_det = results[0]->height(); // total number of detections across batch
-		int k = 0;
+		const int num_det = results[0]->height() / batch_size; // total number of detections across batch
 		for (int j=0;j<batch_size;j++)
 		  {
+		    int k = 0;
 		    std::vector<double> probs;
 		    std::vector<std::string> cats;
 		    std::vector<APIData> bboxes;
@@ -2162,16 +2162,11 @@ namespace dd
 			    break;
 			  }
 			std::vector<float> detection(outr, outr + det_size);
-			if (detection[2] > last_prob)
-			  break; // belongs to next detection
 			++k;
 			last_prob = detection[2];
 			outr += det_size;
 			if (detection[2] < confidence_threshold)
-			  {
-			    outr += det_size;
-			    continue;
-			  }
+			  continue;
 			probs.push_back(detection[2]);
 			cats.push_back(this->_mlmodel.get_hcorresp(detection[1]));
 			APIData ad_bbox;
