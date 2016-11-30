@@ -11,7 +11,7 @@ To run the code on your own image:
 ```
 mkdir model
 cd model
-wget https://deepdetect.com/models/voc01712_dd.tar.gz
+wget https://deepdetect.com/models/voc0712_dd.tar.gz
 tar xvzf voc01712_dd.tar.gz
 cd ..
 ```
