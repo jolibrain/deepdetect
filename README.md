@@ -12,11 +12,11 @@ DeepDetect relies on external machine learning libraries through a very generic 
 
 #### Machine Learning functionalities per library (current):
 
-|            | Training | Prediction | Classification | Regression | Autoencoder |
-|------------|----------|------------|----------------|------------|-------------|
-| Caffe      | Y        | Y          | Y              | Y          | Y           |
-| XGBoost    | Y        | Y          | Y              | Y          | N/A         |
-| Tensorflow | N        | Y          | Y              | N          | N           |
+|            | Training | Prediction | Classification | Detection | Regression | Autoencoder |
+|------------|----------|------------|----------------|-----------|------------|-------------|
+| Caffe      | Y        | Y          | Y              | Y         |   Y        | Y           |
+| XGBoost    | Y        | Y          | Y              | N         |   Y        | N/A         |
+| Tensorflow | N        | Y          | Y              | N         |   N        | N           |
 
 #### Input data support per library (current):
 
@@ -28,7 +28,7 @@ DeepDetect relies on external machine learning libraries through a very generic 
 
 #### Main functionalities
 
-DeepDetect implements support for supervised and unsupervised deep learning of images, text and other data, with focus on simplicity and ease of use, test and connection into existing applications.
+DeepDetect implements support for supervised and unsupervised deep learning of images, text and other data, with focus on simplicity and ease of use, test and connection into existing applications. It supports classification, object detection, regression, autoencoders, ...
 
 #### Support
 
@@ -56,6 +56,7 @@ Current features include:
 
 - high-level API for machine learning and deep learning
 - Support for Caffe, Tensorflow and XGBoost
+- classification, regression, autoencoders, object detection
 - JSON communication format
 - remote Python client library
 - dedicated server with support for asynchronous training calls
@@ -109,7 +110,7 @@ None outside of C++ compiler and make
 ##### Caffe version
 
 By default DeepDetect automatically relies on a modified version of Caffe, https://github.com/beniz/caffe/tree/master
-This version includes many improvements over the original Caffe, such as sparse input data support, exception handling, various additional losses and layers.
+This version includes many improvements over the original Caffe, such as sparse input data support, exception handling, class weights, object detection, and various additional losses and layers.
 
 ##### Implementation
 
@@ -122,6 +123,9 @@ HTML and javascript classification image demo in [demo/imgdetect](https://github
 
 - Image similarity search:
 Python script for indexing and searching images is in [demo/imgsearch](https://github.com/beniz/deepdetect/tree/master/demo/imgsearch)
+
+- Image object detection:
+Python script for object detection within images is in [demo/objdetect](https://github.com/beniz/deepdetect/tree/master/demo/objdetect)
 
 ##### Examples
 
@@ -144,6 +148,7 @@ http://www.deepdetect.com/overview/examples/
 | Inception-ResNet-v2      | N     | [Y](https://deepdetect.com/models/tf/inception_resnet_v2.pb)          | Google        |       79.79%                    |
 | VGG-16                   | [Y](https://deepdetect.com/models/vgg_16/VGG_ILSVRC_16_layers.caffemodel)     | [Y](https://deepdetect.com/models/tf/vgg_16/vgg_16.pb)          | Oxford        |               70.5%            |
 | VGG-19                   | [Y](https://deepdetect.com/models/vgg_16/VGG_ILSVRC_16_layers.caffemodel)     | [Y](https://deepdetect.com/models/tf/vgg_19/vgg_19.pb)          | Oxford        |               71.3%            |
+| VOC0712 (object detection) | [Y](https://deepdetect.com/models/voc0712_dd.tar.gz) | N | https://github.com/weiliu89/caffe/tree/ssd | 71.2 mAP |
 
 More models:
 
