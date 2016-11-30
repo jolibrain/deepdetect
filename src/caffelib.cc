@@ -368,8 +368,10 @@ namespace dd
 	      {
 		lparam = net_param.mutable_layer(2);
 		lparam->set_type("SparseInnerProduct");
+		lparam->mutable_inner_product_param()->set_num_output(nclasses);
 		dlparam = deploy_net_param.mutable_layer(1);
 		dlparam->set_type("SparseInnerProduct");
+		dlparam->mutable_inner_product_param()->set_num_output(nclasses);
 	      }
 	    return;
 	  }
@@ -2472,7 +2474,9 @@ namespace dd
 	    if (lparam->has_inner_product_param())
 	      {
 		if (!_regression || _ntargets == 0)
-		  lparam->mutable_inner_product_param()->set_num_output(_nclasses);
+		  {
+		    lparam->mutable_inner_product_param()->set_num_output(_nclasses);
+		  }
 		else lparam->mutable_inner_product_param()->set_num_output(_ntargets);
 		break;
 	      }
