@@ -12,7 +12,7 @@ DeepDetect relies on external machine learning libraries through a very generic 
 
 #### Machine Learning functionalities per library (current):
 
-|            | Training | Prediction | Classification | Detection | Regression | Autoencoder |
+|            | Training | Prediction | Classification | Object Detection | Regression | Autoencoder |
 |------------|----------|------------|----------------|-----------|------------|-------------|
 | Caffe      | Y        | Y          | Y              | Y         |   Y        | Y           |
 | XGBoost    | Y        | Y          | Y              | N         |   Y        | N/A         |
