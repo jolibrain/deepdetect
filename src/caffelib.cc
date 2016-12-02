@@ -2269,7 +2269,10 @@ namespace dd
       }
     
     out.add("nclasses",nclasses);
-    out.add("bbox",bbox);
+    if (bbox)
+      {
+	out.add("bbox",bbox);
+      }
     tout.finalize(ad.getobj("parameters").getobj("output"),out);
     out.add("status",0);
     
