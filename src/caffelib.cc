@@ -2153,7 +2153,6 @@ namespace dd
 			cols = (*bit).second.second;
 		      }
 		    bool leave = false;
-		    double last_prob = 1.0;
 		    while(k<num_det)
 		      {
 			if (outr[0] == -1)
@@ -2165,7 +2164,6 @@ namespace dd
 			  }
 			std::vector<float> detection(outr, outr + det_size);
 			++k;
-			last_prob = detection[2];
 			outr += det_size;
 			if (detection[2] < confidence_threshold)
 			  continue;
