@@ -1448,6 +1448,16 @@ namespace dd
     if (ad.has("gpu"))
       _gpu = ad.get("gpu").get<bool>();
     set_gpuid(ad);
+    if (_gpu)
+      {
+	for (auto i: _gpuid)
+	  {
+	    Caffe::SetDevice(i);
+	    Caffe::DeviceQuery();
+	  }
+	Caffe::set_mode(Caffe::GPU);
+      }
+    else Caffe::set_mode(Caffe::CPU);
     if (ad.has("nclasses"))
       _nclasses = ad.get("nclasses").get<int>();
     if (ad.has("regression") && ad.get("regression").get<bool>())
@@ -2075,17 +2085,17 @@ namespace dd
 	  {
 	    set_gpuid(ad_mllib);
 	  }
-      }
-    if (gpu)
-      {
-	for (auto i: _gpuid)
+      	if (gpu)
 	  {
-	    Caffe::SetDevice(i);
-	    Caffe::DeviceQuery();
+	    for (auto i: _gpuid)
+	      {
+		Caffe::SetDevice(i);
+		Caffe::DeviceQuery();
+	      }
+	    Caffe::set_mode(Caffe::GPU);
 	  }
-	Caffe::set_mode(Caffe::GPU);
+	else Caffe::set_mode(Caffe::CPU);
       }
-    else Caffe::set_mode(Caffe::CPU);
 #else
       Caffe::set_mode(Caffe::CPU);
 #endif
@@ -2198,7 +2208,6 @@ namespace dd
 			cols = (*bit).second.second;
 		      }
 		    bool leave = false;
-		    double last_prob = 1.0;
 		    while(k<num_det)
 		      {
 			if (outr[0] == -1)
@@ -2210,7 +2219,6 @@ namespace dd
 			  }
 			std::vector<float> detection(outr, outr + det_size);
 			++k;
-			last_prob = detection[2];
 			outr += det_size;
 			if (detection[2] < confidence_threshold)
 			  continue;

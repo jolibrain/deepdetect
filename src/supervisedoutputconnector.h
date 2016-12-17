@@ -192,7 +192,7 @@ namespace dd
 	  _best = 1;
 	  ad_out.erase("autoencoder");
 	}
-      if (ad_out.has("bbox"))
+      if (ad_out.has("bbox") && ad_out.get("bbox").get<bool>())
 	{
 	  _best = -2;
 	  ad_out.erase("nclasses");
