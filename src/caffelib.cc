@@ -177,6 +177,16 @@ namespace dd
 	      lparam->mutable_transform_param()->set_crop_size(ad.get("crop_size").get<int>());
 	    else lparam->mutable_transform_param()->clear_crop_size();
 	  }
+	// input size
+	caffe::LayerParameter *lparam = net_param.mutable_layer(1); // test
+	caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(0);
+	lparam->mutable_memory_data_param()->set_channels(this->_inputc.channels());
+	lparam->mutable_memory_data_param()->set_height(this->_inputc.height());
+	lparam->mutable_memory_data_param()->set_width(this->_inputc.width());
+	dlparam->mutable_memory_data_param()->set_channels(this->_inputc.channels());
+	dlparam->mutable_memory_data_param()->set_height(this->_inputc.height());
+	dlparam->mutable_memory_data_param()->set_width(this->_inputc.width());
+		
 	// noise parameters
 	if ((ad.has("noise")))
 	  {
