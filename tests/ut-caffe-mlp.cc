@@ -20,6 +20,7 @@
  */
 
 #include "caffelib.h"
+#include "caffe_templates.h"
 #include "caffeinputconns.h"
 #include "outputconnectorstrategy.h"
 #include <gtest/gtest.h>
@@ -36,8 +37,10 @@ static std::string convnet_file = "../templates/caffe/convnet/convnet.prototxt";
 static std::string dconvnet_file = "../templates/caffe/convnet/deploy.prototxt";
 static std::string oconvnet_file = "nconvnet.prototxt";
 static std::string doconvnet_file = "nconvnet_deploy.prototxt";
+static std::string oresnet_file = "nresnet.prototxt";
+static std::string doresnet_file = "nresnet_deploy.prototxt";
 
-TEST(caffelib,configure_mlp_template_1)
+/*TEST(caffelib,configure_mlp_template_1)
 {
   int nclasses = 7;
   caffe::NetParameter net_param, deploy_net_param;
@@ -83,9 +86,59 @@ TEST(caffelib,configure_mlp_template_1)
   dlparam = deploy_net_param.mutable_layer(3);
   ASSERT_EQ("InnerProduct",dlparam->type());
   ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
+  }*/
+
+TEST(caffelib,configure_mlp_template_1_nt)
+{
+  int nclasses = 7;
+  caffe::NetParameter net_param, deploy_net_param;
+  /*bool succ = caffe::ReadProtoFromTextFile(net_file,&net_param);
+  ASSERT_TRUE(succ);
+  succ = caffe::ReadProtoFromTextFile(dnet_file,&deploy_net_param);
+  ASSERT_TRUE(succ);*/
+
+  std::vector<int> layers = {200};
+  APIData ad;
+  ad.add("layers",layers);
+  ad.add("activation","prelu");
+  ad.add("dropout",0.6);
+  
+  //CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_mlp_template(ad,false,0,nclasses,net_param,deploy_net_param);
+  CaffeTemplates::configure_mlp_template(ad,false,0,nclasses,net_param,deploy_net_param);
+
+  std::cerr << "onet_file=" << onet_file << std::endl;
+  caffe::WriteProtoToTextFile(net_param,onet_file.c_str());
+  caffe::WriteProtoToTextFile(deploy_net_param,donet_file);
+  bool succ = caffe::ReadProtoFromTextFile(onet_file,&net_param);
+  ASSERT_TRUE(succ);
+  //succ = caffe::ReadProtoFromTextFile(donet_file,&deploy_net_param);
+  ASSERT_TRUE(succ);
+  
+  ASSERT_EQ(8,net_param.layer_size());
+  caffe::LayerParameter *lparam = net_param.mutable_layer(2);
+  ASSERT_EQ("InnerProduct",lparam->type());
+  ASSERT_EQ(layers.at(0),lparam->mutable_inner_product_param()->num_output());
+  lparam = net_param.mutable_layer(3);
+  ASSERT_EQ("PReLU",lparam->type());
+  lparam = net_param.mutable_layer(4);
+  ASSERT_EQ("Dropout",lparam->type());
+  ASSERT_NEAR(0.6,lparam->mutable_dropout_param()->dropout_ratio(),1e-5); // near as there seems to be a slight conversion issue from protobufs
+  lparam = net_param.mutable_layer(5);
+  ASSERT_EQ("InnerProduct",lparam->type());
+  ASSERT_EQ(nclasses,lparam->mutable_inner_product_param()->num_output());
+  
+  ASSERT_EQ(5,deploy_net_param.layer_size());
+  caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(1);
+  ASSERT_EQ("InnerProduct",dlparam->type());
+  ASSERT_EQ(layers.at(0),dlparam->mutable_inner_product_param()->num_output());
+  dlparam = deploy_net_param.mutable_layer(2);
+  ASSERT_EQ("PReLU",dlparam->type());
+  dlparam = deploy_net_param.mutable_layer(3);
+  ASSERT_EQ("InnerProduct",dlparam->type());
+  ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
 }
 
-TEST(caffelib,configure_mlp_template_1_db)
+/*TEST(caffelib,configure_mlp_template_1_db)
 {
   int nclasses = 7;
   caffe::NetParameter net_param, deploy_net_param;
@@ -136,9 +189,119 @@ TEST(caffelib,configure_mlp_template_1_db)
   dlparam = deploy_net_param.mutable_layer(3);
   ASSERT_EQ("InnerProduct",dlparam->type());
   ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
+}*/
+
+TEST(caffelib,configure_mlp_template_1_db_nt)
+{
+  int nclasses = 7;
+  caffe::NetParameter net_param, deploy_net_param;
+  /*bool succ = caffe::ReadProtoFromTextFile(net_file,&net_param);
+  ASSERT_TRUE(succ);
+  succ = caffe::ReadProtoFromTextFile(dnet_file,&deploy_net_param);
+  ASSERT_TRUE(succ);*/
+
+  std::vector<int> layers = {200};
+  APIData ad;
+  ad.add("layers",layers);
+  ad.add("activation","prelu");
+  ad.add("dropout",0.2);
+  ad.add("db",true);
+  
+  //CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_mlp_template(ad,false,0,nclasses,net_param,deploy_net_param);
+  CaffeTemplates::configure_mlp_template(ad,false,0,nclasses,net_param,deploy_net_param);
+  
+  caffe::WriteProtoToTextFile(net_param,onet_file);
+  caffe::WriteProtoToTextFile(deploy_net_param,donet_file);
+  bool succ = caffe::ReadProtoFromTextFile(onet_file,&net_param);
+  ASSERT_TRUE(succ);
+  succ = caffe::ReadProtoFromTextFile(donet_file,&deploy_net_param);
+  ASSERT_TRUE(succ);
+  
+  ASSERT_EQ(8,net_param.layer_size());
+  caffe::LayerParameter *lparam = net_param.mutable_layer(0);
+  ASSERT_EQ("Data",lparam->type());
+  ASSERT_EQ("train.lmdb",lparam->mutable_data_param()->source());
+  ASSERT_EQ(caffe::DataParameter_DB_LMDB,lparam->mutable_data_param()->backend());
+  lparam = net_param.mutable_layer(2);
+  ASSERT_EQ("InnerProduct",lparam->type());
+  ASSERT_EQ(layers.at(0),lparam->mutable_inner_product_param()->num_output());
+  lparam = net_param.mutable_layer(3);
+  ASSERT_EQ("PReLU",lparam->type());
+  lparam = net_param.mutable_layer(4);
+  ASSERT_EQ("Dropout",lparam->type());
+  ASSERT_NEAR(0.2,lparam->mutable_dropout_param()->dropout_ratio(),1e-5); // near as there seems to be a slight conversion issue from protobufs
+  lparam = net_param.mutable_layer(5);
+  ASSERT_EQ("InnerProduct",lparam->type());
+  ASSERT_EQ(nclasses,lparam->mutable_inner_product_param()->num_output());
+  
+  ASSERT_EQ(5,deploy_net_param.layer_size());
+  caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(1);
+  ASSERT_EQ("InnerProduct",dlparam->type());
+  ASSERT_EQ(layers.at(0),dlparam->mutable_inner_product_param()->num_output());
+  dlparam = deploy_net_param.mutable_layer(2);
+  ASSERT_EQ("PReLU",dlparam->type());
+  dlparam = deploy_net_param.mutable_layer(3);
+  ASSERT_EQ("InnerProduct",dlparam->type());
+  ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
 }
 
-TEST(caffelib,configure_mlp_template_n)
+TEST(caffelib,configure_mlp_template_n_nt)
+{
+  int nclasses = 7;
+  caffe::NetParameter net_param, deploy_net_param;
+  /*bool succ = caffe::ReadProtoFromTextFile(net_file,&net_param);
+  ASSERT_TRUE(succ);
+  succ = caffe::ReadProtoFromTextFile(dnet_file,&deploy_net_param);
+  ASSERT_TRUE(succ);*/
+  
+  std::vector<int> layers = {200,150,75};
+  APIData ad;
+  ad.add("layers",layers);
+  ad.add("activation","prelu");
+  ad.add("dropout",0.6);
+  
+  //CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_mlp_template(ad,false,0,nclasses,net_param,deploy_net_param);
+  CaffeTemplates::configure_mlp_template(ad,false,0,nclasses,net_param,deploy_net_param);
+  
+  caffe::WriteProtoToTextFile(net_param,onet_file);
+  caffe::WriteProtoToTextFile(deploy_net_param,donet_file);
+  bool succ = caffe::ReadProtoFromTextFile(onet_file,&net_param);
+  ASSERT_TRUE(succ);
+
+  ASSERT_EQ(14,net_param.layer_size());
+  ASSERT_EQ(9,deploy_net_param.layer_size());
+  int rl = 1;
+  caffe::LayerParameter *lparam;
+  for (size_t l=0;l<layers.size();l++)
+    {
+      lparam = net_param.mutable_layer(++rl);
+      ASSERT_EQ("InnerProduct",lparam->type());
+      ASSERT_EQ(layers.at(l),lparam->mutable_inner_product_param()->num_output());
+      lparam = net_param.mutable_layer(++rl);
+      ASSERT_EQ("PReLU",lparam->type());
+      lparam = net_param.mutable_layer(++rl);
+      ASSERT_EQ("Dropout",lparam->type());
+      ASSERT_NEAR(0.6,lparam->mutable_dropout_param()->dropout_ratio(),1e-5); // near as there seems to be a slight conversion issue from protobufs
+    }
+  int drl = 0;
+  caffe::LayerParameter *dlparam;
+  for (size_t l=0;l<layers.size();l++)
+    {
+      dlparam = deploy_net_param.mutable_layer(++drl);
+      ASSERT_EQ("InnerProduct",dlparam->type());
+      ASSERT_EQ(layers.at(l),dlparam->mutable_inner_product_param()->num_output());
+      dlparam = deploy_net_param.mutable_layer(++drl);
+      ASSERT_EQ("PReLU",dlparam->type());
+    }
+  lparam = net_param.mutable_layer(rl+1);
+  ASSERT_EQ("InnerProduct",lparam->type());
+  ASSERT_EQ(nclasses,lparam->mutable_inner_product_param()->num_output());
+  dlparam = deploy_net_param.mutable_layer(drl+1);
+  ASSERT_EQ("InnerProduct",dlparam->type());
+  ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
+}
+
+/*TEST(caffelib,configure_mlp_template_n)
 {
   int nclasses = 7;
   caffe::NetParameter net_param, deploy_net_param;
@@ -191,9 +354,9 @@ TEST(caffelib,configure_mlp_template_n)
   dlparam = deploy_net_param.mutable_layer(drl+1);
   ASSERT_EQ("InnerProduct",dlparam->type());
   ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
-}
+  }*/
 
-TEST(caffelib,configure_mlp_template_n_mt)
+/*TEST(caffelib,configure_mlp_template_n_mt)
 {
   int nclasses = 7;
   int targets = 3;
@@ -253,9 +416,67 @@ TEST(caffelib,configure_mlp_template_n_mt)
   dlparam = deploy_net_param.mutable_layer(drl+1);
   ASSERT_EQ("InnerProduct",dlparam->type());
   ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
+}*/
+
+TEST(caffelib,configure_mlp_template_n_mt_nt)
+{
+  int nclasses = 7;
+  int targets = 3;
+  caffe::NetParameter net_param, deploy_net_param;
+  
+  std::vector<int> layers = {200,150,75};
+  APIData ad;
+  ad.add("layers",layers);
+  ad.add("activation","prelu");
+  ad.add("dropout",0.6);
+  
+  CaffeTemplates::configure_mlp_template(ad,false,targets,nclasses,net_param,deploy_net_param);
+  
+  caffe::WriteProtoToTextFile(net_param,onet_file);
+  caffe::WriteProtoToTextFile(deploy_net_param,donet_file);
+  bool succ = caffe::ReadProtoFromTextFile(onet_file,&net_param);
+  ASSERT_TRUE(succ);
+
+  ASSERT_EQ(15,net_param.layer_size());
+  ASSERT_EQ(10,deploy_net_param.layer_size());
+  int rl = 1;
+  caffe::LayerParameter *lparam;
+  lparam = net_param.mutable_layer(++rl);
+  ASSERT_EQ("Slice",lparam->type());
+  ASSERT_EQ(nclasses,lparam->mutable_slice_param()->slice_point(0));
+  for (size_t l=0;l<layers.size();l++)
+    {
+      lparam = net_param.mutable_layer(++rl);
+      ASSERT_EQ("InnerProduct",lparam->type());
+      ASSERT_EQ(layers.at(l),lparam->mutable_inner_product_param()->num_output());
+      lparam = net_param.mutable_layer(++rl);
+      ASSERT_EQ("PReLU",lparam->type());
+      lparam = net_param.mutable_layer(++rl);
+      ASSERT_EQ("Dropout",lparam->type());
+      ASSERT_NEAR(0.6,lparam->mutable_dropout_param()->dropout_ratio(),1e-5); // near as there seems to be a slight conversion issue from protobufs
+    }
+  int drl = 0;
+  caffe::LayerParameter *dlparam;
+  dlparam = deploy_net_param.mutable_layer(++drl);
+  ASSERT_EQ("Slice",dlparam->type());
+  ASSERT_EQ(nclasses,dlparam->mutable_slice_param()->slice_point(0));
+  for (size_t l=0;l<layers.size();l++)
+    {
+      dlparam = deploy_net_param.mutable_layer(++drl);
+      ASSERT_EQ("InnerProduct",dlparam->type());
+      ASSERT_EQ(layers.at(l),dlparam->mutable_inner_product_param()->num_output());
+      dlparam = deploy_net_param.mutable_layer(++drl);
+      ASSERT_EQ("PReLU",dlparam->type());
+    }
+  lparam = net_param.mutable_layer(rl+1);
+  ASSERT_EQ("InnerProduct",lparam->type());
+  ASSERT_EQ(nclasses,lparam->mutable_inner_product_param()->num_output());
+  dlparam = deploy_net_param.mutable_layer(drl+1);
+  ASSERT_EQ("InnerProduct",dlparam->type());
+  ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
 }
 
-TEST(caffelib,configure_convnet_template_1)
+/*TEST(caffelib,configure_convnet_template_1)
 {
   int nclasses = 18;
   caffe::NetParameter net_param, deploy_net_param;
@@ -304,9 +525,9 @@ TEST(caffelib,configure_convnet_template_1)
   ASSERT_EQ("InnerProduct",dlparam->type());
   ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
   ASSERT_EQ("pool0",dlparam->bottom(0));
-}
+  }*/
 
-TEST(caffelib,configure_convnet_template_1_db)
+/*TEST(caffelib,configure_convnet_template_1_db)
 {
   int nclasses = 18;
   caffe::NetParameter net_param, deploy_net_param;
@@ -360,9 +581,66 @@ TEST(caffelib,configure_convnet_template_1_db)
   ASSERT_EQ("InnerProduct",dlparam->type());
   ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
   ASSERT_EQ("pool0",dlparam->bottom(0));
+}*/
+
+TEST(caffelib,configure_convnet_template_1_db_nt)
+{
+  int nclasses = 18;
+  caffe::NetParameter net_param, deploy_net_param;
+  /*bool succ = caffe::ReadProtoFromTextFile(convnet_file,&net_param);
+  ASSERT_TRUE(succ);
+  succ = caffe::ReadProtoFromTextFile(dconvnet_file,&deploy_net_param);
+  ASSERT_TRUE(succ);*/
+
+  std::vector<std::string> layers = {"1CR64"};
+  APIData ad;
+  ad.add("layers",layers);
+  ad.add("activation","prelu");
+  ad.add("dropout",0.2);
+  ad.add("db",true);
+  
+  //CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,0,nclasses,ImgCaffeInputFileConn(),net_param,deploy_net_param);
+  CaffeTemplates::configure_convnet_template(ad,false,0,nclasses,false,net_param,deploy_net_param);
+  
+  caffe::WriteProtoToTextFile(net_param,oconvnet_file);
+  caffe::WriteProtoToTextFile(deploy_net_param,doconvnet_file);
+  bool succ = caffe::ReadProtoFromTextFile(oconvnet_file,&net_param);
+  ASSERT_TRUE(succ);
+  succ = caffe::ReadProtoFromTextFile(doconvnet_file,&deploy_net_param);
+  ASSERT_TRUE(succ);
+
+  ASSERT_EQ(8,net_param.layer_size());
+  caffe::LayerParameter *lparam = net_param.mutable_layer(0);
+  ASSERT_EQ("Data",lparam->type());
+  ASSERT_EQ("train.lmdb",lparam->mutable_data_param()->source());
+  ASSERT_EQ(caffe::DataParameter_DB_LMDB,lparam->mutable_data_param()->backend());
+  lparam = net_param.mutable_layer(2);
+  ASSERT_EQ("Convolution",lparam->type());
+  ASSERT_EQ(64,lparam->mutable_convolution_param()->num_output());
+  lparam = net_param.mutable_layer(3);
+  ASSERT_EQ("PReLU",lparam->type());
+  lparam = net_param.mutable_layer(4);
+  ASSERT_EQ("Pooling",lparam->type());
+  lparam = net_param.mutable_layer(5);
+  ASSERT_EQ("InnerProduct",lparam->type());
+  ASSERT_EQ(nclasses,lparam->mutable_inner_product_param()->num_output());
+  ASSERT_EQ("ip0",lparam->bottom(0));
+
+  ASSERT_EQ(6,deploy_net_param.layer_size());
+  caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(1);
+  ASSERT_EQ("Convolution",dlparam->type());
+  ASSERT_EQ(64,dlparam->mutable_convolution_param()->num_output());
+  dlparam = deploy_net_param.mutable_layer(2);
+  ASSERT_EQ("PReLU",dlparam->type());
+  dlparam = deploy_net_param.mutable_layer(3);
+  ASSERT_EQ("Pooling",dlparam->type());
+  dlparam = deploy_net_param.mutable_layer(4);
+  ASSERT_EQ("InnerProduct",dlparam->type());
+  ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
+  ASSERT_EQ("ip0",dlparam->bottom(0));
 }
 
-TEST(caffelib,configure_convnet_template_2)
+/*TEST(caffelib,configure_convnet_template_2)
 {
   int nclasses = 18;
   caffe::NetParameter net_param, deploy_net_param;
@@ -442,9 +720,88 @@ TEST(caffelib,configure_convnet_template_2)
   ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
   ASSERT_EQ("ip2",dlparam->bottom(0)); 
   ASSERT_EQ("ip3",dlparam->top(0));
+  }*/
+
+TEST(caffelib,configure_convnet_template_2_nt)
+{
+  int nclasses = 18;
+  caffe::NetParameter net_param, deploy_net_param;
+
+  std::vector<std::string> layers = {"1CR64","1CR128","1000"};
+  APIData ad;
+  ad.add("layers",layers);
+  ad.add("activation","prelu");
+  ad.add("dropout",0.2);
+  
+  //CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,0,nclasses,ImgCaffeInputFileConn(),net_param,deploy_net_param);
+  CaffeTemplates::configure_convnet_template(ad,false,0,nclasses,false,net_param,deploy_net_param);
+  
+  caffe::WriteProtoToTextFile(net_param,oconvnet_file);
+  caffe::WriteProtoToTextFile(deploy_net_param,doconvnet_file);
+  bool succ = caffe::ReadProtoFromTextFile(oconvnet_file,&net_param);
+  ASSERT_TRUE(succ);
+  succ = caffe::ReadProtoFromTextFile(doconvnet_file,&deploy_net_param);
+  ASSERT_TRUE(succ);
+
+  ASSERT_EQ(14,net_param.layer_size());
+  caffe::LayerParameter *lparam = net_param.mutable_layer(2);
+  ASSERT_EQ("Convolution",lparam->type());
+  ASSERT_EQ(64,lparam->mutable_convolution_param()->num_output());
+  lparam = net_param.mutable_layer(3);
+  ASSERT_EQ("PReLU",lparam->type());
+  lparam = net_param.mutable_layer(4);
+  ASSERT_EQ("Pooling",lparam->type());
+  lparam = net_param.mutable_layer(5);
+  ASSERT_EQ("Convolution",lparam->type());
+  ASSERT_EQ(128,lparam->mutable_convolution_param()->num_output());
+  lparam = net_param.mutable_layer(6);
+  ASSERT_EQ("PReLU",lparam->type());
+  lparam = net_param.mutable_layer(7);
+  ASSERT_EQ("Pooling",lparam->type());
+  lparam = net_param.mutable_layer(8);
+  ASSERT_EQ("InnerProduct",lparam->type());
+  ASSERT_EQ(1000,lparam->mutable_inner_product_param()->num_output());
+  ASSERT_EQ("ip1",lparam->bottom(0));
+  lparam = net_param.mutable_layer(9);
+  ASSERT_EQ("PReLU",lparam->type());
+  lparam = net_param.mutable_layer(10);
+  ASSERT_EQ("Dropout",lparam->type());
+  ASSERT_NEAR(0.2,lparam->mutable_dropout_param()->dropout_ratio(),1e-5);
+  lparam = net_param.mutable_layer(11);
+  ASSERT_EQ("InnerProduct",lparam->type());
+  ASSERT_EQ(nclasses,lparam->mutable_inner_product_param()->num_output());
+  ASSERT_EQ("fc1000",lparam->bottom(0));
+  ASSERT_EQ("ip_losst",lparam->top(0));
+
+  ASSERT_EQ(11,deploy_net_param.layer_size());
+  caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(1);
+  ASSERT_EQ("Convolution",dlparam->type());
+  ASSERT_EQ(64,dlparam->mutable_convolution_param()->num_output());
+  dlparam = deploy_net_param.mutable_layer(2);
+  ASSERT_EQ("PReLU",dlparam->type());
+  dlparam = deploy_net_param.mutable_layer(3);
+  ASSERT_EQ("Pooling",dlparam->type());
+  dlparam = deploy_net_param.mutable_layer(4);
+  ASSERT_EQ("Convolution",dlparam->type());
+  ASSERT_EQ(128,dlparam->mutable_convolution_param()->num_output());
+  dlparam = deploy_net_param.mutable_layer(5);
+  ASSERT_EQ("PReLU",dlparam->type());
+  dlparam = deploy_net_param.mutable_layer(6);
+  ASSERT_EQ("Pooling",dlparam->type());
+  dlparam = deploy_net_param.mutable_layer(7);
+  ASSERT_EQ("InnerProduct",dlparam->type());
+  ASSERT_EQ(1000,dlparam->mutable_inner_product_param()->num_output());
+  ASSERT_EQ("ip1",dlparam->bottom(0));
+  dlparam = deploy_net_param.mutable_layer(8);
+  ASSERT_EQ("PReLU",dlparam->type());
+  dlparam = deploy_net_param.mutable_layer(9);
+  ASSERT_EQ("InnerProduct",dlparam->type());
+  ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
+  ASSERT_EQ("fc1000",dlparam->bottom(0)); 
+  ASSERT_EQ("ip_loss",dlparam->top(0));
 }
 
-TEST(caffelib,configure_convnet_template_3)
+/*TEST(caffelib,configure_convnet_template_3)
 {
   int nclasses = 18;
   caffe::NetParameter net_param, deploy_net_param;
@@ -503,9 +860,67 @@ TEST(caffelib,configure_convnet_template_3)
   ASSERT_EQ("InnerProduct",dlparam->type());
   ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
   ASSERT_EQ("pool0",dlparam->bottom(0));
+  }*/
+
+TEST(caffelib,configure_convnet_template_3_nt)
+{
+  int nclasses = 18;
+  caffe::NetParameter net_param, deploy_net_param;
+
+  std::vector<std::string> layers = {"2CR64"};
+  APIData ad;
+  ad.add("layers",layers);
+  ad.add("activation","prelu");
+  ad.add("dropout",0.2);
+  
+  //CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,false,0,nclasses,ImgCaffeInputFileConn(),net_param,deploy_net_param);
+  CaffeTemplates::configure_convnet_template(ad,false,0,nclasses,false,net_param,deploy_net_param);
+
+  caffe::WriteProtoToTextFile(net_param,oconvnet_file);
+  caffe::WriteProtoToTextFile(deploy_net_param,doconvnet_file);
+  bool succ = caffe::ReadProtoFromTextFile(oconvnet_file,&net_param);
+  ASSERT_TRUE(succ);
+  succ = caffe::ReadProtoFromTextFile(doconvnet_file,&deploy_net_param);
+  ASSERT_TRUE(succ);
+
+  ASSERT_EQ(10,net_param.layer_size());
+  caffe::LayerParameter *lparam = net_param.mutable_layer(2);
+  ASSERT_EQ("Convolution",lparam->type());
+  ASSERT_EQ(64,lparam->mutable_convolution_param()->num_output());
+  lparam = net_param.mutable_layer(3);
+  ASSERT_EQ("PReLU",lparam->type());
+  lparam = net_param.mutable_layer(4);
+  ASSERT_EQ("Convolution",lparam->type());
+  ASSERT_EQ(64,lparam->mutable_convolution_param()->num_output());
+  lparam = net_param.mutable_layer(5);
+  ASSERT_EQ("PReLU",lparam->type());
+  lparam = net_param.mutable_layer(6);
+  ASSERT_EQ("Pooling",lparam->type());
+  lparam = net_param.mutable_layer(7);
+  ASSERT_EQ("InnerProduct",lparam->type());
+  ASSERT_EQ(nclasses,lparam->mutable_inner_product_param()->num_output());
+  ASSERT_EQ("ip0",lparam->bottom(0));
+  
+  ASSERT_EQ(8,deploy_net_param.layer_size());
+  caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(1);
+  ASSERT_EQ("Convolution",dlparam->type());
+  ASSERT_EQ(64,dlparam->mutable_convolution_param()->num_output());
+  dlparam = deploy_net_param.mutable_layer(2);
+  ASSERT_EQ("PReLU",dlparam->type());
+  dlparam = deploy_net_param.mutable_layer(3);
+  ASSERT_EQ("Convolution",dlparam->type());
+  ASSERT_EQ(64,dlparam->mutable_convolution_param()->num_output());
+  dlparam = deploy_net_param.mutable_layer(4);
+  ASSERT_EQ("PReLU",dlparam->type());
+  dlparam = deploy_net_param.mutable_layer(5);
+  ASSERT_EQ("Pooling",dlparam->type());
+  dlparam = deploy_net_param.mutable_layer(6);
+  ASSERT_EQ("InnerProduct",dlparam->type());
+  ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
+  ASSERT_EQ("ip0",dlparam->bottom(0));
 }
 
-TEST(caffelib,configure_convnet_template_n)
+/*TEST(caffelib,configure_convnet_template_n)
 {
   int nclasses = 18;
   caffe::NetParameter net_param, deploy_net_param;
@@ -534,9 +949,38 @@ TEST(caffelib,configure_convnet_template_n)
   ASSERT_EQ("Data",lparam->type());
   ASSERT_EQ("mean.binaryproto",lparam->mutable_transform_param()->mean_file());
   ASSERT_EQ(22,deploy_net_param.layer_size());
+  }*/
+
+TEST(caffelib,configure_convnet_template_n_nt)
+{
+  int nclasses = 18;
+  caffe::NetParameter net_param, deploy_net_param;
+  
+  std::vector<std::string> layers = {"2CR32","2CR64","2CR128","4096","1024"};
+  APIData ad;
+  ad.add("layers",layers);
+  ad.add("activation","prelu");
+  ad.add("dropout",0.2);
+  ad.add("db",true);
+  
+  CaffeTemplates::configure_convnet_template(ad,false,0,nclasses,false,net_param,deploy_net_param);
+
+  caffe::WriteProtoToTextFile(net_param,oconvnet_file);
+  caffe::WriteProtoToTextFile(deploy_net_param,doconvnet_file);
+  bool succ = caffe::ReadProtoFromTextFile(oconvnet_file,&net_param);
+  ASSERT_TRUE(succ);
+  succ = caffe::ReadProtoFromTextFile(doconvnet_file,&deploy_net_param);
+  ASSERT_TRUE(succ);
+
+  ASSERT_EQ(26,net_param.layer_size());
+  caffe::LayerParameter *lparam = net_param.mutable_layer(0);
+  ASSERT_EQ("Data",lparam->type());
+  ASSERT_EQ("mean.binaryproto",lparam->mutable_transform_param()->mean_file());
+  ASSERT_EQ(22,deploy_net_param.layer_size());
 }
 
-TEST(caffelib,configure_convnet_template_n_1D)
+
+/*TEST(caffelib,configure_convnet_template_n_1D)
 {
   int nclasses = 18;
   caffe::NetParameter net_param, deploy_net_param;
@@ -614,4 +1058,139 @@ TEST(caffelib,configure_convnet_template_n_1D)
   ASSERT_EQ(256,lparam->mutable_convolution_param()->num_output());
   ASSERT_EQ(3,lparam->mutable_convolution_param()->kernel_h());
   ASSERT_EQ(1,lparam->mutable_convolution_param()->kernel_w());
+  }*/
+
+
+// charnn template
+TEST(caffelib,configure_convnet_template_n_1D_nt)
+{
+  int nclasses = 18;
+  caffe::NetParameter net_param, deploy_net_param;
+  
+  std::vector<std::string> layers = {"1CR256","1CR256","4CR256","1024","1024"};
+  APIData ad;
+  ad.add("layers",layers);
+  ad.add("activation","prelu");
+  ad.add("dropout",0.2);
+  ad.add("db",true);
+
+  TxtCaffeInputFileConn tcif;
+  tcif._characters = true;
+  tcif._flat1dconv = true;
+  tcif._db = true;
+  tcif.build_alphabet();
+  tcif._sequence = 1014;
+  CaffeTemplates::configure_convnet_template(ad,false,0,nclasses,true,net_param,deploy_net_param); //TODO: all charnn options
+  
+  caffe::WriteProtoToTextFile(net_param,oconvnet_file);
+  caffe::WriteProtoToTextFile(deploy_net_param,doconvnet_file);
+  bool succ = caffe::ReadProtoFromTextFile(oconvnet_file,&net_param);
+  ASSERT_TRUE(succ);
+  succ = caffe::ReadProtoFromTextFile(doconvnet_file,&deploy_net_param);
+  ASSERT_TRUE(succ);
+
+  //ASSERT_EQ(27,net_param.layer_size());
+  caffe::LayerParameter *lparam = net_param.mutable_layer(0);
+  ASSERT_EQ("Data",lparam->type());
+  ASSERT_TRUE(lparam->mutable_transform_param()->mean_file().empty());
+  lparam = net_param.mutable_layer(1);
+  ASSERT_EQ("MemoryData",lparam->type());
+  ASSERT_EQ(1,lparam->mutable_memory_data_param()->channels());
+  ASSERT_EQ(tcif._sequence,lparam->mutable_memory_data_param()->height());
+  ASSERT_EQ(tcif._alphabet.size(),lparam->mutable_memory_data_param()->width());
+  lparam = net_param.mutable_layer(2);
+  ASSERT_EQ("Convolution",lparam->type());
+  ASSERT_EQ(256,lparam->mutable_convolution_param()->num_output());
+  ASSERT_EQ(7,lparam->mutable_convolution_param()->kernel_h());
+  ASSERT_EQ(69,lparam->mutable_convolution_param()->kernel_w());
+  lparam = net_param.mutable_layer(4);
+  ASSERT_EQ("Pooling",lparam->type());
+  ASSERT_EQ(3,lparam->mutable_pooling_param()->stride_h());
+  ASSERT_EQ(1,lparam->mutable_pooling_param()->stride_w());
+  ASSERT_EQ(3,lparam->mutable_pooling_param()->kernel_h());
+  ASSERT_EQ(1,lparam->mutable_pooling_param()->kernel_w());
+  lparam = net_param.mutable_layer(8);
+  ASSERT_EQ("Convolution",lparam->type());
+  ASSERT_EQ(256,lparam->mutable_convolution_param()->num_output());
+  ASSERT_EQ(3,lparam->mutable_convolution_param()->kernel_h());
+  ASSERT_EQ(1,lparam->mutable_convolution_param()->kernel_w());
+  
+  ASSERT_EQ(23,deploy_net_param.layer_size());
+  lparam = deploy_net_param.mutable_layer(0);
+  ASSERT_EQ("MemoryData",lparam->type());
+  ASSERT_EQ(1,lparam->mutable_memory_data_param()->channels());
+  ASSERT_EQ(tcif._sequence,lparam->mutable_memory_data_param()->height());
+  ASSERT_EQ(tcif._alphabet.size(),lparam->mutable_memory_data_param()->width());
+  lparam = deploy_net_param.mutable_layer(1);
+  ASSERT_EQ("Convolution",lparam->type());
+  ASSERT_EQ(256,lparam->mutable_convolution_param()->num_output());
+  ASSERT_EQ(7,lparam->mutable_convolution_param()->kernel_h());
+  ASSERT_EQ(69,lparam->mutable_convolution_param()->kernel_w());
+  lparam = deploy_net_param.mutable_layer(3);
+  ASSERT_EQ("Pooling",lparam->type());
+  ASSERT_EQ(3,lparam->mutable_pooling_param()->stride_h());
+  ASSERT_EQ(1,lparam->mutable_pooling_param()->stride_w());
+  ASSERT_EQ(3,lparam->mutable_pooling_param()->kernel_h());
+  ASSERT_EQ(1,lparam->mutable_pooling_param()->kernel_w());
+  lparam = deploy_net_param.mutable_layer(7);
+  ASSERT_EQ("Convolution",lparam->type());
+  ASSERT_EQ(256,lparam->mutable_convolution_param()->num_output());
+  ASSERT_EQ(3,lparam->mutable_convolution_param()->kernel_h());
+  ASSERT_EQ(1,lparam->mutable_convolution_param()->kernel_w());
 }
+
+//TODO: lregression template
+
+//TODO: regression one target template
+
+//TODO: resnets
+
+/*TEST(caffelib,configure_resnet_template_n_nt)
+{
+  int nclasses = 7;
+  caffe::NetParameter net_param, deploy_net_param;
+  std::vector<int> layers = {200,150,75}; //TODO
+  APIData ad;
+  ad.add("layers",layers);
+  ad.add("activation","prelu");
+  ad.add("dropout",0.6);
+  
+  CaffeTemplates::configure_resnet_template(ad,false,0,nclasses,net_param,deploy_net_param);
+  
+  caffe::WriteProtoToTextFile(net_param,onet_file);
+  caffe::WriteProtoToTextFile(deploy_net_param,donet_file);
+  bool succ = caffe::ReadProtoFromTextFile(onet_file,&net_param);
+  ASSERT_TRUE(succ);
+
+  ASSERT_EQ(14,net_param.layer_size());
+  ASSERT_EQ(9,deploy_net_param.layer_size());
+  int rl = 1;
+  caffe::LayerParameter *lparam;
+  for (size_t l=0;l<layers.size();l++)
+    {
+      lparam = net_param.mutable_layer(++rl);
+      ASSERT_EQ("InnerProduct",lparam->type());
+      ASSERT_EQ(layers.at(l),lparam->mutable_inner_product_param()->num_output());
+      lparam = net_param.mutable_layer(++rl);
+      ASSERT_EQ("PReLU",lparam->type());
+      lparam = net_param.mutable_layer(++rl);
+      ASSERT_EQ("Dropout",lparam->type());
+      ASSERT_NEAR(0.6,lparam->mutable_dropout_param()->dropout_ratio(),1e-5); // near as there seems to be a slight conversion issue from protobufs
+    }
+  int drl = 0;
+  caffe::LayerParameter *dlparam;
+  for (size_t l=0;l<layers.size();l++)
+    {
+      dlparam = deploy_net_param.mutable_layer(++drl);
+      ASSERT_EQ("InnerProduct",dlparam->type());
+      ASSERT_EQ(layers.at(l),dlparam->mutable_inner_product_param()->num_output());
+      dlparam = deploy_net_param.mutable_layer(++drl);
+      ASSERT_EQ("PReLU",dlparam->type());
+    }
+  lparam = net_param.mutable_layer(rl+1);
+  ASSERT_EQ("InnerProduct",lparam->type());
+  ASSERT_EQ(nclasses,lparam->mutable_inner_product_param()->num_output());
+  dlparam = deploy_net_param.mutable_layer(drl+1);
+  ASSERT_EQ("InnerProduct",dlparam->type());
+  ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
+  }*/
