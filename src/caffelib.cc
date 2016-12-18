@@ -1403,6 +1403,7 @@ namespace dd
     if (ad.has("gpu"))
       _gpu = ad.get("gpu").get<bool>();
     set_gpuid(ad);
+#ifndef CPU_ONLY
     if (_gpu)
       {
 	for (auto i: _gpuid)
@@ -1413,6 +1414,9 @@ namespace dd
 	Caffe::set_mode(Caffe::GPU);
       }
     else Caffe::set_mode(Caffe::CPU);
+#else
+    Caffe::set_mode(Caffe::CPU);
+#endif
     if (ad.has("nclasses"))
       _nclasses = ad.get("nclasses").get<int>();
     if (ad.has("regression") && ad.get("regression").get<bool>())
