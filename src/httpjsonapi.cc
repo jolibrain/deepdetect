@@ -34,6 +34,7 @@
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 #include <boost/iostreams/copy.hpp>
+#include <chrono>
 
 DEFINE_string(host,"localhost","host for running the server");
 DEFINE_string(port,"8080","server port");
@@ -139,15 +140,14 @@ public:
 		       const JDoc &janswer,
 		       std::string &access_log,
 		       int &code,
+		       std::chrono::time_point<std::chrono::system_clock> tstart,
 		       const std::string &encoding="")
   {
+    std::chrono::time_point<std::chrono::system_clock> tstop = std::chrono::system_clock::now();
     code = janswer["status"]["code"].GetInt();
     access_log += " " + std::to_string(code);
-    if (janswer.HasMember("head") && janswer["head"].HasMember("time"))
-      {
-	int proctime = janswer["head"]["time"].GetDouble();
-	access_log += " " + std::to_string(proctime);
-      }
+    int proctime = std::chrono::duration_cast<std::chrono::seconds>(tstop-tstart).count();
+    access_log += " " + std::to_string(proctime);
     int outcode = code;
     std::string stranswer;
     if (janswer.HasMember("template")) // if output template, fillup with rendered template.
@@ -227,6 +227,8 @@ public:
     std::cerr << "body=" << request.body << std::endl;*/
     //debug
 
+    std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();
+    
     std::string access_log = request.source + " \"" + request.method + " " + request.destination + "\"";
     int code;
     
@@ -285,63 +287,63 @@ public:
 	      }
 	  }
 	else LOG(ERROR) << "Unsupported content-encoding:" << content_encoding << std::endl;
-	fillup_response(response,_hja->dd_bad_request_400(),access_log,code);
+	fillup_response(response,_hja->dd_bad_request_400(),access_log,code,tstart);
       }
     
     if (rscs.at(0) == _rsc_info)
       {
-	fillup_response(response,_hja->info(),access_log,code,accept_encoding);
+	fillup_response(response,_hja->info(),access_log,code,tstart,accept_encoding);
       }
     else if (rscs.at(0) == _rsc_services)
       {
 	if (rscs.size() < 2)
 	  {
-	    fillup_response(response,_hja->dd_bad_request_400(),access_log,code);
+	    fillup_response(response,_hja->dd_bad_request_400(),access_log,code,tstart);
 	    LOG(ERROR) << access_log << std::endl;
 	    return;
 	  }
 	std::string sname = rscs.at(1);
 	if (req_method == "GET")
 	  {
-	    fillup_response(response,_hja->service_status(sname),access_log,code,accept_encoding);
+	    fillup_response(response,_hja->service_status(sname),access_log,code,tstart,accept_encoding);
 	  }
 	else if (req_method == "PUT" || req_method == "POST") // tolerance to using POST
 	  {
-	    fillup_response(response,_hja->service_create(sname,body),access_log,code,accept_encoding);
+	    fillup_response(response,_hja->service_create(sname,body),access_log,code,tstart,accept_encoding);
 	  }
 	else if (req_method == "DELETE")
 	  {
 	    // DELETE does not accept body so query options are turned into JSON for internal processing
 	    std::string jstr = dd::uri_query_to_json(req_query);
-	    fillup_response(response,_hja->service_delete(sname,jstr),access_log,code,accept_encoding);
+	    fillup_response(response,_hja->service_delete(sname,jstr),access_log,code,tstart,accept_encoding);
 	  }
       }
     else if (rscs.at(0) == _rsc_predict)
       {
 	if (req_method != "POST")
 	  {
-	    fillup_response(response,_hja->dd_bad_request_400(),access_log,code);
+	    fillup_response(response,_hja->dd_bad_request_400(),access_log,code,tstart);
 	    LOG(ERROR) << access_log << std::endl;
 	    return;
 	  }
-	fillup_response(response,_hja->service_predict(body),access_log,code,accept_encoding);
+	fillup_response(response,_hja->service_predict(body),access_log,code,tstart,accept_encoding);
       }
     else if (rscs.at(0) == _rsc_train)
       {
 	if (req_method == "GET")
 	  {
 	    std::string jstr = dd::uri_query_to_json(req_query);
-	    fillup_response(response,_hja->service_train_status(jstr),access_log,code,accept_encoding);
+	    fillup_response(response,_hja->service_train_status(jstr),access_log,code,tstart,accept_encoding);
 	  }
 	else if (req_method == "PUT" || req_method == "POST")
 	  {
-	    fillup_response(response,_hja->service_train(body),access_log,code,accept_encoding);
+	    fillup_response(response,_hja->service_train(body),access_log,code,tstart,accept_encoding);
 	  }
 	else if (req_method == "DELETE")
 	  {
 	    // DELETE does not accept body so query options are turned into JSON for internal processing
 	    std::string jstr = dd::uri_query_to_json(req_query);
-	    fillup_response(response,_hja->service_train_delete(jstr),access_log,code);
+	    fillup_response(response,_hja->service_train_delete(jstr),access_log,code,tstart);
 	  }
       }
     else
