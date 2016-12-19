@@ -355,7 +355,8 @@ namespace dd
 	    }
 
 	  // check on common and required parameters
-	  if (!ad_input.has("label") && _train && _label.empty())
+	  bool autoencoder = ad_input.has("autoencoder") && ad_input.get("autoencoder").get<bool>();
+	  if (!ad_input.has("label") && _train && _label.empty() && !autoencoder)
 	    throw InputConnectorBadParamException("missing label column parameter");
 	  
 	  if (!_csv_fname.empty()) // when training from file
@@ -423,7 +424,7 @@ namespace dd
 
     int batch_size() const
     {
-      return _csvdata.size(); // XXX: what about test data size ?
+      return _csvdata.size();
     }
 
     int test_batch_size() const
@@ -451,8 +452,7 @@ namespace dd
 	    {
 	      APIData adinput;
 	      adinput.add("connector","csv");
-	      std::vector<APIData> vip = { adinput };
-	      adparams.add("input",vip);
+	      adparams.add("input",adinput);
 	    }
 	}
       APIData adinput = adparams.getobj("input");
@@ -474,17 +474,13 @@ namespace dd
 		  adcat.add((*chit).first,(*chit).second);
 		  ++chit;
 		}
-	      std::vector<APIData> vadcat = { adcat };
-	      cats.add((*hit).first,vadcat);
+	      cats.add((*hit).first,adcat);
 	      ++hit;
 	    }
-	  std::vector<APIData> vcats = { cats };
-	  adinput.add("categoricals_mapping",vcats);
+	  adinput.add("categoricals_mapping",cats);
 	}
-      std::vector<APIData> vip = { adinput };
-      adparams.add("input",vip);
-      std::vector<APIData> vad = { adparams };
-      out.add("parameters",vad);
+      adparams.add("input",adinput);
+      out.add("parameters",adparams);
     }
 
     bool is_category(const std::string &c)

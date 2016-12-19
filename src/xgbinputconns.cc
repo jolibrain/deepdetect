@@ -139,13 +139,11 @@ namespace dd
 
     if (!_direct_csv)
       {
-	if (_m)
-	  delete _m;
-	_m = create_from_mat(_csvdata);
+	_m = std::shared_ptr<xgboost::DMatrix>(create_from_mat(_csvdata));
 	_csvdata.clear();
-	if (_mtest)
-	  delete _mtest;
-	_mtest = create_from_mat(_csvdata_test);
+	if (_m->info().num_nonzero == 0)
+	  throw InputConnectorBadParamException("no data could be found processing XGBoost CSV input");
+	_mtest = std::shared_ptr<xgboost::DMatrix>(create_from_mat(_csvdata_test));
 	_csvdata_test.clear();
       }
     else
@@ -173,7 +171,7 @@ namespace dd
 	APIData ad_input = ad.getobj("parameters").getobj("input");
 	fillup_parameters(ad_input);
 	LOG(INFO) << "loading " << _uris.at(0);
-	_m = xgboost::DMatrix::Load(_uris.at(0),silent,dsplit);
+	_m = std::shared_ptr<xgboost::DMatrix>(xgboost::DMatrix::Load(_uris.at(0),silent,dsplit));
 	size_t rsize = _m->info().num_row;
 	LOG(INFO) << "successfully read " << rsize << " rows";
 
@@ -199,17 +197,15 @@ namespace dd
 	    std::vector<int> train_rindex(rindex.begin(),rindex.begin()+split_size);
 	    std::vector<int> test_rindex(rindex.begin()+split_size,rindex.end());
 	    rindex.clear();
-	    xgboost::DMatrix *mtrain = XGDMatrixSliceDMatrix(_m,&train_rindex[0],train_rindex.size());
-	    _mtest = XGDMatrixSliceDMatrix(_m,&test_rindex[0],test_rindex.size());
-	    delete _m;
-	    _m = mtrain;
+	    xgboost::DMatrix *mtrain = XGDMatrixSliceDMatrix(_m.get(),&train_rindex[0],train_rindex.size());
+	    _mtest = std::shared_ptr<xgboost::DMatrix>(XGDMatrixSliceDMatrix(_m.get(),&test_rindex[0],test_rindex.size()));
+	    _m = std::shared_ptr<xgboost::DMatrix>(mtrain);
 	    LOG(INFO) << "dataset sucessfully splitted";
 	  }
 	else
 	  {
-	    xgboost::DMatrix *mtrain = XGDMatrixSliceDMatrix(_m,&rindex[0],rindex.size());
-	    delete _m;
-	    _m = mtrain;
+	    xgboost::DMatrix *mtrain = XGDMatrixSliceDMatrix(_m.get(),&rindex[0],rindex.size());
+	    _m = std::shared_ptr<xgboost::DMatrix>(mtrain);
 	    std::vector<int> ids(_m->info().num_row);
 	    std::iota(std::begin(ids),std::end(ids),0);
 	    for (int i: ids)
@@ -220,8 +216,8 @@ namespace dd
     else if (_uris.size() == 2) // with test file
       {
 	LOG(INFO) << "reading train and test matrices";
-	_m = xgboost::DMatrix::Load(_uris.at(0),silent,dsplit);
-	_mtest = xgboost::DMatrix::Load(_uris.at(1),silent,dsplit);
+	_m = std::shared_ptr<xgboost::DMatrix>(xgboost::DMatrix::Load(_uris.at(0),silent,dsplit));
+	_mtest = std::shared_ptr<xgboost::DMatrix>(xgboost::DMatrix::Load(_uris.at(1),silent,dsplit));
 	LOG(INFO) << "Successfully acquired data";
       }
   }
@@ -237,14 +233,10 @@ namespace dd
 	throw;
       }
 
-    if (_m)
-      delete _m;
-    _m = create_from_mat(_txt);
+    _m = std::shared_ptr<xgboost::DMatrix>(create_from_mat(_txt));
     destroy_txt_entries(_txt);
-    if (_mtest)
-      delete _mtest;
     if (!_test_txt.empty())
-      _mtest = create_from_mat(_test_txt);
+      _mtest = std::shared_ptr<xgboost::DMatrix>(create_from_mat(_test_txt));
     destroy_txt_entries(_test_txt);
   }
   

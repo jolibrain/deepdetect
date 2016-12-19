@@ -198,8 +198,7 @@ namespace dd
     {
       APIData jmrepo;
       jmrepo.add("repository",this->_mlmodel._repo);
-      std::vector<APIData> vobj = {jmrepo};
-      out.add("model",vobj);
+      out.add("model",jmrepo);
       if (!ad.has("async") || (ad.has("async") && ad.get("async").get<bool>()))
 	{
 	  std::lock_guard<std::mutex> lock(_tjobs_mutex);
@@ -347,7 +346,16 @@ namespace dd
 	{
 	  if (!_train_mutex.try_lock_shared())
 	    throw MLServiceLockException("Predict call while training with an offline learning algorithm");
-	  int err = this->predict(ad,out);
+	  int err = 0;
+	  try
+	    {
+	      err = this->predict(ad,out);
+	    }
+	  catch(std::exception &e)
+	    {
+	      _train_mutex.unlock_shared();
+	      throw;
+	    }
 	  _train_mutex.unlock_shared();
 	  return err;
 	}

@@ -47,6 +47,11 @@ namespace dd
     (void)b;
     return vout();
   }
+
+  vout visitor_vad::process(const APIData &ad)
+  {
+    return vout(ad);
+  }
   
   vout visitor_vad::process(const std::vector<double> &vd)
   {

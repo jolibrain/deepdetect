@@ -32,21 +32,94 @@ namespace dd
   using caffe::Net;
   using caffe::Blob;
   using caffe::Datum;
-  
-  class NetInputCaffe: public NetInput
+
+  class CaffeCommon
   {
   public:
-    NetInputCaffe()
-      :NetInput() {}
+    static caffe::LayerParameter* add_layer(caffe::NetParameter *net_param,
+					    const std::string &bottom,
+					    const std::string &top,
+					    const std::string &name="",
+					    const std::string &type="");
+    
+    static std::string set_activation(const APIData &ad_mllib);
+    
+  };
+  
+  template <class TInputCaffe>
+  class NetInputCaffe: public NetInput<TInputCaffe>
+  {
+  public:
+  NetInputCaffe(caffe::NetParameter *net_params,
+		caffe::NetParameter *dnet_params)
+    :NetInput<TInputCaffe>(),_net_params(net_params),_dnet_params(dnet_params) {}
     ~NetInputCaffe() {}
     
-    void configure_inputs(const APIData &ad);
+    void configure_inputs(const APIData &ad,
+			  const TInputCaffe &inputc);
+    
+    caffe::NetParameter *_net_params;
+    caffe::NetParameter *_dnet_params;
   };
 
-  class NetLayersCaffe
+  class NetLayersCaffe: public NetLayers
   {
   public:
+    NetLayersCaffe(caffe::NetParameter *net_params,
+		   caffe::NetParameter *dnet_params)
+      :NetLayers(),_net_params(net_params),_dnet_params(dnet_params) {}
     
+    //void add_basic_block() {}
+    void configure_net(const APIData &ad) {}
+    
+    // common layers
+    void add_fc(caffe::NetParameter *net_param,
+		const std::string &bottom,
+		const std::string &top,
+		const int &num_output);
+    
+    void add_conv(caffe::NetParameter *net_param,
+		  const std::string &bottom,
+		  const std::string &top,
+		  const int &num_output,
+		  const int &kernel_size,
+		  const int &pad,
+		  const int &stride);
+
+    void add_act(caffe::NetParameter *net_param,
+		 const std::string &bottom,
+		 const std::string &activation,
+		 const double &elu_alpha=1.0);
+
+    void add_pooling(caffe::NetParameter *net_param,
+		     const std::string &bottom,
+		     const std::string &top,
+		     const int &kernel_size,
+		     const int &stride,
+		     const std::string &type);
+
+    void add_dropout(caffe::NetParameter *net_param,
+		     const std::string &bottom,
+		     const double &ratio);
+
+    void add_bn(caffe::NetParameter *net_param,
+		const std::string &bottom);
+
+    void add_eltwise(caffe::NetParameter *net_param,
+		     const std::string &bottom1,
+		     const std::string &bottom2,
+		     const std::string &top);
+
+    // requires a fully connected layer (all losses ?)
+    void add_softmax(caffe::NetParameter *net_param,
+		     const std::string &bottom,
+		     const std::string &label,
+		     const std::string &top,
+		     const int &num_output,
+		     const bool &deploy=false);
+    
+    caffe::NetParameter *_net_params;
+    caffe::NetParameter *_dnet_params;
   };
 
   class NetLossCaffe
@@ -59,16 +132,23 @@ namespace dd
     class NetCaffe : public NetGenerator<TNetInputCaffe,TNetLayersCaffe,TNetLossCaffe>
     {
     public:
-      NetCaffe(const int &nclasses);
+      NetCaffe(caffe::NetParameter *net_params,
+	       caffe::NetParameter *dnet_params)
+	:_net_params(net_params),_dnet_params(dnet_params),
+	_nic(net_params,dnet_params),_nlac(net_params,dnet_params) {}
       ~NetCaffe() {}
 
     public:
-      caffe::NetParameter net_params; /**< training net definition. */
-      caffe::NetParameter dnet_params; /**< deploy net definition. */
-      int _nclasses;
-      
+      caffe::NetParameter* _net_params; /**< training net definition. */
+      caffe::NetParameter* _dnet_params; /**< deploy net definition. */
+
+      TNetInputCaffe _nic;
+      TNetLayersCaffe _nlac;
+      //TNetLossCaffe _nloc
     };
   
 }
+
+//#include "net_caffe_mlp.h"
 
 #endif

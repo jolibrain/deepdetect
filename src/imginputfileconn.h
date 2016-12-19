@@ -28,6 +28,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include "ext/base64/base64.h"
 #include <glog/logging.h>
+#include <random>
 
 namespace dd
 {
@@ -74,8 +75,12 @@ namespace dd
     void decode(const std::string &str)
       {
 	std::vector<unsigned char> vdat(str.begin(),str.end());
-	cv::Mat timg = cv::Mat(vdat,true);
-	_img = cv::Mat(cv::imdecode(timg,_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR));
+	cv::Mat img = cv::Mat(cv::imdecode(cv::Mat(vdat,true),_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR));
+	_imgs_size.push_back(std::pair<int,int>(img.rows,img.cols));
+	cv::Size size(_width,_height);
+	cv::Mat rimg;
+	cv::resize(img,rimg,size,0,0,CV_INTER_CUBIC);
+	_imgs.push_back(rimg);
       }
     
     // deserialize image, independent of format
@@ -95,9 +100,14 @@ namespace dd
     // data acquisition
     int read_file(const std::string &fname)
     {
-      _img = cv::imread(fname,_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR);
-      if (_img.empty())
+      cv::Mat img = cv::imread(fname,_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR);
+      if (img.empty())
 	return -1;
+      _imgs_size.push_back(std::pair<int,int>(img.rows,img.cols));
+      cv::Size size(_width,_height);
+      cv::Mat rimg;
+      cv::resize(img,rimg,size,0,0,CV_INTER_CUBIC);
+      _imgs.push_back(rimg);
       return 0;
     }
 
@@ -117,7 +127,7 @@ namespace dd
 	{
 	  decode(content);
 	}
-      if (_img.empty())
+      if (_imgs.at(0).empty())
 	return -1;
       return 0;
     }
@@ -130,7 +140,7 @@ namespace dd
       std::unordered_set<std::string> subdirs;
       if (fileops::list_directory(dir,false,true,subdirs))
 	throw InputConnectorBadParamException("failed reading text subdirectories in data directory " + dir);
-      std::cerr << "list subdirs size=" << subdirs.size() << std::endl;
+      LOG(INFO) << "imginputfileconn: list subdirs size=" << subdirs.size();
 
       // list files and classes
       std::vector<std::pair<std::string,int>> lfiles; // labeled files
@@ -167,19 +177,34 @@ namespace dd
 	}
       
       // read images
+      cv::Size size(_width,_height);
+      _imgs.reserve(lfiles.size());
+      _img_files.reserve(lfiles.size());
+      _labels.reserve(lfiles.size());
       for (std::pair<std::string,int> &p: lfiles)
 	{
-	  _img = cv::imread(p.first,_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR);
+	  cv::Mat img = cv::imread(p.first,_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR);
+	  _imgs_size.push_back(std::pair<int,int>(img.rows,img.cols));
+	  cv::Mat rimg;
+	  cv::resize(img,rimg,size,0,0,CV_INTER_CUBIC);
+	  _imgs.push_back(rimg);
+	  _img_files.push_back(p.first);
 	  if (p.second >= 0)
-	    _label = p.second;
+	    _labels.push_back(p.second);
+	  if (_imgs.size() % 1000 == 0)
+	    std::cerr << "read " << _imgs.size() << " images\n";
 	}
       return 0;
     }
     
-    cv::Mat _img;
+    std::vector<cv::Mat> _imgs;
+    std::vector<std::string> _img_files;
+    std::vector<std::pair<int,int>> _imgs_size;
     bool _bw = false;
     bool _b64 = false;
-    int _label = -1;
+    std::vector<int> _labels;
+    int _width = 227;
+    int _height = 227;
   };
   
   class ImgInputFileConn : public InputConnectorStrategy
@@ -251,6 +276,8 @@ namespace dd
 	  std::string u = _uris.at(i);
 	  DataEl<DDImg> dimg;
 	  dimg._ctype._bw = _bw;
+	  dimg._ctype._width = _width;
+	  dimg._ctype._height = _height;
 	  try
 	    {
 	      if (dimg.read_element(u))
@@ -270,17 +297,25 @@ namespace dd
 	    }
 	  if (no_img)
 	    continue;
-	  //TODO: resize only if necessary
-	  cv::Size size(_width,_height);
-	  cv::Mat image;
-	  cv::resize(dimg._ctype._img,image,size,0,0,CV_INTER_CUBIC);
+
 #pragma omp critical
 	  {
-	    _images.push_back(image);
-	    if (dimg._ctype._label >= 0)
-	      _test_labels.push_back(dimg._ctype._label);
-	    if (!dimg._ctype._b64)
+	    _images.insert(_images.end(),
+	      std::make_move_iterator(dimg._ctype._imgs.begin()),
+	      std::make_move_iterator(dimg._ctype._imgs.end()));
+	    _images_size.insert(_images_size.end(),
+				std::make_move_iterator(dimg._ctype._imgs_size.begin()),
+				std::make_move_iterator(dimg._ctype._imgs_size.end()));
+	    if (!dimg._ctype._labels.empty())
+	      _test_labels.insert(_test_labels.end(),
+	      std::make_move_iterator(dimg._ctype._labels.begin()),
+	      std::make_move_iterator(dimg._ctype._labels.end()));
+	    if (!dimg._ctype._b64 && dimg._ctype._imgs.size() == 1)
 	      uris.push_back(u);
+	    else if (!dimg._ctype._img_files.empty())
+	      uris.insert(uris.end(),
+	      std::make_move_iterator(dimg._ctype._img_files.begin()),
+	      std::make_move_iterator(dimg._ctype._img_files.end()));
 	    else uris.push_back(std::to_string(i));
 	  }
 	}
@@ -298,7 +333,7 @@ namespace dd
 	      std::random_device rd;
 	      g = std::mt19937(rd());
 	    }
-	  std::shuffle(_images.begin(),_images.end(),g);
+	  std::shuffle(_images.begin(),_images.end(),g); //XXX beware: labels are not shuffled, i.e. let's not shuffle while testing
 	}
       // split as required
       if (_test_split > 0)
@@ -319,7 +354,7 @@ namespace dd
 	      ++chit;
 	    }
 	  _images.erase(dchit,_images.end());
-	  LOG(INFO) << "data split test size=" << _test_images.size() << " / remaining data size=" << _images.size() << std::endl;
+	  LOG(INFO) << "data split test size=" << _test_images.size() << " / remaining data size=" << _images.size();
 	}
       if (_images.empty())
 	throw InputConnectorBadParamException("no image could be found");
@@ -329,7 +364,7 @@ namespace dd
     std::vector<cv::Mat> _images;
     std::vector<cv::Mat> _test_images;
     std::vector<int> _test_labels;
-    
+    std::vector<std::pair<int,int>> _images_size;
     // image parameters
     int _width = 227;
     int _height = 227;
@@ -341,5 +376,9 @@ namespace dd
 }
 
 #include "caffeinputconns.h"
+
+#ifdef USE_TF
+#include "tfinputconns.h"
+#endif
 
 #endif

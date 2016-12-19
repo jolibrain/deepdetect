@@ -84,7 +84,7 @@ namespace dd
   int XGBLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::train(const APIData &ad,
 									       APIData &out)
   {
-    //TODO: any check on model here
+    // any check on model here
     this->_mlmodel.read_from_repository();
     
     // mutex if train and predict calls need to be isolated
@@ -199,10 +199,10 @@ namespace dd
       add_cfg_param("tree_method",tree_method);
       
       // data setup
-      std::vector<xgboost::DMatrix*> mats = { inputc._m };
-      xgboost::DMatrix *dtrain(inputc._m);
-      std::vector<xgboost::DMatrix*> deval;
-      std::vector<xgboost::DMatrix*> eval_datasets;
+      std::vector<std::shared_ptr<xgboost::DMatrix>> mats = { inputc._m };
+      std::shared_ptr<xgboost::DMatrix> dtrain(inputc._m);
+      std::vector<std::shared_ptr<xgboost::DMatrix>> deval;
+      std::vector<std::shared_ptr<xgboost::DMatrix>> eval_datasets;
       for (size_t i = 0; i < _params.eval_data_names.size(); ++i) {
 	if (inputc._mtest)
 	  {
@@ -243,7 +243,7 @@ namespace dd
 	  if (_params.silent == 0) {
 	    LOG(INFO) << "boosting round " << i;
 	  }
-	  learner->UpdateOneIter(i, dtrain);
+	  learner->UpdateOneIter(i, dtrain.get());
 	  if (learner->AllowLazyCheckPoint()) {
 	    rabit::LazyCheckPoint(learner.get());
 	  } else {
@@ -271,7 +271,7 @@ namespace dd
 	if (i > 0 && i % test_interval == 0 && !eval_datasets.empty())
 	  {
 	    APIData meas_out;
-	    test(ad,learner,eval_datasets.at(0),meas_out);
+	    test(ad,learner,eval_datasets.at(0).get(),meas_out);
 	    APIData meas_obj = meas_out.getobj("measure");
 	    std::vector<std::string> meas_str = meas_obj.list_keys();
 	    for (auto m: meas_str)
@@ -337,10 +337,11 @@ namespace dd
 	}
       
       // test
-      test(ad,learner,inputc._mtest,out);
+      test(ad,learner,inputc._mtest.get(),out);
       
       // prepare model
       this->_mlmodel.read_from_repository();
+      this->_mlmodel.read_corresp_file();
       
       // add whatever the input connector needs to transmit out
       inputc.response_params(out);
@@ -386,20 +387,19 @@ namespace dd
     APIData ad_out = ad.getobj("parameters").getobj("output");
     if (ad_out.has("measure"))
       {
-	std::vector<xgboost::DMatrix*> eval_datasets = { inputc._m };
+	std::vector<std::shared_ptr<xgboost::DMatrix>> eval_datasets = { inputc._m };
 	APIData meas_out;
 	std::unique_ptr<xgboost::Learner> learner(_learner);
-	test(ad,learner,eval_datasets.at(0),meas_out);
+	test(ad,learner,eval_datasets.at(0).get(),meas_out);
 	learner.release();
 	meas_out.erase("iteration");
-	std::vector<APIData> vad = {meas_out.getobj("measure")};
-	out.add("measure",vad);
+	out.add("measure",meas_out.getobj("measure"));
 	return 0;
       }
     
     // predict
     std::vector<float> preds;
-    _learner->Predict(inputc._m,_params.pred_margin,&preds,_params.ntree_limit);
+    _learner->Predict(inputc._m.get(),_params.pred_margin,&preds,_params.ntree_limit);
 
     // results
     //float loss = 0.0; // XXX: how to acquire loss ?
@@ -439,6 +439,7 @@ namespace dd
 	out.add("regression",true);
 	out.add("nclasses",nclasses);
       }
+    out.add("nclasses",nclasses);
     tout.finalize(ad.getobj("parameters").getobj("output"),out);
     out.add("status",0);
     return 0;
@@ -484,8 +485,7 @@ namespace dd
 	      predictions.insert(predictions.begin(),1.0-predictions.back());
 	    bad.add("target",dtest->info().labels.at(k));
 	    bad.add("pred",predictions);
-	    std::vector<APIData> vad = { bad };
-	    ad_res.add(std::to_string(k),vad);
+	    ad_res.add(std::to_string(k),bad);
 	  }
 	std::vector<std::string> clnames;
 	for (int i=0;i<nout;i++)

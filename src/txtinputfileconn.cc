@@ -65,7 +65,7 @@ namespace dd
     std::unordered_set<std::string> subdirs;
     if (fileops::list_directory(dir,false,true,subdirs))
       throw InputConnectorBadParamException("failed reading text subdirectories in data directory " + dir);
-    std::cerr << "list subdirs size=" << subdirs.size() << std::endl;
+    LOG(INFO) << "txtinputfileconn: list subdirs size=" << subdirs.size();
     
     // list files and classes
     std::vector<std::pair<std::string,int>> lfiles; // labeled files
@@ -310,6 +310,7 @@ namespace dd
       {
 	out << p.first << delim << p.second._pos << std::endl;
       }
+    out.close();
   }
 
   void TxtInputFileConn::deserialize_vocab(const bool &required)
@@ -330,7 +331,7 @@ namespace dd
       {
 	std::vector<std::string> tokens = dd_utils::split(line,',');
 	std::string key = tokens.at(0);
-	int pos = atoi(tokens.at(1).c_str());
+	int pos = std::atoi(tokens.at(1).c_str());
 	_vocab.emplace(std::make_pair(key,Word(pos)));
       }
     std::cerr << "loaded vocabulary of size=" << _vocab.size() << std::endl;

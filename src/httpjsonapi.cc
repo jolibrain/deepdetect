@@ -31,10 +31,16 @@
 #include "ext/rapidjson/writer.h"
 #include <gflags/gflags.h>
 #include "utils/httpclient.hpp"
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <boost/iostreams/copy.hpp>
+#include <chrono>
 
 DEFINE_string(host,"localhost","host for running the server");
 DEFINE_string(port,"8080","server port");
 DEFINE_int32(nthreads,10,"number of HTTP server threads");
+
+using namespace boost::iostreams;
 
 namespace dd
 {
@@ -131,9 +137,17 @@ public:
     }*/
   
   void fillup_response(http_server::response &response,
-		       const JDoc &janswer)
+		       const JDoc &janswer,
+		       std::string &access_log,
+		       int &code,
+		       std::chrono::time_point<std::chrono::system_clock> tstart,
+		       const std::string &encoding="")
   {
-    int code = janswer["status"]["code"].GetInt();
+    std::chrono::time_point<std::chrono::system_clock> tstop = std::chrono::system_clock::now();
+    code = janswer["status"]["code"].GetInt();
+    access_log += " " + std::to_string(code);
+    int proctime = std::chrono::duration_cast<std::chrono::seconds>(tstop-tstart).count();
+    access_log += " " + std::to_string(proctime);
     int outcode = code;
     std::string stranswer;
     if (janswer.HasMember("template")) // if output template, fillup with rendered template.
@@ -181,7 +195,25 @@ public:
 	      }
 	  }
       }
+    bool has_gzip = (encoding.find("gzip") != std::string::npos);
+    if (!encoding.empty() && has_gzip)
+      {
+	std::string gzstr;
+	filtering_ostream gzout;
+	gzout.push(gzip_compressor());
+	gzout.push(boost::iostreams::back_inserter(gzstr));
+	gzout << stranswer;
+	boost::iostreams::close(gzout);
+	stranswer = gzstr;
+      }
     response = http_server::response::stock_reply(http_server::response::status_type(outcode),stranswer);
+    response.headers[1].value = "application/json";
+    if (!encoding.empty() && has_gzip)
+      {
+	response.headers.resize(3);
+	response.headers[2].name = "Content-Encoding";
+	response.headers[2].value = "gzip";
+      }
     response.status = static_cast<http_server::response::status_type>(code);
   }
 
@@ -195,6 +227,11 @@ public:
     std::cerr << "body=" << request.body << std::endl;*/
     //debug
 
+    std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();
+    
+    std::string access_log = request.source + " \"" + request.method + " " + request.destination + "\"";
+    int code;
+    
     std::string source = request.source;
     if (source == "::1")
       source = "127.0.0.1";
@@ -225,68 +262,100 @@ public:
     std::cerr << "path1=" << rscs[1] << std::endl;
     LOG(INFO) << "HTTP " << req_method << " / call / uri=" << ur << std::endl;*/
     //debug
+
+    std::string content_encoding;
+    std::string accept_encoding;
+    for (const auto& header : request.headers) {
+      if (header.name == "Accept-Encoding")
+	  accept_encoding = header.value;
+      else if (header.name == "Content-Encoding")
+	content_encoding = header.value;
+    }
+    if (!content_encoding.empty())
+      {
+	if (content_encoding == "gzip")
+	  {
+	    if (!body.empty())
+	      {
+		std::string gzstr;
+		filtering_ostream gzin;
+		gzin.push(gzip_decompressor());
+		gzin.push(boost::iostreams::back_inserter(gzstr));
+		gzin << body;
+		boost::iostreams::close(gzin);
+		body = gzstr;
+	      }
+	  }
+	else LOG(ERROR) << "Unsupported content-encoding:" << content_encoding << std::endl;
+	fillup_response(response,_hja->dd_bad_request_400(),access_log,code,tstart);
+      }
     
     if (rscs.at(0) == _rsc_info)
       {
-	fillup_response(response,_hja->info());
+	fillup_response(response,_hja->info(),access_log,code,tstart,accept_encoding);
       }
     else if (rscs.at(0) == _rsc_services)
       {
 	if (rscs.size() < 2)
 	  {
-	    fillup_response(response,_hja->dd_bad_request_400());
+	    fillup_response(response,_hja->dd_bad_request_400(),access_log,code,tstart);
+	    LOG(ERROR) << access_log << std::endl;
 	    return;
 	  }
 	std::string sname = rscs.at(1);
 	if (req_method == "GET")
 	  {
-	    fillup_response(response,_hja->service_status(sname));
+	    fillup_response(response,_hja->service_status(sname),access_log,code,tstart,accept_encoding);
 	  }
 	else if (req_method == "PUT" || req_method == "POST") // tolerance to using POST
 	  {
-	    fillup_response(response,_hja->service_create(sname,body));
+	    fillup_response(response,_hja->service_create(sname,body),access_log,code,tstart,accept_encoding);
 	  }
 	else if (req_method == "DELETE")
 	  {
 	    // DELETE does not accept body so query options are turned into JSON for internal processing
 	    std::string jstr = dd::uri_query_to_json(req_query);
-	    fillup_response(response,_hja->service_delete(sname,jstr));
+	    fillup_response(response,_hja->service_delete(sname,jstr),access_log,code,tstart,accept_encoding);
 	  }
       }
     else if (rscs.at(0) == _rsc_predict)
       {
 	if (req_method != "POST")
 	  {
-	    fillup_response(response,_hja->dd_bad_request_400());
+	    fillup_response(response,_hja->dd_bad_request_400(),access_log,code,tstart);
+	    LOG(ERROR) << access_log << std::endl;
 	    return;
 	  }
-	fillup_response(response,_hja->service_predict(body));
+	fillup_response(response,_hja->service_predict(body),access_log,code,tstart,accept_encoding);
       }
     else if (rscs.at(0) == _rsc_train)
       {
 	if (req_method == "GET")
 	  {
 	    std::string jstr = dd::uri_query_to_json(req_query);
-	    fillup_response(response,_hja->service_train_status(jstr));
+	    fillup_response(response,_hja->service_train_status(jstr),access_log,code,tstart,accept_encoding);
 	  }
 	else if (req_method == "PUT" || req_method == "POST")
 	  {
-	    fillup_response(response,_hja->service_train(body));
+	    fillup_response(response,_hja->service_train(body),access_log,code,tstart,accept_encoding);
 	  }
 	else if (req_method == "DELETE")
 	  {
 	    // DELETE does not accept body so query options are turned into JSON for internal processing
 	    std::string jstr = dd::uri_query_to_json(req_query);
-	    fillup_response(response,_hja->service_train_delete(jstr));
+	    fillup_response(response,_hja->service_train_delete(jstr),access_log,code,tstart);
 	  }
       }
     else
       {
 	LOG(ERROR) << "Unknown Service=" << rscs.at(0) << std::endl;
 	response = http_server::response::stock_reply(http_server::response::not_found,_hja->jrender(_hja->dd_not_found_404()));
+	code = 404;
       }
+    if (code == 200 || code == 201)
+      LOG(INFO) << access_log << std::endl;
+    else LOG(ERROR) << access_log << std::endl;
   }
-  
   void log(http_server::string_type const &info)
   {
     LOG(ERROR) << info << std::endl;

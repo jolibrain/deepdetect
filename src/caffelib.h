@@ -26,6 +26,7 @@
 #include "caffemodel.h"
 #include "caffe/caffe.hpp"
 #include "caffe/layers/memory_data_layer.hpp"
+#include "caffe/layers/memory_sparse_data_layer.hpp"
 
 using caffe::Blob;
 
@@ -65,12 +66,14 @@ namespace dd
      * \brief configure an MLP template
      * @param ad the template data object
      * @param regression whether the net is a regressor
+     * @param sparse whether the inputs are sparse
      * @param cnclasses the number of output classes, if any
      * @param net_param the training net object
      * @param deploy_net_param the deploy net object
      */
     static void configure_mlp_template(const APIData &ad,
 				       const bool &regression,
+				       const bool &sparse,
 				       const int &targets,
 				       const int &cnclasses,
 				       caffe::NetParameter &net_param,
@@ -177,10 +180,12 @@ namespace dd
        *                 at service creation
        * @param deploy_file the deploy file, same remark as net_file
        * @param inputc the current input constructor that holds the training data
+       * @param has_class_weights whether training uses class weights
        */
       void update_protofile_net(const std::string &net_file,
 				const std::string &deploy_file,
-				const TInputConnectorStrategy &inputc);
+				const TInputConnectorStrategy &inputc,
+				const bool &has_class_weights);
 
     private:
       void update_protofile_classes(caffe::NetParameter &net_param);
@@ -193,14 +198,17 @@ namespace dd
 			  int &batch_size,
 			  int &test_batch_size,
 			  int &test_iter);
+
+      void set_gpuid(const APIData &ad);
       
     public:
       caffe::Net<float> *_net = nullptr; /**< neural net. */
       bool _gpu = false; /**< whether to use GPU. */
-      int _gpuid = 0; /**< GPU id. */
+      std::vector<int> _gpuid = {0}; /**< GPU id. */
       int _nclasses = 0; /**< required, as difficult to acquire from Caffe's internals. */
       bool _regression = false; /**< whether the net acts as a regressor. */
       int _ntargets = 0; /**< number of classification or regression targets. */
+      bool _autoencoder = false; /**< whether an autoencoder. */
       std::mutex _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as net is not re-instantiated. Use batches instead. */
     };
 

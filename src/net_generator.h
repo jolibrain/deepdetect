@@ -35,13 +35,15 @@ namespace dd
     ~NetGenerator() {}
   };
 
-  class NetInput
+  template <class TInputConnectorStrategy>
+    class NetInput
   {
   public:
     NetInput() {}
     ~NetInput() {}
-
-    void configure_inputs(const APIData &ad_input);
+    
+    void configure_inputs(const APIData &ad_input,
+			  const TInputConnectorStrategy &inputc) {}
   };
 
   class NetLayers
@@ -50,8 +52,10 @@ namespace dd
     NetLayers() {}
     ~NetLayers() {}
 
-    void add_basic_block();
-    void configure_net(); 
+    //void add_basic_block();
+    void configure_net(const APIData &ad_mllib);
+
+    //TODO: basic layers, e.g. conv, etc ?
   };
 
   class NetLoss

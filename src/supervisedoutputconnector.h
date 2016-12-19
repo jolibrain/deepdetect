@@ -60,9 +60,15 @@ namespace dd
 	_cats.insert(std::pair<double,std::string>(prob,cat));
       }
 
+      inline void add_extra(const double &prob, const APIData &ad)
+      {
+	_extra.insert(std::pair<double,APIData>(prob,ad));
+      }
+      
       std::string _label;
       double _loss = 0.0; /**< result loss. */
       std::map<double,std::string,std::greater<double>> _cats; /**< categories and probabilities for this result */
+      std::map<double,APIData,std::greater<double>> _extra; /**< extra data or information added to output, e.g. bboxes. */
     };
 
   public:
@@ -94,6 +100,8 @@ namespace dd
       APIData ad_out = ad.getobj("parameters").getobj("output");
       if (ad_out.has("best"))
 	_best = ad_out.get("best").get<int>();
+      if (_best == -1)
+	_best = ad_out.get("nclasses").get<int>();
     }
 
     /**
@@ -104,11 +112,14 @@ namespace dd
     {
       std::unordered_map<std::string,int>::iterator hit;
       for (APIData ad: vrad)
-	{
+	{ 
 	  std::string uri = ad.get("uri").get<std::string>();
 	  double loss = ad.get("loss").get<double>();
 	  std::vector<double> probs = ad.get("probs").get<std::vector<double>>();
 	  std::vector<std::string> cats = ad.get("cats").get<std::vector<std::string>>();
+	  std::vector<APIData> vextra;
+	  if (ad.has("bboxes"))
+	    vextra = ad.getv("bboxes");
 	  if ((hit=_vcats.find(uri))==_vcats.end())
 	    {
 	      auto resit = _vcats.insert(std::pair<std::string,int>(uri,_vvcats.size()));
@@ -117,6 +128,8 @@ namespace dd
 	      for (size_t i=0;i<probs.size();i++)
 		{
 		  _vvcats.at((*hit).second).add_cat(probs.at(i),cats.at(i));
+		  if (!vextra.empty())
+		    _vvcats.at((*hit).second).add_extra(probs.at(i),vextra.at(i));
 		}
 	    }
 	}
@@ -127,17 +140,24 @@ namespace dd
      * @param ad_out output data object
      * @param bcats supervised output connector
      */
-    void best_cats(const APIData &ad_out, SupervisedOutput &bcats) const
+    void best_cats(const APIData &ad_out, SupervisedOutput &bcats, const int &nclasses) const
     {
       int best = _best;
       if (ad_out.has("best"))
 	best = ad_out.get("best").get<int>();
+      if (best == -1)
+	best = nclasses;
       for (size_t i=0;i<_vvcats.size();i++)
 	{
 	  sup_result sresult = _vvcats.at(i);
 	  sup_result bsresult(sresult._label,sresult._loss);
+	  if (_best == -2) // e.g. bboxes
+	    best = sresult._cats.size();
 	  std::copy_n(sresult._cats.begin(),std::min(best,static_cast<int>(sresult._cats.size())),
 		      std::inserter(bsresult._cats,bsresult._cats.end()));
+	  if (!sresult._extra.empty())
+	    std::copy_n(sresult._extra.begin(),std::min(best,static_cast<int>(sresult._extra.size())),
+			std::inserter(bsresult._extra,bsresult._extra.end()));
 	  bcats._vcats.insert(std::pair<std::string,int>(sresult._label,bcats._vvcats.size()));
 	  bcats._vvcats.push_back(bsresult);
 	}
@@ -152,6 +172,10 @@ namespace dd
     {
       SupervisedOutput bcats(*this);
       bool regression = false;
+      bool autoencoder = false;
+      int nclasses = -1;
+      if (ad_out.has("nclasses"))
+	nclasses = ad_out.get("nclasses").get<int>();
       if (ad_out.has("regression"))
 	{
 	  if (ad_out.get("regression").get<bool>())
@@ -162,8 +186,20 @@ namespace dd
 	  ad_out.erase("regression");
 	  ad_out.erase("nclasses");
 	}
-      best_cats(ad_in,bcats);
-      bcats.to_ad(ad_out,regression);
+      if (ad_out.has("autoencoder") && ad_out.get("autoencoder").get<bool>())
+	{
+	  autoencoder = true;
+	  _best = 1;
+	  ad_out.erase("autoencoder");
+	}
+      if (ad_out.has("bbox") && ad_out.get("bbox").get<bool>())
+	{
+	  _best = -2;
+	  ad_out.erase("nclasses");
+	  ad_out.erase("bbox");
+	}
+      best_cats(ad_in,bcats,nclasses);
+      bcats.to_ad(ad_out,regression,autoencoder);
     }
     
     struct PredictionAndAnswer {
@@ -194,6 +230,7 @@ namespace dd
 	  bool bmcll = (std::find(measures.begin(),measures.end(),"mcll")!=measures.end());
 	  bool bgini = (std::find(measures.begin(),measures.end(),"gini")!=measures.end());
 	  bool beucll = (std::find(measures.begin(),measures.end(),"eucll")!=measures.end());
+	  bool bmcc = (std::find(measures.begin(),measures.end(),"mcc")!=measures.end());
 	  if (bauc) // XXX: applies two binary classification problems only
 	    {
 	      double mauc = auc(ad_res);
@@ -228,16 +265,19 @@ namespace dd
 	      if (std::find(measures.begin(),measures.end(),"cmfull")!=measures.end())
 		{
 		  std::vector<std::string> clnames = ad_res.get("clnames").get<std::vector<std::string>>();
-		  APIData cad;
+		  APIData cmobj;
+		  cmobj.add("labels",clnames);
+		  std::vector<APIData> cmdata;
 		  for (int i=0;i<conf_matrix.cols();i++)
 		    {
-		      std::vector<double> cmcol;
+		      std::vector<double> cmrow;
 		      for (int j=0;j<conf_matrix.rows();j++)
-			cmcol.push_back(conf_matrix(j,i));
-		      cad.add(clnames.at(i),cmcol);
+			cmrow.push_back(conf_matrix(j,i));
+		      APIData adrow;
+		      adrow.add(clnames.at(i),cmrow);
+		      cmdata.push_back(adrow);
 		    }
-		  std::vector<APIData> vad = {cad};
-		  meas_out.add("cmfull",vad);
+		  meas_out.add("cmfull",cmdata);
 		}
 	    }
 	  if (bmcll)
@@ -252,9 +292,14 @@ namespace dd
 	    }
 	  if (beucll)
 	    {
-	      //TODO: euclidean distance
 	      double meucll = eucll(ad_res);
 	      meas_out.add("eucll",meucll);
+	    }
+	  if (bmcc)
+	    {
+	      double mmcc = mcc(ad_res);
+	      meas_out.add("mcc",mmcc);
+	      
 	    }
 	}
 	if (loss)
@@ -263,8 +308,7 @@ namespace dd
 	  meas_out.add("train_loss",ad_res.get("train_loss").get<double>());
 	if (iter)
 	  meas_out.add("iteration",ad_res.get("iteration").get<double>());
-	std::vector<APIData> vad = { meas_out };
-	out.add("measure",vad);
+	out.add("measure",meas_out);
     }
 
     // measure: ACC
@@ -349,7 +393,7 @@ namespace dd
       f1 = (2.0*precision*recall) / (precision+recall);
       conf_diag = conf_diag.transpose().cwiseQuotient(conf_csum+eps.transpose()).transpose();
       for (int i=0;i<conf_matrix.cols();i++)
-	conf_matrix.col(i) = conf_matrix.col(i).transpose().cwiseQuotient(conf_csum+eps.transpose()).transpose();
+	conf_matrix.col(i) /= conf_csum(i);
       return f1;
     }
     
@@ -421,6 +465,35 @@ namespace dd
       return ll / static_cast<double>(batch_size);
     }
 
+    // measure: Mathew correlation coefficient for binary classes
+    static double mcc(const APIData &ad)
+    {
+      int nclasses = ad.get("nclasses").get<int>();
+      dMat conf_matrix = dMat::Zero(nclasses,nclasses);
+      int batch_size = ad.get("batch_size").get<int>();
+      for (int i=0;i<batch_size;i++)
+	{
+	  APIData bad = ad.getobj(std::to_string(i));
+	  std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
+	  int maxpr = std::distance(predictions.begin(),std::max_element(predictions.begin(),predictions.end()));
+	  double target = bad.get("target").get<double>();
+	  if (target < 0)
+	    throw OutputConnectorBadParamException("negative supervised discrete target (e.g. wrong use of label_offset ?");
+	  else if (target >= nclasses)
+	    throw OutputConnectorBadParamException("target class has id " + std::to_string(target) + " is higher than the number of classes " + std::to_string(nclasses) + " (e.g. wrong number of classes specified with nclasses");
+	  conf_matrix(maxpr,target) += 1.0;
+	}
+      double tp = conf_matrix(0,0);
+      double tn = conf_matrix(1,1);
+      double fn = conf_matrix(0,1);
+      double fp = conf_matrix(1,0);
+      double den = (tp+fp)*(tp+fn)*(tn+fp)*(tn+fn);
+      if (den == 0.0)
+	den = 1.0;
+      double mcc = (tp*tn-fp*fn) / std::sqrt(den);
+      return mcc;
+    }
+    
     static double eucll(const APIData &ad)
     {
       double eucl = 0.0;
@@ -506,27 +579,40 @@ namespace dd
      * \brief write supervised output object to data object
      * @param out data destination
      */
-    void to_ad(APIData &out, const bool &regression) const
+    void to_ad(APIData &out, const bool &regression, const bool &autoencoder) const
     {
       static std::string cl = "classes";
       static std::string ve = "vector";
+      static std::string ae = "losses";
+      static std::string bb = "bbox";
       static std::string phead = "prob";
       static std::string chead = "cat";
       static std::string vhead = "val";
+      static std::string ahead = "loss";
       static std::string last = "last";
       std::vector<APIData> vpred;
       for (size_t i=0;i<_vvcats.size();i++)
 	{
 	  APIData adpred;
 	  std::vector<APIData> v;
+	  auto bit = _vvcats.at(i)._extra.begin();
+	  bool has_bbox = (bit!=_vvcats.at(i)._extra.end());
 	  auto mit = _vvcats.at(i)._cats.begin();
 	  while(mit!=_vvcats.at(i)._cats.end())
 	    {
 	      APIData nad;
-	      nad.add(chead,(*mit).second);
+	      if (!autoencoder)
+		nad.add(chead,(*mit).second);
 	      if (regression)
 		nad.add(vhead,(*mit).first);
+	      else if (autoencoder)
+		nad.add(ahead,(*mit).first);
 	      else nad.add(phead,(*mit).first);
+	      if (has_bbox)
+		{
+		  nad.add(bb,(*bit).second);
+		  ++bit;
+		}
 	      ++mit;
 	      if (mit == _vvcats.at(i)._cats.end())
 		nad.add(last,true);
@@ -534,6 +620,8 @@ namespace dd
 	    }
 	  if (regression)
 	    adpred.add(ve,v);
+	  else if (autoencoder)
+	    adpred.add(ae,v);
 	  else adpred.add(cl,v);
 	  if (_vvcats.at(i)._loss > 0.0) // XXX: not set by Caffe in prediction mode for now
 	    adpred.add("loss",_vvcats.at(i)._loss);
