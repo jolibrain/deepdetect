@@ -112,8 +112,6 @@ namespace dd
 
     // deploy
     dlparam->set_type("MemoryData");
-    caffe::NetStateRule *dnsr = dlparam->add_include();
-    dnsr->set_phase(caffe::TEST);
     caffe::MemoryDataParameter *mdparam = dlparam->mutable_memory_data_param();
     mdparam->set_batch_size(1);
     mdparam->set_channels(channels);
@@ -128,7 +126,15 @@ namespace dd
 	lparam->set_name("slice_labels");
 	caffe::SliceParameter *sparam = lparam->mutable_slice_param();
 	sparam->set_slice_dim(1);
-	sparam->add_slice_point(nclasses);
+	sparam->add_slice_point(1); //TODO: temporay value, NOT nclasses
+
+	dlparam = CaffeCommon::add_layer(this->_dnet_params,top,"data");
+	dlparam->add_top("label");
+	dlparam->set_type("Slice");
+	dlparam->set_name("slice_labels");
+	sparam = dlparam->mutable_slice_param();
+	sparam->set_slice_dim(1);
+	sparam->add_slice_point(1); //TODO: temporay value, NOT nclasses
       }
   }
 
@@ -170,11 +176,9 @@ namespace dd
     int nclasses = -1;
     if (ad_mllib.has("nclasses"))
       nclasses = ad_mllib.get("nclasses").get<int>();
-    /*bool db = false;
-    if (ad.has("db"))
-    db = ad.get("db").get<bool>();*/
-    //configure_inputs(net_param,ad,cnclasses,targets,false,db,false);
-    //configure_inputs(deploy_net_param,ad,cnclasses,targets,true,db,false);
+    int ntargets = -1;
+    if (ad_mllib.has("ntargets"))
+      ntargets = ad_mllib.get("ntargets").get<int>();
     std::string bottom = "data";
     for (size_t l=0;l<layers.size();l++)
       {
@@ -184,9 +188,8 @@ namespace dd
 	bottom = top;
       }
     //TODO: to loss ?
-    add_softmax(this->_net_params,bottom,"","losst",nclasses);
-    //add_softmax(net_param,bottom,"label","loss",nclasses,true,false);
-    add_softmax(this->_dnet_params,bottom,"label","loss",nclasses,true);
+    add_softmax(this->_net_params,bottom,"label","losst",nclasses > 0 ? nclasses : ntargets);
+    add_softmax(this->_dnet_params,bottom,"","loss",nclasses > 0 ? nclasses : ntargets,true);
   }
 
   template class NetInputCaffeMLP<ImgCaffeInputFileConn>;

@@ -89,7 +89,8 @@ namespace dd
     void add_act(caffe::NetParameter *net_param,
 		 const std::string &bottom,
 		 const std::string &activation,
-		 const double &elu_alpha=1.0);
+		 const double &elu_alpha=1.0,
+		 const double &negative_slope=0.0);
 
     void add_pooling(caffe::NetParameter *net_param,
 		     const std::string &bottom,

@@ -78,6 +78,10 @@ namespace dd
 				       const int &cnclasses,
 				       caffe::NetParameter &net_param,
 				       caffe::NetParameter &deploy_net_param);
+      static void configure_mlp_template(const APIData &ad,
+					 const TInputConnectorStrategy &inputc,
+					 caffe::NetParameter &net_param,
+					 caffe::NetParameter &dnet_param);
 
     /**
      * \brief configure a convnet template

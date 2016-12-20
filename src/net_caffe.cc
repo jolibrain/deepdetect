@@ -107,12 +107,15 @@ namespace dd
   void NetLayersCaffe::add_act(caffe::NetParameter *net_param,
 			       const std::string &bottom,
 			       const std::string &activation,
-			       const double &elu_alpha)
+			       const double &elu_alpha,
+			       const double &negative_slope)
   {
     caffe::LayerParameter *lparam = CaffeCommon::add_layer(net_param,bottom,bottom,
 							   "act_" + activation + "_" + bottom,activation);
     if (activation == "ELU" && elu_alpha != 1.0)
       lparam->mutable_elu_param()->set_alpha(elu_alpha);
+    if (activation == "ReLU" && negative_slope != 0.0)
+      lparam->mutable_relu_param()->set_negative_slope(negative_slope);
   }
 
   void NetLayersCaffe::add_pooling(caffe::NetParameter *net_param,

@@ -146,12 +146,7 @@ namespace dd
     if (model_tmpl == "mlp" || model_tmpl == "mlp_db" || model_tmpl == "lregression")
       {
 	caffe::NetParameter net_param,deploy_net_param;
-	caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
-	caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
-	//configure_mlp_template(ad,_regression,this->_inputc._sparse,_ntargets,_nclasses,net_param,deploy_net_param);
-	NetCaffe<NetInputCaffeMLP<TInputConnectorStrategy>,NetLayersCaffeMLP,NetLossCaffe> netcaffe(&net_param,&deploy_net_param);
-	netcaffe._nic.configure_inputs(ad,this->_inputc);
-	netcaffe._nlac.configure_net(ad);
+	configure_mlp_template(ad,this->_inputc,net_param,deploy_net_param);
 	caffe::WriteProtoToTextFile(net_param,dest_net);
 	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
       }
@@ -206,6 +201,17 @@ namespace dd
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_mlp_template(const APIData &ad,
+												   const TInputConnectorStrategy &inputc,
+												   caffe::NetParameter &net_param,
+												   caffe::NetParameter &dnet_param)
+    {
+      	NetCaffe<NetInputCaffeMLP<TInputConnectorStrategy>,NetLayersCaffeMLP,NetLossCaffe> netcaffe(&net_param,&dnet_param);
+	netcaffe._nic.configure_inputs(ad,inputc);
+	netcaffe._nlac.configure_net(ad);
+    }
+
+  /*template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_mlp_template(const APIData &ad,
 												   const bool &regression,
 												   const bool &sparse,
@@ -429,12 +435,12 @@ namespace dd
 	if (init == "gaussian")
 	  ipp->mutable_weight_filler()->set_std(init_std);
 	ipp->mutable_bias_filler()->set_type("constant");
-	++drl;
+	++drl;*/
 	
 	/*if (autoencoder && l == layers.size()-1) //TODO: not for MSE
 	  break;*/
 
-	if (rl < max_rl)
+  /*	if (rl < max_rl)
 	  {
 	    lparam = net_param.mutable_layer(rl);
 	    lparam->clear_include();
@@ -707,7 +713,7 @@ namespace dd
 	    ++drl;
 	  }
       }
-  }
+      }*/
   
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_convnet_template(const APIData &ad,
