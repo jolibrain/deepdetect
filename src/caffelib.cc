@@ -23,7 +23,7 @@
 #include "imginputfileconn.h"
 #include "outputconnectorstrategy.h"
 #include "net_caffe.h"
-#include "net_caffe_mlp.h"
+#include "net_caffe_convnet.h"
 #include "utils/fileops.hpp"
 #include "utils/utils.hpp"
 #include <chrono>
@@ -155,7 +155,8 @@ namespace dd
 	caffe::NetParameter net_param,deploy_net_param;
 	caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
 	caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
-	configure_convnet_template(ad,_regression,_ntargets,_nclasses,this->_inputc,net_param,deploy_net_param);
+	//configure_convnet_template(ad,_regression,_ntargets,_nclasses,this->_inputc,net_param,deploy_net_param);
+	configure_convnet_template(ad,this->_inputc,net_param,deploy_net_param);
 	caffe::WriteProtoToTextFile(net_param,dest_net);
 	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
       }
@@ -206,7 +207,7 @@ namespace dd
 												   caffe::NetParameter &net_param,
 												   caffe::NetParameter &dnet_param)
     {
-      	NetCaffe<NetInputCaffeMLP<TInputConnectorStrategy>,NetLayersCaffeMLP,NetLossCaffe> netcaffe(&net_param,&dnet_param);
+      	NetCaffe<NetInputCaffe<TInputConnectorStrategy>,NetLayersCaffeMLP,NetLossCaffe> netcaffe(&net_param,&dnet_param);
 	netcaffe._nic.configure_inputs(ad,inputc);
 	netcaffe._nlac.configure_net(ad);
     }
@@ -714,8 +715,19 @@ namespace dd
 	  }
       }
       }*/
-  
+
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_convnet_template(const APIData &ad,
+												       const TInputConnectorStrategy &inputc,
+												       caffe::NetParameter &net_param,
+												       caffe::NetParameter &dnet_param)
+  {
+    NetCaffe<NetInputCaffe<TInputConnectorStrategy>,NetLayersCaffeConvnet,NetLossCaffe> netcaffe(&net_param,&dnet_param);
+    netcaffe._nic.configure_inputs(ad,inputc);
+    netcaffe._nlac.configure_net(ad);
+  }
+    
+/*template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_convnet_template(const APIData &ad,
 												       const bool &regression,
 												       const int &targets,
@@ -1101,28 +1113,10 @@ namespace dd
 	    dlparam->mutable_pooling_param()->set_kernel_size(pool_kernel_size);
 	    dlparam->mutable_pooling_param()->set_stride(pool_stride);
 	  }
-	++drl;
-
-	/*if (dropout > 0.0 && dropout < 1.0)
-	  {
-	    if (rl < max_rl)
-	      {
-		lparam = net_param.mutable_layer(rl);
-		lparam->clear_bottom();
-		lparam->clear_top();
-		lparam->clear_loss_weight();
-	      }
-	    else lparam = net_param.add_layer(); // dropout layer
-	    lparam->set_name("drop"+lcum);
-	    lparam->set_type("Dropout");
-	    lparam->add_bottom("pool"+lcum);
-	    lparam->add_top("pool"+lcum);
-	    lparam->mutable_dropout_param()->set_dropout_ratio(dropout);
-	    ++rl;
-	    }*/
+	  ++drl;
       }
 
-    prec_ip = "pool" + std::to_string(cr_layers.size()-1);
+      prec_ip = "pool" + std::to_string(cr_layers.size()-1);
     last_ip = "ip" + std::to_string(cr_layers.size());
     int lfc = cr_layers.size();
     int cact = ccount + 1;
@@ -1366,7 +1360,7 @@ namespace dd
 	dlparam->add_top("loss");
 	++drl;
       }
-  }
+      }*/
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::create_model(const bool &test)
@@ -2363,7 +2357,7 @@ namespace dd
 		else mdp->set_batch_size(test_batch_size);
 	      }
 	  }
-	if (lp->has_transform_param())
+	if (lp->has_transform_param() || inputc._has_mean_file)
 	  {
 	    caffe::TransformationParameter *tp = lp->mutable_transform_param();
 	    has_mean_file = tp->has_mean_file();

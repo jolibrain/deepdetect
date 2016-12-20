@@ -19,44 +19,45 @@
  * along with deepdetect.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef NET_CAFFE_MLP_H
-#define NET_CAFFE_MLP_H
+#ifndef NET_CAFFE_CONVNET_H
+#define NET_CAFFE_CONVNET_H
 
-#include "net_caffe.h"
+#include "net_caffe_mlp.h"
 
 namespace dd
 {
 
-  /*template <class TInputCaffe>
-    class NetInputCaffeMLP: public NetInputCaffe<TInputCaffe>
-    {
-    public:
-      NetInputCaffeMLP(caffe::NetParameter *net_params,
-		       caffe::NetParameter *dnet_params)
-	:NetInputCaffe<TInputCaffe>(net_params,dnet_params) {}
-      ~NetInputCaffeMLP() {}
-
-      };*/
-
-  class NetLayersCaffeMLP: public NetLayersCaffe
+  class NetLayersCaffeConvnet: public NetLayersCaffeMLP
   {
   public:
-  NetLayersCaffeMLP(caffe::NetParameter *net_params,
-		    caffe::NetParameter *dnet_params)
-    :NetLayersCaffe(net_params,dnet_params) {}
-    ~NetLayersCaffeMLP() {}
+  NetLayersCaffeConvnet(caffe::NetParameter *net_params,
+			caffe::NetParameter *dnet_params)
+    :NetLayersCaffeMLP(net_params,dnet_params) {}
+    ~NetLayersCaffeConvnet() {}
 
+  private:
+    void parse_conv_layers(const std::vector<std::string> &layers,
+			   std::vector<std::pair<int,int>> &cr_layers,
+			   std::vector<int> &fc_layers);
+    
     void add_basic_block(caffe::NetParameter *net_param,
 			 const std::string &bottom,
 			 const std::string &top,
+			 const int &nconv,
 			 const int &num_output,
+			 const int &kernel_size,
+			 const int &pad,
+			 const int &stride,
 			 const std::string &activation,
 			 const double &dropout_ratio,
-			 const bool &bn);
-    
+			 const bool &bn,
+			 const int &pl_kernel_size,
+			 const int &pl_stride,
+			 const std::string &pl_type);
+
+  public:
     void configure_net(const APIData &ad_mllib);
   };
-  
 }
 
 #endif

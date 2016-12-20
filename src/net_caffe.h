@@ -55,7 +55,7 @@ namespace dd
     :NetInput<TInputCaffe>(),_net_params(net_params),_dnet_params(dnet_params) {}
     ~NetInputCaffe() {}
     
-    void configure_inputs(const APIData &ad,
+    void configure_inputs(const APIData &ad_mllib,
 			  const TInputCaffe &inputc);
     
     caffe::NetParameter *_net_params;

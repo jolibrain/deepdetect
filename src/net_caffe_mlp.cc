@@ -25,119 +25,6 @@
 namespace dd
 {
 
-  /*- NetInputCaffeMLP -*/
-  template<class TInputCaffe>
-  void NetInputCaffeMLP<TInputCaffe>::configure_inputs(const APIData &ad_mllib,
-						       const TInputCaffe &inputc)
-  {
-    //NetInputCaffe<TInputCaffe>::configure_inputs(ad);
-
-    //APIData ad_input = ad.getobj("parameters").getobj("input");
-    //APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
-
-    int nclasses = -1;
-    if (ad_mllib.has("nclasses"))
-      nclasses = ad_mllib.get("nclasses").get<int>();
-    int ntargets = -1;
-    if (ad_mllib.has("ntargets"))
-      ntargets = ad_mllib.get("ntargets").get<int>();
-    bool db = false;
-    if (ad_mllib.has("db"))
-      db = ad_mllib.get("db").get<bool>();
-    int width = inputc.width();
-    int height = inputc.height();
-    int channels = inputc.channels();
-    
-    // train net
-    std::string top = "data";
-    std::string label = "label";
-    if (ntargets > 1)
-      {
-	top = "fulldata";
-	label = "fake_label";
-      }
-
-    // train layer
-    caffe::LayerParameter *lparam = CaffeCommon::add_layer(this->_net_params,top,label);
-    lparam->set_name("data");
-    lparam->add_top(top);
-    lparam->add_top(label);
-    caffe::NetStateRule *nsr = lparam->add_include();
-    nsr->set_phase(caffe::TRAIN);
-    
-    // deploy net
-    caffe::LayerParameter *dlparam = CaffeCommon::add_layer(this->_dnet_params,top,label);
-    dlparam->set_name("data");
-    dlparam->add_top(top);
-    dlparam->add_top(label);
-
-    // sources
-    if (db)
-      {
-	lparam->set_type("Data");
-	caffe::DataParameter *dparam = lparam->mutable_data_param();
-	dparam->set_source("train.lmdb");
-	dparam->set_batch_size(32); // dummy value, updated before training
-	dparam->set_backend(caffe::DataParameter_DB_LMDB);
-
-	// test
-	lparam = this->_net_params->add_layer(); // test layer
-	lparam->set_type("Data");
-	dparam = lparam->mutable_data_param();
-	dparam->set_source("test.lmdb");
-	dparam->set_batch_size(32); // dummy value, updated before training
-	dparam->set_backend(caffe::DataParameter_DB_LMDB);
-	caffe::NetStateRule *nsr = lparam->add_include();
-	nsr->set_phase(caffe::TEST);
-      }
-    else
-      {
-	lparam->set_type("MemoryData");
-	caffe::MemoryDataParameter *mdparam = lparam->mutable_memory_data_param();
-	mdparam->set_batch_size(32); // dummy value, updated before training
-	mdparam->set_channels(channels);
-	mdparam->set_height(height);
-	mdparam->set_width(width);
-
-	lparam = this->_net_params->add_layer(); // test layer
-	lparam->set_type("MemoryData");
-	mdparam = lparam->mutable_memory_data_param();
-	mdparam->set_batch_size(32); // dummy value, updated before training
-	mdparam->set_channels(channels);
-	mdparam->set_height(height);
-	mdparam->set_width(width);
-	caffe::NetStateRule *nsr = lparam->add_include();
-	nsr->set_phase(caffe::TEST);
-      }
-
-    // deploy
-    dlparam->set_type("MemoryData");
-    caffe::MemoryDataParameter *mdparam = dlparam->mutable_memory_data_param();
-    mdparam->set_batch_size(1);
-    mdparam->set_channels(channels);
-    mdparam->set_height(height);
-    mdparam->set_width(width);
-    
-    if (ntargets > 1) // regression
-      {
-	lparam = CaffeCommon::add_layer(this->_net_params,top,"data");
-	lparam->add_top("label");
-	lparam->set_type("Slice");
-	lparam->set_name("slice_labels");
-	caffe::SliceParameter *sparam = lparam->mutable_slice_param();
-	sparam->set_slice_dim(1);
-	sparam->add_slice_point(1); //TODO: temporay value, NOT nclasses
-
-	dlparam = CaffeCommon::add_layer(this->_dnet_params,top,"data");
-	dlparam->add_top("label");
-	dlparam->set_type("Slice");
-	dlparam->set_name("slice_labels");
-	sparam = dlparam->mutable_slice_param();
-	sparam->set_slice_dim(1);
-	sparam->add_slice_point(1); //TODO: temporay value, NOT nclasses
-      }
-  }
-
   /*- NetLayersCaffeMLP -*/
   void NetLayersCaffeMLP::add_basic_block(caffe::NetParameter *net_param,
 					  const std::string &bottom,
@@ -192,12 +79,8 @@ namespace dd
     add_softmax(this->_dnet_params,bottom,"","loss",nclasses > 0 ? nclasses : ntargets,true);
   }
 
-  template class NetInputCaffeMLP<ImgCaffeInputFileConn>;
-  template class NetInputCaffeMLP<CSVCaffeInputFileConn>;
-  template class NetInputCaffeMLP<TxtCaffeInputFileConn>;
-  template class NetInputCaffeMLP<SVMCaffeInputFileConn>;
-  template class NetCaffe<NetInputCaffeMLP<ImgCaffeInputFileConn>,NetLayersCaffeMLP,NetLossCaffe>;
-  template class NetCaffe<NetInputCaffeMLP<CSVCaffeInputFileConn>,NetLayersCaffeMLP,NetLossCaffe>;
-  template class NetCaffe<NetInputCaffeMLP<TxtCaffeInputFileConn>,NetLayersCaffeMLP,NetLossCaffe>;
-  template class NetCaffe<NetInputCaffeMLP<SVMCaffeInputFileConn>,NetLayersCaffeMLP,NetLossCaffe>;
+  template class NetCaffe<NetInputCaffe<ImgCaffeInputFileConn>,NetLayersCaffeMLP,NetLossCaffe>;
+  template class NetCaffe<NetInputCaffe<CSVCaffeInputFileConn>,NetLayersCaffeMLP,NetLossCaffe>;
+  template class NetCaffe<NetInputCaffe<TxtCaffeInputFileConn>,NetLayersCaffeMLP,NetLossCaffe>;
+  template class NetCaffe<NetInputCaffe<SVMCaffeInputFileConn>,NetLayersCaffeMLP,NetLossCaffe>;
 }

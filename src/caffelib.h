@@ -71,13 +71,13 @@ namespace dd
      * @param net_param the training net object
      * @param deploy_net_param the deploy net object
      */
-    static void configure_mlp_template(const APIData &ad,
+      /*static void configure_mlp_template(const APIData &ad,
 				       const bool &regression,
 				       const bool &sparse,
 				       const int &targets,
 				       const int &cnclasses,
 				       caffe::NetParameter &net_param,
-				       caffe::NetParameter &deploy_net_param);
+				       caffe::NetParameter &deploy_net_param);*/
       static void configure_mlp_template(const APIData &ad,
 					 const TInputConnectorStrategy &inputc,
 					 caffe::NetParameter &net_param,
@@ -91,13 +91,18 @@ namespace dd
      * @param net_param the training net object
      * @param deploy_net_param the deploy net object
      */
-    static void configure_convnet_template(const APIData &ad,
+      /*static void configure_convnet_template(const APIData &ad,
 					   const bool &regression,
 					   const int &targets,
 					   const int &cnclasses,
 					   const TInputConnectorStrategy &inputc,
 					   caffe::NetParameter &net_param,
-					   caffe::NetParameter &deploy_net_param);
+					   caffe::NetParameter &deploy_net_param);*/
+
+      static void configure_convnet_template(const APIData &ad,
+					     const TInputConnectorStrategy &inputc,
+					     caffe::NetParameter &net_param,
+					     caffe::NetParameter &dnet_param);
       
     /**
      * \brief creates neural net instance based on model
