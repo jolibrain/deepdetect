@@ -77,6 +77,14 @@ Current features include:
 - API documentation is available from http://www.deepdetect.com/api/
 - FAQ is available from http://www.deepdetect.com/overview/faq/
 
+##### Clients
+
+- Python client:
+  - REST client: https://github.com/beniz/deepdetect/tree/master/clients/python
+  - 'a la scikit' bindings: https://github.com/ArdalanM/pyDD
+- Java client: https://github.com/kfadhel/deepdetect-api-java
+- Early C# client: https://github.com/beniz/deepdetect/pull/98
+
 ##### Dependencies
 
 - C++, gcc >= 4.8 or clang with support for C++11 (there are issues with Clang + Boost)
