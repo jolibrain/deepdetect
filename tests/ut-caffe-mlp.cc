@@ -633,7 +633,7 @@ TEST(caffelib,configure_convnet_template_n_1D)
   ASSERT_EQ(3,lparam->mutable_convolution_param()->kernel_h());
   ASSERT_EQ(1,lparam->mutable_convolution_param()->kernel_w());
   
-  //ASSERT_EQ(23,deploy_net_param.layer_size());
+  ASSERT_EQ(23,deploy_net_param.layer_size());
   lparam = deploy_net_param.mutable_layer(0);
   ASSERT_EQ("MemoryData",lparam->type());
   ASSERT_EQ(1,lparam->mutable_memory_data_param()->channels());
