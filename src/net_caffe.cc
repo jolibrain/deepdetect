@@ -202,12 +202,20 @@ namespace dd
 				const int &num_output,
 				const int &kernel_size,
 				const int &pad,
-				const int &stride)
+				const int &stride,
+				const int &kernel_w,
+				const int &kernel_h)
   {
     caffe::LayerParameter *lparam = CaffeCommon::add_layer(net_param,bottom,top,"conv_"+bottom,"Convolution");
     caffe::ConvolutionParameter *cparam = lparam->mutable_convolution_param();
     cparam->set_num_output(num_output);
-    cparam->add_kernel_size(kernel_size);
+    if (kernel_w == 0 && kernel_h == 0)
+      cparam->add_kernel_size(kernel_size);
+    else
+      {
+	cparam->set_kernel_w(kernel_w);
+	cparam->set_kernel_h(kernel_h);
+      }	
     cparam->add_pad(pad);
     cparam->add_stride(stride);
     cparam->mutable_weight_filler()->set_type("xavier"); //TODO: option
@@ -235,12 +243,28 @@ namespace dd
 				   const std::string &top,
 				   const int &kernel_size,
 				   const int &stride,
-				   const std::string &type)
+				   const std::string &type,
+				   const int &kernel_w,
+				   const int &kernel_h,
+				   const int &stride_w,
+				   const int &stride_h)
   {
     caffe::LayerParameter *lparam = CaffeCommon::add_layer(net_param,bottom,top,"pool_"+bottom,"Pooling");
     caffe::PoolingParameter *pparam = lparam->mutable_pooling_param();
-    pparam->set_kernel_size(kernel_size);
-    pparam->set_stride(stride);
+    if (kernel_w == 0 && kernel_h == 0)
+      pparam->set_kernel_size(kernel_size);
+    else
+      {
+	pparam->set_kernel_w(kernel_w);
+	pparam->set_kernel_h(kernel_h);
+      }
+    if (stride_w == 0 && stride_h == 0)
+      pparam->set_stride(stride);
+    else
+      {
+	pparam->set_stride_w(stride_w);
+	pparam->set_stride_h(stride_h);
+      }
     if (type == "MAX")
       pparam->set_pool(caffe::PoolingParameter::MAX);
     else if (type == "AVE")
@@ -277,6 +301,16 @@ namespace dd
     lparam->add_bottom(bottom2);
   }
 
+  void NetLayersCaffe::add_reshape(caffe::NetParameter *net_param,
+				   const std::string &bottom,
+				   const std::string &top,
+				   const caffe::ReshapeParameter &r_param)
+  {
+    //TODO
+    caffe::LayerParameter *lparam = CaffeCommon::add_layer(net_param,bottom,top,"reshape_"+top,"Reshape");
+    lparam->mutable_reshape_param()->CopyFrom(r_param);
+  }
+  
   void NetLayersCaffe::add_softmax(caffe::NetParameter *net_param,
 				   const std::string &bottom,
 				   const std::string &label,

@@ -53,7 +53,13 @@ namespace dd
 			 const bool &bn,
 			 const int &pl_kernel_size,
 			 const int &pl_stride,
-			 const std::string &pl_type);
+			 const std::string &pl_type,
+			 const int &kernel_w=0,
+			 const int &kernel_h=0,
+			 const int &pl_kernel_w=0,
+			 const int &pl_kernel_h=0,
+			 const int &pl_stride_w=0,
+			 const int &pl_stride_h=0); //TODO: class of convolution parameters ? use caffe proto ?
 
   public:
     void configure_net(const APIData &ad_mllib);

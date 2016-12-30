@@ -84,7 +84,9 @@ namespace dd
 		  const int &num_output,
 		  const int &kernel_size,
 		  const int &pad,
-		  const int &stride);
+		  const int &stride,
+		  const int &kernel_w=0,
+		  const int &kernel_h=0);
 
     void add_act(caffe::NetParameter *net_param,
 		 const std::string &bottom,
@@ -97,7 +99,11 @@ namespace dd
 		     const std::string &top,
 		     const int &kernel_size,
 		     const int &stride,
-		     const std::string &type);
+		     const std::string &type,
+		     const int &kernel_w,
+		     const int &kernel_h,
+		     const int &stride_w,
+		     const int &stride_h);
 
     void add_dropout(caffe::NetParameter *net_param,
 		     const std::string &bottom,
@@ -111,6 +117,11 @@ namespace dd
 		     const std::string &bottom2,
 		     const std::string &top);
 
+    void add_reshape(caffe::NetParameter *net_param,
+		     const std::string &bottom,
+		     const std::string &top,
+		     const caffe::ReshapeParameter &r_param); //TODO
+    
     // requires a fully connected layer (all losses ?)
     void add_softmax(caffe::NetParameter *net_param,
 		     const std::string &bottom,

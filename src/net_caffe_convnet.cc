@@ -69,19 +69,25 @@ namespace dd
 					      const bool &bn,
 					      const int &pl_kernel_size,
 					      const int &pl_stride,
-					      const std::string &pl_type)
+					      const std::string &pl_type,
+					      const int &kernel_w,
+					      const int &kernel_h,
+					      const int &pl_kernel_w,
+					      const int &pl_kernel_h,
+					      const int &pl_stride_w,
+					      const int &pl_stride_h)
   {
     std::string top_conv;
     for (int c=0;c<nconv;c++)
       {
 	top_conv = top + "_conv_" + std::to_string(c);
-	add_conv(net_param,bottom,top_conv,num_output,kernel_size,pad,stride);
+	add_conv(net_param,bottom,top_conv,num_output,kernel_size,pad,stride,kernel_w,kernel_h);
 	if (bn)
 	  {
 	    add_bn(net_param,top_conv);
 	    add_act(net_param,top_conv,activation);
 	  }
-	else if (dropout_ratio > 0.0)
+	else if (dropout_ratio > 0.0) // though in general, no dropout between convolutions
 	  {
 	    add_act(net_param,top_conv,activation);
 	    if (c != nconv-1)
@@ -90,7 +96,7 @@ namespace dd
 	else add_act(net_param,top_conv,activation);
       }
     // pooling
-    add_pooling(net_param,top_conv,top,pl_kernel_size,pl_stride,pl_type);
+    add_pooling(net_param,top_conv,top,pl_kernel_size,pl_stride,pl_type,pl_kernel_w,pl_kernel_h,pl_stride_w,pl_stride_h);
     /*if (dropout_ratio > 0.0 && !bn)
       add_dropout(net_param,top,dropout_ratio);*/
   }
@@ -106,6 +112,9 @@ namespace dd
     bool regression = false;
     if (ad_mllib.has("regression"))
       regression = ad_mllib.get("regression").get<bool>();
+    bool flat1dconv = false;
+    if (ad_mllib.has("flat1dconv"))
+      flat1dconv = ad_mllib.get("flat1dconv").get<bool>();
     
     std::vector<std::string> layers;
     std::string activation = CaffeCommon::set_activation(ad_mllib);
@@ -124,16 +133,39 @@ namespace dd
     bool db = false;
     if (ad_mllib.has("db") && ad_mllib.get("db").get<bool>())
       db = true;
-    uint32_t conv_kernel_size = 3;
-    uint32_t conv1d_early_kernel_size = 7;
-    /*configure_inputs(net_param,ad,nclasses,ntargets,false,db,!text);
-      configure_inputs(deploy_net_param,ad,nclasses,ntargets,true,db,!text);*/
+    int conv_kernel_size = 3;
+    int conv1d_early_kernel_size = 7;
     std::string bottom = "data";
+    int width = -1;
+    if (flat1dconv)
+      width = this->_net_params->mutable_layer(1)->mutable_memory_data_param()->width();
     for (size_t l=0;l<cr_layers.size();l++)
       {
 	std::string top = "ip" + std::to_string(l);
-	add_basic_block(this->_net_params,bottom,top,cr_layers.at(l).first,cr_layers.at(l).second,conv_kernel_size,0,1,activation,0.0,bn,2,2,"MAX"); //TODO: pad=0,stride=1, option, dropout is 0 since no dropout in inner loop
-	add_basic_block(this->_dnet_params,bottom,top,cr_layers.at(l).first,cr_layers.at(l).second,conv_kernel_size,0,1,activation,0.0,bn,2,2,"MAX");
+	if (!flat1dconv)
+	  {
+	    add_basic_block(this->_net_params,bottom,top,cr_layers.at(l).first,cr_layers.at(l).second,
+			    conv_kernel_size,0,1,activation,0.0,bn,2,2,"MAX"); //TODO: pad=0,stride=1, option, dropout is 0 since no dropout in inner loop
+	    add_basic_block(this->_dnet_params,bottom,top,cr_layers.at(l).first,cr_layers.at(l).second,
+			    conv_kernel_size,0,1,activation,0.0,bn,2,2,"MAX");
+	  }
+	else
+	  {
+	    add_basic_block(this->_net_params,bottom,top,cr_layers.at(l).first,cr_layers.at(l).second,
+			    0,0,1,activation,0.0,bn,0,0,"MAX",bottom=="data"?width:1,l<2?conv1d_early_kernel_size:conv_kernel_size,1,3,1,3);
+	    add_basic_block(this->_dnet_params,bottom,top,cr_layers.at(l).first,cr_layers.at(l).second,
+			    0,0,1,activation,0.0,bn,0,0,"MAX",bottom=="data"?width:1,l<2?conv1d_early_kernel_size:conv_kernel_size,1,3,1,3);
+	  }
+	bottom = top;
+      }
+    if (flat1dconv)
+      {
+	std::string top = "reshape0";
+	caffe::ReshapeParameter r_param;
+	r_param.mutable_shape()->add_dim(0);
+	r_param.mutable_shape()->add_dim(-1);
+	add_reshape(this->_net_params,bottom,top,r_param);
+	add_reshape(this->_dnet_params,bottom,top,r_param);
 	bottom = top;
       }
     for (auto fc: fc_layers)

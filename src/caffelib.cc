@@ -724,6 +724,8 @@ namespace dd
   {
     NetCaffe<NetInputCaffe<TInputConnectorStrategy>,NetLayersCaffeConvnet,NetLossCaffe> netcaffe(&net_param,&dnet_param);
     netcaffe._nic.configure_inputs(ad,inputc);
+    if (inputc._flat1dconv)
+      const_cast<APIData&>(ad).add("flat1dconv",static_cast<bool>(inputc._flat1dconv));
     netcaffe._nlac.configure_net(ad);
   }
     
