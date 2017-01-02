@@ -54,8 +54,8 @@ namespace dd
 	    const std::unordered_map<int,double> &v)
       :_label(label),_v(v) {}
     ~SVMline() {}
-    std::unordered_map<int,double> _v; /**< svm line data */
     int _label; /**< svm line label. */
+    std::unordered_map<int,double> _v; /**< svm line data */
   };
 
   class SVMInputFileConn : public InputConnectorStrategy
@@ -185,6 +185,7 @@ namespace dd
 				   const std::unordered_map<int,double> &vals,
 				   const int &count)
     {
+      (void)count;
       _svmdata.emplace_back(label,std::move(vals));
     }
     
@@ -192,6 +193,7 @@ namespace dd
 				  const std::unordered_map<int,double> &vals,
 				  const int &count)
     {
+      (void)count;
       _svmdata_test.emplace_back(label,std::move(vals));
     }
 
