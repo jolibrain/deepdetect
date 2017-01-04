@@ -36,7 +36,7 @@ Please join either the community on [Gitter](https://gitter.im/beniz/deepdetect)
 
 #### Supported Platforms
 
-The reference platform with support is **Ubuntu 14.04 LTS**.
+The reference platforms with support are **Ubuntu 14.04 LTS** and **Ubuntu 16.04 LTS**.
 
 Supported images that come with pre-trained image classification deep (residual) neural nets:
 
@@ -170,7 +170,7 @@ DeepDetect is designed and implemented by Emmanuel Benazera <beniz@droidnik.fr>.
 
 ### Build
 
-Below are instructions for Ubuntu 14.04 LTS. For other Linux and Unix systems, steps may differ, CUDA, Caffe and other libraries may prove difficult to setup.
+Below are instructions for Ubuntu 14.04 LTS. For other Linux and Unix systems, steps may differ, CUDA, Caffe and other libraries may prove difficult to setup. If you are building on 16.04 LTS, look at https://github.com/beniz/deepdetect/issues/126 that tells you how to proceed.
 
 Beware of dependencies, typically on Debian/Ubuntu Linux, do:
 ```
