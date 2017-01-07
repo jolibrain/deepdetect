@@ -510,15 +510,6 @@ layer {
   top: "fire9/concat"
 }
 layer {
-  name: "drop9"
-  type: "Dropout"
-  bottom: "fire9/concat"
-  top: "fire9/concat"
-  dropout_param {
-    dropout_ratio: 0.5
-  }
-}
-layer {
   name: "conv10"
   type: "Convolution"
   bottom: "fire9/concat"
