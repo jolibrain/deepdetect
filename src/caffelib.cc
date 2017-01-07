@@ -92,6 +92,8 @@ namespace dd
 	for (auto i: _gpuid)
 	  LOG(INFO) << "Using GPU " << i << std::endl;
       }
+#else
+    (void)ad;
 #endif
   }
   
@@ -1497,8 +1499,8 @@ namespace dd
     update_in_memory_net_and_solver(solver_param,cad,inputc,has_mean_file,user_batch_size,batch_size,test_batch_size,test_iter);
 
     // parameters
-    bool gpu = _gpu;
 #ifndef CPU_ONLY
+    bool gpu = _gpu;
     if (ad_mllib.has("gpu"))
       {
 	gpu = ad_mllib.get("gpu").get<bool>();
