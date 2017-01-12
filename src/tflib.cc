@@ -409,6 +409,7 @@ namespace dd
 	  }
       } // end prediction loop over batches
     tout.add_results(vrad);
+    tout.add("nclasses",nclasses);
     tout.finalize(ad.getobj("parameters").getobj("output"),out);
     out.add("status",0);
     return 0;
