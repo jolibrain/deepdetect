@@ -277,7 +277,9 @@ namespace dd
 	out.add("measure",out_meas);
 	return 0;
       }
-    
+    double confidence_threshold = 0.0;
+    if (ad_output.has("confidence_threshold"))
+      confidence_threshold = ad_output.get("confidence_threshold").get<double>();
     TInputConnectorStrategy inputc(this->_inputc);
     TOutputConnectorStrategy tout;
     APIData cad = ad;
@@ -387,7 +389,10 @@ namespace dd
 		for (int c=0;c<_nclasses;c++)
 		  {
 		    //std::cerr << "score=" << scores(c) << " / c=" << c << std::endl;
-		    probs.push_back(scores(i*_nclasses+c));
+		    double prob = scores(i*_nclasses+c);
+		    if (prob < confidence_threshold)
+		      continue;
+		    probs.push_back(prob);
 		    cats.push_back(this->_mlmodel.get_hcorresp(c));
 		  }
 		rad.add("probs",probs);
