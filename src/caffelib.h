@@ -94,6 +94,14 @@ namespace dd
 					   const TInputConnectorStrategy &inputc,
 					   caffe::NetParameter &net_param,
 					   caffe::NetParameter &deploy_net_param);
+
+    /**
+     * \brief configure noise data augmentation in training template
+     * @param ad the template data object
+     * @param net_param the trainng net object
+     */
+    static void configure_noise(const APIData &ad,
+				caffe::NetParameter &net_param);
       
     /**
      * \brief creates neural net instance based on model

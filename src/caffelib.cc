@@ -190,50 +190,8 @@ namespace dd
 	dlparam->mutable_memory_data_param()->set_width(this->_inputc.width());
 		
 	// noise parameters
-	if ((ad.has("noise")))
-	  {
-	    std::vector<std::string> noise_options = {
-	      "decolorize","hist_eq","inverse","gauss_blur","posterize","erode",
-	      "saltpepper","clahe","convert_to_hsv","convert_to_lab"
-	    };
-	    APIData ad_noise = ad.getobj("noise");
-	    caffe::LayerParameter *lparam = net_param.mutable_layer(0); // data input layer
-	    caffe::TransformationParameter *trparam = lparam->mutable_transform_param();
-	    caffe::NoiseParameter *nparam = trparam->mutable_noise_param();
-	    if (ad_noise.has("all_effects") && ad_noise.get("all_effects").get<bool>())
-	      nparam->set_all_effects(true);
-	    else
-	      {
-		for (auto s: noise_options)
-		  {
-		    if (ad_noise.has(s))
-		      {
-			if (s == "decolorize")
-			  nparam->set_decolorize(ad_noise.get(s).get<bool>());
-			else if (s == "hist_eq")
-			  nparam->set_hist_eq(ad_noise.get(s).get<bool>());
-			else if (s == "inverse")
-			  nparam->set_inverse(ad_noise.get(s).get<bool>());
-			else if (s == "gauss_blur")
-			  nparam->set_gauss_blur(ad_noise.get(s).get<bool>());
-			else if (s == "posterize")
-			  nparam->set_hist_eq(ad_noise.get(s).get<bool>());
-			else if (s == "erode")
-			  nparam->set_erode(ad_noise.get(s).get<bool>());
-			else if (s == "saltpepper")
-			  nparam->set_saltpepper(ad_noise.get(s).get<bool>());
-			else if (s == "clahe")
-			  nparam->set_clahe(ad_noise.get(s).get<bool>());
-			else if (s == "convert_to_hsv")
-			  nparam->set_convert_to_hsv(ad_noise.get(s).get<bool>());
-			else if (s == "convert_to_lab")
-			  nparam->set_convert_to_lab(ad_noise.get(s).get<bool>());
-		      }
-		  }
-	      }
-	    if (ad_noise.has("prob"))
-	      nparam->set_prob(ad_noise.get("prob").get<double>());
-	  }
+	configure_noise(ad,net_param);
+
 	// adapt number of neuron output
 	update_protofile_classes(net_param);
 	update_protofile_classes(deploy_net_param);
@@ -255,6 +213,56 @@ namespace dd
 
     if (this->_mlmodel.read_from_repository(this->_mlmodel._repo))
       throw MLLibBadParamException("error reading or listing Caffe models in repository " + this->_mlmodel._repo);
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_noise(const APIData &ad,
+											    caffe::NetParameter &net_param)
+  {
+    if ((ad.has("noise")))
+      {
+	std::vector<std::string> noise_options = {
+	  "decolorize","hist_eq","inverse","gauss_blur","posterize","erode",
+	  "saltpepper","clahe","convert_to_hsv","convert_to_lab"
+	};
+	APIData ad_noise = ad.getobj("noise");
+	caffe::LayerParameter *lparam = net_param.mutable_layer(0); // data input layer
+	caffe::TransformationParameter *trparam = lparam->mutable_transform_param();
+	caffe::NoiseParameter *nparam = trparam->mutable_noise_param();
+	if (ad_noise.has("all_effects") && ad_noise.get("all_effects").get<bool>())
+	  nparam->set_all_effects(true);
+	else
+	  {
+	    for (auto s: noise_options)
+	      {
+		if (ad_noise.has(s))
+		  {
+		    if (s == "decolorize")
+		      nparam->set_decolorize(ad_noise.get(s).get<bool>());
+		    else if (s == "hist_eq")
+		      nparam->set_hist_eq(ad_noise.get(s).get<bool>());
+		    else if (s == "inverse")
+		      nparam->set_inverse(ad_noise.get(s).get<bool>());
+		    else if (s == "gauss_blur")
+		      nparam->set_gauss_blur(ad_noise.get(s).get<bool>());
+		    else if (s == "posterize")
+		      nparam->set_hist_eq(ad_noise.get(s).get<bool>());
+		    else if (s == "erode")
+		      nparam->set_erode(ad_noise.get(s).get<bool>());
+		    else if (s == "saltpepper")
+			  nparam->set_saltpepper(ad_noise.get(s).get<bool>());
+		    else if (s == "clahe")
+		      nparam->set_clahe(ad_noise.get(s).get<bool>());
+		    else if (s == "convert_to_hsv")
+		      nparam->set_convert_to_hsv(ad_noise.get(s).get<bool>());
+		    else if (s == "convert_to_lab")
+		      nparam->set_convert_to_lab(ad_noise.get(s).get<bool>());
+		  }
+	      }
+	  }
+	if (ad_noise.has("prob"))
+	  nparam->set_prob(ad_noise.get("prob").get<double>());
+      }
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -937,6 +945,7 @@ namespace dd
 			lparam->mutable_transform_param()->set_mirror(ad.get("mirror").get<bool>());
 			lparam->mutable_transform_param()->set_rotate(ad.get("rotate").get<bool>());
 		      }
+		    configure_noise(ad,net_param);
 		    std::string mf = "mean.binaryproto";
 		    lparam->mutable_transform_param()->set_mean_file(mf.c_str());
 		  }
