@@ -261,12 +261,11 @@ namespace dd
 		  for (int i=0;i<conf_diag.rows();i++)
 		    cmdiagv.push_back(conf_diag(i,0));
 		  meas_out.add("cmdiag",cmdiagv);
+		  meas_out.add("labels",ad_res.get("clnames").get<std::vector<std::string>>());
 		}
 	      if (std::find(measures.begin(),measures.end(),"cmfull")!=measures.end())
 		{
 		  std::vector<std::string> clnames = ad_res.get("clnames").get<std::vector<std::string>>();
-		  APIData cmobj;
-		  cmobj.add("labels",clnames);
 		  std::vector<APIData> cmdata;
 		  for (int i=0;i<conf_matrix.cols();i++)
 		    {
