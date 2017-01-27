@@ -67,8 +67,8 @@ namespace dd
       
       std::string _label;
       double _loss = 0.0; /**< result loss. */
-      std::map<double,std::string,std::greater<double>> _cats; /**< categories and probabilities for this result */
-      std::map<double,APIData,std::greater<double>> _extra; /**< extra data or information added to output, e.g. bboxes. */
+      std::multimap<double,std::string,std::greater<double>> _cats; /**< categories and probabilities for this result */
+      std::multimap<double,APIData,std::greater<double>> _extra; /**< extra data or information added to output, e.g. bboxes. */
     };
 
   public:
