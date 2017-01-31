@@ -182,15 +182,18 @@ namespace dd
 	// input size
 	caffe::LayerParameter *lparam = net_param.mutable_layer(1); // test
 	caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(0);
-	lparam->mutable_memory_data_param()->set_channels(this->_inputc.channels());
-	lparam->mutable_memory_data_param()->set_height(this->_inputc.height());
-	lparam->mutable_memory_data_param()->set_width(this->_inputc.width());
-	dlparam->mutable_memory_data_param()->set_channels(this->_inputc.channels());
-	dlparam->mutable_memory_data_param()->set_height(this->_inputc.height());
-	dlparam->mutable_memory_data_param()->set_width(this->_inputc.width());
+	if (this->_inputc.width() != -1 && this->_inputc.height() != -1) // forced width & height
+	  {
+	    lparam->mutable_memory_data_param()->set_channels(this->_inputc.channels());
+	    lparam->mutable_memory_data_param()->set_height(this->_inputc.height());
+	    lparam->mutable_memory_data_param()->set_width(this->_inputc.width());
+	    dlparam->mutable_memory_data_param()->set_channels(this->_inputc.channels());
+	    dlparam->mutable_memory_data_param()->set_height(this->_inputc.height());
+	    dlparam->mutable_memory_data_param()->set_width(this->_inputc.width());
+	  }
 		
 	// noise parameters
-	configure_noise(ad,net_param);
+	configure_noise_and_distort(ad,net_param);
 
 	// adapt number of neuron output
 	update_protofile_classes(net_param);
@@ -216,10 +219,10 @@ namespace dd
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_noise(const APIData &ad,
-											    caffe::NetParameter &net_param)
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_noise_and_distort(const APIData &ad,
+													caffe::NetParameter &net_param)
   {
-    if ((ad.has("noise")))
+    if (ad.has("noise"))
       {
 	std::vector<std::string> noise_options = {
 	  "decolorize","hist_eq","inverse","gauss_blur","posterize","erode",
@@ -262,6 +265,39 @@ namespace dd
 	  }
 	if (ad_noise.has("prob"))
 	  nparam->set_prob(ad_noise.get("prob").get<double>());
+      }
+    if (ad.has("distort"))
+      {
+	std::vector<std::string> distort_options = {
+	  "brightness","contrast","saturation","hue","random_order"
+	};
+	APIData ad_distort = ad.getobj("distort");
+	caffe::LayerParameter *lparam = net_param.mutable_layer(0); // data input layer
+	caffe::TransformationParameter *trparam = lparam->mutable_transform_param();
+	caffe::DistortionParameter *nparam = trparam->mutable_distort_param();
+	if (ad_distort.has("all_effects") && ad_distort.get("all_effects").get<bool>())
+	  nparam->set_all_effects(true);
+	else
+	  {
+	    for (auto s: distort_options)
+	      {
+		if (ad_distort.has(s))
+		  {
+		    if (s == "brightness")
+		      nparam->set_brightness(ad_distort.get(s).get<bool>());
+		    else if (s == "contrast")
+		      nparam->set_contrast(ad_distort.get(s).get<bool>());
+		    else if (s == "saturation")
+		      nparam->set_saturation(ad_distort.get(s).get<bool>());
+		    else if (s == "hue")
+		      nparam->set_hue(ad_distort.get(s).get<bool>());
+		    else if (s == "random_order")
+		      nparam->set_random_order(ad_distort.get(s).get<bool>());
+		  }
+	      }
+	  }
+	if (ad_distort.has("prob"))
+	  nparam->set_prob(ad_distort.get("prob").get<double>());
       }
   }
 
@@ -945,7 +981,7 @@ namespace dd
 			lparam->mutable_transform_param()->set_mirror(ad.get("mirror").get<bool>());
 			lparam->mutable_transform_param()->set_rotate(ad.get("rotate").get<bool>());
 		      }
-		    configure_noise(ad,net_param);
+		    configure_noise_and_distort(ad,net_param);
 		    std::string mf = "mean.binaryproto";
 		    lparam->mutable_transform_param()->set_mean_file(mf.c_str());
 		  }
