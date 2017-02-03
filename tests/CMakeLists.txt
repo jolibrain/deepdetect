@@ -16,7 +16,7 @@ link_directories(${TF_LIB_DIR})
 link_directories(${XGBOOST_LIB_DIR})
 
 if (USE_XGBOOST)
-  set(XGBOOST_LIB_DEPS -lxgboost -ldmlc)
+  set(XGBOOST_LIB_DEPS -lxgboost -ldmlccore)
 else()
   set(XGBOOST_LIB_DEPS)
 endif()
