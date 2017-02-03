@@ -1,0 +1,27 @@
+{
+  "name": "deepdetect-js",
+  "version": "1.0.0",
+  "description": "A JS library for deepdetect",
+  "main": "dist/index.js",
+  "repository": {},
+  "author": "Alexandre Girard",
+  "license": "MIT",
+  "scripts": {
+    "build": "./node_modules/.bin/webpack",
+    "test": "./node_modules/mocha/bin/mocha spec/node-test.js",
+    "lint": "eslint --ignore-pattern **/deepdetect.js --ext .js src/**"
+  },
+  "devDependencies": {
+    "babel-core": "^6.22.1",
+    "babel-eslint": "^7.1.1",
+    "babel-loader": "^6.2.10",
+    "babel-preset-es2015": "^6.22.0",
+    "eslint": "^3.14.1",
+    "eslint-loader": "^1.6.1",
+    "mocha": "^3.2.0",
+    "webpack": "^2.2.1"
+  },
+  "dependencies": {
+    "axios": "^0.15.3"
+  }
+}

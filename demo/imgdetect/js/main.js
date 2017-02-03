@@ -1,3 +1,5 @@
+var deepdetect = new DeepDetect.App('http://localhost/api');
+
 $(document).ready(function() {
 
   $('#service_select').select2();
@@ -36,8 +38,7 @@ $(document).ready(function() {
 
     $('.loading').removeClass('hidden');
 
-    var post_url = "/api/predict";
-    var post_data = {
+    var predict_data = {
       service: $('#service_select').val(),
       parameters: {
         mllib: {gpu: true},
@@ -46,15 +47,12 @@ $(document).ready(function() {
       data: [$('input#url').val()]
     };
 
-    $.ajax({
-      type: "POST",
-      url: post_url,
-      data: JSON.stringify(post_data),
-      dataType: 'json',
-      success: function(data) {
-        $('#emptyImage img').attr('src', post_data.data[0]);
+    deepdetect.predict.post(predict_data).then(
+      function(data) {
+        var prediction = data.body.predictions[0];
+        $('#emptyImage img').attr('src', prediction.uri);
         $('#emptyImage ul').html('');
-        $.each(data.body.predictions.classes, function() {
+        $.each(prediction.classes, function() {
           var percent = parseInt(this.prob * 100);
 
           var style = 'success';
@@ -91,7 +89,7 @@ $(document).ready(function() {
         $('#emptyImage .predictions').html('');
         $('input#url').val('');
       },
-      error: function(jqXHR, textStatus, errorThrown) {
+      function(jqXHR, textStatus, errorThrown) {
         $('input#url').val('');
         $('.loading').addClass('hidden');
         $('#submitAlert').removeClass('hidden')
@@ -101,7 +99,7 @@ $(document).ready(function() {
           $("#submitAlert").addClass('hidden');
         }, 4000);
       }
-    });
+    );
 
   });
 

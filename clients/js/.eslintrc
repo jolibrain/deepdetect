@@ -1,0 +1,23 @@
+{
+  "parser": "babel-eslint",
+  "rules": {
+    "spaced-comment": [2, "always"],
+    "semi": [2, "always"],
+    "curly": [2, "all"],
+    "no-else-return": 2,
+    "no-unreachable": 2,
+    "no-return-assign": 2,
+    "indent": [2, 2],
+    "no-unused-vars": [2, {"vars": "all", "args": "none"}],
+    "key-spacing": [2, {"afterColon": true}],
+    "quotes": [2, "single"],
+    "camelcase": [2, {"properties": "never"}],
+    "new-cap": 2,
+    "no-const-assign": 2,
+    "eqeqeq": 2,
+    "no-multi-str": 2,
+    "react/display-name": 0,
+    "react/prop-types": 0,
+    "react/no-did-mount-set-state": 0
+  }
+}
