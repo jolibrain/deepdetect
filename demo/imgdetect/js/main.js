@@ -54,7 +54,7 @@ $(document).ready(function() {
       success: function(data) {
         $('#emptyImage img').attr('src', post_data.data[0]);
         $('#emptyImage ul').html('');
-        $.each(data.body.predictions.classes, function() {
+        $.each(data.body.predictions[0].classes, function() {
           var percent = parseInt(this.prob * 100);
 
           var style = 'success';
