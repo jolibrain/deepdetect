@@ -11,8 +11,7 @@ To start, install the SDK via NPM: ```npm install deepdetect-js```
 
 ```js
 var DeepDetect = require('deepdetect-js');
-var app = new DeepDetect.App(
-);
+var app = new DeepDetect.App('http://localhost/api');
 
 ```
 
@@ -20,10 +19,9 @@ You can also use the SDK by adding this script to your HTML:
 
 ```js
 
-<script type="text/javascript" src="https://deepdetect.com/js/deepdetect.js"></script>
+<script type="text/javascript" src="https://deepdetect.com/js/deepdetect.min.js"></script>
 <script>
-  var app = new DeepDetect.App(
-  );
+  var app = new DeepDetect.App('http://localhost/api');
 </script>
 ```
 
