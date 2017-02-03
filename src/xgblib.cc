@@ -276,7 +276,7 @@ namespace dd
 	    std::vector<std::string> meas_str = meas_obj.list_keys();
 	    for (auto m: meas_str)
 	      {
-		if (m != "cmdiag" && m != "cmfull") // do not report confusion matrix in server logs
+		if (m != "cmdiag" && m != "cmfull" && m != "labels") // do not report confusion matrix in server logs
 		  {
 		    double mval = meas_obj.get(m).get<double>();
 		    LOG(INFO) << m << "=" << mval;
@@ -284,14 +284,14 @@ namespace dd
 		    if (!std::isnan(mval)) // if testing occurs once before training even starts, loss is unknown and we don't add it to history.
 		      this->add_meas_per_iter(m,mval);
 		  }
-		else if (m == "cmdiag")
+		/*else if (m == "cmdiag")
 		  {
 		    std::vector<double> mdiag = meas_obj.get(m).get<std::vector<double>>();
 		    std::string mdiag_str;
 		    for (size_t i=0;i<mdiag.size();i++)
 		      mdiag_str += std::to_string(i) + ":" + std::to_string(mdiag.at(i)) + " ";
 		    LOG(INFO) << m << "=[" << mdiag_str << "]";
-		  }
+		    }*/
 	      }
 	  }
 	
