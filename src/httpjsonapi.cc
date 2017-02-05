@@ -35,6 +35,7 @@
 #include <boost/iostreams/filter/gzip.hpp>
 #include <boost/iostreams/copy.hpp>
 #include <chrono>
+#include <ctime>
 
 DEFINE_string(host,"localhost","host for running the server");
 DEFINE_string(port,"8080","server port");
@@ -228,10 +229,8 @@ public:
     //debug
 
     std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();
-    
-    std::string access_log = request.source + " \"" + request.method + " " + request.destination + "\"";
-    int code;
-    
+    std::string access_log =  request.source + " \"" + request.method + " " + request.destination + "\"";
+    int code;    
     std::string source = request.source;
     if (source == "::1")
       source = "127.0.0.1";
@@ -352,9 +351,10 @@ public:
 	response = http_server::response::stock_reply(http_server::response::not_found,_hja->jrender(_hja->dd_not_found_404()));
 	code = 404;
       }
+    std::time_t t = std::time(nullptr);
     if (code == 200 || code == 201)
-      LOG(INFO) << access_log << std::endl;
-    else LOG(ERROR) << access_log << std::endl;
+      LOG(INFO) << std::put_time(std::localtime(&t), "%c %Z") << " - " << access_log << std::endl;
+    else LOG(ERROR) << std::put_time(std::localtime(&t), "%c %Z") << " - " << access_log << std::endl;
   }
   void log(http_server::string_type const &info)
   {
