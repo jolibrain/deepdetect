@@ -146,7 +146,7 @@ public:
     std::chrono::time_point<std::chrono::system_clock> tstop = std::chrono::system_clock::now();
     code = janswer["status"]["code"].GetInt();
     access_log += " " + std::to_string(code);
-    int proctime = std::chrono::duration_cast<std::chrono::seconds>(tstop-tstart).count();
+    int proctime = std::chrono::duration_cast<std::chrono::milliseconds>(tstop-tstart).count();
     access_log += " " + std::to_string(proctime);
     int outcode = code;
     std::string stranswer;
