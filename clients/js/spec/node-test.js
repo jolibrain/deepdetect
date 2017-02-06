@@ -10,7 +10,7 @@ beforeEach(function() {
   );
 });
 
-describe('DeepDetect JS SDK', function() {
+describe('DeepDetect JS client', function() {
 
   describe('Predict', function() {
 
