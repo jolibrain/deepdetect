@@ -56,6 +56,10 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void XGBLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::init_mllib(const APIData &ad)
   {
+#ifndef CPU_ONLY
+    if (ad.has("gpu"))
+      _gpu = ad.get("gpu").get<bool>();
+#endif
     if (ad.has("nclasses"))
       _nclasses = ad.get("nclasses").get<int>();
     if (ad.has("regression") && ad.get("regression").get<bool>())
@@ -111,6 +115,10 @@ namespace dd
       int seed = 0;
       
       APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
+#ifndef CPU_ONLY
+      if (ad_mllib.has("gpu"))
+	_gpu = ad_mllib.get("gpu").get<bool>();
+#endif
       if (ad_mllib.has("booster"))
 	_booster = ad_mllib.get("booster").get<std::string>();
       if (ad_mllib.has("objective"))
@@ -216,6 +224,10 @@ namespace dd
 	  if (ad_booster.has("skip_drop"))
 	    dart_skip_drop = ad_booster.get("skip_drop").get<double>();
 	}
+#ifndef CPU_ONLY
+      if (_gpu)
+	updater = "grow_gpu";
+#endif
       add_cfg_param("eta",eta);
       add_cfg_param("gamma",gamma);
       add_cfg_param("max_depth",max_depth);

@@ -211,8 +211,8 @@ if (USE_XGBOOST)
       INSTALL_DIR ${CMAKE_BINARY_DIR}
       DOWNLOAD_COMMAND git clone --recursive https://github.com/dmlc/xgboost.git
       UPDATE_COMMAND git submodule foreach git pull origin master
-      CONFIGURE_COMMAND wget https://github.com/NVlabs/cub/archive/1.6.4.zip && unzip 1.6.4.zip && rm 1.6.4.zip && mkdir build && cd build &&
-      cmake .. -DPLUGIN_UPDATER_GPU=ON -DCUB_DIRECTORY=${CMAKE_BINARY_DIR}/xgboost/src/xgboost/cub-1.6.4/ -DCUDA_NVCC_FLAGS=-Xcompiler\ -fPIC\ --expt-extended-lambda\ -gencode\ arch=compute_30,code=compute_30\ -gencode\ arch=compute_35,code=compute_35\ -gencode\ arch=compute_50,code=compute_50\ -gencode\ arch=compute_52,code=compute_52\ -gencode\ arch=compute_61,code=compute_61 && make
+      CONFIGURE_COMMAND wget https://github.com/NVlabs/cub/archive/1.6.4.zip && unzip 1.6.4.zip && rm 1.6.4.zip && ${CMAKE_BINARY_DIR}/patches/test_patch.sh ${CMAKE_BINARY_DIR}/patches/xgb/xgb_static_gpu_build.patch && mkdir build && cd build &&
+      cmake .. -DPLUGIN_UPDATER_GPU=ON -DCUB_DIRECTORY=${CMAKE_BINARY_DIR}/xgboost/src/xgboost/cub-1.6.4/ -DCUDA_NVCC_FLAGS=-Xcompiler\ -fPIC\ --expt-extended-lambda\ -gencode\ arch=compute_30,code=compute_30\ -gencode\ arch=compute_35,code=compute_35\ -gencode\ arch=compute_50,code=compute_50\ -gencode\ arch=compute_52,code=compute_52\ -gencode\ arch=compute_61,code=compute_61 && make && make
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
       )
@@ -223,13 +223,13 @@ if (USE_XGBOOST)
       INSTALL_DIR ${CMAKE_BINARY_DIR}
       DOWNLOAD_COMMAND git clone --recursive https://github.com/dmlc/xgboost.git
       UPDATE_COMMAND git submodule foreach git pull origin master
-      CONFIGURE_COMMAND mkdir build && cd build && cmake .. && make
+      CONFIGURE_COMMAND ${CMAKE_BINARY_DIR}/patches/test_patch.sh ${CMAKE_BINARY_DIR}/patches/xgb/xgb_static_gpu_build.patch && mkdir build && cd build && cmake .. && make
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
       )
   endif()
   set(XGBOOST_INC_DIR ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/include ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/src ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/rabit/include ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/dmlc-core/include ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/dmlc-core/src/)
-  set(XGBOOST_LIB_DIR ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/lib ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/dmlc-core/ ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/rabit/lib/ ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/dmlc-core/ ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/)
+  set(XGBOOST_LIB_DIR ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/lib ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/ ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/dmlc-core)
 endif()
   
 
