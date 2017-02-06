@@ -4,7 +4,17 @@ The official JavaScript client for interacting with the [DeepDetect](http://deep
 
 ## Basic use
 
-To start, install the SDK via NPM: ```npm install deepdetect-js```
+You can use DeepDetect js client by adding this script to your HTML:
+
+```js
+
+<script type="text/javascript" src="https://deepdetect.com/js/deepdetect.min.js"></script>
+<script>
+  var app = new DeepDetect.App('http://localhost/api');
+</script>
+```
+
+You can also install the client via NPM: ```npm install deepdetect-js```
 
 
 *This will work in node.js and browsers via [Browserify](http://browserify.org/)*
@@ -13,16 +23,6 @@ To start, install the SDK via NPM: ```npm install deepdetect-js```
 var DeepDetect = require('deepdetect-js');
 var app = new DeepDetect.App('http://localhost/api');
 
-```
-
-You can also use the SDK by adding this script to your HTML:
-
-```js
-
-<script type="text/javascript" src="https://deepdetect.com/js/deepdetect.min.js"></script>
-<script>
-  var app = new DeepDetect.App('http://localhost/api');
-</script>
 ```
 
 ## Docs
