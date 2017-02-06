@@ -15,9 +15,6 @@
     "new-cap": 2,
     "no-const-assign": 2,
     "eqeqeq": 2,
-    "no-multi-str": 2,
-    "react/display-name": 0,
-    "react/prop-types": 0,
-    "react/no-did-mount-set-state": 0
+    "no-multi-str": 2
   }
 }
