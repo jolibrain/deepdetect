@@ -8,9 +8,9 @@
   "license": "MIT",
   "scripts": {
     "build": "./node_modules/.bin/webpack",
-    "test": "./node_modules/mocha/bin/mocha spec/node-test.js",
-    "lint": "eslint --ignore-pattern **/deepdetect.js --ext .js src/**"
+    "test": "eslint --ignore-pattern **/deepdetect.js --ext .js src/** && mocha spec/node-test.js"
   },
+  "pre-commit": ["test"],
   "devDependencies": {
     "babel-core": "^6.22.1",
     "babel-eslint": "^7.1.1",
@@ -19,6 +19,7 @@
     "eslint": "^3.14.1",
     "eslint-loader": "^1.6.1",
     "mocha": "^3.2.0",
+    "pre-commit": "^1.2.2",
     "webpack": "^2.2.1"
   },
   "dependencies": {
