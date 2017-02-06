@@ -2,7 +2,6 @@ module.exports = {
   API: {
     INFO: '/info',
     SERVICES: '/services',
-    TRAIN: '/train',
     PREDICT: '/predict'
   },
   ERRORS: {
