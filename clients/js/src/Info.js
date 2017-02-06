@@ -1,7 +1,7 @@
 let axios = require('axios');
 let {API} = require('./constants');
 
-class Predict {
+class Info {
   constructor(_config) {
     this._config = _config;
   }
@@ -15,4 +15,4 @@ class Predict {
   }
 };
 
-module.exports = Predict;
+module.exports = Info;
