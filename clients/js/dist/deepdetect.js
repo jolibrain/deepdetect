@@ -484,7 +484,6 @@ module.exports = {
   API: {
     INFO: '/info',
     SERVICES: '/services',
-    TRAIN: '/train',
     PREDICT: '/predict'
   },
   ERRORS: {
@@ -974,15 +973,15 @@ var _require = __webpack_require__(2),
 * @class
 */
 
-var App = function () {
-  function App(apiEndpoint, options) {
-    _classCallCheck(this, App);
+var Service = function () {
+  function Service(apiEndpoint, options) {
+    _classCallCheck(this, Service);
 
     this._validate(apiEndpoint, options);
     this._init(apiEndpoint, options);
   }
 
-  _createClass(App, [{
+  _createClass(Service, [{
     key: '_validate',
     value: function _validate(apiEndpoint, options) {
       if (!apiEndpoint) {
@@ -1002,12 +1001,12 @@ var App = function () {
     }
   }]);
 
-  return App;
+  return Service;
 }();
 
 ;
 
-module.exports = App;
+module.exports = Service;
 
 /***/ }),
 /* 11 */
@@ -1919,14 +1918,14 @@ var axios = __webpack_require__(3);
 var _require = __webpack_require__(2),
     API = _require.API;
 
-var Predict = function () {
-  function Predict(_config) {
-    _classCallCheck(this, Predict);
+var Info = function () {
+  function Info(_config) {
+    _classCallCheck(this, Info);
 
     this._config = _config;
   }
 
-  _createClass(Predict, [{
+  _createClass(Info, [{
     key: 'get',
     value: function get() {
       var url = '' + this._config.apiEndpoint + API.INFO;
@@ -1938,12 +1937,12 @@ var Predict = function () {
     }
   }]);
 
-  return Predict;
+  return Info;
 }();
 
 ;
 
-module.exports = Predict;
+module.exports = Info;
 
 /***/ }),
 /* 31 */
@@ -1994,14 +1993,14 @@ module.exports = Predict;
 "use strict";
 /* WEBPACK VAR INJECTION */(function(global) {
 
-var App = __webpack_require__(10);
+var Service = __webpack_require__(10);
 
 var _require = __webpack_require__(12),
     version = _require.version;
 
 module.exports = global.DeepDetect = {
   version: version,
-  App: App
+  Service: Service
 };
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(11)))
 

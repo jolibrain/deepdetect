@@ -7,7 +7,7 @@ let {ERRORS} = require('./constants');
 * @class
 */
 
-class App {
+class Service {
   constructor(apiEndpoint, options) {
     this._validate(apiEndpoint, options);
     this._init(apiEndpoint, options);
@@ -26,4 +26,4 @@ class App {
   }
 };
 
-module.exports = App;
+module.exports = Service;

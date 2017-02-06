@@ -5,7 +5,7 @@ const assert = require('assert');
 var app;
 
 beforeEach(function() {
-  app = new DeepDetect.App(
+  app = new DeepDetect.Service(
     process.env.API_ENDPOINT
   );
 });

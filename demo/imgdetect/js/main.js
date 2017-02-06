@@ -1,4 +1,4 @@
-var deepdetect = new DeepDetect.App('http://localhost/api');
+var deepdetect = new DeepDetect.Service('http://localhost/api');
 
 $(document).ready(function() {
 
