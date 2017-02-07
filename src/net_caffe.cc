@@ -31,11 +31,15 @@ namespace dd
 						const std::string &bottom,
 						const std::string &top,
 						const std::string &name,
-						const std::string &type)
+						const std::string &type,
+						const std::string &label)
   {
     caffe::LayerParameter *lparam = net_param->add_layer();
-    lparam->add_bottom(bottom);
+    if (!bottom.empty())
+      lparam->add_bottom(bottom);
     lparam->add_top(top);
+    if (!label.empty())
+      lparam->add_top(label);
     if (!name.empty())
       lparam->set_name(name);
     if (!type.empty())
@@ -92,19 +96,13 @@ namespace dd
       }
 
     // train layer
-    caffe::LayerParameter *lparam = CaffeCommon::add_layer(this->_net_params,top,label);
-    lparam->set_name("data");
-    lparam->add_top(top);
-    lparam->add_top(label);
+    caffe::LayerParameter *lparam = CaffeCommon::add_layer(this->_net_params,"",top,"inputl","",label);
     caffe::NetStateRule *nsr = lparam->add_include();
     nsr->set_phase(caffe::TRAIN);
     
     // deploy net
-    caffe::LayerParameter *dlparam = CaffeCommon::add_layer(this->_dnet_params,top,label);
-    dlparam->set_name("data");
-    dlparam->add_top(top);
-    dlparam->add_top(label);
-
+    caffe::LayerParameter *dlparam = CaffeCommon::add_layer(this->_dnet_params,"",top,"inputl","",label);
+    
     // sources
     if (db)
       {
@@ -143,8 +141,7 @@ namespace dd
 	mdparam->set_width(width);
       }
 
-    lparam = this->_net_params->add_layer(); // test layer
-    lparam->set_type("MemoryData");
+    lparam = CaffeCommon::add_layer(this->_net_params,"",top,"inputl","MemoryData",label); // test layer
     caffe::MemoryDataParameter *mdparam = lparam->mutable_memory_data_param();
     mdparam->set_batch_size(32); // dummy value, updated before training
     mdparam->set_channels(channels);

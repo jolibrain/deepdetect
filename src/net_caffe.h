@@ -40,7 +40,8 @@ namespace dd
 					    const std::string &bottom,
 					    const std::string &top,
 					    const std::string &name="",
-					    const std::string &type="");
+					    const std::string &type="",
+					    const std::string &label="");
     
     static std::string set_activation(const APIData &ad_mllib);
     
