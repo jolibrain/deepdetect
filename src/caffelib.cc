@@ -153,9 +153,6 @@ namespace dd
     else if (model_tmpl == "convnet")
       {
 	caffe::NetParameter net_param,deploy_net_param;
-	caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
-	caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
-	//configure_convnet_template(ad,_regression,_ntargets,_nclasses,this->_inputc,net_param,deploy_net_param);
 	configure_convnet_template(ad,this->_inputc,net_param,deploy_net_param);
 	caffe::WriteProtoToTextFile(net_param,dest_net);
 	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
@@ -2389,9 +2386,17 @@ namespace dd
 	if (_ntargets == 0 || _ntargets == 1)
 	  {
 	    if (net_param.mutable_layer(0)->has_memory_data_param())
-	      net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels());
+	      {
+		net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels());
+		net_param.mutable_layer(0)->mutable_memory_data_param()->set_width(inputc.width());
+		net_param.mutable_layer(0)->mutable_memory_data_param()->set_height(inputc.height());
+	      }
 	    if (net_param.mutable_layer(1)->has_memory_data_param())
-	      net_param.mutable_layer(1)->mutable_memory_data_param()->set_channels(inputc.channels()); // test layer
+	      {
+		net_param.mutable_layer(1)->mutable_memory_data_param()->set_channels(inputc.channels()); // test layer
+		net_param.mutable_layer(1)->mutable_memory_data_param()->set_width(inputc.width());
+		net_param.mutable_layer(1)->mutable_memory_data_param()->set_height(inputc.height());
+	      }
 	  }
 	else
 	  {
@@ -2460,7 +2465,11 @@ namespace dd
       {
 	// no batch size set on deploy model since it is adjusted for every prediction batch
 	if (_ntargets == 0 || _ntargets == 1)
-	  deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels());
+	  {
+	    deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels());
+	    deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_width(inputc.width());
+	    deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_height(inputc.height());
+	  }
 	else
 	  {
 	    deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels()+_ntargets);
