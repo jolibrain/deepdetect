@@ -2,7 +2,7 @@
   "name": "deepdetect-js",
   "version": "0.0.1",
   "description": "A JS library for deepdetect",
-  "main": "dist/index.js",
+  "main": "dist/deepdetect.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/beniz/deepdetect.git"
