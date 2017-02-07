@@ -168,12 +168,14 @@ namespace dd
 	add_reshape(this->_dnet_params,bottom,top,r_param);
 	bottom = top;
       }
+    int l = 0;
     for (auto fc: fc_layers)
       {
-	std::string top = "fc" + std::to_string(fc);
+	std::string top = "fc" + std::to_string(fc) + "_" + std::to_string(l);
 	NetLayersCaffeMLP::add_basic_block(this->_net_params,bottom,top,fc,activation,dropout,bn,false);
 	NetLayersCaffeMLP::add_basic_block(this->_dnet_params,bottom,top,fc,activation,0.0,bn,false);
 	bottom = top;
+	++l;
       }
     add_softmax(this->_net_params,bottom,"label","losst",nclasses > 0 ? nclasses : ntargets);
     add_softmax(this->_dnet_params,bottom,"","loss",nclasses > 0 ? nclasses : ntargets,true);
