@@ -352,9 +352,17 @@ public:
 	code = 404;
       }
     std::time_t t = std::time(nullptr);
+#if __GNUC__ >= 5
     if (code == 200 || code == 201)
       LOG(INFO) << std::put_time(std::localtime(&t), "%c %Z") << " - " << access_log << std::endl;
     else LOG(ERROR) << std::put_time(std::localtime(&t), "%c %Z") << " - " << access_log << std::endl;
+#else
+    char mltime[128];
+    strftime(mltime,sizeof(mltime),"%c %Z", std::localtime(&t));
+    if (code == 200 || code == 201)
+      LOG(INFO) << mltime << " - " << access_log << std::endl;
+    else LOG(ERROR) << mltime << " - " << access_log << std::endl;
+#endif
   }
   void log(http_server::string_type const &info)
   {
