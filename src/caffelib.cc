@@ -206,6 +206,8 @@ namespace dd
     {
       	NetCaffe<NetInputCaffe<TInputConnectorStrategy>,NetLayersCaffeMLP,NetLossCaffe> netcaffe(&net_param,&dnet_param);
 	netcaffe._nic.configure_inputs(ad,inputc);
+	if (inputc._sparse)
+	  const_cast<APIData&>(ad).add("sparse",true);
 	netcaffe._nlac.configure_net(ad);
     }
 

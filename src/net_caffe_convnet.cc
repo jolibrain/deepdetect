@@ -171,8 +171,8 @@ namespace dd
     for (auto fc: fc_layers)
       {
 	std::string top = "fc" + std::to_string(fc);
-	NetLayersCaffeMLP::add_basic_block(this->_net_params,bottom,top,fc,activation,dropout,bn);
-	NetLayersCaffeMLP::add_basic_block(this->_dnet_params,bottom,top,fc,activation,0.0,bn);
+	NetLayersCaffeMLP::add_basic_block(this->_net_params,bottom,top,fc,activation,dropout,bn,false);
+	NetLayersCaffeMLP::add_basic_block(this->_dnet_params,bottom,top,fc,activation,0.0,bn,false);
 	bottom = top;
       }
     add_softmax(this->_net_params,bottom,"label","losst",nclasses > 0 ? nclasses : ntargets);

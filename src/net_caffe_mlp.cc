@@ -32,9 +32,12 @@ namespace dd
 					  const int &num_output,
 					  const std::string &activation,
 					  const double &dropout_ratio,
-					  const bool &bn)
+					  const bool &bn,
+					  const bool &sparse)
   {
-    add_fc(net_param,bottom,top,num_output);
+    if (sparse)
+      add_sparse_fc(net_param,bottom,top,num_output);
+    else add_fc(net_param,bottom,top,num_output);
     if (bn)
       {
 	add_bn(net_param,top);
@@ -66,12 +69,15 @@ namespace dd
     int ntargets = -1;
     if (ad_mllib.has("ntargets"))
       ntargets = ad_mllib.get("ntargets").get<int>();
+    bool sparse = false;
+    if (ad_mllib.has("sparse"))
+      sparse = ad_mllib.get("sparse").get<bool>();
     std::string bottom = "data";
     for (size_t l=0;l<layers.size();l++)
       {
 	std::string top = "ip" + std::to_string(l);
-	add_basic_block(this->_net_params,bottom,top,layers.at(l),activation,dropout,bn);
-	add_basic_block(this->_dnet_params,bottom,top,layers.at(l),activation,0.0,bn);
+	add_basic_block(this->_net_params,bottom,top,layers.at(l),activation,dropout,bn,sparse&&l==0?sparse:false);
+	add_basic_block(this->_dnet_params,bottom,top,layers.at(l),activation,0.0,bn,sparse&&l==0?sparse:false);
 	bottom = top;
       }
     //TODO: to loss ?

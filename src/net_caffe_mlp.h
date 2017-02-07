@@ -52,7 +52,8 @@ namespace dd
 			 const int &num_output,
 			 const std::string &activation,
 			 const double &dropout_ratio,
-			 const bool &bn);
+			 const bool &bn,
+			 const bool &sparse);
     
     void configure_net(const APIData &ad_mllib);
   };

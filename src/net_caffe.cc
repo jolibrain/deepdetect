@@ -106,7 +106,9 @@ namespace dd
     // sources
     if (db)
       {
-	lparam->set_type("Data");
+	if (inputc._sparse)
+	  lparam->set_type("SparseData");
+	else lparam->set_type("Data");
 	caffe::DataParameter *dparam = lparam->mutable_data_param();
 	dparam->set_source("train.lmdb");
 	dparam->set_batch_size(32); // dummy value, updated before training
@@ -117,6 +119,7 @@ namespace dd
 	      lparam->mutable_transform_param()->set_mirror(ad_mllib.get("mirror").get<bool>());
 	    if (ad_mllib.has("rotate"))
 	      lparam->mutable_transform_param()->set_rotate(ad_mllib.get("rotate").get<bool>());
+	    //TODO
 	    /*std::string mf = "mean.binaryproto";
 	      lparam->mutable_transform_param()->set_mean_file(mf.c_str());*/
 	  }
@@ -133,7 +136,9 @@ namespace dd
       }
     else
       {
-	lparam->set_type("MemoryData");
+	if (inputc._sparse)
+	  lparam->set_type("MemorySparseData");
+	else lparam->set_type("MemoryData");
 	caffe::MemoryDataParameter *mdparam = lparam->mutable_memory_data_param();
 	mdparam->set_batch_size(32); // dummy value, updated before training
 	mdparam->set_channels(channels);
@@ -141,7 +146,8 @@ namespace dd
 	mdparam->set_width(width);
       }
 
-    lparam = CaffeCommon::add_layer(this->_net_params,"",top,"inputl","MemoryData",label); // test layer
+    lparam = CaffeCommon::add_layer(this->_net_params,"",top,"inputl",
+				    inputc._sparse ? "MemorySparseData" : "MemoryData",label); // test layer
     caffe::MemoryDataParameter *mdparam = lparam->mutable_memory_data_param();
     mdparam->set_batch_size(32); // dummy value, updated before training
     mdparam->set_channels(channels);
@@ -151,7 +157,9 @@ namespace dd
     nsr->set_phase(caffe::TEST);
     
     // deploy
-    dlparam->set_type("MemoryData");
+    if (inputc._sparse)
+      dlparam->set_type("MemorySparseData");
+    else dlparam->set_type("MemoryData");
     mdparam = dlparam->mutable_memory_data_param();
     mdparam->set_batch_size(1);
     mdparam->set_channels(channels);
@@ -185,6 +193,20 @@ namespace dd
 			      const int &num_output)
   {
     caffe::LayerParameter *lparam = CaffeCommon::add_layer(net_param,bottom,top,"fc_"+bottom,"InnerProduct");
+    caffe::InnerProductParameter *iparam = lparam->mutable_inner_product_param();
+    iparam->set_num_output(num_output);
+    iparam->mutable_weight_filler()->set_type("xavier"); //TODO: option
+    caffe::FillerParameter *fparam = iparam->mutable_bias_filler();
+    fparam->set_type("constant");
+    fparam->set_value(0.0); //TODO: option
+  }
+
+  void NetLayersCaffe::add_sparse_fc(caffe::NetParameter *net_param,
+				     const std::string &bottom,
+				     const std::string &top,
+				     const int &num_output)
+  {
+    caffe::LayerParameter *lparam = CaffeCommon::add_layer(net_param,bottom,top,"fc_"+bottom,"SparseInnerProduct");
     caffe::InnerProductParameter *iparam = lparam->mutable_inner_product_param();
     iparam->set_num_output(num_output);
     iparam->mutable_weight_filler()->set_type("xavier"); //TODO: option

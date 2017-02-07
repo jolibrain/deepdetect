@@ -78,6 +78,11 @@ namespace dd
 		const std::string &bottom,
 		const std::string &top,
 		const int &num_output);
+
+    void add_sparse_fc(caffe::NetParameter *net_param,
+		       const std::string &bottom,
+		       const std::string &top,
+		       const int &num_output);
     
     void add_conv(caffe::NetParameter *net_param,
 		  const std::string &bottom,
