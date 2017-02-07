@@ -10,7 +10,7 @@ You can use DeepDetect js client by adding this script to your HTML:
 
 <script type="text/javascript" src="https://deepdetect.com/js/deepdetect.min.js"></script>
 <script>
-  var app = new DeepDetect.App('http://localhost/api');
+  var app = new DeepDetect.Service('http://localhost/api');
 </script>
 ```
 
@@ -21,9 +21,21 @@ You can also install the client via NPM: ```npm install deepdetect-js```
 
 ```js
 var DeepDetect = require('deepdetect-js');
-var app = new DeepDetect.App('http://localhost/api');
+var app = new DeepDetect.Service('http://localhost/api');
 
 ```
+
+## Build
+
+To build DeepDetect js client:
+
+```
+cd deepdetect/clients/js
+yarn install
+yarn build
+```
+
+The files `deepdetect.js` and `deepdetect.min.js` will be available in the `dist` folder.
 
 ## Docs
 
