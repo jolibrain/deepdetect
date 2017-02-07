@@ -3,7 +3,13 @@
   "version": "1.0.0",
   "description": "A JS library for deepdetect",
   "main": "dist/index.js",
-  "repository": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/beniz/deepdetect.git"
+  },
+  "bugs": {
+    "url": "https://github.com/beniz/deepdetect/issues"
+  },
   "author": "Alexandre Girard",
   "license": "MIT",
   "scripts": {
