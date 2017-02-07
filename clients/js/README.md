@@ -14,17 +14,6 @@ You can use DeepDetect js client by adding this script to your HTML:
 </script>
 ```
 
-You can also install the client via NPM: ```npm install deepdetect-js```
-
-
-*This will work in node.js and browsers via [Browserify](http://browserify.org/)*
-
-```js
-var DeepDetect = require('deepdetect-js');
-var app = new DeepDetect.Service('http://localhost/api');
-
-```
-
 ## Build
 
 To build DeepDetect js client:
