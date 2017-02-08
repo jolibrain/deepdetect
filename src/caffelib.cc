@@ -208,6 +208,8 @@ namespace dd
 	netcaffe._nic.configure_inputs(ad,inputc);
 	if (inputc._sparse)
 	  const_cast<APIData&>(ad).add("sparse",true);
+	if (_regression)
+	  const_cast<APIData&>(ad).add("regression",true);
 	netcaffe._nlac.configure_net(ad);
     }
 
@@ -725,6 +727,8 @@ namespace dd
     netcaffe._nic.configure_inputs(ad,inputc);
     if (inputc._flat1dconv)
       const_cast<APIData&>(ad).add("flat1dconv",static_cast<bool>(inputc._flat1dconv));
+    if (_regression)
+      const_cast<APIData&>(ad).add("regression",true);
     netcaffe._nlac.configure_net(ad);
   }
     

@@ -72,6 +72,9 @@ namespace dd
     bool sparse = false;
     if (ad_mllib.has("sparse"))
       sparse = ad_mllib.get("sparse").get<bool>();
+    bool regression = false;
+    if (ad_mllib.has("regression"))
+      regression = ad_mllib.get("regression").get<bool>();
     std::string bottom = "data";
     for (size_t l=0;l<layers.size();l++)
       {
@@ -81,8 +84,16 @@ namespace dd
 	bottom = top;
       }
     //TODO: to loss ?
-    add_softmax(this->_net_params,bottom,"label","losst",nclasses > 0 ? nclasses : ntargets);
-    add_softmax(this->_dnet_params,bottom,"","loss",nclasses > 0 ? nclasses : ntargets,true);
+    if (regression)
+      {
+	add_euclidean_loss(this->_net_params,bottom,"label","losst",ntargets);
+	add_euclidean_loss(this->_net_params,bottom,"","loss",ntargets,true);
+      }
+    else
+      {
+	add_softmax(this->_net_params,bottom,"label","losst",nclasses > 0 ? nclasses : ntargets);
+	add_softmax(this->_dnet_params,bottom,"","loss",nclasses > 0 ? nclasses : ntargets,true);
+      }
   }
 
   template class NetCaffe<NetInputCaffe<ImgCaffeInputFileConn>,NetLayersCaffeMLP,NetLossCaffe>;

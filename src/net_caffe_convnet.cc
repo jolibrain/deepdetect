@@ -177,8 +177,16 @@ namespace dd
 	bottom = top;
 	++l;
       }
-    add_softmax(this->_net_params,bottom,"label","losst",nclasses > 0 ? nclasses : ntargets);
-    add_softmax(this->_dnet_params,bottom,"","loss",nclasses > 0 ? nclasses : ntargets,true);
+    if (regression)
+      {
+	add_euclidean_loss(this->_net_params,bottom,"label","losst",ntargets);
+	add_euclidean_loss(this->_net_params,bottom,"","loss",ntargets,true);
+      }
+    else
+      {
+	add_softmax(this->_net_params,bottom,"label","losst",nclasses > 0 ? nclasses : ntargets);
+	add_softmax(this->_dnet_params,bottom,"","loss",nclasses > 0 ? nclasses : ntargets);
+      }
   }
 
   template class NetCaffe<NetInputCaffe<ImgCaffeInputFileConn>,NetLayersCaffeConvnet,NetLossCaffe>;

@@ -100,7 +100,8 @@ TEST(caffelib,configure_mlp_template_1_nt)
   ad.add("dropout",0.6);
   ad.add("nclasses",nclasses);
   
-  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_mlp_template(ad,CSVCaffeInputFileConn(),net_param,deploy_net_param);
+  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel> *caff = new CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>(CaffeModel());
+  caff->configure_mlp_template(ad,CSVCaffeInputFileConn(),net_param,deploy_net_param);
 
   caffe::WriteProtoToTextFile(net_param,onet_file.c_str());
   caffe::WriteProtoToTextFile(deploy_net_param,donet_file);
@@ -127,6 +128,8 @@ TEST(caffelib,configure_mlp_template_1_nt)
   dlparam = deploy_net_param.mutable_layer(3);
   ASSERT_EQ("InnerProduct",dlparam->type());
   ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
+
+  delete caff;
 }
 
 /*TEST(caffelib,configure_mlp_template_sparse_1)
@@ -197,7 +200,8 @@ TEST(caffelib,configure_mlp_template_1_db)
   ad.add("db",true);
   ad.add("nclasses",nclasses);
   
-  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_mlp_template(ad,CSVCaffeInputFileConn(),net_param,deploy_net_param);
+  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel> *caff = new CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>(CaffeModel());
+  caff->configure_mlp_template(ad,CSVCaffeInputFileConn(),net_param,deploy_net_param);
 
   caffe::WriteProtoToTextFile(net_param,onet_file);
   caffe::WriteProtoToTextFile(deploy_net_param,donet_file);
@@ -228,6 +232,8 @@ TEST(caffelib,configure_mlp_template_1_db)
   dlparam = deploy_net_param.mutable_layer(3);
   ASSERT_EQ("InnerProduct",dlparam->type());
   ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
+
+  delete caff;
 }
 
 TEST(caffelib,configure_mlp_template_n_nt)
@@ -241,8 +247,9 @@ TEST(caffelib,configure_mlp_template_n_nt)
   ad.add("activation","prelu");
   ad.add("dropout",0.6);
   ad.add("nclasses",nclasses);
-  
-  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_mlp_template(ad,CSVCaffeInputFileConn(),net_param,deploy_net_param);
+
+  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel> *caff = new CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>(CaffeModel());
+  caff->configure_mlp_template(ad,CSVCaffeInputFileConn(),net_param,deploy_net_param);
     
   caffe::WriteProtoToTextFile(net_param,onet_file);
   caffe::WriteProtoToTextFile(deploy_net_param,donet_file);
@@ -278,6 +285,7 @@ TEST(caffelib,configure_mlp_template_n_nt)
   dlparam = deploy_net_param.mutable_layer(drl+1);
   ASSERT_EQ("InnerProduct",dlparam->type());
   ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
+  delete caff;
 }
 
 TEST(caffelib,configure_mlp_template_n_mt)
@@ -291,8 +299,9 @@ TEST(caffelib,configure_mlp_template_n_mt)
   ad.add("activation","prelu");
   ad.add("dropout",0.6);
   ad.add("ntargets",ntargets);
-  
-  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_mlp_template(ad,CSVCaffeInputFileConn(),net_param,deploy_net_param);
+
+  CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel> *caff = new CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>(CaffeModel());
+  caff->configure_mlp_template(ad,CSVCaffeInputFileConn(),net_param,deploy_net_param);
 
   caffe::WriteProtoToTextFile(net_param,onet_file);
   caffe::WriteProtoToTextFile(deploy_net_param,donet_file);
@@ -334,9 +343,10 @@ TEST(caffelib,configure_mlp_template_n_mt)
   dlparam = deploy_net_param.mutable_layer(drl+1);
   ASSERT_EQ("InnerProduct",dlparam->type());
   ASSERT_EQ(ntargets,dlparam->mutable_inner_product_param()->num_output());
+  delete caff;
 }
 
-TEST(caffelib,configure_convnet_template_1)
+/*TEST(caffelib,configure_convnet_template_1)
 {
   int nclasses = 18;
   caffe::NetParameter net_param, deploy_net_param;
@@ -347,8 +357,9 @@ TEST(caffelib,configure_convnet_template_1)
   ad.add("activation","prelu");
   ad.add("dropout",0.2);
   ad.add("nclasses",nclasses);
-  
-  CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,ImgCaffeInputFileConn(),net_param,deploy_net_param);
+
+  CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel> *caff = new CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(CaffeModel());
+  caff->configure_convnet_template(ad,ImgCaffeInputFileConn(),net_param,deploy_net_param);
 
   caffe::WriteProtoToTextFile(net_param,oconvnet_file);
   caffe::WriteProtoToTextFile(deploy_net_param,doconvnet_file);
@@ -378,9 +389,10 @@ TEST(caffelib,configure_convnet_template_1)
   ASSERT_EQ("InnerProduct",dlparam->type());
   ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
   ASSERT_EQ("ip0",dlparam->bottom(0));
-}
+  delete caff;
+  }*/
 
-TEST(caffelib,configure_convnet_template_1_db)
+/*TEST(caffelib,configure_convnet_template_1_db)
 {
   int nclasses = 18;
   caffe::NetParameter net_param, deploy_net_param;
@@ -392,8 +404,9 @@ TEST(caffelib,configure_convnet_template_1_db)
   ad.add("dropout",0.2);
   ad.add("db",true);
   ad.add("nclasses",nclasses);
-  
-  CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,ImgCaffeInputFileConn(),net_param,deploy_net_param);
+
+  CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel> *caff = new CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(CaffeModel());
+  caff->configure_convnet_template(ad,ImgCaffeInputFileConn(),net_param,deploy_net_param);
 
   caffe::WriteProtoToTextFile(net_param,oconvnet_file);
   caffe::WriteProtoToTextFile(deploy_net_param,doconvnet_file);
@@ -427,6 +440,7 @@ TEST(caffelib,configure_convnet_template_1_db)
   ASSERT_EQ("InnerProduct",dlparam->type());
   ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
   ASSERT_EQ("ip0",dlparam->bottom(0));
+  delete caff;
 }
 
 TEST(caffelib,configure_convnet_template_2)
@@ -440,8 +454,9 @@ TEST(caffelib,configure_convnet_template_2)
   ad.add("activation","prelu");
   ad.add("dropout",0.2);
   ad.add("nclasses",nclasses);
-  
-  CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,ImgCaffeInputFileConn(),net_param,deploy_net_param);
+
+  CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel> *caff = new CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(CaffeModel());
+  caff->configure_convnet_template(ad,ImgCaffeInputFileConn(),net_param,deploy_net_param);
 
   caffe::WriteProtoToTextFile(net_param,oconvnet_file);
   caffe::WriteProtoToTextFile(deploy_net_param,doconvnet_file);
@@ -473,7 +488,7 @@ TEST(caffelib,configure_convnet_template_2)
   lparam = net_param.mutable_layer(11);
   ASSERT_EQ("InnerProduct",lparam->type());
   ASSERT_EQ(nclasses,lparam->mutable_inner_product_param()->num_output());
-  ASSERT_EQ("fc1000",lparam->bottom(0));
+  ASSERT_EQ("fc1000_0",lparam->bottom(0));
   ASSERT_EQ("ip_losst",lparam->top(0));
 
   ASSERT_EQ(11,deploy_net_param.layer_size());
@@ -500,8 +515,9 @@ TEST(caffelib,configure_convnet_template_2)
   dlparam = deploy_net_param.mutable_layer(9);
   ASSERT_EQ("InnerProduct",dlparam->type());
   ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
-  ASSERT_EQ("fc1000",dlparam->bottom(0)); 
+  ASSERT_EQ("fc1000_0",dlparam->bottom(0)); 
   ASSERT_EQ("ip_loss",dlparam->top(0));
+  delete caff;
 }
 
 TEST(caffelib,configure_convnet_template_3)
@@ -515,8 +531,9 @@ TEST(caffelib,configure_convnet_template_3)
   ad.add("activation","prelu");
   ad.add("dropout",0.2);
   ad.add("nclasses",nclasses);
-  
-  CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,ImgCaffeInputFileConn(),net_param,deploy_net_param);
+
+  CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel> *caff = new CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(CaffeModel());
+  caff->configure_convnet_template(ad,ImgCaffeInputFileConn(),net_param,deploy_net_param);
 
   caffe::WriteProtoToTextFile(net_param,oconvnet_file);
   caffe::WriteProtoToTextFile(deploy_net_param,doconvnet_file);
@@ -556,6 +573,7 @@ TEST(caffelib,configure_convnet_template_3)
   ASSERT_EQ("InnerProduct",dlparam->type());
   ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
   ASSERT_EQ("ip0",dlparam->bottom(0));
+  delete caff;
 }
 
 TEST(caffelib,configure_convnet_template_n)
@@ -570,8 +588,9 @@ TEST(caffelib,configure_convnet_template_n)
   ad.add("dropout",0.2);
   ad.add("nclasses",nclasses);
   ad.add("db",true);
-  
-  CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,ImgCaffeInputFileConn(),net_param,deploy_net_param);
+
+  CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel> *caff = new CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(CaffeModel());
+  caff->configure_convnet_template(ad,ImgCaffeInputFileConn(),net_param,deploy_net_param);
 
   caffe::WriteProtoToTextFile(net_param,oconvnet_file);
   caffe::WriteProtoToTextFile(deploy_net_param,doconvnet_file);
@@ -581,6 +600,7 @@ TEST(caffelib,configure_convnet_template_n)
   ASSERT_EQ("Data",lparam->type());
   //ASSERT_EQ("mean.binaryproto",lparam->mutable_transform_param()->mean_file());
   ASSERT_EQ(22,deploy_net_param.layer_size());
+  delete caff;
 }
 
 TEST(caffelib,configure_convnet_template_n_1D)
@@ -602,7 +622,8 @@ TEST(caffelib,configure_convnet_template_n_1D)
   tcif._db = true;
   tcif.build_alphabet();
   tcif._sequence = 1014;
-  CaffeLib<TxtCaffeInputFileConn,SupervisedOutput,CaffeModel>::configure_convnet_template(ad,tcif,net_param,deploy_net_param);
+  CaffeLib<TxtCaffeInputFileConn,SupervisedOutput,CaffeModel> *caff = new CaffeLib<TxtCaffeInputFileConn,SupervisedOutput,CaffeModel>(CaffeModel());
+  caff->configure_convnet_template(ad,tcif,net_param,deploy_net_param);
 
   caffe::WriteProtoToTextFile(net_param,oconvnet_file);
   caffe::WriteProtoToTextFile(deploy_net_param,doconvnet_file);
@@ -655,7 +676,8 @@ TEST(caffelib,configure_convnet_template_n_1D)
   ASSERT_EQ(256,lparam->mutable_convolution_param()->num_output());
   ASSERT_EQ(3,lparam->mutable_convolution_param()->kernel_h());
   ASSERT_EQ(1,lparam->mutable_convolution_param()->kernel_w());
-  }
+  delete caff;
+  }*/
 
 //TODO: lregression template
 
