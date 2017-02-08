@@ -185,7 +185,7 @@ namespace dd
     else
       {
 	add_softmax(this->_net_params,bottom,"label","losst",nclasses > 0 ? nclasses : ntargets);
-	add_softmax(this->_dnet_params,bottom,"","loss",nclasses > 0 ? nclasses : ntargets);
+	add_softmax(this->_dnet_params,bottom,"","loss",nclasses > 0 ? nclasses : ntargets,true);
       }
   }
 
