@@ -93,7 +93,7 @@ TEST(caffeapi,service_train)
   ASSERT_EQ(ok_str,joutstr);
   ASSERT_TRUE(!fileops::file_exists(mnist_repo + "mylenet_iter_101.caffemodel"));
   ASSERT_TRUE(!fileops::file_exists(mnist_repo + "mylenet_iter_101.solverstate"));
-}
+  }
 
 TEST(caffeapi,service_train_async_status_delete)
 {
@@ -521,6 +521,45 @@ TEST(caffeapi,service_train_images)
 
   // train
   std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"width\":32,\"height\":32,\"test_split\":0.001,\"shuffle\":true,\"bw\":false},\"mllib\":{\"gpu\":true,\"gpuid\":"+gpuid+",\"solver\":{\"iterations\":" + iterations_plank + ",\"test_interval\":500,\"base_lr\":0.0001,\"snapshot\":2000,\"test_initialization\":false},\"net\":{\"batch_size\":100}},\"output\":{\"measure\":[\"acc\",\"acc-5\",\"mcll\",\"f1\"]}},\"data\":[\"" + plank_repo + "train\"]}";
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  JDoc jd;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_TRUE(jd.HasMember("status"));
+  ASSERT_EQ(201,jd["status"]["code"].GetInt());
+  ASSERT_EQ("Created",jd["status"]["msg"]);
+  ASSERT_TRUE(jd.HasMember("head"));
+  ASSERT_EQ("/train",jd["head"]["method"]);
+  ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
+  ASSERT_TRUE(jd.HasMember("body"));
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
+  ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("f1"));
+  ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() >= 0.0);
+  ASSERT_TRUE(jd["body"]["measure"]["acc-5"].GetDouble() >= 0.0);
+  ASSERT_EQ(jd["body"]["measure"]["accp"].GetDouble(),jd["body"]["measure"]["acc"].GetDouble());
+
+  // remove service
+  jstr = "{\"clear\":\"full\"}";
+  joutstr = japi.jrender(japi.service_delete(sname,jstr));
+  ASSERT_EQ(ok_str,joutstr);
+  rmdir(plank_repo_loc.c_str());
+}
+
+TEST(caffeapi,service_train_images_convnet)
+{
+  // create service
+  JsonAPI japi;
+  std::string plank_repo_loc = "plank";
+  mkdir(plank_repo_loc.c_str(),0777);
+  std::string sname = "my_service";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  plank_repo_loc + "\",\"templates\":\"" + model_templates_repo  + "\"},\"parameters\":{\"input\":{\"connector\":\"image\"},\"mllib\":{\"db\":true,\"template\":\"convnet\",\"layers\":[\"1CR32\",\"1CR64\",\"1CR128\",\"1024\"],\"nclasses\":121}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
+  ASSERT_EQ(created_str,joutstr);
+
+  // train
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"db\":true,\"width\":32,\"height\":32,\"test_split\":0.001,\"shuffle\":true,\"bw\":false},\"mllib\":{\"gpu\":true,\"gpuid\":"+gpuid+",\"solver\":{\"iterations\":" + iterations_plank + ",\"test_interval\":500,\"base_lr\":0.0001,\"snapshot\":2000,\"test_initialization\":false},\"net\":{\"batch_size\":100}},\"output\":{\"measure\":[\"acc\",\"acc-5\",\"mcll\",\"f1\"]}},\"data\":[\"" + plank_repo + "train\"]}";
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;

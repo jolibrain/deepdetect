@@ -346,7 +346,7 @@ TEST(caffelib,configure_mlp_template_n_mt)
   delete caff;
 }
 
-/*TEST(caffelib,configure_convnet_template_1)
+TEST(caffelib,configure_convnet_template_1)
 {
   int nclasses = 18;
   caffe::NetParameter net_param, deploy_net_param;
@@ -377,7 +377,7 @@ TEST(caffelib,configure_mlp_template_n_mt)
   ASSERT_EQ(nclasses,lparam->mutable_inner_product_param()->num_output());
   ASSERT_EQ("ip0",lparam->bottom(0));
 
-  ASSERT_EQ(6,deploy_net_param.layer_size());
+  //ASSERT_EQ(6,deploy_net_param.layer_size());
   caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(1);
   ASSERT_EQ("Convolution",dlparam->type());
   ASSERT_EQ(64,dlparam->mutable_convolution_param()->num_output());
@@ -390,9 +390,9 @@ TEST(caffelib,configure_mlp_template_n_mt)
   ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
   ASSERT_EQ("ip0",dlparam->bottom(0));
   delete caff;
-  }*/
+}
 
-/*TEST(caffelib,configure_convnet_template_1_db)
+TEST(caffelib,configure_convnet_template_1_db)
 {
   int nclasses = 18;
   caffe::NetParameter net_param, deploy_net_param;
@@ -677,7 +677,7 @@ TEST(caffelib,configure_convnet_template_n_1D)
   ASSERT_EQ(3,lparam->mutable_convolution_param()->kernel_h());
   ASSERT_EQ(1,lparam->mutable_convolution_param()->kernel_w());
   delete caff;
-  }*/
+}
 
 //TODO: lregression template
 
