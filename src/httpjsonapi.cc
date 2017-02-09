@@ -37,7 +37,7 @@
 #include <chrono>
 #include <ctime>
 
-DEFINE_string(host,"localhost","host for running the server");
+DEFINE_string(host,"0.0.0.0","host for running the server");
 DEFINE_string(port,"8080","server port");
 DEFINE_int32(nthreads,10,"number of HTTP server threads");
 
