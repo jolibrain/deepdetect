@@ -24,6 +24,7 @@
 #include "outputconnectorstrategy.h"
 #include "net_caffe.h"
 #include "net_caffe_convnet.h"
+#include "net_caffe_resnet.h"
 #include "utils/fileops.hpp"
 #include "utils/utils.hpp"
 #include <chrono>
@@ -154,6 +155,13 @@ namespace dd
       {
 	caffe::NetParameter net_param,deploy_net_param;
 	configure_convnet_template(ad,this->_inputc,net_param,deploy_net_param);
+	caffe::WriteProtoToTextFile(net_param,dest_net);
+	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
+      }
+    else if (model_tmpl == "resnet")
+      {
+	caffe::NetParameter net_param,deploy_net_param;
+	configure_resnet_template(ad,this->_inputc,net_param,deploy_net_param);
 	caffe::WriteProtoToTextFile(net_param,dest_net);
 	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
       }
@@ -724,6 +732,21 @@ namespace dd
 												       caffe::NetParameter &dnet_param)
   {
     NetCaffe<NetInputCaffe<TInputConnectorStrategy>,NetLayersCaffeConvnet,NetLossCaffe> netcaffe(&net_param,&dnet_param);
+    netcaffe._nic.configure_inputs(ad,inputc);
+    if (inputc._flat1dconv)
+      const_cast<APIData&>(ad).add("flat1dconv",static_cast<bool>(inputc._flat1dconv));
+    if (_regression)
+      const_cast<APIData&>(ad).add("regression",true);
+    netcaffe._nlac.configure_net(ad);
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_resnet_template(const APIData &ad,
+												      const TInputConnectorStrategy &inputc,
+												      caffe::NetParameter &net_param,
+												      caffe::NetParameter &dnet_param)
+  {
+    NetCaffe<NetInputCaffe<TInputConnectorStrategy>,NetLayersCaffeResnet,NetLossCaffe> netcaffe(&net_param,&dnet_param);
     netcaffe._nic.configure_inputs(ad,inputc);
     if (inputc._flat1dconv)
       const_cast<APIData&>(ad).add("flat1dconv",static_cast<bool>(inputc._flat1dconv));

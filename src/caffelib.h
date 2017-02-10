@@ -103,6 +103,11 @@ namespace dd
 				      const TInputConnectorStrategy &inputc,
 				      caffe::NetParameter &net_param,
 				      caffe::NetParameter &dnet_param);
+
+      void configure_resnet_template(const APIData &ad,
+				     const TInputConnectorStrategy &inputc,
+				     caffe::NetParameter &net_param,
+				     caffe::NetParameter &dnet_param);
       
     /**
      * \brief creates neural net instance based on model

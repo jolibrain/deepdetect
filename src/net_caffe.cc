@@ -223,9 +223,10 @@ namespace dd
 				const int &pad,
 				const int &stride,
 				const int &kernel_w,
-				const int &kernel_h)
+				const int &kernel_h,
+				const std::string &name)
   {
-    caffe::LayerParameter *lparam = CaffeCommon::add_layer(net_param,bottom,top,"conv_"+bottom,"Convolution");
+    caffe::LayerParameter *lparam = CaffeCommon::add_layer(net_param,bottom,top,name.empty()?"conv_"+bottom:name,"Convolution");
     caffe::ConvolutionParameter *cparam = lparam->mutable_convolution_param();
     cparam->set_num_output(num_output);
     if (kernel_w == 0 && kernel_h == 0)

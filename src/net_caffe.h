@@ -92,7 +92,8 @@ namespace dd
 		  const int &pad,
 		  const int &stride,
 		  const int &kernel_w=0,
-		  const int &kernel_h=0);
+		  const int &kernel_h=0,
+		  const std::string &name="");
 
     void add_act(caffe::NetParameter *net_param,
 		 const std::string &bottom,
@@ -106,10 +107,10 @@ namespace dd
 		     const int &kernel_size,
 		     const int &stride,
 		     const std::string &type,
-		     const int &kernel_w,
-		     const int &kernel_h,
-		     const int &stride_w,
-		     const int &stride_h);
+		     const int &kernel_w=0,
+		     const int &kernel_h=0,
+		     const int &stride_w=0,
+		     const int &stride_h=0);
 
     void add_dropout(caffe::NetParameter *net_param,
 		     const std::string &bottom,
