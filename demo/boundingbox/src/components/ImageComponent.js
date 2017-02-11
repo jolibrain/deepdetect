@@ -62,7 +62,7 @@ class ImageComponent extends React.Component {
     if(this.state.jsonDisplay) {
       code = JSON.stringify(image.body, null, 2);
     } else {
-      code = "curl -X POST 'http://localhost/api/predict' -d '" + JSON.stringify(image.curl, null, 2) + "'";
+      code = "curl -X POST 'http://localhost:8000/predict' -d '" + JSON.stringify(image.curl, null, 2) + "'";
     }
 
     return (

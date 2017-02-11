@@ -66,14 +66,14 @@ class FormComponent extends React.Component {
   }
 
   componentDidMount() {
-    this.request(this.state.demo[0]);
+    this.request(this.state.demos[0]);
   }
 
   render() {
     return (
       <div>
-        {this.state.demos.map(demo => {
-         return <Image className='demo' src={demo} onClick={this.demo} size='tiny'/>
+        {this.state.demos.map((demo, n) => {
+         return <Image key={n} className='demo' src={demo} onClick={this.demo} size='tiny'/>
         })}
         <Input ref={(ref) => this.input = ref} onChange={this.push} name='url' placeholder='Image URL' />
       </div>
