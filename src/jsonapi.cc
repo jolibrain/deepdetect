@@ -760,9 +760,11 @@ namespace dd
     jhead.AddMember("method","/train",jtrain.GetAllocator());
     jhead.AddMember("job",ad.get("job").get<int>(),jtrain.GetAllocator());
     JVal jout(rapidjson::kObjectType);
+    std::string train_status;
     if (status != -2) // on failure, the output object from the async job is empty
       {
 	out.toJVal(jtrain,jout);
+	train_status = jout["status"].GetString();
 	jhead.AddMember("status",JVal().SetString(jout["status"].GetString(),jtrain.GetAllocator()),jtrain.GetAllocator());
         jhead.AddMember("time",jout["time"].GetDouble(),jtrain.GetAllocator());
 	jout.RemoveMember("time");
@@ -777,6 +779,12 @@ namespace dd
       }
     jtrain.AddMember("head",jhead,jtrain.GetAllocator());
     jtrain.AddMember("body",jout,jtrain.GetAllocator());
+    if (train_status == "finished")
+      {
+	std::string mrepo = out.getobj("model").get("repository").get<std::string>();
+	if (JsonAPI::store_json_blob(mrepo,jrender(jtrain)))
+	LOG(ERROR) << "couldn't write to " << JsonAPI::_json_blob_fname << " file in model repository " << mrepo << std::endl;
+      }
     return jtrain;
   }
 
