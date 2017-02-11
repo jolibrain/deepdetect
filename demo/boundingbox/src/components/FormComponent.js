@@ -3,7 +3,7 @@
 import React from 'react';
 import axios from 'axios';
 import { observer } from 'mobx-react';
-import { Button, Form } from 'semantic-ui-react'
+import { Button, Form, Grid, Image, Input } from 'semantic-ui-react'
 
 require('styles//Form.css');
 
@@ -12,12 +12,27 @@ class FormComponent extends React.Component {
 
   constructor (props) {
     super(props);
+    this.state = { demos: [
+      'http://i.imgur.com/QiksDIs.jpg',
+      'https://www.nbc.com/sites/nbcunbc/files/files/styles/1080xauto/public/scet/photos/269/7924/PAA_267.JPG',
+      'http://wiinoob.walyou.netdna-cdn.com/wp-content/uploads/2009/03/mii-cupcakes.jpg'
+    ]};
   }
 
-  push = (e, { formData }) => {
+  push = (e) => {
     e.preventDefault();
+    console.log(e.target.value);
+    this.request(e.target.value);
+  }
+
+  demo = (e) => {
+    e.preventDefault();
+    this.request(e.target.src);
+  }
+
+  request = (url) => {
     const self = this;
-    axios.post('/api/predict', {
+    const params = {
       service: 'faces',
       parameters: {
         output: {
@@ -25,25 +40,43 @@ class FormComponent extends React.Component {
           confidence_threshold: 0.1
         }
       },
-      data: [ formData.url ]
-    })
+      data: [ url ]
+    };
+
+    axios.post('/api/predict', params)
     .then(function (response) {
-      self.context.store.images.push(response.data);
+
+      const prediction = response.data.body.predictions[0];
+      self.context.store.image = {
+        curl: params,
+        body: response.data.body,
+        uri: prediction.uri,
+        classes: prediction.classes
+      }
+
     })
-    .catch(function () {
-      //console.log(error);
+    .catch(function (error) {
+      self.context.store.image = {
+        curl: params,
+        body: error.response.data.body,
+        uri: params.data[0],
+        classes: []
+      }
     });
+  }
+
+  componentDidMount() {
+    this.request(this.state.demo[0]);
   }
 
   render() {
     return (
-      <Form onSubmit={this.push}>
-        <Form.Field>
-          <label>Image URL</label>
-          <input name='url' placeholder='URL' />
-        </Form.Field>
-        <Button type='submit'>Submit</Button>
-      </Form>
+      <div>
+        {this.state.demos.map(demo => {
+         return <Image className='demo' src={demo} onClick={this.demo} size='tiny'/>
+        })}
+        <Input ref={(ref) => this.input = ref} onChange={this.push} name='url' placeholder='Image URL' />
+      </div>
     );
   }
 }

@@ -80,13 +80,14 @@ class BoundingboxComponent extends React.Component {
       .forEach(box => this.renderBox(box.index, box.box, box.selected));
   }
 
-  componentWillReceiveProps() {
+  componentWillReceiveProps(nextProps) {
     let canvas = ReactDOM.findDOMNode(this.refs.canvasImage);
     let ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     let background = new Image();
     background.src = this.props.image;
     ctx.drawImage(background,0,0);
+      this.setState({hoverIndex: nextProps.selected});
     return true;
   }
 
@@ -95,6 +96,8 @@ class BoundingboxComponent extends React.Component {
   }
 
   componentDidMount() {
+    console.log("didmount");
+    console.log(this.props.selected);
     let canvas = ReactDOM.findDOMNode(this.refs.canvasImage);
     let ctx = canvas.getContext('2d');
 
@@ -175,6 +178,7 @@ BoundingboxComponent.propTypes = {
     React.PropTypes.arrayOf(React.PropTypes.array),
     React.PropTypes.arrayOf(React.PropTypes.object)
   ]),
+  selected: React.PropTypes.number,
   onSelected: React.PropTypes.func,
   options: React.PropTypes.shape({
     colors: React.PropTypes.shape({

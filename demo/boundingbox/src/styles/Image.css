@@ -13,3 +13,11 @@ canvas {
 pre.hidden {
   display:none;
 }
+
+.fa.male {
+  color: #0E6EB8;
+}
+
+.fa.female {
+  color: #FF1493;
+}

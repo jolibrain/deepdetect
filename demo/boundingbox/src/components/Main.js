@@ -2,11 +2,10 @@ require('normalize.css/normalize.css');
 require('styles/App.css');
 
 import React from 'react';
-import { Divider, Container, Header } from 'semantic-ui-react';
+import { Container } from 'semantic-ui-react';
 import { observer } from 'mobx-react';
 
-import FormComponent from './FormComponent';
-import ImageListComponent from './ImageListComponent';
+import ImageComponent from './ImageComponent';
 
 import Store from '../stores/Store';
 
@@ -28,12 +27,8 @@ class AppComponent extends React.Component {
 
   render() {
     return (
-      <Container text>
-        <Header as='h2'>Boundingbox Demo</Header>
-        <Divider/>
-        <FormComponent />
-        <Divider/>
-        <ImageListComponent />
+      <Container fluid>
+        <ImageComponent />
       </Container>
     );
   }
