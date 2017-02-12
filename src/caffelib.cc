@@ -2110,17 +2110,17 @@ namespace dd
 	  {
 	    set_gpuid(ad_mllib);
 	  }
-      	if (gpu)
-	  {
-	    for (auto i: _gpuid)
-	      {
-		Caffe::SetDevice(i);
-		Caffe::DeviceQuery();
-	      }
-	    Caffe::set_mode(Caffe::GPU);
-	  }
-	else Caffe::set_mode(Caffe::CPU);
       }
+    if (gpu)
+      {
+	for (auto i: _gpuid)
+	  {
+	    Caffe::SetDevice(i);
+	    Caffe::DeviceQuery();
+	  }
+	Caffe::set_mode(Caffe::GPU);
+      }
+    else Caffe::set_mode(Caffe::CPU);
 #else
       Caffe::set_mode(Caffe::CPU);
 #endif
