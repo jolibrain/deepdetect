@@ -52,7 +52,6 @@ namespace dd
 					    const std::string &bottom,
 					    std::string &top)
   {
-    //TODO?
     add_conv(net_param,bottom,top,64,7,3,2);
     /*add_bn(net_param,"conv1");
       add_act(net_param,"conv1","ReLU");*/
@@ -74,19 +73,21 @@ namespace dd
     add_bn(net_param,bottom);
     add_act(net_param,bottom,activation);
     int kernel_size = 1;
-    int pad = 1;
+    int pad = 0;
     int stride = 1;
     std::string block_num_str = std::to_string(block_num);
     std::string conv_name = "conv1_branch" + block_num_str;
     //TODO: not conv
     add_conv(net_param,bottom,conv_name,num_output,kernel_size,pad,stride); //TODO: stride as parameter to function
 
+    pad = 1;
     kernel_size = 3;
     add_bn(net_param,conv_name);
     add_act(net_param,conv_name,activation);
     std::string conv2_name = "conv2_branch" + block_num_str;
     add_conv(net_param,conv_name,conv2_name,num_output,kernel_size,pad,stride);
 
+    pad = 0;
     kernel_size = 1;
     add_bn(net_param,conv2_name);
     add_act(net_param,conv2_name,activation);
@@ -149,6 +150,7 @@ namespace dd
     std::vector<int> stages = {16, 64, 128, 256};
     std::string top = "conv1";
     add_init_block(this->_net_params,bottom,top);
+    add_init_block(this->_dnet_params,bottom,top);
     bottom = top;
     int block_num = 1;
     for (size_t s=0;s<stages.size();s++)
