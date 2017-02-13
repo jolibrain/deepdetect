@@ -131,7 +131,7 @@ namespace dd
     int depth = -1;
     int n = -1;
     parse_res_layers(layers,depth,n);
-    std::cerr << "depth=" << depth << " / n=" << n << std::endl;
+    LOG(INFO) << "generating ResNet with depth=" << depth << " / n=" << n << std::endl;
     if (ad_mllib.has("dropout"))
       dropout = ad_mllib.get("dropout").get<double>();
     bool bn = false;
