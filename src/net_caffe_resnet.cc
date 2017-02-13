@@ -38,12 +38,19 @@ namespace dd
 					      int &depth, int &n)
   {
     const std::string res_str = "Res";
-    std::string l = layers.at(0); //TODO: error checking
-    size_t pos = 0;
-    if ((pos=l.find(res_str))!=std::string::npos)
+    if (layers.size() == 1) // ResXX generator, for images
       {
-	std::string sdepth = l.substr(pos+res_str.size());
-	depth = std::atoi(sdepth.c_str());
+	std::string l = layers.at(0); //TODO: error checking
+	size_t pos = 0;
+	if ((pos=l.find(res_str))!=std::string::npos)
+	  {
+	    std::string sdepth = l.substr(pos+res_str.size());
+	    depth = std::atoi(sdepth.c_str());
+	  }
+      }
+    else // custom MLP resnet
+      {
+	//TODO
       }
     n = static_cast<int>(std::floor((depth-2)/9));
   }
@@ -64,6 +71,7 @@ namespace dd
 					     const std::string &bottom,
 					     const int &num_output,
 					     const std::string &activation,
+					     const int &stride,
 					     const bool &identity,
 					     std::string &top)
   {
@@ -74,7 +82,6 @@ namespace dd
     add_act(net_param,bottom,activation);
     int kernel_size = 1;
     int pad = 0;
-    int stride = 1;
     std::string block_num_str = std::to_string(block_num);
     std::string conv_name = "conv1_branch" + block_num_str;
     //TODO: not conv
@@ -85,14 +92,14 @@ namespace dd
     add_bn(net_param,conv_name);
     add_act(net_param,conv_name,activation);
     std::string conv2_name = "conv2_branch" + block_num_str;
-    add_conv(net_param,conv_name,conv2_name,num_output,kernel_size,pad,stride);
+    add_conv(net_param,conv_name,conv2_name,num_output,kernel_size,pad,1);
 
     pad = 0;
     kernel_size = 1;
     add_bn(net_param,conv2_name);
     add_act(net_param,conv2_name,activation);
     std::string conv3_name = "conv3_branch" + block_num_str;
-    add_conv(net_param,conv2_name,conv3_name,num_output,kernel_size,pad,stride);
+    add_conv(net_param,conv2_name,conv3_name,num_output,kernel_size,pad,1);
     
     // resize shortcut if input size != output size
     std::string bottom_scale = bottom;
@@ -157,8 +164,8 @@ namespace dd
       {
 	for (int i=0;i<n;i++)
 	  {
-	    add_basic_block(this->_net_params,block_num,bottom,stages[s],activation,i==0?false:true,top);
-	    add_basic_block(this->_dnet_params,block_num,bottom,stages[s],activation,i==0?false:true,top);
+	    add_basic_block(this->_net_params,block_num,bottom,stages[s],activation,s==0?1:2,i==0?false:true,top);
+	    add_basic_block(this->_dnet_params,block_num,bottom,stages[s],activation,s==0?1:2,i==0?false:true,top);
 	    bottom = top;
 	    ++block_num;
 	  }

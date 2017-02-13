@@ -48,6 +48,7 @@ namespace dd
 			 const std::string &bottom,
 			 const int &num_output,
 			 const std::string &activation,
+			 const int &stride,
 			 const bool &identity,
 			 std::string &top);
 
