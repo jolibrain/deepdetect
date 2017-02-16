@@ -1,0 +1,30 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index f1318dd..fbd43fe 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -66,6 +66,8 @@ file(GLOB SOURCES
+     src/*.cc
+ )
+ 
++list(REMOVE_ITEM SOURCES ${PROJECT_SOURCE_DIR}/src/cli_main.cc)
++
+ set(RABIT_SOURCES
+     rabit/src/allreduce_base.cc
+     rabit/src/allreduce_robust.cc
+@@ -110,14 +112,11 @@ if(PLUGIN_UPDATER_GPU)
+     )
+ endif()
+ 
+-add_executable(xgboost ${SOURCES})
+-add_library(libxgboost SHARED ${SOURCES})
+-target_link_libraries(xgboost dmlccore rabit)
++add_library(libxgboost STATIC ${SOURCES})
+ target_link_libraries(libxgboost dmlccore rabit)
+ 
+ 
+ if(PLUGIN_UPDATER_GPU)
+-    target_link_libraries(xgboost updater_gpu)
+-    target_link_libraries(libxgboost updater_gpu)
++target_link_libraries(libxgboost updater_gpu)
+ endif()
+ 
