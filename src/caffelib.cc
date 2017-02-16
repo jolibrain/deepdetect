@@ -2061,7 +2061,8 @@ namespace dd
 	for (auto i: _gpuid)
 	  {
 	    Caffe::SetDevice(i);
-	    Caffe::DeviceQuery();
+	    if (gpu != _gpu)
+	      Caffe::DeviceQuery();
 	  }
 	Caffe::set_mode(Caffe::GPU);
       }
