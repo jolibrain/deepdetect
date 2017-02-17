@@ -205,6 +205,11 @@ If you would like to build with cuDNN, your `cmake` line should be:
 cmake .. -DUSE_CUDNN=ON
 ```
 
+To target the build of underlying Caffe to a specific CUDA architecture (e.g. Pascal), you can use:
+```
+cmake .. -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61"
+```
+
 If you would like a CPU only build, use:
 ```
 cmake .. -DUSE_CPU_ONLY=ON
