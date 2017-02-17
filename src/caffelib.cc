@@ -1391,6 +1391,15 @@ namespace dd
 	    _net = nullptr;
 	    throw;
 	  }
+	try
+	  {
+	    model_complexity(_flops,_params);
+	  }
+	catch(std::exception &e)
+	  {
+	    // nets can be exotic, let's make sure we don't get killed here
+	    LOG(ERROR) << "failed computing net's complexity";
+	  }
 	return 0;
       }
     // net definition is missing
@@ -2052,7 +2061,8 @@ namespace dd
 	for (auto i: _gpuid)
 	  {
 	    Caffe::SetDevice(i);
-	    Caffe::DeviceQuery();
+	    if (gpu != _gpu)
+	      Caffe::DeviceQuery();
 	  }
 	Caffe::set_mode(Caffe::GPU);
       }
@@ -2613,6 +2623,40 @@ namespace dd
 	if (batch_size == 0)
 	  throw MLLibBadParamException("auto batch size set to zero: MemoryData input requires batch size to be a multiple of training set");
       }
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::model_complexity(long int &flops,
+											     long int &params)
+  {
+    for (size_t l=0;l<_net->layers().size();l++)
+      {
+	const boost::shared_ptr<caffe::Layer<float>> &layer = _net->layers().at(l);
+	std::string lname = layer->layer_param().name();
+	std::string ltype = layer->layer_param().type();
+	std::vector<boost::shared_ptr<Blob<float>>> blblobs = layer->blobs();
+	const std::vector<caffe::Blob<float>*> &tlblobs = _net->top_vecs().at(l);
+	//std::cerr << "lname=" << lname << " / bottom layer blobs size=" << blblobs.size() << std::endl;
+	if (blblobs.empty())
+	  continue;
+	long int lcount = blblobs.at(0)->count();
+	long int lflops = 0;
+	if (ltype == "Convolution")
+	  {
+	    int dwidth = tlblobs.at(0)->width();
+	    int dheight = tlblobs.at(0)->height();
+	    //std::cerr << "dwidth=" << dwidth << " / dheight=" << dheight << std::endl;
+	    lflops = lcount * dwidth * dheight;
+	  }
+	else
+	  {
+	    lflops = lcount;
+	  }
+	//std::cerr << "lname=" << lname << " / ltype=" << ltype << " / lflops=" << lflops << " / lcount=" << lcount << std::endl;
+	flops += lflops;
+	params += lcount;
+      }
+    LOG(INFO) << "Net total flops=" << flops << " / total params=" << params << std::endl;
   }
   
   template class CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>;

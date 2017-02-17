@@ -200,6 +200,9 @@ namespace dd
 			  int &test_iter);
 
       void set_gpuid(const APIData &ad);
+
+      void model_complexity(long int &flops,
+			    long int &params);
       
     public:
       caffe::Net<float> *_net = nullptr; /**< neural net. */
@@ -210,6 +213,8 @@ namespace dd
       int _ntargets = 0; /**< number of classification or regression targets. */
       bool _autoencoder = false; /**< whether an autoencoder. */
       std::mutex _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as net is not re-instantiated. Use batches instead. */
+      long int _flops = 0;  /**< model flops. */
+      long int _params = 0;  /**< number of parameters in the model. */
     };
 
 }
