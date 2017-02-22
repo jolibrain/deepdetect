@@ -67,8 +67,8 @@ namespace dd
       
       std::string _label;
       double _loss = 0.0; /**< result loss. */
-      std::map<double,std::string,std::greater<double>> _cats; /**< categories and probabilities for this result */
-      std::map<double,APIData,std::greater<double>> _extra; /**< extra data or information added to output, e.g. bboxes. */
+      std::multimap<double,std::string,std::greater<double>> _cats; /**< categories and probabilities for this result */
+      std::multimap<double,APIData,std::greater<double>> _extra; /**< extra data or information added to output, e.g. bboxes. */
     };
 
   public:
@@ -261,12 +261,11 @@ namespace dd
 		  for (int i=0;i<conf_diag.rows();i++)
 		    cmdiagv.push_back(conf_diag(i,0));
 		  meas_out.add("cmdiag",cmdiagv);
+		  meas_out.add("labels",ad_res.get("clnames").get<std::vector<std::string>>());
 		}
 	      if (std::find(measures.begin(),measures.end(),"cmfull")!=measures.end())
 		{
 		  std::vector<std::string> clnames = ad_res.get("clnames").get<std::vector<std::string>>();
-		  APIData cmobj;
-		  cmobj.add("labels",clnames);
 		  std::vector<APIData> cmdata;
 		  for (int i=0;i<conf_matrix.cols();i++)
 		    {

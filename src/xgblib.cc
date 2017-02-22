@@ -56,6 +56,10 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void XGBLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::init_mllib(const APIData &ad)
   {
+#ifndef CPU_ONLY
+    if (ad.has("gpu"))
+      _gpu = ad.get("gpu").get<bool>();
+#endif
     if (ad.has("nclasses"))
       _nclasses = ad.get("nclasses").get<int>();
     if (ad.has("regression") && ad.get("regression").get<bool>())
@@ -111,6 +115,10 @@ namespace dd
       int seed = 0;
       
       APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
+#ifndef CPU_ONLY
+      if (ad_mllib.has("gpu"))
+	_gpu = ad_mllib.get("gpu").get<bool>();
+#endif
       if (ad_mllib.has("booster"))
 	_booster = ad_mllib.get("booster").get<std::string>();
       if (ad_mllib.has("objective"))
@@ -159,6 +167,16 @@ namespace dd
       double alpha = 0.0;
       double lambda_bias = 0.0; // linear booster parameters
       std::string tree_method = "auto";
+      double sketch_eps = 0.03;
+      double scale_pos_weight = 1.0;
+      std::string updater = "grow_colmaker,prune";
+      bool refresh_leaf = true;
+      std::string process_type = "default";
+      std::string dart_sample_type = "uniform";
+      std::string dart_normalize_type = "tree";
+      double dart_rate_drop = 0.0;
+      bool dart_one_drop = false;
+      double dart_skip_drop = 0.0;
       
       APIData ad_booster = ad_mllib.getobj("booster_params");
       if (ad_booster.size())
@@ -185,7 +203,31 @@ namespace dd
 	    lambda_bias = ad_booster.get("lambda_bias").get<double>();
 	  if (ad_booster.has("tree_method"))
 	    tree_method = ad_booster.get("tree_method").get<std::string>();
+	  if (ad_booster.has("sketch_eps"))
+	    sketch_eps = ad_booster.get("sketch_eps").get<double>();
+	  if (ad_booster.has("scale_pos_weight"))
+	    scale_pos_weight = ad_booster.get("scale_pos_weight").get<double>();
+	  if (ad_booster.has("updater"))
+	    updater = ad_booster.get("updater").get<std::string>();
+	  if (ad_booster.has("refresh_leaf"))
+	    refresh_leaf = ad_booster.get("refresh_leaf").get<bool>();
+	  if (ad_booster.has("process_type"))
+	    process_type = ad_booster.get("process_type").get<std::string>();
+	  if (ad_booster.has("sample_type"))
+	    dart_sample_type = ad_booster.get("sample_type").get<std::string>();
+	  if (ad_booster.has("normalize_type"))
+	    dart_normalize_type = ad_booster.get("normalize_type").get<std::string>();
+	  if (ad_booster.has("rate_drop"))
+	    dart_rate_drop = ad_booster.get("rate_drop").get<double>();
+	  if (ad_booster.has("one_drop"))
+	    dart_one_drop = ad_booster.get("one_drop").get<bool>();
+	  if (ad_booster.has("skip_drop"))
+	    dart_skip_drop = ad_booster.get("skip_drop").get<double>();
 	}
+#ifndef CPU_ONLY
+      if (_gpu)
+	updater = "grow_gpu";
+#endif
       add_cfg_param("eta",eta);
       add_cfg_param("gamma",gamma);
       add_cfg_param("max_depth",max_depth);
@@ -197,6 +239,16 @@ namespace dd
       add_cfg_param("alpha",alpha);
       add_cfg_param("lambda_bias",lambda_bias);
       add_cfg_param("tree_method",tree_method);
+      add_cfg_param("sketch_eps",sketch_eps);
+      add_cfg_param("scale_pos_weight",scale_pos_weight);
+      add_cfg_param("updater",updater);
+      add_cfg_param("refresh_leaf",refresh_leaf);
+      add_cfg_param("process_type",process_type);
+      add_cfg_param("sample_type",dart_sample_type);
+      add_cfg_param("normalize_type",dart_normalize_type);
+      add_cfg_param("rate_drop",dart_rate_drop);
+      add_cfg_param("one_drop",dart_one_drop);
+      add_cfg_param("skip_drop",dart_skip_drop);
       
       // data setup
       std::vector<std::shared_ptr<xgboost::DMatrix>> mats = { inputc._m };
@@ -276,7 +328,7 @@ namespace dd
 	    std::vector<std::string> meas_str = meas_obj.list_keys();
 	    for (auto m: meas_str)
 	      {
-		if (m != "cmdiag" && m != "cmfull") // do not report confusion matrix in server logs
+		if (m != "cmdiag" && m != "cmfull" && m != "labels") // do not report confusion matrix in server logs
 		  {
 		    double mval = meas_obj.get(m).get<double>();
 		    LOG(INFO) << m << "=" << mval;
@@ -284,14 +336,14 @@ namespace dd
 		    if (!std::isnan(mval)) // if testing occurs once before training even starts, loss is unknown and we don't add it to history.
 		      this->add_meas_per_iter(m,mval);
 		  }
-		else if (m == "cmdiag")
+		/*else if (m == "cmdiag")
 		  {
 		    std::vector<double> mdiag = meas_obj.get(m).get<std::vector<double>>();
 		    std::string mdiag_str;
 		    for (size_t i=0;i<mdiag.size();i++)
 		      mdiag_str += std::to_string(i) + ":" + std::to_string(mdiag.at(i)) + " ";
 		    LOG(INFO) << m << "=[" << mdiag_str << "]";
-		  }
+		    }*/
 	      }
 	  }
 	

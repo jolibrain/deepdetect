@@ -284,6 +284,9 @@ namespace dd
 		out.add("status","finished");
 	      else out.add("status","unknown error");
 	      //this->collect_measures(out); // XXX: beware if there was a queue, since the job has finished, there might be a new one running.
+	      APIData jmrepo;
+	      jmrepo.add("repository",this->_mlmodel._repo);
+	      out.add("model",jmrepo);
 	      std::chrono::time_point<std::chrono::system_clock> trun = std::chrono::system_clock::now();
 	      out.add("time",std::chrono::duration_cast<std::chrono::seconds>(trun-(*hit).second._tstart).count());
 	      if (ad_params_out.has("measure_hist") && ad_params_out.get("measure_hist").get<bool>())
