@@ -32,7 +32,11 @@ namespace dd
   public:
     NetLayersCaffeResnet(caffe::NetParameter *net_params,
 			 caffe::NetParameter *dnet_params)
-      :NetLayersCaffeConvnet(net_params,dnet_params) {}
+      :NetLayersCaffeConvnet(net_params,dnet_params) 
+      {
+	net_params->set_name("resnet");
+	dnet_params->set_name("resnet");
+      }
     ~NetLayersCaffeResnet() {}
 
   private:

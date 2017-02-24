@@ -32,7 +32,11 @@ namespace dd
   public:
   NetLayersCaffeConvnet(caffe::NetParameter *net_params,
 			caffe::NetParameter *dnet_params)
-    :NetLayersCaffeMLP(net_params,dnet_params) {}
+    :NetLayersCaffeMLP(net_params,dnet_params) 
+      {
+	net_params->set_name("convnet");
+	dnet_params->set_name("convnet");
+      }
     ~NetLayersCaffeConvnet() {}
 
   private:
