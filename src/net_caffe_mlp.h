@@ -43,7 +43,11 @@ namespace dd
   public:
   NetLayersCaffeMLP(caffe::NetParameter *net_params,
 		    caffe::NetParameter *dnet_params)
-    :NetLayersCaffe(net_params,dnet_params) {}
+    :NetLayersCaffe(net_params,dnet_params) 
+      {
+	net_params->set_name("mlp");
+	dnet_params->set_name("mlp");
+      }
     ~NetLayersCaffeMLP() {}
 
     void add_basic_block(caffe::NetParameter *net_param,

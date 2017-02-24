@@ -241,7 +241,7 @@ namespace dd
     cparam->mutable_weight_filler()->set_type("xavier"); //TODO: option
     caffe::FillerParameter *fparam = cparam->mutable_bias_filler();
     fparam->set_type("constant");
-    fparam->set_value(0.2); //TODO: option
+    //fparam->set_value(0.2); //TODO: option
   }
 
   void NetLayersCaffe::add_act(caffe::NetParameter *net_param,
