@@ -18,6 +18,14 @@ DeepDetect relies on external machine learning libraries through a very generic 
 | XGBoost    | Y        | Y          | Y              | N         |   Y        | N/A         |
 | Tensorflow | N        | Y          | Y              | N         |   N        | N           |
 
+#### GPU support per library
+
+|            | Training | Prediction |
+|------------|----------|------------|
+| Caffe      | Y        | Y          |
+| XGBoost    | Y        | N          |
+| Tensorflow | Y        | Y          |
+
 #### Input data support per library (current):
 
 |            | CSV | SVM | Text words | Text characters | Images |
@@ -101,7 +109,7 @@ Current features include:
 
 ##### Caffe Dependencies
 
-- CUDA 7 or 6.5 is required for GPU mode.
+- CUDA 8 or 7.5 is recommended for GPU mode.
 - BLAS via ATLAS, MKL, or OpenBLAS.
 - [protobuf](https://github.com/google/protobuf)
 - IO libraries hdf5, leveldb, snappy, lmdb
@@ -109,6 +117,7 @@ Current features include:
 ##### XGBoost Dependencies
 
 None outside of C++ compiler and make
+- CUDA 8 or 7.5 is recommended for GPU mode.
 
 #### Tensorflow Dependencies
 
@@ -194,6 +203,11 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64
 If you would like to build with cuDNN, your `cmake` line should be:
 ```
 cmake .. -DUSE_CUDNN=ON
+```
+
+To target the build of underlying Caffe to a specific CUDA architecture (e.g. Pascal), you can use:
+```
+cmake .. -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61"
 ```
 
 If you would like a CPU only build, use:
