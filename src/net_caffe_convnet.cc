@@ -1,6 +1,6 @@
 /**
  * DeepDetect
- * Copyright (c) 2014-2016 Emmanuel Benazera
+ * Copyright (c) 2014-2017 Emmanuel Benazera
  * Author: Emmanuel Benazera <beniz@droidnik.fr>
  *
  * This file is part of deepdetect.
