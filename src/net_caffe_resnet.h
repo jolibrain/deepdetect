@@ -41,10 +41,16 @@ namespace dd
 
   private:
     void parse_res_layers(const std::vector<std::string> &layers,
+			  std::vector<std::pair<int,int>> &cr_layers,
+			  std::vector<int> &fc_layers,
 			  int &depth, int &n);
     
     void add_init_block(caffe::NetParameter *net_param,
 			const std::string &bottom,
+			const int &num_output,
+			const int &kernel_size,
+			const int &kernel_w,
+			const int &kernel_h,
 			std::string &top);
     
     void add_basic_block(caffe::NetParameter *net_param,
@@ -52,9 +58,25 @@ namespace dd
 			 const std::string &bottom,
 			 const int &num_output,
 			 const std::string &activation,
+			 const int &stride,
 			 const bool &identity,
 			 std::string &top);
 
+    void add_basic_block_flat(caffe::NetParameter *net_param,
+			      const int &block_num,
+			      const std::string &bottom,
+			      const int &num_output,
+			      const std::string &activation,
+			      const int &stride,
+			      const int &kernel_w,
+			      const int &kernel_h,
+			      const bool &identity,
+			      std::string &top);
+
+    void configure_net_resarch(const APIData &ad_mllib);
+    void configure_net_flat(const APIData &ad_mllib);
+
+    
   public:
     void configure_net(const APIData &ad_mllib);
   };

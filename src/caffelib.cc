@@ -126,23 +126,26 @@ namespace dd
     LOG(INFO) << "dest=" << this->_mlmodel._repo + '/' + model_tmpl + ".prototxt";
     std::string dest_net = this->_mlmodel._repo + '/' + model_tmpl + ".prototxt";
     std::string dest_deploy_net = this->_mlmodel._repo + "/deploy.prototxt";
-    int err = fileops::copy_file(source + model_tmpl + ".prototxt", dest_net);
-    if (err == 1)
-      throw MLLibBadParamException("failed to locate model template " + source + ".prototxt");
-    else if (err == 2)
-      throw MLLibBadParamException("failed to create model template destination " + dest_net);
-    err = fileops::copy_file(source + model_tmpl + "_solver.prototxt",
-			     this->_mlmodel._repo + '/' + model_tmpl + "_solver.prototxt");
+    if (model_tmpl != "mlp" && model_tmpl != "convnet" && model_tmpl != "resnet")
+      {
+	int err = fileops::copy_file(source + model_tmpl + ".prototxt", dest_net);
+	if (err == 1)
+	  throw MLLibBadParamException("failed to locate model template " + source + ".prototxt");
+	else if (err == 2)
+	  throw MLLibBadParamException("failed to create model template destination " + dest_net);
+	err = fileops::copy_file(source + "deploy.prototxt", dest_deploy_net);
+	if (err == 1)
+	  throw MLLibBadParamException("failed to locate deploy template " + source + "deploy.prototxt");
+	else if (err == 2)
+	  throw MLLibBadParamException("failed to create destination deploy solver file " + dest_deploy_net);
+      }
+    int err = fileops::copy_file(source + model_tmpl + "_solver.prototxt",
+				 this->_mlmodel._repo + '/' + model_tmpl + "_solver.prototxt");
     if (err == 1)
       throw MLLibBadParamException("failed to locate solver template " + source + model_tmpl + "_solver.prototxt");
     else if (err == 2)
       throw MLLibBadParamException("failed to create destination template solver file " + this->_mlmodel._repo + '/' + model_tmpl + "_solver.prototxt");
-    err = fileops::copy_file(source + "deploy.prototxt", dest_deploy_net);
-    if (err == 1)
-      throw MLLibBadParamException("failed to locate deploy template " + source + "deploy.prototxt");
-    else if (err == 2)
-      throw MLLibBadParamException("failed to create destination deploy solver file " + dest_deploy_net);
-
+    
     // if mlp template, set the net structure as number of layers.
     if (model_tmpl == "mlp" || model_tmpl == "mlp_db" || model_tmpl == "lregression")
       {

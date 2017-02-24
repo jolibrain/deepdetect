@@ -39,11 +39,11 @@ namespace dd
       }
     ~NetLayersCaffeConvnet() {}
 
-  private:
+  protected:
     void parse_conv_layers(const std::vector<std::string> &layers,
 			   std::vector<std::pair<int,int>> &cr_layers,
 			   std::vector<int> &fc_layers);
-    
+  private:
     void add_basic_block(caffe::NetParameter *net_param,
 			 const std::string &bottom,
 			 const std::string &top,
