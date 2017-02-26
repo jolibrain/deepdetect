@@ -97,6 +97,8 @@ namespace dd
 		  const int &stride,
 		  const int &kernel_w=0,
 		  const int &kernel_h=0,
+		  const int &pad_w=0,
+		  const int &pad_h=0,
 		  const std::string &name="");
 
     void add_act(caffe::NetParameter *net_param,

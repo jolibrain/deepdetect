@@ -115,7 +115,7 @@ namespace dd
     if (!identity)
       {
 	bottom_scale = bottom + "_branch";
-	add_conv(net_param,bottom,bottom_scale,num_output,1,0,stride,0,0,"shortcut_"+bottom);
+	add_conv(net_param,bottom,bottom_scale,num_output,1,0,stride,0,0,0,0,"shortcut_"+bottom);
       }
     
     // residual
@@ -144,13 +144,14 @@ namespace dd
     std::string block_num_str = std::to_string(block_num);
     std::string conv_name = "conv1_branch" + block_num_str;
     //TODO: not conv
-    add_conv(net_param,bottom,conv_name,num_output,kernel_size,pad,stride,kernel_w,kernel_h); //TODO: stride as parameter to function
+    add_conv(net_param,bottom,conv_name,num_output,kernel_size,pad,stride,kernel_w,kernel_h,0,2); //TODO: stride as parameter to function
 
+    //pad = 0;
     add_bn(net_param,conv_name);
     add_act(net_param,conv_name,activation);
     std::string conv2_name = "conv2_branch" + block_num_str;
     add_conv(net_param,conv_name,conv2_name,num_output,kernel_size,pad,stride,kernel_w,kernel_h);
-
+    
     /*pad = 0;
     kernel_size = 1;
     add_bn(net_param,conv2_name);
@@ -163,12 +164,12 @@ namespace dd
     if (!identity)
       {
 	bottom_scale = bottom + "_branch";
-	add_conv(net_param,bottom,bottom_scale,num_output,0,0,1,1,3,"shortcut_"+bottom);
+	add_conv(net_param,bottom,bottom_scale,num_output,0,0,1,1,1,0,0,"shortcut_"+bottom);
       }
     
     // residual
     top = "res" + block_num_str;
-    add_eltwise(net_param,bottom_scale,conv_name,top);
+    add_eltwise(net_param,bottom_scale,conv2_name,top);
   }
   
   void NetLayersCaffeResnet::configure_net_resarch(const APIData &ad_mllib)
@@ -302,7 +303,8 @@ namespace dd
 	    /*bool identity = true;
 	    if (l == 0
 	    || (i == 0))*/// && cr_layers.at(l).second!=cr_layers.at(l-1).second))
-	    bool identity = false;
+	    //bool identity = false;
+	    bool identity = (i == 0 ? false : true);
 	    add_basic_block_flat(this->_net_params,block_num,bottom,cr_layers.at(l).second,activation,
 				 stride,kernel_w,kernel_h,identity,top);
 	    add_basic_block_flat(this->_dnet_params,block_num,bottom,cr_layers.at(l).second,activation,

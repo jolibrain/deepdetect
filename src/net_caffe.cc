@@ -79,7 +79,7 @@ namespace dd
     if (ad_mllib.has("ntargets"))
       ntargets = ad_mllib.get("ntargets").get<int>();
     bool db = false;
-    if (ad_mllib.has("db"))
+    if (ad_mllib.has("db")) //TODO: if Caffe + image, db is true
       db = ad_mllib.get("db").get<bool>();
     int width = inputc.width();
     int height = inputc.height();
@@ -224,6 +224,8 @@ namespace dd
 				const int &stride,
 				const int &kernel_w,
 				const int &kernel_h,
+				const int &pad_w,
+				const int &pad_h,
 				const std::string &name)
   {
     caffe::LayerParameter *lparam = CaffeCommon::add_layer(net_param,bottom,top,name.empty()?"conv_"+bottom:name,"Convolution");
@@ -236,7 +238,13 @@ namespace dd
 	cparam->set_kernel_w(kernel_w);
 	cparam->set_kernel_h(kernel_h);
       }	
-    cparam->add_pad(pad);
+    if (pad_w == 0 && pad_h == 0)
+      cparam->add_pad(pad);
+    else
+      {
+	cparam->set_pad_w(pad_w);
+	cparam->set_pad_h(pad_h);
+      }
     cparam->add_stride(stride);
     cparam->mutable_weight_filler()->set_type("xavier"); //TODO: option
     caffe::FillerParameter *fparam = cparam->mutable_bias_filler();
