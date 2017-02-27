@@ -78,10 +78,11 @@ namespace dd
 					      const int &pl_stride_h)
   {
     std::string top_conv;
+    std::string bottom_conv = bottom;
     for (int c=0;c<nconv;c++)
       {
 	top_conv = top + "_conv_" + std::to_string(c);
-	add_conv(net_param,bottom,top_conv,num_output,kernel_size,pad,stride,kernel_w,kernel_h);
+	add_conv(net_param,bottom_conv,top_conv,num_output,kernel_size,pad,stride,kernel_w,kernel_h,0,0,top_conv);
 	if (bn)
 	  {
 	    add_bn(net_param,top_conv);
@@ -94,6 +95,7 @@ namespace dd
 	      add_dropout(net_param,top_conv,dropout_ratio);
 	  }
 	else add_act(net_param,top_conv,activation);
+	bottom_conv = top_conv;
       }
     // pooling
     add_pooling(net_param,top_conv,top,pl_kernel_size,pl_stride,pl_type,pl_kernel_w,pl_kernel_h,pl_stride_w,pl_stride_h);
