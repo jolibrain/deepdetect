@@ -171,6 +171,8 @@ namespace dd
 	    deserialize_vocab();
 	  for (size_t i=0;i<_uris.size();i++)
 	    {
+	      if (_uris.at(i).empty())
+		throw InputConnectorBadParamException("no data could be found for input " + std::to_string(i));
 	      DataEl<DDSvm> ddsvm;
 	      ddsvm._ctype._cifc = this;
 	      ddsvm._ctype._adconf = ad_input;
