@@ -877,7 +877,7 @@ babel-register@^6.22.0:
     mkdirp "^0.5.1"
     source-map-support "^0.4.2"
 
-babel-runtime@^6.18.0, babel-runtime@^6.2.0, babel-runtime@^6.22.0:
+babel-runtime@^6.11.6, babel-runtime@^6.18.0, babel-runtime@^6.2.0, babel-runtime@^6.22.0:
   version "6.22.0"
   resolved "https://registry.yarnpkg.com/babel-runtime/-/babel-runtime-6.22.0.tgz#1cf8b4ac67c77a4ddb0db2ae1f74de52ac4ca611"
   dependencies:
@@ -4030,14 +4030,11 @@ react-addons-test-utils@^15.0.0:
     fbjs "^0.8.4"
     object-assign "^4.1.0"
 
-react-bounding-box@^0.0.6:
-  version "0.0.6"
-  resolved "https://registry.yarnpkg.com/react-bounding-box/-/react-bounding-box-0.0.6.tgz#ac3c19391c3903a00cb1dc8e1318d4ce619380dc"
+react-bounding-box@^0.0.8:
+  version "0.0.8"
+  resolved "https://registry.yarnpkg.com/react-bounding-box/-/react-bounding-box-0.0.8.tgz#a3bf976c103f2cb2465962f8db5a1956898488b7"
   dependencies:
-    core-js "^2.0.0"
-    normalize.css "^4.0.0"
-    react "^15.0.0"
-    react-dom "^15.0.0"
+    babel-runtime "^6.11.6"
 
 react-dom@^15.0.0:
   version "15.4.2"

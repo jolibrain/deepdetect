@@ -3,8 +3,7 @@
 import React from 'react';
 import { observer } from 'mobx-react';
 import { Card, Grid, Label } from 'semantic-ui-react';
-import FormComponent from './FormComponent';
-import BoundingboxComponent from './BoundingboxComponent';
+import Boundingbox from 'react-bounding-box';
 
 require('styles//Image.css');
 
@@ -24,6 +23,7 @@ class ImageComponent extends React.Component {
   }
 
   onSelected = (index) => {
+    console.log(`onSelected ${index}`);
     this.setState({selected: index});
   }
 
@@ -33,7 +33,7 @@ class ImageComponent extends React.Component {
 
   render() {
     const image = this.context.store.image;
-    let description = "";
+    let description = '';
     let boxes = [];
     if(image.classes != null) {
       boxes = image.classes.map(category => {
@@ -55,39 +55,55 @@ class ImageComponent extends React.Component {
         );
       });
     } else {
-      description = "Request failed";
+      description = 'Request failed';
     }
 
-    let code ="";
+    let code ='';
     if(this.state.jsonDisplay) {
       code = JSON.stringify(image.body, null, 2);
     } else {
-      code = "curl -X POST 'http://localhost:8000/predict' -d '" + JSON.stringify(image.curl, null, 2) + "'";
+      code = `curl -X POST 'http://localhost:8000/predict' -d '${JSON.stringify(image.curl, null, 2)}'`;
     }
 
     return (
-      <Grid>
-        <Grid.Column width={12}>
-        <BoundingboxComponent key={image.uri} image={image.uri}
-                              boxes={boxes}
-                              selected={this.state.selected}
-                              onSelected={this.onSelected}
-        />
+      <Grid >
+        <Grid.Column width={12} only='computer' textAlign='center'>
+          <Boundingbox key={image.uri}
+                       image={image.uri}
+                       boxes={boxes}
+                       selectedIndex={this.state.selected}
+                       onSelected={this.onSelected}
+          />
         </Grid.Column>
-        <Grid.Column width={4}>
-        <FormComponent />
-        <Card>
-          <Card.Content>
-            <Card.Description>
-              {description}
-            </Card.Description>
-          </Card.Content>
-          <Card.Content extra>
-            <Label onClick={this.toggleJsonDisplay} color={this.state.jsonDisplay ? 'grey' : 'blue'}>CURL</Label>
-            <Label onClick={this.toggleJsonDisplay} color={this.state.jsonDisplay ? 'blue' : 'grey'}>JSON Response</Label>
-            <pre>{code}</pre>
-          </Card.Content>
-        </Card>
+        <Grid.Column width={16} only='tablet mobile' textAlign='center'>
+          <Boundingbox key={image.uri}
+                       image={image.uri}
+                       boxes={boxes}
+                       selectedIndex={this.state.selected}
+                       onSelected={this.onSelected}
+                       options={{
+                         colors: {
+                          normal: 'rgba(255,225,255,1)',
+                          selected: 'rgba(0,225,204,1)',
+                          unselected: 'rgba(100,100,100,1)'
+                         },
+                         style:{maxWidth: '100%', maxHeight: '50vh'}
+                       }}
+          />
+        </Grid.Column>
+        <Grid.Column computer={4} mobile={16}>
+          <Card fluid>
+            <Card.Content>
+              <Card.Description>
+                {description}
+              </Card.Description>
+            </Card.Content>
+            <Card.Content extra>
+              <Label onClick={this.toggleJsonDisplay} color={this.state.jsonDisplay ? 'grey' : 'blue'}>CURL</Label>
+              <Label onClick={this.toggleJsonDisplay} color={this.state.jsonDisplay ? 'blue' : 'grey'}>JSON Response</Label>
+              <pre>{code}</pre>
+            </Card.Content>
+          </Card>
         </Grid.Column>
       </Grid>
     );

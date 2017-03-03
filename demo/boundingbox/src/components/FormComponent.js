@@ -3,7 +3,7 @@
 import React from 'react';
 import axios from 'axios';
 import { observer } from 'mobx-react';
-import { Button, Form, Grid, Image, Input } from 'semantic-ui-react'
+import { Grid, Image, Input, Segment } from 'semantic-ui-react'
 
 require('styles//Form.css');
 
@@ -12,17 +12,26 @@ class FormComponent extends React.Component {
 
   constructor (props) {
     super(props);
-    this.state = { demos: [
-      'http://i.imgur.com/QiksDIs.jpg',
-      'https://www.nbc.com/sites/nbcunbc/files/files/styles/1080xauto/public/scet/photos/269/7924/PAA_267.JPG',
-      'http://wiinoob.walyou.netdna-cdn.com/wp-content/uploads/2009/03/mii-cupcakes.jpg'
-    ]};
+    this.state = { imageList: [] };
+  }
+
+  validateURL(textval) {
+    const urlregex = /^(https?|ftp):\/\/([a-zA-Z0-9.-]+(:[a-zA-Z0-9.&%$-]+)*@)*((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]?)(\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])){3}|([a-zA-Z0-9-]+\.)*[a-zA-Z0-9-]+\.(com|edu|gov|int|mil|net|org|biz|arpa|info|name|pro|aero|coop|museum|[a-zA-Z]{2}))(:[0-9]+)*(\/($|[a-zA-Z0-9.,?'\\+&%$#=~_-]+))*$/;
+    return urlregex.test(textval);
+  }
+
+
+  cleanInput = (e) => {
+    e.target.parentElement.parentElement.firstChild.value= '';
   }
 
   push = (e) => {
     e.preventDefault();
-    console.log(e.target.value);
-    this.request(e.target.value);
+    const input = e.target.value;
+    if(this.validateURL(input)) {
+      this.setState({imageList: this.state.imageList.concat([input])});
+      this.request(input);
+    }
   }
 
   demo = (e) => {
@@ -33,7 +42,7 @@ class FormComponent extends React.Component {
   request = (url) => {
     const self = this;
     const params = {
-      service: 'faces',
+      service: this.props.service,
       parameters: {
         output: {
           bbox: true,
@@ -66,17 +75,33 @@ class FormComponent extends React.Component {
   }
 
   componentDidMount() {
-    this.request(this.state.demos[0]);
+    this.setState({imageList: this.props.imageList});
+    this.request(this.state.imageList[0]);
   }
 
   render() {
     return (
-      <div>
-        {this.state.demos.map((demo, n) => {
-         return <Image key={n} className='demo' src={demo} onClick={this.demo} size='tiny'/>
-        })}
-        <Input ref={(ref) => this.input = ref} onChange={this.push} name='url' placeholder='Image URL' />
-      </div>
+      <Grid>
+          <Grid.Column width={10} only='tablet mobile'>
+            <Image.Group size='tiny'>
+            {this.state.imageList.slice(-4).map((demo, n) => {
+             return <Image key={n} className='demo' src={demo} onClick={this.demo} size='tiny'  shape='rounded'/>
+            })}
+            </Image.Group>
+          </Grid.Column>
+          <Grid.Column computer={12} only='computer'>
+            <Image.Group size='tiny'>
+            {this.state.imageList.slice(-8).map((demo, n) => {
+             return <Image key={n} className='demo' src={demo} onClick={this.demo} size='tiny'  shape='rounded'/>
+            })}
+            </Image.Group>
+          </Grid.Column>
+          <Grid.Column computer={4} mobile={6}>
+            <Segment basic>
+              <Input ref={(ref) => this.input = ref} onChange={this.push} name='url' placeholder='Image URL' action={{icon: 'remove', onClick: this.cleanInput }}/>
+            </Segment>
+          </Grid.Column>
+      </Grid>
     );
   }
 }

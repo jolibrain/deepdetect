@@ -2,9 +2,10 @@ require('normalize.css/normalize.css');
 require('styles/App.css');
 
 import React from 'react';
-import { Container } from 'semantic-ui-react';
+import { Container, Divider } from 'semantic-ui-react';
 import { observer } from 'mobx-react';
 
+import FormComponent from './FormComponent';
 import ImageComponent from './ImageComponent';
 
 import Store from '../stores/Store';
@@ -27,7 +28,10 @@ class AppComponent extends React.Component {
 
   render() {
     return (
-      <Container fluid>
+      <Container>
+        <FormComponent service={this.props.service}
+                       imageList={this.props.imageList} />
+        <Divider hidden/>
         <ImageComponent />
       </Container>
     );
