@@ -76,7 +76,7 @@ class FormComponent extends React.Component {
 
   componentDidMount() {
     this.setState({imageList: this.props.imageList});
-    this.request(this.state.imageList[0]);
+    this.request(this.props.imageList[0]);
   }
 
   render() {
