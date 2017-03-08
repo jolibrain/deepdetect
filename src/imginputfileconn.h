@@ -134,8 +134,6 @@ namespace dd
 
     int read_dir(const std::string &dir)
     {
-      //throw InputConnectorBadParamException("uri " + dir + " is a directory, requires an image file");
-      
       // list directories in dir
       std::unordered_set<std::string> subdirs;
       if (fileops::list_directory(dir,false,true,subdirs))
@@ -192,7 +190,7 @@ namespace dd
 	  if (p.second >= 0)
 	    _labels.push_back(p.second);
 	  if (_imgs.size() % 1000 == 0)
-	    std::cerr << "read " << _imgs.size() << " images\n";
+	    LOG(INFO) << "read " << _imgs.size() << " images\n";
 	}
       return 0;
     }
@@ -213,7 +211,7 @@ namespace dd
   ImgInputFileConn()
     :InputConnectorStrategy(){}
     ImgInputFileConn(const ImgInputFileConn &i)
-      :InputConnectorStrategy(i),_width(i._width),_height(i._height),_bw(i._bw) {}
+      :InputConnectorStrategy(i),_width(i._width),_height(i._height),_bw(i._bw),_mean(i._mean),_has_mean_scalar(i._has_mean_scalar) {}
     ~ImgInputFileConn() {}
 
     void init(const APIData &ad)
@@ -236,6 +234,24 @@ namespace dd
 	_seed = ad.get("seed").get<int>();
       if (ad.has("test_split"))
 	_test_split = ad.get("test_split").get<double>();
+      if (ad.has("mean"))
+	{
+	  std::vector<int> vm = ad.get("mean").get<std::vector<int>>();
+	  if (vm.size() == 3)
+	    {
+	      int r,g,b;
+	      r = vm[0];
+	      g = vm[1];
+	      b = vm[2];
+	      _mean = cv::Scalar(r,g,b);
+	      _has_mean_scalar = true;
+	    }
+	  else if (vm.size() == 1) // bw
+	    {
+	      _mean = cv::Scalar(vm.at(0));
+	      _has_mean_scalar = true;
+	    }
+	}
     }
     
     int feature_size() const
@@ -372,6 +388,8 @@ namespace dd
     double _test_split = 0.0; /**< auto-split of the dataset. */
     bool _shuffle = false; /**< whether to shuffle the dataset, usually before splitting. */
     int _seed = -1; /**< shuffling seed. */
+    cv::Scalar _mean; /**< mean image pixels, to be subtracted from images. */
+    bool _has_mean_scalar = false; /**< whether scalar is set. */
   };
 }
 

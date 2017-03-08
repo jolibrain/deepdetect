@@ -93,6 +93,10 @@ namespace dd
 	  }
 	catch (std::invalid_argument &e)
 	  {
+	    throw InputConnectorBadParamException("invalid argument error reading SVM format line: " + content);
+	  }
+	catch (...)
+	  {
 	    throw InputConnectorBadParamException("error reading SVM format line: " + content);
 	  }
       }
