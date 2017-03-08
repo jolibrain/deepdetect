@@ -54,6 +54,26 @@ TEST(tfapi,service_predict)
   jd.Parse(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200,jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+  std::string cl1 = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
+  ASSERT_TRUE(cl1 == "n03763968 military uniform");
+  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble() > 0.4);
+
+  // predict batch
+  jpredictstr = "{\"service\":\"imgserv\",\"parameters\":{\"output\":{\"best\":3}},\"data\":[\"" + incept_repo + "grace_hopper.jpg\",\"" + incept_repo + "cat.jpg\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200,jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+  ASSERT_EQ(2,jd["body"]["predictions"].Size());
+  cl1 = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
+  std::string cl2 = jd["body"]["predictions"][1]["classes"][0]["cat"].GetString();
+  ASSERT_TRUE((cl1 == "n03763968 military uniform" && cl2 == "n02123045 tabby, tabby cat")
+	      || (cl1 == "n02123045 tabby, tabby cat" && cl2 == "n03763968 military uniform"));
+  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble() > 0.4);
+  ASSERT_TRUE(jd["body"]["predictions"][1]["classes"][0]["prob"].GetDouble() > 0.4);
 }
 
 TEST(tfapi,service_predict_unsup)
