@@ -22,9 +22,9 @@
 #include "caffelib.h"
 #include "imginputfileconn.h"
 #include "outputconnectorstrategy.h"
-#include "net_caffe.h"
-#include "net_caffe_convnet.h"
-#include "net_caffe_resnet.h"
+#include "generators/net_caffe.h"
+#include "generators/net_caffe_convnet.h"
+#include "generators/net_caffe_resnet.h"
 #include "utils/fileops.hpp"
 #include "utils/utils.hpp"
 #include <chrono>
