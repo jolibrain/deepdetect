@@ -54,8 +54,8 @@ namespace dd
 	    const std::unordered_map<int,double> &v)
       :_label(label),_v(v) {}
     ~SVMline() {}
-    std::unordered_map<int,double> _v; /**< svm line data */
     int _label; /**< svm line label. */
+    std::unordered_map<int,double> _v; /**< svm line data */
   };
 
   class SVMInputFileConn : public InputConnectorStrategy
@@ -171,6 +171,8 @@ namespace dd
 	    deserialize_vocab();
 	  for (size_t i=0;i<_uris.size();i++)
 	    {
+	      if (_uris.at(i).empty())
+		throw InputConnectorBadParamException("no data could be found for input " + std::to_string(i));
 	      DataEl<DDSvm> ddsvm;
 	      ddsvm._ctype._cifc = this;
 	      ddsvm._ctype._adconf = ad_input;
@@ -185,6 +187,7 @@ namespace dd
 				   const std::unordered_map<int,double> &vals,
 				   const int &count)
     {
+      (void)count;
       _svmdata.emplace_back(label,std::move(vals));
     }
     
@@ -192,6 +195,7 @@ namespace dd
 				  const std::unordered_map<int,double> &vals,
 				  const int &count)
     {
+      (void)count;
       _svmdata_test.emplace_back(label,std::move(vals));
     }
 

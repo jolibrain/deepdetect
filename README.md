@@ -18,6 +18,14 @@ DeepDetect relies on external machine learning libraries through a very generic 
 | XGBoost    | Y        | Y          | Y              | N         |   Y        | N/A         |
 | Tensorflow | N        | Y          | Y              | N         |   N        | N           |
 
+#### GPU support per library
+
+|            | Training | Prediction |
+|------------|----------|------------|
+| Caffe      | Y        | Y          |
+| XGBoost    | Y        | N          |
+| Tensorflow | Y        | Y          |
+
 #### Input data support per library (current):
 
 |            | CSV | SVM | Text words | Text characters | Images |
@@ -36,13 +44,13 @@ Please join either the community on [Gitter](https://gitter.im/beniz/deepdetect)
 
 #### Supported Platforms
 
-The reference platform with support is **Ubuntu 14.04 LTS**.
+The reference platforms with support are **Ubuntu 14.04 LTS** and **Ubuntu 16.04 LTS**.
 
 Supported images that come with pre-trained image classification deep (residual) neural nets:
 
 - **docker images** for CPU and GPU machines are available at https://hub.docker.com/r/beniz/deepdetect_cpu/ and https://hub.docker.com/r/beniz/deepdetect_gpu/ respectively. See https://github.com/beniz/deepdetect/tree/master/docker/README.md for details on how to use them.
 
-- For **Amazon AMI** see https://github.com/beniz/deepdetect/issues/5#issuecomment-199952341 and [performance report](https://github.com/beniz/deepdetect/issues/5#issuecomment-200806618)
+- For **Amazon AMI** see official builds documentation at https://deepdetect.com/products/ami/, and direct links to [GPU AMI](https://aws.amazon.com/marketplace/pp/B01N4D483M) and [CPU AMI](https://aws.amazon.com/marketplace/pp/B01N1RGWQZ).
 
 #### Quickstart
 Setup an image classifier API service in a few minutes:
@@ -77,6 +85,14 @@ Current features include:
 - API documentation is available from http://www.deepdetect.com/api/
 - FAQ is available from http://www.deepdetect.com/overview/faq/
 
+##### Clients
+
+- Python client:
+  - REST client: https://github.com/beniz/deepdetect/tree/master/clients/python
+  - 'a la scikit' bindings: https://github.com/ArdalanM/pyDD
+- Java client: https://github.com/kfadhel/deepdetect-api-java
+- Early C# client: https://github.com/beniz/deepdetect/pull/98
+
 ##### Dependencies
 
 - C++, gcc >= 4.8 or clang with support for C++11 (there are issues with Clang + Boost)
@@ -93,7 +109,7 @@ Current features include:
 
 ##### Caffe Dependencies
 
-- CUDA 7 or 6.5 is required for GPU mode.
+- CUDA 8 or 7.5 is recommended for GPU mode.
 - BLAS via ATLAS, MKL, or OpenBLAS.
 - [protobuf](https://github.com/google/protobuf)
 - IO libraries hdf5, leveldb, snappy, lmdb
@@ -101,6 +117,7 @@ Current features include:
 ##### XGBoost Dependencies
 
 None outside of C++ compiler and make
+- CUDA 8 or 7.5 is recommended for GPU mode.
 
 #### Tensorflow Dependencies
 
@@ -148,6 +165,13 @@ http://www.deepdetect.com/overview/examples/
 | Inception-ResNet-v2      | N     | [Y](https://deepdetect.com/models/tf/inception_resnet_v2.pb)          | Google        |       79.79%                    |
 | VGG-16                   | [Y](https://deepdetect.com/models/vgg_16/VGG_ILSVRC_16_layers.caffemodel)     | [Y](https://deepdetect.com/models/tf/vgg_16/vgg_16.pb)          | Oxford        |               70.5%            |
 | VGG-19                   | [Y](https://deepdetect.com/models/vgg_16/VGG_ILSVRC_16_layers.caffemodel)     | [Y](https://deepdetect.com/models/tf/vgg_19/vgg_19.pb)          | Oxford        |               71.3%            |
+| ResNext 50                | [Y](https://deepdetect.com/models/resnext/resnext_50)     | N          | https://github.com/terrychenism/ResNeXt           |      76.9%                     |
+| ResNext 101                | [Y](https://deepdetect.com/models/resnext/resnext_101)     | N          | https://github.com/terrychenism/ResNeXt           |      77.9%                     |
+| ResNext 152               | [Y](https://deepdetect.com/models/resnext/resnext_152)     | N          | https://github.com/terrychenism/ResNeXt           |      78.7%                     |
+| DenseNet-121                   | [Y](https://deepdetect.com/models/densenet/densenet_121_32/)     | N          | https://github.com/shicai/DenseNet-Caffe        |               74.9%            |
+| DenseNet-161                   | [Y](https://deepdetect.com/models/densenet/densenet_161_48/)     | N          | https://github.com/shicai/DenseNet-Caffe        |               77.6%            |
+| DenseNet-169                   | [Y](https://deepdetect.com/models/densenet/densenet_169_32/)     | N          | https://github.com/shicai/DenseNet-Caffe        |               76.1%            |
+| DenseNet-201                   | [Y](https://deepdetect.com/models/densenet/densenet_201_32/)     | N          | https://github.com/shicai/DenseNet-Caffe        |               77.3%            |
 | VOC0712 (object detection) | [Y](https://deepdetect.com/models/voc0712_dd.tar.gz) | N | https://github.com/weiliu89/caffe/tree/ssd | 71.2 mAP |
 
 More models:
@@ -159,7 +183,7 @@ DeepDetect is designed and implemented by Emmanuel Benazera <beniz@droidnik.fr>.
 
 ### Build
 
-Below are instructions for Ubuntu 14.04 LTS. For other Linux and Unix systems, steps may differ, CUDA, Caffe and other libraries may prove difficult to setup.
+Below are instructions for Ubuntu 14.04 LTS. For other Linux and Unix systems, steps may differ, CUDA, Caffe and other libraries may prove difficult to setup. If you are building on 16.04 LTS, look at https://github.com/beniz/deepdetect/issues/126 that tells you how to proceed.
 
 Beware of dependencies, typically on Debian/Ubuntu Linux, do:
 ```
@@ -183,6 +207,11 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64
 If you would like to build with cuDNN, your `cmake` line should be:
 ```
 cmake .. -DUSE_CUDNN=ON
+```
+
+To target the build of underlying Caffe to a specific CUDA architecture (e.g. Pascal), you can use:
+```
+cmake .. -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61"
 ```
 
 If you would like a CPU only build, use:

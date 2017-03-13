@@ -58,7 +58,7 @@ TEST(xgbapi,service_train_csv)
   ASSERT_TRUE(fileops::file_exists(forest_repo + "/" + JsonAPI::_json_blob_fname));
   
   // train
-  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"label\":\"Cover_Type\",\"id\":\"Id\",\"test_split\":0.1,\"label_offset\":-1,\"shuffle\":true},\"mllib\":{\"iterations\":" + iterations_forest + ",\"objective\":\"multi:softprob\"},\"output\":{\"measure\":[\"acc\",\"mcll\",\"f1\",\"cmdiag\",\"cmfull\"]}},\"data\":[\"" + forest_repo + "train.csv\"]}";
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"label\":\"Cover_Type\",\"id\":\"Id\",\"test_split\":0.1,\"label_offset\":-1,\"shuffle\":true},\"mllib\":{\"iterations\":" + iterations_forest + ",\"objective\":\"multi:softprob\",\"gpu\":true},\"output\":{\"measure\":[\"acc\",\"mcll\",\"f1\",\"cmdiag\",\"cmfull\"]}},\"data\":[\"" + forest_repo + "train.csv\"]}";
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
@@ -127,7 +127,7 @@ TEST(xgbapi,service_train_txt)
   ASSERT_EQ(created_str,joutstr);
 
   // train
-  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"test_split\":0.2,\"shuffle\":true,\"min_count\":10,\"min_word_length\":3,\"count\":false},\"mllib\":{\"iterations\":" + iterations_n20 + ",\"objective\":\"multi:softprob\"},\"output\":{\"measure\":[\"acc\",\"mcll\",\"f1\"]}},\"data\":[\"" + n20_repo + "news20\"]}";
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"test_split\":0.2,\"shuffle\":true,\"min_count\":10,\"min_word_length\":3,\"count\":false},\"mllib\":{\"iterations\":" + iterations_n20 + ",\"objective\":\"multi:softprob\",\"gpu\":true},\"output\":{\"measure\":[\"acc\",\"mcll\",\"f1\"]}},\"data\":[\"" + n20_repo + "news20\"]}";
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
@@ -145,7 +145,7 @@ TEST(xgbapi,service_train_txt)
   ASSERT_EQ(jd["body"]["measure"]["accp"].GetDouble(),jd["body"]["measure"]["acc"].GetDouble());
 
   // predict with measure
-  std::string jpredictstr = "{\"service\":\"" + sname + "\",\"parameters\":{\"mllib\":{\"gpu\":true,\"net\":{\"test_batch_size\":10}},\"output\":{\"measure\":[\"f1\"]}},\"data\":[\"" + n20_repo +"news20\"]}";
+  std::string jpredictstr = "{\"service\":\"" + sname + "\",\"parameters\":{\"mllib\":{},\"output\":{\"measure\":[\"f1\"]}},\"data\":[\"" + n20_repo +"news20\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse(joutstr.c_str());
@@ -175,7 +175,7 @@ TEST(xgbapi,service_train_csv_mt_regression)
   ASSERT_EQ(created_str,joutstr);
 
   // train
-  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"test_split\":0.1,\"shuffle\":true,\"label\":[\"x_class\"],\"separator\":\",\",\"scale\":true,\"categoricals\":[\"class_code\",\"code_spot\",\"code_spot_distr\"]},\"mllib\":{\"objective\":\"reg:linear\",\"iterations\":" + iterations_sflare + "},\"output\":{\"measure\":[\"eucll\"]}},\"data\":[\"" + sflare_repo + "flare.csv\"]}";
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"test_split\":0.1,\"shuffle\":true,\"label\":[\"x_class\"],\"separator\":\",\",\"scale\":true,\"categoricals\":[\"class_code\",\"code_spot\",\"code_spot_distr\"]},\"mllib\":{\"objective\":\"reg:linear\",\"gpu\":true,\"iterations\":" + iterations_sflare + "},\"output\":{\"measure\":[\"eucll\"]}},\"data\":[\"" + sflare_repo + "flare.csv\"]}";
   std::cerr << "jtrainstr=" << jtrainstr << std::endl;
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
