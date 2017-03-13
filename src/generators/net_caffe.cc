@@ -72,9 +72,6 @@ namespace dd
   void NetInputCaffe<TInputCaffe>::configure_inputs(const APIData &ad_mllib,
 						    const TInputCaffe &inputc)
   {
-    int nclasses = -1;
-    if (ad_mllib.has("nclasses"))
-      nclasses = ad_mllib.get("nclasses").get<int>();
     int ntargets = -1;
     if (ad_mllib.has("ntargets"))
       ntargets = ad_mllib.get("ntargets").get<int>();
@@ -174,7 +171,7 @@ namespace dd
 	lparam->set_name("slice_labels");
 	caffe::SliceParameter *sparam = lparam->mutable_slice_param();
 	sparam->set_slice_dim(1);
-	sparam->add_slice_point(1); //TODO: temporay value, NOT nclasses
+	sparam->add_slice_point(1);
 
 	dlparam = CaffeCommon::add_layer(this->_dnet_params,top,"data");
 	dlparam->add_top("label");
@@ -182,7 +179,7 @@ namespace dd
 	dlparam->set_name("slice_labels");
 	sparam = dlparam->mutable_slice_param();
 	sparam->set_slice_dim(1);
-	sparam->add_slice_point(1); //TODO: temporay value, NOT nclasses
+	sparam->add_slice_point(1);
       }
   }
 

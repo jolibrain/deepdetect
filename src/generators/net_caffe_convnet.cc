@@ -132,9 +132,6 @@ namespace dd
     bool bn = false;
     if (ad_mllib.has("bn"))
       bn = ad_mllib.get("bn").get<bool>();
-    bool db = false;
-    if (ad_mllib.has("db") && ad_mllib.get("db").get<bool>())
-      db = true;
     int conv_kernel_size = 3;
     int conv1d_early_kernel_size = 7;
     std::string bottom = "data";
@@ -147,7 +144,7 @@ namespace dd
 	if (!flat1dconv)
 	  {
 	    add_basic_block(this->_net_params,bottom,top,cr_layers.at(l).first,cr_layers.at(l).second,
-			    conv_kernel_size,0,1,activation,0.0,bn,2,2,"MAX"); //TODO: pad=0,stride=1, option, dropout is 0 since no dropout in inner loop
+			    conv_kernel_size,0,1,activation,0.0,bn,2,2,"MAX");
 	    add_basic_block(this->_dnet_params,bottom,top,cr_layers.at(l).first,cr_layers.at(l).second,
 			    conv_kernel_size,0,1,activation,0.0,bn,2,2,"MAX");
 	  }
