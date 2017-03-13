@@ -87,9 +87,6 @@ namespace dd
 					     const bool &identity,
 					     std::string &top)
   {
-    //TODO: basic vs bottleneck case
-    // basic = 2 conv 3x3
-    // bottleneck = conv 1x1, conv 3x3, conv 1x1 
     std::string tmp_top = bottom + "_tmp";
     add_bn(net_param,bottom,tmp_top);
     add_act(net_param,tmp_top,activation);
@@ -137,9 +134,6 @@ namespace dd
 						  const bool &identity,
 						  std::string &top)
   {
-    //TODO: basic vs bottleneck case
-    // basic = 2 conv 3x3
-    // bottleneck = conv 1x1, conv 3x3, conv 1x1 
     std::string tmp_top = bottom + "_tmp";
     add_bn(net_param,bottom,tmp_top);
     add_act(net_param,tmp_top,activation);
@@ -191,10 +185,7 @@ namespace dd
     std::string bottom_scale = bottom;
     if (!identity)
       {
-	int stride = 1;
 	bottom_scale = bottom + "_branch";
-	//TODO: conv doesn't work on the flat per channel data used with MLP.
-	//add_conv(net_param,bottom,bottom_scale,num_output,1,0,stride,0,0,0,0,"shortcut_"+bottom);
 	add_fc(net_param,bottom,bottom_scale,num_output);
       }
     
@@ -302,7 +293,7 @@ namespace dd
     int block_num = 1;
     for (size_t l=0;l<cr_layers.size();l++)
       {
-	for (int i=0;i<n;i++) //TODO: use xCR ?
+	for (int i=0;i<cr_layers.at(l).first;i++)
 	  {
 	    int stride = 1;
 	    int kernel_w = 1;
@@ -358,19 +349,13 @@ namespace dd
     if (ad_mllib.has("regression"))
       regression = ad_mllib.get("regression").get<bool>();
     std::string activation = CaffeCommon::set_activation(ad_mllib);
-    double dropout = 0.5;
-    std::vector<int> layers;
+     std::vector<int> layers;
     if (ad_mllib.has("layers"))
       layers = ad_mllib.get("layers").get<std::vector<int>>();
     int depth = layers.size();
     int n = 2;
         
     LOG(INFO) << "generating MLP ResNet with depth=" << depth << " / n=" << n << std::endl;
-    if (ad_mllib.has("dropout"))
-      dropout = ad_mllib.get("dropout").get<double>();
-    bool bn = false;
-    if (ad_mllib.has("bn"))
-      bn = ad_mllib.get("bn").get<bool>();
     std::string bottom = "data";
    
     std::string top = "fc1";
