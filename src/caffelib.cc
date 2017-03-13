@@ -1481,7 +1481,7 @@ namespace dd
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::clear_mllib(const APIData &ad)
   {
     (void)ad;
-    std::vector<std::string> extensions = {".solverstate",".caffemodel",".json"};
+    std::vector<std::string> extensions = {".solverstate",".caffemodel",".json",".prototxt"};
     if (!this->_inputc._db)
       extensions.push_back(".dat"); // e.g., for txt input connector and db, do not delete the vocab.dat since the db is not deleted
     fileops::remove_directory_files(this->_mlmodel._repo,extensions);
