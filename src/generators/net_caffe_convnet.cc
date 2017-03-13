@@ -21,6 +21,7 @@
 
 #include "net_caffe_convnet.h"
 #include "imginputfileconn.h"
+#include "mllibstrategy.h"
 
 namespace dd
 {
@@ -31,7 +32,6 @@ namespace dd
 						std::vector<int> &fc_layers)
   {
     const std::string cr_str = "CR";
-    //const std::string p_str = "P";
     for (auto s: layers)
       {
 	size_t pos = 0;
@@ -50,7 +50,7 @@ namespace dd
 	    catch(std::exception &e)
 	      {
 		//TODO
-		//throw MLLibBadParamException("convnet template requires fully connected layers size to be specified as a string");
+		throw MLLibBadParamException("convnet template requires fully connected layers size to be specified as a string");
 	      }
 	  }
       }

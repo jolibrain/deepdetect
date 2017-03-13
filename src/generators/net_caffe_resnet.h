@@ -22,7 +22,7 @@
 #ifndef NET_CAFFE_RESNET_H
 #define NET_CAFFE_RESNET_H
 
-#include "net_caffe_convnet.h"
+#include "generators/net_caffe_convnet.h"
 
 namespace dd
 {
@@ -73,8 +73,17 @@ namespace dd
 			      const bool &identity,
 			      std::string &top);
 
+    void add_basic_block_mlp(caffe::NetParameter *net_param,
+			     const int &block_num,
+			     const std::string &bottom,
+			     const int &num_output,
+			     const std::string &activation,
+			     const bool &identity,
+			     std::string &top);
+
     void configure_net_resarch(const APIData &ad_mllib);
     void configure_net_flat(const APIData &ad_mllib);
+    void configure_net_mlp(const APIData &ad_mllib);
 
     
   public:

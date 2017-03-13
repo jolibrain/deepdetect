@@ -75,7 +75,7 @@ namespace dd
       :NetLayers(),_net_params(net_params),_dnet_params(dnet_params) {}
     
     //void add_basic_block() {}
-    void configure_net(const APIData &ad) {}
+    void configure_net(const APIData &ad) { (void)ad; }
     
     // common layers
     void add_fc(caffe::NetParameter *net_param,
@@ -123,7 +123,8 @@ namespace dd
 		     const double &ratio);
 
     void add_bn(caffe::NetParameter *net_param,
-		const std::string &bottom);
+		const std::string &bottom,
+		const std::string &top="");
 
     void add_eltwise(caffe::NetParameter *net_param,
 		     const std::string &bottom1,

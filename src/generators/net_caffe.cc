@@ -311,12 +311,13 @@ namespace dd
   }
   
   void NetLayersCaffe::add_bn(caffe::NetParameter *net_param,
-			      const std::string &bottom)
+			      const std::string &bottom,
+			      const std::string &top)
   {
-    caffe::LayerParameter *lparam = CaffeCommon::add_layer(net_param,bottom,bottom,
+    caffe::LayerParameter *lparam = CaffeCommon::add_layer(net_param,bottom,top.empty()?bottom:top,
 							   "bn_"+bottom,"BatchNorm");
-    lparam = CaffeCommon::add_layer(net_param,bottom,bottom,
-				    "scale_"+bottom,"Scale");
+    lparam = CaffeCommon::add_layer(net_param,top.empty()?bottom:top,top.empty()?bottom:top,
+				    "scale_"+bottom,"Scale"); //TODO: add scale
     lparam->mutable_scale_param()->set_bias_term(true);
   }
 

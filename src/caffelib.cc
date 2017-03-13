@@ -751,6 +751,8 @@ namespace dd
   {
     NetCaffe<NetInputCaffe<TInputConnectorStrategy>,NetLayersCaffeResnet,NetLossCaffe> netcaffe(&net_param,&dnet_param);
     netcaffe._nic.configure_inputs(ad,inputc);
+    if (inputc._sparse)
+      const_cast<APIData&>(ad).add("sparse",true);
     if (inputc._flat1dconv)
       const_cast<APIData&>(ad).add("flat1dconv",static_cast<bool>(inputc._flat1dconv));
     if (_regression)
