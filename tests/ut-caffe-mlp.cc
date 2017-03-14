@@ -20,7 +20,6 @@
  */
 
 #include "caffelib.h"
-#include "caffe_templates.h"
 #include "caffeinputconns.h"
 #include "outputconnectorstrategy.h"
 #include <gtest/gtest.h>
@@ -603,6 +602,5 @@ TEST(caffelib,configure_resnet_template_n_nt)
 
   ASSERT_EQ(274,net_param.layer_size());
   ASSERT_EQ(272,deploy_net_param.layer_size());
-  int rl = 1;
   delete caff;
 }
