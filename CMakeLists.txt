@@ -131,8 +131,8 @@ else()
 	  caffe_dd
 	  PREFIX caffe_dd
 	  INSTALL_DIR ${CMAKE_BINARY_DIR}
-	  URL https://github.com/beniz/caffe/archive/master.tar.gz
-	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make CUDA_ARCH=${CUDA_ARCH} -j${N}
+          DOWNLOAD_COMMAND wget https://github.com/beniz/caffe/archive/master.tar.gz && tar xfz master.tar.gz --strip-components=1 -C caffe_dd
+	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn Makefile.config && echo -e "OPENCV_VERSION:=${OPENCV_VERSION}\\nCUSTOM_CXX := g++-4.9\\nINCLUDE_DIRS += /usr/include:${INCLUDE_DIRS}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make CUDA_ARCH=${CUDA_ARCH} -j${N}
 	  INSTALL_COMMAND ""
 	  BUILD_IN_SOURCE 1
 	  )
@@ -141,8 +141,8 @@ else()
 	  caffe_dd
 	  PREFIX caffe_dd
 	  INSTALL_DIR ${CMAKE_BINARY_DIR}
-	  URL https://github.com/beniz/caffe/archive/master.tar.gz
-	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && make CUDA_ARCH=${CUDA_ARCH} -j${N}
+          DOWNLOAD_COMMAND wget https://github.com/beniz/caffe/archive/master.tar.gz && tar xfz master.tar.gz --strip-components=1 -C caffe_dd
+	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn Makefile.config && echo -e "OPENCV_VERSION:=${OPENCV_VERSION}\\nCUSTOM_CXX := g++-4.9\\nINCLUDE_DIRS += /usr/include:${INCLUDE_DIRS}" >> Makefile.config && make CUDA_ARCH=${CUDA_ARCH} -j${N}
 	  INSTALL_COMMAND ""
 	  BUILD_IN_SOURCE 1
 	  )
@@ -153,8 +153,8 @@ else()
 	  caffe_dd
 	  PREFIX caffe_dd
 	  INSTALL_DIR ${CMAKE_BINARY_DIR}
-	  URL https://github.com/beniz/caffe/archive/master.tar.gz
-	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make -j${N}
+          DOWNLOAD_COMMAND wget https://github.com/beniz/caffe/archive/master.tar.gz && tar xfz master.tar.gz --strip-components=1 -C caffe_dd
+	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && echo -e "OPENCV_VERSION:=${OPENCV_VERSION}\\nCUSTOM_CXX := g++-4.9\\nINCLUDE_DIRS += /usr/include:${INCLUDE_DIRS}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make -j${N}
 	  INSTALL_COMMAND ""
 	  BUILD_IN_SOURCE 1
 	  )
@@ -163,8 +163,8 @@ else()
 	  caffe_dd
 	  PREFIX caffe_dd
 	  INSTALL_DIR ${CMAKE_BINARY_DIR}
-	  URL https://github.com/beniz/caffe/archive/master.tar.gz
-	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && make -j${N}
+          DOWNLOAD_COMMAND wget https://github.com/beniz/caffe/archive/master.tar.gz && tar xfz master.tar.gz --strip-components=1 -C caffe_dd
+	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && echo -e "OPENCV_VERSION:=${OPENCV_VERSION}\\nCUSTOM_CXX := g++-4.9\\nINCLUDE_DIRS += /usr/include:${INCLUDE_DIRS}" >> Makefile.config && make -j${N}
 	  INSTALL_COMMAND ""
 	  BUILD_IN_SOURCE 1
 	  )
@@ -176,8 +176,8 @@ else()
 	caffe_dd
 	PREFIX caffe_dd
 	INSTALL_DIR ${CMAKE_BINARY_DIR}
-	URL https://github.com/beniz/caffe/archive/master.tar.gz
-	CONFIGURE_COMMAND ln -sf Makefile.config.cpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make -j${N}
+	DOWNLOAD_COMMAND wget https://github.com/beniz/caffe/archive/master.tar.gz && tar xfz master.tar.gz --strip-components=1 -C caffe_dd
+	CONFIGURE_COMMAND ln -sf Makefile.config.cpu Makefile.config && echo -e "OPENCV_VERSION:=${OPENCV_VERSION}\\nCUSTOM_CXX := g++-4.9\\nINCLUDE_DIRS += /usr/include:${INCLUDE_DIRS}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make -j${N}
 	INSTALL_COMMAND ""
 	BUILD_IN_SOURCE 1
 	)
@@ -186,8 +186,8 @@ else()
 	caffe_dd
 	PREFIX caffe_dd
 	INSTALL_DIR ${CMAKE_BINARY_DIR}
-	URL https://github.com/beniz/caffe/archive/master.tar.gz
-	CONFIGURE_COMMAND ln -sf Makefile.config.cpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && make -j${N}
+	DOWNLOAD_COMMAND wget https://github.com/beniz/caffe/archive/master.tar.gz && tar xfz master.tar.gz --strip-components=1 -C caffe_dd
+	CONFIGURE_COMMAND ln -sf Makefile.config.cpu Makefile.config && echo -e "OPENCV_VERSION:=${OPENCV_VERSION}\\nCUSTOM_CXX := g++-4.9\\nINCLUDE_DIRS += /usr/include:${INCLUDE_DIRS}" >> Makefile.config && make -j${N}
 	INSTALL_COMMAND ""
 	BUILD_IN_SOURCE 1
 	)
