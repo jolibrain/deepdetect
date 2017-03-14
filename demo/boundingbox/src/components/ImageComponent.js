@@ -37,9 +37,12 @@ class ImageComponent extends React.Component {
     let boxes = [];
     if(image.classes != null) {
       boxes = image.classes.map(category => {
-          return [category.bbox.xmin, category.bbox.ymax,
-                  category.bbox.xmax - category.bbox.xmin,
-                  category.bbox.ymin - category.bbox.ymax];
+          return {
+            coord: [category.bbox.xmin, category.bbox.ymax,
+                   category.bbox.xmax - category.bbox.xmin,
+                   category.bbox.ymin - category.bbox.ymax],
+            label: category.cat
+          };
         });
       description = image.classes.map((category, n) => {
         let bottomClass = 'fa fa-stack-2x ' + category.cat;
