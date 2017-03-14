@@ -69,7 +69,7 @@
     "mobx-react": "^4.1.0",
     "normalize.css": "^4.0.0",
     "react": "^15.0.0",
-    "react-bounding-box": "^0.0.8",
+    "react-bounding-box": "^0.0.11",
     "react-dom": "^15.0.0",
     "semantic-ui-css": "^2.2.4",
     "semantic-ui-react": "^0.64.7"
