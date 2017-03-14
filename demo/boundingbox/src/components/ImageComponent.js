@@ -23,7 +23,7 @@ class ImageComponent extends React.Component {
   }
 
   onSelected = (index) => {
-    console.log(`onSelected ${index}`);
+    //console.log(`onSelected ${index}`);
     this.setState({selected: index});
   }
 
