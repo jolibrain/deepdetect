@@ -145,6 +145,14 @@ public:
 		       const std::string &encoding="")
   {
     std::chrono::time_point<std::chrono::system_clock> tstop = std::chrono::system_clock::now();
+    std::string service;
+    if (janswer.HasMember("head"))
+      {
+	if (janswer["head"].HasMember("service"))
+	  service = janswer["head"]["service"].GetString();
+      }
+    if (!service.empty())
+      access_log += " " + service;
     code = janswer["status"]["code"].GetInt();
     access_log += " " + std::to_string(code);
     int proctime = std::chrono::duration_cast<std::chrono::milliseconds>(tstop-tstart).count();
