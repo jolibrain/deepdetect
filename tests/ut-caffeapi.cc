@@ -441,6 +441,7 @@ TEST(caffeapi,service_train_csv)
 
   // assert json blob file is still there (or gone if clear=full)
   ASSERT_TRUE(!fileops::file_exists(forest_repo + "/" + JsonAPI::_json_blob_fname));
+  ASSERT_TRUE(!fileops::remove_directory_files(forest_repo,{".prototxt"}));
 }
 
 TEST(caffeapi,service_train_csv_in_memory)
@@ -509,6 +510,7 @@ TEST(caffeapi,service_train_csv_in_memory)
 
   // assert json blob file is still there (or gone if clear=full)
   ASSERT_TRUE(!fileops::file_exists(forest_repo + "/" + JsonAPI::_json_blob_fname));
+  ASSERT_TRUE(!fileops::remove_directory_files(forest_repo,{".prototxt"}));
 }
 
 TEST(caffeapi,service_train_csv_resnet)
@@ -599,6 +601,7 @@ TEST(caffeapi,service_train_csv_resnet)
 
   // assert json blob file is still there (or gone if clear=full)
   ASSERT_TRUE(!fileops::file_exists(forest_repo + "/" + JsonAPI::_json_blob_fname));
+  ASSERT_TRUE(!fileops::remove_directory_files(forest_repo,{".prototxt"}));
 }
 
 TEST(caffeapi,service_train_svm)
@@ -661,6 +664,7 @@ TEST(caffeapi,service_train_svm)
 
   // assert json blob file is still there (or gone if clear=full)
   ASSERT_TRUE(!fileops::file_exists(farm_repo + "/" + JsonAPI::_json_blob_fname));
+  ASSERT_TRUE(!fileops::remove_directory_files(farm_repo,{".prototxt"}));
 }
 
 TEST(caffeapi,service_train_svm_resnet)
@@ -721,6 +725,7 @@ TEST(caffeapi,service_train_svm_resnet)
 
   // assert json blob file is still there (or gone if clear=full)
   ASSERT_TRUE(!fileops::file_exists(farm_repo + "/" + JsonAPI::_json_blob_fname));
+  ASSERT_TRUE(!fileops::remove_directory_files(farm_repo,{".prototxt"}));
 }
 
 TEST(caffeapi,service_train_images)
