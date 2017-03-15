@@ -11,7 +11,9 @@ for (let i = 0; i < x.length; i++) {
   const service = x[i].dataset.service;
   const imageList = x[i].dataset.imageList ? x[i].dataset.imageList.split(',') : [];
   const confidenceThreshold = x[i].dataset.confidenceThreshold ? parseFloat(x[i].dataset.confidenceThreshold) : 0.1;
+  const best = x[i].dataset.best && x[i].dataset.best == '1';
+  const thresholdControl = x[i].dataset.thresholdControl && x[i].dataset.thresholdControl == 'true';
 
-  ReactDOM.render(<App service={service} imageList={imageList} confidenceThreshold={confidenceThreshold}/>, x[i]);
+  ReactDOM.render(<App service={service} imageList={imageList} confidenceThreshold={confidenceThreshold} best={best} thresholdControl={thresholdControl}/>, x[i]);
 
 }

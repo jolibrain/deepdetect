@@ -99,7 +99,7 @@ class ImageComponent extends React.Component {
             <Card.Content>
               <Card.Description>
                 {description}
-                <p>{this.state.selected != -1 ? '&nbsp;' : image.classes[this.state.selected].cat + ' - ' + image.classes[this.state.selected].prob.toFixed(2)}</p>
+                <p>{this.state.selected == -1 ? ' ' : image.classes[this.state.selected].cat + ' - ' + image.classes[this.state.selected].prob.toFixed(2)}</p>
               </Card.Description>
             </Card.Content>
             <Card.Content extra>
