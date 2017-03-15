@@ -51,17 +51,20 @@ class FormComponent extends React.Component {
   request = (url) => {
     this.setState({url: url});
     const self = this;
-    const params = {
+    let params = {
       service: this.props.service,
       parameters: {
         output: {
           bbox: true,
-          best: (this.props.best ? 1 : -1),
           confidence_threshold: this.state.confidenceThreshold
         }
       },
       data: [ url ]
     };
+
+    if(this.props.best) {
+      params.parameters.best = this.props.best;
+    }
 
     axios.post('/api/predict', params)
     .then(function (response) {
