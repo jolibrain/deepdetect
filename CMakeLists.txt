@@ -56,7 +56,7 @@ set(eigen_archive_hash "50812b426b7c")
 
 #include_directories("$ENV{HOME}/include")
 
-set(EIGEN3_INCLUDE_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/external/eigen_archive/eigen-eigen-${eigen_archive_hash} ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/external/eigen_archive)
+set(EIGEN3_INCLUDE_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/external/eigen_archive/eigen-eigen-${eigen_archive_hash} ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/external/eigen_archive /usr/include/eigen3)
 include_directories("${EIGEN3_INCLUDE_DIR}")
 
 # dependency on Boost
