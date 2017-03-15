@@ -46,6 +46,7 @@ class FormComponent extends React.Component {
       parameters: {
         output: {
           bbox: true,
+          best: 1,
           confidence_threshold: this.props.confidenceThreshold
         }
       },
@@ -59,6 +60,7 @@ class FormComponent extends React.Component {
       self.context.store.image = {
         curl: params,
         body: response.data.body,
+        time: response.data.head.time,
         uri: prediction.uri,
         classes: prediction.classes
       }
