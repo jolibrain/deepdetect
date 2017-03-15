@@ -51,7 +51,7 @@ class ImageComponent extends React.Component {
 
         let topClass = 'fa fa-stack-1x fa-inverse fa-' + category.cat;
         return (
-          <span key={n} className='fa-stack fa-lg' onMouseOver={this.onSelected.bind(this, n)} onMouseLeave={this.onIconLeave} title={category.cat + ' - ' + category.prob.toFixed(2)}>
+          <span key={n} className='fa-stack fa-lg' onMouseOver={this.onSelected.bind(this, n)} onMouseLeave={this.onIconLeave}>
             <i className={bottomClass} style={{opacity: opacity}}/>
             <i className={topClass} style={{opacity: opacity}}/>
           </span>
@@ -99,6 +99,7 @@ class ImageComponent extends React.Component {
             <Card.Content>
               <Card.Description>
                 {description}
+                <p>{this.state.selected != -1 ? '&nbsp;' : image.classes[this.state.selected].cat + ' - ' + image.classes[this.state.selected].prob.toFixed(2)}</p>
               </Card.Description>
             </Card.Content>
             <Card.Content extra>
