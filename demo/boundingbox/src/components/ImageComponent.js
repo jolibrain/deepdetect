@@ -41,7 +41,7 @@ class ImageComponent extends React.Component {
             coord: [category.bbox.xmin, category.bbox.ymax,
                    category.bbox.xmax - category.bbox.xmin,
                    category.bbox.ymin - category.bbox.ymax],
-            label: category.cat
+            label: ""
           };
         });
       description = image.classes.map((category, n) => {
