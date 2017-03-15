@@ -5,7 +5,8 @@
   "main": "",
   "scripts": {
     "clean": "rimraf dist/*",
-    "copy": "copyfiles -f ./src/index.html ./src/favicon.ico ./dist",
+    "asset_path": "sed -e 's/app/assets\\/app/' dist/index.html > index.html.tmp && mv index.html.tmp dist/index.html",
+    "copy": "copyfiles -f ./src/index.html ./src/favicon.ico ./dist & npm run asset_path",
     "dist": "npm run copy & webpack --env=dist",
     "lint": "eslint --fix ./src",
     "posttest": "npm run lint",
