@@ -10,8 +10,8 @@ for (let i = 0; i < x.length; i++) {
 
   const service = x[i].dataset.service;
   const imageList = x[i].dataset.imageList ? x[i].dataset.imageList.split(',') : [];
-  const confidence = x[i].dataset.confidence ? parseFloat(x[i].dataset.confidence) : 0.1;
+  const confidenceThreshold = x[i].dataset.confidenceThreshold ? parseFloat(x[i].dataset.confidenceThreshold) : 0.1;
 
-  ReactDOM.render(<App service={service} imageList={imageList} confidence={confidence}/>, x[i]);
+  ReactDOM.render(<App service={service} imageList={imageList} confidenceThreshold={confidenceThreshold}/>, x[i]);
 
 }

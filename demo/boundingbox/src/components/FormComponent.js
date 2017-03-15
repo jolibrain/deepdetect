@@ -46,7 +46,7 @@ class FormComponent extends React.Component {
       parameters: {
         output: {
           bbox: true,
-          confidence_threshold: this.props.confidence
+          confidence_threshold: this.props.confidenceThreshold
         }
       },
       data: [ url ]

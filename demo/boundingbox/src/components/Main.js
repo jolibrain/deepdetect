@@ -31,7 +31,7 @@ class AppComponent extends React.Component {
       <Container>
         <FormComponent service={this.props.service}
                        imageList={this.props.imageList}
-                       confidence={this.props.confidence} />
+                       confidenceThreshold={this.props.confidenceThreshold} />
         <Divider hidden/>
         <ImageComponent />
       </Container>
