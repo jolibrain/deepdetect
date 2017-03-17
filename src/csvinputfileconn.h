@@ -40,6 +40,7 @@ namespace dd
     ~DDCsv() {}
 
     int read_file(const std::string &fname);
+    int read_db(const std::string &fname);
     int read_mem(const std::string &content);
     int read_dir(const std::string &dir)
     {
@@ -526,6 +527,7 @@ namespace dd
     // data
     std::vector<CSVline> _csvdata;
     std::vector<CSVline> _csvdata_test;
+    std::string _db_fname;
   };
 }
 

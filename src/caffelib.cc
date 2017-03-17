@@ -2229,7 +2229,9 @@ namespace dd
 		for (int j=0;j<batch_size;j++)
 		  {
 		    APIData rad;
-		    rad.add("uri",inputc._ids.at(idoffset+j));
+		    if (!inputc._ids.empty())
+		      rad.add("uri",inputc._ids.at(idoffset+j));
+		    else rad.add("uri",std::to_string(idoffset+j));
 		    rad.add("loss",loss);
 		    std::vector<double> probs;
 		    std::vector<std::string> cats;

@@ -345,7 +345,7 @@ namespace dd
 	if (!_test_db)
 	  {
 	    _test_db = std::unique_ptr<db::DB>(db::GetDB("lmdb"));
-	    _test_db->Open(_model_repo + "/" + _test_dbfullname.c_str(),db::READ);
+	    _test_db->Open(_test_dbfullname.c_str(),db::READ);
 	  }
 	_test_db_cursor = std::unique_ptr<db::Cursor>(_test_db->NewCursor());
 	
@@ -411,6 +411,12 @@ namespace dd
 	return 0;
       }
     else return -1;
+  }
+
+  int DDCCsv::read_db(const std::string &fname)
+  {
+    _cifc->_db_fname = fname;
+    return 0;
   }
   
   int DDCCsv::read_mem(const std::string &content)
@@ -621,7 +627,7 @@ namespace dd
 	if (!_test_db)
 	  {
 	    _test_db = std::unique_ptr<db::DB>(db::GetDB("lmdb"));
-	    _test_db->Open(_model_repo + "/" + _test_dbfullname.c_str(),db::READ);
+	    _test_db->Open(_test_dbfullname.c_str(),db::READ);
 	  }
 	_test_db_cursor = std::unique_ptr<db::Cursor>(_test_db->NewCursor());
       }
@@ -846,7 +852,7 @@ namespace dd
 	if (!_test_db)
 	  {
 	    _test_db = std::unique_ptr<db::DB>(db::GetDB("lmdb"));
-	    _test_db->Open(_model_repo + "/" + _test_dbfullname.c_str(),db::READ);
+	    _test_db->Open(_test_dbfullname.c_str(),db::READ);
 	  }
 	_test_db_cursor = std::unique_ptr<db::Cursor>(_test_db->NewCursor());
       }
@@ -874,7 +880,7 @@ namespace dd
 	if (!_test_db)
 	  {
 	    _test_db = std::unique_ptr<db::DB>(db::GetDB("lmdb"));
-	    _test_db->Open(_model_repo + "/" + _test_dbfullname.c_str(),db::READ);
+	    _test_db->Open(_test_dbfullname.c_str(),db::READ);
 	  }
 	_test_db_cursor = std::unique_ptr<db::Cursor>(_test_db->NewCursor());
       }
@@ -1097,7 +1103,7 @@ namespace dd
 	if (!_test_db)
 	  {
 	    _test_db = std::unique_ptr<db::DB>(db::GetDB("lmdb"));
-	    _test_db->Open(_model_repo + "/" + _test_dbfullname.c_str(),db::READ);
+	    _test_db->Open(_test_dbfullname.c_str(),db::READ);
 	  }
 	_test_db_cursor = std::unique_ptr<db::Cursor>(_test_db->NewCursor());
       }

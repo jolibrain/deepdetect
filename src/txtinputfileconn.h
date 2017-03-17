@@ -39,6 +39,7 @@ namespace dd
     ~DDTxt() {}
 
     int read_file(const std::string &fname);
+    int read_db(const std::string &fname);
     int read_mem(const std::string &content);
     int read_dir(const std::string &dir);
 
@@ -351,6 +352,7 @@ namespace dd
     // data
     std::vector<TxtEntry<double>*> _txt;
     std::vector<TxtEntry<double>*> _test_txt;
+    std::string _db_fname;
   };
   
 }

@@ -36,6 +36,12 @@ namespace dd
       }
     else return -1;
   }
+
+  int DDSvm::read_db(const std::string &fname)
+    {
+      _cifc->_db_fname = fname;
+      return 0;
+    }
   
   int DDSvm::read_mem(const std::string &content)
   {
