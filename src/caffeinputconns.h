@@ -261,7 +261,7 @@ namespace dd
     std::vector<caffe::Datum> get_dv_test(const int &num,
 					  const bool &has_mean_file)
       {
-	if (!_train)
+	if (!_db)
 	  {
 	    int i = 0;
 	    std::vector<caffe::Datum> dv;
