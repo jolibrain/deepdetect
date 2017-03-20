@@ -263,11 +263,13 @@ namespace dd
 	{
 	  DataEl<DDTxt> dtxt;
 	  dtxt._ctype._ctfc = this;
-	  if (dtxt.read_element(u) || _txt.empty())
+	  if (dtxt.read_element(u) || (_txt.empty() && _db_fname.empty()))
 	    {
 	      throw InputConnectorBadParamException("no data for text in " + u);
 	    }
-	  _txt.back()->_uri = u;
+	  if (_db_fname.empty())
+	    _txt.back()->_uri = u;
+	  else return; // single db
 	}
       
       if (_train)

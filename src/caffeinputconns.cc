@@ -339,6 +339,9 @@ namespace dd
   {
     static Blob<float> data_mean;
     static float *mean = nullptr;
+    int tnum = num;
+    if (tnum == 0)
+      tnum = -1;
     if (!_test_db_cursor)
       {
 	// open db and create cursor
@@ -364,7 +367,7 @@ namespace dd
     while(_test_db_cursor->valid())
       {
 	// fill up a vector up to 'num' elements.
-	if (i == num)
+	if (i == tnum)
 	  break;
 	Datum datum;
 	datum.ParseFromString(_test_db_cursor->value());
@@ -621,6 +624,9 @@ namespace dd
 
   std::vector<caffe::Datum> CSVCaffeInputFileConn::get_dv_test_db(const int &num)
   {
+    int tnum = num;
+    if (tnum == 0)
+      tnum = -1;
     if (!_test_db_cursor)
       {
 	// open db and create cursor
@@ -636,7 +642,7 @@ namespace dd
     while(_test_db_cursor->valid())
       {
 	// fill up a vector up to 'num' elements.
-	if (i == num)
+	if (i == tnum)
 	  break;
 	Datum datum;
 	datum.ParseFromString(_test_db_cursor->value());
@@ -846,6 +852,9 @@ namespace dd
 
   std::vector<caffe::Datum> TxtCaffeInputFileConn::get_dv_test_db(const int &num)
   {
+    int tnum = num;
+    if (tnum == 0)
+      tnum = -1;
     if (!_test_db_cursor)
       {
 	// open db and create cursor
@@ -861,7 +870,7 @@ namespace dd
     while(_test_db_cursor->valid())
       {
 	// fill up a vector up to 'num' elements.
-	if (i == num)
+	if (i == tnum)
 	  break;
 	Datum datum;
 	datum.ParseFromString(_test_db_cursor->value());
@@ -874,6 +883,9 @@ namespace dd
    
   std::vector<caffe::SparseDatum> TxtCaffeInputFileConn::get_dv_test_sparse_db(const int &num)
   {
+    int tnum = num;
+    if (tnum == 0)
+      tnum = -1;
     if (!_test_db_cursor)
       {
 	// open db and create cursor
@@ -889,7 +901,7 @@ namespace dd
     while(_test_db_cursor->valid())
       {
 	// fill up a vector up to 'num' elements.
-	if (i == num)
+	if (i == tnum)
 	  break;
 	SparseDatum datum;
 	datum.ParseFromString(_test_db_cursor->value());
@@ -1097,6 +1109,9 @@ namespace dd
 
   std::vector<caffe::SparseDatum> SVMCaffeInputFileConn::get_dv_test_sparse_db(const int &num)
   {
+    int tnum = num;
+    if (tnum == 0)
+      tnum = -1;
     if (!_test_db_cursor)
       {
 	// open db and create cursor
@@ -1112,7 +1127,7 @@ namespace dd
     while(_test_db_cursor->valid())
       {
 	// fill up a vector up to 'num' elements.
-	if (i == num)
+	if (i == tnum)
 	  break;
 	SparseDatum datum;
 	datum.ParseFromString(_test_db_cursor->value());
