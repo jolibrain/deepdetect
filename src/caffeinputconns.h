@@ -168,6 +168,7 @@ namespace dd
 	      _db = true;
 	      return; // done
 	    }
+	  else _db = false;
 	  for (int i=0;i<(int)this->_images.size();i++)
 	    {      
 	      caffe::Datum datum;
@@ -261,7 +262,7 @@ namespace dd
     std::vector<caffe::Datum> get_dv_test(const int &num,
 					  const bool &has_mean_file)
       {
-	if (!_db)
+	if (!_train && _db_fname.empty())
 	  {
 	    int i = 0;
 	    std::vector<caffe::Datum> dv;

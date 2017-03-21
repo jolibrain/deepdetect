@@ -343,7 +343,16 @@ TEST(caffeapi,service_predict)
   jd.Parse(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(400,jd["status"]["code"]);
-    
+
+  // lmdb predict
+  jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"bw\":true,\"width\":28,\"height\":28},\"output\":{\"measure\":[\"f1\"]},\"mllib\":{\"net\":{\"test_batch_size\":100}}},\"data\":[\"" + mnist_repo + "/test.lmdb\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200,jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() > 0.0);
+  
   // remove service
   jstr = "{\"clear\":\"lib\"}";
   joutstr = japi.jrender(japi.service_delete(sname,jstr));
@@ -430,7 +439,7 @@ TEST(caffeapi,service_train_csv)
   cat0 = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString(); // XXX: true cat is 3, which is 2 here with the label offset
   cat1 = jd["body"]["predictions"][0]["classes"][1]["cat"].GetString();
   ASSERT_TRUE("2"==cat0||"2"==cat1);
-  
+
   // remove service
   jstr = "{\"clear\":\"lib\"}";
   joutstr = japi.jrender(japi.service_delete(sname,jstr));
