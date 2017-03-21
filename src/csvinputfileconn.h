@@ -408,7 +408,7 @@ namespace dd
 	      ddcsv.read_element(_uris.at(i));
 	    }
 	}
-      if (_csvdata.empty())
+      if (_csvdata.empty() && _db_fname.empty())
 	throw InputConnectorBadParamException("no data could be found");
     }
 
