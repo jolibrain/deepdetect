@@ -56,6 +56,15 @@ namespace dd
       else directory = false;
       return r == 0; 
     }
+
+    static bool is_db(const std::string &fname)
+    {
+      const std::vector<std::string> db_exts = {".lmdb"}; // add more here
+      for (auto e: db_exts)
+	if (fname.find(e) != std::string::npos)
+	  return true;
+      return false;
+    }
     
     static long int file_last_modif(const std::string &fname)
     {

@@ -323,13 +323,16 @@ namespace dd
   {
     static Blob<float> data_mean;
     static float *mean = nullptr;
+    int tnum = num;
+    if (tnum == 0)
+      tnum = -1;
     if (!_test_db_cursor)
       {
 	// open db and create cursor
 	if (!_test_db)
 	  {
 	    _test_db = std::unique_ptr<db::DB>(db::GetDB("lmdb"));
-	    _test_db->Open(_model_repo + "/" + _test_dbfullname.c_str(),db::READ);
+	    _test_db->Open(_test_dbfullname.c_str(),db::READ);
 	  }
 	_test_db_cursor = std::unique_ptr<db::Cursor>(_test_db->NewCursor());
 	
@@ -348,7 +351,7 @@ namespace dd
     while(_test_db_cursor->valid())
       {
 	// fill up a vector up to 'num' elements.
-	if (i == num)
+	if (i == tnum)
 	  break;
 	Datum datum;
 	datum.ParseFromString(_test_db_cursor->value());
@@ -395,6 +398,12 @@ namespace dd
 	return 0;
       }
     else return -1;
+  }
+
+  int DDCCsv::read_db(const std::string &fname)
+  {
+    _cifc->_db_fname = fname;
+    return 0;
   }
   
   int DDCCsv::read_mem(const std::string &content)
@@ -578,13 +587,16 @@ namespace dd
 
   std::vector<caffe::Datum> CSVCaffeInputFileConn::get_dv_test_db(const int &num)
   {
+    int tnum = num;
+    if (tnum == 0)
+      tnum = -1;
     if (!_test_db_cursor)
       {
 	// open db and create cursor
 	if (!_test_db)
 	  {
 	    _test_db = std::unique_ptr<db::DB>(db::GetDB("lmdb"));
-	    _test_db->Open(_model_repo + "/" + _test_dbfullname.c_str(),db::READ);
+	    _test_db->Open(_test_dbfullname.c_str(),db::READ);
 	  }
 	_test_db_cursor = std::unique_ptr<db::Cursor>(_test_db->NewCursor());
       }
@@ -593,7 +605,7 @@ namespace dd
     while(_test_db_cursor->valid())
       {
 	// fill up a vector up to 'num' elements.
-	if (i == num)
+	if (i == tnum)
 	  break;
 	Datum datum;
 	datum.ParseFromString(_test_db_cursor->value());
@@ -780,13 +792,16 @@ namespace dd
 
   std::vector<caffe::Datum> TxtCaffeInputFileConn::get_dv_test_db(const int &num)
   {
+    int tnum = num;
+    if (tnum == 0)
+      tnum = -1;
     if (!_test_db_cursor)
       {
 	// open db and create cursor
 	if (!_test_db)
 	  {
 	    _test_db = std::unique_ptr<db::DB>(db::GetDB("lmdb"));
-	    _test_db->Open(_model_repo + "/" + _test_dbfullname.c_str(),db::READ);
+	    _test_db->Open(_test_dbfullname.c_str(),db::READ);
 	  }
 	_test_db_cursor = std::unique_ptr<db::Cursor>(_test_db->NewCursor());
       }
@@ -795,7 +810,7 @@ namespace dd
     while(_test_db_cursor->valid())
       {
 	// fill up a vector up to 'num' elements.
-	if (i == num)
+	if (i == tnum)
 	  break;
 	Datum datum;
 	datum.ParseFromString(_test_db_cursor->value());
@@ -808,13 +823,16 @@ namespace dd
    
   std::vector<caffe::SparseDatum> TxtCaffeInputFileConn::get_dv_test_sparse_db(const int &num)
   {
+    int tnum = num;
+    if (tnum == 0)
+      tnum = -1;
     if (!_test_db_cursor)
       {
 	// open db and create cursor
 	if (!_test_db)
 	  {
 	    _test_db = std::unique_ptr<db::DB>(db::GetDB("lmdb"));
-	    _test_db->Open(_model_repo + "/" + _test_dbfullname.c_str(),db::READ);
+	    _test_db->Open(_test_dbfullname.c_str(),db::READ);
 	  }
 	_test_db_cursor = std::unique_ptr<db::Cursor>(_test_db->NewCursor());
       }
@@ -823,7 +841,7 @@ namespace dd
     while(_test_db_cursor->valid())
       {
 	// fill up a vector up to 'num' elements.
-	if (i == num)
+	if (i == tnum)
 	  break;
 	SparseDatum datum;
 	datum.ParseFromString(_test_db_cursor->value());
@@ -992,13 +1010,16 @@ namespace dd
 
   std::vector<caffe::SparseDatum> SVMCaffeInputFileConn::get_dv_test_sparse_db(const int &num)
   {
+    int tnum = num;
+    if (tnum == 0)
+      tnum = -1;
     if (!_test_db_cursor)
       {
 	// open db and create cursor
 	if (!_test_db)
 	  {
 	    _test_db = std::unique_ptr<db::DB>(db::GetDB("lmdb"));
-	    _test_db->Open(_model_repo + "/" + _test_dbfullname.c_str(),db::READ);
+	    _test_db->Open(_test_dbfullname.c_str(),db::READ);
 	  }
 	_test_db_cursor = std::unique_ptr<db::Cursor>(_test_db->NewCursor());
       }
@@ -1007,7 +1028,7 @@ namespace dd
     while(_test_db_cursor->valid())
       {
 	// fill up a vector up to 'num' elements.
-	if (i == num)
+	if (i == tnum)
 	  break;
 	SparseDatum datum;
 	datum.ParseFromString(_test_db_cursor->value());

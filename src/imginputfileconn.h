@@ -111,6 +111,12 @@ namespace dd
       return 0;
     }
 
+    int read_db(const std::string &fname)
+    {
+      _db_fname = fname;
+      return 0;
+    }
+    
     int read_mem(const std::string &content)
     {
       cv::Mat timg;
@@ -203,6 +209,7 @@ namespace dd
     std::vector<int> _labels;
     int _width = 227;
     int _height = 227;
+    std::string _db_fname;
   };
   
   class ImgInputFileConn : public InputConnectorStrategy
@@ -301,6 +308,8 @@ namespace dd
 		  LOG(ERROR) << "no data for image " << u;
 		  no_img = true;
 		}
+	      if (!dimg._ctype._db_fname.empty())
+		_db_fname = dimg._ctype._db_fname;
 	    }
 	  catch(std::exception &e)
 	    {
@@ -313,7 +322,9 @@ namespace dd
 	    }
 	  if (no_img)
 	    continue;
-
+	  if (!_db_fname.empty())
+	    continue;
+	  
 #pragma omp critical
 	  {
 	    _images.insert(_images.end(),
@@ -338,6 +349,9 @@ namespace dd
       if (catch_read)
 	throw InputConnectorBadParamException(catch_msg);
       _uris = uris;
+      if (!_db_fname.empty())
+	return; // db filename is passed to backend
+      
       // shuffle before possible split
       if (_shuffle)
 	{
@@ -390,6 +404,7 @@ namespace dd
     int _seed = -1; /**< shuffling seed. */
     cv::Scalar _mean; /**< mean image pixels, to be subtracted from images. */
     bool _has_mean_scalar = false; /**< whether scalar is set. */
+    std::string _db_fname;
   };
 }
 

@@ -2004,7 +2004,7 @@ namespace dd
 	else if (cm == 2)
 	  throw MLLibBadParamException("no deploy file in " + this->_mlmodel._repo + " for initializing the net");
       }
-    
+
     TInputConnectorStrategy inputc(this->_inputc);
     TOutputConnectorStrategy tout;
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
@@ -2015,6 +2015,33 @@ namespace dd
       confidence_threshold = ad_output.get("confidence_threshold").get<double>();
     if (ad_output.has("bbox") && ad_output.get("bbox").get<bool>())
       bbox = true;
+    
+    // gpu
+#ifndef CPU_ONLY
+    bool gpu = _gpu;
+    if (ad_mllib.has("gpu"))
+      {
+	gpu = ad_mllib.get("gpu").get<bool>();
+	if (gpu)
+	  {
+	    set_gpuid(ad_mllib);
+	  }
+      }
+    if (gpu)
+      {
+	for (auto i: _gpuid)
+	  {
+	    Caffe::SetDevice(i);
+	    if (gpu != _gpu)
+	      Caffe::DeviceQuery();
+	  }
+	Caffe::set_mode(Caffe::GPU);
+      }
+    else Caffe::set_mode(Caffe::CPU);
+#else
+    Caffe::set_mode(Caffe::CPU);
+#endif
+    
     if (ad_output.has("measure"))
       {
 	APIData cad = ad;
@@ -2044,36 +2071,10 @@ namespace dd
 	out.add("measure",out_meas);
 	return 0;
       }
-
-    // parameters
-#ifndef CPU_ONLY
-    bool gpu = _gpu;
-    if (ad_mllib.has("gpu"))
-      {
-	gpu = ad_mllib.get("gpu").get<bool>();
-	if (gpu)
-	  {
-	    set_gpuid(ad_mllib);
-	  }
-      }
-    if (gpu)
-      {
-	for (auto i: _gpuid)
-	  {
-	    Caffe::SetDevice(i);
-	    if (gpu != _gpu)
-	      Caffe::DeviceQuery();
-	  }
-	Caffe::set_mode(Caffe::GPU);
-      }
-    else Caffe::set_mode(Caffe::CPU);
-#else
-      Caffe::set_mode(Caffe::CPU);
-#endif
-
-      std::string extract_layer;
-      if (ad_mllib.has("extract_layer"))
-	extract_layer = ad_mllib.get("extract_layer").get<std::string>();
+    
+    std::string extract_layer;
+    if (ad_mllib.has("extract_layer"))
+      extract_layer = ad_mllib.get("extract_layer").get<std::string>();
       
     APIData cad = ad;
     bool has_mean_file = this->_mlmodel._has_mean_file;
@@ -2229,7 +2230,9 @@ namespace dd
 		for (int j=0;j<batch_size;j++)
 		  {
 		    APIData rad;
-		    rad.add("uri",inputc._ids.at(idoffset+j));
+		    if (!inputc._ids.empty())
+		      rad.add("uri",inputc._ids.at(idoffset+j));
+		    else rad.add("uri",std::to_string(idoffset+j));
 		    rad.add("loss",loss);
 		    std::vector<double> probs;
 		    std::vector<std::string> cats;

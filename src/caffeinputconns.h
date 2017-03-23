@@ -79,6 +79,8 @@ namespace dd
     bool _has_mean_file = false; /**< image model mean.binaryproto. */
     bool _sparse = false; /**< whether to use sparse representation. */
     std::unordered_map<std::string,std::pair<int,int>> _imgs_size; /**< image sizes, used in detection. */
+    std::string _dbfullname = "train.lmdb";
+    std::string _test_dbfullname = "test.lmdb";
   };
 
   /**
@@ -160,6 +162,13 @@ namespace dd
 	      _data_mean.FromProto(blob_proto);
 	      mean = _data_mean.mutable_cpu_data();
 	    }
+	  if (!_db_fname.empty())
+	    {
+	      _test_dbfullname = _db_fname;
+	      _db = true;
+	      return; // done
+	    }
+	  else _db = false;
 	  for (int i=0;i<(int)this->_images.size();i++)
 	    {      
 	      caffe::Datum datum;
@@ -203,6 +212,8 @@ namespace dd
 	}
       else // more complicated, since images can be heavy, a db is built so that it is less costly to iterate than the filesystem
 	{
+	  _dbfullname = _model_repo + "/" + _dbfullname;
+	  _test_dbfullname = _model_repo + "/" + _test_dbfullname;
 	  try
 	    {
 	      get_data(ad);
@@ -240,9 +251,9 @@ namespace dd
 	  
 	  // enrich data object with db files location
 	  APIData dbad;
-	  dbad.add("train_db",_model_repo + "/" + _dbfullname);
+	  dbad.add("train_db",_dbfullname);
 	  if (_test_split > 0.0)
-	    dbad.add("test_db",_model_repo + "/" + _test_dbfullname);
+	    dbad.add("test_db",_test_dbfullname);
 	  dbad.add("meanfile",_model_repo + "/" + _meanfname);
 	  const_cast<APIData&>(ad).add("db",dbad);
 	}
@@ -251,7 +262,7 @@ namespace dd
     std::vector<caffe::Datum> get_dv_test(const int &num,
 					  const bool &has_mean_file)
       {
-	if (!_train)
+	if (!_train && _db_fname.empty())
 	  {
 	    int i = 0;
 	    std::vector<caffe::Datum> dv;
@@ -297,8 +308,6 @@ namespace dd
     std::unique_ptr<caffe::db::Cursor> _test_db_cursor;
     std::string _dbname = "train";
     std::string _test_dbname = "test";
-    std::string _dbfullname = "train.lmdb";
-    std::string _test_dbfullname = "test.lmdb";
     std::string _meanfname = "mean.binaryproto";
     std::string _correspname = "corresp.txt";
     caffe::Blob<float> _data_mean; // mean binary image if available.
@@ -317,6 +326,7 @@ namespace dd
     ~DDCCsv() {}
 
     int read_file(const std::string &fname);
+    int read_db(const std::string &fname);
     int read_mem(const std::string &content);
     int read_dir(const std::string &dir)
     {
@@ -390,6 +400,8 @@ namespace dd
       
       if (_train && ad_input.has("db") && ad_input.get("db").get<bool>())
 	{
+	  _dbfullname = _model_repo + "/" + _dbfullname;
+	  _test_dbfullname = _model_repo + "/" + _test_dbfullname;
 	  fillup_parameters(ad_input);
 	  get_data(ad);
 	  _db = true;
@@ -399,9 +411,9 @@ namespace dd
 	  
 	  // enrich data object with db files location
 	  APIData dbad;
-	  dbad.add("train_db",_model_repo + "/" + _dbfullname);
+	  dbad.add("train_db",_dbfullname);
 	  if (_test_split > 0.0)
-	    dbad.add("test_db",_model_repo + "/" + _test_dbfullname);
+	    dbad.add("test_db",_test_dbfullname);
 	  const_cast<APIData&>(ad).add("db",dbad);
 	}
       else
@@ -438,7 +450,15 @@ namespace dd
 		}
 	    }
 	  if (!_train)
-	    _csvdata_test = std::move(_csvdata);
+	    {
+	      if (!_db_fname.empty())
+		{
+		  _test_dbfullname = _db_fname;
+		  _db = true;
+		  return; // done
+		}
+	      _csvdata_test = std::move(_csvdata);
+	    }
 	  else _csvdata.clear();
 	  auto hit = _csvdata_test.begin();
 	  while(hit!=_csvdata_test.end())
@@ -547,8 +567,6 @@ namespace dd
     std::unique_ptr<caffe::db::Cursor> _test_db_cursor;
     std::string _dbname = "train";
     std::string _test_dbname = "test";
-    std::string _dbfullname = "train.lmdb";
-    std::string _test_dbfullname = "test.lmdb";
     std::string _correspname = "corresp.txt";
 
   private:
@@ -648,8 +666,10 @@ namespace dd
       // transform to one-hot vector datum
       if (_train && _db)
 	{
-	  std::string dbfullname = _model_repo + "/" + _dbname + ".lmdb";
-	  if (!fileops::file_exists(dbfullname)) // if no existing db, preprocess from txt files
+	  _dbfullname = _model_repo + "/" + _dbfullname;
+	  _test_dbfullname = _model_repo + "/" + _test_dbfullname;
+	  //std::string dbfullname = _model_repo + "/" + _dbname + ".lmdb";
+	  if (!fileops::file_exists(_dbfullname)) // if no existing db, preprocess from txt files
 	    TxtInputFileConn::transform(ad);
 	  txt_to_db(_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname,
 		    ad_input);
@@ -658,9 +678,9 @@ namespace dd
 	  
 	  // enrich data object with db files location
 	  APIData dbad;
-	  dbad.add("train_db",_model_repo + "/" + _dbfullname);
+	  dbad.add("train_db",_dbfullname);
 	  if (_test_split > 0.0)
-	    dbad.add("test_db",_model_repo + "/" + _test_dbfullname);
+	    dbad.add("test_db",_test_dbfullname);
 	  const_cast<APIData&>(ad).add("db",dbad);
 	}
       else
@@ -691,7 +711,15 @@ namespace dd
 		}
 	    }
 	  if (!_train)
+	    {
+	      if (!_db_fname.empty())
+		{
+		  _test_dbfullname = _db_fname;
+		  _db = true;
+		  return; // done
+		}
 	    _test_txt = std::move(_txt);
+	    }
 
 	  int n = 0;
 	  auto hit = _test_txt.begin();
@@ -861,8 +889,6 @@ namespace dd
     std::unique_ptr<caffe::db::Cursor> _test_db_cursor;
     std::string _dbname = "train";
     std::string _test_dbname = "test";
-    std::string _dbfullname = "train.lmdb";
-    std::string _test_dbfullname = "test.lmdb";
     int _channels = 0;
   };
 
@@ -933,6 +959,8 @@ namespace dd
       
       if (_train && ad_input.has("db") && ad_input.get("db").get<bool>())
 	{
+	  _dbfullname = _model_repo + "/" + _dbfullname;
+	  _test_dbfullname = _model_repo + "/" + _test_dbfullname;
 	  fillup_parameters(ad_input);
 	  get_data(ad);
 	  _db = true;
@@ -941,9 +969,9 @@ namespace dd
 	  
 	  // enrich data object with db files location
 	  APIData dbad;
-	  dbad.add("train_db",_model_repo + "/" + _dbfullname);
+	  dbad.add("train_db",_dbfullname);
 	  if (_test_split > 0.0)
-	    dbad.add("test_db",_model_repo + "/" + _test_dbfullname);
+	    dbad.add("test_db",_test_dbfullname);
 	  const_cast<APIData&>(ad).add("db",dbad);
 	  serialize_vocab();
 	}
@@ -972,7 +1000,15 @@ namespace dd
 		}
 	    }
 	  if (!_train)
-	    _svmdata_test = std::move(_svmdata);
+	    {
+	      if (!_db_fname.empty())
+		{
+		  _test_dbfullname = _db_fname;
+		  _db = true;
+		  return; // done
+		}
+	      _svmdata_test = std::move(_svmdata);
+	    }
 	  else _svmdata.clear();
 	  int n = 0;
 	  auto hit = _svmdata_test.begin();
@@ -1045,8 +1081,6 @@ namespace dd
     std::unique_ptr<caffe::db::Cursor> _test_db_cursor;
     std::string _dbname = "train";
     std::string _test_dbname = "test";
-    std::string _dbfullname = "train.lmdb";
-    std::string _test_dbfullname = "test.lmdb";
  
   private:
     std::unique_ptr<caffe::db::Transaction> _txn;

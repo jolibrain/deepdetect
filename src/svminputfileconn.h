@@ -42,6 +42,7 @@ namespace dd
     {
       throw InputConnectorBadParamException("uri " + dir + " is a directory, requires a file in libSVM format");
     }
+    int read_db(const std::string &fname);
     
     SVMInputFileConn *_cifc = nullptr;
     APIData _adconf;
@@ -64,7 +65,7 @@ namespace dd
     SVMInputFileConn()
       :InputConnectorStrategy() {}
     SVMInputFileConn(const SVMInputFileConn &i)
-      :InputConnectorStrategy(i),_fids(i._fids),_max_id(i._max_id) {}
+      :InputConnectorStrategy(i),_fids(i._fids),_max_id(i._max_id),_db_fname(i._db_fname) {}
     ~SVMInputFileConn() {}
 
     void init(const APIData &ad)
@@ -179,7 +180,7 @@ namespace dd
 	      ddsvm.read_element(_uris.at(i));
 	    }
 	}
-      if (_svmdata.empty())
+      if (_db_fname.empty() && _svmdata.empty())
 	throw InputConnectorBadParamException("no data could be found");
     }
 
@@ -236,6 +237,7 @@ namespace dd
     std::unordered_set<int> _fids; /**< feature ids. */
     int _max_id = -1;
     std::string _vocabfname = "vocab.dat";
+    std::string _db_fname;
   };
 
 }
