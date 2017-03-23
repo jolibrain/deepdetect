@@ -91,6 +91,13 @@ if (GTEST_FOUND)
     execute_process(COMMAND ${CMAKE_COMMAND} -E rename ${FOREST_EXAMPLE_TRAIN_OUT} ${FOREST_EXAMPLE_PATH}${FOREST_EXAMPLE_TRAIN_OUT})
   endif()
 
+  set(FARM_EXAMPLE_PATH "examples/all/farm_ads/")
+  set(FARM_EXAMPLE_TRAIN_OUT "farm-ads.svm")
+  if (NOT EXISTS "${FARM_EXAMPLE_PATH}${FARM_EXAMPLE_TRAIN_OUT}")
+    message(STATUS "Downloading SVM test dataset")
+    file(DOWNLOAD "http://www.deepdetect.com/dd/examples/all/farm_ads/farm-ads.svm" "${FARM_EXAMPLE_PATH}${FARM_EXAMPLE_TRAIN_OUT}")
+  endif()
+
   set(PLANK_EXAMPLE_PATH "examples/caffe/plankton/")
   set(PLANK_EXAMPLE_TRAIN_ARCHIVE "train.tar.bz2")
   set(PLANK_EXAMPLE_TRAIN_OUT "train")
