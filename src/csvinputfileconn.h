@@ -533,4 +533,8 @@ namespace dd
 #include "xgbinputconns.h"
 #endif
 
+#ifdef USE_TSNE
+#include "tsneinputconns.h"
+#endif
+
 #endif
