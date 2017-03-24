@@ -17,6 +17,7 @@ RUN git clone https://github.com/jpbarrette/curlpp.git
 WORKDIR /opt/curlpp
 RUN cmake .
 RUN make install
+RUN cp /usr/local/lib/libcurlpp.* /usr/lib/
 
 WORKDIR /opt
 RUN git clone https://github.com/beniz/deepdetect.git && cd deepdetect && mkdir build
