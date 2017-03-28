@@ -338,6 +338,7 @@ namespace dd
        */
       if (_train)
 	{
+	  int uri_offset = 0;
 	  if (fileops::file_exists(_uris.at(0))) // training from file
 	    {
 	      _csv_fname = _uris.at(0);
@@ -346,12 +347,6 @@ namespace dd
 	    }
 	  else // training from memory
 	    {
-	      if (_uris.at(0).find(_delim)!=std::string::npos) // first line might be the header if we have some options to consider
-		read_header(_uris.at(0));
-	      else
-		{
-		  throw InputConnectorBadParamException("training CSV file " + _csv_fname + " does not exist or in-memory data are missing a CSV header");
-		}
 	    }
 
 	  // check on common and required parameters
@@ -368,7 +363,7 @@ namespace dd
 	    }
 	  else // training from posted data (in-memory)
 	    {
-	      for (size_t i=1;i<_uris.size();i++)
+	      for (size_t i=uri_offset;i<_uris.size();i++)
 		{
 		  DataEl<DDCsv> ddcsv;
 		  ddcsv._ctype._cifc = this;
