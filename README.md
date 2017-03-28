@@ -178,6 +178,20 @@ More models:
 
 - List of free, even for commercial use, deep neural nets for image classification, and character-based convolutional nets for text classification: http://www.deepdetect.com/applications/list_models/
 
+#### Templates
+
+DeepDetect comes with a built-in system of neural network templates (Caffe backend only at the moment). This allows the creation of custom networks based on recognized architectures, for images, text and data, and with much simplicity.
+
+Usage:
+- specify `template` to use, from `mlp`, `convnet` and `resnet`
+- specify the architecture with the `layers` parameter:
+  - for `mlp`, e.g. `[300,100,10]`
+  - for `convnet`, e.g. `["1CR64","1CR128","2CR256","1024","512"], where the main pattern is `xCRy` where `y` is the number of outputs (feature maps), `CR` stands for Convolution + Activation (with `relu` as default), and `x` specifies the number of chained `CR` blocks without pooling. Pooling is applied between all `xCRy`
+- for `resnets`:
+   - with images, e.g. `["Res50"]` where the main pattern is `ResX` with X the depth of the Resnet
+   - with character-based models (text), use the `xCRy` pattern of convnets instead, with the main difference that `x` now specifies the number of chained `CR` blocks within a resnet block
+   - for Resnets applied to CSV or SVM (sparse data), use the `mlp` pattern. In this latter case, at the moment, the `resnet` is built with blocks made of two layers for each specified layer after the first one. Here is an example: `[300,100,10]` means that a first hidden layer of size `300` is applied followed by a `resnet` block made of two `100` fully connected layer, and another block of two `10` fully connected layers. This is subjected to future changes and more control.
+
 ### Authors
 DeepDetect is designed and implemented by Emmanuel Benazera <beniz@droidnik.fr>.
 
