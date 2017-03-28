@@ -119,7 +119,19 @@ namespace dd
 	for (int i=0;i<N*_no_dims;i++)
 	  Y[i] = 0.0;
 	//std::cerr << "X=" << inputc._X << std::endl;
-	_tsne.run(inputc._X.data(),N,D,Y,_no_dims,_perplexity,_theta,num_threads,_iterations);
+	//_tsne.run(inputc._X.data(),N,D,Y,_no_dims,_perplexity,_theta,num_threads,_iterations);
+
+	TSNE tsne = TSNE(N,D,_perplexity,_theta);
+	//tsne.run(inputc._X.data(),Y,num_threads,_iterations);
+	tsne.step1(inputc._X.data(),Y,num_threads);
+	int test_iter = 50;
+	time_t start = time(0);
+	double loss = 0.0;
+	for (int iter = 0; iter < _iterations; iter++) {
+	  tsne.step2_one_iter(Y,iter,loss,test_iter);
+	  this->add_meas("train_loss",loss);
+	}
+	
       }
     catch(std::exception &e)
       {

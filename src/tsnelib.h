@@ -55,7 +55,6 @@ namespace dd
     }
 
     public:
-    TSNE _tsne;
     int _iterations = 5000;
     int _perplexity = 30;
     const int _no_dims = 2; /**< target dimensionality, backend lib only supports 2D */
