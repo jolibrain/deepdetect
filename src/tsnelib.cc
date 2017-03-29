@@ -58,26 +58,22 @@ namespace dd
     :MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TSNEModel>(std::move(cl))
   {
     this->_libname = "tsne";
-    //TODO
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   TSNELib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::~TSNELib()
   {
-    //TODO
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void TSNELib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::init_mllib(const APIData &ad)
   {
-    //TODO
     (void)ad;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void TSNELib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::clear_mllib(const APIData &ad)
   {
-    //TODO
     (void)ad;
   }
 
@@ -85,7 +81,8 @@ namespace dd
   int TSNELib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::train(const APIData &ad,
 										APIData &out)
   {
-    //TODO: mutex within service
+    std::lock_guard<std::mutex> lock(_tsne_mutex); // locking per service training call
+    
     TInputConnectorStrategy inputc(this->_inputc);
     inputc._train = true;
     APIData cad = ad;
@@ -118,11 +115,8 @@ namespace dd
 	Y = new double[N*_no_dims]; // results
 	for (int i=0;i<N*_no_dims;i++)
 	  Y[i] = 0.0;
-	//std::cerr << "X=" << inputc._X << std::endl;
-	//_tsne.run(inputc._X.data(),N,D,Y,_no_dims,_perplexity,_theta,num_threads,_iterations);
 
 	TSNE tsne = TSNE(N,D,_perplexity,_theta);
-	//tsne.run(inputc._X.data(),Y,num_threads,_iterations);
 	tsne.step1(inputc._X.data(),Y,num_threads);
 	int test_iter = 50;
 	time_t start = time(0);
@@ -136,7 +130,7 @@ namespace dd
     catch(std::exception &e)
       {
 	LOG(ERROR) << e.what();
-	throw; //TODO: MLLib exeception
+	throw; //TODO: MLLib exception
       }
 
     // capture of results

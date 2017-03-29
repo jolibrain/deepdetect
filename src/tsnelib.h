@@ -59,6 +59,7 @@ namespace dd
     int _perplexity = 30;
     const int _no_dims = 2; /**< target dimensionality, backend lib only supports 2D */
     double _theta = 0.5; /**< angle */
+    std::mutex _tsne_mutex;
     };
 
 }
