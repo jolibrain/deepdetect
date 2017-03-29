@@ -9,6 +9,7 @@ DeepDetect relies on external machine learning libraries through a very generic 
 - the deep learning library [Caffe](https://github.com/BVLC/caffe)
 - distributed gradient boosting library [XGBoost](https://github.com/dmlc/xgboost)
 - the deep learning and other usages library [Tensorflow](https://tensorflow.org)
+- clustering with [T-SNE](https://github.com/DmitryUlyanov/Multicore-TSNE)
 
 #### Machine Learning functionalities per library (current):
 
@@ -17,6 +18,8 @@ DeepDetect relies on external machine learning libraries through a very generic 
 | Caffe      | Y        | Y          | Y              | Y         |   Y        | Y           |
 | XGBoost    | Y        | Y          | Y              | N         |   Y        | N/A         |
 | Tensorflow | N        | Y          | Y              | N         |   N        | N           |
+| T-SNE      | Y        | N/A        | N/A            | N/A       |   N/A      | N/A         |
+
 
 #### GPU support per library
 
@@ -25,6 +28,7 @@ DeepDetect relies on external machine learning libraries through a very generic 
 | Caffe      | Y        | Y          |
 | XGBoost    | Y        | N          |
 | Tensorflow | Y        | Y          |
+| T-SNE      | N        | N          |
 
 #### Input data support per library (current):
 
@@ -33,6 +37,8 @@ DeepDetect relies on external machine learning libraries through a very generic 
 | Caffe      | Y   | Y   | Y          | Y               | Y      |
 | XGBoost    | Y   | Y   | Y          | N               | N      |
 | Tensorflow | N   | N   | N          | N               | Y      |
+| T-SNE      | Y   | N   | N          | N               | Y      | (*)
+(*) more input support for T-SNE is pending
 
 #### Main functionalities
 
@@ -63,7 +69,7 @@ List of tutorials, training from text, data and images, setup of prediction serv
 Current features include:
 
 - high-level API for machine learning and deep learning
-- Support for Caffe, Tensorflow and XGBoost
+- Support for Caffe, Tensorflow, XGBoost and T-SNE
 - classification, regression, autoencoders, object detection
 - JSON communication format
 - remote Python client library
@@ -244,6 +250,13 @@ You can combine with XGBoost support with:
 cmake .. -DUSE_TF=on -DUSE_XGBOOST=ON
 ```
 
+#### Build with T-SNE support
+
+Simply specify the option via cmake command line:
+```
+cmake .. -DUSE_TSNE=ON
+```
+
 ### Run tests
 
 Note: running tests requires the automated download of ~75Mb of datasets, and computations may take around thirty minutes on a CPU-only machines.
@@ -287,3 +300,4 @@ See tutorials from http://www.deepdetect.com/tutorials/tutorials/
 - DeepDetect (http://www.deepdetect.com/)
 - Caffe (https://github.com/BVLC/caffe)
 - XGBoost (https://github.com/dmlc/xgboost)
+- T-SNE (https://github.com/DmitryUlyanov/Multicore-TSNE)
