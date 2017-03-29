@@ -239,12 +239,28 @@ if (USE_XGBOOST)
   set(XGBOOST_INC_DIR ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/include ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/src ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/rabit/include ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/dmlc-core/include ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/dmlc-core/src/)
   set(XGBOOST_LIB_DIR ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/lib ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/ ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/dmlc-core)
 endif()
-  
+
+if (USE_TSNE)
+  message(STATUS "Configuring T-SNE")
+  add_definitions(-DUSE_TSNE)
+      ExternalProject_Add(
+      Multicore-TSNE
+      PREFIX Multicore-TSNE
+      INSTALL_DIR ${CMAKE_BINARY_DIR}
+      DOWNLOAD_COMMAND git clone https://github.com/beniz/Multicore-TSNE.git
+      CONFIGURE_COMMAND cd multicore_tsne && mkdir build && cd build && cmake ..
+      BUILD_COMMAND cd multicore_tsne/build/ && make
+      INSTALL_COMMAND ""
+      BUILD_IN_SOURCE 1
+      )
+    set(TSNE_INC_DIR ${CMAKE_BINARY_DIR}/Multicore-TSNE/src/Multicore-TSNE/multicore_tsne)
+    set(TSNE_LIB_DIR ${CMAKE_BINARY_DIR}/Multicore-TSNE/src/Multicore-TSNE/multicore_tsne/build)
+endif()
 
 # add the binary tree to the search path for include files
 # so that we will find dd_config.h
 include_directories("${PROJECT_BINARY_DIR}")
-include_directories(${CAFFE_INC_DIR} ${XGBOOST_INC_DIR})
+include_directories(${CAFFE_INC_DIR} ${XGBOOST_INC_DIR} ${TSNE_INC_DIR})
 
 # main library, main & tests
 include_directories ("${PROJECT_SOURCE_DIR}/src")

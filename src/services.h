@@ -37,6 +37,9 @@
 #ifdef USE_XGBOOST
 #include "xgblib.h"
 #endif
+#ifdef USE_TSNE
+#include "tsnelib.h"
+#endif
 #include <vector>
 #include <mutex>
 #include <chrono>
@@ -61,6 +64,9 @@ namespace dd
     ,MLService<XGBLib,CSVXGBInputFileConn,SupervisedOutput,XGBModel>,
     MLService<XGBLib,SVMXGBInputFileConn,SupervisedOutput,XGBModel>,
     MLService<XGBLib,TxtXGBInputFileConn,SupervisedOutput,XGBModel>
+#endif
+#ifdef USE_TSNE
+    ,MLService<TSNELib,CSVTSNEInputFileConn,UnsupervisedOutput,TSNEModel>
 #endif
     > mls_variant_type;
 

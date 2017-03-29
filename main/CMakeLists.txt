@@ -1,5 +1,5 @@
 include_directories(${Boost_INCLUDE_DIRS})
-link_directories(${CAFFE_LIB_DIR} ${XGBOOST_LIB_DIR} ${TF_LIB_DIR})
+link_directories(${CAFFE_LIB_DIR} ${XGBOOST_LIB_DIR} ${TF_LIB_DIR} ${TSNE_LIB_DIR})
 
 if (CUDA_FOUND)
   set(CUDA_LIB_DEPS ${CUDA_LIBRARIES})
@@ -23,6 +23,9 @@ if (USE_XGBOOST)
 else()
   set(XGBOOST_LIB_DEPS)
 endif()
-  
+if (USE_TSNE)
+  set(TSNE_LIB_DEPS -ltsne_multicore)
+endif()
+
 add_executable (dede dede.cc)
-target_link_libraries (dede ddetect ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} cppnetlib-uri curlpp curl crypto ssl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TF_LIB_DEPS})
+target_link_libraries (dede ddetect ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} cppnetlib-uri curlpp curl crypto ssl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TF_LIB_DEPS} ${TSNE_LIB_DEPS})
