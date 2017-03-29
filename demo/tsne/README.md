@@ -14,4 +14,6 @@ To run the code:
 python demo_tsne.py
 ```
 
-The script downloads the dataset, and that can take a few seconds, then starts the clustering. Expect around a minute total before the scatter plot appears on screen.
+The script downloads the dataset, and that can take a few seconds, then starts the clustering. Expect around a minute total before the scatter plot appears on screen:
+
+![alt tag](https://deepdetect.com/dd/examples/tsne_mnist_test.png)
