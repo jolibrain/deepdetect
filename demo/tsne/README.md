@@ -1,6 +1,6 @@
 ### Clustering with T-SNE demo
 
-This is a small demo of clustering the MNIST dataset test set via the Python client.
+This is a small demo of clustering the MNIST dataset test set via the Python client. The dataset contains 10000 images in CSV format. The final clustering thus has 10000 points.
 
 To run the code:
 - Start a DeepDetect server:
