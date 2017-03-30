@@ -14,6 +14,7 @@ endif()
 link_directories(${CAFFE_LIB_DIR})
 link_directories(${TF_LIB_DIR})
 link_directories(${XGBOOST_LIB_DIR})
+link_directories(${TSNE_LIB_DIR})
 
 if (USE_XGBOOST)
   if (CUDA_FOUND)
@@ -25,25 +26,29 @@ else()
   set(XGBOOST_LIB_DEPS)
 endif()
 
+if (USE_TSNE)
+  set(TSNE_LIB_DEPS -ltsne_multicore)
+endif()
+
 find_package(GTest)
 include_directories(${GTEST_INCLUDE_DIRS})
 if (GTEST_FOUND)
   add_executable(ut_apidata ut-apidata.cc)
-  target_link_libraries(ut_apidata ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS})
+  target_link_libraries(ut_apidata ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
   add_test(
     NAME ut_apidata
     COMMAND ut_apidata
     )
   
   add_executable(ut_conn ut-conn.cc)
-  target_link_libraries(ut_conn ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS})
+  target_link_libraries(ut_conn ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
   add_test(
     NAME ut_conn
     COMMAND ut_conn
     )
   
   add_executable(ut_jsonapi ut-jsonapi.cc)
-  target_link_libraries(ut_jsonapi ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS})
+  target_link_libraries(ut_jsonapi ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
   add_test(
     NAME ut_jsonapi
     COMMAND ut_jsonapi
@@ -58,7 +63,7 @@ if (GTEST_FOUND)
   target_link_libraries(test_server boost_thread cppnetlib-uri cppnetlib-client-connections boost_system crypto ssl)
 
   add_executable(ut_caffe_mlp ut-caffe-mlp.cc)
-  target_link_libraries(ut_caffe_mlp ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS})
+  target_link_libraries(ut_caffe_mlp ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
   add_test(
     NAME ut_caffe_mlp
     COMMAND ut_caffe_mlp
@@ -91,6 +96,13 @@ if (GTEST_FOUND)
     execute_process(COMMAND ${CMAKE_COMMAND} -E rename ${FOREST_EXAMPLE_TRAIN_OUT} ${FOREST_EXAMPLE_PATH}${FOREST_EXAMPLE_TRAIN_OUT})
   endif()
 
+  set(FARM_EXAMPLE_PATH "examples/all/farm_ads/")
+  set(FARM_EXAMPLE_TRAIN_OUT "farm-ads.svm")
+  if (NOT EXISTS "${FARM_EXAMPLE_PATH}${FARM_EXAMPLE_TRAIN_OUT}")
+    message(STATUS "Downloading SVM test dataset")
+    file(DOWNLOAD "http://www.deepdetect.com/dd/examples/all/farm_ads/farm-ads.svm" "${FARM_EXAMPLE_PATH}${FARM_EXAMPLE_TRAIN_OUT}")
+  endif()
+
   set(PLANK_EXAMPLE_PATH "examples/caffe/plankton/")
   set(PLANK_EXAMPLE_TRAIN_ARCHIVE "train.tar.bz2")
   set(PLANK_EXAMPLE_TRAIN_OUT "train")
@@ -120,14 +132,14 @@ if (GTEST_FOUND)
   endif()
   
   add_executable(ut_caffeapi ut-caffeapi.cc)
-  target_link_libraries(ut_caffeapi ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS})
+  target_link_libraries(ut_caffeapi ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
   add_test(
     NAME ut_caffeapi
     COMMAND ut_caffeapi
     )
   
   add_executable(ut_httpapi ut-httpapi.cc)
-  target_link_libraries(ut_httpapi ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS}  ${XGBOOST_LIB_DEPS} cppnetlib-uri curlpp curl crypto ssl)
+  target_link_libraries(ut_httpapi ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS}  ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS} cppnetlib-uri curlpp curl crypto ssl)
   add_test(
     NAME ut_httpapi
     COMMAND ut_httpapi
@@ -136,17 +148,19 @@ if (GTEST_FOUND)
 if (USE_TF)
   set(INCEPT_EXAMPLE_PATH "examples/tf/inception/")
   set(INCEPT_EXAMPLE_MODEL_OUT "inception_v1.pb")
-  set(INCEPT_IMG "grace_hopper.jpg")
+  set(INCEPT_IMG1 "grace_hopper.jpg")
+  set(INCEPT_IMG2 "cat.jpg")
   set(INCEPT_CORRESP "corresp_inception_clean.txt")
   if (NOT EXISTS "${INCEPT_EXAMPLE_PATH}${INCEPT_EXAMPLE_MODEL_OUT}")
     message(STATUS "Downloading TF test model")
     file(DOWNLOAD "http://www.deepdetect.com/models/tf/${INCEPT_EXAMPLE_MODEL_OUT}" "${INCEPT_EXAMPLE_PATH}${INCEPT_EXAMPLE_MODEL_OUT}")
-    file(DOWNLOAD "http://www.deepdetect.com/models/tf/${INCEPT_IMG}" "${INCEPT_EXAMPLE_PATH}${INCEPT_IMG}")
+    file(DOWNLOAD "http://www.deepdetect.com/models/tf/${INCEPT_IMG1}" "${INCEPT_EXAMPLE_PATH}${INCEPT_IMG1}")
+    file(DOWNLOAD "http://www.deepdetect.com/models/tf/${INCEPT_IMG2}" "${INCEPT_EXAMPLE_PATH}${INCEPT_IMG2}")
     file(DOWNLOAD "http://www.deepdetect.com/models/tf/${INCEPT_CORRESP}" "${INCEPT_EXAMPLE_PATH}${INCEPT_CORRESP}")
   endif()
 
   add_executable(ut_tfapi ut-tfapi.cc)
-  target_link_libraries(ut_tfapi ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS})
+  target_link_libraries(ut_tfapi ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
   add_test(
     NAME ut_tfapi
     COMMAND ut_tfapi
@@ -155,7 +169,7 @@ endif()
   
 if (USE_XGBOOST)
   add_executable(ut_xgbapi ut-xgbapi.cc)
-  target_link_libraries(ut_xgbapi ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS}  ${XGBOOST_LIB_DEPS} ${TF_LIB_DEPS})
+  target_link_libraries(ut_xgbapi ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS}  ${XGBOOST_LIB_DEPS} ${TF_LIB_DEPS} ${TSNE_LIB_DEPS})
   add_test(
     NAME ut_xgbapi
     COMMAND ut_xgbapi

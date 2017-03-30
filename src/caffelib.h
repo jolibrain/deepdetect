@@ -71,29 +71,21 @@ namespace dd
      * @param net_param the training net object
      * @param deploy_net_param the deploy net object
      */
-    static void configure_mlp_template(const APIData &ad,
-				       const bool &regression,
-				       const bool &sparse,
-				       const int &targets,
-				       const int &cnclasses,
-				       caffe::NetParameter &net_param,
-				       caffe::NetParameter &deploy_net_param);
+      void configure_mlp_template(const APIData &ad,
+				  const TInputConnectorStrategy &inputc,
+				  caffe::NetParameter &net_param,
+				  caffe::NetParameter &dnet_param);
 
-    /**
-     * \brief configure a convnet template
-     * @param ad the template data object
-     * @param regression whether the net is a regressor
-     * @param cnclasses the number of output classes, if any
-     * @param net_param the training net object
-     * @param deploy_net_param the deploy net object
-     */
-    static void configure_convnet_template(const APIData &ad,
-					   const bool &regression,
-					   const int &targets,
-					   const int &cnclasses,
-					   const TInputConnectorStrategy &inputc,
-					   caffe::NetParameter &net_param,
-					   caffe::NetParameter &deploy_net_param);
+
+      void configure_convnet_template(const APIData &ad,
+				      const TInputConnectorStrategy &inputc,
+				      caffe::NetParameter &net_param,
+				      caffe::NetParameter &dnet_param);
+      
+      void configure_resnet_template(const APIData &ad,
+				     const TInputConnectorStrategy &inputc,
+				     caffe::NetParameter &net_param,
+				     caffe::NetParameter &dnet_param);
 
     /**
      * \brief configure noise data augmentation in training template
@@ -102,7 +94,7 @@ namespace dd
      */
     static void configure_noise_and_distort(const APIData &ad,
 					    caffe::NetParameter &net_param);
-      
+
     /**
      * \brief creates neural net instance based on model
      * @return 0 if OK, 2, if missing 'deploy' file, 1 otherwise

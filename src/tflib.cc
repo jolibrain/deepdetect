@@ -109,12 +109,12 @@ namespace dd
     int rbatch_size = dv.size();
     auto root = tensorflow::Scope::NewRootScope();
     std::string concat_name = "concatenated";
-    std::vector<tensorflow::ops::Input> ops_inputs;
+    std::vector<tensorflow::Input> ops_inputs;
     for (int i=0;i<rbatch_size;i++)
-      ops_inputs.push_back(std::move(tensorflow::ops::Input(dv[i])));
-    tensorflow::gtl::ArraySlice<tensorflow::ops::Input> ipl(&ops_inputs[0],ops_inputs.size());
-    tensorflow::ops::InputList toil(ipl);
-    auto concatout = tensorflow::ops::Concat(root.WithOpName(concat_name),0,toil);
+      ops_inputs.push_back(std::move(tensorflow::Input(dv[i])));
+    tensorflow::gtl::ArraySlice<tensorflow::Input> ipl(&ops_inputs[0],ops_inputs.size());
+    tensorflow::InputList toil(ipl);
+    auto concatout = tensorflow::ops::Concat(root.WithOpName(concat_name),toil,0);
     std::unique_ptr<tensorflow::Session> concat_session(tensorflow::NewSession(tensorflow::SessionOptions()));
     tensorflow::GraphDef graph;
     root.ToGraphDef(&graph);

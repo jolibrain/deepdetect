@@ -35,35 +35,55 @@ namespace dd
       }
     else return -1;
   }
+
+  int DDCsv::read_db(const std::string &fname)
+  {
+    _cifc->_db_fname = fname;
+    return 0;
+  }
   
   int DDCsv::read_mem(const std::string &content)
   {
     if (!_cifc)
       return -1;
-    std::vector<double> vals;
-    std::string cid;
-    int nlines = 0;
-    _cifc->read_csv_line(content,_cifc->_delim,vals,cid,nlines);
-    if (_cifc->_scale)
+    std::stringstream sh(content);
+    std::string line;
+    int l = 0;
+    while(std::getline(sh,line))
       {
-	if (!_cifc->_train) // in prediction mode, on-the-fly scaling
+	if (_cifc->_columns.empty() && _cifc->_train && l == 0)
 	  {
-	    _cifc->scale_vals(vals);
+	    _cifc->read_header(line);
+	    ++l;
+	    continue;
 	  }
-	else // in training mode, collect bounds, then scale in another pass over the data
+	
+	std::vector<double> vals;
+	std::string cid;
+	int nlines = 0;
+	_cifc->read_csv_line(line,_cifc->_delim,vals,cid,nlines);
+	if (_cifc->_scale)
 	  {
-	    if (_cifc->_min_vals.empty() && _cifc->_max_vals.empty())
-	      _cifc->_min_vals = _cifc->_max_vals = vals;
-	    for (size_t j=0;j<vals.size();j++)
+	    if (!_cifc->_train) // in prediction mode, on-the-fly scaling
 	      {
-		_cifc->_min_vals.at(j) = std::min(vals.at(j),_cifc->_min_vals.at(j));
-		_cifc->_max_vals.at(j) = std::max(vals.at(j),_cifc->_max_vals.at(j));
+		_cifc->scale_vals(vals);
+	      }
+	    else // in training mode, collect bounds, then scale in another pass over the data
+	      {
+		if (_cifc->_min_vals.empty() && _cifc->_max_vals.empty())
+		  _cifc->_min_vals = _cifc->_max_vals = vals;
+		for (size_t j=0;j<vals.size();j++)
+		  {
+		    _cifc->_min_vals.at(j) = std::min(vals.at(j),_cifc->_min_vals.at(j));
+		    _cifc->_max_vals.at(j) = std::max(vals.at(j),_cifc->_max_vals.at(j));
+		  }
 	      }
 	  }
+	if (!cid.empty())
+	  _cifc->add_train_csvline(cid,vals);
+	else _cifc->add_train_csvline(std::to_string(_cifc->_csvdata.size()+1),vals);
+	++l;
       }
-    if (!cid.empty())
-      _cifc->add_train_csvline(cid,vals);
-    else _cifc->add_train_csvline(std::to_string(_cifc->_csvdata.size()+1),vals);
     return 0;
   }
 

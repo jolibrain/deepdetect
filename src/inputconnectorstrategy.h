@@ -62,7 +62,9 @@ namespace dd
 	}
       else if (fileops::file_exists(uri,dir))
 	{
-	  if (dir)
+	  if (fileops::is_db(uri))
+	    return _ctype.read_db(uri); // XXX: db can acutally be a dir (e.g. lmdb)
+	  else if (dir)
 	    return _ctype.read_dir(uri);
 	  else return _ctype.read_file(uri);
 	}

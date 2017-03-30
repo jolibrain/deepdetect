@@ -84,7 +84,7 @@ include_directories("${PROTOBUF_INCLUDE_DIR}")
       PREFIX tensorflow
       INSTALL_DIR ${CMAKE_BINARY_DIR}
       DOWNLOAD_COMMAND git clone --recurse-submodules https://github.com/tensorflow/tensorflow
-      CONFIGURE_COMMAND mkdir -p ${CMAKE_BINARY_DIR}/protobuf && git checkout 0.12.1 && mkdir -p dbuild && ${CMAKE_BINARY_DIR}/patches/test_patch.sh ${CMAKE_BINARY_DIR}/patches/tf/libtf_link.patch && ${CMAKE_BINARY_DIR}/patches/test_patch.sh ${CMAKE_BINARY_DIR}/patches/tf/test_only_BUILD.patch && ${CMAKE_BINARY_DIR}/patches/test_patch.sh ${CMAKE_BINARY_DIR}/patches/tf/mwaitxintrin.patch && ${CMAKE_BINARY_DIR}/patches/test_patch.sh ${CMAKE_BINARY_DIR}/patches/tf/zlib_dl.patch && sed "s/bazel /bazel --output_base=dbuild /" < configure > configure.new && mv configure configure.bak && mv configure.new configure && chmod +x configure && ./configure && bazel --output_base dbuild/ build -c opt --config=cuda //tensorflow/tools/pip_package:build_pip_package //tensorflow:libtensorflow.so //tensorflow/examples/label_image //tensorflow/python/tools:freeze_graph && ln -s ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/bazel-out/local-opt ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/bazel-out/local_linux-opt && bazel shutdown && cd dbuild/external/protobuf && ./autogen.sh && ./configure --prefix=${CMAKE_BINARY_DIR}/protobuf && make -j${N} && make install
+      CONFIGURE_COMMAND mkdir -p ${CMAKE_BINARY_DIR}/protobuf && git checkout v1.0.1 && mkdir -p dbuild && ${CMAKE_BINARY_DIR}/patches/test_patch.sh ${CMAKE_BINARY_DIR}/patches/tf/libtf_link.patch && ${CMAKE_BINARY_DIR}/patches/test_patch.sh ${CMAKE_BINARY_DIR}/patches/tf/test_only_BUILD.patch && sed "s/bazel /bazel --output_base=dbuild /" < configure > configure.new && mv configure configure.bak && mv configure.new configure && chmod +x configure && ./configure && bazel --output_base dbuild/ build -c opt --config=cuda //tensorflow/tools/pip_package:build_pip_package //tensorflow:libtensorflow.so //tensorflow/examples/label_image //tensorflow/python/tools:freeze_graph && ln -s ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/bazel-out/local-opt ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/bazel-out/local_linux-opt && bazel shutdown && cd dbuild/external/protobuf && ./autogen.sh && ./configure --prefix=${CMAKE_BINARY_DIR}/protobuf && make -j${N} && make install
       INSTALL_COMMAND ""
       BUILD_COMMAND ""
       BUILD_IN_SOURCE 1
@@ -95,7 +95,7 @@ include_directories("${PROTOBUF_INCLUDE_DIR}")
       PREFIX tensorflow
       INSTALL_DIR ${CMAKE_BINARY_DIR}
       DOWNLOAD_COMMAND git clone --recurse-submodules https://github.com/tensorflow/tensorflow
-      CONFIGURE_COMMAND mkdir -p ${CMAKE_BINARY_DIR}/protobuf && git checkout 0.12.1 && mkdir -p dbuild && ${CMAKE_BINARY_DIR}/patches/test_patch.sh ${CMAKE_BINARY_DIR}/patches/tf/libtf_link.patch && ${CMAKE_BINARY_DIR}/patches/test_patch.sh ${CMAKE_BINARY_DIR}/patches/tf/test_only_BUILD.patch && ${CMAKE_BINARY_DIR}/patches/test_patch.sh ${CMAKE_BINARY_DIR}/patches/tf/zlib_dl.patch && sed "s/bazel /bazel --output_base=dbuild /" < configure > configure.new && mv configure configure.bak && mv configure.new configure && chmod +x configure && ./configure && bazel --output_base dbuild/ build -c opt //tensorflow:libtensorflow.so //tensorflow/examples/label_image //tensorflow/python/tools:freeze_graph && ln -s ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/bazel-out/local-opt ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/bazel-out/local_linux-opt && bazel shutdown && cd dbuild/external/protobuf && ./autogen.sh && ./configure --prefix=${CMAKE_BINARY_DIR}/protobuf && make -j${N} && make install
+      CONFIGURE_COMMAND mkdir -p ${CMAKE_BINARY_DIR}/protobuf && git checkout v1.0.1 && mkdir -p dbuild && ${CMAKE_BINARY_DIR}/patches/test_patch.sh ${CMAKE_BINARY_DIR}/patches/tf/libtf_link.patch && ${CMAKE_BINARY_DIR}/patches/test_patch.sh ${CMAKE_BINARY_DIR}/patches/tf/test_only_BUILD.patch && sed "s/bazel /bazel --output_base=dbuild /" < configure > configure.new && mv configure configure.bak && mv configure.new configure && chmod +x configure && ./configure && bazel --output_base dbuild/ build -c opt //tensorflow:libtensorflow.so //tensorflow/examples/label_image //tensorflow/python/tools:freeze_graph && ln -s ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/bazel-out/local-opt ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/bazel-out/local_linux-opt && bazel shutdown && cd dbuild/external/protobuf && ./autogen.sh && ./configure --prefix=${CMAKE_BINARY_DIR}/protobuf && make -j${N} && make install
       INSTALL_COMMAND ""
       BUILD_COMMAND ""
       BUILD_IN_SOURCE 1
@@ -239,12 +239,28 @@ if (USE_XGBOOST)
   set(XGBOOST_INC_DIR ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/include ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/src ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/rabit/include ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/dmlc-core/include ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/dmlc-core/src/)
   set(XGBOOST_LIB_DIR ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/lib ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/ ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/dmlc-core)
 endif()
-  
+
+if (USE_TSNE)
+  message(STATUS "Configuring T-SNE")
+  add_definitions(-DUSE_TSNE)
+      ExternalProject_Add(
+      Multicore-TSNE
+      PREFIX Multicore-TSNE
+      INSTALL_DIR ${CMAKE_BINARY_DIR}
+      DOWNLOAD_COMMAND git clone https://github.com/beniz/Multicore-TSNE.git
+      CONFIGURE_COMMAND cd multicore_tsne && mkdir build && cd build && cmake ..
+      BUILD_COMMAND cd multicore_tsne/build/ && make
+      INSTALL_COMMAND ""
+      BUILD_IN_SOURCE 1
+      )
+    set(TSNE_INC_DIR ${CMAKE_BINARY_DIR}/Multicore-TSNE/src/Multicore-TSNE/multicore_tsne)
+    set(TSNE_LIB_DIR ${CMAKE_BINARY_DIR}/Multicore-TSNE/src/Multicore-TSNE/multicore_tsne/build)
+endif()
 
 # add the binary tree to the search path for include files
 # so that we will find dd_config.h
 include_directories("${PROJECT_BINARY_DIR}")
-include_directories(${CAFFE_INC_DIR} ${XGBOOST_INC_DIR})
+include_directories(${CAFFE_INC_DIR} ${XGBOOST_INC_DIR} ${TSNE_INC_DIR})
 
 # main library, main & tests
 include_directories ("${PROJECT_SOURCE_DIR}/src")

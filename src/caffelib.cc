@@ -22,6 +22,9 @@
 #include "caffelib.h"
 #include "imginputfileconn.h"
 #include "outputconnectorstrategy.h"
+#include "generators/net_caffe.h"
+#include "generators/net_caffe_convnet.h"
+#include "generators/net_caffe_resnet.h"
 #include "utils/fileops.hpp"
 #include "utils/utils.hpp"
 #include <chrono>
@@ -125,39 +128,45 @@ namespace dd
     LOG(INFO) << "dest=" << this->_mlmodel._repo + '/' + model_tmpl + ".prototxt";
     std::string dest_net = this->_mlmodel._repo + '/' + model_tmpl + ".prototxt";
     std::string dest_deploy_net = this->_mlmodel._repo + "/deploy.prototxt";
-    int err = fileops::copy_file(source + model_tmpl + ".prototxt", dest_net);
-    if (err == 1)
-      throw MLLibBadParamException("failed to locate model template " + source + ".prototxt");
-    else if (err == 2)
-      throw MLLibBadParamException("failed to create model template destination " + dest_net);
-    err = fileops::copy_file(source + model_tmpl + "_solver.prototxt",
-			     this->_mlmodel._repo + '/' + model_tmpl + "_solver.prototxt");
+    if (model_tmpl != "mlp" && model_tmpl != "convnet" && model_tmpl != "resnet")
+      {
+	int err = fileops::copy_file(source + model_tmpl + ".prototxt", dest_net);
+	if (err == 1)
+	  throw MLLibBadParamException("failed to locate model template " + source + ".prototxt");
+	else if (err == 2)
+	  throw MLLibBadParamException("failed to create model template destination " + dest_net);
+	err = fileops::copy_file(source + "deploy.prototxt", dest_deploy_net);
+	if (err == 1)
+	  throw MLLibBadParamException("failed to locate deploy template " + source + "deploy.prototxt");
+	else if (err == 2)
+	  throw MLLibBadParamException("failed to create destination deploy solver file " + dest_deploy_net);
+      }
+    int err = fileops::copy_file(source + model_tmpl + "_solver.prototxt",
+				 this->_mlmodel._repo + '/' + model_tmpl + "_solver.prototxt");
     if (err == 1)
       throw MLLibBadParamException("failed to locate solver template " + source + model_tmpl + "_solver.prototxt");
     else if (err == 2)
       throw MLLibBadParamException("failed to create destination template solver file " + this->_mlmodel._repo + '/' + model_tmpl + "_solver.prototxt");
-    err = fileops::copy_file(source + "deploy.prototxt", dest_deploy_net);
-    if (err == 1)
-      throw MLLibBadParamException("failed to locate deploy template " + source + "deploy.prototxt");
-    else if (err == 2)
-      throw MLLibBadParamException("failed to create destination deploy solver file " + dest_deploy_net);
-
+    
     // if mlp template, set the net structure as number of layers.
     if (model_tmpl == "mlp" || model_tmpl == "mlp_db" || model_tmpl == "lregression")
       {
 	caffe::NetParameter net_param,deploy_net_param;
-	caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
-	caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
-	configure_mlp_template(ad,_regression,this->_inputc._sparse,_ntargets,_nclasses,net_param,deploy_net_param);
+	configure_mlp_template(ad,this->_inputc,net_param,deploy_net_param);
 	caffe::WriteProtoToTextFile(net_param,dest_net);
 	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
       }
     else if (model_tmpl == "convnet")
       {
 	caffe::NetParameter net_param,deploy_net_param;
-	caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
-	caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
-	configure_convnet_template(ad,_regression,_ntargets,_nclasses,this->_inputc,net_param,deploy_net_param);
+	configure_convnet_template(ad,this->_inputc,net_param,deploy_net_param);
+	caffe::WriteProtoToTextFile(net_param,dest_net);
+	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
+      }
+    else if (model_tmpl == "resnet")
+      {
+	caffe::NetParameter net_param,deploy_net_param;
+	configure_resnet_template(ad,this->_inputc,net_param,deploy_net_param);
 	caffe::WriteProtoToTextFile(net_param,dest_net);
 	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
       }
@@ -303,1162 +312,51 @@ namespace dd
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_mlp_template(const APIData &ad,
-												   const bool &regression,
-												   const bool &sparse,
-												   const int &targets,
-												   const int &cnclasses,
+												   const TInputConnectorStrategy &inputc,
 												   caffe::NetParameter &net_param,
-												   caffe::NetParameter &deploy_net_param)
-  {
-    std::string model_tmpl = ad.get("template").get<std::string>();
-    std::vector<int> layers = {50};
-    std::string activation = "ReLU";
-    double elu_alpha = 1.0;
-    double dropout = 0.5;
-    if (ad.has("layers"))
-      layers = ad.get("layers").get<std::vector<int>>();
-    if (ad.has("activation"))
-      {
-	activation = ad.get("activation").get<std::string>();
-	if (dd_utils::iequals(activation,"relu"))
-	  activation = "ReLU";
-	else if (dd_utils::iequals(activation,"prelu"))
-	  activation = "PReLU";
-	else if (dd_utils::iequals(activation,"elu"))
-	  {
-	    activation = "ELU";
-	    if (ad.has("elu_alpha"))
-	      elu_alpha = ad.get("elu_alpha").get<double>();
-	  }
-	else if (dd_utils::iequals(activation,"sigmoid"))
-	  activation = "Sigmoid";
-	else if (dd_utils::iequals(activation,"tanh"))
-	  activation = "TanH";
-      }
-    if (ad.has("dropout"))
-      dropout = ad.get("dropout").get<double>();
-    bool db = false;
-    if (ad.has("db") && ad.get("db").get<bool>())
-      db = true;
-    bool autoencoder = false;
-    if (ad.has("autoencoder") && ad.get("autoencoder").get<bool>())
-      autoencoder = true;
-    std::string init = "xavier";
-    if (ad.has("init"))
-      init = ad.get("init").get<std::string>();
-    double init_std = 0.1;
-    if (ad.has("init_std"))
-      init_std = ad.get("init_std").get<double>();
-    if (!autoencoder && !db && layers.empty() && activation == "ReLU" && dropout == 0.5 && targets == 0)
-      return; // nothing to do
-    
-    int nclasses = 0;
-    int rl = 2;
-    int drl = 1;
-    int max_rl = 8;
-    int max_drl = 5;
-    caffe::LayerParameter *lparam = nullptr;
-    caffe::LayerParameter *dlparam = nullptr;
-    std::string prec_ip = "data";
-    std::string last_ip = "ip0";
-    for (size_t l=0;l<layers.size();l++)
-      {
-	if (l == 0)
-	  {
-	    if (model_tmpl != "lregression")
-	      lparam = net_param.mutable_layer(6);
-	    else lparam = net_param.mutable_layer(2);
-	    if (!cnclasses) // if unknown we keep the default one
-	      nclasses = lparam->mutable_inner_product_param()->num_output();
-	    else nclasses = cnclasses;
-	    if (targets > 1)
-	      {
-		lparam = net_param.mutable_layer(0);
-		lparam->set_top(0,"fulldata");
-		lparam->set_top(1,"fake_label");
-		if (!db)
-		  lparam->mutable_memory_data_param()->set_channels(targets); // XXX: temporary value, set at training time
-		else
-		  {
-		    lparam->clear_memory_data_param();
-		    lparam->set_type("Data");
-		    caffe::DataParameter *ldparam = lparam->mutable_data_param();
-		    ldparam->set_source("train.lmdb");
-		    ldparam->set_batch_size(1000); // dummy value, updated before training
-		    ldparam->set_backend(caffe::DataParameter_DB_LMDB);
-		  }
-		lparam = net_param.mutable_layer(1);
-		lparam->set_top(0,"fulldata");
-		lparam->set_top(1,"fake_label");
-		lparam->mutable_memory_data_param()->set_channels(targets);
-		dlparam = deploy_net_param.mutable_layer(0);
-		dlparam->set_top(0,"fulldata");
-		dlparam->set_top(1,"fake_label");
-		dlparam->mutable_memory_data_param()->set_channels(targets);
-		
-		lparam = net_param.mutable_layer(rl);
-		lparam->clear_include();
-		lparam->clear_top();
-		lparam->clear_bottom();
-		lparam->clear_inner_product_param();
-		lparam->clear_dropout_param();
-		lparam->clear_loss_weight();
-		lparam->set_name("slice_labels");
-		lparam->set_type("Slice");
-		lparam->add_bottom("fulldata");
-		lparam->add_top(prec_ip);
-		lparam->add_top("label");
-		caffe::SliceParameter *spp = lparam->mutable_slice_param();
-		spp->set_slice_dim(1);
-		spp->add_slice_point(nclasses);
-		++rl;
+												   caffe::NetParameter &dnet_param)
+    {
+      	NetCaffe<NetInputCaffe<TInputConnectorStrategy>,NetLayersCaffeMLP,NetLossCaffe> netcaffe(&net_param,&dnet_param);
+	netcaffe._nic.configure_inputs(ad,inputc);
+	if (inputc._sparse)
+	  const_cast<APIData&>(ad).add("sparse",true);
+	if (_regression)
+	  const_cast<APIData&>(ad).add("regression",true);
+	netcaffe._nlac.configure_net(ad);
+    }
 
-		dlparam = deploy_net_param.mutable_layer(drl);
-		dlparam->clear_include();
-		dlparam->clear_top();
-		dlparam->clear_bottom();
-		dlparam->clear_inner_product_param();
-		dlparam->clear_dropout_param();
-		dlparam->clear_loss_weight();
-		dlparam->set_name("slice_labels");
-		dlparam->set_type("Slice");
-		dlparam->add_bottom("fulldata");
-		dlparam->add_top(prec_ip);
-		dlparam->add_top("label");
-		spp = dlparam->mutable_slice_param();
-		spp->set_slice_dim(1);
-		spp->add_slice_point(nclasses); // XXX: temporary value
-		++drl;
-	      }
-	    else if (db)
-	      {
-		// fixing input layer so that it takes data in from db
-		lparam = net_param.mutable_layer(0);
-		lparam->clear_memory_data_param();
-		if (!sparse)
-		  lparam->set_type("Data");
-		else lparam->set_type("SparseData");
-		caffe::DataParameter *ldparam = lparam->mutable_data_param();
-		ldparam->set_source("train.lmdb");
-		ldparam->set_batch_size(1000); // dummy value, updated before training
-		ldparam->set_backend(caffe::DataParameter_DB_LMDB);
-	      }
-	    if (sparse)
-	      {
-		if (!db)
-		  {
-		    lparam = net_param.mutable_layer(0);
-		    lparam->set_type("MemorySparseData");
-		  }	
-		
-		lparam = net_param.mutable_layer(1); // test layer
-		lparam->set_type("MemorySparseData");
-		
-		dlparam = deploy_net_param.mutable_layer(0);
-		dlparam->set_type("MemorySparseData");
-	      }
-	  }
-	else if (l > 0 && model_tmpl != "lregression")
-	  {
-	    prec_ip = "ip" + std::to_string(l-1);
-	    last_ip = "ip" + std::to_string(l);
-	  }
-	if (model_tmpl == "lregression") // one pass for lregression
-	  {
-	    if (sparse)
-	      {
-		lparam = net_param.mutable_layer(2);
-		lparam->set_type("SparseInnerProduct");
-		lparam->mutable_inner_product_param()->set_num_output(nclasses);
-		dlparam = deploy_net_param.mutable_layer(1);
-		dlparam->set_type("SparseInnerProduct");
-		dlparam->mutable_inner_product_param()->set_num_output(nclasses);
-	      }
-	    return;
-	  }
-
-	if (rl < max_rl)
-	  {
-	    lparam = net_param.mutable_layer(rl);
-	    lparam->clear_include();
-	    lparam->clear_top();
-	    lparam->clear_bottom();
-	    lparam->clear_inner_product_param();
-	    lparam->clear_dropout_param();
-	    lparam->clear_loss_weight();
-	  }
-	else lparam = net_param.add_layer();
-	lparam->set_name(last_ip);
-	if (rl == 2 && sparse)
-	  lparam->set_type("SparseInnerProduct");
-	else lparam->set_type("InnerProduct");
-	lparam->add_bottom(prec_ip);
-	lparam->add_top(last_ip);
-	caffe::InnerProductParameter *ipp = lparam->mutable_inner_product_param();
-	ipp->set_num_output(layers.at(l));
-	ipp->mutable_weight_filler()->set_type(init);
-	if (init == "gaussian")
-	  ipp->mutable_weight_filler()->set_std(init_std);
-	ipp->mutable_bias_filler()->set_type("constant");
-	++rl;
-	
-	if (drl < max_drl)
-	  {
-	    dlparam = deploy_net_param.mutable_layer(drl);
-	    dlparam->clear_include();
-	    dlparam->clear_top();
-	    dlparam->clear_bottom();
-	    dlparam->clear_inner_product_param();
-	    dlparam->clear_dropout_param();
-	    dlparam->clear_loss_weight();
-	  }
-	else dlparam = deploy_net_param.add_layer();
-	dlparam->set_name(last_ip);
-	if (drl == 1 && sparse)
-	  dlparam->set_type("SparseInnerProduct");
-	else dlparam->set_type("InnerProduct");
-	dlparam->add_bottom(prec_ip);
-	dlparam->add_top(last_ip);
-	ipp = dlparam->mutable_inner_product_param();
-	ipp->set_num_output(layers.at(l));
-	ipp->mutable_weight_filler()->set_type(init);
-	if (init == "gaussian")
-	  ipp->mutable_weight_filler()->set_std(init_std);
-	ipp->mutable_bias_filler()->set_type("constant");
-	++drl;
-	
-	/*if (autoencoder && l == layers.size()-1) //TODO: not for MSE
-	  break;*/
-
-	if (rl < max_rl)
-	  {
-	    lparam = net_param.mutable_layer(rl);
-	    lparam->clear_include();
-	    lparam->clear_top();
-	    lparam->clear_bottom();
-	    lparam->clear_loss_weight();
-	    lparam->clear_dropout_param();
-	    lparam->clear_inner_product_param();
-	  }
-	else lparam = net_param.add_layer();
-	lparam->set_name("act"+std::to_string(l));
-	lparam->set_type(activation);
-	if (activation == "ELU" && elu_alpha != 1.0)
-	  lparam->mutable_elu_param()->set_alpha(elu_alpha);
-	lparam->add_bottom(last_ip);
-	lparam->add_top(last_ip);
-	++rl;
-
-	if (drl < max_drl)
-	  {
-	    dlparam = deploy_net_param.mutable_layer(drl);
-	    dlparam->clear_include();
-	    dlparam->clear_top();
-	    dlparam->clear_bottom();
-	    dlparam->clear_loss_weight();
-	    dlparam->clear_dropout_param();
-	    dlparam->clear_inner_product_param();
-	  }
-	else dlparam = deploy_net_param.add_layer();
-	dlparam->set_name("act"+std::to_string(l));
-	dlparam->set_type(activation);
-	if (activation == "ELU" && elu_alpha != 1.0)
-	  lparam->mutable_elu_param()->set_alpha(elu_alpha);
-	dlparam->add_bottom(last_ip);
-	dlparam->add_top(last_ip);
-	++drl;
-	
-	if (autoencoder && l == layers.size()-1) //TODO: for MSE
-	  break;
-
-	if (dropout > 0.0 && dropout < 1.0)
-	  {
-	    if (rl < max_rl)
-	      {
-		lparam = net_param.mutable_layer(rl);
-		lparam->clear_include();
-		lparam->clear_bottom();
-		lparam->clear_top();
-		lparam->clear_loss_weight();
-		lparam->clear_dropout_param();
-		lparam->clear_inner_product_param();
-	      }
-	    else lparam = net_param.add_layer(); // dropout layer
-	    lparam->set_name("drop"+std::to_string(l));
-	    lparam->set_type("Dropout");
-	    lparam->add_bottom(last_ip);
-	    lparam->add_top(last_ip);
-	    lparam->mutable_dropout_param()->set_dropout_ratio(dropout);
-	    ++rl;
-	  }
-      }
-
-    // add remaining softmax layers
-    prec_ip = "ip" + std::to_string(layers.size()-1);
-    last_ip = "ip" + std::to_string(layers.size());
-    
-    if (rl < max_rl)
-      {
-	lparam = net_param.mutable_layer(rl); // last inner product before softmax
-	lparam->clear_include();
-	lparam->clear_bottom();
-	lparam->clear_top();
-	lparam->clear_loss_weight();
-	lparam->clear_dropout_param();
-	    lparam->clear_inner_product_param();
-      }
-    else lparam = net_param.add_layer();
-    lparam->set_name(last_ip);
-    lparam->set_type("InnerProduct");
-    lparam->add_bottom(prec_ip);
-    lparam->add_top(last_ip);
-    caffe::InnerProductParameter *ipp = lparam->mutable_inner_product_param();
-    if (!regression || targets == 0)
-      ipp->set_num_output(nclasses);
-    else if (autoencoder)
-      ipp->set_num_output(targets); // XXX: temporary value, set at training time
-    else
-      ipp->set_num_output(targets);
-    ipp->mutable_weight_filler()->set_type(init);
-    if (init == "gaussian")
-      ipp->mutable_weight_filler()->set_std(init_std);
-    ipp->mutable_bias_filler()->set_type("constant");
-    ++rl;
-    
-    if (drl < max_drl)
-      {
-	dlparam = deploy_net_param.mutable_layer(drl);
-	dlparam->clear_include();
-	dlparam->clear_top();
-	dlparam->clear_bottom();
-	dlparam->clear_loss_weight();
-	dlparam->clear_dropout_param();
-	dlparam->clear_inner_product_param();
-      }
-    else dlparam = deploy_net_param.add_layer();
-    dlparam->set_name(last_ip);
-    dlparam->set_type("InnerProduct");
-    dlparam->add_bottom(prec_ip);
-    dlparam->add_top(last_ip);
-    caffe::InnerProductParameter *dipp = dlparam->mutable_inner_product_param();
-    if (!regression || targets == 0)
-      dipp->set_num_output(nclasses);
-    else dipp->set_num_output(targets);
-    dipp->mutable_weight_filler()->set_type(init);
-    if (init == "gaussian")
-      dipp->mutable_weight_filler()->set_std(init_std);
-    dipp->mutable_bias_filler()->set_type("constant");
-    ++drl;
-    
-    if (!autoencoder)
-      {	
-	if (!regression)
-	  {
-	    if (rl < max_rl)
-	      {
-		lparam = net_param.mutable_layer(rl);
-		lparam->clear_include();
-		lparam->clear_bottom();
-		lparam->clear_top();
-		lparam->clear_loss_weight();
-		lparam->clear_dropout_param();
-		lparam->clear_inner_product_param();
-	      }
-	    else lparam = net_param.add_layer(); // test loss
-	    lparam->set_name("losst");
-	    lparam->set_type("Softmax");
-	    lparam->add_bottom(last_ip);
-	    lparam->add_top("losst");
-	    caffe::NetStateRule *nsr = lparam->add_include();
-	    nsr->set_phase(caffe::TEST);
-	    ++rl;
-	  }
-	
-	if (rl < max_rl)
-	  {
-	    lparam = net_param.mutable_layer(rl);
-	    lparam->clear_include();
-	    lparam->clear_bottom();
-	    lparam->clear_top();
-	    lparam->clear_loss_weight();
-	    lparam->clear_dropout_param();
-	    lparam->clear_inner_product_param();
-	  }
-	else lparam = net_param.add_layer(); // training loss
-	lparam->set_name("loss");
-	if (regression)
-	  {
-	    lparam->set_type("EuclideanLoss");
-	  }
-	else lparam->set_type("SoftmaxWithLoss");
-	lparam->add_bottom(last_ip);
-	lparam->add_bottom("label");
-	lparam->add_top("loss");
-	caffe::NetStateRule *nsr = lparam->add_include();
-	nsr->set_phase(caffe::TRAIN);
-	++rl;
-	
-	if (!regression)
-	  {
-	    if (drl < max_drl)
-	      {
-		dlparam = deploy_net_param.mutable_layer(drl);
-		dlparam->clear_include();
-		dlparam->clear_top();
-		dlparam->clear_bottom();
-		dlparam->clear_loss_weight();
-		dlparam->clear_dropout_param();
-		dlparam->clear_inner_product_param();
-	      }
-	    else dlparam = deploy_net_param.add_layer();
-	    dlparam->set_name("loss");
-	    dlparam->set_type("Softmax");
-	    dlparam->add_bottom(last_ip);
-	    dlparam->add_top("loss");
-	  }
-      }
-    else
-      {
-	if (rl < max_rl)
-	  {
-	    lparam = net_param.mutable_layer(rl);
-	    lparam->clear_include();
-	    lparam->clear_bottom();
-	    lparam->clear_top();
-	    lparam->clear_loss_weight();
-	    lparam->clear_dropout_param();
-	    lparam->clear_inner_product_param();
-	  }
-	else lparam = net_param.add_layer();
-	lparam->set_name("loss");
-	lparam->set_type("SigmoidCrossEntropyLoss"); //TODO: option for MSE
-	lparam->add_bottom(last_ip);
-	lparam->add_bottom("data");
-	lparam->add_top("loss");
-	caffe::NetStateRule *nsr = lparam->add_include();
-	nsr->set_phase(caffe::TRAIN);
-	++rl;
-
-	if (rl < max_rl)
-	  {
-	    lparam = net_param.mutable_layer(rl);
-	    lparam->clear_include();
-	    lparam->clear_bottom();
-	    lparam->clear_top();
-	    lparam->clear_loss_weight();
-	    lparam->clear_dropout_param();
-	    lparam->clear_inner_product_param();
-	  }
-	else lparam = net_param.add_layer();
-	lparam->set_name("losst");
-	lparam->set_type("Sigmoid");
-	lparam->add_bottom(last_ip);
-	lparam->add_top("losst");
-	nsr = lparam->add_include();
-	nsr->set_phase(caffe::TEST);
-	++rl;
-	
-	// add decoupled sigmoid and cross entropy loss to deploy
-	if (drl < max_drl)
-	  {
-	    dlparam = deploy_net_param.mutable_layer(drl);
-	    dlparam->clear_include();
-	    dlparam->clear_bottom();
-	    dlparam->clear_top();
-	    dlparam->clear_loss_weight();
-	    dlparam->clear_dropout_param();
-	    dlparam->clear_inner_product_param();
-	  }
-	else dlparam = deploy_net_param.add_layer();
-	dlparam->set_name("sig");
-	dlparam->set_type("Sigmoid"); //TODO: option for MSE
-	dlparam->add_bottom(last_ip);
-	dlparam->add_top("sig");
-
-	if (drl < max_drl)
-	  {
-	    dlparam = deploy_net_param.mutable_layer(drl);
-	    dlparam->clear_include();
-	    dlparam->clear_bottom();
-	    dlparam->clear_top();
-	    dlparam->clear_loss_weight();
-	    dlparam->clear_dropout_param();
-	    dlparam->clear_inner_product_param();
-	  }
-	else dlparam = deploy_net_param.add_layer();
-	dlparam->set_name("loss");
-	dlparam->set_type("CrossEntropyLoss"); //TODO: option for MSE
-	dlparam->add_bottom("sig");
-	dlparam->add_bottom("data");
-	dlparam->add_top("loss");
-	
-	while (rl < max_rl)
-	  {
-	    net_param.mutable_layer()->RemoveLast();
-	    ++rl;
-	  }
-	while (drl < max_drl)
-	  {
-	    deploy_net_param.mutable_layer()->RemoveLast();
-	    ++drl;
-	  }
-      }
-  }
-  
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_convnet_template(const APIData &ad,
-												       const bool &regression,
-												       const int &targets,
-												       const int &cnclasses,
 												       const TInputConnectorStrategy &inputc,
 												       caffe::NetParameter &net_param,
-												       caffe::NetParameter &deploy_net_param)
+												       caffe::NetParameter &dnet_param)
   {
-    //- get relevant configuration elements
-    std::vector<std::string> layers;
-    std::string activation = "ReLU";
-    double elu_alpha = 1.0;
-    double dropout = 0.5;
-    if (ad.has("layers"))
-      try
-	{
-	  layers = ad.get("layers").get<std::vector<std::string>>();
-	}
-      catch(std::exception &e)
-	{
-	  throw MLLibBadParamException("convnet template requires specifying a string array of layers");
-	}
-    if (ad.has("activation"))
-      {
-	activation = ad.get("activation").get<std::string>();
-	if (dd_utils::iequals(activation,"relu"))
-	  activation = "ReLU";
-	else if (dd_utils::iequals(activation,"prelu"))
-	  activation = "PReLU";
-	else if (dd_utils::iequals(activation,"elu"))
-	  {
-	    activation = "ELU";
-	    if (ad.has("elu_alpha"))
-	      elu_alpha = ad.get("elu_alpha").get<double>();
-	  }
-	else if (dd_utils::iequals(activation,"sigmoid"))
-	  activation = "Sigmoid";
-	else if (dd_utils::iequals(activation,"tanh"))
-	  activation = "TanH";
-      }
-    if (ad.has("dropout"))
-      dropout = ad.get("dropout").get<double>();
-    bool db = inputc._db;
-    if (ad.has("db") && ad.get("db").get<bool>())
-      db = true;
-    if (!db && layers.empty() && activation == "ReLU" && dropout == 0.5)
-      return; // nothing to do
-
-    const std::string cr_str = "CR";
-    const std::string p_str = "P";
-    std::vector<std::pair<int,int>> cr_layers; // conv + activation
-    std::vector<int> fc_layers; // fully connected
-    for (auto s: layers)
-      {
-	size_t pos = 0;
-	if ((pos=s.find(cr_str))!=std::string::npos)
-	  {
-	    std::string ncr = s.substr(0,pos);
-	    std::string crs = s.substr(pos+cr_str.size());
-	    cr_layers.push_back(std::pair<int,int>(std::atoi(ncr.c_str()),std::atoi(crs.c_str())));
-	  }
-	else
-	  {
-	    try
-	      {
-		fc_layers.push_back(std::atoi(s.c_str()));
-	      }
-	    catch(std::exception &e)
-	      {
-		throw MLLibBadParamException("convnet template requires fully connected layers size to be specified as a string");
-	      }
-	  }
-      }
-
-    // default params
-    uint32_t conv_kernel_size = 3;
-    uint32_t conv1d_early_kernel_size = 7;
-    std::string conv_wfill_type = "xavier";
-    double conv_wfill_std = 0.001;
-    std::string conv_b_type = "constant";
-    caffe::PoolingParameter_PoolMethod pool_type = caffe::PoolingParameter_PoolMethod_MAX;
-    bool flat1dconv = inputc._flat1dconv; // whether the model uses 1d-conv (e.g. character-level convnet for text)
-    int pool_kernel_size = 2;
-    int pool_stride = 2;
-    int nclasses = 0;
-    int rl = 2;
-    int drl = 1;
-    int max_rl = 9;
-    int max_drl = 6;
-    caffe::LayerParameter *lparam = nullptr;
-    caffe::LayerParameter *dlparam = nullptr;
-    int ccount = 0;
-    std::string prec_ip = "data";
-    std::string last_ip = "conv0";
-    for (size_t l=0;l<cr_layers.size();l++)
-      {
-	if (l == 0)
-	  {
-	    lparam = net_param.mutable_layer(6);
-	    if (!cnclasses) // if unknown we keep the default one
-	      nclasses = lparam->mutable_inner_product_param()->num_output();
-	    else nclasses = cnclasses;
-	    if (targets > 1)
-	      {
-		lparam = net_param.mutable_layer(0);
-		lparam->set_top(0,"fulldata");
-		lparam->set_top(1,"fake_label");
-		if (!db)
-		  lparam->mutable_memory_data_param()->set_channels(targets); // XXX: temporary value
-		else
-		  {
-		    if (flat1dconv) // not dealing with images
-		      lparam->clear_transform_param();
-		    lparam->clear_memory_data_param();
-		    lparam->clear_loss_weight();
-		    lparam->set_type("Data");
-		    caffe::DataParameter *ldparam = lparam->mutable_data_param();
-		    ldparam->set_source("train.lmdb");
-		    ldparam->set_batch_size(1000); // dummy value, updated before training
-		    ldparam->set_backend(caffe::DataParameter_DB_LMDB);
-		  }
-		lparam = net_param.mutable_layer(1);
-		lparam->set_top(0,"fulldata");
-		lparam->set_top(1,"fake_label");
-		lparam->mutable_memory_data_param()->set_channels(targets);
-		dlparam = deploy_net_param.mutable_layer(0);
-		dlparam->set_top(0,"fulldata");
-		dlparam->set_top(1,"fake_label");
-		dlparam->mutable_memory_data_param()->set_channels(targets);
-		
-		lparam = net_param.mutable_layer(rl);
-		lparam->clear_include();
-		lparam->clear_top();
-		lparam->clear_bottom();
-		lparam->clear_inner_product_param();
-		lparam->clear_dropout_param();
-		lparam->clear_loss_weight();
-		lparam->set_name("slice_labels");
-		lparam->set_type("Slice");
-		lparam->add_bottom("fulldata");
-		lparam->add_top("data");
-		lparam->add_top("label");
-		caffe::SliceParameter *spp = lparam->mutable_slice_param();
-		spp->set_slice_dim(1);
-		spp->add_slice_point(nclasses); // XXX: temporary value
-		++rl;
-
-		dlparam = deploy_net_param.mutable_layer(drl);
-		dlparam->clear_include();
-		dlparam->clear_top();
-		dlparam->clear_bottom();
-		dlparam->clear_inner_product_param();
-		dlparam->clear_dropout_param();
-		dlparam->clear_loss_weight();
-		dlparam->set_name("slice_labels");
-		dlparam->set_type("Slice");
-		dlparam->add_bottom("fulldata");
-		dlparam->add_top("data");
-		dlparam->add_top("label");
-		spp = dlparam->mutable_slice_param();
-		spp->set_slice_dim(1);
-		spp->add_slice_point(nclasses);
-		++drl;
-	      }
-	    else if (db)
-	      {
-		// fixing input layer so that it takes data in from db
-		lparam = net_param.mutable_layer(0);
-		if (!flat1dconv)
-		  {
-		    if (ad.has("rotate") || ad.has("mirror"))
-		      {
-			lparam->mutable_transform_param()->set_mirror(ad.get("mirror").get<bool>());
-			lparam->mutable_transform_param()->set_rotate(ad.get("rotate").get<bool>());
-		      }
-		    configure_noise_and_distort(ad,net_param);
-		    std::string mf = "mean.binaryproto";
-		    lparam->mutable_transform_param()->set_mean_file(mf.c_str());
-		  }
-		else if (flat1dconv) // not dealing with images
-		  lparam->clear_transform_param();
-		lparam->clear_memory_data_param();
-		lparam->clear_loss_weight();
-		lparam->set_type("Data");
-		caffe::DataParameter *ldparam = lparam->mutable_data_param();
-		ldparam->set_source("train.lmdb");
-		ldparam->set_batch_size(1000); // dummy value, updated before training
-		ldparam->set_backend(caffe::DataParameter_DB_LMDB);
-	      }
-	    else if (!db && flat1dconv)
-	      {
-		// train
-		lparam = net_param.mutable_layer(0);
-		lparam->mutable_memory_data_param()->set_channels(1);
-		lparam->mutable_memory_data_param()->set_height(inputc.height());
-		lparam->mutable_memory_data_param()->set_width(inputc.width());
-	      }
-	    // test
-	    lparam = net_param.mutable_layer(1);
-	    lparam->mutable_memory_data_param()->set_channels(inputc.channels());
-	    lparam->mutable_memory_data_param()->set_height(inputc.height());
-	    lparam->mutable_memory_data_param()->set_width(inputc.width());
-	    // deploy
-	    lparam = deploy_net_param.mutable_layer(0);
-	    lparam->mutable_memory_data_param()->set_channels(inputc.channels());
-	    lparam->mutable_memory_data_param()->set_height(inputc.height());
-	    lparam->mutable_memory_data_param()->set_width(inputc.width());
-	  }
-	else if (l > 0)
-	  {
-	    prec_ip = "pool" + std::to_string(l-1);
-	    last_ip = "conv" + std::to_string(ccount);
-	  }
-	int nconv = cr_layers.at(l).first;
-	for (int c=0;c<nconv;c++)
-	  {
-	    if (rl < max_rl)
-	      {
-		lparam = net_param.mutable_layer(rl);
-		lparam->clear_include();
-		lparam->clear_top();
-		lparam->clear_bottom();
-		lparam->clear_inner_product_param();
-		lparam->clear_pooling_param();
-		lparam->clear_dropout_param();
-		lparam->clear_loss_weight();
-	      }
-	    else lparam = net_param.add_layer();
-	    lparam->set_name(last_ip);
-	    lparam->set_type("Convolution");
-	    lparam->add_bottom(prec_ip);
-	    lparam->add_top(last_ip);
-	    lparam->mutable_convolution_param()->set_num_output(cr_layers.at(l).second);
-	    if (flat1dconv)
-	      {
-		lparam->mutable_convolution_param()->clear_kernel_size();
-		lparam->mutable_convolution_param()->set_kernel_h(ccount < 2 ? conv1d_early_kernel_size : conv_kernel_size);
-		if (prec_ip == "data")
-		  lparam->mutable_convolution_param()->set_kernel_w(inputc.width());
-		else lparam->mutable_convolution_param()->set_kernel_w(1);
-	      }
-	    else if (!lparam->mutable_convolution_param()->kernel_size_size())
-	      lparam->mutable_convolution_param()->add_kernel_size(conv_kernel_size);
-	    lparam->mutable_convolution_param()->mutable_weight_filler()->set_type(conv_wfill_type);
-	    lparam->mutable_convolution_param()->mutable_weight_filler()->set_std(conv_wfill_std);
-	    lparam->mutable_convolution_param()->mutable_bias_filler()->set_type(conv_b_type);
-	    //TODO: auto compute best padding value
-	    ++rl;
-	    
-	    if (drl < max_drl)
-	      {
-		dlparam = deploy_net_param.mutable_layer(drl);
-		dlparam->clear_include();
-		dlparam->clear_top();
-		dlparam->clear_bottom();
-		dlparam->clear_inner_product_param();
-		dlparam->clear_pooling_param();
-		dlparam->clear_dropout_param();
-		dlparam->clear_loss_weight();
-	      }
-	    else dlparam = deploy_net_param.add_layer();
-	    dlparam->set_name(last_ip);
-	    dlparam->set_type("Convolution");
-	    dlparam->add_top(last_ip);
-	    dlparam->add_bottom(prec_ip);
-	    dlparam->mutable_convolution_param()->set_num_output(cr_layers.at(l).second);
-	    if (flat1dconv)
-	      {
-		dlparam->mutable_convolution_param()->clear_kernel_size();
-		dlparam->mutable_convolution_param()->set_kernel_h(ccount < 2 ? conv1d_early_kernel_size : conv_kernel_size);
-		if (prec_ip == "data")
-		  dlparam->mutable_convolution_param()->set_kernel_w(inputc.width());
-		else dlparam->mutable_convolution_param()->set_kernel_w(1);
-	      }
-	    else if (!dlparam->mutable_convolution_param()->kernel_size_size())
-	      dlparam->mutable_convolution_param()->add_kernel_size(conv_kernel_size);
-	    dlparam->mutable_convolution_param()->mutable_weight_filler()->set_type(conv_wfill_type);
-	    dlparam->mutable_convolution_param()->mutable_weight_filler()->set_std(conv_wfill_std);
-	    dlparam->mutable_convolution_param()->mutable_bias_filler()->set_type(conv_b_type);
-	    ++drl;
-	    
-	    if (rl < max_rl)
-	      {
-		lparam = net_param.mutable_layer(rl);
-		lparam->clear_include();
-		lparam->clear_top();
-		lparam->clear_bottom();
-		lparam->clear_loss_weight();
-		lparam->clear_dropout_param();
-		lparam->clear_inner_product_param();
-	      }
-	    else lparam = net_param.add_layer();
-	    lparam->set_name("act"+std::to_string(ccount));
-	    lparam->set_type(activation);
-	    if (activation == "ELU" && elu_alpha != 1.0)
-	      lparam->mutable_elu_param()->set_alpha(elu_alpha);
-	    lparam->add_bottom("conv"+std::to_string(ccount));
-	    lparam->add_top("conv"+std::to_string(ccount));
-	    ++rl;
-	    
-	    if (drl < max_drl)
-	      {
-		dlparam = deploy_net_param.mutable_layer(drl);
-		dlparam->clear_include();
-		dlparam->clear_top();
-		dlparam->clear_bottom();
-		dlparam->clear_loss_weight();
-		dlparam->clear_dropout_param();
-		dlparam->clear_inner_product_param();
-	      }
-	    else dlparam = deploy_net_param.add_layer();
-	    dlparam->set_name("act"+std::to_string(ccount));
-	    dlparam->set_type(activation);
-	    if (activation == "ELU" && elu_alpha != 1.0)
-	      lparam->mutable_elu_param()->set_alpha(elu_alpha);
-	    dlparam->add_bottom("conv"+std::to_string(ccount));
-	    dlparam->add_top("conv"+std::to_string(ccount));
-	    ++drl;
-	    
-	    prec_ip = "conv" + std::to_string(ccount);
-	    ++ccount;
-	    last_ip = "conv" + std::to_string(ccount);
-	  }
-	
-	std::string cum = std::to_string(ccount-1);
-	std::string lcum = std::to_string(l);
-	if (rl < max_rl)
-	  {
-	    lparam = net_param.mutable_layer(rl);
-	    lparam->clear_inner_product_param();
-	    lparam->clear_bottom();
-	    lparam->clear_top();
-	    lparam->clear_include();
-	    lparam->clear_loss_weight();
-	  }
-	else lparam = net_param.add_layer();
-	lparam->set_name("pool"+lcum);
-	lparam->set_type("Pooling");
-	lparam->add_bottom("conv"+cum);
-	lparam->add_top("pool"+lcum);
-	lparam->mutable_pooling_param()->set_pool(pool_type);
-	if (flat1dconv)
-	  {
-	    lparam->mutable_pooling_param()->clear_stride();
-	    lparam->mutable_pooling_param()->clear_kernel_size();
-	    lparam->mutable_pooling_param()->set_stride_h(3);
-	    lparam->mutable_pooling_param()->set_stride_w(1);
-	    lparam->mutable_pooling_param()->set_kernel_h(3);
-	    lparam->mutable_pooling_param()->set_kernel_w(1);
-	  }
-	else 
-	  {
-	    lparam->mutable_pooling_param()->set_kernel_size(pool_kernel_size);
-	    lparam->mutable_pooling_param()->set_stride(pool_stride);
-	  }
-	++rl;
-	
-	if (drl < max_drl)
-	  {
-	    dlparam = deploy_net_param.mutable_layer(drl);
-	    dlparam->clear_inner_product_param();
-	    dlparam->clear_bottom();
-	    dlparam->clear_top();
-	    dlparam->clear_include();
-	    dlparam->clear_loss_weight();
-	  }
-	else dlparam = deploy_net_param.add_layer(); // pooling
-	dlparam->set_name("pool"+lcum);
-	dlparam->set_type("Pooling");
-	dlparam->add_bottom("conv"+cum);
-	dlparam->add_top("pool"+lcum);
-	dlparam->mutable_pooling_param()->set_pool(pool_type);
-	if (flat1dconv)
-	  {
-	    dlparam->mutable_pooling_param()->clear_stride();
-	    dlparam->mutable_pooling_param()->clear_kernel_size();
-	    dlparam->mutable_pooling_param()->set_stride_h(3);
-	    dlparam->mutable_pooling_param()->set_stride_w(1);
-	    dlparam->mutable_pooling_param()->set_kernel_h(3);
-	    dlparam->mutable_pooling_param()->set_kernel_w(1);
-	  }
-	else 
-	  {
-	    dlparam->mutable_pooling_param()->set_kernel_size(pool_kernel_size);
-	    dlparam->mutable_pooling_param()->set_stride(pool_stride);
-	  }
-	++drl;
-
-	/*if (dropout > 0.0 && dropout < 1.0)
-	  {
-	    if (rl < max_rl)
-	      {
-		lparam = net_param.mutable_layer(rl);
-		lparam->clear_bottom();
-		lparam->clear_top();
-		lparam->clear_loss_weight();
-	      }
-	    else lparam = net_param.add_layer(); // dropout layer
-	    lparam->set_name("drop"+lcum);
-	    lparam->set_type("Dropout");
-	    lparam->add_bottom("pool"+lcum);
-	    lparam->add_top("pool"+lcum);
-	    lparam->mutable_dropout_param()->set_dropout_ratio(dropout);
-	    ++rl;
-	    }*/
-      }
-
-    prec_ip = "pool" + std::to_string(cr_layers.size()-1);
-    last_ip = "ip" + std::to_string(cr_layers.size());
-    int lfc = cr_layers.size();
-    int cact = ccount + 1;
-    bool reshaped = false;
-    for (auto fc: fc_layers)
-      {
-	if (flat1dconv && !reshaped)
-	  {
-	    reshaped = true;
-	    if (rl < max_rl)
-	      {
-		lparam = net_param.mutable_layer(rl);
-		lparam->clear_bottom();
-		lparam->clear_top();
-		lparam->clear_include();
-		lparam->clear_loss_weight();
-	      }
-	    else lparam = net_param.add_layer();
-	    lparam->set_name("reshape0");
-	    lparam->set_type("Reshape");
-	    lparam->add_bottom(prec_ip);
-	    lparam->add_top("reshape0");
-	    lparam->mutable_reshape_param()->mutable_shape()->add_dim(0);
-	    lparam->mutable_reshape_param()->mutable_shape()->add_dim(-1);
-	    ++rl;
-	
-	    if (drl < max_drl)
-	      {
-		dlparam = deploy_net_param.mutable_layer(drl);
-		dlparam->clear_bottom();
-		dlparam->clear_top();
-		dlparam->clear_include();
-		dlparam->clear_loss_weight();
-	      }
-	    else dlparam = deploy_net_param.add_layer();
-	    dlparam->set_name("resphape0");
-	    dlparam->set_type("Reshape");
-	    dlparam->add_bottom(prec_ip);
-	    dlparam->add_top("reshape0");
-	    dlparam->mutable_reshape_param()->mutable_shape()->add_dim(0);
-	    dlparam->mutable_reshape_param()->mutable_shape()->add_dim(-1);
-	    ++drl;
-	  }
-
-	if (rl < max_rl)
-	  {
-	    lparam = net_param.mutable_layer(rl);
-	    lparam->clear_bottom();
-	    lparam->clear_top();
-	    lparam->clear_include();
-	    lparam->clear_loss_weight();
-	  }
-	else lparam = net_param.add_layer();
-	lparam->set_name(last_ip);
-	lparam->set_type("InnerProduct");
-	if (flat1dconv)
-	  lparam->add_bottom("reshape0");
-	else lparam->add_bottom(prec_ip);
-	lparam->add_top(last_ip);
-	caffe::InnerProductParameter *ipp = lparam->mutable_inner_product_param();
-	ipp->set_num_output(fc);
-	ipp->mutable_weight_filler()->set_type("xavier");
-	ipp->mutable_bias_filler()->set_type("constant");
-	++rl;
-	
-	if (drl < max_drl)
-	  {
-	    dlparam = deploy_net_param.mutable_layer(drl);
-	    dlparam->clear_bottom();
-	    dlparam->clear_top();
-	    dlparam->clear_include();
-	    dlparam->clear_loss_weight();
-	  }
-	else dlparam = deploy_net_param.add_layer();
-	dlparam->set_name(last_ip);
-	dlparam->set_type("InnerProduct");
-	if (flat1dconv)
-	  dlparam->add_bottom("reshape0");
-	else dlparam->add_bottom(prec_ip);
-	dlparam->add_top(last_ip);
-	caffe::InnerProductParameter *dipp = dlparam->mutable_inner_product_param();
-	dipp->set_num_output(fc);
-	dipp->mutable_weight_filler()->set_type("xavier");
-	dipp->mutable_bias_filler()->set_type("constant");
-	++drl;
-
-	if (rl < max_rl)
-	  {
-	    lparam = net_param.mutable_layer(rl);
-	    lparam->clear_include();
-	    lparam->clear_top();
-	    lparam->clear_bottom();
-	    lparam->clear_loss_weight();
-	    lparam->clear_inner_product_param();
-	  }
-	else lparam = net_param.add_layer();
-	lparam->set_name("act"+std::to_string(cact));
-	lparam->set_type(activation);
-	if (activation == "ELU" && elu_alpha != 1.0)
-	  lparam->mutable_elu_param()->set_alpha(elu_alpha);
-	lparam->add_bottom(last_ip);
-	lparam->add_top(last_ip);
-	++rl;
-
-	if (drl < max_drl)
-	  {
-	    dlparam = deploy_net_param.mutable_layer(drl);
-	    dlparam->clear_include();
-	    dlparam->clear_top();
-	    dlparam->clear_bottom();
-	    dlparam->clear_loss_weight();
-	    dlparam->clear_inner_product_param();
-	  }
-	else dlparam = deploy_net_param.add_layer();
-	dlparam->set_name("act"+std::to_string(cact));
-	dlparam->set_type(activation);
-	if (activation == "ELU" && elu_alpha != 1.0)
-	  lparam->mutable_elu_param()->set_alpha(elu_alpha);
-	dlparam->add_bottom(last_ip);
-	dlparam->add_top(last_ip);
-	++drl;
-
-	if (dropout > 0.0 && dropout < 1.0)
-	  {
-	    if (rl < max_rl)
-	      {
-		lparam = net_param.mutable_layer(rl);
-		lparam->clear_bottom();
-		lparam->clear_top();
-	      }
-	    else lparam = net_param.add_layer(); // dropout layer
-	    std::string drop = "drop" + std::to_string(lfc);
-	    lparam->set_name(drop);
-	    lparam->set_type("Dropout");
-	    lparam->add_bottom(last_ip);
-	    lparam->add_top(last_ip);
-	    lparam->mutable_dropout_param()->set_dropout_ratio(dropout);
-	    ++rl;
-	  }
-	
-	++lfc;
-	++cact;
-	prec_ip = last_ip;
-	last_ip = "ip" + std::to_string(lfc);
-      }
-
-    // add remaining inner product softmax layers    
-    if (rl < max_rl)
-      {
-	lparam = net_param.mutable_layer(rl);
-	lparam->clear_bottom();
-	lparam->clear_top();
-	lparam->clear_include();
-	lparam->clear_loss_weight();
-      }
-    else lparam = net_param.add_layer(); // last inner product before softmax
-    lparam->set_name(last_ip);
-    lparam->set_type("InnerProduct");
-    lparam->add_bottom(prec_ip);
-    lparam->add_top(last_ip);
-    caffe::InnerProductParameter *ipp = lparam->mutable_inner_product_param();
-    if (!regression || targets == 0)
-      ipp->set_num_output(nclasses);
-    else ipp->set_num_output(targets);
-    ipp->mutable_weight_filler()->set_type("xavier");
-    ipp->mutable_bias_filler()->set_type("constant");
-    ++rl;
-
-    if (drl < max_drl)
-      {
-	dlparam = deploy_net_param.mutable_layer(drl);
-	dlparam->clear_bottom();
-	dlparam->clear_top();
-	dlparam->clear_include();
-	dlparam->clear_loss_weight();
-      }
-    else dlparam = deploy_net_param.add_layer();
-    dlparam->set_name(last_ip);
-    dlparam->set_type("InnerProduct");
-    dlparam->add_bottom(prec_ip);
-    dlparam->add_top(last_ip);
-    caffe::InnerProductParameter *dipp = dlparam->mutable_inner_product_param();
-    if (!regression || targets == 0)
-      dipp->set_num_output(nclasses);
-    else dipp->set_num_output(targets);
-    dipp->mutable_weight_filler()->set_type("xavier");
-    dipp->mutable_bias_filler()->set_type("constant");
-    ++drl;
-
-    if (!regression)
-      {
-	if (rl < max_rl)
-	  {
-	    lparam = net_param.mutable_layer(rl);
-	    lparam->clear_bottom();
-	    lparam->clear_top();
-	    lparam->clear_include();
-	  }
-	else lparam = net_param.add_layer(); // test loss
-	lparam->set_name("losst");
-        lparam->set_type("Softmax");
-	lparam->add_bottom(last_ip);
-	lparam->add_top("losst");
-	caffe::NetStateRule *nsr = lparam->add_include();
-	nsr->set_phase(caffe::TEST);
-	++rl;
-      }
-
-    if (rl < max_rl)
-      {
-	lparam = net_param.mutable_layer(rl);
-	lparam->clear_bottom();
-	lparam->clear_top();
-	lparam->clear_include();
-      }
-    else lparam = net_param.add_layer(); // training loss
-    lparam->set_name("loss");
-    if (regression)
-      lparam->set_type("EuclideanLoss");
-    else lparam->set_type("SoftmaxWithLoss");
-    lparam->add_bottom(last_ip);
-    lparam->add_bottom("label");
-    lparam->add_top("loss");
-    caffe::NetStateRule *nsr = lparam->add_include();
-    nsr->set_phase(caffe::TRAIN);
-    ++rl;
-    
-    if (!regression)
-      {
-	if (drl < max_drl)
-	  {
-	    dlparam = deploy_net_param.mutable_layer(drl);
-	    dlparam->clear_bottom();
-	    dlparam->clear_top();
-	    dlparam->clear_include();
-	  }
-	else dlparam = deploy_net_param.add_layer();
-	dlparam->set_name("loss");
-	dlparam->set_type("Softmax");
-	dlparam->add_bottom(last_ip);
-	dlparam->add_top("loss");
-	++drl;
-      }
+    NetCaffe<NetInputCaffe<TInputConnectorStrategy>,NetLayersCaffeConvnet,NetLossCaffe> netcaffe(&net_param,&dnet_param);
+    netcaffe._nic.configure_inputs(ad,inputc);
+    if (inputc._flat1dconv)
+      const_cast<APIData&>(ad).add("flat1dconv",static_cast<bool>(inputc._flat1dconv));
+    if (_regression)
+      const_cast<APIData&>(ad).add("regression",true);
+    netcaffe._nlac.configure_net(ad);
   }
 
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_resnet_template(const APIData &ad,
+												      const TInputConnectorStrategy &inputc,
+												      caffe::NetParameter &net_param,
+												      caffe::NetParameter &dnet_param)
+  {
+    NetCaffe<NetInputCaffe<TInputConnectorStrategy>,NetLayersCaffeResnet,NetLossCaffe> netcaffe(&net_param,&dnet_param);
+    netcaffe._nic.configure_inputs(ad,inputc);
+    if (inputc._sparse)
+      const_cast<APIData&>(ad).add("sparse",true);
+    if (inputc._flat1dconv)
+      const_cast<APIData&>(ad).add("flat1dconv",static_cast<bool>(inputc._flat1dconv));
+    if (_regression)
+      const_cast<APIData&>(ad).add("regression",true);
+    netcaffe._nlac.configure_net(ad);
+  }
+    
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::create_model(const bool &test)
   {
@@ -2104,7 +1002,7 @@ namespace dd
 	else if (cm == 2)
 	  throw MLLibBadParamException("no deploy file in " + this->_mlmodel._repo + " for initializing the net");
       }
-    
+
     TInputConnectorStrategy inputc(this->_inputc);
     TOutputConnectorStrategy tout;
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
@@ -2115,6 +1013,33 @@ namespace dd
       confidence_threshold = ad_output.get("confidence_threshold").get<double>();
     if (ad_output.has("bbox") && ad_output.get("bbox").get<bool>())
       bbox = true;
+    
+    // gpu
+#ifndef CPU_ONLY
+    bool gpu = _gpu;
+    if (ad_mllib.has("gpu"))
+      {
+	gpu = ad_mllib.get("gpu").get<bool>();
+	if (gpu)
+	  {
+	    set_gpuid(ad_mllib);
+	  }
+      }
+    if (gpu)
+      {
+	for (auto i: _gpuid)
+	  {
+	    Caffe::SetDevice(i);
+	    if (gpu != _gpu)
+	      Caffe::DeviceQuery();
+	  }
+	Caffe::set_mode(Caffe::GPU);
+      }
+    else Caffe::set_mode(Caffe::CPU);
+#else
+    Caffe::set_mode(Caffe::CPU);
+#endif
+    
     if (ad_output.has("measure"))
       {
 	APIData cad = ad;
@@ -2144,36 +1069,10 @@ namespace dd
 	out.add("measure",out_meas);
 	return 0;
       }
-
-    // parameters
-#ifndef CPU_ONLY
-    bool gpu = _gpu;
-    if (ad_mllib.has("gpu"))
-      {
-	gpu = ad_mllib.get("gpu").get<bool>();
-	if (gpu)
-	  {
-	    set_gpuid(ad_mllib);
-	  }
-      }
-    if (gpu)
-      {
-	for (auto i: _gpuid)
-	  {
-	    Caffe::SetDevice(i);
-	    if (gpu != _gpu)
-	      Caffe::DeviceQuery();
-	  }
-	Caffe::set_mode(Caffe::GPU);
-      }
-    else Caffe::set_mode(Caffe::CPU);
-#else
-      Caffe::set_mode(Caffe::CPU);
-#endif
-
-      std::string extract_layer;
-      if (ad_mllib.has("extract_layer"))
-	extract_layer = ad_mllib.get("extract_layer").get<std::string>();
+    
+    std::string extract_layer;
+    if (ad_mllib.has("extract_layer"))
+      extract_layer = ad_mllib.get("extract_layer").get<std::string>();
       
     APIData cad = ad;
     bool has_mean_file = this->_mlmodel._has_mean_file;
@@ -2329,7 +1228,9 @@ namespace dd
 		for (int j=0;j<batch_size;j++)
 		  {
 		    APIData rad;
-		    rad.add("uri",inputc._ids.at(idoffset+j));
+		    if (!inputc._ids.empty())
+		      rad.add("uri",inputc._ids.at(idoffset+j));
+		    else rad.add("uri",std::to_string(idoffset+j));
 		    rad.add("loss",loss);
 		    std::vector<double> probs;
 		    std::vector<std::string> cats;
@@ -2466,7 +1367,7 @@ namespace dd
 		else mdp->set_batch_size(test_batch_size);
 	      }
 	  }
-	if (lp->has_transform_param())
+	if (lp->has_transform_param() || inputc._has_mean_file)
 	  {
 	    caffe::TransformationParameter *tp = lp->mutable_transform_param();
 	    has_mean_file = tp->has_mean_file();
@@ -2496,9 +1397,17 @@ namespace dd
 	if (_ntargets == 0 || _ntargets == 1)
 	  {
 	    if (net_param.mutable_layer(0)->has_memory_data_param())
-	      net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels());
+	      {
+		net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels());
+		net_param.mutable_layer(0)->mutable_memory_data_param()->set_width(inputc.width());
+		net_param.mutable_layer(0)->mutable_memory_data_param()->set_height(inputc.height());
+	      }
 	    if (net_param.mutable_layer(1)->has_memory_data_param())
-	      net_param.mutable_layer(1)->mutable_memory_data_param()->set_channels(inputc.channels()); // test layer
+	      {
+		net_param.mutable_layer(1)->mutable_memory_data_param()->set_channels(inputc.channels()); // test layer
+		net_param.mutable_layer(1)->mutable_memory_data_param()->set_width(inputc.width());
+		net_param.mutable_layer(1)->mutable_memory_data_param()->set_height(inputc.height());
+	      }
 	  }
 	else
 	  {
@@ -2567,7 +1476,11 @@ namespace dd
       {
 	// no batch size set on deploy model since it is adjusted for every prediction batch
 	if (_ntargets == 0 || _ntargets == 1)
-	  deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels());
+	  {
+	    deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels());
+	    deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_width(inputc.width());
+	    deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_height(inputc.height());
+	  }
 	else
 	  {
 	    deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels()+_ntargets);
