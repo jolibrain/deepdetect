@@ -243,7 +243,7 @@ namespace dd
 	cparam->set_pad_h(pad_h);
       }
     cparam->add_stride(stride);
-    cparam->mutable_weight_filler()->set_type("xavier"); //TODO: option
+    cparam->mutable_weight_filler()->set_type("msra"); //TODO: option
     caffe::FillerParameter *fparam = cparam->mutable_bias_filler();
     fparam->set_type("constant");
     //fparam->set_value(0.2); //TODO: option
