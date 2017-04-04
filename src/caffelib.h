@@ -229,6 +229,8 @@ namespace dd
       std::mutex _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as net is not re-instantiated. Use batches instead. */
       long int _flops = 0;  /**< model flops. */
       long int _params = 0;  /**< number of parameters in the model. */
+      caffe::P2PSync<float> *_sync = nullptr;
+      std::vector<boost::shared_ptr<caffe::P2PSync<float>>> _syncs;
     };
 
 }
