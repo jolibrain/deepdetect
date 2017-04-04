@@ -40,6 +40,7 @@ parser.add_argument('--remote-bench-data-dir',help='when bench data directory, w
 parser.add_argument('--max-batch-size',help='max batch size to be tested',type=int,default=256)
 parser.add_argument('--list-bench-files',help='file holding the list of bench files',default='list_bench_files.txt')
 parser.add_argument('--npasses',help='number of passes for every batch size',type=int,default=5)
+parser.add_argument('--detection',help='whether benching a detection model',action='store_true')
 args = parser.parse_args()
 
 host = args.host
@@ -64,6 +65,9 @@ while l <= args.max_batch_size:
 parameters_input = {}
 parameters_mllib = {'gpu':args.gpu}
 parameters_output = {}
+if args.detection:
+    parameters_output['bbox'] = True
+    parameters_output['confidence_threshold'] = 0.1
 
 #TODO: first call to load model
 data =list_bench_files[:1]
