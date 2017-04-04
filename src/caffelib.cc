@@ -630,14 +630,21 @@ namespace dd
 	  }
 	
 	float loss = 0.0;
+	float avg_fb_time = 0.0;
 	try
 	  {
 	    for (size_t i = 0; i < solver->callbacks().size(); ++i) {
 	      solver->callbacks()[i]->on_start();
 	    }
 	    for (int i = 0; i < solver->param_.iter_size(); ++i)
-	      loss += solver->net_->ForwardBackward();
+	      {
+		std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();
+		loss += solver->net_->ForwardBackward();
+		std::chrono::time_point<std::chrono::system_clock> tstop = std::chrono::system_clock::now();
+		avg_fb_time += std::chrono::duration_cast<std::chrono::milliseconds>(tstop-tstart).count();
+	      }
 	    loss /= solver->param_.iter_size();
+	    avg_fb_time /= solver->param_.iter_size();
 	  }
 	catch(std::exception &e)
 	  {
@@ -658,6 +665,7 @@ namespace dd
 	    losses[idx] = loss;
 	  }
 	this->add_meas("train_loss",smoothed_loss);
+	this->add_meas("iter_time",avg_fb_time);
 
 	if (solver->param_.test_interval() && solver->iter_ % solver->param_.test_interval() == 0)
 	  {
