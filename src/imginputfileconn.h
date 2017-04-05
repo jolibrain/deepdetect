@@ -396,8 +396,8 @@ namespace dd
     std::vector<int> _test_labels;
     std::vector<std::pair<int,int>> _images_size;
     // image parameters
-    int _width = 227;
-    int _height = 227;
+    int _width = -1;
+    int _height = -1;
     bool _bw = false; /**< whether to convert to black & white. */
     double _test_split = 0.0; /**< auto-split of the dataset. */
     bool _shuffle = false; /**< whether to shuffle the dataset, usually before splitting. */

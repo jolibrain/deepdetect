@@ -195,6 +195,22 @@ namespace dd
 	      lparam->mutable_transform_param()->set_crop_size(ad.get("crop_size").get<int>());
 	    else lparam->mutable_transform_param()->clear_crop_size();
 	  }
+	// input size
+	caffe::LayerParameter *lparam = net_param.mutable_layer(1); // test
+	caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(0);
+	if (this->_inputc.width() != -1 && this->_inputc.height() != -1) // forced width & height
+	  {
+	    lparam->mutable_memory_data_param()->set_channels(this->_inputc.channels());
+	    lparam->mutable_memory_data_param()->set_height(this->_inputc.height());
+	    lparam->mutable_memory_data_param()->set_width(this->_inputc.width());
+	    dlparam->mutable_memory_data_param()->set_channels(this->_inputc.channels());
+	    dlparam->mutable_memory_data_param()->set_height(this->_inputc.height());
+	    dlparam->mutable_memory_data_param()->set_width(this->_inputc.width());
+	  }
+		
+	// noise parameters
+	configure_noise_and_distort(ad,net_param);
+
 	// adapt number of neuron output
 	update_protofile_classes(net_param);
 	update_protofile_classes(deploy_net_param);
@@ -216,6 +232,89 @@ namespace dd
 
     if (this->_mlmodel.read_from_repository(this->_mlmodel._repo))
       throw MLLibBadParamException("error reading or listing Caffe models in repository " + this->_mlmodel._repo);
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_noise_and_distort(const APIData &ad,
+													caffe::NetParameter &net_param)
+  {
+    if (ad.has("noise"))
+      {
+	std::vector<std::string> noise_options = {
+	  "decolorize","hist_eq","inverse","gauss_blur","posterize","erode",
+	  "saltpepper","clahe","convert_to_hsv","convert_to_lab"
+	};
+	APIData ad_noise = ad.getobj("noise");
+	caffe::LayerParameter *lparam = net_param.mutable_layer(0); // data input layer
+	caffe::TransformationParameter *trparam = lparam->mutable_transform_param();
+	caffe::NoiseParameter *nparam = trparam->mutable_noise_param();
+	if (ad_noise.has("all_effects") && ad_noise.get("all_effects").get<bool>())
+	  nparam->set_all_effects(true);
+	else
+	  {
+	    for (auto s: noise_options)
+	      {
+		if (ad_noise.has(s))
+		  {
+		    if (s == "decolorize")
+		      nparam->set_decolorize(ad_noise.get(s).get<bool>());
+		    else if (s == "hist_eq")
+		      nparam->set_hist_eq(ad_noise.get(s).get<bool>());
+		    else if (s == "inverse")
+		      nparam->set_inverse(ad_noise.get(s).get<bool>());
+		    else if (s == "gauss_blur")
+		      nparam->set_gauss_blur(ad_noise.get(s).get<bool>());
+		    else if (s == "posterize")
+		      nparam->set_hist_eq(ad_noise.get(s).get<bool>());
+		    else if (s == "erode")
+		      nparam->set_erode(ad_noise.get(s).get<bool>());
+		    else if (s == "saltpepper")
+			  nparam->set_saltpepper(ad_noise.get(s).get<bool>());
+		    else if (s == "clahe")
+		      nparam->set_clahe(ad_noise.get(s).get<bool>());
+		    else if (s == "convert_to_hsv")
+		      nparam->set_convert_to_hsv(ad_noise.get(s).get<bool>());
+		    else if (s == "convert_to_lab")
+		      nparam->set_convert_to_lab(ad_noise.get(s).get<bool>());
+		  }
+	      }
+	  }
+	if (ad_noise.has("prob"))
+	  nparam->set_prob(ad_noise.get("prob").get<double>());
+      }
+    if (ad.has("distort"))
+      {
+	std::vector<std::string> distort_options = {
+	  "brightness","contrast","saturation","hue","random_order"
+	};
+	APIData ad_distort = ad.getobj("distort");
+	caffe::LayerParameter *lparam = net_param.mutable_layer(0); // data input layer
+	caffe::TransformationParameter *trparam = lparam->mutable_transform_param();
+	caffe::DistortionParameter *nparam = trparam->mutable_distort_param();
+	if (ad_distort.has("all_effects") && ad_distort.get("all_effects").get<bool>())
+	  nparam->set_all_effects(true);
+	else
+	  {
+	    for (auto s: distort_options)
+	      {
+		if (ad_distort.has(s))
+		  {
+		    if (s == "brightness")
+		      nparam->set_brightness(ad_distort.get(s).get<bool>());
+		    else if (s == "contrast")
+		      nparam->set_contrast(ad_distort.get(s).get<bool>());
+		    else if (s == "saturation")
+		      nparam->set_saturation(ad_distort.get(s).get<bool>());
+		    else if (s == "hue")
+		      nparam->set_hue(ad_distort.get(s).get<bool>());
+		    else if (s == "random_order")
+		      nparam->set_random_order(ad_distort.get(s).get<bool>());
+		  }
+	      }
+	  }
+	if (ad_distort.has("prob"))
+	  nparam->set_prob(ad_distort.get("prob").get<double>());
+      }
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
