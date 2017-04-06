@@ -1139,4 +1139,4 @@ TEST(caffeapi,service_train_csv_mt_regression)
   joutstr = japi.jrender(japi.service_delete(sname,jstr));
   ASSERT_EQ(ok_str,joutstr);
   rmdir(sflare_repo_loc.c_str());
-}
+  }
