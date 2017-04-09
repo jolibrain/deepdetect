@@ -290,6 +290,7 @@ namespace dd
 
     std::string top = "conv1";
     add_init_block(this->_net_params,bottom,cr_layers.at(0).second,0,width,3,top);
+    top = "conv1";
     add_init_block(this->_dnet_params,bottom,cr_layers.at(0).second,0,width,3,top);
     bottom = top;
     int block_num = 1;
