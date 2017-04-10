@@ -102,7 +102,10 @@ namespace dd
     {
       cv::Mat img = cv::imread(fname,_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR);
       if (img.empty())
-	return -1;
+	{
+	  LOG(ERROR) << "empty image";
+	  return -1;
+	}
       _imgs_size.push_back(std::pair<int,int>(img.rows,img.cols));
       cv::Size size(_width,_height);
       cv::Mat rimg;
@@ -396,8 +399,8 @@ namespace dd
     std::vector<int> _test_labels;
     std::vector<std::pair<int,int>> _images_size;
     // image parameters
-    int _width = -1;
-    int _height = -1;
+    int _width = 224;
+    int _height = 224;
     bool _bw = false; /**< whether to convert to black & white. */
     double _test_split = 0.0; /**< auto-split of the dataset. */
     bool _shuffle = false; /**< whether to shuffle the dataset, usually before splitting. */
