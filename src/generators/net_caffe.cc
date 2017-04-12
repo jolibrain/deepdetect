@@ -223,7 +223,8 @@ namespace dd
 				const int &kernel_h,
 				const int &pad_w,
 				const int &pad_h,
-				const std::string &name)
+				const std::string &name,
+				const std::string &init)
   {
     caffe::LayerParameter *lparam = CaffeCommon::add_layer(net_param,bottom,top,name.empty()?"conv_"+bottom:name,"Convolution");
     caffe::ConvolutionParameter *cparam = lparam->mutable_convolution_param();
@@ -243,7 +244,7 @@ namespace dd
 	cparam->set_pad_h(pad_h);
       }
     cparam->add_stride(stride);
-    cparam->mutable_weight_filler()->set_type("xavier"); //TODO: option
+    cparam->mutable_weight_filler()->set_type(init);
     caffe::FillerParameter *fparam = cparam->mutable_bias_filler();
     fparam->set_type("constant");
     //fparam->set_value(0.2); //TODO: option

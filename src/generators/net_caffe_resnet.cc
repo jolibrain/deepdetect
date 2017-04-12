@@ -69,13 +69,17 @@ namespace dd
 					    const int &kernel_size,
 					    const int &kernel_w,
 					    const int &kernel_h,
-					    std::string &top)
+					    std::string &top,
+					    const bool &pooling)
   {
-    add_conv(net_param,bottom,top,num_output,kernel_size,1,2,kernel_w,kernel_h);
-    add_bn(net_param,"conv1");
-    add_act(net_param,"conv1","ReLU");
-    top = "pool1";
-    add_pooling(net_param,"conv1","pool1",3,2,"MAX"); // large images only, e.g. Imagenet
+    add_conv(net_param,bottom,top,num_output,kernel_size,0,2,kernel_w,kernel_h);
+    //add_bn(net_param,"conv1");
+    //add_act(net_param,"conv1","ReLU");
+    if (pooling)
+      {
+	top = "pool1";
+	add_pooling(net_param,"conv1","pool1",3,2,"MAX"); // large images only, e.g. Imagenet
+      }
   }
   
   void NetLayersCaffeResnet::add_basic_block(caffe::NetParameter *net_param,
@@ -134,19 +138,19 @@ namespace dd
 						  const bool &identity,
 						  std::string &top)
   {
-    std::string tmp_top = bottom + "_tmp";
-    add_bn(net_param,bottom,tmp_top);
-    add_act(net_param,tmp_top,activation);
     int kernel_size = 0; // unset
     int pad = 0;
     std::string block_num_str = std::to_string(block_num);
     std::string conv_name = "conv1_branch" + block_num_str;
-    add_conv(net_param,tmp_top,conv_name,num_output,kernel_size,pad,stride,kernel_w,kernel_h,0,2); //TODO: stride as parameter to function
-
+    add_conv(net_param,bottom,conv_name,num_output,kernel_size,pad,stride,kernel_w,kernel_h,0,2); //TODO: stride as parameter to function
     add_bn(net_param,conv_name);
     add_act(net_param,conv_name,activation);
+
     std::string conv2_name = "conv2_branch" + block_num_str;
     add_conv(net_param,conv_name,conv2_name,num_output,kernel_size,pad,stride,kernel_w,kernel_h);
+    add_bn(net_param,conv2_name);
+    add_act(net_param,conv2_name,activation);
+
     
     // resize shortcut if input size != output size
     std::string bottom_scale = bottom;
@@ -289,9 +293,9 @@ namespace dd
     int width = this->_net_params->mutable_layer(1)->mutable_memory_data_param()->width();
 
     std::string top = "conv1";
-    add_init_block(this->_net_params,bottom,cr_layers.at(0).second,0,width,3,top);
+    add_init_block(this->_net_params,bottom,cr_layers.at(0).second,0,width,7,top,false);
     top = "conv1";
-    add_init_block(this->_dnet_params,bottom,cr_layers.at(0).second,0,width,3,top);
+    add_init_block(this->_dnet_params,bottom,cr_layers.at(0).second,0,width,7,top,false);
     bottom = top;
     int block_num = 1;
     for (size_t l=0;l<cr_layers.size();l++)
