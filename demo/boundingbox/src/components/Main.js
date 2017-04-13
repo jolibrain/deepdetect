@@ -34,6 +34,7 @@ class AppComponent extends React.Component {
                        confidenceThreshold={this.props.confidenceThreshold}
                        best={this.props.best}
                        thresholdControl={this.props.thresholdControl}
+                       thresholdControlSteps={this.props.thresholdControlSteps}
         />
         <Divider hidden/>
         <ImageComponent />

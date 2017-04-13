@@ -116,11 +116,11 @@ class FormComponent extends React.Component {
             <Segment basic>
               <Input ref={(ref) => this.input = ref} onChange={this.push} name='url' placeholder='Image URL' action={{icon: 'remove', onClick: this.cleanInput }}/>
               <Button.Group style={{paddingTop: '4px', display: this.props.thresholdControl ? 'inline-flex' : 'none'}}>
-                <Button toggle active={this.state.confidenceThreshold == 0.8} onClick={this.handleThresholdClick.bind(this, 0.8)}>Salient</Button>
+                <Button toggle active={this.state.confidenceThreshold == this.props.thresholdControlSteps[0]} onClick={this.handleThresholdClick.bind(this, this.props.thresholdControlSteps[0])}>Salient</Button>
                 <Button.Or />
-                <Button toggle active={this.state.confidenceThreshold == 0.5} onClick={this.handleThresholdClick.bind(this, 0.5)}>Medium</Button>
+                <Button toggle active={this.state.confidenceThreshold == this.props.thresholdControlSteps[1]} onClick={this.handleThresholdClick.bind(this, this.props.thresholdControlSteps[1])}>Medium</Button>
                 <Button.Or />
-                <Button toggle active={this.state.confidenceThreshold == 0.3} onClick={this.handleThresholdClick.bind(this, 0.3)}>Detailed</Button>
+                <Button toggle active={this.state.confidenceThreshold == this.props.thresholdControlSteps[2]} onClick={this.handleThresholdClick.bind(this, this.props.thresholdControlSteps[2])}>Detailed</Button>
               </Button.Group>
             </Segment>
           </Grid.Column>
