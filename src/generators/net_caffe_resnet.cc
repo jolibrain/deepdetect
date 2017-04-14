@@ -70,11 +70,15 @@ namespace dd
 					    const int &kernel_w,
 					    const int &kernel_h,
 					    std::string &top,
+					    const bool &act,
 					    const bool &pooling)
   {
     add_conv(net_param,bottom,top,num_output,kernel_size,0,2,kernel_w,kernel_h);
-    //add_bn(net_param,"conv1");
-    //add_act(net_param,"conv1","ReLU");
+    if (act)
+      {
+	add_bn(net_param,"conv1");
+	add_act(net_param,"conv1","ReLU");
+      }
     if (pooling)
       {
 	top = "pool1";
@@ -245,8 +249,9 @@ namespace dd
     add_bn(this->_dnet_params,bottom);
     add_act(this->_net_params,bottom,activation);
     add_act(this->_dnet_params,bottom,activation);
-    add_pooling(this->_net_params,bottom,"pool_final",8,1,"AVE"); // could be 8 for 300x300 images
-    add_pooling(this->_dnet_params,bottom,"pool_final",8,1,"AVE");
+    int pool_size = std::ceil(std::max(1,static_cast<int>(this->_net_params->layer(1).memory_data_param().width()) / 37));
+    add_pooling(this->_net_params,bottom,"pool_final",pool_size,1,"AVE"); // could be 8 for 300x300 images
+    add_pooling(this->_dnet_params,bottom,"pool_final",pool_size,1,"AVE");
     bottom = "pool_final";
     
     if (regression)
@@ -293,9 +298,9 @@ namespace dd
     int width = this->_net_params->mutable_layer(1)->mutable_memory_data_param()->width();
 
     std::string top = "conv1";
-    add_init_block(this->_net_params,bottom,cr_layers.at(0).second,0,width,7,top,false);
+    add_init_block(this->_net_params,bottom,cr_layers.at(0).second,0,width,7,top,false,false);
     top = "conv1";
-    add_init_block(this->_dnet_params,bottom,cr_layers.at(0).second,0,width,7,top,false);
+    add_init_block(this->_dnet_params,bottom,cr_layers.at(0).second,0,width,7,top,false,false);
     bottom = top;
     int block_num = 1;
     for (size_t l=0;l<cr_layers.size();l++)

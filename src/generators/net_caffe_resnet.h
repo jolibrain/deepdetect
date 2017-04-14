@@ -52,6 +52,7 @@ namespace dd
 			const int &kernel_w,
 			const int &kernel_h,
 			std::string &top,
+			const bool &bn=true,
 			const bool &pooling=true);
     
     void add_basic_block(caffe::NetParameter *net_param,
