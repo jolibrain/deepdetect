@@ -978,8 +978,7 @@ namespace dd
 						  const APIData &ad_input,
 						  const std::string &backend)
   {
-    std::cerr << "SVM line to db\n";
-    std::cerr << "dbfullname=" << dbfullname << std::endl;
+    LOG(INFO) << "SVM line to db / " << "dbfullname=" << dbfullname;
 
     // Create new DB
     _tdb = std::unique_ptr<db::DB>(db::GetDB(backend));
@@ -988,7 +987,7 @@ namespace dd
     _ttdb = std::unique_ptr<db::DB>(db::GetDB(backend));
     _ttdb->Open(testdbfullname.c_str(), db::NEW);
     _ttxn = std::unique_ptr<db::Transaction>(_ttdb->NewTransaction());
-    std::cerr << "db is opened\n";
+    LOG(INFO) << "dbs " << dbfullname << " / " << testdbfullname << " opened";
 
     _svm_fname = _uris.at(0); // training only from file
     if (!fileops::file_exists(_svm_fname))
