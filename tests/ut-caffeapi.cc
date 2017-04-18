@@ -355,7 +355,16 @@ TEST(caffeapi,service_predict)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200,jd["status"]["code"]);
   ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() > 0.0);
-  
+
+  jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"bw\":true,\"width\":28,\"height\":28},\"output\":{},\"mllib\":{\"net\":{\"test_batch_size\":100}}},\"data\":[\"" + mnist_repo + "/test.lmdb\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200,jd["status"]["code"]);
+  uri = jd["body"]["predictions"][0]["uri"].GetString();
+  ASSERT_EQ(uri,"00000000");
+
   // remove service
   jstr = "{\"clear\":\"lib\"}";
   joutstr = japi.jrender(japi.service_delete(sname,jstr));
@@ -1139,4 +1148,4 @@ TEST(caffeapi,service_train_csv_mt_regression)
   joutstr = japi.jrender(japi.service_delete(sname,jstr));
   ASSERT_EQ(ok_str,joutstr);
   rmdir(sflare_repo_loc.c_str());
-  }
+}

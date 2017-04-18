@@ -375,6 +375,7 @@ namespace dd
 	    datum.clear_data();
 	  }
 	dv.push_back(datum);
+	_ids.push_back(_test_db_cursor->key());
 	_test_db_cursor->Next();
 	++i;
       }
@@ -610,6 +611,7 @@ namespace dd
 	Datum datum;
 	datum.ParseFromString(_test_db_cursor->value());
 	dv.push_back(datum);
+	_ids.push_back(_test_db_cursor->key());
 	_test_db_cursor->Next();
 	++i;
       }
@@ -815,6 +817,7 @@ namespace dd
 	Datum datum;
 	datum.ParseFromString(_test_db_cursor->value());
 	dv.push_back(datum);
+	_ids.push_back(_test_db_cursor->key());
 	_test_db_cursor->Next();
 	++i;
       }
@@ -846,6 +849,7 @@ namespace dd
 	SparseDatum datum;
 	datum.ParseFromString(_test_db_cursor->value());
 	dv.push_back(datum);
+	_ids.push_back(_test_db_cursor->key());
 	_test_db_cursor->Next();
 	++i;
       }
@@ -1032,6 +1036,7 @@ namespace dd
 	SparseDatum datum;
 	datum.ParseFromString(_test_db_cursor->value());
 	dv.push_back(datum);
+	_ids.push_back(_test_db_cursor->key());
 	_test_db_cursor->Next();
 	++i;
       }
