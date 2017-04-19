@@ -58,6 +58,64 @@ macro(deepdetect_list_unique)
 endmacro()
 
 ################################################################################################
+# Helper function to detect Darwin version, i.e. 10.8, 10.9, 10.10, ....
+# Usage:
+#   deepdetect_detect_darwin_version(<version_variable>)
+function(deepdetect_detect_darwin_version output_var)
+  if(APPLE)
+    execute_process(COMMAND /usr/bin/sw_vers -productVersion
+                    RESULT_VARIABLE __sw_vers OUTPUT_VARIABLE __sw_vers_out
+                    ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+    set(${output_var} ${__sw_vers_out} PARENT_SCOPE)
+  else()
+    set(${output_var} "" PARENT_SCOPE)
+  endif()
+endfunction()
+
+########################################################################################################
+# An option that the user can select. Can accept condition to control when option is available for user.
+# Usage:
+#   deepdetect_option(<option_variable> "doc string" <initial value or boolean expression> [IF <condition>])
+function(deepdetect_option variable description value)
+  set(__value ${value})
+  set(__condition "")
+  set(__varname "__value")
+  foreach(arg ${ARGN})
+    if(arg STREQUAL "IF" OR arg STREQUAL "if")
+      set(__varname "__condition")
+    else()
+      list(APPEND ${__varname} ${arg})
+    endif()
+  endforeach()
+  unset(__varname)
+  if("${__condition}" STREQUAL "")
+    set(__condition 2 GREATER 1)
+  endif()
+
+  if(${__condition})
+    if("${__value}" MATCHES ";")
+      if(${__value})
+        option(${variable} "${description}" ON)
+      else()
+        option(${variable} "${description}" OFF)
+      endif()
+    elseif(DEFINED ${__value})
+      if(${__value})
+        option(${variable} "${description}" ON)
+      else()
+        option(${variable} "${description}" OFF)
+      endif()
+    else()
+      option(${variable} "${description}" ${__value})
+    endif()
+  else()
+    unset(${variable} CACHE)
+  endif()
+endfunction()
+
+
+################################################################################################
 # Function for selecting GPU arch flags for nvcc based on CUDA_ARCH_NAME
 # Usage:
 #   deepdetect_select_nvcc_arch_flags(out_variable)
@@ -139,7 +197,7 @@ function(deepdetect_select_nvcc_arch_flags out_variable)
 endfunction()
 
 ################################################################################################
-# Short command for cuda comnpilation
+# Short command for cuda compilation
 # Usage:
 #   deepdetect_cuda_compile(<objlist_variable> <cuda_files>)
 macro(deepdetect_cuda_compile objlist_variable)
