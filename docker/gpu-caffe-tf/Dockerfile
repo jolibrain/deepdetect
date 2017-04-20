@@ -70,8 +70,8 @@ RUN wget -O /opt/curlpp-v0.8.1.zip https://github.com/jpbarrette/curlpp/archive/
     rm -rf curlpp-0.8.1 curlpp-v0.8.1.zip
 
 # Temporary work around to fix https://github.com/tensorflow/tensorflow/issues/8264
-RUN ln -s /usr/lib/x86_64-linux-gnu/libcudnn* /usr/local/cuda/lib64/ && \
-    ln -s /usr/include/cudnn.h /usr/local/cuda/include/
+RUN if [ ! -f /usr/local/cuda/include/cudnn.h -a -f /usr/include/cudnn.h ]; then ln -s /usr/include/cudnn.h /usr/local/cuda/include/; fi && \
+    if [ ! -f /usr/local/cuda/lib64/libcudnn.so -a -f /usr/lib/x86_64-linux-gnu/libcudnn.so ]; then ln -s /usr/lib/x86_64-linux-gnu/libcudnn* /usr/local/cuda/lib64/; fi
 
 WORKDIR /opt
 RUN git clone https://github.com/beniz/deepdetect.git && cd deepdetect && mkdir build
