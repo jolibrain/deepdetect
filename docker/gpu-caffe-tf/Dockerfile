@@ -1,5 +1,4 @@
-#FROM nvidia/cuda:7.5-cudnn4-devel
-FROM nvidia/cuda
+FROM nvidia/cuda:8.0-cudnn5-devel-ubuntu16.04
 
 RUN echo 'building GPU DeepDetect image'
 
