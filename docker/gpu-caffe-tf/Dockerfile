@@ -16,6 +16,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   cmake \
   automake \
   build-essential \
+  openjdk-8-jdk \
+  pkg-config \
+  zip \
+  g++ \
+  zlib1g-dev \
   libgoogle-glog-dev \
   libgflags-dev \
   libeigen3-dev \
@@ -46,6 +51,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   vim \
   strace \
   curl \
+  bash-completion \
   ca-certificates && \
   wget -O /tmp/bazel.deb https://github.com/bazelbuild/bazel/releases/download/0.4.3/bazel_0.4.3-linux-x86_64.deb && \
   dpkg -i /tmp/bazel.deb && \
