@@ -36,14 +36,16 @@ class ImageComponent extends React.Component {
     let description = '';
     let boxes = [];
     if(image.classes != null) {
-      boxes = image.classes.map(category => {
-          return {
+      image.classes.forEach(category => {
+        if(category.bbox) {
+          boxes.push({
             coord: [category.bbox.xmin, category.bbox.ymax,
                    category.bbox.xmax - category.bbox.xmin,
                    category.bbox.ymin - category.bbox.ymax],
             label: ''
-          };
-        });
+          });
+        }
+      });
       description = image.classes.map((category, n) => {
         let bottomClass = 'fa fa-stack-2x ' + category.cat;
         bottomClass += this.state.selected == n ? ' fa-square' : ' fa-circle';
