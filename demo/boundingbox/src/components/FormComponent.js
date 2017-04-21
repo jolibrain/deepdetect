@@ -51,16 +51,20 @@ class FormComponent extends React.Component {
   request = (url) => {
     this.setState({url: url});
     const self = this;
+
     let params = {
       service: this.props.service,
       parameters: {
         output: {
-          bbox: true,
           confidence_threshold: this.state.confidenceThreshold
         }
       },
       data: [ url ]
     };
+
+    if(this.props.displayBoundingBox) {
+      params.parameters.output.bbox = true;
+    }
 
     if(this.props.best) {
       params.parameters.best = this.props.best;

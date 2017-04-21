@@ -14,6 +14,11 @@ for (let i = 0; i < x.length; i++) {
   const thresholdControl = x[i].dataset.thresholdControl && x[i].dataset.thresholdControl == 'true';
   const thresholdControlSteps = x[i].dataset.thresholdControlSteps ? x[i].dataset.thresholdControlSteps.split(',').map(value => parseFloat(value)) : [0.8, 0.5, 0.3];
 
+  let displayBoundingBox = true;
+  if(x[i].dataset.boundingbox) {
+    displayBoundingBox = x[i].dataset.boundingbox == 'true';
+  }
+
   ReactDOM.render(<App
     service={service}
     imageList={imageList}
@@ -21,6 +26,7 @@ for (let i = 0; i < x.length; i++) {
     best={x[i].dataset.best}
     thresholdControl={thresholdControl}
     thresholdControlSteps={thresholdControlSteps}
+    displayBoundingBox={displayBoundingBox}
   />, x[i]);
 
 }

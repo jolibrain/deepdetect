@@ -35,6 +35,7 @@ class AppComponent extends React.Component {
                        best={this.props.best}
                        thresholdControl={this.props.thresholdControl}
                        thresholdControlSteps={this.props.thresholdControlSteps}
+                       displayBoundingBox={this.props.displayBoundingBox}
         />
         <Divider hidden/>
         <ImageComponent />
