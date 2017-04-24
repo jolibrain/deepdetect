@@ -211,7 +211,8 @@ endif()
 if (USE_XGBOOST)
   message(STATUS "Configuring XGBoost")
   add_definitions(-DUSE_XGBOOST)
-  if (CUDA_FOUND)
+  if (CUDA_FOUND AND USE_XGBOOST_GPU)
+    add_definitions(-DUSE_XGBOOST_GPU)
     set(XGB_NVCC_FLAGS,"--expt-extended-lambda;-gencode arch=compute_35,code=compute_35")
     ExternalProject_Add(
       xgboost

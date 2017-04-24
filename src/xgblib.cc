@@ -225,8 +225,10 @@ namespace dd
 	    dart_skip_drop = ad_booster.get("skip_drop").get<double>();
 	}
 #ifndef CPU_ONLY
+#ifdef USE_XGBOOST_GPU
       if (_gpu)
 	updater = "grow_gpu";
+#endif
 #endif
       add_cfg_param("eta",eta);
       add_cfg_param("gamma",gamma);
