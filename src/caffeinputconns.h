@@ -40,7 +40,7 @@ namespace dd
   public:
     CaffeInputInterface() {}
     CaffeInputInterface(const CaffeInputInterface &cii)
-      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_sparse(cii._sparse) {}
+      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse) {}
     ~CaffeInputInterface() {}
 
     /**
@@ -77,6 +77,7 @@ namespace dd
     std::vector<std::string> _ids; /**< input ids (e.g. image ids) */
     bool _flat1dconv = false; /**< whether a 1D convolution model. */
     bool _has_mean_file = false; /**< image model mean.binaryproto. */
+    std::vector<float> _mean_values; /**< mean image values across a dataset. */
     bool _sparse = false; /**< whether to use sparse representation. */
     std::unordered_map<std::string,std::pair<int,int>> _imgs_size; /**< image sizes, used in detection. */
     std::string _dbfullname = "train.lmdb";
@@ -95,7 +96,7 @@ namespace dd
       reset_dv_test();
     }
     ImgCaffeInputFileConn(const ImgCaffeInputFileConn &i)
-      :ImgInputFileConn(i),CaffeInputInterface(i) { _db = true; }
+      :ImgInputFileConn(i),CaffeInputInterface(i) { _db = true;}
     ~ImgCaffeInputFileConn() {}
 
     // size of each element in Caffe jargon
@@ -246,7 +247,7 @@ namespace dd
 	    }
 	  
 	  // create db
-	  images_to_db(_uris.at(0),_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname);
+	  images_to_db(_uris,_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname);
 	  
 	  // compute mean of images, not forcely used, depends on net, see has_mean_file
 	  compute_images_mean(_model_repo + "/" + _dbname,
@@ -290,7 +291,7 @@ namespace dd
     void reset_dv_test();
     
   private:
-    int images_to_db(const std::string &rfolder,
+    int images_to_db(const std::vector<std::string> &rfolders,
 		     const std::string &traindbname,
 		     const std::string &testdbname,
 		     const std::string &backend="lmdb", // lmdb, leveldb

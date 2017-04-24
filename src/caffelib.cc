@@ -58,6 +58,7 @@ namespace dd
     _ntargets = cl._ntargets;
     _autoencoder = cl._autoencoder;
     cl._net = nullptr;
+    _crop_size = cl._crop_size;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -192,20 +193,29 @@ namespace dd
 	    if (ad.has("mirror"))
 	      lparam->mutable_transform_param()->set_rotate(ad.get("rotate").get<bool>());
 	    if (ad.has("crop_size"))
-	      lparam->mutable_transform_param()->set_crop_size(ad.get("crop_size").get<int>());
+	      {
+		_crop_size = ad.get("crop_size").get<int>();
+		lparam->mutable_transform_param()->set_crop_size(_crop_size);
+		caffe::LayerParameter *dlparam = net_param.mutable_layer(1); // test input layer
+		dlparam->mutable_transform_param()->set_crop_size(_crop_size);
+	      }
 	    else lparam->mutable_transform_param()->clear_crop_size();
 	  }
 	// input size
 	caffe::LayerParameter *lparam = net_param.mutable_layer(1); // test
 	caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(0);
-	if (this->_inputc.width() != -1 && this->_inputc.height() != -1) // forced width & height
+	if (_crop_size > 0 || (this->_inputc.width() != -1 && this->_inputc.height() != -1)) // forced width & height
 	  {
+	    int width = this->_inputc.width();
+	    int height = this->_inputc.height();
+	    if (_crop_size > 0)
+	      width = height = _crop_size;
 	    lparam->mutable_memory_data_param()->set_channels(this->_inputc.channels());
-	    lparam->mutable_memory_data_param()->set_height(this->_inputc.height());
-	    lparam->mutable_memory_data_param()->set_width(this->_inputc.width());
+	    lparam->mutable_memory_data_param()->set_height(height);
+	    lparam->mutable_memory_data_param()->set_width(width);
 	    dlparam->mutable_memory_data_param()->set_channels(this->_inputc.channels());
-	    dlparam->mutable_memory_data_param()->set_height(this->_inputc.height());
-	    dlparam->mutable_memory_data_param()->set_width(this->_inputc.width());
+	    dlparam->mutable_memory_data_param()->set_height(height);
+	    dlparam->mutable_memory_data_param()->set_width(height);
 	  }
 		
 	// noise parameters
@@ -384,7 +394,7 @@ namespace dd
 	    LOG(ERROR) << "Error creating network";
 	    throw;
 	  }
-	LOG(INFO) << "Using pre-trained weights from " << this->_mlmodel._weights << std::endl;
+	LOG(INFO) << "Using pre-trained weights from " << this->_mlmodel._weights;
 	try
 	  {
 	    _net->CopyTrainedLayersFrom(this->_mlmodel._weights);
@@ -484,6 +494,8 @@ namespace dd
     inputc._train = true;
     APIData cad = ad;
     cad.add("has_mean_file",this->_mlmodel._has_mean_file);
+    if (_crop_size > 0)
+      cad.add("crop_size",_crop_size);
     try
       {
 	inputc.transform(cad);
@@ -511,7 +523,8 @@ namespace dd
     bool has_mean_file = false;
     int user_batch_size, batch_size, test_batch_size, test_iter;
     update_in_memory_net_and_solver(solver_param,cad,inputc,has_mean_file,user_batch_size,batch_size,test_batch_size,test_iter);
-
+    //caffe::ReadProtoFromTextFile(this->_mlmodel._solver,&solver_param);
+    
     // parameters
 #ifndef CPU_ONLY
     bool gpu = _gpu;
@@ -523,8 +536,6 @@ namespace dd
       }
     if (gpu)
       {
-	for (auto i: _gpuid)
-	  Caffe::DeviceQuery();
 	solver_param.set_device_id(_gpuid.at(0));
 	Caffe::SetDevice(_gpuid.at(0));
 	Caffe::set_mode(Caffe::GPU);
@@ -607,9 +618,9 @@ namespace dd
       {
 	solver.reset(caffe::SolverRegistry<float>::CreateSolver(solver_param));
       }
-    catch(std::exception &e)
+    catch(...)
       {
-	throw;
+	throw MLLibInternalException("solver creation exception");
       }
     if (!inputc._dv.empty() || !inputc._dv_sparse.empty())
       {
@@ -685,7 +696,7 @@ namespace dd
 	_sync = new caffe::P2PSync<float>(solver,nullptr,solver->param());
 	_syncs = std::vector<boost::shared_ptr<caffe::P2PSync<float>>>(_gpuid.size());
 	_sync->Prepare(_gpuid, &_syncs); 
-	for (int i=1;i<_syncs.size();++i)
+	for (size_t i=1;i<_syncs.size();++i)
 	  _syncs[i]->StartInternalThread();
       }
 
@@ -757,7 +768,7 @@ namespace dd
 	    LOG(ERROR) << "exception while forward/backward pass through the network\n";
 	    if (_sync)
 	      {
-		for (int i=1;i<_syncs.size();++i)
+		for (size_t i=1;i<_syncs.size();++i)
 		  _syncs[i]->StopInternalThread();
 	      }
 	    delete _sync;
@@ -795,7 +806,7 @@ namespace dd
 	    LOG(ERROR) << "exception while updating network\n";
 	    if (_sync)
 	      {
-		for (int i=1;i<_syncs.size();++i)
+		for (size_t i=1;i<_syncs.size();++i)
 		  _syncs[i]->StopInternalThread();
 	      }
 	    delete _sync;
@@ -813,7 +824,7 @@ namespace dd
 
     if (_sync)
       {
-	for (int i=1;i<_syncs.size();++i)
+	for (size_t i=1;i<_syncs.size();++i)
 	  _syncs[i]->StopInternalThread();
 	delete _sync;
       }
@@ -1361,7 +1372,7 @@ namespace dd
     // fix source paths in the model.
     caffe::NetParameter *np = sp.mutable_net_param();
     caffe::ReadProtoFromTextFile(sp.net().c_str(),np); //TODO: error on read + use internal caffe ReadOrDie procedure
-    for (int i=0;i<np->layer_size();i++)
+    for (int i=0;i<2;i++)//np->layer_size();i++)
       {
 	caffe::LayerParameter *lp = np->mutable_layer(i);
 	if (lp->has_data_param())
@@ -1398,18 +1409,30 @@ namespace dd
 		else mdp->set_batch_size(test_batch_size);
 	      }
 	  }
-	if (lp->has_transform_param() || inputc._has_mean_file)
+	if (lp->has_transform_param() || inputc._has_mean_file || !inputc._mean_values.empty())
 	  {
 	    caffe::TransformationParameter *tp = lp->mutable_transform_param();
 	    has_mean_file = tp->has_mean_file();
 	    if (tp->has_mean_file())
 	      {
-		if (ad.has("db"))
-		  tp->set_mean_file(ad.getobj("db").get("meanfile").get<std::string>());
-		else tp->set_mean_file(this->_mlmodel._repo + "/" + tp->mean_file());
+		if (tp->crop_size() == 0)
+		  {
+		    if (ad.has("db"))
+		      tp->set_mean_file(ad.getobj("db").get("meanfile").get<std::string>());
+		    else tp->set_mean_file(this->_mlmodel._repo + "/" + tp->mean_file());
+		  }
+		else
+		  {
+		    for (size_t d=0;d<inputc._mean_values.size();d++)
+		      {
+			tp->add_mean_value(inputc._mean_values.at(d));
+		      }
+		    tp->clear_mean_file();
+		  }
 	      }
 	  }
       }
+    //caffe::WriteProtoToTextFile(*np,sp.net().c_str());
     sp.clear_net();
   }
 
@@ -1422,6 +1445,10 @@ namespace dd
   {
     caffe::NetParameter net_param;
     caffe::ReadProtoFromTextFile(net_file,&net_param); //TODO: catch parsing error (returns bool true on success)
+    int width = this->_inputc.width();
+    int height = this->_inputc.height();
+    if (_crop_size > 0)
+      width = height = _crop_size;
     if (net_param.mutable_layer(0)->has_memory_data_param()
 	|| net_param.mutable_layer(1)->has_memory_data_param())
       {
@@ -1430,14 +1457,14 @@ namespace dd
 	    if (net_param.mutable_layer(0)->has_memory_data_param())
 	      {
 		net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels());
-		net_param.mutable_layer(0)->mutable_memory_data_param()->set_width(inputc.width());
-		net_param.mutable_layer(0)->mutable_memory_data_param()->set_height(inputc.height());
+		net_param.mutable_layer(0)->mutable_memory_data_param()->set_width(width);
+		net_param.mutable_layer(0)->mutable_memory_data_param()->set_height(height);
 	      }
 	    if (net_param.mutable_layer(1)->has_memory_data_param())
 	      {
 		net_param.mutable_layer(1)->mutable_memory_data_param()->set_channels(inputc.channels()); // test layer
-		net_param.mutable_layer(1)->mutable_memory_data_param()->set_width(inputc.width());
-		net_param.mutable_layer(1)->mutable_memory_data_param()->set_height(inputc.height());
+		net_param.mutable_layer(1)->mutable_memory_data_param()->set_width(width);
+		net_param.mutable_layer(1)->mutable_memory_data_param()->set_height(height);
 	      }
 	  }
 	else
@@ -1509,14 +1536,20 @@ namespace dd
 	if (_ntargets == 0 || _ntargets == 1)
 	  {
 	    deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels());
-	    deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_width(inputc.width());
-	    deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_height(inputc.height());
+	    deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_width(width);
+	    deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_height(height);
 	  }
 	else
 	  {
 	    deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels()+_ntargets);
 	    deploy_net_param.mutable_layer(1)->mutable_slice_param()->set_slice_point(0,inputc.channels());
 	  }
+	if (_crop_size > 0)
+	   {
+	     for (size_t d=0;d<inputc._mean_values.size();d++)
+	       deploy_net_param.mutable_layer(0)->mutable_transform_param()->add_mean_value(inputc._mean_values.at(d));
+	     deploy_net_param.mutable_layer(0)->mutable_transform_param()->set_crop_size(_crop_size);
+	   }
       }
     caffe::WriteProtoToTextFile(net_param,net_file);
     caffe::WriteProtoToTextFile(deploy_net_param,deploy_file);

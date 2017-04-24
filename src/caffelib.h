@@ -215,6 +215,7 @@ namespace dd
       std::mutex _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as net is not re-instantiated. Use batches instead. */
       long int _flops = 0;  /**< model flops. */
       long int _params = 0;  /**< number of parameters in the model. */
+      int _crop_size = -1; /**< cropping is part of Caffe transforms in input layers, storing here. */
       caffe::P2PSync<float> *_sync = nullptr;
       std::vector<boost::shared_ptr<caffe::P2PSync<float>>> _syncs;
     };
