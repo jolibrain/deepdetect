@@ -215,7 +215,7 @@ namespace dd
 	    lparam->mutable_memory_data_param()->set_width(width);
 	    dlparam->mutable_memory_data_param()->set_channels(this->_inputc.channels());
 	    dlparam->mutable_memory_data_param()->set_height(height);
-	    dlparam->mutable_memory_data_param()->set_width(height);
+	    dlparam->mutable_memory_data_param()->set_width(width);
 	  }
 		
 	// noise parameters
@@ -1445,8 +1445,8 @@ namespace dd
   {
     caffe::NetParameter net_param;
     caffe::ReadProtoFromTextFile(net_file,&net_param); //TODO: catch parsing error (returns bool true on success)
-    int width = this->_inputc.width();
-    int height = this->_inputc.height();
+    int width = inputc.width();
+    int height = inputc.height();
     if (_crop_size > 0)
       width = height = _crop_size;
     if (net_param.mutable_layer(0)->has_memory_data_param()

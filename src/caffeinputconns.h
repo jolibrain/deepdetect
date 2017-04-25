@@ -96,7 +96,7 @@ namespace dd
       reset_dv_test();
     }
     ImgCaffeInputFileConn(const ImgCaffeInputFileConn &i)
-      :ImgInputFileConn(i),CaffeInputInterface(i) { _db = true;}
+      :ImgInputFileConn(i),CaffeInputInterface(i) { _db = true; }
     ~ImgCaffeInputFileConn() {}
 
     // size of each element in Caffe jargon
@@ -144,11 +144,11 @@ namespace dd
       // in prediction mode, convert the images to Datum, a Caffe data structure
       if (!_train)
 	{
-	  // if no img height x width, we assume 227x227 (works if user is lucky, i.e. the best we can do)
+	  // if no img height x width, we assume 224x224 (works if user is lucky, i.e. the best we can do)
 	  if (_width == -1)
-	    _width = 227;
+	    _width = 224;
 	  if (_height == -1)
-	    _height = 227;
+	    _height = 224;
 	  
 	  if (ad.has("has_mean_file"))
 	    _has_mean_file = ad.get("has_mean_file").get<bool>();
