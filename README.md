@@ -239,6 +239,11 @@ If you would like a CPU only build, use:
 cmake .. -DUSE_CPU_ONLY=ON
 ```
 
+If you would like to constrain Caffe to CPU only, use:
+```
+cmake .. -DUSE_CAFFE_CPU_ONLY=ON
+```
+
 #### Build with XGBoost support
 
 If you would like to build with XGBoost, include the `-DUSE_XGBOOST=ON` parameter to `cmake`:
@@ -265,9 +270,14 @@ If you would like to build with Tensorflow, include the `-DUSE_TF=ON` paramter t
 cmake .. -DUSE_TF=ON
 ```
 
+If you would like to constrain Tensorflow to CPU, use:
+```
+cmake .. -DUSE_TF=ON -DUSE_TF_CPU_ONLY=ON
+```
+
 You can combine with XGBoost support with:
 ```
-cmake .. -DUSE_TF=on -DUSE_XGBOOST=ON
+cmake .. -DUSE_TF=ON -DUSE_XGBOOST=ON
 ```
 
 #### Build with T-SNE support
