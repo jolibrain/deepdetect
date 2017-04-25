@@ -32,8 +32,8 @@ class DD(object):
     """
 
     # return types
-    RETURN_JSON = 0
-    RETURN_TEXT = 1
+    RETURN_PYTHON = 0
+    RETURN_JSON = 1
     RETURN_NONE = 2
 
     __HTTP = 0
@@ -51,20 +51,20 @@ class DD(object):
         self.__host = host
         self.__port = port
         self.__proto = proto
-        self.__returntype = self.RETURN_JSON
+        self.__returntype = self.RETURN_PYTHON
         if proto == self.__HTTP:
             self.__ddurl = 'http://%s:%d' % (host, port)
         else:
             self.__ddurl = 'https://%s:%d' % (host, port)
 
     def set_return_format(self, f):
-        assert f == self.RETURN_JSON or f == self.RETURN_TEXT or f == self.RETURN_NONE
+        assert f == self.RETURN_PYTHON or f == self.RETURN_JSON or f == self.RETURN_NONE
         self.__returntype = f
 
     def __return_data(self, r):
-        if self.__returntype == self.RETURN_JSON:
+        if self.__returntype == self.RETURN_PYTHON:
             return r.json()
-        elif self.__returntype == self.RETURN_TEXT:
+        elif self.__returntype == self.RETURN_JSON:
             return r.text
         else:
             return None
@@ -211,6 +211,6 @@ class DD(object):
 # test
 if __name__ == '__main__':
     dd = DD()
-    dd.set_return_format(dd.RETURN_JSON)
+    dd.set_return_format(dd.RETURN_PYTHON)
     inf = dd.info()
     print(inf)
