@@ -78,7 +78,7 @@ include_directories("${PROTOBUF_INCLUDE_DIR}")
 # Tensorflow
   message(STATUS "Fetching Tensorflow")
   add_definitions(-DUSE_TF)
-  if (CUDA_FOUND)
+  if (CUDA_FOUND AND NOT USE_TF_CPU_ONLY)
     ExternalProject_Add(
       tensorflow
       PREFIX tensorflow
@@ -90,6 +90,7 @@ include_directories("${PROTOBUF_INCLUDE_DIR}")
       BUILD_IN_SOURCE 1
       )
   else()
+    add_definitions(-DUSE_TF_CPU_ONLY)
     ExternalProject_Add(
       tensorflow
       PREFIX tensorflow
@@ -117,7 +118,7 @@ if (CAFFE_INC_DIR AND CAFFE_LIB_DIR)
   # do nothing
 else()
   message(STATUS "Configuring customized caffe")
-  if (CUDA_FOUND)
+  if (CUDA_FOUND AND NOT USE_CAFFE_CPU_ONLY)
     if (CUDA_ARCH)
     else()
       if (NOT ${CUDA_VERSION} MATCHES "8.0")
@@ -171,7 +172,8 @@ else()
 	  )
       endif()
     endif() # HAVE_CUDNN
-  else()
+  else() # CUDA_FOUND
+    add_definitions(-DUSE_CAFFE_CPU_ONLY)
     if (USE_TF)
       ExternalProject_Add(
 	caffe_dd
