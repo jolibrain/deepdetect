@@ -103,8 +103,7 @@ class DD(object):
         return self.get(self.__urls["info"])
 
     # API services
-    def put_service(self, sname, model, description, mllib, parameters_input, parameters_mllib, parameters_output,
-                    mltype='supervised'):
+    def put_service(self, sname, model, description, mllib, parameters_input, parameters_mllib, parameters_output, mltype='supervised'):
         """
         Create a service
         Parameters:
