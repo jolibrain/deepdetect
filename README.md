@@ -246,6 +246,12 @@ If you would like to build with XGBoost, include the `-DUSE_XGBOOST=ON` paramete
 cmake .. -DUSE_XGBOOST=ON
 ```
 
+If you would like to build the GPU support for XGBoost (experimental from DMLC), use the `-DUSE_XGBOOST_GPU=ON` parameter to `cmake`:
+```
+cmake .. -DUSE_XGBOOST=ON -DUSE_XGBOOST_GPU=ON
+```
+
+
 #### Build with Tensorflow support
 First you must install [Bazel](https://www.bazel.io/versions/master/docs/install.html#install-on-ubuntu) and Cmake with version > 3.
 

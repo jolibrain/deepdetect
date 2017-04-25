@@ -287,7 +287,10 @@ namespace dd
 	      while(std::getline(sh,col,_delim[0]))
 		{
 		  if ((igit=_ignored_columns_pos.find(cu))!=_ignored_columns_pos.end())
-		    continue;
+		    {
+		      ++cu;
+		      continue;
+		    }
 		  update_category((*hit),col);
 		  ++hit;
 		  ++cu;
@@ -352,9 +355,9 @@ namespace dd
 	  else add_train_csvline(std::to_string(nlines),vals); 
 	  
 	  //debug
-	  /*std::cout << "csv data line #" << nlines << "=";
-	  std::copy(vals.begin(),vals.end(),std::ostream_iterator<double>(std::cout," "));
-	  std::cout << std::endl;*/
+	  /*std::cout << "csv data line #" << nlines << "= " << vals.size() << std::endl;
+	    std::copy(vals.begin(),vals.end(),std::ostream_iterator<double>(std::cout," "));
+	    std::cout << std::endl;*/
 	  //debug
 	}
       LOG(INFO) << "read " << nlines << " lines from " << fname << std::endl;

@@ -15,7 +15,7 @@ else()
 endif()
 
 if (USE_XGBOOST)
-  if (CUDA_FOUND)
+  if (CUDA_FOUND AND USE_XGBOOST_GPU)
     set(XGBOOST_LIB_DEPS -Wl,--whole-archive ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/liblibxgboost.a -Wl,--no-whole-archive ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/dmlc-core/libdmlc.a ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/librabit.a ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/libupdater_gpu.a)
   else()
     set(XGBOOST_LIB_DEPS -Wl,--whole-archive ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/liblibxgboost.a -Wl,--no-whole-archive ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/dmlc-core/libdmlc.a ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/librabit.a)

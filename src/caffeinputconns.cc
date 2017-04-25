@@ -39,7 +39,18 @@ namespace dd
     std::string cl_file = model_repo + "/class_weights.binaryproto";
     if (ad_mllib.has("class_weights"))
       {
-	std::vector<double> cw = ad_mllib.get("class_weights").get<std::vector<double>>();
+	std::vector<double> cw;
+	try
+	  {
+	    cw = ad_mllib.get("class_weights").get<std::vector<double>>();
+	  }
+	catch (std::exception &e)
+	  {
+	    // let's try array of int, that's a common mistake
+	    std::vector<int> cwi = ad_mllib.get("class_weights").get<std::vector<int>>();
+	    for (int v: cwi)
+	      cw.push_back(static_cast<double>(v));
+	  }
 	int nclasses = cw.size();
 	BlobProto cw_blob;
 	cw_blob.set_num(1);
