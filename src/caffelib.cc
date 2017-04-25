@@ -70,7 +70,7 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::set_gpuid(const APIData &ad)
   {
-#ifndef CPU_ONLY
+#if !defined(CPU_ONLY) && !defined(USE_CAFFE_CPU_ONLY)
     if (ad.has("gpuid"))
       {
 	try
@@ -419,7 +419,7 @@ namespace dd
     if (ad.has("gpu"))
       _gpu = ad.get("gpu").get<bool>();
     set_gpuid(ad);
-#ifndef CPU_ONLY
+#if !defined(CPU_ONLY) && !defined(USE_CAFFE_CPU_ONLY)
     if (_gpu)
       {
 	for (auto i: _gpuid)
@@ -513,7 +513,7 @@ namespace dd
     update_in_memory_net_and_solver(solver_param,cad,inputc,has_mean_file,user_batch_size,batch_size,test_batch_size,test_iter);
 
     // parameters
-#ifndef CPU_ONLY
+#if !defined(CPU_ONLY) && !defined(USE_CAFFE_CPU_ONLY)
     bool gpu = _gpu;
     if (ad_mllib.has("gpu"))
       {
@@ -1046,7 +1046,7 @@ namespace dd
       bbox = true;
     
     // gpu
-#ifndef CPU_ONLY
+#if !defined(CPU_ONLY) && !defined(USE_CAFFE_CPU_ONLY)
     bool gpu = _gpu;
     if (ad_mllib.has("gpu"))
       {
