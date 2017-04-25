@@ -46,7 +46,7 @@ args = parser.parse_args()
 host = args.host
 port = args.port
 dd = DD(host,port)
-dd.set_return_format(dd.RETURN_JSON)
+dd.set_return_format(dd.RETURN_PYTHON)
 
 list_bench_files = []
 with open(args.list_bench_files) as f:
