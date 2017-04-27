@@ -1191,7 +1191,6 @@ namespace dd
 	      {
 		const int det_size = 7;
 		const float *outr = results[0]->cpu_data();
-		const int num_det = results[0]->height() / batch_size; // total number of detections across batch
 		for (int j=0;j<batch_size;j++)
 		  {
 		    int k = 0;
@@ -1205,20 +1204,31 @@ namespace dd
 		    int cols = 1;
 		    if (bit != inputc._imgs_size.end())
 		      {
+			// original image size
 			rows = (*bit).second.first;
 			cols = (*bit).second.second;
 		      }
+		    else
+		      {
+			LOG(ERROR) << "couldn't find original image size for " << uri;
+		      }
 		    bool leave = false;
-		    while(k<num_det)
+		    int curi = -1;
+		    while(true)
 		      {
 			if (outr[0] == -1)
 			  {
 			    // skipping invalid detection
+			    LOG(ERROR) << "skipping invalid detection";
 			    outr += det_size;
 			    leave = true;
 			    break;
 			  }
 			std::vector<float> detection(outr, outr + det_size);
+			if (curi == -1)
+			  curi = detection[0]; // first pass
+			else if (curi != detection[0])
+			  break; // this belongs to next image
 			++k;
 			outr += det_size;
 			if (detection[2] < confidence_threshold)
