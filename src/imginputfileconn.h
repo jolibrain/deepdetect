@@ -210,8 +210,8 @@ namespace dd
     bool _bw = false;
     bool _b64 = false;
     std::vector<int> _labels;
-    int _width = 227;
-    int _height = 227;
+    int _width = 224;
+    int _height = 224;
     std::string _db_fname;
   };
   

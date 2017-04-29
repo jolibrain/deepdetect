@@ -74,7 +74,7 @@ namespace dd
   // convert images into db entries
   // a root folder must contain directories as classes holding image
   // files for each class. The name of the class is the name of the directory.
-  int ImgCaffeInputFileConn::images_to_db(const std::string &rfolder,
+  int ImgCaffeInputFileConn::images_to_db(const std::vector<std::string> &rfolders,
 					  const std::string &traindbname,
 					  const std::string &testdbname,
 					  const std::string &backend,
@@ -105,10 +105,10 @@ namespace dd
 	return 0;
       }
 
-    // list directories in dataset root folder
+    // list directories in dataset train folder
     std::unordered_set<std::string> subdirs;
-    if (fileops::list_directory(rfolder,false,true,subdirs))
-      throw InputConnectorBadParamException("failed reading image data directory " + rfolder);
+    if (fileops::list_directory(rfolders.at(0),false,true,subdirs))
+      throw InputConnectorBadParamException("failed reading image train data directory " + rfolders.at(0));
 
     // list files and classes, possibly shuffle / split them
     int cl = 0;
@@ -119,7 +119,7 @@ namespace dd
       {
 	std::unordered_set<std::string> subdir_files;
 	if (fileops::list_directory((*uit),true,false,subdir_files))
-	  throw InputConnectorBadParamException("failed reading image data sub-directory " + (*uit));
+	  throw InputConnectorBadParamException("failed reading image train data sub-directory " + (*uit));
 	hcorresp.insert(std::pair<int,std::string>(cl,dd_utils::split((*uit),'/').back()));
 	auto fit = subdir_files.begin();
 	while(fit!=subdir_files.end()) // XXX: re-iterating the file is not optimal
@@ -163,6 +163,32 @@ namespace dd
 	    ++chit;
 	  }
 	lfiles.erase(dchit,lfiles.end());
+      }
+    else if (rfolders.size() > 1)
+      {
+	// list directories in dataset test folder
+	std::unordered_set<std::string> test_subdirs;
+	if (fileops::list_directory(rfolders.at(1),false,true,test_subdirs))
+	  throw InputConnectorBadParamException("failed reading image test data directory " + rfolders.at(1));
+
+	// list files and classes, possibly shuffle / split them
+	int cl = 0;
+	auto uit = test_subdirs.begin();
+	while(uit!=test_subdirs.end())
+	  {
+	    std::unordered_set<std::string> subdir_files;
+	    if (fileops::list_directory((*uit),true,false,subdir_files))
+	      throw InputConnectorBadParamException("failed reading image test data sub-directory " + (*uit));
+	hcorresp.insert(std::pair<int,std::string>(cl,dd_utils::split((*uit),'/').back()));
+	auto fit = subdir_files.begin();
+	while(fit!=subdir_files.end()) // XXX: re-iterating the file is not optimal
+	  {
+	    test_lfiles.push_back(std::pair<std::string,int>((*fit),cl));
+	    ++fit;
+	  }
+	++cl;
+	++uit;
+	  }	
       }
     _db_batchsize = lfiles.size();
     _db_testbatchsize = test_lfiles.size();
@@ -254,7 +280,20 @@ namespace dd
     std::string dbfullname = dbname + "." + backend;
     if (fileops::file_exists(meanfile))
       {
-	LOG(WARNING) << "image mean file " << meanfile << " already exists, bypassing creation\n";
+	LOG(WARNING) << "image mean file " << meanfile << " already exists, bypassing creation";
+	BlobProto sum_blob;
+	ReadProtoFromBinaryFile(meanfile.c_str(),&sum_blob);
+	const int channels = sum_blob.channels();
+	const int dim = sum_blob.height() * sum_blob.width();
+	_mean_values = std::vector<float>(channels,0.0);
+	LOG(INFO) << "Number of channels: " << channels;
+	for (int c = 0; c < channels; ++c) {
+	  for (int i = 0; i < dim; ++i) {
+	    _mean_values[c] += sum_blob.data(dim * c + i);
+	  }
+	  LOG(INFO) << "mean_value channel [" << c << "]:" << _mean_values[c] / dim;
+	  _mean_values[c] /= dim;
+	}
 	return 0;
       }
 
@@ -315,16 +354,19 @@ namespace dd
     // Write to disk
     LOG(INFO) << "Write to " << meanfile;
     WriteProtoToBinaryFile(sum_blob, meanfile.c_str());
-    
+
+    // let's store the simpler mean values in case of image
+    // size changes, e.g. cropping
     const int channels = sum_blob.channels();
     const int dim = sum_blob.height() * sum_blob.width();
-    std::vector<float> mean_values(channels, 0.0);
+    _mean_values = std::vector<float>(channels,0.0);
     LOG(INFO) << "Number of channels: " << channels;
     for (int c = 0; c < channels; ++c) {
       for (int i = 0; i < dim; ++i) {
-	mean_values[c] += sum_blob.data(dim * c + i);
+	_mean_values[c] += sum_blob.data(dim * c + i);
       }
-      LOG(INFO) << "mean_value channel [" << c << "]:" << mean_values[c] / dim;
+      LOG(INFO) << "mean_value channel [" << c << "]:" << _mean_values[c] / dim;
+      _mean_values[c] /= dim;
     }
     return 0;
   }
