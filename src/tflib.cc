@@ -299,7 +299,7 @@ namespace dd
       batch_size = ad_mllib.get("test_batch_size").get<int>();
 
     std::string extract_layer;
-    if (ad_mllib.has("extract_layer"))
+    if (ad_mllib.has("extract_layer") && !ad_mllib.get("extract_layer").get<std::string>().empty())
       {
        	_outputLayer = ad_mllib.get("extract_layer").get<std::string>();
 	extract_layer = _outputLayer;
