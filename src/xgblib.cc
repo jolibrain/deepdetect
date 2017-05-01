@@ -338,25 +338,24 @@ namespace dd
 		    if (!std::isnan(mval)) // if testing occurs once before training even starts, loss is unknown and we don't add it to history.
 		      this->add_meas_per_iter(m,mval);
 		  }
-		/*else if (m == "cmdiag")
+		else if (m == "cmdiag")
 		  {
 		    std::vector<double> mdiag = meas_obj.get(m).get<std::vector<double>>();
 		    std::string mdiag_str;
 		    for (size_t i=0;i<mdiag.size();i++)
 		      mdiag_str += std::to_string(i) + ":" + std::to_string(mdiag.at(i)) + " ";
 		    LOG(INFO) << m << "=[" << mdiag_str << "]";
-		    }*/
+		  }
 	      }
 	  }
 	
-	LOG(INFO) << "model saving / repo=" << this->_mlmodel._repo << std::endl;;
 	if (_params.save_period != 0 && (i + 1) % _params.save_period == 0) {
+	  LOG(INFO) << "model saving / repo=" << this->_mlmodel._repo << std::endl;;
 	  std::ostringstream os;
 	  os << this->_mlmodel._repo << '/'
 	     << std::setfill('0') << std::setw(4)
 	     << i + 1 << ".model";
-	  std::unique_ptr<dmlc::Stream> fo(
-					   dmlc::Stream::Create(os.str().c_str(), "w"));
+	  std::unique_ptr<dmlc::Stream> fo(dmlc::Stream::Create(os.str().c_str(), "w"));
 	  learner->Save(fo.get());
 	}
 	
