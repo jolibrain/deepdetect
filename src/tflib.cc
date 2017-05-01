@@ -428,15 +428,18 @@ namespace dd
 	else // unsupervised
 	  {
 	    auto layer_vals = output.flat<float>();
+	    int embedding_size = layer_vals.size() / static_cast<float>(dv.size());
+	    int offset = 0;
 	    for (size_t i=0;i<dv.size();i++)
 	      {
 		std::vector<double> vals;
-		vals.reserve(layer_vals.size());
-		for (int c=0;c<layer_vals.size();c++)
-		  vals.push_back(layer_vals.data()[c]);
+		vals.reserve(embedding_size);//layer_vals.size());
+		for (int c=0;c<embedding_size;c++)
+		  vals.push_back(layer_vals.data()[offset+c]);
 		rad.add("uri",inputc._ids.at(idoffset+i));
 		rad.add("vals",vals);
 		vrad.push_back(rad);
+		offset += embedding_size;
 	      }
 	    idoffset += dv.size();
 	  }
