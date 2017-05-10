@@ -1052,7 +1052,17 @@ namespace dd
     bool bbox = false;
     double confidence_threshold = 0.0;
     if (ad_output.has("confidence_threshold"))
-      confidence_threshold = ad_output.get("confidence_threshold").get<double>();
+      {
+	try
+	  {
+	    confidence_threshold = ad_output.get("confidence_threshold").get<double>();
+	  }
+	catch(std::exception &e)
+	  {
+	    // try from int
+	    confidence_threshold = static_cast<double>(ad_output.get("confidence_threshold").get<int>());
+	  }
+      }
     if (ad_output.has("bbox") && ad_output.get("bbox").get<bool>())
       bbox = true;
     
