@@ -1210,6 +1210,7 @@ namespace dd
 	      }
 	    if (bbox) // in-image object detection
 	      {
+		int results_height = results[0]->height();
 		const int det_size = 7;
 		const float *outr = results[0]->cpu_data();
 		for (int j=0;j<batch_size;j++)
@@ -1235,7 +1236,7 @@ namespace dd
 		      }
 		    bool leave = false;
 		    int curi = -1;
-		    while(true && k<results[0]->height())
+		    while(true && k<results_height-1)
 		      {
 			if (outr[0] == -1)
 			  {
