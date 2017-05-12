@@ -96,7 +96,7 @@ namespace dd
       reset_dv_test();
     }
     ImgCaffeInputFileConn(const ImgCaffeInputFileConn &i)
-      :ImgInputFileConn(i),CaffeInputInterface(i) { _db = true; }
+      :ImgInputFileConn(i),CaffeInputInterface(i) { _db = true; _segmentation = i._segmentation; }
     ~ImgCaffeInputFileConn() {}
 
     // size of each element in Caffe jargon
@@ -217,52 +217,84 @@ namespace dd
 	  this->_images.clear();
 	  this->_images_size.clear();
 	}
-      else // more complicated, since images can be heavy, a db is built so that it is less costly to iterate than the filesystem
+      else
 	{
-	  _dbfullname = _model_repo + "/" + _dbfullname;
-	  _test_dbfullname = _model_repo + "/" + _test_dbfullname;
-	  try
-	    {
-	      get_data(ad);
-	    }
-	  catch(InputConnectorBadParamException &ex) // in case the db is in the net config
-	    {
-	      // API defines no data as a user error (bad param).
-	      // However, Caffe does allow to specify the input database into the net's definition,
-	      // which makes it difficult to enforce the API here.
-	      // So for now, this check is kept disabled.
-	      /*if (!fileops::file_exists(_model_repo + "/" + _dbname))
-		throw ex;*/
-	      return;
-	    }
 	  APIData ad_mllib;
 	  if (ad.has("parameters")) // hotplug of parameters, overriding the defaults
 	    {
 	      APIData ad_param = ad.getobj("parameters");
 	      if (ad_param.has("input"))
 		{
+		  APIData ad_input = ad_param.getobj("input");
 		  fillup_parameters(ad_param.getobj("input"));
+		  if (ad_input.has("segmentation"))
+		    _segmentation = ad_input.get("segmentation").get<bool>();
 		}
 	      ad_mllib = ad_param.getobj("mllib");
 	    }
 	  
-	  // create db
-	  images_to_db(_uris,_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname);
-	  
-	  // compute mean of images, not forcely used, depends on net, see has_mean_file
-	  compute_images_mean(_model_repo + "/" + _dbname,
-			      _model_repo + "/" + _meanfname);
-
-	  // class weights if any
-	  write_class_weights(_model_repo,ad_mllib);
-	  
-	  // enrich data object with db files location
-	  APIData dbad;
-	  dbad.add("train_db",_dbfullname);
-	  if (_test_split > 0.0)
-	    dbad.add("test_db",_test_dbfullname);
-	  dbad.add("meanfile",_model_repo + "/" + _meanfname);
-	  const_cast<APIData&>(ad).add("db",dbad);
+	  if (_segmentation)
+	    {
+	      try
+		{
+		  get_data(ad);
+		}
+	      catch(InputConnectorBadParamException &ex)
+		{
+		  throw ex;
+		}
+	      if (!fileops::file_exists(_uris.at(0)))
+		throw InputConnectorBadParamException("input train file " + _uris.at(0) + " not found");
+	      if (_uris.size() > 1)
+		{
+		  if (!fileops::file_exists(_uris.at(1)))
+		    throw InputConnectorBadParamException("input test file " + _uris.at(1) + " not found");
+		}
+	      
+	      //TODO: if test split (+ optional shuffle)
+	      APIData sourcead;
+	      sourcead.add("source_train",_uris.at(0));
+	      if (_uris.size() > 1)
+		sourcead.add("source_test",_uris.at(1));
+	      const_cast<APIData&>(ad).add("source",sourcead);
+	    }
+	  else // more complicated, since images can be heavy, a db is built so that it is less costly to iterate than the filesystem
+	    {
+	      _dbfullname = _model_repo + "/" + _dbfullname;
+	      _test_dbfullname = _model_repo + "/" + _test_dbfullname;
+	      try
+		{
+		  get_data(ad);
+		}
+	      catch(InputConnectorBadParamException &ex) // in case the db is in the net config
+		{
+		  // API defines no data as a user error (bad param).
+		  // However, Caffe does allow to specify the input database into the net's definition,
+		  // which makes it difficult to enforce the API here.
+		  // So for now, this check is kept disabled.
+		  /*if (!fileops::file_exists(_model_repo + "/" + _dbname))
+		    throw ex;*/
+		  return;
+		}
+	      
+	      // create db
+	      images_to_db(_uris,_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname);
+	      
+	      // compute mean of images, not forcely used, depends on net, see has_mean_file
+	      compute_images_mean(_model_repo + "/" + _dbname,
+				  _model_repo + "/" + _meanfname);
+	      
+	      // class weights if any
+	      write_class_weights(_model_repo,ad_mllib);
+	      
+	      // enrich data object with db files location
+	      APIData dbad;
+	      dbad.add("train_db",_dbfullname);
+	      if (_test_split > 0.0)
+		dbad.add("test_db",_test_dbfullname);
+	      dbad.add("meanfile",_model_repo + "/" + _meanfname);
+	      const_cast<APIData&>(ad).add("db",dbad);
+	    }
 	}
     }
 
@@ -319,6 +351,7 @@ namespace dd
     std::string _correspname = "corresp.txt";
     caffe::Blob<float> _data_mean; // mean binary image if available.
     std::vector<caffe::Datum>::const_iterator _dt_vit;
+    bool _segmentation = false;
   };
 
   /**

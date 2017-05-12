@@ -1,0 +1,15 @@
+net: "/home/beniz/projects/deepdetect/apps/caffe/models/segnet_camvid/segnet_train.prototxt"  		# Change this to the absolute path to your model file
+test_initialization: false
+test_iter: 1
+test_interval: 10000000
+base_lr: 0.001
+lr_policy: "step"
+gamma: 1.0
+stepsize: 10000000
+display: 20
+momentum: 0.9
+max_iter: 40000
+weight_decay: 0.0005
+snapshot: 1000
+snapshot_prefix: "segnet_camvid"  	# Change this to the absolute path to where you wish to output solver snapshots
+solver_mode: GPU

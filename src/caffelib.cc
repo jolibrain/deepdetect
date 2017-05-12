@@ -1382,7 +1382,7 @@ namespace dd
     // fix source paths in the model.
     caffe::NetParameter *np = sp.mutable_net_param();
     caffe::ReadProtoFromTextFile(sp.net().c_str(),np); //TODO: error on read + use internal caffe ReadOrDie procedure
-    for (int i=0;i<2;i++)//np->layer_size();i++)
+    for (int i=0;i<2;i++)
       {
 	caffe::LayerParameter *lp = np->mutable_layer(i);
 	if (lp->has_data_param())
@@ -1406,6 +1406,21 @@ namespace dd
 	    if (dp->has_batch_size() && batch_size != inputc.batch_size() && batch_size > 0)
 	      {
 		dp->set_batch_size(user_batch_size); // data params seem to handle batch_size that are no multiple of the training set
+		batch_size = user_batch_size;
+	      }
+	  }
+	else if (lp->has_dense_image_data_param())
+	  {
+	    caffe::DenseImageDataParameter *dp = lp->mutable_dense_image_data_param();
+	    if (dp->has_source())
+	      {
+		if (i == 0 && ad.has("source_train"))
+		  dp->set_source(ad.getobj("source").get("source_train").get<std::string>());
+		else dp->set_source(ad.getobj("source").get("source_test").get<std::string>());
+	      }
+	    if (dp->has_batch_size() && batch_size != inputc.batch_size() && batch_size > 0)
+	      {
+		dp->set_batch_size(user_batch_size);
 		batch_size = user_batch_size;
 	      }
 	  }
