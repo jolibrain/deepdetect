@@ -48,6 +48,12 @@ namespace dd
     return 0;
   }
 
+  int DDTxt::read_db(const std::string &fname)
+    {
+      _ctfc->_db_fname = fname;
+      return 0;
+    }
+  
   int DDTxt::read_mem(const std::string &content)
   {
     if (!_ctfc)

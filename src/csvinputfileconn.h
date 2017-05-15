@@ -40,6 +40,7 @@ namespace dd
     ~DDCsv() {}
 
     int read_file(const std::string &fname);
+    int read_db(const std::string &fname);
     int read_mem(const std::string &content);
     int read_dir(const std::string &dir)
     {
@@ -338,6 +339,7 @@ namespace dd
        */
       if (_train)
 	{
+	  int uri_offset = 0;
 	  if (fileops::file_exists(_uris.at(0))) // training from file
 	    {
 	      _csv_fname = _uris.at(0);
@@ -346,12 +348,6 @@ namespace dd
 	    }
 	  else // training from memory
 	    {
-	      if (_uris.at(0).find(_delim)!=std::string::npos) // first line might be the header if we have some options to consider
-		read_header(_uris.at(0));
-	      else
-		{
-		  throw InputConnectorBadParamException("training CSV file " + _csv_fname + " does not exist or in-memory data are missing a CSV header");
-		}
 	    }
 
 	  // check on common and required parameters
@@ -368,7 +364,7 @@ namespace dd
 	    }
 	  else // training from posted data (in-memory)
 	    {
-	      for (size_t i=1;i<_uris.size();i++)
+	      for (size_t i=uri_offset;i<_uris.size();i++)
 		{
 		  DataEl<DDCsv> ddcsv;
 		  ddcsv._ctype._cifc = this;
@@ -407,7 +403,7 @@ namespace dd
 	      ddcsv.read_element(_uris.at(i));
 	    }
 	}
-      if (_csvdata.empty())
+      if (_csvdata.empty() && _db_fname.empty())
 	throw InputConnectorBadParamException("no data could be found");
     }
 
@@ -526,11 +522,16 @@ namespace dd
     // data
     std::vector<CSVline> _csvdata;
     std::vector<CSVline> _csvdata_test;
+    std::string _db_fname;
   };
 }
 
 #ifdef USE_XGBOOST
 #include "xgbinputconns.h"
+#endif
+
+#ifdef USE_TSNE
+#include "tsneinputconns.h"
 #endif
 
 #endif

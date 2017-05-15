@@ -204,6 +204,9 @@ layer {
   type: "Softmax"
   bottom: "ip1"
   top: "losst"
+  include {
+    phase: TEST
+  }
 }
 layer {
   name: "loss"

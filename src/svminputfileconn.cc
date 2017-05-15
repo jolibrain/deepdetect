@@ -36,6 +36,12 @@ namespace dd
       }
     else return -1;
   }
+
+  int DDSvm::read_db(const std::string &fname)
+    {
+      _cifc->_db_fname = fname;
+      return 0;
+    }
   
   int DDSvm::read_mem(const std::string &content)
   {
@@ -92,6 +98,10 @@ namespace dd
 	      }
 	  }
 	catch (std::invalid_argument &e)
+	  {
+	    throw InputConnectorBadParamException("invalid argument error reading SVM format line: " + content);
+	  }
+	catch (...)
 	  {
 	    throw InputConnectorBadParamException("error reading SVM format line: " + content);
 	  }

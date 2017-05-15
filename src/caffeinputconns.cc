@@ -39,7 +39,18 @@ namespace dd
     std::string cl_file = model_repo + "/class_weights.binaryproto";
     if (ad_mllib.has("class_weights"))
       {
-	std::vector<double> cw = ad_mllib.get("class_weights").get<std::vector<double>>();
+	std::vector<double> cw;
+	try
+	  {
+	    cw = ad_mllib.get("class_weights").get<std::vector<double>>();
+	  }
+	catch (std::exception &e)
+	  {
+	    // let's try array of int, that's a common mistake
+	    std::vector<int> cwi = ad_mllib.get("class_weights").get<std::vector<int>>();
+	    for (int v: cwi)
+	      cw.push_back(static_cast<double>(v));
+	  }
 	int nclasses = cw.size();
 	BlobProto cw_blob;
 	cw_blob.set_num(1);
@@ -63,7 +74,7 @@ namespace dd
   // convert images into db entries
   // a root folder must contain directories as classes holding image
   // files for each class. The name of the class is the name of the directory.
-  int ImgCaffeInputFileConn::images_to_db(const std::string &rfolder,
+  int ImgCaffeInputFileConn::images_to_db(const std::vector<std::string> &rfolders,
 					  const std::string &traindbname,
 					  const std::string &testdbname,
 					  const std::string &backend,
@@ -76,44 +87,28 @@ namespace dd
     // test whether the train / test dbs are already in
     // since they may be long to build, we pass on them if there already
     // in the model repository.
-    // however, some generic values need to be acquired, and since Caffe does not
-    // provide a db size operator, we iterate and count elements.
     if (fileops::file_exists(dbfullname))
       {
-	LOG(WARNING) << "image db file " << dbfullname << " already exists, bypassing creation but checking on records, may take a while...\n";
+	LOG(WARNING) << "image db file " << dbfullname << " already exists, bypassing creation but checking on records";
 	std::unique_ptr<db::DB> db(db::GetDB(backend));
 	db->Open(dbfullname.c_str(), db::READ);
-	std::unique_ptr<db::Cursor> cursor(db->NewCursor());
-	_db_batchsize = 0;
-	while(cursor->valid())
-	  {
-	    ++_db_batchsize;
-	    cursor->Next();
-	  }
-	LOG(WARNING) << "image db file " << dbfullname << " with " << _db_batchsize << " records\n";
+	_db_batchsize = db->Count();
+	LOG(WARNING) << "image db file " << dbfullname << " with " << _db_batchsize << " records";
 	if (!testdbname.empty() && fileops::file_exists(testdbfullname))
 	  {
-	    LOG(WARNING) << "image db file " << testdbfullname << " already exists, bypassing creation but checking on records, may take a while...\n";
+	    LOG(WARNING) << "image db file " << testdbfullname << " already exists, bypassing creation but checking on records";
 	    std::unique_ptr<db::DB> tdb(db::GetDB(backend));
 	    tdb->Open(testdbfullname.c_str(), db::READ);
-	    std::unique_ptr<db::Cursor> tcursor(tdb->NewCursor());
-	    _db_testbatchsize = 0;
-	    while(tcursor->valid())
-	      {
-		//Datum datum;
-		//datum.ParseFromString(tcursor->value());
-		++_db_testbatchsize;
-		tcursor->Next();
-	      }
-	    LOG(WARNING) << "image db file " << testdbfullname << " with " << _db_testbatchsize << " records\n";
+	    _db_testbatchsize = tdb->Count();
+	    LOG(WARNING) << "image db file " << testdbfullname << " with " << _db_testbatchsize << " records";
 	  }
 	return 0;
       }
 
-    // list directories in dataset root folder
+    // list directories in dataset train folder
     std::unordered_set<std::string> subdirs;
-    if (fileops::list_directory(rfolder,false,true,subdirs))
-      throw InputConnectorBadParamException("failed reading image data directory " + rfolder);
+    if (fileops::list_directory(rfolders.at(0),false,true,subdirs))
+      throw InputConnectorBadParamException("failed reading image train data directory " + rfolders.at(0));
 
     // list files and classes, possibly shuffle / split them
     int cl = 0;
@@ -124,7 +119,7 @@ namespace dd
       {
 	std::unordered_set<std::string> subdir_files;
 	if (fileops::list_directory((*uit),true,false,subdir_files))
-	  throw InputConnectorBadParamException("failed reading image data sub-directory " + (*uit));
+	  throw InputConnectorBadParamException("failed reading image train data sub-directory " + (*uit));
 	hcorresp.insert(std::pair<int,std::string>(cl,dd_utils::split((*uit),'/').back()));
 	auto fit = subdir_files.begin();
 	while(fit!=subdir_files.end()) // XXX: re-iterating the file is not optimal
@@ -168,6 +163,32 @@ namespace dd
 	    ++chit;
 	  }
 	lfiles.erase(dchit,lfiles.end());
+      }
+    else if (rfolders.size() > 1)
+      {
+	// list directories in dataset test folder
+	std::unordered_set<std::string> test_subdirs;
+	if (fileops::list_directory(rfolders.at(1),false,true,test_subdirs))
+	  throw InputConnectorBadParamException("failed reading image test data directory " + rfolders.at(1));
+
+	// list files and classes, possibly shuffle / split them
+	int cl = 0;
+	auto uit = test_subdirs.begin();
+	while(uit!=test_subdirs.end())
+	  {
+	    std::unordered_set<std::string> subdir_files;
+	    if (fileops::list_directory((*uit),true,false,subdir_files))
+	      throw InputConnectorBadParamException("failed reading image test data sub-directory " + (*uit));
+	hcorresp.insert(std::pair<int,std::string>(cl,dd_utils::split((*uit),'/').back()));
+	auto fit = subdir_files.begin();
+	while(fit!=subdir_files.end()) // XXX: re-iterating the file is not optimal
+	  {
+	    test_lfiles.push_back(std::pair<std::string,int>((*fit),cl));
+	    ++fit;
+	  }
+	++cl;
+	++uit;
+	  }	
       }
     _db_batchsize = lfiles.size();
     _db_testbatchsize = test_lfiles.size();
@@ -259,7 +280,20 @@ namespace dd
     std::string dbfullname = dbname + "." + backend;
     if (fileops::file_exists(meanfile))
       {
-	LOG(WARNING) << "image mean file " << meanfile << " already exists, bypassing creation\n";
+	LOG(WARNING) << "image mean file " << meanfile << " already exists, bypassing creation";
+	BlobProto sum_blob;
+	ReadProtoFromBinaryFile(meanfile.c_str(),&sum_blob);
+	const int channels = sum_blob.channels();
+	const int dim = sum_blob.height() * sum_blob.width();
+	_mean_values = std::vector<float>(channels,0.0);
+	LOG(INFO) << "Number of channels: " << channels;
+	for (int c = 0; c < channels; ++c) {
+	  for (int i = 0; i < dim; ++i) {
+	    _mean_values[c] += sum_blob.data(dim * c + i);
+	  }
+	  LOG(INFO) << "mean_value channel [" << c << "]:" << _mean_values[c] / dim;
+	  _mean_values[c] /= dim;
+	}
 	return 0;
       }
 
@@ -320,16 +354,19 @@ namespace dd
     // Write to disk
     LOG(INFO) << "Write to " << meanfile;
     WriteProtoToBinaryFile(sum_blob, meanfile.c_str());
-    
+
+    // let's store the simpler mean values in case of image
+    // size changes, e.g. cropping
     const int channels = sum_blob.channels();
     const int dim = sum_blob.height() * sum_blob.width();
-    std::vector<float> mean_values(channels, 0.0);
+    _mean_values = std::vector<float>(channels,0.0);
     LOG(INFO) << "Number of channels: " << channels;
     for (int c = 0; c < channels; ++c) {
       for (int i = 0; i < dim; ++i) {
-	mean_values[c] += sum_blob.data(dim * c + i);
+	_mean_values[c] += sum_blob.data(dim * c + i);
       }
-      LOG(INFO) << "mean_value channel [" << c << "]:" << mean_values[c] / dim;
+      LOG(INFO) << "mean_value channel [" << c << "]:" << _mean_values[c] / dim;
+      _mean_values[c] /= dim;
     }
     return 0;
   }
@@ -339,13 +376,16 @@ namespace dd
   {
     static Blob<float> data_mean;
     static float *mean = nullptr;
+    int tnum = num;
+    if (tnum == 0)
+      tnum = -1;
     if (!_test_db_cursor)
       {
 	// open db and create cursor
 	if (!_test_db)
 	  {
 	    _test_db = std::unique_ptr<db::DB>(db::GetDB("lmdb"));
-	    _test_db->Open(_model_repo + "/" + _test_dbfullname.c_str(),db::READ);
+	    _test_db->Open(_test_dbfullname.c_str(),db::READ);
 	  }
 	_test_db_cursor = std::unique_ptr<db::Cursor>(_test_db->NewCursor());
 	
@@ -364,7 +404,7 @@ namespace dd
     while(_test_db_cursor->valid())
       {
 	// fill up a vector up to 'num' elements.
-	if (i == num)
+	if (i == tnum)
 	  break;
 	Datum datum;
 	datum.ParseFromString(_test_db_cursor->value());
@@ -388,6 +428,7 @@ namespace dd
 	    datum.clear_data();
 	  }
 	dv.push_back(datum);
+	_ids.push_back(_test_db_cursor->key());
 	_test_db_cursor->Next();
 	++i;
       }
@@ -411,6 +452,12 @@ namespace dd
 	return 0;
       }
     else return -1;
+  }
+
+  int DDCCsv::read_db(const std::string &fname)
+  {
+    _cifc->_db_fname = fname;
+    return 0;
   }
   
   int DDCCsv::read_mem(const std::string &content)
@@ -441,15 +488,12 @@ namespace dd
     // test whether the train / test dbs are already in
     // since they may be long to build, we pass on them if there already
     // in the model repository.
-    // however, some generic values need to be acquired, and since Caffe does not
-    // provide a db size operator, we iterate and count elements.
     if (fileops::file_exists(dbfullname))
       {
-	LOG(WARNING) << "CSV db file " << dbfullname << " already exists, bypassing creation but checking on records, may take a while...\n";
+	LOG(WARNING) << "CSV db file " << dbfullname << " already exists, bypassing creation but checking on records";
 	std::unique_ptr<db::DB> db(db::GetDB(backend));
 	db->Open(dbfullname.c_str(), db::READ);
 	std::unique_ptr<db::Cursor> cursor(db->NewCursor());
-	_db_batchsize = 0;
 	while(cursor->valid())
 	  {
 	    if (_channels == 0)
@@ -458,25 +502,17 @@ namespace dd
 		datum.ParseFromString(cursor->value());
 		_channels = datum.channels();
 	      }
-	    ++_db_batchsize;
-	    cursor->Next();
+	    break;
 	  }
-	LOG(INFO) << "CSV db train file " << dbfullname << " with " << _db_batchsize << " records\n";
+	_db_batchsize = db->Count();
+	LOG(INFO) << "CSV db train file " << dbfullname << " with " << _db_batchsize << " records";
 	if (!testdbname.empty() && fileops::file_exists(testdbfullname))
 	  {
-	    LOG(WARNING) << "CSV db file " << testdbfullname << " already exists, bypassing creation but checking on records, may take a while...\n";
+	    LOG(WARNING) << "CSV db file " << testdbfullname << " already exists, bypassing creation but checking on records";
 	    std::unique_ptr<db::DB> tdb(db::GetDB(backend));
 	    tdb->Open(testdbfullname.c_str(), db::READ);
-	    std::unique_ptr<db::Cursor> tcursor(tdb->NewCursor());
-	    _db_testbatchsize = 0;
-	    while(tcursor->valid())
-	      {
-		Datum datum;
-		datum.ParseFromString(tcursor->value());
-		++_db_testbatchsize;
-		tcursor->Next();
-	      }
-	    LOG(INFO) << "CSV db test file " << testdbfullname << " with " << _db_testbatchsize << " records\n";
+	    _db_testbatchsize = tdb->Count();
+	    LOG(INFO) << "CSV db test file " << testdbfullname << " with " << _db_testbatchsize << " records";
 	  }	
 	return 0;
       }
@@ -485,17 +521,7 @@ namespace dd
     _db_batchsize = 0;
     _db_testbatchsize = 0;
     write_csvline_to_db(dbfullname,testdbfullname,ad_input);
-    
-    // write corresp file
-    /*std::ofstream correspf(_model_repo + "/" + _correspname,std::ios::binary);
-    auto hit = hcorresp.begin();
-    while(hit!=hcorresp.end())
-      {
-	correspf << (*hit).first << " " << (*hit).second << std::endl;
-	++hit;
-      }
-      correspf.close();*/
-    
+        
     return 0;
   }
 
@@ -615,13 +641,16 @@ namespace dd
 
   std::vector<caffe::Datum> CSVCaffeInputFileConn::get_dv_test_db(const int &num)
   {
+    int tnum = num;
+    if (tnum == 0)
+      tnum = -1;
     if (!_test_db_cursor)
       {
 	// open db and create cursor
 	if (!_test_db)
 	  {
 	    _test_db = std::unique_ptr<db::DB>(db::GetDB("lmdb"));
-	    _test_db->Open(_model_repo + "/" + _test_dbfullname.c_str(),db::READ);
+	    _test_db->Open(_test_dbfullname.c_str(),db::READ);
 	  }
 	_test_db_cursor = std::unique_ptr<db::Cursor>(_test_db->NewCursor());
       }
@@ -630,11 +659,12 @@ namespace dd
     while(_test_db_cursor->valid())
       {
 	// fill up a vector up to 'num' elements.
-	if (i == num)
+	if (i == tnum)
 	  break;
 	Datum datum;
 	datum.ParseFromString(_test_db_cursor->value());
 	dv.push_back(datum);
+	_ids.push_back(_test_db_cursor->key());
 	_test_db_cursor->Next();
 	++i;
       }
@@ -660,15 +690,12 @@ namespace dd
     // test whether the train / test dbs are already in
     // since they may be long to build, we pass on them if there already
     // in the model repository.
-    // however, some generic values need to be acquired, and since Caffe does not
-    // provide a db size operator, we iterate and count elements.
     if (fileops::file_exists(dbfullname))
       {
-	LOG(WARNING) << "Txt db file " << dbfullname << " already exists, bypassing creation but checking on records, may take a while...\n";
+	LOG(WARNING) << "Txt db file " << dbfullname << " already exists, bypassing creation but checking on records";
 	std::unique_ptr<db::DB> db(db::GetDB(backend));
 	db->Open(dbfullname.c_str(), db::READ);
 	std::unique_ptr<db::Cursor> cursor(db->NewCursor());
-	_db_batchsize = 0;
 	while(cursor->valid())
 	  {
 	    if (_channels == 0)
@@ -677,27 +704,17 @@ namespace dd
 		datum.ParseFromString(cursor->value());
 		_channels = datum.channels();
 	      }
-	    ++_db_batchsize;
-	    cursor->Next();
+	    break;
 	  }
-	LOG(INFO) << "Txt db train file " << dbfullname << " with " << _db_batchsize << " records\n";
+	_db_batchsize = db->Count();
+	LOG(INFO) << "Txt db train file " << dbfullname << " with " << _db_batchsize << " records";
 	if (!testdbname.empty() && fileops::file_exists(testdbfullname))
 	  {
-	    LOG(WARNING) << "Txt db file " << testdbfullname << " already exists, bypassing creation but checking on records, may take a while...\n";
-	    //_test_labels.clear();
+	    LOG(WARNING) << "Txt db file " << testdbfullname << " already exists, bypassing creation but checking on records";
 	    std::unique_ptr<db::DB> tdb(db::GetDB(backend));
 	    tdb->Open(testdbfullname.c_str(), db::READ);
-	    std::unique_ptr<db::Cursor> tcursor(tdb->NewCursor());
-	    _db_testbatchsize = 0;
-	    while(tcursor->valid())
-	      {
-		Datum datum;
-		datum.ParseFromString(tcursor->value());
-		//_test_labels.push_back(datum.label());
-		++_db_testbatchsize;
-		tcursor->Next();
-	      }
-	    LOG(INFO) << "Txt db test file " << testdbfullname << " with " << _db_testbatchsize << " records\n";
+	    _db_testbatchsize = tdb->Count();
+	    LOG(INFO) << "Txt db test file " << testdbfullname << " with " << _db_testbatchsize << " records";
 	  }
 	// XXX: remove in-memory data, which pre-processing is useless and should be avoided
 	destroy_txt_entries(_txt);
@@ -709,7 +726,7 @@ namespace dd
     _db_batchsize = _txt.size();
     _db_testbatchsize = _test_txt.size();
 
-    std::cerr << "db_batchsize=" << _db_batchsize << " / db_testbatchsize=" << _db_testbatchsize << std::endl;
+    LOG(INFO) << "db_batchsize=" << _db_batchsize << " / db_testbatchsize=" << _db_testbatchsize << std::endl;
     
     // write to dbs (i.e. train and possibly test)
     if (!_sparse)
@@ -723,16 +740,6 @@ namespace dd
 	else write_sparse_txt_to_db(testdbfullname,_test_txt);
 	destroy_txt_entries(_test_txt);
       }
-    
-    // write corresp file
-    /*std::ofstream correspf(_model_repo + "/" + _correspname,std::ios::binary);
-    auto hit = hcorresp.begin();
-    while(hit!=hcorresp.end())
-      {
-	correspf << (*hit).first << " " << (*hit).second << std::endl;
-	++hit;
-      }
-      correspf.close();*/
     
     return 0;
   }
@@ -840,13 +847,16 @@ namespace dd
 
   std::vector<caffe::Datum> TxtCaffeInputFileConn::get_dv_test_db(const int &num)
   {
+    int tnum = num;
+    if (tnum == 0)
+      tnum = -1;
     if (!_test_db_cursor)
       {
 	// open db and create cursor
 	if (!_test_db)
 	  {
 	    _test_db = std::unique_ptr<db::DB>(db::GetDB("lmdb"));
-	    _test_db->Open(_model_repo + "/" + _test_dbfullname.c_str(),db::READ);
+	    _test_db->Open(_test_dbfullname.c_str(),db::READ);
 	  }
 	_test_db_cursor = std::unique_ptr<db::Cursor>(_test_db->NewCursor());
       }
@@ -855,11 +865,12 @@ namespace dd
     while(_test_db_cursor->valid())
       {
 	// fill up a vector up to 'num' elements.
-	if (i == num)
+	if (i == tnum)
 	  break;
 	Datum datum;
 	datum.ParseFromString(_test_db_cursor->value());
 	dv.push_back(datum);
+	_ids.push_back(_test_db_cursor->key());
 	_test_db_cursor->Next();
 	++i;
       }
@@ -868,13 +879,16 @@ namespace dd
    
   std::vector<caffe::SparseDatum> TxtCaffeInputFileConn::get_dv_test_sparse_db(const int &num)
   {
+    int tnum = num;
+    if (tnum == 0)
+      tnum = -1;
     if (!_test_db_cursor)
       {
 	// open db and create cursor
 	if (!_test_db)
 	  {
 	    _test_db = std::unique_ptr<db::DB>(db::GetDB("lmdb"));
-	    _test_db->Open(_model_repo + "/" + _test_dbfullname.c_str(),db::READ);
+	    _test_db->Open(_test_dbfullname.c_str(),db::READ);
 	  }
 	_test_db_cursor = std::unique_ptr<db::Cursor>(_test_db->NewCursor());
       }
@@ -883,11 +897,12 @@ namespace dd
     while(_test_db_cursor->valid())
       {
 	// fill up a vector up to 'num' elements.
-	if (i == num)
+	if (i == tnum)
 	  break;
 	SparseDatum datum;
 	datum.ParseFromString(_test_db_cursor->value());
 	dv.push_back(datum);
+	_ids.push_back(_test_db_cursor->key());
 	_test_db_cursor->Next();
 	++i;
       }
@@ -906,15 +921,12 @@ namespace dd
     // test whether the train / test dbs are already in
     // since they may be long to build, we pass on them if there already
     // in the model repository.
-    // however, some generic values need to be acquired, and since Caffe does not
-    // provide a db size operator, we iterate and count elements.
     if (fileops::file_exists(dbfullname))
       {
-	LOG(WARNING) << "SVM db file " << dbfullname << " already exists, bypassing creation but checking on records, may take a while...\n";
+	LOG(WARNING) << "SVM db file " << dbfullname << " already exists, bypassing creation but checking on records";
 	std::unique_ptr<db::DB> db(db::GetDB(backend));
 	db->Open(dbfullname.c_str(), db::READ);
 	std::unique_ptr<db::Cursor> cursor(db->NewCursor());
-	_db_batchsize = 0;
 	while(cursor->valid())
 	  {
 	    if (_channels == 0)
@@ -923,25 +935,17 @@ namespace dd
 		datum.ParseFromString(cursor->value());
 		_channels = datum.size();
 	      }
-	    ++_db_batchsize;
-	    cursor->Next();
+	    break;
 	  }
-	LOG(INFO) << "SVM db train file " << dbfullname << " with " << _db_batchsize << " records\n";
+	_db_batchsize = db->Count();
+	LOG(INFO) << "SVM db train file " << dbfullname << " with " << _db_batchsize << " records";
 	if (!testdbname.empty() && fileops::file_exists(testdbfullname))
 	  {
-	    LOG(WARNING) << "SVM db file " << testdbfullname << " already exists, bypassing creation but checking on records, may take a while...\n";
+	    LOG(WARNING) << "SVM db file " << testdbfullname << " already exists, bypassing creation but checking on records";
 	    std::unique_ptr<db::DB> tdb(db::GetDB(backend));
 	    tdb->Open(testdbfullname.c_str(), db::READ);
-	    std::unique_ptr<db::Cursor> tcursor(tdb->NewCursor());
-	    _db_testbatchsize = 0;
-	    while(tcursor->valid())
-	      {
-		SparseDatum datum;
-		datum.ParseFromString(tcursor->value());
-		++_db_testbatchsize;
-		tcursor->Next();
-	      }
-	    LOG(INFO) << "SVM db test file " << testdbfullname << " with " << _db_testbatchsize << " records\n";
+	    _db_testbatchsize = tdb->Count();
+	    LOG(INFO) << "SVM db test file " << testdbfullname << " with " << _db_testbatchsize << " records";
 	  }	
 	return 0;
       }
@@ -950,34 +954,6 @@ namespace dd
     _db_batchsize = 0;
     _db_testbatchsize = 0;
     write_svmline_to_db(dbfullname,testdbfullname,ad_input);
-    
-    //TODO: setup channels in all records as the total number of dims is missing -> should preproc file...
-    /*std::unique_ptr<db::DB> db(db::GetDB(backend));
-    db->Open(dbfullname.c_str(), db::READ);
-    std::unique_ptr<db::Cursor> cursor(db->NewCursor());
-    _db_batchsize = 0;
-    while(cursor->valid())
-      {
-	if (_channels == 0)
-	  {
-	    SparseDatum datum;
-	    datum.ParseFromString(cursor->value());
-	    datum.set_size(channels());
-    
-	    // put back into db
-	    std::string out;
-	    if(!datum.SerializeToString(&out))
-	      {
-		LOG(INFO) << "Failed serialization of datum for db storage";
-		return 0;
-	      }
-	    _txn->Put(cursor->key(), out);
-	  }
-	++_db_batchsize;
-	cursor->Next();
-      }
-    _txn->Commit();
-    db->Close();*/
     
     return 0;
   }
@@ -1059,8 +1035,7 @@ namespace dd
 						  const APIData &ad_input,
 						  const std::string &backend)
   {
-    std::cerr << "SVM line to db\n";
-    std::cerr << "dbfullname=" << dbfullname << std::endl;
+    LOG(INFO) << "SVM line to db / " << "dbfullname=" << dbfullname;
 
     // Create new DB
     _tdb = std::unique_ptr<db::DB>(db::GetDB(backend));
@@ -1069,7 +1044,7 @@ namespace dd
     _ttdb = std::unique_ptr<db::DB>(db::GetDB(backend));
     _ttdb->Open(testdbfullname.c_str(), db::NEW);
     _ttxn = std::unique_ptr<db::Transaction>(_ttdb->NewTransaction());
-    std::cerr << "db is opened\n";
+    LOG(INFO) << "dbs " << dbfullname << " / " << testdbfullname << " opened";
 
     _svm_fname = _uris.at(0); // training only from file
     if (!fileops::file_exists(_svm_fname))
@@ -1091,13 +1066,16 @@ namespace dd
 
   std::vector<caffe::SparseDatum> SVMCaffeInputFileConn::get_dv_test_sparse_db(const int &num)
   {
+    int tnum = num;
+    if (tnum == 0)
+      tnum = -1;
     if (!_test_db_cursor)
       {
 	// open db and create cursor
 	if (!_test_db)
 	  {
 	    _test_db = std::unique_ptr<db::DB>(db::GetDB("lmdb"));
-	    _test_db->Open(_model_repo + "/" + _test_dbfullname.c_str(),db::READ);
+	    _test_db->Open(_test_dbfullname.c_str(),db::READ);
 	  }
 	_test_db_cursor = std::unique_ptr<db::Cursor>(_test_db->NewCursor());
       }
@@ -1106,11 +1084,12 @@ namespace dd
     while(_test_db_cursor->valid())
       {
 	// fill up a vector up to 'num' elements.
-	if (i == num)
+	if (i == tnum)
 	  break;
 	SparseDatum datum;
 	datum.ParseFromString(_test_db_cursor->value());
 	dv.push_back(datum);
+	_ids.push_back(_test_db_cursor->key());
 	_test_db_cursor->Next();
 	++i;
       }

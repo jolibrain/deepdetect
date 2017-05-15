@@ -140,26 +140,81 @@ namespace dd
      * @param ad_out output data object
      * @param bcats supervised output connector
      */
-    void best_cats(const APIData &ad_out, SupervisedOutput &bcats, const int &nclasses) const
+    void best_cats(const APIData &ad_out, SupervisedOutput &bcats, const int &nclasses, const bool &has_bbox) const
     {
       int best = _best;
       if (ad_out.has("best"))
 	best = ad_out.get("best").get<int>();
       if (best == -1)
 	best = nclasses;
-      for (size_t i=0;i<_vvcats.size();i++)
+      if (!has_bbox)
 	{
-	  sup_result sresult = _vvcats.at(i);
-	  sup_result bsresult(sresult._label,sresult._loss);
-	  if (_best == -2) // e.g. bboxes
-	    best = sresult._cats.size();
-	  std::copy_n(sresult._cats.begin(),std::min(best,static_cast<int>(sresult._cats.size())),
-		      std::inserter(bsresult._cats,bsresult._cats.end()));
-	  if (!sresult._extra.empty())
-	    std::copy_n(sresult._extra.begin(),std::min(best,static_cast<int>(sresult._extra.size())),
-			std::inserter(bsresult._extra,bsresult._extra.end()));
-	  bcats._vcats.insert(std::pair<std::string,int>(sresult._label,bcats._vvcats.size()));
-	  bcats._vvcats.push_back(bsresult);
+	  for (size_t i=0;i<_vvcats.size();i++)
+	    {
+	      sup_result sresult = _vvcats.at(i);
+	      sup_result bsresult(sresult._label,sresult._loss);
+	      std::copy_n(sresult._cats.begin(),std::min(best,static_cast<int>(sresult._cats.size())),
+			  std::inserter(bsresult._cats,bsresult._cats.end()));
+	      if (!sresult._extra.empty())
+		std::copy_n(sresult._extra.begin(),std::min(best,static_cast<int>(sresult._extra.size())),
+			    std::inserter(bsresult._extra,bsresult._extra.end()));
+	      bcats._vcats.insert(std::pair<std::string,int>(sresult._label,bcats._vvcats.size()));
+	      bcats._vvcats.push_back(bsresult);
+	    }
+	}
+      else
+	{
+	  for (size_t i=0;i<_vvcats.size();i++)
+	    {
+	      sup_result sresult = _vvcats.at(i);
+	      sup_result bsresult(sresult._label,sresult._loss);
+
+	      if (best == nclasses)
+		{
+		  int nbest = sresult._cats.size();
+		  std::copy_n(sresult._cats.begin(),std::min(nbest,static_cast<int>(sresult._cats.size())),
+			      std::inserter(bsresult._cats,bsresult._cats.end()));
+		  if (!sresult._extra.empty())
+		    std::copy_n(sresult._extra.begin(),std::min(nbest,static_cast<int>(sresult._extra.size())),
+				std::inserter(bsresult._extra,bsresult._extra.end()));
+		}
+	      else
+		{
+		  std::unordered_map<std::string,int> lboxes;
+		  auto bbit = lboxes.begin();
+		  auto mit = sresult._cats.begin();
+		  auto mitx = sresult._extra.begin();
+		  while(mitx!=sresult._extra.end())
+		    {
+		      APIData bbad = (*mitx).second;
+		      std::string bbkey = std::to_string(bbad.get("xmin").get<double>())
+			+ "-" + std::to_string(bbad.get("ymin").get<double>())
+			+ "-" + std::to_string(bbad.get("xmax").get<double>())
+			+ "-" + std::to_string(bbad.get("ymax").get<double>());
+		      if ((bbit=lboxes.find(bbkey))!=lboxes.end())
+			{
+			  (*bbit).second += 1;
+			  if ((*bbit).second <= best)
+			    {
+			      bsresult._cats.insert(std::pair<double,std::string>((*mit).first,(*mit).second));
+			      bsresult._extra.insert(std::pair<double,APIData>((*mitx).first,bbad));
+			    }
+			}
+		      else
+			{
+			  lboxes.insert(std::pair<std::string,int>(bbkey,1));
+			  bsresult._cats.insert(std::pair<double,std::string>((*mit).first,(*mit).second));
+			  bsresult._extra.insert(std::pair<double,APIData>((*mitx).first,bbad));
+			}
+		      ++mitx;
+		      ++mit;
+		    }
+		}
+	      
+	      
+	      bcats._vcats.insert(std::pair<std::string,int>(sresult._label,bcats._vvcats.size()));
+	      bcats._vvcats.push_back(bsresult);
+	    }
 	}
     }
 
@@ -192,13 +247,14 @@ namespace dd
 	  _best = 1;
 	  ad_out.erase("autoencoder");
 	}
+      bool has_bbox = false;
       if (ad_out.has("bbox") && ad_out.get("bbox").get<bool>())
 	{
-	  _best = -2;
+	  has_bbox = true;
 	  ad_out.erase("nclasses");
 	  ad_out.erase("bbox");
 	}
-      best_cats(ad_in,bcats,nclasses);
+      best_cats(ad_in,bcats,nclasses,has_bbox);
       bcats.to_ad(ad_out,regression,autoencoder);
     }
     

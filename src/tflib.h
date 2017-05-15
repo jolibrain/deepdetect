@@ -61,8 +61,9 @@ namespace dd
     int _nclasses = 0; /**< required. */
     bool _regression = false; /**< whether the net acts as a regressor. */
     int _ntargets = 0; /**< number of classification or regression targets. */
-    std::string _inputLayer; // Input Layer of the Tensorflow Model
-    std::string _outputLayer; // OutPut layer of the tensorflow Model
+    std::string _inputLayer; // input Layer of the model
+    std::string _outputLayer; // output layer of the model
+    APIData _inputFlag; // boolean input to the model
     std::unique_ptr<tensorflow::Session> _session = nullptr;
     std::mutex _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as net is not re-instantiated. Use batches instead. */
     };

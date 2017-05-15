@@ -9,6 +9,7 @@ DeepDetect relies on external machine learning libraries through a very generic 
 - the deep learning library [Caffe](https://github.com/BVLC/caffe)
 - distributed gradient boosting library [XGBoost](https://github.com/dmlc/xgboost)
 - the deep learning and other usages library [Tensorflow](https://tensorflow.org)
+- clustering with [T-SNE](https://github.com/DmitryUlyanov/Multicore-TSNE)
 
 #### Machine Learning functionalities per library (current):
 
@@ -17,6 +18,8 @@ DeepDetect relies on external machine learning libraries through a very generic 
 | Caffe      | Y        | Y          | Y              | Y         |   Y        | Y           |
 | XGBoost    | Y        | Y          | Y              | N         |   Y        | N/A         |
 | Tensorflow | N        | Y          | Y              | N         |   N        | N           |
+| T-SNE      | Y        | N/A        | N/A            | N/A       |   N/A      | N/A         |
+
 
 #### GPU support per library
 
@@ -25,6 +28,7 @@ DeepDetect relies on external machine learning libraries through a very generic 
 | Caffe      | Y        | Y          |
 | XGBoost    | Y        | N          |
 | Tensorflow | Y        | Y          |
+| T-SNE      | N        | N          |
 
 #### Input data support per library (current):
 
@@ -33,6 +37,8 @@ DeepDetect relies on external machine learning libraries through a very generic 
 | Caffe      | Y   | Y   | Y          | Y               | Y      |
 | XGBoost    | Y   | Y   | Y          | N               | N      |
 | Tensorflow | N   | N   | N          | N               | Y      |
+| T-SNE      | Y   | N   | N          | N               | Y      | (*)
+(*) more input support for T-SNE is pending
 
 #### Main functionalities
 
@@ -63,7 +69,7 @@ List of tutorials, training from text, data and images, setup of prediction serv
 Current features include:
 
 - high-level API for machine learning and deep learning
-- Support for Caffe, Tensorflow and XGBoost
+- Support for Caffe, Tensorflow, XGBoost and T-SNE
 - classification, regression, autoencoders, object detection
 - JSON communication format
 - remote Python client library
@@ -168,11 +174,29 @@ http://www.deepdetect.com/overview/examples/
 | ResNext 50                | [Y](https://deepdetect.com/models/resnext/resnext_50)     | N          | https://github.com/terrychenism/ResNeXt           |      76.9%                     |
 | ResNext 101                | [Y](https://deepdetect.com/models/resnext/resnext_101)     | N          | https://github.com/terrychenism/ResNeXt           |      77.9%                     |
 | ResNext 152               | [Y](https://deepdetect.com/models/resnext/resnext_152)     | N          | https://github.com/terrychenism/ResNeXt           |      78.7%                     |
+| DenseNet-121                   | [Y](https://deepdetect.com/models/densenet/densenet_121_32/)     | N          | https://github.com/shicai/DenseNet-Caffe        |               74.9%            |
+| DenseNet-161                   | [Y](https://deepdetect.com/models/densenet/densenet_161_48/)     | N          | https://github.com/shicai/DenseNet-Caffe        |               77.6%            |
+| DenseNet-169                   | [Y](https://deepdetect.com/models/densenet/densenet_169_32/)     | N          | https://github.com/shicai/DenseNet-Caffe        |               76.1%            |
+| DenseNet-201                   | [Y](https://deepdetect.com/models/densenet/densenet_201_32/)     | N          | https://github.com/shicai/DenseNet-Caffe        |               77.3%            |
 | VOC0712 (object detection) | [Y](https://deepdetect.com/models/voc0712_dd.tar.gz) | N | https://github.com/weiliu89/caffe/tree/ssd | 71.2 mAP |
 
 More models:
 
 - List of free, even for commercial use, deep neural nets for image classification, and character-based convolutional nets for text classification: http://www.deepdetect.com/applications/list_models/
+
+#### Templates
+
+DeepDetect comes with a built-in system of neural network templates (Caffe backend only at the moment). This allows the creation of custom networks based on recognized architectures, for images, text and data, and with much simplicity.
+
+Usage:
+- specify `template` to use, from `mlp`, `convnet` and `resnet`
+- specify the architecture with the `layers` parameter:
+  - for `mlp`, e.g. `[300,100,10]`
+  - for `convnet`, e.g. `["1CR64","1CR128","2CR256","1024","512"], where the main pattern is `xCRy` where `y` is the number of outputs (feature maps), `CR` stands for Convolution + Activation (with `relu` as default), and `x` specifies the number of chained `CR` blocks without pooling. Pooling is applied between all `xCRy`
+- for `resnets`:
+   - with images, e.g. `["Res50"]` where the main pattern is `ResX` with X the depth of the Resnet
+   - with character-based models (text), use the `xCRy` pattern of convnets instead, with the main difference that `x` now specifies the number of chained `CR` blocks within a resnet block
+   - for Resnets applied to CSV or SVM (sparse data), use the `mlp` pattern. In this latter case, at the moment, the `resnet` is built with blocks made of two layers for each specified layer after the first one. Here is an example: `[300,100,10]` means that a first hidden layer of size `300` is applied followed by a `resnet` block made of two `100` fully connected layer, and another block of two `10` fully connected layers. This is subjected to future changes and more control.
 
 ### Authors
 DeepDetect is designed and implemented by Emmanuel Benazera <beniz@droidnik.fr>.
@@ -183,7 +207,7 @@ Below are instructions for Ubuntu 14.04 LTS. For other Linux and Unix systems, s
 
 Beware of dependencies, typically on Debian/Ubuntu Linux, do:
 ```
-sudo apt-get install build-essential libgoogle-glog-dev libgflags-dev libeigen3-dev libopencv-dev libcppnetlib-dev libboost-dev libboost-iostreams-dev libcurlpp-dev libcurl4-openssl-dev protobuf-compiler libopenblas-dev libhdf5-dev libprotobuf-dev libleveldb-dev libsnappy-dev liblmdb-dev libutfcpp-dev cmake libgoogle-perftools-dev
+sudo apt-get install build-essential libgoogle-glog-dev libgflags-dev libeigen3-dev libopencv-dev libcppnetlib-dev libboost-dev libboost-iostreams-dev libcurlpp-dev libcurl4-openssl-dev protobuf-compiler libopenblas-dev libhdf5-dev libprotobuf-dev libleveldb-dev libsnappy-dev liblmdb-dev libutfcpp-dev cmake libgoogle-perftools-dev unzip
 ```
 
 #### Default build with Caffe
@@ -205,9 +229,19 @@ If you would like to build with cuDNN, your `cmake` line should be:
 cmake .. -DUSE_CUDNN=ON
 ```
 
+To target the build of underlying Caffe to a specific CUDA architecture (e.g. Pascal), you can use:
+```
+cmake .. -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61"
+```
+
 If you would like a CPU only build, use:
 ```
 cmake .. -DUSE_CPU_ONLY=ON
+```
+
+If you would like to constrain Caffe to CPU only, use:
+```
+cmake .. -DUSE_CAFFE_CPU_ONLY=ON
 ```
 
 #### Build with XGBoost support
@@ -216,6 +250,12 @@ If you would like to build with XGBoost, include the `-DUSE_XGBOOST=ON` paramete
 ```
 cmake .. -DUSE_XGBOOST=ON
 ```
+
+If you would like to build the GPU support for XGBoost (experimental from DMLC), use the `-DUSE_XGBOOST_GPU=ON` parameter to `cmake`:
+```
+cmake .. -DUSE_XGBOOST=ON -DUSE_XGBOOST_GPU=ON
+```
+
 
 #### Build with Tensorflow support
 First you must install [Bazel](https://www.bazel.io/versions/master/docs/install.html#install-on-ubuntu) and Cmake with version > 3.
@@ -230,9 +270,21 @@ If you would like to build with Tensorflow, include the `-DUSE_TF=ON` paramter t
 cmake .. -DUSE_TF=ON
 ```
 
+If you would like to constrain Tensorflow to CPU, use:
+```
+cmake .. -DUSE_TF=ON -DUSE_TF_CPU_ONLY=ON
+```
+
 You can combine with XGBoost support with:
 ```
-cmake .. -DUSE_TF=on -DUSE_XGBOOST=ON
+cmake .. -DUSE_TF=ON -DUSE_XGBOOST=ON
+```
+
+#### Build with T-SNE support
+
+Simply specify the option via cmake command line:
+```
+cmake .. -DUSE_TSNE=ON
 ```
 
 ### Run tests
@@ -278,3 +330,4 @@ See tutorials from http://www.deepdetect.com/tutorials/tutorials/
 - DeepDetect (http://www.deepdetect.com/)
 - Caffe (https://github.com/BVLC/caffe)
 - XGBoost (https://github.com/dmlc/xgboost)
+- T-SNE (https://github.com/DmitryUlyanov/Multicore-TSNE)
