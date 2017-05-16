@@ -1302,9 +1302,11 @@ layer {
   }
 }
 layer {
-  name: "prob"
-  type: "Softmax"
+  name: "pred"
+  type: "ArgMax"
   bottom: "conv1_1_D"
-  top: "prob"
-  softmax_param {engine: CAFFE}
+  top: "pred"
+  argmax_param {
+    axis: 1
+  }
 }
