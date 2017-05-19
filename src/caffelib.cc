@@ -1091,11 +1091,12 @@ namespace dd
 #else
     Caffe::set_mode(Caffe::CPU);
 #endif
-    
+
+    APIData cad = ad;
+    bool has_mean_file = this->_mlmodel._has_mean_file;
+    cad.add("has_mean_file",has_mean_file);
     if (ad_output.has("measure"))
       {
-	APIData cad = ad;
-	cad.add("has_mean_file",this->_mlmodel._has_mean_file);
 	try
 	  {
 	    inputc.transform(cad);
@@ -1126,9 +1127,6 @@ namespace dd
     if (ad_mllib.has("extract_layer"))
       extract_layer = ad_mllib.get("extract_layer").get<std::string>();
       
-    APIData cad = ad;
-    bool has_mean_file = this->_mlmodel._has_mean_file;
-    cad.add("has_mean_file",has_mean_file);
     try
       {
 	inputc.transform(cad);
