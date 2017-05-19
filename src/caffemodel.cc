@@ -74,7 +74,7 @@ namespace dd
     auto hit = lfiles.begin();
     while(hit!=lfiles.end())
       {
-	if ((*hit) == meanf)
+	if ((*hit).find( meanf)!=std::string::npos)
 	  {
 	    _has_mean_file = true;
 	  }
