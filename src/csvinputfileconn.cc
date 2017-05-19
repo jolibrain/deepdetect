@@ -209,6 +209,11 @@ namespace dd
 	      // not a number, skip for now
 	      if (column_id == col) // if id is string, replace with number / TODO: better scheme
 		vals.push_back(c);
+	      else
+		{
+		  LOG(ERROR) << "skipping column " << col_name << " / not a number";
+		  throw InputConnectorBadParamException("column " + col_name + " is not a number, use categoricals or ignore parameters instead");
+		}
 	    }
 	  ++lit;
 	}
