@@ -518,6 +518,7 @@ namespace dd
     std::vector<double> _max_vals; /**< lower bound used for auto-scaling data */
     std::unordered_map<std::string,CCategorical> _categoricals; /**< auto-converted categorical variables */
     double _test_split = -1;
+    int _detect_cols = -1;
     
     // data
     std::vector<CSVline> _csvdata;

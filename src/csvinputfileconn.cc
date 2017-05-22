@@ -137,11 +137,11 @@ namespace dd
       }
 
     //debug
-    /*std::cout << "number of new columns=" << _columns.size() << std::endl;
-    std::cout << "new CSV columns:\n";
+    /*std::cerr << "number of new columns=" << _columns.size() << std::endl;
+    std::cerr << "new CSV columns:\n";
     std::copy(_columns.begin(),_columns.end(),
 	      std::ostream_iterator<std::string>(std::cout," "));
-	      std::cout << std::endl;*/
+	      std::cerr << std::endl;*/
     //debug
   }
   
@@ -211,7 +211,8 @@ namespace dd
 		vals.push_back(c);
 	      else
 		{
-		  LOG(ERROR) << "skipping column " << col_name << " / not a number";
+		  LOG(ERROR) << "line " << nlines << ": skipping column " << col_name << " / not a number";
+		  LOG(ERROR) << hline << std::endl;
 		  throw InputConnectorBadParamException("column " + col_name + " is not a number, use categoricals or ignore parameters instead");
 		}
 	    }
@@ -250,6 +251,7 @@ namespace dd
 	  }
 	++i;
       }
+    _detect_cols = i;
     for (size_t j=0;j<_label_pos.size();j++)
       if (_label_pos.at(j) < 0 && _train)
 	throw InputConnectorBadParamException("cannot find label column " + _label[j]);
@@ -269,16 +271,18 @@ namespace dd
       read_header(hline);
       
       //debug
+      /*std::cerr << "found " << _detect_cols << " columns\n";
       std::cerr << "label size=" << _label.size() << " / label_pos size=" << _label_pos.size() << std::endl;
       std::cout << "CSV columns:\n";
       std::copy(_columns.begin(),_columns.end(),
 		std::ostream_iterator<std::string>(std::cout," "));
-      std::cout << std::endl;
+		std::cout << std::endl;*/
       //debug
 
       // categorical variables
       if (!_categoricals.empty())
 	{
+	  int l = 0;
 	  while(std::getline(csv_file,hline))
 	    {
 	      hline.erase(std::remove(hline.begin(),hline.end(),'\r'),hline.end());
@@ -291,6 +295,12 @@ namespace dd
 	      int cu = 0;
 	      while(std::getline(sh,col,_delim[0]))
 		{
+		  if (cu >= _detect_cols)
+		    {
+		      LOG(ERROR) << "line " << l << " has more columns than headers\n";
+		      LOG(ERROR) << hline << std::endl;
+		      throw InputConnectorBadParamException("line has more columns than headers");
+		    }
 		  if ((igit=_ignored_columns_pos.find(cu))!=_ignored_columns_pos.end())
 		    {
 		      ++cu;
@@ -300,6 +310,7 @@ namespace dd
 		  ++hit;
 		  ++cu;
 		}
+	      ++l;
 	    }
 	  csv_file.clear();
 	  csv_file.seekg(0,std::ios::beg);
