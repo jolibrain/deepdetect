@@ -1234,7 +1234,7 @@ namespace dd
 		      }
 		    bool leave = false;
 		    int curi = -1;
-		    while(true && k<results_height-1)
+		    while(true && k<results_height)
 		      {
 			if (outr[0] == -1)
 			  {
