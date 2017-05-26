@@ -80,9 +80,22 @@ namespace dd
 			      std::unordered_set<std::string> &lfiles)
     {
       DIR *dir;
+      DIR *subdir;
       struct dirent *ent;
       if ((dir = opendir(repo.c_str())) != NULL) {
 	while ((ent = readdir(dir)) != NULL) {
+	  
+	  if(ent->d_type == DT_UNKNOWN)
+	    {
+	    	std::string ef = std::string(repo) + "/" + std::string(ent->d_name);
+	    	if ((subdir = opendir(ef.c_str())) != NULL)
+	    	  {
+	    	     ent->d_type = DT_DIR;
+	    	     closedir(subdir);
+	    	  }   
+	    	else ent->d_type = DT_REG;
+	    }
+
 	  if ((files && (ent->d_type == DT_REG || ent->d_type == DT_LNK))
 	      || (dirs && (ent->d_type == DT_DIR || ent->d_type == DT_LNK) && ent->d_name[0] != '.'))
 	    lfiles.insert(std::string(repo) + "/" + std::string(ent->d_name));
@@ -101,10 +114,21 @@ namespace dd
     {
       int err = 0;
       DIR *dir;
+      DIR *subdir;
       struct dirent *ent;
       if ((dir = opendir(repo.c_str())) != NULL) {
 	while ((ent = readdir(dir)) != NULL) 
 	  {
+	    if(ent->d_type == DT_UNKNOWN)
+	    {
+	    	std::string ef = std::string(repo) + "/" + std::string(ent->d_name);
+	    	if ((subdir = opendir(ef.c_str())) != NULL)
+	    	  {
+	    	     ent->d_type = DT_DIR;
+	    	     closedir(subdir);
+	    	  }   
+	    	else ent->d_type = DT_REG;
+	    }
 	    if (ent->d_type == DT_DIR && ent->d_name[0] == '.')
 	      continue;
 	    else
@@ -134,10 +158,22 @@ namespace dd
     {
       int err = 0;
       DIR *dir;
+      DIR *subdir;
       struct dirent *ent;
       if ((dir = opendir(repo.c_str())) != NULL) {
 	while ((ent = readdir(dir)) != NULL) 
 	  {
+	    if(ent->d_type == DT_UNKNOWN)
+	    {
+	    	std::string ef = std::string(repo) + "/" + std::string(ent->d_name);
+	    	if ((subdir = opendir(ef.c_str())) != NULL)
+	    	  {
+	    	     ent->d_type = DT_DIR;
+	    	     closedir(subdir);
+	    	  }   
+	    	else ent->d_type = DT_REG;
+	    }
+	    
 	    std::string lf = std::string(ent->d_name);
 	    if (ent->d_type == DT_DIR && ent->d_name[0] == '.')
 	      continue;
