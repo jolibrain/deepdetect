@@ -1201,7 +1201,7 @@ namespace dd
 	      }
 	    catch(std::exception &e)
 	      {
-		LOG(ERROR) << "Error while proceeding with prediction forward pass, not enough memory?";
+		LOG(ERROR) << "Error while proceeding with supervised prediction forward pass, not enough memory? " << e.what();
 		delete _net;
 		_net = nullptr;
 		throw;
@@ -1316,7 +1316,17 @@ namespace dd
 	    if ((lit=n_layer_names_index.find(extract_layer))==n_layer_names_index.end())
 	      throw MLLibBadParamException("unknown extract layer " + extract_layer);
 	    int li = (*lit).second;
-	    loss = _net->ForwardFromTo(0,li);
+	    try
+	      {
+		loss = _net->ForwardFromTo(0,li);
+	      }
+	    catch(std::exception &e)
+	      {
+		LOG(ERROR) << "Error while proceeding with unsupervised prediction forward pass, not enough memory? " << e.what();
+		delete _net;
+		_net = nullptr;
+		throw;
+	      }
 	    const std::vector<std::vector<Blob<float>*>>& rresults = _net->top_vecs();
 	    std::vector<Blob<float>*> results = rresults.at(li);
 	    int slot = 0;
