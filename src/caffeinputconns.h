@@ -40,7 +40,7 @@ namespace dd
   public:
     CaffeInputInterface() {}
     CaffeInputInterface(const CaffeInputInterface &cii)
-      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse) {}
+      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse), _segmentation(cii._segmentation) {}
     ~CaffeInputInterface() {}
 
     /**
@@ -79,6 +79,7 @@ namespace dd
     bool _has_mean_file = false; /**< image model mean.binaryproto. */
     std::vector<float> _mean_values; /**< mean image values across a dataset. */
     bool _sparse = false; /**< whether to use sparse representation. */
+    bool _segmentation = false; /**< whether it is a segmentation service. */
     std::unordered_map<std::string,std::pair<int,int>> _imgs_size; /**< image sizes, used in detection. */
     std::string _dbfullname = "train.lmdb";
     std::string _test_dbfullname = "test.lmdb";
@@ -96,7 +97,7 @@ namespace dd
       reset_dv_test();
     }
     ImgCaffeInputFileConn(const ImgCaffeInputFileConn &i)
-      :ImgInputFileConn(i),CaffeInputInterface(i) { _db = true; _segmentation = i._segmentation; }
+      :ImgInputFileConn(i),CaffeInputInterface(i) { _db = true; }
     ~ImgCaffeInputFileConn() {}
 
     // size of each element in Caffe jargon
@@ -232,7 +233,7 @@ namespace dd
 		}
 	      ad_mllib = ad_param.getobj("mllib");
 	    }
-	  
+
 	  if (_segmentation)
 	    {
 	      try
@@ -351,7 +352,6 @@ namespace dd
     std::string _correspname = "corresp.txt";
     caffe::Blob<float> _data_mean; // mean binary image if available.
     std::vector<caffe::Datum>::const_iterator _dt_vit;
-    bool _segmentation = false;
   };
 
   /**

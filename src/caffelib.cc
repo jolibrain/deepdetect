@@ -1375,7 +1375,8 @@ namespace dd
     user_batch_size = batch_size = inputc.batch_size();
     test_batch_size = inputc.test_batch_size();
     test_iter = -1;
-    fix_batch_size(ad,inputc,user_batch_size,batch_size,test_batch_size,test_iter);
+    if (!inputc._segmentation)
+      fix_batch_size(ad,inputc,user_batch_size,batch_size,test_batch_size,test_iter);
     if (test_iter != -1) // has changed
       sp.set_test_iter(0,test_iter);
     
