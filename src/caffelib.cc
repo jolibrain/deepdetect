@@ -789,7 +789,8 @@ namespace dd
 	this->add_meas("train_loss",smoothed_loss);
 	this->add_meas("iter_time",avg_fb_time);
 
-	if (solver->param_.test_interval() && solver->iter_ % solver->param_.test_interval() == 0)
+	if ((solver->param_.display() && solver->iter_ % solver->param_.display() == 0)
+	    || (solver->param_.test_interval() && solver->iter_ % solver->param_.test_interval() == 0))
 	  {
 	    LOG(INFO) << "smoothed_loss=" << this->get_meas("train_loss");
 	  }
