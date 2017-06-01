@@ -1,0 +1,15 @@
+canvas {
+  max-width: 100%;
+}
+
+.ui.grid>.row.cardRow {
+  padding: 0;
+}
+
+.ui.grid>.row.cardRow:first-child {
+  padding-top: 14px;
+}
+
+pre.hidden {
+  display:none;
+}
