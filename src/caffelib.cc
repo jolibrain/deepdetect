@@ -909,13 +909,27 @@ namespace dd
 	      {
 		if (!inputc._sparse)
 		  {
+		    std::vector<caffe::Datum> seg_dv;
 		    std::vector<caffe::Datum> dv = inputc.get_dv_test(test_batch_size,has_mean_file);
 		    if (dv.empty())
 		      break;
 		    dv_size = dv.size();
 		    for (size_t s=0;s<dv_size;s++)
 		      {
-			if (!_autoencoder)
+			if (inputc._segmentation)
+			  {
+			    // dv_labels will need to be of size width x height x batch size -> use dv_float_data
+			    // -> read datum 2 by 2 -> skip s (read s 2 by 2)
+			    if (!(s % 2))
+			      {
+				std::vector<double> vals;
+				for (int k=0;k<dv.at(s+1).float_data_size();k++)
+				  vals.push_back(dv.at(s+1).float_data(k));
+				dv_float_data.push_back(vals);
+				seg_dv.push_back(dv.at(s));
+			      }
+			  }
+			else if (!_autoencoder)
 			  {
 			    dv_labels.push_back(dv.at(s).label());
 			    if (_ntargets > 1)
@@ -938,6 +952,12 @@ namespace dd
 		      }
 		    if (boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(net->layers()[0]) == 0)
 		      throw MLLibBadParamException("test net's first layer is required to be of MemoryData type");
+		    if (inputc._segmentation)
+		      {
+			dv = seg_dv;
+			dv_size = dv.size();
+			seg_dv.clear();
+		      }
 		    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(net->layers()[0])->set_batch_size(dv.size());
 		    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(net->layers()[0])->AddDatumVector(dv);
 		  }
@@ -987,11 +1007,32 @@ namespace dd
 	    int scount = lresults[slot]->count();
 	    int scperel = scount / dv_size;
 	    
+	    int p = 0;
 	    for (int j=0;j<(int)dv_size;j++)
 	      {
 		APIData bad;
 		std::vector<double> predictions;
-		if ((!_regression && !_autoencoder)|| _ntargets == 1)
+		if (inputc._segmentation)
+		  {
+		    int p_offset = tresults * dv_float_data.at(j).size();
+		    for (size_t l=0;l<dv_float_data.at(j).size();l++)
+		      {
+			APIData bad2;
+			std::vector<double> preds;
+			double target = dv_float_data.at(j).at(l);
+			double tsum = 0.0;
+			for (int k=0;k<nout;k++)
+			  {
+			    preds.push_back(lresults[slot]->cpu_data()[l+k*dv_float_data.at(j).size()]);
+			    tsum += preds.back();
+			  }
+			bad2.add("target",target);
+			bad2.add("pred",preds);
+			ad_res.add(std::to_string(p_offset+p),bad2);
+			++p;
+		      }
+		  }
+		else if ((!_regression && !_autoencoder)|| _ntargets == 1)
 		  {
 		    double target = dv_labels.at(j);
 		    for (int k=0;k<nout;k++)
@@ -1011,8 +1052,11 @@ namespace dd
 		      }
 		    bad.add("target",target);
 		  }
-		bad.add("pred",predictions);
-		ad_res.add(std::to_string(tresults+j),bad);
+		if (!inputc._segmentation)
+		  {
+		    bad.add("pred",predictions);
+		    ad_res.add(std::to_string(tresults+j),bad);
+		  }
 	      }
 	    tresults += dv_size;
 	    mean_loss += loss;
@@ -1021,7 +1065,9 @@ namespace dd
 	for (int i=0;i<nout;i++)
 	  clnames.push_back(this->_mlmodel.get_hcorresp(i));
 	ad_res.add("clnames",clnames);
-	ad_res.add("batch_size",tresults);
+	if (inputc._segmentation)
+	  ad_res.add("batch_size",tresults*inputc.height()*inputc.width());
+	else ad_res.add("batch_size",tresults);
 	if (_regression)
 	  ad_res.add("regression",_regression);
       }
@@ -1376,8 +1422,7 @@ namespace dd
     user_batch_size = batch_size = inputc.batch_size();
     test_batch_size = inputc.test_batch_size();
     test_iter = -1;
-    if (!inputc._segmentation)
-      fix_batch_size(ad,inputc,user_batch_size,batch_size,test_batch_size,test_iter);
+    fix_batch_size(ad,inputc,user_batch_size,batch_size,test_batch_size,test_iter);
     if (test_iter != -1) // has changed
       sp.set_test_iter(0,test_iter);
     
@@ -1688,38 +1733,45 @@ namespace dd
 
 	// code below is required when Caffe (weirdly) requires the batch size 
 	// to be a multiple of the training dataset size.
-	if (batch_size < inputc.batch_size())
+	if (!inputc._segmentation)
 	  {
-	    int min_batch_size = 0;
-	    for (int i=batch_size;i>=1;i--)
-	      if (inputc.batch_size() % i == 0)
-		{
-		  min_batch_size = i;
-		  break;
-		}
-	    int max_batch_size = 0;
-	    for (int i=batch_size;i<inputc.batch_size();i++)
+	    if (batch_size < inputc.batch_size())
 	      {
-		if (inputc.batch_size() % i == 0)
+		int min_batch_size = 0;
+		for (int i=batch_size;i>=1;i--)
+		  if (inputc.batch_size() % i == 0)
+		    {
+		      min_batch_size = i;
+		      break;
+		    }
+		int max_batch_size = 0;
+		for (int i=batch_size;i<inputc.batch_size();i++)
 		  {
-		    max_batch_size = i;
-		    break;
+		    if (inputc.batch_size() % i == 0)
+		      {
+			max_batch_size = i;
+			break;
+		      }
 		  }
+		if (std::abs(batch_size-min_batch_size) < std::abs(max_batch_size-batch_size))
+		  batch_size = min_batch_size;
+		else batch_size = max_batch_size;
+		for (int i=test_batch_size;i>1;i--)
+		  if (inputc.test_batch_size() % i == 0)
+		    {
+		      test_batch_size = i;
+		      break;
+		    }
+		test_iter = inputc.test_batch_size() / test_batch_size;
 	      }
-	    if (std::abs(batch_size-min_batch_size) < std::abs(max_batch_size-batch_size))
-	      batch_size = min_batch_size;
-	    else batch_size = max_batch_size;
-	    for (int i=test_batch_size;i>1;i--)
-	      if (inputc.test_batch_size() % i == 0)
-		{
-		  test_batch_size = i;
-		  break;
-		}
+	    else batch_size = inputc.batch_size();
 	    test_iter = inputc.test_batch_size() / test_batch_size;
 	  }
-	else batch_size = inputc.batch_size();
-	test_iter = inputc.test_batch_size() / test_batch_size;
-	
+	else
+	  {
+	    batch_size = user_batch_size;
+	  }
+	    
 	//debug
 	LOG(INFO) << "batch_size=" << batch_size << " / test_batch_size=" << test_batch_size << " / test_iter=" << test_iter << std::endl;
 	//debug

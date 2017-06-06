@@ -302,7 +302,11 @@ namespace dd
     std::vector<caffe::Datum> get_dv_test(const int &num,
 					  const bool &has_mean_file)
       {
-	if (!_train && _db_fname.empty())
+	if (_segmentation)
+	  {
+	    return get_dv_test_segmentation(num,has_mean_file);
+	  }
+	else if (!_train && _db_fname.empty())
 	  {
 	    int i = 0;
 	    std::vector<caffe::Datum> dv;
@@ -321,6 +325,9 @@ namespace dd
     std::vector<caffe::Datum> get_dv_test_db(const int &num,
 					     const bool &has_mean_file);
 
+    std::vector<caffe::Datum> get_dv_test_segmentation(const int &num,
+						       const bool &has_mean_file);
+    
     void reset_dv_test();
     
   private:
@@ -352,6 +359,8 @@ namespace dd
     std::string _correspname = "corresp.txt";
     caffe::Blob<float> _data_mean; // mean binary image if available.
     std::vector<caffe::Datum>::const_iterator _dt_vit;
+    std::vector<std::pair<std::string,std::string>> _segmentation_data_lines;
+    int _dt_seg = 0;
   };
 
   /**

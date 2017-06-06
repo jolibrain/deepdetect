@@ -434,12 +434,64 @@ namespace dd
       }
     return dv;
   }
+
+  std::vector<caffe::Datum> ImgCaffeInputFileConn::get_dv_test_segmentation(const int &num,
+									    const bool &has_mean_file)
+  {
+    (void) has_mean_file;
+    if (_segmentation_data_lines.empty())
+      {
+	LOG(INFO) << "reading segmentation test file " << _uris.at(1).c_str();
+	std::ifstream infile(_uris.at(1).c_str());
+	std::string filename, label_filename;
+	while(infile >> filename >> label_filename)
+	  {
+	    _segmentation_data_lines.push_back(std::make_pair(filename,label_filename));
+	  }
+      }
+
+    std::vector<caffe::Datum> dv;
+    int j = 0;
+    for (int i=_dt_seg;i<static_cast<int>(_segmentation_data_lines.size());i++)
+      {
+	if (j == num)
+	  break;
+	//TODO: detect encoding.
+	Datum datum_data, datum_labels;
+	bool status = ReadImageToDatum(_segmentation_data_lines[i].first,-1,
+				       _height,_width,0,0,!_bw,false,"png",&datum_data);
+	if (status == false)
+	  {
+	    LOG(ERROR) << "reading segmentation image " << _segmentation_data_lines[i].first << " to datum";
+	    continue;
+	  }
+
+	cv::Mat cv_lab = ReadImageToCVMat(_segmentation_data_lines[i].second,_height,_width,false,true);
+	datum_labels.set_height(_height);
+	datum_labels.set_width(_width);
+	datum_labels.set_channels(1);
+	for (int j=0;j<cv_lab.rows;j++) // height
+	  {
+	    for (int i=0;i<cv_lab.cols;i++) // width
+	      {
+		datum_labels.add_float_data(static_cast<float>(cv_lab.at<uchar>(j,i)));
+	      }
+	  }
+	dv.push_back(datum_data);
+	dv.push_back(datum_labels);
+	_ids.push_back(std::to_string(j));
+	++j;
+      }
+    _dt_seg += j;
+    return dv;
+  }
   
   void ImgCaffeInputFileConn::reset_dv_test()
   {
     _dt_vit = _dv_test.begin();
     _test_db_cursor = std::unique_ptr<caffe::db::Cursor>();
     _test_db = std::unique_ptr<caffe::db::DB>();
+    _dt_seg = 0;
   }
 
 
