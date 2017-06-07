@@ -181,11 +181,13 @@ namespace dd
        * @param deploy_file the deploy file, same remark as net_file
        * @param inputc the current input constructor that holds the training data
        * @param has_class_weights whether training uses class weights
+       * @param ignore_label label to be ignored, -1 otherwise
        */
       void update_protofile_net(const std::string &net_file,
 				const std::string &deploy_file,
 				const TInputConnectorStrategy &inputc,
-				const bool &has_class_weights);
+				const bool &has_class_weights,
+				const int &ignore_label);
 
     private:
       void update_protofile_classes(caffe::NetParameter &net_param);

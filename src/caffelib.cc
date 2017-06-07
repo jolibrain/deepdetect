@@ -512,9 +512,12 @@ namespace dd
       {
 	// modifies model structure, template must have been copied at service creation with instantiate_template
 	bool has_class_weights = ad_mllib.has("class_weights");
+	int ignore_label = -1;
+	if (ad_mllib.has("ignore_label"))
+	  ignore_label = ad_mllib.get("ignore_label").get<int>();
 	update_protofile_net(this->_mlmodel._repo + '/' + this->_mlmodel._model_template + ".prototxt",
 			     this->_mlmodel._repo + "/deploy.prototxt",
-			     inputc, has_class_weights);
+			     inputc, has_class_weights, ignore_label);
 	create_model(); // creates initial net.
       }
 
@@ -1513,7 +1516,8 @@ namespace dd
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofile_net(const std::string &net_file,
 												 const std::string &deploy_file,
 												 const TInputConnectorStrategy &inputc,
-												 const bool &has_class_weights)
+												 const bool &has_class_weights,
+												 const int &ignore_label)
   {
     caffe::NetParameter net_param;
     caffe::ReadProtoFromTextFile(net_file,&net_param); //TODO: catch parsing error (returns bool true on success)
@@ -1580,6 +1584,19 @@ namespace dd
 		lparam->set_type("SoftmaxWithInfogainLoss");
 		lparam->mutable_infogain_loss_param()->set_source(this->_mlmodel._repo + "/class_weights.binaryproto");
 		break;
+	      }
+	  }
+      }
+
+    if (ignore_label >= 0)
+      {
+	int k = net_param.layer_size();
+	for (int l=k-1;l>0;l--)
+	  {
+	    caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+	    if (lparam->type() == "SoftmaxWithLoss" || lparam->type() == "SoftmaxWithInfogainLoss")
+	      {
+		lparam->mutable_loss_param()->set_ignore_label(ignore_label);
 	      }
 	  }
       }
