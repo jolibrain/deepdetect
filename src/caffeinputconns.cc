@@ -32,7 +32,7 @@ using namespace caffe;
 
 namespace dd
 {
-
+  
   void CaffeInputInterface::write_class_weights(const std::string &model_repo,
 						const APIData &ad_mllib)
   {
@@ -69,6 +69,16 @@ namespace dd
 	LOG(INFO) << "Write class weights to " << cl_file;
 	WriteProtoToBinaryFile(cw_blob,cl_file.c_str());
       }
+  }
+
+  std::string ImgCaffeInputFileConn::guess_encoding(const std::string &file)
+  {
+    size_t p = file.rfind('.');
+    if (p == file.npos)
+      LOG(WARNING) << "Failed to guess the encoding of " << file;
+    std::string enc = file.substr(p);
+    std::transform(enc.begin(),enc.end(),enc.begin(),::tolower);
+    return enc;
   }
   
   // convert images into db entries
@@ -236,13 +246,7 @@ namespace dd
       bool status;
       std::string enc = encode_type;
       if (encoded && !enc.size()) {
-	// Guess the encoding type from the file name
-	std::string fn = lfiles[line_id].first;
-	size_t p = fn.rfind('.');
-	if ( p == fn.npos )
-	  LOG(WARNING) << "Failed to guess the encoding of '" << fn << "'";
-	enc = fn.substr(p);
-	std::transform(enc.begin(), enc.end(), enc.begin(), ::tolower);
+	enc = guess_encoding(lfiles[line_id].first);
       }
       status = ReadImageToDatum(lfiles[line_id].first,
 				lfiles[line_id].second, _height, _width, !_bw,
@@ -457,9 +461,10 @@ namespace dd
 	if (j == num)
 	  break;
 	//TODO: detect encoding.
+	std::string enc = guess_encoding(_segmentation_data_lines[i].first);
 	Datum datum_data, datum_labels;
 	bool status = ReadImageToDatum(_segmentation_data_lines[i].first,-1,
-				       _height,_width,0,0,!_bw,false,"png",&datum_data);
+				       _height,_width,0,0,!_bw,false,enc,&datum_data);
 	if (status == false)
 	  {
 	    LOG(ERROR) << "reading segmentation image " << _segmentation_data_lines[i].first << " to datum";

@@ -351,6 +351,8 @@ namespace dd
 			    const std::string &meanfile,
 			    const std::string &backend="lmdb");
 
+    std::string guess_encoding(const std::string &file);
+    
   public:
     int _db_batchsize = -1;
     int _db_testbatchsize = -1;
