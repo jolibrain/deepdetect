@@ -251,6 +251,9 @@ namespace dd
 		  if (!fileops::file_exists(_uris.at(1)))
 		    throw InputConnectorBadParamException("input test file " + _uris.at(1) + " not found");
 		}
+
+	      // class weights if any
+	      write_class_weights(_model_repo,ad_mllib);
 	      
 	      //TODO: if test split (+ optional shuffle)
 	      APIData sourcead;
