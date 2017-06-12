@@ -280,7 +280,7 @@ namespace dd
       //debug
 
       // categorical variables
-      if (!_categoricals.empty())
+      if (_train && !_categoricals.empty())
 	{
 	  int l = 0;
 	  while(std::getline(csv_file,hline))

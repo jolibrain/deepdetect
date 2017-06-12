@@ -10,7 +10,6 @@ layer {
   }
   transform_param {
     mirror: true
-    crop_size: 224
     mean_file: "mean.binaryproto"
   }
   data_param {

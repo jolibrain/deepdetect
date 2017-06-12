@@ -191,12 +191,13 @@ namespace dd
 	    {
 	      APIData ad_cat = ad_cats.getobj(c);
 	      CCategorical cc;
+	      _categoricals.insert(std::make_pair(c,cc));
+	      auto chit = _categoricals.find(c);
 	      std::vector<std::string> vcvals = ad_cat.list_keys();
 	      for (std::string v: vcvals)
 		{
-		  cc.add_cat(v,ad_cat.get(v).get<int>());
+		  (*chit).second.add_cat(v,ad_cat.get(v).get<int>());
 		}
-	      _categoricals.insert(std::pair<std::string,CCategorical>(c,cc));
 	    }
 	}
     }
@@ -390,7 +391,7 @@ namespace dd
 	{
 	  for (size_t i=0;i<_uris.size();i++)
 	    {
-	      if (i ==0 && (!_categoricals.empty() || (ad_input.size() && !_id.empty() && _uris.at(0).find(_delim)!=std::string::npos))) // first line might be the header if we have some options to consider
+	      if (i ==0 && !fileops::file_exists(_uris.at(0)) && (!_categoricals.empty() || (ad_input.size() && !_id.empty() && _uris.at(0).find(_delim)!=std::string::npos))) // first line might be the header if we have some options to consider //TODO: prevents reading from CSV file
 		{
 		  read_header(_uris.at(0));
 		  continue;
