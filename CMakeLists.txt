@@ -133,7 +133,7 @@ else()
 	  caffe_dd
 	  PREFIX caffe_dd
 	  INSTALL_DIR ${CMAKE_BINARY_DIR}
-	  URL https://github.com/beniz/caffe/archive/master.tar.gz
+	  URL https://github.com/beniz/caffe/archive/selu.tar.gz
 	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make CUDA_ARCH=${CUDA_ARCH} -j${N}
 	  INSTALL_COMMAND ""
 	  BUILD_IN_SOURCE 1
@@ -143,7 +143,7 @@ else()
 	  caffe_dd
 	  PREFIX caffe_dd
 	  INSTALL_DIR ${CMAKE_BINARY_DIR}
-	  URL https://github.com/beniz/caffe/archive/master.tar.gz
+	  URL https://github.com/beniz/caffe/archive/selu.tar.gz
 	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && make CUDA_ARCH=${CUDA_ARCH} -j${N}
 	  INSTALL_COMMAND ""
 	  BUILD_IN_SOURCE 1
@@ -155,7 +155,7 @@ else()
 	  caffe_dd
 	  PREFIX caffe_dd
 	  INSTALL_DIR ${CMAKE_BINARY_DIR}
-	  URL https://github.com/beniz/caffe/archive/master.tar.gz
+	  URL https://github.com/beniz/caffe/archive/selu.tar.gz
 	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make CUDA_ARCH=${CUDA_ARCH} -j${N}
 	  INSTALL_COMMAND ""
 	  BUILD_IN_SOURCE 1
@@ -165,7 +165,7 @@ else()
 	  caffe_dd
 	  PREFIX caffe_dd
 	  INSTALL_DIR ${CMAKE_BINARY_DIR}
-	  URL https://github.com/beniz/caffe/archive/master.tar.gz
+	  URL https://github.com/beniz/caffe/archive/selu.tar.gz
 	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && make CUDA_ARCH=${CUDA_ARCH} -j${N}
 	  INSTALL_COMMAND ""
 	  BUILD_IN_SOURCE 1
@@ -179,7 +179,7 @@ else()
 	caffe_dd
 	PREFIX caffe_dd
 	INSTALL_DIR ${CMAKE_BINARY_DIR}
-	URL https://github.com/beniz/caffe/archive/master.tar.gz
+	URL https://github.com/beniz/caffe/archive/selu.tar.gz
 	CONFIGURE_COMMAND ln -sf Makefile.config.cpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make -j${N}
 	INSTALL_COMMAND ""
 	BUILD_IN_SOURCE 1
@@ -189,7 +189,7 @@ else()
 	caffe_dd
 	PREFIX caffe_dd
 	INSTALL_DIR ${CMAKE_BINARY_DIR}
-	URL https://github.com/beniz/caffe/archive/master.tar.gz
+	URL https://github.com/beniz/caffe/archive/selu.tar.gz
 	CONFIGURE_COMMAND ln -sf Makefile.config.cpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && make -j${N}
 	INSTALL_COMMAND ""
 	BUILD_IN_SOURCE 1

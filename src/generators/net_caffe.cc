@@ -63,6 +63,8 @@ namespace dd
 	  activation = "Sigmoid";
 	else if (dd_utils::iequals(activation,"tanh"))
 	  activation = "TanH";
+	else if (dd_utils::iequals(activation,"selu"))
+	  activation = "SeLu";
       }
     return activation;
   }
@@ -254,7 +256,9 @@ namespace dd
 			       const std::string &bottom,
 			       const std::string &activation,
 			       const double &elu_alpha,
-			       const double &negative_slope)
+			       const double &negative_slope,
+			       const double &selu_alpha,
+			       const double &selu_lambda)
   {
     caffe::LayerParameter *lparam = CaffeCommon::add_layer(net_param,bottom,bottom,
 							   "act_" + activation + "_" + bottom,activation);
@@ -262,6 +266,13 @@ namespace dd
       lparam->mutable_elu_param()->set_alpha(elu_alpha);
     if (activation == "ReLU" && negative_slope != 0.0)
       lparam->mutable_relu_param()->set_negative_slope(negative_slope);
+    if (activation == "SeLU")
+      {
+	if (selu_alpha != 0.0)
+	  lparam->mutable_selu_param()->set_alpha(selu_alpha);
+	if (selu_lambda != 0.0)
+	  lparam->mutable_selu_param()->set_lambda(selu_lambda);
+      }
   }
 
   void NetLayersCaffe::add_pooling(caffe::NetParameter *net_param,
@@ -301,11 +312,20 @@ namespace dd
 
   void NetLayersCaffe::add_dropout(caffe::NetParameter *net_param,
 				   const std::string &bottom,
-				   const double &ratio)
+				   const double &ratio,
+				   const bool &selu,
+				   const double &selu_alpha)
   {
     caffe::LayerParameter *lparam = CaffeCommon::add_layer(net_param,bottom,bottom,
-							   "drop_"+bottom,"Dropout");
-    lparam->mutable_dropout_param()->set_dropout_ratio(ratio);
+							   "drop_"+bottom,selu?"SeLuDropout":"Dropout");
+    if (!selu)
+      lparam->mutable_dropout_param()->set_dropout_ratio(ratio);
+    else
+      {
+	lparam->mutable_selu_dropout_param()->set_dropout_ratio(ratio);
+	if (selu_alpha != 0.0)
+	  lparam->mutable_selu_dropout_param()->set_alpha(selu_alpha);
+      }
   }
   
   void NetLayersCaffe::add_bn(caffe::NetParameter *net_param,
