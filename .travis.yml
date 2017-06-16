@@ -5,7 +5,7 @@ os:
   - linux
 
 before_install:
-   - wget https://cmake.org/files/v3.9/cmake-3.9.0-rc3.tar.gz
+   - wget https://cmake.org/files/v3.9/cmake-3.9.0-rc3.tar.gz --no-check-certificate
    - tar xvzf cmake-3.9.0-rc3.tar.gz
    - ./bootstrap
    - make 
