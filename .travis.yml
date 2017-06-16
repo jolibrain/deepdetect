@@ -6,6 +6,7 @@ dist: trusty
 before_install:
    - cd src
    - hg clone https://bitbucket.org/eigen/eigen/
+   - ls
    - cd ..
 install:
    - mkdir build
