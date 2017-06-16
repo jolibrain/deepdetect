@@ -17,7 +17,7 @@ install:
    - cd src
    - cd eigen
    - cmake ..
-   - make install
+   - make 
    - cd ..
    - cd ..
 before_script:
