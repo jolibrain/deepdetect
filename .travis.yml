@@ -2,41 +2,41 @@ language: cpp
 compiler: gcc
 
 before_install:
-        - git clone https://github.com/beniz/deepdetect.git
-        - sudo apt-get install build-essential libgoogle-glog-dev libgflags-dev libeigen3-dev libopencv-dev libcppnetlib-dev libboost-dev libboost-iostreams-dev libcurlpp-dev libcurl4-openssl-dev protobuf-compiler libopenblas-dev libhdf5-dev libprotobuf-dev libleveldb-dev libsnappy-dev liblmdb-dev libutfcpp-dev
+   - git clone https://github.com/beniz/deepdetect.git
+   - sudo apt-get install build-essential libgoogle-glog-dev libgflags-dev libeigen3-dev libopencv-dev libcppnetlib-dev libboost-dev libboost-iostreams-dev libcurlpp-dev libcurl4-openssl-dev protobuf-compiler libopenblas-dev libhdf5-dev libprotobuf-dev libleveldb-dev libsnappy-dev liblmdb-dev libutfcpp-dev
 
 install:
-        - cd deepdetect
-        - mkdir build
-        - cd build
-	- export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64
-        - cmake ..
-        - make
+   - cd deepdetect
+   - mkdir build
+   - cd build
+   - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64
+   - cmake ..
+   - make
 before_script:
-        - cd ..
-        - cd build/caffe_dd/src/caffe_dd
-        - ./scripts/download_model_binary.py models/bvlc_googlenet/
-        - cd ..
-        - cd ..
-        - cd ..
-        - cd ..
-        - mkdir models
-        - mkdir models/imgnet
-        - cp build/caffe_dd/src/caffe_dd/models/bvlc_googlenet/bvlc_googlenet.caffemodel models/imgnet
-        - cp datasets/imagenet/corresp_ilsvrc12.txt models/imgnet/corresp.txt
-        - cd models
-        - mkdir voc0712
-        - cd voc0712
-        - wget https://deepdetect.com/models/voc0712_dd.tar.gz
-        - tar xvzf voc01712_dd.tar.gz
-        - cd ..
-        - cd ..
-        - ./build/main/dede
+   - cd ..
+   - cd build/caffe_dd/src/caffe_dd
+   - ./scripts/download_model_binary.py models/bvlc_googlenet/
+   - cd ..
+   - cd ..
+   - cd ..
+   - cd ..
+   - mkdir models
+   - mkdir models/imgnet
+   - cp build/caffe_dd/src/caffe_dd/models/bvlc_googlenet/bvlc_googlenet.caffemodel models/imgnet
+   - cp datasets/imagenet/corresp_ilsvrc12.txt models/imgnet/corresp.txt
+   - cd models
+   - mkdir voc0712
+   - cd voc0712
+   - wget https://deepdetect.com/models/voc0712_dd.tar.gz
+   - tar xvzf voc01712_dd.tar.gz
+   - cd ..
+   - cd ..
+   - ./build/main/dede
 script:
-        - cmake .. -DBUILD_TESTS=ON
-        - make
-        - ctest
+   - cmake .. -DBUILD_TESTS=ON
+   - make
+   - ctest
 notifications:
-    email:
-        on_success: always
-        on_failure: always
+   email:
+      on_success: always
+      on_failure: always
