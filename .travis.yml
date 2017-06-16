@@ -1,6 +1,10 @@
 language: cpp
 compiler: gcc
 
+env:
+  cmake:
+   - 2.8.8
+
 before_install:
    - cmake .
    - make
