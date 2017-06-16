@@ -6,7 +6,6 @@ dist: trusty
 before_install:
 
 install:
-   - cd deepdetect
    - mkdir build
    - cd build
    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64
