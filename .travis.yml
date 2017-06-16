@@ -8,6 +8,7 @@ env:
 before_install:
 install:
    - mkdir build
+   - ls
    - cd build
    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64
    - cmake ..
