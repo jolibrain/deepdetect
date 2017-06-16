@@ -46,6 +46,7 @@ configure_file(
 )
 
 # dependency on Eigen for confusion matrix fast computation
+INCLUDE_DIRECTORIES ( "$ENV{EIGEN3_INCLUDE_DIR}" )
 if (USE_TF)
 else()
   find_package(Eigen3 REQUIRED)
