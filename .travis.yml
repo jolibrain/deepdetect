@@ -13,8 +13,13 @@ install:
    - cd build
    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64
    - pwd
+   - cd ..
+   - sc src
+   - cd eigen
    - cmake ..
-   - make
+   - make install
+   - cd ..
+   - cd ..
 before_script:
    - cd ..
    - cd build/caffe_dd/src/caffe_dd
