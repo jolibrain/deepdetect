@@ -1,6 +1,9 @@
 language: cpp
 compiler: gcc
 
+os:
+  - linux
+
 before_install:
    - cmake . 
    - make
