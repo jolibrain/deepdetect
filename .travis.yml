@@ -6,9 +6,6 @@ env:
    - 2.8.8
 
 before_install:
-   - cmake .
-   - make
-   - make install
 install:
    - mkdir build
    - cd build
