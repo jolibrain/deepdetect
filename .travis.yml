@@ -5,6 +5,7 @@ before_install:
    - cmake . 
    - make
    - make install
+
 install:
    - cd deepdetect
    - mkdir build
