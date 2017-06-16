@@ -2,6 +2,7 @@ language: cpp
 compiler: gcc
 
 before_install:
+   - sudo apt-get upgrade
 
 install:
    - mkdir build
