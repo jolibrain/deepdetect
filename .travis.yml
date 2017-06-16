@@ -2,8 +2,9 @@ language: cpp
 compiler: gcc
 
 before_install:
-   - sudo apt-get upgrade
-
+   - cmake .
+   - make
+   - make install
 install:
    - mkdir build
    - cd build
