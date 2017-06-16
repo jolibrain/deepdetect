@@ -8,6 +8,7 @@ before_install:
    - hg clone https://bitbucket.org/eigen/eigen/
    - ls
    - cd ..
+   - sudo apt-get install build-essential libgoogle-glog-dev libgflags-dev libeigen3-dev libopencv-dev libcppnetlib-dev libboost-dev libboost-iostreams-dev libcurlpp-dev libcurl4-openssl-dev protobuf-compiler libopenblas-dev libhdf5-dev libprotobuf-dev libleveldb-dev libsnappy-dev liblmdb-dev libutfcpp-dev
 install:
    - mkdir build
    - cd build
