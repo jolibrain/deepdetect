@@ -1,0 +1,13 @@
+# Target labels
+ caffe_dd
+# Source files and their labels
+/home/jsaksris/whitefish/deepdetect/CMakeFiles/caffe_dd
+/home/jsaksris/whitefish/deepdetect/CMakeFiles/caffe_dd.rule
+/home/jsaksris/whitefish/deepdetect/CMakeFiles/caffe_dd-complete.rule
+/home/jsaksris/whitefish/deepdetect/caffe_dd/src/caffe_dd-stamp/caffe_dd-install.rule
+/home/jsaksris/whitefish/deepdetect/caffe_dd/src/caffe_dd-stamp/caffe_dd-mkdir.rule
+/home/jsaksris/whitefish/deepdetect/caffe_dd/src/caffe_dd-stamp/caffe_dd-download.rule
+/home/jsaksris/whitefish/deepdetect/caffe_dd/src/caffe_dd-stamp/caffe_dd-update.rule
+/home/jsaksris/whitefish/deepdetect/caffe_dd/src/caffe_dd-stamp/caffe_dd-patch.rule
+/home/jsaksris/whitefish/deepdetect/caffe_dd/src/caffe_dd-stamp/caffe_dd-configure.rule
+/home/jsaksris/whitefish/deepdetect/caffe_dd/src/caffe_dd-stamp/caffe_dd-build.rule

@@ -1,0 +1,55 @@
+Determining if the pthread_create exist failed with the following output:
+Change Dir: /home/jsaksris/whitefish/deepdetect/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_4dc1e/fast"
+/usr/bin/make -f CMakeFiles/cmTC_4dc1e.dir/build.make CMakeFiles/cmTC_4dc1e.dir/build
+make[1]: Entering directory '/home/jsaksris/whitefish/deepdetect/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_4dc1e.dir/CheckSymbolExists.c.o
+/usr/bin/cc     -o CMakeFiles/cmTC_4dc1e.dir/CheckSymbolExists.c.o   -c /home/jsaksris/whitefish/deepdetect/CMakeFiles/CMakeTmp/CheckSymbolExists.c
+Linking C executable cmTC_4dc1e
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_4dc1e.dir/link.txt --verbose=1
+/usr/bin/cc       CMakeFiles/cmTC_4dc1e.dir/CheckSymbolExists.c.o  -o cmTC_4dc1e -rdynamic 
+CMakeFiles/cmTC_4dc1e.dir/CheckSymbolExists.c.o: In function `main':
+CheckSymbolExists.c:(.text+0x16): undefined reference to `pthread_create'
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTC_4dc1e.dir/build.make:97: recipe for target 'cmTC_4dc1e' failed
+make[1]: *** [cmTC_4dc1e] Error 1
+make[1]: Leaving directory '/home/jsaksris/whitefish/deepdetect/CMakeFiles/CMakeTmp'
+Makefile:126: recipe for target 'cmTC_4dc1e/fast' failed
+make: *** [cmTC_4dc1e/fast] Error 2
+
+File /home/jsaksris/whitefish/deepdetect/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <pthread.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef pthread_create
+  return ((int*)(&pthread_create))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+
+Determining if the function pthread_create exists in the pthreads failed with the following output:
+Change Dir: /home/jsaksris/whitefish/deepdetect/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_96aa1/fast"
+/usr/bin/make -f CMakeFiles/cmTC_96aa1.dir/build.make CMakeFiles/cmTC_96aa1.dir/build
+make[1]: Entering directory '/home/jsaksris/whitefish/deepdetect/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_96aa1.dir/CheckFunctionExists.c.o
+/usr/bin/cc    -DCHECK_FUNCTION_EXISTS=pthread_create   -o CMakeFiles/cmTC_96aa1.dir/CheckFunctionExists.c.o   -c /usr/share/cmake-3.5/Modules/CheckFunctionExists.c
+Linking C executable cmTC_96aa1
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_96aa1.dir/link.txt --verbose=1
+/usr/bin/cc   -DCHECK_FUNCTION_EXISTS=pthread_create    CMakeFiles/cmTC_96aa1.dir/CheckFunctionExists.c.o  -o cmTC_96aa1 -rdynamic -lpthreads 
+/usr/bin/ld: cannot find -lpthreads
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTC_96aa1.dir/build.make:97: recipe for target 'cmTC_96aa1' failed
+make[1]: *** [cmTC_96aa1] Error 1
+make[1]: Leaving directory '/home/jsaksris/whitefish/deepdetect/CMakeFiles/CMakeTmp'
+Makefile:126: recipe for target 'cmTC_96aa1/fast' failed
+make: *** [cmTC_96aa1/fast] Error 2
+
+

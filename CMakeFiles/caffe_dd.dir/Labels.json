@@ -1,0 +1,43 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/home/jsaksris/whitefish/deepdetect/CMakeFiles/caffe_dd"
+		},
+		{
+			"file" : "/home/jsaksris/whitefish/deepdetect/CMakeFiles/caffe_dd.rule"
+		},
+		{
+			"file" : "/home/jsaksris/whitefish/deepdetect/CMakeFiles/caffe_dd-complete.rule"
+		},
+		{
+			"file" : "/home/jsaksris/whitefish/deepdetect/caffe_dd/src/caffe_dd-stamp/caffe_dd-install.rule"
+		},
+		{
+			"file" : "/home/jsaksris/whitefish/deepdetect/caffe_dd/src/caffe_dd-stamp/caffe_dd-mkdir.rule"
+		},
+		{
+			"file" : "/home/jsaksris/whitefish/deepdetect/caffe_dd/src/caffe_dd-stamp/caffe_dd-download.rule"
+		},
+		{
+			"file" : "/home/jsaksris/whitefish/deepdetect/caffe_dd/src/caffe_dd-stamp/caffe_dd-update.rule"
+		},
+		{
+			"file" : "/home/jsaksris/whitefish/deepdetect/caffe_dd/src/caffe_dd-stamp/caffe_dd-patch.rule"
+		},
+		{
+			"file" : "/home/jsaksris/whitefish/deepdetect/caffe_dd/src/caffe_dd-stamp/caffe_dd-configure.rule"
+		},
+		{
+			"file" : "/home/jsaksris/whitefish/deepdetect/caffe_dd/src/caffe_dd-stamp/caffe_dd-build.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"caffe_dd"
+		],
+		"name" : "caffe_dd"
+	}
+}

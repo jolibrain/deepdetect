@@ -1,0 +1,3 @@
+repository='external project URL'
+module='https://github.com/beniz/caffe/archive/master.tar.gz'
+tag=''
