@@ -11,7 +11,7 @@ before_install:
 install:
    - mkdir build
    - cd build
-   - cmake .. -DUSE_CPU_ONLY=ON --trace
+   - cmake .. -DUSE_CPU_ONLY=ON -DBoost_USE_STATIC_LIBS=ON
 #   - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64
    - make
    - cd ..
