@@ -4,7 +4,7 @@ sudo: required
 dist: trusty
 
 before_install:
-   - update-alternatives --remove postmaster.1.gz /usr/share/postgresql/9.1/man/man1/postmaster.1.gz
+   - sudo apt-get install synaptic
    - sudo apt-get update && sudo apt-get upgrade -y
    - cd src
    - ls
