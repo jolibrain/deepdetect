@@ -14,6 +14,7 @@ before_install:
 install:
    - mkdir build
    - cd build
+   - export EIGEN_CPPFLAGS="-I/usr/include/eigen3"
    - pwd
    - cd ..
    - cd src
