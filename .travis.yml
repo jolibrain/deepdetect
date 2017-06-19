@@ -4,7 +4,7 @@ sudo: required
 dist: trusty
 
 before_install:
-   - sudo apt-get update
+   - sudo apt-get update && sudo apt-get upgrade -y --ignore-missing
    - cd src
    - hg clone https://bitbucket.org/eigen/eigen/
    - ls
