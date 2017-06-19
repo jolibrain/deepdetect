@@ -9,10 +9,9 @@ before_install:
    - sudo apt-get install libopencv-dev
    - sudo apt-get install libboost-dev
 install:
-   - cmake --trace
    - mkdir build
    - cd build
-   - cmake .. -DUSE_CPU_ONLY=ON
+   - cmake .. -DUSE_CPU_ONLY=ON --trace
 #   - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64
    - make
    - cd ..
