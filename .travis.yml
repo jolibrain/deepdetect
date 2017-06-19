@@ -9,6 +9,13 @@ before_install:
    - ls
    - cd ..
    - sudo apt-get install build-essential libgoogle-glog-dev libgflags-dev libeigen3-dev libopencv-dev libcppnetlib-dev libboost-dev libboost-iostreams-dev libcurlpp-dev libcurl4-openssl-dev protobuf-compiler libopenblas-dev libhdf5-dev libprotobuf-dev libleveldb-dev libsnappy-dev liblmdb-dev libutfcpp-dev
+   - sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+   - sudo apt-get update
+   - sudo apt-get install gcc-4.9 g++-4.9
+   - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 60 --slave /usr/bin/g++ g++ /usr/bin/g++-4.9
+   - sudo apt-get install gcc-4.8 g++-4.8
+   - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.8 60 --slave /usr/bin/g++ g++ /usr/bin/g++-4.8
+
 install:
    - mkdir build
    - cd build
