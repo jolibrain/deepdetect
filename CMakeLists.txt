@@ -48,16 +48,15 @@ configure_file(
 # dependency on Eigen for confusion matrix fast computation
 if (USE_TF)
 else()
-   find_package(Eigen3 REQUIRED)
-   include_directories("${EIGEN3_INCLUDE_DIR}")
-   include_directories("${EIGEN3_INCLUDE_DIR}")
+   find_package(PkgConfig)
+   pkg_search_module(Eigen3 REQUIRED eigen3)
 endif()
 
 set(eigen_archive_hash "50812b426b7c")
 
 #include_directories("$ENV{HOME}/include")
 
-set(EIGEN3_INCLUDE_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/external/eigen_archive/eigen-eigen-${eigen_archive_hash} ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/external/eigen_archive)
+set(EIGEN3_INCLUDE_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/external/eigen_archive/eigen-eigen-${eigen_archive_hash} ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/external/eigen_archive /usr/include/eigen3)
 include_directories("${EIGEN3_INCLUDE_DIR}")
 
 # dependency on Boost
@@ -122,78 +121,79 @@ else()
     if (CUDA_ARCH)
     else()
       if (NOT ${CUDA_VERSION} MATCHES "8.0")
-	set(CUDA_ARCH "-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52")
+      set(CUDA_ARCH "-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52")
       else()
-	set(CUDA_ARCH "-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_61,code=compute_61")
+      set(CUDA_ARCH "-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_61,code=compute_61")
       endif()
     endif()
     if (HAVE_CUDNN AND USE_CUDNN)
       if (USE_TF)
-	ExternalProject_Add(
-	  caffe_dd
-	  PREFIX caffe_dd
-	  INSTALL_DIR ${CMAKE_BINARY_DIR}
-	  URL https://github.com/beniz/caffe/archive/master.tar.gz
-	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make CUDA_ARCH=${CUDA_ARCH} -j${N}
-	  INSTALL_COMMAND ""
-	  BUILD_IN_SOURCE 1
-	  )
-      else() # USE_TF
-	ExternalProject_Add(
-	  caffe_dd
-	  PREFIX caffe_dd
-	  INSTALL_DIR ${CMAKE_BINARY_DIR}
-	  URL https://github.com/beniz/caffe/archive/master.tar.gz
-	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && make CUDA_ARCH=${CUDA_ARCH} -j${N}
-	  INSTALL_COMMAND ""
-	  BUILD_IN_SOURCE 1
-	  )
+      ExternalProject_Add(
+         caffe_dd
+         PREFIX caffe_dd
+         INSTALL_DIR ${CMAKE_BINARY_DIR}
+         DOWNLOAD_COMMAND wget https://github.com/beniz/caffe/archive/master.tar.gz && tar xfz master.tar.gz --strip-components=1 -C caffe_dd
+         CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn Makefile.config && echo -e "OPENCV_VERSION:=${OPENCV_VERSION}\\nINCLUDE_DIRS += /usr/include:${INCLUDE_DIRS}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make CUDA_ARCH=${CUDA_ARCH} -j${N}
+         INSTALL_COMMAND ""
+         BUILD_IN_SOURCE 1
+         )
+       else() # !USE_TF
+       ExternalProject_Add(
+         caffe_dd
+         PREFIX caffe_dd
+         INSTALL_DIR ${CMAKE_BINARY_DIR}
+         DOWNLOAD_COMMAND wget https://github.com/beniz/caffe/archive/master.tar.gz && tar xfz master.tar.gz --strip-components=1 -C caffe_dd
+         CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn Makefile.config && echo -e "OPENCV_VERSION:=${OPENCV_VERSION}\\nINCLUDE_DIRS += /usr/include:${INCLUDE_DIRS}" >> Makefile.config && make CUDA_ARCH=${CUDA_ARCH} -j${N}
+         INSTALL_COMMAND ""
+         BUILD_IN_SOURCE 1
+         )
       endif()
-    else() # HAVE_CUDNN
+    else() # !HAVE_CUDNN
       if (USE_TF)
-	ExternalProject_Add(
-	  caffe_dd
-	  PREFIX caffe_dd
-	  INSTALL_DIR ${CMAKE_BINARY_DIR}
-	  URL https://github.com/beniz/caffe/archive/master.tar.gz
-	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make CUDA_ARCH=${CUDA_ARCH} -j${N}
-	  INSTALL_COMMAND ""
-	  BUILD_IN_SOURCE 1
-	  )
-      else() # USE_TF
-	ExternalProject_Add(
-	  caffe_dd
-	  PREFIX caffe_dd
-	  INSTALL_DIR ${CMAKE_BINARY_DIR}
-	  URL https://github.com/beniz/caffe/archive/master.tar.gz
-	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && make CUDA_ARCH=${CUDA_ARCH} -j${N}
-	  INSTALL_COMMAND ""
-	  BUILD_IN_SOURCE 1
-	  )
+      ExternalProject_Add(
+         caffe_dd
+         PREFIX caffe_dd
+         INSTALL_DIR ${CMAKE_BINARY_DIR}
+         DOWNLOAD_COMMAND wget https://github.com/beniz/caffe/archive/master.tar.gz && tar xfz master.tar.gz --strip-components=1 -C caffe_dd
+         CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && echo -e "OPENCV_VERSION:=${OPENCV_VERSION}\\nINCLUDE_DIRS += /usr/include:${INCLUDE_DIRS}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make -j${N}
+         INSTALL_COMMAND ""
+         BUILD_IN_SOURCE 1
+         )
+       else() # !USE_TF && !HAVE_CUDNN
+       ExternalProject_Add(
+         caffe_dd
+         PREFIX caffe_dd
+         INSTALL_DIR ${CMAKE_BINARY_DIR}
+         DOWNLOAD_COMMAND wget https://github.com/beniz/caffe/archive/master.tar.gz && tar xfz master.tar.gz --strip-components=1 -C caffe_dd
+         CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && echo -e "OPENCV_VERSION:=${OPENCV_VERSION}\\nINCLUDE_DIRS += /usr/include:${INCLUDE_DIRS}" >> Makefile.config && make -j${N}
+         INSTALL_COMMAND ""
+         BUILD_IN_SOURCE 1
+       )
+       endif() # USE_TF
       endif()
     endif() # HAVE_CUDNN
-  else() # CUDA_FOUND
+  else() #!CUDA_FOUND
     add_definitions(-DUSE_CAFFE_CPU_ONLY)
     if (USE_TF)
       ExternalProject_Add(
-	caffe_dd
-	PREFIX caffe_dd
-	INSTALL_DIR ${CMAKE_BINARY_DIR}
-	URL https://github.com/beniz/caffe/archive/master.tar.gz
-	CONFIGURE_COMMAND ln -sf Makefile.config.cpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make -j${N}
-	INSTALL_COMMAND ""
-	BUILD_IN_SOURCE 1
-	)
-    else() # USE_TF
+         caffe_dd
+         PREFIX caffe_dd
+         INSTALL_DIR ${CMAKE_BINARY_DIR}
+         DOWNLOAD_COMMAND wget https://github.com/beniz/caffe/archive/master.tar.gz && tar xfz master.tar.gz --strip-components=1 -C caffe_dd
+         CONFIGURE_COMMAND ln -sf Makefile.config.cpu Makefile.config && echo -e "OPENCV_VERSION:=${OPENCV_VERSION}\\nINCLUDE_DIRS += /usr/include:${INCLUDE_DIRS}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make -j${N}
+         INSTALL_COMMAND ""
+         BUILD_IN_SOURCE 1
+      )
+    else() # !USE_TF
       ExternalProject_Add(
-	caffe_dd
-	PREFIX caffe_dd
-	INSTALL_DIR ${CMAKE_BINARY_DIR}
-	URL https://github.com/beniz/caffe/archive/master.tar.gz
-	CONFIGURE_COMMAND ln -sf Makefile.config.cpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && make -j${N}
-	INSTALL_COMMAND ""
-	BUILD_IN_SOURCE 1
-	)
+         caffe_dd
+         PREFIX caffe_dd
+         INSTALL_DIR ${CMAKE_BINARY_DIR}
+         DOWNLOAD_COMMAND wget https://github.com/beniz/caffe/archive/master.tar.gz && tar xfz master.tar.gz --strip-components=1 -C caffe_dd
+         CONFIGURE_COMMAND ln -sf Makefile.config.cpu Makefile.config && echo -e "OPENCV_VERSION:=${OPENCV_VERSION}\\nINCLUDE_DIRS += /usr/include:${INCLUDE_DIRS}" >> Makefile.config && make -j${N}
+         INSTALL_COMMAND ""
+         BUILD_IN_SOURCE 1
+       )
     endif()
   endif()
   if (CUDA_FOUND)
