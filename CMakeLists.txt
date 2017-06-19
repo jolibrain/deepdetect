@@ -48,10 +48,9 @@ configure_file(
 # dependency on Eigen for confusion matrix fast computation
 if (USE_TF)
 else()
-  find_package(PkgConfig)
-  pkg_search_module(Eigen3 REQUIRED eigen3)
-  include_directories("${EIGEN3_INCLUDE_DIR}")
-  include_directories("${EIGEN3_INCLUDE_DIR}")
+   find_package(Eigen3 REQUIRED)
+   include_directories("${EIGEN3_INCLUDE_DIR}")
+   include_directories("${EIGEN3_INCLUDE_DIR}")
 endif()
 
 set(eigen_archive_hash "50812b426b7c")
