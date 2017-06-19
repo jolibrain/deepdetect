@@ -4,10 +4,7 @@ sudo: required
 dist: trusty
 
 before_install:
-   - cd /etc/apt/sources.list.d/
-   - sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" > pgdg.list'
-   - wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
-   - sudo apt-mark hold postgresql-9.3 postgresql-9.4 postgresql-9.5
+   - sudo apt-mark hold postgresql-9.3 postgresql-9.4 postgresql-9.5 postgresql-9.6
    - sudo apt-get update && sudo apt-get upgrade -y
    - cd
    - cd deepdetect
