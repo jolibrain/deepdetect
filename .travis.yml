@@ -4,6 +4,7 @@ sudo: required
 dist: trusty
 
 before_install:
+   - sudo apt-mark hold postgresql
    - sudo apt-get update
    - cd src
    - hg clone https://bitbucket.org/eigen/eigen/
