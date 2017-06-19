@@ -7,7 +7,7 @@ before_install:
    - sudo apt-mark hold postgresql-9.3 postgresql-9.4 postgresql-9.5 postgresql-9.6
    - sudo apt-get update && sudo apt-get upgrade -y
    - sudo apt-get install libopencv-dev
-   - sudo apt-get install libboost-dev
+   - sudo apt-get install libboost1.54-all-dev
 install:
    - mkdir build
    - cd build
