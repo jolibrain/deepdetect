@@ -10,6 +10,7 @@ before_install:
    - sudo apt-get install libopencv-dev
    - sudo apt-get install libboost1.54-all-dev
    - sudo apt-get install libopenblas-dev 
+   - sudo apt-get install libgflags-dev libgoogle-glog-dev liblmdb-dev
    - wget https://support.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.10.1.tar 
    - export HDF5_DIR=/mnt/hdf5-1.10.1/hdf5
    - pip install tables
