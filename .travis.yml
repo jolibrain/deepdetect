@@ -11,6 +11,10 @@ before_install:
    - sudo apt-get install libboost1.54-all-dev
    - sudo apt-get install libopenblas-dev 
 
+   - cd /usr/lib/x86_64-linux-gnu
+   - sudo ln -s libhdf5_serial.so.8.0.2 libhdf5.so
+   - sudo ln -s libhdf5_serial_hl.so.8.0.2 libhdf5_hl.so
+
    - wget https://github.com/google/protobuf/releases/download/v2.6.1/protobuf-2.6.1.tar.gz
    - tar -xzvf protobuf-2.6.1.tar.gz
    - cd protobuf-2.6.1
