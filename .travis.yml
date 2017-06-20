@@ -38,6 +38,7 @@ before_install:
    - pip install h5py 
 install:
    - ls 
+   - find deepdetect
    - cd deepdetect
    - mkdir build
    - cd build
