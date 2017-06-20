@@ -6,27 +6,6 @@ dist: trusty
 before_install:
    - sudo apt-mark hold postgresql-9.3 postgresql-9.4 postgresql-9.5 postgresql-9.6
    - sudo apt-get update && sudo apt-get upgrade -y
-   - sudo apt-get install libeigen3-dev
-   - sudo apt-get install libopencv-dev
-   - sudo apt-get install libboost1.54-all-dev
-   - sudo apt-get install libopenblas-dev 
-   - wget https://github.com/google/protobuf/releases/download/v2.6.1/protobuf-2.6.1.tar.gz
-   - tar -xzvf protobuf-2.6.1.tar.gz
-   - cd protobuf-2.6.1
-   - export LD_LIBRARY_PATH=/usr/local/lib
-   - ./configure
-   - make
-   - sudo make install
-   - cd ..
-   - wget https://github.com/schuhschuh/gflags/archive/master.zip
-   - unzip master.zip
-   - cd gflags-master
-   - mkdir build && cd build
-   - export CXXFLAGS="-fPIC" && cmake .. && make VERBOSE=1
-   - make 
-   - sudo make install
-   - cd ..
-   - cd ..
    - C_INCLUDE_PATH=/usr/include/hdf5/serial
    - export C_INCLUDE_PATH
 
