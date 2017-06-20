@@ -27,7 +27,7 @@ before_install:
    - sudo make install
    - cd ..
    - cd ..
-   - C_INCLUDE_PATH=/usr/include
+   - C_INCLUDE_PATH=/usr/include/hdf5/serial
    - export C_INCLUDE_PATH
 
 install:
