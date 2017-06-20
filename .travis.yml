@@ -37,6 +37,7 @@ before_install:
    - export HDF5_DIR=/usr/lib/x86_64-linux-gnu/hdf5/serial/
    - pip install h5py 
 install:
+   - ls 
    - cd deepdetect
    - mkdir build
    - cd build
