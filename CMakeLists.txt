@@ -169,7 +169,6 @@ else()
          INSTALL_COMMAND ""
          BUILD_IN_SOURCE 1
        )
-       endif() # USE_TF
       endif()
     endif() # HAVE_CUDNN
   else() #!CUDA_FOUND
