@@ -10,8 +10,8 @@ before_install:
    - sudo apt-get install libopencv-dev
    - sudo apt-get install libboost1.54-all-dev
    - sudo apt-get install libopenblas-dev 
-   - wget http://www.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.8.14.tar
-   - export HDF5_DIR=/mnt/hdf5-1.8.14/hdf5
+   - wget https://support.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.10.1.tar 
+   - export HDF5_DIR=/mnt/hdf5-1.10.1/hdf5
    - pip install tables
 
    - wget https://github.com/google/protobuf/releases/download/v2.6.1/protobuf-2.6.1.tar.gz
