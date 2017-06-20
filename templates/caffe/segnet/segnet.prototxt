@@ -9,17 +9,24 @@ layer {
     batch_size: 4
     shuffle: true
   }
+  include {
+    phase: TRAIN
+  }
 }
 layer {
   name: "data"
-  type: "DenseImageData"
+  type: "MemoryData"
   top: "data"
   top: "label"
-  dense_image_data_param {
-    source: "test.txt"
-    batch_size: 4
-    shuffle: true
+  memory_data_param {
+    batch_size: 1
+    channels: 3
+    height: 360
+    width: 480
  }
+ include {
+    phase: TEST
+  }
 }
 layer {
   bottom: "data"
@@ -1321,12 +1328,16 @@ layer {
   loss_param: {
     weight_by_label_freqs: false
   }
+  include {
+    phase: TRAIN
+  }
 }
 layer {
-  name: "accuracy"
-  type: "Accuracy"
+  name: "probt"
+  type: "Softmax"
   bottom: "conv1_1_D"
-  bottom: "label"
-  top: "accuracy"
-  top: "per_class_accuracy"
+  top: "probt"
+  include {
+    phase: TEST
+  }
 }
