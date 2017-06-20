@@ -38,10 +38,7 @@ before_install:
    - export HDF5_DIR=/usr/lib/x86_64-linux-gnu/hdf5/serial/
    - pip install h5py 
 install:
-   - cd
-   - ls 
-   - find deepdetect
-   - cd deepdetect
+   - cd /home/travis/build/jsaksris/deepdetect
    - mkdir build
    - cd build
    - cmake .. -DUSE_CPU_ONLY=ON -DBoost_USE_STATIC_LIBS=ON
