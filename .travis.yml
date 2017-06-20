@@ -27,6 +27,9 @@ before_install:
    - sudo make install
    - cd ..
    - cd ..
+   - C_INCLUDE_PATH=/usr/include
+   - export C_INCLUDE_PATH
+
 install:
    - mkdir build
    - cd build
