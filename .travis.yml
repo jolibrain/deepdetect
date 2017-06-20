@@ -34,8 +34,11 @@ before_install:
 install:
    - cd /home/travis/build/jsaksris/deepdetect
 ######
-   - export HDF5_DIR=/usr/lib/x86_64-linux-gnu/hdf5/serial/include
-   - find . -type f -exec sed -i -e 's^"hdf5.h"^"hdf5/serial/hdf5.h"^g' -e 's^"hdf5_hl.h"^"hdf5/serial/hdf5_hl.h"^g' '{}' \;
+   - export USE_NCCONFIG=0
+   - export HDF5_LIBDIR=/usr/lib/x86_64-linux-gnu/hdf5/serial
+   - export HDF5_INCDIR=/usr/include/hdf5/serial
+   - export NETCDF4_DIR=/usr
+
 #####
    - pip install h5py 
    - mkdir build
