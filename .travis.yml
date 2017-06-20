@@ -17,6 +17,15 @@ before_install:
    - make
    - sudo make install
    - cd ..
+   - wget https://github.com/schuhschuh/gflags/archive/master.zip
+   - unzip master.zip
+   - cd gflags-master
+   - mkdir build && cd build
+   - export CXXFLAGS="-fPIC" && cmake .. && make VERBOSE=1
+   - make 
+   - sudo make install
+   - cd ..
+   - cd ..
 install:
    - mkdir build
    - cd build
