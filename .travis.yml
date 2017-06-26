@@ -8,9 +8,9 @@ before_install:
 #  - sudo apt-get update && sudo apt-get upgrade -y
    - sudo apt-get install build-essential libgoogle-glog-dev libgflags-dev libeigen3-dev libopencv-dev libcppnetlib-dev libboost-dev libboost-iostreams-dev libcurlpp-dev libcurl4-openssl-dev protobuf-compiler libopenblas-dev libhdf5-dev libprotobuf-dev libleveldb-dev libsnappy-dev liblmdb-dev libutfcpp-dev
 
+   - pip install pyyaml
 
 install:
-   - pip install h5py 
    - mkdir build
    - cd build
    - cmake .. -DUSE_CPU_ONLY=ON -DBoost_USE_STATIC_LIBS=ON
