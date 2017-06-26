@@ -13,7 +13,7 @@ before_install:
 install:
    - mkdir build
    - cd build
-   - cmake .. -DUSE_CPU_ONLY=ON -DBoost_USE_STATIC_LIBS=ON
+   - cmake -DBUILD_TESTS=ON .. 
    - make
 
 before_script:
