@@ -1,0 +1,79 @@
+language: cpp
+compiler: gcc
+sudo: required
+dist: trusty
+
+before_install:
+   - pwd
+   - sudo apt-mark hold postgresql-9.3 postgresql-9.4 postgresql-9.5 postgresql-9.6
+   - sudo apt-get update && sudo apt-get upgrade -y
+   - sudo apt-get install libeigen3-dev
+   - sudo apt-get install libopencv-dev
+   - sudo apt-get install libboost1.54-all-dev
+   - sudo apt-get install libopenblas-dev 
+
+
+   - wget https://github.com/google/protobuf/releases/download/v2.6.1/protobuf-2.6.1.tar.gz
+   - tar -xzvf protobuf-2.6.1.tar.gz
+   - cd protobuf-2.6.1
+   - export LD_LIBRARY_PATH=/usr/local/lib
+   - ./configure
+   - make
+   - sudo make install
+   - cd ..
+   - wget https://github.com/schuhschuh/gflags/archive/master.zip
+   - unzip master.zip
+   - cd gflags-master
+   - mkdir build && cd build
+   - export CXXFLAGS="-fPIC" && cmake .. && make VERBOSE=1
+   - make 
+   - sudo make install
+   - cd ..
+   - cd ..
+
+install:
+   - cd /home/travis/build/jsaksris/deepdetect
+######
+   - export USE_NCCONFIG=0
+   - export HDF5_LIBDIR=/usr/lib/x86_64-linux-gnu/hdf5/serial
+   - export HDF5_INCDIR=/usr/include/hdf5/serial
+   - export NETCDF4_DIR=/usr
+
+#####
+   - pip install h5py 
+   - mkdir build
+   - cd build
+   - cmake .. -DUSE_CPU_ONLY=ON -DBoost_USE_STATIC_LIBS=ON
+#   - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64
+   - make
+   - cd ..
+   - cd ..
+
+#before_script:
+#   - cd ..
+#   - cd build/caffe_dd/src/caffe_dd
+#   - ./scripts/download_model_binary.py models/bvlc_googlenet/
+#   - cd ..
+#   - cd ..
+#   - cd ..
+#   - cd ..
+#   - mkdir models
+#   - mkdir models/imgnet
+#   - cp build/caffe_dd/src/caffe_dd/models/bvlc_googlenet/bvlc_googlenet.caffemodel models/imgnet
+#   - cp datasets/imagenet/corresp_ilsvrc12.txt models/imgnet/corresp.txt
+#   - cd models
+#   - mkdir voc0712
+#   - cd voc0712
+#   - wget https://deepdetect.com/models/voc0712_dd.tar.gz
+#   - tar xvzf voc01712_dd.tar.gz
+#   - cd ..
+#   - cd ..
+#   - ./build/main/dede
+#script:
+#   - cmake .. -DBUILD_TESTS=ON
+#   - make
+#   - ctest
+notifications:
+   email:
+      on_success: always
+      on_failure: always
