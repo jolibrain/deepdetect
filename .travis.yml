@@ -1,0 +1,26 @@
+language: cpp
+compiler: gcc
+sudo: required
+dist: trusty
+
+before_install:
+#  - sudo apt-mark hold postgresql-9.3 postgresql-9.4 postgresql-9.5 postgresql-9.6
+#  - sudo apt-get update && sudo apt-get upgrade -y
+   - sudo apt-get install build-essential libgoogle-glog-dev libgflags-dev libeigen3-dev libopencv-dev libcppnetlib-dev libboost-dev libboost-iostreams-dev libcurlpp-dev libcurl4-openssl-dev protobuf-compiler libopenblas-dev libhdf5-dev libprotobuf-dev libleveldb-dev libsnappy-dev liblmdb-dev libutfcpp-dev
+   - pip install pyyaml
+
+install:
+   - mkdir build
+   - cd build
+   - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64
+   - cmake -DBUILD_TESTS=ON .. 
+   - make
+
+before_script:
+   -
+script:
+   -
+notifications:
+   email:
+      on_success: always
+      on_failure: always

@@ -139,7 +139,7 @@ function(deepdetect_select_nvcc_arch_flags out_variable)
 endfunction()
 
 ################################################################################################
-# Short command for cuda comnpilation
+# Short command for cuda compilation
 # Usage:
 #   deepdetect_cuda_compile(<objlist_variable> <cuda_files>)
 macro(deepdetect_cuda_compile objlist_variable)
