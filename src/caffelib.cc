@@ -1025,7 +1025,7 @@ namespace dd
 			double best_cat = -1.0;
 			for (int k=0;k<nout;k++)
 			  {
-			    double prob = lresults[slot]->cpu_data()[l+k*dv_float_data.at(j).size()]; //TODO: j offset for batch size
+			    double prob = lresults[slot]->cpu_data()[l+(nout*j+k)*dv_float_data.at(j).size()];
 			    if (prob >= best_prob)
 			      {
 				best_prob = prob;
@@ -1255,8 +1255,6 @@ namespace dd
 	    if (inputc._segmentation)
 	      {
 		int slot = results.size() - 1;
-		int scount = results[slot]->count();
-		int scperel = scount / batch_size;
 		nclasses = _nclasses;
 		for (int j=0;j<batch_size;j++)
 		  {
