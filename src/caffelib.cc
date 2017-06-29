@@ -1238,7 +1238,7 @@ namespace dd
 	  }
 	
 	float loss = 0.0;
-	if (extract_layer.empty())// || inputc._segmentation) // supervised or segmentation
+	if (extract_layer.empty() || inputc._segmentation) // supervised or segmentation
 	  {
 	    std::vector<Blob<float>*> results;
 	    try
@@ -1271,7 +1271,7 @@ namespace dd
 			double best_cat = -1.0;
 			for (int k=0;k<nclasses;k++)
 			  {
-			    double prob = results[slot]->cpu_data()[k*imgsize+i];
+			    double prob = results[slot]->cpu_data()[(j*nclasses+k)*imgsize+i];
 			    if (prob > max_prob)
 			      {
 				max_prob = prob;
@@ -1284,9 +1284,8 @@ namespace dd
 		    vrad.push_back(rad);
 		  }
 	      }
-	      else
-	      if (bbox) // in-image object detection
-		{
+	    else if (bbox) // in-image object detection
+	      {
 		const int det_size = 7;
 		const float *outr = results[0]->cpu_data();
 		for (int j=0;j<batch_size;j++)
