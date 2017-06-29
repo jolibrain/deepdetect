@@ -153,6 +153,9 @@ namespace dd
 	  
 	  if (ad.has("has_mean_file"))
 	    _has_mean_file = ad.get("has_mean_file").get<bool>();
+	  APIData ad_input = ad.getobj("parameters").getobj("input");
+	  if (ad_input.has("segmentation"))
+	    _segmentation = ad_input.get("segmentation").get<bool>();
 	  try
 	    {
 	      ImgInputFileConn::transform(ad);
@@ -305,7 +308,7 @@ namespace dd
     std::vector<caffe::Datum> get_dv_test(const int &num,
 					  const bool &has_mean_file)
       {
-	if (_segmentation)
+	if (_segmentation && _train)
 	  {
 	    return get_dv_test_segmentation(num,has_mean_file);
 	  }
