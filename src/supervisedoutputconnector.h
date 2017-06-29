@@ -271,22 +271,30 @@ namespace dd
       bool loss = ad_res.has("loss");
       bool iter = ad_res.has("iteration");
       bool regression = ad_res.has("regression");
+      bool segmentation = ad_res.has("segmentation");
       if (ad_out.has("measure"))
 	{
 	  std::vector<std::string> measures = ad_out.get("measure").get<std::vector<std::string>>();
       	  bool bauc = (std::find(measures.begin(),measures.end(),"auc")!=measures.end());
 	  bool bacc = false;
-	  for (auto s: measures)
-	    if (s.find("acc")!=std::string::npos)
-	      {
-		bacc = true;
-		break;
-	      }
+
+	  if (!segmentation)
+	    {
+	      for (auto s: measures)
+		if (s.find("acc")!=std::string::npos)
+		  {
+		    bacc = true;
+		    break;
+		  }
+	    }
 	  bool bf1 = (std::find(measures.begin(),measures.end(),"f1")!=measures.end());
 	  bool bmcll = (std::find(measures.begin(),measures.end(),"mcll")!=measures.end());
 	  bool bgini = (std::find(measures.begin(),measures.end(),"gini")!=measures.end());
 	  bool beucll = (std::find(measures.begin(),measures.end(),"eucll")!=measures.end());
 	  bool bmcc = (std::find(measures.begin(),measures.end(),"mcc")!=measures.end());
+	  bool baccv = false;
+	  if (segmentation)
+	    baccv = (std::find(measures.begin(),measures.end(),"acc")!=measures.end());
 	  if (bauc) // XXX: applies two binary classification problems only
 	    {
 	      double mauc = auc(ad_res);
@@ -301,6 +309,11 @@ namespace dd
 		  meas_out.add((*mit).first,(*mit).second);
 		  ++mit;
 		}
+	    }
+	  if (baccv)
+	    {
+	      double accs = acc_v(ad_res);
+	      meas_out.add("acc",accs);
 	    }
 	  if (bf1)
 	    {
@@ -417,6 +430,24 @@ namespace dd
 	  accs.insert(std::pair<std::string,double>(key,acc / static_cast<double>(batch_size)));
 	}
       return accs;
+    }
+
+    static double acc_v(const APIData &ad)
+    {
+      int batch_size = ad.get("batch_size").get<int>();
+      double acc_v = 0.0;
+      for (int i=0;i<batch_size;i++)
+	{
+	  APIData bad = ad.getobj(std::to_string(i));
+	  std::vector<double> predictions = bad.get("pred").get<std::vector<double>>(); // all best-1
+	  std::vector<double> targets = bad.get("target").get<std::vector<double>>(); // all targets against best-1
+	  dVec dpred = dVec::Map(&predictions.at(0),predictions.size());
+	  dVec dtarg = dVec::Map(&targets.at(0),targets.size());
+	  dVec ddiff = dpred - dtarg;
+	  double acc = (ddiff.cwiseAbs().array() == 0).count() / static_cast<double>(dpred.size());
+	  acc_v += acc;
+	}
+      return acc_v / static_cast<double>(batch_size);
     }
 
     // measure: F1
