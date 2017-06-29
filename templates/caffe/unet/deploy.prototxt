@@ -775,10 +775,7 @@ layer {
 }
 layer {
   name: "pred"
-  type: "ArgMax"
+  type: "Softmax"
   bottom: "score"
   top: "pred"
-  argmax_param {
-    axis: 1
-  }
 }

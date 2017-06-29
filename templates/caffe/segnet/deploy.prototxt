@@ -1303,10 +1303,7 @@ layer {
 }
 layer {
   name: "pred"
-  type: "ArgMax"
+  type: "Softmax"
   bottom: "conv1_1_D"
   top: "pred"
-  argmax_param {
-    axis: 1
-  }
 }
