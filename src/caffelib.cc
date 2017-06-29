@@ -1010,28 +1010,34 @@ namespace dd
 	    int scount = lresults[slot]->count();
 	    int scperel = scount / dv_size;
 	    
-	    int p = 0;
 	    for (int j=0;j<(int)dv_size;j++)
 	      {
 		APIData bad;
 		std::vector<double> predictions;
 		if (inputc._segmentation)
 		  {
-		    int p_offset = tresults * dv_float_data.at(j).size();
+		    APIData bad2;
+		    std::vector<double> preds, targets;
 		    for (size_t l=0;l<dv_float_data.at(j).size();l++)
 		      {
-			APIData bad2;
-			std::vector<double> preds;
 			double target = dv_float_data.at(j).at(l);
+			double best_prob = -1.0;
+			double best_cat = -1.0;
 			for (int k=0;k<nout;k++)
 			  {
-			    preds.push_back(lresults[slot]->cpu_data()[l+k*dv_float_data.at(j).size()]);
+			    double prob = lresults[slot]->cpu_data()[l+k*dv_float_data.at(j).size()];
+			    if (prob >= best_prob)
+			      {
+				best_prob = prob;
+				best_cat = k;
+			      }
 			  }
-			bad2.add("target",target);
-			bad2.add("pred",preds);
-			ad_res.add(std::to_string(p_offset+p),bad2);
-			++p;
+			preds.push_back(best_cat);
+			targets.push_back(target);
 		      }
+		    bad2.add("target",targets);
+		    bad2.add("pred",preds);
+		    ad_res.add(std::to_string(tresults+j),bad2);
 		  }
 		else if ((!_regression && !_autoencoder)|| _ntargets == 1)
 		  {
@@ -1067,8 +1073,8 @@ namespace dd
 	  clnames.push_back(this->_mlmodel.get_hcorresp(i));
 	ad_res.add("clnames",clnames);
 	if (inputc._segmentation)
-	  ad_res.add("batch_size",tresults*inputc.height()*inputc.width());
-	else ad_res.add("batch_size",tresults);
+	  ad_res.add("segmentation",true);
+	ad_res.add("batch_size",tresults);
 	if (_regression)
 	  ad_res.add("regression",_regression);
       }
