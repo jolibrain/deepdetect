@@ -7,7 +7,8 @@ layer {
   dense_image_data_param {
     source: "train.txt"
     batch_size: 5
-    shuffle: false
+    shuffle: true
+    mirror: true
   }
   include {
     phase: TRAIN
