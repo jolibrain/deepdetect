@@ -4,11 +4,11 @@ layer {
   type: "MemoryData"
   top: "data"
   top: "label"
-  dense_image_data_param {
+  memory_data_param {
     batch_size: 1
     channels: 3
-    height: 480
-    width: 360
+    height: 360
+    width: 480
   }
 }
 layer {

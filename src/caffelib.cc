@@ -1023,11 +1023,9 @@ namespace dd
 			APIData bad2;
 			std::vector<double> preds;
 			double target = dv_float_data.at(j).at(l);
-			double tsum = 0.0;
 			for (int k=0;k<nout;k++)
 			  {
 			    preds.push_back(lresults[slot]->cpu_data()[l+k*dv_float_data.at(j).size()]);
-			    tsum += preds.back();
 			  }
 			bad2.add("target",target);
 			bad2.add("pred",preds);

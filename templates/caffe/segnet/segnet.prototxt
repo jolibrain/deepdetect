@@ -8,6 +8,7 @@ layer {
     source: "train.txt"
     batch_size: 4
     shuffle: true
+    mirror: true
   }
   include {
     phase: TRAIN

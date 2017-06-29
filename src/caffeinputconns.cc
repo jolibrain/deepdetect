@@ -460,7 +460,6 @@ namespace dd
       {
 	if (j == num)
 	  break;
-	//TODO: detect encoding.
 	std::string enc = guess_encoding(_segmentation_data_lines[i].first);
 	Datum datum_data, datum_labels;
 	bool status = ReadImageToDatum(_segmentation_data_lines[i].first,-1,
