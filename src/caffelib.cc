@@ -1025,7 +1025,7 @@ namespace dd
 			double best_cat = -1.0;
 			for (int k=0;k<nout;k++)
 			  {
-			    double prob = lresults[slot]->cpu_data()[l+k*dv_float_data.at(j).size()];
+			    double prob = lresults[slot]->cpu_data()[l+k*dv_float_data.at(j).size()]; //TODO: j offset for batch size
 			    if (prob >= best_prob)
 			      {
 				best_prob = prob;
@@ -1238,7 +1238,7 @@ namespace dd
 	  }
 	
 	float loss = 0.0;
-	if (extract_layer.empty()) // supervised
+	if (extract_layer.empty())// || inputc._segmentation) // supervised or segmentation
 	  {
 	    std::vector<Blob<float>*> results;
 	    try
@@ -1252,8 +1252,43 @@ namespace dd
 		_net = nullptr;
 		throw;
 	      }
-	    if (bbox) // in-image object detection
+	    if (inputc._segmentation)
 	      {
+		int slot = results.size() - 1;
+		int scount = results[slot]->count();
+		int scperel = scount / batch_size;
+		nclasses = _nclasses;
+		for (int j=0;j<batch_size;j++)
+		  {
+		    APIData rad;
+		    if (!inputc._ids.empty())
+		      rad.add("uri",inputc._ids.at(idoffset+j));
+		    else rad.add("uri",std::to_string(idoffset+j));
+		    rad.add("loss",loss);
+		    std::vector<double> vals;
+		    int imgsize = inputc.width()*inputc.height();
+		    for (int i=0;i<imgsize;i++)
+		      {
+			double max_prob = -1.0;
+			double best_cat = -1.0;
+			for (int k=0;k<nclasses;k++)
+			  {
+			    double prob = results[slot]->cpu_data()[k*imgsize+i];
+			    if (prob > max_prob)
+			      {
+				max_prob = prob;
+				best_cat = static_cast<double>(k);
+			      }
+			  }
+			vals.push_back(best_cat);
+		      }
+		    rad.add("vals",vals);
+		    vrad.push_back(rad);
+		  }
+	      }
+	      else
+	      if (bbox) // in-image object detection
+		{
 		const int det_size = 7;
 		const float *outr = results[0]->cpu_data();
 		for (int j=0;j<batch_size;j++)
