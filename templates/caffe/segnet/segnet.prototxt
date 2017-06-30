@@ -1326,9 +1326,6 @@ layer {
   bottom: "label"
   top: "loss"
   softmax_param {engine: CAFFE}
-  loss_param: {
-    weight_by_label_freqs: false
-  }
   include {
     phase: TRAIN
   }
