@@ -39,6 +39,15 @@ namespace dd
       {
        	if (read_from_repository(ad.get("repository").get<std::string>()))
 	  throw MLLibBadParamException("error reading or listing Caffe models in repository " + _repo);
+        if (ad.has("weights"))
+          {
+            _weights = ad.get("weights").get<std::string>();
+            if (!fileops::file_exists(_weights))
+              {
+                LOG(ERROR) << "error reading caffemodel " << _weights << std::endl;
+                throw MLLibBadParamException( "error reading caffemodel " + _weights);
+              }
+          }      
       }
     else
       {
