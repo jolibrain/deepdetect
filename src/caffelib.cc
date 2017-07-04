@@ -229,7 +229,7 @@ namespace dd
       }
     if (ad.has("finetuning") && ad.get("finetuning").get<bool>())
       {
-	if (!ad.has("weights"))
+	if (this->_mlmodel._weights.empty()) // weights should have been specified or detected on the first pass into the model repository
 	  throw MLLibBadParamException("finetuning requires specifying an existing weights file");	
 	caffe::NetParameter net_param,deploy_net_param;
 	caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)

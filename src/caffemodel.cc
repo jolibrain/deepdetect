@@ -35,20 +35,22 @@ namespace dd
     if (ad.has("templates"))
       this->_mlmodel_template_repo = ad.get("templates").get<std::string>();
     else this->_mlmodel_template_repo += "caffe/"; // default
+
+    if (ad.has("def"))
+      _def = ad.get("def").get<std::string>();
+    if (ad.has("trainf"))
+      _trainf = ad.get("trainf").get<std::string>();
+    if (ad.has("weights"))
+      _weights = ad.get("weights").get<std::string>();
+    if (ad.has("corresp"))
+      _corresp = ad.get("corresp").get<std::string>();
+    if (ad.has("solver"))
+      _solver = ad.get("solver").get<std::string>();
     if (ad.has("repository"))
       {
        	if (read_from_repository(ad.get("repository").get<std::string>()))
 	  throw MLLibBadParamException("error reading or listing Caffe models in repository " + _repo);
       }
-    else
-      {
-	_def = ad.get("def").get<std::string>();
-	_trainf = ad.get("trainf").get<std::string>();
-	_weights = ad.get("weights").get<std::string>();
-	_corresp = ad.get("corresp").get<std::string>();
-	_solver = ad.get("solver").get<std::string>();
-      }
-
     read_corresp_file();
   }
   
@@ -114,12 +116,18 @@ namespace dd
 	  trainf = (*hit);
 	++hit;
       }
-    _def = deployf;
-    _trainf = trainf;
-    _weights = weightsf;
-    _corresp = correspf;
-    _solver = solverf;
-    _sstate = sstatef;
+    if (_def.empty())
+      _def = deployf;
+    if (_trainf.empty())
+      _trainf = trainf;
+    if (_weights.empty())
+      _weights = weightsf;
+    if (_corresp.empty())
+      _corresp = correspf;
+    if (_solver.empty())
+      _solver = solverf;
+    if (_sstate.empty())
+      _sstate = sstatef;
     
     /*    if (deployf.empty() || weightsf.empty())
       {
