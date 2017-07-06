@@ -1637,7 +1637,7 @@ namespace dd
 	caffe::LayerParameter *lparam = net_param.mutable_layer(l);
 	if (lparam->type() == "Convolution")
 	  {
-	    ft_oldname = lparam->name();
+	    ft_oldname = lparam->top(0);
 	    ft_lname = lparam->name() + "_ftune";
 	    lparam->set_name(ft_lname);
 	    lparam->set_top(0,ft_lname);
@@ -1646,7 +1646,7 @@ namespace dd
 	  }
 	else if (lparam->type() == "InnerProduct")
 	  {
-	    ft_oldname = lparam->name();
+	    ft_oldname = lparam->top(0);
 	    ft_lname = lparam->name() + "_ftune";
 	    lparam->set_name(ft_lname);
 	    lparam->set_top(0,ft_lname);
