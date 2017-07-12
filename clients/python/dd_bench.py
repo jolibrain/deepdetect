@@ -41,12 +41,31 @@ parser.add_argument('--max-batch-size',help='max batch size to be tested',type=i
 parser.add_argument('--list-bench-files',help='file holding the list of bench files',default='list_bench_files.txt')
 parser.add_argument('--npasses',help='number of passes for every batch size',type=int,default=5)
 parser.add_argument('--detection',help='whether benching a detection model',action='store_true')
+parser.add_argument('--create',help='model\'s folder name to create a service')
+parser.add_argument('--nclasses',help='number of classes for service creation',type=int,default=1000)
+parser.add_argument('--auto-kill',help='auto kill the service after benchmarking',action='store_true')
 args = parser.parse_args()
 
 host = args.host
 port = args.port
 dd = DD(host,port)
 dd.set_return_format(dd.RETURN_PYTHON)
+model_c = args.create
+autokill = args.auto_kill
+
+# Create a service
+if model_c:
+  dd1 = DD('localhost')
+  description = 'image classification service'
+  mllib = 'caffe'
+  model = {'repository':'../../models/'+model_c}
+  parameters_input = {'connector':'image'}
+  parameters_mllib = {'nclasses':args.nclasses}
+  parameters_output = {}
+  dd1.put_service(args.sname,model,description,mllib,
+              parameters_input,parameters_mllib,parameters_output)
+else:
+    pass
 
 list_bench_files = []
 with open(args.list_bench_files) as f:
@@ -99,3 +118,7 @@ for b in batch_sizes:
             break
     print '>>> batch size =',b,' / mean processing time =',mean_ptime/args.npasses, ' / mean time per image =',mean_ptime_per_img/args.npasses, ' / fail =',fail
     #break
+
+if autokill:
+  dd.delete_service(args.sname)
+  
