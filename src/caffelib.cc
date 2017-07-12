@@ -188,18 +188,29 @@ namespace dd
 	    || (ad.has("crop_size")))
 	  {
 	    caffe::LayerParameter *lparam = net_param.mutable_layer(0); // data input layer
-	    if (ad.has("rotate"))
-	      lparam->mutable_transform_param()->set_mirror(ad.get("mirror").get<bool>());
-	    if (ad.has("mirror"))
-	      lparam->mutable_transform_param()->set_rotate(ad.get("rotate").get<bool>());
-	    if (ad.has("crop_size"))
+	    if (lparam->type() != "DenseImageData")
 	      {
-		_crop_size = ad.get("crop_size").get<int>();
-		lparam->mutable_transform_param()->set_crop_size(_crop_size);
-		caffe::LayerParameter *dlparam = net_param.mutable_layer(1); // test input layer
-		dlparam->mutable_transform_param()->set_crop_size(_crop_size);
+		if (ad.has("rotate"))
+		  lparam->mutable_transform_param()->set_mirror(ad.get("mirror").get<bool>());
+		if (ad.has("mirror"))
+		  lparam->mutable_transform_param()->set_rotate(ad.get("rotate").get<bool>());
+		if (ad.has("crop_size"))
+		  {
+		    _crop_size = ad.get("crop_size").get<int>();
+		    lparam->mutable_transform_param()->set_crop_size(_crop_size);
+		    caffe::LayerParameter *dlparam = net_param.mutable_layer(1); // test input layer
+		    dlparam->mutable_transform_param()->set_crop_size(_crop_size);
+		  }
+		else lparam->mutable_transform_param()->clear_crop_size();
 	      }
-	    else lparam->mutable_transform_param()->clear_crop_size();
+	    else
+	      {
+		if (ad.has("rotate"))
+		  lparam->mutable_dense_image_data_param()->set_mirror(ad.get("mirror").get<bool>());
+		if (ad.has("mirror"))
+		  lparam->mutable_dense_image_data_param()->set_rotate(ad.get("rotate").get<bool>());
+		// XXX: DenseImageData supports crop_height and crop_width
+	      }
 	  }
 	// input size
 	caffe::LayerParameter *lparam = net_param.mutable_layer(1); // test
@@ -1010,6 +1021,7 @@ namespace dd
 	    int scount = lresults[slot]->count();
 	    int scperel = scount / dv_size;
 	    
+#pragma omp parallel for
 	    for (int j=0;j<(int)dv_size;j++)
 	      {
 		APIData bad;
@@ -1037,7 +1049,10 @@ namespace dd
 		      }
 		    bad2.add("target",targets);
 		    bad2.add("pred",preds);
+#pragma omp critical
+		    {
 		    ad_res.add(std::to_string(tresults+j),bad2);
+		    }
 		  }
 		else if ((!_regression && !_autoencoder)|| _ntargets == 1)
 		  {
@@ -1062,7 +1077,10 @@ namespace dd
 		if (!inputc._segmentation)
 		  {
 		    bad.add("pred",predictions);
-		    ad_res.add(std::to_string(tresults+j),bad);
+#pragma omp critical
+		    {
+		      ad_res.add(std::to_string(tresults+j),bad);
+		    }
 		  }
 	      }
 	    tresults += dv_size;
