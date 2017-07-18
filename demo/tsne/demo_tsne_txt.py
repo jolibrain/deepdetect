@@ -19,6 +19,7 @@ dd.set_return_format(dd.RETURN_PYTHON)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--txtdir",help="directory containing text files")
+parser.add_argument("--perplexity",help="TSNE perplexity",type=int,default=30)
 args = parser.parse_args()
 
 training_repo = args.txtdir
@@ -37,7 +38,7 @@ except:
 # training
 train_data = [training_repo]
 parameters_input = {'min_count':10,'min_word_length':5}
-parameters_mllib = {'iterations':500}
+parameters_mllib = {'iterations':500,'perplexity':args.perplexity}
 parameters_output = {}
 predout = dd.post_train(sname,train_data,parameters_input,parameters_mllib,parameters_output,async=True)
 
