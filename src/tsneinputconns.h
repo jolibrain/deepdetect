@@ -24,6 +24,7 @@
 
 #include <Eigen/Dense>
 #include "csvinputfileconn.h"
+#include "txtinputfileconn.h"
 
 namespace dd
 {
@@ -58,6 +59,23 @@ namespace dd
     void init(const APIData &ad)
     {
       CSVInputFileConn::init(ad);
+    }
+
+    void transform(const APIData &ad);
+  };
+
+  class TxtTSNEInputFileConn : public TxtInputFileConn, public TSNEInputInterface
+  {
+  public:
+    TxtTSNEInputFileConn()
+      :TxtInputFileConn() {}
+    TxtTSNEInputFileConn(const TxtTSNEInputFileConn &i)
+      :TxtInputFileConn(i),TSNEInputInterface(i) {}
+    ~TxtTSNEInputFileConn() {}
+
+    void init(const APIData &ad)
+    {
+      TxtInputFileConn::init(ad);
     }
 
     void transform(const APIData &ad);

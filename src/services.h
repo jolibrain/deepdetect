@@ -67,6 +67,7 @@ namespace dd
 #endif
 #ifdef USE_TSNE
     ,MLService<TSNELib,CSVTSNEInputFileConn,UnsupervisedOutput,TSNEModel>
+    ,MLService<TSNELib,TxtTSNEInputFileConn,UnsupervisedOutput,TSNEModel>
 #endif
     > mls_variant_type;
 
