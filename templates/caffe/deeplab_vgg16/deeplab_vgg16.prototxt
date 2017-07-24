@@ -854,6 +854,7 @@ layer {
   type: "SoftmaxWithLoss"
   bottom: "fc8_vgg16"
   bottom: "label_shrink"
+  top: "loss"
   include {
     phase: TRAIN
   }

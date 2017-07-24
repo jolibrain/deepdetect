@@ -472,36 +472,17 @@ layer {
 }
 layer {
   name: "conv5_3_pool1_conv/bn"
-  type: "BN"
+  type: "BatchNorm"
+  bottom: "conv5_3_pool1_conv"
+  top: "conv5_3_pool1_conv"  
+}
+layer {
+  name: "conv5_3_pool1_conv/scale"
+  type: "Scale"
   bottom: "conv5_3_pool1_conv"
   top: "conv5_3_pool1_conv"
-  param {
-    lr_mult: 1
-    decay_mult: 0
-  }
-  param {
-    lr_mult: 1
-    decay_mult: 0
-  }
-  param {
-    lr_mult: 0
-    decay_mult: 0
-  }
-  param {
-    lr_mult: 0
-    decay_mult: 0
-  }
-  bn_param {
-    slope_filler {
-      type: "constant"
-      value: 1
-    }
-    bias_filler {
-      type: "constant"
-      value: 0
-    }
-    frozen: true
-    momentum: 0.95
+  scale_param {
+   bias_term: true
   }
 }
 layer {
@@ -552,36 +533,17 @@ layer {
 }
 layer {
   name: "conv5_3_pool2_conv/bn"
-  type: "BN"
+  type: "BatchNorm"
+  bottom: "conv5_3_pool2_conv"
+  top: "conv5_3_pool2_conv"  
+}
+layer {
+  name: "conv5_3_pool2_conv/scale"
+  type: "Scale"
   bottom: "conv5_3_pool2_conv"
   top: "conv5_3_pool2_conv"
-  param {
-    lr_mult: 1
-    decay_mult: 0
-  }
-  param {
-    lr_mult: 1
-    decay_mult: 0
-  }
-  param {
-    lr_mult: 0
-    decay_mult: 0
-  }
-  param {
-    lr_mult: 0
-    decay_mult: 0
-  }
-  bn_param {
-    slope_filler {
-      type: "constant"
-      value: 1
-    }
-    bias_filler {
-      type: "constant"
-      value: 0
-    }
-    frozen: true
-    momentum: 0.95
+  scale_param {
+   bias_term: true
   }
 }
 layer {
@@ -632,38 +594,20 @@ layer {
 }
 layer {
   name: "conv5_3_pool3_conv/bn"
-  type: "BN"
+  type: "BatchNorm"
+  bottom: "conv5_3_pool3_conv"
+  top: "conv5_3_pool3_conv"  
+}
+layer {
+  name: "conv5_3_pool3_conv/scale"
+  type: "Scale"
   bottom: "conv5_3_pool3_conv"
   top: "conv5_3_pool3_conv"
-  param {
-    lr_mult: 1
-    decay_mult: 0
-  }
-  param {
-    lr_mult: 1
-    decay_mult: 0
-  }
-  param {
-    lr_mult: 0
-    decay_mult: 0
-  }
-  param {
-    lr_mult: 0
-    decay_mult: 0
-  }
-  bn_param {
-    slope_filler {
-      type: "constant"
-      value: 1
-    }
-    bias_filler {
-      type: "constant"
-      value: 0
-    }
-    frozen: true
-    momentum: 0.95
+  scale_param {
+   bias_term: true
   }
 }
+
 layer {
   name: "conv5_3_pool3_conv/relu"
   type: "ReLU"
@@ -712,36 +656,17 @@ layer {
 }
 layer {
   name: "conv5_3_pool6_conv/bn"
-  type: "BN"
+  type: "BatchNorm"
+  bottom: "conv5_3_pool6_conv"
+  top: "conv5_3_pool6_conv"  
+}
+layer {
+  name: "conv5_3_pool6_conv/scale"
+  type: "Scale"
   bottom: "conv5_3_pool6_conv"
   top: "conv5_3_pool6_conv"
-  param {
-    lr_mult: 1
-    decay_mult: 0
-  }
-  param {
-    lr_mult: 1
-    decay_mult: 0
-  }
-  param {
-    lr_mult: 0
-    decay_mult: 0
-  }
-  param {
-    lr_mult: 0
-    decay_mult: 0
-  }
-  bn_param {
-    slope_filler {
-      type: "constant"
-      value: 1
-    }
-    bias_filler {
-      type: "constant"
-      value: 0
-    }
-    frozen: true
-    momentum: 0.95
+  scale_param {
+   bias_term: true
   }
 }
 layer {
@@ -792,40 +717,6 @@ layer {
   }
 }
 layer {
-  name: "conv5_4/bn"
-  type: "BN"
-  bottom: "conv5_4"
-  top: "conv5_4"
-  param {
-    lr_mult: 1
-    decay_mult: 0
-  }
-  param {
-    lr_mult: 1
-    decay_mult: 0
-  }
-  param {
-    lr_mult: 0
-    decay_mult: 1
-  }
-  param {
-    lr_mult: 0
-    decay_mult: 0
-  }
-  bn_param {
-    slope_filler {
-      type: "constant"
-      value: 1
-    }
-    bias_filler {
-      type: "constant"
-      value: 0
-    }
-    frozen: true
-    momentum: 0.95
-  }
-}
-layer {
   name: "conv5_4/relu"
   type: "ReLU"
   bottom: "conv5_4"
@@ -870,8 +761,8 @@ layer {
   name: "label_shrink"
   type: "Interp"
   interp_param {
-     width: 61
-     height: 61
+     width: 60
+     height: 60
   }
 }
 
@@ -880,6 +771,7 @@ layer {
   type: "SoftmaxWithLoss"
   bottom: "conv6"
   bottom: "label_shrink"
+  top: "loss"
   include {
     phase: TRAIN
   }
