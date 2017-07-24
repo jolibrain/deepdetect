@@ -219,7 +219,7 @@ namespace dd
     int feature_size() const
     {
       // total number of indices
-      return _max_id;
+      return _max_id + 1;
     }
 
     // serialization of vocabulary
