@@ -377,6 +377,8 @@ namespace dd
 	    TSNEModel tmodel(ad_model);
 	    if (input == "csv")
 	      add_service(sname,std::move(MLService<TSNELib,CSVTSNEInputFileConn,UnsupervisedOutput,TSNEModel>(sname,tmodel,description)),ad);
+	    else if (input == "txt")
+	      add_service(sname,std::move(MLService<TSNELib,TxtTSNEInputFileConn,UnsupervisedOutput,TSNEModel>(sname,tmodel,description)),ad);
 	    else return dd_input_connector_not_found_1004();
 	    if (JsonAPI::store_json_blob(tmodel._repo,jstr)) // store successful call json blob
 	      LOG(ERROR) << "couldn't write " << JsonAPI::_json_blob_fname << " file in model repository " << tmodel._repo << std::endl; 
