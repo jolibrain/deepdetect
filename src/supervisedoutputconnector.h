@@ -312,8 +312,10 @@ namespace dd
 	    }
 	  if (baccv)
 	    {
-	      double accs = acc_v(ad_res);
+	      double meanacc;
+	      double accs = acc_v(ad_res,meanacc);
 	      meas_out.add("acc",accs);
+	      meas_out.add("meanacc",meanacc);
 	    }
 	  if (bf1)
 	    {
@@ -432,10 +434,14 @@ namespace dd
       return accs;
     }
 
-    static double acc_v(const APIData &ad)
+    static double acc_v(const APIData &ad, double &meanacc)
     {
+      int nclasses = ad.get("nclasses").get<int>();
       int batch_size = ad.get("batch_size").get<int>();
+      std::vector<double> mean_acc(nclasses,0.0);
+      std::vector<double> mean_acc_bs(nclasses,0.0);
       double acc_v = 0.0;
+      meanacc = 0.0;
       for (int i=0;i<batch_size;i++)
 	{
 	  APIData bad = ad.getobj(std::to_string(i));
@@ -446,7 +452,32 @@ namespace dd
 	  dVec ddiff = dpred - dtarg;
 	  double acc = (ddiff.cwiseAbs().array() == 0).count() / static_cast<double>(dpred.size());
 	  acc_v += acc;
+	  
+	  // mean acc over classes
+	  for (int c=0;c<nclasses;c++)
+	    {
+	      dVec dpredc = (dpred.array() == c).select(dpred,dVec::Constant(dpred.size(),-1.0));
+	      dVec dtargc = (dtarg.array() == c).select(dtarg,dVec::Constant(dtarg.size(),1.0));
+	      dVec ddiffc = dpredc - dtargc;
+	      double c_sum = (ddiffc.cwiseAbs().array() == 0).count();
+	      if (c_sum == 0)
+		continue;
+	      double accc = c_sum / static_cast<double>((dtargc.array() == c).count());
+	      mean_acc[c] += accc;
+	      mean_acc_bs[c]++;
+	    }
 	}
+      int c_nclasses = 0;
+      for (int c=0;c<nclasses;c++)
+	{
+	  if (mean_acc_bs[c] > 0.0)
+	    {
+	      mean_acc[c] /= mean_acc_bs[c];
+	      c_nclasses++;
+	    }
+	  meanacc += mean_acc[c];
+	}
+      meanacc /= static_cast<double>(c_nclasses);
       return acc_v / static_cast<double>(batch_size);
     }
 
