@@ -1518,7 +1518,7 @@ namespace dd
 	    caffe::DenseImageDataParameter *dp = lp->mutable_dense_image_data_param();
 	    if (dp->has_source())
 	      {
-		if (i == 0 && ad.has("source_train"))
+		if (i == 0)
 		  dp->set_source(ad.getobj("source").get("source_train").get<std::string>());
 		else dp->set_source(ad.getobj("source").get("source_test").get<std::string>());
 	      }
