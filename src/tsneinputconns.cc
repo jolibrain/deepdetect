@@ -45,4 +45,37 @@ namespace dd
       }
     _csvdata.clear();
   }
+
+  void TxtTSNEInputFileConn::transform(const APIData &ad)
+  {
+    try
+      {
+	TxtInputFileConn::transform(ad);
+      }
+    catch(std::exception &e)
+      {
+	throw;
+      }
+    _N = _txt.size();
+    _D = _vocab.size();
+    _X = dMatR::Zero(_N,_D);
+    int i = 0;
+    auto hit = _txt.begin();
+    while(hit!=_txt.end())
+      {
+	TxtBowEntry *tbe = static_cast<TxtBowEntry*>((*hit));
+	std::unordered_map<std::string,Word>::const_iterator wit;
+	tbe->reset();
+	while(tbe->has_elt())
+	  {
+	    std::string key;
+	    double val;
+	    tbe->get_next_elt(key,val);
+	    if ((wit = _vocab.find(key))!=_vocab.end())
+	      _X(i,_vocab[key]._pos) = val;
+	  }
+	++i;
+	++hit;
+      }
+  }
 }

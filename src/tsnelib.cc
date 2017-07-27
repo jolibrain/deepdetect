@@ -157,4 +157,5 @@ namespace dd
   }
 
   template class TSNELib<CSVTSNEInputFileConn,UnsupervisedOutput,TSNEModel>;
+  template class TSNELib<TxtTSNEInputFileConn,UnsupervisedOutput,TSNEModel>;
 }
