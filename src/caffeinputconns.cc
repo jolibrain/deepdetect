@@ -113,6 +113,7 @@ namespace dd
     // list files and classes, possibly shuffle / split them
     int cl = 0;
     std::unordered_map<int,std::string> hcorresp; // correspondence class number / class name
+    std::unordered_map<std::string,int> hcorresp_r; // reverse correspondence for test set.
     std::vector<std::pair<std::string,int>> lfiles; // labeled files
     auto uit = subdirs.begin();
     while(uit!=subdirs.end())
@@ -120,7 +121,9 @@ namespace dd
 	std::unordered_set<std::string> subdir_files;
 	if (fileops::list_directory((*uit),true,false,subdir_files))
 	  throw InputConnectorBadParamException("failed reading image train data sub-directory " + (*uit));
-	hcorresp.insert(std::pair<int,std::string>(cl,dd_utils::split((*uit),'/').back()));
+	std::string cls = dd_utils::split((*uit),'/').back();
+	hcorresp.insert(std::pair<int,std::string>(cl,cls));
+	hcorresp_r.insert(std::pair<std::string,int>(cls,cl));
 	auto fit = subdir_files.begin();
 	while(fit!=subdir_files.end()) // XXX: re-iterating the file is not optimal
 	  {
@@ -172,22 +175,28 @@ namespace dd
 	  throw InputConnectorBadParamException("failed reading image test data directory " + rfolders.at(1));
 
 	// list files and classes, possibly shuffle / split them
-	int cl = 0;
+	std::unordered_map<std::string,int>::const_iterator hcit;
 	auto uit = test_subdirs.begin();
 	while(uit!=test_subdirs.end())
 	  {
 	    std::unordered_set<std::string> subdir_files;
 	    if (fileops::list_directory((*uit),true,false,subdir_files))
 	      throw InputConnectorBadParamException("failed reading image test data sub-directory " + (*uit));
-	hcorresp.insert(std::pair<int,std::string>(cl,dd_utils::split((*uit),'/').back()));
-	auto fit = subdir_files.begin();
-	while(fit!=subdir_files.end()) // XXX: re-iterating the file is not optimal
-	  {
-	    test_lfiles.push_back(std::pair<std::string,int>((*fit),cl));
-	    ++fit;
-	  }
-	++cl;
-	++uit;
+	    std::string cls = dd_utils::split((*uit),'/').back();
+	    if ((hcit=hcorresp_r.find(cls))==hcorresp_r.end())
+	      {
+		LOG(ERROR) << "class " << cls << " appears in testing set but not in training set, skipping";
+		++uit;
+		continue;
+	      }
+	    int cl = (*hcit).second;
+	    auto fit = subdir_files.begin();
+	    while(fit!=subdir_files.end()) // XXX: re-iterating the file is not optimal
+	      {
+		test_lfiles.push_back(std::pair<std::string,int>((*fit),cl));
+		++fit;
+	      }
+	    ++uit;
 	  }	
       }
     _db_batchsize = lfiles.size();
