@@ -67,7 +67,8 @@ TEST(outputconn,acc_v)
   std::vector<APIData> vad = {bad};
   res_ad.add(std::to_string(0),vad);
   SupervisedOutput so;
-  double acc = so.acc_v(res_ad);
+  double meanacc = 0.0, meaniou = 0.0; //TODO
+  double acc = so.acc_v(res_ad,meanacc,meaniou);
   ASSERT_EQ(0.75,acc);
 }
 

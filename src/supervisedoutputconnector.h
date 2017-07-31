@@ -312,10 +312,11 @@ namespace dd
 	    }
 	  if (baccv)
 	    {
-	      double meanacc;
-	      double accs = acc_v(ad_res,meanacc);
+	      double meanacc, meaniou;
+	      double accs = acc_v(ad_res,meanacc,meaniou);
 	      meas_out.add("acc",accs);
 	      meas_out.add("meanacc",meanacc);
+	      meas_out.add("meaniou",meaniou);
 	    }
 	  if (bf1)
 	    {
@@ -434,14 +435,16 @@ namespace dd
       return accs;
     }
 
-    static double acc_v(const APIData &ad, double &meanacc)
+    static double acc_v(const APIData &ad, double &meanacc, double &meaniou)
     {
       int nclasses = ad.get("nclasses").get<int>();
       int batch_size = ad.get("batch_size").get<int>();
       std::vector<double> mean_acc(nclasses,0.0);
       std::vector<double> mean_acc_bs(nclasses,0.0);
+      std::vector<double> mean_iou(nclasses,0.0);
       double acc_v = 0.0;
       meanacc = 0.0;
+      meaniou = 0.0;
       for (int i=0;i<batch_size;i++)
 	{
 	  APIData bad = ad.getobj(std::to_string(i));
@@ -453,7 +456,6 @@ namespace dd
 	  double acc = (ddiff.cwiseAbs().array() == 0).count() / static_cast<double>(dpred.size());
 	  acc_v += acc;
 	  
-	  // mean acc over classes
 	  for (int c=0;c<nclasses;c++)
 	    {
 	      dVec dpredc = (dpred.array() == c).select(dpred,dVec::Constant(dpred.size(),-1.0));
@@ -462,9 +464,18 @@ namespace dd
 	      double c_sum = (ddiffc.cwiseAbs().array() == 0).count();
 	      if (c_sum == 0)
 		continue;
-	      double accc = c_sum / static_cast<double>((dtargc.array() == c).count());
+
+	      // mean acc over classes
+	      double c_total_targ = static_cast<double>((dtargc.array() == c).count());
+	      double accc = c_sum / c_total_targ;
 	      mean_acc[c] += accc;
 	      mean_acc_bs[c]++;
+
+	      // mean intersection over union
+	      double c_false_neg = static_cast<double>((ddiffc.array() == c-1).count());
+	      double c_false_pos = static_cast<double>((ddiffc.array() == -1-c).count());
+	      double iou = c_sum / (c_false_pos + c_sum + c_false_neg);
+	      mean_iou[c] += iou;
 	    }
 	}
       int c_nclasses = 0;
@@ -473,11 +484,14 @@ namespace dd
 	  if (mean_acc_bs[c] > 0.0)
 	    {
 	      mean_acc[c] /= mean_acc_bs[c];
+	      mean_iou[c] /= mean_acc_bs[c];
 	      c_nclasses++;
 	    }
 	  meanacc += mean_acc[c];
+	  meaniou += mean_iou[c];
 	}
       meanacc /= static_cast<double>(c_nclasses);
+      meaniou /= static_cast<double>(c_nclasses);
       return acc_v / static_cast<double>(batch_size);
     }
 
