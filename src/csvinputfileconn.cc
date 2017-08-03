@@ -35,35 +35,55 @@ namespace dd
       }
     else return -1;
   }
+
+  int DDCsv::read_db(const std::string &fname)
+  {
+    _cifc->_db_fname = fname;
+    return 0;
+  }
   
   int DDCsv::read_mem(const std::string &content)
   {
     if (!_cifc)
       return -1;
-    std::vector<double> vals;
-    std::string cid;
-    int nlines = 0;
-    _cifc->read_csv_line(content,_cifc->_delim,vals,cid,nlines);
-    if (_cifc->_scale)
+    std::stringstream sh(content);
+    std::string line;
+    int l = 0;
+    while(std::getline(sh,line))
       {
-	if (!_cifc->_train) // in prediction mode, on-the-fly scaling
+	if (_cifc->_columns.empty() && _cifc->_train && l == 0)
 	  {
-	    _cifc->scale_vals(vals);
+	    _cifc->read_header(line);
+	    ++l;
+	    continue;
 	  }
-	else // in training mode, collect bounds, then scale in another pass over the data
+	
+	std::vector<double> vals;
+	std::string cid;
+	int nlines = 0;
+	_cifc->read_csv_line(line,_cifc->_delim,vals,cid,nlines);
+	if (_cifc->_scale)
 	  {
-	    if (_cifc->_min_vals.empty() && _cifc->_max_vals.empty())
-	      _cifc->_min_vals = _cifc->_max_vals = vals;
-	    for (size_t j=0;j<vals.size();j++)
+	    if (!_cifc->_train) // in prediction mode, on-the-fly scaling
 	      {
-		_cifc->_min_vals.at(j) = std::min(vals.at(j),_cifc->_min_vals.at(j));
-		_cifc->_max_vals.at(j) = std::max(vals.at(j),_cifc->_max_vals.at(j));
+		_cifc->scale_vals(vals);
+	      }
+	    else // in training mode, collect bounds, then scale in another pass over the data
+	      {
+		if (_cifc->_min_vals.empty() && _cifc->_max_vals.empty())
+		  _cifc->_min_vals = _cifc->_max_vals = vals;
+		for (size_t j=0;j<vals.size();j++)
+		  {
+		    _cifc->_min_vals.at(j) = std::min(vals.at(j),_cifc->_min_vals.at(j));
+		    _cifc->_max_vals.at(j) = std::max(vals.at(j),_cifc->_max_vals.at(j));
+		  }
 	      }
 	  }
+	if (!cid.empty())
+	  _cifc->add_train_csvline(cid,vals);
+	else _cifc->add_train_csvline(std::to_string(_cifc->_csvdata.size()+1),vals);
+	++l;
       }
-    if (!cid.empty())
-      _cifc->add_train_csvline(cid,vals);
-    else _cifc->add_train_csvline(std::to_string(_cifc->_csvdata.size()+1),vals);
     return 0;
   }
 
@@ -117,11 +137,11 @@ namespace dd
       }
 
     //debug
-    /*std::cout << "number of new columns=" << _columns.size() << std::endl;
-    std::cout << "new CSV columns:\n";
+    /*std::cerr << "number of new columns=" << _columns.size() << std::endl;
+    std::cerr << "new CSV columns:\n";
     std::copy(_columns.begin(),_columns.end(),
 	      std::ostream_iterator<std::string>(std::cout," "));
-	      std::cout << std::endl;*/
+	      std::cerr << std::endl;*/
     //debug
   }
   
@@ -189,6 +209,12 @@ namespace dd
 	      // not a number, skip for now
 	      if (column_id == col) // if id is string, replace with number / TODO: better scheme
 		vals.push_back(c);
+	      else
+		{
+		  LOG(ERROR) << "line " << nlines << ": skipping column " << col_name << " / not a number";
+		  LOG(ERROR) << hline << std::endl;
+		  throw InputConnectorBadParamException("column " + col_name + " is not a number, use categoricals or ignore parameters instead");
+		}
 	    }
 	  ++lit;
 	}
@@ -225,6 +251,7 @@ namespace dd
 	  }
 	++i;
       }
+    _detect_cols = i;
     for (size_t j=0;j<_label_pos.size();j++)
       if (_label_pos.at(j) < 0 && _train)
 	throw InputConnectorBadParamException("cannot find label column " + _label[j]);
@@ -244,16 +271,18 @@ namespace dd
       read_header(hline);
       
       //debug
+      /*std::cerr << "found " << _detect_cols << " columns\n";
       std::cerr << "label size=" << _label.size() << " / label_pos size=" << _label_pos.size() << std::endl;
       std::cout << "CSV columns:\n";
       std::copy(_columns.begin(),_columns.end(),
 		std::ostream_iterator<std::string>(std::cout," "));
-      std::cout << std::endl;
+		std::cout << std::endl;*/
       //debug
 
       // categorical variables
-      if (!_categoricals.empty())
+      if (_train && !_categoricals.empty())
 	{
+	  int l = 0;
 	  while(std::getline(csv_file,hline))
 	    {
 	      hline.erase(std::remove(hline.begin(),hline.end(),'\r'),hline.end());
@@ -266,12 +295,22 @@ namespace dd
 	      int cu = 0;
 	      while(std::getline(sh,col,_delim[0]))
 		{
+		  if (cu >= _detect_cols)
+		    {
+		      LOG(ERROR) << "line " << l << " has more columns than headers\n";
+		      LOG(ERROR) << hline << std::endl;
+		      throw InputConnectorBadParamException("line has more columns than headers");
+		    }
 		  if ((igit=_ignored_columns_pos.find(cu))!=_ignored_columns_pos.end())
-		    continue;
+		    {
+		      ++cu;
+		      continue;
+		    }
 		  update_category((*hit),col);
 		  ++hit;
 		  ++cu;
 		}
+	      ++l;
 	    }
 	  csv_file.clear();
 	  csv_file.seekg(0,std::ios::beg);
@@ -332,9 +371,9 @@ namespace dd
 	  else add_train_csvline(std::to_string(nlines),vals); 
 	  
 	  //debug
-	  /*std::cout << "csv data line #" << nlines << "=";
-	  std::copy(vals.begin(),vals.end(),std::ostream_iterator<double>(std::cout," "));
-	  std::cout << std::endl;*/
+	  /*std::cout << "csv data line #" << nlines << "= " << vals.size() << std::endl;
+	    std::copy(vals.begin(),vals.end(),std::ostream_iterator<double>(std::cout," "));
+	    std::cout << std::endl;*/
 	  //debug
 	}
       LOG(INFO) << "read " << nlines << " lines from " << fname << std::endl;

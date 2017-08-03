@@ -1,6 +1,6 @@
 /**
  * DeepDetect
- * Copyright (c) 2014-2015 Emmanuel Benazera
+ * Copyright (c) 2014-2016 Emmanuel Benazera
  * Author: Emmanuel Benazera <beniz@droidnik.fr>
  *
  * This file is part of deepdetect.
@@ -40,7 +40,7 @@ namespace dd
   public:
     CaffeInputInterface() {}
     CaffeInputInterface(const CaffeInputInterface &cii)
-      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_sparse(cii._sparse) {}
+      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse) {}
     ~CaffeInputInterface() {}
 
     /**
@@ -65,6 +65,10 @@ namespace dd
 
     void reset_dv_test() {}
 
+    // write class weights to binary proto
+    void write_class_weights(const std::string &model_repo,
+			     const APIData &ad_mllib);
+
     bool _db = false; /**< whether to use a db. */
     std::vector<caffe::Datum> _dv; /**< main input datum vector, used for training or prediction */
     std::vector<caffe::Datum> _dv_test; /**< test input datum vector, when applicable in training mode */
@@ -73,7 +77,12 @@ namespace dd
     std::vector<std::string> _ids; /**< input ids (e.g. image ids) */
     bool _flat1dconv = false; /**< whether a 1D convolution model. */
     bool _has_mean_file = false; /**< image model mean.binaryproto. */
+    std::vector<float> _mean_values; /**< mean image values across a dataset. */
     bool _sparse = false; /**< whether to use sparse representation. */
+    bool _embed = false; /**< whether model is using an input embedding layer. */
+    std::unordered_map<std::string,std::pair<int,int>> _imgs_size; /**< image sizes, used in detection. */
+    std::string _dbfullname = "train.lmdb";
+    std::string _test_dbfullname = "test.lmdb";
   };
 
   /**
@@ -83,7 +92,10 @@ namespace dd
   {
   public:
     ImgCaffeInputFileConn()
-      :ImgInputFileConn() { _db = true; }
+      :ImgInputFileConn() {
+      _db = true;
+      reset_dv_test();
+    }
     ImgCaffeInputFileConn(const ImgCaffeInputFileConn &i)
       :ImgInputFileConn(i),CaffeInputInterface(i) { _db = true; }
     ~ImgCaffeInputFileConn() {}
@@ -133,6 +145,12 @@ namespace dd
       // in prediction mode, convert the images to Datum, a Caffe data structure
       if (!_train)
 	{
+	  // if no img height x width, we assume 224x224 (works if user is lucky, i.e. the best we can do)
+	  if (_width == -1)
+	    _width = 224;
+	  if (_height == -1)
+	    _height = 224;
+	  
 	  if (ad.has("has_mean_file"))
 	    _has_mean_file = ad.get("has_mean_file").get<bool>();
 	  try
@@ -152,6 +170,13 @@ namespace dd
 	      _data_mean.FromProto(blob_proto);
 	      mean = _data_mean.mutable_cpu_data();
 	    }
+	  if (!_db_fname.empty())
+	    {
+	      _test_dbfullname = _db_fname;
+	      _db = true;
+	      return; // done
+	    }
+	  else _db = false;
 	  for (int i=0;i<(int)this->_images.size();i++)
 	    {      
 	      caffe::Datum datum;
@@ -167,18 +192,36 @@ namespace dd
 		      for (int w=0;w<width;++w)
 			{
 			  int data_index = (c*height+h)*width+w;
-			  float datum_element;
-			  datum_element = static_cast<float>(static_cast<uint8_t>(datum.data()[data_index]));
+			  float datum_element = static_cast<float>(static_cast<uint8_t>(datum.data()[data_index]));
 			  datum.add_float_data(datum_element - mean[data_index]);
+			}
+		  datum.clear_data();
+		}
+	      else if (_has_mean_scalar)
+		{
+		  int height = datum.height();
+		  int width = datum.width();
+		  for (int c=0;c<datum.channels();++c)
+		    for (int h=0;h<height;++h)
+		      for (int w=0;w<width;++w)
+			{
+			  int data_index = (c*height+h)*width+w;
+			  float datum_element = static_cast<float>(static_cast<uint8_t>(datum.data()[data_index]));
+			  datum.add_float_data(datum_element - _mean[c]);
 			}
 		  datum.clear_data();
 		}
 	      _dv_test.push_back(datum);
 	      _ids.push_back(this->_uris.at(i));
+	      _imgs_size.insert(std::pair<std::string,std::pair<int,int>>(this->_uris.at(i),this->_images_size.at(i)));
 	    }
+	  this->_images.clear();
+	  this->_images_size.clear();
 	}
       else // more complicated, since images can be heavy, a db is built so that it is less costly to iterate than the filesystem
 	{
+	  _dbfullname = _model_repo + "/" + _dbfullname;
+	  _test_dbfullname = _model_repo + "/" + _test_dbfullname;
 	  try
 	    {
 	      get_data(ad);
@@ -193,6 +236,7 @@ namespace dd
 		throw ex;*/
 	      return;
 	    }
+	  APIData ad_mllib;
 	  if (ad.has("parameters")) // hotplug of parameters, overriding the defaults
 	    {
 	      APIData ad_param = ad.getobj("parameters");
@@ -200,33 +244,55 @@ namespace dd
 		{
 		  fillup_parameters(ad_param.getobj("input"));
 		}
+	      ad_mllib = ad_param.getobj("mllib");
 	    }
 	  
 	  // create db
-	  images_to_db(_uris.at(0),_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname);
+	  images_to_db(_uris,_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname);
 	  
 	  // compute mean of images, not forcely used, depends on net, see has_mean_file
 	  compute_images_mean(_model_repo + "/" + _dbname,
 			      _model_repo + "/" + _meanfname);
 
+	  // class weights if any
+	  write_class_weights(_model_repo,ad_mllib);
+	  
 	  // enrich data object with db files location
 	  APIData dbad;
-	  dbad.add("train_db",_model_repo + "/" + _dbfullname);
+	  dbad.add("train_db",_dbfullname);
 	  if (_test_split > 0.0)
-	    dbad.add("test_db",_model_repo + "/" + _test_dbfullname);
+	    dbad.add("test_db",_test_dbfullname);
 	  dbad.add("meanfile",_model_repo + "/" + _meanfname);
-	  std::vector<APIData> vdbad = {dbad};
-	  const_cast<APIData&>(ad).add("db",vdbad);
+	  const_cast<APIData&>(ad).add("db",dbad);
 	}
     }
 
     std::vector<caffe::Datum> get_dv_test(const int &num,
-					  const bool &has_mean_file);
+					  const bool &has_mean_file)
+      {
+	if (!_train && _db_fname.empty())
+	  {
+	    int i = 0;
+	    std::vector<caffe::Datum> dv;
+	    while(_dt_vit!=_dv_test.end()
+		  && i < num)
+	      {
+		dv.push_back((*_dt_vit));
+		++i;
+		++_dt_vit;
+	      }
+	    return dv;
+	  }
+	else return get_dv_test_db(num,has_mean_file);
+      }
+    
+    std::vector<caffe::Datum> get_dv_test_db(const int &num,
+					     const bool &has_mean_file);
 
     void reset_dv_test();
     
   private:
-    int images_to_db(const std::string &rfolder,
+    int images_to_db(const std::vector<std::string> &rfolders,
 		     const std::string &traindbname,
 		     const std::string &testdbname,
 		     const std::string &backend="lmdb", // lmdb, leveldb
@@ -250,11 +316,10 @@ namespace dd
     std::unique_ptr<caffe::db::Cursor> _test_db_cursor;
     std::string _dbname = "train";
     std::string _test_dbname = "test";
-    std::string _dbfullname = "train.lmdb";
-    std::string _test_dbfullname = "test.lmdb";
     std::string _meanfname = "mean.binaryproto";
     std::string _correspname = "corresp.txt";
     caffe::Blob<float> _data_mean; // mean binary image if available.
+    std::vector<caffe::Datum>::const_iterator _dt_vit;
   };
 
   /**
@@ -269,6 +334,7 @@ namespace dd
     ~DDCCsv() {}
 
     int read_file(const std::string &fname);
+    int read_db(const std::string &fname);
     int read_mem(const std::string &content);
     int read_dir(const std::string &dir)
     {
@@ -338,22 +404,25 @@ namespace dd
     {
       APIData ad_param = ad.getobj("parameters");
       APIData ad_input = ad_param.getobj("input");
+      APIData ad_mllib = ad_param.getobj("mllib");
       
       if (_train && ad_input.has("db") && ad_input.get("db").get<bool>())
 	{
+	  _dbfullname = _model_repo + "/" + _dbfullname;
+	  _test_dbfullname = _model_repo + "/" + _test_dbfullname;
 	  fillup_parameters(ad_input);
 	  get_data(ad);
 	  _db = true;
 	  csv_to_db(_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname,
 		    ad_input);
+	  write_class_weights(_model_repo,ad_mllib);
 	  
 	  // enrich data object with db files location
 	  APIData dbad;
-	  dbad.add("train_db",_model_repo + "/" + _dbfullname);
+	  dbad.add("train_db",_dbfullname);
 	  if (_test_split > 0.0)
-	    dbad.add("test_db",_model_repo + "/" + _test_dbfullname);
-	  std::vector<APIData> vdbad = {dbad};
-	  const_cast<APIData&>(ad).add("db",vdbad);
+	    dbad.add("test_db",_test_dbfullname);
+	  const_cast<APIData&>(ad).add("db",dbad);
 	}
       else
 	{
@@ -389,7 +458,15 @@ namespace dd
 		}
 	    }
 	  if (!_train)
-	    _csvdata_test = std::move(_csvdata);
+	    {
+	      if (!_db_fname.empty())
+		{
+		  _test_dbfullname = _db_fname;
+		  _db = true;
+		  return; // done
+		}
+	      _csvdata_test = std::move(_csvdata);
+	    }
 	  else _csvdata.clear();
 	  auto hit = _csvdata_test.begin();
 	  while(hit!=_csvdata_test.end())
@@ -498,8 +575,6 @@ namespace dd
     std::unique_ptr<caffe::db::Cursor> _test_db_cursor;
     std::string _dbname = "train";
     std::string _test_dbname = "test";
-    std::string _dbfullname = "train.lmdb";
-    std::string _test_dbfullname = "test.lmdb";
     std::string _correspname = "corresp.txt";
 
   private:
@@ -594,6 +669,7 @@ namespace dd
     {
       APIData ad_param = ad.getobj("parameters");
       APIData ad_input = ad_param.getobj("input");
+      APIData ad_mllib = ad_param.getobj("mllib");
       if (ad_input.has("db") && ad_input.get("db").get<bool>())
 	_db = true;
       if (ad_input.has("embedding") && ad_input.get("embedding").get<bool>())
@@ -605,19 +681,22 @@ namespace dd
       // transform to one-hot vector datum
       if (_train && _db)
 	{
-	  std::string dbfullname = _model_repo + "/" + _dbname + ".lmdb";
-	  if (!fileops::file_exists(dbfullname)) // if no existing db, preprocess from txt files
+	  _dbfullname = _model_repo + "/" + _dbfullname;
+	  _test_dbfullname = _model_repo + "/" + _test_dbfullname;
+	  //std::string dbfullname = _model_repo + "/" + _dbname + ".lmdb";
+	  if (!fileops::file_exists(_dbfullname)) // if no existing db, preprocess from txt files
 	    TxtInputFileConn::transform(ad);
 	  txt_to_db(_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname,
 		    ad_input);
+	  write_class_weights(_model_repo,ad_mllib);
+
 	  
 	  // enrich data object with db files location
 	  APIData dbad;
-	  dbad.add("train_db",_model_repo + "/" + _dbfullname);
+	  dbad.add("train_db",_dbfullname);
 	  if (_test_split > 0.0)
-	    dbad.add("test_db",_model_repo + "/" + _test_dbfullname);
-	  std::vector<APIData> vdbad = {dbad};
-	  const_cast<APIData&>(ad).add("db",vdbad);
+	    dbad.add("test_db",_test_dbfullname);
+	  const_cast<APIData&>(ad).add("db",dbad);
 	}
       else
 	{
@@ -647,7 +726,15 @@ namespace dd
 		}
 	    }
 	  if (!_train)
+	    {
+	      if (!_db_fname.empty())
+		{
+		  _test_dbfullname = _db_fname;
+		  _db = true;
+		  return; // done
+		}
 	    _test_txt = std::move(_txt);
+	    }
 
 	  int n = 0;
 	  auto hit = _test_txt.begin();
@@ -840,10 +927,7 @@ namespace dd
     std::unique_ptr<caffe::db::Cursor> _test_db_cursor;
     std::string _dbname = "train";
     std::string _test_dbname = "test";
-    std::string _dbfullname = "train.lmdb";
-    std::string _test_dbfullname = "test.lmdb";
     int _channels = 0;
-    bool _embed = false; /**< whether model is using an input embedding layer. */
   };
 
   /**
@@ -909,21 +993,24 @@ namespace dd
     {
       APIData ad_param = ad.getobj("parameters");
       APIData ad_input = ad_param.getobj("input");
+      APIData ad_mllib = ad_param.getobj("mllib");
       
       if (_train && ad_input.has("db") && ad_input.get("db").get<bool>())
 	{
+	  _dbfullname = _model_repo + "/" + _dbfullname;
+	  _test_dbfullname = _model_repo + "/" + _test_dbfullname;
 	  fillup_parameters(ad_input);
 	  get_data(ad);
 	  _db = true;
 	  svm_to_db(_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname,ad_input);
+	  write_class_weights(_model_repo,ad_mllib);
 	  
 	  // enrich data object with db files location
 	  APIData dbad;
-	  dbad.add("train_db",_model_repo + "/" + _dbfullname);
+	  dbad.add("train_db",_dbfullname);
 	  if (_test_split > 0.0)
-	    dbad.add("test_db",_model_repo + "/" + _test_dbfullname);
-	  std::vector<APIData> vdbad = {dbad};
-	  const_cast<APIData&>(ad).add("db",vdbad);
+	    dbad.add("test_db",_test_dbfullname);
+	  const_cast<APIData&>(ad).add("db",dbad);
 	  serialize_vocab();
 	}
       else
@@ -939,6 +1026,7 @@ namespace dd
 	
 	  if (_train)
 	    {
+	      write_class_weights(_model_repo,ad_mllib);
 	      int n = 0;
 	      auto hit = _svmdata.begin();
 	      while(hit!=_svmdata.end())
@@ -950,7 +1038,15 @@ namespace dd
 		}
 	    }
 	  if (!_train)
-	    _svmdata_test = std::move(_svmdata);
+	    {
+	      if (!_db_fname.empty())
+		{
+		  _test_dbfullname = _db_fname;
+		  _db = true;
+		  return; // done
+		}
+	      _svmdata_test = std::move(_svmdata);
+	    }
 	  else _svmdata.clear();
 	  int n = 0;
 	  auto hit = _svmdata_test.begin();
@@ -1023,8 +1119,6 @@ namespace dd
     std::unique_ptr<caffe::db::Cursor> _test_db_cursor;
     std::string _dbname = "train";
     std::string _test_dbname = "test";
-    std::string _dbfullname = "train.lmdb";
-    std::string _test_dbfullname = "test.lmdb";
  
   private:
     std::unique_ptr<caffe::db::Transaction> _txn;

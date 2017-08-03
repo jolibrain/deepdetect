@@ -1,0 +1,14 @@
+diff --git a/third_party/gpus/crosstool/CROSSTOOL.tpl b/third_party/gpus/crosstool/CROSSTOOL.tpl
+index 3ce6b74..4f78aaf 100644
+--- a/third_party/gpus/crosstool/CROSSTOOL.tpl
++++ b/third_party/gpus/crosstool/CROSSTOOL.tpl
+@@ -54,6 +54,9 @@ toolchain {
+   # Use "-std=c++11" for nvcc. For consistency, force both the host compiler
+   # and the device compiler to use "-std=c++11".
+   cxx_flag: "-std=c++11"
++  cxx_flag: "-D_MWAITXINTRIN_H_INCLUDED"
++  cxx_flag: "-D__STRICT_ANSI__"
++  cxx_flag: "-D_FORCE_INLINES"
+   linker_flag: "-lstdc++"
+   linker_flag: "-B/usr/bin/"
+ 

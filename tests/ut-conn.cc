@@ -101,7 +101,31 @@ TEST(outputconn,auc)
   SupervisedOutput so;
   double auc = so.auc(res_ad);
   ASSERT_EQ(0.75,auc);
-  }
+}
+
+TEST(outputconn,mcc)
+{
+  std::vector<double> targets = {0, 0, 1, 1};
+  std::vector<double> pred1 = {0.9, 0.1};
+  std::vector<double> pred2 = {0.6, 0.4};
+  std::vector<double> pred3 = {0.65, 0.35};
+  std::vector<double> pred4 = {0.2, 0.8};
+  std::vector<std::vector<double>> preds = { pred1, pred2, pred3, pred4 };
+  APIData res_ad;
+  res_ad.add("nclasses",2);
+  res_ad.add("batch_size",static_cast<int>(targets.size()));
+  for (size_t i=0;i<targets.size();i++)
+    {
+      APIData bad;
+      bad.add("pred",preds.at(i));
+      bad.add("target",targets.at(i));
+      std::vector<APIData> vad = {bad};
+      res_ad.add(std::to_string(i),vad);
+    }
+  SupervisedOutput so;
+  double mcc = so.mcc(res_ad);
+  ASSERT_NEAR(0.57735,mcc,1e-3);
+}
 
 TEST(outputconn,gini)
 {
@@ -168,15 +192,14 @@ TEST(outputconn,cmfull)
   out.toJVal(jpred,jout);
   std::string jstr = japi.jrender(jout);
   std::cerr << "jstr=" << jstr << std::endl;
-  ASSERT_EQ("{\"measure\":{\"f1\":0.35294117352941187,\"cmfull\":[{\"zero\":[0.5,0.5,0.0,0.0]},{\"one\":[0.0,1.0,0.0,0.0]},{\"two\":[0.0,1.0,0.0,0.0]},{\"three\":[2.696539702293474e308,2.696539702293474e308,2.696539702293474e308,2.696539702293474e308]}],\"cmdiag\":[0.4999999975,0.9999999900000002,0.0,0.0],\"recall\":0.3333333305555556,\"precision\":0.3749999968750001,\"accp\":0.5}}",jstr);
-
+  ASSERT_EQ("{\"measure\":{\"labels\":[\"zero\",\"one\",\"two\",\"three\"],\"f1\":0.35294117352941187,\"cmfull\":[{\"zero\":[0.5,0.5,0.0,0.0]},{\"one\":[0.0,1.0,0.0,0.0]},{\"two\":[0.0,1.0,0.0,0.0]},{\"three\":[2.696539702293474e308,2.696539702293474e308,2.696539702293474e308,2.696539702293474e308]}],\"cmdiag\":[0.4999999975,0.9999999900000002,0.0,0.0],\"recall\":0.3333333305555556,\"precision\":0.3749999968750001,\"accp\":0.5}}",jstr);
 }
 
 TEST(inputconn,img)
 {
   std::string mnist_repo = "../examples/caffe/mnist/";
   APIData ad;
-  std::vector<std::string> uris = {mnist_repo + "/sample_digit.png","http://www.deepdetect.com/dd/examples/caffe/mnist/sample_digit.png"};
+  std::vector<std::string> uris = {mnist_repo + "/sample_digit.png","https://deepdetect.com/dd/examples/caffe/mnist/sample_digit.png"};
   ad.add("data",uris);
   ImgInputFileConn iifc;
   try
@@ -188,6 +211,8 @@ TEST(inputconn,img)
       std::cerr << e.what() << std::endl;
       ASSERT_FALSE(true); // trigger
     }
+  for (auto u: iifc._uris)
+    std::cerr << u << std::endl;
   ASSERT_EQ(2,iifc._uris.size());
   ASSERT_EQ(2,iifc._images.size());
   cv::Mat diff;

@@ -25,6 +25,7 @@
 #include "inputconnectorstrategy.h"
 #include <algorithm>
 #include <cmath>
+#include <random>
 #include "utf8.h"
 
 namespace dd
@@ -38,6 +39,7 @@ namespace dd
     ~DDTxt() {}
 
     int read_file(const std::string &fname);
+    int read_db(const std::string &fname);
     int read_mem(const std::string &content);
     int read_dir(const std::string &dir);
 
@@ -261,11 +263,13 @@ namespace dd
 	{
 	  DataEl<DDTxt> dtxt;
 	  dtxt._ctype._ctfc = this;
-	  if (dtxt.read_element(u) || _txt.empty())
+	  if (dtxt.read_element(u) || (_txt.empty() && _db_fname.empty()))
 	    {
 	      throw InputConnectorBadParamException("no data for text in " + u);
 	    }
-	  _txt.back()->_uri = u;
+	  if (_db_fname.empty())
+	    _txt.back()->_uri = u;
+	  else return; // single db
 	}
       
       if (_train)
@@ -350,6 +354,7 @@ namespace dd
     // data
     std::vector<TxtEntry<double>*> _txt;
     std::vector<TxtEntry<double>*> _test_txt;
+    std::string _db_fname;
   };
   
 }

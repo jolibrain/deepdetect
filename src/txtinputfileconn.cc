@@ -48,6 +48,12 @@ namespace dd
     return 0;
   }
 
+  int DDTxt::read_db(const std::string &fname)
+    {
+      _ctfc->_db_fname = fname;
+      return 0;
+    }
+  
   int DDTxt::read_mem(const std::string &content)
   {
     if (!_ctfc)
@@ -65,7 +71,7 @@ namespace dd
     std::unordered_set<std::string> subdirs;
     if (fileops::list_directory(dir,false,true,subdirs))
       throw InputConnectorBadParamException("failed reading text subdirectories in data directory " + dir);
-    std::cerr << "list subdirs size=" << subdirs.size() << std::endl;
+    LOG(INFO) << "txtinputfileconn: list subdirs size=" << subdirs.size();
     
     // list files and classes
     std::vector<std::pair<std::string,int>> lfiles; // labeled files

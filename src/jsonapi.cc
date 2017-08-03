@@ -329,6 +329,33 @@ namespace dd
 		return dd_service_bad_request_1006();
 	      }
 	  }
+#ifdef USE_TF
+	else if (mllib == "tensorflow" || mllib == "tf")
+	  {
+	    TFModel tfmodel(ad_model);
+	    if (type == "supervised")
+	      {
+		if (input == "image")
+		  add_service(sname,std::move(MLService<TFLib,ImgTFInputFileConn,SupervisedOutput,TFModel>(sname,tfmodel,description)),ad);
+		else return dd_input_connector_not_found_1004();
+		if (JsonAPI::store_json_blob(tfmodel._repo,jstr)) // store successful call json blob
+		  LOG(ERROR) << "couldn't write " << JsonAPI::_json_blob_fname << " file in model repository " << tfmodel._repo << std::endl;
+	      }
+	    else if (type == "unsupervised")
+	      {
+		if (input == "image")
+		  add_service(sname,std::move(MLService<TFLib,ImgTFInputFileConn,UnsupervisedOutput,TFModel>(sname,tfmodel,description)),ad);
+		else return dd_input_connector_not_found_1004();
+		if (JsonAPI::store_json_blob(tfmodel._repo,jstr)) // store successful call json blob
+		  LOG(ERROR) << "couldn't write " << JsonAPI::_json_blob_fname << " file in model repository " << tfmodel._repo << std::endl;
+	      }
+	    else
+	      {
+		// unknown type
+		return dd_service_bad_request_1006();
+	      }
+	  }
+#endif
 #ifdef USE_XGBOOST
 	else if (mllib == "xgboost")
 	  {
@@ -342,6 +369,19 @@ namespace dd
 	    else return dd_input_connector_not_found_1004();
 	    if (JsonAPI::store_json_blob(xmodel._repo,jstr)) // store successful call json blob
 	      LOG(ERROR) << "couldn't write " << JsonAPI::_json_blob_fname << " file in model repository " << xmodel._repo << std::endl;
+	  }
+#endif
+#ifdef USE_TSNE
+	else if (mllib == "tsne")
+	  {
+	    TSNEModel tmodel(ad_model);
+	    if (input == "csv")
+	      add_service(sname,std::move(MLService<TSNELib,CSVTSNEInputFileConn,UnsupervisedOutput,TSNEModel>(sname,tmodel,description)),ad);
+	    else if (input == "txt")
+	      add_service(sname,std::move(MLService<TSNELib,TxtTSNEInputFileConn,UnsupervisedOutput,TSNEModel>(sname,tmodel,description)),ad);
+	    else return dd_input_connector_not_found_1004();
+	    if (JsonAPI::store_json_blob(tmodel._repo,jstr)) // store successful call json blob
+	      LOG(ERROR) << "couldn't write " << JsonAPI::_json_blob_fname << " file in model repository " << tmodel._repo << std::endl; 
 	  }
 #endif
 	else
@@ -733,9 +773,11 @@ namespace dd
     jhead.AddMember("method","/train",jtrain.GetAllocator());
     jhead.AddMember("job",ad.get("job").get<int>(),jtrain.GetAllocator());
     JVal jout(rapidjson::kObjectType);
+    std::string train_status;
     if (status != -2) // on failure, the output object from the async job is empty
       {
 	out.toJVal(jtrain,jout);
+	train_status = jout["status"].GetString();
 	jhead.AddMember("status",JVal().SetString(jout["status"].GetString(),jtrain.GetAllocator()),jtrain.GetAllocator());
         jhead.AddMember("time",jout["time"].GetDouble(),jtrain.GetAllocator());
 	jout.RemoveMember("time");
@@ -750,6 +792,12 @@ namespace dd
       }
     jtrain.AddMember("head",jhead,jtrain.GetAllocator());
     jtrain.AddMember("body",jout,jtrain.GetAllocator());
+    if (train_status == "finished")
+      {
+	std::string mrepo = out.getobj("model").get("repository").get<std::string>();
+	if (JsonAPI::store_json_blob(mrepo,jrender(jtrain)))
+	LOG(ERROR) << "couldn't write to " << JsonAPI::_json_blob_fname << " file in model repository " << mrepo << std::endl;
+      }
     return jtrain;
   }
 

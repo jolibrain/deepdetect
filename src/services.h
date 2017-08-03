@@ -1,6 +1,6 @@
 /**
  * DeepDetect
- * Copyright (c) 2014-2015 Emmanuel Benazera
+ * Copyright (c) 2014-2016 Emmanuel Benazera
  * Author: Emmanuel Benazera <beniz@droidnik.fr>
  *
  * This file is part of deepdetect.
@@ -31,8 +31,14 @@
 #include "svminputfileconn.h"
 #include "outputconnectorstrategy.h"
 #include "caffelib.h"
+#ifdef USE_TF
+#include "tflib.h"
+#endif
 #ifdef USE_XGBOOST
 #include "xgblib.h"
+#endif
+#ifdef USE_TSNE
+#include "tsnelib.h"
 #endif
 #include <vector>
 #include <mutex>
@@ -49,11 +55,19 @@ namespace dd
     MLService<CaffeLib,ImgCaffeInputFileConn,UnsupervisedOutput,CaffeModel>,
     MLService<CaffeLib,CSVCaffeInputFileConn,UnsupervisedOutput,CaffeModel>,
     MLService<CaffeLib,TxtCaffeInputFileConn,UnsupervisedOutput,CaffeModel>,
+#ifdef USE_TF
+    MLService<TFLib,ImgTFInputFileConn,SupervisedOutput,TFModel>,
+    MLService<TFLib,ImgTFInputFileConn,UnsupervisedOutput,TFModel>,
+#endif
     MLService<CaffeLib,SVMCaffeInputFileConn,UnsupervisedOutput,CaffeModel>
 #ifdef USE_XGBOOST
     ,MLService<XGBLib,CSVXGBInputFileConn,SupervisedOutput,XGBModel>,
     MLService<XGBLib,SVMXGBInputFileConn,SupervisedOutput,XGBModel>,
     MLService<XGBLib,TxtXGBInputFileConn,SupervisedOutput,XGBModel>
+#endif
+#ifdef USE_TSNE
+    ,MLService<TSNELib,CSVTSNEInputFileConn,UnsupervisedOutput,TSNEModel>
+    ,MLService<TSNELib,TxtTSNEInputFileConn,UnsupervisedOutput,TSNEModel>
 #endif
     > mls_variant_type;
 

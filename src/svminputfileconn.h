@@ -42,6 +42,7 @@ namespace dd
     {
       throw InputConnectorBadParamException("uri " + dir + " is a directory, requires a file in libSVM format");
     }
+    int read_db(const std::string &fname);
     
     SVMInputFileConn *_cifc = nullptr;
     APIData _adconf;
@@ -54,8 +55,8 @@ namespace dd
 	    const std::unordered_map<int,double> &v)
       :_label(label),_v(v) {}
     ~SVMline() {}
-    std::unordered_map<int,double> _v; /**< svm line data */
     int _label; /**< svm line label. */
+    std::unordered_map<int,double> _v; /**< svm line data */
   };
 
   class SVMInputFileConn : public InputConnectorStrategy
@@ -63,11 +64,15 @@ namespace dd
   public:
     SVMInputFileConn()
       :InputConnectorStrategy() {}
+    SVMInputFileConn(const SVMInputFileConn &i)
+      :InputConnectorStrategy(i),_fids(i._fids),_max_id(i._max_id),_db_fname(i._db_fname) {}
     ~SVMInputFileConn() {}
 
     void init(const APIData &ad)
     {
       fillup_parameters(ad);
+      if (_fids.empty() && !_train)
+	deserialize_vocab(false);
     }
 
     void fillup_parameters(const APIData &ad_input)
@@ -167,13 +172,15 @@ namespace dd
 	    deserialize_vocab();
 	  for (size_t i=0;i<_uris.size();i++)
 	    {
+	      if (_uris.at(i).empty())
+		throw InputConnectorBadParamException("no data could be found for input " + std::to_string(i));
 	      DataEl<DDSvm> ddsvm;
 	      ddsvm._ctype._cifc = this;
 	      ddsvm._ctype._adconf = ad_input;
 	      ddsvm.read_element(_uris.at(i));
 	    }
 	}
-      if (_svmdata.empty())
+      if (_db_fname.empty() && _svmdata.empty())
 	throw InputConnectorBadParamException("no data could be found");
     }
 
@@ -181,6 +188,7 @@ namespace dd
 				   const std::unordered_map<int,double> &vals,
 				   const int &count)
     {
+      (void)count;
       _svmdata.emplace_back(label,std::move(vals));
     }
     
@@ -188,6 +196,7 @@ namespace dd
 				  const std::unordered_map<int,double> &vals,
 				  const int &count)
     {
+      (void)count;
       _svmdata_test.emplace_back(label,std::move(vals));
     }
 
@@ -210,7 +219,7 @@ namespace dd
     int feature_size() const
     {
       // total number of indices
-      return _max_id;
+      return _max_id + 1;
     }
 
     // serialization of vocabulary
@@ -228,6 +237,7 @@ namespace dd
     std::unordered_set<int> _fids; /**< feature ids. */
     int _max_id = -1;
     std::string _vocabfname = "vocab.dat";
+    std::string _db_fname;
   };
 
 }

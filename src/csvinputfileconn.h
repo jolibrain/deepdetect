@@ -40,6 +40,7 @@ namespace dd
     ~DDCsv() {}
 
     int read_file(const std::string &fname);
+    int read_db(const std::string &fname);
     int read_mem(const std::string &content);
     int read_dir(const std::string &dir)
     {
@@ -190,12 +191,13 @@ namespace dd
 	    {
 	      APIData ad_cat = ad_cats.getobj(c);
 	      CCategorical cc;
+	      _categoricals.insert(std::make_pair(c,cc));
+	      auto chit = _categoricals.find(c);
 	      std::vector<std::string> vcvals = ad_cat.list_keys();
 	      for (std::string v: vcvals)
 		{
-		  cc.add_cat(v,ad_cat.get(v).get<int>());
+		  (*chit).second.add_cat(v,ad_cat.get(v).get<int>());
 		}
-	      _categoricals.insert(std::pair<std::string,CCategorical>(c,cc));
 	    }
 	}
     }
@@ -338,6 +340,7 @@ namespace dd
        */
       if (_train)
 	{
+	  int uri_offset = 0;
 	  if (fileops::file_exists(_uris.at(0))) // training from file
 	    {
 	      _csv_fname = _uris.at(0);
@@ -346,12 +349,6 @@ namespace dd
 	    }
 	  else // training from memory
 	    {
-	      if (_uris.at(0).find(_delim)!=std::string::npos) // first line might be the header if we have some options to consider
-		read_header(_uris.at(0));
-	      else
-		{
-		  throw InputConnectorBadParamException("training CSV file " + _csv_fname + " does not exist or in-memory data are missing a CSV header");
-		}
 	    }
 
 	  // check on common and required parameters
@@ -368,7 +365,7 @@ namespace dd
 	    }
 	  else // training from posted data (in-memory)
 	    {
-	      for (size_t i=1;i<_uris.size();i++)
+	      for (size_t i=uri_offset;i<_uris.size();i++)
 		{
 		  DataEl<DDCsv> ddcsv;
 		  ddcsv._ctype._cifc = this;
@@ -394,7 +391,7 @@ namespace dd
 	{
 	  for (size_t i=0;i<_uris.size();i++)
 	    {
-	      if (i ==0 && (!_categoricals.empty() || (ad_input.size() && !_id.empty() && _uris.at(0).find(_delim)!=std::string::npos))) // first line might be the header if we have some options to consider
+	      if (i ==0 && !fileops::file_exists(_uris.at(0)) && (!_categoricals.empty() || (ad_input.size() && !_id.empty() && _uris.at(0).find(_delim)!=std::string::npos))) // first line might be the header if we have some options to consider //TODO: prevents reading from CSV file
 		{
 		  read_header(_uris.at(0));
 		  continue;
@@ -407,7 +404,7 @@ namespace dd
 	      ddcsv.read_element(_uris.at(i));
 	    }
 	}
-      if (_csvdata.empty())
+      if (_csvdata.empty() && _db_fname.empty())
 	throw InputConnectorBadParamException("no data could be found");
     }
 
@@ -452,8 +449,7 @@ namespace dd
 	    {
 	      APIData adinput;
 	      adinput.add("connector","csv");
-	      std::vector<APIData> vip = { adinput };
-	      adparams.add("input",vip);
+	      adparams.add("input",adinput);
 	    }
 	}
       APIData adinput = adparams.getobj("input");
@@ -475,17 +471,13 @@ namespace dd
 		  adcat.add((*chit).first,(*chit).second);
 		  ++chit;
 		}
-	      std::vector<APIData> vadcat = { adcat };
-	      cats.add((*hit).first,vadcat);
+	      cats.add((*hit).first,adcat);
 	      ++hit;
 	    }
-	  std::vector<APIData> vcats = { cats };
-	  adinput.add("categoricals_mapping",vcats);
+	  adinput.add("categoricals_mapping",cats);
 	}
-      std::vector<APIData> vip = { adinput };
-      adparams.add("input",vip);
-      std::vector<APIData> vad = { adparams };
-      out.add("parameters",vad);
+      adparams.add("input",adinput);
+      out.add("parameters",adparams);
     }
 
     bool is_category(const std::string &c)
@@ -527,15 +519,21 @@ namespace dd
     std::vector<double> _max_vals; /**< lower bound used for auto-scaling data */
     std::unordered_map<std::string,CCategorical> _categoricals; /**< auto-converted categorical variables */
     double _test_split = -1;
+    int _detect_cols = -1;
     
     // data
     std::vector<CSVline> _csvdata;
     std::vector<CSVline> _csvdata_test;
+    std::string _db_fname;
   };
 }
 
 #ifdef USE_XGBOOST
 #include "xgbinputconns.h"
+#endif
+
+#ifdef USE_TSNE
+#include "tsneinputconns.h"
 #endif
 
 #endif

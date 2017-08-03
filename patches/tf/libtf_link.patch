@@ -1,0 +1,26 @@
+diff --git a/tensorflow/BUILD b/tensorflow/BUILD
+index c2a5de9..a5109da 100644
+--- a/tensorflow/BUILD
++++ b/tensorflow/BUILD
+@@ -206,6 +206,7 @@ cc_binary(
+         "//tensorflow/c:c_api",
+         "//tensorflow/core:tensorflow",
+     ],
++   linkopts = [ "-Wl,--version-script=tensorflow/tf_version_script.lds" ]
+ )
+ 
+ cc_binary(
+@@ -215,6 +216,7 @@ cc_binary(
+         "//tensorflow/c:c_api",
+         "//tensorflow/core:tensorflow",
+     ],
++   linkopts = [ "-Wl,--version-script=tensorflow/tf_version_script.lds" ]
+ )
+ 
+ cc_binary(
+@@ -225,4 +227,5 @@ cc_binary(
+         "//tensorflow/cc:cc_ops",
+         "//tensorflow/core:tensorflow",
+     ],
++   linkopts = [ "-Wl,--version-script=tensorflow/tf_version_script.lds" ]
+ )

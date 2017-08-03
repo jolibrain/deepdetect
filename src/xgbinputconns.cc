@@ -137,6 +137,18 @@ namespace dd
 	throw;
       }    
 
+    // feature map (useful for feature importance analysis)
+    if (ad.has("model_repo"))
+      {
+	std::ofstream fmap(ad.get("model_repo").get<std::string>()+"/model.fmap",std::ios::binary);
+	int nc = 0;
+	for (auto c: this->_columns)
+	  {
+	    fmap << nc << "\t" << c << "\tq\n";
+	    ++nc;
+	  }
+      }
+      
     if (!_direct_csv)
       {
 	_m = std::shared_ptr<xgboost::DMatrix>(create_from_mat(_csvdata));
