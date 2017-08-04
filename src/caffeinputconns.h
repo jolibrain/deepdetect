@@ -40,7 +40,7 @@ namespace dd
   public:
     CaffeInputInterface() {}
     CaffeInputInterface(const CaffeInputInterface &cii)
-      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse) {}
+      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed) {}
     ~CaffeInputInterface() {}
 
     /**
@@ -614,7 +614,11 @@ namespace dd
       if (_characters)
 	return 1;
       if (_embed)
-	return _sequence;
+	{
+	  if (!_characters)
+	    return _sequence;
+	  else return 1;
+	}
       if (_channels > 0)
 	return _channels;
       return feature_size();
@@ -674,7 +678,6 @@ namespace dd
 	_db = true;
       if (ad_input.has("embedding") && ad_input.get("embedding").get<bool>())
 	{
-	  std::cerr << "Using sequence=" << _sequence << " with embedding\n";
 	  _embed = true;
 	}
       
@@ -818,7 +821,7 @@ namespace dd
 	int datum_channels;
 	if (_characters)
 	  datum_channels = 1;
-	else if (_embed)
+	else if (_embed && !_characters)
 	  datum_channels = _sequence;
 	else datum_channels = _vocab.size(); // XXX: may be very large
 	datum.set_channels(datum_channels);
@@ -878,16 +881,31 @@ namespace dd
 	      }
 	    /*if (vals.size() > _sequence)
 	      std::cerr << "more characters than sequence / " << vals.size() << " / sequence=" << _sequence << std::endl;*/
-	    for (int c=0;c<_sequence;c++)
+	    if (!_embed)
 	      {
-		std::vector<float> v(_alphabet.size(),0.0);
-		if (c<(int)vals.size() && vals[c] != -1)
-		  v[vals[c]] = 1.0;
-		for (float f: v)
-		  datum.add_float_data(f);
+		for (int c=0;c<_sequence;c++)
+		  {
+		    std::vector<float> v(_alphabet.size(),0.0);
+		    if (c<(int)vals.size() && vals[c] != -1)
+		      v[vals[c]] = 1.0;
+		    for (float f: v)
+		      datum.add_float_data(f);
+		  }
+		datum.set_height(_sequence);
+		datum.set_width(_alphabet.size());
 	      }
-	    datum.set_height(_sequence);
-	    datum.set_width(_alphabet.size());
+	    else
+	      {
+		for (int c=0;c<_sequence;c++)
+		  {
+		    double val = 0.0;
+		    if (c<(int)vals.size() && vals[c] != -1)
+		      val = static_cast<float>(vals[c]+1.0); // +1 as offset to null index
+		    datum.add_float_data(val);
+		  }
+		datum.set_height(_sequence); //TODO: height to sequence and channels to 1 ?
+		datum.set_width(1);
+	      }
 	  }
 	return datum;
       }

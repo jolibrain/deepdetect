@@ -138,6 +138,7 @@ namespace dd
     int width = -1;
     if (flat1dconv)
       width = this->_net_params->mutable_layer(1)->mutable_memory_data_param()->width();
+    //TODO: support for embed layer in inputs
     for (size_t l=0;l<cr_layers.size();l++)
       {
 	std::string top = "ip" + std::to_string(l);
