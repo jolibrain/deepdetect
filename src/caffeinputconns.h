@@ -40,7 +40,7 @@ namespace dd
   public:
     CaffeInputInterface() {}
     CaffeInputInterface(const CaffeInputInterface &cii)
-      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse) {}
+      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed) {}
     ~CaffeInputInterface() {}
 
     /**
@@ -79,6 +79,7 @@ namespace dd
     bool _has_mean_file = false; /**< image model mean.binaryproto. */
     std::vector<float> _mean_values; /**< mean image values across a dataset. */
     bool _sparse = false; /**< whether to use sparse representation. */
+    bool _embed = false; /**< whether model is using an input embedding layer. */
     std::unordered_map<std::string,std::pair<int,int>> _imgs_size; /**< image sizes, used in detection. */
     std::string _dbfullname = "train.lmdb";
     std::string _test_dbfullname = "test.lmdb";
@@ -612,6 +613,12 @@ namespace dd
     {
       if (_characters)
 	return 1;
+      if (_embed)
+	{
+	  if (!_characters)
+	    return _sequence;
+	  else return 1;
+	}
       if (_channels > 0)
 	return _channels;
       return feature_size();
@@ -669,6 +676,10 @@ namespace dd
       APIData ad_mllib = ad_param.getobj("mllib");
       if (ad_input.has("db") && ad_input.get("db").get<bool>())
 	_db = true;
+      if (ad_input.has("embedding") && ad_input.get("embedding").get<bool>())
+	{
+	  _embed = true;
+	}
       
       // transform to one-hot vector datum
       if (_train && _db)
@@ -810,6 +821,8 @@ namespace dd
 	int datum_channels;
 	if (_characters)
 	  datum_channels = 1;
+	else if (_embed && !_characters)
+	  datum_channels = _sequence;
 	else datum_channels = _vocab.size(); // XXX: may be very large
 	datum.set_channels(datum_channels);
        	datum.set_height(1);
@@ -818,16 +831,37 @@ namespace dd
 	if (!_characters)
 	  {
 	    std::unordered_map<std::string,Word>::const_iterator wit;
-	    for (int i=0;i<datum_channels;i++) // XXX: expected to be slow
-	      datum.add_float_data(0.0);
-	    tbe->reset();
-	    while(tbe->has_elt())
+	    if (!_embed)
 	      {
-		std::string key;
-		double val;
-		tbe->get_next_elt(key,val);
-		if ((wit = _vocab.find(key))!=_vocab.end())
-		  datum.set_float_data(_vocab[key]._pos,static_cast<float>(val));
+		for (int i=0;i<datum_channels;i++) // XXX: expected to be slow
+		  datum.add_float_data(0.0);
+		tbe->reset();
+		while(tbe->has_elt())
+		  {
+		    std::string key;
+		    double val;
+		    tbe->get_next_elt(key,val);
+		    if ((wit = _vocab.find(key))!=_vocab.end())
+		      datum.set_float_data(_vocab[key]._pos,static_cast<float>(val));
+		  }
+	      }
+	    else
+	      {
+		tbe->reset();
+		int i = 0;
+		while(tbe->has_elt())
+		  {
+		    std::string key;
+		    double val;
+		    tbe->get_next_elt(key,val);
+		    if ((wit = _vocab.find(key))!=_vocab.end())
+		      datum.add_float_data(static_cast<float>(_vocab[key]._pos));
+		    ++i;
+		    if (i == _sequence) // tmp limit on sequence length
+		      break;
+		  }
+		while (datum.float_data_size() < _sequence)
+		  datum.add_float_data(0.0);
 	      }
 	  }
 	else // character-level features
@@ -847,16 +881,31 @@ namespace dd
 	      }
 	    /*if (vals.size() > _sequence)
 	      std::cerr << "more characters than sequence / " << vals.size() << " / sequence=" << _sequence << std::endl;*/
-	    for (int c=0;c<_sequence;c++)
+	    if (!_embed)
 	      {
-		std::vector<float> v(_alphabet.size(),0.0);
-		if (c<(int)vals.size() && vals[c] != -1)
-		  v[vals[c]] = 1.0;
-		for (float f: v)
-		  datum.add_float_data(f);
+		for (int c=0;c<_sequence;c++)
+		  {
+		    std::vector<float> v(_alphabet.size(),0.0);
+		    if (c<(int)vals.size() && vals[c] != -1)
+		      v[vals[c]] = 1.0;
+		    for (float f: v)
+		      datum.add_float_data(f);
+		  }
+		datum.set_height(_sequence);
+		datum.set_width(_alphabet.size());
 	      }
-	    datum.set_height(_sequence);
-	    datum.set_width(_alphabet.size());
+	    else
+	      {
+		for (int c=0;c<_sequence;c++)
+		  {
+		    double val = 0.0;
+		    if (c<(int)vals.size() && vals[c] != -1)
+		      val = static_cast<float>(vals[c]+1.0); // +1 as offset to null index
+		    datum.add_float_data(val);
+		  }
+		datum.set_height(_sequence); //TODO: height to sequence and channels to 1 ?
+		datum.set_width(1);
+	      }
 	  }
 	return datum;
       }

@@ -63,6 +63,12 @@ namespace dd
     void configure_inputs(const APIData &ad_mllib,
 			  const TInputCaffe &inputc);
     
+    void add_embed(caffe::NetParameter *net_param,
+		   const std::string &bottom,
+		   const std::string &top,
+		   const int &input_dim,
+		   const int &num_output);
+
     caffe::NetParameter *_net_params;
     caffe::NetParameter *_dnet_params;
   };
@@ -136,7 +142,7 @@ namespace dd
 		     const std::string &bottom,
 		     const std::string &top,
 		     const caffe::ReshapeParameter &r_param); //TODO
-    
+
     // requires a fully connected layer (all losses ?)
     void add_softmax(caffe::NetParameter *net_param,
 		     const std::string &bottom,

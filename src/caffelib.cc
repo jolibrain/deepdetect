@@ -632,7 +632,10 @@ namespace dd
 		{
 		  throw MLLibBadParamException("solver's net's first layer is required to be of MemoryData type");
 		}
+	      std::cerr << "adding input data\n";
+	      std::cerr << "dv size=" << inputc._dv.size() << " / datum channels=" << inputc._dv.at(0).channels() << " / heigh=" << inputc._dv.at(0).height() << " / width=" << inputc._dv.at(0).height() << std::endl;
 	      boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->net()->layers()[0])->AddDatumVector(inputc._dv);
+	      std::cerr << "done with adding input data\n";
 	    }
 	  else
 	    {
@@ -1505,6 +1508,11 @@ namespace dd
 	    net_param.mutable_layer(2)->mutable_slice_param()->set_slice_point(0,inputc.channels());
 	  }
       }
+
+    if (net_param.mutable_layer(2)->type() == "Embed")
+      {
+	net_param.mutable_layer(2)->mutable_embed_param()->set_input_dim(inputc.feature_size());
+      }
     
     // if autoencoder, set the last inner product layer output number to input size (i.e. inputc.channels())
     if (_autoencoder)
@@ -1543,6 +1551,11 @@ namespace dd
 
     caffe::NetParameter deploy_net_param;
     caffe::ReadProtoFromTextFile(deploy_file,&deploy_net_param);
+
+    if (deploy_net_param.mutable_layer(1)->type() == "Embed")
+      {
+	deploy_net_param.mutable_layer(1)->mutable_embed_param()->set_input_dim(inputc.feature_size());
+      }
     
     if (_autoencoder)
       {
