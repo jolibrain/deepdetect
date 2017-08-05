@@ -607,6 +607,8 @@ namespace dd
 	_flat1dconv = true;
       if (ad.has("sparse") && ad.get("sparse").get<bool>())
 	_sparse = true;
+      if (ad.has("embedding") && ad.get("embedding").get<bool>())
+	_embed = true;
     }
 
     int channels() const
@@ -633,7 +635,7 @@ namespace dd
 
     int width() const
     {
-      if (_characters)
+      if (_characters && !_embed)
 	return _alphabet.size();
       return 1;
     }

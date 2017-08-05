@@ -1,0 +1,421 @@
+name: "vdcnn"
+layer {
+  name: "input"
+  type: "MemoryData"
+  top: "data"
+  top: "label"
+  memory_data_param {
+    batch_size: 32
+    channels: 1
+    height: 1014 # sequence length
+    width: 1
+  }
+}
+layer {
+  name: "flatten_0"
+  type: "Flatten"
+  bottom: "data"
+  top: "data_flat"
+  flatten_param {
+    axis: 1
+    end_axis: -1
+  }
+}
+layer {
+  name: "embed_0"
+  type: "Embed"
+  bottom: "data_flat"
+  top: "data_emb"
+  param {
+   lr_mult: 1
+  }
+  embed_param {
+   bias_term: false
+   input_dim: 70 # alphabet size
+   num_output: 16
+   weight_filler {
+    type: "uniform"
+    min: -0.1
+    max: 0.1
+   }
+ }
+}
+layer {
+  name: "reshape_embed_0"
+  type: "Reshape"
+  bottom: "data_emb"
+  top: "data_emb_reshape"
+  reshape_param {
+   shape {
+     dim: 0
+     dim: 1
+     dim: 1014 # sequence length
+     dim: 16
+    }
+  }
+}
+layer {
+  name: "ip0_conv_0"
+  type: "Convolution"
+  bottom: "data_emb_reshape"
+  top: "ip0_conv_0"
+  convolution_param {
+    num_output: 64
+    pad_h: 1
+    stride: 1
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+    }
+    kernel_h: 3
+    kernel_w: 16
+  }
+}
+layer {
+  name: "ip1_conv_0"
+  type: "Convolution"
+  bottom: "ip0_conv_0"
+  top: "ip1_conv_0"
+  convolution_param {
+    num_output: 64
+    pad_h: 1
+    stride: 1
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+    }
+    kernel_h: 3
+    kernel_w: 1
+  }
+}
+layer {
+  name: "act_ReLU_ip1_conv_0"
+  type: "ReLU"
+  bottom: "ip1_conv_0"
+  top: "ip1_conv_0"
+}
+layer {
+  name: "ip1_conv_1"
+  type: "Convolution"
+  bottom: "ip1_conv_0"
+  top: "ip1_conv_1"
+  convolution_param {
+    num_output: 64
+    pad_h: 1
+    stride: 1
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+    }
+    kernel_h: 3
+    kernel_w: 1
+  }
+}
+
+layer {
+  name: "act_ReLU_ip1_conv_1"
+  type: "ReLU"
+  bottom: "ip1_conv_1"
+  top: "ip1_conv_1"
+}
+layer {
+  name: "pool_ip1_conv_1"
+  type: "Pooling"
+  bottom: "ip1_conv_1"
+  top: "ip1"
+  pooling_param {
+    pool: MAX
+    kernel_h: 3
+    kernel_w: 1
+    stride_h: 2
+    stride_w: 1
+    #pad_h: 1
+  }
+}
+layer {
+  name: "ip2_conv_0"
+  type: "Convolution"
+  bottom: "ip1"
+  top: "ip2_conv_0"
+  convolution_param {
+    num_output: 128
+    pad_h: 1
+    stride: 1
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+    }
+    kernel_h: 2
+    kernel_w: 1
+  }
+}
+
+layer {
+  name: "act_ReLU_ip2_conv_0"
+  type: "ReLU"
+  bottom: "ip2_conv_0"
+  top: "ip2_conv_0"
+}
+layer {
+  name: "ip2_conv_1"
+  type: "Convolution"
+  bottom: "ip2_conv_0"
+  top: "ip2_conv_1"
+  convolution_param {
+    num_output: 128
+    pad_h: 1
+    stride: 1
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+    }
+    kernel_h: 3
+    kernel_w: 1
+  }
+}
+
+layer {
+  name: "act_ReLU_ip2_conv_1"
+  type: "ReLU"
+  bottom: "ip2_conv_1"
+  top: "ip2_conv_1"
+}
+layer {
+  name: "pool_ip2_conv_1"
+  type: "Pooling"
+  bottom: "ip2_conv_1"
+  top: "ip2"
+  pooling_param {
+    pool: MAX
+    kernel_h: 3
+    kernel_w: 1
+    stride_h: 2
+    stride_w: 1
+    #pad_h: 1
+  }
+}
+layer {
+  name: "ip3_conv_0"
+  type: "Convolution"
+  bottom: "ip2"
+  top: "ip3_conv_0"
+  convolution_param {
+    num_output: 256
+    pad_h: 1
+    stride: 1
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+    }
+    kernel_h: 3
+    kernel_w: 1
+  }
+}
+
+layer {
+  name: "act_ReLU_ip3_conv_0"
+  type: "ReLU"
+  bottom: "ip3_conv_0"
+  top: "ip3_conv_0"
+}
+layer {
+  name: "ip3_conv_1"
+  type: "Convolution"
+  bottom: "ip3_conv_0"
+  top: "ip3_conv_1"
+  convolution_param {
+    num_output: 256
+    pad_h: 1
+    stride: 1
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+    }
+    kernel_h: 3
+    kernel_w: 1
+  }
+}
+
+layer {
+  name: "act_ReLU_ip3_conv_1"
+  type: "ReLU"
+  bottom: "ip3_conv_1"
+  top: "ip3_conv_1"
+}
+layer {
+  name: "pool_ip3_conv_1"
+  type: "Pooling"
+  bottom: "ip3_conv_1"
+  top: "ip3"
+  pooling_param {
+    pool: MAX
+    kernel_h: 3
+    kernel_w: 1
+    stride_h: 2
+    stride_w: 1
+    #pad_h: 1
+  }
+}
+layer {
+  name: "ip4_conv_0"
+  type: "Convolution"
+  bottom: "ip3"
+  top: "ip4_conv_0"
+  convolution_param {
+    num_output: 512
+    pad_h: 1
+    stride: 1
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+    }
+    kernel_h: 3
+    kernel_w: 1
+  }
+}
+
+layer {
+  name: "act_ReLU_ip4_conv_0"
+  type: "ReLU"
+  bottom: "ip4_conv_0"
+  top: "ip4_conv_0"
+}
+layer {
+  name: "ip4_conv_1"
+  type: "Convolution"
+  bottom: "ip4_conv_0"
+  top: "ip4_conv_1"
+  convolution_param {
+    num_output: 512
+    pad_h: 1
+    stride: 1
+    weight_filler {
+      type: "msra"
+    }
+    bias_filler {
+      type: "constant"
+    }
+    kernel_h: 3
+    kernel_w: 1
+  }
+}
+
+layer {
+  name: "act_ReLU_ip4_conv_1"
+  type: "ReLU"
+  bottom: "ip4_conv_1"
+  top: "ip4_conv_1"
+}
+layer {
+  name: "pool_ip4_conv_1"
+  type: "Pooling"
+  bottom: "ip4_conv_1"
+  top: "ip4"
+  pooling_param {
+    pool: MAX
+    kernel_h: 8
+    kernel_w: 1
+    stride_h: 2
+    stride_w: 1
+  }
+}
+layer {
+  name: "reshape_reshape0"
+  type: "Reshape"
+  bottom: "ip4"
+  top: "reshape0"
+  reshape_param {
+    shape {
+      dim: 0
+      dim: -1
+    }
+  }
+ }
+layer {
+  name: "fc_reshape0"
+  type: "InnerProduct"
+  bottom: "reshape0"
+  top: "fc4096_0"
+  inner_product_param {
+    num_output: 4096
+    weight_filler {
+      type: "msra"
+    }
+  }
+}
+layer {
+  name: "act_ReLU_fc4096_0"
+  type: "ReLU"
+  bottom: "fc4096_0"
+  top: "fc4096_0"
+}
+layer {   
+  name: "drop_fc4096_0"
+  type: "Dropout"
+  bottom: "fc4096_0"
+  top: "fc4096_0" 
+  dropout_param {
+   dropout_ratio: 0.5  
+  }
+}
+layer {
+  name: "fc_fc4096_0"
+  type: "InnerProduct"
+  bottom: "fc4096_0"
+  top: "fc2048_1"
+  inner_product_param {
+    num_output: 2048
+    weight_filler {
+      type: "msra"
+    }
+  }
+}
+layer {
+  name: "act_ReLU_fc2048_1"
+  type: "ReLU"
+  bottom: "fc2048_1"
+  top: "fc2048_1"
+}
+layer {   
+  name: "drop_fc2048_1"
+  type: "Dropout"
+  bottom: "fc2048_1"
+  top: "fc2048_1" 
+  dropout_param {
+   dropout_ratio: 0.5  
+  }
+}      
+layer {
+  name: "fc_fc2048_1"
+  type: "InnerProduct"
+  bottom: "fc2048_1"
+  top: "ip_losst"
+  inner_product_param {
+    num_output: 4 # number of classes
+    weight_filler {
+      type: "msra"
+    }
+  }
+}
+layer {
+  name: "probt"
+  type: "Softmax"
+  bottom: "ip_losst"
+  top: "prob"
+}
