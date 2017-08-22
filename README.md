@@ -58,6 +58,10 @@ Supported images that come with pre-trained image classification deep (residual)
 
 - For **Amazon AMI** see official builds documentation at https://deepdetect.com/products/ami/, and direct links to [GPU AMI](https://aws.amazon.com/marketplace/pp/B01N4D483M) and [CPU AMI](https://aws.amazon.com/marketplace/pp/B01N1RGWQZ).
 
+#### Performances
+
+See https://github.com/jolibrain/dd_performances for a report on performances on NVidia Desktop and embedded GPUs, along with Raspberry Pi 3.
+
 #### Quickstart
 Setup an image classifier API service in a few minutes:
 http://www.deepdetect.com/tutorials/imagenet-classifier/
