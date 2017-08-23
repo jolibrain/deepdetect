@@ -1,0 +1,16 @@
+net: "deeplab_vgg16.prototxt"
+lr_policy: "step"
+stepsize: 10000000
+gamma: 1.0
+base_lr: 0.001
+test_iter: 1
+test_interval: 10000000
+test_initialization: false
+display: 20
+max_iter: 20000
+momentum: 0.9
+weight_decay: 0.0001
+snapshot: 20000
+snapshot_prefix: "deeplab_vgg16"
+solver_type: SGD
+solver_mode: GPU

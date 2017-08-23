@@ -32,7 +32,7 @@ using namespace caffe;
 
 namespace dd
 {
-
+  
   void CaffeInputInterface::write_class_weights(const std::string &model_repo,
 						const APIData &ad_mllib)
   {
@@ -69,6 +69,16 @@ namespace dd
 	LOG(INFO) << "Write class weights to " << cl_file;
 	WriteProtoToBinaryFile(cw_blob,cl_file.c_str());
       }
+  }
+
+  std::string ImgCaffeInputFileConn::guess_encoding(const std::string &file)
+  {
+    size_t p = file.rfind('.');
+    if (p == file.npos)
+      LOG(WARNING) << "Failed to guess the encoding of " << file;
+    std::string enc = file.substr(p);
+    std::transform(enc.begin(),enc.end(),enc.begin(),::tolower);
+    return enc;
   }
   
   // convert images into db entries
@@ -245,13 +255,7 @@ namespace dd
       bool status;
       std::string enc = encode_type;
       if (encoded && !enc.size()) {
-	// Guess the encoding type from the file name
-	std::string fn = lfiles[line_id].first;
-	size_t p = fn.rfind('.');
-	if ( p == fn.npos )
-	  LOG(WARNING) << "Failed to guess the encoding of '" << fn << "'";
-	enc = fn.substr(p);
-	std::transform(enc.begin(), enc.end(), enc.begin(), ::tolower);
+	enc = guess_encoding(lfiles[line_id].first);
       }
       status = ReadImageToDatum(lfiles[line_id].first,
 				lfiles[line_id].second, _height, _width, !_bw,
@@ -443,12 +447,64 @@ namespace dd
       }
     return dv;
   }
+
+  std::vector<caffe::Datum> ImgCaffeInputFileConn::get_dv_test_segmentation(const int &num,
+									    const bool &has_mean_file)
+  {
+    (void) has_mean_file;
+    if (_segmentation_data_lines.empty())
+      {
+	LOG(INFO) << "reading segmentation test file " << _uris.at(1).c_str();
+	std::ifstream infile(_uris.at(1).c_str());
+	std::string filename, label_filename;
+	while(infile >> filename >> label_filename)
+	  {
+	    _segmentation_data_lines.push_back(std::make_pair(filename,label_filename));
+	  }
+      }
+
+    std::vector<caffe::Datum> dv;
+    int j = 0;
+    for (int i=_dt_seg;i<static_cast<int>(_segmentation_data_lines.size());i++)
+      {
+	if (j == num)
+	  break;
+	std::string enc = guess_encoding(_segmentation_data_lines[i].first);
+	Datum datum_data, datum_labels;
+	bool status = ReadImageToDatum(_segmentation_data_lines[i].first,-1,
+				       _height,_width,0,0,!_bw,false,enc,&datum_data);
+	if (status == false)
+	  {
+	    LOG(ERROR) << "reading segmentation image " << _segmentation_data_lines[i].first << " to datum";
+	    continue;
+	  }
+
+	cv::Mat cv_lab = ReadImageToCVMat(_segmentation_data_lines[i].second,_height,_width,false,true);
+	datum_labels.set_height(_height);
+	datum_labels.set_width(_width);
+	datum_labels.set_channels(1);
+	for (int j=0;j<cv_lab.rows;j++) // height
+	  {
+	    for (int i=0;i<cv_lab.cols;i++) // width
+	      {
+		datum_labels.add_float_data(static_cast<float>(cv_lab.at<uchar>(j,i)));
+	      }
+	  }
+	dv.push_back(datum_data);
+	dv.push_back(datum_labels);
+	_ids.push_back(std::to_string(j));
+	++j;
+      }
+    _dt_seg += j;
+    return dv;
+  }
   
   void ImgCaffeInputFileConn::reset_dv_test()
   {
     _dt_vit = _dv_test.begin();
     _test_db_cursor = std::unique_ptr<caffe::db::Cursor>();
     _test_db = std::unique_ptr<caffe::db::DB>();
+    _dt_seg = 0;
   }
 
 

@@ -188,18 +188,29 @@ namespace dd
 	    || (ad.has("crop_size")))
 	  {
 	    caffe::LayerParameter *lparam = net_param.mutable_layer(0); // data input layer
-	    if (ad.has("rotate"))
-	      lparam->mutable_transform_param()->set_mirror(ad.get("mirror").get<bool>());
-	    if (ad.has("mirror"))
-	      lparam->mutable_transform_param()->set_rotate(ad.get("rotate").get<bool>());
-	    if (ad.has("crop_size"))
+	    if (lparam->type() != "DenseImageData")
 	      {
-		_crop_size = ad.get("crop_size").get<int>();
-		lparam->mutable_transform_param()->set_crop_size(_crop_size);
-		caffe::LayerParameter *dlparam = net_param.mutable_layer(1); // test input layer
-		dlparam->mutable_transform_param()->set_crop_size(_crop_size);
+		if (ad.has("rotate"))
+		  lparam->mutable_transform_param()->set_mirror(ad.get("mirror").get<bool>());
+		if (ad.has("mirror"))
+		  lparam->mutable_transform_param()->set_rotate(ad.get("rotate").get<bool>());
+		if (ad.has("crop_size"))
+		  {
+		    _crop_size = ad.get("crop_size").get<int>();
+		    lparam->mutable_transform_param()->set_crop_size(_crop_size);
+		    caffe::LayerParameter *dlparam = net_param.mutable_layer(1); // test input layer
+		    dlparam->mutable_transform_param()->set_crop_size(_crop_size);
+		  }
+		else lparam->mutable_transform_param()->clear_crop_size();
 	      }
-	    else lparam->mutable_transform_param()->clear_crop_size();
+	    else
+	      {
+		if (ad.has("rotate"))
+		  lparam->mutable_dense_image_data_param()->set_mirror(ad.get("mirror").get<bool>());
+		if (ad.has("mirror"))
+		  lparam->mutable_dense_image_data_param()->set_rotate(ad.get("rotate").get<bool>());
+		// XXX: DenseImageData supports crop_height and crop_width
+	      }
 	  }
 	// input size
 	caffe::LayerParameter *lparam = net_param.mutable_layer(1); // test
@@ -512,9 +523,12 @@ namespace dd
       {
 	// modifies model structure, template must have been copied at service creation with instantiate_template
 	bool has_class_weights = ad_mllib.has("class_weights");
+	int ignore_label = -1;
+	if (ad_mllib.has("ignore_label"))
+	  ignore_label = ad_mllib.get("ignore_label").get<int>();
 	update_protofile_net(this->_mlmodel._repo + '/' + this->_mlmodel._model_template + ".prototxt",
 			     this->_mlmodel._repo + "/deploy.prototxt",
-			     inputc, has_class_weights);
+			     inputc, has_class_weights, ignore_label);
 	create_model(); // creates initial net.
       }
 
@@ -792,7 +806,8 @@ namespace dd
 	this->add_meas("train_loss",smoothed_loss);
 	this->add_meas("iter_time",avg_fb_time);
 
-	if (solver->param_.test_interval() && solver->iter_ % solver->param_.test_interval() == 0)
+	if ((solver->param_.display() && solver->iter_ % solver->param_.display() == 0)
+	    || (solver->param_.test_interval() && solver->iter_ % solver->param_.test_interval() == 0))
 	  {
 	    LOG(INFO) << "smoothed_loss=" << this->get_meas("train_loss");
 	  }
@@ -911,13 +926,27 @@ namespace dd
 	      {
 		if (!inputc._sparse)
 		  {
+		    std::vector<caffe::Datum> seg_dv;
 		    std::vector<caffe::Datum> dv = inputc.get_dv_test(test_batch_size,has_mean_file);
 		    if (dv.empty())
 		      break;
 		    dv_size = dv.size();
 		    for (size_t s=0;s<dv_size;s++)
 		      {
-			if (!_autoencoder)
+			if (inputc._segmentation)
+			  {
+			    // dv_labels will need to be of size width x height x batch size -> use dv_float_data
+			    // -> read datum 2 by 2 -> skip s (read s 2 by 2)
+			    if (!(s % 2))
+			      {
+				std::vector<double> vals;
+				for (int k=0;k<dv.at(s+1).float_data_size();k++)
+				  vals.push_back(dv.at(s+1).float_data(k));
+				dv_float_data.push_back(vals);
+				seg_dv.push_back(dv.at(s));
+			      }
+			  }
+			else if (!_autoencoder)
 			  {
 			    dv_labels.push_back(dv.at(s).label());
 			    if (_ntargets > 1)
@@ -940,6 +969,12 @@ namespace dd
 		      }
 		    if (boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(net->layers()[0]) == 0)
 		      throw MLLibBadParamException("test net's first layer is required to be of MemoryData type");
+		    if (inputc._segmentation)
+		      {
+			dv = seg_dv;
+			dv_size = dv.size();
+			seg_dv.clear();
+		      }
 		    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(net->layers()[0])->set_batch_size(dv.size());
 		    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(net->layers()[0])->AddDatumVector(dv);
 		  }
@@ -989,11 +1024,40 @@ namespace dd
 	    int scount = lresults[slot]->count();
 	    int scperel = scount / dv_size;
 	    
+#pragma omp parallel for
 	    for (int j=0;j<(int)dv_size;j++)
 	      {
 		APIData bad;
 		std::vector<double> predictions;
-		if ((!_regression && !_autoencoder)|| _ntargets == 1)
+		if (inputc._segmentation)
+		  {
+		    APIData bad2;
+		    std::vector<double> preds, targets;
+		    for (size_t l=0;l<dv_float_data.at(j).size();l++)
+		      {
+			double target = dv_float_data.at(j).at(l);
+			double best_prob = -1.0;
+			double best_cat = -1.0;
+			for (int k=0;k<nout;k++)
+			  {
+			    double prob = lresults[slot]->cpu_data()[l+(nout*j+k)*dv_float_data.at(j).size()];
+			    if (prob >= best_prob)
+			      {
+				best_prob = prob;
+				best_cat = k;
+			      }
+			  }
+			preds.push_back(best_cat);
+			targets.push_back(target);
+		      }
+		    bad2.add("target",targets);
+		    bad2.add("pred",preds);
+#pragma omp critical
+		    {
+		    ad_res.add(std::to_string(tresults+j),bad2);
+		    }
+		  }
+		else if ((!_regression && !_autoencoder)|| _ntargets == 1)
 		  {
 		    double target = dv_labels.at(j);
 		    for (int k=0;k<nout;k++)
@@ -1013,8 +1077,14 @@ namespace dd
 		      }
 		    bad.add("target",target);
 		  }
-		bad.add("pred",predictions);
-		ad_res.add(std::to_string(tresults+j),bad);
+		if (!inputc._segmentation)
+		  {
+		    bad.add("pred",predictions);
+#pragma omp critical
+		    {
+		      ad_res.add(std::to_string(tresults+j),bad);
+		    }
+		  }
 	      }
 	    tresults += dv_size;
 	    mean_loss += loss;
@@ -1023,6 +1093,8 @@ namespace dd
 	for (int i=0;i<nout;i++)
 	  clnames.push_back(this->_mlmodel.get_hcorresp(i));
 	ad_res.add("clnames",clnames);
+	if (inputc._segmentation)
+	  ad_res.add("segmentation",true);
 	ad_res.add("batch_size",tresults);
 	if (_regression)
 	  ad_res.add("regression",_regression);
@@ -1195,7 +1267,7 @@ namespace dd
 	  }
 	
 	float loss = 0.0;
-	if (extract_layer.empty()) // supervised
+	if (extract_layer.empty() || inputc._segmentation) // supervised or segmentation
 	  {
 	    std::vector<Blob<float>*> results;
 	    try
@@ -1209,7 +1281,39 @@ namespace dd
 		_net = nullptr;
 		throw;
 	      }
-	    if (bbox) // in-image object detection
+	    if (inputc._segmentation)
+	      {
+		int slot = results.size() - 1;
+		nclasses = _nclasses;
+		for (int j=0;j<batch_size;j++)
+		  {
+		    APIData rad;
+		    if (!inputc._ids.empty())
+		      rad.add("uri",inputc._ids.at(idoffset+j));
+		    else rad.add("uri",std::to_string(idoffset+j));
+		    rad.add("loss",loss);
+		    std::vector<double> vals;
+		    int imgsize = inputc.width()*inputc.height();
+		    for (int i=0;i<imgsize;i++)
+		      {
+			double max_prob = -1.0;
+			double best_cat = -1.0;
+			for (int k=0;k<nclasses;k++)
+			  {
+			    double prob = results[slot]->cpu_data()[(j*nclasses+k)*imgsize+i];
+			    if (prob > max_prob)
+			      {
+				max_prob = prob;
+				best_cat = static_cast<double>(k);
+			      }
+			  }
+			vals.push_back(best_cat);
+		      }
+		    rad.add("vals",vals);
+		    vrad.push_back(rad);
+		  }
+	      }
+	    else if (bbox) // in-image object detection
 	      {
 		int results_height = results[0]->height();
 		const int det_size = 7;
@@ -1356,7 +1460,8 @@ namespace dd
 	idoffset += batch_size;
       } // end prediction loop over batches
 
-    tout.add_results(vrad);
+    if (!inputc._segmentation)
+      tout.add_results(vrad);
     if (extract_layer.empty())
       {
 	if (_regression)
@@ -1371,7 +1476,14 @@ namespace dd
     
     out.add("nclasses",nclasses);
     out.add("bbox",bbox);
-    tout.finalize(ad.getobj("parameters").getobj("output"),out);
+    if (!inputc._segmentation)
+      tout.finalize(ad.getobj("parameters").getobj("output"),out);
+    else // segmentation returns an array, best dealt with an unsupervised connector
+      {
+	UnsupervisedOutput unsupo;
+	unsupo.add_results(vrad);
+	unsupo.finalize(ad.getobj("parameters").getobj("output"),out);
+      }
     out.add("status",0);
     
     return 0;
@@ -1404,7 +1516,7 @@ namespace dd
     // fix source paths in the model.
     caffe::NetParameter *np = sp.mutable_net_param();
     caffe::ReadProtoFromTextFile(sp.net().c_str(),np); //TODO: error on read + use internal caffe ReadOrDie procedure
-    for (int i=0;i<2;i++)//np->layer_size();i++)
+    for (int i=0;i<2;i++)
       {
 	caffe::LayerParameter *lp = np->mutable_layer(i);
 	if (lp->has_data_param())
@@ -1428,6 +1540,21 @@ namespace dd
 	    if (dp->has_batch_size() && batch_size != inputc.batch_size() && batch_size > 0)
 	      {
 		dp->set_batch_size(user_batch_size); // data params seem to handle batch_size that are no multiple of the training set
+		batch_size = user_batch_size;
+	      }
+	  }
+	else if (lp->has_dense_image_data_param())
+	  {
+	    caffe::DenseImageDataParameter *dp = lp->mutable_dense_image_data_param();
+	    if (dp->has_source())
+	      {
+		if (i == 0)
+		  dp->set_source(ad.getobj("source").get("source_train").get<std::string>());
+		else dp->set_source(ad.getobj("source").get("source_test").get<std::string>());
+	      }
+	    if (dp->has_batch_size() && batch_size != inputc.batch_size() && batch_size > 0)
+	      {
+		dp->set_batch_size(user_batch_size);
 		batch_size = user_batch_size;
 	      }
 	  }
@@ -1473,7 +1600,8 @@ namespace dd
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofile_net(const std::string &net_file,
 												 const std::string &deploy_file,
 												 const TInputConnectorStrategy &inputc,
-												 const bool &has_class_weights)
+												 const bool &has_class_weights,
+												 const int &ignore_label)
   {
     caffe::NetParameter net_param;
     caffe::ReadProtoFromTextFile(net_file,&net_param); //TODO: catch parsing error (returns bool true on success)
@@ -1545,6 +1673,19 @@ namespace dd
 		lparam->set_type("SoftmaxWithInfogainLoss");
 		lparam->mutable_infogain_loss_param()->set_source(this->_mlmodel._repo + "/class_weights.binaryproto");
 		break;
+	      }
+	  }
+      }
+
+    if (ignore_label >= 0)
+      {
+	int k = net_param.layer_size();
+	for (int l=k-1;l>0;l--)
+	  {
+	    caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+	    if (lparam->type() == "SoftmaxWithLoss" || lparam->type() == "SoftmaxWithInfogainLoss")
+	      {
+		lparam->mutable_loss_param()->set_ignore_label(ignore_label);
 	      }
 	  }
       }
@@ -1703,38 +1844,45 @@ namespace dd
 
 	// code below is required when Caffe (weirdly) requires the batch size 
 	// to be a multiple of the training dataset size.
-	if (batch_size < inputc.batch_size())
+	if (!inputc._segmentation)
 	  {
-	    int min_batch_size = 0;
-	    for (int i=batch_size;i>=1;i--)
-	      if (inputc.batch_size() % i == 0)
-		{
-		  min_batch_size = i;
-		  break;
-		}
-	    int max_batch_size = 0;
-	    for (int i=batch_size;i<inputc.batch_size();i++)
+	    if (batch_size < inputc.batch_size())
 	      {
-		if (inputc.batch_size() % i == 0)
+		int min_batch_size = 0;
+		for (int i=batch_size;i>=1;i--)
+		  if (inputc.batch_size() % i == 0)
+		    {
+		      min_batch_size = i;
+		      break;
+		    }
+		int max_batch_size = 0;
+		for (int i=batch_size;i<inputc.batch_size();i++)
 		  {
-		    max_batch_size = i;
-		    break;
+		    if (inputc.batch_size() % i == 0)
+		      {
+			max_batch_size = i;
+			break;
+		      }
 		  }
+		if (std::abs(batch_size-min_batch_size) < std::abs(max_batch_size-batch_size))
+		  batch_size = min_batch_size;
+		else batch_size = max_batch_size;
+		for (int i=test_batch_size;i>1;i--)
+		  if (inputc.test_batch_size() % i == 0)
+		    {
+		      test_batch_size = i;
+		      break;
+		    }
+		test_iter = inputc.test_batch_size() / test_batch_size;
 	      }
-	    if (std::abs(batch_size-min_batch_size) < std::abs(max_batch_size-batch_size))
-	      batch_size = min_batch_size;
-	    else batch_size = max_batch_size;
-	    for (int i=test_batch_size;i>1;i--)
-	      if (inputc.test_batch_size() % i == 0)
-		{
-		  test_batch_size = i;
-		  break;
-		}
+	    else batch_size = inputc.batch_size();
 	    test_iter = inputc.test_batch_size() / test_batch_size;
 	  }
-	else batch_size = inputc.batch_size();
-	test_iter = inputc.test_batch_size() / test_batch_size;
-	
+	else
+	  {
+	    batch_size = user_batch_size;
+	  }
+	    
 	//debug
 	LOG(INFO) << "batch_size=" << batch_size << " / test_batch_size=" << test_batch_size << " / test_iter=" << test_iter << std::endl;
 	//debug

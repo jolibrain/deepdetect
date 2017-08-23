@@ -271,22 +271,30 @@ namespace dd
       bool loss = ad_res.has("loss");
       bool iter = ad_res.has("iteration");
       bool regression = ad_res.has("regression");
+      bool segmentation = ad_res.has("segmentation");
       if (ad_out.has("measure"))
 	{
 	  std::vector<std::string> measures = ad_out.get("measure").get<std::vector<std::string>>();
       	  bool bauc = (std::find(measures.begin(),measures.end(),"auc")!=measures.end());
 	  bool bacc = false;
-	  for (auto s: measures)
-	    if (s.find("acc")!=std::string::npos)
-	      {
-		bacc = true;
-		break;
-	      }
+
+	  if (!segmentation)
+	    {
+	      for (auto s: measures)
+		if (s.find("acc")!=std::string::npos)
+		  {
+		    bacc = true;
+		    break;
+		  }
+	    }
 	  bool bf1 = (std::find(measures.begin(),measures.end(),"f1")!=measures.end());
 	  bool bmcll = (std::find(measures.begin(),measures.end(),"mcll")!=measures.end());
 	  bool bgini = (std::find(measures.begin(),measures.end(),"gini")!=measures.end());
 	  bool beucll = (std::find(measures.begin(),measures.end(),"eucll")!=measures.end());
 	  bool bmcc = (std::find(measures.begin(),measures.end(),"mcc")!=measures.end());
+	  bool baccv = false;
+	  if (segmentation)
+	    baccv = (std::find(measures.begin(),measures.end(),"acc")!=measures.end());
 	  if (bauc) // XXX: applies two binary classification problems only
 	    {
 	      double mauc = auc(ad_res);
@@ -301,6 +309,14 @@ namespace dd
 		  meas_out.add((*mit).first,(*mit).second);
 		  ++mit;
 		}
+	    }
+	  if (baccv)
+	    {
+	      double meanacc, meaniou;
+	      double accs = acc_v(ad_res,meanacc,meaniou);
+	      meas_out.add("acc",accs);
+	      meas_out.add("meanacc",meanacc);
+	      meas_out.add("meaniou",meaniou);
 	    }
 	  if (bf1)
 	    {
@@ -417,6 +433,66 @@ namespace dd
 	  accs.insert(std::pair<std::string,double>(key,acc / static_cast<double>(batch_size)));
 	}
       return accs;
+    }
+
+    static double acc_v(const APIData &ad, double &meanacc, double &meaniou)
+    {
+      int nclasses = ad.get("nclasses").get<int>();
+      int batch_size = ad.get("batch_size").get<int>();
+      std::vector<double> mean_acc(nclasses,0.0);
+      std::vector<double> mean_acc_bs(nclasses,0.0);
+      std::vector<double> mean_iou(nclasses,0.0);
+      double acc_v = 0.0;
+      meanacc = 0.0;
+      meaniou = 0.0;
+      for (int i=0;i<batch_size;i++)
+	{
+	  APIData bad = ad.getobj(std::to_string(i));
+	  std::vector<double> predictions = bad.get("pred").get<std::vector<double>>(); // all best-1
+	  std::vector<double> targets = bad.get("target").get<std::vector<double>>(); // all targets against best-1
+	  dVec dpred = dVec::Map(&predictions.at(0),predictions.size());
+	  dVec dtarg = dVec::Map(&targets.at(0),targets.size());
+	  dVec ddiff = dpred - dtarg;
+	  double acc = (ddiff.cwiseAbs().array() == 0).count() / static_cast<double>(dpred.size());
+	  acc_v += acc;
+	  
+	  for (int c=0;c<nclasses;c++)
+	    {
+	      dVec dpredc = (dpred.array() == c).select(dpred,dVec::Constant(dpred.size(),-1.0));
+	      dVec dtargc = (dtarg.array() == c).select(dtarg,dVec::Constant(dtarg.size(),1.0));
+	      dVec ddiffc = dpredc - dtargc;
+	      double c_sum = (ddiffc.cwiseAbs().array() == 0).count();
+	      if (c_sum == 0)
+		continue;
+
+	      // mean acc over classes
+	      double c_total_targ = static_cast<double>((dtargc.array() == c).count());
+	      double accc = c_sum / c_total_targ;
+	      mean_acc[c] += accc;
+	      mean_acc_bs[c]++;
+
+	      // mean intersection over union
+	      double c_false_neg = static_cast<double>((ddiffc.array() == c-1).count());
+	      double c_false_pos = static_cast<double>((ddiffc.array() == -1-c).count());
+	      double iou = c_sum / (c_false_pos + c_sum + c_false_neg);
+	      mean_iou[c] += iou;
+	    }
+	}
+      int c_nclasses = 0;
+      for (int c=0;c<nclasses;c++)
+	{
+	  if (mean_acc_bs[c] > 0.0)
+	    {
+	      mean_acc[c] /= mean_acc_bs[c];
+	      mean_iou[c] /= mean_acc_bs[c];
+	      c_nclasses++;
+	    }
+	  meanacc += mean_acc[c];
+	  meaniou += mean_iou[c];
+	}
+      meanacc /= static_cast<double>(c_nclasses);
+      meaniou /= static_cast<double>(c_nclasses);
+      return acc_v / static_cast<double>(batch_size);
     }
 
     // measure: F1

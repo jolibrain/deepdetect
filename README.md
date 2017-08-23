@@ -13,12 +13,12 @@ DeepDetect relies on external machine learning libraries through a very generic 
 
 #### Machine Learning functionalities per library (current):
 
-|            | Training | Prediction | Classification | Object Detection | Regression | Autoencoder |
-|------------|----------|------------|----------------|-----------|------------|-------------|
-| Caffe      | Y        | Y          | Y              | Y         |   Y        | Y           |
-| XGBoost    | Y        | Y          | Y              | N         |   Y        | N/A         |
-| Tensorflow | N        | Y          | Y              | N         |   N        | N           |
-| T-SNE      | Y        | N/A        | N/A            | N/A       |   N/A      | N/A         |
+|            | Training | Prediction | Classification | Object Detection | Segmentation | Regression | Autoencoder |
+|------------|----------|------------|----------------|-----------|-----------|------------|-------------|
+| Caffe      | Y        | Y          | Y              | Y         |   Y       |   Y        | Y           |
+| XGBoost    | Y        | Y          | Y              | N         |   N       |   Y        | N/A         |
+| Tensorflow | N        | Y          | Y              | N         |   N       |   N        | N           |
+| T-SNE      | Y        | N/A        | N/A            | N/A       |   N/A     |   N/A      | N/A         |
 
 
 #### GPU support per library
@@ -42,7 +42,7 @@ DeepDetect relies on external machine learning libraries through a very generic 
 
 #### Main functionalities
 
-DeepDetect implements support for supervised and unsupervised deep learning of images, text and other data, with focus on simplicity and ease of use, test and connection into existing applications. It supports classification, object detection, regression, autoencoders, ...
+DeepDetect implements support for supervised and unsupervised deep learning of images, text and other data, with focus on simplicity and ease of use, test and connection into existing applications. It supports classification, object detection, segmentation, regression, autoencoders, ...
 
 #### Support
 
@@ -74,7 +74,7 @@ Current features include:
 
 - high-level API for machine learning and deep learning
 - Support for Caffe, Tensorflow, XGBoost and T-SNE
-- classification, regression, autoencoders, object detection
+- classification, regression, autoencoders, object detection, segmentation
 - JSON communication format
 - remote Python client library
 - dedicated server with support for asynchronous training calls
@@ -137,7 +137,7 @@ None outside of C++ compiler and make
 ##### Caffe version
 
 By default DeepDetect automatically relies on a modified version of Caffe, https://github.com/beniz/caffe/tree/master
-This version includes many improvements over the original Caffe, such as sparse input data support, exception handling, class weights, object detection, and various additional losses and layers.
+This version includes many improvements over the original Caffe, such as sparse input data support, exception handling, class weights, object detection, segmentation, and various additional losses and layers.
 
 ##### Implementation
 
@@ -153,6 +153,9 @@ Python script for indexing and searching images is in [demo/imgsearch](https://g
 
 - Image object detection:
 Python script for object detection within images is in [demo/objdetect](https://github.com/beniz/deepdetect/tree/master/demo/objdetect)
+
+- Image segmentation:
+Python script for image segmentation is in [demo/segmentation](https://github.com/beniz/deepdetect/tree/master/demo/segmentation)
 
 ##### Examples
 

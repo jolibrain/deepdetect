@@ -54,6 +54,24 @@ TEST(outputconn,acc)
   ASSERT_EQ(0.75,accs["acc"]);
 }
 
+TEST(outputconn,acc_v)
+{
+  std::vector<double> targets = {0.0, 0.0, 1.0, 1.0};
+  std::vector<double> pred1 = {0.0,1.0,1.0,1.0};
+  std::vector<std::vector<double>> preds = { pred1 };
+  APIData res_ad;
+  res_ad.add("batch_size",static_cast<int>(1));
+  APIData bad;
+  bad.add("pred",pred1);
+  bad.add("target",targets);
+  std::vector<APIData> vad = {bad};
+  res_ad.add(std::to_string(0),vad);
+  SupervisedOutput so;
+  double meanacc = 0.0, meaniou = 0.0; //TODO
+  double acc = so.acc_v(res_ad,meanacc,meaniou);
+  ASSERT_EQ(0.75,acc);
+}
+
 TEST(outputconn,acck)
 {
   std::vector<double> targets = {0, 0, 1, 2};
@@ -180,9 +198,9 @@ TEST(outputconn,cmfull)
   SupervisedOutput::measure(res_ad,ad_out,out);
   APIData meas_out = out.getobj("measure");
   auto lkeys = meas_out.list_keys();
-  /*std::cerr << "lkeys size=" << lkeys.size() << std::endl;
-  for (auto k: lkeys)
-  std::cerr << k << std::endl;*/
+  ///std::cerr << "lkeys size=" << lkeys.size() << std::endl;
+  //for (auto k: lkeys)
+  //std::cerr << k << std::endl;
   ASSERT_EQ(0.5,meas_out.get("accp").get<double>());
   
   // cmfull
@@ -192,7 +210,7 @@ TEST(outputconn,cmfull)
   out.toJVal(jpred,jout);
   std::string jstr = japi.jrender(jout);
   std::cerr << "jstr=" << jstr << std::endl;
-  ASSERT_EQ("{\"measure\":{\"labels\":[\"zero\",\"one\",\"two\",\"three\"],\"f1\":0.35294117352941187,\"cmfull\":[{\"zero\":[0.5,0.5,0.0,0.0]},{\"one\":[0.0,1.0,0.0,0.0]},{\"two\":[0.0,1.0,0.0,0.0]},{\"three\":[2.696539702293474e308,2.696539702293474e308,2.696539702293474e308,2.696539702293474e308]}],\"cmdiag\":[0.4999999975,0.9999999900000002,0.0,0.0],\"recall\":0.3333333305555556,\"precision\":0.3749999968750001,\"accp\":0.5}}",jstr);
+  ASSERT_EQ("{\"measure\":{\"cmfull\":[{\"zero\":[0.5,0.5,0.0,0.0]},{\"one\":[0.0,1.0,0.0,0.0]},{\"two\":[0.0,1.0,0.0,0.0]},{\"three\":[2.696539702293474e308,2.696539702293474e308,2.696539702293474e308,2.696539702293474e308]}],\"precision\":0.3749999968750001,\"labels\":[\"zero\",\"one\",\"two\",\"three\"],\"f1\":0.35294117352941187,\"accp\":0.5,\"recall\":0.3333333305555556,\"cmdiag\":[0.4999999975,0.9999999900000002,0.0,0.0]}}",jstr);
 }
 
 TEST(inputconn,img)
