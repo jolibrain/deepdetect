@@ -19,7 +19,7 @@ host = 'localhost'
 sname = 'segserv'
 description = 'image segmentation'
 mllib = 'caffe'
-mltype = 'unsupervised' #TODO: supervised
+mltype = 'unsupervised'
 nclasses = args.nclasses
 width = args.width
 height = args.height
@@ -47,7 +47,7 @@ except: # most likely the service already exists
 
 # prediction call
 parameters_input = {'segmentation':True}
-parameters_mllib = {'gpu':True,'extract_layer':'pred'}
+parameters_mllib = {'gpu':True}
 parameters_output = {}
 data = [args.image]
 detect = dd.post_predict(sname,data,parameters_input,parameters_mllib,parameters_output)

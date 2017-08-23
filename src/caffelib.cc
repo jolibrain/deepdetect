@@ -1438,7 +1438,8 @@ namespace dd
 	idoffset += batch_size;
       } // end prediction loop over batches
 
-    tout.add_results(vrad);
+    if (!inputc._segmentation)
+      tout.add_results(vrad);
     if (extract_layer.empty())
       {
 	if (_regression)
@@ -1453,7 +1454,14 @@ namespace dd
     
     out.add("nclasses",nclasses);
     out.add("bbox",bbox);
-    tout.finalize(ad.getobj("parameters").getobj("output"),out);
+    if (!inputc._segmentation)
+      tout.finalize(ad.getobj("parameters").getobj("output"),out);
+    else // segmentation returns an array, best dealt with an unsupervised connector
+      {
+	UnsupervisedOutput unsupo;
+	unsupo.add_results(vrad);
+	unsupo.finalize(ad.getobj("parameters").getobj("output"),out);
+      }
     out.add("status",0);
     
     return 0;
