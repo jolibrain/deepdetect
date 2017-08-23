@@ -1024,7 +1024,6 @@ namespace dd
 	    int scount = lresults[slot]->count();
 	    int scperel = scount / dv_size;
 	    
-#pragma omp parallel for
 	    for (int j=0;j<(int)dv_size;j++)
 	      {
 		APIData bad;
@@ -1052,10 +1051,7 @@ namespace dd
 		      }
 		    bad2.add("target",targets);
 		    bad2.add("pred",preds);
-#pragma omp critical
-		    {
 		    ad_res.add(std::to_string(tresults+j),bad2);
-		    }
 		  }
 		else if ((!_regression && !_autoencoder)|| _ntargets == 1)
 		  {
@@ -1080,10 +1076,7 @@ namespace dd
 		if (!inputc._segmentation)
 		  {
 		    bad.add("pred",predictions);
-#pragma omp critical
-		    {
 		      ad_res.add(std::to_string(tresults+j),bad);
-		    }
 		  }
 	      }
 	    tresults += dv_size;
