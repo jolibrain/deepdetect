@@ -101,8 +101,8 @@ include_directories("${PROTOBUF_INCLUDE_DIR}")
       BUILD_IN_SOURCE 1
       )
   endif()
-  set(TF_INC_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/ ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/tensorflow/ ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/tensorflow/bazel-out/host/genfiles/ ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/tensorflow/bazel-out/local_linux-opt/genfiles)
-  set(TF_LIB_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/tensorflow/bazel-out/local_linux-opt/bin/tensorflow/)
+  set(TF_INC_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/ ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/tensorflow/ ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/org_tensorflow/bazel-out/host/genfiles/ ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/org_tensorflow/bazel-out/local_linux-opt/genfiles)
+  set(TF_LIB_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/org_tensorflow/bazel-out/local_linux-opt/bin/tensorflow/)
   include_directories("${TF_INC_DIR}")
 endif() # USE_TF
 
