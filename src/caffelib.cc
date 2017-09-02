@@ -745,14 +745,14 @@ namespace dd
 	    LOG(INFO) << "batch size=" << batch_size;
 	    for (auto m: meas_str)
 	      {
-		if (m != "cmdiag" && m != "cmfull" && m != "labels") // do not report confusion matrix in server logs
+		if (m != "cmdiag" && m != "cmfull" && m != "clacc" && m != "labels") // do not report confusion matrix in server logs
 		  {
 		    double mval = meas_obj.get(m).get<double>();
 		    LOG(INFO) << m << "=" << mval;
 		    this->add_meas(m,mval);
 		    this->add_meas_per_iter(m,mval);
 		  }
-		else if (m == "cmdiag")
+		else if (m == "cmdiag" || m == "clacc")
 		  {
 		    std::vector<double> mdiag = meas_obj.get(m).get<std::vector<double>>();
 		    std::string mdiag_str;
