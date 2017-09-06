@@ -95,6 +95,7 @@ namespace dd
     ImgCaffeInputFileConn()
       :ImgInputFileConn() {
       _db = true;
+      _shuffle = true;
       reset_dv_test();
     }
     ImgCaffeInputFileConn(const ImgCaffeInputFileConn &i)
@@ -644,6 +645,7 @@ namespace dd
     TxtCaffeInputFileConn()
       :TxtInputFileConn()
       {
+	_shuffle = true;
 	reset_dv_test();
       }
     TxtCaffeInputFileConn(const TxtCaffeInputFileConn &i)
