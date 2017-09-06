@@ -317,7 +317,8 @@ namespace dd
 
     // text tokenization for BOW
     void parse_content(const std::string &content,
-		       const float &target=-1);
+		       const float &target=-1,
+		       const bool &test=false);
 
     // serialization of vocabulary
     void serialize_vocab();
@@ -350,6 +351,7 @@ namespace dd
     std::unordered_map<std::string,Word> _vocab; /**< string to word stats, including word */
     std::string _vocabfname = "vocab.dat";
     std::string _correspname = "corresp.txt";
+    int _dirs = 0; /**< directories as input. */
     
     // data
     std::vector<TxtEntry<double>*> _txt;

@@ -78,6 +78,7 @@ namespace dd
     std::unordered_map<int,std::string> hcorresp; // correspondence class number / class name
     if (!subdirs.empty())
       {
+	++_ctfc->_dirs; // this is a directory containing classes info.
 	int cl = 0;
 	auto uit = subdirs.begin();
 	while(uit!=subdirs.end())
@@ -119,7 +120,7 @@ namespace dd
 	std::stringstream buffer;
 	buffer << txt_file.rdbuf();
 	std::string ct = buffer.str();
-	_ctfc->parse_content(ct,p.second);
+	_ctfc->parse_content(ct,p.second,_ctfc->_dirs>=2);
       }
 
     // post-processing
@@ -196,7 +197,8 @@ namespace dd
   
   /*- TxtInputFileConn -*/
   void TxtInputFileConn::parse_content(const std::string &content,
-				       const float &target)
+				       const float &target,
+				       const bool &test)
   {
     if (!_train && content.empty())
       throw InputConnectorBadParamException("no text data found");
@@ -247,7 +249,9 @@ namespace dd
 		  }
 		tbe->add_word(w,1.0,_count);
 	      }
-	    _txt.push_back(tbe);
+	    if (!test)
+	      _txt.push_back(tbe);
+	    else _test_txt.push_back(tbe);
 	  }
 	else // character-level features
 	  {
@@ -297,7 +301,9 @@ namespace dd
 		}
 		while(str_i<end && seq < _sequence);
 	      }
-	    _txt.push_back(tce);
+	    if (!test)
+	      _txt.push_back(tce);
+	    else _test_txt.push_back(tce);
 	    std::cerr << "\rloaded text samples=" << _txt.size();
 	  }
 
