@@ -74,11 +74,14 @@ namespace dd
     LOG(INFO) << "txtinputfileconn: list subdirs size=" << subdirs.size();
     
     // list files and classes
+    bool test_dir = false;
     std::vector<std::pair<std::string,int>> lfiles; // labeled files
     std::unordered_map<int,std::string> hcorresp; // correspondence class number / class name
     if (!subdirs.empty())
       {
 	++_ctfc->_dirs; // this is a directory containing classes info.
+	if (_ctfc->_dirs >= 2)
+	  test_dir = true;
 	int cl = 0;
 	auto uit = subdirs.begin();
 	while(uit!=subdirs.end())
@@ -86,8 +89,11 @@ namespace dd
 	    std::unordered_set<std::string> subdir_files;
 	    if (fileops::list_directory((*uit),true,false,subdir_files))
 	      throw InputConnectorBadParamException("failed reading text data sub-directory " + (*uit));
-	    if (_ctfc->_train)
-	      hcorresp.insert(std::pair<int,std::string>(cl,dd_utils::split((*uit),'/').back()));
+	    if (!test_dir)
+	      {
+		if (_ctfc->_train)
+		  hcorresp.insert(std::pair<int,std::string>(cl,dd_utils::split((*uit),'/').back()));
+	      }
 	    auto fit = subdir_files.begin();
 	    while(fit!=subdir_files.end()) // XXX: re-iterating the file is not optimal
 	      {
@@ -120,12 +126,12 @@ namespace dd
 	std::stringstream buffer;
 	buffer << txt_file.rdbuf();
 	std::string ct = buffer.str();
-	_ctfc->parse_content(ct,p.second,_ctfc->_dirs>=2);
+	_ctfc->parse_content(ct,p.second,test_dir);
       }
 
     // post-processing
     size_t initial_vocab_size = _ctfc->_vocab.size();
-    if (_ctfc->_train)
+    if (_ctfc->_train && !test_dir)
       {
 	auto vhit = _ctfc->_vocab.begin();
 	while(vhit!=_ctfc->_vocab.end())
@@ -135,7 +141,7 @@ namespace dd
 	    else ++vhit;
 	  }
       }
-    if (_ctfc->_train && initial_vocab_size != _ctfc->_vocab.size())
+    if (_ctfc->_train && !test_dir && initial_vocab_size != _ctfc->_vocab.size())
       {
 	// update pos
 	int pos = 0;
@@ -148,7 +154,7 @@ namespace dd
 	  }
       }
 
-    if (!_ctfc->_characters && (initial_vocab_size != _ctfc->_vocab.size() || _ctfc->_tfidf))
+    if (!_ctfc->_characters && !test_dir && (initial_vocab_size != _ctfc->_vocab.size() || _ctfc->_tfidf))
       {
 	// clearing up the corpus + tfidf
 	std::unordered_map<std::string,Word>::iterator whit;
@@ -178,7 +184,7 @@ namespace dd
       }
 
     // write corresp file
-    if (_ctfc->_train)
+    if (_ctfc->_train && !test_dir)
       {
 	std::ofstream correspf(_ctfc->_model_repo + "/" + _ctfc->_correspname,std::ios::binary);
 	auto hit = hcorresp.begin();
