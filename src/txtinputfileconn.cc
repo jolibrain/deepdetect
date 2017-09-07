@@ -77,11 +77,27 @@ namespace dd
     bool test_dir = false;
     std::vector<std::pair<std::string,int>> lfiles; // labeled files
     std::unordered_map<int,std::string> hcorresp; // correspondence class number / class name
+    std::unordered_map<std::string,int> hcorresp_r; // reverse correspondence for test set.
     if (!subdirs.empty())
       {
 	++_ctfc->_dirs; // this is a directory containing classes info.
 	if (_ctfc->_dirs >= 2)
-	  test_dir = true;
+	  {
+	    test_dir = true;
+	    std::ifstream correspf(_ctfc->_model_repo + "/" + _ctfc->_correspname,std::ios::binary);
+	    if (!correspf.is_open())
+	      {
+		std::string err_msg = "Failed opening corresp file before reading txt test data directory";;
+		LOG(ERROR) << err_msg;
+		throw InputConnectorInternalException(err_msg);
+	      }
+	    std::string line;
+	    while(std::getline(correspf,line))
+	      {
+		std::vector<std::string> vstr = dd_utils::split(line,' ');
+		hcorresp_r.insert(std::pair<std::string,int>(vstr.at(1),std::atoi(vstr.at(0).c_str())));
+	      }
+	  }
 	int cl = 0;
 	auto uit = subdirs.begin();
 	while(uit!=subdirs.end())
@@ -89,10 +105,25 @@ namespace dd
 	    std::unordered_set<std::string> subdir_files;
 	    if (fileops::list_directory((*uit),true,false,subdir_files))
 	      throw InputConnectorBadParamException("failed reading text data sub-directory " + (*uit));
+	    std::string cls = dd_utils::split((*uit),'/').back();
 	    if (!test_dir)
 	      {
 		if (_ctfc->_train)
-		  hcorresp.insert(std::pair<int,std::string>(cl,dd_utils::split((*uit),'/').back()));
+		  {
+		    hcorresp.insert(std::pair<int,std::string>(cl,cls));
+		    hcorresp_r.insert(std::pair<std::string,int>(cls,cl));
+		  }
+	      }
+	    else
+	      {
+		std::unordered_map<std::string,int>::const_iterator hcit;
+		if ((hcit=hcorresp_r.find(cls))==hcorresp_r.end())
+		  {
+		    LOG(ERROR) << "class " << cls << " appears in testing set but not in training set, skipping";
+		    ++uit;
+		    continue;
+		  }
+		cl = (*hcit).second;
 	      }
 	    auto fit = subdir_files.begin();
 	    while(fit!=subdir_files.end()) // XXX: re-iterating the file is not optimal
@@ -100,7 +131,8 @@ namespace dd
 		lfiles.push_back(std::pair<std::string,int>((*fit),cl));
 		++fit;
 	      }
-	    ++cl;
+	    if (!test_dir)
+	      ++cl;
 	    ++uit;
 	  }
       }
