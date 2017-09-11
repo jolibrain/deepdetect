@@ -95,7 +95,6 @@ namespace dd
     ImgCaffeInputFileConn()
       :ImgInputFileConn() {
       _db = true;
-      _shuffle = true;
       reset_dv_test();
     }
     ImgCaffeInputFileConn(const ImgCaffeInputFileConn &i)
@@ -225,6 +224,7 @@ namespace dd
 	}
       else
 	{
+	  _shuffle = true;
 	  APIData ad_mllib;
 	  if (ad.has("parameters")) // hotplug of parameters, overriding the defaults
 	    {
@@ -645,7 +645,6 @@ namespace dd
     TxtCaffeInputFileConn()
       :TxtInputFileConn()
       {
-	_shuffle = true;
 	reset_dv_test();
       }
     TxtCaffeInputFileConn(const TxtCaffeInputFileConn &i)
