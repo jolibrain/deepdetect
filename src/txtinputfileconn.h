@@ -273,7 +273,10 @@ namespace dd
 	}
       
       if (_train)
-	serialize_vocab();
+	{
+	  _shuffle = true;
+	  serialize_vocab();
+	}
 
       // shuffle entries if requested
       if (_train && _shuffle)

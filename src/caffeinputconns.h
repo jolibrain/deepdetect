@@ -224,6 +224,7 @@ namespace dd
 	}
       else
 	{
+	  _shuffle = true;
 	  APIData ad_mllib;
 	  if (ad.has("parameters")) // hotplug of parameters, overriding the defaults
 	    {
