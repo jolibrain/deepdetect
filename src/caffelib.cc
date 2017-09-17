@@ -1600,6 +1600,7 @@ namespace dd
     caffe::ReadProtoFromTextFile(net_file,&net_param); //TODO: catch parsing error (returns bool true on success)
     int width = inputc.width();
     int height = inputc.height();
+    bool has_embed = false;
     if (_crop_size > 0)
       width = height = _crop_size;
     if (net_param.mutable_layer(0)->has_memory_data_param()
@@ -1629,10 +1630,16 @@ namespace dd
 	    net_param.mutable_layer(2)->mutable_slice_param()->set_slice_point(0,inputc.channels());
 	  }
       }
-
-    if (net_param.mutable_layer(2)->type() == "Embed")
+    
+    if (net_param.mutable_layer(3)->type() == "Embed") // embed is preceded by a flatten layer
       {
-	net_param.mutable_layer(2)->mutable_embed_param()->set_input_dim(inputc.feature_size());
+	has_embed = true;
+	net_param.mutable_layer(3)->mutable_embed_param()->set_input_dim(inputc._max_embed_id);
+      }
+
+    if (net_param.mutable_layer(4)->type() == "Reshape" && has_embed)
+      {
+	net_param.mutable_layer(4)->mutable_reshape_param()->mutable_shape()->set_dim(2,inputc._sequence_txt);
       }
     
     // if autoencoder, set the last inner product layer output number to input size (i.e. inputc.channels())
@@ -1686,9 +1693,15 @@ namespace dd
     caffe::NetParameter deploy_net_param;
     caffe::ReadProtoFromTextFile(deploy_file,&deploy_net_param);
 
-    if (deploy_net_param.mutable_layer(1)->type() == "Embed")
+    
+    
+    if (deploy_net_param.mutable_layer(2)->type() == "Embed")
       {
-	deploy_net_param.mutable_layer(1)->mutable_embed_param()->set_input_dim(inputc.feature_size());
+	deploy_net_param.mutable_layer(2)->mutable_embed_param()->set_input_dim(inputc._max_embed_id);
+      }
+    if (deploy_net_param.mutable_layer(3)->type() == "Reshape" && has_embed)
+      {
+	deploy_net_param.mutable_layer(3)->mutable_reshape_param()->mutable_shape()->set_dim(2,inputc._sequence_txt);
       }
     
     if (_autoencoder)

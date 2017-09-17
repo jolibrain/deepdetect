@@ -40,7 +40,7 @@ namespace dd
   public:
     CaffeInputInterface() {}
     CaffeInputInterface(const CaffeInputInterface &cii)
-      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed), _segmentation(cii._segmentation) {}
+      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed),_sequence_txt(cii._sequence_txt),_max_embed_id(cii._max_embed_id),_segmentation(cii._segmentation) {}
     ~CaffeInputInterface() {}
 
     /**
@@ -80,6 +80,8 @@ namespace dd
     std::vector<float> _mean_values; /**< mean image values across a dataset. */
     bool _sparse = false; /**< whether to use sparse representation. */
     bool _embed = false; /**< whether model is using an input embedding layer. */
+    int _sequence_txt = -1; /**< sequence of txt input connector. */
+    int _max_embed_id = -1; /**< in embeddings, the max index. */
     bool _segmentation = false; /**< whether it is a segmentation service. */
     std::unordered_map<std::string,std::pair<int,int>> _imgs_size; /**< image sizes, used in detection. */
     std::string _dbfullname = "train.lmdb";
@@ -660,6 +662,8 @@ namespace dd
 	_sparse = true;
       if (ad.has("embedding") && ad.get("embedding").get<bool>())
 	_embed = true;
+      _sequence_txt = _sequence;
+      _max_embed_id = _alphabet.size() + 1; // +1 as offset to null index
     }
 
     int channels() const
@@ -956,7 +960,7 @@ namespace dd
 		      val = static_cast<float>(vals[c]+1.0); // +1 as offset to null index
 		    datum.add_float_data(val);
 		  }
-		datum.set_height(_sequence); //TODO: height to sequence and channels to 1 ?
+		datum.set_height(_sequence);
 		datum.set_width(1);
 	      }
 	  }
