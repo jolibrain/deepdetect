@@ -103,6 +103,10 @@ Current features include:
 - Java client: https://github.com/kfadhel/deepdetect-api-java
 - Early C# client: https://github.com/beniz/deepdetect/pull/98
 
+##### Tools
+
+- Log DeepDetect training metrics via Tensorboard with [dd_board](https://github.com/jolibrain/dd_board)
+
 ##### Dependencies
 
 - C++, gcc >= 4.8 or clang with support for C++11 (there are issues with Clang + Boost)
