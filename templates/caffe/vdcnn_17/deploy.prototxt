@@ -203,7 +203,7 @@ layer {
     bias_filler {
       type: "constant"
     }
-    kernel_h: 2
+    kernel_h: 3
     kernel_w: 1
   }
 }
@@ -253,7 +253,7 @@ layer {
     bias_filler {
       type: "constant"
     }
-    kernel_h: 2
+    kernel_h: 3
     kernel_w: 1
   }
 }
