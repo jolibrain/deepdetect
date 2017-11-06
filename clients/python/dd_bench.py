@@ -29,7 +29,7 @@ import argparse
 from dd_client import DD
 
 parser = argparse.ArgumentParser(description='DeepDetect benchmark tool')
-parser.add_argument('--host',help='server host')
+parser.add_argument('--host',help='server host',default='localhost')
 parser.add_argument('--port',help='server port',type=int,default=8080)
 parser.add_argument('--sname',help='service name')
 parser.add_argument('--img-width',help='image width',type=int,default=224)
@@ -50,20 +50,18 @@ host = args.host
 port = args.port
 dd = DD(host,port)
 dd.set_return_format(dd.RETURN_PYTHON)
-model_c = args.create
 autokill = args.auto_kill
 
 # Create a service
-if model_c:
-  dd1 = DD('localhost')
+if args.create:
   description = 'image classification service'
   mllib = 'caffe'
-  model = {'repository':'../../models/'+model_c}
-  parameters_input = {'connector':'image'}
+  model = {'repository':args.create}
+  parameters_input = {'connector':'image','width':args.img_width,'height':args.img_height}
   parameters_mllib = {'nclasses':args.nclasses}
   parameters_output = {}
-  dd1.put_service(args.sname,model,description,mllib,
-              parameters_input,parameters_mllib,parameters_output)
+  dd.put_service(args.sname,model,description,mllib,
+                 parameters_input,parameters_mllib,parameters_output)
 else:
     pass
 
