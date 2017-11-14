@@ -137,6 +137,16 @@ else()
 	  INSTALL_COMMAND ""
 	  BUILD_IN_SOURCE 1
 	  )
+      elseif(JETSON)
+	ExternalProject_Add(
+	  caffe_dd
+	  PREFIX caffe_dd
+	  INSTALL_DIR ${CMAKE_BINARY_DIR}
+	  URL https://github.com/beniz/caffe/archive/master.tar.gz
+	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn.jetson Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && make CUDA_ARCH=${CUDA_ARCH} -j${N}
+	  INSTALL_COMMAND ""
+	  BUILD_IN_SOURCE 1
+	  )
       else() # USE_TF
 	ExternalProject_Add(
 	  caffe_dd
@@ -195,12 +205,17 @@ else()
 	)
     endif()
   endif()
+  if (JETSON)
+    set(HDF5_LIB /usr/lib/aarch64-linux-gnu/hdf5/serial)
+  else()
+    set(HDF5_LIB /usr/lib/x86_64-linux-gnu/hdf5/serial)
+  endif()
   if (CUDA_FOUND)
     set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${CUDA_INCLUDE_DIRS} ${PROTOBUF_INCLUDE_DIR})
-    set(CAFFE_LIB_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src /usr/lib/x86_64-linux-gnu/hdf5/serial ${PROTOBUF_LIB_DIR} ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY})
+    set(CAFFE_LIB_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${HDF5_LIB} ${PROTOBUF_LIB_DIR} ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY})
   else()
     set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src /usr/include/hdf5/serial ${PROTOBUF_INCLUDE_DIR})
-    set(CAFFE_LIB_DIR $ENV{HOME}/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src /usr/lib/x86_64-linux-gnu/hdf5/serial ${PROTOBUF_LIB_DIR})
+    set(CAFFE_LIB_DIR $ENV{HOME}/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${HDF5_LIB} ${PROTOBUF_LIB_DIR})
   endif()
 endif()
 
