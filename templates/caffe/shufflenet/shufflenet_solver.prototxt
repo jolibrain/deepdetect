@@ -1,0 +1,15 @@
+net: "shufflenet.prototxt"
+test_iter: 1000
+test_interval: 4000
+test_initialization: false
+display: 40
+average_loss: 40
+base_lr: 0.01
+lr_policy: "fixed"
+stepsize: 320000
+max_iter: 10000000
+momentum: 0.9
+weight_decay: 0.0001
+snapshot: 40000
+snapshot_prefix: "shufflenet"
+solver_mode: GPU
