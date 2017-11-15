@@ -245,6 +245,12 @@ To target the build of underlying Caffe to a specific CUDA architecture (e.g. Pa
 cmake .. -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61"
 ```
 
+If you would like to build on NVidia Jetson TX1:
+```
+cmake .. -DCUDA_ARCH="-gencode arch=compute_53,code=sm_53" -DUSE_CUDNN=ON -DJETSON=ON -DCUDA_USE_STATIC_CUDA_RUNTIME=OFF
+```
+On Jetson TX2, use `-DCUDA_ARCH="-gencode arch=compute_62,code=sm_62"`
+
 If you would like a CPU only build, use:
 ```
 cmake .. -DUSE_CPU_ONLY=ON
