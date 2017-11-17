@@ -1118,6 +1118,8 @@ namespace dd
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
     APIData ad_output = ad.getobj("parameters").getobj("output");
     bool bbox = false;
+    bool rois = false;
+    std::string roi_layer;
     double confidence_threshold = 0.0;
     if (ad_output.has("confidence_threshold"))
       {
@@ -1133,7 +1135,11 @@ namespace dd
       }
     if (ad_output.has("bbox") && ad_output.get("bbox").get<bool>())
       bbox = true;
-    
+    if (ad_output.has("rois")) {
+      roi_layer =  ad_output.get("rois").get<std::string>();
+      rois = true;
+    }
+
     // gpu
 #if !defined(CPU_ONLY) && !defined(USE_CAFFE_CPU_ONLY)
     bool gpu = _gpu;
@@ -1197,11 +1203,11 @@ namespace dd
       
     try
       {
-	inputc.transform(cad);
+        inputc.transform(cad);
       }
     catch (std::exception &e)
       {
-	throw;
+        throw;
       }
     int batch_size = inputc.test_batch_size();
     if (ad_mllib.has("net"))
@@ -1263,18 +1269,44 @@ namespace dd
 	if (extract_layer.empty() || inputc._segmentation) // supervised or segmentation
 	  {
 	    std::vector<Blob<float>*> results;
-	    try
-	      {
-		results = _net->Forward(&loss);
+
+        if (rois) {
+          std::map<std::string,int> n_layer_names_index = _net->layer_names_index();
+          std::map<std::string,int>::const_iterator lit;
+          if ((lit=n_layer_names_index.find(roi_layer))==n_layer_names_index.end())
+            throw MLLibBadParamException("unknown rois layer " + roi_layer);
+          int li = (*lit).second;
+          try
+            {
+              loss = _net->ForwardFromTo(0,li);
+            }
+          catch(std::exception &e)
+            {
+              LOG(ERROR) << "Error while proceeding with supervised prediction forward pass, not enough memory? " << e.what();
+              delete _net;
+              _net = nullptr;
+              throw;
+	        }
+          const std::vector<std::vector<Blob<float>*>>& rresults = _net->top_vecs();
+          results = rresults.at(li);
+
+        } else {
+
+          try
+            {
+              results = _net->Forward(&loss);
+            }
+          catch(std::exception &e)
+            {
+              LOG(ERROR) << "Error while proceeding with supervised prediction forward pass, not enough memory? " << e.what();
+              delete _net;
+              _net = nullptr;
+              throw;
 	      }
-	    catch(std::exception &e)
-	      {
-		LOG(ERROR) << "Error while proceeding with supervised prediction forward pass, not enough memory? " << e.what();
-		delete _net;
-		_net = nullptr;
-		throw;
-	      }
-	    if (inputc._segmentation)
+        }
+
+
+          if (inputc._segmentation)
 	      {
 		int slot = results.size() - 1;
 		nclasses = _nclasses;
@@ -1372,6 +1404,56 @@ namespace dd
 		    vrad.push_back(rad);
 		  }
 	      }
+        else if (rois) {
+
+          // adhoc code for roi extractions
+          //int nblobs = results.size();
+          // nblobs should be 4: 0 is id (in batch)
+          // 1 is label
+          // 2 is confidence
+          // 3 is coord
+          // 4 is pooled_data
+          int nroi = results[0]->shape(0);
+          // 1 et un seul val par reply
+          int max_id = -1;
+          for (int iroi=0; iroi<nroi; ++iroi)
+            if (std::round(results[0]->cpu_data()[iroi]) > max_id)
+              max_id = std::round(results[0]->cpu_data()[0]);
+
+          // loop over images
+          for (int iid=0; iid<=max_id; ++iid) {
+            APIData rad;
+            std::vector<APIData> rois;
+            // loop overs rois
+            std::vector<double> probs;
+            std::vector<std::string> cats;
+            for (int iroi=0; iroi<nroi; ++iroi) {
+              // check if current roi belongs to current image
+              if (std::round(results[0]->cpu_data()[iroi]) == iid) {
+                APIData roi;
+                //roi.add("cat",results[1]->cpu_data()[iroi]);
+                cats.push_back(this->_mlmodel.get_hcorresp(results[1]->cpu_data()[iroi]));
+                probs.push_back(results[2]->cpu_data()[iroi]);
+                std::vector<double> coords;
+                for (int icoord = 0; icoord< 4; ++icoord)
+                  coords.push_back(results[3]->cpu_data()[iroi+icoord]);
+                roi.add("coord",coords);
+                std::vector<double> pooled_data(results[4]->count());
+                for (int idata = 0; idata < results.at(4)->count();++idata)
+                  pooled_data.push_back(results.at(4)->cpu_data()[iroi+idata]);
+                //pooled_data.push_back(results[4]->cpu_data()[iroi]);
+                roi.add("pooled",pooled_data);
+                rois.push_back(roi);
+              }//end if roi in image
+            } // end loop over all rois
+            rad.add("rois",rois);
+            rad.add("uri",inputc._ids.at(idoffset+iid));
+            rad.add("loss",0.0); // XXX: unused
+		    rad.add("probs",probs);
+		    rad.add("cats",cats);
+		    vrad.push_back(rad);
+          }
+        }
 	    else // classification
 	      {
 		int slot = results.size() - 1;
@@ -1427,8 +1509,10 @@ namespace dd
 		_net = nullptr;
 		throw;
 	      }
-	    const std::vector<std::vector<Blob<float>*>>& rresults = _net->top_vecs();
+
+        const std::vector<std::vector<Blob<float>*>>& rresults = _net->top_vecs();
 	    std::vector<Blob<float>*> results = rresults.at(li);
+
 	    int slot = 0;
 	    int scount = results[slot]->count();
 	    int scperel = scount / batch_size;
@@ -1453,6 +1537,7 @@ namespace dd
 	idoffset += batch_size;
       } // end prediction loop over batches
 
+
     if (!inputc._segmentation)
       tout.add_results(vrad);
     if (extract_layer.empty())
@@ -1469,6 +1554,7 @@ namespace dd
     
     out.add("nclasses",nclasses);
     out.add("bbox",bbox);
+    out.add("roi",rois);
     if (!inputc._segmentation)
       tout.finalize(ad.getobj("parameters").getobj("output"),out);
     else // segmentation returns an array, best dealt with an unsupervised connector

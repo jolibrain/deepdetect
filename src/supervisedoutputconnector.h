@@ -120,7 +120,9 @@ namespace dd
 	  std::vector<APIData> vextra;
 	  if (ad.has("bboxes"))
 	    vextra = ad.getv("bboxes");
-	  if ((hit=_vcats.find(uri))==_vcats.end())
+      if (ad.has("rois"))
+        vextra = ad.getv("rois");
+      if ((hit=_vcats.find(uri))==_vcats.end())
 	    {
 	      auto resit = _vcats.insert(std::pair<std::string,int>(uri,_vvcats.size()));
 	      _vvcats.push_back(sup_result(uri,loss));
@@ -248,14 +250,22 @@ namespace dd
 	  ad_out.erase("autoencoder");
 	}
       bool has_bbox = false;
+      bool has_roi = true;
       if (ad_out.has("bbox") && ad_out.get("bbox").get<bool>())
 	{
 	  has_bbox = true;
 	  ad_out.erase("nclasses");
 	  ad_out.erase("bbox");
 	}
+
+      if (ad_out.has("roi"))
+        {
+          has_roi = true;
+          ad_out.erase("nclasses");
+          ad_out.erase("roi");
+        }
       best_cats(ad_in,bcats,nclasses,has_bbox);
-      bcats.to_ad(ad_out,regression,autoencoder);
+      bcats.to_ad(ad_out,regression,autoencoder,has_bbox, has_roi);
     }
     
     struct PredictionAndAnswer {
@@ -718,12 +728,13 @@ namespace dd
      * \brief write supervised output object to data object
      * @param out data destination
      */
-    void to_ad(APIData &out, const bool &regression, const bool &autoencoder) const
+    void to_ad(APIData &out, const bool &regression, const bool &autoencoder, const bool &has_bbox, const bool &has_roi) const
     {
       static std::string cl = "classes";
       static std::string ve = "vector";
       static std::string ae = "losses";
       static std::string bb = "bbox";
+      static std::string roi = "roi";
       static std::string phead = "prob";
       static std::string chead = "cat";
       static std::string vhead = "val";
@@ -735,7 +746,7 @@ namespace dd
 	  APIData adpred;
 	  std::vector<APIData> v;
 	  auto bit = _vvcats.at(i)._extra.begin();
-	  bool has_bbox = (bit!=_vvcats.at(i)._extra.end());
+	  //bool has_bbox = (bit!=_vvcats.at(i)._extra.end());
 	  auto mit = _vvcats.at(i)._cats.begin();
 	  while(mit!=_vvcats.at(i)._cats.end())
 	    {
@@ -752,6 +763,11 @@ namespace dd
 		  nad.add(bb,(*bit).second);
 		  ++bit;
 		}
+          if (has_roi)
+            {
+              nad.add(roi,(*bit).second);
+              ++bit;
+            }
 	      ++mit;
 	      if (mit == _vvcats.at(i)._cats.end())
 		nad.add(last,true);
