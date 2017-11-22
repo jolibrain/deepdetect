@@ -30,24 +30,54 @@
 
 namespace dd
 {
+  /**
+   * \brief Similarity search indexing exception
+   */
+  class SimIndexException : public std::exception
+  {
+  public:
+    SimIndexException(const std::string &s)
+      :_s(s) {}
+    ~SimIndexException() {}
+    const char* what() const noexcept { return _s.c_str(); }
+  private:
+    std::string _s;
+  };
+
+  /**
+   * \brief Similarity search searching exception
+   */
+  class SimSearchException : public std::exception
+  {
+  public:
+    SimSearchException(const std::string &s)
+      :_s(s) {}
+    ~SimSearchException() {}
+    const char* what() const noexcept { return _s.c_str(); }
+  private:
+    std::string _s;
+  };
+  
   template <class TSE>
     class SearchEngine
     {
     public:
-      SearchEngine(const int &dim);
+      SearchEngine(const int &dim, const std::string &model_repo);
       ~SearchEngine();
       
       void create_index();
 
       void update_index();
 
+      void remove_index();
+      
       void index(const std::string &uri,
 		 const std::vector<double> &data);
       
       void search(const std::vector<double> &data,
 		  const int &nn,
-		  const std::vector<std::string> &uris,
-		  const std::vector<double> &distances);
+		  std::vector<std::string> &uris,
+		  std::vector<double> &distances);
 
       const int _dim = 128; /**< indexed vector length. */
       TSE *_tse = nullptr;

@@ -22,6 +22,7 @@
 #ifndef MODEL_H
 #define MODEL_H
 
+#include "simsearch.h"
 #include <string>
 #include <fstream>
 #include <iostream>
@@ -34,8 +35,11 @@ namespace dd
   public:
     MLModel() {};
     MLModel(const std::string &repo)
-      :_repo(repo) {}
-    ~MLModel() {};
+      :_repo(repo) {
+    }
+    ~MLModel() {
+      delete _se;
+    }
 
     void read_corresp_file()
     {
@@ -66,11 +70,49 @@ namespace dd
 	  return std::to_string(i);
 	else return _hcorresp[i];
       }
+
+    /**
+     * \brief create similarity search engine
+     */
+    void create_sim_search(const int &dim)
+    {
+      if (!_se)
+	_se = new SearchEngine<AnnoySE>(dim,_repo);
+    }
+
+    /**
+     * \brief create similarity search index
+     */
+    void create_index()
+    {
+      if (_se)
+	_se->create_index();
+    }
+
+    /**
+     * \brief build similarity search index
+     */
+    void build_index()
+    {
+      if (_se)
+	_se->update_index();
+    }
+    
+    /**
+     * \brief remove similarity search index
+     */
+    void remove_index()
+    {
+      if (_se)
+	_se->remove_index();
+    }
     
     std::string _repo; /**< model repository. */
     std::string _mlmodel_template_repo = "templates/";
     std::unordered_map<int,std::string> _hcorresp; /**< table of class correspondences. */
     std::string _corresp; /**< file name of the class correspondences (e.g. house / 23) */
+
+    SearchEngine<AnnoySE> *_se = nullptr;
   };
 }
 

@@ -200,6 +200,22 @@ namespace dd
     render_status(jd,404,"Not Found",1009,"Output Connector Network Error");
     return jd;
   }
+
+  JDoc JsonAPI::dd_sim_index_error_1010() const
+  {
+    JDoc jd;
+    jd.SetObject();
+    render_status(jd,403,"Forbidden",1010,"Cannot index after similarity search tree has been built");
+    return jd;
+  }
+
+  JDoc JsonAPI::dd_sim_search_error_1011() const
+  {
+    JDoc jd;
+    jd.SetObject();
+    render_status(jd,403,"Forbidden",1011,"Cannot search before similarity search tree has been built");
+    return jd;
+  }
   
   std::string JsonAPI::jrender(const JDoc &jst) const
   {

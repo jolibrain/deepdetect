@@ -106,7 +106,7 @@ namespace dd
 	}
     }
 
-    void finalize(const APIData &ad_in, APIData &ad_out)
+    void finalize(const APIData &ad_in, APIData &ad_out, MLModel *mlm)
     {
       if (ad_in.has("binarized"))
 	_binarized = ad_in.get("binarized").get<bool>();
@@ -136,6 +136,22 @@ namespace dd
 	    }
 	}
       to_ad(ad_out);
+
+      if (ad_in.has("index") && ad_in.get("index").get<bool>())
+	{
+	  // check whether index has been created
+	  if (!mlm->_se)
+	    {
+	      int index_dim = _vvres.at(0)._vals.size(); //XXX: lookup to the batch's first otuput, as they should all have the same size
+	      mlm->create_sim_search(index_dim);
+	    }
+	      
+	  // index output content -> vector (XXX: will need to flatten in case of multiple vectors)
+	  for (size_t i=0;i<_vvres.size();i++)
+	    {
+	      mlm->_se->index(_vvres.at(i)._uri,_vvres.at(i)._vals);
+	    }
+	}
     }
 
     void to_ad(APIData &out) const

@@ -26,10 +26,11 @@ namespace dd
 {
 
   template <class TSE>
-  SearchEngine<TSE>::SearchEngine(const int &dim)
+  SearchEngine<TSE>::SearchEngine(const int &dim,
+				  const std::string &model_repo)
     :_dim(dim)
   {
-    _tse = new TSE(_dim);
+    _tse = new TSE(_dim,model_repo);
   }
 
   template <class TSE>
@@ -51,20 +52,26 @@ namespace dd
   }
 
   template <class TSE>
+  void SearchEngine<TSE>::remove_index()
+  {
+    _tse->remove_index();
+  }
+  
+  template <class TSE>
   void SearchEngine<TSE>::index(const std::string &uri,
 				const std::vector<double> &data)
   {
     std::lock_guard<std::mutex> lock(_index_mutex);
-    _tse.index(uri,data);
+    _tse->index(uri,data);
   }
   
   template <class TSE>
   void SearchEngine<TSE>::search(const std::vector<double> &data,
 				 const int &nn,
-				 const std::vector<std::string> &uris,
-				 const std::vector<double> &distances)
+				 std::vector<std::string> &uris,
+				 std::vector<double> &distances)
   {
-    _tse.search(data,nn,uris,distances);
+    _tse->search(data,nn,uris,distances);
   }
 
   /*- AnnoySE -*/
@@ -165,4 +172,6 @@ namespace dd
     _db->Get(std::to_string(idx),uri);
   }
   
+
+  template class SearchEngine<AnnoySE>;
 }
