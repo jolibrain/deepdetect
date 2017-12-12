@@ -142,18 +142,20 @@ namespace dd
      * @param ad_out output data object
      * @param bcats supervised output connector
      */
-    void best_cats(const APIData &ad_out, SupervisedOutput &bcats, const int &nclasses, const bool &has_bbox) const
+    void best_cats(const APIData &ad_out, SupervisedOutput &bcats, const int &nclasses, const bool &has_bbox, const bool &has_roi) const
     {
       int best = _best;
       if (ad_out.has("best"))
 	best = ad_out.get("best").get<int>();
       if (best == -1)
 	best = nclasses;
-      if (!has_bbox)
+         if (!has_bbox)
 	{
 	  for (size_t i=0;i<_vvcats.size();i++)
 	    {
 	      sup_result sresult = _vvcats.at(i);
+          if (has_roi)
+            best = static_cast<int>(sresult._cats.size());
 	      sup_result bsresult(sresult._label,sresult._loss);
 	      std::copy_n(sresult._cats.begin(),std::min(best,static_cast<int>(sresult._cats.size())),
 			  std::inserter(bsresult._cats,bsresult._cats.end()));
@@ -258,13 +260,13 @@ namespace dd
 	  ad_out.erase("bbox");
 	}
 
-      if (ad_out.has("roi"))
-        {
-          has_roi = true;
-          ad_out.erase("nclasses");
-          ad_out.erase("roi");
-        }
-      best_cats(ad_in,bcats,nclasses,has_bbox);
+      /* if (ad_out.has("roi")) */
+      /*   { */
+      /*     has_roi = true; */
+      /*     ad_out.erase("nclasses"); */
+      /*     ad_out.erase("roi"); */
+      /*   } */
+      best_cats(ad_in,bcats,nclasses,has_bbox,has_roi);
       bcats.to_ad(ad_out,regression,autoencoder,has_bbox, has_roi);
     }
     
@@ -735,6 +737,7 @@ namespace dd
       static std::string ae = "losses";
       static std::string bb = "bbox";
       static std::string roi = "roi";
+      static std::string rois = "rois";
       static std::string phead = "prob";
       static std::string chead = "cat";
       static std::string vhead = "val";
@@ -752,17 +755,17 @@ namespace dd
 	    {
 	      APIData nad;
 	      if (!autoencoder)
-		nad.add(chead,(*mit).second);
+            nad.add(chead,(*mit).second);
 	      if (regression)
-		nad.add(vhead,(*mit).first);
+            nad.add(vhead,(*mit).first);
 	      else if (autoencoder)
-		nad.add(ahead,(*mit).first);
+            nad.add(ahead,(*mit).first);
 	      else nad.add(phead,(*mit).first);
 	      if (has_bbox)
-		{
-		  nad.add(bb,(*bit).second);
-		  ++bit;
-		}
+            {
+              nad.add(bb,(*bit).second);
+              ++bit;
+            }
           if (has_roi)
             {
               nad.add(roi,(*bit).second);
@@ -770,13 +773,15 @@ namespace dd
             }
 	      ++mit;
 	      if (mit == _vvcats.at(i)._cats.end())
-		nad.add(last,true);
+            nad.add(last,true);
 	      v.push_back(nad);
 	    }
 	  if (regression)
 	    adpred.add(ve,v);
 	  else if (autoencoder)
 	    adpred.add(ae,v);
+      else if (has_roi)
+        adpred.add(rois,v);
 	  else adpred.add(cl,v);
 	  if (_vvcats.at(i)._loss > 0.0) // XXX: not set by Caffe in prediction mode for now
 	    adpred.add("loss",_vvcats.at(i)._loss);

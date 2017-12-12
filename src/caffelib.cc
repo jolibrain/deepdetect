@@ -1408,7 +1408,7 @@ namespace dd
 
           // adhoc code for roi extractions
           //int nblobs = results.size();
-          // nblobs should be 4: 0 is id (in batch)
+          // nblobs should be 5: 0 is id (in batch)
           // 1 is label
           // 2 is confidence
           // 3 is coord
@@ -1438,11 +1438,11 @@ namespace dd
                 for (int icoord = 0; icoord< 4; ++icoord)
                   coords.push_back(results[3]->cpu_data()[iroi+icoord]);
                 roi.add("coord",coords);
-                std::vector<double> pooled_data(results[4]->count());
+                std::vector<double> pooled_data;
                 for (int idata = 0; idata < results.at(4)->count();++idata)
                   pooled_data.push_back(results.at(4)->cpu_data()[iroi+idata]);
                 //pooled_data.push_back(results[4]->cpu_data()[iroi]);
-                roi.add("pooled",pooled_data);
+                roi.add("pool",pooled_data);
                 rois.push_back(roi);
               }//end if roi in image
             } // end loop over all rois
