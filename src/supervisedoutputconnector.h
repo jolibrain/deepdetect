@@ -768,6 +768,8 @@ namespace dd
             }
           if (has_roi)
             {
+              // step into this APIdata in order to flatten output data
+              // unordered_map containing "pool":varable_length_data and "coord":4_floats
               nad.add(roi,(*bit).second);
               ++bit;
             }
