@@ -77,7 +77,10 @@ namespace dd
     void create_sim_search(const int &dim)
     {
       if (!_se)
-	_se = new SearchEngine<AnnoySE>(dim,_repo);
+	{
+	  _se = new SearchEngine<AnnoySE>(dim,_repo);
+	  _se->create_index();
+	}
     }
 
     /**

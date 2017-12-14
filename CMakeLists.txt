@@ -63,7 +63,7 @@ include_directories("${EIGEN3_INCLUDE_DIR}")
 find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system iostreams)
 
 # annoy
-set(ANNOY_INCLUDE_DIR /path/to/annoy/src/)
+set(ANNOY_INCLUDE_DIR /home/beniz/projects/deepdetect/apps/annoy/src/)
 include_directories("${ANNOY_INCLUDE_DIR}")
 
 # optional packages

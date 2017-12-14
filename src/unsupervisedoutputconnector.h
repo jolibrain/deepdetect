@@ -140,17 +140,26 @@ namespace dd
       if (ad_in.has("index") && ad_in.get("index").get<bool>())
 	{
 	  // check whether index has been created
+	  std::cerr << "mlm se=" << mlm->_se << std::endl;
 	  if (!mlm->_se)
 	    {
-	      int index_dim = _vvres.at(0)._vals.size(); //XXX: lookup to the batch's first otuput, as they should all have the same size
+	      int index_dim = _vvres.at(0)._vals.size(); //XXX: lookup to the batch's first output, as they should all have the same size
+	      std::cerr << "Creating index\n";
 	      mlm->create_sim_search(index_dim);
 	    }
 	      
 	  // index output content -> vector (XXX: will need to flatten in case of multiple vectors)
 	  for (size_t i=0;i<_vvres.size();i++)
 	    {
+	      std::cerr << "indexing...\n";
 	      mlm->_se->index(_vvres.at(i)._uri,_vvres.at(i)._vals);
 	    }
+	}
+      if (ad_in.has("build_index") && ad_in.get("build_index").get<bool>())
+	{
+	  if (mlm->_se)
+	    mlm->build_index();
+	  else throw SimIndexException("Cannot build index if not created");
 	}
     }
 

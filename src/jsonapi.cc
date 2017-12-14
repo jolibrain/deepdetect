@@ -563,6 +563,14 @@ namespace dd
       {
 	return dd_train_predict_conflict_1008();
       }
+    catch (SimIndexException &e)
+      {
+	return dd_sim_index_error_1010();
+      }
+    catch (SimSearchException &e)
+      {
+	return dd_sim_search_error_1011();
+      }
     catch (std::exception &e)
       {
 	return dd_internal_mllib_error_1007(e.what());

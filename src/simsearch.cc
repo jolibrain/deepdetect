@@ -96,11 +96,21 @@ namespace dd
   {
     std::string index_filename = _model_repo + "/" + _index_name;
     if (fileops::file_exists(index_filename))
-      _aindex->load(index_filename.c_str());
+      {
+	_saved_tree = true;
+	_aindex->load(index_filename.c_str());
+      }
     std::string db_filename = _model_repo + "/" + _db_name;
     if (fileops::file_exists(db_filename))
-      _db->Open(db_filename,caffe::db::READ);
-    else _db->Open(db_filename,caffe::db::NEW);
+      {
+	std::cerr << "open existing index db\n";
+	_db->Open(db_filename,caffe::db::WRITE);
+      }
+    else
+      {
+	std::cerr << "create index db\n";
+	_db->Open(db_filename,caffe::db::NEW);
+      }
   }
 
   void AnnoySE::remove_index()
@@ -120,34 +130,42 @@ namespace dd
   void AnnoySE::build_tree()
   {
     _aindex->build(_ntrees);
+    _built_index = true;
   }
 
   void AnnoySE::unbuild_tree()
   {
     _aindex->unbuild();
+    _built_index = false;
   }
 
   void AnnoySE::save_tree()
   {
     std::string index_path = _model_repo + "/" + _index_name;
     _aindex->save(index_path.c_str());
+    _saved_tree = true;
   }
   
   // must be protected by mutex
   void AnnoySE::index(const std::string &uri,
 		      const std::vector<double> &vec)
   {
+    if (_saved_tree)
+      throw SimIndexException("Cannot index after Annoy index has been saved");
     int idx = _index_size;
     _aindex->add_item(idx,&vec[0]);
     ++_index_size;
+    std::cerr << "add to db\n";
     add_to_db(idx,uri);
   }
-
+  
   void AnnoySE::search(const std::vector<double> &vec,
 		       const int &nn,
 		       std::vector<std::string> &uris,
 		       std::vector<double> &distances)
   {
+    if (!_built_index)
+      throw SimSearchException("Cannot search before the Annoy tree has been built");
     std::vector<int> result;
     _aindex->get_nns_by_vector(&vec[0],nn,-1,&result,&distances);
     for (auto i: result)
