@@ -362,12 +362,12 @@ layer {
   name: "relu4_3"
   type: "ReLU"
   bottom: "conv4_3"
-  top: "conv4_3"
+  top: "conv4_3_relued"
 }
 layer {
   name: "pool4"
   type: "Pooling"
-  bottom: "conv4_3"
+  bottom: "conv4_3_relued"
   top: "pool4"
   pooling_param {
     pool: MAX
@@ -545,12 +545,12 @@ layer {
   name: "relu7"
   type: "ReLU"
   bottom: "fc7"
-  top: "fc7"
+  top: "fc7_relued"
 }
 layer {
   name: "conv6_1"
   type: "Convolution"
-  bottom: "fc7"
+  bottom: "fc7_relued"
   top: "conv6_1"
   param {
     lr_mult: 1
@@ -611,12 +611,12 @@ layer {
   name: "conv6_2_relu"
   type: "ReLU"
   bottom: "conv6_2"
-  top: "conv6_2"
+  top: "conv6_2_relued"
 }
 layer {
   name: "conv7_1"
   type: "Convolution"
-  bottom: "conv6_2"
+  bottom: "conv6_2_relued"
   top: "conv7_1"
   param {
     lr_mult: 1
@@ -677,12 +677,12 @@ layer {
   name: "conv7_2_relu"
   type: "ReLU"
   bottom: "conv7_2"
-  top: "conv7_2"
+  top: "conv7_2_relued"
 }
 layer {
   name: "conv8_1"
   type: "Convolution"
-  bottom: "conv7_2"
+  bottom: "conv7_2_relued"
   top: "conv8_1"
   param {
     lr_mult: 1
@@ -743,12 +743,12 @@ layer {
   name: "conv8_2_relu"
   type: "ReLU"
   bottom: "conv8_2"
-  top: "conv8_2"
+  top: "conv8_2_relued"
 }
 layer {
   name: "pool6"
   type: "Pooling"
-  bottom: "conv8_2"
+  bottom: "conv8_2_relued"
   top: "pool6"
   pooling_param {
     pool: AVE
@@ -758,7 +758,7 @@ layer {
 layer {
   name: "conv4_3_norm"
   type: "Normalize"
-  bottom: "conv4_3"
+  bottom: "conv4_3_relued"
   top: "conv4_3_norm"
   norm_param {
     across_spatial: false
@@ -885,7 +885,7 @@ layer {
 layer {
   name: "fc7_mbox_loc"
   type: "Convolution"
-  bottom: "fc7"
+  bottom: "fc7_relued"
   top: "fc7_mbox_loc"
   param {
     lr_mult: 1
@@ -933,7 +933,7 @@ layer {
 layer {
   name: "fc7_mbox_conf"
   type: "Convolution"
-  bottom: "fc7"
+  bottom: "fc7_relued"
   top: "fc7_mbox_conf"
   param {
     lr_mult: 1
@@ -981,7 +981,7 @@ layer {
 layer {
   name: "fc7_mbox_priorbox"
   type: "PriorBox"
-  bottom: "fc7"
+  bottom: "fc7_relued"
   bottom: "data"
   top: "fc7_mbox_priorbox"
   prior_box_param {
@@ -1000,7 +1000,7 @@ layer {
 layer {
   name: "conv6_2_mbox_loc"
   type: "Convolution"
-  bottom: "conv6_2"
+  bottom: "conv6_2_relued"
   top: "conv6_2_mbox_loc"
   param {
     lr_mult: 1
@@ -1048,7 +1048,7 @@ layer {
 layer {
   name: "conv6_2_mbox_conf"
   type: "Convolution"
-  bottom: "conv6_2"
+  bottom: "conv6_2_relued"
   top: "conv6_2_mbox_conf"
   param {
     lr_mult: 1
@@ -1096,7 +1096,7 @@ layer {
 layer {
   name: "conv6_2_mbox_priorbox"
   type: "PriorBox"
-  bottom: "conv6_2"
+  bottom: "conv6_2_relued"
   bottom: "data"
   top: "conv6_2_mbox_priorbox"
   prior_box_param {
@@ -1115,7 +1115,7 @@ layer {
 layer {
   name: "conv7_2_mbox_loc"
   type: "Convolution"
-  bottom: "conv7_2"
+  bottom: "conv7_2_relued"
   top: "conv7_2_mbox_loc"
   param {
     lr_mult: 1
@@ -1163,7 +1163,7 @@ layer {
 layer {
   name: "conv7_2_mbox_conf"
   type: "Convolution"
-  bottom: "conv7_2"
+  bottom: "conv7_2_relued"
   top: "conv7_2_mbox_conf"
   param {
     lr_mult: 1
@@ -1211,7 +1211,7 @@ layer {
 layer {
   name: "conv7_2_mbox_priorbox"
   type: "PriorBox"
-  bottom: "conv7_2"
+  bottom: "conv7_2_relued"
   bottom: "data"
   top: "conv7_2_mbox_priorbox"
   prior_box_param {
@@ -1230,7 +1230,7 @@ layer {
 layer {
   name: "conv8_2_mbox_loc"
   type: "Convolution"
-  bottom: "conv8_2"
+  bottom: "conv8_2_relued"
   top: "conv8_2_mbox_loc"
   param {
     lr_mult: 1
@@ -1278,7 +1278,7 @@ layer {
 layer {
   name: "conv8_2_mbox_conf"
   type: "Convolution"
-  bottom: "conv8_2"
+  bottom: "conv8_2_relued"
   top: "conv8_2_mbox_conf"
   param {
     lr_mult: 1
@@ -1326,7 +1326,7 @@ layer {
 layer {
   name: "conv8_2_mbox_priorbox"
   type: "PriorBox"
-  bottom: "conv8_2"
+  bottom: "conv8_2_relued"
   bottom: "data"
   top: "conv8_2_mbox_priorbox"
   prior_box_param {
@@ -1628,6 +1628,7 @@ layer {
   roi_pooling_param {
      pooled_w: 2
      pooled_h: 2
+     # pooled_? are the dimension of the output 
      # spatial_scale: 0.0625 # 1/16
      # roi are between 0 and 1, we have to multiply by w, h of input
      # input : w x h x d
@@ -1644,14 +1645,82 @@ layer {
      # pool5 is 3 1 + pad 1 does not change dimension
      # conv6_2 is stride 2
      # conv7_2 is stride 2
-     # conv8 and conv 9 are stride 1 do not change dimension
+     # conv8 is stride 2
      # we are input after pool3 so
      # so here we have  h/w blob = 1/8 image size which is consistent with fast rnn
      # they give absolute roi here we have relative at input which is 300x300
-     # which finally leads to 300/16 w and h ...
-     spatial_scale: 37.5 
+     # which finally leads to 300/8 w and h ...
+     # as our coordinates are between 0 and 1, we only need to put image size here
+     spatial_scale: 38 
   }
 }
+
+
+layer {
+  name: "roipool_fc7"
+  type: "ROIPooling"
+  bottom: "fc7"
+  bottom: "id_coord_shaped"
+  top: "roipool_fc7"
+  include {
+    phase: TEST
+  }
+  roi_pooling_param {
+     pooled_w: 2
+     pooled_h: 2
+     spatial_scale: 19
+  }
+}
+
+layer {
+  name: "roipool_6_2"
+  type: "ROIPooling"
+  bottom: "conv6_2"
+  bottom: "id_coord_shaped"
+  top: "roipool_6_2"
+  include {
+    phase: TEST
+  }
+  roi_pooling_param {
+     pooled_w: 2
+     pooled_h: 2
+     spatial_scale: 10
+  }
+}
+
+layer {
+  name: "roipool_7_2"
+  type: "ROIPooling"
+  bottom: "conv7_2"
+  bottom: "id_coord_shaped"
+  top: "roipool_7_2"
+  include {
+    phase: TEST
+  }
+  roi_pooling_param {
+     pooled_w: 2
+     pooled_h: 2
+     spatial_scale: 5
+  }
+}
+
+layer {
+  name: "roipool_8_2"
+  type: "ROIPooling"
+  bottom: "conv8_2"
+  bottom: "id_coord_shaped"
+  top: "roipool_8_2"
+  include {
+    phase: TEST
+  }
+  roi_pooling_param {
+     pooled_w: 2
+     pooled_h: 2
+     spatial_scale: 3
+  }
+}
+
+
 
 
 
