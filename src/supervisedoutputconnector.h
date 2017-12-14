@@ -267,13 +267,18 @@ namespace dd
 	  ad_out.erase("autoencoder");
 	}
       bool has_bbox = false;
-      bool has_roi = true;
+      bool has_roi = false;
       if (ad_out.has("bbox") && ad_out.get("bbox").get<bool>())
 	{
 	  has_bbox = true;
 	  ad_out.erase("nclasses");
 	  ad_out.erase("bbox");
 	}
+
+      if (ad_out.has("roi") && ad_out.get("roi").get<bool>())
+        {
+          has_roi = true;
+        }
 
       /* if (ad_out.has("roi")) */
       /*   { */
