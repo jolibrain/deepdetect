@@ -1,3 +1,4 @@
+
 /**
  * DeepDetect
  * Copyright (c) 2014-2015 Emmanuel Benazera
@@ -1427,6 +1428,9 @@ namespace dd
             // loop overs rois
             std::vector<double> probs;
             std::vector<std::string> cats;
+            std::vector<APIData> bboxes;
+            std::vector<APIData> vals;
+
             for (int iroi=0; iroi<nroi; ++iroi) {
               // check if current roi belongs to current image
               if (std::round(results[0]->cpu_data()[iroi]) == iid) {
@@ -1434,19 +1438,24 @@ namespace dd
                 //roi.add("cat",results[1]->cpu_data()[iroi]);
                 cats.push_back(this->_mlmodel.get_hcorresp(results[1]->cpu_data()[iroi]));
                 probs.push_back(results[2]->cpu_data()[iroi]);
-                std::vector<double> coords;
-                for (int icoord = 0; icoord< 4; ++icoord)
-                  coords.push_back(results[3]->cpu_data()[iroi+icoord]);
-                roi.add("coord",coords);
+                APIData ad_bbox;
+                ad_bbox.add("xmin",results[3]->cpu_data()[iroi*4]);
+                ad_bbox.add("ymin",results[3]->cpu_data()[iroi*4+1]);
+                ad_bbox.add("xmax",results[3]->cpu_data()[iroi*4+2]);
+                ad_bbox.add("ymax",results[3]->cpu_data()[iroi*4+3]);
+                bboxes.push_back(ad_bbox);
                 std::vector<double> pooled_data;
-                for (int idata = 0; idata < results.at(4)->count();++idata)
-                  pooled_data.push_back(results.at(4)->cpu_data()[iroi+idata]);
+                int poolsize = results.at(4)->count()/nroi;
+                for (int idata = 0; idata < poolsize; ++idata)
+                  pooled_data.push_back(results.at(4)->cpu_data()[iroi*poolsize+idata]);
                 //pooled_data.push_back(results[4]->cpu_data()[iroi]);
-                roi.add("pool",pooled_data);
-                rois.push_back(roi);
+                APIData rval;
+                rval.add("vals",pooled_data);
+                vals.push_back(rval);
               }//end if roi in image
             } // end loop over all rois
-            rad.add("rois",rois);
+            rad.add("vals",vals);
+            rad.add("bboxes", bboxes);
             rad.add("uri",inputc._ids.at(idoffset+iid));
             rad.add("loss",0.0); // XXX: unused
 		    rad.add("probs",probs);
