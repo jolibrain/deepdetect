@@ -1549,8 +1549,10 @@ layer {
       top_k: 400
     }
     code_type: CENTER_SIZE
-    keep_top_k: 200
-    confidence_threshold: 0.01
+    #keep_top_k: 200
+    keep_top_k: 10
+    confidence_threshold: 0.1 
+    #confidence_threshold: 0.01
   }
 }
 
@@ -1626,8 +1628,8 @@ layer {
     phase: TEST
   }
   roi_pooling_param {
-     pooled_w: 2
-     pooled_h: 2
+     pooled_w: 1
+     pooled_h: 1
      # pooled_? are the dimension of the output 
      # spatial_scale: 0.0625 # 1/16
      # roi are between 0 and 1, we have to multiply by w, h of input
