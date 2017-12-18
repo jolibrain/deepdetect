@@ -1430,6 +1430,22 @@ namespace dd
             std::vector<std::string> cats;
             std::vector<APIData> bboxes;
             std::vector<APIData> vals;
+		    std::string uri = inputc._ids.at(idoffset+iid);
+		    auto bit = inputc._imgs_size.find(uri);
+		    int rows = 1;
+		    int cols = 1;
+		    if (bit != inputc._imgs_size.end())
+		      {
+                // original image size
+                rows = (*bit).second.first;
+                cols = (*bit).second.second;
+		      }
+		    else
+		      {
+                LOG(ERROR) << "couldn't find original image size for " << uri;
+		      }
+
+
 
             for (int iroi=0; iroi<nroi; ++iroi) {
               // check if current roi belongs to current image
@@ -1439,10 +1455,10 @@ namespace dd
                 cats.push_back(this->_mlmodel.get_hcorresp(results[1]->cpu_data()[iroi]));
                 probs.push_back(results[2]->cpu_data()[iroi]);
                 APIData ad_bbox;
-                ad_bbox.add("xmin",results[3]->cpu_data()[iroi*4]);
-                ad_bbox.add("ymin",results[3]->cpu_data()[iroi*4+1]);
-                ad_bbox.add("xmax",results[3]->cpu_data()[iroi*4+2]);
-                ad_bbox.add("ymax",results[3]->cpu_data()[iroi*4+3]);
+                ad_bbox.add("xmin",results[3]->cpu_data()[iroi*4]*cols);
+                ad_bbox.add("ymax",results[3]->cpu_data()[iroi*4+1]*rows);
+                ad_bbox.add("xmax",results[3]->cpu_data()[iroi*4+2]*cols);
+                ad_bbox.add("ymin",results[3]->cpu_data()[iroi*4+3]*rows);
                 bboxes.push_back(ad_bbox);
                 std::vector<double> pooled_data;
                 int poolsize = results.at(4)->count()/nroi;
