@@ -1551,20 +1551,10 @@ layer {
     code_type: CENTER_SIZE
     #keep_top_k: 200
     keep_top_k: 10
-    confidence_threshold: 0.1 
+    confidence_threshold: 0.9 
     #confidence_threshold: 0.01
   }
 }
-
-#ici un truc qui prend le 1 * 1 * N * 7 en sortie de detection output
-#N = nbre de boxes, 7 est
-#[id, label, conf, xmin, ymin, xmax, ymax]
-# id is batch index
-#et qui rentre ca dans roipooling:
-#bottom 1 is R x 5 :
-#R = N
-#5 est [id, xmin yin xmax ymax]
-# bottom[0]->shape(0) is batch size
 
 
 layer {
@@ -1630,97 +1620,75 @@ layer {
   roi_pooling_param {
      pooled_w: 1
      pooled_h: 1
-     # pooled_? are the dimension of the output 
-     # spatial_scale: 0.0625 # 1/16
-     # roi are between 0 and 1, we have to multiply by w, h of input
-     # input : w x h x d
-     # f, s
-     # ouput is w2 x h2 x d2
-     # w2 = (w-f) / s + 1
-     # h2 = (h-f) / s + 1
-     # we need to recode stuff in order to discard spatial_scale and multiply internally by w and h
-     # which are available in caffe src code
-     # pool1 is 2 2 divides by 2 
-     # pool2  is 2 2
-     # pool3 is 2 2
-     # pool4 is 2 2
-     # pool5 is 3 1 + pad 1 does not change dimension
-     # conv6_2 is stride 2
-     # conv7_2 is stride 2
-     # conv8 is stride 2
-     # we are input after pool3 so
-     # so here we have  h/w blob = 1/8 image size which is consistent with fast rnn
-     # they give absolute roi here we have relative at input which is 300x300
-     # which finally leads to 300/8 w and h ...
-     # as our coordinates are between 0 and 1, we only need to put image size here
+     reduction: 0
      spatial_scale: 38 
   }
 }
 
 
-layer {
-  name: "roipool_fc7"
-  type: "ROIPooling"
-  bottom: "fc7"
-  bottom: "id_coord_shaped"
-  top: "roipool_fc7"
-  include {
-    phase: TEST
-  }
-  roi_pooling_param {
-     pooled_w: 2
-     pooled_h: 2
-     spatial_scale: 19
-  }
-}
+# layer {
+#   name: "roipool_fc7"
+#   type: "ROIPooling"
+#   bottom: "fc7"
+#   bottom: "id_coord_shaped"
+#   top: "roipool_fc7"
+#   include {
+#     phase: TEST
+#   }
+#   roi_pooling_param {
+#      pooled_w: 1
+#      pooled_h: 1
+#      spatial_scale: 19
+#   }
+# }
 
-layer {
-  name: "roipool_6_2"
-  type: "ROIPooling"
-  bottom: "conv6_2"
-  bottom: "id_coord_shaped"
-  top: "roipool_6_2"
-  include {
-    phase: TEST
-  }
-  roi_pooling_param {
-     pooled_w: 2
-     pooled_h: 2
-     spatial_scale: 10
-  }
-}
+# layer {
+#   name: "roipool_6_2"
+#   type: "ROIPooling"
+#   bottom: "conv6_2"
+#   bottom: "id_coord_shaped"
+#   top: "roipool_6_2"
+#   include {
+#     phase: TEST
+#   }
+#   roi_pooling_param {
+#      pooled_w: 2
+#      pooled_h: 2
+#      spatial_scale: 10
+#   }
+# }
 
-layer {
-  name: "roipool_7_2"
-  type: "ROIPooling"
-  bottom: "conv7_2"
-  bottom: "id_coord_shaped"
-  top: "roipool_7_2"
-  include {
-    phase: TEST
-  }
-  roi_pooling_param {
-     pooled_w: 2
-     pooled_h: 2
-     spatial_scale: 5
-  }
-}
+# layer {
+#   name: "roipool_7_2"
+#   type: "ROIPooling"
+#   bottom: "conv7_2"
+#   bottom: "id_coord_shaped"
+#   top: "roipool_7_2"
+#   include {
+#     phase: TEST
+#   }
+#   roi_pooling_param {
+#      pooled_w: 2
+#      pooled_h: 2
+#      spatial_scale: 5
+#   }
+# }
 
-layer {
-  name: "roipool_8_2"
-  type: "ROIPooling"
-  bottom: "conv8_2"
-  bottom: "id_coord_shaped"
-  top: "roipool_8_2"
-  include {
-    phase: TEST
-  }
-  roi_pooling_param {
-     pooled_w: 2
-     pooled_h: 2
-     spatial_scale: 3
-  }
-}
+# layer {
+#   name: "roipool_8_2"
+#   type: "ROIPooling"
+#   bottom: "conv8_2"
+#   bottom: "id_coord_shaped"
+#   top: "roipool_8_2"
+#   include {
+#     phase: TEST
+#   }
+#   roi_pooling_param {
+#      pooled_w: 2
+#      pooled_h: 2
+#      spatial_scale: 3
+#   }
+# }
 
 
 
@@ -1790,12 +1758,14 @@ layer {
   }
 }
 
+
+
 layer {
-  name: "roipool_flattened"
+  name: "pooldata_flattened"
   type: "Flatten"
-  top: "roipool_flattened"
+  top: "pooldata_flattened"
   bottom: "roipool_4_3"
-  include {
+    include {
     phase: TEST
   }
   flatten_param {
@@ -1810,7 +1780,7 @@ layer {
   bottom: "label_shaped"
   bottom: "conf_shaped"
   bottom: "coord_shaped"
-  bottom: "roipool_flattened"
+  bottom: "pooldata_flattened"
   top: "all_infos_rois"
   include {
     phase: TEST
@@ -1845,6 +1815,10 @@ layer {
 
 
 # layer {
+# input roipooling:
+#   bottom 1 is R x 5 :
+# R = N
+# 5 est [id, xmin yin xmax ymax]
 #   name: "roipool_4_3"
 #   type: "ROIPooling"
 #   bottom: "conv4_3"
@@ -1856,28 +1830,11 @@ layer {
 #   roi_pooling_param {
 #      pooled_w: 2
 #      pooled_h: 2
-#      # spatial_scale: 0.0625 # 1/16
-#      # roi are between 0 and 1, we have to multiply by w, h of input
-#      # input : w x h x d
-#      # f, s
-#      # ouput is w2 x h2 x d2
-#      # w2 = (w-f) / s + 1
-#      # h2 = (h-f) / s + 1
-#      # we need to recode stuff in order to discard spatial_scale and multiply internally by w and h
-#      # which are available in caffe src code
-#      # pool1 is 2 2 divides by 2 
-#      # pool2  is 2 2
-#      # pool3 is 2 2
-#      # pool4 is 2 2
-#      # pool5 is 3 1 + pad 1 does not change dimension
-#      # conv6_2 is stride 2
-#      # conv7_2 is stride 2
-#      # conv8 and conv 9 are stride 1 do not change dimension
-#      # we are input after pool3 so
-#      # so here we have  h/w blob = 1/8 image size which is consistent with fast rnn
-#      # they give absolute roi here we have relative at input which is 300x300
-#      # which finally leads to 300/16 w and h ...
-#      spatial_scale: 37.5 
+#      spatial_scale is ratio between coord of output of detection
+#       in [0:1]
+#      and size of image at layer pooled
+#      if height = width = 38 then
+#      spatial_scale: 38
 #   }
 # }
 

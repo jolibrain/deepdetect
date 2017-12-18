@@ -38,7 +38,7 @@ layer_size = 2048 # default output code size
 width = height = 300
 dd = DD(host)
 dd.set_return_format(dd.RETURN_PYTHON)
-ntrees = 100
+ntrees = 1000
 metric = 'angular'  # or 'euclidean'
 
 # creating ML service
@@ -64,7 +64,7 @@ if args.index:
 
     # list files in image repository
     c = 0
-    d = 0
+    d = 1
     onlyfiles = []
     for (dirpath, dirnames, filenames) in walk(args.index):
         nfilenames = []
