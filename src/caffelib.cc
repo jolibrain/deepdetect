@@ -1419,7 +1419,7 @@ namespace dd
           int max_id = -1;
           for (int iroi=0; iroi<nroi; ++iroi)
             if (std::round(results[0]->cpu_data()[iroi]) > max_id)
-              max_id = std::round(results[0]->cpu_data()[0]);
+              max_id = std::round(results[0]->cpu_data()[iroi]);
 
           // loop over images
           for (int iid=0; iid<=max_id; ++iid) {
@@ -1448,6 +1448,9 @@ namespace dd
 
 
             for (int iroi=0; iroi<nroi; ++iroi) {
+              // if cat == -1 no detection has been done on image
+              if (results[1]->cpu_data()[iroi] == -1)
+                continue;
               // check if current roi belongs to current image
               if (std::round(results[0]->cpu_data()[iroi]) == iid) {
                 APIData roi;
