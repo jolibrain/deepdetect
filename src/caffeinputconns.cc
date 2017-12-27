@@ -746,7 +746,6 @@ namespace dd
   /*- TxtCaffeInputFileConn -*/
   int TxtCaffeInputFileConn::txt_to_db(const std::string &traindbname,
 				       const std::string &testdbname,
-				       const APIData &ad_input,
 				       const std::string &backend)
   {
     std::string dbfullname = traindbname + "." + backend;

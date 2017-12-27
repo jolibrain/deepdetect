@@ -715,7 +715,6 @@ namespace dd
     
     int txt_to_db(const std::string &traindbname,
 		  const std::string &testdbname,
-		  const APIData &ad_input,
 		  const std::string &backend="lmdb");
 
     void write_txt_to_db(const std::string &dbname,
@@ -746,8 +745,7 @@ namespace dd
 	  //std::string dbfullname = _model_repo + "/" + _dbname + ".lmdb";
 	  if (!fileops::file_exists(_dbfullname)) // if no existing db, preprocess from txt files
 	    TxtInputFileConn::transform(ad);
-	  txt_to_db(_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname,
-		    ad_input);
+	  txt_to_db(_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname);
 	  write_class_weights(_model_repo,ad_mllib);
 
 	  
