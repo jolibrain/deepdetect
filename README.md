@@ -189,6 +189,13 @@ http://www.deepdetect.com/overview/examples/
 | DenseNet-161                   | [Y](https://deepdetect.com/models/densenet/densenet_161_48/)     | N          | https://github.com/shicai/DenseNet-Caffe        |               77.6%            |
 | DenseNet-169                   | [Y](https://deepdetect.com/models/densenet/densenet_169_32/)     | N          | https://github.com/shicai/DenseNet-Caffe        |               76.1%            |
 | DenseNet-201                   | [Y](https://deepdetect.com/models/densenet/densenet_201_32/)     | N          | https://github.com/shicai/DenseNet-Caffe        |               77.3%            |
+| SE-BN-Inception                   | [Y](https://deepdetect.com/models/senets/se_bn_inception/)     | N          | https://github.com/hujie-frank/SENet        |               76.38%            |
+| SE-ResNet-50                   | [Y](https://deepdetect.com/models/senets/se_resnet_50/)     | N          | https://github.com/hujie-frank/SENet        |               77.63%            |
+| SE-ResNet-101                   | [Y](https://deepdetect.com/models/senets/se_resnet_101/)     | N          | https://github.com/hujie-frank/SENet        |               78.25%            |
+| SE-ResNet-152                   | [Y](https://deepdetect.com/models/senets/se_resnet_152/)     | N          | https://github.com/hujie-frank/SENet        |               78.66%            |
+| SE-ResNext-50                   | [Y](https://deepdetect.com/models/senets/se_resnext_50/)     | N          | https://github.com/hujie-frank/SENet        |               79.03%            |
+| SE-ResNext-101                   | [Y](https://deepdetect.com/models/senets/se_resnext_101/)     | N          | https://github.com/hujie-frank/SENet        |               80.19%            |
+| SENet                   | [Y](https://deepdetect.com/models/senets/se_net/)     | N          | https://github.com/hujie-frank/SENet        |               81.32%            |
 | VOC0712 (object detection) | [Y](https://deepdetect.com/models/voc0712_dd.tar.gz) | N | https://github.com/weiliu89/caffe/tree/ssd | 71.2 mAP |
 
 More models:
