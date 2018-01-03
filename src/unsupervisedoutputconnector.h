@@ -58,6 +58,7 @@ namespace dd
     std::vector<double> _vals;
     std::vector<bool> _bvals;
     std::string _str;
+    bool _indexed = false;
   };
   
   /**
@@ -135,8 +136,8 @@ namespace dd
 	      _vvres.at(i).string_binarized();
 	    }
 	}
-      to_ad(ad_out);
 
+      std::unordered_set<std::string> indexed_uris;
       if (ad_in.has("index") && ad_in.get("index").get<bool>())
 	{
 	  // check whether index has been created
@@ -153,6 +154,7 @@ namespace dd
 	    {
 	      std::cerr << "indexing...\n";
 	      mlm->_se->index(_vvres.at(i)._uri,_vvres.at(i)._vals);
+	      indexed_uris.insert(_vvres.at(i)._uri);
 	    }
 	}
       if (ad_in.has("build_index") && ad_in.get("build_index").get<bool>())
@@ -161,10 +163,13 @@ namespace dd
 	    mlm->build_index();
 	  else throw SimIndexException("Cannot build index if not created");
 	}
+
+      to_ad(ad_out,indexed_uris);
     }
 
-    void to_ad(APIData &out) const
+    void to_ad(APIData &out, const std::unordered_set<std::string> &indexed_uris) const
     {
+      std::unordered_set<std::string>::const_iterator hit;
       std::vector<APIData> vpred;
       for (size_t i=0;i<_vvres.size();i++)
 	{
@@ -177,6 +182,8 @@ namespace dd
 	  else adpred.add("vals",_vvres.at(i)._vals);
 	  if (i == _vvres.size()-1)
 	    adpred.add("last",true);
+	  if ((hit=indexed_uris.find(_vvres.at(i)._uri))!=indexed_uris.end())
+	    adpred.add("indexed",true);
 	  vpred.push_back(adpred);
 	}
       out.add("predictions",vpred);

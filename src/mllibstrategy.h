@@ -96,6 +96,14 @@ namespace dd
     void clear_mllib(const APIData &ad);
 
     /**
+     * \brief removes search index from model repository
+     */
+    void clear_index()
+    {
+      _mlmodel.remove_index();
+    }
+    
+    /**
      * \brief removes everything in model repository
      */
     void clear_full()

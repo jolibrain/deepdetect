@@ -54,6 +54,7 @@ namespace dd
   template <class TSE>
   void SearchEngine<TSE>::remove_index()
   {
+    std::cerr << "removing index\n";
     _tse->remove_index();
   }
   
