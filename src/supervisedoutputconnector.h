@@ -65,17 +65,22 @@ namespace dd
 	_extra.insert(std::pair<double,APIData>(prob,ad));
       }
 
+#ifdef USE_SIMSEARCH
       void add_nn(const double dist, const std::string &uri)
       {
 	_nns.insert(std::pair<double,std::string>(dist,uri));
       }
+#endif
       
       std::string _label;
       double _loss = 0.0; /**< result loss. */
       std::multimap<double,std::string,std::greater<double>> _cats; /**< categories and probabilities for this result */
       std::multimap<double,APIData,std::greater<double>> _extra; /**< extra data or information added to output, e.g. bboxes. */
+
+#ifdef USE_SIMSEARCH
       bool _indexed = false;
       std::multimap<double,std::string> _nns; /**< nearest neigbors. */
+#endif
     };
 
   public:
@@ -263,8 +268,9 @@ namespace dd
 	}
       best_cats(ad_in,bcats,nclasses,has_bbox);
 
-      // index
       std::unordered_set<std::string> indexed_uris;
+#ifdef USE_SIMSEARCH
+      // index
       if (ad_in.has("index") && ad_in.get("index").get<bool>())
 	{
 	  // check whether index has been created
@@ -322,6 +328,7 @@ namespace dd
 		}
 	    }
 	}
+#endif
 
       bcats.to_ad(ad_out,regression,autoencoder,indexed_uris);
     }
@@ -835,6 +842,7 @@ namespace dd
 	  if (_vvcats.at(i)._loss > 0.0) // XXX: not set by Caffe in prediction mode for now
 	    adpred.add("loss",_vvcats.at(i)._loss);
 	  adpred.add("uri",_vvcats.at(i)._label);
+#ifdef USE_SIMSEARCH
 	  if (!indexed_uris.empty() && (hit=indexed_uris.find(_vvcats.at(i)._label))!=indexed_uris.end())
 	    adpred.add("indexed",true);
 	  if (!_vvcats.at(i)._nns.empty())
@@ -851,6 +859,7 @@ namespace dd
 		}
 	      adpred.add("nns",ad_nns);
 	    }
+#endif
 	  vpred.push_back(adpred);
 	}
       out.add("predictions",vpred);

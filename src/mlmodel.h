@@ -22,7 +22,9 @@
 #ifndef MODEL_H
 #define MODEL_H
 
+#ifdef USE_SIMSEARCH
 #include "simsearch.h"
+#endif
 #include <string>
 #include <fstream>
 #include <iostream>
@@ -38,7 +40,9 @@ namespace dd
       :_repo(repo) {
     }
     ~MLModel() {
+#ifdef USE_SIMSEARCH
       delete _se;
+#endif
     }
 
     void read_corresp_file()
@@ -71,6 +75,7 @@ namespace dd
 	else return _hcorresp[i];
       }
 
+#ifdef USE_SIMSEARCH
     /**
      * \brief create similarity search engine
      */
@@ -109,13 +114,16 @@ namespace dd
       if (_se)
 	_se->remove_index();
     }
+#endif
     
     std::string _repo; /**< model repository. */
     std::string _mlmodel_template_repo = "templates/";
     std::unordered_map<int,std::string> _hcorresp; /**< table of class correspondences. */
     std::string _corresp; /**< file name of the class correspondences (e.g. house / 23) */
 
+#ifdef USE_SIMSEARCH
     SearchEngine<AnnoySE> *_se = nullptr;
+#endif
   };
 }
 

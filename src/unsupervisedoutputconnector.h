@@ -54,17 +54,21 @@ namespace dd
       _vals.clear();
     }
 
+#ifdef USE_SIMSEARCH
     void add_nn(const double dist, const std::string &uri)
     {
       _nns.insert(std::pair<double,std::string>(dist,uri));
     }
+#endif
     
     std::string _uri;
     std::vector<double> _vals;
     std::vector<bool> _bvals;
     std::string _str;
+#ifdef USE_SIMSEARCH
     bool _indexed = false;
     std::multimap<double,std::string> _nns; /**< nearest neigbors. */
+#endif
   };
   
   /**
@@ -144,6 +148,7 @@ namespace dd
 	}
 
       std::unordered_set<std::string> indexed_uris;
+#ifdef USE_SIMSEARCH
       if (ad_in.has("index") && ad_in.get("index").get<bool>())
 	{
 	  // check whether index has been created
@@ -184,6 +189,7 @@ namespace dd
 		}
 	    }
 	}
+#endif
       
       to_ad(ad_out,indexed_uris);
     }
@@ -203,6 +209,7 @@ namespace dd
 	  else adpred.add("vals",_vvres.at(i)._vals);
 	  if (i == _vvres.size()-1)
 	    adpred.add("last",true);
+#ifdef USE_SIMSEARCH
 	  if (!indexed_uris.empty() && (hit=indexed_uris.find(_vvres.at(i)._uri))!=indexed_uris.end())
 	    adpred.add("indexed",true);
 	  if (!_vvres.at(i)._nns.empty())
@@ -219,6 +226,7 @@ namespace dd
 		}
 	      adpred.add("nns",ad_nns);
 	    }
+#endif
 	  vpred.push_back(adpred);
 	}
       out.add("predictions",vpred);
@@ -229,7 +237,9 @@ namespace dd
     bool _binarized = false; /**< binary representation of output values. */
     bool _bool_binarized = false; /**< boolean binary representation of output values. */
     bool _string_binarized = false; /**< boolean string as binary representation of output values. */
+#ifdef USE_SIMSEARCH
     int _search_nn = 10; /**< default nearest neighbors per search. */
+#endif
   };
 
 }

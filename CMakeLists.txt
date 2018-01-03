@@ -54,8 +54,6 @@ endif()
 
 set(eigen_archive_hash "50812b426b7c")
 
-#include_directories("$ENV{HOME}/include")
-
 set(EIGEN3_INCLUDE_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/external/eigen_archive/eigen-eigen-${eigen_archive_hash} ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/external/eigen_archive /usr/include/eigen3)
 include_directories("${EIGEN3_INCLUDE_DIR}")
 
@@ -63,7 +61,22 @@ include_directories("${EIGEN3_INCLUDE_DIR}")
 find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system iostreams)
 
 # annoy
-set(ANNOY_INCLUDE_DIR /home/beniz/projects/deepdetect/apps/annoy/src/)
+if (USE_SIMSEARCH)
+  message(STATUS "Fetching Annoy")
+  add_definitions(-DUSE_SIMSEARCH)
+  ExternalProject_Add(
+    annoy
+    PREFIX annoy
+    INSTALL_DIR ${CMAKE_BINARY_DIR}
+    DOWNLOAD_COMMAND git clone https://github.com/spotify/annoy.git
+    CONFIGURE_COMMAND python setup.py build
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+    BUILD_IN_SOURCE 1
+    )
+endif()
+
+set(ANNOY_INCLUDE_DIR ${CMAKE_BINARY_DIR}/annoy/src/annoy/src/)
 include_directories("${ANNOY_INCLUDE_DIR}")
 
 # optional packages
@@ -136,7 +149,7 @@ else()
 	  caffe_dd
 	  PREFIX caffe_dd
 	  INSTALL_DIR ${CMAKE_BINARY_DIR}
-	  URL https://github.com/beniz/caffe/archive/lmdb_get.tar.gz
+	  URL https://github.com/beniz/caffe/archive/master.tar.gz
 	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make CUDA_ARCH=${CUDA_ARCH} -j${N}
 	  INSTALL_COMMAND ""
 	  BUILD_IN_SOURCE 1
@@ -146,7 +159,7 @@ else()
 	  caffe_dd
 	  PREFIX caffe_dd
 	  INSTALL_DIR ${CMAKE_BINARY_DIR}
-	  URL https://github.com/beniz/caffe/archive/lmdb_get.tar.gz
+	  URL https://github.com/beniz/caffe/archive/master.tar.gz
 	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && make CUDA_ARCH=${CUDA_ARCH} -j${N}
 	  INSTALL_COMMAND ""
 	  BUILD_IN_SOURCE 1
@@ -158,7 +171,7 @@ else()
 	  caffe_dd
 	  PREFIX caffe_dd
 	  INSTALL_DIR ${CMAKE_BINARY_DIR}
-	  URL https://github.com/beniz/caffe/archive/lmdb_get.tar.gz
+	  URL https://github.com/beniz/caffe/archive/master.tar.gz
 	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make CUDA_ARCH=${CUDA_ARCH} -j${N}
 	  INSTALL_COMMAND ""
 	  BUILD_IN_SOURCE 1
@@ -168,7 +181,7 @@ else()
 	  caffe_dd
 	  PREFIX caffe_dd
 	  INSTALL_DIR ${CMAKE_BINARY_DIR}
-	  URL https://github.com/beniz/caffe/archive/lmdb_get.tar.gz
+	  URL https://github.com/beniz/caffe/archive/master.tar.gz
 	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && make CUDA_ARCH=${CUDA_ARCH} -j${N}
 	  INSTALL_COMMAND ""
 	  BUILD_IN_SOURCE 1
@@ -182,7 +195,7 @@ else()
 	caffe_dd
 	PREFIX caffe_dd
 	INSTALL_DIR ${CMAKE_BINARY_DIR}
-	URL https://github.com/beniz/caffe/archive/lmdb_get.tar.gz
+	URL https://github.com/beniz/caffe/archive/master.tar.gz
 	CONFIGURE_COMMAND ln -sf Makefile.config.cpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make -j${N}
 	INSTALL_COMMAND ""
 	BUILD_IN_SOURCE 1
@@ -192,7 +205,7 @@ else()
 	caffe_dd
 	PREFIX caffe_dd
 	INSTALL_DIR ${CMAKE_BINARY_DIR}
-	URL https://github.com/beniz/caffe/archive/lmdb_get.tar.gz
+	URL https://github.com/beniz/caffe/archive/master.tar.gz
 	CONFIGURE_COMMAND ln -sf Makefile.config.cpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && make -j${N}
 	INSTALL_COMMAND ""
 	BUILD_IN_SOURCE 1

@@ -95,6 +95,7 @@ namespace dd
      */
     void clear_mllib(const APIData &ad);
 
+#ifdef USE_SIMSEARCH
     /**
      * \brief removes search index from model repository
      */
@@ -102,6 +103,7 @@ namespace dd
     {
       _mlmodel.remove_index();
     }
+#endif
     
     /**
      * \brief removes everything in model repository
