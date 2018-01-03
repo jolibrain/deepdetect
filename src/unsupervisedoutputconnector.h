@@ -203,7 +203,7 @@ namespace dd
 	  else adpred.add("vals",_vvres.at(i)._vals);
 	  if (i == _vvres.size()-1)
 	    adpred.add("last",true);
-	  if ((hit=indexed_uris.find(_vvres.at(i)._uri))!=indexed_uris.end())
+	  if (!indexed_uris.empty() && (hit=indexed_uris.find(_vvres.at(i)._uri))!=indexed_uris.end())
 	    adpred.add("indexed",true);
 	  if (!_vvres.at(i)._nns.empty())
 	    {

@@ -64,11 +64,18 @@ namespace dd
       {
 	_extra.insert(std::pair<double,APIData>(prob,ad));
       }
+
+      void add_nn(const double dist, const std::string &uri)
+      {
+	_nns.insert(std::pair<double,std::string>(dist,uri));
+      }
       
       std::string _label;
       double _loss = 0.0; /**< result loss. */
       std::multimap<double,std::string,std::greater<double>> _cats; /**< categories and probabilities for this result */
       std::multimap<double,APIData,std::greater<double>> _extra; /**< extra data or information added to output, e.g. bboxes. */
+      bool _indexed = false;
+      std::multimap<double,std::string> _nns; /**< nearest neigbors. */
     };
 
   public:
@@ -255,7 +262,68 @@ namespace dd
 	  ad_out.erase("bbox");
 	}
       best_cats(ad_in,bcats,nclasses,has_bbox);
-      bcats.to_ad(ad_out,regression,autoencoder);
+
+      // index
+      std::unordered_set<std::string> indexed_uris;
+      if (ad_in.has("index") && ad_in.get("index").get<bool>())
+	{
+	  // check whether index has been created
+	  if (!mlm->_se)
+	    {
+	      int index_dim = _best;
+	      std::cerr << "Creating index\n";
+	      mlm->create_sim_search(index_dim);
+	    }
+
+	  // index output content
+	  for (size_t i=0;i<bcats._vvcats.size();i++)
+	    {
+	      std::vector<double> probs;
+	      auto mit = bcats._vvcats.at(i)._cats.begin();
+	      while(mit!=bcats._vvcats.at(i)._cats.end())
+		{
+		  probs.push_back((*mit).first);
+		  ++mit;
+		}
+	      mlm->_se->index(bcats._vvcats.at(i)._label,probs);
+	      indexed_uris.insert(bcats._vvcats.at(i)._label);
+	    }
+	}
+      
+      // build index
+      if (ad_in.has("build_index") && ad_in.get("build_index").get<bool>())
+	{
+	  if (mlm->_se)
+	    mlm->build_index();
+	  else throw SimIndexException("Cannot build index if not created");
+	}
+
+      // search
+      if (ad_in.has("search") && ad_in.get("search").get<bool>())
+	{
+	  int search_nn = _best;
+	  if (ad_in.has("search_nn"))
+	    search_nn = ad_in.get("search_nn").get<int>();
+	  for (size_t i=0;i<bcats._vvcats.size();i++)
+	    {
+	      std::vector<double> probs;
+	      auto mit = bcats._vvcats.at(i)._cats.begin();
+	      while(mit!=bcats._vvcats.at(i)._cats.end())
+		{
+		  probs.push_back((*mit).first);
+		  ++mit;
+		}
+	      std::vector<std::string> nn_uris;
+	      std::vector<double> nn_distances;
+	      mlm->_se->search(probs,search_nn,nn_uris,nn_distances);
+	      for (size_t j=0;j<nn_uris.size();j++)
+		{
+		  bcats._vvcats.at(i).add_nn(nn_distances.at(i),nn_uris.at(i));
+		}
+	    }
+	}
+
+      bcats.to_ad(ad_out,regression,autoencoder,indexed_uris);
     }
     
     struct PredictionAndAnswer {
@@ -718,7 +786,8 @@ namespace dd
      * \brief write supervised output object to data object
      * @param out data destination
      */
-    void to_ad(APIData &out, const bool &regression, const bool &autoencoder) const
+    void to_ad(APIData &out, const bool &regression, const bool &autoencoder,
+	       const std::unordered_set<std::string> &indexed_uris) const
     {
       static std::string cl = "classes";
       static std::string ve = "vector";
@@ -729,6 +798,7 @@ namespace dd
       static std::string vhead = "val";
       static std::string ahead = "loss";
       static std::string last = "last";
+      std::unordered_set<std::string>::const_iterator hit;
       std::vector<APIData> vpred;
       for (size_t i=0;i<_vvcats.size();i++)
 	{
@@ -765,6 +835,22 @@ namespace dd
 	  if (_vvcats.at(i)._loss > 0.0) // XXX: not set by Caffe in prediction mode for now
 	    adpred.add("loss",_vvcats.at(i)._loss);
 	  adpred.add("uri",_vvcats.at(i)._label);
+	  if (!indexed_uris.empty() && (hit=indexed_uris.find(_vvcats.at(i)._label))!=indexed_uris.end())
+	    adpred.add("indexed",true);
+	  if (!_vvcats.at(i)._nns.empty())
+	    {
+	      std::vector<APIData> ad_nns;
+	      auto mit = _vvcats.at(i)._nns.begin();
+	      while(mit!=_vvcats.at(i)._nns.end())
+		{
+		  APIData ad_nn;
+		  ad_nn.add("uri",(*mit).second);
+		  ad_nn.add("dist",(*mit).first);
+		  ad_nns.push_back(ad_nn);
+		  ++mit;
+		}
+	      adpred.add("nns",ad_nns);
+	    }
 	  vpred.push_back(adpred);
 	}
       out.add("predictions",vpred);
