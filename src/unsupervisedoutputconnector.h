@@ -54,11 +54,17 @@ namespace dd
       _vals.clear();
     }
 
+    void add_nn(const double dist, const std::string &uri)
+    {
+      _nns.insert(std::pair<double,std::string>(dist,uri));
+    }
+    
     std::string _uri;
     std::vector<double> _vals;
     std::vector<bool> _bvals;
     std::string _str;
     bool _indexed = false;
+    std::multimap<double,std::string> _nns; /**< nearest neigbors. */
   };
   
   /**
@@ -141,7 +147,6 @@ namespace dd
       if (ad_in.has("index") && ad_in.get("index").get<bool>())
 	{
 	  // check whether index has been created
-	  std::cerr << "mlm se=" << mlm->_se << std::endl;
 	  if (!mlm->_se)
 	    {
 	      int index_dim = _vvres.at(0)._vals.size(); //XXX: lookup to the batch's first output, as they should all have the same size
@@ -152,7 +157,6 @@ namespace dd
 	  // index output content -> vector (XXX: will need to flatten in case of multiple vectors)
 	  for (size_t i=0;i<_vvres.size();i++)
 	    {
-	      std::cerr << "indexing...\n";
 	      mlm->_se->index(_vvres.at(i)._uri,_vvres.at(i)._vals);
 	      indexed_uris.insert(_vvres.at(i)._uri);
 	    }
@@ -164,6 +168,23 @@ namespace dd
 	  else throw SimIndexException("Cannot build index if not created");
 	}
 
+      if (ad_in.has("search") && ad_in.get("search").get<bool>())
+	{
+	  int search_nn = _search_nn;
+	  if (ad_in.has("search_nn"))
+	    search_nn = ad_in.get("search_nn").get<int>();
+	  for (size_t i=0;i<_vvres.size();i++)
+	    {
+	      std::vector<std::string> nn_uris;
+	      std::vector<double> nn_distances;
+	      mlm->_se->search(_vvres.at(i)._vals,search_nn,nn_uris,nn_distances);
+	      for (size_t j=0;j<nn_uris.size();j++)
+		{
+		  _vvres.at(i).add_nn(nn_distances.at(i),nn_uris.at(i));
+		}
+	    }
+	}
+      
       to_ad(ad_out,indexed_uris);
     }
 
@@ -184,6 +205,20 @@ namespace dd
 	    adpred.add("last",true);
 	  if ((hit=indexed_uris.find(_vvres.at(i)._uri))!=indexed_uris.end())
 	    adpred.add("indexed",true);
+	  if (!_vvres.at(i)._nns.empty())
+	    {
+	      std::vector<APIData> ad_nns;
+	      auto mit = _vvres.at(i)._nns.begin();
+	      while(mit!=_vvres.at(i)._nns.end())
+		{
+		  APIData ad_nn;
+		  ad_nn.add("uri",(*mit).second);
+		  ad_nn.add("dist",(*mit).first);
+		  ad_nns.push_back(ad_nn);
+		  ++mit;
+		}
+	      adpred.add("nns",ad_nns);
+	    }
 	  vpred.push_back(adpred);
 	}
       out.add("predictions",vpred);
@@ -194,6 +229,7 @@ namespace dd
     bool _binarized = false; /**< binary representation of output values. */
     bool _bool_binarized = false; /**< boolean binary representation of output values. */
     bool _string_binarized = false; /**< boolean string as binary representation of output values. */
+    int _search_nn = 10; /**< default nearest neighbors per search. */
   };
 
 }
