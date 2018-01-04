@@ -100,6 +100,7 @@ namespace dd
       {
 	_saved_tree = true;
 	_aindex->load(index_filename.c_str());
+	_built_index = true;
       }
     std::string db_filename = _model_repo + "/" + _db_name;
     if (fileops::file_exists(db_filename))
