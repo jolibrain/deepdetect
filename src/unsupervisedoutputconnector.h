@@ -175,6 +175,12 @@ namespace dd
 
       if (ad_in.has("search") && ad_in.get("search").get<bool>())
 	{
+	  if (!mlm->_se)
+	    {
+	      int index_dim = _vvres.at(0)._vals.size(); //XXX: lookup to the batch's first output, as they should all have the same size
+	      mlm->create_sim_search(index_dim);
+	    }
+	  
 	  int search_nn = _search_nn;
 	  if (ad_in.has("search_nn"))
 	    search_nn = ad_in.get("search_nn").get<int>();
@@ -185,7 +191,7 @@ namespace dd
 	      mlm->_se->search(_vvres.at(i)._vals,search_nn,nn_uris,nn_distances);
 	      for (size_t j=0;j<nn_uris.size();j++)
 		{
-		  _vvres.at(i).add_nn(nn_distances.at(i),nn_uris.at(i));
+		  _vvres.at(i).add_nn(nn_distances.at(j),nn_uris.at(j));
 		}
 	    }
 	}

@@ -307,6 +307,14 @@ namespace dd
       // search
       if (ad_in.has("search") && ad_in.get("search").get<bool>())
 	{
+	  // check whether index has been created
+	  if (!mlm->_se)
+	    {
+	      int index_dim = _best;
+	      std::cerr << "Creating index\n";
+	      mlm->create_sim_search(index_dim);
+	    }
+	  
 	  int search_nn = _best;
 	  if (ad_in.has("search_nn"))
 	    search_nn = ad_in.get("search_nn").get<int>();
@@ -324,7 +332,7 @@ namespace dd
 	      mlm->_se->search(probs,search_nn,nn_uris,nn_distances);
 	      for (size_t j=0;j<nn_uris.size();j++)
 		{
-		  bcats._vvcats.at(i).add_nn(nn_distances.at(i),nn_uris.at(i));
+		  bcats._vvcats.at(i).add_nn(nn_distances.at(j),nn_uris.at(j));
 		}
 	    }
 	}
