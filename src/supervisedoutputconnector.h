@@ -520,7 +520,7 @@ namespace dd
 	    throw OutputConnectorBadParamException("negative supervised discrete target (e.g. wrong use of label_offset ?");
 	  else if (target >= nclasses)
 	    throw OutputConnectorBadParamException("target class has id " + std::to_string(target) + " is higher than the number of classes " + std::to_string(nclasses) + " (e.g. wrong number of classes specified with nclasses");
-	  conf_matrix(maxpr,target) += 1.0;
+	  conf_matrix(maxpr,static_cast<int>(target)) += 1.0;
 	}
       conf_diag = conf_matrix.diagonal();
       dMat conf_csum = conf_matrix.colwise().sum();
@@ -620,7 +620,7 @@ namespace dd
 	    throw OutputConnectorBadParamException("negative supervised discrete target (e.g. wrong use of label_offset ?");
 	  else if (target >= nclasses)
 	    throw OutputConnectorBadParamException("target class has id " + std::to_string(target) + " is higher than the number of classes " + std::to_string(nclasses) + " (e.g. wrong number of classes specified with nclasses");
-	  conf_matrix(maxpr,target) += 1.0;
+	  conf_matrix(maxpr,static_cast<int>(target)) += 1.0;
 	}
       double tp = conf_matrix(0,0);
       double tn = conf_matrix(1,1);
