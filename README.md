@@ -296,7 +296,7 @@ cmake .. -DUSE_TF=ON -DCUDA_USE_STATIC_CUDA_RUNTIME=OFF
 
 If you would like to constrain Tensorflow to CPU, use:
 ```
-cmake .. -DUSE_TF=ON -DUSE_TF_CPU_ONLY=ON -DCUDA_USE_STATIC_CUDA_RUNTIME=OFF
+cmake .. -DUSE_TF=ON -DUSE_TF_CPU_ONLY=ON
 ```
 
 You can combine with XGBoost support with:
