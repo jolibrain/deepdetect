@@ -73,12 +73,13 @@ List of tutorials, training from text, data and images, setup of prediction serv
 Current features include:
 
 - high-level API for machine learning and deep learning
-- Support for Caffe, Tensorflow, XGBoost and T-SNE
+- support for Caffe, Tensorflow, XGBoost and T-SNE
 - classification, regression, autoencoders, object detection, segmentation
 - JSON communication format
 - remote Python client library
 - dedicated server with support for asynchronous training calls
 - high performances, benefit from multicore CPU and GPU
+- built-in similarity search via neural embeddings
 - connector to handle large collections of images with on-the-fly data augmentation (e.g. rotations, mirroring)
 - connector to handle CSV files with preprocessing capabilities
 - connector to handle text files, sentences, and character-based models
@@ -280,7 +281,6 @@ If you would like to build the GPU support for XGBoost (experimental from DMLC),
 cmake .. -DUSE_XGBOOST=ON -DUSE_XGBOOST_GPU=ON
 ```
 
-
 #### Build with Tensorflow support
 First you must install [Bazel](https://www.bazel.io/versions/master/docs/install.html#install-on-ubuntu) and Cmake with version > 3.
 
@@ -309,6 +309,13 @@ cmake .. -DUSE_TF=ON -DUSE_XGBOOST=ON
 Simply specify the option via cmake command line:
 ```
 cmake .. -DUSE_TSNE=ON
+```
+
+#### Build with similarity search support
+
+Specify the following option via cmake:
+```
+cmake .. -DUSE_SIMSEARCH=ON
 ```
 
 ### Run tests
