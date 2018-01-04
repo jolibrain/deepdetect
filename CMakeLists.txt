@@ -47,14 +47,13 @@ configure_file(
 
 # dependency on Eigen for confusion matrix fast computation
 if (USE_TF)
+  set(TENSORFLOW_CC_DIR ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/)
+  set(EIGEN3_INCLUDE_DIR ${TENSORFLOW_CC_DIR}/tensorflow/tensorflow/contrib/makefile/downloads/eigen/)
 else()
    find_package(PkgConfig)
    pkg_search_module(Eigen3 REQUIRED eigen3)
+   set(EIGEN3_INCLUDE_DIR "/usr/include/eigen3")
 endif()
-
-set(TENSORFLOW_CC_DIR ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/)
-
-set(EIGEN3_INCLUDE_DIR ${TENSORFLOW_CC_DIR}/tensorflow/tensorflow/contrib/makefile/downloads/eigen/)
 include_directories("${EIGEN3_INCLUDE_DIR}")
 
 # dependency on Boost
