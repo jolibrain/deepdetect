@@ -1,5 +1,51 @@
-### Image similary search demo
+## Image similary search demo
 
+This is a demo of an image similarity search application. Below are two examples:
+
+- Similarity search using the DD server's built-in similarity search
+
+- Using DD for deep learning inference only and building the similarity search component with Python
+
+The two techniques above are equivalent, the first one being more practical since it embeds everything within the C++ server.
+
+### Server similarity search
+
+It does index images and retrieve similar images via similarity search.
+
+To run the code on your own collection of images:
+
+- build DeepDetect with the similarity search component, i.e. using the `-DUSE_SIMSEARCH=ON` flag at build time.
+
+- start a DeepDetect server:
+  ```
+  ./dede
+  ```
+
+- create a model repository with the pre-trained image classification network of your choice. Here we are using a pre-trained GoogleNet, but you can also use a built-in ResNet or [other provided models](http://www.deepdetect.com/applications/model/):
+  ```
+  mkdir model
+  cd model
+  wget http://www.deepdetect.com/models/ggnet/bvlc_googlenet.caffemodel
+  ```
+  
+  **make sure that the `model` repository is in the same repository as the script `imgsearch.py`**
+
+- index your collection of images:
+  ```
+  python imgsearch_dd.py --index /path/to/your/images --index-batch-size 64
+  ```
+  Here `index-batch-size` controls the number of images that are processed at once.
+  The index file is then `index.ann` in the repository. `names.bin` indexes the filenames.
+  
+  **Index and name files are erased upon every new indexing call**
+
+- search for similar images:
+  ```
+  python imgsearch_dd.py --search /path/your/image.png --search-size 10
+  ```
+  Here `search-size` controls the number of approximate neighbors.
+
+### Python demo
 This is a small Python demo of an image similarity search application.
 
 It does two things:
@@ -45,7 +91,7 @@ To run the code on your own collection of images:
   ```
   Here `search-size` controls the number of approximate neighbors.
 
-Notes:
+### Notes
 
 - The search uses a deep convolutional net layer as a code for every image. Using top layers (e.g. `loss3/classifier` with GoogleNet) uses high level features and thus image similarity is based on high level concepts such as whether the image contains a lakeshore, a bottle, etc... Using bottom or mid-range layers (e.g. `pool5/7x7_s1` with GoogleNet) makes image similarity based on lower level, potentially invariant, universal features such as lightning conditions, basic shapes, etc... Experiment and see what is best for your application.
 
