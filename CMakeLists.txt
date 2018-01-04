@@ -74,11 +74,11 @@ if (USE_SIMSEARCH)
     INSTALL_COMMAND ""
     BUILD_IN_SOURCE 1
     )
+
+  set(ANNOY_INCLUDE_DIR ${CMAKE_BINARY_DIR}/annoy/src/annoy/src/)
+  include_directories("${ANNOY_INCLUDE_DIR}")
 endif()
-
-set(ANNOY_INCLUDE_DIR ${CMAKE_BINARY_DIR}/annoy/src/annoy/src/)
-include_directories("${ANNOY_INCLUDE_DIR}")
-
+  
 # optional packages
 if (USE_CPU_ONLY)
 else()
