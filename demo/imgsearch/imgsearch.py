@@ -12,6 +12,8 @@ parser.add_argument("--index",help="repository of images to be indexed")
 parser.add_argument("--index-batch-size",type=int,help="size of image batch when indexing",default=1)
 parser.add_argument("--search",help="image input file for similarity search")
 parser.add_argument("--search-size",help="number of nearest neighbors",type=int,default=10)
+parser.add_argument("--model_repo",help="path to model",default=os.getcwd() + '/model')
+
 args = parser.parse_args()
 
 def batch(iterable, n=1):
@@ -43,10 +45,17 @@ ntrees = 100
 metric = 'angular'  # or 'euclidean'
 
 # creating ML service
-model_repo = os.getcwd() + '/model'
+model_repo = args.model_repo
+
 model = {'repository':model_repo,'templates':'../templates/caffe/'}
 parameters_input = {'connector':'image','width':width,'height':height}
-parameters_mllib = {'nclasses':nclasses,'template':'googlenet'}
+
+parameters_mllib = {'nclasses':nclasses}
+
+template_name = 'googlenet'
+if not os.path.isfile(model_repo + '/' + template_name + '.prototxt'):
+    parameters_mllib['template'] = template_name
+
 parameters_output = {}
 dd.put_service(sname,model,description,mllib,
                parameters_input,parameters_mllib,parameters_output,mltype)

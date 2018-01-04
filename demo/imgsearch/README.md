@@ -45,6 +45,17 @@ To run the code on your own collection of images:
   ```
   Here `search-size` controls the number of approximate neighbors.
 
+
+### Running with a dockerised image
+
+- Start your docker container instance as per https://github.com/beniz/deepdetect/tree/master/docker but mount your images to a volume
+
+  `docker run -d -p 8080:8080 -v /full/path/to/your/images:/images beniz/deepdetect_cpu`
+ 
+  There is an additional `--model_repo` argument to specify the path to the model, this is relative to the volume mount in the docker container.
+  `--model_repo /model` with the additional argument on `docker run` of `-v /path/to/your/model:/model`
+
+
 Notes:
 
 - The search uses a deep convolutional net layer as a code for every image. Using top layers (e.g. `loss3/classifier` with GoogleNet) uses high level features and thus image similarity is based on high level concepts such as whether the image contains a lakeshore, a bottle, etc... Using bottom or mid-range layers (e.g. `pool5/7x7_s1` with GoogleNet) makes image similarity based on lower level, potentially invariant, universal features such as lightning conditions, basic shapes, etc... Experiment and see what is best for your application.

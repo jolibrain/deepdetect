@@ -42,6 +42,10 @@ RUN cp /opt/deepdetect/datasets/imagenet/corresp_ilsvrc12.txt /opt/models/resnet
 RUN cp /opt/deepdetect/templates/caffe/googlenet/*prototxt /opt/models/ggnet/
 RUN cp /opt/deepdetect/templates/caffe/resnet_50/*prototxt /opt/models/resnet_50/
 
+# include python-pip and pip annoy so we can use the demo script
+RUN apt-get install --no-install-recommends -y python-pip python-dev && pip install annoy
+
+
 # permissions
 RUN chown -R dd:dd /opt/deepdetect
 RUN chown -R dd:dd /opt/models
