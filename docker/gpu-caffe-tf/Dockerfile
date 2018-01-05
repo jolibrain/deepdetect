@@ -1,4 +1,4 @@
-FROM nvidia/cuda:8.0-cudnn5-devel-ubuntu16.04
+FROM nvidia/cuda:8.0-cudnn7-devel-ubuntu16.04
 
 RUN echo 'building GPU DeepDetect image'
 
@@ -53,7 +53,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   curl \
   bash-completion \
   ca-certificates && \
-  wget -O /tmp/bazel.deb https://github.com/bazelbuild/bazel/releases/download/0.4.3/bazel_0.4.3-linux-x86_64.deb && \
+  wget -O /tmp/bazel.deb https://github.com/bazelbuild/bazel/releases/download/0.8.1/bazel_0.8.1-linux-x86_64.deb && \
   dpkg -i /tmp/bazel.deb && \
   apt-get remove -y libcurlpp0 && \
   apt-get clean && \
@@ -74,26 +74,12 @@ RUN if [ ! -f /usr/local/cuda/include/cudnn.h -a -f /usr/include/cudnn.h ]; then
     if [ ! -f /usr/local/cuda/lib64/libcudnn.so -a -f /usr/lib/x86_64-linux-gnu/libcudnn.so ]; then ln -s /usr/lib/x86_64-linux-gnu/libcudnn* /usr/local/cuda/lib64/; fi
 
 WORKDIR /opt
-RUN git clone https://github.com/beniz/deepdetect.git && cd deepdetect && mkdir build
+RUN git clone https://github.com/beniz/deepdetect.git && cd deepdetect && git checkout tf_1.4 && mkdir build
 
 WORKDIR /opt/deepdetect/build
-RUN export TF_CUDA_VERSION=8.0 && \
-    export TF_CUDA_COMPUTE_CAPABILITIES=5.2,6.1 && \
-    export TF_CUDNN_VERSION=5 && \
-    export TF_NEED_HDFS=0 && \
-    export TF_NEED_GCP=0 && \
-    export TF_NEED_OPENCL=0 && \
-    export TF_NEED_CUDA=1 && \   
-    export PYTHON_BIN_PATH=/usr/bin/python && \
-    export PYTHON_LIB_PATH=/usr/local/lib/python2.7/dist-packages && \
-    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64 && \
-    export GCC_HOST_COMPILER_PATH=$(which gcc) && \
-    export CUDA_TOOLKIT_PATH=/usr/local/cuda && \
-    export CUDNN_INSTALL_PATH=/usr/local/cuda && \
-    export TF_NEED_JEMALLOC=1 && \
-    export TF_ENABLE_XLA=0 && \
-    export CC_OPT_FLAGS="-march=native" && \
-    cmake .. -DUSE_TF=ON -DUSE_CUDNN=ON -DCUDA_ARCH_NAME=Manual -DCUDA_ARCH_BIN=52,61 -DCUDA_ARCH_PTX=52,61 && \
+RUN export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64
+RUN echo "/usr/local/cuda-8.0/targets/x86_64-linux/lib/stubs" > /etc/ld.so.conf.d/cuda-8.0-stubs.conf && ldconfig
+RUN cmake .. -DUSE_TF=ON -DUSE_CUDNN=ON && \ 
     make
 
 # external volume to be mapped, e.g. for models or training data
