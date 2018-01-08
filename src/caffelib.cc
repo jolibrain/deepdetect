@@ -1405,83 +1405,79 @@ namespace dd
 		    vrad.push_back(rad);
 		  }
 	      }
-        else if (rois) {
-
-          // adhoc code for roi extractions
-          //int nblobs = results.size();
-          // nblobs should be 5: 0 is id (in batch)
-          // 1 is label
-          // 2 is confidence
-          // 3 is coord
-          // 4 is pooled_data
-          int nroi = results[0]->shape(0);
-          // 1 et un seul val par reply
-          int max_id = -1;
-          for (int iroi=0; iroi<nroi; ++iroi)
-            if (std::round(results[0]->cpu_data()[iroi]) > max_id)
-              max_id = std::round(results[0]->cpu_data()[iroi]);
-
-          // loop over images
-          for (int iid=0; iid<=max_id; ++iid) {
-            APIData rad;
-            std::vector<APIData> rois;
-            // loop overs rois
-            std::vector<double> probs;
-            std::vector<std::string> cats;
-            std::vector<APIData> bboxes;
-            std::vector<APIData> vals;
-		    std::string uri = inputc._ids.at(idoffset+iid);
-		    auto bit = inputc._imgs_size.find(uri);
-		    int rows = 1;
-		    int cols = 1;
-		    if (bit != inputc._imgs_size.end())
-		      {
-                // original image size
-                rows = (*bit).second.first;
-                cols = (*bit).second.second;
-		      }
-		    else
-		      {
-                LOG(ERROR) << "couldn't find original image size for " << uri;
-		      }
-
-
-
-            for (int iroi=0; iroi<nroi; ++iroi) {
-              // if cat == -1 no detection has been done on image
-              if (results[1]->cpu_data()[iroi] == -1)
-                continue;
-              // check if current roi belongs to current image
-              if (std::round(results[0]->cpu_data()[iroi]) == iid) {
-                APIData roi;
-                //roi.add("cat",results[1]->cpu_data()[iroi]);
-                cats.push_back(this->_mlmodel.get_hcorresp(results[1]->cpu_data()[iroi]));
-                probs.push_back(results[2]->cpu_data()[iroi]);
-                APIData ad_bbox;
-                ad_bbox.add("xmin",results[3]->cpu_data()[iroi*4]*cols);
-                ad_bbox.add("ymax",results[3]->cpu_data()[iroi*4+1]*rows);
-                ad_bbox.add("xmax",results[3]->cpu_data()[iroi*4+2]*cols);
-                ad_bbox.add("ymin",results[3]->cpu_data()[iroi*4+3]*rows);
-                bboxes.push_back(ad_bbox);
-                std::vector<double> pooled_data;
-                int poolsize = results.at(4)->count()/nroi;
-                for (int idata = 0; idata < poolsize; ++idata)
-                  pooled_data.push_back(results.at(4)->cpu_data()[iroi*poolsize+idata]);
-                //pooled_data.push_back(results[4]->cpu_data()[iroi]);
-                APIData rval;
-                rval.add("vals",pooled_data);
-                vals.push_back(rval);
-              }//end if roi in image
-            } // end loop over all rois
-            rad.add("vals",vals);
-            rad.add("bboxes", bboxes);
-            rad.add("uri",inputc._ids.at(idoffset+iid));
-            rad.add("loss",0.0); // XXX: unused
-		    rad.add("probs",probs);
-		    rad.add("cats",cats);
-		    vrad.push_back(rad);
-          }
-        }
+	    else if (rois) {
+	      
+	      // adhoc code for roi extractions
+	      // nblobs should be 5: 0 is id (in batch)
+	      // 1 is label
+	      // 2 is confidence
+	      // 3 is coord
+	      // 4 is pooled_data
+	      int nroi = results[0]->shape(0);
+	      // 1 et un seul val par reply
+	      int max_id = -1;
+	      for (int iroi=0; iroi<nroi; ++iroi)
+		if (std::round(results[0]->cpu_data()[iroi]) > max_id)
+		  max_id = std::round(results[0]->cpu_data()[iroi]);
+	      
+	      // loop over images
+	      for (int iid=0; iid<=max_id; ++iid) {
+		APIData rad;
+		std::vector<APIData> rois;
+		// loop overs rois
+		std::vector<double> probs;
+		std::vector<std::string> cats;
+		std::vector<APIData> bboxes;
+		std::vector<APIData> vals;
+		std::string uri = inputc._ids.at(idoffset+iid);
+		auto bit = inputc._imgs_size.find(uri);
+		int rows = 1;
+		int cols = 1;
+		if (bit != inputc._imgs_size.end())
+		  {
+		    // original image size
+		    rows = (*bit).second.first;
+		    cols = (*bit).second.second;
+		  }
+		else
+		  {
+		    LOG(ERROR) << "couldn't find original image size for " << uri;
+		  }
+		
+		for (int iroi=0; iroi<nroi; ++iroi) {
+		  // if cat == -1 no detection has been done on image
+		  if (results[1]->cpu_data()[iroi] == -1)
+		    continue;
+		  // check if current roi belongs to current image
+		  if (std::round(results[0]->cpu_data()[iroi]) == iid) {
+		    APIData roi;
+		    //roi.add("cat",results[1]->cpu_data()[iroi]);
+		    cats.push_back(this->_mlmodel.get_hcorresp(results[1]->cpu_data()[iroi]));
+		    probs.push_back(results[2]->cpu_data()[iroi]);
+		    APIData ad_bbox;
+		    ad_bbox.add("xmin",results[3]->cpu_data()[iroi*4]*cols);
+		    ad_bbox.add("ymax",results[3]->cpu_data()[iroi*4+1]*rows);
+		    ad_bbox.add("xmax",results[3]->cpu_data()[iroi*4+2]*cols);
+		    ad_bbox.add("ymin",results[3]->cpu_data()[iroi*4+3]*rows);
+		    bboxes.push_back(ad_bbox);
+		    std::vector<double> pooled_data;
+		    int poolsize = results.at(4)->count()/nroi;
+		    for (int idata = 0; idata < poolsize; ++idata)
+		      pooled_data.push_back(results.at(4)->cpu_data()[iroi*poolsize+idata]);
+		    APIData rval;
+		    rval.add("vals",pooled_data);
+		    vals.push_back(rval);
+		  }//end if roi in image
+		} // end loop over all rois
+		rad.add("vals",vals);
+		rad.add("bboxes", bboxes);
+		rad.add("uri",inputc._ids.at(idoffset+iid));
+		rad.add("loss",0.0); // XXX: unused
+		rad.add("probs",probs);
+		rad.add("cats",cats);
+		vrad.push_back(rad);
+	      }
+	    }
 	    else // classification
 	      {
 		int slot = results.size() - 1;
@@ -1538,7 +1534,7 @@ namespace dd
 		throw;
 	      }
 
-        const std::vector<std::vector<Blob<float>*>>& rresults = _net->top_vecs();
+	    const std::vector<std::vector<Blob<float>*>>& rresults = _net->top_vecs();
 	    std::vector<Blob<float>*> results = rresults.at(li);
 
 	    int slot = 0;
@@ -1564,7 +1560,6 @@ namespace dd
 	  }
 	idoffset += batch_size;
       } // end prediction loop over batches
-
 
     if (!inputc._segmentation)
       tout.add_results(vrad);
