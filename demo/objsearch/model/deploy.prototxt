@@ -1620,7 +1620,6 @@ layer {
   roi_pooling_param {
      pooled_w: 1
      pooled_h: 1
-     reduction: 0
      spatial_scale: 38 
   }
 }
