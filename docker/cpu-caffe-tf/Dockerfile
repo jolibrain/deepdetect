@@ -68,7 +68,7 @@ RUN wget -O /opt/curlpp-v0.8.1.zip https://github.com/jpbarrette/curlpp/archive/
     cd /opt && \
     rm -rf curlpp-0.8.1 curlpp-v0.8.1.zip
 
-RUN git clone https://github.com/beniz/deepdetect.git && cd deepdetect && git checkout tf_1.4 && mkdir build
+RUN git clone https://github.com/beniz/deepdetect.git && cd deepdetect && mkdir build
 
 WORKDIR /opt/deepdetect/build
 RUN cmake .. -DUSE_TF=ON -DUSE_TF_CPU_ONLY=ON && \

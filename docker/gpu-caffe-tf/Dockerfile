@@ -74,7 +74,7 @@ RUN if [ ! -f /usr/local/cuda/include/cudnn.h -a -f /usr/include/cudnn.h ]; then
     if [ ! -f /usr/local/cuda/lib64/libcudnn.so -a -f /usr/lib/x86_64-linux-gnu/libcudnn.so ]; then ln -s /usr/lib/x86_64-linux-gnu/libcudnn* /usr/local/cuda/lib64/; fi
 
 WORKDIR /opt
-RUN git clone https://github.com/beniz/deepdetect.git && cd deepdetect && git checkout tf_1.4 && mkdir build
+RUN git clone https://github.com/beniz/deepdetect.git && cd deepdetect && mkdir build
 
 WORKDIR /opt/deepdetect/build
 RUN export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64
