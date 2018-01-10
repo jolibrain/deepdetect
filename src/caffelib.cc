@@ -600,6 +600,11 @@ namespace dd
 	      solver_param.set_solver_type(caffe::SolverParameter_SolverType_ADADELTA);
 	    else if (strcasecmp(solver_type.c_str(),"ADAM") == 0)
 	      solver_param.set_solver_type(caffe::SolverParameter_SolverType_ADAM);
+	    else if (strcasecmp(solver_type.c_str(),"AMSGRAD") == 0)
+	      {
+		solver_param.set_solver_type(caffe::SolverParameter_SolverType_ADAM);
+		solver_param.set_amsgrad(true);
+	      }
 	  }
 	if (ad_solver.has("test_interval"))
 	  solver_param.set_test_interval(ad_solver.get("test_interval").get<int>());
