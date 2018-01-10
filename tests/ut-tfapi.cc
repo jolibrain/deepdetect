@@ -74,7 +74,7 @@ TEST(tfapi,service_predict)
 	      || (cl1 == "n02123045 tabby, tabby cat" && cl2 == "n03763968 military uniform"));
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble() > 0.4);
   ASSERT_TRUE(jd["body"]["predictions"][1]["classes"][0]["prob"].GetDouble() > 0.4);
-}
+  }
 
 TEST(tfapi,service_predict_unsup)
 {

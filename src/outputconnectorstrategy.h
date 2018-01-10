@@ -33,7 +33,7 @@ namespace dd
 {
   typedef Eigen::MatrixXd dMat;
   typedef Eigen::VectorXd dVec;
-  
+
   /**
    * \brief bad parameter exception
    */

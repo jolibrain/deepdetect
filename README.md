@@ -136,7 +136,7 @@ None outside of C++ compiler and make
 #### Tensorflow Dependencies
 
 - Cmake > 3
-- [Bazel](https://www.bazel.io/versions/master/docs/install.html#install-on-ubuntu)
+- [Bazel 0.8.x](https://www.bazel.io/versions/master/docs/install.html#install-on-ubuntu)
 
 ##### Caffe version
 
@@ -291,7 +291,7 @@ sudo apt-get install python-numpy swig python-dev python-wheel unzip
 
 If you would like to build with Tensorflow, include the `-DUSE_TF=ON` paramter to `cmake`:
 ```
-cmake .. -DUSE_TF=ON
+cmake .. -DUSE_TF=ON -DCUDA_USE_STATIC_CUDA_RUNTIME=OFF
 ```
 
 If you would like to constrain Tensorflow to CPU, use:
