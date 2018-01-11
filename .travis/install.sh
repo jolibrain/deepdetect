@@ -21,7 +21,7 @@ if [ "$TRAVIS_OS_NAME" = 'linux' ]; then
 	libopencv-dev \
 	libcppnetlib-dev \
 	libboost-dev \
-	libboost-ostreams-dev \
+	libboost-iostreams-dev \
 	libcurlpp-dev \
 	libcurl4-openssl-dev \
 	protobuf-compiler \
