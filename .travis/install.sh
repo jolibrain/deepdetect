@@ -87,7 +87,8 @@ if [ "$TRAVIS_OS_NAME" = 'linux' ]; then
             "cuda-cudart-dev-${CUDA_PKG_VERSION}" \
             "cuda-curand-dev-${CUDA_PKG_VERSION}" \
             "cuda-driver-dev-${CUDA_PKG_VERSION}" \
-            "cuda-nvrtc-dev-${CUDA_PKG_VERSION}"
+            "cuda-nvrtc-dev-${CUDA_PKG_VERSION}" \
+	    "cuda-cusparse-dev-${CUDA_PKG_VERSION}"
         # Manually create CUDA symlink
         sudo ln -sf /usr/local/cuda-$CUDA_VERSION /usr/local/cuda
 
