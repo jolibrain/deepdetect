@@ -34,11 +34,20 @@ if [ "$TRAVIS_OS_NAME" = 'linux' ]; then
 	libutfcpp-dev
 
         # Install ccache symlink wrappers
-    pushd /usr/local/bin
-    sudo ln -sf "$(which ccache)" gcc
-    sudo ln -sf "$(which ccache)" g++
-    popd
+        pushd /usr/local/bin
+        sudo ln -sf "$(which ccache)" gcc
+        sudo ln -sf "$(which ccache)" g++
+        popd
 
+        ################
+        # Install GCC5 #
+        ################
+        sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+        sudo apt-get update
+        $APT_INSTALL_CMD g++-5
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 60 \
+            --slave /usr/bin/g++ g++ /usr/bin/g++-5
+	
         if [ "$BUILD_CUDA" = 'true' ]; then
         ##################
         # Install ccache #
