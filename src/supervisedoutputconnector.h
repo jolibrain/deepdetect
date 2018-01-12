@@ -160,23 +160,21 @@ namespace dd
 	best = ad_out.get("best").get<int>();
       if (best == -1)
 	best = nclasses;
-         if (!has_bbox)
+      if (!has_bbox && !has_roi)
 	{
 	  for (size_t i=0;i<_vvcats.size();i++)
 	    {
 	      sup_result sresult = _vvcats.at(i);
-          if (has_roi)
-            best = static_cast<int>(sresult._cats.size());
 	      sup_result bsresult(sresult._label,sresult._loss);
 	      std::copy_n(sresult._cats.begin(),std::min(best,static_cast<int>(sresult._cats.size())),
 			  std::inserter(bsresult._cats,bsresult._cats.end()));
 	      if (!sresult._bboxes.empty())
-            std::copy_n(sresult._bboxes.begin(),std::min(best,static_cast<int>(sresult._bboxes.size())),
-                        std::inserter(bsresult._bboxes,bsresult._bboxes.end()));
-          if (!sresult._vals.empty())
-            std::copy_n(sresult._vals.begin(),std::min(best,static_cast<int>(sresult._vals.size())),
-                        std::inserter(bsresult._vals,bsresult._vals.end()));
-
+		std::copy_n(sresult._bboxes.begin(),std::min(best,static_cast<int>(sresult._bboxes.size())),
+			    std::inserter(bsresult._bboxes,bsresult._bboxes.end()));
+	      if (!sresult._vals.empty())
+		std::copy_n(sresult._vals.begin(),std::min(best,static_cast<int>(sresult._vals.size())),
+			    std::inserter(bsresult._vals,bsresult._vals.end()));
+	      
 	      bcats._vcats.insert(std::pair<std::string,int>(sresult._label,bcats._vvcats.size()));
 	      bcats._vvcats.push_back(bsresult);
 	    }
@@ -203,9 +201,13 @@ namespace dd
 		  auto bbit = lboxes.begin();
 		  auto mit = sresult._cats.begin();
 		  auto mitx = sresult._bboxes.begin();
+		  auto mity = sresult._vals.begin();
 		  while(mitx!=sresult._bboxes.end())
 		    {
 		      APIData bbad = (*mitx).second;
+		      APIData vvad;
+		      if (has_roi)
+			vvad = (*mity).second;
 		      std::string bbkey = std::to_string(bbad.get("xmin").get<double>())
 			+ "-" + std::to_string(bbad.get("ymin").get<double>())
 			+ "-" + std::to_string(bbad.get("xmax").get<double>())
@@ -217,6 +219,8 @@ namespace dd
 			    {
 			      bsresult._cats.insert(std::pair<double,std::string>((*mit).first,(*mit).second));
 			      bsresult._bboxes.insert(std::pair<double,APIData>((*mitx).first,bbad));
+			      if (has_roi)
+				bsresult._vals.insert(std::pair<double,APIData>((*mity).first,vvad));
 			    }
 			}
 		      else
@@ -224,13 +228,15 @@ namespace dd
 			  lboxes.insert(std::pair<std::string,int>(bbkey,1));
 			  bsresult._cats.insert(std::pair<double,std::string>((*mit).first,(*mit).second));
 			  bsresult._bboxes.insert(std::pair<double,APIData>((*mitx).first,bbad));
+			  if (has_roi)
+			    bsresult._vals.insert(std::pair<double,APIData>((*mity).first,vvad));
 			}
 		      ++mitx;
 		      ++mit;
+		      if (has_roi)
+			++mity;
 		    }
 		}
-	      
-	      
 	      bcats._vcats.insert(std::pair<std::string,int>(sresult._label,bcats._vvcats.size()));
 	      bcats._vvcats.push_back(bsresult);
 	    }
