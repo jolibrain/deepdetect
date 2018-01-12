@@ -1449,7 +1449,7 @@ namespace dd
 		    continue;
 		  // check if current roi belongs to current image
 		  if (std::round(results[0]->cpu_data()[iroi]) == iid) {
-		    if (results[2]->cpu_data()[0] < confidence_threshold)
+		    if (results[2]->cpu_data()[iroi] < confidence_threshold)
 		      continue;
 		    APIData roi;
 		    //roi.add("cat",results[1]->cpu_data()[iroi]);
