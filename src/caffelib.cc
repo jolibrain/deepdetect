@@ -1406,7 +1406,6 @@ namespace dd
 		  }
 	      }
 	    else if (rois) {
-	      
 	      // adhoc code for roi extractions
 	      // nblobs should be 5: 0 is id (in batch)
 	      // 1 is label
@@ -1450,6 +1449,8 @@ namespace dd
 		    continue;
 		  // check if current roi belongs to current image
 		  if (std::round(results[0]->cpu_data()[iroi]) == iid) {
+		    if (results[2]->cpu_data()[0] < confidence_threshold)
+		      continue;
 		    APIData roi;
 		    //roi.add("cat",results[1]->cpu_data()[iroi]);
 		    cats.push_back(this->_mlmodel.get_hcorresp(results[1]->cpu_data()[iroi]));
