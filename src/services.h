@@ -213,6 +213,10 @@ namespace dd
 	      mllib.clear_full();
 	    else if (clear == "lib")
 	      mllib.clear_mllib(_ad);
+#ifdef USE_SIMSEARCH
+	    else if (clear == "index")
+	      mllib.clear_index();
+#endif
 	  }
       }
     

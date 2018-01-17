@@ -1585,12 +1585,12 @@ namespace dd
     out.add("bbox",bbox);
     out.add("roi",rois);
     if (!inputc._segmentation)
-      tout.finalize(ad.getobj("parameters").getobj("output"),out);
+      tout.finalize(ad.getobj("parameters").getobj("output"),out,static_cast<MLModel*>(&this->_mlmodel));
     else // segmentation returns an array, best dealt with an unsupervised connector
       {
 	UnsupervisedOutput unsupo;
 	unsupo.add_results(vrad);
-	unsupo.finalize(ad.getobj("parameters").getobj("output"),out);
+	unsupo.finalize(ad.getobj("parameters").getobj("output"),out,static_cast<MLModel*>(&this->_mlmodel));
       }
     out.add("status",0);
     

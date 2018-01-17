@@ -200,6 +200,24 @@ namespace dd
     render_status(jd,404,"Not Found",1009,"Output Connector Network Error");
     return jd;
   }
+
+#ifdef USE_SIMSEARCH
+  JDoc JsonAPI::dd_sim_index_error_1010() const
+  {
+    JDoc jd;
+    jd.SetObject();
+    render_status(jd,403,"Forbidden",1010,"Cannot index after similarity search tree has been built");
+    return jd;
+  }
+
+  JDoc JsonAPI::dd_sim_search_error_1011() const
+  {
+    JDoc jd;
+    jd.SetObject();
+    render_status(jd,403,"Forbidden",1011,"Cannot search before similarity search tree has been built");
+    return jd;
+  }
+#endif
   
   std::string JsonAPI::jrender(const JDoc &jst) const
   {
@@ -547,6 +565,16 @@ namespace dd
       {
 	return dd_train_predict_conflict_1008();
       }
+#ifdef USE_SIMSEARCH
+    catch (SimIndexException &e)
+      {
+	return dd_sim_index_error_1010();
+      }
+    catch (SimSearchException &e)
+      {
+	return dd_sim_search_error_1011();
+      }
+#endif
     catch (std::exception &e)
       {
 	return dd_internal_mllib_error_1007(e.what());

@@ -151,7 +151,7 @@ namespace dd
       }
     delete[] Y;
     tout.add_results(vrad);
-    tout.finalize(ad.getobj("parameters").getobj("output"),out);
+    tout.finalize(ad.getobj("parameters").getobj("output"),out,static_cast<MLModel*>(&this->_mlmodel));
     out.add("status",0);
     return 0;
   }
