@@ -47,14 +47,15 @@ configure_file(
 
 # dependency on Eigen for confusion matrix fast computation
 if (USE_TF)
+  set(TENSORFLOW_CC_DIR ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/)
+  set(EIGEN3_INCLUDE_DIR ${TENSORFLOW_CC_DIR}/tensorflow/tensorflow/contrib/makefile/downloads/eigen/)
 else()
    find_package(PkgConfig)
    pkg_search_module(Eigen3 REQUIRED eigen3)
+   set(EIGEN3_INCLUDE_DIR "/usr/include/eigen3")
 endif()
 
 set(eigen_archive_hash "50812b426b7c")
-
-#include_directories("$ENV{HOME}/include")
 
 set(EIGEN3_INCLUDE_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/external/eigen_archive/eigen-eigen-${eigen_archive_hash} ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/external/eigen_archive /usr/include/eigen3)
 include_directories("${EIGEN3_INCLUDE_DIR}")
@@ -62,6 +63,25 @@ include_directories("${EIGEN3_INCLUDE_DIR}")
 # dependency on Boost
 find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system iostreams)
 
+# annoy
+if (USE_SIMSEARCH)
+  message(STATUS "Fetching Annoy")
+  add_definitions(-DUSE_SIMSEARCH)
+  ExternalProject_Add(
+    annoy
+    PREFIX annoy
+    INSTALL_DIR ${CMAKE_BINARY_DIR}
+    DOWNLOAD_COMMAND git clone https://github.com/spotify/annoy.git
+    CONFIGURE_COMMAND python setup.py build
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+    BUILD_IN_SOURCE 1
+    )
+
+  set(ANNOY_INCLUDE_DIR ${CMAKE_BINARY_DIR}/annoy/src/annoy/src/)
+  include_directories("${ANNOY_INCLUDE_DIR}")
+endif()
+  
 # optional packages
 if (USE_CPU_ONLY)
 else()
@@ -69,41 +89,44 @@ include(cmake/Cuda.cmake) # cuda + cudnn
 endif()
 
 if (USE_TF)
-# protobuf with tf
-set(PROTOBUF_INCLUDE_DIR ${CMAKE_BINARY_DIR}/protobuf/include/)
-set(PROTOBUF_LIB_DIR ${CMAKE_BINARY_DIR}/protobuf/lib/)
-include_directories("${PROTOBUF_INCLUDE_DIR}")
+  # protobuf with tf
+  set(PROTOBUF_INCLUDE_DIR ${CMAKE_BINARY_DIR}/protobuf/include/)
+  set(PROTOBUF_LIB_DIR ${CMAKE_BINARY_DIR}/protobuf/lib/)
+  include_directories("${PROTOBUF_INCLUDE_DIR}")
 
-# Tensorflow
+  # Tensorflow
   message(STATUS "Fetching Tensorflow")
   add_definitions(-DUSE_TF)
   if (CUDA_FOUND AND NOT USE_TF_CPU_ONLY)
     ExternalProject_Add(
-      tensorflow
-      PREFIX tensorflow
+      tensorflow_cc
+      PREFIX tensorflow_cc
       INSTALL_DIR ${CMAKE_BINARY_DIR}
-      DOWNLOAD_COMMAND git clone --recurse-submodules https://github.com/tensorflow/tensorflow
-      CONFIGURE_COMMAND mkdir -p ${CMAKE_BINARY_DIR}/protobuf && git checkout v1.0.1 && mkdir -p dbuild && ${CMAKE_BINARY_DIR}/patches/test_patch.sh ${CMAKE_BINARY_DIR}/patches/tf/libtf_link.patch && ${CMAKE_BINARY_DIR}/patches/test_patch.sh ${CMAKE_BINARY_DIR}/patches/tf/test_only_BUILD.patch && sed "s/bazel /bazel --output_base=dbuild /" < configure > configure.new && mv configure configure.bak && mv configure.new configure && chmod +x configure && ./configure && bazel --output_base dbuild/ build -c opt --config=cuda //tensorflow/tools/pip_package:build_pip_package //tensorflow:libtensorflow.so //tensorflow/examples/label_image //tensorflow/python/tools:freeze_graph && ln -s ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/bazel-out/local-opt ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/bazel-out/local_linux-opt && bazel shutdown && cd dbuild/external/protobuf && ./autogen.sh && ./configure --prefix=${CMAKE_BINARY_DIR}/protobuf && make -j${N} && make install
-      INSTALL_COMMAND ""
+      DOWNLOAD_COMMAND git clone https://github.com/beniz/tensorflow_cc.git
+      CONFIGURE_COMMAND cd tensorflow_cc && mkdir build && cd build && cmake -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED=ON .. && make && ln -s ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/tensorflow/tensorflow/contrib/makefile/gen/protobuf ${CMAKE_BINARY_DIR}/protobuf
       BUILD_COMMAND ""
+      INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
       )
   else()
     add_definitions(-DUSE_TF_CPU_ONLY)
     ExternalProject_Add(
-      tensorflow
-      PREFIX tensorflow
+      tensorflow_cc
+      PREFIX tensorflow_cc
       INSTALL_DIR ${CMAKE_BINARY_DIR}
-      DOWNLOAD_COMMAND git clone --recurse-submodules https://github.com/tensorflow/tensorflow
-      CONFIGURE_COMMAND mkdir -p ${CMAKE_BINARY_DIR}/protobuf && git checkout v1.0.1 && mkdir -p dbuild && ${CMAKE_BINARY_DIR}/patches/test_patch.sh ${CMAKE_BINARY_DIR}/patches/tf/libtf_link.patch && ${CMAKE_BINARY_DIR}/patches/test_patch.sh ${CMAKE_BINARY_DIR}/patches/tf/test_only_BUILD.patch && sed "s/bazel /bazel --output_base=dbuild /" < configure > configure.new && mv configure configure.bak && mv configure.new configure && chmod +x configure && ./configure && bazel --output_base dbuild/ build -c opt //tensorflow:libtensorflow.so //tensorflow/examples/label_image //tensorflow/python/tools:freeze_graph && ln -s ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/bazel-out/local-opt ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/bazel-out/local_linux-opt && bazel shutdown && cd dbuild/external/protobuf && ./autogen.sh && ./configure --prefix=${CMAKE_BINARY_DIR}/protobuf && make -j${N} && make install
-      INSTALL_COMMAND ""
+      DOWNLOAD_COMMAND git clone https://github.com/beniz/tensorflow_cc.git
+      CONFIGURE_COMMAND cd tensorflow_cc && mkdir build && cd build && cmake -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED_CPU=ON .. && make && ln -s ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/tensorflow/tensorflow/contrib/makefile/gen/protobuf ${CMAKE_BINARY_DIR}/protobuf
       BUILD_COMMAND ""
+      INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
       )
   endif()
-  set(TF_INC_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/ ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/tensorflow/ ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/org_tensorflow/bazel-out/host/genfiles/ ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/org_tensorflow/bazel-out/local_linux-opt/genfiles)
-  set(TF_LIB_DIR ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/org_tensorflow/bazel-out/local_linux-opt/bin/tensorflow/)
-  include_directories("${TF_INC_DIR}")
+
+set(TF_INC_DIR ${TENSORFLOW_CC_DIR}/tensorflow/ ${TENSORFLOW_CC_DIR}/tensorflow/bazel-genfiles/ ${TENSORFLOW_CC_DIR}/tensorflow/tensorflow/contrib/makefile/downloads/nsync/public/)
+set(TF_LIB_DIR ${TENSORFLOW_CC_DIR}/tensorflow/bazel-bin/tensorflow/)
+
+include_directories("${TF_INC_DIR}")
+
 endif() # USE_TF
 
 # OpenCV
@@ -165,7 +188,7 @@ else()
 	  PREFIX caffe_dd
 	  INSTALL_DIR ${CMAKE_BINARY_DIR}
 	  URL https://github.com/beniz/caffe/archive/master.tar.gz
-	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make CUDA_ARCH=${CUDA_ARCH} -j${N}
+	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${TENSORFLOW_CC_DIR}/tensorflow/tensorflow/contrib/makefile/gen/protobuf/bin:$ENV{PATH} make CUDA_ARCH=${CUDA_ARCH} -j${N}
 	  INSTALL_COMMAND ""
 	  BUILD_IN_SOURCE 1
 	  )
@@ -220,7 +243,7 @@ else()
 endif()
 
 if (USE_TF)
-  add_dependencies(caffe_dd tensorflow)
+  add_dependencies(caffe_dd tensorflow_cc)
 endif()
 
 # XGBoost

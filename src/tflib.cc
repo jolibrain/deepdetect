@@ -446,7 +446,7 @@ namespace dd
       } // end prediction loop over batches
     tout.add_results(vrad);
     out.add("nclasses",_nclasses);
-    tout.finalize(ad.getobj("parameters").getobj("output"),out);
+    tout.finalize(ad.getobj("parameters").getobj("output"),out,static_cast<MLModel*>(&this->_mlmodel));
     out.add("status",0);
     return 0;
   }

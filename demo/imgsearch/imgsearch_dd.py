@@ -3,8 +3,6 @@ from os import listdir
 from os.path import isfile, join
 from os import walk
 from dd_client import DD
-from annoy import AnnoyIndex
-import shelve
 import cv2
 
 parser = argparse.ArgumentParser()
@@ -34,23 +32,22 @@ mltype = 'unsupervised'
 extract_layer = 'loss3/classifier'
 #extract_layer = 'pool5/7x7_s1'
 nclasses = 1000
-layer_size = 1000 # default output code size
 width = height = 224
 binarized = False
 dd = DD(host)
 dd.set_return_format(dd.RETURN_PYTHON)
-ntrees = 100
-metric = 'angular'  # or 'euclidean'
 
 # creating ML service
-#model_repo = os.getcwd() + '/model'
-model_repo = '/data1/jb/models/public/googlenet/'
+model_repo = os.getcwd() + '/model'
 model = {'repository':model_repo,'templates':'../templates/caffe/'}
 parameters_input = {'connector':'image','width':width,'height':height}
-parameters_mllib = {'nclasses':nclasses}#,'template':'googlenet'}
+parameters_mllib = {'nclasses':nclasses}
 parameters_output = {}
-dd.put_service(sname,model,description,mllib,
-               parameters_input,parameters_mllib,parameters_output,mltype)
+try:
+    dd.put_service(sname,model,description,mllib,
+                   parameters_input,parameters_mllib,parameters_output,mltype)
+except:
+    pass
 
 # reset call params
 parameters_input = {}
@@ -58,12 +55,8 @@ parameters_mllib = {'gpu':True,'extract_layer':extract_layer}
 parameters_output = {'binarized':binarized}
 
 if args.index:
-    try:
-        os.remove('names.bin')
-    except:
-        pass
-    s = shelve.open('names.bin')
-        
+    parameters_output['index'] = True
+    
     # list files in image repository
     c = 0
     onlyfiles = []
@@ -77,33 +70,27 @@ if args.index:
         sys.stdout.flush()
         classif = dd.post_predict(sname,x,parameters_input,parameters_mllib,parameters_output)
         for p in classif['body']['predictions']:
-            if c == 0:
-                layer_size = len(p['vals'])
-                s['layer_size'] = layer_size
-                t = AnnoyIndex(layer_size,metric) # prepare index
-            t.add_item(c,p['vals'])
-            s[str(c)] = p['uri']
             c = c + 1
-        #if c >= 10000:
-        #    break
+        if c >= 100:
+            break
+
+    # one last dumb predict call to build the index
     print 'building index...\n'
-    print 'layer_size=',layer_size
-    t.build(ntrees)
-    t.save('index.ann')
-    s.close()
+    parameters_output['index'] = False
+    parameters_output['build_index']=True
+    classif = dd.post_predict(sname,[nfilenames[0]],parameters_input,parameters_mllib,parameters_output)
 
 if args.search:
-    s = shelve.open('names.bin')
-    u = AnnoyIndex(s['layer_size'],metric)
-    u.load('index.ann')
+    parameters_output['search'] = True
+    parameters_output['search_nn'] = args.search_size
     data = [args.search]
     classif = dd.post_predict(sname,data,parameters_input,parameters_mllib,parameters_output)
-    near = u.get_nns_by_vector(classif['body']['predictions'][0]['vals'],args.search_size,include_distances=True)
-    print near
+    print classif
     near_names = []
-    for n in near[0]:
-        near_names.append(s[str(n)])
+    for nn in classif['body']['predictions'][0]['nns']:
+        near_names.append(nn['uri'])
     print near_names
+    print len(near_names)
     cv2.imshow('query',image_resize(args.search,224.0))
     cv2.waitKey(0)
     for n in near_names:

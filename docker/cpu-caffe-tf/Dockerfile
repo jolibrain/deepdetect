@@ -52,7 +52,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   curl \
   bash-completion \
   ca-certificates && \
-  wget -O /tmp/bazel.deb https://github.com/bazelbuild/bazel/releases/download/0.4.3/bazel_0.4.3-linux-x86_64.deb && \
+  wget -O /tmp/bazel.deb https://github.com/bazelbuild/bazel/releases/download/0.8.1/bazel_0.8.1-linux-x86_64.deb && \
   dpkg -i /tmp/bazel.deb && \
   apt-get remove -y libcurlpp0 && \
   apt-get clean && \
@@ -71,17 +71,7 @@ RUN wget -O /opt/curlpp-v0.8.1.zip https://github.com/jpbarrette/curlpp/archive/
 RUN git clone https://github.com/beniz/deepdetect.git && cd deepdetect && mkdir build
 
 WORKDIR /opt/deepdetect/build
-RUN export TF_NEED_HDFS=0 && \
-    export TF_NEED_GCP=0 && \
-    export TF_NEED_OPENCL=0 && \
-    export TF_NEED_CUDA=0 && \
-    export PYTHON_BIN_PATH=/usr/bin/python && \
-    export PYTHON_LIB_PATH=/usr/local/lib/python2.7/dist-packages && \
-    export GCC_HOST_COMPILER_PATH=$(which gcc) && \
-    export TF_NEED_JEMALLOC=1 && \
-    export TF_ENABLE_XLA=0 && \
-    export CC_OPT_FLAGS="-march=native" && \
-    cmake .. -DUSE_TF=ON && \
+RUN cmake .. -DUSE_TF=ON -DUSE_TF_CPU_ONLY=ON && \
     make
 
 # external volume to be mapped, e.g. for models or training data

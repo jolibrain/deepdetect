@@ -73,6 +73,8 @@ namespace dd
     JDoc dd_internal_mllib_error_1007(const std::string &what) const;
     JDoc dd_train_predict_conflict_1008() const;
     JDoc dd_output_connector_network_error_1009() const;
+    JDoc dd_sim_index_error_1010() const;
+    JDoc dd_sim_search_error_1011() const;
     
     // JSON rendering
     std::string jrender(const JDoc &jst) const;

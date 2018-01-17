@@ -7,7 +7,7 @@ else()
 endif()
 set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lhdf5_hl -lhdf5 -lopenblas -lcaffe -lprotobuf)
 if (USE_TF)
-  set(TF_LIB_DEPS -ltensorflow ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/org_tensorflow/bazel-out/local_linux-opt/bin/tensorflow/cc/libcc_ops.lo ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/org_tensorflow/bazel-out/local_linux-opt/bin/tensorflow/cc/libconst_op.a ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/org_tensorflow/bazel-out/local_linux-opt/bin/tensorflow/cc/libops.a ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/org_tensorflow/bazel-out/local_linux-opt/bin/tensorflow/cc/libscope.a tcmalloc_minimal)
+  set(TF_LIB_DEPS -ltensorflow_cc)
 else()
   set(TF_LIB_DEPS)
 endif()
@@ -185,5 +185,14 @@ if (USE_XGBOOST)
     COMMAND ut_xgbapi
     )
 endif()
-  
+
+if (USE_SIMSEARCH)
+add_executable(ut_simsearch ut-simsearch.cc)
+target_link_libraries(ut_simsearch ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
+add_test(
+  NAME ut_simsearch
+  COMMAND ut_simsearch
+  )
+endif()
+
 endif()

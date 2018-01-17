@@ -22,6 +22,7 @@
 #ifndef OUTPUTCONNECTORSTRATEGY_H
 #define OUTPUTCONNECTORSTRATEGY_H
 
+#include "mlmodel.h"
 #include <map>
 #include <algorithm>
 #include <iostream>
@@ -33,7 +34,7 @@ namespace dd
 {
   typedef Eigen::MatrixXd dMat;
   typedef Eigen::VectorXd dVec;
-  
+
   /**
    * \brief bad parameter exception
    */
@@ -93,7 +94,7 @@ namespace dd
      * @param ad_in data output object from the API call
      * @param ad_out data object as the call response
      */
-    void finalize(const APIData &ad_in, APIData &ad_out);
+    void finalize(const APIData &ad_in, APIData &ad_out, MLModel *mlm=nullptr);
   };
 
   /**
