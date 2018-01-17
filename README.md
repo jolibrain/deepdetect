@@ -88,6 +88,7 @@ Current features include:
 - flexible template output format to simplify connection to external applications
 - templates for the most useful neural architectures (e.g. Googlenet, Alexnet, ResNet, convnet, character-based convnet, mlp, logistic regression)
 - support for sparse features and computations on both GPU and CPU
+- built-in similarity indexing and search of predicted features and probability distributions
 
 ##### Documentation
 
