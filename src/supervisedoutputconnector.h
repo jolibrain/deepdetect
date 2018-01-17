@@ -60,15 +60,22 @@ namespace dd
 	_cats.insert(std::pair<double,std::string>(prob,cat));
       }
 
-      inline void add_extra(const double &prob, const APIData &ad)
+      inline void add_bbox(const double &prob, const APIData &ad)
       {
-	_extra.insert(std::pair<double,APIData>(prob,ad));
+        _bboxes.insert(std::pair<double,APIData>(prob,ad));
       }
-      
+
+      inline void add_val(const double &prob, const APIData &ad)
+      {
+        _vals.insert(std::pair<double,APIData>(prob,ad));
+      }
+
+
       std::string _label;
       double _loss = 0.0; /**< result loss. */
       std::multimap<double,std::string,std::greater<double>> _cats; /**< categories and probabilities for this result */
-      std::multimap<double,APIData,std::greater<double>> _extra; /**< extra data or information added to output, e.g. bboxes. */
+      std::multimap<double,APIData,std::greater<double>> _bboxes; /**< extra data or information added to output, e.g. bboxes. */
+      std::multimap<double,APIData,std::greater<double>> _vals; /**< extra data or information added to output, e.g. bboxes. */
     };
 
   public:
@@ -117,10 +124,14 @@ namespace dd
 	  double loss = ad.get("loss").get<double>();
 	  std::vector<double> probs = ad.get("probs").get<std::vector<double>>();
 	  std::vector<std::string> cats = ad.get("cats").get<std::vector<std::string>>();
-	  std::vector<APIData> vextra;
+	  std::vector<APIData> bboxes;
+      std::vector<APIData> rois;
 	  if (ad.has("bboxes"))
-	    vextra = ad.getv("bboxes");
-	  if ((hit=_vcats.find(uri))==_vcats.end())
+	    bboxes = ad.getv("bboxes");
+      if (ad.has("vals")) {
+        rois = ad.getv("vals");
+      }
+      if ((hit=_vcats.find(uri))==_vcats.end())
 	    {
 	      auto resit = _vcats.insert(std::pair<std::string,int>(uri,_vvcats.size()));
 	      _vvcats.push_back(sup_result(uri,loss));
@@ -128,8 +139,10 @@ namespace dd
 	      for (size_t i=0;i<probs.size();i++)
 		{
 		  _vvcats.at((*hit).second).add_cat(probs.at(i),cats.at(i));
-		  if (!vextra.empty())
-		    _vvcats.at((*hit).second).add_extra(probs.at(i),vextra.at(i));
+		  if (!bboxes.empty())
+		    _vvcats.at((*hit).second).add_bbox(probs.at(i),bboxes.at(i));
+          if (!rois.empty())
+		    _vvcats.at((*hit).second).add_val(probs.at(i),rois.at(i));
 		}
 	    }
 	}
@@ -140,14 +153,14 @@ namespace dd
      * @param ad_out output data object
      * @param bcats supervised output connector
      */
-    void best_cats(const APIData &ad_out, SupervisedOutput &bcats, const int &nclasses, const bool &has_bbox) const
+    void best_cats(const APIData &ad_out, SupervisedOutput &bcats, const int &nclasses, const bool &has_bbox, const bool &has_roi) const
     {
       int best = _best;
       if (ad_out.has("best"))
 	best = ad_out.get("best").get<int>();
       if (best == -1)
 	best = nclasses;
-      if (!has_bbox)
+      if (!has_bbox && !has_roi)
 	{
 	  for (size_t i=0;i<_vvcats.size();i++)
 	    {
@@ -155,9 +168,13 @@ namespace dd
 	      sup_result bsresult(sresult._label,sresult._loss);
 	      std::copy_n(sresult._cats.begin(),std::min(best,static_cast<int>(sresult._cats.size())),
 			  std::inserter(bsresult._cats,bsresult._cats.end()));
-	      if (!sresult._extra.empty())
-		std::copy_n(sresult._extra.begin(),std::min(best,static_cast<int>(sresult._extra.size())),
-			    std::inserter(bsresult._extra,bsresult._extra.end()));
+	      if (!sresult._bboxes.empty())
+		std::copy_n(sresult._bboxes.begin(),std::min(best,static_cast<int>(sresult._bboxes.size())),
+			    std::inserter(bsresult._bboxes,bsresult._bboxes.end()));
+	      if (!sresult._vals.empty())
+		std::copy_n(sresult._vals.begin(),std::min(best,static_cast<int>(sresult._vals.size())),
+			    std::inserter(bsresult._vals,bsresult._vals.end()));
+	      
 	      bcats._vcats.insert(std::pair<std::string,int>(sresult._label,bcats._vvcats.size()));
 	      bcats._vvcats.push_back(bsresult);
 	    }
@@ -174,19 +191,23 @@ namespace dd
 		  int nbest = sresult._cats.size();
 		  std::copy_n(sresult._cats.begin(),std::min(nbest,static_cast<int>(sresult._cats.size())),
 			      std::inserter(bsresult._cats,bsresult._cats.end()));
-		  if (!sresult._extra.empty())
-		    std::copy_n(sresult._extra.begin(),std::min(nbest,static_cast<int>(sresult._extra.size())),
-				std::inserter(bsresult._extra,bsresult._extra.end()));
+		  if (!sresult._bboxes.empty())
+		    std::copy_n(sresult._bboxes.begin(),std::min(nbest,static_cast<int>(sresult._bboxes.size())),
+				std::inserter(bsresult._bboxes,bsresult._bboxes.end()));
 		}
 	      else
 		{
 		  std::unordered_map<std::string,int> lboxes;
 		  auto bbit = lboxes.begin();
 		  auto mit = sresult._cats.begin();
-		  auto mitx = sresult._extra.begin();
-		  while(mitx!=sresult._extra.end())
+		  auto mitx = sresult._bboxes.begin();
+		  auto mity = sresult._vals.begin();
+		  while(mitx!=sresult._bboxes.end())
 		    {
 		      APIData bbad = (*mitx).second;
+		      APIData vvad;
+		      if (has_roi)
+			vvad = (*mity).second;
 		      std::string bbkey = std::to_string(bbad.get("xmin").get<double>())
 			+ "-" + std::to_string(bbad.get("ymin").get<double>())
 			+ "-" + std::to_string(bbad.get("xmax").get<double>())
@@ -197,21 +218,25 @@ namespace dd
 			  if ((*bbit).second <= best)
 			    {
 			      bsresult._cats.insert(std::pair<double,std::string>((*mit).first,(*mit).second));
-			      bsresult._extra.insert(std::pair<double,APIData>((*mitx).first,bbad));
+			      bsresult._bboxes.insert(std::pair<double,APIData>((*mitx).first,bbad));
+			      if (has_roi)
+				bsresult._vals.insert(std::pair<double,APIData>((*mity).first,vvad));
 			    }
 			}
 		      else
 			{
 			  lboxes.insert(std::pair<std::string,int>(bbkey,1));
 			  bsresult._cats.insert(std::pair<double,std::string>((*mit).first,(*mit).second));
-			  bsresult._extra.insert(std::pair<double,APIData>((*mitx).first,bbad));
+			  bsresult._bboxes.insert(std::pair<double,APIData>((*mitx).first,bbad));
+			  if (has_roi)
+			    bsresult._vals.insert(std::pair<double,APIData>((*mity).first,vvad));
 			}
 		      ++mitx;
 		      ++mit;
+		      if (has_roi)
+			++mity;
 		    }
 		}
-	      
-	      
 	      bcats._vcats.insert(std::pair<std::string,int>(sresult._label,bcats._vvcats.size()));
 	      bcats._vvcats.push_back(bsresult);
 	    }
@@ -248,14 +273,27 @@ namespace dd
 	  ad_out.erase("autoencoder");
 	}
       bool has_bbox = false;
+      bool has_roi = false;
       if (ad_out.has("bbox") && ad_out.get("bbox").get<bool>())
 	{
 	  has_bbox = true;
 	  ad_out.erase("nclasses");
 	  ad_out.erase("bbox");
 	}
-      best_cats(ad_in,bcats,nclasses,has_bbox);
-      bcats.to_ad(ad_out,regression,autoencoder);
+
+      if (ad_out.has("roi") && ad_out.get("roi").get<bool>())
+        {
+          has_roi = true;
+        }
+
+      /* if (ad_out.has("roi")) */
+      /*   { */
+      /*     has_roi = true; */
+      /*     ad_out.erase("nclasses"); */
+      /*     ad_out.erase("roi"); */
+      /*   } */
+      best_cats(ad_in,bcats,nclasses,has_bbox,has_roi);
+      bcats.to_ad(ad_out,regression,autoencoder,has_bbox, has_roi);
     }
     
     struct PredictionAndAnswer {
@@ -718,12 +756,15 @@ namespace dd
      * \brief write supervised output object to data object
      * @param out data destination
      */
-    void to_ad(APIData &out, const bool &regression, const bool &autoencoder) const
+    void to_ad(APIData &out, const bool &regression, const bool &autoencoder, const bool &has_bbox, const bool &has_roi) const
     {
       static std::string cl = "classes";
       static std::string ve = "vector";
       static std::string ae = "losses";
       static std::string bb = "bbox";
+      static std::string roi = "vals";
+      static std::string rois = "rois";
+
       static std::string phead = "prob";
       static std::string chead = "cat";
       static std::string vhead = "val";
@@ -734,33 +775,46 @@ namespace dd
 	{
 	  APIData adpred;
 	  std::vector<APIData> v;
-	  auto bit = _vvcats.at(i)._extra.begin();
-	  bool has_bbox = (bit!=_vvcats.at(i)._extra.end());
+	  auto bit = _vvcats.at(i)._bboxes.begin();
+      auto vit = _vvcats.at(i)._vals.begin();
+	  //bool has_bbox = (bit!=_vvcats.at(i)._bboxes.end());
 	  auto mit = _vvcats.at(i)._cats.begin();
 	  while(mit!=_vvcats.at(i)._cats.end())
 	    {
 	      APIData nad;
 	      if (!autoencoder)
-		nad.add(chead,(*mit).second);
+            nad.add(chead,(*mit).second);
 	      if (regression)
-		nad.add(vhead,(*mit).first);
+            nad.add(vhead,(*mit).first);
 	      else if (autoencoder)
-		nad.add(ahead,(*mit).first);
+            nad.add(ahead,(*mit).first);
 	      else nad.add(phead,(*mit).first);
-	      if (has_bbox)
-		{
-		  nad.add(bb,(*bit).second);
-		  ++bit;
-		}
+	      if (has_bbox || has_roi)
+            {
+              nad.add(bb,(*bit).second);
+              ++bit;
+            }
+          if (has_roi)
+            {
+              /* std::vector<std::string> keys = (*vit).second.list_keys(); */
+              /* std::copy(keys.begin(), keys.end(), std::ostream_iterator<std::string>(std::cout, "'")); */
+              /* std::cout << std::endl; */
+              nad.add(roi,(*vit).second.get("vals").get<std::vector<double>>());
+              ++vit;
+            }
 	      ++mit;
 	      if (mit == _vvcats.at(i)._cats.end())
-		nad.add(last,true);
+            nad.add(last,true);
 	      v.push_back(nad);
 	    }
 	  if (regression)
 	    adpred.add(ve,v);
 	  else if (autoencoder)
 	    adpred.add(ae,v);
+      else if (has_bbox)
+        adpred.add(bb, v);
+      else if (has_roi)
+        adpred.add(rois,v);
 	  else adpred.add(cl,v);
 	  if (_vvcats.at(i)._loss > 0.0) // XXX: not set by Caffe in prediction mode for now
 	    adpred.add("loss",_vvcats.at(i)._loss);
