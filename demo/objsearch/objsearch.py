@@ -12,6 +12,9 @@ parser.add_argument("--index",help="repository of images to be indexed")
 parser.add_argument("--index-batch-size",type=int,help="size of image batch when indexing",default=1)
 parser.add_argument("--search",help="image input file for similarity search")
 parser.add_argument("--search-size",help="number of nearest neighbors",type=int,default=10)
+parser.add_argument("--confidence-threshold",help="confidence threshold on bounding boxes",type=float,default=0.01)
+parser.add_argument("--nclasses",help="number of classes in the model",type=int,default=21)
+parser.add_argument("--model-dir",help="model directory",default="model")
 args = parser.parse_args()
 
 def batch(iterable, n=1):
@@ -32,9 +35,8 @@ description = 'image classification'
 mllib = 'caffe'
 mltype = 'supervised'
 extract_layer = 'rois'
-#extract_layer = 'pool5/7x7_s1'
-nclasses = 21
-layer_size = 2048 # default output code size
+nclasses = args.nclasses
+layer_size = 512 # auto anyways
 width = height = 300
 dd = DD(host)
 dd.set_return_format(dd.RETURN_PYTHON)
@@ -42,18 +44,21 @@ ntrees = 1000
 metric = 'angular'  # or 'euclidean'
 
 # creating ML service
-model_repo = os.getcwd() + '/model'
+model_repo = os.getcwd() + '/' + args.model_dir
 model = {'repository':model_repo,'templates':'../templates/caffe/'}
 parameters_input = {'connector':'image','width':width,'height':height}
 parameters_mllib = {'nclasses':nclasses}
 parameters_output = {}
-dd.put_service(sname,model,description,mllib,
-               parameters_input,parameters_mllib,parameters_output,mltype)
+try:
+    dd.put_service(sname,model,description,mllib,
+                   parameters_input,parameters_mllib,parameters_output,mltype)
+except:
+    pass
 
 # reset call params
 parameters_input = {}
 parameters_mllib = {'gpu':True}
-parameters_output = {'rois':'rois'}
+parameters_output = {'rois':'rois','confidence_threshold':args.confidence_threshold,'best':1}
 
 if args.index:
     try:
