@@ -1498,7 +1498,6 @@ namespace dd
 	      int slot = results.size() - 1;
 	      const int alphabet_size = results[slot]->shape(2);
 	      const int time_step = results[slot]->shape(0);
-	      int scperel = results[slot]->count() / batch_size;
 	      const float *pred_data = results[slot]->cpu_data();
 	      for (int j=0;j<batch_size;j++)
 		{
