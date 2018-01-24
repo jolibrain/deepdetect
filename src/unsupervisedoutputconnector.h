@@ -162,8 +162,9 @@ namespace dd
 	  // index output content -> vector (XXX: will need to flatten in case of multiple vectors)
 	  for (size_t i=0;i<_vvres.size();i++)
 	    {
-	      mlm->_se->index(_vvres.at(i)._uri,_vvres.at(i)._vals);
-	      indexed_uris.insert(_vvres.at(i)._uri);
+	      URIData urid(_vvres.at(i)._uri);
+	      mlm->_se->index(urid,_vvres.at(i)._vals);
+	      indexed_uris.insert(urid._uri);
 	    }
 	}
       if (ad_in.has("build_index") && ad_in.get("build_index").get<bool>())
@@ -186,12 +187,12 @@ namespace dd
 	    search_nn = ad_in.get("search_nn").get<int>();
 	  for (size_t i=0;i<_vvres.size();i++)
 	    {
-	      std::vector<std::string> nn_uris;
+	      std::vector<URIData> nn_uris;
 	      std::vector<double> nn_distances;
 	      mlm->_se->search(_vvres.at(i)._vals,search_nn,nn_uris,nn_distances);
 	      for (size_t j=0;j<nn_uris.size();j++)
 		{
-		  _vvres.at(i).add_nn(nn_distances.at(j),nn_uris.at(j));
+		  _vvres.at(i).add_nn(nn_distances.at(j),nn_uris.at(j)._uri);
 		}
 	    }
 	}

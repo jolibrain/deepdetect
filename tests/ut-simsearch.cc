@@ -45,17 +45,17 @@ TEST(annoyse,index_search)
   mkdir(model_repo.c_str(),0770);
   AnnoySE ase(t,model_repo);
   ase.create_index(); // index creation
-  ase.index("test1",vec1); // indexing data
-  ase.index("test2",vec2);
-  ase.index("test3",vec3);
-  std::vector<std::string> uris;
+  ase.index(URIData("test1"),vec1); // indexing data
+  ase.index(URIData("test2"),vec2);
+  ase.index(URIData("test3"),vec3);
+  std::vector<URIData> uris;
   std::vector<double> distances;
   ase.build_tree(); // tree building
   ase.save_tree(); // tree saving
   ase.search(vec1,3,uris,distances); // searching nearest neighbors
   std::cerr << "search uris size=" << uris.size() << std::endl;
   for (size_t i=0;i<uris.size();i++)
-    std::cout << uris.at(i) << " / distances=" << distances.at(i) << std::endl;
+    std::cout << uris.at(i)._uri << " / distances=" << distances.at(i) << std::endl;
   ase.remove_index();
   rmdir(model_repo.c_str());
 }
@@ -72,25 +72,25 @@ TEST(annoyse,index_search_incr)
   mkdir(model_repo.c_str(),0770);
   AnnoySE ase(t,model_repo);
   ase.create_index();
-  ase.index("test1",vec1);
-  ase.index("test2",vec2);
-  ase.index("test3",vec3);
-  std::vector<std::string> uris;
+  ase.index(URIData("test1"),vec1);
+  ase.index(URIData("test2"),vec2);
+  ase.index(URIData("test3"),vec3);
+  std::vector<URIData> uris;
   std::vector<double> distances;
   ase.build_tree();
   ase.search(vec1,3,uris,distances);
   std::cerr << "search uris size=" << uris.size() << std::endl;
   for (size_t i=0;i<uris.size();i++)
-    std::cout << uris.at(i) << " / distances=" << distances.at(i) << std::endl;
+    std::cout << uris.at(i)._uri << " / distances=" << distances.at(i) << std::endl;
   uris.clear();
   distances.clear();
   ase.unbuild_tree();
-  ase.index("test4",vec4);
+  ase.index(URIData("test4"),vec4);
   ase.build_tree();
   ase.search(vec4,3,uris,distances);
   std::cerr << "search uris size=" << uris.size() << std::endl;
   for (size_t i=0;i<uris.size();i++)
-    std::cout << uris.at(i) << " / distances=" << distances.at(i) << std::endl;
+    std::cout << uris.at(i)._uri << " / distances=" << distances.at(i) << std::endl;
   ase.remove_index();
   rmdir(model_repo.c_str());
 }
@@ -106,7 +106,7 @@ TEST(simsearch,predict_simsearch_unsup)
   JDoc jd;
   
   // train
-  std::string gpuid = "0";
+  /*std::string gpuid = "0";
   std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"mllib\":{\"gpu\":true,\"gpuid\":"+gpuid+",\"solver\":{\"iterations\":" + iterations_mnist + ",\"snapshot\":200,\"snapshot_prefix\":\"" + mnist_repo + "/mylenet\",\"test_interval\":2}},\"output\":{\"measure_hist\":true,\"measure\":[\"f1\"]}}}";
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
@@ -121,7 +121,7 @@ TEST(simsearch,predict_simsearch_unsup)
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"].HasMember("measure"));
   ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
-  ASSERT_EQ(jd["body"]["measure_hist"]["iteration_hist"].Size(),jd["body"]["measure_hist"]["train_loss_hist"].Size());
+  ASSERT_EQ(jd["body"]["measure_hist"]["iteration_hist"].Size(),jd["body"]["measure_hist"]["train_loss_hist"].Size());*/
   
   // predict
   std::string jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"bw\":true,\"width\":28,\"height\":28},\"mllib\":{\"extract_layer\":\"ip2\"},\"output\":{\"index\":true}},\"data\":[\"" + mnist_repo + "/sample_digit.png\"]}";
@@ -186,7 +186,7 @@ TEST(simsearch,predict_simsearch_sup)
   JDoc jd;
   
   // train
-  std::string gpuid = "0";
+  /*std::string gpuid = "0";
   std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"mllib\":{\"gpu\":true,\"gpuid\":"+gpuid+",\"solver\":{\"iterations\":" + iterations_mnist + ",\"snapshot\":200,\"snapshot_prefix\":\"" + mnist_repo + "/mylenet\",\"test_interval\":2}},\"output\":{\"measure_hist\":true,\"measure\":[\"f1\"]}}}";
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
@@ -201,7 +201,7 @@ TEST(simsearch,predict_simsearch_sup)
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"].HasMember("measure"));
   ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
-  ASSERT_EQ(jd["body"]["measure_hist"]["iteration_hist"].Size(),jd["body"]["measure_hist"]["train_loss_hist"].Size());
+  ASSERT_EQ(jd["body"]["measure_hist"]["iteration_hist"].Size(),jd["body"]["measure_hist"]["train_loss_hist"].Size());*/
   
   // predict
   std::string jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"bw\":true,\"width\":28,\"height\":28},\"mllib\":{},\"output\":{\"index\":true,\"best\":2}},\"data\":[\"" + mnist_repo + "/sample_digit.png\"]}";
