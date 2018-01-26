@@ -155,7 +155,6 @@ namespace dd
 	  if (!mlm->_se)
 	    {
 	      int index_dim = _vvres.at(0)._vals.size(); //XXX: lookup to the batch's first output, as they should all have the same size
-	      std::cerr << "Creating index\n";
 	      mlm->create_sim_search(index_dim);
 	    }
 	      

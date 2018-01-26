@@ -1549,10 +1549,8 @@ layer {
       top_k: 400
     }
     code_type: CENTER_SIZE
-    #keep_top_k: 200
-    keep_top_k: 10
-    confidence_threshold: 0.9 
-    #confidence_threshold: 0.01
+    keep_top_k: 200
+    confidence_threshold: 0.01
   }
 }
 

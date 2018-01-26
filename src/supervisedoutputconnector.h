@@ -71,9 +71,16 @@ namespace dd
       }
 
 #ifdef USE_SIMSEARCH
-      void add_nn(const double dist, const URIData &uri)
+      void add_nn(const double &dist, const URIData &uri)
       {
 	_nns.insert(std::pair<double,URIData>(dist,uri));
+      }
+      
+      void add_bbox_nn(const int &bb, const double &dist, const URIData &uri)
+      {
+	if (_bbox_nns.empty())
+	  _bbox_nns = std::vector<std::multimap<double,URIData>>(_bboxes.size(),std::multimap<double,URIData>());
+	_bbox_nns.at(bb).insert(std::pair<double,URIData>(dist,uri));
       }
 #endif
 
@@ -85,6 +92,7 @@ namespace dd
 #ifdef USE_SIMSEARCH
       bool _indexed = false;
       std::multimap<double,URIData> _nns; /**< nearest neigbors. */
+      std::vector<std::multimap<double,URIData>> _bbox_nns; /**< per bbox nearest neighbors. */
 #endif      
     };
 
@@ -307,7 +315,8 @@ namespace dd
 	  if (!mlm->_se)
 	    {
 	      int index_dim = _best;
-	      std::cerr << "Creating index\n";
+	      if (has_roi)
+		index_dim = (*bcats._vvcats.at(0)._vals.begin()).second.get("vals").get<std::vector<double>>().size(); // lookup to the first roi dimensions
 	      mlm->create_sim_search(index_dim);
 	    }
 
@@ -330,6 +339,7 @@ namespace dd
 	    }
 	  else // roi
 	    {
+	      int nrois = 0;
 	      for (size_t i=0;i<bcats._vvcats.size();i++)
 		{
 		  auto vit = bcats._vvcats.at(i)._vals.begin();
@@ -346,10 +356,11 @@ namespace dd
 		      URIData urid(bcats._vvcats.at(i)._label,
 				   bbox,prob,cat);
 		      mlm->_se->index(urid,(*vit).second.get("vals").get<std::vector<double>>());
-		      indexed_uris.insert(urid._uri);
 		      ++mit;
 		      ++vit;
 		      ++bit;
+		      ++nrois;
+		      indexed_uris.insert(urid._uri);
 		    }
 		}
 	    }
@@ -370,11 +381,14 @@ namespace dd
 	  if (!mlm->_se)
 	    {
 	      int index_dim = _best;
-	      std::cerr << "Creating index\n";
+	      if (has_roi)
+		index_dim = (*bcats._vvcats.at(0)._vals.begin()).second.get("vals").get<std::vector<double>>().size(); // lookup to the first roi dimensions
 	      mlm->create_sim_search(index_dim);
 	    }
 	  
 	  int search_nn = _best;
+	  if (has_roi)
+	    search_nn = _search_nn;
 	  if (ad_in.has("search_nn"))
 	    search_nn = ad_in.get("search_nn").get<int>();
 	  if (!has_roi)
@@ -397,14 +411,14 @@ namespace dd
 		    }
 		}
 	    }
-	  else
+	  else // has_roi
 	    {
 	      for (size_t i=0;i<bcats._vvcats.size();i++)
 		{
+		  int bb = 0;
 		  auto vit = bcats._vvcats.at(i)._vals.begin();
-		  //auto bit = bcats._vvcats.at(i)._bboxes.begin();
-		  auto mit = bcats._vvcats.at(i)._cats.begin();
-		  while(mit!=bcats._vvcats.at(i)._cats.end())
+		  auto mit = bcats._vvcats.at(i)._cats.begin(); 
+		  while(mit!=bcats._vvcats.at(i)._cats.end()) // equivalent to iterating the bboxes
 		    {
 		      std::vector<URIData> nn_uris;
 		      std::vector<double> nn_distances;
@@ -414,14 +428,15 @@ namespace dd
 		      ++vit;
 		      for (size_t j=0;j<nn_uris.size();j++)
 			{
-			  bcats._vvcats.at(i).add_nn(nn_distances.at(j),nn_uris.at(j));
+			  bcats._vvcats.at(i).add_bbox_nn(bb,nn_distances.at(j),nn_uris.at(j));
 			}
+		      ++bb;
 		    }
 		}
 	    }
 	}      
 #endif
-
+      
       bcats.to_ad(ad_out,regression,autoencoder,has_bbox,has_roi,indexed_uris);
     }
     
@@ -919,68 +934,86 @@ namespace dd
 	    {
 	      APIData nad;
 	      if (!autoencoder)
-            nad.add(chead,(*mit).second);
+		nad.add(chead,(*mit).second);
 	      if (regression)
-            nad.add(vhead,(*mit).first);
+		nad.add(vhead,(*mit).first);
 	      else if (autoencoder)
-            nad.add(ahead,(*mit).first);
+		nad.add(ahead,(*mit).first);
 	      else nad.add(phead,(*mit).first);
 	      if (has_bbox || has_roi)
-            {
-              nad.add(bb,(*bit).second);
-              ++bit;
-            }
-          if (has_roi)
-            {
-              /* std::vector<std::string> keys = (*vit).second.list_keys(); */
-              /* std::copy(keys.begin(), keys.end(), std::ostream_iterator<std::string>(std::cout, "'")); */
-              /* std::cout << std::endl; */
-              nad.add(roi,(*vit).second.get("vals").get<std::vector<double>>());
-              ++vit;
-            }
+		{
+		  nad.add(bb,(*bit).second);
+		  ++bit;
+		}
+	      if (has_roi)
+		{
+		  /* std::vector<std::string> keys = (*vit).second.list_keys(); */
+		  /* std::copy(keys.begin(), keys.end(), std::ostream_iterator<std::string>(std::cout, "'")); */
+		  /* std::cout << std::endl; */
+		  nad.add(roi,(*vit).second.get("vals").get<std::vector<double>>());
+		  ++vit;
+		}
 	      ++mit;
 	      if (mit == _vvcats.at(i)._cats.end())
-            nad.add(last,true);
+		nad.add(last,true);
 	      v.push_back(nad);
 	    }
-	  if (regression)
-	    adpred.add(ve,v);
-	  else if (autoencoder)
-	    adpred.add(ae,v);
-      else if (has_roi)
-        adpred.add(rois,v);
-	  else adpred.add(cl,v);
 	  if (_vvcats.at(i)._loss > 0.0) // XXX: not set by Caffe in prediction mode for now
 	    adpred.add("loss",_vvcats.at(i)._loss);
 	  adpred.add("uri",_vvcats.at(i)._label);
 #ifdef USE_SIMSEARCH
 	  if (!indexed_uris.empty() && (hit=indexed_uris.find(_vvcats.at(i)._label))!=indexed_uris.end())
 	    adpred.add("indexed",true);
-	  if (!_vvcats.at(i)._nns.empty())
+	  if (!_vvcats.at(i)._nns.empty() || !_vvcats.at(i)._bbox_nns.empty())
 	    {
-	      std::vector<APIData> ad_nns;
-	      auto mit = _vvcats.at(i)._nns.begin();
-	      while(mit!=_vvcats.at(i)._nns.end())
+	      if (!has_roi)
 		{
-		  APIData ad_nn;
-		  ad_nn.add("uri",(*mit).second._uri);
-		  if (!(*mit).second._bbox.empty())
+		  std::vector<APIData> ad_nns;
+		  auto nnit = _vvcats.at(i)._nns.begin();
+		  while(nnit!=_vvcats.at(i)._nns.end())
 		    {
-		      ad_nn.add("prob",(*mit).second._prob);
-		      ad_nn.add("cat",(*mit).second._cat);
-		      APIData ad_bbox;
-		      ad_bbox.add("xmin",ad_nn.get("xmin").get<double>());
-		      ad_bbox.add("ymin",ad_nn.get("ymin").get<double>());
-		      ad_bbox.add("xmax",ad_nn.get("xmax").get<double>());
-		      ad_bbox.add("ymax",ad_nn.get("ymax").get<double>());
+		      APIData ad_nn;
+		      ad_nn.add("uri",(*nnit).second._uri);
+		      ad_nn.add("dist",(*nnit).first);
+		      ad_nns.push_back(ad_nn);
+		      ++nnit;
 		    }
-		  ad_nn.add("dist",(*mit).first);
-		  ad_nns.push_back(ad_nn);
-		  ++mit;
+		  adpred.add("nns",ad_nns);
 		}
-	      adpred.add("nns",ad_nns);
+	      else // has_roi
+		{
+		  for (size_t bb=0;bb<_vvcats.at(i)._bbox_nns.size();bb++)
+		    {
+		      std::vector<APIData> ad_nns;
+		      auto nnit = _vvcats.at(i)._bbox_nns.at(bb).begin();
+		      while(nnit!=_vvcats.at(i)._bbox_nns.at(bb).end())
+			{
+			  APIData ad_nn;
+			  ad_nn.add("uri",(*nnit).second._uri);
+			  ad_nn.add("dist",(*nnit).first);
+			  ad_nn.add("prob",(*nnit).second._prob);
+			  ad_nn.add("cat",(*nnit).second._cat);
+			  APIData ad_bbox;
+			  ad_bbox.add("xmin",(*nnit).second._bbox.at(0));
+			  ad_bbox.add("ymin",(*nnit).second._bbox.at(1));
+			  ad_bbox.add("xmax",(*nnit).second._bbox.at(2));
+			  ad_bbox.add("ymax",(*nnit).second._bbox.at(3));
+			  ad_nn.add("bbox",ad_bbox);
+			  ad_nns.push_back(ad_nn);
+			  ++nnit;
+			}
+		      v.at(bb).add("nns",ad_nns); // v is in roi object vector
+		    }
+		}
 	    }
 #endif
+	  if (regression)
+	    adpred.add(ve,v);
+	  else if (autoencoder)
+	    adpred.add(ae,v);
+	  else if (has_roi)
+	    adpred.add(rois,v);
+	  else adpred.add(cl,v);
 	  vpred.push_back(adpred);
 	}
       out.add("predictions",vpred);
@@ -991,6 +1024,9 @@ namespace dd
     
     // options
     int _best = 1;
+#ifdef USE_SIMSEARCH
+    int _search_nn = 10; /**< default nearest neighbors per search. */
+#endif
   };
   
 }

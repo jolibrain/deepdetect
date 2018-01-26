@@ -78,7 +78,7 @@ if args.index:
         onlyfiles.extend(nfilenames)
     for x in batch(onlyfiles,args.index_batch_size):
         classif = dd.post_predict(sname,x,parameters_input,parameters_mllib,parameters_output)
-
+        
         for p in classif['body']['predictions']:
             uri =  p['uri']
             rois = p['rois']
