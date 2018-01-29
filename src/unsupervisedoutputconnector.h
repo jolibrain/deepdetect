@@ -29,8 +29,10 @@ namespace dd
   {
   public:
     unsup_result(const std::string &uri,
-		 const std::vector<double> &vals)
-      :_uri(uri),_vals(vals) {}
+		 const std::vector<double> &vals,
+		 const APIData &extra=APIData())
+      :_uri(uri),_vals(vals),_extra(extra) {
+    }
 
     ~unsup_result() {}
 
@@ -69,6 +71,7 @@ namespace dd
     bool _indexed = false;
     std::multimap<double,std::string> _nns; /**< nearest neigbors. */
 #endif
+    APIData _extra; /**< other metadata, e.g. image size.*/
   };
   
   /**
@@ -112,8 +115,15 @@ namespace dd
 	  if ((hit=_vres.find(uri))==_vres.end())
 	    {
 	      _vres.insert(std::pair<std::string,int>(uri,_vvres.size()));
-	      _vvres.push_back(unsup_result(uri,vals));
+	      if (ad.has("imgsize"))
+		{
+		  APIData ad_imgsize;
+		  ad_imgsize.add("imgsize",ad.getobj("imgsize"));
+		  _vvres.push_back(unsup_result(uri,vals,ad_imgsize));
+		}
+	      else _vvres.push_back(unsup_result(uri,vals));
 	    }
+	  
 	}
     }
 
@@ -155,7 +165,6 @@ namespace dd
 	  if (!mlm->_se)
 	    {
 	      int index_dim = _vvres.at(0)._vals.size(); //XXX: lookup to the batch's first output, as they should all have the same size
-	      std::cerr << "Creating index\n";
 	      mlm->create_sim_search(index_dim);
 	    }
 	      
@@ -213,6 +222,8 @@ namespace dd
 	  else if (_string_binarized)
 	    adpred.add("vals",_vvres.at(i)._str);
 	  else adpred.add("vals",_vvres.at(i)._vals);
+	  if (_vvres.at(i)._extra.has("imgsize"))
+	    adpred.add("imgsize",_vvres.at(i)._extra.getobj("imgsize"));
 	  if (i == _vvres.size()-1)
 	    adpred.add("last",true);
 #ifdef USE_SIMSEARCH

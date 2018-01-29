@@ -1319,9 +1319,17 @@ namespace dd
 		for (int j=0;j<batch_size;j++)
 		  {
 		    APIData rad;
+		    std::string uri;
 		    if (!inputc._ids.empty())
-		      rad.add("uri",inputc._ids.at(idoffset+j));
-		    else rad.add("uri",std::to_string(idoffset+j));
+		      {
+			uri = inputc._ids.at(idoffset+j);
+			rad.add("uri",uri);
+		      }
+		    else
+		      {
+			uri = std::to_string(idoffset+j);
+			rad.add("uri",uri);
+		      }
 		    rad.add("loss",loss);
 		    std::vector<double> vals;
 		    int imgsize = inputc.width()*inputc.height();
@@ -1339,6 +1347,19 @@ namespace dd
 			      }
 			  }
 			vals.push_back(best_cat);
+		      }
+		    auto bit = inputc._imgs_size.find(uri);
+		    APIData ad_imgsize;
+		    ad_imgsize.add("height",(*bit).second.first);
+		    ad_imgsize.add("width",(*bit).second.second);
+		    rad.add("imgsize",ad_imgsize);
+		    if (imgsize != (*bit).second.first*(*bit).second.second) // resizing output segmentation array
+		      {
+			cv::Mat segimg = cv::Mat(inputc.height(),inputc.width(), CV_64FC1);
+			std::memcpy(segimg.data,vals.data(),vals.size()*sizeof(double));
+			cv::Mat segimg_res;
+			cv::resize(segimg,segimg_res,cv::Size((*bit).second.second,(*bit).second.first),0,0,cv::INTER_NEAREST);
+			vals = std::vector<double>((double*)segimg_res.data,(double*)segimg_res.data+segimg_res.rows*segimg_res.cols);
 		      }
 		    rad.add("vals",vals);
 		    vrad.push_back(rad);
