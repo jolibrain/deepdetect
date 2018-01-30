@@ -1125,6 +1125,8 @@ namespace dd
     APIData ad_output = ad.getobj("parameters").getobj("output");
     bool bbox = false;
     bool rois = false;
+    bool ctc = false;
+    int blank_label = -1;
     std::string roi_layer;
     double confidence_threshold = 0.0;
     if (ad_output.has("confidence_threshold"))
@@ -1145,6 +1147,12 @@ namespace dd
       roi_layer =  ad_output.get("rois").get<std::string>();
       rois = true;
     }
+    if (ad_output.has("ctc"))
+      {
+	ctc = ad_output.get("ctc").get<bool>();
+	if (ad_output.has("blank_label"))
+	  blank_label = ad_output.get("blank_label").get<int>();
+      }
 
     // gpu
 #if !defined(CPU_ONLY) && !defined(USE_CAFFE_CPU_ONLY)
@@ -1505,6 +1513,54 @@ namespace dd
 		vrad.push_back(rad);
 	      }
 	    }
+	    else if (ctc)
+	    {
+	      // input is time_step x batch_size x alphabet_size
+	      int slot = results.size() - 1;
+	      const int alphabet_size = results[slot]->shape(2);
+	      const int time_step = results[slot]->shape(0);
+	      int scperel = results[slot]->count() / batch_size;
+	      const float *pred_data = results[slot]->cpu_data();
+	      for (int j=0;j<batch_size;j++)
+		{
+		  std::vector<int> pred_label_seq_with_blank(time_step);
+		  std::vector<std::vector<float>> pred_sample;
+
+		  const float *pred_cur = pred_data;
+		  pred_cur += j*alphabet_size;
+		  for (int t=0;t<time_step;t++)
+		    {
+		      pred_label_seq_with_blank[t] = std::max_element(pred_cur, pred_cur + alphabet_size) - pred_cur;
+		      pred_cur += batch_size * alphabet_size;
+		    }
+
+		  // get labels seq
+		  std::vector<int> pred_label_seq;
+		  int prev = blank_label;
+		  for(int l = 0; l < time_step; ++l)
+		    {
+		      int cur = pred_label_seq_with_blank[l];
+		      if(cur != prev && cur != blank_label)
+			pred_label_seq.push_back(cur);
+		      prev = cur;
+		    }
+		  APIData outseq;
+		  std::string outstr;
+		  for (auto l: pred_label_seq)
+		    {
+		      outstr += this->_mlmodel.get_hcorresp(l);
+		    }
+		  std::vector<std::string> cats;
+		  cats.push_back(outstr);
+		  if (!inputc._ids.empty())
+		    outseq.add("uri",inputc._ids.at(idoffset+j));
+		  else outseq.add("uri",std::to_string(idoffset+j));
+		  outseq.add("cats",cats);
+		  outseq.add("probs",std::vector<double>(1,1.0)); //XXX: in raw pred_label_seq_with_blank
+		  outseq.add("loss",0.0);
+		  vrad.push_back(outseq);
+		}
+	    }
 	    else // classification
 	      {
 		int slot = results.size() - 1;
@@ -1605,6 +1661,7 @@ namespace dd
     out.add("nclasses",nclasses);
     out.add("bbox",bbox);
     out.add("roi",rois);
+    out.add("ctc",ctc);
     if (!inputc._segmentation)
       tout.finalize(ad.getobj("parameters").getobj("output"),out,static_cast<MLModel*>(&this->_mlmodel));
     else // segmentation returns an array, best dealt with an unsupervised connector
