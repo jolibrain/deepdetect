@@ -433,7 +433,7 @@ namespace dd
 	      meas_out.add("meaniou",meaniou);
 	      meas_out.add("clacc",clacc);
 	    }
-	  if (bf1)
+	  if (!segmentation && bf1)
 	    {
 	      double f1,precision,recall,acc;
 	      dMat conf_diag,conf_matrix;
@@ -466,7 +466,7 @@ namespace dd
 		  meas_out.add("cmfull",cmdata);
 		}
 	    }
-	  if (bmcll)
+	  if (!segmentation && bmcll)
 	    {
 	      double mmcll = mcll(ad_res);
 	      meas_out.add("mcll",mmcll);
