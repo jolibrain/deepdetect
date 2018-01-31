@@ -1519,7 +1519,6 @@ namespace dd
 	      int slot = results.size() - 1;
 	      const int alphabet_size = results[slot]->shape(2);
 	      const int time_step = results[slot]->shape(0);
-	      int scperel = results[slot]->count() / batch_size;
 	      const float *pred_data = results[slot]->cpu_data();
 	      for (int j=0;j<batch_size;j++)
 		{
@@ -1661,7 +1660,6 @@ namespace dd
     out.add("nclasses",nclasses);
     out.add("bbox",bbox);
     out.add("roi",rois);
-    out.add("ctc",ctc);
     if (!inputc._segmentation)
       tout.finalize(ad.getobj("parameters").getobj("output"),out,static_cast<MLModel*>(&this->_mlmodel));
     else // segmentation returns an array, best dealt with an unsupervised connector

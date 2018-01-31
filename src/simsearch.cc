@@ -21,10 +21,41 @@
 
 #include "simsearch.h"
 #include "utils/fileops.hpp"
+#include "utils/utils.hpp"
 
 namespace dd
 {
 
+  /*-- URIData --*/
+  char URIData::_enc_char = '^';
+  
+  std::string URIData::encode() const
+  {
+    if (_bbox.empty())
+      return _uri;
+    std::string enc = _uri + _enc_char;
+    for (auto b: _bbox)
+      enc += std::to_string(b) + _enc_char;
+    enc += std::to_string(_prob) + _enc_char;
+    enc += _cat;
+    return enc;
+  }
+
+  void URIData::decode(const std::string &tmp)
+  {
+    std::vector<std::string> tok = dd_utils::split(tmp,_enc_char);
+    _uri = tok.at(0);
+    if (tok.size() == 1)
+      return;
+    for (int i=1;i<5;i++) // bbox is 4 double
+      {
+	_bbox.push_back(std::stod(tok.at(i)));
+      }
+    _prob = std::stod(tok.at(5));
+    _cat = tok.at(6);
+  }
+  
+  /*-- SearchEngine --*/
   template <class TSE>
   SearchEngine<TSE>::SearchEngine(const int &dim,
 				  const std::string &model_repo)
@@ -59,7 +90,7 @@ namespace dd
   }
   
   template <class TSE>
-  void SearchEngine<TSE>::index(const std::string &uri,
+  void SearchEngine<TSE>::index(const URIData &uri,
 				const std::vector<double> &data)
   {
     std::lock_guard<std::mutex> lock(_index_mutex);
@@ -69,7 +100,7 @@ namespace dd
   template <class TSE>
   void SearchEngine<TSE>::search(const std::vector<double> &data,
 				 const int &nn,
-				 std::vector<std::string> &uris,
+				 std::vector<URIData> &uris,
 				 std::vector<double> &distances)
   {
     _tse->search(data,nn,uris,distances);
@@ -149,7 +180,7 @@ namespace dd
   }
   
   // must be protected by mutex
-  void AnnoySE::index(const std::string &uri,
+  void AnnoySE::index(const URIData &uri,
 		      const std::vector<double> &vec)
   {
     if (_saved_tree)
@@ -163,7 +194,7 @@ namespace dd
   
   void AnnoySE::search(const std::vector<double> &vec,
 		       const int &nn,
-		       std::vector<std::string> &uris,
+		       std::vector<URIData> &uris,
 		       std::vector<double> &distances)
   {
     if (!_built_index)
@@ -172,24 +203,28 @@ namespace dd
     _aindex->get_nns_by_vector(&vec[0],nn,-1,&result,&distances);
     for (auto i: result)
       {
-	std::string uri;
+	URIData uri;
 	get_from_db(i,uri);
 	uris.push_back(uri);
       }
   }
 
+  //TODO: add to db with bbox, prob and cat
+  
   void AnnoySE::add_to_db(const int &idx,
-			  const std::string &uri)
+			  const URIData &fmap)
   {
     std::unique_ptr<caffe::db::Transaction> txn(_db->NewTransaction());
-    txn->Put(std::to_string(idx),uri);
+    txn->Put(std::to_string(idx),fmap.encode());
     txn->Commit(); // no batch commits at the moment
   }
-
+  
   void AnnoySE::get_from_db(const int &idx,
-			    std::string &uri)
+			    URIData &fmap)
   {
-    _db->Get(std::to_string(idx),uri);
+    std::string tmp;
+    _db->Get(std::to_string(idx),tmp);
+    fmap.decode(tmp);
   }
   
 
