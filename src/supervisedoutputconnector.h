@@ -900,8 +900,6 @@ namespace dd
 	    adpred.add(ae,v);
 	  else if (has_roi)
 	    adpred.add(rois,v);
-	  else if (has_bbox)
-	    adpred.add(bb, v);
 	  else if (has_roi)
 	    adpred.add(rois,v);
 	  else adpred.add(cl,v);
