@@ -39,6 +39,7 @@ static std::string mnist_repo = "../examples/caffe/mnist/";
 static std::string forest_repo = "../examples/all/forest_type/";
 static std::string farm_repo = "../examples/all/farm_ads/";
 static std::string plank_repo = "../examples/caffe/plankton/";
+static std::string voc_repo = "../examples/caffe/voc/voc/";
 static std::string n20_repo = "../examples/all/n20/";
 static std::string sflare_repo = "../examples/all/sflare/";
 static std::string camvid_repo = "../examples/caffe/camvid/CamVid_square/";
@@ -900,6 +901,30 @@ TEST(caffeapi,service_train_images_seg)
   joutstr = japi.jrender(japi.service_delete(sname,jstr));
   ASSERT_EQ(ok_str,joutstr);
   rmdir(camvid_repo_loc.c_str());
+}
+
+TEST(caffeapi,service_test_bbox)
+{
+    // create service
+  JsonAPI japi;
+  std::string sname = "my_service";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  voc_repo + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"width\":300,\"height\":300},\"mllib\":{\"nclasses\":21}}}";
+  std::cerr << "jstr=" << jstr << std::endl;
+  std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
+  ASSERT_EQ(created_str,joutstr);
+  JDoc jd;
+
+  // predict
+  std::string jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{},\"mllib\":{},\"output\":{\"bbox\":true,\"confidence_threshold\":0.1}},\"data\":[\"" + voc_repo + "/test_img.jpg\"]}";
+  std::cerr << "jpredictstr=" << jpredictstr << std::endl;
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr predict=" << joutstr << std::endl;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200,jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"][0].HasMember("classes"));
+  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0].HasMember("bbox"));
+  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["bbox"].HasMember("xmin"));
 }
 
 TEST(caffeapi,service_train_txt)
