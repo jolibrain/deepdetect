@@ -184,6 +184,46 @@ namespace dd
 	caffe::NetParameter net_param,deploy_net_param;
 	caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
 	caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
+
+
+    // switch to imageDataLayer
+    if (!(this->_inputc._db) && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
+      {
+        caffe::LayerParameter *lparam = net_param.mutable_layer(0);
+        caffe::ImageDataParameter* image_data_parameter = lparam->mutable_image_data_param();
+        lparam->set_type("ImageData");
+        image_data_parameter->set_source("file-lst.txt");
+        image_data_parameter->set_batch_size(this->_inputc.batch_size());
+        image_data_parameter->set_shuffle(this->_inputc._shuffle);
+        image_data_parameter->set_new_height(this->_inputc.height());
+        image_data_parameter->set_new_width(this->_inputc.width());
+        // TODO : virer ce param et le mettre dans imagedatalayer
+        if (this->_inputc._multi_label)
+          image_data_parameter->set_label_size(_nclasses);
+        else
+          image_data_parameter->set_label_size(1);
+        if (this->_inputc._has_mean_file)
+          image_data_parameter->set_mean_file("mean.binaryproto");
+        lparam->clear_data_param();
+        lparam->clear_transform_param();
+
+
+        // input should be ok, now do the output
+        if (this->_inputc._multi_label)
+          {
+            int k = net_param.layer_size();
+            for (int l=k-1;l>0;l--)
+              {
+                caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+                if (lparam->type() == "SoftmaxWithLoss" || lparam->type() == "Softmax")
+                  {
+                    lparam->set_type("MultiLabelSigmoidLoss");
+                    //break;
+                  }
+              }
+          }
+      }
+
 	if ((ad.has("rotate") && ad.get("rotate").get<bool>()) 
 	    || (ad.has("mirror") && ad.get("mirror").get<bool>())
 	    || (ad.has("crop_size")))
@@ -604,7 +644,7 @@ namespace dd
 	    else if (strcasecmp(solver_type.c_str(),"AMSGRAD") == 0)
 	      {
 		solver_param.set_solver_type(caffe::SolverParameter_SolverType_ADAM);
-		solver_param.set_amsgrad(true);
+        solver_param.set_amsgrad(true);
 	      }
 	  }
 	if (ad_solver.has("test_interval"))
@@ -1624,6 +1664,16 @@ namespace dd
     // fix source paths in the model.
     caffe::NetParameter *np = sp.mutable_net_param();
     caffe::ReadProtoFromTextFile(sp.net().c_str(),np); //TODO: error on read + use internal caffe ReadOrDie procedure
+
+    if (!(inputc._db) && typeid(inputc) == typeid(ImgCaffeInputFileConn))
+      {
+        caffe::LayerParameter *lparam = np->mutable_layer(0);
+        caffe::ImageDataParameter* image_data_parameter = lparam->mutable_image_data_param();
+        image_data_parameter->set_batch_size(user_batch_size);
+      }
+
+
+
     for (int i=0;i<2;i++)
       {
 	caffe::LayerParameter *lp = np->mutable_layer(i);
@@ -1718,6 +1768,20 @@ namespace dd
     bool has_embed = false;
     if (_crop_size > 0)
       width = height = _crop_size;
+
+
+    if (!(this->_inputc._db) && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
+      {
+            caffe::LayerParameter *lparam = net_param.mutable_layer(0);
+            caffe::ImageDataParameter* image_data_parameter = lparam->mutable_image_data_param();
+            image_data_parameter->set_source(inputc._uris.at(0));
+            image_data_parameter->set_batch_size(inputc.batch_size());
+            image_data_parameter->set_new_height(inputc.height());
+            image_data_parameter->set_new_width(inputc.width());
+
+      }
+
+
     if (net_param.mutable_layer(0)->has_memory_data_param()
 	|| net_param.mutable_layer(1)->has_memory_data_param())
       {
@@ -1962,6 +2026,7 @@ namespace dd
 	if (batch_size == 0)
 	  throw MLLibBadParamException("batch size set to zero");
 	LOG(INFO) << "user batch_size=" << batch_size << " / inputc batch_size=" << inputc.batch_size() << std::endl;
+    return;
 
 	// code below is required when Caffe (weirdly) requires the batch size 
 	// to be a multiple of the training dataset size.

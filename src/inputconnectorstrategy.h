@@ -175,6 +175,8 @@ namespace dd
     }
     
     bool _train = false; /**< whether in train or predict mode. */
+    bool _shuffle = false; /**< whether to shuffle the dataset, usually before splitting. */
+
     std::vector<std::string> _uris;
     std::string _model_repo; /**< model repository, useful when connector needs to read from saved data (e.g. vocabulary). */
   };
