@@ -381,9 +381,11 @@ namespace dd
 	  if (!mlm->_se)
 	    {
 	      int index_dim = _best;
-	      if (has_roi)
-		index_dim = (*bcats._vvcats.at(0)._vals.begin()).second.get("vals").get<std::vector<double>>().size(); // lookup to the first roi dimensions
-	      mlm->create_sim_search(index_dim);
+	      if (has_roi && !bcats._vvcats.at(0)._vals.empty())
+		{
+		  index_dim = (*bcats._vvcats.at(0)._vals.begin()).second.get("vals").get<std::vector<double>>().size(); // lookup to the first roi dimensions
+		  mlm->create_sim_search(index_dim);
+		}
 	    }
 	  
 	  int search_nn = _best;
