@@ -188,7 +188,6 @@ namespace dd
     int idx = _index_size;
     _aindex->add_item(idx,&vec[0]);
     ++_index_size;
-    std::cerr << "add to db\n";
     add_to_db(idx,uri);
   }
   
@@ -209,8 +208,6 @@ namespace dd
       }
   }
 
-  //TODO: add to db with bbox, prob and cat
-  
   void AnnoySE::add_to_db(const int &idx,
 			  const URIData &fmap)
   {
