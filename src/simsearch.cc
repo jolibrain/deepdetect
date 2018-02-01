@@ -162,6 +162,11 @@ namespace dd
   
   void AnnoySE::build_tree()
   {
+    if (_count_put % _count_put_max != 0)
+      {
+	_txn->Commit(); // last pending db commit
+	_txn = std::unique_ptr<caffe::db::Transaction>(_db->NewTransaction());
+      }
     _aindex->build(_ntrees);
     _built_index = true;
   }
@@ -211,9 +216,15 @@ namespace dd
   void AnnoySE::add_to_db(const int &idx,
 			  const URIData &fmap)
   {
-    std::unique_ptr<caffe::db::Transaction> txn(_db->NewTransaction());
-    txn->Put(std::to_string(idx),fmap.encode());
-    txn->Commit(); // no batch commits at the moment
+    if (_count_put == 0)
+      _txn = std::unique_ptr<caffe::db::Transaction>(_db->NewTransaction());
+    _txn->Put(std::to_string(idx),fmap.encode());
+    ++_count_put;
+    if (_count_put % _count_put_max == 0)
+      {
+	_txn->Commit(); // batch commit
+	_txn = std::unique_ptr<caffe::db::Transaction>(_db->NewTransaction());
+      }
   }
   
   void AnnoySE::get_from_db(const int &idx,

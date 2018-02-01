@@ -154,6 +154,9 @@ namespace dd
     const std::string _db_name = "names.bin";
     const std::string _db_backend = "lmdb";
     caffe::db::DB *_db = nullptr;
+    std::unique_ptr<caffe::db::Transaction> _txn;
+    int _count_put = 0;
+    int _count_put_max = 1000;
     const std::string _index_name = "index.ann";
     bool _saved_tree = false; /**< whether the tree has been saved. */
     bool _built_index = false; /**< whether the index has been built. */
