@@ -565,9 +565,10 @@ namespace dd
     APIData ad_solver = ad_mllib.getobj("solver");
     if (ad_solver.size())
       {
-	if (ad_solver.has("iterations"))
+        int max_iter = -1;
+        if (ad_solver.has("iterations"))
 	  {
-	    int max_iter = ad_solver.get("iterations").get<int>();
+	    max_iter = ad_solver.get("iterations").get<int>();
 	    solver_param.set_max_iter(max_iter);
 	  }
 	if (ad_solver.has("snapshot")) // iterations between snapshots
@@ -629,6 +630,34 @@ namespace dd
 	  solver_param.set_rms_decay(ad_solver.get("rms_decay").get<double>());
 	if (ad_solver.has("iter_size"))
 	  solver_param.set_iter_size(ad_solver.get("iter_size").get<int>());
+
+	if (ad_solver.has("min_lr"))
+	  solver_param.set_min_lr(ad_solver.get("min_lr").get<double>());
+	if (ad_solver.has("lr_mult"))
+	  solver_param.set_lr_mult(ad_solver.get("lr_mult").get<double>());
+    double p_mult = -1;
+	if (ad_solver.has("p_mult")) {
+      p_mult = ad_solver.get("p_mult").get<double>();
+	  solver_param.set_p_mult(p_mult);
+    }
+	if (ad_solver.has("period"))
+	  solver_param.set_period(ad_solver.get("period").get<int>());
+	if (ad_solver.has("ncycles")) {
+      // compute initial period length in order to have num_period cycle until max_iter
+      int ncycles = ad_solver.get("ncycles").get<int>();
+      if (p_mult < 0) {
+        p_mult = 2.0;
+        solver_param.set_p_mult(p_mult);
+      }
+      if (max_iter > 0) {
+        int period = ((float) max_iter)  / ( pow(p_mult, ncycles) - 1.0);
+        solver_param.set_period(period);
+      } else
+        throw MLLibBadParamException("sgdr + ncycles  requires iterations to be set");
+
+    }
+
+	
       }
     
     // optimize
