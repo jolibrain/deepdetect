@@ -41,7 +41,13 @@ dd.set_return_format(dd.RETURN_PYTHON)
 model_repo = os.getcwd() + '/model'
 model = {'repository':model_repo,'templates':'../templates/caffe/'}
 parameters_input = {'connector':'image','width':width,'height':height}
-parameters_mllib = {'nclasses':nclasses}
+
+# Only indexing needs the template.
+if args.index:
+    parameters_mllib = {'nclasses':nclasses,'template':'googlenet'}
+else:
+    parameters_mllib = {'nclasses':nclasses}
+
 parameters_output = {}
 try:
     dd.put_service(sname,model,description,mllib,
