@@ -15,7 +15,7 @@ mllib = 'tsne'
 dd = DD(host)
 dd.set_return_format(dd.RETURN_PYTHON)
 
-training_repo = 'http://deepdetect.com/dd/datasets/mnist_csv/mnist_test.csv'
+training_repo = 'https://deepdetect.com/dd/datasets/mnist_csv/mnist_test.csv'
 
 # service creation
 model = {'repository':model_repo}
