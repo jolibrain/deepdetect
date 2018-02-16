@@ -125,7 +125,7 @@ Current features include:
 
 ##### Caffe Dependencies
 
-- CUDA 8 or 7.5 is recommended for GPU mode.
+- CUDA 9 or 8 is recommended for GPU mode.
 - BLAS via ATLAS, MKL, or OpenBLAS.
 - [protobuf](https://github.com/google/protobuf)
 - IO libraries hdf5, leveldb, snappy, lmdb
@@ -133,7 +133,7 @@ Current features include:
 ##### XGBoost Dependencies
 
 None outside of C++ compiler and make
-- CUDA 8 or 7.5 is recommended for GPU mode.
+- CUDA 8 is recommended for GPU mode.
 
 #### Tensorflow Dependencies
 
@@ -227,7 +227,7 @@ Below are instructions for Ubuntu 14.04 LTS. For other Linux and Unix systems, s
 
 Beware of dependencies, typically on Debian/Ubuntu Linux, do:
 ```
-sudo apt-get install build-essential libgoogle-glog-dev libgflags-dev libeigen3-dev libopencv-dev libcppnetlib-dev libboost-dev libboost-iostreams-dev libcurlpp-dev libcurl4-openssl-dev protobuf-compiler libopenblas-dev libhdf5-dev libprotobuf-dev libleveldb-dev libsnappy-dev liblmdb-dev libutfcpp-dev cmake libgoogle-perftools-dev unzip
+sudo apt-get install build-essential libgoogle-glog-dev libgflags-dev libeigen3-dev libopencv-dev libcppnetlib-dev libboost-dev libboost-iostreams-dev libcurlpp-dev libcurl4-openssl-dev protobuf-compiler libopenblas-dev libhdf5-dev libprotobuf-dev libleveldb-dev libsnappy-dev liblmdb-dev libutfcpp-dev cmake libgoogle-perftools-dev unzip python-setuptools
 ```
 
 #### Default build with Caffe
