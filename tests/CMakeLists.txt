@@ -140,6 +140,16 @@ if (GTEST_FOUND)
     execute_process(COMMAND ${CMAKE_COMMAND} -E tar xvzf ${CAMVID_EXAMPLE_PATH}${CAMVID_EXAMPLE_TRAIN_ARCHIVE} -C ${CAMVID_EXAMPLE_PATH})
     execute_process(COMMAND ${CMAKE_COMMAND} -E rename ${CAMVID_EXAMPLE_TRAIN_OUT} ${CAMVID_EXAMPLE_PATH}${CAMVID_EXAMPLE_TRAIN_OUT})
   endif()
+
+  set(VOC_EXAMPLE_PATH "examples/caffe/voc/")
+  set(VOC_EXAMPLE_MODEL_ARCHIVE "voc0712_dd.tar.gz")
+  set(VOC_EXAMPLE_MODEL_OUT "voc")
+  if (NOT EXISTS "${VOC_EXAMPLE_PATH}${VOC_EXAMPLE_MODEL_ARCHIVE}")
+    message(STATUS "Downloading object detection test model")
+    file(DOWNLOAD "http://deepdetect.com/dd/examples/caffe/voc/${VOC_EXAMPLE_MODEL_ARCHIVE}" "${VOC_EXAMPLE_PATH}${VOC_EXAMPLE_MODEL_ARCHIVE}")
+    execute_process(COMMAND ${CMAKE_COMMAND} -E tar xvzf ${VOC_EXAMPLE_PATH}${VOC_EXAMPLE_MODEL_ARCHIVE} -C ${VOC_EXAMPLE_PATH})
+    execute_process(COMMAND ${CMAKE_COMMAND} -E rename ${VOC_EXAMPLE_MODEL_OUT} ${VOC_EXAMPLE_PATH}${VOC_EXAMPLE_MODEL_OUT})
+  endif()
   
   add_executable(ut_caffeapi ut-caffeapi.cc)
   target_link_libraries(ut_caffeapi ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
@@ -187,11 +197,21 @@ if (USE_XGBOOST)
 endif()
 
 if (USE_SIMSEARCH)
-add_executable(ut_simsearch ut-simsearch.cc)
-target_link_libraries(ut_simsearch ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
-add_test(
-  NAME ut_simsearch
-  COMMAND ut_simsearch
+  set(VOC_EXAMPLE_PATH "examples/caffe/voc_roi/")
+  set(VOC_EXAMPLE_MODEL_ARCHIVE "voc0712_dd_roi.tar.gz")
+  set(VOC_EXAMPLE_MODEL_OUT "voc_roi")
+  if (NOT EXISTS "${VOC_EXAMPLE_PATH}${VOC_EXAMPLE_MODEL_ARCHIVE}")
+    message(STATUS "Downloading object detection test model with rois")
+    file(DOWNLOAD "http://deepdetect.com/dd/examples/caffe/voc_roi/${VOC_EXAMPLE_MODEL_ARCHIVE}" "${VOC_EXAMPLE_PATH}${VOC_EXAMPLE_MODEL_ARCHIVE}")
+    execute_process(COMMAND ${CMAKE_COMMAND} -E tar xvzf ${VOC_EXAMPLE_PATH}${VOC_EXAMPLE_MODEL_ARCHIVE} -C ${VOC_EXAMPLE_PATH})
+    execute_process(COMMAND ${CMAKE_COMMAND} -E rename ${VOC_EXAMPLE_MODEL_OUT} ${VOC_EXAMPLE_PATH}${VOC_EXAMPLE_MODEL_OUT})
+  endif()
+  
+  add_executable(ut_simsearch ut-simsearch.cc)
+  target_link_libraries(ut_simsearch ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
+  add_test(
+    NAME ut_simsearch
+    COMMAND ut_simsearch
   )
 endif()
 

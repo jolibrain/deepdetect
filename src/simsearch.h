@@ -57,6 +57,32 @@ namespace dd
   private:
     std::string _s;
   };
+
+  /**
+   * \brief stored feature map
+   */
+  class URIData
+  {
+  public:
+    URIData() {}
+    URIData(const std::string &uri)
+      :_uri(uri) {}
+    URIData(const std::string &uri,
+	    const std::vector<double> &bbox,
+	    const double &prob,
+	    const std::string &cat)
+      :_uri(uri),_bbox(bbox),_prob(prob),_cat(cat) {}
+    ~URIData() {}
+
+    std::string encode() const;
+    void decode(const std::string &str);
+    
+    std::string _uri;
+    std::vector<double> _bbox;
+    double _prob = 0.0;
+    std::string _cat;
+    static char _enc_char;
+  };
   
   template <class TSE>
     class SearchEngine
@@ -71,12 +97,12 @@ namespace dd
 
       void remove_index();
       
-      void index(const std::string &uri,
+      void index(const URIData &uri,
 		 const std::vector<double> &data);
       
       void search(const std::vector<double> &data,
 		  const int &nn,
-		  std::vector<std::string> &uris,
+		  std::vector<URIData> &uris,
 		  std::vector<double> &distances);
 
       const int _dim = 128; /**< indexed vector length. */
@@ -97,12 +123,12 @@ namespace dd
     
     void remove_index();
 
-    void index(const std::string &uri,
-		 const std::vector<double> &data);
+    void index(const URIData &uri,
+	       const std::vector<double> &data);
     
     void search(const std::vector<double> &vec,
 		const int &nn,
-		std::vector<std::string> &uris,
+		std::vector<URIData> &uris,
 		std::vector<double> &distances);
       
     // internal functions
@@ -113,10 +139,10 @@ namespace dd
     void save_tree();
     
     void add_to_db(const int &idx,
-		   const std::string &uri);
-
+		   const URIData &fmap);
+    
     void get_from_db(const int &idx,
-		     std::string &uri);
+		     URIData &fmap);
 
     void set_ntrees(const int &ntrees) { _ntrees = ntrees; }
     
@@ -128,6 +154,9 @@ namespace dd
     const std::string _db_name = "names.bin";
     const std::string _db_backend = "lmdb";
     caffe::db::DB *_db = nullptr;
+    std::unique_ptr<caffe::db::Transaction> _txn;
+    int _count_put = 0;
+    int _count_put_max = 1000;
     const std::string _index_name = "index.ann";
     bool _saved_tree = false; /**< whether the tree has been saved. */
     bool _built_index = false; /**< whether the index has been built. */

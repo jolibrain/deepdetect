@@ -16,6 +16,7 @@ parser.add_argument("--model-dir",help="model directory")
 args = parser.parse_args();
 
 host = 'localhost'
+port = 8080
 sname = 'segserv'
 description = 'image segmentation'
 mllib = 'caffe'
@@ -23,7 +24,7 @@ mltype = 'unsupervised'
 nclasses = args.nclasses
 width = args.width
 height = args.height
-dd = DD(host)
+dd = DD(host,port)
 dd.set_return_format(dd.RETURN_PYTHON)
 
 def random_color():
@@ -47,12 +48,13 @@ except: # most likely the service already exists
 
 # prediction call
 parameters_input = {'segmentation':True}
-parameters_mllib = {'gpu':True}
+parameters_mllib = {'gpu':True,'gpuid':0}
 parameters_output = {}
 data = [args.image]
 detect = dd.post_predict(sname,data,parameters_input,parameters_mllib,parameters_output)
 
 pixels = np.array((map(int,detect['body']['predictions'][0]['vals'])))
+imgsize = detect['body']['predictions'][0]['imgsize']
 
 # visual output
 label_colours = []
@@ -68,10 +70,10 @@ for l in range(0,nclasses):
     g[pixels==l] = label_colours[l,1]
     b[pixels==l] = label_colours[l,2]
 
-r = np.reshape(r,(height,width))
-g = np.reshape(g,(height,width))
-b = np.reshape(b,(height,width))
-rgb = np.zeros((height,width,3))
+r = np.reshape(r,(imgsize['height'],imgsize['width']))
+g = np.reshape(g,(imgsize['height'],imgsize['width']))
+b = np.reshape(b,(imgsize['height'],imgsize['width']))
+rgb = np.zeros((imgsize['height'],imgsize['width'],3))
 rgb[:,:,0] = r/255.0
 rgb[:,:,1] = g/255.0
 rgb[:,:,2] = b/255.0

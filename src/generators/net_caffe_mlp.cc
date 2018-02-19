@@ -75,6 +75,9 @@ namespace dd
     bool regression = false;
     if (ad_mllib.has("regression"))
       regression = ad_mllib.get("regression").get<bool>();
+    bool autoencoder = false;
+    if (ad_mllib.has("autoencoder"))
+      autoencoder = ad_mllib.get("autoencoder").get<bool>();
     std::string bottom = "data";
     for (size_t l=0;l<layers.size();l++)
       {
@@ -88,6 +91,12 @@ namespace dd
       {
 	add_euclidean_loss(this->_net_params,bottom,"label","losst",ntargets);
 	add_euclidean_loss(this->_net_params,bottom,"","loss",ntargets,true);
+	add_euclidean_loss(this->_dnet_params,bottom,"","loss",ntargets,true);
+      }
+    else if (autoencoder)
+      {
+	add_sigmoid_crossentropy_loss(this->_net_params,bottom,"data","losst",ntargets);
+	add_sigmoid_crossentropy_loss(this->_dnet_params,bottom,"","loss",ntargets,true);
       }
     else
       {

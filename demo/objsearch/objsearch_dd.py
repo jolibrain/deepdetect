@@ -30,15 +30,15 @@ def image_resize(imgfile,width):
     return small
 
 host = 'localhost'
+port = 8200
 sname = 'imageserv'
 description = 'image classification'
 mllib = 'caffe'
 mltype = 'supervised'
 extract_layer = 'rois'
 nclasses = args.nclasses
-layer_size = 512 # auto anyways
 width = height = 300
-dd = DD(host)
+dd = DD(host,port)
 dd.set_return_format(dd.RETURN_PYTHON)
 ntrees = 1000
 metric = 'angular'  # or 'euclidean'
@@ -61,15 +61,11 @@ parameters_mllib = {'gpu':True}
 parameters_output = {'rois':'rois','confidence_threshold':args.confidence_threshold,'best':1}
 
 if args.index:
-    try:
-        os.remove('data.bin')
-    except:
-        pass
-    s = shelve.open('data.bin')
-
+    parameters_output['index'] = True
+    
     # list files in image repository
     c = 0
-    d = 1
+    d = 0
     onlyfiles = []
     for (dirpath, dirnames, filenames) in walk(args.index):
         nfilenames = []
@@ -80,61 +76,43 @@ if args.index:
         classif = dd.post_predict(sname,x,parameters_input,parameters_mllib,parameters_output)
         
         for p in classif['body']['predictions']:
+            c = c + 1
             uri =  p['uri']
             rois = p['rois']
-            sys.stdout.write('\rIndexing image '+str(d)+'/'+str(len(onlyfiles)) + ' : ' + str(len(rois)) + ' rois  total:' + str(c) + '   ')
+            sys.stdout.write('\rIndexing image '+str(c)+'/'+str(len(onlyfiles)) + ' : ' + str(len(rois)) + ' rois  total:' + str(d) + '   ')
             sys.stdout.flush()
+            d += len(rois)
+        if c >= 100:
+            break
 
-            for roi in rois:
-                bbox = roi['bbox']
-                cat = roi['cat']
-                prob = roi['prob']
-                vals = roi['vals']
-                if c == 0:
-                    layer_size = len(vals)
-                    s['layer_size'] = layer_size
-                    t = AnnoyIndex(layer_size,metric) # prepare index
-                t.add_item(c,vals)
-                s[str(c)] = {'uri':uri, 'bbox' : bbox, 'cat' : cat, 'prob' : prob}
-                c = c + 1
-            d = d + 1
-        #if c >= 10000:
-        #    break
+    # one last dumb predict call to build the index
     print 'building index...\n'
-    print 'layer_size=',layer_size
-    t.build(ntrees)
-    t.save('index.ann')
-    s.close()
-
+    parameters_output['index'] = False
+    parameters_output['build_index']=True
+    classif = dd.post_predict(sname,[nfilenames[0]],parameters_input,parameters_mllib,parameters_output)
+        
 if args.search:
-    s = shelve.open('data.bin')
-    u = AnnoyIndex(s['layer_size'],metric)
-    u.load('index.ann')
+    parameters_output['search'] = True
+    parameters_output['search_nn'] = args.search_size
     data = [args.search]
     classif = dd.post_predict(sname,data,parameters_input,parameters_mllib,parameters_output)
     # search for every roi
     res = classif['body']['predictions'][0]['rois']
     print('number of ROI in query: ' + str(len(res)))
     for roi in res:
-        near = u.get_nns_by_vector(roi['vals'],args.search_size,include_distances=True)
-        near_data = []
-        near_distance = []
-        for n in near[1]:
-            near_distance.append(n)
-        print('distances: ')
-        print(near_distance)
-        for n in near[0]:
-            near_data.append(s[str(n)])
+    #    near = u.get_nns_by_vector(roi['vals'],args.search_size,include_distances=True)
+        near = roi['nns']
+        print(near)
+
         # print query bbox
         img = cv2.imread(args.search)
         bbox = roi['bbox']
         cat = roi['cat']
         cv2.rectangle(img, (int(bbox['xmin']),int(bbox['ymax'])),(int(bbox['xmax']),int(bbox['ymin'])),(255,0,0),2)
-
         cv2.putText(img,cat,(int(bbox['xmin']),int(bbox['ymax'])),cv2.FONT_HERSHEY_PLAIN,1,255)
         cv2.imshow('query',img)
         cv2.waitKey(0)
-        for n in near_data:
+        for n in near:
             resimg = cv2.imread(n['uri'])
             bbox = n['bbox']
             cat = n['cat']

@@ -43,8 +43,7 @@ ntrees = 100
 metric = 'angular'  # or 'euclidean'
 
 # creating ML service
-#model_repo = os.getcwd() + '/model'
-model_repo = '/data1/jb/models/public/googlenet/'
+model_repo = os.getcwd() + '/model'
 model = {'repository':model_repo,'templates':'../templates/caffe/'}
 parameters_input = {'connector':'image','width':width,'height':height}
 parameters_mllib = {'nclasses':nclasses}#,'template':'googlenet'}

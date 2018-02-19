@@ -157,6 +157,13 @@ namespace dd
 			    const std::string &top,
 			    const int &num_output,
 			    const bool &deploy=false);
+
+    void add_sigmoid_crossentropy_loss(caffe::NetParameter *net_param,
+				       const std::string &bottom,
+				       const std::string &label,
+				       const std::string &top,
+				       const int &num_output,
+				       const bool &deploy=false);
     
     caffe::NetParameter *_net_params;
     caffe::NetParameter *_dnet_params;

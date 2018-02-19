@@ -33,6 +33,7 @@ static std::string not_found_str = "{\"status\":{\"code\":404,\"msg\":\"NotFound
 
 static std::string mnist_repo = "../examples/caffe/mnist/";
 static std::string iterations_mnist = "2";
+static std::string voc_repo = "../examples/caffe/voc_roi/voc_roi/";
 
 TEST(annoyse,index_search)
 {
@@ -45,17 +46,17 @@ TEST(annoyse,index_search)
   mkdir(model_repo.c_str(),0770);
   AnnoySE ase(t,model_repo);
   ase.create_index(); // index creation
-  ase.index("test1",vec1); // indexing data
-  ase.index("test2",vec2);
-  ase.index("test3",vec3);
-  std::vector<std::string> uris;
+  ase.index(URIData("test1"),vec1); // indexing data
+  ase.index(URIData("test2"),vec2);
+  ase.index(URIData("test3"),vec3);
+  std::vector<URIData> uris;
   std::vector<double> distances;
   ase.build_tree(); // tree building
   ase.save_tree(); // tree saving
   ase.search(vec1,3,uris,distances); // searching nearest neighbors
   std::cerr << "search uris size=" << uris.size() << std::endl;
   for (size_t i=0;i<uris.size();i++)
-    std::cout << uris.at(i) << " / distances=" << distances.at(i) << std::endl;
+    std::cout << uris.at(i)._uri << " / distances=" << distances.at(i) << std::endl;
   ase.remove_index();
   rmdir(model_repo.c_str());
 }
@@ -72,25 +73,25 @@ TEST(annoyse,index_search_incr)
   mkdir(model_repo.c_str(),0770);
   AnnoySE ase(t,model_repo);
   ase.create_index();
-  ase.index("test1",vec1);
-  ase.index("test2",vec2);
-  ase.index("test3",vec3);
-  std::vector<std::string> uris;
+  ase.index(URIData("test1"),vec1);
+  ase.index(URIData("test2"),vec2);
+  ase.index(URIData("test3"),vec3);
+  std::vector<URIData> uris;
   std::vector<double> distances;
   ase.build_tree();
   ase.search(vec1,3,uris,distances);
   std::cerr << "search uris size=" << uris.size() << std::endl;
   for (size_t i=0;i<uris.size();i++)
-    std::cout << uris.at(i) << " / distances=" << distances.at(i) << std::endl;
+    std::cout << uris.at(i)._uri << " / distances=" << distances.at(i) << std::endl;
   uris.clear();
   distances.clear();
   ase.unbuild_tree();
-  ase.index("test4",vec4);
+  ase.index(URIData("test4"),vec4);
   ase.build_tree();
   ase.search(vec4,3,uris,distances);
   std::cerr << "search uris size=" << uris.size() << std::endl;
   for (size_t i=0;i<uris.size();i++)
-    std::cout << uris.at(i) << " / distances=" << distances.at(i) << std::endl;
+    std::cout << uris.at(i)._uri << " / distances=" << distances.at(i) << std::endl;
   ase.remove_index();
   rmdir(model_repo.c_str());
 }
@@ -253,4 +254,60 @@ TEST(simsearch,predict_simsearch_sup)
   // assert non-existence of index
   ASSERT_TRUE(!fileops::file_exists(mnist_repo + "index.ann"));
   ASSERT_TRUE(!fileops::file_exists(mnist_repo + "names.bin/data.mdb"));
+}
+
+TEST(simsearch,predict_roi_simsearch)
+{
+  // create service
+  JsonAPI japi;
+  std::string sname = "my_service";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  voc_repo + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"width\":300,\"height\":300},\"mllib\":{\"nclasses\":21}}}";
+  std::cerr << "jstr=" << jstr << std::endl;
+  std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
+  ASSERT_EQ(created_str,joutstr);
+  JDoc jd;
+
+  // predict
+  std::string jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{},\"mllib\":{},\"output\":{\"rois\":\"rois\",\"confidence_threshold\":0.1,\"index\":true}},\"data\":[\"" + voc_repo + "/test_img.jpg\"]}";
+  std::cerr << "jpredictstr=" << jpredictstr << std::endl;
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr predict index=" << joutstr << std::endl;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200,jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"][0].HasMember("indexed"));
+  ASSERT_TRUE(jd["body"]["predictions"][0]["indexed"].GetBool());
+  
+  // build & save index
+  jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{},\"mllib\":{},\"output\":{\"build_index\":true,\"rois\":\"rois\",\"confidence_threshold\":0.1}},\"data\":[\"" + voc_repo + "/test_img.jpg\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr predict build index=" << joutstr << std::endl;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200,jd["status"]["code"]);
+
+  // assert existence of index
+  ASSERT_TRUE(fileops::file_exists(voc_repo + "index.ann"));
+  ASSERT_TRUE(fileops::file_exists(voc_repo + "names.bin/data.mdb"));
+
+  // search index
+  jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{},\"mllib\":{},\"output\":{\"search\":true,\"rois\":\"rois\",\"confidence_threshold\":0.1}},\"data\":[\"" + voc_repo + "/test_img.jpg\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr predict search=" << joutstr << std::endl;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200,jd["status"]["code"]);
+  // assert result is itself
+  ASSERT_TRUE(jd["body"]["predictions"][0]["rois"][0].HasMember("nns"));
+  ASSERT_TRUE(jd["body"]["predictions"][0]["rois"][0]["nns"][0]["dist"]==0.0);
+  ASSERT_TRUE(jd["body"]["predictions"][0]["rois"][0]["nns"][0]["uri"]=="../examples/caffe/voc_roi/voc_roi//test_img.jpg");
+  
+  // remove service
+  jstr = "{\"clear\":\"index\"}";
+  joutstr = japi.jrender(japi.service_delete(sname,jstr));
+  ASSERT_EQ(ok_str,joutstr);
+
+  // assert non-existence of index
+  ASSERT_TRUE(!fileops::file_exists(voc_repo + "index.ann"));
+  ASSERT_TRUE(!fileops::file_exists(voc_repo + "names.bin/data.mdb"));
 }

@@ -351,6 +351,11 @@ namespace dd
 	  const_cast<APIData&>(ad).add("sparse",true);
 	if (_regression)
 	  const_cast<APIData&>(ad).add("regression",true);
+	if (_autoencoder)
+	  {
+	    const_cast<APIData&>(ad).add("autoencoder",true);
+	    const_cast<APIData&>(ad).add("ntargets",inputc.width()*inputc.height());
+	  }
 	netcaffe._nlac.configure_net(ad);
     }
 
@@ -565,9 +570,10 @@ namespace dd
     APIData ad_solver = ad_mllib.getobj("solver");
     if (ad_solver.size())
       {
-	if (ad_solver.has("iterations"))
+        int max_iter = -1;
+        if (ad_solver.has("iterations"))
 	  {
-	    int max_iter = ad_solver.get("iterations").get<int>();
+	    max_iter = ad_solver.get("iterations").get<int>();
 	    solver_param.set_max_iter(max_iter);
 	  }
 	if (ad_solver.has("snapshot")) // iterations between snapshots
@@ -629,6 +635,31 @@ namespace dd
 	  solver_param.set_rms_decay(ad_solver.get("rms_decay").get<double>());
 	if (ad_solver.has("iter_size"))
 	  solver_param.set_iter_size(ad_solver.get("iter_size").get<int>());
+
+	if (ad_solver.has("min_lr"))
+	  solver_param.set_min_lr(ad_solver.get("min_lr").get<double>());
+	if (ad_solver.has("lr_mult"))
+	  solver_param.set_lr_mult(ad_solver.get("lr_mult").get<double>());
+	double p_mult = -1;
+	if (ad_solver.has("p_mult")) {
+	  p_mult = ad_solver.get("p_mult").get<double>();
+	  solver_param.set_p_mult(p_mult);
+	}
+	if (ad_solver.has("period"))
+	  solver_param.set_period(ad_solver.get("period").get<int>());
+	else if (ad_solver.has("ncycles")) {
+	  // compute initial period length in order to have num_period cycle until max_iter
+	  int ncycles = ad_solver.get("ncycles").get<int>();
+	  if (p_mult < 0) {
+	    p_mult = 2.0;
+	    solver_param.set_p_mult(p_mult);
+	  }
+	  if (max_iter > 0) {
+	    int period = ((float) max_iter)  / ( pow(p_mult, ncycles) - 1.0);
+	    solver_param.set_period(period);
+	  } else
+	    throw MLLibBadParamException("sgdr + ncycles  requires iterations to be set");
+	}
       }
     
     // optimize
@@ -1327,9 +1358,17 @@ namespace dd
 		for (int j=0;j<batch_size;j++)
 		  {
 		    APIData rad;
+		    std::string uri;
 		    if (!inputc._ids.empty())
-		      rad.add("uri",inputc._ids.at(idoffset+j));
-		    else rad.add("uri",std::to_string(idoffset+j));
+		      {
+			uri = inputc._ids.at(idoffset+j);
+			rad.add("uri",uri);
+		      }
+		    else
+		      {
+			uri = std::to_string(idoffset+j);
+			rad.add("uri",uri);
+		      }
 		    rad.add("loss",loss);
 		    std::vector<double> vals;
 		    int imgsize = inputc.width()*inputc.height();
@@ -1347,6 +1386,19 @@ namespace dd
 			      }
 			  }
 			vals.push_back(best_cat);
+		      }
+		    auto bit = inputc._imgs_size.find(uri);
+		    APIData ad_imgsize;
+		    ad_imgsize.add("height",(*bit).second.first);
+		    ad_imgsize.add("width",(*bit).second.second);
+		    rad.add("imgsize",ad_imgsize);
+		    if (imgsize != (*bit).second.first*(*bit).second.second) // resizing output segmentation array
+		      {
+			cv::Mat segimg = cv::Mat(inputc.height(),inputc.width(), CV_64FC1);
+			std::memcpy(segimg.data,vals.data(),vals.size()*sizeof(double));
+			cv::Mat segimg_res;
+			cv::resize(segimg,segimg_res,cv::Size((*bit).second.second,(*bit).second.first),0,0,cv::INTER_NEAREST);
+			vals = std::vector<double>((double*)segimg_res.data,(double*)segimg_res.data+segimg_res.rows*segimg_res.cols);
 		      }
 		    rad.add("vals",vals);
 		    vrad.push_back(rad);
@@ -1639,7 +1691,6 @@ namespace dd
     out.add("nclasses",nclasses);
     out.add("bbox",bbox);
     out.add("roi",rois);
-    out.add("ctc",ctc);
     if (!inputc._segmentation)
       tout.finalize(ad.getobj("parameters").getobj("output"),out,static_cast<MLModel*>(&this->_mlmodel));
     else // segmentation returns an array, best dealt with an unsupervised connector

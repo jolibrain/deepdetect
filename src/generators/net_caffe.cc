@@ -409,6 +409,27 @@ namespace dd
 	nsr->set_phase(caffe::TRAIN);
       }
   }
+
+  void NetLayersCaffe::add_sigmoid_crossentropy_loss(caffe::NetParameter *net_param,
+						     const std::string &bottom,
+						     const std::string &label,
+						     const std::string &top,
+						     const int &num_output,
+						     const bool &deploy)
+  {
+    std::string ln_tmp = "ip_" + top;
+    add_fc(net_param,bottom,ln_tmp,num_output);
+
+
+    if (!deploy)
+      {
+	caffe::LayerParameter *lparam = CaffeCommon::add_layer(net_param,ln_tmp,top,
+							       "loss","SigmoidCrossEntropyLoss"); // train
+	lparam->add_bottom(label);
+	caffe::NetStateRule *nsr = lparam->add_include();
+	nsr->set_phase(caffe::TRAIN);
+      }
+  }
   
   /*- NetLossCaffe -*/
 
