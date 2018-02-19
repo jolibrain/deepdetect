@@ -403,7 +403,6 @@ namespace dd
     int _height = 224;
     bool _bw = false; /**< whether to convert to black & white. */
     double _test_split = 0.0; /**< auto-split of the dataset. */
-    bool _shuffle = false; /**< whether to shuffle the dataset, usually before splitting. */
     int _seed = -1; /**< shuffling seed. */
     cv::Scalar _mean; /**< mean image pixels, to be subtracted from images. */
     bool _has_mean_scalar = false; /**< whether scalar is set. */

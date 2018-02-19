@@ -83,6 +83,7 @@ namespace dd
     int _sequence_txt = -1; /**< sequence of txt input connector. */
     int _max_embed_id = -1; /**< in embeddings, the max index. */
     bool _segmentation = false; /**< whether it is a segmentation service. */
+    bool _multi_label = false; /**< multi label setup */
     std::unordered_map<std::string,std::pair<int,int>> _imgs_size; /**< image sizes, used in detection. */
     std::string _dbfullname = "train.lmdb";
     std::string _test_dbfullname = "test.lmdb";
@@ -96,11 +97,11 @@ namespace dd
   public:
     ImgCaffeInputFileConn()
       :ImgInputFileConn() {
-      _db = true;
+      //_db = true;
       reset_dv_test();
     }
     ImgCaffeInputFileConn(const ImgCaffeInputFileConn &i)
-      :ImgInputFileConn(i),CaffeInputInterface(i) { _db = true; }
+      :ImgInputFileConn(i),CaffeInputInterface(i) {/* _db = true;*/ }
     ~ImgCaffeInputFileConn() {}
 
     // size of each element in Caffe jargon
@@ -118,6 +119,7 @@ namespace dd
     int width() const
     {
       return _width;
+
     }
 
     int batch_size() const
@@ -159,6 +161,8 @@ namespace dd
 	  APIData ad_input = ad.getobj("parameters").getobj("input");
 	  if (ad_input.has("segmentation"))
 	    _segmentation = ad_input.get("segmentation").get<bool>();
+	  if (ad_input.has("multi_label"))
+	    _multi_label = ad_input.get("multi_label").get<bool>();
 	  try
 	    {
 	      ImgInputFileConn::transform(ad);
@@ -237,6 +241,8 @@ namespace dd
 		  fillup_parameters(ad_param.getobj("input"));
 		  if (ad_input.has("segmentation"))
 		    _segmentation = ad_input.get("segmentation").get<bool>();
+		  if (ad_input.has("multi_label"))
+		    _multi_label = ad_input.get("multi_label").get<bool>();
 		}
 	      ad_mllib = ad_param.getobj("mllib");
 	    }
@@ -266,7 +272,7 @@ namespace dd
 	      APIData sourcead;
 	      sourcead.add("source_train",_uris.at(0));
 	      if (_uris.size() > 1)
-		sourcead.add("source_test",_uris.at(1));
+            sourcead.add("source_test",_uris.at(1));
 	      const_cast<APIData&>(ad).add("source",sourcead);
 	    }
 	  else // more complicated, since images can be heavy, a db is built so that it is less costly to iterate than the filesystem
@@ -287,7 +293,11 @@ namespace dd
 		    throw ex;*/
 		  return;
 		}
-	      
+	      if (!this->_db) {
+            // TODO: create test db
+            create_test_db_for_imagedatalayer(_uris.at(1),_model_repo + "/" +_test_dbname);
+            return;
+          }
 	      // create db
 	      images_to_db(_uris,_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname);
 	      
@@ -312,7 +322,7 @@ namespace dd
     std::vector<caffe::Datum> get_dv_test(const int &num,
 					  const bool &has_mean_file)
       {
-	if (_segmentation && _train)
+        if (_segmentation && _train)
 	  {
 	    return get_dv_test_segmentation(num,has_mean_file);
 	  }
@@ -341,9 +351,16 @@ namespace dd
     void reset_dv_test();
     
   private:
+
+    void create_test_db_for_imagedatalayer(const std::string &test_lst,
+                                           const std::string &testdbname,
+                                           const std::string &backend="lmdb", // lmdb, leveldb
+                                           const bool &encoded=true, // save the encoded image in datum
+                                           const std::string &encode_type=""); // 'png', 'jpg', ...
+
     int images_to_db(const std::vector<std::string> &rfolders,
 		     const std::string &traindbname,
-		     const std::string &testdbname,
+                     const std::string &testdbname,
 		     const std::string &backend="lmdb", // lmdb, leveldb
 		     const bool &encoded=true, // save the encoded image in datum
 		     const std::string &encode_type=""); // 'png', 'jpg', ...

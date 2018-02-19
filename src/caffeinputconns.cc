@@ -234,6 +234,29 @@ namespace dd
     return 0;
   }
 
+
+  void ImgCaffeInputFileConn::create_test_db_for_imagedatalayer(const std::string &test_lst,
+                                         const std::string &testdbname,
+                                         const std::string &backend,
+                                         const bool &encoded,
+                                         const std::string &encode_type) // 'png', 'jpg', ...
+{
+
+  size_t found=test_lst.find_last_of("/\\");
+  string root_folder = test_lst.substr(0,found) + "/";
+
+    std::string testdbfullname = testdbname + "." + backend;
+    vector<std::pair<std::string, std::vector<int> > > lines;
+    caffe::ReadImagesList(test_lst,&lines);
+    std::vector<std::pair<std::string,int>> test_lfiles;
+    for (auto line: lines)
+      {
+        test_lfiles.push_back(std::pair<std::string,int>(root_folder+line.first,line.second.at(0)));
+      }
+    write_image_to_db(testdbfullname,test_lfiles,backend,encoded,encode_type);
+  }
+
+
   void ImgCaffeInputFileConn::write_image_to_db(const std::string &dbfullname,
 						const std::vector<std::pair<std::string,int>> &lfiles,
 						const std::string &backend,
