@@ -40,7 +40,7 @@ namespace dd
   public:
     CaffeInputInterface() {}
     CaffeInputInterface(const CaffeInputInterface &cii)
-      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed),_sequence_txt(cii._sequence_txt),_max_embed_id(cii._max_embed_id),_segmentation(cii._segmentation) {}
+      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed),_sequence_txt(cii._sequence_txt),_max_embed_id(cii._max_embed_id),_segmentation(cii._segmentation),_multi_label(cii._multi_label) {}
     ~CaffeInputInterface() {}
 
     /**
@@ -143,6 +143,8 @@ namespace dd
     void init(const APIData &ad)
     {
       ImgInputFileConn::init(ad);
+      if (ad.has("multi_label"))
+	_multi_label = ad.get("multi_label").get<bool>();
     }
 
     void transform(const APIData &ad)
@@ -370,6 +372,12 @@ namespace dd
 			   const std::string &backend,
 			   const bool &encoded,
 			   const std::string &encode_type);
+
+    void write_image_to_db_multilabel(const std::string &dbfullname,
+				      const std::vector<std::pair<std::string,std::vector<int>>> &lfiles,
+				      const std::string &backend,
+				      const bool &encoded,
+				      const std::string &encode_type);
     
     int compute_images_mean(const std::string &dbname,
 			    const std::string &meanfile,
