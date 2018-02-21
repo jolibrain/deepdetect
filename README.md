@@ -199,6 +199,7 @@ http://www.deepdetect.com/overview/examples/
 | SE-ResNext-101                   | [Y](https://deepdetect.com/models/senets/se_resnext_101/)     | N          | https://github.com/hujie-frank/SENet        |               80.19%            |
 | SENet                   | [Y](https://deepdetect.com/models/senets/se_net/)     | N          | https://github.com/hujie-frank/SENet        |               81.32%            |
 | VOC0712 (object detection) | [Y](https://deepdetect.com/models/voc0712_dd.tar.gz) | N | https://github.com/weiliu89/caffe/tree/ssd | 71.2 mAP |
+| InceptionBN-21k | [Y](https://deepdetect.com/models/inception/inception_bn_21k) | N | https://github.com/pertusa/InceptionBN-21K-for-Caffe | 41.9% |
 
 More models:
 
