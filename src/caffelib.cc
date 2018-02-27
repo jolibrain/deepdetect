@@ -802,6 +802,8 @@ namespace dd
 	
 	float loss = 0.0;
 	float avg_fb_time = 0.0;
+	float est_remain_time = 0.0;
+	std::string est_remain_time_str;
 	try
 	  {
 	    for (size_t i = 0; i < solver->callbacks().size(); ++i) {
@@ -816,6 +818,7 @@ namespace dd
 	      }
 	    loss /= solver->param_.iter_size();
 	    avg_fb_time /= solver->param_.iter_size();
+	    est_remain_time = avg_fb_time * solver->param_.iter_size() * (solver->param_.max_iter() - solver->iter_) / 1000.0;
 	  }
 	catch(std::exception &e)
 	  {
@@ -842,7 +845,8 @@ namespace dd
 	  }
 	this->add_meas("train_loss",smoothed_loss);
 	this->add_meas("iter_time",avg_fb_time);
-
+	this->add_meas("remain_time",est_remain_time);
+	
 	if ((solver->param_.display() && solver->iter_ % solver->param_.display() == 0)
 	    || (solver->param_.test_interval() && solver->iter_ % solver->param_.test_interval() == 0))
 	  {

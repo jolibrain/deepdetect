@@ -254,6 +254,7 @@ namespace dd
 	    {
 	      out.add("status","running");
 	      this->collect_measures(out);
+	      this->est_remain_time(out);
 	      std::chrono::time_point<std::chrono::system_clock> trun = std::chrono::system_clock::now();
 	      out.add("time",std::chrono::duration_cast<std::chrono::seconds>(trun-(*hit).second._tstart).count());
 	      if (ad_params_out.has("measure_hist") && ad_params_out.get("measure_hist").get<bool>())
