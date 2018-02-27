@@ -192,7 +192,7 @@ namespace dd
 	    caffe::LayerParameter *lparam = net_param.mutable_layer(0);
 	    caffe::ImageDataParameter* image_data_parameter = lparam->mutable_image_data_param();
 	    lparam->set_type("ImageData");
-	    image_data_parameter->set_source("file-lst.txt");
+	    image_data_parameter->set_source(this->_inputc._root_folder);
 	    image_data_parameter->set_batch_size(this->_inputc.batch_size());
 	    image_data_parameter->set_shuffle(this->_inputc._shuffle);
 	    image_data_parameter->set_new_height(this->_inputc.height());
@@ -1050,13 +1050,12 @@ namespace dd
 				seg_dv.push_back(dv.at(s));
 			      }
 			  }
-			//TODO: imagedata layer
+			// imagedata layer
 			//- store labels in float_data
 			//- similar to segmentation for computing multi-label accuracy
 			else if (inputc._multi_label && !(inputc._db) && typeid(inputc) == typeid(ImgCaffeInputFileConn)
 				 && _nclasses > 1)
 			  {
-			    //TODO: labels are into float_data
 			    std::vector<double> vals;
 			    for (int k=0;k<dv.at(s).float_data_size();k++)
 			      vals.push_back(dv.at(s).float_data(k));
@@ -1137,9 +1136,11 @@ namespace dd
 	    
 	    if (_regression && _ntargets > 1) // slicing is involved
 	      slot--; // labels appear to be last
+	    else if (inputc._multi_label)
+	      slot--;
 	    int scount = lresults[slot]->count();
 	    int scperel = scount / dv_size;
-	    
+
 	    for (int j=0;j<(int)dv_size;j++)
 	      {
 		APIData bad;
@@ -1170,10 +1171,10 @@ namespace dd
 		    ad_res.add(std::to_string(tresults+j),bad2);
 		  }
 		// multilabel image
-		else if (inputc._multi_label && !(inputc._db) && typeid(inputc) == typeid(ImgCaffeInputFileConn)
+		else if (inputc._multi_label && !inputc._db && typeid(inputc) == typeid(ImgCaffeInputFileConn)
 			 && _nclasses > 1)
 		  {
-		    // grab multi-label prediction from sigmoid
+		    // grab multi-label prediction from last layer
 		    std::vector<double> targets;
 		    for (int k=0;k<nout;k++)
 		      {
@@ -1938,10 +1939,10 @@ namespace dd
             caffe::LayerParameter *lparam = net_param.mutable_layer(0);
             caffe::ImageDataParameter* image_data_parameter = lparam->mutable_image_data_param();
             image_data_parameter->set_source(inputc._uris.at(0));
+	    image_data_parameter->set_root_folder(inputc._root_folder);
             image_data_parameter->set_batch_size(inputc.batch_size());
             image_data_parameter->set_new_height(inputc.height());
             image_data_parameter->set_new_width(inputc.width());
-
       }
 
 
@@ -2189,11 +2190,11 @@ namespace dd
 	if (batch_size == 0)
 	  throw MLLibBadParamException("batch size set to zero");
 	LOG(INFO) << "user batch_size=" << batch_size << " / inputc batch_size=" << inputc.batch_size() << std::endl;
-    return;
+	//return;
 
 	// code below is required when Caffe (weirdly) requires the batch size 
 	// to be a multiple of the training dataset size.
-	if (!inputc._segmentation)
+	if (!inputc._segmentation && !(!inputc._db && typeid(inputc) == typeid(ImgCaffeInputFileConn)))
 	  {
 	    if (batch_size < inputc.batch_size())
 	      {

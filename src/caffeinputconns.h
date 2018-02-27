@@ -40,7 +40,7 @@ namespace dd
   public:
     CaffeInputInterface() {}
     CaffeInputInterface(const CaffeInputInterface &cii)
-      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed),_sequence_txt(cii._sequence_txt),_max_embed_id(cii._max_embed_id),_segmentation(cii._segmentation),_multi_label(cii._multi_label) {}
+      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed),_sequence_txt(cii._sequence_txt),_max_embed_id(cii._max_embed_id),_segmentation(cii._segmentation),_multi_label(cii._multi_label),_root_folder(cii._root_folder) {}
     ~CaffeInputInterface() {}
 
     /**
@@ -84,6 +84,7 @@ namespace dd
     int _max_embed_id = -1; /**< in embeddings, the max index. */
     bool _segmentation = false; /**< whether it is a segmentation service. */
     bool _multi_label = false; /**< multi label setup */
+    std::string _root_folder; /**< root folder for image list layer. */
     std::unordered_map<std::string,std::pair<int,int>> _imgs_size; /**< image sizes, used in detection. */
     std::string _dbfullname = "train.lmdb";
     std::string _test_dbfullname = "test.lmdb";
@@ -145,6 +146,8 @@ namespace dd
       ImgInputFileConn::init(ad);
       if (ad.has("multi_label"))
 	_multi_label = ad.get("multi_label").get<bool>();
+      if (ad.has("root_folder"))
+	_root_folder = ad.get("root_folder").get<std::string>();	  
     }
 
     void transform(const APIData &ad)
@@ -165,6 +168,8 @@ namespace dd
 	    _segmentation = ad_input.get("segmentation").get<bool>();
 	  if (ad_input.has("multi_label"))
 	    _multi_label = ad_input.get("multi_label").get<bool>();
+	  if (ad.has("root_folder"))
+	    _root_folder = ad.get("root_folder").get<std::string>();
 	  try
 	    {
 	      ImgInputFileConn::transform(ad);
@@ -245,6 +250,8 @@ namespace dd
 		    _segmentation = ad_input.get("segmentation").get<bool>();
 		  if (ad_input.has("multi_label"))
 		    _multi_label = ad_input.get("multi_label").get<bool>();
+		  if (ad_input.has("root_folder"))
+		    _root_folder = ad_input.get("root_folder").get<std::string>();
 		}
 	      ad_mllib = ad_param.getobj("mllib");
 	    }

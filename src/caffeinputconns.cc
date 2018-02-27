@@ -241,8 +241,8 @@ namespace dd
 								const bool &encoded,
 								const std::string &encode_type) // 'png', 'jpg', ...
 {
-  size_t found=test_lst.find_last_of("/\\");
-  string root_folder = test_lst.substr(0,found) + "/";
+  /*size_t found=test_lst.find_last_of("/\\");
+    string root_folder = test_lst.substr(0,found) + "/";*/
 
   std::string testdbfullname = testdbname + "." + backend;
   vector<std::pair<std::string, std::vector<int> > > lines;
@@ -253,8 +253,8 @@ namespace dd
     for (auto line: lines)
       {
 	if (nlabels == 1) // XXX: expected to be 1 for all samples, variable label size not yet allowed
-	  test_lfiles_1.push_back(std::pair<std::string,int>(root_folder+line.first,line.second.at(0)));
-	else test_lfiles_n.push_back(std::pair<std::string,std::vector<int>>(root_folder+line.first,line.second));
+	  test_lfiles_1.push_back(std::pair<std::string,int>(_root_folder+line.first,line.second.at(0)));
+	else test_lfiles_n.push_back(std::pair<std::string,std::vector<int>>(_root_folder+line.first,line.second));
       }
     if (nlabels == 1)
       write_image_to_db(testdbfullname,test_lfiles_1,backend,encoded,encode_type);
@@ -341,19 +341,15 @@ namespace dd
       status = ReadImageToDatum(lfiles[line_id].first,
 				lfiles[line_id].second[0], _height, _width, !_bw, // XXX: passing first label, fixing labels below
 				enc, &datum);
-      //TODO:
-      // - clear datum label
-      // - store multi labels into float_data in the datum (encoded image should be into data as bytes)
-      std::cerr << "prelabel datum float_data_size=" << datum.float_data_size() << std::endl;
-      //datum.clear_label();
+      if (status == false)
+	LOG(ERROR) << "Failed reading image " << lfiles[line_id].first;
+      
+      // store multi labels into float_data in the datum (encoded image should be into data as bytes)
       std::vector<int> labels = lfiles[line_id].second;
       for (auto l: labels)
 	{
 	  datum.add_float_data(l);
 	}
-      std::cerr << "datum float_data_size=" << datum.float_data_size() << std::endl;
-      
-      if (status == false) continue;
       
       // sequential
       int length = snprintf(key_cstr, kMaxKeyLength, "%08d_%s", line_id,
@@ -515,7 +511,7 @@ namespace dd
 	Datum datum;
 	datum.ParseFromString(_test_db_cursor->value());
 	std::vector<double> fd; // XXX: hack to work around removal of float_data in decoder
-	for (size_t s=0;s<datum.float_data_size();s++)
+	for (int s=0;s<datum.float_data_size();s++)
 	  fd.push_back(datum.float_data(s));
 	DecodeDatumNative(&datum);
 	for (auto s: fd)
