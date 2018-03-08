@@ -234,6 +234,31 @@ namespace dd
     return 0;
   }
 
+
+  void ImgCaffeInputFileConn::create_test_db_for_imagedatalayer(const std::string &test_lst,
+								const std::string &testdbname,
+								const std::string &backend,
+								const bool &encoded,
+								const std::string &encode_type) // 'png', 'jpg', ...
+{
+  std::string testdbfullname = testdbname + "." + backend;
+  vector<std::pair<std::string, std::vector<int> > > lines;
+    caffe::ReadImagesList(test_lst,&lines);
+    std::vector<std::pair<std::string,int>> test_lfiles_1;
+    std::vector<std::pair<std::string,std::vector<int>>> test_lfiles_n;
+    int nlabels = (*lines.begin()).second.size();
+    for (auto line: lines)
+      {
+	if (nlabels == 1) // XXX: expected to be 1 for all samples, variable label size not yet allowed
+	  test_lfiles_1.push_back(std::pair<std::string,int>(_root_folder+line.first,line.second.at(0)));
+	else test_lfiles_n.push_back(std::pair<std::string,std::vector<int>>(_root_folder+line.first,line.second));
+      }
+    if (nlabels == 1)
+      write_image_to_db(testdbfullname,test_lfiles_1,backend,encoded,encode_type);
+    else write_image_to_db_multilabel(testdbfullname,test_lfiles_n,backend,encoded,encode_type);
+  }
+
+
   void ImgCaffeInputFileConn::write_image_to_db(const std::string &dbfullname,
 						const std::vector<std::pair<std::string,int>> &lfiles,
 						const std::string &backend,
@@ -261,6 +286,67 @@ namespace dd
 				lfiles[line_id].second, _height, _width, !_bw,
 				enc, &datum);
       if (status == false) continue;
+      
+      // sequential
+      int length = snprintf(key_cstr, kMaxKeyLength, "%08d_%s", line_id,
+			    lfiles[line_id].first.c_str());
+      
+      // put in db
+      std::string out;
+      if(!datum.SerializeToString(&out))
+	LOG(ERROR) << "Failed serialization of datum for db storage";
+      txn->Put(string(key_cstr, length), out);
+      
+      if (++count % 1000 == 0) {
+	// commit db
+	txn->Commit();
+	txn.reset(db->NewTransaction());
+	LOG(INFO) << "Processed " << count << " files.";
+      }
+    }
+    // write the last batch
+    if (count % 1000 != 0) {
+      txn->Commit();
+      LOG(INFO) << "Processed " << count << " files.";
+    }
+  }
+
+  void ImgCaffeInputFileConn::write_image_to_db_multilabel(const std::string &dbfullname,
+							   const std::vector<std::pair<std::string,std::vector<int>>> &lfiles,
+							   const std::string &backend,
+							   const bool &encoded,
+							   const std::string &encode_type)
+  {
+    // Create new DB
+    std::unique_ptr<db::DB> db(db::GetDB(backend));
+    db->Open(dbfullname.c_str(), db::NEW);
+    std::unique_ptr<db::Transaction> txn(db->NewTransaction());
+    
+    // Storing to db
+    //Datum datum;
+    int count = 0;
+    const int kMaxKeyLength = 256;
+    char key_cstr[kMaxKeyLength];
+    
+    for (int line_id = 0; line_id < (int)lfiles.size(); ++line_id) {
+      Datum datum;
+      bool status;
+      std::string enc = encode_type;
+      if (encoded && !enc.size()) {
+	enc = guess_encoding(lfiles[line_id].first);
+      }
+      status = ReadImageToDatum(lfiles[line_id].first,
+				lfiles[line_id].second[0], _height, _width, !_bw, // XXX: passing first label, fixing labels below
+				enc, &datum);
+      if (status == false)
+	LOG(ERROR) << "Failed reading image " << lfiles[line_id].first;
+      
+      // store multi labels into float_data in the datum (encoded image should be into data as bytes)
+      std::vector<int> labels = lfiles[line_id].second;
+      for (auto l: labels)
+	{
+	  datum.add_float_data(l);
+	}
       
       // sequential
       int length = snprintf(key_cstr, kMaxKeyLength, "%08d_%s", line_id,
@@ -421,10 +507,16 @@ namespace dd
 	  break;
 	Datum datum;
 	datum.ParseFromString(_test_db_cursor->value());
+	std::vector<double> fd; // XXX: hack to work around removal of float_data in decoder
+	for (int s=0;s<datum.float_data_size();s++)
+	  fd.push_back(datum.float_data(s));
 	DecodeDatumNative(&datum);
+	for (auto s: fd)
+	  datum.add_float_data(s);
 
 	// deal with the mean image values, this forces to turn the datum
 	// data into an array of floats (as opposed to original bytes format)
+	// XXX: beware this is not compatible with imagedata layer with multi-labels as they are stored in float_data
 	if (mean)
 	  {
 	    int height = datum.height();

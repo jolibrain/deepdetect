@@ -184,6 +184,75 @@ namespace dd
 	caffe::NetParameter net_param,deploy_net_param;
 	caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
 	caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
+
+
+	// switch to imageDataLayer
+	if (!(this->_inputc._db) && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
+	  {
+	    caffe::LayerParameter *lparam = net_param.mutable_layer(0);
+	    caffe::ImageDataParameter* image_data_parameter = lparam->mutable_image_data_param();
+	    lparam->set_type("ImageData");
+	    image_data_parameter->set_source(this->_inputc._root_folder);
+	    image_data_parameter->set_batch_size(this->_inputc.batch_size());
+	    image_data_parameter->set_shuffle(this->_inputc._shuffle);
+	    image_data_parameter->set_new_height(this->_inputc.height());
+	    image_data_parameter->set_new_width(this->_inputc.width());
+	    if (this->_inputc._multi_label)
+	      image_data_parameter->set_label_size(_nclasses);
+	    else
+	      image_data_parameter->set_label_size(1);
+	    if (this->_inputc._has_mean_file)
+	      image_data_parameter->set_mean_file("mean.binaryproto");
+	    lparam->clear_data_param();
+	    lparam->clear_transform_param();
+	  }
+	
+	// input should be ok, now do the output
+	if (this->_inputc._multi_label)
+          {
+            int k = net_param.layer_size();
+            for (int l=k-1;l>0;l--)
+              {
+		caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+		if (lparam->type() == "SoftmaxWithLoss")
+		  {
+		    lparam->set_type("MultiLabelSigmoidLoss");
+		    caffe::NetStateRule *nsr = lparam->add_include();
+		    nsr->set_phase(caffe::TRAIN);
+		    break;
+		  }
+	      }
+	    // XXX: code below removes the softmax layer
+	    // protobuf only allows to remove last element from repeated field.
+	    int softm_pos = -1;
+	    for (int l=k-1;l>0;l--)
+	      {
+		caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+		if (lparam->type() == "Softmax")
+		  {
+		    softm_pos = l;
+		    break;
+		  }
+	      }
+	    if (softm_pos > 0)
+	      {
+		for (int l=softm_pos;l<net_param.layer_size()-1;l++)
+		  {
+		    caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+		    *lparam = net_param.layer(l+1);
+		  }
+		net_param.mutable_layer()->RemoveLast();
+	      }
+	    else throw MLLibInternalException("Couldn't find Softmax layer to replace for multi-label training");
+
+	    k = deploy_net_param.layer_size();
+	    caffe::LayerParameter *lparam = deploy_net_param.mutable_layer(k-1);
+	    if (lparam->type() == "Softmax")
+	      {
+		deploy_net_param.mutable_layer()->RemoveLast();
+	      }
+          }
+
 	if ((ad.has("rotate") && ad.get("rotate").get<bool>()) 
 	    || (ad.has("mirror") && ad.get("mirror").get<bool>())
 	    || (ad.has("crop_size")))
@@ -610,7 +679,7 @@ namespace dd
 	    else if (strcasecmp(solver_type.c_str(),"AMSGRAD") == 0)
 	      {
 		solver_param.set_solver_type(caffe::SolverParameter_SolverType_ADAM);
-		solver_param.set_amsgrad(true);
+        solver_param.set_amsgrad(true);
 	      }
 	  }
 	if (ad_solver.has("test_interval"))
@@ -683,10 +752,7 @@ namespace dd
 		{
 		  throw MLLibBadParamException("solver's net's first layer is required to be of MemoryData type");
 		}
-	      std::cerr << "adding input data\n";
-	      std::cerr << "dv size=" << inputc._dv.size() << " / datum channels=" << inputc._dv.at(0).channels() << " / heigh=" << inputc._dv.at(0).height() << " / width=" << inputc._dv.at(0).height() << std::endl;
 	      boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(solver->net()->layers()[0])->AddDatumVector(inputc._dv);
-	      std::cerr << "done with adding input data\n";
 	    }
 	  else
 	    {
@@ -987,6 +1053,17 @@ namespace dd
 				seg_dv.push_back(dv.at(s));
 			      }
 			  }
+			// imagedata layer
+			//- store labels in float_data
+			//- similar to segmentation for computing multi-label accuracy
+			else if (inputc._multi_label && !(inputc._db) && typeid(inputc) == typeid(ImgCaffeInputFileConn)
+				 && _nclasses > 1)
+			  {
+			    std::vector<double> vals;
+			    for (int k=0;k<dv.at(s).float_data_size();k++)
+			      vals.push_back(dv.at(s).float_data(k));
+			    dv_float_data.push_back(vals);
+			  }
 			else if (!_autoencoder)
 			  {
 			    dv_labels.push_back(dv.at(s).label());
@@ -1062,9 +1139,11 @@ namespace dd
 	    
 	    if (_regression && _ntargets > 1) // slicing is involved
 	      slot--; // labels appear to be last
+	    else if (inputc._multi_label)
+	      slot--;
 	    int scount = lresults[slot]->count();
 	    int scperel = scount / dv_size;
-	    
+
 	    for (int j=0;j<(int)dv_size;j++)
 	      {
 		APIData bad;
@@ -1093,6 +1172,21 @@ namespace dd
 		    bad2.add("target",targets);
 		    bad2.add("pred",preds);
 		    ad_res.add(std::to_string(tresults+j),bad2);
+		  }
+		// multilabel image
+		else if (inputc._multi_label && !inputc._db && typeid(inputc) == typeid(ImgCaffeInputFileConn)
+			 && _nclasses > 1)
+		  {
+		    // grab multi-label prediction from last layer
+		    std::vector<double> targets;
+		    for (int k=0;k<nout;k++)
+		      {
+			double target = dv_float_data.at(j).at(k);
+			targets.push_back(target);
+			predictions.push_back(lresults[slot]->cpu_data()[j*scperel+k]);
+		      }
+		    bad.add("target",targets);
+		    bad.add("pred",predictions);
 		  }
 		else if ((!_regression && !_autoencoder)|| _ntargets == 1)
 		  {
@@ -1129,6 +1223,8 @@ namespace dd
 	ad_res.add("clnames",clnames);
 	if (inputc._segmentation)
 	  ad_res.add("segmentation",true);
+	if (inputc._multi_label)
+	  ad_res.add("multilabel",true);
 	ad_res.add("batch_size",tresults);
 	if (_regression)
 	  ad_res.add("regression",_regression);
@@ -1735,6 +1831,16 @@ namespace dd
     // fix source paths in the model.
     caffe::NetParameter *np = sp.mutable_net_param();
     caffe::ReadProtoFromTextFile(sp.net().c_str(),np); //TODO: error on read + use internal caffe ReadOrDie procedure
+
+    if (!(inputc._db) && typeid(inputc) == typeid(ImgCaffeInputFileConn))
+      {
+        caffe::LayerParameter *lparam = np->mutable_layer(0);
+        caffe::ImageDataParameter* image_data_parameter = lparam->mutable_image_data_param();
+        image_data_parameter->set_batch_size(user_batch_size);
+      }
+
+
+
     for (int i=0;i<2;i++)
       {
 	caffe::LayerParameter *lp = np->mutable_layer(i);
@@ -1829,6 +1935,20 @@ namespace dd
     bool has_embed = false;
     if (_crop_size > 0)
       width = height = _crop_size;
+
+
+    if (!(this->_inputc._db) && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
+      {
+            caffe::LayerParameter *lparam = net_param.mutable_layer(0);
+            caffe::ImageDataParameter* image_data_parameter = lparam->mutable_image_data_param();
+            image_data_parameter->set_source(inputc._uris.at(0));
+	    image_data_parameter->set_root_folder(inputc._root_folder);
+            image_data_parameter->set_batch_size(inputc.batch_size());
+            image_data_parameter->set_new_height(inputc.height());
+            image_data_parameter->set_new_width(inputc.width());
+      }
+
+
     if (net_param.mutable_layer(0)->has_memory_data_param()
 	|| net_param.mutable_layer(1)->has_memory_data_param())
       {
@@ -2073,10 +2193,11 @@ namespace dd
 	if (batch_size == 0)
 	  throw MLLibBadParamException("batch size set to zero");
 	LOG(INFO) << "user batch_size=" << batch_size << " / inputc batch_size=" << inputc.batch_size() << std::endl;
+	//return;
 
 	// code below is required when Caffe (weirdly) requires the batch size 
 	// to be a multiple of the training dataset size.
-	if (!inputc._segmentation)
+	if (!inputc._segmentation && !(!inputc._db && typeid(inputc) == typeid(ImgCaffeInputFileConn)))
 	  {
 	    if (batch_size < inputc.batch_size())
 	      {

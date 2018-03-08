@@ -456,13 +456,14 @@ namespace dd
       bool iter = ad_res.has("iteration");
       bool regression = ad_res.has("regression");
       bool segmentation = ad_res.has("segmentation");
+      bool multilabel = ad_res.has("multilabel");
       if (ad_out.has("measure"))
 	{
 	  std::vector<std::string> measures = ad_out.get("measure").get<std::vector<std::string>>();
       	  bool bauc = (std::find(measures.begin(),measures.end(),"auc")!=measures.end());
 	  bool bacc = false;
 
-	  if (!segmentation)
+	  if (!multilabel && !segmentation)
 	    {
 	      for (auto s: measures)
 		if (s.find("acc")!=std::string::npos)
@@ -477,8 +478,11 @@ namespace dd
 	  bool beucll = (std::find(measures.begin(),measures.end(),"eucll")!=measures.end());
 	  bool bmcc = (std::find(measures.begin(),measures.end(),"mcc")!=measures.end());
 	  bool baccv = false;
+	  bool mlacc = false;
 	  if (segmentation)
 	    baccv = (std::find(measures.begin(),measures.end(),"acc")!=measures.end());
+	  if (multilabel)
+	    mlacc = (std::find(measures.begin(),measures.end(),"acc")!=measures.end());
 	  if (bauc) // XXX: applies two binary classification problems only
 	    {
 	      double mauc = auc(ad_res);
@@ -504,7 +508,17 @@ namespace dd
 	      meas_out.add("meaniou",meaniou);
 	      meas_out.add("clacc",clacc);
 	    }
-	  if (!segmentation && bf1)
+	  if (mlacc)
+	    {
+	      double f1, sensitivity, specificity, harmmean, precision;
+	      multilabel_acc(ad_res,sensitivity,specificity,harmmean,precision,f1);
+	      meas_out.add("f1",f1);
+	      meas_out.add("precision",precision);
+	      meas_out.add("sensitivity",sensitivity);
+	      meas_out.add("specificity",specificity);
+	      meas_out.add("harmmean",harmmean);
+	    }
+	  if (!multilabel && !segmentation && bf1)
 	    {
 	      double f1,precision,recall,acc;
 	      dMat conf_diag,conf_matrix;
@@ -537,7 +551,7 @@ namespace dd
 		  meas_out.add("cmfull",cmdata);
 		}
 	    }
-	  if (!segmentation && bmcll)
+	  if (!multilabel && !segmentation && bmcll)
 	    {
 	      double mmcll = mcll(ad_res);
 	      meas_out.add("mcll",mmcll);
@@ -687,6 +701,53 @@ namespace dd
       return acc_v / static_cast<double>(batch_size);
     }
 
+    // multilabel measures
+    static double multilabel_acc(const APIData &ad, double &sensitivity, double &specificity,
+				 double &harmmean, double &precision, double &f1)
+    {
+      int batch_size = ad.get("batch_size").get<int>();
+      double tp = 0.0;
+      double fp = 0.0;
+      double tn = 0.0;
+      double fn = 0.0;
+      double count_pos = 0.0;
+      double count_neg = 0.0;
+      for (int i=0;i<batch_size;i++)
+	{
+	  APIData bad = ad.getobj(std::to_string(i));
+	  std::vector<double> targets = bad.get("target").get<std::vector<double>>();
+	  std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
+	  for (size_t j=0;j<predictions.size();j++)
+	    {
+	      if (targets.at(j) < 0)
+		continue;
+	      if (targets.at(j) >= 0.5)
+		{
+		  // positive accuracy
+		  if (predictions.at(j) >= 0)
+		    ++tp;
+		  else ++fn;
+		  ++count_pos;
+		}
+	      else
+		{
+		  // negative accuracy
+		  if (predictions.at(j) < 0)
+		    ++tn;
+		  else ++fp;
+		  ++count_neg;
+		}
+	    }
+	}
+      sensitivity = (count_pos > 0) ? tp / count_pos : 0.0;
+      specificity = (count_neg > 0) ? tn / count_neg : 0.0;
+      harmmean = ((count_pos + count_neg > 0)) ?
+	2 / (count_pos / tp + count_neg / tn) : 0.0;
+      precision = (tp > 0) ? (tp / (tp + fp)): 0.0;
+      f1 = (tp > 0) ? 2 * tp / (2 * tp + fp + fn): 0.0;
+      return f1;
+    }
+    
     // measure: F1
     static double mf1(const APIData &ad, double &precision, double &recall, double &acc, dMat &conf_diag, dMat &conf_matrix)
     {
