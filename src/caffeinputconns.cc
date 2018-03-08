@@ -241,9 +241,6 @@ namespace dd
 								const bool &encoded,
 								const std::string &encode_type) // 'png', 'jpg', ...
 {
-  /*size_t found=test_lst.find_last_of("/\\");
-    string root_folder = test_lst.substr(0,found) + "/";*/
-
   std::string testdbfullname = testdbname + "." + backend;
   vector<std::pair<std::string, std::vector<int> > > lines;
     caffe::ReadImagesList(test_lst,&lines);

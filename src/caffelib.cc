@@ -197,7 +197,6 @@ namespace dd
 	    image_data_parameter->set_shuffle(this->_inputc._shuffle);
 	    image_data_parameter->set_new_height(this->_inputc.height());
 	    image_data_parameter->set_new_width(this->_inputc.width());
-	    // TODO : virer ce param et le mettre dans imagedatalayer
 	    if (this->_inputc._multi_label)
 	      image_data_parameter->set_label_size(_nclasses);
 	    else
