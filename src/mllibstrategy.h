@@ -242,8 +242,8 @@ namespace dd
         int days = est_remain_time / 60 / 60 / 24;
         std::string est_remain_time_str = std::to_string(days) + "d:" + std::to_string(hours) + "h:" + std::to_string(minutes) + "m:" + std::to_string(seconds) + "s";
         meas.add("remain_time_str",est_remain_time_str);
+        out.add("measure",meas);
       }
-      out.add("measure",meas);
     }
     
     TInputConnectorStrategy _inputc; /**< input connector strategy for channeling data in. */
