@@ -187,7 +187,7 @@ namespace dd
 
 
 	// switch to imageDataLayer
-	if (!(this->_inputc._db) && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
+	if (!this->_inputc._db && !this->_inputc._segmentation && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
 	  {
 	    caffe::LayerParameter *lparam = net_param.mutable_layer(0);
 	    caffe::ImageDataParameter* image_data_parameter = lparam->mutable_image_data_param();

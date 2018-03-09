@@ -147,7 +147,9 @@ namespace dd
       if (ad.has("multi_label"))
 	_multi_label = ad.get("multi_label").get<bool>();
       if (ad.has("root_folder"))
-	_root_folder = ad.get("root_folder").get<std::string>();	  
+	_root_folder = ad.get("root_folder").get<std::string>();
+      if (ad.has("segmentation"))
+	_segmentation = ad.get("segmentation").get<bool>();
     }
 
     void transform(const APIData &ad)
