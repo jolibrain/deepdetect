@@ -187,6 +187,7 @@ namespace dd
 
 
 	// switch to imageDataLayer
+	//TODO: should apply to all templates with images
 	if (!this->_inputc._db && !this->_inputc._segmentation && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
 	  {
 	    caffe::LayerParameter *lparam = net_param.mutable_layer(0);
@@ -251,7 +252,7 @@ namespace dd
 	      {
 		deploy_net_param.mutable_layer()->RemoveLast();
 	      }
-          }
+          } // end multi_label
 
 	if ((ad.has("rotate") && ad.get("rotate").get<bool>()) 
 	    || (ad.has("mirror") && ad.get("mirror").get<bool>())
@@ -529,6 +530,8 @@ namespace dd
 #else
     Caffe::set_mode(Caffe::CPU);
 #endif
+    if (ad.has("db"))
+      this->_inputc._db = ad.get("db").get<bool>(); // XXX: API backward compatibility, if db is in mllib, assume it applies to input as well
     if (ad.has("nclasses"))
       _nclasses = ad.get("nclasses").get<int>();
     if (ad.has("regression") && ad.get("regression").get<bool>())
@@ -1096,7 +1099,7 @@ namespace dd
 		    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(net->layers()[0])->set_batch_size(dv.size());
 		    boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(net->layers()[0])->AddDatumVector(dv);
 		  }
-		else
+		else // sparse
 		  {
 		    std::vector<caffe::SparseDatum> dv = inputc.get_dv_test_sparse(test_batch_size);
 		    if (dv.empty())

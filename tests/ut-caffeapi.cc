@@ -750,7 +750,6 @@ TEST(caffeapi,service_train_svm_resnet)
   ASSERT_TRUE(!fileops::remove_directory_files(farm_repo,{".prototxt"}));
 }
 
-
 TEST(caffeapi,service_train_images)
 {
   // create service
@@ -758,12 +757,12 @@ TEST(caffeapi,service_train_images)
   std::string plank_repo_loc = "plank";
   mkdir(plank_repo_loc.c_str(),0777);
   std::string sname = "my_service";
-  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  plank_repo_loc + "\",\"templates\":\"" + model_templates_repo  + "\"},\"parameters\":{\"input\":{\"connector\":\"image\"},\"mllib\":{\"template\":\"cifar\",\"nclasses\":121}}}";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  plank_repo_loc + "\",\"templates\":\"" + model_templates_repo  + "\"},\"parameters\":{\"input\":{\"connector\":\"image\"},\"mllib\":{\"db\":true,\"template\":\"cifar\",\"nclasses\":121}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
   ASSERT_EQ(created_str,joutstr);
 
   // train
-  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"width\":32,\"height\":32,\"test_split\":0.001,\"shuffle\":true,\"bw\":false},\"mllib\":{\"gpu\":true,\"gpuid\":"+gpuid+",\"solver\":{\"iterations\":" + iterations_plank + ",\"test_interval\":500,\"base_lr\":0.0001,\"snapshot\":2000,\"test_initialization\":false},\"net\":{\"batch_size\":100}},\"output\":{\"measure\":[\"acc\",\"acc-5\",\"mcll\",\"f1\"]}},\"data\":[\"" + plank_repo + "train\"]}";
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"db\":true,\"width\":32,\"height\":32,\"test_split\":0.001,\"shuffle\":true,\"bw\":false},\"mllib\":{\"gpu\":true,\"gpuid\":"+gpuid+",\"solver\":{\"iterations\":" + iterations_plank + ",\"test_interval\":500,\"base_lr\":0.0001,\"snapshot\":2000,\"test_initialization\":false},\"net\":{\"batch_size\":100}},\"output\":{\"measure\":[\"acc\",\"acc-5\",\"mcll\",\"f1\"]}},\"data\":[\"" + plank_repo + "train\"]}";
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
@@ -1291,3 +1290,4 @@ TEST(caffeapi,service_train_csv_mt_regression)
   ASSERT_EQ(ok_str,joutstr);
   rmdir(sflare_repo_loc.c_str());
 }
+

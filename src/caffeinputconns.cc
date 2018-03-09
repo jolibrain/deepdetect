@@ -761,9 +761,6 @@ namespace dd
 						  const APIData &ad_input,
 						  const std::string &backend)
   {
-    std::cerr << "CSV line to db\n";
-    std::cerr << "dbfullname=" << dbfullname << std::endl;
-
     // Create new DB
     _tdb = std::unique_ptr<db::DB>(db::GetDB(backend));
     _tdb->Open(dbfullname.c_str(), db::NEW);
@@ -771,7 +768,6 @@ namespace dd
     _ttdb = std::unique_ptr<db::DB>(db::GetDB(backend));
     _ttdb->Open(testdbfullname.c_str(), db::NEW);
     _ttxn = std::unique_ptr<db::Transaction>(_ttdb->NewTransaction());
-    std::cerr << "db is opened\n";
 
     _csv_fname = _uris.at(0); // training only from file
     if (!fileops::file_exists(_csv_fname))

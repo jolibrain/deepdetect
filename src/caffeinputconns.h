@@ -98,7 +98,6 @@ namespace dd
   public:
     ImgCaffeInputFileConn()
       :ImgInputFileConn() {
-      //_db = true;
       reset_dv_test();
     }
     ImgCaffeInputFileConn(const ImgCaffeInputFileConn &i)
@@ -144,6 +143,8 @@ namespace dd
     void init(const APIData &ad)
     {
       ImgInputFileConn::init(ad);
+      if (ad.has("db"))
+	_db = ad.get("db").get<bool>();
       if (ad.has("multi_label"))
 	_multi_label = ad.get("multi_label").get<bool>();
       if (ad.has("root_folder"))
@@ -248,6 +249,8 @@ namespace dd
 		{
 		  APIData ad_input = ad_param.getobj("input");
 		  fillup_parameters(ad_param.getobj("input"));
+		  if (ad_input.has("db"))
+		    _db = ad_input.get("db").get<bool>();
 		  if (ad_input.has("segmentation"))
 		    _segmentation = ad_input.get("segmentation").get<bool>();
 		  if (ad_input.has("multi_label"))
@@ -286,7 +289,7 @@ namespace dd
             sourcead.add("source_test",_uris.at(1));
 	      const_cast<APIData&>(ad).add("source",sourcead);
 	    }
-	  else // more complicated, since images can be heavy, a db is built so that it is less costly to iterate than the filesystem
+	  else // more complicated, since images can be heavy, a db is built so that it is less costly to iterate than the filesystem, unless image data layer is used (e.g. multi-class image training)
 	    {
 	      _dbfullname = _model_repo + "/" + _dbfullname;
 	      _test_dbfullname = _model_repo + "/" + _test_dbfullname;
@@ -305,10 +308,10 @@ namespace dd
 		  return;
 		}
 	      if (!this->_db) {
-            // TODO: create test db
-            create_test_db_for_imagedatalayer(_uris.at(1),_model_repo + "/" +_test_dbname);
-            return;
-          }
+		// create test db for image data layer (no db of images)
+		create_test_db_for_imagedatalayer(_uris.at(1),_model_repo + "/" +_test_dbname);
+		return;
+	      }
 	      // create db
 	      images_to_db(_uris,_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname);
 	      
