@@ -678,7 +678,7 @@ namespace dd
 	      // mean intersection over union
 	      double c_false_neg = static_cast<double>((ddiffc.array() == -2-c).count());
 	      double c_false_pos = static_cast<double>((ddiffc.array() == c+1).count()); 
-	      double iou = c_sum / (c_false_pos + c_sum + c_false_neg);
+	      double iou = (c_sum==0) ? 0: c_sum / (c_false_pos + c_sum + c_false_neg);
 	      mean_iou[c] += iou;
 	      mean_iou_bs[c]++;
 	    }
@@ -696,8 +696,10 @@ namespace dd
 	  meaniou += mean_iou[c];
 	}
       clacc = mean_acc;
-      meanacc /= static_cast<double>(c_nclasses);
-      meaniou /= static_cast<double>(c_nclasses);
+      if (c_nclasses > 0) {
+        meanacc /= static_cast<double>(c_nclasses);
+        meaniou /= static_cast<double>(c_nclasses);
+      }
       return acc_v / static_cast<double>(batch_size);
     }
 
