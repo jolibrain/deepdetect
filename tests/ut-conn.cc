@@ -56,21 +56,35 @@ TEST(outputconn,acc)
 
 TEST(outputconn,acc_v)
 {
-  std::vector<double> targets = {0.0, 0.0, 1.0, 1.0};
-  std::vector<double> pred1 = {0.0,1.0,1.0,1.0};
-  std::vector<std::vector<double>> preds = { pred1 };
   APIData res_ad;
-  res_ad.add("batch_size",static_cast<int>(1));
+  res_ad.add("batch_size",static_cast<int>(2));
+  res_ad.add("nclasses",static_cast<int>(2));
+
   APIData bad;
+  std::vector<double> targets = {0.0, 1.0 };
+  std::vector<double> pred1 = {0.0, 1.0};
   bad.add("pred",pred1);
   bad.add("target",targets);
   std::vector<APIData> vad = {bad};
   res_ad.add(std::to_string(0),vad);
+
+
+  APIData bad2;
+  std::vector<double> targets2 = {0.0, 0.0};
+  std::vector<double> pred2 = {0.0, 1.0};
+  bad2.add("pred",pred2);
+  bad2.add("target",targets2);
+  std::vector<APIData> vad2 = {bad2};
+  res_ad.add(std::to_string(1),vad2);
+
+
+
   SupervisedOutput so;
   double meanacc = 0.0, meaniou = 0.0;
   std::vector<double> clacc;
   double acc = so.acc_v(res_ad,meanacc,meaniou,clacc);
   ASSERT_EQ(0.75,acc);
+  ASSERT_EQ(0.875,meaniou)
 }
 
 TEST(outputconn,acck)

@@ -673,14 +673,22 @@ namespace dd
 		  double accc = c_sum / c_total_targ;
 		  mean_acc[c] += accc;
 		  mean_acc_bs[c]++;
-		}
 
-	      // mean intersection over union
+        }
+
+           // mean intersection over union
 	      double c_false_neg = static_cast<double>((ddiffc.array() == -2-c).count());
-	      double c_false_pos = static_cast<double>((ddiffc.array() == c+1).count()); 
-	      double iou = (c_sum==0) ? 0: c_sum / (c_false_pos + c_sum + c_false_neg);
+	      double c_false_pos = static_cast<double>((ddiffc.array() == c+1).count());
+          // below corner case where nothing is to predict : put correct to zero
+          // but do not devide by zero
+          double iou =  (c_sum == 0)? 0 : c_sum / (c_false_pos + c_sum + c_false_neg);
 	      mean_iou[c] += iou;
-	      mean_iou_bs[c]++;
+          // ... and divide one time less when normalizing by batch size
+          if (c_total_targ !=0)
+            mean_iou_bs[c]++;
+          // another possible waywould be to put artificially iou to one if nothing is to be
+          // predicted for class c
+
 	    }
 	}
       int c_nclasses = 0;
@@ -696,6 +704,7 @@ namespace dd
 	  meaniou += mean_iou[c];
 	}
       clacc = mean_acc;
+      // corner case where prediction is wrong
       if (c_nclasses > 0) {
         meanacc /= static_cast<double>(c_nclasses);
         meaniou /= static_cast<double>(c_nclasses);
