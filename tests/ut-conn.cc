@@ -84,7 +84,7 @@ TEST(outputconn,acc_v)
   std::vector<double> clacc;
   double acc = so.acc_v(res_ad,meanacc,meaniou,clacc);
   ASSERT_EQ(0.75,acc);
-  ASSERT_EQ(0.875,meaniou)
+  ASSERT_EQ(0.875,meaniou);
 }
 
 TEST(outputconn,acck)
