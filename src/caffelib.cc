@@ -2099,6 +2099,7 @@ namespace dd
     // fix class numbers
     // this procedure looks for the first bottom layer with a 'num_output' field and
     // set it to the number of classes defined by the supervised service.
+    bool last_layer = true;
     for (int l=net_param.layer_size()-1;l>0;l--)
       {
 	caffe::LayerParameter *lparam = net_param.mutable_layer(l);
@@ -2106,8 +2107,12 @@ namespace dd
 	  {
 	    if (lparam->has_convolution_param())
 	      {
-		lparam->mutable_convolution_param()->set_num_output(_nclasses);
-		break;
+		int num_output = lparam->mutable_convolution_param()->num_output();
+		if (last_layer || num_output == 0)
+		  lparam->mutable_convolution_param()->set_num_output(_nclasses);
+		if (last_layer && num_output != 0)
+		  break;
+		else last_layer = false;
 	      }
 	  }
 	else if (lparam->type() == "InnerProduct" || lparam->type() == "SparseInnerProduct")
