@@ -210,39 +210,54 @@ namespace dd
 	
 	// input should be ok, now do the output
 	if (this->_inputc._multi_label)
+      {
+        int k = net_param.layer_size();
+        for (int l=k-1;l>0;l--)
           {
-            int k = net_param.layer_size();
-            for (int l=k-1;l>0;l--)
+            caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+            if (lparam->type() == "SoftmaxWithLoss")
               {
-		caffe::LayerParameter *lparam = net_param.mutable_layer(l);
-		if (lparam->type() == "SoftmaxWithLoss")
-		  {
-		    lparam->set_type("MultiLabelSigmoidLoss");
-		    caffe::NetStateRule *nsr = lparam->add_include();
-		    nsr->set_phase(caffe::TRAIN);
-		    break;
-		  }
+                lparam->set_type("MultiLabelSigmoidLoss");
+                caffe::NetStateRule *nsr = lparam->add_include();
+                nsr->set_phase(caffe::TRAIN);
+                break;
+              }
 	      }
 	    // XXX: code below removes the softmax layer
 	    // protobuf only allows to remove last element from repeated field.
 	    int softm_pos = -1;
 	    for (int l=k-1;l>0;l--)
 	      {
-		caffe::LayerParameter *lparam = net_param.mutable_layer(l);
-		if (lparam->type() == "Softmax")
-		  {
-		    softm_pos = l;
-		    break;
-		  }
+            caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+            if (lparam->type() == "Softmax")
+              {
+                softm_pos = l;
+                break;
+              }
 	      }
 	    if (softm_pos > 0)
 	      {
-		for (int l=softm_pos;l<net_param.layer_size()-1;l++)
-		  {
-		    caffe::LayerParameter *lparam = net_param.mutable_layer(l);
-		    *lparam = net_param.layer(l+1);
-		  }
-		net_param.mutable_layer()->RemoveLast();
+            if (!_regression)
+              {
+                for (int l=softm_pos;l<net_param.layer_size()-1;l++)
+                  {
+                    caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+                    *lparam = net_param.layer(l+1);
+                  }
+                net_param.mutable_layer()->RemoveLast();
+              }
+            else
+              {
+                caffe::LayerParameter *lparam = net_param.mutable_layer(softm_pos);
+                lparam->set_type("Sigmoid");
+                //lparam->add_sigmoid_param();
+                //lparam->sigmoid_param().set_engine(lparam->softmax_param().engine());
+                // for doing so in a clean way, need to match softmaxParameter::engine
+                // with sigmoidparameter::engine
+                // for now, rewrite engine filed as is
+                lparam->clear_softmax_param();
+              }
+
 	      }
 	    else throw MLLibInternalException("Couldn't find Softmax layer to replace for multi-label training");
 
@@ -250,9 +265,18 @@ namespace dd
 	    caffe::LayerParameter *lparam = deploy_net_param.mutable_layer(k-1);
 	    if (lparam->type() == "Softmax")
 	      {
-		deploy_net_param.mutable_layer()->RemoveLast();
+            if (!_regression)
+              deploy_net_param.mutable_layer()->RemoveLast();
+            else
+              {
+                lparam->set_type("Sigmoid");
+                //lparam->add_sigmoid_param();
+                //lparam->sigmoid_param().set_engine(lparam->softmax_param().engine());
+                // see 20 lines above for comment
+                lparam->clear_softmax_param();
+              }
 	      }
-          } // end multi_label
+      } // end multi_label
 
 	if ((ad.has("rotate") && ad.get("rotate").get<bool>()) 
 	    || (ad.has("mirror") && ad.get("mirror").get<bool>())
