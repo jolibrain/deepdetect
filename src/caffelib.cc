@@ -566,7 +566,7 @@ namespace dd
     if (ad.has("regression") && ad.get("regression").get<bool>())
       {
 	_regression = true;
-    //	_nclasses = 1;
+    	_nclasses = 1;
       }
     if (ad.has("ntargets"))
       _ntargets = ad.get("ntargets").get<int>();
@@ -574,8 +574,14 @@ namespace dd
       _autoencoder = true;
     if (!_autoencoder && _nclasses == 0)
       throw MLLibBadParamException("number of classes is unknown (nclasses == 0)");
-    if (_regression && _ntargets == 0 && _nclasses == 0)
+    bool multi =
+      this->_inputc._multi_label &&  !(this->_inputc._db)
+      && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn);
+    if (_regression && _ntargets == 0 && !multi)
       throw MLLibBadParamException("number of regression targets is unknown (ntargets == 0)");
+    if (_regression && multi) // multisoft case
+      if (ad.has("nclasses"))
+        _nclasses = ad.get("nclasses").get<int>();
     // instantiate model template here, if any
     if (ad.has("template"))
       instantiate_template(ad);
