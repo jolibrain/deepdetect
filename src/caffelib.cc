@@ -250,6 +250,9 @@ namespace dd
               {
                 caffe::LayerParameter *lparam = net_param.mutable_layer(softm_pos);
                 lparam->set_type("Sigmoid");
+                lparam->set_name("pred");
+                *lparam->mutable_top(0) = "pred";
+
                 //lparam->add_sigmoid_param();
                 //lparam->sigmoid_param().set_engine(lparam->softmax_param().engine());
                 // for doing so in a clean way, need to match softmaxParameter::engine
@@ -270,7 +273,9 @@ namespace dd
             else
               {
                 lparam->set_type("Sigmoid");
-                //lparam->add_sigmoid_param();
+                lparam->set_name("pred");
+                *lparam->mutable_top(0) = "pred";
+               //lparam->add_sigmoid_param();
                 //lparam->sigmoid_param().set_engine(lparam->softmax_param().engine());
                 // see 20 lines above for comment
                 lparam->clear_softmax_param();
@@ -561,7 +566,7 @@ namespace dd
     if (ad.has("regression") && ad.get("regression").get<bool>())
       {
 	_regression = true;
-	_nclasses = 1;
+    //	_nclasses = 1;
       }
     if (ad.has("ntargets"))
       _ntargets = ad.get("ntargets").get<int>();
@@ -569,7 +574,7 @@ namespace dd
       _autoencoder = true;
     if (!_autoencoder && _nclasses == 0)
       throw MLLibBadParamException("number of classes is unknown (nclasses == 0)");
-    if (_regression && _ntargets == 0)
+    if (_regression && _ntargets == 0 && _nclasses == 0)
       throw MLLibBadParamException("number of regression targets is unknown (ntargets == 0)");
     // instantiate model template here, if any
     if (ad.has("template"))
