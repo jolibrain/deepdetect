@@ -1211,7 +1211,7 @@ namespace dd
 		    bad2.add("pred",preds);
 		    ad_res.add(std::to_string(tresults+j),bad2);
 		  }
-		// multilabel image
+		// multilabel image  => also covers soft labels
 		else if (inputc._multi_label && !inputc._db && typeid(inputc) == typeid(ImgCaffeInputFileConn)
 			 && _nclasses > 1)
 		  {
