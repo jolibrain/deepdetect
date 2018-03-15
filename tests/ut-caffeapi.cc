@@ -893,8 +893,22 @@ TEST(caffeapi,service_train_images_imagedatalayer_multilabel_softprob)
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
   ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
-  ASSERT_TRUE(jd["body"]["measure"].HasMember("f1"));
-  ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() >= 0.0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("kl_divergence"));
+  ASSERT_TRUE(jd["body"]["measure"]["kl_divergence"].GetDouble() >= 0.0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("kolmogorov_smirnov"));
+  ASSERT_TRUE(jd["body"]["measure"]["kolmogorov_smirnov"].GetDouble() >= 0.0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("distance_correlation"));
+  ASSERT_TRUE(jd["body"]["measure"]["distance_correlation"].GetDouble() >= 0.0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("r2"));
+  ASSERT_TRUE(jd["body"]["measure"]["r2"].GetDouble() >= 0.0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("delta_score_0.05"));
+  ASSERT_TRUE(jd["body"]["measure"]["delta_score_0.05"].GetDouble() >= 0.0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("delta_score_0.1"));
+  ASSERT_TRUE(jd["body"]["measure"]["delta_score_0.1"].GetDouble() >= 0.0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("delta_score_0.2"));
+  ASSERT_TRUE(jd["body"]["measure"]["delta_score_0.2"].GetDouble() >= 0.0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("delta_score_0.5"));
+  ASSERT_TRUE(jd["body"]["measure"]["delta_score_0.5"].GetDouble() >= 0.0);
 
   // remove service
   jstr = "{\"clear\":\"full\"}";

@@ -533,14 +533,15 @@ namespace dd
           double distance_correlation; // distance correlation , same as brownian correlation
           double r_2; // r_2 score: best  is 1, min is 0
           double delta_scores[4]; // delta-score , aka 1 if pred \in [truth-delta, truth+delta]
-          double deltas[4] = {0.005, 0.1, 0.2, 0.5};
+          double deltas[4] = {0.05, 0.1, 0.2, 0.5};
           multilabel_acc_soft(ad_res, kl_divergence, wasserstein, kolmogorov_smirnov,
                                distance_correlation, r_2, delta_scores, deltas, 4);
+          meas_out.add("kl_divergence",kl_divergence);
 	      meas_out.add("wasserstein",wasserstein);
 	      meas_out.add("kolmogorov_smirnov",kolmogorov_smirnov);
 	      meas_out.add("distance_correlation",distance_correlation);
           meas_out.add("r2",r_2);
-          for (int i=0; i<<4; ++i)
+          for (int i=0; i<4; ++i)
             {
               std::ostringstream sstr;
               sstr << "delta_score_" << deltas[i];
@@ -827,8 +828,8 @@ namespace dd
               p_j[i] += predictions[j];
               if (i==0)
                 {
-                  t_k[j] = targets[j]/(double)batch_size;
-                  p_k[j] = predictions[j]/(double)batch_size;
+                  t_k.push_back(targets[j]/(double)batch_size);
+                  p_k.push_back(predictions[j]/(double)batch_size);
                 }
               else
                 {
