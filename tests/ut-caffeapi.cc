@@ -900,7 +900,7 @@ TEST(caffeapi,service_train_images_imagedatalayer_multilabel_softprob)
   ASSERT_TRUE(jd["body"]["measure"].HasMember("distance_correlation"));
   ASSERT_TRUE(jd["body"]["measure"]["distance_correlation"].GetDouble() >= 0.0);
   ASSERT_TRUE(jd["body"]["measure"].HasMember("r2"));
-  ASSERT_TRUE(jd["body"]["measure"]["r2"].GetDouble() >= 0.0);
+  ASSERT_TRUE(jd["body"]["measure"]["r2"].GetDouble() <= 1.0);
   ASSERT_TRUE(jd["body"]["measure"].HasMember("delta_score_0.05"));
   ASSERT_TRUE(jd["body"]["measure"]["delta_score_0.05"].GetDouble() >= 0.0);
   ASSERT_TRUE(jd["body"]["measure"].HasMember("delta_score_0.1"));

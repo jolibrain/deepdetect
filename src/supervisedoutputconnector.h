@@ -528,15 +528,17 @@ namespace dd
         {
           // below measures for soft multilabel
           double kl_divergence; // kl: amount of lost info if using pred instead of truth
+          double js_divergence; // jsd: symetrized version of kl
           double wasserstein; // wasserstein distance
           double kolmogorov_smirnov; // kolmogorov-smirnov test aka max individual error
           double distance_correlation; // distance correlation , same as brownian correlation
           double r_2; // r_2 score: best  is 1, min is 0
           double delta_scores[4]; // delta-score , aka 1 if pred \in [truth-delta, truth+delta]
           double deltas[4] = {0.05, 0.1, 0.2, 0.5};
-          multilabel_acc_soft(ad_res, kl_divergence, wasserstein, kolmogorov_smirnov,
+          multilabel_acc_soft(ad_res, kl_divergence, js_divergence, wasserstein, kolmogorov_smirnov,
                                distance_correlation, r_2, delta_scores, deltas, 4);
           meas_out.add("kl_divergence",kl_divergence);
+	      meas_out.add("js_divergence",js_divergence);
 	      meas_out.add("wasserstein",wasserstein);
 	      meas_out.add("kolmogorov_smirnov",kolmogorov_smirnov);
 	      meas_out.add("distance_correlation",distance_correlation);
@@ -778,7 +780,8 @@ namespace dd
       return f1;
     }
 
-    static double multilabel_acc_soft(const APIData &ad, double &kl_divergence, double &wasserstein,
+    static double multilabel_acc_soft(const APIData &ad, double &kl_divergence, double  &js_divergence,
+                                      double &wasserstein,
                                       double &kolmogorov_smirnov,double &distance_correlation,
                                       double &r_2,
                                       double *delta_scores, const double deltas[], const int ndeltas)
@@ -786,15 +789,11 @@ namespace dd
       // distance correlation seems hard to compute w/o using lots of mem
       int batch_size = ad.get("batch_size").get<int>();
       kl_divergence = 0;
+      js_divergence = 0;
       wasserstein = 0;
       kolmogorov_smirnov = 0;
       long int total_number = 0;
       double tmean = 0;
-      double t_j[batch_size];
-      double p_j[batch_size];
-      double t_, p_;
-      std::vector<double> t_k;
-      std::vector<double> p_k;
       for (int k =0; k<ndeltas; ++k)
         delta_scores[k] = 0;
       for (int i=0;i<batch_size;i++)
@@ -802,8 +801,6 @@ namespace dd
           APIData bad = ad.getobj(std::to_string(i));
           std::vector<double> targets = bad.get("target").get<std::vector<double>>();
           std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
-          t_j[i] = 0;
-          p_j[i] = 0;
           for (size_t j=0;j<predictions.size();j++)
             {
               if (targets[j] < 0) // case ignore_label
@@ -815,6 +812,7 @@ namespace dd
               double tval = (targets[j]< eps)? eps: targets[j];
               double pval = (predictions[j]< eps)? eps: predictions[j];
               kl_divergence += tval * log (tval/pval);
+              js_divergence += 0.5 * (tval * log(2*tval/(tval+pval))) + 0.5 * (pval * log(2*pval/(tval+pval)));
               double dif = targets[j] - predictions[j];
               wasserstein += dif*dif;
               dif = fabs(dif);
@@ -824,64 +822,112 @@ namespace dd
                   if (dif < deltas[k])
                     delta_scores[k]++;
               tmean += targets[j];
-              t_j[i] += targets[j];
-              p_j[i] += predictions[j];
-              if (i==0)
-                {
-                  t_k.push_back(targets[j]/(double)batch_size);
-                  p_k.push_back(predictions[j]/(double)batch_size);
-                }
-              else
-                {
-                  t_k[j] += targets[j]/(double)batch_size;
-                  p_k[j] += predictions[j]/(double)batch_size;
-                }
             }
-          t_j[i] /= predictions.size();
-          p_j[i] /= predictions.size();
-          t_ += t_j[i];
-          p_ += p_j[i];
         }
-      t_ /= batch_size;
-      p_ /= batch_size;
 
 
       double ssres = wasserstein;
       wasserstein = sqrt(wasserstein);
       // below normalize to compare different learnings
       kl_divergence /= (double)total_number;
+      js_divergence /= (double)total_number;
       wasserstein /=  sqrt((double)total_number); // gives distance between 0 and 1
       for (int k =0; k<ndeltas; ++k)
         delta_scores[k] /=  (double)total_number; // gives proportion of good in 0:1 at every threshold
       tmean /= (double)total_number;
 
-
-      double dvart= 0;
-      double dvarp = 0;
-      double dcor = 0;
       double sstot = 0;
-      for(int i=0; i<batch_size; ++i)
+
+      for (int i=0;i<batch_size;i++)
         {
           APIData bad = ad.getobj(std::to_string(i));
           std::vector<double> targets = bad.get("target").get<std::vector<double>>();
           std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
-          for (size_t j=0; j<predictions.size(); ++j)
+          for (size_t j=0;j<predictions.size();j++)
             {
-              sstot += (targets[j] - tmean)* (targets[j] - tmean);
-              double P_jk = predictions[j]- p_j[i] - p_k[j] + p_;
-              double T_jk = targets[j]- t_j[i] - t_k[j] + t_;
-              dcor += P_jk * T_jk / predictions.size();
-              dvarp += P_jk * P_jk / predictions.size();
-              dvart += T_jk * T_jk  / predictions.size();
+              if (targets[j] < 0)
+                continue;
+              sstot += (targets[j] - tmean) *  (targets[j] - tmean);
             }
         }
-      dcor /= batch_size;
-      dcor = sqrt(dcor);
-      dvarp /= batch_size;
-      dvarp = sqrt(dvarp);
-      dvart /= batch_size;
+
+
+      double t_jk[batch_size][batch_size];
+      double p_jk[batch_size][batch_size];
+      double t_j[batch_size];
+      double t_k[batch_size];
+      double p_j[batch_size];
+      double p_k[batch_size];
+      double t_;
+      double p_;
+
+      for (int j=0;j<batch_size;j++)
+        for (int k=0; k<batch_size; ++k)
+          {
+            APIData badj = ad.getobj(std::to_string(j));
+            APIData badk = ad.getobj(std::to_string(k));
+            std::vector<double> targetsj = badj.get("target").get<std::vector<double>>();
+            std::vector<double> targetsk = badk.get("target").get<std::vector<double>>();
+            std::vector<double> predictionsj = badj.get("pred").get<std::vector<double>>();
+            std::vector<double> predictionsk = badk.get("pred").get<std::vector<double>>();
+            p_jk[j][k] = 0;
+            t_jk[j][k] = 0;
+            for (size_t i=0;i<predictionsj.size();i++)
+              {
+                if (targetsk[i] < 0 || targetsj[i] < 0)
+                  continue;
+                p_jk[j][k] += (predictionsj[i] - predictionsk[i]) * (predictionsj[i] - predictionsk[i]);
+                t_jk[j][k] += (targetsj[i] - targetsk[i]) * (targetsj[i] - targetsk[i]);
+              }
+            p_jk[j][k] = sqrt(p_jk[j][k]);
+            t_jk[j][k] = sqrt(t_jk[j][k]);
+          }
+
+      t_ = 0;
+      p_ = 0;
+      for (int i =0; i<batch_size; ++i) {
+        t_j[i] = 0;
+        t_k[i] = 0;
+        p_j[i] = 0;
+        p_k[i] = 0;
+        for (int l =0; l<batch_size; ++l) {
+          t_j[i] += t_jk[i][l];
+          t_k[i] += t_jk[l][i];
+          p_j[i] += p_jk[i][l];
+          p_k[i] += p_jk[l][i];
+        }
+        t_j[i] /= (double)batch_size;
+        t_ += t_j[i];
+        t_k[i] /= (double)batch_size;
+        p_j[i] /= (double)batch_size;
+        p_ += p_j[i];
+        p_k[i] /= (double)batch_size;
+      }
+      t_ /= (double) batch_size;
+      p_ /= (double) batch_size;
+
+      double dcov = 0;
+      double dvart = 0;
+      double dvarp = 0;
+
+      for (int j=0; j<batch_size; ++j)
+        for (int k=0; k<batch_size; ++k)
+          {
+            double p = p_jk[j][k] - p_j[j] - p_k[k] + p_;
+            double t = t_jk[j][k] - t_j[j] - t_k[k] + t_;
+            dcov += p*t;
+            dvart += t*t;
+            dvarp += p*p;
+          }
+      dcov /= batch_size * batch_size;
+      dvart /= batch_size* batch_size;
+      dvarp /= batch_size * batch_size;
+      dcov = sqrt(dcov);
       dvart = sqrt(dvart);
-      distance_correlation = dcor / sqrt(dvarp*dvart);
+      dvarp = sqrt(dvarp);
+
+      distance_correlation = dcov / (sqrt(dvart * dvarp));
+
       r_2 = 1.0 - ssres/sstot;
       return r_2;
     }
