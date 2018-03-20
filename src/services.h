@@ -40,6 +40,7 @@
 #ifdef USE_TSNE
 #include "tsnelib.h"
 #endif
+#include <spdlog/spdlog.h>
 #include <vector>
 #include <mutex>
 #include <chrono>
@@ -259,8 +260,9 @@ namespace dd
 	{
 	  throw ServiceForbiddenException("Service already exists");
 	}
-
+      
       visitor_init vi(ad);
+      auto llog = spdlog::get(sname);
       try
 	{
 	  mapbox::util::apply_visitor(vi,mls);
@@ -269,22 +271,22 @@ namespace dd
 	}
       catch (InputConnectorBadParamException &e)
 	{
-	  LOG(ERROR) << "service creation input connector bad param: " << e.what() << std::endl;
+	  llog->error("service creation input connector bad param: {}",e.what());
 	  throw;
 	}
       catch (MLLibBadParamException &e)
 	{
-	  LOG(ERROR) << "service creation mllib bad param: " << e.what() << std::endl;
+	  llog->error("service creation mllib bad param: {}",e.what());
 	  throw;
 	}
       catch (MLLibInternalException &e)
 	{
-	  LOG(ERROR) << "service creation mllib internal error: " << e.what() << std::endl;
+	  llog->error("service creation mllib internal error: {}",e.what());
 	  throw;
 	}
       catch(...)
 	{
-	  LOG(ERROR) << "service creation call failed\n";
+	  llog->error("service creation call failed");
 	  throw;
 	}
     }
@@ -302,6 +304,7 @@ namespace dd
       auto hit = _mlservices.begin();
       if ((hit=_mlservices.find(sname))!=_mlservices.end())
 	{
+	  auto llog = spdlog::get(sname);
 	  if (ad.has("clear"))
 	    {
 	      visitor_clear vc(ad);
@@ -311,24 +314,25 @@ namespace dd
 		}
 	      catch (MLLibBadParamException &e)
 		{
-		  LOG(ERROR) << "service " << sname << " mllib bad param: " << e.what() << std::endl;
+		  llog->error("mllib bad param: {}",e.what());
 		  throw;
 		}
 	      catch (MLLibInternalException &e)
 		{
-		  LOG(ERROR) << "service " << sname << " mllib internal error: " << e.what() << std::endl;
+		  llog->error("mllib internal error: {}",e.what());
 	  	  throw;
 		}
 	      catch(...)
 		{
-		  LOG(ERROR) << "service " << sname << " delete service call failed\n";
+		  llog->error("delete service call failed");
 	  	  throw;
 		}
 	    }
 	  _mlservices.erase(hit);
 	  return true;
 	}
-      LOG(ERROR) << "cannot find service " << sname << " for removal\n";
+      auto llog = spdlog::get("api");
+      llog->error("cannot find service for removal");
       return false;
     }
 
@@ -370,6 +374,7 @@ namespace dd
       visitor_train vt;
       vt._ad = ad;
       output pout;
+      auto llog = spdlog::get(sname);
       try
 	{
 	  auto hit = get_service_it(sname);
@@ -377,25 +382,25 @@ namespace dd
 	}
       catch (InputConnectorBadParamException &e)
 	{
-	  LOG(ERROR) << "service " << sname << " mllib bad param: " << e.what() << std::endl;
+	  llog->error("mllib bad param: {}",e.what());
 	  pout._status = -2;
 	  throw;
 	}
       catch (MLLibBadParamException &e)
 	{
-	  LOG(ERROR) << "service " << sname << " mllib bad param: " << e.what() << std::endl;
+	  llog->error("mllib bad param: {}",e.what());
 	  pout._status = -2;
 	  throw;
 	}
       catch (MLLibInternalException &e)
 	{
-	  LOG(ERROR) << "service " << sname << " mllib internal error: " << e.what() << std::endl;
+	  llog->error("mllib internal error: {}",e.what());
 	  pout._status = -1;
 	  throw;
 	}
       catch(...)
 	{
-	  LOG(ERROR) << "service " << sname << " training call failed\n";
+	  llog->error("training call failed");
 	  pout._status = -1;
 	  throw;
 	}
@@ -433,7 +438,8 @@ namespace dd
 	}
       catch(...)
 	{
-	  LOG(ERROR) << "service " << sname << " training status call failed\n";
+	  auto llog = spdlog::get(sname);
+	  llog->error("training status call failed");
 	  pout._status = -1;
 	  throw;
 	}
@@ -459,7 +465,8 @@ namespace dd
 	}
       catch(...)
 	{
-	  LOG(ERROR) << "service " << sname << " training delete call failed\n";
+	  auto llog = spdlog::get(sname);
+	  llog->error("training delete call failed");
 	  pout._status = -1;
 	  throw;
 	}
@@ -479,6 +486,7 @@ namespace dd
       visitor_predict vp;
       vp._ad = ad;
       output pout;
+      auto llog = spdlog::get(sname);
       try
 	{
 	  auto hit = get_service_it(sname);
@@ -486,31 +494,31 @@ namespace dd
 	}
       catch (InputConnectorBadParamException &e)
 	{
-	  LOG(ERROR) << "service " << sname << " mllib bad param: " << e.what() << std::endl;
+	  llog->error("mllib bad param: {}",e.what());
 	  pout._status = -2;
 	  throw;
 	}
       catch (MLLibBadParamException &e)
 	{
-	  LOG(ERROR) << "service " << sname << " mllib bad param: " << e.what() << std::endl;
+	  llog->error("mllib bad param: {}",e.what());
 	  pout._status = -2;
 	  throw;
 	}
       catch (MLLibInternalException &e)
 	{
-	  LOG(ERROR) << "service " << sname << " mllib internal error: " << e.what() << std::endl;
+	  llog->error("mllib internal error: {}",e.what());
 	  pout._status = -1;
 	  throw;
 	}
       catch (MLServiceLockException &e)
 	{
-	  LOG(ERROR) << "service " << sname << " mllib lock error: " << e.what() << std::endl;
+	  llog->error("mllib lock error: {}",e.what());
 	  pout._status = -3;
 	  throw;
 	}
       catch(...)
 	{
-	  LOG(ERROR) << "service " << sname << " prediction call failed\n";
+	  llog->error("prediction call failed");
 	  pout._status = -1;
 	  throw;
 	}

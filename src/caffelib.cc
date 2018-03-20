@@ -102,7 +102,7 @@ namespace dd
 	    _gpu = true;
 	  }
 	for (auto i: _gpuid)
-	  LOG(INFO) << "Using GPU " << i << std::endl;
+	  this->_logger->info("Using GPU {}",i);
       }
 #else
     (void)ad;
@@ -113,7 +113,7 @@ namespace dd
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::instantiate_template(const APIData &ad)
   {
     // - check whether there's a risk of erasing model files
-    if (this->_mlmodel.read_from_repository(this->_mlmodel._repo))
+    if (this->_mlmodel.read_from_repository(this->_mlmodel._repo,this->_logger))
       throw MLLibBadParamException("error reading or listing Caffe models in repository " + this->_mlmodel._repo);
     if (!this->_mlmodel._weights.empty())
       {
@@ -129,12 +129,12 @@ namespace dd
     // - locate template repository
     std::string model_tmpl = ad.get("template").get<std::string>();
     this->_mlmodel._model_template = model_tmpl;
-    LOG(INFO) << "instantiating model template " << model_tmpl << std::endl;
-
+    this->_logger->info("instantiating model template {}",model_tmpl);
+    
     // - copy files to model repository
     std::string source = this->_mlmodel._mlmodel_template_repo + '/' + model_tmpl + "/";
-    LOG(INFO) << "source=" << source << std::endl;
-    LOG(INFO) << "dest=" << this->_mlmodel._repo + '/' + model_tmpl + ".prototxt";
+    this->_logger->info("source={}",source);
+    this->_logger->info("dest={}",this->_mlmodel._repo + '/' + model_tmpl + ".prototxt");
     std::string dest_net = this->_mlmodel._repo + '/' + model_tmpl + ".prototxt";
     std::string dest_deploy_net = this->_mlmodel._repo + "/deploy.prototxt";
     if (model_tmpl != "mlp" && model_tmpl != "convnet" && model_tmpl != "resnet")
@@ -322,7 +322,7 @@ namespace dd
 	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
       }
 
-    if (this->_mlmodel.read_from_repository(this->_mlmodel._repo))
+    if (this->_mlmodel.read_from_repository(this->_mlmodel._repo,this->_logger))
       throw MLLibBadParamException("error reading or listing Caffe models in repository " + this->_mlmodel._repo);
   }
 
@@ -415,7 +415,7 @@ namespace dd
 												   caffe::NetParameter &net_param,
 												   caffe::NetParameter &dnet_param)
     {
-      	NetCaffe<NetInputCaffe<TInputConnectorStrategy>,NetLayersCaffeMLP,NetLossCaffe> netcaffe(&net_param,&dnet_param);
+      NetCaffe<NetInputCaffe<TInputConnectorStrategy>,NetLayersCaffeMLP,NetLossCaffe> netcaffe(&net_param,&dnet_param,this->_logger);
 	netcaffe._nic.configure_inputs(ad,inputc);
 	if (inputc._sparse)
 	  const_cast<APIData&>(ad).add("sparse",true);
@@ -435,7 +435,7 @@ namespace dd
 												       caffe::NetParameter &net_param,
 												       caffe::NetParameter &dnet_param)
   {
-    NetCaffe<NetInputCaffe<TInputConnectorStrategy>,NetLayersCaffeConvnet,NetLossCaffe> netcaffe(&net_param,&dnet_param);
+    NetCaffe<NetInputCaffe<TInputConnectorStrategy>,NetLayersCaffeConvnet,NetLossCaffe> netcaffe(&net_param,&dnet_param,this->_logger);
     netcaffe._nic.configure_inputs(ad,inputc);
     if (inputc._flat1dconv)
       const_cast<APIData&>(ad).add("flat1dconv",static_cast<bool>(inputc._flat1dconv));
@@ -450,7 +450,7 @@ namespace dd
 												      caffe::NetParameter &net_param,
 												      caffe::NetParameter &dnet_param)
   {
-    NetCaffe<NetInputCaffe<TInputConnectorStrategy>,NetLayersCaffeResnet,NetLossCaffe> netcaffe(&net_param,&dnet_param);
+    NetCaffe<NetInputCaffe<TInputConnectorStrategy>,NetLayersCaffeResnet,NetLossCaffe> netcaffe(&net_param,&dnet_param,this->_logger);
     netcaffe._nic.configure_inputs(ad,inputc);
     if (inputc._sparse)
       const_cast<APIData&>(ad).add("sparse",true);
@@ -478,17 +478,17 @@ namespace dd
 	  }
 	catch (std::exception &e)
 	  {
-	    LOG(ERROR) << "Error creating network";
+	    this->_logger->error("Error creating network");
 	    throw;
 	  }
-	LOG(INFO) << "Using pre-trained weights from " << this->_mlmodel._weights;
+	this->_logger->info("Using pre-trained weights from ",this->_mlmodel._weights);
 	try
 	  {
 	    _net->CopyTrainedLayersFrom(this->_mlmodel._weights);
 	  }
 	catch (std::exception &e)
 	  {
-	    LOG(ERROR) << "Error copying pre-trained weights";
+	    this->_logger->error("Error copying pre-trained weights");
 	    delete _net;
 	    _net = nullptr;
 	    throw;
@@ -500,7 +500,7 @@ namespace dd
 	catch(std::exception &e)
 	  {
 	    // nets can be exotic, let's make sure we don't get killed here
-	    LOG(ERROR) << "failed computing net's complexity";
+	    this->_logger->error("failed computing net's complexity");
 	  }
 	return 0;
       }
@@ -747,7 +747,7 @@ namespace dd
       }
     if (!inputc._dv.empty() || !inputc._dv_sparse.empty())
       {
-	LOG(INFO) << "filling up net prior to training\n";
+	this->_logger->info("filling up net prior to training");
 	try {
 	  if (!inputc._sparse)
 	    {
@@ -774,14 +774,14 @@ namespace dd
 	inputc._dv_sparse.clear();
 	inputc._ids.clear();
       }
-    if (this->_mlmodel.read_from_repository(this->_mlmodel._repo))
+    if (this->_mlmodel.read_from_repository(this->_mlmodel._repo,this->_logger))
       throw MLLibBadParamException("error reading or listing Caffe models in repository " + this->_mlmodel._repo);
     this->_mlmodel.read_corresp_file();
     if (ad_mllib.has("resume") && ad_mllib.get("resume").get<bool>())
       {
 	if (this->_mlmodel._sstate.empty())
 	  {
-	    LOG(ERROR) << "resuming a model requires a .solverstate file in model repository\n";
+	    this->_logger->error("resuming a model requires a .solverstate file in model repository");
 	    throw MLLibBadParamException("resuming a model requires a .solverstate file in model repository");
 	  }
 	else 
@@ -792,7 +792,7 @@ namespace dd
 	      }
 	    catch(std::exception &e)
 	      {
-		LOG(ERROR) << "Failed restoring network state\n";
+		this->_logger->error("Failed restoring network state");
 		throw;
 	      }
 	  }
@@ -848,13 +848,14 @@ namespace dd
 	    test(solver->test_nets().at(0).get(),ad,inputc,test_batch_size,has_mean_file,meas_out);
 	    APIData meas_obj = meas_out.getobj("measure");
 	    std::vector<std::string> meas_str = meas_obj.list_keys();
-	    LOG(INFO) << "batch size=" << batch_size;
+	    this->_logger->info("batch size=",batch_size);
+	    
 	    for (auto m: meas_str)
 	      {
 		if (m != "cmdiag" && m != "cmfull" && m != "clacc" && m != "labels") // do not report confusion matrix in server logs
 		  {
 		    double mval = meas_obj.get(m).get<double>();
-		    LOG(INFO) << m << "=" << mval;
+		    this->_logger->info("{}={}",m,mval);
 		    this->add_meas(m,mval);
 		    this->add_meas_per_iter(m,mval);
 		  }
@@ -864,7 +865,7 @@ namespace dd
 		    std::string mdiag_str;
 		    for (size_t i=0;i<mdiag.size();i++)
 		      mdiag_str += this->_mlmodel.get_hcorresp(i) + ":" + std::to_string(mdiag.at(i)) + " ";
-		    LOG(INFO) << m << "=[" << mdiag_str << "]";
+		    this->_logger->info("{}=[{}]",m,mdiag_str);
 		  }
 	      }
 	  }
@@ -891,7 +892,7 @@ namespace dd
 	  }
 	catch(std::exception &e)
 	  {
-	    LOG(ERROR) << "exception while forward/backward pass through the network\n";
+	    this->_logger->error("exception while forward/backward pass through the network");
 	    if (_sync)
 	      {
 		for (size_t i=1;i<_syncs.size();++i)
@@ -919,7 +920,7 @@ namespace dd
 	if ((solver->param_.display() && solver->iter_ % solver->param_.display() == 0)
 	    || (solver->param_.test_interval() && solver->iter_ % solver->param_.test_interval() == 0))
 	  {
-	    LOG(INFO) << "smoothed_loss=" << this->get_meas("train_loss");
+	    this->_logger->info("smoothed_loss={}",this->get_meas("train_loss"));
 	  }
 	try
 	  {
@@ -931,7 +932,7 @@ namespace dd
 	  }
 	catch (std::exception &e)
 	  {
-	    LOG(ERROR) << "exception while updating network\n";
+	    this->_logger->error("exception while updating network");
 	    if (_sync)
 	      {
 		for (size_t i=1;i<_syncs.size();++i)
@@ -966,7 +967,7 @@ namespace dd
       }
     
     solver_param = caffe::SolverParameter();
-    if (this->_mlmodel.read_from_repository(this->_mlmodel._repo))
+    if (this->_mlmodel.read_from_repository(this->_mlmodel._repo,this->_logger))
       throw MLLibBadParamException("error reading or listing Caffe models in repository " + this->_mlmodel._repo);
     int cm = create_model();
     if (cm == 1)
@@ -1122,7 +1123,7 @@ namespace dd
 	      }
 	    catch(std::exception &e)
 	      {
-		LOG(ERROR) << "Error while filling up network for testing";
+		this->_logger->error("Error while filling up network for testing");
 		// XXX: might want to clean up here...
 		throw;
 	      }
@@ -1134,7 +1135,7 @@ namespace dd
 	      }
 	    catch(std::exception &e)
 	      {
-		LOG(ERROR) << "Error while proceeding with test forward pass";
+		this->_logger->error("Error while proceeding with test forward pass");
 		// XXX: might want to clean up here...
 		throw;
 	      }
@@ -1246,7 +1247,7 @@ namespace dd
       {
 	int cm = create_model(true);
 	if (cm != 0)
-	  LOG(ERROR) << "Error creating model for prediction";
+	  this->_logger->error("Error creating model for prediction");
 	if (cm == 1)
 	  throw MLLibInternalException("no model in " + this->_mlmodel._repo + " for initializing the net");
 	else if (cm == 2)
@@ -1380,7 +1381,7 @@ namespace dd
 		batch_size = dv.size();
 		if (boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0]) == 0)
 		    {
-		      LOG(ERROR) << "deploy net's first layer is required to be of MemoryData type (predict)";
+		      this->_logger->info("deploy net's first layer is required to be of MemoryData type (predict)");
 		      delete _net;
 		      _net = nullptr;
 		      throw MLLibBadParamException("deploy net's first layer is required to be of MemoryData type");
@@ -1396,7 +1397,7 @@ namespace dd
 		batch_size = dv.size();
 		if (boost::dynamic_pointer_cast<caffe::MemorySparseDataLayer<float>>(_net->layers()[0]) == 0)
 		  {
-		    LOG(ERROR) << "deploy net's first layer is required to be of MemoryData type (predict)";
+		    this->_logger->error("deploy net's first layer is required to be of MemoryData type (predict)");
 		    delete _net;
 		    _net = nullptr;
 		    throw MLLibBadParamException("deploy net's first layer is required to be of MemorySparseData type");
@@ -1407,7 +1408,7 @@ namespace dd
 	  }
 	catch(std::exception &e)
 	  {
-	    LOG(ERROR) << "exception while filling up network for prediction";
+	    this->_logger->error("exception while filling up network for prediction");
 	    delete _net;
 	    _net = nullptr;
 	    throw;
@@ -1430,7 +1431,7 @@ namespace dd
             }
           catch(std::exception &e)
             {
-              LOG(ERROR) << "Error while proceeding with supervised prediction forward pass, not enough memory? " << e.what();
+	      this->_logger->error("Error while proceeding with supervised prediction forward pass, not enough memory? {}",e.what());
               delete _net;
               _net = nullptr;
               throw;
@@ -1446,7 +1447,7 @@ namespace dd
             }
           catch(std::exception &e)
             {
-              LOG(ERROR) << "Error while proceeding with supervised prediction forward pass, not enough memory? " << e.what();
+	      this->_logger->error("Error while proceeding with supervised prediction forward pass, not enough memory? {}",e.what());
               delete _net;
               _net = nullptr;
               throw;
@@ -1531,7 +1532,7 @@ namespace dd
 		      }
 		    else
 		      {
-			LOG(ERROR) << "couldn't find original image size for " << uri;
+			this->_logger->error("couldn't find original image size for {}",uri);
 		      }
 		    bool leave = false;
 		    int curi = -1;
@@ -1540,7 +1541,7 @@ namespace dd
 			if (outr[0] == -1)
 			  {
 			    // skipping invalid detection
-			    LOG(ERROR) << "skipping invalid detection";
+			    this->_logger->error("skipping invalid detection");
 			    outr += det_size;
 			    leave = true;
 			    break;
@@ -1608,7 +1609,7 @@ namespace dd
 		  }
 		else
 		  {
-		    LOG(ERROR) << "couldn't find original image size for " << uri;
+		    this->_logger->error("couldn't find original image size for {}",uri);
 		  }
 		
 		for (int iroi=0; iroi<nroi; ++iroi) {
@@ -1744,7 +1745,7 @@ namespace dd
 	      }
 	    catch(std::exception &e)
 	      {
-		LOG(ERROR) << "Error while proceeding with unsupervised prediction forward pass, not enough memory? " << e.what();
+		this->_logger->error("Error while proceeding with unsupervised prediction forward pass, not enough memory? {}",e.what());
 		delete _net;
 		_net = nullptr;
 		throw;
@@ -2189,9 +2190,6 @@ namespace dd
   {
     // acquire custom batch size if any
     APIData ad_net = ad.getobj("parameters").getobj("mllib").getobj("net");
-    //batch_size = inputc.batch_size();
-    //test_batch_size = inputc.test_batch_size();
-    //test_iter = 1;
     if (ad_net.has("batch_size"))
       {
 	// adjust batch size so that it is a multiple of the number of training samples (Caffe requirement)
@@ -2200,8 +2198,7 @@ namespace dd
 	  test_batch_size = ad_net.get("test_batch_size").get<int>();
 	if (batch_size == 0)
 	  throw MLLibBadParamException("batch size set to zero");
-	LOG(INFO) << "user batch_size=" << batch_size << " / inputc batch_size=" << inputc.batch_size() << std::endl;
-	//return;
+	this->_logger->info("user batch_size={} / intpuc batch_size=",batch_size,inputc.batch_size());
 
 	// code below is required when Caffe (weirdly) requires the batch size 
 	// to be a multiple of the training dataset size.
@@ -2245,7 +2242,7 @@ namespace dd
 	  }
 	    
 	//debug
-	LOG(INFO) << "batch_size=" << batch_size << " / test_batch_size=" << test_batch_size << " / test_iter=" << test_iter << std::endl;
+	this->_logger->error("batch_size={} / test_batch_size={} / test_iter={}", batch_size, test_batch_size, test_iter);
 	//debug
 
 	if (batch_size == 0)
@@ -2284,7 +2281,7 @@ namespace dd
 	flops += lflops;
 	params += lcount;
       }
-    LOG(INFO) << "Net total flops=" << flops << " / total params=" << params << std::endl;
+    this->_logger->info("Net total flops={} / total params={}",flops,params);
   }
   
   template class CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>;

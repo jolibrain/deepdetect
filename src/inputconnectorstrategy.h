@@ -25,6 +25,7 @@
 #include "apidata.h"
 #include "utils/fileops.hpp"
 #include "utils/httpclient.hpp"
+#include <spdlog/spdlog.h>
 #include <exception>
 
 namespace dd
@@ -40,8 +41,10 @@ namespace dd
     DataEl() {}
     ~DataEl() {}
 
-    int read_element(const std::string &uri)
+    int read_element(const std::string &uri,
+		     std::shared_ptr<spdlog::logger> &logger)
     {
+      _ctype._logger = logger;
       bool dir = false;
       if (uri.find("https://") != std::string::npos
 	  || uri.find("http://") != std::string::npos
@@ -112,7 +115,7 @@ namespace dd
   public:
     InputConnectorStrategy() {}
     InputConnectorStrategy(const InputConnectorStrategy &i)
-      :_model_repo(i._model_repo) {}
+      :_model_repo(i._model_repo),_logger(i._logger) {}
     ~InputConnectorStrategy() {}
     
     /**
@@ -179,6 +182,7 @@ namespace dd
 
     std::vector<std::string> _uris;
     std::string _model_repo; /**< model repository, useful when connector needs to read from saved data (e.g. vocabulary). */
+    std::shared_ptr<spdlog::logger> _logger;
   };
   
 }

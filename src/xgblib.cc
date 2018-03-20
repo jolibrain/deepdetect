@@ -284,7 +284,7 @@ namespace dd
 	  std::unique_ptr<dmlc::Stream> fi(dmlc::Stream::Create(_params.model_in.c_str(), "r")); //TODO: update the model path (repo)
 	  learner->Load(fi.get());
 	} else {
-	  LOG(INFO) << "initializing model";
+	  this->_logger->info("initializing model");
 	  learner->InitModel();
 	}
       }    
@@ -296,7 +296,7 @@ namespace dd
 	this->add_meas("iteration",i);
 	if (version % 2 == 0) {
 	  if (_params.silent == 0) {
-	    LOG(INFO) << "boosting round " << i;
+	    this->_logger->info("boosting round {}",i);
 	  }
 	  learner->UpdateOneIter(i, dtrain.get());
 	  if (learner->AllowLazyCheckPoint()) {
@@ -306,22 +306,7 @@ namespace dd
 	  }
 	  version += 1;
 	}
-	//std::cerr << "version=" << version << " / rabit version=" << rabit::VersionNumber() << std::endl;
-	//CHECK_EQ(version, rabit::VersionNumber());
-	/*std::string res = learner->EvalOneIter(i, eval_datasets, eval_data_names);
-	  if (rabit::IsDistributed()) {
-	  if (rabit::GetRank() == 0) {
-	  //LOG(TRACKER) << res;
-	  LOG(INFO) << "res=" << res << std::endl;
-	  }
-	  } else {
-	  std::cerr << "param silent=" << _params.silent << std::endl;
-	if (_params.silent < 2) {
-	//LOG(CONSOLE) << res;
-	LOG(INFO) << "res=" << res << std::endl;
-	}
-	}*/
-
+	
 	// measures for dd
 	if (i > 0 && i % test_interval == 0 && !eval_datasets.empty())
 	  {
@@ -334,7 +319,7 @@ namespace dd
 		if (m != "cmdiag" && m != "cmfull" && m != "labels") // do not report confusion matrix in server logs
 		  {
 		    double mval = meas_obj.get(m).get<double>();
-		    LOG(INFO) << m << "=" << mval;
+		    this->_logger->info("{}={}",m,mval);
 		    this->add_meas(m,mval);
 		    if (!std::isnan(mval)) // if testing occurs once before training even starts, loss is unknown and we don't add it to history.
 		      this->add_meas_per_iter(m,mval);
@@ -345,13 +330,13 @@ namespace dd
 		    std::string mdiag_str;
 		    for (size_t i=0;i<mdiag.size();i++)
 		      mdiag_str += std::to_string(i) + ":" + std::to_string(mdiag.at(i)) + " ";
-		    LOG(INFO) << m << "=[" << mdiag_str << "]";
+		    this->_logger->info("{}=[{}]",m,mdiag_str);
 		  }
 	      }
 	  }
 	
 	if (_params.save_period != 0 && (i + 1) % _params.save_period == 0) {
-	  LOG(INFO) << "model saving / repo=" << this->_mlmodel._repo << std::endl;;
+	  this->_logger->info("model saving / repo={}",this->_mlmodel._repo);
 	  std::ostringstream os;
 	  os << this->_mlmodel._repo << '/'
 	     << std::setfill('0') << std::setw(4)
@@ -427,7 +412,7 @@ namespace dd
       {
 	_learner = xgboost::Learner::Create({});
 	std::string model_in = this->_mlmodel._weights;
-        LOG(INFO) << "loading XGBoost model file=" << model_in;
+	this->_logger->info("loading XGBoost model file={}",model_in);
 	std::unique_ptr<dmlc::Stream> fi(dmlc::Stream::Create(model_in.c_str(),"r"));
 	_learner->Load(fi.get());
 	// we can't read the objective function string name from the xgboost in-memory model,

@@ -43,7 +43,7 @@ namespace dd
     int e = fileops::list_directory(_repo,true,false,lfiles);
     if (e != 0)
       {
-	LOG(ERROR) << "error reading or listing XGBoost models in repository " << _repo << std::endl;
+	this->_logger->error("error reading or listing XGBoost models in repository {}",_repo);
 	return 1;
       }
     std::string weightsf,correspf;
@@ -79,7 +79,7 @@ namespace dd
     std::ifstream ff(modelfile);
     if (!ff.is_open())
       {
-	LOG(ERROR) << "cannot open xgb model file " << modelfile << " for looking objective up";
+	this->_logger("cannot open xgb model file {} for looking objective up",modelfile);
 	return "";
       }
     std::string line;

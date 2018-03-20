@@ -49,6 +49,7 @@ namespace dd
     
     CSVInputFileConn *_cifc = nullptr;
     APIData _adconf;
+    std::shared_ptr<spdlog::logger> _logger;
   };
   
   class CSVline
@@ -361,7 +362,7 @@ namespace dd
 	      DataEl<DDCsv> ddcsv;
 	      ddcsv._ctype._cifc = this;
 	      ddcsv._ctype._adconf = ad_input;
-	      ddcsv.read_element(_csv_fname);
+	      ddcsv.read_element(_csv_fname,this->_logger);
 	    }
 	  else // training from posted data (in-memory)
 	    {
@@ -370,7 +371,7 @@ namespace dd
 		  DataEl<DDCsv> ddcsv;
 		  ddcsv._ctype._cifc = this;
 		  ddcsv._ctype._adconf = ad_input;
-		  ddcsv.read_element(_uris.at(i));
+		  ddcsv.read_element(_uris.at(i),this->_logger);
 		}
 	      if (_scale)
 		{
@@ -401,7 +402,7 @@ namespace dd
 	      DataEl<DDCsv> ddcsv;
 	      ddcsv._ctype._cifc = this;
 	      ddcsv._ctype._adconf = ad_input;
-	      ddcsv.read_element(_uris.at(i));
+	      ddcsv.read_element(_uris.at(i),this->_logger);
 	    }
 	}
       if (_csvdata.empty() && _db_fname.empty())

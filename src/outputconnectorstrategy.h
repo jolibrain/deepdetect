@@ -29,6 +29,7 @@
 #include <numeric>
 #include <Eigen/Dense>
 #include "utils/utils.hpp"
+#include <spdlog/spdlog.h>
 
 namespace dd
 {
@@ -95,6 +96,8 @@ namespace dd
      * @param ad_out data object as the call response
      */
     void finalize(const APIData &ad_in, APIData &ad_out, MLModel *mlm=nullptr);
+
+    std::shared_ptr<spdlog::logger> _logger;
   };
 
   /**

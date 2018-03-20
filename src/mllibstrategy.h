@@ -24,6 +24,7 @@
 
 #include "apidata.h"
 #include "utils/fileops.hpp"
+#include <spdlog/spdlog.h>
 #include <atomic>
 #include <exception>
 #include <mutex>
@@ -75,7 +76,7 @@ namespace dd
      * \brief copy-constructor
      */
     MLLib(MLLib &&mll) noexcept
-      :_inputc(mll._inputc),_outputc(mll._outputc),_mlmodel(mll._mlmodel),_meas(mll._meas),_tjob_running(mll._tjob_running.load())
+      :_inputc(mll._inputc),_outputc(mll._outputc),_mlmodel(mll._mlmodel),_meas(mll._meas),_tjob_running(mll._tjob_running.load()),_logger(mll._logger)
       {}
     
     /**
@@ -245,7 +246,7 @@ namespace dd
         out.add("measure",meas);
       }
     }
-    
+
     TInputConnectorStrategy _inputc; /**< input connector strategy for channeling data in. */
     TOutputConnectorStrategy _outputc; /**< output connector strategy for passing results back to API. */
 
@@ -263,6 +264,8 @@ namespace dd
     bool _online = false; /**< whether the algorithm is online, i.e. it interleaves training and prediction calls.
 			     When not, prediction calls are rejected while training is running. */
 
+    std::shared_ptr<spdlog::logger> _logger; /**< mllib logger. */
+    
   protected:
     std::mutex _meas_per_iter_mutex; /**< mutex over measures history. */
     std::mutex _meas_mutex; /** mutex around current measures. */

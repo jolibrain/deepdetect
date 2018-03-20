@@ -26,7 +26,6 @@
 #include "caffeinputconns.h"
 #include "utils/utils.hpp"
 #include <memory>
-#include <glog/logging.h>
 
 using namespace caffe;
 
@@ -66,7 +65,7 @@ namespace dd
 		else cw_blob.add_data(0.);
 	      }
 	  }
-	LOG(INFO) << "Write class weights to " << cl_file;
+	//_logger->info("write class weights to {}",cl_file);
 	WriteProtoToBinaryFile(cw_blob,cl_file.c_str());
       }
   }
@@ -75,7 +74,7 @@ namespace dd
   {
     size_t p = file.rfind('.');
     if (p == file.npos)
-      LOG(WARNING) << "Failed to guess the encoding of " << file;
+      _logger->warn("Failed to guess the encoding of {}",file);
     std::string enc = file.substr(p);
     std::transform(enc.begin(),enc.end(),enc.begin(),::tolower);
     return enc;
@@ -99,18 +98,18 @@ namespace dd
     // in the model repository.
     if (fileops::file_exists(dbfullname))
       {
-	LOG(WARNING) << "image db file " << dbfullname << " already exists, bypassing creation but checking on records";
+	_logger->warn("image db file {} already exists, bypassing creation but checking on records",dbfullname);
 	std::unique_ptr<db::DB> db(db::GetDB(backend));
 	db->Open(dbfullname.c_str(), db::READ);
 	_db_batchsize = db->Count();
-	LOG(WARNING) << "image db file " << dbfullname << " with " << _db_batchsize << " records";
+	_logger->warn("image db file {} with {} records",dbfullname,_db_batchsize);
 	if (!testdbname.empty() && fileops::file_exists(testdbfullname))
 	  {
-	    LOG(WARNING) << "image db file " << testdbfullname << " already exists, bypassing creation but checking on records";
+	    _logger->warn("image db file {} already exists, bypassing creation but checking on records",testdbfullname);
 	    std::unique_ptr<db::DB> tdb(db::GetDB(backend));
 	    tdb->Open(testdbfullname.c_str(), db::READ);
 	    _db_testbatchsize = tdb->Count();
-	    LOG(WARNING) << "image db file " << testdbfullname << " with " << _db_testbatchsize << " records";
+	    _logger->warn("image db file {} with {} records",testdbfullname,_db_testbatchsize);
 	  }
 	return 0;
       }
@@ -195,7 +194,7 @@ namespace dd
 	    std::string cls = dd_utils::split((*uit),'/').back();
 	    if ((hcit=hcorresp_r.find(cls))==hcorresp_r.end())
 	      {
-		LOG(ERROR) << "class " << cls << " appears in testing set but not in training set, skipping";
+		_logger->error("class {} appears in testing set but not in training set, skipping");
 		++uit;
 		continue;
 	      }
@@ -212,7 +211,7 @@ namespace dd
     _db_batchsize = lfiles.size();
     _db_testbatchsize = test_lfiles.size();
     
-    LOG(INFO) << "A total of " << lfiles.size() << " images.";
+    _logger->info("a total of {} images",lfiles.size());
     if (lfiles.empty())
       throw InputConnectorBadParamException("no image data found in repository");
     
@@ -294,20 +293,20 @@ namespace dd
       // put in db
       std::string out;
       if(!datum.SerializeToString(&out))
-	LOG(ERROR) << "Failed serialization of datum for db storage";
+	_logger->error("Failed serialization of datum for db storage");
       txn->Put(string(key_cstr, length), out);
       
       if (++count % 1000 == 0) {
 	// commit db
 	txn->Commit();
 	txn.reset(db->NewTransaction());
-	LOG(INFO) << "Processed " << count << " files.";
+	_logger->info("Processed {} files",count);
       }
     }
     // write the last batch
     if (count % 1000 != 0) {
       txn->Commit();
-      LOG(INFO) << "Processed " << count << " files.";
+      _logger->info("Processed {} files",count);
     }
   }
 
@@ -339,7 +338,7 @@ namespace dd
 				lfiles[line_id].second[0], _height, _width, !_bw, // XXX: passing first label, fixing labels below
 				enc, &datum);
       if (status == false)
-	LOG(ERROR) << "Failed reading image " << lfiles[line_id].first;
+	_logger->error("failed reading image {}",lfiles[line_id].first);
       
       // store multi labels into float_data in the datum (encoded image should be into data as bytes)
       std::vector<int> labels = lfiles[line_id].second;
@@ -355,20 +354,20 @@ namespace dd
       // put in db
       std::string out;
       if(!datum.SerializeToString(&out))
-	LOG(ERROR) << "Failed serialization of datum for db storage";
+	_logger->error("Failed serialization of datum for db storage");
       txn->Put(string(key_cstr, length), out);
       
       if (++count % 1000 == 0) {
 	// commit db
 	txn->Commit();
 	txn.reset(db->NewTransaction());
-	LOG(INFO) << "Processed " << count << " files.";
+	_logger->info("Processed {} files",count);
       }
     }
     // write the last batch
     if (count % 1000 != 0) {
       txn->Commit();
-      LOG(INFO) << "Processed " << count << " files.";
+      _logger->info("Processed {} files",count);
     }
   }
 
@@ -379,18 +378,18 @@ namespace dd
     std::string dbfullname = dbname + "." + backend;
     if (fileops::file_exists(meanfile))
       {
-	LOG(WARNING) << "image mean file " << meanfile << " already exists, bypassing creation";
+	_logger->warn("image mean file {} already exists, bypassing creation",meanfile);
 	BlobProto sum_blob;
 	ReadProtoFromBinaryFile(meanfile.c_str(),&sum_blob);
 	const int channels = sum_blob.channels();
 	const int dim = sum_blob.height() * sum_blob.width();
 	_mean_values = std::vector<float>(channels,0.0);
-	LOG(INFO) << "Number of channels: " << channels;
+	_logger->info("Number of channels: {}",channels);
 	for (int c = 0; c < channels; ++c) {
 	  for (int i = 0; i < dim; ++i) {
 	    _mean_values[c] += sum_blob.data(dim * c + i);
 	  }
-	  LOG(INFO) << "mean_value channel [" << c << "]:" << _mean_values[c] / dim;
+	  _logger->info("mean value channel [{}]:{}",c,_mean_values[c] / dim);
 	  _mean_values[c] /= dim;
 	}
 	return 0;
@@ -407,7 +406,7 @@ namespace dd
     datum.ParseFromString(cursor->value());
 
     if (DecodeDatumNative(&datum)) {
-      LOG(INFO) << "Decoding Datum";
+      //_logger->info("Decoding Datum");
     }
     
     sum_blob.set_num(1);
@@ -439,19 +438,19 @@ namespace dd
       }
       ++count;
       if (count % 10000 == 0) {
-	LOG(INFO) << "Processed " << count << " files.";
+	_logger->info("Processed {} files",count);
       }
       cursor->Next();
     }
     
     if (count % 10000 != 0) {
-      LOG(INFO) << "Processed " << count << " files.";
+      _logger->info("Processed {} files",count);
     }
     for (int i = 0; i < sum_blob.data_size(); ++i) {
       sum_blob.set_data(i, sum_blob.data(i) / count);
     }
     // Write to disk
-    LOG(INFO) << "Write to " << meanfile;
+    _logger->info("Write to {}",meanfile);
     WriteProtoToBinaryFile(sum_blob, meanfile.c_str());
 
     // let's store the simpler mean values in case of image
@@ -459,12 +458,12 @@ namespace dd
     const int channels = sum_blob.channels();
     const int dim = sum_blob.height() * sum_blob.width();
     _mean_values = std::vector<float>(channels,0.0);
-    LOG(INFO) << "Number of channels: " << channels;
+    _logger->info("Number of channels: {}",channels);
     for (int c = 0; c < channels; ++c) {
       for (int i = 0; i < dim; ++i) {
 	_mean_values[c] += sum_blob.data(dim * c + i);
       }
-      LOG(INFO) << "mean_value channel [" << c << "]:" << _mean_values[c] / dim;
+      _logger->info("mean value channel [{}]:{}",c,_mean_values[c] / dim);
       _mean_values[c] /= dim;
     }
     return 0;
@@ -546,7 +545,7 @@ namespace dd
     (void) has_mean_file;
     if (_segmentation_data_lines.empty())
       {
-	LOG(INFO) << "reading segmentation test file " << _uris.at(1).c_str();
+	_logger->info("reading segmentation test file {}",_uris.at(1).c_str());
 	std::ifstream infile(_uris.at(1).c_str());
 	std::string filename, label_filename;
 	while(infile >> filename >> label_filename)
@@ -567,7 +566,7 @@ namespace dd
 				       _height,_width,0,0,!_bw,false,enc,&datum_data);
 	if (status == false)
 	  {
-	    LOG(ERROR) << "reading segmentation image " << _segmentation_data_lines[i].first << " to datum";
+	    _logger->error("reading segmentation image {} to datum",_segmentation_data_lines[i].first);
 	    continue;
 	  }
 
@@ -647,7 +646,7 @@ namespace dd
     // in the model repository.
     if (fileops::file_exists(dbfullname))
       {
-	LOG(WARNING) << "CSV db file " << dbfullname << " already exists, bypassing creation but checking on records";
+	_logger->warn("CSV db file {} already exists, bypassing creation but checking on records",dbfullname);
 	std::unique_ptr<db::DB> db(db::GetDB(backend));
 	db->Open(dbfullname.c_str(), db::READ);
 	std::unique_ptr<db::Cursor> cursor(db->NewCursor());
@@ -662,14 +661,14 @@ namespace dd
 	    break;
 	  }
 	_db_batchsize = db->Count();
-	LOG(INFO) << "CSV db train file " << dbfullname << " with " << _db_batchsize << " records";
+	_logger->info("CSV db train file {} with {} records",dbfullname,_db_batchsize);
 	if (!testdbname.empty() && fileops::file_exists(testdbfullname))
 	  {
-	    LOG(WARNING) << "CSV db file " << testdbfullname << " already exists, bypassing creation but checking on records";
+	    _logger->warn("CSV db file {} already exists, bypassing creation but checking on records",testdbfullname);
 	    std::unique_ptr<db::DB> tdb(db::GetDB(backend));
 	    tdb->Open(testdbfullname.c_str(), db::READ);
 	    _db_testbatchsize = tdb->Count();
-	    LOG(INFO) << "CSV db test file " << testdbfullname << " with " << _db_testbatchsize << " records";
+	    _logger->info("CSV db test file {} with {} records",testdbfullname,_db_testbatchsize);
 	  }	
 	return 0;
       }
@@ -705,7 +704,7 @@ namespace dd
     std::string out;
     if(!d.SerializeToString(&out))
       {
-	LOG(INFO) << "Failed serialization of datum for db storage";
+	_logger->error("Failed serialization of datum for db storage");
 	return;
       }
     _txn->Put(std::string(key_cstr, length), out);
@@ -715,7 +714,7 @@ namespace dd
       // commit db
       _txn->Commit();
       _txn.reset(_tdb->NewTransaction());
-      LOG(INFO) << "Processed " << count << " records";
+      _logger->info("Processed {} records",count);
     }
   }
 
@@ -742,7 +741,7 @@ namespace dd
     std::string out;
     if(!d.SerializeToString(&out))
       {
-	LOG(INFO) << "Failed serialization of datum for db storage";
+	_logger->error("Failed serialization of datum for db storage");
 	return;
       }
     _ttxn->Put(std::string(key_cstr, length), out);
@@ -752,7 +751,7 @@ namespace dd
       // commit db
       _ttxn->Commit();
       _ttxn.reset(_ttdb->NewTransaction());
-      LOG(INFO) << "Processed " << count << " records";
+      _logger->info("Processed {} records",count);
     }
   }
   
@@ -783,7 +782,7 @@ namespace dd
     DataEl<DDCCsv> ddcsv;
     ddcsv._ctype._cifc = this;
     ddcsv._ctype._adconf = ad_input;
-    ddcsv.read_element(_csv_fname);
+    ddcsv.read_element(_csv_fname,this->_logger);
 
     _txn->Commit();
     _ttxn->Commit();
@@ -844,7 +843,7 @@ namespace dd
     // in the model repository.
     if (fileops::file_exists(dbfullname))
       {
-	LOG(WARNING) << "Txt db file " << dbfullname << " already exists, bypassing creation but checking on records";
+	_logger->warn("Txt db file {} already exists, bypassing creation but checking on records",dbfullname);
 	std::unique_ptr<db::DB> db(db::GetDB(backend));
 	db->Open(dbfullname.c_str(), db::READ);
 	std::unique_ptr<db::Cursor> cursor(db->NewCursor());
@@ -859,14 +858,14 @@ namespace dd
 	    break;
 	  }
 	_db_batchsize = db->Count();
-	LOG(INFO) << "Txt db train file " << dbfullname << " with " << _db_batchsize << " records";
+	_logger->info("Txt db train file {} with {} records",dbfullname,_db_batchsize);
 	if (!testdbname.empty() && fileops::file_exists(testdbfullname))
 	  {
-	    LOG(WARNING) << "Txt db file " << testdbfullname << " already exists, bypassing creation but checking on records";
+	    _logger->warn("Txt db file {} already exists, bypassing creation but checking on records",testdbfullname);
 	    std::unique_ptr<db::DB> tdb(db::GetDB(backend));
 	    tdb->Open(testdbfullname.c_str(), db::READ);
 	    _db_testbatchsize = tdb->Count();
-	    LOG(INFO) << "Txt db test file " << testdbfullname << " with " << _db_testbatchsize << " records";
+	    _logger->info("Txt db test file {} with {} records",testdbfullname,_db_testbatchsize);
 	  }
 	// XXX: remove in-memory data, which pre-processing is useless and should be avoided
 	destroy_txt_entries(_txt);
@@ -878,7 +877,7 @@ namespace dd
     _db_batchsize = _txt.size();
     _db_testbatchsize = _test_txt.size();
 
-    LOG(INFO) << "db_batchsize=" << _db_batchsize << " / db_testbatchsize=" << _db_testbatchsize << std::endl;
+    _logger->info("db_batchsize={} / db_testbatchsize={}",_db_batchsize,_db_testbatchsize);
     
     // write to dbs (i.e. train and possibly test)
     if (!_sparse)
@@ -924,14 +923,14 @@ namespace dd
 	// put in db
 	std::string out;
 	if (!datum.SerializeToString(&out))
-	  LOG(ERROR) << "Failed serialization of datum for db storage";
+	  _logger->error("Failed serialization of datum for db storage");
 	txn->Put(string(key_cstr,length),out);
 
 	if (++count % 1000 == 0) {
 	  // commit db
 	  txn->Commit();
 	  txn.reset(db->NewTransaction());
-	  LOG(INFO) << "Processed " << count << " text entries";
+	  _logger->info("Processed {} text entries",count);
 	}
 	
 	++hit;
@@ -941,7 +940,7 @@ namespace dd
     // write the last batch
     if (count % 1000 != 0) {
       txn->Commit();
-      LOG(INFO) << "Processed " << count << " text entries";
+      _logger->info("Processed {} text entries",count);
     }
 
     db->Close();
@@ -974,14 +973,14 @@ namespace dd
 	// put in db
 	std::string out;
 	if (!datum.SerializeToString(&out))
-	  LOG(ERROR) << "Failed serialization of datum for db storage";
+	  _logger->error("Failed serialization of datum for db storage");
 	txn->Put(string(key_cstr,length),out);
 
 	if (++count % 1000 == 0) {
 	  // commit db
 	  txn->Commit();
 	  txn.reset(db->NewTransaction());
-	  LOG(INFO) << "Processed " << count << " text entries";
+	  _logger->info("Processed {} text entries",count);
 	}
 	
 	++hit;
@@ -991,7 +990,7 @@ namespace dd
     // write the last batch
     if (count % 1000 != 0) {
       txn->Commit();
-      LOG(INFO) << "Processed " << count << " text entries";
+      _logger->info("Processed {} text entries",count);
     }
 
     db->Close();
@@ -1075,7 +1074,7 @@ namespace dd
     // in the model repository.
     if (fileops::file_exists(dbfullname))
       {
-	LOG(WARNING) << "SVM db file " << dbfullname << " already exists, bypassing creation but checking on records";
+	_logger->warn("SVM db file {} already exists, bypassing creation but checking on records",dbfullname);
 	std::unique_ptr<db::DB> db(db::GetDB(backend));
 	db->Open(dbfullname.c_str(), db::READ);
 	std::unique_ptr<db::Cursor> cursor(db->NewCursor());
@@ -1090,14 +1089,15 @@ namespace dd
 	    break;
 	  }
 	_db_batchsize = db->Count();
-	LOG(INFO) << "SVM db train file " << dbfullname << " with " << _db_batchsize << " records";
+	_logger->info("SVM db train file {} with {} records",dbfullname,_db_batchsize);
 	if (!testdbname.empty() && fileops::file_exists(testdbfullname))
 	  {
-	    LOG(WARNING) << "SVM db file " << testdbfullname << " already exists, bypassing creation but checking on records";
+
+	    _logger->warn("SVM db file {} already exists, bypassing creation but checking on records",testdbfullname);
 	    std::unique_ptr<db::DB> tdb(db::GetDB(backend));
 	    tdb->Open(testdbfullname.c_str(), db::READ);
 	    _db_testbatchsize = tdb->Count();
-	    LOG(INFO) << "SVM db test file " << testdbfullname << " with " << _db_testbatchsize << " records";
+	    _logger->info("SVM db test file {} with {} records",testdbfullname,_db_testbatchsize);
 	  }	
 	return 0;
       }
@@ -1132,7 +1132,7 @@ namespace dd
     std::string out;
     if(!d.SerializeToString(&out))
       {
-	LOG(INFO) << "Failed serialization of datum for db storage";
+	_logger->info("Failed serialization of datum for db storage");
 	return;
       }
     _txn->Put(std::string(key_cstr, length), out);
@@ -1142,7 +1142,7 @@ namespace dd
       // commit db
       _txn->Commit();
       _txn.reset(_tdb->NewTransaction());
-      LOG(INFO) << "Processed " << count << " records";
+      _logger->info("Processed {} records",count);
     }
   }
 
@@ -1168,7 +1168,7 @@ namespace dd
     std::string out;
     if(!d.SerializeToString(&out))
       {
-	LOG(INFO) << "Failed serialization of datum for db storage";
+	_logger->error("Failed serialization of datum for db storage");
 	return;
       }
     _ttxn->Put(std::string(key_cstr, length), out);
@@ -1178,7 +1178,7 @@ namespace dd
       // commit db
       _ttxn->Commit();
       _ttxn.reset(_ttdb->NewTransaction());
-      LOG(INFO) << "Processed " << count << " records";
+      _logger->info("Processed {} records",count);
     }
   }
   
@@ -1187,7 +1187,7 @@ namespace dd
 						  const APIData &ad_input,
 						  const std::string &backend)
   {
-    LOG(INFO) << "SVM line to db / " << "dbfullname=" << dbfullname;
+    _logger->info("SVM line to db / dbfullname={}",dbfullname);
 
     // Create new DB
     _tdb = std::unique_ptr<db::DB>(db::GetDB(backend));
@@ -1196,8 +1196,8 @@ namespace dd
     _ttdb = std::unique_ptr<db::DB>(db::GetDB(backend));
     _ttdb->Open(testdbfullname.c_str(), db::NEW);
     _ttxn = std::unique_ptr<db::Transaction>(_ttdb->NewTransaction());
-    LOG(INFO) << "dbs " << dbfullname << " / " << testdbfullname << " opened";
-
+    _logger->info("dbs {} / {} opened",dbfullname,testdbfullname);
+    
     _svm_fname = _uris.at(0); // training only from file
     if (!fileops::file_exists(_svm_fname))
       throw InputConnectorBadParamException("training SVM file " + _svm_fname + " does not exist");
@@ -1207,7 +1207,7 @@ namespace dd
     DataEl<DDSvm> ddsvm;
     ddsvm._ctype._cifc = this;
     ddsvm._ctype._adconf = ad_input;
-    ddsvm.read_element(_svm_fname);
+    ddsvm.read_element(_svm_fname,this->_logger);
 
     _txn->Commit();
     _ttxn->Commit();

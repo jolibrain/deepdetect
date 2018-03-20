@@ -20,7 +20,6 @@
  */
 
 #include "csvinputfileconn.h"
-#include <glog/logging.h>
 
 namespace dd
 {
@@ -211,8 +210,8 @@ namespace dd
 		vals.push_back(c);
 	      else
 		{
-		  LOG(ERROR) << "line " << nlines << ": skipping column " << col_name << " / not a number";
-		  LOG(ERROR) << hline << std::endl;
+		  _logger->error("line {}: skipping column {} / not a number",nlines,col_name);
+		  _logger->error(hline);
 		  throw InputConnectorBadParamException("column " + col_name + " is not a number, use categoricals or ignore parameters instead");
 		}
 	    }
@@ -263,7 +262,7 @@ namespace dd
 				  const std::string &fname)
   {
       std::ifstream csv_file(fname,std::ios::binary);
-      LOG(INFO) << "fname=" << fname << " / open=" << csv_file.is_open() << std::endl;
+      _logger->info("fname={} / open={}",fname,csv_file.is_open());
       if (!csv_file.is_open())
 	throw InputConnectorBadParamException("cannot open file " + fname);
       std::string hline;
@@ -297,8 +296,8 @@ namespace dd
 		{
 		  if (cu >= _detect_cols)
 		    {
-		      LOG(ERROR) << "line " << l << " has more columns than headers\n";
-		      LOG(ERROR) << hline << std::endl;
+		      _logger->error("line {} has more columns than headers",l);
+		      _logger->error(hline);
 		      throw InputConnectorBadParamException("line has more columns than headers");
 		    }
 		  if ((igit=_ignored_columns_pos.find(cu))!=_ignored_columns_pos.end())
@@ -376,7 +375,7 @@ namespace dd
 	    std::cout << std::endl;*/
 	  //debug
 	}
-      LOG(INFO) << "read " << nlines << " lines from " << fname << std::endl;
+      _logger->info("read {} lines from {}",nlines,fname);
       csv_file.close();
       
       // test file, if any.
@@ -409,7 +408,7 @@ namespace dd
 		std::cout << std::endl;*/
 	      //debug
 	    }
-	  LOG(INFO) << "read " << nlines << " lines from " << _csv_test_fname << std::endl;
+	  _logger->info("read {} lines from {}", nlines, _csv_test_fname);
 	  csv_test_file.close();
 	}
 
@@ -419,7 +418,7 @@ namespace dd
       if (_csv_test_fname.empty() && _test_split > 0)
 	{
 	  split_data();
-	  LOG(INFO) << "data split test size=" << _csvdata_test.size() << " / remaining data size=" << _csvdata.size() << std::endl;
+	  _logger->info("data split test size={} / remaining data size={}",_csvdata_test.size(),_csvdata.size());
 	}
       if (!_ignored_columns.empty() || !_categoricals.empty())
 	update_columns();

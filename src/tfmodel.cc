@@ -29,13 +29,14 @@ namespace dd
   {
    if (ad.has("repository"))
       {
-	read_from_repository(ad.get("repository").get<std::string>()); // XXX: beware, error not caught
+	read_from_repository(ad.get("repository").get<std::string>(),spdlog::get("api")); // XXX: beware, error not caught
 	this-> _modelRepo = ad.get("repository").get<std::string>();
       }
-   read_corresp_file();
+   read_corresp_file(spdlog::get("api"));
   }
 
-  int TFModel::read_from_repository(const std::string &repo)
+  int TFModel::read_from_repository(const std::string &repo,
+				    const std::shared_ptr<spdlog::logger> &logger)
   {
     std::string graphName = ".pb";
     std::string labelFile = ".txt";
@@ -44,7 +45,7 @@ namespace dd
   	int e = fileops::list_directory(repo,true,false,lfiles);
     if (e != 0)
       {
-	LOG(ERROR) << "error reading or listing caffe models in repository " << repo << std::endl;
+	logger->error("error reading or listing caffe models in repository {}",repo);
 	return 1;
       }
       
@@ -74,13 +75,13 @@ namespace dd
 	return 0;
   }
 
-  int TFModel::read_corresp_file()
+  int TFModel::read_corresp_file(const std::shared_ptr<spdlog::logger> &logger)
   {
     if (!_corresp.empty())
       {
 	std::ifstream ff(_corresp);
 	if (!ff.is_open())
-	  LOG(ERROR) << "cannot open TF model corresp file=" << _corresp << std::endl;
+	  logger->error("cannot open TF model corresp file={}",_corresp);
 	else{
 	  std::string line;
 	  while(!ff.eof())

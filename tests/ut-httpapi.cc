@@ -58,7 +58,6 @@ TEST(httpjsonapi,uri_query_to_json)
 
 TEST(httpjsonapi,info)
 {
-  ::google::InitGoogleLogging("ut_httpapi");
   HttpJsonAPI hja;
   hja.start_server_daemon(host,std::to_string(port),nthreads);
   std::string luri = "http://" + host + ":" + std::to_string(port);

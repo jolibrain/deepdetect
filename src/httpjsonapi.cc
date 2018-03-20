@@ -29,6 +29,7 @@
 #include "ext/rapidjson/stringbuffer.h"
 #include "ext/rapidjson/reader.h"
 #include "ext/rapidjson/writer.h"
+#include <spdlog/spdlog.h>
 #include <gflags/gflags.h>
 #include "utils/httpclient.hpp"
 #include <boost/iostreams/filtering_stream.hpp>
@@ -119,7 +120,10 @@ class APIHandler
 {
 public:
   APIHandler(dd::HttpJsonAPI *hja)
-    :_hja(hja) { }
+    :_hja(hja)
+  {
+    _logger = spdlog::get("api");
+  }
   
   ~APIHandler() { }
 
@@ -178,7 +182,7 @@ public:
 	  url = janswer["network"]["url"].GetString();
 	if (url.empty())
 	  {
-	    LOG(ERROR) << "missing url in network output connector";
+	    _logger->error("missing url in network output connector");
 	    stranswer = _hja->jrender(_hja->dd_bad_request_400());
 	    code = 400;
 	  }
@@ -198,8 +202,8 @@ public:
 	      }
 	    catch (std::runtime_error &e)
 	      {
-		LOG(ERROR) << e.what() << std::endl;
-		LOG(INFO) << stranswer << std::endl;
+		_logger->error(e.what());
+		_logger->info(stranswer);
 		stranswer = _hja->jrender(_hja->dd_output_connector_network_error_1009());
 	      }
 	  }
@@ -219,7 +223,7 @@ public:
 	  }
 	catch(const std::exception &e)
 	  {
-	    LOG(ERROR) << e.what() << std::endl;
+	    _logger->error(e.what());
 	    outcode = 400;
 	    stranswer = _hja->jrender(_hja->dd_bad_request_400());
 	  }
@@ -264,7 +268,7 @@ public:
     std::vector<std::string> rscs = dd::dd_utils::split(req_path,'/');
     if (rscs.empty())
       {
-	LOG(ERROR) << "empty resource\n";
+	_logger->error("empty resource");
 	response = http_server::response::stock_reply(http_server::response::not_found,_hja->jrender(_hja->dd_not_found_404()));
 	return;
       }
@@ -276,7 +280,7 @@ public:
     std::cerr << "query=" << req_query << std::endl;
     std::cerr << "rscs size=" << rscs.size() << std::endl;
     std::cerr << "path1=" << rscs[1] << std::endl;
-    LOG(INFO) << "HTTP " << req_method << " / call / uri=" << ur << std::endl;*/
+    _logger->info("HTTP {} / call / uri={}",req_method,ur);*/
     //debug
 
     std::string content_encoding;
@@ -306,7 +310,7 @@ public:
 		  }
 		catch(const std::exception &e)
 		  {
-		    LOG(ERROR) << e.what() << std::endl;
+		    _logger->error(e.what());
 		    fillup_response(response,_hja->dd_bad_request_400(),access_log,code,tstart);
 		    code = 400;
 		    encoding_error = true;
@@ -315,7 +319,7 @@ public:
 	  }
 	else
 	  {
-	    LOG(ERROR) << "Unsupported content-encoding:" << content_encoding << std::endl;
+	    _logger->error("Unsupported content-encoding: {}",content_encoding);
 	    fillup_response(response,_hja->dd_bad_request_400(),access_log,code,tstart);
 	    code = 400;
 	    encoding_error = true;
@@ -333,7 +337,7 @@ public:
 	    if (rscs.size() < 2)
 	      {
 		fillup_response(response,_hja->dd_bad_request_400(),access_log,code,tstart);
-		LOG(ERROR) << access_log << std::endl;
+		_logger->error(access_log);
 		return;
 	      }
 	    std::string sname = rscs.at(1);
@@ -357,7 +361,7 @@ public:
 	    if (req_method != "POST")
 	      {
 		fillup_response(response,_hja->dd_bad_request_400(),access_log,code,tstart);
-		LOG(ERROR) << access_log << std::endl;
+		_logger->error(access_log);
 		return;
 	      }
 	    fillup_response(response,_hja->service_predict(body),access_log,code,tstart,accept_encoding);
@@ -382,27 +386,19 @@ public:
 	  }
 	else
 	  {
-	    LOG(ERROR) << "Unknown Service=" << rscs.at(0) << std::endl;
+	    _logger->error("Unknown Service={}",rscs.at(0));
 	    response = http_server::response::stock_reply(http_server::response::not_found,_hja->jrender(_hja->dd_not_found_404()));
 	    code = 404;
 	  }
       }
-    std::time_t t = std::time(nullptr);
-#if __GNUC__ >= 5
     if (code == 200 || code == 201)
-      LOG(INFO) << std::put_time(std::localtime(&t), "%c %Z") << " - " << access_log << std::endl;
-    else LOG(ERROR) << std::put_time(std::localtime(&t), "%c %Z") << " - " << access_log << std::endl;
-#else
-    char mltime[128];
-    strftime(mltime,sizeof(mltime),"%c %Z", std::localtime(&t));
-    if (code == 200 || code == 201)
-      LOG(INFO) << mltime << " - " << access_log << std::endl;
-    else LOG(ERROR) << mltime << " - " << access_log << std::endl;
-#endif
+      _logger->info(access_log);
+    else _logger->error(access_log);
   }
+  
   void log(http_server::string_type const &info)
   {
-    LOG(ERROR) << info << std::endl;
+    _logger->error(info);
   }
 
   dd::HttpJsonAPI *_hja;
@@ -410,6 +406,7 @@ public:
   std::string _rsc_services = "services";
   std::string _rsc_predict = "predict";
   std::string _rsc_train = "train";
+  std::shared_ptr<spdlog::logger> _logger;
 };
 
 namespace dd
@@ -442,7 +439,7 @@ namespace dd
 				 .reuse_address(true));
     _ghja = this;
     _gdd_server = _dd_server;
-    LOG(INFO) << "Running DeepDetect HTTP server on " << host << ":" << port << std::endl;
+    _logger->info("Running DeepDetect HTTP server on {}:{}",host,port);
 
     std::vector<std::thread> ts;
     for (int i=0;i<nthreads;i++)
@@ -452,7 +449,7 @@ namespace dd
     }
     catch(std::exception &e)
       {
-	LOG(ERROR) << e.what() << std::endl;
+	_logger->error(e.what());
 	return 1;
       }
     for (int i=0;i<nthreads;i++)
@@ -472,7 +469,7 @@ namespace dd
   
   void HttpJsonAPI::stop_server()
   {
-    LOG(INFO) << "stopping HTTP server\n";
+    _logger->info("stopping HTTP server");
     if (_dd_server)
       {
 	try
@@ -484,7 +481,7 @@ namespace dd
 	  }
 	catch (std::exception &e)
 	  {
-	    LOG(ERROR) << e.what() << std::endl;
+	    _logger->error(e.what());
 	  }
       }
   }

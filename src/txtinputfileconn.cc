@@ -23,7 +23,6 @@
 #include "utils/fileops.hpp"
 #include "utils/utils.hpp"
 #include <boost/tokenizer.hpp>
-#include <glog/logging.h>
 #include <iostream>
 
 namespace dd
@@ -39,7 +38,7 @@ namespace dd
     std::ifstream txt_file(fname);
     if (!txt_file.is_open())
       {
-	LOG(ERROR) << "cannot open file=" << fname;
+	_logger->error("cannot open file={}",fname);
 	throw InputConnectorBadParamException("cannot open file " + fname);
       }
     std::stringstream buffer;
@@ -71,7 +70,7 @@ namespace dd
     std::unordered_set<std::string> subdirs;
     if (fileops::list_directory(dir,false,true,subdirs))
       throw InputConnectorBadParamException("failed reading text subdirectories in data directory " + dir);
-    LOG(INFO) << "txtinputfileconn: list subdirs size=" << subdirs.size();
+    _logger->info("txtinputfileconn: list subdirs size={}",subdirs.size());
     
     // list files and classes
     bool test_dir = false;
@@ -88,7 +87,7 @@ namespace dd
 	    if (!correspf.is_open())
 	      {
 		std::string err_msg = "Failed opening corresp file before reading txt test data directory";;
-		LOG(ERROR) << err_msg;
+		_logger->error(err_msg);
 		throw InputConnectorInternalException(err_msg);
 	      }
 	    std::string line;
@@ -119,7 +118,7 @@ namespace dd
 		std::unordered_map<std::string,int>::const_iterator hcit;
 		if ((hcit=hcorresp_r.find(cls))==hcorresp_r.end())
 		  {
-		    LOG(ERROR) << "class " << cls << " appears in testing set but not in training set, skipping";
+		    _logger->error("class {} appears in testing set but not in training set, skipping",cls);
 		    ++uit;
 		    continue;
 		  }
@@ -228,8 +227,8 @@ namespace dd
 	correspf.close();
       }    
 
-    LOG(INFO) << "vocabulary size=" << _ctfc->_vocab.size() << std::endl;
-        
+    _logger->info("vocabulary size={}",_ctfc->_vocab.size());
+    
     return 0;
   }
   
@@ -315,7 +314,7 @@ namespace dd
 		    }
 		  catch(...)
 		    {
-		      LOG(ERROR) << "Invalid UTF-8 character in " << w << std::endl;
+		      _logger->error("Invalid UTF-8 character in {}",w);
 		      c = 0;
 		      ++str_i;
 		    }

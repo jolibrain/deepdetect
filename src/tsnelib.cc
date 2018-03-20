@@ -23,7 +23,6 @@
 #include "csvinputfileconn.h"
 #include "outputconnectorstrategy.h"
 #include <thread>
-#include <glog/logging.h>
 
 namespace dd
 {
@@ -42,7 +41,6 @@ namespace dd
     unsigned int cores = std::thread::hardware_concurrency();
     if (!cores)
       cores = my_hardware_concurrency();
-    LOG(INFO) << "Detected " << cores << " cores";
     return cores;
   }
   
@@ -112,6 +110,7 @@ namespace dd
 	D = inputc._D;
 	std::cerr << "N=" << N << " / D=" << D << std::endl;
 	int num_threads = hardware_concurrency();
+	this->_logger->info("Detected {} cores", num_threads);
 	Y = new double[N*_no_dims]; // results
 	for (int i=0;i<N*_no_dims;i++)
 	  Y[i] = 0.0;
@@ -119,7 +118,7 @@ namespace dd
 	TSNE tsne = TSNE(N,D,_perplexity,_theta);
 	tsne.step1(inputc._X.data(),Y,num_threads);
 	int test_iter = 50;
-	time_t start = time(0);
+	//time_t start = time(0);
 	double loss = 0.0;
 	for (int iter = 0; iter < _iterations; iter++) {
 	  tsne.step2_one_iter(Y,iter,loss,test_iter);
@@ -129,7 +128,7 @@ namespace dd
       }
     catch(std::exception &e)
       {
-	LOG(ERROR) << e.what();
+	this->_logger->error(e.what());
 	throw; //TODO: MLLib exception
       }
 
