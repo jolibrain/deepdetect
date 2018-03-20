@@ -12,6 +12,7 @@ cd build
 # Configure
 CMAKE_ARGS=('-DCMAKE_VERBOSE_MAKEFILE=ON')
 CMAKE_ARGS+=('-DCMAKE_INSTALL_PREFIX=../install')
+CMAKE_ARGS+=('-DUSE_XGBOOST=ON')
 if [ "$BUILD_CUDA" = 'true' ]; then
     CMAKE_ARGS+=('-DUSE_CUDNN=ON')
     CMAKE_ARGS+=('-DCUDA_NVCC_EXECUTABLE=/usr/local/bin/nvcc')
