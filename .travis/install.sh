@@ -47,6 +47,13 @@ if [ "$TRAVIS_OS_NAME" = 'linux' ]; then
         $APT_INSTALL_CMD g++-5
         sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 60 \
             --slave /usr/bin/g++ g++ /usr/bin/g++-5
+
+	##################
+        # Install spdlog #
+        ##################
+        # Not available on 14.04 trusty via package
+	git clone https://github.com/gabime/spdlog.git
+	sudo cp -r include/spdlog /usr/include/
 	
         if [ "$BUILD_CUDA" = 'true' ]; then
         ##################
@@ -79,13 +86,6 @@ if [ "$TRAVIS_OS_NAME" = 'linux' ]; then
         wget -O "$_cmake_installer" https://cmake.org/files/v3.8/cmake-3.8.2-Linux-x86_64.sh
         sudo bash "$_cmake_installer" --prefix=/usr/local --skip-license
         rm -rf "$_cmake_installer"
-
-	##################
-        # Install spdlog #
-        ##################
-        # Not available on 14.04 trusty via package
-	git clone https://github.com/gabime/spdlog.git
-	sudo cp -r include/spdlog /usr/include/
 	
         ################
         # Install CUDA #
