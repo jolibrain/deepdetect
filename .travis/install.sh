@@ -31,8 +31,7 @@ if [ "$TRAVIS_OS_NAME" = 'linux' ]; then
 	libleveldb-dev \
 	libsnappy-dev \
 	liblmdb-dev \
-	libutfcpp-dev \
-	libspdlog-dev
+	libutfcpp-dev
 
         # Install ccache symlink wrappers
         pushd /usr/local/bin
@@ -81,6 +80,13 @@ if [ "$TRAVIS_OS_NAME" = 'linux' ]; then
         sudo bash "$_cmake_installer" --prefix=/usr/local --skip-license
         rm -rf "$_cmake_installer"
 
+	##################
+        # Install spdlog #
+        ##################
+        # Not available on 14.04 trusty via package
+	git clone https://github.com/gabime/spdlog.git
+	sudo cp -r include/spdlog /usr/include/
+	
         ################
         # Install CUDA #
         ################
