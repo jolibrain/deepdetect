@@ -21,7 +21,6 @@
 
 #include "tfmodel.h"
 #include <utils/fileops.hpp>
-#include <glog/logging.h>
 #include <string>
 namespace dd
 {

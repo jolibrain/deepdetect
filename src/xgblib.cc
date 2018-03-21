@@ -73,7 +73,7 @@ namespace dd
       throw MLLibBadParamException("number of classes is unknown (nclasses == 0)");
     if (_regression && _ntargets == 0)
       throw MLLibBadParamException("number of regression targets is unknown (ntargets == 0)");
-    this->_mlmodel.read_from_repository();
+    this->_mlmodel.read_from_repository(this->_logger);
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -89,7 +89,7 @@ namespace dd
 									       APIData &out)
   {
     // any check on model here
-    this->_mlmodel.read_from_repository();
+    this->_mlmodel.read_from_repository(this->_logger);
     
     // mutex if train and predict calls need to be isolated
     std::lock_guard<std::mutex> lock(_learner_mutex);
@@ -379,7 +379,7 @@ namespace dd
       test(ad,learner,inputc._mtest.get(),out);
       
       // prepare model
-      this->_mlmodel.read_from_repository();
+      this->_mlmodel.read_from_repository(this->_logger);
       this->_mlmodel.read_corresp_file();
       
       // add whatever the input connector needs to transmit out
@@ -417,7 +417,7 @@ namespace dd
 	_learner->Load(fi.get());
 	// we can't read the objective function string name from the xgboost in-memory model,
 	// so let's read it from file
-	_objective = this->_mlmodel.lookup_objective(model_in);
+	_objective = this->_mlmodel.lookup_objective(model_in,this->_logger);
 	if (_objective == "")
 	  throw MLLibInternalException("failed to read the objective from XGBoost model file " + model_in);
       }

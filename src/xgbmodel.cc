@@ -35,7 +35,7 @@ namespace dd
     read_corresp_file();
   }
 
-  int XGBModel::read_from_repository()
+  int XGBModel::read_from_repository(const std::shared_ptr<spdlog::logger> &logger)
   {
     static std::string weights = ".model";
     static std::string corresp = "corresp";
@@ -43,7 +43,7 @@ namespace dd
     int e = fileops::list_directory(_repo,true,false,lfiles);
     if (e != 0)
       {
-	this->_logger->error("error reading or listing XGBoost models in repository {}",_repo);
+	logger->error("error reading or listing XGBoost models in repository {}",_repo);
 	return 1;
       }
     std::string weightsf,correspf;
@@ -70,7 +70,8 @@ namespace dd
     return 0;
   }
 
-  std::string XGBModel::lookup_objective(const std::string &modelfile)
+  std::string XGBModel::lookup_objective(const std::string &modelfile,
+					 const std::shared_ptr<spdlog::logger> &logger)
   {
     static std::string objective_softprob = "multi:softprob";
     static std::string objective_binary = "binary:logistic";
