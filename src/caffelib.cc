@@ -28,6 +28,7 @@
 #include "generators/net_caffe_resnet.h"
 #include "utils/fileops.hpp"
 #include "utils/utils.hpp"
+#include "caffe/sgd_solvers.hpp"
 #include <chrono>
 #include <iostream>
 
@@ -848,7 +849,7 @@ namespace dd
 	    test(solver->test_nets().at(0).get(),ad,inputc,test_batch_size,has_mean_file,meas_out);
 	    APIData meas_obj = meas_out.getobj("measure");
 	    std::vector<std::string> meas_str = meas_obj.list_keys();
-	    this->_logger->info("batch size=",batch_size);
+	    this->_logger->info("batch size={}",batch_size);
 	    
 	    for (auto m: meas_str)
 	      {
@@ -920,7 +921,8 @@ namespace dd
 	if ((solver->param_.display() && solver->iter_ % solver->param_.display() == 0)
 	    || (solver->param_.test_interval() && solver->iter_ % solver->param_.test_interval() == 0))
 	  {
-	    this->_logger->info("smoothed_loss={}",this->get_meas("train_loss"));
+	    caffe::SGDSolver<float> *sgd_solver = static_cast<caffe::SGDSolver<float>*>(solver.get());
+	    this->_logger->info("Iteration {}, lr = {}, smoothed_loss={}",solver->iter_,sgd_solver->GetLearningRate(),this->get_meas("train_loss"));
 	  }
 	try
 	  {
@@ -928,7 +930,7 @@ namespace dd
 	      solver->callbacks()[i]->on_gradients_ready();
 	    }
 	    solver->iter_++;
-	    solver->ApplyUpdate();
+	    solver->ApplyUpdate(false); // no iteration logging from within caffe
 	  }
 	catch (std::exception &e)
 	  {

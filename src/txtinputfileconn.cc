@@ -383,7 +383,7 @@ namespace dd
 	int pos = std::atoi(tokens.at(1).c_str());
 	_vocab.emplace(std::make_pair(key,Word(pos)));
       }
-    std::cerr << "loaded vocabulary of size=" << _vocab.size() << std::endl;
+    _logger->info("loaded vocabulary of size={}",_vocab.size());
   }
 
   void TxtInputFileConn::build_alphabet()
