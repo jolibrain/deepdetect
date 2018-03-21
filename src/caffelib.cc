@@ -865,6 +865,7 @@ namespace dd
 		    for (size_t i=0;i<mdiag.size();i++)
 		      mdiag_str += this->_mlmodel.get_hcorresp(i) + ":" + std::to_string(mdiag.at(i)) + " ";
 		    LOG(INFO) << m << "=[" << mdiag_str << "]";
+		    this->add_meas(m,mdiag);
 		  }
 	      }
 	  }
