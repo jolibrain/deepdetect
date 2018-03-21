@@ -31,7 +31,7 @@ namespace dd
   {
     if (ad.has("repository"))
       this->_repo = ad.get("repository").get<std::string>();
-    read_from_repository();
+    read_from_repository(spdlog::get("api"));
     read_corresp_file();
   }
 
@@ -80,7 +80,7 @@ namespace dd
     std::ifstream ff(modelfile);
     if (!ff.is_open())
       {
-	this->_logger("cannot open xgb model file {} for looking objective up",modelfile);
+	logger("cannot open xgb model file {} for looking objective up",modelfile);
 	return "";
       }
     std::string line;
