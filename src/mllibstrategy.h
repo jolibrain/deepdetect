@@ -196,6 +196,21 @@ namespace dd
       else _meas.insert(std::pair<std::string,double>(meas,l));
     }
 
+    void add_meas(const std::string &meas, const std::vector<double> &vl)
+    {
+      std::lock_guard<std::mutex> lock(_meas_mutex);
+      int c = 0;
+      for (double l: vl)
+	{
+	  std::string measl = meas + '_' + std::to_string(c);
+	  auto hit = _meas.find(measl);
+	  if (hit!=_meas.end())
+	    (*hit).second = l;
+	  else _meas.insert(std::pair<std::string,double>(measl,l));
+	  ++c;
+	}
+    }
+    
     /**
      * \brief get currentvalue of argument measure
      * @param meas measure name
