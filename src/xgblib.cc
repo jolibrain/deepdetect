@@ -452,7 +452,7 @@ namespace dd
       }
     
     // predict
-    std::vector<float> preds;
+    xgboost::HostDeviceVector<float> preds;
     _learner->Configure(_params.cfg);
     _learner->Predict(inputc._m.get(),_params.pred_margin,&preds,_params.ntree_limit);
 
@@ -475,7 +475,7 @@ namespace dd
 	std::vector<std::string> cats;
 	for (int i=0;i<nclasses;i++)
 	  {
-	    probs.push_back(preds.at(j*nclasses+i));
+	    probs.push_back(preds.data_h().at(j*nclasses+i));
 	    cats.push_back(this->_mlmodel.get_hcorresp(i));
 	  }
 	if (_objective == "binary:logistic")
@@ -519,7 +519,7 @@ namespace dd
 	  nout = _ntargets;
 	ad_res.add("nclasses",_nclasses);
 	bool output_margin = false;
-	std::vector<float> out_preds;
+	xgboost::HostDeviceVector<float> out_preds;
 	learner->Configure(_params.cfg);
 	learner->Predict(dtest,output_margin,&out_preds);
 
@@ -535,7 +535,7 @@ namespace dd
 	    std::vector<double> predictions;
 	    for (int c=0;c<nclasses;c++)
 	      {
-		predictions.push_back(out_preds.at(k*nclasses+c));
+		predictions.push_back(out_preds.data_h().at(k*nclasses+c));
 	      }
 	    if (_objective == "binary:logistic")
 	      predictions.insert(predictions.begin(),1.0-predictions.back());

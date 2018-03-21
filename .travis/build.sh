@@ -18,6 +18,7 @@ if [ "$BUILD_CUDA" = 'true' ]; then
     export PATH="/usr/local/cuda/bin:${PATH}"
 else
     CMAKE_ARGS+=('-DUSE_CPU_ONLY=ON')
+    CMAKE_ARGS+=('-DUSE_XGBOOST=ON')
 fi
 cmake .. ${CMAKE_ARGS[*]}
 make
