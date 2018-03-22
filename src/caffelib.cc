@@ -2104,7 +2104,7 @@ namespace dd
     for (int l=net_param.layer_size()-1;l>0;l--)
       {
 	caffe::LayerParameter *lparam = net_param.mutable_layer(l);
-	if (lparam->type() == "Convolution")
+	if (lparam->type() == "Convolution" || lparam->type() == "Deconvolution")
 	  {
 	    if (lparam->has_convolution_param())
 	      {
