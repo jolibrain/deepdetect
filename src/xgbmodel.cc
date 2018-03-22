@@ -80,7 +80,7 @@ namespace dd
     std::ifstream ff(modelfile);
     if (!ff.is_open())
       {
-	logger("cannot open xgb model file {} for looking objective up",modelfile);
+	logger->info("cannot open xgb model file {} for looking objective up",modelfile);
 	return "";
       }
     std::string line;
