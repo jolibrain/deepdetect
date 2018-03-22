@@ -85,9 +85,9 @@ parameters_output = {}
 if args.detection:
     parameters_output['bbox'] = True
     parameters_output['confidence_threshold'] = 0.1
-
-#TODO: first call to load model
-data =list_bench_files[:1]
+    
+# First call to load model
+data = list_bench_files[:1]
 classif = dd.post_predict(args.sname,data,parameters_input,parameters_mllib,parameters_output)
 
 for b in batch_sizes:
