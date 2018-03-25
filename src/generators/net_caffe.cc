@@ -63,6 +63,8 @@ namespace dd
 	  activation = "Sigmoid";
 	else if (dd_utils::iequals(activation,"tanh"))
 	  activation = "TanH";
+	else if (dd_utils::iequals(activation,"swish"))
+	  activation = "Swish";
       }
     return activation;
   }
