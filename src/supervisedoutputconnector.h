@@ -924,9 +924,14 @@ namespace dd
       dvarp /= batch_size * batch_size;
       dcov = sqrt(dcov);
       dvart = sqrt(dvart);
+
       dvarp = sqrt(dvarp);
 
-      distance_correlation = dcov / (sqrt(dvart * dvarp));
+      if (dvart == 0 || dvarp ==0)
+        distance_correlation = 0;
+
+      else
+        distance_correlation = dcov / (sqrt(dvart * dvarp));
 
       r_2 = 1.0 - ssres/sstot;
       return r_2;
