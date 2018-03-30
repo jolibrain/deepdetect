@@ -11,6 +11,9 @@ include(ExternalProject)
 
 set (deepdetect_VERSION_MAJOR 0)
 set (deepdetect_VERSION_MINOR 1)
+#set (CAFFE_INC_DIR /home/infantes/caffe/include /home/infantes/caffe/build/src)
+set (HDF5_LIB /usr/lib/x86_64-linux-gnu/hdf5/serial)
+#set (CAFFE_LIB_DIR /home/infantes/caffe/build/lib /home/infantes/caffe/build/src ${HDF5_LIB})
 
 # options
 OPTION(BUILD_TESTS "Should the tests be built")
@@ -31,7 +34,7 @@ execute_process(
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
-set (CMAKE_CXX_FLAGS "-g -Wall -Wextra -fopenmp -fPIC -std=c++11 -O2 -DUSE_OPENCV -DUSE_LMDB")
+set (CMAKE_CXX_FLAGS "-g -Wall -Wextra -fopenmp -fPIC -std=c++11  -DUSE_OPENCV -DUSE_LMDB")
 
 # configure a header file to pass some of the CMake settings
 # to the source code
@@ -154,7 +157,7 @@ else()
 	  caffe_dd
 	  PREFIX caffe_dd
 	  INSTALL_DIR ${CMAKE_BINARY_DIR}
-	  URL https://github.com/beniz/caffe/archive/master.tar.gz
+	  URL https://github.com/fantes/caffe/archive/multi_label_soft.tar.gz
 	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make CUDA_ARCH=${CUDA_ARCH} -j${N}
 	  INSTALL_COMMAND ""
 	  BUILD_IN_SOURCE 1
@@ -164,7 +167,7 @@ else()
 	  caffe_dd
 	  PREFIX caffe_dd
 	  INSTALL_DIR ${CMAKE_BINARY_DIR}
-	  URL https://github.com/beniz/caffe/archive/master.tar.gz
+	  URL https://github.com/fantes/caffe/archive/multi_label_soft.tar.gz
 	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn.jetson Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && make CUDA_ARCH=${CUDA_ARCH} -j${N}
 	  INSTALL_COMMAND ""
 	  BUILD_IN_SOURCE 1
@@ -174,7 +177,7 @@ else()
 	  caffe_dd
 	  PREFIX caffe_dd
 	  INSTALL_DIR ${CMAKE_BINARY_DIR}
-	  URL https://github.com/beniz/caffe/archive/master.tar.gz
+	  URL https://github.com/fantes/caffe/archive/multi_label_soft.tar.gz
 	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && make CUDA_ARCH=${CUDA_ARCH} -j${N}
 	  INSTALL_COMMAND ""
 	  BUILD_IN_SOURCE 1
@@ -186,7 +189,7 @@ else()
 	  caffe_dd
 	  PREFIX caffe_dd
 	  INSTALL_DIR ${CMAKE_BINARY_DIR}
-	  URL https://github.com/beniz/caffe/archive/master.tar.gz
+	  URL https://github.com/fantes/caffe/archive/multi_label_soft.tar.gz
 	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${TENSORFLOW_CC_DIR}/tensorflow/tensorflow/contrib/makefile/gen/protobuf/bin:$ENV{PATH} make CUDA_ARCH=${CUDA_ARCH} -j${N}
 	  INSTALL_COMMAND ""
 	  BUILD_IN_SOURCE 1
@@ -196,7 +199,7 @@ else()
 	  caffe_dd
 	  PREFIX caffe_dd
 	  INSTALL_DIR ${CMAKE_BINARY_DIR}
-	  URL https://github.com/beniz/caffe/archive/master.tar.gz
+	  URL https://github.com/fantes/caffe/archive/multi_label_soft.tar.gz
 	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && make CUDA_ARCH=${CUDA_ARCH} -j${N}
 	  INSTALL_COMMAND ""
 	  BUILD_IN_SOURCE 1
@@ -210,7 +213,7 @@ else()
 	caffe_dd
 	PREFIX caffe_dd
 	INSTALL_DIR ${CMAKE_BINARY_DIR}
-	URL https://github.com/beniz/caffe/archive/master.tar.gz
+	URL https://github.com/fantes/caffe/archive/multi_label_soft.tar.gz
 	CONFIGURE_COMMAND ln -sf Makefile.config.cpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make -j${N}
 	INSTALL_COMMAND ""
 	BUILD_IN_SOURCE 1
@@ -220,7 +223,7 @@ else()
 	caffe_dd
 	PREFIX caffe_dd
 	INSTALL_DIR ${CMAKE_BINARY_DIR}
-	URL https://github.com/beniz/caffe/archive/master.tar.gz
+	URL https://github.com/fantes/caffe/archive/multi_label_soft.tar.gz
 	CONFIGURE_COMMAND ln -sf Makefile.config.cpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && make -j${N}
 	INSTALL_COMMAND ""
 	BUILD_IN_SOURCE 1
