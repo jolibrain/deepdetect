@@ -85,7 +85,11 @@ namespace dd
 	      const std::string &description="")
       :TMLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>(mlmodel),_sname(sname),_description(description),_tjobs_counter(0)
       {
+#ifdef USE_DD_SYSLOG
+	this->_logger = spdlog::syslog_logger(_sname);
+#else
 	this->_logger = spdlog::stdout_logger_mt(_sname);
+#endif
       }
     
     /**

@@ -37,7 +37,11 @@ namespace dd
     public:
       APIStrategy()
 	{
+#ifdef USE_DD_SYSLOG
+	  _logger = spdlog::syslog_logger("api");
+#else
 	  _logger = spdlog::stdout_logger_mt("api");
+#endif
 	};
       ~APIStrategy()
 	{

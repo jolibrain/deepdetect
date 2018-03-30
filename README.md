@@ -321,6 +321,13 @@ Specify the following option via cmake:
 cmake .. -DUSE_SIMSEARCH=ON
 ```
 
+#### Build with logs output into syslog
+
+Specify the following option via cmake:
+```
+cmake .. -DUSE_DD_SYSLOG=ON
+```
+
 ### Run tests
 
 Note: running tests requires the automated download of ~75Mb of datasets, and computations may take around thirty minutes on a CPU-only machines.
