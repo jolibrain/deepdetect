@@ -2,6 +2,9 @@
 if (NOT CUDA_FOUND)
   add_definitions(-DCPU_ONLY)
 endif()
+if (USE_DD_SYSLOG)
+  add_definitions(-DUSE_DD_SYSLOG)
+endif()
 
 set(ddetect_SOURCES deepdetect.h deepdetect.cc caffelib.h caffelib.cc mllibstrategy.h mlmodel.h mlservice.h caffemodel.h caffemodel.cc inputconnectorstrategy.h imginputfileconn.h csvinputfileconn.h csvinputfileconn.cc svminputfileconn.h svminputfileconn.cc txtinputfileconn.h txtinputfileconn.cc caffeinputconns.h caffeinputconns.cc commandlineapi.h commandlineapi.cc commandlinejsonapi.h commandlinejsonapi.cc apidata.h apidata.cc jsonapi.h jsonapi.cc httpjsonapi.cc httpjsonapi.h ext/rmustache/mustache.h ext/rmustache/mustache.cc generators/net_generator.h generators/net_caffe.h generators/net_caffe.cc generators/net_caffe_mlp.h generators/net_caffe_mlp.cc generators/net_caffe_convnet.h generators/net_caffe_convnet.cc generators/net_caffe_resnet.h generators/net_caffe_resnet.cc)
 if (USE_TF)
