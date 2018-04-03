@@ -242,6 +242,11 @@ namespace dd
 								const std::string &encode_type) // 'png', 'jpg', ...
 {
   std::string testdbfullname = testdbname + "." + backend;
+  if (fileops::file_exists(testdbfullname))
+    {
+      LOG(WARNING) << "test db " << testdbfullname << " already exists, bypassing creation";
+      return;
+    }
   vector<std::pair<std::string, std::vector<float> > > lines;
     caffe::ReadImagesList(test_lst,&lines);
     std::vector<std::pair<std::string,int>> test_lfiles_1;
