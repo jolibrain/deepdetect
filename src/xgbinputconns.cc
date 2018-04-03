@@ -182,7 +182,7 @@ namespace dd
 	//- shuffle & split matrix as required (read parameters -> fillup_parameters or init ?)
 	APIData ad_input = ad.getobj("parameters").getobj("input");
 	fillup_parameters(ad_input);
-	_logger->info("loading {}",uris.at(0));
+	_logger->info("loading {}",_uris.at(0));
 	_m = std::shared_ptr<xgboost::DMatrix>(xgboost::DMatrix::Load(_uris.at(0),silent,dsplit));
 	size_t rsize = _m->info().num_row;
 	_logger->info("successfully read {} rows",rsize);
