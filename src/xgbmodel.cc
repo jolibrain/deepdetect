@@ -31,11 +31,11 @@ namespace dd
   {
     if (ad.has("repository"))
       this->_repo = ad.get("repository").get<std::string>();
-    read_from_repository();
+    read_from_repository(spdlog::get("api"));
     read_corresp_file();
   }
 
-  int XGBModel::read_from_repository()
+  int XGBModel::read_from_repository(const std::shared_ptr<spdlog::logger> &logger)
   {
     static std::string weights = ".model";
     static std::string corresp = "corresp";
@@ -43,7 +43,7 @@ namespace dd
     int e = fileops::list_directory(_repo,true,false,lfiles);
     if (e != 0)
       {
-	LOG(ERROR) << "error reading or listing XGBoost models in repository " << _repo << std::endl;
+	logger->error("error reading or listing XGBoost models in repository {}",_repo);
 	return 1;
       }
     std::string weightsf,correspf;
@@ -70,7 +70,8 @@ namespace dd
     return 0;
   }
 
-  std::string XGBModel::lookup_objective(const std::string &modelfile)
+  std::string XGBModel::lookup_objective(const std::string &modelfile,
+					 const std::shared_ptr<spdlog::logger> &logger)
   {
     static std::string objective_softprob = "multi:softprob";
     static std::string objective_binary = "binary:logistic";
@@ -79,7 +80,7 @@ namespace dd
     std::ifstream ff(modelfile);
     if (!ff.is_open())
       {
-	LOG(ERROR) << "cannot open xgb model file " << modelfile << " for looking objective up";
+	logger->info("cannot open xgb model file {} for looking objective up",modelfile);
 	return "";
       }
     std::string line;

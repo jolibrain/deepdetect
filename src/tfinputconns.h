@@ -36,9 +36,8 @@
 
 #include "inputconnectorstrategy.h"
 #include "ext/base64/base64.h"
-#include <glog/logging.h>
 
- namespace dd
+namespace dd
  {
   class TFInputInterface
   {

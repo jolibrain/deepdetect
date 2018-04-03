@@ -24,6 +24,7 @@
 
 #include "mlmodel.h"
 #include "apidata.h"
+#include <spdlog/spdlog.h>
 #include <string>
 #include <unordered_map>
 
@@ -38,9 +39,10 @@ namespace dd
       :MLModel(repo) {}
     ~XGBModel() {}
 
-    int read_from_repository();
+    int read_from_repository(const std::shared_ptr<spdlog::logger> &logger);
 
-    std::string lookup_objective(const std::string &modelfile);
+    std::string lookup_objective(const std::string &modelfile,
+				 const std::shared_ptr<spdlog::logger> &logger);
     
     //TODO
     std::string _weights; /**< file with model weights. */

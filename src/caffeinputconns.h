@@ -433,6 +433,7 @@ namespace dd
     
     CSVCaffeInputFileConn *_cifc = nullptr;
     APIData _adconf;
+    std::shared_ptr<spdlog::logger> _logger;
   };
   
   class CSVCaffeInputFileConn : public CSVInputFileConn, public CaffeInputInterface

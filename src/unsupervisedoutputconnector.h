@@ -129,6 +129,9 @@ namespace dd
 
     void finalize(const APIData &ad_in, APIData &ad_out, MLModel *mlm)
     {
+#ifndef USE_SIMSEARCH
+      (void)mlm;
+#endif
       if (ad_in.has("binarized"))
 	_binarized = ad_in.get("binarized").get<bool>();
       else if (ad_in.has("bool_binarized"))
@@ -212,6 +215,9 @@ namespace dd
 
     void to_ad(APIData &out, const std::unordered_set<std::string> &indexed_uris) const
     {
+#ifndef USE_SIMSEARCH
+      (void)indexed_uris;
+#endif
       std::unordered_set<std::string>::const_iterator hit;
       std::vector<APIData> vpred;
       for (size_t i=0;i<_vvres.size();i++)

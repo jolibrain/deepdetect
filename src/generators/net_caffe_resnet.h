@@ -31,8 +31,9 @@ namespace dd
   {
   public:
     NetLayersCaffeResnet(caffe::NetParameter *net_params,
-			 caffe::NetParameter *dnet_params)
-      :NetLayersCaffeConvnet(net_params,dnet_params) 
+			 caffe::NetParameter *dnet_params,
+			 std::shared_ptr<spdlog::logger> &logger)
+      :NetLayersCaffeConvnet(net_params,dnet_params,logger) 
       {
 	net_params->set_name("resnet");
 	dnet_params->set_name("resnet");

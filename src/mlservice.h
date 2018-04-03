@@ -84,7 +84,13 @@ namespace dd
 	      const TMLModel &mlmodel,
 	      const std::string &description="")
       :TMLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>(mlmodel),_sname(sname),_description(description),_tjobs_counter(0)
-      {}
+      {
+#ifdef USE_DD_SYSLOG
+	this->_logger = spdlog::syslog_logger(_sname);
+#else
+	this->_logger = spdlog::stdout_logger_mt(_sname);
+#endif
+      }
     
     /**
      * \brief copy-constructor
@@ -100,6 +106,7 @@ namespace dd
     ~MLService() 
       {
 	kill_jobs();
+	spdlog::drop(_sname);
       }
 
     /**
@@ -117,6 +124,8 @@ namespace dd
       this->_inputc.init(ad.getobj("parameters").getobj("input"));
       this->_outputc.init(ad.getobj("parameters").getobj("output"));
       this->init_mllib(ad.getobj("parameters").getobj("mllib"));
+      this->_inputc._logger = this->_logger;
+      this->_outputc._logger = this->_logger;
     }
 
     /**

@@ -268,6 +268,9 @@ namespace dd
      */
     void finalize(const APIData &ad_in, APIData &ad_out, MLModel *mlm)
     {
+#ifndef USE_SIMSEARCH
+      (void)mlm;
+#endif
       SupervisedOutput bcats(*this);
       bool regression = false;
       bool autoencoder = false;
@@ -983,6 +986,9 @@ namespace dd
 	       const bool &has_bbox, const bool &has_roi,
 	       const std::unordered_set<std::string> &indexed_uris) const
     {
+#ifndef USE_SIMSEARCH
+      (void)indexed_uris;
+#endif
       static std::string cl = "classes";
       static std::string ve = "vector";
       static std::string ae = "losses";

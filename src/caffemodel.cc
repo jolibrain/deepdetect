@@ -22,7 +22,6 @@
 #include "caffemodel.h"
 #include "mllibstrategy.h"
 #include "utils/fileops.hpp"
-#include <glog/logging.h>
 #include <exception>
 #include <fstream>
 #include <iostream>
@@ -48,13 +47,14 @@ namespace dd
       _solver = ad.get("solver").get<std::string>();
     if (ad.has("repository"))
       {
-       	if (read_from_repository(ad.get("repository").get<std::string>()))
+       	if (read_from_repository(ad.get("repository").get<std::string>(),spdlog::get("api")))
 	  throw MLLibBadParamException("error reading or listing Caffe models in repository " + _repo);
       }
     read_corresp_file();
   }
   
-  int CaffeModel::read_from_repository(const std::string &repo)
+  int CaffeModel::read_from_repository(const std::string &repo,
+				       const std::shared_ptr<spdlog::logger> &logger)
   {
     static std::string deploy = "deploy.prototxt";
     static std::string train = ".prototxt";
@@ -68,7 +68,7 @@ namespace dd
     int e = fileops::list_directory(repo,true,false,lfiles);
     if (e != 0)
       {
-	LOG(ERROR) << "error reading or listing caffe models in repository " << repo << std::endl;
+	logger->error("error reading or listing caffe models in repository {}",repo);
 	return 1;
       }
     std::string deployf,trainf,weightsf,correspf,solverf,sstatef;
@@ -127,13 +127,7 @@ namespace dd
     if (_solver.empty())
       _solver = solverf;
     if (_sstate.empty())
-      _sstate = sstatef;
-    
-    /*    if (deployf.empty() || weightsf.empty())
-      {
-	LOG(ERROR) << "missing caffe model file(s) in repository\n";
-	return CaffeModel();
-	}*/
+      _sstate = sstatef;    
     return 0;
   }
 }

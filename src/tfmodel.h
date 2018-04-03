@@ -24,7 +24,9 @@
 
 #include "mlmodel.h"
 #include "apidata.h"
+#include <spdlog/spdlog.h>
 #include <string>
+
 namespace dd
 {
   class TFModel : public MLModel
@@ -36,9 +38,10 @@ namespace dd
       :MLModel(repo) {}
     ~TFModel() {}
     
-    int read_from_repository(const std:: string &repo);
+    int read_from_repository(const std:: string &repo,
+			     const std::shared_ptr<spdlog::logger> &logger);
 
-    int read_corresp_file();
+    int read_corresp_file(const std::shared_ptr<spdlog::logger> &logger);
 
     inline std::string get_hcorresp(const int &i)
     {

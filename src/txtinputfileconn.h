@@ -44,6 +44,7 @@ namespace dd
     int read_dir(const std::string &dir);
 
     TxtInputFileConn *_ctfc = nullptr;
+    std::shared_ptr<spdlog::logger> _logger;
   };
 
   class Word
@@ -263,7 +264,7 @@ namespace dd
 	{
 	  DataEl<DDTxt> dtxt;
 	  dtxt._ctype._ctfc = this;
-	  if (dtxt.read_element(u) || (_txt.empty() && _db_fname.empty()))
+	  if (dtxt.read_element(u,this->_logger) || (_txt.empty() && _db_fname.empty()))
 	    {
 	      throw InputConnectorBadParamException("no data for text in " + u);
 	    }

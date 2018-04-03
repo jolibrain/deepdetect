@@ -27,7 +27,6 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include "ext/base64/base64.h"
-#include <glog/logging.h>
 #include <random>
 
 namespace dd
@@ -103,7 +102,7 @@ namespace dd
       cv::Mat img = cv::imread(fname,_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR);
       if (img.empty())
 	{
-	  LOG(ERROR) << "empty image";
+	  _logger->error("empty image");
 	  return -1;
 	}
       _imgs_size.push_back(std::pair<int,int>(img.rows,img.cols));
@@ -147,8 +146,8 @@ namespace dd
       std::unordered_set<std::string> subdirs;
       if (fileops::list_directory(dir,false,true,subdirs))
 	throw InputConnectorBadParamException("failed reading text subdirectories in data directory " + dir);
-      LOG(INFO) << "imginputfileconn: list subdirs size=" << subdirs.size();
-
+      _logger->info("imginputfileconn: list subdirs size={}",subdirs.size());
+      
       // list files and classes
       std::vector<std::pair<std::string,int>> lfiles; // labeled files
       std::unordered_map<int,std::string> hcorresp; // correspondence class number / class name
@@ -199,7 +198,7 @@ namespace dd
 	  if (p.second >= 0)
 	    _labels.push_back(p.second);
 	  if (_imgs.size() % 1000 == 0)
-	    LOG(INFO) << "read " << _imgs.size() << " images\n";
+	    _logger->info("read {} images",_imgs.size());
 	}
       return 0;
     }
@@ -213,6 +212,7 @@ namespace dd
     int _width = 224;
     int _height = 224;
     std::string _db_fname;
+    std::shared_ptr<spdlog::logger> _logger;
   };
   
   class ImgInputFileConn : public InputConnectorStrategy
@@ -306,9 +306,9 @@ namespace dd
 	  dimg._ctype._height = _height;
 	  try
 	    {
-	      if (dimg.read_element(u))
+	      if (dimg.read_element(u,this->_logger))
 		{
-		  LOG(ERROR) << "no data for image " << u;
+		  _logger->error("no data for image {}",u);
 		  no_img = true;
 		}
 	      if (!dimg._ctype._db_fname.empty())
@@ -387,7 +387,7 @@ namespace dd
 	      ++chit;
 	    }
 	  _images.erase(dchit,_images.end());
-	  LOG(INFO) << "data split test size=" << _test_images.size() << " / remaining data size=" << _images.size();
+	  _logger->info("data split test size={} / remaining data size={}",_test_images.size(),_images.size());
 	}
       if (_images.empty())
 	throw InputConnectorBadParamException("no image could be found");

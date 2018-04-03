@@ -46,6 +46,7 @@ namespace dd
     
     SVMInputFileConn *_cifc = nullptr;
     APIData _adconf;
+    std::shared_ptr<spdlog::logger> _logger;
   };
   
   class SVMline
@@ -142,7 +143,7 @@ namespace dd
 	      DataEl<DDSvm> ddsvm;
 	      ddsvm._ctype._cifc = this;
 	      ddsvm._ctype._adconf = ad_input;
-	      ddsvm.read_element(_svm_fname);
+	      ddsvm.read_element(_svm_fname,this->_logger);
 	    }
 	  else // training from posted data (in-memory)
 	    {
@@ -151,7 +152,7 @@ namespace dd
 		  DataEl<DDSvm> ddsvm;
 		  ddsvm._ctype._cifc = this;
 		  ddsvm._ctype._adconf = ad_input;
-		  ddsvm.read_element(_uris.at(i));
+		  ddsvm.read_element(_uris.at(i),this->_logger);
 		}
 	      /*if (_scale)
 		{
@@ -177,7 +178,7 @@ namespace dd
 	      DataEl<DDSvm> ddsvm;
 	      ddsvm._ctype._cifc = this;
 	      ddsvm._ctype._adconf = ad_input;
-	      ddsvm.read_element(_uris.at(i));
+	      ddsvm.read_element(_uris.at(i),this->_logger);
 	    }
 	}
       if (_db_fname.empty() && _svmdata.empty())

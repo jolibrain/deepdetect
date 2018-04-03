@@ -223,7 +223,7 @@ namespace dd
     std::vector<std::pair<int,int>> cr_layers;
     std::vector<int> fc_layers;
     parse_res_layers(layers,cr_layers,fc_layers,depth,n);
-    LOG(INFO) << "generating ResNet with depth=" << depth << " / n=" << n << std::endl;
+    _logger->info("generating ResNet with depth={} / n={}",depth,n);
     std::string bottom = "data";
     
     //std::vector<int> stages = {16, 64, 128, 256};
@@ -288,7 +288,7 @@ namespace dd
     std::vector<std::pair<int,int>> cr_layers;
     std::vector<int> fc_layers;
     parse_res_layers(layers,cr_layers,fc_layers,depth,n);
-    LOG(INFO) << "generating CharText ResNet with depth=" << depth << " / n=" << n << std::endl;
+    _logger->info("generating CharText ResNet with depth={} / n={}",depth,n);
     if (ad_mllib.has("dropout"))
       dropout = ad_mllib.get("dropout").get<double>();
     bool bn = false;
@@ -367,7 +367,7 @@ namespace dd
     int depth = layers.size();
     int n = 2;
         
-    LOG(INFO) << "generating MLP ResNet with depth=" << depth << " / n=" << n << std::endl;
+    _logger->info("generating MLP ResNet with depth={} / n={}",depth,n);
     std::string bottom = "data";
    
     std::string top = "fc1";

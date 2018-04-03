@@ -46,7 +46,6 @@ static std::string iterations_sflare = "100";
 
 TEST(xgbapi,service_train_csv)
 {
-::google::InitGoogleLogging("ut_xgbapi");
   JsonAPI japi;
   std::string sname = "my_service";
   std::string jstr = "{\"mllib\":\"xgboost\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  forest_repo + "\"},\"parameters\":{\"input\":{\"connector\":\"csv\"},\"mllib\":{\"nclasses\":7}}}";

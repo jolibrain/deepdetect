@@ -94,7 +94,7 @@ namespace dd
       throw MLLibBadParamException("number of classes is unknown (nclasses == 0)");
     if (_regression && _ntargets == 0)
       throw MLLibBadParamException("number of regression targets is unknown (ntargets == 0)");
-    this->_mlmodel.read_from_repository(this->_mlmodel._repo);
+    this->_mlmodel.read_from_repository(this->_mlmodel._repo,this->_logger);
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -177,13 +177,13 @@ namespace dd
     std::string graphFile = this->_mlmodel._graphName;
     if (graphFile.empty())
       throw MLLibBadParamException("No pre-trained model found in model repository");
-    LOG(INFO) << "test: using graphFile dir=" << graphFile;
+    this->_logger->info("test: using graphFile dir={}",graphFile);
     // Loading the graph to the given variable
     tensorflow::Status graphLoadedStatus = ReadBinaryProto(tensorflow::Env::Default(),graphFile,&graph_def);
     
     if (!graphLoadedStatus.ok())
       {
-	LOG(ERROR) << "failed loading tensorflow graph with status=" << graphLoadedStatus.ToString() << std::endl;
+	this->_logger->error("failed loading tensorflow graph with status={}",graphLoadedStatus.ToString());
 	throw MLLibBadParamException("failed loading tensorflow graph with status=" + graphLoadedStatus.ToString());
       }
     std::string inputLayer = _inputLayer;
@@ -191,12 +191,12 @@ namespace dd
     if (inputLayer.empty())
       {
 	inputLayer = graph_def.node(0).name();
-	LOG(INFO) << "testing: using input layer=" << inputLayer << std::endl;
+	this->_logger->info("testing: using input layer={}",inputLayer);
       }
     if (outputLayer.empty())
       {
 	outputLayer = graph_def.node(graph_def.node_size()-1).name();
-	LOG(INFO) << "testing: using output layer=" << outputLayer << std::endl;
+	this->_logger->info("testing: using output layer={}",outputLayer);
       }
     
     // creating a session with the graph
@@ -316,13 +316,13 @@ namespace dd
 	std::string graphFile = this->_mlmodel._graphName;
 	if (graphFile.empty())
 	  throw MLLibBadParamException("No pre-trained model found in model repository");
-	LOG(INFO) << "predict: using graphFile dir=" << graphFile;
+	this->_logger->info("predict: using graphFile dir={}",graphFile);
 	// Loading the graph to the given variable
 	tensorflow::Status graphLoadedStatus = ReadBinaryProto(tensorflow::Env::Default(),graphFile,&graph_def);
 	
 	if (!graphLoadedStatus.ok())
 	  {
-	    LOG(ERROR) << "failed loading tensorflow graph with status=" << graphLoadedStatus.ToString() << std::endl;
+	    this->_logger->error("failed loading tensorflow graph with status={}",graphLoadedStatus.ToString());
 	    throw MLLibBadParamException("failed loading tensorflow graph with status=" + graphLoadedStatus.ToString());
 	  }
 
@@ -334,12 +334,12 @@ namespace dd
 	if (_inputLayer.empty())
 	  {
 	    _inputLayer = graph_def.node(0).name();
-	    LOG(INFO) << "using input layer=" << _inputLayer << std::endl;
+	    this->_logger->info("using input layer={}",_inputLayer);
 	  }
 	if (_outputLayer.empty())
 	  {
 	    _outputLayer = graph_def.node(graph_def.node_size()-1).name();
-	    LOG(INFO) << "using output layer=" << _outputLayer << std::endl;
+	    this->_logger->info("using output layer={}",_outputLayer);
 	  }
 	//tensorflow::graph::SetDefaultDevice(device, &graph_def);
 	
