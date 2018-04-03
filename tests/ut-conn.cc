@@ -30,6 +30,39 @@
 
 using namespace dd;
 
+TEST(outputconn,mlsoft)
+{
+  std::vector<double> targets = {0.1, 0.6, 0.0, 0.9};
+  std::vector<double> preds = {0.0, 0.5, 0.1, 0.9};
+  APIData res_ad;
+  res_ad.add("batch_size",2);
+  for (size_t i=0;i<2;i++)
+    {
+      APIData bad;
+      bad.add("pred",preds);
+      bad.add("target",targets);
+      std::vector<APIData> vad = {bad};
+      res_ad.add(std::to_string(i),vad);
+    }
+  SupervisedOutput so;
+  std::vector<std::string> measures = {"acc"};
+  double kl, js, was, ks, dc, r2;
+  double delta_scores[4];
+  double deltas[4] = {0.05, 0.1, 0.2, 0.5};
+  so.multilabel_acc_soft(res_ad,kl,js,was,ks,dc,r2,delta_scores, deltas, 4);
+  ASSERT_NEAR(0.257584,kl, 0.0001); // val checked with def
+  ASSERT_NEAR(0.0178739,js, 0.0001);
+  ASSERT_NEAR(0.0866025,was, 0.0001);
+  ASSERT_EQ(0.1,ks);
+  ASSERT_NEAR(0,dc,0.001);
+  // TODO : dc makes sense only if variations over batch
+  ASSERT_NEAR(0.94444,r2,0.0001);
+  ASSERT_EQ(0.25,delta_scores[0]);
+  ASSERT_EQ(0.5,delta_scores[1]);
+  ASSERT_EQ(1,delta_scores[2]);
+  ASSERT_EQ(1,delta_scores[3]);
+}
+
 TEST(outputconn,acc)
 {
   std::vector<double> targets = {0, 0, 1, 1};
