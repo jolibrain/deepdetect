@@ -786,7 +786,6 @@ namespace dd
                                       double &r_2,
                                       double *delta_scores, const double deltas[], const int ndeltas)
     {
-      // distance correlation seems hard to compute w/o using lots of mem
       int batch_size = ad.get("batch_size").get<int>();
       kl_divergence = 0;
       js_divergence = 0;
@@ -855,17 +854,18 @@ namespace dd
 
       distance_correlation = 0;
 
+
+
+      double t_jk[nclasses][nclasses];
+      double p_jk[nclasses][nclasses];
+      double t_j[nclasses];
+      double t_k[nclasses];
+      double p_j[nclasses];
+      double p_k[nclasses];
+      double t_;
+      double p_;
+
       for (int i =0; i< batch_size; ++i) {
-
-        double t_jk[nclasses][nclasses];
-        double p_jk[nclasses][nclasses];
-        double t_j[nclasses];
-        double t_k[nclasses];
-        double p_j[nclasses];
-        double p_k[nclasses];
-        double t_;
-        double p_;
-
         APIData badj = ad.getobj(std::to_string(i));
         std::vector<double> targets = badj.get("target").get<std::vector<double>>();
         std::vector<double> predictions = badj.get("pred").get<std::vector<double>>();
@@ -874,7 +874,7 @@ namespace dd
         for (int j=0;j<nclasses;j++)
           for (int k=0; k<nclasses; ++k)
             {
-              if (targets[j] < 0 || targetsj[k] < 0)
+              if (targets[j] < 0 || targets[k] < 0)
                 continue;
               p_jk[j][k] = sqrt((predictions[j]-predictions[k]) * (predictions[j] -predictions[k])) ;
               t_jk[j][k] = sqrt((targets[j]-targets[k]) * (targets[j] -targets[k])) ;;
