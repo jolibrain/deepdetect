@@ -804,7 +804,7 @@ namespace dd
           for (size_t j=0;j<predictions.size();j++)
             {
               if (targets[j] < 0) // case ignore_label
-                continue;
+                 continue;
               total_number++;
               // d_kl(target||pred) = sum target * log (target/pred)
               // do not work if zeros, give a threshold
@@ -851,67 +851,64 @@ namespace dd
             }
         }
 
+      int nclasses = ad.getobj(std::to_string(0)).get("target").get<std::vector<double>>().size();
 
-      double t_jk[batch_size][batch_size];
-      double p_jk[batch_size][batch_size];
-      double t_j[batch_size];
-      double t_k[batch_size];
-      double p_j[batch_size];
-      double p_k[batch_size];
-      double t_;
-      double p_;
+      distance_correlation = 0;
 
-      for (int j=0;j<batch_size;j++)
-        for (int k=0; k<batch_size; ++k)
-          {
-            APIData badj = ad.getobj(std::to_string(j));
-            APIData badk = ad.getobj(std::to_string(k));
-            std::vector<double> targetsj = badj.get("target").get<std::vector<double>>();
-            std::vector<double> targetsk = badk.get("target").get<std::vector<double>>();
-            std::vector<double> predictionsj = badj.get("pred").get<std::vector<double>>();
-            std::vector<double> predictionsk = badk.get("pred").get<std::vector<double>>();
-            p_jk[j][k] = 0;
-            t_jk[j][k] = 0;
-            for (size_t i=0;i<predictionsj.size();i++)
-              {
-                if (targetsk[i] < 0 || targetsj[i] < 0)
-                  continue;
-                p_jk[j][k] += (predictionsj[i] - predictionsk[i]) * (predictionsj[i] - predictionsk[i]);
-                t_jk[j][k] += (targetsj[i] - targetsk[i]) * (targetsj[i] - targetsk[i]);
-              }
-            p_jk[j][k] = sqrt(p_jk[j][k]);
-            t_jk[j][k] = sqrt(t_jk[j][k]);
+      for (int i =0; i< batch_size; ++i) {
+
+        double t_jk[nclasses][nclasses];
+        double p_jk[nclasses][nclasses];
+        double t_j[nclasses];
+        double t_k[nclasses];
+        double p_j[nclasses];
+        double p_k[nclasses];
+        double t_;
+        double p_;
+
+        APIData badj = ad.getobj(std::to_string(i));
+        std::vector<double> targets = badj.get("target").get<std::vector<double>>();
+        std::vector<double> predictions = badj.get("pred").get<std::vector<double>>();
+
+
+        for (int j=0;j<nclasses;j++)
+          for (int k=0; k<nclasses; ++k)
+            {
+              if (targets[j] < 0 || targetsj[k] < 0)
+                continue;
+              p_jk[j][k] = sqrt((predictions[j]-predictions[k]) * (predictions[j] -predictions[k])) ;
+              t_jk[j][k] = sqrt((targets[j]-targets[k]) * (targets[j] -targets[k])) ;;
+            }
+
+        t_ = 0;
+        p_ = 0;
+        for (int l =0; l<nclasses; ++l) {
+          t_j[l] = 0;
+          t_k[l] = 0;
+          p_j[l] = 0;
+          p_k[l] = 0;
+          for (int m =0; m<nclasses; ++m) {
+            t_j[m] += t_jk[l][m];
+            t_k[m] += t_jk[m][l];
+            p_j[m] += p_jk[l][m];
+            p_k[m] += p_jk[m][l];
           }
-
-      t_ = 0;
-      p_ = 0;
-      for (int i =0; i<batch_size; ++i) {
-        t_j[i] = 0;
-        t_k[i] = 0;
-        p_j[i] = 0;
-        p_k[i] = 0;
-        for (int l =0; l<batch_size; ++l) {
-          t_j[i] += t_jk[i][l];
-          t_k[i] += t_jk[l][i];
-          p_j[i] += p_jk[i][l];
-          p_k[i] += p_jk[l][i];
+          t_j[l] /= (double)nclasses;
+          t_ += t_j[l];
+          t_k[i] /= (double)nclasses;
+          p_j[i] /= (double)nclasses;
+          p_ += p_j[i];
+          p_k[i] /= (double)nclasses;
         }
-        t_j[i] /= (double)batch_size;
-        t_ += t_j[i];
-        t_k[i] /= (double)batch_size;
-        p_j[i] /= (double)batch_size;
-        p_ += p_j[i];
-        p_k[i] /= (double)batch_size;
-      }
-      t_ /= (double) batch_size;
-      p_ /= (double) batch_size;
+        t_ /= (double) nclasses;
+        p_ /= (double) nclasses;
 
-      double dcov = 0;
-      double dvart = 0;
-      double dvarp = 0;
+        double dcov = 0;
+        double dvart = 0;
+        double dvarp = 0;
 
-      for (int j=0; j<batch_size; ++j)
-        for (int k=0; k<batch_size; ++k)
+        for (int j=0; j<nclasses; ++j)
+          for (int k=0; k<nclasses; ++k)
           {
             double p = p_jk[j][k] - p_j[j] - p_k[k] + p_;
             double t = t_jk[j][k] - t_j[j] - t_k[k] + t_;
@@ -919,19 +916,18 @@ namespace dd
             dvart += t*t;
             dvarp += p*p;
           }
-      dcov /= batch_size * batch_size;
-      dvart /= batch_size* batch_size;
-      dvarp /= batch_size * batch_size;
-      dcov = sqrt(dcov);
-      dvart = sqrt(dvart);
+        dcov /= nclasses * nclasses;
+        dvart /= nclasses* nclasses;
+        dvarp /= nclasses * nclasses;
+        dcov = sqrt(dcov);
+        dvart = sqrt(dvart);
 
-      dvarp = sqrt(dvarp);
+        dvarp = sqrt(dvarp);
 
-      if (dvart == 0 || dvarp ==0)
-        distance_correlation = 0;
-
-      else
-        distance_correlation = dcov / (sqrt(dvart * dvarp));
+        if (dvart != 0 && dvarp !=0)
+          distance_correlation += dcov / (sqrt(dvart * dvarp));
+      }
+      distance_correlation /= batch_size;
 
       r_2 = 1.0 - ssres/sstot;
       return r_2;
@@ -1081,7 +1077,8 @@ namespace dd
 	    target = bad.get("target").get<std::vector<double>>();
 	  else target.push_back(bad.get("target").get<double>());
 	  for (size_t i=0;i<target.size();i++)
-	    eucl += (predictions.at(i)-target.at(i))*(predictions.at(i)-target.at(i));
+        if (target.at(i) >=0)
+          eucl += (predictions.at(i)-target.at(i))*(predictions.at(i)-target.at(i));
 	}
 	return eucl / static_cast<double>(batch_size);
     }
