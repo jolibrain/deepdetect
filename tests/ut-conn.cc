@@ -54,7 +54,7 @@ TEST(outputconn,mlsoft)
   ASSERT_NEAR(0.0178739,js, 0.0001);
   ASSERT_NEAR(0.0866025,was, 0.0001);
   ASSERT_EQ(0.1,ks);
-  ASSERT_NEAR(0,dc,0.001);
+  ASSERT_NEAR(0.941,dc,0.001);
   // TODO : dc makes sense only if variations over batch
   ASSERT_NEAR(0.94444,r2,0.0001);
   ASSERT_EQ(0.25,delta_scores[0]);
