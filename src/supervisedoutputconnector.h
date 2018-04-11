@@ -933,9 +933,15 @@ namespace dd
           for (int k=0; k<nclasses; ++k)
             {
               if (targets[j] < 0 || targets[k] < 0)
-                continue;
-              p_jk[j][k] = sqrt((predictions[j]-predictions[k]) * (predictions[j] -predictions[k])) ;
-              t_jk[j][k] = sqrt((targets[j]-targets[k]) * (targets[j] -targets[k])) ;;
+                {
+                  p_jk[j][k] = 0;
+                  t_jk[j][k] = 0;
+                }
+              else
+                {
+                  p_jk[j][k] = sqrt((predictions[j]-predictions[k]) * (predictions[j] -predictions[k])) ;
+                  t_jk[j][k] = sqrt((targets[j]-targets[k]) * (targets[j] -targets[k])) ;;
+                }
             }
 
         t_ = 0;
@@ -946,10 +952,10 @@ namespace dd
           p_j[l] = 0;
           p_k[l] = 0;
           for (int m =0; m<nclasses; ++m) {
-            t_j[m] += t_jk[l][m];
-            t_k[m] += t_jk[m][l];
-            p_j[m] += p_jk[l][m];
-            p_k[m] += p_jk[m][l];
+            t_j[l] += t_jk[l][m];
+            t_k[l] += t_jk[m][l];
+            p_j[l] += p_jk[l][m];
+            p_k[l] += p_jk[m][l];
           }
           t_j[l] /= (double)nclasses;
           t_ += t_j[l];
@@ -1034,7 +1040,7 @@ namespace dd
     {
       int batch_size = ad.get("batch_size").get<int>();
       long int total_number = 0;
-      for (int k =0; k<deltas.size(); ++k)
+      for (unsigned int k =0; k<deltas.size(); ++k)
         delta_scores[k] = 0;
       for (int i=0;i<batch_size;i++)
         {
@@ -1047,12 +1053,12 @@ namespace dd
                 continue;
               total_number++;
               double dif = fabs(targets[j] - predictions[j]);
-              for (int k=0; k<deltas.size(); ++k)
+              for (unsigned int k=0; k<deltas.size(); ++k)
                 if (dif < deltas[k])
                   delta_scores[k]++;
             }
         }
-      for (int k =0; k<deltas.size(); ++k)
+      for (unsigned int k =0; k<deltas.size(); ++k)
         delta_scores[k] /=  (double)total_number; // gives proportion of good in 0:1 at every threshold
 
     }
