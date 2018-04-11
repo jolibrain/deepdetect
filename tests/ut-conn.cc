@@ -47,8 +47,8 @@ TEST(outputconn,mlsoft)
   SupervisedOutput so;
   std::vector<std::string> measures = {"acc"};
   double kl, js, was, ks, dc, r2;
-  double delta_scores[4];
-  double deltas[4] = {0.05, 0.1, 0.2, 0.5};
+  std::vector<double> delta_scores {0,0,0,0};
+  std::vector<double> deltas {0.05, 0.1, 0.2, 0.5};
   so.multilabel_acc_soft(res_ad,kl,js,was,ks,dc,r2,delta_scores, deltas, 4);
   ASSERT_NEAR(0.257584,kl, 0.0001); // val checked with def
   ASSERT_NEAR(0.0178739,js, 0.0001);

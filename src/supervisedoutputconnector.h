@@ -527,14 +527,14 @@ namespace dd
       if (mlsoft)
         {
           // below measures for soft multilabel
-          double kl_divergence; // kl: amount of lost info if using pred instead of truth
-          double js_divergence; // jsd: symetrized version of kl
-          double wasserstein; // wasserstein distance
-          double kolmogorov_smirnov; // kolmogorov-smirnov test aka max individual error
-          double distance_correlation; // distance correlation , same as brownian correlation
-          double r_2; // r_2 score: best  is 1, min is 0
-          double delta_scores[4]; // delta-score , aka 1 if pred \in [truth-delta, truth+delta]
-          double deltas[4] = {0.05, 0.1, 0.2, 0.5};
+          double kl_divergence = 0; // kl: amount of lost info if using pred instead of truth
+          double js_divergence = 0 ; // jsd: symetrized version of kl
+          double wasserstein = 0; // wasserstein distance
+          double kolmogorov_smirnov = 0; // kolmogorov-smirnov test aka max individual error
+          double distance_correlation = 0; // distance correlation , same as brownian correlation
+          double r_2 = 0; // r_2 score: best  is 1, min is 0
+          std::vector<double> delta_scores {0,0,0,0}; // delta-score , aka 1 if pred \in [truth-delta, truth+delta]
+          std::vector<double> deltas {0.05, 0.1, 0.2, 0.5};
           multilabel_acc_soft(ad_res, kl_divergence, js_divergence, wasserstein, kolmogorov_smirnov,
                                distance_correlation, r_2, delta_scores, deltas, 4);
           meas_out.add("kl_divergence",kl_divergence);
@@ -784,7 +784,7 @@ namespace dd
                                       double &wasserstein,
                                       double &kolmogorov_smirnov,double &distance_correlation,
                                       double &r_2,
-                                      double *delta_scores, const double deltas[], const int ndeltas)
+                                      std::vector<double>& delta_scores, const std::vector<double>& deltas, const int ndeltas)
     {
       int batch_size = ad.get("batch_size").get<int>();
       kl_divergence = 0;
@@ -849,8 +849,12 @@ namespace dd
               sstot += (targets[j] - tmean) *  (targets[j] - tmean);
             }
         }
+      r_2 = 1.0 - ssres/sstot;
+
 
       int nclasses = ad.getobj(std::to_string(0)).get("target").get<std::vector<double>>().size();
+
+
 
       distance_correlation = 0;
 
@@ -864,6 +868,10 @@ namespace dd
       double p_k[nclasses];
       double t_;
       double p_;
+
+      double dcov = 0;
+      double dvart = 0;
+      double dvarp = 0;
 
       for (int i =0; i< batch_size; ++i) {
         APIData badj = ad.getobj(std::to_string(i));
@@ -895,17 +903,17 @@ namespace dd
           }
           t_j[l] /= (double)nclasses;
           t_ += t_j[l];
-          t_k[i] /= (double)nclasses;
-          p_j[i] /= (double)nclasses;
-          p_ += p_j[i];
-          p_k[i] /= (double)nclasses;
+          t_k[l] /= (double)nclasses;
+          p_j[l] /= (double)nclasses;
+          p_ += p_j[l];
+          p_k[l] /= (double)nclasses;
         }
         t_ /= (double) nclasses;
         p_ /= (double) nclasses;
 
-        double dcov = 0;
-        double dvart = 0;
-        double dvarp = 0;
+        dcov = 0;
+        dvart = 0;
+        dvarp = 0;
 
         for (int j=0; j<nclasses; ++j)
           for (int k=0; k<nclasses; ++k)
@@ -929,7 +937,7 @@ namespace dd
       }
       distance_correlation /= batch_size;
 
-      r_2 = 1.0 - ssres/sstot;
+
       return r_2;
     }
 
