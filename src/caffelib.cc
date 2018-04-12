@@ -211,39 +211,57 @@ namespace dd
 	
 	// input should be ok, now do the output
 	if (this->_inputc._multi_label)
+      {
+        int k = net_param.layer_size();
+        for (int l=k-1;l>0;l--)
           {
-            int k = net_param.layer_size();
-            for (int l=k-1;l>0;l--)
+            caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+            if (lparam->type() == "SoftmaxWithLoss")
               {
-		caffe::LayerParameter *lparam = net_param.mutable_layer(l);
-		if (lparam->type() == "SoftmaxWithLoss")
-		  {
-		    lparam->set_type("MultiLabelSigmoidLoss");
-		    caffe::NetStateRule *nsr = lparam->add_include();
-		    nsr->set_phase(caffe::TRAIN);
-		    break;
-		  }
+                lparam->set_type("MultiLabelSigmoidLoss");
+                caffe::NetStateRule *nsr = lparam->add_include();
+                nsr->set_phase(caffe::TRAIN);
+                break;
+              }
 	      }
 	    // XXX: code below removes the softmax layer
 	    // protobuf only allows to remove last element from repeated field.
 	    int softm_pos = -1;
 	    for (int l=k-1;l>0;l--)
 	      {
-		caffe::LayerParameter *lparam = net_param.mutable_layer(l);
-		if (lparam->type() == "Softmax")
-		  {
-		    softm_pos = l;
-		    break;
-		  }
+            caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+            if (lparam->type() == "Softmax")
+              {
+                softm_pos = l;
+                break;
+              }
 	      }
 	    if (softm_pos > 0)
 	      {
-		for (int l=softm_pos;l<net_param.layer_size()-1;l++)
-		  {
-		    caffe::LayerParameter *lparam = net_param.mutable_layer(l);
-		    *lparam = net_param.layer(l+1);
-		  }
-		net_param.mutable_layer()->RemoveLast();
+            if (!_regression)
+              {
+                for (int l=softm_pos;l<net_param.layer_size()-1;l++)
+                  {
+                    caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+                    *lparam = net_param.layer(l+1);
+                  }
+                net_param.mutable_layer()->RemoveLast();
+              }
+            else
+              {
+                caffe::LayerParameter *lparam = net_param.mutable_layer(softm_pos);
+                lparam->set_type("Sigmoid");
+                lparam->set_name("pred");
+                *lparam->mutable_top(0) = "pred";
+
+                //lparam->add_sigmoid_param();
+                //lparam->sigmoid_param().set_engine(lparam->softmax_param().engine());
+                // for doing so in a clean way, need to match softmaxParameter::engine
+                // with sigmoidparameter::engine
+                // for now, rewrite engine filed as is
+                lparam->clear_softmax_param();
+              }
+
 	      }
 	    else throw MLLibInternalException("Couldn't find Softmax layer to replace for multi-label training");
 
@@ -251,9 +269,20 @@ namespace dd
 	    caffe::LayerParameter *lparam = deploy_net_param.mutable_layer(k-1);
 	    if (lparam->type() == "Softmax")
 	      {
-		deploy_net_param.mutable_layer()->RemoveLast();
+            if (!_regression)
+              deploy_net_param.mutable_layer()->RemoveLast();
+            else
+              {
+                lparam->set_type("Sigmoid");
+                lparam->set_name("pred");
+                *lparam->mutable_top(0) = "pred";
+               //lparam->add_sigmoid_param();
+                //lparam->sigmoid_param().set_engine(lparam->softmax_param().engine());
+                // see 20 lines above for comment
+                lparam->clear_softmax_param();
+              }
 	      }
-          } // end multi_label
+      } // end multi_label
 
 	if ((ad.has("rotate") && ad.get("rotate").get<bool>()) 
 	    || (ad.has("mirror") && ad.get("mirror").get<bool>())
@@ -538,7 +567,7 @@ namespace dd
     if (ad.has("regression") && ad.get("regression").get<bool>())
       {
 	_regression = true;
-	_nclasses = 1;
+    	_nclasses = 1;
       }
     if (ad.has("ntargets"))
       _ntargets = ad.get("ntargets").get<int>();
@@ -546,8 +575,14 @@ namespace dd
       _autoencoder = true;
     if (!_autoencoder && _nclasses == 0)
       throw MLLibBadParamException("number of classes is unknown (nclasses == 0)");
-    if (_regression && _ntargets == 0)
+    bool multi =
+      this->_inputc._multi_label &&  !(this->_inputc._db)
+      && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn);
+    if (_regression && _ntargets == 0 && !multi)
       throw MLLibBadParamException("number of regression targets is unknown (ntargets == 0)");
+    if (_regression && multi) // multisoft case
+      if (ad.has("nclasses"))
+        _nclasses = ad.get("nclasses").get<int>();
     // instantiate model template here, if any
     if (ad.has("template"))
       instantiate_template(ad);
@@ -1146,8 +1181,9 @@ namespace dd
 	    
 	    if (_regression && _ntargets > 1) // slicing is involved
 	      slot--; // labels appear to be last
-	    else if (inputc._multi_label)
-	      slot--;
+	    else if (inputc._multi_label && ( inputc._db || ! (typeid(inputc) == typeid(ImgCaffeInputFileConn))
+                                           ||  _nclasses <= 1))
+          slot--;
 	    int scount = lresults[slot]->count();
 	    int scperel = scount / dv_size;
 
@@ -1180,7 +1216,7 @@ namespace dd
 		    bad2.add("pred",preds);
 		    ad_res.add(std::to_string(tresults+j),bad2);
 		  }
-		// multilabel image
+		// multilabel image  => also covers soft labels
 		else if (inputc._multi_label && !inputc._db && typeid(inputc) == typeid(ImgCaffeInputFileConn)
 			 && _nclasses > 1)
 		  {

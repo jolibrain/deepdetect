@@ -386,7 +386,7 @@ namespace dd
 			   const std::string &encode_type);
 
     void write_image_to_db_multilabel(const std::string &dbfullname,
-				      const std::vector<std::pair<std::string,std::vector<int>>> &lfiles,
+				      const std::vector<std::pair<std::string,std::vector<float>>> &lfiles,
 				      const std::string &backend,
 				      const bool &encoded,
 				      const std::string &encode_type);

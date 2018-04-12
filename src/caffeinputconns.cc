@@ -241,16 +241,21 @@ namespace dd
 								const std::string &encode_type) // 'png', 'jpg', ...
 {
   std::string testdbfullname = testdbname + "." + backend;
-  vector<std::pair<std::string, std::vector<int> > > lines;
+  if (fileops::file_exists(testdbfullname))
+    {
+      LOG(WARNING) << "test db " << testdbfullname << " already exists, bypassing creation";
+      return;
+    }
+  vector<std::pair<std::string, std::vector<float> > > lines;
     caffe::ReadImagesList(test_lst,&lines);
     std::vector<std::pair<std::string,int>> test_lfiles_1;
-    std::vector<std::pair<std::string,std::vector<int>>> test_lfiles_n;
+    std::vector<std::pair<std::string,std::vector<float>>> test_lfiles_n;
     int nlabels = (*lines.begin()).second.size();
     for (auto line: lines)
       {
 	if (nlabels == 1) // XXX: expected to be 1 for all samples, variable label size not yet allowed
-	  test_lfiles_1.push_back(std::pair<std::string,int>(_root_folder+line.first,line.second.at(0)));
-	else test_lfiles_n.push_back(std::pair<std::string,std::vector<int>>(_root_folder+line.first,line.second));
+	  test_lfiles_1.push_back(std::pair<std::string,float>(_root_folder+line.first,line.second.at(0)));
+	else test_lfiles_n.push_back(std::pair<std::string,std::vector<float>>(_root_folder+line.first,line.second));
       }
     if (nlabels == 1)
       write_image_to_db(testdbfullname,test_lfiles_1,backend,encoded,encode_type);
@@ -311,7 +316,7 @@ namespace dd
   }
 
   void ImgCaffeInputFileConn::write_image_to_db_multilabel(const std::string &dbfullname,
-							   const std::vector<std::pair<std::string,std::vector<int>>> &lfiles,
+							   const std::vector<std::pair<std::string,std::vector<float>>> &lfiles,
 							   const std::string &backend,
 							   const bool &encoded,
 							   const std::string &encode_type)
@@ -341,7 +346,7 @@ namespace dd
 	_logger->error("failed reading image {}",lfiles[line_id].first);
       
       // store multi labels into float_data in the datum (encoded image should be into data as bytes)
-      std::vector<int> labels = lfiles[line_id].second;
+      std::vector<float> labels = lfiles[line_id].second;
       for (auto l: labels)
 	{
 	  datum.add_float_data(l);

@@ -11,6 +11,9 @@ include(ExternalProject)
 
 set (deepdetect_VERSION_MAJOR 0)
 set (deepdetect_VERSION_MINOR 1)
+#set (CAFFE_INC_DIR /home/infantes/caffe/include /home/infantes/caffe/build/src)
+set (HDF5_LIB /usr/lib/x86_64-linux-gnu/hdf5/serial)
+#set (CAFFE_LIB_DIR /home/infantes/caffe/build/lib /home/infantes/caffe/build/src ${HDF5_LIB})
 
 # options
 OPTION(BUILD_TESTS "Should the tests be built")
@@ -31,7 +34,7 @@ execute_process(
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
-set (CMAKE_CXX_FLAGS "-g -Wall -Wextra -fopenmp -fPIC -std=c++11 -O2 -DUSE_OPENCV -DUSE_LMDB")
+set (CMAKE_CXX_FLAGS "-g -Wall -Wextra -fopenmp -fPIC -std=c++11  -DUSE_OPENCV -DUSE_LMDB")
 
 # configure a header file to pass some of the CMake settings
 # to the source code
