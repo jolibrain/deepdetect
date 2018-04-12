@@ -1178,8 +1178,9 @@ namespace dd
 	    
 	    if (_regression && _ntargets > 1) // slicing is involved
 	      slot--; // labels appear to be last
-	    else if (inputc._multi_label)
-	      slot--;
+	    else if (inputc._multi_label && ( inputc._db || ! (typeid(inputc) == typeid(ImgCaffeInputFileConn))
+                                           ||  _nclasses <= 1))
+          slot--;
 	    int scount = lresults[slot]->count();
 	    int scperel = scount / dv_size;
 

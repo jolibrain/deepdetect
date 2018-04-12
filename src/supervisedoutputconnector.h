@@ -479,15 +479,26 @@ namespace dd
 	  bool bmcc = (std::find(measures.begin(),measures.end(),"mcc")!=measures.end());
 	  bool baccv = false;
 	  bool mlacc = false;
-      bool mlsoft = false;
+      bool mlsoft_kl = false;
+      bool mlsoft_js = false;
+      bool mlsoft_was = false;
+      bool mlsoft_ks = false;
+      bool mlsoft_dc = false;
+      bool mlsoft_r2 = false;
+      bool mlsoft_deltas = false;
        if (segmentation)
 	    baccv = (std::find(measures.begin(),measures.end(),"acc")!=measures.end());
 	  if (multilabel && !regression)
 	    mlacc = (std::find(measures.begin(),measures.end(),"acc")!=measures.end());
-
       if (multilabel && regression)
         {
-          mlsoft = (std::find(measures.begin(),measures.end(),"acc")!=measures.end());
+          mlsoft_kl = (std::find(measures.begin(),measures.end(),"kl")!=measures.end());
+          mlsoft_js = (std::find(measures.begin(),measures.end(),"js")!=measures.end());
+          mlsoft_was = (std::find(measures.begin(),measures.end(),"was")!=measures.end());
+          mlsoft_ks = (std::find(measures.begin(),measures.end(),"ks")!=measures.end());
+          mlsoft_dc = (std::find(measures.begin(),measures.end(),"dc")!=measures.end());
+          mlsoft_r2 = (std::find(measures.begin(),measures.end(),"r2")!=measures.end());
+          mlsoft_deltas = (std::find(measures.begin(),measures.end(),"deltas")!=measures.end());
         }
 	  if (bauc) // XXX: applies two binary classification problems only
 	    {
@@ -524,32 +535,49 @@ namespace dd
 	      meas_out.add("specificity",specificity);
 	      meas_out.add("harmmean",harmmean);
 	    }
-      if (mlsoft)
+      if (mlsoft_kl)
         {
-          // below measures for soft multilabel
-          double kl_divergence; // kl: amount of lost info if using pred instead of truth
-          double js_divergence; // jsd: symetrized version of kl
-          double wasserstein; // wasserstein distance
-          double kolmogorov_smirnov; // kolmogorov-smirnov test aka max individual error
-          double distance_correlation; // distance correlation , same as brownian correlation
-          double r_2; // r_2 score: best  is 1, min is 0
-          double delta_scores[4]; // delta-score , aka 1 if pred \in [truth-delta, truth+delta]
-          double deltas[4] = {0.05, 0.1, 0.2, 0.5};
-          multilabel_acc_soft(ad_res, kl_divergence, js_divergence, wasserstein, kolmogorov_smirnov,
-                               distance_correlation, r_2, delta_scores, deltas, 4);
+          double kl_divergence = multilabel_soft_kl(ad_res); // kl: amount of lost info if using pred instead of truth
           meas_out.add("kl_divergence",kl_divergence);
+        }
+      if (mlsoft_js)
+        {
+          double js_divergence = multilabel_soft_js(ad_res) ; // jsd: symetrized version of kl
 	      meas_out.add("js_divergence",js_divergence);
+        }
+      if (mlsoft_was)
+        {
+          double wasserstein = multilabel_soft_was(ad_res); // wasserstein distance
 	      meas_out.add("wasserstein",wasserstein);
+        }
+      if (mlsoft_ks)
+        {
+          double kolmogorov_smirnov = multilabel_soft_ks(ad_res); // kolmogorov-smirnov test aka max individual error
 	      meas_out.add("kolmogorov_smirnov",kolmogorov_smirnov);
+        }
+      if (mlsoft_dc)
+        {
+          double distance_correlation = multilabel_soft_dc(ad_res); // distance correlation , same as brownian correlation
 	      meas_out.add("distance_correlation",distance_correlation);
+        }
+      if (mlsoft_r2)
+        {
+          double r_2 = multilabel_soft_r2(ad_res); // r_2 score: best  is 1, min is 0
           meas_out.add("r2",r_2);
-          for (int i=0; i<4; ++i)
+        }
+      if (mlsoft_deltas)
+        {
+          std::vector<double> delta_scores {0,0,0,0}; // delta-score , aka 1 if pred \in [truth-delta, truth+delta]
+          std::vector<double> deltas {0.05, 0.1, 0.2, 0.5};
+          multilabel_soft_deltas(ad_res, delta_scores, deltas);
+          for (int i=0; i<deltas.size(); ++i)
             {
               std::ostringstream sstr;
               sstr << "delta_score_" << deltas[i];
               meas_out.add(sstr.str(),delta_scores[i]);
             }
         }
+
 	  if (!multilabel && !segmentation && bf1)
 	    {
 	      double f1,precision,recall,acc;
@@ -791,22 +819,11 @@ namespace dd
       return f1;
     }
 
-    static double multilabel_acc_soft(const APIData &ad, double &kl_divergence, double  &js_divergence,
-                                      double &wasserstein,
-                                      double &kolmogorov_smirnov,double &distance_correlation,
-                                      double &r_2,
-                                      double *delta_scores, const double deltas[], const int ndeltas)
+    static double multilabel_soft_kl(const APIData &ad)
     {
-      // distance correlation seems hard to compute w/o using lots of mem
-      int batch_size = ad.get("batch_size").get<int>();
-      kl_divergence = 0;
-      js_divergence = 0;
-      wasserstein = 0;
-      kolmogorov_smirnov = 0;
+      double kl_divergence = 0;
       long int total_number = 0;
-      double tmean = 0;
-      for (int k =0; k<ndeltas; ++k)
-        delta_scores[k] = 0;
+      int batch_size = ad.get("batch_size").get<int>();
       for (int i=0;i<batch_size;i++)
         {
           APIData bad = ad.getobj(std::to_string(i));
@@ -817,34 +834,200 @@ namespace dd
               if (targets[j] < 0) // case ignore_label
                 continue;
               total_number++;
-              // d_kl(target||pred) = sum target * log (target/pred)
-              // do not work if zeros, give a threshold
               double eps = 0.00001;
               double tval = (targets[j]< eps)? eps: targets[j];
               double pval = (predictions[j]< eps)? eps: predictions[j];
               kl_divergence += tval * log (tval/pval);
-              js_divergence += 0.5 * (tval * log(2*tval/(tval+pval))) + 0.5 * (pval * log(2*pval/(tval+pval)));
-              double dif = targets[j] - predictions[j];
-              wasserstein += dif*dif;
-              dif = fabs(dif);
-              if (dif > kolmogorov_smirnov)
-                kolmogorov_smirnov = dif;
-              for (int k=0; k<ndeltas; ++k)
-                  if (dif < deltas[k])
-                    delta_scores[k]++;
-              tmean += targets[j];
             }
         }
+      return kl_divergence / (double)total_number;
+    }
+
+    static double multilabel_soft_js(const APIData &ad)
+    {
+      int batch_size = ad.get("batch_size").get<int>();
+      double js_divergence = 0;
+      long int total_number = 0;
+      for (int i=0;i<batch_size;i++)
+        {
+          APIData bad = ad.getobj(std::to_string(i));
+          std::vector<double> targets = bad.get("target").get<std::vector<double>>();
+          std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
+          for (size_t j=0;j<predictions.size();j++)
+            {
+              if (targets[j] < 0) // case ignore_label
+                continue;
+              total_number++;
+              double eps = 0.00001;
+              double tval = (targets[j]< eps)? eps: targets[j];
+              double pval = (predictions[j]< eps)? eps: predictions[j];
+              js_divergence += 0.5 * (tval * log(2*tval/(tval+pval))) + 0.5 * (pval * log(2*pval/(tval+pval)));
+            }
+        }
+      return js_divergence / (double)total_number;
+    }
+
+    static double multilabel_soft_was(const APIData &ad)
+    {
+      int batch_size = ad.get("batch_size").get<int>();
+      double was = 0;
+      long int total_number = 0;
+      for (int i=0;i<batch_size;i++)
+        {
+          APIData bad = ad.getobj(std::to_string(i));
+          std::vector<double> targets = bad.get("target").get<std::vector<double>>();
+          std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
+          for (size_t j=0;j<predictions.size();j++)
+            {
+              if (targets[j] < 0) // case ignore_label
+                continue;
+              total_number++;
+              double dif = targets[j] - predictions[j];
+              was += dif*dif;
+            }
+        }
+      was = sqrt(was);
+      return was/sqrt((double)total_number);
+    }
+
+    static double multilabel_soft_ks(const APIData &ad)
+    {
+      int batch_size = ad.get("batch_size").get<int>();
+      double ks = 0;
+      long int total_number = 0;
+      for (int i=0;i<batch_size;i++)
+        {
+          APIData bad = ad.getobj(std::to_string(i));
+          std::vector<double> targets = bad.get("target").get<std::vector<double>>();
+          std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
+          for (size_t j=0;j<predictions.size();j++)
+            {
+              if (targets[j] < 0) // case ignore_label
+                continue;
+              total_number++;
+              double dif = targets[j] - predictions[j];
+              dif = fabs(dif);
+              if (dif > ks)
+                ks = dif;
+            }
+        }
+      return ks;
+    }
+
+    static double multilabel_soft_dc(const APIData &ad)
+    {
+      int batch_size = ad.get("batch_size").get<int>();
+      int nclasses = ad.getobj(std::to_string(0)).get("target").get<std::vector<double>>().size();
+
+      double distance_correlation = 0;
+
+      double t_jk[nclasses][nclasses];
+      double p_jk[nclasses][nclasses];
+      double t_j[nclasses];
+      double t_k[nclasses];
+      double p_j[nclasses];
+      double p_k[nclasses];
+      double t_;
+      double p_;
+
+      double dcov = 0;
+      double dvart = 0;
+      double dvarp = 0;
+
+      for (int i =0; i< batch_size; ++i) {
+        APIData badj = ad.getobj(std::to_string(i));
+        std::vector<double> targets = badj.get("target").get<std::vector<double>>();
+        std::vector<double> predictions = badj.get("pred").get<std::vector<double>>();
 
 
-      double ssres = wasserstein;
-      wasserstein = sqrt(wasserstein);
-      // below normalize to compare different learnings
-      kl_divergence /= (double)total_number;
-      js_divergence /= (double)total_number;
-      wasserstein /=  sqrt((double)total_number); // gives distance between 0 and 1
-      for (int k =0; k<ndeltas; ++k)
-        delta_scores[k] /=  (double)total_number; // gives proportion of good in 0:1 at every threshold
+        for (int j=0;j<nclasses;j++)
+          for (int k=0; k<nclasses; ++k)
+            {
+              if (targets[j] < 0 || targets[k] < 0)
+                {
+                  p_jk[j][k] = 0;
+                  t_jk[j][k] = 0;
+                }
+              else
+                {
+                  p_jk[j][k] = sqrt((predictions[j]-predictions[k]) * (predictions[j] -predictions[k])) ;
+                  t_jk[j][k] = sqrt((targets[j]-targets[k]) * (targets[j] -targets[k])) ;;
+                }
+            }
+
+        t_ = 0;
+        p_ = 0;
+        for (int l =0; l<nclasses; ++l) {
+          t_j[l] = 0;
+          t_k[l] = 0;
+          p_j[l] = 0;
+          p_k[l] = 0;
+          for (int m =0; m<nclasses; ++m) {
+            t_j[l] += t_jk[l][m];
+            t_k[l] += t_jk[m][l];
+            p_j[l] += p_jk[l][m];
+            p_k[l] += p_jk[m][l];
+          }
+          t_j[l] /= (double)nclasses;
+          t_ += t_j[l];
+          t_k[l] /= (double)nclasses;
+          p_j[l] /= (double)nclasses;
+          p_ += p_j[l];
+          p_k[l] /= (double)nclasses;
+        }
+        t_ /= (double) nclasses;
+        p_ /= (double) nclasses;
+
+        dcov = 0;
+        dvart = 0;
+        dvarp = 0;
+
+        for (int j=0; j<nclasses; ++j)
+          for (int k=0; k<nclasses; ++k)
+          {
+            double p = p_jk[j][k] - p_j[j] - p_k[k] + p_;
+            double t = t_jk[j][k] - t_j[j] - t_k[k] + t_;
+            dcov += p*t;
+            dvart += t*t;
+            dvarp += p*p;
+          }
+        dcov /= nclasses * nclasses;
+        dvart /= nclasses* nclasses;
+        dvarp /= nclasses * nclasses;
+        dcov = sqrt(dcov);
+        dvart = sqrt(dvart);
+
+        dvarp = sqrt(dvarp);
+
+        if (dvart != 0 && dvarp !=0)
+          distance_correlation += dcov / (sqrt(dvart * dvarp));
+      }
+      distance_correlation /= batch_size;
+      return distance_correlation;
+    }
+
+    static double multilabel_soft_r2(const APIData &ad)
+    {
+      int batch_size = ad.get("batch_size").get<int>();
+      double tmean = 0;
+      long int total_number = 0;
+      double ssres = 0;
+      for (int i=0;i<batch_size;i++)
+        {
+          APIData bad = ad.getobj(std::to_string(i));
+          std::vector<double> targets = bad.get("target").get<std::vector<double>>();
+          std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
+          for (size_t j=0;j<predictions.size();j++)
+            {
+              if (targets[j] < 0) // case ignore_label
+                continue;
+              total_number++;
+              tmean += targets[j];
+              double dif = targets[j] - predictions[j];
+              ssres += dif*dif;
+
+            }
+        }
       tmean /= (double)total_number;
 
       double sstot = 0;
@@ -861,91 +1044,34 @@ namespace dd
               sstot += (targets[j] - tmean) *  (targets[j] - tmean);
             }
         }
+      return  1.0 - ssres/sstot;
+    }
 
-
-      double t_jk[batch_size][batch_size];
-      double p_jk[batch_size][batch_size];
-      double t_j[batch_size];
-      double t_k[batch_size];
-      double p_j[batch_size];
-      double p_k[batch_size];
-      double t_;
-      double p_;
-
-      for (int j=0;j<batch_size;j++)
-        for (int k=0; k<batch_size; ++k)
-          {
-            APIData badj = ad.getobj(std::to_string(j));
-            APIData badk = ad.getobj(std::to_string(k));
-            std::vector<double> targetsj = badj.get("target").get<std::vector<double>>();
-            std::vector<double> targetsk = badk.get("target").get<std::vector<double>>();
-            std::vector<double> predictionsj = badj.get("pred").get<std::vector<double>>();
-            std::vector<double> predictionsk = badk.get("pred").get<std::vector<double>>();
-            p_jk[j][k] = 0;
-            t_jk[j][k] = 0;
-            for (size_t i=0;i<predictionsj.size();i++)
-              {
-                if (targetsk[i] < 0 || targetsj[i] < 0)
-                  continue;
-                p_jk[j][k] += (predictionsj[i] - predictionsk[i]) * (predictionsj[i] - predictionsk[i]);
-                t_jk[j][k] += (targetsj[i] - targetsk[i]) * (targetsj[i] - targetsk[i]);
-              }
-            p_jk[j][k] = sqrt(p_jk[j][k]);
-            t_jk[j][k] = sqrt(t_jk[j][k]);
-          }
-
-      t_ = 0;
-      p_ = 0;
-      for (int i =0; i<batch_size; ++i) {
-        t_j[i] = 0;
-        t_k[i] = 0;
-        p_j[i] = 0;
-        p_k[i] = 0;
-        for (int l =0; l<batch_size; ++l) {
-          t_j[i] += t_jk[i][l];
-          t_k[i] += t_jk[l][i];
-          p_j[i] += p_jk[i][l];
-          p_k[i] += p_jk[l][i];
+    static void multilabel_soft_deltas(const APIData &ad, std::vector<double>& delta_scores, const std::vector<double>& deltas)
+    {
+      int batch_size = ad.get("batch_size").get<int>();
+      long int total_number = 0;
+      for (unsigned int k =0; k<deltas.size(); ++k)
+        delta_scores[k] = 0;
+      for (int i=0;i<batch_size;i++)
+        {
+          APIData bad = ad.getobj(std::to_string(i));
+          std::vector<double> targets = bad.get("target").get<std::vector<double>>();
+          std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
+          for (size_t j=0;j<predictions.size();j++)
+            {
+              if (targets[j] < 0) // case ignore_label
+                continue;
+              total_number++;
+              double dif = fabs(targets[j] - predictions[j]);
+              for (unsigned int k=0; k<deltas.size(); ++k)
+                if (dif < deltas[k])
+                  delta_scores[k]++;
+            }
         }
-        t_j[i] /= (double)batch_size;
-        t_ += t_j[i];
-        t_k[i] /= (double)batch_size;
-        p_j[i] /= (double)batch_size;
-        p_ += p_j[i];
-        p_k[i] /= (double)batch_size;
-      }
-      t_ /= (double) batch_size;
-      p_ /= (double) batch_size;
+      for (unsigned int k =0; k<deltas.size(); ++k)
+        delta_scores[k] /=  (double)total_number; // gives proportion of good in 0:1 at every threshold
 
-      double dcov = 0;
-      double dvart = 0;
-      double dvarp = 0;
-
-      for (int j=0; j<batch_size; ++j)
-        for (int k=0; k<batch_size; ++k)
-          {
-            double p = p_jk[j][k] - p_j[j] - p_k[k] + p_;
-            double t = t_jk[j][k] - t_j[j] - t_k[k] + t_;
-            dcov += p*t;
-            dvart += t*t;
-            dvarp += p*p;
-          }
-      dcov /= batch_size * batch_size;
-      dvart /= batch_size* batch_size;
-      dvarp /= batch_size * batch_size;
-      dcov = sqrt(dcov);
-      dvart = sqrt(dvart);
-
-      dvarp = sqrt(dvarp);
-
-      if (dvart == 0 || dvarp ==0)
-        distance_correlation = 0;
-
-      else
-        distance_correlation = dcov / (sqrt(dvart * dvarp));
-
-      r_2 = 1.0 - ssres/sstot;
-      return r_2;
     }
 
 
@@ -1092,7 +1218,8 @@ namespace dd
 	    target = bad.get("target").get<std::vector<double>>();
 	  else target.push_back(bad.get("target").get<double>());
 	  for (size_t i=0;i<target.size();i++)
-	    eucl += (predictions.at(i)-target.at(i))*(predictions.at(i)-target.at(i));
+        if (target.at(i) >=0)
+          eucl += (predictions.at(i)-target.at(i))*(predictions.at(i)-target.at(i));
 	}
 	return eucl / static_cast<double>(batch_size);
     }
