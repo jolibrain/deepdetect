@@ -495,14 +495,22 @@ namespace dd
 	    mlacc = (std::find(measures.begin(),measures.end(),"acc")!=measures.end());
       if (multilabel && regression)
         {
-          mlsoft_kl = (std::find(measures.begin(),measures.end(),"kl")!=measures.end());
-          mlsoft_js = (std::find(measures.begin(),measures.end(),"js")!=measures.end());
-          mlsoft_was = (std::find(measures.begin(),measures.end(),"was")!=measures.end());
-          mlsoft_ks = (std::find(measures.begin(),measures.end(),"ks")!=measures.end());
-          mlsoft_dc = (std::find(measures.begin(),measures.end(),"dc")!=measures.end());
-          mlsoft_r2 = (std::find(measures.begin(),measures.end(),"r2")!=measures.end());
-          mlsoft_deltas = (std::find(measures.begin(),measures.end(),"deltas")!=measures.end());
-        }
+	  bool acc =  (std::find(measures.begin(),measures.end(),"acc")!=measures.end());
+	  if (acc)
+	    {
+	      mlsoft_kl = mlsoft_js = mlsoft_was = mlsoft_ks = mlsoft_dc = mlsoft_r2 = mlsoft_deltas = true;
+	    }
+	  else
+	    {
+	      mlsoft_kl = (std::find(measures.begin(),measures.end(),"kl")!=measures.end());
+	      mlsoft_js = (std::find(measures.begin(),measures.end(),"js")!=measures.end());
+	      mlsoft_was = (std::find(measures.begin(),measures.end(),"was")!=measures.end());
+	      mlsoft_ks = (std::find(measures.begin(),measures.end(),"ks")!=measures.end());
+	      mlsoft_dc = (std::find(measures.begin(),measures.end(),"dc")!=measures.end());
+	      mlsoft_r2 = (std::find(measures.begin(),measures.end(),"r2")!=measures.end());
+	      mlsoft_deltas = (std::find(measures.begin(),measures.end(),"deltas")!=measures.end());
+	    }
+	}
 	  if (bauc) // XXX: applies two binary classification problems only
 	    {
 	      double mauc = auc(ad_res);
