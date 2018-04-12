@@ -243,7 +243,7 @@ namespace dd
   std::string testdbfullname = testdbname + "." + backend;
   if (fileops::file_exists(testdbfullname))
     {
-      LOG(WARNING) << "test db " << testdbfullname << " already exists, bypassing creation";
+      _logger->warn("test db {} already exists, bypassing creation",testdbfullname);
       return;
     }
   vector<std::pair<std::string, std::vector<float> > > lines;
