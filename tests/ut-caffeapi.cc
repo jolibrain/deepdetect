@@ -65,7 +65,7 @@ static std::string iterations_sflare = "2000";
 static std::string iterations_camvid = "2";
 #endif
 
-static std::string gpuid = "2"; // change as needed
+static std::string gpuid = "0"; // change as needed
 
 TEST(caffeapi,service_train)
 {
