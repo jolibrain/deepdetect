@@ -51,6 +51,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   vim \
   strace \
   curl \
+  libspdlog-dev \
   bash-completion \
   ca-certificates && \
   wget -O /tmp/bazel.deb https://github.com/bazelbuild/bazel/releases/download/0.8.1/bazel_0.8.1-linux-x86_64.deb && \
