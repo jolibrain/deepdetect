@@ -953,60 +953,54 @@ namespace dd
       double dcov = 0;
       double dvart = 0;
       double dvarp = 0;
-      int n_care_classes = 0;
+      std::vector<int> care_classes;
 
       for (int i =0; i< batch_size; ++i) {
         APIData badj = ad.getobj(std::to_string(i));
         std::vector<double> targets = badj.get("target").get<std::vector<double>>();
         std::vector<double> predictions = badj.get("pred").get<std::vector<double>>();
 
+        care_classes.clear();
         for (int l =0; l<nclasses; ++l)
           if (targets[l] >= 0)
-            n_care_classes++;
+            care_classes.push_back(l);
 
+        if (care_classes.size() == 0)
+          continue;
 
-        for (int l =0; l<nclasses; ++l) {
-          for (int m =0; m<nclasses; ++m) {
+        for (int l : care_classes) {
+          for (int m : care_classes) {
             double t_lm;
             double p_lm;
             dc_pt_jk(l,m, targets, predictions, p_lm, t_lm);
             t_j[l] += t_lm;
             p_j[l] += p_lm;
           }
-          t_j[l] /= (double)n_care_classes;
+          t_j[l] /= (double)care_classes.size();
           t_ += t_j[l];
-          p_j[l] /= (double)n_care_classes;
+          p_j[l] /= (double)care_classes.size();
           p_ += p_j[l];
         }
-        t_ /= (double) n_care_classes;
-        p_ /= (double) n_care_classes;
+        t_ /= (double) care_classes.size();
+        p_ /= (double) care_classes.size();
 
-        for (int j=0; j<nclasses; ++j)
+        for (int j : care_classes)
           {
-            double p_jj;
-            double t_jj;
-            dc_pt_jk(j,j, targets, predictions, p_jj, t_jj);
-            double p = p_jj - p_j[j] - p_j[j] + p_;
-            double t = t_jj - t_j[j] - t_j[j] + t_;
-            dcov += p*t;
-            dvart += t*t;
-            dvarp += p*p;
-
-            for (int k=j+1; k<nclasses; ++k)
+            for (int k : care_classes)
               {
                 double p_jk;
                 double t_jk;
                 dc_pt_jk(j,k, targets, predictions, p_jk, t_jk);
                 double p = p_jk - p_j[j] - p_j[k] + p_;
                 double t = t_jk - t_j[j] - t_j[k] + t_;
-                dcov += 2*p*t;
-                dvart += 2*t*t;
-                dvarp += 2*p*p;
+                dcov += p*t;
+                dvart += t*t;
+                dvarp += p*p;
               }
           }
-        dcov /= n_care_classes * n_care_classes;
-        dvart /= n_care_classes* n_care_classes;
-        dvarp /= n_care_classes * n_care_classes;
+        dcov /= care_classes.size() * care_classes.size();
+        dvart /= care_classes.size()* care_classes.size();
+        dvarp /= care_classes.size() * care_classes.size();
         dcov = sqrt(dcov);
         dvart = sqrt(dvart);
 
