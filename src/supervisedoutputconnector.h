@@ -581,7 +581,7 @@ namespace dd
           std::vector<double> delta_scores {0,0,0,0}; // delta-score , aka 1 if pred \in [truth-delta, truth+delta]
           std::vector<double> deltas {0.05, 0.1, 0.2, 0.5};
           multilabel_soft_deltas(ad_res, delta_scores, deltas);
-          for (int i=0; i<deltas.size(); ++i)
+          for (unsigned int i=0; i<deltas.size(); ++i)
             {
               std::ostringstream sstr;
               sstr << "delta_score_" << deltas[i];
@@ -925,6 +925,19 @@ namespace dd
       return ks;
     }
 
+    static int dc_pt_jk(const long int j, const long int k, const std::vector<double> &targets, const std::vector<double> & predictions, double& p_jk, double &t_jk )
+    {
+      if (targets[j] < 0 || targets[k] < 0)
+        {
+          p_jk = 0;
+          t_jk = 0;
+          return 0;
+        }
+      p_jk = fabs(predictions[j]-predictions[k]);
+      t_jk = fabs(targets[j]-targets[k]);
+      return 1;
+    }
+
     static double multilabel_soft_dc(const APIData &ad)
     {
       int batch_size = ad.get("batch_size").get<int>();
@@ -932,79 +945,62 @@ namespace dd
 
       double distance_correlation = 0;
 
-      double t_jk[nclasses][nclasses];
-      double p_jk[nclasses][nclasses];
-      double t_j[nclasses];
-      double t_k[nclasses];
-      double p_j[nclasses];
-      double p_k[nclasses];
-      double t_;
-      double p_;
+      std::vector<double> t_j(nclasses,0);
+      std::vector<double> p_j(nclasses,0);
+      double t_ = 0;
+      double p_ = 0;
 
       double dcov = 0;
       double dvart = 0;
       double dvarp = 0;
+      std::vector<int> care_classes;
 
       for (int i =0; i< batch_size; ++i) {
         APIData badj = ad.getobj(std::to_string(i));
         std::vector<double> targets = badj.get("target").get<std::vector<double>>();
         std::vector<double> predictions = badj.get("pred").get<std::vector<double>>();
 
+        care_classes.clear();
+        for (int l =0; l<nclasses; ++l)
+          if (targets[l] >= 0)
+            care_classes.push_back(l);
 
-        for (int j=0;j<nclasses;j++)
-          for (int k=0; k<nclasses; ++k)
-            {
-              if (targets[j] < 0 || targets[k] < 0)
-                {
-                  p_jk[j][k] = 0;
-                  t_jk[j][k] = 0;
-                }
-              else
-                {
-                  p_jk[j][k] = sqrt((predictions[j]-predictions[k]) * (predictions[j] -predictions[k])) ;
-                  t_jk[j][k] = sqrt((targets[j]-targets[k]) * (targets[j] -targets[k])) ;;
-                }
-            }
+        if (care_classes.size() == 0)
+          continue;
 
-        t_ = 0;
-        p_ = 0;
-        for (int l =0; l<nclasses; ++l) {
-          t_j[l] = 0;
-          t_k[l] = 0;
-          p_j[l] = 0;
-          p_k[l] = 0;
-          for (int m =0; m<nclasses; ++m) {
-            t_j[l] += t_jk[l][m];
-            t_k[l] += t_jk[m][l];
-            p_j[l] += p_jk[l][m];
-            p_k[l] += p_jk[m][l];
+        for (int l : care_classes) {
+          for (int m : care_classes) {
+            double t_lm;
+            double p_lm;
+            dc_pt_jk(l,m, targets, predictions, p_lm, t_lm);
+            t_j[l] += t_lm;
+            p_j[l] += p_lm;
           }
-          t_j[l] /= (double)nclasses;
+          t_j[l] /= (double)care_classes.size();
           t_ += t_j[l];
-          t_k[l] /= (double)nclasses;
-          p_j[l] /= (double)nclasses;
+          p_j[l] /= (double)care_classes.size();
           p_ += p_j[l];
-          p_k[l] /= (double)nclasses;
         }
-        t_ /= (double) nclasses;
-        p_ /= (double) nclasses;
+        t_ /= (double) care_classes.size();
+        p_ /= (double) care_classes.size();
 
-        dcov = 0;
-        dvart = 0;
-        dvarp = 0;
-
-        for (int j=0; j<nclasses; ++j)
-          for (int k=0; k<nclasses; ++k)
+        for (int j : care_classes)
           {
-            double p = p_jk[j][k] - p_j[j] - p_k[k] + p_;
-            double t = t_jk[j][k] - t_j[j] - t_k[k] + t_;
-            dcov += p*t;
-            dvart += t*t;
-            dvarp += p*p;
+            for (int k : care_classes)
+              {
+                double p_jk;
+                double t_jk;
+                dc_pt_jk(j,k, targets, predictions, p_jk, t_jk);
+                double p = p_jk - p_j[j] - p_j[k] + p_;
+                double t = t_jk - t_j[j] - t_j[k] + t_;
+                dcov += p*t;
+                dvart += t*t;
+                dvarp += p*p;
+              }
           }
-        dcov /= nclasses * nclasses;
-        dvart /= nclasses* nclasses;
-        dvarp /= nclasses * nclasses;
+        dcov /= care_classes.size() * care_classes.size();
+        dvart /= care_classes.size()* care_classes.size();
+        dvarp /= care_classes.size() * care_classes.size();
         dcov = sqrt(dcov);
         dvart = sqrt(dvart);
 
