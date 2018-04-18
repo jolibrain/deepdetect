@@ -1875,15 +1875,22 @@ namespace dd
     caffe::NetParameter *np = sp.mutable_net_param();
     caffe::ReadProtoFromTextFile(sp.net().c_str(),np); //TODO: error on read + use internal caffe ReadOrDie procedure
 
+    std::cerr << "input db =" <<  inputc._db << std::endl;
+    APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
     if (!(inputc._db) && typeid(inputc) == typeid(ImgCaffeInputFileConn))
       {
-        caffe::LayerParameter *lparam = np->mutable_layer(0);
+	caffe::LayerParameter *lparam = np->mutable_layer(0);
         caffe::ImageDataParameter* image_data_parameter = lparam->mutable_image_data_param();
         image_data_parameter->set_batch_size(user_batch_size);
+	if (ad_mllib.has("resume") && ad_mllib.get("resume").get<bool>())
+	  {
+	    if (ad_mllib.getobj("solver").has("rand_skip"))
+	      {
+		image_data_parameter->set_rand_skip(ad_mllib.getobj("solver").get("rand_skip").get<int>());
+	      }
+	  }
       }
-
-
-
+    
     for (int i=0;i<2;i++)
       {
 	caffe::LayerParameter *lp = np->mutable_layer(i);
@@ -1924,6 +1931,13 @@ namespace dd
 	      {
 		dp->set_batch_size(user_batch_size);
 		batch_size = user_batch_size;
+	      }
+	    if (ad_mllib.has("resume") && ad_mllib.get("resume").get<bool>())
+	      {
+		if (ad_mllib.getobj("solver").has("rand_skip"))
+		  {
+		    dp->set_rand_skip(ad_mllib.getobj("solver").get("rand_skip").get<int>());
+		  }
 	      }
 	  }
 	else if (lp->has_memory_data_param())
