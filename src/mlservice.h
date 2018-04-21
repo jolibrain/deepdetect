@@ -121,11 +121,11 @@ namespace dd
       this->_inputc._model_repo = ad.getobj("model").get("repository").get<std::string>();
       if (this->_inputc._model_repo.empty())
 	throw MLLibBadParamException("empty repository");
+      this->_inputc._logger = this->_logger;
+      this->_outputc._logger = this->_logger;
       this->_inputc.init(ad.getobj("parameters").getobj("input"));
       this->_outputc.init(ad.getobj("parameters").getobj("output"));
       this->init_mllib(ad.getobj("parameters").getobj("mllib"));
-      this->_inputc._logger = this->_logger;
-      this->_outputc._logger = this->_logger;
     }
 
     /**

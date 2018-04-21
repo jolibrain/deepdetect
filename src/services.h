@@ -260,9 +260,9 @@ namespace dd
 	{
 	  throw ServiceForbiddenException("Service already exists");
 	}
-      
-      visitor_init vi(ad);
+
       auto llog = spdlog::get(sname);
+      visitor_init vi(ad);
       try
 	{
 	  mapbox::util::apply_visitor(vi,mls);
