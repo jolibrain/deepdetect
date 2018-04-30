@@ -39,7 +39,6 @@ def _convert_base64(filename):  # return type: Optional[str]
             return x.decode('ascii').replace('\n', '')
     if re.match('^http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|'
                 '[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+$', filename):
-        import requests  # let's keep it here for now...
         result = requests.get(filename)
         if result.status_code != 200:
             warnings.warn("{} returned status {}".format(filename, status))
