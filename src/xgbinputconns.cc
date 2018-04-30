@@ -40,12 +40,12 @@ namespace dd
     src.CopyFrom(handle);
     xgboost::data::SimpleCSRSource& ret = *source;
     
-    CHECK_EQ(src.info.group_ptr.size(), 0)
+    CHECK_EQ(src.info.group_ptr_.size(), 0)
       << "slice does not support group structure";
     
     ret.Clear();
-    ret.info.num_row = len;
-    ret.info.num_col = src.info.num_col;
+    ret.info.num_row_ = len;
+    ret.info.num_col_ = src.info.num_col_;
     
     dmlc::DataIter<xgboost::RowBatch>* iter = &src;
     iter->BeforeFirst();
@@ -60,16 +60,16 @@ namespace dd
       std::memcpy(dmlc::BeginPtr(ret.row_data_) + ret.row_ptr_.back(), inst.data,
 		  sizeof(xgboost::RowBatch::Entry) * inst.length);
       ret.row_ptr_.push_back(ret.row_ptr_.back() + inst.length);
-      ret.info.num_nonzero += inst.length;
+      ret.info.num_nonzero_ += inst.length;
       
-      if (src.info.labels.size() != 0) {
-	ret.info.labels.push_back(src.info.labels[ridx]);
+      if (src.info.labels_.size() != 0) {
+	ret.info.labels_.push_back(src.info.labels_[ridx]);
       }
-      if (src.info.weights.size() != 0) {
-	ret.info.weights.push_back(src.info.weights[ridx]);
+      if (src.info.weights_.size() != 0) {
+	ret.info.weights_.push_back(src.info.weights_[ridx]);
       }
-      if (src.info.root_index.size() != 0) {
-	ret.info.root_index.push_back(src.info.root_index[ridx]);
+      if (src.info.root_index_.size() != 0) {
+	ret.info.root_index_.push_back(src.info.root_index_[ridx]);
       }
     }
     xgboost::DMatrix *out = xgboost::DMatrix::Create(std::move(source));
@@ -83,8 +83,8 @@ namespace dd
     std::unique_ptr<xgboost::data::SimpleCSRSource> source(new xgboost::data::SimpleCSRSource());
     xgboost::data::SimpleCSRSource& mat = *source;
     bool nan_missing = xgboost::common::CheckNAN(_missing);
-    mat.info.num_row = csvl.size();
-    mat.info.num_col = feature_size()+1; // XXX: +1 otherwise there's a mismatch in xgboost's simple_dmatrix.cc:151
+    mat.info.num_row_ = csvl.size();
+    mat.info.num_col_ = feature_size()+1; // XXX: +1 otherwise there's a mismatch in xgboost's simple_dmatrix.cc:151
     auto hit = csvl.begin();
     while(hit!=csvl.end())
       {
@@ -100,7 +100,7 @@ namespace dd
 		&& (ipos = std::find(_label_pos.begin(),_label_pos.end(),i))!=_label_pos.end())
 	      {
 		int pos = std::distance(_label_pos.begin(),ipos);
-		mat.info.labels.push_back(v+_label_offset[pos]);
+		mat.info.labels_.push_back(v+_label_offset[pos]);
 	      }
 	    else if (i == _id_pos)
 	      {
@@ -121,7 +121,7 @@ namespace dd
 	_ids.push_back((*hit)._str);
 	++hit;
       }
-    mat.info.num_nonzero = mat.row_data_.size();
+    mat.info.num_nonzero_ = mat.row_data_.size();
     xgboost::DMatrix *out = xgboost::DMatrix::Create(std::move(source));
     return out;
   }
@@ -153,7 +153,7 @@ namespace dd
       {
 	_m = std::shared_ptr<xgboost::DMatrix>(create_from_mat(_csvdata));
 	_csvdata.clear();
-	if (_m->info().num_nonzero == 0)
+	if (_m->Info().num_nonzero_ == 0)
 	  throw InputConnectorBadParamException("no data could be found processing XGBoost CSV input");
 	_mtest = std::shared_ptr<xgboost::DMatrix>(create_from_mat(_csvdata_test));
 	_csvdata_test.clear();
@@ -184,7 +184,7 @@ namespace dd
 	fillup_parameters(ad_input);
 	_logger->info("loading {}",_uris.at(0));
 	_m = std::shared_ptr<xgboost::DMatrix>(xgboost::DMatrix::Load(_uris.at(0),silent,dsplit));
-	size_t rsize = _m->info().num_row;
+	size_t rsize = _m->Info().num_row_;
 	_logger->info("successfully read {} rows",rsize);
 
 	std::vector<int> rindex(rsize);
@@ -218,7 +218,7 @@ namespace dd
 	  {
 	    xgboost::DMatrix *mtrain = XGDMatrixSliceDMatrix(_m.get(),&rindex[0],rindex.size());
 	    _m = std::shared_ptr<xgboost::DMatrix>(mtrain);
-	    std::vector<int> ids(_m->info().num_row);
+	    std::vector<int> ids(_m->Info().num_row_);
 	    std::iota(std::begin(ids),std::end(ids),0);
 	    for (int i: ids)
 	      _ids.push_back(std::to_string(i));
@@ -259,15 +259,15 @@ namespace dd
     std::unique_ptr<xgboost::data::SimpleCSRSource> source(new xgboost::data::SimpleCSRSource());
     xgboost::data::SimpleCSRSource& mat = *source;
     bool nan_missing = xgboost::common::CheckNAN(_missing);
-    mat.info.num_row = txt.size();
-    mat.info.num_col = feature_size()+1; // XXX: +1 otherwise there's a mismatch in xgnoost's simple_dmatrix.cc:151
+    mat.info.num_row_ = txt.size();
+    mat.info.num_col_ = feature_size()+1; // XXX: +1 otherwise there's a mismatch in xgnoost's simple_dmatrix.cc:151
     int nid = 0;
     auto hit = txt.begin();
     while(hit!=txt.end())
       {
 	long nelem = 0;
 	TxtBowEntry *tbe = static_cast<TxtBowEntry*>((*hit));
-	mat.info.labels.push_back(tbe->_target);
+	mat.info.labels_.push_back(tbe->_target);
 	tbe->reset();
 	while(tbe->has_elt())
 	  {
@@ -284,7 +284,7 @@ namespace dd
 	++nid;
 	++hit;
       }
-    mat.info.num_nonzero = mat.row_data_.size();
+    mat.info.num_nonzero_ = mat.row_data_.size();
     xgboost::DMatrix *out = xgboost::DMatrix::Create(std::move(source));
     return out;
   }
