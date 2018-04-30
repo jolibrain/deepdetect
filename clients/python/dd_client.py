@@ -13,6 +13,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 """
 
+import base64
+import os
+import re
+import warnings
+
 import requests
 
 DD_TIMEOUT = 2000  # seconds, for long blocking training calls, as needed
@@ -25,6 +30,24 @@ API_METHODS_URL = {
         "predict": "/predict"
     }
 }
+
+def _convert_base64(filename):  # return type: Optional[str]
+    if os.path.isfile(filename):
+        with open(filename, 'rb') as fh:
+            data = fh.read()
+            x = base64.encodebytes(data)
+            return x.decode('ascii').replace('\n', '')
+    if re.match('^http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|'
+                '[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+$', filename):
+        import requests  # let's keep it here for now...
+        result = requests.get(filename)
+        if result.status_code != 200:
+            warnings.warn("{} returned status {}".format(filename, status))
+            return
+        x = base64.encodebytes(result.content)
+        return x.decode('ascii').replace('\n', '')
+    warnings.warn("Unable to understand file type:"
+                  " file not found or url not valid", RuntimeWarning)
 
 
 class DD(object):
@@ -190,7 +213,8 @@ class DD(object):
         return self.delete(self.__urls["train"], params=params)
 
     # API predict
-    def post_predict(self, sname, data, parameters_input, parameters_mllib, parameters_output):
+    def post_predict(self, sname, data, parameters_input, parameters_mllib,
+                     parameters_output, use_base64=False):
         """
         Makes prediction from data and model
         Parameters:
@@ -200,6 +224,10 @@ class DD(object):
         parameters_mllib -- dict ML library parameters
         parameters_output -- dict of output parameters
         """
+
+        if use_base64:
+            data = [_convert_base64(d) for d in data]
+
         data = {"service": sname,
                 "parameters": {"input": parameters_input,
                                "mllib": parameters_mllib,
