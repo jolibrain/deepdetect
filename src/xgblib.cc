@@ -443,7 +443,7 @@ namespace dd
 
     // results
     //float loss = 0.0; // XXX: how to acquire loss ?
-    int batch_size = preds.size();
+    int batch_size = preds.Size();
     int nclasses = _nclasses;
     if (_objective == "multi:softprob")
       batch_size /= nclasses;
@@ -460,7 +460,7 @@ namespace dd
 	std::vector<std::string> cats;
 	for (int i=0;i<nclasses;i++)
 	  {
-	    probs.push_back(preds.data_h().at(j*nclasses+i));
+	    probs.push_back(preds.HostVector().at(j*nclasses+i));
 	    cats.push_back(this->_mlmodel.get_hcorresp(i));
 	  }
 	if (_objective == "binary:logistic")
@@ -509,7 +509,7 @@ namespace dd
 	learner->Predict(dtest,output_margin,&out_preds);
 
 	int nclasses = _nclasses;
-	int batch_size = out_preds.size();
+	int batch_size = out_preds.Size();
 	if (_objective == "multi:softprob")
 	  batch_size /= _nclasses;
 	else if (_objective == "binary:logistic")
@@ -520,11 +520,11 @@ namespace dd
 	    std::vector<double> predictions;
 	    for (int c=0;c<nclasses;c++)
 	      {
-		predictions.push_back(out_preds.data_h().at(k*nclasses+c));
+		predictions.push_back(out_preds.HostVector().at(k*nclasses+c));
 	      }
 	    if (_objective == "binary:logistic")
 	      predictions.insert(predictions.begin(),1.0-predictions.back());
-	    bad.add("target",dtest->info().labels.at(k));
+	    bad.add("target",dtest->Info().labels_.at(k));
 	    bad.add("pred",predictions);
 	    ad_res.add(std::to_string(k),bad);
 	  }
