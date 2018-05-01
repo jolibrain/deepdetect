@@ -40,7 +40,7 @@ namespace dd
   public:
     CaffeInputInterface() {}
     CaffeInputInterface(const CaffeInputInterface &cii)
-      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed),_sequence_txt(cii._sequence_txt),_max_embed_id(cii._max_embed_id),_segmentation(cii._segmentation),_multi_label(cii._multi_label),_root_folder(cii._root_folder) {}
+      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed),_sequence_txt(cii._sequence_txt),_max_embed_id(cii._max_embed_id),_segmentation(cii._segmentation),_multi_label(cii._multi_label),_ocr(cii._ocr),_root_folder(cii._root_folder) {}
     ~CaffeInputInterface() {}
 
     /**
@@ -84,6 +84,7 @@ namespace dd
     int _max_embed_id = -1; /**< in embeddings, the max index. */
     bool _segmentation = false; /**< whether it is a segmentation service. */
     bool _multi_label = false; /**< multi label setup */
+    bool _ocr = false; /** whether it is an OCR service. */
     std::string _root_folder; /**< root folder for image list layer. */
     std::unordered_map<std::string,std::pair<int,int>> _imgs_size; /**< image sizes, used in detection. */
     std::string _dbfullname = "train.lmdb";
@@ -289,6 +290,25 @@ namespace dd
             sourcead.add("source_test",_uris.at(1));
 	      const_cast<APIData&>(ad).add("source",sourcead);
 	    }
+	  else if (_ocr)
+	    {
+	      _dbfullname = _model_repo + "/" + _dbfullname;
+	      _test_dbfullname = _model_repo + "/" + _test_dbfullname;
+	      try
+		{
+		  get_data(ad);
+		}
+	      catch(InputConnectorBadParamException &ex) // in case the db is in the net config
+		{
+		  throw ex;
+		}
+
+	      //TODO:
+	      //- read image + string file
+	      //- write hdf5 file(s)
+	      images_to_hdf5(_uris,_model_repo  + "/" + _dbname,_model_repo + "/" + _test_dbname);
+	      
+	    }
 	  else // more complicated, since images can be heavy, a db is built so that it is less costly to iterate than the filesystem, unless image data layer is used (e.g. multi-class image training)
 	    {
 	      _dbfullname = _model_repo + "/" + _dbfullname;
@@ -390,6 +410,13 @@ namespace dd
 				      const std::string &backend,
 				      const bool &encoded,
 				      const std::string &encode_type);
+
+    void images_to_hdf5(const std::vector<std::string> &img_lists,
+			const std::string &traindbname,
+			const std::string &testdbname);
+
+    void write_images_to_hdf5(const std::string &dbfullbame,
+			      const std::vector<std::pair<std::string,std::string>> &lfiles);
     
     int compute_images_mean(const std::string &dbname,
 			    const std::string &meanfile,

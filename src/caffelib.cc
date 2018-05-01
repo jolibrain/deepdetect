@@ -1918,6 +1918,21 @@ namespace dd
 		batch_size = user_batch_size;
 	      }
 	  }
+	else if (lp->has_hdf5_data_param())
+	  {
+	    caffe::HDF5DataParameter *dp = lp->mutable_hdf5_data_param();
+	    if (dp->has_source())
+	      {
+		if (i == 0)
+		  {
+		    dp->set_source(ad.getobj("db").get("train_db").get<std::string>());
+		  }
+		else if (i == 1)
+		  {
+		    dp->set_source(ad.getobj("db").get("test_db").get<std::string>());
+		  }
+	      }
+	  }
 	else if (lp->has_dense_image_data_param())
 	  {
 	    caffe::DenseImageDataParameter *dp = lp->mutable_dense_image_data_param();

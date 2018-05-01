@@ -25,6 +25,8 @@
 
 #include "caffeinputconns.h"
 #include "utils/utils.hpp"
+//#include <boost/multi_array.hpp>
+#include <H5Cpp.h>
 #include <memory>
 
 using namespace caffe;
@@ -376,6 +378,123 @@ namespace dd
     }
   }
 
+  // - fixed size in-memory arrays put down to disk at once
+  // - no support for UTF-8 characters yet
+  void ImgCaffeInputFileConn::images_to_hdf5(const std::vector<std::string> &img_lists,
+					     const std::string &traindbname,
+					     const std::string &testdbname)
+  {
+    static std::string backend = ".hdf5";
+    std::string dbfullname = traindbname + "." + backend;
+    std::string testdbfullname = testdbname + "." + backend;
+
+    //TODO: test whether dbs already exist
+
+    //TODO: read / shuffle / split list of images
+    std::unordered_map<uint32_t,int> alphabet;
+    alphabet[0] = 0; // space character
+    std::unordered_map<uint32_t,int>::iterator ait;
+    std::ifstream train_file(img_lists.at(0));
+    std::string line;
+
+    // count file lines, we're using fixed-size in-memory array due to
+    // complexity of hdf5 handling + current limitation of the C++ wrapper
+    int clines = 0;
+    int max_ocr_length = -1;
+    while(std::getline(train_file, line))
+      {
+	std::vector<std::string> elts = dd_utils::split(line,' ');
+	max_ocr_length = std::max(max_ocr_length,static_cast<int>(elts.at(1).size()));
+	++clines;
+      }
+    train_file.clear();
+    train_file.seekg(0, std::ios::beg);
+
+    //TODO: beware of overflow, and allocate per chunk / saved in multiple files
+    int cn = (_bw ? 1 : 3);
+    float img_data[clines][cn][_height][_width];
+    float ocr_data[clines][max_ocr_length];
+    int nline = 0;
+    while (std::getline(train_file, line))
+      {
+	std::vector<std::string> elts = dd_utils::split(line,' ');
+
+	// first elt is the image path
+	std::string img_path = elts.at(0);
+	cv::Mat img = cv::imread(img_path, _bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR);
+	for(int i=0;i<img.rows;i++)
+	  {
+	    for(int j=0;j<img.cols;j++)
+	      {
+		cv::Point3_<uint8_t> pixel = img.at<cv::Point3_<uint8_t>>(i,j);
+		img_data[nline][0][i][j] = pixel.x; // B
+		img_data[nline][1][i][j] = pixel.y; // G
+		img_data[nline][2][i][j] = pixel.z; // R
+	      }
+	  }
+	
+	// then come the OCR string
+	int cpos = 0;
+	for (size_t i=1;i<elts.size();i++)
+	  {
+	    std::string ostr = elts.at(i);
+	    for (char &c: ostr)
+	      {
+		// check / add / get id from alphabet
+		int nc = -1;
+		if ((ait=alphabet.find(c))==alphabet.end())
+		  {
+		    nc = alphabet.size();
+		    alphabet.insert(std::pair<uint32_t,int>(c,nc));
+		  }
+		else nc = (*ait).second;
+		ocr_data[nline][cpos] = static_cast<float>(nc);
+		++cpos;
+	      }
+	    // add space
+	    ocr_data[nline][cpos] = 0.0;
+	    ++cpos;
+	  }
+	++nline;
+      }
+
+    H5::H5File file(traindbname, H5F_ACC_TRUNC);
+    
+    // create datasets
+    // image data
+    hsize_t img_dims[4]; 
+    img_dims[0] = clines;
+    img_dims[1] = cn;
+    img_dims[2] = _height;
+    img_dims[3] = _width;
+    H5::DataSpace dataspace(4, img_dims);
+    H5::FloatType datatype(H5::PredType::NATIVE_FLOAT);
+    //datatype.setOrder( H5T_ORDER_LE );
+    H5::DataSet dataset = file.createDataSet("data",datatype,dataspace);
+    dataset.write(img_data, H5::PredType::NATIVE_FLOAT);
+    
+    //TODO: write datasets
+    hsize_t ocr_dims[2]; 
+    ocr_dims[0] = clines;
+    ocr_dims[1] = max_ocr_length;
+    H5::DataSpace dataspace2(2, ocr_dims);
+    H5::FloatType datatype2(H5::PredType::NATIVE_FLOAT);
+    //datatype.setOrder( H5T_ORDER_LE );
+    H5::DataSet dataset2 = file.createDataSet("label",datatype2,dataspace2);
+    dataset2.write(img_data, H5::PredType::NATIVE_FLOAT);
+
+    //TODO: testdb ?
+
+    //TODO: save the alphabet (vocab.dat)
+    
+  }
+
+  void ImgCaffeInputFileConn::write_images_to_hdf5(const std::string &dbfullname,
+						   const std::vector<std::pair<std::string,std::string>> &lfiles)
+  {
+    
+  }
+    
   int ImgCaffeInputFileConn::compute_images_mean(const std::string &dbname,
 						 const std::string &meanfile,
 						 const std::string &backend)
