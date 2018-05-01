@@ -1,0 +1,14 @@
+net: "mobilenet_v2.prototxt"
+test_iter: 2000 
+test_interval: 1000
+base_lr: 0.001
+display: 40
+max_iter: 170000
+iter_size: 1
+lr_policy: "fixed"
+momentum: 0.9
+weight_decay: 0.0001
+snapshot: 1000
+snapshot_prefix: "train"
+solver_mode: GPU
+test_initialization: false
