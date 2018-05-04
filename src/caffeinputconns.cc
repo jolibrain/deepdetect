@@ -25,7 +25,6 @@
 
 #include "caffeinputconns.h"
 #include "utils/utils.hpp"
-//#include <boost/multi_array.hpp>
 #include <H5Cpp.h>
 #include <memory>
 
@@ -381,13 +380,9 @@ namespace dd
   // - fixed size in-memory arrays put down to disk at once
   // - no support for UTF-8 characters yet
   void ImgCaffeInputFileConn::images_to_hdf5(const std::vector<std::string> &img_lists,
-					     const std::string &traindbname,
-					     const std::string &testdbname)
+					     const std::string &dbfullname,
+					     const std::string &test_dbfullname)
   {
-    static std::string backend = ".hdf5";
-    std::string dbfullname = traindbname + "." + backend;
-    std::string testdbfullname = testdbname + "." + backend;
-
     //TODO: test whether dbs already exist
 
     //TODO: read / shuffle / split list of images
@@ -405,6 +400,8 @@ namespace dd
       {
 	std::vector<std::string> elts = dd_utils::split(line,' ');
 	max_ocr_length = std::max(max_ocr_length,static_cast<int>(elts.at(1).size()));
+	if (clines > 100)
+	  break;
 	++clines;
       }
     train_file.clear();
@@ -412,11 +409,13 @@ namespace dd
 
     //TODO: beware of overflow, and allocate per chunk / saved in multiple files
     int cn = (_bw ? 1 : 3);
-    float img_data[clines][cn][_height][_width];
+    float img_data[clines][cn][_height][_width]; //TODO: overflow on clines
     float ocr_data[clines][max_ocr_length];
     int nline = 0;
     while (std::getline(train_file, line))
       {
+	std::cerr << "line=" << line << std::endl;
+	std::cerr << "nline=" << nline << std::endl;
 	std::vector<std::string> elts = dd_utils::split(line,' ');
 
 	// first elt is the image path
@@ -455,10 +454,13 @@ namespace dd
 	    ocr_data[nline][cpos] = 0.0;
 	    ++cpos;
 	  }
+	if (nline >= 99)
+	  break;
 	++nline;
       }
 
-    H5::H5File file(traindbname, H5F_ACC_TRUNC);
+    H5::H5File hdffile(dbfullname, H5F_ACC_TRUNC);
+    std::cerr << "created hdf5 train dataset\n";
     
     // create datasets
     // image data
@@ -470,22 +472,30 @@ namespace dd
     H5::DataSpace dataspace(4, img_dims);
     H5::FloatType datatype(H5::PredType::NATIVE_FLOAT);
     //datatype.setOrder( H5T_ORDER_LE );
-    H5::DataSet dataset = file.createDataSet("data",datatype,dataspace);
+    H5::DataSet dataset = hdffile.createDataSet("data",datatype,dataspace);
     dataset.write(img_data, H5::PredType::NATIVE_FLOAT);
+    std::cerr << "written img_data\n";
     
-    //TODO: write datasets
+    // ocr data
     hsize_t ocr_dims[2]; 
     ocr_dims[0] = clines;
     ocr_dims[1] = max_ocr_length;
     H5::DataSpace dataspace2(2, ocr_dims);
     H5::FloatType datatype2(H5::PredType::NATIVE_FLOAT);
     //datatype.setOrder( H5T_ORDER_LE );
-    H5::DataSet dataset2 = file.createDataSet("label",datatype2,dataspace2);
-    dataset2.write(img_data, H5::PredType::NATIVE_FLOAT);
-
+    H5::DataSet dataset2 = hdffile.createDataSet("label",datatype2,dataspace2);
+    dataset2.write(ocr_data, H5::PredType::NATIVE_FLOAT);
+    std::cerr << "written ocr_data\n";
+    
     //TODO: testdb ?
 
     //TODO: save the alphabet (vocab.dat)
+
+    //TODO: generate list of hdf5 db files
+    std::string train_list = _model_repo + "/training.txt";
+    std::ofstream tlist(train_list.c_str());
+    tlist << dbfullname << std::endl;
+    tlist.close();
     
   }
 

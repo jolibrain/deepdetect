@@ -152,6 +152,8 @@ namespace dd
 	_root_folder = ad.get("root_folder").get<std::string>();
       if (ad.has("segmentation"))
 	_segmentation = ad.get("segmentation").get<bool>();
+      if (ad.has("ocr"))
+	_ocr = ad.get("ocr").get<bool>();
     }
 
     void transform(const APIData &ad)
@@ -292,8 +294,8 @@ namespace dd
 	    }
 	  else if (_ocr)
 	    {
-	      _dbfullname = _model_repo + "/" + _dbfullname;
-	      _test_dbfullname = _model_repo + "/" + _test_dbfullname;
+	      _dbfullname = _model_repo + "/train.h5";
+	      _test_dbfullname = _model_repo + "/test.h5";
 	      try
 		{
 		  get_data(ad);
@@ -306,8 +308,14 @@ namespace dd
 	      //TODO:
 	      //- read image + string file
 	      //- write hdf5 file(s)
-	      images_to_hdf5(_uris,_model_repo  + "/" + _dbname,_model_repo + "/" + _test_dbname);
-	      
+	      images_to_hdf5(_uris,_dbfullname,_test_dbfullname);
+
+	      // enrich data object with db files location
+	      APIData dbad;
+	      dbad.add("train_db",_model_repo + "/training.txt");
+	      if (_test_split > 0.0)
+		dbad.add("test_db",_model_repo + "/testing.txt");
+	      const_cast<APIData&>(ad).add("db",dbad);
 	    }
 	  else // more complicated, since images can be heavy, a db is built so that it is less costly to iterate than the filesystem, unless image data layer is used (e.g. multi-class image training)
 	    {
