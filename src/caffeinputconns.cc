@@ -413,11 +413,11 @@ namespace dd
 
     int cn = (_bw ? 1 : 3);
     int max_lines = std::pow(10,9) / (_height*_width*3*4);
-    std::cerr << "max_lines=" << max_lines << std::endl;
+    _logger->info("hdf5 using max number of lines={}",max_lines);
         
     cv::Size size(_width,_height);
     int chunks = std::ceil(clines / static_cast<double>(max_lines));
-    std::cerr << "chunks=" << chunks << std::endl;
+    _logger->info("proceeding with {} hdf5 chunks",chunks);
     std::vector<std::string> dbchunks;
     for (int ch=0;ch<chunks;ch++)
       {
@@ -479,7 +479,7 @@ namespace dd
 	std::string dbchunkname = dbfullname + "_" + std::to_string(ch) + ".h5";
 	dbchunks.push_back(dbchunkname);
 	H5::H5File hdffile(dbchunkname, H5F_ACC_TRUNC);
-	std::cerr << "created hdf5 train dataset for chunk=" << ch << "\n";
+	_logger->info("created hdf5 train dataset for chunk {}",ch);
 	
 	// create datasets
 	// image data
@@ -515,7 +515,6 @@ namespace dd
     for (auto s: dbchunks)
       tlist << s << std::endl;
     tlist.close();
-    
   }
 
   void ImgCaffeInputFileConn::write_images_to_hdf5(const std::string &dbfullname,
