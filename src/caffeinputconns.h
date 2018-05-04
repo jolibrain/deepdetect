@@ -294,8 +294,8 @@ namespace dd
 	    }
 	  else if (_ocr)
 	    {
-	      _dbfullname = _model_repo + "/train.h5";
-	      _test_dbfullname = _model_repo + "/test.h5";
+	      _dbfullname = _model_repo + "/train";
+	      _test_dbfullname = _model_repo + "/test.h5"; //TODO
 	      try
 		{
 		  get_data(ad);
