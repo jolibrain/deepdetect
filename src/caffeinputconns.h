@@ -423,8 +423,11 @@ namespace dd
 			const std::string &traindbname,
 			const std::string &testdbname);
 
-    void write_images_to_hdf5(const std::string &dbfullbame,
-			      const std::vector<std::pair<std::string,std::string>> &lfiles);
+    void write_images_to_hdf5(const std::string &inputfilename,
+			      const std::string &dbfullbame,
+			      const std::string &dblistfilename,
+			      std::unordered_map<uint32_t,int> &alphabet,
+			      const bool &train_db);
     
     int compute_images_mean(const std::string &dbname,
 			    const std::string &meanfile,

@@ -392,14 +392,42 @@ namespace dd
       }
     
     //TODO: read / shuffle / split list of images
+    
     std::unordered_map<uint32_t,int> alphabet;
     alphabet[0] = 0; // space character
-    std::unordered_map<uint32_t,int>::iterator ait;
-    std::ifstream train_file(img_lists.at(0));
-    std::string line;
 
+    std::string train_list = _model_repo + "/training.txt";
+    write_images_to_hdf5(img_lists.at(0), dbfullname, train_list, alphabet, true);
+
+    if (img_lists.size() > 1)
+      {
+	std::string test_list = _model_repo + "/testing.txt";
+	write_images_to_hdf5(img_lists.at(1), test_dbfullname, test_list, alphabet, false);
+      }
+    
+    // save the alphabet as corresp file
+    std::ofstream correspf(_model_repo + "/" + _correspname,std::ios::binary);
+    auto hit = alphabet.begin();
+    while(hit!=alphabet.end())
+      {
+	correspf << (*hit).second << " " << std::to_string((*hit).first) << std::endl;
+	++hit;
+      }
+    correspf.close();
+  }
+
+  void ImgCaffeInputFileConn::write_images_to_hdf5(const std::string &inputfilename,
+						   const std::string &dbfullname,
+						   const std::string &dblistfilename,
+						   std::unordered_map<uint32_t,int> &alphabet,
+						   const bool &train_db)
+  {
+    std::ifstream train_file(inputfilename);
+    std::string line;
+    std::unordered_map<uint32_t,int>::iterator ait;
+    
     // count file lines, we're using fixed-size in-memory array due to
-    // complexity of hdf5 handling + current limitation of the C++ wrapper
+    // complexity of hdf5 handling of incremental datasets
     int clines = 0;
     int max_ocr_length = -1;
     while(std::getline(train_file, line))
@@ -410,7 +438,7 @@ namespace dd
       }
     train_file.clear();
     train_file.seekg(0, std::ios::beg);
-
+    
     int cn = (_bw ? 1 : 3);
     int max_lines = std::pow(10,9) / (_height*_width*3*4);
     _logger->info("hdf5 using max number of lines={}",max_lines);
@@ -459,17 +487,29 @@ namespace dd
 		    int nc = -1;
 		    if ((ait=alphabet.find(c))==alphabet.end())
 		      {
-			nc = alphabet.size();
-			alphabet.insert(std::pair<uint32_t,int>(c,nc));
+			if (train_db)
+			  {
+			    nc = alphabet.size();
+			    alphabet.insert(std::pair<uint32_t,int>(c,nc));
+			  }
+			else nc = 0; // space, blank
 		      }
 		    else nc = (*ait).second;
 		    ocr_data[nline][cpos] = static_cast<float>(nc);
 		    ++cpos;
 		  }
-		// add space
-		//TODO: only if more words
-		/*ocr_data[nline][cpos] = 0.0;
-		  ++cpos;*/
+		// add space, only if more forthcoming words
+		if (i != elts.size()-1)
+		  {
+		    ocr_data[nline][cpos] = 0.0;
+		    ++cpos;
+		  }
+	      }
+	    // complete string with blank label
+	    while (cpos < max_ocr_length)
+	      {
+		ocr_data[nline][cpos] = 0.0;
+		++cpos;
 	      }
 	    if (nline == tlines-1)
 	      break;
@@ -505,22 +545,13 @@ namespace dd
 	dataset2.write(ocr_data.data(), H5::PredType::NATIVE_FLOAT);
       }
     
-    //TODO: testdb ?
-    
     //TODO: save the alphabet (vocab.dat)
     
     //TODO: generate list of hdf5 db files
-    std::string train_list = _model_repo + "/training.txt";
-    std::ofstream tlist(train_list.c_str());
+    std::ofstream tlist(dblistfilename.c_str());
     for (auto s: dbchunks)
       tlist << s << std::endl;
     tlist.close();
-  }
-
-  void ImgCaffeInputFileConn::write_images_to_hdf5(const std::string &dbfullname,
-						   const std::vector<std::pair<std::string,std::string>> &lfiles)
-  {
-    
   }
     
   int ImgCaffeInputFileConn::compute_images_mean(const std::string &dbname,
