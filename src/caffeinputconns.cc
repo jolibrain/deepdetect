@@ -28,6 +28,7 @@
 #include <boost/multi_array.hpp>
 #include <H5Cpp.h>
 #include <memory>
+#include "utf8.h"
 
 using namespace caffe;
 
@@ -481,9 +482,13 @@ namespace dd
 	    for (size_t i=1;i<elts.size();i++)
 	      {
 		std::string ostr = elts.at(i);
-		for (char &c: ostr)
-		  {
+		char *ostr_c = (char*)ostr.c_str();
+		char *ostr_ci = ostr_c;
+		char *end = ostr_c + strlen(ostr_c);
+		while(ostr_ci<end)
+		{
 		    // check / add / get id from alphabet
+		    uint32_t c = utf8::next(ostr_ci,end);
 		    int nc = -1;
 		    if ((ait=alphabet.find(c))==alphabet.end())
 		      {
@@ -492,12 +497,16 @@ namespace dd
 			    nc = alphabet.size();
 			    alphabet.insert(std::pair<uint32_t,int>(c,nc));
 			  }
-			else nc = 0; // space, blank
+			else
+			  {
+			    _logger->warn("character {} in test set not found in training set",c);
+			     nc = 0; // space, blank
+			  }
 		      }
 		    else nc = (*ait).second;
 		    ocr_data[nline][cpos] = static_cast<float>(nc);
 		    ++cpos;
-		  }
+		}
 		// add space, only if more forthcoming words
 		if (i != elts.size()-1)
 		  {
