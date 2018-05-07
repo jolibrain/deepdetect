@@ -305,9 +305,7 @@ namespace dd
 		  throw ex;
 		}
 
-	      //TODO:
-	      //- read image + string file
-	      //- write hdf5 file(s)
+	      // read images list and create dbs
 	      images_to_hdf5(_uris,_dbfullname,_test_dbfullname);
 
 	      // enrich data object with db files location

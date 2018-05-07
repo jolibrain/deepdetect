@@ -1055,6 +1055,7 @@ namespace dd
     ad_res.add("iteration",this->get_meas("iteration"));
     ad_res.add("train_loss",this->get_meas("train_loss"));
     APIData ad_out = ad.getobj("parameters").getobj("output");
+
     if (ad_out.has("measure"))
       {
 	float mean_loss = 0.0;
@@ -1073,7 +1074,12 @@ namespace dd
 	    std::vector<std::vector<double>> dv_float_data;
 	    try
 	      {
-		if (!inputc._sparse)
+		if (inputc._ocr)
+		  {
+		    // do nothing, db input
+		    dv_size = 1;
+		  }
+		else if (!inputc._sparse)
 		  {
 		    std::vector<caffe::Datum> seg_dv;
 		    std::vector<caffe::Datum> dv = inputc.get_dv_test(test_batch_size,has_mean_file);
@@ -1183,10 +1189,21 @@ namespace dd
 	      slot--; // labels appear to be last
 	    else if (inputc._multi_label && ( inputc._db || ! (typeid(inputc) == typeid(ImgCaffeInputFileConn))
                                            ||  _nclasses <= 1))
-          slot--;
+	      slot--;
 	    int scount = lresults[slot]->count();
 	    int scperel = scount / dv_size;
 
+	    if (inputc._ocr)
+	      {
+		slot = 0;
+		std::vector<double> predictions;
+		predictions.push_back(lresults[slot]->cpu_data()[0]);
+		APIData bad;
+		bad.add("pred",predictions);
+		ad_res.add("0",bad);
+		break;
+	      }
+	    
 	    for (int j=0;j<(int)dv_size;j++)
 	      {
 		APIData bad;
@@ -1271,6 +1288,8 @@ namespace dd
 	ad_res.add("batch_size",tresults);
 	if (_regression)
 	  ad_res.add("regression",_regression);
+	if (inputc._ocr)
+	  ad_res.add("ctc",true);
       }
     SupervisedOutput::measure(ad_res,ad_out,out);
   }
