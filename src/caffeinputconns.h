@@ -260,6 +260,8 @@ namespace dd
 		    _multi_label = ad_input.get("multi_label").get<bool>();
 		  if (ad_input.has("root_folder"))
 		    _root_folder = ad_input.get("root_folder").get<std::string>();
+		  if (ad_input.has("align"))
+		    _align = ad_input.get("align").get<bool>();
 		}
 	      ad_mllib = ad_param.getobj("mllib");
 	    }
@@ -447,6 +449,7 @@ namespace dd
     std::vector<caffe::Datum>::const_iterator _dt_vit;
     std::vector<std::pair<std::string,std::string>> _segmentation_data_lines;
     int _dt_seg = 0;
+    bool _align = false;
   };
 
   /**

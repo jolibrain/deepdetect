@@ -476,6 +476,12 @@ namespace dd
 	    // first elt is the image path
 	    std::string img_path = elts.at(0);
 	    cv::Mat img = cv::imread(img_path, _bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR);
+	    if (_align && img.rows > img.cols) // rotate so that width is longest axis
+	      {
+		cv::Mat timg;
+		cv::transpose(img,timg);
+		cv::flip(timg,img,1);
+	      }
 	    cv::Mat rimg;
 	    cv::resize(img,rimg,size,0,0,CV_INTER_CUBIC);
 	    img = rimg;
