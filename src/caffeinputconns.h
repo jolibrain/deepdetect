@@ -311,7 +311,7 @@ namespace dd
 	      // enrich data object with db files location
 	      APIData dbad;
 	      dbad.add("train_db",_model_repo + "/training.txt");
-	      if (_test_split > 0.0)
+	      if (_uris.size() > 1 || _test_split > 0.0)
 		dbad.add("test_db",_model_repo + "/testing.txt");
 	      const_cast<APIData&>(ad).add("db",dbad);
 	    }
@@ -425,6 +425,7 @@ namespace dd
 			      const std::string &dbfullbame,
 			      const std::string &dblistfilename,
 			      std::unordered_map<uint32_t,int> &alphabet,
+			      int &max_ocr_length,
 			      const bool &train_db);
     
     int compute_images_mean(const std::string &dbname,

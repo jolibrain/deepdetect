@@ -396,14 +396,16 @@ namespace dd
     
     std::unordered_map<uint32_t,int> alphabet;
     alphabet[0] = 0; // space character
+    int max_ocr_length = -1;
 
     std::string train_list = _model_repo + "/training.txt";
-    write_images_to_hdf5(img_lists.at(0), dbfullname, train_list, alphabet, true);
-
+    write_images_to_hdf5(img_lists.at(0), dbfullname, train_list, alphabet, max_ocr_length, true);
+    _logger->info("ctc alphabet training size={}",alphabet.size());
+    
     if (img_lists.size() > 1)
       {
 	std::string test_list = _model_repo + "/testing.txt";
-	write_images_to_hdf5(img_lists.at(1), test_dbfullname, test_list, alphabet, false);
+	write_images_to_hdf5(img_lists.at(1), test_dbfullname, test_list, alphabet, max_ocr_length, false);
       }
     
     // save the alphabet as corresp file
@@ -421,6 +423,7 @@ namespace dd
 						   const std::string &dbfullname,
 						   const std::string &dblistfilename,
 						   std::unordered_map<uint32_t,int> &alphabet,
+						   int &max_ocr_length,
 						   const bool &train_db)
   {
     std::ifstream train_file(inputfilename);
@@ -430,13 +433,23 @@ namespace dd
     // count file lines, we're using fixed-size in-memory array due to
     // complexity of hdf5 handling of incremental datasets
     int clines = 0;
-    int max_ocr_length = -1;
     while(std::getline(train_file, line))
       {
 	std::vector<std::string> elts = dd_utils::split(line,' ');
-	max_ocr_length = std::max(max_ocr_length,static_cast<int>(elts.at(1).size()));
+	if (train_db)
+	  {
+	    int ocr_size = 0;
+	    for (size_t k=1;k<elts.size();k++)
+	      {
+		ocr_size += elts.at(k).size();
+		if (k != elts.size()-1)
+		  ++ocr_size; // space between words
+	      }
+	    max_ocr_length = std::max(max_ocr_length,ocr_size);
+	  }
 	++clines;
       }
+    _logger->info("ctc output string max size={}",max_ocr_length);
     train_file.clear();
     train_file.seekg(0, std::ios::beg);
     
