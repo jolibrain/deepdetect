@@ -449,6 +449,9 @@ namespace dd
 	  }
 	++clines;
       }
+    if (train_db)
+      _logger->info("ocr dataset training size={}",clines);
+    else _logger->info("ocr dataset testing size={}",clines);
     _logger->info("ctc output string max size={}",max_ocr_length);
     train_file.clear();
     train_file.seekg(0, std::ios::beg);
@@ -483,7 +486,15 @@ namespace dd
 		cv::flip(timg,img,1);
 	      }
 	    cv::Mat rimg;
-	    cv::resize(img,rimg,size,0,0,CV_INTER_CUBIC);
+	    try
+	      {
+		cv::resize(img,rimg,size,0,0,CV_INTER_CUBIC);
+	      }
+	    catch(std::exception &e)
+	      {
+		_logger->error("failed resizing image {}: {}",img_path,e.what());
+		continue;
+	      }
 	    img = rimg;
 	    for(int r=0;r<img.rows;r++)
 	      {
