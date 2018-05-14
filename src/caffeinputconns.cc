@@ -380,7 +380,6 @@ namespace dd
   }
 
   // - fixed size in-memory arrays put down to disk at once
-  // - no support for UTF-8 characters yet
   void ImgCaffeInputFileConn::images_to_hdf5(const std::vector<std::string> &img_lists,
 					     const std::string &dbfullname,
 					     const std::string &test_dbfullname)
@@ -388,10 +387,43 @@ namespace dd
     
     // test whether dbs already exist
     if (fileops::file_exists(dbfullname + "_0.h5"))
-      {
+      {	
+	if (!fileops::file_exists(_model_repo + "/" + _correspname))
+	  throw InputConnectorBadParamException("found h5 db but no corresp.txt file, erase h5 to rebuild them instead ?");
+	std::ifstream in(_model_repo + "/" + _correspname);
+	if (!in.is_open())
+	  throw InputConnectorBadParamException("failed opening corresp.txt file");
+	int nlines = 0;
+	std::string line;
+	while(getline(in,line))
+	  ++nlines;
+	_alphabet_size = nlines;
+
+	if (!fileops::file_exists(_model_repo + "/testing.txt"))
+	  _logger->info("no hdf5 test db list found, no test set");
+	else
+	  {
+	    std::string tfilename;
+	    int tsize = 0;
+	    in = std::ifstream(_model_repo + "/testing.txt");
+	    while(getline(in,tfilename))
+	      {
+		H5::H5File tfile(tfilename, H5F_ACC_RDONLY);
+		H5::DataSet dataset = tfile.openDataSet("label");
+		//H5::FloatType datatype = dataset.getFloatType();
+		//tsize += datatype.getSize();
+		
+		H5::DataSpace dataspace = dataset.getSpace();
+		hsize_t dims[2];
+		dataspace.getSimpleExtentDims(dims,NULL);
+		tsize += dims[0];
+	      }
+	    _db_testbatchsize = tsize;
+	    _logger->info("hdf5 test set size={}",tsize);
+	  }
 	return;
       }
-    
+	
     //TODO: read / shuffle / split list of images
     
     std::unordered_map<uint32_t,int> alphabet;
@@ -417,6 +449,7 @@ namespace dd
 	++hit;
       }
     correspf.close();
+    _alphabet_size = alphabet.size();
   }
 
   void ImgCaffeInputFileConn::write_images_to_hdf5(const std::string &inputfilename,
@@ -450,8 +483,15 @@ namespace dd
 	++clines;
       }
     if (train_db)
-      _logger->info("ocr dataset training size={}",clines);
-    else _logger->info("ocr dataset testing size={}",clines);
+      {
+	_logger->info("ocr dataset training size={}",clines);
+	_db_batchsize = clines;
+      }
+    else
+      {
+	_logger->info("ocr dataset testing size={}",clines);
+	_db_testbatchsize = clines;
+      }
     _logger->info("ctc output string max size={}",max_ocr_length);
     train_file.clear();
     train_file.seekg(0, std::ios::beg);

@@ -189,7 +189,7 @@ namespace dd
 
 	// switch to imageDataLayer
 	//TODO: should apply to all templates with images
-	if (!this->_inputc._db && !this->_inputc._segmentation && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
+	if (!this->_inputc._db && !this->_inputc._segmentation && !this->_inputc._ocr && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
 	  {
 	    caffe::LayerParameter *lparam = net_param.mutable_layer(0);
 	    caffe::ImageDataParameter* image_data_parameter = lparam->mutable_image_data_param();
@@ -316,7 +316,7 @@ namespace dd
 	// input size
 	caffe::LayerParameter *lparam = net_param.mutable_layer(1); // test
 	caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(0);
-	if (_crop_size > 0 || (this->_inputc.width() != -1 && this->_inputc.height() != -1)) // forced width & height
+	if (!this->_inputc._ocr &&(_crop_size > 0 || (this->_inputc.width() != -1 && this->_inputc.height() != -1))) // forced width & height
 	  {
 	    int width = this->_inputc.width();
 	    int height = this->_inputc.height();
@@ -640,9 +640,14 @@ namespace dd
 	int ignore_label = -1;
 	if (ad_mllib.has("ignore_label"))
 	  ignore_label = ad_mllib.get("ignore_label").get<int>();
+	int timesteps = 0;
+	if (ad_mllib.has("timesteps"))
+	  timesteps = ad_mllib.get("timesteps").get<int>();
+	if (timesteps == 0 && inputc._ocr)
+	  throw MLLibBadParamException("Need to specify timesteps > 0 with sequence (e.g. OCR / CTC) models");
 	update_protofile_net(this->_mlmodel._repo + '/' + this->_mlmodel._model_template + ".prototxt",
 			     this->_mlmodel._repo + "/deploy.prototxt",
-			     inputc, has_class_weights, ignore_label);
+			     inputc, has_class_weights, ignore_label, timesteps);
 	create_model(); // creates initial net.
       }
 
@@ -881,7 +886,7 @@ namespace dd
 	  {
 	    APIData meas_out;
 	    solver->test_nets().at(0).get()->ShareTrainedLayersWith(solver->net().get());
-	    test(solver->test_nets().at(0).get(),ad,inputc,test_batch_size,has_mean_file,meas_out);
+	    test(solver->test_nets().at(0).get(),ad,inputc,test_batch_size,has_mean_file,test_iter,meas_out);
 	    APIData meas_obj = meas_out.getobj("measure");
 	    std::vector<std::string> meas_str = meas_obj.list_keys();
 	    this->_logger->info("batch size={}",batch_size);
@@ -1014,7 +1019,7 @@ namespace dd
       throw MLLibBadParamException("no deploy file in " + this->_mlmodel._repo + " for initializing the net");
     
     // test
-    test(_net,ad,inputc,test_batch_size,has_mean_file,out);
+    test(_net,ad,inputc,test_batch_size,has_mean_file,test_iter,out);
     inputc._dv_test.clear();
     inputc._dv_test_sparse.clear();
 
@@ -1049,6 +1054,7 @@ namespace dd
 										 TInputConnectorStrategy &inputc,
 										 const int &test_batch_size,
 										 const bool &has_mean_file,
+										 const int &test_iter,
 										 APIData &out)
   {
     APIData ad_res;
@@ -1061,6 +1067,8 @@ namespace dd
 	float mean_loss = 0.0;
 	int tresults = 0;
 	int nout = _nclasses;
+	int ocr_iter = 0;
+	float net_meas = 0.0;
 	if (_regression && _ntargets > 1)
 	  nout = _ntargets;
 	if (_autoencoder)
@@ -1193,85 +1201,93 @@ namespace dd
 	    int scount = lresults[slot]->count();
 	    int scperel = scount / dv_size;
 
-	    if (inputc._ocr)
+	    if (inputc._ocr) // special case, we're using the accuracy computed from within the network
 	      {
 		slot = 0;
-		std::vector<double> predictions;
-		predictions.push_back(lresults[slot]->cpu_data()[0]);
-		APIData bad;
-		bad.add("pred",predictions);
-		ad_res.add("0",bad);
-		break;
-	      }
-	    
-	    for (int j=0;j<(int)dv_size;j++)
-	      {
-		APIData bad;
-		std::vector<double> predictions;
-		if (inputc._segmentation)
+		net_meas += lresults[slot]->cpu_data()[0];
+		if (ocr_iter >= test_iter)
 		  {
-		    APIData bad2;
-		    std::vector<double> preds, targets;
-		    for (size_t l=0;l<dv_float_data.at(j).size();l++)
+		    net_meas /= static_cast<float>(test_iter);
+		    std::vector<double> predictions;
+		    predictions.push_back(net_meas);
+		    APIData bad;
+		    bad.add("pred",predictions);
+		    ad_res.add("0",bad);
+		    break;
+		  }
+		++ocr_iter;
+	      }
+	    else
+	      {
+		for (int j=0;j<(int)dv_size;j++)
+		  {
+		    APIData bad;
+		    std::vector<double> predictions;
+		    if (inputc._segmentation)
 		      {
-			double target = dv_float_data.at(j).at(l);
-			double best_prob = -1.0;
-			double best_cat = -1.0;
+			APIData bad2;
+			std::vector<double> preds, targets;
+			for (size_t l=0;l<dv_float_data.at(j).size();l++)
+			  {
+			    double target = dv_float_data.at(j).at(l);
+			    double best_prob = -1.0;
+			    double best_cat = -1.0;
+			    for (int k=0;k<nout;k++)
+			      {
+				double prob = lresults[slot]->cpu_data()[l+(nout*j+k)*dv_float_data.at(j).size()];
+				if (prob >= best_prob)
+				  {
+				    best_prob = prob;
+				    best_cat = k;
+				  }
+			      }
+			    preds.push_back(best_cat);
+			    targets.push_back(target);
+			  }
+			bad2.add("target",targets);
+			bad2.add("pred",preds);
+			ad_res.add(std::to_string(tresults+j),bad2);
+		      }
+		    // multilabel image  => also covers soft labels
+		    else if (inputc._multi_label && !inputc._db && typeid(inputc) == typeid(ImgCaffeInputFileConn)
+			     && _nclasses > 1)
+		      {
+			// grab multi-label prediction from last layer
+			std::vector<double> targets;
 			for (int k=0;k<nout;k++)
 			  {
-			    double prob = lresults[slot]->cpu_data()[l+(nout*j+k)*dv_float_data.at(j).size()];
-			    if (prob >= best_prob)
-			      {
-				best_prob = prob;
-				best_cat = k;
-			      }
+			    double target = dv_float_data.at(j).at(k);
+			    targets.push_back(target);
+			    predictions.push_back(lresults[slot]->cpu_data()[j*scperel+k]);
 			  }
-			preds.push_back(best_cat);
-			targets.push_back(target);
+			bad.add("target",targets);
+			bad.add("pred",predictions);
 		      }
-		    bad2.add("target",targets);
-		    bad2.add("pred",preds);
-		    ad_res.add(std::to_string(tresults+j),bad2);
-		  }
-		// multilabel image  => also covers soft labels
-		else if (inputc._multi_label && !inputc._db && typeid(inputc) == typeid(ImgCaffeInputFileConn)
-			 && _nclasses > 1)
-		  {
-		    // grab multi-label prediction from last layer
-		    std::vector<double> targets;
-		    for (int k=0;k<nout;k++)
+		    else if ((!_regression && !_autoencoder)|| _ntargets == 1)
 		      {
-			double target = dv_float_data.at(j).at(k);
-			targets.push_back(target);
-			predictions.push_back(lresults[slot]->cpu_data()[j*scperel+k]);
+			double target = dv_labels.at(j);
+			for (int k=0;k<nout;k++)
+			  {
+			    predictions.push_back(lresults[slot]->cpu_data()[j*scperel+k]);
+			  }
+			bad.add("target",target);
 		      }
-		    bad.add("target",targets);
-		    bad.add("pred",predictions);
-		  }
-		else if ((!_regression && !_autoencoder)|| _ntargets == 1)
-		  {
-		    double target = dv_labels.at(j);
-		    for (int k=0;k<nout;k++)
+		    else // regression with ntargets > 1 or autoencoder
 		      {
-			predictions.push_back(lresults[slot]->cpu_data()[j*scperel+k]);
+			std::vector<double> target;
+			for (size_t k=0;k<dv_float_data.at(j).size();k++)
+			  target.push_back(dv_float_data.at(j).at(k));
+			for (int k=0;k<nout;k++)
+			  {
+			    predictions.push_back(lresults[slot]->cpu_data()[j*scperel+k]);
+			  }
+			bad.add("target",target);
 		      }
-		    bad.add("target",target);
-		  }
-		else // regression with ntargets > 1 or autoencoder
-		  {
-		    std::vector<double> target;
-		    for (size_t k=0;k<dv_float_data.at(j).size();k++)
-		      target.push_back(dv_float_data.at(j).at(k));
-		    for (int k=0;k<nout;k++)
+		    if (!inputc._segmentation)
 		      {
-			predictions.push_back(lresults[slot]->cpu_data()[j*scperel+k]);
+			bad.add("pred",predictions);
+			ad_res.add(std::to_string(tresults+j),bad);
 		      }
-		    bad.add("target",target);
-		  }
-		if (!inputc._segmentation)
-		  {
-		    bad.add("pred",predictions);
-		      ad_res.add(std::to_string(tresults+j),bad);
 		  }
 	      }
 	    tresults += dv_size;
@@ -1396,7 +1412,7 @@ namespace dd
 	  }
 
 	bool has_mean_file = this->_mlmodel._has_mean_file;
-	test(_net,ad,inputc,batch_size,has_mean_file,out);
+	test(_net,ad,inputc,batch_size,has_mean_file,1,out);
 	APIData out_meas = out.getobj("measure");
 	out_meas.erase("train_loss");
 	out_meas.erase("iteration");
@@ -1738,9 +1754,11 @@ namespace dd
 		    }
 		  APIData outseq;
 		  std::string outstr;
+		  std::ostringstream oss;
 		  for (auto l: pred_label_seq)
 		    {
-		      outstr += this->_mlmodel.get_hcorresp(l);
+		      outstr += char(std::atoi(this->_mlmodel.get_hcorresp(l).c_str()));
+		      //utf8::append(this->_mlmodel.get_hcorresp(l),outstr);
 		    }
 		  std::vector<std::string> cats;
 		  cats.push_back(outstr);
@@ -1894,7 +1912,7 @@ namespace dd
     caffe::NetParameter *np = sp.mutable_net_param();
     caffe::ReadProtoFromTextFile(sp.net().c_str(),np); //TODO: error on read + use internal caffe ReadOrDie procedure
 
-    std::cerr << "input db =" <<  inputc._db << std::endl;
+    _logger->info("input db = {}",inputc._db);
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
     if (!(inputc._db) && typeid(inputc) == typeid(ImgCaffeInputFileConn))
       {
@@ -1909,7 +1927,7 @@ namespace dd
 	      }
 	  }
       }
-    
+
     for (int i=0;i<2;i++)
       {
 	caffe::LayerParameter *lp = np->mutable_layer(i);
@@ -2017,7 +2035,8 @@ namespace dd
 												 const std::string &deploy_file,
 												 const TInputConnectorStrategy &inputc,
 												 const bool &has_class_weights,
-												 const int &ignore_label)
+												 const int &ignore_label,
+												 const int &timesteps)
   {
     caffe::NetParameter net_param;
     caffe::ReadProtoFromTextFile(net_file,&net_param); //TODO: catch parsing error (returns bool true on success)
@@ -2027,8 +2046,7 @@ namespace dd
     if (_crop_size > 0)
       width = height = _crop_size;
 
-
-    if (!(this->_inputc._db) && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
+    if (!(this->_inputc._db) && !inputc._ocr && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
       {
             caffe::LayerParameter *lparam = net_param.mutable_layer(0);
             caffe::ImageDataParameter* image_data_parameter = lparam->mutable_image_data_param();
@@ -2039,6 +2057,31 @@ namespace dd
             image_data_parameter->set_new_width(inputc.width());
       }
 
+    if (this->_inputc._ocr) // crnn
+      {
+	int k = net_param.layer_size();
+	for (int l=0;l<k;l++)
+	  {
+	    caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+	    if (lparam->type() == "Reshape")
+	      {
+		lparam->mutable_reshape_param()->mutable_shape()->set_dim(2,timesteps);
+	      }
+	    else if (lparam->type() == "ContinuationIndicator")
+	      {
+		lparam->mutable_continuation_indicator_param()->set_time_step(timesteps);
+	      }
+	    else if (lparam->type() == "CtcLoss")
+	      {
+		lparam->mutable_ctc_loss_param()->set_time_step(timesteps);
+		lparam->mutable_ctc_loss_param()->set_alphabet_size(inputc._alphabet_size);
+	      }
+	    else if (lparam->type() == "InnerProduct") // last layer before ctcloss
+	      {
+		lparam->mutable_inner_product_param()->set_num_output(inputc._alphabet_size);
+	      }
+	  }
+      }
 
     if (net_param.mutable_layer(0)->has_memory_data_param()
 	|| net_param.mutable_layer(1)->has_memory_data_param())
@@ -2128,9 +2171,28 @@ namespace dd
       }
 
     caffe::NetParameter deploy_net_param;
-    caffe::ReadProtoFromTextFile(deploy_file,&deploy_net_param);
+    caffe::ReadProtoFromTextFile(deploy_file,&deploy_net_param);    
 
-    
+    if (this->_inputc._ocr) // crnn
+      {
+	int k = deploy_net_param.layer_size();
+	for (int l=0;l<k;l++)
+	  {
+	    caffe::LayerParameter *lparam = deploy_net_param.mutable_layer(l);
+	    if (lparam->type() == "Reshape")
+	      {
+		lparam->mutable_reshape_param()->mutable_shape()->set_dim(2,timesteps);
+	      }
+	    else if (lparam->type() == "ContinuationIndicator")
+	      {
+		lparam->mutable_continuation_indicator_param()->set_time_step(timesteps);
+	      }
+	    else if (lparam->type() == "InnerProduct") // last layer before ctcloss
+	      {
+		lparam->mutable_inner_product_param()->set_num_output(inputc._alphabet_size);
+	      }
+	  }
+      }
     
     if (deploy_net_param.mutable_layer(2)->type() == "Embed")
       {
@@ -2289,7 +2351,7 @@ namespace dd
 
 	// code below is required when Caffe (weirdly) requires the batch size 
 	// to be a multiple of the training dataset size.
-	if (!inputc._segmentation && !(!inputc._db && typeid(inputc) == typeid(ImgCaffeInputFileConn)))
+	if (!inputc._ocr && !inputc._segmentation && !(!inputc._db && typeid(inputc) == typeid(ImgCaffeInputFileConn)))
 	  {
 	    if (batch_size < inputc.batch_size())
 	      {
@@ -2326,10 +2388,11 @@ namespace dd
 	else
 	  {
 	    batch_size = user_batch_size;
+	    test_iter = std::max(inputc.test_batch_size() / test_batch_size,1);
 	  }
 	    
 	//debug
-	this->_logger->error("batch_size={} / test_batch_size={} / test_iter={}", batch_size, test_batch_size, test_iter);
+	this->_logger->info("batch_size={} / test_batch_size={} / test_iter={}", batch_size, test_batch_size, test_iter);
 	//debug
 
 	if (batch_size == 0)
@@ -2348,7 +2411,6 @@ namespace dd
 	std::string ltype = layer->layer_param().type();
 	std::vector<boost::shared_ptr<Blob<float>>> blblobs = layer->blobs();
 	const std::vector<caffe::Blob<float>*> &tlblobs = _net->top_vecs().at(l);
-	//std::cerr << "lname=" << lname << " / bottom layer blobs size=" << blblobs.size() << std::endl;
 	if (blblobs.empty())
 	  continue;
 	long int lcount = blblobs.at(0)->count();
@@ -2357,14 +2419,12 @@ namespace dd
 	  {
 	    int dwidth = tlblobs.at(0)->width();
 	    int dheight = tlblobs.at(0)->height();
-	    //std::cerr << "dwidth=" << dwidth << " / dheight=" << dheight << std::endl;
 	    lflops = lcount * dwidth * dheight;
 	  }
 	else
 	  {
 	    lflops = lcount;
 	  }
-	//std::cerr << "lname=" << lname << " / ltype=" << ltype << " / lflops=" << lflops << " / lcount=" << lcount << std::endl;
 	flops += lflops;
 	params += lcount;
       }

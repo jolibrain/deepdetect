@@ -139,6 +139,7 @@ namespace dd
       * @param inputc input connector
       * @param test_batch_size current size of the test batches
       * @param has_mean_file whereas testing set uses a mean file (for images)
+      * @param test_iter the number of test iterations (used for ctc)
       * @param out output data object
       */
       void test(caffe::Net<float> *net,
@@ -146,7 +147,8 @@ namespace dd
 	      TInputConnectorStrategy &inputc,
 	      const int &test_batch_size,
 	      const bool &has_mean_file,
-	      APIData &out);
+		const int &test_iter,
+		APIData &out);
 
     /**
      * \brief updates: - solver's paths to data according to current Caffe model
@@ -182,12 +184,14 @@ namespace dd
        * @param inputc the current input constructor that holds the training data
        * @param has_class_weights whether training uses class weights
        * @param ignore_label label to be ignored, -1 otherwise
+       * @param timesteps number of timesteps for recurrent models
        */
       void update_protofile_net(const std::string &net_file,
 				const std::string &deploy_file,
 				const TInputConnectorStrategy &inputc,
 				const bool &has_class_weights,
-				const int &ignore_label);
+				const int &ignore_label,
+				const int &timesteps);
 
     private:
       void update_protofile_classes(caffe::NetParameter &net_param);

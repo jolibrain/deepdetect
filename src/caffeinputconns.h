@@ -40,7 +40,7 @@ namespace dd
   public:
     CaffeInputInterface() {}
     CaffeInputInterface(const CaffeInputInterface &cii)
-      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed),_sequence_txt(cii._sequence_txt),_max_embed_id(cii._max_embed_id),_segmentation(cii._segmentation),_multi_label(cii._multi_label),_ocr(cii._ocr),_root_folder(cii._root_folder) {}
+      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed),_sequence_txt(cii._sequence_txt),_max_embed_id(cii._max_embed_id),_segmentation(cii._segmentation),_multi_label(cii._multi_label),_ocr(cii._ocr),_alphabet_size(cii._alphabet_size),_root_folder(cii._root_folder) {}
     ~CaffeInputInterface() {}
 
     /**
@@ -84,7 +84,8 @@ namespace dd
     int _max_embed_id = -1; /**< in embeddings, the max index. */
     bool _segmentation = false; /**< whether it is a segmentation service. */
     bool _multi_label = false; /**< multi label setup */
-    bool _ocr = false; /** whether it is an OCR service. */
+    bool _ocr = false; /**< whether it is an OCR service. */
+    int _alphabet_size = 0; /**< for sequence to sequence models. */
     std::string _root_folder; /**< root folder for image list layer. */
     std::unordered_map<std::string,std::pair<int,int>> _imgs_size; /**< image sizes, used in detection. */
     std::string _dbfullname = "train.lmdb";
