@@ -40,7 +40,7 @@ namespace dd
   public:
     CaffeInputInterface() {}
     CaffeInputInterface(const CaffeInputInterface &cii)
-      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed),_sequence_txt(cii._sequence_txt),_max_embed_id(cii._max_embed_id),_segmentation(cii._segmentation),_multi_label(cii._multi_label),_ocr(cii._ocr),_alphabet_size(cii._alphabet_size),_root_folder(cii._root_folder) {}
+      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed),_sequence_txt(cii._sequence_txt),_max_embed_id(cii._max_embed_id),_segmentation(cii._segmentation),_multi_label(cii._multi_label),_ctc(cii._ctc),_alphabet_size(cii._alphabet_size),_root_folder(cii._root_folder) {}
     ~CaffeInputInterface() {}
 
     /**
@@ -84,7 +84,7 @@ namespace dd
     int _max_embed_id = -1; /**< in embeddings, the max index. */
     bool _segmentation = false; /**< whether it is a segmentation service. */
     bool _multi_label = false; /**< multi label setup */
-    bool _ocr = false; /**< whether it is an OCR service. */
+    bool _ctc = false; /**< whether it is a CTC / OCR service. */
     int _alphabet_size = 0; /**< for sequence to sequence models. */
     std::string _root_folder; /**< root folder for image list layer. */
     std::unordered_map<std::string,std::pair<int,int>> _imgs_size; /**< image sizes, used in detection. */
@@ -153,8 +153,8 @@ namespace dd
 	_root_folder = ad.get("root_folder").get<std::string>();
       if (ad.has("segmentation"))
 	_segmentation = ad.get("segmentation").get<bool>();
-      if (ad.has("ocr"))
-	_ocr = ad.get("ocr").get<bool>();
+      if (ad.has("ctc"))
+	_ctc = ad.get("ctc").get<bool>();
     }
 
     void transform(const APIData &ad)
@@ -295,7 +295,7 @@ namespace dd
             sourcead.add("source_test",_uris.at(1));
 	      const_cast<APIData&>(ad).add("source",sourcead);
 	    }
-	  else if (_ocr)
+	  else if (_ctc)
 	    {
 	      _dbfullname = _model_repo + "/train";
 	      _test_dbfullname = _model_repo + "/test.h5"; //TODO

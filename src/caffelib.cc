@@ -189,7 +189,7 @@ namespace dd
 
 	// switch to imageDataLayer
 	//TODO: should apply to all templates with images
-	if (!this->_inputc._db && !this->_inputc._segmentation && !this->_inputc._ocr && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
+	if (!this->_inputc._db && !this->_inputc._segmentation && !this->_inputc._ctc && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
 	  {
 	    caffe::LayerParameter *lparam = net_param.mutable_layer(0);
 	    caffe::ImageDataParameter* image_data_parameter = lparam->mutable_image_data_param();
@@ -316,7 +316,7 @@ namespace dd
 	// input size
 	caffe::LayerParameter *lparam = net_param.mutable_layer(1); // test
 	caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(0);
-	if (!this->_inputc._ocr &&(_crop_size > 0 || (this->_inputc.width() != -1 && this->_inputc.height() != -1))) // forced width & height
+	if (!this->_inputc._ctc &&(_crop_size > 0 || (this->_inputc.width() != -1 && this->_inputc.height() != -1))) // forced width & height
 	  {
 	    int width = this->_inputc.width();
 	    int height = this->_inputc.height();
@@ -643,7 +643,7 @@ namespace dd
 	int timesteps = 0;
 	if (ad_mllib.has("timesteps"))
 	  timesteps = ad_mllib.get("timesteps").get<int>();
-	if (timesteps == 0 && inputc._ocr)
+	if (timesteps == 0 && inputc._ctc)
 	  throw MLLibBadParamException("Need to specify timesteps > 0 with sequence (e.g. OCR / CTC) models");
 	update_protofile_net(this->_mlmodel._repo + '/' + this->_mlmodel._model_template + ".prototxt",
 			     this->_mlmodel._repo + "/deploy.prototxt",
@@ -1082,7 +1082,7 @@ namespace dd
 	    std::vector<std::vector<double>> dv_float_data;
 	    try
 	      {
-		if (inputc._ocr)
+		if (inputc._ctc)
 		  {
 		    // do nothing, db input
 		    dv_size = 1;
@@ -1201,7 +1201,7 @@ namespace dd
 	    int scount = lresults[slot]->count();
 	    int scperel = scount / dv_size;
 
-	    if (inputc._ocr) // special case, we're using the accuracy computed from within the network
+	    if (inputc._ctc) // special case, we're using the accuracy computed from within the network
 	      {
 		slot = 0;
 		net_meas += lresults[slot]->cpu_data()[0];
@@ -1304,7 +1304,7 @@ namespace dd
 	ad_res.add("batch_size",tresults);
 	if (_regression)
 	  ad_res.add("regression",_regression);
-	if (inputc._ocr)
+	if (inputc._ctc)
 	  ad_res.add("ctc",true);
       }
     SupervisedOutput::measure(ad_res,ad_out,out);
@@ -1912,7 +1912,7 @@ namespace dd
     caffe::NetParameter *np = sp.mutable_net_param();
     caffe::ReadProtoFromTextFile(sp.net().c_str(),np); //TODO: error on read + use internal caffe ReadOrDie procedure
 
-    _logger->info("input db = {}",inputc._db);
+    this->_logger->info("input db = {}",inputc._db);
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
     if (!(inputc._db) && typeid(inputc) == typeid(ImgCaffeInputFileConn))
       {
@@ -2046,7 +2046,7 @@ namespace dd
     if (_crop_size > 0)
       width = height = _crop_size;
 
-    if (!(this->_inputc._db) && !inputc._ocr && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
+    if (!(this->_inputc._db) && !inputc._ctc && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
       {
             caffe::LayerParameter *lparam = net_param.mutable_layer(0);
             caffe::ImageDataParameter* image_data_parameter = lparam->mutable_image_data_param();
@@ -2057,7 +2057,7 @@ namespace dd
             image_data_parameter->set_new_width(inputc.width());
       }
 
-    if (this->_inputc._ocr) // crnn
+    if (this->_inputc._ctc) // crnn
       {
 	int k = net_param.layer_size();
 	for (int l=0;l<k;l++)
@@ -2173,7 +2173,7 @@ namespace dd
     caffe::NetParameter deploy_net_param;
     caffe::ReadProtoFromTextFile(deploy_file,&deploy_net_param);    
 
-    if (this->_inputc._ocr) // crnn
+    if (this->_inputc._ctc) // crnn
       {
 	int k = deploy_net_param.layer_size();
 	for (int l=0;l<k;l++)
@@ -2351,7 +2351,7 @@ namespace dd
 
 	// code below is required when Caffe (weirdly) requires the batch size 
 	// to be a multiple of the training dataset size.
-	if (!inputc._ocr && !inputc._segmentation && !(!inputc._db && typeid(inputc) == typeid(ImgCaffeInputFileConn)))
+	if (!inputc._ctc && !inputc._segmentation && !(!inputc._db && typeid(inputc) == typeid(ImgCaffeInputFileConn)))
 	  {
 	    if (batch_size < inputc.batch_size())
 	      {

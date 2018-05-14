@@ -484,12 +484,12 @@ namespace dd
       }
     if (train_db)
       {
-	_logger->info("ocr dataset training size={}",clines);
+	_logger->info("ctc/ocr dataset training size={}",clines);
 	_db_batchsize = clines;
       }
     else
       {
-	_logger->info("ocr dataset testing size={}",clines);
+	_logger->info("ctc/ocr dataset testing size={}",clines);
 	_db_testbatchsize = clines;
       }
     _logger->info("ctc output string max size={}",max_ocr_length);
@@ -547,7 +547,7 @@ namespace dd
 		  }
 	      }
 	    
-	    // then come the OCR string
+	    // then come the CTC/OCR string
 	    int cpos = 0;
 	    for (size_t i=1;i<elts.size();i++)
 	      {
