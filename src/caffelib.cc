@@ -1019,7 +1019,8 @@ namespace dd
       throw MLLibBadParamException("no deploy file in " + this->_mlmodel._repo + " for initializing the net");
     
     // test
-    test(_net,ad,inputc,test_batch_size,has_mean_file,test_iter,out);
+    if (!this->_inputc._ctc) // ctc uses the accuracy computed from within the net, can't run test with deploy
+      test(_net,ad,inputc,test_batch_size,has_mean_file,test_iter,out);
     inputc._dv_test.clear();
     inputc._dv_test_sparse.clear();
 
@@ -1963,10 +1964,13 @@ namespace dd
 		if (i == 0)
 		  {
 		    dp->set_source(ad.getobj("db").get("train_db").get<std::string>());
+		    if (dp->has_batch_size() && batch_size != inputc.batch_size() && batch_size > 0)
+		      dp->set_batch_size(user_batch_size);
 		  }
 		else if (i == 1)
 		  {
 		    dp->set_source(ad.getobj("db").get("test_db").get<std::string>());
+		    dp->set_batch_size(test_batch_size);
 		  }
 	      }
 	  }
