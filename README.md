@@ -102,6 +102,7 @@ Current features include:
 - Python client:
   - REST client: https://github.com/beniz/deepdetect/tree/master/clients/python
   - 'a la scikit' bindings: https://github.com/ArdalanM/pyDD
+- Javacript client: https://github.com/jolibrain/deepdetect-js
 - Java client: https://github.com/kfadhel/deepdetect-api-java
 - Early C# client: https://github.com/beniz/deepdetect/pull/98
 
