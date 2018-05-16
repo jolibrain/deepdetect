@@ -842,17 +842,6 @@ namespace dd
           std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
           dVec dpred = dVec::Map(&predictions.at(0), predictions.size());
           dVec dtarg = dVec::Map(&targets.at(0), targets.size());
-
-          /* for (size_t j=0;j<predictions.size();j++) */
-          /*   { */
-          /*     if (targets[j] < 0) // case ignore_label */
-          /*       continue; */
-          /*     total_number++; */
-          /*     double eps = 0.00001; */
-          /*     double tval = (targets[j]< eps)? eps: targets[j]; */
-          /*     double pval = (predictions[j]< eps)? eps: predictions[j]; */
-          /*     kl_divergence += tval * log (tval/pval); */
-          /*   } */
           total_number += (dtarg.array()>=0).count();
           double eps = 0.00001;
           dVec dprede = (dpred.array() < eps).select(eps, dpred);
@@ -876,16 +865,6 @@ namespace dd
           std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
           dVec dpred = dVec::Map(&predictions.at(0), predictions.size());
           dVec dtarg = dVec::Map(&targets.at(0), targets.size());
-          /* for (size_t j=0;j<predictions.size();j++) */
-          /*   { */
-          /*     if (targets[j] < 0) // case ignore_label */
-          /*       continue; */
-          /*     total_number++; */
-          /*     double eps = 0.00001; */
-          /*     double tval = (targets[j]< eps)? eps: targets[j]; */
-          /*     double pval = (predictions[j]< eps)? eps: predictions[j]; */
-          /*     js_divergence += 0.5 * (tval * log(2*tval/(tval+pval))) + 0.5 * (pval * log(2*pval/(tval+pval))); */
-          /*   } */
           total_number += (dtarg.array()>=0).count();
           double eps = 0.00001;
           dVec dprede = (dpred.array() < eps).select(eps, dpred);
@@ -912,14 +891,6 @@ namespace dd
           dVec dpred = dVec::Map(&predictions.at(0), predictions.size());
           dVec dtarg = dVec::Map(&targets.at(0), targets.size());
           total_number += (dtarg.array()>=0).count();
-          /* for (size_t j=0;j<predictions.size();j++) */
-          /*   { */
-          /*     if (targets[j] < 0) // case ignore_label */
-          /*       continue; */
-          /*     total_number++; */
-          /*     double dif = targets[j] - predictions[j]; */
-          /*     was += dif*dif; */
-          /*   } */
           dVec dif = dtarg - dpred;
           dif = (dtarg.array() < 0).select(0, dif);
           was += (dif.array() * dif.array()).sum();
@@ -941,16 +912,6 @@ namespace dd
           dVec dpred = dVec::Map(&predictions.at(0), predictions.size());
           dVec dtarg = dVec::Map(&targets.at(0), targets.size());
           total_number += (dtarg.array()>=0).count();
-          /* for (size_t j=0;j<predictions.size();j++) */
-          /*   { */
-          /*     if (targets[j] < 0) // case ignore_label */
-          /*       continue; */
-          /*     total_number++; */
-          /*     double dif = targets[j] - predictions[j]; */
-          /*     dif = fabs(dif); */
-          /*     if (dif > ks) */
-          /*       ks = dif; */
-          /*   } */
           dVec dif = dtarg-dpred;
           dif = (dtarg.array() < 0).select(0, dif);
           ks = dif.array().abs().maxCoeff();
@@ -1066,17 +1027,6 @@ namespace dd
           dVec dif = dtarg - dpred;
           dif = (dtarg.array() < 0).select(0, dif);
           ssres += (dif.array() * dif.array() ).sum();
-
-          /* for (size_t j=0;j<predictions.size();j++) */
-          /*   { */
-          /*     if (targets[j] < 0) // case ignore_label */
-          /*       continue; */
-          /*     total_number++; */
-          /*     tmean += targets[j]; */
-          /*     double dif = targets[j] - predictions[j]; */
-          /*     ssres += dif*dif; */
-
-          /*   } */
         }
       tmean /= (double)total_number;
 
@@ -1089,12 +1039,6 @@ namespace dd
           std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
           dVec dpred = dVec::Map(&predictions.at(0), predictions.size());
           dVec dtarg = dVec::Map(&targets.at(0), targets.size());
-          /* for (size_t j=0;j<predictions.size();j++) */
-          /*   { */
-          /*     if (targets[j] < 0) */
-          /*       continue; */
-          /*     sstot += (targets[j] - tmean) *  (targets[j] - tmean); */
-          /*   } */
           dVec temp = (dtarg.array() < 0).select(0, dtarg.array() - tmean);
           sstot += (temp.array() * temp.array()).sum();
         }
@@ -1115,16 +1059,6 @@ namespace dd
           dVec dpred = dVec::Map(&predictions.at(0), predictions.size());
           dVec dtarg = dVec::Map(&targets.at(0), targets.size());
           total_number += (dtarg.array()>=0).count();
-          /* for (size_t j=0;j<predictions.size();j++) */
-          /*   { */
-          /*     if (targets[j] < 0) // case ignore_label */
-          /*       continue; */
-          /*     total_number++; */
-          /*     double dif = fabs(targets[j] - predictions[j]); */
-          /*     for (unsigned int k=0; k<deltas.size(); ++k) */
-          /*       if (dif < deltas[k]) */
-          /*         delta_scores[k]++; */
-          /*   } */
           dVec dif = (dtarg.array() < 0).select(10, (dtarg-dpred).array().abs());
           for (unsigned int k=0; k<deltas.size(); ++k)
             delta_scores[k] += (dif.array() < deltas[k]).count();
