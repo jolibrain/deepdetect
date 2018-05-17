@@ -37,7 +37,6 @@ DEFINE_int32(jsonapi,0,"whether to use the JSON command line API (0: HTTP server
 int main(int argc, char *argv[])
 {
   google::ParseCommandLineFlags(&argc, &argv, true);
-  //::google::InitGoogleLogging(argv[0]);
 #ifdef USE_XGBOOST
   rabit::Init(argc,argv);
 #endif

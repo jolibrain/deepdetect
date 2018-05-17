@@ -499,6 +499,7 @@ namespace dd
   {
     google::ParseCommandLineFlags(&argc, &argv, true);
     std::signal(SIGINT,terminate);
+    JsonAPI::boot(argc,argv);
     return start_server(FLAGS_host,FLAGS_port,FLAGS_nthreads);
   }
 
