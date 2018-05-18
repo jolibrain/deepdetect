@@ -555,7 +555,7 @@ namespace dd
 		char *ostr_c = (char*)ostr.c_str();
 		char *ostr_ci = ostr_c;
 		char *end = ostr_c + strlen(ostr_c);
-		while(ostr_ci<end)
+		while(ostr_ci<end && cpos < max_ocr_length)
 		{
 		    // check / add / get id from alphabet
 		    uint32_t c = utf8::next(ostr_ci,end);
@@ -570,10 +570,12 @@ namespace dd
 			else
 			  {
 			    _logger->warn("character {} in test set not found in training set",c);
-			     nc = 0; // space, blank
+			    nc = 0; // space, blank
 			  }
 		      }
 		    else nc = (*ait).second;
+		    /*if (!train_db)
+		      std::cerr << "nc=" << nc << std::endl;*/
 		    ocr_data[nline][cpos] = static_cast<float>(nc);
 		    ++cpos;
 		}
