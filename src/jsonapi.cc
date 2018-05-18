@@ -27,6 +27,8 @@
 #include "ext/rapidjson/reader.h"
 #include "ext/rapidjson/writer.h"
 
+DEFINE_string(service_start_list,"","list of JSON calls to be executed at startup");
+
 namespace dd
 {
   std::string JsonAPI::_json_blob_fname = "model.json";
@@ -42,11 +44,61 @@ namespace dd
 
   int JsonAPI::boot(int argc, char *argv[])
   {
-    (void)argc;
-    (void)argv;
-    return 0; // does nothing, in practice, class should be derived.
+    google::ParseCommandLineFlags(&argc, &argv, true);
+    if (!FLAGS_service_start_list.empty())
+      service_autostart(FLAGS_service_start_list);
+    return 0;
   }
 
+  JDoc JsonAPI::service_autostart(const std::string &autostart_file)
+  {
+    if (autostart_file.empty())
+      return 0;
+    if (!fileops::file_exists(autostart_file))
+      {
+	_logger->error("JSON autostart file not found: {}",autostart_file);
+	return dd_bad_request_400();
+      }
+    std::ifstream injsonfile(autostart_file);
+    if (!injsonfile.is_open())
+      {
+	_logger->error("Failed opening JSON autostart file {}",autostart_file);
+	return dd_internal_error_500();
+      }
+
+    std::vector<JDoc> calls_output;
+    std::string line;
+    int lines = 0;
+    while(std::getline(injsonfile,line))
+      {
+	// file format is service_create;sname;JSON or service_predict;JSON
+	std::vector<std::string> elts = dd_utils::split(line,';');
+	std::string api_call = elts.at(0);
+	if ((api_call == "service_create" && elts.size() != 3)
+	    || api_call == "service_predict" && elts.size() != 2)
+	  {
+	    _logger->error("Error parsing autostart JSON file {} line {}: wrong number of elements",autostart_file,lines);
+	    return dd_bad_request_400();
+	  }
+	
+	// dispatch to service calls.
+	if (api_call == "service_create")
+	  {
+	    std::string sname = elts.at(1);
+	    std::string body = elts.at(2);
+	    calls_output.push_back(service_create(sname,body));
+	  }
+	else if (api_call == "service_predict")
+	  {
+	    std::string body = elts.at(1);
+	    calls_output.push_back(service_predict(body));
+	  }
+	++lines;
+      }
+    _logger->info("Successfully executed calls from autostart JSON file {}",autostart_file);
+    return dd_created_201();
+  }
+  
   void JsonAPI::render_status(JDoc &jst,
 			      const uint32_t &code, const std::string &msg,
 			      const uint32_t &dd_code, const std::string &dd_msg) const

@@ -42,6 +42,12 @@ namespace dd
     int boot(int argc, char *argv[]);
 
     /**
+     * \brief service autostart from JSON file
+     * @param autostart_file JSON file with service API call and JSON body
+     */
+    JDoc service_autostart(const std::string &autostart_file);
+    
+    /**
      * \brief error status generation
      * @param jst JSON document object
      * @param code error HTTP code
