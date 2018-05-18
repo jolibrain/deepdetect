@@ -120,7 +120,7 @@ namespace dd
     std::string _mlmodel_template_repo = "templates/";
     std::unordered_map<int,std::string> _hcorresp; /**< table of class correspondences. */
     std::string _corresp; /**< file name of the class correspondences (e.g. house / 23) */
-
+    
 #ifdef USE_SIMSEARCH
     SearchEngine<AnnoySE> *_se = nullptr;
 #endif

@@ -28,4 +28,4 @@ if (USE_TSNE)
 endif()
 
 add_executable (dede dede.cc)
-target_link_libraries (dede ddetect ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} cppnetlib-uri curlpp curl crypto ssl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TF_LIB_DEPS} ${TSNE_LIB_DEPS})
+target_link_libraries (dede ddetect ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} cppnetlib-uri curlpp curl crypto ssl hdf5_cpp ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TF_LIB_DEPS} ${TSNE_LIB_DEPS})

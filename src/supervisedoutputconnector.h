@@ -460,13 +460,14 @@ namespace dd
       bool regression = ad_res.has("regression");
       bool segmentation = ad_res.has("segmentation");
       bool multilabel = ad_res.has("multilabel");
+      bool ctc = ad_res.has("ctc");
       if (ad_out.has("measure"))
 	{
 	  std::vector<std::string> measures = ad_out.get("measure").get<std::vector<std::string>>();
       	  bool bauc = (std::find(measures.begin(),measures.end(),"auc")!=measures.end());
 	  bool bacc = false;
 
-	  if (!multilabel && !segmentation)
+	  if (!multilabel && !segmentation && !ctc)
 	    {
 	      for (auto s: measures)
 		if (s.find("acc")!=std::string::npos)
@@ -489,6 +490,10 @@ namespace dd
       bool mlsoft_dc = false;
       bool mlsoft_r2 = false;
       bool mlsoft_deltas = false;
+      bool net_meas = false;
+      
+      if (ctc)
+	net_meas = true;
        if (segmentation)
 	    baccv = (std::find(measures.begin(),measures.end(),"acc")!=measures.end());
 	  if (multilabel && !regression)
@@ -510,6 +515,11 @@ namespace dd
 	      mlsoft_r2 = (std::find(measures.begin(),measures.end(),"r2")!=measures.end());
 	      mlsoft_deltas = (std::find(measures.begin(),measures.end(),"deltas")!=measures.end());
 	    }
+	}
+      if (net_meas) // measure is coming from the net directly
+	{
+	  double acc = straight_meas(ad_res);
+	  meas_out.add("acc",acc);
 	}
 	  if (bauc) // XXX: applies two binary classification problems only
 	    {
@@ -653,6 +663,15 @@ namespace dd
 	out.add("measure",meas_out);
     }
 
+    static double straight_meas(const APIData &ad)
+    {
+      APIData bad = ad.getobj("0");
+      std::vector<double> acc = bad.get("pred").get<std::vector<double>>();
+      if (acc.empty())
+	return 0.0;
+      else return acc.at(0);
+    }
+    
     // measure: ACC
     static std::map<std::string,double> acc(const APIData &ad,
 					    const std::vector<std::string> &measures)

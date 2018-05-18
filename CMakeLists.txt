@@ -11,9 +11,6 @@ include(ExternalProject)
 
 set (deepdetect_VERSION_MAJOR 0)
 set (deepdetect_VERSION_MINOR 1)
-#set (CAFFE_INC_DIR /home/infantes/caffe/include /home/infantes/caffe/build/src)
-set (HDF5_LIB /usr/lib/x86_64-linux-gnu/hdf5/serial)
-#set (CAFFE_LIB_DIR /home/infantes/caffe/build/lib /home/infantes/caffe/build/src ${HDF5_LIB})
 
 # options
 OPTION(BUILD_TESTS "Should the tests be built")
@@ -61,6 +58,11 @@ endif()
 set(eigen_archive_hash "50812b426b7c")
 
 include_directories("${EIGEN3_INCLUDE_DIR}")
+
+# hdf5
+set (HDF5_LIB /usr/lib/x86_64-linux-gnu/hdf5/serial)
+set (HDF5_INCLUDE /usr/include/hdf5/serial)
+include_directories(${HDF5_INCLUDE})
 
 # dependency on Boost
 find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system iostreams)
