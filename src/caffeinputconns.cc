@@ -574,8 +574,6 @@ namespace dd
 			  }
 		      }
 		    else nc = (*ait).second;
-		    /*if (!train_db)
-		      std::cerr << "nc=" << nc << std::endl;*/
 		    ocr_data[nline][cpos] = static_cast<float>(nc);
 		    ++cpos;
 		}
