@@ -11,6 +11,7 @@ include(ExternalProject)
 
 set (deepdetect_VERSION_MAJOR 0)
 set (deepdetect_VERSION_MINOR 1)
+set (HDF5_LIB /usr/lib/x86_64-linux-gnu/hdf5/serial)
 
 # options
 OPTION(BUILD_TESTS "Should the tests be built")
@@ -308,6 +309,7 @@ endif()
 # so that we will find dd_config.h
 include_directories("${PROJECT_BINARY_DIR}")
 include_directories(${CAFFE_INC_DIR} ${XGBOOST_INC_DIR} ${TSNE_INC_DIR})
+include_directories(${CMAKE_SOURCE_DIR}/src/backends/caffe ${CMAKE_SOURCE_DIR}/backends/xgb ${CMAKE_SOURCE_DIR}/backends/tf ${CMAKE_SOURCE_DIR}/backends/tsne)
 
 # main library, main & tests
 include_directories ("${PROJECT_SOURCE_DIR}/src")
