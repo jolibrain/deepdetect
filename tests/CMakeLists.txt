@@ -184,7 +184,7 @@ if (USE_TF)
   endif()
 
   add_executable(ut_tfapi ut-tfapi.cc)
-  target_link_libraries(ut_tfapi ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
+  target_link_libraries(ut_tfapi ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc curlpp curl hdf5_cpp ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
   add_test(
     NAME ut_tfapi
     COMMAND ut_tfapi
