@@ -40,7 +40,7 @@ namespace dd
   public:
     CaffeInputInterface() {}
     CaffeInputInterface(const CaffeInputInterface &cii)
-      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed),_sequence_txt(cii._sequence_txt),_max_embed_id(cii._max_embed_id),_segmentation(cii._segmentation),_multi_label(cii._multi_label),_root_folder(cii._root_folder) {}
+      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed),_sequence_txt(cii._sequence_txt),_max_embed_id(cii._max_embed_id),_segmentation(cii._segmentation),_multi_label(cii._multi_label),_ctc(cii._ctc),_alphabet_size(cii._alphabet_size),_root_folder(cii._root_folder) {}
     ~CaffeInputInterface() {}
 
     /**
@@ -84,6 +84,8 @@ namespace dd
     int _max_embed_id = -1; /**< in embeddings, the max index. */
     bool _segmentation = false; /**< whether it is a segmentation service. */
     bool _multi_label = false; /**< multi label setup */
+    bool _ctc = false; /**< whether it is a CTC / OCR service. */
+    int _alphabet_size = 0; /**< for sequence to sequence models. */
     std::string _root_folder; /**< root folder for image list layer. */
     std::unordered_map<std::string,std::pair<int,int>> _imgs_size; /**< image sizes, used in detection. */
     std::string _dbfullname = "train.lmdb";
@@ -151,6 +153,8 @@ namespace dd
 	_root_folder = ad.get("root_folder").get<std::string>();
       if (ad.has("segmentation"))
 	_segmentation = ad.get("segmentation").get<bool>();
+      if (ad.has("ctc"))
+	_ctc = ad.get("ctc").get<bool>();
     }
 
     void transform(const APIData &ad)
@@ -257,6 +261,8 @@ namespace dd
 		    _multi_label = ad_input.get("multi_label").get<bool>();
 		  if (ad_input.has("root_folder"))
 		    _root_folder = ad_input.get("root_folder").get<std::string>();
+		  if (ad_input.has("align"))
+		    _align = ad_input.get("align").get<bool>();
 		}
 	      ad_mllib = ad_param.getobj("mllib");
 	    }
@@ -288,6 +294,29 @@ namespace dd
 	      if (_uris.size() > 1)
             sourcead.add("source_test",_uris.at(1));
 	      const_cast<APIData&>(ad).add("source",sourcead);
+	    }
+	  else if (_ctc)
+	    {
+	      _dbfullname = _model_repo + "/train";
+	      _test_dbfullname = _model_repo + "/test.h5"; //TODO
+	      try
+		{
+		  get_data(ad);
+		}
+	      catch(InputConnectorBadParamException &ex) // in case the db is in the net config
+		{
+		  throw ex;
+		}
+
+	      // read images list and create dbs
+	      images_to_hdf5(_uris,_dbfullname,_test_dbfullname);
+
+	      // enrich data object with db files location
+	      APIData dbad;
+	      dbad.add("train_db",_model_repo + "/training.txt");
+	      if (_uris.size() > 1 || _test_split > 0.0)
+		dbad.add("test_db",_model_repo + "/testing.txt");
+	      const_cast<APIData&>(ad).add("db",dbad);
 	    }
 	  else // more complicated, since images can be heavy, a db is built so that it is less costly to iterate than the filesystem, unless image data layer is used (e.g. multi-class image training)
 	    {
@@ -390,6 +419,17 @@ namespace dd
 				      const std::string &backend,
 				      const bool &encoded,
 				      const std::string &encode_type);
+
+    void images_to_hdf5(const std::vector<std::string> &img_lists,
+			const std::string &traindbname,
+			const std::string &testdbname);
+
+    void write_images_to_hdf5(const std::string &inputfilename,
+			      const std::string &dbfullbame,
+			      const std::string &dblistfilename,
+			      std::unordered_map<uint32_t,int> &alphabet,
+			      int &max_ocr_length,
+			      const bool &train_db);
     
     int compute_images_mean(const std::string &dbname,
 			    const std::string &meanfile,
@@ -410,6 +450,7 @@ namespace dd
     std::vector<caffe::Datum>::const_iterator _dt_vit;
     std::vector<std::pair<std::string,std::string>> _segmentation_data_lines;
     int _dt_seg = 0;
+    bool _align = false;
   };
 
   /**
