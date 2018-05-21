@@ -41,6 +41,7 @@
 DEFINE_string(host,"localhost","host for running the server");
 DEFINE_string(port,"8080","server port");
 DEFINE_int32(nthreads,10,"number of HTTP server threads");
+DEFINE_string(allow_origin,"","Access-Control-Allow-Origin for the server");
 
 using namespace boost::iostreams;
 
@@ -235,6 +236,13 @@ public:
 	response.headers.resize(3);
 	response.headers[2].name = "Content-Encoding";
 	response.headers[2].value = "gzip";
+      }
+    if (!FLAGS_allow_origin.empty())
+      {
+	int pos = response.headers.size()+2;
+	response.headers.resize(pos);
+	response.headers[pos-1].name = "Access-Control-Allow-Origin";
+	response.headers[pos-1].value = FLAGS_allow_origin;
       }
     response.status = static_cast<http_server::response::status_type>(code);
   }
@@ -441,6 +449,9 @@ namespace dd
     _gdd_server = _dd_server;
     _logger->info("Running DeepDetect HTTP server on {}:{}",host,port);
 
+    if (!FLAGS_allow_origin.empty())
+      _logger->info("Allowing origin from {}",FLAGS_allow_origin);
+    
     std::vector<std::thread> ts;
     for (int i=0;i<nthreads;i++)
       ts.push_back(std::thread(std::bind(&http_server::run,_dd_server)));
