@@ -193,6 +193,12 @@ namespace dd
 				const int &ignore_label,
 				const int &timesteps);
 
+      /**
+       * \brief updates the softmax temperature
+       * @param mllib apidata object
+       */
+      void update_deploy_protofile_softmax(const APIData &ad);
+      
     private:
       void update_protofile_classes(caffe::NetParameter &net_param);
 
