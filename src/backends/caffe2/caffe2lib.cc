@@ -189,6 +189,37 @@ namespace dd {
 #endif
 	option.set_device_type(caffe2::CPU);
 
+      std::string extract = _state.extract_layer();
+      if (!extract.empty()) { // unsupervised
+
+	// Creation of a shorter net which stop when 'extract' have been generated
+	caffe2::NetDef short_net;
+	short_net.set_name(_predict_net.name());
+	short_net.mutable_external_input()->CopyFrom(_predict_net.external_input());
+	short_net.add_external_output(extract);
+	auto ops = _predict_net.op();
+	int last_op = ops.size() - 1;
+
+	while (true) {
+
+	  caffe2::OperatorDef &op = ops[last_op];
+	  auto outputs = op.output();
+	  if (std::find(outputs.begin(), outputs.end(), extract) != outputs.end()) {
+	    break; // Found where 'extract' blob is last modified
+	  }
+	  if (!last_op--) { // 'extract' blob never generated
+	    throw MLLibBadParamException("Error extracting '" + extract + "' blob");
+	  }
+
+	}
+
+	for (int i = 0; i <= last_op; ++i) {
+	  short_net.add_op()->CopyFrom(ops[i]);
+	}
+
+	_predict_net.CopyFrom(short_net);
+      }
+
       for (caffe2::OperatorDef &op : *_predict_net.mutable_op()) {
 	op.mutable_device_option()->CopyFrom(option);
       }
@@ -271,6 +302,10 @@ namespace dd {
       }
     }
 
+    if (ad_mllib.has("extract_layer")) {
+      _state.set_extract_layer(ad_mllib.get("extract_layer").get<std::string>());
+    }
+
     UPDATE_GPU_STATE(ad_mllib);
 
     if (_state.changed()) {
@@ -301,6 +336,7 @@ namespace dd {
       AUTOTYPED_TENSOR({
 	  _workspace->GetBlob(_input_blob)->GetMutable<Tensor>()->CopyFrom(tensor_input);
 	});
+
     } catch(std::exception &e) {
       this->_logger->error("exception while filling up network for prediction");
       throw;
@@ -314,11 +350,15 @@ namespace dd {
 
       CAFFE_ENFORCE(_workspace->RunNetOnce(_predict_net));
 
-      // If the "outputlayer" mllib parameter was not set
-      // We'll use instead the first external_output found in the net.
-      std::string output_blob = _output_blob;
-      if (output_blob.empty()) {
-	output_blob = _predict_net.external_output()[0];
+      std::string output_blob = _state.extract_layer();
+      if (output_blob.empty()) { // supervised
+
+	// If the "outputlayer" mllib parameter was not set
+	// We'll use instead the first external_output found in the net.
+	output_blob = _output_blob;
+	if (output_blob.empty()) {
+	  output_blob = _predict_net.external_output()[0];
+	}
       }
 
       caffe2::TensorCPU tensor_output;
@@ -334,11 +374,12 @@ namespace dd {
       }
 
     } catch(std::exception &e) {
-      this->_logger->error("Error while proceeding with supervised prediction forward pass, not enough memory? {}",e.what());
+      this->_logger->error("Error while proceeding with prediction forward pass, not enough memory? {}",e.what());
       throw;
     }
 
     for (const std::vector<float> &result : results) {
+
       APIData rad;
       if (!inputc._ids.empty()) {
 	rad.add("uri", inputc._ids.at(vrad.size()));
@@ -346,19 +387,29 @@ namespace dd {
 	rad.add("uri", std::to_string(vrad.size()));
       }
       rad.add("loss", loss);
-      std::vector<double> probs;
-      std::vector<std::string> cats;
-      for (size_t i = 0; i < result.size(); ++i) {
-	float prob = result[i];
-	if (prob < confidence_threshold)
-	  continue;
-	probs.push_back(prob);
-	cats.push_back(this->_mlmodel.get_hcorresp(i));
+
+      if (_state.extract_layer().empty()) { // supervised
+
+	std::vector<double> probs;
+	std::vector<std::string> cats;
+	for (size_t i = 0; i < result.size(); ++i) {
+	  float prob = result[i];
+	  if (prob < confidence_threshold)
+	    continue;
+	  probs.push_back(prob);
+	  cats.push_back(this->_mlmodel.get_hcorresp(i));
+	}
+	rad.add("probs", probs);
+	rad.add("cats", cats);
+
+      } else { // unsupervised
+	std::vector<double> vals(result.begin(), result.end());
+	rad.add("vals", vals);
       }
-      rad.add("probs", probs);
-      rad.add("cats", cats);
+
       vrad.push_back(rad);
     }
+
     tout.add_results(vrad);
     tout.finalize(ad.getobj("parameters").getobj("output"), out,
 		  static_cast<MLModel*>(&this->_mlmodel));
@@ -368,4 +419,5 @@ namespace dd {
   }
 
   template class Caffe2Lib<ImgCaffe2InputFileConn,SupervisedOutput,Caffe2Model>;
+  template class Caffe2Lib<ImgCaffe2InputFileConn,UnsupervisedOutput,Caffe2Model>;
 }

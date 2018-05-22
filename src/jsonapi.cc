@@ -442,6 +442,14 @@ namespace dd
 		if (JsonAPI::store_json_blob(c2model._repo,jstr)) // store successful call json blob
 		  _logger->error("couldn't write {} file in model repository {}",JsonAPI::_json_blob_fname,c2model._repo);
 	      }
+	    else if (type == "unsupervised")
+	      {
+		if (input == "image")
+		  add_service(sname,std::move(MLService<Caffe2Lib,ImgCaffe2InputFileConn,UnsupervisedOutput,Caffe2Model>(sname,c2model,description)),ad);
+		else return dd_input_connector_not_found_1004();
+		if (JsonAPI::store_json_blob(c2model._repo,jstr)) // store successful call json blob
+		  _logger->error("couldn't write {} file in model repository {}",JsonAPI::_json_blob_fname,c2model._repo);
+	      }
 	    else
 	      {
 		return dd_service_bad_request_1006();

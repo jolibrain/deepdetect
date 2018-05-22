@@ -63,6 +63,7 @@ namespace dd {
    *           - training or prediction
    *           - cpu or gpu
    *           - gpu ids
+   *           - layer to extract
    *        Each one of these has a getter and two setter (current value, and default value).
    *        The goals of this class are to allow a simple flag management,
    *        and to provide a quick way to know if the nets need
@@ -82,6 +83,7 @@ namespace dd {
     REGISTER_CONFIG(bool, is_gpu, false);
     REGISTER_CONFIG(bool, is_training, false);
     REGISTER_CONFIG(std::vector<int>, gpu_ids, {0});
+    REGISTER_CONFIG(std::string, extract_layer, "");
 
   public:
 
@@ -90,6 +92,7 @@ namespace dd {
       init_is_gpu();
       init_is_training();
       init_gpu_ids();
+      init_extract_layer();
     }
 
     /**
