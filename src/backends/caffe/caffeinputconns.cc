@@ -250,7 +250,20 @@ namespace dd
       return;
     }
   vector<std::pair<std::string, std::vector<float> > > lines;
-    caffe::ReadImagesList(test_lst,&lines);
+  try
+    {
+      caffe::ReadImagesList(test_lst,&lines);
+    }
+  catch (std::exception &e)
+    {
+      _logger->error("failed reading image list for image data layer");
+      throw InputConnectorBadParamException("failed reading image list for image data layer");
+    }
+  if (lines.empty())
+    {
+      _logger->error("empty data from {}",test_lst);
+      throw InputConnectorBadParamException("empty data from " + test_lst);
+    }
     std::vector<std::pair<std::string,int>> test_lfiles_1;
     std::vector<std::pair<std::string,std::vector<float>>> test_lfiles_n;
     int nlabels = (*lines.begin()).second.size();
@@ -278,17 +291,20 @@ namespace dd
     std::unique_ptr<db::Transaction> txn(db->NewTransaction());
     
     // Storing to db
-    Datum datum;
     int count = 0;
     const int kMaxKeyLength = 256;
     char key_cstr[kMaxKeyLength];
     
     for (int line_id = 0; line_id < (int)lfiles.size(); ++line_id) {
+      Datum datum;
       bool status;
       std::string enc = encode_type;
       if (encoded && !enc.size()) {
 	enc = guess_encoding(lfiles[line_id].first);
       }
+      else if (!encoded)
+	enc = "";
+      //TODO: read unchanged
       status = ReadImageToDatum(lfiles[line_id].first,
 				lfiles[line_id].second, _height, _width, !_bw,
 				enc, &datum);
@@ -297,7 +313,7 @@ namespace dd
       // sequential
       int length = snprintf(key_cstr, kMaxKeyLength, "%08d_%s", line_id,
 			    lfiles[line_id].first.c_str());
-      
+
       // put in db
       std::string out;
       if(!datum.SerializeToString(&out))
