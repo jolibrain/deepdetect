@@ -44,9 +44,9 @@ if [ "$TRAVIS_OS_NAME" = 'linux' ]; then
         ################
         sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
         sudo apt-get update
-        $APT_INSTALL_CMD g++-5
-        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 60 \
-            --slave /usr/bin/g++ g++ /usr/bin/g++-5
+        $APT_INSTALL_CMD g++-4.9
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 60 \
+            --slave /usr/bin/g++ g++ /usr/bin/g++-4.9
 
 	##################
         # Install spdlog #
