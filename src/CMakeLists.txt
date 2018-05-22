@@ -15,6 +15,13 @@ if (USE_CAFFE2)
     backends/caffe2/caffe2lib.cc
     backends/caffe2/caffe2model.cc
     backends/caffe2/caffe2inputimg.cc
+    backends/caffe2/nettools/fillers_and_optimizers.cc
+    backends/caffe2/nettools/devices_and_operators.cc
+    backends/caffe2/nettools/gradients.cc
+    backends/caffe2/nettools/workspace.cc
+    backends/caffe2/nettools/internal.cc
+    backends/caffe2/nettools/others.cc
+    backends/caffe2/nettools/debug.cc
     )
 endif()
 if (USE_XGBOOST)

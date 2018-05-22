@@ -29,6 +29,24 @@
 
 DEFINE_string(service_start_list,"","list of JSON calls to be executed at startup");
 
+//XXX <<< Propositions to make things less dense in 'service_create' (could be used for each mllib)
+
+#define MLSERVICE(lib, input, output, model)					\
+  MLService<lib##Lib, input##lib##InputFileConn, output##Output, lib##Model>	\
+  (sname, model, description)
+
+#define STORE_MODEL(model)							\
+  /* store successful call json blob */						\
+  if (JsonAPI::store_json_blob(model._repo, jstr))				\
+    _logger->error("couldn't write {} file in model repository {}",		\
+		   JsonAPI::_json_blob_fname, model._repo);			\
+  /* store model configuration json blob */					\
+  if (store_config && JsonAPI::store_json_config_blob(model._repo, jstr))	\
+    _logger->error("couldn't write {} file in model repository {}",		\
+		   JsonAPI::_json_config_blob_fname, model._repo);
+
+//XXX >>>
+
 namespace dd
 {
   std::string JsonAPI::_json_blob_fname = "model.json";
@@ -450,34 +468,31 @@ namespace dd
 		return dd_service_bad_request_1006();
 	      }
 	  }
-#ifdef USE_CAFFE2
-	else if (mllib == "caffe2")
-	  {
-	    Caffe2Model c2model(ad_model);
-	    if (type == "supervised")
-	      {
-		if (input == "image")
-		  add_service(sname,std::move(MLService<Caffe2Lib,ImgCaffe2InputFileConn,SupervisedOutput,Caffe2Model>(sname,c2model,description)),ad);
-		else return dd_input_connector_not_found_1004();
-		if (JsonAPI::store_json_blob(c2model._repo,jstr)) // store successful call json blob
-		  _logger->error("couldn't write {} file in model repository {}",JsonAPI::_json_blob_fname,c2model._repo);
-		if (store_config)
-		  if (JsonAPI::store_json_config_blob(c2model._repo,jstr))
-		    _logger->error("couldn't write {} file in model repository {}",JsonAPI::_json_config_blob_fname,c2model._repo);
-	      }
-	    else if (type == "unsupervised")
-	      {
-		if (input == "image")
-		  add_service(sname,std::move(MLService<Caffe2Lib,ImgCaffe2InputFileConn,UnsupervisedOutput,Caffe2Model>(sname,c2model,description)),ad);
-		else return dd_input_connector_not_found_1004();
-		if (JsonAPI::store_json_blob(c2model._repo,jstr)) // store successful call json blob
-		  _logger->error("couldn't write {} file in model repository {}",JsonAPI::_json_blob_fname,c2model._repo);
-	      }
-	    else
-	      {
-		return dd_service_bad_request_1006();
-	      }
-	  }
+#ifdef USE_CAFFE2 //XXX Remove macros ?
+
+	else if (mllib == "caffe2") {
+	  Caffe2Model c2model(ad_model);
+	  if (type == "supervised") {
+
+	    if (input == "image")
+	      add_service(sname, std::move(MLSERVICE(Caffe2, Img, Supervised, c2model)), ad);
+	    else {
+	      return dd_input_connector_not_found_1004();
+	    }
+	    STORE_MODEL(c2model);
+
+	  } else if (type == "unsupervised") {
+
+	    if (input == "image")
+	      add_service(sname, std::move(MLSERVICE(Caffe2, Img, Unsupervised, c2model)), ad);
+	    else {
+	      return dd_input_connector_not_found_1004();
+	    }
+	    STORE_MODEL(c2model);
+
+	  } else return dd_service_bad_request_1006(); // unknown service type
+	}
+
 #endif // USE_CAFFE2
 #ifdef USE_TF
 	else if (mllib == "tensorflow" || mllib == "tf")

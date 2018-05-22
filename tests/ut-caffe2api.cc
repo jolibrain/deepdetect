@@ -34,7 +34,7 @@ using namespace dd;
 
 #define RESPONSE(code, msg) TO_STRING({"status":{"code":code,"msg":msg}})
 
-#define CREATE(type, repo, std) TO_STRING({		\
+#define CREATE(type, repo, std, nclasses) TO_STRING({	\
       "mllib": "caffe2",				\
       "description": "my classifier",			\
       "type": type,					\
@@ -49,7 +49,8 @@ using namespace dd;
 	  "std": std					\
 	},						\
 	"mllib": {					\
-	  "gpu": true					\
+	  "gpu": true,					\
+	  "nclasses": nclasses				\
 	}						\
       }							\
     })
@@ -74,14 +75,36 @@ using namespace dd;
 	  },						\
 	  data)
 
+#define TRAIN(service, iter, test, measures...) TO_STRING({		\
+      "service": service,						\
+      "async": false,							\
+      "parameters": {							\
+	"mllib": {							\
+	  "solver": {							\
+	    "iterations": iter,						\
+	    "test_interval": test					\
+	  }								\
+	},								\
+	"output": {							\
+	  "measure": [ measures ]					\
+        }								\
+      }									\
+    })
+
 static const std::string ok_str = RESPONSE(200, "ok");
 static const std::string created_str = RESPONSE(201, "Created");
 static const std::string bad_param_str = RESPONSE(400, "BadRequest");
 static const std::string not_found_str = RESPONSE(404, "NotFound");
 
-#define CREATE_RESNET50(type) CREATE(type, "../examples/caffe2/resnet_50", 255.0)
-static const std::string resnet50_supervised = CREATE_RESNET50("supervised");
-static const std::string resnet50_unsupervised = CREATE_RESNET50("unsupervised");
+#define CREATE_RESNET50(type, suffix)					\
+  CREATE(type, "../examples/caffe2/resnet_50"##suffix, 255.0, 1000)
+
+static const std::string supervised =
+  CREATE("supervised", "../examples/caffe2/resnet_50", 255.0, 1000);
+static const std::string unsupervised =
+  CREATE("unsupervised", "../examples/caffe2/resnet_50", 255.0, 1000);
+static const std::string trainable =
+  CREATE("supervised", "../examples/caffe2/resnet_50_trainable", 255.0, 1000);
 
 static const std::string predict_test1_str =
   PREDICT_SUPERVISED("imgserv", 3,
@@ -94,11 +117,13 @@ static const std::string predict_test3_str =
   PREDICT_UNSUPERVISED("imgserv", "gpu_0/conv1",
 		       "../examples/caffe/voc/voc/test_img.jpg");
 
-TEST(caffe2api, service_predict)
-{
+static const std::string train_test1_str = TRAIN("imgserv", 2, 1, "acc");
+
+TEST(caffe2api, service_predict) {
+
   // create service
   JsonAPI japi;
-  std::string joutstr = japi.jrender(japi.service_create("imgserv", resnet50_supervised));
+  std::string joutstr = japi.jrender(japi.service_create("imgserv", supervised));
   ASSERT_EQ(created_str, joutstr);
 
   // predict
@@ -106,7 +131,7 @@ TEST(caffe2api, service_predict)
   JDoc jd;
   jd.Parse(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200,jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"]);
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   std::string cl1 = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
   ASSERT_TRUE(cl1 == "megalith, megalithic structure");
@@ -127,11 +152,11 @@ TEST(caffe2api, service_predict)
   ASSERT_TRUE(jd["body"]["predictions"][1]["classes"][0]["prob"].GetDouble() > 0.35);
 }
 
-TEST(caffe2api, service_predict_unsup)
-{
+TEST(caffe2api, service_predict_unsup) {
+
   // create service
   JsonAPI japi;
-  std::string joutstr = japi.jrender(japi.service_create("imgserv", resnet50_unsupervised));
+  std::string joutstr = japi.jrender(japi.service_create("imgserv", unsupervised));
   ASSERT_EQ(created_str, joutstr);
 
   // predict
@@ -141,4 +166,23 @@ TEST(caffe2api, service_predict_unsup)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   ASSERT_EQ(802816, jd["body"]["predictions"][0]["vals"].Size());
+}
+
+TEST(caffe2api, service_train) {
+
+  // create service
+  JsonAPI japi;
+  std::string joutstr = japi.jrender(japi.service_create("imgserv", trainable));
+  ASSERT_EQ(created_str, joutstr);
+
+  // train
+  joutstr = japi.jrender(japi.service_train(train_test1_str));
+  JDoc jd;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
+  ASSERT_EQ("Created", jd["status"]["msg"]);
+  ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
+  ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
+  ASSERT_TRUE(fabs(jd["body"]["measure"]["acc"].GetDouble()) >= 0);
 }
