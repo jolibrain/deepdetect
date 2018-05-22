@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 2.8.8)
 project(deepdetect)
 
+if (USE_TF AND USE_CAFFE2)
+  message(FATAL_ERROR "Building with tensorflow AND caffe2 causes conflict
+(The two libraries have their own protobuf embed)")
+endif()
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
@@ -93,6 +97,50 @@ else()
 include(cmake/Cuda.cmake) # cuda + cudnn
 endif()
 
+if (USE_CAFFE2)
+
+  add_definitions(-DUSE_CAFFE2)
+
+  set(PYTORCH_SUPPORTED_COMMIT bb15a0830de9577b4f6bdcded5eac864f78701c2)
+  # Patches have been generated and tested on this version (Tue May 22 01:50:13 2018)
+  list(APPEND CAFFE2_PATCHES
+    ${CMAKE_BINARY_DIR}/patches/caffe2/caffe_proto.patch
+    ${CMAKE_BINARY_DIR}/patches/caffe2/logging.patch
+    )
+  list(APPEND PYTORCH_FLAGS
+    -DUSE_OPENMP=ON
+    -DUSE_GLOG=OFF
+    -DUSE_GFLAGS=OFF
+    -DUSE_MPI=OFF
+    )
+
+  set(PYTORCH_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch-complete)
+  set(PYTORCH_PATH ${CMAKE_BINARY_DIR}/pytorch/src/pytorch)
+  ExternalProject_Add(
+    pytorch
+    PREFIX pytorch
+    INSTALL_DIR ${CMAKE_BINARY_DIR}
+    GIT_REPOSITORY https://github.com/pytorch/pytorch.git
+    UPDATE_DISCONNECTED 1
+    GIT_TAG ${PYTORCH_SUPPORTED_COMMIT}
+    PATCH_COMMAND git am ${CAFFE2_PATCHES}
+    CONFIGURE_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || cmake ${PYTORCH_FLAGS}
+    BUILD_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || make -j${N}
+    INSTALL_COMMAND ""
+    BUILD_IN_SOURCE 1
+    )
+
+  set(PROTOBUF_INCLUDE_DIR ${CMAKE_BINARY_DIR}/protobuf/include)
+  set(PROTOBUF_LIB_DIR ${CMAKE_BINARY_DIR}/protobuf/lib)
+  if (NOT EXISTS ${CMAKE_BINARY_DIR}/protobuf)
+    execute_process(COMMAND mkdir ${CMAKE_BINARY_DIR}/protobuf)
+    execute_process(COMMAND ln -s ${PYTORCH_PATH}/third_party/protobuf/src ${PROTOBUF_INCLUDE_DIR})
+    execute_process(COMMAND ln -s ${PYTORCH_PATH}/lib ${PROTOBUF_LIB_DIR})
+    execute_process(COMMAND ln -s ${PYTORCH_PATH}/bin ${CMAKE_BINARY_DIR}/protobuf/bin)
+  endif()
+
+endif()
+
 if (USE_TF)
   # protobuf with tf
   set(PROTOBUF_INCLUDE_DIR ${CMAKE_BINARY_DIR}/protobuf/include/)
@@ -180,6 +228,16 @@ else()
 	  INSTALL_COMMAND ""
 	  BUILD_IN_SOURCE 1
 	  )
+      elseif (USE_CAFFE2)
+	ExternalProject_Add(
+	  caffe_dd
+	  PREFIX caffe_dd
+	  INSTALL_DIR ${CMAKE_BINARY_DIR}
+	  URL https://github.com/beniz/caffe/archive/master.tar.gz
+	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && echo "USE_SYSLOG:=${USE_SYSLOG}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make CUDA_ARCH=${CUDA_ARCH} -j${N}
+	  INSTALL_COMMAND ""
+	  BUILD_IN_SOURCE 1
+	  )
       else() # USE_TF
 	ExternalProject_Add(
 	  caffe_dd
@@ -202,6 +260,16 @@ else()
 	  INSTALL_COMMAND ""
 	  BUILD_IN_SOURCE 1
 	  )
+      elseif (USE_CAFFE2)
+	ExternalProject_Add(
+	  caffe_dd
+	  PREFIX caffe_dd
+	  INSTALL_DIR ${CMAKE_BINARY_DIR}
+	  URL https://github.com/beniz/caffe/archive/master.tar.gz
+	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && echo "USE_SYSLOG:=${USE_SYSLOG}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make CUDA_ARCH=${CUDA_ARCH} -j${N}
+	  INSTALL_COMMAND ""
+	  BUILD_IN_SOURCE 1
+	  )
       else() # USE_TF
 	ExternalProject_Add(
 	  caffe_dd
@@ -217,6 +285,16 @@ else()
   else() # CUDA_FOUND
     add_definitions(-DUSE_CAFFE_CPU_ONLY)
     if (USE_TF)
+      ExternalProject_Add(
+	caffe_dd
+	PREFIX caffe_dd
+	INSTALL_DIR ${CMAKE_BINARY_DIR}
+	URL https://github.com/beniz/caffe/archive/master.tar.gz
+	CONFIGURE_COMMAND ln -sf Makefile.config.cpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && echo "USE_SYSLOG:=${USE_SYSLOG}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make -j${N}
+	INSTALL_COMMAND ""
+	BUILD_IN_SOURCE 1
+	)
+    elseif (USE_CAFFE2)
       ExternalProject_Add(
 	caffe_dd
 	PREFIX caffe_dd
@@ -254,6 +332,10 @@ endif()
 
 if (USE_TF)
   add_dependencies(caffe_dd tensorflow_cc)
+endif()
+
+if (USE_CAFFE2)
+  add_dependencies(caffe_dd pytorch)
 endif()
 
 # XGBoost
@@ -310,6 +392,15 @@ endif()
 include_directories("${PROJECT_BINARY_DIR}")
 include_directories(${CAFFE_INC_DIR} ${XGBOOST_INC_DIR} ${TSNE_INC_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/src/backends/caffe ${CMAKE_SOURCE_DIR}/backends/xgb ${CMAKE_SOURCE_DIR}/backends/tf ${CMAKE_SOURCE_DIR}/backends/tsne)
+
+# Our version of caffe.proto was "injected" into caffe2 and compiled within it
+# So two versions of caffe.pb.h were generated (the only difference being the namespace ... name).
+# One of them is meant to be used by caffe2, the other one by us.
+# Because we can include the one from caffe2, but don't want to,
+# PYTORCH_PATH must be checked after CAFFE_INC_DIR
+if (USE_CAFFE2)
+  include_directories(${PYTORCH_PATH})
+endif()
 
 # main library, main & tests
 include_directories ("${PROJECT_SOURCE_DIR}/src")
