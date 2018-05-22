@@ -304,10 +304,10 @@ namespace dd
       }
       else if (!encoded)
 	enc = "";
-      //TODO: read unchanged
+
       status = ReadImageToDatum(lfiles[line_id].first,
 				lfiles[line_id].second, _height, _width, !_bw,
-				enc, &datum);
+				enc, &datum, this->_unchanged_data);
       if (status == false) continue;
       
       // sequential
@@ -641,9 +641,7 @@ namespace dd
 	dataset2.write(ocr_data.data(), H5::PredType::NATIVE_FLOAT);
       }
     
-    //TODO: save the alphabet (vocab.dat)
-    
-    //TODO: generate list of hdf5 db files
+    // generate list of hdf5 db files
     std::ofstream tlist(dblistfilename.c_str());
     for (auto s: dbchunks)
       tlist << s << std::endl;
