@@ -13,12 +13,12 @@ DeepDetect relies on external machine learning libraries through a very generic 
 
 #### Machine Learning functionalities per library (current):
 
-|            | Training | Prediction | Classification | Object Detection | Segmentation | Regression | Autoencoder |
-|------------|----------|------------|----------------|-----------|-----------|------------|-------------|
-| Caffe      | Y        | Y          | Y              | Y         |   Y       |   Y        | Y           |
-| XGBoost    | Y        | Y          | Y              | N         |   N       |   Y        | N/A         |
-| Tensorflow | N        | Y          | Y              | N         |   N       |   N        | N           |
-| T-SNE      | Y        | N/A        | N/A            | N/A       |   N/A     |   N/A      | N/A         |
+|            | Training | Prediction | Classification | Object Detection | Segmentation | Regression | Autoencoder | OCR / Seq2Seq |
+|------------|----------|------------|----------------|-----------|-----------|------------|-------------|-------------|
+| Caffe      | Y        | Y          | Y              | Y         |   Y       |   Y        | Y           | Y           |
+| XGBoost    | Y        | Y          | Y              | N         |   N       |   Y        | N/A         | N           |
+| Tensorflow | N        | Y          | Y              | N         |   N       |   N        | N           | N           |
+| T-SNE      | Y        | N/A        | N/A            | N/A       |   N/A     |   N/A      | N/A         | N           |
 
 
 #### GPU support per library
@@ -102,6 +102,7 @@ Current features include:
 - Python client:
   - REST client: https://github.com/beniz/deepdetect/tree/master/clients/python
   - 'a la scikit' bindings: https://github.com/ArdalanM/pyDD
+- Javacript client: https://github.com/jolibrain/deepdetect-js
 - Java client: https://github.com/kfadhel/deepdetect-api-java
 - Early C# client: https://github.com/beniz/deepdetect/pull/98
 

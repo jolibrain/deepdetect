@@ -460,13 +460,14 @@ namespace dd
       bool regression = ad_res.has("regression");
       bool segmentation = ad_res.has("segmentation");
       bool multilabel = ad_res.has("multilabel");
+      bool ctc = ad_res.has("ctc");
       if (ad_out.has("measure"))
 	{
 	  std::vector<std::string> measures = ad_out.get("measure").get<std::vector<std::string>>();
       	  bool bauc = (std::find(measures.begin(),measures.end(),"auc")!=measures.end());
 	  bool bacc = false;
 
-	  if (!multilabel && !segmentation)
+	  if (!multilabel && !segmentation && !ctc)
 	    {
 	      for (auto s: measures)
 		if (s.find("acc")!=std::string::npos)
@@ -489,6 +490,10 @@ namespace dd
       bool mlsoft_dc = false;
       bool mlsoft_r2 = false;
       bool mlsoft_deltas = false;
+      bool net_meas = false;
+      
+      if (ctc)
+	net_meas = true;
        if (segmentation)
 	    baccv = (std::find(measures.begin(),measures.end(),"acc")!=measures.end());
 	  if (multilabel && !regression)
@@ -510,6 +515,11 @@ namespace dd
 	      mlsoft_r2 = (std::find(measures.begin(),measures.end(),"r2")!=measures.end());
 	      mlsoft_deltas = (std::find(measures.begin(),measures.end(),"deltas")!=measures.end());
 	    }
+	}
+      if (net_meas) // measure is coming from the net directly
+	{
+	  double acc = straight_meas(ad_res);
+	  meas_out.add("acc",acc);
 	}
 	  if (bauc) // XXX: applies two binary classification problems only
 	    {
@@ -653,6 +663,15 @@ namespace dd
 	out.add("measure",meas_out);
     }
 
+    static double straight_meas(const APIData &ad)
+    {
+      APIData bad = ad.getobj("0");
+      std::vector<double> acc = bad.get("pred").get<std::vector<double>>();
+      if (acc.empty())
+	return 0.0;
+      else return acc.at(0);
+    }
+    
     // measure: ACC
     static std::map<std::string,double> acc(const APIData &ad,
 					    const std::vector<std::string> &measures)
@@ -840,16 +859,15 @@ namespace dd
           APIData bad = ad.getobj(std::to_string(i));
           std::vector<double> targets = bad.get("target").get<std::vector<double>>();
           std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
-          for (size_t j=0;j<predictions.size();j++)
-            {
-              if (targets[j] < 0) // case ignore_label
-                continue;
-              total_number++;
-              double eps = 0.00001;
-              double tval = (targets[j]< eps)? eps: targets[j];
-              double pval = (predictions[j]< eps)? eps: predictions[j];
-              kl_divergence += tval * log (tval/pval);
-            }
+          dVec dpred = dVec::Map(&predictions.at(0), predictions.size());
+          dVec dtarg = dVec::Map(&targets.at(0), targets.size());
+          total_number += (dtarg.array()>=0).count();
+          double eps = 0.00001;
+          dVec dprede = (dpred.array() < eps).select(eps, dpred);
+          dVec dtarge = (dtarg.array() < eps).select(eps, dtarg);
+          dVec temp = (dprede.array().inverse()*dtarge.array()).log()*dtarge.array();
+          temp = (dtarg.array() < 0).select(0, temp);
+          kl_divergence +=  temp.sum();
         }
       return kl_divergence / (double)total_number;
     }
@@ -864,16 +882,17 @@ namespace dd
           APIData bad = ad.getobj(std::to_string(i));
           std::vector<double> targets = bad.get("target").get<std::vector<double>>();
           std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
-          for (size_t j=0;j<predictions.size();j++)
-            {
-              if (targets[j] < 0) // case ignore_label
-                continue;
-              total_number++;
-              double eps = 0.00001;
-              double tval = (targets[j]< eps)? eps: targets[j];
-              double pval = (predictions[j]< eps)? eps: predictions[j];
-              js_divergence += 0.5 * (tval * log(2*tval/(tval+pval))) + 0.5 * (pval * log(2*pval/(tval+pval)));
-            }
+          dVec dpred = dVec::Map(&predictions.at(0), predictions.size());
+          dVec dtarg = dVec::Map(&targets.at(0), targets.size());
+          total_number += (dtarg.array()>=0).count();
+          double eps = 0.00001;
+          dVec dprede = (dpred.array() < eps).select(eps, dpred);
+          dVec dtarge = (dtarg.array() < eps).select(eps, dtarg);
+          dVec temp = (dprede + dtarge).array().inverse();
+          dVec temp2 = (temp.array()*dtarge.array()*2).log()*dtarge.array()*0.5 +
+            (temp.array()*dprede.array()*2).log()*dprede.array()*0.5;
+          temp2 = (dtarg.array()<0).select(0, temp2);
+          js_divergence += temp2.sum();
         }
       return js_divergence / (double)total_number;
     }
@@ -888,14 +907,12 @@ namespace dd
           APIData bad = ad.getobj(std::to_string(i));
           std::vector<double> targets = bad.get("target").get<std::vector<double>>();
           std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
-          for (size_t j=0;j<predictions.size();j++)
-            {
-              if (targets[j] < 0) // case ignore_label
-                continue;
-              total_number++;
-              double dif = targets[j] - predictions[j];
-              was += dif*dif;
-            }
+          dVec dpred = dVec::Map(&predictions.at(0), predictions.size());
+          dVec dtarg = dVec::Map(&targets.at(0), targets.size());
+          total_number += (dtarg.array()>=0).count();
+          dVec dif = dtarg - dpred;
+          dif = (dtarg.array() < 0).select(0, dif);
+          was += (dif.array() * dif.array()).sum();
         }
       was = sqrt(was);
       return was/sqrt((double)total_number);
@@ -911,16 +928,12 @@ namespace dd
           APIData bad = ad.getobj(std::to_string(i));
           std::vector<double> targets = bad.get("target").get<std::vector<double>>();
           std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
-          for (size_t j=0;j<predictions.size();j++)
-            {
-              if (targets[j] < 0) // case ignore_label
-                continue;
-              total_number++;
-              double dif = targets[j] - predictions[j];
-              dif = fabs(dif);
-              if (dif > ks)
-                ks = dif;
-            }
+          dVec dpred = dVec::Map(&predictions.at(0), predictions.size());
+          dVec dtarg = dVec::Map(&targets.at(0), targets.size());
+          total_number += (dtarg.array()>=0).count();
+          dVec dif = dtarg-dpred;
+          dif = (dtarg.array() < 0).select(0, dif);
+          ks = dif.array().abs().maxCoeff();
         }
       return ks;
     }
@@ -938,7 +951,8 @@ namespace dd
       return 1;
     }
 
-    static double multilabel_soft_dc(const APIData &ad)
+
+      static double multilabel_soft_dc(const APIData &ad)
     {
       int batch_size = ad.get("batch_size").get<int>();
       int nclasses = ad.getobj(std::to_string(0)).get("target").get<std::vector<double>>().size();
@@ -1024,16 +1038,14 @@ namespace dd
           APIData bad = ad.getobj(std::to_string(i));
           std::vector<double> targets = bad.get("target").get<std::vector<double>>();
           std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
-          for (size_t j=0;j<predictions.size();j++)
-            {
-              if (targets[j] < 0) // case ignore_label
-                continue;
-              total_number++;
-              tmean += targets[j];
-              double dif = targets[j] - predictions[j];
-              ssres += dif*dif;
+          dVec dpred = dVec::Map(&predictions.at(0), predictions.size());
+          dVec dtarg = dVec::Map(&targets.at(0), targets.size());
+          total_number += (dtarg.array()>=0).count();
 
-            }
+          tmean += ((dtarg.array() < 0).select(0, dtarg)).sum();
+          dVec dif = dtarg - dpred;
+          dif = (dtarg.array() < 0).select(0, dif);
+          ssres += (dif.array() * dif.array() ).sum();
         }
       tmean /= (double)total_number;
 
@@ -1044,12 +1056,10 @@ namespace dd
           APIData bad = ad.getobj(std::to_string(i));
           std::vector<double> targets = bad.get("target").get<std::vector<double>>();
           std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
-          for (size_t j=0;j<predictions.size();j++)
-            {
-              if (targets[j] < 0)
-                continue;
-              sstot += (targets[j] - tmean) *  (targets[j] - tmean);
-            }
+          dVec dpred = dVec::Map(&predictions.at(0), predictions.size());
+          dVec dtarg = dVec::Map(&targets.at(0), targets.size());
+          dVec temp = (dtarg.array() < 0).select(0, dtarg.array() - tmean);
+          sstot += (temp.array() * temp.array()).sum();
         }
       return  1.0 - ssres/sstot;
     }
@@ -1065,16 +1075,12 @@ namespace dd
           APIData bad = ad.getobj(std::to_string(i));
           std::vector<double> targets = bad.get("target").get<std::vector<double>>();
           std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
-          for (size_t j=0;j<predictions.size();j++)
-            {
-              if (targets[j] < 0) // case ignore_label
-                continue;
-              total_number++;
-              double dif = fabs(targets[j] - predictions[j]);
-              for (unsigned int k=0; k<deltas.size(); ++k)
-                if (dif < deltas[k])
-                  delta_scores[k]++;
-            }
+          dVec dpred = dVec::Map(&predictions.at(0), predictions.size());
+          dVec dtarg = dVec::Map(&targets.at(0), targets.size());
+          total_number += (dtarg.array()>=0).count();
+          dVec dif = (dtarg.array() < 0).select(10, (dtarg-dpred).array().abs());
+          for (unsigned int k=0; k<deltas.size(); ++k)
+            delta_scores[k] += (dif.array() < deltas[k]).count();
         }
       for (unsigned int k =0; k<deltas.size(); ++k)
         delta_scores[k] /=  (double)total_number; // gives proportion of good in 0:1 at every threshold

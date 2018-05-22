@@ -530,11 +530,11 @@ namespace dd
 }
 
 #ifdef USE_XGBOOST
-#include "xgbinputconns.h"
+#include "backends/xgb/xgbinputconns.h"
 #endif
 
 #ifdef USE_TSNE
-#include "tsneinputconns.h"
+#include "backends/tsne/tsneinputconns.h"
 #endif
 
 #endif

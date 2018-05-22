@@ -413,7 +413,7 @@ namespace dd
 #include "caffeinputconns.h"
 
 #ifdef USE_TF
-#include "tfinputconns.h"
+#include "backends/tf/tfinputconns.h"
 #endif
 
 #endif

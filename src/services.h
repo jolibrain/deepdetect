@@ -30,15 +30,15 @@
 #include "txtinputfileconn.h"
 #include "svminputfileconn.h"
 #include "outputconnectorstrategy.h"
-#include "caffelib.h"
+#include "backends/caffe/caffelib.h"
 #ifdef USE_TF
-#include "tflib.h"
+#include "backends/tf/tflib.h"
 #endif
 #ifdef USE_XGBOOST
-#include "xgblib.h"
+#include "backends/xgb/xgblib.h"
 #endif
 #ifdef USE_TSNE
-#include "tsnelib.h"
+#include "backends/tsne/tsnelib.h"
 #endif
 #include <spdlog/spdlog.h>
 #include <vector>
