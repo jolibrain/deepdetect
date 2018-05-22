@@ -15,11 +15,11 @@ CMAKE_ARGS+=('-DCMAKE_INSTALL_PREFIX=../install')
 if [ "$BUILD_CUDA" = 'true' ]; then
     CMAKE_ARGS+=('-DUSE_CUDNN=ON')
     CMAKE_ARGS+=('-DCUDA_NVCC_EXECUTABLE=/usr/local/bin/nvcc')
-    CMAKE_ARGS+=('-DCUDA_ARCH=-gencode\ arch=compute_30,code=sm_30')
+    CMAKE_ARGS+=('-DCUDA_ARCH=-gencode=arch=compute_30,code=sm_30')
     export PATH="/usr/local/cuda/bin:${PATH}"
 else
     CMAKE_ARGS+=('-DUSE_CPU_ONLY=ON')
     CMAKE_ARGS+=('-DUSE_XGBOOST=ON')
 fi
-eval cmake .. ${CMAKE_ARGS[*]}
+cmake .. ${CMAKE_ARGS[*]}
 make
