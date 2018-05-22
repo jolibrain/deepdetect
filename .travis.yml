@@ -7,7 +7,6 @@ compiler: gcc
 env:
   global:
     - BUILD_CCACHE_DIR=~/build/ccache
-    - MAKEFLAGS="-j 2"
   matrix:
     - BUILD=linux
     - BUILD=linux-cuda
