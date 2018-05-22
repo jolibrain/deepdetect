@@ -498,7 +498,7 @@ namespace dd
     if (!this->_mlmodel._def.empty() && !this->_mlmodel._weights.empty())
       {
 	delete _net;
-	_net = nullptr;
+	_net = nullptr;	
 	try
 	  {
 	    if (!test)
@@ -587,7 +587,10 @@ namespace dd
     if (ad.has("template"))
       instantiate_template(ad);
     else // model template instantiation is defered until training call
-      create_model();
+      {
+	update_deploy_protofile_softmax(ad);
+	create_model();
+      }
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -2033,6 +2036,30 @@ namespace dd
     sp.clear_net();
   }
 
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_deploy_protofile_softmax(const APIData &ad)
+  {
+    if (ad.has("scaling_temperature"))
+      {
+	double temperature = ad.get("scaling_temperature").get<double>();
+	std::string deploy_file = this->_mlmodel._repo + "/deploy.prototxt";
+	caffe::NetParameter deploy_net_param;
+	caffe::ReadProtoFromTextFile(deploy_file,&deploy_net_param);
+	int k = deploy_net_param.layer_size();
+	for (int l=k-1;l>0;l--)
+	  {
+	    caffe::LayerParameter *lparam = deploy_net_param.mutable_layer(l);
+	    if (lparam->type() == "Softmax")
+	      {
+		lparam->mutable_softmax_param()->set_scaling_temperature(temperature);
+	      }
+	    // we don't break in case multiple softmax heads.
+	  }
+	caffe::WriteProtoToTextFile(deploy_net_param,deploy_file);
+      }
+    else return;
+  }
+  
   // XXX: we are no more pre-setting the batch_size to the data set values (e.g. number of samples)
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofile_net(const std::string &net_file,
