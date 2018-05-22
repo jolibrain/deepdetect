@@ -430,6 +430,24 @@ namespace dd
 		return dd_service_bad_request_1006();
 	      }
 	  }
+#ifdef USE_CAFFE2
+	else if (mllib == "caffe2")
+	  {
+	    Caffe2Model c2model(ad_model);
+	    if (type == "supervised")
+	      {
+		if (input == "image")
+		  add_service(sname,std::move(MLService<Caffe2Lib,ImgCaffe2InputFileConn,SupervisedOutput,Caffe2Model>(sname,c2model,description)),ad);
+		else return dd_input_connector_not_found_1004();
+		if (JsonAPI::store_json_blob(c2model._repo,jstr)) // store successful call json blob
+		  _logger->error("couldn't write {} file in model repository {}",JsonAPI::_json_blob_fname,c2model._repo);
+	      }
+	    else
+	      {
+		return dd_service_bad_request_1006();
+	      }
+	  }
+#endif // USE_CAFFE2
 #ifdef USE_TF
 	else if (mllib == "tensorflow" || mllib == "tf")
 	  {
