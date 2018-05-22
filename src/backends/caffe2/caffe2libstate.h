@@ -22,6 +22,8 @@
 #ifndef CAFFE2LIBSTATE_H
 #define CAFFE2LIBSTATE_H
 
+#include "apidata.h"
+
 #define REGISTER_CONFIG(type, name, def)				\
 									\
 private:								\
@@ -54,6 +56,16 @@ public:						                        \
  }									\
  void set_default_##name(const type &value) {				\
    _##name##_default = value;						\
+ }									\
+ void set_##name(const APIData &ad, bool force_get=false) {		\
+   if (force_get || ad.has(#name)) {					\
+     set_##name(ad.get(#name).get<type>());				\
+   }									\
+ }									\
+ void set_default_##name(const APIData &ad, bool force_get=false) {	\
+   if (force_get || ad.has(#name)) {					\
+     set_default_##name(ad.get(#name).get<type>());			\
+   }									\
  }
 
 namespace dd {
@@ -63,8 +75,10 @@ namespace dd {
    *           - training or prediction
    *           - cpu or gpu
    *           - gpu ids
-   *           - layer to extract
-   *        Each one of these has a getter and two setter (current value, and default value).
+   *           - databases
+   *           - ...
+   *        Each one has a getter and two setter (current value, and default value).
+   *        (Note that setters can use an APIData to retrieve the value themselves)
    *        The goals of this class are to allow a simple flag management,
    *        and to provide a quick way to know if the nets need
    *        to be reconfigured between two api call.
@@ -80,19 +94,53 @@ namespace dd {
 
     // Declare here every parameter needed to configure a net
     // (type, name, default value)
+
     REGISTER_CONFIG(bool, is_gpu, false);
     REGISTER_CONFIG(bool, is_training, false);
+    REGISTER_CONFIG(bool, is_testing, false);
+    REGISTER_CONFIG(bool, resume, false);
     REGISTER_CONFIG(std::vector<int>, gpu_ids, {0});
+
     REGISTER_CONFIG(std::string, extract_layer, "");
+
+    REGISTER_CONFIG(std::string, train_db, "");
+    REGISTER_CONFIG(std::string, test_db, "");
+    REGISTER_CONFIG(int, batch_size, 32);
+    REGISTER_CONFIG(int, test_batch_size, 32);
+    REGISTER_CONFIG(std::vector<double>, mean_values, {});
+
+    REGISTER_CONFIG(std::string, lr_policy, "fixed");
+    REGISTER_CONFIG(double, base_lr, -0.001);
+    REGISTER_CONFIG(int, stepsize, 0);
+    REGISTER_CONFIG(double, gamma, 0);
+
+    REGISTER_CONFIG(std::string, solver_type, "sgd");
 
   public:
 
     // For every declared parameter call the corresponding init function
     Caffe2LibState() {
+
       init_is_gpu();
       init_is_training();
+      init_is_testing();
+      init_resume();
       init_gpu_ids();
+
       init_extract_layer();
+
+      init_train_db();
+      init_test_db();
+      init_batch_size();
+      init_test_batch_size();
+      init_mean_values();
+
+      init_lr_policy();
+      init_base_lr();
+      init_stepsize();
+      init_gamma();
+
+      init_solver_type();
     }
 
     /**

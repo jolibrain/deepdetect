@@ -235,32 +235,55 @@ if (USE_DLIB)
     COMMAND ut_dlibapi
   )
 endif()
+
 if (USE_CAFFE2)
-  set(CAFFE2_EXAMPLE_PATH "examples/caffe2/")
-  set(RESNET50_EXAMPLE_MODEL_INIT "resnet_50/init_net.pb")
-  set(RESNET50_EXAMPLE_MODEL_PREDICT "resnet_50/predict_net.pb")
-  set(RESNET50_CORRESP "resnet_50/corresp.txt")
-  if (NOT EXISTS "${CAFFE2_EXAMPLE_PATH}${RESNET50_EXAMPLE_MODEL_INIT}")
-    message(STATUS "Downloading Caffe2 test model")
-    file(DOWNLOAD
-      "https://deepdetect.com/dd/examples/caffe2/${RESNET50_EXAMPLE_MODEL_INIT}"
-      "${CAFFE2_EXAMPLE_PATH}${RESNET50_EXAMPLE_MODEL_INIT}"
-      )
-    file(DOWNLOAD
-      "https://deepdetect.com/dd/examples/caffe2/${RESNET50_EXAMPLE_MODEL_PREDICT}"
-      "${CAFFE2_EXAMPLE_PATH}${RESNET50_EXAMPLE_MODEL_PREDICT}"
-      )
-    file(DOWNLOAD
-      "https://deepdetect.com/dd/examples/caffe2/${RESNET50_CORRESP}"
-      "${CAFFE2_EXAMPLE_PATH}${RESNET50_CORRESP}"
-      )
-  endif()
-  add_executable(ut_caffe2api ut-caffe2api.cc)
-  target_link_libraries(ut_caffe2api ddetect ${DLIB_LIB_DEPS} ${CUDA_LIB_DEPS} glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc curlpp curl hdf5_cpp ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS} ${CAFFE2_LIB_DEPS})
-  add_test(
-    NAME ut_caffe2api
-    COMMAND ut_caffe2api
+
+  function (ASSERT_EXISTS _MODEL _FILE _UNTAR)
+    set(_FINAL_PATH "examples/caffe2/${_MODEL}/${_FILE}") # File to get
+    set(_LOCAL_PATH "${_FINAL_PATH}")
+    if (_UNTAR)
+      set(_LOCAL_PATH "${_LOCAL_PATH}.tar.gz") # File to download
+    endif ()
+    set(_REMOTE_PATH "http://www.deepdetect.com/dd/${_LOCAL_PATH}") # Url of the file
+    if (NOT EXISTS ${_LOCAL_PATH}) # Download
+      message(STATUS "Downloading Caffe2 ${_MODEL} ${_FILE}")
+      file(DOWNLOAD ${_REMOTE_PATH} ${_LOCAL_PATH})
+    endif ()
+    if (_UNTAR AND NOT EXISTS ${_FINAL_PATH}) # Untar
+      message(STATUS "Extracting Caffe2 ${_MODEL} ${_FILE}")
+      execute_process(COMMAND tar xvzf ${_LOCAL_PATH})
+      execute_process(COMMAND mv ${_FILE} ${_FINAL_PATH})
+    endif ()
+  endfunction (ASSERT_EXISTS)
+
+  function (ASSERT_MODEL _MODEL _TRAIN)
+    ASSERT_EXISTS(${_MODEL} "predict_net.pb" 0)
+    ASSERT_EXISTS(${_MODEL} "init_net.pb" 0)
+    ASSERT_EXISTS(${_MODEL} "corresp.txt" 0)
+    if (_TRAIN)
+      ASSERT_EXISTS(${_MODEL} "train.lmdb" 1)
+      ASSERT_EXISTS(${_MODEL} "test.lmdb" 1)
+      ASSERT_EXISTS(${_MODEL} "mean.pb" 0)
+    endif ()
+  endfunction (ASSERT_MODEL)
+
+  ASSERT_MODEL("resnet_50" 0)
+  ASSERT_MODEL("resnet_50_trainable" 1)
+
+  list(APPEND CAFFE2_COMPLETE_DEPS
+    ddetect ${DLIB_LIB_DEPS} ${CUDA_LIB_DEPS} glog gflags gtest gtest_main
+    opencv_core opencv_highgui opencv_imgproc curlpp curl hdf5_cpp ${Boost_LIBRARIES}
+    ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS} ${CAFFE2_LIB_DEPS}
     )
+
+  function (REGISTER_TEST _NAME _SOURCES)
+    add_executable(${_NAME} ${_SOURCES})
+    target_link_libraries(${_NAME} ${CAFFE2_COMPLETE_DEPS})
+    add_test(NAME ${_NAME} COMMAND ${_NAME})
+  endfunction ()
+
+  REGISTER_TEST(ut_caffe2api ut-caffe2api.cc)
+
 endif()
 
 if (USE_XGBOOST)
