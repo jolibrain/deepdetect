@@ -16,7 +16,7 @@ if [ "$BUILD_CUDA" = 'true' ]; then
     CMAKE_ARGS+=('-DUSE_CUDNN=ON')
     CMAKE_ARGS+=('-DCUDA_NVCC_EXECUTABLE=/usr/local/bin/nvcc')
 #	    CMAKE_ARGS+=('-DCUDA_ARCH=-gencode=arch=compute_52,code=sm_52')
-    CMAKE_ARGS+=('-DCUDA_ARCH= ')
+    CMAKE_ARGS+=('-DCUDA_ARCH=-gencode=  ')
     export PATH="/usr/local/cuda/bin:${PATH}"
 else
     CMAKE_ARGS+=('-DUSE_CPU_ONLY=ON')
