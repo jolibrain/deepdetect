@@ -34,10 +34,10 @@ if [ "$TRAVIS_OS_NAME" = 'linux' ]; then
 	libutfcpp-dev
 
         # Install ccache symlink wrappers
-#        pushd /usr/local/bin
-#        sudo ln -sf "$(which ccache)" gcc
-#        sudo ln -sf "$(which ccache)" g++
-#        popd
+        pushd /usr/local/bin
+        sudo ln -sf "$(which ccache)" gcc
+        sudo ln -sf "$(which ccache)" g++
+        popd
 
         ################
         # Install GCC4.9 #
