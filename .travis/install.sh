@@ -60,23 +60,23 @@ if [ "$TRAVIS_OS_NAME" = 'linux' ]; then
         # Install ccache #
         ##################
         # Needs specific branch to work with nvcc (ccache/ccache#145)
-#        if [ -e "${BUILD_CCACHE_DIR}/ccache" ]; then
-#            echo "Using cached ccache build at \"$BUILD_CCACHE_DIR\" ..."
-#        else
-#            git clone https://github.com/colesbury/ccache -b ccbin "$BUILD_CCACHE_DIR"
-#            pushd "$BUILD_CCACHE_DIR"
-#            ./autogen.sh
-#            ./configure
-#            make "-j$(nproc)"
-#            popd
-#        fi
+        if [ -e "${BUILD_CCACHE_DIR}/ccache" ]; then
+            echo "Using cached ccache build at \"$BUILD_CCACHE_DIR\" ..."
+        else
+            git clone https://github.com/colesbury/ccache -b ccbin "$BUILD_CCACHE_DIR"
+            pushd "$BUILD_CCACHE_DIR"
+            ./autogen.sh
+            ./configure
+            make "-j$(nproc)"
+            popd
+        fi
 
         # Overwrite ccache symlink wrappers
-#        pushd /usr/local/bin
-#        sudo ln -sf "${BUILD_CCACHE_DIR}/ccache" gcc
-#        sudo ln -sf "${BUILD_CCACHE_DIR}/ccache" g++
-#        sudo ln -sf "${BUILD_CCACHE_DIR}/ccache" nvcc
-#        popd
+        pushd /usr/local/bin
+        sudo ln -sf "${BUILD_CCACHE_DIR}/ccache" gcc
+        sudo ln -sf "${BUILD_CCACHE_DIR}/ccache" g++
+        sudo ln -sf "${BUILD_CCACHE_DIR}/ccache" nvcc
+        popd
 
         #################
         # Install CMake #
