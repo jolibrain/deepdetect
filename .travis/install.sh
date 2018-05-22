@@ -34,13 +34,13 @@ if [ "$TRAVIS_OS_NAME" = 'linux' ]; then
 	libutfcpp-dev
 
         # Install ccache symlink wrappers
-        pushd /usr/local/bin
-        sudo ln -sf "$(which ccache)" gcc
-        sudo ln -sf "$(which ccache)" g++
-        popd
+#        pushd /usr/local/bin
+#        sudo ln -sf "$(which ccache)" gcc
+#        sudo ln -sf "$(which ccache)" g++
+#        popd
 
         ################
-        # Install GCC5 #
+        # Install GCC4.9 #
         ################
         sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
         sudo apt-get update
@@ -60,32 +60,32 @@ if [ "$TRAVIS_OS_NAME" = 'linux' ]; then
         # Install ccache #
         ##################
         # Needs specific branch to work with nvcc (ccache/ccache#145)
-        if [ -e "${BUILD_CCACHE_DIR}/ccache" ]; then
-            echo "Using cached ccache build at \"$BUILD_CCACHE_DIR\" ..."
-        else
-            git clone https://github.com/colesbury/ccache -b ccbin "$BUILD_CCACHE_DIR"
-            pushd "$BUILD_CCACHE_DIR"
-            ./autogen.sh
-            ./configure
-            make "-j$(nproc)"
-            popd
-        fi
+#        if [ -e "${BUILD_CCACHE_DIR}/ccache" ]; then
+#            echo "Using cached ccache build at \"$BUILD_CCACHE_DIR\" ..."
+#        else
+#            git clone https://github.com/colesbury/ccache -b ccbin "$BUILD_CCACHE_DIR"
+#            pushd "$BUILD_CCACHE_DIR"
+#            ./autogen.sh
+#            ./configure
+#            make "-j$(nproc)"
+#            popd
+#        fi
 
         # Overwrite ccache symlink wrappers
-        pushd /usr/local/bin
-        sudo ln -sf "${BUILD_CCACHE_DIR}/ccache" gcc
-        sudo ln -sf "${BUILD_CCACHE_DIR}/ccache" g++
-        sudo ln -sf "${BUILD_CCACHE_DIR}/ccache" nvcc
-        popd
+#        pushd /usr/local/bin
+#        sudo ln -sf "${BUILD_CCACHE_DIR}/ccache" gcc
+#        sudo ln -sf "${BUILD_CCACHE_DIR}/ccache" g++
+#        sudo ln -sf "${BUILD_CCACHE_DIR}/ccache" nvcc
+#        popd
 
         #################
         # Install CMake #
         #################
         # Newer version required to get cmake+ccache+nvcc to work
-        _cmake_installer=/tmp/cmake.sh
-        wget -O "$_cmake_installer" https://cmake.org/files/v3.8/cmake-3.8.2-Linux-x86_64.sh
-        sudo bash "$_cmake_installer" --prefix=/usr/local --skip-license
-        rm -rf "$_cmake_installer"
+#        _cmake_installer=/tmp/cmake.sh
+#        wget -O "$_cmake_installer" https://cmake.org/files/v3.8/cmake-3.8.2-Linux-x86_64.sh
+#        sudo bash "$_cmake_installer" --prefix=/usr/local --skip-license
+#        rm -rf "$_cmake_installer"
 	
         ################
         # Install CUDA #
