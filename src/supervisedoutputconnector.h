@@ -660,8 +660,10 @@ namespace dd
 	    }
 	  if (beucll)
 	    {
-	      double meucll = eucll(ad_res);
+	      double meucll = eucll(ad_res,false);
 	      meas_out.add("eucll",meucll);
+	      double meucll_no_0 = eucll(ad_res,true);
+	      meas_out.add("eucll_no_0",meucll,no_0);
 	    }
 	  if (bmcc)
 	    {
@@ -1291,7 +1293,7 @@ namespace dd
       return mcc;
     }
     
-    static double eucll(const APIData &ad)
+    static double eucll(const APIData &ad, bool ignore_0)
     {
       double eucl = 0.0;
       int batch_size = ad.get("batch_size").get<int>();
@@ -1304,6 +1306,10 @@ namespace dd
 	    target = bad.get("target").get<std::vector<double>>();
 	  else target.push_back(bad.get("target").get<double>());
 	  for (size_t i=0;i<target.size();i++)
+        if (ignore_0)
+          if (target.at(i) >0)
+            eucl += (predictions.at(i)-target.at(i))*(predictions.at(i)-target.at(i));
+        else
         if (target.at(i) >=0)
           eucl += (predictions.at(i)-target.at(i))*(predictions.at(i)-target.at(i));
 	}
