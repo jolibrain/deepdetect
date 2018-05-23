@@ -93,6 +93,39 @@ else()
 include(cmake/Cuda.cmake) # cuda + cudnn
 endif()
 
+if (USE_DLIB)
+    # Dlib
+    message(STATUS "Using Dlib")
+    add_definitions(-DUSE_DLIB)
+
+    if (CUDA_FOUND AND NOT USE_DLIB_CPU_ONLY)
+        ExternalProject_Add(
+          dlib
+          PREFIX dlib
+          INSTALL_DIR ${CMAKE_BINARY_DIR}
+          DOWNLOAD_COMMAND git clone https://github.com/davisking/dlib.git
+          CONFIGURE_COMMAND cd dlib && mkdir build && cd build && cmake .. -DDLIB_NO_GUI_SUPPORT=ON && cmake --build . --config Release
+          BUILD_COMMAND ""
+          INSTALL_COMMAND ""
+          BUILD_IN_SOURCE 1
+        )
+    else()
+        ExternalProject_Add(
+                dlib
+                PREFIX dlib
+                INSTALL_DIR ${CMAKE_BINARY_DIR}
+                DOWNLOAD_COMMAND git clone https://github.com/davisking/dlib.git
+                CONFIGURE_COMMAND cd dlib && mkdir build && cd build && cmake .. -DDLIB_NO_GUI_SUPPORT=ON -DDLIB_USE_CUDA=OFF && cmake --build . --config Release
+                BUILD_COMMAND ""
+                INSTALL_COMMAND ""
+                BUILD_IN_SOURCE 1
+        )
+    endif()
+    set(DLIB_VERSION ${dlib_VERSION_MAJOR})
+    include_directories(${dlib_INCLUDE_DIRS})
+    message(STATUS "Dlib ${DLIB_VERSION} (${dlib_VERSION}) found (${dlib_CONFIG_PATH})")
+endif()
+
 if (USE_TF)
   # protobuf with tf
   set(PROTOBUF_INCLUDE_DIR ${CMAKE_BINARY_DIR}/protobuf/include/)
