@@ -663,7 +663,7 @@ namespace dd
 	      double meucll = eucll(ad_res,false);
 	      meas_out.add("eucll",meucll);
 	      double meucll_no_0 = eucll(ad_res,true);
-	      meas_out.add("eucll_no_0",meucll,no_0);
+	      meas_out.add("eucll_no_0",meucll_no_0);
 	    }
 	  if (bmcc)
 	    {
@@ -1307,11 +1307,15 @@ namespace dd
 	  else target.push_back(bad.get("target").get<double>());
 	  for (size_t i=0;i<target.size();i++)
         if (ignore_0)
-          if (target.at(i) >0)
-            eucl += (predictions.at(i)-target.at(i))*(predictions.at(i)-target.at(i));
+          {
+            if (target.at(i) >0)
+              eucl += (predictions.at(i)-target.at(i))*(predictions.at(i)-target.at(i));
+          }
         else
-        if (target.at(i) >=0)
-          eucl += (predictions.at(i)-target.at(i))*(predictions.at(i)-target.at(i));
+          {
+            if (target.at(i) >=0)
+              eucl += (predictions.at(i)-target.at(i))*(predictions.at(i)-target.at(i));
+          }
 	}
 	return eucl / static_cast<double>(batch_size);
     }
