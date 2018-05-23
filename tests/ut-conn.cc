@@ -65,7 +65,7 @@ TEST(outputconn,mlsoft)
   ASSERT_EQ(0.5,delta_scores[1]);
   ASSERT_EQ(1,delta_scores[2]);
   ASSERT_EQ(1,delta_scores[3]);
-  measures = {"kl-0.1"};
+  measures = {"kl-0.1","dc"};
   bool do_kl = false;
   bool do_js = true;
   bool do_dc = false;
@@ -77,10 +77,10 @@ TEST(outputconn,mlsoft)
   so.find_presence_and_thres("dc", measures, do_dc, dc_thres);
   ASSERT_EQ(do_kl, true);
   ASSERT_EQ(do_js, true);
-  ASSERT_EQ(do_dc, false);
+  ASSERT_EQ(do_dc, true);
   ASSERT_NEAR(kl_thres, 0.1, 0.001);
   ASSERT_NEAR(js_thres, -2, 0.001);
-  ASSERT_NEAR(dc_thres, -1, 0.001);
+  ASSERT_NEAR(dc_thres, 0, 0.001);
 
 
 }

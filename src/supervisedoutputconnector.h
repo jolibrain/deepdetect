@@ -569,67 +569,49 @@ namespace dd
         {
           double kl_divergence = multilabel_soft_kl(ad_res,-1); // kl: amount of lost info if using pred instead of truth
           meas_out.add("kl_divergence",kl_divergence);
-          if (mlsoft_kl_thres >= 0)
-            {
-              double kl_divergence_thres = multilabel_soft_kl(ad_res,mlsoft_kl_thres);
-              std::string b = "kl_divergence_no_" +std::to_string(mlsoft_kl_thres);
-              meas_out.add(b,kl_divergence_thres);
-            }
+          double kl_divergence_thres = multilabel_soft_kl(ad_res,mlsoft_kl_thres);
+          std::string b = "kl_divergence_no_" +std::to_string(mlsoft_kl_thres);
+          meas_out.add(b,kl_divergence_thres);
         }
       if (mlsoft_js)
         {
           double js_divergence = multilabel_soft_js(ad_res,-1) ; // jsd: symetrized version of kl
 	      meas_out.add("js_divergence",js_divergence);
-          if (mlsoft_js_thres >=0)
-            {
-              double js_divergence_thres = multilabel_soft_js(ad_res,mlsoft_js_thres) ;
-              std::string b = "js_divergence_no_" + std::to_string(mlsoft_js_thres);
-              meas_out.add(b,js_divergence_thres);
-            }
+          double js_divergence_thres = multilabel_soft_js(ad_res,mlsoft_js_thres) ;
+          std::string b = "js_divergence_no_" + std::to_string(mlsoft_js_thres);
+          meas_out.add(b,js_divergence_thres);
         }
       if (mlsoft_was)
         {
           double wasserstein = multilabel_soft_was(ad_res,-1); // wasserstein distance
 	      meas_out.add("wasserstein",wasserstein);
-          if (mlsoft_was_thres >= 0)
-            {
-              double wasserstein_thres = multilabel_soft_was(ad_res,mlsoft_was_thres);
-              std::string b = "wasserstein_no_" + std::to_string(mlsoft_was_thres);
-              meas_out.add(b,wasserstein_thres);
-            }
+          double wasserstein_thres = multilabel_soft_was(ad_res,mlsoft_was_thres);
+          std::string b = "wasserstein_no_" + std::to_string(mlsoft_was_thres);
+          meas_out.add(b,wasserstein_thres);
         }
       if (mlsoft_ks)
         {
           double kolmogorov_smirnov = multilabel_soft_ks(ad_res,-1); // kolmogorov-smirnov test aka max individual error
 	      meas_out.add("kolmogorov_smirnov",kolmogorov_smirnov);
-          if (mlsoft_ks_thres >= 0)
-            {
-              double kolmogorov_smirnov_thres = multilabel_soft_ks(ad_res,mlsoft_ks_thres);
-              std::string b = "kolmogorov_smirnov_no_" + std::to_string(kolmogorov_smirnov_thres);
-              meas_out.add(b,kolmogorov_smirnov_thres);
-            }
+          double kolmogorov_smirnov_thres = multilabel_soft_ks(ad_res,mlsoft_ks_thres);
+          std::string b = "kolmogorov_smirnov_no_" + std::to_string(kolmogorov_smirnov_thres);
+          meas_out.add(b,kolmogorov_smirnov_thres);
         }
       if (mlsoft_dc)
         {
           double distance_correlation = multilabel_soft_dc(ad_res,-1); // distance correlation , same as brownian correlation
 	      meas_out.add("distance_correlation",distance_correlation);
-          if (mlsoft_dc_thres >=0)
-            {
-              double distance_correlation_thres = multilabel_soft_dc(ad_res,mlsoft_dc_thres);
-              std::string b = "distance_correlation_no_" + std::to_string(mlsoft_dc_thres);
-              meas_out.add(b,distance_correlation_thres);
-            }
+          double distance_correlation_thres = multilabel_soft_dc(ad_res,mlsoft_dc_thres);
+          std::string b = "distance_correlation_no_" + std::to_string(mlsoft_dc_thres);
+          meas_out.add(b,distance_correlation_thres);
         }
       if (mlsoft_r2)
         {
           double r_2 = multilabel_soft_r2(ad_res,-1); // r_2 score: best  is 1, min is 0
           meas_out.add("r2",r_2);
-          if (mlsoft_r2_thres >= 0)
-            {
-              double r_2_thres = multilabel_soft_r2(ad_res,mlsoft_r2_thres);
-              std::string b = "r2_no_" + std::to_string(mlsoft_r2_thres);
-              meas_out.add(b,r_2_thres);
-            }
+          double r_2_thres = multilabel_soft_r2(ad_res,mlsoft_r2_thres);
+          std::string b = "r2_no_" + std::to_string(mlsoft_r2_thres);
+          meas_out.add(b,r_2_thres);
         }
       if (mlsoft_deltas)
         {
@@ -637,19 +619,15 @@ namespace dd
           std::vector<double> delta_scores_thres {0,0,0,0}; // delta-score , aka 1 if pred \in [truth-delta, truth+delta]
           std::vector<double> deltas {0.05, 0.1, 0.2, 0.5};
           multilabel_soft_deltas(ad_res, delta_scores, deltas,-1);
-          if (mlsoft_deltas_thres >=0)
-            multilabel_soft_deltas(ad_res, delta_scores_thres, deltas,mlsoft_deltas_thres);
+          multilabel_soft_deltas(ad_res, delta_scores_thres, deltas,mlsoft_deltas_thres);
           for (unsigned int i=0; i<deltas.size(); ++i)
             {
               std::ostringstream sstr;
               sstr << "delta_score_" << deltas[i];
               meas_out.add(sstr.str(),delta_scores[i]);
-              if (mlsoft_deltas_thres)
-                {
-                  std::string b = "delta_score_no_" + std::to_string(mlsoft_deltas_thres);
-                  sstr << "delta_score_" << deltas[i]<<"_no_"<<mlsoft_deltas_thres;
-                  meas_out.add(sstr.str(),delta_scores_thres[i]);
-                }
+              std::string b = "delta_score_no_" + std::to_string(mlsoft_deltas_thres);
+              sstr << "delta_score_" << deltas[i]<<"_no_"<<mlsoft_deltas_thres;
+              meas_out.add(sstr.str(),delta_scores_thres[i]);
             }
         }
 
@@ -700,12 +678,9 @@ namespace dd
 	    {
 	      double meucll = eucll(ad_res,-1);
 	      meas_out.add("eucll",meucll);
-          if (beucll_thres >=0)
-            {
-              double meucll_thres = eucll(ad_res,beucll_thres);
-              std::string b = "eucll_no_" + std::to_string(beucll_thres);
-              meas_out.add(b,meucll_thres);
-            }
+          double meucll_thres = eucll(ad_res,beucll_thres);
+          std::string b = "eucll_no_" + std::to_string(beucll_thres);
+          meas_out.add(b,meucll_thres);
 	    }
 	  if (bmcc)
 	    {
@@ -735,7 +710,7 @@ namespace dd
                 meas_thres = std::atof(sv.at(1).c_str());
               }
             else
-              meas_thres = -1;
+              meas_thres = 0;
           }
     }
 
