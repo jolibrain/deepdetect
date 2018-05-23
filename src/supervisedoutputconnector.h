@@ -560,42 +560,58 @@ namespace dd
         {
           double kl_divergence = multilabel_soft_kl(ad_res,false); // kl: amount of lost info if using pred instead of truth
           meas_out.add("kl_divergence",kl_divergence);
+          double kl_divergence_no_0 = multilabel_soft_kl(ad_res,true); // kl: amount of lost info if using pred instead of truth
+          meas_out.add("kl_divergence_no_0",kl_divergence_no_0);
         }
       if (mlsoft_js)
         {
           double js_divergence = multilabel_soft_js(ad_res,false) ; // jsd: symetrized version of kl
 	      meas_out.add("js_divergence",js_divergence);
+          double js_divergence_no_0 = multilabel_soft_js(ad_res,true) ; // jsd: symetrized version of kl
+	      meas_out.add("js_divergence_no_0",js_divergence_no_0);
         }
       if (mlsoft_was)
         {
           double wasserstein = multilabel_soft_was(ad_res,false); // wasserstein distance
 	      meas_out.add("wasserstein",wasserstein);
+          double wasserstein_no_0 = multilabel_soft_was(ad_res,true); // wasserstein distance
+	      meas_out.add("wasserstein_no_0",wasserstein_no_0);
         }
       if (mlsoft_ks)
         {
           double kolmogorov_smirnov = multilabel_soft_ks(ad_res,false); // kolmogorov-smirnov test aka max individual error
 	      meas_out.add("kolmogorov_smirnov",kolmogorov_smirnov);
+          double kolmogorov_smirnov_no_0 = multilabel_soft_ks(ad_res,true); // kolmogorov-smirnov test aka max individual error
+	      meas_out.add("kolmogorov_smirnov_no_0",kolmogorov_smirnov_no_0);
         }
       if (mlsoft_dc)
         {
           double distance_correlation = multilabel_soft_dc(ad_res,false); // distance correlation , same as brownian correlation
 	      meas_out.add("distance_correlation",distance_correlation);
+          double distance_correlation_no_0 = multilabel_soft_dc(ad_res,true); // distance correlation , same as brownian correlation
+	      meas_out.add("distance_correlation_no_0",distance_correlation_no_0);
         }
       if (mlsoft_r2)
         {
           double r_2 = multilabel_soft_r2(ad_res,false); // r_2 score: best  is 1, min is 0
           meas_out.add("r2",r_2);
+          double r_2_no_0 = multilabel_soft_r2(ad_res,true); // r_2 score: best  is 1, min is 0
+          meas_out.add("r2_no_0",r_2_no_0);
         }
       if (mlsoft_deltas)
         {
           std::vector<double> delta_scores {0,0,0,0}; // delta-score , aka 1 if pred \in [truth-delta, truth+delta]
+          std::vector<double> delta_scores_no_0 {0,0,0,0}; // delta-score , aka 1 if pred \in [truth-delta, truth+delta]
           std::vector<double> deltas {0.05, 0.1, 0.2, 0.5};
           multilabel_soft_deltas(ad_res, delta_scores, deltas,false);
+          multilabel_soft_deltas(ad_res, delta_scores_no_0, deltas,true);
           for (unsigned int i=0; i<deltas.size(); ++i)
             {
               std::ostringstream sstr;
               sstr << "delta_score_" << deltas[i];
               meas_out.add(sstr.str(),delta_scores[i]);
+              sstr << "delta_score_" << deltas[i]<<"_no_0";
+              meas_out.add(sstr.str(),delta_scores_no_0[i]);
             }
         }
 
