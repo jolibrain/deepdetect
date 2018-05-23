@@ -479,17 +479,26 @@ namespace dd
 	  bool bf1 = (std::find(measures.begin(),measures.end(),"f1")!=measures.end());
 	  bool bmcll = (std::find(measures.begin(),measures.end(),"mcll")!=measures.end());
 	  bool bgini = (std::find(measures.begin(),measures.end(),"gini")!=measures.end());
-	  bool beucll = (std::find(measures.begin(),measures.end(),"eucll")!=measures.end());
+	  bool beucll = false;
+      float beucll_thres = -1;
+      find_presence_and_thres("eucll", measures, beucll, beucll_thres);
 	  bool bmcc = (std::find(measures.begin(),measures.end(),"mcc")!=measures.end());
 	  bool baccv = false;
 	  bool mlacc = false;
       bool mlsoft_kl = false;
+      float mlsoft_kl_thres = -1;
       bool mlsoft_js = false;
+      float mlsoft_js_thres = -1;
       bool mlsoft_was = false;
+      float mlsoft_was_thres = -1;
       bool mlsoft_ks = false;
+      float mlsoft_ks_thres = -1;
       bool mlsoft_dc = false;
+      float mlsoft_dc_thres = -1;
       bool mlsoft_r2 = false;
+      float mlsoft_r2_thres = -1;
       bool mlsoft_deltas = false;
+      float mlsoft_deltas_thres = -1;
       bool net_meas = false;
       
       if (ctc)
@@ -507,13 +516,13 @@ namespace dd
 	    }
 	  else
 	    {
-	      mlsoft_kl = (std::find(measures.begin(),measures.end(),"kl")!=measures.end());
-	      mlsoft_js = (std::find(measures.begin(),measures.end(),"js")!=measures.end());
-	      mlsoft_was = (std::find(measures.begin(),measures.end(),"was")!=measures.end());
-	      mlsoft_ks = (std::find(measures.begin(),measures.end(),"ks")!=measures.end());
-	      mlsoft_dc = (std::find(measures.begin(),measures.end(),"dc")!=measures.end());
-	      mlsoft_r2 = (std::find(measures.begin(),measures.end(),"r2")!=measures.end());
-	      mlsoft_deltas = (std::find(measures.begin(),measures.end(),"deltas")!=measures.end());
+          find_presence_and_thres("kl", measures, mlsoft_kl, mlsoft_kl_thres);
+          find_presence_and_thres("js", measures, mlsoft_js, mlsoft_js_thres);
+          find_presence_and_thres("was", measures, mlsoft_was, mlsoft_was_thres);
+          find_presence_and_thres("ks", measures, mlsoft_ks, mlsoft_ks_thres);
+          find_presence_and_thres("dc", measures, mlsoft_dc, mlsoft_dc_thres);
+          find_presence_and_thres("r2", measures, mlsoft_r2, mlsoft_r2_thres);
+          find_presence_and_thres("deltas", measures, mlsoft_deltas, mlsoft_deltas_thres);
 	    }
 	}
       if (net_meas) // measure is coming from the net directly
@@ -558,60 +567,89 @@ namespace dd
 	    }
       if (mlsoft_kl)
         {
-          double kl_divergence = multilabel_soft_kl(ad_res,false); // kl: amount of lost info if using pred instead of truth
+          double kl_divergence = multilabel_soft_kl(ad_res,-1); // kl: amount of lost info if using pred instead of truth
           meas_out.add("kl_divergence",kl_divergence);
-          double kl_divergence_no_0 = multilabel_soft_kl(ad_res,true); // kl: amount of lost info if using pred instead of truth
-          meas_out.add("kl_divergence_no_0",kl_divergence_no_0);
+          if (mlsoft_kl_thres >= 0)
+            {
+              double kl_divergence_thres = multilabel_soft_kl(ad_res,mlsoft_kl_thres);
+              std::string b = "kl_divergence_no_" +std::to_string(mlsoft_kl_thres);
+              meas_out.add(b,kl_divergence_thres);
+            }
         }
       if (mlsoft_js)
         {
-          double js_divergence = multilabel_soft_js(ad_res,false) ; // jsd: symetrized version of kl
+          double js_divergence = multilabel_soft_js(ad_res,-1) ; // jsd: symetrized version of kl
 	      meas_out.add("js_divergence",js_divergence);
-          double js_divergence_no_0 = multilabel_soft_js(ad_res,true) ; // jsd: symetrized version of kl
-	      meas_out.add("js_divergence_no_0",js_divergence_no_0);
+          if (mlsoft_js_thres >=0)
+            {
+              double js_divergence_thres = multilabel_soft_js(ad_res,mlsoft_js_thres) ;
+              std::string b = "js_divergence_no_" + std::to_string(mlsoft_js_thres);
+              meas_out.add(b,js_divergence_thres);
+            }
         }
       if (mlsoft_was)
         {
-          double wasserstein = multilabel_soft_was(ad_res,false); // wasserstein distance
+          double wasserstein = multilabel_soft_was(ad_res,-1); // wasserstein distance
 	      meas_out.add("wasserstein",wasserstein);
-          double wasserstein_no_0 = multilabel_soft_was(ad_res,true); // wasserstein distance
-	      meas_out.add("wasserstein_no_0",wasserstein_no_0);
+          if (mlsoft_was_thres >= 0)
+            {
+              double wasserstein_thres = multilabel_soft_was(ad_res,mlsoft_was_thres);
+              std::string b = "wasserstein_no_" + std::to_string(mlsoft_was_thres);
+              meas_out.add(b,wasserstein_thres);
+            }
         }
       if (mlsoft_ks)
         {
-          double kolmogorov_smirnov = multilabel_soft_ks(ad_res,false); // kolmogorov-smirnov test aka max individual error
+          double kolmogorov_smirnov = multilabel_soft_ks(ad_res,-1); // kolmogorov-smirnov test aka max individual error
 	      meas_out.add("kolmogorov_smirnov",kolmogorov_smirnov);
-          double kolmogorov_smirnov_no_0 = multilabel_soft_ks(ad_res,true); // kolmogorov-smirnov test aka max individual error
-	      meas_out.add("kolmogorov_smirnov_no_0",kolmogorov_smirnov_no_0);
+          if (mlsoft_ks_thres >= 0)
+            {
+              double kolmogorov_smirnov_thres = multilabel_soft_ks(ad_res,mlsoft_ks_thres);
+              std::string b = "kolmogorov_smirnov_no_" + std::to_string(kolmogorov_smirnov_thres);
+              meas_out.add(b,kolmogorov_smirnov_thres);
+            }
         }
       if (mlsoft_dc)
         {
-          double distance_correlation = multilabel_soft_dc(ad_res,false); // distance correlation , same as brownian correlation
+          double distance_correlation = multilabel_soft_dc(ad_res,-1); // distance correlation , same as brownian correlation
 	      meas_out.add("distance_correlation",distance_correlation);
-          double distance_correlation_no_0 = multilabel_soft_dc(ad_res,true); // distance correlation , same as brownian correlation
-	      meas_out.add("distance_correlation_no_0",distance_correlation_no_0);
+          if (mlsoft_dc_thres >=0)
+            {
+              double distance_correlation_thres = multilabel_soft_dc(ad_res,mlsoft_dc_thres);
+              std::string b = "distance_correlation_no_" + std::to_string(mlsoft_dc_thres);
+              meas_out.add(b,distance_correlation_thres);
+            }
         }
       if (mlsoft_r2)
         {
-          double r_2 = multilabel_soft_r2(ad_res,false); // r_2 score: best  is 1, min is 0
+          double r_2 = multilabel_soft_r2(ad_res,-1); // r_2 score: best  is 1, min is 0
           meas_out.add("r2",r_2);
-          double r_2_no_0 = multilabel_soft_r2(ad_res,true); // r_2 score: best  is 1, min is 0
-          meas_out.add("r2_no_0",r_2_no_0);
+          if (mlsoft_r2_thres >= 0)
+            {
+              double r_2_thres = multilabel_soft_r2(ad_res,mlsoft_r2_thres);
+              std::string b = "r2_no_" + std::to_string(mlsoft_r2_thres);
+              meas_out.add(b,r_2_thres);
+            }
         }
       if (mlsoft_deltas)
         {
           std::vector<double> delta_scores {0,0,0,0}; // delta-score , aka 1 if pred \in [truth-delta, truth+delta]
-          std::vector<double> delta_scores_no_0 {0,0,0,0}; // delta-score , aka 1 if pred \in [truth-delta, truth+delta]
+          std::vector<double> delta_scores_thres {0,0,0,0}; // delta-score , aka 1 if pred \in [truth-delta, truth+delta]
           std::vector<double> deltas {0.05, 0.1, 0.2, 0.5};
-          multilabel_soft_deltas(ad_res, delta_scores, deltas,false);
-          multilabel_soft_deltas(ad_res, delta_scores_no_0, deltas,true);
+          multilabel_soft_deltas(ad_res, delta_scores, deltas,-1);
+          if (mlsoft_deltas_thres >=0)
+            multilabel_soft_deltas(ad_res, delta_scores_thres, deltas,mlsoft_deltas_thres);
           for (unsigned int i=0; i<deltas.size(); ++i)
             {
               std::ostringstream sstr;
               sstr << "delta_score_" << deltas[i];
               meas_out.add(sstr.str(),delta_scores[i]);
-              sstr << "delta_score_" << deltas[i]<<"_no_0";
-              meas_out.add(sstr.str(),delta_scores_no_0[i]);
+              if (mlsoft_deltas_thres)
+                {
+                  std::string b = "delta_score_no_" + std::to_string(mlsoft_deltas_thres);
+                  sstr << "delta_score_" << deltas[i]<<"_no_"<<mlsoft_deltas_thres;
+                  meas_out.add(sstr.str(),delta_scores_thres[i]);
+                }
             }
         }
 
@@ -660,10 +698,14 @@ namespace dd
 	    }
 	  if (beucll)
 	    {
-	      double meucll = eucll(ad_res,false);
+	      double meucll = eucll(ad_res,-1);
 	      meas_out.add("eucll",meucll);
-	      double meucll_no_0 = eucll(ad_res,true);
-	      meas_out.add("eucll_no_0",meucll_no_0);
+          if (beucll_thres >=0)
+            {
+              double meucll_thres = eucll(ad_res,beucll_thres);
+              std::string b = "eucll_no_" + std::to_string(beucll_thres);
+              meas_out.add(b,meucll_thres);
+            }
 	    }
 	  if (bmcc)
 	    {
@@ -680,6 +722,23 @@ namespace dd
 	  meas_out.add("iteration",ad_res.get("iteration").get<double>());
 	out.add("measure",meas_out);
     }
+
+    static void find_presence_and_thres(std::string meas, std::vector<std::string> measures, bool& do_meas, float& meas_thres)
+    {
+      for(auto s: measures)
+        if (s.find(meas)!=std::string::npos)
+          {
+            do_meas = true;
+            std::vector<std::string> sv = dd_utils::split(s,'-');
+            if (sv.size() == 2)
+              {
+                meas_thres = std::atof(sv.at(1).c_str());
+              }
+            else
+              meas_thres = -1;
+          }
+    }
+
 
     static double straight_meas(const APIData &ad)
     {
@@ -867,7 +926,7 @@ namespace dd
       return f1;
     }
 
-    static double multilabel_soft_kl(const APIData &ad, bool ignore_0)
+    static double multilabel_soft_kl(const APIData &ad, float thres)
     {
       double kl_divergence = 0;
       long int total_number = 0;
@@ -883,10 +942,10 @@ namespace dd
           dVec dprede = (dpred.array() < eps).select(eps, dpred);
           dVec dtarge = (dtarg.array() < eps).select(eps, dtarg);
           dVec temp = (dprede.array().inverse()*dtarge.array()).log()*dtarge.array();
-          if (ignore_0)
+          if (thres >= 0)
             {
-              total_number += (dtarg.array()>0).count();
-              temp = (dtarg.array() <= 0).select(0, temp);
+              total_number += (dtarg.array()>thres).count();
+              temp = (dtarg.array() <= thres).select(0, temp);
             }
           else
             {
@@ -898,7 +957,7 @@ namespace dd
       return kl_divergence / (double)total_number;
     }
 
-    static double multilabel_soft_js(const APIData &ad, bool ignore_0)
+    static double multilabel_soft_js(const APIData &ad, float thres)
     {
       int batch_size = ad.get("batch_size").get<int>();
       double js_divergence = 0;
@@ -916,10 +975,10 @@ namespace dd
           dVec temp = (dprede + dtarge).array().inverse();
           dVec temp2 = (temp.array()*dtarge.array()*2).log()*dtarge.array()*0.5 +
             (temp.array()*dprede.array()*2).log()*dprede.array()*0.5;
-          if (ignore_0)
+          if (thres >= 0)
             {
-              total_number += (dtarg.array()>0).count();
-              temp2 = (dtarg.array()<=0).select(0, temp2);
+              total_number += (dtarg.array()>thres).count();
+              temp2 = (dtarg.array()<=thres).select(0, temp2);
             }
           else
             {
@@ -931,7 +990,7 @@ namespace dd
       return js_divergence / (double)total_number;
     }
 
-    static double multilabel_soft_was(const APIData &ad, bool ignore_0)
+    static double multilabel_soft_was(const APIData &ad, float thres)
     {
       int batch_size = ad.get("batch_size").get<int>();
       double was = 0;
@@ -944,10 +1003,10 @@ namespace dd
           dVec dpred = dVec::Map(&predictions.at(0), predictions.size());
           dVec dtarg = dVec::Map(&targets.at(0), targets.size());
           dVec dif = dtarg - dpred;
-          if (ignore_0)
+          if (thres >=0)
             {
-              dif = (dtarg.array() <= 0).select(0, dif);
-              total_number += (dtarg.array()>0).count();
+              dif = (dtarg.array() <= thres).select(0, dif);
+              total_number += (dtarg.array()>thres).count();
             }
           else
             {
@@ -960,7 +1019,7 @@ namespace dd
       return was/sqrt((double)total_number);
     }
 
-    static double multilabel_soft_ks(const APIData &ad, bool ignore_0)
+    static double multilabel_soft_ks(const APIData &ad, float thres)
     {
       int batch_size = ad.get("batch_size").get<int>();
       double ks = 0;
@@ -973,10 +1032,10 @@ namespace dd
           dVec dpred = dVec::Map(&predictions.at(0), predictions.size());
           dVec dtarg = dVec::Map(&targets.at(0), targets.size());
           dVec dif = dtarg-dpred;
-          if (ignore_0)
+          if (thres >= 0)
             {
-              dif = (dtarg.array() < 0).select(0, dif);
-              total_number += (dtarg.array()>0).count();
+              dif = (dtarg.array() < thres).select(0, dif);
+              total_number += (dtarg.array()>thres).count();
             }
           else
             {
@@ -996,7 +1055,7 @@ namespace dd
     }
 
 
-    static double multilabel_soft_dc(const APIData &ad, bool ignore_0)
+    static double multilabel_soft_dc(const APIData &ad, float thres)
     {
       int batch_size = ad.get("batch_size").get<int>();
       int nclasses = ad.getobj(std::to_string(0)).get("target").get<std::vector<double>>().size();
@@ -1020,9 +1079,9 @@ namespace dd
 
         care_classes.clear();
         for (int l =0; l<nclasses; ++l)
-          if (ignore_0)
+          if (thres >= 0)
             {
-              if (targets[l] > 0)
+              if (targets[l] > thres)
                 care_classes.push_back(l);
             }
           else
@@ -1077,7 +1136,7 @@ namespace dd
       return distance_correlation;
     }
 
-    static double multilabel_soft_r2(const APIData &ad, bool ignore_0)
+    static double multilabel_soft_r2(const APIData &ad, float thres)
     {
       int batch_size = ad.get("batch_size").get<int>();
       double tmean = 0;
@@ -1091,11 +1150,11 @@ namespace dd
           dVec dpred = dVec::Map(&predictions.at(0), predictions.size());
           dVec dtarg = dVec::Map(&targets.at(0), targets.size());
           dVec dif = dtarg - dpred;
-          if (ignore_0)
+          if (thres >=0)
             {
-              total_number += (dtarg.array()>0).count();
-              tmean += ((dtarg.array() <= 0).select(0, dtarg)).sum();
-              dif = (dtarg.array() <= 0).select(0, dif);
+              total_number += (dtarg.array()>thres).count();
+              tmean += ((dtarg.array() <= thres).select(0, dtarg)).sum();
+              dif = (dtarg.array() <= thres).select(0, dif);
             }
           else
             {
@@ -1117,9 +1176,9 @@ namespace dd
           dVec dpred = dVec::Map(&predictions.at(0), predictions.size());
           dVec dtarg = dVec::Map(&targets.at(0), targets.size());
           dVec temp;
-          if (ignore_0)
+          if (thres>=0)
             {
-              temp = (dtarg.array() <= 0).select(0, dtarg.array() - tmean);
+              temp = (dtarg.array() <= thres).select(0, dtarg.array() - tmean);
             }
           else
             {
@@ -1130,7 +1189,7 @@ namespace dd
       return  1.0 - ssres/sstot;
     }
 
-    static void multilabel_soft_deltas(const APIData &ad, std::vector<double>& delta_scores, const std::vector<double>& deltas, bool ignore_0)
+    static void multilabel_soft_deltas(const APIData &ad, std::vector<double>& delta_scores, const std::vector<double>& deltas, float thres)
     {
       int batch_size = ad.get("batch_size").get<int>();
       long int total_number = 0;
@@ -1144,10 +1203,10 @@ namespace dd
           dVec dpred = dVec::Map(&predictions.at(0), predictions.size());
           dVec dtarg = dVec::Map(&targets.at(0), targets.size());
           dVec dif;
-          if (ignore_0)
+          if (thres >=0)
             {
-              total_number += (dtarg.array()>0).count();
-              dif = (dtarg.array() <= 0).select(10, (dtarg-dpred).array().abs());
+              total_number += (dtarg.array()>thres).count();
+              dif = (dtarg.array() <= thres).select(10, (dtarg-dpred).array().abs());
             }
           else
             {
@@ -1293,7 +1352,7 @@ namespace dd
       return mcc;
     }
     
-    static double eucll(const APIData &ad, bool ignore_0)
+    static double eucll(const APIData &ad, float thres)
     {
       double eucl = 0.0;
       int batch_size = ad.get("batch_size").get<int>();
@@ -1306,9 +1365,9 @@ namespace dd
 	    target = bad.get("target").get<std::vector<double>>();
 	  else target.push_back(bad.get("target").get<double>());
 	  for (size_t i=0;i<target.size();i++)
-        if (ignore_0)
+        if (thres >= 0)
           {
-            if (target.at(i) >0)
+            if (target.at(i) >thres)
               eucl += (predictions.at(i)-target.at(i))*(predictions.at(i)-target.at(i));
           }
         else
