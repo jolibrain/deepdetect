@@ -632,7 +632,171 @@ namespace dd
       tlist << s << std::endl;
     tlist.close();
   }
+
+  int ImgCaffeInputFileConn::objects_to_db(const std::vector<std::string> &filelists,
+					   const std::string &traindbname,
+					   const std::string &testdbname,
+					   const bool &encoded,
+					   const std::string &encode_type,
+					   const std::string &backend)
+  {
+    //TODO: bypass creation if dbs already exist
+    if (fileops::file_exists(traindbname))
+      {
+	//TODO: count ? ...
+	_logger->warn("object db file {} already exists, bypassing creation",traindbname);
+	return 0;
+      }
+
+    //TODO: read train lines
+    std::ifstream in(filelists.at(0));
+    if (!in.is_open())
+      throw InputConnectorBadParamException("failed opening training data file " + filelists.at(0));
+    std::string line;
+    std::vector<std::pair<std::string,std::string>> lines;
+    int clines = 0;
+    while(std::getline(in,line))
+      {
+	//TODO
+	std::vector<std::string> elts = dd_utils::split(line,' ');
+	if (elts.size() != 2)
+	  throw InputConnectorBadParamException("wrong line " + std::to_string(clines) + " in data file " + filelists.at(0));
+	lines.push_back(std::pair<std::string,std::string>(elts.at(0),elts.at(1)));
+	++clines;
+      }
     
+    //TODO: shuffle & split
+    
+    //TODO: create train & test dbs
+    write_objects_to_db(traindbname,lines,encoded,encode_type,backend);
+
+    //TODO: read test lines as needed
+   
+    //TODO: write corresp / map file
+    
+    return 0;
+  }
+
+  void ImgCaffeInputFileConn::write_objects_to_db(const std::string &dbfullname,
+						  const std::vector<std::pair<std::string,std::string>> &lines,
+						  const bool &encoded,
+						  const std::string &encode_type,
+						  const std::string &backend)
+  {
+
+    // Create new DB
+    std::unique_ptr<db::DB> db(db::GetDB(backend));
+    db->Open(dbfullname.c_str(), db::NEW);
+    std::unique_ptr<db::Transaction> txn(db->NewTransaction());
+
+    // Storing to db
+    AnnotatedDatum_AnnotationType type; 
+    AnnotatedDatum anno_datum;
+    Datum* datum = anno_datum.mutable_datum();
+    int count = 0;
+    int data_size = 0;
+    bool data_size_initialized = false;
+    int min_dim = 0;
+    int max_dim = 0;
+    std::string label_type = "txt";
+    bool status = true;
+    bool check_size = false; // check whether all datum have the same size
+    
+    //TODO: read map file -> we don't need it when using txt format
+    std::map<std::string, int> name_to_label;
+
+    for (int line_id = 0; line_id < lines.size(); ++line_id)
+      {
+
+	std::string enc = encode_type;
+	if (encoded && !enc.size())
+	  {
+	    // Guess the encoding type from the file name
+	    string fn = lines[line_id].first;
+	    size_t p = fn.rfind('.');
+	    if ( p == fn.npos )
+	      LOG(WARNING) << "Failed to guess the encoding of '" << fn << "'";
+	    enc = fn.substr(p);
+	    std::transform(enc.begin(), enc.end(), enc.begin(), ::tolower);
+	  }
+	std::string filename = lines[line_id].first;
+
+	std::string labelname = lines[line_id].second;
+	status = ReadRichImageToAnnotatedDatum(filename, labelname, _height,
+					       _width, min_dim, max_dim, !_bw, enc, type, label_type,
+					       name_to_label, &anno_datum);
+	anno_datum.set_type(AnnotatedDatum_AnnotationType_BBOX);
+	if (status == false)
+	  {
+	    _logger->warn("failed to read {}",lines[line_id].first);
+	    continue;
+	  }
+	if (check_size)
+	  {
+	    if (!data_size_initialized)
+	      {
+		data_size = datum->channels() * datum->height() * datum->width();
+		data_size_initialized = true;
+	      }
+	    else
+	      {
+		const std::string& data = datum->data();
+		CHECK_EQ(data.size(), data_size) << "Incorrect data field size "
+						 << data.size();
+	      }
+	  }
+
+	// compute the mean
+	/*if (mean)
+	  {
+	  if (meanv.empty())
+	  meanv = std::vector<float>(datum->channels(),0.0);
+	  std::vector<float> lmeanv(datum->channels(),0.0);
+	  std::vector<cv::Mat> channels;
+	  cv::Mat img = cv::imread(lines[line_id].first);
+	  cv::split(img, channels);
+	  for (int d=0;d<datum->channels();d++) {
+	  lmeanv[d] = cv::mean(channels[d])[0];
+	  meanv[d] += lmeanv[d];
+	  //std::cerr << meanv[d] / count << std::endl;
+	  }
+	  }*/
+	
+	// sequential
+	string key_str = caffe::format_int(line_id, 8) + "_" + lines[line_id].first;
+	
+	// Put in db
+	string out;
+	CHECK(anno_datum.SerializeToString(&out));
+	if (!anno_datum.SerializeToString(&out))
+	  _logger->error("Failed serialization of annotated datum for db storage");
+	txn->Put(key_str, out);
+	
+	if (++count % 1000 == 0) {
+	  // Commit db
+	  txn->Commit();
+	  txn.reset(db->NewTransaction());
+	  LOG(INFO) << "Processed " << count << " files.";
+	}
+      }
+  
+  // write the last batch
+  if (count % 1000 != 0) {
+    txn->Commit();
+    LOG(INFO) << "Processed " << count << " files.";
+  }
+  //TODO: ?
+  /*if (mean)
+    {
+      std::ofstream fout_mean("mean_values.txt");
+      for (auto v: meanv)
+	fout_mean << v/static_cast<float>(count) << " ";
+      fout_mean << std::endl;
+      fout_mean.close();
+      }*/
+    
+  }
+  
   int ImgCaffeInputFileConn::compute_images_mean(const std::string &dbname,
 						 const std::string &meanfile,
 						 const std::string &backend)
