@@ -46,15 +46,15 @@ TEST(outputconn,mlsoft)
     }
   SupervisedOutput so;
   std::vector<std::string> measures = {"acc"};
-  double kl = so.multilabel_soft_kl(res_ad);
-  double js = so.multilabel_soft_js(res_ad);
-  double was = so.multilabel_soft_was(res_ad);
-  double ks = so.multilabel_soft_ks(res_ad);
-  double dc = so.multilabel_soft_dc(res_ad);
-  double r2 = so.multilabel_soft_r2(res_ad);;
+  double kl = so.multilabel_soft_kl(res_ad,false);
+  double js = so.multilabel_soft_js(res_ad,false);
+  double was = so.multilabel_soft_was(res_ad,false);
+  double ks = so.multilabel_soft_ks(res_ad,false);
+  double dc = so.multilabel_soft_dc(res_ad,false);
+  double r2 = so.multilabel_soft_r2(res_ad,false);;
   std::vector<double> delta_scores {0,0,0,0};
   std::vector<double> deltas {0.05, 0.1, 0.2, 0.5};
-  so.multilabel_soft_deltas(res_ad,delta_scores, deltas);
+  so.multilabel_soft_deltas(res_ad,delta_scores, deltas,false);
   ASSERT_NEAR(0.257584,kl, 0.0001); // val checked with def
   ASSERT_NEAR(0.0178739,js, 0.0001);
   ASSERT_NEAR(0.0866025,was, 0.0001);
