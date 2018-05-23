@@ -31,7 +31,7 @@
 #include "dlib/image_processing.h"
 #include "dlib/opencv/to_open_cv.h"
 #include "dlib/opencv/cv_image.h"
-
+#include "DNNStructures.h"
 
 namespace dd
 {
