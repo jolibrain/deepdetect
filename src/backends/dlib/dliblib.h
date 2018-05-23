@@ -32,7 +32,7 @@
 
 namespace dd
 {
-  template<class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel=TFModel>
+  template<class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel=DlibModel>
     class DlibLib : public MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>
     {
     public:

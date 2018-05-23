@@ -121,9 +121,12 @@ if (USE_DLIB)
                 BUILD_IN_SOURCE 1
         )
     endif()
-    set(DLIB_VERSION ${dlib_VERSION_MAJOR})
-    include_directories(${dlib_INCLUDE_DIRS})
-    message(STATUS "Dlib ${DLIB_VERSION} (${dlib_VERSION}) found (${dlib_CONFIG_PATH})")
+
+    set(DLIB_INC_DIR ${CMAKE_BINARY_DIR}/dlib/src/dlib)
+    set(DLIB_LIB_DIR ${CMAKE_BINARY_DIR}/dlib/src/dlib/dlib/build)
+
+    include_directories("${DLIB_INC_DIR}")
+    message(STATUS "Dlib built")
 endif()
 
 if (USE_TF)

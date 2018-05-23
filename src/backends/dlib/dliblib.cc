@@ -24,11 +24,14 @@
 #include "imginputfileconn.h"
 #include "outputconnectorstrategy.h"
 
-//#include "tensorflow/core/public/session.h"
-//#include "tensorflow/core/platform/env.h"
-//#include "tensorflow/core/framework/tensor.h"
-//#include "tensorflow/cc/ops/standard_ops.h"
-//#include "tensorflow/core/graph/default_device.h"
+// Dlib
+#include "dlib/data_io.h"
+#include "dlib/image_io.h"
+#include "dlib/image_transforms.h"
+#include "dlib/image_processing.h"
+#include "dlib/opencv/to_open_cv.h"
+#include "dlib/opencv/cv_image.h"
+
 
 namespace dd
 {
@@ -45,56 +48,56 @@ namespace dd
     :MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,DlibModel>(std::move(cl))
   {
     this->_libname = "dlib";
-    _nclasses = cl._nclasses;
-    _regression = cl._regression;
-    _ntargets = cl._ntargets;
-    _inputLayer = cl._inputLayer;
-    _outputLayer = cl._outputLayer;
-    _inputFlag = cl._inputFlag;
+//    _nclasses = cl._nclasses;
+//    _regression = cl._regression;
+//    _ntargets = cl._ntargets;
+//    _inputLayer = cl._inputLayer;
+//    _outputLayer = cl._outputLayer;
+//    _inputFlag = cl._inputFlag;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   DlibLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::~DlibLib()
   {
     std::lock_guard<std::mutex> lock(_net_mutex);
-    if (_session)
-      {
-	_session->Close();
-	_session.reset();
-      }
+//    if (_session)
+//      {
+//	_session->Close();
+//	_session.reset();
+//      }
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void DlibLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::init_mllib(const APIData &ad)
   {
-    if (ad.has("nclasses"))
-      _nclasses = ad.get("nclasses").get<int>();
-    if (ad.has("regression") && ad.get("regression").get<bool>())
-      {
-	_regression = true; // XXX: unsupported
-	_nclasses = 1;
-      }
-    // setting the value of Input Layer for Tensorflow graph
-    if (ad.has("inputlayer"))
-      {
-	_inputLayer = ad.get("inputlayer").get<std::string>();
-      }
-    // setting the final Output Layer for Tensorflow graph
-    if (ad.has("outputlayer"))
-    {
-      _outputLayer = ad.get("outputlayer").get<std::string>();
-    }
-    if (ad.has("input_flag"))
-      {
-	_inputFlag = ad.getobj("input_flag");
-      }
-    if (ad.has("ntargets")) // XXX: unsupported
-      _ntargets = ad.get("ntargets").get<int>();
-    if (_nclasses == 0)
-      throw MLLibBadParamException("number of classes is unknown (nclasses == 0)");
-    if (_regression && _ntargets == 0)
-      throw MLLibBadParamException("number of regression targets is unknown (ntargets == 0)");
-    this->_mlmodel.read_from_repository(this->_mlmodel._repo,this->_logger);
+//    if (ad.has("nclasses"))
+//      _nclasses = ad.get("nclasses").get<int>();
+//    if (ad.has("regression") && ad.get("regression").get<bool>())
+//      {
+//	_regression = true; // XXX: unsupported
+//	_nclasses = 1;
+//      }
+//    // setting the value of Input Layer for Tensorflow graph
+//    if (ad.has("inputlayer"))
+//      {
+//	_inputLayer = ad.get("inputlayer").get<std::string>();
+//      }
+//    // setting the final Output Layer for Tensorflow graph
+//    if (ad.has("outputlayer"))
+//    {
+//      _outputLayer = ad.get("outputlayer").get<std::string>();
+//    }
+//    if (ad.has("input_flag"))
+//      {
+//	_inputFlag = ad.getobj("input_flag");
+//      }
+//    if (ad.has("ntargets")) // XXX: unsupported
+//      _ntargets = ad.get("ntargets").get<int>();
+//    if (_nclasses == 0)
+//      throw MLLibBadParamException("number of classes is unknown (nclasses == 0)");
+//    if (_regression && _ntargets == 0)
+//      throw MLLibBadParamException("number of regression targets is unknown (ntargets == 0)");
+//    this->_mlmodel.read_from_repository(this->_mlmodel._repo,this->_logger);
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -103,34 +106,34 @@ namespace dd
     // NOT IMPLEMENTED
   }
 
-  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  void DlibLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::tf_concat(const std::vector<tensorflow::Tensor> &dv,
-										   std::vector<tensorflow::Tensor> &vtfinputs)
-  {
-//    /*
-//      as incredible as it seems, code below is the bloated tf way of concatenating
-//      tensors to produce the intput to the neural net graph.
-//    */
-//    int rbatch_size = dv.size();
-//    auto root = tensorflow::Scope::NewRootScope();
-//    std::string concat_name = "concatenated";
-//    std::vector<tensorflow::Input> ops_inputs;
-//    for (int i=0;i<rbatch_size;i++)
-//      ops_inputs.push_back(std::move(tensorflow::Input(dv[i])));
-//    tensorflow::gtl::ArraySlice<tensorflow::Input> ipl(&ops_inputs[0],ops_inputs.size());
-//    tensorflow::InputList toil(ipl);
-//    auto concatout = tensorflow::ops::Concat(root.WithOpName(concat_name),toil,0);
-//    std::unique_ptr<tensorflow::Session> concat_session(tensorflow::NewSession(tensorflow::SessionOptions()));
-//    tensorflow::GraphDef graph;
-//    root.ToGraphDef(&graph);
-//    concat_session->Create(graph);
-//    tensorflow::Status concat_run_status = concat_session->Run({}, {concat_name}, {}, &vtfinputs);
-//    if (!concat_run_status.ok())
-//      {
-//	std::cout << concat_run_status.ToString() << std::endl;
-//	throw MLLibInternalException(concat_run_status.ToString());
-      }
-  }
+//  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+//  void DlibLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::tf_concat(const std::vector<tensorflow::Tensor> &dv,
+//										   std::vector<tensorflow::Tensor> &vtfinputs)
+//  {
+////    /*
+////      as incredible as it seems, code below is the bloated tf way of concatenating
+////      tensors to produce the intput to the neural net graph.
+////    */
+////    int rbatch_size = dv.size();
+////    auto root = tensorflow::Scope::NewRootScope();
+////    std::string concat_name = "concatenated";
+////    std::vector<tensorflow::Input> ops_inputs;
+////    for (int i=0;i<rbatch_size;i++)
+////      ops_inputs.push_back(std::move(tensorflow::Input(dv[i])));
+////    tensorflow::gtl::ArraySlice<tensorflow::Input> ipl(&ops_inputs[0],ops_inputs.size());
+////    tensorflow::InputList toil(ipl);
+////    auto concatout = tensorflow::ops::Concat(root.WithOpName(concat_name),toil,0);
+////    std::unique_ptr<tensorflow::Session> concat_session(tensorflow::NewSession(tensorflow::SessionOptions()));
+////    tensorflow::GraphDef graph;
+////    root.ToGraphDef(&graph);
+////    concat_session->Create(graph);
+////    tensorflow::Status concat_run_status = concat_session->Run({}, {concat_name}, {}, &vtfinputs);
+////    if (!concat_run_status.ok())
+////      {
+////	std::cout << concat_run_status.ToString() << std::endl;
+////	throw MLLibInternalException(concat_run_status.ToString());
+//      }
+//  }
   
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   int DlibLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::train(const APIData &ad,
@@ -451,6 +454,6 @@ namespace dd
     return 0;
   }
   
-  template class DlibLib<ImgTFInputFileConn,SupervisedOutput,DlibModel>;
-  template class DlibLib<ImgTFInputFileConn,UnsupervisedOutput,DlibModel>;
+//  template class DlibLib<ImgTFInputFileConn,SupervisedOutput,DlibModel>;
+//  template class DlibLib<ImgTFInputFileConn,UnsupervisedOutput,DlibModel>;
 }
