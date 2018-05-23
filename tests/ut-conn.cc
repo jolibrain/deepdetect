@@ -46,15 +46,15 @@ TEST(outputconn,mlsoft)
     }
   SupervisedOutput so;
   std::vector<std::string> measures = {"acc"};
-  double kl = so.multilabel_soft_kl(res_ad,false);
-  double js = so.multilabel_soft_js(res_ad,false);
-  double was = so.multilabel_soft_was(res_ad,false);
-  double ks = so.multilabel_soft_ks(res_ad,false);
-  double dc = so.multilabel_soft_dc(res_ad,false);
-  double r2 = so.multilabel_soft_r2(res_ad,false);;
+  double kl = so.multilabel_soft_kl(res_ad,-1);
+  double js = so.multilabel_soft_js(res_ad,-1);
+  double was = so.multilabel_soft_was(res_ad,-1);
+  double ks = so.multilabel_soft_ks(res_ad,-1);
+  double dc = so.multilabel_soft_dc(res_ad,-1);
+  double r2 = so.multilabel_soft_r2(res_ad,-1);;
   std::vector<double> delta_scores {0,0,0,0};
   std::vector<double> deltas {0.05, 0.1, 0.2, 0.5};
-  so.multilabel_soft_deltas(res_ad,delta_scores, deltas,false);
+  so.multilabel_soft_deltas(res_ad,delta_scores, deltas,-1);
   ASSERT_NEAR(0.257584,kl, 0.0001); // val checked with def
   ASSERT_NEAR(0.0178739,js, 0.0001);
   ASSERT_NEAR(0.0866025,was, 0.0001);
@@ -65,6 +65,24 @@ TEST(outputconn,mlsoft)
   ASSERT_EQ(0.5,delta_scores[1]);
   ASSERT_EQ(1,delta_scores[2]);
   ASSERT_EQ(1,delta_scores[3]);
+  measures = {"kl-0.1"};
+  bool do_kl = false;
+  bool do_js = true;
+  bool do_dc = false;
+  float kl_thres = -2 ;
+  float js_thres = -2 ;
+  float dc_thres = -1 ;
+  so.find_presence_and_thres("kl", measures, do_kl, kl_thres);
+  so.find_presence_and_thres("js", measures, do_js, js_thres);
+  so.find_presence_and_thres("dc", measures, do_dc, dc_thres);
+  ASSERT_EQ(do_kl, true);
+  ASSERT_EQ(do_js, true);
+  ASSERT_EQ(do_dc, false);
+  ASSERT_NEAR(kl_thres, 0.1, 0.001);
+  ASSERT_NEAR(js_thres, -2, 0.001);
+  ASSERT_NEAR(dc_thres, -1, 0.001);
+
+
 }
 
 TEST(outputconn,acc)
