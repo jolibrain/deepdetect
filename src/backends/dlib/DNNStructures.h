@@ -1,6 +1,10 @@
+#ifndef DLIBDNNSTRUCTURES_H
+#define DLIBDNNSTRUCTURES_H
+
 #include <dlib/dnn.h>
 
-// ------- Face detect deep neural net ------- //
+
+// --------      Common layers        ------- //
 template <long num_filters, typename SUBNET> using con5d = dlib::con<num_filters,5,5,2,2,SUBNET>;
 template <long num_filters, typename SUBNET> using con5  = dlib::con<num_filters,5,5,1,1,SUBNET>;
 
@@ -13,10 +17,19 @@ dlib::affine<
                             32, dlib::relu<
                                 dlib::affine<
                                 con5d<16,SUBNET>>>>>>>>>;
-template <typename SUBNET> using rcon5  = dlib::relu<dlib::affine<con5<45,SUBNET>>>;
 
-using net_type_detector = dlib::loss_mmod<dlib::con<1,9,9,1,1,rcon5<rcon5<rcon5<downsampler<dlib::input_rgb_image_pyramid<dlib::pyramid_down<6>>>>>>>>;
 
+// ------- Obj detect deep neural net ------- //
+
+template <typename SUBNET> using rcon5Obj  = dlib::relu<dlib::affine<con5<55,SUBNET>>>;
+
+using net_type_objDetector = dlib::loss_mmod<dlib::con<1,9,9,1,1,rcon5Obj<rcon5Obj<rcon5Obj<downsampler<dlib::input_rgb_image_pyramid<dlib::pyramid_down<6>>>>>>>>;
+
+
+// ------- Face detect deep neural net ------- //
+template <typename SUBNET> using rcon5Face  = dlib::relu<dlib::affine<con5<45,SUBNET>>>;
+
+using net_type_faceDetector = dlib::loss_mmod<dlib::con<1,9,9,1,1,rcon5Face<rcon5Face<rcon5Face<downsampler<dlib::input_rgb_image_pyramid<dlib::pyramid_down<6>>>>>>>>;
 
 
 // ------- Face recognition feature extraction deep neural net (ResNet) -------- //
@@ -47,3 +60,8 @@ using anet_type = dlib::loss_metric<dlib::fc_no_bias<128,dlib::avg_pool_everythi
                                                                                                  dlib::max_pool<3,3,2,2,dlib::relu<dlib::affine<dlib::con<32,7,7,2,2,
                                                                                                  dlib::input_rgb_image_sized<150>
                                                                                  >>>>>>>>>>>>;
+
+
+template<class T> using net_type = dlib::loss_mmod<T>;
+
+#endif

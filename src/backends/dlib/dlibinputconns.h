@@ -37,154 +37,117 @@
 #include "inputconnectorstrategy.h"
 #include "ext/base64/base64.h"
 
-namespace dd
- {
-  class DlibInputInterface
-  {
-  public:
-    DlibInputInterface() {}
-    DlibInputInterface(const DlibInputInterface &tii)
-    :_dv(tii._dv),_ids(tii._ids){}
-    ~DlibInputInterface() {}
+namespace dd {
+    class DlibInputInterface {
+    public:
+        DlibInputInterface() {}
 
-  public:
-    // parameters common to all TF input connectors
-    std::vector<tensorflow::Tensor> _dv; // main tensor for prediction.
-    std::vector<tensorflow::Tensor> _dv_test;
-    std::vector<std::string> _ids; // input ids (eg. Image Ids).
-  };
+        DlibInputInterface(const DlibInputInterface &tii)
+                : _dv(tii._dv), _ids(tii._ids) {}
 
-  class ImgTFInputFileConn : public ImgInputFileConn, public DlibInputInterface
-  {
-  public:
-    ImgTFInputFileConn()
-      :ImgInputFileConn() 
-      {
-	reset_dv();
-      }
-    ImgTFInputFileConn(const ImgTFInputFileConn &i)
-      :ImgInputFileConn(i),DlibInputInterface(i),_mean(i._mean),_std(i._std) {}
-    ~ImgTFInputFileConn() {}
+        ~DlibInputInterface() {}
 
-    int channels() const
-    {
-      if (_bw) return 1;
-      else return 3; // RGB
-    }
-    
-    int height() const
-    {
-      return _height;
-    }
-    
-    int width() const
-    {
-      return _width;
-    }
+    public:
+        // parameters common to all Dlib input connectors
+        std::vector<std::string> _ids; // input ids (eg. Image Ids).
+    };
 
-    int batch_size() const
-    {
-      if (!_dv.empty())
-      return _dv.size();
-      else return ImgInputFileConn::batch_size();
-    }
-    
-    int test_batch_size() const
-    {
-      if (!_dv_test.empty())
-	return _dv_test.size();
-      else return ImgInputFileConn::test_batch_size();
-    }
+    class ImgDlibInputFileConn : public ImgInputFileConn, public DlibInputInterface {
+    public:
+        ImgDlibInputFileConn()
+                : ImgInputFileConn() {
+        }
 
-    void init(const APIData &ad)
-    {
-      ImgInputFileConn::init(ad);
-      if (ad.has("mean"))
-	_mean = ad.get("mean").get<double>();
-      if (ad.has("std"))
-	_std = ad.get("std").get<double>();
-    }
+        ImgDlibInputFileConn(const ImgDlibInputFileConn &i)
+                : ImgInputFileConn(i), DlibInputInterface(i), _mean(i._mean), _std(i._std) {}
 
-    void transform(const APIData &ad)
-    { 
-      try
-	{
-	  ImgInputFileConn::transform(ad);
-	}
-      catch (InputConnectorBadParamException &e)
-	{
-	  throw;
-	}
+        ~ImgDlibInputFileConn() {}
 
-      APIData ad_param = ad.getobj("parameters");
-      if (ad_param.has("input"))
-	{
-	  APIData ad_input = ad_param.getobj("input");
-	  if (ad_input.has("mean"))
-	    _mean = ad_input.get("mean").get<double>();
-	  if (ad_input.has("std"))
-	    _std = ad_input.get("std").get<double>();
-	}
-      
-      for (size_t i=0;i<_images.size();i++)
-	{
-	  tensorflow::Tensor input_tensor(tensorflow::DT_FLOAT, tensorflow::TensorShape({1,_height,_width,channels()}));
-	  auto input_tensor_mapped = input_tensor.tensor<float, 4>();
+        int channels() const {
+            if (_bw) return 1;
+            else return 3; // RGB
+        }
 
-	  cv::Mat CImage = std::move(this->_images.at(i));
-	  cv::Mat Image;
-	  CImage.convertTo(Image, CV_32FC1);
-	  cv::Mat Image2;
-	  cv::cvtColor(Image,Image2,CV_BGR2RGB); // because OpenCV defaults to BGR
-	  Image = (Image2 - _mean) / _std;
-	  const float * source_data = (float*) Image.data;
+        int height() const {
+            return _height;
+        }
 
-	  // copying the data into the corresponding tensor
-	  for (int y = 0; y < height(); ++y) {
-	    const float* source_row = source_data + (y * width()  * channels());
-	    for (int x = 0; x < width(); ++x) {
-	      const float* source_pixel = source_row + (x * channels());
-	      for (int c = 0; c < channels(); ++c) {
-		const float* source_value = source_pixel + c;
-		input_tensor_mapped(0, y, x, c) = *source_value;
-	      }
-	    }
-	  }
-	  
-	  _dv.push_back(input_tensor);
-	  _ids.push_back(_uris.at(i));
-	}
-      _images.clear();
-    }
-    
-    std::vector<tensorflow::Tensor> get_dv(const int &num)
-      {
-	if (!_train)
-	  {
-	    int i = 0;
-	    std::vector<tensorflow::Tensor> dv;
-	    while(_dt_vit!=_dv.end()
-		  && i < num)
-	      {
-		dv.push_back((*_dt_vit));
-		++i;
-		++_dt_vit;
-	      }
-	    return dv;
-	  }
-	return std::vector<tensorflow::Tensor>(); // unused
-      }
+        int width() const {
+            return _width;
+        }
 
-  void reset_dv()
-  {
-    _dt_vit = _dv.begin();
-  }
+        int batch_size() const {
+            if (!_dv.empty())
+                return _dv.size();
+            else return ImgInputFileConn::batch_size();
+        }
 
-  public:
-    int _mean = 128;
-    int _std = 128;
-    std::vector<tensorflow::Tensor>::const_iterator _dt_vit;
-  };
+        int test_batch_size() const {
+            if (!_dv_test.empty())
+                return _dv_test.size();
+            else return ImgInputFileConn::test_batch_size();
+        }
+
+        void init(const APIData &ad) {
+            ImgInputFileConn::init(ad);
+            if (ad.has("mean"))
+                _mean = ad.get("mean").get<double>();
+            if (ad.has("std"))
+                _std = ad.get("std").get<double>();
+        }
+
+        void transform(const APIData &ad) {
+            try {
+                ImgInputFileConn::transform(ad);
+            }
+            catch (InputConnectorBadParamException &e) {
+                throw;
+            }
+
+            APIData ad_param = ad.getobj("parameters");
+            if (ad_param.has("input")) {
+                APIData ad_input = ad_param.getobj("input");
+                if (ad_input.has("mean"))
+                    _mean = ad_input.get("mean").get<double>();
+                if (ad_input.has("std"))
+                    _std = ad_input.get("std").get<double>();
+            }
+
+            for (size_t i = 0; i < _images.size(); i++) {
+                tensorflow::Tensor input_tensor(tensorflow::DT_FLOAT,
+                                                tensorflow::TensorShape({1, _height, _width, channels()}));
+                auto input_tensor_mapped = input_tensor.tensor<float, 4>();
+
+                cv::Mat CImage = std::move(this->_images.at(i));
+                cv::Mat Image;
+                CImage.convertTo(Image, CV_32FC1);
+                cv::Mat Image2;
+                cv::cvtColor(Image, Image2, CV_BGR2RGB); // because OpenCV defaults to BGR
+                Image = (Image2 - _mean) / _std;
+                const float *source_data = (float *) Image.data;
+
+                // copying the data into the corresponding tensor
+                for (int y = 0; y < height(); ++y) {
+                    const float *source_row = source_data + (y * width() * channels());
+                    for (int x = 0; x < width(); ++x) {
+                        const float *source_pixel = source_row + (x * channels());
+                        for (int c = 0; c < channels(); ++c) {
+                            const float *source_value = source_pixel + c;
+                            input_tensor_mapped(0, y, x, c) = *source_value;
+                        }
+                    }
+                }
+
+                _dv.push_back(input_tensor);
+                _ids.push_back(_uris.at(i));
+            }
+            _images.clear();
+        }
+
+    public:
+        int _mean = 128;
+        int _std = 128;
+    };
 
 }
 

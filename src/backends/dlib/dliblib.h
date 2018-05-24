@@ -22,52 +22,54 @@
 #ifndef DLIBLIB_H
 #define DLIBLIB_H
 
+#include "DNNStructures.h"
+
 #include "mllibstrategy.h"
 #include "dlibmodel.h"
 
-# include <string>
-//#include "tensorflow/core/public/session.h"
-//#include "tensorflow/core/platform/env.h"
-//#include "tensorflow/core/framework/tensor.h"
+#include <string>
 
-namespace dd
-{
-  template<class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel=DlibModel>
-    class DlibLib : public MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>
-    {
+namespace dd {
+    template<class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel=DlibModel>
+    class DlibLib : public MLLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel> {
     public:
-    DlibLib(const DlibModel &tfmodel);
-    DlibLib(DlibLib &&tl) noexcept;
-    ~DlibLib();
+        DlibLib(const DlibModel &tfmodel);
+
+        DlibLib(DlibLib &&tl) noexcept;
+
+        ~DlibLib();
 
         /*- from mllib -*/
-    void init_mllib(const APIData &ad);
+        void init_mllib(const APIData &ad);
 
-    void clear_mllib(const APIData &d);
+        void clear_mllib(const APIData &d);
 
-    int train(const APIData &ad, APIData &out);
+        int train(const APIData &ad, APIData &out);
 
-    void test(const APIData &ad, APIData &out);
-    
-    int predict(const APIData &ad, APIData &out);
+        void test(const APIData &ad, APIData &out);
 
-    /*- local functions -*/
+        int predict(const APIData &ad, APIData &out);
+
+        /*- local functions -*/
+//        template<class T>
+//        dlib::loss_mmod<T> generate(const std::string &type);
 //    void tf_concat(const std::vector<tensorflow::Tensor> &dv,
 //		   std::vector<tensorflow::Tensor> &vtfinputs);
-    
+
 
     public:
-    // general parameters
-    int _nclasses = 0; /**< required. */
-    bool _regression = false; /**< whether the net acts as a regressor. */
-    int _ntargets = 0; /**< number of classification or regression targets. */
-    std::string _inputLayer; // input Layer of the model
-    std::string _outputLayer; // output layer of the model
-    APIData _inputFlag; // boolean input to the model
-//    std::unique_ptr<tensorflow::Session> _session = nullptr;
-    std::mutex _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as net is not re-instantiated. Use batches instead. */
+        // general parameters
+        int _nclasses = 0; /**< required. */
+        bool _regression = false; /**< whether the net acts as a regressor. */
+        int _ntargets = 0; /**< number of classification or regression targets. */
+        std::string _inputLayer; // input Layer of the model
+        std::string _outputLayer; // output layer of the model
+        APIData _inputFlag; // boolean input to the model
+//        net_type model;
+        net_type_objDetector model;
+        std::mutex _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as net is not re-instantiated. Use batches instead. */
     };
-  
+
 }
 
 #endif

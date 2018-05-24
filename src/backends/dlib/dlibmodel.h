@@ -27,34 +27,24 @@
 #include <spdlog/spdlog.h>
 #include <string>
 
-namespace dd
-{
-  class DlibModel : public MLModel
-  {
-  public:
-    DlibModel():MLModel() {}
-    DlibModel(const APIData &ad);
-    DlibModel(const std::string &repo)
-      :MLModel(repo) {}
-    ~DlibModel() {}
-    
-    int read_from_repository(const std:: string &repo,
-			     const std::shared_ptr<spdlog::logger> &logger);
+namespace dd {
+    class DlibModel : public MLModel {
+    public:
+        DlibModel() : MLModel() {}
 
-    int read_corresp_file(const std::shared_ptr<spdlog::logger> &logger);
+        DlibModel(const APIData &ad);
 
-    inline std::string get_hcorresp(const int &i)
-    {
-      if (_hcorresp.empty())
-	return std::to_string(i);
-      else return _hcorresp[i];
-    }
-    
-    std::string _graphName; // Name of the graph 
-    std::string _modelRepo;
-    std::string _corresp; /**< file name of the class correspondences (e.g. house / 23) */
-    std::unordered_map<int,std::string> _hcorresp; /**< table of class correspondences. */
-  };
+        DlibModel(const std::string &repo)
+                : MLModel(repo) {}
+
+        ~DlibModel() {}
+
+        int read_from_repository(const std::string &repo,
+                                 const std::shared_ptr<spdlog::logger> &logger);
+
+        std::string _modelName; // Name of the graph
+        std::string _modelRepo;
+    };
 
 }
 

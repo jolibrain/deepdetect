@@ -31,45 +31,35 @@
 #include "dlib/image_processing.h"
 #include "dlib/opencv/to_open_cv.h"
 #include "dlib/opencv/cv_image.h"
-#include "DNNStructures.h"
+//#include "DNNStructures.h"
 
-namespace dd
-{
+namespace dd {
 
-  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  DlibLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::DlibLib(const DlibModel &cmodel)
-    :MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,DlibModel>(cmodel)
-  {
-    this->_libname = "dlib";
-  }
-  
-  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  DlibLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::DlibLib(DlibLib &&cl) noexcept
-    :MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,DlibModel>(std::move(cl))
-  {
-    this->_libname = "dlib";
+    template<class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+    DlibLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::DlibLib(const DlibModel &cmodel)
+            :MLLib<TInputConnectorStrategy, TOutputConnectorStrategy, DlibModel>(cmodel) {
+        this->_libname = "dlib";
+    }
+
+    template<class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+    DlibLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::DlibLib(DlibLib &&cl) noexcept
+            :MLLib<TInputConnectorStrategy, TOutputConnectorStrategy, DlibModel>(std::move(cl)) {
+        this->_libname = "dlib";
 //    _nclasses = cl._nclasses;
 //    _regression = cl._regression;
 //    _ntargets = cl._ntargets;
 //    _inputLayer = cl._inputLayer;
 //    _outputLayer = cl._outputLayer;
 //    _inputFlag = cl._inputFlag;
-  }
+    }
 
-  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  DlibLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::~DlibLib()
-  {
-    std::lock_guard<std::mutex> lock(_net_mutex);
-//    if (_session)
-//      {
-//	_session->Close();
-//	_session.reset();
-//      }
-  }
+    template<class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+    DlibLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::~DlibLib() {
+        std::lock_guard<std::mutex> lock(_net_mutex);
+    }
 
-  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  void DlibLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::init_mllib(const APIData &ad)
-  {
+    template<class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+    void DlibLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::init_mllib(const APIData &ad) {
 //    if (ad.has("nclasses"))
 //      _nclasses = ad.get("nclasses").get<int>();
 //    if (ad.has("regression") && ad.get("regression").get<bool>())
@@ -97,84 +87,48 @@ namespace dd
 //      throw MLLibBadParamException("number of classes is unknown (nclasses == 0)");
 //    if (_regression && _ntargets == 0)
 //      throw MLLibBadParamException("number of regression targets is unknown (ntargets == 0)");
-//    this->_mlmodel.read_from_repository(this->_mlmodel._repo,this->_logger);
-  }
+        this->_mlmodel.read_from_repository(this->_mlmodel._repo, this->_logger);
+    }
 
-  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  void DlibLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::clear_mllib(const APIData &ad)
-  {
-    // NOT IMPLEMENTED
-  }
+    template<class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+    void DlibLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::clear_mllib(const APIData &ad) {
+        // NOT IMPLEMENTED
+    }
 
-//  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-//  void DlibLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::tf_concat(const std::vector<tensorflow::Tensor> &dv,
-//										   std::vector<tensorflow::Tensor> &vtfinputs)
-//  {
-////    /*
-////      as incredible as it seems, code below is the bloated tf way of concatenating
-////      tensors to produce the intput to the neural net graph.
-////    */
-////    int rbatch_size = dv.size();
-////    auto root = tensorflow::Scope::NewRootScope();
-////    std::string concat_name = "concatenated";
-////    std::vector<tensorflow::Input> ops_inputs;
-////    for (int i=0;i<rbatch_size;i++)
-////      ops_inputs.push_back(std::move(tensorflow::Input(dv[i])));
-////    tensorflow::gtl::ArraySlice<tensorflow::Input> ipl(&ops_inputs[0],ops_inputs.size());
-////    tensorflow::InputList toil(ipl);
-////    auto concatout = tensorflow::ops::Concat(root.WithOpName(concat_name),toil,0);
-////    std::unique_ptr<tensorflow::Session> concat_session(tensorflow::NewSession(tensorflow::SessionOptions()));
-////    tensorflow::GraphDef graph;
-////    root.ToGraphDef(&graph);
-////    concat_session->Create(graph);
-////    tensorflow::Status concat_run_status = concat_session->Run({}, {concat_name}, {}, &vtfinputs);
-////    if (!concat_run_status.ok())
-////      {
-////	std::cout << concat_run_status.ToString() << std::endl;
-////	throw MLLibInternalException(concat_run_status.ToString());
-//      }
-//  }
-  
-  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  int DlibLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::train(const APIData &ad,
-									       APIData &out)
-  {
-    // NOT IMPLEMENTED
-    return 0;
-  }
+    template<class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+    int DlibLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::train(const APIData &ad,
+                                                                                    APIData &out) {
+        // NOT IMPLEMENTED
+        return 0;
+    }
 
-  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  void DlibLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::test(const APIData &ad,
-									      APIData &out)
-  {
-    APIData ad_out = ad.getobj("parameters").getobj("output");
-    if (!ad_out.has("measure"))
-      {
-	APIData ad_res;
-	SupervisedOutput::measure(ad_res,ad_out,out);
-	return;
-      }
-    
-    TInputConnectorStrategy inputc(this->_inputc);
-    TOutputConnectorStrategy tout;
-    APIData cad = ad;
-    cad.add("model_repo",this->_mlmodel._repo);
-    try
-      {
-	inputc.transform(cad);
-      }
-    catch (std::exception &e)
-      {
-	throw;
-      }
-    
-    APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
-    APIData ad_output = ad.getobj("parameters").getobj("output");
-    int batch_size = inputc.batch_size();
-    if (ad_mllib.has("test_batch_size"))
-      {
-	batch_size = ad_mllib.get("test_batch_size").get<int>();
-      }
+    template<class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+    void DlibLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::test(const APIData &ad,
+                                                                                    APIData &out) {
+        APIData ad_out = ad.getobj("parameters").getobj("output");
+        if (!ad_out.has("measure")) {
+            APIData ad_res;
+            SupervisedOutput::measure(ad_res, ad_out, out);
+            return;
+        }
+
+        TInputConnectorStrategy inputc(this->_inputc);
+        TOutputConnectorStrategy tout;
+        APIData cad = ad;
+        cad.add("model_repo", this->_mlmodel._repo);
+        try {
+            inputc.transform(cad);
+        }
+        catch (std::exception &e) {
+            throw;
+        }
+
+        APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
+        APIData ad_output = ad.getobj("parameters").getobj("output");
+        int batch_size = inputc.batch_size();
+        if (ad_mllib.has("test_batch_size")) {
+            batch_size = ad_mllib.get("test_batch_size").get<int>();
+        }
 
 //    tensorflow::GraphDef graph_def;
 //    std::string graphFile = this->_mlmodel._graphName;
@@ -265,54 +219,73 @@ namespace dd
 //    ad_res.add("batch_size",tresults);
 //
 //    SupervisedOutput::measure(ad_res,ad_out,out);
-  }
+    }
 
-  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  int DlibLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::predict(const APIData &ad,
-										APIData &out)
-  {
-    // TF sessions support concurrent calls, however server design enforces
-    // preference for using batches to max out resources instead of 
-    // cumulated calls that may overflow the resources.
-    // This policy may be subjected to futur changes.
-    std::lock_guard<std::mutex> lock(_net_mutex);
+//    template<class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+//    template<class T>
+//    dlib::loss_mmod<T> generate(const std::string &type) {
+//        if (type == "obj_detector") {
+//            this->model = net_type_objDetector;
+//        }
+//    }
 
-    APIData ad_output = ad.getobj("parameters").getobj("output");
-    if (ad_output.has("measure"))
-      {
-	test(ad,out);
-	APIData out_meas = out.getobj("measure");
-	out.add("measure",out_meas);
-	return 0;
-      }
-    double confidence_threshold = 0.0;
-    if (ad_output.has("confidence_threshold"))
-      confidence_threshold = ad_output.get("confidence_threshold").get<double>();
-    TInputConnectorStrategy inputc(this->_inputc);
-    TOutputConnectorStrategy tout;
-    APIData cad = ad;
-    cad.add("model_repo",this->_mlmodel._repo);
-    try
-      {
-	inputc.transform(cad);
-      }
-    catch (std::exception &e)
-      {
-	throw;
-      }
-    
-    APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
-    int batch_size = inputc.batch_size();
-    if (ad_mllib.has("test_batch_size"))
-      batch_size = ad_mllib.get("test_batch_size").get<int>();
+    template<class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+    int DlibLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::predict(const APIData &ad,
+                                                                                      APIData &out) {
+        // TF sessions support concurrent calls, however server design enforces
+        // preference for using batches to max out resources instead of
+        // cumulated calls that may overflow the resources.
+        // This policy may be subjected to futur changes.
+        std::lock_guard<std::mutex> lock(_net_mutex);
 
-    std::string extract_layer;
-    if (ad_mllib.has("extract_layer") && !ad_mllib.get("extract_layer").get<std::string>().empty())
-      {
-       	_outputLayer = ad_mllib.get("extract_layer").get<std::string>();
-	extract_layer = _outputLayer;
-      }
-      
+        APIData ad_output = ad.getobj("parameters").getobj("output");
+//        if (ad_output.has("measure")) {
+//            test(ad, out);
+//            APIData out_meas = out.getobj("measure");
+//            out.add("measure", out_meas);
+//            return 0;
+//        }
+        double confidence_threshold = 0.0;
+        if (ad_output.has("confidence_threshold"))
+            confidence_threshold = ad_output.get("confidence_threshold").get<double>();
+        TInputConnectorStrategy inputc(this->_inputc);
+        TOutputConnectorStrategy tout;
+        APIData cad = ad;
+        cad.add("model_repo", this->_mlmodel._repo);
+        try {
+            inputc.transform(cad);
+        }
+        catch (std::exception &e) {
+            throw;
+        }
+
+        APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
+        int batch_size = inputc.batch_size();
+        if (ad_mllib.has("test_batch_size"))
+            batch_size = ad_mllib.get("test_batch_size").get<int>();
+
+        std::string modelType;
+        if (ad_mllib.has("model_type")) {
+            modelType = ad_mllib.get("model_type").get<std::string>();
+        }
+
+
+
+//        std::string extract_layer;
+//        if (ad_mllib.has("extract_layer") && !ad_mllib.get("extract_layer").get<std::string>().empty()) {
+//            _outputLayer = ad_mllib.get("extract_layer").get<std::string>();
+//            extract_layer = _outputLayer;
+//        }
+
+        const std::string modelFile = this->_mlmodel._modelName;
+        if (modelFile.empty()) {
+            throw MLLibBadParamException("No pre-trained model found in model repository");
+        }
+        this->_logger->info("predict: using modelFile dir={}", modelFile);
+
+        // Load the model into memory
+
+
 //    if (!_session)
 //      {
 //	tensorflow::GraphDef graph_def;
@@ -451,9 +424,11 @@ namespace dd
 //    out.add("nclasses",_nclasses);
 //    tout.finalize(ad.getobj("parameters").getobj("output"),out,static_cast<MLModel*>(&this->_mlmodel));
 //    out.add("status",0);
-    return 0;
-  }
-  
+        return 0;
+    }
+
+
+
 //  template class DlibLib<ImgTFInputFileConn,SupervisedOutput,DlibModel>;
 //  template class DlibLib<ImgTFInputFileConn,UnsupervisedOutput,DlibModel>;
 }
