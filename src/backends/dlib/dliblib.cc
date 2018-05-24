@@ -220,12 +220,13 @@ namespace dd {
 //
 //    SupervisedOutput::measure(ad_res,ad_out,out);
     }
-
+//
 //    template<class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
 //    template<class T>
-//    dlib::loss_mmod<T> generate(const std::string &type) {
+//    dlib::loss_mmod<T> DlibLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::generate(const std::string &type) {
 //        if (type == "obj_detector") {
-//            this->model = net_type_objDetector;
+//            net_type_objDetector objDetector;
+//            this->model = objDetector;
 //        }
 //    }
 
@@ -267,6 +268,7 @@ namespace dd {
         std::string modelType;
         if (ad_mllib.has("model_type")) {
             modelType = ad_mllib.get("model_type").get<std::string>();
+            net_type = modelType;
         }
 
 
@@ -284,7 +286,15 @@ namespace dd {
         this->_logger->info("predict: using modelFile dir={}", modelFile);
 
         // Load the model into memory
-
+        if (net_type.empty()) {
+            throw MLLibBadParamException("Net type not specified");
+        } else if (net_type == "obj_detector") {
+            dlib::deserialize(this->_mlmodel._modelName) >> objDetector;
+        } else if (net_type == "face_detector") {
+            dlib::deserialize(this->_mlmodel._modelName) >> faceDetector;
+        } else {
+            throw MLLibBadParamException("Unrecognized net type: " + net_type);
+        }
 
 //    if (!_session)
 //      {

@@ -53,8 +53,17 @@ namespace dd {
         /*- local functions -*/
 //        template<class T>
 //        dlib::loss_mmod<T> generate(const std::string &type);
-//    void tf_concat(const std::vector<tensorflow::Tensor> &dv,
-//		   std::vector<tensorflow::Tensor> &vtfinputs);
+        auto getModel() {
+            if (net_type.empty()) {
+                throw MLLibInternalException("Cannot get model before model is loaded");
+            } else if (net_type == "object_detector") {
+                return objDetector;
+            } else if (net_type == "face_detector") {
+                return faceDetector;
+            } else {
+                throw MLLibInternalException("Unrecognized net type: " + net_type);
+            }
+        }
 
 
     public:
@@ -65,8 +74,11 @@ namespace dd {
         std::string _inputLayer; // input Layer of the model
         std::string _outputLayer; // output layer of the model
         APIData _inputFlag; // boolean input to the model
-//        net_type model;
-        net_type_objDetector model;
+//        template<class T>
+//        net_type<T> model;
+        net_type_objDetector objDetector;
+        net_type_faceDetector faceDetector;
+        std::string net_type;
         std::mutex _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as net is not re-instantiated. Use batches instead. */
     };
 
