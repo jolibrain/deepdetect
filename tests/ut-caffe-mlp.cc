@@ -604,3 +604,35 @@ TEST(caffelib,configure_resnet_template_n_nt)
   ASSERT_EQ(272,deploy_net_param.layer_size());
   delete caff;
 }
+
+TEST(caffelib, configure_unet_diceloss)
+{
+  APIData ad;
+  ad.add("template","unet");
+  ad.add("loss","dice");
+  ad.add("templates","../templates/caffe");
+  ad.add("repository","./");
+  ad.add("nclasses",2);
+  ad.add("segmentation",true);
+  CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel> *caff = new CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(CaffeModel(ad));
+  caff->_logger = spdlog::syslog_logger("UT");
+  caff->_inputc.init(ad);
+  caff->init_mllib(ad);
+  caff->instantiate_template(ad);
+
+  caffe::NetParameter net_param, deploy_net_param;
+  bool succ = caffe::ReadProtoFromTextFile("./unet.prototxt",&net_param);
+  ASSERT_TRUE(succ);
+
+  bool found = false;
+  int k = net_param.layer_size();
+
+  for (int l=k-1;l>0;l--)
+    {
+      caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+      if (lparam->type() == "DiceCoefLoss")
+        found = true;
+    }
+  ASSERT_TRUE(found);
+
+}
