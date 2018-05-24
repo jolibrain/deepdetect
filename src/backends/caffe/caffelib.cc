@@ -187,6 +187,26 @@ namespace dd
 	caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
 
 
+    if (this->_loss == 1)
+      // dice loss!!
+      {
+        int k = net_param.layer_size();
+        for (int l=k-1;l>0;l--)
+          {
+            caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+            if (lparam->type() == "SoftmaxWithLoss")
+              {
+                lparam->set_type("DiceCoefLoss");
+                if (lparam->has_softmax_param())
+                  lparam->clear_softmax_param();
+                caffe::DiceCoefLossParameter* dclp = lparam->mutable_dice_coef_loss_param();
+                dclp->set_generalization(caffe::DiceCoefLossParameter::NONE);
+                break;
+              }
+	      }
+
+      }
+
 	// switch to imageDataLayer
 	//TODO: should apply to all templates with images
 	if (!this->_inputc._db && !this->_inputc._segmentation && !this->_inputc._ctc && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
@@ -568,6 +588,13 @@ namespace dd
       {
 	_regression = true;
     	_nclasses = 1;
+      }
+    if (ad.has("loss") && ad.get("loss").get<std::string>().compare("dice")==0)
+      {
+        if (this->_inputc._segmentation)
+          _loss = 1;
+        else
+          throw MLLibBadParamException("asked for dice loss without segmentation");
       }
     if (ad.has("ntargets"))
       _ntargets = ad.get("ntargets").get<int>();
