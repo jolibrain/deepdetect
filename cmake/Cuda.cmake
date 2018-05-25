@@ -233,6 +233,8 @@ if(USE_CUDNN)
   endif()
 endif()
 
+message(STATUS "CUDA linker libs: " ${deepdetect_LINKER_LIBS})
+
 # setting nvcc arch flags
 deepdetect_select_nvcc_arch_flags(NVCC_FLAGS_EXTRA)
 list(APPEND CUDA_NVCC_FLAGS ${NVCC_FLAGS_EXTRA})
