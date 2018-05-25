@@ -415,5 +415,8 @@ namespace dd
 #ifdef USE_TF
 #include "backends/tf/tfinputconns.h"
 #endif
+#ifdef USE_DLIB
+#include "backends/dlib/dlibinputconns.h"
+#endif
 
 #endif

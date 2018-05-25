@@ -21,17 +21,13 @@
 #define DLIBINPUTCONNS_H
 
 #include "imginputfileconn.h"
-//#include "tensorflow/core/public/session.h"
-//#include "tensorflow/core/platform/env.h"
-//#include "tensorflow/core/framework/tensor.h"
-#include <opencv2/opencv.hpp>
-
-//#include "tensorflow/cc/ops/const_op.h"
-//#include "tensorflow/cc/ops/image_ops.h"
-//#include "tensorflow/cc/ops/standard_ops.h"
-//#include "tensorflow/core/framework/graph.pb.h"
-//#include "tensorflow/core/framework/tensor.h"
-//#include "tensorflow/core/graph/graph_def_builder.h"
+#include "opencv2/opencv.hpp"
+#include "dlib/data_io.h"
+#include "dlib/image_io.h"
+#include "dlib/image_transforms.h"
+#include "dlib/image_processing.h"
+#include "dlib/opencv/to_open_cv.h"
+#include "dlib/opencv/cv_image.h"
 
 
 #include "inputconnectorstrategy.h"
@@ -49,6 +45,8 @@ namespace dd {
 
     public:
         // parameters common to all Dlib input connectors
+        std::vector<dlib::matrix<dlib::rgb_pixel>> _dv;
+        std::vector<dlib::matrix<dlib::rgb_pixel>> _dv_test;
         std::vector<std::string> _ids; // input ids (eg. Image Ids).
     };
 
@@ -56,6 +54,7 @@ namespace dd {
     public:
         ImgDlibInputFileConn()
                 : ImgInputFileConn() {
+            reset_dv();
         }
 
         ImgDlibInputFileConn(const ImgDlibInputFileConn &i)
@@ -114,39 +113,61 @@ namespace dd {
             }
 
             for (size_t i = 0; i < _images.size(); i++) {
-                tensorflow::Tensor input_tensor(tensorflow::DT_FLOAT,
-                                                tensorflow::TensorShape({1, _height, _width, channels()}));
-                auto input_tensor_mapped = input_tensor.tensor<float, 4>();
-
-                cv::Mat CImage = std::move(this->_images.at(i));
-                cv::Mat Image;
-                CImage.convertTo(Image, CV_32FC1);
-                cv::Mat Image2;
-                cv::cvtColor(Image, Image2, CV_BGR2RGB); // because OpenCV defaults to BGR
-                Image = (Image2 - _mean) / _std;
-                const float *source_data = (float *) Image.data;
-
-                // copying the data into the corresponding tensor
-                for (int y = 0; y < height(); ++y) {
-                    const float *source_row = source_data + (y * width() * channels());
-                    for (int x = 0; x < width(); ++x) {
-                        const float *source_pixel = source_row + (x * channels());
-                        for (int c = 0; c < channels(); ++c) {
-                            const float *source_value = source_pixel + c;
-                            input_tensor_mapped(0, y, x, c) = *source_value;
-                        }
-                    }
-                }
-
-                _dv.push_back(input_tensor);
+//                tensorflow::Tensor input_tensor(tensorflow::DT_FLOAT,
+//                                                tensorflow::TensorShape({1, _height, _width, channels()}));
+//                auto input_tensor_mapped = input_tensor.tensor<float, 4>();
+//
+//                cv::Mat CImage = std::move(this->_images.at(i));
+//                cv::Mat Image;
+//                CImage.convertTo(Image, CV_32FC1);
+//                cv::Mat Image2;
+//                cv::cvtColor(Image, Image2, CV_BGR2RGB); // because OpenCV defaults to BGR
+//                Image = (Image2 - _mean) / _std;
+//                const float *source_data = (float *) Image.data;
+//
+//                // copying the data into the corresponding tensor
+//                for (int y = 0; y < height(); ++y) {
+//                    const float *source_row = source_data + (y * width() * channels());
+//                    for (int x = 0; x < width(); ++x) {
+//                        const float *source_pixel = source_row + (x * channels());
+//                        for (int c = 0; c < channels(); ++c) {
+//                            const float *source_value = source_pixel + c;
+//                            input_tensor_mapped(0, y, x, c) = *source_value;
+//                        }
+//                    }
+//                }
+//
+//                _dv.push_back(input_tensor);
+//                _ids.push_back(_uris.at(i));
+                dlib::matrix<dlib::rgb_pixel> inputImg;
+                dlib::assign_image(inputImg, dlib::cv_image<dlib::rgb_pixel>(_images.at(i)));
+                _dv.push_back(inputImg);
                 _ids.push_back(_uris.at(i));
             }
             _images.clear();
         }
 
+        std::vector<dlib::matrix<dlib::rgb_pixel>> get_dv(const int &num) {
+            int i = 0;
+            std::vector<dlib::matrix<dlib::rgb_pixel>> dv;
+            while(_dt_vit!=_dv.end() && i < num) {
+                dv.push_back((*_dt_vit));
+                ++i;
+                ++_dt_vit;
+            }
+            return dv;
+        }
+
+        void reset_dv()
+        {
+            _dt_vit = _dv.begin();
+        }
+
     public:
         int _mean = 128;
         int _std = 128;
+        std::vector<dlib::matrix<dlib::rgb_pixel>>::const_iterator _dt_vit;
+
     };
 
 }

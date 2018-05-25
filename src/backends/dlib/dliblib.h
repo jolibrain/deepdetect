@@ -78,6 +78,7 @@ namespace dd {
 //        net_type<T> model;
         net_type_objDetector objDetector;
         net_type_faceDetector faceDetector;
+        bool modelLoaded = false;
         std::string net_type;
         std::mutex _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as net is not re-instantiated. Use batches instead. */
     };

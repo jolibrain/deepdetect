@@ -104,7 +104,7 @@ if (USE_DLIB)
           PREFIX dlib
           INSTALL_DIR ${CMAKE_BINARY_DIR}
           DOWNLOAD_COMMAND git clone https://github.com/davisking/dlib.git
-          CONFIGURE_COMMAND cd dlib && mkdir build && cd build && cmake .. -DDLIB_NO_GUI_SUPPORT=ON && cmake --build . --config Release
+          CONFIGURE_COMMAND cd dlib && mkdir build && cd build && cmake .. -DDLIB_NO_GUI_SUPPORT=ON -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/dlib/build && cmake --build . --config Release --target install
           BUILD_COMMAND ""
           INSTALL_COMMAND ""
           BUILD_IN_SOURCE 1
@@ -115,18 +115,18 @@ if (USE_DLIB)
                 PREFIX dlib
                 INSTALL_DIR ${CMAKE_BINARY_DIR}
                 DOWNLOAD_COMMAND git clone https://github.com/davisking/dlib.git
-                CONFIGURE_COMMAND cd dlib && mkdir build && cd build && cmake .. -DDLIB_NO_GUI_SUPPORT=ON -DDLIB_USE_CUDA=OFF && cmake --build . --config Release
+                CONFIGURE_COMMAND cd dlib && mkdir build && cd build && cmake .. -DDLIB_NO_GUI_SUPPORT=ON -DDLIB_USE_CUDA=OFF -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/dlib/build && cmake --build . --config Release --target install
                 BUILD_COMMAND ""
                 INSTALL_COMMAND ""
                 BUILD_IN_SOURCE 1
         )
     endif()
 
-    set(DLIB_INC_DIR ${CMAKE_BINARY_DIR}/dlib/src/dlib)
-    set(DLIB_LIB_DIR ${CMAKE_BINARY_DIR}/dlib/src/dlib/dlib/build)
+    set(DLIB_INC_DIR ${CMAKE_BINARY_DIR}/dlib/build/include)
+    set(DLIB_LIB_DIR ${CMAKE_BINARY_DIR}/dlib/build/lib)
 
     include_directories("${DLIB_INC_DIR}")
-    message(STATUS "Dlib built")
+    message(STATUS "Dlib will be built")
 endif()
 
 if (USE_TF)
@@ -345,7 +345,7 @@ endif()
 # so that we will find dd_config.h
 include_directories("${PROJECT_BINARY_DIR}")
 include_directories(${CAFFE_INC_DIR} ${XGBOOST_INC_DIR} ${TSNE_INC_DIR})
-include_directories(${CMAKE_SOURCE_DIR}/src/backends/caffe ${CMAKE_SOURCE_DIR}/backends/xgb ${CMAKE_SOURCE_DIR}/backends/tf ${CMAKE_SOURCE_DIR}/backends/tsne)
+include_directories(${CMAKE_SOURCE_DIR}/src/backends/caffe ${CMAKE_SOURCE_DIR}/backends/xgb ${CMAKE_SOURCE_DIR}/backends/tf ${CMAKE_SOURCE_DIR}/backends/dlib ${CMAKE_SOURCE_DIR}/backends/tsne)
 
 # main library, main & tests
 include_directories ("${PROJECT_SOURCE_DIR}/src")

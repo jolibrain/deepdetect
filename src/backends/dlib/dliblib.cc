@@ -233,10 +233,6 @@ namespace dd {
     template<class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
     int DlibLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::predict(const APIData &ad,
                                                                                       APIData &out) {
-        // TF sessions support concurrent calls, however server design enforces
-        // preference for using batches to max out resources instead of
-        // cumulated calls that may overflow the resources.
-        // This policy may be subjected to futur changes.
         std::lock_guard<std::mutex> lock(_net_mutex);
 
         APIData ad_output = ad.getobj("parameters").getobj("output");
@@ -273,11 +269,11 @@ namespace dd {
 
 
 
-//        std::string extract_layer;
-//        if (ad_mllib.has("extract_layer") && !ad_mllib.get("extract_layer").get<std::string>().empty()) {
-//            _outputLayer = ad_mllib.get("extract_layer").get<std::string>();
-//            extract_layer = _outputLayer;
-//        }
+        std::string extract_layer;
+        if (ad_mllib.has("extract_layer") && !ad_mllib.get("extract_layer").get<std::string>().empty()) {
+            _outputLayer = ad_mllib.get("extract_layer").get<std::string>();
+            extract_layer = _outputLayer;
+        }
 
         const std::string modelFile = this->_mlmodel._modelName;
         if (modelFile.empty()) {
@@ -285,155 +281,82 @@ namespace dd {
         }
         this->_logger->info("predict: using modelFile dir={}", modelFile);
 
-        // Load the model into memory
-        if (net_type.empty()) {
-            throw MLLibBadParamException("Net type not specified");
-        } else if (net_type == "obj_detector") {
-            dlib::deserialize(this->_mlmodel._modelName) >> objDetector;
-        } else if (net_type == "face_detector") {
-            dlib::deserialize(this->_mlmodel._modelName) >> faceDetector;
-        } else {
-            throw MLLibBadParamException("Unrecognized net type: " + net_type);
+        // Load the model into memory if not already
+        if (!modelLoaded) {
+            if (net_type.empty()) {
+                throw MLLibBadParamException("Net type not specified");
+            } else if (net_type == "obj_detector") {
+                dlib::deserialize(this->_mlmodel._modelName) >> objDetector;
+            } else if (net_type == "face_detector") {
+                dlib::deserialize(this->_mlmodel._modelName) >> faceDetector;
+            } else {
+                throw MLLibBadParamException("Unrecognized net type: " + net_type);
+            }
+            modelLoaded = true;
         }
 
-//    if (!_session)
-//      {
-//	tensorflow::GraphDef graph_def;
-//	std::string graphFile = this->_mlmodel._graphName;
-//	if (graphFile.empty())
-//	  throw MLLibBadParamException("No pre-trained model found in model repository");
-//	this->_logger->info("predict: using graphFile dir={}",graphFile);
-//	// Loading the graph to the given variable
-//	tensorflow::Status graphLoadedStatus = ReadBinaryProto(tensorflow::Env::Default(),graphFile,&graph_def);
-//
-//	if (!graphLoadedStatus.ok())
-//	  {
-//	    this->_logger->error("failed loading tensorflow graph with status={}",graphLoadedStatus.ToString());
-//	    throw MLLibBadParamException("failed loading tensorflow graph with status=" + graphLoadedStatus.ToString());
-//	  }
-//
-//	/*for (int l=0;l<graph_def.node_size();l++)
-//	  {
-//	    std::cerr << graph_def.node(l).name() << std::endl;
-//	    }*/
-//
-//	if (_inputLayer.empty())
-//	  {
-//	    _inputLayer = graph_def.node(0).name();
-//	    this->_logger->info("using input layer={}",_inputLayer);
-//	  }
-//	if (_outputLayer.empty())
-//	  {
-//	    _outputLayer = graph_def.node(graph_def.node_size()-1).name();
-//	    this->_logger->info("using output layer={}",_outputLayer);
-//	  }
-//	//tensorflow::graph::SetDefaultDevice(device, &graph_def);
-//
-//	// creating a session with the graph
-//	tensorflow::SessionOptions options;
-//	tensorflow::ConfigProto &config = options.config;
-//	config.mutable_gpu_options()->set_allow_growth(true); // default is we prevent tf from holding all memory across all GPUs
-//	_session = std::unique_ptr<tensorflow::Session>(tensorflow::NewSession(options));
-//	tensorflow::Status session_create_status = _session->Create(graph_def);
-//
-//	if (!session_create_status.ok())
-//	  {
-//	    std::cout << session_create_status.ToString()<<std::endl;
-//	    _session = nullptr;
-//	    throw MLLibInternalException(session_create_status.ToString());
-//	  }
-//      }
-//
-//    // vector for storing  the outputAPI of the file
-//    std::vector<APIData> vrad;
-//    inputc.reset_dv();
-//    int idoffset = 0;
-//    while(true)
-//      {
-//	std::vector<tensorflow::Tensor> dv = inputc.get_dv(batch_size);
-//	if (dv.empty())
-//	  break;
-//	std::vector<tensorflow::Tensor> vtfinputs;
-//	if (dv.size() > 1)
-//	  tf_concat(dv,vtfinputs);
-//	else vtfinputs = dv;
-//
-//	// other input variables
-//	std::pair<std::string,tensorflow::Tensor> othertfinputs;
-//	std::vector<std::string> lkeys = _inputFlag.list_keys();
-//	bool has_input_vars = false;
-//	for (auto k: lkeys)
-//	  {
-//	    tensorflow::Tensor ivar(tensorflow::DT_BOOL,tensorflow::TensorShape());
-//	    ivar.scalar<bool>()() = _inputFlag.get(k).get<bool>();
-//	    othertfinputs.first = k;
-//	    othertfinputs.second = ivar;
-//	    has_input_vars = true;
-//	    break; // a single key for now, may have to use ClientSession for another scheme
-//	  }
-//
-//
-//	// running the loded graph and saving the generated output
-//	std::vector<tensorflow::Tensor> finalOutput; // To save the final output generated by the tensorflow
-//	tensorflow::Status run_status;
-//	if (has_input_vars)
-//	  run_status = _session->Run({{_inputLayer,*(vtfinputs.begin())},othertfinputs},{_outputLayer},{},&finalOutput);
-//	else run_status = _session->Run({{_inputLayer,*(vtfinputs.begin())}},{_outputLayer},{},&finalOutput);
-//	if (!run_status.ok())
-//	  {
-//	    std::cout <<run_status.ToString()<<std::endl;
-//	    throw MLLibInternalException(run_status.ToString()); //TODO: separate bad param and internal errors
-//	  }
-//	tensorflow::Tensor output = std::move(finalOutput.at(0));
-//
-//	APIData rad;
-//	if (extract_layer.empty()) // supervised setting
-//	  {
-//	    auto scores = output.flat<float>();
-//	    for (size_t i=0;i<dv.size();i++)
-//	      {
-//		rad.add("uri",inputc._ids.at(idoffset+i));
-//		std::vector<double> probs;
-//		std::vector<std::string> cats;
-//		for (int c=0;c<_nclasses;c++)
-//		  {
-//		    //std::cerr << "score=" << scores(c) << " / c=" << c << std::endl;
-//		    double prob = scores(i*_nclasses+c);
-//		    if (prob < confidence_threshold)
-//		      continue;
-//		    probs.push_back(prob);
-//		    cats.push_back(this->_mlmodel.get_hcorresp(c));
-//		  }
-//		rad.add("probs",probs);
-//		rad.add("cats",cats);
-//		rad.add("loss",0.0);
-//		vrad.push_back(rad);
-//	      }
-//	    idoffset += dv.size();
-//	  }
-//	else // unsupervised
-//	  {
-//	    auto layer_vals = output.flat<float>();
-//	    int embedding_size = layer_vals.size() / static_cast<float>(dv.size());
-//	    int offset = 0;
-//	    for (size_t i=0;i<dv.size();i++)
-//	      {
-//		std::vector<double> vals;
-//		vals.reserve(embedding_size);//layer_vals.size());
-//		for (int c=0;c<embedding_size;c++)
-//		  vals.push_back(layer_vals.data()[offset+c]);
-//		rad.add("uri",inputc._ids.at(idoffset+i));
-//		rad.add("vals",vals);
-//		vrad.push_back(rad);
-//		offset += embedding_size;
-//	      }
-//	    idoffset += dv.size();
-//	  }
-//      } // end prediction loop over batches
-//    tout.add_results(vrad);
-//    out.add("nclasses",_nclasses);
-//    tout.finalize(ad.getobj("parameters").getobj("output"),out,static_cast<MLModel*>(&this->_mlmodel));
-//    out.add("status",0);
+    // vector for storing  the outputAPI of the file
+    std::vector<APIData> vrad;
+    inputc.reset_dv();
+    int idoffset = 0;
+    while (true) {
+        std::vector<dlib::matrix<dlib::rgb_pixel>> dv = inputc.get_dv(batch_size);
+        if (dv.empty()) break;
+
+        // running the loaded model and saving the generated output
+        auto detections = (net_type == "obj_detector") ? objDetector(dv) : (net_type == "face_detector") ? faceDetector(dv) : throw MLLibBadParamException("Unrecognized net type: " + net_type);
+
+        APIData rad;
+        if (extract_layer.empty()) // supervised setting
+        {
+            for (size_t i = 0; i < dv.size(); i++) {
+                rad.add("uri", inputc._ids.at(idoffset + i));
+                std::vector<double> probs;
+                std::vector<std::string> cats;
+
+                for (auto &d : detections) {
+//                    PFILOG(debug) << "Found obj: " << d.label << " - " << d.detection_confidence << "(" << d.rect << ")";
+                    // bbox #TODO
+                    if (d.detection_confidence < confidence_threshold) continue;
+                    probs.push_back(d.detection_confidence);
+                    cats.push_back(d.label);
+
+                    /*
+                     * bbox can be formed with d.rect.left()/top()/right()/bottom()
+                     *
+                     *
+                     */
+
+                }
+                rad.add("probs", probs);
+                rad.add("cats", cats);
+                rad.add("loss", 0.0);
+                vrad.push_back(rad);
+            }
+            idoffset += dv.size();
+        }
+//        else // unsupervised
+//        {
+//            auto layer_vals = output.flat<float>();
+//            int embedding_size = layer_vals.size() / static_cast<float>(dv.size());
+//            int offset = 0;
+//            for (size_t i = 0; i < dv.size(); i++) {
+//                std::vector<double> vals;
+//                vals.reserve(embedding_size);//layer_vals.size());
+//                for (int c = 0; c < embedding_size; c++)
+//                    vals.push_back(layer_vals.data()[offset + c]);
+//                rad.add("uri", inputc._ids.at(idoffset + i));
+//                rad.add("vals", vals);
+//                vrad.push_back(rad);
+//                offset += embedding_size;
+//            }
+//            idoffset += dv.size();
+//        }
+    } // end prediction loop over batches
+        tout.add_results(vrad);
+//        out.add("nclasses", _nclasses);
+        tout.finalize(ad.getobj("parameters").getobj("output"), out, static_cast<MLModel *>(&this->_mlmodel));
+        out.add("status",0);
         return 0;
     }
 
