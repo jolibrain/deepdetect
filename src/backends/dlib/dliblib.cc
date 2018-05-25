@@ -45,6 +45,7 @@ namespace dd {
     DlibLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::DlibLib(DlibLib &&cl) noexcept
             :MLLib<TInputConnectorStrategy, TOutputConnectorStrategy, DlibModel>(std::move(cl)) {
         this->_libname = "dlib";
+        _net_type = cl._net_type;
 //    _nclasses = cl._nclasses;
 //    _regression = cl._regression;
 //    _ntargets = cl._ntargets;
@@ -60,8 +61,11 @@ namespace dd {
 
     template<class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
     void DlibLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::init_mllib(const APIData &ad) {
-//    if (ad.has("nclasses"))
-//      _nclasses = ad.get("nclasses").get<int>();
+    if (ad.has("model_type"))
+      _net_type= ad.get("model_type").get<std::string>();
+
+    if (_net_type.empty() || (_net_type != "obj_detector" && _net_type != "face_detector"))
+        throw MLLibBadParamException("Must specify model type (obj_detector or face_detector)");
 //    if (ad.has("regression") && ad.get("regression").get<bool>())
 //      {
 //	_regression = true; // XXX: unsupported
@@ -261,19 +265,25 @@ namespace dd {
         if (ad_mllib.has("test_batch_size"))
             batch_size = ad_mllib.get("test_batch_size").get<int>();
 
-        std::string modelType;
-        if (ad_mllib.has("model_type")) {
-            modelType = ad_mllib.get("model_type").get<std::string>();
-            net_type = modelType;
-        }
+        bool bbox = false;
+        if (ad_output.has("bbox") && ad_output.get("bbox").get<bool>())
+            bbox = true;
+
+        this->_logger->info("predict: bbox={}", bbox);
+
+//        std::string modelType;
+//        if (ad_mllib.has("model_type")) {
+//            modelType = ad_mllib.get("model_type").get<std::string>();
+//            net_type = modelType;
+//        }
 
 
 
-        std::string extract_layer;
-        if (ad_mllib.has("extract_layer") && !ad_mllib.get("extract_layer").get<std::string>().empty()) {
-            _outputLayer = ad_mllib.get("extract_layer").get<std::string>();
-            extract_layer = _outputLayer;
-        }
+//        std::string extract_layer;
+//        if (ad_mllib.has("extract_layer") && !ad_mllib.get("extract_layer").get<std::string>().empty()) {
+//            _outputLayer = ad_mllib.get("extract_layer").get<std::string>();
+//            extract_layer = _outputLayer;
+//        }
 
         const std::string modelFile = this->_mlmodel._modelName;
         if (modelFile.empty()) {
@@ -283,14 +293,15 @@ namespace dd {
 
         // Load the model into memory if not already
         if (!modelLoaded) {
-            if (net_type.empty()) {
+            this->_logger->info("predit: loading model into memory ({})", modelFile);
+            if (_net_type.empty()) {
                 throw MLLibBadParamException("Net type not specified");
-            } else if (net_type == "obj_detector") {
+            } else if (_net_type == "obj_detector") {
                 dlib::deserialize(this->_mlmodel._modelName) >> objDetector;
-            } else if (net_type == "face_detector") {
+            } else if (_net_type == "face_detector") {
                 dlib::deserialize(this->_mlmodel._modelName) >> faceDetector;
             } else {
-                throw MLLibBadParamException("Unrecognized net type: " + net_type);
+                throw MLLibBadParamException("Unrecognized net type: " + _net_type);
             }
             modelLoaded = true;
         }
@@ -304,37 +315,43 @@ namespace dd {
         if (dv.empty()) break;
 
         // running the loaded model and saving the generated output
-        auto detections = (net_type == "obj_detector") ? objDetector(dv) : (net_type == "face_detector") ? faceDetector(dv) : throw MLLibBadParamException("Unrecognized net type: " + net_type);
+        std::vector<std::vector<dlib::mmod_rect>> detections = (_net_type == "obj_detector") ? objDetector(dv) : (_net_type == "face_detector") ? faceDetector(dv) : throw MLLibBadParamException("Unrecognized net type: " + _net_type);
 
         APIData rad;
-        if (extract_layer.empty()) // supervised setting
-        {
+//        if (extract_layer.empty()) // supervised setting
+//        {
             for (size_t i = 0; i < dv.size(); i++) {
                 rad.add("uri", inputc._ids.at(idoffset + i));
                 std::vector<double> probs;
                 std::vector<std::string> cats;
-
-                for (auto &d : detections) {
-//                    PFILOG(debug) << "Found obj: " << d.label << " - " << d.detection_confidence << "(" << d.rect << ")";
-                    // bbox #TODO
+                std::vector<APIData> bboxes;
+                this->_logger->info("Found {} objects", detections[i].size());
+                for (auto &d : detections[i]) {
+                    this->_logger->info("Found obj: {} - {} ({})", d.label, d.detection_confidence, d.rect);
                     if (d.detection_confidence < confidence_threshold) continue;
                     probs.push_back(d.detection_confidence);
                     cats.push_back(d.label);
 
-                    /*
-                     * bbox can be formed with d.rect.left()/top()/right()/bottom()
-                     *
-                     *
-                     */
+                    if (bbox) {
+                        // bbox can be formed with d.rect.left()/top()/right()/bottom()
+                        APIData ad_bbox;
+                        ad_bbox.add("xmin", d.rect.left());
+                        ad_bbox.add("ymax", d.rect.top());
+                        ad_bbox.add("xmax", d.rect.right());
+                        ad_bbox.add("ymin", d.rect.bottom());
+                        bboxes.push_back(ad_bbox);
+                    }
+
 
                 }
                 rad.add("probs", probs);
                 rad.add("cats", cats);
                 rad.add("loss", 0.0);
+                if (bbox) rad.add("bboxes",bboxes);
                 vrad.push_back(rad);
             }
             idoffset += dv.size();
-        }
+//        }
 //        else // unsupervised
 //        {
 //            auto layer_vals = output.flat<float>();
@@ -355,6 +372,7 @@ namespace dd {
     } // end prediction loop over batches
         tout.add_results(vrad);
 //        out.add("nclasses", _nclasses);
+        out.add("bbox",bbox);
         tout.finalize(ad.getobj("parameters").getobj("output"), out, static_cast<MLModel *>(&this->_mlmodel));
         out.add("status",0);
         return 0;
@@ -362,6 +380,6 @@ namespace dd {
 
 
 
-//  template class DlibLib<ImgTFInputFileConn,SupervisedOutput,DlibModel>;
-//  template class DlibLib<ImgTFInputFileConn,UnsupervisedOutput,DlibModel>;
+  template class DlibLib<ImgDlibInputFileConn,SupervisedOutput,DlibModel>;
+  template class DlibLib<ImgDlibInputFileConn,UnsupervisedOutput,DlibModel>;
 }

@@ -53,33 +53,33 @@ namespace dd {
         /*- local functions -*/
 //        template<class T>
 //        dlib::loss_mmod<T> generate(const std::string &type);
-        auto getModel() {
-            if (net_type.empty()) {
-                throw MLLibInternalException("Cannot get model before model is loaded");
-            } else if (net_type == "object_detector") {
-                return objDetector;
-            } else if (net_type == "face_detector") {
-                return faceDetector;
-            } else {
-                throw MLLibInternalException("Unrecognized net type: " + net_type);
-            }
-        }
+//        auto getModel() {
+//            if (net_type.empty()) {
+//                throw MLLibInternalException("Cannot get model before model is loaded");
+//            } else if (net_type == "object_detector") {
+//                return objDetector;
+//            } else if (net_type == "face_detector") {
+//                return faceDetector;
+//            } else {
+//                throw MLLibInternalException("Unrecognized net type: " + net_type);
+//            }
+//        }
 
 
     public:
         // general parameters
-        int _nclasses = 0; /**< required. */
-        bool _regression = false; /**< whether the net acts as a regressor. */
-        int _ntargets = 0; /**< number of classification or regression targets. */
-        std::string _inputLayer; // input Layer of the model
-        std::string _outputLayer; // output layer of the model
-        APIData _inputFlag; // boolean input to the model
+//        int _nclasses = 0; /**< required. */
+//        bool _regression = false; /**< whether the net acts as a regressor. */
+//        int _ntargets = 0; /**< number of classification or regression targets. */
+//        std::string _inputLayer; // input Layer of the model
+//        std::string _outputLayer; // output layer of the model
+//        APIData _inputFlag; // boolean input to the model
 //        template<class T>
 //        net_type<T> model;
         net_type_objDetector objDetector;
         net_type_faceDetector faceDetector;
         bool modelLoaded = false;
-        std::string net_type;
+        std::string _net_type;
         std::mutex _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as net is not re-instantiated. Use batches instead. */
     };
 
