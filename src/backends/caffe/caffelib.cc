@@ -1072,7 +1072,7 @@ namespace dd
 	float mean_loss = 0.0;
 	int tresults = 0;
 	int nout = _nclasses;
-	int ocr_iter = 0;
+	int inner_meas_iter = 0;
 	float net_meas = 0.0;
 	if (_regression && _ntargets > 1)
 	  nout = _ntargets;
@@ -1087,7 +1087,7 @@ namespace dd
 	    std::vector<std::vector<double>> dv_float_data;
 	    try
 	      {
-		if (inputc._ctc)
+		if (inputc._ctc || inputc._bbox)
 		  {
 		    // do nothing, db input
 		    dv_size = 1;
@@ -1206,11 +1206,11 @@ namespace dd
 	    int scount = lresults[slot]->count();
 	    int scperel = scount / dv_size;
 
-	    if (inputc._ctc) // special case, we're using the accuracy computed from within the network
+	    if (inputc._ctc || inputc._bbox) // special case, we're using the accuracy computed from within the network
 	      {
 		slot = 0;
 		net_meas += lresults[slot]->cpu_data()[0];
-		if (ocr_iter >= test_iter)
+		if (inner_meas_iter >= test_iter)
 		  {
 		    net_meas /= static_cast<float>(test_iter);
 		    std::vector<double> predictions;
@@ -1220,7 +1220,7 @@ namespace dd
 		    ad_res.add("0",bad);
 		    break;
 		  }
-		++ocr_iter;
+		++inner_meas_iter;
 	      }
 	    else
 	      {
@@ -2011,24 +2011,31 @@ namespace dd
 		else mdp->set_batch_size(test_batch_size);
 	      }
 	  }
-	if (!inputc._bbox && (lp->has_transform_param() || inputc._has_mean_file || !inputc._mean_values.empty()))
+	if ((lp->has_transform_param() || inputc._has_mean_file || !inputc._mean_values.empty()))
 	  {
 	    caffe::TransformationParameter *tp = lp->mutable_transform_param();
 	    has_mean_file = tp->has_mean_file();
-	    if (tp->has_mean_file())
+	    if (tp->has_mean_file() || !inputc._mean_values.empty())
 	      {
-		if (tp->crop_size() == 0)
+		if (tp->crop_size() == 0) // beware if no mean file available, though should not happen
 		  {
-		    if (ad.has("db"))
-		      tp->set_mean_file(ad.getobj("db").get("meanfile").get<std::string>());
-		    else tp->set_mean_file(this->_mlmodel._repo + "/" + tp->mean_file());
+		    if (inputc._mean_values.empty())
+		      {
+			if (ad.has("db"))
+			  tp->set_mean_file(ad.getobj("db").get("meanfile").get<std::string>());
+			else tp->set_mean_file(this->_mlmodel._repo + "/" + tp->mean_file());
+		      }
+		    else
+		      {
+			for (size_t d=0;d<inputc._mean_values.size();d++)
+			  tp->add_mean_value(inputc._mean_values.at(d));
+			tp->clear_mean_file();
+		      }
 		  }
 		else
 		  {
 		    for (size_t d=0;d<inputc._mean_values.size();d++)
-		      {
-			tp->add_mean_value(inputc._mean_values.at(d));
-		      }
+		      tp->add_mean_value(inputc._mean_values.at(d));
 		    tp->clear_mean_file();
 		  }
 	      }

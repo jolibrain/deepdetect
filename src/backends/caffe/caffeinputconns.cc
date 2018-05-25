@@ -640,15 +640,27 @@ namespace dd
 					   const std::string &encode_type,
 					   const std::string &backend)
   {
-    //TODO: bypass creation if dbs already exist
+    // bypass creation if dbs already exist
     if (fileops::file_exists(traindbname))
       {
 	//TODO: count ? ...
+	//TODO: re-read mean values
+	std::string line;
+	std::ifstream fin_mean(_model_repo + "/mean_values.txt");
+	_mean_values.clear();
+	while(std::getline(fin_mean,line))
+	  {
+	    std::vector<std::string> elts = dd_utils::split(line,' ');
+	    for (auto s: elts)
+	      _mean_values.push_back(std::atof(s.c_str()));
+	    break;
+	  }
+
 	_logger->warn("object db file {} already exists, bypassing creation",traindbname);
 	return 0;
       }
 
-    //TODO: read train lines
+    // read train lines
     std::ifstream in(filelists.at(0));
     if (!in.is_open())
       throw InputConnectorBadParamException("failed opening training data file " + filelists.at(0));
@@ -667,10 +679,10 @@ namespace dd
     
     //TODO: shuffle & split
     
-    //TODO: create train & test dbs
-    write_objects_to_db(traindbname,lines,encoded,encode_type,backend);
+    // create train db
+    write_objects_to_db(traindbname,lines,encoded,encode_type,backend,true);
 
-    //TODO: read test lines as needed
+    // read test lines as needed
     if (filelists.size() < 2)
       return 0;
     std::ifstream tin(filelists.at(1));
@@ -687,7 +699,7 @@ namespace dd
 	tlines.push_back(std::pair<std::string,std::string>(elts.at(0),elts.at(1)));
 	++clines;
       }
-    write_objects_to_db(testdbname,tlines,encoded,encode_type,backend);
+    write_objects_to_db(testdbname,tlines,encoded,encode_type,backend,false);
     
     //TODO: write corresp / map file
     
@@ -698,7 +710,8 @@ namespace dd
 						  const std::vector<std::pair<std::string,std::string>> &lines,
 						  const bool &encoded,
 						  const std::string &encode_type,
-						  const std::string &backend)
+						  const std::string &backend,
+						  const bool &train)
   {
 
     // Create new DB
@@ -718,6 +731,7 @@ namespace dd
     std::string label_type = "txt";
     bool status = true;
     bool check_size = false; // check whether all datum have the same size
+    std::vector<float> meanv;
     
     //TODO: read map file -> we don't need it when using txt format
     std::map<std::string, int> name_to_label;
@@ -767,19 +781,21 @@ namespace dd
 
 	// compute the mean
 	/*if (mean)
+	  {*/
+	if (train)
 	  {
-	  if (meanv.empty())
-	  meanv = std::vector<float>(datum->channels(),0.0);
-	  std::vector<float> lmeanv(datum->channels(),0.0);
-	  std::vector<cv::Mat> channels;
-	  cv::Mat img = cv::imread(lines[line_id].first);
-	  cv::split(img, channels);
-	  for (int d=0;d<datum->channels();d++) {
-	  lmeanv[d] = cv::mean(channels[d])[0];
-	  meanv[d] += lmeanv[d];
-	  //std::cerr << meanv[d] / count << std::endl;
+	    if (_mean_values.empty())
+	      _mean_values = std::vector<float>(datum->channels(),0.0);
+	    std::vector<float> lmeanv(datum->channels(),0.0);
+	    std::vector<cv::Mat> channels;
+	    cv::Mat img = cv::imread(lines[line_id].first);
+	    cv::split(img, channels);
+	    for (int d=0;d<datum->channels();d++) {
+	      lmeanv[d] = cv::mean(channels[d])[0];
+	      _mean_values[d] += lmeanv[d];
+	    }
 	  }
-	  }*/
+	//}
 	
 	// sequential
 	string key_str = caffe::format_int(line_id, 8) + "_" + lines[line_id].first;
@@ -799,21 +815,24 @@ namespace dd
 	}
       }
   
-  // write the last batch
-  if (count % 1000 != 0) {
-    txn->Commit();
-    LOG(INFO) << "Processed " << count << " files.";
-  }
-  //TODO: ?
-  /*if (mean)
-    {
-      std::ofstream fout_mean("mean_values.txt");
-      for (auto v: meanv)
-	fout_mean << v/static_cast<float>(count) << " ";
-      fout_mean << std::endl;
-      fout_mean.close();
-      }*/
-    
+    // write the last batch
+    if (count % 1000 != 0) {
+      txn->Commit();
+      LOG(INFO) << "Processed " << count << " files.";
+    }
+
+    // average the mean
+    if (train)
+      {
+	std::ofstream fout_mean(_model_repo + "/mean_values.txt"); // since images are of various sizes
+	for (size_t i=0;i<_mean_values.size();i++)
+	  {
+	    _mean_values.at(i) /= static_cast<float>(count);
+	    fout_mean << _mean_values.at(i) << " ";
+	  }
+	fout_mean << std::endl;
+	fout_mean.close();
+      }
   }
   
   int ImgCaffeInputFileConn::compute_images_mean(const std::string &dbname,

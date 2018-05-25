@@ -481,7 +481,8 @@ namespace dd
 			     const std::vector<std::pair<std::string,std::string>> &lines,
 			     const bool &encoded,
 			     const std::string &encode_type,
-			     const std::string &backend);
+			     const std::string &backend,
+			     const bool &train);
     
     int compute_images_mean(const std::string &dbname,
 			    const std::string &meanfile,
