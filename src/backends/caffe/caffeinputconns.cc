@@ -652,12 +652,12 @@ namespace dd
     std::ifstream in(filelists.at(0));
     if (!in.is_open())
       throw InputConnectorBadParamException("failed opening training data file " + filelists.at(0));
+    _logger->info("reading training data file {}",filelists.at(0));
     std::string line;
     std::vector<std::pair<std::string,std::string>> lines;
     int clines = 0;
     while(std::getline(in,line))
       {
-	//TODO
 	std::vector<std::string> elts = dd_utils::split(line,' ');
 	if (elts.size() != 2)
 	  throw InputConnectorBadParamException("wrong line " + std::to_string(clines) + " in data file " + filelists.at(0));
@@ -671,7 +671,24 @@ namespace dd
     write_objects_to_db(traindbname,lines,encoded,encode_type,backend);
 
     //TODO: read test lines as needed
-   
+    if (filelists.size() < 2)
+      return 0;
+    std::ifstream tin(filelists.at(1));
+    if (!tin.is_open())
+      throw InputConnectorBadParamException("failed opening testing data file " + filelists.at(1));
+    _logger->info("reading testing data file {}",filelists.at(0));
+    std::vector<std::pair<std::string,std::string>> tlines;
+    clines = 0;
+    while(std::getline(tin,line))
+      {
+	std::vector<std::string> elts = dd_utils::split(line,' ');
+	if (elts.size() != 2)
+	  throw InputConnectorBadParamException("wrong line " + std::to_string(clines) + " in data file " + filelists.at(1));
+	tlines.push_back(std::pair<std::string,std::string>(elts.at(0),elts.at(1)));
+	++clines;
+      }
+    write_objects_to_db(testdbname,tlines,encoded,encode_type,backend);
+    
     //TODO: write corresp / map file
     
     return 0;
@@ -690,7 +707,7 @@ namespace dd
     std::unique_ptr<db::Transaction> txn(db->NewTransaction());
 
     // Storing to db
-    AnnotatedDatum_AnnotationType type; 
+    AnnotatedDatum_AnnotationType type = AnnotatedDatum_AnnotationType_BBOX; 
     AnnotatedDatum anno_datum;
     Datum* datum = anno_datum.mutable_datum();
     int count = 0;
@@ -705,9 +722,8 @@ namespace dd
     //TODO: read map file -> we don't need it when using txt format
     std::map<std::string, int> name_to_label;
 
-    for (int line_id = 0; line_id < lines.size(); ++line_id)
+    for (size_t line_id = 0; line_id < lines.size(); ++line_id)
       {
-
 	std::string enc = encode_type;
 	if (encoded && !enc.size())
 	  {
@@ -741,8 +757,11 @@ namespace dd
 	    else
 	      {
 		const std::string& data = datum->data();
-		CHECK_EQ(data.size(), data_size) << "Incorrect data field size "
-						 << data.size();
+	        if (static_cast<int>(data.size()) != data_size)
+		  {
+		    _logger->error("incorrect data field size {}",data.size());
+		    throw InputConnectorBadParamException("incorrect data field size " + std::to_string(data.size()));
+		  }
 	      }
 	  }
 

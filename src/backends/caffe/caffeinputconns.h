@@ -322,10 +322,17 @@ namespace dd
 
 	      //TODO:
 	      // - create lmdbs
-	      objects_to_db(_uris,_model_repo + "/" + _dbname + ".lmdb",_model_repo + "/" + _test_dbname + ".lmdb");
+	      _dbfullname = _model_repo + "/" + _dbfullname;
+	      _test_dbfullname = _model_repo + "/" + _test_dbfullname;
+	      objects_to_db(_uris,_dbfullname,_test_dbfullname);
 
 	      //TODO: data object with db files location
-	      
+	      APIData dbad;
+	      dbad.add("train_db",_dbfullname);
+	      if (_test_split > 0.0 || _uris.size() > 1)
+		dbad.add("test_db",_test_dbfullname);
+	      //dbad.add("meanfile",_model_repo + "/" + _meanfname);
+	      const_cast<APIData&>(ad).add("db",dbad); 
 	    }
 	  else if (_ctc)
 	    {

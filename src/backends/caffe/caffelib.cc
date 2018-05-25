@@ -316,7 +316,7 @@ namespace dd
 	// input size
 	caffe::LayerParameter *lparam = net_param.mutable_layer(1); // test
 	caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(0);
-	if (!this->_inputc._ctc &&(_crop_size > 0 || (this->_inputc.width() != -1 && this->_inputc.height() != -1))) // forced width & height
+	if (!this->_inputc._bbox && !this->_inputc._ctc &&(_crop_size > 0 || (this->_inputc.width() != -1 && this->_inputc.height() != -1))) // forced width & height
 	  {
 	    int width = this->_inputc.width();
 	    int height = this->_inputc.height();
@@ -655,7 +655,8 @@ namespace dd
       }
 
     caffe::SolverParameter solver_param;
-    caffe::ReadProtoFromTextFile(this->_mlmodel._solver,&solver_param);
+    if (!caffe::ReadProtoFromTextFile(this->_mlmodel._solver,&solver_param))
+      throw MLLibInternalException("failed opening solver file " + this->_mlmodel._solver);
     bool has_mean_file = false;
     int user_batch_size, batch_size, test_batch_size, test_iter;
     update_in_memory_net_and_solver(solver_param,cad,inputc,has_mean_file,user_batch_size,batch_size,test_batch_size,test_iter);
@@ -1914,11 +1915,12 @@ namespace dd
     
     // fix source paths in the model.
     caffe::NetParameter *np = sp.mutable_net_param();
-    caffe::ReadProtoFromTextFile(sp.net().c_str(),np); //TODO: error on read + use internal caffe ReadOrDie procedure
+    if (!caffe::ReadProtoFromTextFile(sp.net().c_str(),np))
+      throw MLLibInternalException("failed opening train prototxt file " + sp.net());
 
     this->_logger->info("input db = {}",inputc._db);
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
-    if (!(inputc._db) && typeid(inputc) == typeid(ImgCaffeInputFileConn))
+    if (!inputc._db && !inputc._bbox && typeid(inputc) == typeid(ImgCaffeInputFileConn))
       {
 	caffe::LayerParameter *lparam = np->mutable_layer(0);
         caffe::ImageDataParameter* image_data_parameter = lparam->mutable_image_data_param();
@@ -2009,7 +2011,7 @@ namespace dd
 		else mdp->set_batch_size(test_batch_size);
 	      }
 	  }
-	if (lp->has_transform_param() || inputc._has_mean_file || !inputc._mean_values.empty())
+	if (!inputc._bbox && (lp->has_transform_param() || inputc._has_mean_file || !inputc._mean_values.empty()))
 	  {
 	    caffe::TransformationParameter *tp = lp->mutable_transform_param();
 	    has_mean_file = tp->has_mean_file();
@@ -2077,7 +2079,7 @@ namespace dd
     if (_crop_size > 0)
       width = height = _crop_size;
 
-    if (!(this->_inputc._db) && !inputc._ctc && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
+    if (!(this->_inputc._db) && !inputc._bbox && !inputc._ctc && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
       {
             caffe::LayerParameter *lparam = net_param.mutable_layer(0);
             caffe::ImageDataParameter* image_data_parameter = lparam->mutable_image_data_param();
@@ -2280,6 +2282,8 @@ namespace dd
     // fix class numbers
     // this procedure looks for the first bottom layer with a 'num_output' field and
     // set it to the number of classes defined by the supervised service.
+    if (this->_inputc._bbox)
+      return;
     bool last_layer = true;
     for (int l=net_param.layer_size()-1;l>0;l--)
       {
