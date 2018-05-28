@@ -204,6 +204,14 @@ namespace dd
 
       void update_protofile_finetune(caffe::NetParameter &net_param);
 
+      caffe::LayerParameter* insert_layer_before
+      (caffe::NetParameter &net_param, int layer_number);
+      caffe::LayerParameter*  find_layer_by_name(caffe::NetParameter &net_param, std::string name);
+
+      int find_index_layer_by_type(caffe::NetParameter &net_param, std::string type);
+      int find_index_layer_by_name(caffe::NetParameter &net_param, std::string name);
+
+
       void fix_batch_size(const APIData &ad,
 			  const TInputConnectorStrategy &inputc,
 			  int &user_batch_size,
