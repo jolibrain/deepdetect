@@ -191,30 +191,87 @@ namespace dd
       // dice loss!!
       {
         int k = net_param.layer_size();
+        int softml_pos = -1;
         for (int l=k-1;l>0;l--)
           {
             caffe::LayerParameter *lparam = net_param.mutable_layer(l);
             if (lparam->type() == "SoftmaxWithLoss")
               {
-                lparam->set_type("DiceCoefLoss");
-                if (lparam->has_softmax_param())
-                  lparam->clear_softmax_param();
-                caffe::DiceCoefLossParameter* dclp = lparam->mutable_dice_coef_loss_param();
-                switch (this->_loss)
-                  {
-                  case 1:
-                    dclp->set_generalization(caffe::DiceCoefLossParameter::NONE);
-                    break;
-                  // case 2:
-                  //   dclp->set_generalization(caffe::DiceCoefLossParameter::BINARY);
-                  //   break;
-                  // case 3:
-                  //   dclp->set_generalization(caffe::DiceCoefLossParameter::BINARY_WEIGHTED);
-                  //   break;
-                  }
+                softml_pos = l;
                 break;
               }
-	      }
+
+          }
+
+        int softm_pos = -1;
+        for (int l=k-1;l>0;l--)
+          {
+            caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+            if (lparam->type() == "Softmax")
+              {
+                softm_pos = l;
+                break;
+              }
+          }
+
+        std::string logits_name = net_param.layer(softm_pos).bottom(0);
+
+
+        // first softmax
+        caffe::LayerParameter *lparam = net_param.mutable_layer(softml_pos);
+        *lparam->mutable_type() = "Softmax";
+        *lparam->mutable_name()="softmax";
+        lparam->clear_bottom();
+        lparam->clear_top();
+        lparam->add_top("prob");
+        lparam->add_bottom(logits_name);
+        lparam->clear_include();
+
+
+        lparam = net_param.mutable_layer(softm_pos);
+        lparam->set_type("Slice");
+        lparam->set_name("class_slicer");
+        lparam->clear_bottom();
+        lparam->clear_top();
+        lparam->add_bottom(logits_name);
+        lparam->add_top("class0");
+        lparam->add_top("class1");
+        lparam->clear_softmax_param();
+        caffe::NetStateRule * nsr = lparam->mutable_include(0);
+        nsr->set_phase(caffe::TRAIN);
+        caffe::SliceParameter*  ap = lparam->mutable_slice_param();
+        ap->set_axis(1);
+        ap->add_slice_point(1);
+
+
+        //replace softmax with diceloss
+
+
+        lparam = net_param.add_layer();
+        lparam->set_type("DiceCoefLoss");
+        lparam->clear_bottom();
+        lparam->set_name("diceloss");
+        lparam->clear_softmax_param();
+        lparam->add_bottom("class1");
+        lparam->add_bottom("label");
+        lparam->add_include();
+        nsr = lparam->mutable_include(0);
+        nsr->set_phase(caffe::TRAIN);
+
+
+        caffe::DiceCoefLossParameter* dclp = lparam->mutable_dice_coef_loss_param();
+        switch (this->_loss)
+          {
+          case 1:
+            dclp->set_generalization(caffe::DiceCoefLossParameter::NONE);
+            break;
+            // case 2:
+            //   dclp->set_generalization(caffe::DiceCoefLossParameter::BINARY);
+            //   break;
+            // case 3:
+            //   dclp->set_generalization(caffe::DiceCoefLossParameter::BINARY_WEIGHTED);
+            //   break;
+          }
 
       }
 
@@ -386,6 +443,8 @@ namespace dd
     if (this->_mlmodel.read_from_repository(this->_mlmodel._repo,this->_logger))
       throw MLLibBadParamException("error reading or listing Caffe models in repository " + this->_mlmodel._repo);
   }
+
+
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_noise_and_distort(const APIData &ad,
@@ -604,10 +663,10 @@ namespace dd
       {
         if (ad.get("loss").get<std::string>().compare("dice")==0)
           {
-            if (this->_inputc._segmentation)
+            if (this->_inputc._segmentation && _nclasses == 2)
               _loss = 1;
             else
-              throw MLLibBadParamException("asked for dice loss without segmentation");
+              throw MLLibBadParamException("asked for vanilla dice loss without segmentation or with nclasses != 2 ");
           }
         // else if (ad.get("loss").get<std::string>().compare("dice_binary")==0)
         //   {
@@ -1291,15 +1350,15 @@ namespace dd
 			    double target = dv_float_data.at(j).at(l);
 			    double best_prob = -1.0;
 			    double best_cat = -1.0;
-			    for (int k=0;k<nout;k++)
-			      {
-				double prob = lresults[slot]->cpu_data()[l+(nout*j+k)*dv_float_data.at(j).size()];
-				if (prob >= best_prob)
-				  {
-				    best_prob = prob;
-				    best_cat = k;
-				  }
-			      }
+                for (int k=0;k<nout;k++)
+                  {
+                    double prob = lresults[slot]->cpu_data()[l+(nout*j+k)*dv_float_data.at(j).size()];
+                    if (prob >= best_prob)
+                      {
+                        best_prob = prob;
+                        best_cat = k;
+                      }
+                  }
 			    preds.push_back(best_cat);
 			    targets.push_back(target);
 			  }
@@ -1613,15 +1672,15 @@ namespace dd
 		      {
 			double max_prob = -1.0;
 			double best_cat = -1.0;
-			for (int k=0;k<nclasses;k++)
-			  {
-			    double prob = results[slot]->cpu_data()[(j*nclasses+k)*imgsize+i];
-			    if (prob > max_prob)
-			      {
-				max_prob = prob;
-				best_cat = static_cast<double>(k);
-			      }
-			  }
+            for (int k=0;k<nclasses;k++)
+              {
+                double prob = results[slot]->cpu_data()[(j*nclasses+k)*imgsize+i];
+                if (prob > max_prob)
+                  {
+                    max_prob = prob;
+                    best_cat = static_cast<double>(k);
+                  }
+              }
 			vals.push_back(best_cat);
 		      }
 		    auto bit = inputc._imgs_size.find(uri);
