@@ -109,8 +109,8 @@ if (USE_DLIB)
           INSTALL_COMMAND ""
           BUILD_IN_SOURCE 1
         )
-        set(DLIB_INC_DIR ${CMAKE_BINARY_DIR}/dlib/build/include ${CUDA_INCLUDE_DIRS})
-        set(DLIB_LIB_DIR ${CMAKE_BINARY_DIR}/dlib/build/lib ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_CUDART_LIBRARY} ${CUDNN_LIBRARY} ${CUDA_cusolver_LIBRARY} ${CUDA_LIBRARY})
+        set(DLIB_INC_DIR ${CMAKE_BINARY_DIR}/dlib/build/include)
+        set(DLIB_LIB_DIR ${CMAKE_BINARY_DIR}/dlib/build/lib)
     else()
         ExternalProject_Add(
                 dlib
@@ -128,7 +128,6 @@ if (USE_DLIB)
 
     include_directories("${DLIB_INC_DIR}")
     message(STATUS "Dlib will be built")
-    message(STATUS "DLIB_LIB_DIR: " ${DLIB_LIB_DIR})
 endif()
 
 if (USE_TF)
@@ -283,7 +282,7 @@ else()
   endif()
   if (CUDA_FOUND)
     set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${CUDA_INCLUDE_DIRS} ${PROTOBUF_INCLUDE_DIR})
-    set(CAFFE_LIB_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${HDF5_LIB} ${PROTOBUF_LIB_DIR} ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY})
+    set(CAFFE_LIB_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${HDF5_LIB} ${PROTOBUF_LIB_DIR})
   else()
     set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src /usr/include/hdf5/serial ${PROTOBUF_INCLUDE_DIR})
     set(CAFFE_LIB_DIR $ENV{HOME}/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${HDF5_LIB} ${PROTOBUF_LIB_DIR})
