@@ -104,11 +104,13 @@ if (USE_DLIB)
           PREFIX dlib
           INSTALL_DIR ${CMAKE_BINARY_DIR}
           DOWNLOAD_COMMAND git clone https://github.com/davisking/dlib.git
-          CONFIGURE_COMMAND cd dlib && mkdir build && cd build && cmake .. -DDLIB_NO_GUI_SUPPORT=ON -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/dlib/build && cmake --build . --config Release --target install
+          CONFIGURE_COMMAND cd dlib && mkdir build && cd build && cmake .. -DDLIB_NO_GUI_SUPPORT=ON -DDLIB_USE_CUDA=ON -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/dlib/build && cmake --build . --config Release --target install
           BUILD_COMMAND ""
           INSTALL_COMMAND ""
           BUILD_IN_SOURCE 1
         )
+        set(DLIB_INC_DIR ${CMAKE_BINARY_DIR}/dlib/build/include ${CUDA_INCLUDE_DIRS})
+        set(DLIB_LIB_DIR ${CMAKE_BINARY_DIR}/dlib/build/lib ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_CUDART_LIBRARY} ${CUDNN_LIBRARY} ${CUDA_cusolver_LIBRARY} ${CUDA_LIBRARY})
     else()
         ExternalProject_Add(
                 dlib
@@ -120,13 +122,13 @@ if (USE_DLIB)
                 INSTALL_COMMAND ""
                 BUILD_IN_SOURCE 1
         )
+        set(DLIB_INC_DIR ${CMAKE_BINARY_DIR}/dlib/build/include)
+        set(DLIB_LIB_DIR ${CMAKE_BINARY_DIR}/dlib/build/lib)
     endif()
-
-    set(DLIB_INC_DIR ${CMAKE_BINARY_DIR}/dlib/build/include)
-    set(DLIB_LIB_DIR ${CMAKE_BINARY_DIR}/dlib/build/lib)
 
     include_directories("${DLIB_INC_DIR}")
     message(STATUS "Dlib will be built")
+    message(STATUS "DLIB_LIB_DIR: " ${DLIB_LIB_DIR})
 endif()
 
 if (USE_TF)
