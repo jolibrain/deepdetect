@@ -657,6 +657,18 @@ namespace dd
 	  }
 
 	_logger->warn("object db file {} already exists, bypassing creation",traindbname);
+	std::unique_ptr<db::DB> db(db::GetDB(backend));
+	db->Open(traindbname.c_str(), db::READ);
+	_db_batchsize = db->Count();
+	_logger->warn("image db file {} with {} records",traindbname,_db_batchsize);
+	if (!testdbname.empty() && fileops::file_exists(testdbname))
+	  {
+	    _logger->warn("image db file {} already exists, bypassing creation but checking on records",testdbname);
+	    std::unique_ptr<db::DB> tdb(db::GetDB(backend));
+	    tdb->Open(testdbname.c_str(), db::READ);
+	    _db_testbatchsize = tdb->Count();
+	    _logger->warn("image db file {} with {} records",testdbname,_db_testbatchsize);
+	  }
 	return 0;
       }
 
@@ -681,7 +693,8 @@ namespace dd
     
     // create train db
     write_objects_to_db(traindbname,lines,encoded,encode_type,backend,true);
-
+    _db_batchsize = lines.size();
+    
     // read test lines as needed
     if (filelists.size() < 2)
       return 0;
@@ -700,6 +713,7 @@ namespace dd
 	++clines;
       }
     write_objects_to_db(testdbname,tlines,encoded,encode_type,backend,false);
+    _db_testbatchsize = tlines.size();
     
     //TODO: write corresp / map file
     

@@ -22,6 +22,16 @@
 #ifndef SUPERVISEDOUTPUTCONNECTOR_H
 #define SUPERVISEDOUTPUTCONNECTOR_H
 
+template <typename T>
+bool SortScorePairDescend(const std::pair<double, T>& pair1,
+			  const std::pair<double, T>& pair2) {
+  return pair1.first > pair2.first;
+}    
+template bool SortScorePairDescend(const std::pair<double, int>& pair1,
+				   const std::pair<double, int>& pair2);
+template bool SortScorePairDescend(const std::pair<double, std::pair<int, int> >& pair1,
+				   const std::pair<double, std::pair<int, int> >& pair2);
+
 namespace dd
 {
 
@@ -460,14 +470,15 @@ namespace dd
       bool regression = ad_res.has("regression");
       bool segmentation = ad_res.has("segmentation");
       bool multilabel = ad_res.has("multilabel");
-      bool ctc = ad_res.has("ctc");
+      bool net_meas = ad_res.has("net_meas");
+      bool bbox = ad_res.has("bbox");
       if (ad_out.has("measure"))
 	{
 	  std::vector<std::string> measures = ad_out.get("measure").get<std::vector<std::string>>();
       	  bool bauc = (std::find(measures.begin(),measures.end(),"auc")!=measures.end());
 	  bool bacc = false;
 
-	  if (!multilabel && !segmentation && !ctc)
+	  if (!multilabel && !segmentation && !net_meas && !bbox)
 	    {
 	      for (auto s: measures)
 		if (s.find("acc")!=std::string::npos)
@@ -490,13 +501,10 @@ namespace dd
       bool mlsoft_dc = false;
       bool mlsoft_r2 = false;
       bool mlsoft_deltas = false;
-      bool net_meas = false;
       
-      if (ctc)
-	net_meas = true;
        if (segmentation)
 	    baccv = (std::find(measures.begin(),measures.end(),"acc")!=measures.end());
-	  if (multilabel && !regression)
+       if (multilabel && !regression)
 	    mlacc = (std::find(measures.begin(),measures.end(),"acc")!=measures.end());
       if (multilabel && regression)
         {
@@ -516,46 +524,56 @@ namespace dd
 	      mlsoft_deltas = (std::find(measures.begin(),measures.end(),"deltas")!=measures.end());
 	    }
 	}
+      if (bbox)
+	{
+	  bool bbmap = (std::find(measures.begin(),measures.end(),"map")!=measures.end());
+	  if (bbmap)
+	    {
+	      double bmap = ap(ad_res);
+	      //std::cerr << "map=" << map << std::endl;
+	      meas_out.add("map",bmap);
+	    }
+	}
       if (net_meas) // measure is coming from the net directly
 	{
 	  double acc = straight_meas(ad_res);
 	  meas_out.add("acc",acc);
 	}
-	  if (bauc) // XXX: applies two binary classification problems only
+      if (bauc) // XXX: applies two binary classification problems only
+	{
+	  double mauc = auc(ad_res);
+	  meas_out.add("auc",mauc);
+	}
+      if (bacc)
+	{
+	  std::map<std::string,double> accs = acc(ad_res,measures);
+	  auto mit = accs.begin();
+	  while(mit!=accs.end())
 	    {
-	      double mauc = auc(ad_res);
-	      meas_out.add("auc",mauc);
+	      meas_out.add((*mit).first,(*mit).second);
+	      ++mit;
 	    }
-	  if (bacc)
-	    {
-	      std::map<std::string,double> accs = acc(ad_res,measures);
-	      auto mit = accs.begin();
-	      while(mit!=accs.end())
-		{
-		  meas_out.add((*mit).first,(*mit).second);
-		  ++mit;
-		}
-	    }
-	  if (baccv)
-	    {
-	      double meanacc, meaniou;
-	      std::vector<double> clacc;
-	      double accs = acc_v(ad_res,meanacc,meaniou,clacc);
-	      meas_out.add("acc",accs);
-	      meas_out.add("meanacc",meanacc);
-	      meas_out.add("meaniou",meaniou);
-	      meas_out.add("clacc",clacc);
-	    }
-	  if (mlacc)
-	    {
-	      double f1, sensitivity, specificity, harmmean, precision;
-	      multilabel_acc(ad_res,sensitivity,specificity,harmmean,precision,f1);
-	      meas_out.add("f1",f1);
-	      meas_out.add("precision",precision);
-	      meas_out.add("sensitivity",sensitivity);
-	      meas_out.add("specificity",specificity);
-	      meas_out.add("harmmean",harmmean);
-	    }
+	}
+      if (baccv)
+	{
+	  double meanacc, meaniou;
+	  std::vector<double> clacc;
+	  double accs = acc_v(ad_res,meanacc,meaniou,clacc);
+	  meas_out.add("acc",accs);
+	  meas_out.add("meanacc",meanacc);
+	  meas_out.add("meaniou",meaniou);
+	  meas_out.add("clacc",clacc);
+	}
+      if (mlacc)
+	{
+	  double f1, sensitivity, specificity, harmmean, precision;
+	  multilabel_acc(ad_res,sensitivity,specificity,harmmean,precision,f1);
+	  meas_out.add("f1",f1);
+	  meas_out.add("precision",precision);
+	  meas_out.add("sensitivity",sensitivity);
+	  meas_out.add("specificity",specificity);
+	  meas_out.add("harmmean",harmmean);
+	}
       if (mlsoft_kl)
         {
           double kl_divergence = multilabel_soft_kl(ad_res); // kl: amount of lost info if using pred instead of truth
@@ -599,7 +617,7 @@ namespace dd
             }
         }
 
-	  if (!multilabel && !segmentation && bf1)
+	  if (!multilabel && !segmentation && !bbox && bf1)
 	    {
 	      double f1,precision,recall,acc;
 	      dMat conf_diag,conf_matrix;
@@ -632,7 +650,7 @@ namespace dd
 		  meas_out.add("cmfull",cmdata);
 		}
 	    }
-	  if (!multilabel && !segmentation && bmcll)
+	  if (!multilabel && !segmentation && !bbox && bmcll)
 	    {
 	      double mmcll = mcll(ad_res);
 	      meas_out.add("mcll",mmcll);
@@ -1119,6 +1137,109 @@ namespace dd
       for (int i=0;i<conf_matrix.cols();i++)
 	conf_matrix.col(i) /= conf_csum(i);
       return f1;
+    }
+
+    // measure: AP, mAP
+    static void cumsum_pair(const std::vector<std::pair<double, int> >& pairs,
+			    std::vector<int> &cumsum)
+    {
+      // Sort the pairs based on first item of the pair.
+      std::vector<std::pair<double, int> > sort_pairs = pairs;
+      std::stable_sort(sort_pairs.begin(), sort_pairs.end(),
+		       SortScorePairDescend<int>);
+      for (int i = 0; i < sort_pairs.size(); ++i)
+	{
+	  if (i == 0)
+	    {
+	      cumsum.push_back(sort_pairs[i].second);
+	    }
+	  else
+	    {
+	      cumsum.push_back(cumsum.back() + sort_pairs[i].second);
+	    }
+	}
+    }
+    
+    static double compute_ap(const std::vector<std::pair<double,int>> &tp,
+			     const std::vector<std::pair<double,int>> &fp,
+			     const int &num_pos)
+    {
+      const double eps = 1e-6;
+      const int num = tp.size();
+      double ap = 0.0;
+      //std::cerr << "num=" << num << std::endl;
+      std::vector<int> tp_cumsum;
+      std::vector<int> fp_cumsum;
+      cumsum_pair(tp, tp_cumsum); // tp cumsum
+      cumsum_pair(fp, fp_cumsum); // fp cumsum
+      std::vector<double> prec; // precision
+      for (int i=0;i<num;i++)
+	prec.push_back(static_cast<double>(tp_cumsum[i])/(tp_cumsum[i] + fp_cumsum[i]));
+      std::vector<double> rec; // recall
+      for (int i=0;i<num;i++)
+	rec.push_back(static_cast<double>(tp_cumsum[i])/num_pos);
+
+      //std::cerr << "prec size=" << prec.size() << " / rec size=" << rec.size() << std::endl;
+      
+      // voc12, ilsvrc style ap
+      float cur_rec = rec.back();
+      float cur_prec = prec.back();
+      for (int i=num-2; i>=0; --i)
+	{
+	  cur_prec = std::max<float>(prec[i], cur_prec);
+	  if (fabs(cur_rec - rec[i]) > eps)
+	    {
+	      ap += cur_prec * fabs(cur_rec - rec[i]);
+	    }
+	  cur_rec = rec[i];
+	}
+      ap += cur_rec * cur_prec;
+      //std::cerr << "ap=" << ap << std::endl;
+      return ap;
+    }
+    
+    static double ap(const APIData &ad)
+    {
+      double mAP = 0.0;
+      std::map<int, float> APs;
+      
+      // extract tp, fp, labels
+      APIData bad = ad.getobj("0");
+      int pos_count = ad.get("pos_count").get<int>();
+      //std::cerr << "measures pos_count=" << pos_count << std::endl;
+      for (int i=0;i<pos_count;i++)
+	{
+	  std::vector<APIData> vbad = bad.getv(std::to_string(i));
+	  //std::cerr << "vbad size=" << vbad.size() << std::endl;
+	  for (size_t j=0;j<vbad.size();j++)
+	    {
+	      std::vector<double> tp_d = vbad.at(j).get("tp_d").get<std::vector<double>>();
+	      //std::cerr << "tp_d size=" << tp_d.size() << std::endl;
+	      std::vector<int> tp_i = vbad.at(j).get("tp_i").get<std::vector<int>>();
+	      std::vector<double> fp_d = vbad.at(j).get("fp_d").get<std::vector<double>>();
+	      std::vector<int> fp_i = vbad.at(j).get("fp_i").get<std::vector<int>>();
+	      int num_pos = vbad.at(j).get("num_pos").get<int>();
+	      //std::cerr << "num_pos=" << num_pos << std::endl;
+	      int label = vbad.at(j).get("label").get<int>();
+	      //std::cerr << "label=" << label << std::endl;
+	      std::vector<std::pair<double,int>> tp;
+	      std::vector<std::pair<double,int>> fp;
+	      
+	      //std::cerr << "fp_d size=" << fp_d.size() << std::endl;
+	      for (size_t j=0;j<tp_d.size();j++)
+		{
+		  tp.push_back(std::pair<double,int>(tp_d.at(j),tp_i.at(j)));
+		}
+	      for (size_t j=0;j<fp_d.size();j++)
+		{
+		  fp.push_back(std::pair<double,int>(fp_d.at(j),fp_i.at(j)));
+		}
+	      
+	      APs[label] = compute_ap(tp,fp,num_pos);
+	      mAP += APs[label];
+	    }
+	}
+      return mAP/static_cast<double>(pos_count);
     }
     
     // measure: AUC

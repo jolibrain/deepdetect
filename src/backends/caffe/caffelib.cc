@@ -189,7 +189,7 @@ namespace dd
 
 	// switch to imageDataLayer
 	//TODO: should apply to all templates with images
-	if (!this->_inputc._db && !this->_inputc._segmentation && !this->_inputc._ctc && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
+	if (!this->_inputc._db && !this->_inputc._bbox && !this->_inputc._segmentation && !this->_inputc._ctc && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
 	  {
 	    caffe::LayerParameter *lparam = net_param.mutable_layer(0);
 	    caffe::ImageDataParameter* image_data_parameter = lparam->mutable_image_data_param();
@@ -1080,6 +1080,9 @@ namespace dd
 	  nout = inputc.channels();
 	ad_res.add("nclasses",_nclasses);
 	inputc.reset_dv_test();
+	std::map<int,std::map<int,std::vector<std::pair<float,int>>>> all_true_pos;
+	std::map<int,std::map<int,std::vector<std::pair<float,int>>>> all_false_pos;
+	std::map<int,std::map<int,int>> all_num_pos;
 	while(true)
 	  {
 	    size_t dv_size = 0;
@@ -1206,7 +1209,7 @@ namespace dd
 	    int scount = lresults[slot]->count();
 	    int scperel = scount / dv_size;
 
-	    if (inputc._ctc || inputc._bbox) // special case, we're using the accuracy computed from within the network
+	    if (inputc._ctc) // special case, we're using the accuracy computed from within the network
 	      {
 		slot = 0;
 		net_meas += lresults[slot]->cpu_data()[0];
@@ -1218,6 +1221,129 @@ namespace dd
 		    APIData bad;
 		    bad.add("pred",predictions);
 		    ad_res.add("0",bad);
+		    break;
+		  }
+		++inner_meas_iter;
+	      }
+	    else if (inputc._bbox)
+	      {
+		//TODO: test iter or push through memory data...
+		//std::cerr << "lresults size=" << lresults.size() << std::endl;
+		for (int j=0;j<lresults.size();j++)
+		  {
+		    if (lresults[j]->width() != 5)
+		      throw MLLibBadParamException("wrong width in bbox result");
+		    int pos = tresults + j;
+		    //std::cerr << "pos=" << pos << std::endl;
+		    const float *result_vec = lresults[j]->cpu_data();
+		    int num_det = lresults[j]->height();
+		    for (int k=0;k<num_det;k++)
+		      {
+			int item_id = static_cast<int>(result_vec[k * 5]);
+			int label = static_cast<int>(result_vec[k * 5 + 1]);
+			if (item_id == -1) {
+			  // Special row of storing number of positives for a label.
+			  if (all_num_pos[pos].find(label) == all_num_pos[pos].end()) {
+			    all_num_pos[pos][label] = static_cast<int>(result_vec[k * 5 + 2]);
+			  } else {
+			    all_num_pos[pos][label] += static_cast<int>(result_vec[k * 5 + 2]);
+			  }
+			} else {
+			  // Normal row storing detection status.
+			  float score = result_vec[k * 5 + 2];
+			  int tp = static_cast<int>(result_vec[k * 5 + 3]);
+			  int fp = static_cast<int>(result_vec[k * 5 + 4]);
+			  if (tp == 0 && fp == 0) {
+			    // Ignore such case. It happens when a detection bbox is matched to
+			    // a difficult gt bbox and we don't evaluate on difficult gt bbox.
+			    continue;
+			  }
+			  all_true_pos[pos][label].push_back(std::make_pair(score, tp));
+			  all_false_pos[pos][label].push_back(std::make_pair(score, fp));
+			}
+		      }
+		  }
+
+		// wrapping up
+		if (inner_meas_iter >= test_iter)
+		  {
+		    //std::cerr << "inner_meas_iter=" << inner_meas_iter << " / test_iter=" << test_iter << std::endl;
+		    APIData bad;
+		    int pos_count = 0;
+		    //std::cerr << "all_true_pos size=" << all_true_pos.size() << std::endl;
+		    for (size_t i=0;i<all_true_pos.size();i++)
+		      {
+			//std::cerr << "i=" << i << std::endl;
+			if (all_true_pos.find(i) == all_true_pos.end())
+			  throw MLLibInternalException("Missing output_blob true_pos: " + std::to_string(i));
+			
+			const std::map<int, std::vector<std::pair<float, int> > >& true_pos =
+			  all_true_pos.find(i)->second;
+			if (all_false_pos.find(i) == all_false_pos.end())
+			  throw MLLibInternalException("Missing output_blob false_pos: " + std::to_string(i));
+			const std::map<int, std::vector<std::pair<float, int> > >& false_pos =
+			  all_false_pos.find(i)->second;
+			if (all_num_pos.find(i) == all_num_pos.end())
+			  throw MLLibInternalException("Missing output_blob num_pos: " + std::to_string(i));
+			const std::map<int, int>& num_pos = all_num_pos.find(i)->second;
+			//std::map<int, float> APs;
+			//float mAP = 0.;
+			// Sort true_pos and false_pos with descend scores.
+			std::vector<APIData> vbad;
+			//std::cerr << "num_pos size=" << num_pos.size() << std::endl;
+			for (std::map<int, int>::const_iterator it = num_pos.begin();
+			     it != num_pos.end(); ++it)
+			  {
+			    APIData lbad;
+			    int label = it->first;
+			    int label_num_pos = it->second;
+			    if (true_pos.find(label) == true_pos.end()) {
+			      this->_logger->error("Missing true_pos for label: {}",label);
+			      continue;
+			    }
+			    const std::vector<std::pair<float, int> >& label_true_pos =
+			      true_pos.find(label)->second;
+			    if (false_pos.find(label) == false_pos.end()) {
+			      this->_logger->error("Missing false_pos for label: {}",label);
+			      continue;
+			    }
+			    const std::vector<std::pair<float, int> >& label_false_pos =
+			      false_pos.find(label)->second;
+			    
+			    //XXX: AP computed here, store in apidata instead
+			    std::vector<double> tp_d;
+			    std::vector<int> tp_i;
+			    for (size_t v=0;v<label_true_pos.size();v++)
+			      {
+				tp_d.push_back(label_true_pos.at(v).first);
+				tp_i.push_back(label_true_pos.at(v).second);
+			      }
+			    //std::cerr << "tp_d size=" << tp_d.size() << " / tp_i size=" << tp_i.size() << std::endl;
+			    
+			    std::vector<double> fp_d;
+			    std::vector<int> fp_i;
+			    for (size_t v=0;v<label_false_pos.size();v++)
+			      {
+				fp_d.push_back(label_false_pos.at(v).first);
+				fp_i.push_back(label_false_pos.at(v).second);
+			      }
+			    //std::cerr << "fp_d size=" << fp_d.size() << " / fp_i size=" << fp_i.size() << std::endl;
+			    
+			    lbad.add("tp_d",tp_d);
+			    lbad.add("tp_i",tp_i);
+			    lbad.add("fp_d",fp_d);
+			    lbad.add("fp_i",fp_i);
+			    lbad.add("num_pos",label_num_pos);
+			    lbad.add("label",label);
+			    vbad.push_back(lbad);
+			  }
+			/*std::cerr << "adding pos_count=" << pos_count << std::endl;
+			  std::cerr << "added vbad size=" << vbad.size() << std::endl;*/
+			bad.add(std::to_string(pos_count),vbad);
+			++pos_count;
+		      }
+		    ad_res.add("0",bad);
+		    ad_res.add("pos_count",pos_count);
 		    break;
 		  }
 		++inner_meas_iter;
@@ -1306,11 +1432,13 @@ namespace dd
 	  ad_res.add("segmentation",true);
 	if (inputc._multi_label)
 	  ad_res.add("multilabel",true);
+	if (inputc._bbox)
+	  ad_res.add("bbox",true);
 	ad_res.add("batch_size",tresults);
 	if (_regression)
 	  ad_res.add("regression",_regression);
 	if (inputc._ctc)
-	  ad_res.add("ctc",true);
+	  ad_res.add("net_meas",true);
       }
     SupervisedOutput::measure(ad_res,ad_out,out);
   }
@@ -1910,8 +2038,12 @@ namespace dd
     test_batch_size = inputc.test_batch_size();
     test_iter = -1;
     fix_batch_size(ad,inputc,user_batch_size,batch_size,test_batch_size,test_iter);
+    std::cerr << "test_iter=" << test_iter << std::endl;
     if (test_iter != -1) // has changed
-      sp.set_test_iter(0,test_iter);
+      {
+	std::cerr << "setting test_iter\n";
+	sp.set_test_iter(0,test_iter);
+      }
     
     // fix source paths in the model.
     caffe::NetParameter *np = sp.mutable_net_param();
@@ -2431,6 +2563,7 @@ namespace dd
 	  {
 	    batch_size = user_batch_size;
 	    test_iter = std::max(inputc.test_batch_size() / test_batch_size,1);
+	    std::cerr << "inputc test_batch_size=" << inputc.test_batch_size() << " / test_batch_size=" << test_batch_size << std::endl;
 	  }
 	    
 	//debug
