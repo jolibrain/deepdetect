@@ -1,6 +1,6 @@
 include_directories(${Boost_INCLUDE_DIRS})# ${PROTOBUF_INCLUDE_DIRS})
 if (CUDA_FOUND)
-  set(CUDA_LIB_DEPS ${CUDA_LIBRARIES})
+  set(CUDA_LIB_DEPS ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY})
 else()
   set(CUDA_LIB_DEPS "")
   add_definitions(-DCPU_ONLY)

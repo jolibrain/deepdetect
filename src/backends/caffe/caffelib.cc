@@ -291,9 +291,9 @@ namespace dd
 	    caffe::LayerParameter *lparam = net_param.mutable_layer(0); // data input layer
 	    if (lparam->type() != "DenseImageData")
 	      {
-		if (ad.has("rotate"))
-		  lparam->mutable_transform_param()->set_mirror(ad.get("mirror").get<bool>());
 		if (ad.has("mirror"))
+		  lparam->mutable_transform_param()->set_mirror(ad.get("mirror").get<bool>());
+		if (ad.has("rotate"))
 		  lparam->mutable_transform_param()->set_rotate(ad.get("rotate").get<bool>());
 		if (ad.has("crop_size"))
 		  {
@@ -306,9 +306,9 @@ namespace dd
 	      }
 	    else
 	      {
-		if (ad.has("rotate"))
-		  lparam->mutable_dense_image_data_param()->set_mirror(ad.get("mirror").get<bool>());
 		if (ad.has("mirror"))
+		  lparam->mutable_dense_image_data_param()->set_mirror(ad.get("mirror").get<bool>());
+		if (ad.has("rotate"))
 		  lparam->mutable_dense_image_data_param()->set_rotate(ad.get("rotate").get<bool>());
 		// XXX: DenseImageData supports crop_height and crop_width
 	      }
