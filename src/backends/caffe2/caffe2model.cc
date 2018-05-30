@@ -1,7 +1,7 @@
 /**
  * DeepDetect
- * Copyright (c) 2014 Emmanuel Benazera
- * Author: Emmanuel Benazera <beniz@droidnik.fr>
+ * Copyright (c) 2018 Jolibrain
+ * Author: Julien Chicha
  *
  * This file is part of deepdetect.
  *
@@ -28,15 +28,24 @@ namespace dd
   Caffe2Model::Caffe2Model(const APIData &ad)
     :MLModel()
   {
-    if (ad.has("templates"))
-      this->_mlmodel_template_repo = ad.get("templates").get<std::string>();
-    else this->_mlmodel_template_repo += "caffe2"; // default
-    if (ad.has("corresp"))
-      _corresp = ad.get("corresp").get<std::string>();
+    static const std::map<std::string, std::string *> names =
+      {
+	{ "predictf", &_predict },
+	{ "initf", &_init },
+	{ "corresp", &_corresp}
+      };
+
+    for (auto &it : names) {
+      if (ad.has(it.first)) {
+	*it.second = ad.get(it.first).get<std::string>();
+      }
+    }
+
     if (ad.has("repository"))
       {
 	if (read_from_repository(ad.get("repository").get<std::string>(),spdlog::get("api")))
-	  throw MLLibBadParamException("error reading or listing Caffe2 models in repository " + _repo);
+	  throw MLLibBadParamException("error reading or listing Caffe2 models in repository " +
+				       _repo);
       }
     read_corresp_file();
   }
@@ -44,7 +53,12 @@ namespace dd
   int Caffe2Model::read_from_repository(const std::string &repo,
 					const std::shared_ptr<spdlog::logger> &logger)
   {
-    static const std::string &corresp = "corresp";
+    static const std::map<std::string, std::string *> names =
+      {
+	{ "predict_net.pb", &_predict },
+	{ "init_net.pb", &_init },
+	{ "corresp.txt", &_corresp}
+      };
     this->_repo = repo;
     std::unordered_set<std::string> lfiles;
     int e = fileops::list_directory(repo, true, false, lfiles);
@@ -52,14 +66,17 @@ namespace dd
       logger->error("error reading or listing caffe2 models in repository {}",repo);
       return 1;
     }
-    std::string correspf;
-    for (auto &file : lfiles) {
-      if (file.find(corresp) != std::string::npos) {
-	correspf = file;
+
+    for (const std::string &file : lfiles) {
+      for (auto &it : names) {
+	if (file.find(it.first) != std::string::npos) {
+	  if (it.second->empty()) {
+	    *it.second = file;
+	  }
+	  break;
+	}
       }
     }
-    if (_corresp.empty())
-      _corresp = correspf;
     return 0;
   }
 }
