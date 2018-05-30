@@ -1,7 +1,7 @@
 /**
  * DeepDetect
- * Copyright (c) 2014-2015 Emmanuel Benazera
- * Author: Emmanuel Benazera <beniz@droidnik.fr>
+ * Copyright (c) 2018 Jolibrain
+ * Author: Julien Chicha
  *
  * This file is part of deepdetect.
  *
@@ -19,93 +19,194 @@
  * along with deepdetect.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-//TODO Remove that to print the warnings
+//XXX Remove that to print the warnings
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
+
+#ifndef CPU_ONLY
+#include <caffe2/core/context_gpu.h>
+#endif
+
 #include <caffe2/utils/proto_utils.h>
 #pragma GCC diagnostic pop
 
+#include <caffe2/core/init.h>
 #include "imginputfileconn.h"
 #include "backends/caffe2/caffe2lib.h"
 #include "outputconnectorstrategy.h"
 
-namespace dd
-{
+#ifdef CPU_ONLY
+#define AUTOTYPED_TENSOR(code)			\
+  {						\
+    using Tensor = caffe2::TensorCPU;		\
+    code;					\
+  }
+#else
+#define AUTOTYPED_TENSOR(code)			\
+  if (_state.is_gpu()) {			\
+    using Tensor = caffe2::TensorCUDA;		\
+    code;					\
+  } else {					\
+    using Tensor = caffe2::TensorCPU;		\
+    code;					\
+  }
+#endif
+
+//XXX Find a better way to init caffe2
+static void init_caffe2_flags() {
+
+  static bool init = false;
+  if (init) return;
+  init = true;
+
+  int size = 2;
+  const char *flags[size] = {
+    "FLAGS"
+
+    // As each service may want to use a different GPU,
+    // We don't want any global variable to store the "current GPU id" in our Nets.
+    ,"--caffe2_disable_implicit_engine_preference=1"
+
+  };
+  char **ptr = const_cast<char **>(&flags[0]);
+  caffe2::GlobalInit(&size, &ptr);
+}
+
+namespace dd {
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
   Caffe2Lib(const Caffe2Model &c2model)
-    :MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,Caffe2Model>(c2model)
-  {
+    :MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,Caffe2Model>(c2model) {
     this->_libname = "caffe2";
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
   Caffe2Lib(Caffe2Lib &&c2l) noexcept
-    :MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,Caffe2Model>(std::move(c2l))
-  {
+    :MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,Caffe2Model>(std::move(c2l)) {
     this->_libname = "caffe2";
 
-    //TODO: Find a clean way to copy a workspace
-    for (auto blobname : c2l._workspace.Blobs()) {
+    //XXX: Find a clean way to copy a workspace
+    for (const std::string &blobname : c2l._workspace.Blobs()) {
       _workspace.CreateBlob(blobname)->swap(*c2l._workspace.GetBlob(blobname));
     }
 
     _init_net = c2l._init_net;
     _predict_net = c2l._predict_net;
+    _input_blob = c2l._input_blob;
+    _output_blob = c2l._output_blob;
+    _state = c2l._state;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::~Caffe2Lib()
-  {
+  Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::~Caffe2Lib() {
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  std::vector<int> Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
+#ifdef CPU_ONLY
+  get_gpu_ids(const APIData &) const { return {}; }
+#else
+  get_gpu_ids(const APIData &ad) const {
+    std::vector<int> ids;
+    try {
+      ids = { ad.get("gpuid").get<int>() };
+    } catch(std::exception &e) {
+      ids = ad.get("gpuid").get<std::vector<int>>();
+    }
+    if (ids.size() == 1 && ids[0] == -1) {
+      ids.clear();
+      int count_gpus = 0;
+      cudaGetDeviceCount(&count_gpus);
+      ids.resize(count_gpus);
+      std::iota(ids.begin(), ids.end(), 0);
+    }
+    CAFFE_ENFORCE(!ids.empty());
+    for (int id: ids) {
+      this->_logger->info("Using GPU {}", id);
+    }
+    return ids;
+  }
+#endif
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
+  create_model() {
+    if (_state.has_changed()) {
+
+      try {
+	// Check if the nets are properly set
+	if (this->_mlmodel._predict.empty() ||
+	    (this->_mlmodel._init.empty() && !_state.is_training())) {
+	  this->_logger->error("Error creating model");
+	  throw MLLibInternalException(this->_mlmodel._repo +
+				       " does not contain the required files to initialize a net");
+	}
+
+	CAFFE_ENFORCE(caffe2::ReadProtoFromFile(this->_mlmodel._predict, &_predict_net));
+	if (_state.is_training()) {
+
+	  //TODO Duplicate the net definition over the gpus, make the average, ...
+
+	} else { // !is_training
+
+	  CAFFE_ENFORCE(caffe2::ReadProtoFromFile(this->_mlmodel._init, &_init_net));
+	  caffe2::DeviceOption option;
+#ifndef CPU_ONLY
+	  if (_state.is_gpu()) {
+	    option.set_device_type(caffe2::CUDA);
+	    option.set_cuda_gpu_id(_state.gpu_ids()[0]);
+	  }
+	  else
+#endif
+	    option.set_device_type(caffe2::CPU);
+
+	  for (caffe2::OperatorDef &op : *_predict_net.mutable_op()) {
+	    op.mutable_device_option()->CopyFrom(option);
+	  }
+	  for (caffe2::OperatorDef &op : *_init_net.mutable_op()) {
+	    op.mutable_device_option()->CopyFrom(option);
+	  }
+
+	}
+	for (const std::string &blob : _workspace.Blobs()) {
+	  _workspace.RemoveBlob(blob);
+	}
+	CAFFE_ENFORCE(_workspace.RunNetOnce(_init_net));
+	_workspace.CreateBlob(_input_blob);
+	CAFFE_ENFORCE(_workspace.CreateNet(_predict_net, true));
+
+      } catch (...) {
+	_state.force_init();
+	throw;
+      }
+    }
+    _state.backup();
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
-  instantiate_template(const APIData &ad)
-  {
-    // - check whether there's a risk of erasing model files
+  init_mllib(const APIData &ad) {
+    init_caffe2_flags(); //XXX Find a better place to init caffe2
+    if (ad.has("inputlayer")) {
+      _input_blob = ad.get("inputlayer").get<std::string>();
+    }
+    if (ad.has("outputlayer")) {
+      _output_blob = ad.get("outputlayer").get<std::string>();
+    }
+#ifndef CPU_ONLY
+    if (ad.has("gpuid")) {
+      _state.set_default_gpu_ids(get_gpu_ids(ad));
+      _state.set_default_is_gpu(true);
+    }
+    if (ad.has("gpu")) {
+      _state.set_default_is_gpu(ad.get("gpu").get<bool>());
+    }
+#endif
     if (this->_mlmodel.read_from_repository(this->_mlmodel._repo, this->_logger))
       throw MLLibBadParamException("error reading or listing Caffe2 models in repository " +
 				   this->_mlmodel._repo);
-    // - locate template repository
-    std::string model_tmpl = ad.get("template").get<std::string>();
-    this->_mlmodel._model_template = model_tmpl;
-    this->_logger->info("instantiating model template {}",model_tmpl);
-
-    // - copy files to model repository
-    std::string source = this->_mlmodel._mlmodel_template_repo + '/' + model_tmpl;
-    this->_logger->info("source={}", source);
-    this->_logger->info("dest={}", this->_mlmodel._repo);
-    auto copy = [&](const std::string &name, std::string &dst) {
-      auto src = source + "/" + name;
-      dst = this->_mlmodel._repo + "/" + name;
-      switch(fileops::copy_file(src, dst)) {
-      case 1: throw MLLibBadParamException("failed to locate model template " + src);
-      case 2: throw MLLibBadParamException("failed to create model template destination " + dst);
-      }
-    };
-    std::string predict_net_path, init_net_path;
-    copy("predict_net.pb", predict_net_path);
-    copy("init_net.pb", init_net_path);
-
-    //
-    CAFFE_ENFORCE(caffe2::ReadProtoFromFile(init_net_path, &_init_net));
-    CAFFE_ENFORCE(caffe2::ReadProtoFromFile(predict_net_path, &_predict_net));
-    CAFFE_ENFORCE(_workspace.RunNetOnce(_init_net));
-    //TODO Create all inexistents external inputs
-    _workspace.CreateBlob("gpu_0/data");
-    CAFFE_ENFORCE(_workspace.CreateNet(_predict_net));
-
-  }
-
-  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
-  init_mllib(const APIData &ad)
-  {
-    if (ad.has("template"))
-      instantiate_template(ad);
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -118,18 +219,25 @@ namespace dd
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   int Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
-  train(const APIData &, APIData &)
-  {
+  train(const APIData &ad, APIData &out) {
+    _state.reset();
+    _state.set_is_training(true);
+    //TODO
     return 0;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   int Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
-  predict(const APIData &ad, APIData &out)
-  {
+  predict(const APIData &ad, APIData &out) {
+
+    _state.reset();
+    _state.set_is_training(false);
+
     TInputConnectorStrategy inputc(this->_inputc);
     TOutputConnectorStrategy tout;
+    APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
     APIData ad_output = ad.getobj("parameters").getobj("output");
+
     float confidence_threshold = 0.0;
     if (ad_output.has("confidence_threshold")) {
       try {
@@ -140,73 +248,84 @@ namespace dd
       }
     }
 
+    // gpu
+#ifndef CPU_ONLY
+    if (ad_mllib.has("gpu")) {
+      _state.set_is_gpu(ad_mllib.get("gpu").get<bool>());
+      if (_state.is_gpu() && ad_mllib.has("gpuid")) {
+	_state.set_gpu_ids(get_gpu_ids(ad_mllib));
+      }
+    }
+#endif
+
+    create_model();
+
     try {
       inputc.transform(ad);
     } catch (std::exception &e) {
       throw;
     }
 
-    // int batch_size = inputc.test_batch_size();
-    //TODO Get the batch size and the input tensor from value_info.json
-    int batch_size = 1;
     std::vector<APIData> vrad;
-    auto &tensor_input = *_workspace.GetBlob("gpu_0/data")->GetMutable<caffe2::TensorCPU>();
+    int data_count(0);
+    try {
 
-    while (true) {
-      auto image_count(0);
-      try {
-	image_count = inputc.get_tensor_test(tensor_input, batch_size);
-	if (!image_count)
-	  break;
-      } catch(std::exception &e) {
-	this->_logger->error("exception while filling up network for prediction");
-	throw;
+      caffe2::TensorCPU tensor_input;
+      data_count = inputc.get_tensor_test(tensor_input);
+      AUTOTYPED_TENSOR({
+	  _workspace.GetBlob(_input_blob)->GetMutable<Tensor>()->CopyFrom(tensor_input);
+	});
+    } catch(std::exception &e) {
+      this->_logger->error("exception while filling up network for prediction");
+      throw;
+    }
+
+    float loss(0);
+    std::vector<std::vector<float> > results(data_count);
+    int result_size(0);
+
+    try {
+      CAFFE_ENFORCE(_workspace.RunNetOnce(_predict_net));
+      std::string output_blob = _output_blob;
+      if (output_blob.empty()) {
+	output_blob = _predict_net.external_output()[0];
       }
-
-      float loss(0);
-      std::vector<std::vector<float> > results(image_count);
-      auto result_size(0);
-
-      //Running the net
-      try {
-	CAFFE_ENFORCE(_workspace.RunNetOnce(_predict_net));
-	//TODO Get the external output from the predict_net
-	auto &tensor = _workspace.GetBlob("gpu_0/softmax")->Get<caffe2::TensorCPU>();
-	result_size = tensor.size() / batch_size;
-	auto data = tensor.data<float>();
-	for (auto &result : results) {
-	  result.assign(data, data + result_size);
-	  data += result_size;
-	}
-      } catch(std::exception &e) {
-	this->_logger->error("Error while proceeding with supervised prediction forward pass, not enough memory? {}",e.what());
-	throw;
+      caffe2::TensorCPU tensor_output;
+      AUTOTYPED_TENSOR({
+	  tensor_output.CopyFrom(_workspace.GetBlob(output_blob)->Get<Tensor>());
+	});
+      result_size = tensor_output.size() / data_count;
+      const float *data = tensor_output.data<float>();
+      for (std::vector<float> &result : results) {
+	result.assign(data, data + result_size);
+	data += result_size;
       }
+    } catch(std::exception &e) {
+      this->_logger->error("Error while proceeding with supervised prediction forward pass, not enough memory? {}",e.what());
+      throw;
+    }
 
-      //Adding the results
-      for (auto &result : results) {
-	APIData rad;
-	if (!inputc._ids.empty()) {
-	  rad.add("uri", inputc._ids.at(vrad.size()));
-	} else {
-	  rad.add("uri", std::to_string(vrad.size()));
-	}
-	rad.add("loss", loss);
-	std::vector<double> probs;
-	std::vector<std::string> cats;
-	for (size_t i = 0; i < result.size(); ++i) {
-	  float prob = result[i];
-	  if (prob < confidence_threshold)
-	    continue;
-	  probs.push_back(prob);
-	  cats.push_back(this->_mlmodel.get_hcorresp(i));
-	}
-	rad.add("probs", probs);
-	rad.add("cats", cats);
-	vrad.push_back(rad);
+    for (const std::vector<float> &result : results) {
+      APIData rad;
+      if (!inputc._ids.empty()) {
+	rad.add("uri", inputc._ids.at(vrad.size()));
+      } else {
+	rad.add("uri", std::to_string(vrad.size()));
       }
-    } // end prediction loop over batches
-
+      rad.add("loss", loss);
+      std::vector<double> probs;
+      std::vector<std::string> cats;
+      for (size_t i = 0; i < result.size(); ++i) {
+	float prob = result[i];
+	if (prob < confidence_threshold)
+	  continue;
+	probs.push_back(prob);
+	cats.push_back(this->_mlmodel.get_hcorresp(i));
+      }
+      rad.add("probs", probs);
+      rad.add("cats", cats);
+      vrad.push_back(rad);
+    }
     tout.add_results(vrad);
     tout.finalize(ad.getobj("parameters").getobj("output"), out,
 		  static_cast<MLModel*>(&this->_mlmodel));

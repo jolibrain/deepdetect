@@ -1,7 +1,7 @@
 /**
  * DeepDetect
- * Copyright (c) 2014-2015 Emmanuel Benazera
- * Author: Emmanuel Benazera <beniz@droidnik.fr>
+ * Copyright (c) 2018 Jolibrain
+ * Author: Julien Chicha
  *
  * This file is part of deepdetect.
  *
@@ -29,6 +29,7 @@
 #pragma GCC diagnostic pop
 
 #include "mllibstrategy.h"
+#include "backends/caffe2/caffe2libstate.h"
 #include "backends/caffe2/caffe2model.h"
 
 namespace dd
@@ -57,14 +58,16 @@ namespace dd
     ~Caffe2Lib();
 
     /**
-     * \brief instanciate a model from template
-     * @param ad mllib data object
+     * \brief creates neural net instance based on model
      */
-    void instantiate_template(const APIData &ad);
+    void create_model();
 
     /*- from mllib -*/
     void init_mllib(const APIData &ad);
     void clear_mllib(const APIData &ad);
+
+    std::vector<int> get_gpu_ids(const APIData &ad) const;
+
     int train(const APIData &ad, APIData &out);
 
     /**
@@ -77,7 +80,10 @@ namespace dd
 
     public:
     caffe2::Workspace _workspace;
+    Caffe2LibState _state;
     caffe2::NetDef _init_net, _predict_net;
+    std::string _input_blob;
+    std::string _output_blob;
     };
 }
 

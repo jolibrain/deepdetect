@@ -1,7 +1,7 @@
 /**
  * DeepDetect
- * Copyright (c) 2014-2016 Emmanuel Benazera
- * Author: Emmanuel Benazera <beniz@droidnik.fr>
+ * Copyright (c) 2018 Jolibrain
+ * Author: Julien Chicha
  *
  * This file is part of deepdetect.
  *
@@ -22,7 +22,7 @@
 #ifndef CAFFE2INPUTCONNS_H
 #define CAFFE2INPUTCONNS_H
 
-//TODO Remove that to print the warnings
+//XXX Remove that to print the warnings
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
 #include <caffe2/core/tensor.h>
@@ -44,15 +44,14 @@ namespace dd
     Caffe2InputInterface() {}
     ~Caffe2InputInterface() {}
 
-      /**
-       * \brief fill the input tensor
-       * @param tensor the tensor to fill
-       * @param num the batch size
-       * @return the real size of this batch (<= num)
-       * @see ImgCaffe2InputFileConn
-       */
-
-    int get_tensor_test(caffe2::TensorCPU &, int) {
+    /**
+     * \brief fill the input tensor
+     * @param tensor the tensor to fill
+     * @param num the batch size (or -1 to put all the data in one batch)
+     * @return the real size of this batch (used to know if there was less data than 'num')
+     * @see ImgCaffe2InputFileConn
+     */
+    int get_tensor_test(caffe2::TensorCPU &, int = -1) {
       return 0;
     }
 
@@ -72,8 +71,10 @@ namespace dd
 
     void init(const APIData &ad);
     void transform(const APIData &ad);
+    void transform_test(const APIData &ad);
+    void transform_train(const APIData &ad);
 
-    int get_tensor_test(caffe2::TensorCPU &tensor, int num);
+    int get_tensor_test(caffe2::TensorCPU &tensor, int num = -1);
   };
 }
 

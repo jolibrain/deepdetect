@@ -1,7 +1,7 @@
 /**
  * DeepDetect
- * Copyright (c) 2014 Emmanuel Benazera
- * Author: Emmanuel Benazera <beniz@droidnik.fr>
+ * Copyright (c) 2018 Jolibrain
+ * Author: Julien Chicha
  *
  * This file is part of deepdetect.
  *
@@ -40,7 +40,9 @@ namespace dd
 
     int read_from_repository(const std::string &repo,
 			     const std::shared_ptr<spdlog::logger> &logger);
-    std::string _model_template; /**< model template name, if any. */
+
+    std::string _predict; /**< file name of the predict net. */
+    std::string _init; /**< file name of the predict net. */
   };
 }
 
