@@ -65,7 +65,6 @@ namespace dd
 #endif
 #ifdef USE_DLIB
 	MLService<DlibLib,ImgDlibInputFileConn,SupervisedOutput,DlibModel>,
-	MLService<DlibLib,ImgDlibInputFileConn,UnsupervisedOutput,DlibModel>,
 #endif
     MLService<CaffeLib,SVMCaffeInputFileConn,UnsupervisedOutput,CaffeModel>
 #ifdef USE_XGBOOST

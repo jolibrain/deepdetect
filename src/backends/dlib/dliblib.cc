@@ -1,7 +1,7 @@
 /**
  * DeepDetect
- * Copyright (c) 2016 Emmanuel Benazera
- * Author: Emmanuel Benazera <beniz@droidnik.fr>
+ * Copyright (c) 2018 Cheni Chadowitz
+ * Author: Cheni Chadowitz <cchadowitz@pixelforensics.com>
  *
  * This file is part of deepdetect.
  *
@@ -24,15 +24,6 @@
 #include "imginputfileconn.h"
 #include "outputconnectorstrategy.h"
 
-// Dlib
-#include "dlib/data_io.h"
-#include "dlib/image_io.h"
-#include "dlib/image_transforms.h"
-#include "dlib/image_processing.h"
-#include "dlib/opencv/to_open_cv.h"
-#include "dlib/opencv/cv_image.h"
-//#include "DNNStructures.h"
-
 namespace dd {
 
     template<class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -46,51 +37,23 @@ namespace dd {
             :MLLib<TInputConnectorStrategy, TOutputConnectorStrategy, DlibModel>(std::move(cl)) {
         this->_libname = "dlib";
         _net_type = cl._net_type;
-//    _nclasses = cl._nclasses;
-//    _regression = cl._regression;
-//    _ntargets = cl._ntargets;
-//    _inputLayer = cl._inputLayer;
-//    _outputLayer = cl._outputLayer;
-//    _inputFlag = cl._inputFlag;
     }
 
     template<class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
     DlibLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::~DlibLib() {
-        std::lock_guard<std::mutex> lock(_net_mutex);
+        std::lock_guard <std::mutex> lock(_net_mutex);
     }
 
     template<class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
     void DlibLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::init_mllib(const APIData &ad) {
-    if (ad.has("model_type"))
-      _net_type= ad.get("model_type").get<std::string>();
+        if (ad.has("model_type")) {
+            _net_type = ad.get("model_type").get<std::string>();
+        }
 
-    if (_net_type.empty() || (_net_type != "obj_detector" && _net_type != "face_detector"))
-        throw MLLibBadParamException("Must specify model type (obj_detector or face_detector)");
-//    if (ad.has("regression") && ad.get("regression").get<bool>())
-//      {
-//	_regression = true; // XXX: unsupported
-//	_nclasses = 1;
-//      }
-//    // setting the value of Input Layer for Tensorflow graph
-//    if (ad.has("inputlayer"))
-//      {
-//	_inputLayer = ad.get("inputlayer").get<std::string>();
-//      }
-//    // setting the final Output Layer for Tensorflow graph
-//    if (ad.has("outputlayer"))
-//    {
-//      _outputLayer = ad.get("outputlayer").get<std::string>();
-//    }
-//    if (ad.has("input_flag"))
-//      {
-//	_inputFlag = ad.getobj("input_flag");
-//      }
-//    if (ad.has("ntargets")) // XXX: unsupported
-//      _ntargets = ad.get("ntargets").get<int>();
-//    if (_nclasses == 0)
-//      throw MLLibBadParamException("number of classes is unknown (nclasses == 0)");
-//    if (_regression && _ntargets == 0)
-//      throw MLLibBadParamException("number of regression targets is unknown (ntargets == 0)");
+        if (_net_type.empty() || (_net_type != "obj_detector" && _net_type != "face_detector")) {
+            throw MLLibBadParamException("Must specify model type (obj_detector or face_detector)");
+        }
+
         this->_mlmodel.read_from_repository(this->_mlmodel._repo, this->_logger);
     }
 
@@ -109,13 +72,20 @@ namespace dd {
     template<class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
     void DlibLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::test(const APIData &ad,
                                                                                     APIData &out) {
-        APIData ad_out = ad.getobj("parameters").getobj("output");
-        if (!ad_out.has("measure")) {
-            APIData ad_res;
-            SupervisedOutput::measure(ad_res, ad_out, out);
-            return;
-        }
+        // NOT IMPLEMENTED
+    }
 
+    template<class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+    int DlibLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::predict(const APIData &ad,
+                                                                                      APIData &out) {
+        std::lock_guard <std::mutex> lock(_net_mutex);
+
+        APIData ad_output = ad.getobj("parameters").getobj("output");
+
+        double confidence_threshold = 0.0;
+        if (ad_output.has("confidence_threshold")) {
+            confidence_threshold = ad_output.get("confidence_threshold").get<double>();
+        }
         TInputConnectorStrategy inputc(this->_inputc);
         TOutputConnectorStrategy tout;
         APIData cad = ad;
@@ -128,162 +98,15 @@ namespace dd {
         }
 
         APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
-        APIData ad_output = ad.getobj("parameters").getobj("output");
         int batch_size = inputc.batch_size();
         if (ad_mllib.has("test_batch_size")) {
             batch_size = ad_mllib.get("test_batch_size").get<int>();
         }
 
-//    tensorflow::GraphDef graph_def;
-//    std::string graphFile = this->_mlmodel._graphName;
-//    if (graphFile.empty())
-//      throw MLLibBadParamException("No pre-trained model found in model repository");
-//    this->_logger->info("test: using graphFile dir={}",graphFile);
-//    // Loading the graph to the given variable
-//    tensorflow::Status graphLoadedStatus = ReadBinaryProto(tensorflow::Env::Default(),graphFile,&graph_def);
-//
-//    if (!graphLoadedStatus.ok())
-//      {
-//	this->_logger->error("failed loading tensorflow graph with status={}",graphLoadedStatus.ToString());
-//	throw MLLibBadParamException("failed loading tensorflow graph with status=" + graphLoadedStatus.ToString());
-//      }
-//    std::string inputLayer = _inputLayer;
-//    std::string outputLayer = _outputLayer;
-//    if (inputLayer.empty())
-//      {
-//	inputLayer = graph_def.node(0).name();
-//	this->_logger->info("testing: using input layer={}",inputLayer);
-//      }
-//    if (outputLayer.empty())
-//      {
-//	outputLayer = graph_def.node(graph_def.node_size()-1).name();
-//	this->_logger->info("testing: using output layer={}",outputLayer);
-//      }
-//
-//    // creating a session with the graph
-//    tensorflow::SessionOptions options;
-//    tensorflow::ConfigProto &config = options.config;
-//    config.mutable_gpu_options()->set_allow_growth(true); // default is we prevent tf from holding all memory across all GPUs
-//    auto session = std::unique_ptr<tensorflow::Session>(tensorflow::NewSession(options));
-//    tensorflow::Status session_create_status = session->Create(graph_def);
-//
-//    if (!session_create_status.ok())
-//      {
-//	std::cout << session_create_status.ToString()<<std::endl;
-//	throw MLLibInternalException(session_create_status.ToString());
-//      }
-//
-//    // vector for storing  the outputAPI of the file
-//    APIData ad_res;
-//    ad_res.add("nclasses",_nclasses);
-//    int tresults = 0;
-//
-//    inputc.reset_dv();
-//    int idoffset = 0;
-//    while(true)
-//      {
-//	std::vector<int> dv_labels = inputc._test_labels;
-//	std::vector<tensorflow::Tensor> dv = inputc.get_dv(batch_size);
-//	if (dv.empty())
-//	  break;
-//	std::vector<tensorflow::Tensor> vtfinputs;
-//	if (dv.size() > 1)
-//	  tf_concat(dv,vtfinputs);
-//	else vtfinputs = dv;
-//
-//	// running the loded graph and saving the generated output
-//	std::vector<tensorflow::Tensor> finalOutput; // To save the final Output generated by the tensorflow
-//	tensorflow::Status run_status  = session->Run({{inputLayer,*(vtfinputs.begin())}},{outputLayer},{},&finalOutput);
-//	if (!run_status.ok())
-//	  {
-//	    std::cout << run_status.ToString() << std::endl;
-//	    throw MLLibInternalException(run_status.ToString()); //XXX: does not separate bad param from internal errors
-//	  }
-//	tensorflow::Tensor output = std::move(finalOutput.at(0));
-//
-//	auto scores = output.flat<float>();
-//	std::vector<double> predictions;
-//	for (size_t i=0;i<dv.size();i++)
-//	  {
-//	    APIData bad;
-//	    for (int c=0;c<_nclasses;c++)
-//	      predictions.push_back(scores(i*_nclasses+c));
-//	    double target = dv_labels.at(i);
-//	    bad.add("target",target);
-//	    bad.add("pred",predictions);
-//	    ad_res.add(std::to_string(tresults+i),bad);
-//	  }
-//	tresults += dv.size();
-//      } // end prediction loop over batches
-//
-//    std::vector<std::string> clnames;
-//    for (int i=0;i<_nclasses;i++)
-//      clnames.push_back(this->_mlmodel.get_hcorresp(i));
-//    ad_res.add("clnames",clnames);
-//    ad_res.add("batch_size",tresults);
-//
-//    SupervisedOutput::measure(ad_res,ad_out,out);
-    }
-//
-//    template<class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-//    template<class T>
-//    dlib::loss_mmod<T> DlibLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::generate(const std::string &type) {
-//        if (type == "obj_detector") {
-//            net_type_objDetector objDetector;
-//            this->model = objDetector;
-//        }
-//    }
-
-    template<class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-    int DlibLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::predict(const APIData &ad,
-                                                                                      APIData &out) {
-        std::lock_guard<std::mutex> lock(_net_mutex);
-
-        APIData ad_output = ad.getobj("parameters").getobj("output");
-//        if (ad_output.has("measure")) {
-//            test(ad, out);
-//            APIData out_meas = out.getobj("measure");
-//            out.add("measure", out_meas);
-//            return 0;
-//        }
-        double confidence_threshold = 0.0;
-        if (ad_output.has("confidence_threshold"))
-            confidence_threshold = ad_output.get("confidence_threshold").get<double>();
-        TInputConnectorStrategy inputc(this->_inputc);
-        TOutputConnectorStrategy tout;
-        APIData cad = ad;
-        cad.add("model_repo", this->_mlmodel._repo);
-        try {
-            inputc.transform(cad);
-        }
-        catch (std::exception &e) {
-            throw;
-        }
-
-        APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
-        int batch_size = inputc.batch_size();
-        if (ad_mllib.has("test_batch_size"))
-            batch_size = ad_mllib.get("test_batch_size").get<int>();
-
         bool bbox = false;
-        if (ad_output.has("bbox") && ad_output.get("bbox").get<bool>())
+        if (ad_output.has("bbox") && ad_output.get("bbox").get<bool>()) {
             bbox = true;
-
-        this->_logger->info("predict: bbox={}", bbox);
-
-//        std::string modelType;
-//        if (ad_mllib.has("model_type")) {
-//            modelType = ad_mllib.get("model_type").get<std::string>();
-//            net_type = modelType;
-//        }
-
-
-
-//        std::string extract_layer;
-//        if (ad_mllib.has("extract_layer") && !ad_mllib.get("extract_layer").get<std::string>().empty()) {
-//            _outputLayer = ad_mllib.get("extract_layer").get<std::string>();
-//            extract_layer = _outputLayer;
-//        }
+        }
 
         const std::string modelFile = this->_mlmodel._modelName;
         if (modelFile.empty()) {
@@ -293,7 +116,7 @@ namespace dd {
 
         // Load the model into memory if not already
         if (!modelLoaded) {
-            this->_logger->info("predit: loading model into memory ({})", modelFile);
+            this->_logger->info("predict: loading model into memory ({})", modelFile);
             if (_net_type.empty()) {
                 throw MLLibBadParamException("Net type not specified");
             } else if (_net_type == "obj_detector") {
@@ -306,29 +129,41 @@ namespace dd {
             modelLoaded = true;
         }
 
-    // vector for storing  the outputAPI of the file
-    std::vector<APIData> vrad;
-    inputc.reset_dv();
-    int idoffset = 0;
-    while (true) {
-        std::vector<dlib::matrix<dlib::rgb_pixel>> dv = inputc.get_dv(batch_size);
-        if (dv.empty()) break;
+        // vector for storing  the outputAPI of the file
+        std::vector <APIData> vrad;
+        inputc.reset_dv();
+        int idoffset = 0;
+        while (true) {
+            std::vector <dlib::matrix<dlib::rgb_pixel>> dv = inputc.get_dv(batch_size);
+            if (dv.empty()) break;
 
-        // running the loaded model and saving the generated output
-        std::vector<std::vector<dlib::mmod_rect>> detections = (_net_type == "obj_detector") ? objDetector(dv) : (_net_type == "face_detector") ? faceDetector(dv) : throw MLLibBadParamException("Unrecognized net type: " + _net_type);
+            // running the loaded model and saving the generated output
+            std::chrono::time_point <std::chrono::system_clock> tstart = std::chrono::system_clock::now();
+            std::vector <std::vector<dlib::mmod_rect>> detections;
+            if (_net_type == "obj_detector") {
+                detections = objDetector(dv, batch_size);
+            } else if (_net_type == "face_detector") {
+                detections = faceDetector(dv, batch_size);
+            } else {
+                throw MLLibBadParamException("Unrecognized net type: " + _net_type);
+            }
+            std::chrono::time_point <std::chrono::system_clock> tstop = std::chrono::system_clock::now();
+            this->_logger->info("predict: forward pass time={}",
+                                std::chrono::duration_cast<std::chrono::milliseconds>(tstop - tstart).count());
 
-        APIData rad;
-//        if (extract_layer.empty()) // supervised setting
-//        {
+            APIData rad;
+
             for (size_t i = 0; i < dv.size(); i++) {
                 rad.add("uri", inputc._ids.at(idoffset + i));
                 std::vector<double> probs;
-                std::vector<std::string> cats;
-                std::vector<APIData> bboxes;
+                std::vector <std::string> cats;
+                std::vector <APIData> bboxes;
                 this->_logger->info("Found {} objects", detections[i].size());
                 for (auto &d : detections[i]) {
                     this->_logger->info("Found obj: {} - {} ({})", d.label, d.detection_confidence, d.rect);
-                    if (d.detection_confidence < confidence_threshold) continue;
+
+                    if (d.detection_confidence < confidence_threshold) continue; // Skip if it doesn't pass the conf threshold
+
                     probs.push_back(d.detection_confidence);
                     cats.push_back(d.label);
 
@@ -347,39 +182,19 @@ namespace dd {
                 rad.add("probs", probs);
                 rad.add("cats", cats);
                 rad.add("loss", 0.0);
-                if (bbox) rad.add("bboxes",bboxes);
+                if (bbox) rad.add("bboxes", bboxes);
                 vrad.push_back(rad);
             }
             idoffset += dv.size();
-//        }
-//        else // unsupervised
-//        {
-//            auto layer_vals = output.flat<float>();
-//            int embedding_size = layer_vals.size() / static_cast<float>(dv.size());
-//            int offset = 0;
-//            for (size_t i = 0; i < dv.size(); i++) {
-//                std::vector<double> vals;
-//                vals.reserve(embedding_size);//layer_vals.size());
-//                for (int c = 0; c < embedding_size; c++)
-//                    vals.push_back(layer_vals.data()[offset + c]);
-//                rad.add("uri", inputc._ids.at(idoffset + i));
-//                rad.add("vals", vals);
-//                vrad.push_back(rad);
-//                offset += embedding_size;
-//            }
-//            idoffset += dv.size();
-//        }
-    } // end prediction loop over batches
+        } // end prediction loop over batches
         tout.add_results(vrad);
-//        out.add("nclasses", _nclasses);
-        out.add("bbox",bbox);
+        out.add("bbox", bbox);
         tout.finalize(ad.getobj("parameters").getobj("output"), out, static_cast<MLModel *>(&this->_mlmodel));
-        out.add("status",0);
+        out.add("status", 0);
         return 0;
     }
 
 
-
-  template class DlibLib<ImgDlibInputFileConn,SupervisedOutput,DlibModel>;
-  template class DlibLib<ImgDlibInputFileConn,UnsupervisedOutput,DlibModel>;
+    template
+    class DlibLib<ImgDlibInputFileConn, SupervisedOutput, DlibModel>;
 }
