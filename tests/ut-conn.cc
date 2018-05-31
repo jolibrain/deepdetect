@@ -280,7 +280,7 @@ TEST(outputconn,cmfull)
   out.toJVal(jpred,jout);
   std::string jstr = japi.jrender(jout);
   std::cerr << "jstr=" << jstr << std::endl;
-  ASSERT_EQ("{\"measure\":{\"cmfull\":[{\"zero\":[0.5,0.5,0.0,0.0]},{\"one\":[0.0,1.0,0.0,0.0]},{\"two\":[0.0,1.0,0.0,0.0]},{\"three\":[2.696539702293474e308,2.696539702293474e308,2.696539702293474e308,2.696539702293474e308]}],\"precision\":0.3749999968750001,\"labels\":[\"zero\",\"one\",\"two\",\"three\"],\"f1\":0.35294117352941187,\"accp\":0.5,\"recall\":0.3333333305555556,\"cmdiag\":[0.4999999975,0.9999999900000002,0.0,0.0]}}",jstr);
+  ASSERT_EQ("{\"measure\":{\"labels\":[\"zero\",\"one\",\"two\",\"three\"],\"f1\":0.35294117352941187,\"cmfull\":[{\"zero\":[0.5,0.5,0.0,0.0]},{\"one\":[0.0,1.0,0.0,0.0]},{\"two\":[0.0,1.0,0.0,0.0]},{\"three\":[2.696539702293474e308,2.696539702293474e308,2.696539702293474e308,2.696539702293474e308]}],\"cmdiag\":[0.4999999975,0.9999999900000002,0.0,0.0],\"recall\":0.3333333305555556,\"precision\":0.3749999968750001,\"accp\":0.5}}",jstr);
 }
 
 TEST(inputconn,img)
@@ -319,6 +319,7 @@ TEST(inputconn,csv_mem1)
   APIData ad;
   ad.add("data",vdata);
   CSVInputFileConn cifc;
+  cifc._logger = spdlog::syslog_logger("test");
   cifc._train = false; // prediction mode
   try
     {
@@ -349,6 +350,7 @@ TEST(inputconn,csv_mem2)
   std::vector<APIData> vpad = { pad };
   ad.add("parameters",vpad);
   CSVInputFileConn cifc;
+  cifc._logger = spdlog::syslog_logger("test1");
   cifc._train = false;
   try
     {
@@ -382,6 +384,7 @@ TEST(inputconn,csv_copy)
   std::vector<APIData> vpad = { pad };
   ad.add("parameters",vpad);
   CSVInputFileConn cifc;
+  cifc._logger = spdlog::syslog_logger("test2");
   cifc.init(ad.getobj("parameters").getobj("input"));
   CSVInputFileConn cifc2 = cifc;
   ASSERT_EQ("val5",cifc2._label[0]);
@@ -407,6 +410,7 @@ TEST(inputconn,csv_categoricals1)
   std::vector<APIData> vpad = { pad };
   ad.add("parameters",vpad);
   CSVInputFileConn cifc;
+  cifc._logger = spdlog::syslog_logger("test3");
   cifc._train = true;
   try
     {
@@ -446,6 +450,7 @@ TEST(inputconn,csv_categoricals2)
   std::vector<APIData> vpad = { pad };
   ad.add("parameters",vpad);
   CSVInputFileConn cifc;
+  cifc._logger = spdlog::syslog_logger("test4");
   cifc._train = true;
   cifc.transform(ad);
   ASSERT_EQ(3,cifc._csvdata.size());
@@ -472,6 +477,7 @@ TEST(inputconn,csv_read_categoricals)
   ASSERT_TRUE(ap.has("categoricals_mapping"));
   APIData ap_cm = ap.getobj("categoricals_mapping");
   CSVInputFileConn cifc;
+  cifc._logger = spdlog::syslog_logger("test5");
   cifc._train = true;
   cifc.read_categoricals(ap);
   ASSERT_EQ(23,cifc._categoricals.size());
@@ -498,6 +504,7 @@ TEST(inputconn,csv_ignore)
   std::vector<APIData> vpad = { pad };
   ad.add("parameters",vpad);
   CSVInputFileConn cifc;
+  cifc._logger = spdlog::syslog_logger("test6");
   cifc._train = true;
   try
     {
