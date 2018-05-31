@@ -1,6 +1,9 @@
 include_directories(${Boost_INCLUDE_DIRS})# ${PROTOBUF_INCLUDE_DIRS})
 if (CUDA_FOUND)
-  set(CUDA_LIB_DEPS ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY})
+  set(CUDA_LIB_DEPS ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_CUDART_LIBRARY} ${CUDA_cusolver_LIBRARY})
+  if (USE_CUDNN)
+    set(CUDA_LIB_DEPS ${CUDA_LIB_DEPS} ${CUDNN_LIBRARY})
+  endif()
 else()
   set(CUDA_LIB_DEPS "")
   add_definitions(-DCPU_ONLY)
@@ -11,10 +14,14 @@ if (USE_TF)
 else()
   set(TF_LIB_DEPS)
 endif()
+if (USE_DLIB)
+  set(DLIB_LIB_DEPS -ldlib)
+endif()
 link_directories(${CAFFE_LIB_DIR})
 link_directories(${TF_LIB_DIR})
 link_directories(${XGBOOST_LIB_DIR})
 link_directories(${TSNE_LIB_DIR})
+link_directories(${DLIB_LIB_DIR})
 
 if (USE_XGBOOST)
   if (CUDA_FOUND AND USE_XGBOOST_GPU)
@@ -34,21 +41,21 @@ find_package(GTest)
 include_directories(${GTEST_INCLUDE_DIRS})
 if (GTEST_FOUND)
   add_executable(ut_apidata ut-apidata.cc)
-  target_link_libraries(ut_apidata ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl hdf5_cpp ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
+  target_link_libraries(ut_apidata ddetect ${DLIB_LIB_DEPS} ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl hdf5_cpp ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
   add_test(
     NAME ut_apidata
     COMMAND ut_apidata
     )
   
   add_executable(ut_conn ut-conn.cc)
-  target_link_libraries(ut_conn ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl hdf5_cpp ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
+  target_link_libraries(ut_conn ddetect ${DLIB_LIB_DEPS} ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl hdf5_cpp ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
   add_test(
     NAME ut_conn
     COMMAND ut_conn
     )
   
   add_executable(ut_jsonapi ut-jsonapi.cc)
-  target_link_libraries(ut_jsonapi ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl hdf5_cpp ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
+  target_link_libraries(ut_jsonapi ddetect ${DLIB_LIB_DEPS} ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl hdf5_cpp ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
   add_test(
     NAME ut_jsonapi
     COMMAND ut_jsonapi
@@ -63,7 +70,7 @@ if (GTEST_FOUND)
   target_link_libraries(test_server boost_thread cppnetlib-uri cppnetlib-client-connections boost_system crypto ssl)
 
   add_executable(ut_caffe_mlp ut-caffe-mlp.cc)
-  target_link_libraries(ut_caffe_mlp ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl hdf5_cpp ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
+  target_link_libraries(ut_caffe_mlp ddetect ${DLIB_LIB_DEPS} ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl hdf5_cpp ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
   add_test(
     NAME ut_caffe_mlp
     COMMAND ut_caffe_mlp
@@ -156,14 +163,14 @@ if (GTEST_FOUND)
   endif()
   
   add_executable(ut_caffeapi ut-caffeapi.cc)
-  target_link_libraries(ut_caffeapi ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl hdf5_cpp ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
+  target_link_libraries(ut_caffeapi ddetect ${DLIB_LIB_DEPS} ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl hdf5_cpp ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
   add_test(
     NAME ut_caffeapi
     COMMAND ut_caffeapi
     )
   
   add_executable(ut_httpapi ut-httpapi.cc)
-  target_link_libraries(ut_httpapi ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS}  ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS} cppnetlib-uri curlpp curl crypto ssl hdf5_cpp)
+  target_link_libraries(ut_httpapi ddetect ${DLIB_LIB_DEPS} ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS}  ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS} cppnetlib-uri curlpp curl crypto ssl hdf5_cpp)
   add_test(
     NAME ut_httpapi
     COMMAND ut_httpapi
@@ -184,16 +191,36 @@ if (USE_TF)
   endif()
 
   add_executable(ut_tfapi ut-tfapi.cc)
-  target_link_libraries(ut_tfapi ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc curlpp curl hdf5_cpp ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
+  target_link_libraries(ut_tfapi ddetect ${DLIB_LIB_DEPS} ${CUDA_LIB_DEPS} glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc curlpp curl hdf5_cpp ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
   add_test(
     NAME ut_tfapi
     COMMAND ut_tfapi
     )
 endif()
-  
+
+if (USE_DLIB)
+  set(FACE_EXAMPLE_PATH "examples/dlib/face/")
+  set(FACE_EXAMPLE_MODEL_OUT "mmod_human_face_detector.dat")
+  set(FACE_IMG1 "grace_hopper.jpg")
+  set(FACE_IMG2 "cat.jpg")
+  if (NOT EXISTS "${FACE_EXAMPLE_PATH}${FACE_EXAMPLE_MODEL_OUT}")
+    message(STATUS "Downloading Dlib test face model")
+    file(DOWNLOAD "http://www.deepdetect.com/models/dlib/${FACE_EXAMPLE_MODEL_OUT}" "${FACE_EXAMPLE_PATH}${FACE_EXAMPLE_MODEL_OUT}")
+    file(DOWNLOAD "http://www.deepdetect.com/models/tf/${FACE_IMG1}" "${FACE_EXAMPLE_PATH}${FACE_IMG1}")
+    file(DOWNLOAD "http://www.deepdetect.com/models/tf/${FACE_IMG2}" "${FACE_EXAMPLE_PATH}${FACE_IMG2}")
+  endif()
+
+  add_executable(ut_dlibapi ut-dlibapi.cc)
+  target_link_libraries(ut_dlibapi ddetect ${DLIB_LIB_DEPS} ${CUDA_LIB_DEPS} glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc curlpp curl hdf5_cpp ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DPES} ${TSNET_LIB_DEPS})
+  add_test(
+    NAME ut_dlibapi
+    COMMAND ut_dlibapi
+  )
+endif()
+
 if (USE_XGBOOST)
   add_executable(ut_xgbapi ut-xgbapi.cc)
-  target_link_libraries(ut_xgbapi ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl hdf5_cpp ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS}  ${XGBOOST_LIB_DEPS} ${TF_LIB_DEPS} ${TSNE_LIB_DEPS})
+  target_link_libraries(ut_xgbapi ddetect ${DLIB_LIB_DEPS} ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl hdf5_cpp ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS}  ${XGBOOST_LIB_DEPS} ${TF_LIB_DEPS} ${TSNE_LIB_DEPS})
   add_test(
     NAME ut_xgbapi
     COMMAND ut_xgbapi
@@ -212,7 +239,7 @@ if (USE_SIMSEARCH)
   endif()
   
   add_executable(ut_simsearch ut-simsearch.cc)
-  target_link_libraries(ut_simsearch ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl hdf5_cpp ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
+  target_link_libraries(ut_simsearch ddetect ${DLIB_LIB_DEPS} ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl hdf5_cpp ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
   add_test(
     NAME ut_simsearch
     COMMAND ut_simsearch
