@@ -145,6 +145,7 @@ namespace dd {
 	}
 
 	CAFFE_ENFORCE(caffe2::ReadProtoFromFile(this->_mlmodel._predict, &_predict_net));
+	_predict_net.set_name("predict_net");
 	if (_state.is_training()) {
 
 	  //TODO Duplicate the net definition over the gpus, make the average, ...
