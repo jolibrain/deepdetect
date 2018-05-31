@@ -21,22 +21,23 @@
 
 #include "backends/caffe2/caffe2inputconns.h"
 
-namespace dd
-{
-  void ImgCaffe2InputFileConn::init(const APIData &ad)
-  {
+namespace dd {
+
+  void ImgCaffe2InputFileConn::init(const APIData &ad) {
     ImgInputFileConn::init(ad);
+    if (ad.has("std"))
+      _std = ad.get("std").get<float>();
   }
 
   void ImgCaffe2InputFileConn::transform(const APIData &ad) {
     if (_train) {
       transform_train(ad);
     } else {
-      transform_test(ad);
+      transform_predict(ad);
     }
   }
 
-  void ImgCaffe2InputFileConn::transform_test(const APIData &ad) {
+  void ImgCaffe2InputFileConn::transform_predict(const APIData &ad) {
     try {
       ImgInputFileConn::transform(ad);
     } catch (InputConnectorBadParamException &e) {
@@ -46,38 +47,41 @@ namespace dd
   }
 
   void ImgCaffe2InputFileConn::transform_train(const APIData &) {
-    _shuffle = true;
     //TODO
   }
 
   int ImgCaffe2InputFileConn::get_tensor_test(caffe2::TensorCPU &tensor, int num) {
-    if (!_images.size()) {
+
+    int image_count = _images.size();
+    if (!image_count) {
       return 0; // No more data
     }
     int w = _images[0].cols;
     int h = _images[0].rows;
-    if (num < 0) {
-      num = _images.size(); // No fixed batch_size
+    if (image_count > num && num > 0) {
+      image_count = num; // Cap the batch size to 'num'
     }
 
-    // Resize and prefill with 0s
-    tensor.Resize(std::vector<caffe2::TIndex>({num, 3, h, w}));
-    float *data = tensor.mutable_data<float>();
-    std::fill(data, data + tensor.size(), 0);
+    // Resize the tensor
+    std::vector<cv::Mat> chan(channels());
+    tensor.Resize(std::vector<caffe2::TIndex>({image_count, channels(), h, w}));
+    size_t channel_size = h * w * sizeof(float);
+    uint8_t *data = reinterpret_cast<uint8_t *>(tensor.mutable_data<float>());
 
-    int idx(0), size(0);
-    for (auto it = _images.begin(); num - size && it != _images.end(); ++size) {
-      std::vector<cv::Mat> chan(3);
-      cv::split(*it, chan);
-      it = _images.erase(it);
+    auto it_begin(_images.begin());
+    auto it_end(it_begin + image_count);
+    for (auto it = it_begin; it < it_end; ++it) {
+
+      // Convert from NHWC uint8_t to NCHW float
+      it->convertTo(*it, CV_32F);
+      cv::split(*it / _std, chan);
       for (cv::Mat &ch : chan) {
-	for (int row = 0; row < h; ++row) {
-	  for (int col = 0; col < w; ++col) {
-	    data[idx++] = ch.at<unsigned char>(row, col) / 255.0;
-	  }
-	}
+	std::memcpy(data, ch.data, channel_size);
+	data += channel_size;
       }
+
     }
-    return size;
+    _images.erase(it_begin, it_end);
+    return image_count;
   }
 }

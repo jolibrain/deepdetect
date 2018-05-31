@@ -70,11 +70,18 @@ namespace dd
     ~ImgCaffe2InputFileConn() {}
 
     void init(const APIData &ad);
+
+    inline int channels() const {
+      return _bw ? 1 : 3;
+    }
+
     void transform(const APIData &ad);
-    void transform_test(const APIData &ad);
+    void transform_predict(const APIData &ad);
     void transform_train(const APIData &ad);
 
     int get_tensor_test(caffe2::TensorCPU &tensor, int num = -1);
+
+    float _std = 255.0f;
   };
 }
 

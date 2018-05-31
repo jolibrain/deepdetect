@@ -92,8 +92,8 @@ namespace dd {
       _workspace.CreateBlob(blobname)->swap(*c2l._workspace.GetBlob(blobname));
     }
 
-    _init_net = c2l._init_net;
-    _predict_net = c2l._predict_net;
+    _init_net = std::move(c2l._init_net);
+    _predict_net = std::move(c2l._predict_net);
     _input_blob = c2l._input_blob;
     _output_blob = c2l._output_blob;
     _state = c2l._state;
@@ -133,57 +133,47 @@ namespace dd {
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
   create_model() {
-    if (_state.has_changed()) {
 
-      try {
-	// Check if the nets are properly set
-	if (this->_mlmodel._predict.empty() ||
-	    (this->_mlmodel._init.empty() && !_state.is_training())) {
-	  this->_logger->error("Error creating model");
-	  throw MLLibInternalException(this->_mlmodel._repo +
-				       " does not contain the required files to initialize a net");
-	}
-
-	CAFFE_ENFORCE(caffe2::ReadProtoFromFile(this->_mlmodel._predict, &_predict_net));
-	_predict_net.set_name("predict_net");
-	if (_state.is_training()) {
-
-	  //TODO Duplicate the net definition over the gpus, make the average, ...
-
-	} else { // !is_training
-
-	  CAFFE_ENFORCE(caffe2::ReadProtoFromFile(this->_mlmodel._init, &_init_net));
-	  caffe2::DeviceOption option;
-#ifndef CPU_ONLY
-	  if (_state.is_gpu()) {
-	    option.set_device_type(caffe2::CUDA);
-	    option.set_cuda_gpu_id(_state.gpu_ids()[0]);
-	  }
-	  else
-#endif
-	    option.set_device_type(caffe2::CPU);
-
-	  for (caffe2::OperatorDef &op : *_predict_net.mutable_op()) {
-	    op.mutable_device_option()->CopyFrom(option);
-	  }
-	  for (caffe2::OperatorDef &op : *_init_net.mutable_op()) {
-	    op.mutable_device_option()->CopyFrom(option);
-	  }
-
-	}
-	for (const std::string &blob : _workspace.Blobs()) {
-	  _workspace.RemoveBlob(blob);
-	}
-	CAFFE_ENFORCE(_workspace.RunNetOnce(_init_net));
-	_workspace.CreateBlob(_input_blob);
-	CAFFE_ENFORCE(_workspace.CreateNet(_predict_net, true));
-
-      } catch (...) {
-	_state.force_init();
-	throw;
-      }
+    // Check if the nets are properly set
+    if (this->_mlmodel._predict.empty() ||
+	(this->_mlmodel._init.empty() && !_state.is_training())) {
+      throw MLLibInternalException(this->_mlmodel._repo +
+				   " does not contain the required files to initialize a net");
     }
-    _state.backup();
+
+    CAFFE_ENFORCE(caffe2::ReadProtoFromFile(this->_mlmodel._predict, &_predict_net));
+    _predict_net.set_name("predict_net");
+    if (_state.is_training()) {
+
+      //TODO Duplicate the net definition over the gpus, make the average, ...
+
+    } else { // !is_training
+
+      CAFFE_ENFORCE(caffe2::ReadProtoFromFile(this->_mlmodel._init, &_init_net));
+      caffe2::DeviceOption option;
+#ifndef CPU_ONLY
+      if (_state.is_gpu()) {
+	option.set_device_type(caffe2::CUDA);
+	option.set_cuda_gpu_id(_state.gpu_ids()[0]);
+      }
+      else
+#endif
+	option.set_device_type(caffe2::CPU);
+
+      for (caffe2::OperatorDef &op : *_predict_net.mutable_op()) {
+	op.mutable_device_option()->CopyFrom(option);
+      }
+      for (caffe2::OperatorDef &op : *_init_net.mutable_op()) {
+	op.mutable_device_option()->CopyFrom(option);
+      }
+
+    }
+    for (const std::string &blob : _workspace.Blobs()) {
+      _workspace.RemoveBlob(blob);
+    }
+    CAFFE_ENFORCE(_workspace.RunNetOnce(_init_net));
+    _workspace.CreateBlob(_input_blob);
+    CAFFE_ENFORCE(_workspace.CreateNet(_predict_net, true));
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -259,7 +249,18 @@ namespace dd {
     }
 #endif
 
-    create_model();
+    if (_state.has_changed()) {
+      try {
+	create_model(); // Reloading from the disk and reconfiguring.
+      } catch (...) {
+	this->_logger->error("Error creating model");
+	// Must stay in a 'changed_state' until a call to create_model finally succeed.
+	_state.force_init();
+	throw;
+      }
+      // Save the current net configuration.
+      _state.backup();
+    }
 
     try {
       inputc.transform(ad);
@@ -287,20 +288,26 @@ namespace dd {
 
     try {
       CAFFE_ENFORCE(_workspace.RunNetOnce(_predict_net));
+
+      // If the "outputlayer" mllib parameter was not set
+      // We'll use instead the first external_output found in the net.
       std::string output_blob = _output_blob;
       if (output_blob.empty()) {
 	output_blob = _predict_net.external_output()[0];
       }
+
       caffe2::TensorCPU tensor_output;
       AUTOTYPED_TENSOR({
 	  tensor_output.CopyFrom(_workspace.GetBlob(output_blob)->Get<Tensor>());
 	});
+
       result_size = tensor_output.size() / data_count;
       const float *data = tensor_output.data<float>();
       for (std::vector<float> &result : results) {
 	result.assign(data, data + result_size);
 	data += result_size;
       }
+
     } catch(std::exception &e) {
       this->_logger->error("Error while proceeding with supervised prediction forward pass, not enough memory? {}",e.what());
       throw;
