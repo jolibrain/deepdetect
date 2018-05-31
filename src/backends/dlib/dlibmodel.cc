@@ -1,7 +1,7 @@
 /**
  * DeepDetect
- * Copyright (c) 2016 Emmanuel Benazera
- * Author: Emmanuel Benazera <beniz@droidnik.fr>
+ * Copyright (c) 2018 Pixel Forensics, Inc.
+ * Author: Cheni Chadowitz <cchadowitz@pixelforensics.com>
  *
  * This file is part of deepdetect.
  *

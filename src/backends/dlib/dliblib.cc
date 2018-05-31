@@ -1,6 +1,6 @@
 /**
  * DeepDetect
- * Copyright (c) 2018 Cheni Chadowitz
+ * Copyright (c) 2018 Pixel Forensics, Inc.
  * Author: Cheni Chadowitz <cchadowitz@pixelforensics.com>
  *
  * This file is part of deepdetect.

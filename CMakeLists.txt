@@ -90,6 +90,10 @@ endif()
 # optional packages
 if (USE_CPU_ONLY)
 else()
+    if (USE_DLIB AND NOT USE_DLIB_CPU_ONLY)
+        message(STATUS "Dlib enabled with CUDA requires cuDNN - enabling cuDNN")
+        set(USE_CUDNN ON)
+    endif()
 include(cmake/Cuda.cmake) # cuda + cudnn
 endif()
 
@@ -99,6 +103,9 @@ if (USE_DLIB)
     add_definitions(-DUSE_DLIB)
 
     if (CUDA_FOUND AND NOT USE_DLIB_CPU_ONLY)
+        if (NOT USE_CUDNN)
+            message(FATAL_ERROR "Dlib with CUDA must also enable cuDNN. Use -DUSE_CUDNN=ON")
+        endif()
         ExternalProject_Add(
           dlib
           PREFIX dlib
