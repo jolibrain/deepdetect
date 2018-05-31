@@ -102,13 +102,20 @@ namespace dd
       cv::Mat img = cv::imread(fname,_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR);
       if (img.empty())
 	{
-	  _logger->error("empty image");
+	  _logger->error("empty image {}",fname);
 	  return -1;
 	}
       _imgs_size.push_back(std::pair<int,int>(img.rows,img.cols));
       cv::Size size(_width,_height);
       cv::Mat rimg;
-      cv::resize(img,rimg,size,0,0,CV_INTER_CUBIC);
+      try
+	{
+	  cv::resize(img,rimg,size,0,0,CV_INTER_CUBIC);
+	}
+      catch(...)
+	{
+	  throw InputConnectorBadParamException("failed resizing image " + fname);
+	}
       _imgs.push_back(rimg);
       return 0;
     }
@@ -192,7 +199,14 @@ namespace dd
 	  cv::Mat img = cv::imread(p.first,_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR);
 	  _imgs_size.push_back(std::pair<int,int>(img.rows,img.cols));
 	  cv::Mat rimg;
-	  cv::resize(img,rimg,size,0,0,CV_INTER_CUBIC);
+	  try
+	    {
+	      cv::resize(img,rimg,size,0,0,CV_INTER_CUBIC);
+	    }
+	  catch(...)
+	    {
+	      throw InputConnectorBadParamException("failed resizing image " + p.first);
+	    }
 	  _imgs.push_back(rimg);
 	  _img_files.push_back(p.first);
 	  if (p.second >= 0)
@@ -295,6 +309,7 @@ namespace dd
       int catch_read = 0;
       std::string catch_msg;
       std::vector<std::string> uris;
+      std::vector<std::string> failed_uris;
 #pragma omp parallel for
       for (size_t i=0;i<_uris.size();i++)
 	{
@@ -320,6 +335,7 @@ namespace dd
 	      {
 		++catch_read;
 		catch_msg = e.what();
+		failed_uris.push_back(u);
 		no_img = true;
 	      }
 	    }
@@ -350,7 +366,11 @@ namespace dd
 	  }
 	}
       if (catch_read)
-	throw InputConnectorBadParamException(catch_msg);
+	{
+	  for (auto s: failed_uris)
+	    _logger->error("failed reading image {}",s);
+	  throw InputConnectorBadParamException(catch_msg);
+	}
       _uris = uris;
       if (!_db_fname.empty())
 	return; // db filename is passed to backend
