@@ -107,11 +107,35 @@ if (USE_CAFFE2)
     ${CMAKE_BINARY_DIR}/patches/caffe2/caffe_proto.patch
     ${CMAKE_BINARY_DIR}/patches/caffe2/logging.patch
     )
+
   list(APPEND PYTORCH_FLAGS
+
     -DUSE_OPENMP=ON
-    -DUSE_GLOG=OFF
-    -DUSE_GFLAGS=OFF
     -DUSE_MPI=OFF
+
+    -DUSE_GFLAGS=OFF
+    -DUSE_GLOG=OFF
+
+    -DBUILD_TEST=OFF
+    -DBUILD_BINARY=OFF
+    -DBUILD_PYTHON=OFF
+    -DBUILD_DOCS=OFF
+    )
+
+  # Only 11 / 28 submodules are currently used by caffe2
+  # (No need to log, benchmark, compile for IOS, make python libraries, ...)
+  list(APPEND PYTORCH_SUBMODULES
+    third_party/cpuinfo
+    third_party/cub
+    third_party/FP16
+    third_party/FXdiv
+    third_party/gloo
+    third_party/NNPACK
+    third_party/onnx
+    third_party/protobuf
+    third_party/psimd
+    third_party/pthreadpool
+    third_party/python-peachpy
     )
 
   set(PYTORCH_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch-complete)
@@ -121,6 +145,7 @@ if (USE_CAFFE2)
     PREFIX pytorch
     INSTALL_DIR ${CMAKE_BINARY_DIR}
     GIT_REPOSITORY https://github.com/pytorch/pytorch.git
+    GIT_SUBMODULES ${PYTORCH_SUBMODULES}
     UPDATE_DISCONNECTED 1
     GIT_TAG ${PYTORCH_SUPPORTED_COMMIT}
     PATCH_COMMAND git am ${CAFFE2_PATCHES}
