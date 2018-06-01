@@ -286,8 +286,40 @@ namespace dd
     return buffer.GetString();
   }
 
-  JDoc JsonAPI::info() const
+  JDoc JsonAPI::info(const std::string &jstr) const
   {
+    bool status = false;
+
+    if (!jstr.empty())
+      {
+	rapidjson::Document d;
+	d.Parse(jstr.c_str());
+	if (d.HasParseError())
+	  {
+	    _logger->error("JSON parsing error on string: {}",jstr);
+	    return dd_bad_request_400();
+	  }
+	
+	// parameters
+	APIData ad;
+	try
+	  {
+	    ad = APIData(d);
+	  }
+	catch(RapidjsonException &e)
+	  {
+	    _logger->error("JSON error {}",e.what());
+	    return dd_bad_request_400();
+	  }
+	catch(...)
+	  {
+	 return dd_bad_request_400();
+	  }
+	
+	if (ad.has("status"))
+	  status = ad.get("status").get<bool>();
+      }
+	
     // answer info call.
     JDoc jinfo = dd_ok_200();
     JVal jhead(rapidjson::kObjectType);
@@ -300,7 +332,7 @@ namespace dd
     auto hit = _mlservices.begin();
     while(hit!=_mlservices.end())
       {
-	APIData ad = mapbox::util::apply_visitor(visitor_info(),(*hit).second);
+	APIData ad = mapbox::util::apply_visitor(visitor_info(status),(*hit).second);
 	JVal jserv(rapidjson::kObjectType);
 	ad.toJVal(jinfo,jserv);
 	jservs.PushBack(jserv,jinfo.GetAllocator());
