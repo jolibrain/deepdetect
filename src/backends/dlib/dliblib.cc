@@ -150,7 +150,6 @@ namespace dd {
             std::chrono::time_point <std::chrono::system_clock> tstop = std::chrono::system_clock::now();
             this->_logger->info("predict: forward pass time={}",
                                 std::chrono::duration_cast<std::chrono::milliseconds>(tstop - tstart).count());
-
             APIData rad;
 
             for (size_t i = 0; i < dv.size(); i++) {
@@ -158,7 +157,7 @@ namespace dd {
                 std::vector<double> probs;
                 std::vector <std::string> cats;
                 std::vector <APIData> bboxes;
-                this->_logger->info("Found {} objects", detections[i].size());
+                this->_logger->info("[Input {}] Found {} objects", i, detections[i].size());
                 for (auto &d : detections[i]) {
                     this->_logger->info("Found obj: {} - {} ({})", d.label, d.detection_confidence, d.rect);
 
