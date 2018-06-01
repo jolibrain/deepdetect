@@ -1229,7 +1229,7 @@ namespace dd
 	      {
 		//TODO: test iter or push through memory data...
 		//std::cerr << "lresults size=" << lresults.size() << std::endl;
-		for (int j=0;j<lresults.size();j++)
+		for (size_t j=0;j<lresults.size();j++)
 		  {
 		    if (lresults[j]->width() != 5)
 		      throw MLLibBadParamException("wrong width in bbox result");

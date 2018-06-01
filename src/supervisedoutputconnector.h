@@ -530,7 +530,6 @@ namespace dd
 	  if (bbmap)
 	    {
 	      double bmap = ap(ad_res);
-	      //std::cerr << "map=" << map << std::endl;
 	      meas_out.add("map",bmap);
 	    }
 	}
@@ -1147,7 +1146,7 @@ namespace dd
       std::vector<std::pair<double, int> > sort_pairs = pairs;
       std::stable_sort(sort_pairs.begin(), sort_pairs.end(),
 		       SortScorePairDescend<int>);
-      for (int i = 0; i < sort_pairs.size(); ++i)
+      for (size_t i = 0; i < sort_pairs.size(); ++i)
 	{
 	  if (i == 0)
 	    {
