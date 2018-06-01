@@ -214,6 +214,9 @@ namespace dd {
     if (this->_mlmodel.read_from_repository(this->_mlmodel._repo, this->_logger))
       throw MLLibBadParamException("error reading or listing Caffe2 models in repository " +
 				   this->_mlmodel._repo);
+    // Now that all the '_default' values are defined,
+    // we can initialize the '_current' ones.
+    _state.reset();
     if (!this->_mlmodel._predict.empty()) {
       create_model();
       _state.backup();
