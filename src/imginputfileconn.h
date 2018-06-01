@@ -76,9 +76,23 @@ namespace dd
 	std::vector<unsigned char> vdat(str.begin(),str.end());
 	cv::Mat img = cv::Mat(cv::imdecode(cv::Mat(vdat,true),_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR));
 	_imgs_size.push_back(std::pair<int,int>(img.rows,img.cols));
-	cv::Size size(_width,_height);
-	cv::Mat rimg;
-	cv::resize(img,rimg,size,0,0,CV_INTER_CUBIC);
+    cv::Mat rimg;
+	if (_width == 0 || _height == 0) {
+		if (_width == 0 && _height == 0) {
+			// XXX - Do nothing and keep native resolution. May cause issues if batched images are different resolutions
+            rimg = img;
+		} else {
+			// Resize so that the larger dimension is set to whichever (width or height) is non-zero, maintaining aspect ratio
+			// XXX - This may cause issues if batch images are different resolutions
+			size_t currMaxDim = std::max(img.rows, img.cols);
+			double scale = static_cast<double>(std::max(_width, _height)) / static_cast<double>(currMaxDim);
+			cv::resize(img,rimg,cv::Size(),scale,scale,CV_INTER_CUBIC);
+		}
+	} else {
+		// Resize normally to the specified width and height
+		cv::resize(img,rimg,cv::Size(_width,_height),0,0,CV_INTER_CUBIC);
+	}
+
 	_imgs.push_back(rimg);
       }
     
@@ -106,9 +120,22 @@ namespace dd
 	  return -1;
 	}
       _imgs_size.push_back(std::pair<int,int>(img.rows,img.cols));
-      cv::Size size(_width,_height);
       cv::Mat rimg;
-      cv::resize(img,rimg,size,0,0,CV_INTER_CUBIC);
+      if (_width == 0 || _height == 0) {
+        if (_width == 0 && _height == 0) {
+          // Do nothing and keep native resolution. May cause issues if batched images are different resolutions
+            rimg = img;
+        } else {
+		  // Resize so that the larger dimension is set to whichever (width or height) is non-zero, maintaining aspect ratio
+		  // XXX - This may cause issues if batch images are different resolutions
+          size_t currMaxDim = std::max(img.rows, img.cols);
+          double scale = static_cast<double>(std::max(_width, _height)) / static_cast<double>(currMaxDim);
+          cv::resize(img,rimg,cv::Size(),scale,scale,CV_INTER_CUBIC);
+        }
+      } else {
+		// Resize normally to the specified width and height
+        cv::resize(img,rimg,cv::Size(_width,_height),0,0,CV_INTER_CUBIC);
+      }
       _imgs.push_back(rimg);
       return 0;
     }
@@ -183,7 +210,6 @@ namespace dd
 	}
       
       // read images
-      cv::Size size(_width,_height);
       _imgs.reserve(lfiles.size());
       _img_files.reserve(lfiles.size());
       _labels.reserve(lfiles.size());
@@ -192,7 +218,21 @@ namespace dd
 	  cv::Mat img = cv::imread(p.first,_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR);
 	  _imgs_size.push_back(std::pair<int,int>(img.rows,img.cols));
 	  cv::Mat rimg;
-	  cv::resize(img,rimg,size,0,0,CV_INTER_CUBIC);
+	  if (_width == 0 || _height == 0) {
+        if (_width == 0 && _height == 0) {
+          // Do nothing and keep native resolution. May cause issues if batched images are different resolutions
+            rimg = img;
+        } else {
+		  // Resize so that the larger dimension is set to whichever (width or height) is non-zero, maintaining aspect ratio
+		  // XXX - This may cause issues if batch images are different resolutions
+          size_t currMaxDim = std::max(img.rows, img.cols);
+          double scale = static_cast<double>(std::max(_width, _height)) / static_cast<double>(currMaxDim);
+		  cv::resize(img,rimg,cv::Size(),scale,scale,CV_INTER_CUBIC);
+		}
+	  } else {
+		// Resize normally to the specified width and height
+		cv::resize(img,rimg,cv::Size(_width,_height),0,0,CV_INTER_CUBIC);
+	  }
 	  _imgs.push_back(rimg);
 	  _img_files.push_back(p.first);
 	  if (p.second >= 0)
