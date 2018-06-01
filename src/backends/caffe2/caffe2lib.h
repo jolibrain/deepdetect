@@ -79,7 +79,11 @@ namespace dd
     int predict(const APIData &ad, APIData &out);
 
     public:
-    caffe2::Workspace _workspace;
+    // Workspaces cannot be std::move()'d or assigned
+    // (see DISABLE_COPY_AND_ASSIGN in caffe2/core/workspace.h)
+    // Hence the usage of a pointer.
+    std::unique_ptr<caffe2::Workspace> _workspace =
+      std::unique_ptr<caffe2::Workspace>(new caffe2::Workspace);
     Caffe2LibState _state;
     caffe2::NetDef _init_net, _predict_net;
     std::string _input_blob;
