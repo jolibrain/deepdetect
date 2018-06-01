@@ -87,11 +87,7 @@ namespace dd {
     :MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,Caffe2Model>(std::move(c2l)) {
     this->_libname = "caffe2";
 
-    //XXX: Find a clean way to copy a workspace
-    for (const std::string &blobname : c2l._workspace.Blobs()) {
-      _workspace.CreateBlob(blobname)->swap(*c2l._workspace.GetBlob(blobname));
-    }
-
+    _workspace = std::move(c2l._workspace);
     _init_net = std::move(c2l._init_net);
     _predict_net = std::move(c2l._predict_net);
     _input_blob = c2l._input_blob;
@@ -143,6 +139,30 @@ namespace dd {
 
     CAFFE_ENFORCE(caffe2::ReadProtoFromFile(this->_mlmodel._predict, &_predict_net));
     _predict_net.set_name("predict_net");
+
+    // _input_blob and _output_blob should have been initialized during init_mllib
+    // (by "inputlayer" and "outputlayer" respectively)
+    // If the are not, we'll do a guess based on the following conventions:
+    //    - the input blob name is (or contains) "data"
+    //    - the external inputs are sorted
+    //    - there is only one external output
+    if (_output_blob.empty()) {
+      _output_blob = _predict_net.external_output()[0];
+    }
+    if (_input_blob.empty()) {
+      const auto &inputs = _predict_net.external_input();
+      _input_blob = inputs[0];
+      if (_input_blob.find("data") == std::string::npos) {
+	_input_blob = inputs[inputs.size() - 1];
+	if (_input_blob.find("data") == std::string::npos) {
+	  _input_blob = "data";
+	}
+      }
+    }
+
+    _workspace.reset(new caffe2::Workspace);
+    _workspace->CreateBlob(_input_blob);
+
     if (_state.is_training()) {
 
       //TODO Duplicate the net definition over the gpus, make the average, ...
@@ -167,13 +187,9 @@ namespace dd {
 	op.mutable_device_option()->CopyFrom(option);
       }
 
+      CAFFE_ENFORCE(_workspace->RunNetOnce(_init_net));
     }
-    for (const std::string &blob : _workspace.Blobs()) {
-      _workspace.RemoveBlob(blob);
-    }
-    CAFFE_ENFORCE(_workspace.RunNetOnce(_init_net));
-    _workspace.CreateBlob(_input_blob);
-    CAFFE_ENFORCE(_workspace.CreateNet(_predict_net, true));
+    CAFFE_ENFORCE(_workspace->CreateNet(_predict_net));
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -198,6 +214,10 @@ namespace dd {
     if (this->_mlmodel.read_from_repository(this->_mlmodel._repo, this->_logger))
       throw MLLibBadParamException("error reading or listing Caffe2 models in repository " +
 				   this->_mlmodel._repo);
+    if (!this->_mlmodel._predict.empty()) {
+      create_model();
+      _state.backup();
+    }
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -275,7 +295,7 @@ namespace dd {
       caffe2::TensorCPU tensor_input;
       data_count = inputc.get_tensor_test(tensor_input);
       AUTOTYPED_TENSOR({
-	  _workspace.GetBlob(_input_blob)->GetMutable<Tensor>()->CopyFrom(tensor_input);
+	  _workspace->GetBlob(_input_blob)->GetMutable<Tensor>()->CopyFrom(tensor_input);
 	});
     } catch(std::exception &e) {
       this->_logger->error("exception while filling up network for prediction");
@@ -287,7 +307,8 @@ namespace dd {
     int result_size(0);
 
     try {
-      CAFFE_ENFORCE(_workspace.RunNetOnce(_predict_net));
+
+      CAFFE_ENFORCE(_workspace->RunNetOnce(_predict_net));
 
       // If the "outputlayer" mllib parameter was not set
       // We'll use instead the first external_output found in the net.
@@ -298,7 +319,7 @@ namespace dd {
 
       caffe2::TensorCPU tensor_output;
       AUTOTYPED_TENSOR({
-	  tensor_output.CopyFrom(_workspace.GetBlob(output_blob)->Get<Tensor>());
+	  tensor_output.CopyFrom(_workspace->GetBlob(output_blob)->Get<Tensor>());
 	});
 
       result_size = tensor_output.size() / data_count;

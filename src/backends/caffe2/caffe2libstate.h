@@ -27,7 +27,7 @@
 private:						\
 							\
  type _##name##_default = def;				\
- type _##name##_current;				\
+ type _##name##_current = def;				\
  type _##name##_last;					\
  inline bool name##_changed() const {			\
    return _##name##_last != _##name##_current;		\
