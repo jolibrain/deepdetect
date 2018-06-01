@@ -323,7 +323,7 @@ namespace dd
             conv_param_param->set_axis(1);
             conv_param_param->add_kernel_size(1);
             filler_param = conv_param_param->mutable_weight_filler();
-            filler_param->set_std(0.01);
+            filler_param->set_std(0.5);
             filler_param->set_type("gaussian");
 
 
