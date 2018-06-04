@@ -286,7 +286,7 @@ namespace dd
             conv_param_param->add_kernel_size(1);
 
             caffe::FillerParameter* filler_param = conv_param_param->mutable_weight_filler();
-            filler_param->set_std(0.01);
+            filler_param->set_std(0.5);
             filler_param->set_type("gaussian");
 
             caffe::LayerParameter* sigmoid_loss_param = insert_layer_before(net_param, softml_pos++);
