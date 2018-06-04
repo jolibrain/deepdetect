@@ -180,6 +180,10 @@ namespace dd
 	caffe::WriteProtoToTextFile(net_param,dest_net);
 	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
       }
+    else if (model_tmpl.find("ssd")!=std::string::npos)
+      {
+	configure_ssd_template(dest_net,dest_deploy_net,ad,this->_inputc);
+      }
     else
       {
 	caffe::NetParameter net_param,deploy_net_param;
@@ -490,7 +494,79 @@ namespace dd
       const_cast<APIData&>(ad).add("regression",true);
     netcaffe._nlac.configure_net(ad);
   }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_ssd_template(const std::string &dest_net,
+												   const std::string &dest_deploy_net,
+												   const APIData &ad,
+												   const TInputConnectorStrategy &inputc)
+  {
+    //TODO:
+    //- load prototxt
+    caffe::NetParameter net_param,deploy_net_param;
+    caffe::ReadProtoFromTextFile(dest_net,&net_param);
+    caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
     
+    //- if finetuning, change the proper layer names
+    std::string postfix = "_ftune";
+    int k = net_param.layer_size();
+    for (int l=0;l<k;l++)
+      {
+	caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+	if (lparam->name().find("mbox_conf") != std::string::npos
+	    || lparam->name().find("mbox_loc") != std::string::npos)
+	  {
+	    lparam->set_name(lparam->name() + postfix);
+	  }
+	for (int t=0;t<lparam->top_size();t++)
+	  {
+	    if (lparam->top(t).find("_conf") != std::string::npos
+		|| lparam->top(t).find("_loc") != std::string::npos)
+	      {
+		lparam->set_top(t,lparam->top(t) + postfix);
+	      }
+	  }
+	for (int t=0;t<lparam->bottom_size();t++)
+	  {
+	    if (lparam->bottom(t).find("_conf") != std::string::npos
+		|| lparam->bottom(t).find("_loc") != std::string::npos)
+	      {
+		lparam->set_bottom(t,lparam->bottom(t) + postfix);
+	      }
+	  }
+	//- set correct layer parameters based on nclasses
+	if (lparam->name() == "mbox_loss")
+	  {
+	    lparam->mutable_multibox_loss_param()->set_num_classes(_nclasses);
+	  }
+	if (lparam->name() == "detection_out")
+	  {
+	    lparam->mutable_detection_output_param()->set_num_classes(_nclasses);
+	  }
+	else if (lparam->name() == "detection_eval")
+	  {
+	    lparam->mutable_detection_evaluate_param()->set_num_classes(_nclasses);
+	  }
+      }
+	
+    // fix other layer parameters
+    for (int l=0;l<k;l++)
+      {
+	caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+	if (lparam->name().find("mbox_conf") != std::string::npos
+	    && lparam->type() == "Convolution")
+	  {
+	    int num_priors_per_location = lparam->mutable_convolution_param()->num_output() / 2;
+	    lparam->mutable_convolution_param()->set_num_output(num_priors_per_location * _nclasses);
+	  }
+      }
+    
+    //- write it down
+    caffe::WriteProtoToTextFile(net_param,dest_net);
+    caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
+    
+  }
+  
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::create_model(const bool &test)
   {

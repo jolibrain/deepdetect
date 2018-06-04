@@ -87,6 +87,11 @@ namespace dd
 				     caffe::NetParameter &net_param,
 				     caffe::NetParameter &dnet_param);
 
+      void configure_ssd_template(const std::string &dest_net,
+				  const std::string &deploy_dest_net,
+				  const APIData &ad,
+				  const TInputConnectorStrategy &inputc);				  
+      
     /**
      * \brief configure noise data augmentation in training template
      * @param ad the template data object
