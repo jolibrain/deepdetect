@@ -26,7 +26,7 @@ namespace dd {
   void ImgCaffe2InputFileConn::init(const APIData &ad) {
     ImgInputFileConn::init(ad);
     if (ad.has("std"))
-      _std = ad.get("std").get<float>();
+      _std = ad.get("std").get<double>();
   }
 
   void ImgCaffe2InputFileConn::transform(const APIData &ad) {
@@ -74,6 +74,9 @@ namespace dd {
 
       // Convert from NHWC uint8_t to NCHW float
       it->convertTo(*it, CV_32F);
+      if (_has_mean_scalar) {
+	*it -= _mean;
+      }
       cv::split(*it / _std, chan);
       for (cv::Mat &ch : chan) {
 	std::memcpy(data, ch.data, channel_size);

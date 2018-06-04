@@ -99,11 +99,12 @@ namespace dd {
   Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::~Caffe2Lib() {
   }
 
+#ifdef CPU_ONLY
+#define UPDATE_GPU_STATE(ad)
+#else
+
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   std::vector<int> Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
-#ifdef CPU_ONLY
-  get_gpu_ids(const APIData &) const { return {}; }
-#else
   get_gpu_ids(const APIData &ad) const {
     std::vector<int> ids;
     try {
@@ -123,6 +124,14 @@ namespace dd {
       this->_logger->info("Using GPU {}", id);
     }
     return ids;
+  }
+
+#define UPDATE_GPU_STATE(ad)				\
+  if (ad.has("gpu")) {					\
+    _state.set_is_gpu(ad.get("gpu").get<bool>());	\
+    if (_state.is_gpu() && ad.has("gpuid")) {		\
+      _state.set_gpu_ids(get_gpu_ids(ad));		\
+    }							\
   }
 #endif
 
@@ -262,15 +271,7 @@ namespace dd {
       }
     }
 
-    // gpu
-#ifndef CPU_ONLY
-    if (ad_mllib.has("gpu")) {
-      _state.set_is_gpu(ad_mllib.get("gpu").get<bool>());
-      if (_state.is_gpu() && ad_mllib.has("gpuid")) {
-	_state.set_gpu_ids(get_gpu_ids(ad_mllib));
-      }
-    }
-#endif
+    UPDATE_GPU_STATE(ad_mllib);
 
     if (_state.has_changed()) {
       try {
