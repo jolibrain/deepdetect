@@ -81,7 +81,7 @@ namespace dd
 
     int get_tensor_test(caffe2::TensorCPU &tensor, int num = -1);
 
-    float _std = 255.0f;
+    float _std = 1.0f;
   };
 }
 

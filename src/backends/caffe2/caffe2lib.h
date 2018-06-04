@@ -66,7 +66,9 @@ namespace dd
     void init_mllib(const APIData &ad);
     void clear_mllib(const APIData &ad);
 
+#ifndef CPU_ONLY
     std::vector<int> get_gpu_ids(const APIData &ad) const;
+#endif
 
     int train(const APIData &ad, APIData &out);
 
