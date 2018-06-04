@@ -9,7 +9,7 @@ env:
     - BUILD_CCACHE_DIR=~/build/ccache
   matrix:
     - BUILD=linux
-    - BUILD=linux-cuda
+#    - BUILD=linux-cuda
 
 cache:
   directories:
