@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 2.8.8)
 project(deepdetect)
 
+option(USE_CAFFE2 "build caffe2 backend")
+option(USE_TF "use TF backend")
+
 if (USE_TF AND USE_CAFFE2)
   message(FATAL_ERROR "Building with tensorflow AND caffe2 causes conflict
 (The two libraries have their own protobuf embed)")
