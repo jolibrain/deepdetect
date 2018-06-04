@@ -511,7 +511,7 @@ namespace dd
 	    this->_logger->error("Error creating network");
 	    throw;
 	  }
-	this->_logger->info("Using pre-trained weights from ",this->_mlmodel._weights);
+	this->_logger->info("Using pre-trained weights from {}",this->_mlmodel._weights);
 	try
 	  {
 	    _net->CopyTrainedLayersFrom(this->_mlmodel._weights);
