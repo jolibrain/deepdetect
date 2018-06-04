@@ -593,7 +593,7 @@ TEST(caffelib,configure_resnet_template_n_nt)
   ad.add("nclasses",nclasses);
   
   CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel> *caff = new CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(CaffeModel());
-  caff->_logger = spdlog::syslog_logger("test");
+  caff->_logger = spdlog::stdout_logger_mt("test");
   caff->configure_resnet_template(ad,ImgCaffeInputFileConn(),net_param,deploy_net_param);
   
   caffe::WriteProtoToTextFile(net_param,oresnet_file);
