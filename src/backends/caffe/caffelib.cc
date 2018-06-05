@@ -188,149 +188,16 @@ namespace dd
 	caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
 
 
-    if (this->_loss == 1)
+    if (this->_loss == "dice")
       // dice loss!!
       {
         if (net_param.name().compare("deeplab_vgg16")==0)
           {
-            caffe::LayerParameter *shrink_param = find_layer_by_name(net_param,"label_shrink");
-            shrink_param->add_include();
-            caffe::NetStateRule *nsr = shrink_param->mutable_include(0);
-            nsr->set_phase(caffe::TRAIN);
-
-            int softml_pos = find_index_layer_by_type(net_param,"SoftmaxWithLoss");
-
-            std::string logits_from_loss = net_param.layer(softml_pos).bottom(0);
-            std::string agg_output = logits_from_loss + "_agg";
-            std::string sigmoid_output = agg_output + "_norm";
-
-            caffe::LayerParameter* conv_param = insert_layer_before(net_param, softml_pos++);
-            *conv_param->mutable_name() = "linear_aggregation";
-            *conv_param->mutable_type() = "Convolution";
-            conv_param->add_bottom(logits_from_loss);
-            conv_param->add_top(agg_output);
-            caffe::ConvolutionParameter* conv_param_param = conv_param->mutable_convolution_param();
-            conv_param_param->set_num_output(1);
-            conv_param_param->set_axis(1);
-            conv_param_param->add_kernel_size(1);
-
-            caffe::FillerParameter* filler_param = conv_param_param->mutable_weight_filler();
-            filler_param->set_std(0.01);
-            filler_param->set_type("gaussian");
-
-
-
-
-            caffe::LayerParameter* sigmoid_loss_param = insert_layer_before(net_param, softml_pos++);
-            sigmoid_loss_param->set_name("agg_norm");
-            sigmoid_loss_param->set_type("Sigmoid");
-            sigmoid_loss_param->add_bottom(agg_output);
-            sigmoid_loss_param->add_top(sigmoid_output);
-            sigmoid_loss_param->add_include();
-            nsr = sigmoid_loss_param->mutable_include(0);
-            nsr->set_phase(caffe::TRAIN);
-
-
-            // first new loss
-            caffe::LayerParameter *lossparam = net_param.mutable_layer(softml_pos);
-            *lossparam->mutable_type() = "DiceCoefLoss";
-            *lossparam->mutable_bottom(0) = sigmoid_output;
-            caffe::DiceCoefLossParameter* dclp = lossparam->mutable_dice_coef_loss_param();
-            dclp->set_generalization(caffe::DiceCoefLossParameter::NONE);
-
-            caffe::LayerParameter* final_interp_param = find_layer_by_name(net_param,"final_interp");
-            *final_interp_param->mutable_bottom(0) = agg_output;
-
-            caffe::LayerParameter* probt_param = find_layer_by_name(net_param, "probt");
-            *probt_param->mutable_type() = "Sigmoid";
-
-
-            // now work on deploy.txt
-            int final_interp_pos = find_index_layer_by_type(deploy_net_param, "Interp");
-            final_interp_param = deploy_net_param.mutable_layer(final_interp_pos);
-            *final_interp_param->mutable_bottom(0) = agg_output;
-
-            conv_param = insert_layer_before(deploy_net_param, final_interp_pos);
-            *conv_param->mutable_name() = "linear_aggregation";
-            *conv_param->mutable_type() = "Convolution";
-            conv_param->add_bottom(logits_from_loss);
-            conv_param->add_top(agg_output);
-            conv_param_param = conv_param->mutable_convolution_param();
-            conv_param_param->set_num_output(1);
-            conv_param_param->set_axis(1);
-            conv_param_param->add_kernel_size(1);
-            filler_param = conv_param_param->mutable_weight_filler();
-            filler_param->set_std(0.01);
-            filler_param->set_type("gaussian");
-
-
-            probt_param = find_layer_by_name(deploy_net_param, "probt");
-            *probt_param->mutable_type() = "Sigmoid";
+            update_protofiles_dice_deeplab_vgg16(net_param, deploy_net_param);
           }
         else if (net_param.name().compare("unet") == 0)
           {
-            int softml_pos = find_index_layer_by_type(net_param,"SoftmaxWithLoss");
-
-            std::string logits_from_loss = net_param.layer(softml_pos).bottom(0);
-            std::string agg_output = logits_from_loss + "_agg";
-            std::string sigmoid_output = agg_output + "_norm";
-
-            caffe::LayerParameter* conv_param = insert_layer_before(net_param, softml_pos++);
-            *conv_param->mutable_name() = "linear_aggregation";
-            *conv_param->mutable_type() = "Convolution";
-            conv_param->add_bottom(logits_from_loss);
-            conv_param->add_top(agg_output);
-            caffe::ConvolutionParameter* conv_param_param = conv_param->mutable_convolution_param();
-            conv_param_param->set_num_output(1);
-            conv_param_param->set_axis(1);
-            conv_param_param->add_kernel_size(1);
-
-            caffe::FillerParameter* filler_param = conv_param_param->mutable_weight_filler();
-            filler_param->set_std(0.5);
-            filler_param->set_type("gaussian");
-
-            caffe::LayerParameter* sigmoid_loss_param = insert_layer_before(net_param, softml_pos++);
-            sigmoid_loss_param->set_name("agg_norm");
-            sigmoid_loss_param->set_type("Sigmoid");
-            sigmoid_loss_param->add_bottom(agg_output);
-            sigmoid_loss_param->add_top(sigmoid_output);
-            sigmoid_loss_param->add_include();
-            caffe::NetStateRule *nsr = sigmoid_loss_param->mutable_include(0);
-            nsr->set_phase(caffe::TRAIN);
-
-            // first new loss
-            caffe::LayerParameter *lossparam = net_param.mutable_layer(softml_pos);
-            lossparam->clear_softmax_param();
-            *lossparam->mutable_type() = "DiceCoefLoss";
-            *lossparam->mutable_bottom(0) = sigmoid_output;
-            caffe::DiceCoefLossParameter* dclp = lossparam->mutable_dice_coef_loss_param();
-            dclp->set_generalization(caffe::DiceCoefLossParameter::NONE);
-
-            caffe::LayerParameter* probt_param = find_layer_by_name(net_param, "probt");
-            *probt_param->mutable_type() = "Sigmoid";
-            *probt_param->mutable_bottom(0) = agg_output;
-
-
-            int final_pred = find_index_layer_by_name(deploy_net_param, "pred");
-
-            conv_param = insert_layer_before(deploy_net_param, final_pred);
-            *conv_param->mutable_name() = "linear_aggregation";
-            *conv_param->mutable_type() = "Convolution";
-            conv_param->add_bottom(logits_from_loss);
-            conv_param->add_top(agg_output);
-            conv_param_param = conv_param->mutable_convolution_param();
-            conv_param_param->set_num_output(1);
-            conv_param_param->set_axis(1);
-            conv_param_param->add_kernel_size(1);
-            filler_param = conv_param_param->mutable_weight_filler();
-            filler_param->set_std(0.5);
-            filler_param->set_type("gaussian");
-
-
-            probt_param = find_layer_by_name(deploy_net_param, "pred");
-            *probt_param->mutable_type() = "Sigmoid";
-            *probt_param->mutable_bottom(0) = agg_output;
-
+           update_protofiles_dice_unet(net_param,deploy_net_param);
           }
 
       }
@@ -339,22 +206,7 @@ namespace dd
 	//TODO: should apply to all templates with images
 	if (!this->_inputc._db && !this->_inputc._segmentation && !this->_inputc._ctc && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
 	  {
-	    caffe::LayerParameter *lparam = net_param.mutable_layer(0);
-	    caffe::ImageDataParameter* image_data_parameter = lparam->mutable_image_data_param();
-	    lparam->set_type("ImageData");
-	    image_data_parameter->set_source(this->_inputc._root_folder);
-	    image_data_parameter->set_batch_size(this->_inputc.batch_size());
-	    image_data_parameter->set_shuffle(this->_inputc._shuffle);
-	    image_data_parameter->set_new_height(this->_inputc.height());
-	    image_data_parameter->set_new_width(this->_inputc.width());
-	    if (this->_inputc._multi_label)
-	      image_data_parameter->set_label_size(_nclasses);
-	    else
-	      image_data_parameter->set_label_size(1);
-	    if (this->_inputc._has_mean_file)
-	      image_data_parameter->set_mean_file("mean.binaryproto");
-	    lparam->clear_data_param();
-	    lparam->clear_transform_param();
+        update_protofile_imageDataLayer(net_param);
 	  }
 	
 	// input should be ok, now do the output
@@ -794,7 +646,7 @@ namespace dd
           {
             if (this->_inputc._segmentation)
               {
-                _loss = 1;
+                _loss = "dice";
               }
             else
               throw MLLibBadParamException("asked for vanilla dice loss without segmentation");
@@ -2568,7 +2420,7 @@ namespace dd
 	    if (lparam->has_convolution_param())
 	      {
             int num_output = lparam->mutable_convolution_param()->num_output();
-            if (_loss ==1 && lparam->name() == "linear_aggregation" && num_output == 1)
+            if (_loss == "dice" && lparam->name() == "linear_aggregation" && num_output == 1)
               continue;
             if (last_layer || num_output == 0)
               lparam->mutable_convolution_param()->set_num_output(_nclasses);
@@ -2712,31 +2564,31 @@ namespace dd
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::model_complexity(long int &flops,
-											     long int &params)
+                                                                                             long int &params)
   {
     for (size_t l=0;l<_net->layers().size();l++)
       {
-	const boost::shared_ptr<caffe::Layer<float>> &layer = _net->layers().at(l);
-	std::string lname = layer->layer_param().name();
-	std::string ltype = layer->layer_param().type();
-	std::vector<boost::shared_ptr<Blob<float>>> blblobs = layer->blobs();
-	const std::vector<caffe::Blob<float>*> &tlblobs = _net->top_vecs().at(l);
-	if (blblobs.empty())
-	  continue;
-	long int lcount = blblobs.at(0)->count();
-	long int lflops = 0;
-	if (ltype == "Convolution")
-	  {
-	    int dwidth = tlblobs.at(0)->width();
-	    int dheight = tlblobs.at(0)->height();
-	    lflops = lcount * dwidth * dheight;
-	  }
-	else
-	  {
-	    lflops = lcount;
-	  }
-	flops += lflops;
-	params += lcount;
+        const boost::shared_ptr<caffe::Layer<float>> &layer = _net->layers().at(l);
+        std::string lname = layer->layer_param().name();
+        std::string ltype = layer->layer_param().type();
+        std::vector<boost::shared_ptr<Blob<float>>> blblobs = layer->blobs();
+        const std::vector<caffe::Blob<float>*> &tlblobs = _net->top_vecs().at(l);
+        if (blblobs.empty())
+          continue;
+        long int lcount = blblobs.at(0)->count();
+        long int lflops = 0;
+        if (ltype == "Convolution")
+          {
+            int dwidth = tlblobs.at(0)->width();
+            int dheight = tlblobs.at(0)->height();
+            lflops = lcount * dwidth * dheight;
+          }
+        else
+          {
+            lflops = lcount;
+          }
+        flops += lflops;
+        params += lcount;
       }
     this->_logger->info("Net total flops={} / total params={}",flops,params);
   }
@@ -2776,6 +2628,173 @@ namespace dd
     this->_logger->info("detected network type is {}",mltype);
   }
   
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofiles_dice_deeplab_vgg16(caffe::NetParameter &net_param,caffe::NetParameter &deploy_net_param)
+  {
+    caffe::LayerParameter *shrink_param = find_layer_by_name(net_param,"label_shrink");
+    shrink_param->add_include();
+    caffe::NetStateRule *nsr = shrink_param->mutable_include(0);
+    nsr->set_phase(caffe::TRAIN);
+
+    int softml_pos = find_index_layer_by_type(net_param,"SoftmaxWithLoss");
+
+    std::string logits_from_loss = net_param.layer(softml_pos).bottom(0);
+    std::string agg_output = logits_from_loss + "_agg";
+    std::string sigmoid_output = agg_output + "_norm";
+
+    caffe::LayerParameter* conv_param = insert_layer_before(net_param, softml_pos++);
+    *conv_param->mutable_name() = "linear_aggregation";
+    *conv_param->mutable_type() = "Convolution";
+    conv_param->add_bottom(logits_from_loss);
+    conv_param->add_top(agg_output);
+    caffe::ConvolutionParameter* conv_param_param = conv_param->mutable_convolution_param();
+    conv_param_param->set_num_output(1);
+    conv_param_param->set_axis(1);
+    conv_param_param->add_kernel_size(1);
+
+    caffe::FillerParameter* filler_param = conv_param_param->mutable_weight_filler();
+    filler_param->set_std(0.01);
+    filler_param->set_type("gaussian");
+
+
+
+
+    caffe::LayerParameter* sigmoid_loss_param = insert_layer_before(net_param, softml_pos++);
+    sigmoid_loss_param->set_name("agg_norm");
+    sigmoid_loss_param->set_type("Sigmoid");
+    sigmoid_loss_param->add_bottom(agg_output);
+    sigmoid_loss_param->add_top(sigmoid_output);
+    sigmoid_loss_param->add_include();
+    nsr = sigmoid_loss_param->mutable_include(0);
+    nsr->set_phase(caffe::TRAIN);
+
+
+    // first new loss
+    caffe::LayerParameter *lossparam = net_param.mutable_layer(softml_pos);
+    *lossparam->mutable_type() = "DiceCoefLoss";
+    *lossparam->mutable_bottom(0) = sigmoid_output;
+    caffe::DiceCoefLossParameter* dclp = lossparam->mutable_dice_coef_loss_param();
+    dclp->set_generalization(caffe::DiceCoefLossParameter::NONE);
+
+    caffe::LayerParameter* final_interp_param = find_layer_by_name(net_param,"final_interp");
+    *final_interp_param->mutable_bottom(0) = agg_output;
+
+    caffe::LayerParameter* probt_param = find_layer_by_name(net_param, "probt");
+    *probt_param->mutable_type() = "Sigmoid";
+
+    // now work on deploy.txt
+    int final_interp_pos = find_index_layer_by_type(deploy_net_param, "Interp");
+    final_interp_param = deploy_net_param.mutable_layer(final_interp_pos);
+    *final_interp_param->mutable_bottom(0) = agg_output;
+
+    conv_param = insert_layer_before(deploy_net_param, final_interp_pos);
+    *conv_param->mutable_name() = "linear_aggregation";
+    *conv_param->mutable_type() = "Convolution";
+    conv_param->add_bottom(logits_from_loss);
+    conv_param->add_top(agg_output);
+    conv_param_param = conv_param->mutable_convolution_param();
+    conv_param_param->set_num_output(1);
+    conv_param_param->set_axis(1);
+    conv_param_param->add_kernel_size(1);
+    filler_param = conv_param_param->mutable_weight_filler();
+    filler_param->set_std(0.01);
+    filler_param->set_type("gaussian");
+
+
+    probt_param = find_layer_by_name(deploy_net_param, "probt");
+    *probt_param->mutable_type() = "Sigmoid";
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofiles_dice_unet(caffe::NetParameter &net_param,caffe::NetParameter &deploy_net_param)
+  {
+    int softml_pos = find_index_layer_by_type(net_param,"SoftmaxWithLoss");
+
+    std::string logits_from_loss = net_param.layer(softml_pos).bottom(0);
+    std::string agg_output = logits_from_loss + "_agg";
+    std::string sigmoid_output = agg_output + "_norm";
+
+    caffe::LayerParameter* conv_param = insert_layer_before(net_param, softml_pos++);
+    *conv_param->mutable_name() = "linear_aggregation";
+    *conv_param->mutable_type() = "Convolution";
+    conv_param->add_bottom(logits_from_loss);
+    conv_param->add_top(agg_output);
+    caffe::ConvolutionParameter* conv_param_param = conv_param->mutable_convolution_param();
+    conv_param_param->set_num_output(1);
+    conv_param_param->set_axis(1);
+    conv_param_param->add_kernel_size(1);
+
+    caffe::FillerParameter* filler_param = conv_param_param->mutable_weight_filler();
+    filler_param->set_std(0.5);
+    filler_param->set_type("gaussian");
+
+    caffe::LayerParameter* sigmoid_loss_param = insert_layer_before(net_param, softml_pos++);
+    sigmoid_loss_param->set_name("agg_norm");
+    sigmoid_loss_param->set_type("Sigmoid");
+    sigmoid_loss_param->add_bottom(agg_output);
+    sigmoid_loss_param->add_top(sigmoid_output);
+    sigmoid_loss_param->add_include();
+    caffe::NetStateRule *nsr = sigmoid_loss_param->mutable_include(0);
+    nsr->set_phase(caffe::TRAIN);
+
+    // first new loss
+    caffe::LayerParameter *lossparam = net_param.mutable_layer(softml_pos);
+    lossparam->clear_softmax_param();
+    *lossparam->mutable_type() = "DiceCoefLoss";
+    *lossparam->mutable_bottom(0) = sigmoid_output;
+    caffe::DiceCoefLossParameter* dclp = lossparam->mutable_dice_coef_loss_param();
+    dclp->set_generalization(caffe::DiceCoefLossParameter::NONE);
+
+    caffe::LayerParameter* probt_param = find_layer_by_name(net_param, "probt");
+    *probt_param->mutable_type() = "Sigmoid";
+    *probt_param->mutable_bottom(0) = agg_output;
+
+
+    int final_pred = find_index_layer_by_name(deploy_net_param, "pred");
+
+    conv_param = insert_layer_before(deploy_net_param, final_pred);
+    *conv_param->mutable_name() = "linear_aggregation";
+    *conv_param->mutable_type() = "Convolution";
+    conv_param->add_bottom(logits_from_loss);
+    conv_param->add_top(agg_output);
+    conv_param_param = conv_param->mutable_convolution_param();
+    conv_param_param->set_num_output(1);
+    conv_param_param->set_axis(1);
+    conv_param_param->add_kernel_size(1);
+    filler_param = conv_param_param->mutable_weight_filler();
+    filler_param->set_std(0.5);
+    filler_param->set_type("gaussian");
+
+
+    probt_param = find_layer_by_name(deploy_net_param, "pred");
+    *probt_param->mutable_type() = "Sigmoid";
+    *probt_param->mutable_bottom(0) = agg_output;
+  }
+
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofile_imageDataLayer(caffe::NetParameter &net_param)
+  {
+    caffe::LayerParameter *lparam = net_param.mutable_layer(0);
+    caffe::ImageDataParameter* image_data_parameter = lparam->mutable_image_data_param();
+    lparam->set_type("ImageData");
+    image_data_parameter->set_source(this->_inputc._root_folder);
+    image_data_parameter->set_batch_size(this->_inputc.batch_size());
+    image_data_parameter->set_shuffle(this->_inputc._shuffle);
+    image_data_parameter->set_new_height(this->_inputc.height());
+    image_data_parameter->set_new_width(this->_inputc.width());
+    if (this->_inputc._multi_label)
+      image_data_parameter->set_label_size(_nclasses);
+    else
+      image_data_parameter->set_label_size(1);
+    if (this->_inputc._has_mean_file)
+      image_data_parameter->set_mean_file("mean.binaryproto");
+    lparam->clear_data_param();
+    lparam->clear_transform_param();
+  }
+
+
   template class CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>;
   template class CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>;
   template class CaffeLib<TxtCaffeInputFileConn,SupervisedOutput,CaffeModel>;

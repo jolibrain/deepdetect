@@ -202,6 +202,12 @@ namespace dd
     private:
       void update_protofile_classes(caffe::NetParameter &net_param);
 
+      void update_protofiles_dice_deeplab_vgg16(caffe::NetParameter &net_param, caffe::NetParameter &deploy_net_param);
+      void update_protofiles_dice_unet(caffe::NetParameter &net_param, caffe::NetParameter &deploy_net_param);
+
+      void update_protofile_imageDataLayer(caffe::NetParameter &net_param);
+
+
       void update_protofile_finetune(caffe::NetParameter &net_param);
 
       caffe::LayerParameter* insert_layer_before
@@ -232,7 +238,7 @@ namespace dd
       std::vector<int> _gpuid = {0}; /**< GPU id. */
       int _nclasses = 0; /**< required, as difficult to acquire from Caffe's internals. */
       bool _regression = false; /**< whether the net acts as a regressor. */
-      int _loss = 0; /**< loss to use : 0 softmax+multinomail logistic or1: dice*/
+      std::string _loss = ""; /**< loss to use : 0 softmax+multinomail logistic or1: dice*/
       int _ntargets = 0; /**< number of classification or regression targets. */
       bool _autoencoder = false; /**< whether an autoencoder. */
       std::mutex _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as net is not re-instantiated. Use batches instead. */
