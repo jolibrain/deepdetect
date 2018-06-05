@@ -170,7 +170,7 @@ namespace dd
      * \brief collect current measures history into a data object
      * 
      */
-    void collect_measures_history(APIData &ad)
+    void collect_measures_history(APIData &ad) const
     {
       APIData meas_hist;
       std::lock_guard<std::mutex> lock(_meas_per_iter_mutex);
@@ -217,7 +217,7 @@ namespace dd
      * @param meas measure name
      * @return current value of measure
      */
-    double get_meas(const std::string &meas)
+    double get_meas(const std::string &meas) const
     {
       std::lock_guard<std::mutex> lock(_meas_mutex);
       auto hit = _meas.find(meas);
@@ -230,7 +230,7 @@ namespace dd
      * \brief collect current measures into a data object
      * @param ad data object to hold the measures
      */
-    void collect_measures(APIData &ad)
+    void collect_measures(APIData &ad) const
     {
       APIData meas;
       std::lock_guard<std::mutex> lock(_meas_mutex);
@@ -247,7 +247,7 @@ namespace dd
      * \brief render estimated remaining time
      * @param ad data object to hold the estimate
      */
-    void est_remain_time(APIData &out)
+    void est_remain_time(APIData &out) const
     {
       APIData meas = out.getobj("measure");
       if (meas.has("remain_time")){    
@@ -265,7 +265,6 @@ namespace dd
     TInputConnectorStrategy _inputc; /**< input connector strategy for channeling data in. */
     TOutputConnectorStrategy _outputc; /**< output connector strategy for passing results back to API. */
 
-    bool _has_train = false; /**< whether training is available. */
     bool _has_predict = true; /**< whether prediction is available. */
 
     TMLModel _mlmodel; /**< statistical model template. */
@@ -282,8 +281,8 @@ namespace dd
     std::shared_ptr<spdlog::logger> _logger; /**< mllib logger. */
     
   protected:
-    std::mutex _meas_per_iter_mutex; /**< mutex over measures history. */
-    std::mutex _meas_mutex; /** mutex around current measures. */
+    mutable std::mutex _meas_per_iter_mutex; /**< mutex over measures history. */
+    mutable std::mutex _meas_mutex; /** mutex around current measures. */
   };  
   
 }

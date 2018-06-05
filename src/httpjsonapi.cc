@@ -338,7 +338,8 @@ public:
       {
 	if (rscs.at(0) == _rsc_info)
 	  {
-	    fillup_response(response,_hja->info(),access_log,code,tstart,accept_encoding);
+	    std::string jstr = dd::uri_query_to_json(req_query);
+	    fillup_response(response,_hja->info(jstr),access_log,code,tstart,accept_encoding);
 	  }
 	else if (rscs.at(0) == _rsc_services)
 	  {
