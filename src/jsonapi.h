@@ -88,7 +88,7 @@ namespace dd
 
     // resources
     // return a JSON document for every API call
-    JDoc info() const;
+    JDoc info(const std::string &jstr) const;
     JDoc service_create(const std::string &sname, const std::string &jstr);
     JDoc service_status(const std::string &sname);
     JDoc service_delete(const std::string &sname,
@@ -112,14 +112,15 @@ namespace dd
   class visitor_info : public mapbox::util::static_visitor<APIData>
   {
   public:
-    visitor_info() {}
+    visitor_info(const bool &status):_status(status) {}
     ~visitor_info() {}
 
     template<typename T>
       APIData operator() (T &mllib)
       {
-	return mllib.info();
+	return mllib.info(_status);
       }
+    bool _status = false;
   };
 
   /**

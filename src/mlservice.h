@@ -155,16 +155,60 @@ namespace dd
      * \brief get info about the service
      * @return info data object
      */
-    APIData info() const
+    APIData info(const bool &status=false) const
     {
       APIData ad;
-      ad.add("name",_sname);
-      ad.add("description",_description);
-      ad.add("mllib",this->_libname);
+      if (!status)
+	{
+	  ad.add("name",_sname);
+	  ad.add("description",_description);
+	  ad.add("mllib",this->_libname);
+	  if (this->_has_predict)
+	    ad.add("predict",true);
+	  else ad.add("training",true);
+	}
+      else
+	{
+	  APIData ad = info(false);
+	  std::vector<APIData> vad;
+	  std::lock_guard<std::mutex> lock(_tjobs_mutex);
+	  auto hit = _training_jobs.begin();
+	  while(hit!=_training_jobs.end())
+	    {
+	      APIData jad;
+	      jad.add("job",(*hit).first);
+	      int jstatus = (*hit).second._status;
+	      if (jstatus == 0)
+		jad.add("status","not started");
+	      else if (jstatus == 1)
+		{
+		  jad.add("status","running");
+		  APIData tjob;
+		  std::future_status status = (*hit).second._ft.wait_for(std::chrono::seconds(0));
+		  if (status == std::future_status::timeout)
+		    {
+		      this->collect_measures(jad);
+		      this->est_remain_time(jad);
+		      std::chrono::time_point<std::chrono::system_clock> trun = std::chrono::system_clock::now();
+		      jad.add("time",std::chrono::duration_cast<std::chrono::seconds>(trun-(*hit).second._tstart).count());
+		    }
+		}
+	      else if (jstatus == 2)
+		jad.add("status","finished");
+	      vad.push_back(jad);
+	      ++hit;
+	    }
+	  ad.add("jobs",vad);
+	  if (this->_has_predict)
+	    {
+	      ad.add("repository",this->_inputc._model_repo);
+	      ad.add("width",this->_inputc.width());
+	      ad.add("height",this->_inputc.height());
+	    }
+	}
       return ad;
     }
     
-    // 
     /**
      * \brief get status of the service
      *        To be surcharged in related classes
@@ -172,10 +216,7 @@ namespace dd
      */
     APIData status()
     {
-      APIData ad;
-      ad.add("name",_sname);
-      ad.add("description",_description);
-      ad.add("mllib",this->_libname);
+      APIData ad = info(false);
       std::vector<APIData> vad;
       std::lock_guard<std::mutex> lock(_tjobs_mutex);
       auto hit = _training_jobs.begin();
@@ -214,6 +255,7 @@ namespace dd
 	  std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();
 	  ++_tjobs_counter;
 	  int local_tcounter = _tjobs_counter;
+	  this->_has_predict = false;
 	  _training_jobs.emplace(local_tcounter,
 				 std::move(tjob(std::async(std::launch::async,
 							   [this,ad,local_tcounter]
@@ -291,7 +333,10 @@ namespace dd
 		  _training_out.erase(ohit);
 		}
 	      if (st == 0)
-		out.add("status","finished");
+		{
+		  out.add("status","finished");
+		  this->_has_predict = true;
+		}
 	      else out.add("status","unknown error");
 	      //this->collect_measures(out); // XXX: beware if there was a queue, since the job has finished, there might be a new one running.
 	      APIData jmrepo;
@@ -383,7 +428,7 @@ namespace dd
     std::string _sname; /**< service name. */
     std::string _description; /**< optional description of the service. */
 
-    std::mutex _tjobs_mutex; /**< mutex around training jobs. */
+    mutable std::mutex _tjobs_mutex; /**< mutex around training jobs. */
     std::atomic<int> _tjobs_counter = {0}; /**< training jobs counter. */
     std::unordered_map<int,tjob> _training_jobs; // XXX: the futures' dtor blocks if the object is being terminated
     std::unordered_map<int,APIData> _training_out;
