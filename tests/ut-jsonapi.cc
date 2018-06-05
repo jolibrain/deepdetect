@@ -51,7 +51,7 @@ TEST(jsonapi,service_delete)
   jstr = "{\"clear\":\"mem\"}";
   std::string jdelstr = japi.jrender(japi.service_delete(sname,jstr));
   ASSERT_EQ(ok_str,jdelstr);
-  std::string jinfostr = japi.jrender(japi.info());
+  std::string jinfostr = japi.jrender(japi.info(""));
   JDoc jd;
   jd.Parse(jinfostr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
@@ -119,7 +119,7 @@ TEST(jsonapi,info)
   ASSERT_EQ(created_str,joutstr);
 
   // info
-  std::string jinfostr = japi.jrender(japi.info());
+  std::string jinfostr = japi.jrender(japi.info(""));
   //std::cout << "jinfostr=" << jinfostr << std::endl;
   JDoc jd;
   jd.Parse(jinfostr.c_str());

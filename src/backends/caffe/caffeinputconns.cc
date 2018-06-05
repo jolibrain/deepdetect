@@ -421,7 +421,7 @@ namespace dd
 	  {
 	    std::string tfilename;
 	    int tsize = 0;
-	    in = std::ifstream(_model_repo + "/testing.txt");
+        std::ifstream in(_model_repo + "/testing.txt");
 	    while(getline(in,tfilename))
 	      {
 		H5::H5File tfile(tfilename, H5F_ACC_RDONLY);

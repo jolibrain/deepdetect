@@ -593,6 +593,7 @@ TEST(caffelib,configure_resnet_template_n_nt)
   ad.add("nclasses",nclasses);
   
   CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel> *caff = new CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(CaffeModel());
+  caff->_logger = spdlog::stdout_logger_mt("test");
   caff->configure_resnet_template(ad,ImgCaffeInputFileConn(),net_param,deploy_net_param);
   
   caffe::WriteProtoToTextFile(net_param,oresnet_file);
@@ -600,7 +601,7 @@ TEST(caffelib,configure_resnet_template_n_nt)
   bool succ = caffe::ReadProtoFromTextFile(oresnet_file,&net_param);
   ASSERT_TRUE(succ);
 
-  ASSERT_EQ(274,net_param.layer_size());
-  ASSERT_EQ(272,deploy_net_param.layer_size());
+  ASSERT_EQ(278,net_param.layer_size());
+  ASSERT_EQ(276,deploy_net_param.layer_size());
   delete caff;
 }
