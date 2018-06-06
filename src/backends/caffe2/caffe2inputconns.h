@@ -69,6 +69,9 @@ namespace dd
     }
     ~ImgCaffe2InputFileConn() {}
 
+    inline int height() const { return _height; }
+    inline int width() const { return _width; }
+
     void init(const APIData &ad);
 
     inline int channels() const {
