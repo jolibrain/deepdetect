@@ -315,6 +315,13 @@ Simply specify the option via cmake command line:
 cmake .. -DUSE_TSNE=ON
 ```
 
+#### Build with Caffe2 support
+
+Specify the option via cmake:
+```
+cmake .. -DUSE_CAFFE2=ON
+```
+
 #### Build with similarity search support
 
 Specify the following option via cmake:
