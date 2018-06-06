@@ -347,11 +347,15 @@ namespace dd
 		return;
 	      }
 	      // create db
-	      images_to_db(_uris,_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname);
+	      if (!this->_unchanged_data)
+		images_to_db(_uris,_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname);
+	      else images_to_db(_uris,_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname,
+				"lmdb",false,"");
 	      
 	      // compute mean of images, not forcely used, depends on net, see has_mean_file
-	      compute_images_mean(_model_repo + "/" + _dbname,
-				  _model_repo + "/" + _meanfname);
+	      if (!this->_unchanged_data)
+		compute_images_mean(_model_repo + "/" + _dbname,
+				    _model_repo + "/" + _meanfname);
 	      
 	      // class weights if any
 	      write_class_weights(_model_repo,ad_mllib);

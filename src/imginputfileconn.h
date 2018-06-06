@@ -74,7 +74,9 @@ namespace dd
     void decode(const std::string &str)
       {
 	std::vector<unsigned char> vdat(str.begin(),str.end());
-	cv::Mat img = cv::Mat(cv::imdecode(cv::Mat(vdat,true),_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR));
+	cv::Mat img = cv::Mat(cv::imdecode(cv::Mat(vdat,true),
+                                     _unchanged_data ? CV_LOAD_IMAGE_UNCHANGED :
+                                     (_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR)));
 	_imgs_size.push_back(std::pair<int,int>(img.rows,img.cols));
     cv::Mat rimg;
 	if (_width == 0 || _height == 0) {
@@ -113,7 +115,8 @@ namespace dd
     // data acquisition
     int read_file(const std::string &fname)
     {
-      cv::Mat img = cv::imread(fname,_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR);
+      cv::Mat img = cv::imread(fname, _unchanged_data ? CV_LOAD_IMAGE_UNCHANGED :
+                               (_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR));
       if (img.empty())
 	{
 	  _logger->error("empty image {}",fname);
@@ -222,7 +225,8 @@ namespace dd
       _labels.reserve(lfiles.size());
       for (std::pair<std::string,int> &p: lfiles)
 	{
-	  cv::Mat img = cv::imread(p.first,_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR);
+	  cv::Mat img = cv::imread(p.first, _unchanged_data ? CV_LOAD_IMAGE_UNCHANGED :
+                             (_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR));
 	  _imgs_size.push_back(std::pair<int,int>(img.rows,img.cols));
 	  cv::Mat rimg;
 
@@ -263,6 +267,7 @@ namespace dd
     std::vector<std::pair<int,int>> _imgs_size;
     bool _bw = false;
     bool _b64 = false;
+    bool _unchanged_data = false;
     std::vector<int> _labels;
     int _width = 224;
     int _height = 224;
@@ -276,7 +281,7 @@ namespace dd
   ImgInputFileConn()
     :InputConnectorStrategy(){}
     ImgInputFileConn(const ImgInputFileConn &i)
-      :InputConnectorStrategy(i),_width(i._width),_height(i._height),_bw(i._bw),_mean(i._mean),_has_mean_scalar(i._has_mean_scalar) {}
+      :InputConnectorStrategy(i),_width(i._width),_height(i._height),_bw(i._bw),_unchanged_data(i._unchanged_data),_mean(i._mean),_has_mean_scalar(i._has_mean_scalar) {}
     ~ImgInputFileConn() {}
 
     void init(const APIData &ad)
@@ -293,6 +298,8 @@ namespace dd
 	_height = ad.get("height").get<int>();
       if (ad.has("bw"))
 	_bw = ad.get("bw").get<bool>();
+      if (ad.has("unchanged_data"))
+        _unchanged_data = ad.get("unchanged_data").get<bool>();
       if (ad.has("shuffle"))
 	_shuffle = ad.get("shuffle").get<bool>();
       if (ad.has("seed"))
@@ -321,7 +328,7 @@ namespace dd
     
     int feature_size() const
     {
-      if (_bw) return _width*_height;
+      if (_bw || _unchanged_data) return _width*_height; // XXX: only valid for single channels
       else return _width*_height*3; // RGB
     }
 
@@ -358,6 +365,7 @@ namespace dd
 	  std::string u = _uris.at(i);
 	  DataEl<DDImg> dimg;
 	  dimg._ctype._bw = _bw;
+	  dimg._ctype._unchanged_data = _unchanged_data;
 	  dimg._ctype._width = _width;
 	  dimg._ctype._height = _height;
 	  try
@@ -463,6 +471,7 @@ namespace dd
     int _width = 224;
     int _height = 224;
     bool _bw = false; /**< whether to convert to black & white. */
+    bool _unchanged_data = false; /**< IMREAD_UNCHANGED flag. */
     double _test_split = 0.0; /**< auto-split of the dataset. */
     int _seed = -1; /**< shuffling seed. */
     cv::Scalar _mean; /**< mean image pixels, to be subtracted from images. */
