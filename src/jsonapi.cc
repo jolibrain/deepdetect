@@ -75,7 +75,7 @@ namespace dd
 	std::vector<std::string> elts = dd_utils::split(line,';');
 	std::string api_call = elts.at(0);
 	if ((api_call == "service_create" && elts.size() != 3)
-	    || api_call == "service_predict" && elts.size() != 2)
+	    || (api_call == "service_predict" && elts.size() != 2))
 	  {
 	    _logger->error("Error parsing autostart JSON file {} line {}: wrong number of elements",autostart_file,lines);
 	    return dd_bad_request_400();
