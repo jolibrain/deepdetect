@@ -1275,8 +1275,9 @@ namespace dd
     {
       const double eps = 1e-6;
       const int num = tp.size();
+      if (num == 0 || num_pos == 0)
+	return 0.0;
       double ap = 0.0;
-      //std::cerr << "num=" << num << std::endl;
       std::vector<int> tp_cumsum;
       std::vector<int> fp_cumsum;
       cumsum_pair(tp, tp_cumsum); // tp cumsum
@@ -1288,8 +1289,6 @@ namespace dd
       for (int i=0;i<num;i++)
 	rec.push_back(static_cast<double>(tp_cumsum[i])/num_pos);
 
-      //std::cerr << "prec size=" << prec.size() << " / rec size=" << rec.size() << std::endl;
-      
       // voc12, ilsvrc style ap
       float cur_rec = rec.back();
       float cur_prec = prec.back();
@@ -1303,7 +1302,6 @@ namespace dd
 	  cur_rec = rec[i];
 	}
       ap += cur_rec * cur_prec;
-      //std::cerr << "ap=" << ap << std::endl;
       return ap;
     }
     
@@ -1315,7 +1313,7 @@ namespace dd
       // extract tp, fp, labels
       APIData bad = ad.getobj("0");
       int pos_count = ad.get("pos_count").get<int>();
-      //std::cerr << "measures pos_count=" << pos_count << std::endl;
+      std::cerr << "measures pos_count=" << pos_count << std::endl;
       for (int i=0;i<pos_count;i++)
 	{
 	  std::vector<APIData> vbad = bad.getv(std::to_string(i));
@@ -1345,10 +1343,12 @@ namespace dd
 		}
 	      
 	      APs[label] = compute_ap(tp,fp,num_pos);
+	      //std::cerr << "ap for label " << label << "=" << APs[label] << std::endl;
 	      mAP += APs[label];
 	    }
+	  mAP/=static_cast<double>(vbad.size());
 	}
-      return mAP/static_cast<double>(pos_count);
+      return mAP;
     }
     
     // measure: AUC

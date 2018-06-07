@@ -501,37 +501,40 @@ namespace dd
 												   const APIData &ad,
 												   const TInputConnectorStrategy &inputc)
   {
-    //TODO:
     //- load prototxt
     caffe::NetParameter net_param,deploy_net_param;
     caffe::ReadProtoFromTextFile(dest_net,&net_param);
     caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
-    
+
     //- if finetuning, change the proper layer names
     std::string postfix = "_ftune";
+    const bool finetune = (ad.has("finetuning") && ad.get("finetuning").get<bool>());
     int k = net_param.layer_size();
     for (int l=0;l<k;l++)
       {
 	caffe::LayerParameter *lparam = net_param.mutable_layer(l);
-	if (lparam->name().find("mbox_conf") != std::string::npos
-	    || lparam->name().find("mbox_loc") != std::string::npos)
+	if (finetune)
 	  {
-	    lparam->set_name(lparam->name() + postfix);
-	  }
-	for (int t=0;t<lparam->top_size();t++)
-	  {
-	    if (lparam->top(t).find("_conf") != std::string::npos
-		|| lparam->top(t).find("_loc") != std::string::npos)
+	    if (lparam->name().find("mbox_conf") != std::string::npos
+		|| lparam->name().find("mbox_loc") != std::string::npos)
 	      {
-		lparam->set_top(t,lparam->top(t) + postfix);
+		lparam->set_name(lparam->name() + postfix);
 	      }
-	  }
-	for (int t=0;t<lparam->bottom_size();t++)
-	  {
-	    if (lparam->bottom(t).find("_conf") != std::string::npos
-		|| lparam->bottom(t).find("_loc") != std::string::npos)
+	    for (int t=0;t<lparam->top_size();t++)
 	      {
-		lparam->set_bottom(t,lparam->bottom(t) + postfix);
+		if (lparam->top(t).find("_conf") != std::string::npos
+		    || lparam->top(t).find("_loc") != std::string::npos)
+		  {
+		    lparam->set_top(t,lparam->top(t) + postfix);
+		  }
+	      }
+	    for (int t=0;t<lparam->bottom_size();t++)
+	      {
+		if (lparam->bottom(t).find("_conf") != std::string::npos
+		    || lparam->bottom(t).find("_loc") != std::string::npos)
+		  {
+		    lparam->set_bottom(t,lparam->bottom(t) + postfix);
+		  }
 	      }
 	  }
 	//- set correct layer parameters based on nclasses
@@ -539,13 +542,17 @@ namespace dd
 	  {
 	    lparam->mutable_multibox_loss_param()->set_num_classes(_nclasses);
 	  }
-	if (lparam->name() == "detection_out")
+	else if (lparam->name() == "detection_out")
 	  {
 	    lparam->mutable_detection_output_param()->set_num_classes(_nclasses);
 	  }
 	else if (lparam->name() == "detection_eval")
 	  {
 	    lparam->mutable_detection_evaluate_param()->set_num_classes(_nclasses);
+	  }
+	else if (lparam->name().find("mbox_conf_reshape") != std::string::npos)
+	  {
+	    lparam->mutable_reshape_param()->mutable_shape()->set_dim(2,_nclasses);
 	  }
       }
 	
@@ -560,11 +567,55 @@ namespace dd
 	    lparam->mutable_convolution_param()->set_num_output(num_priors_per_location * _nclasses);
 	  }
       }
+
+    k = deploy_net_param.layer_size();
+    for (int l=0;l<k;l++)
+      {
+	caffe::LayerParameter *lparam = deploy_net_param.mutable_layer(l);
+	if (finetune)
+	  {
+	    if (lparam->name().find("mbox_conf") != std::string::npos
+		|| lparam->name().find("mbox_loc") != std::string::npos)
+	      {
+		lparam->set_name(lparam->name() + postfix);
+	      }
+	    for (int t=0;t<lparam->top_size();t++)
+	      {
+		if (lparam->top(t).find("_conf") != std::string::npos
+		    || lparam->top(t).find("_loc") != std::string::npos)
+		  {
+		    lparam->set_top(t,lparam->top(t) + postfix);
+		  }
+	      }
+	    for (int t=0;t<lparam->bottom_size();t++)
+	      {
+		if (lparam->bottom(t).find("_conf") != std::string::npos
+		    || lparam->bottom(t).find("_loc") != std::string::npos)
+		  {
+		    lparam->set_bottom(t,lparam->bottom(t) + postfix);
+		  }
+	      }
+	  }
+	//- set correct layer parameters based on nclasses
+	if (lparam->name().find("mbox_conf") != std::string::npos
+	    && lparam->type() == "Convolution")
+	  {
+	    int num_priors_per_location = lparam->mutable_convolution_param()->num_output() / 2;
+	    lparam->mutable_convolution_param()->set_num_output(num_priors_per_location * _nclasses);
+	  }
+	else if (lparam->name() == "detection_out")
+	  {
+	    lparam->mutable_detection_output_param()->set_num_classes(_nclasses);
+	  }
+	else if (lparam->name().find("mbox_conf_reshape") != std::string::npos)
+	  {
+	    lparam->mutable_reshape_param()->mutable_shape()->set_dim(2,_nclasses);
+	  }
+      }
     
     //- write it down
     caffe::WriteProtoToTextFile(net_param,dest_net);
     caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
-    
   }
   
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -1329,6 +1380,7 @@ namespace dd
 			  float score = result_vec[k * 5 + 2];
 			  int tp = static_cast<int>(result_vec[k * 5 + 3]);
 			  int fp = static_cast<int>(result_vec[k * 5 + 4]);
+			  //std::cerr << "tp=" << tp << " / fp=" << fp << std::endl;
 			  if (tp == 0 && fp == 0) {
 			    // Ignore such case. It happens when a detection bbox is matched to
 			    // a difficult gt bbox and we don't evaluate on difficult gt bbox.
@@ -2114,10 +2166,8 @@ namespace dd
     test_batch_size = inputc.test_batch_size();
     test_iter = -1;
     fix_batch_size(ad,inputc,user_batch_size,batch_size,test_batch_size,test_iter);
-    std::cerr << "test_iter=" << test_iter << std::endl;
     if (test_iter != -1) // has changed
       {
-	std::cerr << "setting test_iter\n";
 	sp.set_test_iter(0,test_iter);
       }
     
@@ -2639,7 +2689,6 @@ namespace dd
 	  {
 	    batch_size = user_batch_size;
 	    test_iter = std::max(inputc.test_batch_size() / test_batch_size,1);
-	    std::cerr << "inputc test_batch_size=" << inputc.test_batch_size() << " / test_batch_size=" << test_batch_size << std::endl;
 	  }
 	    
 	//debug

@@ -643,8 +643,6 @@ namespace dd
     // bypass creation if dbs already exist
     if (fileops::file_exists(traindbname))
       {
-	//TODO: count ? ...
-	//TODO: re-read mean values
 	std::string line;
 	std::ifstream fin_mean(_model_repo + "/mean_values.txt");
 	_mean_values.clear();
@@ -701,7 +699,7 @@ namespace dd
     std::ifstream tin(filelists.at(1));
     if (!tin.is_open())
       throw InputConnectorBadParamException("failed opening testing data file " + filelists.at(1));
-    _logger->info("reading testing data file {}",filelists.at(0));
+    _logger->info("reading testing data file {}",filelists.at(1));
     std::vector<std::pair<std::string,std::string>> tlines;
     clines = 0;
     while(std::getline(tin,line))
@@ -735,8 +733,7 @@ namespace dd
 
     // Storing to db
     AnnotatedDatum_AnnotationType type = AnnotatedDatum_AnnotationType_BBOX; 
-    AnnotatedDatum anno_datum;
-    Datum* datum = anno_datum.mutable_datum();
+
     int count = 0;
     int data_size = 0;
     bool data_size_initialized = false;
@@ -749,31 +746,35 @@ namespace dd
     
     //TODO: read map file -> we don't need it when using txt format
     std::map<std::string, int> name_to_label;
-
+    std::string enc = encode_type;
+    
     for (size_t line_id = 0; line_id < lines.size(); ++line_id)
       {
-	std::string enc = encode_type;
+	AnnotatedDatum anno_datum;
+	Datum* datum = anno_datum.mutable_datum();
 	if (encoded && !enc.size())
 	  {
 	    // Guess the encoding type from the file name
 	    string fn = lines[line_id].first;
 	    size_t p = fn.rfind('.');
 	    if ( p == fn.npos )
-	      LOG(WARNING) << "Failed to guess the encoding of '" << fn << "'";
+	      _logger->warn("failed to guess the encoding of '{}",fn);
 	    enc = fn.substr(p);
 	    std::transform(enc.begin(), enc.end(), enc.begin(), ::tolower);
+	    _logger->info("using encoding {}",enc);
 	  }
 	std::string filename = lines[line_id].first;
-
 	std::string labelname = lines[line_id].second;
-	status = ReadRichImageToAnnotatedDatum(filename, labelname, _height,
-					       _width, min_dim, max_dim, !_bw, enc, type, label_type,
+	int width = 0; // do not resize images
+	int height = 0;
+	status = ReadRichImageToAnnotatedDatum(filename, labelname, height,
+					       width, min_dim, max_dim, !_bw, enc, type, label_type,
 					       name_to_label, &anno_datum);
 	anno_datum.set_type(AnnotatedDatum_AnnotationType_BBOX);
 	if (status == false)
 	  {
-	    _logger->warn("failed to read {}",lines[line_id].first);
-	    continue;
+	    _logger->error("failed to read {} or {}",lines[line_id].first,lines[line_id].second);
+	    throw InputConnectorBadParamException("failed to read " + lines[line_id].first + " or " + lines[line_id].second + " at line " + std::to_string(line_id));
 	  }
 	if (check_size)
 	  {
