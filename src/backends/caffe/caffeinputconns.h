@@ -186,12 +186,9 @@ namespace dd
 	      throw;
 	    }
 	  float *mean = nullptr;
-	  if (this->_has_mean_scalar)
+	  std::string meanfullname = _model_repo + "/" + _meanfname;
+	  if (_data_mean.count() == 0 && _has_mean_file)
 	    {
-	    }
-	  else if (_data_mean.count() == 0 && _has_mean_file)
-	    {
-	      std::string meanfullname = _model_repo + "/" + _meanfname;
 	      caffe::BlobProto blob_proto;
 	      caffe::ReadProtoFromBinaryFile(meanfullname.c_str(),&blob_proto);
 	      _data_mean.FromProto(blob_proto);
@@ -207,12 +204,10 @@ namespace dd
 	  for (int i=0;i<(int)this->_images.size();i++)
 	    {      
 	      caffe::Datum datum;
-	      if (this->_has_mean_scalar)
-		cv::subtract(this->_mean,this->_images.at(i),this->_images.at(i));
 	      caffe::CVMatToDatum(this->_images.at(i),&datum);
 	      if (!_test_labels.empty())
 		datum.set_label(_test_labels.at(i));
-	      if (_data_mean.count() != 0 && !this->_has_mean_scalar)
+	      if (_data_mean.count() != 0)
 		{
 		  int height = datum.height();
 		  int width = datum.width();
