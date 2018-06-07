@@ -273,7 +273,7 @@ namespace dd {
 
     UPDATE_GPU_STATE(ad_mllib);
 
-    if (_state.has_changed()) {
+    if (_state.changed()) {
       try {
 	create_model(); // Reloading from the disk and reconfiguring.
       } catch (...) {

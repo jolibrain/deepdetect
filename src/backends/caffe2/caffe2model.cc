@@ -53,7 +53,7 @@ namespace dd
   int Caffe2Model::read_from_repository(const std::string &repo,
 					const std::shared_ptr<spdlog::logger> &logger)
   {
-    static const std::map<std::string, std::string *> names =
+    std::map<std::string, std::string *> names =
       {
 	{ "predict_net.pb", &_predict },
 	{ "init_net.pb", &_init },

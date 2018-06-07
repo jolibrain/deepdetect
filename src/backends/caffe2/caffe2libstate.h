@@ -22,33 +22,38 @@
 #ifndef CAFFE2LIBSTATE_H
 #define CAFFE2LIBSTATE_H
 
-#define REGISTER_CONFIG(type, name, def)		\
-							\
-private:						\
-							\
- type _##name##_default = def;				\
- type _##name##_current = def;				\
- type _##name##_last;					\
- inline bool name##_changed() const {			\
-   return _##name##_last != _##name##_current;		\
- }							\
- void backup_##name() {					\
-   _##name##_last = _##name##_current;			\
- }							\
- void reset_##name() {					\
-   _##name##_current = _##name##_default;		\
- }							\
-							\
-public:							\
-							\
- const type &name() const {				\
-   return _##name##_current;				\
- }							\
- void set_##name(const type &value) {			\
-   _##name##_current = value;				\
- }							\
- void set_default_##name(const type &value) {		\
-   _##name##_default = value;				\
+#define REGISTER_CONFIG(type, name, def)				\
+									\
+private:								\
+									\
+ type _##name##_default = def;						\
+ type _##name##_current = def;						\
+ type _##name##_last;							\
+ bool name##_changed() const {						\
+   return _##name##_last != _##name##_current;				\
+ }									\
+ void name##_backup() {							\
+   _##name##_last = _##name##_current;					\
+ }									\
+ void name##_reset() {							\
+   _##name##_current = _##name##_default;				\
+ }									\
+ void init_##name() {							\
+   _changed.push_back(&Caffe2LibState::name##_changed);			\
+   _backup.push_back(&Caffe2LibState::name##_backup);			\
+   _reset.push_back(&Caffe2LibState::name##_reset);			\
+ }									\
+									\
+public:						                        \
+									\
+ const type &name() const {						\
+   return _##name##_current;						\
+ }									\
+ void set_##name(const type &value) {					\
+   _##name##_current = value;						\
+ }									\
+ void set_default_##name(const type &value) {				\
+   _##name##_default = value;						\
  }
 
 namespace dd {
@@ -68,21 +73,35 @@ namespace dd {
   private:
 
     bool _force_init = true;
+    std::vector<bool(Caffe2LibState::*)()const> _changed;
+    std::vector<void(Caffe2LibState::*)()> _backup;
+    std::vector<void(Caffe2LibState::*)()> _reset;
+
+    // Declare here every parameter needed to configure a net
+    // (type, name, default value)
     REGISTER_CONFIG(bool, is_gpu, false);
     REGISTER_CONFIG(bool, is_training, false);
     REGISTER_CONFIG(std::vector<int>, gpu_ids, {0});
 
   public:
 
+    // For every declared parameter call the corresponding init function
+    Caffe2LibState() {
+      init_is_gpu();
+      init_is_training();
+      init_gpu_ids();
+    }
+
     /**
      * \brief Is the current configuration different from the last backuped one ?
      * @return True they differ and False otherwise
      */
-    inline bool has_changed() const {
-      return _force_init
-	|| is_gpu_changed()
-	|| is_training_changed()
-	|| gpu_ids_changed();
+    bool changed() const {
+      bool b = _force_init;
+      for (auto f : _changed) {
+	b |= (this->*f)();
+      }
+      return b;
     }
 
     /**
@@ -92,7 +111,7 @@ namespace dd {
      *        (e.g. an unexpected error occured during the initialization)
      *        and they need to be reconfigured before being used.
      */
-    inline void force_init() {
+    void force_init() {
       _force_init = true;
     }
 
@@ -101,18 +120,18 @@ namespace dd {
      */
     void backup() {
       _force_init = false;
-      backup_is_gpu();
-      backup_is_training();
-      backup_gpu_ids();
+      for (auto f : _backup) {
+	(this->*f)();
+      }
     }
 
     /**
      * \brief Set current configuration to the default one.
      */
     void reset() {
-      reset_is_gpu();
-      reset_is_training();
-      reset_gpu_ids();
+      for (auto f : _reset) {
+	(this->*f)();
+      }
     }
 
   };
