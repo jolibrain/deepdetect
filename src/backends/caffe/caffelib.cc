@@ -1761,7 +1761,7 @@ namespace dd
 		  std::ostringstream oss;
 		  for (auto l: pred_label_seq)
 		    {
-		      outstr += char(std::atoi(this->_mlmodel.get_hcorresp(l).c_str()));
+		      outstr += this->_mlmodel.get_hcorresp(l).c_str();
 		      //utf8::append(this->_mlmodel.get_hcorresp(l),outstr);
 		    }
 		  std::vector<std::string> cats;
