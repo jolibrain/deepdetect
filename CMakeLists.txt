@@ -57,6 +57,22 @@ configure_file(
 if (USE_TF)
   set(TENSORFLOW_CC_DIR ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/)
   set(EIGEN3_INCLUDE_DIR ${TENSORFLOW_CC_DIR}/tensorflow/tensorflow/contrib/makefile/downloads/eigen/)
+elseif (USE_CAFFE2)
+  set(EIGEN3_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/eigen3-complete)
+  set(EIGEN3_INSTALL ${CMAKE_BINARY_DIR}/eigen3/install)
+  list(APPEND EIGEN3_FLAGS
+    -DCMAKE_INSTALL_PREFIX=${EIGEN3_INSTALL}
+    ${CMAKE_BINARY_DIR}/eigen3/src/eigen3
+    )
+  ExternalProject_Add(
+    eigen3
+    PREFIX eigen3
+    GIT_REPOSITORY https://github.com/eigenteam/eigen-git-mirror
+    UPDATE_DISCONNECTED 1
+    CONFIGURE_COMMAND test -f ${EIGEN3_COMPLETE} && echo Skipping || cmake ${EIGEN3_FLAGS}
+    INSTALL_COMMAND test -f ${EIGEN3_COMPLETE} && echo Skipping || make install
+    )
+  set(EIGEN3_INCLUDE_DIR ${EIGEN3_INSTALL}/include/eigen3)
 else()
    find_package(PkgConfig)
    pkg_search_module(Eigen3 REQUIRED eigen3)
@@ -112,6 +128,8 @@ if (USE_CAFFE2)
     )
 
   list(APPEND PYTORCH_FLAGS
+
+    -DCMAKE_PREFIX_PATH=${EIGEN3_INSTALL}
 
     -DUSE_OPENMP=ON
     -DUSE_MPI=OFF
@@ -363,6 +381,7 @@ if (USE_TF)
 endif()
 
 if (USE_CAFFE2)
+  add_dependencies(pytorch eigen3)
   add_dependencies(caffe_dd pytorch)
 endif()
 
