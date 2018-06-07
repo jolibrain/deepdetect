@@ -226,20 +226,6 @@ namespace dd
 			}
 		  datum.clear_data();
 		}
-	      else if (_has_mean_scalar)
-		{
-		  int height = datum.height();
-		  int width = datum.width();
-		  for (int c=0;c<datum.channels();++c)
-		    for (int h=0;h<height;++h)
-		      for (int w=0;w<width;++w)
-			{
-			  int data_index = (c*height+h)*width+w;
-			  float datum_element = static_cast<float>(static_cast<uint8_t>(datum.data()[data_index]));
-			  datum.add_float_data(datum_element - _mean[c]);
-			}
-		  datum.clear_data();
-		}
 	      _dv_test.push_back(datum);
 	      _ids.push_back(this->_uris.at(i));
 	      _imgs_size.insert(std::pair<std::string,std::pair<int,int>>(this->_uris.at(i),this->_images_size.at(i)));
