@@ -197,7 +197,35 @@ if (USE_TF)
     COMMAND ut_tfapi
     )
 endif()
-  
+
+if (USE_CAFFE2)
+  set(CAFFE2_EXAMPLE_PATH "examples/caffe2/")
+  set(RESNET50_EXAMPLE_MODEL_INIT "resnet_50/init_net.pb")
+  set(RESNET50_EXAMPLE_MODEL_PREDICT "resnet_50/predict_net.pb")
+  set(RESNET50_CORRESP "resnet_50/corresp.txt")
+  if (NOT EXISTS "${CAFFE2_EXAMPLE_PATH}${RESNET50_EXAMPLE_MODEL_INIT}")
+    message(STATUS "Downloading Caffe2 test model")
+    file(DOWNLOAD
+      "https://deepdetect.com/dd/examples/caffe2/${RESNET50_EXAMPLE_MODEL_INIT}"
+      "${CAFFE2_EXAMPLE_PATH}${RESNET50_EXAMPLE_MODEL_INIT}"
+      )
+    file(DOWNLOAD
+      "https://deepdetect.com/dd/examples/caffe2/${RESNET50_EXAMPLE_MODEL_PREDICT}"
+      "${CAFFE2_EXAMPLE_PATH}${RESNET50_EXAMPLE_MODEL_PREDICT}"
+      )
+    file(DOWNLOAD
+      "https://deepdetect.com/dd/examples/caffe2/${RESNET50_CORRESP}"
+      "${CAFFE2_EXAMPLE_PATH}${RESNET50_CORRESP}"
+      )
+  endif()
+  add_executable(ut_caffe2api ut-caffe2api.cc)
+  target_link_libraries(ut_caffe2api ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc curlpp curl hdf5_cpp ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS} ${CAFFE2_LIB_DEPS})
+  add_test(
+    NAME ut_caffe2api
+    COMMAND ut_caffe2api
+    )
+endif()
+
 if (USE_XGBOOST)
   add_executable(ut_xgbapi ut-xgbapi.cc)
   target_link_libraries(ut_xgbapi ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl hdf5_cpp ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS}  ${XGBOOST_LIB_DEPS} ${TF_LIB_DEPS} ${TSNE_LIB_DEPS} ${CAFFE2_LIB_DEPS})
