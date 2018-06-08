@@ -333,7 +333,7 @@ namespace dd
       }
       else {
 	  	// RGB
-	  	if (_crop_width != 0 || _crop_height != 0) return _crop_width*_crop_height*3;
+	  	if (_crop_width != 0 && _crop_height != 0) return _crop_width*_crop_height*3;
 	  	else return _width*_height*3;
       }
     }
