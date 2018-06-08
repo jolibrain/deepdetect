@@ -166,6 +166,7 @@ namespace dd
 	  if (this->_has_predict)
 	    ad.add("predict",true);
 	  else ad.add("training",true);
+	  ad.add("mltype",this->_mltype);
 	}
       else
 	{
@@ -235,6 +236,7 @@ namespace dd
 	  ++hit;
 	}
       ad.add("jobs",vad);
+      ad.add("mltype",this->_mltype);
       return ad;
     }
 
