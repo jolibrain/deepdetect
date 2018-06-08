@@ -126,3 +126,19 @@ TEST(caffe2api, service_predict)
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble() > 0.35);
   ASSERT_TRUE(jd["body"]["predictions"][1]["classes"][0]["prob"].GetDouble() > 0.35);
 }
+
+TEST(caffe2api, service_predict_unsup)
+{
+  // create service
+  JsonAPI japi;
+  std::string joutstr = japi.jrender(japi.service_create("imgserv", resnet50_unsupervised));
+  ASSERT_EQ(created_str, joutstr);
+
+  // predict
+  joutstr = japi.jrender(japi.service_predict(predict_test3_str));
+  JDoc jd;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(802816, jd["body"]["predictions"][0]["vals"].Size());
+}
