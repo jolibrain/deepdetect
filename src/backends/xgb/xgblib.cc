@@ -44,6 +44,9 @@ namespace dd
     _regression = cl._regression;
     _ntargets = cl._ntargets;
     _booster = cl._booster;
+    if (_regression)
+      this->_mltype = "regression";
+    else this->_mltype = "classification";
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
