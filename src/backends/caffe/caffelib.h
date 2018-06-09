@@ -215,6 +215,8 @@ namespace dd
 
       void model_complexity(long int &flops,
 			    long int &params);
+
+      void model_type(std::string &mltype);
       
     public:
       caffe::Net<float> *_net = nullptr; /**< neural net. */
