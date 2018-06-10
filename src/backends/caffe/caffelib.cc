@@ -2086,6 +2086,7 @@ namespace dd
 		    dp->set_batch_size(test_batch_size);
 		  }
 	      }
+	    dp->set_image(true);
 	  }
 	else if (lp->has_dense_image_data_param())
 	  {
