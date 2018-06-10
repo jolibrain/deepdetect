@@ -26,9 +26,9 @@ DeepDetect relies on external machine learning libraries through a very generic 
 |            | Training | Prediction |
 |------------|----------|------------|
 | Caffe      | Y        | Y          |
-| XGBoost    | Y        | N          |
-| Tensorflow | Y        | Y          |
-| T-SNE      | N        | N          |
+| XGBoost    | Y        | Y          |
+| Tensorflow | N        | Y          |
+| T-SNE      | Y        | N          |
 
 #### Input data support per library (current):
 
