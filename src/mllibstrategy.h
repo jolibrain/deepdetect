@@ -76,7 +76,7 @@ namespace dd
      * \brief copy-constructor
      */
     MLLib(MLLib &&mll) noexcept
-      :_inputc(mll._inputc),_outputc(mll._outputc),_mlmodel(mll._mlmodel),_meas(mll._meas),_tjob_running(mll._tjob_running.load()),_logger(mll._logger)
+      :_inputc(mll._inputc),_outputc(mll._outputc),_mltype(mll._mltype),_mlmodel(mll._mlmodel),_meas(mll._meas),_tjob_running(mll._tjob_running.load()),_logger(mll._logger)
       {}
     
     /**
@@ -265,6 +265,8 @@ namespace dd
     TInputConnectorStrategy _inputc; /**< input connector strategy for channeling data in. */
     TOutputConnectorStrategy _outputc; /**< output connector strategy for passing results back to API. */
 
+    std::string _mltype = ""; /**< ml lib service instantiated type (e.g. regression, segmentation, detection, ...) */
+    
     bool _has_predict = true; /**< whether prediction is available. */
 
     TMLModel _mlmodel; /**< statistical model template. */

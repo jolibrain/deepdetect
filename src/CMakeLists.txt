@@ -10,6 +10,13 @@ set(ddetect_SOURCES deepdetect.h deepdetect.cc backends/caffe/caffelib.h backend
 if (USE_TF)
   list(APPEND ddetect_SOURCES backends/tf/tflib.cc backends/tf/tflib.h backends/tf/tfmodel.cc backends/tf/tfmodel.h backends/tf/tfinputconns.h)
 endif()
+if (USE_CAFFE2)
+  list(APPEND ddetect_SOURCES
+    backends/caffe2/caffe2lib.cc
+    backends/caffe2/caffe2model.cc
+    backends/caffe2/caffe2inputimg.cc
+    )
+endif()
 if (USE_XGBOOST)
   list(APPEND ddetect_SOURCES backends/xgb/xgblib.cc backends/xgb/xgblib.h backends/xgb/xgbmodel.cc backends/xgb/xgbmodel.h backends/xgb/xgbinputconns.cc backends/xgb/xgbinputconns.h)
 endif()
@@ -23,3 +30,4 @@ if (USE_DLIB)
   list(APPEND ddetect_SOURCES backends/dlib/DNNStructures.h backends/dlib/dliblib.cc backends/dlib/dliblib.h backends/dlib/dlibmodel.cc backends/dlib/dlibmodel.h backends/dlib/dlibinputconns.h)
 endif()
 add_library(ddetect ${ddetect_SOURCES})
+add_dependencies(ddetect caffe_dd)

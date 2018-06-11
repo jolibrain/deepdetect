@@ -37,6 +37,9 @@
 #ifdef USE_DLIB
 #include "backends/dlib/dliblib.h"
 #endif
+#ifdef USE_CAFFE2
+#include "backends/caffe2/caffe2lib.h"
+#endif
 #ifdef USE_XGBOOST
 #include "backends/xgb/xgblib.h"
 #endif
@@ -59,6 +62,9 @@ namespace dd
     MLService<CaffeLib,ImgCaffeInputFileConn,UnsupervisedOutput,CaffeModel>,
     MLService<CaffeLib,CSVCaffeInputFileConn,UnsupervisedOutput,CaffeModel>,
     MLService<CaffeLib,TxtCaffeInputFileConn,UnsupervisedOutput,CaffeModel>,
+#ifdef USE_CAFFE2
+    MLService<Caffe2Lib,ImgCaffe2InputFileConn,SupervisedOutput,Caffe2Model>,
+#endif
 #ifdef USE_TF
     MLService<TFLib,ImgTFInputFileConn,SupervisedOutput,TFModel>,
     MLService<TFLib,ImgTFInputFileConn,UnsupervisedOutput,TFModel>,

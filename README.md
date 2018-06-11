@@ -336,6 +336,13 @@ If you would like to constrain Dlib to CPU, use:
 cmake .. -DUSE_DLIB=ON -DUSE_DLIB_CPU_ONLY=ON
 ```
 
+#### Build with Caffe2 support
+
+Specify the option via cmake:
+```
+cmake .. -DUSE_CAFFE2=ON
+```
+
 #### Build with similarity search support
 
 Specify the following option via cmake:
