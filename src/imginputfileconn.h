@@ -445,4 +445,8 @@ namespace dd
 #include "backends/tf/tfinputconns.h"
 #endif
 
+#ifdef USE_CAFFE2
+#include "backends/caffe2/caffe2inputconns.h"
+#endif
+
 #endif
