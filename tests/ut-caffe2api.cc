@@ -47,6 +47,9 @@ using namespace dd;
 	  "height": 224,				\
 	  "width": 224,					\
 	  "std": std					\
+	},						\
+	"mllib": {					\
+	  "gpu": true					\
 	}						\
       }							\
     })
