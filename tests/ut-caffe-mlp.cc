@@ -610,7 +610,8 @@ TEST(caffelib, configure_deeplabvgg16_diceloss)
 {
   APIData ad;
   ad.add("template","deeplab_vgg16");
-  ad.add("loss","dice");
+  ad.add("loss","dice_weighted");
+  ad.add("ignore_label",0);
   ad.add("templates","../templates/caffe");
   ad.add("repository","./");
   ad.add("nclasses",2);
@@ -643,10 +644,11 @@ TEST(caffelib, configure_unet_diceloss)
 {
   APIData ad;
   ad.add("template","unet");
-  ad.add("loss","dice");
+  ad.add("loss","dice_weighted");
   ad.add("templates","../templates/caffe");
   ad.add("repository","./");
   ad.add("nclasses",2);
+  ad.add("ignore_label", 0);
   ad.add("segmentation",true);
   CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel> *caff = new CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(CaffeModel(ad));
   caff->_logger = spdlog::syslog_logger("UT");
