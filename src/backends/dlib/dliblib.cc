@@ -115,18 +115,18 @@ namespace dd {
         this->_logger->info("predict: using modelFile dir={}", modelFile);
 
         // Load the model into memory if not already
-        if (!modelLoaded) {
+        if (!_modelLoaded) {
             this->_logger->info("predict: loading model into memory ({})", modelFile);
             if (_net_type.empty()) {
                 throw MLLibBadParamException("Net type not specified");
             } else if (_net_type == "obj_detector") {
-                dlib::deserialize(this->_mlmodel._modelName) >> objDetector;
+                dlib::deserialize(this->_mlmodel._modelName) >> _objDetector;
             } else if (_net_type == "face_detector") {
-                dlib::deserialize(this->_mlmodel._modelName) >> faceDetector;
+                dlib::deserialize(this->_mlmodel._modelName) >> _faceDetector;
             } else {
                 throw MLLibBadParamException("Unrecognized net type: " + _net_type);
             }
-            modelLoaded = true;
+            _modelLoaded = true;
         }
 
         // vector for storing  the outputAPI of the file
@@ -141,9 +141,9 @@ namespace dd {
             std::chrono::time_point <std::chrono::system_clock> tstart = std::chrono::system_clock::now();
             std::vector <std::vector<dlib::mmod_rect>> detections;
             if (_net_type == "obj_detector") {
-                detections = objDetector(dv, batch_size);
+                detections = _objDetector(dv, batch_size);
             } else if (_net_type == "face_detector") {
-                detections = faceDetector(dv, batch_size);
+                detections = _faceDetector(dv, batch_size);
             } else {
                 throw MLLibBadParamException("Unrecognized net type: " + _net_type);
             }
