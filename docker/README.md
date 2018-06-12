@@ -108,7 +108,7 @@ Running DeepDetect HTTP server on 0.0.0.0:8080
 
 - share a volume with the image:
 ```
-docker run -d -p 8080:8080 -v /path/to/volume:/opt/deepdetect beniz/deepdetect_cpu
+docker run -d -p 8080:8080 -v /path/to/volume:/mnt beniz/deepdetect_cpu
 ```
 where `path/to/volume` is the path to your local volume that you'd like to attach to `/opt/deepdetect/`. This is useful for sharing / saving models, etc...
 
