@@ -103,9 +103,7 @@ namespace dd {
             for (size_t i = 0; i < _images.size(); i++) {
                 dlib::matrix<dlib::rgb_pixel> inputImg;
                 if (_bw) {
-                    dlib::matrix<unsigned char> inputImgGray;
-                    dlib::assign_image(inputImgGray, dlib::cv_image<unsigned char>(_images.at(i)));
-                    dlib::assign_image(inputImg, inputImgGray);
+                    dlib::assign_image(inputImg, dlib::cv_image<unsigned char>(_images.at(i)));
                 } else {
                     dlib::assign_image(inputImg, dlib::cv_image<dlib::rgb_pixel>(_images.at(i)));
                 }
