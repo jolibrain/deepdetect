@@ -1,13 +1,25 @@
 pipeline {
   agent any
   stages {
-    stage('Build') {
-      steps {
-        sh '''script
+    stage('Build Caffe GPU') {
+      parallel {
+        stage('Build Caffe GPU') {
+          steps {
+            sh '''script
 mkdir build
 cd build
 cmake .. 
 make'''
+          }
+        }
+        stage('Build Caffe2') {
+          steps {
+            sh '''script
+mkdir build_caffe2
+cd build_caffe2
+cmake .. -DUSE_CAFFE2'''
+          }
+        }
       }
     }
     stage('cleanup') {
