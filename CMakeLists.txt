@@ -122,7 +122,10 @@ endif()
 
 if (USE_DLIB)
     # Dlib
-    message(STATUS "Using Dlib")
+
+    # Currently supported release version of dlib
+    set(DLIB_RELEASE_VERSION v19.13)
+    message(STATUS "Using Dlib version ${DLIB_RELEASE_VERSION}")
     add_definitions(-DUSE_DLIB)
 
     if (CUDA_FOUND AND NOT USE_DLIB_CPU_ONLY)
@@ -133,7 +136,7 @@ if (USE_DLIB)
           dlib
           PREFIX dlib
           INSTALL_DIR ${CMAKE_BINARY_DIR}
-          DOWNLOAD_COMMAND git clone https://github.com/davisking/dlib.git
+          URL https://github.com/davisking/dlib/archive/${DLIB_RELEASE_VERSION}.tar.gz
           CONFIGURE_COMMAND cd dlib && mkdir build && cd build && cmake .. -DDLIB_NO_GUI_SUPPORT=ON -DDLIB_USE_CUDA=ON -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/dlib/build && cmake --build . --config Release --target install
           BUILD_COMMAND ""
           INSTALL_COMMAND ""
@@ -143,14 +146,14 @@ if (USE_DLIB)
         set(DLIB_LIB_DIR ${CMAKE_BINARY_DIR}/dlib/build/lib)
     else()
         ExternalProject_Add(
-                dlib
-                PREFIX dlib
-                INSTALL_DIR ${CMAKE_BINARY_DIR}
-                DOWNLOAD_COMMAND git clone https://github.com/davisking/dlib.git
-                CONFIGURE_COMMAND cd dlib && mkdir build && cd build && cmake .. -DDLIB_NO_GUI_SUPPORT=ON -DDLIB_USE_CUDA=OFF -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/dlib/build && cmake --build . --config Release --target install
-                BUILD_COMMAND ""
-                INSTALL_COMMAND ""
-                BUILD_IN_SOURCE 1
+            dlib
+            PREFIX dlib
+            INSTALL_DIR ${CMAKE_BINARY_DIR}
+            URL https://github.com/davisking/dlib/archive/${DLIB_RELEASE_VERSION}.tar.gz
+            CONFIGURE_COMMAND cd dlib && mkdir build && cd build && cmake .. -DDLIB_NO_GUI_SUPPORT=ON -DDLIB_USE_CUDA=OFF -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/dlib/build && cmake --build . --config Release --target install
+            BUILD_COMMAND ""
+            INSTALL_COMMAND ""
+            BUILD_IN_SOURCE 1
         )
         set(DLIB_INC_DIR ${CMAKE_BINARY_DIR}/dlib/build/include)
         set(DLIB_LIB_DIR ${CMAKE_BINARY_DIR}/dlib/build/lib)
