@@ -17,7 +17,8 @@ make'''
             sh '''script
 mkdir build_xgboost
 cd build_xgboost
-cmake .. -DUSE_XGBOOST=ON -DBUILD_TESTS=ON'''
+cmake .. -DUSE_XGBOOST=ON -DBUILD_TESTS=ON
+make'''
           }
         }
         stage('Test Caffe GPU') {
@@ -35,7 +36,8 @@ ctest'''
             sh '''script
 mkdir build_caffe2
 cd build_caffe2
-cmake .. -DBUILD_TESTS=ON -DUSE_CAFFE2=ON'''
+cmake .. -DBUILD_TESTS=ON -DUSE_CAFFE2=ON
+make'''
           }
         }
         stage('Test Xgboost') {
