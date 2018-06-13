@@ -11,53 +11,39 @@ make'''
       }
     }
     stage('Build Xgboost') {
-      parallel {
-        stage('Build Xgboost') {
-          steps {
-            sh '''script
-mkdir build_xgboost
-cd build_xgboost
+      steps {
+        sh '''script
+cd build
 cmake .. -DUSE_XGBOOST=ON -DBUILD_TESTS=ON
 make'''
-          }
-        }
-        stage('Test Caffe GPU') {
-          steps {
-            sh '''cd build
-ctest'''
-          }
-        }
       }
     }
     stage('Build Caffe2') {
-      parallel {
-        stage('Build Caffe2') {
-          steps {
-            sh '''script
+      steps {
+        sh '''script
 mkdir build_caffe2
 cd build_caffe2
 cmake .. -DBUILD_TESTS=ON -DUSE_CAFFE2=ON
 make'''
-          }
-        }
-        stage('Test Xgboost') {
-          steps {
-            sh '''script
-cd build_xgboost/tests
-./ut_xgbapi
-'''
-          }
-        }
       }
     }
-    stage('Test Caffe2') {
+    stage('Build simsearch') {
       steps {
         sh '''script
-cd build_caffe2/tests
-./ut_caffe2api'''
+cd build
+cmake .. -DUSE_SIMSEARCH=ON -DBUILD_TESTS=ON
+make'''
       }
     }
-    stage('Cleanup') {
+    stage('Build tsne') {
+      steps {
+        sh '''script
+cd build
+cmake .. -DUSE_TSNE=ON -DBUILD_TESTS=ON
+make'''
+      }
+    }
+    stage('') {
       steps {
         cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
       }
