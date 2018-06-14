@@ -44,6 +44,18 @@ namespace dd
     int _D = -1; /**< problem dimensions */
     int _N = -1; /**< number of samples */
 
+    // for API info only
+    int width() const
+    {
+      return -1;
+    }
+
+    // for API info only
+    int height() const
+    {
+      return -1;
+    }
+    
     //TODO: parameters, ids
   };
 
