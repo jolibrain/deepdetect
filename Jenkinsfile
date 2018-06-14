@@ -43,7 +43,13 @@ cmake .. -DUSE_TSNE=ON -DBUILD_TESTS=ON
 make'''
       }
     }
-    stage('') {
+    stage('Tests') {
+      steps {
+        sh '''cd build
+ctest'''
+      }
+    }
+    stage('cleanup') {
       steps {
         cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
       }
