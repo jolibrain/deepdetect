@@ -4,7 +4,7 @@ pipeline {
     stage('Build Caffe GPU') {
       steps {
         sh '''script
-mkdir build
+mkdir -p build
 cd build
 cmake .. -DBUILD_TESTS=ON
 make'''
@@ -21,8 +21,7 @@ make'''
     stage('Build Caffe2') {
       steps {
         sh '''script
-mkdir build_caffe2
-cd build_caffe2
+cd build
 cmake .. -DBUILD_TESTS=ON -DUSE_CAFFE2=ON
 make'''
       }
