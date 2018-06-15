@@ -13,7 +13,8 @@ make'''
     stage('Build Xgboost') {
       steps {
         sh '''script
-cd build
+mkdir build_xgboost
+cd build_xgboost
 cmake .. -DUSE_XGBOOST=ON -DBUILD_TESTS=ON
 make'''
       }
@@ -21,7 +22,8 @@ make'''
     stage('Build Caffe2') {
       steps {
         sh '''script
-cd build
+mkdir build_caffe2
+cd build_caffe2
 cmake .. -DBUILD_TESTS=ON -DUSE_CAFFE2=ON -DUSE_XGBOOST=ON
 make'''
       }
@@ -29,20 +31,22 @@ make'''
     stage('Build simsearch') {
       steps {
         sh '''script
-cd build
-cmake .. -DUSE_SIMSEARCH=ON -DBUILD_TESTS=ON -DUSE_CAFFE2=ON -DUSE_XGBOOST=ON
+mkdir build_simsearch
+cd build_simsearch
+cmake .. -DUSE_SIMSEARCH=ON -DBUILD_TESTS=ON
 make'''
       }
     }
     stage('Build tsne') {
       steps {
         sh '''script
-cd build
-cmake .. -DUSE_TSNE=ON -DBUILD_TESTS=ON -DUSE_CAFFE2=ON -DUSE_XGBOOST=ON -DUSE_SIMSEARCH=ON
+mkdir build_tsne
+cd build_tsne
+cmake .. -DUSE_TSNE=ON -DBUILD_TESTS=ON
 make'''
       }
     }
-    stage('Tests') {
+    stage('Tests Caffe GPU') {
       steps {
         sh '''cd build
 ctest'''
