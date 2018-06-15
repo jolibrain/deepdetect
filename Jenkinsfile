@@ -22,7 +22,7 @@ make'''
       steps {
         sh '''script
 cd build
-cmake .. -DBUILD_TESTS=ON -DUSE_CAFFE2=ON
+cmake .. -DBUILD_TESTS=ON -DUSE_CAFFE2=ON -DUSE_XGBOOST=ON
 make'''
       }
     }
@@ -30,7 +30,7 @@ make'''
       steps {
         sh '''script
 cd build
-cmake .. -DUSE_SIMSEARCH=ON -DBUILD_TESTS=ON
+cmake .. -DUSE_SIMSEARCH=ON -DBUILD_TESTS=ON -DUSE_CAFFE2=ON -DUSE_XGBOOST=ON
 make'''
       }
     }
@@ -38,7 +38,7 @@ make'''
       steps {
         sh '''script
 cd build
-cmake .. -DUSE_TSNE=ON -DBUILD_TESTS=ON
+cmake .. -DUSE_TSNE=ON -DBUILD_TESTS=ON -DUSE_CAFFE2=ON -DUSE_XGBOOST=ON -DUSE_SIMSEARCH=ON
 make'''
       }
     }
