@@ -125,6 +125,7 @@ if (USE_CAFFE2)
   list(APPEND CAFFE2_PATCHES
     ${CMAKE_BINARY_DIR}/patches/caffe2/caffe_proto.patch
     ${CMAKE_BINARY_DIR}/patches/caffe2/logging.patch
+    ${CMAKE_BINARY_DIR}/patches/caffe2/VLOG.patch
     )
 
   list(APPEND PYTORCH_FLAGS
