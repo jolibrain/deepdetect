@@ -1,0 +1,31 @@
+From ca77c50ace5f2a0ae22cd5f7c51f5968f1d4cb1e Mon Sep 17 00:00:00 2001
+From: Julien CHICHA <julien.chicha@epitech.eu>
+Date: Mon, 18 Jun 2018 11:12:22 +0200
+Subject: [PATCH] Prevent VLOG redefinition
+
+---
+ caffe2/core/logging_is_not_google_glog.h | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/caffe2/core/logging_is_not_google_glog.h b/caffe2/core/logging_is_not_google_glog.h
+index b7f892451..81a09377f 100644
+--- a/caffe2/core/logging_is_not_google_glog.h
++++ b/caffe2/core/logging_is_not_google_glog.h
+@@ -3,10 +3,14 @@
+ 
+ #include "caffe/llogging.h"
+ 
++#ifndef VLOG
++
+ #define DEBUG "none"
+ static const std::string VLogLevels[4] = {DEBUG, DEBUG, ERROR, DEBUG};
+ #define VLOG(n) LOG(VLogLevels[n])
+ 
++#endif
++
+ #define LOG_AS_STRING(l, o)			\
+   std::stringstream ss;				\
+   ss << o;					\
+-- 
+2.17.1
+
