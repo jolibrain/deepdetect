@@ -153,6 +153,7 @@ namespace dd {
             APIData rad;
 
             for (size_t i = 0; i < dv.size(); i++) {
+                size_t height = dv[i].nr(); // nr() is number of rows, nc() is number of columns
                 rad.add("uri", inputc._ids.at(idoffset + i));
                 std::vector<double> probs;
                 std::vector <std::string> cats;
@@ -170,9 +171,9 @@ namespace dd {
                         // bbox can be formed with d.rect.left()/top()/right()/bottom()
                         APIData ad_bbox;
                         ad_bbox.add("xmin", d.rect.left());
-                        ad_bbox.add("ymax", d.rect.top());
+                        ad_bbox.add("ymax", height - d.rect.top());
                         ad_bbox.add("xmax", d.rect.right());
-                        ad_bbox.add("ymin", d.rect.bottom());
+                        ad_bbox.add("ymin", height - d.rect.bottom());
                         bboxes.push_back(ad_bbox);
                     }
 
