@@ -1105,7 +1105,7 @@ namespace dd
       throw MLLibBadParamException("no deploy file in " + this->_mlmodel._repo + " for initializing the net");
     
     // test
-    if (!this->_inputc._ctc) // ctc uses the accuracy computed from within the net, can't run test with deploy
+    if (!inputc._ctc) // ctc uses the accuracy computed from within the net, can't run test with deploy
       test(_net,ad,inputc,test_batch_size,has_mean_file,test_iter,out);
     inputc._dv_test.clear();
     inputc._dv_test_sparse.clear();
@@ -1131,6 +1131,10 @@ namespace dd
 	    out.add("parameters",adparams);
 	  }
       }
+
+    // reset db input connector, ready for in-memory prediction
+    if (this->_inputc._db)
+      this->_inputc._db = false;
 
     return 0;
   }
@@ -2028,7 +2032,7 @@ namespace dd
 
     this->_logger->info("input db = {}",inputc._db);
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
-    if (!(inputc._db) && typeid(inputc) == typeid(ImgCaffeInputFileConn))
+    if (!inputc._db && typeid(inputc) == typeid(ImgCaffeInputFileConn))
       {
 	caffe::LayerParameter *lparam = np->mutable_layer(0);
         caffe::ImageDataParameter* image_data_parameter = lparam->mutable_image_data_param();
@@ -2188,7 +2192,8 @@ namespace dd
     if (_crop_size > 0)
       width = height = _crop_size;
 
-    if (!(this->_inputc._db) && !inputc._ctc && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
+    
+    if (!inputc._db && !inputc._ctc && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
       {
             caffe::LayerParameter *lparam = net_param.mutable_layer(0);
             caffe::ImageDataParameter* image_data_parameter = lparam->mutable_image_data_param();
