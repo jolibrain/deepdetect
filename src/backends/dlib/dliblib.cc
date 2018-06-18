@@ -153,8 +153,19 @@ namespace dd {
             APIData rad;
 
             for (size_t i = 0; i < dv.size(); i++) {
-                size_t height = dv[i].nr(); // nr() is number of rows, nc() is number of columns
-                rad.add("uri", inputc._ids.at(idoffset + i));
+                size_t height = dv[i].nr(), width = dv[i].nc(); // nr() is number of rows, nc() is number of columns
+                std::string uri = inputc._ids.at(idoffset + i);
+                rad.add("uri", uri);
+                auto foundImg = inputc._imgs_size.find(uri);
+                int rows = 1;
+                int cols = 1;
+                if (foundImg != inputc._imgs_size.end()) {
+                    // original image size
+                    rows = foundImg->second.first;
+                    cols = foundImg->second.second;
+                } else {
+                    this->_logger->error("couldn't find original image size for {}",uri);
+                }
                 std::vector<double> probs;
                 std::vector <std::string> cats;
                 std::vector <APIData> bboxes;
@@ -170,10 +181,10 @@ namespace dd {
                     if (bbox) {
                         // bbox can be formed with d.rect.left()/top()/right()/bottom()
                         APIData ad_bbox;
-                        ad_bbox.add("xmin", d.rect.left());
-                        ad_bbox.add("ymax", height - d.rect.top());
-                        ad_bbox.add("xmax", d.rect.right());
-                        ad_bbox.add("ymin", height - d.rect.bottom());
+                        ad_bbox.add("xmin", std::round((static_cast<double>(d.rect.left()) / static_cast<double>(width)) * cols));
+                        ad_bbox.add("ymax", std::round((static_cast<double>(height - d.rect.top()) / static_cast<double>(height)) * rows));
+                        ad_bbox.add("xmax", std::round((static_cast<double>(d.rect.right()) / static_cast<double>(width)) * cols));
+                        ad_bbox.add("ymin", std::round((static_cast<double>(height - d.rect.bottom()) / static_cast<double>(height)) * rows));
                         bboxes.push_back(ad_bbox);
                     }
 

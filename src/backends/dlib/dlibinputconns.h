@@ -50,6 +50,7 @@ namespace dd {
         std::vector<dlib::matrix<dlib::rgb_pixel>> _dv;
         std::vector<dlib::matrix<dlib::rgb_pixel>> _dv_test;
         std::vector<std::string> _ids; // input ids (eg. Image Ids).
+        std::unordered_map<std::string,std::pair<int,int>> _imgs_size; /**< image sizes, used in detection. */
     };
 
     class ImgDlibInputFileConn : public ImgInputFileConn, public DlibInputInterface {
@@ -109,8 +110,10 @@ namespace dd {
                 }
                 _dv.push_back(inputImg);
                 _ids.push_back(_uris.at(i));
+                _imgs_size.insert(std::pair<std::string,std::pair<int,int>>(this->_uris.at(i),this->_images_size.at(i)));
             }
-            _images.clear();
+            this->_images.clear();
+            this->_images_size.clear();
         }
 
         std::vector<dlib::matrix<dlib::rgb_pixel>> get_dv(const int &num) {
