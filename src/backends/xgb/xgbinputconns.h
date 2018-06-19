@@ -29,6 +29,7 @@
 #define DMLC_NO_EXCEPTION  noexcept(true)
 
 #include <dmlc/base.h>
+#include <dmlc/io.h>
 #include <data/parser.h> // dmlc
 #include <xgboost/data.h>
 
