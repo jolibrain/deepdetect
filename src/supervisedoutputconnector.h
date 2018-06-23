@@ -1313,7 +1313,6 @@ namespace dd
       // extract tp, fp, labels
       APIData bad = ad.getobj("0");
       int pos_count = ad.get("pos_count").get<int>();
-      std::cerr << "measures pos_count=" << pos_count << std::endl;
       for (int i=0;i<pos_count;i++)
 	{
 	  std::vector<APIData> vbad = bad.getv(std::to_string(i));
