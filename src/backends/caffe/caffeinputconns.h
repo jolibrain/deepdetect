@@ -40,7 +40,7 @@ namespace dd
   public:
     CaffeInputInterface() {}
     CaffeInputInterface(const CaffeInputInterface &cii)
-      :_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed),_sequence_txt(cii._sequence_txt),_max_embed_id(cii._max_embed_id),_segmentation(cii._segmentation),_bbox(cii._bbox),_multi_label(cii._multi_label),_ctc(cii._ctc),_alphabet_size(cii._alphabet_size),_root_folder(cii._root_folder) {}
+      :_db(cii._db),_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed),_sequence_txt(cii._sequence_txt),_max_embed_id(cii._max_embed_id),_segmentation(cii._segmentation),_bbox(cii._bbox),_multi_label(cii._multi_label),_ctc(cii._ctc),_alphabet_size(cii._alphabet_size),_root_folder(cii._root_folder),_dbfullname(cii._dbfullname),_test_dbfullname(cii._test_dbfullname) {}
     ~CaffeInputInterface() {}
 
     /**
@@ -381,11 +381,15 @@ namespace dd
 		return;
 	      }
 	      // create db
-	      images_to_db(_uris,_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname);
+	      if (!this->_unchanged_data)
+		images_to_db(_uris,_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname);
+	      else images_to_db(_uris,_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname,
+				"lmdb",false,"");
 	      
 	      // compute mean of images, not forcely used, depends on net, see has_mean_file
-	      compute_images_mean(_model_repo + "/" + _dbname,
-				  _model_repo + "/" + _meanfname);
+	      if (!this->_unchanged_data)
+		compute_images_mean(_model_repo + "/" + _dbname,
+				    _model_repo + "/" + _meanfname);
 	      
 	      // class weights if any
 	      write_class_weights(_model_repo,ad_mllib);

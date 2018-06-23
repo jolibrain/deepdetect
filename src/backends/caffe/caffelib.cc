@@ -659,6 +659,14 @@ namespace dd
 	    // nets can be exotic, let's make sure we don't get killed here
 	    this->_logger->error("failed computing net's complexity");
 	  }
+	try
+	  {
+	    model_type(this->_mltype);
+	  }
+	catch (std::exception &e)
+	  {
+	    this->_logger->error("failed determining mltype");
+	  }
 	return 0;
       }
     // net definition is missing
@@ -695,6 +703,7 @@ namespace dd
       {
 	_regression = true;
     	_nclasses = 1;
+	this->_mltype = "regression";
       }
     if (ad.has("ntargets"))
       _ntargets = ad.get("ntargets").get<int>();
@@ -718,6 +727,7 @@ namespace dd
 	update_deploy_protofile_softmax(ad);
 	create_model();
       }
+    
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -1150,7 +1160,7 @@ namespace dd
       throw MLLibBadParamException("no deploy file in " + this->_mlmodel._repo + " for initializing the net");
     
     // test
-    if (!this->_inputc._ctc) // ctc uses the accuracy computed from within the net, can't run test with deploy
+    if (!inputc._ctc) // ctc uses the accuracy computed from within the net, can't run test with deploy
       test(_net,ad,inputc,test_batch_size,has_mean_file,test_iter,out);
     inputc._dv_test.clear();
     inputc._dv_test_sparse.clear();
@@ -1176,6 +1186,10 @@ namespace dd
 	    out.add("parameters",adparams);
 	  }
       }
+
+    // reset db input connector, ready for in-memory prediction
+    if (this->_inputc._db)
+      this->_inputc._db = false;
 
     return 0;
   }
@@ -2220,6 +2234,7 @@ namespace dd
 		    dp->set_batch_size(test_batch_size);
 		  }
 	      }
+	    dp->set_image(true);
 	  }
 	else if (lp->has_dense_image_data_param())
 	  {
@@ -2328,7 +2343,7 @@ namespace dd
     if (_crop_size > 0)
       width = height = _crop_size;
 
-    if (!(this->_inputc._db) && !inputc._bbox && !inputc._ctc && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
+    if (!inputc._db && !inputc._bbox && !inputc._ctc && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
       {
             caffe::LayerParameter *lparam = net_param.mutable_layer(0);
             caffe::ImageDataParameter* image_data_parameter = lparam->mutable_image_data_param();
@@ -2713,6 +2728,41 @@ namespace dd
 	params += lcount;
       }
     this->_logger->info("Net total flops={} / total params={}",flops,params);
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::model_type(std::string &mltype)
+  {
+    for (size_t l=0;l<_net->layers().size();l++)
+      {
+	const boost::shared_ptr<caffe::Layer<float>> &layer = _net->layers().at(l);
+	std::string lname = layer->layer_param().name();
+	std::string ltype = layer->layer_param().type();
+
+	if (ltype == "DetectionOutput")
+	  {
+	    mltype = "detection";
+	    break;
+	  }
+	if (ltype == "ContinuationIndicator") // XXX: CTC layer does not appear in deploy file, this is a hack used by our LSTMs
+	  {
+	    mltype = "ctc";
+	    break;
+	  }
+	if (ltype == "Interp" || ltype == "Deconvolution") // XXX: using interpolation and deconvolution as proxy to segmentation
+	  {
+	    mltype = "segmentation";
+	    break;
+	  }
+	if (ltype == "Sigmoid" && l == _net->layers().size()-1)
+	  {
+	    mltype = "regression";
+	    break;
+	  }
+      }
+    if (mltype.empty())
+      mltype = "classification";
+    this->_logger->info("detected network type is {}",mltype);
   }
   
   template class CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>;

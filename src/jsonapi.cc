@@ -75,7 +75,7 @@ namespace dd
 	std::vector<std::string> elts = dd_utils::split(line,';');
 	std::string api_call = elts.at(0);
 	if ((api_call == "service_create" && elts.size() != 3)
-	    || api_call == "service_predict" && elts.size() != 2)
+	    || (api_call == "service_predict" && elts.size() != 2))
 	  {
 	    _logger->error("Error parsing autostart JSON file {} line {}: wrong number of elements",autostart_file,lines);
 	    return dd_bad_request_400();
@@ -286,8 +286,40 @@ namespace dd
     return buffer.GetString();
   }
 
-  JDoc JsonAPI::info() const
+  JDoc JsonAPI::info(const std::string &jstr) const
   {
+    bool status = false;
+
+    if (!jstr.empty())
+      {
+	rapidjson::Document d;
+	d.Parse(jstr.c_str());
+	if (d.HasParseError())
+	  {
+	    _logger->error("JSON parsing error on string: {}",jstr);
+	    return dd_bad_request_400();
+	  }
+	
+	// parameters
+	APIData ad;
+	try
+	  {
+	    ad = APIData(d);
+	  }
+	catch(RapidjsonException &e)
+	  {
+	    _logger->error("JSON error {}",e.what());
+	    return dd_bad_request_400();
+	  }
+	catch(...)
+	  {
+	 return dd_bad_request_400();
+	  }
+	
+	if (ad.has("status"))
+	  status = ad.get("status").get<bool>();
+      }
+	
     // answer info call.
     JDoc jinfo = dd_ok_200();
     JVal jhead(rapidjson::kObjectType);
@@ -300,7 +332,7 @@ namespace dd
     auto hit = _mlservices.begin();
     while(hit!=_mlservices.end())
       {
-	APIData ad = mapbox::util::apply_visitor(visitor_info(),(*hit).second);
+	APIData ad = mapbox::util::apply_visitor(visitor_info(status),(*hit).second);
 	JVal jserv(rapidjson::kObjectType);
 	ad.toJVal(jinfo,jserv);
 	jservs.PushBack(jserv,jinfo.GetAllocator());
@@ -398,6 +430,24 @@ namespace dd
 		return dd_service_bad_request_1006();
 	      }
 	  }
+#ifdef USE_CAFFE2
+	else if (mllib == "caffe2")
+	  {
+	    Caffe2Model c2model(ad_model);
+	    if (type == "supervised")
+	      {
+		if (input == "image")
+		  add_service(sname,std::move(MLService<Caffe2Lib,ImgCaffe2InputFileConn,SupervisedOutput,Caffe2Model>(sname,c2model,description)),ad);
+		else return dd_input_connector_not_found_1004();
+		if (JsonAPI::store_json_blob(c2model._repo,jstr)) // store successful call json blob
+		  _logger->error("couldn't write {} file in model repository {}",JsonAPI::_json_blob_fname,c2model._repo);
+	      }
+	    else
+	      {
+		return dd_service_bad_request_1006();
+	      }
+	  }
+#endif // USE_CAFFE2
 #ifdef USE_TF
 	else if (mllib == "tensorflow" || mllib == "tf")
 	  {
