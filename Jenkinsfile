@@ -6,7 +6,7 @@ pipeline {
         sh '''script
 mkdir -p build
 cd build
-cmake .. -DBUILD_TESTS=ON -DUSE_CUDNN=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_XGBOOST=ON
+cmake .. -DBUILD_TESTS=ON -DUSE_CUDNN=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_XGBOOST=ON -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61"
 make'''
       }
     }
