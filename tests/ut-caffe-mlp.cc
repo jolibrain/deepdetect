@@ -610,12 +610,8 @@ TEST(caffelib, configure_deeplabvgg16_diceloss)
 {
   APIData ad;
   ad.add("template","deeplab_vgg16");
-<<<<<<< HEAD
   ad.add("loss","dice_weighted");
   ad.add("ignore_label",0);
-=======
-  ad.add("loss","dice");
->>>>>>> jolibrain/master
   ad.add("templates","../templates/caffe");
   ad.add("repository","./");
   ad.add("nclasses",2);
