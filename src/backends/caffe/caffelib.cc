@@ -61,6 +61,7 @@ namespace dd
     _autoencoder = cl._autoencoder;
     cl._net = nullptr;
     _crop_size = cl._crop_size;
+    _loss = cl._loss;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -187,26 +188,25 @@ namespace dd
 	caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
 
 
+    if (this->_loss == "dice")
+      // dice loss!!
+      {
+        if (net_param.name().compare("deeplab_vgg16")==0)
+          {
+            update_protofiles_dice_deeplab_vgg16(net_param, deploy_net_param);
+          }
+        else if (net_param.name().compare("unet") == 0)
+          {
+           update_protofiles_dice_unet(net_param,deploy_net_param);
+          }
+
+      }
+
 	// switch to imageDataLayer
 	//TODO: should apply to all templates with images
 	if (!this->_inputc._db && !this->_inputc._segmentation && !this->_inputc._ctc && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
 	  {
-	    caffe::LayerParameter *lparam = net_param.mutable_layer(0);
-	    caffe::ImageDataParameter* image_data_parameter = lparam->mutable_image_data_param();
-	    lparam->set_type("ImageData");
-	    image_data_parameter->set_source(this->_inputc._root_folder);
-	    image_data_parameter->set_batch_size(this->_inputc.batch_size());
-	    image_data_parameter->set_shuffle(this->_inputc._shuffle);
-	    image_data_parameter->set_new_height(this->_inputc.height());
-	    image_data_parameter->set_new_width(this->_inputc.width());
-	    if (this->_inputc._multi_label)
-	      image_data_parameter->set_label_size(_nclasses);
-	    else
-	      image_data_parameter->set_label_size(1);
-	    if (this->_inputc._has_mean_file)
-	      image_data_parameter->set_mean_file("mean.binaryproto");
-	    lparam->clear_data_param();
-	    lparam->clear_transform_param();
+        update_protofile_imageDataLayer(net_param);
 	  }
 	
 	// input should be ok, now do the output
@@ -355,6 +355,68 @@ namespace dd
     if (this->_mlmodel.read_from_repository(this->_mlmodel._repo,this->_logger))
       throw MLLibBadParamException("error reading or listing Caffe models in repository " + this->_mlmodel._repo);
   }
+
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  caffe::LayerParameter*
+  CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::insert_layer_before(caffe::NetParameter &net_param, int layer_number)
+  {
+    
+    net_param.add_layer();
+
+    for (int i=net_param.layer_size()-1; i>layer_number; --i)
+      {
+        caffe::LayerParameter *lparam = net_param.mutable_layer(i);
+        *lparam = net_param.layer(i-1);
+      }
+    net_param.mutable_layer(layer_number)->Clear();
+    return  net_param.mutable_layer(layer_number);
+  }
+
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  caffe::LayerParameter*
+  CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::find_layer_by_name(caffe::NetParameter &net_param, std::string name)
+  {
+    int k = net_param.layer_size();
+    for (int l=k-1;l>0;l--)
+      {
+        caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+        if (lparam->name().compare(name) == 0)
+          return net_param.mutable_layer(l);
+      }
+    return NULL;
+  }
+
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  int
+  CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::find_index_layer_by_type(caffe::NetParameter &net_param, std::string type)
+  {
+    int k = net_param.layer_size();
+    for (int l=k-1;l>0;l--)
+      {
+        caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+        if (lparam->type() == type)
+          return l;
+      }
+    return -1;
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  int
+  CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::find_index_layer_by_name(caffe::NetParameter &net_param, std::string name)
+  {
+    int k = net_param.layer_size();
+    for (int l=k-1;l>0;l--)
+      {
+        caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+        if (lparam->name() == name)
+          return l;
+      }
+    return -1;
+  }
+
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_noise_and_distort(const APIData &ad,
@@ -577,6 +639,32 @@ namespace dd
 	_regression = true;
     	_nclasses = 1;
 	this->_mltype = "regression";
+      }
+    if (ad.has("loss"))
+      {
+        if (ad.get("loss").get<std::string>().compare("dice")==0)
+          {
+            if (this->_inputc._segmentation)
+              {
+                _loss = "dice";
+              }
+            else
+              throw MLLibBadParamException("asked for vanilla dice loss without segmentation");
+          }
+        // else if (ad.get("loss").get<std::string>().compare("dice_binary")==0)
+        //   {
+        //     if (this->_inputc._segmentation)
+        //       _loss = 2;
+        //     else
+        //       throw MLLibBadParamException("asked for (binary) dice loss without segmentation");
+        //   }
+        // else if (ad.get("loss").get<std::string>().compare("dice_binary_weighted")==0)
+        //   {
+        //     if (this->_inputc._segmentation)
+        //       _loss = 3;
+        //     else
+        //       throw MLLibBadParamException("asked for (binary weighted) dice loss without segmentation");
+        //   }
       }
     if (ad.has("ntargets"))
       _ntargets = ad.get("ntargets").get<int>();
@@ -1091,7 +1179,7 @@ namespace dd
 	  nout = _ntargets;
 	if (_autoencoder)
 	  nout = inputc.channels();
-	ad_res.add("nclasses",_nclasses);
+    ad_res.add("nclasses",_nclasses);
 	inputc.reset_dv_test();
 	while(true)
 	  {
@@ -1250,15 +1338,31 @@ namespace dd
 			    double target = dv_float_data.at(j).at(l);
 			    double best_prob = -1.0;
 			    double best_cat = -1.0;
-			    for (int k=0;k<nout;k++)
-			      {
-				double prob = lresults[slot]->cpu_data()[l+(nout*j+k)*dv_float_data.at(j).size()];
-				if (prob >= best_prob)
-				  {
-				    best_prob = prob;
-				    best_cat = k;
-				  }
-			      }
+                if (lresults[slot]->shape(1) != 1)
+                  {
+                    for (int k=0;k<nout;k++)
+                      {
+                        double prob = lresults[slot]->cpu_data()[l+(nout*j+k)*dv_float_data.at(j).size()];
+                        if (prob >= best_prob)
+                          {
+                            best_prob = prob;
+                            best_cat = k;
+                          }
+                      }
+                  }
+                else
+                  {
+                    // in case of dice loss + deeplab_vgg16, predictions are at pos 0
+                    double res = lresults[slot]->cpu_data()[l+j*dv_float_data.at(j).size()];
+                    if (res > 0.5)
+                      {
+                        best_cat = 1;
+                      }
+                    else
+                      {
+                        best_cat = 0;
+                      }
+                  }
 			    preds.push_back(best_cat);
 			    targets.push_back(target);
 			  }
@@ -1572,15 +1676,26 @@ namespace dd
 		      {
 			double max_prob = -1.0;
 			double best_cat = -1.0;
-			for (int k=0;k<nclasses;k++)
-			  {
-			    double prob = results[slot]->cpu_data()[(j*nclasses+k)*imgsize+i];
-			    if (prob > max_prob)
-			      {
-				max_prob = prob;
-				best_cat = static_cast<double>(k);
-			      }
-			  }
+            if (results[slot]->shape(1) != 1)
+              {
+                for (int k=0;k<nclasses;k++)
+                  {
+                    double prob = results[slot]->cpu_data()[(j*nclasses+k)*imgsize+i];
+                    if (prob > max_prob)
+                      {
+                        max_prob = prob;
+                        best_cat = static_cast<double>(k);
+                      }
+                  }
+              }
+            else
+              {
+                double prob = results[slot]->cpu_data()[(j)*imgsize+i];
+                if (prob > 0.5)
+                  best_cat = 1;
+                else
+                  best_cat = 0;
+              }
 			vals.push_back(best_cat);
 		      }
 		    auto bit = inputc._imgs_size.find(uri);
@@ -2304,24 +2419,24 @@ namespace dd
 	  {
 	    if (lparam->has_convolution_param())
 	      {
-		int num_output = lparam->mutable_convolution_param()->num_output();
-		if (last_layer || num_output == 0)
-		  lparam->mutable_convolution_param()->set_num_output(_nclasses);
-		if (last_layer && num_output != 0)
-		  break;
-		else last_layer = false;
+            int num_output = lparam->mutable_convolution_param()->num_output();
+            if (_loss == "dice" && lparam->name() == "linear_aggregation" && num_output == 1)
+              continue;
+            if (last_layer || num_output == 0)
+              lparam->mutable_convolution_param()->set_num_output(_nclasses);
+            if (last_layer && num_output != 0)
+              break;
+            else last_layer = false;
 	      }
 	  }
 	else if (lparam->type() == "InnerProduct" || lparam->type() == "SparseInnerProduct")
 	  {
 	    if (lparam->has_inner_product_param())
 	      {
-		if (!_regression || _ntargets == 0)
-		  {
-		    lparam->mutable_inner_product_param()->set_num_output(_nclasses);
-		  }
-		else lparam->mutable_inner_product_param()->set_num_output(_ntargets);
-		break;
+            if (!_regression || _ntargets == 0)
+                lparam->mutable_inner_product_param()->set_num_output(_nclasses);
+            else lparam->mutable_inner_product_param()->set_num_output(_ntargets);
+            break;
 	      }
 	  }
 	/*else if (lparam->type() == "DetectionOutput")
@@ -2449,31 +2564,31 @@ namespace dd
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::model_complexity(long int &flops,
-											     long int &params)
+                                                                                             long int &params)
   {
     for (size_t l=0;l<_net->layers().size();l++)
       {
-	const boost::shared_ptr<caffe::Layer<float>> &layer = _net->layers().at(l);
-	std::string lname = layer->layer_param().name();
-	std::string ltype = layer->layer_param().type();
-	std::vector<boost::shared_ptr<Blob<float>>> blblobs = layer->blobs();
-	const std::vector<caffe::Blob<float>*> &tlblobs = _net->top_vecs().at(l);
-	if (blblobs.empty())
-	  continue;
-	long int lcount = blblobs.at(0)->count();
-	long int lflops = 0;
-	if (ltype == "Convolution")
-	  {
-	    int dwidth = tlblobs.at(0)->width();
-	    int dheight = tlblobs.at(0)->height();
-	    lflops = lcount * dwidth * dheight;
-	  }
-	else
-	  {
-	    lflops = lcount;
-	  }
-	flops += lflops;
-	params += lcount;
+        const boost::shared_ptr<caffe::Layer<float>> &layer = _net->layers().at(l);
+        std::string lname = layer->layer_param().name();
+        std::string ltype = layer->layer_param().type();
+        std::vector<boost::shared_ptr<Blob<float>>> blblobs = layer->blobs();
+        const std::vector<caffe::Blob<float>*> &tlblobs = _net->top_vecs().at(l);
+        if (blblobs.empty())
+          continue;
+        long int lcount = blblobs.at(0)->count();
+        long int lflops = 0;
+        if (ltype == "Convolution")
+          {
+            int dwidth = tlblobs.at(0)->width();
+            int dheight = tlblobs.at(0)->height();
+            lflops = lcount * dwidth * dheight;
+          }
+        else
+          {
+            lflops = lcount;
+          }
+        flops += lflops;
+        params += lcount;
       }
     this->_logger->info("Net total flops={} / total params={}",flops,params);
   }
@@ -2513,6 +2628,204 @@ namespace dd
     this->_logger->info("detected network type is {}",mltype);
   }
   
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofiles_dice_deeplab_vgg16(caffe::NetParameter &net_param,caffe::NetParameter &deploy_net_param)
+  {
+    caffe::LayerParameter *shrink_param = find_layer_by_name(net_param,"label_shrink");
+    shrink_param->add_include();
+    caffe::NetStateRule *nsr = shrink_param->mutable_include(0);
+    nsr->set_phase(caffe::TRAIN);
+
+    int softml_pos = find_index_layer_by_type(net_param,"SoftmaxWithLoss");
+
+    std::string logits_from_loss = net_param.layer(softml_pos).bottom(0);
+    std::string logits_norm = logits_from_loss + "_norm";
+    std::string agg_output = logits_from_loss + "_agg";
+    std::string sigmoid_output = agg_output + "_prob";
+
+    caffe::LayerParameter* mvn_param = insert_layer_before(net_param, softml_pos++);
+    *mvn_param->mutable_name() = "normalization";
+    *mvn_param->mutable_type() = "MVN";
+    mvn_param->add_bottom(logits_from_loss);
+    mvn_param->add_top(logits_norm);
+
+
+
+    caffe::LayerParameter* conv_param = insert_layer_before(net_param, softml_pos++);
+    *conv_param->mutable_name() = "linear_aggregation";
+    *conv_param->mutable_type() = "Convolution";
+    conv_param->add_bottom(logits_norm);
+    conv_param->add_top(agg_output);
+    caffe::ConvolutionParameter* conv_param_param = conv_param->mutable_convolution_param();
+    conv_param_param->set_num_output(1);
+    conv_param_param->set_axis(1);
+    conv_param_param->add_kernel_size(1);
+
+    caffe::FillerParameter* filler_param = conv_param_param->mutable_weight_filler();
+    filler_param->set_std(0.5);
+    filler_param->set_type("gaussian");
+
+
+
+
+    caffe::LayerParameter* sigmoid_loss_param = insert_layer_before(net_param, softml_pos++);
+    sigmoid_loss_param->set_name("probablizer");
+    sigmoid_loss_param->set_type("Sigmoid");
+    sigmoid_loss_param->add_bottom(agg_output);
+    sigmoid_loss_param->add_top(sigmoid_output);
+    sigmoid_loss_param->add_include();
+    nsr = sigmoid_loss_param->mutable_include(0);
+    nsr->set_phase(caffe::TRAIN);
+
+
+    // first new loss
+    caffe::LayerParameter *lossparam = net_param.mutable_layer(softml_pos);
+    *lossparam->mutable_type() = "DiceCoefLoss";
+    *lossparam->mutable_bottom(0) = sigmoid_output;
+    caffe::DiceCoefLossParameter* dclp = lossparam->mutable_dice_coef_loss_param();
+    dclp->set_generalization(caffe::DiceCoefLossParameter::NONE);
+
+    caffe::LayerParameter* final_interp_param = find_layer_by_name(net_param,"final_interp");
+    *final_interp_param->mutable_bottom(0) = agg_output;
+
+    caffe::LayerParameter* probt_param = find_layer_by_name(net_param, "probt");
+    *probt_param->mutable_type() = "Sigmoid";
+
+    // now work on deploy.txt
+    int final_interp_pos = find_index_layer_by_type(deploy_net_param, "Interp");
+    final_interp_param = deploy_net_param.mutable_layer(final_interp_pos);
+    *final_interp_param->mutable_bottom(0) = agg_output;
+
+    mvn_param = insert_layer_before(deploy_net_param, final_interp_pos++);
+    *mvn_param->mutable_name() = "normalization";
+    *mvn_param->mutable_type() = "MVN";
+    mvn_param->add_bottom(logits_from_loss);
+    mvn_param->add_top(logits_norm);
+
+
+    conv_param = insert_layer_before(deploy_net_param, final_interp_pos);
+    *conv_param->mutable_name() = "linear_aggregation";
+    *conv_param->mutable_type() = "Convolution";
+    conv_param->add_bottom(logits_norm);
+    conv_param->add_top(agg_output);
+    conv_param_param = conv_param->mutable_convolution_param();
+    conv_param_param->set_num_output(1);
+    conv_param_param->set_axis(1);
+    conv_param_param->add_kernel_size(1);
+    filler_param = conv_param_param->mutable_weight_filler();
+    filler_param->set_std(0.5);
+    filler_param->set_type("gaussian");
+
+
+    probt_param = find_layer_by_name(deploy_net_param, "probt");
+    *probt_param->mutable_type() = "Sigmoid";
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofiles_dice_unet(caffe::NetParameter &net_param,caffe::NetParameter &deploy_net_param)
+  {
+    int softml_pos = find_index_layer_by_type(net_param,"SoftmaxWithLoss");
+
+    std::string logits_from_loss = net_param.layer(softml_pos).bottom(0);
+    std::string logits_norm  = logits_from_loss + "_norm";
+    std::string agg_output = logits_from_loss + "_agg";
+    std::string sigmoid_output = agg_output + "_prob";
+
+    caffe::LayerParameter* mvn_param = insert_layer_before(net_param, softml_pos++);
+    *mvn_param->mutable_name() = "normalization";
+    *mvn_param->mutable_type() = "MVN";
+    mvn_param->add_bottom(logits_from_loss);
+    mvn_param->add_top(logits_norm);
+
+
+    caffe::LayerParameter* conv_param = insert_layer_before(net_param, softml_pos++);
+    *conv_param->mutable_name() = "linear_aggregation";
+    *conv_param->mutable_type() = "Convolution";
+    conv_param->add_bottom(logits_norm);
+    conv_param->add_top(agg_output);
+    caffe::ConvolutionParameter* conv_param_param = conv_param->mutable_convolution_param();
+    conv_param_param->set_num_output(1);
+    conv_param_param->set_axis(1);
+    conv_param_param->add_kernel_size(1);
+
+    caffe::FillerParameter* filler_param = conv_param_param->mutable_weight_filler();
+    filler_param->set_std(0.5);
+    filler_param->set_type("gaussian");
+
+    caffe::LayerParameter* sigmoid_loss_param = insert_layer_before(net_param, softml_pos++);
+    sigmoid_loss_param->set_name("probabilizer");
+    sigmoid_loss_param->set_type("Sigmoid");
+    sigmoid_loss_param->add_bottom(agg_output);
+    sigmoid_loss_param->add_top(sigmoid_output);
+    sigmoid_loss_param->add_include();
+    caffe::NetStateRule *nsr = sigmoid_loss_param->mutable_include(0);
+    nsr->set_phase(caffe::TRAIN);
+
+    // first new loss
+    caffe::LayerParameter *lossparam = net_param.mutable_layer(softml_pos);
+    lossparam->clear_softmax_param();
+    *lossparam->mutable_type() = "DiceCoefLoss";
+    *lossparam->mutable_bottom(0) = sigmoid_output;
+    caffe::DiceCoefLossParameter* dclp = lossparam->mutable_dice_coef_loss_param();
+    dclp->set_generalization(caffe::DiceCoefLossParameter::NONE);
+
+    caffe::LayerParameter* probt_param = find_layer_by_name(net_param, "probt");
+    *probt_param->mutable_type() = "Sigmoid";
+    *probt_param->mutable_bottom(0) = agg_output;
+
+
+    int final_pred = find_index_layer_by_name(deploy_net_param, "pred");
+
+    mvn_param = insert_layer_before(deploy_net_param, final_pred++);
+    *mvn_param->mutable_name() = "normalization";
+    *mvn_param->mutable_type() = "MVN";
+    mvn_param->add_bottom(logits_from_loss);
+    mvn_param->add_top(logits_norm);
+
+
+    conv_param = insert_layer_before(deploy_net_param, final_pred);
+    *conv_param->mutable_name() = "linear_aggregation";
+    *conv_param->mutable_type() = "Convolution";
+    conv_param->add_bottom(logits_norm);
+    conv_param->add_top(agg_output);
+    conv_param_param = conv_param->mutable_convolution_param();
+    conv_param_param->set_num_output(1);
+    conv_param_param->set_axis(1);
+    conv_param_param->add_kernel_size(1);
+    filler_param = conv_param_param->mutable_weight_filler();
+    filler_param->set_std(0.5);
+    filler_param->set_type("gaussian");
+
+
+    probt_param = find_layer_by_name(deploy_net_param, "pred");
+    *probt_param->mutable_type() = "Sigmoid";
+    *probt_param->mutable_bottom(0) = agg_output;
+  }
+
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofile_imageDataLayer(caffe::NetParameter &net_param)
+  {
+    caffe::LayerParameter *lparam = net_param.mutable_layer(0);
+    caffe::ImageDataParameter* image_data_parameter = lparam->mutable_image_data_param();
+    lparam->set_type("ImageData");
+    image_data_parameter->set_source(this->_inputc._root_folder);
+    image_data_parameter->set_batch_size(this->_inputc.batch_size());
+    image_data_parameter->set_shuffle(this->_inputc._shuffle);
+    image_data_parameter->set_new_height(this->_inputc.height());
+    image_data_parameter->set_new_width(this->_inputc.width());
+    if (this->_inputc._multi_label)
+      image_data_parameter->set_label_size(_nclasses);
+    else
+      image_data_parameter->set_label_size(1);
+    if (this->_inputc._has_mean_file)
+      image_data_parameter->set_mean_file("mean.binaryproto");
+    lparam->clear_data_param();
+    lparam->clear_transform_param();
+  }
+
+
   template class CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>;
   template class CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>;
   template class CaffeLib<TxtCaffeInputFileConn,SupervisedOutput,CaffeModel>;

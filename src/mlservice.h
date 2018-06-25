@@ -97,7 +97,7 @@ namespace dd
      * @param mls ML service
      */
     MLService(MLService &&mls) noexcept
-      :TMLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>(std::move(mls)),_sname(std::move(mls._sname)),_description(std::move(mls._description)),_tjobs_counter(mls._tjobs_counter.load()),_training_jobs(std::move(mls._training_jobs))
+      :TMLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>(std::move(mls)),_sname(std::move(mls._sname)),_description(std::move(mls._description)),_init_parameters(std::move(mls._init_parameters)),_tjobs_counter(mls._tjobs_counter.load()),_training_jobs(std::move(mls._training_jobs))
       {}
     
     /**
@@ -123,9 +123,10 @@ namespace dd
 	throw MLLibBadParamException("empty repository");
       this->_inputc._logger = this->_logger;
       this->_outputc._logger = this->_logger;
-      this->_inputc.init(ad.getobj("parameters").getobj("input"));
-      this->_outputc.init(ad.getobj("parameters").getobj("output"));
-      this->init_mllib(ad.getobj("parameters").getobj("mllib"));
+      _init_parameters = ad.getobj("parameters");
+      this->_inputc.init(_init_parameters.getobj("input"));
+      this->_outputc.init(_init_parameters.getobj("output"));
+      this->init_mllib(_init_parameters.getobj("mllib"));
     }
 
     /**
@@ -236,6 +237,7 @@ namespace dd
 	  ++hit;
 	}
       ad.add("jobs",vad);
+      ad.add("parameters",_init_parameters);
       ad.add("mltype",this->_mltype);
       return ad;
     }
@@ -429,7 +431,8 @@ namespace dd
 
     std::string _sname; /**< service name. */
     std::string _description; /**< optional description of the service. */
-
+    APIData _init_parameters; /**< service creation parameters. */
+    
     mutable std::mutex _tjobs_mutex; /**< mutex around training jobs. */
     std::atomic<int> _tjobs_counter = {0}; /**< training jobs counter. */
     std::unordered_map<int,tjob> _training_jobs; // XXX: the futures' dtor blocks if the object is being terminated
