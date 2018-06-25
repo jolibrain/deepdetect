@@ -490,6 +490,7 @@ namespace dd
 	    _ft.wait();
 	    delete _dd_server;
 	    _gdd_server = nullptr;
+	    _dd_server = nullptr;
 	  }
 	catch (std::exception &e)
 	  {
