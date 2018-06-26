@@ -39,7 +39,7 @@ static std::string doconvnet_file = "nconvnet_deploy.prototxt";
 static std::string oresnet_file = "nresnet.prototxt";
 static std::string doresnet_file = "nresnet_deploy.prototxt";
 
-/*TEST(caffelib,configure_mlp_template_1_nt)
+TEST(caffelib,configure_mlp_template_1_nt)
 {
   int nclasses = 7;
   caffe::NetParameter net_param, deploy_net_param;
@@ -573,7 +573,7 @@ TEST(caffelib,configure_convnet_template_n_1D)
   ASSERT_EQ(3,lparam->mutable_convolution_param()->kernel_h());
   ASSERT_EQ(1,lparam->mutable_convolution_param()->kernel_w());
   delete caff;
-}*/
+}
 
 //TODO: lregression template
 
