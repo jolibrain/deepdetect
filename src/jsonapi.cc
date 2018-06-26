@@ -1036,7 +1036,7 @@ namespace dd
 			       const std::string &jstr)
   {
     std::ofstream outf;
-    outf.open(model_repo + "/" + JsonAPI::_json_blob_fname,std::ofstream::out|std::ofstream::trunc);
+    outf.open(model_repo + "/" + JsonAPI::_json_config_blob_fname,std::ofstream::out|std::ofstream::trunc);
     if (!outf.is_open())
       return 1;
     outf << jstr << std::endl;
