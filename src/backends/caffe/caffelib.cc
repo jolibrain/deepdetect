@@ -197,12 +197,12 @@ namespace dd
 
             if (net_param.name().compare("deeplab_vgg16")==0)
               {
-								update_protofiles_dice_one_hot(net_param, this->_loss, _nclasses);
+                update_protofiles_dice_one_hot(net_param, this->_loss, _nclasses);
                 update_protofiles_dice_deeplab_vgg16(net_param, deploy_net_param, this->_loss, ignore_label);
               }
             else if (net_param.name().compare("unet") == 0)
               {
-								update_protofiles_dice_one_hot(net_param, this->_loss, _nclasses);
+                update_protofiles_dice_one_hot(net_param, this->_loss, _nclasses);
                 update_protofiles_dice_unet(net_param,deploy_net_param, this->_loss, ignore_label);
               }
 
