@@ -616,7 +616,7 @@ TEST(caffelib, configure_deeplabvgg16_diceloss)
   ad.add("nclasses",2);
   ad.add("segmentation",true);
   CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel> *caff = new CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(CaffeModel(ad));
-  caff->_logger = spdlog::syslog_logger("UT-deeplab_vgg16");
+  caff->_logger = spdlog::stdout_logger_mt("UT-deeplab_vgg16");
   caff->_inputc.init(ad);
   caff->init_mllib(ad);
   caff->instantiate_template(ad);
@@ -649,7 +649,7 @@ TEST(caffelib, configure_unet_diceloss)
   ad.add("nclasses",2);
   ad.add("segmentation",true);
   CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel> *caff = new CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(CaffeModel(ad));
-  caff->_logger = spdlog::syslog_logger("UT-unet");
+  caff->_logger = spdlog::stdout_logger_mt("UT-unet");
   caff->_inputc.init(ad);
   caff->init_mllib(ad);
   caff->instantiate_template(ad);
