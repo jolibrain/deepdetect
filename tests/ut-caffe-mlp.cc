@@ -39,7 +39,7 @@ static std::string doconvnet_file = "nconvnet_deploy.prototxt";
 static std::string oresnet_file = "nresnet.prototxt";
 static std::string doresnet_file = "nresnet_deploy.prototxt";
 
-/*TEST(caffelib,configure_mlp_template_1_nt)
+TEST(caffelib,configure_mlp_template_1_nt)
 {
   int nclasses = 7;
   caffe::NetParameter net_param, deploy_net_param;
@@ -573,7 +573,7 @@ TEST(caffelib,configure_convnet_template_n_1D)
   ASSERT_EQ(3,lparam->mutable_convolution_param()->kernel_h());
   ASSERT_EQ(1,lparam->mutable_convolution_param()->kernel_w());
   delete caff;
-}*/
+}
 
 //TODO: lregression template
 
@@ -616,7 +616,7 @@ TEST(caffelib, configure_deeplabvgg16_diceloss)
   ad.add("nclasses",2);
   ad.add("segmentation",true);
   CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel> *caff = new CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(CaffeModel(ad));
-  caff->_logger = spdlog::syslog_logger("UT-deeplab_vgg16");
+  caff->_logger = spdlog::stdout_logger_mt("UT-deeplab_vgg16");
   caff->_inputc.init(ad);
   caff->init_mllib(ad);
   caff->instantiate_template(ad);
@@ -649,7 +649,7 @@ TEST(caffelib, configure_unet_diceloss)
   ad.add("nclasses",2);
   ad.add("segmentation",true);
   CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel> *caff = new CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(CaffeModel(ad));
-  caff->_logger = spdlog::syslog_logger("UT-unet");
+  caff->_logger = spdlog::stdout_logger_mt("UT-unet");
   caff->_inputc.init(ad);
   caff->init_mllib(ad);
   caff->instantiate_template(ad);

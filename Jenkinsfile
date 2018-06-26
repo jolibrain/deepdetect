@@ -7,7 +7,7 @@ pipeline {
 mkdir -p build
 cd build
 cmake .. -DBUILD_TESTS=ON -DUSE_CUDNN=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_XGBOOST=ON -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61"
-make'''
+make -j24'''
       }
     }
     stage('Tests GPU') {
