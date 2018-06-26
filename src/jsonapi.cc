@@ -32,6 +32,7 @@ DEFINE_string(service_start_list,"","list of JSON calls to be executed at startu
 namespace dd
 {
   std::string JsonAPI::_json_blob_fname = "model.json";
+  std::string JsonAPI::_json_config_blob_fname = "config.json";
   
   JsonAPI::JsonAPI()
     :APIStrategy()
@@ -362,6 +363,7 @@ namespace dd
 
     std::string mllib,input;
     std::string type,description;
+    bool store_config = false;
     APIData ad,ad_model;
     try
       {
@@ -379,6 +381,13 @@ namespace dd
 	// model parameters (mandatory).
 	ad = APIData(d);
 	ad_model = ad.getobj("model");
+	APIData ad_param = ad.getobj("parameters");
+	if (ad_param.has("output"))
+	  {
+	    APIData ad_output = ad_param.getobj("output");
+	    if (ad_output.has("store_config"))
+	      store_config = ad_output.get("store_config").get<bool>();
+	  }
       }
     catch(RapidjsonException &e)
       {
@@ -409,6 +418,9 @@ namespace dd
 		else return dd_input_connector_not_found_1004();
 		if (JsonAPI::store_json_blob(cmodel._repo,jstr)) // store successful call json blob
 		  _logger->error("couldn't write {} file in model repository {}",JsonAPI::_json_blob_fname,cmodel._repo);
+		if (store_config)
+		  if (JsonAPI::store_json_config_blob(cmodel._repo,jstr))
+		    _logger->error("couldn't write {} file in model repository {}",JsonAPI::_json_config_blob_fname,cmodel._repo);
 	      }
 	    else if (type == "unsupervised")
 	      {
@@ -423,6 +435,9 @@ namespace dd
 		else return dd_input_connector_not_found_1004();
 		if (JsonAPI::store_json_blob(cmodel._repo,jstr)) // store successful call json blob
 		  _logger->error("couldn't write {} file in model repository {}",JsonAPI::_json_blob_fname,cmodel._repo);
+		if (store_config)
+		  if (JsonAPI::store_json_config_blob(cmodel._repo,jstr))
+		    _logger->error("couldn't write {} file in model repository {}",JsonAPI::_json_config_blob_fname,cmodel._repo);
 	      }
 	    else
 	      {
@@ -441,6 +456,9 @@ namespace dd
 		else return dd_input_connector_not_found_1004();
 		if (JsonAPI::store_json_blob(c2model._repo,jstr)) // store successful call json blob
 		  _logger->error("couldn't write {} file in model repository {}",JsonAPI::_json_blob_fname,c2model._repo);
+		if (store_config)
+		  if (JsonAPI::store_json_config_blob(c2model._repo,jstr))
+		    _logger->error("couldn't write {} file in model repository {}",JsonAPI::_json_config_blob_fname,c2model._repo);
 	      }
 	    else
 	      {
@@ -467,6 +485,9 @@ namespace dd
 		else return dd_input_connector_not_found_1004();
 		if (JsonAPI::store_json_blob(tfmodel._repo,jstr)) // store successful call json blob
 		  _logger->error("couldn't write {} file in model repository {}",JsonAPI::_json_blob_fname,tfmodel._repo);
+		if (store_config)
+		  if (JsonAPI::store_json_config_blob(tfmodel._repo,jstr))
+		    _logger->error("couldn't write {} file in model repository {}",JsonAPI::_json_config_blob_fname,tfmodel._repo);
 	      }
 	    else
 	      {
@@ -488,6 +509,9 @@ namespace dd
 	    else return dd_input_connector_not_found_1004();
 	    if (JsonAPI::store_json_blob(xmodel._repo,jstr)) // store successful call json blob
 	      _logger->error("couldn't write {} file in model repository {}",JsonAPI::_json_blob_fname,xmodel._repo);
+	    if (store_config)
+	      if (JsonAPI::store_json_config_blob(xmodel._repo,jstr))
+		_logger->error("couldn't write {} file in model repository {}",JsonAPI::_json_config_blob_fname,xmodel._repo);
 	  }
 #endif
 #ifdef USE_TSNE
@@ -501,6 +525,9 @@ namespace dd
 	    else return dd_input_connector_not_found_1004();
 	    if (JsonAPI::store_json_blob(tmodel._repo,jstr)) // store successful call json blob
 	      _logger->error("couldn't write {} file in model repository {}",JsonAPI::_json_blob_fname,tmodel._repo);
+	    if (store_config)
+	      if (JsonAPI::store_json_config_blob(tmodel._repo,jstr))
+		_logger->error("couldn't write {} file in model repository {}",JsonAPI::_json_config_blob_fname,tmodel._repo);
 	  }
 #endif
 	else
@@ -999,6 +1026,17 @@ namespace dd
   {
     std::ofstream outf;
     outf.open(model_repo + "/" + JsonAPI::_json_blob_fname,std::ofstream::out|std::ofstream::app);
+    if (!outf.is_open())
+      return 1;
+    outf << jstr << std::endl;
+    return 0;
+  }
+  
+  int JsonAPI::store_json_config_blob(const std::string &model_repo,
+			       const std::string &jstr)
+  {
+    std::ofstream outf;
+    outf.open(model_repo + "/" + JsonAPI::_json_blob_fname,std::ofstream::out|std::ofstream::trunc);
     if (!outf.is_open())
       return 1;
     outf << jstr << std::endl;
