@@ -97,7 +97,7 @@ namespace dd
      * @param mls ML service
      */
     MLService(MLService &&mls) noexcept
-      :TMLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>(std::move(mls)),_sname(std::move(mls._sname)),_description(std::move(mls._description)),_tjobs_counter(mls._tjobs_counter.load()),_training_jobs(std::move(mls._training_jobs))
+      :TMLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>(std::move(mls)),_sname(std::move(mls._sname)),_description(std::move(mls._description)),_init_parameters(std::move(mls._init_parameters)),_tjobs_counter(mls._tjobs_counter.load()),_training_jobs(std::move(mls._training_jobs))
       {}
     
     /**
@@ -123,9 +123,10 @@ namespace dd
 	throw MLLibBadParamException("empty repository");
       this->_inputc._logger = this->_logger;
       this->_outputc._logger = this->_logger;
-      this->_inputc.init(ad.getobj("parameters").getobj("input"));
-      this->_outputc.init(ad.getobj("parameters").getobj("output"));
-      this->init_mllib(ad.getobj("parameters").getobj("mllib"));
+      _init_parameters = ad.getobj("parameters");
+      this->_inputc.init(_init_parameters.getobj("input"));
+      this->_outputc.init(_init_parameters.getobj("output"));
+      this->init_mllib(_init_parameters.getobj("mllib"));
     }
 
     /**
@@ -155,16 +156,61 @@ namespace dd
      * \brief get info about the service
      * @return info data object
      */
-    APIData info() const
+    APIData info(const bool &status=false) const
     {
       APIData ad;
-      ad.add("name",_sname);
-      ad.add("description",_description);
-      ad.add("mllib",this->_libname);
+      if (!status)
+	{
+	  ad.add("name",_sname);
+	  ad.add("description",_description);
+	  ad.add("mllib",this->_libname);
+	  if (this->_has_predict)
+	    ad.add("predict",true);
+	  else ad.add("training",true);
+	  ad.add("mltype",this->_mltype);
+	}
+      else
+	{
+	  APIData ad = info(false);
+	  std::vector<APIData> vad;
+	  std::lock_guard<std::mutex> lock(_tjobs_mutex);
+	  auto hit = _training_jobs.begin();
+	  while(hit!=_training_jobs.end())
+	    {
+	      APIData jad;
+	      jad.add("job",(*hit).first);
+	      int jstatus = (*hit).second._status;
+	      if (jstatus == 0)
+		jad.add("status","not started");
+	      else if (jstatus == 1)
+		{
+		  jad.add("status","running");
+		  APIData tjob;
+		  std::future_status status = (*hit).second._ft.wait_for(std::chrono::seconds(0));
+		  if (status == std::future_status::timeout)
+		    {
+		      this->collect_measures(jad);
+		      this->est_remain_time(jad);
+		      std::chrono::time_point<std::chrono::system_clock> trun = std::chrono::system_clock::now();
+		      jad.add("time",std::chrono::duration_cast<std::chrono::seconds>(trun-(*hit).second._tstart).count());
+		    }
+		}
+	      else if (jstatus == 2)
+		jad.add("status","finished");
+	      vad.push_back(jad);
+	      ++hit;
+	    }
+	  ad.add("jobs",vad);
+	  if (this->_has_predict)
+	    {
+	      ad.add("repository",this->_inputc._model_repo);
+	      ad.add("width",this->_inputc.width());
+	      ad.add("height",this->_inputc.height());
+	    }
+	}
       return ad;
     }
     
-    // 
     /**
      * \brief get status of the service
      *        To be surcharged in related classes
@@ -172,10 +218,7 @@ namespace dd
      */
     APIData status()
     {
-      APIData ad;
-      ad.add("name",_sname);
-      ad.add("description",_description);
-      ad.add("mllib",this->_libname);
+      APIData ad = info(false);
       std::vector<APIData> vad;
       std::lock_guard<std::mutex> lock(_tjobs_mutex);
       auto hit = _training_jobs.begin();
@@ -194,6 +237,8 @@ namespace dd
 	  ++hit;
 	}
       ad.add("jobs",vad);
+      ad.add("parameters",_init_parameters);
+      ad.add("mltype",this->_mltype);
       return ad;
     }
 
@@ -214,6 +259,7 @@ namespace dd
 	  std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();
 	  ++_tjobs_counter;
 	  int local_tcounter = _tjobs_counter;
+	  this->_has_predict = false;
 	  _training_jobs.emplace(local_tcounter,
 				 std::move(tjob(std::async(std::launch::async,
 							   [this,ad,local_tcounter]
@@ -291,7 +337,10 @@ namespace dd
 		  _training_out.erase(ohit);
 		}
 	      if (st == 0)
-		out.add("status","finished");
+		{
+		  out.add("status","finished");
+		  this->_has_predict = true;
+		}
 	      else out.add("status","unknown error");
 	      //this->collect_measures(out); // XXX: beware if there was a queue, since the job has finished, there might be a new one running.
 	      APIData jmrepo;
@@ -382,8 +431,9 @@ namespace dd
 
     std::string _sname; /**< service name. */
     std::string _description; /**< optional description of the service. */
-
-    std::mutex _tjobs_mutex; /**< mutex around training jobs. */
+    APIData _init_parameters; /**< service creation parameters. */
+    
+    mutable std::mutex _tjobs_mutex; /**< mutex around training jobs. */
     std::atomic<int> _tjobs_counter = {0}; /**< training jobs counter. */
     std::unordered_map<int,tjob> _training_jobs; // XXX: the futures' dtor blocks if the object is being terminated
     std::unordered_map<int,APIData> _training_out;

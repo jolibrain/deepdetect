@@ -16,6 +16,7 @@ DeepDetect relies on external machine learning libraries through a very generic 
 |            | Training | Prediction | Classification | Object Detection | Segmentation | Regression | Autoencoder | OCR / Seq2Seq |
 |------------|----------|------------|----------------|-----------|-----------|------------|-------------|-------------|
 | Caffe      | Y        | Y          | Y              | Y         |   Y       |   Y        | Y           | Y           |
+| Caffe2     | N        | Y          | N              | N         |   N       |   N        | N           | N           |
 | XGBoost    | Y        | Y          | Y              | N         |   N       |   Y        | N/A         | N           |
 | Tensorflow | N        | Y          | Y              | N         |   N       |   N        | N           | N           |
 | T-SNE      | Y        | N/A        | N/A            | N/A       |   N/A     |   N/A      | N/A         | N           |
@@ -26,15 +27,17 @@ DeepDetect relies on external machine learning libraries through a very generic 
 |            | Training | Prediction |
 |------------|----------|------------|
 | Caffe      | Y        | Y          |
-| XGBoost    | Y        | N          |
-| Tensorflow | Y        | Y          |
-| T-SNE      | N        | N          |
+| Caffe2     | N        | Y          |
+| XGBoost    | Y        | Y          |
+| Tensorflow | N        | Y          |
+| T-SNE      | Y        | N          |
 
 #### Input data support per library (current):
 
 |            | CSV | SVM | Text words | Text characters | Images |
 |------------|-----|-----|------------|-----------------|--------|
 | Caffe      | Y   | Y   | Y          | Y               | Y      |
+| Caffe2     | N   | N   | N          | N               | Y      |
 | XGBoost    | Y   | Y   | Y          | N               | N      |
 | Tensorflow | N   | N   | N          | N               | Y      |
 | T-SNE      | Y   | N   | N          | N               | Y      | (*)
@@ -313,6 +316,13 @@ cmake .. -DUSE_TF=ON -DUSE_XGBOOST=ON
 Simply specify the option via cmake command line:
 ```
 cmake .. -DUSE_TSNE=ON
+```
+
+#### Build with Caffe2 support
+
+Specify the option via cmake:
+```
+cmake .. -DUSE_CAFFE2=ON
 ```
 
 #### Build with similarity search support

@@ -593,7 +593,7 @@ TEST(caffelib,configure_resnet_template_n_nt)
   ad.add("nclasses",nclasses);
   
   CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel> *caff = new CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(CaffeModel());
-  caff->_logger = spdlog::syslog_logger("test");
+  caff->_logger = spdlog::stdout_logger_mt("test");
   caff->configure_resnet_template(ad,ImgCaffeInputFileConn(),net_param,deploy_net_param);
   
   caffe::WriteProtoToTextFile(net_param,oresnet_file);
@@ -651,7 +651,7 @@ TEST(caffelib, configure_unet_diceloss)
   ad.add("ignore_label", 0);
   ad.add("segmentation",true);
   CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel> *caff = new CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(CaffeModel(ad));
-  caff->_logger = spdlog::syslog_logger("UT");
+  caff->_logger = spdlog::syslog_logger("UT-unet");
   caff->_inputc.init(ad);
   caff->init_mllib(ad);
   caff->instantiate_template(ad);

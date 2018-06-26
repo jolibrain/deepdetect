@@ -60,7 +60,7 @@ namespace dd
       }
     if (FLAGS_info)
       {
-	std::string janswer = jrender(info());
+	std::string janswer = jrender(info(""));
 	std::cout << janswer << std::endl;
       }
     if (!FLAGS_service_name.empty())

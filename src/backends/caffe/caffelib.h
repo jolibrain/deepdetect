@@ -201,8 +201,8 @@ namespace dd
       
     private:
       void update_protofile_classes(caffe::NetParameter &net_param);
-
       void update_protofiles_dice_one_hot(caffe::NetParameter &net_param, std::string loss, int nclasses);
+
 
       void update_protofiles_dice_deeplab_vgg16(caffe::NetParameter &net_param, caffe::NetParameter &deploy_net_param, std::string loss, int ignore_label);
       void update_protofiles_dice_unet(caffe::NetParameter &net_param, caffe::NetParameter &deploy_net_param, std::string loss, int ignore_label);
@@ -215,10 +215,11 @@ namespace dd
       caffe::LayerParameter* insert_layer_before
       (caffe::NetParameter &net_param, int layer_number);
       caffe::LayerParameter*  find_layer_by_name(caffe::NetParameter &net_param, std::string name);
-      caffe::LayerParameter*  find_layer_by_type(caffe::NetParameter &net_param, std::string type);
 
       int find_index_layer_by_type(caffe::NetParameter &net_param, std::string type);
       int find_index_layer_by_name(caffe::NetParameter &net_param, std::string name);
+      caffe::LayerParameter* find_layer_by_type(caffe::NetParameter &net_param, std::string type);
+
 
 
       void fix_batch_size(const APIData &ad,
@@ -232,6 +233,8 @@ namespace dd
 
       void model_complexity(long int &flops,
 			    long int &params);
+
+      void model_type(std::string &mltype);
       
     public:
       caffe::Net<float> *_net = nullptr; /**< neural net. */

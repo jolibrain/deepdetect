@@ -51,6 +51,7 @@ namespace dd
     _inputLayer = cl._inputLayer;
     _outputLayer = cl._outputLayer;
     _inputFlag = cl._inputFlag;
+    this->_mltype = "classification";
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>

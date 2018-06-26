@@ -29,6 +29,7 @@
 #define DMLC_NO_EXCEPTION  noexcept(true)
 
 #include <dmlc/base.h>
+#include <dmlc/io.h>
 #include <data/parser.h> // dmlc
 #include <xgboost/data.h>
 
@@ -48,6 +49,18 @@ namespace dd
     std::shared_ptr<xgboost::DMatrix>_m;
     std::shared_ptr<xgboost::DMatrix> _mtest;
 
+    // for API info only
+    int width() const
+    {
+      return -1;
+    }
+
+    // for API info only
+    int height() const
+    {
+      return -1;
+    }
+    
     // parameters
     float _missing;// = std::NAN; /**< represents missing values. */
     std::vector<std::string> _ids; /**< input ids. */

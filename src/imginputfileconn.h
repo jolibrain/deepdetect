@@ -74,11 +74,18 @@ namespace dd
     void decode(const std::string &str)
       {
 	std::vector<unsigned char> vdat(str.begin(),str.end());
-	cv::Mat img = cv::Mat(cv::imdecode(cv::Mat(vdat,true),_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR));
+	cv::Mat img = cv::Mat(cv::imdecode(cv::Mat(vdat,true),
+                                     _unchanged_data ? CV_LOAD_IMAGE_UNCHANGED :
+                                     (_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR)));
 	_imgs_size.push_back(std::pair<int,int>(img.rows,img.cols));
 	cv::Size size(_width,_height);
 	cv::Mat rimg;
 	cv::resize(img,rimg,size,0,0,CV_INTER_CUBIC);
+	if (_crop_width != 0 && _crop_height != 0) {
+		int widthBorder = (_width - _crop_width)/2;
+		int heightBorder = (_height - _crop_height)/2;
+		rimg = rimg(cv::Rect(widthBorder, heightBorder, _crop_width, _crop_height));
+	}
 	_imgs.push_back(rimg);
       }
     
@@ -99,7 +106,8 @@ namespace dd
     // data acquisition
     int read_file(const std::string &fname)
     {
-      cv::Mat img = cv::imread(fname,_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR);
+      cv::Mat img = cv::imread(fname, _unchanged_data ? CV_LOAD_IMAGE_UNCHANGED :
+                               (_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR));
       if (img.empty())
 	{
 	  _logger->error("empty image {}",fname);
@@ -116,6 +124,15 @@ namespace dd
 	{
 	  throw InputConnectorBadParamException("failed resizing image " + fname);
 	}
+		if (_crop_width != 0 && _crop_height != 0) {
+			int widthBorder = (_width - _crop_width)/2;
+			int heightBorder = (_height - _crop_height)/2;
+			try {
+				rimg = rimg(cv::Rect(widthBorder, heightBorder, _crop_width, _crop_height));
+			} catch(...) {
+				throw InputConnectorBadParamException("failed cropping image " + fname);
+			}
+		}
       _imgs.push_back(rimg);
       return 0;
     }
@@ -196,7 +213,8 @@ namespace dd
       _labels.reserve(lfiles.size());
       for (std::pair<std::string,int> &p: lfiles)
 	{
-	  cv::Mat img = cv::imread(p.first,_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR);
+	  cv::Mat img = cv::imread(p.first, _unchanged_data ? CV_LOAD_IMAGE_UNCHANGED :
+                             (_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR));
 	  _imgs_size.push_back(std::pair<int,int>(img.rows,img.cols));
 	  cv::Mat rimg;
 	  try
@@ -207,6 +225,15 @@ namespace dd
 	    {
 	      throw InputConnectorBadParamException("failed resizing image " + p.first);
 	    }
+		if (_crop_width != 0 && _crop_height != 0) {
+			int widthBorder = (_width - _crop_width)/2;
+			int heightBorder = (_height - _crop_height)/2;
+			try {
+				rimg = rimg(cv::Rect(widthBorder, heightBorder, _crop_width, _crop_height));
+			} catch(...) {
+				throw InputConnectorBadParamException("failed cropping image " + p.first);
+			}
+		}
 	  _imgs.push_back(rimg);
 	  _img_files.push_back(p.first);
 	  if (p.second >= 0)
@@ -222,9 +249,12 @@ namespace dd
     std::vector<std::pair<int,int>> _imgs_size;
     bool _bw = false;
     bool _b64 = false;
+    bool _unchanged_data = false;
     std::vector<int> _labels;
     int _width = 224;
     int _height = 224;
+    int _crop_width = 0;
+    int _crop_height = 0;
     std::string _db_fname;
     std::shared_ptr<spdlog::logger> _logger;
   };
@@ -235,7 +265,7 @@ namespace dd
   ImgInputFileConn()
     :InputConnectorStrategy(){}
     ImgInputFileConn(const ImgInputFileConn &i)
-      :InputConnectorStrategy(i),_width(i._width),_height(i._height),_bw(i._bw),_mean(i._mean),_has_mean_scalar(i._has_mean_scalar) {}
+      :InputConnectorStrategy(i),_width(i._width),_height(i._height),_crop_width(i._crop_width),_crop_height(i._crop_height),_bw(i._bw),_unchanged_data(i._unchanged_data),_mean(i._mean),_has_mean_scalar(i._has_mean_scalar) {}
     ~ImgInputFileConn() {}
 
     void init(const APIData &ad)
@@ -250,8 +280,24 @@ namespace dd
 	_width = ad.get("width").get<int>();
       if (ad.has("height"))
 	_height = ad.get("height").get<int>();
+      if (ad.has("crop_width")) {
+		  _crop_width = ad.get("crop_width").get<int>();
+		  if (_crop_width > _width) {
+			  _logger->error("Crop width must be less than or equal to width");
+			  throw InputConnectorBadParamException("Crop width must be less than or equal to width");
+		  }
+	  }
+      if (ad.has("crop_height")) {
+		  _crop_height = ad.get("crop_height").get<int>();
+		  if (_crop_height > _height) {
+			  _logger->error("Crop height must be less than or equal to height");
+			  throw InputConnectorBadParamException("Crop height must be less than or equal to height");
+		  }
+	  }
       if (ad.has("bw"))
 	_bw = ad.get("bw").get<bool>();
+      if (ad.has("unchanged_data"))
+        _unchanged_data = ad.get("unchanged_data").get<bool>();
       if (ad.has("shuffle"))
 	_shuffle = ad.get("shuffle").get<bool>();
       if (ad.has("seed"))
@@ -280,8 +326,16 @@ namespace dd
     
     int feature_size() const
     {
-      if (_bw) return _width*_height;
-      else return _width*_height*3; // RGB
+      if (_bw || _unchanged_data) {
+		  // XXX: only valid for single channels
+      	if (_crop_width != 0 && _crop_height != 0) return _crop_width*_crop_height;
+      	else return _width*_height;
+      }
+      else {
+	  	// RGB
+	  	if (_crop_width != 0 && _crop_height != 0) return _crop_width*_crop_height*3;
+	  	else return _width*_height*3;
+      }
     }
 
     int batch_size() const
@@ -317,8 +371,11 @@ namespace dd
 	  std::string u = _uris.at(i);
 	  DataEl<DDImg> dimg;
 	  dimg._ctype._bw = _bw;
+	  dimg._ctype._unchanged_data = _unchanged_data;
 	  dimg._ctype._width = _width;
 	  dimg._ctype._height = _height;
+	  dimg._ctype._crop_width = _crop_width;
+	  dimg._ctype._crop_height = _crop_height;
 	  try
 	    {
 	      if (dimg.read_element(u,this->_logger))
@@ -421,7 +478,10 @@ namespace dd
     // image parameters
     int _width = 224;
     int _height = 224;
+    int _crop_width = 0;
+    int _crop_height = 0;
     bool _bw = false; /**< whether to convert to black & white. */
+    bool _unchanged_data = false; /**< IMREAD_UNCHANGED flag. */
     double _test_split = 0.0; /**< auto-split of the dataset. */
     int _seed = -1; /**< shuffling seed. */
     cv::Scalar _mean; /**< mean image pixels, to be subtracted from images. */
@@ -434,6 +494,10 @@ namespace dd
 
 #ifdef USE_TF
 #include "backends/tf/tfinputconns.h"
+#endif
+
+#ifdef USE_CAFFE2
+#include "backends/caffe2/caffe2inputconns.h"
 #endif
 
 #endif
