@@ -229,7 +229,7 @@ if (USE_DLIB)
   endif()
 
   add_executable(ut_dlibapi ut-dlibapi.cc)
-  target_link_libraries(ut_dlibapi ddetect ${DLIB_LIB_DEPS} ${CUDA_LIB_DEPS} glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc curlpp curl hdf5_cpp ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DPES} ${TSNET_LIB_DEPS} ${CAFFE2_LIB_DEPS})
+  target_link_libraries(ut_dlibapi ddetect ${DLIB_LIB_DEPS} ${CUDA_LIB_DEPS} glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc curlpp curl hdf5_cpp ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNET_LIB_DEPS} ${CAFFE2_LIB_DEPS})
   add_test(
     NAME ut_dlibapi
     COMMAND ut_dlibapi
