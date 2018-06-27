@@ -20,6 +20,7 @@ DeepDetect relies on external machine learning libraries through a very generic 
 | XGBoost    | Y        | Y          | Y              | N         |   N       |   Y        | N/A         | N           |
 | Tensorflow | N        | Y          | Y              | N         |   N       |   N        | N           | N           |
 | T-SNE      | Y        | N/A        | N/A            | N/A       |   N/A     |   N/A      | N/A         | N           |
+| Dlib       | N        | Y          | Y              | Y         |   N       |   N        | N           | N           |
 
 
 #### GPU support per library
@@ -31,6 +32,7 @@ DeepDetect relies on external machine learning libraries through a very generic 
 | XGBoost    | Y        | Y          |
 | Tensorflow | N        | Y          |
 | T-SNE      | Y        | N          |
+| Dlib       | N        | Y          |
 
 #### Input data support per library (current):
 
@@ -41,6 +43,7 @@ DeepDetect relies on external machine learning libraries through a very generic 
 | XGBoost    | Y   | Y   | Y          | N               | N      |
 | Tensorflow | N   | N   | N          | N               | Y      |
 | T-SNE      | Y   | N   | N          | N               | Y      | (*)
+| Dlib       | N   | N   | N          | N               | Y      |
 (*) more input support for T-SNE is pending
 
 #### Main functionalities
@@ -144,6 +147,10 @@ None outside of C++ compiler and make
 - Cmake > 3
 - [Bazel 0.8.x](https://www.bazel.io/versions/master/docs/install.html#install-on-ubuntu)
 
+#### Dlib Dependencies
+
+- CUDA 8 and cuDNN 7 for GPU mode
+
 ##### Caffe version
 
 By default DeepDetect automatically relies on a modified version of Caffe, https://github.com/beniz/caffe/tree/master
@@ -205,6 +212,8 @@ http://www.deepdetect.com/overview/examples/
 | VOC0712 (object detection) | [Y](https://deepdetect.com/models/voc0712_dd.tar.gz) | N | https://github.com/weiliu89/caffe/tree/ssd | 71.2 mAP |
 | InceptionBN-21k | [Y](https://deepdetect.com/models/inception/inception_bn_21k) | N | https://github.com/pertusa/InceptionBN-21K-for-Caffe | 41.9% |
 | Inception v3 5K | N | [Y](https://deepdetect.com/models/tf/openimages_inception_v3) | https://github.com/openimages/dataset |  |
+| [5-point Face Landmarking Model (face detection)](http://dlib.net/files/mmod_human_face_detector.dat.bz2) | N | N | http://blog.dlib.net/2017/09/fast-multiclass-object-detection-in.html |  |
+| [Front/Rear vehicle detection (object detection)](http://dlib.net/files/mmod_front_and_rear_end_vehicle_detector.dat.bz2) | N | N | http://blog.dlib.net/2017/09/fast-multiclass-object-detection-in.html |  |
 
 More models:
 
@@ -316,6 +325,18 @@ cmake .. -DUSE_TF=ON -DUSE_XGBOOST=ON
 Simply specify the option via cmake command line:
 ```
 cmake .. -DUSE_TSNE=ON
+```
+
+#### Build with Dlib support
+Specify the following option via cmake:
+```$xslt
+cmake .. -DUSE_DLIB=ON
+```
+This will automatically build with GPU support if possible. Note: this will also enable cuDNN if available by default.
+
+If you would like to constrain Dlib to CPU, use:
+```
+cmake .. -DUSE_DLIB=ON -DUSE_DLIB_CPU_ONLY=ON
 ```
 
 #### Build with Caffe2 support

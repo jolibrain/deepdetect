@@ -34,6 +34,9 @@
 #ifdef USE_TF
 #include "backends/tf/tflib.h"
 #endif
+#ifdef USE_DLIB
+#include "backends/dlib/dliblib.h"
+#endif
 #ifdef USE_CAFFE2
 #include "backends/caffe2/caffe2lib.h"
 #endif
@@ -65,6 +68,9 @@ namespace dd
 #ifdef USE_TF
     MLService<TFLib,ImgTFInputFileConn,SupervisedOutput,TFModel>,
     MLService<TFLib,ImgTFInputFileConn,UnsupervisedOutput,TFModel>,
+#endif
+#ifdef USE_DLIB
+	MLService<DlibLib,ImgDlibInputFileConn,SupervisedOutput,DlibModel>,
 #endif
     MLService<CaffeLib,SVMCaffeInputFileConn,UnsupervisedOutput,CaffeModel>
 #ifdef USE_XGBOOST

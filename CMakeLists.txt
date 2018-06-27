@@ -113,7 +113,54 @@ endif()
 # optional packages
 if (USE_CPU_ONLY)
 else()
+    if (USE_DLIB AND NOT USE_DLIB_CPU_ONLY)
+        message(STATUS "Dlib enabled with CUDA requires cuDNN - enabling cuDNN")
+        set(USE_CUDNN ON)
+    endif()
 include(cmake/Cuda.cmake) # cuda + cudnn
+endif()
+
+if (USE_DLIB)
+    # Dlib
+
+    # Currently supported release version of dlib
+    set(DLIB_RELEASE_VERSION v19.13)
+    message(STATUS "Using Dlib version ${DLIB_RELEASE_VERSION}")
+    add_definitions(-DUSE_DLIB)
+
+    if (CUDA_FOUND AND NOT USE_DLIB_CPU_ONLY)
+        if (NOT USE_CUDNN)
+            message(FATAL_ERROR "Dlib with CUDA must also enable cuDNN. Use -DUSE_CUDNN=ON")
+        endif()
+        ExternalProject_Add(
+          dlib
+          PREFIX dlib
+          INSTALL_DIR ${CMAKE_BINARY_DIR}
+          URL https://github.com/davisking/dlib/archive/${DLIB_RELEASE_VERSION}.tar.gz
+          CONFIGURE_COMMAND cd dlib && mkdir build && cd build && cmake .. -DDLIB_NO_GUI_SUPPORT=ON -DDLIB_USE_CUDA=ON -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/dlib/build && cmake --build . --config Release --target install
+          BUILD_COMMAND ""
+          INSTALL_COMMAND ""
+          BUILD_IN_SOURCE 1
+        )
+        set(DLIB_INC_DIR ${CMAKE_BINARY_DIR}/dlib/build/include)
+        set(DLIB_LIB_DIR ${CMAKE_BINARY_DIR}/dlib/build/lib)
+    else()
+        ExternalProject_Add(
+            dlib
+            PREFIX dlib
+            INSTALL_DIR ${CMAKE_BINARY_DIR}
+            URL https://github.com/davisking/dlib/archive/${DLIB_RELEASE_VERSION}.tar.gz
+            CONFIGURE_COMMAND cd dlib && mkdir build && cd build && cmake .. -DDLIB_NO_GUI_SUPPORT=ON -DDLIB_USE_CUDA=OFF -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/dlib/build && cmake --build . --config Release --target install
+            BUILD_COMMAND ""
+            INSTALL_COMMAND ""
+            BUILD_IN_SOURCE 1
+        )
+        set(DLIB_INC_DIR ${CMAKE_BINARY_DIR}/dlib/build/include)
+        set(DLIB_LIB_DIR ${CMAKE_BINARY_DIR}/dlib/build/lib)
+    endif()
+
+    include_directories("${DLIB_INC_DIR}")
+    message(STATUS "Dlib will be built")
 endif()
 
 if (USE_CAFFE2)
@@ -185,7 +232,6 @@ if (USE_CAFFE2)
     execute_process(COMMAND ln -s ${PYTORCH_PATH}/lib ${PROTOBUF_LIB_DIR})
     execute_process(COMMAND ln -s ${PYTORCH_PATH}/bin ${CMAKE_BINARY_DIR}/protobuf/bin)
   endif()
-
 endif()
 
 if (USE_TF)
@@ -439,7 +485,7 @@ endif()
 # so that we will find dd_config.h
 include_directories("${PROJECT_BINARY_DIR}")
 include_directories(${CAFFE_INC_DIR} ${XGBOOST_INC_DIR} ${TSNE_INC_DIR})
-include_directories(${CMAKE_SOURCE_DIR}/src/backends/caffe ${CMAKE_SOURCE_DIR}/backends/xgb ${CMAKE_SOURCE_DIR}/backends/tf ${CMAKE_SOURCE_DIR}/backends/tsne)
+include_directories(${CMAKE_SOURCE_DIR}/src/backends/caffe ${CMAKE_SOURCE_DIR}/backends/xgb ${CMAKE_SOURCE_DIR}/backends/tf ${CMAKE_SOURCE_DIR}/backends/dlib ${CMAKE_SOURCE_DIR}/backends/tsne)
 
 # Our version of caffe.proto was "injected" into caffe2 and compiled within it
 # So two versions of caffe.pb.h were generated (the only difference being the namespace ... name).
