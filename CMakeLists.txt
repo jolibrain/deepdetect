@@ -163,10 +163,8 @@ if (USE_DLIB)
     message(STATUS "Dlib will be built")
 endif()
 
-# set(CAFFE_DD_USER beniz)
-# set(CAFFE_DD_BRANCH master)
-set(CAFFE_DD_USER chichaj)
-set(CAFFE_DD_BRANCH force_pb)
+set(CAFFE_DD_USER beniz)
+set(CAFFE_DD_BRANCH master)
 
 if (USE_CAFFE2)
 
