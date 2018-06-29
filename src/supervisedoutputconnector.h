@@ -1307,14 +1307,16 @@ namespace dd
     
     static double ap(const APIData &ad)
     {
-      double mAP = 0.0;
+      double mmAP = 0.0;
       std::map<int, float> APs;
-      
+
       // extract tp, fp, labels
       APIData bad = ad.getobj("0");
       int pos_count = ad.get("pos_count").get<int>();
       for (int i=0;i<pos_count;i++)
 	{
+         // do a mean over label AP per image in test set
+         double mAP = 0.0;
 	  std::vector<APIData> vbad = bad.getv(std::to_string(i));
 	  //std::cerr << "vbad size=" << vbad.size() << std::endl;
 	  for (size_t j=0;j<vbad.size();j++)
@@ -1346,8 +1348,10 @@ namespace dd
 	      mAP += APs[label];
 	    }
 	  mAP/=static_cast<double>(vbad.size());
+         // do a mean mAP over images in test set
+         mmAP += mAP;
 	}
-      return mAP;
+      return mmAP/static_cast<double>(pos_count);
     }
     
     // measure: AUC
