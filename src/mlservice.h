@@ -171,7 +171,7 @@ namespace dd
 	}
       else
 	{
-	  APIData ad = info(false);
+	  ad = info(false);
 	  std::vector<APIData> vad;
 	  std::lock_guard<std::mutex> lock(_tjobs_mutex);
 	  auto hit = _training_jobs.begin();
