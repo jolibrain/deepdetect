@@ -596,7 +596,7 @@ namespace dd
 	  }
 	try
 	  {
-	    model_type(this->_mltype);
+	    model_type(_net,this->_mltype);
 	  }
 	catch (std::exception &e)
 	  {
@@ -688,7 +688,6 @@ namespace dd
 	update_deploy_protofile_softmax(ad);
 	create_model();
       }
-    
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -886,6 +885,14 @@ namespace dd
     catch(...)
       {
 	throw MLLibInternalException("solver creation exception");
+      }
+    try
+      {
+	model_type(solver->net().get(),this->_mltype);
+      }
+    catch (std::exception &e)
+      {
+	this->_logger->error("failed determining mltype");
       }
     if (!inputc._dv.empty() || !inputc._dv_sparse.empty())
       {
@@ -2594,11 +2601,12 @@ namespace dd
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::model_type(std::string &mltype)
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::model_type(caffe::Net<float> *net,
+										       std::string &mltype)
   {
-    for (size_t l=0;l<_net->layers().size();l++)
+    for (size_t l=0;l<net->layers().size();l++)
       {
-	const boost::shared_ptr<caffe::Layer<float>> &layer = _net->layers().at(l);
+	const boost::shared_ptr<caffe::Layer<float>> &layer = net->layers().at(l);
 	std::string lname = layer->layer_param().name();
 	std::string ltype = layer->layer_param().type();
 
@@ -2617,7 +2625,7 @@ namespace dd
 	    mltype = "segmentation";
 	    break;
 	  }
-	if (ltype == "Sigmoid" && l == _net->layers().size()-1)
+	if (ltype == "Sigmoid" && l == net->layers().size()-1)
 	  {
 	    mltype = "regression";
 	    break;
