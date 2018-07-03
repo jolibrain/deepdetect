@@ -305,6 +305,8 @@ namespace dd
 	try
 	  {
 	    ad = APIData(d);
+	    if (ad.has("status"))
+	      status = ad.get("status").get<bool>();
 	  }
 	catch(RapidjsonException &e)
 	  {
@@ -315,9 +317,6 @@ namespace dd
 	  {
 	 return dd_bad_request_400();
 	  }
-	
-	if (ad.has("status"))
-	  status = ad.get("status").get<bool>();
       }
 	
     // answer info call.
