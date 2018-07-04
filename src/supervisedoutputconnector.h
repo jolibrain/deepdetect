@@ -539,8 +539,14 @@ namespace dd
 	  bool bbmap = (std::find(measures.begin(),measures.end(),"map")!=measures.end());
 	  if (bbmap)
 	    {
-	      double bmap = ap(ad_res);
+             std::map<int,float> aps;
+	      double bmap = ap(ad_res,aps);
 	      meas_out.add("map",bmap);
+             for (auto ap: aps)
+               {
+                 std::string s = "map_" + ap.first;
+                 meas_out.add(s,ap.second);
+               }
 	    }
 	}
       if (net_meas) // measure is coming from the net directly
@@ -1305,10 +1311,10 @@ namespace dd
       return ap;
     }
     
-    static double ap(const APIData &ad)
+    static double ap(const APIData &ad,  std::map<int,float>& APs)
     {
       double mmAP = 0.0;
-      std::map<int, float> APs;
+      std::map<int, int> APs_count;
 
       // extract tp, fp, labels
       APIData bad = ad.getobj("0");
@@ -1342,16 +1348,30 @@ namespace dd
 		{
 		  fp.push_back(std::pair<double,int>(fp_d.at(j),fp_i.at(j)));
 		}
-	      
-	      APs[label] = compute_ap(tp,fp,num_pos);
+
+             double local_ap =compute_ap(tp,fp,num_pos);
+             if (APs.find(label) == APs.end())
+               {
+                 APs[label] = local_ap;
+                 APs_count[label] = 1;
+               }
+             else
+               {
+                 APs[label] += local_ap;
+                 APs_count[label] += 1;
+               }
 	      //std::cerr << "ap for label " << label << "=" << APs[label] << std::endl;
-	      mAP += APs[label];
+	      mAP += local_ap;
 	    }
 	  mAP/=static_cast<double>(vbad.size());
          // do a mean mAP over images in test set
          mmAP += mAP;
 	}
-      return mmAP/static_cast<double>(pos_count);
+      for (auto ap: APs)
+        {
+          ap.second /= static_cast<float>(APs_count[ap.first]);
+        }
+     return mmAP / static_cast<double>(pos_count);;
     }
     
     // measure: AUC
