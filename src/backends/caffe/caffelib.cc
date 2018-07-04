@@ -181,6 +181,10 @@ namespace dd
 	caffe::WriteProtoToTextFile(net_param,dest_net);
 	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
       }
+    else if (model_tmpl.find("ssd")!=std::string::npos)
+      {
+	configure_ssd_template(dest_net,dest_deploy_net,ad,this->_inputc);
+      }
     else
       {
 	caffe::NetParameter net_param,deploy_net_param;
@@ -210,7 +214,7 @@ namespace dd
 
 	// switch to imageDataLayer
 	//TODO: should apply to all templates with images
-	if (!this->_inputc._db && !this->_inputc._segmentation && !this->_inputc._ctc && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
+	if (!this->_inputc._db && !this->_inputc._bbox && !this->_inputc._segmentation && !this->_inputc._ctc && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
 	  {
         update_protofile_imageDataLayer(net_param);
 	  }
@@ -322,7 +326,7 @@ namespace dd
 	// input size
 	caffe::LayerParameter *lparam = net_param.mutable_layer(1); // test
 	caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(0);
-	if (!this->_inputc._ctc &&(_crop_size > 0 || (this->_inputc.width() != -1 && this->_inputc.height() != -1))) // forced width & height
+	if (!this->_inputc._bbox && !this->_inputc._ctc &&(_crop_size > 0 || (this->_inputc.width() != -1 && this->_inputc.height() != -1))) // forced width & height
 	  {
 	    int width = this->_inputc.width();
 	    int height = this->_inputc.height();
@@ -572,7 +576,130 @@ namespace dd
       const_cast<APIData&>(ad).add("regression",true);
     netcaffe._nlac.configure_net(ad);
   }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_ssd_template(const std::string &dest_net,
+												   const std::string &dest_deploy_net,
+												   const APIData &ad,
+												   const TInputConnectorStrategy &inputc)
+  {
+    //- load prototxt
+    caffe::NetParameter net_param,deploy_net_param;
+    caffe::ReadProtoFromTextFile(dest_net,&net_param);
+    caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
+
+    //- if finetuning, change the proper layer names
+    std::string postfix = "_ftune";
+    const bool finetune = (ad.has("finetuning") && ad.get("finetuning").get<bool>());
+    int k = net_param.layer_size();
+    for (int l=0;l<k;l++)
+      {
+	caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+	if (finetune)
+	  {
+	    if (lparam->name().find("mbox_conf") != std::string::npos
+		|| lparam->name().find("mbox_loc") != std::string::npos)
+	      {
+		lparam->set_name(lparam->name() + postfix);
+	      }
+	    for (int t=0;t<lparam->top_size();t++)
+	      {
+		if (lparam->top(t).find("_conf") != std::string::npos
+		    || lparam->top(t).find("_loc") != std::string::npos)
+		  {
+		    lparam->set_top(t,lparam->top(t) + postfix);
+		  }
+	      }
+	    for (int t=0;t<lparam->bottom_size();t++)
+	      {
+		if (lparam->bottom(t).find("_conf") != std::string::npos
+		    || lparam->bottom(t).find("_loc") != std::string::npos)
+		  {
+		    lparam->set_bottom(t,lparam->bottom(t) + postfix);
+		  }
+	      }
+	  }
+	//- set correct layer parameters based on nclasses
+	if (lparam->name() == "mbox_loss")
+	  {
+	    lparam->mutable_multibox_loss_param()->set_num_classes(_nclasses);
+	  }
+	else if (lparam->name() == "detection_out")
+	  {
+	    lparam->mutable_detection_output_param()->set_num_classes(_nclasses);
+	  }
+	else if (lparam->name() == "detection_eval")
+	  {
+	    lparam->mutable_detection_evaluate_param()->set_num_classes(_nclasses);
+	  }
+	else if (lparam->name().find("mbox_conf_reshape") != std::string::npos)
+	  {
+	    lparam->mutable_reshape_param()->mutable_shape()->set_dim(2,_nclasses);
+	  }
+      }
+	
+    // fix other layer parameters
+    for (int l=0;l<k;l++)
+      {
+	caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+	if (lparam->name().find("mbox_conf") != std::string::npos
+	    && lparam->type() == "Convolution")
+	  {
+	    int num_priors_per_location = lparam->mutable_convolution_param()->num_output() / 2;
+	    lparam->mutable_convolution_param()->set_num_output(num_priors_per_location * _nclasses);
+	  }
+      }
+
+    k = deploy_net_param.layer_size();
+    for (int l=0;l<k;l++)
+      {
+	caffe::LayerParameter *lparam = deploy_net_param.mutable_layer(l);
+	if (finetune)
+	  {
+	    if (lparam->name().find("mbox_conf") != std::string::npos
+		|| lparam->name().find("mbox_loc") != std::string::npos)
+	      {
+		lparam->set_name(lparam->name() + postfix);
+	      }
+	    for (int t=0;t<lparam->top_size();t++)
+	      {
+		if (lparam->top(t).find("_conf") != std::string::npos
+		    || lparam->top(t).find("_loc") != std::string::npos)
+		  {
+		    lparam->set_top(t,lparam->top(t) + postfix);
+		  }
+	      }
+	    for (int t=0;t<lparam->bottom_size();t++)
+	      {
+		if (lparam->bottom(t).find("_conf") != std::string::npos
+		    || lparam->bottom(t).find("_loc") != std::string::npos)
+		  {
+		    lparam->set_bottom(t,lparam->bottom(t) + postfix);
+		  }
+	      }
+	  }
+	//- set correct layer parameters based on nclasses
+	if (lparam->name().find("mbox_conf") != std::string::npos
+	    && lparam->type() == "Convolution")
+	  {
+	    int num_priors_per_location = lparam->mutable_convolution_param()->num_output() / 2;
+	    lparam->mutable_convolution_param()->set_num_output(num_priors_per_location * _nclasses);
+	  }
+	else if (lparam->name() == "detection_out")
+	  {
+	    lparam->mutable_detection_output_param()->set_num_classes(_nclasses);
+	  }
+	else if (lparam->name().find("mbox_conf_reshape") != std::string::npos)
+	  {
+	    lparam->mutable_reshape_param()->mutable_shape()->set_dim(2,_nclasses);
+	  }
+      }
     
+    //- write it down
+    caffe::WriteProtoToTextFile(net_param,dest_net);
+    caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
+  }
+  
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::create_model(const bool &test)
   {
@@ -754,7 +881,8 @@ namespace dd
       }
 
     caffe::SolverParameter solver_param;
-    caffe::ReadProtoFromTextFile(this->_mlmodel._solver,&solver_param);
+    if (!caffe::ReadProtoFromTextFile(this->_mlmodel._solver,&solver_param))
+      throw MLLibInternalException("failed opening solver file " + this->_mlmodel._solver);
     bool has_mean_file = false;
     int user_batch_size, batch_size, test_batch_size, test_iter;
     update_in_memory_net_and_solver(solver_param,cad,inputc,has_mean_file,user_batch_size,batch_size,test_batch_size,test_iter);
@@ -1182,7 +1310,7 @@ namespace dd
 	float mean_loss = 0.0;
 	int tresults = 0;
 	int nout = _nclasses;
-	int ocr_iter = 0;
+	int inner_meas_iter = 0;
 	float net_meas = 0.0;
 	if (_regression && _ntargets > 1)
 	  nout = _ntargets;
@@ -1190,6 +1318,9 @@ namespace dd
 	  nout = inputc.channels();
     ad_res.add("nclasses",_nclasses);
 	inputc.reset_dv_test();
+	std::map<int,std::map<int,std::vector<std::pair<float,int>>>> all_true_pos;
+	std::map<int,std::map<int,std::vector<std::pair<float,int>>>> all_false_pos;
+	std::map<int,std::map<int,int>> all_num_pos;
 	while(true)
 	  {
 	    size_t dv_size = 0;
@@ -1197,10 +1328,10 @@ namespace dd
 	    std::vector<std::vector<double>> dv_float_data;
 	    try
 	      {
-		if (inputc._ctc)
+		if (inputc._ctc || inputc._bbox)
 		  {
 		    // do nothing, db input
-		    dv_size = 1;
+		    dv_size = test_batch_size;
 		  }
 		else if (!inputc._sparse)
 		  {
@@ -1320,7 +1451,7 @@ namespace dd
 	      {
 		slot = 0;
 		net_meas += lresults[slot]->cpu_data()[0];
-		if (ocr_iter >= test_iter)
+		if (inner_meas_iter >= test_iter)
 		  {
 		    net_meas /= static_cast<float>(test_iter);
 		    std::vector<double> predictions;
@@ -1330,7 +1461,117 @@ namespace dd
 		    ad_res.add("0",bad);
 		    break;
 		  }
-		++ocr_iter;
+		++inner_meas_iter;
+	      }
+	    else if (inputc._bbox)
+	      {
+		for (size_t j=0;j<lresults.size();j++)
+		  {
+		    if (lresults[j]->width() != 5)
+		      throw MLLibBadParamException("wrong width in bbox result");
+		    int pos = tresults + j;
+		    const float *result_vec = lresults[j]->cpu_data();
+		    int num_det = lresults[j]->height();
+		    for (int k=0;k<num_det;k++)
+		      {
+			int item_id = static_cast<int>(result_vec[k * 5]);
+			int label = static_cast<int>(result_vec[k * 5 + 1]);
+			if (item_id == -1) {
+			  // Special row of storing number of positives for a label.
+			  if (all_num_pos[pos].find(label) == all_num_pos[pos].end()) {
+			    all_num_pos[pos][label] = static_cast<int>(result_vec[k * 5 + 2]);
+			  } else {
+			    all_num_pos[pos][label] += static_cast<int>(result_vec[k * 5 + 2]);
+			  }
+			} else {
+			  // Normal row storing detection status.
+			  float score = result_vec[k * 5 + 2];
+			  int tp = static_cast<int>(result_vec[k * 5 + 3]);
+			  int fp = static_cast<int>(result_vec[k * 5 + 4]);
+			  if (tp == 0 && fp == 0) {
+			    // Ignore such case. It happens when a detection bbox is matched to
+			    // a difficult gt bbox and we don't evaluate on difficult gt bbox.
+			    continue;
+			  }
+			  all_true_pos[pos][label].push_back(std::make_pair(score, tp));
+			  all_false_pos[pos][label].push_back(std::make_pair(score, fp));
+			}
+		      }
+		  }
+
+		// wrapping up
+		if (inner_meas_iter >= test_iter)
+		  {
+		    APIData bad;
+		    int pos_count = 0;
+		    for (size_t i=0;i<all_true_pos.size();i++)
+		      {
+			if (all_true_pos.find(i) == all_true_pos.end())
+			  throw MLLibInternalException("Missing output_blob true_pos: " + std::to_string(i));
+			
+			const std::map<int, std::vector<std::pair<float, int> > >& true_pos =
+			  all_true_pos.find(i)->second;
+			if (all_false_pos.find(i) == all_false_pos.end())
+			  throw MLLibInternalException("Missing output_blob false_pos: " + std::to_string(i));
+			const std::map<int, std::vector<std::pair<float, int> > >& false_pos =
+			  all_false_pos.find(i)->second;
+			if (all_num_pos.find(i) == all_num_pos.end())
+			  throw MLLibInternalException("Missing output_blob num_pos: " + std::to_string(i));
+			const std::map<int, int>& num_pos = all_num_pos.find(i)->second;
+			// Sort true_pos and false_pos with descend scores.
+			std::vector<APIData> vbad;
+			for (std::map<int, int>::const_iterator it = num_pos.begin();
+			     it != num_pos.end(); ++it)
+			  {
+			    APIData lbad;
+			    int label = it->first;
+			    int label_num_pos = it->second;
+			    if (true_pos.find(label) == true_pos.end()) {
+			      this->_logger->error("Missing true_pos for label: {}",label);
+			      continue;
+			    }
+			    const std::vector<std::pair<float, int> >& label_true_pos =
+			      true_pos.find(label)->second;
+			    if (false_pos.find(label) == false_pos.end()) {
+			      this->_logger->error("Missing false_pos for label: {}",label);
+			      continue;
+			    }
+			    const std::vector<std::pair<float, int> >& label_false_pos =
+			      false_pos.find(label)->second;
+			    
+			    //XXX: AP computed here, store in apidata instead
+			    std::vector<double> tp_d;
+			    std::vector<int> tp_i;
+			    for (size_t v=0;v<label_true_pos.size();v++)
+			      {
+				tp_d.push_back(label_true_pos.at(v).first);
+				tp_i.push_back(label_true_pos.at(v).second);
+			      }
+			    
+			    std::vector<double> fp_d;
+			    std::vector<int> fp_i;
+			    for (size_t v=0;v<label_false_pos.size();v++)
+			      {
+				fp_d.push_back(label_false_pos.at(v).first);
+				fp_i.push_back(label_false_pos.at(v).second);
+			      }
+			    
+			    lbad.add("tp_d",tp_d);
+			    lbad.add("tp_i",tp_i);
+			    lbad.add("fp_d",fp_d);
+			    lbad.add("fp_i",fp_i);
+			    lbad.add("num_pos",label_num_pos);
+			    lbad.add("label",label);
+			    vbad.push_back(lbad);
+			  }
+			bad.add(std::to_string(pos_count),vbad);
+			++pos_count;
+		      }
+		    ad_res.add("0",bad);
+		    ad_res.add("pos_count",pos_count);
+		    break;
+		  }
+		++inner_meas_iter;
 	      }
 	    else
 	      {
@@ -1432,11 +1673,13 @@ namespace dd
 	  ad_res.add("segmentation",true);
 	if (inputc._multi_label)
 	  ad_res.add("multilabel",true);
+	if (inputc._bbox)
+	  ad_res.add("bbox",true);
 	ad_res.add("batch_size",tresults);
 	if (_regression)
 	  ad_res.add("regression",_regression);
 	if (inputc._ctc)
-	  ad_res.add("ctc",true);
+	  ad_res.add("net_meas",true);
       }
     SupervisedOutput::measure(ad_res,ad_out,out);
   }
@@ -2048,15 +2291,16 @@ namespace dd
     test_iter = -1;
     fix_batch_size(ad,inputc,user_batch_size,batch_size,test_batch_size,test_iter);
     if (test_iter != -1) // has changed
-      sp.set_test_iter(0,test_iter);
+	sp.set_test_iter(0,test_iter);
     
     // fix source paths in the model.
     caffe::NetParameter *np = sp.mutable_net_param();
-    caffe::ReadProtoFromTextFile(sp.net().c_str(),np); //TODO: error on read + use internal caffe ReadOrDie procedure
+    if (!caffe::ReadProtoFromTextFile(sp.net().c_str(),np))
+      throw MLLibInternalException("failed opening train prototxt file " + sp.net());
 
     this->_logger->info("input db = {}",inputc._db);
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
-    if (!inputc._db && typeid(inputc) == typeid(ImgCaffeInputFileConn))
+    if (!inputc._db && !inputc._bbox && typeid(inputc) == typeid(ImgCaffeInputFileConn))
       {
 	caffe::LayerParameter *lparam = np->mutable_layer(0);
         caffe::ImageDataParameter* image_data_parameter = lparam->mutable_image_data_param();
@@ -2148,24 +2392,31 @@ namespace dd
 		else mdp->set_batch_size(test_batch_size);
 	      }
 	  }
-	if (lp->has_transform_param() || inputc._has_mean_file || !inputc._mean_values.empty())
+	if ((lp->has_transform_param() || inputc._has_mean_file || !inputc._mean_values.empty()))
 	  {
 	    caffe::TransformationParameter *tp = lp->mutable_transform_param();
 	    has_mean_file = tp->has_mean_file();
-	    if (tp->has_mean_file())
+	    if (tp->has_mean_file() || !inputc._mean_values.empty())
 	      {
-		if (tp->crop_size() == 0)
+		if (tp->crop_size() == 0) // beware if no mean file available, though should not happen
 		  {
-		    if (ad.has("db"))
-		      tp->set_mean_file(ad.getobj("db").get("meanfile").get<std::string>());
-		    else tp->set_mean_file(this->_mlmodel._repo + "/" + tp->mean_file());
+		    if (inputc._mean_values.empty())
+		      {
+			if (ad.has("db"))
+			  tp->set_mean_file(ad.getobj("db").get("meanfile").get<std::string>());
+			else tp->set_mean_file(this->_mlmodel._repo + "/" + tp->mean_file());
+		      }
+		    else
+		      {
+			for (size_t d=0;d<inputc._mean_values.size();d++)
+			  tp->add_mean_value(inputc._mean_values.at(d));
+			tp->clear_mean_file();
+		      }
 		  }
 		else
 		  {
 		    for (size_t d=0;d<inputc._mean_values.size();d++)
-		      {
-			tp->add_mean_value(inputc._mean_values.at(d));
-		      }
+		      tp->add_mean_value(inputc._mean_values.at(d));
 		    tp->clear_mean_file();
 		  }
 	      }
@@ -2216,8 +2467,7 @@ namespace dd
     if (_crop_size > 0)
       width = height = _crop_size;
 
-    
-    if (!inputc._db && !inputc._ctc && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
+    if (!inputc._db && !inputc._bbox && !inputc._ctc && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
       {
             caffe::LayerParameter *lparam = net_param.mutable_layer(0);
             caffe::ImageDataParameter* image_data_parameter = lparam->mutable_image_data_param();
@@ -2420,6 +2670,8 @@ namespace dd
     // fix class numbers
     // this procedure looks for the first bottom layer with a 'num_output' field and
     // set it to the number of classes defined by the supervised service.
+    if (this->_inputc._bbox)
+      return;
     bool last_layer = true;
     for (int l=net_param.layer_size()-1;l>0;l--)
       {

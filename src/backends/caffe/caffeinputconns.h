@@ -40,7 +40,7 @@ namespace dd
   public:
     CaffeInputInterface() {}
     CaffeInputInterface(const CaffeInputInterface &cii)
-      :_db(cii._db),_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed),_sequence_txt(cii._sequence_txt),_max_embed_id(cii._max_embed_id),_segmentation(cii._segmentation),_multi_label(cii._multi_label),_ctc(cii._ctc),_alphabet_size(cii._alphabet_size),_root_folder(cii._root_folder),_dbfullname(cii._dbfullname),_test_dbfullname(cii._test_dbfullname) {}
+      :_db(cii._db),_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed),_sequence_txt(cii._sequence_txt),_max_embed_id(cii._max_embed_id),_segmentation(cii._segmentation),_bbox(cii._bbox),_multi_label(cii._multi_label),_ctc(cii._ctc),_alphabet_size(cii._alphabet_size),_root_folder(cii._root_folder),_dbfullname(cii._dbfullname),_test_dbfullname(cii._test_dbfullname) {}
     ~CaffeInputInterface() {}
 
     /**
@@ -83,6 +83,7 @@ namespace dd
     int _sequence_txt = -1; /**< sequence of txt input connector. */
     int _max_embed_id = -1; /**< in embeddings, the max index. */
     bool _segmentation = false; /**< whether it is a segmentation service. */
+    bool _bbox = false; /**< whether it is an object detection service. */
     bool _multi_label = false; /**< multi label setup */
     bool _ctc = false; /**< whether it is a CTC / OCR service. */
     int _alphabet_size = 0; /**< for sequence to sequence models. */
@@ -153,6 +154,8 @@ namespace dd
 	_root_folder = ad.get("root_folder").get<std::string>();
       if (ad.has("segmentation"))
 	_segmentation = ad.get("segmentation").get<bool>();
+      if (ad.has("bbox"))
+	_bbox = ad.get("bbox").get<bool>();
       if (ad.has("ctc"))
 	_ctc = ad.get("ctc").get<bool>();
     }
@@ -173,6 +176,8 @@ namespace dd
 	  APIData ad_input = ad.getobj("parameters").getobj("input");
 	  if (ad_input.has("segmentation"))
 	    _segmentation = ad_input.get("segmentation").get<bool>();
+	  if (ad_input.has("bbox"))
+	    _bbox = ad_input.get("bbox").get<bool>();
 	  if (ad_input.has("multi_label"))
 	    _multi_label = ad_input.get("multi_label").get<bool>();
 	  if (ad.has("root_folder"))
@@ -257,6 +262,8 @@ namespace dd
 		    _db = ad_input.get("db").get<bool>();
 		  if (ad_input.has("segmentation"))
 		    _segmentation = ad_input.get("segmentation").get<bool>();
+		  if (ad_input.has("bbox"))
+		    _bbox = ad_input.get("bbox").get<bool>();
 		  if (ad_input.has("multi_label"))
 		    _multi_label = ad_input.get("multi_label").get<bool>();
 		  if (ad_input.has("root_folder"))
@@ -278,11 +285,11 @@ namespace dd
 		  throw ex;
 		}
 	      if (!fileops::file_exists(_uris.at(0)))
-		throw InputConnectorBadParamException("input train file " + _uris.at(0) + " not found");
+		throw InputConnectorBadParamException("segmentation input train file " + _uris.at(0) + " not found");
 	      if (_uris.size() > 1)
 		{
 		  if (!fileops::file_exists(_uris.at(1)))
-		    throw InputConnectorBadParamException("input test file " + _uris.at(1) + " not found");
+		    throw InputConnectorBadParamException("segmentation input test file " + _uris.at(1) + " not found");
 		}
 
 	      // class weights if any
@@ -294,6 +301,38 @@ namespace dd
 	      if (_uris.size() > 1)
             sourcead.add("source_test",_uris.at(1));
 	      const_cast<APIData&>(ad).add("source",sourcead);
+	    }
+	  else if (_bbox)
+	    {
+	      try
+		{
+		  get_data(ad);
+		}
+	      catch(InputConnectorBadParamException &ex)
+		{
+		  throw ex;
+		}
+	      if (!fileops::file_exists(_uris.at(0)))
+		throw InputConnectorBadParamException("object detection input train file " + _uris.at(0) + " not found");
+	      if (_uris.size() > 1)
+		{
+		  if (!fileops::file_exists(_uris.at(1)))
+		    throw InputConnectorBadParamException("object detection input test file " + _uris.at(1) + " not found");
+		}
+
+	      //TODO:
+	      // - create lmdbs
+	      _dbfullname = _model_repo + "/" + _dbfullname;
+	      _test_dbfullname = _model_repo + "/" + _test_dbfullname;
+	      objects_to_db(_uris,_dbfullname,_test_dbfullname);
+
+	      //TODO: data object with db files location
+	      APIData dbad;
+	      dbad.add("train_db",_dbfullname);
+	      if (_test_split > 0.0 || _uris.size() > 1)
+		dbad.add("test_db",_test_dbfullname);
+	      //dbad.add("meanfile",_model_repo + "/" + _meanfname);
+	      const_cast<APIData&>(ad).add("db",dbad); 
 	    }
 	  else if (_ctc)
 	    {
@@ -434,6 +473,20 @@ namespace dd
 			      std::unordered_map<uint32_t,int> &alphabet,
 			      int &max_ocr_length,
 			      const bool &train_db);
+
+    int objects_to_db(const std::vector<std::string> &rfolders,
+		      const std::string &traindbname,
+		      const std::string &testdbname,
+		      const bool &encoded=true,
+		      const std::string &encode_type="",
+		      const std::string &backend="lmdb");
+
+    void write_objects_to_db(const std::string &dbfullname,
+			     const std::vector<std::pair<std::string,std::string>> &lines,
+			     const bool &encoded,
+			     const std::string &encode_type,
+			     const std::string &backend,
+			     const bool &train);
     
     int compute_images_mean(const std::string &dbname,
 			    const std::string &meanfile,
