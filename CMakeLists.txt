@@ -163,6 +163,9 @@ if (USE_DLIB)
     message(STATUS "Dlib will be built")
 endif()
 
+set(CAFFE_DD_USER jolibrain)
+set(CAFFE_DD_BRANCH master)
+
 if (USE_CAFFE2)
 
   add_definitions(-DUSE_CAFFE2)
@@ -170,7 +173,6 @@ if (USE_CAFFE2)
   set(PYTORCH_SUPPORTED_COMMIT bb15a0830de9577b4f6bdcded5eac864f78701c2)
   # Patches have been generated and tested on this version (Tue May 22 01:50:13 2018)
   list(APPEND CAFFE2_PATCHES
-    ${CMAKE_BINARY_DIR}/patches/caffe2/caffe_proto.patch
     ${CMAKE_BINARY_DIR}/patches/caffe2/logging.patch
     ${CMAKE_BINARY_DIR}/patches/caffe2/VLOG.patch
     )
@@ -178,6 +180,8 @@ if (USE_CAFFE2)
   list(APPEND PYTORCH_FLAGS
 
     -DCMAKE_PREFIX_PATH=${EIGEN3_INSTALL}
+
+    -DCAFFE2_LINK_LOCAL_PROTOBUF=0
 
     -DUSE_OPENMP=ON
     -DUSE_MPI=OFF
@@ -217,7 +221,7 @@ if (USE_CAFFE2)
     GIT_SUBMODULES ${PYTORCH_SUBMODULES}
     UPDATE_DISCONNECTED 1
     GIT_TAG ${PYTORCH_SUPPORTED_COMMIT}
-    PATCH_COMMAND git am ${CAFFE2_PATCHES}
+    PATCH_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || wget https://raw.githubusercontent.com/${CAFFE_DD_USER}/caffe/${CAFFE_DD_BRANCH}/src/caffe/proto/caffe.proto -O caffe/proto/caffe.proto && git am ${CAFFE2_PATCHES}
     CONFIGURE_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || cmake ${PYTORCH_FLAGS}
     BUILD_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || make -j${N}
     INSTALL_COMMAND ""
@@ -231,6 +235,7 @@ if (USE_CAFFE2)
     execute_process(COMMAND ln -s ${PYTORCH_PATH}/third_party/protobuf/src ${PROTOBUF_INCLUDE_DIR})
     execute_process(COMMAND ln -s ${PYTORCH_PATH}/lib ${PROTOBUF_LIB_DIR})
     execute_process(COMMAND ln -s ${PYTORCH_PATH}/bin ${CMAKE_BINARY_DIR}/protobuf/bin)
+    execute_process(COMMAND ln -s ${PYTORCH_PATH} ${CMAKE_BINARY_DIR}/pytorch_root)
   endif()
 endif()
 
@@ -286,11 +291,35 @@ if (CAFFE_INC_DIR AND CAFFE_LIB_DIR)
   # do nothing
 else()
   message(STATUS "Configuring customized caffe")
+
   if (USE_DD_SYSLOG)
     set(USE_SYSLOG 1)
   else()
     set(USE_SYSLOG 0)
   endif()
+
+  if (USE_CAFFE2)
+    set(PYTORCH_LINK 1)
+  else()
+    set(PYTORCH_LINK 0)
+  endif()
+
+  # Set protoc path
+  if (CUDA_FOUND
+      AND NOT USE_CAFFE_CPU_ONLY
+      AND NOT (HAVE_CUDNN AND USE_CUDNN)
+      AND USE_TF)
+    list(APPEND CAFFE_DD_MAKE
+      ${CMAKE_COMMAND} -E env PATH=${TENSORFLOW_CC_DIR}/tensorflow/tensorflow/contrib/makefile/gen/protobuf/bin:$ENV{PATH}
+      )
+  elseif (USE_TF OR USE_CAFFE2)
+    list(APPEND CAFFE_DD_MAKE
+      ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH}
+      )
+  endif()
+  list(APPEND CAFFE_DD_MAKE make)
+
+  # Set cuda arch
   if (CUDA_FOUND AND NOT USE_CAFFE_CPU_ONLY)
     if (CUDA_ARCH)
     else()
@@ -300,115 +329,43 @@ else()
 	set(CUDA_ARCH "-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_61,code=compute_61")
       endif()
     endif()
+    list(APPEND CAFFE_DD_MAKE_ARG CUDA_ARCH=${CUDA_ARCH})
+  endif()
+
+  # Set config file
+  if (CUDA_FOUND AND NOT USE_CAFFE_CPU_ONLY)
     if (HAVE_CUDNN AND USE_CUDNN)
-      if (USE_TF)
-	ExternalProject_Add(
-	  caffe_dd
-	  PREFIX caffe_dd
-	  INSTALL_DIR ${CMAKE_BINARY_DIR}
-	  URL https://github.com/beniz/caffe/archive/master.tar.gz
-	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && echo "USE_SYSLOG:=${USE_SYSLOG}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make CUDA_ARCH=${CUDA_ARCH} -j${N}
-	  INSTALL_COMMAND ""
-	  BUILD_IN_SOURCE 1
-	  )
-      elseif(JETSON)
-	ExternalProject_Add(
-	  caffe_dd
-	  PREFIX caffe_dd
-	  INSTALL_DIR ${CMAKE_BINARY_DIR}
-	  URL https://github.com/beniz/caffe/archive/master.tar.gz
-	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn.jetson Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && echo "USE_SYSLOG:=${USE_SYSLOG}" >> Makefile.config && make CUDA_ARCH=${CUDA_ARCH} -j${N}
-	  INSTALL_COMMAND ""
-	  BUILD_IN_SOURCE 1
-	  )
-      elseif (USE_CAFFE2)
-	ExternalProject_Add(
-	  caffe_dd
-	  PREFIX caffe_dd
-	  INSTALL_DIR ${CMAKE_BINARY_DIR}
-	  URL https://github.com/beniz/caffe/archive/master.tar.gz
-	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && echo "USE_SYSLOG:=${USE_SYSLOG}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make CUDA_ARCH=${CUDA_ARCH} -j${N}
-	  INSTALL_COMMAND ""
-	  BUILD_IN_SOURCE 1
-	  )
-      else() # USE_TF
-	ExternalProject_Add(
-	  caffe_dd
-	  PREFIX caffe_dd
-	  INSTALL_DIR ${CMAKE_BINARY_DIR}
-	  URL https://github.com/beniz/caffe/archive/master.tar.gz
-	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu.cudnn Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && echo "USE_SYSLOG:=${USE_SYSLOG}" >> Makefile.config && make CUDA_ARCH=${CUDA_ARCH} -j${N}
-	  INSTALL_COMMAND ""
-	  BUILD_IN_SOURCE 1
-	  )
+      if(JETSON)
+	set(CAFFE_DD_CONFIG_FILE Makefile.config.gpu.cudnn.jetson)
+      else()
+	set(CAFFE_DD_CONFIG_FILE Makefile.config.gpu.cudnn)
       endif()
     else() # HAVE_CUDNN
-      if (USE_TF)
-	ExternalProject_Add(
-	  caffe_dd
-	  PREFIX caffe_dd
-	  INSTALL_DIR ${CMAKE_BINARY_DIR}
-	  URL https://github.com/beniz/caffe/archive/master.tar.gz
-	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && echo "USE_SYSLOG:=${USE_SYSLOG}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${TENSORFLOW_CC_DIR}/tensorflow/tensorflow/contrib/makefile/gen/protobuf/bin:$ENV{PATH} make CUDA_ARCH=${CUDA_ARCH} -j${N}
-	  INSTALL_COMMAND ""
-	  BUILD_IN_SOURCE 1
-	  )
-      elseif (USE_CAFFE2)
-	ExternalProject_Add(
-	  caffe_dd
-	  PREFIX caffe_dd
-	  INSTALL_DIR ${CMAKE_BINARY_DIR}
-	  URL https://github.com/beniz/caffe/archive/master.tar.gz
-	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && echo "USE_SYSLOG:=${USE_SYSLOG}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make CUDA_ARCH=${CUDA_ARCH} -j${N}
-	  INSTALL_COMMAND ""
-	  BUILD_IN_SOURCE 1
-	  )
-      else() # USE_TF
-	ExternalProject_Add(
-	  caffe_dd
-	  PREFIX caffe_dd
-	  INSTALL_DIR ${CMAKE_BINARY_DIR}
-	  URL https://github.com/beniz/caffe/archive/master.tar.gz
-	  CONFIGURE_COMMAND ln -sf Makefile.config.gpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && echo "USE_SYSLOG:=${USE_SYSLOG}" >> Makefile.config && make CUDA_ARCH=${CUDA_ARCH} -j${N}
-	  INSTALL_COMMAND ""
-	  BUILD_IN_SOURCE 1
-	  )
-      endif()
+      set(CAFFE_DD_CONFIG_FILE Makefile.config.gpu)
     endif() # HAVE_CUDNN
   else() # CUDA_FOUND
     add_definitions(-DUSE_CAFFE_CPU_ONLY)
-    if (USE_TF)
-      ExternalProject_Add(
-	caffe_dd
-	PREFIX caffe_dd
-	INSTALL_DIR ${CMAKE_BINARY_DIR}
-	URL https://github.com/beniz/caffe/archive/master.tar.gz
-	CONFIGURE_COMMAND ln -sf Makefile.config.cpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && echo "USE_SYSLOG:=${USE_SYSLOG}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make -j${N}
-	INSTALL_COMMAND ""
-	BUILD_IN_SOURCE 1
-	)
-    elseif (USE_CAFFE2)
-      ExternalProject_Add(
-	caffe_dd
-	PREFIX caffe_dd
-	INSTALL_DIR ${CMAKE_BINARY_DIR}
-	URL https://github.com/beniz/caffe/archive/master.tar.gz
-	CONFIGURE_COMMAND ln -sf Makefile.config.cpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && echo "USE_SYSLOG:=${USE_SYSLOG}" >> Makefile.config && ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH} make -j${N}
-	INSTALL_COMMAND ""
-	BUILD_IN_SOURCE 1
-	)
-    else() # USE_TF
-      ExternalProject_Add(
-	caffe_dd
-	PREFIX caffe_dd
-	INSTALL_DIR ${CMAKE_BINARY_DIR}
-	URL https://github.com/beniz/caffe/archive/master.tar.gz
-	CONFIGURE_COMMAND ln -sf Makefile.config.cpu Makefile.config && echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config && echo "USE_SYSLOG:=${USE_SYSLOG}" >> Makefile.config && make -j${N}
-	INSTALL_COMMAND ""
-	BUILD_IN_SOURCE 1
-	)
-    endif()
+    set(CAFFE_DD_CONFIG_FILE Makefile.config.cpu)
   endif()
+
+  list(APPEND CAFFE_DD_CONFIGURE_COMMAND
+    ln -sf ${CAFFE_DD_CONFIG_FILE} Makefile.config &&
+    echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config &&
+    echo "USE_SYSLOG:=${USE_SYSLOG}" >> Makefile.config &&
+    echo "PYTORCH_LINK:=${PYTORCH_LINK}" >> Makefile.config &&
+    ${CAFFE_DD_MAKE} ${CAFFE_DD_MAKE_ARG} -j${N}
+    )
+
+  ExternalProject_Add(
+    caffe_dd
+    PREFIX caffe_dd
+    INSTALL_DIR ${CMAKE_BINARY_DIR}
+    URL https://github.com/${CAFFE_DD_USER}/caffe/archive/${CAFFE_DD_BRANCH}.tar.gz
+    CONFIGURE_COMMAND ${CAFFE_DD_CONFIGURE_COMMAND}
+    INSTALL_COMMAND ""
+    BUILD_IN_SOURCE 1
+    )
+
   if (JETSON)
     set(HDF5_LIB /usr/lib/aarch64-linux-gnu/hdf5/serial)
   else()
