@@ -121,6 +121,16 @@ namespace dd
       this->_inputc._model_repo = ad.getobj("model").get("repository").get<std::string>();
       if (this->_inputc._model_repo.empty())
 	throw MLLibBadParamException("empty repository");
+      bool create =
+        ad.getobj("model").has("create_repository")
+        && ad.getobj("model").get("create_repository").get<bool>();
+      bool isDir;
+      bool exists= fileops::file_exists(this->_inputc._model_repo, isDir);
+      if (exists && !isDir)
+        throw MLLibBadParamException("bad repo name: remove file with repo name");
+      if (!exists && create)
+        fileops::create_dir(this->_inputc._model_repo,0775);
+
       this->_inputc._logger = this->_logger;
       this->_outputc._logger = this->_logger;
       _init_parameters = ad.getobj("parameters");
