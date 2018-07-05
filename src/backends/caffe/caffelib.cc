@@ -1143,7 +1143,10 @@ namespace dd
 		    std::vector<double> mdiag = meas_obj.get(m).get<std::vector<double>>();
 		    std::string mdiag_str;
 		    for (size_t i=0;i<mdiag.size();i++)
-		      mdiag_str += this->_mlmodel.get_hcorresp(i) + ":" + std::to_string(mdiag.at(i)) + " ";
+		      {
+			mdiag_str += this->_mlmodel.get_hcorresp(i) + ":" + std::to_string(mdiag.at(i)) + " ";
+			this->add_meas_per_iter(m+'_'+std::to_string(i),mdiag.at(i));
+		      }
 		    this->_logger->info("{}=[{}]",m,mdiag_str);
 		    this->add_meas(m,mdiag);
 		  }
