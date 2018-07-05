@@ -1197,6 +1197,7 @@ namespace dd
 	    losses[idx] = loss;
 	  }
 	this->add_meas("train_loss",smoothed_loss);
+	this->add_meas_per_iter("train_loss",smoothed_loss);
 	this->add_meas("iter_time",avg_fb_time);
 	this->add_meas("remain_time",est_remain_time);
 	
