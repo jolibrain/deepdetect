@@ -29,15 +29,24 @@
 #include <fstream>
 #include <iostream>
 #include <unordered_map>
+#include "apidata.h"
+#include "utils/fileops.hpp"
+#include "mllibstrategy.h"
 
 namespace dd
 {
   class MLModel
   {
   public:
-    MLModel() {};
-    MLModel(const std::string &repo)
-      :_repo(repo) {
+    MLModel() {}
+    MLModel(const APIData &ad)
+      {
+        init_repo_dir(ad);
+      }
+
+  MLModel(const APIData &ad, const std::string &repo)
+    :_repo(repo) {
+      init_repo_dir(ad);
     }
     ~MLModel() {
 #ifdef USE_SIMSEARCH
@@ -124,6 +133,19 @@ namespace dd
 #ifdef USE_SIMSEARCH
     SearchEngine<AnnoySE> *_se = nullptr;
 #endif
+
+  private:
+    void init_repo_dir(const APIData &ad)
+    {
+      std::string repo =  ad.get("repository").get<std::string>();
+      bool create = ad.has("create_repository") && ad.get("create_repository").get<bool>();
+      bool isDir;
+      bool exists= fileops::file_exists(repo, isDir);
+      if (exists && !isDir)
+        throw MLLibBadParamException("bad repo name: remove file with repo name");
+      if (!exists && create)
+        fileops::create_dir(repo,0775);
+    }
   };
 }
 
