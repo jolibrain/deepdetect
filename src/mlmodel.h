@@ -39,18 +39,21 @@ namespace dd
   {
   public:
     MLModel() {}
-    MLModel(const APIData &ad)
-      {
-        init_repo_dir(ad);
-      }
 
-  MLModel(const std::string &repo) :_repo(repo) {}
-
-
-  MLModel(const APIData &ad, const std::string &repo)
-    :_repo(repo) {
+    MLModel(const APIData &ad)  {
       init_repo_dir(ad);
     }
+
+    MLModel(const std::string &repo)
+      :_repo(repo) {}
+
+
+    MLModel(const APIData &ad, const std::string &repo)
+    :_repo(repo)
+    {
+      init_repo_dir(ad);
+    }
+
     ~MLModel() {
 #ifdef USE_SIMSEARCH
       delete _se;
