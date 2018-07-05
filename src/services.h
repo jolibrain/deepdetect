@@ -529,6 +529,13 @@ namespace dd
 	  pout._status = -3;
 	  throw;
 	}
+	  catch (const std::exception &e)
+    {
+      // catch anything thrown within try block that derives from std::exception
+	  llog->error("other error: {}",e.what());
+	  pout._status = -1;
+	  throw;
+	}
       catch(...)
 	{
 	  llog->error("prediction call failed");
