@@ -44,6 +44,9 @@ namespace dd
         init_repo_dir(ad);
       }
 
+  MLModel(const std::string &repo) :_repo(repo) {}
+
+
   MLModel(const APIData &ad, const std::string &repo)
     :_repo(repo) {
       init_repo_dir(ad);
