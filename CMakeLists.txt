@@ -170,8 +170,7 @@ if (USE_CAFFE2)
 
   add_definitions(-DUSE_CAFFE2)
 
-  set(PYTORCH_SUPPORTED_COMMIT bb15a0830de9577b4f6bdcded5eac864f78701c2)
-  # Patches have been generated and tested on this version (Tue May 22 01:50:13 2018)
+  set(PYTORCH_SUPPORTED_COMMIT 3749c58) # Release v0.4.0
   list(APPEND CAFFE2_PATCHES
     ${CMAKE_BINARY_DIR}/patches/caffe2/logging.patch
     ${CMAKE_BINARY_DIR}/patches/caffe2/VLOG.patch
