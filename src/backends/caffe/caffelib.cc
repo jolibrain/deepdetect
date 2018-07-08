@@ -2871,6 +2871,9 @@ namespace dd
 	if (ltype == "DetectionOutput")
 	  {
 	    mltype = "detection";
+	    const boost::shared_ptr<caffe::Layer<float>> &final_layer = net->layers().at(net->layers().size()-1);
+	    if (final_layer->layer_param().type() == "Slice")
+	      mltype = "rois";
 	    break;
 	  }
 	if (ltype == "ContinuationIndicator") // XXX: CTC layer does not appear in deploy file, this is a hack used by our LSTMs
