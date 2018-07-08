@@ -160,7 +160,7 @@ namespace dd
       if (hit!=_meas_per_iter.end())
 	{
 	  (*hit).second.push_back(l);
-	  if ((*hit).second.size() >= _max_meas_points)
+	  if ((int)(*hit).second.size() >= _max_meas_points)
 	    {
 	      // resolution is halved
 	      std::vector<double> vmeas_short;
