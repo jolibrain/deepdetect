@@ -122,7 +122,7 @@ TEST(simsearch,predict_simsearch_unsup)
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"].HasMember("measure"));
   ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
-  ASSERT_EQ(jd["body"]["measure_hist"]["iteration_hist"].Size(),jd["body"]["measure_hist"]["train_loss_hist"].Size());
+  ASSERT_EQ(jd["body"]["measure_hist"]["iteration_hist"].Size(),jd["body"]["measure_hist"]["f1_hist"].Size());
   
   // predict
   std::string jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"bw\":true,\"width\":28,\"height\":28},\"mllib\":{\"extract_layer\":\"ip2\"},\"output\":{\"index\":true}},\"data\":[\"" + mnist_repo + "/sample_digit.png\"]}";
@@ -202,7 +202,7 @@ TEST(simsearch,predict_simsearch_sup)
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"].HasMember("measure"));
   ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
-  ASSERT_EQ(jd["body"]["measure_hist"]["iteration_hist"].Size(),jd["body"]["measure_hist"]["train_loss_hist"].Size());
+  ASSERT_EQ(jd["body"]["measure_hist"]["iteration_hist"].Size(),jd["body"]["measure_hist"]["f1_hist"].Size());
   
   // predict
   std::string jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"bw\":true,\"width\":28,\"height\":28},\"mllib\":{},\"output\":{\"index\":true,\"best\":2}},\"data\":[\"" + mnist_repo + "/sample_digit.png\"]}";
