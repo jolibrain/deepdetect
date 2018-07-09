@@ -158,7 +158,19 @@ namespace dd
       std::lock_guard<std::mutex> lock(_meas_per_iter_mutex);
       auto hit = _meas_per_iter.find(meas);
       if (hit!=_meas_per_iter.end())
-	(*hit).second.push_back(l);
+	{
+	  (*hit).second.push_back(l);
+	  if ((int)(*hit).second.size() >= _max_meas_points)
+	    {
+	      // resolution is halved
+	      std::vector<double> vmeas_short;
+	      vmeas_short.reserve(_max_meas_points/2);
+	      int di = 0;
+	      for (size_t j=0;j<(*hit).second.size();j+=2)
+		vmeas_short.at(di++) = (*hit).second.at(j);
+	      (*hit).second = vmeas_short;
+	    }
+	}
       else
 	{
 	  std::vector<double> vmeas = {l};
@@ -285,6 +297,7 @@ namespace dd
   protected:
     mutable std::mutex _meas_per_iter_mutex; /**< mutex over measures history. */
     mutable std::mutex _meas_mutex; /** mutex around current measures. */
+    const int _max_meas_points = 1e7; // 10M points max per measure
   };  
   
 }

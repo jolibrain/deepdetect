@@ -1197,6 +1197,7 @@ namespace dd
 	    losses[idx] = loss;
 	  }
 	this->add_meas("train_loss",smoothed_loss);
+	this->add_meas_per_iter("train_loss",smoothed_loss);
 	this->add_meas("iter_time",avg_fb_time);
 	this->add_meas("remain_time",est_remain_time);
 	
@@ -2870,6 +2871,9 @@ namespace dd
 	if (ltype == "DetectionOutput")
 	  {
 	    mltype = "detection";
+	    const boost::shared_ptr<caffe::Layer<float>> &final_layer = net->layers().at(net->layers().size()-1);
+	    if (final_layer->layer_param().type() == "Slice")
+	      mltype = "rois";
 	    break;
 	  }
 	if (ltype == "ContinuationIndicator") // XXX: CTC layer does not appear in deploy file, this is a hack used by our LSTMs
