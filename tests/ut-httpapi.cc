@@ -214,7 +214,7 @@ TEST(httpjsonapi,train)
   bool running = true;
   while(running)
     {
-      httpclient::get_call(luri+"/train?service="+serv+"&job=1&timeout=1&parameters.output.measure_hist=true","GET",code,jstr);
+      httpclient::get_call(luri+"/train?service="+serv+"&job=1&timeout=1&parameters.output.measure_hist=true&parameters.output.max_hist_points=100","GET",code,jstr);
       running = jstr.find("running") != std::string::npos;
       if (running)
 	{
@@ -236,6 +236,7 @@ TEST(httpjsonapi,train)
 	  ASSERT_TRUE(jd2["body"]["measure"].HasMember("iteration"));
 	  ASSERT_TRUE(jd2["body"]["measure"]["iteration"].GetDouble() >= 0);
 	  ASSERT_TRUE(jd2["body"].HasMember("measure_hist"));
+	  ASSERT_TRUE(100 <= jd2["body"].["measure_hist"]["train_loss"].Size());
 	}
       else ASSERT_TRUE(jstr.find("finished")!=std::string::npos);
     }
