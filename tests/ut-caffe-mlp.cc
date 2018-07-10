@@ -640,6 +640,41 @@ TEST(caffelib, configure_deeplabvgg16_diceloss)
 
 }
 
+TEST(caffelib, configure_deeplabvgg16_diceloss_finetune)
+{
+  APIData ad;
+  ad.add("template","deeplab_vgg16");
+  ad.add("loss","dice");
+  ad.add("templates","../templates/caffe");
+  ad.add("repository","./");
+  ad.add("nclasses",2);
+  ad.add("segmentation",true);
+  ad.add("finetuning",true);
+  ad.add("weights","/home/infantes/test/mitparsing/vgg16_init_deeplab.caffemodel");
+  CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel> *caff = new CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(CaffeModel(ad));
+  caff->_logger = spdlog::stdout_logger_mt("UT-deeplab_vgg16_ft");
+  caff->_inputc.init(ad);
+  caff->init_mllib(ad);
+  caff->_loss = 1;
+
+  caffe::NetParameter net_param, deploy_net_param;
+  bool succ = caffe::ReadProtoFromTextFile("./deeplab_vgg16.prototxt",&net_param);
+  ASSERT_TRUE(succ);
+
+  bool found = false;
+  int k = net_param.layer_size();
+
+  for (int l=k-1;l>0;l--)
+    {
+      caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+      if (lparam->type() == "DiceCoefLoss")
+        found = true;
+    }
+  ASSERT_TRUE(found);
+
+}
+
+
 TEST(caffelib, configure_unet_diceloss)
 {
   APIData ad;
