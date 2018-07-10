@@ -236,7 +236,7 @@ TEST(httpjsonapi,train)
 	  ASSERT_TRUE(jd2["body"]["measure"].HasMember("iteration"));
 	  ASSERT_TRUE(jd2["body"]["measure"]["iteration"].GetDouble() >= 0);
 	  ASSERT_TRUE(jd2["body"].HasMember("measure_hist"));
-	  ASSERT_TRUE(100 <= jd2["body"].["measure_hist"]["train_loss"].Size());
+	  ASSERT_TRUE(100 <= jd2["body"]["measure_hist"]["train_loss"].Size());
 	}
       else ASSERT_TRUE(jstr.find("finished")!=std::string::npos);
     }
