@@ -37,6 +37,7 @@ namespace dd {
             :MLLib<TInputConnectorStrategy, TOutputConnectorStrategy, DlibModel>(std::move(cl)) {
         this->_libname = "dlib";
         _net_type = cl._net_type;
+        this->_mltype = "classification (" + _net_type + ")";
     }
 
     template<class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
