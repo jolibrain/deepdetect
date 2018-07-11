@@ -53,6 +53,7 @@ if [ "$TRAVIS_OS_NAME" = 'linux' ]; then
         ##################
         # Not available on 14.04 trusty via package
 	git clone https://github.com/gabime/spdlog.git
+	cd spdlog && git checkout v0.17.0 && cd ..
 	sudo cp -r spdlog/include/spdlog /usr/include/
 	
         if [ "$BUILD_CUDA" = 'true' ]; then
