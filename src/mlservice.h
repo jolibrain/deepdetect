@@ -313,7 +313,11 @@ namespace dd
 	      std::chrono::time_point<std::chrono::system_clock> trun = std::chrono::system_clock::now();
 	      out.add("time",std::chrono::duration_cast<std::chrono::seconds>(trun-(*hit).second._tstart).count());
 	      if (ad_params_out.has("measure_hist") && ad_params_out.get("measure_hist").get<bool>())
-		this->collect_measures_history(out);
+		{
+		  if (ad_params_out.has("max_hist_points"))
+		    this->collect_measures_history(out,ad_params_out.get("max_hist_points").get<int>());
+		  else this->collect_measures_history(out);
+		}
 	    }
 	  else if (status == std::future_status::ready)
 	    {
@@ -349,7 +353,11 @@ namespace dd
 	      std::chrono::time_point<std::chrono::system_clock> trun = std::chrono::system_clock::now();
 	      out.add("time",std::chrono::duration_cast<std::chrono::seconds>(trun-(*hit).second._tstart).count());
 	      if (ad_params_out.has("measure_hist") && ad_params_out.get("measure_hist").get<bool>())
-		this->collect_measures_history(out);
+		{
+		  if (ad_params_out.has("max_hist_points"))
+		    this->collect_measures_history(out,ad_params_out.get("max_hist_points").get<int>());
+		  else this->collect_measures_history(out);
+		}
 	      _training_jobs.erase(hit);
 	    }
 	  return 0;

@@ -179,22 +179,42 @@ namespace dd
     }
 
     /**
-     * \brief collect current measures history into a data object
-     * 
+     * \brief sub-samples measure history to fit a fixed number of points at max
+     * @param hist measure history vector
+     * @param npoints max number of output points
      */
-    void collect_measures_history(APIData &ad) const
+    std::vector<double> subsample_hist(const std::vector<double> &hist,
+				       const int &npoints) const
+    {
+      std::vector<double> sub_hist;
+      sub_hist.reserve(npoints);
+      int rpoints = std::ceil(hist.size() / npoints);
+      for (size_t i=0;i<hist.size();i+=rpoints)
+	sub_hist.push_back(hist.at(i));
+      return sub_hist;
+    }
+    
+    /**
+     * \brief collect current measures history into a data object
+     * @param ad api data object
+     * @param npoints max number of output points, < 0 if unbounded
+     */
+    void collect_measures_history(APIData &ad,
+				  const int &npoints=-1) const
     {
       APIData meas_hist;
       std::lock_guard<std::mutex> lock(_meas_per_iter_mutex);
       auto hit = _meas_per_iter.begin();
       while(hit!=_meas_per_iter.end())
 	{
+	  if (npoints > 0 && (*hit).second.size() > npoints)
+	    meas_hist.add((*hit).first+"_hist",subsample_hist((*hit).second,npoints));
 	  meas_hist.add((*hit).first+"_hist",(*hit).second);
 	  ++hit;
 	}
       ad.add("measure_hist",meas_hist);
     }
-
+    
     /**
      * \brief sets current value of a measure
      * @param meas measure name
