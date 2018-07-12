@@ -74,12 +74,31 @@ using namespace dd;
 	    "extract_layer": layer			\
 	  },						\
 	  data)
+#define PREDICT_TEST(service, batch, data, measures...) TO_STRING({	\
+      "service": service,						\
+      "parameters": {							\
+	"mllib": {							\
+	  "net": {							\
+	    "batch_size": batch						\
+	   }								\
+	},								\
+	"output": {							\
+	  "measure": [ measures ]					\
+	}								\
+      },								\
+      "data": [ data ]							\
+    })
 
+// The number of GPUs being unknown, batch sizes are set to 6 (divisible by 1, 2 and 3)
 #define TRAIN(service, iter, test, measures...) TO_STRING({		\
       "service": service,						\
       "async": false,							\
       "parameters": {							\
 	"mllib": {							\
+	  "net": {							\
+	    "batch_size": 6,						\
+	    "test_batch_size": 6  					\
+	  },								\
 	  "solver": {							\
 	    "iterations": iter,						\
 	    "test_interval": test					\
@@ -96,8 +115,11 @@ static const std::string created_str = RESPONSE(201, "Created");
 static const std::string bad_param_str = RESPONSE(400, "BadRequest");
 static const std::string not_found_str = RESPONSE(404, "NotFound");
 
-#define CREATE_RESNET50(type, suffix)					\
-  CREATE(type, "../examples/caffe2/resnet_50"##suffix, 255.0, 1000)
+//XXX Current tests just assert that nothing breaks
+//Loss and accuracy values/evolutions are not checked
+//Real datasets, images and models must be prepared for that
+
+//XXX Add a test that dumps & resumes the state of a training
 
 static const std::string supervised =
   CREATE("supervised", "../examples/caffe2/resnet_50", 255.0, 1000);
@@ -116,6 +138,8 @@ static const std::string predict_test2_str =
 static const std::string predict_test3_str =
   PREDICT_UNSUPERVISED("imgserv", "gpu_0/conv1",
 		       "../examples/caffe/voc/voc/test_img.jpg");
+static const std::string predict_test4_str =
+  PREDICT_TEST("imgserv", 5, "../examples/caffe2/resnet_50_trainable/test.lmdb", "acc");
 
 static const std::string train_test1_str = TRAIN("imgserv", 2, 1, "acc");
 
@@ -166,6 +190,22 @@ TEST(caffe2api, service_predict_unsup) {
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   ASSERT_EQ(802816, jd["body"]["predictions"][0]["vals"].Size());
+}
+
+TEST(caffe2api, service_predict_test) {
+
+  // create service
+  JsonAPI japi;
+  std::string joutstr = japi.jrender(japi.service_create("imgserv", trainable));
+  ASSERT_EQ(created_str, joutstr);
+
+  // predict
+  joutstr = japi.jrender(japi.service_predict(predict_test4_str));
+  JDoc jd;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
+  ASSERT_TRUE(fabs(jd["body"]["measure"]["acc"].GetDouble()) >= 0);
 }
 
 TEST(caffe2api, service_train) {

@@ -55,5 +55,18 @@ namespace dd {
       remove(graph.c_str());
     }
 
+    void dump_net(const caffe2::NetDef &net, const std::string &path) {
+
+      // Raw protobuf file
+      std::ofstream f(path + ".pb");
+      net.SerializeToOstream(&f);
+
+      // Human-readable protobuf file
+      std::ofstream(path + ".pbtxt") << net.DebugString();
+
+      // SVG file
+      net_to_svg(net, path + ".svg");
+    }
+
   }
 }

@@ -60,7 +60,7 @@ namespace dd {
 	{ "mean.pb", &_meanfile },
 	{ "init_state.pb", &_init_state },
 	{ "dbreader_state.pb", &_dbreader_state },
-	{ "dbreader_test_state.pb", &_dbreader_test_state },
+	{ "dbreader_train_state.pb", &_dbreader_train_state },
 	{ "iter_state.pb", &_iter_state },
 	{ "lr_state.pb", &_lr_state },
       };
@@ -84,6 +84,13 @@ namespace dd {
 	  break;
 	}
       }
+    }
+  }
+
+  void Caffe2Model::get_hcorresp(std::vector<std::string> &clnames) {
+    int i = 0;
+    for (std::string &name : clnames) {
+      name = get_hcorresp(i++);
     }
   }
 

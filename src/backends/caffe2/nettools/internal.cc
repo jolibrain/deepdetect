@@ -76,6 +76,7 @@ namespace dd {
 	{"SquaredL2", {}},
 	{"SquaredL2Channel", {}},
 	{"StopGradient", {}},
+	{"Sub", {}},
 	{"Sum", {}}
       });
 

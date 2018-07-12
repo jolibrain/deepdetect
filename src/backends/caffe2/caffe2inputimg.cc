@@ -27,116 +27,178 @@
 
 #include "utils/utils.hpp"
 #include "backends/caffe2/caffe2inputconns.h"
-#include "backends/caffe2/nettools.h"
 
 namespace dd {
 
+  void ImgCaffe2InputFileConn::update(const APIData &ad) {
+    if (ad.has("std")) {
+      _std = static_cast<float>(ad.get("std").get<double>());
+    }
+    //XXX Implement support for other tags (multi_label, segmentation, ...)
+  }
+
   void ImgCaffe2InputFileConn::init(const APIData &ad) {
     ImgInputFileConn::init(ad);
-    if (ad.has("std"))
-      _std = ad.get("std").get<double>();
+    Caffe2InputInterface::init(_model_repo);
+    update(ad);
+    //XXX let the meanfile and/or mean-values be changed by the API ?
+    _mean_file = _model_repo + "/mean.pb";
+    _corresp_file = _model_repo + "/corresp.txt";
+    load_mean_file();
   }
 
   void ImgCaffe2InputFileConn::transform(const APIData &ad) {
+
+    // Update internal values
+    if (ad.has("parameters")) {
+      APIData ad_param = ad.getobj("parameters");
+      if (ad_param.has("input")) {
+	APIData ad_input = ad_param.getobj("input");
+	fillup_parameters(ad_input);
+	update(ad_input);
+      }
+    }
+
+    // Prepare the images
     if (_train) {
       transform_train(ad);
+      finalize_transform_train(ad);
     } else {
       transform_predict(ad);
+      finalize_transform_predict(ad);
     }
+
+    load_mean_file();
   }
 
-  void load_mean_file(const std::string &file, std::vector<double> &values) {
-      // Load tensor
-      caffe2::TensorProto mean;
-      std::ifstream ifs(file);
-      mean.ParseFromIstream(&ifs);
-      ifs.close();
-      values.resize(mean.dims(0));
-      int chan_size = mean.dims(1) * mean.dims(2);
+  void ImgCaffe2InputFileConn::load_mean_file() {
 
-      // Compute mean values
-      const float *data = mean.float_data().data();
-      for (double &value : values) {
-	const float *data_end = data + chan_size;
-	value = std::accumulate(data, data_end, 0) / chan_size;
-	data = data_end;
-      }
+    // Default values
+    if (!fileops::file_exists(_mean_file)) {
+      _logger->info("No mean file in the repository");
+      _mean_values.clear();
+      _mean_values.resize(channels());
+      return;
+    }
+
+    // Load tensor
+    caffe2::TensorProto mean;
+    std::ifstream ifs(_mean_file);
+    mean.ParseFromIstream(&ifs);
+    ifs.close();
+    _mean_values.resize(mean.dims(0));
+    CAFFE_ENFORCE(_mean_values.size() == static_cast<size_t>(channels()));
+    int chan_size = mean.dims(1) * mean.dims(2);
+
+    // Compute mean values
+    const float *data = mean.float_data().data();
+    for (float &value : _mean_values) {
+      const float *data_end = data + chan_size;
+      value = std::accumulate(data, data_end, 0) / chan_size;
+      data = data_end;
+    }
   }
 
   void ImgCaffe2InputFileConn::transform_predict(const APIData &ad) {
 
-    try {
-      ImgInputFileConn::transform(ad);
-    } catch (InputConnectorBadParamException &e) {
-      throw;
-    }
+    if (ad.has("data")) { // If we know what kind of data we'll have to work with
 
-    if (!_has_mean_scalar && ad.has("mean_file")) {
-
-      std::vector<double> mean_values;
-      load_mean_file(ad.get("mean_file").get<std::string>(), mean_values);
-
-      _has_mean_scalar = true;
-      if (mean_values.size() == 3) { // BGR
-	_mean = cv::Scalar(mean_values[0], mean_values[1], mean_values[2]);
-      } else { // BW
-	_mean = cv::Scalar(mean_values[0]);
+      get_data(ad);
+      _is_load_manual = !fileops::is_db(_uris[0]);
+      if (_is_load_manual) {
+	ImgInputFileConn::transform(ad); // Apply classic image pre-computations
       }
+
+    } else {
+      _is_load_manual = true; // Can't add automatic inputs without data
     }
 
-    _ids = _uris;
+    _train_db = "";
+    if (_is_load_manual) {
+
+      _db = "";
+      compute_db_sizes();
+      _is_testable = false; //XXX Can't infer labels from raw data
+      _is_load_manual = true;
+      _ids = _uris;
+
+    } else {
+
+      _db = _uris[0];
+      compute_db_sizes();
+      _is_testable = true;
+      _is_load_manual = false;
+      _ids.resize(_db_size);
+      std::iota(_ids.begin(), _ids.end(), 0); // Set indices as ids
+    }
   }
 
   void ImgCaffe2InputFileConn::transform_train(const APIData &ad) {
 
     _shuffle = true;
-    APIData ad_mllib;
-    if (ad.has("parameters")) {
-      APIData ad_param = ad.getobj("parameters");
-      if (ad_param.has("input")) {
-	APIData ad_input = ad_param.getobj("input");
-	fillup_parameters(ad_param.getobj("input"));
-      }
-      ad_mllib = ad_param.getobj("mllib");
-    }
+    _is_load_manual = false;
 
-    std::string
-      dbname = _model_repo + "/" + _dbfullname,
-      test_dbname = _model_repo + "/" + _test_dbfullname,
-      meanfile = _model_repo + "/" + _meanfname;
+    // Get databases paths
+    if (ad.has("data")) {
 
-    bool has_data = true;
-    try {
       get_data(ad);
-    } catch (...) { // No dataset specified in the 'data' field
-      if (!fileops::file_exists(dbname)) { // And no database in the model repository
+      uris_to_db();
+
+    } else {
+
+      _train_db = _default_train_db;
+      if (!fileops::file_exists(_train_db)) { // No database in the model repository
 	_logger->error("Missing training inputs");
 	throw;
       }
-      if (!fileops::file_exists(test_dbname)) {
-	test_dbname = "";
-      }
-      has_data = false;
+
+      _db = _default_db;
+      _is_testable = fileops::file_exists(_db);
     }
 
-    if (has_data) { // If datasets where given to the api
-      if (_test_split == 0.0 && _uris.size() == 1) {
-	_logger->warn("dataset unsplittable, no test will be done during training");
-	test_dbname = "";
-      }
-      images_to_db(_uris, dbname, test_dbname);
+    compute_db_sizes();
+    compute_images_mean();
+  }
+
+  void ImgCaffe2InputFileConn::uris_to_db() {
+
+    // Check if the uris are coherent
+    bool uris_are_db = fileops::is_db(_uris[0]);
+    if (uris_are_db && _uris.size() > 1 && !fileops::is_db(_uris[1])) {
+      throw InputConnectorBadParamException("Can't use both files and databases as inputs");
     }
 
-    compute_images_mean(dbname, meanfile);
-    std::vector<double> mean_values;
-    load_mean_file(meanfile, mean_values);
+    // Check if there is data to test on
+    _is_testable = (_uris.size() > 1); // Two sets of data
+    _is_testable |= (!uris_are_db && _test_split > 0); // A folder with a split size
 
-    // Enrich data object with db informations
-    APIData dbad;
-    dbad.add("train_db", dbname);
-    dbad.add("test_db", test_dbname);
-    dbad.add("mean_values", mean_values);
-    const_cast<APIData&>(ad).add("db", dbad);
+    // Set databases paths
+    if (uris_are_db) {
+      _train_db = _uris[0];
+      _db = _is_testable ? _uris[1] : "";
+      return;
+    }
+    _train_db = _default_train_db;
+    _db = _is_testable ? _default_db : "";
+
+    // Check if local databases could be used
+    bool is_train = fileops::file_exists(_train_db), is_test = fileops::file_exists(_db);
+    if (is_train && (!_is_testable || is_test)) {
+      _logger->warn("Found local database(s), bypassing creation");
+      return;
+    }
+
+    // Check if creation would overwrite existing data
+    if (is_train != (_is_testable && is_test)) {
+      _logger->error("Creating a pair of local train/test databases would overwrite files");
+      throw InputConnectorBadParamException("failed to create databases");
+    }
+
+    // Create database(s)
+    if (!is_train) {
+      _logger->info("Transforming images to database(s)");
+      images_to_db();
+    }
   }
 
   void ImgCaffe2InputFileConn::list_images(const std::string &root,
@@ -147,7 +209,7 @@ namespace dd {
 
     std::unordered_set<std::string> subdirs;
     if (fileops::list_directory(root, false, true, subdirs)) {
-      std::string msg("failed reading image data directory " + root);
+      std::string msg("Failed reading image data directory " + root);
       _logger->error(msg);
       throw InputConnectorBadParamException(msg);
     }
@@ -158,7 +220,7 @@ namespace dd {
 
       std::unordered_set<std::string> subdir_files;
       if (fileops::list_directory(dir, true, false, subdir_files)) {
-	std::string msg("failed reading image data sub-directory " + dir);
+	std::string msg("Failed reading image data sub-directory " + dir);
 	_logger->error(msg);
 	throw InputConnectorBadParamException(msg);
       }
@@ -167,7 +229,7 @@ namespace dd {
       if (is_reversed) { // retrieve the class id
 	auto it = corresp_r.find(cls);
 	if (it == corresp_r.end()) {
-	  _logger->warn("class {} was not indexed, skipping", cls);
+	  _logger->warn("Class {} was not indexed, skipping", cls);
 	  continue;
 	}
 	cl = it->second;
@@ -194,16 +256,10 @@ namespace dd {
     }
   }
 
-  void ImgCaffe2InputFileConn::compute_images_mean(const std::string &dbname,
-						   const std::string &meanfile,
-						   const std::string &backend) {
-    if (fileops::file_exists(meanfile)) {
-      _logger->warn("image mean file {} already exists, bypassing creation", meanfile);
-      return;
-    }
-    _logger->info("Creating {} image mean file", meanfile);
+  void ImgCaffe2InputFileConn::compute_images_mean() {
 
-    std::unique_ptr<caffe2::db::DB> db(caffe2::db::CreateDB(backend, dbname, caffe2::db::READ));
+    _logger->info("Creating mean file {}", _mean_file);
+    std::unique_ptr<caffe2::db::DB> db(caffe2::db::CreateDB(_db_type, _db, caffe2::db::READ));
     std::unique_ptr<caffe2::db::Cursor> cursor(db->NewCursor());
 
     // Load first tensor
@@ -226,77 +282,46 @@ namespace dd {
     std::for_each(data.begin(), data.end(), [&count](float &f) { f /= count; });
 
     // Write to disk
-    std::ofstream ofs(meanfile);
+    std::ofstream ofs(_mean_file);
     mean.SerializeToOstream(&ofs);
     ofs.close();
   }
 
-  void ImgCaffe2InputFileConn::images_to_db(const std::vector<std::string> &rfolders,
-					    const std::string &traindbname,
-					    const std::string &testdbname,
-					    const std::string &backend) {
-    bool
-      is_train = fileops::file_exists(traindbname),
-      is_test = fileops::file_exists(testdbname);
-
-    // Creating a test db
-    if (testdbname.size()) {
-
-      // Test whether the train / test dbs are already in
-      // since they may be long to build, we pass on them if there already
-      // in the model repository.
-      if (is_train && is_test) {
-	_logger->warn("image db files {} and {} already exist, bypassing creation",
-		      traindbname, testdbname);
-	return;
-      }
-
-      // Both databases must be created at the same time to ensure a correct split of the images.
-      if (is_train || is_test) {
-	_logger->error("creating the {} db would overwrite an already existing one",
-		       is_train ? traindbname : testdbname);
-	throw InputConnectorBadParamException("failed to create databases");
-      }
-
-    } else if (is_train) {
-      _logger->warn("image db file {} already exists, bypassing creation", traindbname);
-      return;
-    }
+  void ImgCaffe2InputFileConn::images_to_db() {
 
     std::unordered_map<int,std::string> corresp;
     std::unordered_map<std::string,int> corresp_r;
     std::vector<std::pair<std::string,int>> train_files, test_files;
-    list_images(rfolders[0], corresp, corresp_r, train_files, false);
+    list_images(_uris[0], corresp, corresp_r, train_files, false);
 
-    // Creating a test db
-    if (testdbname.size()) {
+    // Create a test db
+    if (_is_testable) {
 
-      if (_test_split > 0.0) {
+      if (_uris.size() > 1) {
+	list_images(_uris[1], corresp, corresp_r, test_files, true);
+
+      } else { // Split that data
 	auto it = train_files.begin() + std::floor(train_files.size() * (1.0 - _test_split));
 	test_files.assign(it, train_files.end());
 	train_files.erase(it, train_files.end());
-      } else {
-	list_images(rfolders[1], corresp, corresp_r, test_files, true);
       }
-
-      write_image_to_db(testdbname, test_files, backend);
+      write_images_to_db(_db, test_files);
     }
-    write_image_to_db(traindbname, train_files, backend);
+    write_images_to_db(_train_db, train_files);
 
     // write corresp file
-    std::ofstream correspf(_model_repo + "/" + _correspname, std::ios::binary);
+    std::ofstream correspf(_corresp_file, std::ios::binary);
     for (auto &kp : corresp) {
       correspf << kp.first << " " << kp.second << std::endl;
     }
     correspf.close();
   }
 
-  void ImgCaffe2InputFileConn::write_image_to_db(
-	const std::string &dbfullname,
-	const std::vector<std::pair<std::string, int>> &lfiles,
-	const std::string &backend) {
+  void ImgCaffe2InputFileConn::write_images_to_db(const std::string &dbname,
+						  const std::vector<std::pair<std::string, int>>
+						  &lfiles) {
 
-    std::unique_ptr<caffe2::db::DB> db(caffe2::db::CreateDB(backend, dbfullname, caffe2::db::NEW));
+    std::unique_ptr<caffe2::db::DB> db(caffe2::db::CreateDB(_db_type, dbname, caffe2::db::NEW));
 
     // Prefill db entries
     int chans = channels();
@@ -343,7 +368,7 @@ namespace dd {
 	}
 	CAFFE_ENFORCE(protos.SerializeToString(&out));
       } catch (...) {
-	_logger->warn("could not load {}", file.first);
+	_logger->warn("Could not load {}", file.first);
 	continue;
       }
 
@@ -357,69 +382,84 @@ namespace dd {
       }
     }
     if (!count) {
-      std::string msg("could not fill " + dbfullname + " with the requested dataset");
+      std::string msg("Could not fill " + dbname + " with the requested dataset");
       _logger->error(msg);
       throw InputConnectorBadParamException(msg);
     }
-    _logger->info("{} successfully created ({} entries)", dbfullname, count);
+    _logger->info("{} successfully created ({} entries)", dbname, count);
   }
 
-  int ImgCaffe2InputFileConn::get_batch(caffe2::TensorCPU &tensor, int num) {
+  int ImgCaffe2InputFileConn::load_batch(Caffe2NetTools::ModelContext &context) {
+    CAFFE_ENFORCE(_is_load_manual);
 
-    int image_count = _images.size();
+    // Split the images over the tensors
+    std::vector<caffe2::TensorCPU> tensors(context.device_count());
+    int image_count = std::min(static_cast<int>(_images.size()), _batch_size);
+    int image_per_tensor = image_count / tensors.size();
+    image_count = image_per_tensor * tensors.size();
+
+    // Check if there is enough images to make a batch
     if (!image_count) {
-      return 0; // No more data
+      if (_images.size()) {
+	_logger->warn("The last {} image(s) could not be splitted between the {} tensors",
+		      _images.size(), tensors.size());
+      }
+      _images.clear();
+      return 0;
     }
+
+    // Transform the data
     int w = _images[0].cols;
     int h = _images[0].rows;
-    if (image_count > num && num > 0) {
-      image_count = num; // Cap the batch size to 'num'
-    }
-
-    // Resize the tensor
     std::vector<cv::Mat> chan(channels());
-    tensor.Resize(std::vector<caffe2::TIndex>({image_count, channels(), h, w}));
     size_t channel_size = h * w * sizeof(float);
-    uint8_t *data = reinterpret_cast<uint8_t *>(tensor.mutable_data<float>());
-
     auto it_begin(_images.begin());
     auto it_end(it_begin + image_count);
-    for (auto it = it_begin; it < it_end; ++it) {
+    auto image = it_begin;
 
-      // Convert from NHWC uint8_t to NCHW float
-      it->convertTo(*it, CV_32F);
-      if (_has_mean_scalar) {
-	*it -= _mean;
-      }
-      cv::split(*it / _std, chan);
-      for (cv::Mat &ch : chan) {
-	std::memcpy(data, ch.data, channel_size);
-	data += channel_size;
-      }
+    for (caffe2::TensorCPU &tensor : tensors) {
+      tensor.Resize(std::vector<caffe2::TIndex>({image_per_tensor, channels(), h, w}));
+      uint8_t *data = reinterpret_cast<uint8_t *>(tensor.mutable_data<float>());
+      for (int i = 0; i < image_per_tensor; ++i, ++image) {
 
+	// Convert from NHWC uint8_t to NCHW float
+	image->convertTo(*image, CV_32F);
+	cv::split(*image, chan);
+	for (cv::Mat &ch : chan) {
+	  std::memcpy(data, ch.data, channel_size);
+	  data += channel_size;
+	}
+
+      }
     }
+
+    // Update
     _images.erase(it_begin, it_end);
+    context.insert_inputs(tensors);
     return image_count;
   }
 
-  void ImgCaffe2InputFileConn::configure_db_operator(caffe2::OperatorDef &op,
-						     const std::vector<double> &mean_values) {
-    op.set_type("ImageInput");
-
-    // Mandatory arguments
-    Caffe2NetTools::add_arg(op, "scale", _width);
-    Caffe2NetTools::add_arg(op, "crop", _width);
-    Caffe2NetTools::add_arg(op, "color", channels());
-    Caffe2NetTools::add_arg(op, "is_test", !_train);
-
-    // Optionnal arguments
-    std::vector<double> mean_per_channel(channels(), 0);
-    std::vector<double> std_per_channel(channels(), _std);
-    if (mean_values.size()) {
-      mean_per_channel = mean_values;
-    }
-    Caffe2NetTools::add_arg(op, "mean_per_channel", mean_per_channel);
-    Caffe2NetTools::add_arg(op, "std_per_channel", std_per_channel);
+  bool ImgCaffe2InputFileConn::needs_reconfiguration(const ImgCaffe2InputFileConn &inputc) {
+    return Caffe2InputInterface::needs_reconfiguration(inputc)
+      ||	_std		!= inputc._std
+      ||	_mean_values	!= inputc._mean_values
+      ;
   }
 
+  void ImgCaffe2InputFileConn::add_constant_layers(const Caffe2NetTools::ModelContext &context,
+						   caffe2::NetDef &init_net) {
+    caffe2::OperatorDef op;
+    Caffe2NetTools::GivenTensorFill(op, _blob_mean_values, { channels() }, _mean_values);
+    Caffe2NetTools::copy_and_broadcast_operator(context, init_net, op);
+  }
+
+  void ImgCaffe2InputFileConn::
+  add_transformation_layers(const Caffe2NetTools::ModelContext &context,
+			    caffe2::NetDef &net_def) {
+    Caffe2NetTools::ScopedNet net = context.scope_net(net_def);
+    Caffe2NetTools::add_external_input(net, _blob_mean_values);
+    Caffe2NetTools::Sub(net, context._input_blob, _blob_mean_values,
+			context._input_blob, 1, 1); // broadcast axis=1 means channel N[C]HW
+    Caffe2NetTools::Scale(net, context._input_blob, context._input_blob, 1.f / _std);
+  }
 }

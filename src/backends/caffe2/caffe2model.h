@@ -39,27 +39,35 @@ namespace dd {
     ~Caffe2Model() {};
 
     /**
-     * \brief check if the repository contains new files
+     * \brief checks if the repository contains new files
      */
     void update_from_repository(const std::shared_ptr<spdlog::logger> &logger);
 
     /**
-     * \brief dump informations in the repository
+     * \brief dumps informations in the repository
      */
     void write_state(const google::protobuf::Message &init_net,
 		     const std::map<std::string, std::string> &blobs);
 
-    /* state of blobs, useful for resuming training */
+    /**
+     * \brief assigns a class name to each element of the vector (the vector is not resized)
+     */
+    void get_hcorresp(std::vector<std::string> &clnames);
+    using MLModel::get_hcorresp;
+
+    // state of blobs, useful for resuming training
     std::string _init_state;
     std::string _dbreader_state;
-    std::string _dbreader_test_state;
+    std::string _dbreader_train_state;
     std::string _iter_state;
     std::string _lr_state;
 
-    std::string _model_template; /* model template name, if any. */
-    std::string _predict; /* file name of the predict net. */
-    std::string _init; /* file name of the predict net. */
-    std::string _meanfile; /* path to a mean.pb file, if available (for image models only). */
+    std::string _model_template; // model template name, if any.
+
+    // Files path (empty if non-existant)
+    std::string _predict;
+    std::string _init;
+    std::string _meanfile;
   };
 }
 

@@ -27,9 +27,6 @@
 #include <caffe2/core/context_gpu.h>
 #endif
 
-//XXX Is only used in one short function that should disapear one day
-#include <caffe2/core/db.h>
-
 #pragma GCC diagnostic pop
 
 #include <caffe2/core/init.h>
@@ -38,33 +35,20 @@
 #include "backends/caffe2/nettools.h"
 #include "outputconnectorstrategy.h"
 
-//XXX Find a better way to init caffe2
-static void init_caffe2_flags() {
-
-  static bool init = false;
-  if (init) return;
-  init = true;
+// Just a few static lines of code to be sure Caffe2 is correctly initialized
+namespace { class RunOnce { public: RunOnce() {
 
   int size = 2;
   const char *flags[size] = {
     "FLAGS"
-
     // As each service may want to use a different GPU,
     // We don't want any global variable to store the "current GPU id" in our Nets.
     ,"--caffe2_disable_implicit_engine_preference=1"
-
   };
   char **ptr = const_cast<char **>(&flags[0]);
   caffe2::GlobalInit(&size, &ptr);
-}
 
-//XXX Move every label-related operation somewhere in Caffe2NetTools (e.g. like 'iter' and 'lr')
-const std::string blob_label("label");
-
-//XXX Find a clean way to manage databases inputs from within caffe2inputconnectors
-// -> dbreaders, labels, mean_values, etc.
-const std::string blob_dbreader("dbreader");
-const std::string blob_dbreader_test("dbreader_test");
+}}; static RunOnce _; }
 
 namespace dd {
 
@@ -81,61 +65,95 @@ namespace dd {
     :MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,Caffe2Model>(std::move(c2l)) {
     this->_libname = "caffe2";
 
-    _workspace = std::move(c2l._workspace);
-    _devices = std::move(c2l._devices);
+    _context = std::move(c2l._context);
     _init_net = std::move(c2l._init_net);
-    _test_net = std::move(c2l._test_net);
+    _train_net = std::move(c2l._train_net);
     _net = std::move(c2l._net);
     _state = c2l._state;
+    _last_inputc = c2l._last_inputc;
 
-    _input_blob = c2l._input_blob;
-    _output_blob = c2l._output_blob;
     _nclasses = c2l._nclasses;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::~Caffe2Lib() {}
 
-  //Define some GPY-only code
-#ifdef CPU_ONLY
-#define _UPDATE_GPU_STATE(...)
-#else
-
-  static void get_gpu_ids(const APIData &ad, std::vector<int> &ids) {
-
-    // Fetch ids from the ApiData
-    try { //XXX Is a try catch the only way ?
-      ids = { ad.get("gpuid").get<int>() };
-    } catch (std::exception &e) {
-      ids = ad.get("gpuid").get<std::vector<int>>();
+  template <typename T>
+  static bool get_api_variant(const ad_variant_type &adv, const std::function<void(const T&)> &f) {
+    if (!adv.is<T>()) {
+      return false;
     }
-
-    // By default, use every GPUs
-    if (ids.size() == 1 && ids[0] == -1) {
-      ids.clear();
-      int count_gpus = 0;
-      cudaGetDeviceCount(&count_gpus);
-      ids.resize(count_gpus);
-      std::iota(ids.begin(), ids.end(), 0);
-    }
-    CAFFE_ENFORCE(!ids.empty());
+    f(adv.get<T>());
+    return true;
   }
 
-  // Used when initiliazing, training and predicting
-#define _UPDATE_GPU_STATE(ad, dft)					\
-  if (ad.has("gpuid")) {						\
-    std::vector<int> ids;						\
-    get_gpu_ids(ad, ids);						\
-    _state.set##dft##_gpu_ids(ids);					\
-    _state.set##dft##_is_gpu(true);					\
-  }									\
-  if (ad.has("gpu")) {							\
-    _state.set##dft##_is_gpu(ad.get("gpu").get<bool>());		\
+  // Simple way to retrieve a value from an APIData when the type is uncertain
+  template <typename T1, typename T2>
+  static void test_api_variants(const APIData &ad, const std::string &name,
+				const std::function<void(const T1&)> &f1,
+				const std::function<void(const T2&)> &f2) {
+    const ad_variant_type &adv = ad.get(name);
+    if (get_api_variant<T1>(adv, f1));
+    else if (get_api_variant<T2>(adv, f2));
+    else throw std::runtime_error("Invalid type for '" + std::string(name) + "'");
+  }
+
+#define TEST_API_VARIANTS(ad, name, t1, code1, t2, code2)		\
+  test_api_variants<t1, t2>(ad, name, [&](const t1 &value) {code1;}, [&](const t2 &value) {code2;});
+
+  template <typename T>
+  using StateSetter = void(Caffe2LibState::*)(const T&);
+
+#ifdef CPU_ONLY
+  inline void _set_gpu_state(const APIData &ad, Caffe2LibState&, void*, void*) {
+    if (ad.has("gpuid") || ad.has("gpu")) {
+      this->_logger->warn("Parametters 'gpuid' and 'gpu' are not used in CPU_ONLY mode");
+    }
+  }
+#else
+  inline void _set_gpu_state(const APIData &ad, Caffe2LibState &state,
+			     StateSetter<std::vector<int>> gpu_ids, StateSetter<bool> is_gpu) {
+    if (ad.has("gpuid")) {
+      std::vector<int> ids;
+
+      // Fetch ids from the ApiData
+      TEST_API_VARIANTS(ad, "gpuid",
+			int,			ids = { value },
+			std::vector<int>,	ids = value);
+
+      // By default, use every GPUs
+      if (ids.size() == 1 && ids[0] == -1) {
+	ids.clear();
+	int count_gpus = 0;
+	cudaGetDeviceCount(&count_gpus);
+	ids.resize(count_gpus);
+	std::iota(ids.begin(), ids.end(), 0);
+      }
+      CAFFE_ENFORCE(!ids.empty());
+      (state.*gpu_ids)(ids);
+      (state.*is_gpu)(true);
+    }
+
+    if (ad.has("gpu")) {
+      (state.*is_gpu)(ad.get("gpu").get<bool>());
+    }
   }
 #endif
 
-#define UPDATE_GPU_STATE(...)		_UPDATE_GPU_STATE(__VA_ARGS__,)
-#define UPDATE_GPU_DEFAULT_STATE(...)	_UPDATE_GPU_STATE(__VA_ARGS__, _default)
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
+  set_gpu_state(const APIData &ad, bool dft) {
+    StateSetter<std::vector<int>> gpu_ids;
+    StateSetter<bool> is_gpu;
+    if (dft) {
+      gpu_ids = &Caffe2LibState::set_default_gpu_ids;
+      is_gpu = &Caffe2LibState::set_default_is_gpu;
+    } else {
+      gpu_ids = &Caffe2LibState::set_gpu_ids;
+      is_gpu = &Caffe2LibState::set_is_gpu;
+    }
+    _set_gpu_state(ad, _state, gpu_ids, is_gpu);
+  }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
@@ -149,7 +167,7 @@ namespace dd {
 				   "or remove existing '.pb' files ?");
     }
 
-    //XXX Implement build-in template creation (mlp, convnet, reset, etc.)
+    //XXX Implement build-in template creation (mlp, convnet, resnet, etc.)
 
     std::string model_tmpl = ad.get("template").get<std::string>();
     std::string source = this->_mlmodel._mlmodel_template_repo + '/' + model_tmpl;
@@ -168,6 +186,8 @@ namespace dd {
       }
     }
 
+    //XXX Configure the nets protobuf files
+
     // Update the mlmodel
     this->_mlmodel._model_template = model_tmpl;
     this->_mlmodel.update_from_repository(this->_logger);
@@ -175,187 +195,148 @@ namespace dd {
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
+  set_train_mode(const APIData &ad, bool train) {
+
+    // Update the input connector
+    TInputConnectorStrategy inputc(this->_inputc);
+    inputc._train = train;
+    try {
+      inputc.transform(ad);
+    } catch (...) {
+      this->_logger->info("Could not configure the InputConnector");
+      throw;
+    }
+
+    // Update the local input connector
+    bool force_init = inputc.needs_reconfiguration(_last_inputc);
+    _last_inputc = inputc;
+
+    // Reset the state
+    _state.reset();
+    _state.set_is_training(train);
+    if (force_init) {
+      _state.force_init();
+    }
+  }
+
+  //XXX When classifying, the last layer is currently not reshaped based on _nclasses
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
   create_model_train() {
 
     // Computation is done on new nets
     caffe2::NetDef init_net, train_net, test_net;
-    Caffe2NetTools::ScopedNet
-      init_net_scoped(init_net),
-      train_net_scoped(train_net),
-      test_net_scoped(test_net);
-
-    train_net_scoped._devices = _devices;
-    init_net_scoped._devices = _devices;
-    test_net_scoped._devices = { _devices[0] };
 
     //XXX Find a way to prevent code duplication when applying changes to the test net
-    bool testing = _state.is_testing(), resume = _state.resume();
-    std::string train_db = _state.train_db(), test_db = _state.test_db();
 
-    // Reset parameters to ConstantFills, XaviersFills, etc.
-    if (!_state.resume()) {
-      Caffe2NetTools::reset_fillers(_net, _init_net);
-    }
+    // Load or create a dbreader per net
+    if (_state.resume()) {
 
-    if (train_db.empty()) {
-      //XXX Define how to setup a net without a database (use inputconnector with a list of data ?)
-      throw MLLibBadParamException("training without a database");
+      _last_inputc.load_dbreader(_context, this->_mlmodel._dbreader_train_state, true);
+      if (_state.is_testing()) {
+	_last_inputc.load_dbreader(_context, this->_mlmodel._dbreader_state);
+      }
+
     } else {
 
-      // Check if the net is testable
-      if (testing && test_db.empty()) {
-	testing = false;
-	_state.set_is_testing(testing);
-	this->_logger->warn("Cannot test without a testing database");
-      }
-
-      // Load or create one dbreader per net
-      if (resume) {
-
-	Caffe2NetTools::load_blob(*_workspace, this->_mlmodel._dbreader_state, blob_dbreader);
-	if (testing) {
-	  Caffe2NetTools::load_blob(*_workspace, this->_mlmodel._dbreader_test_state,
-				    blob_dbreader_test);
-	}
-
-      } else {
-	Caffe2NetTools::CreateDB(init_net, blob_dbreader, train_db);
-	if (testing) {
-	  Caffe2NetTools::CreateDB(init_net, blob_dbreader_test, test_db);
-	}
-      }
-
-      // Check if the inputs need image-related layers
-      caffe2::OperatorDef input;
-      std::string input_name(_input_blob);
-      bool is_image(typeid(this->_inputc) == typeid(ImgCaffe2InputFileConn));
-      bool is_nhwc(is_image // ImageInput operators format data in NHWC
-#ifndef CPU_ONLY
-		   && !_state.is_gpu() // But gpu_transform can correct it
-#endif
-		   );
-
-      if (is_nhwc) {
-	input_name += "_nhwv"; // NHWC2NCHW is not an in-place operator
-      }
-
-      // Create a tensor loader
-      //XXX There is currently no tool to load unlabeled data (supervised only)
-      //XXX Divide the batch_size by the number of devices ?
-      Caffe2NetTools::TensorProtosDBInput(input, blob_dbreader, input_name, blob_label,
-					  _state.batch_size());
-      if (is_image) {
-	reinterpret_cast<ImgCaffe2InputFileConn &>(this->_inputc)
-	  .configure_db_operator(input, _state.mean_values()); // Special operator for images
-#ifndef CPU_ONLY
-	if (_state.is_gpu()) {
-	  Caffe2NetTools::add_arg(input, "use_gpu_transform", 1);
-	  Caffe2NetTools::add_arg(input, "order", "NCHW");
-	}
-#endif
-      }
-
-      // Add the previously created operators on each devices
-      Caffe2NetTools::insert_db_input_operator(train_net_scoped, input);
-      if (testing) {
-	// The test net has a different db and batch size
-	*input.mutable_input(0) = blob_dbreader_test;
-	Caffe2NetTools::replace_arg(input, "batch_size", _state.test_batch_size());
-	Caffe2NetTools::insert_db_input_operator(test_net_scoped, input);
-      }
-
-      if (is_nhwc) {
-	Caffe2NetTools::NHWC2NCHW(train_net_scoped, input_name, _input_blob);
-	if (testing) {
-	  Caffe2NetTools::NHWC2NCHW(test_net_scoped, input_name, _input_blob);
-	}
+      // Reset parameters to ConstantFills, XaviersFills, etc.
+      Caffe2NetTools::reset_fillers(_net, _init_net);
+      _last_inputc.create_dbreader(init_net, true);
+      if (_state.is_testing()) {
+	_last_inputc.create_dbreader(init_net);
       }
 
     }
 
-    // Prevent the backward pass from reaching the database and input-fomatting operators
-    Caffe2NetTools::StopGradient(train_net_scoped, _input_blob);
-
-    // Add requested operators on each devices
-    for (const caffe2::OperatorDef &op : _net.op()) {
-      Caffe2NetTools::add_op(train_net_scoped, op);
-      if (testing) {
-	Caffe2NetTools::add_op(test_net_scoped, op);
-      }
+    // Load batches from the databases
+    _last_inputc.add_tensor_loader(_context, train_net, true);
+    if (_state.is_testing()) {
+      _last_inputc.add_tensor_loader(_context, test_net);
     }
 
-    // Assert that the test net output has the desired name
-    // (e.g. a previous scope may have renamed it to gpu_0/...)
-    if (testing) {
-      *test_net.mutable_op(test_net.op().size() - 1)->mutable_output(0) = _output_blob;
+    // Apply input tranformations
+    _last_inputc.add_constant_layers(_context, init_net);
+    _last_inputc.add_transformation_layers(_context, train_net);
+    if (_state.is_testing()) {
+      _last_inputc.add_transformation_layers(_context, test_net);
     }
 
-    // Copy the external intputs (name of the parameters) on each device
-    // (the 'main' input should not be copied if remplaced by a db-input)
-    for (const std::string &input : _net.external_input()) {
-      //XXX The day no-db training is implemented, this will (probably) need to be modified
-      if (input != _input_blob || train_db.empty()) {
-	Caffe2NetTools::add_external_input(train_net_scoped, input);
-	if (testing) {
-	  Caffe2NetTools::add_external_input(test_net_scoped, input);
-	}
-      }
+    // Add the requested net, with its loss and gradients
+    _context.append_trainable_net(train_net, _net);
+    if (_state.is_testing()) {
+      _context.append_net(test_net, _net);
     }
 
     // The test net is complete
-    // Below is the training-only stuff
-
-    // Add loss, gradient, and sum over the devices
-    //XXX There is currently no tool to compute loss without labels (it's supervised only)
-    Caffe2NetTools::insert_loss_operators(train_net_scoped, _output_blob, blob_label);
-    Caffe2NetTools::add_gradient_ops(train_net);
-#ifndef CPU_ONLY
-    if (train_net_scoped._devices.size() > 1) {
-      Caffe2NetTools::reduce(train_net_scoped);
-    }
-#endif
 
     // Set the learning-related operators and blobs to the desired iteration
-    int iter = resume ? Caffe2NetTools::load_iter(this->_mlmodel._iter_state) : 0;
-
-    Caffe2NetTools::insert_learning_operators(train_net_scoped, init_net_scoped, iter,
-					      _state.lr_policy(), _state.base_lr(),
-					      _state.stepsize(), _state.gamma());
-    Caffe2NetTools::get_optimizer(_state.solver_type())(train_net_scoped, init_net_scoped);
-
-    if (resume) {
-      // Prefill the learning_rate with its old value
-      Caffe2NetTools::load_lr(*_workspace, _devices, this->_mlmodel._lr_state);
+    if (_state.resume()) {
+      _context.load_lr(this->_mlmodel._lr_state); // Prefill the workspace
+      _context.load_iter(this->_mlmodel._iter_state); // Just load the integer
+    } else {
+      _context.reset_iter();
     }
 
-    // Train net is complete
+    Caffe2NetTools::insert_learning_operators(_context, train_net, init_net,
+					      _state.lr_policy(), _state.base_lr(),
+					      _state.stepsize(), _state.gamma());
+    Caffe2NetTools::get_optimizer(_state.solver_type())(_context, train_net, init_net);
+
+    // The train net is complete
 
     // Duplicate the init net outputs on all the devices
-    Caffe2NetTools::copy_and_broadcast_operators(init_net_scoped, _init_net);
+    Caffe2NetTools::copy_and_broadcast_operators(_context, init_net, _init_net);
+
+    // The init net is complete
 
     // Apply changes
-    _net.Swap(&train_net);
+    _net.Swap(&test_net);
     _init_net.Swap(&init_net);
-    _test_net.Swap(&test_net);
+    _train_net.Swap(&train_net);
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
   create_model_predict() {
+    _context._parallelized = false;
 
-    // usually the init net only initiliaze the parameters
-    // so we create the 'data' blob manually, just to be sure
-    _workspace->CreateBlob(_input_blob);
+    // Computation is done on a new net
+    caffe2::NetDef tmp_net;
+
+    if (_last_inputc.is_load_manual()) {
+
+      // usually the init net only initiliaze the parameters
+      // so we create the 'data' blob manually, just to be sure
+      _context.create_input();
+      tmp_net.add_external_input(_context._input_blob);
+
+    } else {
+
+      // Add database informations
+      _last_inputc.create_dbreader(_init_net);
+      _last_inputc.add_tensor_loader(_context, tmp_net);
+
+    }
+
+    // Add transformations
+    _last_inputc.add_constant_layers(_context, _init_net);
+    _last_inputc.add_transformation_layers(_context, tmp_net);
+
+    // Add the rest of the operators
+    _context.append_net(tmp_net, _net);
 
     std::string extract = _state.extract_layer();
     if (!extract.empty()) { // unsupervised
       // Operators placed after the extracted layer are removed (they would do useless computation)
-      Caffe2NetTools::truncate_net(_net, extract);
+      Caffe2NetTools::truncate_net(tmp_net, extract);
     }
 
-    // Set the device for every operators
-    Caffe2NetTools::set_net_device(_net, _devices[0]);
-    Caffe2NetTools::set_net_device(_init_net, _devices[0]);
+    // Force the device for every operators
+    Caffe2NetTools::set_net_device(tmp_net, _context._devices[0]);
+    Caffe2NetTools::set_net_device(_init_net, _context._devices[0]);
+
+    // Apply changes
+    _net.Swap(&tmp_net);
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -369,7 +350,7 @@ namespace dd {
 				   " does not contain the required files to initialize a net");
     }
 
-    this->_logger->info("Re-creating the net");
+    this->_logger->info("Re-creating the nets");
 
     // Load the nets protobuffers
     std::string init_net_path = _state.is_training() && _state.resume() ?
@@ -383,38 +364,28 @@ namespace dd {
     //    - the input blob name is (or contains) "data"
     //    - the external inputs are sorted
     //    - there is only one external output
-    if (_output_blob.empty()) {
-      _output_blob = _net.external_output()[0];
+    if (_context._output_blob.empty()) {
+      _context._output_blob = _net.external_output()[0];
     }
-    if (_input_blob.empty()) {
+    if (_context._input_blob.empty()) {
       const auto &inputs = _net.external_input();
-      _input_blob = inputs[0];
-      if (_input_blob.find("data") == std::string::npos) {
-	_input_blob = inputs[inputs.size() - 1];
-	if (_input_blob.find("data") == std::string::npos) {
-	  _input_blob = "data";
+      _context._input_blob = inputs[0];
+      if (_context._input_blob.find("data") == std::string::npos) {
+	_context._input_blob = inputs[inputs.size() - 1];
+	if (_context._input_blob.find("data") == std::string::npos) {
+	  _context._input_blob = "data";
 	}
       }
     }
 
-    // Reset the workspace and devices
-    _workspace.reset(new caffe2::Workspace);
-    _devices.clear();
-    caffe2::DeviceOption option;
+    // Reset the context
+    _context.reset_workspace();
 #ifndef CPU_ONLY
     if (_state.is_gpu()) {
-      option.set_device_type(caffe2::CUDA);
-      for (int i : _state.gpu_ids()) {
-	this->_logger->info("Using GPU {}", i);
-	option.set_cuda_gpu_id(i);
-	_devices.push_back(option);
-      }
+      _context.reset_devices(_state.gpu_ids());
     } else
 #endif
-      {
-	option.set_device_type(caffe2::CPU);
-	_devices.push_back(option);
-      }
+      _context.reset_devices();
 
     // Transform the nets
     if (_state.is_training()) {
@@ -422,36 +393,44 @@ namespace dd {
     } else {
       create_model_predict();
     }
+    _net.set_name("_net");
+    _init_net.set_name("_init_net");
+    _train_net.set_name("_train_net");
 
     // Update the workspace with the new nets
-    _net.set_name("_net");
-    CAFFE_ENFORCE(_workspace->RunNetOnce(_init_net));
-    CAFFE_ENFORCE(_workspace->CreateNet(_net));
-    if (_state.is_testing()) {
-      _test_net.set_name("_test_net");
-      CAFFE_ENFORCE(_workspace->CreateNet(_test_net));
+    _context.run_net_once(_init_net);
+    if (!_state.is_training() || _state.is_testing()) {
+      _context.create_net(_net);
       //XXX Check how _nclasses could be infered here
     }
+    if (_state.is_training()) {
+      _context.create_net(_train_net);
+    }
 
-    this->_logger->info("Net updated");
+    this->_logger->info("Nets updated");
   }
 
-  // Just a if statement used both before training and before predicting
-  // May become a function if used more often
-#define UPDATE_MODEL()							\
-  if (_state.changed()) {						\
-    try {								\
-      create_model(); /* Reload from the disk and reconfigure. */	\
-    } catch (...) {							\
-      this->_logger->error("Error creating model");			\
-      /* Must stay in a 'changed_state' until a call to create_model finally succeed. */ \
-      _state.force_init();						\
-      throw;								\
-    }									\
-    /* Save the current net configuration. */				\
-    _state.backup();							\
-  } else {								\
-    CAFFE_ENFORCE(_workspace->RunNetOnce(_init_net)); /* Update the workspace */ \
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
+  update_model() {
+
+    if (!_state.changed()) {
+      this->_logger->info("Reseting the workspace");
+      _context.run_net_once(_init_net);
+      return;
+    }
+
+    // Reload from the disk and reconfigure.
+    try {
+      create_model();
+    } catch (...) {
+      this->_logger->error("Couldn't create model");
+      // Must stay in a 'changed_state' until a call to create_model finally succeed.
+      _state.force_init();
+      throw;
+    }
+    // Save the current net configuration.
+    _state.backup();
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -460,8 +439,8 @@ namespace dd {
     caffe2::NetDef init;
     std::map<std::string, std::string> blobs;
     // Blobs and nets are formatted here, so mlmodel just have to manage the files
-    Caffe2NetTools::extract_state(*_workspace, _devices[0], blobs);
-    Caffe2NetTools::create_init_net(*_workspace, _devices[0], _net, init);
+    _context.extract_state(blobs);
+    _context.create_init_net(_train_net, init);
     this->_mlmodel.write_state(init, blobs);
     this->_logger->info("Dumped model state");
   }
@@ -469,22 +448,23 @@ namespace dd {
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
   init_mllib(const APIData &ad) {
-    init_caffe2_flags(); //XXX Find a better place to init caffe2
 
     // Store the net's general configuration
     if (ad.has("inputlayer")) {
-      _input_blob = ad.get("inputlayer").get<std::string>();
+      _context._input_blob = ad.get("inputlayer").get<std::string>();
     }
     if (ad.has("outputlayer")) {
-      _output_blob = ad.get("outputlayer").get<std::string>();
+      _context._output_blob = ad.get("outputlayer").get<std::string>();
     }
 
     if (ad.has("nclasses")) {
       _nclasses = ad.get("nclasses").get<int>();
     }
 
+    //XXX Get more informations (targets for multi-label, autoencoder, regression, ...)
+
     // Store the net's default (but variable) configuration
-    UPDATE_GPU_DEFAULT_STATE(ad);
+    set_gpu_state(ad, true);
 
     if (ad.has("template")) {
       instantiate_template(ad);
@@ -492,6 +472,9 @@ namespace dd {
 
     // Now that every '_default' values are defined, initialize the '_current' ones
     _state.reset();
+    _last_inputc = this->_inputc;
+
+    // Preconfigure the net to make predictions
     if (!this->_mlmodel._predict.empty()) {
       create_model();
       _state.backup();
@@ -501,8 +484,7 @@ namespace dd {
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
   clear_mllib(const APIData &) {
-    std::vector<std::string> extensions({".json"});
-    //XXX remove _state files ? the databases ?
+    std::vector<std::string> extensions({".json"}); //XXX remove _state files ? the databases ?
     fileops::remove_directory_files(this->_mlmodel._repo, extensions);
   }
 
@@ -512,24 +494,12 @@ namespace dd {
     try {
 
       std::chrono::time_point<std::chrono::system_clock> start = std::chrono::system_clock::now();
-      CAFFE_ENFORCE(_workspace->RunNet(net));
+      _context.run_net(net);
 
-      if (results) { // Fill the vector with the output layer
-
-	std::string output = _state.extract_layer();
-	if (output.empty()) { // supervised
-	  output = _output_blob;
-	}
-	caffe2::TensorCPU tensor;
-	//XXX Support multi-device
-	CAFFE_ENFORCE(Caffe2NetTools::extract_tensor(*_workspace, _devices[0], output, tensor));
-
-	int result_size = tensor.size() / results->size();
-	const float *data = tensor.data<float>();
-	for (std::vector<float> &result : *results) {
-	  result.assign(data, data + result_size);
-	  data += result_size;
-	}
+      if (results) {
+	// Fill the vector with the output layer
+	// Extract layer is only used if not empty
+	_context.extract_results(*results, _state.extract_layer());
       }
 
       std::chrono::time_point<std::chrono::system_clock> stop = std::chrono::system_clock::now();
@@ -541,49 +511,15 @@ namespace dd {
     }
   }
 
-  //XXX Find a better way to determine the number of iterations
-  static int get_db_size(const std::string &path) {
-    std::unique_ptr<caffe2::db::DB> db(caffe2::db::CreateDB("lmdb", path,  caffe2::db::READ));
-    std::unique_ptr<caffe2::db::Cursor> cursor(db->NewCursor());
-    int count = 0;
-    for (; cursor->Valid(); ++count, cursor->Next());
-    return count;
-  }
-
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   int Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
   train(const APIData &ad, APIData &out) {
-    // Reseting to the default configuration
-    _state.reset();
-    _state.set_is_training(true);
+    set_train_mode(ad, true);
 
-    // Retreive the input-related configuration
-    TInputConnectorStrategy inputc(this->_inputc);
-    inputc._train = true;
-    APIData cad = ad;
-    try {
-      inputc.transform(cad);
-    } catch (...) {
-      this->_logger->info("Could not retrieve InputConnector's informations");
-      throw;
-    }
-
-    // Update databases tags
-    if (cad.has("db")) {
-      APIData db = cad.getobj("db");
-
-      // Db paths must be set (even if empty)
-      _state.set_train_db(db, true);
-      _state.set_test_db(db, true);
-
-      // Mean values are only set when using an InputImgConnector
-      _state.set_mean_values(db);
-    }
-
-    APIData ad_mllib = cad.getobj("parameters").getobj("mllib");
+    APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
 
     // Update GPUs tags
-    UPDATE_GPU_STATE(ad_mllib);
+    set_gpu_state(ad_mllib);
 
     int iterations = 0;
     int test_interval = 0;
@@ -612,40 +548,24 @@ namespace dd {
       if (ad_solver.has("snapshot")) {
 	snapshot_interval = ad_solver.get("snapshot").get<int>();
       }
-
     }
 
     if (!iterations) {
-
+      //XXX Use a default number of epoch ? (e.g. 50 * _last_inputc.db_size())
       throw MLLibBadParamException("'iterations' must be set to a positive integer");
-
-      //XXX Use a default number of iterations ?
-      const std::string &db = _state.train_db();
-      if (db.empty()) {
-	iterations = 100000;
-      } else {
-	iterations = 50 * get_db_size(db);
-      }
-    }
-
-    // Update the net's tags
-    if (ad_mllib.has("net")) {
-      APIData ad_net = ad_mllib.getobj("net");
-      _state.set_batch_size(ad_net);
-      _state.set_test_batch_size(ad_net);
     }
 
     // Update the training's tags
-    _state.set_is_testing(test_interval > 0);
+    _state.set_is_testing(test_interval > 0 && _last_inputc.is_testable());
     _state.set_resume(ad_mllib);
     if (_state.resume()) {
       _state.force_init(); // When resuming, blobs like DBreaders and Iters must be updated
     }
 
-    UPDATE_MODEL(); // Recreate the net from protobuf files if the configuration has changed
+    update_model(); // Recreate the net from protobuf files if the configuration has changed
 
     // Start the training
-    const int start_iter = Caffe2NetTools::extract_iter(*_workspace, _devices[0]);
+    const int start_iter = _context.extract_iter();
     this->clear_all_meas_per_iter();
     this->_tjob_running = true;
     if (start_iter) {
@@ -654,10 +574,10 @@ namespace dd {
     for (int iter = start_iter; iter < iterations && this->_tjob_running.load(); ++iter) {
 
       // Add measures
-      float iter_time = run_net(_net.name());
+      float iter_time = run_net(_train_net.name());
       this->add_meas("iter_time", iter_time);
       this->add_meas("remain_time", iter_time * (iterations - iter) / 1000.0);
-      this->add_meas("train_loss", Caffe2NetTools::extract_loss(*_workspace, _devices));
+      this->add_meas("train_loss", _context.extract_loss());
       this->add_meas("iteration", iter);
 
       // Save snapshot
@@ -670,18 +590,15 @@ namespace dd {
 	this->_logger->info("Testing model");
 
 	APIData meas_out;
-	test(_test_net.name(), ad, inputc, meas_out);
+	test(ad, meas_out);
 	APIData meas_obj = meas_out.getobj("measure");
 	for (auto meas : meas_obj.list_keys()) { // Add test measures
-
-	  try { //XXX Is a try catch the only way ?
-	    double mval = meas_obj.get(meas).get<double>();
-	    this->add_meas(meas, mval);
-	    this->add_meas_per_iter(meas, mval);
-	  } catch(std::exception &e) {
-	    this->add_meas(meas, meas_obj.get(meas).get<std::vector<double>>());
-	  }
-
+	  TEST_API_VARIANTS(meas_obj, meas,
+			    double,			this->add_meas(meas, value);
+							this->add_meas_per_iter(meas, value),
+			    std::vector<double>,	std::vector<std::string> cls(value.size());
+							this->_mlmodel.get_hcorresp(cls);
+							this->add_meas(meas, value, cls));
 	}
 	this->_logger->info("Model tested");
       }
@@ -692,55 +609,41 @@ namespace dd {
 
       if (_state.is_testing()) {
 	this->_logger->info("Adding final measures");
-	test(_test_net.name(), ad, inputc, out);
+	test(ad, out);
       }
 
       this->_logger->info("Updating net parameters");
       caffe2::NetDef init;
-      Caffe2NetTools::create_init_net(*_workspace, _devices[0], _net, init);
+      _context.create_init_net(_train_net, init);
       caffe2::WriteProtoToTextFile(init, this->_mlmodel._init);
 
-      inputc.response_params(out);
+      // Forward informations the input connector wants to send
+      _last_inputc.response_params(out);
     }
     return 0;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  int Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
-  load_batch(TInputConnectorStrategy &inputc, int batch_size) {
-    try {
-      caffe2::TensorCPU tensor;
-      batch_size = inputc.get_batch(tensor, batch_size);
-      if (batch_size > 0) {
-	//XXX Support multi-device
-	Caffe2NetTools::insert_tensor(*_workspace, _devices[0], _input_blob, tensor);
-      }
-    } catch(std::exception &e) {
-      this->_logger->error("exception while filling up network");
-      throw;
-    }
-    return batch_size;
-  }
-
-  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
-  test(const std::string &net,
-       const APIData &ad,
-       TInputConnectorStrategy &inputc,
-       APIData &out) {
+  test(const APIData &ad, APIData &out) {
 
-    // Retreive the set configuration
-    int batch_size = _state.test_batch_size();
-    int is_training = _state.is_training();
-    int data_count = 0;
-    int total_size = 0;
-    if (is_training) {
-      total_size = get_db_size(_state.test_db());
+    int batch_size = 0, total_size = 0;
+
+    // Get sizes used by tensor loaders
+    if (!_last_inputc.is_load_manual()) {
+      _last_inputc.get_tensor_loader_infos(batch_size, total_size);
+      int remaining = total_size % batch_size;
+      if (remaining) {
+	this->_logger->warn("The last {} image(s) will be ignored, as they won't fill"
+			    " the requested batch size of {}",
+			    remaining, batch_size);
+      }
+      total_size -= remaining;
     }
 
     // Add already computed measures
     APIData ad_res;
-    if (is_training) {
+    if (_state.is_training()) {
       ad_res.add("iteration", this->get_meas("iteration"));
       ad_res.add("train_loss", this->get_meas("train_loss"));
     }
@@ -749,39 +652,36 @@ namespace dd {
     //(classification, regression, autoencoder, etc.)
     int nout = _nclasses;
 
-    std::vector<std::string> clnames;
-    for (int i = 0; i < nout; i++)
-      clnames.push_back(this->_mlmodel.get_hcorresp(i));
+    std::vector<std::string> clnames(nout);
+    this->_mlmodel.get_hcorresp(clnames);
     ad_res.add("clnames", clnames);
     ad_res.add("nclasses", nout);
+    //XXX True/False flags can be forwarded to ad_res (segmentation, multi_label, etc.)
 
     // Loop while there is data to test
-    for (int i = 0; true; i += data_count) {
+    for (int i = 0; true; i += batch_size) {
 
-      // Get the current batch size, and fill the input blob if not using a database
-      if (is_training) {
-	data_count = std::min(batch_size, total_size - i);
+      if (_last_inputc.is_load_manual()) {
+
+	// Get the current batch size and fill the input blob
+	batch_size = _last_inputc.load_batch(_context);
+	total_size += batch_size;
+
       } else {
-	data_count = load_batch(inputc, batch_size);
-	total_size += data_count;
+	batch_size *= (i < total_size);
       }
-      if (!data_count) break; // Everything was tested
+      if (!batch_size) break; // Everything was tested
 
-      std::vector<float> labels;
-      std::vector<std::vector<float>> results(data_count);
+      std::vector<std::vector<float>> results(batch_size);
+      run_net(_net.name(), &results);
 
-      run_net(net, &results);
-      { //XXX Move this code in a tool or function
-	//(will need to change if used with multiple-devices)
-	caffe2::TensorCPU tensor;
-	std::string label = Caffe2NetTools::get_device_prefix(_devices[0]) + blob_label;
-	CAFFE_ENFORCE(Caffe2NetTools::extract_tensor(*_workspace, _devices[0], label, tensor));
-	const int *data = tensor.data<int>();
-	labels.assign(data, data + tensor.size());
-      }
+      //XXX Find how labels could be fetched when loading manually
+      //XXX What about other types of prediction ? Multi-labels ?
+      std::vector<float> labels(batch_size);
+      _context.extract_labels(labels);
 
       // Loop on each batch
-      for (int j = 0; j < data_count; j++) {
+      for (int j = 0; j < batch_size; j++) {
 	APIData bad;
 	std::vector<double> predictions;
 
@@ -802,11 +702,8 @@ namespace dd {
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   int Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
   predict(const APIData &ad, APIData &out) {
-    // Reseting to the default configuration
-    _state.reset();
-    _state.set_is_training(false);
+    set_train_mode(ad, false);
 
-    TInputConnectorStrategy inputc(this->_inputc);
     TOutputConnectorStrategy tout;
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
     APIData ad_output = ad.getobj("parameters").getobj("output");
@@ -814,73 +711,58 @@ namespace dd {
     // Get the lower limit of confidence requested for an prediction to be acceptable
     float confidence_threshold = 0.0;
     if (ad_output.has("confidence_threshold")) {
-      try { //XXX Is a try catch the only way ?
-	confidence_threshold = ad_output.get("confidence_threshold").get<float>();
-      } catch (std::exception &e) {
-	confidence_threshold = static_cast<float>(ad_output.get("confidence_threshold").get<int>());
-      }
+      TEST_API_VARIANTS(ad_output, "confidence_threshold",
+			double,	confidence_threshold = value,
+			int,	confidence_threshold = static_cast<float>(value));
     }
+
+    //XXX More informations could be fetched in the future (bbox, rois, etc.)
 
     _state.set_extract_layer(ad_mllib); // The net will be truncated if this flag is present
 
     // Update GPUs tags
-    UPDATE_GPU_STATE(ad_mllib);
+    set_gpu_state(ad_mllib);
 
-    // Add informations that the InputConnector may need
-    APIData cad = ad;
-    if (this->_mlmodel._meanfile.size()) {
-      cad.add("mean_file", this->_mlmodel._meanfile);
-    }
-
-    // Retreive the input-related configuration
-    try {
-      inputc.transform(cad);
-    } catch (std::exception &e) {
-      this->_logger->info("Could not retrieve InputConnector's informations");
-      throw;
-    }
-
-    UPDATE_MODEL(); // Recreate the net from protobuf files if the configuration has changed
-
-    // Special case where the net is runned by test()
     if (ad_output.has("measure")) {
       CAFFE_ENFORCE(_state.extract_layer().empty()); // A truncated net can't be mesured
-      if (ad_mllib.has("net")) {
-	_state.set_test_batch_size(ad_mllib.getobj("net"));
-      }
-      test(_net.name(), ad, inputc, out);
+      CAFFE_ENFORCE(_last_inputc.is_testable());
+      _state.set_is_testing(true);
+    }
+
+    update_model(); // Recreate the net from protobuf files if the configuration has changed
+
+    // Special case where the net is runned by test()
+    if (_state.is_testing()) {
+      test(ad, out);
       return 0;
     }
 
     // Load everything in a single batch
-    std::vector<APIData> vrad;
-    int data_count(load_batch(inputc));
-    std::vector<std::vector<float> > results(data_count);
+    CAFFE_ENFORCE(_last_inputc.is_load_manual());
+    int batch_size = _last_inputc.load_batch(_context);
 
+    std::vector<APIData> vrad(batch_size);
+    std::vector<std::vector<float> > results(batch_size);
     run_net(_net.name(), &results);
 
     // Loop on each item of the input batch
-    for (const std::vector<float> &result : results) {
-      APIData rad;
+    for (int i = 0; i < batch_size; ++i) {
+      const std::vector<float> &result = results[i];
+      APIData &rad = vrad[i];
 
-      // Store its name
-      if (!inputc._ids.empty()) {
-	rad.add("uri", inputc._ids.at(vrad.size()));
-      } else {
-	rad.add("uri", std::to_string(vrad.size()));
-      }
+      rad.add("uri", _last_inputc.ids().at(i)); // Store its name
       rad.add("loss", 0.f); //XXX Needed but not relevant
 
       if (_state.extract_layer().empty()) { //XXX for now this means supervised classification
 
 	std::vector<double> probs;
 	std::vector<std::string> cats;
-	for (size_t i = 0; i < result.size(); ++i) {
-	  float prob = result[i];
+	for (size_t j = 0; j < result.size(); ++j) {
+	  float prob = result[j];
 	  if (prob < confidence_threshold)
 	    continue;
 	  probs.push_back(prob);
-	  cats.push_back(this->_mlmodel.get_hcorresp(i));
+	  cats.push_back(this->_mlmodel.get_hcorresp(j));
 	}
 	rad.add("probs", probs);
 	rad.add("cats", cats);
@@ -890,18 +772,24 @@ namespace dd {
 	rad.add("vals", vals);
       }
 
+      //XXX This if/else could contain more extraction types (segmentation, bbox, etc.)
+
       vrad.push_back(rad);
     }
 
     tout.add_results(vrad);
+
+    //XXX More tags can be forwarded (regression, autoencoder, etc.)
+
     tout.finalize(ad.getobj("parameters").getobj("output"), out,
 		  static_cast<MLModel*>(&this->_mlmodel));
-    out.add("status", 0);
 
+    out.add("status", 0);
     return 0;
   }
 
   // Template instantiation
   template class Caffe2Lib<ImgCaffe2InputFileConn,SupervisedOutput,Caffe2Model>;
   template class Caffe2Lib<ImgCaffe2InputFileConn,UnsupervisedOutput,Caffe2Model>;
+  //XXX Make more input connectors
 }
