@@ -84,55 +84,71 @@ namespace dd {
      *			GPU id on which the final gradient sum will be computed
      *			(set to -1 if there's no such device)
      *
-     *  Below are some #define to make this more explicit in the code
+     *  Below are some classes to make this more explicit in the code
      */
 
-    using BlobInfo = std::tuple<int, int, int, int>; // <current, total, inplace, device>
-#define BLOB_CURRENT(info) std::get<0>(info)
-#define BLOB_TOTAL(info) std::get<1>(info)
-#define BLOB_INPLACE(info) std::get<2>(info)
-#define BLOB_DEVICE(info) std::get<3>(info)
-#define SET_BLOB_INFO(info, value, inplace, device) {	\
-      BLOB_CURRENT(info) = BLOB_TOTAL(info) = value;	\
-      BLOB_INPLACE(info) += inplace;			\
-      BLOB_DEVICE(info) = device;			\
-    }
+    class BlobInfo {
+    public:
 
-    // When a blob isn't modified 'inplace', it is 'split' in several versions
-    // (each one with a specific prefix and suffix)
-    // When each 'split' is computed they're summed into the main blob.
-#define IS_SPLITTED(info) (BLOB_TOTAL(info) - BLOB_INPLACE(info) > 1)
-#define SPLIT_NAME(name, i) if (i) {					\
-      name = "_" + name + "_autosplit_" + std::to_string(i - 1);	\
-    }
+      int _current = 0;
+      int _total = 0;
+      int _inplace = 0;
+      int _device = 0;
 
-    // Fetch the next available 'split' of the given blob
-#define RENAME_IF_MULTIPLE_USE(map, name)				\
-    if (map.count(name)) {						\
-      BlobInfo &info = map[name];					\
-      if (BLOB_CURRENT(info) > 0) {					\
-	int split_nb = BLOB_TOTAL(info) - BLOB_CURRENT(info);		\
-	BLOB_CURRENT(info)--;						\
-	if (IS_SPLITTED(info)) {					\
-	  SPLIT_NAME(name, split_nb);					\
-	}								\
-      }									\
-    }
+      inline void set(int value, int inplace, int device) {
+	_current = _total = value;
+	_inplace += inplace;
+	_device = device;
+      }
 
-    // See the 'pass_replace' map in the 'add_gradient_ops' function for an explanation.
-#define RENAME_IF_TAGGED(map, name) {		\
-      auto it = map.find(name);			\
-      if (it != map.end()) {			\
-	name = it->second;			\
-	map.erase(it);				\
-      }						\
-    }
+      // When a blob isn't modified 'inplace', it is 'split' in several versions
+      // (each one with a specific prefix and suffix)
+      // When each 'split' is computed they're summed into the main blob.
+      inline void rename_if_splitted(std::string &name, int i) {
+	if (_total - _inplace > 1 && i) {
+	  name = "_" + name + "_autosplit_" + std::to_string(i - 1);
+	}
+      }
+    };
+
+    class BlobsInfo: public std::map<std::string, BlobInfo> {
+    public:
+
+      // Fetch the next available 'split' of the given blob
+      inline void rename_if_multiple_use(std::string &name) {
+
+	if (!count(name)) return; // Can't cause conflicts
+
+	BlobInfo &info = at(name);
+	if (info._current < 1) return; // Won't be reused
+
+	int split_nb = info._total - info._current;
+	info._current--; // Use once
+	info.rename_if_splitted(name, split_nb);
+      }
+    };
+
+    // Because we want our gradients to be generated in the same way as caffe2's,
+    // sometimes our gradient sums don't create a new output but are done 'inplace'.
+    // To do this either inputs or output are renamed.
+    // This is a map containing the renamed blobs.
+    class RenamedBlobs: public std::map<std::string, std::string> {
+    public:
+
+      inline void rename_if_tagged(std::string &name) {
+	auto it = find(name);
+	if (it != end()) {
+	  name = it->second;
+	  erase(it);
+	}
+      }
+    };
 
     // Used once by add_gradient_ops
     // Moved in a function to make it more readable
     static void collect_gradient_ops(caffe2::NetDef &net,
 				     std::vector<caffe2::OperatorDef> &gradient_ops,
-				     std::map<std::string, BlobInfo> &blobs_info) {
+				     BlobsInfo &blobs_info) {
 
       std::set<std::string> external_inputs(net.external_input().begin(),
 					    net.external_input().end());
@@ -167,7 +183,7 @@ namespace dd {
 	    // If those operators are Sums, then the gradient can be computed
 	    // using inplace operations.
 	    // If they're not, we will need the manage a 'split' input
-	    SET_BLOB_INFO(info, input_count[input], op.type() == "Sum", device);
+	    info.set(input_count[input], op.type() == "Sum", device);
 	  }
 	}
       }
@@ -194,8 +210,8 @@ namespace dd {
     // Used once by add_gradient_ops
     // Moved in a function to make it more readable
     static void add_gradient_for_op(caffe2::NetDef &net, const caffe2::OperatorDef &op,
-				    std::map<std::string, std::string> &pass_replace,
-				    std::map<std::string, BlobInfo> &blobs_info) {
+				    RenamedBlobs &renamed_blobs,
+				    BlobsInfo &blobs_info) {
       // Feed the gradient with the operator outputs
       std::vector<caffe2::GradientWrapper> output(op.output_size());
       for (size_t i = 0; i < output.size(); ++i) {
@@ -215,10 +231,10 @@ namespace dd {
 	}
 	grad.set_is_gradient_op(true);
 	for (std::string &output : *grad.mutable_output()) {
-	  RENAME_IF_MULTIPLE_USE(blobs_info, output);
+	  blobs_info.rename_if_multiple_use(output);
 	}
 	for (std::string &input : *grad.mutable_input()) {
-	  RENAME_IF_TAGGED(pass_replace, input);
+	  renamed_blobs.rename_if_tagged(input);
 	}
       }
     }
@@ -226,12 +242,12 @@ namespace dd {
     // Used once by add_gradient_ops
     // Moved in a function to make it more readable
     static void sum_gradients(caffe2::NetDef &net,
-			      std::map<std::string, std::string> &pass_replace,
-			      std::map<std::string, BlobInfo> &blobs_info) {
+			      RenamedBlobs &renamed_blobs,
+			      BlobsInfo &blobs_info) {
       for (auto &it : blobs_info) {
 	const std::string &name = it.first;
 	BlobInfo &info = it.second;
-	if (BLOB_CURRENT(info)) {
+	if (info._current) {
 	  // if > 0:
 	  //    Some operators still need to be computed before we do the final sum.
 	  // if < 0:
@@ -240,12 +256,10 @@ namespace dd {
 	}
 	// Merge the 'split' versions of this blob
 	std::vector<std::string> inputs;
-	for (int i = 0; i < BLOB_TOTAL(info); i++) {
+	for (int i = 0; i < info._total; i++) {
 	  std::string input = name;
-	  if (IS_SPLITTED(info)) {
-	    SPLIT_NAME(input, i);
-	  }
-	  RENAME_IF_TAGGED(pass_replace, input);
+	  info.rename_if_splitted(input, i);
+	  renamed_blobs.rename_if_tagged(input);
 	  if (input == name) {
 	    inputs.insert(inputs.begin(), input); // Inplace
 	  } else {
@@ -254,13 +268,13 @@ namespace dd {
 	}
 	caffe2::OperatorDef &op = Sum(net, inputs, name);
 #ifndef CPU_ONLY
-	if (BLOB_DEVICE(info) >= 0) {
+	if (info._device >= 0) {
 	  op.mutable_device_option()->set_device_type(caffe2::CUDA);
-	  op.mutable_device_option()->set_cuda_gpu_id(BLOB_DEVICE(info));
+	  op.mutable_device_option()->set_cuda_gpu_id(info._device);
 	}
 #endif
 	// Setting counter to a negative value so it won't trigger anymore
-	--BLOB_CURRENT(info);
+	info._current--;
       }
     }
 
@@ -270,7 +284,7 @@ namespace dd {
       // sometimes our gradient sums don't create a new output but are done 'inplace'.
       // To do this either inputs or output are renamed.
       // This is a map containing the renamed blobs.
-      std::map<std::string, std::string> pass_replace;
+      RenamedBlobs renamed_blobs;
 
       // Ordered list of operators that can be needed to create the gradient.
       std::vector<caffe2::OperatorDef> gradient_ops;
@@ -280,7 +294,7 @@ namespace dd {
       std::set<std::string> stop_inputs;
 
       // See the BlobInfo definition for more details
-      std::map<std::string, BlobInfo> blobs_info;
+      BlobsInfo blobs_info;
 
       collect_gradient_ops(net, gradient_ops, blobs_info);
       for (const caffe2::OperatorDef &op : gradient_ops) {
@@ -293,13 +307,13 @@ namespace dd {
 	  // Make the first output as 'inplace' during the backward pass
 	  for (const std::string &input : op.input()) {
 	    std::string in = input + gradient_suffix;
-	    RENAME_IF_MULTIPLE_USE(blobs_info, in);
-	    pass_replace[in] = op.output(0) + gradient_suffix;
+	    blobs_info.rename_if_multiple_use(in);
+	    renamed_blobs[in] = op.output(0) + gradient_suffix;
 	  }
 	} else {
-	  add_gradient_for_op(net, op, pass_replace, blobs_info);
+	  add_gradient_for_op(net, op, renamed_blobs, blobs_info);
 	}
-	sum_gradients(net, pass_replace, blobs_info);
+	sum_gradients(net, renamed_blobs, blobs_info);
       }
     }
 
@@ -315,32 +329,33 @@ namespace dd {
       std::set<std::string> external_inputs(net.external_input().begin(),
 					    net.external_input().end());
       for (const caffe2::OperatorDef &op : net.op()) {
+
+	// Anything found before 'StopGradient' cannot be a parameter
+	if (op.type() == "StopGradient") {
+	  params.clear();
+	  computed_params.clear();
+	  continue;
+	}
+
 	std::vector<std::string> trainable;
 	std::vector<std::string> computed;
 	if (!is_trainable(op, &trainable, &computed)) {
 	  continue;
 	}
 	const auto &output = op.output();
-#define CHECK_PARAMS(v_in, v_out)						\
-	for (const std::string &input : v_in) {					\
-	  if (!input.find(prefix) &&						\
-	      external_inputs.find(input) != external_inputs.end() &&		\
-	      std::find(output.begin(), output.end(), input) == output.end()) {	\
-	    v_out.push_back(input.substr(remove_prefix * prefix.size(), -1));	\
-	  }									\
-	}
-	CHECK_PARAMS(trainable, params);
-	CHECK_PARAMS(computed, computed_params);
-#undef CHECK_PARAMS
-      }
-    }
 
-    void collect_params(const ScopedNet &net,
-			std::vector<std::string> &params,
-			std::vector<std::string> &computed_params,
-			bool remove_prefix) {
-      collect_params(net._net, params, computed_params,
-		     get_device_prefix(net._devices[0]), remove_prefix);
+	auto check_params = [&](std::vector<std::string> &v_in, std::vector<std::string> &v_out) {
+	  for (const std::string &input : v_in) {
+	    if (!input.find(prefix) &&
+		external_inputs.find(input) != external_inputs.end() &&
+		std::find(output.begin(), output.end(), input) == output.end()) {
+	      v_out.push_back(input.substr(remove_prefix * prefix.size(), -1));
+	    }
+	  }
+	};
+	check_params(trainable, params);
+	check_params(computed, computed_params);
+      }
     }
 
 #ifndef CPU_ONLY
@@ -418,7 +433,7 @@ namespace dd {
       net._rename_inputs = net._rename_outputs = false;
 
       gradient_sum_order(device_ids, sum_order);
-      collect_params(net, params, computed_params);
+      collect_params(net._net, params, computed_params, device_id_to_prefix(device_ids[0]), true);
 
       for (const std::string &param : params) {
 	std::string gradient = param + gradient_suffix;

@@ -19,6 +19,9 @@
  * along with deepdetect.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef CAFFE2NETTOOLS_H
+#define CAFFE2NETTOOLS_H
+
 //XXX Remove that to print the warnings
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -37,6 +40,9 @@ namespace dd {
 
     //XXX Doesn't work on too heavy graphs
     void net_to_svg(const caffe2::NetDef &net, const std::string &path);
+
+    //Export in three formats : <path>.pb, <path>.pbtxt and <path>.svg
+    void dump_net(const caffe2::NetDef &net, const std::string &path);
 
     /*
      *  Device management
@@ -108,12 +114,16 @@ namespace dd {
     /**
      * \brief tags the given input as external on each device
      */
-    void add_external_input(ScopedNet &net, const std::string &input);
+    void add_external_input(ScopedNet &net, const std::string &name);
 
     /**
      * \brief tags the given output as external on each device
      */
-    void add_external_output(ScopedNet &net, const std::string &output);
+    void add_external_output(ScopedNet &net, const std::string &name);
+
+    // Simple overload of the previous functions to be more uniform
+    void add_external_input(caffe2::NetDef &net, const std::string &name);
+    void add_external_output(caffe2::NetDef &net, const std::string &name);
 
     /**
      * \brief sets set device_option of every operators
@@ -124,26 +134,14 @@ namespace dd {
      *	Protobuffer manipulation
      */
 
-    /**
-     * \brief removes the first argument with the given name (if any) from the operator
-     */
-    void del_arg(caffe2::OperatorDef &op, const std::string &name);
-
-#define PROTOTYPE(type)						\
-    /* Add an 'Argument' in an 'OperatorDef' */			\
-    caffe2::Argument &add_arg(caffe2::OperatorDef &op,		\
-			      const std::string& name,		\
-			      const type &value);		\
-    /* Same as del_arg followed by add_arg */			\
-    caffe2::Argument &replace_arg(caffe2::OperatorDef &op,	\
-				  const std::string& name,	\
-				  const type &value);
+    // AddS an 'Argument' in an 'OperatorDef'
+#define PROTOTYPE(type)							\
+    caffe2::Argument &add_arg(caffe2::OperatorDef &op, const std::string &name, const type &value);
     PROTOTYPE(int);
     PROTOTYPE(float);
     PROTOTYPE(std::string);
     PROTOTYPE(std::vector<int>);
     PROTOTYPE(std::vector<float>);
-    PROTOTYPE(std::vector<double>);
 #undef PROTOTYPE
 
     /**
@@ -156,10 +154,26 @@ namespace dd {
      */
     void add_op(ScopedNet &net, const caffe2::OperatorDef &op);
 
+    /**
+     * \brief appends a net into another (adds operators and external inputs only)
+     * @param dst destination net
+     * @param dst source net
+     * @param ignore external inputs to ignore (usefull if defined by the destination net)
+     */
+    void add_ops_and_inputs(caffe2::NetDef &dst, const caffe2::NetDef &src,
+			    const std::vector<std::string> &ignore = {});
+    // Same as above, except a copy is added for each devices
+    void add_ops_and_inputs(ScopedNet &dst, const caffe2::NetDef &src,
+			    const std::vector<std::string> &ignore = {});
+
+    // Declare variants of the same function:
+    //		- NetDef	adds a single operator into a net
+    //		- ScopedNet	adds an operator for each device
+    //		- OperatorDef	simply configures the operator
 #define PROTOTYPE(name, args...)					\
-    caffe2::OperatorDef &name(caffe2::NetDef&, args); /* adds a 'name' operator into a net */ \
-    void name(ScopedNet&, args); /* for each device, adds a 'name' operator into a net */ \
-    void name(caffe2::OperatorDef&, args); /* configures an operator as being a 'name' */
+    caffe2::OperatorDef &name(caffe2::NetDef&, args);			\
+    void name(ScopedNet&, args);					\
+    void name(caffe2::OperatorDef&, args);
 
     // Database
     PROTOTYPE(CreateDB, const std::string &reader, const std::string &db);
@@ -169,11 +183,13 @@ namespace dd {
     PROTOTYPE(NHWC2NCHW, const std::string &input, const std::string &output);
 
     // Basic
+    PROTOTYPE(Sum, const std::vector<std::string> &inputs, const std::string &output);
+    PROTOTYPE(Sub, const std::string &input1, const std::string &input2, const std::string &output,
+	      int broadcast, int axis);
     PROTOTYPE(Copy, const std::string &input, const std::string &output);
     PROTOTYPE(Scale, const std::string &input, const std::string &output, float scale);
 
     // Sum and Optimize
-    PROTOTYPE(Sum, const std::vector<std::string> &inputs, const std::string &output);
     PROTOTYPE(WeightedSum, const std::vector<std::string> &inputs, const std::string &output);
     PROTOTYPE(MomentumSGDUpdate, const std::string &param, const std::string &momentum,
 	      const std::string &gradient, const std::string &rate);
@@ -227,105 +243,202 @@ namespace dd {
 #undef PROTOTYPE
 
     /*
+     *  Workspace management
+     */
+
+    /**
+     * \brief A workspace with its configuration
+     */
+    class ModelContext {
+    public:
+
+      // Workspaces cannot be std::move()'d or assigned
+      // (see DISABLE_COPY_AND_ASSIGN in caffe2/core/workspace.h)
+      // Hence the usage of a pointer.
+      std::unique_ptr<caffe2::Workspace> _workspace =
+	std::unique_ptr<caffe2::Workspace>(new caffe2::Workspace);
+      std::vector<caffe2::DeviceOption> _devices;
+      std::string _input_blob;
+      std::string _output_blob;
+      std::string _blob_label = "label"; //XXX Should be optional in the future
+
+      bool _parallelized; // Whether multiple devices are used
+      int _loaded_iter; // Last iteration number that was loaded from the file system
+
+      inline void reset_workspace() { _workspace.reset(new caffe2::Workspace); }
+      inline size_t device_count() const { return _parallelized ? _devices.size() : 1; }
+      inline std::string get_prefix(int device_idx) const {
+	return _parallelized ? get_device_prefix(_devices[device_idx]) : "";
+      }
+      inline void create_input() {
+	for (size_t i = 0; i < device_count(); ++i) {
+	  _workspace->CreateBlob(get_prefix(i) + _input_blob);
+	}
+      }
+
+      // Enforce
+      inline void run_net(const std::string &net) {
+	CAFFE_ENFORCE(_workspace->RunNet(net));
+      }
+      inline void run_net_once(const caffe2::NetDef &net) {
+	CAFFE_ENFORCE(_workspace->RunNetOnce(net));
+      }
+      inline void create_net(const caffe2::NetDef &net) {
+	CAFFE_ENFORCE(_workspace->CreateNet(net));
+      }
+
+      /*
+       *  Workspace initialization
+       */
+
+      /**
+       * \brief creates a scoped net
+       */
+      ScopedNet scope_net(caffe2::NetDef &net) const;
+
+      /**
+       * \brief resets the list of devices to a single CPU
+       */
+      void reset_devices();
+
+#ifndef CPU_ONLY
+      /**
+       * \brief resets the list of devices to multiple GPUs
+       */
+      void reset_devices(const std::vector<int> &gpu_ids);
+
+      /**
+       * \brief adds a tensor on each device.
+       */
+      void insert_inputs(const std::vector<caffe2::TensorCPU> &tensors);
+#endif
+
+      /**
+       * \brief reset the 'last loaded' iteration to 0
+       */
+      void reset_iter();
+
+      /**
+       * \brief loads an iteration counter from a serialized blob
+       *        (not into the workspace, just as an internal flag)
+       */
+      void load_iter(const std::string &path);
+
+      /**
+       * \brief loads a serialized blob and place it into the workspace
+       */
+      void load_blob(const std::string &path, const std::string &name);
+
+      /**
+       * \brief loads the serialized learning rate on each device
+       */
+      void load_lr(const std::string &path);
+
+      /*
+       *  Information extraction
+       */
+
+      /**
+       * \brief fetches the given layer and merge batches of results from each devices
+       *        into a single batch (an empty name means the 'main' output)
+       *        Note that the function does not append elements, but assign a value to them
+       */
+      void extract_results(std::vector<std::vector<float>> &results,
+			   const std::string &name="") const;
+      // Same as above, but with results composed of a single value each
+      void extract_results(std::vector<int> &results, const std::string &name="") const;
+      void extract_results(std::vector<long> &results, const std::string &name="") const;
+      void extract_results(std::vector<float> &results, const std::string &name="") const;
+
+      /**
+       * \brief fetches the scaled losses of every devices and sums them
+       */
+      float extract_loss() const;
+
+      /**
+       * \brief fetches the current iteration
+       */
+      int extract_iter() const;
+
+      /**
+       * \brief fetches the labels and store them as float values (the vector size must be pre-set)
+       */
+      void extract_labels(std::vector<float> &labels) const;
+
+      /**
+       * \brief serializes every blobs related to the training state (except parameters)
+       *        and store them in a map
+       */
+      void extract_state(std::map<std::string, std::string> &blobs) const;
+
+      /*
+       *  Network manipulation
+       */
+
+      /**
+       * \brief creates an init net capable of setting the net parameters to their current value
+       */
+      void create_init_net(const caffe2::NetDef &net, caffe2::NetDef &init) const;
+
+      /**
+       * \bried append a net's operators and inputs to another (its 'main' input is ignored)
+       */
+      void append_net(caffe2::NetDef &dst, const caffe2::NetDef &src) const;
+      // Same as above, but also adds gradients for the new operators
+      void append_trainable_net(caffe2::NetDef &dst, const caffe2::NetDef &src) const;
+
+    private:
+
+      /**
+       * \brief tries to find the blob of the given name on the give device,
+       *        and to use it to fill the tensor (true if successfull)
+       */
+      bool extract_tensor(int device_idx, const std::string &name, caffe2::TensorCPU &tensor) const;
+
+      /**
+       * \brief tries to find the blob of the given name on the give device,
+       *        and to use the tensor to fill it
+       */
+      void insert_tensor(int device_idx, const std::string &name, const caffe2::TensorCPU &tensor);
+
+      // Tools to generalize the 'extract_results' functions
+      template <typename Result, typename Data>
+      using Stockage = std::function<void(Result &, const Data *, size_t)>;
+
+      template <typename Result, typename Data>
+      void extract_layer(std::vector<Result> &results,
+			 const std::string &name,
+			 const Stockage<Result, Data> &store) const;
+
+    }; //! ModelContext
+
+    /*
      *  Operators Grouping
      */
 
     /**
      * \brief adds a tensor loader on each device, all sharing the same DBReader
      */
-    void insert_db_input_operator(ScopedNet &net, const caffe2::OperatorDef &dbinput);
+    void insert_db_input_operator(const ModelContext &context, caffe2::NetDef &net_def,
+				  const caffe2::OperatorDef &dbinput);
 
     /**
      * \brief adds operators related to the training on each device (iter, learning_rate, etc.)
      */
-    void insert_learning_operators(ScopedNet &net, ScopedNet &init,
-				   int iter, const std::string &policy,
+    void insert_learning_operators(const ModelContext &context,
+				   caffe2::NetDef &net_def,
+				   caffe2::NetDef &init_def,
+				   const std::string &policy,
 				   float base_lr, int stepsize, float gamma);
-
-    /**
-     * \brief adds operators related to the loss computing on each device
-     *        (cross entropy, averaged loss, iter, learning_rate, etc.)
-     *        the loss will be scaled based on the number of device
-     *        XXX Needs a label layer (supervised only)
-     */
-    void insert_loss_operators(ScopedNet &net,
-			       const std::string &prediction,
-			       const std::string &label);
 
     /**
      * \brief copies an operator on the main device and broadcasts the outputs on the others
      */
-    void copy_and_broadcast_operator(ScopedNet &net, const caffe2::OperatorDef &op);
-
-    /**
-     * \brief copies every operators of the source on the main device
-     *        and broadcasts the outputs on the others
-     */
-    void copy_and_broadcast_operators(ScopedNet &dest, const caffe2::NetDef &src);
-
-    /*
-     *  Workspace management
-     */
-
-    /**
-     * \brief finds the blob of the given name and uses it to fill the tensor
-     *        The device is used to know the blob's type, NOT to scope the blob name
-     */
-    bool extract_tensor(const caffe2::Workspace &workspace, const caffe2::DeviceOption &device,
-			const std::string &name, caffe2::TensorCPU &tensor);
-
-    /**
-     * \brief finds the blob of the given name and fills it using the tensor
-     *        The device is used to know the blob's type, NOT to scope the blob name
-     */
-    void insert_tensor(caffe2::Workspace &workspace, const caffe2::DeviceOption &device,
-		       const std::string &name, const caffe2::TensorCPU &tensor);
-
-    /**
-     * \brief fetch the scaled losses of every devices and sums them
-     */
-    float extract_loss(const caffe2::Workspace &workspace,
-		       const std::vector<caffe2::DeviceOption> &devices);
-
-    /**
-     * \brief fetch the current iteration
-     */
-    int extract_iter(const caffe2::Workspace &workspace, const caffe2::DeviceOption &device);
-
-    /**
-     * \brief serializes every blobs related to the training state (except parameters)
-     *        and store them in a map
-     */
-    void extract_state(const caffe2::Workspace &workspace,
-		       const caffe2::DeviceOption &device,
-		       std::map<std::string, std::string> &blobs);
-
-    /**
-     * \brief creates an init net capable of setting the net parameters to their current value
-     */
-    void create_init_net(const caffe2::Workspace &workspace,
-			 const caffe2::DeviceOption &device,
-			 const caffe2::NetDef &net,
-			 caffe2::NetDef &init);
-
-    /**
-     * \brief loads an iteration counter from a serialized blob
-     */
-    int load_iter(const std::string &path);
-
-    /**
-     * \brief loads a serialized blob and place it into the workspace
-     */
-    void load_blob(caffe2::Workspace &workspace,
-		   const std::string &path,
-		   const std::string &name);
-
-    /**
-     * \brief loads the serialized learning rate on each device
-     */
-    void load_lr(caffe2::Workspace &workspace,
-		 const std::vector<caffe2::DeviceOption> &devices,
-		 const std::string &path);
+    void copy_and_broadcast_operator(const ModelContext &context, caffe2::NetDef &net,
+				     const caffe2::OperatorDef &op);
+    // Same as above but with every operator of the source
+    void copy_and_broadcast_operators(const ModelContext &context, caffe2::NetDef &dest,
+				      const caffe2::NetDef &src);
 
     /*
      *	Gradient management
@@ -361,12 +474,6 @@ namespace dd {
 			std::vector<std::string> &computed_params,
 			const std::string &prefix = "",
 			bool remove_prefix = true);
-
-    // Same as above, except the prefix is infered based on the first device's scope
-    void collect_params(const ScopedNet &net,
-			std::vector<std::string> &params,
-			std::vector<std::string> &computed_params,
-			bool remove_prefix = true);
 #ifndef CPU_ONLY
 
     /**
@@ -397,13 +504,14 @@ namespace dd {
      *  Optimizers
      */
 
-    // Optimizers are strored as functions that take the net
+    // Optimizers are stored as functions that take a net
     // and use the gradients to update the parameters
     //XXX Make epsilon, decay, etc. configurables
     using Optimizer = std::function<
       void
-      (ScopedNet&,		// net
-       ScopedNet&		// init_net
+      (const ModelContext&,	// context
+       caffe2::NetDef&,		// net
+       caffe2::NetDef&		// init_net
        )>;
 
     // List of registered optimizers : sgd, momentum, adagrad, adam, rmsprop
@@ -411,7 +519,7 @@ namespace dd {
     const Optimizer &get_optimizer(const std::string &name);
 
     /*
-     *  Others
+     *  Other net manipulations
      */
 
     /**
@@ -425,3 +533,5 @@ namespace dd {
 
   }
 }
+
+#endif

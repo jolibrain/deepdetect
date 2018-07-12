@@ -46,113 +46,115 @@ namespace dd {
     class TInputConnectorStrategy,
     class TOutputConnectorStrategy,
     class TMLModel=Caffe2Model>
-  class Caffe2Lib : public MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel> {
+    class Caffe2Lib : public MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel> {
 
   public: // from mllib
 
-    /**
-     * \brief constructor from model
-     * @param model Caffe2 model
-     */
-    Caffe2Lib(const Caffe2Model &c2model);
+  /**
+   * \brief constructor from model
+   * @param model Caffe2 model
+   */
+  Caffe2Lib(const Caffe2Model &c2model);
 
-    /**
-     * \brief copy-constructor
-     */
-    Caffe2Lib(Caffe2Lib &&cl) noexcept;
+  /**
+   * \brief copy-constructor
+   */
+  Caffe2Lib(Caffe2Lib &&cl) noexcept;
 
-    /**
-     * \brief destructor
-     */
-    ~Caffe2Lib();
+  /**
+   * \brief destructor
+   */
+  ~Caffe2Lib();
 
-    void init_mllib(const APIData &ad);
-    void clear_mllib(const APIData &ad);
+  void init_mllib(const APIData &ad);
+  void clear_mllib(const APIData &ad);
 
-    /**
-     * \brief trains a model
-     * @param ad root data object
-     * @param out output data object (e.g. loss, ...)
-     * @return 0 if OK, 1 otherwise
-     */
-    int train(const APIData &ad, APIData &out);
+  /**
+   * \brief trains a model
+   * @param ad root data object
+   * @param out output data object (e.g. loss, ...)
+   * @return 0 if OK, 1 otherwise
+   */
+  int train(const APIData &ad, APIData &out);
 
-    /**
-     * \brief predicts from model
-     * @param ad root data object
-     * @param out output data object (e.g. predictions, ...)
-     * @return 0 if OK, 1 otherwise
-     */
-    int predict(const APIData &ad, APIData &out);
+  /**
+   * \brief predicts from model
+   * @param ad root data object
+   * @param out output data object (e.g. predictions, ...)
+   * @return 0 if OK, 1 otherwise
+   */
+  int predict(const APIData &ad, APIData &out);
 
   private:
 
-    /**
-     * \brief create nets and update the repository
-     * @param ad mllib data object
-     */
-    void instantiate_template(const APIData &ad);
+  /**
+   * \brief create nets and update the repository
+   * @param ad mllib data object
+   */
+  void instantiate_template(const APIData &ad);
 
-    /**
-     * \brief creates neural net instance based on model
-     */
-    void create_model();
+  /**
+   * \brief sets (/resets) internal values to fit the matching mode
+   * @param ad APIData of the current request
+   * @param train true means train and false mean predict
+   */
+  void set_train_mode(const APIData &ad, bool train);
 
-    /**
-     * \brief tests a model and compute measures
-     * @param ad root data object
-     * @param out output data object
-     */
-    void test(const std::string &net, const APIData &ad,
-	      TInputConnectorStrategy &inputc, APIData &out);
+  /**
+   * \brief update the gpu configuration from the APIData
+   * @param ad mllib APIData
+   * @param dft true to set thoses values as the default ones
+   */
+  void set_gpu_state(const APIData &ad, bool dft=false);
 
-    /**
-     * \brief setups the nets, inputs, outputs, gradients, etc.
-     */
-    void create_model_train();
-    void create_model_predict();
+  /**
+   * \brief creates neural net instance based on model
+   */
+  void create_model();
 
-    /**
-     * \brief dumps on the filesystem usefull information to resume training
-     */
-    void dump_model_state();
+  /**
+   * \brief tests a model and compute measures
+   * @param ad root data object
+   * @param out output data object
+   */
+  void test(const APIData &ad, APIData &out);
 
-    /**
-     * \brief runs a net once (both forward and backward if the gradients are set)
-     * @param net net too run
-     * @param where to store the output layer (one vector per batch item)
-     *        The vector must be of the right size. If set to NULL, nothing is stored.
-     *        XXX Only retrieve the output of the first device
-     *	          (currently predictions and tests are done on a single device)
-     * @return the elapsed time
-     */
-    float run_net(const std::string &net, std::vector<std::vector<float>> *results = NULL);
+  /**
+   * \brief setups the nets, inputs, outputs, gradients, etc.
+   */
+  void create_model_train();
+  void create_model_predict();
 
-    /**
-     * \brief inserts a batch in th workspace
-     *        XXX The batch is inserted only on the first device
-     *            (currently predictions and tests are done on a single device)
-     * @param inputcs input connector that will generate the batch
-     * @param batch_size maximum size of the batch
-     * @return actual size of the batch ( <= batch_size )
-     */
-    int load_batch(TInputConnectorStrategy &inputc, int batch_size = -1);
+  /**
+   * \brief recreates nets if the configuration changed and resets the workspace
+   */
+  void update_model();
 
-    // Workspaces cannot be std::move()'d or assigned
-    // (see DISABLE_COPY_AND_ASSIGN in caffe2/core/workspace.h)
-    // Hence the usage of a pointer.
-    std::unique_ptr<caffe2::Workspace> _workspace =
-      std::unique_ptr<caffe2::Workspace>(new caffe2::Workspace);
+  /**
+   * \brief dumps on the filesystem usefull information to resume training
+   */
+  void dump_model_state();
 
-    std::vector<caffe2::DeviceOption> _devices;
-    caffe2::NetDef _init_net;
-    caffe2::NetDef _test_net;
-    caffe2::NetDef _net;
-    Caffe2LibState _state;
+  /**
+   * \brief runs a net once (both forward and backward if the gradients are set)
+   * @param net net too run
+   * @param where to store the output layer (one vector per batch item)
+   *        The vector must be of the right size. If set to NULL, nothing is stored.
+   * @return the elapsed time
+   */
+  float run_net(const std::string &net,
+		std::vector<std::vector<float>> *results = NULL);
 
-    std::string _input_blob;
-    std::string _output_blob;
-    int _nclasses = 0; //XXX Infer it during the 'create_model' phase
+  Caffe2NetTools::ModelContext _context;
+  caffe2::NetDef _init_net;
+  caffe2::NetDef _train_net;
+  caffe2::NetDef _net;
+  Caffe2LibState _state;
+  TInputConnectorStrategy _last_inputc; // Last transformed version of the default _inputc
+
+  //XXX Could be infered during the 'create_model' phase
+  //XXX May become a '_state' that transforms the output layer size
+  int _nclasses = 0;
   };
 }
 

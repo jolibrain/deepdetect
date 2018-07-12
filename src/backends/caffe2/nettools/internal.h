@@ -19,6 +19,9 @@
  * along with deepdetect.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef CAFFE2NETTOOLSINTERNAL_H
+#define CAFFE2NETTOOLSINTERNAL_H
+
 #include "backends/caffe2/nettools.h"
 
 namespace dd {
@@ -54,3 +57,5 @@ namespace dd {
 
   }
 }
+
+#endif

@@ -24,7 +24,8 @@
 
 #include "apidata.h"
 
-#define REGISTER_CONFIG(type, name, def)				\
+// Create getters, setters and check callbacks
+#define _REGISTER_CONFIG(type, name, def)				\
 									\
 private:								\
 									\
@@ -48,7 +49,7 @@ private:								\
 									\
 public:						                        \
 									\
- const type &name() const {						\
+ inline const type &name() const {					\
    return _##name##_current;						\
  }									\
  void set_##name(const type &value) {					\
@@ -56,7 +57,11 @@ public:						                        \
  }									\
  void set_default_##name(const type &value) {				\
    _##name##_default = value;						\
- }									\
+ }
+
+// Special setters using an APIData
+#define REGISTER_CONFIG(type, name, def)				\
+ _REGISTER_CONFIG(type, name, def)					\
  void set_##name(const APIData &ad, bool force_get=false) {		\
    if (force_get || ad.has(#name)) {					\
      set_##name(ad.get(#name).get<type>());				\
@@ -68,14 +73,37 @@ public:						                        \
    }									\
  }
 
+// Even more special setters using an APIData
+#define REGISTER_CONFIG_FLOAT(name, def)				\
+ _REGISTER_CONFIG(float, name, def)					\
+ void set_##name(const APIData &ad, bool force_get=false) {		\
+   if (force_get || ad.has(#name)) {					\
+     const ad_variant_type &adv = ad.get(#name);			\
+     if (adv.is<int>()) {						\
+       set_##name(adv.get<int>());					\
+     } else {								\
+       set_##name(adv.get<double>());					\
+     }									\
+   }									\
+ }									\
+ void set_default_##name(const APIData &ad, bool force_get=false) {	\
+   if (force_get || ad.has(#name)) {					\
+     const ad_variant_type &adv = ad.get(#name);			\
+     if (adv.is<int>()) {						\
+       set_default_##name(adv.get<int>());				\
+     } else {								\
+       set_default_##name(adv.get<double>());				\
+     }									\
+   }									\
+ }
+
 namespace dd {
 
   /**
-   * \brief Contains the current configuration of the nets :
+   * \brief Contains informations about the current configuration of the nets :
    *           - training or prediction
    *           - cpu or gpu
    *           - gpu ids
-   *           - databases
    *           - ...
    *        Each one has a getter and two setter (current value, and default value).
    *        (Note that setters can use an APIData to retrieve the value themselves)
@@ -103,16 +131,10 @@ namespace dd {
 
     REGISTER_CONFIG(std::string, extract_layer, "");
 
-    REGISTER_CONFIG(std::string, train_db, "");
-    REGISTER_CONFIG(std::string, test_db, "");
-    REGISTER_CONFIG(int, batch_size, 32);
-    REGISTER_CONFIG(int, test_batch_size, 32);
-    REGISTER_CONFIG(std::vector<double>, mean_values, {});
-
     REGISTER_CONFIG(std::string, lr_policy, "fixed");
-    REGISTER_CONFIG(double, base_lr, -0.001);
+    REGISTER_CONFIG_FLOAT(base_lr, -0.001);
     REGISTER_CONFIG(int, stepsize, 0);
-    REGISTER_CONFIG(double, gamma, 0);
+    REGISTER_CONFIG_FLOAT(gamma, 0);
 
     REGISTER_CONFIG(std::string, solver_type, "sgd");
 
@@ -128,12 +150,6 @@ namespace dd {
       init_gpu_ids();
 
       init_extract_layer();
-
-      init_train_db();
-      init_test_db();
-      init_batch_size();
-      init_test_batch_size();
-      init_mean_values();
 
       init_lr_policy();
       init_base_lr();
@@ -188,6 +204,8 @@ namespace dd {
   };
 }
 
+#undef _REGISTER_CONFIG
 #undef REGISTER_CONFIG
+#undef REGISTER_CONFIG_FLOAT
 
 #endif
