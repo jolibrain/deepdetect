@@ -188,7 +188,7 @@ namespace dd
     {
       std::vector<double> sub_hist;
       sub_hist.reserve(npoints);
-      int rpoints = std::ceil(hist.size() / npoints);
+      int rpoints = std::ceil(hist.size() / npoints) + 1;
       for (size_t i=0;i<hist.size();i+=rpoints)
 	sub_hist.push_back(hist.at(i));
       return sub_hist;
@@ -207,9 +207,9 @@ namespace dd
       auto hit = _meas_per_iter.begin();
       while(hit!=_meas_per_iter.end())
 	{
-	  if (npoints > 0 && (*hit).second.size() > npoints)
+	  if (npoints > 0 && (int)(*hit).second.size() > npoints)
 	    meas_hist.add((*hit).first+"_hist",subsample_hist((*hit).second,npoints));
-	  meas_hist.add((*hit).first+"_hist",(*hit).second);
+	  else meas_hist.add((*hit).first+"_hist",(*hit).second);
 	  ++hit;
 	}
       ad.add("measure_hist",meas_hist);
