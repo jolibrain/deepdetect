@@ -46,7 +46,11 @@ TEST(jsonapi,service_delete)
   std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"here/\",\"create_repository\":true},\"parameters\":{\"input\":{\"connector\":\"image\"},\"mllib\":{\"nclasses\":2}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
   ASSERT_EQ(created_str,joutstr);
-  
+  bool isdir = false;
+  bool exists = fileops::file_exists("here", isdir);
+
+  ASSERT_EQ(isdir, true);
+  ASSERT_EQ(exists, true);
   // delete service.
   jstr = "{\"clear\":\"mem\"}";
   std::string jdelstr = japi.jrender(japi.service_delete(sname,jstr));
