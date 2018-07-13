@@ -37,13 +37,13 @@ static std::string not_found_str = "{\"status\":{\"code\":404,\"msg\":\"NotFound
 TEST(jsonapi,service_delete)
 {
   // fake model repository
-  std::string here = "here";
-  mkdir(here.c_str(),0777);
+  //  std::string here = "here";
+  //  mkdir(here.c_str(),0777);
   
   // create service.
   JsonAPI japi;
   std::string sname = "my_service";
-  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"here/\"},\"parameters\":{\"input\":{\"connector\":\"image\"},\"mllib\":{\"nclasses\":2}}}";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"here/\",\"create_repository\":true},\"parameters\":{\"input\":{\"connector\":\"image\"},\"mllib\":{\"nclasses\":2}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
   ASSERT_EQ(created_str,joutstr);
   
