@@ -1,0 +1,34 @@
+From c3959561f71595a5c9e99aeec45dc7fb5128ce53 Mon Sep 17 00:00:00 2001
+From: Julien CHICHA <julien.chicha@epitech.eu>
+Date: Fri, 13 Jul 2018 12:09:52 +0200
+Subject: [PATCH] eigen
+
+---
+ cmake/Dependencies.cmake | 11 +----------
+ 1 file changed, 1 insertion(+), 10 deletions(-)
+
+diff --git a/cmake/Dependencies.cmake b/cmake/Dependencies.cmake
+index 1ee96a78b..558fb27db 100644
+--- a/cmake/Dependencies.cmake
++++ b/cmake/Dependencies.cmake
+@@ -275,16 +275,7 @@ if(USE_FFMPEG)
+ endif()
+ 
+ # ---[ EIGEN
+-# Due to license considerations, we will only use the MPL2 parts of Eigen.
+-set(EIGEN_MPL2_ONLY 1)
+-find_package(Eigen3)
+-if(EIGEN3_FOUND)
+-  message(STATUS "Found system Eigen at " ${EIGEN3_INCLUDE_DIR})
+-  include_directories(${EIGEN3_INCLUDE_DIR})
+-else()
+-  message(STATUS "Did not find system Eigen. Using third party subdirectory.")
+-  include_directories(${PROJECT_SOURCE_DIR}/third_party/eigen)
+-endif()
++include_directories(${PROJECT_SOURCE_DIR}/third_party/eigen)
+ 
+ # ---[ Python + Numpy
+ if(BUILD_PYTHON)
+-- 
+2.18.0
+
