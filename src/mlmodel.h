@@ -148,7 +148,7 @@ namespace dd
       bool isDir;
       bool exists= fileops::file_exists(repo, isDir);
       if (exists && !isDir)
-        throw MLLibBadParamException("bad repo name: remove file with repo name");
+        throw MLLibBadParamException("file exists with same name as repository");
       if (!exists && create)
         fileops::create_dir(repo,0775);
     }
