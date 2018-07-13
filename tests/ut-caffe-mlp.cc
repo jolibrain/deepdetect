@@ -644,7 +644,7 @@ TEST(caffelib, configure_deeplabvgg16_diceloss_finetune)
 {
   APIData ad;
   ad.add("template","deeplab_vgg16");
-  ad.add("loss","dice");
+  ad.add("loss","dice_weighted");
   ad.add("templates","../templates/caffe");
   ad.add("repository","./");
   ad.add("nclasses",2);
