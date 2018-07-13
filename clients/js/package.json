@@ -1,0 +1,57 @@
+{
+  "name": "deepdetect-js",
+  "version": "0.1.5",
+  "description": "A JS library for deepdetect",
+  "license": "MIT",
+  "keywords": [],
+  "main": "index.js",
+  "jsnext:main": "index.es.js",
+  "babel": {
+    "presets": [
+      "latest",
+      "stage-0"
+    ],
+    "plugins": [
+      "transform-runtime"
+    ]
+  },
+  "eslintConfig": {
+    "parser": "babel-eslint",
+    "extends": "airbnb-base"
+  },
+  "dependencies": {
+    "axios": "^0.16.1",
+    "babel-runtime": "^6.11.6"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.16.0",
+    "babel-core": "^6.17.0",
+    "babel-eslint": "^7.0.0",
+    "babel-plugin-transform-runtime": "^6.15.0",
+    "babel-preset-latest": "^6.16.0",
+    "babel-preset-stage-0": "^6.16.0",
+    "babel-register": "^6.16.3",
+    "chai": "^4.0.0-canary.1",
+    "coveralls": "^2.11.14",
+    "del": "^2.2.2",
+    "eslint": "^3.8.0",
+    "eslint-config-airbnb-base": "^10.0.1",
+    "eslint-plugin-import": "^2.2.0",
+    "istanbul": "^1.1.0-alpha.1",
+    "mocha": "^3.1.2",
+    "rollup": "^0.36.3",
+    "rollup-plugin-babel": "^2.6.1",
+    "sinon": "^2.0.0-pre.3"
+  },
+  "scripts": {
+    "lint": "eslint src test tools",
+    "test": "mocha --compilers js:babel-register",
+    "test:watch": "mocha --compilers js:babel-register --reporter min --watch",
+    "test:cover": "babel-node ./node_modules/istanbul/lib/cli.js cover ./node_modules/mocha/bin/_mocha",
+    "coveralls": "cat ./coverage/lcov.info | coveralls",
+    "build": "node tools/build",
+    "prepublish": "npm run build",
+    "publish:docs": "easystatic deploy docs --repo kriasoft/babel-starter-kit",
+    "start": "easystatic start docs"
+  }
+}
