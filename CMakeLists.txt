@@ -58,21 +58,8 @@ if (USE_TF)
   set(TENSORFLOW_CC_DIR ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/)
   set(EIGEN3_INCLUDE_DIR ${TENSORFLOW_CC_DIR}/tensorflow/tensorflow/contrib/makefile/downloads/eigen/)
 elseif (USE_CAFFE2)
-  set(EIGEN3_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/eigen3-complete)
-  set(EIGEN3_INSTALL ${CMAKE_BINARY_DIR}/eigen3/install)
-  list(APPEND EIGEN3_FLAGS
-    -DCMAKE_INSTALL_PREFIX=${EIGEN3_INSTALL}
-    ${CMAKE_BINARY_DIR}/eigen3/src/eigen3
-    )
-  ExternalProject_Add(
-    eigen3
-    PREFIX eigen3
-    GIT_REPOSITORY https://github.com/eigenteam/eigen-git-mirror
-    UPDATE_DISCONNECTED 1
-    CONFIGURE_COMMAND test -f ${EIGEN3_COMPLETE} && echo Skipping || cmake ${EIGEN3_FLAGS}
-    INSTALL_COMMAND test -f ${EIGEN3_COMPLETE} && echo Skipping || make install
-    )
-  set(EIGEN3_INCLUDE_DIR ${EIGEN3_INSTALL}/include/eigen3)
+  set(PYTORCH_PATH ${CMAKE_BINARY_DIR}/pytorch/src/pytorch)
+  set(EIGEN3_INCLUDE_DIR ${PYTORCH_PATH}/third_party/eigen)
 else()
    find_package(PkgConfig)
    pkg_search_module(Eigen3 REQUIRED eigen3)
@@ -170,16 +157,14 @@ if (USE_CAFFE2)
 
   add_definitions(-DUSE_CAFFE2)
 
-  set(PYTORCH_SUPPORTED_COMMIT bb15a0830de9577b4f6bdcded5eac864f78701c2)
-  # Patches have been generated and tested on this version (Tue May 22 01:50:13 2018)
+  set(PYTORCH_SUPPORTED_COMMIT 3749c58) # Release v0.4.0
   list(APPEND CAFFE2_PATCHES
+    ${CMAKE_BINARY_DIR}/patches/caffe2/eigen.patch
     ${CMAKE_BINARY_DIR}/patches/caffe2/logging.patch
     ${CMAKE_BINARY_DIR}/patches/caffe2/VLOG.patch
     )
 
   list(APPEND PYTORCH_FLAGS
-
-    -DCMAKE_PREFIX_PATH=${EIGEN3_INSTALL}
 
     -DCAFFE2_LINK_LOCAL_PROTOBUF=0
 
@@ -195,11 +180,12 @@ if (USE_CAFFE2)
     -DBUILD_DOCS=OFF
     )
 
-  # Only 11 / 28 submodules are currently used by caffe2
+  # Only 12 / 28 submodules are currently used by caffe2
   # (No need to log, benchmark, compile for IOS, make python libraries, ...)
   list(APPEND PYTORCH_SUBMODULES
     third_party/cpuinfo
     third_party/cub
+    third_party/eigen
     third_party/FP16
     third_party/FXdiv
     third_party/gloo
@@ -212,7 +198,6 @@ if (USE_CAFFE2)
     )
 
   set(PYTORCH_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch-complete)
-  set(PYTORCH_PATH ${CMAKE_BINARY_DIR}/pytorch/src/pytorch)
   ExternalProject_Add(
     pytorch
     PREFIX pytorch
@@ -380,7 +365,6 @@ if (USE_TF)
 endif()
 
 if (USE_CAFFE2)
-  add_dependencies(pytorch eigen3)
   add_dependencies(caffe_dd pytorch)
 endif()
 
