@@ -32,10 +32,10 @@ namespace dd
   class CaffeModel : public MLModel
   {
   public:
-    CaffeModel():MLModel() {}
+  CaffeModel(): MLModel() {}
     CaffeModel(const APIData &ad);
-    CaffeModel(const std::string &repo)
-      :MLModel(repo) {}
+  CaffeModel(const APIData &ad, const std::string &repo)
+    :MLModel(ad, repo) {}
     ~CaffeModel() {};
 
     int read_from_repository(const std::string &repo,
@@ -48,7 +48,7 @@ namespace dd
     std::string _sstate; /**< current solver state, useful for resuming training. */
     std::string _model_template; /**< model template name, if any. */
     bool _has_mean_file = false; /**< whether a mean.binaryproto file is available, for image models only. */
-  };
+};
   
 }
 

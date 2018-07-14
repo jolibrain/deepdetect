@@ -29,7 +29,7 @@
 namespace dd
 {
   CaffeModel::CaffeModel(const APIData &ad)
-    :MLModel()
+    :MLModel(ad)
   {
     if (ad.has("templates"))
       this->_mlmodel_template_repo = ad.get("templates").get<std::string>();
