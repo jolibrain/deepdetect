@@ -62,6 +62,8 @@ namespace dd
     cl._net = nullptr;
     _crop_size = cl._crop_size;
     _loss = cl._loss;
+    _best_metrics = cl._best_metrics;
+    _best_metric_value = cl._best_metric_value;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -1068,6 +1070,21 @@ namespace dd
     this->_mlmodel.read_corresp_file();
     if (ad_mllib.has("resume") && ad_mllib.get("resume").get<bool>())
       {
+        std::string bestfilename = this->_mlmodel._repo + "/best_model";
+        std::ifstream bestfile;
+        try
+          {
+            std::string tmp;
+            bestfile.open(bestfilename,std::ios::in);
+            bestfile >> tmp >> tmp >> tmp >> tmp;
+            bestfile.close();
+            _best_metric_value = std::atof(tmp.c_str());
+          }
+        catch (std::exception &e)
+          {
+            this->_logger->info("no previous best model file");
+          }
+
 	if (this->_mlmodel._sstate.empty())
 	  {
 	    this->_logger->error("resuming a model requires a .solverstate file in model repository");
@@ -3217,7 +3234,8 @@ namespace dd
         try
           {
             std::ofstream bestfile;
-            bestfile.open("best_model",std::ios::out);
+            std::string bestfilename = this->_mlmodel._repo + "/best_model";
+            bestfile.open(bestfilename,std::ios::out);
             bestfile << "iteration: " <<  solver->iter_ << std::endl;
             bestfile <<  meas << ": " << cur_meas << std::endl;
             bestfile.close();
