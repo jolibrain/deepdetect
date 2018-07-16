@@ -240,7 +240,12 @@ namespace dd
 
       void model_type(caffe::Net<float> *net,
 		      std::string &mltype);
-      
+
+      bool is_better(double v1, double v2, std::string metric_name);
+
+      void save_if_best(APIData &meas_out, boost::shared_ptr<caffe::Solver<float>>solver);
+
+
     public:
       caffe::Net<float> *_net = nullptr; /**< neural net. */
       bool _gpu = false; /**< whether to use GPU. */
@@ -254,6 +259,10 @@ namespace dd
       long int _flops = 0;  /**< model flops. */
       long int _params = 0;  /**< number of parameters in the model. */
       int _crop_size = -1; /**< cropping is part of Caffe transforms in input layers, storing here. */
+
+      std::vector<std::string> _best_metrics; /**< metric to use for saving best model */
+      double _best_metric_value; /**< best metric value  */
+
       caffe::P2PSync<float> *_sync = nullptr;
       std::vector<boost::shared_ptr<caffe::P2PSync<float>>> _syncs;
     };

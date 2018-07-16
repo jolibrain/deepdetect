@@ -817,6 +817,16 @@ namespace dd
 	update_deploy_protofile_softmax(ad);
 	create_model();
       }
+
+    // the first present measure will be used to snapshot best model
+    _best_metrics.push_back("map");
+    _best_metrics.push_back("meaniou");
+    _best_metrics.push_back("mlacc");
+    _best_metrics.push_back("delta_score_0.1");
+    _best_metrics.push_back("bacc");
+    _best_metrics.push_back("f1");
+    _best_metrics.push_back("net_meas");
+    _best_metric_value = std::numeric_limits<double>::infinity();
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -1126,6 +1136,10 @@ namespace dd
 	    solver->test_nets().at(0).get()->ShareTrainedLayersWith(solver->net().get());
 	    test(solver->test_nets().at(0).get(),ad,inputc,test_batch_size,has_mean_file,test_iter,meas_out);
 	    APIData meas_obj = meas_out.getobj("measure");
+
+           save_if_best(meas_obj, solver);
+
+
 	    std::vector<std::string> meas_str = meas_obj.list_keys();
 	    this->_logger->info("batch size={}",batch_size);
 	    
@@ -3166,6 +3180,54 @@ namespace dd
       image_data_parameter->set_mean_file("mean.binaryproto");
     lparam->clear_data_param();
     lparam->clear_transform_param();
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  bool CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::is_better(double v1, double v2, std::string metric_name)
+  {
+    if (metric_name == "eucll" || metric_name == "delta_score_0.1")
+      return (v2 > v1);
+    return (v1 > v2);
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::save_if_best(APIData &meas_out, boost::shared_ptr<caffe::Solver<float>>solver)
+  {
+    double cur_meas = std::numeric_limits<double>::infinity();
+    std::string meas;
+    for (auto m: _best_metrics)
+      {
+        if (meas_out.has(m))
+          {
+            cur_meas = meas_out.get(m).get<double>();
+            meas = m;
+          }
+      }
+    if (cur_meas == std::numeric_limits<double>::infinity())
+      {
+        // could not find valeu for measuring best
+        this->_logger->info("could not find any value for measuring best model");
+        return;
+      }
+    if (_best_metric_value == std::numeric_limits<double>::infinity() ||
+        is_better(cur_meas, _best_metric_value, meas))
+      {
+        _best_metric_value = cur_meas;
+        solver->Snapshot();
+        try
+          {
+            std::ofstream bestfile;
+            bestfile.open("best_model",std::ios::out);
+            bestfile << "iteration: " <<  solver->iter_ << std::endl;
+            bestfile <<  meas << ": " << cur_meas << std::endl;
+            bestfile.close();
+          }
+        catch(std::exception &e)
+          {
+            this->_logger->error("could not write best model file");
+          }
+      }
+
   }
 
 
