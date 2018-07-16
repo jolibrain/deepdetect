@@ -119,6 +119,19 @@ namespace dd
     }
 
     /**
+     * \brief removes everything in model repository + rmdir
+     */
+    void clear_dir()
+    {
+      clear_full();
+      int err = fileops::remove_dir(_mlmodel._repo);
+      if (err < 0)
+        throw MLLibBadParamException("unable to remove dir " + _mlmodel._repo);
+
+    }
+
+
+    /**
      * \brief train new model
      * @param ad root data object
      * @param out output data object (e.g. loss, ...)
