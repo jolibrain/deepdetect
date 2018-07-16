@@ -164,7 +164,7 @@ TEST(jsonapi,service_status)
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"].HasMember("description"));
 
-  //  std::string here = "here";
-  // rmdir(here.c_str());
+  std::string here = "here";
+  rmdir(here.c_str());
 }
 
