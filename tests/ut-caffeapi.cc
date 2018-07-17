@@ -300,7 +300,7 @@ TEST(caffeapi,service_predict)
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"].HasMember("measure"));
   ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
-  ASSERT_EQ(jd["body"]["measure_hist"]["iteration_hist"].Size(),jd["body"]["measure_hist"]["train_loss_hist"].Size());
+  ASSERT_EQ(jd["body"]["measure_hist"]["iteration_hist"].Size(),jd["body"]["measure_hist"]["f1_hist"].Size());
 
   // predict
   std::string jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"bw\":true}},\"data\":[\"" + mnist_repo + "/sample_digit.png\"]}";
@@ -1341,4 +1341,3 @@ TEST(caffeapi,service_train_csv_mt_regression)
   ASSERT_EQ(ok_str,joutstr);
   rmdir(sflare_repo_loc.c_str());
 }
-

@@ -649,7 +649,7 @@ namespace dd
               std::ostringstream sstr;
               sstr << "delta_score_" << deltas[i];
               meas_out.add(sstr.str(),delta_scores[i]);
-              std::string b = "delta_score_no_" + std::to_string(mlsoft_deltas_thres);
+              sstr.str("");
               sstr << "delta_score_" << deltas[i]<<"_no_"<<mlsoft_deltas_thres;
               meas_out.add(sstr.str(),delta_scores_thres[i]);
             }

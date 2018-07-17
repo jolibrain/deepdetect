@@ -37,6 +37,7 @@ namespace dd {
             :MLLib<TInputConnectorStrategy, TOutputConnectorStrategy, DlibModel>(std::move(cl)) {
         this->_libname = "dlib";
         _net_type = cl._net_type;
+        this->_mltype = "detection";
     }
 
     template<class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -141,9 +142,17 @@ namespace dd {
             std::chrono::time_point <std::chrono::system_clock> tstart = std::chrono::system_clock::now();
             std::vector <std::vector<dlib::mmod_rect>> detections;
             if (_net_type == "obj_detector") {
-                detections = _objDetector(dv, batch_size);
+                try {
+                    detections = _objDetector(dv, batch_size);
+                } catch (dlib::error &e) {
+                    throw MLLibInternalException(e.what());
+                }
             } else if (_net_type == "face_detector") {
-                detections = _faceDetector(dv, batch_size);
+                try {
+                    detections = _faceDetector(dv, batch_size);
+                } catch (dlib::error &e) {
+                    throw MLLibInternalException(e.what());
+                }
             } else {
                 throw MLLibBadParamException("Unrecognized net type: " + _net_type);
             }

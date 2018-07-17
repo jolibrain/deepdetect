@@ -34,7 +34,7 @@ std::string serv = "myserv";
 std::string serv_put = "{\"mllib\":\"caffe\",\"description\":\"example classification service\",\"type\":\"supervised\",\"parameters\":{\"input\":{\"connector\":\"csv\"},\"mllib\":{\"template\":\"mlp\",\"nclasses\":2,\"layers\":[50,50,50],\"activation\":\"PReLU\"}},\"model\":{\"templates\":\"../templates/caffe/\",\"repository\":\".\"}}";
 
 #ifndef CPU_ONLY
-static std::string iterations_mnist = "250";
+static std::string iterations_mnist = "10000";
 #else
 static std::string iterations_mnist = "10";
 #endif
@@ -170,7 +170,7 @@ TEST(httpjsonapi,train)
   ASSERT_TRUE(d.HasMember("body"));
   ASSERT_TRUE(d["body"].HasMember("measure"));
 #ifndef CPU_ONLY
-  ASSERT_EQ(249,d["body"]["measure"]["iteration"].GetDouble());
+  ASSERT_EQ(9999,d["body"]["measure"]["iteration"].GetDouble());
 #else
   ASSERT_EQ(9,d["body"]["measure"]["iteration"].GetDouble());
 #endif
@@ -214,7 +214,7 @@ TEST(httpjsonapi,train)
   bool running = true;
   while(running)
     {
-      httpclient::get_call(luri+"/train?service="+serv+"&job=1&timeout=1&parameters.output.measure_hist=true","GET",code,jstr);
+      httpclient::get_call(luri+"/train?service="+serv+"&job=1&timeout=1&parameters.output.max_hist_points=100","GET",code,jstr);
       running = jstr.find("running") != std::string::npos;
       if (running)
 	{
@@ -236,6 +236,7 @@ TEST(httpjsonapi,train)
 	  ASSERT_TRUE(jd2["body"]["measure"].HasMember("iteration"));
 	  ASSERT_TRUE(jd2["body"]["measure"]["iteration"].GetDouble() >= 0);
 	  ASSERT_TRUE(jd2["body"].HasMember("measure_hist"));
+	  ASSERT_TRUE(100 >= jd2["body"]["measure_hist"]["train_loss_hist"].Size());
 	}
       else ASSERT_TRUE(jstr.find("finished")!=std::string::npos);
     }
