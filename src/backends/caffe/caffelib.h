@@ -241,10 +241,18 @@ namespace dd
       void model_type(caffe::Net<float> *net,
 		      std::string &mltype);
 
+
+      /**
+       * \brief checks wether v1 is better than v2
+       */
       bool is_better(double v1, double v2, std::string metric_name);
 
-      void save_if_best(APIData &meas_out, boost::shared_ptr<caffe::Solver<float>>solver);
-
+      /**
+       * \brief generates a file containing best iteration so far
+       */
+      void save_if_best(APIData &meas_out, boost::shared_ptr<caffe::Solver<float>>solver,
+                        bool already_snapshoted);
+      std::string _best_model_filename = "/best_model";
 
     public:
       caffe::Net<float> *_net = nullptr; /**< neural net. */

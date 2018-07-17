@@ -821,13 +821,7 @@ namespace dd
       }
 
     // the first present measure will be used to snapshot best model
-    _best_metrics.push_back("map");
-    _best_metrics.push_back("meaniou");
-    _best_metrics.push_back("mlacc");
-    _best_metrics.push_back("delta_score_0.1");
-    _best_metrics.push_back("bacc");
-    _best_metrics.push_back("f1");
-    _best_metrics.push_back("net_meas");
+    _best_metrics = {"map", "meaniou", "mlacc", "delta_score_0.1", "bacc", "f1", "net_meas"};
     _best_metric_value = std::numeric_limits<double>::infinity();
   }
 
@@ -1070,12 +1064,13 @@ namespace dd
     this->_mlmodel.read_corresp_file();
     if (ad_mllib.has("resume") && ad_mllib.get("resume").get<bool>())
       {
-        std::string bestfilename = this->_mlmodel._repo + "/best_model";
+        std::string bestfilename = this->_mlmodel._repo + _best_model_filename;
         std::ifstream bestfile;
         try
           {
             std::string tmp;
             bestfile.open(bestfilename,std::ios::in);
+            // first three fields are thrown away
             bestfile >> tmp >> tmp >> tmp >> tmp;
             bestfile.close();
             _best_metric_value = std::atof(tmp.c_str());
@@ -1142,9 +1137,11 @@ namespace dd
 	solver->net_->ClearParamDiffs();
 	
 	// Save a snapshot if needed.
+       bool already_snapshoted = false;
 	if (solver->param_.snapshot() && solver->iter_ > start_iter &&
 	    solver->iter_ % solver->param_.snapshot() == 0) {
 	  solver->Snapshot();
+         already_snapshoted = true;
 	}
 	if (solver->param_.test_interval() && solver->iter_ % solver->param_.test_interval() == 0
 	    && (solver->iter_ > 0 || solver->param_.test_initialization())) 
@@ -1154,7 +1151,7 @@ namespace dd
 	    test(solver->test_nets().at(0).get(),ad,inputc,test_batch_size,has_mean_file,test_iter,meas_out);
 	    APIData meas_obj = meas_out.getobj("measure");
 
-           save_if_best(meas_obj, solver);
+           save_if_best(meas_obj, solver, already_snapshoted);
 
 
 	    std::vector<std::string> meas_str = meas_obj.list_keys();
@@ -3208,7 +3205,7 @@ namespace dd
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::save_if_best(APIData &meas_out, boost::shared_ptr<caffe::Solver<float>>solver)
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::save_if_best(APIData &meas_out, boost::shared_ptr<caffe::Solver<float>>solver, bool already_snapshoted)
   {
     double cur_meas = std::numeric_limits<double>::infinity();
     std::string meas;
@@ -3218,11 +3215,12 @@ namespace dd
           {
             cur_meas = meas_out.get(m).get<double>();
             meas = m;
+            break;
           }
       }
     if (cur_meas == std::numeric_limits<double>::infinity())
       {
-        // could not find valeu for measuring best
+        // could not find value for measuring best
         this->_logger->info("could not find any value for measuring best model");
         return;
       }
@@ -3230,11 +3228,12 @@ namespace dd
         is_better(cur_meas, _best_metric_value, meas))
       {
         _best_metric_value = cur_meas;
-        solver->Snapshot();
+        if (!already_snapshoted)
+          solver->Snapshot();
         try
           {
             std::ofstream bestfile;
-            std::string bestfilename = this->_mlmodel._repo + "/best_model";
+            std::string bestfilename = this->_mlmodel._repo + _best_model_filename;
             bestfile.open(bestfilename,std::ios::out);
             bestfile << "iteration: " <<  solver->iter_ << std::endl;
             bestfile <<  meas << ": " << cur_meas << std::endl;
