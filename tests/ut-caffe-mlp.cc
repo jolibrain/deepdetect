@@ -671,6 +671,30 @@ TEST(caffelib, configure_deeplabvgg16_diceloss_finetune)
         found = true;
     }
   ASSERT_TRUE(found);
+  bool found1 = false;
+  bool found2 = false;
+  bool found3 = false;
+  bool found4 = false;
+  for (int l=k-1;l>0;l--)
+    {
+      caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+      if (lparam->name() == "fc8_vgg16_1_ftune")
+        found1 = true;
+      lparam = net_param.mutable_layer(l);
+      if (lparam->name() == "fc8_vgg16_2_ftune")
+        found2 = true;
+      lparam = net_param.mutable_layer(l);
+      if (lparam->name() == "fc8_vgg16_3_ftune")
+        found3 = true;
+      lparam = net_param.mutable_layer(l);
+      if (lparam->name() == "fc8_vgg16_4_ftune")
+        found4 = true;
+    }
+  ASSERT_TRUE(found1);
+  ASSERT_TRUE(found2);
+  ASSERT_TRUE(found3);
+  ASSERT_TRUE(found4);
+
 
 }
 
