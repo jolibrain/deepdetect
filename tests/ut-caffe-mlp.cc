@@ -638,65 +638,11 @@ TEST(caffelib, configure_deeplabvgg16_diceloss)
     }
   ASSERT_TRUE(found);
 
+  remove("./deeplab_vgg16.prototxt");
+  remove("./deeplab_vgg16_solver.prototxt");
+  remove("./deploy.prototxt");
 }
 
-TEST(caffelib, configure_deeplabvgg16_diceloss_finetune)
-{
-  APIData ad;
-  ad.add("template","deeplab_vgg16");
-  ad.add("loss","dice_weighted");
-  ad.add("templates","../templates/caffe");
-  ad.add("repository","./");
-  ad.add("nclasses",2);
-  ad.add("segmentation",true);
-  ad.add("finetuning",true);
-  ad.add("weights","/home/infantes/test/mitparsing/vgg16_init_deeplab.caffemodel");
-  CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel> *caff = new CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(CaffeModel(ad));
-  caff->_logger = spdlog::stdout_logger_mt("UT-deeplab_vgg16_ft");
-  caff->_inputc.init(ad);
-  caff->init_mllib(ad);
-  caff->_loss = 1;
-
-  caffe::NetParameter net_param, deploy_net_param;
-  bool succ = caffe::ReadProtoFromTextFile("./deeplab_vgg16.prototxt",&net_param);
-  ASSERT_TRUE(succ);
-
-  bool found = false;
-  int k = net_param.layer_size();
-
-  for (int l=k-1;l>0;l--)
-    {
-      caffe::LayerParameter *lparam = net_param.mutable_layer(l);
-      if (lparam->type() == "DiceCoefLoss")
-        found = true;
-    }
-  ASSERT_TRUE(found);
-  bool found1 = false;
-  bool found2 = false;
-  bool found3 = false;
-  bool found4 = false;
-  for (int l=k-1;l>0;l--)
-    {
-      caffe::LayerParameter *lparam = net_param.mutable_layer(l);
-      if (lparam->name() == "fc8_vgg16_1_ftune")
-        found1 = true;
-      lparam = net_param.mutable_layer(l);
-      if (lparam->name() == "fc8_vgg16_2_ftune")
-        found2 = true;
-      lparam = net_param.mutable_layer(l);
-      if (lparam->name() == "fc8_vgg16_3_ftune")
-        found3 = true;
-      lparam = net_param.mutable_layer(l);
-      if (lparam->name() == "fc8_vgg16_4_ftune")
-        found4 = true;
-    }
-  ASSERT_TRUE(found1);
-  ASSERT_TRUE(found2);
-  ASSERT_TRUE(found3);
-  ASSERT_TRUE(found4);
-
-
-}
 
 
 TEST(caffelib, configure_unet_diceloss)
