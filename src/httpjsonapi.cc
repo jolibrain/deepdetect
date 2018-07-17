@@ -47,6 +47,27 @@ using namespace boost::iostreams;
 
 namespace dd
 {
+
+  void mergeJObj(JVal& to, JVal& from, JDoc& jd)
+  {
+    for (auto fromIt = from.MemberBegin(); fromIt != from.MemberEnd(); ++ fromIt)
+      {
+        auto toIt = to.FindMember(fromIt->name);
+        if (toIt == to.MemberEnd())
+          to.AddMember(fromIt->name, fromIt->value, jd.GetAllocator());
+        else
+          {
+            if (fromIt->value.IsArray())
+                for (auto arrayIt = fromIt->value.Begin(); arrayIt != fromIt->value.End(); ++arrayIt)
+                  toIt->value.PushBack(*arrayIt,jd.GetAllocator());
+            else if (fromIt->value.IsObject())
+              mergeJObj(toIt->value, fromIt->value, jd);
+            else
+                toIt->value = fromIt->value;
+          }
+      }
+  }
+
   std::string uri_query_to_json(const std::string &req_query)
   {
     if (!req_query.empty())
@@ -90,7 +111,9 @@ namespace dd
 			JVal jnobj(rapidjson::kObjectType);
 			jobj = jnobj.AddMember(JVal().SetString(vpt.at(b).c_str(),jd.GetAllocator()),jobj,jd.GetAllocator());
 		      }
-		    jsv.AddMember(JVal().SetString(vpt.at(0).c_str(),jd.GetAllocator()),jobj,jd.GetAllocator());
+                  JVal jsv2(rapidjson::kObjectType);
+		    jsv2.AddMember(JVal().SetString(vpt.at(0).c_str(),jd.GetAllocator()),jobj,jd.GetAllocator());
+                  mergeJObj(jsv, jsv2, jd);
 		  }
 		else
 		  {
