@@ -212,7 +212,15 @@ namespace dd
 	return -1; // error.
       return 0;
     }
-    
+
+    static int remove_dir(const std::string &d)
+    {
+      if (remove(d.c_str()))
+        return -1; // error.
+      return 0;
+    }
+
+
   };
   
 }

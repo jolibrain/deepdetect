@@ -51,7 +51,7 @@ TEST(jsonapi,service_delete)
 
   ASSERT_EQ(isdir, true);
   ASSERT_EQ(exists, true);
-  // delete service.
+  //delete service.
   jstr = "{\"clear\":\"mem\"}";
   std::string jdelstr = japi.jrender(japi.service_delete(sname,jstr));
   ASSERT_EQ(ok_str,jdelstr);
@@ -161,7 +161,29 @@ TEST(jsonapi,service_status)
   ASSERT_EQ("OK",jd["status"]["msg"]);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"].HasMember("description"));
+}
 
-  std::string here = "here";
-  rmdir(here.c_str());
+TEST(jsonapi, service_purge)
+{
+  JsonAPI japi;
+  std::string sname = "my_service";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"here\"},\"parameters\":{\"input\":{\"connector\":\"image\"},\"mllib\":{\"nclasses\":2}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
+  ASSERT_EQ(created_str,joutstr);
+
+
+  jstr = "{\"clear\":\"dir\"}";
+  std::string jdelstr = japi.jrender(japi.service_delete(sname,jstr));
+  ASSERT_EQ(ok_str,jdelstr);
+  std::string jinfostr = japi.jrender(japi.info(""));
+  JDoc jd;
+  jd.Parse(jinfostr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_TRUE(jd.HasMember("status"));
+  ASSERT_EQ(200,jd["status"]["code"]);
+  ASSERT_EQ("OK",jd["status"]["msg"]);
+  ASSERT_EQ(0,jd["head"]["services"].Size());
+  bool isdir;
+  bool exists = fileops::file_exists("here", isdir);
+  ASSERT_EQ(exists, false);
 }
