@@ -39,6 +39,9 @@ static std::string iterations_mnist = "10000";
 static std::string iterations_mnist = "10";
 #endif
 
+
+
+
 TEST(httpjsonapi,uri_query_to_json)
 {
   std::string q = "service=myserv&job=1";
@@ -54,6 +57,9 @@ TEST(httpjsonapi,uri_query_to_json)
   std::string q3 = q + "&parameters.output.measure_hist=false";
   p = uri_query_to_json(q3);
   ASSERT_EQ("{\"service\":\"myserv\",\"job\":1,\"parameters\":{\"output\":{\"measure_hist\":false}}}",p);
+  std::string q4 = q + "&parameters.output.measure_hist=true&parameters.output.max_hist_points=100";
+  p = uri_query_to_json(q4);
+  ASSERT_EQ("{\"service\":\"myserv\",\"job\":1,\"parameters\":{\"output\":{\"measure_hist\":true,\"max_hist_points\":100}}}",p);
 }
 
 TEST(httpjsonapi,info)
