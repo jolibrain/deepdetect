@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>DeepDetect Demo : BoundingBox</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="description" content="">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+</head>
+<body>
+
+  <div class="container">
+
+  <div class="boundingBox" data-service="faces" data-image-list="http://i.imgur.com/QiksDIs.jpg,https://www.nbc.com/sites/nbcunbc/files/files/styles/1080xauto/public/scet/photos/269/7924/PAA_267.JPG,http://wiinoob.walyou.netdna-cdn.com/wp-content/uploads/2009/03/mii-cupcakes.jpg" data-threshold-control="true" data-threshold-control-steps="0.5,0.3,0.2" data-boundingbox='false'></div>
+  <hr/>
+  <div class="boundingBox" data-service="face_gender" data-image-list="http://i.imgur.com/QiksDIs.jpg,https://www.nbc.com/sites/nbcunbc/files/files/styles/1080xauto/public/scet/photos/269/7924/PAA_267.JPG,http://wiinoob.walyou.netdna-cdn.com/wp-content/uploads/2009/03/mii-cupcakes.jpg" data-confidence-threshold="0.5"></div>
+  <hr/>
+  <div class="boundingBox" data-service="clothes"></div>
+  <hr/>
+  <div class="boundingBox" data-service="generic"></div>
+
+</div>
+
+  <script>__REACT_DEVTOOLS_GLOBAL_HOOK__ = parent.__REACT_DEVTOOLS_GLOBAL_HOOK__</script>
+  <script type="text/javascript" src="/app.js"></script>
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.2.2/semantic.min.css"></link>
+  <link rel="stylesheet" href="font-awesome/css/font-awesome.min.css"></link>
+  <script src="https://code.jquery.com/jquery-3.1.1.slim.min.js" integrity="sha384-A7FZj7v+d/sdmMqp/nOQwliLvUsJfDHW+k9Omg/a/EheAdgtzNs3hpfag6Ed950n" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tether/1.4.0/js/tether.min.js" integrity="sha384-DztdAPBWPRXSA/3eYEEUWrWCy7G5KFbe8fFjk5JAIxUYHKkDx6Qin1DkWx51bBrb" crossorigin="anonymous"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/js/bootstrap.min.js" integrity="sha384-vBWWzlZJ8ea9aCX4pEW3rVHjgjt7zpkNpZk+02D9phzyeVkE+jo0ieGizqPLForn" crossorigin="anonymous"></script>
+</body>
+</html>

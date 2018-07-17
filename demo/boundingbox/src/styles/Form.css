@@ -1,0 +1,8 @@
+.form-component {
+  border: 1px dashed #f00;
+}
+
+img.demo {
+  padding: 5px;
+  float:left;
+}
