@@ -539,14 +539,14 @@ namespace dd
 	  bool bbmap = (std::find(measures.begin(),measures.end(),"map")!=measures.end());
 	  if (bbmap)
 	    {
-             std::map<int,float> aps;
+	      std::map<int,float> aps;
 	      double bmap = ap(ad_res,aps);
 	      meas_out.add("map",bmap);
-             for (auto ap: aps)
+	      for (auto ap: aps)
                {
-                 std::string s = "map_" + ap.first;
+                 std::string s = "map_" + std::to_string(ap.first);
                  meas_out.add(s,ap.second);
-               }
+	       }
 	    }
 	}
       if (net_meas) // measure is coming from the net directly

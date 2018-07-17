@@ -89,8 +89,7 @@ namespace dd
 
       void configure_ssd_template(const std::string &dest_net,
 				  const std::string &deploy_dest_net,
-				  const APIData &ad,
-				  const TInputConnectorStrategy &inputc);				  
+				  const APIData &ad);
       
     /**
      * \brief configure noise data augmentation in training template

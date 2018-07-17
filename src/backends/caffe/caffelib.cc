@@ -183,7 +183,7 @@ namespace dd
       }
     else if (model_tmpl.find("ssd")!=std::string::npos)
       {
-	configure_ssd_template(dest_net,dest_deploy_net,ad,this->_inputc);
+	configure_ssd_template(dest_net,dest_deploy_net,ad);
       }
     else
       {
@@ -580,8 +580,7 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_ssd_template(const std::string &dest_net,
 												   const std::string &dest_deploy_net,
-												   const APIData &ad,
-												   const TInputConnectorStrategy &inputc)
+												   const APIData &ad)
   {
     //- load prototxt
     caffe::NetParameter net_param,deploy_net_param;
@@ -1495,6 +1494,7 @@ namespace dd
 			  if (tp == 0 && fp == 0) {
 			    // Ignore such case. It happens when a detection bbox is matched to
 			    // a difficult gt bbox and we don't evaluate on difficult gt bbox.
+			    this->_logger->warn("skipping bbox");
 			    continue;
 			  }
 			  all_true_pos[pos][label].push_back(std::make_pair(score, tp));
@@ -1512,7 +1512,7 @@ namespace dd
 		      {
 			if (all_true_pos.find(i) == all_true_pos.end())
 			  throw MLLibInternalException("Missing output_blob true_pos: " + std::to_string(i));
-			
+
 			const std::map<int, std::vector<std::pair<float, int> > >& true_pos =
 			  all_true_pos.find(i)->second;
 			if (all_false_pos.find(i) == all_false_pos.end())
@@ -1522,6 +1522,7 @@ namespace dd
 			if (all_num_pos.find(i) == all_num_pos.end())
 			  throw MLLibInternalException("Missing output_blob num_pos: " + std::to_string(i));
 			const std::map<int, int>& num_pos = all_num_pos.find(i)->second;
+
 			// Sort true_pos and false_pos with descend scores.
 			std::vector<APIData> vbad;
 			for (std::map<int, int>::const_iterator it = num_pos.begin();
@@ -1551,7 +1552,7 @@ namespace dd
 				tp_d.push_back(label_true_pos.at(v).first);
 				tp_i.push_back(label_true_pos.at(v).second);
 			      }
-			    
+
 			    std::vector<double> fp_d;
 			    std::vector<int> fp_i;
 			    for (size_t v=0;v<label_false_pos.size();v++)
@@ -1666,7 +1667,9 @@ namespace dd
 		      }
 		  }
 	      }
-	    tresults += dv_size;
+	    if (inputc._bbox)
+	      tresults += 1;
+	    else tresults += dv_size;
 	    mean_loss += loss;
 	  }
 	std::vector<std::string> clnames;
