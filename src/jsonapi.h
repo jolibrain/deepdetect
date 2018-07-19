@@ -62,11 +62,11 @@ namespace dd
     // errors
     JDoc dd_ok_200() const;
     JDoc dd_created_201() const;
-    JDoc dd_bad_request_400() const;
+    JDoc dd_bad_request_400(const std::string &msg="") const;
     JDoc dd_forbidden_403() const;
     JDoc dd_not_found_404() const;
     JDoc dd_conflict_409() const;
-    JDoc dd_internal_error_500() const;
+    JDoc dd_internal_error_500(const std::string &msg="") const;
 
     // specific errors
     JDoc dd_unknown_library_1000() const;
@@ -74,8 +74,8 @@ namespace dd
     JDoc dd_service_not_found_1002() const;
     JDoc dd_job_not_found_1003() const;
     JDoc dd_input_connector_not_found_1004() const;
-    JDoc dd_service_input_bad_request_1005() const;
-    JDoc dd_service_bad_request_1006() const;
+    JDoc dd_service_input_bad_request_1005(const std::string &what="") const;
+    JDoc dd_service_bad_request_1006(const std::string &what="") const;
     JDoc dd_internal_mllib_error_1007(const std::string &what) const;
     JDoc dd_train_predict_conflict_1008() const;
     JDoc dd_output_connector_network_error_1009() const;
