@@ -2899,7 +2899,7 @@ namespace dd
 	std::string lname = layer->layer_param().name();
 	std::string ltype = layer->layer_param().type();
 
-	if (ltype == "DetectionOutput")
+	if (ltype == "DetectionOutput" || ltype == "MultiBoxLoss" || ltype == "PriorBox")
 	  {
 	    mltype = "detection";
 	    const boost::shared_ptr<caffe::Layer<float>> &final_layer = net->layers().at(net->layers().size()-1);
