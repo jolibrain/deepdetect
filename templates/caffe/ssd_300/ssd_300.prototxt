@@ -30,14 +30,22 @@ layer {
     }
     distort_param {
       prob: 0.5
+      brightness: true
       brightness_delta: 32.0
+      contrast: true
       contrast_lower: 0.5
       contrast_upper: 1.5
+      hue: true
       hue_delta: 18.0
+      saturation: true
       saturation_lower: 0.5
       saturation_upper: 1.5
       all_effects: false
       random_order: false
+    }
+    expand_param {
+      prob: 0.5
+      max_expand_ratio: 4.0
     }
   }
   data_param {
