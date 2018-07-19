@@ -3,7 +3,7 @@ pipeline {
   stages {
     stage('Build GPU') {
       steps {
-        sh '''script
+        sh '''
 mkdir -p build
 cd build
 cmake .. -DBUILD_TESTS=ON -DUSE_CUDNN=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_XGBOOST=ON -DUSE_CAFFE2=ON -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61"
