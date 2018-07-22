@@ -250,6 +250,8 @@ namespace dd
       else
 	{
 	  _shuffle = true;
+	  int db_height = 0;
+	  int db_width = 0;
 	  APIData ad_mllib;
 	  if (ad.has("parameters")) // hotplug of parameters, overriding the defaults
 	    {
@@ -270,6 +272,10 @@ namespace dd
 		    _root_folder = ad_input.get("root_folder").get<std::string>();
 		  if (ad_input.has("align"))
 		    _align = ad_input.get("align").get<bool>();
+		  if (ad_input.has("db_height"))
+		    db_height = ad_input.get("db_height").get<int>();
+		  if (ad_input.has("db_width"))
+		    db_height = ad_input.get("db_width").get<int>();
 		}
 	      ad_mllib = ad_param.getobj("mllib");
 	    }
@@ -320,18 +326,16 @@ namespace dd
 		    throw InputConnectorBadParamException("object detection input test file " + _uris.at(1) + " not found");
 		}
 
-	      //TODO:
 	      // - create lmdbs
 	      _dbfullname = _model_repo + "/" + _dbfullname;
 	      _test_dbfullname = _model_repo + "/" + _test_dbfullname;
-	      objects_to_db(_uris,_dbfullname,_test_dbfullname);
-
-	      //TODO: data object with db files location
+	      objects_to_db(_uris,db_height,db_width,_dbfullname,_test_dbfullname);
+	      
+	      // data object with db files location
 	      APIData dbad;
 	      dbad.add("train_db",_dbfullname);
 	      if (_test_split > 0.0 || _uris.size() > 1)
 		dbad.add("test_db",_test_dbfullname);
-	      //dbad.add("meanfile",_model_repo + "/" + _meanfname);
 	      const_cast<APIData&>(ad).add("db",dbad); 
 	    }
 	  else if (_ctc)
@@ -475,6 +479,8 @@ namespace dd
 			      const bool &train_db);
 
     int objects_to_db(const std::vector<std::string> &rfolders,
+		      const int &db_height,
+		      const int &db_width,
 		      const std::string &traindbname,
 		      const std::string &testdbname,
 		      const bool &encoded=true,
@@ -482,6 +488,8 @@ namespace dd
 		      const std::string &backend="lmdb");
 
     void write_objects_to_db(const std::string &dbfullname,
+			     const int &db_height,
+			     const int &db_width,
 			     const std::vector<std::pair<std::string,std::string>> &lines,
 			     const bool &encoded,
 			     const std::string &encode_type,
