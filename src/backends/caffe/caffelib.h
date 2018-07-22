@@ -251,7 +251,6 @@ namespace dd
        */
       void save_if_best(APIData &meas_out, boost::shared_ptr<caffe::Solver<float>>solver,
                         bool already_snapshoted);
-      std::string _best_model_filename = "/best_model";
 
     public:
       caffe::Net<float> *_net = nullptr; /**< neural net. */

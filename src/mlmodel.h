@@ -135,6 +135,7 @@ namespace dd
     std::string _mlmodel_template_repo = "templates/";
     std::unordered_map<int,std::string> _hcorresp; /**< table of class correspondences. */
     std::string _corresp; /**< file name of the class correspondences (e.g. house / 23) */
+    std::string _best_model_filename = "/best_model.txt";
     
 #ifdef USE_SIMSEARCH
     SearchEngine<AnnoySE> *_se = nullptr;

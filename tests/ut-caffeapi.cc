@@ -754,6 +754,7 @@ TEST(caffeapi,service_train_images)
   // create service
   JsonAPI japi;
   std::string plank_repo_loc = "plank";
+  std::string plank_repo_loc2 = "plank2";
   mkdir(plank_repo_loc.c_str(),0777);
   std::string sname = "my_service";
   std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  plank_repo_loc + "\",\"templates\":\"" + model_templates_repo  + "\"},\"parameters\":{\"input\":{\"connector\":\"image\"},\"mllib\":{\"db\":true,\"template\":\"cifar\",\"nclasses\":121}}}";
@@ -761,7 +762,7 @@ TEST(caffeapi,service_train_images)
   ASSERT_EQ(created_str,joutstr);
 
   // train
-  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"db\":true,\"width\":32,\"height\":32,\"test_split\":0.001,\"shuffle\":true,\"bw\":false},\"mllib\":{\"gpu\":true,\"gpuid\":"+gpuid+",\"solver\":{\"iterations\":" + iterations_plank + ",\"test_interval\":500,\"base_lr\":0.0001,\"snapshot\":2000,\"test_initialization\":false},\"net\":{\"batch_size\":100}},\"output\":{\"measure\":[\"acc\",\"acc-5\",\"mcll\",\"f1\"]}},\"data\":[\"" + plank_repo + "train\"]}";
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"db\":true,\"width\":32,\"height\":32,\"test_split\":0.001,\"shuffle\":true,\"bw\":false},\"mllib\":{\"gpu\":true,\"gpuid\":"+gpuid+",\"solver\":{\"iterations\":" + iterations_plank + ",\"test_interval\":500,\"base_lr\":0.0001,\"snapshot\":2000,\"test_initialization\":false},\"net\":{\"batch_size\":100}},\"output\":{\"measure\":[\"acc\",\"acc-5\",\"mcll\",\"f1\"],\"target_repository\":\"" + plank_repo_loc2 + "\"}},\"data\":[\"" + plank_repo + "train\"]}";
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
@@ -780,12 +781,15 @@ TEST(caffeapi,service_train_images)
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() >= 0.0);
   ASSERT_TRUE(jd["body"]["measure"]["acc-5"].GetDouble() >= 0.0);
   ASSERT_EQ(jd["body"]["measure"]["accp"].GetDouble(),jd["body"]["measure"]["acc"].GetDouble());
-
+  ASSERT_TRUE(fileops::file_exists(plank_repo_loc + "/best_model.txt"));
+  ASSERT_TRUE(fileops::file_exists(plank_repo_loc2 + "/deploy.prototxt"));
+  
   // remove service
   jstr = "{\"clear\":\"full\"}";
   joutstr = japi.jrender(japi.service_delete(sname,jstr));
   ASSERT_EQ(ok_str,joutstr);
   rmdir(plank_repo_loc.c_str());
+  rmdir(plank_repo_loc2.c_str()); // XXX: fails due to creation with 0755
 }
 
 
