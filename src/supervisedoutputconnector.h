@@ -1369,7 +1369,7 @@ namespace dd
 	}
       for (auto ap: APs)
         {
-          ap.second /= static_cast<float>(APs_count[ap.first]);
+          APs[ap.first] /= static_cast<float>(APs_count[ap.first]);
         }
      return mmAP / static_cast<double>(pos_count);;
     }
