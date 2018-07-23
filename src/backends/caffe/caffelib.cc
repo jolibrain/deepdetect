@@ -1063,7 +1063,7 @@ namespace dd
     this->_mlmodel.read_corresp_file();
     if (ad_mllib.has("resume") && ad_mllib.get("resume").get<bool>())
       {
-        std::string bestfilename = this->_mlmodel._repo + _best_model_filename;
+        std::string bestfilename = this->_mlmodel._repo + this->_mlmodel._best_model_filename;
         std::ifstream bestfile;
         try
           {
@@ -1077,7 +1077,7 @@ namespace dd
         catch (std::exception &e)
           {
             this->_logger->info("no previous best model file");
-          }
+	  }
 
 	if (this->_mlmodel._sstate.empty())
 	  {
@@ -1319,6 +1319,12 @@ namespace dd
     if (this->_inputc._db)
       this->_inputc._db = false;
 
+    // if there's target repository, copy relevant data there
+    APIData ad_out = ad.getobj("parameters").getobj("output");
+    if (ad_out.has("target_repository"))
+      this->_mlmodel.copy_to_target(ad_out.get("target_repository").get<std::string>(),
+				    this->_logger);
+    
     return 0;
   }
 
@@ -3272,10 +3278,10 @@ namespace dd
         try
           {
             std::ofstream bestfile;
-            std::string bestfilename = this->_mlmodel._repo + _best_model_filename;
+            std::string bestfilename = this->_mlmodel._repo + this->_mlmodel._best_model_filename;
             bestfile.open(bestfilename,std::ios::out);
-            bestfile << "iteration: " <<  solver->iter_ << std::endl;
-            bestfile <<  meas << ": " << cur_meas << std::endl;
+            bestfile << "iteration:" <<  solver->iter_ << std::endl;
+            bestfile <<  meas << ":" << cur_meas << std::endl;
             bestfile.close();
           }
         catch(std::exception &e)
