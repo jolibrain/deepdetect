@@ -1201,6 +1201,11 @@ namespace dd
 	_logger->error("Failed serialization of datum for db storage");
 	return;
       }
+    if (!_txn)
+      {
+	_logger->error("db transaction cannot be executed, wrong db flag ?");
+	throw InputConnectorBadParamException("db transaction cannot be executed, wrong db flag ?");
+      }
     _txn->Put(std::string(key_cstr, length), out);
     _db_batchsize++;
     
