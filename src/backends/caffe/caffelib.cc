@@ -2749,11 +2749,49 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofile_finetune(caffe::NetParameter &net_param)
   {
+    std::string ft_lname, ft_oldname;
+
+    if (net_param.name() == "deeplab_vgg16")
+      // special case with 4 ends to change
+      {
+        for (int l=net_param.layer_size()-1;l>0;l--)
+          {
+            caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+            if (lparam->type() == "Convolution" &&
+                (lparam->name() == "fc8_vgg16_1" ||
+                 lparam->name() == "fc8_vgg16_2" ||
+                 lparam->name() == "fc8_vgg16_3" ||
+                 lparam->name() == "fc8_vgg16_4" ))
+              {
+                ft_oldname = lparam->top(0);
+                ft_lname = lparam->name() + "_ftune";
+                lparam->set_name(ft_lname);
+                lparam->set_top(0,ft_lname);
+                continue;
+              }
+            if (lparam->name() == "fc8_vgg16")
+              {
+                ft_lname = lparam->name() + "_ftune";
+                lparam->set_name(ft_lname);
+                lparam->set_top(0,ft_lname);
+                for (int i=0; i<4; ++i) {
+                  std::string ft_lname_b = lparam->bottom(i) + "_ftune";
+                  lparam->set_bottom(i,ft_lname_b);
+                }
+                continue;
+              }
+            if (lparam->name() == "normalization" && lparam->bottom(0) == "fc8_vgg16")
+              {
+                lparam->set_bottom(0, lparam->bottom(0) + "_ftune");
+                continue;
+              }
+          }
+        return;
+      }
     // fix class numbers
     // this procedure looks for the first bottom layer with a 'num_output' field and
     // rename the layer so that its weights can be reinitialized and the net finetuned
     int k = net_param.layer_size();
-    std::string ft_lname, ft_oldname;
     for (int l=net_param.layer_size()-1;l>0;l--)
       {
 	caffe::LayerParameter *lparam = net_param.mutable_layer(l);

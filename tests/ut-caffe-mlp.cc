@@ -638,7 +638,12 @@ TEST(caffelib, configure_deeplabvgg16_diceloss)
     }
   ASSERT_TRUE(found);
 
+  remove("./deeplab_vgg16.prototxt");
+  remove("./deeplab_vgg16_solver.prototxt");
+  remove("./deploy.prototxt");
 }
+
+
 
 TEST(caffelib, configure_unet_diceloss)
 {
