@@ -2688,12 +2688,10 @@ namespace dd
 	    deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels()+_ntargets);
 	    deploy_net_param.mutable_layer(1)->mutable_slice_param()->set_slice_point(0,inputc.channels());
 	  }
+	for (size_t d=0;d<inputc._mean_values.size();d++)
+	  deploy_net_param.mutable_layer(0)->mutable_transform_param()->add_mean_value(inputc._mean_values.at(d));
 	if (_crop_size > 0)
-	   {
-	     for (size_t d=0;d<inputc._mean_values.size();d++)
-	       deploy_net_param.mutable_layer(0)->mutable_transform_param()->add_mean_value(inputc._mean_values.at(d));
-	     deploy_net_param.mutable_layer(0)->mutable_transform_param()->set_crop_size(_crop_size);
-	   }
+	  deploy_net_param.mutable_layer(0)->mutable_transform_param()->set_crop_size(_crop_size);
       }
     caffe::WriteProtoToTextFile(net_param,net_file);
     caffe::WriteProtoToTextFile(deploy_net_param,deploy_file);

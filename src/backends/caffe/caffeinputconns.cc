@@ -649,6 +649,8 @@ namespace dd
   }
 
   int ImgCaffeInputFileConn::objects_to_db(const std::vector<std::string> &filelists,
+					   const int &db_height,
+					   const int &db_width,
 					   const std::string &traindbname,
 					   const std::string &testdbname,
 					   const bool &encoded,
@@ -705,7 +707,7 @@ namespace dd
     //TODO: shuffle & split
     
     // create train db
-    write_objects_to_db(traindbname,lines,encoded,encode_type,backend,true);
+    write_objects_to_db(traindbname,db_height,db_width,lines,encoded,encode_type,backend,true);
     _db_batchsize = lines.size();
     
     // read test lines as needed
@@ -725,7 +727,7 @@ namespace dd
 	tlines.push_back(std::pair<std::string,std::string>(elts.at(0),elts.at(1)));
 	++clines;
       }
-    write_objects_to_db(testdbname,tlines,encoded,encode_type,backend,false);
+    write_objects_to_db(testdbname,db_height,db_width,tlines,encoded,encode_type,backend,false);
     _db_testbatchsize = tlines.size();
     
     //TODO: write corresp / map file
@@ -734,6 +736,8 @@ namespace dd
   }
 
   void ImgCaffeInputFileConn::write_objects_to_db(const std::string &dbfullname,
+						  const int &db_height,
+						  const int &db_width,
 						  const std::vector<std::pair<std::string,std::string>> &lines,
 						  const bool &encoded,
 						  const std::string &encode_type,
@@ -759,7 +763,6 @@ namespace dd
     bool check_size = false; // check whether all datum have the same size
     std::vector<float> meanv;
     
-    //TODO: read map file -> we don't need it when using txt format
     std::map<std::string, int> name_to_label;
     std::string enc = encode_type;
     
@@ -780,8 +783,8 @@ namespace dd
 	  }
 	std::string filename = lines[line_id].first;
 	std::string labelname = lines[line_id].second;
-	int width = 0; // do not resize images
-	int height = 0;
+	int width = db_width; // do not resize images is default
+	int height = db_height;
 	status = ReadRichImageToAnnotatedDatum(filename, labelname, height,
 					       width, min_dim, max_dim, !_bw, enc, type, label_type,
 					       name_to_label, &anno_datum);
@@ -810,8 +813,6 @@ namespace dd
 	  }
 
 	// compute the mean
-	/*if (mean)
-	  {*/
 	if (train)
 	  {
 	    if (_mean_values.empty())
@@ -825,7 +826,6 @@ namespace dd
 	      _mean_values[d] += lmeanv[d];
 	    }
 	  }
-	//}
 	
 	// sequential
 	string key_str = caffe::format_int(line_id, 8) + "_" + lines[line_id].first;
