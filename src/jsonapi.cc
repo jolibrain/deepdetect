@@ -978,7 +978,7 @@ namespace dd
     if (train_status == "finished")
       {
 	std::string mrepo = out.getobj("model").get("repository").get<std::string>();
-	if (JsonAPI::store_json_blob(mrepo,jrender(jtrain)))
+	if (JsonAPI::store_json_blob(mrepo,jrender(jtrain),"metrics.json"))
 	  _logger->error("couldn't write to {} file in model repository {}",JsonAPI::_json_blob_fname,mrepo);
       }
     return jtrain;
@@ -1049,10 +1049,15 @@ namespace dd
   }
   
   int JsonAPI::store_json_blob(const std::string &model_repo,
-			       const std::string &jstr)
+			       const std::string &jstr,
+			       const std::string &jfilename)
   {
     std::ofstream outf;
-    outf.open(model_repo + "/" + JsonAPI::_json_blob_fname,std::ofstream::out|std::ofstream::app);
+    std::string outfname = model_repo + "/";
+    if (!jfilename.empty())
+      outfname += jfilename;
+    else outfname += JsonAPI::_json_blob_fname;
+    outf.open(outfname,std::ofstream::out|std::ofstream::app);
     if (!outf.is_open())
       return 1;
     outf << jstr << std::endl;
