@@ -31,6 +31,7 @@ using namespace dd;
 static std::string ok_str = "{\"status\":{\"code\":200,\"msg\":\"OK\"}}";
 static std::string created_str = "{\"status\":{\"code\":201,\"msg\":\"Created\"}}";
 static std::string bad_param_str = "{\"status\":{\"code\":400,\"msg\":\"BadRequest\"}}";
+static std::string bad_param_str_false = "{\"status\":{\"code\":400,\"msg\":\"BadRequest\",\"dd_code\":400,\"dd_msg\":\"false\"}}";
 static std::string bad_request_str = "{\"status\":{\"code\":400,\"msg\":\"BadRequest\",\"dd_code\":1006,\"dd_msg\":\"Service Bad Request Error\"}}";
 static std::string not_found_str = "{\"status\":{\"code\":404,\"msg\":\"NotFound\"}}";
 
@@ -90,7 +91,7 @@ TEST(jsonapi,service_create)
   jd.RemoveMember("mllib");
   jstrt = japi.jrender(jd);
   joutstr = japi.jrender(japi.service_create(sname,jstrt));
-  ASSERT_EQ(bad_param_str,joutstr);
+  ASSERT_EQ(bad_param_str_false,joutstr);
   jd.Parse(jstr.c_str());
 
   // description
@@ -110,7 +111,7 @@ TEST(jsonapi,service_create)
   jd["parameters"].RemoveMember("input");
   jstrt = japi.jrender(jd);
   joutstr = japi.jrender(japi.service_create(sname,jstrt));
-  ASSERT_EQ(bad_param_str,joutstr);
+  ASSERT_EQ(bad_param_str_false,joutstr);
 }
 
 TEST(jsonapi,info)

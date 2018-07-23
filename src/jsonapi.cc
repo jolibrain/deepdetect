@@ -133,11 +133,13 @@ namespace dd
     return jd;
   }
 
-  JDoc JsonAPI::dd_bad_request_400() const
+  JDoc JsonAPI::dd_bad_request_400(const std::string &msg) const
   {
     JDoc jd;
     jd.SetObject();
-    render_status(jd,400,"BadRequest");
+    if (msg.empty())
+      render_status(jd,400,"BadRequest");
+    else render_status(jd,400,"BadRequest",400,msg);
     return jd;
   }
   
@@ -165,11 +167,13 @@ namespace dd
     return jd;
   }
 
-  JDoc JsonAPI::dd_internal_error_500() const
+  JDoc JsonAPI::dd_internal_error_500(const std::string &msg) const
   {
     JDoc jd;
     jd.SetObject();
-    render_status(jd,500,"InternalError");
+    if (msg.empty())
+      render_status(jd,500,"InternalError");
+    else render_status(jd,500,"InternalError",500,msg);
     return jd;
   }
   
@@ -213,7 +217,7 @@ namespace dd
     return jd;
   }
 
-  JDoc JsonAPI::dd_service_input_bad_request_1005() const
+  JDoc JsonAPI::dd_service_input_bad_request_1005(const std::string &msg) const
   {
     JDoc jd;
     jd.SetObject();
@@ -221,11 +225,11 @@ namespace dd
     return jd;
   }
   
-  JDoc JsonAPI::dd_service_bad_request_1006() const
+  JDoc JsonAPI::dd_service_bad_request_1006(const std::string &msg) const
   {
     JDoc jd;
     jd.SetObject();
-    render_status(jd,400,"BadRequest",1006,"Service Bad Request Error");
+    render_status(jd,400,"BadRequest",1006,msg.empty() ? "Service Bad Request Error" : "Service Bad Request Error: " + msg);
     return jd;
   }
   
@@ -312,7 +316,7 @@ namespace dd
 	catch(RapidjsonException &e)
 	  {
 	    _logger->error("JSON error {}",e.what());
-	    return dd_bad_request_400();
+	    return dd_bad_request_400(e.what());
 	  }
 	catch(...)
 	  {
@@ -391,7 +395,7 @@ namespace dd
     catch(RapidjsonException &e)
       {
 	_logger->error("JSON error {}",e.what());
-	return dd_bad_request_400();
+	return dd_bad_request_400(e.what());
       }
     catch(...)
       {
@@ -568,19 +572,19 @@ namespace dd
       }
     catch (InputConnectorBadParamException &e)
       {
-	return dd_service_input_bad_request_1005();
+	return dd_service_input_bad_request_1005(e.what());
       }
     catch (MLLibBadParamException &e)
       {
-	return dd_service_bad_request_1006();
+	return dd_service_bad_request_1006(e.what());
       }
     catch (InputConnectorInternalException &e)
       {
-	return dd_internal_error_500();
+	return dd_internal_error_500(e.what());
       }
     catch (MLLibInternalException &e)
       {
-	return dd_internal_error_500();
+	return dd_internal_error_500(e.what());
       }
     catch (std::exception &e)
       {
@@ -631,7 +635,7 @@ namespace dd
     catch(RapidjsonException &e)
       {
 	_logger->error("JSON error {}",e.what());
-	return dd_bad_request_400();
+	return dd_bad_request_400(e.what());
       }
     catch(...)
       {
@@ -645,7 +649,7 @@ namespace dd
       }
     catch (MLLibInternalException &e)
       {
-	return dd_internal_error_500();
+	return dd_internal_error_500(e.what());
       }
     catch (std::exception &e)
       {
@@ -687,7 +691,7 @@ namespace dd
     catch(RapidjsonException &e)
       {
 	_logger->error("JSON error {}",e.what());
-	return dd_bad_request_400();
+	return dd_bad_request_400(e.what());
       }
     catch(...)
       {
@@ -702,19 +706,19 @@ namespace dd
       }
     catch (InputConnectorBadParamException &e)
       {
-	return dd_service_input_bad_request_1005();
+	return dd_service_input_bad_request_1005(e.what());
       }
     catch (MLLibBadParamException &e)
       {
-	return dd_service_bad_request_1006();
+	return dd_service_bad_request_1006(e.what());
       }
     catch (InputConnectorInternalException &e)
       {
-	return dd_internal_error_500();
+	return dd_internal_error_500(e.what());
       }
     catch (MLLibInternalException &e)
       {
-	return dd_internal_error_500();
+	return dd_internal_error_500(e.what());
       }
     catch (MLServiceLockException &e)
       {
@@ -804,7 +808,7 @@ namespace dd
     catch(RapidjsonException &e)
       {
 	_logger->error("JSON error {}",e.what());
-	return dd_bad_request_400();
+	return dd_bad_request_400(e.what());
       }
     catch(...)
       {
@@ -823,19 +827,19 @@ namespace dd
       }
     catch (InputConnectorBadParamException &e)
       {
-	return dd_service_input_bad_request_1005();
+	return dd_service_input_bad_request_1005(e.what());
       }
     catch (MLLibBadParamException &e)
       {
-	return dd_service_bad_request_1006();
+	return dd_service_bad_request_1006(e.what());
       }
     catch (InputConnectorInternalException &e)
       {
-	return dd_internal_error_500();
+	return dd_internal_error_500(e.what());
       }
     catch (MLLibInternalException &e)
       {
-	return dd_internal_error_500();
+	return dd_internal_error_500(e.what());
       }
     catch (std::exception &e)
       {
@@ -898,7 +902,7 @@ namespace dd
     catch(RapidjsonException &e)
       {
 	_logger->error("JSON error {}",e.what());
-	return dd_bad_request_400();
+	return dd_bad_request_400(e.what());
       }
     catch(...)
       {
@@ -918,24 +922,24 @@ namespace dd
       }
     catch (InputConnectorBadParamException &e)
       {
-	dout = dd_service_input_bad_request_1005();
+	dout = dd_service_input_bad_request_1005(e.what());
       }
     catch (MLLibBadParamException &e)
       {
-	dout = dd_service_bad_request_1006();
+	dout = dd_service_bad_request_1006(e.what());
       }
     catch (InputConnectorInternalException &e)
       {
-	dout = dd_internal_error_500();
+	dout = dd_internal_error_500(e.what());
       }
     catch (MLLibInternalException &e)
       {
-	dout = dd_internal_error_500();
+	dout = dd_internal_error_500(e.what());
       }
     catch(RapidjsonException &e)
       {
 	_logger->error("JSON error {}",e.what());
-	dout = dd_bad_request_400();
+	dout = dd_bad_request_400(e.what());
       }
     catch (std::exception &e)
       {
@@ -1017,7 +1021,7 @@ namespace dd
     catch(RapidjsonException &e)
       {
 	_logger->error("JSON error {}",e.what());
-	return dd_bad_request_400();
+	return dd_bad_request_400(e.what());
       }
     catch(...)
       {
