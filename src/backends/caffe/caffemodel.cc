@@ -135,6 +135,11 @@ namespace dd
   int CaffeModel::copy_to_target(const std::string &target_repo,
 				 const std::shared_ptr<spdlog::logger> &logger)
   {
+    if (target_repo.empty())
+      {
+	logger->warn("empty target repository, bypassing");
+	return 0;
+      }
     if (!fileops::create_dir(target_repo,0755)) // create target repo as needed
       logger->info("created target repository {}",target_repo);
     std::string bfile = this->_repo + this->_best_model_filename;
