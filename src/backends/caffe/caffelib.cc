@@ -1150,8 +1150,8 @@ namespace dd
 	    test(solver->test_nets().at(0).get(),ad,inputc,test_batch_size,has_mean_file,test_iter,meas_out);
 	    APIData meas_obj = meas_out.getobj("measure");
 
-           save_if_best(meas_obj, solver, already_snapshoted);
-
+	    // save best iteration snapshot
+	    save_if_best(meas_obj, solver, already_snapshoted);
 
 	    std::vector<std::string> meas_str = meas_obj.list_keys();
 	    this->_logger->info("batch size={}",batch_size);
@@ -1168,14 +1168,16 @@ namespace dd
 		else if (m == "cmdiag" || m == "clacc")
 		  {
 		    std::vector<double> mdiag = meas_obj.get(m).get<std::vector<double>>();
+		    std::vector<std::string> cnames;
 		    std::string mdiag_str;
 		    for (size_t i=0;i<mdiag.size();i++)
 		      {
 			mdiag_str += this->_mlmodel.get_hcorresp(i) + ":" + std::to_string(mdiag.at(i)) + " ";
-			this->add_meas_per_iter(m+'_'+std::to_string(i),mdiag.at(i));
+			this->add_meas_per_iter(m+'_'+this->_mlmodel.get_hcorresp(i),mdiag.at(i));
+			cnames.push_back(this->_mlmodel.get_hcorresp(i));
 		      }
 		    this->_logger->info("{}=[{}]",m,mdiag_str);
-		    this->add_meas(m,mdiag);
+		    this->add_meas(m,mdiag,cnames);
 		  }
 	      }
 	  }

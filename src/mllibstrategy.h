@@ -242,13 +242,14 @@ namespace dd
       else _meas.insert(std::pair<std::string,double>(meas,l));
     }
 
-    void add_meas(const std::string &meas, const std::vector<double> &vl)
+    void add_meas(const std::string &meas, const std::vector<double> &vl,
+		  const std::vector<std::string> &cnames)
     {
       std::lock_guard<std::mutex> lock(_meas_mutex);
       int c = 0;
       for (double l: vl)
 	{
-	  std::string measl = meas + '_' + std::to_string(c);
+	  std::string measl = meas + '_' + cnames.at(c);//std::to_string(c);
 	  auto hit = _meas.find(measl);
 	  if (hit!=_meas.end())
 	    (*hit).second = l;
