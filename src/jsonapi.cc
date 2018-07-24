@@ -221,7 +221,9 @@ namespace dd
   {
     JDoc jd;
     jd.SetObject();
-    render_status(jd,400,"BadRequest",1005,"Service Input Error");
+    if (msg.empty())
+      render_status(jd,400,"BadRequest",1005,"Service Input Error");
+    else render_status(jd,400,"BadRequest",1005,"Service Input Error: " + msg);
     return jd;
   }
   
