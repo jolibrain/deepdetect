@@ -239,6 +239,7 @@ namespace dd
 	}
       ad.add("jobs",vad);
       ad.add("parameters",_init_parameters);
+      ad.add("repository",this->_inputc._model_repo);
       ad.add("mltype",this->_mltype);
       return ad;
     }
