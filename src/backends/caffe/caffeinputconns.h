@@ -275,7 +275,7 @@ namespace dd
 		  if (ad_input.has("db_height"))
 		    db_height = ad_input.get("db_height").get<int>();
 		  if (ad_input.has("db_width"))
-		    db_height = ad_input.get("db_width").get<int>();
+		    db_width = ad_input.get("db_width").get<int>();
 		}
 	      ad_mllib = ad_param.getobj("mllib");
 	    }
