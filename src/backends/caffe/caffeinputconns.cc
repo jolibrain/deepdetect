@@ -727,7 +727,7 @@ namespace dd
 	tlines.push_back(std::pair<std::string,std::string>(elts.at(0),elts.at(1)));
 	++clines;
       }
-    write_objects_to_db(testdbname,db_height,db_width,tlines,encoded,encode_type,backend,false);
+    write_objects_to_db(testdbname,this->_height,this->_width,tlines,encoded,encode_type,backend,false);
     _db_testbatchsize = tlines.size();
     
     //TODO: write corresp / map file
