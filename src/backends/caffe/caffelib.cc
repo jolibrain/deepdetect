@@ -1290,7 +1290,7 @@ namespace dd
       throw MLLibBadParamException("no deploy file in " + this->_mlmodel._repo + " for initializing the net");
     
     // test
-    if (!inputc._ctc) // ctc uses the accuracy computed from within the net, can't run test with deploy
+    if (!inputc._ctc && !inputc._bbox) // ctc uses the accuracy computed from within the net, and bbox models use special layer as well, can't run test with deploy
       test(_net,ad,inputc,test_batch_size,has_mean_file,test_iter,out);
     inputc._dv_test.clear();
     inputc._dv_test_sparse.clear();
