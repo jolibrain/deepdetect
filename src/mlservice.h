@@ -358,6 +358,9 @@ namespace dd
 	      if (ad_params_out.has("max_hist_points"))
 		this->collect_measures_history(out,ad_params_out.get("max_hist_points").get<int>());
 	      else this->collect_measures_history(out);
+	      out.add("mltype",this->_mltype);
+	      out.add("sname",this->_sname);
+	      out.add("description",this->_description);
 	      _training_jobs.erase(hit);
 	    }
 	  return 0;
