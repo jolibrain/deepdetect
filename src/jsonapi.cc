@@ -472,7 +472,7 @@ namespace dd
 
 	  } else return dd_service_bad_request_1006(); // unknown service type
 
-	  // store model configuration json blob
+	  // store successful call json blob
 	  if (JsonAPI::store_json_blob(c2model._repo, jstr)) {
 	    _logger->error("couldn't write {} file in model repository {}",
 			   JsonAPI::_json_blob_fname, c2model._repo);
