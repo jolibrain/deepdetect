@@ -595,7 +595,7 @@ namespace dd
 		    ++cpos;
 		}
 		// add space, only if more forthcoming words
-		if (i != elts.size()-1)
+		if (cpos < max_ocr_length && i != elts.size()-1)
 		  {
 		    ocr_data[nline][cpos] = 0.0;
 		    ++cpos;
