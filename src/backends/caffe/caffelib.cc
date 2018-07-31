@@ -193,7 +193,6 @@ namespace dd
 	caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
 	caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
 
-
     if (this->_loss == "dice"  || _loss == "dice_multiclass" || _loss == "dice_weighted")
       // dice loss!!
       {
@@ -205,12 +204,12 @@ namespace dd
           {
             update_protofiles_dice_one_hot(net_param, this->_loss, _nclasses);
             update_protofiles_dice_deeplab_vgg16(net_param, deploy_net_param, this->_loss, ignore_label);
-          }
+	  }
         else if (net_param.name().compare("unet") == 0)
           {
             update_protofiles_dice_one_hot(net_param, this->_loss, _nclasses);
             update_protofiles_dice_unet(net_param,deploy_net_param, this->_loss, ignore_label);
-          }
+	  }
 
       }
 
@@ -322,6 +321,8 @@ namespace dd
 		  lparam->mutable_dense_image_data_param()->set_mirror(ad.get("mirror").get<bool>());
 		if (ad.has("rotate"))
 		  lparam->mutable_dense_image_data_param()->set_rotate(ad.get("rotate").get<bool>());
+		lparam->mutable_dense_image_data_param()->set_new_height(this->_inputc.height());
+		lparam->mutable_dense_image_data_param()->set_new_width(this->_inputc.width());
 		// XXX: DenseImageData supports crop_height and crop_width
 	      }
 	  }
