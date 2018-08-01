@@ -100,6 +100,12 @@ namespace dd {
 	blob.GetMutable<caffe2::TensorCPU>()->CopyFrom(tensor);
     }
 
+    void ModelContext::broadcast_tensor(const std::string &name, const caffe2::TensorCPU &tensor) {
+      for (size_t i = 0; i < device_count(); ++i) {
+	insert_tensor(i, name, tensor);
+      }
+    }
+
     static bool deserialize_blob(caffe2::Blob &blob, const std::string &path) {
       std::ifstream f(path);
       CAFFE_ENFORCE(f.good());
@@ -111,10 +117,6 @@ namespace dd {
       }
       blob.Deserialize(str);
       return true;
-    }
-
-    void ModelContext::reset_iter() {
-      _loaded_iter = 0;
     }
 
     void ModelContext::load_iter(const std::string &path) {
@@ -132,10 +134,7 @@ namespace dd {
       // A learning rate serialized during the first iteration is still uninitialized
       // In that case we just ignore it
       if (deserialize_blob(blob, path)) {
-	const caffe2::TensorCPU &tensor = blob.Get<caffe2::TensorCPU>();
-	for (size_t i = 0; i < device_count(); ++i) {
-	  insert_tensor(i, blob_lr, tensor);
-	}
+	broadcast_tensor(blob_lr, blob.Get<caffe2::TensorCPU>());
       }
     }
 
@@ -149,10 +148,9 @@ namespace dd {
 				     const Stockage<Result, Data> &store) const {
 
       // Fetch tensors
-      std::string layer = name.empty() ? _output_blob : name;
       std::vector<caffe2::TensorCPU> tensors(device_count());
       for (size_t i = 0; i < tensors.size(); ++i) {
-	CAFFE_ENFORCE(extract_tensor(i, layer, tensors[i]));
+	CAFFE_ENFORCE(extract_tensor(i, name, tensors[i]));
 	CAFFE_ENFORCE(tensors[i].IsType<Data>());
       }
 
@@ -189,24 +187,36 @@ namespace dd {
       result.assign(data, data + size);
     }
 
-    void ModelContext::extract_results(std::vector<int> &results,
-				       const std::string &name) const {
-      extract_layer(results, name, Stockage<int, int>(_store_single_value<int>));
+    template <typename Result, typename Data>
+    static void assign_results(std::vector<Result> &results, const std::vector<Data> &datas) {
+      results.assign(datas.begin(), datas.end());
     }
 
-    void ModelContext::extract_results(std::vector<long> &results,
-				       const std::string &name) const {
-      extract_layer(results, name, Stockage<long, long>(_store_single_value<long>));
+    template <typename Result, typename Data>
+    static void assign_results(std::vector<std::vector<Result>> &results,
+			       const std::vector<std::vector<Data>> &datas) {
+      for (size_t i = 0; i < results.size(); ++i) {
+	results[i].assign(datas[i].begin(), datas[i].end());
+      }
     }
 
-    void ModelContext::extract_results(std::vector<float> &results,
-				       const std::string &name) const {
-      extract_layer(results, name, Stockage<float, float>(_store_single_value<float>));
+    template <typename T>
+    void ModelContext::extract_results(std::vector<T> &results, const std::string &name) const {
+      extract_layer(results, name, Stockage<T, T>(_store_single_value<T>));
     }
 
-    void ModelContext::extract_results(std::vector<std::vector<float>> &results,
+    template <typename T>
+    void ModelContext::extract_results(std::vector<std::vector<T>> &results,
 				       const std::string &name) const {
-      extract_layer(results, name, Stockage<std::vector<float>, float>(_store_vector<float>));
+      extract_layer(results, name, Stockage<std::vector<T>, T>(_store_vector<T>));
+    }
+
+    template <typename Result, typename Data>
+    void ModelContext::extract_and_cast_results(std::vector<Result> &results,
+						const std::string &name) const {
+      std::vector<Data> raw(results.size());
+      extract_results(raw, name);
+      assign_results(results, raw);
     }
 
     float ModelContext::extract_loss() const {
@@ -222,9 +232,7 @@ namespace dd {
     }
 
     void ModelContext::extract_labels(std::vector<float> &labels) const {
-      std::vector<int> int_labels(labels.size());
-      extract_results(int_labels, _blob_label);
-      labels.assign(int_labels.begin(), int_labels.end());
+      extract_and_cast_results<float, int>(labels, _blob_label);
     }
 
     void ModelContext::extract_state(std::map<std::string, std::string> &blobs) const {
@@ -241,6 +249,11 @@ namespace dd {
       } else { // Can fail during the first iteration of the net
 	blobs["lr"] = caffe2::TypeMeta().name(); // nullptr (uninitialized)
       }
+    }
+
+    void ModelContext::extract(std::vector<std::vector<float>> &batches,
+			       const std::string &name) const {
+      extract_results(batches, name);
     }
 
     /*
@@ -285,8 +298,9 @@ namespace dd {
 
       add_ops_and_inputs(net, ref, { _input_blob });
 
-      //XXX Manage no-label outputs
-      LabelCrossEntropy(net, _output_blob, _blob_label, blob_xent);
+      //XXX Manage other kinds of outputs (no-label, multi-label, bbox, etc.)
+      CAFFE_ENFORCE(_output_blobs.size() == 1);
+      LabelCrossEntropy(net, _output_blobs[0], _blob_label, blob_xent);
 
       std::string loss_grad = blob_loss_scale + gradient_suffix;
 
@@ -317,9 +331,7 @@ namespace dd {
       int last_op = ops.size() - 1; // Index of the last operator that updates 'blob'
 
       while (true) {
-	caffe2::OperatorDef &op = ops[last_op];
-	auto outputs = op.output();
-	if (std::find(outputs.begin(), outputs.end(), blob) != outputs.end()) {
+	if (has_output(ops[last_op], blob)) {
 	  break;
 	}
 	if (!last_op--) {

@@ -174,8 +174,7 @@ namespace dd {
 	}
 #endif
 	for (const std::string &input : op.input()) {
-	  const auto &output = op.output();
-	  if (std::find(output.begin(), output.end(), input) != output.end()) {
+	  if (has_output(op, input)) {
 	    // If a blob is tagged as both an input and an output,
 	    // Then an inplace gradient will already be created (no need to it manually)
 	    continue;

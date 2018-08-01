@@ -33,7 +33,12 @@
 #include "imginputfileconn.h"
 #include "backends/caffe2/caffe2lib.h"
 #include "backends/caffe2/nettools.h"
+
+//XXX Remove that to print the warnings
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include "outputconnectorstrategy.h"
+#pragma GCC diagnostic pop
 
 namespace dd {
 
@@ -62,29 +67,6 @@ namespace dd {
   Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::~Caffe2Lib() {}
 
   template <typename T>
-  static bool get_api_variant(const ad_variant_type &adv, const std::function<void(const T&)> &f) {
-    if (!adv.is<T>()) {
-      return false;
-    }
-    f(adv.get<T>());
-    return true;
-  }
-
-  // Simple way to retrieve a value from an APIData when the type is uncertain
-  template <typename T1, typename T2>
-  static void test_api_variants(const APIData &ad, const std::string &name,
-				const std::function<void(const T1&)> &f1,
-				const std::function<void(const T2&)> &f2) {
-    const ad_variant_type &adv = ad.get(name);
-    if (get_api_variant<T1>(adv, f1));
-    else if (get_api_variant<T2>(adv, f2));
-    else throw std::runtime_error("Invalid type for '" + std::string(name) + "'");
-  }
-
-#define TEST_API_VARIANTS(ad, name, t1, code1, t2, code2)		\
-  test_api_variants<t1, t2>(ad, name, [&](const t1 &value) {code1;}, [&](const t2 &value) {code2;});
-
-  template <typename T>
   using StateSetter = void(Caffe2LibState::*)(const T&);
 
 #ifdef CPU_ONLY
@@ -100,9 +82,7 @@ namespace dd {
       std::vector<int> ids;
 
       // Fetch ids from the ApiData
-      TEST_API_VARIANTS(ad, "gpuid",
-			int,			ids = { value },
-			std::vector<int>,	ids = value);
+      apitools::get_vector(ad, "gpuid", ids);
 
       // By default, use every GPUs
       if (ids.size() == 1 && ids[0] == -1) {
@@ -176,6 +156,16 @@ namespace dd {
     this->_mlmodel.update_from_repository(this->_logger);
   }
 
+  //TODO be able to batch the input of any net, and remove this function
+  inline bool is_net_batchable(const std::string &net_pb_file) {
+    //XXX Nets ending with a BoxWithNMSLimit need an additionnal layer called batch_splits
+    // to be able to compute a batch of input.
+    // As it is currently not supported by the input connector, a batch size of 1 is mandatory.
+    caffe2::NetDef net;
+    CAFFE_ENFORCE(caffe2::ReadProtoFromFile(net_pb_file, &net));
+    return net.op(net.op().size() - 1).type() == "BoxWithNMSLimit";
+  }
+
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
   set_train_mode(const APIData &ad, bool train) {
@@ -183,6 +173,16 @@ namespace dd {
     // Update the input connector
     TInputConnectorStrategy inputc(this->_inputc);
     inputc._train = train;
+
+    // If the net is neither training nor testing, the input connector can
+    // load all the data into a single batch
+    inputc._measuring = ad.getobj("parameters").getobj("output").has("measure");
+
+    //TODO remove this flag
+    this->_mlmodel.update_from_repository(this->_logger);
+    inputc._force_lowest_batch_size = is_net_batchable(this->_mlmodel._predict);
+
+    // Configure the input data
     try {
       inputc.transform(ad);
     } catch (std::exception &e) {
@@ -316,15 +316,15 @@ namespace dd {
   create_model() {
     this->_logger->info("Re-creating the nets");
 
-    // _input_blob and _output_blob should have been initialized during init_mllib
+    // _input_blob and _output_blobs should have been initialized during init_mllib
     // (by "inputlayer" and "outputlayer" respectively)
     // If the are not, we'll do a guess based on the following conventions:
     //    - the input blob name is (or contains) "data"
     //    - the external inputs are sorted
     //    - all the outputs are created by the last operator
-    if (_context._output_blob.empty()) {
+    if (!_context._output_blobs.size()) {
       const auto &outputs = _net.op(_net.op().size() - 1).output();
-      _context._output_blob = outputs[0];
+      _context._output_blobs.assign(outputs.begin(), outputs.end());
     }
     if (_context._input_blob.empty()) {
       const auto &inputs = _net.external_input();
@@ -366,14 +366,12 @@ namespace dd {
     // Register the prediction net
     if (!_state.is_training() || _state.is_testing()) {
       this->_logger->info("Create predict net");
-      _context.configure_net(_net);
       _context.create_net(_net);
     }
 
     // Register the training net
-    this->_logger->info("Create train net");
     if (_state.is_training()) {
-      _context.configure_net(_train_net);
+      this->_logger->info("Create train net");
       _context.create_net(_train_net);
     }
 
@@ -385,8 +383,10 @@ namespace dd {
   update_model() {
 
     if (!_state.changed()) {
-      this->_logger->info("Reseting the workspace");
-      _context.run_net_once(_init_net);
+      if (_state.is_training()) {
+	this->_logger->info("Reseting the workspace");
+	_context.run_net_once(_init_net);
+      }
       return;
     }
 
@@ -432,7 +432,7 @@ namespace dd {
       _context._input_blob = ad.get("inputlayer").get<std::string>();
     }
     if (ad.has("outputlayer")) {
-      _context._output_blob = ad.get("outputlayer").get<std::string>();
+      apitools::get_vector(ad, "outputlayer", _context._output_blobs);
     }
     if (ad.has("nclasses")) {
       _context._nclasses = ad.get("nclasses").get<int>();
@@ -506,24 +506,44 @@ namespace dd {
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   float Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
-  run_net(const std::string &net, std::vector<std::vector<float>> *results) {
+  run_net(const std::string &net) {
     try {
 
-      std::chrono::time_point<std::chrono::system_clock> start = std::chrono::system_clock::now();
+      using namespace std::chrono;
+      time_point<system_clock> start = system_clock::now();
       _context.run_net(net);
-
-      if (results) {
-	// Fill the vector with the output layer
-	// Extract layer is only used if not empty
-	_context.extract_results(*results, _state.extract_layer());
-      }
-
-      std::chrono::time_point<std::chrono::system_clock> stop = std::chrono::system_clock::now();
-      return std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
+      return duration_cast<milliseconds>(system_clock::now() - start).count();
 
     } catch(std::exception &e) {
-      this->_logger->error("Error while running the network, not enough memory? {}", e.what());
+      this->_logger->error("Error while running the network: {}", e.what());
       throw;
+    }
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
+  extract_results(int batch_size, std::vector<std::vector<std::vector<float>>> &results) {
+
+    // Choose outputs to extract
+    std::vector<std::string> outputs;
+    if (_state.extract_layer().empty()) {
+      outputs = _context._output_blobs;
+    } else {
+      outputs = { _state.extract_layer() };
+    }
+
+    //XXX More checks could be done
+    if (_state.bbox()) {
+      CAFFE_ENFORCE(outputs.size() == 3); // scores, bboxes, classes
+    } else {
+      CAFFE_ENFORCE(outputs.size() == 1); // simple prediction
+    }
+
+    // Fill the vector
+    results.clear();
+    for (const std::string &output : outputs) {
+      results.emplace_back(batch_size);
+      _context.extract(results.back(), output);
     }
   }
 
@@ -626,21 +646,28 @@ namespace dd {
 	test(ad, meas_out);
 	APIData meas_obj = meas_out.getobj("measure");
 	for (auto meas : meas_obj.list_keys()) { // Add test measures
-	  TEST_API_VARIANTS(meas_obj, meas,
-			    double,
-				this->add_meas(meas, value);
-				this->add_meas_per_iter(meas, value);
-				this->_logger->info("{} = {}", meas, value),
-			    std::vector<double>,
-				size_t nb_values = value.size();
-				std::vector<std::string> cls(nb_values);
-				this->_mlmodel.get_hcorresp(cls);
-				this->add_meas(meas, value, cls);
-				std::stringstream s;
-				for (size_t v = 0; v < nb_values; ++v) {
-				  s << (v ? ", " : "") << cls[v] << ": " << value[v];
-				}
-				this->_logger->info("{} = [ {} ]", meas, s.str()));
+	  apitools::test_variants<double, std::vector<double>>
+	    (meas_obj, meas,
+
+	     // Single value
+            [&](const double &value) {
+	      this->add_meas(meas, value);
+	      this->add_meas_per_iter(meas, value);
+	      this->_logger->info("{} = {}", meas, value);
+	    },
+
+	    // Multiple values
+	    [&](const std::vector<double> &values) {
+	      size_t nb_values = values.size();
+	      std::vector<std::string> cls(nb_values);
+	      this->_mlmodel.get_hcorresp(cls);
+	      this->add_meas(meas, values, cls);
+	      std::stringstream s;
+	      for (size_t value = 0; value < nb_values; ++value) {
+		s << (value ? ", " : "") << cls[value] << ": " << values[value];
+	      }
+	      this->_logger->info("{} = [ {} ]", meas, s.str());
+	    });
 	}
 	this->_logger->info("Model tested");
       }
@@ -665,18 +692,13 @@ namespace dd {
     return 0;
   }
 
-  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  int Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
-  load_batch(int already_loaded) {
-    if (_last_inputc.is_load_manual()) {
-      return _last_inputc.load_batch(_context);
-    }
-    return _last_inputc.use_dbreader(_context, already_loaded);
-  }
-
+  //XXX Some code in common with 'predict', it should be possible to group it into another function
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
   test(const APIData &ad, APIData &out) {
+
+    //XXX Right now it means supervised single-label classification
+    CAFFE_ENFORCE(!_state.bbox() && _context._output_blobs.size() == 1);
 
     // Add already computed measures
     APIData ad_res;
@@ -696,27 +718,31 @@ namespace dd {
     //XXX True/False flags can be forwarded to ad_res (segmentation, multi_label, etc.)
 
     // Loop while there is data to test
-    int total_size = 0;
-    for (int batch_size; (batch_size = load_batch(total_size)); total_size += batch_size) {
-      std::vector<std::vector<float>> results(batch_size);
-      run_net(_net.name(), &results);
+    int batch_size, total_size = 0;
+    while ((batch_size = _last_inputc.load_batch(_context, total_size))) {
+      run_net(_net.name());
+
+      // Extract results
+      std::vector<std::vector<std::vector<float>>> results;
+      extract_results(batch_size, results);
 
       //XXX Find how labels could be fetched when loading manually
-      //XXX What about other types of prediction ? Multi-labels ?
       std::vector<float> labels(batch_size);
       _context.extract_labels(labels);
 
-      // Loop on each batch
-      for (int j = 0; j < batch_size; j++) {
+      // Loop on each item of the batch
+      for (int item = 0; item < batch_size; ++item, ++total_size) {
 	APIData bad;
-	std::vector<double> predictions;
 
-	//XXX Here again 'target' and 'pred' format will change depending on the prediction mode
-	//(e.g. multi-label)
-	predictions.assign(results[j].begin(), results[j].end());
-	bad.add("target", labels[j]);
+	//XXX 'target' and 'pred' format will change depending on the prediction mode
+	//(e.g. bbox or multi-label)
+	const std::vector<float> &result = results[0][item];
+	std::vector<double> predictions;
+	predictions.assign(result.begin(), result.end());
+	bad.add("target", labels[item]);
 	bad.add("pred", predictions);
-	ad_res.add(std::to_string(total_size + j), bad);
+
+	ad_res.add(std::to_string(total_size), bad);
       }
     }
 
@@ -737,10 +763,10 @@ namespace dd {
     // Get the lower limit of confidence requested for an prediction to be acceptable
     float confidence_threshold = 0.0;
     if (ad_output.has("confidence_threshold")) {
-      TEST_API_VARIANTS(ad_output, "confidence_threshold",
-			double,	confidence_threshold = value,
-			int,	confidence_threshold = static_cast<float>(value));
+      apitools::get_float(ad_output, "confidence_threshold", confidence_threshold);
     }
+
+    _state.set_bbox(ad_output);
 
     //XXX More informations could be fetched in the future (bbox, rois, etc.)
 
@@ -764,53 +790,99 @@ namespace dd {
       return 0;
     }
 
-    // Load everything in a single batch
-    CAFFE_ENFORCE(_last_inputc.is_load_manual());
-    int batch_size = load_batch();
+    // Extract results
+    std::vector<APIData> vrad;
 
-    std::vector<APIData> vrad(batch_size);
-    std::vector<std::vector<float> > results(batch_size);
-    run_net(_net.name(), &results);
+    int batch_size, total_size = 0;
+    while ((batch_size = _last_inputc.load_batch(_context, total_size))) {
+      run_net(_net.name());
 
-    // Loop on each item of the input batch
-    for (int i = 0; i < batch_size; ++i) {
-      const std::vector<float> &result = results[i];
-      APIData &rad = vrad[i];
+      // Extract results
+      std::vector<std::vector<std::vector<float>>> results;
+      extract_results(batch_size, results);
 
-      rad.add("uri", _last_inputc.ids().at(i)); // Store its name
-      rad.add("loss", 0.f); //XXX Needed but not relevant
+      // Loop on each item of the input batch
+      for (int item = 0; item < batch_size; ++item, ++total_size) {
 
-      if (_state.extract_layer().empty()) { //XXX for now this means supervised classification
+	vrad.emplace_back();
+	APIData &rad = vrad.back();
+	rad.add("uri", _last_inputc.ids().at(total_size)); // Store its name
+	rad.add("loss", 0.f); //XXX Needed but not relevant
 
-	std::vector<double> probs;
-	std::vector<std::string> cats;
-	for (size_t j = 0; j < result.size(); ++j) {
-	  float prob = result[j];
-	  if (prob < confidence_threshold)
-	    continue;
-	  probs.push_back(prob);
-	  cats.push_back(this->_mlmodel.get_hcorresp(j));
+	if (!_state.extract_layer().empty()) {
+
+	  const std::vector<float> &result = results[0][item];
+	  std::vector<double> vals(result.begin(), result.end()); // raw extracted layer
+	  rad.add("vals", vals);
+
+	} else if (_state.bbox()) {
+
+	  // Fetch data
+	  const std::vector<float> &scale = _last_inputc.scales().at(total_size);
+	  const std::vector<float> &scores = results[0][item];
+	  const std::vector<float> &coords = results[1][item];
+	  const std::vector<float> &classes = results[2][item];
+	  std::vector<double> probs;
+	  std::vector<std::string> cats;
+	  std::vector<APIData> bboxes;
+	  CAFFE_ENFORCE(scores.size() == classes.size());
+	  CAFFE_ENFORCE(scores.size() * 4 == coords.size());
+	  auto coords_it = coords.begin();
+
+	  for (size_t box = 0; box < scores.size(); ++box, coords_it += 4) {
+
+	    // Ignore low score
+	    float prob = scores[box];
+	    if (prob < confidence_threshold)
+	      continue;
+
+	    // Set the bounding box
+	    APIData ad_bbox;
+	    const std::vector<std::string> coord({"xmin", "ymin", "xmax", "ymax"});
+	    const std::vector<float> coord_scale({scale[1], scale[0], scale[1], scale[0]});
+	    for (int coord_idx = 0; coord_idx < 4; ++coord_idx) {
+	      ad_bbox.add(coord[coord_idx], *(coords_it + coord_idx) / coord_scale[coord_idx]);
+	    }
+
+	    // Append the data
+	    probs.push_back(prob);
+	    cats.push_back(this->_mlmodel.get_hcorresp(classes[box]));
+	    bboxes.push_back(ad_bbox);
+	  }
+
+	  rad.add("probs", probs);
+	  rad.add("cats", cats);
+	  rad.add("bboxes", bboxes);
+
+	} else { //XXX for now this means supervised classification
+
+	  const std::vector<float> &result = results[0][item];
+	  std::vector<double> probs;
+	  std::vector<std::string> cats;
+	  for (size_t cls = 0; cls < result.size(); ++cls) {
+	    float prob = result[cls];
+	    if (prob < confidence_threshold)
+	      continue;
+	    probs.push_back(prob);
+	    cats.push_back(this->_mlmodel.get_hcorresp(cls));
+	  }
+	  rad.add("probs", probs);
+	  rad.add("cats", cats);
+
 	}
-	rad.add("probs", probs);
-	rad.add("cats", cats);
 
-      } else {
-	std::vector<double> vals(result.begin(), result.end()); // raw extracted layer
-	rad.add("vals", vals);
+	//XXX This if/else could contain more extraction types (segmentation, etc.)
       }
-
-      //XXX This if/else could contain more extraction types (segmentation, bbox, etc.)
-
-      vrad.push_back(rad);
     }
 
     tout.add_results(vrad);
+
+    out.add("bbox", bool(_state.bbox())); // ad_api_variants work with 'bool', not 'const bool &'
 
     //XXX More tags can be forwarded (regression, autoencoder, etc.)
 
     tout.finalize(ad.getobj("parameters").getobj("output"), out,
 		  static_cast<MLModel*>(&this->_mlmodel));
-
     out.add("status", 0);
     return 0;
   }

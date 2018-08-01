@@ -31,20 +31,27 @@
 namespace dd {
 
   void ImgCaffe2InputFileConn::update(const APIData &ad) {
+
+    // std
     if (ad.has("std")) {
-      _std = static_cast<float>(ad.get("std").get<double>());
+      apitools::get_float(ad, "std", _std);
     }
+
+    // mean
+    if (!_has_mean_scalar) {
+      load_mean_file();
+    }
+
     //XXX Implement support for other tags (multi_label, segmentation, ...)
   }
 
   void ImgCaffe2InputFileConn::init(const APIData &ad) {
+
     ImgInputFileConn::init(ad);
     Caffe2InputInterface::init(this);
-    update(ad);
-    //XXX let the meanfile and/or mean-values be changed by the API ?
     _mean_file = _model_repo + "/mean.pb";
     _corresp_file = _model_repo + "/corresp.txt";
-    load_mean_file();
+    update(ad);
   }
 
   void ImgCaffe2InputFileConn::transform(const APIData &ad) {
@@ -67,8 +74,6 @@ namespace dd {
       transform_predict(ad);
       finalize_transform_predict(ad);
     }
-
-    load_mean_file();
   }
 
   void ImgCaffe2InputFileConn::load_mean_file() {
@@ -76,8 +81,8 @@ namespace dd {
     // Default values
     if (!fileops::file_exists(_mean_file)) {
       _logger->info("No mean file in the repository");
-      _mean_values.clear();
-      _mean_values.resize(channels());
+      _mean.clear();
+      _mean.resize(channels());
       return;
     }
 
@@ -86,17 +91,24 @@ namespace dd {
     std::ifstream ifs(_mean_file);
     mean.ParseFromIstream(&ifs);
     ifs.close();
-    _mean_values.resize(mean.dims(0));
-    CAFFE_ENFORCE(_mean_values.size() == static_cast<size_t>(channels()));
+    _mean.resize(mean.dims(0));
+    CAFFE_ENFORCE(_mean.size() == static_cast<size_t>(channels()));
     int chan_size = mean.dims(1) * mean.dims(2);
 
     // Compute mean values
     const float *data = mean.float_data().data();
-    for (float &value : _mean_values) {
+    for (float &value : _mean) {
       const float *data_end = data + chan_size;
-      value = std::accumulate(data, data_end, 0) / chan_size;
+      value = std::accumulate(data, data_end, 0.f) / chan_size;
       data = data_end;
     }
+  }
+
+  inline std::vector<float> compute_scale(const cv::Mat &image, const std::pair<int, int> &size) {
+    return {
+      static_cast<float>(image.rows) / size.first,
+      static_cast<float>(image.cols) / size.second
+    };
   }
 
   void ImgCaffe2InputFileConn::transform_predict(const APIData &ad) {
@@ -121,6 +133,9 @@ namespace dd {
       _is_testable = false; //XXX Can't infer labels from raw data
       _is_load_manual = true;
       _ids = _uris;
+      _scales.resize(_ids.size());
+      std::transform(_images.begin(), _images.end(), _images_size.begin(), _scales.begin(),
+		     compute_scale);
 
     } else {
 
@@ -129,7 +144,14 @@ namespace dd {
       _is_testable = true;
       _is_load_manual = false;
       _ids.resize(_db_size);
-      std::iota(_ids.begin(), _ids.end(), 0); // Set indices as ids
+      _scales.resize(_db_size);
+
+      // Set indices as ids
+      for (int id = 0; id < _db_size; ++id) {
+	_ids[id] = std::to_string(id);
+      }
+      // No pre-computation
+      std::fill(_scales.begin(), _scales.end(), std::vector<float>({1, 1}));
     }
   }
 
@@ -159,8 +181,20 @@ namespace dd {
 
     compute_db_sizes();
 
-    if (new_data || !fileops::file_exists(_mean_file)) {
+    if (_has_mean_scalar) {
+      // Save the mean values used in this training
+      caffe2::TensorProto mean;
+      std::vector<size_t> dims({ _mean.size(), 1, 1 });
+      *mean.mutable_dims() = {dims.begin(), dims.end()};
+      *mean.mutable_float_data() = {_mean.begin(), _mean.end()};
+      std::ofstream ofs(_mean_file);
+      mean.SerializeToOstream(&ofs);
+      ofs.close();
+
+    } else if (new_data || !fileops::file_exists(_mean_file)) {
+      // Compute the mean values of the database and save it into a file
       compute_images_mean();
+      load_mean_file();
     }
   }
 
@@ -329,6 +363,10 @@ namespace dd {
     std::unique_ptr<caffe2::db::DB> db(caffe2::db::CreateDB(_db_type, dbname, caffe2::db::NEW));
     std::unique_ptr<caffe2::db::Transaction> txn(db->NewTransaction());
 
+    //TODO Manage Dectron-like databases
+    // Detectron : [ images with variable size, im_info blob, bbox, classes, ... ]
+    // Current : [ images with the same size, label blob ]
+
     // Prefill db entries
     int chans = channels();
     int chan_size = _height * _width * sizeof(float);
@@ -400,49 +438,60 @@ namespace dd {
     _logger->info("{} successfully created ({} entries)", dbname, count);
   }
 
-  int ImgCaffe2InputFileConn::load_batch(Caffe2NetTools::ModelContext &context) {
-    CAFFE_ENFORCE(_is_load_manual);
+  inline float *resize_data(caffe2::TensorCPU &tensor, const std::vector<caffe2::TIndex> &size) {
+    tensor.Resize(size);
+    return tensor.mutable_data<float>();
+  }
 
-    std::vector<cv::Mat> chan(channels());
-    size_t channel_size = _height * _width * sizeof(float);
-    std::vector<caffe2::TIndex> dims({channels(), _height, _width});
-    auto image = _images.begin();
+  inline void append_data(float *&dst, float *src, size_t size) {
+    std::memcpy(dst, src, size * sizeof(float));
+    dst += size;
+  }
 
+  int ImgCaffe2InputFileConn::load_batch(Caffe2NetTools::ModelContext &context,
+					 int already_loaded) {
+
+    // Call the generic batch loader
+    if (!_is_load_manual) {
+      return use_dbreader(context, already_loaded, _train);
+    }
+
+    //TODO Manage batches with multiple image sizes
+
+    auto image = _images.begin() + already_loaded;
     InputGetter get_tensors = [&](std::vector<caffe2::TensorCPU> &tensors) {
 
-      // Resize the tensor
-      caffe2::TensorCPU &tensor(tensors[0]);
-      tensor.Resize(dims);
-      uint8_t *data = reinterpret_cast<uint8_t *>(tensor.mutable_data<float>());
+      // Set the sizes
+      int c = channels(), h = image->rows, w = image->cols;
+      std::vector<float> im_info({ static_cast<float>(h), static_cast<float>(w), 1 });
+      float *data = resize_data(tensors[1], {3});
+      append_data(data, im_info.data(), 3);
 
-      // Convert to float
+      // Convert from HWC uint8 to CHW float
+      std::vector<cv::Mat> chan(c);
+      data = resize_data(tensors[0], {c, h, w});
       image->convertTo(*image, CV_32F);
-      cv::split(*image, chan);
-      ++image;
-
-      // Convert from HWC to CHW
+      cv::split(*image++, chan);
       for (cv::Mat &ch : chan) {
-	std::memcpy(data, ch.data, channel_size);
-	data += channel_size;
+	append_data(data, reinterpret_cast<float *>(ch.data), ch.total());
       }
     };
 
-    int batch_size = insert_inputs(context, {context._input_blob}, _images.size(), get_tensors);
-    _images.erase(_images.begin(), image);
-    return batch_size;
+    return insert_inputs(context, {context._input_blob, context._blob_im_info},
+			 _images.size() - already_loaded, get_tensors);
   }
 
   bool ImgCaffe2InputFileConn::needs_reconfiguration(const ImgCaffe2InputFileConn &inputc) {
     return Caffe2InputInterface::needs_reconfiguration(inputc)
-      ||	_std		!= inputc._std
-      ||	_mean_values	!= inputc._mean_values
+      ||	_std	!= inputc._std
+      ||	_mean	!= inputc._mean
       ;
   }
 
   void ImgCaffe2InputFileConn::add_constant_layers(const Caffe2NetTools::ModelContext &context,
 						   caffe2::NetDef &init_net) {
     caffe2::OperatorDef op;
-    Caffe2NetTools::GivenTensorFill(op, _blob_mean_values, { channels() }, _mean_values);
+    Caffe2NetTools::GivenTensorFill(op, _blob_mean_values, { channels() }, _mean);
     Caffe2NetTools::copy_and_broadcast_operator(context, init_net, op);
   }
 

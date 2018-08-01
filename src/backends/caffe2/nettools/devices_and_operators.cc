@@ -19,10 +19,32 @@
  * along with deepdetect.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+//XXX Remove that to print the warnings
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#include <caffe2/core/operator.h>
+#pragma GCC diagnostic pop
+
 #include "backends/caffe2/nettools/internal.h"
 
 namespace dd {
   namespace Caffe2NetTools {
+
+    /*
+     *  Simple tools
+     */
+
+    template<typename T, typename U>
+    inline bool has_value(const T &container, const U &value) {
+      return std::find(container.begin(), container.end(), value) != container.end();
+    }
+
+    bool has_input(const caffe2::OperatorDef &op, const std::string &name) {
+      return has_value(op.input(), name);
+    }
+    bool has_output(const caffe2::OperatorDef &op, const std::string &name) {
+      return has_value(op.output(), name);
+    }
 
     /*
      *  Device management
@@ -65,12 +87,72 @@ namespace dd {
     ADD_EXTERNAL(output)
 #undef ADD_EXTERNAL
 
-    /* ------------------------- Set device in loop ------------------------- */
+    /* ------------------------- Add op ------------------------- */
+
+    inline bool is_cpu_only(const std::string &op) {
+#ifdef CPU_ONLY
+      return true;
+#else
+      return !has_value(caffe2::gDeviceTypeRegistry()->at(caffe2::CUDA)->Keys(), op);
+#endif
+    }
+
+    // Returns true if successfull, false if CPU was forced
+    static bool set_op_device(caffe2::OperatorDef &op, const caffe2::DeviceOption &device) {
+      caffe2::DeviceOption &op_device = *op.mutable_device_option();
+      if (is_cpu_only(op.type())) {
+	op_device.set_device_type(caffe2::CPU);
+	return device.device_type() == caffe2::CPU;
+      }
+      op_device.CopyFrom(device);
+      return true;
+    }
+
+    static void add_op(caffe2::NetDef &net,
+		       const caffe2::OperatorDef &op,
+		       const caffe2::DeviceOption &device) {
+      caffe2::OperatorDef new_op(op);
+      if (set_op_device(new_op, device)) {
+	net.add_op()->CopyFrom(new_op);
+	return;
+      }
+
+      // Device unavailable
+
+      // Convert & Rename inputs
+      for (std::string &input : *new_op.mutable_input()) {
+	caffe2::OperatorDef &to_cpu(EnsureCPUOutput(net, input, input + force_device_suffix));
+	CAFFE_ENFORCE(set_op_device(to_cpu, device));
+	input += force_device_suffix;
+      }
+
+      // Rename outputs
+      for (std::string &output : *new_op.mutable_output()) {
+	output += force_device_suffix;
+      }
+
+      net.add_op()->CopyFrom(new_op);
+
+      // Convert outputs
+      for (const std::string &output : op.output()) {
+	caffe2::OperatorDef &from_cpu(CopyFromCPUInput(net, output + force_device_suffix, output));
+	CAFFE_ENFORCE(set_op_device(from_cpu, device));
+      }
+    }
+
+    /* ------------------------- Add ops in loop ------------------------- */
 
     void set_net_device(caffe2::NetDef &net, const caffe2::DeviceOption &device) {
-      for (caffe2::OperatorDef &op : *net.mutable_op()) {
-	op.mutable_device_option()->CopyFrom(device);
+
+      caffe2::NetDef tmp;
+      for (const caffe2::OperatorDef &op : net.op()) {
+	if (is_cpu_only(op.type())) {
+	  add_op(tmp, op);
+	} else {
+	  add_op(tmp, op, device);
+	}
       }
+      net.mutable_op()->Swap(tmp.mutable_op());
     }
 
     /*
@@ -160,10 +242,8 @@ namespace dd {
 #endif
 
       for (const caffe2::DeviceOption &option : *devices) {
-	caffe2::OperatorDef &op = *net._net.get().add_op();
+	caffe2::OperatorDef op;
 	init(op);
-	op.mutable_device_option()->CopyFrom(option);
-
 #ifndef CPU_ONLY
 	if (option.device_type() == caffe2::CUDA) {
 	  std::string prefix = device_id_to_prefix(option.cuda_gpu_id());
@@ -180,7 +260,7 @@ namespace dd {
 	  }
 	}
 #endif
-	net._op_modifier(op);
+	add_op(net._net, op, option);
       }
     }
 
@@ -193,12 +273,11 @@ namespace dd {
     template<class Net>
     inline void add_ops_and_inputs(Net &dst, const caffe2::NetDef &src,
 				   const std::vector<std::string> &ignore) {
-      auto begin = ignore.begin(), end = ignore.end();
       for (const caffe2::OperatorDef &op : src.op()) {
 	add_op(dst, op);
       }
       for (const std::string &input : src.external_input()) {
-	if (std::find(begin, end, input) == end) {
+	if (!has_value(ignore, input)) {
 	  add_external_input(dst, input);
 	}
       }
@@ -351,6 +430,7 @@ namespace dd {
 		const std::string &output,
 		int broadcast, int axis)
     REGISTER_SIMPLE_OP_1I1O(Copy)
+    REGISTER_SIMPLE_OP_1I1O(Alias)
     REGISTER_SIMPLE_OP_1I1O1A(Scale, float, scale)
 
     // Sum and Optimize
@@ -467,6 +547,8 @@ namespace dd {
     REGISTER_SIMPLE_OP_1I1O(Softmax)
 
     // Misc
+    REGISTER_SIMPLE_OP_1I1O(CopyFromCPUInput)
+    REGISTER_SIMPLE_OP_1I1O(EnsureCPUOutput)
     REGISTER_SIMPLE_OP_3I1O(FC)
     REGISTER_OP(Conv,
 		INPUT(input, w, b),
@@ -602,6 +684,100 @@ namespace dd {
 	ops.push_back(&op);
       }
       copy_and_broadcast_operators(context, net, ops);
+    }
+
+    /*
+     *  Finalisation
+     */
+
+    static void remove_duplicate_casts(caffe2::NetDef &net) {
+
+      caffe2::NetDef new_net;
+      std::map<std::string, std::string> casted_blobs;
+      std::map<std::string, std::string> rename_blobs;
+
+      for (caffe2::OperatorDef &op : *net.mutable_op()) {
+
+	// Rename inputs
+	for (std::string &input : *op.mutable_input()) {
+	  auto rename = rename_blobs.find(input);
+	  if (rename != rename_blobs.end()) {
+	    input = rename->second;
+	  }
+	}
+
+	// Cast operators
+	if (op.type() == "CopyFromCPUInput" || op.type() == "EnsureCPUOutput") {
+	  const std::string &input = op.input(0);
+	  const std::string &output = op.output(0);
+
+	  // Reuse the previous casts
+	  auto casted = casted_blobs.find(input);
+	  if (casted != casted_blobs.end()) {
+	    rename_blobs[output] = casted->second;
+	    continue;
+	  }
+
+	  // Store the blobs name
+	  casted_blobs[input] = output;
+	  casted_blobs[output] = input;
+
+	} else {
+
+	  // Detect blob overrides
+	  for (const std::string &output : op.output()) {
+	    // Do not rename anymore
+	    auto rename = rename_blobs.find(output);
+	    if (rename != rename_blobs.end()) {
+	      rename_blobs.erase(rename);
+	    }
+	    // Do not reuse casts
+	    auto casted = casted_blobs.find(output);
+	    if (casted != casted_blobs.end()) {
+	      casted_blobs.erase(casted_blobs.find(casted->second));
+	      casted_blobs.erase(casted);
+	    }
+	  }
+	}
+
+	// Apply modifications
+	add_op(new_net, op);
+      }
+      net.mutable_op()->Swap(new_net.mutable_op());
+    }
+
+    static void remove_useless_casts(caffe2::NetDef &net) {
+      for (int i = 0; i < net.op().size(); ++i) {
+	caffe2::OperatorDef &op = *net.mutable_op(i);
+
+	// Cast operators
+	if (op.type() == "CopyFromCPUInput" || op.type() == "EnsureCPUOutput") {
+	  const std::string &input = op.input(0);
+	  const std::string &output = op.output(0);
+
+	  // Check if the cast is used
+	  bool used = false;
+	  for (int j = i; j < net.op().size(); ++j) {
+	    if (has_input(net.op(j), output)) {
+	      used = true;
+	      break;
+	    }
+	  }
+
+	  // Transform into a simple alias (in case the layer is an external output)
+	  if (!used) {
+	    caffe2::OperatorDef new_op;
+	    Alias(new_op, input, output);
+	    op.Swap(&new_op);
+	  }
+	}
+      }
+    }
+
+    void final_optimizations(caffe2::NetDef &net) {
+      // Prevent useless casts between CPU/GPU tensors
+      remove_duplicate_casts(net);
+      remove_useless_casts(net);
     }
 
   }

@@ -183,25 +183,22 @@ namespace dd {
   //		they share the same internal objects (e.g. NetDef or batch_size).
   //	        The names 'test_batch_size' and 'batch_size' are only kept to have a
   //		have a coherence over the APIs.
-  //
-  // 3 -	Batch sizes make sens when there is a large amount of data (training or testing),
-  //		but not for a simple prediction call (all the data should fit as one batch).
-  //		That's why we must know what the input is used for.
-  //		The best way to assert that the input isn't used to measure nets is to check the
-  //		'output' parameter, even if it is destined to OutputConnectors.
 
   void Caffe2InputInterface::set_batch_sizes(const APIData &ad, bool train) {
+
+    //TODO Remove this flag
+    if (_force_lowest_batch_size) {
+      _batch_size = 1;
+      _train_batch_size = train;
+      return;
+    }
 
     // Reset to default values
     _batch_size = _train_batch_size = _default_batch_size;
     _train_batch_size *= train;
-    bool measuring = false;
 
     if (ad.has("parameters")) {
       const APIData &param = ad.getobj("parameters");
-
-      // Check if measures are present
-      measuring = param.has("output") && param.getobj("output").has("measure");
 
       if (param.has("mllib")) {
 	const APIData &mllib = param.getobj("mllib");
@@ -220,8 +217,7 @@ namespace dd {
       }
     }
 
-    _is_batched = train || measuring;
-    if (!_is_batched) {
+    if (!train && !_measuring) {
 
       // Load all the data in one batch
       if (_is_load_manual) {
