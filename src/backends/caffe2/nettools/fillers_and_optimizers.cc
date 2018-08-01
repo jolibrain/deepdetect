@@ -264,7 +264,7 @@ namespace dd {
 	const std::string &blob = _net.op(op_idx).input(input);
 	while (op_idx-- > 0) {
 	  const caffe2::OperatorDef &op = _net.op(op_idx);
-	  if (std::find(op.output().begin(), op.output().end(), blob) != op.output().end()) {
+	  if (has_output(op, blob)) {
 	    return op_idx;
 	  }
 	}
@@ -314,9 +314,9 @@ namespace dd {
     };
 
     const std::map<std::string, std::map<int, float>> OutputShapePtrs::_forwarded_shapes({
-	{ "Softmax", {
-	    { 0, 1 } // One input, same shape
-	  }},
+	{ "Softmax", {{ 0, 1 }} }, // One input, same shape
+	{ "CopyFromCPUInput", {{ 0, 1 }} },
+	{ "EnsureCPUOutput", {{ 0, 1 }} },
 	{ "BBoxTransform", {
 	    { 1, 1 } // An input that is already a group of bbox
 	  }},

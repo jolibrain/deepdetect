@@ -62,15 +62,6 @@ namespace dd {
     void link_dbreader(const Caffe2NetTools::ModelContext &context, caffe2::NetDef &net,
 		       bool train = false) const;
 
-    /**
-     * \brief uses the dbreader to insert data into the workspace
-     * @param context context of the nets
-     * @param already_loaded how many tensors must be ignored
-     * @param train which db must be read
-     * @return size of this batch (0 if there was not enough data to fill the tensors)
-     */
-    int use_dbreader(Caffe2NetTools::ModelContext &context, int already_loaded, bool train = false);
-
     /* Functions that should be re-implemented by childrens */
 
     // Automatic data transformations (used when loading from a database)
@@ -92,11 +83,17 @@ namespace dd {
     // Manual data transformations (from raw data)
 
     /**
-     * \brief manually loads a batch
+     * \brief loads a batch
      * @param context context of the nets
+     * @param already_loaded how many tensor where already loaded
      * @return size of this batch (0 if there was not enough data to fill the tensors)
      */
-    int load_batch(Caffe2NetTools::ModelContext &) { return 0; }
+    int load_batch(Caffe2NetTools::ModelContext &, int) { return 0; }
+
+    // Global configuration of the network
+
+    bool _measuring = false;
+    bool _force_lowest_batch_size = false; //TODO Remove this flag
 
   private:
 
@@ -141,13 +138,21 @@ namespace dd {
     int insert_inputs(Caffe2NetTools::ModelContext &context, const std::vector<std::string> &blobs,
 		      int nb_data, const InputGetter &get_tensors, bool train = false);
 
+    /**
+     * \brief uses the dbreader to insert data into the workspace
+     * @param context context of the nets
+     * @param already_loaded how many tensors must be ignored
+     * @param train which db must be read
+     * @return size of this batch (0 if there was not enough data to fill the tensors)
+     */
+    int use_dbreader(Caffe2NetTools::ModelContext &context, int already_loaded, bool train = false);
+
     /* Members managed by the mother class */
 
     InputConnectorStrategy *_child = NULL;
 
     std::string _default_db;
     std::string _default_train_db;
-    bool _is_batched = true;
     int _db_size = 0;
     int _train_db_size = 0;
     int _batch_size = 0;
@@ -168,6 +173,7 @@ namespace dd {
     bool _is_testable = false; // whether test data is available
     bool _is_load_manual = true; // whether data is manually loaded (as opposed to database-loaded)
     std::vector<std::string> _ids; // input ids
+    std::vector<std::vector<float>> _scales; // input scale coefficients
 
     /* Public getters */
   public:
@@ -175,6 +181,7 @@ namespace dd {
     _GETTER(is_testable);
     _GETTER(is_load_manual);
     _GETTER(ids);
+    _GETTER(scales);
 #undef _GETTER
   };
 
@@ -193,7 +200,7 @@ namespace dd {
 
     void init(const APIData &ad);
     void transform(const APIData &ad);
-    int load_batch(Caffe2NetTools::ModelContext &context);
+    int load_batch(Caffe2NetTools::ModelContext &context, int already_loaded);
     bool needs_reconfiguration(const ImgCaffe2InputFileConn &inputc);
     void add_constant_layers(const Caffe2NetTools::ModelContext &context, caffe2::NetDef &init_net);
     void add_transformation_layers(const Caffe2NetTools::ModelContext &context,

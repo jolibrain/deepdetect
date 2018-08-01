@@ -27,6 +27,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include "ext/base64/base64.h"
+#include "utils/apitools.h"
 #include <random>
 
 namespace dd
@@ -70,6 +71,12 @@ namespace dd
       else return false;
     }
 
+    void scale(const cv::Mat &src, cv::Mat &dst) const {
+      float coef = std::min(static_cast<float>(_scale_max) / std::max(src.rows, src.cols),
+			    static_cast<float>(_scale_min) / std::min(src.rows, src.cols));
+      cv::resize(src, dst, cv::Size(), coef, coef, CV_INTER_CUBIC);
+    }
+
     // decode image
     void decode(const std::string &str)
       {
@@ -79,7 +86,9 @@ namespace dd
                                      (_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR)));
 	_imgs_size.push_back(std::pair<int,int>(img.rows,img.cols));
     cv::Mat rimg;
-	if (_width == 0 || _height == 0) {
+	if (_scaled)
+	  scale(img, rimg);
+	else if (_width == 0 || _height == 0) {
 		if (_width == 0 && _height == 0) {
 			// XXX - Do nothing and keep native resolution. May cause issues if batched images are different resolutions
             rimg = img;
@@ -131,7 +140,9 @@ namespace dd
       cv::Mat rimg;
       try
 	{
-		if (_width == 0 || _height == 0) {
+		if (_scaled)
+		  scale(img, rimg);
+		else if (_width == 0 || _height == 0) {
 			if (_width == 0 && _height == 0) {
 				// Do nothing and keep native resolution. May cause issues if batched images are different resolutions
 				rimg = img;
@@ -246,7 +257,9 @@ namespace dd
 
 	  try
 	    {
-			if (_width == 0 || _height == 0) {
+		if (_scaled)
+		  scale(img, rimg);
+		else if (_width == 0 || _height == 0) {
 				if (_width == 0 && _height == 0) {
 					// Do nothing and keep native resolution. May cause issues if batched images are different resolutions
 					rimg = img;
@@ -296,6 +309,9 @@ namespace dd
     int _height = 224;
     int _crop_width = 0;
     int _crop_height = 0;
+    bool _scaled = false;
+    int _scale_min = 600;
+    int _scale_max = 1000;
     std::string _db_fname;
     std::shared_ptr<spdlog::logger> _logger;
   };
@@ -306,7 +322,12 @@ namespace dd
   ImgInputFileConn()
     :InputConnectorStrategy(){}
     ImgInputFileConn(const ImgInputFileConn &i)
-      :InputConnectorStrategy(i),_width(i._width),_height(i._height),_crop_width(i._crop_width),_crop_height(i._crop_height),_bw(i._bw),_unchanged_data(i._unchanged_data),_mean(i._mean),_has_mean_scalar(i._has_mean_scalar) {}
+      :InputConnectorStrategy(i),
+      _width(i._width),_height(i._height),
+      _crop_width(i._crop_width),_crop_height(i._crop_height),
+      _bw(i._bw),_unchanged_data(i._unchanged_data),
+      _mean(i._mean),_has_mean_scalar(i._has_mean_scalar),
+      _scaled(i._scaled), _scale_min(i._scale_min), _scale_max(i._scale_max) {}
     ~ImgInputFileConn() {}
 
     void init(const APIData &ad)
@@ -347,22 +368,17 @@ namespace dd
 	_test_split = ad.get("test_split").get<double>();
       if (ad.has("mean"))
 	{
-	  std::vector<int> vm = ad.get("mean").get<std::vector<int>>();
-	  if (vm.size() == 3)
-	    {
-	      int r,g,b;
-	      r = vm[0];
-	      g = vm[1];
-	      b = vm[2];
-	      _mean = cv::Scalar(r,g,b);
-	      _has_mean_scalar = true;
-	    }
-	  else if (vm.size() == 1) // bw
-	    {
-	      _mean = cv::Scalar(vm.at(0));
-	      _has_mean_scalar = true;
-	    }
+	  apitools::get_floats(ad, "mean", _mean);
+	  _has_mean_scalar = true;
 	}
+
+      // Variable size
+      if (ad.has("scaled") || ad.has("scale_min") || ad.has("scale_max"))
+	_scaled = true;
+      if (ad.has("scale_min"))
+	_scale_min = ad.get("scale_min").get<int>();
+      if (ad.has("scale_max"))
+	_scale_max = ad.get("scale_max").get<int>();
     }
     
     int feature_size() const
@@ -417,6 +433,9 @@ namespace dd
 	  dimg._ctype._height = _height;
 	  dimg._ctype._crop_width = _crop_width;
 	  dimg._ctype._crop_height = _crop_height;
+	  dimg._ctype._scaled = _scaled;
+	  dimg._ctype._scale_min = _scale_min;
+	  dimg._ctype._scale_max = _scale_max;
 	  try
 	    {
 	      if (dimg.read_element(u,this->_logger))
@@ -525,9 +544,12 @@ namespace dd
     bool _unchanged_data = false; /**< IMREAD_UNCHANGED flag. */
     double _test_split = 0.0; /**< auto-split of the dataset. */
     int _seed = -1; /**< shuffling seed. */
-    cv::Scalar _mean; /**< mean image pixels, to be subtracted from images. */
+    std::vector<float> _mean; /**< mean image pixels, to be subtracted from images. */
     bool _has_mean_scalar = false; /**< whether scalar is set. */
     std::string _db_fname;
+    bool _scaled = false;
+    int _scale_min = 600;
+    int _scale_max = 1000;
   };
 }
 

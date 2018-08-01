@@ -22,7 +22,7 @@
 #ifndef CAFFE2LIBSTATE_H
 #define CAFFE2LIBSTATE_H
 
-#include "apidata.h"
+#include "utils/apitools.h"
 
 // Create getters, setters and check callbacks
 #define _REGISTER_CONFIG(type, name, def)				\
@@ -78,22 +78,12 @@ public:						                        \
  _REGISTER_CONFIG(float, name, def)					\
  void set_##name(const APIData &ad, bool force_get=false) {		\
    if (force_get || ad.has(#name)) {					\
-     const ad_variant_type &adv = ad.get(#name);			\
-     if (adv.is<int>()) {						\
-       set_##name(adv.get<int>());					\
-     } else {								\
-       set_##name(adv.get<double>());					\
-     }									\
+     apitools::get_float(ad, #name, _##name##_current);			\
    }									\
  }									\
  void set_default_##name(const APIData &ad, bool force_get=false) {	\
    if (force_get || ad.has(#name)) {					\
-     const ad_variant_type &adv = ad.get(#name);			\
-     if (adv.is<int>()) {						\
-       set_default_##name(adv.get<int>());				\
-     } else {								\
-       set_default_##name(adv.get<double>());				\
-     }									\
+     apitools::get_float(ad, #name, _##name##_default);			\
    }									\
  }
 
@@ -130,6 +120,7 @@ namespace dd {
     REGISTER_CONFIG(std::vector<int>, gpu_ids, {0});
 
     REGISTER_CONFIG(std::string, extract_layer, "");
+    REGISTER_CONFIG(bool, bbox, false);
 
     REGISTER_CONFIG(std::string, lr_policy, "fixed");
     REGISTER_CONFIG_FLOAT(base_lr, 0.01);
@@ -154,6 +145,7 @@ namespace dd {
       init_gpu_ids();
 
       init_extract_layer();
+      init_bbox();
 
       init_lr_policy();
       init_base_lr();

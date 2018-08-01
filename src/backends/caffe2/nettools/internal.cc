@@ -24,6 +24,10 @@
 namespace dd {
   namespace Caffe2NetTools {
 
+    // Note if another operator needs to be registered here :
+    // A quick way to check if it has or not a gradient is to check if its type is in
+    // caffe2::GradientRegistry()->Keys()
+
     const std::map<std::string, bool> non_trainable_ops({
 
 	{"ConstantFill", true},
@@ -204,6 +208,7 @@ namespace dd {
 	{"Sum", _get_blobs}
       });
 
+    const std::string force_device_suffix("_force_device");
     const std::string mean_square_suffix("_meansq");
     const std::string momentum_suffix("_momentum");
     const std::string gradient_suffix("_grad");
