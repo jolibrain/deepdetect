@@ -200,7 +200,10 @@ namespace dd
         if (ad.has("ignore_label"))
           ignore_label = ad.get("ignore_label").get<int>();
 
-        if (net_param.name().compare("deeplab_vgg16")==0)
+        if (net_param.name().compare("deeplab_vgg16")==0
+	    || net_param.name().compare("pspnet_vgg16")==0
+	    || net_param.name().compare("pspnet_50")==0
+	    || net_param.name().compare("pspnet_101")==0)
           {
             update_protofiles_dice_one_hot(net_param, this->_loss, _nclasses);
             update_protofiles_dice_deeplab_vgg16(net_param, deploy_net_param, this->_loss, ignore_label);
