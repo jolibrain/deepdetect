@@ -137,12 +137,13 @@ namespace dd {
 
     _shuffle = true;
     _is_load_manual = false;
+    bool new_data = false;
 
     // Get databases paths
     if (ad.has("data")) {
 
       get_data(ad);
-      uris_to_db();
+      new_data = uris_to_db();
 
     } else {
 
@@ -157,10 +158,13 @@ namespace dd {
     }
 
     compute_db_sizes();
-    compute_images_mean();
+
+    if (new_data || !fileops::file_exists(_mean_file)) {
+      compute_images_mean();
+    }
   }
 
-  void ImgCaffe2InputFileConn::uris_to_db() {
+  bool ImgCaffe2InputFileConn::uris_to_db() {
 
     // Check if the uris are coherent
     bool uris_are_db = fileops::is_db(_uris[0]);
@@ -176,7 +180,7 @@ namespace dd {
     if (uris_are_db) {
       _train_db = _uris[0];
       _db = _is_testable ? _uris[1] : "";
-      return;
+      return false;
     }
     _train_db = _default_train_db;
     _db = _is_testable ? _default_db : "";
@@ -185,7 +189,7 @@ namespace dd {
     bool is_train = fileops::file_exists(_train_db), is_test = fileops::file_exists(_db);
     if (is_train && (!_is_testable || is_test)) {
       _logger->warn("Found local database(s), bypassing creation");
-      return;
+      return false;
     }
 
     // Check if creation would overwrite existing data
@@ -199,6 +203,7 @@ namespace dd {
       _logger->info("Transforming images to database(s)");
       images_to_db();
     }
+    return is_train;
   }
 
   void ImgCaffe2InputFileConn::list_images(const std::string &root,
@@ -322,6 +327,7 @@ namespace dd {
 						  &lfiles) {
 
     std::unique_ptr<caffe2::db::DB> db(caffe2::db::CreateDB(_db_type, dbname, caffe2::db::NEW));
+    std::unique_ptr<caffe2::db::Transaction> txn(db->NewTransaction());
 
     // Prefill db entries
     int chans = channels();
@@ -348,10 +354,10 @@ namespace dd {
 
     // Storing to db
     int count = 0;
-    const int kMaxKeyLength = 256;
+    const int kMaxKeyLength = 256, batch_size = 1000;
     char key_cstr[kMaxKeyLength];
 
-    for (const auto &file : lfiles) {
+    for (const std::pair<std::string, int> &file : lfiles) {
 
       // Fill db entry
       std::string out;
@@ -373,18 +379,23 @@ namespace dd {
       }
 
       // Put in db
-      auto txn = db->NewTransaction();
       int length = snprintf(key_cstr, kMaxKeyLength, "%08d_%s", count, file.first.c_str());
       txn->Put(std::string(key_cstr, length), out);
-      txn->Commit();
-      if (!(++count % 1000)) {
+      if (!(++count % batch_size)) {
 	_logger->info("Processed {} entries", count);
+	txn->Commit();
       }
     }
     if (!count) {
       std::string msg("Could not fill " + dbname + " with the requested dataset");
       _logger->error(msg);
       throw InputConnectorBadParamException(msg);
+    }
+
+    // Write the last batch
+    if (count % batch_size) {
+      _logger->info("Processed {} entries", count);
+      txn->Commit();
     }
     _logger->info("{} successfully created ({} entries)", dbname, count);
   }
