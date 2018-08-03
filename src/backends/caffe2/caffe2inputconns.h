@@ -207,8 +207,9 @@ namespace dd {
 
     /**
      * \brief checks which database(s) can/should be used depending on the 'uris' content
+     * @return true if images were used to create (a) new database(s), false otherwise
      */
-    void uris_to_db();
+    bool uris_to_db();
 
     /**
      * \brief uses the given root directory to match images with their class

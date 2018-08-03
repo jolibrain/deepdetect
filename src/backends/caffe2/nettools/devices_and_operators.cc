@@ -441,7 +441,10 @@ namespace dd {
     REGISTER_OP(LearningRate,
 		INPUT(iter),
 		OUTPUT(rate),
-		ADD_ARG(policy); ADD_ARG(base_lr); ADD_ARG(stepsize); ADD_ARG(gamma),
+		ADD_ARG(policy);
+		ADD_ARG_VALUE(base_lr, -base_lr); /* Caffe2 adds the learning rate */
+		ADD_ARG(stepsize);
+		ADD_ARG(gamma),
 		const std::string &iter,
 		const std::string &rate,
 		const std::string &policy,
