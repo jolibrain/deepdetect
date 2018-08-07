@@ -155,6 +155,189 @@ namespace dd {
       apply_filler_types(init, fillers);
     }
 
+    // Some values (e.g. the number of classes) are present several times inside init nets.
+    // This class stores pointers to integers that represent the same value.
+    // Some of them may be multiples of one another, so a coefficient is linked to each pointer.
+    class ShapePtrs {
+      std::vector<std::pair<const int *, float>> _ptrs;
+
+      // For the concerned blobs, two informations are stored:
+      //   - Which dimension of its shape corresponds to the desired value
+      //   - Its coefficient
+      std::map<std::string, std::pair<int, float>> _blobs;
+
+      // Store a pointer to the nth dimension of an input filler
+      void add_ptr(const caffe2::OperatorDef &filler, int dimension, float coef) {
+
+	// Find the shape
+	for (const caffe2::Argument &arg : filler.arg()) {
+	  if (arg.name() != "shape") {
+	    continue;
+	  }
+
+	  // Shapes should be small enough to fit into an integer (stored as long in caffe2)
+	  if (dimension < arg.ints().size()) {
+	    return _ptrs.emplace_back(reinterpret_cast<const int *>(&arg.ints()[dimension]), coef);
+	  }
+
+	  CAFFE_THROW("Can't access ", filler.output(0), " shape at position ", dimension);
+	}
+	CAFFE_THROW("Can't access ", filler.output(0), " shape");
+      }
+
+    protected:
+
+      inline void register_blob(const std::string &blob, int dimension, float coefficient) {
+	_blobs[blob] = { dimension, coefficient };
+      }
+
+      void fetch_pointers(const caffe2::NetDef &init_net) {
+
+	// Check if the fillers output are registered
+	for (const caffe2::OperatorDef &filler : init_net.op()) {
+	  const auto &blob = _blobs.find(filler.output(0));
+	  if (blob == _blobs.end()) {
+	    continue;
+	  }
+
+	  // Keep a pointer to the shape
+	  add_ptr(filler, blob->second.first, blob->second.second);
+	  _blobs.erase(blob);
+	}
+
+	// Assert that every blob was found
+	const auto &blob = _blobs.begin();
+	if (blob != _blobs.end()) {
+	  CAFFE_THROW("Can't access ", blob->first, " shape");
+	}
+
+	// Assert that the retreived data is coherent
+	int value = *_ptrs[0].first / _ptrs[0].second;
+	for (const std::pair<const int *, int> &ptr : _ptrs) {
+	  if (*ptr.first % ptr.second || *ptr.first / ptr.second != value) {
+	    CAFFE_THROW("Couldn't fetch data from the initalization net");
+	  }
+	}
+      }
+
+    public:
+
+      inline int get_value() const {
+	return *_ptrs[0].first / _ptrs[0].second;
+      }
+
+      void set_value(int value) {
+	if (get_value() != value) {
+	  for (const std::pair<const int *, int> ptr : _ptrs) {
+	    *const_cast<int *>(ptr.first) = value * ptr.second;
+	  }
+	}
+      }
+
+    };
+
+    // Group of function used to find which integers are defining the output shape of a net
+    // Also contains maps used to know how an operator output shape is defined
+    // (detailed right after the class)
+    class OutputShapePtrs : public ShapePtrs {
+
+      /*
+       *  Some operators have their shape defined by previous operators.
+       */
+      //                    Operator              Input, Coef
+      static const std::map<std::string, std::map<int,   float> > _forwarded_shapes;
+
+      /*
+       *  Other operators have their shape defined by external inputs.
+       *  Thoses shapes too may be multiples of one another, but it will be explicitly shown inside
+       *  the 'shape' argument of the corresponding filler. Unfortunately we still need to know
+       *  which dimension of thoses 'shape's is shared.
+       */
+      //                    Operator              Input, Dimension index
+      static const std::map<std::string, std::map<int,   int>> _external_shapes;
+
+      // Return the index of a prior operator that have updated the given blob
+      int find_previous_op(int op_idx, int input) const {
+	const std::string &blob = _net.op(op_idx).input(input);
+	while (op_idx-- > 0) {
+	  const caffe2::OperatorDef &op = _net.op(op_idx);
+	  if (std::find(op.output().begin(), op.output().end(), blob) != op.output().end()) {
+	    return op_idx;
+	  }
+	}
+	CAFFE_THROW("Can't access ", blob, " shape");
+      }
+
+      void compute(int op_idx, float coef) {
+	const caffe2::OperatorDef &op = _net.op(op_idx);
+	const std::string &type = op.type();
+
+	if (_forwarded_shapes.find(type) != _forwarded_shapes.end()) {
+
+	  // Recurse over previous operators
+	  for (const std::pair<int, float> &input_coef : _forwarded_shapes.at(type)) {
+	    compute(find_previous_op(op_idx, input_coef.first), coef * input_coef.second);
+	  }
+
+	} else if (_external_shapes.find(type) != _external_shapes.end()) {
+
+	  // Save the blob informations
+	  for (const std::pair<int, int> &input_dim : _external_shapes.at(type)) {
+	    int input_idx = input_dim.first;
+	    if (input_idx >= op.input().size()) {
+	      CAFFE_THROW("Can't access ", op.type(), " input at position ", input_idx);
+	    }
+	    register_blob(op.input(input_idx), input_dim.second, coef);
+	  }
+
+	} else {
+	  //XXX Handle more configurations
+	  CAFFE_THROW("Can't access ", op.type(), " input shapes");
+	}
+      }
+
+    public:
+
+      const caffe2::NetDef &_net;
+      OutputShapePtrs(const caffe2::NetDef &net, const caffe2::NetDef &init_net): _net(net) {
+	// Start computing from the last operator whose shape match nclasses (coef = 1)
+	compute(_net.op().size() - 1, 1);
+	fetch_pointers(init_net);
+      }
+    };
+
+    const std::map<std::string, std::map<int, float>> OutputShapePtrs::_forwarded_shapes({
+	{ "Softmax", {
+	    { 0, 1 } // One input, same shape
+	  }},
+	{ "BBoxTransform", {
+	    { 1, 1 } // An input that is already a group of bbox
+	  }},
+	{ "BoxWithNMSLimit", {
+	    { 0, 1 }, // 1 probablity per result
+	    { 1, 4 }  // 4 points per result
+	  }}
+      });
+
+    const std::map<std::string, std::map<int, int>> OutputShapePtrs::_external_shapes({
+	{ "Conv", {
+	    { 1, 0 }, // Weights have 2 dimensions (nb_output and nb_input)
+	    { 2, 0 }  // Bias have 1 dimension (nb_output)
+	  }},
+	{ "FC", { // Same as 'Conv'
+	    { 1, 0 },
+	    { 2, 0 }
+	  }}
+      });
+
+    void set_nclasses(const caffe2::NetDef &net, caffe2::NetDef &init_net, int nclasses) {
+      OutputShapePtrs(net, init_net).set_value(nclasses);
+    }
+
+    int get_nclasses(const caffe2::NetDef &net, const caffe2::NetDef &init_net) {
+      return OutputShapePtrs(net, init_net).get_value();
+    }
+
     /*
      *  Optimizers
      */

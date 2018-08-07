@@ -71,8 +71,6 @@ namespace dd {
     _net = std::move(c2l._net);
     _state = c2l._state;
     _last_inputc = c2l._last_inputc;
-
-    _nclasses = c2l._nclasses;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -219,7 +217,6 @@ namespace dd {
     }
   }
 
-  //XXX When classifying, the last layer is currently not reshaped based on _nclasses
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
   create_model_train() {
@@ -241,6 +238,9 @@ namespace dd {
 
       // Reset parameters to ConstantFills, XaviersFills, etc.
       Caffe2NetTools::reset_fillers(_net, _init_net);
+      if (_context._nclasses) { //XXX Check if classifying
+	Caffe2NetTools::set_nclasses(_net, _init_net, _context._nclasses);
+      }
       _last_inputc.create_dbreader(init_net, true);
       if (_state.is_testing()) {
 	_last_inputc.create_dbreader(init_net);
@@ -363,9 +363,10 @@ namespace dd {
     // If the are not, we'll do a guess based on the following conventions:
     //    - the input blob name is (or contains) "data"
     //    - the external inputs are sorted
-    //    - there is only one external output
+    //    - all the outputs are created by the last operator
     if (_context._output_blob.empty()) {
-      _context._output_blob = _net.external_output()[0];
+      const auto &outputs = _net.op(_net.op().size() - 1).output();
+      _context._output_blob = outputs[0];
     }
     if (_context._input_blob.empty()) {
       const auto &inputs = _net.external_input();
@@ -400,8 +401,11 @@ namespace dd {
     // Update the workspace with the new nets
     _context.run_net_once(_init_net);
     if (!_state.is_training() || _state.is_testing()) {
+      if (!_context._nclasses) { //XXX Check if classifying
+	// If not initiliazied by init_mllib, it will be infered
+	_context._nclasses = Caffe2NetTools::get_nclasses(_net, _init_net);
+      }
       _context.create_net(_net);
-      //XXX Check how _nclasses could be infered here
     }
     if (_state.is_training()) {
       _context.create_net(_train_net);
@@ -456,9 +460,8 @@ namespace dd {
     if (ad.has("outputlayer")) {
       _context._output_blob = ad.get("outputlayer").get<std::string>();
     }
-
     if (ad.has("nclasses")) {
-      _nclasses = ad.get("nclasses").get<int>();
+      _context._nclasses = ad.get("nclasses").get<int>();
     }
 
     //XXX Get more informations (targets for multi-label, autoencoder, regression, ...)
@@ -486,6 +489,19 @@ namespace dd {
   clear_mllib(const APIData &) {
     std::vector<std::string> extensions({".json"}); //XXX remove _state files ? the databases ?
     fileops::remove_directory_files(this->_mlmodel._repo, extensions);
+    this->_mlmodel.update_from_repository(this->_logger);
+    std::vector<std::string> files({
+	this->_mlmodel._init_state,
+	this->_mlmodel._dbreader_state,
+	this->_mlmodel._dbreader_train_state,
+	this->_mlmodel._iter_state,
+	this->_mlmodel._lr_state
+    });
+    for (const std::string &file : files) {
+      if (!file.empty()) {
+	remove(file.c_str());
+      }
+    }
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -650,7 +666,7 @@ namespace dd {
 
     //XXX This 'nout' value is supposed to be set accordingly to the type of prediction
     //(classification, regression, autoencoder, etc.)
-    int nout = _nclasses;
+    int nout = _context._nclasses;
 
     std::vector<std::string> clnames(nout);
     this->_mlmodel.get_hcorresp(clnames);

@@ -224,6 +224,7 @@ namespace dd {
       for (size_t i = 0; i < meta.ops_.size(); ++i) {
 	caffe2::OperatorDef &grad = *net.add_op();
 	grad.CopyFrom(meta.ops_[i]);
+	grad.clear_name();
 	if (i) {
 	  // If there are several operators,
 	  // only the first will be linked to the other gradients
