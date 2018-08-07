@@ -151,10 +151,6 @@ namespace dd {
   caffe2::NetDef _net;
   Caffe2LibState _state;
   TInputConnectorStrategy _last_inputc; // Last transformed version of the default _inputc
-
-  //XXX Could be infered during the 'create_model' phase
-  //XXX May become a '_state' that transforms the output layer size
-  int _nclasses = 0;
   };
 }
 

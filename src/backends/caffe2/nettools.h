@@ -260,7 +260,10 @@ namespace dd {
       std::vector<caffe2::DeviceOption> _devices;
       std::string _input_blob;
       std::string _output_blob;
-      std::string _blob_label = "label"; //XXX Should be optional in the future
+
+      //XXX Should be optionals in the future
+      std::string _blob_label = "label";
+      int _nclasses = 0;
 
       bool _parallelized; // Whether multiple devices are used
       int _loaded_iter; // Last iteration number that was loaded from the file system
@@ -499,6 +502,16 @@ namespace dd {
      *        because their shape can't be infered.
      */
     void reset_fillers(const caffe2::NetDef &net, caffe2::NetDef &init);
+
+    /**
+     * \brief reshape the output to match the number of classes
+     */
+    void set_nclasses(const caffe2::NetDef &net, caffe2::NetDef &init_net, int nclasses);
+
+    /**
+     * \brief infer the number of classes based on the output's shape
+     */
+    int get_nclasses(const caffe2::NetDef &net, const caffe2::NetDef &init_net);
 
     /*
      *  Optimizers
