@@ -455,8 +455,8 @@ namespace dd {
      * @return true if trainable, false otherwise
      */
     bool is_trainable(const caffe2::OperatorDef &op,
-		      std::vector<std::string> *trainable,
-		      std::vector<std::string> *computed);
+		      std::set<std::string> *trainable,
+		      std::set<std::string> *computed);
 
     void add_gradient_ops(caffe2::NetDef &net);
 
@@ -473,8 +473,8 @@ namespace dd {
      * @param remove_prefix whether the given prefix must be removed from the blob name
      */
     void collect_params(const caffe2::NetDef &net,
-			std::vector<std::string> &params,
-			std::vector<std::string> &computed_params,
+			std::set<std::string> &params,
+			std::set<std::string> &computed_params,
 			const std::string &prefix = "",
 			bool remove_prefix = true);
 #ifndef CPU_ONLY

@@ -380,8 +380,12 @@ namespace dd {
       }
 
       // Functions supposed to be overloaded
-      virtual void init() {} // Once per net (optional)
-      virtual void optimize() = 0; // Once per parameter
+
+      virtual bool negative_base_lr() {
+	return false; // XXX Find a rule determining the sign of the learning rate
+      }
+      virtual void init() {} // Code executed only once per net
+      virtual void optimize() = 0; // Code executed for each parameter
 
     public:
 
@@ -397,13 +401,32 @@ namespace dd {
       // Common code
       void run() {
 
+	// Call child's 'negative_base_lr'
+	int base_lr_sign = negative_base_lr() ? -1 : 1;
+
+	// Find where are defined the 'base_lr's and force their sign
+	size_t base_lr_args = 0;
+	for (caffe2::OperatorDef &op : *_netdef.mutable_op()) {
+	  if (op.type() == "LearningRate") {
+	    for (caffe2::Argument &arg : *op.mutable_arg()) {
+	      if (arg.name() == "base_lr") {
+		arg.set_f(base_lr_sign * std::abs(arg.f()));
+		++base_lr_args;
+	      }
+	    }
+	  }
+	}
+
+	// There should be exactly one 'LearningRate' operator per net and one base_lr per operator
+	CAFFE_ENFORCE(base_lr_args == _context.device_count());
+
 	// Collect net's informations
-	std::vector<std::string> params;
-	std::vector<std::string> computed;
+	std::set<std::string> params;
+	std::set<std::string> computed;
 	std::string main_prefix = _context.get_prefix(0);
 	collect_params(_netdef, params, computed, main_prefix);
 	_shapes.clear();
-	collect_blob_shapes(_netdef, _shapes, main_prefix);
+	collect_blob_shapes(_initdef, _shapes, main_prefix);
 
 	// Call child's "init" function
 	init();
@@ -432,17 +455,20 @@ namespace dd {
 
     class sgd : public AbstractOptimizer {
       using AbstractOptimizer::AbstractOptimizer;
-      virtual void init() {
+      bool negative_base_lr() {
+	return true;
+      }
+      void init() {
 	broadcast_external_constantfill(blob_one, std::vector<int>({1}), 1);
       }
-      virtual void optimize() {
+      void optimize() {
 	WeightedSum(_net, { _param, blob_one, _grad, blob_lr }, _param);
       }
     };
 
     class momentum : public AbstractOptimizer {
       using AbstractOptimizer::AbstractOptimizer;
-      virtual void optimize() {
+      void optimize() {
 	default_fillers({_moment});
 	MomentumSGDUpdate(_net, _param, _moment, _grad, blob_lr);
       }
@@ -450,7 +476,7 @@ namespace dd {
 
     class adagrad : public AbstractOptimizer {
       using AbstractOptimizer::AbstractOptimizer;
-      virtual void optimize() {
+      void optimize() {
 	default_fillers({_moment});
 	Adagrad(_net, _param, _moment, _grad, blob_lr);
       }
@@ -458,7 +484,7 @@ namespace dd {
 
     class adam : public AbstractOptimizer {
       using AbstractOptimizer::AbstractOptimizer;
-      virtual void optimize() {
+      void optimize() {
 	std::string moment1(_moment + "_1");
 	std::string moment2(_moment + "_2");
 	default_fillers({moment1, moment2});
@@ -468,7 +494,7 @@ namespace dd {
 
     class rmsprop : public AbstractOptimizer {
       using AbstractOptimizer::AbstractOptimizer;
-      virtual void optimize() {
+      void optimize() {
 	default_fillers({_moment, _meansq});
 	RmsProp(_net, _grad, _meansq, _moment, blob_lr);
 	Sum(_net, { _param, _grad }, _param);

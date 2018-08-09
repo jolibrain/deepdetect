@@ -363,7 +363,8 @@ namespace dd {
     REGISTER_OP(MomentumSGDUpdate,
 		INPUT(gradient, momentum, rate, param),
 		OUTPUT(gradient, momentum, param),
-		NO_ARG,
+		//https://caffe2.ai/docs/operators-catalogue.html#momentumsgdupdate
+		ADD_ARG_VALUE(momentum, 0.9f); ADD_ARG_VALUE(nesterov, 1),
 		const std::string &param,
 		const std::string &momentum,
 		const std::string &gradient,
@@ -442,7 +443,7 @@ namespace dd {
 		INPUT(iter),
 		OUTPUT(rate),
 		ADD_ARG(policy);
-		ADD_ARG_VALUE(base_lr, -base_lr); /* Caffe2 adds the learning rate */
+		ADD_ARG(base_lr);
 		ADD_ARG(stepsize);
 		ADD_ARG(gamma),
 		const std::string &iter,

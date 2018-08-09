@@ -257,7 +257,7 @@ namespace dd {
      */
 
     void ModelContext::create_init_net(const caffe2::NetDef &net, caffe2::NetDef &init) const {
-      std::vector<std::string> params;
+      std::set<std::string> params;
       caffe2::TensorCPU tensor;
       collect_params(net, params, params, get_prefix(0));
       for (const std::string &param : params) {

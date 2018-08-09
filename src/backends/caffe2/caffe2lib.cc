@@ -277,17 +277,13 @@ namespace dd {
       _context.reset_iter();
     }
 
+    // Duplicate the init net outputs on all the devices
+    Caffe2NetTools::copy_and_broadcast_operators(_context, init_net, _init_net);
+
     Caffe2NetTools::insert_learning_operators(_context, train_net, init_net,
 					      _state.lr_policy(), _state.base_lr(),
 					      _state.stepsize(), _state.gamma());
     Caffe2NetTools::get_optimizer(_state.solver_type())(_context, train_net, init_net);
-
-    // The train net is complete
-
-    // Duplicate the init net outputs on all the devices
-    Caffe2NetTools::copy_and_broadcast_operators(_context, init_net, _init_net);
-
-    // The init net is complete
 
     // Apply changes
     _net.Swap(&test_net);
@@ -487,7 +483,7 @@ namespace dd {
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
   clear_mllib(const APIData &) {
-    std::vector<std::string> extensions({".json"}); //XXX remove _state files ? the databases ?
+    std::vector<std::string> extensions({".json"});
     fileops::remove_directory_files(this->_mlmodel._repo, extensions);
     this->_mlmodel.update_from_repository(this->_logger);
     std::vector<std::string> files({

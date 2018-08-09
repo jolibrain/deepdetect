@@ -42,8 +42,8 @@ namespace dd {
      */
 
     bool is_trainable(const caffe2::OperatorDef &op,
-		      std::vector<std::string> *trainable = NULL,
-		      std::vector<std::string> *computed = NULL) {
+		      std::set<std::string> *trainable = NULL,
+		      std::set<std::string> *computed = NULL) {
       auto it = trainable_ops.find(op.type());
       if (it == trainable_ops.end()) {
 	return false;
@@ -53,10 +53,10 @@ namespace dd {
       int i = 0;
       for (const std::string &input : op.input()) {
 	if (index == end || *index != i++) {
-	  if (trainable) trainable->push_back(input);
+	  if (trainable) trainable->insert(input);
 	} else {
 	  ++index;
-	  if (computed) computed->push_back(input);
+	  if (computed) computed->insert(input);
 	}
       }
       return true;
@@ -323,8 +323,8 @@ namespace dd {
      */
 
     void collect_params(const caffe2::NetDef &net,
-			std::vector<std::string> &params,
-			std::vector<std::string> &computed_params,
+			std::set<std::string> &params,
+			std::set<std::string> &computed_params,
 			const std::string &prefix,
 			bool remove_prefix) {
       std::set<std::string> external_inputs(net.external_input().begin(),
@@ -338,19 +338,17 @@ namespace dd {
 	  continue;
 	}
 
-	std::vector<std::string> trainable;
-	std::vector<std::string> computed;
+	std::set<std::string> trainable;
+	std::set<std::string> computed;
 	if (!is_trainable(op, &trainable, &computed)) {
 	  continue;
 	}
 	const auto &output = op.output();
 
-	auto check_params = [&](std::vector<std::string> &v_in, std::vector<std::string> &v_out) {
+	auto check_params = [&](std::set<std::string> &v_in, std::set<std::string> &v_out) {
 	  for (const std::string &input : v_in) {
-	    if (!input.find(prefix) &&
-		external_inputs.find(input) != external_inputs.end() &&
-		std::find(output.begin(), output.end(), input) == output.end()) {
-	      v_out.push_back(input.substr(remove_prefix * prefix.size(), -1));
+	    if (!input.find(prefix) && external_inputs.find(input) != external_inputs.end()) {
+	      v_out.insert(input.substr(remove_prefix * prefix.size(), -1));
 	    }
 	  }
 	};
@@ -419,8 +417,8 @@ namespace dd {
     void reduce(ScopedNet &net) {
 
       std::vector<int> device_ids;
-      std::vector<std::string> params;
-      std::vector<std::string> computed_params;
+      std::set<std::string> params;
+      std::set<std::string> computed_params;
       std::vector<std::vector<int> > sum_order;
 
       for (const caffe2::DeviceOption &option : net._devices) {
