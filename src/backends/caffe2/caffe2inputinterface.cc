@@ -125,10 +125,15 @@ namespace dd {
     }
 
     _is_batched = train || measuring;
-    // If the data is fetched from a database
-    if (!_is_batched && !_is_load_manual) {
-      _batch_size = _db_size;
-      _train_batch_size = _train_db_size;
+    if (!_is_batched) {
+
+      // Load all the data in one batch
+      if (_is_load_manual) {
+	_batch_size = _ids.size();
+      } else {
+	_batch_size = _db_size;
+	_train_batch_size = _train_db_size;
+      }
     }
   }
 
@@ -143,8 +148,8 @@ namespace dd {
   bool Caffe2InputInterface::needs_reconfiguration(const Caffe2InputInterface &inputc) {
     return	_is_load_manual		!= inputc._is_load_manual
       ||	_is_testable		!= inputc._is_testable
-      ||	_batch_size		!= inputc._batch_size
-      ||	_train_batch_size	!= inputc._train_batch_size
+      ||	((_batch_size		!= inputc._batch_size)		&& !_is_load_manual)
+      ||	((_train_batch_size	!= inputc._train_batch_size)	&& !_is_load_manual)
       ;
   }
 

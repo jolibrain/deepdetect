@@ -132,7 +132,7 @@ namespace dd {
     REGISTER_CONFIG(std::string, extract_layer, "");
 
     REGISTER_CONFIG(std::string, lr_policy, "fixed");
-    REGISTER_CONFIG_FLOAT(base_lr, -0.001);
+    REGISTER_CONFIG_FLOAT(base_lr, 0.001);
     REGISTER_CONFIG(int, stepsize, 0);
     REGISTER_CONFIG_FLOAT(gamma, 0);
 
