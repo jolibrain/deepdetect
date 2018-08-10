@@ -153,8 +153,8 @@ if (USE_DLIB)
     message(STATUS "Dlib will be built")
 endif()
 
-set(CAFFE_DD_USER jolibrain)
-set(CAFFE_DD_BRANCH master)
+set(CAFFE_DD_USER CorentinB)
+set(CAFFE_DD_BRANCH pi3)
 
 if (USE_CAFFE2)
 
@@ -329,6 +329,11 @@ else()
   else() # CUDA_FOUND
     add_definitions(-DUSE_CAFFE_CPU_ONLY)
     set(CAFFE_DD_CONFIG_FILE Makefile.config.cpu)
+  endif()
+
+  # Set ARM caffe Makefile
+  if (ARM)
+    set(CAFFE_DD_CONFIG_FILE Makefile.config.pi3)
   endif()
 
   list(APPEND CAFFE_DD_CONFIGURE_COMMAND
