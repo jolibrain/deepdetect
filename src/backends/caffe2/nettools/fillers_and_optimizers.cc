@@ -268,25 +268,28 @@ namespace dd {
 	CAFFE_THROW("Can't access ", blob, " shape");
       }
 
+      // Recursive function that start browsing the net a specific index and coefficient
       void compute(int op_idx, float coef) {
 	const caffe2::OperatorDef &op = _net.op(op_idx);
 	const std::string &type = op.type();
 
 	if (_forwarded_shapes.find(type) != _forwarded_shapes.end()) {
+	  // Shape defined by previous operators
 
-	  // Recurse over previous operators
 	  for (const std::pair<int, float> &input_coef : _forwarded_shapes.at(type)) {
+	    // Recurse over them
 	    compute(find_previous_op(op_idx, input_coef.first), coef * input_coef.second);
 	  }
 
 	} else if (_external_shapes.find(type) != _external_shapes.end()) {
+	  // Shape defined by external inputs
 
-	  // Save the blob informations
 	  for (const std::pair<int, int> &input_dim : _external_shapes.at(type)) {
 	    int input_idx = input_dim.first;
 	    if (input_idx >= op.input().size()) {
 	      CAFFE_THROW("Can't access ", op.type(), " input at position ", input_idx);
 	    }
+	    // Save the blob informations
 	    register_blob(op.input(input_idx), input_dim.second, coef);
 	  }
 
@@ -300,7 +303,8 @@ namespace dd {
 
       const caffe2::NetDef &_net;
       OutputShapePtrs(const caffe2::NetDef &net, const caffe2::NetDef &init_net): _net(net) {
-	// Start computing from the last operator whose shape match nclasses (coef = 1)
+	// Start computing from the last operator whose shape is (by definition)
+	// the same as the net output shape (so coef=1)
 	compute(_net.op().size() - 1, 1);
 	fetch_pointers(init_net);
       }
@@ -321,8 +325,8 @@ namespace dd {
 
     const std::map<std::string, std::map<int, int>> OutputShapePtrs::_external_shapes({
 	{ "Conv", {
-	    { 1, 0 }, // Weights have 2 dimensions (nb_output and nb_input)
-	    { 2, 0 }  // Bias have 1 dimension (nb_output)
+	    { 1, 0 }, // Weights have 2 dimensions (nb_output and nb_input), we want the first
+	    { 2, 0 }  // Bias have 1 dimension (nb_output), we also want the first
 	  }},
 	{ "FC", { // Same as 'Conv'
 	    { 1, 0 },
@@ -382,7 +386,8 @@ namespace dd {
       // Functions supposed to be overloaded
 
       virtual bool negative_base_lr() {
-	return false; // XXX Find a rule determining the sign of the learning rate
+	// XXX Find a rule determining the sign of the learning rate (caffe2/python/optimizer.py)
+	return false;
       }
       virtual void init() {} // Code executed only once per net
       virtual void optimize() = 0; // Code executed for each parameter

@@ -48,10 +48,11 @@ namespace dd {
      *  Device management
      */
 
-    /**
-     * \breif alias to make things more readable
-     */
+    // Aliases to make things more readable
     using OpModifier = std::function<void(caffe2::OperatorDef&)>;
+    using LROpModifier = std::function<void(caffe2::OperatorDef&, // LearningRate
+					    const std::string&, // Iter blob
+					    const std::string&)>; // LR blob
 
     /**
      * \brief device-tagged net
@@ -222,7 +223,7 @@ namespace dd {
     PROTOTYPE(StopGradient, const std::string &blob);
     PROTOTYPE(LearningRate,
 	      const std::string &iter, const std::string &rate, const std::string &policy,
-	      float base_lr, int stepsize, float gamma);
+	      float base_lr, int stepsize, int max_iter, float gamma, float power);
 
     // Test
     PROTOTYPE(LabelCrossEntropy, const std::string &prediction, const std::string &label,
@@ -431,8 +432,7 @@ namespace dd {
     void insert_learning_operators(const ModelContext &context,
 				   caffe2::NetDef &net_def,
 				   caffe2::NetDef &init_def,
-				   const std::string &policy,
-				   float base_lr, int stepsize, float gamma);
+				   const LROpModifier &lr_config);
 
     /**
      * \brief copies an operator on the main device and broadcasts the outputs on the others
@@ -458,7 +458,7 @@ namespace dd {
 		      std::set<std::string> *trainable,
 		      std::set<std::string> *computed);
 
-    void add_gradient_ops(caffe2::NetDef &net);
+    void add_gradient_ops(caffe2::NetDef &net, const std::set<std::string> &main_gradients);
 
     /*
      *  Gradient & Device

@@ -276,21 +276,39 @@ namespace dd {
     }
 
     void ModelContext::append_trainable_net(caffe2::NetDef &dst, const caffe2::NetDef &src) const {
-      ScopedNet net = scope_net(dst);
+
       // Prevent the gradients from reaching previous operators
+      ScopedNet net = scope_net(dst);
       StopGradient(net, _input_blob);
-      add_ops_and_inputs(net, src, { _input_blob });
+
+      // Assert that operators will generate the correct gradients
+      caffe2::NetDef ref(src);
+      for (caffe2::OperatorDef &op : *ref.mutable_op()) {
+	for (caffe2::Argument &arg : *op.mutable_arg()) {
+	  if (arg.name() == "is_test") {
+	    arg.set_i(0);
+	  }
+	}
+      }
+
+      add_ops_and_inputs(net, ref, { _input_blob });
 
       //XXX Manage no-label outputs
       LabelCrossEntropy(net, _output_blob, _blob_label, blob_xent);
 
+      std::string loss_grad = blob_loss_scale + gradient_suffix;
+
       // Add the losses
       AveragedLoss(net, blob_xent, blob_loss);
       Scale(net, blob_loss, blob_loss_scale, 1.f / device_count());
-      ConstantFill(net, blob_loss_scale, blob_loss_scale + gradient_suffix, 1.0);
+      ConstantFill(net, blob_loss_scale, loss_grad, 1.0);
 
       // Add the gradients and sum them over the devices
-      add_gradient_ops(dst);
+      std::set<std::string> main_gradients;
+      for (size_t i = 0; i < device_count(); ++i) {
+	main_gradients.insert(get_prefix(i) + loss_grad);
+      }
+      add_gradient_ops(dst, main_gradients);
 #ifndef CPU_ONLY
       if (device_count() > 1) {
 	reduce(net);

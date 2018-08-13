@@ -442,14 +442,17 @@ namespace dd {
     REGISTER_OP(LearningRate,
 		INPUT(iter),
 		OUTPUT(rate),
-		ADD_ARG(policy);
-		ADD_ARG(base_lr);
-		ADD_ARG(stepsize);
-		ADD_ARG(gamma),
+		ADD_ARG(policy); ADD_ARG(base_lr);
+		ADD_ARG(stepsize); ADD_ARG(max_iter);
+		ADD_ARG(gamma); ADD_ARG(power),
 		const std::string &iter,
 		const std::string &rate,
 		const std::string &policy,
-		float base_lr, int stepsize, float gamma)
+		float base_lr,
+		int stepsize,
+		int max_iter,
+		float gamma,
+		float power)
 
     // Test
     REGISTER_SIMPLE_OP_2I1O(LabelCrossEntropy)
@@ -523,8 +526,7 @@ namespace dd {
     void insert_learning_operators(const ModelContext &context,
 				   caffe2::NetDef &net_def,
 				   caffe2::NetDef &init_def,
-				   const std::string &policy,
-				   float base_lr, int stepsize, float gamma) {
+				   const LROpModifier &lr_config) {
 
       ScopedNet net(context.scope_net(net_def));
       // Forcing the device (iter blobs must be run on CPU)
@@ -549,7 +551,9 @@ namespace dd {
 
       add_external_input(net, blob_iter);
       Iter(net, blob_iter);
-      LearningRate(net, blob_iter, blob_lr, policy, base_lr, stepsize, gamma);
+      caffe2::OperatorDef lr;
+      lr_config(lr, blob_iter, blob_lr);
+      add_op(net, lr);
     }
 
     // Add all the operators on the main device and copy the outputs on the other devices
