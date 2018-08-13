@@ -95,8 +95,9 @@ namespace dd {
       int _inplace = 0;
       int _device = 0;
 
-      inline void set(int value, int inplace, int device) {
-	_current = _total = value;
+      inline void add(int inplace, int device) {
+	++_current;
+	++_total;
 	_inplace += inplace;
 	_device = device;
       }
@@ -114,10 +115,14 @@ namespace dd {
     class BlobsInfo: public std::map<std::string, BlobInfo> {
     public:
 
+      inline bool is_tagged(const std::string &name) {
+	return count(name);
+      }
+
       // Fetch the next available 'split' of the given blob
       inline void rename_if_multiple_use(std::string &name) {
 
-	if (!count(name)) return; // Can't cause conflicts
+	if (!is_tagged(name)) return; // Can't cause conflicts
 
 	BlobInfo &info = at(name);
 	if (info._current < 1) return; // Won't be reused
@@ -176,15 +181,11 @@ namespace dd {
 	    // Then an inplace gradient will already be created (no need to it manually)
 	    continue;
 	  }
-	  // If the blob is used by several operators,
-	  // then its gradient will have multiple source (Sum)
-	  if (++input_count[input] > 1) {
-	    BlobInfo &info = blobs_info[input + gradient_suffix];
-	    // If those operators are Sums, then the gradient can be computed
-	    // using inplace operations.
-	    // If they're not, we will need the manage a 'split' input
-	    info.set(input_count[input], op.type() == "Sum", device);
-	  }
+	  // If the blob is used by several operators, then its gradient will have multiple source.
+	  // If those operators are Sums, then the gradient can be computed
+	  // using inplace operations.
+	  // If not we will need the manage a 'split' input and manually add a Sum.
+	  blobs_info[input + gradient_suffix].add(op.type() == "Sum", device);
 	}
       }
       // As we take an interest in the backward pass, we want the 'StopGradient' operator
@@ -215,21 +216,21 @@ namespace dd {
       // Feed the gradient with the operator outputs
       std::vector<caffe2::GradientWrapper> output(op.output_size());
       for (size_t i = 0; i < output.size(); ++i) {
-	output[i].dense_ = op.output(i) + gradient_suffix;
+	std::string grad = op.output(i) + gradient_suffix;
+	if (blobs_info.is_tagged(grad)) { // This output must generate a gradient
+	  output[i].dense_ = grad;
+	}
+	//XXX Manage sparse gradients (GradientWrapper.indices_ & GradientWrapper.values_)
+	// See caffe2/python/core.py -- GradientRegistry._GetGradientForOpCC -- from_untyped
       }
 
-      // Assert that a gradient exists for this operator
+      // Assert that gradients exist for this operator
       caffe2::GradientOpsMeta meta = GetGradientForOp(op, output);
       CAFFE_ENFORCE(meta.ops_.size());
       for (size_t i = 0; i < meta.ops_.size(); ++i) {
 	caffe2::OperatorDef &grad = *net.add_op();
 	grad.CopyFrom(meta.ops_[i]);
 	grad.clear_name();
-	if (i) {
-	  // If there are several operators,
-	  // only the first will be linked to the other gradients
-	  continue;
-	}
 	grad.set_is_gradient_op(true);
 	for (std::string &output : *grad.mutable_output()) {
 	  blobs_info.rename_if_multiple_use(output);
@@ -248,11 +249,13 @@ namespace dd {
       for (auto &it : blobs_info) {
 	const std::string &name = it.first;
 	BlobInfo &info = it.second;
-	if (info._current) {
-	  // if > 0:
+	if (info._current || info._total < 2) {
+	  // current > 0:
 	  //    Some operators still need to be computed before we do the final sum.
-	  // if < 0:
+	  // current < 0:
 	  //    The sum was already done.
+	  // total < 2:
+	  //    Nothing to sum
 	  continue;
 	}
 	// Merge the 'split' versions of this blob
@@ -279,7 +282,7 @@ namespace dd {
       }
     }
 
-    void add_gradient_ops(caffe2::NetDef &net) {
+    void add_gradient_ops(caffe2::NetDef &net, const std::set<std::string> &main_gradients) {
 
       // Because we want our gradients to be generated in the same way as caffe2's,
       // sometimes our gradient sums don't create a new output but are done 'inplace'.
@@ -296,6 +299,9 @@ namespace dd {
 
       // See the BlobInfo definition for more details
       BlobsInfo blobs_info;
+      for (const std::string &grad : main_gradients) {
+	blobs_info[grad]._total = 1;
+      }
 
       collect_gradient_ops(net, gradient_ops, blobs_info);
       for (const caffe2::OperatorDef &op : gradient_ops) {
@@ -343,7 +349,6 @@ namespace dd {
 	if (!is_trainable(op, &trainable, &computed)) {
 	  continue;
 	}
-	const auto &output = op.output();
 
 	auto check_params = [&](std::set<std::string> &v_in, std::set<std::string> &v_out) {
 	  for (const std::string &input : v_in) {

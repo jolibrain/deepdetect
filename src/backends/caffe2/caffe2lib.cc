@@ -280,9 +280,14 @@ namespace dd {
     // Duplicate the init net outputs on all the devices
     Caffe2NetTools::copy_and_broadcast_operators(_context, init_net, _init_net);
 
-    Caffe2NetTools::insert_learning_operators(_context, train_net, init_net,
-					      _state.lr_policy(), _state.base_lr(),
-					      _state.stepsize(), _state.gamma());
+    // Forward the APIData configuration in an operator
+    Caffe2NetTools::LROpModifier lr_config =
+      [&](caffe2::OperatorDef &lr, const std::string &iter, const std::string &rate) {
+      Caffe2NetTools::LearningRate(lr, iter, rate, _state.lr_policy(), _state.base_lr(),
+				   _state.stepsize(), _state.max_iter(),
+				   _state.gamma(), _state.power());
+    };
+    Caffe2NetTools::insert_learning_operators(_context, train_net, init_net, lr_config);
     Caffe2NetTools::get_optimizer(_state.solver_type())(_context, train_net, init_net);
 
     // Apply changes
@@ -546,6 +551,8 @@ namespace dd {
       _state.set_base_lr(ad_solver);
       _state.set_stepsize(ad_solver);
       _state.set_gamma(ad_solver);
+      _state.set_power(ad_solver);
+      _state.set_max_iter(ad_solver);
       _state.set_solver_type(ad_solver);
 
       //XXX Allow more parameters: decay, epsilon, ...

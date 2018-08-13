@@ -133,8 +133,10 @@ namespace dd {
 
     REGISTER_CONFIG(std::string, lr_policy, "fixed");
     REGISTER_CONFIG_FLOAT(base_lr, 0.001);
-    REGISTER_CONFIG(int, stepsize, 0);
-    REGISTER_CONFIG_FLOAT(gamma, 0);
+    REGISTER_CONFIG(int, stepsize, 1);
+    REGISTER_CONFIG_FLOAT(gamma, 1);
+    REGISTER_CONFIG_FLOAT(power, 1);
+    REGISTER_CONFIG(int, max_iter, -1);
 
     REGISTER_CONFIG(std::string, solver_type, "sgd");
 
@@ -155,6 +157,8 @@ namespace dd {
       init_base_lr();
       init_stepsize();
       init_gamma();
+      init_power();
+      init_max_iter();
 
       init_solver_type();
     }
