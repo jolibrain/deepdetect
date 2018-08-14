@@ -41,8 +41,12 @@ namespace dd {
     //XXX Doesn't work on too heavy graphs
     void net_to_svg(const caffe2::NetDef &net, const std::string &path);
 
-    //Export in three formats : <path>.pb, <path>.pbtxt and <path>.svg
+    // Exports in three formats : <path>.pb, <path>.pbtxt and <path>.svg
     void dump_net(const caffe2::NetDef &net, const std::string &path);
+
+    // Reads 'predict_net.pb' and 'init_net.pb' in the input folder, resets the weights,
+    // and dumps the result as 'predict_net.pbtxt' and 'init_net.pbtxt' in the output folder
+    void untrain_model(const std::string &input, const std::string &output);
 
     /*
      *  Device management

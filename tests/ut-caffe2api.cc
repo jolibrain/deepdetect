@@ -34,11 +34,12 @@ using namespace dd;
 
 #define RESPONSE(code, msg) TO_STRING({"status":{"code":code,"msg":msg}})
 
-#define CREATE(type, repo, std, nclasses) TO_STRING({	\
+#define _CREATE(type, repo, std, mllib...) TO_STRING({	\
       "mllib": "caffe2",				\
       "description": "my classifier",			\
       "type": type,					\
       "model": {					\
+	"templates": "../templates/caffe2",		\
 	"repository": repo				\
       },						\
       "parameters": {					\
@@ -49,11 +50,14 @@ using namespace dd;
 	  "std": std					\
 	},						\
 	"mllib": {					\
-	  "gpu": true,					\
-	  "nclasses": nclasses				\
+	  mllib						\
 	}						\
       }							\
     })
+
+#define CREATE(t, r, s) _CREATE(t, r, s, "gpuid": [0])
+#define CREATE_TEMPLATE(t, r, s, tname, nclasses)			\
+  _CREATE(t, r, s, "gpuid": [0], "template": tname, "nclasses": nclasses)
 
 #define PREDICT(service, extraction, data...) TO_STRING({	\
       "service": service,					\
@@ -89,140 +93,175 @@ using namespace dd;
       "data": [ data ]							\
     })
 
-// The number of GPUs being unknown, batch sizes are set to 6 (divisible by 1, 2 and 3)
-#define TRAIN(service, iter, test, measures...) TO_STRING({		\
-      "service": service,						\
-      "async": false,							\
-      "parameters": {							\
-	"mllib": {							\
-	  "net": {							\
-	    "batch_size": 6,						\
-	    "test_batch_size": 6  					\
-	  },								\
-	  "solver": {							\
-	    "iterations": iter,						\
-	    "test_interval": test					\
-	  }								\
-	},								\
-	"output": {							\
-	  "measure": [ measures ]					\
-        }								\
-      }									\
-    })
+#define SERVICE "imgserv"
 
 static const std::string ok_str = RESPONSE(200, "ok");
 static const std::string created_str = RESPONSE(201, "Created");
 static const std::string bad_param_str = RESPONSE(400, "BadRequest");
 static const std::string not_found_str = RESPONSE(404, "NotFound");
 
-//XXX Current tests just assert that nothing breaks
-//Loss and accuracy values/evolutions are not checked
-//Real datasets, images and models must be prepared for that
+// Json management
 
-//XXX Add a test that dumps & resumes the state of a training
-
-static const std::string supervised =
-  CREATE("supervised", "../examples/caffe2/resnet_50", 255.0, 1000);
-static const std::string unsupervised =
-  CREATE("unsupervised", "../examples/caffe2/resnet_50", 255.0, 1000);
-static const std::string trainable =
-  CREATE("supervised", "../examples/caffe2/resnet_50_trainable", 255.0, 1000);
-
-static const std::string predict_test1_str =
-  PREDICT_SUPERVISED("imgserv", 3,
-		     "../examples/caffe/voc/voc/test_img.jpg");
-static const std::string predict_test2_str =
-  PREDICT_SUPERVISED("imgserv", 3,
-		     "../examples/caffe/voc/voc/test_img.jpg",
-		     "../examples/caffe/camvid/CamVid_square/test/0001TP_010110.png");
-static const std::string predict_test3_str =
-  PREDICT_UNSUPERVISED("imgserv", "gpu_0/conv1",
-		       "../examples/caffe/voc/voc/test_img.jpg");
-static const std::string predict_test4_str =
-  PREDICT_TEST("imgserv", 5, "../examples/caffe2/resnet_50_trainable/test.lmdb", "acc");
-
-static const std::string train_test1_str = TRAIN("imgserv", 2, 1, "acc");
-
-TEST(caffe2api, service_predict) {
-
-  // create service
-  JsonAPI japi;
-  std::string joutstr = japi.jrender(japi.service_create("imgserv", supervised));
-  ASSERT_EQ(created_str, joutstr);
-
-  // predict
-  joutstr = japi.jrender(japi.service_predict(predict_test1_str));
-  JDoc jd;
-  jd.Parse(joutstr.c_str());
-  ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
-  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
-  std::string cl1 = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
-  ASSERT_TRUE(cl1 == "megalith, megalithic structure");
-  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble() > 0.35);
-
-  // predict batch
-  joutstr = japi.jrender(japi.service_predict(predict_test2_str));
-  jd.Parse(joutstr.c_str());
-  ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
-  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
-  ASSERT_EQ(2, jd["body"]["predictions"].Size());
-  cl1 = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
-  std::string cl2 = jd["body"]["predictions"][1]["classes"][0]["cat"].GetString();
-  ASSERT_TRUE((cl1 == "megalith, megalithic structure" && cl2 == "car mirror")
-	      || (cl1 == "car mirror" && cl2 == "megalith, megalithic structure"));
-  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble() > 0.35);
-  ASSERT_TRUE(jd["body"]["predictions"][1]["classes"][0]["prob"].GetDouble() > 0.35);
+inline void create(JsonAPI &japi, const std::string &json) {
+  ASSERT_EQ(created_str, japi.jrender(japi.service_create(SERVICE, json)));
 }
 
-TEST(caffe2api, service_predict_unsup) {
-
-  // create service
-  JsonAPI japi;
-  std::string joutstr = japi.jrender(japi.service_create("imgserv", unsupervised));
-  ASSERT_EQ(created_str, joutstr);
-
-  // predict
-  joutstr = japi.jrender(japi.service_predict(predict_test3_str));
-  JDoc jd;
-  jd.Parse(joutstr.c_str());
+inline void predict(JsonAPI &japi, JDoc &jd, const std::string &json) {
+  jd.Parse(japi.jrender(japi.service_predict(json)).c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
-  ASSERT_EQ(802816, jd["body"]["predictions"][0]["vals"].Size());
 }
 
-TEST(caffe2api, service_predict_test) {
-
-  // create service
-  JsonAPI japi;
-  std::string joutstr = japi.jrender(japi.service_create("imgserv", trainable));
-  ASSERT_EQ(created_str, joutstr);
-
-  // predict
-  joutstr = japi.jrender(japi.service_predict(predict_test4_str));
-  JDoc jd;
-  jd.Parse(joutstr.c_str());
-  ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"].GetInt());
-  ASSERT_TRUE(fabs(jd["body"]["measure"]["acc"].GetDouble()) >= 0);
-}
-
-TEST(caffe2api, service_train) {
-
-  // create service
-  JsonAPI japi;
-  std::string joutstr = japi.jrender(japi.service_create("imgserv", trainable));
-  ASSERT_EQ(created_str, joutstr);
-
-  // train
-  joutstr = japi.jrender(japi.service_train(train_test1_str));
-  JDoc jd;
-  jd.Parse(joutstr.c_str());
+inline void train(JsonAPI &japi, JDoc &jd, const std::string &json) {
+  jd.Parse(japi.jrender(japi.service_train(json)).c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
   ASSERT_EQ("Created", jd["status"]["msg"]);
   ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
-  ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
-  ASSERT_TRUE(fabs(jd["body"]["measure"]["acc"].GetDouble()) >= 0);
 }
+
+void assert_predictions(const JDoc &jd, std::vector<std::pair<std::string, double>> preds) {
+
+  // Check array
+  size_t nb_pred = preds.size();
+  const auto &predictions = jd["body"]["predictions"];
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+
+  // Check elements
+  for (size_t i = 0; i < nb_pred; ++i) {
+    const auto &prediction = predictions[i]["classes"][0];
+    std::string cat = prediction["cat"].GetString();
+    double prob = prediction["prob"].GetDouble();
+
+    // Find a matching prediction
+    auto pred = preds.begin();
+    while (true) {
+      ASSERT_TRUE(pred != preds.end());
+      if (cat == pred->first && prob > pred->second) {
+	break;
+      }
+      ++pred;
+    }
+    preds.erase(pred);
+  }
+}
+
+inline void assert_accuracy(const JDoc &jd, double d) {
+  ASSERT_TRUE(fabs(jd["body"]["measure"]["acc"].GetDouble()) > d);
+}
+
+inline void assert_loss(const JDoc &jd, double d) {
+  ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) < d);
+}
+
+// Paths
+
+#define TRAINED "../examples/caffe2/resnet_50_trained"
+#define IMG_CAT "../examples/caffe2/resnet_50_trained/imgs/cat.jpg"
+#define IMG_AMB "../examples/caffe2/resnet_50_trained/imgs/ambulance.jpg"
+#define DB_FISH "../examples/caffe2/resnet_50_trained/fish.lmdb"
+#define BC_REPO "../examples/caffe2/boats_and_cars"
+#define BC_IMGS "../examples/caffe2/boats_and_cars/imgs"
+
+// Json create
+
+static const std::string supervised = CREATE("supervised", TRAINED, 128.0);
+static const std::string unsupervised = CREATE("unsupervised", TRAINED, 128.0);
+static const std::string trainable = CREATE_TEMPLATE("supervised", BC_REPO, 128.0, "resnet_50", 2);
+
+// Json predict
+
+static const std::string predict_cat = PREDICT_SUPERVISED(SERVICE, 3, IMG_CAT);
+static const std::string predict_cat_and_amb = PREDICT_SUPERVISED(SERVICE, 3, IMG_CAT, IMG_AMB);
+static const std::string test_accuracy = PREDICT_TEST(SERVICE, 6, DB_FISH, "acc");
+static const std::string extract_conv1 = PREDICT_UNSUPERVISED(SERVICE, "gpu_0/conv1", IMG_CAT);
+
+// Json train & test
+
+// 1 epoch = 1200 imgs / 32 batch size = 37.5 iters
+#define TRAIN_BC(service, data...) TO_STRING({			\
+      "service": service,					\
+      "async": false,						\
+      "parameters": {						\
+	"input": {						\
+	  "test_split": 0.1,					\
+	  "shuffle": true					\
+	},							\
+	"output": {						\
+	  "measure": ["acc"]					\
+	},							\
+	"mllib": {						\
+	  "net": {						\
+	    "batch_size": 32,					\
+	    "test_batch_size": 32				\
+	   },							\
+	  "solver": {						\
+	    "iterations": 1000,					\
+	    "test_interval": 200,				\
+	    "lr_policy": "step",				\
+	    "base_lr": 0.01,					\
+	    "stepsize": 375,					\
+	    "gamma": 0.1,					\
+	    "solver_type": "momentum"				\
+	  }							\
+	}							\
+      },							\
+      "data": [ data ]						\
+})
+static const std::string train_boats_and_cars = TRAIN_BC(SERVICE, BC_IMGS);
+
+// Tests
+
+TEST(caffe2api, service_predict_supervised) {
+
+  JsonAPI japi;
+  JDoc jd;
+  create(japi, supervised);
+
+  predict(japi, jd, predict_cat);
+  assert_predictions(jd, { {"tabby, tabby cat", 0.8} });
+
+  predict(japi, jd, predict_cat_and_amb);
+  assert_predictions(jd, { {"tabby, tabby cat", 0.8}, {"ambulance", 0.8} });
+}
+
+TEST(caffe2api, service_predict_test) {
+
+  JsonAPI japi;
+  JDoc jd;
+  create(japi, supervised);
+
+  predict(japi, jd, test_accuracy);
+  assert_accuracy(jd, 0.9);
+}
+
+TEST(caffe2api, service_predict_extract_layer) {
+
+  JsonAPI japi;
+  JDoc jd;
+  create(japi, unsupervised);
+
+  predict(japi, jd, extract_conv1);
+  ASSERT_EQ(802816, jd["body"]["predictions"][0]["vals"].Size());
+}
+
+TEST(caffe2api, service_train) {
+
+  // Remove old data
+  ASSERT_TRUE(!fileops::remove_directory_files(BC_REPO, { ".json", ".txt", ".pb" }));
+  std::set<std::string> dbs({BC_REPO "/train.lmdb", BC_REPO "/test.lmdb"});
+  for (const std::string &db : dbs) {
+    fileops::clear_directory(db);
+    rmdir(db.c_str());
+  }
+
+  JsonAPI japi;
+  JDoc jd;
+  create(japi, trainable);
+
+  train(japi, jd, train_boats_and_cars);
+  assert_accuracy(jd, 0.7);
+  assert_loss(jd, 0.01);
+}
+
+//XXX Add a test that dumps & resumes the state of a training
