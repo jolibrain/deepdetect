@@ -1,0 +1,3021 @@
+name: "resnet"
+op {
+  input: "data"
+  input: "conv1_w"
+  input: "conv1_b"
+  output: "conv1"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 7
+  }
+  arg {
+    name: "pad"
+    i: 3
+  }
+  arg {
+    name: "stride"
+    i: 2
+  }
+}
+op {
+  input: "conv1"
+  input: "conv1_spatbn_relu_s"
+  input: "conv1_spatbn_relu_b"
+  input: "conv1_spatbn_relu_rm"
+  input: "conv1_spatbn_relu_riv"
+  output: "conv1_spatbn_relu"
+  output: "conv1_spatbn_relu_rm"
+  output: "conv1_spatbn_relu_riv"
+  output: "conv1_spatbn_relu_sm"
+  output: "conv1_spatbn_relu_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "conv1_spatbn_relu"
+  output: "conv1_spatbn_relu"
+  type: "Relu"
+}
+op {
+  input: "conv1_spatbn_relu"
+  output: "pool1"
+  type: "MaxPool"
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "stride"
+    i: 2
+  }
+}
+op {
+  input: "pool1"
+  input: "comp_0_conv_1_w"
+  input: "comp_0_conv_1_b"
+  output: "comp_0_conv_1"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_0_conv_1"
+  input: "comp_0_spatbn_1_s"
+  input: "comp_0_spatbn_1_b"
+  input: "comp_0_spatbn_1_rm"
+  input: "comp_0_spatbn_1_riv"
+  output: "comp_0_spatbn_1"
+  output: "comp_0_spatbn_1_rm"
+  output: "comp_0_spatbn_1_riv"
+  output: "comp_0_spatbn_1_sm"
+  output: "comp_0_spatbn_1_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_0_spatbn_1"
+  output: "comp_0_spatbn_1"
+  type: "Relu"
+}
+op {
+  input: "comp_0_spatbn_1"
+  input: "comp_0_conv_2_w"
+  input: "comp_0_conv_2_b"
+  output: "comp_0_conv_2"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_0_conv_2"
+  input: "comp_0_spatbn_2_s"
+  input: "comp_0_spatbn_2_b"
+  input: "comp_0_spatbn_2_rm"
+  input: "comp_0_spatbn_2_riv"
+  output: "comp_0_spatbn_2"
+  output: "comp_0_spatbn_2_rm"
+  output: "comp_0_spatbn_2_riv"
+  output: "comp_0_spatbn_2_sm"
+  output: "comp_0_spatbn_2_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_0_spatbn_2"
+  output: "comp_0_spatbn_2"
+  type: "Relu"
+}
+op {
+  input: "comp_0_spatbn_2"
+  input: "comp_0_conv_3_w"
+  input: "comp_0_conv_3_b"
+  output: "comp_0_conv_3"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_0_conv_3"
+  input: "comp_0_spatbn_3_s"
+  input: "comp_0_spatbn_3_b"
+  input: "comp_0_spatbn_3_rm"
+  input: "comp_0_spatbn_3_riv"
+  output: "comp_0_spatbn_3"
+  output: "comp_0_spatbn_3_rm"
+  output: "comp_0_spatbn_3_riv"
+  output: "comp_0_spatbn_3_sm"
+  output: "comp_0_spatbn_3_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "pool1"
+  input: "shortcut_projection_0_w"
+  input: "shortcut_projection_0_b"
+  output: "shortcut_projection_0"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "shortcut_projection_0"
+  input: "shortcut_projection_0_spatbn_s"
+  input: "shortcut_projection_0_spatbn_b"
+  input: "shortcut_projection_0_spatbn_rm"
+  input: "shortcut_projection_0_spatbn_riv"
+  output: "shortcut_projection_0_spatbn"
+  output: "shortcut_projection_0_spatbn_rm"
+  output: "shortcut_projection_0_spatbn_riv"
+  output: "shortcut_projection_0_spatbn_sm"
+  output: "shortcut_projection_0_spatbn_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "shortcut_projection_0_spatbn"
+  input: "comp_0_spatbn_3"
+  output: "comp_0_sum_3"
+  type: "Sum"
+}
+op {
+  input: "comp_0_sum_3"
+  output: "comp_0_sum_3"
+  type: "Relu"
+}
+op {
+  input: "comp_0_sum_3"
+  input: "comp_1_conv_1_w"
+  input: "comp_1_conv_1_b"
+  output: "comp_1_conv_1"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_1_conv_1"
+  input: "comp_1_spatbn_1_s"
+  input: "comp_1_spatbn_1_b"
+  input: "comp_1_spatbn_1_rm"
+  input: "comp_1_spatbn_1_riv"
+  output: "comp_1_spatbn_1"
+  output: "comp_1_spatbn_1_rm"
+  output: "comp_1_spatbn_1_riv"
+  output: "comp_1_spatbn_1_sm"
+  output: "comp_1_spatbn_1_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_1_spatbn_1"
+  output: "comp_1_spatbn_1"
+  type: "Relu"
+}
+op {
+  input: "comp_1_spatbn_1"
+  input: "comp_1_conv_2_w"
+  input: "comp_1_conv_2_b"
+  output: "comp_1_conv_2"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_1_conv_2"
+  input: "comp_1_spatbn_2_s"
+  input: "comp_1_spatbn_2_b"
+  input: "comp_1_spatbn_2_rm"
+  input: "comp_1_spatbn_2_riv"
+  output: "comp_1_spatbn_2"
+  output: "comp_1_spatbn_2_rm"
+  output: "comp_1_spatbn_2_riv"
+  output: "comp_1_spatbn_2_sm"
+  output: "comp_1_spatbn_2_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_1_spatbn_2"
+  output: "comp_1_spatbn_2"
+  type: "Relu"
+}
+op {
+  input: "comp_1_spatbn_2"
+  input: "comp_1_conv_3_w"
+  input: "comp_1_conv_3_b"
+  output: "comp_1_conv_3"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_1_conv_3"
+  input: "comp_1_spatbn_3_s"
+  input: "comp_1_spatbn_3_b"
+  input: "comp_1_spatbn_3_rm"
+  input: "comp_1_spatbn_3_riv"
+  output: "comp_1_spatbn_3"
+  output: "comp_1_spatbn_3_rm"
+  output: "comp_1_spatbn_3_riv"
+  output: "comp_1_spatbn_3_sm"
+  output: "comp_1_spatbn_3_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_0_sum_3"
+  input: "comp_1_spatbn_3"
+  output: "comp_1_sum_3"
+  type: "Sum"
+}
+op {
+  input: "comp_1_sum_3"
+  output: "comp_1_sum_3"
+  type: "Relu"
+}
+op {
+  input: "comp_1_sum_3"
+  input: "comp_2_conv_1_w"
+  input: "comp_2_conv_1_b"
+  output: "comp_2_conv_1"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_2_conv_1"
+  input: "comp_2_spatbn_1_s"
+  input: "comp_2_spatbn_1_b"
+  input: "comp_2_spatbn_1_rm"
+  input: "comp_2_spatbn_1_riv"
+  output: "comp_2_spatbn_1"
+  output: "comp_2_spatbn_1_rm"
+  output: "comp_2_spatbn_1_riv"
+  output: "comp_2_spatbn_1_sm"
+  output: "comp_2_spatbn_1_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_2_spatbn_1"
+  output: "comp_2_spatbn_1"
+  type: "Relu"
+}
+op {
+  input: "comp_2_spatbn_1"
+  input: "comp_2_conv_2_w"
+  input: "comp_2_conv_2_b"
+  output: "comp_2_conv_2"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_2_conv_2"
+  input: "comp_2_spatbn_2_s"
+  input: "comp_2_spatbn_2_b"
+  input: "comp_2_spatbn_2_rm"
+  input: "comp_2_spatbn_2_riv"
+  output: "comp_2_spatbn_2"
+  output: "comp_2_spatbn_2_rm"
+  output: "comp_2_spatbn_2_riv"
+  output: "comp_2_spatbn_2_sm"
+  output: "comp_2_spatbn_2_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_2_spatbn_2"
+  output: "comp_2_spatbn_2"
+  type: "Relu"
+}
+op {
+  input: "comp_2_spatbn_2"
+  input: "comp_2_conv_3_w"
+  input: "comp_2_conv_3_b"
+  output: "comp_2_conv_3"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_2_conv_3"
+  input: "comp_2_spatbn_3_s"
+  input: "comp_2_spatbn_3_b"
+  input: "comp_2_spatbn_3_rm"
+  input: "comp_2_spatbn_3_riv"
+  output: "comp_2_spatbn_3"
+  output: "comp_2_spatbn_3_rm"
+  output: "comp_2_spatbn_3_riv"
+  output: "comp_2_spatbn_3_sm"
+  output: "comp_2_spatbn_3_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_1_sum_3"
+  input: "comp_2_spatbn_3"
+  output: "comp_2_sum_3"
+  type: "Sum"
+}
+op {
+  input: "comp_2_sum_3"
+  output: "comp_2_sum_3"
+  type: "Relu"
+}
+op {
+  input: "comp_2_sum_3"
+  input: "comp_3_conv_1_w"
+  input: "comp_3_conv_1_b"
+  output: "comp_3_conv_1"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_3_conv_1"
+  input: "comp_3_spatbn_1_s"
+  input: "comp_3_spatbn_1_b"
+  input: "comp_3_spatbn_1_rm"
+  input: "comp_3_spatbn_1_riv"
+  output: "comp_3_spatbn_1"
+  output: "comp_3_spatbn_1_rm"
+  output: "comp_3_spatbn_1_riv"
+  output: "comp_3_spatbn_1_sm"
+  output: "comp_3_spatbn_1_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_3_spatbn_1"
+  output: "comp_3_spatbn_1"
+  type: "Relu"
+}
+op {
+  input: "comp_3_spatbn_1"
+  input: "comp_3_conv_2_w"
+  input: "comp_3_conv_2_b"
+  output: "comp_3_conv_2"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "stride"
+    i: 2
+  }
+}
+op {
+  input: "comp_3_conv_2"
+  input: "comp_3_spatbn_2_s"
+  input: "comp_3_spatbn_2_b"
+  input: "comp_3_spatbn_2_rm"
+  input: "comp_3_spatbn_2_riv"
+  output: "comp_3_spatbn_2"
+  output: "comp_3_spatbn_2_rm"
+  output: "comp_3_spatbn_2_riv"
+  output: "comp_3_spatbn_2_sm"
+  output: "comp_3_spatbn_2_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_3_spatbn_2"
+  output: "comp_3_spatbn_2"
+  type: "Relu"
+}
+op {
+  input: "comp_3_spatbn_2"
+  input: "comp_3_conv_3_w"
+  input: "comp_3_conv_3_b"
+  output: "comp_3_conv_3"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_3_conv_3"
+  input: "comp_3_spatbn_3_s"
+  input: "comp_3_spatbn_3_b"
+  input: "comp_3_spatbn_3_rm"
+  input: "comp_3_spatbn_3_riv"
+  output: "comp_3_spatbn_3"
+  output: "comp_3_spatbn_3_rm"
+  output: "comp_3_spatbn_3_riv"
+  output: "comp_3_spatbn_3_sm"
+  output: "comp_3_spatbn_3_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_2_sum_3"
+  input: "shortcut_projection_3_w"
+  input: "shortcut_projection_3_b"
+  output: "shortcut_projection_3"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "shortcut_projection_3"
+  input: "shortcut_projection_3_spatbn_s"
+  input: "shortcut_projection_3_spatbn_b"
+  input: "shortcut_projection_3_spatbn_rm"
+  input: "shortcut_projection_3_spatbn_riv"
+  output: "shortcut_projection_3_spatbn"
+  output: "shortcut_projection_3_spatbn_rm"
+  output: "shortcut_projection_3_spatbn_riv"
+  output: "shortcut_projection_3_spatbn_sm"
+  output: "shortcut_projection_3_spatbn_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "shortcut_projection_3_spatbn"
+  input: "comp_3_spatbn_3"
+  output: "comp_3_sum_3"
+  type: "Sum"
+}
+op {
+  input: "comp_3_sum_3"
+  output: "comp_3_sum_3"
+  type: "Relu"
+}
+op {
+  input: "comp_3_sum_3"
+  input: "comp_4_conv_1_w"
+  input: "comp_4_conv_1_b"
+  output: "comp_4_conv_1"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_4_conv_1"
+  input: "comp_4_spatbn_1_s"
+  input: "comp_4_spatbn_1_b"
+  input: "comp_4_spatbn_1_rm"
+  input: "comp_4_spatbn_1_riv"
+  output: "comp_4_spatbn_1"
+  output: "comp_4_spatbn_1_rm"
+  output: "comp_4_spatbn_1_riv"
+  output: "comp_4_spatbn_1_sm"
+  output: "comp_4_spatbn_1_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_4_spatbn_1"
+  output: "comp_4_spatbn_1"
+  type: "Relu"
+}
+op {
+  input: "comp_4_spatbn_1"
+  input: "comp_4_conv_2_w"
+  input: "comp_4_conv_2_b"
+  output: "comp_4_conv_2"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_4_conv_2"
+  input: "comp_4_spatbn_2_s"
+  input: "comp_4_spatbn_2_b"
+  input: "comp_4_spatbn_2_rm"
+  input: "comp_4_spatbn_2_riv"
+  output: "comp_4_spatbn_2"
+  output: "comp_4_spatbn_2_rm"
+  output: "comp_4_spatbn_2_riv"
+  output: "comp_4_spatbn_2_sm"
+  output: "comp_4_spatbn_2_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_4_spatbn_2"
+  output: "comp_4_spatbn_2"
+  type: "Relu"
+}
+op {
+  input: "comp_4_spatbn_2"
+  input: "comp_4_conv_3_w"
+  input: "comp_4_conv_3_b"
+  output: "comp_4_conv_3"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_4_conv_3"
+  input: "comp_4_spatbn_3_s"
+  input: "comp_4_spatbn_3_b"
+  input: "comp_4_spatbn_3_rm"
+  input: "comp_4_spatbn_3_riv"
+  output: "comp_4_spatbn_3"
+  output: "comp_4_spatbn_3_rm"
+  output: "comp_4_spatbn_3_riv"
+  output: "comp_4_spatbn_3_sm"
+  output: "comp_4_spatbn_3_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_3_sum_3"
+  input: "comp_4_spatbn_3"
+  output: "comp_4_sum_3"
+  type: "Sum"
+}
+op {
+  input: "comp_4_sum_3"
+  output: "comp_4_sum_3"
+  type: "Relu"
+}
+op {
+  input: "comp_4_sum_3"
+  input: "comp_5_conv_1_w"
+  input: "comp_5_conv_1_b"
+  output: "comp_5_conv_1"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_5_conv_1"
+  input: "comp_5_spatbn_1_s"
+  input: "comp_5_spatbn_1_b"
+  input: "comp_5_spatbn_1_rm"
+  input: "comp_5_spatbn_1_riv"
+  output: "comp_5_spatbn_1"
+  output: "comp_5_spatbn_1_rm"
+  output: "comp_5_spatbn_1_riv"
+  output: "comp_5_spatbn_1_sm"
+  output: "comp_5_spatbn_1_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_5_spatbn_1"
+  output: "comp_5_spatbn_1"
+  type: "Relu"
+}
+op {
+  input: "comp_5_spatbn_1"
+  input: "comp_5_conv_2_w"
+  input: "comp_5_conv_2_b"
+  output: "comp_5_conv_2"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_5_conv_2"
+  input: "comp_5_spatbn_2_s"
+  input: "comp_5_spatbn_2_b"
+  input: "comp_5_spatbn_2_rm"
+  input: "comp_5_spatbn_2_riv"
+  output: "comp_5_spatbn_2"
+  output: "comp_5_spatbn_2_rm"
+  output: "comp_5_spatbn_2_riv"
+  output: "comp_5_spatbn_2_sm"
+  output: "comp_5_spatbn_2_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_5_spatbn_2"
+  output: "comp_5_spatbn_2"
+  type: "Relu"
+}
+op {
+  input: "comp_5_spatbn_2"
+  input: "comp_5_conv_3_w"
+  input: "comp_5_conv_3_b"
+  output: "comp_5_conv_3"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_5_conv_3"
+  input: "comp_5_spatbn_3_s"
+  input: "comp_5_spatbn_3_b"
+  input: "comp_5_spatbn_3_rm"
+  input: "comp_5_spatbn_3_riv"
+  output: "comp_5_spatbn_3"
+  output: "comp_5_spatbn_3_rm"
+  output: "comp_5_spatbn_3_riv"
+  output: "comp_5_spatbn_3_sm"
+  output: "comp_5_spatbn_3_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_4_sum_3"
+  input: "comp_5_spatbn_3"
+  output: "comp_5_sum_3"
+  type: "Sum"
+}
+op {
+  input: "comp_5_sum_3"
+  output: "comp_5_sum_3"
+  type: "Relu"
+}
+op {
+  input: "comp_5_sum_3"
+  input: "comp_6_conv_1_w"
+  input: "comp_6_conv_1_b"
+  output: "comp_6_conv_1"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_6_conv_1"
+  input: "comp_6_spatbn_1_s"
+  input: "comp_6_spatbn_1_b"
+  input: "comp_6_spatbn_1_rm"
+  input: "comp_6_spatbn_1_riv"
+  output: "comp_6_spatbn_1"
+  output: "comp_6_spatbn_1_rm"
+  output: "comp_6_spatbn_1_riv"
+  output: "comp_6_spatbn_1_sm"
+  output: "comp_6_spatbn_1_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_6_spatbn_1"
+  output: "comp_6_spatbn_1"
+  type: "Relu"
+}
+op {
+  input: "comp_6_spatbn_1"
+  input: "comp_6_conv_2_w"
+  input: "comp_6_conv_2_b"
+  output: "comp_6_conv_2"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_6_conv_2"
+  input: "comp_6_spatbn_2_s"
+  input: "comp_6_spatbn_2_b"
+  input: "comp_6_spatbn_2_rm"
+  input: "comp_6_spatbn_2_riv"
+  output: "comp_6_spatbn_2"
+  output: "comp_6_spatbn_2_rm"
+  output: "comp_6_spatbn_2_riv"
+  output: "comp_6_spatbn_2_sm"
+  output: "comp_6_spatbn_2_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_6_spatbn_2"
+  output: "comp_6_spatbn_2"
+  type: "Relu"
+}
+op {
+  input: "comp_6_spatbn_2"
+  input: "comp_6_conv_3_w"
+  input: "comp_6_conv_3_b"
+  output: "comp_6_conv_3"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_6_conv_3"
+  input: "comp_6_spatbn_3_s"
+  input: "comp_6_spatbn_3_b"
+  input: "comp_6_spatbn_3_rm"
+  input: "comp_6_spatbn_3_riv"
+  output: "comp_6_spatbn_3"
+  output: "comp_6_spatbn_3_rm"
+  output: "comp_6_spatbn_3_riv"
+  output: "comp_6_spatbn_3_sm"
+  output: "comp_6_spatbn_3_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_5_sum_3"
+  input: "comp_6_spatbn_3"
+  output: "comp_6_sum_3"
+  type: "Sum"
+}
+op {
+  input: "comp_6_sum_3"
+  output: "comp_6_sum_3"
+  type: "Relu"
+}
+op {
+  input: "comp_6_sum_3"
+  input: "comp_7_conv_1_w"
+  input: "comp_7_conv_1_b"
+  output: "comp_7_conv_1"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_7_conv_1"
+  input: "comp_7_spatbn_1_s"
+  input: "comp_7_spatbn_1_b"
+  input: "comp_7_spatbn_1_rm"
+  input: "comp_7_spatbn_1_riv"
+  output: "comp_7_spatbn_1"
+  output: "comp_7_spatbn_1_rm"
+  output: "comp_7_spatbn_1_riv"
+  output: "comp_7_spatbn_1_sm"
+  output: "comp_7_spatbn_1_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_7_spatbn_1"
+  output: "comp_7_spatbn_1"
+  type: "Relu"
+}
+op {
+  input: "comp_7_spatbn_1"
+  input: "comp_7_conv_2_w"
+  input: "comp_7_conv_2_b"
+  output: "comp_7_conv_2"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "stride"
+    i: 2
+  }
+}
+op {
+  input: "comp_7_conv_2"
+  input: "comp_7_spatbn_2_s"
+  input: "comp_7_spatbn_2_b"
+  input: "comp_7_spatbn_2_rm"
+  input: "comp_7_spatbn_2_riv"
+  output: "comp_7_spatbn_2"
+  output: "comp_7_spatbn_2_rm"
+  output: "comp_7_spatbn_2_riv"
+  output: "comp_7_spatbn_2_sm"
+  output: "comp_7_spatbn_2_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_7_spatbn_2"
+  output: "comp_7_spatbn_2"
+  type: "Relu"
+}
+op {
+  input: "comp_7_spatbn_2"
+  input: "comp_7_conv_3_w"
+  input: "comp_7_conv_3_b"
+  output: "comp_7_conv_3"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_7_conv_3"
+  input: "comp_7_spatbn_3_s"
+  input: "comp_7_spatbn_3_b"
+  input: "comp_7_spatbn_3_rm"
+  input: "comp_7_spatbn_3_riv"
+  output: "comp_7_spatbn_3"
+  output: "comp_7_spatbn_3_rm"
+  output: "comp_7_spatbn_3_riv"
+  output: "comp_7_spatbn_3_sm"
+  output: "comp_7_spatbn_3_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_6_sum_3"
+  input: "shortcut_projection_7_w"
+  input: "shortcut_projection_7_b"
+  output: "shortcut_projection_7"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "shortcut_projection_7"
+  input: "shortcut_projection_7_spatbn_s"
+  input: "shortcut_projection_7_spatbn_b"
+  input: "shortcut_projection_7_spatbn_rm"
+  input: "shortcut_projection_7_spatbn_riv"
+  output: "shortcut_projection_7_spatbn"
+  output: "shortcut_projection_7_spatbn_rm"
+  output: "shortcut_projection_7_spatbn_riv"
+  output: "shortcut_projection_7_spatbn_sm"
+  output: "shortcut_projection_7_spatbn_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "shortcut_projection_7_spatbn"
+  input: "comp_7_spatbn_3"
+  output: "comp_7_sum_3"
+  type: "Sum"
+}
+op {
+  input: "comp_7_sum_3"
+  output: "comp_7_sum_3"
+  type: "Relu"
+}
+op {
+  input: "comp_7_sum_3"
+  input: "comp_8_conv_1_w"
+  input: "comp_8_conv_1_b"
+  output: "comp_8_conv_1"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_8_conv_1"
+  input: "comp_8_spatbn_1_s"
+  input: "comp_8_spatbn_1_b"
+  input: "comp_8_spatbn_1_rm"
+  input: "comp_8_spatbn_1_riv"
+  output: "comp_8_spatbn_1"
+  output: "comp_8_spatbn_1_rm"
+  output: "comp_8_spatbn_1_riv"
+  output: "comp_8_spatbn_1_sm"
+  output: "comp_8_spatbn_1_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_8_spatbn_1"
+  output: "comp_8_spatbn_1"
+  type: "Relu"
+}
+op {
+  input: "comp_8_spatbn_1"
+  input: "comp_8_conv_2_w"
+  input: "comp_8_conv_2_b"
+  output: "comp_8_conv_2"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_8_conv_2"
+  input: "comp_8_spatbn_2_s"
+  input: "comp_8_spatbn_2_b"
+  input: "comp_8_spatbn_2_rm"
+  input: "comp_8_spatbn_2_riv"
+  output: "comp_8_spatbn_2"
+  output: "comp_8_spatbn_2_rm"
+  output: "comp_8_spatbn_2_riv"
+  output: "comp_8_spatbn_2_sm"
+  output: "comp_8_spatbn_2_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_8_spatbn_2"
+  output: "comp_8_spatbn_2"
+  type: "Relu"
+}
+op {
+  input: "comp_8_spatbn_2"
+  input: "comp_8_conv_3_w"
+  input: "comp_8_conv_3_b"
+  output: "comp_8_conv_3"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_8_conv_3"
+  input: "comp_8_spatbn_3_s"
+  input: "comp_8_spatbn_3_b"
+  input: "comp_8_spatbn_3_rm"
+  input: "comp_8_spatbn_3_riv"
+  output: "comp_8_spatbn_3"
+  output: "comp_8_spatbn_3_rm"
+  output: "comp_8_spatbn_3_riv"
+  output: "comp_8_spatbn_3_sm"
+  output: "comp_8_spatbn_3_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_7_sum_3"
+  input: "comp_8_spatbn_3"
+  output: "comp_8_sum_3"
+  type: "Sum"
+}
+op {
+  input: "comp_8_sum_3"
+  output: "comp_8_sum_3"
+  type: "Relu"
+}
+op {
+  input: "comp_8_sum_3"
+  input: "comp_9_conv_1_w"
+  input: "comp_9_conv_1_b"
+  output: "comp_9_conv_1"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_9_conv_1"
+  input: "comp_9_spatbn_1_s"
+  input: "comp_9_spatbn_1_b"
+  input: "comp_9_spatbn_1_rm"
+  input: "comp_9_spatbn_1_riv"
+  output: "comp_9_spatbn_1"
+  output: "comp_9_spatbn_1_rm"
+  output: "comp_9_spatbn_1_riv"
+  output: "comp_9_spatbn_1_sm"
+  output: "comp_9_spatbn_1_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_9_spatbn_1"
+  output: "comp_9_spatbn_1"
+  type: "Relu"
+}
+op {
+  input: "comp_9_spatbn_1"
+  input: "comp_9_conv_2_w"
+  input: "comp_9_conv_2_b"
+  output: "comp_9_conv_2"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_9_conv_2"
+  input: "comp_9_spatbn_2_s"
+  input: "comp_9_spatbn_2_b"
+  input: "comp_9_spatbn_2_rm"
+  input: "comp_9_spatbn_2_riv"
+  output: "comp_9_spatbn_2"
+  output: "comp_9_spatbn_2_rm"
+  output: "comp_9_spatbn_2_riv"
+  output: "comp_9_spatbn_2_sm"
+  output: "comp_9_spatbn_2_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_9_spatbn_2"
+  output: "comp_9_spatbn_2"
+  type: "Relu"
+}
+op {
+  input: "comp_9_spatbn_2"
+  input: "comp_9_conv_3_w"
+  input: "comp_9_conv_3_b"
+  output: "comp_9_conv_3"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_9_conv_3"
+  input: "comp_9_spatbn_3_s"
+  input: "comp_9_spatbn_3_b"
+  input: "comp_9_spatbn_3_rm"
+  input: "comp_9_spatbn_3_riv"
+  output: "comp_9_spatbn_3"
+  output: "comp_9_spatbn_3_rm"
+  output: "comp_9_spatbn_3_riv"
+  output: "comp_9_spatbn_3_sm"
+  output: "comp_9_spatbn_3_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_8_sum_3"
+  input: "comp_9_spatbn_3"
+  output: "comp_9_sum_3"
+  type: "Sum"
+}
+op {
+  input: "comp_9_sum_3"
+  output: "comp_9_sum_3"
+  type: "Relu"
+}
+op {
+  input: "comp_9_sum_3"
+  input: "comp_10_conv_1_w"
+  input: "comp_10_conv_1_b"
+  output: "comp_10_conv_1"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_10_conv_1"
+  input: "comp_10_spatbn_1_s"
+  input: "comp_10_spatbn_1_b"
+  input: "comp_10_spatbn_1_rm"
+  input: "comp_10_spatbn_1_riv"
+  output: "comp_10_spatbn_1"
+  output: "comp_10_spatbn_1_rm"
+  output: "comp_10_spatbn_1_riv"
+  output: "comp_10_spatbn_1_sm"
+  output: "comp_10_spatbn_1_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_10_spatbn_1"
+  output: "comp_10_spatbn_1"
+  type: "Relu"
+}
+op {
+  input: "comp_10_spatbn_1"
+  input: "comp_10_conv_2_w"
+  input: "comp_10_conv_2_b"
+  output: "comp_10_conv_2"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_10_conv_2"
+  input: "comp_10_spatbn_2_s"
+  input: "comp_10_spatbn_2_b"
+  input: "comp_10_spatbn_2_rm"
+  input: "comp_10_spatbn_2_riv"
+  output: "comp_10_spatbn_2"
+  output: "comp_10_spatbn_2_rm"
+  output: "comp_10_spatbn_2_riv"
+  output: "comp_10_spatbn_2_sm"
+  output: "comp_10_spatbn_2_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_10_spatbn_2"
+  output: "comp_10_spatbn_2"
+  type: "Relu"
+}
+op {
+  input: "comp_10_spatbn_2"
+  input: "comp_10_conv_3_w"
+  input: "comp_10_conv_3_b"
+  output: "comp_10_conv_3"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_10_conv_3"
+  input: "comp_10_spatbn_3_s"
+  input: "comp_10_spatbn_3_b"
+  input: "comp_10_spatbn_3_rm"
+  input: "comp_10_spatbn_3_riv"
+  output: "comp_10_spatbn_3"
+  output: "comp_10_spatbn_3_rm"
+  output: "comp_10_spatbn_3_riv"
+  output: "comp_10_spatbn_3_sm"
+  output: "comp_10_spatbn_3_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_9_sum_3"
+  input: "comp_10_spatbn_3"
+  output: "comp_10_sum_3"
+  type: "Sum"
+}
+op {
+  input: "comp_10_sum_3"
+  output: "comp_10_sum_3"
+  type: "Relu"
+}
+op {
+  input: "comp_10_sum_3"
+  input: "comp_11_conv_1_w"
+  input: "comp_11_conv_1_b"
+  output: "comp_11_conv_1"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_11_conv_1"
+  input: "comp_11_spatbn_1_s"
+  input: "comp_11_spatbn_1_b"
+  input: "comp_11_spatbn_1_rm"
+  input: "comp_11_spatbn_1_riv"
+  output: "comp_11_spatbn_1"
+  output: "comp_11_spatbn_1_rm"
+  output: "comp_11_spatbn_1_riv"
+  output: "comp_11_spatbn_1_sm"
+  output: "comp_11_spatbn_1_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_11_spatbn_1"
+  output: "comp_11_spatbn_1"
+  type: "Relu"
+}
+op {
+  input: "comp_11_spatbn_1"
+  input: "comp_11_conv_2_w"
+  input: "comp_11_conv_2_b"
+  output: "comp_11_conv_2"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_11_conv_2"
+  input: "comp_11_spatbn_2_s"
+  input: "comp_11_spatbn_2_b"
+  input: "comp_11_spatbn_2_rm"
+  input: "comp_11_spatbn_2_riv"
+  output: "comp_11_spatbn_2"
+  output: "comp_11_spatbn_2_rm"
+  output: "comp_11_spatbn_2_riv"
+  output: "comp_11_spatbn_2_sm"
+  output: "comp_11_spatbn_2_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_11_spatbn_2"
+  output: "comp_11_spatbn_2"
+  type: "Relu"
+}
+op {
+  input: "comp_11_spatbn_2"
+  input: "comp_11_conv_3_w"
+  input: "comp_11_conv_3_b"
+  output: "comp_11_conv_3"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_11_conv_3"
+  input: "comp_11_spatbn_3_s"
+  input: "comp_11_spatbn_3_b"
+  input: "comp_11_spatbn_3_rm"
+  input: "comp_11_spatbn_3_riv"
+  output: "comp_11_spatbn_3"
+  output: "comp_11_spatbn_3_rm"
+  output: "comp_11_spatbn_3_riv"
+  output: "comp_11_spatbn_3_sm"
+  output: "comp_11_spatbn_3_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_10_sum_3"
+  input: "comp_11_spatbn_3"
+  output: "comp_11_sum_3"
+  type: "Sum"
+}
+op {
+  input: "comp_11_sum_3"
+  output: "comp_11_sum_3"
+  type: "Relu"
+}
+op {
+  input: "comp_11_sum_3"
+  input: "comp_12_conv_1_w"
+  input: "comp_12_conv_1_b"
+  output: "comp_12_conv_1"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_12_conv_1"
+  input: "comp_12_spatbn_1_s"
+  input: "comp_12_spatbn_1_b"
+  input: "comp_12_spatbn_1_rm"
+  input: "comp_12_spatbn_1_riv"
+  output: "comp_12_spatbn_1"
+  output: "comp_12_spatbn_1_rm"
+  output: "comp_12_spatbn_1_riv"
+  output: "comp_12_spatbn_1_sm"
+  output: "comp_12_spatbn_1_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_12_spatbn_1"
+  output: "comp_12_spatbn_1"
+  type: "Relu"
+}
+op {
+  input: "comp_12_spatbn_1"
+  input: "comp_12_conv_2_w"
+  input: "comp_12_conv_2_b"
+  output: "comp_12_conv_2"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_12_conv_2"
+  input: "comp_12_spatbn_2_s"
+  input: "comp_12_spatbn_2_b"
+  input: "comp_12_spatbn_2_rm"
+  input: "comp_12_spatbn_2_riv"
+  output: "comp_12_spatbn_2"
+  output: "comp_12_spatbn_2_rm"
+  output: "comp_12_spatbn_2_riv"
+  output: "comp_12_spatbn_2_sm"
+  output: "comp_12_spatbn_2_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_12_spatbn_2"
+  output: "comp_12_spatbn_2"
+  type: "Relu"
+}
+op {
+  input: "comp_12_spatbn_2"
+  input: "comp_12_conv_3_w"
+  input: "comp_12_conv_3_b"
+  output: "comp_12_conv_3"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_12_conv_3"
+  input: "comp_12_spatbn_3_s"
+  input: "comp_12_spatbn_3_b"
+  input: "comp_12_spatbn_3_rm"
+  input: "comp_12_spatbn_3_riv"
+  output: "comp_12_spatbn_3"
+  output: "comp_12_spatbn_3_rm"
+  output: "comp_12_spatbn_3_riv"
+  output: "comp_12_spatbn_3_sm"
+  output: "comp_12_spatbn_3_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_11_sum_3"
+  input: "comp_12_spatbn_3"
+  output: "comp_12_sum_3"
+  type: "Sum"
+}
+op {
+  input: "comp_12_sum_3"
+  output: "comp_12_sum_3"
+  type: "Relu"
+}
+op {
+  input: "comp_12_sum_3"
+  input: "comp_13_conv_1_w"
+  input: "comp_13_conv_1_b"
+  output: "comp_13_conv_1"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_13_conv_1"
+  input: "comp_13_spatbn_1_s"
+  input: "comp_13_spatbn_1_b"
+  input: "comp_13_spatbn_1_rm"
+  input: "comp_13_spatbn_1_riv"
+  output: "comp_13_spatbn_1"
+  output: "comp_13_spatbn_1_rm"
+  output: "comp_13_spatbn_1_riv"
+  output: "comp_13_spatbn_1_sm"
+  output: "comp_13_spatbn_1_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_13_spatbn_1"
+  output: "comp_13_spatbn_1"
+  type: "Relu"
+}
+op {
+  input: "comp_13_spatbn_1"
+  input: "comp_13_conv_2_w"
+  input: "comp_13_conv_2_b"
+  output: "comp_13_conv_2"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "stride"
+    i: 2
+  }
+}
+op {
+  input: "comp_13_conv_2"
+  input: "comp_13_spatbn_2_s"
+  input: "comp_13_spatbn_2_b"
+  input: "comp_13_spatbn_2_rm"
+  input: "comp_13_spatbn_2_riv"
+  output: "comp_13_spatbn_2"
+  output: "comp_13_spatbn_2_rm"
+  output: "comp_13_spatbn_2_riv"
+  output: "comp_13_spatbn_2_sm"
+  output: "comp_13_spatbn_2_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_13_spatbn_2"
+  output: "comp_13_spatbn_2"
+  type: "Relu"
+}
+op {
+  input: "comp_13_spatbn_2"
+  input: "comp_13_conv_3_w"
+  input: "comp_13_conv_3_b"
+  output: "comp_13_conv_3"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_13_conv_3"
+  input: "comp_13_spatbn_3_s"
+  input: "comp_13_spatbn_3_b"
+  input: "comp_13_spatbn_3_rm"
+  input: "comp_13_spatbn_3_riv"
+  output: "comp_13_spatbn_3"
+  output: "comp_13_spatbn_3_rm"
+  output: "comp_13_spatbn_3_riv"
+  output: "comp_13_spatbn_3_sm"
+  output: "comp_13_spatbn_3_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_12_sum_3"
+  input: "shortcut_projection_13_w"
+  input: "shortcut_projection_13_b"
+  output: "shortcut_projection_13"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "shortcut_projection_13"
+  input: "shortcut_projection_13_spatbn_s"
+  input: "shortcut_projection_13_spatbn_b"
+  input: "shortcut_projection_13_spatbn_rm"
+  input: "shortcut_projection_13_spatbn_riv"
+  output: "shortcut_projection_13_spatbn"
+  output: "shortcut_projection_13_spatbn_rm"
+  output: "shortcut_projection_13_spatbn_riv"
+  output: "shortcut_projection_13_spatbn_sm"
+  output: "shortcut_projection_13_spatbn_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "shortcut_projection_13_spatbn"
+  input: "comp_13_spatbn_3"
+  output: "comp_13_sum_3"
+  type: "Sum"
+}
+op {
+  input: "comp_13_sum_3"
+  output: "comp_13_sum_3"
+  type: "Relu"
+}
+op {
+  input: "comp_13_sum_3"
+  input: "comp_14_conv_1_w"
+  input: "comp_14_conv_1_b"
+  output: "comp_14_conv_1"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_14_conv_1"
+  input: "comp_14_spatbn_1_s"
+  input: "comp_14_spatbn_1_b"
+  input: "comp_14_spatbn_1_rm"
+  input: "comp_14_spatbn_1_riv"
+  output: "comp_14_spatbn_1"
+  output: "comp_14_spatbn_1_rm"
+  output: "comp_14_spatbn_1_riv"
+  output: "comp_14_spatbn_1_sm"
+  output: "comp_14_spatbn_1_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_14_spatbn_1"
+  output: "comp_14_spatbn_1"
+  type: "Relu"
+}
+op {
+  input: "comp_14_spatbn_1"
+  input: "comp_14_conv_2_w"
+  input: "comp_14_conv_2_b"
+  output: "comp_14_conv_2"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_14_conv_2"
+  input: "comp_14_spatbn_2_s"
+  input: "comp_14_spatbn_2_b"
+  input: "comp_14_spatbn_2_rm"
+  input: "comp_14_spatbn_2_riv"
+  output: "comp_14_spatbn_2"
+  output: "comp_14_spatbn_2_rm"
+  output: "comp_14_spatbn_2_riv"
+  output: "comp_14_spatbn_2_sm"
+  output: "comp_14_spatbn_2_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_14_spatbn_2"
+  output: "comp_14_spatbn_2"
+  type: "Relu"
+}
+op {
+  input: "comp_14_spatbn_2"
+  input: "comp_14_conv_3_w"
+  input: "comp_14_conv_3_b"
+  output: "comp_14_conv_3"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_14_conv_3"
+  input: "comp_14_spatbn_3_s"
+  input: "comp_14_spatbn_3_b"
+  input: "comp_14_spatbn_3_rm"
+  input: "comp_14_spatbn_3_riv"
+  output: "comp_14_spatbn_3"
+  output: "comp_14_spatbn_3_rm"
+  output: "comp_14_spatbn_3_riv"
+  output: "comp_14_spatbn_3_sm"
+  output: "comp_14_spatbn_3_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_13_sum_3"
+  input: "comp_14_spatbn_3"
+  output: "comp_14_sum_3"
+  type: "Sum"
+}
+op {
+  input: "comp_14_sum_3"
+  output: "comp_14_sum_3"
+  type: "Relu"
+}
+op {
+  input: "comp_14_sum_3"
+  input: "comp_15_conv_1_w"
+  input: "comp_15_conv_1_b"
+  output: "comp_15_conv_1"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_15_conv_1"
+  input: "comp_15_spatbn_1_s"
+  input: "comp_15_spatbn_1_b"
+  input: "comp_15_spatbn_1_rm"
+  input: "comp_15_spatbn_1_riv"
+  output: "comp_15_spatbn_1"
+  output: "comp_15_spatbn_1_rm"
+  output: "comp_15_spatbn_1_riv"
+  output: "comp_15_spatbn_1_sm"
+  output: "comp_15_spatbn_1_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_15_spatbn_1"
+  output: "comp_15_spatbn_1"
+  type: "Relu"
+}
+op {
+  input: "comp_15_spatbn_1"
+  input: "comp_15_conv_2_w"
+  input: "comp_15_conv_2_b"
+  output: "comp_15_conv_2"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_15_conv_2"
+  input: "comp_15_spatbn_2_s"
+  input: "comp_15_spatbn_2_b"
+  input: "comp_15_spatbn_2_rm"
+  input: "comp_15_spatbn_2_riv"
+  output: "comp_15_spatbn_2"
+  output: "comp_15_spatbn_2_rm"
+  output: "comp_15_spatbn_2_riv"
+  output: "comp_15_spatbn_2_sm"
+  output: "comp_15_spatbn_2_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_15_spatbn_2"
+  output: "comp_15_spatbn_2"
+  type: "Relu"
+}
+op {
+  input: "comp_15_spatbn_2"
+  input: "comp_15_conv_3_w"
+  input: "comp_15_conv_3_b"
+  output: "comp_15_conv_3"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "comp_15_conv_3"
+  input: "comp_15_spatbn_3_s"
+  input: "comp_15_spatbn_3_b"
+  input: "comp_15_spatbn_3_rm"
+  input: "comp_15_spatbn_3_riv"
+  output: "comp_15_spatbn_3"
+  output: "comp_15_spatbn_3_rm"
+  output: "comp_15_spatbn_3_riv"
+  output: "comp_15_spatbn_3_sm"
+  output: "comp_15_spatbn_3_siv"
+  type: "SpatialBN"
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "is_test"
+    i: 0
+  }
+  arg {
+    name: "momentum"
+    f: 0.1
+  }
+}
+op {
+  input: "comp_14_sum_3"
+  input: "comp_15_spatbn_3"
+  output: "comp_15_sum_3"
+  type: "Sum"
+}
+op {
+  input: "comp_15_sum_3"
+  output: "comp_15_sum_3"
+  type: "Relu"
+}
+op {
+  input: "comp_15_sum_3"
+  output: "final_avg"
+  type: "AveragePool"
+  arg {
+    name: "global_pooling"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 7
+  }
+  arg {
+    name: "stride"
+    i: 1
+  }
+}
+op {
+  input: "final_avg"
+  input: "last_out_L2_w"
+  input: "last_out_L2_b"
+  output: "last_out_L2"
+  type: "FC"
+}
+op {
+  input: "last_out_L2"
+  output: "softmax"
+  type: "Softmax"
+}
+external_input: "data"
+external_input: "conv1_w"
+external_input: "conv1_b"
+external_input: "conv1_spatbn_relu_s"
+external_input: "conv1_spatbn_relu_b"
+external_input: "conv1_spatbn_relu_rm"
+external_input: "conv1_spatbn_relu_riv"
+external_input: "comp_0_conv_1_w"
+external_input: "comp_0_conv_1_b"
+external_input: "comp_0_spatbn_1_s"
+external_input: "comp_0_spatbn_1_b"
+external_input: "comp_0_spatbn_1_rm"
+external_input: "comp_0_spatbn_1_riv"
+external_input: "comp_0_conv_2_w"
+external_input: "comp_0_conv_2_b"
+external_input: "comp_0_spatbn_2_s"
+external_input: "comp_0_spatbn_2_b"
+external_input: "comp_0_spatbn_2_rm"
+external_input: "comp_0_spatbn_2_riv"
+external_input: "comp_0_conv_3_w"
+external_input: "comp_0_conv_3_b"
+external_input: "comp_0_spatbn_3_s"
+external_input: "comp_0_spatbn_3_b"
+external_input: "comp_0_spatbn_3_rm"
+external_input: "comp_0_spatbn_3_riv"
+external_input: "shortcut_projection_0_w"
+external_input: "shortcut_projection_0_b"
+external_input: "shortcut_projection_0_spatbn_s"
+external_input: "shortcut_projection_0_spatbn_b"
+external_input: "shortcut_projection_0_spatbn_rm"
+external_input: "shortcut_projection_0_spatbn_riv"
+external_input: "comp_1_conv_1_w"
+external_input: "comp_1_conv_1_b"
+external_input: "comp_1_spatbn_1_s"
+external_input: "comp_1_spatbn_1_b"
+external_input: "comp_1_spatbn_1_rm"
+external_input: "comp_1_spatbn_1_riv"
+external_input: "comp_1_conv_2_w"
+external_input: "comp_1_conv_2_b"
+external_input: "comp_1_spatbn_2_s"
+external_input: "comp_1_spatbn_2_b"
+external_input: "comp_1_spatbn_2_rm"
+external_input: "comp_1_spatbn_2_riv"
+external_input: "comp_1_conv_3_w"
+external_input: "comp_1_conv_3_b"
+external_input: "comp_1_spatbn_3_s"
+external_input: "comp_1_spatbn_3_b"
+external_input: "comp_1_spatbn_3_rm"
+external_input: "comp_1_spatbn_3_riv"
+external_input: "comp_2_conv_1_w"
+external_input: "comp_2_conv_1_b"
+external_input: "comp_2_spatbn_1_s"
+external_input: "comp_2_spatbn_1_b"
+external_input: "comp_2_spatbn_1_rm"
+external_input: "comp_2_spatbn_1_riv"
+external_input: "comp_2_conv_2_w"
+external_input: "comp_2_conv_2_b"
+external_input: "comp_2_spatbn_2_s"
+external_input: "comp_2_spatbn_2_b"
+external_input: "comp_2_spatbn_2_rm"
+external_input: "comp_2_spatbn_2_riv"
+external_input: "comp_2_conv_3_w"
+external_input: "comp_2_conv_3_b"
+external_input: "comp_2_spatbn_3_s"
+external_input: "comp_2_spatbn_3_b"
+external_input: "comp_2_spatbn_3_rm"
+external_input: "comp_2_spatbn_3_riv"
+external_input: "comp_3_conv_1_w"
+external_input: "comp_3_conv_1_b"
+external_input: "comp_3_spatbn_1_s"
+external_input: "comp_3_spatbn_1_b"
+external_input: "comp_3_spatbn_1_rm"
+external_input: "comp_3_spatbn_1_riv"
+external_input: "comp_3_conv_2_w"
+external_input: "comp_3_conv_2_b"
+external_input: "comp_3_spatbn_2_s"
+external_input: "comp_3_spatbn_2_b"
+external_input: "comp_3_spatbn_2_rm"
+external_input: "comp_3_spatbn_2_riv"
+external_input: "comp_3_conv_3_w"
+external_input: "comp_3_conv_3_b"
+external_input: "comp_3_spatbn_3_s"
+external_input: "comp_3_spatbn_3_b"
+external_input: "comp_3_spatbn_3_rm"
+external_input: "comp_3_spatbn_3_riv"
+external_input: "shortcut_projection_3_w"
+external_input: "shortcut_projection_3_b"
+external_input: "shortcut_projection_3_spatbn_s"
+external_input: "shortcut_projection_3_spatbn_b"
+external_input: "shortcut_projection_3_spatbn_rm"
+external_input: "shortcut_projection_3_spatbn_riv"
+external_input: "comp_4_conv_1_w"
+external_input: "comp_4_conv_1_b"
+external_input: "comp_4_spatbn_1_s"
+external_input: "comp_4_spatbn_1_b"
+external_input: "comp_4_spatbn_1_rm"
+external_input: "comp_4_spatbn_1_riv"
+external_input: "comp_4_conv_2_w"
+external_input: "comp_4_conv_2_b"
+external_input: "comp_4_spatbn_2_s"
+external_input: "comp_4_spatbn_2_b"
+external_input: "comp_4_spatbn_2_rm"
+external_input: "comp_4_spatbn_2_riv"
+external_input: "comp_4_conv_3_w"
+external_input: "comp_4_conv_3_b"
+external_input: "comp_4_spatbn_3_s"
+external_input: "comp_4_spatbn_3_b"
+external_input: "comp_4_spatbn_3_rm"
+external_input: "comp_4_spatbn_3_riv"
+external_input: "comp_5_conv_1_w"
+external_input: "comp_5_conv_1_b"
+external_input: "comp_5_spatbn_1_s"
+external_input: "comp_5_spatbn_1_b"
+external_input: "comp_5_spatbn_1_rm"
+external_input: "comp_5_spatbn_1_riv"
+external_input: "comp_5_conv_2_w"
+external_input: "comp_5_conv_2_b"
+external_input: "comp_5_spatbn_2_s"
+external_input: "comp_5_spatbn_2_b"
+external_input: "comp_5_spatbn_2_rm"
+external_input: "comp_5_spatbn_2_riv"
+external_input: "comp_5_conv_3_w"
+external_input: "comp_5_conv_3_b"
+external_input: "comp_5_spatbn_3_s"
+external_input: "comp_5_spatbn_3_b"
+external_input: "comp_5_spatbn_3_rm"
+external_input: "comp_5_spatbn_3_riv"
+external_input: "comp_6_conv_1_w"
+external_input: "comp_6_conv_1_b"
+external_input: "comp_6_spatbn_1_s"
+external_input: "comp_6_spatbn_1_b"
+external_input: "comp_6_spatbn_1_rm"
+external_input: "comp_6_spatbn_1_riv"
+external_input: "comp_6_conv_2_w"
+external_input: "comp_6_conv_2_b"
+external_input: "comp_6_spatbn_2_s"
+external_input: "comp_6_spatbn_2_b"
+external_input: "comp_6_spatbn_2_rm"
+external_input: "comp_6_spatbn_2_riv"
+external_input: "comp_6_conv_3_w"
+external_input: "comp_6_conv_3_b"
+external_input: "comp_6_spatbn_3_s"
+external_input: "comp_6_spatbn_3_b"
+external_input: "comp_6_spatbn_3_rm"
+external_input: "comp_6_spatbn_3_riv"
+external_input: "comp_7_conv_1_w"
+external_input: "comp_7_conv_1_b"
+external_input: "comp_7_spatbn_1_s"
+external_input: "comp_7_spatbn_1_b"
+external_input: "comp_7_spatbn_1_rm"
+external_input: "comp_7_spatbn_1_riv"
+external_input: "comp_7_conv_2_w"
+external_input: "comp_7_conv_2_b"
+external_input: "comp_7_spatbn_2_s"
+external_input: "comp_7_spatbn_2_b"
+external_input: "comp_7_spatbn_2_rm"
+external_input: "comp_7_spatbn_2_riv"
+external_input: "comp_7_conv_3_w"
+external_input: "comp_7_conv_3_b"
+external_input: "comp_7_spatbn_3_s"
+external_input: "comp_7_spatbn_3_b"
+external_input: "comp_7_spatbn_3_rm"
+external_input: "comp_7_spatbn_3_riv"
+external_input: "shortcut_projection_7_w"
+external_input: "shortcut_projection_7_b"
+external_input: "shortcut_projection_7_spatbn_s"
+external_input: "shortcut_projection_7_spatbn_b"
+external_input: "shortcut_projection_7_spatbn_rm"
+external_input: "shortcut_projection_7_spatbn_riv"
+external_input: "comp_8_conv_1_w"
+external_input: "comp_8_conv_1_b"
+external_input: "comp_8_spatbn_1_s"
+external_input: "comp_8_spatbn_1_b"
+external_input: "comp_8_spatbn_1_rm"
+external_input: "comp_8_spatbn_1_riv"
+external_input: "comp_8_conv_2_w"
+external_input: "comp_8_conv_2_b"
+external_input: "comp_8_spatbn_2_s"
+external_input: "comp_8_spatbn_2_b"
+external_input: "comp_8_spatbn_2_rm"
+external_input: "comp_8_spatbn_2_riv"
+external_input: "comp_8_conv_3_w"
+external_input: "comp_8_conv_3_b"
+external_input: "comp_8_spatbn_3_s"
+external_input: "comp_8_spatbn_3_b"
+external_input: "comp_8_spatbn_3_rm"
+external_input: "comp_8_spatbn_3_riv"
+external_input: "comp_9_conv_1_w"
+external_input: "comp_9_conv_1_b"
+external_input: "comp_9_spatbn_1_s"
+external_input: "comp_9_spatbn_1_b"
+external_input: "comp_9_spatbn_1_rm"
+external_input: "comp_9_spatbn_1_riv"
+external_input: "comp_9_conv_2_w"
+external_input: "comp_9_conv_2_b"
+external_input: "comp_9_spatbn_2_s"
+external_input: "comp_9_spatbn_2_b"
+external_input: "comp_9_spatbn_2_rm"
+external_input: "comp_9_spatbn_2_riv"
+external_input: "comp_9_conv_3_w"
+external_input: "comp_9_conv_3_b"
+external_input: "comp_9_spatbn_3_s"
+external_input: "comp_9_spatbn_3_b"
+external_input: "comp_9_spatbn_3_rm"
+external_input: "comp_9_spatbn_3_riv"
+external_input: "comp_10_conv_1_w"
+external_input: "comp_10_conv_1_b"
+external_input: "comp_10_spatbn_1_s"
+external_input: "comp_10_spatbn_1_b"
+external_input: "comp_10_spatbn_1_rm"
+external_input: "comp_10_spatbn_1_riv"
+external_input: "comp_10_conv_2_w"
+external_input: "comp_10_conv_2_b"
+external_input: "comp_10_spatbn_2_s"
+external_input: "comp_10_spatbn_2_b"
+external_input: "comp_10_spatbn_2_rm"
+external_input: "comp_10_spatbn_2_riv"
+external_input: "comp_10_conv_3_w"
+external_input: "comp_10_conv_3_b"
+external_input: "comp_10_spatbn_3_s"
+external_input: "comp_10_spatbn_3_b"
+external_input: "comp_10_spatbn_3_rm"
+external_input: "comp_10_spatbn_3_riv"
+external_input: "comp_11_conv_1_w"
+external_input: "comp_11_conv_1_b"
+external_input: "comp_11_spatbn_1_s"
+external_input: "comp_11_spatbn_1_b"
+external_input: "comp_11_spatbn_1_rm"
+external_input: "comp_11_spatbn_1_riv"
+external_input: "comp_11_conv_2_w"
+external_input: "comp_11_conv_2_b"
+external_input: "comp_11_spatbn_2_s"
+external_input: "comp_11_spatbn_2_b"
+external_input: "comp_11_spatbn_2_rm"
+external_input: "comp_11_spatbn_2_riv"
+external_input: "comp_11_conv_3_w"
+external_input: "comp_11_conv_3_b"
+external_input: "comp_11_spatbn_3_s"
+external_input: "comp_11_spatbn_3_b"
+external_input: "comp_11_spatbn_3_rm"
+external_input: "comp_11_spatbn_3_riv"
+external_input: "comp_12_conv_1_w"
+external_input: "comp_12_conv_1_b"
+external_input: "comp_12_spatbn_1_s"
+external_input: "comp_12_spatbn_1_b"
+external_input: "comp_12_spatbn_1_rm"
+external_input: "comp_12_spatbn_1_riv"
+external_input: "comp_12_conv_2_w"
+external_input: "comp_12_conv_2_b"
+external_input: "comp_12_spatbn_2_s"
+external_input: "comp_12_spatbn_2_b"
+external_input: "comp_12_spatbn_2_rm"
+external_input: "comp_12_spatbn_2_riv"
+external_input: "comp_12_conv_3_w"
+external_input: "comp_12_conv_3_b"
+external_input: "comp_12_spatbn_3_s"
+external_input: "comp_12_spatbn_3_b"
+external_input: "comp_12_spatbn_3_rm"
+external_input: "comp_12_spatbn_3_riv"
+external_input: "comp_13_conv_1_w"
+external_input: "comp_13_conv_1_b"
+external_input: "comp_13_spatbn_1_s"
+external_input: "comp_13_spatbn_1_b"
+external_input: "comp_13_spatbn_1_rm"
+external_input: "comp_13_spatbn_1_riv"
+external_input: "comp_13_conv_2_w"
+external_input: "comp_13_conv_2_b"
+external_input: "comp_13_spatbn_2_s"
+external_input: "comp_13_spatbn_2_b"
+external_input: "comp_13_spatbn_2_rm"
+external_input: "comp_13_spatbn_2_riv"
+external_input: "comp_13_conv_3_w"
+external_input: "comp_13_conv_3_b"
+external_input: "comp_13_spatbn_3_s"
+external_input: "comp_13_spatbn_3_b"
+external_input: "comp_13_spatbn_3_rm"
+external_input: "comp_13_spatbn_3_riv"
+external_input: "shortcut_projection_13_w"
+external_input: "shortcut_projection_13_b"
+external_input: "shortcut_projection_13_spatbn_s"
+external_input: "shortcut_projection_13_spatbn_b"
+external_input: "shortcut_projection_13_spatbn_rm"
+external_input: "shortcut_projection_13_spatbn_riv"
+external_input: "comp_14_conv_1_w"
+external_input: "comp_14_conv_1_b"
+external_input: "comp_14_spatbn_1_s"
+external_input: "comp_14_spatbn_1_b"
+external_input: "comp_14_spatbn_1_rm"
+external_input: "comp_14_spatbn_1_riv"
+external_input: "comp_14_conv_2_w"
+external_input: "comp_14_conv_2_b"
+external_input: "comp_14_spatbn_2_s"
+external_input: "comp_14_spatbn_2_b"
+external_input: "comp_14_spatbn_2_rm"
+external_input: "comp_14_spatbn_2_riv"
+external_input: "comp_14_conv_3_w"
+external_input: "comp_14_conv_3_b"
+external_input: "comp_14_spatbn_3_s"
+external_input: "comp_14_spatbn_3_b"
+external_input: "comp_14_spatbn_3_rm"
+external_input: "comp_14_spatbn_3_riv"
+external_input: "comp_15_conv_1_w"
+external_input: "comp_15_conv_1_b"
+external_input: "comp_15_spatbn_1_s"
+external_input: "comp_15_spatbn_1_b"
+external_input: "comp_15_spatbn_1_rm"
+external_input: "comp_15_spatbn_1_riv"
+external_input: "comp_15_conv_2_w"
+external_input: "comp_15_conv_2_b"
+external_input: "comp_15_spatbn_2_s"
+external_input: "comp_15_spatbn_2_b"
+external_input: "comp_15_spatbn_2_rm"
+external_input: "comp_15_spatbn_2_riv"
+external_input: "comp_15_conv_3_w"
+external_input: "comp_15_conv_3_b"
+external_input: "comp_15_spatbn_3_s"
+external_input: "comp_15_spatbn_3_b"
+external_input: "comp_15_spatbn_3_rm"
+external_input: "comp_15_spatbn_3_riv"
+external_input: "last_out_L2_w"
+external_input: "last_out_L2_b"

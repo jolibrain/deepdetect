@@ -50,6 +50,11 @@ namespace dd {
 		     const std::map<std::string, std::string> &blobs);
 
     /**
+     * \brief list the template's pbtxt files and the corresponding local pb file
+     */
+    void list_template_pbtxts(const std::string &name, std::map<std::string, std::string> &files);
+
+    /**
      * \brief assigns a class name to each element of the vector (the vector is not resized)
      */
     void get_hcorresp(std::vector<std::string> &clnames);

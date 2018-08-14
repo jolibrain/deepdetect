@@ -153,6 +153,15 @@ namespace dd {
     _set_gpu_state(ad, _state, gpu_ids, is_gpu);
   }
 
+  // Convert a human-readable protobuff to its compact version
+  static void pbtxt_to_pb(const std::string &pbtxt, const std::string &pb,
+			  google::protobuf::Message *buffer) {
+    CAFFE_ENFORCE(caffe2::ReadProtoFromFile(pbtxt, buffer));
+    std::ofstream f(pb);
+    buffer->SerializeToOstream(&f);
+    f.close();
+  }
+
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
   instantiate_template(const APIData &ad) {
@@ -168,23 +177,18 @@ namespace dd {
     //XXX Implement build-in template creation (mlp, convnet, resnet, etc.)
 
     std::string model_tmpl = ad.get("template").get<std::string>();
-    std::string source = this->_mlmodel._mlmodel_template_repo + '/' + model_tmpl;
-    std::vector<std::string> files({"predict_net.pb", "init_net.pb"});
     this->_logger->info("instantiating model template {}", model_tmpl);
-    this->_logger->info("source = {}", source);
-    this->_logger->info("dest = {}", this->_mlmodel._repo);
 
-    // Copy files
-    for (const std::string &file : files) {
-      std::string src = source + "/" + file;
-      std::string dst = this->_mlmodel._repo + "/" + file;
-      switch (fileops::copy_file(src, dst)) {
-      case 1: throw MLLibBadParamException("failed to locate model template " + src);
-      case 2: throw MLLibBadParamException("failed to create model template destination " + dst);
-      }
+    std::map<std::string, std::string> files;
+    this->_mlmodel.list_template_pbtxts(model_tmpl, files);
+    for (const std::pair<std::string, std::string> &file : files) {
+
+      // Convert the prototxt file
+      caffe2::NetDef buffer;
+      CAFFE_ENFORCE(caffe2::ReadProtoFromFile(file.first, &buffer));
+      std::ofstream f(file.second);
+      buffer.SerializeToOstream(&f);
     }
-
-    //XXX Configure the nets protobuf files
 
     // Update the mlmodel
     this->_mlmodel._model_template = model_tmpl;
@@ -204,6 +208,9 @@ namespace dd {
       this->_logger->info("Could not configure the InputConnector");
       throw;
     }
+
+    // Read the repository again in case the input connector added something
+    this->_mlmodel.update_from_repository(this->_logger);
 
     // Update the local input connector
     bool force_init = inputc.needs_reconfiguration(_last_inputc);
@@ -588,7 +595,9 @@ namespace dd {
     this->clear_all_meas_per_iter();
     this->_tjob_running = true;
     if (start_iter) {
-      this->_logger->info("Training is restarting at iteration: " + std::to_string(start_iter));
+      this->_logger->info("Training is restarting at iteration {}", start_iter);
+    } else {
+      this->_logger->info("Training is starting");
     }
     for (int iter = start_iter; iter < iterations && this->_tjob_running.load(); ++iter) {
 
@@ -606,7 +615,7 @@ namespace dd {
 
       // Test the net
       if (_state.is_testing() && iter > start_iter && !(iter % test_interval)) {
-	this->_logger->info("Testing model");
+	this->_logger->info("Testing model (iteration {})", iter);
 
 	APIData meas_out;
 	test(ad, meas_out);

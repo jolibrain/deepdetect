@@ -68,5 +68,14 @@ namespace dd {
       net_to_svg(net, path + ".svg");
     }
 
+    void untrain_model(const std::string &input, const std::string &output) {
+      caffe2::NetDef net, init;
+      CAFFE_ENFORCE(caffe2::ReadProtoFromFile(input + "/predict_net.pb", &net));
+      CAFFE_ENFORCE(caffe2::ReadProtoFromFile(input + "/init_net.pb", &init));
+      reset_fillers(net, init);
+      std::ofstream(output + "/predict_net.pbtxt") << net.DebugString();
+      std::ofstream(output + "/init_net.pbtxt") << init.DebugString();
+    }
+
   }
 }

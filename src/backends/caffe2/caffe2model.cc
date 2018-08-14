@@ -102,4 +102,14 @@ namespace dd {
     std::ofstream f(_repo + "/init_state.pb");
     init.SerializeToOstream(&f);
   }
+
+  void Caffe2Model::list_template_pbtxts(const std::string &name,
+					 std::map<std::string, std::string> &files) {
+    const std::set<std::string> nets({"predict_net", "init_net"});
+    std::string source = this->_mlmodel_template_repo + '/' + name;
+    for (const std::string &net : nets) {
+      std::string pbtxt = source + '/' + net + ".pbtxt";
+      files[pbtxt] = _repo + '/' + net + ".pb";
+    }
+  }
 }

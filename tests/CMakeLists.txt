@@ -256,19 +256,15 @@ if (USE_CAFFE2)
     endif ()
   endfunction (ASSERT_EXISTS)
 
-  function (ASSERT_MODEL _MODEL _TRAIN)
-    ASSERT_EXISTS(${_MODEL} "predict_net.pb" 0)
-    ASSERT_EXISTS(${_MODEL} "init_net.pb" 0)
-    ASSERT_EXISTS(${_MODEL} "corresp.txt" 0)
-    if (_TRAIN)
-      ASSERT_EXISTS(${_MODEL} "train.lmdb" 1)
-      ASSERT_EXISTS(${_MODEL} "test.lmdb" 1)
-      ASSERT_EXISTS(${_MODEL} "mean.pb" 0)
-    endif ()
-  endfunction (ASSERT_MODEL)
+  # Tar GZ files
+  ASSERT_EXISTS("boats_and_cars" "imgs" 1)
+  ASSERT_EXISTS("resnet_50_trained" "imgs" 1)
+  ASSERT_EXISTS("resnet_50_trained" "fish.lmdb" 1)
 
-  ASSERT_MODEL("resnet_50" 0)
-  ASSERT_MODEL("resnet_50_trainable" 1)
+  # Classic files
+  ASSERT_EXISTS("resnet_50_trained" "corresp.txt" 0)
+  ASSERT_EXISTS("resnet_50_trained" "init_net.pb" 0)
+  ASSERT_EXISTS("resnet_50_trained" "predict_net.pb" 0)
 
   list(APPEND CAFFE2_COMPLETE_DEPS
     ddetect ${DLIB_LIB_DEPS} ${CUDA_LIB_DEPS} glog gflags gtest gtest_main
