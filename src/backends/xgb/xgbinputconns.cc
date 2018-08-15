@@ -59,11 +59,11 @@ namespace dd
       //xgboost::RowBatch::Inst inst = batch[ridx];
       auto inst = batch[ridx];
       CHECK_LT(static_cast<unsigned long>(ridx), batch.Size());
-      ret.page_.data.resize(ret.page_.data.size() + inst.length);
-      std::memcpy(dmlc::BeginPtr(ret.page_.data) + ret.page_.offset.back(), inst.data,
-		  sizeof(xgboost::Entry) * inst.length);
-      ret.page_.offset.push_back(ret.page_.offset.back() + inst.length);
-      ret.info.num_nonzero_ += inst.length;
+      ret.page_.data.resize(ret.page_.data.size() + inst.size());
+      std::memcpy(dmlc::BeginPtr(ret.page_.data) + ret.page_.offset.back(), inst.data(),
+		  sizeof(xgboost::Entry) * inst.size());
+      ret.page_.offset.push_back(ret.page_.offset.back() + inst.size());
+      ret.info.num_nonzero_ += inst.size();
       
       if (src.info.labels_.size() != 0) {
 	ret.info.labels_.push_back(src.info.labels_[ridx]);
