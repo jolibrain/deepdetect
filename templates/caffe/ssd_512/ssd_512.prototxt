@@ -1,14 +1,167 @@
-name: "VGG_SSD_300x300_deploy"
+name: "VGG_SSD_512x512_train"
 layer {
   name: "data"
-  type: "MemoryData"
+  type: "AnnotatedData"
   top: "data"
   top: "label"
-  memory_data_param {
+  include {
+    phase: TRAIN
+  }
+  transform_param {
+    mirror: true
+    force_color: true
+    resize_param {
+      prob: 1
+      resize_mode: WARP
+      height: 512
+      width: 512
+      interp_mode: LINEAR
+      interp_mode: AREA
+      interp_mode: NEAREST
+      interp_mode: CUBIC
+      interp_mode: LANCZOS4
+    }
+    noise_param {
+      prob: 0.001
+      all_effects: true
+    }
+    emit_constraint {
+      emit_type: CENTER
+    }
+    distort_param {
+      prob: 0.5
+      brightness: true
+      brightness_delta: 32.0
+      contrast: true
+      contrast_lower: 0.5
+      contrast_upper: 1.5
+      hue: true
+      hue_delta: 18.0
+      saturation: true
+      saturation_lower: 0.5
+      saturation_upper: 1.5
+      all_effects: false
+      random_order: false
+     }
+  }
+  data_param {
+    source: "train.lmdb"
+    batch_size: 12
+    backend: LMDB
+  }
+  annotated_data_param {
+    batch_sampler {
+      max_sample: 1
+      max_trials: 1
+    }
+    batch_sampler {
+      sampler {
+        min_scale: 0.1
+        max_scale: 1.0
+        min_aspect_ratio: 0.5
+        max_aspect_ratio: 2.0
+      }
+      sample_constraint {
+        min_jaccard_overlap: 0.1
+      }
+      max_sample: 1
+      max_trials: 50
+    }
+    batch_sampler {
+      sampler {
+        min_scale: 0.1
+        max_scale: 1.0
+        min_aspect_ratio: 0.5
+        max_aspect_ratio: 2.0
+      }
+      sample_constraint {
+        min_jaccard_overlap: 0.3
+      }
+      max_sample: 1
+      max_trials: 50
+    }
+    batch_sampler {
+      sampler {
+        min_scale: 0.1
+        max_scale: 1.0
+        min_aspect_ratio: 0.5
+        max_aspect_ratio: 2.0
+      }
+      sample_constraint {
+        min_jaccard_overlap: 0.5
+      }
+      max_sample: 1
+      max_trials: 50
+    }
+    batch_sampler {
+      sampler {
+        min_scale: 0.1
+        max_scale: 1.0
+        min_aspect_ratio: 0.5
+        max_aspect_ratio: 2.0
+      }
+      sample_constraint {
+        min_jaccard_overlap: 0.7
+      }
+      max_sample: 1
+      max_trials: 50
+    }
+    batch_sampler {
+      sampler {
+        min_scale: 0.1
+        max_scale: 1.0
+        min_aspect_ratio: 0.5
+        max_aspect_ratio: 2.0
+      }
+      sample_constraint {
+        min_jaccard_overlap: 0.9
+      }
+      max_sample: 1
+      max_trials: 50
+    }
+    batch_sampler {
+      sampler {
+        min_scale: 0.1
+        max_scale: 1.0
+        min_aspect_ratio: 0.5
+        max_aspect_ratio: 2.0
+      }
+      sample_constraint {
+        max_jaccard_overlap: 1.0
+      }
+      max_sample: 1
+      max_trials: 50
+    }
+    label_map_file: "/data1/visual_genome/generic_detect_v2/data/labelmap_fd.prototxt"
+  }
+}
+layer {
+  name: "tdata"
+  type: "AnnotatedData"
+  top: "data"
+  top: "label"
+  include {
+    phase: TEST
+  }
+  transform_param {
+    force_color: true
+    resize_param {
+      prob: 1.0
+      resize_mode: WARP
+      height: 512
+      width: 512
+      interp_mode: LINEAR
+    }
+  }
+  data_param {
+    source: "test.lmdb"
     batch_size: 1
-    channels: 3
-    height: 300
-    width: 300
+    backend: LMDB
+  }
+  annotated_data_param {
+    batch_sampler {
+    }
+    label_map_file: "labelmap_fd.prototxt"
   }
 }
 layer {
@@ -92,11 +245,11 @@ layer {
   bottom: "pool1"
   top: "conv2_1"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 1
+    decay_mult: 1
   }
   param {
-    lr_mult: 0
+    lr_mult: 2
     decay_mult: 0
   }
   convolution_param {
@@ -124,11 +277,11 @@ layer {
   bottom: "conv2_1"
   top: "conv2_2"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 1
+    decay_mult: 1
   }
   param {
-    lr_mult: 0
+    lr_mult: 2
     decay_mult: 0
   }
   convolution_param {
@@ -829,10 +982,10 @@ layer {
   }
 }
 layer {
-  name: "conv4_3_norm_mbox_loc"
+  name: "conv4_3_norm_mbox_loc_my_layer"
   type: "Convolution"
   bottom: "conv4_3_norm"
-  top: "conv4_3_norm_mbox_loc"
+  top: "conv4_3_norm_mbox_loc_my_layer"
   param {
     lr_mult: 1
     decay_mult: 1
@@ -856,10 +1009,10 @@ layer {
   }
 }
 layer {
-  name: "conv4_3_norm_mbox_loc_perm"
+  name: "conv4_3_norm_mbox_loc_my_layer_perm"
   type: "Permute"
-  bottom: "conv4_3_norm_mbox_loc"
-  top: "conv4_3_norm_mbox_loc_perm"
+  bottom: "conv4_3_norm_mbox_loc_my_layer"
+  top: "conv4_3_norm_mbox_loc_my_layer_perm"
   permute_param {
     order: 0
     order: 2
@@ -868,19 +1021,19 @@ layer {
   }
 }
 layer {
-  name: "conv4_3_norm_mbox_loc_flat"
+  name: "conv4_3_norm_mbox_loc_my_layer_flat"
   type: "Flatten"
-  bottom: "conv4_3_norm_mbox_loc_perm"
-  top: "conv4_3_norm_mbox_loc_flat"
+  bottom: "conv4_3_norm_mbox_loc_my_layer_perm"
+  top: "conv4_3_norm_mbox_loc_my_layer_flat"
   flatten_param {
     axis: 1
   }
 }
 layer {
-  name: "conv4_3_norm_mbox_conf"
+  name: "conv4_3_norm_mbox_conf_my_layer"
   type: "Convolution"
   bottom: "conv4_3_norm"
-  top: "conv4_3_norm_mbox_conf"
+  top: "conv4_3_norm_mbox_conf_my_layer"
   param {
     lr_mult: 1
     decay_mult: 1
@@ -904,10 +1057,10 @@ layer {
   }
 }
 layer {
-  name: "conv4_3_norm_mbox_conf_perm"
+  name: "conv4_3_norm_mbox_conf_my_layer_perm"
   type: "Permute"
-  bottom: "conv4_3_norm_mbox_conf"
-  top: "conv4_3_norm_mbox_conf_perm"
+  bottom: "conv4_3_norm_mbox_conf_my_layer"
+  top: "conv4_3_norm_mbox_conf_my_layer_perm"
   permute_param {
     order: 0
     order: 2
@@ -916,10 +1069,10 @@ layer {
   }
 }
 layer {
-  name: "conv4_3_norm_mbox_conf_flat"
+  name: "conv4_3_norm_mbox_conf_my_layer_flat"
   type: "Flatten"
-  bottom: "conv4_3_norm_mbox_conf_perm"
-  top: "conv4_3_norm_mbox_conf_flat"
+  bottom: "conv4_3_norm_mbox_conf_my_layer_perm"
+  top: "conv4_3_norm_mbox_conf_my_layer_flat"
   flatten_param {
     axis: 1
   }
@@ -931,8 +1084,8 @@ layer {
   bottom: "data"
   top: "conv4_3_norm_mbox_priorbox"
   prior_box_param {
-    min_size: 30.0
-    max_size: 60.0
+    min_size: 35.84
+    max_size: 102.4
     aspect_ratio: 2
     flip: true
     clip: false
@@ -945,10 +1098,10 @@ layer {
   }
 }
 layer {
-  name: "fc7_mbox_loc"
+  name: "fc7_mbox_loc_my_layer"
   type: "Convolution"
   bottom: "fc7"
-  top: "fc7_mbox_loc"
+  top: "fc7_mbox_loc_my_layer"
   param {
     lr_mult: 1
     decay_mult: 1
@@ -972,10 +1125,10 @@ layer {
   }
 }
 layer {
-  name: "fc7_mbox_loc_perm"
+  name: "fc7_mbox_loc_my_layer_perm"
   type: "Permute"
-  bottom: "fc7_mbox_loc"
-  top: "fc7_mbox_loc_perm"
+  bottom: "fc7_mbox_loc_my_layer"
+  top: "fc7_mbox_loc_my_layer_perm"
   permute_param {
     order: 0
     order: 2
@@ -984,19 +1137,19 @@ layer {
   }
 }
 layer {
-  name: "fc7_mbox_loc_flat"
+  name: "fc7_mbox_loc_my_layer_flat"
   type: "Flatten"
-  bottom: "fc7_mbox_loc_perm"
-  top: "fc7_mbox_loc_flat"
+  bottom: "fc7_mbox_loc_my_layer_perm"
+  top: "fc7_mbox_loc_my_layer_flat"
   flatten_param {
     axis: 1
   }
 }
 layer {
-  name: "fc7_mbox_conf"
+  name: "fc7_mbox_conf_my_layer"
   type: "Convolution"
   bottom: "fc7"
-  top: "fc7_mbox_conf"
+  top: "fc7_mbox_conf_my_layer"
   param {
     lr_mult: 1
     decay_mult: 1
@@ -1020,10 +1173,10 @@ layer {
   }
 }
 layer {
-  name: "fc7_mbox_conf_perm"
+  name: "fc7_mbox_conf_my_layer_perm"
   type: "Permute"
-  bottom: "fc7_mbox_conf"
-  top: "fc7_mbox_conf_perm"
+  bottom: "fc7_mbox_conf_my_layer"
+  top: "fc7_mbox_conf_my_layer_perm"
   permute_param {
     order: 0
     order: 2
@@ -1032,10 +1185,10 @@ layer {
   }
 }
 layer {
-  name: "fc7_mbox_conf_flat"
+  name: "fc7_mbox_conf_my_layer_flat"
   type: "Flatten"
-  bottom: "fc7_mbox_conf_perm"
-  top: "fc7_mbox_conf_flat"
+  bottom: "fc7_mbox_conf_my_layer_perm"
+  top: "fc7_mbox_conf_my_layer_flat"
   flatten_param {
     axis: 1
   }
@@ -1047,8 +1200,8 @@ layer {
   bottom: "data"
   top: "fc7_mbox_priorbox"
   prior_box_param {
-    min_size: 60.0
-    max_size: 111.0
+    min_size: 76.8
+    max_size: 168.96
     aspect_ratio: 2
     aspect_ratio: 3
     flip: true
@@ -1062,10 +1215,10 @@ layer {
   }
 }
 layer {
-  name: "conv6_2_mbox_loc"
+  name: "conv6_2_mbox_loc_my_layer"
   type: "Convolution"
   bottom: "conv6_2"
-  top: "conv6_2_mbox_loc"
+  top: "conv6_2_mbox_loc_my_layer"
   param {
     lr_mult: 1
     decay_mult: 1
@@ -1089,10 +1242,10 @@ layer {
   }
 }
 layer {
-  name: "conv6_2_mbox_loc_perm"
+  name: "conv6_2_mbox_loc_my_layer_perm"
   type: "Permute"
-  bottom: "conv6_2_mbox_loc"
-  top: "conv6_2_mbox_loc_perm"
+  bottom: "conv6_2_mbox_loc_my_layer"
+  top: "conv6_2_mbox_loc_my_layer_perm"
   permute_param {
     order: 0
     order: 2
@@ -1101,19 +1254,19 @@ layer {
   }
 }
 layer {
-  name: "conv6_2_mbox_loc_flat"
+  name: "conv6_2_mbox_loc_my_layer_flat"
   type: "Flatten"
-  bottom: "conv6_2_mbox_loc_perm"
-  top: "conv6_2_mbox_loc_flat"
+  bottom: "conv6_2_mbox_loc_my_layer_perm"
+  top: "conv6_2_mbox_loc_my_layer_flat"
   flatten_param {
     axis: 1
   }
 }
 layer {
-  name: "conv6_2_mbox_conf"
+  name: "conv6_2_mbox_conf_my_layer"
   type: "Convolution"
   bottom: "conv6_2"
-  top: "conv6_2_mbox_conf"
+  top: "conv6_2_mbox_conf_my_layer"
   param {
     lr_mult: 1
     decay_mult: 1
@@ -1137,10 +1290,10 @@ layer {
   }
 }
 layer {
-  name: "conv6_2_mbox_conf_perm"
+  name: "conv6_2_mbox_conf_my_layer_perm"
   type: "Permute"
-  bottom: "conv6_2_mbox_conf"
-  top: "conv6_2_mbox_conf_perm"
+  bottom: "conv6_2_mbox_conf_my_layer"
+  top: "conv6_2_mbox_conf_my_layer_perm"
   permute_param {
     order: 0
     order: 2
@@ -1149,10 +1302,10 @@ layer {
   }
 }
 layer {
-  name: "conv6_2_mbox_conf_flat"
+  name: "conv6_2_mbox_conf_my_layer_flat"
   type: "Flatten"
-  bottom: "conv6_2_mbox_conf_perm"
-  top: "conv6_2_mbox_conf_flat"
+  bottom: "conv6_2_mbox_conf_my_layer_perm"
+  top: "conv6_2_mbox_conf_my_layer_flat"
   flatten_param {
     axis: 1
   }
@@ -1164,8 +1317,8 @@ layer {
   bottom: "data"
   top: "conv6_2_mbox_priorbox"
   prior_box_param {
-    min_size: 111.0
-    max_size: 162.0
+    min_size: 168.96
+    max_size: 261.12
     aspect_ratio: 2
     aspect_ratio: 3
     flip: true
@@ -1179,10 +1332,10 @@ layer {
   }
 }
 layer {
-  name: "conv7_2_mbox_loc"
+  name: "conv7_2_mbox_loc_my_layer"
   type: "Convolution"
   bottom: "conv7_2"
-  top: "conv7_2_mbox_loc"
+  top: "conv7_2_mbox_loc_my_layer"
   param {
     lr_mult: 1
     decay_mult: 1
@@ -1206,10 +1359,10 @@ layer {
   }
 }
 layer {
-  name: "conv7_2_mbox_loc_perm"
+  name: "conv7_2_mbox_loc_my_layer_perm"
   type: "Permute"
-  bottom: "conv7_2_mbox_loc"
-  top: "conv7_2_mbox_loc_perm"
+  bottom: "conv7_2_mbox_loc_my_layer"
+  top: "conv7_2_mbox_loc_my_layer_perm"
   permute_param {
     order: 0
     order: 2
@@ -1218,19 +1371,19 @@ layer {
   }
 }
 layer {
-  name: "conv7_2_mbox_loc_flat"
+  name: "conv7_2_mbox_loc_my_layer_flat"
   type: "Flatten"
-  bottom: "conv7_2_mbox_loc_perm"
-  top: "conv7_2_mbox_loc_flat"
+  bottom: "conv7_2_mbox_loc_my_layer_perm"
+  top: "conv7_2_mbox_loc_my_layer_flat"
   flatten_param {
     axis: 1
   }
 }
 layer {
-  name: "conv7_2_mbox_conf"
+  name: "conv7_2_mbox_conf_my_layer"
   type: "Convolution"
   bottom: "conv7_2"
-  top: "conv7_2_mbox_conf"
+  top: "conv7_2_mbox_conf_my_layer"
   param {
     lr_mult: 1
     decay_mult: 1
@@ -1254,10 +1407,10 @@ layer {
   }
 }
 layer {
-  name: "conv7_2_mbox_conf_perm"
+  name: "conv7_2_mbox_conf_my_layer_perm"
   type: "Permute"
-  bottom: "conv7_2_mbox_conf"
-  top: "conv7_2_mbox_conf_perm"
+  bottom: "conv7_2_mbox_conf_my_layer"
+  top: "conv7_2_mbox_conf_my_layer_perm"
   permute_param {
     order: 0
     order: 2
@@ -1266,10 +1419,10 @@ layer {
   }
 }
 layer {
-  name: "conv7_2_mbox_conf_flat"
+  name: "conv7_2_mbox_conf_my_layer_flat"
   type: "Flatten"
-  bottom: "conv7_2_mbox_conf_perm"
-  top: "conv7_2_mbox_conf_flat"
+  bottom: "conv7_2_mbox_conf_my_layer_perm"
+  top: "conv7_2_mbox_conf_my_layer_flat"
   flatten_param {
     axis: 1
   }
@@ -1281,8 +1434,8 @@ layer {
   bottom: "data"
   top: "conv7_2_mbox_priorbox"
   prior_box_param {
-    min_size: 162.0
-    max_size: 213.0
+    min_size: 261.12
+    max_size: 353.28
     aspect_ratio: 2
     aspect_ratio: 3
     flip: true
@@ -1296,10 +1449,10 @@ layer {
   }
 }
 layer {
-  name: "conv8_2_mbox_loc"
+  name: "conv8_2_mbox_loc_my_layer"
   type: "Convolution"
   bottom: "conv8_2"
-  top: "conv8_2_mbox_loc"
+  top: "conv8_2_mbox_loc_my_layer"
   param {
     lr_mult: 1
     decay_mult: 1
@@ -1323,10 +1476,10 @@ layer {
   }
 }
 layer {
-  name: "conv8_2_mbox_loc_perm"
+  name: "conv8_2_mbox_loc_my_layer_perm"
   type: "Permute"
-  bottom: "conv8_2_mbox_loc"
-  top: "conv8_2_mbox_loc_perm"
+  bottom: "conv8_2_mbox_loc_my_layer"
+  top: "conv8_2_mbox_loc_my_layer_perm"
   permute_param {
     order: 0
     order: 2
@@ -1335,19 +1488,19 @@ layer {
   }
 }
 layer {
-  name: "conv8_2_mbox_loc_flat"
+  name: "conv8_2_mbox_loc_my_layer_flat"
   type: "Flatten"
-  bottom: "conv8_2_mbox_loc_perm"
-  top: "conv8_2_mbox_loc_flat"
+  bottom: "conv8_2_mbox_loc_my_layer_perm"
+  top: "conv8_2_mbox_loc_my_layer_flat"
   flatten_param {
     axis: 1
   }
 }
 layer {
-  name: "conv8_2_mbox_conf"
+  name: "conv8_2_mbox_conf_my_layer"
   type: "Convolution"
   bottom: "conv8_2"
-  top: "conv8_2_mbox_conf"
+  top: "conv8_2_mbox_conf_my_layer"
   param {
     lr_mult: 1
     decay_mult: 1
@@ -1371,10 +1524,10 @@ layer {
   }
 }
 layer {
-  name: "conv8_2_mbox_conf_perm"
+  name: "conv8_2_mbox_conf_my_layer_perm"
   type: "Permute"
-  bottom: "conv8_2_mbox_conf"
-  top: "conv8_2_mbox_conf_perm"
+  bottom: "conv8_2_mbox_conf_my_layer"
+  top: "conv8_2_mbox_conf_my_layer_perm"
   permute_param {
     order: 0
     order: 2
@@ -1383,10 +1536,10 @@ layer {
   }
 }
 layer {
-  name: "conv8_2_mbox_conf_flat"
+  name: "conv8_2_mbox_conf_my_layer_flat"
   type: "Flatten"
-  bottom: "conv8_2_mbox_conf_perm"
-  top: "conv8_2_mbox_conf_flat"
+  bottom: "conv8_2_mbox_conf_my_layer_perm"
+  top: "conv8_2_mbox_conf_my_layer_flat"
   flatten_param {
     axis: 1
   }
@@ -1398,8 +1551,8 @@ layer {
   bottom: "data"
   top: "conv8_2_mbox_priorbox"
   prior_box_param {
-    min_size: 213.0
-    max_size: 264.0
+    min_size: 353.28
+    max_size: 445.44
     aspect_ratio: 2
     flip: true
     clip: false
@@ -1412,10 +1565,10 @@ layer {
   }
 }
 layer {
-  name: "conv9_2_mbox_loc"
+  name: "conv9_2_mbox_loc_my_layer"
   type: "Convolution"
   bottom: "conv9_2"
-  top: "conv9_2_mbox_loc"
+  top: "conv9_2_mbox_loc_my_layer"
   param {
     lr_mult: 1
     decay_mult: 1
@@ -1439,10 +1592,10 @@ layer {
   }
 }
 layer {
-  name: "conv9_2_mbox_loc_perm"
+  name: "conv9_2_mbox_loc_my_layer_perm"
   type: "Permute"
-  bottom: "conv9_2_mbox_loc"
-  top: "conv9_2_mbox_loc_perm"
+  bottom: "conv9_2_mbox_loc_my_layer"
+  top: "conv9_2_mbox_loc_my_layer_perm"
   permute_param {
     order: 0
     order: 2
@@ -1451,19 +1604,19 @@ layer {
   }
 }
 layer {
-  name: "conv9_2_mbox_loc_flat"
+  name: "conv9_2_mbox_loc_my_layer_flat"
   type: "Flatten"
-  bottom: "conv9_2_mbox_loc_perm"
-  top: "conv9_2_mbox_loc_flat"
+  bottom: "conv9_2_mbox_loc_my_layer_perm"
+  top: "conv9_2_mbox_loc_my_layer_flat"
   flatten_param {
     axis: 1
   }
 }
 layer {
-  name: "conv9_2_mbox_conf"
+  name: "conv9_2_mbox_conf_my_layer"
   type: "Convolution"
   bottom: "conv9_2"
-  top: "conv9_2_mbox_conf"
+  top: "conv9_2_mbox_conf_my_layer"
   param {
     lr_mult: 1
     decay_mult: 1
@@ -1487,10 +1640,10 @@ layer {
   }
 }
 layer {
-  name: "conv9_2_mbox_conf_perm"
+  name: "conv9_2_mbox_conf_my_layer_perm"
   type: "Permute"
-  bottom: "conv9_2_mbox_conf"
-  top: "conv9_2_mbox_conf_perm"
+  bottom: "conv9_2_mbox_conf_my_layer"
+  top: "conv9_2_mbox_conf_my_layer_perm"
   permute_param {
     order: 0
     order: 2
@@ -1499,10 +1652,10 @@ layer {
   }
 }
 layer {
-  name: "conv9_2_mbox_conf_flat"
+  name: "conv9_2_mbox_conf_my_layer_flat"
   type: "Flatten"
-  bottom: "conv9_2_mbox_conf_perm"
-  top: "conv9_2_mbox_conf_flat"
+  bottom: "conv9_2_mbox_conf_my_layer_perm"
+  top: "conv9_2_mbox_conf_my_layer_flat"
   flatten_param {
     axis: 1
   }
@@ -1514,8 +1667,8 @@ layer {
   bottom: "data"
   top: "conv9_2_mbox_priorbox"
   prior_box_param {
-    min_size: 264.0
-    max_size: 315.0
+    min_size: 445.44
+    max_size: 537.6
     aspect_ratio: 2
     flip: true
     clip: false
@@ -1530,12 +1683,12 @@ layer {
 layer {
   name: "mbox_loc"
   type: "Concat"
-  bottom: "conv4_3_norm_mbox_loc_flat"
-  bottom: "fc7_mbox_loc_flat"
-  bottom: "conv6_2_mbox_loc_flat"
-  bottom: "conv7_2_mbox_loc_flat"
-  bottom: "conv8_2_mbox_loc_flat"
-  bottom: "conv9_2_mbox_loc_flat"
+  bottom: "conv4_3_norm_mbox_loc_my_layer_flat"
+  bottom: "fc7_mbox_loc_my_layer_flat"
+  bottom: "conv6_2_mbox_loc_my_layer_flat"
+  bottom: "conv7_2_mbox_loc_my_layer_flat"
+  bottom: "conv8_2_mbox_loc_my_layer_flat"
+  bottom: "conv9_2_mbox_loc_my_layer_flat"
   top: "mbox_loc"
   concat_param {
     axis: 1
@@ -1544,12 +1697,12 @@ layer {
 layer {
   name: "mbox_conf"
   type: "Concat"
-  bottom: "conv4_3_norm_mbox_conf_flat"
-  bottom: "fc7_mbox_conf_flat"
-  bottom: "conv6_2_mbox_conf_flat"
-  bottom: "conv7_2_mbox_conf_flat"
-  bottom: "conv8_2_mbox_conf_flat"
-  bottom: "conv9_2_mbox_conf_flat"
+  bottom: "conv4_3_norm_mbox_conf_my_layer_flat"
+  bottom: "fc7_mbox_conf_my_layer_flat"
+  bottom: "conv6_2_mbox_conf_my_layer_flat"
+  bottom: "conv7_2_mbox_conf_my_layer_flat"
+  bottom: "conv8_2_mbox_conf_my_layer_flat"
+  bottom: "conv9_2_mbox_conf_my_layer_flat"
   top: "mbox_conf"
   concat_param {
     axis: 1
@@ -1570,6 +1723,43 @@ layer {
   }
 }
 layer {
+  name: "mbox_loss"
+  type: "MultiBoxLoss"
+  bottom: "mbox_loc"
+  bottom: "mbox_conf"
+  bottom: "mbox_priorbox"
+  bottom: "label"
+  top: "mbox_loss"
+  include {
+    phase: TRAIN
+  }
+  propagate_down: true
+  propagate_down: true
+  propagate_down: false
+  propagate_down: false
+  loss_param {
+    normalization: VALID
+  }
+  multibox_loss_param {
+    loc_loss_type: SMOOTH_L1
+    conf_loss_type: SOFTMAX
+    loc_weight: 1.0
+    num_classes: 2
+    share_location: true
+    match_type: PER_PREDICTION
+    overlap_threshold: 0.5
+    use_prior_for_matching: true
+    background_label_id: 0
+    use_difficult_gt: true
+    neg_pos_ratio: 3.0
+    neg_overlap: 0.5
+    code_type: CENTER_SIZE
+    ignore_cross_boundary_bbox: false
+    mining_type: MAX_NEGATIVE
+  }
+}
+
+layer {
   name: "mbox_conf_reshape"
   type: "Reshape"
   bottom: "mbox_conf"
@@ -1581,6 +1771,9 @@ layer {
       dim: 2
     }
   }
+  include {
+    phase: TEST
+  }
 }
 layer {
   name: "mbox_conf_softmax"
@@ -1589,6 +1782,9 @@ layer {
   top: "mbox_conf_softmax"
   softmax_param {
     axis: 2
+  }
+  include {
+    phase: TEST
   }
 }
 layer {
@@ -1599,6 +1795,9 @@ layer {
   flatten_param {
     axis: 1
   }
+  include {
+    phase: TEST
+  }
 }
 layer {
   name: "detection_out"
@@ -1607,6 +1806,9 @@ layer {
   bottom: "mbox_conf_flatten"
   bottom: "mbox_priorbox"
   top: "detection_out"
+  include {
+    phase: TEST
+  }
   detection_output_param {
     num_classes: 2
     share_location: true
@@ -1614,12 +1816,26 @@ layer {
     nms_param {
       nms_threshold: 0.45
       top_k: 400
-      soft_nms: false
-      theta: 0.5
     }
-    code_type: CENTER_SIZE
+     code_type: CENTER_SIZE
     keep_top_k: 200
     confidence_threshold: 0.01
+  }
+}
+layer {
+  name: "detection_eval"
+  type: "DetectionEvaluate"
+  bottom: "detection_out"
+  bottom: "label"
+  top: "detection_eval"
+  include {
+    phase: TEST
+  }
+  detection_evaluate_param {
+    num_classes: 2
+    background_label_id: 0
+    overlap_threshold: 0.5
+    evaluate_difficult_gt: false
   }
 }
 
