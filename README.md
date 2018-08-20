@@ -184,7 +184,7 @@ http://www.deepdetect.com/overview/examples/
 |                          | Caffe | Tensorflow | Source        | Top-1 Accuracy (ImageNet) |
 |--------------------------|-------|------------|---------------|---------------------------|
 | AlexNet                  | Y     | N          | BVLC          |          57.1%                 |
-| SqueezeNet               | Y     | N          | DeepScale              |       59.5%                    | 
+| SqueezeNet               | [Y](https://deepdetect.com/models/squeezenet/squeezenet_v1.1.caffemodel)     | N          | DeepScale              |       59.5%                    | 
 | Inception v1 / GoogleNet | [Y](https://deepdetect.com/models/ggnet/bvlc_googlenet.caffemodel)     | [Y](https://deepdetect.com/models/tf/inception_v1.pb)          | BVLC / Google |             67.9%              |
 | Inception v2             | N     | [Y](https://deepdetect.com/models/tf/inception_v2.pb)          | Google        |     72.2%                      |
 | Inception v3             | N     | [Y](https://deepdetect.com/models/tf/inception_v3.pb)          | Google        |         76.9%                  |
