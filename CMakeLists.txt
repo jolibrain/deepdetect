@@ -70,7 +70,7 @@ set(eigen_archive_hash "50812b426b7c")
 include_directories("${EIGEN3_INCLUDE_DIR}")
 
 # hdf5
-if (ARM)
+if (RPI3)
   set(HDF5_LIB /usr/lib/arm-linux-gnueabihf/hdf5/serial)
 else()
   set(HDF5_LIB /usr/lib/x86_64-linux-gnu/hdf5/serial)
@@ -331,8 +331,8 @@ else()
     set(CAFFE_DD_CONFIG_FILE Makefile.config.cpu)
   endif()
 
-  # Set ARM caffe Makefile
-  if (ARM)
+  # Set RPi3 caffe Makefile
+  if (RPI3)
     set(CAFFE_DD_CONFIG_FILE Makefile.config.pi3)
   endif()
 
@@ -356,7 +356,7 @@ else()
 
   if (JETSON)
     set(HDF5_LIB /usr/lib/aarch64-linux-gnu/hdf5/serial)
-  elseif (ARM)
+  elseif (RPI3)
     set(HDF5_LIB /usr/lib/arm-linux-gnueabihf/hdf5/serial)
   else()
     set(HDF5_LIB /usr/lib/x86_64-linux-gnu/hdf5/serial)
