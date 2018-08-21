@@ -137,7 +137,7 @@ namespace dd {
 
   /**
    * \brief runs a net once (both forward and backward if the gradients are set)
-   * @param net net too run
+   * @param net net to run
    * @param where to store the output layer (one vector per batch item)
    *        The vector must be of the right size. If set to NULL, nothing is stored.
    * @return the elapsed time

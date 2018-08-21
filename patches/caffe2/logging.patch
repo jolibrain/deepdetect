@@ -770,7 +770,7 @@ index b4335ae..b7f8924 100644
 -static const std::string LogLevels[4] = {INFO, WARNING, ERROR, FATAL};
 -#define VLOG(n) LOG(LogLevels[n])
 +#define DEBUG "none"
-+static const std::string VLogLevels[4] = {DEBUG, DEBUG, ERROR, DEBUG};
++static const std::string VLogLevels[4] = {DEBUG, DEBUG, DEBUG, DEBUG};
 +#define VLOG(n) LOG(VLogLevels[n])
  
  #define LOG_AS_STRING(l, o)			\

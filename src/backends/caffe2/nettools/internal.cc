@@ -81,7 +81,7 @@ namespace dd {
       });
 
     const std::string mean_square_suffix("_meansq");
-    const std::string momentum_suffix("_moment");
+    const std::string momentum_suffix("_momentum");
     const std::string gradient_suffix("_grad");
     const std::string scale_suffix("_scale");
 

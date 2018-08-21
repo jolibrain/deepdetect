@@ -35,21 +35,6 @@
 #include "backends/caffe2/nettools.h"
 #include "outputconnectorstrategy.h"
 
-// Just a few static lines of code to be sure Caffe2 is correctly initialized
-namespace { class RunOnce { public: RunOnce() {
-
-  int size = 2;
-  const char *flags[size] = {
-    "FLAGS"
-    // As each service may want to use a different GPU,
-    // We don't want any global variable to store the "current GPU id" in our Nets.
-    ,"--caffe2_disable_implicit_engine_preference=1"
-  };
-  char **ptr = const_cast<char **>(&flags[0]);
-  caffe2::GlobalInit(&size, &ptr);
-
-}}; static RunOnce _; }
-
 namespace dd {
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -151,15 +136,6 @@ namespace dd {
       is_gpu = &Caffe2LibState::set_is_gpu;
     }
     _set_gpu_state(ad, _state, gpu_ids, is_gpu);
-  }
-
-  // Convert a human-readable protobuff to its compact version
-  static void pbtxt_to_pb(const std::string &pbtxt, const std::string &pb,
-			  google::protobuf::Message *buffer) {
-    CAFFE_ENFORCE(caffe2::ReadProtoFromFile(pbtxt, buffer));
-    std::ofstream f(pb);
-    buffer->SerializeToOstream(&f);
-    f.close();
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -402,20 +378,26 @@ namespace dd {
     } else {
       create_model_predict();
     }
+
     _net.set_name("_net");
     _init_net.set_name("_init_net");
     _train_net.set_name("_train_net");
 
     // Update the workspace with the new nets
+    this->_logger->info("Run init net");
     _context.run_net_once(_init_net);
     if (!_state.is_training() || _state.is_testing()) {
       if (!_context._nclasses) { //XXX Check if classifying
 	// If not initiliazied by init_mllib, it will be infered
 	_context._nclasses = Caffe2NetTools::get_nclasses(_net, _init_net);
       }
+      this->_logger->info("Create predict net");
+      _context.configure_net(_net);
       _context.create_net(_net);
     }
+    this->_logger->info("Create train net");
     if (_state.is_training()) {
+      _context.configure_net(_train_net);
       _context.create_net(_train_net);
     }
 

@@ -265,10 +265,12 @@ namespace dd {
       std::vector<caffe2::DeviceOption> _devices;
       std::string _input_blob;
       std::string _output_blob;
-
-      //XXX Should be optionals in the future
-      std::string _blob_label = "label";
       int _nclasses = 0;
+
+      //XXX Should be optionals / configurables in the future
+      std::string _blob_label = "label";
+      std::string _net_type = "dag";
+      int _thread_per_device = 4;
 
       bool _parallelized; // Whether multiple devices are used
       int _loaded_iter; // Last iteration number that was loaded from the file system
@@ -282,6 +284,10 @@ namespace dd {
 	for (size_t i = 0; i < device_count(); ++i) {
 	  _workspace->CreateBlob(get_prefix(i) + _input_blob);
 	}
+      }
+      inline void configure_net(caffe2::NetDef &net) const {
+	net.set_type(_net_type);
+	net.set_num_workers(_thread_per_device * device_count());
       }
 
       // Enforce
@@ -383,13 +389,15 @@ namespace dd {
        *  Network manipulation
        */
 
+      //XXX Recreate the 'OptimizeGradientMemory' function to reuse blobs in the net
+
       /**
        * \brief creates an init net capable of setting the net parameters to their current value
        */
       void create_init_net(const caffe2::NetDef &net, caffe2::NetDef &init) const;
 
       /**
-       * \bried append a net's operators and inputs to another (its 'main' input is ignored)
+       * \bried appends a net's operators and inputs to another (its 'main' input is ignored)
        */
       void append_net(caffe2::NetDef &dst, const caffe2::NetDef &src) const;
       // Same as above, but also adds gradients for the new operators
