@@ -350,10 +350,10 @@ namespace dd {
 	  continue;
 	}
 
-	auto check_params = [&](std::set<std::string> &v_in, std::set<std::string> &v_out) {
-	  for (const std::string &input : v_in) {
+	auto check_params = [&](std::set<std::string> &s_in, std::set<std::string> &s_out) {
+	  for (const std::string &input : s_in) {
 	    if (!input.find(prefix) && external_inputs.find(input) != external_inputs.end()) {
-	      v_out.insert(input.substr(remove_prefix * prefix.size(), -1));
+	      s_out.insert(input.substr(remove_prefix * prefix.size(), -1));
 	    }
 	  }
 	};
