@@ -170,11 +170,11 @@ layer {
   bottom: "data"
   top: "conv1_1"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 1.0
+    decay_mult: 1.0
   }
   param {
-    lr_mult: 0
+    lr_mult: 2.0
     decay_mult: 0
   }
   convolution_param {
@@ -202,11 +202,11 @@ layer {
   bottom: "conv1_1"
   top: "conv1_2"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 1.0
+    decay_mult: 1.0
   }
   param {
-    lr_mult: 0
+    lr_mult: 2.0
     decay_mult: 0
   }
   convolution_param {
