@@ -52,16 +52,24 @@ namespace dd {
     void create_dbreader(caffe2::NetDef &init_net, bool train = false) const;
 
     /**
-     * \brief links the database with the given net
+     * \brief asserts that the context can be used with the current input configuration
      */
-    void add_tensor_loader(const Caffe2NetTools::ModelContext &context,
-			   caffe2::NetDef &net,
-			   bool train = false) const;
+    void assert_context_validity(Caffe2NetTools::ModelContext &context, bool train = false) const;
 
     /**
-     * \bried fills informations about the tensor loader
+     * \brief links the dbreader with the given net
      */
-    void get_tensor_loader_infos(int &batch_size, int &total_size, bool train = false) const;
+    void link_dbreader(const Caffe2NetTools::ModelContext &context, caffe2::NetDef &net,
+		       bool train = false) const;
+
+    /**
+     * \brief uses the dbreader to insert data into the workspace
+     * @param context context of the nets
+     * @param already_loaded how many tensors must be ignored
+     * @param train which db must be read
+     * @return size of this batch (0 if there was not enough data to fill the tensors)
+     */
+    int use_dbreader(Caffe2NetTools::ModelContext &context, int already_loaded, bool train = false);
 
     /* Functions that should be re-implemented by childrens */
 
@@ -100,7 +108,7 @@ namespace dd {
 
     /* Functions that should be called by the childrens */
 
-    void init(const std::string &model_repo);
+    void init(InputConnectorStrategy *child);
 
     // Should be called AFTER the children has initialized protected members
     void finalize_transform_predict(const APIData &ad);
@@ -118,7 +126,24 @@ namespace dd {
      */
     void compute_db_sizes();
 
+    // Function that populate a vector with input tensors
+    using InputGetter = std::function<void(std::vector<caffe2::TensorCPU>&)>;
+
+    /**
+     * \brief fill the workspace with batches of tensors
+     * @param context context of the nets
+     * @param blobs name of the blobs to fill
+     * @param nb_data number of data available
+     * @param get_tensors callback to fetch an input (one tensor per blob)
+     * @param train whether to use the train batch size or not
+     * @return how many tensors were insered
+     */
+    int insert_inputs(Caffe2NetTools::ModelContext &context, const std::vector<std::string> &blobs,
+		      int nb_data, const InputGetter &get_tensors, bool train = false);
+
     /* Members managed by the mother class */
+
+    InputConnectorStrategy *_child = NULL;
 
     std::string _default_db;
     std::string _default_train_db;

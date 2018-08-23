@@ -320,12 +320,13 @@ namespace dd {
        * \brief resets the list of devices to multiple GPUs
        */
       void reset_devices(const std::vector<int> &gpu_ids);
+#endif
 
       /**
-       * \brief adds a tensor on each device.
+       * \brief tries to find the blob of the given name on the given device,
+       *        and to use the tensor to fill it
        */
-      void insert_inputs(const std::vector<caffe2::TensorCPU> &tensors);
-#endif
+      void insert_tensor(int device_idx, const std::string &name, const caffe2::TensorCPU &tensor);
 
       /**
        * \brief reset the 'last loaded' iteration to 0
@@ -351,6 +352,12 @@ namespace dd {
       /*
        *  Information extraction
        */
+
+      /**
+       * \brief tries to find the blob of the given name on the given device,
+       *        and to use it to fill the tensor (true if successfull)
+       */
+      bool extract_tensor(int device_idx, const std::string &name, caffe2::TensorCPU &tensor) const;
 
       /**
        * \brief fetches the given layer and merge batches of results from each devices
@@ -397,25 +404,17 @@ namespace dd {
       void create_init_net(const caffe2::NetDef &net, caffe2::NetDef &init) const;
 
       /**
-       * \bried appends a net's operators and inputs to another (its 'main' input is ignored)
+       * \bried appends a net's operators and inputs to another
        */
       void append_net(caffe2::NetDef &dst, const caffe2::NetDef &src) const;
-      // Same as above, but also adds gradients for the new operators
+
+      /**
+       * \bried appends a net's operators and inputs to another (its 'main' input is ignored)
+       *        then adds gradients for the new operators
+       */
       void append_trainable_net(caffe2::NetDef &dst, const caffe2::NetDef &src) const;
 
     private:
-
-      /**
-       * \brief tries to find the blob of the given name on the give device,
-       *        and to use it to fill the tensor (true if successfull)
-       */
-      bool extract_tensor(int device_idx, const std::string &name, caffe2::TensorCPU &tensor) const;
-
-      /**
-       * \brief tries to find the blob of the given name on the give device,
-       *        and to use the tensor to fill it
-       */
-      void insert_tensor(int device_idx, const std::string &name, const caffe2::TensorCPU &tensor);
 
       // Tools to generalize the 'extract_results' functions
       template <typename Result, typename Data>

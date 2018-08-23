@@ -100,15 +100,6 @@ namespace dd {
 	blob.GetMutable<caffe2::TensorCPU>()->CopyFrom(tensor);
     }
 
-    void ModelContext::insert_inputs(const std::vector<caffe2::TensorCPU> &tensors) {
-      CAFFE_ENFORCE(tensors.size() == device_count());
-
-      // Loop over the devices
-      for (size_t i = 0; i < tensors.size(); ++i) {
-	insert_tensor(i, _input_blob, tensors[i]);
-      }
-    }
-
     static bool deserialize_blob(caffe2::Blob &blob, const std::string &path) {
       std::ifstream f(path);
       CAFFE_ENFORCE(f.good());
@@ -272,7 +263,7 @@ namespace dd {
 
     void ModelContext::append_net(caffe2::NetDef &dst, const caffe2::NetDef &src) const {
       ScopedNet net = scope_net(dst);
-      add_ops_and_inputs(net, src, { _input_blob });
+      add_ops_and_inputs(net, src);
     }
 
     void ModelContext::append_trainable_net(caffe2::NetDef &dst, const caffe2::NetDef &src) const {

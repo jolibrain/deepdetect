@@ -231,11 +231,8 @@ namespace dd {
 
     }
 
-    // Load batches from the databases
-    _last_inputc.add_tensor_loader(_context, train_net, true);
-    if (_state.is_testing()) {
-      _last_inputc.add_tensor_loader(_context, test_net);
-    }
+    // Load batches from the database
+    _last_inputc.link_dbreader(_context, train_net, true);
 
     // Apply input tranformations
     _last_inputc.add_constant_layers(_context, init_net);
@@ -287,19 +284,9 @@ namespace dd {
     // Computation is done on a new net
     caffe2::NetDef tmp_net;
 
-    if (_last_inputc.is_load_manual()) {
-
-      // usually the init net only initiliaze the parameters
-      // so we create the 'data' blob manually, just to be sure
-      _context.create_input();
-      tmp_net.add_external_input(_context._input_blob);
-
-    } else {
-
-      // Add database informations
+    // Add database informations
+    if (!_last_inputc.is_load_manual()) {
       _last_inputc.create_dbreader(_init_net);
-      _last_inputc.add_tensor_loader(_context, tmp_net);
-
     }
 
     // Add transformations
@@ -379,13 +366,17 @@ namespace dd {
       create_model_predict();
     }
 
+    // Set an unique name to each net
     _net.set_name("_net");
     _init_net.set_name("_init_net");
     _train_net.set_name("_train_net");
 
-    // Update the workspace with the new nets
+    // Add the inputs
     this->_logger->info("Run init net");
+    _context.create_input();
     _context.run_net_once(_init_net);
+
+    // Register the prediction net
     if (!_state.is_training() || _state.is_testing()) {
       if (!_context._nclasses) { //XXX Check if classifying
 	// If not initiliazied by init_mllib, it will be infered
@@ -395,6 +386,8 @@ namespace dd {
       _context.configure_net(_net);
       _context.create_net(_net);
     }
+
+    // Register the training net
     this->_logger->info("Create train net");
     if (_state.is_training()) {
       _context.configure_net(_train_net);
@@ -572,6 +565,12 @@ namespace dd {
 
     update_model(); // Recreate the net from protobuf files if the configuration has changed
 
+    // Check if everything is well configured
+    _last_inputc.assert_context_validity(_context, true);
+    if (_state.is_testing()) {
+      _last_inputc.assert_context_validity(_context);
+    }
+
     // Start the training
     const int start_iter = _context.extract_iter();
     this->clear_all_meas_per_iter();
@@ -634,22 +633,17 @@ namespace dd {
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  int Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
+  load_batch(int already_loaded) {
+    if (_last_inputc.is_load_manual()) {
+      return _last_inputc.load_batch(_context);
+    }
+    return _last_inputc.use_dbreader(_context, already_loaded);
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
   test(const APIData &ad, APIData &out) {
-
-    int batch_size = 0, total_size = 0;
-
-    // Get sizes used by tensor loaders
-    if (!_last_inputc.is_load_manual()) {
-      _last_inputc.get_tensor_loader_infos(batch_size, total_size);
-      int remaining = total_size % batch_size;
-      if (remaining) {
-	this->_logger->warn("The last {} image(s) will be ignored, as they won't fill"
-			    " the requested batch size of {}",
-			    remaining, batch_size);
-      }
-      total_size -= remaining;
-    }
 
     // Add already computed measures
     APIData ad_res;
@@ -669,19 +663,8 @@ namespace dd {
     //XXX True/False flags can be forwarded to ad_res (segmentation, multi_label, etc.)
 
     // Loop while there is data to test
-    for (int i = 0; true; i += batch_size) {
-
-      if (_last_inputc.is_load_manual()) {
-
-	// Get the current batch size and fill the input blob
-	batch_size = _last_inputc.load_batch(_context);
-	total_size += batch_size;
-
-      } else {
-	batch_size *= (i < total_size);
-      }
-      if (!batch_size) break; // Everything was tested
-
+    int total_size = 0;
+    for (int batch_size; (batch_size = load_batch(total_size)); total_size += batch_size) {
       std::vector<std::vector<float>> results(batch_size);
       run_net(_net.name(), &results);
 
@@ -700,7 +683,7 @@ namespace dd {
 	predictions.assign(results[j].begin(), results[j].end());
 	bad.add("target", labels[j]);
 	bad.add("pred", predictions);
-	ad_res.add(std::to_string(i + j), bad);
+	ad_res.add(std::to_string(total_size + j), bad);
       }
     }
 
@@ -740,6 +723,7 @@ namespace dd {
     }
 
     update_model(); // Recreate the net from protobuf files if the configuration has changed
+    _last_inputc.assert_context_validity(_context); // Check if everything is well configured
 
     // Special case where the net is runned by test()
     if (_state.is_testing()) {
@@ -749,7 +733,7 @@ namespace dd {
 
     // Load everything in a single batch
     CAFFE_ENFORCE(_last_inputc.is_load_manual());
-    int batch_size = _last_inputc.load_batch(_context);
+    int batch_size = load_batch();
 
     std::vector<APIData> vrad(batch_size);
     std::vector<std::vector<float> > results(batch_size);
