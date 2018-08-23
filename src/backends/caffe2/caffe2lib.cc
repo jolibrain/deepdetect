@@ -537,6 +537,11 @@ namespace dd {
       _state.set_max_iter(ad_solver);
       _state.set_solver_type(ad_solver);
 
+      // To be compatible with caffe's syntax, the 'solver_type' is allowed to be sent in uppercase
+      std::string solver_type = _state.solver_type();
+      std::transform(solver_type.begin(), solver_type.end(), solver_type.begin(), ::tolower);
+      _state.set_solver_type(solver_type);
+
       //XXX Allow more parameters: decay, epsilon, ...
 
       // Iterations count
