@@ -39,7 +39,7 @@ namespace dd {
 
   void ImgCaffe2InputFileConn::init(const APIData &ad) {
     ImgInputFileConn::init(ad);
-    Caffe2InputInterface::init(_model_repo);
+    Caffe2InputInterface::init(this);
     update(ad);
     //XXX let the meanfile and/or mean-values be changed by the API ?
     _mean_file = _model_repo + "/mean.pb";
@@ -403,51 +403,33 @@ namespace dd {
   int ImgCaffe2InputFileConn::load_batch(Caffe2NetTools::ModelContext &context) {
     CAFFE_ENFORCE(_is_load_manual);
 
-    // Split the images over the tensors
-    std::vector<caffe2::TensorCPU> tensors(context.device_count());
-    int image_count = std::min(static_cast<int>(_images.size()), _batch_size);
-    int image_per_tensor = image_count / tensors.size();
-    image_count = image_per_tensor * tensors.size();
-
-    // Check if there is enough images to make a batch
-    if (!image_count) {
-      if (_images.size()) {
-	_logger->warn("The last {} image(s) could not be splitted between the {} tensors",
-		      _images.size(), tensors.size());
-      }
-      _images.clear();
-      return 0;
-    }
-
-    // Transform the data
-    int w = _images[0].cols;
-    int h = _images[0].rows;
     std::vector<cv::Mat> chan(channels());
-    size_t channel_size = h * w * sizeof(float);
-    auto it_begin(_images.begin());
-    auto it_end(it_begin + image_count);
-    auto image = it_begin;
+    size_t channel_size = _height * _width * sizeof(float);
+    std::vector<caffe2::TIndex> dims({channels(), _height, _width});
+    auto image = _images.begin();
 
-    for (caffe2::TensorCPU &tensor : tensors) {
-      tensor.Resize(std::vector<caffe2::TIndex>({image_per_tensor, channels(), h, w}));
+    InputGetter get_tensors = [&](std::vector<caffe2::TensorCPU> &tensors) {
+
+      // Resize the tensor
+      caffe2::TensorCPU &tensor(tensors[0]);
+      tensor.Resize(dims);
       uint8_t *data = reinterpret_cast<uint8_t *>(tensor.mutable_data<float>());
-      for (int i = 0; i < image_per_tensor; ++i, ++image) {
 
-	// Convert from NHWC uint8_t to NCHW float
-	image->convertTo(*image, CV_32F);
-	cv::split(*image, chan);
-	for (cv::Mat &ch : chan) {
-	  std::memcpy(data, ch.data, channel_size);
-	  data += channel_size;
-	}
+      // Convert to float
+      image->convertTo(*image, CV_32F);
+      cv::split(*image, chan);
+      ++image;
 
+      // Convert from HWC to CHW
+      for (cv::Mat &ch : chan) {
+	std::memcpy(data, ch.data, channel_size);
+	data += channel_size;
       }
-    }
+    };
 
-    // Update
-    _images.erase(it_begin, it_end);
-    context.insert_inputs(tensors);
-    return image_count;
+    int batch_size = insert_inputs(context, {context._input_blob}, _images.size(), get_tensors);
+    _images.erase(_images.begin(), image);
+    return batch_size;
   }
 
   bool ImgCaffe2InputFileConn::needs_reconfiguration(const ImgCaffe2InputFileConn &inputc) {

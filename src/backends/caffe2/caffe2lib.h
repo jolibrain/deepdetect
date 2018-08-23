@@ -113,6 +113,13 @@ namespace dd {
   void create_model();
 
   /**
+   * \brief load a new batch in the workspace
+   * @param number of data that was already loaded
+   * @return the batch size (0 if there is nothing left to load)
+   */
+  int load_batch(int already_loaded = 0);
+
+  /**
    * \brief tests a model and compute measures
    * @param ad root data object
    * @param out output data object

@@ -46,36 +46,131 @@ namespace dd {
     Caffe2NetTools::CreateDB(init_net, DBREADER(train), DB(train));
   }
 
-  void Caffe2InputInterface::add_tensor_loader(const Caffe2NetTools::ModelContext &context,
-					       caffe2::NetDef &net,
-					       bool train) const {
-
-    // Check the batch size
-    int batch_size = BATCH_SIZE(train);
+  void Caffe2InputInterface::assert_context_validity(Caffe2NetTools::ModelContext &context,
+						     bool train) const {
+    // Check the number of inputs
+    int nb_data = _is_load_manual ? _ids.size() : DB_SIZE(train);
     int devices = context.device_count();
-    int size_per_device = batch_size / devices;
-    if (size_per_device < 1 || batch_size % devices) {
-      throw InputConnectorBadParamException("cannot split a batch of " +
-					    std::to_string(batch_size) + " on " +
-					    std::to_string(devices) + " device(s)");
+    if (nb_data < devices) {
+      throw InputConnectorBadParamException("cannot split " + std::to_string(nb_data) + " inputs"
+					    " on " + std::to_string(devices) + " device(s)");
     }
+  }
 
+  void Caffe2InputInterface::link_dbreader(const Caffe2NetTools::ModelContext &context,
+					   caffe2::NetDef &net,
+					   bool train) const {
     caffe2::OperatorDef op;
+    int size_per_device = BATCH_SIZE(train) / context.device_count();
+
     //XXX Manage no-label inputs
     Caffe2NetTools::TensorProtosDBInput(op, DBREADER(train), context._input_blob,
 					context._blob_label, size_per_device);
     Caffe2NetTools::insert_db_input_operator(context, net, op);
   }
 
-  void Caffe2InputInterface::get_tensor_loader_infos(int &batch_size, int &total_size,
-						     bool train) const {
-    batch_size = BATCH_SIZE(train);
-    total_size = DB_SIZE(train);
+  int Caffe2InputInterface::insert_inputs(Caffe2NetTools::ModelContext &context,
+					  const std::vector<std::string> &blobs, int nb_data,
+					  const InputGetter &get_tensors, bool train) {
+    // Get the batch size of each device
+    std::vector<int> batch_sizes;
+    int devices = context.device_count();
+    batch_sizes.resize(devices);
+    std::fill(batch_sizes.begin(), batch_sizes.end(), 0);
+
+    // Reduce the batch size if not enough data
+    int batch_size = std::min(BATCH_SIZE(train), nb_data);
+    if (!batch_size) {
+      return 0;
+    }
+
+    // Check if there is enough data to make a batch
+    CAFFE_ENFORCE(devices <= batch_size);
+    int batch_per_device = batch_size / devices;
+    batch_size = batch_per_device * devices;
+    if (!batch_size) {
+      return 0;
+    }
+
+    // If there is too few data left to form the next batch, add it to the current one
+    nb_data -= batch_size;
+    nb_data *= (nb_data < devices);
+    batch_size += nb_data;
+    for (int device = 0; device < devices; ++device) {
+      batch_sizes[device] = batch_per_device + (device < nb_data);
+    }
+
+    // Loop over the devices
+    for (int device = 0; device < devices; ++device) {
+      std::vector<caffe2::TensorCPU> tensors(blobs.size());
+      std::vector<uint8_t *> raw_datas(blobs.size(), NULL);
+      int current_batch_size = batch_sizes[device];
+
+      // Loop over the items
+      for (int item = 0; item < current_batch_size; ++item) {
+	std::vector<caffe2::TensorCPU> tmp_tensors(tensors.size());
+	get_tensors(tmp_tensors);
+
+	// Loop over the blobs
+	for (size_t i = 0; i < tensors.size(); ++i) {
+	  uint8_t *&raw_data(raw_datas[i]);
+	  caffe2::TensorCPU &tensor(tensors[i]);
+	  caffe2::TensorCPU &tmp(tmp_tensors[i]);
+
+	  // Resize the tensor based on the shape of the first item
+	  if (!raw_data) {
+	    std::vector<caffe2::TIndex> dims(tmp.dims());
+	    dims.insert(dims.begin(), current_batch_size);
+	    tensor.Resize(dims);
+	    raw_data = static_cast<uint8_t *>(tensor.raw_mutable_data(tmp.meta()));
+	  }
+
+	  // Copy the data
+	  CAFFE_ENFORCE(tensor.size() == tmp.size() * current_batch_size);
+	  CAFFE_ENFORCE(tensor.meta() == tmp.meta());
+	  std::memcpy(raw_data + tmp.nbytes() * item, tmp.raw_data(), tmp.nbytes());
+	}
+      }
+
+      // Insert the tensors on the current device
+      for (size_t i = 0; i < tensors.size(); ++i) {
+	context.insert_tensor(device, blobs[i], tensors[i]);
+      }
+    }
+
+    return batch_size;
   }
 
-  void Caffe2InputInterface::init(const std::string &model_repo) {
-    _default_db = model_repo + _db_relative_path;
-    _default_train_db = model_repo + _train_db_relative_path;
+  int Caffe2InputInterface::use_dbreader(Caffe2NetTools::ModelContext &context, int already_loaded,
+					 bool train) {
+    CAFFE_ENFORCE(!_is_load_manual);
+
+    // Get a reference to the DBReader
+    const caffe2::db::DBReader &dbreader =
+      context._workspace->GetBlob(DBREADER(train))->Get<caffe2::db::DBReader>();
+    std::string key, value;
+    caffe2::TensorProtos protos;
+    caffe2::TensorDeserializer<caffe2::CPUContext> deserializer;
+
+    // Fetch the data
+    InputGetter get_tensors = [&](std::vector<caffe2::TensorCPU> &tensors) {
+      dbreader.Read(&key, &value);
+      CAFFE_ENFORCE(protos.ParseFromString(value));
+      CAFFE_ENFORCE(static_cast<size_t>(protos.protos_size()) == tensors.size());
+      for (size_t i = 0; i < tensors.size(); ++i) {
+	deserializer.Deserialize(protos.protos(i), &tensors[i]);
+      }
+    };
+
+    //XXX Manage no-label inputs
+    std::vector<std::string> blobs({context._input_blob, context._blob_label});
+    return insert_inputs(context, blobs, DB_SIZE(train) - already_loaded, get_tensors, train);
+  }
+
+  void Caffe2InputInterface::init(InputConnectorStrategy *child) {
+    _child = child;
+    _default_db = _child->_model_repo + _db_relative_path;
+    _default_train_db = _child->_model_repo + _train_db_relative_path;
   }
 
   // Notes about the APIData
@@ -91,6 +186,7 @@ namespace dd {
   //
   // 3 -	Batch sizes make sens when there is a large amount of data (training or testing),
   //		but not for a simple prediction call (all the data should fit as one batch).
+  //		That's why we must know what the input is used for.
   //		The best way to assert that the input isn't used to measure nets is to check the
   //		'output' parameter, even if it is destined to OutputConnectors.
 
