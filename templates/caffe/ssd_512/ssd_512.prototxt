@@ -132,7 +132,7 @@ layer {
       max_sample: 1
       max_trials: 50
     }
-    label_map_file: "/data1/visual_genome/generic_detect_v2/data/labelmap_fd.prototxt"
+    label_map_file: "labelmap_fd.prototxt"
   }
 }
 layer {
