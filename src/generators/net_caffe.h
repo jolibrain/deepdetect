@@ -110,6 +110,20 @@ namespace dd
 		  const std::string &name="",
 		  const std::string &init="msra");
 
+    void add_deconv(caffe::NetParameter *net_param,
+		    const std::string &bottom,
+		    const std::string &top,
+		    const int &num_output,
+		    const int &kernel_size,
+		    const int &pad,
+		    const int &stride,
+		    const int &kernel_w=0,
+		    const int &kernel_h=0,
+		    const int &pad_w=0,
+		    const int &pad_h=0,
+		    const std::string &name="",
+		    const std::string &init="msra");
+
     void add_act(caffe::NetParameter *net_param,
 		 const std::string &bottom,
 		 const std::string &activation,

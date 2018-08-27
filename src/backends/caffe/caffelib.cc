@@ -564,6 +564,11 @@ namespace dd
       const_cast<APIData&>(ad).add("flat1dconv",static_cast<bool>(inputc._flat1dconv));
     if (_regression)
       const_cast<APIData&>(ad).add("regression",true);
+    if (_autoencoder)
+      {
+	const_cast<APIData&>(ad).add("autoencoder",true);
+	const_cast<APIData&>(ad).add("ntargets",inputc.width()*inputc.height());
+      }
     netcaffe._nlac.configure_net(ad);
   }
 

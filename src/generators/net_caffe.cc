@@ -273,6 +273,44 @@ namespace dd
     //fparam->set_value(0.2); //TODO: option
   }
 
+  void NetLayersCaffe::add_deconv(caffe::NetParameter *net_param,
+				  const std::string &bottom,
+				  const std::string &top,
+				  const int &num_output,
+				  const int &kernel_size,
+				  const int &pad,
+				  const int &stride,
+				  const int &kernel_w,
+				  const int &kernel_h,
+				  const int &pad_w,
+				  const int &pad_h,
+				  const std::string &name,
+				  const std::string &init)
+  {
+    caffe::LayerParameter *lparam = CaffeCommon::add_layer(net_param,bottom,top,name.empty()?"deconv_"+bottom:name,"Deconvolution");
+    caffe::ConvolutionParameter *cparam = lparam->mutable_convolution_param();
+    cparam->set_num_output(num_output);
+    if (kernel_w == 0 && kernel_h == 0)
+      cparam->add_kernel_size(kernel_size);
+    else
+      {
+	cparam->set_kernel_w(kernel_w);
+	cparam->set_kernel_h(kernel_h);
+      }	
+    if (pad_w == 0 && pad_h == 0)
+      cparam->add_pad(pad);
+    else
+      {
+	cparam->set_pad_w(pad_w);
+	cparam->set_pad_h(pad_h);
+      }
+    cparam->add_stride(stride);
+    cparam->mutable_weight_filler()->set_type(init);
+    caffe::FillerParameter *fparam = cparam->mutable_bias_filler();
+    fparam->set_type("constant");
+    //fparam->set_value(0.2); //TODO: option
+  }
+
   void NetLayersCaffe::add_act(caffe::NetParameter *net_param,
 			       const std::string &bottom,
 			       const std::string &activation,

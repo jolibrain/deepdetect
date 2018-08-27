@@ -93,7 +93,7 @@ namespace dd
 	add_euclidean_loss(this->_net_params,bottom,"","loss",ntargets,true);
 	add_euclidean_loss(this->_dnet_params,bottom,"","loss",ntargets,true);
       }
-    else if (autoencoder)
+    else if (autoencoder) //TODO: sigmoid crossentropy would be only for integer-type targets...
       {
 	add_sigmoid_crossentropy_loss(this->_net_params,bottom,"data","losst",ntargets);
 	add_sigmoid_crossentropy_loss(this->_dnet_params,bottom,"","loss",ntargets,true);
