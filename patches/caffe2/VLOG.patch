@@ -18,7 +18,7 @@ index b7f892451..81a09377f 100644
 +#ifndef VLOG
 +
  #define DEBUG "none"
- static const std::string VLogLevels[4] = {DEBUG, DEBUG, ERROR, DEBUG};
+ static const std::string VLogLevels[4] = {DEBUG, DEBUG, DEBUG, DEBUG};
  #define VLOG(n) LOG(VLogLevels[n])
  
 +#endif

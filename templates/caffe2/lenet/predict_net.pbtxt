@@ -1,0 +1,145 @@
+name: "mnist_train"
+op {
+  input: "data"
+  input: "conv1_w"
+  input: "conv1_b"
+  output: "conv1"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 5
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  device_option {
+    device_type: 1
+    cuda_gpu_id: 0
+  }
+}
+op {
+  input: "conv1"
+  output: "pool1"
+  type: "MaxPool"
+  arg {
+    name: "kernel"
+    i: 2
+  }
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  device_option {
+    device_type: 1
+    cuda_gpu_id: 0
+  }
+}
+op {
+  input: "pool1"
+  input: "conv2_w"
+  input: "conv2_b"
+  output: "conv2"
+  type: "Conv"
+  arg {
+    name: "kernel"
+    i: 5
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  device_option {
+    device_type: 1
+    cuda_gpu_id: 0
+  }
+}
+op {
+  input: "conv2"
+  output: "pool2"
+  type: "MaxPool"
+  arg {
+    name: "kernel"
+    i: 2
+  }
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  device_option {
+    device_type: 1
+    cuda_gpu_id: 0
+  }
+}
+op {
+  input: "pool2"
+  input: "fc3_w"
+  input: "fc3_b"
+  output: "fc3"
+  type: "FC"
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  device_option {
+    device_type: 1
+    cuda_gpu_id: 0
+  }
+}
+op {
+  input: "fc3"
+  output: "fc3"
+  type: "Relu"
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  device_option {
+    device_type: 1
+    cuda_gpu_id: 0
+  }
+}
+op {
+  input: "fc3"
+  input: "pred_w"
+  input: "pred_b"
+  output: "pred"
+  type: "FC"
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  device_option {
+    device_type: 1
+    cuda_gpu_id: 0
+  }
+}
+op {
+  input: "pred"
+  output: "softmax"
+  type: "Softmax"
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  device_option {
+    device_type: 1
+    cuda_gpu_id: 0
+  }
+}
+external_input: "pred_b"
+external_input: "conv1_b"
+external_input: "conv2_b"
+external_input: "fc3_w"
+external_input: "pred_w"
+external_input: "conv2_w"
+external_input: "fc3_b"
+external_input: "conv1_w"

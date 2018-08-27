@@ -1,0 +1,72 @@
+op {
+  output: "conv1_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 20
+  }
+}
+op {
+  output: "conv1_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 20
+    ints: 1
+    ints: 5
+    ints: 5
+  }
+}
+op {
+  output: "conv2_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 100
+  }
+}
+op {
+  output: "conv2_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 100
+    ints: 20
+    ints: 5
+    ints: 5
+  }
+}
+op {
+  output: "fc3_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 500
+  }
+}
+op {
+  output: "fc3_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 500
+    ints: 1600
+  }
+}
+op {
+  output: "pred_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 10
+  }
+}
+op {
+  output: "pred_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 10
+    ints: 500
+  }
+}

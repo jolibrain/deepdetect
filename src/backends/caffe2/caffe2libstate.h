@@ -22,7 +22,10 @@
 #ifndef CAFFE2LIBSTATE_H
 #define CAFFE2LIBSTATE_H
 
-#define REGISTER_CONFIG(type, name, def)				\
+#include "apidata.h"
+
+// Create getters, setters and check callbacks
+#define _REGISTER_CONFIG(type, name, def)				\
 									\
 private:								\
 									\
@@ -46,7 +49,7 @@ private:								\
 									\
 public:						                        \
 									\
- const type &name() const {						\
+ inline const type &name() const {					\
    return _##name##_current;						\
  }									\
  void set_##name(const type &value) {					\
@@ -56,15 +59,54 @@ public:						                        \
    _##name##_default = value;						\
  }
 
+// Special setters using an APIData
+#define REGISTER_CONFIG(type, name, def)				\
+ _REGISTER_CONFIG(type, name, def)					\
+ void set_##name(const APIData &ad, bool force_get=false) {		\
+   if (force_get || ad.has(#name)) {					\
+     set_##name(ad.get(#name).get<type>());				\
+   }									\
+ }									\
+ void set_default_##name(const APIData &ad, bool force_get=false) {	\
+   if (force_get || ad.has(#name)) {					\
+     set_default_##name(ad.get(#name).get<type>());			\
+   }									\
+ }
+
+// Even more special setters using an APIData
+#define REGISTER_CONFIG_FLOAT(name, def)				\
+ _REGISTER_CONFIG(float, name, def)					\
+ void set_##name(const APIData &ad, bool force_get=false) {		\
+   if (force_get || ad.has(#name)) {					\
+     const ad_variant_type &adv = ad.get(#name);			\
+     if (adv.is<int>()) {						\
+       set_##name(adv.get<int>());					\
+     } else {								\
+       set_##name(adv.get<double>());					\
+     }									\
+   }									\
+ }									\
+ void set_default_##name(const APIData &ad, bool force_get=false) {	\
+   if (force_get || ad.has(#name)) {					\
+     const ad_variant_type &adv = ad.get(#name);			\
+     if (adv.is<int>()) {						\
+       set_default_##name(adv.get<int>());				\
+     } else {								\
+       set_default_##name(adv.get<double>());				\
+     }									\
+   }									\
+ }
+
 namespace dd {
 
   /**
-   * \brief Contains the current configuration of the nets :
+   * \brief Contains informations about the current configuration of the nets :
    *           - training or prediction
    *           - cpu or gpu
    *           - gpu ids
-   *           - layer to extract
-   *        Each one of these has a getter and two setter (current value, and default value).
+   *           - ...
+   *        Each one has a getter and two setter (current value, and default value).
+   *        (Note that setters can use an APIData to retrieve the value themselves)
    *        The goals of this class are to allow a simple flag management,
    *        and to provide a quick way to know if the nets need
    *        to be reconfigured between two api call.
@@ -80,19 +122,45 @@ namespace dd {
 
     // Declare here every parameter needed to configure a net
     // (type, name, default value)
+
     REGISTER_CONFIG(bool, is_gpu, false);
     REGISTER_CONFIG(bool, is_training, false);
+    REGISTER_CONFIG(bool, is_testing, false);
+    REGISTER_CONFIG(bool, resume, false);
     REGISTER_CONFIG(std::vector<int>, gpu_ids, {0});
+
     REGISTER_CONFIG(std::string, extract_layer, "");
+
+    REGISTER_CONFIG(std::string, lr_policy, "fixed");
+    REGISTER_CONFIG_FLOAT(base_lr, 0.001);
+    REGISTER_CONFIG(int, stepsize, 1);
+    REGISTER_CONFIG_FLOAT(gamma, 1);
+    REGISTER_CONFIG_FLOAT(power, 1);
+    REGISTER_CONFIG(int, max_iter, -1);
+
+    REGISTER_CONFIG(std::string, solver_type, "sgd");
 
   public:
 
     // For every declared parameter call the corresponding init function
     Caffe2LibState() {
+
       init_is_gpu();
       init_is_training();
+      init_is_testing();
+      init_resume();
       init_gpu_ids();
+
       init_extract_layer();
+
+      init_lr_policy();
+      init_base_lr();
+      init_stepsize();
+      init_gamma();
+      init_power();
+      init_max_iter();
+
+      init_solver_type();
     }
 
     /**
@@ -140,6 +208,8 @@ namespace dd {
   };
 }
 
+#undef _REGISTER_CONFIG
 #undef REGISTER_CONFIG
+#undef REGISTER_CONFIG_FLOAT
 
 #endif

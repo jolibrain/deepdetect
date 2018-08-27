@@ -22,75 +22,143 @@
 #ifndef CAFFE2LIB_H
 #define CAFFE2LIB_H
 
-//TODO Remove that to print the warnings
+//XXX Remove that to print the warnings
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <caffe2/core/workspace.h>
 #pragma GCC diagnostic pop
 
+//XXX Remove that to print the warnings
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
 #include "mllibstrategy.h"
+#pragma GCC diagnostic pop
+
 #include "backends/caffe2/caffe2libstate.h"
 #include "backends/caffe2/caffe2model.h"
 
-namespace dd
-{
+namespace dd {
+
   /**
    * \brief Caffe2 library wrapper for deepdetect
    */
-  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel=Caffe2Model>
-    class Caffe2Lib : public MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>
-    {
-    public:
-    /**
-     * \brief constructor from model
-     * @param model Caffe2 model
-     */
-    Caffe2Lib(const Caffe2Model &c2model);
+  template <
+    class TInputConnectorStrategy,
+    class TOutputConnectorStrategy,
+    class TMLModel=Caffe2Model>
+    class Caffe2Lib : public MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel> {
 
-    /**
-     * \brief copy-constructor
-     */
-    Caffe2Lib(Caffe2Lib &&cl) noexcept;
+  public: // from mllib
 
-    /**
-     * \brief destructor
-     */
-    ~Caffe2Lib();
+  /**
+   * \brief constructor from model
+   * @param model Caffe2 model
+   */
+  Caffe2Lib(const Caffe2Model &c2model);
 
-    /**
-     * \brief creates neural net instance based on model
-     */
-    void create_model();
+  /**
+   * \brief copy-constructor
+   */
+  Caffe2Lib(Caffe2Lib &&cl) noexcept;
 
-    /*- from mllib -*/
-    void init_mllib(const APIData &ad);
-    void clear_mllib(const APIData &ad);
+  /**
+   * \brief destructor
+   */
+  ~Caffe2Lib();
 
-#ifndef CPU_ONLY
-    std::vector<int> get_gpu_ids(const APIData &ad) const;
-#endif
+  void init_mllib(const APIData &ad);
+  void clear_mllib(const APIData &ad);
 
-    int train(const APIData &ad, APIData &out);
+  /**
+   * \brief trains a model
+   * @param ad root data object
+   * @param out output data object (e.g. loss, ...)
+   * @return 0 if OK, 1 otherwise
+   */
+  int train(const APIData &ad, APIData &out);
 
-    /**
-     * \brief predicts from model
-     * @param ad root data object
-     * @param out output data object (e.g. predictions, ...)
-     * @return 0 if OK, 1 otherwise
-     */
-    int predict(const APIData &ad, APIData &out);
+  /**
+   * \brief predicts from model
+   * @param ad root data object
+   * @param out output data object (e.g. predictions, ...)
+   * @return 0 if OK, 1 otherwise
+   */
+  int predict(const APIData &ad, APIData &out);
 
-    public:
-    // Workspaces cannot be std::move()'d or assigned
-    // (see DISABLE_COPY_AND_ASSIGN in caffe2/core/workspace.h)
-    // Hence the usage of a pointer.
-    std::unique_ptr<caffe2::Workspace> _workspace =
-      std::unique_ptr<caffe2::Workspace>(new caffe2::Workspace);
-    Caffe2LibState _state;
-    caffe2::NetDef _init_net, _predict_net;
-    std::string _input_blob;
-    std::string _output_blob;
-    };
+  private:
+
+  /**
+   * \brief create nets and update the repository
+   * @param ad mllib data object
+   */
+  void instantiate_template(const APIData &ad);
+
+  /**
+   * \brief sets (/resets) internal values to fit the matching mode
+   * @param ad APIData of the current request
+   * @param train true means train and false mean predict
+   */
+  void set_train_mode(const APIData &ad, bool train);
+
+  /**
+   * \brief update the gpu configuration from the APIData
+   * @param ad mllib APIData
+   * @param dft true to set thoses values as the default ones
+   */
+  void set_gpu_state(const APIData &ad, bool dft=false);
+
+  /**
+   * \brief creates neural net instance based on model
+   */
+  void create_model();
+
+  /**
+   * \brief load a new batch in the workspace
+   * @param number of data that was already loaded
+   * @return the batch size (0 if there is nothing left to load)
+   */
+  int load_batch(int already_loaded = 0);
+
+  /**
+   * \brief tests a model and compute measures
+   * @param ad root data object
+   * @param out output data object
+   */
+  void test(const APIData &ad, APIData &out);
+
+  /**
+   * \brief setups the nets, inputs, outputs, gradients, etc.
+   */
+  void create_model_train();
+  void create_model_predict();
+
+  /**
+   * \brief recreates nets if the configuration changed and resets the workspace
+   */
+  void update_model();
+
+  /**
+   * \brief dumps on the filesystem usefull information to resume training
+   */
+  void dump_model_state();
+
+  /**
+   * \brief runs a net once (both forward and backward if the gradients are set)
+   * @param net net to run
+   * @param where to store the output layer (one vector per batch item)
+   *        The vector must be of the right size. If set to NULL, nothing is stored.
+   * @return the elapsed time
+   */
+  float run_net(const std::string &net,
+		std::vector<std::vector<float>> *results = NULL);
+
+  Caffe2NetTools::ModelContext _context;
+  caffe2::NetDef _init_net;
+  caffe2::NetDef _train_net;
+  caffe2::NetDef _net;
+  Caffe2LibState _state;
+  TInputConnectorStrategy _last_inputc; // Last transformed version of the default _inputc
+  };
 }
 
 #endif

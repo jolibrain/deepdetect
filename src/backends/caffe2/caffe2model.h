@@ -26,11 +26,11 @@
 #include "apidata.h"
 #include <spdlog/spdlog.h>
 #include <string>
+#include <google/protobuf/message.h>
 
-namespace dd
-{
-  class Caffe2Model : public MLModel
-  {
+namespace dd {
+
+  class Caffe2Model : public MLModel {
   public:
     Caffe2Model():MLModel() {}
     Caffe2Model(const APIData &ad);
@@ -38,11 +38,41 @@ namespace dd
       :MLModel(repo) {}
     ~Caffe2Model() {};
 
-    int read_from_repository(const std::string &repo,
-			     const std::shared_ptr<spdlog::logger> &logger);
+    /**
+     * \brief checks if the repository contains new files
+     */
+    void update_from_repository(const std::shared_ptr<spdlog::logger> &logger);
 
-    std::string _predict; /**< file name of the predict net. */
-    std::string _init; /**< file name of the predict net. */
+    /**
+     * \brief dumps informations in the repository
+     */
+    void write_state(const google::protobuf::Message &init_net,
+		     const std::map<std::string, std::string> &blobs);
+
+    /**
+     * \brief list the template's pbtxt files and the corresponding local pb file
+     */
+    void list_template_pbtxts(const std::string &name, std::map<std::string, std::string> &files);
+
+    /**
+     * \brief assigns a class name to each element of the vector (the vector is not resized)
+     */
+    void get_hcorresp(std::vector<std::string> &clnames);
+    using MLModel::get_hcorresp;
+
+    // state of blobs, useful for resuming training
+    std::string _init_state;
+    std::string _dbreader_state;
+    std::string _dbreader_train_state;
+    std::string _iter_state;
+    std::string _lr_state;
+
+    std::string _model_template; // model template name, if any.
+
+    // Files path (empty if non-existant)
+    std::string _predict;
+    std::string _init;
+    std::string _meanfile;
   };
 }
 
