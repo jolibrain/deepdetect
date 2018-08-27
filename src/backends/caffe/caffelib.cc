@@ -183,7 +183,8 @@ namespace dd
 	caffe::WriteProtoToTextFile(net_param,dest_net);
 	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
       }
-    else if (model_tmpl.find("ssd")!=std::string::npos)
+    else if (model_tmpl.find("ssd")!=std::string::npos
+	     || model_tmpl.find("refinedet")!=std::string::npos)
       {
 	configure_ssd_template(dest_net,dest_deploy_net,ad);
       }
@@ -2941,6 +2942,7 @@ namespace dd
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::model_type(caffe::Net<float> *net,
 										       std::string &mltype)
   {
+    // XXX: using deploy.prototxt to detect network's task type.
     for (size_t l=0;l<net->layers().size();l++)
       {
 	const boost::shared_ptr<caffe::Layer<float>> &layer = net->layers().at(l);
@@ -2963,7 +2965,7 @@ namespace dd
 	if (ltype == "Interp" || ltype == "Deconvolution") // XXX: using interpolation and deconvolution as proxy to segmentation
 	  {
 	    mltype = "segmentation";
-	    break;
+	    // we don't break since some detection tasks may use deconvolutions
 	  }
 	if (ltype == "Sigmoid" && l == net->layers().size()-1)
 	  {

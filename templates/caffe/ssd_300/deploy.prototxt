@@ -1,4 +1,4 @@
-name: "VGG_SSD_300x300_deploy"
+name: "VGG_SSD_res_pred_300x300_deploy"
 layer {
   name: "data"
   type: "MemoryData"
