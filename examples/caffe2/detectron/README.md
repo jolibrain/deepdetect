@@ -15,7 +15,7 @@ Both ```init_net.pb``` and ```predict_net.pb``` files must be present in your mo
 #### Option 2 - In their Detectron format
 
 Download the weights (model_final.pkl) from the model zoo:
-ttps://github.com/facebookresearch/Detectron/blob/master/MODEL_ZOO.md
+https://github.com/facebookresearch/Detectron/blob/master/MODEL_ZOO.md
 
 And find the corresponding training configuration (*.yaml):
 https://github.com/facebookresearch/Detectron/tree/master/configs
