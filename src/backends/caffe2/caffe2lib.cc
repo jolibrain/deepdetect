@@ -608,11 +608,20 @@ namespace dd {
 	APIData meas_obj = meas_out.getobj("measure");
 	for (auto meas : meas_obj.list_keys()) { // Add test measures
 	  TEST_API_VARIANTS(meas_obj, meas,
-			    double,			this->add_meas(meas, value);
-							this->add_meas_per_iter(meas, value),
-			    std::vector<double>,	std::vector<std::string> cls(value.size());
-							this->_mlmodel.get_hcorresp(cls);
-							this->add_meas(meas, value, cls));
+			    double,
+				this->add_meas(meas, value);
+				this->add_meas_per_iter(meas, value);
+				this->_logger->info("{} = {}", meas, value),
+			    std::vector<double>,
+				size_t nb_values = value.size();
+				std::vector<std::string> cls(nb_values);
+				this->_mlmodel.get_hcorresp(cls);
+				this->add_meas(meas, value, cls);
+				std::stringstream s;
+				for (size_t v = 0; v < nb_values; ++v) {
+				  s << (v ? ", " : "") << cls[v] << ": " << value[v];
+				}
+				this->_logger->info("{} = [ {} ]", meas, s.str()));
 	}
 	this->_logger->info("Model tested");
       }
