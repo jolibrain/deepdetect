@@ -460,7 +460,6 @@ namespace dd
     std::string ln_tmp = "ip_" + top;
     add_fc(net_param,bottom,ln_tmp,num_output);
 
-
     if (!deploy)
       {
 	caffe::LayerParameter *lparam = CaffeCommon::add_layer(net_param,ln_tmp,top,

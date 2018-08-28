@@ -68,7 +68,7 @@ namespace dd
       }
   }
 
-  void NetLayersCaffeConvnet::add_basic_block(caffe::NetParameter *net_param,
+  std::string NetLayersCaffeConvnet::add_basic_block(caffe::NetParameter *net_param,
 					      const std::string &bottom,
 					      const std::string &top,
 					      const int &nconv,
@@ -114,6 +114,7 @@ namespace dd
       add_pooling(net_param,top_conv,top,pl_kernel_size,pl_stride,pl_type,pl_kernel_w,pl_kernel_h,pl_stride_w,pl_stride_h);
     /*if (dropout_ratio > 0.0 && !bn)
       add_dropout(net_param,top,dropout_ratio);*/
+    return top_conv;
   }
 
   void NetLayersCaffeConvnet::configure_net(const APIData &ad_mllib)
@@ -155,6 +156,7 @@ namespace dd
     int width = -1;
     if (flat1dconv)
       width = this->_net_params->mutable_layer(1)->mutable_memory_data_param()->width();
+    std::string top_conv;
     //TODO: support for embed layer in inputs
     for (size_t l=0;l<cr_layers.size();l++)
       {
@@ -163,10 +165,14 @@ namespace dd
 	  {
 	    if (!flat1dconv)
 	      {
-		add_basic_block(this->_net_params,bottom,top,cr_layers.at(l)._nconv,cr_layers.at(l)._num_output,
-				conv_kernel_size,0,1,activation,0.0,bn,2,2,has_deconv?"NONE":"MAX");
-		add_basic_block(this->_dnet_params,bottom,top,cr_layers.at(l)._nconv,cr_layers.at(l)._num_output,
-				conv_kernel_size,0,1,activation,0.0,bn,2,2,has_deconv?"NONE":"MAX");
+		int kernel_size = conv_kernel_size;
+		if (has_deconv)
+		  kernel_size = 1;
+		top_conv = add_basic_block(this->_net_params,bottom,top,cr_layers.at(l)._nconv,cr_layers.at(l)._num_output,
+					   kernel_size,0,1,activation,0.0,bn,2,2,has_deconv?"NONE":"MAX");
+		if (!has_deconv)
+		  top_conv = add_basic_block(this->_dnet_params,bottom,top,cr_layers.at(l)._nconv,cr_layers.at(l)._num_output,
+					     conv_kernel_size,0,1,activation,0.0,bn,2,2,has_deconv?"NONE":"MAX");
 	      }
 	    else
 	      {
@@ -178,7 +184,7 @@ namespace dd
 	  }
 	else if (cr_layers.at(l)._layer == "DR")
 	  {
-	    add_deconv(this->_net_params,bottom,top,cr_layers.at(l)._num_output,conv_kernel_size,0,1);
+	    add_deconv(this->_net_params,top_conv,top,cr_layers.at(l)._num_output,2,0,2);
 	    add_act(this->_net_params,top,activation);
 	    has_deconv = true;
 	  }
@@ -195,6 +201,7 @@ namespace dd
 	add_reshape(this->_dnet_params,bottom,top,r_param);
 	bottom = top;
       }
+    bottom = top_conv;
     int l = 0;
     for (auto fc: fc_layers)
       {

@@ -58,7 +58,7 @@ namespace dd
 			   std::vector<ConvBlock> &cr_layers,
 			   std::vector<int> &fc_layers);
   private:
-    void add_basic_block(caffe::NetParameter *net_param,
+    std::string add_basic_block(caffe::NetParameter *net_param,
 			 const std::string &bottom,
 			 const std::string &top,
 			 const int &nconv,

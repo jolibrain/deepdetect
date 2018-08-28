@@ -2597,7 +2597,7 @@ namespace dd
       }
     
     // if autoencoder, set the last inner product layer output number to input size (i.e. inputc.channels())
-    if (_autoencoder)
+    if (_autoencoder && typeid(this->_inputc) == typeid(CSVCaffeInputFileConn))
       {
 	int k = net_param.layer_size();
 	std::string bottom;
@@ -2677,7 +2677,7 @@ namespace dd
 	deploy_net_param.mutable_layer(3)->mutable_reshape_param()->mutable_shape()->set_dim(2,inputc._sequence_txt);
       }
     
-    if (_autoencoder)
+    if (_autoencoder && typeid(this->_inputc) == typeid(CSVCaffeInputFileConn))
       {
 	int k = deploy_net_param.layer_size();
 	std::string bottom = "";
