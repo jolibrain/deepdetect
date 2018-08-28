@@ -129,6 +129,8 @@ curl -X PUT "http://localhost:8080/services/my_service" -d '{
 }'
 ```
 
+**WARNING: Using scaled inputs will force a batch size of 1**
+
 ### Predict
 
 The only flag to set is 'bbox':

@@ -186,8 +186,8 @@ namespace dd {
 
   void Caffe2InputInterface::set_batch_sizes(const APIData &ad, bool train) {
 
-    //TODO Remove this flag
-    if (_force_lowest_batch_size) {
+    // No need for further checks if the data can't be batched
+    if (!_is_batchable) {
       _batch_size = 1;
       _train_batch_size = train;
       return;

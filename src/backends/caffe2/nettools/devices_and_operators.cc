@@ -46,6 +46,15 @@ namespace dd {
       return has_value(op.output(), name);
     }
 
+    int find_previous_update(const caffe2::NetDef &net, const std::string &name, int idx) {
+      for (; idx >= 0; --idx) {
+	if (has_output(net.op(idx), name)) {
+	  return idx;
+	}
+      }
+      CAFFE_THROW("Can't find '", name, "' first update");
+    }
+
     /*
      *  Device management
      */
@@ -684,6 +693,46 @@ namespace dd {
 	ops.push_back(&op);
       }
       copy_and_broadcast_operators(context, net, ops);
+    }
+
+    /*
+     *  Pre-computation
+     */
+
+    /*
+     * Currently the only the detectron models make us update the net in order to make it batchable.
+     * By default the 'batch_splits' blob is not used, so we need to place it into the net.
+     * See https://github.com/pytorch/pytorch/blob/master/caffe2/operators/box_with_nms_limit_op.cc
+     * and https://github.com/pytorch/pytorch/blob/master/caffe2/operators/bbox_transform_op.cc
+     */
+    void ensure_is_batchable(caffe2::NetDef &net) {
+
+      // Loop over the operators
+      auto &ops = *net.mutable_op();
+      for (int idx = ops.size(); idx-- > 0;) {
+	caffe2::OperatorDef &op = ops[idx];
+	auto &op_inputs = *op.mutable_input();
+	auto &op_outputs = *op.mutable_output();
+
+	// Find box NMS predictions that doesn't have a 'batch_splits' input
+	if (op.type() == "BoxWithNMSLimit" && op_inputs.size() == 2) {
+	  CAFFE_ENFORCE(op_outputs.size() == 3); // Should have a 'batch_splits' output
+
+	  // Find if the box-transform already generates thoses values
+	  caffe2::OperatorDef &box_op(ops[find_previous_update(net, op_inputs[1], idx - 1)]);
+	  CAFFE_ENFORCE(box_op.type() == "BBoxTransform");
+	  auto &box_op_outputs = *box_op.mutable_output();
+
+	  // If not, generate them
+	  if (box_op_outputs.size() == 1) {
+	    box_op_outputs.Add(std::move(box_op_outputs[0] + batch_splits_suffix));
+	  }
+
+	  // Link them to the current operator
+	  op_inputs.Add(std::string(box_op_outputs[1]));
+	  op_outputs.Add(std::move(op_outputs[0] + batch_splits_suffix));
+	}
+      }
     }
 
     /*

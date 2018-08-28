@@ -142,38 +142,39 @@ namespace dd {
      *  Information extraction
      */
 
+    size_t ModelContext::extract_tensors(const std::string &name,
+					 std::vector<caffe2::TensorCPU> &tensors) const {
+      size_t size = 0;
+      int devices = device_count();
+      tensors.resize(devices);
+      for (int i = 0; i < devices; ++i) {
+	caffe2::TensorCPU &tensor(tensors[i]);
+	CAFFE_ENFORCE(extract_tensor(i, name, tensor));
+	size += tensor.size();
+      }
+      return size;
+    }
+
     template <typename Result, typename Data>
-    void ModelContext::extract_layer(std::vector<Result> &results,
-				     const std::string &name,
+    void ModelContext::split_tensors(std::vector<Result> &results,
+				     std::vector<caffe2::TensorCPU> tensors,
+				     const std::vector<size_t> &sizes,
 				     const Stockage<Result, Data> &store) const {
 
-      // Fetch tensors
-      std::vector<caffe2::TensorCPU> tensors(device_count());
-      for (size_t i = 0; i < tensors.size(); ++i) {
-	CAFFE_ENFORCE(extract_tensor(i, name, tensors[i]));
-	CAFFE_ENFORCE(tensors[i].IsType<Data>());
-      }
-
-      // Compute the total size
-      size_t data_size = 0;
-      for (const caffe2::TensorCPU &tensor : tensors) {
-	data_size += tensor.size();
-      }
-
-      // Size of an element = Total size / Number of elements
-      size_t result_size = data_size / results.size();
-      typename std::vector<Result>::iterator result = results.begin();
-
       // Assign a value to each result
+      typename std::vector<Result>::iterator result = results.begin();
+      std::vector<size_t>::const_iterator size = sizes.begin();
+
+      // Loop over the tensors
       for (const caffe2::TensorCPU &tensor : tensors) {
+	CAFFE_ENFORCE(tensor.IsType<Data>());
 	const Data *data = tensor.data<Data>();
 	const Data *data_end = data + tensor.size();
 	// Loop over the current batch
-	for (; data < data_end; data += result_size, ++result) {
-	  store(*result, data, result_size);
+	for (; data < data_end; data += *size, ++result, ++size) {
+	  store(*result, data, *size);
 	}
       }
-      CAFFE_ENFORCE(result == results.end());
     }
 
     template <typename T>
@@ -201,38 +202,69 @@ namespace dd {
     }
 
     template <typename T>
-    void ModelContext::extract_results(std::vector<T> &results, const std::string &name) const {
-      extract_layer(results, name, Stockage<T, T>(_store_single_value<T>));
+    void ModelContext::split_tensors(std::vector<T> &results,
+				     const std::vector<caffe2::TensorCPU> &tensors,
+				     const std::vector<size_t> &sizes) const {
+      split_tensors(results, tensors, sizes, Stockage<T, T>(_store_single_value<T>));
     }
 
     template <typename T>
-    void ModelContext::extract_results(std::vector<std::vector<T>> &results,
-				       const std::string &name) const {
-      extract_layer(results, name, Stockage<std::vector<T>, T>(_store_vector<T>));
+    void ModelContext::split_tensors(std::vector<std::vector<T>> &results,
+				     const std::vector<caffe2::TensorCPU> &tensors,
+				     const std::vector<size_t> &sizes) const {
+      split_tensors(results, tensors, sizes, Stockage<std::vector<T>, T>(_store_vector<T>));
     }
 
-    template <typename Result, typename Data>
+    template <typename T>
+    void ModelContext::extract_results(std::vector<T> &results,
+				       const std::string &name,
+				       size_t size) const {
+      std::vector<caffe2::TensorCPU> tensors;
+      size_t data_size = extract_tensors(name, tensors);
+      size_t data_count = results.size();
+      if (!size) {
+	size = data_size / data_count;
+      }
+      CAFFE_ENFORCE(data_size == size * data_count);
+      split_tensors(results, tensors, std::vector<size_t>(data_count, size));
+    }
+
+    template <typename T>
+    void ModelContext::extract_results(std::vector<T> &results,
+				       const std::string &name,
+				       const std::vector<size_t> &sizes) const {
+      std::vector<caffe2::TensorCPU> tensors;
+      size_t data_count = results.size();
+      CAFFE_ENFORCE(data_count == sizes.size());
+      size_t data_size1 = extract_tensors(name, tensors);
+      size_t data_size2 = std::accumulate(sizes.begin(), sizes.end(), static_cast<size_t>(0));
+      CAFFE_ENFORCE(data_size1 == data_size2);
+      split_tensors(results, tensors, sizes);
+    }
+
+    template <typename Result, typename Data, typename Size>
     void ModelContext::extract_and_cast_results(std::vector<Result> &results,
-						const std::string &name) const {
+						const std::string &name,
+						const Size &size) const {
       std::vector<Data> raw(results.size());
-      extract_results(raw, name);
+      extract_results(raw, name, size);
       assign_results(results, raw);
     }
 
     float ModelContext::extract_loss() const {
       std::vector<float> losses(device_count());
-      extract_results(losses, blob_loss_scale);
+      extract_results(losses, blob_loss_scale, 1);
       return std::accumulate(losses.begin(), losses.end(), 0.f);
     }
 
     int ModelContext::extract_iter() const {
       std::vector<long> iters(device_count());
-      extract_results(iters, blob_iter);
+      extract_results(iters, blob_iter, 1);
       return iters[0];
     }
 
     void ModelContext::extract_labels(std::vector<float> &labels) const {
-      extract_and_cast_results<float, int>(labels, _blob_label);
+      extract_and_cast_results<float, int>(labels, _blob_label, 1);
     }
 
     void ModelContext::extract_state(std::map<std::string, std::string> &blobs) const {
@@ -251,9 +283,14 @@ namespace dd {
       }
     }
 
-    void ModelContext::extract(std::vector<std::vector<float>> &batches,
-			       const std::string &name) const {
-      extract_results(batches, name);
+    void ModelContext::extract(std::vector<std::vector<float>> &results,
+			       const std::string &name,
+			       const std::vector<size_t> &sizes) const {
+      if (sizes.size()) {
+	extract_results(results, name, sizes);
+      } else {
+	extract_results(results, name);
+      }
     }
 
     /*
@@ -328,16 +365,7 @@ namespace dd {
 
     void truncate_net(const caffe2::NetDef &net, caffe2::NetDef &out, const std::string &blob) {
       auto ops = net.op();
-      int last_op = ops.size() - 1; // Index of the last operator that updates 'blob'
-
-      while (true) {
-	if (has_output(ops[last_op], blob)) {
-	  break;
-	}
-	if (!last_op--) {
-	  CAFFE_THROW("Blob '", blob, "' not found");
-	}
-      }
+      int last_op = find_previous_update(net, blob, ops.size() - 1);
 
       // Fill the new net
       for (int i = 0; i <= last_op; ++i) {

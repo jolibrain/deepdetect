@@ -42,6 +42,9 @@ namespace dd {
       load_mean_file();
     }
 
+    // If the images are scaled but not stretched or cropped, then their sizes will differ
+    _is_batchable &= !_scaled;
+
     //XXX Implement support for other tags (multi_label, segmentation, ...)
   }
 
@@ -455,8 +458,6 @@ namespace dd {
     if (!_is_load_manual) {
       return use_dbreader(context, already_loaded, _train);
     }
-
-    //TODO Manage batches with multiple image sizes
 
     auto image = _images.begin() + already_loaded;
     InputGetter get_tensors = [&](std::vector<caffe2::TensorCPU> &tensors) {

@@ -79,6 +79,7 @@ namespace dd {
     using GetOpBlobsFcts = std::tuple<GetOpInputFct, GetOpInputFct, GetOpOutputFct>;
     extern const std::map<std::string, GetOpBlobsFcts> trainable_ops;
 
+    extern const std::string batch_splits_suffix;
     extern const std::string force_device_suffix;
     extern const std::string mean_square_suffix;
     extern const std::string momentum_suffix;

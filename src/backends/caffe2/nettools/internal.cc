@@ -208,6 +208,7 @@ namespace dd {
 	{"Sum", _get_blobs}
       });
 
+    const std::string batch_splits_suffix("_batch_splits");
     const std::string force_device_suffix("_force_device");
     const std::string mean_square_suffix("_meansq");
     const std::string momentum_suffix("_momentum");
