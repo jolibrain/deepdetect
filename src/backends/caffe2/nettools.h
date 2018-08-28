@@ -139,7 +139,16 @@ namespace dd {
     bool has_input(const caffe2::OperatorDef &op, const std::string &name);
     bool has_output(const caffe2::OperatorDef &op, const std::string &name);
 
-    // AddS an 'Argument' in an 'OperatorDef'
+    /**
+     * \brief finds where the given blob was previously updataded
+     * @param net net to search
+     * @param name name of the blob
+     * @param idx first operator index to check (the search is done by decreasing this index)
+     * @return the index of the found operator
+     */
+    int find_previous_update(const caffe2::NetDef &net, const std::string &name, int idx);
+
+    // Adds an 'Argument' in an 'OperatorDef'
 #define PROTOTYPE(type)							\
     caffe2::Argument &add_arg(caffe2::OperatorDef &op, const std::string &name, const type &value);
     PROTOTYPE(int);
@@ -252,7 +261,12 @@ namespace dd {
 #undef PROTOTYPE
 
     /**
-     * \brief transforms the net into an quicker version
+     * \brief transforms the net into a version supporting batching
+     */
+    void ensure_is_batchable(caffe2::NetDef &net);
+
+    /**
+     * \brief transforms the net into a quicker version
      *        /!\ Can remove and edit blobs and operators /!\
      */
     void final_optimizations(caffe2::NetDef &net);
@@ -397,11 +411,14 @@ namespace dd {
       void extract_state(std::map<std::string, std::string> &blobs) const;
 
       /**
-       * \brief fetches the given layer and merge batches of results from each devices
-       *        into a single batch
+       * \brief fetches the given layer and merge the results of each devices into a single batch.
        *        Note that the function does not append elements, but assign a value to them
+       * @param results where to store the data
+       * @param name name of the layer
+       * @param sizes size of each element of the batch (split equally if empty)
        */
-      void extract(std::vector<std::vector<float>> &results, const std::string &name) const;
+      void extract(std::vector<std::vector<float>> &results, const std::string &name,
+		   const std::vector<size_t> &sizes={}) const;
 
       /*
        *  Network manipulation
@@ -428,22 +445,44 @@ namespace dd {
     private:
 
       // Tools to generalize the 'extract_*' functions
+
       template <typename Result, typename Data>
       using Stockage = std::function<void(Result &, const Data *, size_t)>;
 
+      // Extract from each device and return the total size
+      size_t extract_tensors(const std::string &name,
+			     std::vector<caffe2::TensorCPU> &tensors) const;
+
+      // Merge the tensors and re-split into a single batch of items
       template <typename Result, typename Data>
-      void extract_layer(std::vector<Result> &results,
-			 const std::string &name,
+      void split_tensors(std::vector<Result> &results,
+			 std::vector<caffe2::TensorCPU> tensors,
+			 const std::vector<size_t> &sizes,
 			 const Stockage<Result, Data> &store) const;
-
       template <typename T>
-      void extract_results(std::vector<T> &results, const std::string &name) const;
-
+      void split_tensors(std::vector<T> &results,
+			 const std::vector<caffe2::TensorCPU> &tensors,
+			 const std::vector<size_t> &sizes) const;
       template <typename T>
-      void extract_results(std::vector<std::vector<T>> &results, const std::string &name) const;
+      void split_tensors(std::vector<std::vector<T>> &results,
+			 const std::vector<caffe2::TensorCPU> &tensors,
+			 const std::vector<size_t> &sizes) const;
 
-      template <typename Result, typename Data>
-      void extract_and_cast_results(std::vector<Result> &results, const std::string &name) const;
+      // Fecth the data then split it
+      template <typename T>
+      void extract_results(std::vector<T> &results,
+			   const std::string &name,
+			   size_t size=0) const;
+      template <typename T>
+      void extract_results(std::vector<T> &results,
+			   const std::string &name,
+			   const std::vector<size_t> &sizes) const;
+
+      // Fetch, split and cast the data
+      template <typename Result, typename Data, typename Size>
+      void extract_and_cast_results(std::vector<Result> &results,
+				    const std::string &name,
+				    const Size &size) const;
 
     }; //! ModelContext
 

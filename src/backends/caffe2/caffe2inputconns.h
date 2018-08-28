@@ -93,7 +93,6 @@ namespace dd {
     // Global configuration of the network
 
     bool _measuring = false;
-    bool _force_lowest_batch_size = false; //TODO Remove this flag
 
   private:
 
@@ -172,6 +171,7 @@ namespace dd {
     std::string _train_db; // path to the training database
     bool _is_testable = false; // whether test data is available
     bool _is_load_manual = true; // whether data is manually loaded (as opposed to database-loaded)
+    bool _is_batchable = true; // whether inputs can be pre-computed into the same format
     std::vector<std::string> _ids; // input ids
     std::vector<std::vector<float>> _scales; // input scale coefficients
 

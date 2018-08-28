@@ -145,7 +145,7 @@ namespace dd {
   /**
    * \bried extracts the results of the last run ( [layer][batch_item][data] )
    */
-  void extract_results(int batch_size, std::vector<std::vector<std::vector<float>>> &results);
+  void extract_results(std::vector<std::vector<std::vector<float>>> &results, int batch_size);
 
   Caffe2NetTools::ModelContext _context;
   caffe2::NetDef _init_net;

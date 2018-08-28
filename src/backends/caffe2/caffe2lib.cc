@@ -156,16 +156,6 @@ namespace dd {
     this->_mlmodel.update_from_repository(this->_logger);
   }
 
-  //TODO be able to batch the input of any net, and remove this function
-  inline bool is_net_batchable(const std::string &net_pb_file) {
-    //XXX Nets ending with a BoxWithNMSLimit need an additionnal layer called batch_splits
-    // to be able to compute a batch of input.
-    // As it is currently not supported by the input connector, a batch size of 1 is mandatory.
-    caffe2::NetDef net;
-    CAFFE_ENFORCE(caffe2::ReadProtoFromFile(net_pb_file, &net));
-    return net.op(net.op().size() - 1).type() == "BoxWithNMSLimit";
-  }
-
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
   set_train_mode(const APIData &ad, bool train) {
@@ -177,10 +167,6 @@ namespace dd {
     // If the net is neither training nor testing, the input connector can
     // load all the data into a single batch
     inputc._measuring = ad.getobj("parameters").getobj("output").has("measure");
-
-    //TODO remove this flag
-    this->_mlmodel.update_from_repository(this->_logger);
-    inputc._force_lowest_batch_size = is_net_batchable(this->_mlmodel._predict);
 
     // Configure the input data
     try {
@@ -315,6 +301,7 @@ namespace dd {
   void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
   create_model() {
     this->_logger->info("Re-creating the nets");
+    Caffe2NetTools::ensure_is_batchable(_net);
 
     // _input_blob and _output_blobs should have been initialized during init_mllib
     // (by "inputlayer" and "outputlayer" respectively)
@@ -520,31 +507,65 @@ namespace dd {
     }
   }
 
+  inline void extract_layers(const Caffe2NetTools::ModelContext &context,
+			     std::vector<std::vector<std::vector<float>>> &results,
+			     int batch_size,
+			     const std::vector<std::string> &names,
+			     const std::string &size_layer = "",
+			     const std::vector<size_t> &scales = {}) {
+    // Fetch the items size
+    size_t layers = names.size();
+    std::vector<std::vector<float>> sizes;
+    bool has_sizes = !size_layer.empty();
+    if (has_sizes) {
+      CAFFE_ENFORCE(scales.size() == layers);
+      sizes.resize(batch_size);
+      context.extract(sizes, size_layer, std::vector<size_t>(batch_size, 1));
+    }
+
+    // Fetch the layers
+    results.resize(layers);
+    for (size_t i = 0; i < layers; ++i) {
+      std::vector<std::vector<float>> &result(results[i]);
+      const std::string &name(names[i]);
+
+      // Fetch the items
+      result.resize(batch_size);
+      if (has_sizes) {
+	size_t scale = scales[i];
+	std::vector<size_t> scaled_sizes(batch_size);
+	std::transform(sizes.begin(), sizes.end(), scaled_sizes.begin(),
+		       [&](const std::vector<float> &size){ return scale * size[0]; });
+	context.extract(result, name, scaled_sizes);
+      } else {
+	context.extract(result, name);
+      }
+    }
+  }
+
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
-  extract_results(int batch_size, std::vector<std::vector<std::vector<float>>> &results) {
+  extract_results(std::vector<std::vector<std::vector<float>>> &results, int batch_size) {
 
-    // Choose outputs to extract
-    std::vector<std::string> outputs;
-    if (_state.extract_layer().empty()) {
-      outputs = _context._output_blobs;
-    } else {
-      outputs = { _state.extract_layer() };
+    std::string extract = _state.extract_layer();
+    std::vector<std::string> outputs = _context._output_blobs;
+
+    // raw layer
+    if (!extract.empty()) {
+      return extract_layers(_context, results, batch_size, { extract });
     }
 
-    //XXX More checks could be done
+    // scores, bboxes, classes, batch_splits
     if (_state.bbox()) {
-      CAFFE_ENFORCE(outputs.size() == 3); // scores, bboxes, classes
-    } else {
-      CAFFE_ENFORCE(outputs.size() == 1); // simple prediction
+      CAFFE_ENFORCE(outputs.size() == 4);
+      std::string sizes = outputs.back();
+      outputs.pop_back();
+      return extract_layers(_context, results, batch_size, outputs, sizes, {1, 4, 1});
     }
 
-    // Fill the vector
-    results.clear();
-    for (const std::string &output : outputs) {
-      results.emplace_back(batch_size);
-      _context.extract(results.back(), output);
-    }
+    // Simple prediction
+    CAFFE_ENFORCE(outputs.size() == 1);
+    extract_layers(_context, results, batch_size, outputs);
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -645,12 +666,14 @@ namespace dd {
 	APIData meas_out;
 	test(ad, meas_out);
 	APIData meas_obj = meas_out.getobj("measure");
-	for (auto meas : meas_obj.list_keys()) { // Add test measures
+
+	// Loop over the test measures
+	for (auto meas : meas_obj.list_keys()) {
 	  apitools::test_variants<double, std::vector<double>>
 	    (meas_obj, meas,
 
-	     // Single value
-            [&](const double &value) {
+	    // Single value
+	    [&](const double &value) {
 	      this->add_meas(meas, value);
 	      this->add_meas_per_iter(meas, value);
 	      this->_logger->info("{} = {}", meas, value);
@@ -724,7 +747,7 @@ namespace dd {
 
       // Extract results
       std::vector<std::vector<std::vector<float>>> results;
-      extract_results(batch_size, results);
+      extract_results(results, batch_size);
 
       //XXX Find how labels could be fetched when loading manually
       std::vector<float> labels(batch_size);
@@ -799,7 +822,7 @@ namespace dd {
 
       // Extract results
       std::vector<std::vector<std::vector<float>>> results;
-      extract_results(batch_size, results);
+      extract_results(results, batch_size);
 
       // Loop on each item of the input batch
       for (int item = 0; item < batch_size; ++item, ++total_size) {
@@ -833,8 +856,9 @@ namespace dd {
 
 	    // Ignore low score
 	    float prob = scores[box];
-	    if (prob < confidence_threshold)
+	    if (prob < confidence_threshold) {
 	      continue;
+	    }
 
 	    // Set the bounding box
 	    APIData ad_bbox;
