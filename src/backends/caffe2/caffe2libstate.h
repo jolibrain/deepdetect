@@ -139,6 +139,8 @@ namespace dd {
     REGISTER_CONFIG(int, max_iter, -1);
 
     REGISTER_CONFIG(std::string, solver_type, "sgd");
+    REGISTER_CONFIG_FLOAT(momentum, -1.f);
+    REGISTER_CONFIG_FLOAT(rms_decay, -1.f);
 
   public:
 
@@ -161,6 +163,8 @@ namespace dd {
       init_max_iter();
 
       init_solver_type();
+      init_momentum();
+      init_rms_decay();
     }
 
     /**

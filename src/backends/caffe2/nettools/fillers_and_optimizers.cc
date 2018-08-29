@@ -386,25 +386,38 @@ namespace dd {
       // Functions supposed to be overloaded
 
       virtual bool negative_base_lr() {
-	// XXX Find a rule determining the sign of the learning rate (caffe2/python/optimizer.py)
+	// XXX Find a rule determining the sign of the learning rate
 	return false;
       }
       virtual void init() {} // Code executed only once per net
       virtual void optimize() = 0; // Code executed for each parameter
 
+      // Configuration
+      float _momentum, _rms_decay;
+      virtual void set_default_momentum() {}
+      virtual void set_default_rms_decay() {}
+
     public:
 
       AbstractOptimizer(const ModelContext &context,
 			caffe2::NetDef &netdef,
-			caffe2::NetDef &initdef) :
+			caffe2::NetDef &initdef,
+			float momentum,
+			float rms_decay) :
 	_context(context),
 	_netdef(netdef),
 	_initdef(initdef),
-	_net(context.scope_net(netdef)) {
+	_net(context.scope_net(netdef)),
+	_momentum(momentum),
+	_rms_decay(rms_decay) {
       }
 
       // Common code
       void run() {
+
+	// Set the default configuration
+	if (_momentum < 0) set_default_momentum();
+	if (_rms_decay < 0) set_default_rms_decay();
 
 	// Call child's 'negative_base_lr'
 	int base_lr_sign = negative_base_lr() ? -1 : 1;
@@ -452,33 +465,34 @@ namespace dd {
       // Transform a child into a callback
       template <class C>
       static Optimizer callback() {
-	return [](const ModelContext &context, caffe2::NetDef &netdef, caffe2::NetDef &initdef) {
-	  C(context, netdef, initdef).run();
+	return [](const ModelContext &context, caffe2::NetDef &netdef, caffe2::NetDef &initdef,
+		  float momentum, float decay) {
+	  C(context, netdef, initdef, momentum, decay).run();
 	};
       }
     };
 
     class sgd : public AbstractOptimizer {
       using AbstractOptimizer::AbstractOptimizer;
-      bool negative_base_lr() {
-	return true;
-      }
+      void set_default_momentum() { _momentum = 0.9f; }
+      bool negative_base_lr() { return _momentum == 0.f; }
       void init() {
-	broadcast_external_constantfill(blob_one, std::vector<int>({1}), 1);
+	if (_momentum == 0.f) {
+	  broadcast_external_constantfill(blob_one, std::vector<int>({1}), 1);
+	}
       }
       void optimize() {
-	WeightedSum(_net, { _param, blob_one, _grad, blob_lr }, _param);
+	if (_momentum == 0.f) {
+	  WeightedSum(_net, { _param, blob_one, _grad, blob_lr }, _param);
+
+	} else {
+	  default_fillers({_moment});
+	  MomentumSGDUpdate(_net, _param, _moment, _grad, blob_lr, _momentum);
+	}
       }
     };
 
-    class momentum : public AbstractOptimizer {
-      using AbstractOptimizer::AbstractOptimizer;
-      void optimize() {
-	default_fillers({_moment});
-	MomentumSGDUpdate(_net, _param, _moment, _grad, blob_lr);
-      }
-    };
-
+    //TODO fix
     class adagrad : public AbstractOptimizer {
       using AbstractOptimizer::AbstractOptimizer;
       void optimize() {
@@ -487,6 +501,7 @@ namespace dd {
       }
     };
 
+    //TODO fix
     class adam : public AbstractOptimizer {
       using AbstractOptimizer::AbstractOptimizer;
       void optimize() {
@@ -499,17 +514,21 @@ namespace dd {
 
     class rmsprop : public AbstractOptimizer {
       using AbstractOptimizer::AbstractOptimizer;
+      void set_default_momentum() { _momentum = 0.f; }
+      void set_default_rms_decay() { _rms_decay = 0.9f; }
+      void init() {
+	broadcast_external_constantfill(blob_one, std::vector<int>({1}), 1);
+      }
       void optimize() {
 	default_fillers({_moment, _meansq});
-	RmsProp(_net, _grad, _meansq, _moment, blob_lr);
-	Sum(_net, { _param, _grad }, _param);
+	RmsProp(_net, _grad, _meansq, _moment, blob_one, _momentum, _rms_decay);
+	MomentumSGDUpdate(_net, _param, _moment, _grad, blob_lr, _momentum);
       }
     };
 
 #define REGISTER_OPTIMIZER(name) { #name, AbstractOptimizer::callback<name>() }
     const std::map<std::string, Optimizer> optimizers = {
       REGISTER_OPTIMIZER(sgd),
-      REGISTER_OPTIMIZER(momentum),
       REGISTER_OPTIMIZER(adagrad),
       REGISTER_OPTIMIZER(adam),
       REGISTER_OPTIMIZER(rmsprop)

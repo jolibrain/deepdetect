@@ -268,7 +268,8 @@ namespace dd {
 				   _state.gamma(), _state.power());
     };
     Caffe2NetTools::insert_learning_operators(_context, train_net, init_net, lr_config);
-    Caffe2NetTools::get_optimizer(_state.solver_type())(_context, train_net, init_net);
+    Caffe2NetTools::get_optimizer(_state.solver_type())
+      (_context, train_net, init_net, _state.momentum(), _state.rms_decay());
 
     // Apply changes
     _net.Swap(&test_net);
@@ -536,6 +537,8 @@ namespace dd {
       _state.set_power(ad_solver);
       _state.set_max_iter(ad_solver);
       _state.set_solver_type(ad_solver);
+      _state.set_momentum(ad_solver);
+      _state.set_rms_decay(ad_solver);
 
       // To be compatible with caffe's syntax, the 'solver_type' is allowed to be sent in uppercase
       std::string solver_type = _state.solver_type();

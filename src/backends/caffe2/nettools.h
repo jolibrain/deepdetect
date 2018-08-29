@@ -196,15 +196,16 @@ namespace dd {
 
     // Sum and Optimize
     PROTOTYPE(WeightedSum, const std::vector<std::string> &inputs, const std::string &output);
-    PROTOTYPE(MomentumSGDUpdate, const std::string &param, const std::string &momentum,
-	      const std::string &gradient, const std::string &rate);
+    PROTOTYPE(MomentumSGDUpdate, const std::string &param, const std::string &momentum_blob,
+	      const std::string &gradient, const std::string &rate, float momentum);
     PROTOTYPE(Adagrad, const std::string &param, const std::string &momentum,
 	      const std::string &gradient, const std::string &rate);
     PROTOTYPE(Adam, const std::string &param,
 	      const std::string &momentum1, const std::string &momentum2,
 	      const std::string &gradient, const std::string &rate, const std::string &iter);
     PROTOTYPE(RmsProp, const std::string &gradient, const std::string &mean_square,
-	      const std::string &momentum, const std::string &rate);
+	      const std::string &momentum_blob, const std::string &rate,
+	      float momentum, float decay);
 
     // Fill
     PROTOTYPE(ConstantFill, const std::string &input, const std::string &output, float value);
@@ -530,15 +531,17 @@ namespace dd {
 
     // Optimizers are stored as functions that take a net
     // and use the gradients to update the parameters
-    //XXX Make epsilon, decay, etc. configurables
     using Optimizer = std::function<
       void
       (const ModelContext&,	// context
        caffe2::NetDef&,		// net
-       caffe2::NetDef&		// init_net
+       caffe2::NetDef&,		// init_net
+       float,			// momentum
+       float			// rms_decay
        )>;
 
-    // List of registered optimizers : sgd, momentum, adagrad, adam, rmsprop
+    // List of registered optimizers : sgd, adagrad, adam, rmsprop
+    // See caffe2/python/optimizer.py
     //XXX Add other optimizers: SparseAdagrad, RowWiseSparseAdagrad, etc.
     const Optimizer &get_optimizer(const std::string &name);
 

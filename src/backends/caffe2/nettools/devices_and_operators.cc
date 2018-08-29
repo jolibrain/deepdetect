@@ -361,14 +361,16 @@ namespace dd {
 		const std::vector<std::string> &inputs,
 		const std::string &output)
     REGISTER_OP(MomentumSGDUpdate,
-		INPUT(gradient, momentum, rate, param),
-		OUTPUT(gradient, momentum, param),
+		INPUT(gradient, momentum_blob, rate, param),
+		OUTPUT(gradient, momentum_blob, param),
 		//https://caffe2.ai/docs/operators-catalogue.html#momentumsgdupdate
-		ADD_ARG_VALUE(momentum, 0.9f); ADD_ARG_VALUE(nesterov, 1),
+		ADD_ARG_VALUE(nesterov, 1);
+		ADD_ARG(momentum),
 		const std::string &param,
-		const std::string &momentum,
+		const std::string &momentum_blob,
 		const std::string &gradient,
-		const std::string &rate)
+		const std::string &rate,
+		float momentum)
     REGISTER_OP(Adagrad,
 		INPUT(param, momentum, gradient, rate),
 		OUTPUT(param, momentum),
@@ -388,15 +390,15 @@ namespace dd {
 		const std::string &rate,
 		const std::string &iter)
     REGISTER_OP(RmsProp,
-		INPUT(gradient, mean_square, momentum, rate),
-		OUTPUT(gradient, mean_square, momentum),
-		ADD_ARG_VALUE(decay, 0.9f);
-		ADD_ARG_VALUE(momentum, 0.8f);
-		ADD_ARG_VALUE(epsilon, 1e-5f),
+		INPUT(gradient, mean_square, momentum_blob, rate),
+		OUTPUT(gradient, mean_square, momentum_blob),
+		ADD_ARG_VALUE(epsilon, 1e-5f);
+		ADD_ARG(momentum); ADD_ARG(decay),
 		const std::string &gradient,
 		const std::string &mean_square,
-		const std::string &momentum,
-		const std::string &rate)
+		const std::string &momentum_blob,
+		const std::string &rate,
+		float momentum, float decay);
 
     // Fill
     //ConstantFill
