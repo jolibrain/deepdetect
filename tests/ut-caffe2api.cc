@@ -202,7 +202,7 @@ static const std::string extract_conv1 = PREDICT_UNSUPERVISED(SERVICE, "gpu_0/co
 	    "base_lr": 0.01,					\
 	    "stepsize": 375,					\
 	    "gamma": 0.1,					\
-	    "solver_type": "momentum"				\
+	    "solver_type": "sgd"				\
 	  }							\
 	}							\
       },							\

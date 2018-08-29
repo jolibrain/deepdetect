@@ -264,6 +264,7 @@ namespace dd {
     void ModelContext::append_net(caffe2::NetDef &dst, const caffe2::NetDef &src) const {
       ScopedNet net = scope_net(dst);
       add_ops_and_inputs(net, src);
+      dst.add_external_input(_input_blob);
     }
 
     void ModelContext::append_trainable_net(caffe2::NetDef &dst, const caffe2::NetDef &src) const {
