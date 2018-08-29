@@ -146,12 +146,25 @@ void assert_predictions(const JDoc &jd, std::vector<std::pair<std::string, doubl
   }
 }
 
+void clean_repository(const std::string &repo) {
+  ASSERT_TRUE(!fileops::remove_directory_files(repo, { ".json", ".txt", ".pb" }));
+  std::set<std::string> dbs({repo + "/train.lmdb", repo + "/test.lmdb"});
+  for (const std::string &db : dbs) {
+    fileops::clear_directory(db);
+    rmdir(db.c_str());
+  }
+}
+
 inline void assert_accuracy(const JDoc &jd, double d) {
   ASSERT_TRUE(fabs(jd["body"]["measure"]["acc"].GetDouble()) > d);
 }
 
 inline void assert_loss(const JDoc &jd, double d) {
   ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) < d);
+}
+
+inline void assert_first_test_at(const JDoc &jd, double d) {
+  ASSERT_EQ(jd["body"]["measure_hist"]["iteration_hist"][0].GetDouble(), d);
 }
 
 // Paths
@@ -179,7 +192,7 @@ static const std::string extract_conv1 = PREDICT_UNSUPERVISED(SERVICE, "gpu_0/co
 // Json train & test
 
 // 1 epoch = 1200 imgs / 32 batch size = 37.5 iters
-#define TRAIN_BC(service, data...) TO_STRING({			\
+#define TRAIN_BC(service, iter, resume, data...) TO_STRING({	\
       "service": service,					\
       "async": false,						\
       "parameters": {						\
@@ -188,15 +201,17 @@ static const std::string extract_conv1 = PREDICT_UNSUPERVISED(SERVICE, "gpu_0/co
 	  "shuffle": true					\
 	},							\
 	"output": {						\
+	  "measure_hist": true,					\
 	  "measure": ["acc"]					\
 	},							\
 	"mllib": {						\
+	  "resume": resume,					\
 	  "net": {						\
 	    "batch_size": 32,					\
 	    "test_batch_size": 32				\
 	   },							\
 	  "solver": {						\
-	    "iterations": 1000,					\
+	    "iterations": iter,					\
 	    "test_interval": 200,				\
 	    "lr_policy": "step",				\
 	    "base_lr": 0.01,					\
@@ -208,7 +223,8 @@ static const std::string extract_conv1 = PREDICT_UNSUPERVISED(SERVICE, "gpu_0/co
       },							\
       "data": [ data ]						\
 })
-static const std::string train_boats_and_cars = TRAIN_BC(SERVICE, BC_IMGS);
+static const std::string train_boats_and_cars = TRAIN_BC(SERVICE, 1000, false, BC_IMGS);
+static const std::string train_boats_and_cars_resume = TRAIN_BC(SERVICE, 1300, true, BC_IMGS);
 
 // Tests
 
@@ -248,20 +264,24 @@ TEST(caffe2api, service_predict_extract_layer) {
 TEST(caffe2api, service_train) {
 
   // Remove old data
-  ASSERT_TRUE(!fileops::remove_directory_files(BC_REPO, { ".json", ".txt", ".pb" }));
-  std::set<std::string> dbs({BC_REPO "/train.lmdb", BC_REPO "/test.lmdb"});
-  for (const std::string &db : dbs) {
-    fileops::clear_directory(db);
-    rmdir(db.c_str());
-  }
+  clean_repository(BC_REPO);
 
   JsonAPI japi;
   JDoc jd;
   create(japi, trainable);
 
+  // Test training
   train(japi, jd, train_boats_and_cars);
   assert_accuracy(jd, 0.7);
-  assert_loss(jd, 0.01);
-}
+  assert_loss(jd, 0.05);
+  assert_first_test_at(jd, 200); // 1000 iterations (0, 999), tests at 200, 400, 600, 800
 
-//XXX Add a test that dumps & resumes the state of a training
+  // Test resume
+  train(japi, jd, train_boats_and_cars_resume);
+  assert_accuracy(jd, 0.7);
+  assert_loss(jd, 0.05);
+  assert_first_test_at(jd, 1200); // 300 iterations (1000, 1299), test at 1200
+
+  // Remove new data
+  clean_repository(BC_REPO);
+}
