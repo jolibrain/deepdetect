@@ -604,7 +604,7 @@ namespace dd {
 
       // Test the net
       if (_state.is_testing() && iter > start_iter && !(iter % test_interval)) {
-	this->_logger->info("Testing model (iteration {})", iter);
+	this->_logger->info("Testing model");
 
 	APIData meas_out;
 	test(ad, meas_out);
