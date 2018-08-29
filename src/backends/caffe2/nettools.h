@@ -199,7 +199,7 @@ namespace dd {
     PROTOTYPE(MomentumSGDUpdate, const std::string &param, const std::string &momentum_blob,
 	      const std::string &gradient, const std::string &rate, float momentum);
     PROTOTYPE(Adagrad, const std::string &param, const std::string &momentum,
-	      const std::string &gradient, const std::string &rate);
+	      const std::string &gradient, const std::string &rate, float decay);
     PROTOTYPE(Adam, const std::string &param,
 	      const std::string &momentum1, const std::string &momentum2,
 	      const std::string &gradient, const std::string &rate, const std::string &iter);
