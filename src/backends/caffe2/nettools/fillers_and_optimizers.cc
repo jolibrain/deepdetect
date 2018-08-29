@@ -362,6 +362,7 @@ namespace dd {
       ScopedNet _net;
       std::string _param;
       std::string _grad, _moment, _meansq; // Blob names
+      float _momentum, _decay; // Configuration
 
       // Create a new ConstantFill :
       //  - On the main device of the init net
@@ -385,17 +386,11 @@ namespace dd {
 
       // Functions supposed to be overloaded
 
-      virtual bool negative_base_lr() {
-	// XXX Find a rule determining the sign of the learning rate
-	return false;
-      }
       virtual void init() {} // Code executed only once per net
       virtual void optimize() = 0; // Code executed for each parameter
-
-      // Configuration
-      float _momentum, _rms_decay;
+      virtual bool negative_base_lr() { return false; }
       virtual void set_default_momentum() {}
-      virtual void set_default_rms_decay() {}
+      virtual void set_default_decay() {}
 
     public:
 
@@ -403,13 +398,13 @@ namespace dd {
 			caffe2::NetDef &netdef,
 			caffe2::NetDef &initdef,
 			float momentum,
-			float rms_decay) :
+			float decay) :
 	_context(context),
 	_netdef(netdef),
 	_initdef(initdef),
 	_net(context.scope_net(netdef)),
 	_momentum(momentum),
-	_rms_decay(rms_decay) {
+	_decay(decay) {
       }
 
       // Common code
@@ -417,7 +412,7 @@ namespace dd {
 
 	// Set the default configuration
 	if (_momentum < 0) set_default_momentum();
-	if (_rms_decay < 0) set_default_rms_decay();
+	if (_decay < 0) set_default_decay();
 
 	// Call child's 'negative_base_lr'
 	int base_lr_sign = negative_base_lr() ? -1 : 1;
@@ -495,15 +490,18 @@ namespace dd {
     //TODO fix
     class adagrad : public AbstractOptimizer {
       using AbstractOptimizer::AbstractOptimizer;
+      void set_default_decay() { _decay = 1.f; }
+      bool negative_base_lr() { return true; }
       void optimize() {
 	default_fillers({_moment});
-	Adagrad(_net, _param, _moment, _grad, blob_lr);
+	Adagrad(_net, _param, _moment, _grad, blob_lr, _decay);
       }
     };
 
     //TODO fix
     class adam : public AbstractOptimizer {
       using AbstractOptimizer::AbstractOptimizer;
+      bool negative_base_lr() { return true; }
       void optimize() {
 	std::string moment1(_moment + "_1");
 	std::string moment2(_moment + "_2");
@@ -515,13 +513,13 @@ namespace dd {
     class rmsprop : public AbstractOptimizer {
       using AbstractOptimizer::AbstractOptimizer;
       void set_default_momentum() { _momentum = 0.f; }
-      void set_default_rms_decay() { _rms_decay = 0.9f; }
+      void set_default_decay() { _decay = 0.9f; }
       void init() {
 	broadcast_external_constantfill(blob_one, std::vector<int>({1}), 1);
       }
       void optimize() {
 	default_fillers({_moment, _meansq});
-	RmsProp(_net, _grad, _meansq, _moment, blob_one, _momentum, _rms_decay);
+	RmsProp(_net, _grad, _meansq, _moment, blob_one, _momentum, _decay);
 	MomentumSGDUpdate(_net, _param, _moment, _grad, blob_lr, _momentum);
       }
     };

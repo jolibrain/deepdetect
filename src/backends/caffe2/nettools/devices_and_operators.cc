@@ -374,15 +374,19 @@ namespace dd {
     REGISTER_OP(Adagrad,
 		INPUT(param, momentum, gradient, rate),
 		OUTPUT(param, momentum),
-		NO_ARG,
+		ADD_ARG_VALUE(epsilon, 1e-4f);
+		ADD_ARG(decay),
 		const std::string &param,
 		const std::string &momentum,
 		const std::string &gradient,
-		const std::string &rate)
+		const std::string &rate,
+		float decay)
     REGISTER_OP(Adam,
 		INPUT(param, momentum1, momentum2, gradient, rate, iter),
 		OUTPUT(param, momentum1, momentum2),
-		NO_ARG,
+		ADD_ARG_VALUE(epsilon, 1e-8f);
+		ADD_ARG_VALUE(beta1, 0.9f);
+		ADD_ARG_VALUE(beta2, 0.999f),
 		const std::string &param,
 		const std::string &momentum1,
 		const std::string &momentum2,
