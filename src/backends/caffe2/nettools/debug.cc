@@ -56,25 +56,19 @@ namespace dd {
     }
 
     void dump_net(const caffe2::NetDef &net, const std::string &path) {
-
-      // Raw protobuf file
-      std::ofstream f(path + ".pb");
-      net.SerializeToOstream(&f);
-
-      // Human-readable protobuf file
-      std::ofstream(path + ".pbtxt") << net.DebugString();
-
-      // SVG file
-      net_to_svg(net, path + ".svg");
+      export_net(net, path + ".pb"); // Raw protobuf file
+      export_net(net, path + ".pbtxt", true); // Human-readable protobuf file
+      net_to_svg(net, path + ".svg"); // SVG file
     }
 
+    void _reset_init_net(const caffe2::NetDef &net, caffe2::NetDef &init);
     void untrain_model(const std::string &input, const std::string &output) {
       caffe2::NetDef net, init;
-      CAFFE_ENFORCE(caffe2::ReadProtoFromFile(input + "/predict_net.pb", &net));
-      CAFFE_ENFORCE(caffe2::ReadProtoFromFile(input + "/init_net.pb", &init));
-      reset_fillers(net, init);
-      std::ofstream(output + "/predict_net.pbtxt") << net.DebugString();
-      std::ofstream(output + "/init_net.pbtxt") << init.DebugString();
+      import_net(net, input + "/predict_net.pb");
+      import_net(init, input + "/init_net.pb");
+      _reset_init_net(net, init);
+      export_net(net, output + "/predict_net.pbtxt", true);
+      export_net(init, output + "/init_net.pbtxt", true);
     }
 
   }

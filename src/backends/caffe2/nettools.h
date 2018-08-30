@@ -464,11 +464,13 @@ namespace dd {
      * @param op operator to check
      * @param trainable used to store the input blobs that will be part of the gradient
      * @param computed used to strore the other inputs
+     * @param needed outputs that needs to be added to the operator to compute its gradient
      * @return true if trainable, false otherwise
      */
     bool is_trainable(const caffe2::OperatorDef &op,
 		      std::set<std::string> *trainable,
-		      std::set<std::string> *computed);
+		      std::set<std::string> *computed,
+		      std::vector<std::string> *needed);
 
     void add_gradient_ops(caffe2::NetDef &net, const std::set<std::string> &main_gradients);
 
@@ -508,22 +510,14 @@ namespace dd {
      */
 
     /**
-     * \brief browses the net, creates a filler for each parameter,
-     *        and uses them to update the init net.
-     *        Only the fillers having an equivalent in the init net can be used,
-     *        because their shape can't be infered.
+     * \brief creates a filler for each parameter defining the shape
      */
-    void reset_fillers(const caffe2::NetDef &net, caffe2::NetDef &init);
+    void set_nclasses(const caffe2::NetDef &net, caffe2::NetDef &init, int nclasses);
 
     /**
-     * \brief reshape the output to match the number of classes
+     * \brief infers the number of classes based on the output's shape
      */
-    void set_nclasses(const caffe2::NetDef &net, caffe2::NetDef &init_net, int nclasses);
-
-    /**
-     * \brief infer the number of classes based on the output's shape
-     */
-    int get_nclasses(const caffe2::NetDef &net, const caffe2::NetDef &init_net);
+    int get_nclasses(const caffe2::NetDef &net, const caffe2::NetDef &init);
 
     /*
      *  Optimizers
@@ -557,6 +551,16 @@ namespace dd {
 
     // Same as above, except that the net is replaced by its truncated version
     void truncate_net(caffe2::NetDef &net, const std::string &blob);
+
+    /**
+     * \brief reads a .pb or .pbtxt file
+     */
+    void import_net(caffe2::NetDef &net, const std::string &file);
+
+    /**
+     * \brief writes a .pb or .pbtxt file
+     */
+    void export_net(const caffe2::NetDef &net, const std::string &file, bool human_readable=false);
 
   }
 }

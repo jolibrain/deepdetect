@@ -141,29 +141,34 @@ namespace dd {
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
   instantiate_template(const APIData &ad) {
-    this->_mlmodel.update_from_repository(this->_logger);
-
-    // Assert that there is no risk of erasing model files
-    if (!this->_mlmodel._init.empty() && !this->_mlmodel._predict.empty()) {
-      throw MLLibBadParamException("using template while model files already exists, "
-				   "remove 'template' from 'mllib', "
-				   "or remove existing '.pb' files ?");
-    }
 
     //XXX Implement build-in template creation (mlp, convnet, resnet, etc.)
 
     std::string model_tmpl = ad.get("template").get<std::string>();
-    this->_logger->info("instantiating model template {}", model_tmpl);
+    this->_logger->info("Instantiating model template {}", model_tmpl);
 
+    // Fetch the files path
     std::map<std::string, std::string> files;
-    this->_mlmodel.list_template_pbtxts(model_tmpl, files);
+    bool finetuning = ad.has("finetuning") && ad.get("finetuning").get<bool>();
+    this->_mlmodel.list_template_files(model_tmpl, files, finetuning);
     for (const std::pair<std::string, std::string> &file : files) {
+
+      // Assert the remote file exists
+      if (!fileops::file_exists(file.first)) {
+	throw MLLibBadParamException("file '" + file.first + "' doen't exists");
+      }
+
+      // Assert the local file won't be erased
+      if (fileops::file_exists(file.second)) {
+	throw MLLibBadParamException("using template while model files already exists, "
+				     "remove 'template' from 'mllib', "
+				     "or remove existing '.pb' files ?");
+      }
 
       // Convert the prototxt file
       caffe2::NetDef buffer;
-      CAFFE_ENFORCE(caffe2::ReadProtoFromFile(file.first, &buffer));
-      std::ofstream f(file.second);
-      buffer.SerializeToOstream(&f);
+      Caffe2NetTools::import_net(buffer, file.first);
+      Caffe2NetTools::export_net(buffer, file.second);
     }
 
     // Update the mlmodel
@@ -180,8 +185,8 @@ namespace dd {
     inputc._train = train;
     try {
       inputc.transform(ad);
-    } catch (...) {
-      this->_logger->info("Could not configure the InputConnector");
+    } catch (std::exception &e) {
+      this->_logger->error("Could not configure the InputConnector {}", e.what());
       throw;
     }
 
@@ -219,11 +224,6 @@ namespace dd {
 
     } else {
 
-      // Reset parameters to ConstantFills, XaviersFills, etc.
-      Caffe2NetTools::reset_fillers(_net, _init_net);
-      if (_context._nclasses) { //XXX Check if classifying
-	Caffe2NetTools::set_nclasses(_net, _init_net, _context._nclasses);
-      }
       _last_inputc.create_dbreader(init_net, true);
       if (_state.is_testing()) {
 	_last_inputc.create_dbreader(init_net);
@@ -314,21 +314,7 @@ namespace dd {
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
   create_model() {
-
-    // Check if the mandatory files are present
-    this->_mlmodel.update_from_repository(this->_logger);
-    if (this->_mlmodel._predict.empty() || this->_mlmodel._init.empty()) {
-      throw MLLibInternalException(this->_mlmodel._repo +
-				   " does not contain the required files to initialize a net");
-    }
-
     this->_logger->info("Re-creating the nets");
-
-    // Load the nets protobuffers
-    std::string init_net_path = _state.is_training() && _state.resume() ?
-      this->_mlmodel._init_state : this->_mlmodel._init;
-    CAFFE_ENFORCE(caffe2::ReadProtoFromFile(init_net_path, &_init_net));
-    CAFFE_ENFORCE(caffe2::ReadProtoFromFile(this->_mlmodel._predict, &_net));
 
     // _input_blob and _output_blob should have been initialized during init_mllib
     // (by "inputlayer" and "outputlayer" respectively)
@@ -379,10 +365,6 @@ namespace dd {
 
     // Register the prediction net
     if (!_state.is_training() || _state.is_testing()) {
-      if (!_context._nclasses) { //XXX Check if classifying
-	// If not initiliazied by init_mllib, it will be infered
-	_context._nclasses = Caffe2NetTools::get_nclasses(_net, _init_net);
-      }
       this->_logger->info("Create predict net");
       _context.configure_net(_net);
       _context.create_net(_net);
@@ -408,11 +390,19 @@ namespace dd {
       return;
     }
 
-    // Reload from the disk and reconfigure.
     try {
+
+      // Reload from the disk
+      std::string init_net_path = _state.is_training() && _state.resume() ?
+	this->_mlmodel._init_state : this->_mlmodel._init;
+      Caffe2NetTools::import_net(_init_net, init_net_path);
+      Caffe2NetTools::import_net(_net, this->_mlmodel._predict);
+
+      // Reconfigure
       create_model();
-    } catch (...) {
-      this->_logger->error("Couldn't create model");
+
+    } catch (std::exception &e) {
+      this->_logger->error("Couldn't create model {}", e.what());
       // Must stay in a 'changed_state' until a call to create_model finally succeed.
       _state.force_init();
       throw;
@@ -453,19 +443,45 @@ namespace dd {
     // Store the net's default (but variable) configuration
     set_gpu_state(ad, true);
 
-    if (ad.has("template")) {
+    bool has_template = ad.has("template");
+    if (has_template) {
       instantiate_template(ad);
     }
 
-    // Now that every '_default' values are defined, initialize the '_current' ones
+    // Check if the mandatory files are present
+    if (this->_mlmodel._predict.empty() || this->_mlmodel._init.empty()) {
+      throw MLLibInternalException
+	(this->_mlmodel._repo + " does not contain the required files to initialize a net");
+    }
+
+    // Load the model
+    Caffe2NetTools::import_net(_init_net, this->_mlmodel._init);
+    Caffe2NetTools::import_net(_net, this->_mlmodel._predict);
+    int current_nclasses = Caffe2NetTools::get_nclasses(_net, _init_net);
+
+    // Keep the current shape
+    if (!_context._nclasses) {
+      _context._nclasses = current_nclasses;
+
+      // Change the shape
+    } else if (has_template) {
+
+      // Reset parameters to ConstantFills, XaviersFills, etc.
+      Caffe2NetTools::set_nclasses(_net, _init_net, _context._nclasses);
+      Caffe2NetTools::export_net(_init_net, this->_mlmodel._init);
+
+      // Assert the shape is correct
+    } else {
+      CAFFE_ENFORCE(_context._nclasses == current_nclasses);
+    }
+
+    // Now that every '_default' configuration values are defined, initialize the '_current' ones
     _state.reset();
     _last_inputc = this->_inputc;
 
     // Preconfigure the net to make predictions
-    if (!this->_mlmodel._predict.empty()) {
-      create_model();
-      _state.backup();
-    }
+    create_model();
+    _state.backup();
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>

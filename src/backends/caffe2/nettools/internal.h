@@ -35,13 +35,49 @@ namespace dd {
 
     /*
      * Operators having a gradient.
-     * With each operator is associated a list of indices,
-     * corresponding to the inputs that should be treated as 'computed parameters'
-     * ( A 'computed parameter' act almost like a weight or a bias,
-     *   but is not changed by the gradients. See ParameterTags in
-     *   pytorch/caffe2/python/modeling/parameter_info.py )
+     * With each operator is associated three functions that can store the following :
+     *
+     * -- 1 --
+     *
+     * Inputs that will be part of the gradient
+     *
+     * -- 2 --
+     *
+     * Inputs that should be treated as 'computed parameters'
+     *
+     * Quote from 'model_helper.py':
+     *
+     *       'Computed params' are such parameters that are not optimized via gradient descent
+     *       but are directly computed from data, such as the running mean and variance of
+     *       Spatial Batch Normalization.
+     *
+     * See 'ParameterTags' in pytorch/caffe2/python/modeling/parameter_info.py
+     *
+     * -- 3 --
+     *
+     * Outputs that must be added (in the given order) for the operator to be trainable.
+     *
+     * The following quote from the SpatialBN documentation:
+     *
+     *        Output 3 'var' :
+     *        The running variance after the spatial BN operator.
+     *        Must be in-place with the input var.
+     *        Should not be used for testing.
+     *
+     * Means that this output won't be present in prediciton, but must be set to a specific value
+     * when training.
+     *
+     * (See https://github.com/caffe2/caffe2/blob/master/caffe2/operators/spatial_batch_norm_op.cc
+     *  or https://github.com/caffe2/caffe2/blob/master/caffe2/operators/instance_norm_op.cc
+     *  for concrete examples)
+     *
      */
-    extern const std::map<std::string, std::set<int> > trainable_ops;
+    using GetOpInputFct =
+      std::function<void(const caffe2::OperatorDef&, std::set<std::string>&)>;
+    using GetOpOutputFct =
+      std::function<void(const caffe2::OperatorDef&, std::vector<std::string>&)>;
+    using GetOpBlobsFcts = std::tuple<GetOpInputFct, GetOpInputFct, GetOpOutputFct>;
+    extern const std::map<std::string, GetOpBlobsFcts> trainable_ops;
 
     extern const std::string mean_square_suffix;
     extern const std::string momentum_suffix;

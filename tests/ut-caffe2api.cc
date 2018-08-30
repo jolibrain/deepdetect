@@ -34,13 +34,14 @@ using namespace dd;
 
 #define RESPONSE(code, msg) TO_STRING({"status":{"code":code,"msg":msg}})
 
-#define _CREATE(type, repo, std, mllib...) TO_STRING({	\
+#define _CREATE(type, repo, weights, std, mllib...) TO_STRING({	\
       "mllib": "caffe2",				\
       "description": "my classifier",			\
       "type": type,					\
       "model": {					\
 	"templates": "../templates/caffe2",		\
-	"repository": repo				\
+	"repository": repo,				\
+	"weights": weights				\
       },						\
       "parameters": {					\
 	"input": {					\
@@ -55,9 +56,11 @@ using namespace dd;
       }							\
     })
 
-#define CREATE(t, r, s) _CREATE(t, r, s, "gpuid": [0])
+#define CREATE(t, r, s) _CREATE(t, r, "", s, "gpuid": [0])
 #define CREATE_TEMPLATE(t, r, s, tname, nclasses)			\
-  _CREATE(t, r, s, "gpuid": [0], "template": tname, "nclasses": nclasses)
+  _CREATE(t, r, "", s, "gpuid": [0], "template": tname, "nclasses": nclasses)
+#define CREATE_FINETUNE(t, r, s, tname, nclasses, weights)		\
+  _CREATE(t, r, weights, s, "gpuid": [0], "template": tname, "nclasses": nclasses, "finetune": true)
 
 #define PREDICT(service, extraction, data...) TO_STRING({	\
       "service": service,					\
@@ -175,12 +178,15 @@ inline void assert_first_test_at(const JDoc &jd, double d) {
 #define DB_FISH "../examples/caffe2/resnet_50_trained/fish.lmdb"
 #define BC_REPO "../examples/caffe2/boats_and_cars"
 #define BC_IMGS "../examples/caffe2/boats_and_cars/imgs"
+#define WEIGHTS "../examples/caffe2/resnet_50_imagenet/init_net.pb"
 
 // Json create
 
 static const std::string supervised = CREATE("supervised", TRAINED, 128.0);
 static const std::string unsupervised = CREATE("unsupervised", TRAINED, 128.0);
 static const std::string trainable = CREATE_TEMPLATE("supervised", BC_REPO, 128.0, "resnet_50", 2);
+static const std::string finetunable = CREATE_FINETUNE("supervised", BC_REPO, 128.0, "resnet_50", 2,
+						       WEIGHTS);
 
 // Json predict
 
@@ -225,6 +231,40 @@ static const std::string extract_conv1 = PREDICT_UNSUPERVISED(SERVICE, "gpu_0/co
 })
 static const std::string train_boats_and_cars = TRAIN_BC(SERVICE, 1000, false, BC_IMGS);
 static const std::string train_boats_and_cars_resume = TRAIN_BC(SERVICE, 1300, true, BC_IMGS);
+
+// Finetune
+
+#define FINETUNE_BC(service, iter, data...) TO_STRING({		\
+      "service": service,					\
+      "async": false,						\
+      "parameters": {						\
+	"input": {						\
+	  "test_split": 0.1,					\
+	  "shuffle": true					\
+	},							\
+	"output": {						\
+	  "measure_hist": true,					\
+	  "measure": ["acc"]					\
+	},							\
+	"mllib": {						\
+	  "net": {						\
+	    "batch_size": 32,					\
+	    "test_batch_size": 32				\
+	   },							\
+	  "solver": {						\
+	    "iterations": iter,					\
+	    "test_interval": 40,				\
+	    "lr_policy": "step",				\
+	    "base_lr": 0.01,					\
+	    "stepsize": 1,					\
+	    "gamma": 0.99,					\
+	    "solver_type": "sgd"				\
+	  }							\
+	}							\
+      },							\
+      "data": [ data ]						\
+})
+static const std::string finetune_boats_and_cars = FINETUNE_BC(SERVICE, 200, BC_IMGS);
 
 // Tests
 
@@ -281,6 +321,21 @@ TEST(caffe2api, service_train) {
   assert_accuracy(jd, 0.7);
   assert_loss(jd, 0.05);
   assert_first_test_at(jd, 1200); // 300 iterations (1000, 1299), test at 1200
+
+  // Remove new data
+  clean_repository(BC_REPO);
+}
+
+TEST(caffe2api, service_finetune) {
+
+  // Remove old data
+  clean_repository(BC_REPO);
+
+  JsonAPI japi;
+  JDoc jd;
+  create(japi, finetunable);
+  train(japi, jd, finetune_boats_and_cars);
+  assert_accuracy(jd, 0.8);
 
   // Remove new data
   clean_repository(BC_REPO);

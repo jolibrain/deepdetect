@@ -341,5 +341,18 @@ namespace dd {
       net.Swap(&short_net);
     }
 
+    void import_net(caffe2::NetDef &net, const std::string &file) {
+      CAFFE_ENFORCE(caffe2::ReadProtoFromFile(file, &net));
+    }
+
+    void export_net(const caffe2::NetDef &net, const std::string &file, bool human_readable) {
+      std::ofstream f(file);
+      if (human_readable) {
+	f << net.DebugString();
+      } else {
+	net.SerializeToOstream(&f);
+      }
+    }
+
   }
 }

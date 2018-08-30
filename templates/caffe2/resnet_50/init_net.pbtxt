@@ -1,3276 +1,4 @@
 op {
-  output: "comp_0_conv_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "comp_0_conv_1_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 64
-    ints: 64
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_0_conv_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "comp_0_conv_2_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 64
-    ints: 64
-    ints: 3
-    ints: 3
-  }
-}
-op {
-  output: "comp_0_conv_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_0_conv_3_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 256
-    ints: 64
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_0_spatbn_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "comp_0_spatbn_1_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "comp_0_spatbn_1_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "comp_0_spatbn_1_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "comp_0_spatbn_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "comp_0_spatbn_2_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "comp_0_spatbn_2_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "comp_0_spatbn_2_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "comp_0_spatbn_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_0_spatbn_3_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_0_spatbn_3_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_0_spatbn_3_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_10_conv_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_10_conv_1_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 256
-    ints: 1024
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_10_conv_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_10_conv_2_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 256
-    ints: 256
-    ints: 3
-    ints: 3
-  }
-}
-op {
-  output: "comp_10_conv_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 1024
-  }
-}
-op {
-  output: "comp_10_conv_3_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 1024
-    ints: 256
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_10_spatbn_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_10_spatbn_1_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_10_spatbn_1_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_10_spatbn_1_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_10_spatbn_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_10_spatbn_2_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_10_spatbn_2_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_10_spatbn_2_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_10_spatbn_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 1024
-  }
-}
-op {
-  output: "comp_10_spatbn_3_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 1024
-  }
-}
-op {
-  output: "comp_10_spatbn_3_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 1024
-  }
-}
-op {
-  output: "comp_10_spatbn_3_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 1024
-  }
-}
-op {
-  output: "comp_11_conv_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_11_conv_1_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 256
-    ints: 1024
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_11_conv_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_11_conv_2_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 256
-    ints: 256
-    ints: 3
-    ints: 3
-  }
-}
-op {
-  output: "comp_11_conv_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 1024
-  }
-}
-op {
-  output: "comp_11_conv_3_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 1024
-    ints: 256
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_11_spatbn_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_11_spatbn_1_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_11_spatbn_1_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_11_spatbn_1_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_11_spatbn_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_11_spatbn_2_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_11_spatbn_2_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_11_spatbn_2_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_11_spatbn_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 1024
-  }
-}
-op {
-  output: "comp_11_spatbn_3_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 1024
-  }
-}
-op {
-  output: "comp_11_spatbn_3_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 1024
-  }
-}
-op {
-  output: "comp_11_spatbn_3_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 1024
-  }
-}
-op {
-  output: "comp_12_conv_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_12_conv_1_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 256
-    ints: 1024
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_12_conv_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_12_conv_2_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 256
-    ints: 256
-    ints: 3
-    ints: 3
-  }
-}
-op {
-  output: "comp_12_conv_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 1024
-  }
-}
-op {
-  output: "comp_12_conv_3_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 1024
-    ints: 256
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_12_spatbn_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_12_spatbn_1_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_12_spatbn_1_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_12_spatbn_1_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_12_spatbn_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_12_spatbn_2_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_12_spatbn_2_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_12_spatbn_2_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_12_spatbn_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 1024
-  }
-}
-op {
-  output: "comp_12_spatbn_3_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 1024
-  }
-}
-op {
-  output: "comp_12_spatbn_3_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 1024
-  }
-}
-op {
-  output: "comp_12_spatbn_3_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 1024
-  }
-}
-op {
-  output: "comp_13_conv_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_13_conv_1_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 512
-    ints: 1024
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_13_conv_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_13_conv_2_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 512
-    ints: 512
-    ints: 3
-    ints: 3
-  }
-}
-op {
-  output: "comp_13_conv_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 2048
-  }
-}
-op {
-  output: "comp_13_conv_3_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 2048
-    ints: 512
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_13_spatbn_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_13_spatbn_1_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_13_spatbn_1_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_13_spatbn_1_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_13_spatbn_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_13_spatbn_2_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_13_spatbn_2_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_13_spatbn_2_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_13_spatbn_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 2048
-  }
-}
-op {
-  output: "comp_13_spatbn_3_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 2048
-  }
-}
-op {
-  output: "comp_13_spatbn_3_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 2048
-  }
-}
-op {
-  output: "comp_13_spatbn_3_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 2048
-  }
-}
-op {
-  output: "comp_14_conv_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_14_conv_1_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 512
-    ints: 2048
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_14_conv_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_14_conv_2_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 512
-    ints: 512
-    ints: 3
-    ints: 3
-  }
-}
-op {
-  output: "comp_14_conv_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 2048
-  }
-}
-op {
-  output: "comp_14_conv_3_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 2048
-    ints: 512
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_14_spatbn_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_14_spatbn_1_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_14_spatbn_1_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_14_spatbn_1_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_14_spatbn_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_14_spatbn_2_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_14_spatbn_2_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_14_spatbn_2_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_14_spatbn_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 2048
-  }
-}
-op {
-  output: "comp_14_spatbn_3_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 2048
-  }
-}
-op {
-  output: "comp_14_spatbn_3_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 2048
-  }
-}
-op {
-  output: "comp_14_spatbn_3_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 2048
-  }
-}
-op {
-  output: "comp_15_conv_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_15_conv_1_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 512
-    ints: 2048
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_15_conv_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_15_conv_2_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 512
-    ints: 512
-    ints: 3
-    ints: 3
-  }
-}
-op {
-  output: "comp_15_conv_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 2048
-  }
-}
-op {
-  output: "comp_15_conv_3_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 2048
-    ints: 512
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_15_spatbn_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_15_spatbn_1_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_15_spatbn_1_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_15_spatbn_1_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_15_spatbn_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_15_spatbn_2_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_15_spatbn_2_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_15_spatbn_2_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_15_spatbn_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 2048
-  }
-}
-op {
-  output: "comp_15_spatbn_3_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 2048
-  }
-}
-op {
-  output: "comp_15_spatbn_3_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 2048
-  }
-}
-op {
-  output: "comp_15_spatbn_3_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 2048
-  }
-}
-op {
-  output: "comp_1_conv_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "comp_1_conv_1_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 64
-    ints: 256
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_1_conv_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "comp_1_conv_2_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 64
-    ints: 64
-    ints: 3
-    ints: 3
-  }
-}
-op {
-  output: "comp_1_conv_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_1_conv_3_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 256
-    ints: 64
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_1_spatbn_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "comp_1_spatbn_1_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "comp_1_spatbn_1_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "comp_1_spatbn_1_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "comp_1_spatbn_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "comp_1_spatbn_2_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "comp_1_spatbn_2_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "comp_1_spatbn_2_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "comp_1_spatbn_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_1_spatbn_3_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_1_spatbn_3_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_1_spatbn_3_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_2_conv_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "comp_2_conv_1_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 64
-    ints: 256
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_2_conv_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "comp_2_conv_2_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 64
-    ints: 64
-    ints: 3
-    ints: 3
-  }
-}
-op {
-  output: "comp_2_conv_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_2_conv_3_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 256
-    ints: 64
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_2_spatbn_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "comp_2_spatbn_1_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "comp_2_spatbn_1_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "comp_2_spatbn_1_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "comp_2_spatbn_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "comp_2_spatbn_2_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "comp_2_spatbn_2_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "comp_2_spatbn_2_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "comp_2_spatbn_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_2_spatbn_3_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_2_spatbn_3_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_2_spatbn_3_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_3_conv_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_3_conv_1_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 128
-    ints: 256
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_3_conv_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_3_conv_2_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 128
-    ints: 128
-    ints: 3
-    ints: 3
-  }
-}
-op {
-  output: "comp_3_conv_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_3_conv_3_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 512
-    ints: 128
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_3_spatbn_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_3_spatbn_1_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_3_spatbn_1_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_3_spatbn_1_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_3_spatbn_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_3_spatbn_2_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_3_spatbn_2_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_3_spatbn_2_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_3_spatbn_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_3_spatbn_3_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_3_spatbn_3_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_3_spatbn_3_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_4_conv_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_4_conv_1_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 128
-    ints: 512
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_4_conv_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_4_conv_2_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 128
-    ints: 128
-    ints: 3
-    ints: 3
-  }
-}
-op {
-  output: "comp_4_conv_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_4_conv_3_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 512
-    ints: 128
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_4_spatbn_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_4_spatbn_1_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_4_spatbn_1_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_4_spatbn_1_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_4_spatbn_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_4_spatbn_2_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_4_spatbn_2_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_4_spatbn_2_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_4_spatbn_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_4_spatbn_3_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_4_spatbn_3_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_4_spatbn_3_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_5_conv_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_5_conv_1_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 128
-    ints: 512
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_5_conv_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_5_conv_2_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 128
-    ints: 128
-    ints: 3
-    ints: 3
-  }
-}
-op {
-  output: "comp_5_conv_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_5_conv_3_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 512
-    ints: 128
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_5_spatbn_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_5_spatbn_1_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_5_spatbn_1_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_5_spatbn_1_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_5_spatbn_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_5_spatbn_2_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_5_spatbn_2_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_5_spatbn_2_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_5_spatbn_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_5_spatbn_3_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_5_spatbn_3_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_5_spatbn_3_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_6_conv_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_6_conv_1_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 128
-    ints: 512
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_6_conv_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_6_conv_2_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 128
-    ints: 128
-    ints: 3
-    ints: 3
-  }
-}
-op {
-  output: "comp_6_conv_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_6_conv_3_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 512
-    ints: 128
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_6_spatbn_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_6_spatbn_1_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_6_spatbn_1_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_6_spatbn_1_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_6_spatbn_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_6_spatbn_2_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_6_spatbn_2_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_6_spatbn_2_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 128
-  }
-}
-op {
-  output: "comp_6_spatbn_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_6_spatbn_3_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_6_spatbn_3_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_6_spatbn_3_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "comp_7_conv_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_7_conv_1_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 256
-    ints: 512
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_7_conv_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_7_conv_2_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 256
-    ints: 256
-    ints: 3
-    ints: 3
-  }
-}
-op {
-  output: "comp_7_conv_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 1024
-  }
-}
-op {
-  output: "comp_7_conv_3_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 1024
-    ints: 256
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_7_spatbn_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_7_spatbn_1_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_7_spatbn_1_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_7_spatbn_1_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_7_spatbn_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_7_spatbn_2_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_7_spatbn_2_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_7_spatbn_2_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_7_spatbn_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 1024
-  }
-}
-op {
-  output: "comp_7_spatbn_3_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 1024
-  }
-}
-op {
-  output: "comp_7_spatbn_3_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 1024
-  }
-}
-op {
-  output: "comp_7_spatbn_3_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 1024
-  }
-}
-op {
-  output: "comp_8_conv_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_8_conv_1_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 256
-    ints: 1024
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_8_conv_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_8_conv_2_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 256
-    ints: 256
-    ints: 3
-    ints: 3
-  }
-}
-op {
-  output: "comp_8_conv_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 1024
-  }
-}
-op {
-  output: "comp_8_conv_3_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 1024
-    ints: 256
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_8_spatbn_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_8_spatbn_1_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_8_spatbn_1_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_8_spatbn_1_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_8_spatbn_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_8_spatbn_2_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_8_spatbn_2_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_8_spatbn_2_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_8_spatbn_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 1024
-  }
-}
-op {
-  output: "comp_8_spatbn_3_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 1024
-  }
-}
-op {
-  output: "comp_8_spatbn_3_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 1024
-  }
-}
-op {
-  output: "comp_8_spatbn_3_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 1024
-  }
-}
-op {
-  output: "comp_9_conv_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_9_conv_1_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 256
-    ints: 1024
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_9_conv_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_9_conv_2_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 256
-    ints: 256
-    ints: 3
-    ints: 3
-  }
-}
-op {
-  output: "comp_9_conv_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 1024
-  }
-}
-op {
-  output: "comp_9_conv_3_w"
-  type: "XavierFill"
-  arg {
-    name: "shape"
-    ints: 1024
-    ints: 256
-    ints: 1
-    ints: 1
-  }
-}
-op {
-  output: "comp_9_spatbn_1_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_9_spatbn_1_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_9_spatbn_1_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_9_spatbn_1_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_9_spatbn_2_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_9_spatbn_2_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_9_spatbn_2_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_9_spatbn_2_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "comp_9_spatbn_3_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 1024
-  }
-}
-op {
-  output: "comp_9_spatbn_3_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 1024
-  }
-}
-op {
-  output: "comp_9_spatbn_3_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 1024
-  }
-}
-op {
-  output: "comp_9_spatbn_3_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 1024
-  }
-}
-op {
-  output: "conv1_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "conv1_spatbn_relu_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "conv1_spatbn_relu_riv"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "conv1_spatbn_relu_rm"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
-  output: "conv1_spatbn_relu_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 64
-  }
-}
-op {
   output: "conv1_w"
   type: "XavierFill"
   arg {
@@ -3282,44 +10,42 @@ op {
   }
 }
 op {
-  output: "last_out_L2_b"
+  output: "res_conv1_bn_s"
   type: "ConstantFill"
   arg {
+    name: "value"
+    f: 1
+  }
+  arg {
     name: "shape"
-    ints: 2
+    ints: 64
   }
 }
 op {
-  output: "last_out_L2_w"
+  output: "res_conv1_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "res2_0_branch2a_w"
   type: "XavierFill"
   arg {
     name: "shape"
-    ints: 2
-    ints: 2048
+    ints: 64
+    ints: 64
+    ints: 1
+    ints: 1
   }
 }
 op {
-  output: "shortcut_projection_0_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "shortcut_projection_0_spatbn_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 256
-  }
-}
-op {
-  output: "shortcut_projection_0_spatbn_riv"
+  output: "res2_0_branch2a_bn_s"
   type: "ConstantFill"
   arg {
     name: "value"
@@ -3327,11 +53,11 @@ op {
   }
   arg {
     name: "shape"
-    ints: 256
+    ints: 64
   }
 }
 op {
-  output: "shortcut_projection_0_spatbn_rm"
+  output: "res2_0_branch2a_bn_b"
   type: "ConstantFill"
   arg {
     name: "value"
@@ -3339,11 +65,22 @@ op {
   }
   arg {
     name: "shape"
-    ints: 256
+    ints: 64
   }
 }
 op {
-  output: "shortcut_projection_0_spatbn_s"
+  output: "res2_0_branch2b_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 64
+    ints: 64
+    ints: 3
+    ints: 3
+  }
+}
+op {
+  output: "res2_0_branch2b_bn_s"
   type: "ConstantFill"
   arg {
     name: "value"
@@ -3351,11 +88,23 @@ op {
   }
   arg {
     name: "shape"
-    ints: 256
+    ints: 64
   }
 }
 op {
-  output: "shortcut_projection_0_w"
+  output: "res2_0_branch2b_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "res2_0_branch2c_w"
   type: "XavierFill"
   arg {
     name: "shape"
@@ -3366,27 +115,7 @@ op {
   }
 }
 op {
-  output: "shortcut_projection_13_b"
-  type: "ConstantFill"
-  arg {
-    name: "shape"
-    ints: 2048
-  }
-}
-op {
-  output: "shortcut_projection_13_spatbn_b"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 0
-  }
-  arg {
-    name: "shape"
-    ints: 2048
-  }
-}
-op {
-  output: "shortcut_projection_13_spatbn_riv"
+  output: "res2_0_branch2c_bn_s"
   type: "ConstantFill"
   arg {
     name: "value"
@@ -3394,11 +123,11 @@ op {
   }
   arg {
     name: "shape"
-    ints: 2048
+    ints: 256
   }
 }
 op {
-  output: "shortcut_projection_13_spatbn_rm"
+  output: "res2_0_branch2c_bn_b"
   type: "ConstantFill"
   arg {
     name: "value"
@@ -3406,42 +135,34 @@ op {
   }
   arg {
     name: "shape"
-    ints: 2048
+    ints: 256
   }
 }
 op {
-  output: "shortcut_projection_13_spatbn_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 2048
-  }
-}
-op {
-  output: "shortcut_projection_13_w"
+  output: "res2_0_branch1_w"
   type: "XavierFill"
   arg {
     name: "shape"
-    ints: 2048
-    ints: 1024
+    ints: 256
+    ints: 64
     ints: 1
     ints: 1
   }
 }
 op {
-  output: "shortcut_projection_3_b"
+  output: "res2_0_branch1_bn_s"
   type: "ConstantFill"
   arg {
+    name: "value"
+    f: 1
+  }
+  arg {
     name: "shape"
-    ints: 512
+    ints: 256
   }
 }
 op {
-  output: "shortcut_projection_3_spatbn_b"
+  output: "res2_0_branch1_bn_b"
   type: "ConstantFill"
   arg {
     name: "value"
@@ -3449,11 +170,302 @@ op {
   }
   arg {
     name: "shape"
-    ints: 512
+    ints: 256
   }
 }
 op {
-  output: "shortcut_projection_3_spatbn_riv"
+  output: "res2_1_branch2a_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 64
+    ints: 256
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "res2_1_branch2a_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "res2_1_branch2a_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "res2_1_branch2b_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 64
+    ints: 64
+    ints: 3
+    ints: 3
+  }
+}
+op {
+  output: "res2_1_branch2b_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "res2_1_branch2b_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "res2_1_branch2c_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 256
+    ints: 64
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "res2_1_branch2c_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res2_1_branch2c_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res2_2_branch2a_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 64
+    ints: 256
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "res2_2_branch2a_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "res2_2_branch2a_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "res2_2_branch2b_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 64
+    ints: 64
+    ints: 3
+    ints: 3
+  }
+}
+op {
+  output: "res2_2_branch2b_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "res2_2_branch2b_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "res2_2_branch2c_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 256
+    ints: 64
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "res2_2_branch2c_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res2_2_branch2c_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res3_0_branch2a_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 128
+    ints: 256
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "res3_0_branch2a_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_0_branch2a_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_0_branch2b_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 128
+    ints: 128
+    ints: 3
+    ints: 3
+  }
+}
+op {
+  output: "res3_0_branch2b_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_0_branch2b_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_0_branch2c_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 512
+    ints: 128
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "res3_0_branch2c_bn_s"
   type: "ConstantFill"
   arg {
     name: "value"
@@ -3465,7 +477,7 @@ op {
   }
 }
 op {
-  output: "shortcut_projection_3_spatbn_rm"
+  output: "res3_0_branch2c_bn_b"
   type: "ConstantFill"
   arg {
     name: "value"
@@ -3477,19 +489,7 @@ op {
   }
 }
 op {
-  output: "shortcut_projection_3_spatbn_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 512
-  }
-}
-op {
-  output: "shortcut_projection_3_w"
+  output: "res3_0_branch1_w"
   type: "XavierFill"
   arg {
     name: "shape"
@@ -3500,15 +500,19 @@ op {
   }
 }
 op {
-  output: "shortcut_projection_7_b"
+  output: "res3_0_branch1_bn_s"
   type: "ConstantFill"
   arg {
+    name: "value"
+    f: 1
+  }
+  arg {
     name: "shape"
-    ints: 1024
+    ints: 512
   }
 }
 op {
-  output: "shortcut_projection_7_spatbn_b"
+  output: "res3_0_branch1_bn_b"
   type: "ConstantFill"
   arg {
     name: "value"
@@ -3516,11 +520,407 @@ op {
   }
   arg {
     name: "shape"
-    ints: 1024
+    ints: 512
   }
 }
 op {
-  output: "shortcut_projection_7_spatbn_riv"
+  output: "res3_1_branch2a_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 128
+    ints: 512
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "res3_1_branch2a_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_1_branch2a_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_1_branch2b_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 128
+    ints: 128
+    ints: 3
+    ints: 3
+  }
+}
+op {
+  output: "res3_1_branch2b_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_1_branch2b_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_1_branch2c_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 512
+    ints: 128
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "res3_1_branch2c_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res3_1_branch2c_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res3_2_branch2a_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 128
+    ints: 512
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "res3_2_branch2a_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_2_branch2a_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_2_branch2b_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 128
+    ints: 128
+    ints: 3
+    ints: 3
+  }
+}
+op {
+  output: "res3_2_branch2b_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_2_branch2b_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_2_branch2c_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 512
+    ints: 128
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "res3_2_branch2c_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res3_2_branch2c_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res3_3_branch2a_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 128
+    ints: 512
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "res3_3_branch2a_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_3_branch2a_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_3_branch2b_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 128
+    ints: 128
+    ints: 3
+    ints: 3
+  }
+}
+op {
+  output: "res3_3_branch2b_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_3_branch2b_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_3_branch2c_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 512
+    ints: 128
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "res3_3_branch2c_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res3_3_branch2c_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res4_0_branch2a_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 256
+    ints: 512
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "res4_0_branch2a_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_0_branch2a_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_0_branch2b_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 256
+    ints: 256
+    ints: 3
+    ints: 3
+  }
+}
+op {
+  output: "res4_0_branch2b_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_0_branch2b_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_0_branch2c_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 1024
+    ints: 256
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "res4_0_branch2c_bn_s"
   type: "ConstantFill"
   arg {
     name: "value"
@@ -3532,7 +932,7 @@ op {
   }
 }
 op {
-  output: "shortcut_projection_7_spatbn_rm"
+  output: "res4_0_branch2c_bn_b"
   type: "ConstantFill"
   arg {
     name: "value"
@@ -3544,19 +944,7 @@ op {
   }
 }
 op {
-  output: "shortcut_projection_7_spatbn_s"
-  type: "ConstantFill"
-  arg {
-    name: "value"
-    f: 1
-  }
-  arg {
-    name: "shape"
-    ints: 1024
-  }
-}
-op {
-  output: "shortcut_projection_7_w"
+  output: "res4_0_branch1_w"
   type: "XavierFill"
   arg {
     name: "shape"
@@ -3564,5 +952,2193 @@ op {
     ints: 512
     ints: 1
     ints: 1
+  }
+}
+op {
+  output: "res4_0_branch1_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 1024
+  }
+}
+op {
+  output: "res4_0_branch1_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 1024
+  }
+}
+op {
+  output: "res4_1_branch2a_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 256
+    ints: 1024
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "res4_1_branch2a_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_1_branch2a_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_1_branch2b_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 256
+    ints: 256
+    ints: 3
+    ints: 3
+  }
+}
+op {
+  output: "res4_1_branch2b_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_1_branch2b_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_1_branch2c_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 1024
+    ints: 256
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "res4_1_branch2c_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 1024
+  }
+}
+op {
+  output: "res4_1_branch2c_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 1024
+  }
+}
+op {
+  output: "res4_2_branch2a_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 256
+    ints: 1024
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "res4_2_branch2a_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_2_branch2a_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_2_branch2b_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 256
+    ints: 256
+    ints: 3
+    ints: 3
+  }
+}
+op {
+  output: "res4_2_branch2b_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_2_branch2b_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_2_branch2c_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 1024
+    ints: 256
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "res4_2_branch2c_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 1024
+  }
+}
+op {
+  output: "res4_2_branch2c_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 1024
+  }
+}
+op {
+  output: "res4_3_branch2a_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 256
+    ints: 1024
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "res4_3_branch2a_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_3_branch2a_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_3_branch2b_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 256
+    ints: 256
+    ints: 3
+    ints: 3
+  }
+}
+op {
+  output: "res4_3_branch2b_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_3_branch2b_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_3_branch2c_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 1024
+    ints: 256
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "res4_3_branch2c_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 1024
+  }
+}
+op {
+  output: "res4_3_branch2c_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 1024
+  }
+}
+op {
+  output: "res4_4_branch2a_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 256
+    ints: 1024
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "res4_4_branch2a_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_4_branch2a_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_4_branch2b_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 256
+    ints: 256
+    ints: 3
+    ints: 3
+  }
+}
+op {
+  output: "res4_4_branch2b_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_4_branch2b_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_4_branch2c_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 1024
+    ints: 256
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "res4_4_branch2c_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 1024
+  }
+}
+op {
+  output: "res4_4_branch2c_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 1024
+  }
+}
+op {
+  output: "res4_5_branch2a_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 256
+    ints: 1024
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "res4_5_branch2a_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_5_branch2a_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_5_branch2b_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 256
+    ints: 256
+    ints: 3
+    ints: 3
+  }
+}
+op {
+  output: "res4_5_branch2b_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_5_branch2b_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_5_branch2c_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 1024
+    ints: 256
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "res4_5_branch2c_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 1024
+  }
+}
+op {
+  output: "res4_5_branch2c_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 1024
+  }
+}
+op {
+  output: "res5_0_branch2a_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 512
+    ints: 1024
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "res5_0_branch2a_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res5_0_branch2a_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res5_0_branch2b_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 512
+    ints: 512
+    ints: 3
+    ints: 3
+  }
+}
+op {
+  output: "res5_0_branch2b_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res5_0_branch2b_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res5_0_branch2c_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 2048
+    ints: 512
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "res5_0_branch2c_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 2048
+  }
+}
+op {
+  output: "res5_0_branch2c_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 2048
+  }
+}
+op {
+  output: "res5_0_branch1_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 2048
+    ints: 1024
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "res5_0_branch1_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 2048
+  }
+}
+op {
+  output: "res5_0_branch1_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 2048
+  }
+}
+op {
+  output: "res5_1_branch2a_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 512
+    ints: 2048
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "res5_1_branch2a_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res5_1_branch2a_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res5_1_branch2b_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 512
+    ints: 512
+    ints: 3
+    ints: 3
+  }
+}
+op {
+  output: "res5_1_branch2b_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res5_1_branch2b_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res5_1_branch2c_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 2048
+    ints: 512
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "res5_1_branch2c_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 2048
+  }
+}
+op {
+  output: "res5_1_branch2c_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 2048
+  }
+}
+op {
+  output: "res5_2_branch2a_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 512
+    ints: 2048
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "res5_2_branch2a_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res5_2_branch2a_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res5_2_branch2b_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 512
+    ints: 512
+    ints: 3
+    ints: 3
+  }
+}
+op {
+  output: "res5_2_branch2b_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res5_2_branch2b_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res5_2_branch2c_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 2048
+    ints: 512
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "res5_2_branch2c_bn_s"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 2048
+  }
+}
+op {
+  output: "res5_2_branch2c_bn_b"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 2048
+  }
+}
+op {
+  output: "pred_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 1000
+    ints: 2048
+  }
+}
+op {
+  output: "pred_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 1000
+  }
+}
+op {
+  output: "res_conv1_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "res_conv1_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "res2_0_branch2a_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "res2_0_branch2a_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "res2_0_branch2b_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "res2_0_branch2b_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "res2_0_branch2c_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res2_0_branch2c_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res2_0_branch1_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res2_0_branch1_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res2_1_branch2a_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "res2_1_branch2a_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "res2_1_branch2b_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "res2_1_branch2b_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "res2_1_branch2c_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res2_1_branch2c_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res2_2_branch2a_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "res2_2_branch2a_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "res2_2_branch2b_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "res2_2_branch2b_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "res2_2_branch2c_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res2_2_branch2c_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res3_0_branch2a_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_0_branch2a_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_0_branch2b_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_0_branch2b_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_0_branch2c_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res3_0_branch2c_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res3_0_branch1_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res3_0_branch1_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res3_1_branch2a_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_1_branch2a_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_1_branch2b_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_1_branch2b_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_1_branch2c_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res3_1_branch2c_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res3_2_branch2a_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_2_branch2a_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_2_branch2b_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_2_branch2b_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_2_branch2c_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res3_2_branch2c_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res3_3_branch2a_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_3_branch2a_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_3_branch2b_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_3_branch2b_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "res3_3_branch2c_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res3_3_branch2c_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res4_0_branch2a_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_0_branch2a_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_0_branch2b_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_0_branch2b_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_0_branch2c_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 1024
+  }
+}
+op {
+  output: "res4_0_branch2c_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 1024
+  }
+}
+op {
+  output: "res4_0_branch1_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 1024
+  }
+}
+op {
+  output: "res4_0_branch1_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 1024
+  }
+}
+op {
+  output: "res4_1_branch2a_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_1_branch2a_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_1_branch2b_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_1_branch2b_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_1_branch2c_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 1024
+  }
+}
+op {
+  output: "res4_1_branch2c_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 1024
+  }
+}
+op {
+  output: "res4_2_branch2a_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_2_branch2a_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_2_branch2b_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_2_branch2b_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_2_branch2c_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 1024
+  }
+}
+op {
+  output: "res4_2_branch2c_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 1024
+  }
+}
+op {
+  output: "res4_3_branch2a_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_3_branch2a_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_3_branch2b_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_3_branch2b_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_3_branch2c_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 1024
+  }
+}
+op {
+  output: "res4_3_branch2c_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 1024
+  }
+}
+op {
+  output: "res4_4_branch2a_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_4_branch2a_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_4_branch2b_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_4_branch2b_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_4_branch2c_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 1024
+  }
+}
+op {
+  output: "res4_4_branch2c_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 1024
+  }
+}
+op {
+  output: "res4_5_branch2a_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_5_branch2a_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_5_branch2b_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_5_branch2b_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "res4_5_branch2c_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 1024
+  }
+}
+op {
+  output: "res4_5_branch2c_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 1024
+  }
+}
+op {
+  output: "res5_0_branch2a_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res5_0_branch2a_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res5_0_branch2b_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res5_0_branch2b_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res5_0_branch2c_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 2048
+  }
+}
+op {
+  output: "res5_0_branch2c_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 2048
+  }
+}
+op {
+  output: "res5_0_branch1_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 2048
+  }
+}
+op {
+  output: "res5_0_branch1_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 2048
+  }
+}
+op {
+  output: "res5_1_branch2a_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res5_1_branch2a_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res5_1_branch2b_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res5_1_branch2b_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res5_1_branch2c_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 2048
+  }
+}
+op {
+  output: "res5_1_branch2c_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 2048
+  }
+}
+op {
+  output: "res5_2_branch2a_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res5_2_branch2a_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res5_2_branch2b_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res5_2_branch2b_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 512
+  }
+}
+op {
+  output: "res5_2_branch2c_bn_rm"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 0
+  }
+  arg {
+    name: "shape"
+    ints: 2048
+  }
+}
+op {
+  output: "res5_2_branch2c_bn_riv"
+  type: "ConstantFill"
+  arg {
+    name: "value"
+    f: 1
+  }
+  arg {
+    name: "shape"
+    ints: 2048
   }
 }
