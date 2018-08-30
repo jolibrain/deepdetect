@@ -149,12 +149,6 @@ namespace dd {
       }
     }
 
-    void reset_fillers(const caffe2::NetDef &net, caffe2::NetDef &init) {
-      std::map<std::string, caffe2::OperatorDef> fillers;
-      collect_filler_types(net, fillers);
-      apply_filler_types(init, fillers);
-    }
-
     // Some values (e.g. the number of classes) are present several times inside init nets.
     // This class stores pointers to integers that represent the same value.
     // Some of them may be multiples of one another, so a coefficient is linked to each pointer.
@@ -193,21 +187,24 @@ namespace dd {
 
       void fetch_pointers(const caffe2::NetDef &init_net) {
 
+	// Make a copy
+	std::map<std::string, std::pair<int, float>> blobs = _blobs;
+
 	// Check if the fillers output are registered
 	for (const caffe2::OperatorDef &filler : init_net.op()) {
-	  const auto &blob = _blobs.find(filler.output(0));
-	  if (blob == _blobs.end()) {
+	  const auto &blob = blobs.find(filler.output(0));
+	  if (blob == blobs.end()) {
 	    continue;
 	  }
 
 	  // Keep a pointer to the shape
 	  add_ptr(filler, blob->second.first, blob->second.second);
-	  _blobs.erase(blob);
+	  blobs.erase(blob);
 	}
 
 	// Assert that every blob was found
-	const auto &blob = _blobs.begin();
-	if (blob != _blobs.end()) {
+	const auto &blob = blobs.begin();
+	if (blob != blobs.end()) {
 	  CAFFE_THROW("Can't access ", blob->first, " shape");
 	}
 
@@ -222,6 +219,13 @@ namespace dd {
 
     public:
 
+      inline void get_blobs(std::set<std::string> &blobs) {
+	blobs.clear();
+	for (const std::pair<std::string, std::pair<int, float>> &it : _blobs) {
+	  blobs.insert(it.first);
+	}
+      }
+
       inline int get_value() const {
 	return *_ptrs[0].first / _ptrs[0].second;
       }
@@ -233,7 +237,6 @@ namespace dd {
 	  }
 	}
       }
-
     };
 
     // Group of function used to find which integers are defining the output shape of a net
@@ -334,12 +337,40 @@ namespace dd {
 	  }}
       });
 
-    void set_nclasses(const caffe2::NetDef &net, caffe2::NetDef &init_net, int nclasses) {
-      OutputShapePtrs(net, init_net).set_value(nclasses);
+    //XXX Used by debug.cc
+    void _reset_init_net(const caffe2::NetDef &net, caffe2::NetDef &init) {
+      std::map<std::string, caffe2::OperatorDef> fillers;
+      collect_filler_types(net, fillers);
+      apply_filler_types(init, fillers);
     }
 
-    int get_nclasses(const caffe2::NetDef &net, const caffe2::NetDef &init_net) {
-      return OutputShapePtrs(net, init_net).get_value();
+    void set_nclasses(const caffe2::NetDef &net, caffe2::NetDef &init, int nclasses) {
+
+      // Reshape the blobs defining the output shape
+      std::set<std::string> shape;
+      OutputShapePtrs ptrs(net, init);
+      ptrs.set_value(nclasses);
+      ptrs.get_blobs(shape);
+
+      // Collect every fillers
+      std::map<std::string, caffe2::OperatorDef> fillers;
+      collect_filler_types(net, fillers);
+
+      // Filter them
+      for (auto it = fillers.begin(); it != fillers.end();) {
+	if (shape.find(it->first) == shape.end()) {
+	  it = fillers.erase(it);
+	} else {
+	  ++it;
+	}
+      }
+
+      // Reset them
+      apply_filler_types(init, fillers);
+    }
+
+    int get_nclasses(const caffe2::NetDef &net, const caffe2::NetDef &init) {
+      return OutputShapePtrs(net, init).get_value();
     }
 
     /*
@@ -487,7 +518,6 @@ namespace dd {
       }
     };
 
-    //TODO fix
     class adagrad : public AbstractOptimizer {
       using AbstractOptimizer::AbstractOptimizer;
       void set_default_decay() { _decay = 1.f; }
@@ -498,7 +528,6 @@ namespace dd {
       }
     };
 
-    //TODO fix
     class adam : public AbstractOptimizer {
       using AbstractOptimizer::AbstractOptimizer;
       bool negative_base_lr() { return true; }

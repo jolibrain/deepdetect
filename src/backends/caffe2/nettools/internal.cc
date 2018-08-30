@@ -50,34 +50,158 @@ namespace dd {
 
       });
 
-    const std::map<std::string, std::set<int> > trainable_ops({
-	{"Add", {}},
-	{"AffineScale", {}},
-	{"AveragedLoss", {}},
-	{"AveragePool", {}},
-	{"BackMean", {}},
-	{"Concat", {}},
-	{"Conv", {}},
-	{"Diagonal", {}},
-	{"Dropout", {}},
-	{"EnsureCPUOutput", {}},
-	{"FC", {}},
-	{"LabelCrossEntropy", {}},
-	{"LRN", {}},
-	{"MaxPool", {}},
-	{"Mul", {}},
-	{"RecurrentNetwork", {}},
-	{"Relu", {}},
-	{"Reshape", {}},
-	{"Scale", {}},
-	{"Slice", {}},
-	{"Softmax", {}},
-	{"SpatialBN", {3, 4}},
-	{"SquaredL2", {}},
-	{"SquaredL2Channel", {}},
-	{"StopGradient", {}},
-	{"Sub", {}},
-	{"Sum", {}}
+    // Parametrable functions
+
+    template <class OpDef>
+    GetOpInputFct _fill_trainable_inputs() {
+      return [](const caffe2::OperatorDef &op, std::set<std::string> &inputs) {
+	auto index = OpDef::computed.begin();
+	auto end = OpDef::computed.end();
+	int i = 0;
+	for (const std::string &input : op.input()) {
+	  if (index != end && *index == i++) {
+	    ++index;
+	  } else {
+	    inputs.insert(input);
+	  }
+	}
+      };
+    }
+
+    template <class OpDef>
+    GetOpInputFct _fill_computed_inputs() {
+      return [](const caffe2::OperatorDef &op, std::set<std::string> &inputs) {
+	auto index = OpDef::computed.begin();
+	auto end = OpDef::computed.end();
+	int i = 0;
+	for (const std::string &input : op.input()) {
+	  if (index != end && *index == i++) {
+	    ++index;
+	    inputs.insert(input);
+	  }
+	}
+      };
+    }
+
+    template <class OpDef>
+    GetOpOutputFct _fill_needed_outputs() {
+      return [](const caffe2::OperatorDef &op, std::vector<std::string> &outputs) {
+
+	// Skip the already existing outputs
+	const auto &op_inputs = op.input();
+	const auto &op_outputs = op.output();
+	int nb_outputs = op_outputs.size();
+	for (const auto &output : OpDef::needed) {
+	  if (nb_outputs-- > 0) {
+	    continue;
+	  }
+
+	  // Should not be a prediction output
+	  CAFFE_ENFORCE(output.train_only);
+
+	  // Get the base name
+	  std::string base_name;
+	  if (output.use_input) {
+	    base_name = op_inputs[output.blob_index];
+	  } else {
+	    base_name = op_outputs[output.blob_index];
+	  }
+
+	  // Store the new blob
+	  outputs.push_back(base_name + output.blob_suffix);
+	}
+      };
+    }
+
+    template <class OpDef>
+    inline GetOpBlobsFcts _operator_blob_getters() {
+      return std::make_tuple
+	(_fill_trainable_inputs<OpDef>(),
+	 _fill_computed_inputs<OpDef>(),
+	 _fill_needed_outputs<OpDef>());
+    }
+
+    // Classes used as parameters
+
+    class OutputDef {
+    public:
+      bool train_only;
+      bool use_input;
+      int blob_index;
+      std::string blob_suffix;
+      OutputDef(bool train, bool input, int index, const std::string &suffix):
+	train_only(train), use_input(input), blob_index(index), blob_suffix(suffix) {}
+    };
+
+    // Default
+    class DefaultOperatorDef { public:
+      static const std::set<int> computed;
+      static const std::vector<OutputDef> needed;
+    };
+    const std::set<int> DefaultOperatorDef::computed;
+    const std::vector<OutputDef> DefaultOperatorDef::needed;
+
+    // Incstance normalization
+    class InstanceNormDef { public:
+      static const std::set<int> computed;
+      static const std::vector<OutputDef> needed;
+    };
+    const std::set<int> InstanceNormDef::computed;
+    const std::vector<OutputDef> InstanceNormDef::needed({
+        OutputDef(false, false, 0, "" ), // output (default)
+	OutputDef(true, false, 0, "_sm"), // saved_min
+	OutputDef(true, false, 0, "_siv") // saved_inv_stdev
+    });
+
+    // Batch normalization
+    class SpatialBNDef { public:
+      static const std::set<int> computed;
+      static const std::vector<OutputDef> needed;
+    };
+    const std::set<int> SpatialBNDef::computed({3, 4}); // Mean & Var
+    const std::vector<OutputDef> SpatialBNDef::needed({
+        OutputDef(false, false, 0, ""), // output (default)
+	OutputDef(true, true, 3, ""), // mean (inplace)
+	OutputDef(true, true, 4, ""), // var (inplace)
+	OutputDef(true, false, 0, "_sm"), // saved_mean
+	OutputDef(true, false, 0, "_siv") // saved_var
+    });
+
+    // Register
+
+    const GetOpBlobsFcts _get_blobs = _operator_blob_getters<DefaultOperatorDef>();
+    const GetOpBlobsFcts _get_blobs_instance_norm = _operator_blob_getters<InstanceNormDef>();
+    const GetOpBlobsFcts _get_blobs_spatial_bn = _operator_blob_getters<SpatialBNDef>();
+
+    const std::map<std::string, GetOpBlobsFcts> trainable_ops({
+	{"Add", _get_blobs},
+	{"AffineScale", _get_blobs},
+	{"AveragedLoss", _get_blobs},
+	{"AveragePool", _get_blobs},
+	{"BackMean", _get_blobs},
+	{"Concat", _get_blobs},
+	{"Conv", _get_blobs},
+	{"Diagonal", _get_blobs},
+	{"Dropout", _get_blobs},
+	{"EnsureCPUOutput", _get_blobs},
+	{"FC", _get_blobs},
+	{"InstanceNorm", _get_blobs_instance_norm},
+	{"LabelCrossEntropy", _get_blobs},
+	{"LRN", _get_blobs},
+	{"MaxPool", _get_blobs},
+	{"Mul", _get_blobs},
+	{"RecurrentNetwork", _get_blobs},
+	{"Relu", _get_blobs},
+	{"Reshape", _get_blobs},
+	{"Scale", _get_blobs},
+	{"Slice", _get_blobs},
+	{"Softmax", _get_blobs},
+	{"SpatialBN", _get_blobs_spatial_bn},
+	{"SquaredL2", _get_blobs},
+	{"SquaredL2Channel", _get_blobs},
+	{"StopGradient", _get_blobs},
+	{"Sub", _get_blobs},
+	{"Sum", _get_blobs}
       });
 
     const std::string mean_square_suffix("_meansq");

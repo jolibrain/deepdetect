@@ -28,11 +28,12 @@ namespace dd {
   Caffe2Model::Caffe2Model(const APIData &ad)
     :MLModel()
   {
-    static const std::map<std::string, std::string *> names =
+    std::map<std::string, std::string *> names =
       {
 	{ "predictf", &_predict },
 	{ "initf", &_init },
-	{ "corresp", &_corresp}
+	{ "corresp", &_corresp },
+	{ "weights", &_weights }
       };
 
     // Update from API
@@ -103,13 +104,24 @@ namespace dd {
     init.SerializeToOstream(&f);
   }
 
-  void Caffe2Model::list_template_pbtxts(const std::string &name,
-					 std::map<std::string, std::string> &files) {
-    const std::set<std::string> nets({"predict_net", "init_net"});
+  void Caffe2Model::list_template_files(const std::string &name,
+					std::map<std::string, std::string> &files,
+					bool external_weights) {
+
+    // Path manipulation
     std::string source = this->_mlmodel_template_repo + '/' + name;
-    for (const std::string &net : nets) {
-      std::string pbtxt = source + '/' + net + ".pbtxt";
-      files[pbtxt] = _repo + '/' + net + ".pb";
+    auto set_path = [&](const std::string &net, const std::string &remote="") {
+      files[remote.empty() ? source + '/' + net + ".pbtxt" : remote] = _repo + '/' + net + ".pb";
+    };
+
+    // Choose the files
+    set_path("predict_net");
+    if (!external_weights) {
+      set_path("init_net");
+    } else if (_weights.empty()) {
+      throw MLLibBadParamException("No external weights specified");
+    } else {
+      set_path("init_net", _weights);
     }
   }
 }

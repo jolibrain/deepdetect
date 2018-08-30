@@ -42,23 +42,16 @@ namespace dd {
      */
 
     bool is_trainable(const caffe2::OperatorDef &op,
-		      std::set<std::string> *trainable = NULL,
-		      std::set<std::string> *computed = NULL) {
+		      std::set<std::string> *trainable,
+		      std::set<std::string> *computed,
+		      std::vector<std::string> *needed) {
       auto it = trainable_ops.find(op.type());
       if (it == trainable_ops.end()) {
 	return false;
       }
-      auto index = it->second.begin();
-      auto end = it->second.end();
-      int i = 0;
-      for (const std::string &input : op.input()) {
-	if (index == end || *index != i++) {
-	  if (trainable) trainable->insert(input);
-	} else {
-	  ++index;
-	  if (computed) computed->insert(input);
-	}
-      }
+      if (trainable) std::get<0>(it->second)(op, *trainable);
+      if (computed) std::get<1>(it->second)(op, *computed);
+      if (needed) std::get<2>(it->second)(op, *needed);
       return true;
     }
 
@@ -158,16 +151,22 @@ namespace dd {
       std::set<std::string> external_inputs(net.external_input().begin(),
 					    net.external_input().end());
       std::map<std::string, int> input_count;
-      for (const caffe2::OperatorDef &op : net.op()) {
+      for (caffe2::OperatorDef &op : *net.mutable_op()) {
 
-	if (!is_trainable(op)) {
+	std::vector<std::string> new_outputs;
+	if (!is_trainable(op, NULL, NULL, &new_outputs)) {
 	  // If we don't know whether an operator should or shouldn't be part of the gradient,
 	  // we won't to the gradient at all and throw an error instead.
 	  CAFFE_ENFORCE(non_trainable_ops.find(op.type()) != non_trainable_ops.end());
 	  continue;
 	}
 
+	// Register the blobs and operators
+	for (const std::string &output : new_outputs) {
+	  op.add_output(output);
+	}
 	gradient_ops.push_back(op);
+
 	int device = -1;
 #ifndef CPU_ONLY
 	if (op.device_option().device_type() == caffe2::CUDA) {
@@ -346,7 +345,7 @@ namespace dd {
 
 	std::set<std::string> trainable;
 	std::set<std::string> computed;
-	if (!is_trainable(op, &trainable, &computed)) {
+	if (!is_trainable(op, &trainable, &computed, NULL)) {
 	  continue;
 	}
 

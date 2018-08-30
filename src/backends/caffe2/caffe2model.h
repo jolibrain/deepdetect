@@ -50,9 +50,14 @@ namespace dd {
 		     const std::map<std::string, std::string> &blobs);
 
     /**
-     * \brief list the template's pbtxt files and the corresponding local pb file
+     * \brief list the template's files
+     * @param name name of the template
+     * @param files correspondance between remote and local files
+     * @param external_weights whether to use the template weights or thoses set in the api data
      */
-    void list_template_pbtxts(const std::string &name, std::map<std::string, std::string> &files);
+    void list_template_files(const std::string &name,
+			     std::map<std::string, std::string> &files,
+			     bool external_weights);
 
     /**
      * \brief assigns a class name to each element of the vector (the vector is not resized)
@@ -68,6 +73,7 @@ namespace dd {
     std::string _lr_state;
 
     std::string _model_template; // model template name, if any.
+    std::string _weights; // external weights, if any
 
     // Files path (empty if non-existant)
     std::string _predict;
