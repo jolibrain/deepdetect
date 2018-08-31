@@ -149,7 +149,7 @@ namespace dd
     bool bn = false;
     if (ad_mllib.has("bn"))
       bn = ad_mllib.get("bn").get<bool>();
-    int conv_kernel_size = 3;
+    int conv_kernel_size = 2;
     int conv1d_early_kernel_size = 7;
     std::string bottom = "data";
     bool has_deconv = false;
@@ -165,14 +165,19 @@ namespace dd
 	  {
 	    if (!flat1dconv)
 	      {
-		int kernel_size = conv_kernel_size;
+		int conv_pad = 0;
 		if (has_deconv)
-		  kernel_size = 1;
+		  conv_pad = 1;
 		top_conv = add_basic_block(this->_net_params,bottom,top,cr_layers.at(l)._nconv,cr_layers.at(l)._num_output,
-					   kernel_size,0,1,activation,0.0,bn,2,2,has_deconv?"NONE":"MAX");
-		if (!has_deconv)
+					   conv_kernel_size,conv_pad,1,activation,0.0,bn,2,2,has_deconv?"NONE":"MAX");
+		if (has_deconv && l == cr_layers.size()-1)
 		  top_conv = add_basic_block(this->_dnet_params,bottom,top,cr_layers.at(l)._nconv,cr_layers.at(l)._num_output,
-					     conv_kernel_size,0,1,activation,0.0,bn,2,2,has_deconv?"NONE":"MAX");
+					     1,conv_pad,1,activation,0.0,bn,1,1,"NONE");
+		else
+		  top_conv = add_basic_block(this->_dnet_params,bottom,top,cr_layers.at(l)._nconv,cr_layers.at(l)._num_output,
+					     conv_kernel_size,conv_pad,1,activation,0.0,bn,2,2,has_deconv?"NONE":"MAX");
+
+
 	      }
 	    else
 	      {
@@ -186,6 +191,8 @@ namespace dd
 	  {
 	    add_deconv(this->_net_params,top_conv,top,cr_layers.at(l)._num_output,2,0,2);
 	    add_act(this->_net_params,top,activation);
+	    add_deconv(this->_dnet_params,top_conv,top,cr_layers.at(l)._num_output,2,0,2);
+	    add_act(this->_dnet_params,top,activation);
 	    has_deconv = true;
 	  }
 	//TODO: upsampling UR
@@ -219,7 +226,7 @@ namespace dd
     else if (autoencoder)
       {
 	add_sigmoid_crossentropy_loss(this->_net_params,bottom,"data","losst",ntargets);
-	add_sigmoid_crossentropy_loss(this->_dnet_params,bottom,"","loss",ntargets,true);
+	add_act(this->_dnet_params,bottom,"Sigmoid");
       }
     else
       {

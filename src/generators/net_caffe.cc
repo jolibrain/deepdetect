@@ -315,7 +315,8 @@ namespace dd
 			       const std::string &bottom,
 			       const std::string &activation,
 			       const double &elu_alpha,
-			       const double &negative_slope)
+			       const double &negative_slope,
+			       const bool &test)
   {
     caffe::LayerParameter *lparam = CaffeCommon::add_layer(net_param,bottom,bottom,
 							   "act_" + activation + "_" + bottom,activation);
@@ -323,6 +324,11 @@ namespace dd
       lparam->mutable_elu_param()->set_alpha(elu_alpha);
     if (activation == "ReLU" && negative_slope != 0.0)
       lparam->mutable_relu_param()->set_negative_slope(negative_slope);
+    if (test)
+      {
+	caffe::NetStateRule *nsr = lparam->add_include();
+	nsr->set_phase(caffe::TEST);
+      }
   }
 
   void NetLayersCaffe::add_pooling(caffe::NetParameter *net_param,
@@ -467,6 +473,10 @@ namespace dd
 	lparam->add_bottom(label);
 	caffe::NetStateRule *nsr = lparam->add_include();
 	nsr->set_phase(caffe::TRAIN);
+	caffe::LossParameter *nlp = lparam->mutable_loss_param();
+	nlp->set_normalization((caffe::LossParameter_NormalizationMode)0); // FULL
+
+	add_act(net_param,ln_tmp,"Sigmoid",1.0,0.0,true); // test
       }
   }
   

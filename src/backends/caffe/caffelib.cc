@@ -1,7 +1,7 @@
 
 /**
  * DeepDetect
- * Copyright (c) 2014-2015 Emmanuel Benazera
+ * Copyright (c) 2014-2018 Emmanuel Benazera
  * Author: Emmanuel Benazera <beniz@droidnik.fr>
  *
  * This file is part of deepdetect.
@@ -173,6 +173,8 @@ namespace dd
       {
 	caffe::NetParameter net_param,deploy_net_param;
 	configure_convnet_template(ad,this->_inputc,net_param,deploy_net_param);
+	if (typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
+	  configure_image_augmentation(ad,net_param);
 	caffe::WriteProtoToTextFile(net_param,dest_net);
 	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
       }
@@ -180,6 +182,8 @@ namespace dd
       {
 	caffe::NetParameter net_param,deploy_net_param;
 	configure_resnet_template(ad,this->_inputc,net_param,deploy_net_param);
+	if (typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
+	  configure_image_augmentation(ad,net_param);
 	caffe::WriteProtoToTextFile(net_param,dest_net);
 	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
       }
@@ -298,38 +302,7 @@ namespace dd
               }
 	      }
       } // end multi_label
-
-	if ((ad.has("rotate") && ad.get("rotate").get<bool>()) 
-	    || (ad.has("mirror") && ad.get("mirror").get<bool>())
-	    || (ad.has("crop_size")))
-	  {
-	    caffe::LayerParameter *lparam = net_param.mutable_layer(0); // data input layer
-	    if (lparam->type() != "DenseImageData")
-	      {
-		if (ad.has("mirror"))
-		  lparam->mutable_transform_param()->set_mirror(ad.get("mirror").get<bool>());
-		if (ad.has("rotate"))
-		  lparam->mutable_transform_param()->set_rotate(ad.get("rotate").get<bool>());
-		if (ad.has("crop_size"))
-		  {
-		    _crop_size = ad.get("crop_size").get<int>();
-		    lparam->mutable_transform_param()->set_crop_size(_crop_size);
-		    caffe::LayerParameter *dlparam = net_param.mutable_layer(1); // test input layer
-		    dlparam->mutable_transform_param()->set_crop_size(_crop_size);
-		  }
-		else lparam->mutable_transform_param()->clear_crop_size();
-	      }
-	    else
-	      {
-		if (ad.has("mirror"))
-		  lparam->mutable_dense_image_data_param()->set_mirror(ad.get("mirror").get<bool>());
-		if (ad.has("rotate"))
-		  lparam->mutable_dense_image_data_param()->set_rotate(ad.get("rotate").get<bool>());
-		lparam->mutable_dense_image_data_param()->set_new_height(this->_inputc.height());
-		lparam->mutable_dense_image_data_param()->set_new_width(this->_inputc.width());
-		// XXX: DenseImageData supports crop_height and crop_width
-	      }
-	  }
+      
 	// input size
 	caffe::LayerParameter *lparam = net_param.mutable_layer(1); // test
 	caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(0);
@@ -347,9 +320,10 @@ namespace dd
 	    dlparam->mutable_memory_data_param()->set_width(width);
 	  }
 		
-	// noise parameters
-	configure_noise_and_distort(ad,net_param);
-
+	// image data augmentation
+	if (typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
+	  configure_image_augmentation(ad,net_param);
+	    
 	// adapt number of neuron output
 	update_protofile_classes(net_param);
 	update_protofile_classes(deploy_net_param);
@@ -450,9 +424,46 @@ namespace dd
 
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_noise_and_distort(const APIData &ad,
-													caffe::NetParameter &net_param)
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_image_augmentation(const APIData &ad,
+													 caffe::NetParameter &net_param)
   {
+    if ((ad.has("rotate") && ad.get("rotate").get<bool>()) 
+	|| (ad.has("mirror") && ad.get("mirror").get<bool>())
+	|| ad.has("crop_size") || ad.has("scale"))
+      {
+	caffe::LayerParameter *lparam = net_param.mutable_layer(0); // data input layer
+	if (lparam->type() != "DenseImageData")
+	  {
+	    if (ad.has("mirror"))
+	      lparam->mutable_transform_param()->set_mirror(ad.get("mirror").get<bool>());
+	    if (ad.has("rotate"))
+	      lparam->mutable_transform_param()->set_rotate(ad.get("rotate").get<bool>());
+	    if (ad.has("crop_size"))
+	      {
+		_crop_size = ad.get("crop_size").get<int>();
+		lparam->mutable_transform_param()->set_crop_size(_crop_size);
+		caffe::LayerParameter *dlparam = net_param.mutable_layer(1); // test input layer
+		dlparam->mutable_transform_param()->set_crop_size(_crop_size);
+	      }
+	    else lparam->mutable_transform_param()->clear_crop_size();
+	    if (ad.get("scale").get<double>() != 1.0)
+	      {
+		lparam->mutable_transform_param()->set_scale(ad.get("scale").get<double>());
+		caffe::LayerParameter *dlparam = net_param.mutable_layer(1); // test input layer
+		dlparam->mutable_transform_param()->set_scale(ad.get("scale").get<double>());
+	      }
+	  }
+	else
+	  {
+	    if (ad.has("mirror"))
+	      lparam->mutable_dense_image_data_param()->set_mirror(ad.get("mirror").get<bool>());
+	    if (ad.has("rotate"))
+	      lparam->mutable_dense_image_data_param()->set_rotate(ad.get("rotate").get<bool>());
+	    lparam->mutable_dense_image_data_param()->set_new_height(this->_inputc.height());
+	    lparam->mutable_dense_image_data_param()->set_new_width(this->_inputc.width());
+	    // XXX: DenseImageData supports crop_height and crop_width
+	  }
+      }
     if (ad.has("noise"))
       {
 	std::vector<std::string> noise_options = {
@@ -1818,6 +1829,8 @@ namespace dd
 
     APIData cad = ad;
     bool has_mean_file = this->_mlmodel._has_mean_file;
+    if (_autoencoder)
+      has_mean_file = false;
     cad.add("has_mean_file",has_mean_file);
     if (ad_output.has("measure"))
       {
@@ -2445,7 +2458,7 @@ namespace dd
 		else mdp->set_batch_size(test_batch_size);
 	      }
 	  }
-	if ((lp->has_transform_param() || inputc._has_mean_file || !inputc._mean_values.empty()))
+	if (!_autoencoder && (lp->has_transform_param() || inputc._has_mean_file || !inputc._mean_values.empty()))
 	  {
 	    caffe::TransformationParameter *tp = lp->mutable_transform_param();
 	    has_mean_file = tp->has_mean_file();
@@ -2948,6 +2961,11 @@ namespace dd
 										       std::string &mltype)
   {
     // XXX: using deploy.prototxt to detect network's task type.
+    if (_autoencoder)
+      {
+	mltype = "autoencoder";
+	return;
+      }
     for (size_t l=0;l<net->layers().size();l++)
       {
 	const boost::shared_ptr<caffe::Layer<float>> &layer = net->layers().at(l);
@@ -2977,6 +2995,7 @@ namespace dd
 	    mltype = "regression";
 	    break;
 	  }
+	
       }
     if (mltype.empty())
       mltype = "classification";

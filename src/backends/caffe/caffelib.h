@@ -96,8 +96,8 @@ namespace dd
      * @param ad the template data object
      * @param net_param the trainng net object
      */
-    static void configure_noise_and_distort(const APIData &ad,
-					    caffe::NetParameter &net_param);
+      void configure_image_augmentation(const APIData &ad,
+				       caffe::NetParameter &net_param);
 
     /**
      * \brief creates neural net instance based on model

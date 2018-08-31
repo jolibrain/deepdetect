@@ -128,7 +128,8 @@ namespace dd
 		 const std::string &bottom,
 		 const std::string &activation,
 		 const double &elu_alpha=1.0,
-		 const double &negative_slope=0.0);
+		 const double &negative_slope=0.0,
+		 const bool &test=false);
 
     void add_pooling(caffe::NetParameter *net_param,
 		     const std::string &bottom,
