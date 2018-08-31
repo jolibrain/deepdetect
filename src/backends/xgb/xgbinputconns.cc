@@ -59,17 +59,17 @@ namespace dd
       //xgboost::RowBatch::Inst inst = batch[ridx];
       auto inst = batch[ridx];
       CHECK_LT(static_cast<unsigned long>(ridx), batch.Size());
-      ret.page_.data.resize(ret.page_.data.size() + inst.size());
-      std::memcpy(dmlc::BeginPtr(ret.page_.data) + ret.page_.offset.back(), inst.data(),
+      ret.page_.data.Resize(ret.page_.data.Size() + inst.size());
+      std::memcpy(dmlc::BeginPtr(ret.page_.data.HostVector()) + ret.page_.offset.HostVector().back(), inst.data(),
 		  sizeof(xgboost::Entry) * inst.size());
-      ret.page_.offset.push_back(ret.page_.offset.back() + inst.size());
+      ret.page_.offset.HostVector().push_back(ret.page_.offset.HostVector().back() + inst.size());
       ret.info.num_nonzero_ += inst.size();
       
-      if (src.info.labels_.size() != 0) {
-	ret.info.labels_.push_back(src.info.labels_[ridx]);
+      if (src.info.labels_.HostVector().size() != 0) {
+	ret.info.labels_.HostVector().push_back(src.info.labels_.HostVector()[ridx]);
       }
-      if (src.info.weights_.size() != 0) {
-	ret.info.weights_.push_back(src.info.weights_[ridx]);
+      if (src.info.weights_.HostVector().size() != 0) {
+	ret.info.weights_.HostVector().push_back(src.info.weights_.HostVector()[ridx]);
       }
       if (src.info.root_index_.size() != 0) {
 	ret.info.root_index_.push_back(src.info.root_index_[ridx]);
@@ -103,7 +103,7 @@ namespace dd
 		&& (ipos = std::find(_label_pos.begin(),_label_pos.end(),i))!=_label_pos.end())
 	      {
 		int pos = std::distance(_label_pos.begin(),ipos);
-		mat.info.labels_.push_back(v+_label_offset[pos]);
+		mat.info.labels_.HostVector().push_back(v+_label_offset[pos]);
 	      }
 	    else if (i == _id_pos)
 	      {
@@ -114,17 +114,17 @@ namespace dd
 	      {
 		if (nan_missing || v != _missing)
 		  {
-		    mat.page_.data.push_back(xgboost::Entry(i,v));
+		    mat.page_.data.HostVector().push_back(xgboost::Entry(i,v));
 		    ++nelem;
 		  }
 	      }
 	    ++lit;
 	  }
-	mat.page_.offset.push_back(mat.page_.offset.back()+nelem);
+	mat.page_.offset.HostVector().push_back(mat.page_.offset.HostVector().back()+nelem);
 	_ids.push_back((*hit)._str);
 	++hit;
       }
-    mat.info.num_nonzero_ = mat.page_.data.size();
+    mat.info.num_nonzero_ = mat.page_.data.HostVector().size();
     xgboost::DMatrix *out = xgboost::DMatrix::Create(std::move(source));
     return out;
   }
@@ -270,7 +270,7 @@ namespace dd
       {
 	long nelem = 0;
 	TxtBowEntry *tbe = static_cast<TxtBowEntry*>((*hit));
-	mat.info.labels_.push_back(tbe->_target);
+	mat.info.labels_.HostVector().push_back(tbe->_target);
 	tbe->reset();
 	while(tbe->has_elt())
 	  {
@@ -279,15 +279,15 @@ namespace dd
 	    tbe->get_next_elt(key,v);
 	    if (xgboost::common::CheckNAN(v) && !nan_missing)
 	      throw InputConnectorBadParamException("NaN value in input data matrix, and missing != NaN");
-	    mat.page_.data.push_back(xgboost::Entry(_vocab[key]._pos,v));
+	    mat.page_.data.HostVector().push_back(xgboost::Entry(_vocab[key]._pos,v));
 	    ++nelem;
 	  }
-	mat.page_.offset.push_back(mat.page_.offset.back()+nelem);
+	mat.page_.offset.HostVector().push_back(mat.page_.offset.HostVector().back()+nelem);
 	_ids.push_back(std::to_string(nid));
 	++nid;
 	++hit;
       }
-    mat.info.num_nonzero_ = mat.page_.data.size();
+    mat.info.num_nonzero_ = mat.page_.data.HostVector().size();
     xgboost::DMatrix *out = xgboost::DMatrix::Create(std::move(source));
     return out;
   }

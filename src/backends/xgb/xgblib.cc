@@ -527,7 +527,7 @@ namespace dd
 	      }
 	    if (_objective == "binary:logistic")
 	      predictions.insert(predictions.begin(),1.0-predictions.back());
-	    bad.add("target",dtest->Info().labels_.at(k));
+	    bad.add("target",dtest->Info().labels_.HostVector().at(k));
 	    bad.add("pred",predictions);
 	    ad_res.add(std::to_string(k),bad);
 	  }
