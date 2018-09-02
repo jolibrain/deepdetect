@@ -23,53 +23,62 @@
 #include "mllibstrategy.h"
 #include "utils/fileops.hpp"
 
-namespace dd
-{
+namespace dd {
+
   Caffe2Model::Caffe2Model(const APIData &ad)
     :MLModel()
   {
-    static const std::map<std::string, std::string *> names =
+    std::map<std::string, std::string *> names =
       {
 	{ "predictf", &_predict },
 	{ "initf", &_init },
-	{ "corresp", &_corresp}
+	{ "corresp", &_corresp },
+	{ "weights", &_weights }
       };
 
+    // Update from API
     for (auto &it : names) {
       if (ad.has(it.first)) {
 	*it.second = ad.get(it.first).get<std::string>();
       }
     }
 
-    if (ad.has("repository"))
-      {
-	if (read_from_repository(ad.get("repository").get<std::string>(),spdlog::get("api")))
-	  throw MLLibBadParamException("error reading or listing Caffe2 models in repository " +
-				       _repo);
-      }
+    // Register repositories
+    this->_repo = ad.get("repository").get<std::string>();
+    this->_mlmodel_template_repo = ad.has("templates") ?
+      ad.get("templates").get<std::string>() : "caffe2"; // Default
+
+    update_from_repository(spdlog::get("api"));
     read_corresp_file();
   }
 
-  int Caffe2Model::read_from_repository(const std::string &repo,
-					const std::shared_ptr<spdlog::logger> &logger)
-  {
+  void Caffe2Model::update_from_repository(const std::shared_ptr<spdlog::logger> &logger) {
     std::map<std::string, std::string *> names =
       {
 	{ "predict_net.pb", &_predict },
 	{ "init_net.pb", &_init },
-	{ "corresp.txt", &_corresp}
+	{ "corresp.txt", &_corresp },
+	{ "mean.pb", &_meanfile },
+	{ "init_state.pb", &_init_state },
+	{ "dbreader_state.pb", &_dbreader_state },
+	{ "dbreader_train_state.pb", &_dbreader_train_state },
+	{ "iter_state.pb", &_iter_state },
+	{ "lr_state.pb", &_lr_state },
       };
-    this->_repo = repo;
+
+    // List available files
     std::unordered_set<std::string> lfiles;
-    int e = fileops::list_directory(repo, true, false, lfiles);
-    if (e) {
-      logger->error("error reading or listing caffe2 models in repository {}",repo);
-      return 1;
+    if (fileops::list_directory(_repo, true, false, lfiles)) {
+      std::string msg("error reading or listing Caffe2 models in repository " + _repo);
+      logger->error(msg);
+      throw MLLibBadParamException(msg);
     }
 
     for (const std::string &file : lfiles) {
       for (auto &it : names) {
+	// if the file name contains a string from the map
 	if (file.find(it.first) != std::string::npos) {
+	  // And if the corresponding variable is still uninitialized
 	  if (it.second->empty()) {
 	    *it.second = file;
 	  }
@@ -77,6 +86,42 @@ namespace dd
 	}
       }
     }
-    return 0;
+  }
+
+  void Caffe2Model::get_hcorresp(std::vector<std::string> &clnames) {
+    int i = 0;
+    for (std::string &name : clnames) {
+      name = get_hcorresp(i++);
+    }
+  }
+
+  void Caffe2Model::write_state(const google::protobuf::Message &init,
+				const std::map<std::string, std::string> &blobs) {
+    for (auto it : blobs) {
+      std::ofstream(_repo + "/" + it.first + "_state.pb") << it.second;
+    }
+    std::ofstream f(_repo + "/init_state.pb");
+    init.SerializeToOstream(&f);
+  }
+
+  void Caffe2Model::list_template_files(const std::string &name,
+					std::map<std::string, std::string> &files,
+					bool external_weights) {
+
+    // Path manipulation
+    std::string source = this->_mlmodel_template_repo + '/' + name;
+    auto set_path = [&](const std::string &net, const std::string &remote="") {
+      files[remote.empty() ? source + '/' + net + ".pbtxt" : remote] = _repo + '/' + net + ".pb";
+    };
+
+    // Choose the files
+    set_path("predict_net");
+    if (!external_weights) {
+      set_path("init_net");
+    } else if (_weights.empty()) {
+      throw MLLibBadParamException("No external weights specified");
+    } else {
+      set_path("init_net", _weights);
+    }
   }
 }
