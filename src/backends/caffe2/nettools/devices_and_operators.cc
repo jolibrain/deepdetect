@@ -206,12 +206,13 @@ namespace dd {
 #define ADD_ARG(t1, t2, function)						\
     caffe2::Argument &add_arg(caffe2::OperatorDef &op,				\
 			      const std::string& name,				\
-			      const t1 &value) {				\
+			      t1 const &value) {				\
       return add_arg<t1, t2>(op, name, value, &caffe2::Argument::function);	\
     }
     //		Our type		Protobuf type		Name of the setter
     ADD_ARG(	int,			long int,		set_i)
     ADD_ARG(	float,			float,			set_f)
+    ADD_ARG(	char const*,		std::string const&,	set_s)
     ADD_ARG(	std::string,		std::string const&,	set_s)
     ADD_ARG(	std::vector<int>,	long int,		add_ints)
     ADD_ARG(	std::vector<float>,	float,			add_floats)
@@ -408,10 +409,12 @@ namespace dd {
      */
 
     // Database
+    #define DB_TYPE "lmdb"
     REGISTER_OP(CreateDB,
 		NO_INPUT,
 		OUTPUT(reader),
-		ADD_ARG(db); ADD_ARG_VALUE(db_type, "lmdb"),
+		ADD_ARG(db);
+		ADD_ARG_VALUE(db_type, DB_TYPE),
 		const std::string &reader,
 		const std::string &db)
     REGISTER_OP(TensorProtosDBInput,
@@ -420,7 +423,8 @@ namespace dd {
 		ADD_ARG(batch_size),
 		const std::string &reader,
 		const std::string &data,
-		const std::string &label, int batch_size)
+		const std::string &label,
+		int batch_size)
     REGISTER_SIMPLE_OP_1I1O(NHWC2NCHW)
 
     // Basic

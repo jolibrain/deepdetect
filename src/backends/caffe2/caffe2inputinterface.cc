@@ -63,7 +63,6 @@ namespace dd {
     caffe2::OperatorDef op;
     int size_per_device = BATCH_SIZE(train) / context.device_count();
 
-    //XXX Manage no-label inputs
     Caffe2NetTools::TensorProtosDBInput(op, DBREADER(train), context._input_blob,
 					context._blob_label, size_per_device);
     Caffe2NetTools::insert_db_input_operator(context, net, op);
@@ -71,7 +70,7 @@ namespace dd {
 
   int Caffe2InputInterface::insert_inputs(Caffe2NetTools::ModelContext &context,
 					  const std::vector<std::string> &blobs, int nb_data,
-					  const InputGetter &get_tensors, bool train) {
+					  const InputGetter &get_tensors, bool train) const {
     // Get the batch size of each device
     std::vector<int> batch_sizes;
     int devices = context.device_count();
@@ -162,7 +161,6 @@ namespace dd {
       }
     };
 
-    //XXX Manage no-label inputs
     std::vector<std::string> blobs({context._input_blob, context._blob_label});
     return insert_inputs(context, blobs, DB_SIZE(train) - already_loaded, get_tensors, train);
   }
@@ -237,7 +235,7 @@ namespace dd {
     set_batch_sizes(ad, true);
   }
 
-  bool Caffe2InputInterface::needs_reconfiguration(const Caffe2InputInterface &inputc) {
+  bool Caffe2InputInterface::needs_reconfiguration(const Caffe2InputInterface &inputc) const {
     return	_is_load_manual		!= inputc._is_load_manual
       ||	_is_testable		!= inputc._is_testable
       ||	((_batch_size		!= inputc._batch_size)		&& !_is_load_manual)

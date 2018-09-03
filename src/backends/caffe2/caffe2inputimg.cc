@@ -89,7 +89,7 @@ namespace dd {
       return;
     }
 
-    // Load tensor
+    // Load
     caffe2::TensorProto mean;
     std::ifstream ifs(_mean_file);
     mean.ParseFromIstream(&ifs);
@@ -98,7 +98,7 @@ namespace dd {
     CAFFE_ENFORCE(_mean.size() == static_cast<size_t>(channels()));
     int chan_size = mean.dims(1) * mean.dims(2);
 
-    // Compute mean values
+    // Compute
     const float *data = mean.float_data().data();
     for (float &value : _mean) {
       const float *data_end = data + chan_size;
@@ -366,9 +366,7 @@ namespace dd {
     std::unique_ptr<caffe2::db::DB> db(caffe2::db::CreateDB(_db_type, dbname, caffe2::db::NEW));
     std::unique_ptr<caffe2::db::Transaction> txn(db->NewTransaction());
 
-    //TODO Manage Dectron-like databases
-    // Detectron : [ images with variable size, im_info blob, bbox, classes, ... ]
-    // Current : [ images with the same size, label blob ]
+    //TODO Manage Dectron-like databases (im_info blob, bbox, classes, ...)
 
     // Prefill db entries
     int chans = channels();
@@ -479,10 +477,10 @@ namespace dd {
     };
 
     return insert_inputs(context, {context._input_blob, context._blob_im_info},
-			 _images.size() - already_loaded, get_tensors);
+			 _images.size() - already_loaded, get_tensors, false);
   }
 
-  bool ImgCaffe2InputFileConn::needs_reconfiguration(const ImgCaffe2InputFileConn &inputc) {
+  bool ImgCaffe2InputFileConn::needs_reconfiguration(const ImgCaffe2InputFileConn &inputc) const {
     return Caffe2InputInterface::needs_reconfiguration(inputc)
       ||	_std	!= inputc._std
       ||	_mean	!= inputc._mean
@@ -490,7 +488,7 @@ namespace dd {
   }
 
   void ImgCaffe2InputFileConn::add_constant_layers(const Caffe2NetTools::ModelContext &context,
-						   caffe2::NetDef &init_net) {
+						   caffe2::NetDef &init_net) const {
     caffe2::OperatorDef op;
     Caffe2NetTools::GivenTensorFill(op, _blob_mean_values, { channels() }, _mean);
     Caffe2NetTools::copy_and_broadcast_operator(context, init_net, op);
@@ -498,7 +496,7 @@ namespace dd {
 
   void ImgCaffe2InputFileConn::
   add_transformation_layers(const Caffe2NetTools::ModelContext &context,
-			    caffe2::NetDef &net_def) {
+			    caffe2::NetDef &net_def) const {
     Caffe2NetTools::ScopedNet net = context.scope_net(net_def);
     Caffe2NetTools::add_external_input(net, _blob_mean_values);
     Caffe2NetTools::Sub(net, context._input_blob, _blob_mean_values,
