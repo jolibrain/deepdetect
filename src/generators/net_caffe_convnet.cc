@@ -149,7 +149,7 @@ namespace dd
     bool bn = false;
     if (ad_mllib.has("bn"))
       bn = ad_mllib.get("bn").get<bool>();
-    int conv_kernel_size = 2;
+    int conv_kernel_size = 3;
     int conv1d_early_kernel_size = 7;
     std::string bottom = "data";
     bool has_deconv = false;
