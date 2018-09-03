@@ -613,7 +613,7 @@ namespace dd {
     /**
      * \brief reads a .pb or .pbtxt file
      */
-    void import_net(caffe2::NetDef &net, const std::string &file);
+    void import_net(caffe2::NetDef &net, const std::string &file, bool unscoped = false);
 
     /**
      * \brief writes a .pb or .pbtxt file

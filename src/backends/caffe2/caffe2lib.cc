@@ -147,7 +147,7 @@ namespace dd {
 
       // Convert the prototxt file
       caffe2::NetDef buffer;
-      Caffe2NetTools::import_net(buffer, file.first);
+      Caffe2NetTools::import_net(buffer, file.first, true);
       Caffe2NetTools::export_net(buffer, file.second);
     }
 
