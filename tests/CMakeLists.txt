@@ -257,15 +257,23 @@ if (USE_CAFFE2)
   endfunction (ASSERT_EXISTS)
 
   # Tar GZ files
+
   ASSERT_EXISTS("boats_and_cars" "imgs" 1)
-  ASSERT_EXISTS("resnet_50_trained" "imgs" 1)
-  ASSERT_EXISTS("resnet_50_trained" "fish.lmdb" 1)
+
+  ASSERT_EXISTS("detectron" "imgs" 1)
+
+  ASSERT_EXISTS("resnet_50_imagenet" "imgs" 1)
+  ASSERT_EXISTS("resnet_50_imagenet" "fish.lmdb" 1)
 
   # Classic files
-  ASSERT_EXISTS("resnet_50_trained" "corresp.txt" 0)
-  ASSERT_EXISTS("resnet_50_trained" "init_net.pb" 0)
-  ASSERT_EXISTS("resnet_50_trained" "predict_net.pb" 0)
+
+  ASSERT_EXISTS("detectron" "corresp.txt" 0)
+  ASSERT_EXISTS("detectron" "init_net.pb" 0)
+  ASSERT_EXISTS("detectron" "predict_net.pb" 0)
+
+  ASSERT_EXISTS("resnet_50_imagenet" "corresp.txt" 0)
   ASSERT_EXISTS("resnet_50_imagenet" "init_net.pb" 0)
+  ASSERT_EXISTS("resnet_50_imagenet" "predict_net.pb" 0)
 
   list(APPEND CAFFE2_COMPLETE_DEPS
     ddetect ${DLIB_LIB_DEPS} ${CUDA_LIB_DEPS} glog gflags gtest gtest_main

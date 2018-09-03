@@ -49,7 +49,6 @@ namespace dd {
       ad.get("templates").get<std::string>() : "caffe2"; // Default
 
     update_from_repository(spdlog::get("api"));
-    read_corresp_file();
   }
 
   void Caffe2Model::update_from_repository(const std::shared_ptr<spdlog::logger> &logger) {
@@ -86,6 +85,8 @@ namespace dd {
 	}
       }
     }
+
+    read_corresp_file();
   }
 
   void Caffe2Model::get_hcorresp(std::vector<std::string> &clnames) {

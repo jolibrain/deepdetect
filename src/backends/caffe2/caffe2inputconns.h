@@ -71,14 +71,14 @@ namespace dd {
      * @param context the context of the net
      * @param init_net the net to update
      */
-    void add_constant_layers(const Caffe2NetTools::ModelContext &, caffe2::NetDef &) {}
+    void add_constant_layers(const Caffe2NetTools::ModelContext &, caffe2::NetDef &) const {}
 
     /**
      * \brief adds operators to format the input
      * @param context the context of the net
      * @param net the net to update
      */
-    void add_transformation_layers(const Caffe2NetTools::ModelContext &, caffe2::NetDef &) {}
+    void add_transformation_layers(const Caffe2NetTools::ModelContext &, caffe2::NetDef &) const {}
 
     // Manual data transformations (from raw data)
 
@@ -115,14 +115,14 @@ namespace dd {
      * @param inputc last version of the input connector
      * @return true if a critical change occurred, false otherwise
      */
-    bool needs_reconfiguration(const Caffe2InputInterface &inputc);
+    bool needs_reconfiguration(const Caffe2InputInterface &inputc) const;
 
     /**
      * \brief compute the databases size (they must be created at this point)
      */
     void compute_db_sizes();
 
-    // Function that populate a vector with input tensors
+    // Function that populate a vector with input tensors (already allocated)
     using InputGetter = std::function<void(std::vector<caffe2::TensorCPU>&)>;
 
     /**
@@ -135,7 +135,7 @@ namespace dd {
      * @return how many tensors were insered
      */
     int insert_inputs(Caffe2NetTools::ModelContext &context, const std::vector<std::string> &blobs,
-		      int nb_data, const InputGetter &get_tensors, bool train = false);
+		      int nb_data, const InputGetter &get_tensors, bool train) const;
 
     /**
      * \brief uses the dbreader to insert data into the workspace
@@ -201,10 +201,11 @@ namespace dd {
     void init(const APIData &ad);
     void transform(const APIData &ad);
     int load_batch(Caffe2NetTools::ModelContext &context, int already_loaded);
-    bool needs_reconfiguration(const ImgCaffe2InputFileConn &inputc);
-    void add_constant_layers(const Caffe2NetTools::ModelContext &context, caffe2::NetDef &init_net);
+    bool needs_reconfiguration(const ImgCaffe2InputFileConn &inputc) const;
+    void add_constant_layers(const Caffe2NetTools::ModelContext &context,
+			     caffe2::NetDef &init_net) const;
     void add_transformation_layers(const Caffe2NetTools::ModelContext &context,
-				   caffe2::NetDef &net);
+				   caffe2::NetDef &net) const;
 
   private:
 
@@ -267,7 +268,6 @@ namespace dd {
     std::string _mean_file;
     std::string _corresp_file;
     float _std = 1.0f;
-    std::vector<float> _mean_values;
 
     //XXX Implement a way to change it ?
     std::string _blob_mean_values = "mean_values";
