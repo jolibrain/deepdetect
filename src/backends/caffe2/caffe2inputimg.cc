@@ -94,17 +94,15 @@ namespace dd {
     std::ifstream ifs(_mean_file);
     mean.ParseFromIstream(&ifs);
     ifs.close();
-    _mean.resize(mean.dims(0));
-    CAFFE_ENFORCE(_mean.size() == static_cast<size_t>(channels()));
-    int chan_size = mean.dims(1) * mean.dims(2);
 
-    // Compute
-    const float *data = mean.float_data().data();
-    for (float &value : _mean) {
-      const float *data_end = data + chan_size;
-      value = std::accumulate(data, data_end, 0.f) / chan_size;
-      data = data_end;
-    }
+    // Check
+    auto &dims = mean.dims();
+    CAFFE_ENFORCE(dims.size() == 1);
+    CAFFE_ENFORCE(dims[0] == channels());
+
+    // Assign
+    auto &data = mean.float_data();
+    _mean.assign(data.begin(), data.end());
   }
 
   inline std::vector<float> compute_scale(const cv::Mat &image, const std::pair<int, int> &size) {
@@ -298,29 +296,113 @@ namespace dd {
     }
   }
 
+  void ImgCaffe2InputFileConn::image_proto_to_mats(const caffe2::TensorProto &proto,
+						   std::vector<cv::Mat> &mats,
+						   bool resize) const {
+
+    cv::Mat src;
+    int chans = channels();
+    int type = proto.data_type();
+
+    // Encoded
+    if (type == proto.STRING) {
+      auto &data = proto.string_data();
+      CAFFE_ENFORCE(data.size() == 1);
+
+      // Convert
+      const std::string &img = data[0];
+      int size = img.size();
+      src = cv::imdecode(cv::Mat(1, &size, CV_8UC1, const_cast<char *>(img.data())),
+			 _bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR);
+      CAFFE_ENFORCE(src.rows && src.cols);
+
+      // Raw
+    } else if (type == proto.BYTE) {
+      auto &data = proto.byte_data();
+      int src_c = (proto.dims_size() == 3) ? proto.dims(2) : 1;
+      CAFFE_ENFORCE(src_c == 3 || src_c == 1);
+
+      // Convert
+      src.create(proto.dims(0), proto.dims(1), (src_c == 1) ? CV_8UC1 : CV_8UC3);
+      std::memcpy(src.ptr<uchar>(0), data.data(), data.size());
+      if (chans != src_c) {
+	cv::cvtColor(src, src, _bw ? cv::COLOR_RGB2GRAY : cv::COLOR_GRAY2RGB);
+      }
+    } else {
+      throw InputConnectorBadParamException("Unknown image data type.");
+    }
+
+    if (resize) {
+      cv::resize(src, src, cv::Size(_width, _height), 0, 0, CV_INTER_CUBIC);
+    }
+    mats.resize(chans);
+    cv::split(src, mats);
+  }
+
+  void ImgCaffe2InputFileConn::mats_to_tensor(const std::vector<cv::Mat> &mats,
+					      caffe2::TensorCPU &tensor) const {
+    // Fill with the current configuration
+    CAFFE_ENFORCE(mats.size() == static_cast<size_t>(channels()));
+    int h = _scaled ? mats[0].rows : _height;
+    int w = _scaled ? mats[0].cols : _width;
+    size_t channel_size = h * w * sizeof(float);
+    std::vector<caffe2::TIndex> dims({channels(), h, w});
+
+    // Resize the tensor
+    tensor.Resize(dims);
+    uint8_t *data = reinterpret_cast<uint8_t *>(tensor.mutable_data<float>());
+
+    // Convert to float
+    cv::Mat ch;
+    for (const cv::Mat &mat : mats) {
+      CAFFE_ENFORCE(mat.cols == w && mat.rows == h);
+      mat.convertTo(ch, CV_32F);
+      std::memcpy(data, ch.data, channel_size);
+      data += channel_size;
+    }
+  }
+
+  void ImgCaffe2InputFileConn::im_info_to_tensor(const cv::Mat &img,
+						 caffe2::TensorCPU &tensor) const {
+    tensor.Resize(std::vector<caffe2::TIndex>({3}));
+    float *data = tensor.mutable_data<float>();
+    data[0] = img.rows;
+    data[1] = img.cols;
+    data[2] = 1;
+  }
+
   void ImgCaffe2InputFileConn::compute_images_mean() {
 
     _logger->info("Creating mean file {}", _mean_file);
     std::unique_ptr<caffe2::db::DB> db(caffe2::db::CreateDB(_db_type, _db, caffe2::db::READ));
     std::unique_ptr<caffe2::db::Cursor> cursor(db->NewCursor());
 
-    // Load first tensor
-    caffe2::TensorProtos protos;
-    protos.ParseFromString(cursor->value());
-    cursor->Next();
-    int count = 1;
-    caffe2::TensorProto mean(protos.protos(0));
+    // Preset mean tensor
+    int chans = channels();
+    caffe2::TensorProto mean;
+    mean.mutable_dims()->Add(chans);
+    mean.set_data_type(mean.FLOAT);
     auto &data = *mean.mutable_float_data();
+    data.Resize(chans, 0);
 
-    // Compute mean values
+    // Loop through the db
+    caffe2::TensorProtos protos;
+    std::vector<cv::Mat> mats;
+    int count = 0;
     for (; cursor->Valid(); cursor->Next()) {
       protos.ParseFromString(cursor->value());
-      std::transform(data.begin(), data.end(), protos.protos(0).float_data().begin(),
-		     data.begin(), std::plus<float>());
+      image_proto_to_mats(protos.protos(0), mats);
+
+      // Sum the channel and add
+      for (int i = 0; i < chans; ++i) {
+	data[i] += cv::mean(mats[i])[0];
+      }
+
       if (!(++count % 1000)) {
 	_logger->info("Processed {} entries", count);
       }
     }
+
     std::for_each(data.begin(), data.end(), [&count](float &f) { f /= count; });
 
     // Write to disk
@@ -369,27 +451,15 @@ namespace dd {
     //TODO Manage Dectron-like databases (im_info blob, bbox, classes, ...)
 
     // Prefill db entries
-    int chans = channels();
-    int chan_size = _height * _width * sizeof(float);
     caffe2::TensorProtos protos;
     caffe2::TensorProto *proto_data = protos.add_protos();
-    proto_data->set_data_type(proto_data->FLOAT);
-    proto_data->mutable_dims()->Add(chans);
-    proto_data->mutable_dims()->Add(_height);
-    proto_data->mutable_dims()->Add(_width);
-    proto_data->mutable_float_data()->Resize(chans * _height * _width, 0);
-    float *ptr = proto_data->mutable_float_data()->mutable_data();
-    std::vector<void *> img(chans);
-    for (int i = 0; i < chans; ++i) {
-      img[i] = ptr;
-      ptr += _height * _width;
-    }
     caffe2::TensorProto *proto_label = protos.add_protos();
+    proto_data->set_data_type(proto_data->STRING);
     proto_label->set_data_type(proto_label->INT32);
+    proto_data->mutable_dims()->Add(1);
+    proto_label->mutable_dims()->Add(1);
+    std::string &data = *proto_data->mutable_string_data()->Add();
     int &label = *proto_label->mutable_int32_data()->Add();
-
-    int cv_load = _bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR;
-    cv::Size size(_width, _height);
 
     // Storing to db
     int count = 0;
@@ -401,16 +471,10 @@ namespace dd {
       // Fill db entry
       std::string out;
       try {
+	std::stringstream s;
+	s << std::ifstream(file.first).rdbuf();
+	data = s.str();
 	label = file.second;
-	cv::Mat mat = cv::imread(file.first, cv_load);
-	CAFFE_ENFORCE(!mat.empty());
-	cv::resize(mat, mat, size, 0, 0, CV_INTER_CUBIC);
-	mat.convertTo(mat, CV_32F);
-	std::vector<cv::Mat> mats(chans);
-	cv::split(mat, mats);
-	for (int i = 0; i < chans; ++i) {
-	  std::memcpy(img[i], mats[i].data, chan_size);
-	}
 	CAFFE_ENFORCE(protos.SerializeToString(&out));
       } catch (...) {
 	_logger->warn("Could not load {}", file.first);
@@ -439,41 +503,85 @@ namespace dd {
     _logger->info("{} successfully created ({} entries)", dbname, count);
   }
 
-  inline float *resize_data(caffe2::TensorCPU &tensor, const std::vector<caffe2::TIndex> &size) {
-    tensor.Resize(size);
-    return tensor.mutable_data<float>();
+  void ImgCaffe2InputFileConn::link_train_dbreader(const Caffe2NetTools::ModelContext &context,
+						   caffe2::NetDef &net) const {
+    // Notes
+    //
+    // -- 1 --
+    // ImageInput operators output square-shaped images
+    // See pytorch/caffe2/image/image_input_op.cc
+    //
+    // -- 2 --
+    // GPU transformations will swap the dimensions (from NHWC to NCHW)
+    // See pytorch/caffe2/image/transform_gpu.cu
+    //
+    // -- 3 --
+    // NHWC2NCHW can't be inplace, so its input must have a different name from its output
+    // See pytorch/caffe2/operators/order_switch_ops.cc
+
+    // Square
+    CAFFE_ENFORCE(_width == _height);
+
+    // Check if gpu optimizations can be used
+    bool use_gpu_transform =
+#ifdef CPU_ONLY
+      false
+#else
+      (context._devices[0].device_type() == caffe2::CUDA)
+#endif
+      ;
+
+    std::string input = context._input_blob;
+    if (!use_gpu_transform) {
+      input += "_NHWC";
+    }
+
+    // Add an ImageInput
+    // TODO manage Detectron databases
+    DBInputSetter config_dbinput =
+      [&](caffe2::OperatorDef &op, const std::string &reader, int batch_size) {
+      Caffe2NetTools::ImageInput(op, reader, input, context._blob_label, batch_size,
+				 channels(), _width, use_gpu_transform);
+    };
+    link_dbreader(context, net, config_dbinput, true);
+
+    // Swap manually
+    if (!use_gpu_transform) {
+      Caffe2NetTools::ScopedNet ns(context.scope_net(net));
+      Caffe2NetTools::NHWC2NCHW(ns, input, context._input_blob);
+    }
   }
 
-  inline void append_data(float *&dst, float *src, size_t size) {
-    std::memcpy(dst, src, size * sizeof(float));
-    dst += size;
+  int ImgCaffe2InputFileConn::use_test_dbreader(Caffe2NetTools::ModelContext &context,
+						int already_loaded) const {
+    caffe2::TensorDeserializer<caffe2::CPUContext> deserializer;
+    ProtosConverter convert_protos =
+      [&](const caffe2::TensorProtos &protos, std::vector<caffe2::TensorCPU> &tensors) {
+
+      // Convert the image
+      std::vector<cv::Mat> mats;
+      image_proto_to_mats(protos.protos(0), mats, true);
+      mats_to_tensor(mats, tensors[0]);
+
+      // Deserialize the label
+      deserializer.Deserialize(protos.protos(1), &tensors[1]);
+    };
+    return use_dbreader(context, already_loaded, convert_protos, false);
   }
 
   int ImgCaffe2InputFileConn::load_batch(Caffe2NetTools::ModelContext &context,
 					 int already_loaded) {
-
     // Call the generic batch loader
     if (!_is_load_manual) {
-      return use_dbreader(context, already_loaded, _train);
+      return use_test_dbreader(context, already_loaded);
     }
 
     auto image = _images.begin() + already_loaded;
     InputGetter get_tensors = [&](std::vector<caffe2::TensorCPU> &tensors) {
-
-      // Set the sizes
-      int c = channels(), h = image->rows, w = image->cols;
-      std::vector<float> im_info({ static_cast<float>(h), static_cast<float>(w), 1 });
-      float *data = resize_data(tensors[1], {3});
-      append_data(data, im_info.data(), 3);
-
-      // Convert from HWC uint8 to CHW float
-      std::vector<cv::Mat> chan(c);
-      data = resize_data(tensors[0], {c, h, w});
-      image->convertTo(*image, CV_32F);
-      cv::split(*image++, chan);
-      for (cv::Mat &ch : chan) {
-	append_data(data, reinterpret_cast<float *>(ch.data), ch.total());
-      }
+      std::vector<cv::Mat> chan;
+      cv::split(*image, chan);
+      mats_to_tensor(chan, tensors[0]);
+      im_info_to_tensor(*image++, tensors[1]);
     };
 
     return insert_inputs(context, {context._input_blob, context._blob_im_info},

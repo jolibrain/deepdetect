@@ -211,6 +211,7 @@ namespace dd {
     }
     //		Our type		Protobuf type		Name of the setter
     ADD_ARG(	int,			long int,		set_i)
+    ADD_ARG(	bool,			long int,		set_i)
     ADD_ARG(	float,			float,			set_f)
     ADD_ARG(	char const*,		std::string const&,	set_s)
     ADD_ARG(	std::string,		std::string const&,	set_s)
@@ -425,6 +426,22 @@ namespace dd {
 		const std::string &data,
 		const std::string &label,
 		int batch_size)
+    REGISTER_OP(ImageInput,
+	        INPUT(reader),
+		OUTPUT(data, label),
+		ADD_ARG(batch_size);
+		ADD_ARG(color);
+		ADD_ARG_VALUE(minsize, size);
+		ADD_ARG_VALUE(crop, size);
+		ADD_ARG_VALUE(is_test, true);
+		ADD_ARG(use_gpu_transform),
+		const std::string &reader,
+		const std::string &data,
+		const std::string &label,
+		int batch_size,
+		int color,
+		int size,
+		bool use_gpu_transform)
     REGISTER_SIMPLE_OP_1I1O(NHWC2NCHW)
 
     // Basic
