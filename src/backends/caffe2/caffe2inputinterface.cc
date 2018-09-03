@@ -59,13 +59,22 @@ namespace dd {
 
   void Caffe2InputInterface::link_dbreader(const Caffe2NetTools::ModelContext &context,
 					   caffe2::NetDef &net,
+					   const DBInputSetter &config_dbinput,
 					   bool train) const {
     caffe2::OperatorDef op;
-    int size_per_device = BATCH_SIZE(train) / context.device_count();
-
-    Caffe2NetTools::TensorProtosDBInput(op, DBREADER(train), context._input_blob,
-					context._blob_label, size_per_device);
+    config_dbinput(op, DBREADER(train), BATCH_SIZE(train) / context.device_count());
     Caffe2NetTools::insert_db_input_operator(context, net, op);
+  }
+
+  // Default tensort loader
+  void Caffe2InputInterface::link_train_dbreader(const Caffe2NetTools::ModelContext &context,
+						 caffe2::NetDef &net) const {
+    DBInputSetter config_dbinput =
+      [&](caffe2::OperatorDef &op, const std::string &reader, int batch_size) {
+      Caffe2NetTools::TensorProtosDBInput(op, reader, context._input_blob,
+					  context._blob_label, batch_size);
+    };
+    link_dbreader(context, net, config_dbinput, true);
   }
 
   int Caffe2InputInterface::insert_inputs(Caffe2NetTools::ModelContext &context,
@@ -140,8 +149,10 @@ namespace dd {
     return batch_size;
   }
 
-  int Caffe2InputInterface::use_dbreader(Caffe2NetTools::ModelContext &context, int already_loaded,
-					 bool train) {
+  int Caffe2InputInterface::use_dbreader(Caffe2NetTools::ModelContext &context,
+					 int already_loaded,
+					 const ProtosConverter &convert_protos,
+					 bool train) const {
     CAFFE_ENFORCE(!_is_load_manual);
 
     // Get a reference to the DBReader
@@ -149,20 +160,30 @@ namespace dd {
       context._workspace->GetBlob(DBREADER(train))->Get<caffe2::db::DBReader>();
     std::string key, value;
     caffe2::TensorProtos protos;
-    caffe2::TensorDeserializer<caffe2::CPUContext> deserializer;
 
     // Fetch the data
     InputGetter get_tensors = [&](std::vector<caffe2::TensorCPU> &tensors) {
       dbreader.Read(&key, &value);
       CAFFE_ENFORCE(protos.ParseFromString(value));
       CAFFE_ENFORCE(static_cast<size_t>(protos.protos_size()) == tensors.size());
-      for (size_t i = 0; i < tensors.size(); ++i) {
-	deserializer.Deserialize(protos.protos(i), &tensors[i]);
-      }
+      convert_protos(protos, tensors);
     };
 
     std::vector<std::string> blobs({context._input_blob, context._blob_label});
     return insert_inputs(context, blobs, DB_SIZE(train) - already_loaded, get_tensors, train);
+  }
+
+  // Default deserialization
+  int Caffe2InputInterface::use_test_dbreader(Caffe2NetTools::ModelContext &context,
+					      int already_loaded) const {
+    caffe2::TensorDeserializer<caffe2::CPUContext> deserializer;
+    ProtosConverter convert_protos =
+      [&](const caffe2::TensorProtos &protos, std::vector<caffe2::TensorCPU> &tensors) {
+      for (size_t i = 0; i < tensors.size(); ++i) {
+	deserializer.Deserialize(protos.protos(i), &tensors[i]);
+      }
+    };
+    return use_dbreader(context, already_loaded, convert_protos, false);
   }
 
   void Caffe2InputInterface::init(InputConnectorStrategy *child) {

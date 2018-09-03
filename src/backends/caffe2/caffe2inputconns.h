@@ -56,12 +56,6 @@ namespace dd {
      */
     void assert_context_validity(Caffe2NetTools::ModelContext &context, bool train = false) const;
 
-    /**
-     * \brief links the dbreader with the given net
-     */
-    void link_dbreader(const Caffe2NetTools::ModelContext &context, caffe2::NetDef &net,
-		       bool train = false) const;
-
     /* Functions that should be re-implemented by childrens */
 
     // Automatic data transformations (used when loading from a database)
@@ -79,6 +73,22 @@ namespace dd {
      * @param net the net to update
      */
     void add_transformation_layers(const Caffe2NetTools::ModelContext &, caffe2::NetDef &) const {}
+
+    // Database read
+
+    /**
+     * \brief links the dbreader with the given net
+     */
+    void link_train_dbreader(const Caffe2NetTools::ModelContext &context,
+			     caffe2::NetDef &net) const;
+
+    /**
+     * \brief uses the dbreader to insert data into the workspace
+     * @param context context of the nets
+     * @param already_loaded how many tensors must be ignored
+     * @return size of this batch (0 if there was not enough data to fill the tensors)
+     */
+    int use_test_dbreader(Caffe2NetTools::ModelContext &context, int already_loaded) const;
 
     // Manual data transformations (from raw data)
 
@@ -122,6 +132,27 @@ namespace dd {
      */
     void compute_db_sizes();
 
+    // Function that configure a tensor loader with given dbreader and batch size
+    using DBInputSetter = std::function<void(caffe2::OperatorDef&, const std::string &, int)>;
+
+    void link_dbreader(const Caffe2NetTools::ModelContext &context, caffe2::NetDef &net,
+		       const DBInputSetter &config_dbinput, bool train) const;
+
+    // Function that convert a TensorProtos into a vector of tensor (already allocated)
+    using ProtosConverter =
+      std::function<void(const caffe2::TensorProtos&, std::vector<caffe2::TensorCPU>&)>;
+
+    /**
+     * \brief uses the dbreader to insert data into the workspace
+     * @param context context of the nets
+     * @param already_loaded how many tensors must be ignored
+     * @param convert_protos, callback to convert a TensorProtos into the corresponding tensors
+     * @param train which db must be read
+     * @return size of this batch (0 if there was not enough data to fill the tensors)
+     */
+    int use_dbreader(Caffe2NetTools::ModelContext &context, int already_loaded,
+		     const ProtosConverter &convert_protos, bool train) const;
+
     // Function that populate a vector with input tensors (already allocated)
     using InputGetter = std::function<void(std::vector<caffe2::TensorCPU>&)>;
 
@@ -136,15 +167,6 @@ namespace dd {
      */
     int insert_inputs(Caffe2NetTools::ModelContext &context, const std::vector<std::string> &blobs,
 		      int nb_data, const InputGetter &get_tensors, bool train) const;
-
-    /**
-     * \brief uses the dbreader to insert data into the workspace
-     * @param context context of the nets
-     * @param already_loaded how many tensors must be ignored
-     * @param train which db must be read
-     * @return size of this batch (0 if there was not enough data to fill the tensors)
-     */
-    int use_dbreader(Caffe2NetTools::ModelContext &context, int already_loaded, bool train = false);
 
     /* Members managed by the mother class */
 
@@ -200,6 +222,9 @@ namespace dd {
 
     void init(const APIData &ad);
     void transform(const APIData &ad);
+    void link_train_dbreader(const Caffe2NetTools::ModelContext &context,
+			     caffe2::NetDef &net) const;
+    int use_test_dbreader(Caffe2NetTools::ModelContext &context, int already_loaded) const;
     int load_batch(Caffe2NetTools::ModelContext &context, int already_loaded);
     bool needs_reconfiguration(const ImgCaffe2InputFileConn &inputc) const;
     void add_constant_layers(const Caffe2NetTools::ModelContext &context,
@@ -225,6 +250,24 @@ namespace dd {
      * \brief initilializes mean values
      */
     void load_mean_file();
+
+    /**
+     * \brief transforms a tensor proto containing an image into a vector of channels
+     *        See pytorch/caffe2/image/image_input_op.h GetImageAndLabelAndInfoFromDBValue
+     */
+    void image_proto_to_mats(const caffe2::TensorProto &proto,
+			     std::vector<cv::Mat> &mats,
+			     bool resize=false) const;
+
+    /**
+     * \brief transforms vector of channels into a CHW float tensor
+     */
+    void mats_to_tensor(const std::vector<cv::Mat> &mats, caffe2::TensorCPU &tensor) const;
+
+    /**
+     * \brief stores the image dimensions into a tensor
+     */
+    void im_info_to_tensor(const cv::Mat &img, caffe2::TensorCPU &tensor) const;
 
     /**
      * \brief creates mean file

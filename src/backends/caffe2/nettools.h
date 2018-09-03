@@ -194,6 +194,9 @@ namespace dd {
     PROTOTYPE(TensorProtosDBInput,
 	      const std::string &reader, const std::string &data, const std::string &label,
 	      int batch_size);
+    PROTOTYPE(ImageInput,
+	      const std::string &reader, const std::string &data, const std::string &label,
+	      int batch_size, int color, int size, bool use_gpu_transform);
     PROTOTYPE(NHWC2NCHW, const std::string &input, const std::string &output);
 
     // Basic

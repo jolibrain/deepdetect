@@ -347,8 +347,6 @@ TEST(caffe2api, service_predict_supervised) {
   assert_predictions(jd, { {"tabby, tabby cat", 0.8}, {"ambulance", 0.8} });
 }
 
-//TODO Change the database format
-/*
 TEST(caffe2api, service_predict_test) {
 
   JsonAPI japi;
@@ -358,7 +356,6 @@ TEST(caffe2api, service_predict_test) {
   predict(japi, jd, test_accuracy);
   assert_accuracy(jd, 0.9);
 }
-*/
 
 TEST(caffe2api, service_predict_extract_layer) {
 
