@@ -56,6 +56,25 @@ using namespace dd;
       }							\
     })
 
+#define CREATE_DETECTRON(repo, input...) TO_STRING({	\
+      "mllib": "caffe2",				\
+      "description": "my classifier",			\
+      "type": "supervised",				\
+      "model": {					\
+	"repository": repo				\
+      },						\
+      "parameters": {					\
+	"input": {					\
+	  "connector": "image",				\
+	  "mean": [102.9801, 115.9465, 122.7717],	\
+	  input						\
+	},						\
+        "mllib": {					\
+	  "gpuid": [0]					\
+	}						\
+      }							\
+    })
+
 #define CREATE(t, r, s) _CREATE(t, r, "", s, "gpuid": [0])
 #define CREATE_TEMPLATE(t, r, s, tname, nclasses)			\
   _CREATE(t, r, "", s, "gpuid": [0], "template": tname, "nclasses": nclasses)
@@ -91,6 +110,17 @@ using namespace dd;
 	},								\
 	"output": {							\
 	  "measure": [ measures ]					\
+	}								\
+      },								\
+      "data": [ data ]							\
+    })
+#define PREDICT_BBOX(service, threshold, data...) TO_STRING({		\
+      "service": service,						\
+      "parameters": {							\
+	"output": {							\
+	  "bbox": true,							\
+	  "best": 1,							\
+	  "confidence_threshold": threshold				\
 	}								\
       },								\
       "data": [ data ]							\
@@ -149,6 +179,36 @@ void assert_predictions(const JDoc &jd, std::vector<std::pair<std::string, doubl
   }
 }
 
+void assert_bboxes(const JDoc &jd, std::map<std::string, std::map<std::string, int>> preds) {
+
+  // Check array
+  size_t nb_pred = preds.size();
+  const auto &predictions = jd["body"]["predictions"];
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+
+  // Check elements
+  for (size_t i = 0; i < nb_pred; ++i) {
+    const auto &prediction = predictions[i];
+    auto &cmp = preds[prediction["uri"].GetString()];
+
+    // Check BBoxes
+    size_t nb_classes = prediction["classes"].Size();
+    for (size_t j = 0; j < nb_classes; ++j) {
+      const auto &cls = prediction["classes"][j];
+      ASSERT_TRUE(cls.HasMember("bbox"));
+      auto it = cmp.find(cls["cat"].GetString());
+      if (it != cmp.end()) {
+	it->second--;
+      }
+    }
+
+    // Check count
+    for (auto it : cmp) {
+      ASSERT_TRUE(it.second <= 0);
+    }
+  }
+}
+
 void clean_repository(const std::string &repo) {
   ASSERT_TRUE(!fileops::remove_directory_files(repo, { ".json", ".txt", ".pb" }));
   std::set<std::string> dbs({repo + "/train.lmdb", repo + "/test.lmdb"});
@@ -172,13 +232,16 @@ inline void assert_first_test_at(const JDoc &jd, double d) {
 
 // Paths
 
-#define TRAINED "../examples/caffe2/resnet_50_trained"
-#define IMG_CAT "../examples/caffe2/resnet_50_trained/imgs/cat.jpg"
-#define IMG_AMB "../examples/caffe2/resnet_50_trained/imgs/ambulance.jpg"
-#define DB_FISH "../examples/caffe2/resnet_50_trained/fish.lmdb"
+#define TRAINED "../examples/caffe2/resnet_50_imagenet"
+#define IMG_CAT "../examples/caffe2/resnet_50_imagenet/imgs/cat.jpg"
+#define IMG_AMB "../examples/caffe2/resnet_50_imagenet/imgs/ambulance.jpg"
+#define DB_FISH "../examples/caffe2/resnet_50_imagenet/fish.lmdb"
 #define BC_REPO "../examples/caffe2/boats_and_cars"
 #define BC_IMGS "../examples/caffe2/boats_and_cars/imgs"
 #define WEIGHTS "../examples/caffe2/resnet_50_imagenet/init_net.pb"
+#define DTTRON "../examples/caffe2/detectron"
+#define DTTRON_BOATS "../examples/caffe2/detectron/imgs/boats.jpg"
+#define DTTRON_DOGS "../examples/caffe2/detectron/imgs/dogs.jpg"
 
 // Json create
 
@@ -187,6 +250,7 @@ static const std::string unsupervised = CREATE("unsupervised", TRAINED, 128.0);
 static const std::string trainable = CREATE_TEMPLATE("supervised", BC_REPO, 128.0, "resnet_50", 2);
 static const std::string finetunable = CREATE_FINETUNE("supervised", BC_REPO, 128.0, "resnet_50", 2,
 						       WEIGHTS);
+static const std::string detectron = CREATE_DETECTRON(DTTRON, "scale_min": 800, "scale_max": 1333);
 
 // Json predict
 
@@ -194,6 +258,8 @@ static const std::string predict_cat = PREDICT_SUPERVISED(SERVICE, 3, IMG_CAT);
 static const std::string predict_cat_and_amb = PREDICT_SUPERVISED(SERVICE, 3, IMG_CAT, IMG_AMB);
 static const std::string test_accuracy = PREDICT_TEST(SERVICE, 6, DB_FISH, "acc");
 static const std::string extract_conv1 = PREDICT_UNSUPERVISED(SERVICE, "gpu_0/conv1", IMG_CAT);
+static const std::string predict_bbox_boats_and_dogs = PREDICT_BBOX(SERVICE, 0.7,
+								    DTTRON_BOATS, DTTRON_DOGS);
 
 // Json train & test
 
@@ -281,6 +347,8 @@ TEST(caffe2api, service_predict_supervised) {
   assert_predictions(jd, { {"tabby, tabby cat", 0.8}, {"ambulance", 0.8} });
 }
 
+//TODO Change the database format
+/*
 TEST(caffe2api, service_predict_test) {
 
   JsonAPI japi;
@@ -290,6 +358,7 @@ TEST(caffe2api, service_predict_test) {
   predict(japi, jd, test_accuracy);
   assert_accuracy(jd, 0.9);
 }
+*/
 
 TEST(caffe2api, service_predict_extract_layer) {
 
@@ -339,4 +408,16 @@ TEST(caffe2api, service_finetune) {
 
   // Remove new data
   clean_repository(BC_REPO);
+}
+
+TEST(caffe2api, detectron_predict) {
+  JsonAPI japi;
+  JDoc jd;
+  create(japi, detectron);
+
+  predict(japi, jd, predict_bbox_boats_and_dogs);
+  assert_bboxes(jd, {
+      { DTTRON_BOATS, {{"boat", 2}, {"person", 35}} },
+      { DTTRON_DOGS, {{"dog", 2}, {"person", 2}} }
+  });
 }

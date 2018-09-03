@@ -87,9 +87,6 @@ namespace dd {
       // If set to a gpu id, devices vector will be ignored
       int _force_device = -1;
 
-      // Called each time an operator is added to the net
-      OpModifier _op_modifier = [](caffe2::OperatorDef&){};
-
       ScopedNet(caffe2::NetDef &n): _net(n) {}
 
     };
@@ -139,7 +136,19 @@ namespace dd {
      *	Protobuffer manipulation
      */
 
-    // AddS an 'Argument' in an 'OperatorDef'
+    bool has_input(const caffe2::OperatorDef &op, const std::string &name);
+    bool has_output(const caffe2::OperatorDef &op, const std::string &name);
+
+    /**
+     * \brief finds where the given blob was previously updataded
+     * @param net net to search
+     * @param name name of the blob
+     * @param idx first operator index to check (the search is done by decreasing this index)
+     * @return the index of the found operator
+     */
+    int find_previous_update(const caffe2::NetDef &net, const std::string &name, int idx);
+
+    // Adds an 'Argument' in an 'OperatorDef'
 #define PROTOTYPE(type)							\
     caffe2::Argument &add_arg(caffe2::OperatorDef &op, const std::string &name, const type &value);
     PROTOTYPE(int);
@@ -192,6 +201,7 @@ namespace dd {
     PROTOTYPE(Sub, const std::string &input1, const std::string &input2, const std::string &output,
 	      int broadcast, int axis);
     PROTOTYPE(Copy, const std::string &input, const std::string &output);
+    PROTOTYPE(Alias, const std::string &input, const std::string &output);
     PROTOTYPE(Scale, const std::string &input, const std::string &output, float scale);
 
     // Sum and Optimize
@@ -239,6 +249,8 @@ namespace dd {
     PROTOTYPE(Softmax, const std::string &input, const std::string &output);
 
     // Misc
+    PROTOTYPE(CopyFromCPUInput, const std::string &input, const std::string &output);
+    PROTOTYPE(EnsureCPUOutput, const std::string &input, const std::string &output);
     PROTOTYPE(FC, const std::string &input, const std::string &weight, const std::string &bias,
 	      const std::string &output);
     PROTOTYPE(Conv, const std::string &input, const std::string &weight, const std::string &bias,
@@ -247,6 +259,17 @@ namespace dd {
 	      int stride, int pad, int kernel);
 
 #undef PROTOTYPE
+
+    /**
+     * \brief transforms the net into a version supporting batching
+     */
+    void ensure_is_batchable(caffe2::NetDef &net);
+
+    /**
+     * \brief transforms the net into a quicker version
+     *        /!\ Can remove and edit blobs and operators /!\
+     */
+    void final_optimizations(caffe2::NetDef &net);
 
     /*
      *  Workspace management
@@ -265,11 +288,12 @@ namespace dd {
 	std::unique_ptr<caffe2::Workspace>(new caffe2::Workspace);
       std::vector<caffe2::DeviceOption> _devices;
       std::string _input_blob;
-      std::string _output_blob;
+      std::vector<std::string> _output_blobs;
       int _nclasses = 0;
 
       //XXX Should be optionals / configurables in the future
       std::string _blob_label = "label";
+      std::string _blob_im_info = "im_info";
       std::string _net_type = "dag";
       int _thread_per_device = 4;
 
@@ -286,9 +310,11 @@ namespace dd {
 	  _workspace->CreateBlob(get_prefix(i) + _input_blob);
 	}
       }
-      inline void configure_net(caffe2::NetDef &net) const {
+      inline void create_net(caffe2::NetDef &net) const {
 	net.set_type(_net_type);
 	net.set_num_workers(_thread_per_device * device_count());
+	final_optimizations(net);
+	CAFFE_ENFORCE(_workspace->CreateNet(net));
       }
 
       // Enforce
@@ -297,9 +323,6 @@ namespace dd {
       }
       inline void run_net_once(const caffe2::NetDef &net) {
 	CAFFE_ENFORCE(_workspace->RunNetOnce(net));
-      }
-      inline void create_net(const caffe2::NetDef &net) {
-	CAFFE_ENFORCE(_workspace->CreateNet(net));
       }
 
       /*
@@ -329,10 +352,7 @@ namespace dd {
        */
       void insert_tensor(int device_idx, const std::string &name, const caffe2::TensorCPU &tensor);
 
-      /**
-       * \brief reset the 'last loaded' iteration to 0
-       */
-      void reset_iter();
+      inline void reset_iter() { _loaded_iter = 0; }
 
       /**
        * \brief loads an iteration counter from a serialized blob
@@ -351,6 +371,15 @@ namespace dd {
       void load_lr(const std::string &path);
 
       /*
+       *  Information insertion
+       */
+
+      /**
+       * \brief adds a copy of the tensor on each device
+       */
+      void broadcast_tensor(const std::string &name, const caffe2::TensorCPU &tensor);
+
+      /*
        *  Information extraction
        */
 
@@ -359,18 +388,6 @@ namespace dd {
        *        and to use it to fill the tensor (true if successfull)
        */
       bool extract_tensor(int device_idx, const std::string &name, caffe2::TensorCPU &tensor) const;
-
-      /**
-       * \brief fetches the given layer and merge batches of results from each devices
-       *        into a single batch (an empty name means the 'main' output)
-       *        Note that the function does not append elements, but assign a value to them
-       */
-      void extract_results(std::vector<std::vector<float>> &results,
-			   const std::string &name="") const;
-      // Same as above, but with results composed of a single value each
-      void extract_results(std::vector<int> &results, const std::string &name="") const;
-      void extract_results(std::vector<long> &results, const std::string &name="") const;
-      void extract_results(std::vector<float> &results, const std::string &name="") const;
 
       /**
        * \brief fetches the scaled losses of every devices and sums them
@@ -392,6 +409,16 @@ namespace dd {
        *        and store them in a map
        */
       void extract_state(std::map<std::string, std::string> &blobs) const;
+
+      /**
+       * \brief fetches the given layer and merge the results of each devices into a single batch.
+       *        Note that the function does not append elements, but assign a value to them
+       * @param results where to store the data
+       * @param name name of the layer
+       * @param sizes size of each element of the batch (split equally if empty)
+       */
+      void extract(std::vector<std::vector<float>> &results, const std::string &name,
+		   const std::vector<size_t> &sizes={}) const;
 
       /*
        *  Network manipulation
@@ -417,14 +444,45 @@ namespace dd {
 
     private:
 
-      // Tools to generalize the 'extract_results' functions
+      // Tools to generalize the 'extract_*' functions
+
       template <typename Result, typename Data>
       using Stockage = std::function<void(Result &, const Data *, size_t)>;
 
+      // Extract from each device and return the total size
+      size_t extract_tensors(const std::string &name,
+			     std::vector<caffe2::TensorCPU> &tensors) const;
+
+      // Merge the tensors and re-split into a single batch of items
       template <typename Result, typename Data>
-      void extract_layer(std::vector<Result> &results,
-			 const std::string &name,
+      void split_tensors(std::vector<Result> &results,
+			 std::vector<caffe2::TensorCPU> tensors,
+			 const std::vector<size_t> &sizes,
 			 const Stockage<Result, Data> &store) const;
+      template <typename T>
+      void split_tensors(std::vector<T> &results,
+			 const std::vector<caffe2::TensorCPU> &tensors,
+			 const std::vector<size_t> &sizes) const;
+      template <typename T>
+      void split_tensors(std::vector<std::vector<T>> &results,
+			 const std::vector<caffe2::TensorCPU> &tensors,
+			 const std::vector<size_t> &sizes) const;
+
+      // Fecth the data then split it
+      template <typename T>
+      void extract_results(std::vector<T> &results,
+			   const std::string &name,
+			   size_t size=0) const;
+      template <typename T>
+      void extract_results(std::vector<T> &results,
+			   const std::string &name,
+			   const std::vector<size_t> &sizes) const;
+
+      // Fetch, split and cast the data
+      template <typename Result, typename Data, typename Size>
+      void extract_and_cast_results(std::vector<Result> &results,
+				    const std::string &name,
+				    const Size &size) const;
 
     }; //! ModelContext
 
@@ -555,7 +613,7 @@ namespace dd {
     /**
      * \brief reads a .pb or .pbtxt file
      */
-    void import_net(caffe2::NetDef &net, const std::string &file);
+    void import_net(caffe2::NetDef &net, const std::string &file, bool unscoped = false);
 
     /**
      * \brief writes a .pb or .pbtxt file

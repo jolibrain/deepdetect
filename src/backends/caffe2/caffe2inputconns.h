@@ -62,15 +62,6 @@ namespace dd {
     void link_dbreader(const Caffe2NetTools::ModelContext &context, caffe2::NetDef &net,
 		       bool train = false) const;
 
-    /**
-     * \brief uses the dbreader to insert data into the workspace
-     * @param context context of the nets
-     * @param already_loaded how many tensors must be ignored
-     * @param train which db must be read
-     * @return size of this batch (0 if there was not enough data to fill the tensors)
-     */
-    int use_dbreader(Caffe2NetTools::ModelContext &context, int already_loaded, bool train = false);
-
     /* Functions that should be re-implemented by childrens */
 
     // Automatic data transformations (used when loading from a database)
@@ -80,23 +71,28 @@ namespace dd {
      * @param context the context of the net
      * @param init_net the net to update
      */
-    void add_constant_layers(const Caffe2NetTools::ModelContext &, caffe2::NetDef &) {}
+    void add_constant_layers(const Caffe2NetTools::ModelContext &, caffe2::NetDef &) const {}
 
     /**
      * \brief adds operators to format the input
      * @param context the context of the net
      * @param net the net to update
      */
-    void add_transformation_layers(const Caffe2NetTools::ModelContext &, caffe2::NetDef &) {}
+    void add_transformation_layers(const Caffe2NetTools::ModelContext &, caffe2::NetDef &) const {}
 
     // Manual data transformations (from raw data)
 
     /**
-     * \brief manually loads a batch
+     * \brief loads a batch
      * @param context context of the nets
+     * @param already_loaded how many tensor where already loaded
      * @return size of this batch (0 if there was not enough data to fill the tensors)
      */
-    int load_batch(Caffe2NetTools::ModelContext &) { return 0; }
+    int load_batch(Caffe2NetTools::ModelContext &, int) { return 0; }
+
+    // Global configuration of the network
+
+    bool _measuring = false;
 
   private:
 
@@ -119,14 +115,14 @@ namespace dd {
      * @param inputc last version of the input connector
      * @return true if a critical change occurred, false otherwise
      */
-    bool needs_reconfiguration(const Caffe2InputInterface &inputc);
+    bool needs_reconfiguration(const Caffe2InputInterface &inputc) const;
 
     /**
      * \brief compute the databases size (they must be created at this point)
      */
     void compute_db_sizes();
 
-    // Function that populate a vector with input tensors
+    // Function that populate a vector with input tensors (already allocated)
     using InputGetter = std::function<void(std::vector<caffe2::TensorCPU>&)>;
 
     /**
@@ -139,7 +135,16 @@ namespace dd {
      * @return how many tensors were insered
      */
     int insert_inputs(Caffe2NetTools::ModelContext &context, const std::vector<std::string> &blobs,
-		      int nb_data, const InputGetter &get_tensors, bool train = false);
+		      int nb_data, const InputGetter &get_tensors, bool train) const;
+
+    /**
+     * \brief uses the dbreader to insert data into the workspace
+     * @param context context of the nets
+     * @param already_loaded how many tensors must be ignored
+     * @param train which db must be read
+     * @return size of this batch (0 if there was not enough data to fill the tensors)
+     */
+    int use_dbreader(Caffe2NetTools::ModelContext &context, int already_loaded, bool train = false);
 
     /* Members managed by the mother class */
 
@@ -147,7 +152,6 @@ namespace dd {
 
     std::string _default_db;
     std::string _default_train_db;
-    bool _is_batched = true;
     int _db_size = 0;
     int _train_db_size = 0;
     int _batch_size = 0;
@@ -167,7 +171,9 @@ namespace dd {
     std::string _train_db; // path to the training database
     bool _is_testable = false; // whether test data is available
     bool _is_load_manual = true; // whether data is manually loaded (as opposed to database-loaded)
+    bool _is_batchable = true; // whether inputs can be pre-computed into the same format
     std::vector<std::string> _ids; // input ids
+    std::vector<std::vector<float>> _scales; // input scale coefficients
 
     /* Public getters */
   public:
@@ -175,6 +181,7 @@ namespace dd {
     _GETTER(is_testable);
     _GETTER(is_load_manual);
     _GETTER(ids);
+    _GETTER(scales);
 #undef _GETTER
   };
 
@@ -193,11 +200,12 @@ namespace dd {
 
     void init(const APIData &ad);
     void transform(const APIData &ad);
-    int load_batch(Caffe2NetTools::ModelContext &context);
-    bool needs_reconfiguration(const ImgCaffe2InputFileConn &inputc);
-    void add_constant_layers(const Caffe2NetTools::ModelContext &context, caffe2::NetDef &init_net);
+    int load_batch(Caffe2NetTools::ModelContext &context, int already_loaded);
+    bool needs_reconfiguration(const ImgCaffe2InputFileConn &inputc) const;
+    void add_constant_layers(const Caffe2NetTools::ModelContext &context,
+			     caffe2::NetDef &init_net) const;
     void add_transformation_layers(const Caffe2NetTools::ModelContext &context,
-				   caffe2::NetDef &net);
+				   caffe2::NetDef &net) const;
 
   private:
 
@@ -260,7 +268,6 @@ namespace dd {
     std::string _mean_file;
     std::string _corresp_file;
     float _std = 1.0f;
-    std::vector<float> _mean_values;
 
     //XXX Implement a way to change it ?
     std::string _blob_mean_values = "mean_values";

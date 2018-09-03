@@ -63,7 +63,6 @@ namespace dd {
     caffe2::OperatorDef op;
     int size_per_device = BATCH_SIZE(train) / context.device_count();
 
-    //XXX Manage no-label inputs
     Caffe2NetTools::TensorProtosDBInput(op, DBREADER(train), context._input_blob,
 					context._blob_label, size_per_device);
     Caffe2NetTools::insert_db_input_operator(context, net, op);
@@ -71,7 +70,7 @@ namespace dd {
 
   int Caffe2InputInterface::insert_inputs(Caffe2NetTools::ModelContext &context,
 					  const std::vector<std::string> &blobs, int nb_data,
-					  const InputGetter &get_tensors, bool train) {
+					  const InputGetter &get_tensors, bool train) const {
     // Get the batch size of each device
     std::vector<int> batch_sizes;
     int devices = context.device_count();
@@ -162,7 +161,6 @@ namespace dd {
       }
     };
 
-    //XXX Manage no-label inputs
     std::vector<std::string> blobs({context._input_blob, context._blob_label});
     return insert_inputs(context, blobs, DB_SIZE(train) - already_loaded, get_tensors, train);
   }
@@ -183,25 +181,22 @@ namespace dd {
   //		they share the same internal objects (e.g. NetDef or batch_size).
   //	        The names 'test_batch_size' and 'batch_size' are only kept to have a
   //		have a coherence over the APIs.
-  //
-  // 3 -	Batch sizes make sens when there is a large amount of data (training or testing),
-  //		but not for a simple prediction call (all the data should fit as one batch).
-  //		That's why we must know what the input is used for.
-  //		The best way to assert that the input isn't used to measure nets is to check the
-  //		'output' parameter, even if it is destined to OutputConnectors.
 
   void Caffe2InputInterface::set_batch_sizes(const APIData &ad, bool train) {
+
+    // No need for further checks if the data can't be batched
+    if (!_is_batchable) {
+      _batch_size = 1;
+      _train_batch_size = train;
+      return;
+    }
 
     // Reset to default values
     _batch_size = _train_batch_size = _default_batch_size;
     _train_batch_size *= train;
-    bool measuring = false;
 
     if (ad.has("parameters")) {
       const APIData &param = ad.getobj("parameters");
-
-      // Check if measures are present
-      measuring = param.has("output") && param.getobj("output").has("measure");
 
       if (param.has("mllib")) {
 	const APIData &mllib = param.getobj("mllib");
@@ -220,8 +215,7 @@ namespace dd {
       }
     }
 
-    _is_batched = train || measuring;
-    if (!_is_batched) {
+    if (!train && !_measuring) {
 
       // Load all the data in one batch
       if (_is_load_manual) {
@@ -241,7 +235,7 @@ namespace dd {
     set_batch_sizes(ad, true);
   }
 
-  bool Caffe2InputInterface::needs_reconfiguration(const Caffe2InputInterface &inputc) {
+  bool Caffe2InputInterface::needs_reconfiguration(const Caffe2InputInterface &inputc) const {
     return	_is_load_manual		!= inputc._is_load_manual
       ||	_is_testable		!= inputc._is_testable
       ||	((_batch_size		!= inputc._batch_size)		&& !_is_load_manual)

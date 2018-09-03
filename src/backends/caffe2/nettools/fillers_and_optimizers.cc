@@ -259,18 +259,6 @@ namespace dd {
       //                    Operator              Input, Dimension index
       static const std::map<std::string, std::map<int,   int>> _external_shapes;
 
-      // Return the index of a prior operator that have updated the given blob
-      int find_previous_op(int op_idx, int input) const {
-	const std::string &blob = _net.op(op_idx).input(input);
-	while (op_idx-- > 0) {
-	  const caffe2::OperatorDef &op = _net.op(op_idx);
-	  if (std::find(op.output().begin(), op.output().end(), blob) != op.output().end()) {
-	    return op_idx;
-	  }
-	}
-	CAFFE_THROW("Can't access ", blob, " shape");
-      }
-
       // Recursive function that start browsing the net a specific index and coefficient
       void compute(int op_idx, float coef) {
 	const caffe2::OperatorDef &op = _net.op(op_idx);
@@ -281,7 +269,8 @@ namespace dd {
 
 	  for (const std::pair<int, float> &input_coef : _forwarded_shapes.at(type)) {
 	    // Recurse over them
-	    compute(find_previous_op(op_idx, input_coef.first), coef * input_coef.second);
+	    const std::string &input_name = _net.op(op_idx).input(input_coef.first);
+	    compute(find_previous_update(_net, input_name, op_idx - 1), coef * input_coef.second);
 	  }
 
 	} else if (_external_shapes.find(type) != _external_shapes.end()) {
@@ -314,9 +303,9 @@ namespace dd {
     };
 
     const std::map<std::string, std::map<int, float>> OutputShapePtrs::_forwarded_shapes({
-	{ "Softmax", {
-	    { 0, 1 } // One input, same shape
-	  }},
+	{ "Softmax", {{ 0, 1 }} }, // One input, same shape
+	{ "CopyFromCPUInput", {{ 0, 1 }} },
+	{ "EnsureCPUOutput", {{ 0, 1 }} },
 	{ "BBoxTransform", {
 	    { 1, 1 } // An input that is already a group of bbox
 	  }},

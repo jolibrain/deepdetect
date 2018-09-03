@@ -113,13 +113,6 @@ namespace dd {
   void create_model();
 
   /**
-   * \brief load a new batch in the workspace
-   * @param number of data that was already loaded
-   * @return the batch size (0 if there is nothing left to load)
-   */
-  int load_batch(int already_loaded = 0);
-
-  /**
    * \brief tests a model and compute measures
    * @param ad root data object
    * @param out output data object
@@ -145,12 +138,14 @@ namespace dd {
   /**
    * \brief runs a net once (both forward and backward if the gradients are set)
    * @param net net to run
-   * @param where to store the output layer (one vector per batch item)
-   *        The vector must be of the right size. If set to NULL, nothing is stored.
    * @return the elapsed time
    */
-  float run_net(const std::string &net,
-		std::vector<std::vector<float>> *results = NULL);
+  float run_net(const std::string &net);
+
+  /**
+   * \bried extracts the results of the last run ( [layer][batch_item][data] )
+   */
+  void extract_results(std::vector<std::vector<std::vector<float>>> &results, int batch_size);
 
   Caffe2NetTools::ModelContext _context;
   caffe2::NetDef _init_net;
