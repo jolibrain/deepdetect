@@ -30,16 +30,36 @@
 
 namespace dd {
 
+  inline void get_if_present(const APIData &ad, const std::string &name, int &v) {
+    if (ad.has(name)) v = ad.get(name).get<int>(); }
+
+  inline void get_if_present(const APIData &ad, const std::string &name, bool &v) {
+    if (ad.has(name)) v = ad.get(name).get<bool>(); }
+
+  inline void get_if_present(const APIData &ad, const std::string &name, float &v) {
+    if (ad.has(name)) apitools::get_float(ad, name, v); }
+
   void ImgCaffe2InputFileConn::update(const APIData &ad) {
 
     // std
-    if (ad.has("std")) {
-      apitools::get_float(ad, "std", _std);
-    }
+    get_if_present(ad, "std", _std);
 
     // mean
     if (!_has_mean_scalar) {
       load_mean_file();
+    }
+
+    // Data augmentation
+    if (ad.has("img_aug")) {
+      const APIData &aug = ad.getobj("img_aug");
+      get_if_present(aug, "color_jitter", _color_jitter);
+      get_if_present(aug, "img_saturation", _img_saturation);
+      get_if_present(aug, "img_brightness", _img_brightness);
+      get_if_present(aug, "img_contrast", _img_contrast);
+      get_if_present(aug, "color_lighting", _color_lighting);
+      get_if_present(aug, "color_lighting_std", _color_lighting_std);
+      get_if_present(aug, "scale_jitter_type", _scale_jitter_type);
+      get_if_present(aug, "mirror", _mirror);
     }
 
     // If the images are scaled but not stretched or cropped, then their sizes will differ
@@ -542,6 +562,14 @@ namespace dd {
       [&](caffe2::OperatorDef &op, const std::string &reader, int batch_size) {
       Caffe2NetTools::ImageInput(op, reader, input, context._blob_label, batch_size,
 				 channels(), _width, use_gpu_transform);
+      Caffe2NetTools::add_arg(op, "color_jitter", _color_jitter);
+      Caffe2NetTools::add_arg(op, "img_saturation", _img_saturation);
+      Caffe2NetTools::add_arg(op, "img_brightness", _img_brightness);
+      Caffe2NetTools::add_arg(op, "img_contrast", _img_contrast);
+      Caffe2NetTools::add_arg(op, "color_lighting", _color_lighting);
+      Caffe2NetTools::add_arg(op, "color_lighting_std", _color_lighting_std);
+      Caffe2NetTools::add_arg(op, "scale_jitter_type", _scale_jitter_type);
+      Caffe2NetTools::add_arg(op, "mirror", _mirror);
     };
     link_dbreader(context, net, config_dbinput, true);
 

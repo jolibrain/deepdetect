@@ -312,6 +312,16 @@ namespace dd {
     std::string _corresp_file;
     float _std = 1.0f;
 
+    // ImageInput augmentations (See https://caffe2.ai/docs/operators-catalogue.html#imageinput)
+    bool _color_jitter = false;
+    float _img_saturation = 0.4f;
+    float _img_brightness = 0.4f;
+    float _img_contrast = 0.4f;
+    bool _color_lighting = false;
+    float _color_lighting_std = 0.1f;
+    int _scale_jitter_type = 0;
+    bool _mirror = false;
+
     //XXX Implement a way to change it ?
     std::string _blob_mean_values = "mean_values";
   };
