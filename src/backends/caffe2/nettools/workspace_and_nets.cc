@@ -381,8 +381,25 @@ namespace dd {
       net.Swap(&short_net);
     }
 
-    void import_net(caffe2::NetDef &net, const std::string &file) {
+    inline void unscope(std::string &s, const std::string &prefix) {
+      if (!s.find(prefix)) {
+	s.erase(0, prefix.size());
+      }
+    }
+
+    void import_net(caffe2::NetDef &net, const std::string &file, bool unscoped) {
       CAFFE_ENFORCE(caffe2::ReadProtoFromFile(file, &net));
+      if (unscoped) {
+	// Some net templates begin with a prefix on each blob ('gpu_0/')
+	// We may want to remove it early to prevent conflicts
+	std::string prefix = device_id_to_prefix(0);
+	for (std::string &s : *net.mutable_external_input()) unscope(s, prefix);
+	for (std::string &s : *net.mutable_external_output()) unscope(s, prefix);
+	for (caffe2::OperatorDef &op : *net.mutable_op()) {
+	  for (std::string &s : *op.mutable_input()) unscope(s, prefix);
+	  for (std::string &s : *op.mutable_output()) unscope(s, prefix);
+	}
+      }
     }
 
     void export_net(const caffe2::NetDef &net, const std::string &file, bool human_readable) {
