@@ -359,7 +359,7 @@ TEST(caffe2api, service_predict_test) {
   create(japi, supervised);
 
   predict(japi, jd, test_accuracy);
-  assert_accuracy(jd, 0.9);
+  assert_accuracy(jd, 0.7);
 }
 
 TEST(caffe2api, service_predict_extract_layer) {
