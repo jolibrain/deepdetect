@@ -107,6 +107,17 @@ else()
 include(cmake/Cuda.cmake) # cuda + cudnn
 endif()
 
+# CUDA dependencies
+if (CUDA_FOUND)
+  set(CUDA_LIB_DEPS ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_CUDART_LIBRARY} ${CUDA_cusolver_LIBRARY})
+  if (USE_CUDNN)
+    set(CUDA_LIB_DEPS ${CUDA_LIB_DEPS} ${CUDNN_LIBRARY})
+  endif()
+else()
+  set(CUDA_LIB_DEPS "")
+  add_definitions(-DCPU_ONLY)
+endif()
+
 if (USE_DLIB)
     # Dlib
 
@@ -114,6 +125,7 @@ if (USE_DLIB)
     set(DLIB_RELEASE_VERSION v19.13)
     message(STATUS "Using Dlib version ${DLIB_RELEASE_VERSION}")
     add_definitions(-DUSE_DLIB)
+    set(DLIB_LIB_DEPS -ldlib)
 
     if (CUDA_FOUND AND NOT USE_DLIB_CPU_ONLY)
         if (NOT USE_CUDNN)
@@ -156,6 +168,10 @@ set(CAFFE_DD_BRANCH master)
 if (USE_CAFFE2)
 
   add_definitions(-DUSE_CAFFE2)
+  list(APPEND CAFFE2_LIB_DEPS -lcaffe2)
+  if (CUDA_FOUND)
+    list(APPEND CAFFE2_LIB_DEPS -lcaffe2_gpu)
+  endif()
 
   set(PYTORCH_SUPPORTED_COMMIT 3749c58) # Release v0.4.0
   list(APPEND CAFFE2_PATCHES
@@ -233,6 +249,7 @@ if (USE_TF)
   # Tensorflow
   message(STATUS "Fetching Tensorflow")
   add_definitions(-DUSE_TF)
+  set(TF_LIB_DEPS -ltensorflow_cc)
   if (CUDA_FOUND AND NOT USE_TF_CPU_ONLY)
     ExternalProject_Add(
       tensorflow_cc
@@ -360,6 +377,9 @@ else()
   endif()
 endif()
 
+# Caffe dependencies
+set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lhdf5_hl -lhdf5 -lopenblas -lcaffe -lprotobuf)
+
 if (USE_TF)
   add_dependencies(caffe_dd tensorflow_cc)
 endif()
@@ -372,8 +392,11 @@ endif()
 if (USE_XGBOOST)
   message(STATUS "Configuring XGBoost")
   add_definitions(-DUSE_XGBOOST)
+  set(XGBOOST_LIB_DEPS -Wl,--whole-archive ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/lib/libxgboost.a -Wl,--no-whole-archive ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/dmlc-core/libdmlc.a ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/librabit.a)
+
   if (CUDA_FOUND AND USE_XGBOOST_GPU)
     add_definitions(-DUSE_XGBOOST_GPU)
+    list(APPEND XGBOOST_LIB_DEPS ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/CMakeFiles/gpuxgboost.dir/plugin/updater_gpu/src/gpuxgboost_generated_updater_gpu.cu.o ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/nccl/libnccl.a)
 #    set(XGB_NVCC_FLAGS,"--expt-extended-lambda;-gencode arch=compute_35,code=compute_35")
     ExternalProject_Add(
       xgboost
@@ -403,7 +426,8 @@ endif()
 if (USE_TSNE)
   message(STATUS "Configuring T-SNE")
   add_definitions(-DUSE_TSNE)
-      ExternalProject_Add(
+  set(TSNE_LIB_DEPS -ltsne_multicore)
+  ExternalProject_Add(
       Multicore-TSNE
       PREFIX Multicore-TSNE
       INSTALL_DIR ${CMAKE_BINARY_DIR}
@@ -434,7 +458,27 @@ endif()
 
 # main library, main & tests
 include_directories ("${PROJECT_SOURCE_DIR}/src")
-add_subdirectory (src) 
+add_subdirectory (src)
+
+# Flags used by the subdirectories
+set(COMMON_INCLUDE_DIRS ${Boost_INCLUDE_DIRS})
+set(COMMON_LINK_DIRS
+  ${CAFFE_LIB_DIR}
+  ${CAFFE2_LIB_DIR}
+  ${TF_LIB_DIR}
+  ${XGBOOST_LIB_DIR}
+  ${TSNE_LIB_DIR}
+  ${DLIB_LIB_DIR})
+set(COMMON_LINK_LIBS
+  ddetect ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl hdf5_cpp ${Boost_LIBRARIES}
+  ${CAFFE_LIB_DEPS}
+  ${CAFFE2_LIB_DEPS}
+  ${TF_LIB_DEPS}
+  ${XGBOOST_LIB_DEPS}
+  ${TSNE_LIB_DEPS}
+  ${DLIB_LIB_DEPS})
+set(HTTP_LINK_LIBS cppnetlib-uri crypto ssl)
+
 add_subdirectory(main)
 
 # templates
