@@ -22,6 +22,7 @@ set (HDF5_LIB /usr/lib/x86_64-linux-gnu/hdf5/serial)
 
 # options
 OPTION(BUILD_TESTS "Should the tests be built")
+OPTION(BUILD_TOOLS "Should the tools be built")
  
 # Get the current working branch
 execute_process(
@@ -169,7 +170,7 @@ if (USE_CAFFE2)
 
   add_definitions(-DUSE_CAFFE2)
   list(APPEND CAFFE2_LIB_DEPS -lcaffe2)
-  if (CUDA_FOUND)
+  if (CUDA_FOUND AND NOT USE_CPU_ONLY)
     list(APPEND CAFFE2_LIB_DEPS -lcaffe2_gpu)
   endif()
 
@@ -494,6 +495,11 @@ file(COPY "patches" DESTINATION ".")
 if (BUILD_TESTS)
   enable_testing()
   add_subdirectory(tests)
+endif()
+
+# unit testing
+if (BUILD_TOOLS)
+  add_subdirectory(tools)
 endif()
 
 # status
