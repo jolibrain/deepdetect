@@ -30,7 +30,8 @@ namespace dd {
      */
 
     void net_to_svg(const caffe2::NetDef &net, const std::string &path) {
-      int size = std::min(net.op().size(), 600);
+      int size = net.op().size();
+      CAFFE_ENFORCE(size < 600);
       auto graph = path + ".tmpgraph";
       std::ofstream file(graph);
       file << "digraph {" << std::endl;

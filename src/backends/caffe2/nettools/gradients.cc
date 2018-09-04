@@ -273,8 +273,9 @@ namespace dd {
 	if (info._device >= 0) {
 	  op.mutable_device_option()->set_device_type(caffe2::CUDA);
 	  op.mutable_device_option()->set_cuda_gpu_id(info._device);
-	}
+	} else
 #endif
+	  op.mutable_device_option()->set_device_type(caffe2::CPU);
 	// Setting counter to a negative value so it won't trigger anymore
 	info._current--;
       }

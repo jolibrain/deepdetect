@@ -66,16 +66,19 @@ namespace dd {
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::~Caffe2Lib() {}
 
-  template <typename T>
-  using StateSetter = void(Caffe2LibState::*)(const T&);
-
 #ifdef CPU_ONLY
-  inline void _set_gpu_state(const APIData &ad, Caffe2LibState&, void*, void*) {
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
+  set_gpu_state(const APIData &ad, bool) {
     if (ad.has("gpuid") || ad.has("gpu")) {
       this->_logger->warn("Parametters 'gpuid' and 'gpu' are not used in CPU_ONLY mode");
     }
   }
 #else
+
+  template <typename T>
+  using StateSetter = void(Caffe2LibState::*)(const T&);
+
   inline void _set_gpu_state(const APIData &ad, Caffe2LibState &state,
 			     StateSetter<std::vector<int>> gpu_ids, StateSetter<bool> is_gpu) {
     if (ad.has("gpuid")) {
@@ -101,7 +104,6 @@ namespace dd {
       (state.*is_gpu)(ad.get("gpu").get<bool>());
     }
   }
-#endif
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
@@ -117,6 +119,7 @@ namespace dd {
     }
     _set_gpu_state(ad, _state, gpu_ids, is_gpu);
   }
+#endif
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
