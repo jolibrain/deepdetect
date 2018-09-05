@@ -181,10 +181,10 @@ namespace dd
 	      }
 	    else
 	      {
-		add_basic_block(this->_net_params,bottom,top,cr_layers.at(l)._nconv,cr_layers.at(l)._num_output,
-				0,0,1,activation,0.0,bn,0,0,"MAX",bottom=="data"?width:1,l<2?conv1d_early_kernel_size:conv_kernel_size,1,3,1,3);
-		add_basic_block(this->_dnet_params,bottom,top,cr_layers.at(l)._nconv,cr_layers.at(l)._num_output,
-				0,0,1,activation,0.0,bn,0,0,"MAX",bottom=="data"?width:1,l<2?conv1d_early_kernel_size:conv_kernel_size,1,3,1,3);
+		top_conv = add_basic_block(this->_net_params,bottom,top,cr_layers.at(l)._nconv,cr_layers.at(l)._num_output,
+					   0,0,1,activation,0.0,bn,0,0,"MAX",bottom=="data"?width:1,l<2?conv1d_early_kernel_size:conv_kernel_size,1,3,1,3);
+		top_conv = add_basic_block(this->_dnet_params,bottom,top,cr_layers.at(l)._nconv,cr_layers.at(l)._num_output,
+					   0,0,1,activation,0.0,bn,0,0,"MAX",bottom=="data"?width:1,l<2?conv1d_early_kernel_size:conv_kernel_size,1,3,1,3);
 	      }
 	  }
 	else if (cr_layers.at(l)._layer == "DR")
