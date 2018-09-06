@@ -150,9 +150,11 @@ namespace dd {
 
     // Adds an 'Argument' in an 'OperatorDef'
 #define PROTOTYPE(type)							\
-    caffe2::Argument &add_arg(caffe2::OperatorDef &op, const std::string &name, const type &value);
+    caffe2::Argument &add_arg(caffe2::OperatorDef &op, const std::string &name, type const &value);
     PROTOTYPE(int);
+    PROTOTYPE(bool);
     PROTOTYPE(float);
+    PROTOTYPE(char *);
     PROTOTYPE(std::string);
     PROTOTYPE(std::vector<int>);
     PROTOTYPE(std::vector<float>);
@@ -194,6 +196,9 @@ namespace dd {
     PROTOTYPE(TensorProtosDBInput,
 	      const std::string &reader, const std::string &data, const std::string &label,
 	      int batch_size);
+    PROTOTYPE(ImageInput,
+	      const std::string &reader, const std::string &data, const std::string &label,
+	      int batch_size, int color, int size, bool use_gpu_transform);
     PROTOTYPE(NHWC2NCHW, const std::string &input, const std::string &output);
 
     // Basic

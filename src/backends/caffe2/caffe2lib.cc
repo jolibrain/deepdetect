@@ -218,7 +218,7 @@ namespace dd {
     }
 
     // Load batches from the database
-    _last_inputc.link_dbreader(_context, train_net, true);
+    _last_inputc.link_train_dbreader(_context, train_net);
 
     // Apply input tranformations
     _last_inputc.add_constant_layers(_context, init_net);
