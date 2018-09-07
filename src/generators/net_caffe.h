@@ -188,6 +188,11 @@ namespace dd
 		    const std::string &top,
 		    const int &interp_width,
 		    const int &interp_height);
+
+    void add_flatten(caffe::NetParameter *net_param,
+		     const std::string &bottom,
+		     const std::string &top,
+		     const bool &test=false);
     
     caffe::NetParameter *_net_params;
     caffe::NetParameter *_dnet_params;

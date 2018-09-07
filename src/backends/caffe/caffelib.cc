@@ -430,7 +430,7 @@ namespace dd
   {
     if ((ad.has("rotate") && ad.get("rotate").get<bool>()) 
 	|| (ad.has("mirror") && ad.get("mirror").get<bool>())
-	|| ad.has("crop_size") || ad.has("scale"))
+	|| ad.has("crop_size") || _scale != 1.0)
       {
 	caffe::LayerParameter *lparam = net_param.mutable_layer(0); // data input layer
 	if (lparam->type() != "DenseImageData")
@@ -447,9 +447,8 @@ namespace dd
 		dlparam->mutable_transform_param()->set_crop_size(_crop_size);
 	      }
 	    else lparam->mutable_transform_param()->clear_crop_size();
-	    if (ad.get("scale").get<double>() != 1.0)
+	    if (_scale != 1.0)
 	      {
-		_scale = ad.get("scale").get<double>();
 		lparam->mutable_transform_param()->set_scale(_scale);
 		caffe::LayerParameter *dlparam = net_param.mutable_layer(1); // test input layer
 		dlparam->mutable_transform_param()->set_scale(_scale);
@@ -803,6 +802,8 @@ namespace dd
 #else
     Caffe::set_mode(Caffe::CPU);
 #endif
+    if (ad.has("scale"))
+      _scale = ad.get("scale").get<double>();
     if (ad.has("db"))
       this->_inputc._db = ad.get("db").get<bool>(); // XXX: API backward compatibility, if db is in mllib, assume it applies to input as well
     if (ad.has("nclasses"))
@@ -1384,7 +1385,7 @@ namespace dd
 	      nout = inputc.channels() * inputc.width() * inputc.height();
 	    else nout = inputc.channels();
 	  }
-    ad_res.add("nclasses",_nclasses);
+	ad_res.add("nclasses",_nclasses);
 	inputc.reset_dv_test();
 	std::map<int,std::map<int,std::vector<std::pair<float,int>>>> all_true_pos;
 	std::map<int,std::map<int,std::vector<std::pair<float,int>>>> all_false_pos;
@@ -1458,6 +1459,7 @@ namespace dd
 				    int data_index = (c*height+h)*width+w;
 				    double datum_element;
 				    datum_element = static_cast<double>(static_cast<uint8_t>(datum.data()[data_index]));
+				    datum_element *= _scale;
 				    vals.push_back(datum_element);
 				  }
 			    dv_float_data.push_back(vals);
@@ -1529,6 +1531,8 @@ namespace dd
 	    else if (inputc._multi_label && ( inputc._db || ! (typeid(inputc) == typeid(ImgCaffeInputFileConn))
                                            ||  _nclasses <= 1))
 	      slot--;
+	    else if (_autoencoder && typeid(inputc) == typeid(ImgCaffeInputFileConn))
+	      slot = 0; // flatten output
 	    int scount = lresults[slot]->count();
 	    int scperel = scount / dv_size;
 
@@ -1770,7 +1774,6 @@ namespace dd
 	if (inputc._ctc)
 	  ad_res.add("net_meas",true);
       }
-    std::cerr << "computing measures\n";
     SupervisedOutput::measure(ad_res,ad_out,out);
   }
   

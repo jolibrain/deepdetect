@@ -478,8 +478,8 @@ namespace dd
 	nsr->set_phase(caffe::TRAIN);
 	caffe::LossParameter *nlp = lparam->mutable_loss_param();
 	nlp->set_normalization((caffe::LossParameter_NormalizationMode)0); // FULL
-
-	add_act(net_param,ln_tmp,"Sigmoid",1.0,0.0,true); // test
+	add_flatten(net_param,ln_tmp,"conv_flatten",true);
+	add_act(net_param,"conv_flatten","Sigmoid",1.0,0.0,true); // test
       }
   }
 
@@ -492,6 +492,19 @@ namespace dd
     caffe::LayerParameter *lparam = CaffeCommon::add_layer(net_param,bottom,top,"interp_"+bottom,"Interp");
     lparam->mutable_interp_param()->set_width(interp_width);
     lparam->mutable_interp_param()->set_height(interp_height);
+  }
+
+  void NetLayersCaffe::add_flatten(caffe::NetParameter *net_param,
+				   const std::string &bottom,
+				   const std::string &top,
+				   const bool &test)
+  {
+    caffe::LayerParameter *lparam = CaffeCommon::add_layer(net_param,bottom,top,"flatten_"+bottom,"Flatten");
+    if (test)
+      {
+	caffe::NetStateRule *nsr = lparam->add_include();
+	nsr->set_phase(caffe::TEST);
+      }
   }
   
   /*- NetLossCaffe -*/
