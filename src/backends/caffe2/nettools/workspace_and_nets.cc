@@ -392,7 +392,7 @@ namespace dd {
       if (unscoped) {
 	// Some net templates begin with a prefix on each blob ('gpu_0/')
 	// We may want to remove it early to prevent conflicts
-	std::string prefix = device_id_to_prefix(0);
+	const char *prefix = "gpu_0/";
 	for (std::string &s : *net.mutable_external_input()) unscope(s, prefix);
 	for (std::string &s : *net.mutable_external_output()) unscope(s, prefix);
 	for (caffe2::OperatorDef &op : *net.mutable_op()) {
