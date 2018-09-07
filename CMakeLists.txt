@@ -18,7 +18,6 @@ include(ExternalProject)
 
 set (deepdetect_VERSION_MAJOR 0)
 set (deepdetect_VERSION_MINOR 1)
-set (HDF5_LIB /usr/lib/x86_64-linux-gnu/hdf5/serial)
 
 # options
 OPTION(BUILD_TESTS "Should the tests be built")
@@ -72,7 +71,11 @@ set(eigen_archive_hash "50812b426b7c")
 include_directories("${EIGEN3_INCLUDE_DIR}")
 
 # hdf5
-set (HDF5_LIB /usr/lib/x86_64-linux-gnu/hdf5/serial)
+if (RPI3)
+  set(HDF5_LIB /usr/lib/arm-linux-gnueabihf/hdf5/serial)
+else()
+  set(HDF5_LIB /usr/lib/x86_64-linux-gnu/hdf5/serial)
+endif()
 set (HDF5_INCLUDE /usr/include/hdf5/serial)
 include_directories(${HDF5_INCLUDE})
 
@@ -346,6 +349,10 @@ else()
     set(CAFFE_DD_CONFIG_FILE Makefile.config.cpu)
   endif()
 
+  if (RPI3)
+    set(CAFFE_DD_CONFIG_FILE Makefile.config.pi3)
+  endif()
+
   list(APPEND CAFFE_DD_CONFIGURE_COMMAND
     ln -sf ${CAFFE_DD_CONFIG_FILE} Makefile.config &&
     echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config &&
@@ -366,6 +373,8 @@ else()
 
   if (JETSON)
     set(HDF5_LIB /usr/lib/aarch64-linux-gnu/hdf5/serial)
+  elseif (RPI3)
+    set(HDF5_LIB /usr/lib/arm-linux-gnueabihf/hdf5/serial)
   else()
     set(HDF5_LIB /usr/lib/x86_64-linux-gnu/hdf5/serial)
   endif()
