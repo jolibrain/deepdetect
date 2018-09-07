@@ -180,7 +180,14 @@ namespace dd
 				       const std::string &label,
 				       const std::string &top,
 				       const int &num_output,
-				       const bool &deploy=false);
+				       const bool &deploy=false,
+				       const bool &fc=true);
+
+    void add_interp(caffe::NetParameter *net_param,
+		    const std::string &bottom,
+		    const std::string &top,
+		    const int &interp_width,
+		    const int &interp_height);
     
     caffe::NetParameter *_net_params;
     caffe::NetParameter *_dnet_params;

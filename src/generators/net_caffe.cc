@@ -461,11 +461,14 @@ namespace dd
 						     const std::string &label,
 						     const std::string &top,
 						     const int &num_output,
-						     const bool &deploy)
+						     const bool &deploy,
+						     const bool &fc)
   {
     std::string ln_tmp = "ip_" + top;
-    add_fc(net_param,bottom,ln_tmp,num_output);
-
+    if (fc)
+      add_fc(net_param,bottom,ln_tmp,num_output);
+    else add_conv(net_param,bottom,ln_tmp,num_output,1,0,1);
+    
     if (!deploy)
       {
 	caffe::LayerParameter *lparam = CaffeCommon::add_layer(net_param,ln_tmp,top,
@@ -478,6 +481,17 @@ namespace dd
 
 	add_act(net_param,ln_tmp,"Sigmoid",1.0,0.0,true); // test
       }
+  }
+
+  void NetLayersCaffe::add_interp(caffe::NetParameter *net_param,
+				  const std::string &bottom,
+				  const std::string &top,
+				  const int &interp_width,
+				  const int &interp_height)
+  {
+    caffe::LayerParameter *lparam = CaffeCommon::add_layer(net_param,bottom,top,"interp_"+bottom,"Interp");
+    lparam->mutable_interp_param()->set_width(interp_width);
+    lparam->mutable_interp_param()->set_height(interp_height);
   }
   
   /*- NetLossCaffe -*/

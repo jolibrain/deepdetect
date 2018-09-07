@@ -265,7 +265,8 @@ namespace dd
       long int _flops = 0;  /**< model flops. */
       long int _params = 0;  /**< number of parameters in the model. */
       int _crop_size = -1; /**< cropping is part of Caffe transforms in input layers, storing here. */
-
+      double _scale = 1.0; /**< scale is part of Caffe transforms in input layers, storing here. */
+      
       std::vector<std::string> _best_metrics; /**< metric to use for saving best model */
       double _best_metric_value; /**< best metric value  */
 

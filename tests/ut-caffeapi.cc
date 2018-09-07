@@ -920,7 +920,6 @@ TEST(caffeapi,service_train_images_imagedatalayer_multilabel_softprob)
   rmdir(plank_repo_loc.c_str());
 }
 
-
 TEST(caffeapi,service_train_images_convnet)
 {
   // create service
@@ -991,6 +990,45 @@ TEST(caffeapi,service_train_images_resnet)
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() >= 0.0);
   ASSERT_TRUE(jd["body"]["measure"]["acc-5"].GetDouble() >= 0.0);
   ASSERT_EQ(jd["body"]["measure"]["accp"].GetDouble(),jd["body"]["measure"]["acc"].GetDouble());
+
+  // remove service
+  jstr = "{\"clear\":\"full\"}";
+  joutstr = japi.jrender(japi.service_delete(sname,jstr));
+  ASSERT_EQ(ok_str,joutstr);
+  rmdir(plank_repo_loc.c_str());
+}
+
+TEST(caffeapi,service_train_images_autoenc)
+{
+ // create service
+  JsonAPI japi;
+  std::string plank_repo_loc = "plank";
+  mkdir(plank_repo_loc.c_str(),0777);
+  std::string sname = "my_service";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  plank_repo_loc + "\",\"templates\":\"" + model_templates_repo  + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"width\":224,\"height\":224},\"mllib\":{\"db\":true,\"template\":\"convnet\",\"layers\":[\"1CR32\",\"1CR64\",\"1CR128\",\"DR128\",\"1CR128\",\"DR64\",\"1CR64\",\"DR32\",\"1CR32\"],\"activation\":\"relu\",\"autoencoder\":true,\"scale\":0.004}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
+  ASSERT_EQ(created_str,joutstr);
+  
+  // train
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"db\":true,\"test_split\":0.001,\"shuffle\":true,\"bw\":false},\"mllib\":{\"gpu\":true,\"gpuid\":"+gpuid+",\"solver\":{\"iterations\":" + iterations_plank + ",\"test_interval\":500,\"base_lr\":0.0001,\"snapshot\":2000,\"test_initialization\":false},\"net\":{\"batch_size\":10}},\"output\":{\"measure\":[\"eucll\"]}},\"data\":[\"" + plank_repo + "train\"]}";
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  JDoc jd;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_TRUE(jd.HasMember("status"));
+  ASSERT_EQ(201,jd["status"]["code"].GetInt());
+  ASSERT_EQ("Created",jd["status"]["msg"]);
+  ASSERT_TRUE(jd.HasMember("head"));
+  ASSERT_EQ("/train",jd["head"]["method"]);
+  ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
+  ASSERT_TRUE(jd.HasMember("body"));
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
+  ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
+  /*ASSERT_TRUE(jd["body"]["measure"].HasMember("f1"));
+  ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() >= 0.0);
+  ASSERT_TRUE(jd["body"]["measure"]["acc-5"].GetDouble() >= 0.0);
+  ASSERT_EQ(jd["body"]["measure"]["accp"].GetDouble(),jd["body"]["measure"]["acc"].GetDouble());*/
 
   // remove service
   jstr = "{\"clear\":\"full\"}";

@@ -98,15 +98,18 @@ namespace dd
 	if (bn)
 	  {
 	    add_bn(net_param,top_conv);
-	    add_act(net_param,top_conv,activation);
+	    if (activation != "none")
+	      add_act(net_param,top_conv,activation);
 	  }
 	else if (dropout_ratio > 0.0) // though in general, no dropout between convolutions
 	  {
-	    add_act(net_param,top_conv,activation);
+	    if (activation != "none")
+	      add_act(net_param,top_conv,activation);
 	    if (c != nconv-1)
 	      add_dropout(net_param,top_conv,dropout_ratio);
 	  }
-	else add_act(net_param,top_conv,activation);
+	else if (activation != "none")
+	  add_act(net_param,top_conv,activation);
 	bottom_conv = top_conv;
       }
     // pooling
@@ -135,6 +138,7 @@ namespace dd
     if (ad_mllib.has("flat1dconv"))
       flat1dconv = ad_mllib.get("flat1dconv").get<bool>();
     
+    
     std::vector<std::string> layers;
     std::string activation = CaffeCommon::set_activation(ad_mllib);
     double dropout = 0.5;
@@ -154,8 +158,14 @@ namespace dd
     std::string bottom = "data";
     bool has_deconv = false;
     int width = -1;
+    int height = -1;
     if (flat1dconv)
       width = this->_net_params->mutable_layer(1)->mutable_memory_data_param()->width();
+    if (autoencoder)
+      {
+	width = ad_mllib.get("width").get<int>();
+	height = ad_mllib.get("height").get<int>();
+      }
     std::string top_conv;
     //TODO: support for embed layer in inputs
     for (size_t l=0;l<cr_layers.size();l++)
@@ -168,16 +178,20 @@ namespace dd
 		int conv_pad = 0;
 		if (has_deconv)
 		  conv_pad = 1;
-		top_conv = add_basic_block(this->_net_params,bottom,top,cr_layers.at(l)._nconv,cr_layers.at(l)._num_output,
-					   conv_kernel_size,conv_pad,1,activation,0.0,bn,2,2,has_deconv?"NONE":"MAX");
 		if (has_deconv && l == cr_layers.size()-1)
-		  top_conv = add_basic_block(this->_dnet_params,bottom,top,cr_layers.at(l)._nconv,cr_layers.at(l)._num_output,
-					     1,conv_pad,1,activation,0.0,bn,1,1,"NONE");
+		  {
+		    top_conv = add_basic_block(this->_net_params,bottom,top,cr_layers.at(l)._nconv,cr_layers.at(l)._num_output,
+					     conv_kernel_size,conv_pad,1,"none",0.0,bn,1,1,"NONE");
+		    top_conv = add_basic_block(this->_dnet_params,bottom,top,cr_layers.at(l)._nconv,cr_layers.at(l)._num_output,
+					     conv_kernel_size,conv_pad,1,"none",0.0,bn,1,1,"NONE");
+		  }
 		else
-		  top_conv = add_basic_block(this->_dnet_params,bottom,top,cr_layers.at(l)._nconv,cr_layers.at(l)._num_output,
-					     conv_kernel_size,conv_pad,1,activation,0.0,bn,2,2,has_deconv?"NONE":"MAX");
-
-
+		  {
+		    top_conv = add_basic_block(this->_net_params,bottom,top,cr_layers.at(l)._nconv,cr_layers.at(l)._num_output,
+					       conv_kernel_size,conv_pad,1,activation,0.0,bn,2,2,has_deconv?"NONE":"MAX");
+		    top_conv = add_basic_block(this->_dnet_params,bottom,top,cr_layers.at(l)._nconv,cr_layers.at(l)._num_output,
+					       conv_kernel_size,conv_pad,1,activation,0.0,bn,2,2,has_deconv?"NONE":"MAX");
+		  }
 	      }
 	    else
 	      {
@@ -225,8 +239,11 @@ namespace dd
       }
     else if (autoencoder)
       {
-	add_sigmoid_crossentropy_loss(this->_net_params,bottom,"data","losst",ntargets);
-	add_act(this->_dnet_params,bottom,"Sigmoid");
+	add_interp(this->_net_params,bottom,"final_interp",width,height);
+	add_sigmoid_crossentropy_loss(this->_net_params,"final_interp","data","losst",ntargets,false,false);
+	add_interp(this->_dnet_params,bottom,"final_interp",width,height);
+	add_conv(this->_dnet_params,"final_interp","conv_prob",ntargets,1,0,1);
+	add_act(this->_dnet_params,"conv_prob","Sigmoid");
       }
     else
       {

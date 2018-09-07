@@ -61,6 +61,7 @@ namespace dd
     _autoencoder = cl._autoencoder;
     cl._net = nullptr;
     _crop_size = cl._crop_size;
+    _scale = cl._scale;
     _loss = cl._loss;
     _best_metrics = cl._best_metrics;
     _best_metric_value = cl._best_metric_value;
@@ -448,9 +449,10 @@ namespace dd
 	    else lparam->mutable_transform_param()->clear_crop_size();
 	    if (ad.get("scale").get<double>() != 1.0)
 	      {
-		lparam->mutable_transform_param()->set_scale(ad.get("scale").get<double>());
+		_scale = ad.get("scale").get<double>();
+		lparam->mutable_transform_param()->set_scale(_scale);
 		caffe::LayerParameter *dlparam = net_param.mutable_layer(1); // test input layer
-		dlparam->mutable_transform_param()->set_scale(ad.get("scale").get<double>());
+		dlparam->mutable_transform_param()->set_scale(_scale);
 	      }
 	  }
 	else
@@ -578,7 +580,9 @@ namespace dd
     if (_autoencoder)
       {
 	const_cast<APIData&>(ad).add("autoencoder",true);
-	const_cast<APIData&>(ad).add("ntargets",inputc.width()*inputc.height());
+	const_cast<APIData&>(ad).add("ntargets",inputc.channels());
+	const_cast<APIData&>(ad).add("width",inputc.width());
+	const_cast<APIData&>(ad).add("height",inputc.height());
       }
     netcaffe._nlac.configure_net(ad);
   }
@@ -1375,7 +1379,11 @@ namespace dd
 	if (_regression && _ntargets > 1)
 	  nout = _ntargets;
 	if (_autoencoder)
-	  nout = inputc.channels();
+	  {
+	    if (typeid(inputc) == typeid(ImgCaffeInputFileConn))
+	      nout = inputc.channels() * inputc.width() * inputc.height();
+	    else nout = inputc.channels();
+	  }
     ad_res.add("nclasses",_nclasses);
 	inputc.reset_dv_test();
 	std::map<int,std::map<int,std::vector<std::pair<float,int>>>> all_true_pos;
@@ -1436,6 +1444,23 @@ namespace dd
 				  vals.push_back(dv.at(s).float_data(k));
 				dv_float_data.push_back(vals);
 			      }
+			  }
+			else if (_autoencoder && (typeid(inputc) == typeid(ImgCaffeInputFileConn)))
+			  {
+			    Datum datum = dv.at(s);
+			    int height = datum.height();
+			    int width = datum.width();
+			    std::vector<double> vals;
+			    for (int c=0;c<datum.channels();++c) //TODO: store for each channel or flatten before sigmoid
+			      for (int h=0;h<height;++h)
+				for (int w=0;w<width;++w)
+				  {
+				    int data_index = (c*height+h)*width+w;
+				    double datum_element;
+				    datum_element = static_cast<double>(static_cast<uint8_t>(datum.data()[data_index]));
+				    vals.push_back(datum_element);
+				  }
+			    dv_float_data.push_back(vals);
 			  }
 			else
 			  {
@@ -1650,31 +1675,31 @@ namespace dd
 			    double target = dv_float_data.at(j).at(l);
 			    double best_prob = -1.0;
 			    double best_cat = -1.0;
-                if (lresults[slot]->shape(1) != 1)
-                  {
-                    for (int k=0;k<nout;k++)
-                      {
-                        double prob = lresults[slot]->cpu_data()[l+(nout*j+k)*dv_float_data.at(j).size()];
-                        if (prob >= best_prob)
-                          {
-                            best_prob = prob;
-                            best_cat = k;
-                          }
-                      }
-                  }
-                else
-                  {
-                    // in case of dice loss + deeplab_vgg16, predictions are at pos 0
-                    double res = lresults[slot]->cpu_data()[l+j*dv_float_data.at(j).size()];
-                    if (res > 0.5)
-                      {
-                        best_cat = 1;
-                      }
-                    else
-                      {
-                        best_cat = 0;
-                      }
-                  }
+			    if (lresults[slot]->shape(1) != 1)
+			      {
+				for (int k=0;k<nout;k++)
+				  {
+				    double prob = lresults[slot]->cpu_data()[l+(nout*j+k)*dv_float_data.at(j).size()];
+				    if (prob >= best_prob)
+				      {
+					best_prob = prob;
+					best_cat = k;
+				      }
+				  }
+			      }
+			    else
+			      {
+				// in case of dice loss + deeplab_vgg16, predictions are at pos 0
+				double res = lresults[slot]->cpu_data()[l+j*dv_float_data.at(j).size()];
+				if (res > 0.5)
+				  {
+				    best_cat = 1;
+				  }
+				else
+				  {
+				    best_cat = 0;
+				  }
+			      }
 			    preds.push_back(best_cat);
 			    targets.push_back(target);
 			  }
@@ -1745,6 +1770,7 @@ namespace dd
 	if (inputc._ctc)
 	  ad_res.add("net_meas",true);
       }
+    std::cerr << "computing measures\n";
     SupervisedOutput::measure(ad_res,ad_out,out);
   }
   
@@ -2719,8 +2745,11 @@ namespace dd
 	    deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels()+_ntargets);
 	    deploy_net_param.mutable_layer(1)->mutable_slice_param()->set_slice_point(0,inputc.channels());
 	  }
-	for (size_t d=0;d<inputc._mean_values.size();d++)
-	  deploy_net_param.mutable_layer(0)->mutable_transform_param()->add_mean_value(inputc._mean_values.at(d));
+	if (!_autoencoder)
+	  for (size_t d=0;d<inputc._mean_values.size();d++)
+	    deploy_net_param.mutable_layer(0)->mutable_transform_param()->add_mean_value(inputc._mean_values.at(d));
+	if (_scale != 1.0)
+	  deploy_net_param.mutable_layer(0)->mutable_transform_param()->set_scale(_scale);
 	if (_crop_size > 0)
 	  deploy_net_param.mutable_layer(0)->mutable_transform_param()->set_crop_size(_crop_size);
       }

@@ -1484,18 +1484,18 @@ namespace dd
 	    target = bad.get("target").get<std::vector<double>>();
 	  else target.push_back(bad.get("target").get<double>());
 	  for (size_t i=0;i<target.size();i++)
-        if (thres >= 0)
-          {
-            if (target.at(i) >thres)
-              eucl += (predictions.at(i)-target.at(i))*(predictions.at(i)-target.at(i));
-          }
-        else
-          {
-            if (target.at(i) >=0)
-              eucl += (predictions.at(i)-target.at(i))*(predictions.at(i)-target.at(i));
-          }
+	    if (thres >= 0)
+	      {
+		if (target.at(i) >thres)
+		  eucl += (predictions.at(i)-target.at(i))*(predictions.at(i)-target.at(i));
+	      }
+	    else
+	      {
+		if (target.at(i) >=0)
+		  eucl += (predictions.at(i)-target.at(i))*(predictions.at(i)-target.at(i));
+	      }
 	}
-	return eucl / static_cast<double>(batch_size);
+      return eucl / static_cast<double>(batch_size);
     }
     
     // measure: gini coefficient
