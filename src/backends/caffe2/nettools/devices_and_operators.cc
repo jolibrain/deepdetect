@@ -720,41 +720,92 @@ namespace dd {
      *  Pre-computation
      */
 
+    typedef std::function<void(caffe2::NetDef&,int)> EnsureIsBatchable;
+    extern const std::map<std::string, EnsureIsBatchable> ensure_op_is_batchable;
+
     /*
-     * Currently the only the detectron models make us update the net in order to make it batchable.
+     * Currently only the detectron models make us update the net
+     * in order to make it batchable.
+     *
      * By default the 'batch_splits' blob is not used, so we need to place it into the net.
-     * See https://github.com/pytorch/pytorch/blob/master/caffe2/operators/box_with_nms_limit_op.cc
-     * and https://github.com/pytorch/pytorch/blob/master/caffe2/operators/bbox_transform_op.cc
+     * See in https://github.com/pytorch/pytorch/blob/master/caffe2/operators :
+     * box_with_nms_limit_op.cc and bbox_transform_op.cc
+     *
+     * Another problem occurs with CollectAndDistributeFpnRpnProposals
+     * that do not keep the data grouped by batch item.
+     * See in https://github.com/chichaj/deepdetect/blob/master/patches/caffe2 :
+     * collect_proposals.patch
      */
     void ensure_is_batchable(caffe2::NetDef &net) {
-
       // Loop over the operators
-      auto &ops = *net.mutable_op();
+      const auto &ops = net.op();
       for (int idx = ops.size(); idx-- > 0;) {
-	caffe2::OperatorDef &op = ops[idx];
-	auto &op_inputs = *op.mutable_input();
-	auto &op_outputs = *op.mutable_output();
-
-	// Find box NMS predictions that doesn't have a 'batch_splits' input
-	if (op.type() == "BoxWithNMSLimit" && op_inputs.size() == 2) {
-	  CAFFE_ENFORCE(op_outputs.size() == 3); // Should have a 'batch_splits' output
-
-	  // Find if the box-transform already generates thoses values
-	  caffe2::OperatorDef &box_op(ops[find_previous_update(net, op_inputs[1], idx - 1)]);
-	  CAFFE_ENFORCE(box_op.type() == "BBoxTransform");
-	  auto &box_op_outputs = *box_op.mutable_output();
-
-	  // If not, generate them
-	  if (box_op_outputs.size() == 1) {
-	    box_op_outputs.Add(std::move(box_op_outputs[0] + batch_splits_suffix));
-	  }
-
-	  // Link them to the current operator
-	  op_inputs.Add(std::string(box_op_outputs[1]));
-	  op_outputs.Add(std::move(op_outputs[0] + batch_splits_suffix));
+	auto it = ensure_op_is_batchable.find(ops[idx].type());
+	if (it != ensure_op_is_batchable.end()) {
+	  it->second(net, idx);
 	}
       }
     }
+
+    void make_input_batchable(caffe2::NetDef &net, int op_idx, int input_size,
+			      const std::string &prev_type, int input_idx, int output_idx) {
+      // Check if all the inputs are already present
+      auto &inputs = *net.mutable_op(op_idx)->mutable_input();
+      if (inputs.size() == input_size) {
+	return;
+      }
+      CAFFE_ENFORCE(inputs.size() == input_size - 1);
+      // Find a previous blob that can output the 'batch_splits' blob
+      int prev_idx = find_previous_update(net, inputs[input_idx], op_idx - 1);
+      const caffe2::OperatorDef &prev = net.op(prev_idx);
+      CAFFE_ENFORCE(prev.type() == prev_type);
+      // Add it the the input's list
+      ensure_op_is_batchable.at(prev_type)(net, prev_idx);
+      inputs.Add(std::string(prev.output(output_idx)));
+    }
+
+    void make_output_batchable(caffe2::NetDef &net, int op_idx, int output_size,
+			       int output_idx) {
+      // Check if all the outputs are already present
+      auto &outputs = *net.mutable_op(op_idx)->mutable_output();
+      if (outputs.size() == output_size) {
+	return;
+      }
+      // Output a 'batch_splits' blob
+      CAFFE_ENFORCE(outputs.size() == output_size - 1);
+      outputs.Add(std::move(outputs[output_idx] + batch_splits_suffix));
+    }
+
+    static void ensure_collect_proposals_is_batchable(caffe2::NetDef &net, int idx) {
+      caffe2::OperatorDef &op = *net.mutable_op(idx);
+      for (caffe2::Argument &arg : *op.mutable_arg()) {
+	if (arg.name() == "keep_grouped") {
+	  arg.set_i(true);
+	  return;
+	}
+      }
+      add_arg(op, "keep_grouped", true);
+    }
+
+    static inline void ensure_bbox_transform_is_batchable(caffe2::NetDef &net, int idx) {
+      make_output_batchable(net, idx, 2, 0);
+    }
+
+    static inline void ensure_box_nms_is_batchable(caffe2::NetDef &net, int idx) {
+      make_input_batchable(net, idx, 3, "BBoxTransform", 1, 1);
+      make_output_batchable(net, idx, 4, 0);
+    }
+
+    static inline void ensure_bbox_rois_is_batchable(caffe2::NetDef &net, int idx) {
+      make_input_batchable(net, idx, 3, "BoxWithNMSLimit", 0, 3);
+    }
+
+    const std::map<std::string, EnsureIsBatchable> ensure_op_is_batchable({
+	{ "CollectAndDistributeFpnRpnProposals", ensure_collect_proposals_is_batchable },
+	{ "BBoxTransform", ensure_bbox_transform_is_batchable },
+	{ "BoxWithNMSLimit", ensure_box_nms_is_batchable },
+	{ "BBoxToRoi", ensure_bbox_rois_is_batchable },
+    });
 
     /*
      *  Finalisation

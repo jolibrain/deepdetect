@@ -151,6 +151,7 @@ namespace dd {
   caffe2::NetDef _init_net;
   caffe2::NetDef _train_net;
   caffe2::NetDef _net;
+  std::vector<std::pair<caffe2::NetDef, caffe2::NetDef>> _extensions;
   Caffe2LibState _state;
   TInputConnectorStrategy _last_inputc; // Last transformed version of the default _inputc
   };

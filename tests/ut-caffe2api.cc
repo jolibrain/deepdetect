@@ -75,6 +75,26 @@ using namespace dd;
       }							\
     })
 
+#define CREATE_DETECTRON_MASK(repo, mask, input...) TO_STRING({	\
+      "mllib": "caffe2",				\
+      "description": "my classifier",			\
+      "type": "supervised",				\
+      "model": {					\
+	"repository": repo,				\
+	"extensions": [mask]				\
+      },						\
+      "parameters": {					\
+	"input": {					\
+	  "connector": "image",				\
+	  "mean": [102.9801, 115.9465, 122.7717],	\
+	  input						\
+	},						\
+        "mllib": {					\
+	  "gpuid": [0]					\
+	}						\
+      }							\
+    })
+
 #define CREATE(t, r, s) _CREATE(t, r, "", s, "gpuid": [0])
 #define CREATE_TEMPLATE(t, r, s, tname, nclasses)			\
   _CREATE(t, r, "", s, "gpuid": [0], "template": tname, "nclasses": nclasses)
@@ -119,6 +139,17 @@ using namespace dd;
       "parameters": {							\
 	"output": {							\
 	  "bbox": true,							\
+	  "best": 1,							\
+	  "confidence_threshold": threshold				\
+	}								\
+      },								\
+      "data": [ data ]							\
+    })
+#define PREDICT_MASK(service, threshold, data...) TO_STRING({		\
+      "service": service,						\
+      "parameters": {							\
+	"output": {							\
+	  "mask": true,							\
 	  "best": 1,							\
 	  "confidence_threshold": threshold				\
 	}								\
@@ -179,7 +210,9 @@ void assert_predictions(const JDoc &jd, std::vector<std::pair<std::string, doubl
   }
 }
 
-void assert_bboxes(const JDoc &jd, std::map<std::string, std::map<std::string, int>> preds) {
+void assert_bboxes_and_masks(const JDoc &jd,
+			     std::map<std::string, std::map<std::string, int>> preds,
+			     bool has_mask) {
 
   // Check array
   size_t nb_pred = preds.size();
@@ -199,6 +232,23 @@ void assert_bboxes(const JDoc &jd, std::map<std::string, std::map<std::string, i
       auto it = cmp.find(cls["cat"].GetString());
       if (it != cmp.end()) {
 	it->second--;
+      }
+
+      // Check Masks
+      if (has_mask) {
+	ASSERT_TRUE(cls.HasMember("mask"));
+	const auto &bbox = cls["bbox"];
+	const auto &mask = cls["mask"];
+	size_t height = mask["height"].GetInt();
+	size_t width = mask["width"].GetInt();
+	size_t xmin = static_cast<size_t>(bbox["xmin"].GetDouble());
+	size_t ymin = static_cast<size_t>(bbox["ymin"].GetDouble());
+	size_t xmax = static_cast<size_t>(bbox["xmax"].GetDouble());
+	size_t ymax = static_cast<size_t>(bbox["ymax"].GetDouble());
+	ASSERT_TRUE(width == xmax - xmin + 1);
+	ASSERT_TRUE(height == ymax - ymin + 1);
+	ASSERT_TRUE(mask.HasMember("format"));
+	ASSERT_TRUE(mask["data"].Size() == width * height);
       }
     }
 
@@ -242,6 +292,8 @@ inline void assert_first_test_at(const JDoc &jd, double d) {
 #define DTTRON "../examples/caffe2/detectron"
 #define DTTRON_BOATS "../examples/caffe2/detectron/imgs/boats.jpg"
 #define DTTRON_DOGS "../examples/caffe2/detectron/imgs/dogs.jpg"
+#define DTTRON_MASK "../examples/caffe2/detectron_mask"
+#define DTTRON_MASK_EXT "../examples/caffe2/detectron_mask/ext"
 
 // Json create
 
@@ -251,6 +303,8 @@ static const std::string trainable = CREATE_TEMPLATE("supervised", BC_REPO, 128.
 static const std::string finetunable = CREATE_FINETUNE("supervised", BC_REPO, 128.0, "resnet_50", 2,
 						       WEIGHTS);
 static const std::string detectron = CREATE_DETECTRON(DTTRON, "scale_min": 800, "scale_max": 1333);
+static const std::string detectron_mask =
+  CREATE_DETECTRON_MASK(DTTRON_MASK, DTTRON_MASK_EXT, "height": 800, "width": 1216);
 
 // Json predict
 
@@ -258,8 +312,10 @@ static const std::string predict_cat = PREDICT_SUPERVISED(SERVICE, 3, IMG_CAT);
 static const std::string predict_cat_and_amb = PREDICT_SUPERVISED(SERVICE, 3, IMG_CAT, IMG_AMB);
 static const std::string test_accuracy = PREDICT_TEST(SERVICE, 6, DB_FISH, "acc");
 static const std::string extract_conv1 = PREDICT_UNSUPERVISED(SERVICE, "gpu_0/conv1", IMG_CAT);
-static const std::string predict_bbox_boats_and_dogs = PREDICT_BBOX(SERVICE, 0.7,
-								    DTTRON_BOATS, DTTRON_DOGS);
+static const std::string predict_bbox_boats_and_dogs =
+  PREDICT_BBOX(SERVICE, 0.8, DTTRON_BOATS, DTTRON_DOGS);
+static const std::string predict_mask_boats_and_dogs =
+  PREDICT_MASK(SERVICE, 0.8, DTTRON_BOATS, DTTRON_DOGS);
 
 // Json train & test
 
@@ -412,14 +468,26 @@ TEST(caffe2api, service_finetune) {
   clean_repository(BC_REPO);
 }
 
-TEST(caffe2api, detectron_predict) {
+TEST(caffe2api, detectron_bbox_predict) {
   JsonAPI japi;
   JDoc jd;
   create(japi, detectron);
 
   predict(japi, jd, predict_bbox_boats_and_dogs);
-  assert_bboxes(jd, {
+  assert_bboxes_and_masks(jd, {
       { DTTRON_BOATS, {{"boat", 2}, {"person", 35}} },
       { DTTRON_DOGS, {{"dog", 2}, {"person", 2}} }
-  });
+  }, false);
+}
+
+TEST(caffe2api, detectron_mask_predict) {
+  JsonAPI japi;
+  JDoc jd;
+  create(japi, detectron_mask);
+
+  predict(japi, jd, predict_mask_boats_and_dogs);
+  assert_bboxes_and_masks(jd, {
+      { DTTRON_BOATS, {{"boat", 2}, {"person", 25}} },
+      { DTTRON_DOGS, {{"dog", 2}, {"person", 2}} }
+  }, true);
 }

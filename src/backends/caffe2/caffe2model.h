@@ -72,7 +72,8 @@ namespace dd {
     std::string _iter_state;
     std::string _lr_state;
 
-    std::string _model_template; // model template name, if any.
+    std::vector<std::pair<std::string, std::string>> _extensions; // nets to append, if any
+    std::string _model_template; // model template name, if any
     std::string _weights; // external weights, if any
 
     // Files path (empty if non-existant)

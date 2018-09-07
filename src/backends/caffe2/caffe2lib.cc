@@ -59,6 +59,7 @@ namespace dd {
     _init_net = std::move(c2l._init_net);
     _train_net = std::move(c2l._train_net);
     _net = std::move(c2l._net);
+    _extensions = std::move(c2l._extensions);
     _state = c2l._state;
     _last_inputc = c2l._last_inputc;
   }
@@ -304,6 +305,11 @@ namespace dd {
   void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
   create_model() {
     this->_logger->info("Re-creating the nets");
+
+    // Add the extensions
+    for (const auto &nets : _extensions) {
+      Caffe2NetTools::append_model(_net, _init_net, nets.first, nets.second);
+    }
     Caffe2NetTools::ensure_is_batchable(_net);
 
     // _input_blob and _output_blobs should have been initialized during init_mllib
@@ -447,6 +453,18 @@ namespace dd {
     // Load the model
     Caffe2NetTools::import_net(_init_net, this->_mlmodel._init);
     Caffe2NetTools::import_net(_net, this->_mlmodel._predict);
+
+    // Load the extensions
+    for (const auto &ext : this->_mlmodel._extensions) {
+      _extensions.emplace_back();
+      auto &nets = _extensions.back();
+      Caffe2NetTools::import_net(nets.first, ext.first, true);
+      if (ext.second.size()) {
+	Caffe2NetTools::import_net(nets.second, ext.second, true);
+      }
+    }
+
+    // Check the number of classes
     int current_nclasses = Caffe2NetTools::get_nclasses(_net, _init_net);
 
     // Keep the current shape
@@ -518,12 +536,15 @@ namespace dd {
 			     const std::vector<size_t> &scales = {}) {
     // Fetch the items size
     size_t layers = names.size();
-    std::vector<std::vector<float>> sizes;
+    std::vector<size_t> sizes;
     bool has_sizes = !size_layer.empty();
     if (has_sizes) {
       CAFFE_ENFORCE(scales.size() == layers);
+      std::vector<std::vector<float>> float_sizes(batch_size);
+      context.extract(float_sizes, size_layer, std::vector<size_t>(batch_size, 1));
       sizes.resize(batch_size);
-      context.extract(sizes, size_layer, std::vector<size_t>(batch_size, 1));
+      std::transform(float_sizes.begin(), float_sizes.end(), sizes.begin(),
+		     [&](const std::vector<float> &size){ return size[0]; });
     }
 
     // Fetch the layers
@@ -535,11 +556,7 @@ namespace dd {
       // Fetch the items
       result.resize(batch_size);
       if (has_sizes) {
-	size_t scale = scales[i];
-	std::vector<size_t> scaled_sizes(batch_size);
-	std::transform(sizes.begin(), sizes.end(), scaled_sizes.begin(),
-		       [&](const std::vector<float> &size){ return scale * size[0]; });
-	context.extract(result, name, scaled_sizes);
+	context.extract(result, name, sizes, scales[i]);
       } else {
 	context.extract(result, name);
       }
@@ -556,6 +573,16 @@ namespace dd {
     // raw layer
     if (!extract.empty()) {
       return extract_layers(_context, results, batch_size, { extract });
+    }
+
+    // scores, bboxes, classes, mask, im_info, batch_splits
+    if (_state.mask()) {
+      CAFFE_ENFORCE(outputs.size() == 6);
+      std::string infos = outputs[4], sizes = outputs[5];
+      outputs.erase(outputs.begin() + 4, outputs.end());
+      extract_layers(_context, results, batch_size, outputs, sizes, {1, 4, 1, 0});
+      results.emplace_back(batch_size);
+      return _context.extract(results.back(), infos);
     }
 
     // scores, bboxes, classes, batch_splits
@@ -793,6 +820,7 @@ namespace dd {
     }
 
     _state.set_bbox(ad_output);
+    _state.set_mask(ad_output);
 
     //XXX More informations could be fetched in the future (bbox, rois, etc.)
 
@@ -823,6 +851,10 @@ namespace dd {
     while ((batch_size = _last_inputc.load_batch(_context, total_size))) {
       run_net(_net.name());
 
+      //TODO Print the blobs shape after the first run
+      // _context._workspace->PrintBlobSizes()
+      // https://github.com/pytorch/pytorch/blob/master/caffe2/core/workspace.cc#L21
+
       // Extract results
       std::vector<std::vector<std::vector<float>>> results;
       extract_results(results, batch_size);
@@ -841,7 +873,7 @@ namespace dd {
 	  std::vector<double> vals(result.begin(), result.end()); // raw extracted layer
 	  rad.add("vals", vals);
 
-	} else if (_state.bbox()) {
+	} else if (_state.bbox() ||  _state.mask()) {
 
 	  // Fetch data
 	  const std::vector<float> &scale = _last_inputc.scales().at(total_size);
@@ -851,11 +883,28 @@ namespace dd {
 	  std::vector<double> probs;
 	  std::vector<std::string> cats;
 	  std::vector<APIData> bboxes;
+	  std::vector<APIData> masks;
 	  CAFFE_ENFORCE(scores.size() == classes.size());
 	  CAFFE_ENFORCE(scores.size() * 4 == coords.size());
 	  auto coords_it = coords.begin();
 
-	  for (size_t box = 0; box < scores.size(); ++box, coords_it += 4) {
+	  std::vector<uchar> raw_masks;
+	  size_t mask_h(0), mask_w(0), img_h(0), img_w(0), mask_size(0);
+	  if ( _state.mask()) {
+	    raw_masks.assign(results[3][item].begin(), results[3][item].end());
+	    std::vector<float> im_info = results[4][item];
+	    CAFFE_ENFORCE(im_info.size() == 3);
+	    mask_h = im_info[0];
+	    mask_w = im_info[1];
+	    img_h = mask_h / scale[0];
+	    img_w = mask_w / scale[1];
+	    mask_size = mask_h * mask_w;
+	  }
+	  cv::Size img_size(img_w, img_h);
+	  uchar *masks_data = raw_masks.data();
+
+	  for (size_t box = 0; box < scores.size(); ++box,
+		 coords_it += 4, masks_data += mask_size) {
 
 	    // Ignore low score
 	    float prob = scores[box];
@@ -863,23 +912,46 @@ namespace dd {
 	      continue;
 	    }
 
-	    // Set the bounding box
-	    APIData ad_bbox;
-	    const std::vector<std::string> coord({"xmin", "ymin", "xmax", "ymax"});
-	    const std::vector<float> coord_scale({scale[1], scale[0], scale[1], scale[0]});
-	    for (int coord_idx = 0; coord_idx < 4; ++coord_idx) {
-	      ad_bbox.add(coord[coord_idx], *(coords_it + coord_idx) / coord_scale[coord_idx]);
-	    }
-
 	    // Append the data
 	    probs.push_back(prob);
 	    cats.push_back(this->_mlmodel.get_hcorresp(classes[box]));
-	    bboxes.push_back(ad_bbox);
+
+	    // Set the bounding box
+	    bboxes.emplace_back();
+	    APIData &ad_bbox = bboxes.back();
+	    const std::vector<std::string> coord({"xmin", "ymin", "xmax", "ymax"});
+	    const std::vector<float> coord_scale({scale[1], scale[0], scale[1], scale[0]});
+	    int scaled_coords[4];
+	    for (int coord_idx = 0; coord_idx < 4; ++coord_idx) {
+	      float scaled = *(coords_it + coord_idx) / coord_scale[coord_idx];
+	      scaled_coords[coord_idx] = scaled;
+	      ad_bbox.add(coord[coord_idx], scaled);
+	    }
+
+	    // Set the mask
+	    if ( _state.mask()) {
+	      masks.emplace_back();
+	      APIData &ad_mask = masks.back();
+	      cv::Mat img(mask_h, mask_w, CV_8U);
+	      img.data = masks_data;
+	      cv::resize(img, img, img_size, 0, 0, cv::INTER_NEAREST);
+	      int width = scaled_coords[2] - scaled_coords[0] + 1;
+	      int height = scaled_coords[3] - scaled_coords[1] + 1;
+	      cv::Mat mask;
+	      img(cv::Rect(scaled_coords[0], scaled_coords[1], width, height)).copyTo(mask);
+	      ad_mask.add("format", "HW");
+	      ad_mask.add("width", width);
+	      ad_mask.add("height", height);
+	      ad_mask.add("data", std::vector<int>(mask.data, mask.data + mask.total()));
+	    }
 	  }
 
 	  rad.add("probs", probs);
 	  rad.add("cats", cats);
 	  rad.add("bboxes", bboxes);
+	  if ( _state.mask()) {
+	    rad.add("masks", masks);
+	  }
 
 	} else { //XXX for now this means supervised classification
 
@@ -904,7 +976,9 @@ namespace dd {
 
     tout.add_results(vrad);
 
-    out.add("bbox", bool(_state.bbox())); // ad_api_variants work with 'bool', not 'const bool &'
+    // ad_api_variants work with 'bool', not 'const bool &'
+    out.add("bbox", bool(_state.bbox()));
+    out.add("mask", bool( _state.mask()));
 
     //XXX More tags can be forwarded (regression, autoencoder, etc.)
 

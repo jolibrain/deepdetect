@@ -421,9 +421,10 @@ namespace dd {
        * @param results where to store the data
        * @param name name of the layer
        * @param sizes size of each element of the batch (split equally if empty)
+       * @param scale scale factor for the elements of the 'sizes' vector (inferred if 0)
        */
       void extract(std::vector<std::vector<float>> &results, const std::string &name,
-		   const std::vector<size_t> &sizes={}) const;
+		   const std::vector<size_t> &sizes={}, size_t scale=1) const;
 
       /*
        *  Network manipulation
@@ -481,7 +482,8 @@ namespace dd {
       template <typename T>
       void extract_results(std::vector<T> &results,
 			   const std::string &name,
-			   const std::vector<size_t> &sizes) const;
+			   const std::vector<size_t> &sizes,
+			   size_t scale=0) const;
 
       // Fetch, split and cast the data
       template <typename Result, typename Data, typename Size>
@@ -624,6 +626,12 @@ namespace dd {
      * \brief writes a .pb or .pbtxt file
      */
     void export_net(const caffe2::NetDef &net, const std::string &file, bool human_readable=false);
+
+    /**
+     * \brief extends a model with another
+     */
+    void append_model(caffe2::NetDef &dst_net, caffe2::NetDef &dst_init,
+		      const caffe2::NetDef &src_net, const caffe2::NetDef &src_init);
 
   }
 }

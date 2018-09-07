@@ -232,14 +232,21 @@ namespace dd {
     template <typename T>
     void ModelContext::extract_results(std::vector<T> &results,
 				       const std::string &name,
-				       const std::vector<size_t> &sizes) const {
+				       const std::vector<size_t> &sizes,
+				       size_t scale) const {
       std::vector<caffe2::TensorCPU> tensors;
       size_t data_count = results.size();
       CAFFE_ENFORCE(data_count == sizes.size());
       size_t data_size1 = extract_tensors(name, tensors);
       size_t data_size2 = std::accumulate(sizes.begin(), sizes.end(), static_cast<size_t>(0));
-      CAFFE_ENFORCE(data_size1 == data_size2);
-      split_tensors(results, tensors, sizes);
+      if (!scale) {
+	scale = data_size1 / data_size2;
+      }
+      CAFFE_ENFORCE(data_size1 == data_size2 * scale);
+      std::vector<size_t> scaled_sizes(data_count);
+      std::transform(sizes.begin(), sizes.end(), scaled_sizes.begin(),
+		     [&](float size){ return scale * size; });
+      split_tensors(results, tensors, scaled_sizes);
     }
 
     template <typename Result, typename Data, typename Size>
@@ -285,9 +292,10 @@ namespace dd {
 
     void ModelContext::extract(std::vector<std::vector<float>> &results,
 			       const std::string &name,
-			       const std::vector<size_t> &sizes) const {
+			       const std::vector<size_t> &sizes,
+			       size_t scale) const {
       if (sizes.size()) {
-	extract_results(results, name, sizes);
+	extract_results(results, name, sizes, scale);
       } else {
 	extract_results(results, name);
       }
@@ -408,6 +416,19 @@ namespace dd {
 	f << net.DebugString();
       } else {
 	net.SerializeToOstream(&f);
+      }
+    }
+
+    void append_model(caffe2::NetDef &dst_net, caffe2::NetDef &dst_init,
+		      const caffe2::NetDef &src_net, const caffe2::NetDef &src_init) {
+      for (auto op : src_init.op()) {
+	dst_init.add_op()->CopyFrom(op);
+	for (const std::string blob : op.output()) {
+	  dst_net.add_external_input(blob);
+	}
+      }
+      for (auto op : src_net.op()) {
+	dst_net.add_op()->CopyFrom(op);
       }
     }
 
