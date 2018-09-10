@@ -2389,6 +2389,7 @@ namespace dd
 		batch_size = user_batch_size;
 	      }
 	  }
+	#ifdef USE_HDF5
 	else if (lp->has_hdf5_data_param())
 	  {
 	    caffe::HDF5DataParameter *dp = lp->mutable_hdf5_data_param();
@@ -2408,6 +2409,7 @@ namespace dd
 	      }
 	    dp->set_image(true);
 	  }
+	#endif // USE_HDF5
 	else if (lp->has_dense_image_data_param())
 	  {
 	    caffe::DenseImageDataParameter *dp = lp->mutable_dense_image_data_param();
