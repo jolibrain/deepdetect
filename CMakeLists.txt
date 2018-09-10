@@ -71,13 +71,15 @@ set(eigen_archive_hash "50812b426b7c")
 include_directories("${EIGEN3_INCLUDE_DIR}")
 
 # hdf5
-if (RPI3)
-  set(HDF5_LIB /usr/lib/arm-linux-gnueabihf/hdf5/serial)
-else()
-  set(HDF5_LIB /usr/lib/x86_64-linux-gnu/hdf5/serial)
+if (USE_HDF5)
+  if (RPI3)
+    set(HDF5_LIB /usr/lib/arm-linux-gnueabihf/hdf5/serial)
+  else()
+    set(HDF5_LIB /usr/lib/x86_64-linux-gnu/hdf5/serial)
+  endif()
+  set (HDF5_INCLUDE /usr/include/hdf5/serial)
+  include_directories(${HDF5_INCLUDE})
 endif()
-set (HDF5_INCLUDE /usr/include/hdf5/serial)
-include_directories(${HDF5_INCLUDE})
 
 # dependency on Boost
 find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system iostreams)
@@ -371,24 +373,41 @@ else()
     BUILD_IN_SOURCE 1
     )
 
-  if (JETSON)
-    set(HDF5_LIB /usr/lib/aarch64-linux-gnu/hdf5/serial)
-  elseif (RPI3)
-    set(HDF5_LIB /usr/lib/arm-linux-gnueabihf/hdf5/serial)
-  else()
-    set(HDF5_LIB /usr/lib/x86_64-linux-gnu/hdf5/serial)
+  if (USE_HDF5)
+    if (JETSON)
+      set(HDF5_LIB /usr/lib/aarch64-linux-gnu/hdf5/serial)
+    elseif (RPI3)
+      set(HDF5_LIB /usr/lib/arm-linux-gnueabihf/hdf5/serial)
+    else()
+      set(HDF5_LIB /usr/lib/x86_64-linux-gnu/hdf5/serial)
+    endif()
   endif()
-  if (CUDA_FOUND)
-    set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${CUDA_INCLUDE_DIRS} ${PROTOBUF_INCLUDE_DIR})
-    set(CAFFE_LIB_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${HDF5_LIB} ${PROTOBUF_LIB_DIR})
+
+  if (USE_HDF5)
+    if (CUDA_FOUND)
+      set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${CUDA_INCLUDE_DIRS} ${PROTOBUF_INCLUDE_DIR})
+      set(CAFFE_LIB_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${HDF5_LIB} ${PROTOBUF_LIB_DIR})
+    else()
+      set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src /usr/include/hdf5/serial ${PROTOBUF_INCLUDE_DIR})
+      set(CAFFE_LIB_DIR $ENV{HOME}/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${HDF5_LIB} ${PROTOBUF_LIB_DIR})
+    endif()
   else()
-    set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src /usr/include/hdf5/serial ${PROTOBUF_INCLUDE_DIR})
-    set(CAFFE_LIB_DIR $ENV{HOME}/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${HDF5_LIB} ${PROTOBUF_LIB_DIR})
+    if (CUDA_FOUND)
+      set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${CUDA_INCLUDE_DIRS} ${PROTOBUF_INCLUDE_DIR})
+      set(CAFFE_LIB_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${PROTOBUF_LIB_DIR})
+    else()
+      set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${PROTOBUF_INCLUDE_DIR})
+      set(CAFFE_LIB_DIR $ENV{HOME}/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${PROTOBUF_LIB_DIR})
+    endif()
   endif()
 endif()
 
 # Caffe dependencies
-set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lhdf5_hl -lhdf5 -lopenblas -lcaffe -lprotobuf)
+if (USE_HDF5)
+  set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lhdf5_hl -lhdf5 -lopenblas -lcaffe -lprotobuf)
+else()
+  set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lopenblas -lcaffe -lprotobuf)
+endif()
 
 if (USE_TF)
   add_dependencies(caffe_dd tensorflow_cc)
@@ -479,14 +498,25 @@ set(COMMON_LINK_DIRS
   ${XGBOOST_LIB_DIR}
   ${TSNE_LIB_DIR}
   ${DLIB_LIB_DIR})
-set(COMMON_LINK_LIBS
-  ddetect ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl hdf5_cpp ${Boost_LIBRARIES}
-  ${CAFFE_LIB_DEPS}
-  ${CAFFE2_LIB_DEPS}
-  ${TF_LIB_DEPS}
-  ${XGBOOST_LIB_DEPS}
-  ${TSNE_LIB_DEPS}
-  ${DLIB_LIB_DEPS})
+if (USE_HDF5)
+  set(COMMON_LINK_LIBS
+    ddetect ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl hdf5_cpp ${Boost_LIBRARIES}
+    ${CAFFE_LIB_DEPS}
+    ${CAFFE2_LIB_DEPS}
+    ${TF_LIB_DEPS}
+    ${XGBOOST_LIB_DEPS}
+    ${TSNE_LIB_DEPS}
+    ${DLIB_LIB_DEPS})
+else()
+  set(COMMON_LINK_LIBS
+    ddetect ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES}
+    ${CAFFE_LIB_DEPS}
+    ${CAFFE2_LIB_DEPS}
+    ${TF_LIB_DEPS}
+    ${XGBOOST_LIB_DEPS}
+    ${TSNE_LIB_DEPS}
+    ${DLIB_LIB_DEPS})
+endif()
 set(HTTP_LINK_LIBS cppnetlib-uri crypto ssl)
 
 add_subdirectory(main)
