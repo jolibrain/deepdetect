@@ -707,9 +707,14 @@ namespace dd
   }
   
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::create_model(const bool &test)
+  int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::create_model(const bool &test,
+											const bool &autoload_model)
   {
     // create net and fill it up
+    if (!autoload_model)
+      {
+	return 1;
+      }
     if (!this->_mlmodel._def.empty() && !this->_mlmodel._weights.empty())
       {
 	delete _net;
@@ -810,6 +815,9 @@ namespace dd
     bool multi =
       this->_inputc._multi_label &&  !(this->_inputc._db)
       && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn);
+    bool autoload_model = true;
+    if (ad.has("autoload_model") && !ad.get("autoload_model").get<bool>())
+      autoload_model = false;
     if (_regression && _ntargets == 0 && !multi)
       throw MLLibBadParamException("number of regression targets is unknown (ntargets == 0)");
     if (_regression && multi) // multisoft case
@@ -821,7 +829,7 @@ namespace dd
     else // model template instantiation is defered until training call
       {
 	update_deploy_protofile_softmax(ad);
-	create_model();
+	create_model(false,autoload_model);
       }
 
     // the first present measure will be used to snapshot best model
@@ -1914,44 +1922,43 @@ namespace dd
 	if (extract_layer.empty() || inputc._segmentation) // supervised or segmentation
 	  {
 	    std::vector<Blob<float>*> results;
-
-        if (rois) {
-          std::map<std::string,int> n_layer_names_index = _net->layer_names_index();
-          std::map<std::string,int>::const_iterator lit;
-          if ((lit=n_layer_names_index.find(roi_layer))==n_layer_names_index.end())
-            throw MLLibBadParamException("unknown rois layer " + roi_layer);
-          int li = (*lit).second;
-          try
-            {
-              loss = _net->ForwardFromTo(0,li);
-            }
-          catch(std::exception &e)
-            {
-	      this->_logger->error("Error while proceeding with supervised prediction forward pass, not enough memory? {}",e.what());
-              delete _net;
-              _net = nullptr;
-              throw;
+	    
+	    if (rois) {
+	      std::map<std::string,int> n_layer_names_index = _net->layer_names_index();
+	      std::map<std::string,int>::const_iterator lit;
+	      if ((lit=n_layer_names_index.find(roi_layer))==n_layer_names_index.end())
+		throw MLLibBadParamException("unknown rois layer " + roi_layer);
+	      int li = (*lit).second;
+	      try
+		{
+		  loss = _net->ForwardFromTo(0,li);
+		}
+	      catch(std::exception &e)
+		{
+		  this->_logger->error("Error while proceeding with supervised prediction forward pass, not enough memory? {}",e.what());
+		  delete _net;
+		  _net = nullptr;
+		  throw;
 	        }
-          const std::vector<std::vector<Blob<float>*>>& rresults = _net->top_vecs();
-          results = rresults.at(li);
-
-        } else {
-
-          try
-            {
-              results = _net->Forward(&loss);
-            }
-          catch(std::exception &e)
-            {
-	      this->_logger->error("Error while proceeding with supervised prediction forward pass, not enough memory? {}",e.what());
-              delete _net;
-              _net = nullptr;
-              throw;
+	      const std::vector<std::vector<Blob<float>*>>& rresults = _net->top_vecs();
+	      results = rresults.at(li);
+	    }
+	    else
+	      {
+		try
+		  {
+		    results = _net->Forward(&loss);
+		  }
+		catch(std::exception &e)
+		  {
+		    this->_logger->error("Error while proceeding with supervised prediction forward pass, not enough memory? {}",e.what());
+		    delete _net;
+		    _net = nullptr;
+		    throw;
+		  }
 	      }
-        }
 
-
-          if (inputc._segmentation)
+	    if (inputc._segmentation)
 	      {
 		int slot = results.size() - 1;
 		nclasses = _nclasses;
@@ -1976,26 +1983,26 @@ namespace dd
 		      {
 			double max_prob = -1.0;
 			double best_cat = -1.0;
-            if (results[slot]->shape(1) != 1)
-              {
-                for (int k=0;k<nclasses;k++)
-                  {
-                    double prob = results[slot]->cpu_data()[(j*nclasses+k)*imgsize+i];
-                    if (prob > max_prob)
-                      {
-                        max_prob = prob;
-                        best_cat = static_cast<double>(k);
-                      }
-                  }
-              }
-            else
-              {
-                double prob = results[slot]->cpu_data()[(j)*imgsize+i];
-                if (prob > 0.5)
-                  best_cat = 1;
-                else
-                  best_cat = 0;
-              }
+			if (results[slot]->shape(1) != 1)
+			  {
+			    for (int k=0;k<nclasses;k++)
+			      {
+				double prob = results[slot]->cpu_data()[(j*nclasses+k)*imgsize+i];
+				if (prob > max_prob)
+				  {
+				    max_prob = prob;
+				    best_cat = static_cast<double>(k);
+				  }
+			      }
+			  }
+			else
+			  {
+			    double prob = results[slot]->cpu_data()[(j)*imgsize+i];
+			    if (prob > 0.5)
+			      best_cat = 1;
+			    else
+			      best_cat = 0;
+			  }
 			vals.push_back(best_cat);
 		      }
 		    auto bit = inputc._imgs_size.find(uri);
