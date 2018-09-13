@@ -346,11 +346,19 @@ else()
     set(CAFFE_DD_CONFIG_FILE Makefile.config.cpu)
   endif()
 
+  # Set caffe DEBUG mode
+  if (USE_CAFFE_DEBUG)
+    set(CAFFE_DEBUG 1)
+  else()
+    set(CAFFE_DEBUG 0)
+  endif()
+
   list(APPEND CAFFE_DD_CONFIGURE_COMMAND
     ln -sf ${CAFFE_DD_CONFIG_FILE} Makefile.config &&
     echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config &&
     echo "USE_SYSLOG:=${USE_SYSLOG}" >> Makefile.config &&
     echo "PYTORCH_LINK:=${PYTORCH_LINK}" >> Makefile.config &&
+    echo "DEBUG:=${CAFFE_DEBUG}" >> Makefile.config &&
     ${CAFFE_DD_MAKE} ${CAFFE_DD_MAKE_ARG} -j${N}
     )
 
@@ -503,4 +511,5 @@ if (BUILD_TOOLS)
 endif()
 
 # status
-MESSAGE(STATUS "Build Tests          : ${BUILD_TESTS}")
+message(STATUS "Build Tests          : ${BUILD_TESTS}")
+message(STATUS "Caffe DEBUG          : ${USE_CAFFE_DEBUG}")
