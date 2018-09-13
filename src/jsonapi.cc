@@ -983,8 +983,9 @@ namespace dd
       {
 	jhead.AddMember("status",JVal().SetString("error",jtrain.GetAllocator()),jtrain.GetAllocator());
 	_logger->error(jrender(dout["status"]));
-	/*JVal &jvout = dout["status"];
-	  jout.AddMember("Error",jvout,jtrain.GetAllocator());*/ // XXX: beware, acquiring the status appears to lead to corrupted rapidjson strings
+	JVal jvout(rapidjson::kObjectType);
+	jvout.CopyFrom(dout["status"],jtrain.GetAllocator());
+	jout.AddMember("Error",jvout,jtrain.GetAllocator());
       }
     jtrain.AddMember("head",jhead,jtrain.GetAllocator());
     jtrain.AddMember("body",jout,jtrain.GetAllocator());

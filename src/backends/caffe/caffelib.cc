@@ -2998,6 +2998,7 @@ namespace dd
 	mltype = "autoencoder";
 	return;
       }
+    bool has_deconv = false;
     for (size_t l=0;l<net->layers().size();l++)
       {
 	const boost::shared_ptr<caffe::Layer<float>> &layer = net->layers().at(l);
@@ -3020,9 +3021,10 @@ namespace dd
 	if (ltype == "Interp" || ltype == "Deconvolution") // XXX: using interpolation and deconvolution as proxy to segmentation
 	  {
 	    mltype = "segmentation";
+	    has_deconv = true;
 	    // we don't break since some detection tasks may use deconvolutions
 	  }
-	if (ltype == "Sigmoid" && l == net->layers().size()-1)
+	if (!has_deconv && ltype == "Sigmoid" && l == net->layers().size()-1)
 	  {
 	    mltype = "regression";
 	    break;
