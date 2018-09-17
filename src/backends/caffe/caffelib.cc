@@ -626,7 +626,7 @@ namespace dd
 	      }
 	  }
 	//- set correct layer parameters based on nclasses
-	if (lparam->name() == "mbox_loss")
+	if (lparam->name() == "mbox_loss" || lparam->name() == "odm_loss" || lparam->name() == "arm_loss")
 	  {
 	    lparam->mutable_multibox_loss_param()->set_num_classes(_nclasses);
 	  }
