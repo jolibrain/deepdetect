@@ -697,7 +697,9 @@ namespace dd
 	  {
 	    lparam->mutable_detection_output_param()->set_num_classes(_nclasses);
 	  }
-	else if (lparam->name().find("mbox_conf_reshape") != std::string::npos)
+	else if (lparam->name().find("mbox_conf_reshape") != std::string::npos
+		 || lparam->name().find("odm_conf_reshape") != std::string::npos
+		 || lparam->name().find("arm_conf_reshape") != std::string::npos)
 	  {
 	    lparam->mutable_reshape_param()->mutable_shape()->set_dim(2,_nclasses);
 	  }
