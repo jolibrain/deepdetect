@@ -275,7 +275,8 @@ namespace dd
     double multibox_distance(const double &dist,
 			     const double &prob)
     {
-      return dist;// * prob;
+      (void)prob; // XXX: probability is unused at the moment
+      return dist;
     }
 #endif
     
@@ -476,14 +477,6 @@ namespace dd
 		      bcats._vvcats.at(i).add_nn((*hit).second.first/static_cast<double>((*hit).second.second),URIData((*hit).first)); // sorted as per multimap
 		      ++hit;
 		    }
-		  //debut
-		  auto hit2 = bcats._vvcats.at(i)._nns.begin();
-		  while(hit2!=bcats._vvcats.at(i)._nns.end())
-		    {
-		      std::cerr << "prob=" << (*hit2).first << " / uri=" << (*hit2).second._uri << std::endl; 
-		      ++hit2;
-		    }
-		  //debug
 		}
 	    }
 	  else // has_roi
