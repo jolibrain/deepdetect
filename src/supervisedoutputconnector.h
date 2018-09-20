@@ -271,6 +271,15 @@ namespace dd
 	}
     }
 
+#ifdef USE_SIMSEARCH
+    double multibox_distance(const double &dist,
+			     const double &prob)
+    {
+      (void)prob; // XXX: probability is unused at the moment
+      return dist;
+    }
+#endif
+    
     /**
      * \brief finalize output supervised connector data
      * @param ad_in data output object from the API call
@@ -305,6 +314,7 @@ namespace dd
 	}
       bool has_bbox = false;
       bool has_roi = false;
+      bool has_multibox_rois = false;
       if (ad_out.has("bbox") && ad_out.get("bbox").get<bool>())
 	{
 	  has_bbox = true;
@@ -315,8 +325,10 @@ namespace dd
       if (ad_out.has("roi") && ad_out.get("roi").get<bool>())
         {
           has_roi = true;
+	  if (ad_out.has("multibox_rois") && ad_out.get("multibox_rois").get<bool>())
+	    has_multibox_rois = true;
         }
-
+      
       best_cats(ad_in,bcats,nclasses,has_bbox,has_roi);
       
       std::unordered_set<std::string> indexed_uris;
@@ -426,6 +438,47 @@ namespace dd
 		    }
 		}
 	    }
+	  else if (has_roi && has_multibox_rois)
+	    {
+	      for (size_t i=0;i<bcats._vvcats.size();i++)
+		{
+		  std::unordered_map<std::string,std::pair<double,int>> multibox_nn; // one uri (image) / total distance, count
+		  std::unordered_map<std::string,std::pair<double,int>>::iterator hit; 
+		  auto vit = bcats._vvcats.at(i)._vals.begin();
+		  auto mit = bcats._vvcats.at(i)._cats.begin();
+		  while(mit!=bcats._vvcats.at(i)._cats.end()) // equivalent to iterating the bboxes
+		    {
+		      std::vector<URIData> nn_uris;
+		      std::vector<double> nn_distances;
+		      mlm->_se->search((*vit).second.get("vals").get<std::vector<double>>(),
+				       search_nn,nn_uris,nn_distances);
+		      for (size_t j=0;j<nn_uris.size();j++)
+			{
+			  if ((hit=multibox_nn.find(nn_uris.at(j)._uri))==multibox_nn.end())
+			    {
+			      double mb_dist = multibox_distance(nn_distances.at(j),nn_uris.at(j)._prob);
+			      multibox_nn.insert(std::pair<std::string,std::pair<double,int>>(nn_uris.at(j)._uri,std::pair<double,int>(mb_dist,1)));
+			    }
+			  else
+			    {
+			      (*hit).second.first += multibox_distance(nn_distances.at(j),nn_uris.at(j)._prob);
+			      (*hit).second.second += 1;
+			    }
+			}
+		      
+		      ++mit;
+		      ++vit;
+		    }
+		  // final ranking per images and store final results here
+		  hit = multibox_nn.begin();
+		  while(hit!=multibox_nn.end()) // unsorted
+		    {
+		      //std::cerr << "adding uri=" << (*hit).first << " / dist=" << (*hit).second.first / static_cast<double>((*hit).second.second) << std::endl;
+		      bcats._vvcats.at(i).add_nn((*hit).second.first/static_cast<double>((*hit).second.second),URIData((*hit).first)); // sorted as per multimap
+		      ++hit;
+		    }
+		}
+	    }
 	  else // has_roi
 	    {
 	      for (size_t i=0;i<bcats._vvcats.size();i++)
@@ -451,7 +504,9 @@ namespace dd
 	    }
 	}      
 #endif
-      
+
+      if (has_multibox_rois)
+	has_roi = false;
       bcats.to_ad(ad_out,regression,autoencoder,has_bbox,has_roi,indexed_uris);
     }
     
