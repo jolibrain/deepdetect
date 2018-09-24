@@ -989,7 +989,7 @@ namespace dd
       }
     jtrain.AddMember("head",jhead,jtrain.GetAllocator());
     jtrain.AddMember("body",jout,jtrain.GetAllocator());
-    if (train_status == "finished")
+    if (train_status == "finished" || train_status == "running")
       {
 	std::string mrepo = out.getobj("model").get("repository").get<std::string>();
 	if (JsonAPI::store_json_blob(mrepo,jrender(jtrain),"metrics.json"))
