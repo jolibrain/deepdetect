@@ -176,7 +176,8 @@ namespace dd
 		     source_repo,target_repo);
 	return 0;
       }
-    logger->error("failed finding best model to copy to target repository {}",target_repo);
+    logger->error("failed finding best model to copy from {} to target repository {}",
+		  source_repo,target_repo);
     return 1;
   }
 
