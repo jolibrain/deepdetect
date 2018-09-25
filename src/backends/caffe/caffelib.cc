@@ -831,6 +831,12 @@ namespace dd
     // the first present measure will be used to snapshot best model
     _best_metrics = {"map", "meaniou", "mlacc", "delta_score_0.1", "bacc", "f1", "net_meas", "acc"};
     _best_metric_value = std::numeric_limits<double>::infinity();
+
+    // import model from existing directory upon request
+    if (ad.has("from_repository"))
+      this->_mlmodel.copy_to_target(ad.get("from_repository").get<std::string>(),
+				    this->_mlmodel._repo,
+				    this->_logger);
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -1333,7 +1339,8 @@ namespace dd
     // if there's target repository, copy relevant data there
     APIData ad_out = ad.getobj("parameters").getobj("output");
     if (ad_out.has("target_repository"))
-      this->_mlmodel.copy_to_target(ad_out.get("target_repository").get<std::string>(),
+      this->_mlmodel.copy_to_target(this->_mlmodel._repo,
+				    ad_out.get("target_repository").get<std::string>(),
 				    this->_logger);
     
     return 0;
