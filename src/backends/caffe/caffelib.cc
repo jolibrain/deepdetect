@@ -829,7 +829,7 @@ namespace dd
       }
 
     // the first present measure will be used to snapshot best model
-    _best_metrics = {"map", "meaniou", "mlacc", "delta_score_0.1", "bacc", "f1", "net_meas"};
+    _best_metrics = {"map", "meaniou", "mlacc", "delta_score_0.1", "bacc", "f1", "net_meas", "acc"};
     _best_metric_value = std::numeric_limits<double>::infinity();
 
     // import model from existing directory upon request
