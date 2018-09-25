@@ -565,7 +565,6 @@ namespace dd
       float mlsoft_r2_thres = -1;
       bool mlsoft_deltas = false;
       float mlsoft_deltas_thres = -1;
-      bool net_meas = false;
       
        if (segmentation)
 	    baccv = (std::find(measures.begin(),measures.end(),"acc")!=measures.end());
