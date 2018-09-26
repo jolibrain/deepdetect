@@ -29,7 +29,7 @@ namespace dd
   {
     if (_cifc)
       {
-	_cifc->read_csv(_adconf,fname);
+        _cifc->read_csv(fname);
 	return 0;
       }
     else return -1;
@@ -258,8 +258,7 @@ namespace dd
       throw InputConnectorBadParamException("cannot find id column " + _id);
   }
   
-  void CSVInputFileConn::read_csv(const APIData &ad,
-				  const std::string &fname)
+  void CSVInputFileConn::read_csv(const std::string &fname, const bool forbid_shuffle)
   {
       std::ifstream csv_file(fname,std::ios::binary);
       _logger->info("fname={} / open={}",fname,csv_file.is_open());
@@ -413,11 +412,11 @@ namespace dd
 	}
 
       // shuffle before possible test data selection.
-      shuffle_data(ad);
+      shuffle_data(_csvdata, forbid_shuffle);
       
       if (_csv_test_fname.empty() && _test_split > 0)
 	{
-	  split_data();
+	  split_data(_csvdata, _csvdata_test);
 	  _logger->info("data split test size={} / remaining data size={}",_csvdata_test.size(),_csvdata.size());
 	}
       if (!_ignored_columns.empty() || !_categoricals.empty())

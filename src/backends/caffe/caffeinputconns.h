@@ -24,6 +24,7 @@
 
 #include "imginputfileconn.h"
 #include "csvinputfileconn.h"
+#include "csvtsinputfileconn.h"
 #include "txtinputfileconn.h"
 #include "svminputfileconn.h"
 #include "caffe/caffe.hpp"
@@ -40,7 +41,7 @@ namespace dd
   public:
     CaffeInputInterface() {}
     CaffeInputInterface(const CaffeInputInterface &cii)
-      :_db(cii._db),_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed),_sequence_txt(cii._sequence_txt),_max_embed_id(cii._max_embed_id),_segmentation(cii._segmentation),_bbox(cii._bbox),_multi_label(cii._multi_label),_ctc(cii._ctc),_alphabet_size(cii._alphabet_size),_root_folder(cii._root_folder),_dbfullname(cii._dbfullname),_test_dbfullname(cii._test_dbfullname) {}
+      :_db(cii._db),_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed),_sequence_txt(cii._sequence_txt),_max_embed_id(cii._max_embed_id),_segmentation(cii._segmentation),_bbox(cii._bbox), _multi_label(cii._multi_label),_ctc(cii._ctc),_alphabet_size(cii._alphabet_size),_root_folder(cii._root_folder),_dbfullname(cii._dbfullname),_test_dbfullname(cii._test_dbfullname) {}
     ~CaffeInputInterface() {}
 
     /**
@@ -74,6 +75,7 @@ namespace dd
     std::vector<caffe::Datum> _dv_test; /**< test input datum vector, when applicable in training mode */
     std::vector<caffe::SparseDatum> _dv_sparse;
     std::vector<caffe::SparseDatum> _dv_test_sparse;
+
     std::vector<std::string> _ids; /**< input ids (e.g. image ids) */
     bool _flat1dconv = false; /**< whether a 1D convolution model. */
     bool _has_mean_file = false; /**< image model mean.binaryproto. */
@@ -89,8 +91,10 @@ namespace dd
     int _alphabet_size = 0; /**< for sequence to sequence models. */
     std::string _root_folder; /**< root folder for image list layer. */
     std::unordered_map<std::string,std::pair<int,int>> _imgs_size; /**< image sizes, used in detection. */
+    //std::vector<int> _targets;
     std::string _dbfullname = "train.lmdb";
     std::string _test_dbfullname = "test.lmdb";
+
   };
 
   /**
@@ -532,8 +536,7 @@ namespace dd
     int read_file(const std::string &fname);
     int read_db(const std::string &fname);
     int read_mem(const std::string &content);
-    int read_dir(const std::string &dir)
-    {
+    int read_dir(const std::string &dir){
       throw InputConnectorBadParamException("uri " + dir + " is a directory, requires a CSV file");
     }
     
@@ -780,6 +783,128 @@ namespace dd
     std::unique_ptr<caffe::db::Transaction> _ttxn;
     std::unique_ptr<caffe::db::DB> _ttdb;
     int _channels = 0;
+  };
+
+  /**
+   * \brief caffe csv ts connector
+   */
+
+  class CSVTSCaffeInputFileConn;
+  class DDCCsvTS
+  {
+  public:
+  DDCCsvTS() {}
+    ~DDCCsvTS() {}
+    int read_file(const std::string &fname, bool is_test_data=false);
+    int read_db(const std::string &fname);
+    int read_mem(const std::string &content);
+    int read_dir(const std::string &dir, bool is_test_data=false);
+
+    DDCsvTS _ddcsvts;
+    CSVTSCaffeInputFileConn *_cifc = nullptr;
+    APIData _adconf;
+    std::shared_ptr<spdlog::logger> _logger;
+  };
+
+
+  class CSVTSCaffeInputFileConn : public CSVTSInputFileConn, public CaffeInputInterface
+  {
+  public:
+  CSVTSCaffeInputFileConn()
+    :CSVTSInputFileConn(), _dv_index(-1), _dv_test_index(-1), _timesteps(100)
+      {
+        reset_dv_test();
+      }
+  CSVTSCaffeInputFileConn(const CSVTSCaffeInputFileConn &i)
+    :CSVTSInputFileConn(i), CaffeInputInterface(i), _dv_index(i._dv_index), _dv_test_index(i._dv_test_index), _timesteps(i._timesteps)  {} ;
+    ~CSVTSCaffeInputFileConn() {}
+
+    void init(const APIData &ad)
+    {
+      CSVTSInputFileConn::init(ad);
+      if (ad.has("timesteps"))
+        _timesteps= ad.get("timesteps").get<int>();
+    }
+
+    // size of each element in Caffe jargon
+    int channels() const
+    {
+      return _timesteps;
+    }
+
+    int height() const
+    {
+      return _datadim;
+    }
+
+    int width() const
+    {
+      return 1;
+    }
+
+    int batch_size() const
+    {
+      if (_db_batchsize > 0)
+	return _db_batchsize;
+      else if (_dv.size() != 0)
+	return _dv.size();
+      else
+        return 1;
+    }
+
+    int test_batch_size() const
+    {
+      if (_db_testbatchsize > 0)
+	return _db_testbatchsize;
+      else if (_dv_test.size() != 0)
+	return _dv_test.size();
+      else
+        return 1;
+    }
+
+    virtual void push_csv_to_csvts(bool is_test_data=false);
+
+    void transform(const APIData &ad); // calls CSVTSInputfileconn::transform and db stuff
+    void reset_dv_test();
+    std::vector<caffe::Datum> get_dv_test(const int &num,
+                                          const bool &has_mean_file);
+    std::vector<caffe::Datum> get_dv_test_db(const int &num);
+    std::vector<caffe::SparseDatum> get_dv_test_sparse_db(const int &num);
+
+    int csvts_to_db(const std::string &traindbname,
+                    const std::string &testdbname,
+                    const APIData &ad_input,
+                    const std::string &backend="lmdb"); // lmdb, leveldb
+    void csvts_to_dv(bool is_test_data=false, bool clear_dv_first = false, bool clear_csvts_after=false);
+    void dv_to_db(bool is_test_data=false);
+
+    void write_csvts_to_db(const std::string &dbfullname,
+                           const std::string &testdbfullname,
+                           const APIData &ad_input,
+                           const std::string &backend);
+
+    std::vector<caffe::Datum>::const_iterator _dt_vit;
+
+    int _dv_index;
+    int _dv_test_index;
+
+    int _db_batchsize = -1;
+    int _db_testbatchsize = -1;
+    std::unique_ptr<caffe::db::DB> _test_db;
+    std::unique_ptr<caffe::db::Cursor> _test_db_cursor;
+    std::string _dbname = "train";
+    std::string _test_dbname = "test";
+    std::string _correspname = "corresp.txt";
+    int _timesteps;
+
+  private:
+    std::unique_ptr<caffe::db::Transaction> _txn;
+    std::unique_ptr<caffe::db::DB> _tdb;
+    std::unique_ptr<caffe::db::Transaction> _ttxn;
+    std::unique_ptr<caffe::db::DB> _ttdb;
+    int _channels = 0;
+
+
   };
 
   /**

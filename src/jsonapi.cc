@@ -416,6 +416,8 @@ namespace dd
 		  add_service(sname,std::move(MLService<CaffeLib,ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
 		else if (input == "csv")
 		  add_service(sname,std::move(MLService<CaffeLib,CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
+		else if (input == "csv_ts" || input == "csvts")
+		  add_service(sname,std::move(MLService<CaffeLib,CSVTSCaffeInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
 		else if (input == "txt")
 		  add_service(sname,std::move(MLService<CaffeLib,TxtCaffeInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
 		else if (input == "svm")
@@ -433,6 +435,8 @@ namespace dd
 		  add_service(sname,std::move(MLService<CaffeLib,ImgCaffeInputFileConn,UnsupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
 		else if (input == "csv")
 		  add_service(sname,std::move(MLService<CaffeLib,CSVCaffeInputFileConn,UnsupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
+		else if (input == "csv_ts")
+		  add_service(sname,std::move(MLService<CaffeLib,CSVTSCaffeInputFileConn,UnsupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
 		else if (input == "txt")
 		  add_service(sname,std::move(MLService<CaffeLib,TxtCaffeInputFileConn,UnsupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
 		else if (input == "svm")

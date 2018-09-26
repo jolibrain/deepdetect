@@ -26,6 +26,7 @@
 #include "generators/net_caffe.h"
 #include "generators/net_caffe_convnet.h"
 #include "generators/net_caffe_resnet.h"
+#include "generators/net_caffe_recurrent.h"
 #include "utils/fileops.hpp"
 #include "utils/utils.hpp"
 #include "caffe/sgd_solvers.hpp"
@@ -58,6 +59,7 @@ namespace dd
     _nclasses = cl._nclasses;
     _regression = cl._regression;
     _ntargets = cl._ntargets;
+    _targets = cl._targets;
     _autoencoder = cl._autoencoder;
     cl._net = nullptr;
     _crop_size = cl._crop_size;
@@ -141,7 +143,7 @@ namespace dd
     this->_logger->info("dest={}",this->_mlmodel._repo + '/' + model_tmpl + ".prototxt");
     std::string dest_net = this->_mlmodel._repo + '/' + model_tmpl + ".prototxt";
     std::string dest_deploy_net = this->_mlmodel._repo + "/deploy.prototxt";
-    if (model_tmpl != "mlp" && model_tmpl != "convnet" && model_tmpl != "resnet")
+    if (model_tmpl != "mlp" && model_tmpl != "convnet" && model_tmpl != "resnet" && model_tmpl != "recurrent")
       {
 	int err = fileops::copy_file(source + model_tmpl + ".prototxt", dest_net);
 	if (err == 1)
@@ -187,6 +189,13 @@ namespace dd
 	     || model_tmpl.find("refinedet")!=std::string::npos)
       {
 	configure_ssd_template(dest_net,dest_deploy_net,ad);
+      }
+    else if (model_tmpl.find("recurrent") != std::string::npos)
+      {
+        caffe::NetParameter net_param,deploy_net_param;
+        configure_recurrent_template(ad,this->_inputc,net_param,deploy_net_param);
+        caffe::WriteProtoToTextFile(net_param,dest_net);
+        caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
       }
     else
       {
@@ -709,7 +718,20 @@ namespace dd
     caffe::WriteProtoToTextFile(net_param,dest_net);
     caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
   }
-  
+
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_recurrent_template(const APIData &ad,
+                                                                                                   const TInputConnectorStrategy &inputc,
+                                                                                                   caffe::NetParameter &net_param,
+                                                                                                         caffe::NetParameter &dnet_param)
+  {
+
+    NetCaffe<NetInputCaffe<TInputConnectorStrategy>,NetLayersCaffeRecurrent,NetLossCaffe> netcaffe(&net_param,&dnet_param,this->_logger);
+    netcaffe._nic.configure_inputs(ad,inputc);
+    netcaffe._nlac.configure_net(ad);
+  }
+
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::create_model(const bool &test)
   {
@@ -807,6 +829,11 @@ namespace dd
 
     if (ad.has("ntargets"))
       _ntargets = ad.get("ntargets").get<int>();
+    if (ad.has("targets"))
+      {
+        _targets = ad.get("targets").get<std::vector<int>>();
+        _ntargets = _targets.size();
+      }
     if (ad.has("autoencoder") && ad.get("autoencoder").get<bool>())
       _autoencoder = true;
     if (!_autoencoder && _nclasses == 0)
@@ -1163,7 +1190,7 @@ namespace dd
 	    APIData meas_out;
 	    solver->test_nets().at(0).get()->ShareTrainedLayersWith(solver->net().get());
 	    test(solver->test_nets().at(0).get(),ad,inputc,test_batch_size,has_mean_file,test_iter,meas_out);
-	    APIData meas_obj = meas_out.getobj("measure");
+           APIData meas_obj = meas_out.getobj("measure");
 
 	    // save best iteration snapshot
 	    save_if_best(meas_obj, solver, already_snapshoted);
@@ -1383,7 +1410,7 @@ namespace dd
 	    std::vector<std::vector<double>> dv_float_data;
 	    try
 	      {
-		if (inputc._ctc || inputc._bbox)
+               if (inputc._ctc || inputc._bbox)
 		  {
 		    // do nothing, db input
 		    dv_size = test_batch_size;
@@ -1421,6 +1448,20 @@ namespace dd
 			      vals.push_back(dv.at(s).float_data(k));
 			    dv_float_data.push_back(vals);
 			  }
+                     else if (typeid(inputc) == typeid(CSVTSCaffeInputFileConn))  // timeseries case
+                       {
+			    std::vector<double> vals;
+                         CSVTSCaffeInputFileConn* ic =
+                           reinterpret_cast<CSVTSCaffeInputFileConn*>(&inputc);
+                         for (int t=0; t<ic->_timesteps; ++t)
+                           {
+                             for (int k: _targets)
+                               {
+                                 vals.push_back(dv.at(s).float_data(t*ic->_datadim+k));
+                               }
+                           }
+			    dv_float_data.push_back(vals);
+                       }
 			else if (!_autoencoder)
 			  {
 			    dv_labels.push_back(dv.at(s).label());
@@ -1495,10 +1536,14 @@ namespace dd
 	    int slot = lresults.size() - 1;
 	    
 	    if (_regression && _ntargets > 1) // slicing is involved
-	      slot--; // labels appear to be last
+	      slot--; // labels appear to be lass
 	    else if (inputc._multi_label && ( inputc._db || ! (typeid(inputc) == typeid(ImgCaffeInputFileConn))
                                            ||  _nclasses <= 1))
 	      slot--;
+           else if (typeid(inputc) == typeid(CSVTSCaffeInputFileConn))
+             {
+               slot = 0;
+             }
 	    int scount = lresults[slot]->count();
 	    int scperel = scount / dv_size;
 
@@ -1692,6 +1737,24 @@ namespace dd
 			bad.add("target",targets);
 			bad.add("pred",predictions);
 		      }
+                  else if (typeid(inputc) == typeid(CSVTSCaffeInputFileConn))
+                    {
+                      std::vector<double> target;
+                      for (size_t k=0;k<dv_float_data.at(j).size();k++)
+                        target.push_back(dv_float_data.at(j).at(k));
+                      bad.add("target", target);
+
+                      CSVTSCaffeInputFileConn* ic =
+                        reinterpret_cast<CSVTSCaffeInputFileConn*>(&inputc);
+
+                      for (int t=0; t<ic->_timesteps; ++t)
+                        {
+                          for (int k=0;k<nout;k++)
+                            {
+                              predictions.push_back(lresults[slot]->cpu_data()[t*nout*dv_size+k+j*nout+k]);
+                            }
+                        }
+                    }
 		    else if ((!_regression && !_autoencoder)|| _ntargets == 1)
 		      {
 			double target = dv_labels.at(j);
@@ -1739,6 +1802,11 @@ namespace dd
 	  ad_res.add("regression",_regression);
 	if (inputc._ctc)
 	  ad_res.add("net_meas",true);
+       if (typeid(inputc) == typeid(CSVTSCaffeInputFileConn))
+         {
+           ad_res.add("timeserie",true);
+           ad_res.add("timeseries",nout);
+         }
       }
     SupervisedOutput::measure(ad_res,ad_out,out);
   }
@@ -1883,7 +1951,7 @@ namespace dd
       {
 	try
 	  {
-	    if (!inputc._sparse)
+           if (!inputc._sparse)
 	      {
 		std::vector<Datum> dv = inputc.get_dv_test(batch_size,has_mean_file);
 		if (dv.empty())
@@ -2218,6 +2286,38 @@ namespace dd
 		  vrad.push_back(outseq);
 		}
 	    }
+           else if (typeid(inputc) == typeid(CSVTSCaffeInputFileConn)) // timeseries
+             {
+               int slot = 0;
+               //               int scount = results[slot]->count();
+               //int scperel = scount / batch_size;
+               int nout = _ntargets;
+
+               CSVTSCaffeInputFileConn* ic =
+                 reinterpret_cast<CSVTSCaffeInputFileConn*>(&inputc);
+               for (int j=0;j<batch_size;j++)
+                 {
+                   APIData out;
+                   std::vector<APIData> series;
+
+                   for (int k=0;k<nout;k++)
+                     {
+                       std::vector<double> predictions;
+                       for (int t=0; t<ic->_timesteps; ++t)
+                         predictions.push_back(results[slot]->cpu_data()[t*nout*batch_size+k+j*nout+k]);
+                       APIData serie;
+                       serie.add("serie", predictions);
+                       series.push_back(serie);
+                     }
+                   if (!inputc._ids.empty())
+                     out.add("uri",inputc._ids.at(idoffset+j));
+                   else out.add("uri",std::to_string(idoffset+j));
+                   out.add("series", series);
+                   out.add("probs",std::vector<double>(nout,1.0));
+                   out.add("loss",0.0);
+                   vrad.push_back(out);
+                 }
+             }
 	    else // classification
 	      {
 		int slot = results.size() - 1;
@@ -2313,6 +2413,10 @@ namespace dd
 	  {
 	    out.add("autoencoder",true);
 	  }
+       if (typeid(inputc) == typeid(CSVTSCaffeInputFileConn))
+         {
+           out.add("timeseries",true);
+         }
       }
     
     out.add("nclasses",nclasses);
@@ -2570,7 +2674,7 @@ namespace dd
     if (net_param.mutable_layer(0)->has_memory_data_param()
 	|| net_param.mutable_layer(1)->has_memory_data_param())
       {
-	if (_ntargets == 0 || _ntargets == 1)
+        if (_ntargets == 0 || _ntargets == 1 || (typeid(this->_inputc) == typeid(CSVTSCaffeInputFileConn)))
 	  {
 	    if (net_param.mutable_layer(0)->has_memory_data_param())
 	      {
@@ -2705,7 +2809,7 @@ namespace dd
     if (deploy_net_param.mutable_layer(0)->has_memory_data_param())
       {
 	// no batch size set on deploy model since it is adjusted for every prediction batch
-	if (_ntargets == 0 || _ntargets == 1)
+        if (_ntargets == 0 || _ntargets == 1  || (typeid(this->_inputc) == typeid(CSVTSCaffeInputFileConn)))
 	  {
 	    deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels());
 	    deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_width(width);
@@ -3320,10 +3424,12 @@ namespace dd
 
   template class CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>;
   template class CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>;
+  template class CaffeLib<CSVTSCaffeInputFileConn,SupervisedOutput,CaffeModel>;
   template class CaffeLib<TxtCaffeInputFileConn,SupervisedOutput,CaffeModel>;
   template class CaffeLib<SVMCaffeInputFileConn,SupervisedOutput,CaffeModel>;
   template class CaffeLib<ImgCaffeInputFileConn,UnsupervisedOutput,CaffeModel>;
   template class CaffeLib<CSVCaffeInputFileConn,UnsupervisedOutput,CaffeModel>;
+  template class CaffeLib<CSVTSCaffeInputFileConn,UnsupervisedOutput,CaffeModel>;
   template class CaffeLib<TxtCaffeInputFileConn,UnsupervisedOutput,CaffeModel>;
   template class CaffeLib<SVMCaffeInputFileConn,UnsupervisedOutput,CaffeModel>;
 }

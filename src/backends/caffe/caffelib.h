@@ -90,7 +90,12 @@ namespace dd
       void configure_ssd_template(const std::string &dest_net,
 				  const std::string &deploy_dest_net,
 				  const APIData &ad);
-      
+
+      void configure_recurrent_template(const APIData &ad,
+                                        const TInputConnectorStrategy &inputc,
+                                        caffe::NetParameter &net_param,
+                                        caffe::NetParameter &dnet_param);
+
     /**
      * \brief configure noise data augmentation in training template
      * @param ad the template data object
@@ -260,6 +265,7 @@ namespace dd
       bool _regression = false; /**< whether the net acts as a regressor. */
       std::string _loss = ""; /**< loss to use : 0 softmax+multinomail logistic or1: dice*/
       int _ntargets = 0; /**< number of classification or regression targets. */
+      std::vector<int> _targets; /**< id number of classification or regression targets. */
       bool _autoencoder = false; /**< whether an autoencoder. */
       std::mutex _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as net is not re-instantiated. Use batches instead. */
       long int _flops = 0;  /**< model flops. */

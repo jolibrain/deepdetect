@@ -41,6 +41,7 @@ static std::string farm_repo = "../examples/all/farm_ads/";
 static std::string plank_repo = "../examples/caffe/plankton/";
 static std::string voc_repo = "../examples/caffe/voc/voc/";
 static std::string n20_repo = "../examples/all/n20/";
+static std::string sinus = "../examples/all/sinus/";
 static std::string sflare_repo = "../examples/all/sflare/";
 static std::string camvid_repo = "../examples/caffe/camvid/CamVid_square/";
 static std::string model_templates_repo = "../templates/caffe/";
@@ -54,6 +55,7 @@ static std::string iterations_n20 = "2000";
 static std::string iterations_n20_char = "1000";
 static std::string iterations_sflare = "5000";
 static std::string iterations_camvid = "600";
+static std::string iterations_lstm = "200";
 #else
 static std::string iterations_mnist = "10";
 static std::string iterations_plank = "10";
@@ -1344,4 +1346,124 @@ TEST(caffeapi,service_train_csv_mt_regression)
   joutstr = japi.jrender(japi.service_delete(sname,jstr));
   ASSERT_EQ(ok_str,joutstr);
   rmdir(sflare_repo_loc.c_str());
+}
+
+
+TEST(caffeapi,service_train_csvts_lstm)
+{
+  // create service
+  JsonAPI japi;
+  std::string csvts_data = sinus + "/train";
+  std::string csvts_test = sinus +"/test";
+  std::string csvts_predict = sinus +"/predict";
+  std::string csvts_repo = "csvts";
+  mkdir(csvts_repo.c_str(),0777);
+  std::string sname = "my_service_csvts";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my ts regressor\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  csvts_repo+"\",\"templates\":\"" + "/home/infantes/deepdetect/templates/caffe"+ "\"},\"parameters\":{\"input\":{\"connector\":\"csvts\",\"timesteps\":20},\"mllib\":{\"template\":\"recurrent\",\"layers\":[\"L\",\"L\"],\"dropouts\":[0.0,0.0,0.0],\"regression\":true,\"targets\":[1],\"inputs\":[0],\"ncols\":2,\"hidden\":10,\"sl1sigma\":100.0,\"loss\":\"L1\"}}}";
+  //std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my ts regressor\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  csvts_repo+"\",\"templates\":\"" + "/home/infantes/deepdetect/templates/caffe"+ "\"},\"parameters\":{\"input\":{\"connector\":\"csvts\",\"timesteps\":10},\"mllib\":{}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
+  ASSERT_EQ(created_str,joutstr);
+
+  // train
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"shuffle\":true,\"separator\":\",\",\"scale\":true},\"mllib\":{\"gpu\":true,\"gpuid\":"+gpuid+",\"solver\":{\"iterations\":" + iterations_lstm + ",\"test_interval\":500,\"base_lr\":0.001,\"snapshot\":500,\"test_initialization\":false},\"net\":{\"batch_size\":100}},\"output\":{\"measure\":[\"L1\",\"L2\"]}},\"data\":[\"" + csvts_data+"\",\""+csvts_test+"\"]}";
+  std::cerr << "jtrainstr=" << jtrainstr << std::endl;
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  JDoc jd;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_TRUE(jd.HasMember("status"));
+  ASSERT_EQ(201,jd["status"]["code"].GetInt());
+  ASSERT_EQ("Created",jd["status"]["msg"]);
+  ASSERT_TRUE(jd.HasMember("head"));
+  ASSERT_EQ("/train",jd["head"]["method"]);
+  ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
+  ASSERT_TRUE(jd.HasMember("body"));
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
+  ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("max_error"));
+  ASSERT_TRUE(jd["body"]["measure"]["max_error"].GetDouble() > 0.0);
+  ASSERT_TRUE(jd["body"]["parameters"]["input"].HasMember("max_vals"));
+  ASSERT_TRUE(jd["body"]["parameters"]["input"].HasMember("min_vals"));
+
+  std::string str_min_vals = japi.jrender(jd["body"]["parameters"]["input"]["min_vals"]);
+  std::string str_max_vals = japi.jrender(jd["body"]["parameters"]["input"]["max_vals"]);
+
+  //  predict
+  std::string jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"connector\":\"csvts\",\"scale\":true,\"min_vals\":" + str_min_vals + ",\"max_vals\":" + str_max_vals + "},\"output\":{}},\"data\":[\"" + csvts_predict + "\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200,jd["status"]["code"]);
+  std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
+  ASSERT_EQ("0",uri);
+  ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
+  ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["serie"][0].GetDouble() >= -1.0);
+
+  //  remove service
+  jstr = "{\"clear\":\"full\"}";
+  joutstr = japi.jrender(japi.service_delete(sname,jstr));
+  ASSERT_EQ(ok_str,joutstr);
+  rmdir(csvts_repo.c_str());
+}
+
+
+TEST(caffeapi,service_train_csvts_db_lstm)
+{
+  // create service
+  JsonAPI japi;
+  std::string csvts_data = sinus + "/train";
+  std::string csvts_test = sinus +"/test";
+  std::string csvts_predict = sinus +"/predict";
+  std::string csvts_repo = "csvts";
+  mkdir(csvts_repo.c_str(),0777);
+  std::string sname = "my_service_csvts";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my ts regressor\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  csvts_repo+"\",\"templates\":\"" + "/home/infantes/deepdetect/templates/caffe"+ "\"},\"parameters\":{\"input\":{\"connector\":\"csvts\",\"timesteps\":20,\"db\":true},\"mllib\":{\"template\":\"recurrent\",\"layers\":[\"L\",\"L\"],\"dropouts\":[0.0,0.0],\"regression\":true,\"targets\":[1],\"inputs\":[0],\"ncols\":2,\"hidden\":10,\"sl1sigma\":100.0,\"loss\":\"L1\",\"db\":true}}}";
+  //std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my ts regressor\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  csvts_repo+"\",\"templates\":\"" + "/home/infantes/deepdetect/templates/caffe"+ "\"},\"parameters\":{\"input\":{\"connector\":\"csvts\",\"timesteps\":10},\"mllib\":{}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
+  ASSERT_EQ(created_str,joutstr);
+
+  // train
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"shuffle\":true,\"separator\":\",\",\"scale\":true,\"db\":true},\"mllib\":{\"db\":true,\"gpu\":true,\"gpuid\":"+gpuid+",\"solver\":{\"iterations\":" + iterations_lstm + ",\"test_interval\":500,\"base_lr\":0.001,\"snapshot\":500,\"test_initialization\":false},\"net\":{\"batch_size\":100}},\"output\":{\"measure\":[\"L1\",\"L2\"]}},\"data\":[\"" + csvts_data+"\",\""+csvts_test+"\"]}";
+  std::cerr << "jtrainstr=" << jtrainstr << std::endl;
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  JDoc jd;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_TRUE(jd.HasMember("status"));
+  ASSERT_EQ(201,jd["status"]["code"].GetInt());
+  ASSERT_EQ("Created",jd["status"]["msg"]);
+  ASSERT_TRUE(jd.HasMember("head"));
+  ASSERT_EQ("/train",jd["head"]["method"]);
+  ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
+  ASSERT_TRUE(jd.HasMember("body"));
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
+  ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("max_error"));
+  ASSERT_TRUE(jd["body"]["measure"]["max_error"].GetDouble() > 0.0);
+  ASSERT_TRUE(jd["body"]["parameters"]["input"].HasMember("max_vals"));
+  ASSERT_TRUE(jd["body"]["parameters"]["input"].HasMember("min_vals"));
+
+  std::string str_min_vals = japi.jrender(jd["body"]["parameters"]["input"]["min_vals"]);
+  std::string str_max_vals = japi.jrender(jd["body"]["parameters"]["input"]["max_vals"]);
+
+  // predict
+  std::string jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"connector\":\"csvts\",\"scale\":true,\"min_vals\":" + str_min_vals + ",\"max_vals\":" + str_max_vals + "},\"output\":{}},\"data\":[\"" + csvts_predict + "\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200,jd["status"]["code"]);
+  std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
+  ASSERT_EQ("0",uri);
+  ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
+  ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["serie"][0].GetDouble() >= -1.0);
+
+  //  remove service
+  jstr = "{\"clear\":\"full\"}";
+  joutstr = japi.jrender(japi.service_delete(sname,jstr));
+  ASSERT_EQ(ok_str,joutstr);
+  rmdir(csvts_repo.c_str());
 }
