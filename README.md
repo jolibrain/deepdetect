@@ -16,7 +16,7 @@ DeepDetect relies on external machine learning libraries through a very generic 
 |            | Training | Prediction | Classification | Object Detection | Segmentation | Regression | Autoencoder | OCR / Seq2Seq |
 |------------|----------|------------|----------------|-----------|-----------|------------|-------------|-------------|
 | Caffe      | Y        | Y          | Y              | Y         |   Y       |   Y        | Y           | Y           |
-| Caffe2     | N        | Y          | N              | N         |   N       |   N        | N           | N           |
+| Caffe2     | Y        | Y          | Y              | Y         |   N       |   N        | N           | N           |
 | XGBoost    | Y        | Y          | Y              | N         |   N       |   Y        | N/A         | N           |
 | Tensorflow | N        | Y          | Y              | N         |   N       |   N        | N           | N           |
 | T-SNE      | Y        | N/A        | N/A            | N/A       |   N/A     |   N/A      | N/A         | N           |
@@ -28,7 +28,7 @@ DeepDetect relies on external machine learning libraries through a very generic 
 |            | Training | Prediction |
 |------------|----------|------------|
 | Caffe      | Y        | Y          |
-| Caffe2     | N        | Y          |
+| Caffe2     | Y        | Y          |
 | XGBoost    | Y        | Y          |
 | Tensorflow | N        | Y          |
 | T-SNE      | Y        | N          |
