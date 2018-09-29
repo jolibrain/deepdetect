@@ -130,7 +130,8 @@ namespace dd
     return 0;
   }
 
-  int CaffeModel::copy_to_target(const std::string &target_repo,
+  int CaffeModel::copy_to_target(const std::string &source_repo,
+				 const std::string &target_repo,
 				 const std::shared_ptr<spdlog::logger> &logger)
   {
     if (target_repo.empty())
@@ -140,7 +141,7 @@ namespace dd
       }
     if (!fileops::create_dir(target_repo,0755)) // create target repo as needed
       logger->info("created target repository {}",target_repo);
-    std::string bfile = this->_repo + this->_best_model_filename;
+    std::string bfile = source_repo + this->_best_model_filename;
     if (fileops::file_exists(bfile))
       {
 	std::ifstream inp(bfile);
@@ -150,20 +151,21 @@ namespace dd
 	std::getline(inp,line);
 	std::vector<std::string> elts = dd_utils::split(line,':');
 	std::string best_caffemodel = "/model_iter_" + elts.at(1) + ".caffemodel";
-	if (fileops::copy_file(this->_repo + best_caffemodel,target_repo + best_caffemodel))
+	if (fileops::copy_file(source_repo + best_caffemodel,target_repo + best_caffemodel))
 	  {
-	    logger->error("failed copying best model {} to {}",this->_repo + best_caffemodel,
+	    logger->error("failed copying best model {} to {}",source_repo + best_caffemodel,
 			  target_repo + best_caffemodel);
 	    return 1;
 	  }
 	else logger->info("sucessfully copied best model file {}",best_caffemodel);
 	std::unordered_set<std::string> lfiles;
-	fileops::list_directory(this->_repo,true,false,lfiles);
+	fileops::list_directory(source_repo,true,false,lfiles);
 	auto hit = lfiles.begin();
 	while(hit!=lfiles.end())
 	  {
 	    if ((*hit).find("prototxt")!=std::string::npos
-		|| (*hit).find(".json")!=std::string::npos)
+		|| (*hit).find(".json")!=std::string::npos
+		|| (*hit).find(".txt")!=std::string::npos)
 	      {
 		std::vector<std::string> selts = dd_utils::split((*hit),'/');
 		fileops::copy_file((*hit),target_repo + '/' + selts.back());
@@ -171,10 +173,11 @@ namespace dd
 	    ++hit;
 	  }
 	logger->info("successfully copied best model files from {} to {}",
-		     this->_repo,target_repo);
+		     source_repo,target_repo);
 	return 0;
       }
-    logger->error("failed finding best model to copy to target repository {}",target_repo);
+    logger->error("failed finding best model to copy from {} to target repository {}",
+		  source_repo,target_repo);
     return 1;
   }
 

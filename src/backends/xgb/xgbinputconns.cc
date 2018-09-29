@@ -248,6 +248,20 @@ namespace dd
 	throw;
       }
 
+    // fmap file
+    if (ad.has("model_repo"))
+      {
+	std::ofstream fmap(ad.get("model_repo").get<std::string>()+"/model.fmap",std::ios::binary);
+	int nc = 0;
+	auto vit = this->_vocab.begin();
+	while(vit!=this->_vocab.end())
+	  {
+	    fmap << nc << "\t" << (*vit).first << "\tq\n";
+	    ++vit;
+	    ++nc;
+	  }
+      }
+    
     _m = std::shared_ptr<xgboost::DMatrix>(create_from_mat(_txt));
     destroy_txt_entries(_txt);
     if (!_test_txt.empty())
