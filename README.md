@@ -394,6 +394,27 @@ To see all options, do:
 ./dede --help
 ```
 
+### Services auto-start
+
+A list of services can be stored into a file and passed to the `dede` server so that they are all created upon server start. A list fo predictions can also be run automatically upon server start. The file is passed with:
+
+```
+./dede -service_start_list <yourfile>
+```
+
+File format is as follows:
+
+- service creation:
+```
+service_create;sname;JSON string
+```
+where `sname` is the service name and the JSON is a string without external quotes
+
+- service prediction
+```
+service_predict;JSON string
+``` 
+
 ### Pure command line JSON API
 
 To use deepdetect without the client/server architecture while passing the exact same JSON messages from the API:
