@@ -165,7 +165,8 @@ namespace dd
 	  {
 	    if ((*hit).find("prototxt")!=std::string::npos
 		|| (*hit).find(".json")!=std::string::npos
-		|| (*hit).find(".txt")!=std::string::npos)
+		|| (*hit).find(".txt")!=std::string::npos
+		|| (*hit).find("vocab.dat")!=std::string::npos)
 	      {
 		std::vector<std::string> selts = dd_utils::split((*hit),'/');
 		fileops::copy_file((*hit),target_repo + '/' + selts.back());
