@@ -643,6 +643,54 @@ TEST(caffelib, configure_deeplabvgg16_diceloss)
   remove("./deploy.prototxt");
 }
 
+TEST(caffelib,configure_service_images_autoenc_geometry)
+{
+  APIData adg;
+  adg.add("all_effects",false);
+  adg.add("persp_horizontal",true);
+  adg.add("persp_vertical",false);
+  adg.add("zoom_in",true);
+  adg.add("zoom_out",true);
+  adg.add("pad_mode","mirrored");
+  adg.add("prob",0.1);
+  APIData ad;
+  ad.add("template","convnet");
+  std::vector<std::string> net = {"1CR32","1CR64","1CR128","DR128","1CR128","DR64","1CR64","DR32","1CR32"};
+  ad.add("layers", net);
+  ad.add("activation","relu");
+  ad.add("autoencoder",true);
+  ad.add("geometry",adg);
+  ad.add("templates","../templates/caffe");
+  ad.add("repository","./");
+  ad.add("width",224);
+  ad.add("height",224);
+
+  CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel> *caff = new CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(CaffeModel(ad));
+  caff->_logger = spdlog::stdout_logger_mt("UT-geom");
+  caff->_inputc.init(ad);
+  //caff->init_mllib(ad);
+  caff->instantiate_template(ad);
+
+
+  caffe::NetParameter net_param;
+  std::string prototxt = "convnet.prototxt";;
+  bool succ = caffe::ReadProtoFromTextFile(prototxt,&net_param);
+  ASSERT_TRUE(succ);
+
+
+  caffe::LayerParameter *lparam = net_param.mutable_layer(0);
+  caffe::GeometryParameter gparam = lparam->transform_param().geometry_param();
+  ASSERT_FLOAT_EQ(gparam.prob(), 0.1);
+  ASSERT_EQ(gparam.persp_horizontal(),true);
+  ASSERT_EQ(gparam.persp_vertical(),false);
+  ASSERT_EQ(gparam.zoom_out(),true);
+  ASSERT_EQ(gparam.zoom_in(),true);
+  ASSERT_EQ(gparam.pad_mode(),caffe::GeometryParameter_Pad_mode_MIRRORED);
+  remove("./convnet.prototxt");
+  remove("./convnet_solver.prototxt");
+  remove("./deploy.prototxt");
+
+}
 
 
 TEST(caffelib, configure_unet_diceloss)
