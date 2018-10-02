@@ -1035,6 +1035,44 @@ TEST(caffeapi,service_train_images_autoenc)
   rmdir(plank_repo_loc.c_str());
 }
 
+
+TEST(caffeapi,service_create_images_autoenc_geometry)
+{
+ // create service
+  JsonAPI japi;
+  std::string plank_repo_loc = "plank";
+  mkdir(plank_repo_loc.c_str(),0777);
+  std::string sname = "my_service";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  plank_repo_loc + "\",\"templates\":\"" + model_templates_repo  + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"width\":224,\"height\":224},\"mllib\":{\"db\":true,\"template\":\"convnet\",\"layers\":[\"1CR32\",\"1CR64\",\"1CR128\",\"DR128\",\"1CR128\",\"DR64\",\"1CR64\",\"DR32\",\"1CR32\"],\"activation\":\"relu\",\"autoencoder\":true,\"scale\":0.0039,\"geometry\":{\"all_effects\":false,\"persp_horizontal\":true,\"persp_vertical\":false,\"zoom_in\":true,\"zoom_out\":true,\"pad_mode\":\"mirrored\",\"prob\":0.1}}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
+  ASSERT_EQ(created_str,joutstr);
+
+
+  caffe::NetParameter net_param;
+  std::string prototxt = plank_repo_loc + "/convnet.prototxt";;
+  bool succ = caffe::ReadProtoFromTextFile(prototxt,&net_param);
+  ASSERT_TRUE(succ);
+
+
+  caffe::LayerParameter *lparam = net_param.mutable_layer(0);
+  caffe::GeometryParameter gparam = lparam->transform_param().geometry_param();
+  ASSERT_FLOAT_EQ(gparam.prob(), 0.1);
+  ASSERT_EQ(gparam.persp_horizontal(),true);
+  ASSERT_EQ(gparam.persp_vertical(),false);
+  ASSERT_EQ(gparam.zoom_out(),true);
+  ASSERT_EQ(gparam.zoom_in(),true);
+  ASSERT_EQ(gparam.pad_mode(),caffe::GeometryParameter_Pad_mode_MIRRORED);
+
+
+
+  // remove service
+  jstr = "{\"clear\":\"full\"}";
+  joutstr = japi.jrender(japi.service_delete(sname,jstr));
+  ASSERT_EQ(ok_str,joutstr);
+  rmdir(plank_repo_loc.c_str());
+}
+
+
 TEST(caffeapi,service_train_images_seg)
 {
   // create service
