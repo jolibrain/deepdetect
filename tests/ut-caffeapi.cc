@@ -1036,7 +1036,7 @@ TEST(caffeapi,service_train_images_autoenc)
 }
 
 
-TEST(caffeapi,service_create_images_autoenc_geometry)
+TEST(caffeapi,service_train_images_autoenc_geometry)
 {
  // create service
   JsonAPI japi;
@@ -1063,7 +1063,24 @@ TEST(caffeapi,service_create_images_autoenc_geometry)
   ASSERT_EQ(gparam.zoom_in(),true);
   ASSERT_EQ(gparam.pad_mode(),caffe::GeometryParameter_Pad_mode_MIRRORED);
 
-
+  // // train
+  // std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"db\":true,\"test_split\":0.001,\"shuffle\":true,\"bw\":false},\"mllib\":{\"gpu\":true,\"gpuid\":"+gpuid+",\"resume\":false,\"solver\":{\"iterations\":" + iterations_plank + ",\"test_interval\":500,\"base_lr\":0.0001,\"snapshot\":2000,\"test_initialization\":false},\"net\":{\"batch_size\":10}},\"output\":{\"measure\":[\"eucll\"]}},\"data\":[\"" + plank_repo + "train\"]}";
+  // joutstr = japi.jrender(japi.service_train(jtrainstr));
+  // std::cout << "joutstr=" << joutstr << std::endl;
+  // JDoc jd;
+  // jd.Parse(joutstr.c_str());
+  // ASSERT_TRUE(!jd.HasParseError());
+  // ASSERT_TRUE(jd.HasMember("status"));
+  // ASSERT_EQ(201,jd["status"]["code"].GetInt());
+  // ASSERT_EQ("Created",jd["status"]["msg"]);
+  // ASSERT_TRUE(jd.HasMember("head"));
+  // ASSERT_EQ("/train",jd["head"]["method"]);
+  // ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
+  // ASSERT_TRUE(jd.HasMember("body"));
+  // ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
+  // ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
+  // ASSERT_TRUE(jd["body"]["measure"].HasMember("eucll"));
+  // ASSERT_TRUE(jd["body"]["measure"]["eucll"].GetDouble() <= 1000000);
 
   // remove service
   jstr = "{\"clear\":\"full\"}";
