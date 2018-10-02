@@ -310,6 +310,9 @@ namespace dd
 	  if (status == std::future_status::timeout)
 	    {
 	      out.add("status","running");
+	      APIData jmrepo;
+	      jmrepo.add("repository",this->_mlmodel._repo);
+	      out.add("model",jmrepo);
 	      this->collect_measures(out);
 	      this->est_remain_time(out);
 	      std::chrono::time_point<std::chrono::system_clock> trun = std::chrono::system_clock::now();
