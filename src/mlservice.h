@@ -245,7 +245,7 @@ namespace dd
     }
 
     /**
-     * \brief starts a possibly asynchronous trainin job and returns status or job number (async job).
+     * \brief starts a possibly asynchronous training job and returns status or job number (async job).
      * @param ad root data object
      * @param out output data object
      * @return training job number if async, otherwise status upon termination
