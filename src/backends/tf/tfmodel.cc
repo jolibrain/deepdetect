@@ -41,7 +41,7 @@ namespace dd
     std::string labelFile = ".txt";
     this->_repo = repo;
     std::unordered_set<std::string> lfiles;
-  	int e = fileops::list_directory(repo,true,false,lfiles);
+  	int e = fileops::list_directory(repo,true,false, false, lfiles);
     if (e != 0)
       {
 	logger->error("error reading or listing tensorflow models in repository {}",repo);

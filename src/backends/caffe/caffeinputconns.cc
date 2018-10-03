@@ -119,7 +119,7 @@ namespace dd
 
     // list directories in dataset train folder
     std::unordered_set<std::string> subdirs;
-    if (fileops::list_directory(rfolders.at(0),false,true,subdirs))
+    if (fileops::list_directory(rfolders.at(0),false,true,false,subdirs))
       throw InputConnectorBadParamException("failed reading image train data directory " + rfolders.at(0));
 
     // list files and classes, possibly shuffle / split them
@@ -131,7 +131,7 @@ namespace dd
     while(uit!=subdirs.end())
       {
 	std::unordered_set<std::string> subdir_files;
-	if (fileops::list_directory((*uit),true,false,subdir_files))
+	if (fileops::list_directory((*uit),true,false,true,subdir_files))
 	  throw InputConnectorBadParamException("failed reading image train data sub-directory " + (*uit));
 	std::string cls = dd_utils::split((*uit),'/').back();
 	hcorresp.insert(std::pair<int,std::string>(cl,cls));
@@ -183,7 +183,7 @@ namespace dd
       {
 	// list directories in dataset test folder
 	std::unordered_set<std::string> test_subdirs;
-	if (fileops::list_directory(rfolders.at(1),false,true,test_subdirs))
+	if (fileops::list_directory(rfolders.at(1),false,true,false,test_subdirs))
 	  throw InputConnectorBadParamException("failed reading image test data directory " + rfolders.at(1));
 
 	// list files and classes, possibly shuffle / split them
@@ -192,7 +192,7 @@ namespace dd
 	while(uit!=test_subdirs.end())
 	  {
 	    std::unordered_set<std::string> subdir_files;
-	    if (fileops::list_directory((*uit),true,false,subdir_files))
+	    if (fileops::list_directory((*uit),true,false,true,subdir_files))
 	      throw InputConnectorBadParamException("failed reading image test data sub-directory " + (*uit));
 	    std::string cls = dd_utils::split((*uit),'/').back();
 	    if ((hcit=hcorresp_r.find(cls))==hcorresp_r.end())
