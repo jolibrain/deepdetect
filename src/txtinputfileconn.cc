@@ -68,7 +68,7 @@ namespace dd
 
     // list directories in dir
     std::unordered_set<std::string> subdirs;
-    if (fileops::list_directory(dir,false,true,subdirs))
+    if (fileops::list_directory(dir,false,true,false,subdirs))
       throw InputConnectorBadParamException("failed reading text subdirectories in data directory " + dir);
     _logger->info("txtinputfileconn: list subdirs size={}",subdirs.size());
     
@@ -102,7 +102,7 @@ namespace dd
 	while(uit!=subdirs.end())
 	  {
 	    std::unordered_set<std::string> subdir_files;
-	    if (fileops::list_directory((*uit),true,false,subdir_files))
+	    if (fileops::list_directory((*uit),true,false,true,subdir_files))
 	      throw InputConnectorBadParamException("failed reading text data sub-directory " + (*uit));
 	    std::string cls = dd_utils::split((*uit),'/').back();
 	    if (!test_dir)
@@ -138,7 +138,7 @@ namespace dd
     else
       {
 	std::unordered_set<std::string> test_files;
-	fileops::list_directory(dir,true,false,test_files);
+	fileops::list_directory(dir,true,false,false,test_files);
 	auto fit = test_files.begin();
 	while(fit!=test_files.end())
 	  {

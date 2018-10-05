@@ -268,7 +268,7 @@ namespace dd {
 					   bool is_reversed) {
 
     std::unordered_set<std::string> subdirs;
-    if (fileops::list_directory(root, false, true, subdirs)) {
+    if (fileops::list_directory(root, false, true, false, subdirs)) {
       std::string msg("Failed reading image data directory " + root);
       _logger->error(msg);
       throw InputConnectorBadParamException(msg);
@@ -279,7 +279,7 @@ namespace dd {
     for (const std::string &dir : subdirs) {
 
       std::unordered_set<std::string> subdir_files;
-      if (fileops::list_directory(dir, true, false, subdir_files)) {
+      if (fileops::list_directory(dir, true, false, true, subdir_files)) {
 	std::string msg("Failed reading image data sub-directory " + dir);
 	_logger->error(msg);
 	throw InputConnectorBadParamException(msg);

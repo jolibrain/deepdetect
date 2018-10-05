@@ -67,7 +67,7 @@ namespace dd {
 
     // List available files
     std::unordered_set<std::string> lfiles;
-    if (fileops::list_directory(_repo, true, false, lfiles)) {
+    if (fileops::list_directory(_repo, true, false, false, lfiles)) {
       std::string msg("error reading or listing Caffe2 models in repository " + _repo);
       logger->error(msg);
       throw MLLibBadParamException(msg);

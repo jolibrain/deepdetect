@@ -98,25 +98,28 @@ namespace dd
     }
 
     static int list_directory(const std::string &repo,
-			      const bool &files,
-			      const bool &dirs,
-			      std::unordered_set<std::string> &lfiles)
+                              const bool &files,
+                              const bool &dirs,
+                              const bool &sub_files,
+                              std::unordered_set<std::string> &lfiles)
     {
       DIR *dir;
       struct dirent *ent;
       if ((dir = opendir(repo.c_str())) != NULL) {
-	while ((ent = readdir(dir)) != NULL) {
-	  if ((files && (ent->d_type == DT_REG || ent->d_type == DT_LNK))
-	      || (dirs && (ent->d_type == DT_DIR || ent->d_type == DT_LNK) && ent->d_name[0] != '.'))
-	    lfiles.insert(std::string(repo) + "/" + std::string(ent->d_name));
-	}
-	closedir(dir);
-	return 0;
-      } 
-      else 
-	{
-	  return 1;
-	}
+        while ((ent = readdir(dir)) != NULL) {
+          if ((files && (ent->d_type == DT_REG || ent->d_type == DT_LNK))
+              || (dirs && (ent->d_type == DT_DIR || ent->d_type == DT_LNK) && ent->d_name[0] != '.'))
+            lfiles.insert(std::string(repo) + "/" + std::string(ent->d_name));
+          if (sub_files && (ent->d_type == DT_DIR || ent->d_type == DT_LNK) && ent->d_name[0] != '.')
+            list_directory(std::string(repo) + "/" + std::string(ent->d_name),files,dirs,sub_files,lfiles);
+        }
+        closedir(dir);
+        return 0;
+      }
+      else
+        {
+          return 1;
+        }
     }
 
     // remove everything, including first level directories within directory
