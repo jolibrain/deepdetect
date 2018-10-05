@@ -388,7 +388,11 @@ else()
 endif()
 
 # Caffe dependencies
-set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lhdf5_hl -lhdf5 -lopenblas -lcaffe -lprotobuf)
+if (RPI3)
+  set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lhdf5_hl -lhdf5 -latlas -lcaffe -lprotobuf)
+else()
+  set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lhdf5_hl -lhdf5 -lopenblas -lcaffe -lprotobuf)
+endif()
 
 if (USE_TF)
   add_dependencies(caffe_dd tensorflow_cc)
