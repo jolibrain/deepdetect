@@ -385,10 +385,14 @@ namespace dd
 		return;
 	      }
 	      // create db
-	      if (!this->_unchanged_data)
-		images_to_db(_uris,_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname);
-	      else images_to_db(_uris,_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname,
-				"lmdb",false,"");
+				// Check if the indicated uri is a folder
+				bool dir_images = true;
+				bool exists= fileops::file_exists(_uris.at(0), dir_images);
+				
+				if (!this->_unchanged_data)
+				images_to_db(_uris,_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname, dir_images);
+					else images_to_db(_uris,_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname, dir_images,
+					"lmdb",false,"");
 	      
 	      // compute mean of images, not forcely used, depends on net, see has_mean_file
 	      if (!this->_unchanged_data)
@@ -448,12 +452,14 @@ namespace dd
                                            const bool &encoded=true, // save the encoded image in datum
                                            const std::string &encode_type=""); // 'png', 'jpg', ...
 
-    int images_to_db(const std::vector<std::string> &rfolders,
+    int images_to_db(const std::vector<std::string> &rpaths,
 		     const std::string &traindbname,
-                     const std::string &testdbname,
+         const std::string &testdbname,
+				 const bool &folders=true,						 
 		     const std::string &backend="lmdb", // lmdb, leveldb
 		     const bool &encoded=true, // save the encoded image in datum
 		     const std::string &encode_type=""); // 'png', 'jpg', ...
+
 
     void write_image_to_db(const std::string &dbfullname,
 			   const std::vector<std::pair<std::string,int>> &lfiles,
