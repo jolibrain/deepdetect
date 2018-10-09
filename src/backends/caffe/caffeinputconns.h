@@ -27,6 +27,7 @@
 #include "csvtsinputfileconn.h"
 #include "txtinputfileconn.h"
 #include "svminputfileconn.h"
+#include "vidinputconn.h"
 #include "caffe/caffe.hpp"
 #include "caffe/util/db.hpp"
 #include "utils/fileops.hpp"
@@ -494,6 +495,284 @@ namespace dd
 			      int &max_ocr_length,
 			      const bool &train_db);
 		#endif // USE_HDF5
+
+    int objects_to_db(const std::vector<std::string> &rfolders,
+		      const int &db_height,
+		      const int &db_width,
+		      const std::string &traindbname,
+		      const std::string &testdbname,
+		      const bool &encoded=true,
+		      const std::string &encode_type="",
+		      const std::string &backend="lmdb");
+
+    void write_objects_to_db(const std::string &dbfullname,
+			     const int &db_height,
+			     const int &db_width,
+			     const std::vector<std::pair<std::string,std::string>> &lines,
+			     const bool &encoded,
+			     const std::string &encode_type,
+			     const std::string &backend,
+			     const bool &train);
+    
+    int compute_images_mean(const std::string &dbname,
+			    const std::string &meanfile,
+			    const std::string &backend="lmdb");
+
+    std::string guess_encoding(const std::string &file);
+    
+  public:
+    int _db_batchsize = -1;
+    int _db_testbatchsize = -1;
+    std::unique_ptr<caffe::db::DB> _test_db;
+    std::unique_ptr<caffe::db::Cursor> _test_db_cursor;
+    std::string _dbname = "train";
+    std::string _test_dbname = "test";
+    std::string _meanfname = "mean.binaryproto";
+    std::string _correspname = "corresp.txt";
+    caffe::Blob<float> _data_mean; // mean binary image if available.
+    std::vector<caffe::Datum>::const_iterator _dt_vit;
+    std::vector<std::pair<std::string,std::string>> _segmentation_data_lines;
+    int _dt_seg = 0;
+    bool _align = false;
+  };
+
+  /**
+   * \brief Video image connector, supports both files and camera stream
+   */
+  class VidCaffeInputConn : public VidInputConn, public CaffeInputInterface
+  {
+  public:
+    VidCaffeInputConn()
+      :VidInputConn() {}
+    VidCaffeInputConn(const VidCaffeInputConn &i)
+      :VidInputConn(i),CaffeInputInterface(i) {/* _db = true;*/ }
+    ~VidCaffeInputConn() {}
+
+    // size of each element in Caffe jargon
+    int channels() const
+    {
+      return 3;
+    }
+    
+    int height() const
+    {
+      return _height;
+    }
+    
+    int width() const
+    {
+      return _width;
+
+    }
+
+    int batch_size() const
+    {
+      if (_db_batchsize > 0)
+	return _db_batchsize;
+      else if (!_dv.empty())
+	return _dv.size();
+      else return VidInputConn::test_batch_size();
+    }
+ 
+    int test_batch_size() const
+    {
+      if (_db_testbatchsize > 0)
+	return _db_testbatchsize;
+      else if (!_dv_test.empty())
+	return _dv_test.size();
+      else return VidInputConn::test_batch_size();
+    }
+
+
+
+    void init(const APIData &ad)
+    {
+      // TODO: verify usage of those init fields for DB
+      VidInputConn::init(ad);
+      if (ad.has("db"))
+	_db = ad.get("db").get<bool>();
+      if (ad.has("multi_label"))
+	_multi_label = ad.get("multi_label").get<bool>();
+      if (ad.has("root_folder"))
+	_root_folder = ad.get("root_folder").get<std::string>();
+      if (ad.has("segmentation"))
+	_segmentation = ad.get("segmentation").get<bool>();
+      if (ad.has("bbox"))
+	_bbox = ad.get("bbox").get<bool>();
+      if (ad.has("ctc"))
+	_ctc = ad.get("ctc").get<bool>();
+    }
+
+    void transform(const APIData &ad)
+    {
+      // in prediction mode only, convert the images to Datum, a Caffe data structure
+      if (!_train)
+	{
+	  // if no img height x width, we assume 224x224 (works if user is lucky, i.e. the best we can do)
+	  if (_width == -1)
+	    _width = 224;
+	  if (_height == -1)
+	    _height = 224;
+	  
+	  if (ad.has("has_mean_file"))
+	    _has_mean_file = ad.get("has_mean_file").get<bool>();
+	  APIData ad_input = ad.getobj("parameters").getobj("input");
+	  if (ad_input.has("segmentation"))
+	    _segmentation = ad_input.get("segmentation").get<bool>();
+	  if (ad_input.has("bbox"))
+	    _bbox = ad_input.get("bbox").get<bool>();
+	  if (ad_input.has("multi_label"))
+	    _multi_label = ad_input.get("multi_label").get<bool>();
+	  if (ad.has("root_folder"))
+	    _root_folder = ad.get("root_folder").get<std::string>();
+	  try
+	    {
+	      VidInputConn::transform(ad);
+	    }
+	  catch (InputConnectorBadParamException &e)
+	    {
+	      throw;
+	    }
+	  float *mean = nullptr;
+	  std::string meanfullname = _model_repo + "/" + _meanfname;
+	  if (_data_mean.count() == 0 && _has_mean_file)
+	    {
+	      caffe::BlobProto blob_proto;
+	      caffe::ReadProtoFromBinaryFile(meanfullname.c_str(),&blob_proto);
+	      _data_mean.FromProto(blob_proto);
+	      mean = _data_mean.mutable_cpu_data();
+	    }
+          // TODO: NBD needed ?
+          /*
+	  if (!_db_fname.empty())
+	    {
+	      _test_dbfullname = _db_fname;
+	      _db = true;
+	      return; // done
+	    }
+            */
+	  else _db = false;
+          // TODO NBD: how to know when stop reading
+	  for (int i=0;i<(int)this->_images.size();i++)
+	    {      
+	      caffe::Datum datum;
+	      caffe::CVMatToDatum(this->_images.at(i),&datum);
+              /*
+	      if (!_test_labels.empty())
+		datum.set_label(_test_labels.at(i));
+                */
+	      if (_data_mean.count() != 0)
+		{
+		  int height = datum.height();
+		  int width = datum.width();
+		  for (int c=0;c<datum.channels();++c)
+		    for (int h=0;h<height;++h)
+		      for (int w=0;w<width;++w)
+			{
+			  int data_index = (c*height+h)*width+w;
+			  float datum_element = static_cast<float>(static_cast<uint8_t>(datum.data()[data_index]));
+			  datum.add_float_data(datum_element - mean[data_index]);
+			}
+		  datum.clear_data();
+		}
+	      else if (_has_mean_scalar)
+		{
+		  int height = datum.height();
+		  int width = datum.width();
+		  for (int c=0;c<datum.channels();++c)
+		    for (int h=0;h<height;++h)
+		      for (int w=0;w<width;++w)
+			{
+			  int data_index = (c*height+h)*width+w;
+			  float datum_element = static_cast<float>(static_cast<uint8_t>(datum.data()[data_index]));
+			  datum.add_float_data(datum_element - _mean[c]);
+			}
+		  datum.clear_data();
+		}
+	      _dv_test.push_back(datum);
+	      _ids.push_back(this->_uris.at(i));
+              // TODO: NBD img_size is constant
+	      //_imgs_size.insert(std::pair<std::string,std::pair<int,int>>(this->_uris.at(i),this->_images_size.at(i)));
+	    }
+	  this->_images.clear();
+	  this->_images_size.clear();
+	}
+	
+    }
+
+    std::vector<caffe::Datum> get_dv_test(const int &num,
+					  const bool &has_mean_file)
+      {
+		
+	if (!_train &&  _images.empty())
+	  {
+	    int i = 0;
+	    std::vector<caffe::Datum> dv;
+	    while(_dt_vit!=_dv_test.end()
+		  && i < num)
+	      {
+		dv.push_back((*_dt_vit));
+		++i;
+		++_dt_vit;
+	      }
+	    return dv;
+	  }
+	else return get_dv_test_db(num,has_mean_file);
+      }
+    
+    std::vector<caffe::Datum> get_dv_test_db(const int &num,
+		    const bool &has_mean_file)
+    {
+	    std::vector<caffe::Datum> dv;
+	    return dv;
+    }
+
+    std::vector<caffe::Datum> get_dv_test_segmentation(const int &num,
+						       const bool &has_mean_file)
+    
+    {
+	    std::vector<caffe::Datum> dv;
+	    return dv;
+    }
+    void reset_dv_test();
+    
+  private:
+
+    void create_test_db_for_imagedatalayer(const std::string &test_lst,
+                                           const std::string &testdbname,
+                                           const std::string &backend="lmdb", // lmdb, leveldb
+                                           const bool &encoded=true, // save the encoded image in datum
+                                           const std::string &encode_type=""); // 'png', 'jpg', ...
+
+    int images_to_db(const std::vector<std::string> &rfolders,
+		     const std::string &traindbname,
+                     const std::string &testdbname,
+		     const std::string &backend="lmdb", // lmdb, leveldb
+		     const bool &encoded=true, // save the encoded image in datum
+		     const std::string &encode_type=""); // 'png', 'jpg', ...
+
+    void write_image_to_db(const std::string &dbfullname,
+			   const std::vector<std::pair<std::string,int>> &lfiles,
+			   const std::string &backend,
+			   const bool &encoded,
+			   const std::string &encode_type);
+
+    void write_image_to_db_multilabel(const std::string &dbfullname,
+				      const std::vector<std::pair<std::string,std::vector<float>>> &lfiles,
+				      const std::string &backend,
+				      const bool &encoded,
+				      const std::string &encode_type);
+
+    void images_to_hdf5(const std::vector<std::string> &img_lists,
+			const std::string &traindbname,
+			const std::string &testdbname);
+
+    void write_images_to_hdf5(const std::string &inputfilename,
+			      const std::string &dbfullbame,
+			      const std::string &dblistfilename,
+			      std::unordered_map<uint32_t,int> &alphabet,
+			      int &max_ocr_length,
+			      const bool &train_db);
 
     int objects_to_db(const std::vector<std::string> &rfolders,
 		      const int &db_height,
