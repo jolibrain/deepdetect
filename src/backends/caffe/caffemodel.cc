@@ -121,12 +121,13 @@ namespace dd
       _def = deployf;
     if (_trainf.empty())
       _trainf = trainf;
-    _weights = weightsf;
+    if (!weightsf.empty())
+      _weights = weightsf;
     if (_corresp.empty())
       _corresp = correspf;
     if (_solver.empty())
       _solver = solverf;
-    _sstate = sstatef;    
+    _sstate = sstatef;
     return 0;
   }
 
