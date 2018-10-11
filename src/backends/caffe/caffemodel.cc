@@ -127,6 +127,7 @@ namespace dd
       _corresp = correspf;
     if (_solver.empty())
       _solver = solverf;
+    if (!sstatef.empty())
     _sstate = sstatef;
     return 0;
   }
