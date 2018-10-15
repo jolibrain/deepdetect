@@ -160,6 +160,7 @@ namespace dd
     const std::string _index_name = "index.ann";
     bool _saved_tree = false; /**< whether the tree has been saved. */
     bool _built_index = false; /**< whether the index has been built. */
+    const bool _map_populate = true; /**< whether to use MAP_POPULATE when mmapping the full index. */
   };
   
 }
