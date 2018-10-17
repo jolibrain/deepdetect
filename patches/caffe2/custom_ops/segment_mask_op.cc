@@ -42,7 +42,7 @@ namespace caffe2 {
     const float *infos = Input(Index::im_info).template data<float>();
 
     // Input shape
-    const vector<TIndex> &dims = Input(Index::mask).dims();
+    const vector<long int> &dims = Input(Index::mask).dims();
     int nb_items = dims[0];
     int layers = dims[1];
     int mask_size = dims[2];
@@ -62,7 +62,7 @@ namespace caffe2 {
       CAFFE_ENFORCE(static_cast<int>(infos_ptr[1] / infos_ptr[2]) == img_w);
     }
     int img_size = img_h * img_w;
-    Output(0)->Resize(std::vector<TIndex>({nb_items, img_h, img_w}));
+    Output(0)->Resize(std::vector<long int>({nb_items, img_h, img_w}));
     float *segm_mask = Output(0)->template mutable_data<float>();
     std::memset(segm_mask, 0, nb_items * img_size);
 

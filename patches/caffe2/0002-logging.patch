@@ -1,19 +1,19 @@
-From d138800194b30253fbaef820859d9219c47d380c Mon Sep 17 00:00:00 2001
+From 68069c663325a379ce685c52a4a30d2fd6a917bc Mon Sep 17 00:00:00 2001
 From: Julien CHICHA <julien.chicha@epitech.eu>
 Date: Fri, 18 May 2018 16:20:35 +0200
-Subject: [PATCH 1/2] replaced logging system with the caffe_dd one
+Subject: [PATCH 2/3] logging
 
 ---
- caffe/llogging.h                         | 258 +++++++++++++++++++++++++++++++
- caffe2/core/logging.cc                   | 167 +-------------------
- caffe2/core/logging.h                    |  10 --
- caffe2/core/logging_is_not_google_glog.h | 241 ++++++-----------------------
- 4 files changed, 306 insertions(+), 370 deletions(-)
+ caffe/llogging.h                         | 258 +++++++++++++++++++++++
+ caffe2/core/logging.cc                   | 183 ----------------
+ caffe2/core/logging.h                    |  10 -
+ caffe2/core/logging_is_not_google_glog.h | 250 +++++-----------------
+ 4 files changed, 312 insertions(+), 389 deletions(-)
  create mode 100644 caffe/llogging.h
 
 diff --git a/caffe/llogging.h b/caffe/llogging.h
 new file mode 100644
-index 0000000..c3b8839
+index 000000000..c3b8839ce
 --- /dev/null
 +++ b/caffe/llogging.h
 @@ -0,0 +1,258 @@
@@ -276,31 +276,45 @@ index 0000000..c3b8839
 +
 +#endif
 diff --git a/caffe2/core/logging.cc b/caffe2/core/logging.cc
-index 3681bea..1bd8a90 100644
+index 30603888a..d7fbad416 100644
 --- a/caffe2/core/logging.cc
 +++ b/caffe2/core/logging.cc
-@@ -98,170 +98,7 @@ const void* EnforceNotMet::caller() const noexcept {
+@@ -60,116 +60,8 @@ void ThrowEnforceNotMet(
  
  }  // namespace caffe2
  
 -
+-#ifdef CAFFE2_USE_GFLAGS
+-// When GLOG depends on GFLAGS, these variables are being defined in GLOG
+-// directly via the GFLAGS definition, so we will use DECLARE_* to declare
+-// them, and use them in Caffe2.
+-// GLOG's minloglevel
+-DECLARE_int32(minloglevel);
+-// GLOG's verbose log value.
+-DECLARE_int32(v);
+-// GLOG's logtostderr value
+-DECLARE_bool(logtostderr);
+-#elif !CAFFE2_MOBILE && !__APPLE__ && !defined(_WIN32)
+-// Declare our own versions of the above flags so we don't error out
+-// when they are passed into Caffe2.
+-CAFFE2_DEFINE_int(minloglevel, 0, "Equivalent to glog minloglevel");
+-CAFFE2_DEFINE_int(v, 0, "Equivalent to glog verbose");
+-CAFFE2_DEFINE_bool(logtostderr, false, "Equivalent to glog logtostderr");
+-#endif // CAFFE2_USE_GFLAGS
+-
+-
 -#ifdef CAFFE2_USE_GOOGLE_GLOG
 -
--#ifdef CAFFE2_USE_GFLAGS
--// GLOG's minloglevel
--CAFFE2_DECLARE_int(minloglevel);
--// GLOG's verbose log value.
--CAFFE2_DECLARE_int(v);
--// GLOG's logtostderr value
--CAFFE2_DECLARE_bool(logtostderr);
--
--#else
--
+-// Provide easy access to the above variables, regardless whether GLOG is
+-// dependent on GFLAGS or not. Note that the namespace (fLI, fLB) is actually
+-// consistent between GLOG and GFLAGS, so we can do the below declaration
+-// consistently.
+-namespace caffe2 {
 -using fLI::FLAGS_minloglevel;
 -using fLI::FLAGS_v;
 -using fLB::FLAGS_logtostderr;
+-}  // namespace caffe2
 -
--#endif // CAFFE2_USE_GFLAGS
 -
 -CAFFE2_DEFINE_int(caffe2_log_level, google::GLOG_ERROR,
 -                  "The minimum log level that caffe2 will output.");
@@ -316,7 +330,7 @@ index 3681bea..1bd8a90 100644
 -}  // namespace google
 -
 -
- namespace caffe2 {
+-namespace caffe2 {
 -bool InitCaffeLogging(int* argc, char** argv) {
 -  if (*argc == 0) return true;
 -#if !defined(_MSC_VER)
@@ -330,6 +344,11 @@ index 3681bea..1bd8a90 100644
 -    ::google::InstallFailureSignalHandler();
 -#endif
 -  }
+-  UpdateLoggingLevelsFromFlags();
+-  return true;
+-}
+-
+-void UpdateLoggingLevelsFromFlags() {
 -  // If caffe2_log_level is set and is lower than the min log level by glog,
 -  // we will transfer the caffe2_log_level setting to glog to override that.
 -  FLAGS_minloglevel = std::min(FLAGS_caffe2_log_level, FLAGS_minloglevel);
@@ -341,10 +360,7 @@ index 3681bea..1bd8a90 100644
 -  if (FLAGS_caffe2_log_level < 0) {
 -    FLAGS_v = std::min(FLAGS_v, -FLAGS_caffe2_log_level);
 -  }
--  return true;
-+  bool InitCaffeLogging(int* argc, char** argv) { return true; }
-+  void ShowLogInfoToStderr() {}
- }
+-}
 -
 -void ShowLogInfoToStderr() {
 -  FLAGS_logtostderr = 1;
@@ -361,8 +377,8 @@ index 3681bea..1bd8a90 100644
 -CAFFE2_DEFINE_int(caffe2_log_level, ERROR,
 -                  "The minimum log level that caffe2 will output.");
 -
--namespace caffe2 {
--bool InitCaffeLogging(int* argc, char** argv) {
+ namespace caffe2 {
+ bool InitCaffeLogging(int* argc, char** argv) {
 -  // When doing InitCaffeLogging, we will assume that caffe's flag paser has
 -  // already finished.
 -  if (*argc == 0) return true;
@@ -377,12 +393,15 @@ index 3681bea..1bd8a90 100644
 -              << FATAL << "). Capping it to FATAL." << std::endl;
 -    FLAGS_caffe2_log_level = FATAL;
 -  }
--  return true;
--}
--
--void ShowLogInfoToStderr() {
+   return true;
+ }
+ 
+@@ -177,80 +69,5 @@ void UpdateLoggingLevelsFromFlags() {
+ }
+ 
+ void ShowLogInfoToStderr() {
 -  FLAGS_caffe2_log_level = INFO;
--}
+ }
 -
 -MessageLogger::MessageLogger(const char *file, int line, int severity)
 -  : severity_(severity) {
@@ -411,7 +430,7 @@ index 3681bea..1bd8a90 100644
 -          //<< ":" << std::setw(2) << timeinfo->tm_min
 -          //<< ":" << std::setw(2) << timeinfo->tm_sec
 -          //<< "." << std::setw(9) << ns.count() % 1000000000
--          << " " << StripBasename(std::string(file)) << ":" << line << "] ";
+-          << " " << at::detail::StripBasename(std::string(file)) << ":" << line << "] ";
 -}
 -
 -// Output the contents of the stream to the proper channel on destruction.
@@ -442,6 +461,12 @@ index 3681bea..1bd8a90 100644
 -  if (severity_ >= FLAGS_caffe2_log_level) {
 -    // If not building on Android, log all output to std::cerr.
 -    std::cerr << stream_.str();
+-    // Simulating the glog default behavior: if the severity is above INFO,
+-    // we flush the stream so that the output appears immediately on std::cerr.
+-    // This is expected in some of our tests.
+-    if (severity_ > INFO) {
+-      std::cerr << std::flush;
+-    }
 -  }
 -#endif  // ANDROID
 -  if (severity_ == FATAL) {
@@ -449,14 +474,14 @@ index 3681bea..1bd8a90 100644
 -  }
 -}
 -
--}  // namespace caffe2
+ }  // namespace caffe2
 -
 -#endif  // !CAFFE2_USE_GOOGLE_GLOG
 diff --git a/caffe2/core/logging.h b/caffe2/core/logging.h
-index ad9a57e..54371dc 100644
+index 859ee4765..627176be3 100644
 --- a/caffe2/core/logging.h
 +++ b/caffe2/core/logging.h
-@@ -19,14 +19,8 @@
+@@ -20,14 +20,8 @@
  #define CAFFE2_LOG_THRESHOLD INT_MIN
  #endif // CAFFE2_LOG_THRESHOLD
  
@@ -471,8 +496,8 @@ index ad9a57e..54371dc 100644
  CAFFE2_DECLARE_bool(caffe2_use_fatal_for_enforce);
  
  namespace caffe2 {
-@@ -34,11 +28,7 @@ namespace caffe2 {
- bool InitCaffeLogging(int* argc, char** argv);
+@@ -43,11 +37,7 @@ CAFFE2_API CAFFE2_NORETURN void ThrowEnforceNotMet(
+     const void* caller = nullptr);
  
  constexpr bool IsUsingGoogleLogging() {
 -#ifdef CAFFE2_USE_GOOGLE_GLOG
@@ -484,25 +509,29 @@ index ad9a57e..54371dc 100644
  
  /**
 diff --git a/caffe2/core/logging_is_not_google_glog.h b/caffe2/core/logging_is_not_google_glog.h
-index 1db23b7..b4335ae 100644
+index 6e9046fb6..3595606b1 100644
 --- a/caffe2/core/logging_is_not_google_glog.h
 +++ b/caffe2/core/logging_is_not_google_glog.h
-@@ -1,212 +1,63 @@
+@@ -1,219 +1,77 @@
  #ifndef CAFFE2_CORE_LOGGING_IS_NOT_GOOGLE_GLOG_H_
  #define CAFFE2_CORE_LOGGING_IS_NOT_GOOGLE_GLOG_H_
  
 -#include <chrono>
 -#include <climits>
 -#include <ctime>
--#include <iomanip>
+ #include <iomanip>
 -#include <string>
 -#include <fstream>
 -#include <set>
 -#include <sstream>
 -#include <vector>
--
++#include <google/protobuf/message.h>
++#include <caffe2/proto/caffe2_pb.h>
++#include "caffe/llogging.h"
+ 
 -#include "caffe2/core/flags.h"
--
++#ifndef VLOG
+ 
 -// Log severity level constants.
 -const int FATAL   = 3;
 -#if !defined(_MSC_VER) || !defined(ERROR)
@@ -517,45 +546,45 @@ index 1db23b7..b4335ae 100644
 -const char CAFFE2_SEVERITY_PREFIX[] = "FEWIV";
 -
 -namespace caffe2 {
--class MessageLogger {
+-class CAFFE2_API MessageLogger {
 - public:
 -  MessageLogger(const char *file, int line, int severity);
 -  ~MessageLogger();
 -  // Return the stream associated with the logger object.
 -  std::stringstream &stream() { return stream_; }
-+#include "caffe/llogging.h"
- 
+-
 - private:
 -  // When there is a fatal log, we simply abort.
 -  void DealWithFatal() { abort(); }
-+static const std::string LogLevels[4] = {INFO, WARNING, ERROR, FATAL};
-+#define VLOG(n) LOG(LogLevels[n])
++#define DEBUG "none"
++static const std::string VLogLevels[4] = {DEBUG, DEBUG, DEBUG, DEBUG};
++#define VLOG(n) LOG(VLogLevels[n])
  
 -  const char* tag_;
 -  std::stringstream stream_;
 -  int severity_;
 -};
-+#define LOG_AS_STRING(l, o)			\
-+  std::stringstream ss;				\
-+  ss << o;					\
-+  return l << ss.str();
++#endif
  
 -// This class is used to explicitly ignore values in the conditional
 -// logging macros.  This avoids compiler warnings like "value computed
 -// is not used" and "statement has no effect".
--class LoggerVoidify {
+-class CAFFE2_API LoggerVoidify {
 - public:
 -  LoggerVoidify() { }
 -  // This has to be an operator with a precedence lower than << but
 -  // higher than ?:
 -  void operator&(const std::ostream &s) { }
 -};
--
++#define LOG_AS_STRING(l, o)			\
++  std::stringstream ss;				\
++  ss << o;					\
++  return l << ss.str();
+ 
 -// Log a message and terminate.
 -template<class T>
 -void LogMessageFatal(const char *file, int line, const T &message) {
 -  MessageLogger(file, line, FATAL).stream() << message;
-+#include <iomanip>
 +inline CaffeLogger &operator<<(CaffeLogger &out, const std::_Setprecision &o) {
 +  LOG_AS_STRING(out, o);
  }
@@ -582,6 +611,9 @@ index 1db23b7..b4335ae 100644
 -template <typename T>
 -T& CheckNotNull(const char *file, int line, const char *names, T& t) {
 -  return CheckNotNullCommon(file, line, names, t);
++inline CaffeLogger &operator<<(CaffeLogger &out, const caffe2::DeviceType &o) {
++  LOG_AS_STRING(out, o);
++}
 +inline CaffeLogger &operator<<(CaffeLogger &out, const google::protobuf::Message &o) {
 +  return out << o.SerializeAsString();
  }
@@ -610,7 +642,7 @@ index 1db23b7..b4335ae 100644
 -#define FATAL_IF(condition) \
 -  condition ? (void) 0 : ::caffe2::LoggerVoidify() & \
 -      ::caffe2::MessageLogger((char*)__FILE__, __LINE__, FATAL).stream()
- 
+-
 -// Check for a given boolean condition.
 -#define CHECK(condition) FATAL_IF(condition) \
 -        << "Check failed: " #condition " "
@@ -671,29 +703,26 @@ index 1db23b7..b4335ae 100644
 -// ---------------------- Support for std objects --------------------------
 -// These are adapted from glog to support a limited set of logging capability
 -// for STL objects.
--
--namespace caffe2 {
+ 
+ namespace std {
 -// Forward declare these two, and define them after all the container streams
 -// operators so that we can recurse from pair -> container -> container -> pair
 -// properly.
 -template<class First, class Second>
 -std::ostream& operator<<(
 -    std::ostream& out, const std::pair<First, Second>& p);
+-} // namespace std
+ 
+-namespace caffe2 {
 -template <class Iter>
 -void PrintSequence(std::ostream& ss, Iter begin, Iter end);
+-} // namespace caffe2
 +#define LOG_PAIR(s)							\
 +  template<class First, class Second>					\
 +  inline s& operator<<(s& out, const std::pair<First, Second>& p) {	\
 +    return out << '(' << p.first << ", " << p.second << ')';		\
 +  }
- 
--#define INSTANTIATE_FOR_CONTAINER(container) \
--template <class... Types> \
--std::ostream& operator<<( \
--    std::ostream& out, const container<Types...>& seq) { \
--  PrintSequence(out, seq.begin(), seq.end()); \
--  return out; \
--}
++
 +LOG_PAIR(std::ostream)
 +LOG_PAIR(CaffeLogger)
 +
@@ -713,13 +742,25 @@ index 1db23b7..b4335ae 100644
 +    return out;								\
 +  }
  
+-namespace std {
+-#define INSTANTIATE_FOR_CONTAINER(container) \
+-template <class... Types> \
+-std::ostream& operator<<( \
+-    std::ostream& out, const container<Types...>& seq) { \
+-  caffe2::PrintSequence(out, seq.begin(), seq.end()); \
+-  return out; \
+-}
++LOG_CONTAINER(std::ostream, std::vector)
++LOG_CONTAINER(std::ostream, std::map)
++LOG_CONTAINER(std::ostream, std::set)
+ 
 -INSTANTIATE_FOR_CONTAINER(std::vector)
 -INSTANTIATE_FOR_CONTAINER(std::map)
 -INSTANTIATE_FOR_CONTAINER(std::set)
 -#undef INSTANTIATE_FOR_CONTAINER
-+LOG_CONTAINER(std::ostream, std::vector)
-+LOG_CONTAINER(std::ostream, std::map)
-+LOG_CONTAINER(std::ostream, std::set)
++LOG_CONTAINER(CaffeLogger, std::vector)
++LOG_CONTAINER(CaffeLogger, std::map)
++LOG_CONTAINER(CaffeLogger, std::set)
  
 -template<class First, class Second>
 -inline std::ostream& operator<<(
@@ -727,10 +768,9 @@ index 1db23b7..b4335ae 100644
 -  out << '(' << p.first << ", " << p.second << ')';
 -  return out;
 -}
-+LOG_CONTAINER(CaffeLogger, std::vector)
-+LOG_CONTAINER(CaffeLogger, std::map)
-+LOG_CONTAINER(CaffeLogger, std::set)
+ } // namespace std
  
+-namespace caffe2 {
 -template <class Iter>
 -inline void PrintSequence(std::ostream& out, Iter begin, Iter end) {
 -  // Output at most 100 elements -- appropriate if used for logging.
@@ -747,34 +787,5 @@ index 1db23b7..b4335ae 100644
  
  #endif  // CAFFE2_CORE_LOGGING_IS_NOT_GOOGLE_GLOG_H_
 -- 
-2.7.4
-
-
-From eb8d8121ff93db48418a722ebaeee90bfd530012 Mon Sep 17 00:00:00 2001
-From: Julien CHICHA <julien.chicha@epitech.eu>
-Date: Fri, 25 May 2018 09:53:59 +0200
-Subject: [PATCH 2/2] Minimizing caffe2 verbosisty
-
----
- caffe2/core/logging_is_not_google_glog.h | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
-
-diff --git a/caffe2/core/logging_is_not_google_glog.h b/caffe2/core/logging_is_not_google_glog.h
-index b4335ae..b7f8924 100644
---- a/caffe2/core/logging_is_not_google_glog.h
-+++ b/caffe2/core/logging_is_not_google_glog.h
-@@ -3,8 +3,9 @@
- 
- #include "caffe/llogging.h"
- 
--static const std::string LogLevels[4] = {INFO, WARNING, ERROR, FATAL};
--#define VLOG(n) LOG(LogLevels[n])
-+#define DEBUG "none"
-+static const std::string VLogLevels[4] = {DEBUG, DEBUG, DEBUG, DEBUG};
-+#define VLOG(n) LOG(VLogLevels[n])
- 
- #define LOG_AS_STRING(l, o)			\
-   std::stringstream ss;				\
--- 
-2.7.4
+2.18.0
 

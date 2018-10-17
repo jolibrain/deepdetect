@@ -22,6 +22,7 @@
 //XXX Remove that to print the warnings
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <caffe2/core/db.h>
 #pragma GCC diagnostic pop
 
@@ -83,6 +84,7 @@ namespace dd {
     // Get the batch size of each device
     std::vector<int> batch_sizes;
     int devices = context.device_count();
+    size_t nb_blobs = blobs.size();
     batch_sizes.resize(devices);
     std::fill(batch_sizes.begin(), batch_sizes.end(), 0);
 
@@ -110,24 +112,32 @@ namespace dd {
 
     // Loop over the devices
     for (int device = 0; device < devices; ++device) {
-      std::vector<caffe2::TensorCPU> tensors(blobs.size());
-      std::vector<uint8_t *> raw_datas(blobs.size(), NULL);
+      std::vector<caffe2::Tensor> tensors;
+      tensors.reserve(nb_blobs);
+      std::vector<uint8_t *> raw_datas(nb_blobs, NULL);
       int current_batch_size = batch_sizes[device];
 
       // Loop over the items
       for (int item = 0; item < current_batch_size; ++item) {
-	std::vector<caffe2::TensorCPU> tmp_tensors(tensors.size());
+	std::vector<caffe2::Tensor> tmp_tensors;
+	tmp_tensors.reserve(nb_blobs);
+	for (size_t i = 0; i < nb_blobs; ++i) {
+	  tmp_tensors.emplace_back(caffe2::CPU);
+	  if (!item) {
+	    tensors.emplace_back(caffe2::CPU);
+	  }
+	}
 	get_tensors(tmp_tensors);
 
 	// Loop over the blobs
-	for (size_t i = 0; i < tensors.size(); ++i) {
+	for (size_t i = 0; i < nb_blobs; ++i) {
 	  uint8_t *&raw_data(raw_datas[i]);
-	  caffe2::TensorCPU &tensor(tensors[i]);
-	  caffe2::TensorCPU &tmp(tmp_tensors[i]);
+	  caffe2::Tensor &tensor(tensors[i]);
+	  caffe2::Tensor &tmp(tmp_tensors[i]);
 
 	  // Resize the tensor based on the shape of the first item
 	  if (!raw_data) {
-	    std::vector<caffe2::TIndex> dims(tmp.dims());
+	    std::vector<long int> dims(tmp.dims());
 	    dims.insert(dims.begin(), current_batch_size);
 	    tensor.Resize(dims);
 	    raw_data = static_cast<uint8_t *>(tensor.raw_mutable_data(tmp.meta()));
@@ -141,7 +151,7 @@ namespace dd {
       }
 
       // Insert the tensors on the current device
-      for (size_t i = 0; i < tensors.size(); ++i) {
+      for (size_t i = 0; i < nb_blobs; ++i) {
 	context.insert_tensor(device, blobs[i], tensors[i]);
       }
     }
@@ -162,7 +172,7 @@ namespace dd {
     caffe2::TensorProtos protos;
 
     // Fetch the data
-    InputGetter get_tensors = [&](std::vector<caffe2::TensorCPU> &tensors) {
+    InputGetter get_tensors = [&](std::vector<caffe2::Tensor> &tensors) {
       dbreader.Read(&key, &value);
       CAFFE_ENFORCE(protos.ParseFromString(value));
       CAFFE_ENFORCE(static_cast<size_t>(protos.protos_size()) == tensors.size());
@@ -176,9 +186,9 @@ namespace dd {
   // Default deserialization
   int Caffe2InputInterface::use_test_dbreader(Caffe2NetTools::ModelContext &context,
 					      int already_loaded) const {
-    caffe2::TensorDeserializer<caffe2::CPUContext> deserializer;
+    caffe2::TensorDeserializer deserializer;
     ProtosConverter convert_protos =
-      [&](const caffe2::TensorProtos &protos, std::vector<caffe2::TensorCPU> &tensors) {
+      [&](const caffe2::TensorProtos &protos, std::vector<caffe2::Tensor> &tensors) {
       for (size_t i = 0; i < tensors.size(); ++i) {
 	deserializer.Deserialize(protos.protos(i), &tensors[i]);
       }

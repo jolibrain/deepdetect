@@ -22,6 +22,7 @@
 //XXX Remove that to print the warnings
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <caffe2/core/operator.h>
 #pragma GCC diagnostic pop
 
@@ -68,7 +69,7 @@ namespace dd {
       return "gpu_" + std::to_string(id) + "/";
     }
     std::string get_device_prefix(const caffe2::DeviceOption &option) {
-      return option.device_type() == caffe2::CUDA ?
+      return option.device_type() == caffe2::DeviceTypeProto::PROTO_CUDA ?
 	device_id_to_prefix(option.cuda_gpu_id()) : "";
     }
 #endif
@@ -110,8 +111,8 @@ namespace dd {
     static bool set_op_device(caffe2::OperatorDef &op, const caffe2::DeviceOption &device) {
       caffe2::DeviceOption &op_device = *op.mutable_device_option();
       if (is_cpu_only(op.type())) {
-	op_device.set_device_type(caffe2::CPU);
-	return device.device_type() == caffe2::CPU;
+	op_device.set_device_type(caffe2::DeviceTypeProto::PROTO_CPU);
+	return device.device_type() == caffe2::DeviceTypeProto::PROTO_CPU;
       }
       op_device.CopyFrom(device);
       return true;
@@ -242,7 +243,7 @@ namespace dd {
       // Handle the _force_device tag
       std::vector<caffe2::DeviceOption> buffer(1);
       if (net._force_device >= 0) {
-	buffer[0].set_device_type(caffe2::CUDA);
+	buffer[0].set_device_type(caffe2::DeviceTypeProto::PROTO_CUDA);
 	buffer[0].set_cuda_gpu_id(net._force_device);
 	devices = &buffer;
       }
@@ -252,7 +253,7 @@ namespace dd {
 	caffe2::OperatorDef op;
 	init(op);
 #ifndef CPU_ONLY
-	if (option.device_type() == caffe2::CUDA) {
+	if (option.device_type() == caffe2::DeviceTypeProto::PROTO_CUDA) {
 	  std::string prefix = device_id_to_prefix(option.cuda_gpu_id());
 	  // Handle _rename_* tags
 	  if (net._rename_inputs) {
@@ -646,7 +647,7 @@ namespace dd {
       // Forcing the device (iter blobs must be run on CPU)
       ScopedNet init(init_def);
       caffe2::DeviceOption option;
-      option.set_device_type(caffe2::CPU);
+      option.set_device_type(caffe2::DeviceTypeProto::PROTO_CPU);
       init._devices = {option};
 
       std::string main_iter;
@@ -677,7 +678,9 @@ namespace dd {
 #ifndef CPU_ONLY
       std::vector<std::string> sync;
       const caffe2::DeviceOption &main_device = context._devices[0];
-      bool is_sync = main_device.device_type() == caffe2::CUDA && context._parallelized;
+      bool is_sync =
+	main_device.device_type() == caffe2::DeviceTypeProto::PROTO_CUDA
+	&& context._parallelized;
 
       if (is_sync) {
 	net._force_device = main_device.cuda_gpu_id();
