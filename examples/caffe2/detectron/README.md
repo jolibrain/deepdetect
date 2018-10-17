@@ -242,7 +242,7 @@ curl -X POST "http://localhost:8080/predict" -d '{
   "service": "my_service",
   "parameters": {
     "output": {
-      "bbox": true,
+      "mask": true,
       "best": 1,
       "confidence_threshold": 0.7
     }
