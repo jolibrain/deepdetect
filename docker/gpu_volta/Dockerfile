@@ -24,7 +24,7 @@ WORKDIR /opt
 RUN git clone https://github.com/beniz/deepdetect.git && cd deepdetect && mkdir build
 
 WORKDIR /opt/deepdetect/build
-RUN cmake .. -DUSE_CUDNN=ON -DCUDA_ARCH="-gencode arch=compute_70,code=sm_70"
+RUN cmake .. -DUSE_CUDNN=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DCUDA_ARCH="-gencode arch=compute_70,code=sm_70"
 RUN make
 
 # external volume to be mapped, e.g. for models or training data
