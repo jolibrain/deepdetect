@@ -3,6 +3,7 @@ project(deepdetect)
 
 option(USE_CAFFE2 "build caffe2 backend")
 option(USE_TF "use TF backend")
+option(USE_HDF5 "use HDF5" ON)
 
 if (USE_TF AND USE_CAFFE2)
   message(FATAL_ERROR "Building with tensorflow AND caffe2 causes conflict
