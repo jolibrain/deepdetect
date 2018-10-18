@@ -174,8 +174,8 @@ namespace dd
 				// Check if mapping does not exist
 				if ((it=hcorresp_r.find(label))==hcorresp_r.end())
 				{
-					hcorresp.insert(std::pair<int,std::string>(cl,filename));
-				  hcorresp_r.insert(std::pair<std::string,int>(filename,cl));
+					hcorresp.insert(std::pair<int,std::string>(cl,label));
+				  hcorresp_r.insert(std::pair<std::string,int>(label,cl));
 					cl++;
 				}
 				else
