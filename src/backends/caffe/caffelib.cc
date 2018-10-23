@@ -1296,7 +1296,7 @@ namespace dd
       }
     
     solver_param = caffe::SolverParameter();
-    if (this->_mlmodel.read_from_repository(this->_mlmodel._repo,this->_logger))
+    if (this->_mlmodel.read_from_repository(this->_mlmodel._repo,this->_logger,true))
       throw MLLibBadParamException("error reading or listing Caffe models in repository " + this->_mlmodel._repo);
     int cm = create_model();
     if (cm == 1)

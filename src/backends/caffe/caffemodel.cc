@@ -55,7 +55,8 @@ namespace dd
   }
   
   int CaffeModel::read_from_repository(const std::string &repo,
-				       const std::shared_ptr<spdlog::logger> &logger)
+				       const std::shared_ptr<spdlog::logger> &logger,
+				       const bool &new_first)
   {
     static std::string deploy = "deploy.prototxt";
     static std::string train = ".prototxt";
@@ -121,12 +122,14 @@ namespace dd
       _def = deployf;
     if (_trainf.empty())
       _trainf = trainf;
-    _weights = weightsf;
+    if (!new_first || _weights.empty())
+      _weights = weightsf;
     if (_corresp.empty())
       _corresp = correspf;
     if (_solver.empty())
       _solver = solverf;
-    _sstate = sstatef;    
+    if (!new_first || _weights.empty())
+      _sstate = sstatef;    
     return 0;
   }
 
