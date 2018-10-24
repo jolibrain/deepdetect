@@ -14,7 +14,6 @@
 ### Requirements
 
 DeepDetect must be compiled with the ```-DUSE_CAFFE2=ON``` flag
-Detectron must be installed if you wish to convert .pkl/.yaml files (default format of Detectron models) into .pb/.pbtxt (caffe2 format used by DeepDetect)
 
 ### Get a model
 
@@ -71,13 +70,13 @@ rmdir $WORKSPACE
 
 - #### With mask support
 
-To be able to generate masks, the model need two more files
+To be able to generate masks, convert the model using [our](convert_pkl_to_pb.py) tool instead (using the same '.pkl' and '.yaml' as before).
 
-They can be [generated](convert_pkl_to_mask_net.py) using the same '.pkl' and '.yaml' as before
+This script uses the versions of Pytorch and Detectron embed within DeepDetect, so you need to add ```build/python_path/pytorch``` and ```build/python_path/detectron``` to your ```PYTHONPATH``` environment variable for it to work.
 
-The newly created files (also called 'predict_net.pb' and 'init_net.pb') must be used **in addition** to the classic ones
+When executed, a subdirectory will be created inside your model repository to complete the missing part of the model.
 
-(See "[create a service](#create-a-service)" for more details)
+(See the following example and "[create a service](#create-a-service)" for more details)
 
 ###### Example
 
@@ -91,8 +90,7 @@ WEIGHTS=https://s3-us-west-2.amazonaws.com/detectron/35859007/12_2017_baselines/
 CONFIG=https://raw.githubusercontent.com/facebookresearch/Detectron/master/configs/12_2017_baselines/e2e_mask_rcnn_R-50-FPN_2x.yaml
 
 #Paths
-DETECTRON=/home/foo/Detectron
-DEEPDETECT=/home/foo/deepdetect
+DEEPDETECT=/home/foo/deepdetect # (We assume that there is a 'build' subdirectory)
 WORKSPACE=/home/foo/tmp
 REPOSITORY=/home/foo/rcnn_model
 
@@ -100,16 +98,12 @@ mkdir $WORKSPACE
 cd $WORKSPACE
 wget $WEIGHTS -O weights.pkl
 wget $CONFIG -O config.yaml
-python $DETECTRON/tools/convert_pkl_to_pb.py --out_dir . --cfg config.yaml DOWNLOAD_CACHE . TRAIN.WEIGHTS weights.pkl TEST.WEIGHTS weights.pkl
+PYTHONPATH=$PYTHONPATH:$DEEPDETECT/build/python_path/pytorch:$DEEPDETECT/build/python_path/detectron \
+	python $DEEPDETECT/examples/caffe2/detectron/convert_pkl_to_pb.py \
+    --cfg config.yaml --wts weights.pkl \
+    --out_dir $REPOSITORY --mask_dir $REPOSITORY/mask
 
-mkdir $REPOSITORY
-cp model_init.pb $REPOSITORY/init_net.pb
-cp model.pb $REPOSITORY/predict_net.pb
-
-mkdir $REPOSITORY/mask
-python $DEEPDETECT/examples/caffe2/detectron/convert_pkl_to_mask_net.py --out_dir $REPOSITORY/mask --cfg config.yaml --wts weights.pkl
-
-rm weights.pkl config.yaml model_def.png model.pbtxt model.pb model_init.pb
+rm weights.pkl config.yaml
 rmdir $WORKSPACE
 ```
 
@@ -117,7 +111,7 @@ rmdir $WORKSPACE
 
 If you do not have access to the training dataset or the classes that were used during the training, it may imply that the default 80-classes COCO dataset was used. Its classes are listed [here](https://github.com/facebookresearch/Detectron/blob/master/detectron/datasets/dummy_datasets.py)
 
-You can also [generate](generate_coco_corresp_file.py) a 'corresp.txt' file in your model repository
+You can also generate a 'corresp.txt' file when converting the model (using the ```--coco``` flag of [this](convert_pkl_to_pb.py) script).
 
 ### Create a service
 
@@ -182,7 +176,7 @@ curl -X PUT "http://localhost:8080/services/my_service" -d '{
 
 - #### With masks as outputs
 
-Because masks are generated using more files (see "[get a model](#get-a-model)" for more details), an additional path must be given to the API when registering the repository
+Because masks are generated using more files (see "[get a model](#get-a-model)" for more details), an additional path must be given to the API when registering the repository.
 
 If your model repository looks like this:
 
@@ -197,7 +191,7 @@ Then the following flag must be set:
 - ```'repository': 'my_model'```
 - ```'extensions': [{'repository' : 'my_model/mask', 'type' : 'mask'}]```
 
-Note that the repository is optional. In not set, a subdirectory whose name is the type will be used. It means that in the current case, the flags can be simplified to:
+Note that if the repository is not set, a subdirectory whose name is the type will be used. It means that in the current case, the flags can be simplified to:
 - ```'repository': 'my_model'```
 - ```'extensions': [{'type' : 'mask'}]```
 

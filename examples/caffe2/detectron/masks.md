@@ -9,8 +9,8 @@
 # Start DeepDetect and define the following variables with their correct values
 
 
-export DTRON_REPO=/home/foo/Detectron # Detectron Repository
 export DD_REPO=/home/foo/deepdetect # DeepDetect Repository
+export DD_PYTHONPATH=$DD_REPO/build/python_path # Build of DeepDetect
 export DD_URL=http://localhost:8080 # API URL
 export WORKSPACE=/home/foo/tmp # Some location to download files
 export IMAGE=https://upload.wikimedia.org/wikipedia/commons/b/be/Cattle_dog_with_tennis_ball.jpg # Image URL
@@ -23,12 +23,11 @@ export DTRON_CFG=https://raw.githubusercontent.com/facebookresearch/Detectron/ma
 # Then prepare your workspace
 
 
+export PYTHONPATH=$PYTHONPATH:$DD_PYTHONPATH/pytorch:$DD_PYTHONPATH/detectron
 mkdir $WORKSPACE
 mkdir $WORKSPACE/inputs
 mkdir $WORKSPACE/outputs
 mkdir $WORKSPACE/detectron_model
-mkdir $WORKSPACE/deepdetect_model
-mkdir $WORKSPACE/deepdetect_model/mask
 cd $WORKSPACE
 
 
@@ -43,11 +42,12 @@ wget $IMAGE -O inputs/dogs.jpg
 # Convert the model
 
 
-python $DTRON_REPO/tools/convert_pkl_to_pb.py --out_dir deepdetect_model --cfg detectron_model/config.yaml DOWNLOAD_CACHE detectron_model TRAIN.WEIGHTS detectron_model/weights.pkl TEST.WEIGHTS detectron_model/weights.pkl
-python $DD_REPO/examples/caffe2/detectron/convert_pkl_to_mask_net.py --out_dir deepdetect_model/mask --cfg detectron_model/config.yaml --wts detectron_model/weights.pkl
-python $DD_REPO/examples/caffe2/detectron/generate_coco_corresp_file.py deepdetect_model
-mv deepdetect_model/model_init.pb deepdetect_model/init_net.pb
-mv deepdetect_model/model.pb deepdetect_model/predict_net.pb
+python $DD_REPO/examples/caffe2/detectron/convert_pkl_to_pb.py \
+    --out_dir deepdetect_model \
+    --mask_dir deepdetect_model/mask \
+    --cfg detectron_model/config.yaml \
+    --wts detectron_model/weights.pkl \
+    --coco
 
 
 # Register the service
