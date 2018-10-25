@@ -123,6 +123,7 @@ namespace dd
 	for (int iter = 0; iter < _iterations; iter++) {
 	  tsne.step2_one_iter(Y,iter,loss,test_iter);
 	  this->add_meas("train_loss",loss);
+	  this->add_meas("iteration", iter);
 	}
 	
       }
