@@ -41,7 +41,8 @@ namespace dd
     int read_from_repository(const std::string &repo,
 			     const std::shared_ptr<spdlog::logger> &logger);
 
-    int copy_to_target(const std::string &target_repo,
+    int copy_to_target(const std::string &source_repo,
+		       const std::string &target_repo,
 		       const std::shared_ptr<spdlog::logger> &logger);
     
     std::string _def; /**< file name of the model definition in the form of a protocol buffer message description. */

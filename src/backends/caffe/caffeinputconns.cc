@@ -26,7 +26,9 @@
 #include "caffeinputconns.h"
 #include "utils/utils.hpp"
 #include <boost/multi_array.hpp>
+#ifdef USE_HDF5
 #include <H5Cpp.h>
+#endif // USE_HDF5
 #include <memory>
 #include "utf8.h"
 
@@ -119,7 +121,7 @@ namespace dd
 
     // list directories in dataset train folder
     std::unordered_set<std::string> subdirs;
-    if (fileops::list_directory(rfolders.at(0),false,true,subdirs))
+    if (fileops::list_directory(rfolders.at(0),false,true,false,subdirs))
       throw InputConnectorBadParamException("failed reading image train data directory " + rfolders.at(0));
 
     // list files and classes, possibly shuffle / split them
@@ -131,7 +133,7 @@ namespace dd
     while(uit!=subdirs.end())
       {
 	std::unordered_set<std::string> subdir_files;
-	if (fileops::list_directory((*uit),true,false,subdir_files))
+	if (fileops::list_directory((*uit),true,false,true,subdir_files))
 	  throw InputConnectorBadParamException("failed reading image train data sub-directory " + (*uit));
 	std::string cls = dd_utils::split((*uit),'/').back();
 	hcorresp.insert(std::pair<int,std::string>(cl,cls));
@@ -183,7 +185,7 @@ namespace dd
       {
 	// list directories in dataset test folder
 	std::unordered_set<std::string> test_subdirs;
-	if (fileops::list_directory(rfolders.at(1),false,true,test_subdirs))
+	if (fileops::list_directory(rfolders.at(1),false,true,false,test_subdirs))
 	  throw InputConnectorBadParamException("failed reading image test data directory " + rfolders.at(1));
 
 	// list files and classes, possibly shuffle / split them
@@ -192,7 +194,7 @@ namespace dd
 	while(uit!=test_subdirs.end())
 	  {
 	    std::unordered_set<std::string> subdir_files;
-	    if (fileops::list_directory((*uit),true,false,subdir_files))
+	    if (fileops::list_directory((*uit),true,false,true,subdir_files))
 	      throw InputConnectorBadParamException("failed reading image test data sub-directory " + (*uit));
 	    std::string cls = dd_utils::split((*uit),'/').back();
 	    if ((hcit=hcorresp_r.find(cls))==hcorresp_r.end())
@@ -396,6 +398,7 @@ namespace dd
   }
 
   // - fixed size in-memory arrays put down to disk at once
+	#ifdef USE_HDF5
   void ImgCaffeInputFileConn::images_to_hdf5(const std::vector<std::string> &img_lists,
 					     const std::string &dbfullname,
 					     const std::string &test_dbfullname)
@@ -647,6 +650,7 @@ namespace dd
       tlist << s << std::endl;
     tlist.close();
   }
+	#endif // USE_HDF5
 
   int ImgCaffeInputFileConn::objects_to_db(const std::vector<std::string> &filelists,
 					   const int &db_height,

@@ -27,7 +27,7 @@ namespace dd
 {
 
   XGBModel::XGBModel(const APIData &ad)
-    :MLModel()
+    :MLModel(ad)
   {
     if (ad.has("repository"))
       this->_repo = ad.get("repository").get<std::string>();
@@ -40,7 +40,7 @@ namespace dd
     static std::string weights = ".model";
     static std::string corresp = "corresp";
     std::unordered_set<std::string> lfiles;
-    int e = fileops::list_directory(_repo,true,false,lfiles);
+    int e = fileops::list_directory(_repo,true,false,false,lfiles);
     if (e != 0)
       {
 	logger->error("error reading or listing XGBoost models in repository {}",_repo);

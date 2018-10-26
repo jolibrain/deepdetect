@@ -245,7 +245,7 @@ namespace dd
     }
 
     /**
-     * \brief starts a possibly asynchronous trainin job and returns status or job number (async job).
+     * \brief starts a possibly asynchronous training job and returns status or job number (async job).
      * @param ad root data object
      * @param out output data object
      * @return training job number if async, otherwise status upon termination
@@ -310,15 +310,19 @@ namespace dd
 	  if (status == std::future_status::timeout)
 	    {
 	      out.add("status","running");
+	      APIData jmrepo;
+	      jmrepo.add("repository",this->_mlmodel._repo);
+	      out.add("model",jmrepo);
 	      this->collect_measures(out);
 	      this->est_remain_time(out);
 	      std::chrono::time_point<std::chrono::system_clock> trun = std::chrono::system_clock::now();
 	      out.add("time",std::chrono::duration_cast<std::chrono::seconds>(trun-(*hit).second._tstart).count());
 	      if (ad_params_out.has("max_hist_points") || (ad_params_out.has("measure_hist") && ad_params_out.get("measure_hist").get<bool>()))
 		{
+		  int max_hist_points = 10000; // default
 		  if (ad_params_out.has("max_hist_points"))
-		    this->collect_measures_history(out,ad_params_out.get("max_hist_points").get<int>());
-		  else this->collect_measures_history(out);
+		    max_hist_points = ad_params_out.get("max_hist_points").get<int>();
+		  this->collect_measures_history(out,max_hist_points);
 		}
 	    }
 	  else if (status == std::future_status::ready)
@@ -355,9 +359,10 @@ namespace dd
 	      std::chrono::time_point<std::chrono::system_clock> trun = std::chrono::system_clock::now();
 	      out.add("time",std::chrono::duration_cast<std::chrono::seconds>(trun-(*hit).second._tstart).count());
 	      // metrics history is force-collected when training finishes
+	      int max_hist_points = 10000; // default
 	      if (ad_params_out.has("max_hist_points"))
-		this->collect_measures_history(out,ad_params_out.get("max_hist_points").get<int>());
-	      else this->collect_measures_history(out);
+		max_hist_points = ad_params_out.get("max_hist_points").get<int>();
+	      this->collect_measures_history(out,max_hist_points);
 	      out.add("mltype",this->_mltype);
 	      out.add("sname",this->_sname);
 	      out.add("description",this->_description);

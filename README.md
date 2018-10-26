@@ -16,7 +16,7 @@ DeepDetect relies on external machine learning libraries through a very generic 
 |            | Training | Prediction | Classification | Object Detection | Segmentation | Regression | Autoencoder | OCR / Seq2Seq |
 |------------|----------|------------|----------------|-----------|-----------|------------|-------------|-------------|
 | Caffe      | Y        | Y          | Y              | Y         |   Y       |   Y        | Y           | Y           |
-| Caffe2     | N        | Y          | N              | N         |   N       |   N        | N           | N           |
+| Caffe2     | Y        | Y          | Y              | Y         |   N       |   N        | N           | N           |
 | XGBoost    | Y        | Y          | Y              | N         |   N       |   Y        | N/A         | N           |
 | Tensorflow | N        | Y          | Y              | N         |   N       |   N        | N           | N           |
 | T-SNE      | Y        | N/A        | N/A            | N/A       |   N/A     |   N/A      | N/A         | N           |
@@ -28,7 +28,7 @@ DeepDetect relies on external machine learning libraries through a very generic 
 |            | Training | Prediction |
 |------------|----------|------------|
 | Caffe      | Y        | Y          |
-| Caffe2     | N        | Y          |
+| Caffe2     | Y        | Y          |
 | XGBoost    | Y        | Y          |
 | Tensorflow | N        | Y          |
 | T-SNE      | Y        | N          |
@@ -393,6 +393,27 @@ To see all options, do:
 ```
 ./dede --help
 ```
+
+### Services auto-start
+
+A list of services can be stored into a file and passed to the `dede` server so that they are all created upon server start. A list fo predictions can also be run automatically upon server start. The file is passed with:
+
+```
+./dede -service_start_list <yourfile>
+```
+
+File format is as follows:
+
+- service creation:
+```
+service_create;sname;JSON string
+```
+where `sname` is the service name and the JSON is a string without external quotes
+
+- service prediction
+```
+service_predict;JSON string
+``` 
 
 ### Pure command line JSON API
 

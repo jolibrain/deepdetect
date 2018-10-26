@@ -352,8 +352,9 @@ namespace dd
 		}
 
 	      // read images list and create dbs
-	      images_to_hdf5(_uris,_dbfullname,_test_dbfullname);
-
+				#ifdef USE_HDF5
+				images_to_hdf5(_uris,_dbfullname,_test_dbfullname);
+				#endif // USE_HDF5
 	      // enrich data object with db files location
 	      APIData dbad;
 	      dbad.add("train_db",_model_repo + "/training.txt");
@@ -466,7 +467,7 @@ namespace dd
 				      const std::string &backend,
 				      const bool &encoded,
 				      const std::string &encode_type);
-
+		#ifdef USE_HDF5
     void images_to_hdf5(const std::vector<std::string> &img_lists,
 			const std::string &traindbname,
 			const std::string &testdbname);
@@ -477,6 +478,7 @@ namespace dd
 			      std::unordered_map<uint32_t,int> &alphabet,
 			      int &max_ocr_length,
 			      const bool &train_db);
+		#endif // USE_HDF5
 
     int objects_to_db(const std::vector<std::string> &rfolders,
 		      const int &db_height,
