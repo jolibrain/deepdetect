@@ -166,7 +166,7 @@ namespace dd
 				std::istringstream iss(line);
 				string filename;
 				string label;
-				CHECK(iss >> filename) << "Error reading line " << line_num;
+				iss >> filename;
 				iss >> label;
 
 				int label_int = cl;
