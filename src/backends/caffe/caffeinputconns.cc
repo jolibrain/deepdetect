@@ -85,14 +85,14 @@ namespace dd
   
   // convert images into db entries
   // a path must:
-	// - either contain directories as classes holding image
+  // - either contain directories as classes holding image
   //   files for each class. The name of the class is the name of the directory.
-	// - either be a file containing in each line the path to an image
-	//   and the label associated
+  // - either be a file containing in each line the path to an image
+  //   and the label associated
   int ImgCaffeInputFileConn::images_to_db(const std::vector<std::string> &rpaths,
 					  const std::string &traindbname,
 					  const std::string &testdbname,
-						const bool &folders,
+					  const bool &folders,
 					  const std::string &backend,
 					  const bool &encoded,
 					  const std::string &encode_type)
@@ -127,67 +127,67 @@ namespace dd
     std::unordered_map<std::string,int> hcorresp_r; // reverse correspondence for test set.
     std::vector<std::pair<std::string,int>> lfiles; // labeled files
 		
-		// If the input is a folder
-		if (folders)
-		{
-    // list directories in dataset train folder
-    std::unordered_set<std::string> subdirs;
-    if (fileops::list_directory(rpaths.at(0),false,true,false,subdirs))
-      throw InputConnectorBadParamException("failed reading image train data directory " + rpaths.at(0));
-
-    auto uit = subdirs.begin();
-    while(uit!=subdirs.end())
+    // If the input is a folder
+    if (folders)
       {
-	std::unordered_set<std::string> subdir_files;
-	if (fileops::list_directory((*uit),true,false,true,subdir_files))
-	  throw InputConnectorBadParamException("failed reading image train data sub-directory " + (*uit));
-	std::string cls = dd_utils::split((*uit),'/').back();
-	hcorresp.insert(std::pair<int,std::string>(cl,cls));
-	hcorresp_r.insert(std::pair<std::string,int>(cls,cl));
-	auto fit = subdir_files.begin();
-	while(fit!=subdir_files.end()) // XXX: re-iterating the file is not optimal
-	  {
-	    lfiles.push_back(std::pair<std::string,int>((*fit),cl));
-	    ++fit;
-	  }
-	++cl;
-	++uit;
+      // list directories in dataset train folder
+      std::unordered_set<std::string> subdirs;
+      if (fileops::list_directory(rpaths.at(0),false,true,false,subdirs))
+        throw InputConnectorBadParamException("failed reading image train data directory " + rpaths.at(0));
+
+      auto uit = subdirs.begin();
+      while(uit!=subdirs.end())
+        {
+        std::unordered_set<std::string> subdir_files;
+        if (fileops::list_directory((*uit),true,false,true,subdir_files))
+          throw InputConnectorBadParamException("failed reading image train data sub-directory " + (*uit));
+        std::string cls = dd_utils::split((*uit),'/').back();
+        hcorresp.insert(std::pair<int,std::string>(cl,cls));
+        hcorresp_r.insert(std::pair<std::string,int>(cls,cl));
+        auto fit = subdir_files.begin();
+        while(fit!=subdir_files.end()) // XXX: re-iterating the file is not optimal
+          {
+          lfiles.push_back(std::pair<std::string,int>((*fit),cl));
+          ++fit;
+          }
+        ++cl;
+        ++uit;
+        }
       }
-		}
-		// Else if input is a file
-		else
-		{
-			std::ifstream infile(rpaths.at(0));
-			std::string line;
-			int line_num = 1;
-			int cl = 0;
-			while (std::getline(infile, line))
-			{
-				std::istringstream iss(line);
-				string filename;
-				string label;
-				iss >> filename >> label;
+    // Else if input is a file
+    else
+      {
+      std::ifstream infile(rpaths.at(0));
+      std::string line;
+      int line_num = 1;
+      int cl = 0;
+      while (std::getline(infile, line))
+        {
+        std::istringstream iss(line);
+        string filename;
+        string label;
+        iss >> filename >> label;
 
-				int label_int = cl;
-				std::unordered_map<std::string,int>::const_iterator it;
-				// Check if mapping does not exist
-				if ((it=hcorresp_r.find(label))==hcorresp_r.end())
-				{
-					hcorresp.insert(std::pair<int,std::string>(cl,label));
-				  hcorresp_r.insert(std::pair<std::string,int>(label,cl));
-					cl++;
-				}
-				else
-					label_int = it->second;
+        int label_int = cl;
+        std::unordered_map<std::string,int>::const_iterator it;
+        // Check if mapping does not exist
+        if ((it=hcorresp_r.find(label))==hcorresp_r.end())
+          {
+          hcorresp.insert(std::pair<int,std::string>(cl,label));
+          hcorresp_r.insert(std::pair<std::string,int>(label,cl));
+          cl++;
+          }
+        else
+          label_int = it->second;
 
-				line_num ++;
-				// Append lfiles
-				lfiles.push_back(std::pair<std::string,int>(filename, label_int));
+        line_num ++;
+        // Append lfiles
+        lfiles.push_back(std::pair<std::string,int>(filename, label_int));
 
-			}
-		}
+        }
+      }
 	
-  if (_shuffle)
+    if (_shuffle)
       {
 	std::mt19937 g;
 	if (_seed >= 0)
@@ -223,65 +223,64 @@ namespace dd
       }
     else if (rpaths.size() > 1)
       {
-			// If input is a folder
-			if (folders)
-		{
-	// list directories in dataset test folder
-	std::unordered_set<std::string> test_subdirs;
-	if (fileops::list_directory(rpaths.at(1),false,true,false,test_subdirs))
-	  throw InputConnectorBadParamException("failed reading image test data directory " + rpaths.at(1));
+      // If input is a folder
+      if (folders)
+        {
+        // list directories in dataset test folder
+        std::unordered_set<std::string> test_subdirs;
+        if (fileops::list_directory(rpaths.at(1),false,true,false,test_subdirs))
+          throw InputConnectorBadParamException("failed reading image test data directory " + rpaths.at(1));
 
-	// list files and classes, possibly shuffle / split them
-	std::unordered_map<std::string,int>::const_iterator hcit;
-	auto uit = test_subdirs.begin();
-	while(uit!=test_subdirs.end())
-	  {
-	    std::unordered_set<std::string> subdir_files;
-	    if (fileops::list_directory((*uit),true,false,true,subdir_files))
-	      throw InputConnectorBadParamException("failed reading image test data sub-directory " + (*uit));
-	    std::string cls = dd_utils::split((*uit),'/').back();
-	    if ((hcit=hcorresp_r.find(cls))==hcorresp_r.end())
-	      {
-		_logger->error("class {} appears in testing set but not in training set, skipping");
-		++uit;
-		continue;
-	      }
-	    int cl = (*hcit).second;
-	    auto fit = subdir_files.begin();
-	    while(fit!=subdir_files.end()) // XXX: re-iterating the file is not optimal
-	      {
-		test_lfiles.push_back(std::pair<std::string,int>((*fit),cl));
-		++fit;
-	      }
-	    ++uit;
-	  }
-		}
-		// Else if input is a file
-		else
-		{
-			std::ifstream infile(rpaths.at(0));
-			std::string line;
-			int line_num = 1;
-			while (std::getline(infile, line))
-			{
-				std::istringstream iss(line);
-				string filename;
-				string label;
-				CHECK(iss >> filename) << "Error reading line " << line_num;
-				iss >> label;
+        // list files and classes, possibly shuffle / split them
+        std::unordered_map<std::string,int>::const_iterator hcit;
+        auto uit = test_subdirs.begin();
+        while(uit!=test_subdirs.end())
+          {
+          std::unordered_set<std::string> subdir_files;
+          if (fileops::list_directory((*uit),true,false,true,subdir_files))
+            throw InputConnectorBadParamException("failed reading image test data sub-directory " + (*uit));
+          std::string cls = dd_utils::split((*uit),'/').back();
+          if ((hcit=hcorresp_r.find(cls))==hcorresp_r.end())
+            {
+            _logger->error("class {} appears in testing set but not in training set, skipping");
+            ++uit;
+            continue;
+            }
+          int cl = (*hcit).second;
+          auto fit = subdir_files.begin();
+          while(fit!=subdir_files.end()) // XXX: re-iterating the file is not optimal
+	          {
+            test_lfiles.push_back(std::pair<std::string,int>((*fit),cl));
+            ++fit;
+            }
+          ++uit;
+          }
+        }
+      // Else if input is a file
+      else
+        {
+        std::ifstream infile(rpaths.at(0));
+        std::string line;
+        int line_num = 1;
+        while (std::getline(infile, line))
+          {
+          std::istringstream iss(line);
+          string filename;
+          string label;
+          iss >> filename >> labels;
 
-				// Check if mapping does not exist, go to next file
-				std::unordered_map<std::string,int>::const_iterator it;
-				if ((it=hcorresp_r.find(label))==hcorresp_r.end())
-	      {
-					_logger->error("class {} appears in testing set but not in training set, skipping");
-					continue;
-				}
-				line_num++;
-				// Append lfiles
-				test_lfiles.push_back(std::pair<std::string,int>(filename, it->second));
-			}
-		}
+          // Check if mapping does not exist, go to next file
+          std::unordered_map<std::string,int>::const_iterator it;
+          if ((it=hcorresp_r.find(label))==hcorresp_r.end())
+            {
+            _logger->error("class {} appears in testing set but not in training set, skipping");
+            continue;
+            }
+          line_num++;
+          // Append lfiles
+          test_lfiles.push_back(std::pair<std::string,int>(filename, it->second));
+          }
+        }
       }
     _db_batchsize = lfiles.size();
     _db_testbatchsize = test_lfiles.size();
