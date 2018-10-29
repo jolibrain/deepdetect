@@ -267,7 +267,7 @@ namespace dd
           std::istringstream iss(line);
           string filename;
           string label;
-          iss >> filename >> labels;
+          iss >> filename >> label;
 
           // Check if mapping does not exist, go to next file
           std::unordered_map<std::string,int>::const_iterator it;
