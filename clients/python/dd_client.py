@@ -61,7 +61,7 @@ class DD(object):
     __HTTP = 0
     __HTTPS = 1
 
-    def __init__(self, host="localhost", port=8080, path='', proto=0, apiversion="0.1"):
+    def __init__(self, host="localhost", port=8080, proto=0, path='', apiversion="0.1"):
         """ DD class constructor
         Parameters:
         host -- the DeepDetect server host
