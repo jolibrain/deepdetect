@@ -61,7 +61,7 @@ class DD(object):
     __HTTP = 0
     __HTTPS = 1
 
-    def __init__(self, host="localhost", port=8080, proto=0, apiversion="0.1"):
+    def __init__(self, host="localhost", port=8080, path='', proto=0, apiversion="0.1"):
         """ DD class constructor
         Parameters:
         host -- the DeepDetect server host
@@ -72,13 +72,16 @@ class DD(object):
         self.__urls = API_METHODS_URL[apiversion]
         self.__host = host
         self.__port = port
+        self.__path = path
         self.__proto = proto
         self.__returntype = self.RETURN_PYTHON
         if proto == self.__HTTP:
             self.__ddurl = 'http://%s:%d' % (host, port)
         else:
             self.__ddurl = 'https://%s:%d' % (host, port)
-
+        if path:
+            self.__ddurl += path
+            
     def set_return_format(self, f):
         assert f == self.RETURN_PYTHON or f == self.RETURN_JSON or f == self.RETURN_NONE
         self.__returntype = f
