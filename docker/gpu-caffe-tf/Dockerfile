@@ -44,6 +44,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   python-numpy \
   swig \
   python-dev \
+  python-setuptools \
   python-wheel \
   unzip \
   libgoogle-perftools-dev \
