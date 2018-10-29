@@ -387,7 +387,7 @@ namespace dd
 	      // create db
 				// Check if the indicated uri is a folder
 				bool dir_images = true;
-				bool exists= fileops::file_exists(_uris.at(0), dir_images);
+				fileops::file_exists(_uris.at(0), dir_images);
 				
 				if (!this->_unchanged_data)
 				images_to_db(_uris,_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname, dir_images);
