@@ -166,8 +166,7 @@ namespace dd
 				std::istringstream iss(line);
 				string filename;
 				string label;
-				iss >> filename;
-				iss >> label;
+				iss >> filename >> label;
 
 				int label_int = cl;
 				std::unordered_map<std::string,int>::const_iterator it;
