@@ -279,7 +279,7 @@ namespace dd
 	    
 	  }
 	else throw MLLibInternalException("Couldn't find Softmax layer to replace for multi-label training");
-	
+      
 	k = deploy_net_param.layer_size();
 	caffe::LayerParameter *lparam = deploy_net_param.mutable_layer(k-1);
 	if (lparam->type() == "Softmax")
@@ -298,6 +298,32 @@ namespace dd
               }
 	  }
       } // end multi_label
+    else if (_regression)
+      {
+	int k = net_param.layer_size();
+        for (int l=k-1;l>0;l--)
+          {
+            caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+            if (lparam->type() == "SoftmaxWithLoss")
+              {
+                lparam->set_type("SigmoidCrossEntropyLoss");
+		lparam->clear_include();
+                caffe::NetStateRule *nsr = lparam->add_include();
+                nsr->set_phase(caffe::TRAIN);
+                break;
+              }
+	    else if (lparam->type() == "Softmax")
+	      {
+		lparam->set_type("Sigmoid");
+		lparam->clear_include();
+		caffe::NetStateRule *nsr = lparam->add_include();
+                nsr->set_phase(caffe::TEST);
+                break;
+	      }
+	  }
+	
+      }
+    
     
     if ((ad.has("rotate") && ad.get("rotate").get<bool>()) 
 	|| (ad.has("mirror") && ad.get("mirror").get<bool>())
