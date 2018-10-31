@@ -217,15 +217,15 @@ namespace dd
 
       }
 
-	// switch to imageDataLayer
-	//TODO: should apply to all templates with images
-	if (!this->_inputc._db && !this->_inputc._bbox && !this->_inputc._segmentation && !this->_inputc._ctc && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
-	  {
+    // switch to imageDataLayer
+    //TODO: should apply to all templates with images
+    if (!this->_inputc._db && !this->_inputc._bbox && !this->_inputc._segmentation && !this->_inputc._ctc && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
+      {
         update_protofile_imageDataLayer(net_param);
-	  }
-	
-	// input should be ok, now do the output
-	if (this->_inputc._multi_label)
+      }
+    
+    // input should be ok, now do the output
+    if (this->_inputc._multi_label)
       {
         int k = net_param.layer_size();
         for (int l=k-1;l>0;l--)
@@ -238,21 +238,21 @@ namespace dd
                 nsr->set_phase(caffe::TRAIN);
                 break;
               }
-	      }
-	    // XXX: code below removes the softmax layer
-	    // protobuf only allows to remove last element from repeated field.
-	    int softm_pos = -1;
-	    for (int l=k-1;l>0;l--)
-	      {
+	  }
+	// XXX: code below removes the softmax layer
+	// protobuf only allows to remove last element from repeated field.
+	int softm_pos = -1;
+	for (int l=k-1;l>0;l--)
+	  {
             caffe::LayerParameter *lparam = net_param.mutable_layer(l);
             if (lparam->type() == "Softmax")
               {
                 softm_pos = l;
                 break;
               }
-	      }
-	    if (softm_pos > 0)
-	      {
+	  }
+	if (softm_pos > 0)
+	  {
             if (!_regression)
               {
                 for (int l=softm_pos;l<net_param.layer_size()-1;l++)
@@ -268,7 +268,7 @@ namespace dd
                 lparam->set_type("Sigmoid");
                 lparam->set_name("pred");
                 *lparam->mutable_top(0) = "pred";
-
+		
                 //lparam->add_sigmoid_param();
                 //lparam->sigmoid_param().set_engine(lparam->softmax_param().engine());
                 // for doing so in a clean way, need to match softmaxParameter::engine
@@ -276,14 +276,14 @@ namespace dd
                 // for now, rewrite engine filed as is
                 lparam->clear_softmax_param();
               }
-
-	      }
-	    else throw MLLibInternalException("Couldn't find Softmax layer to replace for multi-label training");
-
-	    k = deploy_net_param.layer_size();
-	    caffe::LayerParameter *lparam = deploy_net_param.mutable_layer(k-1);
-	    if (lparam->type() == "Softmax")
-	      {
+	    
+	  }
+	else throw MLLibInternalException("Couldn't find Softmax layer to replace for multi-label training");
+	
+	k = deploy_net_param.layer_size();
+	caffe::LayerParameter *lparam = deploy_net_param.mutable_layer(k-1);
+	if (lparam->type() == "Softmax")
+	  {
             if (!_regression)
               deploy_net_param.mutable_layer()->RemoveLast();
             else
@@ -291,70 +291,70 @@ namespace dd
                 lparam->set_type("Sigmoid");
                 lparam->set_name("pred");
                 *lparam->mutable_top(0) = "pred";
-               //lparam->add_sigmoid_param();
+		//lparam->add_sigmoid_param();
                 //lparam->sigmoid_param().set_engine(lparam->softmax_param().engine());
                 // see 20 lines above for comment
                 lparam->clear_softmax_param();
               }
-	      }
+	  }
       } // end multi_label
-
-	if ((ad.has("rotate") && ad.get("rotate").get<bool>()) 
-	    || (ad.has("mirror") && ad.get("mirror").get<bool>())
-	    || (ad.has("crop_size")))
+    
+    if ((ad.has("rotate") && ad.get("rotate").get<bool>()) 
+	|| (ad.has("mirror") && ad.get("mirror").get<bool>())
+	|| (ad.has("crop_size")))
+      {
+	caffe::LayerParameter *lparam = net_param.mutable_layer(0); // data input layer
+	if (lparam->type() != "DenseImageData")
 	  {
-	    caffe::LayerParameter *lparam = net_param.mutable_layer(0); // data input layer
-	    if (lparam->type() != "DenseImageData")
+	    if (ad.has("mirror"))
+	      lparam->mutable_transform_param()->set_mirror(ad.get("mirror").get<bool>());
+	    if (ad.has("rotate"))
+	      lparam->mutable_transform_param()->set_rotate(ad.get("rotate").get<bool>());
+	    if (ad.has("crop_size"))
 	      {
-		if (ad.has("mirror"))
-		  lparam->mutable_transform_param()->set_mirror(ad.get("mirror").get<bool>());
-		if (ad.has("rotate"))
-		  lparam->mutable_transform_param()->set_rotate(ad.get("rotate").get<bool>());
-		if (ad.has("crop_size"))
-		  {
-		    _crop_size = ad.get("crop_size").get<int>();
-		    lparam->mutable_transform_param()->set_crop_size(_crop_size);
-		    caffe::LayerParameter *dlparam = net_param.mutable_layer(1); // test input layer
-		    dlparam->mutable_transform_param()->set_crop_size(_crop_size);
-		  }
-		else lparam->mutable_transform_param()->clear_crop_size();
+		_crop_size = ad.get("crop_size").get<int>();
+		lparam->mutable_transform_param()->set_crop_size(_crop_size);
+		caffe::LayerParameter *dlparam = net_param.mutable_layer(1); // test input layer
+		dlparam->mutable_transform_param()->set_crop_size(_crop_size);
 	      }
-	    else
-	      {
-		if (ad.has("mirror"))
-		  lparam->mutable_dense_image_data_param()->set_mirror(ad.get("mirror").get<bool>());
-		if (ad.has("rotate"))
-		  lparam->mutable_dense_image_data_param()->set_rotate(ad.get("rotate").get<bool>());
-		lparam->mutable_dense_image_data_param()->set_new_height(this->_inputc.height());
-		lparam->mutable_dense_image_data_param()->set_new_width(this->_inputc.width());
-		// XXX: DenseImageData supports crop_height and crop_width
-	      }
+	    else lparam->mutable_transform_param()->clear_crop_size();
 	  }
-	// input size
-	caffe::LayerParameter *lparam = net_param.mutable_layer(1); // test
-	caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(0);
-	if (!this->_inputc._bbox && !this->_inputc._ctc &&(_crop_size > 0 || (this->_inputc.width() != -1 && this->_inputc.height() != -1))) // forced width & height
+	else
 	  {
-	    int width = this->_inputc.width();
-	    int height = this->_inputc.height();
-	    if (_crop_size > 0)
-	      width = height = _crop_size;
-	    lparam->mutable_memory_data_param()->set_channels(this->_inputc.channels());
-	    lparam->mutable_memory_data_param()->set_height(height);
-	    lparam->mutable_memory_data_param()->set_width(width);
-	    dlparam->mutable_memory_data_param()->set_channels(this->_inputc.channels());
-	    dlparam->mutable_memory_data_param()->set_height(height);
-	    dlparam->mutable_memory_data_param()->set_width(width);
+	    if (ad.has("mirror"))
+	      lparam->mutable_dense_image_data_param()->set_mirror(ad.get("mirror").get<bool>());
+	    if (ad.has("rotate"))
+	      lparam->mutable_dense_image_data_param()->set_rotate(ad.get("rotate").get<bool>());
+	    lparam->mutable_dense_image_data_param()->set_new_height(this->_inputc.height());
+	    lparam->mutable_dense_image_data_param()->set_new_width(this->_inputc.width());
+	    // XXX: DenseImageData supports crop_height and crop_width
 	  }
-		
-	// noise parameters
-	configure_noise_and_distort(ad,net_param);
-
-	// adapt number of neuron output
-	update_protofile_classes(net_param);
-	update_protofile_classes(deploy_net_param);
-	caffe::WriteProtoToTextFile(net_param,dest_net);
-	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
+      }
+    // input size
+    caffe::LayerParameter *lparam = net_param.mutable_layer(1); // test
+    caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(0);
+    if (!this->_inputc._bbox && !this->_inputc._ctc &&(_crop_size > 0 || (this->_inputc.width() != -1 && this->_inputc.height() != -1))) // forced width & height
+      {
+	int width = this->_inputc.width();
+	int height = this->_inputc.height();
+	if (_crop_size > 0)
+	  width = height = _crop_size;
+	lparam->mutable_memory_data_param()->set_channels(this->_inputc.channels());
+	lparam->mutable_memory_data_param()->set_height(height);
+	lparam->mutable_memory_data_param()->set_width(width);
+	dlparam->mutable_memory_data_param()->set_channels(this->_inputc.channels());
+	dlparam->mutable_memory_data_param()->set_height(height);
+	dlparam->mutable_memory_data_param()->set_width(width);
+      }
+    
+    // noise parameters
+    configure_noise_and_distort(ad,net_param);
+    
+    // adapt number of neuron output
+    update_protofile_classes(net_param);
+    update_protofile_classes(deploy_net_param);
+    caffe::WriteProtoToTextFile(net_param,dest_net);
+    caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
       }
     if (ad.has("finetuning") && ad.get("finetuning").get<bool>())
       {
@@ -368,11 +368,10 @@ namespace dd
 	caffe::WriteProtoToTextFile(net_param,dest_net);
 	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
       }
-
+    
     if (this->_mlmodel.read_from_repository(this->_mlmodel._repo,this->_logger))
       throw MLLibBadParamException("error reading or listing Caffe models in repository " + this->_mlmodel._repo);
   }
-
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   caffe::LayerParameter*
