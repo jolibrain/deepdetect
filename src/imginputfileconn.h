@@ -206,7 +206,7 @@ namespace dd
     {
       // list directories in dir
       std::unordered_set<std::string> subdirs;
-      if (fileops::list_directory(dir,false,true,subdirs))
+      if (fileops::list_directory(dir,false,true,false,subdirs))
 	throw InputConnectorBadParamException("failed reading text subdirectories in data directory " + dir);
       _logger->info("imginputfileconn: list subdirs size={}",subdirs.size());
       
@@ -220,7 +220,7 @@ namespace dd
 	  while(uit!=subdirs.end())
 	    {
 	      std::unordered_set<std::string> subdir_files;
-	      if (fileops::list_directory((*uit),true,false,subdir_files))
+	      if (fileops::list_directory((*uit),true,false,true,subdir_files))
 		throw InputConnectorBadParamException("failed reading image data sub-directory " + (*uit));
 	      auto fit = subdir_files.begin();
 	      while(fit!=subdir_files.end()) // XXX: re-iterating the file is not optimal
@@ -235,7 +235,7 @@ namespace dd
       else
 	{
 	  std::unordered_set<std::string> test_files;
-	  fileops::list_directory(dir,true,false,test_files);
+	  fileops::list_directory(dir,true,false,false,test_files);
 	  auto fit = test_files.begin();
 	  while(fit!=test_files.end())
 	    {

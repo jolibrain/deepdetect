@@ -8,9 +8,6 @@ layer {
   }
   transform_param {
     mirror: true
-    mean_value: 106
-    mean_value: 114
-    mean_value: 119
     force_color: true
     resize_param {
       prob: 1.0
@@ -154,8 +151,8 @@ layer {
     resize_param {
       prob: 1.0
       resize_mode: WARP
-      height: 224
-      width: 224
+      height: 300
+      width: 300
       interp_mode: LINEAR
     }
   }

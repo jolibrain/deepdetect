@@ -66,7 +66,7 @@ namespace dd
     static std::string meanf = "mean.binaryproto";
     this->_repo = repo;
     std::unordered_set<std::string> lfiles;
-    int e = fileops::list_directory(repo,true,false,lfiles);
+    int e = fileops::list_directory(repo,true,false,false,lfiles);
     if (e != 0)
       {
 	logger->error("error reading or listing caffe models in repository {}",repo);
@@ -159,13 +159,14 @@ namespace dd
 	  }
 	else logger->info("sucessfully copied best model file {}",best_caffemodel);
 	std::unordered_set<std::string> lfiles;
-	fileops::list_directory(source_repo,true,false,lfiles);
+	fileops::list_directory(source_repo,true,false,false,lfiles);
 	auto hit = lfiles.begin();
 	while(hit!=lfiles.end())
 	  {
 	    if ((*hit).find("prototxt")!=std::string::npos
 		|| (*hit).find(".json")!=std::string::npos
-		|| (*hit).find(".txt")!=std::string::npos)
+		|| (*hit).find(".txt")!=std::string::npos
+		|| (*hit).find("vocab.dat")!=std::string::npos)
 	      {
 		std::vector<std::string> selts = dd_utils::split((*hit),'/');
 		fileops::copy_file((*hit),target_repo + '/' + selts.back());

@@ -41,6 +41,8 @@ parser.add_argument('--max-batch-size',help='max batch size to be tested',type=i
 parser.add_argument('--list-bench-files',help='file holding the list of bench files',default='list_bench_files.txt')
 parser.add_argument('--npasses',help='number of passes for every batch size',type=int,default=5)
 parser.add_argument('--detection',help='whether benching a detection model',action='store_true')
+parser.add_argument('--search',help='whether benching a similarity search service',action='store_true')
+parser.add_argument('--search-multibox',help='whether benching a multibox similarity search service',action='store_true')
 parser.add_argument('--create',help='model\'s folder name to create a service')
 parser.add_argument('--nclasses',help='number of classes for service creation',type=int,default=1000)
 parser.add_argument('--auto-kill',help='auto kill the service after benchmarking',action='store_true')
@@ -85,7 +87,14 @@ parameters_output = {}
 if args.detection:
     parameters_output['bbox'] = True
     parameters_output['confidence_threshold'] = 0.1
-    
+    if args.search or args.search_multibox:
+      parameters_output['search'] = True
+      parameters_output['rois'] = 'rois'
+    if args.search_multibox:
+      parameters_output['multibox_rois'] = True
+elif args.search:
+  parameters_output['search'] = True
+      
 # First call to load model
 data = list_bench_files[:1]
 classif = dd.post_predict(args.sname,data,parameters_input,parameters_mllib,parameters_output)

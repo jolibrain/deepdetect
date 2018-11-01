@@ -23,7 +23,7 @@ WORKDIR /opt
 RUN git clone https://github.com/beniz/deepdetect.git && cd deepdetect && mkdir build
 
 WORKDIR /opt/deepdetect/build
-RUN cmake .. -DUSE_XGBOOST=ON -DUSE_SIMSEARCH=ON
+RUN cmake .. -DUSE_XGBOOST=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON
 RUN make
 
 # external volume to be mapped, e.g. for models or training data

@@ -222,15 +222,15 @@ namespace dd
 
       }
 
-	// switch to imageDataLayer
-	//TODO: should apply to all templates with images
-	if (!this->_inputc._db && !this->_inputc._bbox && !this->_inputc._segmentation && !this->_inputc._ctc && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
-	  {
+    // switch to imageDataLayer
+    //TODO: should apply to all templates with images
+    if (!this->_inputc._db && !this->_inputc._bbox && !this->_inputc._segmentation && !this->_inputc._ctc && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
+      {
         update_protofile_imageDataLayer(net_param);
-	  }
-	
-	// input should be ok, now do the output
-	if (this->_inputc._multi_label)
+      }
+    
+    // input should be ok, now do the output
+    if (this->_inputc._multi_label)
       {
         int k = net_param.layer_size();
         for (int l=k-1;l>0;l--)
@@ -243,21 +243,21 @@ namespace dd
                 nsr->set_phase(caffe::TRAIN);
                 break;
               }
-	      }
-	    // XXX: code below removes the softmax layer
-	    // protobuf only allows to remove last element from repeated field.
-	    int softm_pos = -1;
-	    for (int l=k-1;l>0;l--)
-	      {
+	  }
+	// XXX: code below removes the softmax layer
+	// protobuf only allows to remove last element from repeated field.
+	int softm_pos = -1;
+	for (int l=k-1;l>0;l--)
+	  {
             caffe::LayerParameter *lparam = net_param.mutable_layer(l);
             if (lparam->type() == "Softmax")
               {
                 softm_pos = l;
                 break;
               }
-	      }
-	    if (softm_pos > 0)
-	      {
+	  }
+	if (softm_pos > 0)
+	  {
             if (!_regression)
               {
                 for (int l=softm_pos;l<net_param.layer_size()-1;l++)
@@ -273,7 +273,7 @@ namespace dd
                 lparam->set_type("Sigmoid");
                 lparam->set_name("pred");
                 *lparam->mutable_top(0) = "pred";
-
+		
                 //lparam->add_sigmoid_param();
                 //lparam->sigmoid_param().set_engine(lparam->softmax_param().engine());
                 // for doing so in a clean way, need to match softmaxParameter::engine
@@ -281,14 +281,14 @@ namespace dd
                 // for now, rewrite engine filed as is
                 lparam->clear_softmax_param();
               }
-
-	      }
-	    else throw MLLibInternalException("Couldn't find Softmax layer to replace for multi-label training");
-
-	    k = deploy_net_param.layer_size();
-	    caffe::LayerParameter *lparam = deploy_net_param.mutable_layer(k-1);
-	    if (lparam->type() == "Softmax")
-	      {
+	    
+	  }
+	else throw MLLibInternalException("Couldn't find Softmax layer to replace for multi-label training");
+	
+	k = deploy_net_param.layer_size();
+	caffe::LayerParameter *lparam = deploy_net_param.mutable_layer(k-1);
+	if (lparam->type() == "Softmax")
+	  {
             if (!_regression)
               deploy_net_param.mutable_layer()->RemoveLast();
             else
@@ -296,12 +296,12 @@ namespace dd
                 lparam->set_type("Sigmoid");
                 lparam->set_name("pred");
                 *lparam->mutable_top(0) = "pred";
-               //lparam->add_sigmoid_param();
+		//lparam->add_sigmoid_param();
                 //lparam->sigmoid_param().set_engine(lparam->softmax_param().engine());
                 // see 20 lines above for comment
                 lparam->clear_softmax_param();
               }
-	      }
+	  }
       } // end multi_label
       
 	// input size
@@ -330,7 +330,7 @@ namespace dd
 	update_protofile_classes(deploy_net_param);
 	caffe::WriteProtoToTextFile(net_param,dest_net);
 	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
-      }
+  }
     if (ad.has("finetuning") && ad.get("finetuning").get<bool>())
       {
 	if (this->_mlmodel._weights.empty()) // weights should have been specified or detected on the first pass into the model repository
@@ -343,11 +343,10 @@ namespace dd
 	caffe::WriteProtoToTextFile(net_param,dest_net);
 	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
       }
-
+    
     if (this->_mlmodel.read_from_repository(this->_mlmodel._repo,this->_logger))
       throw MLLibBadParamException("error reading or listing Caffe models in repository " + this->_mlmodel._repo);
   }
-
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   caffe::LayerParameter*
@@ -2451,6 +2450,7 @@ namespace dd
 		batch_size = user_batch_size;
 	      }
 	  }
+	#ifdef USE_HDF5
 	else if (lp->has_hdf5_data_param())
 	  {
 	    caffe::HDF5DataParameter *dp = lp->mutable_hdf5_data_param();
@@ -2470,6 +2470,7 @@ namespace dd
 	      }
 	    dp->set_image(true);
 	  }
+	#endif // USE_HDF5
 	else if (lp->has_dense_image_data_param())
 	  {
 	    caffe::DenseImageDataParameter *dp = lp->mutable_dense_image_data_param();

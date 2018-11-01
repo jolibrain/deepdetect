@@ -993,7 +993,7 @@ namespace dd
       {
 	std::string mrepo = out.getobj("model").get("repository").get<std::string>();
 	if (JsonAPI::store_json_blob(mrepo,jrender(jtrain),"metrics.json"))
-	  _logger->error("couldn't write to {} file in model repository {}",JsonAPI::_json_blob_fname,mrepo);
+	  _logger->error("couldn't write to metrics.json file in model repository {}",mrepo);
       }
     return jtrain;
   }
@@ -1071,7 +1071,7 @@ namespace dd
     if (!jfilename.empty())
       outfname += jfilename;
     else outfname += JsonAPI::_json_blob_fname;
-    outf.open(outfname,std::ofstream::out|std::ofstream::app);
+    outf.open(outfname,std::ofstream::out|std::ofstream::trunc);
     if (!outf.is_open())
       return 1;
     outf << jstr << std::endl;
