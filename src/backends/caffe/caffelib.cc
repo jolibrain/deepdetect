@@ -234,6 +234,7 @@ namespace dd
             if (lparam->type() == "SoftmaxWithLoss")
               {
                 lparam->set_type("MultiLabelSigmoidLoss");
+		lparam->clear_include();
                 caffe::NetStateRule *nsr = lparam->add_include();
                 nsr->set_phase(caffe::TRAIN);
                 break;
@@ -318,7 +319,6 @@ namespace dd
 		lparam->clear_include();
 		caffe::NetStateRule *nsr = lparam->add_include();
                 nsr->set_phase(caffe::TEST);
-                break;
 	      }
 	  }
 	
