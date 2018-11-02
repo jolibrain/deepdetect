@@ -19,12 +19,12 @@
  * along with deepdetect.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ncnnlib.h"
-#include "ncnninputconns.h"
 #include "outputconnectorstrategy.h"
 #include <thread>
 
 // NCNN
+#include "ncnnlib.h"
+#include "ncnninputconns.h"
 #include "cpu.h"
 #include "net.h"
 
@@ -69,7 +69,8 @@ namespace dd
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
     void NCNNLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::init_mllib(const APIData &ad)
     {
-        (void)ad;
+        _net.load_param(this->_mlmodel._params.c_str());
+        _net.load_model(this->_mlmodel._weights.c_str());
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>

@@ -22,7 +22,10 @@
 #ifndef NCNNLIB_H
 #define NCNNLIB_H
 
+// NCNN
+#include "net.h"
 #include "ncnnmodel.h"
+
 #include "apidata.h"
 
 namespace dd
@@ -34,6 +37,8 @@ namespace dd
     NCNNLib(const NCNNModel &tmodel);
     NCNNLib(NCNNLib &&tl) noexcept;
     ~NCNNLib();
+
+    ncnn::Net _net;
 
     /*- from mllib -*/
     void init_mllib(const APIData &ad);

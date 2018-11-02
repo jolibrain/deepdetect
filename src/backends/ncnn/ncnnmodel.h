@@ -22,6 +22,7 @@
 #ifndef NCNNMODEL_H
 #define NCNNMODEL_H
 
+#include <spdlog/spdlog.h>
 #include "mlmodel.h"
 #include "apidata.h"
 
@@ -32,17 +33,20 @@ namespace dd
     public:
         NCNNModel():MLModel() {}
         NCNNModel(const APIData &ad)
-            :MLModel()
-            {
-        if (ad.has("repository"))
-	        this->_repo = ad.get("repository").get<std::string>();
-	    read_from_repository();	
-            }
+            :MLModel() {
+            if (ad.has("repository"))
+	            this->_repo = ad.get("repository").get<std::string>();
+	        read_from_repository(spdlog::get("api"));	
+        }
         NCNNModel(const std::string &repo)
             :MLModel(repo) {}
         ~NCNNModel() {}
 
-        int read_from_repository() { return 0; };
+        int read_from_repository(const std::shared_ptr<spdlog::logger> &logger);
+
+    public:
+        std::string _weights;
+        std::string _params;
     };
 }
 
