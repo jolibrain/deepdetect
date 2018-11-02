@@ -42,6 +42,18 @@ namespace dd
             :ImgInputFileConn(i),NCNNInputInterface(i) {}
         ~ImgNCNNInputFileConn() {}
 
+        // for API info only
+        int width() const
+        {
+            return _width;
+        }
+
+        // for API info only
+        int height() const
+        {
+            return _height;
+        }
+
         void init(const APIData &ad)
         {
             ImgInputFileConn::init(ad);

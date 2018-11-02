@@ -570,6 +570,20 @@ namespace dd
 		_logger->error("couldn't write {} file in model repository {}",JsonAPI::_json_config_blob_fname,tmodel._repo);
 	  }
 #endif
+#ifdef USE_NCNN
+  else if (mllib == "ncnn")
+    {
+      NCNNModel tmodel(ad_model);
+      if (input == "img")
+        add_service(sname,std::move(MLService<NCNNLib,ImgNCNNInputFileConn,SupervisedOutput,NCNNModel>(sname,tmodel,description)),ad);
+      else return dd_input_connector_not_found_1004();
+      if (JsonAPI::store_json_blob(tmodel._repo,jstr)) // store successful call json blob
+        _logger->error("couldn't write {} file in model repository {}",JsonAPI::_json_blob_fname,tmodel._repo);
+      if (store_config)
+        if (JsonAPI::store_json_config_blob(tmodel._repo,jstr))
+    _logger->error("couldn't write {} file in model repository {}",JsonAPI::_json_config_blob_fname,tmodel._repo);
+    }
+#endif
 	else
 	  {
 	    return dd_unknown_library_1000();
