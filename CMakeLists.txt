@@ -3,6 +3,7 @@ project(deepdetect)
 
 option(USE_CAFFE2 "build caffe2 backend")
 option(USE_TF "use TF backend")
+option(USE_NCNN "use NCNN backend")
 option(USE_HDF5 "use HDF5" ON)
 
 if (USE_TF AND USE_CAFFE2)
@@ -426,6 +427,24 @@ if (USE_CAFFE2)
   add_dependencies(caffe_dd pytorch)
 endif()
 
+# NCNN
+if (USE_NCNN)
+  message(STATUS "Configuring NCNN")
+  add_definitions(-DUSE_NCNN)
+  ExternalProject_Add(
+    ncnn
+    PREFIX ncnn
+    INSTALL_DIR ${CMAKE_BINARY_DIR}
+    DOWNLOAD_COMMAND git clone --recursive https://github.com/Tencent/ncnn.git
+    CONFIGURE_COMMAND mkdir build && cd build && cmake .. 
+    BUILD_COMMAND cd build/ && make -j${N}
+    INSTALL_COMMAND ""
+    BUILD_IN_SOURCE 1
+    )
+  set(NCNN_INC_DIR ${CMAKE_BINARY_DIR}/ncnn/src)
+  set(NCNN_LIB_DIR ${CMAKE_BINARY_DIR}/ncnn/build)
+endif()
+
 # XGBoost
 if (USE_XGBOOST)
   message(STATUS "Configuring XGBoost")
@@ -461,6 +480,7 @@ if (USE_XGBOOST)
   set(XGBOOST_LIB_DIR ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/lib ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/ ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/dmlc-core)
 endif()
 
+# T-SNE
 if (USE_TSNE)
   message(STATUS "Configuring T-SNE")
   add_definitions(-DUSE_TSNE)
