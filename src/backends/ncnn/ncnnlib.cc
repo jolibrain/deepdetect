@@ -44,7 +44,7 @@ namespace dd
         unsigned int cores = std::thread::hardware_concurrency();
         if (!cores)
             cores = my_hardware_concurrency();
-            return cores;
+        return cores;
     }
   
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -71,6 +71,9 @@ namespace dd
     {
         _net.load_param(this->_mlmodel._params.c_str());
         _net.load_model(this->_mlmodel._weights.c_str());
+
+        *_ex = _net.create_extractor();
+        _ex->set_num_threads(hardware_concurrency());
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -89,7 +92,35 @@ namespace dd
     int NCNNLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::predict(const APIData &ad,
 										APIData &out)
     {
-        
+        TInputConnectorStrategy inputc(this->_inputc);
+        try
+        {
+            inputc.transform(ad);
+        }
+        catch(...)
+        {
+            throw;
+        }
+        _ex->input("data", inputc._in);
+
+        ncnn:Mat out;
+        _ex->extract("detection_out", out);
+
+        /*objects.clear();
+        for (int i=0; i<out.h; i++)
+        {
+            const float* values = out.row(i);
+
+            Object object;
+            object.label = values[0];
+            object.prob = values[1];
+            object.rect.x = values[2] * img_w;
+            object.rect.y = values[3] * img_h;
+            object.rect.width = values[4] * img_w - object.rect.x;
+            object.rect.height = values[5] * img_h - object.rect.y;
+
+            objects.push_back(object);
+        }*/
     }
 
     template class NCNNLib<ImgNCNNInputFileConn,SupervisedOutput,NCNNModel>;

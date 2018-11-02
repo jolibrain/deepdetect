@@ -24,6 +24,9 @@
 
 #include "imginputfileconn.h"
 
+// NCNN
+#include "net.h"
+
 namespace dd
 {
     class NCNNInputInterface
@@ -61,8 +64,23 @@ namespace dd
         
         void transform(const APIData &ad)
         {
+            try
+            {
+                ImgInputFileConn::transform(ad);
+            }
+            catch(const std::exception& e)
+            {
+                throw;
+            }
+            cv::Mat bgr = this->_images.at(0);
+            _in = ncnn::Mat::from_pixels_resize(bgr.data, ncnn::Mat::PIXEL_BGR, bgr.cols, bgr.rows, width(), height());
 
+            //const float mean_vals[3] = {104.f, 117.f, 123.f};
+            _in.substract_mean_normalize(&_mean[0], 0);
         }
+
+        public:
+            ncnn::Mat _in;
     };
 }
 

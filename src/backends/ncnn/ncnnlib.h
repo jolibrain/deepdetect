@@ -34,22 +34,22 @@ namespace dd
     class NCNNLib : public MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>
     {
     public:
-    NCNNLib(const NCNNModel &tmodel);
-    NCNNLib(NCNNLib &&tl) noexcept;
-    ~NCNNLib();
+        NCNNLib(const NCNNModel &tmodel);
+        NCNNLib(NCNNLib &&tl) noexcept;
+        ~NCNNLib();
 
-    ncnn::Net _net;
+        /*- from mllib -*/
+        void init_mllib(const APIData &ad);
 
-    /*- from mllib -*/
-    void init_mllib(const APIData &ad);
+        void clear_mllib(const APIData &ad);
 
-    void clear_mllib(const APIData &ad);
+        int train(const APIData &ad, APIData &out);
 
-    int train(const APIData &ad, APIData &out);
-
-    int predict(const APIData &ad, APIData &out);
+        int predict(const APIData &ad, APIData &out);
 
     public:
+        ncnn::Net _net;
+        ncnn::Extractor *_ex = nullptr;
     };
 }
 

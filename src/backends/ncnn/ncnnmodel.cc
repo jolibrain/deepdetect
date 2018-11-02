@@ -19,43 +19,48 @@
  * along with deepdetect.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-int NCNNModel::read_from_repository(const std::shared_ptr<spdlog::logger> &logger)
+#include "ncnnmodel.h"
+
+namespace dd
 {
-    static std::string params = ".param";
-    static std::string weights = ".bin";
-    static std::string corresp = "corresp";
-    std::unordered_set<std::string> lfiles;
-    int e = fileops::list_directory(_repo,true,false,false,lfiles);
-    if (e != 0) {
-        logger->error("error reading or listing NCNN models in repository {}",_repo);
-        return 1;
-    }
-    std::string paramsf,weightsf,correspf;
-    int weight_t = -1;
-    int params_t = -1;
-    auto hit = lfiles.begin();
-    while (hit != lfiles.end()) {
-        if ((*hit).find(weights) != std::string::npos) {
-            // stat file to pick the latest one
-            long int wt = fileops::file_last_modif((*hit));
-            if (wt > weight_t) {
-    	        weightsf = (*hit);
-    	        weight_t = wt;
-            }
-        } else if ((*hit).find(corresp) != std::string::npos) {
-            correspf = (*hit);
-        } else if ((*hit).find(params) != std::string::npos) {
-            // stat file to pick the latest one
-            long int pm = fileops::file_last_modif((*hit));
-            if (pm > params_t) {
-                paramsf = (*hit);
-                params_t = pm;
-            }
+    int NCNNModel::read_from_repository(const std::shared_ptr<spdlog::logger> &logger)
+    {   
+        static std::string params = ".param";
+        static std::string weights = ".bin";
+        static std::string corresp = "corresp";
+        std::unordered_set<std::string> lfiles;
+        int e = fileops::list_directory(_repo,true,false,false,lfiles);
+        if (e != 0) {
+            logger->error("error reading or listing NCNN models in repository {}",_repo);
+            return 1;
         }
-        ++hit;
+        std::string paramsf,weightsf,correspf;
+        int weight_t = -1;
+        int params_t = -1;
+        auto hit = lfiles.begin();
+        while (hit != lfiles.end()) {
+            if ((*hit).find(weights) != std::string::npos) {
+                // stat file to pick the latest one
+                long int wt = fileops::file_last_modif((*hit));
+                if (wt > weight_t) {
+        	        weightsf = (*hit);
+        	        weight_t = wt;
+                }
+            } else if ((*hit).find(corresp) != std::string::npos) {
+                correspf = (*hit);
+            } else if ((*hit).find(params) != std::string::npos) {
+                // stat file to pick the latest one
+                long int pm = fileops::file_last_modif((*hit));
+                if (pm > params_t) {
+                    paramsf = (*hit);
+                    params_t = pm;
+                }
+            }
+            ++hit;
+        }
+        _params = paramsf;
+        _weights = weightsf;
+        _corresp = correspf;
+        return 0;
     }
-    _params = paramsf;
-    _weights = weightsf;
-    _corresp = correspf;
-    return 0;
 }
