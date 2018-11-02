@@ -42,12 +42,7 @@ namespace dd
 
     int train(const APIData &ad, APIData &out);
 
-    int predict(const APIData &ad, APIData &out)
-    {
-        (void)ad;
-        (void)out;
-        return 0;
-    }
+    int predict(const APIData &ad, APIData &out);
 
     public:
     };

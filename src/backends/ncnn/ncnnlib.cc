@@ -80,5 +80,12 @@ namespace dd
     {
     }
 
+    template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+    int NCNNLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::predict(const APIData &ad,
+										APIData &out)
+    {
+        
+    }
+
     template class NCNNLib<ImgNCNNInputFileConn,SupervisedOutput,NCNNModel>;
 }
