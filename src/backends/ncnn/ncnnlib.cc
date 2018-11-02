@@ -24,6 +24,10 @@
 #include "outputconnectorstrategy.h"
 #include <thread>
 
+// NCNN
+#include "cpu.h"
+#include "net.h"
+
 namespace dd
 {
     int my_hardware_concurrency()

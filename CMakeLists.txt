@@ -431,6 +431,7 @@ endif()
 if (USE_NCNN)
   message(STATUS "Configuring NCNN")
   add_definitions(-DUSE_NCNN)
+  set(NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src/libncnn.a)
   ExternalProject_Add(
     ncnn
     PREFIX ncnn
@@ -441,8 +442,8 @@ if (USE_NCNN)
     INSTALL_COMMAND ""
     BUILD_IN_SOURCE 1
     )
-  set(NCNN_INC_DIR ${CMAKE_BINARY_DIR}/ncnn/src)
-  set(NCNN_LIB_DIR ${CMAKE_BINARY_DIR}/ncnn/build)
+  set(NCNN_INC_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/src ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src)
+  set(NCNN_LIB_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src)
 endif()
 
 # XGBoost
@@ -514,6 +515,10 @@ if (USE_CAFFE2)
   include_directories(${PYTORCH_PATH})
 endif()
 
+if (USE_NCNN)
+  include_directories(${NCNN_INC_DIR})
+endif()
+
 # main library, main & tests
 include_directories ("${PROJECT_SOURCE_DIR}/src")
 add_subdirectory (src)
@@ -526,6 +531,7 @@ set(COMMON_LINK_DIRS
   ${TF_LIB_DIR}
   ${XGBOOST_LIB_DIR}
   ${TSNE_LIB_DIR}
+  ${NCNN_LIB_DIR}
   ${DLIB_LIB_DIR})
 if (USE_HDF5)
   set(COMMON_LINK_LIBS
@@ -535,6 +541,7 @@ if (USE_HDF5)
     ${TF_LIB_DEPS}
     ${XGBOOST_LIB_DEPS}
     ${TSNE_LIB_DEPS}
+    ${NCNN_LIB_DEPS}
     ${DLIB_LIB_DEPS})
 else()
   set(COMMON_LINK_LIBS
@@ -544,6 +551,7 @@ else()
     ${TF_LIB_DEPS}
     ${XGBOOST_LIB_DEPS}
     ${TSNE_LIB_DEPS}
+    ${NCNN_LIB_DEPS}
     ${DLIB_LIB_DEPS})
 endif()
 set(HTTP_LINK_LIBS cppnetlib-uri crypto ssl)
