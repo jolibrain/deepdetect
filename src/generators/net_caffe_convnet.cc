@@ -239,8 +239,11 @@ namespace dd
       }
     else if (autoencoder)
       {
+	std::string data = "data";
+	if (this->_net_params->mutable_layer(0)->top_size() == 3)
+	  data = "orig_data";
 	add_interp(this->_net_params,bottom,"final_interp",width,height);
-	add_sigmoid_crossentropy_loss(this->_net_params,"final_interp","data","losst",ntargets,false,false);
+	add_sigmoid_crossentropy_loss(this->_net_params,"final_interp",data,"losst",ntargets,false,false);
 	add_interp(this->_dnet_params,bottom,"final_interp",width,height);
 	add_conv(this->_dnet_params,"final_interp","conv_prob",ntargets,1,0,1);
 	add_flatten(this->_dnet_params,"conv_prob","conv_flatten");

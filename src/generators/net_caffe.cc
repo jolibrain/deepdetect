@@ -80,6 +80,9 @@ namespace dd
     bool db = false;
     if (ad_mllib.has("db")) //TODO: if Caffe + image, db is true
       db = ad_mllib.get("db").get<bool>();
+    bool autoencoder = false;
+    if (ad_mllib.has("autoencoder"))
+      autoencoder = ad_mllib.get("autoencoder").get<bool>();
     int width = inputc.width();
     int height = inputc.height();
     int channels = inputc.channels();
@@ -114,13 +117,46 @@ namespace dd
 	dparam->set_backend(caffe::DataParameter_DB_LMDB);
 	if (!flat1dconv)
 	  {
+	    bool has_mirror = false;
 	    if (ad_mllib.has("mirror"))
-	      lparam->mutable_transform_param()->set_mirror(ad_mllib.get("mirror").get<bool>());
+	      {
+		has_mirror = ad_mllib.get("mirror").get<bool>();
+		lparam->mutable_transform_param()->set_mirror(has_mirror);
+	      }
+	    bool has_rotate = false;
 	    if (ad_mllib.has("rotate"))
-	      lparam->mutable_transform_param()->set_rotate(ad_mllib.get("rotate").get<bool>());
+	      {
+		has_rotate = ad_mllib.get("rotate").get<bool>();
+		lparam->mutable_transform_param()->set_rotate(has_rotate);
+	      }
 	    //TODO
 	    /*std::string mf = "mean.binaryproto";
 	      lparam->mutable_transform_param()->set_mean_file(mf.c_str());*/
+	    bool has_noise = false;
+	    bool has_distort = false;
+	    if (ad_mllib.has("noise"))
+	      {
+		has_noise = true;
+		APIData ad_noise = ad_mllib.getobj("noise");
+		caffe::LayerParameter *lparam = this->_net_params->mutable_layer(0); // data input layer
+		caffe::TransformationParameter *trparam = lparam->mutable_transform_param();
+		caffe::NoiseParameter *nparam = trparam->mutable_noise_param();
+		nparam->set_all_effects(true); // all effects true is default
+	      }
+	    if (ad_mllib.has("distort"))
+	      {
+		has_distort = true;
+		APIData ad_noise = ad_mllib.getobj("noise");
+		caffe::LayerParameter *lparam = this->_net_params->mutable_layer(0); // data input layer
+		caffe::TransformationParameter *trparam = lparam->mutable_transform_param();
+		caffe::NoiseParameter *nparam = trparam->mutable_noise_param();
+		nparam->set_all_effects(true); // all effects true is default
+	      }
+	    if (autoencoder && (has_noise || has_distort || has_rotate))
+	      {
+		this->_net_params->mutable_layer(0)->add_top("orig_data"); // unchanged data top
+		this->_net_params->mutable_layer(0)->mutable_transform_param()->set_untransformed_top(true);
+	      }
 	  }
 	
 	// test
