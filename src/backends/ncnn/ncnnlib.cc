@@ -93,6 +93,7 @@ namespace dd
 										APIData &out)
     {
         TInputConnectorStrategy inputc(this->_inputc);
+        TOutputConnectorStrategy tout;
         try
         {
             inputc.transform(ad);
@@ -104,22 +105,53 @@ namespace dd
 
         _ex->input("data", inputc._in);
         _ex->extract("detection_out", inputc._out);
+        
+        std::vector<APIData> vrad;
 
-        /*objects.clear();
-        for (int i=0; i<out.h; i++)
-        {
-            const float* values = out.row(i);
+        std::vector<double> probs;
+        std::vector<std::string> cats;
+        std::vector<APIData> bboxes;
+        int cols;
+        int rows;
+        int _nclasses = -1;
 
-            Object object;
-            object.label = values[0];
-            object.prob = values[1];
-            object.rect.x = values[2] * img_w;
-            object.rect.y = values[3] * img_h;
-            object.rect.width = values[4] * img_w - object.rect.x;
-            object.rect.height = values[5] * img_h - object.rect.y;
+        APIData rad;
+                                                                                                                                                                           
+        rows = inputc.height();
+        cols = inputc.width();
 
-            objects.push_back(object);
-        }*/
+        if (ad.has("nclasses"))
+            _nclasses = ad.get("nclasses").get<int>();
+
+        for (int i = 0; i < inputc._out.h; i++) {
+            const float* values = inputc._out.row(i);
+
+            cats.push_back(this->_mlmodel.get_hcorresp(values[0]));
+            probs.push_back(values[1]);
+
+            APIData ad_bbox;
+            ad_bbox.add("xmin",values[2] * cols);
+            ad_bbox.add("ymax",values[3] * rows);
+            ad_bbox.add("xmax",values[4] * cols);
+            ad_bbox.add("ymin",values[5] * rows);
+            bboxes.push_back(ad_bbox);
+        }
+
+        rad.add("probs", probs);
+        rad.add("cats", cats);
+        rad.add("bboxes", bboxes);
+
+        vrad.push_back(rad);
+        tout.add_results(vrad);
+
+        out.add("nclasses", _nclasses);
+        out.add("bbox", true);
+        out.add("roi", false);
+        out.add("multibox_rois", false);
+
+        tout.finalize(ad.getobj("parameters").getobj("output"),out,static_cast<MLModel*>(&this->_mlmodel));
+
+        out.add("status", 0);
     }
 
     template class NCNNLib<ImgNCNNInputFileConn,SupervisedOutput,NCNNModel>;

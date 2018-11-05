@@ -36,7 +36,6 @@ endif()
 if (USE_NCNN)
   list(APPEND ddetect_SOURCES
     backends/ncnn/ncnnlib.cc
-    backends/ncnn/ncnninputconns.cc
     backends/ncnn/ncnnmodel.cc
   )
 endif()
