@@ -81,6 +81,7 @@ namespace dd
 
         public:
             ncnn::Mat _in;
+            ncnn::Mat _out;
     };
 }
 

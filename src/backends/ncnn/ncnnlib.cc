@@ -101,10 +101,9 @@ namespace dd
         {
             throw;
         }
-        _ex->input("data", inputc._in);
 
-        ncnn:Mat out;
-        _ex->extract("detection_out", out);
+        _ex->input("data", inputc._in);
+        _ex->extract("detection_out", inputc._out);
 
         /*objects.clear();
         for (int i=0; i<out.h; i++)
