@@ -486,6 +486,26 @@ namespace dd
 	}
 
 #endif // USE_CAFFE2
+#ifdef USE_NCNN
+  else if (mllib == "ncnn")
+  {
+    NCNNModel ncnnmodel(ad_model);
+    if (type == "supervised")
+    {
+      if (input == "image")
+        add_service(sname, std::move(MLService<NCNNLib,ImgNCNNInputFileConn,SupervisedOutput,NCNNModel>(sname,ncnnmodel,description)), ad);
+      else
+        return dd_input_connector_not_found_1004();
+      if (JsonAPI::store_json_blob(ncnnmodel._repo, jstr))
+        _logger->error("couldn't write {} file in model repository {}", JsonAPI::_json_blob_fname, ncnnmodel._repo);
+    }
+    else
+	  {
+		  // unknown type
+		  return dd_service_bad_request_1006();
+	  }
+  }
+#endif // USE_NCNN
 #ifdef USE_TF
 	else if (mllib == "tensorflow" || mllib == "tf")
 	  {
