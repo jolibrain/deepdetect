@@ -49,7 +49,6 @@ namespace dd
 
     public:
         ncnn::Net _net;
-        ncnn::Extractor *_ex = nullptr;
     };
 }
 

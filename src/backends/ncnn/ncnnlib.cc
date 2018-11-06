@@ -71,9 +71,6 @@ namespace dd
     {
         _net.load_param(this->_mlmodel._params.c_str());
         _net.load_model(this->_mlmodel._weights.c_str());
-
-        *_ex = _net.create_extractor();
-        _ex->set_num_threads(hardware_concurrency());
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -103,8 +100,10 @@ namespace dd
             throw;
         }
 
-        _ex->input("data", inputc._in);
-        _ex->extract("detection_out", inputc._out);
+        ncnn::Extractor ex = _net.create_extractor();
+        ex.set_num_threads(hardware_concurrency());
+        ex.input("data", inputc._in);
+        ex.extract("detection_out", inputc._out);
         
         std::vector<APIData> vrad;
 
