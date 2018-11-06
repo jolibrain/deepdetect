@@ -39,7 +39,15 @@ namespace dd
         int params_t = -1;
         auto hit = lfiles.begin();
         while (hit != lfiles.end()) {
-            if ((*hit).find(weights) != std::string::npos) {
+            std::cerr << *hit << std::endl;
+            if ((*hit).find(params) != std::string::npos) {
+                // stat file to pick the latest one
+                long int pm = fileops::file_last_modif((*hit));
+                if (pm > params_t) {
+                    paramsf = (*hit);
+                    params_t = pm;
+                }
+            } else if ((*hit).find(weights) != std::string::npos) {
                 // stat file to pick the latest one
                 long int wt = fileops::file_last_modif((*hit));
                 if (wt > weight_t) {
@@ -48,13 +56,6 @@ namespace dd
                 }
             } else if ((*hit).find(corresp) != std::string::npos) {
                 correspf = (*hit);
-            } else if ((*hit).find(params) != std::string::npos) {
-                // stat file to pick the latest one
-                long int pm = fileops::file_last_modif((*hit));
-                if (pm > params_t) {
-                    paramsf = (*hit);
-                    params_t = pm;
-                }
             }
             ++hit;
         }
