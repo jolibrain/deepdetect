@@ -39,7 +39,6 @@ namespace dd
         int params_t = -1;
         auto hit = lfiles.begin();
         while (hit != lfiles.end()) {
-            std::cerr << *hit << std::endl;
             if ((*hit).find(params) != std::string::npos) {
                 // stat file to pick the latest one
                 long int pm = fileops::file_last_modif((*hit));
