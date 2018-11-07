@@ -1415,7 +1415,7 @@ namespace dd
 		else if (!inputc._sparse)
 		  {
 		    std::vector<caffe::Datum> seg_dv;
-		    std::vector<caffe::Datum> dv = inputc.get_dv_test(test_batch_size,has_mean_file);
+		    std::vector<caffe::Datum> dv = inputc.get_dv_test(test_batch_size,!_autoencoder ? has_mean_file : false);
 		    if (dv.empty())
 		      break;
 		    dv_size = dv.size();
