@@ -72,6 +72,7 @@ namespace dd
             {
                 throw;
             }
+            std::cerr << this->_images.size() << std::endl;
             cv::Mat bgr = this->_images.at(0);
             _in = ncnn::Mat::from_pixels_resize(bgr.data, ncnn::Mat::PIXEL_BGR, bgr.cols, bgr.rows, width(), height());
 

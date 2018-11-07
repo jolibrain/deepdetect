@@ -25,7 +25,7 @@ namespace dd
 {
     int NCNNModel::read_from_repository(const std::shared_ptr<spdlog::logger> &logger)
     {
-        static std::string params = ".param.bin";
+        static std::string params = ".param";
         static std::string weights = ".bin";
         static std::string corresp = "corresp";
         std::unordered_set<std::string> lfiles;
