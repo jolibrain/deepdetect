@@ -48,7 +48,7 @@ namespace dd
         int predict(const APIData &ad, APIData &out);
 
     public:
-        ncnn::Net _net;
+        ncnn::Net *_net = nullptr;
     };
 }
 

@@ -72,10 +72,10 @@ namespace dd
             {
                 throw;
             }
-            std::cerr << this->_images.size() << std::endl;
             cv::Mat bgr = this->_images.at(0);
-            _in = ncnn::Mat::from_pixels_resize(bgr.data, ncnn::Mat::PIXEL_BGR, bgr.cols, bgr.rows, width(), height());
+            //_in = ncnn::Mat::from_pixels_resize(bgr.data, ncnn::Mat::PIXEL_BGR, bgr.cols, bgr.rows, width(), height());
 
+            _in = ncnn::Mat::from_pixels(bgr.data, ncnn::Mat::PIXEL_BGR, bgr.cols, bgr.rows);
             //const float mean_vals[3] = {104.f, 117.f, 123.f};
             _in.substract_mean_normalize(&_mean[0], 0);
         }
