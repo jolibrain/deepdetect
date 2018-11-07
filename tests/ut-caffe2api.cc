@@ -316,6 +316,8 @@ static const std::string predict_bbox_boats_and_dogs =
   PREDICT_BBOX(SERVICE, 0.8, DTTRON_BOATS, DTTRON_DOGS);
 static const std::string predict_mask_boats_and_dogs =
   PREDICT_MASK(SERVICE, 0.8, DTTRON_BOATS, DTTRON_DOGS);
+static const std::string predict_mask_no_result =
+  PREDICT_MASK(SERVICE, 0.999, DTTRON_BOATS);
 
 // Json train & test
 
@@ -490,4 +492,13 @@ TEST(caffe2api, detectron_mask_predict) {
       { DTTRON_BOATS, {{"boat", 2}, {"person", 25}} },
       { DTTRON_DOGS, {{"dog", 2}, {"person", 2}} }
   }, true);
+}
+
+TEST(caffe2api, detectron_mask_predict_empty) {
+  JsonAPI japi;
+  JDoc jd;
+  create(japi, detectron_mask);
+
+  predict(japi, jd, predict_mask_no_result);
+  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"].Size() == 0);
 }
