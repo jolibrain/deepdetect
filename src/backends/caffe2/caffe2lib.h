@@ -126,6 +126,11 @@ namespace dd {
   void create_model_predict();
 
   /**
+   * \brief (re)loads nets from the disk
+   */
+  void load_nets();
+
+  /**
    * \brief recreates nets if the configuration changed and resets the workspace
    */
   void update_model();

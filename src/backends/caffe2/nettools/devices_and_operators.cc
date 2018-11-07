@@ -155,11 +155,7 @@ namespace dd {
 
       caffe2::NetDef tmp;
       for (const caffe2::OperatorDef &op : net.op()) {
-	if (is_cpu_only(op.type())) {
-	  add_op(tmp, op);
-	} else {
-	  add_op(tmp, op, device);
-	}
+	add_op(tmp, op, device);
       }
       net.mutable_op()->Swap(tmp.mutable_op());
     }
@@ -867,7 +863,12 @@ namespace dd {
       net.mutable_op()->Swap(new_net.mutable_op());
     }
 
+    // We consider that nets are not splitted during a CPU/CUDA conversion
     static void remove_useless_casts(caffe2::NetDef &net) {
+
+      const auto &net_inputs(net.external_input());
+      const std::set<std::string> external_inputs(net_inputs.begin(), net_inputs.end());
+
       for (int i = 0; i < net.op().size(); ++i) {
 	caffe2::OperatorDef &op = *net.mutable_op(i);
 
@@ -876,17 +877,21 @@ namespace dd {
 	  const std::string &input = op.input(0);
 	  const std::string &output = op.output(0);
 
-	  // Check if the cast is used
-	  bool used = false;
-	  for (int j = i; j < net.op().size(); ++j) {
-	    if (has_input(net.op(j), output)) {
-	      used = true;
-	      break;
+	  bool internal = external_inputs.find(input) == external_inputs.end();
+	  if (!internal) {
+	    // The cast is not an external input, but may be an external output
+
+	    // Check if the cast is used
+	    for (int j = i; j < net.op().size(); ++j) {
+	      if (has_input(net.op(j), output)) {
+		internal = true;
+		break;
+	      }
 	    }
 	  }
 
-	  // Transform into a simple alias (in case the layer is an external output)
-	  if (!used) {
+	  // Transform into a simple alias
+	  if (!internal) {
 	    caffe2::OperatorDef new_op;
 	    Alias(new_op, input, output);
 	    op.Swap(&new_op);

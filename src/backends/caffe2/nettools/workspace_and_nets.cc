@@ -239,7 +239,7 @@ namespace dd {
       CAFFE_ENFORCE(data_count == sizes.size());
       size_t data_size1 = extract_tensors(name, tensors);
       size_t data_size2 = std::accumulate(sizes.begin(), sizes.end(), static_cast<size_t>(0));
-      if (!scale) {
+      if (!scale && data_size1) {
 	scale = data_size1 / data_size2;
       }
       CAFFE_ENFORCE(data_size1 == data_size2 * scale);
