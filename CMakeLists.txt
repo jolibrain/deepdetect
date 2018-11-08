@@ -432,20 +432,29 @@ if (USE_NCNN)
   message(STATUS "Configuring NCNN")
   add_definitions(-DUSE_NCNN)
   set(NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src/libncnn.a)
-  ExternalProject_Add(
-    ncnn
-    PREFIX ncnn
-    INSTALL_DIR ${CMAKE_BINARY_DIR}
-    DOWNLOAD_COMMAND git clone --recursive https://github.com/Tencent/ncnn.git
-    if (RPI3)
+  if (RPI3)
+    ExternalProject_Add(
+      ncnn
+      PREFIX ncnn
+      INSTALL_DIR ${CMAKE_BINARY_DIR}
+      DOWNLOAD_COMMAND git clone --recursive https://github.com/Tencent/ncnn.git
       CONFIGURE_COMMAND mkdir build && cd build && cmake .. -DPI3 -DCMAKE_TOOLCHAIN_FILE=../pi3.toolchain.cmake
-    else ()
-      CONFIGURE_COMMAND mkdir build && cd build && cmake ..
-    endif()
-    BUILD_COMMAND cd build/ && make -j${N}
-    INSTALL_COMMAND ""
-    BUILD_IN_SOURCE 1
+      BUILD_COMMAND cd build/ && make -j${N}
+      INSTALL_COMMAND ""
+      BUILD_IN_SOURCE 1
     )
+  else ()
+    ExternalProject_Add(
+      ncnn
+      PREFIX ncnn
+      INSTALL_DIR ${CMAKE_BINARY_DIR}
+      DOWNLOAD_COMMAND git clone --recursive https://github.com/Tencent/ncnn.git
+      CONFIGURE_COMMAND mkdir build && cd build && cmake ..
+      BUILD_COMMAND cd build/ && make -j${N}
+      INSTALL_COMMAND ""
+      BUILD_IN_SOURCE 1
+    )
+  endif()
   set(NCNN_INC_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/src ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src)
   set(NCNN_LIB_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src)
 endif()
