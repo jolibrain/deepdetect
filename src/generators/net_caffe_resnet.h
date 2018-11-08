@@ -42,7 +42,7 @@ namespace dd
 
   private:
     void parse_res_layers(const std::vector<std::string> &layers,
-			  std::vector<std::pair<int,int>> &cr_layers,
+			  std::vector<ConvBlock> &cr_layers,
 			  std::vector<int> &fc_layers,
 			  int &depth, int &n);
     

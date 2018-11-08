@@ -1,7 +1,7 @@
 
 /**
  * DeepDetect
- * Copyright (c) 2014-2015 Emmanuel Benazera
+ * Copyright (c) 2014-2018 Emmanuel Benazera
  * Author: Emmanuel Benazera <beniz@droidnik.fr>
  *
  * This file is part of deepdetect.
@@ -61,6 +61,7 @@ namespace dd
     _autoencoder = cl._autoencoder;
     cl._net = nullptr;
     _crop_size = cl._crop_size;
+    _scale = cl._scale;
     _loss = cl._loss;
     _best_metrics = cl._best_metrics;
     _best_metric_value = cl._best_metric_value;
@@ -173,6 +174,8 @@ namespace dd
       {
 	caffe::NetParameter net_param,deploy_net_param;
 	configure_convnet_template(ad,this->_inputc,net_param,deploy_net_param);
+	if (typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
+	  configure_image_augmentation(ad,net_param);
 	caffe::WriteProtoToTextFile(net_param,dest_net);
 	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
       }
@@ -180,6 +183,8 @@ namespace dd
       {
 	caffe::NetParameter net_param,deploy_net_param;
 	configure_resnet_template(ad,this->_inputc,net_param,deploy_net_param);
+	if (typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
+	  configure_image_augmentation(ad,net_param);
 	caffe::WriteProtoToTextFile(net_param,dest_net);
 	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
       }
@@ -298,64 +303,34 @@ namespace dd
               }
 	  }
       } // end multi_label
-    
-    if ((ad.has("rotate") && ad.get("rotate").get<bool>()) 
-	|| (ad.has("mirror") && ad.get("mirror").get<bool>())
-	|| (ad.has("crop_size")))
-      {
-	caffe::LayerParameter *lparam = net_param.mutable_layer(0); // data input layer
-	if (lparam->type() != "DenseImageData")
+      
+	// input size
+	caffe::LayerParameter *lparam = net_param.mutable_layer(1); // test
+	caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(0);
+	if (!this->_inputc._bbox && !this->_inputc._ctc &&(_crop_size > 0 || (this->_inputc.width() != -1 && this->_inputc.height() != -1))) // forced width & height
 	  {
-	    if (ad.has("mirror"))
-	      lparam->mutable_transform_param()->set_mirror(ad.get("mirror").get<bool>());
-	    if (ad.has("rotate"))
-	      lparam->mutable_transform_param()->set_rotate(ad.get("rotate").get<bool>());
-	    if (ad.has("crop_size"))
-	      {
-		_crop_size = ad.get("crop_size").get<int>();
-		lparam->mutable_transform_param()->set_crop_size(_crop_size);
-		caffe::LayerParameter *dlparam = net_param.mutable_layer(1); // test input layer
-		dlparam->mutable_transform_param()->set_crop_size(_crop_size);
-	      }
-	    else lparam->mutable_transform_param()->clear_crop_size();
+	    int width = this->_inputc.width();
+	    int height = this->_inputc.height();
+	    if (_crop_size > 0)
+	      width = height = _crop_size;
+	    lparam->mutable_memory_data_param()->set_channels(this->_inputc.channels());
+	    lparam->mutable_memory_data_param()->set_height(height);
+	    lparam->mutable_memory_data_param()->set_width(width);
+	    dlparam->mutable_memory_data_param()->set_channels(this->_inputc.channels());
+	    dlparam->mutable_memory_data_param()->set_height(height);
+	    dlparam->mutable_memory_data_param()->set_width(width);
 	  }
-	else
-	  {
-	    if (ad.has("mirror"))
-	      lparam->mutable_dense_image_data_param()->set_mirror(ad.get("mirror").get<bool>());
-	    if (ad.has("rotate"))
-	      lparam->mutable_dense_image_data_param()->set_rotate(ad.get("rotate").get<bool>());
-	    lparam->mutable_dense_image_data_param()->set_new_height(this->_inputc.height());
-	    lparam->mutable_dense_image_data_param()->set_new_width(this->_inputc.width());
-	    // XXX: DenseImageData supports crop_height and crop_width
-	  }
-      }
-    // input size
-    caffe::LayerParameter *lparam = net_param.mutable_layer(1); // test
-    caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(0);
-    if (!this->_inputc._bbox && !this->_inputc._ctc &&(_crop_size > 0 || (this->_inputc.width() != -1 && this->_inputc.height() != -1))) // forced width & height
-      {
-	int width = this->_inputc.width();
-	int height = this->_inputc.height();
-	if (_crop_size > 0)
-	  width = height = _crop_size;
-	lparam->mutable_memory_data_param()->set_channels(this->_inputc.channels());
-	lparam->mutable_memory_data_param()->set_height(height);
-	lparam->mutable_memory_data_param()->set_width(width);
-	dlparam->mutable_memory_data_param()->set_channels(this->_inputc.channels());
-	dlparam->mutable_memory_data_param()->set_height(height);
-	dlparam->mutable_memory_data_param()->set_width(width);
-      }
-    
-    // noise parameters
-    configure_noise_and_distort(ad,net_param);
-    
-    // adapt number of neuron output
-    update_protofile_classes(net_param);
-    update_protofile_classes(deploy_net_param);
-    caffe::WriteProtoToTextFile(net_param,dest_net);
-    caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
-      }
+		
+	// image data augmentation
+	if (typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
+	  configure_image_augmentation(ad,net_param);
+	    
+	// adapt number of neuron output
+	update_protofile_classes(net_param);
+	update_protofile_classes(deploy_net_param);
+	caffe::WriteProtoToTextFile(net_param,dest_net);
+	caffe::WriteProtoToTextFile(deploy_net_param,dest_deploy_net);
+  }
     if (ad.has("finetuning") && ad.get("finetuning").get<bool>())
       {
 	if (this->_mlmodel._weights.empty()) // weights should have been specified or detected on the first pass into the model repository
@@ -449,9 +424,46 @@ namespace dd
 
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_noise_and_distort(const APIData &ad,
-													caffe::NetParameter &net_param)
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_image_augmentation(const APIData &ad,
+													 caffe::NetParameter &net_param)
   {
+    if ((ad.has("rotate") && ad.get("rotate").get<bool>()) 
+	|| (ad.has("mirror") && ad.get("mirror").get<bool>())
+	|| ad.has("crop_size") || _scale != 1.0)
+      {
+	caffe::LayerParameter *lparam = net_param.mutable_layer(0); // data input layer
+	if (lparam->type() != "DenseImageData")
+	  {
+	    if (ad.has("mirror"))
+	      lparam->mutable_transform_param()->set_mirror(ad.get("mirror").get<bool>());
+	    if (ad.has("rotate"))
+	      lparam->mutable_transform_param()->set_rotate(ad.get("rotate").get<bool>());
+	    if (ad.has("crop_size"))
+	      {
+		_crop_size = ad.get("crop_size").get<int>();
+		lparam->mutable_transform_param()->set_crop_size(_crop_size);
+		caffe::LayerParameter *dlparam = net_param.mutable_layer(1); // test input layer
+		dlparam->mutable_transform_param()->set_crop_size(_crop_size);
+	      }
+	    else lparam->mutable_transform_param()->clear_crop_size();
+	    if (_scale != 1.0)
+	      {
+		lparam->mutable_transform_param()->set_scale(_scale);
+		caffe::LayerParameter *dlparam = net_param.mutable_layer(1); // test input layer
+		dlparam->mutable_transform_param()->set_scale(_scale);
+	      }
+	  }
+	else
+	  {
+	    if (ad.has("mirror"))
+	      lparam->mutable_dense_image_data_param()->set_mirror(ad.get("mirror").get<bool>());
+	    if (ad.has("rotate"))
+	      lparam->mutable_dense_image_data_param()->set_rotate(ad.get("rotate").get<bool>());
+	    lparam->mutable_dense_image_data_param()->set_new_height(this->_inputc.height());
+	    lparam->mutable_dense_image_data_param()->set_new_width(this->_inputc.width());
+	    // XXX: DenseImageData supports crop_height and crop_width
+	  }
+      }
     if (ad.has("noise"))
       {
 	std::vector<std::string> noise_options = {
@@ -563,6 +575,13 @@ namespace dd
       const_cast<APIData&>(ad).add("flat1dconv",static_cast<bool>(inputc._flat1dconv));
     if (_regression)
       const_cast<APIData&>(ad).add("regression",true);
+    if (_autoencoder)
+      {
+	const_cast<APIData&>(ad).add("autoencoder",true);
+	const_cast<APIData&>(ad).add("ntargets",inputc.channels());
+	const_cast<APIData&>(ad).add("width",inputc.width());
+	const_cast<APIData&>(ad).add("height",inputc.height());
+      }
     netcaffe._nlac.configure_net(ad);
   }
 
@@ -786,6 +805,8 @@ namespace dd
 #else
     Caffe::set_mode(Caffe::CPU);
 #endif
+    if (ad.has("scale"))
+      _scale = ad.get("scale").get<double>();
     if (ad.has("db"))
       this->_inputc._db = ad.get("db").get<bool>(); // XXX: API backward compatibility, if db is in mllib, assume it applies to input as well
     if (ad.has("nclasses"))
@@ -869,6 +890,8 @@ namespace dd
     cad.add("has_mean_file",this->_mlmodel._has_mean_file);
     if (_crop_size > 0)
       cad.add("crop_size",_crop_size);
+    if (_autoencoder)
+      cad.add("autoencoder",_autoencoder);
     try
       {
 	inputc.transform(cad);
@@ -1369,8 +1392,12 @@ namespace dd
 	if (_regression && _ntargets > 1)
 	  nout = _ntargets;
 	if (_autoencoder)
-	  nout = inputc.channels();
-    ad_res.add("nclasses",_nclasses);
+	  {
+	    if (typeid(inputc) == typeid(ImgCaffeInputFileConn))
+	      nout = inputc.channels() * inputc.width() * inputc.height();
+	    else nout = inputc.channels();
+	  }
+	ad_res.add("nclasses",_nclasses);
 	inputc.reset_dv_test();
 	std::map<int,std::map<int,std::vector<std::pair<float,int>>>> all_true_pos;
 	std::map<int,std::map<int,std::vector<std::pair<float,int>>>> all_false_pos;
@@ -1390,7 +1417,7 @@ namespace dd
 		else if (!inputc._sparse)
 		  {
 		    std::vector<caffe::Datum> seg_dv;
-		    std::vector<caffe::Datum> dv = inputc.get_dv_test(test_batch_size,has_mean_file);
+		    std::vector<caffe::Datum> dv = inputc.get_dv_test(test_batch_size,!_autoencoder ? has_mean_file : false);
 		    if (dv.empty())
 		      break;
 		    dv_size = dv.size();
@@ -1430,6 +1457,24 @@ namespace dd
 				  vals.push_back(dv.at(s).float_data(k));
 				dv_float_data.push_back(vals);
 			      }
+			  }
+			else if (_autoencoder && (typeid(inputc) == typeid(ImgCaffeInputFileConn)))
+			  {
+			    Datum datum = dv.at(s);
+			    int height = datum.height();
+			    int width = datum.width();
+			    std::vector<double> vals;
+			    for (int c=0;c<datum.channels();++c) //TODO: store for each channel or flatten before sigmoid
+			      for (int h=0;h<height;++h)
+				for (int w=0;w<width;++w)
+				  {
+				    int data_index = (c*height+h)*width+w;
+				    double datum_element;
+				    datum_element = static_cast<double>(static_cast<uint8_t>(datum.data()[data_index]));
+				    datum_element *= _scale;
+				    vals.push_back(datum_element);
+				  }
+			    dv_float_data.push_back(vals);
 			  }
 			else
 			  {
@@ -1498,6 +1543,8 @@ namespace dd
 	    else if (inputc._multi_label && ( inputc._db || ! (typeid(inputc) == typeid(ImgCaffeInputFileConn))
                                            ||  _nclasses <= 1))
 	      slot--;
+	    else if (_autoencoder && typeid(inputc) == typeid(ImgCaffeInputFileConn))
+	      slot = 0; // flatten output
 	    int scount = lresults[slot]->count();
 	    int scperel = scount / dv_size;
 
@@ -1644,31 +1691,31 @@ namespace dd
 			    double target = dv_float_data.at(j).at(l);
 			    double best_prob = -1.0;
 			    double best_cat = -1.0;
-                if (lresults[slot]->shape(1) != 1)
-                  {
-                    for (int k=0;k<nout;k++)
-                      {
-                        double prob = lresults[slot]->cpu_data()[l+(nout*j+k)*dv_float_data.at(j).size()];
-                        if (prob >= best_prob)
-                          {
-                            best_prob = prob;
-                            best_cat = k;
-                          }
-                      }
-                  }
-                else
-                  {
-                    // in case of dice loss + deeplab_vgg16, predictions are at pos 0
-                    double res = lresults[slot]->cpu_data()[l+j*dv_float_data.at(j).size()];
-                    if (res > 0.5)
-                      {
-                        best_cat = 1;
-                      }
-                    else
-                      {
-                        best_cat = 0;
-                      }
-                  }
+			    if (lresults[slot]->shape(1) != 1)
+			      {
+				for (int k=0;k<nout;k++)
+				  {
+				    double prob = lresults[slot]->cpu_data()[l+(nout*j+k)*dv_float_data.at(j).size()];
+				    if (prob >= best_prob)
+				      {
+					best_prob = prob;
+					best_cat = k;
+				      }
+				  }
+			      }
+			    else
+			      {
+				// in case of dice loss + deeplab_vgg16, predictions are at pos 0
+				double res = lresults[slot]->cpu_data()[l+j*dv_float_data.at(j).size()];
+				if (res > 0.5)
+				  {
+				    best_cat = 1;
+				  }
+				else
+				  {
+				    best_cat = 0;
+				  }
+			      }
 			    preds.push_back(best_cat);
 			    targets.push_back(target);
 			  }
@@ -1826,6 +1873,8 @@ namespace dd
 
     APIData cad = ad;
     bool has_mean_file = this->_mlmodel._has_mean_file;
+    if (_autoencoder)
+      has_mean_file = false;
     cad.add("has_mean_file",has_mean_file);
     if (ad_output.has("measure"))
       {
@@ -2456,7 +2505,7 @@ namespace dd
 		else mdp->set_batch_size(test_batch_size);
 	      }
 	  }
-	if ((lp->has_transform_param() || inputc._has_mean_file || !inputc._mean_values.empty()))
+	if (!_autoencoder && (lp->has_transform_param() || inputc._has_mean_file || !inputc._mean_values.empty()))
 	  {
 	    caffe::TransformationParameter *tp = lp->mutable_transform_param();
 	    has_mean_file = tp->has_mean_file();
@@ -2608,7 +2657,7 @@ namespace dd
       }
     
     // if autoencoder, set the last inner product layer output number to input size (i.e. inputc.channels())
-    if (_autoencoder)
+    if (_autoencoder && typeid(this->_inputc) == typeid(CSVCaffeInputFileConn))
       {
 	int k = net_param.layer_size();
 	std::string bottom;
@@ -2688,7 +2737,7 @@ namespace dd
 	deploy_net_param.mutable_layer(3)->mutable_reshape_param()->mutable_shape()->set_dim(2,inputc._sequence_txt);
       }
     
-    if (_autoencoder)
+    if (_autoencoder && typeid(this->_inputc) == typeid(CSVCaffeInputFileConn))
       {
 	int k = deploy_net_param.layer_size();
 	std::string bottom = "";
@@ -2717,8 +2766,11 @@ namespace dd
 	    deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels()+_ntargets);
 	    deploy_net_param.mutable_layer(1)->mutable_slice_param()->set_slice_point(0,inputc.channels());
 	  }
-	for (size_t d=0;d<inputc._mean_values.size();d++)
-	  deploy_net_param.mutable_layer(0)->mutable_transform_param()->add_mean_value(inputc._mean_values.at(d));
+	if (!_autoencoder)
+	  for (size_t d=0;d<inputc._mean_values.size();d++)
+	    deploy_net_param.mutable_layer(0)->mutable_transform_param()->add_mean_value(inputc._mean_values.at(d));
+	if (_scale != 1.0)
+	  deploy_net_param.mutable_layer(0)->mutable_transform_param()->set_scale(_scale);
 	if (_crop_size > 0)
 	  deploy_net_param.mutable_layer(0)->mutable_transform_param()->set_crop_size(_crop_size);
       }
@@ -2959,6 +3011,11 @@ namespace dd
 										       std::string &mltype)
   {
     // XXX: using deploy.prototxt to detect network's task type.
+    if (_autoencoder)
+      {
+	mltype = "autoencoder";
+	return;
+      }
     bool has_deconv = false;
     for (size_t l=0;l<net->layers().size();l++)
       {
@@ -2990,6 +3047,7 @@ namespace dd
 	    mltype = "regression";
 	    break;
 	  }
+	
       }
     if (mltype.empty())
       mltype = "classification";

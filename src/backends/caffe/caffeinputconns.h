@@ -40,7 +40,7 @@ namespace dd
   public:
     CaffeInputInterface() {}
     CaffeInputInterface(const CaffeInputInterface &cii)
-      :_db(cii._db),_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed),_sequence_txt(cii._sequence_txt),_max_embed_id(cii._max_embed_id),_segmentation(cii._segmentation),_bbox(cii._bbox),_multi_label(cii._multi_label),_ctc(cii._ctc),_alphabet_size(cii._alphabet_size),_root_folder(cii._root_folder),_dbfullname(cii._dbfullname),_test_dbfullname(cii._test_dbfullname) {}
+      :_db(cii._db),_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed),_sequence_txt(cii._sequence_txt),_max_embed_id(cii._max_embed_id),_segmentation(cii._segmentation),_bbox(cii._bbox),_multi_label(cii._multi_label),_ctc(cii._ctc),_autoencoder(cii._autoencoder),_alphabet_size(cii._alphabet_size),_root_folder(cii._root_folder),_dbfullname(cii._dbfullname),_test_dbfullname(cii._test_dbfullname) {}
     ~CaffeInputInterface() {}
 
     /**
@@ -86,6 +86,7 @@ namespace dd
     bool _bbox = false; /**< whether it is an object detection service. */
     bool _multi_label = false; /**< multi label setup */
     bool _ctc = false; /**< whether it is a CTC / OCR service. */
+    bool _autoencoder = false; /**< whether an autoencoder. */
     int _alphabet_size = 0; /**< for sequence to sequence models. */
     std::string _root_folder; /**< root folder for image list layer. */
     std::unordered_map<std::string,std::pair<int,int>> _imgs_size; /**< image sizes, used in detection. */
@@ -276,6 +277,8 @@ namespace dd
 		    db_height = ad_input.get("db_height").get<int>();
 		  if (ad_input.has("db_width"))
 		    db_width = ad_input.get("db_width").get<int>();
+		  if (ad.has("autoencoder"))
+		    _autoencoder = ad.get("autoencoder").get<bool>();
 		}
 	      ad_mllib = ad_param.getobj("mllib");
 	    }
