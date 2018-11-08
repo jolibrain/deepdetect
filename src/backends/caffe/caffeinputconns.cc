@@ -469,7 +469,7 @@ namespace dd
   }
 
   // - fixed size in-memory arrays put down to disk at once
-	#ifdef USE_HDF5
+#ifdef USE_HDF5
   void ImgCaffeInputFileConn::images_to_hdf5(const std::vector<std::string> &img_lists,
 					     const std::string &dbfullname,
 					     const std::string &test_dbfullname)

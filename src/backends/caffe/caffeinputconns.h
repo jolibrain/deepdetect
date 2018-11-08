@@ -352,9 +352,9 @@ namespace dd
 		}
 
 	      // read images list and create dbs
-				#ifdef USE_HDF5
-				images_to_hdf5(_uris,_dbfullname,_test_dbfullname);
-				#endif // USE_HDF5
+#ifdef USE_HDF5
+	      images_to_hdf5(_uris,_dbfullname,_test_dbfullname);
+#endif // USE_HDF5
 	      // enrich data object with db files location
 	      APIData dbad;
 	      dbad.add("train_db",_model_repo + "/training.txt");
