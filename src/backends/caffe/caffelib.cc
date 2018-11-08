@@ -890,6 +890,8 @@ namespace dd
     cad.add("has_mean_file",this->_mlmodel._has_mean_file);
     if (_crop_size > 0)
       cad.add("crop_size",_crop_size);
+    if (_autoencoder)
+      cad.add("autoencoder",_autoencoder);
     try
       {
 	inputc.transform(cad);
