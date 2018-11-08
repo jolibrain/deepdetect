@@ -438,7 +438,7 @@ if (USE_NCNN)
       PREFIX ncnn
       INSTALL_DIR ${CMAKE_BINARY_DIR}
       DOWNLOAD_COMMAND git clone --recursive https://github.com/Tencent/ncnn.git
-      CONFIGURE_COMMAND mkdir build && cd build && cmake .. -DPI3 -DCMAKE_TOOLCHAIN_FILE=../pi3.toolchain.cmake
+      CONFIGURE_COMMAND mkdir build && cd build && cmake .. -DPI3=ON -DCMAKE_TOOLCHAIN_FILE=../pi3.toolchain.cmake
       BUILD_COMMAND cd build/ && make -j${N}
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
