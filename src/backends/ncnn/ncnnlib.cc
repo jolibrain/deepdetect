@@ -44,6 +44,8 @@ namespace dd
         unsigned int cores = std::thread::hardware_concurrency();
         if (!cores)
             cores = my_hardware_concurrency();
+        if (cores > 4)
+            cores /= 2;
         return cores;
     }
   
@@ -98,23 +100,28 @@ namespace dd
         TInputConnectorStrategy inputc(this->_inputc);
         TOutputConnectorStrategy tout;
         try {
-            //auto startTransform = std::chrono::system_clock::now();
             inputc.transform(ad);
-            /* auto endTransform = std::chrono::system_clock::now();
-            std::chrono::duration<double> timeTransform = endTransform - startTransform;
-            std::cerr << "Transform duration: " << timeTransform.count() << "s" << std::endl; */
         } catch (...) {
             throw;
         }
 
-        //auto startExtraction = std::chrono::system_clock::now();
         ncnn::Extractor ex = _net->create_extractor();
-        ex.set_num_threads(6);
+        ex.set_num_threads(hardware_concurrency());
         ex.input("data", inputc._in);
-        ex.extract("detection_out", inputc._out);
-        /*auto endExtraction = std::chrono::system_clock::now();
-        std::chrono::duration<double> timeExtraction = endExtraction - startExtraction;
-        std::cerr << "Extract duration: " << timeExtraction.count() << "s" << std::endl; */
+
+        APIData ad_output = ad.getobj("parameters").getobj("output");
+
+        // Get bbox
+        bool bbox = false;
+        if (ad_output.has("bbox") && ad_output.get("bbox").get<bool>())
+            bbox = true;
+
+        // Extract detection or classification
+        if (bbox == true) {
+            ex.extract("detection_out", inputc._out);
+        } else {
+            ex.extract("prob", inputc._out);
+        }
 
         std::vector<APIData> vrad;
 
@@ -130,39 +137,65 @@ namespace dd
         rows = inputc.height();
         cols = inputc.width();
 
+        // Get confidence_threshold
         double confidence_threshold = 0.0;
-        APIData ad_output = ad.getobj("parameters").getobj("output");
         if (ad_output.has("confidence_threshold")) {
 	        try {
 	            confidence_threshold = ad_output.get("confidence_threshold").get<double>();
 	        } catch (std::exception &e) {
-	            // Try from int
 	            confidence_threshold = static_cast<double>(ad_output.get("confidence_threshold").get<int>());
 	        }
         }
 
-        bool bbox = false;
-        if (ad_output.has("bbox") && ad_output.get("bbox").get<bool>())
-            bbox = true;
+        // Get best
+        int best = 1;
+        if (ad_output.has("best")) {
+            best = ad_output.get("best").get<int>();
+        }
 
+        // Get nclasses
         if (ad.has("nclasses"))
             _nclasses = ad.get("nclasses").get<int>();
 
-        for (int i = 0; i < inputc._out.h; i++) {
-            const float* values = inputc._out.row(i);
-            if (values[1] < confidence_threshold)
-                continue;
+        if (bbox == true) {
+            for (int i = 0; i < inputc._out.h; i++) {
+                const float* values = inputc._out.row(i);
+                if (values[1] < confidence_threshold)
+                    continue;
 
-            cats.push_back(this->_mlmodel.get_hcorresp(values[0]));
-            probs.push_back(values[1]);
+                cats.push_back(this->_mlmodel.get_hcorresp(values[0]));
+                probs.push_back(values[1]);
 
-            if (bbox == true) {
                 APIData ad_bbox;
                 ad_bbox.add("xmin",values[2] * cols);
                 ad_bbox.add("ymax",values[3] * rows);
                 ad_bbox.add("xmax",values[4] * cols);
                 ad_bbox.add("ymin",values[5] * rows);
                 bboxes.push_back(ad_bbox);
+            }
+        } else {
+            std::vector<float> cls_scores;
+
+            cls_scores.resize(inputc._out.w);
+            for (int j = 0; j < inputc._out.w; j++) {
+                cls_scores[j] = inputc._out[j];
+            }
+            int size = cls_scores.size();
+            std::vector< std::pair<float, int> > vec;
+            vec.resize(size);
+            for (int i = 0; i < size; i++) {
+                vec[i] = std::make_pair(cls_scores[i], i);
+            }
+        
+            std::partial_sort(vec.begin(), vec.begin() + best, vec.end(),
+                              std::greater< std::pair<float, int> >());
+        
+            for (int i = 0; i < best; i++)
+            {
+                if (vec[i].first < confidence_threshold)
+                    continue;
+                cats.push_back(this->_mlmodel.get_hcorresp(vec[i].second));
+                probs.push_back(vec[i].first);
             }
         }
 
