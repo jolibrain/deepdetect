@@ -76,7 +76,7 @@ namespace dd
     void NCNNLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::init_mllib(const APIData &ad)
     {
         ncnn::set_omp_dynamic(0);
-        ncnn::set_omp_num_threads(6);
+        ncnn::set_omp_num_threads(hardware_concurrency());
         _net->load_param(this->_mlmodel._params.c_str());
         _net->load_model(this->_mlmodel._weights.c_str());
     }

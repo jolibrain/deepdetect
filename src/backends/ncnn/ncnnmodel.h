@@ -36,7 +36,8 @@ namespace dd
             :MLModel() {
             if (ad.has("repository"))
 	            this->_repo = ad.get("repository").get<std::string>();
-	        read_from_repository(spdlog::get("api"));	
+	        read_from_repository(spdlog::get("api"));
+            read_corresp_file();
         }
         NCNNModel(const std::string &repo)
             :MLModel(repo) {}
