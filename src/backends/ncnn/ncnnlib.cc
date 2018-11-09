@@ -35,8 +35,8 @@ namespace dd
         std::ifstream cpuinfo("/proc/cpuinfo");
 
         return std::count(std::istream_iterator<std::string>(cpuinfo),
-            std::istream_iterator<std::string>(),
-	        std::string("processor"));
+			  std::istream_iterator<std::string>(),
+			  std::string("processor"));
     }
   
     unsigned int hardware_concurrency()
@@ -48,6 +48,13 @@ namespace dd
             cores /= 2;
         return cores;
     }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+    ncnn::UnlockedPoolAllocator NCNNLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::_blob_pool_allocator
+      = ncnn::UnlockedPoolAllocator();
+    template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+    ncnn::PoolAllocator NCNNLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::_workspace_pool_allocator
+      = ncnn::PoolAllocator();
   
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
     NCNNLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::NCNNLib(const NCNNModel &cmodel)
@@ -58,27 +65,41 @@ namespace dd
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-    NCNNLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::NCNNLib(NCNNLib &&cl) noexcept
-        :MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,NCNNModel>(std::move(cl))
+    NCNNLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::NCNNLib(NCNNLib &&tl) noexcept
+        :MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,NCNNModel>(std::move(tl))
     {
         this->_libname = "ncnn";
-        _net = cl._net;
+	_net = tl._net;
+	tl._net = nullptr;
+	_nclasses = tl._nclasses;
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
     NCNNLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::~NCNNLib()
     {
-    /*    if (_net)
-            delete _net;*/
+      delete _net;
+      _net = nullptr;
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
     void NCNNLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::init_mllib(const APIData &ad)
     {
-        ncnn::set_omp_dynamic(0);
-        ncnn::set_omp_num_threads(hardware_concurrency());
-        _net->load_param(this->_mlmodel._params.c_str());
-        _net->load_model(this->_mlmodel._weights.c_str());
+      /*ncnn::set_omp_dynamic(0);
+	ncnn::set_omp_num_threads(hardware_concurrency());*/
+      _net->load_param(this->_mlmodel._params.c_str());
+      _net->load_model(this->_mlmodel._weights.c_str());
+      if (ad.has("nclasses"))
+	_nclasses = ad.get("nclasses").get<int>();
+      /*_blob_pool_allocator.clear();
+	_workspace_pool_allocator.clear();*/
+      _blob_pool_allocator.set_size_compare_ratio(0.0f);
+      _workspace_pool_allocator.set_size_compare_ratio(0.5f);
+      ncnn::Option opt;
+      opt.lightmode = true;
+      opt.num_threads = hardware_concurrency();
+      opt.blob_allocator = &_blob_pool_allocator;
+      opt.workspace_allocator = &_workspace_pool_allocator;
+      ncnn::set_default_option(opt);
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -124,27 +145,19 @@ namespace dd
         }
 
         std::vector<APIData> vrad;
-
         std::vector<double> probs;
         std::vector<std::string> cats;
         std::vector<APIData> bboxes;
-        int cols;
-        int rows;
-        int _nclasses = -1;
-
         APIData rad;
-                                                                                                                                                                           
-        rows = inputc.height();
-        cols = inputc.width();
-
+	
         // Get confidence_threshold
         double confidence_threshold = 0.0;
         if (ad_output.has("confidence_threshold")) {
-	        try {
-	            confidence_threshold = ad_output.get("confidence_threshold").get<double>();
-	        } catch (std::exception &e) {
-	            confidence_threshold = static_cast<double>(ad_output.get("confidence_threshold").get<int>());
-	        }
+	  try {
+	    confidence_threshold = ad_output.get("confidence_threshold").get<double>();
+	  } catch (std::exception &e) {
+	    confidence_threshold = static_cast<double>(ad_output.get("confidence_threshold").get<int>());
+	  }
         }
 
         // Get best
@@ -153,11 +166,11 @@ namespace dd
             best = ad_output.get("best").get<int>();
         }
 
-        // Get nclasses
-        if (ad.has("nclasses"))
-            _nclasses = ad.get("nclasses").get<int>();
-
-        if (bbox == true) {
+        if (bbox == true)
+	  {
+	    int rows = inputc.height();
+	    int cols = inputc.width();
+	    
             for (int i = 0; i < inputc._out.h; i++) {
                 const float* values = inputc._out.row(i);
                 if (values[1] < confidence_threshold)
@@ -206,20 +219,16 @@ namespace dd
         if (bbox == true)
             rad.add("bboxes", bboxes);
 
-
         vrad.push_back(rad);
-
-        tout.add_results(vrad);
-
-        out.add("nclasses", _nclasses);
+	tout.add_results(vrad);
+        out.add("nclasses", this->_nclasses);
         if (bbox == true)
             out.add("bbox", true);
         out.add("roi", false);
         out.add("multibox_rois", false);
-
         tout.finalize(ad.getobj("parameters").getobj("output"),out,static_cast<MLModel*>(&this->_mlmodel));
-
         out.add("status", 0);
+	return 0;
     }
 
     template class NCNNLib<ImgNCNNInputFileConn,SupervisedOutput,NCNNModel>;

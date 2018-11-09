@@ -49,6 +49,10 @@ namespace dd
 
     public:
         ncnn::Net *_net = nullptr;
+        int _nclasses = 0;
+    private:
+        static ncnn::UnlockedPoolAllocator _blob_pool_allocator;
+        static ncnn::PoolAllocator _workspace_pool_allocator;
     };
 }
 
