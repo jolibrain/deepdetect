@@ -6,10 +6,10 @@ DeepDetect (http://www.deepdetect.com/) is a machine learning API and server wri
 
 DeepDetect relies on external machine learning libraries through a very generic and flexible API. At the moment it has support for:
 
-- the deep learning library [Caffe](https://github.com/BVLC/caffe)
+- the deep learning libraries [Caffe](https://github.com/BVLC/caffe), [Tensorflow](https://tensorflow.org), [Caffe2](https://caffe2.ai/) and [Dlib](http://dlib.net/ml.html)
 - distributed gradient boosting library [XGBoost](https://github.com/dmlc/xgboost)
-- the deep learning and other usages library [Tensorflow](https://tensorflow.org)
 - clustering with [T-SNE](https://github.com/DmitryUlyanov/Multicore-TSNE)
+- similarity search with [Annoy]()
 
 #### Machine Learning functionalities per library (current):
 
@@ -238,7 +238,7 @@ DeepDetect is designed and implemented by Emmanuel Benazera <beniz@droidnik.fr>.
 
 ### Build
 
-Below are instructions for Ubuntu 14.04 LTS. For other Linux and Unix systems, steps may differ, CUDA, Caffe and other libraries may prove difficult to setup. If you are building on 16.04 LTS, look at https://github.com/beniz/deepdetect/issues/126 that tells you how to proceed.
+Below are instructions for Ubuntu 14.04 LTS and 16.04 LTS. For other Linux and Unix systems, steps may differ, CUDA, Caffe and other libraries may prove difficult to setup. If you are building on 16.04 LTS, look at https://github.com/beniz/deepdetect/issues/126 that tells you how to proceed.
 
 Beware of dependencies, typically on Debian/Ubuntu Linux, do:
 ```
