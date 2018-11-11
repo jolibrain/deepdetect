@@ -9,7 +9,7 @@ DeepDetect relies on external machine learning libraries through a very generic 
 - the deep learning libraries [Caffe](https://github.com/BVLC/caffe), [Tensorflow](https://tensorflow.org), [Caffe2](https://caffe2.ai/) and [Dlib](http://dlib.net/ml.html)
 - distributed gradient boosting library [XGBoost](https://github.com/dmlc/xgboost)
 - clustering with [T-SNE](https://github.com/DmitryUlyanov/Multicore-TSNE)
-- similarity search with [Annoy]()
+- similarity search with [Annoy](https://github.com/spotify/annoy/)
 
 #### Machine Learning functionalities per library (current):
 
