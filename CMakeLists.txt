@@ -109,6 +109,13 @@ endif()
   
 # optional packages
 if (USE_CPU_ONLY)
+  set(USE_CAFFE_CPU_ONLY ON)
+  if (USE_TF)
+    set(USE_TF_CPU_ONLY ON)
+  endif()
+  if (USE_DLIB)
+    set(USE_DLIB_CPU_ONLY ON)
+  endif()
 else()
     if (USE_DLIB AND NOT USE_DLIB_CPU_ONLY)
         message(STATUS "Dlib enabled with CUDA requires cuDNN - enabling cuDNN")
