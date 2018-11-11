@@ -234,7 +234,7 @@ Usage:
    - for Resnets applied to CSV or SVM (sparse data), use the `mlp` pattern. In this latter case, at the moment, the `resnet` is built with blocks made of two layers for each specified layer after the first one. Here is an example: `[300,100,10]` means that a first hidden layer of size `300` is applied followed by a `resnet` block made of two `100` fully connected layer, and another block of two `10` fully connected layers. This is subjected to future changes and more control.
 
 ### Authors
-DeepDetect is designed and implemented by Emmanuel Benazera <beniz@droidnik.fr>.
+DeepDetect is designed, implemented and supported by [Jolibrain](http://jolibrain.com/) with the help of other contributors.
 
 ### Build
 
