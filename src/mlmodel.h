@@ -99,6 +99,7 @@ namespace dd
       if (!_se)
 	{
 	  _se = new SearchEngine<AnnoySE>(dim,_repo);
+	  _se->_tse->_map_populate = _index_preload;
 	  _se->create_index();
 	}
     }
@@ -139,6 +140,7 @@ namespace dd
     
 #ifdef USE_SIMSEARCH
     SearchEngine<AnnoySE> *_se = nullptr;
+    bool _index_preload = true;
 #endif
 
   private:
@@ -147,11 +149,14 @@ namespace dd
       std::string repo =  ad.get("repository").get<std::string>();
       bool create = ad.has("create_repository") && ad.get("create_repository").get<bool>();
       bool isDir;
-      bool exists= fileops::file_exists(repo, isDir);
+      bool exists = fileops::file_exists(repo, isDir);
       if (exists && !isDir)
         throw MLLibBadParamException("file exists with same name as repository");
       if (!exists && create)
         fileops::create_dir(repo,0775);
+#ifdef USE_SIMSEARCH
+      _index_preload = ad.has("index_preload") && ad.get("index_preload").get<bool>();
+#endif
     }
   };
 }

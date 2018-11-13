@@ -110,11 +110,26 @@ namespace dd
 		  const std::string &name="",
 		  const std::string &init="msra");
 
+    void add_deconv(caffe::NetParameter *net_param,
+		    const std::string &bottom,
+		    const std::string &top,
+		    const int &num_output,
+		    const int &kernel_size,
+		    const int &pad,
+		    const int &stride,
+		    const int &kernel_w=0,
+		    const int &kernel_h=0,
+		    const int &pad_w=0,
+		    const int &pad_h=0,
+		    const std::string &name="",
+		    const std::string &init="msra");
+
     void add_act(caffe::NetParameter *net_param,
 		 const std::string &bottom,
 		 const std::string &activation,
 		 const double &elu_alpha=1.0,
-		 const double &negative_slope=0.0);
+		 const double &negative_slope=0.0,
+		 const bool &test=false);
 
     void add_pooling(caffe::NetParameter *net_param,
 		     const std::string &bottom,
@@ -176,7 +191,19 @@ namespace dd
 				       const std::string &label,
 				       const std::string &top,
 				       const int &num_output,
-				       const bool &deploy=false);
+				       const bool &deploy=false,
+				       const bool &fc=true);
+
+    void add_interp(caffe::NetParameter *net_param,
+		    const std::string &bottom,
+		    const std::string &top,
+		    const int &interp_width,
+		    const int &interp_height);
+
+    void add_flatten(caffe::NetParameter *net_param,
+		     const std::string &bottom,
+		     const std::string &top,
+		     const bool &test=false);
     
     caffe::NetParameter *_net_params;
     caffe::NetParameter *_dnet_params;

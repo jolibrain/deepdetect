@@ -44,6 +44,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   python-numpy \
   swig \
   python-dev \
+  python-setuptools \
   python-wheel \
   unzip \
   libgoogle-perftools-dev \
@@ -80,7 +81,7 @@ RUN git clone https://github.com/beniz/deepdetect.git && cd deepdetect && mkdir 
 WORKDIR /opt/deepdetect/build
 RUN export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64
 RUN echo "/usr/local/cuda-8.0/targets/x86_64-linux/lib/stubs" > /etc/ld.so.conf.d/cuda-8.0-stubs.conf && ldconfig
-RUN cmake .. -DUSE_TF=ON -DUSE_CUDNN=ON -DCUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_53,code=sm_53 -gencode arch=compute_61,code=sm_61" && \ 
+RUN cmake .. -DUSE_TF=ON -DUSE_CUDNN=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DCUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_53,code=sm_53 -gencode arch=compute_61,code=sm_61" && \ 
     make
 
 # external volume to be mapped, e.g. for models or training data

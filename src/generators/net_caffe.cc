@@ -80,6 +80,9 @@ namespace dd
     bool db = false;
     if (ad_mllib.has("db")) //TODO: if Caffe + image, db is true
       db = ad_mllib.get("db").get<bool>();
+    bool autoencoder = false;
+    if (ad_mllib.has("autoencoder"))
+      autoencoder = ad_mllib.get("autoencoder").get<bool>();
     int width = inputc.width();
     int height = inputc.height();
     int channels = inputc.channels();
@@ -115,13 +118,46 @@ namespace dd
 	dparam->set_backend(caffe::DataParameter_DB_LMDB);
 	if (!flat1dconv)
 	  {
+	    bool has_mirror = false;
 	    if (ad_mllib.has("mirror"))
-	      lparam->mutable_transform_param()->set_mirror(ad_mllib.get("mirror").get<bool>());
+	      {
+		has_mirror = ad_mllib.get("mirror").get<bool>();
+		lparam->mutable_transform_param()->set_mirror(has_mirror);
+	      }
+	    bool has_rotate = false;
 	    if (ad_mllib.has("rotate"))
-	      lparam->mutable_transform_param()->set_rotate(ad_mllib.get("rotate").get<bool>());
+	      {
+		has_rotate = ad_mllib.get("rotate").get<bool>();
+		lparam->mutable_transform_param()->set_rotate(has_rotate);
+	      }
 	    //TODO
 	    /*std::string mf = "mean.binaryproto";
 	      lparam->mutable_transform_param()->set_mean_file(mf.c_str());*/
+	    bool has_noise = false;
+	    bool has_distort = false;
+	    if (ad_mllib.has("noise"))
+	      {
+		has_noise = true;
+		APIData ad_noise = ad_mllib.getobj("noise");
+		caffe::LayerParameter *lparam = this->_net_params->mutable_layer(0); // data input layer
+		caffe::TransformationParameter *trparam = lparam->mutable_transform_param();
+		caffe::NoiseParameter *nparam = trparam->mutable_noise_param();
+		nparam->set_all_effects(true); // all effects true is default
+	      }
+	    if (ad_mllib.has("distort"))
+	      {
+		has_distort = true;
+		APIData ad_noise = ad_mllib.getobj("noise");
+		caffe::LayerParameter *lparam = this->_net_params->mutable_layer(0); // data input layer
+		caffe::TransformationParameter *trparam = lparam->mutable_transform_param();
+		caffe::NoiseParameter *nparam = trparam->mutable_noise_param();
+		nparam->set_all_effects(true); // all effects true is default
+	      }
+	    if (autoencoder && (has_noise || has_distort || has_rotate))
+	      {
+		this->_net_params->mutable_layer(0)->add_top("orig_data"); // unchanged data top
+		this->_net_params->mutable_layer(0)->mutable_transform_param()->set_untransformed_top(true);
+	      }
 	  }
 	
 	// test
@@ -303,11 +339,52 @@ namespace dd
   }
 
 
+
+  void NetLayersCaffe::add_deconv(caffe::NetParameter *net_param,
+				  const std::string &bottom,
+				  const std::string &top,
+				  const int &num_output,
+				  const int &kernel_size,
+				  const int &pad,
+				  const int &stride,
+				  const int &kernel_w,
+				  const int &kernel_h,
+				  const int &pad_w,
+				  const int &pad_h,
+				  const std::string &name,
+				  const std::string &init)
+  {
+    caffe::LayerParameter *lparam = CaffeCommon::add_layer(net_param,bottom,top,name.empty()?"deconv_"+bottom:name,"Deconvolution");
+    caffe::ConvolutionParameter *cparam = lparam->mutable_convolution_param();
+    cparam->set_num_output(num_output);
+    if (kernel_w == 0 && kernel_h == 0)
+      cparam->add_kernel_size(kernel_size);
+    else
+      {
+	cparam->set_kernel_w(kernel_w);
+	cparam->set_kernel_h(kernel_h);
+      }	
+    if (pad_w == 0 && pad_h == 0)
+      cparam->add_pad(pad);
+    else
+      {
+	cparam->set_pad_w(pad_w);
+	cparam->set_pad_h(pad_h);
+      }
+    cparam->add_stride(stride);
+    cparam->mutable_weight_filler()->set_type(init);
+    caffe::FillerParameter *fparam = cparam->mutable_bias_filler();
+    fparam->set_type("constant");
+    //fparam->set_value(0.2); //TODO: option
+  }
+
+
   void NetLayersCaffe::add_act(caffe::NetParameter *net_param,
 			       const std::string &bottom,
 			       const std::string &activation,
 			       const double &elu_alpha,
-			       const double &negative_slope)
+			       const double &negative_slope,
+			       const bool &test)
   {
     caffe::LayerParameter *lparam = CaffeCommon::add_layer(net_param,bottom,bottom,
 							   "act_" + activation + "_" + bottom,activation);
@@ -315,6 +392,11 @@ namespace dd
       lparam->mutable_elu_param()->set_alpha(elu_alpha);
     if (activation == "ReLU" && negative_slope != 0.0)
       lparam->mutable_relu_param()->set_negative_slope(negative_slope);
+    if (test)
+      {
+	caffe::NetStateRule *nsr = lparam->add_include();
+	nsr->set_phase(caffe::TEST);
+      }
   }
 
 
@@ -448,12 +530,14 @@ namespace dd
 						     const std::string &label,
 						     const std::string &top,
 						     const int &num_output,
-						     const bool &deploy)
+						     const bool &deploy,
+						     const bool &fc)
   {
     std::string ln_tmp = "ip_" + top;
-    add_fc(net_param,bottom,ln_tmp,num_output);
-
-
+    if (fc)
+      add_fc(net_param,bottom,ln_tmp,num_output);
+    else add_conv(net_param,bottom,ln_tmp,num_output,1,0,1);
+    
     if (!deploy)
       {
 	caffe::LayerParameter *lparam = CaffeCommon::add_layer(net_param,ln_tmp,top,
@@ -461,6 +545,34 @@ namespace dd
 	lparam->add_bottom(label);
 	caffe::NetStateRule *nsr = lparam->add_include();
 	nsr->set_phase(caffe::TRAIN);
+	caffe::LossParameter *nlp = lparam->mutable_loss_param();
+	nlp->set_normalization((caffe::LossParameter_NormalizationMode)0); // FULL
+	add_flatten(net_param,ln_tmp,"conv_flatten",true);
+	add_act(net_param,"conv_flatten","Sigmoid",1.0,0.0,true); // test
+      }
+  }
+
+  void NetLayersCaffe::add_interp(caffe::NetParameter *net_param,
+				  const std::string &bottom,
+				  const std::string &top,
+				  const int &interp_width,
+				  const int &interp_height)
+  {
+    caffe::LayerParameter *lparam = CaffeCommon::add_layer(net_param,bottom,top,"interp_"+bottom,"Interp");
+    lparam->mutable_interp_param()->set_width(interp_width);
+    lparam->mutable_interp_param()->set_height(interp_height);
+  }
+
+  void NetLayersCaffe::add_flatten(caffe::NetParameter *net_param,
+				   const std::string &bottom,
+				   const std::string &top,
+				   const bool &test)
+  {
+    caffe::LayerParameter *lparam = CaffeCommon::add_layer(net_param,bottom,top,"flatten_"+bottom,"Flatten");
+    if (test)
+      {
+	caffe::NetStateRule *nsr = lparam->add_include();
+	nsr->set_phase(caffe::TEST);
       }
   }
   
