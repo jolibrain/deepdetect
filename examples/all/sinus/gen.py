@@ -20,16 +20,16 @@ test_target = data[:3, 1:]
 if os.path.exists("./train"):
     for f in os.listdir("train"):
         os.remove("train/"+f)
-        os.rmdir("train")
+    os.rmdir("train")
 if os.path.exists("./test"):
     for f in os.listdir("test"):
-        os.remove("test"+f)
-        os.rmdir("test")
+        os.remove("test/"+f)
+    os.rmdir("test")
 
 if os.path.exists("./predict"):
     for f in os.listdir("predict"):
-        os.remove("predict"+f)
-        os.rmdir("predict")
+        os.remove("predict/"+f)
+    os.rmdir("predict")
 
 
 os.mkdir("train")
