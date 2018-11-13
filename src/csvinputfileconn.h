@@ -292,14 +292,14 @@ namespace dd
 	}
     }
 
-    void shuffle_data(std::vector<CSVline> csvdata,
+    void shuffle_data(std::vector<CSVline> &csvdata,
                       const bool forbid_shuffle = false)
     {
       if (_shuffle && !forbid_shuffle)
         std::shuffle(csvdata.begin(),csvdata.end(),_g);
     }
 
-    void split_data(std::vector<CSVline> csvdata, std::vector<CSVline> csvdata_test)
+    void split_data(std::vector<CSVline> &csvdata, std::vector<CSVline> &csvdata_test)
     {
       if (_test_split > 0.0)
 	{

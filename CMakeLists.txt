@@ -21,6 +21,9 @@ include(ExternalProject)
 
 set (deepdetect_VERSION_MAJOR 0)
 set (deepdetect_VERSION_MINOR 1)
+#set (HDF5_LIB /usr/lib/x86_64-linux-gnu/hdf5/serial)
+#set (CAFFE_INC_DIR /home/infantes/caffe/include /home/infantes/caffe/build/src)
+#set (CAFFE_LIB_DIR /home/infantes/caffe/build/lib /home/infantes/caffe/build/src ${HDF5_LIB})
 
 # options
 OPTION(BUILD_TESTS "Should the tests be built")

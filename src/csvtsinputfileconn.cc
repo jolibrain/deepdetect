@@ -75,7 +75,7 @@ namespace dd
   {
     // first recursive list csv files
     std::unordered_set<std::string> allfiles;
-    int ret = fileops::list_directory(dir, true, false, allfiles, true);
+    int ret = fileops::list_directory(dir, true, false, true, allfiles);
     if (ret != 0)
       return ret;
     // then simply read them
