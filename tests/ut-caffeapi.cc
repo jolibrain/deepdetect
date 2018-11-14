@@ -1042,7 +1042,7 @@ TEST(caffeapi,service_train_images_seg)
   std::string camvid_repo_loc = "camvid";
   mkdir(camvid_repo_loc.c_str(),0777);
   std::string sname = "my_service";
-  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  camvid_repo_loc + "\",\"templates\":\"" + model_templates_repo  + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"segmentation\":true,\"width\":480,\"height\":480},\"mllib\":{\"template\":\"unet\",\"nclasses\":11}}}";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  camvid_repo_loc + "\",\"templates\":\"" + model_templates_repo  + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"segmentation\":true,\"width\":480,\"height\":480},\"mllib\":{\"template\":\"unet\",\"nclasses\":12}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
   ASSERT_EQ(created_str,joutstr);
 
