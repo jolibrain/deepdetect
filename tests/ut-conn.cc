@@ -288,7 +288,7 @@ TEST(inputconn,img)
 {
   std::string mnist_repo = "../examples/caffe/mnist/";
   APIData ad;
-  std::vector<std::string> uris = {mnist_repo + "/sample_digit.png","https://deepdetect.com/dd/examples/caffe/mnist/sample_digit.png"};
+  std::vector<std::string> uris = {mnist_repo + "/sample_digit.png","https://www.deepdetect.com/dd/examples/caffe/mnist/sample_digit.png"};
   ad.add("data",uris);
   ImgInputFileConn iifc;
   try
