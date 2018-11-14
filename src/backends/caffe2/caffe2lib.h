@@ -141,6 +141,13 @@ namespace dd {
   void dump_model_state();
 
   /**
+   * \brief finds the first the group of nets of the specified type
+   * @param type type to find
+   * @return the net group
+   */
+  Caffe2NetTools::NetGroup &find_net_group(const std::string &type);
+
+  /**
    * \brief runs a net once (both forward and backward if the gradients are set)
    * @param net net to run
    * @return the elapsed time
@@ -148,15 +155,31 @@ namespace dd {
   float run_net(const std::string &net);
 
   /**
-   * \bried extracts the results of the last run ( [layer][batch_item][data] )
+   * \bried extracts the results of the last run
+   * @param results vector of results ( [layer][batch_item][data] )
+   * @param sizes vector to read / write the size of each batch item
+   * @param batch_size number of item in this batch
+   * @param outputs blobs created by the last run
    */
-  void extract_results(std::vector<std::vector<std::vector<float>>> &results, int batch_size);
+  void extract_results(std::vector<std::vector<std::vector<float>>> &results,
+		       std::vector<size_t> &sizes,
+		       int batch_size,
+		       const std::vector<std::string> &outputs);
+
+  /**
+   * \brief finds a net of the given type, execute it and fetch the output
+   * @param results vector of results ( [layer][batch_item][data] )
+   * @param sizes vector to read / write the size of each batch item data
+   * @param batch_size number of item in this batch
+   * @param type type of net to execute ("main" by default)
+   */
+  void typed_prediction(std::vector<std::vector<std::vector<float>>> &results,
+			std::vector<size_t> &sizes,
+			int batch_size,
+			const std::string &type="main");
 
   Caffe2NetTools::ModelContext _context;
-  caffe2::NetDef _init_net;
-  caffe2::NetDef _train_net;
-  caffe2::NetDef _net;
-  std::vector<std::pair<caffe2::NetDef, caffe2::NetDef>> _extensions;
+  std::vector<Caffe2NetTools::NetGroup> _nets;
   Caffe2LibState _state;
   TInputConnectorStrategy _last_inputc; // Last transformed version of the default _inputc
   };

@@ -24,12 +24,10 @@
 
 namespace {
   enum Index {
-    score,
     bbox,
     cls,
     mask,
     im_info,
-    batch_splits,
     TOTAL
   };
 }
@@ -64,8 +62,8 @@ namespace caffe2 {
       CAFFE_ENFORCE(static_cast<int>(infos_ptr[1] / infos_ptr[2]) == img_w);
     }
     int img_size = img_h * img_w;
-    Output(Index::mask)->Resize(std::vector<TIndex>({nb_items, img_h, img_w}));
-    float *segm_mask = Output(Index::mask)->template mutable_data<float>();
+    Output(0)->Resize(std::vector<TIndex>({nb_items, img_h, img_w}));
+    float *segm_mask = Output(0)->template mutable_data<float>();
     std::memset(segm_mask, 0, nb_items * img_size);
 
     // To work around an issue with cv2.resize
@@ -130,16 +128,11 @@ namespace caffe2 {
       bbox += 4;
     }
 
-    // Forward the blobs
-    const std::set<int> indices({
-	Index::score, Index::bbox, Index::cls, Index::im_info, Index::batch_splits
-    });
-    for (int i : indices) {
-      const auto &input = Input(i);
-      auto &output = *Output(i);
-      output.ResizeLike(input);
-      output.ShareData(input);
-    }
+    // Forward the im_info blob
+    const auto &input = Input(Index::im_info);
+    auto &output = *Output(1);
+    output.ResizeLike(input);
+    output.ShareData(input);
 
     return true;
   }
@@ -148,31 +141,16 @@ namespace caffe2 {
 
   OPERATOR_SCHEMA(SegmentMask)
   .NumInputs(Index::TOTAL)
-  .NumOutputs(Index::TOTAL)
-  .AllowInplace({
-      {Index::score, Index::score},
-      {Index::bbox, Index::bbox},
-      {Index::cls, Index::cls},
-      {Index::im_info, Index::im_info},
-      {Index::batch_splits, Index::batch_splits}
-    })
+  .NumOutputs(2)
+  .AllowInplace({{Index::im_info, 1}})
   .Arg("thresh_bin", "(float, 0.5 by default)"
        " Binarization threshold for converting soft masks to hard masks")
-  .Input(Index::score, "score_nms", "Filtered scores, size (n)")
   .Input(Index::bbox, "bbox_nms", "Filtered boxes, size (n, 4)")
   .Input(Index::cls, "class_nms", "Class id for each filtered score/box, size (n)")
   .Input(Index::mask, "mask_pred", "Compressed masks, size (n, nbclasses, length, length)")
   .Input(Index::im_info, "im_info",
 	 "Image info, size (img_count, 3), format (height, width, scale)")
-  .Input(Index::batch_splits, "batch_splits",
-	 "Tensor of shape (batch_size) with each element denoting "
-	 "the number of boxes belonging to the corresponding image in batch. "
-	 "Sum should add up to total count of boxes.")
-  .Output(Index::score, "score_nms", "Input propagation")
-  .Output(Index::bbox, "bbox_nms", "Input propagation")
-  .Output(Index::cls, "class_nms", "Input propagation")
-  .Output(Index::mask, "mask", "Scaled masks, size (n, h, w")
-  .Output(Index::im_info, "im_info", "Input propagation")
-  .Output(Index::batch_splits, "batch_splits", "Input propagation")
+  .Output(0, "mask", "Scaled masks, size (n, h, w")
+  .Output(1, "im_info", "Input propagation")
   ;
 }

@@ -81,7 +81,10 @@ using namespace dd;
       "type": "supervised",				\
       "model": {					\
 	"repository": repo,				\
-	"extensions": [mask]				\
+	  "extensions": [{				\
+	    "repository": mask,				\
+	    "type": "mask"				\
+	  }]	        				\
       },						\
       "parameters": {					\
 	"input": {					\
@@ -311,7 +314,7 @@ static const std::string detectron_mask =
 static const std::string predict_cat = PREDICT_SUPERVISED(SERVICE, 3, IMG_CAT);
 static const std::string predict_cat_and_amb = PREDICT_SUPERVISED(SERVICE, 3, IMG_CAT, IMG_AMB);
 static const std::string test_accuracy = PREDICT_TEST(SERVICE, 6, DB_FISH, "acc");
-static const std::string extract_conv1 = PREDICT_UNSUPERVISED(SERVICE, "gpu_0/conv1", IMG_CAT);
+static const std::string extract_conv1 = PREDICT_UNSUPERVISED(SERVICE, "conv1", IMG_CAT);
 static const std::string predict_bbox_boats_and_dogs =
   PREDICT_BBOX(SERVICE, 0.8, DTTRON_BOATS, DTTRON_DOGS);
 static const std::string predict_mask_boats_and_dogs =

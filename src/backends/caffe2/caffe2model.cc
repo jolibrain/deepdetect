@@ -52,31 +52,40 @@ namespace dd {
 
     // List the extensions' nets
     if (ad.has("extensions")) {
-      std::vector<std::string> exts = ad.get("extensions").get<std::vector<std::string>>();
-      for (const std::string &ext : exts) {
+      std::vector<APIData> extensions = ad.getv("extensions");
+      for (const APIData &extension : extensions) {
+
+	const std::string &ext_type(extension.get("type").get<std::string>());
+	std::string ext_repo;
+	if (extension.has("repository")) {
+	  ext_repo = extension.get("repository").get<std::string>();
+	} else {
+	  ext_repo = this->_repo + "/" + ext_type;
+	}
 
 	// Check if the extension is a repository
 	bool is_dir;
-	if (!fileops::file_exists(ext, is_dir) || !is_dir) {
-	  std::string msg("'" + ext + "' is not a directory");
+	if (!fileops::file_exists(ext_repo, is_dir) || !is_dir) {
+	  std::string msg("'" + ext_repo + "' is not a directory");
 	  logger->error(msg);
 	  throw MLLibBadParamException(msg);
 	}
 
 	_extensions.emplace_back();
-	auto &nets = _extensions.back();
-	nets.first = ext + "/predict_net.pb";
-	nets.second = ext + "/init_net.pb";
+	Extension &ext(_extensions.back());
+	ext._init = ext_repo + "/init_net.pb";
+	ext._predict = ext_repo + "/predict_net.pb";
+	ext._type = ext_type;
 
 	// Check if the nets exist
-	if (!fileops::file_exists(nets.first)) {
-	  std::string msg("'" + nets.first + "' does not exists");
+	if (!fileops::file_exists(ext._predict)) {
+	  std::string msg("'" + ext._predict + "' does not exists");
 	  logger->error(msg);
 	  throw MLLibBadParamException(msg);
 	}
-	if (!fileops::file_exists(nets.second)) {
-	  logger->warn("No initialization net found in '" + ext + "'");
-	  nets.second = "";
+	if (!fileops::file_exists(ext._init)) {
+	  logger->warn("No initialization net found in '" + ext_repo + "'");
+	  ext._init = "";
 	}
       }
     }

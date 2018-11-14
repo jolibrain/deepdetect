@@ -106,11 +106,9 @@ def main():
     net.op.extend(mask_net.op)
 
     # Post-process the masks
-    boxes = Constants.nms_outputs[:-1]
-    infos = [Constants.im_info, Constants.nms_outputs[-1]]
     add_custom_op(net, 'SegmentMask',
-                  boxes + [Constants.mask_pred] + infos,
-                  boxes + [Constants.main_output] + infos,
+                  Constants.nms_outputs[1:-1] + [Constants.mask_pred, Constants.im_info],
+                  [Constants.main_output, Constants.im_info],
                   thresh_bin = cfg.MRCNN.THRESH_BINARIZE)
 
     # Export

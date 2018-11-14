@@ -293,7 +293,6 @@ namespace dd {
 	std::unique_ptr<caffe2::Workspace>(new caffe2::Workspace);
       std::vector<caffe2::DeviceOption> _devices;
       std::string _input_blob;
-      std::vector<std::string> _output_blobs;
       int _nclasses = 0;
 
       //XXX Should be optionals / configurables in the future
@@ -446,7 +445,8 @@ namespace dd {
        * \bried appends a net's operators and inputs to another (its 'main' input is ignored)
        *        then adds gradients for the new operators
        */
-      void append_trainable_net(caffe2::NetDef &dst, const caffe2::NetDef &src) const;
+      void append_trainable_net(caffe2::NetDef &dst, const caffe2::NetDef &src,
+				const std::vector<std::string> &output_blobs) const;
 
     private:
 
@@ -620,7 +620,7 @@ namespace dd {
     /**
      * \brief reads a .pb or .pbtxt file
      */
-    void import_net(caffe2::NetDef &net, const std::string &file, bool unscoped = false);
+    void import_net(caffe2::NetDef &net, const std::string &file, bool unscoped = true);
 
     /**
      * \brief writes a .pb or .pbtxt file
@@ -632,6 +632,43 @@ namespace dd {
      */
     void append_model(caffe2::NetDef &dst_net, caffe2::NetDef &dst_init,
 		      const caffe2::NetDef &src_net, const caffe2::NetDef &src_init);
+
+    /**
+     * \brief A pack of three nets (initialization, training, prediction)
+     */
+    class NetGroup {
+    public:
+
+      const std::string _type;
+      caffe2::NetDef _init;
+      caffe2::NetDef _train;
+      caffe2::NetDef _predict;
+      std::vector<std::string> _output_blobs;
+
+      NetGroup(): _type("") {};
+      NetGroup(const std::string &type,
+	       const std::string &init,
+	       const std::string &predict,
+	       const std::string &train="");
+
+      /**
+       * \brief swap nets with another group
+       */
+      void swap(NetGroup &nets);
+
+      /**
+       * \brief rename each nets with the same prefix
+       */
+      void rename(const std::string &name);
+
+      /**
+       * \brief import protobuf files
+       */
+      void import(const std::string &init,
+		  const std::string &predict,
+		  const std::string &train="");
+
+    }; //! NetGroup
 
   }
 }

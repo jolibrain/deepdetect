@@ -59,7 +59,7 @@ curl -X PUT "http://localhost:8080/services/mask" -d '{
   "mllib": "caffe2",
   "model": {
     "repository": "'$WORKSPACE'/deepdetect_model",
-    "extensions": ["'$WORKSPACE'/deepdetect_model/mask"]
+    "extensions": [{"type": "mask"}]
   },
   "parameters": {
     "input": {
@@ -130,7 +130,7 @@ for item in items:
 
     # Plot everything
     ax.imshow(buff)
-    ax.add_patch(patches.Rectangle((xmin, ymin), width, height, linewidth=1, edgecolor='g', facecolor='none'))
+    ax.add_patch(patches.Rectangle((xmin, ymin), width, height, linewidth=1, edgecolor="g", facecolor="none"))
     ax.text(xmin, ymin, "{} {:.2f}".format(item["cat"], item["prob"]))
 
 plt.show() # Show'

@@ -72,13 +72,20 @@ namespace dd {
     std::string _iter_state;
     std::string _lr_state;
 
-    std::vector<std::pair<std::string, std::string>> _extensions; // nets to append, if any
+    class Extension {
+    public:
+      std::string _init;
+      std::string _predict;
+      std::string _type;
+    }; //! Extension
+
+    std::vector<Extension> _extensions; // nets to append, if any
     std::string _model_template; // model template name, if any
     std::string _weights; // external weights, if any
 
     // Files path (empty if non-existant)
-    std::string _predict;
     std::string _init;
+    std::string _predict;
     std::string _meanfile;
   };
 }

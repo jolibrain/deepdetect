@@ -195,7 +195,11 @@ If your model repository looks like this:
 
 Then the following flag must be set:
 - ```'repository': 'my_model'```
-- ```'extensions': ['my_model/mask']```
+- ```'extensions': [{'repository' : 'my_model/mask', 'type' : 'mask'}]```
+
+Note that the repository is optional. In not set, a subdirectory whose name is the type will be used. It means that in the current case, the flags can be simplified to:
+- ```'repository': 'my_model'```
+- ```'extensions': [{'type' : 'mask'}]```
 
 ```
 curl -X PUT "http://localhost:8080/services/my_service" -d '{
@@ -204,7 +208,7 @@ curl -X PUT "http://localhost:8080/services/my_service" -d '{
   "mllib": "caffe2",
   "model": {
     "repository": "my_model",
-    "extensions": ["my_model/mask"]
+    "extensions': [{"type" : "mask"}]
   },
   "parameters": {
     "input": { "connector": "image" },

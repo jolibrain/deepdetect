@@ -325,7 +325,8 @@ namespace dd {
       dst.add_external_input(_input_blob);
     }
 
-    void ModelContext::append_trainable_net(caffe2::NetDef &dst, const caffe2::NetDef &src) const {
+    void ModelContext::append_trainable_net(caffe2::NetDef &dst, const caffe2::NetDef &src,
+					    const std::vector<std::string> &output_blobs) const {
 
       // Prevent the gradients from reaching previous operators
       ScopedNet net = scope_net(dst);
@@ -344,8 +345,8 @@ namespace dd {
       add_ops_and_inputs(net, ref, { _input_blob });
 
       //XXX Manage other kinds of outputs (no-label, multi-label, bbox, etc.)
-      CAFFE_ENFORCE(_output_blobs.size() == 1);
-      LabelCrossEntropy(net, _output_blobs[0], _blob_label, blob_xent);
+      CAFFE_ENFORCE(output_blobs.size() == 1);
+      LabelCrossEntropy(net, output_blobs[0], _blob_label, blob_xent);
 
       std::string loss_grad = blob_loss_scale + gradient_suffix;
 
