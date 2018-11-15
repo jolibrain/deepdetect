@@ -27,10 +27,13 @@
 #include "apidata.h"
 #include "inputconnectorstrategy.h"
 #include "imginputfileconn.h"
+#include "csvinputfileconn.h"
 #include "txtinputfileconn.h"
 #include "svminputfileconn.h"
 #include "outputconnectorstrategy.h"
+#ifdef USE_CAFFE
 #include "backends/caffe/caffelib.h"
+#endif
 #ifdef USE_TF
 #include "backends/tf/tflib.h"
 #endif
@@ -55,13 +58,16 @@
 namespace dd
 {
   /* service types as variant type. */
-  typedef mapbox::util::variant<MLService<CaffeLib,ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>,
+  typedef mapbox::util::variant<
+#ifdef USE_CAFFE
+    MLService<CaffeLib,ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>,
     MLService<CaffeLib,CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>,
     MLService<CaffeLib,TxtCaffeInputFileConn,SupervisedOutput,CaffeModel>,
     MLService<CaffeLib,SVMCaffeInputFileConn,SupervisedOutput,CaffeModel>,
     MLService<CaffeLib,ImgCaffeInputFileConn,UnsupervisedOutput,CaffeModel>,
     MLService<CaffeLib,CSVCaffeInputFileConn,UnsupervisedOutput,CaffeModel>,
     MLService<CaffeLib,TxtCaffeInputFileConn,UnsupervisedOutput,CaffeModel>,
+#endif
 #ifdef USE_CAFFE2
     MLService<Caffe2Lib,ImgCaffe2InputFileConn,SupervisedOutput,Caffe2Model>,
     MLService<Caffe2Lib,ImgCaffe2InputFileConn,UnsupervisedOutput,Caffe2Model>,
@@ -71,11 +77,13 @@ namespace dd
     MLService<TFLib,ImgTFInputFileConn,UnsupervisedOutput,TFModel>,
 #endif
 #ifdef USE_DLIB
-	MLService<DlibLib,ImgDlibInputFileConn,SupervisedOutput,DlibModel>,
+    MLService<DlibLib,ImgDlibInputFileConn,SupervisedOutput,DlibModel>,
 #endif
-    MLService<CaffeLib,SVMCaffeInputFileConn,UnsupervisedOutput,CaffeModel>
+#ifdef USE_CAFFE
+    MLService<CaffeLib,SVMCaffeInputFileConn,UnsupervisedOutput,CaffeModel>,
+#endif
 #ifdef USE_XGBOOST
-    ,MLService<XGBLib,CSVXGBInputFileConn,SupervisedOutput,XGBModel>,
+    MLService<XGBLib,CSVXGBInputFileConn,SupervisedOutput,XGBModel>,
     MLService<XGBLib,SVMXGBInputFileConn,SupervisedOutput,XGBModel>,
     MLService<XGBLib,TxtXGBInputFileConn,SupervisedOutput,XGBModel>
 #endif

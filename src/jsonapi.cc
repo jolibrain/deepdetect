@@ -26,6 +26,7 @@
 #include "ext/rapidjson/stringbuffer.h"
 #include "ext/rapidjson/reader.h"
 #include "ext/rapidjson/writer.h"
+#include <gflags/gflags.h>
 
 DEFINE_string(service_start_list,"","list of JSON calls to be executed at startup");
 
@@ -407,7 +408,12 @@ namespace dd
     // create service.
     try
       {
-	if (mllib == "caffe")
+	if (mllib.empty())
+	  {
+	    return dd_unknown_library_1000();
+	  }
+#ifdef USE_CAFFE
+	else if (mllib == "caffe")
 	  {
 	    CaffeModel cmodel(ad_model);
 	    if (type == "supervised")
@@ -450,6 +456,7 @@ namespace dd
 		return dd_service_bad_request_1006();
 	      }
 	  }
+#endif
 #ifdef USE_CAFFE2
 
 	else if (mllib == "caffe2") {

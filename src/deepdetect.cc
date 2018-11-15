@@ -42,7 +42,9 @@ namespace dd
   {
   }
 
+#ifdef USE_CAFFE
   template class DeepDetect<CommandLineAPI>;
+#endif
   template class DeepDetect<CommandLineJsonAPI>;
   template class DeepDetect<HttpJsonAPI>;
 }
