@@ -18,7 +18,11 @@ if (GTEST_FOUND)
 
   if (USE_TF)
     add_executable(opencv_tensor opencv_tensor.cc)
-    target_link_libraries(opencv_tensor ${OpenCV_LIBS} boost_thread boost_system crypto ssl hdf5_cpp ${TF_LIB_DEPS})
+    if (USE_HDF5)
+      target_link_libraries(opencv_tensor ${OpenCV_LIBS} boost_thread boost_system crypto ssl hdf5_cpp ${TF_LIB_DEPS})
+    else()
+      target_link_libraries(opencv_tensor ${OpenCV_LIBS} boost_thread boost_system crypto ssl ${TF_LIB_DEPS})
+    endif()
   endif()
 
   add_executable(test_server test-server.cc)

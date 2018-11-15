@@ -130,7 +130,7 @@ namespace dd
     if (fileops::file_exists(index_filename))
       {
 	_saved_tree = true;
-	_aindex->load(index_filename.c_str());
+	_aindex->load(index_filename.c_str(),_map_populate);
 	_built_index = true;
       }
     std::string db_filename = _model_repo + "/" + _db_name;
@@ -180,7 +180,7 @@ namespace dd
   void AnnoySE::save_tree()
   {
     std::string index_path = _model_repo + "/" + _index_name;
-    _aindex->save(index_path.c_str());
+    _aindex->save(index_path.c_str(),_map_populate);
     _saved_tree = true;
   }
   

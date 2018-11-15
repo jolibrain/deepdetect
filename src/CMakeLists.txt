@@ -3,6 +3,10 @@ if (USE_DD_SYSLOG)
   add_definitions(-DUSE_DD_SYSLOG)
 endif()
 
+if (USE_HDF5)
+  add_definitions(-DUSE_HDF5)
+endif()
+
 set(ddetect_SOURCES deepdetect.h deepdetect.cc backends/caffe/caffelib.h backends/caffe/caffelib.cc mllibstrategy.h mlmodel.h mlservice.h backends/caffe/caffemodel.h backends/caffe/caffemodel.cc inputconnectorstrategy.h imginputfileconn.h csvinputfileconn.h csvinputfileconn.cc svminputfileconn.h svminputfileconn.cc txtinputfileconn.h txtinputfileconn.cc backends/caffe/caffeinputconns.h backends/caffe/caffeinputconns.cc commandlineapi.h commandlineapi.cc commandlinejsonapi.h commandlinejsonapi.cc apidata.h apidata.cc jsonapi.h jsonapi.cc httpjsonapi.cc httpjsonapi.h ext/rmustache/mustache.h ext/rmustache/mustache.cc generators/net_generator.h generators/net_caffe.h generators/net_caffe.cc generators/net_caffe_mlp.h generators/net_caffe_mlp.cc generators/net_caffe_convnet.h generators/net_caffe_convnet.cc generators/net_caffe_resnet.h generators/net_caffe_resnet.cc)
 if (USE_TF)
   list(APPEND ddetect_SOURCES backends/tf/tflib.cc backends/tf/tflib.h backends/tf/tfmodel.cc backends/tf/tfmodel.h backends/tf/tfinputconns.h)

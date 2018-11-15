@@ -40,7 +40,7 @@ namespace dd
   public:
     CaffeInputInterface() {}
     CaffeInputInterface(const CaffeInputInterface &cii)
-      :_db(cii._db),_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed),_sequence_txt(cii._sequence_txt),_max_embed_id(cii._max_embed_id),_segmentation(cii._segmentation),_bbox(cii._bbox),_multi_label(cii._multi_label),_ctc(cii._ctc),_alphabet_size(cii._alphabet_size),_root_folder(cii._root_folder),_dbfullname(cii._dbfullname),_test_dbfullname(cii._test_dbfullname) {}
+      :_db(cii._db),_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed),_sequence_txt(cii._sequence_txt),_max_embed_id(cii._max_embed_id),_segmentation(cii._segmentation),_bbox(cii._bbox),_multi_label(cii._multi_label),_ctc(cii._ctc),_autoencoder(cii._autoencoder),_alphabet_size(cii._alphabet_size),_root_folder(cii._root_folder),_dbfullname(cii._dbfullname),_test_dbfullname(cii._test_dbfullname) {}
     ~CaffeInputInterface() {}
 
     /**
@@ -86,6 +86,7 @@ namespace dd
     bool _bbox = false; /**< whether it is an object detection service. */
     bool _multi_label = false; /**< multi label setup */
     bool _ctc = false; /**< whether it is a CTC / OCR service. */
+    bool _autoencoder = false; /**< whether an autoencoder. */
     int _alphabet_size = 0; /**< for sequence to sequence models. */
     std::string _root_folder; /**< root folder for image list layer. */
     std::unordered_map<std::string,std::pair<int,int>> _imgs_size; /**< image sizes, used in detection. */
@@ -276,6 +277,8 @@ namespace dd
 		    db_height = ad_input.get("db_height").get<int>();
 		  if (ad_input.has("db_width"))
 		    db_width = ad_input.get("db_width").get<int>();
+		  if (ad.has("autoencoder"))
+		    _autoencoder = ad.get("autoencoder").get<bool>();
 		}
 	      ad_mllib = ad_param.getobj("mllib");
 	    }
@@ -352,8 +355,9 @@ namespace dd
 		}
 
 	      // read images list and create dbs
+#ifdef USE_HDF5
 	      images_to_hdf5(_uris,_dbfullname,_test_dbfullname);
-
+#endif // USE_HDF5
 	      // enrich data object with db files location
 	      APIData dbad;
 	      dbad.add("train_db",_model_repo + "/training.txt");
@@ -385,11 +389,15 @@ namespace dd
 		return;
 	      }
 	      // create db
+	      // Check if the indicated uri is a folder
+	      bool dir_images = true;
+	      fileops::file_exists(_uris.at(0), dir_images);
 	      if (!this->_unchanged_data)
-		images_to_db(_uris,_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname);
-	      else images_to_db(_uris,_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname,
-				"lmdb",false,"");
-	      
+	        images_to_db(_uris,_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname, dir_images);
+	      else 
+	        images_to_db(_uris,_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname, dir_images,
+					"lmdb",false,"");
+
 	      // compute mean of images, not forcely used, depends on net, see has_mean_file
 	      if (!this->_unchanged_data)
 		compute_images_mean(_model_repo + "/" + _dbname,
@@ -448,9 +456,10 @@ namespace dd
                                            const bool &encoded=true, // save the encoded image in datum
                                            const std::string &encode_type=""); // 'png', 'jpg', ...
 
-    int images_to_db(const std::vector<std::string> &rfolders,
+    int images_to_db(const std::vector<std::string> &rpaths,
 		     const std::string &traindbname,
-                     const std::string &testdbname,
+		     const std::string &testdbname,
+		     const bool &folders=true,						 
 		     const std::string &backend="lmdb", // lmdb, leveldb
 		     const bool &encoded=true, // save the encoded image in datum
 		     const std::string &encode_type=""); // 'png', 'jpg', ...
@@ -466,7 +475,7 @@ namespace dd
 				      const std::string &backend,
 				      const bool &encoded,
 				      const std::string &encode_type);
-
+		#ifdef USE_HDF5
     void images_to_hdf5(const std::vector<std::string> &img_lists,
 			const std::string &traindbname,
 			const std::string &testdbname);
@@ -477,6 +486,7 @@ namespace dd
 			      std::unordered_map<uint32_t,int> &alphabet,
 			      int &max_ocr_length,
 			      const bool &train_db);
+		#endif // USE_HDF5
 
     int objects_to_db(const std::vector<std::string> &rfolders,
 		      const int &db_height,

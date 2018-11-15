@@ -40,7 +40,7 @@ namespace dd
       std::string s = dirName;
       size_t pre=0,pos;
       std::string dir;
-      int mdret;
+      int mdret = 0;
 
       if(s[s.size()-1]!='/'){
         // force trailing / so we can handle everything in loop
