@@ -67,29 +67,42 @@ namespace dd
     MLService<CaffeLib,ImgCaffeInputFileConn,UnsupervisedOutput,CaffeModel>,
     MLService<CaffeLib,CSVCaffeInputFileConn,UnsupervisedOutput,CaffeModel>,
     MLService<CaffeLib,TxtCaffeInputFileConn,UnsupervisedOutput,CaffeModel>,
+    MLService<CaffeLib,SVMCaffeInputFileConn,UnsupervisedOutput,CaffeModel>
 #endif
 #ifdef USE_CAFFE2
+    #ifdef USE_CAFFE
+    ,
+    #endif
     MLService<Caffe2Lib,ImgCaffe2InputFileConn,SupervisedOutput,Caffe2Model>,
     MLService<Caffe2Lib,ImgCaffe2InputFileConn,UnsupervisedOutput,Caffe2Model>,
 #endif
 #ifdef USE_TF
+    #if defined(USE_CAFFE) || defined(USE_CAFFE2)
+    ,
+    #endif
     MLService<TFLib,ImgTFInputFileConn,SupervisedOutput,TFModel>,
-    MLService<TFLib,ImgTFInputFileConn,UnsupervisedOutput,TFModel>,
+    MLService<TFLib,ImgTFInputFileConn,UnsupervisedOutput,TFModel>
 #endif
 #ifdef USE_DLIB
-    MLService<DlibLib,ImgDlibInputFileConn,SupervisedOutput,DlibModel>,
-#endif
-#ifdef USE_CAFFE
-    MLService<CaffeLib,SVMCaffeInputFileConn,UnsupervisedOutput,CaffeModel>,
+    #if defined(USE_CAFFE) || defined(USE_CAFFE2) || defined(USE_TF)
+    ,
+    #endif
+    MLService<DlibLib,ImgDlibInputFileConn,SupervisedOutput,DlibModel>
 #endif
 #ifdef USE_XGBOOST
+    #if defined(USE_CAFFE) || defined(USE_CAFFE2) || defined(USE_TF) || defined(USE_DLIB)
+    ,
+    #endif
     MLService<XGBLib,CSVXGBInputFileConn,SupervisedOutput,XGBModel>,
     MLService<XGBLib,SVMXGBInputFileConn,SupervisedOutput,XGBModel>,
     MLService<XGBLib,TxtXGBInputFileConn,SupervisedOutput,XGBModel>
 #endif
 #ifdef USE_TSNE
-    ,MLService<TSNELib,CSVTSNEInputFileConn,UnsupervisedOutput,TSNEModel>
-    ,MLService<TSNELib,TxtTSNEInputFileConn,UnsupervisedOutput,TSNEModel>
+    #if defined(USE_CAFFE) || defined(USE_CAFFE2) || defined(USE_TF) || defined(USE_DLIB) || defined(USE_XGBOOST)
+    ,
+    #endif
+    MLService<TSNELib,CSVTSNEInputFileConn,UnsupervisedOutput,TSNEModel>,
+    MLService<TSNELib,TxtTSNEInputFileConn,UnsupervisedOutput,TSNEModel>
 #endif
     > mls_variant_type;
 
