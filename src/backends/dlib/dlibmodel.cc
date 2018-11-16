@@ -24,7 +24,10 @@
 #include <string>
 
 namespace dd {
-    DlibModel::DlibModel(const APIData &ad) {
+     DlibModel::DlibModel(const APIData &ad, APIData &adg,
+		       const std::shared_ptr<spdlog::logger> &logger)
+       :MLModel(ad,adg,logger)
+     {
         if (ad.has("repository")) {
             read_from_repository(ad.get("repository").get<std::string>(),
                                  spdlog::get("api")); // XXX: beware, error not caught

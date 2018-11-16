@@ -33,7 +33,8 @@ namespace dd
   {
   public:
     TFModel():MLModel() {}
-    TFModel(const APIData &ad);
+    TFModel(const APIData &ad, APIData &adg,
+	    const std::shared_ptr<spdlog::logger> &logger);
     TFModel(const std::string &repo)
       :MLModel(repo) {}
     ~TFModel() {}

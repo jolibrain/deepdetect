@@ -29,8 +29,34 @@
 
 namespace dd
 {
+  CaffeModel::CaffeModel(const APIData &ad, APIData &adg,
+			 const std::shared_ptr<spdlog::logger> &logger)
+    :MLModel(ad,adg,logger)
+  {
+    if (ad.has("templates"))
+      this->_mlmodel_template_repo = ad.get("templates").get<std::string>();
+    else this->_mlmodel_template_repo += "caffe/"; // default
+
+    if (ad.has("def"))
+      _def = ad.get("def").get<std::string>();
+    if (ad.has("trainf"))
+      _trainf = ad.get("trainf").get<std::string>();
+    if (ad.has("weights"))
+      _weights = ad.get("weights").get<std::string>();
+    if (ad.has("corresp"))
+      _corresp = ad.get("corresp").get<std::string>();
+    if (ad.has("solver"))
+      _solver = ad.get("solver").get<std::string>();
+    if (ad.has("repository"))
+      {
+       	if (read_from_repository(ad.get("repository").get<std::string>(),spdlog::get("api")))
+	  throw MLLibBadParamException("error reading or listing Caffe models in repository " + _repo);
+      }
+    read_corresp_file();
+  }
+
   CaffeModel::CaffeModel(const APIData &ad)
-    :MLModel(ad)
+      :MLModel(ad)
   {
     if (ad.has("templates"))
       this->_mlmodel_template_repo = ad.get("templates").get<std::string>();

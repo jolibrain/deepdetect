@@ -33,8 +33,9 @@ namespace dd
   {
   public:
     TSNEModel():MLModel() {}
-    TSNEModel(const APIData &ad)
-      :MLModel()
+  TSNEModel(const APIData &ad,APIData &adg,
+	    const std::shared_ptr<spdlog::logger> &logger)
+    :MLModel(ad,adg,logger)
       {
 	if (ad.has("repository"))
 	  this->_repo = ad.get("repository").get<std::string>();
