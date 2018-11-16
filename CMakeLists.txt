@@ -1,16 +1,12 @@
 cmake_minimum_required(VERSION 2.8.8)
 project(deepdetect)
 
-set(USE_HDF5 ON)
-set(USE_CAFFE ON)
-
 option(USE_CAFFE2 "build caffe2 backend")
 option(USE_TF "use TF backend")
-option(USE_HDF5 "use HDF5")
-option(USE_CAFFE "use Caffe backend")
+option(USE_HDF5 "use HDF5" ON)
+option(USE_CAFFE "use Caffe backend" ON)
 
 if (USE_CAFFE)
-  set(USE_CAFFE 1)
   add_definitions(-DUSE_CAFFE)
 endif()
 
@@ -82,7 +78,6 @@ include_directories("${EIGEN3_INCLUDE_DIR}")
 
 # hdf5
 if (USE_HDF5)
-  set(USE_HDF5 1)
   if (RPI3)
     set(HDF5_LIB /usr/lib/arm-linux-gnueabihf/hdf5/serial)
   else()
