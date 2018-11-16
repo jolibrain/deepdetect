@@ -74,7 +74,7 @@ namespace dd
     ,
     #endif
     MLService<Caffe2Lib,ImgCaffe2InputFileConn,SupervisedOutput,Caffe2Model>,
-    MLService<Caffe2Lib,ImgCaffe2InputFileConn,UnsupervisedOutput,Caffe2Model>,
+    MLService<Caffe2Lib,ImgCaffe2InputFileConn,UnsupervisedOutput,Caffe2Model>
 #endif
 #ifdef USE_TF
     #if defined(USE_CAFFE) || defined(USE_CAFFE2)
