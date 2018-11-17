@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 2.8.8)
 project(deepdetect)
 
-set(USE_HDF5 ON)
-
 option(USE_CAFFE2 "build caffe2 backend")
 option(USE_TF "use TF backend")
 option(USE_HDF5 "use HDF5")
@@ -528,7 +526,7 @@ if (USE_HDF5)
     ${DLIB_LIB_DEPS})
 else()
   set(COMMON_LINK_LIBS
-    ddetect ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES}
+    ddetect ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} archive
     ${CAFFE_LIB_DEPS}
     ${CAFFE2_LIB_DEPS}
     ${TF_LIB_DEPS}
