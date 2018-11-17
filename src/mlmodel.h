@@ -31,6 +31,7 @@
 #include <unordered_map>
 #include "apidata.h"
 #include "utils/fileops.hpp"
+#include "utils/httpclient.hpp"
 #include "mllibstrategy.h"
 
 namespace dd
@@ -169,6 +170,29 @@ namespace dd
       if (ad.has("init"))
 	{
 	  std::string compressedf = ad.get("init").get<std::string>();
+
+	  if (compressedf.find("https://") != std::string::npos
+	      || compressedf.find("http://") != std::string::npos
+	      || compressedf.find("file://") != std::string::npos)
+	    {
+	      int outcode = -1;
+	      std::string content;
+	      try
+		{
+		  httpclient::get_call(compressedf,"GET",outcode,content);
+		}
+	      catch(...)
+		{
+		  throw MLLibBadParamException("failed fetching model archive: " + compressedf + " with code: " + std::to_string(outcode));
+		}
+	      std::string base_model_fname = compressedf.substr(compressedf.find_last_of("/") + 1);
+	      std::string modelf = _repo + "/" + base_model_fname;
+	      std::ofstream mof(modelf);
+	      mof << content;
+	      mof.close();
+	      compressedf = modelf;
+	    }
+	  
 	  if (fileops::uncompress(compressedf,_repo))
 	    throw MLLibBadParamException("failed installing model from archive, check 'init' argument to model");
 	}
