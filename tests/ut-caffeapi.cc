@@ -920,7 +920,6 @@ TEST(caffeapi,service_train_images_imagedatalayer_multilabel_softprob)
   rmdir(plank_repo_loc.c_str());
 }
 
-
 TEST(caffeapi,service_train_images_convnet)
 {
   // create service
@@ -999,6 +998,43 @@ TEST(caffeapi,service_train_images_resnet)
   rmdir(plank_repo_loc.c_str());
 }
 
+TEST(caffeapi,service_train_images_autoenc)
+{
+ // create service
+  JsonAPI japi;
+  std::string plank_repo_loc = "plank";
+  mkdir(plank_repo_loc.c_str(),0777);
+  std::string sname = "my_service";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  plank_repo_loc + "\",\"templates\":\"" + model_templates_repo  + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"width\":224,\"height\":224},\"mllib\":{\"db\":true,\"template\":\"convnet\",\"layers\":[\"1CR32\",\"1CR64\",\"1CR128\",\"DR128\",\"1CR128\",\"DR64\",\"1CR64\",\"DR32\",\"1CR32\"],\"activation\":\"relu\",\"autoencoder\":true,\"scale\":0.0039}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
+  ASSERT_EQ(created_str,joutstr);
+  
+  // train
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"db\":true,\"test_split\":0.001,\"shuffle\":true,\"bw\":false},\"mllib\":{\"gpu\":true,\"gpuid\":"+gpuid+",\"resume\":false,\"solver\":{\"iterations\":" + iterations_plank + ",\"test_interval\":500,\"base_lr\":0.0001,\"snapshot\":2000,\"test_initialization\":false},\"net\":{\"batch_size\":10}},\"output\":{\"measure\":[\"eucll\"]}},\"data\":[\"" + plank_repo + "train\"]}";
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  JDoc jd;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_TRUE(jd.HasMember("status"));
+  ASSERT_EQ(201,jd["status"]["code"].GetInt());
+  ASSERT_EQ("Created",jd["status"]["msg"]);
+  ASSERT_TRUE(jd.HasMember("head"));
+  ASSERT_EQ("/train",jd["head"]["method"]);
+  ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
+  ASSERT_TRUE(jd.HasMember("body"));
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
+  ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("eucll"));
+  ASSERT_TRUE(jd["body"]["measure"]["eucll"].GetDouble() <= 1000000);
+
+  // remove service
+  jstr = "{\"clear\":\"full\"}";
+  joutstr = japi.jrender(japi.service_delete(sname,jstr));
+  ASSERT_EQ(ok_str,joutstr);
+  rmdir(plank_repo_loc.c_str());
+}
+
 TEST(caffeapi,service_train_images_seg)
 {
   // create service
@@ -1006,12 +1042,12 @@ TEST(caffeapi,service_train_images_seg)
   std::string camvid_repo_loc = "camvid";
   mkdir(camvid_repo_loc.c_str(),0777);
   std::string sname = "my_service";
-  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  camvid_repo_loc + "\",\"templates\":\"" + model_templates_repo  + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"segmentation\":true,\"width\":480,\"height\":480},\"mllib\":{\"template\":\"unet\",\"nclasses\":11}}}";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  camvid_repo_loc + "\",\"templates\":\"" + model_templates_repo  + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"segmentation\":true,\"width\":480,\"height\":480},\"mllib\":{\"template\":\"unet\",\"nclasses\":12}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
   ASSERT_EQ(created_str,joutstr);
 
   // train
-  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"segmentation\":true},\"mllib\":{\"gpu\":true,\"gpuid\":"+gpuid+",\"class_weights\":[0.2595,0.1826,4.5640,0.1417,0.9051,0.3826,9.6446,1.8418,0.6823,6.2478,7.3614],\"ignore_label\":11,\"solver\":{\"iterations\":" + iterations_camvid + ",\"test_interval\":200,\"base_lr\":0.001,\"test_initialization\":false,\"mirror\":true,\"solver_type\":\"SGD\"},\"net\":{\"batch_size\":1,\"test_batch_size\":1}},\"output\":{\"measure\":[\"acc\"]}},\"data\":[\"" + camvid_repo + "train.txt\",\"" + camvid_repo + "test2.txt\"]}";
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"segmentation\":true},\"mllib\":{\"gpu\":true,\"gpuid\":"+gpuid+",\"class_weights\":[0.2595,0.1826,4.5640,0.1417,0.9051,0.3826,9.6446,1.8418,0.6823,6.2478,7.3614,0.5],\"ignore_label\":11,\"solver\":{\"iterations\":" + iterations_camvid + ",\"test_interval\":200,\"base_lr\":0.0001,\"test_initialization\":false,\"mirror\":true,\"solver_type\":\"SGD\"},\"net\":{\"batch_size\":1,\"test_batch_size\":1}},\"output\":{\"measure\":[\"acc\"]}},\"data\":[\"" + camvid_repo + "train.txt\",\"" + camvid_repo + "test2.txt\"]}";
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;

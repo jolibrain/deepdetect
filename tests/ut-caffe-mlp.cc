@@ -271,7 +271,7 @@ TEST(caffelib,configure_convnet_template_1)
   lparam = net_param.mutable_layer(5);
   ASSERT_EQ("InnerProduct",lparam->type());
   ASSERT_EQ(nclasses,lparam->mutable_inner_product_param()->num_output());
-  ASSERT_EQ("ip0",lparam->bottom(0));
+  ASSERT_EQ("ip0_conv_0",lparam->bottom(0));
 
   //ASSERT_EQ(6,deploy_net_param.layer_size());
   caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(1);
@@ -284,7 +284,7 @@ TEST(caffelib,configure_convnet_template_1)
   dlparam = deploy_net_param.mutable_layer(4);
   ASSERT_EQ("InnerProduct",dlparam->type());
   ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
-  ASSERT_EQ("ip0",dlparam->bottom(0));
+  ASSERT_EQ("ip0_conv_0",dlparam->bottom(0));
   delete caff;
 }
 
@@ -322,7 +322,7 @@ TEST(caffelib,configure_convnet_template_1_db)
   lparam = net_param.mutable_layer(5);
   ASSERT_EQ("InnerProduct",lparam->type());
   ASSERT_EQ(nclasses,lparam->mutable_inner_product_param()->num_output());
-  ASSERT_EQ("ip0",lparam->bottom(0));
+  ASSERT_EQ("ip0_conv_0",lparam->bottom(0));
 
   ASSERT_EQ(6,deploy_net_param.layer_size());
   caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(1);
@@ -335,7 +335,7 @@ TEST(caffelib,configure_convnet_template_1_db)
   dlparam = deploy_net_param.mutable_layer(4);
   ASSERT_EQ("InnerProduct",dlparam->type());
   ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
-  ASSERT_EQ("ip0",dlparam->bottom(0));
+  ASSERT_EQ("ip0_conv_0",dlparam->bottom(0));
   delete caff;
 }
 
@@ -375,7 +375,7 @@ TEST(caffelib,configure_convnet_template_2)
   lparam = net_param.mutable_layer(8);
   ASSERT_EQ("InnerProduct",lparam->type());
   ASSERT_EQ(1000,lparam->mutable_inner_product_param()->num_output());
-  ASSERT_EQ("ip1",lparam->bottom(0));
+  ASSERT_EQ("ip1_conv_0",lparam->bottom(0));
   lparam = net_param.mutable_layer(9);
   ASSERT_EQ("PReLU",lparam->type());
   lparam = net_param.mutable_layer(10);
@@ -405,7 +405,7 @@ TEST(caffelib,configure_convnet_template_2)
   dlparam = deploy_net_param.mutable_layer(7);
   ASSERT_EQ("InnerProduct",dlparam->type());
   ASSERT_EQ(1000,dlparam->mutable_inner_product_param()->num_output());
-  ASSERT_EQ("ip1",dlparam->bottom(0));
+  ASSERT_EQ("ip1_conv_0",dlparam->bottom(0));
   dlparam = deploy_net_param.mutable_layer(8);
   ASSERT_EQ("PReLU",dlparam->type());
   dlparam = deploy_net_param.mutable_layer(9);
@@ -450,7 +450,7 @@ TEST(caffelib,configure_convnet_template_3)
   lparam = net_param.mutable_layer(7);
   ASSERT_EQ("InnerProduct",lparam->type());
   ASSERT_EQ(nclasses,lparam->mutable_inner_product_param()->num_output());
-  ASSERT_EQ("ip0",lparam->bottom(0));
+  ASSERT_EQ("ip0_conv_1",lparam->bottom(0));
   
   ASSERT_EQ(8,deploy_net_param.layer_size());
   caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(1);
@@ -468,7 +468,7 @@ TEST(caffelib,configure_convnet_template_3)
   dlparam = deploy_net_param.mutable_layer(6);
   ASSERT_EQ("InnerProduct",dlparam->type());
   ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
-  ASSERT_EQ("ip0",dlparam->bottom(0));
+  ASSERT_EQ("ip0_conv_1",dlparam->bottom(0));
   delete caff;
 }
 

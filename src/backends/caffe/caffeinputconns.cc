@@ -242,13 +242,13 @@ namespace dd
           if (fileops::list_directory((*uit),true,false,true,subdir_files))
             throw InputConnectorBadParamException("failed reading image test data sub-directory " + (*uit));
           std::string cls = dd_utils::split((*uit),'/').back();
-          if ((hcit=hcorresp_r.find(cls))==hcorresp_r.end())
+          if (!_autoencoder && (hcit=hcorresp_r.find(cls))==hcorresp_r.end())
             {
-            _logger->error("class {} appears in testing set but not in training set, skipping");
-            ++uit;
-            continue;
+	      _logger->error("class {} appears in testing set but not in training set, skipping",cls);
+	      ++uit;
+	      continue;
             }
-          int cl = (*hcit).second;
+          int cl = _autoencoder ? 0 : (*hcit).second;
           auto fit = subdir_files.begin();
           while(fit!=subdir_files.end()) // XXX: re-iterating the file is not optimal
 	          {
@@ -273,10 +273,10 @@ namespace dd
 
           // Check if mapping does not exist, go to next file
           std::unordered_map<std::string,int>::const_iterator it;
-          if ((it=hcorresp_r.find(label))==hcorresp_r.end())
+          if (!_autoencoder && (it=hcorresp_r.find(label))==hcorresp_r.end())
             {
-            _logger->error("class {} appears in testing set but not in training set, skipping");
-            continue;
+	      _logger->error("class {} appears in testing set but not in training set, skipping",label);
+	      continue;
             }
           line_num++;
           // Append lfiles
@@ -469,7 +469,7 @@ namespace dd
   }
 
   // - fixed size in-memory arrays put down to disk at once
-	#ifdef USE_HDF5
+#ifdef USE_HDF5
   void ImgCaffeInputFileConn::images_to_hdf5(const std::vector<std::string> &img_lists,
 					     const std::string &dbfullname,
 					     const std::string &test_dbfullname)

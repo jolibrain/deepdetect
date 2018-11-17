@@ -36,7 +36,7 @@ namespace dd
 
   /*- NetLayersCaffeResnet -*/
   void NetLayersCaffeResnet::parse_res_layers(const std::vector<std::string> &layers,
-					      std::vector<std::pair<int,int>> &cr_layers,
+					      std::vector<ConvBlock> &cr_layers,
 					      std::vector<int> &fc_layers,
 					      int &depth, int &n)
   {
@@ -220,7 +220,7 @@ namespace dd
       layers = ad_mllib.get("layers").get<std::vector<std::string>>();
     int depth = -1;
     int n = -1;
-    std::vector<std::pair<int,int>> cr_layers;
+    std::vector<ConvBlock> cr_layers;
     std::vector<int> fc_layers;
     parse_res_layers(layers,cr_layers,fc_layers,depth,n);
     _logger->info("generating ResNet with depth={} / n={}",depth,n);
@@ -285,7 +285,7 @@ namespace dd
       layers = ad_mllib.get("layers").get<std::vector<std::string>>();
     int depth = -1;
     int n = -1;
-    std::vector<std::pair<int,int>> cr_layers;
+    std::vector<ConvBlock> cr_layers;
     std::vector<int> fc_layers;
     parse_res_layers(layers,cr_layers,fc_layers,depth,n);
     _logger->info("generating CharText ResNet with depth={} / n={}",depth,n);
@@ -298,22 +298,22 @@ namespace dd
     int width = this->_net_params->mutable_layer(1)->mutable_memory_data_param()->width();
 
     std::string top = "conv1";
-    add_init_block(this->_net_params,bottom,cr_layers.at(0).second,0,width,7,top,false,false);
+    add_init_block(this->_net_params,bottom,cr_layers.at(0)._num_output,0,width,7,top,false,false);
     top = "conv1";
-    add_init_block(this->_dnet_params,bottom,cr_layers.at(0).second,0,width,7,top,false,false);
+    add_init_block(this->_dnet_params,bottom,cr_layers.at(0)._num_output,0,width,7,top,false,false);
     bottom = top;
     int block_num = 1;
     for (size_t l=0;l<cr_layers.size();l++)
       {
-	for (int i=0;i<cr_layers.at(l).first;i++)
+	for (int i=0;i<cr_layers.at(l)._nconv;i++)
 	  {
 	    int stride = 1;
 	    int kernel_w = 1;
 	    int kernel_h = 3;
 	    bool identity = (i == 0 ? false : true);
-	    add_basic_block_flat(this->_net_params,block_num,bottom,cr_layers.at(l).second,activation,
+	    add_basic_block_flat(this->_net_params,block_num,bottom,cr_layers.at(l)._num_output,activation,
 				 stride,kernel_w,kernel_h,identity,top);
-	    add_basic_block_flat(this->_dnet_params,block_num,bottom,cr_layers.at(l).second,activation,
+	    add_basic_block_flat(this->_dnet_params,block_num,bottom,cr_layers.at(l)._num_output,activation,
 				 stride,kernel_w,kernel_h,identity,top);
 	    bottom = top;
 	    ++block_num;
