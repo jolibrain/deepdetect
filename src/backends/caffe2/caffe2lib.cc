@@ -433,7 +433,7 @@ namespace dd {
     // Store the net's default (but variable) configuration
     set_gpu_state(ad, true);
 
-    bool has_template = ad.has("template");
+    bool has_template = ad.has("template") && ad.get("template").get<std::string>() != "";
     if (has_template) {
       instantiate_template(ad);
     }
