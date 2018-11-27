@@ -54,42 +54,42 @@ namespace dd
 
     void VidInputConn::transform(const APIData &ad)
     {
-        unsigned long video_buffer_size;
-        cv::Mat rimg;
-        DataEl <DDVid> dvid;
-        this->_logger->info("VidInputConn::transform");
+      unsigned long video_buffer_size;
+      cv::Mat rimg;
+      DataEl <DDVid> dvid;
+      this->_logger->info("VidInputConn::transform");
 
-        get_data(ad);
-        if (this->_uris[0].empty()) 
+      get_data(ad);
+      if (this->_uris[0].empty())
+      {
+        // TODO : stop acquisition
+        return;
+      }
+      else
+      {
+        if ( this->_current_uri.compare(this->_uris[0]) != 0)
         {
-            // TODO : stop acquisition
-            return;
-        } 
-        else
-        {
-            if ( this->_current_uri.compare(this->_uris[0]) != 0)
-            {
-                // New URI received start frame acquistion
-                this->init(ad);
+          // New URI received start frame acquistion
+          this->init(ad);
           if (dvid.read_element(this->_uris[0], this->_logger))
-                {
-                  this->streamlib._input.set_filepath(this->_uris[0]);
-                  this->streamlib.init();
-		  this->_logger->info("run async");
-                  this->streamlib.run_async();
-                  this->streamlib.set_max_video_buffer(this->max_video_buffer);
-                }
+          {
+            this->streamlib._input.set_filepath(this->_uris[0]);
+            this->streamlib.init();
+            this->_logger->info("run async");
+            this->streamlib.run_async();
+            this->streamlib.set_max_video_buffer(this->max_video_buffer);
+          }
 
-                this->_current_uri = this->_uris[0];
-            }
-            video_buffer_size = this->streamlib.get_video_buffer(rimg);
-            if (video_buffer_size == 0){
-                // TODO non an exception ? just waiting frames of frame count finished
-                throw InputConnectorBadParamException("no video frame");
-            }
-            this->_images.push_back(rimg);
-        };
-    return;    
+          this->_current_uri = this->_uris[0];
+        }
+        video_buffer_size = this->streamlib.get_video_buffer(rimg);
+        if (video_buffer_size == 0){
+          // TODO non an exception ? just waiting frames of frame count finished
+          throw InputConnectorBadParamException("no video frame");
+        }
+        this->_images.push_back(rimg);
+      };
+      return;    
     };
 
 

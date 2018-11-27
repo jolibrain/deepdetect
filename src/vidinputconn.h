@@ -39,24 +39,34 @@ namespace dd
       DDVid() {}
       ~DDVid() {}
 
+
       int read_mem(const std::string &content)
       {
-        return 0;
+        // NOT USED
+        _logger->info("not used:: read_mem : {}", content);
+        return 1;
       };
-
-      int read_db(const std::string &fname)
-      {
-        return 0;
-      }
-
-      int read_dir(const std::string &dir)
-      {
-        return 0;
-      }
 
       int read_file(const std::string &fname)
       {
         // TODO: TO IMPLEMENT
+        // add streamlib handling in DDvid instead of VidInputConnector
+        _logger->info(" read file : {}", fname);
+        return 1;
+      }
+
+      int read_db(const std::string &fname)
+      {
+
+        // NOT USED
+        _logger->info("not used:: read_db: {}", fname);
+        return 1;
+      }
+
+      int read_dir(const std::string &dir)
+      {
+        // NOT USED
+        _logger->info("not used:: read_dir: {}", dir);
         return 1;
       }
 
@@ -76,9 +86,15 @@ namespace dd
 
       void fillup_parameters(const APIData &ad)
       {
-        // TODO: Ask what is fill up parameters fo video
         if (ad.has("width"))
           _width = ad.get("width").get<int>();
+        if (ad.has("height"))
+          _height = ad.get("height").get<int>();
+        if (ad.has("mean"))
+        {
+          apitools::get_floats(ad, "mean", _mean);
+          _has_mean_scalar = true;
+        }
       };
 
       int feature_size() const
@@ -99,6 +115,7 @@ namespace dd
       unsigned int MAX_FRAMES = 30;
       int _width = 300;
       int _height = 300;
+      bool _bw = false; /**< whether to convert to black & white. */
       std::vector<cv::Mat> _images;
       std::vector<cv::Mat> _images_size;
       unsigned long max_video_buffer = 300;
