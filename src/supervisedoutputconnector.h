@@ -1529,6 +1529,12 @@ namespace dd
     {
       double eucl = 0.0;
       int batch_size = ad.get("batch_size").get<int>();
+      bool has_ignore = ad.has("ignore_value");
+
+      double ignore_value = -10000;
+      if (has_ignore)
+        ignore_value = ad.get("ignore_value").get<double>();
+
       for (int i=0;i<batch_size;i++)
 	{
 	  APIData bad = ad.getobj(std::to_string(i));
@@ -1537,18 +1543,24 @@ namespace dd
 	  if (predictions.size() > 1)
 	    target = bad.get("target").get<std::vector<double>>();
 	  else target.push_back(bad.get("target").get<double>());
+         double leucl = 0;
 	  for (size_t i=0;i<target.size();i++)
-	    if (thres >= 0)
+           {
+             if (has_ignore && target.at(i) == ignore_value)
+               continue;
+             double diff = predictions.at(i)-target.at(i);
+             if (thres >= 0 )
+               {
+                 if (fabs(diff) >= thres)
+                   leucl += diff*diff;
+               }
+             else
 	      {
-		if (target.at(i) >thres)
-		  eucl += (predictions.at(i)-target.at(i))*(predictions.at(i)-target.at(i));
+               leucl += diff*diff;
 	      }
-	    else
-	      {
-		if (target.at(i) >=0)
-		  eucl += (predictions.at(i)-target.at(i))*(predictions.at(i)-target.at(i));
-	      }
-	}
+           }
+         eucl += sqrt(leucl);
+       }
       return eucl / static_cast<double>(batch_size);
     }
     
