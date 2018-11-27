@@ -1406,6 +1406,12 @@ namespace dd
     ad_res.add("train_loss",this->get_meas("train_loss"));
     APIData ad_out = ad.getobj("parameters").getobj("output");
 
+    if (ad.getobj("parameters").getobj("mllib").has("ignore_value"))
+      {
+        double ignore_value = ad.getobj("parameters").getobj("mllib").get("ignore_value").get<double>();
+        ad_res.add("ignore_value", ignore_value);
+      }
+
     if (ad_out.has("measure"))
       {
 	float mean_loss = 0.0;
@@ -1569,6 +1575,12 @@ namespace dd
 	      slot--;
 	    else if (_autoencoder && typeid(inputc) == typeid(ImgCaffeInputFileConn))
 	      slot = 0; // flatten output
+           else if (_regression && _ntargets == 1 && typeid(inputc) == typeid(CSVCaffeInputFileConn))
+             {
+               slot = findOutputSlotNumberByBlobName(net, "ip_loss");
+             }
+
+
 	    int scount = lresults[slot]->count();
 	    int scperel = scount / dv_size;
 
@@ -3399,6 +3411,35 @@ namespace dd
       }
 
   }
+
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::findOutputSlotNumberByBlobName(const caffe::Net<float> *net,
+                                     const std::string blob_name)
+  {
+    const std::vector<std::string> blob_names = net->blob_names();
+    const std::vector<int> output_blob_indices = net->output_blob_indices();
+    for (int i =0; i<net->num_outputs(); ++i)
+      {
+        if (blob_names[output_blob_indices[i]] == blob_name)
+          return i;
+      }
+    return -1;
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  Blob<float>* CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::findOutputBlobByName(const caffe::Net<float> *net, const std::string blob_name)
+  {
+    const std::vector<std::string> blob_names = net->blob_names();
+    const std::vector<int> output_blob_indices = net->output_blob_indices();
+    for (int i =0; i<net->num_outputs(); ++i)
+      {
+        if (blob_names[output_blob_indices[i]] == blob_name)
+          net->output_blobs().at(i);
+      }
+    return nullptr;
+  }
+
 
 
   template class CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>;
