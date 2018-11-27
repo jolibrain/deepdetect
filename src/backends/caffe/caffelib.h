@@ -257,6 +257,14 @@ namespace dd
       void save_if_best(APIData &meas_out, boost::shared_ptr<caffe::Solver<float>>solver,
                         bool already_snapshoted);
 
+      int findOutputSlotNumberByBlobName(const caffe::Net<float> *net,
+                                     const std::string blob_name);
+
+      Blob<float>* findOutputBlobByName(const caffe::Net<float> *net,
+                                        const std::string blob_name);
+
+
+
     public:
       caffe::Net<float> *_net = nullptr; /**< neural net. */
       bool _gpu = false; /**< whether to use GPU. */

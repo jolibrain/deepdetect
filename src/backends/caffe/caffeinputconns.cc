@@ -1540,6 +1540,7 @@ namespace dd
 
   void CSVTSCaffeInputFileConn::push_csv_to_csvts(bool is_test_data)
   {
+
     CSVTSInputFileConn::push_csv_to_csvts(is_test_data);
     dv_to_db(is_test_data);
   }
@@ -1550,12 +1551,14 @@ namespace dd
     APIData ad_input = ad_param.getobj("input");
     APIData ad_mllib = ad_param.getobj("mllib");
 
+    get_data(ad);
+    fillup_parameters(ad_input);
+
     if (_train && ad_input.has("db") && ad_input.get("db").get<bool>())
       {
         _dbfullname = _model_repo + "/" + _dbfullname;
         _test_dbfullname = _model_repo + "/" + _test_dbfullname;
-        fillup_parameters(ad_input);
-        get_data(ad);
+
         _db = true;
         csvts_to_db(_model_repo + "/" + _dbname,_model_repo + "/" + _test_dbname,
 		    ad_input);
@@ -1867,6 +1870,18 @@ namespace dd
                 *index = 0;
               }
           }
+        // at end of sequence start a new datum so that if the sequence
+        //is smaller than the number of timesteps,  then every datum contains an independant sequence
+        // is sequence is larger than timesteps, it will be splitted into independant sequences
+        Datum dprim;
+        dprim.set_channels(this->_timesteps);
+        dprim.set_height(this->_datadim);
+        for (int i=0; i< this->_timesteps*this->_datadim; ++i)
+          dprim.add_float_data(0.0);
+        dprim.set_width(1);
+        dv->push_back(dprim);
+        d = &(dv->back());
+        *index = 0;
       }
     if (clear_csvts_after)
         data->clear();
