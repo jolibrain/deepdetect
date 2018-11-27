@@ -1577,7 +1577,7 @@ namespace dd
 	      slot = 0; // flatten output
            else if (_regression && _ntargets == 1 && typeid(inputc) == typeid(CSVCaffeInputFileConn))
              {
-               slot = findOutputSlotNumberByBlobName(net, "ip_loss");
+               slot = findOutputSlotNumberByBlobName(net, "ip_losst");
              }
 
 
