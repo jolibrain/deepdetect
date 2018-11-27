@@ -24,28 +24,6 @@
 
 namespace dd
 {
-    vnn::BufferCbFunc get_video_buffer_callback=[](int width, int height, 
-            unsigned char * data )
-    {
-#if 0
-        cv::Mat imgbuf, rgbimgbuf ;  
-        imgbuf = cv::Mat(cv::Size(width, height), 
-                CV_8UC2, (char*)data,
-                cv::Mat::AUTO_STEP);              
-        rgbimgbuf = cv::Mat(cv::Size(width, height),
-                CV_8UC3, 
-                (char*)data, cv::Mat::AUTO_STEP);           
-        cvtColor(imgbuf, rgbimgbuf, CV_YUV2BGRA_YUY2);   
-
-        if ( this._frames.size() < this.MAX_FRAMES ) {
-            this._frames.push(rgbimgbuf);
-
-        }
-#endif
-        return 0;
-    };
-
-
     void VidInputConn::init(const APIData &ad) 
     {
         std::string video_path = "/tmp/bbb_60.mkv";
