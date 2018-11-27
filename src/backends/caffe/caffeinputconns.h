@@ -692,7 +692,9 @@ namespace dd
     std::vector<caffe::Datum> get_dv_test(const int &num,
         const bool &has_mean_file)
     {
+      (void)has_mean_file;
       std::vector<caffe::Datum> dv;
+
       if ( _images.empty())
       {
         int i = 0;
@@ -707,15 +709,8 @@ namespace dd
       return dv;
     }
 
-    std::vector<caffe::Datum> get_dv_test_segmentation(const int &num,
-						       const bool &has_mean_file)
-    
-    {
-	    std::vector<caffe::Datum> dv;
-	    return dv;
-    }
     void reset_dv_test();
-    
+
   private:
 
     void create_test_db_for_imagedatalayer(const std::string &test_lst,
