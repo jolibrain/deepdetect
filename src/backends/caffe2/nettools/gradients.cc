@@ -41,20 +41,6 @@ namespace dd {
      *  Gradient management
      */
 
-    bool is_trainable(const caffe2::OperatorDef &op,
-		      std::set<std::string> *trainable,
-		      std::set<std::string> *computed,
-		      std::vector<std::string> *needed) {
-      auto it = trainable_ops.find(op.type());
-      if (it == trainable_ops.end()) {
-	return false;
-      }
-      if (trainable) std::get<0>(it->second)(op, *trainable);
-      if (computed) std::get<1>(it->second)(op, *computed);
-      if (needed) std::get<2>(it->second)(op, *needed);
-      return true;
-    }
-
     /*
      *  When creating the gradients,
      *  the following informations are stored for the concerned blobs:
@@ -154,12 +140,15 @@ namespace dd {
       for (caffe2::OperatorDef &op : *net.mutable_op()) {
 
 	std::vector<std::string> new_outputs;
-	if (!is_trainable(op, NULL, NULL, &new_outputs)) {
+	const TrainableOp *train_op;
+	if (!is_trainable(op, train_op)) {
 	  // If we don't know whether an operator should or shouldn't be part of the gradient,
 	  // we won't to the gradient at all and throw an error instead.
-	  CAFFE_ENFORCE(non_trainable_ops.find(op.type()) != non_trainable_ops.end());
+	  CAFFE_ENFORCE(non_trainable_ops.find(op.type()) != non_trainable_ops.end(),
+			"Unknown operator: ", op.type());
 	  continue;
 	}
+	train_op->get_needed_outputs(op, new_outputs);
 
 	// Register the blobs and operators
 	for (const std::string &output : new_outputs) {
@@ -281,7 +270,61 @@ namespace dd {
       }
     }
 
+    inline void _set_to_version(std::string &string, int version) {
+      if (version > 0) {
+	string += "_version_" + std::to_string(version);
+      }
+    }
+
+    // Used once by add_gradient_ops
+    // Moved in a function to make it more readable
+    static void remove_untrainable_blob_overwrites(caffe2::NetDef &net) {
+
+      // Initialize blobs' version to 0
+      std::map<std::string, int> versions;
+      for (const std::string &input : net.external_input()) {
+	versions[input] = 0;
+      }
+
+      for (caffe2::OperatorDef &op : *net.mutable_op()) {
+
+	// Fetch legitimate overwrites
+	std::set<int> trainable_overwrites;
+	const TrainableOp *train_op;
+	if (is_trainable(op, train_op)) {
+	  train_op->get_trainable_overwrites(op, trainable_overwrites);
+	}
+
+	// Rename inputs
+	for (std::string &input : *op.mutable_input()) {
+	  _set_to_version(input, versions[input]);
+	}
+
+	// Rename outputs
+	for (int idx = 0; idx < op.output().size(); ++idx) {
+	  std::string &output = *op.mutable_output(idx);
+
+	  // Initialize to 0
+	  if (versions.find(output) == versions.end()) {
+	    versions[output] = 0;
+	    continue;
+	  }
+
+	  // Create a new version
+	  if (trainable_overwrites.find(idx) == trainable_overwrites.end()) {
+	    ++versions[output];
+	  }
+	  _set_to_version(output, versions[output]);
+	}
+      }
+    }
+
     void add_gradient_ops(caffe2::NetDef &net, const std::set<std::string> &main_gradients) {
+
+      // Except for a few 'inplace' operations, reusing a blob several times means
+      // loosing some versions of the tensor and being unable to compute the gradients.
+      // For this reason, we replace them with new blobs
+      remove_untrainable_blob_overwrites(net);
 
       // Because we want our gradients to be generated in the same way as caffe2's,
       // sometimes our gradient sums don't create a new output but are done 'inplace'.
@@ -345,9 +388,12 @@ namespace dd {
 
 	std::set<std::string> trainable;
 	std::set<std::string> computed;
-	if (!is_trainable(op, &trainable, &computed, NULL)) {
+	const TrainableOp *train_op;
+	if (!is_trainable(op, train_op)) {
 	  continue;
 	}
+	train_op->get_trainable_inputs(op, trainable);
+	train_op->get_computed_inputs(op, computed);
 
 	auto check_params = [&](std::set<std::string> &s_in, std::set<std::string> &s_out) {
 	  for (const std::string &input : s_in) {

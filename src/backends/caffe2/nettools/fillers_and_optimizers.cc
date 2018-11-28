@@ -304,6 +304,7 @@ namespace dd {
 
     const std::map<std::string, std::map<int, float>> OutputShapePtrs::_forwarded_shapes({
 	{ "Softmax", {{ 0, 1 }} }, // One input, same shape
+	{ "Sigmoid", {{ 0, 1 }} },
 	{ "CopyFromCPUInput", {{ 0, 1 }} },
 	{ "EnsureCPUOutput", {{ 0, 1 }} },
 	{ "BBoxTransform", {
