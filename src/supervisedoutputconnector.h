@@ -1529,11 +1529,11 @@ namespace dd
     {
       double eucl = 0.0;
       int batch_size = ad.get("batch_size").get<int>();
-      bool has_ignore = ad.has("ignore_value");
+      bool has_ignore = ad.has("ignore_label");
 
-      double ignore_value = -10000;
+      int ignore_label = -10000;
       if (has_ignore)
-        ignore_value = ad.get("ignore_value").get<double>();
+        ignore_label = ad.get("ignore_label").get<int>();
 
       for (int i=0;i<batch_size;i++)
 	{
@@ -1546,7 +1546,8 @@ namespace dd
          double leucl = 0;
 	  for (size_t i=0;i<target.size();i++)
            {
-             if (has_ignore && target.at(i) == ignore_value)
+             int t = target.at(i);
+             if (has_ignore && static_cast<int>(t >=0 ? t+0.5 : t-0.5) == ignore_label)
                continue;
              double diff = predictions.at(i)-target.at(i);
              if (thres >= 0 )

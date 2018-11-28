@@ -238,7 +238,7 @@ namespace dd
             if (lparam->type() == "SoftmaxWithLoss")
               {
                 lparam->set_type("MultiLabelSigmoidLoss");
-		lparam->clear_include();
+                lparam->clear_include();
                 caffe::NetStateRule *nsr = lparam->add_include();
                 nsr->set_phase(caffe::TRAIN);
                 break;
@@ -1406,10 +1406,10 @@ namespace dd
     ad_res.add("train_loss",this->get_meas("train_loss"));
     APIData ad_out = ad.getobj("parameters").getobj("output");
 
-    if (ad.getobj("parameters").getobj("mllib").has("ignore_value"))
+    if (ad.getobj("parameters").getobj("mllib").has("ignore_label"))
       {
-        double ignore_value = ad.getobj("parameters").getobj("mllib").get("ignore_value").get<double>();
-        ad_res.add("ignore_value", ignore_value);
+        int ignore_label = ad.getobj("parameters").getobj("mllib").get("ignore_label").get<int>();
+        ad_res.add("ignore_label", ignore_label);
       }
 
     if (ad_out.has("measure"))
