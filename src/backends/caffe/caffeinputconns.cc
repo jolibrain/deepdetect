@@ -26,6 +26,8 @@
 #include "caffeinputconns.h"
 #include "utils/utils.hpp"
 #include <boost/multi_array.hpp>
+#include <algorithm>
+#include <random>
 #ifdef USE_HDF5
 #include <H5Cpp.h>
 #endif // USE_HDF5
@@ -1515,8 +1517,21 @@ namespace dd
     // then simply read them
     if (!_cifc)
       return -1;
-    for (auto fname : allfiles)
-      read_file(fname, is_test_data);
+    if (!is_test_data && _cifc->_shuffle)
+      {
+        std::vector<std::string> allfiles_v;
+        for (auto fname : allfiles)
+          allfiles_v.push_back(fname);
+        auto rng = std::default_random_engine();
+        std::shuffle(allfiles_v.begin(), allfiles_v.end(), rng);
+        for (auto fname : allfiles_v)
+          read_file(fname, is_test_data);
+      }
+    else
+      {
+        for (auto fname : allfiles)
+          read_file(fname, is_test_data);
+      }
     //    _cifc->shuffle_data_if_needed();
     //_cifc->dv_to_db(is_test_data);
     return 0;
@@ -1739,11 +1754,11 @@ namespace dd
         (*txn_ptr)->Put(std::string(key_cstr, length), out);
         _db_batchsize++;
 
-        if (++count % (1000/_timesteps) == 0) {
+        if (++count % 10 == 0) {
           // commit db
           (*txn_ptr)->Commit();
           (*txn_ptr).reset((*tdb_ptr)->NewTransaction());
-          _logger->info("Processed {} records",count);
+          _logger->info("Processed {} timeseries",count);
         }
       }
     dvtodump.clear();
@@ -1854,9 +1869,11 @@ namespace dd
           }
       }
     if (clear_csvts_after)
-      {
         data->clear();
-      }
+
+    if (!test && _shuffle)
+        std::random_shuffle(dv->begin(), dv->end());
+
   }
 
 
