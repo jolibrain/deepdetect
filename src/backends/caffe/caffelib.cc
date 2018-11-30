@@ -2603,7 +2603,8 @@ namespace dd
 	else if (lp->has_memory_data_param())
 	  {
 	    caffe::MemoryDataParameter *mdp = lp->mutable_memory_data_param();
-	    if (mdp->has_batch_size() && batch_size != inputc.batch_size() && batch_size > 0)
+	    if (mdp->has_batch_size() && batch_size > 0 &&
+               ( (batch_size != inputc.batch_size()) || (typeid(inputc) == typeid(CSVTSCaffeInputFileConn)) ))
 	      {
 		if (i == 0) // training
 		  mdp->set_batch_size(batch_size);
