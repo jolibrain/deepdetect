@@ -1,0 +1,4135 @@
+name: ""
+op {
+  input: "data"
+  input: "conv1_w"
+  output: "conv1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv1"
+  input: "conv1_scale"
+  input: "conv1_bias"
+  input: "conv1_mean"
+  input: "conv1_var"
+  output: "conv1_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv1_unique"
+  input: "conv1_w_second"
+  output: "conv1_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv1_internal"
+  input: "conv1_b"
+  output: "conv1"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv1"
+  output: "conv1"
+  type: "Relu"
+}
+op {
+  input: "conv1"
+  input: "conv2_w"
+  output: "conv2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv2"
+  input: "conv2_scale"
+  input: "conv2_bias"
+  input: "conv2_mean"
+  input: "conv2_var"
+  output: "conv2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv2_unique"
+  input: "conv2_w_second"
+  output: "conv2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv2_internal"
+  input: "conv2_b"
+  output: "conv2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv2"
+  output: "conv2"
+  type: "Relu"
+}
+op {
+  input: "conv2"
+  input: "xception1_match_conv_w"
+  output: "xception1_match_conv"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception1_match_conv"
+  input: "xception1_match_conv_scale"
+  input: "xception1_match_conv_bias"
+  input: "xception1_match_conv_mean"
+  input: "xception1_match_conv_var"
+  output: "xception1_match_conv_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception1_match_conv_unique"
+  input: "xception1_match_conv_w_second"
+  output: "xception1_match_conv_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception1_match_conv_internal"
+  input: "xception1_match_conv_b"
+  output: "xception1_match_conv"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv2"
+  input: "xception1_conv1_1_w"
+  output: "xception1_conv1_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 64
+  }
+}
+op {
+  input: "xception1_conv1_1"
+  input: "xception1_conv1_2_w"
+  output: "xception1_conv1_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception1_conv1_2"
+  input: "xception1_conv1_2_scale"
+  input: "xception1_conv1_2_bias"
+  input: "xception1_conv1_2_mean"
+  input: "xception1_conv1_2_var"
+  output: "xception1_conv1_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception1_conv1_2_unique"
+  input: "xception1_conv1_2_w_second"
+  output: "xception1_conv1_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception1_conv1_2_internal"
+  input: "xception1_conv1_2_b"
+  output: "xception1_conv1_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception1_conv1_2"
+  output: "xception1_conv1_2"
+  type: "Relu"
+}
+op {
+  input: "xception1_conv1_2"
+  input: "xception1_conv2_1_w"
+  output: "xception1_conv2_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 128
+  }
+}
+op {
+  input: "xception1_conv2_1"
+  input: "xception1_conv2_2_w"
+  output: "xception1_conv2_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception1_conv2_2"
+  input: "xception1_conv2_2_scale"
+  input: "xception1_conv2_2_bias"
+  input: "xception1_conv2_2_mean"
+  input: "xception1_conv2_2_var"
+  output: "xception1_conv2_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception1_conv2_2_unique"
+  input: "xception1_conv2_2_w_second"
+  output: "xception1_conv2_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception1_conv2_2_internal"
+  input: "xception1_conv2_2_b"
+  output: "xception1_conv2_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception1_conv2_2"
+  output: "xception1_pool"
+  type: "MaxPool"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "xception1_match_conv"
+  input: "xception1_pool"
+  output: "xception1_elewise"
+  type: "Sum"
+}
+op {
+  input: "xception1_elewise"
+  input: "xception2_match_conv_w"
+  output: "xception2_match_conv"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception2_match_conv"
+  input: "xception2_match_conv_scale"
+  input: "xception2_match_conv_bias"
+  input: "xception2_match_conv_mean"
+  input: "xception2_match_conv_var"
+  output: "xception2_match_conv_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception2_match_conv_unique"
+  input: "xception2_match_conv_w_second"
+  output: "xception2_match_conv_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception2_match_conv_internal"
+  input: "xception2_match_conv_b"
+  output: "xception2_match_conv"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception1_elewise"
+  output: "xception2_relu"
+  type: "Relu"
+}
+op {
+  input: "xception2_relu"
+  input: "xception2_conv1_1_w"
+  output: "xception2_conv1_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 128
+  }
+}
+op {
+  input: "xception2_conv1_1"
+  input: "xception2_conv1_2_w"
+  output: "xception2_conv1_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception2_conv1_2"
+  input: "xception2_conv1_2_scale"
+  input: "xception2_conv1_2_bias"
+  input: "xception2_conv1_2_mean"
+  input: "xception2_conv1_2_var"
+  output: "xception2_conv1_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception2_conv1_2_unique"
+  input: "xception2_conv1_2_w_second"
+  output: "xception2_conv1_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception2_conv1_2_internal"
+  input: "xception2_conv1_2_b"
+  output: "xception2_conv1_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception2_conv1_2"
+  output: "xception2_conv1_2"
+  type: "Relu"
+}
+op {
+  input: "xception2_conv1_2"
+  input: "xception2_conv2_1_w"
+  output: "xception2_conv2_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 256
+  }
+}
+op {
+  input: "xception2_conv2_1"
+  input: "xception2_conv2_2_w"
+  output: "xception2_conv2_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception2_conv2_2"
+  input: "xception2_conv2_2_scale"
+  input: "xception2_conv2_2_bias"
+  input: "xception2_conv2_2_mean"
+  input: "xception2_conv2_2_var"
+  output: "xception2_conv2_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception2_conv2_2_unique"
+  input: "xception2_conv2_2_w_second"
+  output: "xception2_conv2_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception2_conv2_2_internal"
+  input: "xception2_conv2_2_b"
+  output: "xception2_conv2_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception2_conv2_2"
+  output: "xception2_pool"
+  type: "MaxPool"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "xception2_match_conv"
+  input: "xception2_pool"
+  output: "xception2_elewise"
+  type: "Sum"
+}
+op {
+  input: "xception2_elewise"
+  input: "xception3_match_conv_w"
+  output: "xception3_match_conv"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception3_match_conv"
+  input: "xception3_match_conv_scale"
+  input: "xception3_match_conv_bias"
+  input: "xception3_match_conv_mean"
+  input: "xception3_match_conv_var"
+  output: "xception3_match_conv_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception3_match_conv_unique"
+  input: "xception3_match_conv_w_second"
+  output: "xception3_match_conv_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception3_match_conv_internal"
+  input: "xception3_match_conv_b"
+  output: "xception3_match_conv"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception2_elewise"
+  output: "xception3_relu"
+  type: "Relu"
+}
+op {
+  input: "xception3_relu"
+  input: "xception3_conv1_1_w"
+  output: "xception3_conv1_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 256
+  }
+}
+op {
+  input: "xception3_conv1_1"
+  input: "xception3_conv1_2_w"
+  output: "xception3_conv1_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception3_conv1_2"
+  input: "xception3_conv1_2_scale"
+  input: "xception3_conv1_2_bias"
+  input: "xception3_conv1_2_mean"
+  input: "xception3_conv1_2_var"
+  output: "xception3_conv1_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception3_conv1_2_unique"
+  input: "xception3_conv1_2_w_second"
+  output: "xception3_conv1_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception3_conv1_2_internal"
+  input: "xception3_conv1_2_b"
+  output: "xception3_conv1_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception3_conv1_2"
+  output: "xception3_conv1_2"
+  type: "Relu"
+}
+op {
+  input: "xception3_conv1_2"
+  input: "xception3_conv2_1_w"
+  output: "xception3_conv2_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 728
+  }
+}
+op {
+  input: "xception3_conv2_1"
+  input: "xception3_conv2_2_w"
+  output: "xception3_conv2_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception3_conv2_2"
+  input: "xception3_conv2_2_scale"
+  input: "xception3_conv2_2_bias"
+  input: "xception3_conv2_2_mean"
+  input: "xception3_conv2_2_var"
+  output: "xception3_conv2_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception3_conv2_2_unique"
+  input: "xception3_conv2_2_w_second"
+  output: "xception3_conv2_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception3_conv2_2_internal"
+  input: "xception3_conv2_2_b"
+  output: "xception3_conv2_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception3_conv2_2"
+  output: "xception3_pool"
+  type: "MaxPool"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "xception3_match_conv"
+  input: "xception3_pool"
+  output: "xception3_elewise"
+  type: "Sum"
+}
+op {
+  input: "xception3_elewise"
+  output: "xception4_relu"
+  type: "Relu"
+}
+op {
+  input: "xception4_relu"
+  input: "xception4_conv1_1_w"
+  output: "xception4_conv1_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 728
+  }
+}
+op {
+  input: "xception4_conv1_1"
+  input: "xception4_conv1_2_w"
+  output: "xception4_conv1_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception4_conv1_2"
+  input: "xception4_conv1_2_scale"
+  input: "xception4_conv1_2_bias"
+  input: "xception4_conv1_2_mean"
+  input: "xception4_conv1_2_var"
+  output: "xception4_conv1_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception4_conv1_2_unique"
+  input: "xception4_conv1_2_w_second"
+  output: "xception4_conv1_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception4_conv1_2_internal"
+  input: "xception4_conv1_2_b"
+  output: "xception4_conv1_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception4_conv1_2"
+  output: "xception4_conv1_2"
+  type: "Relu"
+}
+op {
+  input: "xception4_conv1_2"
+  input: "xception4_conv2_1_w"
+  output: "xception4_conv2_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 728
+  }
+}
+op {
+  input: "xception4_conv2_1"
+  input: "xception4_conv2_2_w"
+  output: "xception4_conv2_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception4_conv2_2"
+  input: "xception4_conv2_2_scale"
+  input: "xception4_conv2_2_bias"
+  input: "xception4_conv2_2_mean"
+  input: "xception4_conv2_2_var"
+  output: "xception4_conv2_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception4_conv2_2_unique"
+  input: "xception4_conv2_2_w_second"
+  output: "xception4_conv2_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception4_conv2_2_internal"
+  input: "xception4_conv2_2_b"
+  output: "xception4_conv2_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception4_conv2_2"
+  output: "xception4_conv2_2"
+  type: "Relu"
+}
+op {
+  input: "xception4_conv2_2"
+  input: "xception4_conv3_1_w"
+  output: "xception4_conv3_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 728
+  }
+}
+op {
+  input: "xception4_conv3_1"
+  input: "xception4_conv3_2_w"
+  output: "xception4_conv3_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception4_conv3_2"
+  input: "xception4_conv3_2_scale"
+  input: "xception4_conv3_2_bias"
+  input: "xception4_conv3_2_mean"
+  input: "xception4_conv3_2_var"
+  output: "xception4_conv3_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception4_conv3_2_unique"
+  input: "xception4_conv3_2_w_second"
+  output: "xception4_conv3_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception4_conv3_2_internal"
+  input: "xception4_conv3_2_b"
+  output: "xception4_conv3_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception3_elewise"
+  input: "xception4_conv3_2"
+  output: "xception4_elewise"
+  type: "Sum"
+}
+op {
+  input: "xception4_elewise"
+  output: "xception5_relu"
+  type: "Relu"
+}
+op {
+  input: "xception5_relu"
+  input: "xception5_conv1_1_w"
+  output: "xception5_conv1_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 728
+  }
+}
+op {
+  input: "xception5_conv1_1"
+  input: "xception5_conv1_2_w"
+  output: "xception5_conv1_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception5_conv1_2"
+  input: "xception5_conv1_2_scale"
+  input: "xception5_conv1_2_bias"
+  input: "xception5_conv1_2_mean"
+  input: "xception5_conv1_2_var"
+  output: "xception5_conv1_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception5_conv1_2_unique"
+  input: "xception5_conv1_2_w_second"
+  output: "xception5_conv1_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception5_conv1_2_internal"
+  input: "xception5_conv1_2_b"
+  output: "xception5_conv1_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception5_conv1_2"
+  output: "xception5_conv1_2"
+  type: "Relu"
+}
+op {
+  input: "xception5_conv1_2"
+  input: "xception5_conv2_1_w"
+  output: "xception5_conv2_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 728
+  }
+}
+op {
+  input: "xception5_conv2_1"
+  input: "xception5_conv2_2_w"
+  output: "xception5_conv2_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception5_conv2_2"
+  input: "xception5_conv2_2_scale"
+  input: "xception5_conv2_2_bias"
+  input: "xception5_conv2_2_mean"
+  input: "xception5_conv2_2_var"
+  output: "xception5_conv2_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception5_conv2_2_unique"
+  input: "xception5_conv2_2_w_second"
+  output: "xception5_conv2_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception5_conv2_2_internal"
+  input: "xception5_conv2_2_b"
+  output: "xception5_conv2_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception5_conv2_2"
+  output: "xception5_conv2_2"
+  type: "Relu"
+}
+op {
+  input: "xception5_conv2_2"
+  input: "xception5_conv3_1_w"
+  output: "xception5_conv3_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 728
+  }
+}
+op {
+  input: "xception5_conv3_1"
+  input: "xception5_conv3_2_w"
+  output: "xception5_conv3_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception5_conv3_2"
+  input: "xception5_conv3_2_scale"
+  input: "xception5_conv3_2_bias"
+  input: "xception5_conv3_2_mean"
+  input: "xception5_conv3_2_var"
+  output: "xception5_conv3_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception5_conv3_2_unique"
+  input: "xception5_conv3_2_w_second"
+  output: "xception5_conv3_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception5_conv3_2_internal"
+  input: "xception5_conv3_2_b"
+  output: "xception5_conv3_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception4_elewise"
+  input: "xception5_conv3_2"
+  output: "xception5_elewise"
+  type: "Sum"
+}
+op {
+  input: "xception5_elewise"
+  output: "xception6_relu"
+  type: "Relu"
+}
+op {
+  input: "xception6_relu"
+  input: "xception6_conv1_1_w"
+  output: "xception6_conv1_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 728
+  }
+}
+op {
+  input: "xception6_conv1_1"
+  input: "xception6_conv1_2_w"
+  output: "xception6_conv1_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception6_conv1_2"
+  input: "xception6_conv1_2_scale"
+  input: "xception6_conv1_2_bias"
+  input: "xception6_conv1_2_mean"
+  input: "xception6_conv1_2_var"
+  output: "xception6_conv1_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception6_conv1_2_unique"
+  input: "xception6_conv1_2_w_second"
+  output: "xception6_conv1_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception6_conv1_2_internal"
+  input: "xception6_conv1_2_b"
+  output: "xception6_conv1_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception6_conv1_2"
+  output: "xception6_conv1_2"
+  type: "Relu"
+}
+op {
+  input: "xception6_conv1_2"
+  input: "xception6_conv2_1_w"
+  output: "xception6_conv2_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 728
+  }
+}
+op {
+  input: "xception6_conv2_1"
+  input: "xception6_conv2_2_w"
+  output: "xception6_conv2_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception6_conv2_2"
+  input: "xception6_conv2_2_scale"
+  input: "xception6_conv2_2_bias"
+  input: "xception6_conv2_2_mean"
+  input: "xception6_conv2_2_var"
+  output: "xception6_conv2_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception6_conv2_2_unique"
+  input: "xception6_conv2_2_w_second"
+  output: "xception6_conv2_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception6_conv2_2_internal"
+  input: "xception6_conv2_2_b"
+  output: "xception6_conv2_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception6_conv2_2"
+  output: "xception6_conv2_2"
+  type: "Relu"
+}
+op {
+  input: "xception6_conv2_2"
+  input: "xception6_conv3_1_w"
+  output: "xception6_conv3_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 728
+  }
+}
+op {
+  input: "xception6_conv3_1"
+  input: "xception6_conv3_2_w"
+  output: "xception6_conv3_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception6_conv3_2"
+  input: "xception6_conv3_2_scale"
+  input: "xception6_conv3_2_bias"
+  input: "xception6_conv3_2_mean"
+  input: "xception6_conv3_2_var"
+  output: "xception6_conv3_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception6_conv3_2_unique"
+  input: "xception6_conv3_2_w_second"
+  output: "xception6_conv3_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception6_conv3_2_internal"
+  input: "xception6_conv3_2_b"
+  output: "xception6_conv3_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception5_elewise"
+  input: "xception6_conv3_2"
+  output: "xception6_elewise"
+  type: "Sum"
+}
+op {
+  input: "xception6_elewise"
+  output: "xception7_relu"
+  type: "Relu"
+}
+op {
+  input: "xception7_relu"
+  input: "xception7_conv1_1_w"
+  output: "xception7_conv1_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 728
+  }
+}
+op {
+  input: "xception7_conv1_1"
+  input: "xception7_conv1_2_w"
+  output: "xception7_conv1_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception7_conv1_2"
+  input: "xception7_conv1_2_scale"
+  input: "xception7_conv1_2_bias"
+  input: "xception7_conv1_2_mean"
+  input: "xception7_conv1_2_var"
+  output: "xception7_conv1_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception7_conv1_2_unique"
+  input: "xception7_conv1_2_w_second"
+  output: "xception7_conv1_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception7_conv1_2_internal"
+  input: "xception7_conv1_2_b"
+  output: "xception7_conv1_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception7_conv1_2"
+  output: "xception7_conv1_2"
+  type: "Relu"
+}
+op {
+  input: "xception7_conv1_2"
+  input: "xception7_conv2_1_w"
+  output: "xception7_conv2_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 728
+  }
+}
+op {
+  input: "xception7_conv2_1"
+  input: "xception7_conv2_2_w"
+  output: "xception7_conv2_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception7_conv2_2"
+  input: "xception7_conv2_2_scale"
+  input: "xception7_conv2_2_bias"
+  input: "xception7_conv2_2_mean"
+  input: "xception7_conv2_2_var"
+  output: "xception7_conv2_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception7_conv2_2_unique"
+  input: "xception7_conv2_2_w_second"
+  output: "xception7_conv2_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception7_conv2_2_internal"
+  input: "xception7_conv2_2_b"
+  output: "xception7_conv2_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception7_conv2_2"
+  output: "xception7_conv2_2"
+  type: "Relu"
+}
+op {
+  input: "xception7_conv2_2"
+  input: "xception7_conv3_1_w"
+  output: "xception7_conv3_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 728
+  }
+}
+op {
+  input: "xception7_conv3_1"
+  input: "xception7_conv3_2_w"
+  output: "xception7_conv3_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception7_conv3_2"
+  input: "xception7_conv3_2_scale"
+  input: "xception7_conv3_2_bias"
+  input: "xception7_conv3_2_mean"
+  input: "xception7_conv3_2_var"
+  output: "xception7_conv3_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception7_conv3_2_unique"
+  input: "xception7_conv3_2_w_second"
+  output: "xception7_conv3_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception7_conv3_2_internal"
+  input: "xception7_conv3_2_b"
+  output: "xception7_conv3_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception6_elewise"
+  input: "xception7_conv3_2"
+  output: "xception7_elewise"
+  type: "Sum"
+}
+op {
+  input: "xception7_elewise"
+  output: "xception8_relu"
+  type: "Relu"
+}
+op {
+  input: "xception8_relu"
+  input: "xception8_conv1_1_w"
+  output: "xception8_conv1_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 728
+  }
+}
+op {
+  input: "xception8_conv1_1"
+  input: "xception8_conv1_2_w"
+  output: "xception8_conv1_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception8_conv1_2"
+  input: "xception8_conv1_2_scale"
+  input: "xception8_conv1_2_bias"
+  input: "xception8_conv1_2_mean"
+  input: "xception8_conv1_2_var"
+  output: "xception8_conv1_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception8_conv1_2_unique"
+  input: "xception8_conv1_2_w_second"
+  output: "xception8_conv1_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception8_conv1_2_internal"
+  input: "xception8_conv1_2_b"
+  output: "xception8_conv1_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception8_conv1_2"
+  output: "xception8_conv1_2"
+  type: "Relu"
+}
+op {
+  input: "xception8_conv1_2"
+  input: "xception8_conv2_1_w"
+  output: "xception8_conv2_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 728
+  }
+}
+op {
+  input: "xception8_conv2_1"
+  input: "xception8_conv2_2_w"
+  output: "xception8_conv2_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception8_conv2_2"
+  input: "xception8_conv2_2_scale"
+  input: "xception8_conv2_2_bias"
+  input: "xception8_conv2_2_mean"
+  input: "xception8_conv2_2_var"
+  output: "xception8_conv2_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception8_conv2_2_unique"
+  input: "xception8_conv2_2_w_second"
+  output: "xception8_conv2_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception8_conv2_2_internal"
+  input: "xception8_conv2_2_b"
+  output: "xception8_conv2_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception8_conv2_2"
+  output: "xception8_conv2_2"
+  type: "Relu"
+}
+op {
+  input: "xception8_conv2_2"
+  input: "xception8_conv3_1_w"
+  output: "xception8_conv3_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 728
+  }
+}
+op {
+  input: "xception8_conv3_1"
+  input: "xception8_conv3_2_w"
+  output: "xception8_conv3_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception8_conv3_2"
+  input: "xception8_conv3_2_scale"
+  input: "xception8_conv3_2_bias"
+  input: "xception8_conv3_2_mean"
+  input: "xception8_conv3_2_var"
+  output: "xception8_conv3_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception8_conv3_2_unique"
+  input: "xception8_conv3_2_w_second"
+  output: "xception8_conv3_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception8_conv3_2_internal"
+  input: "xception8_conv3_2_b"
+  output: "xception8_conv3_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception7_elewise"
+  input: "xception8_conv3_2"
+  output: "xception8_elewise"
+  type: "Sum"
+}
+op {
+  input: "xception8_elewise"
+  output: "xception9_relu"
+  type: "Relu"
+}
+op {
+  input: "xception9_relu"
+  input: "xception9_conv1_1_w"
+  output: "xception9_conv1_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 728
+  }
+}
+op {
+  input: "xception9_conv1_1"
+  input: "xception9_conv1_2_w"
+  output: "xception9_conv1_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception9_conv1_2"
+  input: "xception9_conv1_2_scale"
+  input: "xception9_conv1_2_bias"
+  input: "xception9_conv1_2_mean"
+  input: "xception9_conv1_2_var"
+  output: "xception9_conv1_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception9_conv1_2_unique"
+  input: "xception9_conv1_2_w_second"
+  output: "xception9_conv1_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception9_conv1_2_internal"
+  input: "xception9_conv1_2_b"
+  output: "xception9_conv1_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception9_conv1_2"
+  output: "xception9_conv1_2"
+  type: "Relu"
+}
+op {
+  input: "xception9_conv1_2"
+  input: "xception9_conv2_1_w"
+  output: "xception9_conv2_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 728
+  }
+}
+op {
+  input: "xception9_conv2_1"
+  input: "xception9_conv2_2_w"
+  output: "xception9_conv2_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception9_conv2_2"
+  input: "xception9_conv2_2_scale"
+  input: "xception9_conv2_2_bias"
+  input: "xception9_conv2_2_mean"
+  input: "xception9_conv2_2_var"
+  output: "xception9_conv2_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception9_conv2_2_unique"
+  input: "xception9_conv2_2_w_second"
+  output: "xception9_conv2_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception9_conv2_2_internal"
+  input: "xception9_conv2_2_b"
+  output: "xception9_conv2_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception9_conv2_2"
+  output: "xception9_conv2_2"
+  type: "Relu"
+}
+op {
+  input: "xception9_conv2_2"
+  input: "xception9_conv3_1_w"
+  output: "xception9_conv3_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 728
+  }
+}
+op {
+  input: "xception9_conv3_1"
+  input: "xception9_conv3_2_w"
+  output: "xception9_conv3_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception9_conv3_2"
+  input: "xception9_conv3_2_scale"
+  input: "xception9_conv3_2_bias"
+  input: "xception9_conv3_2_mean"
+  input: "xception9_conv3_2_var"
+  output: "xception9_conv3_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception9_conv3_2_unique"
+  input: "xception9_conv3_2_w_second"
+  output: "xception9_conv3_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception9_conv3_2_internal"
+  input: "xception9_conv3_2_b"
+  output: "xception9_conv3_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception8_elewise"
+  input: "xception9_conv3_2"
+  output: "xception9_elewise"
+  type: "Sum"
+}
+op {
+  input: "xception9_elewise"
+  output: "xception10_relu"
+  type: "Relu"
+}
+op {
+  input: "xception10_relu"
+  input: "xception10_conv1_1_w"
+  output: "xception10_conv1_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 728
+  }
+}
+op {
+  input: "xception10_conv1_1"
+  input: "xception10_conv1_2_w"
+  output: "xception10_conv1_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception10_conv1_2"
+  input: "xception10_conv1_2_scale"
+  input: "xception10_conv1_2_bias"
+  input: "xception10_conv1_2_mean"
+  input: "xception10_conv1_2_var"
+  output: "xception10_conv1_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception10_conv1_2_unique"
+  input: "xception10_conv1_2_w_second"
+  output: "xception10_conv1_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception10_conv1_2_internal"
+  input: "xception10_conv1_2_b"
+  output: "xception10_conv1_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception10_conv1_2"
+  output: "xception10_conv1_2"
+  type: "Relu"
+}
+op {
+  input: "xception10_conv1_2"
+  input: "xception10_conv2_1_w"
+  output: "xception10_conv2_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 728
+  }
+}
+op {
+  input: "xception10_conv2_1"
+  input: "xception10_conv2_2_w"
+  output: "xception10_conv2_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception10_conv2_2"
+  input: "xception10_conv2_2_scale"
+  input: "xception10_conv2_2_bias"
+  input: "xception10_conv2_2_mean"
+  input: "xception10_conv2_2_var"
+  output: "xception10_conv2_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception10_conv2_2_unique"
+  input: "xception10_conv2_2_w_second"
+  output: "xception10_conv2_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception10_conv2_2_internal"
+  input: "xception10_conv2_2_b"
+  output: "xception10_conv2_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception10_conv2_2"
+  output: "xception10_conv2_2"
+  type: "Relu"
+}
+op {
+  input: "xception10_conv2_2"
+  input: "xception10_conv3_1_w"
+  output: "xception10_conv3_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 728
+  }
+}
+op {
+  input: "xception10_conv3_1"
+  input: "xception10_conv3_2_w"
+  output: "xception10_conv3_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception10_conv3_2"
+  input: "xception10_conv3_2_scale"
+  input: "xception10_conv3_2_bias"
+  input: "xception10_conv3_2_mean"
+  input: "xception10_conv3_2_var"
+  output: "xception10_conv3_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception10_conv3_2_unique"
+  input: "xception10_conv3_2_w_second"
+  output: "xception10_conv3_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception10_conv3_2_internal"
+  input: "xception10_conv3_2_b"
+  output: "xception10_conv3_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception9_elewise"
+  input: "xception10_conv3_2"
+  output: "xception10_elewise"
+  type: "Sum"
+}
+op {
+  input: "xception10_elewise"
+  output: "xception11_relu"
+  type: "Relu"
+}
+op {
+  input: "xception11_relu"
+  input: "xception11_conv1_1_w"
+  output: "xception11_conv1_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 728
+  }
+}
+op {
+  input: "xception11_conv1_1"
+  input: "xception11_conv1_2_w"
+  output: "xception11_conv1_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception11_conv1_2"
+  input: "xception11_conv1_2_scale"
+  input: "xception11_conv1_2_bias"
+  input: "xception11_conv1_2_mean"
+  input: "xception11_conv1_2_var"
+  output: "xception11_conv1_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception11_conv1_2_unique"
+  input: "xception11_conv1_2_w_second"
+  output: "xception11_conv1_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception11_conv1_2_internal"
+  input: "xception11_conv1_2_b"
+  output: "xception11_conv1_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception11_conv1_2"
+  output: "xception11_conv1_2"
+  type: "Relu"
+}
+op {
+  input: "xception11_conv1_2"
+  input: "xception11_conv2_1_w"
+  output: "xception11_conv2_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 728
+  }
+}
+op {
+  input: "xception11_conv2_1"
+  input: "xception11_conv2_2_w"
+  output: "xception11_conv2_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception11_conv2_2"
+  input: "xception11_conv2_2_scale"
+  input: "xception11_conv2_2_bias"
+  input: "xception11_conv2_2_mean"
+  input: "xception11_conv2_2_var"
+  output: "xception11_conv2_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception11_conv2_2_unique"
+  input: "xception11_conv2_2_w_second"
+  output: "xception11_conv2_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception11_conv2_2_internal"
+  input: "xception11_conv2_2_b"
+  output: "xception11_conv2_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception11_conv2_2"
+  output: "xception11_conv2_2"
+  type: "Relu"
+}
+op {
+  input: "xception11_conv2_2"
+  input: "xception11_conv3_1_w"
+  output: "xception11_conv3_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 728
+  }
+}
+op {
+  input: "xception11_conv3_1"
+  input: "xception11_conv3_2_w"
+  output: "xception11_conv3_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception11_conv3_2"
+  input: "xception11_conv3_2_scale"
+  input: "xception11_conv3_2_bias"
+  input: "xception11_conv3_2_mean"
+  input: "xception11_conv3_2_var"
+  output: "xception11_conv3_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception11_conv3_2_unique"
+  input: "xception11_conv3_2_w_second"
+  output: "xception11_conv3_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception11_conv3_2_internal"
+  input: "xception11_conv3_2_b"
+  output: "xception11_conv3_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception10_elewise"
+  input: "xception11_conv3_2"
+  output: "xception11_elewise"
+  type: "Sum"
+}
+op {
+  input: "xception11_elewise"
+  input: "xception12_match_conv_w"
+  output: "xception12_match_conv"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception12_match_conv"
+  input: "xception12_match_conv_scale"
+  input: "xception12_match_conv_bias"
+  input: "xception12_match_conv_mean"
+  input: "xception12_match_conv_var"
+  output: "xception12_match_conv_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception12_match_conv_unique"
+  input: "xception12_match_conv_w_second"
+  output: "xception12_match_conv_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception12_match_conv_internal"
+  input: "xception12_match_conv_b"
+  output: "xception12_match_conv"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception11_elewise"
+  output: "xception12_relu"
+  type: "Relu"
+}
+op {
+  input: "xception12_relu"
+  input: "xception12_conv1_1_w"
+  output: "xception12_conv1_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 728
+  }
+}
+op {
+  input: "xception12_conv1_1"
+  input: "xception12_conv1_2_w"
+  output: "xception12_conv1_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception12_conv1_2"
+  input: "xception12_conv1_2_scale"
+  input: "xception12_conv1_2_bias"
+  input: "xception12_conv1_2_mean"
+  input: "xception12_conv1_2_var"
+  output: "xception12_conv1_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception12_conv1_2_unique"
+  input: "xception12_conv1_2_w_second"
+  output: "xception12_conv1_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception12_conv1_2_internal"
+  input: "xception12_conv1_2_b"
+  output: "xception12_conv1_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception12_conv1_2"
+  output: "xception12_conv1_2"
+  type: "Relu"
+}
+op {
+  input: "xception12_conv1_2"
+  input: "xception12_conv2_1_w"
+  output: "xception12_conv2_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 728
+  }
+}
+op {
+  input: "xception12_conv2_1"
+  input: "xception12_conv2_2_w"
+  output: "xception12_conv2_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "xception12_conv2_2"
+  input: "xception12_conv2_2_scale"
+  input: "xception12_conv2_2_bias"
+  input: "xception12_conv2_2_mean"
+  input: "xception12_conv2_2_var"
+  output: "xception12_conv2_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "xception12_conv2_2_unique"
+  input: "xception12_conv2_2_w_second"
+  output: "xception12_conv2_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception12_conv2_2_internal"
+  input: "xception12_conv2_2_b"
+  output: "xception12_conv2_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "xception12_conv2_2"
+  output: "xception12_pool"
+  type: "MaxPool"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "xception12_match_conv"
+  input: "xception12_pool"
+  output: "xception12_elewise"
+  type: "Sum"
+}
+op {
+  input: "xception12_elewise"
+  input: "conv3_1_w"
+  output: "conv3_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 1024
+  }
+}
+op {
+  input: "conv3_1"
+  input: "conv3_2_w"
+  output: "conv3_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv3_2"
+  input: "conv3_2_scale"
+  input: "conv3_2_bias"
+  input: "conv3_2_mean"
+  input: "conv3_2_var"
+  output: "conv3_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv3_2_unique"
+  input: "conv3_2_w_second"
+  output: "conv3_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv3_2_internal"
+  input: "conv3_2_b"
+  output: "conv3_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv3_2"
+  output: "conv3_2"
+  type: "Relu"
+}
+op {
+  input: "conv3_2"
+  input: "conv4_1_w"
+  output: "conv4_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "group"
+    i: 1536
+  }
+}
+op {
+  input: "conv4_1"
+  input: "conv4_2_w"
+  output: "conv4_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv4_2"
+  input: "conv4_2_scale"
+  input: "conv4_2_bias"
+  input: "conv4_2_mean"
+  input: "conv4_2_var"
+  output: "conv4_2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 0.001
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv4_2_unique"
+  input: "conv4_2_w_second"
+  output: "conv4_2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv4_2_internal"
+  input: "conv4_2_b"
+  output: "conv4_2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv4_2"
+  output: "conv4_2"
+  type: "Relu"
+}
+op {
+  input: "conv4_2"
+  output: "pool_ave"
+  type: "AveragePool"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 0
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+  arg {
+    name: "global_pooling"
+    i: 1
+  }
+}
+op {
+  input: "pool_ave"
+  input: "classifier_w"
+  input: "classifier_b"
+  output: "classifier"
+  type: "FC"
+}
+op {
+  input: "classifier"
+  output: "prob"
+  type: "Softmax"
+}
+external_input: "data"
+external_input: "conv1_w"
+external_input: "conv1_scale"
+external_input: "conv1_bias"
+external_input: "conv1_mean"
+external_input: "conv1_var"
+external_input: "conv1_w_second"
+external_input: "conv1_b"
+external_input: "conv2_w"
+external_input: "conv2_scale"
+external_input: "conv2_bias"
+external_input: "conv2_mean"
+external_input: "conv2_var"
+external_input: "conv2_w_second"
+external_input: "conv2_b"
+external_input: "xception1_match_conv_w"
+external_input: "xception1_match_conv_scale"
+external_input: "xception1_match_conv_bias"
+external_input: "xception1_match_conv_mean"
+external_input: "xception1_match_conv_var"
+external_input: "xception1_match_conv_w_second"
+external_input: "xception1_match_conv_b"
+external_input: "xception1_conv1_1_w"
+external_input: "xception1_conv1_2_w"
+external_input: "xception1_conv1_2_scale"
+external_input: "xception1_conv1_2_bias"
+external_input: "xception1_conv1_2_mean"
+external_input: "xception1_conv1_2_var"
+external_input: "xception1_conv1_2_w_second"
+external_input: "xception1_conv1_2_b"
+external_input: "xception1_conv2_1_w"
+external_input: "xception1_conv2_2_w"
+external_input: "xception1_conv2_2_scale"
+external_input: "xception1_conv2_2_bias"
+external_input: "xception1_conv2_2_mean"
+external_input: "xception1_conv2_2_var"
+external_input: "xception1_conv2_2_w_second"
+external_input: "xception1_conv2_2_b"
+external_input: "xception2_match_conv_w"
+external_input: "xception2_match_conv_scale"
+external_input: "xception2_match_conv_bias"
+external_input: "xception2_match_conv_mean"
+external_input: "xception2_match_conv_var"
+external_input: "xception2_match_conv_w_second"
+external_input: "xception2_match_conv_b"
+external_input: "xception2_conv1_1_w"
+external_input: "xception2_conv1_2_w"
+external_input: "xception2_conv1_2_scale"
+external_input: "xception2_conv1_2_bias"
+external_input: "xception2_conv1_2_mean"
+external_input: "xception2_conv1_2_var"
+external_input: "xception2_conv1_2_w_second"
+external_input: "xception2_conv1_2_b"
+external_input: "xception2_conv2_1_w"
+external_input: "xception2_conv2_2_w"
+external_input: "xception2_conv2_2_scale"
+external_input: "xception2_conv2_2_bias"
+external_input: "xception2_conv2_2_mean"
+external_input: "xception2_conv2_2_var"
+external_input: "xception2_conv2_2_w_second"
+external_input: "xception2_conv2_2_b"
+external_input: "xception3_match_conv_w"
+external_input: "xception3_match_conv_scale"
+external_input: "xception3_match_conv_bias"
+external_input: "xception3_match_conv_mean"
+external_input: "xception3_match_conv_var"
+external_input: "xception3_match_conv_w_second"
+external_input: "xception3_match_conv_b"
+external_input: "xception3_conv1_1_w"
+external_input: "xception3_conv1_2_w"
+external_input: "xception3_conv1_2_scale"
+external_input: "xception3_conv1_2_bias"
+external_input: "xception3_conv1_2_mean"
+external_input: "xception3_conv1_2_var"
+external_input: "xception3_conv1_2_w_second"
+external_input: "xception3_conv1_2_b"
+external_input: "xception3_conv2_1_w"
+external_input: "xception3_conv2_2_w"
+external_input: "xception3_conv2_2_scale"
+external_input: "xception3_conv2_2_bias"
+external_input: "xception3_conv2_2_mean"
+external_input: "xception3_conv2_2_var"
+external_input: "xception3_conv2_2_w_second"
+external_input: "xception3_conv2_2_b"
+external_input: "xception4_conv1_1_w"
+external_input: "xception4_conv1_2_w"
+external_input: "xception4_conv1_2_scale"
+external_input: "xception4_conv1_2_bias"
+external_input: "xception4_conv1_2_mean"
+external_input: "xception4_conv1_2_var"
+external_input: "xception4_conv1_2_w_second"
+external_input: "xception4_conv1_2_b"
+external_input: "xception4_conv2_1_w"
+external_input: "xception4_conv2_2_w"
+external_input: "xception4_conv2_2_scale"
+external_input: "xception4_conv2_2_bias"
+external_input: "xception4_conv2_2_mean"
+external_input: "xception4_conv2_2_var"
+external_input: "xception4_conv2_2_w_second"
+external_input: "xception4_conv2_2_b"
+external_input: "xception4_conv3_1_w"
+external_input: "xception4_conv3_2_w"
+external_input: "xception4_conv3_2_scale"
+external_input: "xception4_conv3_2_bias"
+external_input: "xception4_conv3_2_mean"
+external_input: "xception4_conv3_2_var"
+external_input: "xception4_conv3_2_w_second"
+external_input: "xception4_conv3_2_b"
+external_input: "xception5_conv1_1_w"
+external_input: "xception5_conv1_2_w"
+external_input: "xception5_conv1_2_scale"
+external_input: "xception5_conv1_2_bias"
+external_input: "xception5_conv1_2_mean"
+external_input: "xception5_conv1_2_var"
+external_input: "xception5_conv1_2_w_second"
+external_input: "xception5_conv1_2_b"
+external_input: "xception5_conv2_1_w"
+external_input: "xception5_conv2_2_w"
+external_input: "xception5_conv2_2_scale"
+external_input: "xception5_conv2_2_bias"
+external_input: "xception5_conv2_2_mean"
+external_input: "xception5_conv2_2_var"
+external_input: "xception5_conv2_2_w_second"
+external_input: "xception5_conv2_2_b"
+external_input: "xception5_conv3_1_w"
+external_input: "xception5_conv3_2_w"
+external_input: "xception5_conv3_2_scale"
+external_input: "xception5_conv3_2_bias"
+external_input: "xception5_conv3_2_mean"
+external_input: "xception5_conv3_2_var"
+external_input: "xception5_conv3_2_w_second"
+external_input: "xception5_conv3_2_b"
+external_input: "xception6_conv1_1_w"
+external_input: "xception6_conv1_2_w"
+external_input: "xception6_conv1_2_scale"
+external_input: "xception6_conv1_2_bias"
+external_input: "xception6_conv1_2_mean"
+external_input: "xception6_conv1_2_var"
+external_input: "xception6_conv1_2_w_second"
+external_input: "xception6_conv1_2_b"
+external_input: "xception6_conv2_1_w"
+external_input: "xception6_conv2_2_w"
+external_input: "xception6_conv2_2_scale"
+external_input: "xception6_conv2_2_bias"
+external_input: "xception6_conv2_2_mean"
+external_input: "xception6_conv2_2_var"
+external_input: "xception6_conv2_2_w_second"
+external_input: "xception6_conv2_2_b"
+external_input: "xception6_conv3_1_w"
+external_input: "xception6_conv3_2_w"
+external_input: "xception6_conv3_2_scale"
+external_input: "xception6_conv3_2_bias"
+external_input: "xception6_conv3_2_mean"
+external_input: "xception6_conv3_2_var"
+external_input: "xception6_conv3_2_w_second"
+external_input: "xception6_conv3_2_b"
+external_input: "xception7_conv1_1_w"
+external_input: "xception7_conv1_2_w"
+external_input: "xception7_conv1_2_scale"
+external_input: "xception7_conv1_2_bias"
+external_input: "xception7_conv1_2_mean"
+external_input: "xception7_conv1_2_var"
+external_input: "xception7_conv1_2_w_second"
+external_input: "xception7_conv1_2_b"
+external_input: "xception7_conv2_1_w"
+external_input: "xception7_conv2_2_w"
+external_input: "xception7_conv2_2_scale"
+external_input: "xception7_conv2_2_bias"
+external_input: "xception7_conv2_2_mean"
+external_input: "xception7_conv2_2_var"
+external_input: "xception7_conv2_2_w_second"
+external_input: "xception7_conv2_2_b"
+external_input: "xception7_conv3_1_w"
+external_input: "xception7_conv3_2_w"
+external_input: "xception7_conv3_2_scale"
+external_input: "xception7_conv3_2_bias"
+external_input: "xception7_conv3_2_mean"
+external_input: "xception7_conv3_2_var"
+external_input: "xception7_conv3_2_w_second"
+external_input: "xception7_conv3_2_b"
+external_input: "xception8_conv1_1_w"
+external_input: "xception8_conv1_2_w"
+external_input: "xception8_conv1_2_scale"
+external_input: "xception8_conv1_2_bias"
+external_input: "xception8_conv1_2_mean"
+external_input: "xception8_conv1_2_var"
+external_input: "xception8_conv1_2_w_second"
+external_input: "xception8_conv1_2_b"
+external_input: "xception8_conv2_1_w"
+external_input: "xception8_conv2_2_w"
+external_input: "xception8_conv2_2_scale"
+external_input: "xception8_conv2_2_bias"
+external_input: "xception8_conv2_2_mean"
+external_input: "xception8_conv2_2_var"
+external_input: "xception8_conv2_2_w_second"
+external_input: "xception8_conv2_2_b"
+external_input: "xception8_conv3_1_w"
+external_input: "xception8_conv3_2_w"
+external_input: "xception8_conv3_2_scale"
+external_input: "xception8_conv3_2_bias"
+external_input: "xception8_conv3_2_mean"
+external_input: "xception8_conv3_2_var"
+external_input: "xception8_conv3_2_w_second"
+external_input: "xception8_conv3_2_b"
+external_input: "xception9_conv1_1_w"
+external_input: "xception9_conv1_2_w"
+external_input: "xception9_conv1_2_scale"
+external_input: "xception9_conv1_2_bias"
+external_input: "xception9_conv1_2_mean"
+external_input: "xception9_conv1_2_var"
+external_input: "xception9_conv1_2_w_second"
+external_input: "xception9_conv1_2_b"
+external_input: "xception9_conv2_1_w"
+external_input: "xception9_conv2_2_w"
+external_input: "xception9_conv2_2_scale"
+external_input: "xception9_conv2_2_bias"
+external_input: "xception9_conv2_2_mean"
+external_input: "xception9_conv2_2_var"
+external_input: "xception9_conv2_2_w_second"
+external_input: "xception9_conv2_2_b"
+external_input: "xception9_conv3_1_w"
+external_input: "xception9_conv3_2_w"
+external_input: "xception9_conv3_2_scale"
+external_input: "xception9_conv3_2_bias"
+external_input: "xception9_conv3_2_mean"
+external_input: "xception9_conv3_2_var"
+external_input: "xception9_conv3_2_w_second"
+external_input: "xception9_conv3_2_b"
+external_input: "xception10_conv1_1_w"
+external_input: "xception10_conv1_2_w"
+external_input: "xception10_conv1_2_scale"
+external_input: "xception10_conv1_2_bias"
+external_input: "xception10_conv1_2_mean"
+external_input: "xception10_conv1_2_var"
+external_input: "xception10_conv1_2_w_second"
+external_input: "xception10_conv1_2_b"
+external_input: "xception10_conv2_1_w"
+external_input: "xception10_conv2_2_w"
+external_input: "xception10_conv2_2_scale"
+external_input: "xception10_conv2_2_bias"
+external_input: "xception10_conv2_2_mean"
+external_input: "xception10_conv2_2_var"
+external_input: "xception10_conv2_2_w_second"
+external_input: "xception10_conv2_2_b"
+external_input: "xception10_conv3_1_w"
+external_input: "xception10_conv3_2_w"
+external_input: "xception10_conv3_2_scale"
+external_input: "xception10_conv3_2_bias"
+external_input: "xception10_conv3_2_mean"
+external_input: "xception10_conv3_2_var"
+external_input: "xception10_conv3_2_w_second"
+external_input: "xception10_conv3_2_b"
+external_input: "xception11_conv1_1_w"
+external_input: "xception11_conv1_2_w"
+external_input: "xception11_conv1_2_scale"
+external_input: "xception11_conv1_2_bias"
+external_input: "xception11_conv1_2_mean"
+external_input: "xception11_conv1_2_var"
+external_input: "xception11_conv1_2_w_second"
+external_input: "xception11_conv1_2_b"
+external_input: "xception11_conv2_1_w"
+external_input: "xception11_conv2_2_w"
+external_input: "xception11_conv2_2_scale"
+external_input: "xception11_conv2_2_bias"
+external_input: "xception11_conv2_2_mean"
+external_input: "xception11_conv2_2_var"
+external_input: "xception11_conv2_2_w_second"
+external_input: "xception11_conv2_2_b"
+external_input: "xception11_conv3_1_w"
+external_input: "xception11_conv3_2_w"
+external_input: "xception11_conv3_2_scale"
+external_input: "xception11_conv3_2_bias"
+external_input: "xception11_conv3_2_mean"
+external_input: "xception11_conv3_2_var"
+external_input: "xception11_conv3_2_w_second"
+external_input: "xception11_conv3_2_b"
+external_input: "xception12_match_conv_w"
+external_input: "xception12_match_conv_scale"
+external_input: "xception12_match_conv_bias"
+external_input: "xception12_match_conv_mean"
+external_input: "xception12_match_conv_var"
+external_input: "xception12_match_conv_w_second"
+external_input: "xception12_match_conv_b"
+external_input: "xception12_conv1_1_w"
+external_input: "xception12_conv1_2_w"
+external_input: "xception12_conv1_2_scale"
+external_input: "xception12_conv1_2_bias"
+external_input: "xception12_conv1_2_mean"
+external_input: "xception12_conv1_2_var"
+external_input: "xception12_conv1_2_w_second"
+external_input: "xception12_conv1_2_b"
+external_input: "xception12_conv2_1_w"
+external_input: "xception12_conv2_2_w"
+external_input: "xception12_conv2_2_scale"
+external_input: "xception12_conv2_2_bias"
+external_input: "xception12_conv2_2_mean"
+external_input: "xception12_conv2_2_var"
+external_input: "xception12_conv2_2_w_second"
+external_input: "xception12_conv2_2_b"
+external_input: "conv3_1_w"
+external_input: "conv3_2_w"
+external_input: "conv3_2_scale"
+external_input: "conv3_2_bias"
+external_input: "conv3_2_mean"
+external_input: "conv3_2_var"
+external_input: "conv3_2_w_second"
+external_input: "conv3_2_b"
+external_input: "conv4_1_w"
+external_input: "conv4_2_w"
+external_input: "conv4_2_scale"
+external_input: "conv4_2_bias"
+external_input: "conv4_2_mean"
+external_input: "conv4_2_var"
+external_input: "conv4_2_w_second"
+external_input: "conv4_2_b"
+external_input: "classifier_w"
+external_input: "classifier_b"
+external_output: "prob"
