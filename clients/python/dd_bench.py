@@ -85,11 +85,14 @@ parameters_input = {}
 parameters_mllib = {'gpu':args.gpu}
 parameters_output = {}
 if args.detection:
-    parameters_output['bbox'] = True
+
     parameters_output['confidence_threshold'] = 0.1
     if args.search or args.search_multibox:
       parameters_output['search'] = True
       parameters_output['rois'] = 'rois'
+      parameters_output['bbox'] = False
+    else:
+      parameters_output['bbox'] = True
     if args.search_multibox:
       parameters_output['multibox_rois'] = True
 elif args.search:
