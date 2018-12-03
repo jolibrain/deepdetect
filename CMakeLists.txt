@@ -62,6 +62,7 @@ if (USE_TF)
   set(EIGEN3_INCLUDE_DIR ${TENSORFLOW_CC_DIR}/tensorflow/tensorflow/contrib/makefile/downloads/eigen/)
 elseif (USE_CAFFE2)
   set(PYTORCH_PATH ${CMAKE_BINARY_DIR}/pytorch/src/pytorch)
+  set(DETECTRON_PATH ${CMAKE_BINARY_DIR}/detectron/src/detectron)
   set(EIGEN3_INCLUDE_DIR ${PYTORCH_PATH}/third_party/eigen)
 else()
    find_package(PkgConfig)
@@ -193,20 +194,30 @@ if (USE_CAFFE2)
     ${PYTORCH_PATH}-build
     ${PYTORCH_PATH}/aten/src
   )
+  set(CAFFE2_PATCHES ${CMAKE_BINARY_DIR}/patches/caffe2)
 
   set(PYTORCH_SUPPORTED_COMMIT ff608a9) # Pre-release v1.0rc1
-  list(APPEND CAFFE2_PATCHES
-    ${CMAKE_BINARY_DIR}/patches/caffe2/0001-eigen.patch
-    ${CMAKE_BINARY_DIR}/patches/caffe2/0002-logging.patch
-    ${CMAKE_BINARY_DIR}/patches/caffe2/0003-collect_proposals.patch
-  )
+  set(PYTORCH_PATCHES
+    ${CAFFE2_PATCHES}/pytorch/0001-eigen.patch
+    ${CAFFE2_PATCHES}/pytorch/0002-logging.patch
+    ${CAFFE2_PATCHES}/pytorch/0003-collect_proposals.patch
+    )
+
+  set(DETECTRON_SUPPORTED_COMMIT 8181a32) # Nov 7, 2018
+  set(DETECTRON_PATCHES
+    ${CAFFE2_PATCHES}/detectron/0001-dependencies.patch
+    ${CAFFE2_PATCHES}/detectron/0002-compiled.patch
+    ${CAFFE2_PATCHES}/detectron/0003-ops.patch
+    ${CAFFE2_PATCHES}/detectron/0004-import.patch
+    )
+
   list(APPEND CAFFE2_OPS
-    ${CMAKE_BINARY_DIR}/patches/caffe2/custom_ops/bbox_to_roi_op.h
-    ${CMAKE_BINARY_DIR}/patches/caffe2/custom_ops/bbox_to_roi_op.cc
-    ${CMAKE_BINARY_DIR}/patches/caffe2/custom_ops/segment_mask_op.h
-    ${CMAKE_BINARY_DIR}/patches/caffe2/custom_ops/segment_mask_op.cc
-    ${CMAKE_BINARY_DIR}/patches/caffe2/custom_ops/multi_level_roi_op.h
-    ${CMAKE_BINARY_DIR}/patches/caffe2/custom_ops/multi_level_roi_op.cc
+    ${CAFFE2_PATCHES}/custom_ops/bbox_to_roi_op.h
+    ${CAFFE2_PATCHES}/custom_ops/bbox_to_roi_op.cc
+    ${CAFFE2_PATCHES}/custom_ops/segment_mask_op.h
+    ${CAFFE2_PATCHES}/custom_ops/segment_mask_op.cc
+    ${CAFFE2_PATCHES}/custom_ops/multi_level_roi_op.h
+    ${CAFFE2_PATCHES}/custom_ops/multi_level_roi_op.cc
   )
 
   list(APPEND PYTORCH_FLAGS
@@ -221,7 +232,6 @@ if (USE_CAFFE2)
 
     -DBUILD_TEST=OFF
     -DBUILD_BINARY=OFF
-    -DBUILD_PYTHON=OFF
     -DBUILD_DOCS=OFF
     )
 
@@ -239,10 +249,12 @@ if (USE_CAFFE2)
     third_party/protobuf
     third_party/psimd
     third_party/pthreadpool
+    third_party/pybind11
     third_party/python-peachpy
     third_party/sleef
     )
 
+  # Pytorch
   set(PYTORCH_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch-complete)
   ExternalProject_Add(
     pytorch
@@ -252,12 +264,13 @@ if (USE_CAFFE2)
     GIT_SUBMODULES ${PYTORCH_SUBMODULES}
     UPDATE_DISCONNECTED 1
     GIT_TAG ${PYTORCH_SUPPORTED_COMMIT}
-    PATCH_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || echo cp modules/detectron/*_op.* caffe2/operators | bash && cp ${CAFFE2_OPS} caffe2/operators && git am ${CAFFE2_PATCHES}
+    PATCH_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || echo cp modules/detectron/*_op.* caffe2/operators | bash && cp ${CAFFE2_OPS} caffe2/operators && git am ${PYTORCH_PATCHES}
     CONFIGURE_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || cmake ../pytorch ${PYTORCH_FLAGS}
     BUILD_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || make -j${N}
     INSTALL_COMMAND ""
     )
 
+  # Compilation path
   set(PROTOBUF_INCLUDE_DIR ${CMAKE_BINARY_DIR}/protobuf/include)
   set(PROTOBUF_LIB_DIR ${CMAKE_BINARY_DIR}/protobuf/lib)
   if (NOT EXISTS ${CMAKE_BINARY_DIR}/protobuf)
@@ -266,6 +279,32 @@ if (USE_CAFFE2)
     execute_process(COMMAND ln -s ${PYTORCH_PATH}-build/lib ${PROTOBUF_LIB_DIR})
     execute_process(COMMAND ln -s ${PYTORCH_PATH}-build/bin ${CMAKE_BINARY_DIR}/protobuf/bin)
   endif()
+
+  # Detectron
+  set(DETECTRON_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/detectron-complete)
+  ExternalProject_Add(
+    detectron
+    PREFIX detectron
+    INSTALL_DIR ${CMAKE_BINARY_DIR}
+    GIT_REPOSITORY https://github.com/facebookresearch/Detectron
+    UPDATE_DISCONNECTED 1
+    GIT_TAG ${DETECTRON_SUPPORTED_COMMIT}
+    PATCH_COMMAND test -f ${DETECTRON_COMPLETE} && echo Skipping || git am ${DETECTRON_PATCHES}
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+    )
+  add_dependencies(detectron pytorch)
+
+  # Python path
+  if (NOT EXISTS ${CMAKE_BINARY_DIR}/python_path)
+    execute_process(COMMAND mkdir ${CMAKE_BINARY_DIR}/python_path)
+    execute_process(COMMAND ln -s ${PYTORCH_PATH}-build
+      ${CMAKE_BINARY_DIR}/python_path/pytorch)
+    execute_process(COMMAND ln -s ${DETECTRON_PATH}
+      ${CMAKE_BINARY_DIR}/python_path/detectron)
+  endif()
+
 endif()
 
 if (USE_TF)
@@ -437,7 +476,7 @@ if (USE_TF)
 endif()
 
 if (USE_CAFFE2)
-  add_dependencies(caffe_dd pytorch)
+  add_dependencies(caffe_dd detectron)
 endif()
 
 # XGBoost
