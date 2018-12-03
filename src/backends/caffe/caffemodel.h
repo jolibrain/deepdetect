@@ -39,7 +39,8 @@ namespace dd
     ~CaffeModel() {};
 
     int read_from_repository(const std::string &repo,
-			     const std::shared_ptr<spdlog::logger> &logger);
+			     const std::shared_ptr<spdlog::logger> &logger,
+			     const bool &new_first=false);
 
     int copy_to_target(const std::string &source_repo,
 		       const std::string &target_repo,
