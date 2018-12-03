@@ -468,7 +468,7 @@ namespace dd {
     std::unique_ptr<caffe2::db::DB> db(caffe2::db::CreateDB(_db_type, dbname, caffe2::db::NEW));
     std::unique_ptr<caffe2::db::Transaction> txn(db->NewTransaction());
 
-    //TODO Manage Dectron-like databases (im_info blob, bbox, classes, ...)
+    //XXX Manage Dectron-like databases (im_info blob, bbox, classes, ...)
 
     // Prefill db entries
     caffe2::TensorProtos protos;
@@ -557,7 +557,7 @@ namespace dd {
     }
 
     // Add an ImageInput
-    // TODO manage Detectron databases
+    //XXX manage Detectron databases
     DBInputSetter config_dbinput =
       [&](caffe2::OperatorDef &op, const std::string &reader, int batch_size) {
       Caffe2NetTools::ImageInput(op, reader, input, context._blob_label, batch_size,

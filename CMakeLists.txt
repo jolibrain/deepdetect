@@ -194,7 +194,16 @@ if (USE_CAFFE2)
     ${CMAKE_BINARY_DIR}/patches/caffe2/eigen.patch
     ${CMAKE_BINARY_DIR}/patches/caffe2/logging.patch
     ${CMAKE_BINARY_DIR}/patches/caffe2/VLOG.patch
-    )
+    ${CMAKE_BINARY_DIR}/patches/caffe2/collect_proposals.patch
+  )
+  list(APPEND CAFFE2_OPS
+    ${CMAKE_BINARY_DIR}/patches/caffe2/custom_ops/bbox_to_roi_op.h
+    ${CMAKE_BINARY_DIR}/patches/caffe2/custom_ops/bbox_to_roi_op.cc
+    ${CMAKE_BINARY_DIR}/patches/caffe2/custom_ops/segment_mask_op.h
+    ${CMAKE_BINARY_DIR}/patches/caffe2/custom_ops/segment_mask_op.cc
+    ${CMAKE_BINARY_DIR}/patches/caffe2/custom_ops/multi_level_roi_op.h
+    ${CMAKE_BINARY_DIR}/patches/caffe2/custom_ops/multi_level_roi_op.cc
+  )
 
   list(APPEND PYTORCH_FLAGS
 
@@ -238,7 +247,7 @@ if (USE_CAFFE2)
     GIT_SUBMODULES ${PYTORCH_SUBMODULES}
     UPDATE_DISCONNECTED 1
     GIT_TAG ${PYTORCH_SUPPORTED_COMMIT}
-    PATCH_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || wget https://raw.githubusercontent.com/${CAFFE_DD_USER}/caffe/${CAFFE_DD_BRANCH}/src/caffe/proto/caffe.proto -O caffe/proto/caffe.proto && git am ${CAFFE2_PATCHES}
+    PATCH_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || wget https://raw.githubusercontent.com/${CAFFE_DD_USER}/caffe/${CAFFE_DD_BRANCH}/src/caffe/proto/caffe.proto -O caffe/proto/caffe.proto && echo cp modules/detectron/*_op.* caffe2/operators | bash && cp ${CAFFE2_OPS} caffe2/operators && git am ${CAFFE2_PATCHES}
     CONFIGURE_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || cmake ${PYTORCH_FLAGS}
     BUILD_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || make -j${N}
     INSTALL_COMMAND ""

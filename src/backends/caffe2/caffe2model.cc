@@ -43,12 +43,54 @@ namespace dd {
       }
     }
 
+    const std::shared_ptr<spdlog::logger> &logger = spdlog::get("api");
+
     // Register repositories
     this->_repo = ad.get("repository").get<std::string>();
     this->_mlmodel_template_repo = ad.has("templates") ?
       ad.get("templates").get<std::string>() : "caffe2"; // Default
 
-    update_from_repository(spdlog::get("api"));
+    // List the extensions' nets
+    if (ad.has("extensions")) {
+      std::vector<APIData> extensions = ad.getv("extensions");
+      for (const APIData &extension : extensions) {
+
+	const std::string &ext_type(extension.get("type").get<std::string>());
+	std::string ext_repo;
+	if (extension.has("repository")) {
+	  ext_repo = extension.get("repository").get<std::string>();
+	} else {
+	  ext_repo = this->_repo + "/" + ext_type;
+	}
+
+	// Check if the extension is a repository
+	bool is_dir;
+	if (!fileops::file_exists(ext_repo, is_dir) || !is_dir) {
+	  std::string msg("'" + ext_repo + "' is not a directory");
+	  logger->error(msg);
+	  throw MLLibBadParamException(msg);
+	}
+
+	_extensions.emplace_back();
+	Extension &ext(_extensions.back());
+	ext._init = ext_repo + "/init_net.pb";
+	ext._predict = ext_repo + "/predict_net.pb";
+	ext._type = ext_type;
+
+	// Check if the nets exist
+	if (!fileops::file_exists(ext._predict)) {
+	  std::string msg("'" + ext._predict + "' does not exists");
+	  logger->error(msg);
+	  throw MLLibBadParamException(msg);
+	}
+	if (!fileops::file_exists(ext._init)) {
+	  logger->warn("No initialization net found in '" + ext_repo + "'");
+	  ext._init = "";
+	}
+      }
+    }
+
+    update_from_repository(logger);
   }
 
   void Caffe2Model::update_from_repository(const std::shared_ptr<spdlog::logger> &logger) {

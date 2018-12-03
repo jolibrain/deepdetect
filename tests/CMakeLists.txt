@@ -182,21 +182,27 @@ if (USE_CAFFE2)
     endif ()
   endfunction (ASSERT_EXISTS)
 
+  function (ASSERT_MODEL_EXISTS _MODEL)
+    ASSERT_EXISTS(${_MODEL} "corresp.txt" 0)
+    ASSERT_EXISTS(${_MODEL} "init_net.pb" 0)
+    ASSERT_EXISTS(${_MODEL} "predict_net.pb" 0)
+  endfunction (ASSERT_MODEL_EXISTS)
+
   # Tar GZ files
 
   ASSERT_EXISTS("boats_and_cars" "imgs" 1)
   ASSERT_EXISTS("detectron" "imgs" 1)
+  ASSERT_EXISTS("detectron_mask" "ext" 1)
   ASSERT_EXISTS("resnet_50_imagenet" "imgs" 1)
   ASSERT_EXISTS("resnet_50_imagenet" "fish.lmdb" 1)
 
-  # Classic files
+  # Models
 
-  ASSERT_EXISTS("detectron" "corresp.txt" 0)
-  ASSERT_EXISTS("detectron" "init_net.pb" 0)
-  ASSERT_EXISTS("detectron" "predict_net.pb" 0)
-  ASSERT_EXISTS("resnet_50_imagenet" "corresp.txt" 0)
-  ASSERT_EXISTS("resnet_50_imagenet" "init_net.pb" 0)
-  ASSERT_EXISTS("resnet_50_imagenet" "predict_net.pb" 0)
+  ASSERT_MODEL_EXISTS("detectron")
+  ASSERT_MODEL_EXISTS("detectron_mask")
+  ASSERT_MODEL_EXISTS("resnet_50_imagenet")
+
+  # Tests
 
   REGISTER_TEST(ut_caffe2api ut-caffe2api.cc)
 

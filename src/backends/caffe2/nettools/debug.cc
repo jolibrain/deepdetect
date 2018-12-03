@@ -65,8 +65,8 @@ namespace dd {
     void _reset_init_net(const caffe2::NetDef &net, caffe2::NetDef &init);
     void untrain_model(const std::string &input, const std::string &output) {
       caffe2::NetDef net, init;
-      import_net(net, input + "/predict_net.pb", true);
-      import_net(init, input + "/init_net.pb", true);
+      import_net(net, input + "/predict_net.pb");
+      import_net(init, input + "/init_net.pb");
       _reset_init_net(net, init);
       export_net(net, output + "/predict_net.pbtxt", true);
       export_net(init, output + "/init_net.pbtxt", true);

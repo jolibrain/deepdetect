@@ -1,0 +1,95 @@
+From b806d9852831988211069b9c7b4e532c53262ab3 Mon Sep 17 00:00:00 2001
+From: Julien CHICHA <julien.chicha@epitech.eu>
+Date: Sat, 6 Oct 2018 12:27:06 +0200
+Subject: [PATCH] Added a 'keep_grouped' flag to Detectron op
+
+---
+ ...ect_and_distribute_fpn_rpn_proposals_op.cc | 43 +++++++++++++++++++
+ ...lect_and_distribute_fpn_rpn_proposals_op.h |  3 ++
+ 2 files changed, 46 insertions(+)
+
+diff --git a/caffe2/operators/collect_and_distribute_fpn_rpn_proposals_op.cc b/caffe2/operators/collect_and_distribute_fpn_rpn_proposals_op.cc
+index 256e21095..bdf9d2d0e 100644
+--- a/caffe2/operators/collect_and_distribute_fpn_rpn_proposals_op.cc
++++ b/caffe2/operators/collect_and_distribute_fpn_rpn_proposals_op.cc
+@@ -223,6 +223,48 @@ bool CollectAndDistributeFpnRpnProposalsOp<CPUContext>::RunOnDevice() {
+                                               rois_idx_restore.size());
+   rois_idx_restore_out_mat = rois_idx_restore;
+ 
++  // GenerateProposals group their outputs based on the batch item they correspond to.
++  // This property is used by other operators, such as BBoxTransform
++  // See https://github.com/pytorch/pytorch/blob/master/caffe2/operators/bbox_transform_op.cc
++  // But after being 'collected' by CollectAndDistributeFpnRpnProposals, everything is mixed.
++  // Here is a fix that sort the data again
++  if (keep_grouped_) {
++
++    size_t nb_roi = rois_out_mat.rows();
++    float *rois_data = rois_out->mutable_data<float>();
++    int *idx_data = rois_idx_restore_out->mutable_data<int>();
++
++    // Extract the batch size
++    size_t batch_size = 0;
++    float *data = rois_data;
++    for (size_t i = 0; i < nb_roi; ++i, data += 5) {
++      batch_size = std::max(batch_size, static_cast<size_t>(*data) + 1);
++    }
++
++    // Group the indices
++    std::vector<std::vector<int>> indices(batch_size);
++    for (std::vector<int> &v : indices) {
++      v.reserve(nb_roi);
++    }
++    data = rois_data;
++    for (size_t i = 0; i < nb_roi; ++i, data += 5) {
++      indices[*data].push_back(i);
++    }
++
++    // Sort the outputs
++    std::vector<float> rois_shuffled(rois_data, rois_data + 5 * nb_roi);
++    std::vector<int> idx_shuffled(idx_data, idx_data + nb_roi);
++    for (const std::vector<int> &v : indices) {
++      for (const int &idx : v) {
++	float *roi = rois_shuffled.data() + idx * 5;
++	for (int i = 0; i < 5; ++i) {
++	  *rois_data++ = *roi++;
++	}
++	*idx_data++ = idx_shuffled[idx];
++      }
++    }
++
++  }
+   return true;
+ }
+ 
+@@ -252,6 +294,7 @@ Inputs and outputs are examples only; if min/max levels change,
+ the number of inputs and outputs, as well as their level numbering,
+ will change.
+ )DOC")
++    .Arg("keep_grouped", "(bool, default 0) Set to 1 to keep the rois grouped by batch")
+     .Arg("roi_canonical_scale", "(int) ROI_CANONICAL_SCALE")
+     .Arg("roi_canonical_level", "(int) ROI_CANONICAL_LEVEL")
+     .Arg("roi_max_level", "(int) ROI_MAX_LEVEL")
+diff --git a/caffe2/operators/collect_and_distribute_fpn_rpn_proposals_op.h b/caffe2/operators/collect_and_distribute_fpn_rpn_proposals_op.h
+index d41aedcab..bd0e1d3d0 100644
+--- a/caffe2/operators/collect_and_distribute_fpn_rpn_proposals_op.h
++++ b/caffe2/operators/collect_and_distribute_fpn_rpn_proposals_op.h
+@@ -48,6 +48,8 @@ class CollectAndDistributeFpnRpnProposalsOp final : public Operator<Context> {
+   USE_OPERATOR_CONTEXT_FUNCTIONS;
+   CollectAndDistributeFpnRpnProposalsOp(const OperatorDef& operator_def, Workspace* ws)
+       : Operator<Context>(operator_def, ws),
++        keep_grouped_(
++            OperatorBase::GetSingleArgument<int>("keep_grouped", 0)),
+         roi_canonical_scale_(
+             OperatorBase::GetSingleArgument<int>("roi_canonical_scale", 224)),
+         roi_canonical_level_(
+@@ -81,6 +83,7 @@ class CollectAndDistributeFpnRpnProposalsOp final : public Operator<Context> {
+   bool RunOnDevice() override;
+ 
+  protected:
++  bool keep_grouped_{false};
+   // ROI_CANONICAL_SCALE
+   int roi_canonical_scale_{224};
+   // ROI_CANONICAL_LEVEL
+-- 
+2.18.0
+
