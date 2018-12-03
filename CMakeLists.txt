@@ -188,13 +188,17 @@ if (USE_CAFFE2)
   if (CUDA_FOUND AND NOT USE_CPU_ONLY)
     list(APPEND CAFFE2_LIB_DEPS -lcaffe2_gpu)
   endif()
+  include_directories(
+    ${PYTORCH_PATH}
+    ${PYTORCH_PATH}-build
+    ${PYTORCH_PATH}/aten/src
+  )
 
-  set(PYTORCH_SUPPORTED_COMMIT 3749c58) # Release v0.4.0
+  set(PYTORCH_SUPPORTED_COMMIT ff608a9) # Pre-release v1.0rc1
   list(APPEND CAFFE2_PATCHES
-    ${CMAKE_BINARY_DIR}/patches/caffe2/eigen.patch
-    ${CMAKE_BINARY_DIR}/patches/caffe2/logging.patch
-    ${CMAKE_BINARY_DIR}/patches/caffe2/VLOG.patch
-    ${CMAKE_BINARY_DIR}/patches/caffe2/collect_proposals.patch
+    ${CMAKE_BINARY_DIR}/patches/caffe2/0001-eigen.patch
+    ${CMAKE_BINARY_DIR}/patches/caffe2/0002-logging.patch
+    ${CMAKE_BINARY_DIR}/patches/caffe2/0003-collect_proposals.patch
   )
   list(APPEND CAFFE2_OPS
     ${CMAKE_BINARY_DIR}/patches/caffe2/custom_ops/bbox_to_roi_op.h
@@ -221,7 +225,7 @@ if (USE_CAFFE2)
     -DBUILD_DOCS=OFF
     )
 
-  # Only 12 / 28 submodules are currently used by caffe2
+  # Only a few submodules are currently used by caffe2
   # (No need to log, benchmark, compile for IOS, make python libraries, ...)
   list(APPEND PYTORCH_SUBMODULES
     third_party/cpuinfo
@@ -236,6 +240,7 @@ if (USE_CAFFE2)
     third_party/psimd
     third_party/pthreadpool
     third_party/python-peachpy
+    third_party/sleef
     )
 
   set(PYTORCH_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch-complete)
@@ -247,11 +252,10 @@ if (USE_CAFFE2)
     GIT_SUBMODULES ${PYTORCH_SUBMODULES}
     UPDATE_DISCONNECTED 1
     GIT_TAG ${PYTORCH_SUPPORTED_COMMIT}
-    PATCH_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || wget https://raw.githubusercontent.com/${CAFFE_DD_USER}/caffe/${CAFFE_DD_BRANCH}/src/caffe/proto/caffe.proto -O caffe/proto/caffe.proto && echo cp modules/detectron/*_op.* caffe2/operators | bash && cp ${CAFFE2_OPS} caffe2/operators && git am ${CAFFE2_PATCHES}
-    CONFIGURE_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || cmake ${PYTORCH_FLAGS}
+    PATCH_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || echo cp modules/detectron/*_op.* caffe2/operators | bash && cp ${CAFFE2_OPS} caffe2/operators && git am ${CAFFE2_PATCHES}
+    CONFIGURE_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || cmake ../pytorch ${PYTORCH_FLAGS}
     BUILD_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || make -j${N}
     INSTALL_COMMAND ""
-    BUILD_IN_SOURCE 1
     )
 
   set(PROTOBUF_INCLUDE_DIR ${CMAKE_BINARY_DIR}/protobuf/include)
@@ -259,9 +263,8 @@ if (USE_CAFFE2)
   if (NOT EXISTS ${CMAKE_BINARY_DIR}/protobuf)
     execute_process(COMMAND mkdir ${CMAKE_BINARY_DIR}/protobuf)
     execute_process(COMMAND ln -s ${PYTORCH_PATH}/third_party/protobuf/src ${PROTOBUF_INCLUDE_DIR})
-    execute_process(COMMAND ln -s ${PYTORCH_PATH}/lib ${PROTOBUF_LIB_DIR})
-    execute_process(COMMAND ln -s ${PYTORCH_PATH}/bin ${CMAKE_BINARY_DIR}/protobuf/bin)
-    execute_process(COMMAND ln -s ${PYTORCH_PATH} ${CMAKE_BINARY_DIR}/pytorch_root)
+    execute_process(COMMAND ln -s ${PYTORCH_PATH}-build/lib ${PROTOBUF_LIB_DIR})
+    execute_process(COMMAND ln -s ${PYTORCH_PATH}-build/bin ${CMAKE_BINARY_DIR}/protobuf/bin)
   endif()
 endif()
 
@@ -325,12 +328,6 @@ else()
     set(USE_SYSLOG 0)
   endif()
 
-  if (USE_CAFFE2)
-    set(PYTORCH_LINK 1)
-  else()
-    set(PYTORCH_LINK 0)
-  endif()
-
   # Set protoc path
   if (CUDA_FOUND
       AND NOT USE_CAFFE_CPU_ONLY
@@ -385,7 +382,6 @@ else()
     ln -sf ${CAFFE_DD_CONFIG_FILE} Makefile.config &&
     echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config &&
     echo "USE_SYSLOG:=${USE_SYSLOG}" >> Makefile.config &&
-    echo "PYTORCH_LINK:=${PYTORCH_LINK}" >> Makefile.config &&
     echo "DEBUG:=${CAFFE_DEBUG}" >> Makefile.config &&
     ${CAFFE_DD_MAKE} ${CAFFE_DD_MAKE_ARG} -j${N}
     )
@@ -502,15 +498,6 @@ endif()
 include_directories("${PROJECT_BINARY_DIR}")
 include_directories(${CAFFE_INC_DIR} ${XGBOOST_INC_DIR} ${TSNE_INC_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/src/backends/caffe ${CMAKE_SOURCE_DIR}/backends/xgb ${CMAKE_SOURCE_DIR}/backends/tf ${CMAKE_SOURCE_DIR}/backends/dlib ${CMAKE_SOURCE_DIR}/backends/tsne)
-
-# Our version of caffe.proto was "injected" into caffe2 and compiled within it
-# So two versions of caffe.pb.h were generated (the only difference being the namespace ... name).
-# One of them is meant to be used by caffe2, the other one by us.
-# Because we can include the one from caffe2, but don't want to,
-# PYTORCH_PATH must be checked after CAFFE_INC_DIR
-if (USE_CAFFE2)
-  include_directories(${PYTORCH_PATH})
-endif()
 
 # main library, main & tests
 include_directories ("${PROJECT_SOURCE_DIR}/src")

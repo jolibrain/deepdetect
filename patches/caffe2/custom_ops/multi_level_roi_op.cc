@@ -42,7 +42,7 @@ namespace caffe2 {
 
     // Add RoI blobs for multiple FPN levels
     std::vector<size_t> roi_indices(nb_items);
-    Output(0)->Resize(std::vector<TIndex>({nb_items}));
+    Output(0)->Resize(std::vector<long int>({nb_items}));
     int *idx_restore = Output(0)->template mutable_data<int>();
     int backuped = 0;
     for (int fpn_idx = 1, level = _min_level; level <= _max_level; ++level, ++fpn_idx) {
@@ -57,7 +57,7 @@ namespace caffe2 {
       }
 
       // Store the RoIs
-      Output(fpn_idx)->Resize(std::vector<TIndex>({roi_indices.size(), 5}));
+      Output(fpn_idx)->Resize(std::vector<long int>({roi_indices.size(), 5}));
       float *fpn = Output(fpn_idx)->template mutable_data<float>();
       for (size_t roi_idx : roi_indices) {
 	memcpy(fpn, rois + 5 * roi_idx, 5 * sizeof(float));

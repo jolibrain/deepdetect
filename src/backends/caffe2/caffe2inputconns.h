@@ -140,7 +140,7 @@ namespace dd {
 
     // Function that convert a TensorProtos into a vector of tensor (already allocated)
     using ProtosConverter =
-      std::function<void(const caffe2::TensorProtos&, std::vector<caffe2::TensorCPU>&)>;
+      std::function<void(const caffe2::TensorProtos&, std::vector<caffe2::Tensor>&)>;
 
     /**
      * \brief uses the dbreader to insert data into the workspace
@@ -154,7 +154,7 @@ namespace dd {
 		     const ProtosConverter &convert_protos, bool train) const;
 
     // Function that populate a vector with input tensors (already allocated)
-    using InputGetter = std::function<void(std::vector<caffe2::TensorCPU>&)>;
+    using InputGetter = std::function<void(std::vector<caffe2::Tensor>&)>;
 
     /**
      * \brief fill the workspace with batches of tensors
@@ -262,12 +262,12 @@ namespace dd {
     /**
      * \brief transforms vector of channels into a CHW float tensor
      */
-    void mats_to_tensor(const std::vector<cv::Mat> &mats, caffe2::TensorCPU &tensor) const;
+    void mats_to_tensor(const std::vector<cv::Mat> &mats, caffe2::Tensor &tensor) const;
 
     /**
      * \brief stores the image dimensions into a tensor
      */
-    void im_info_to_tensor(const cv::Mat &img, caffe2::TensorCPU &tensor) const;
+    void im_info_to_tensor(const cv::Mat &img, caffe2::Tensor &tensor) const;
 
     /**
      * \brief creates mean file
@@ -326,7 +326,7 @@ namespace dd {
     std::string _blob_mean_values = "mean_values";
   };
 
-  //XXX Do other connectors ___Caffe2InputFileConn (CSV, Txt, SVM, etc.)
+  //XXX Do other connectors XXXCaffe2InputFileConn (CSV, Txt, SVM, etc.)
 }
 
 #endif

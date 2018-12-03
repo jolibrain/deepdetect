@@ -26,7 +26,7 @@ namespace caffe2 {
   template<class Context>
   bool BBoxToRoiOp<Context>::RunOnDevice() {
     size_t nb_items = Input(0).dim(0);
-    Output(0)->Resize(std::vector<TIndex>({nb_items, 5}));
+    Output(0)->Resize(std::vector<long int>({nb_items, 5}));
 
     const float *bbox = Input(0).template data<float>();
     const float *infos = Input(1).template data<float>();

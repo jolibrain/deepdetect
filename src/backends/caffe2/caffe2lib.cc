@@ -22,6 +22,7 @@
 //XXX Remove that to print the warnings
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 
 #ifndef CPU_ONLY
 #include <caffe2/core/context_gpu.h>

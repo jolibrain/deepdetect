@@ -52,7 +52,7 @@ namespace dd {
       }
       file << "}" << std::endl;
       file.close();
-      system(("dot -Tsvg -o" + path + " " + graph).c_str());
+      CAFFE_ENFORCE(!system(("dot -Tsvg -o" + path + " " + graph).c_str()));
       remove(graph.c_str());
     }
 

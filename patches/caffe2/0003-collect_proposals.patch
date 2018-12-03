@@ -1,7 +1,7 @@
-From b806d9852831988211069b9c7b4e532c53262ab3 Mon Sep 17 00:00:00 2001
+From 401be5aa4d27ede4b56040aa2f0215a55603f6a1 Mon Sep 17 00:00:00 2001
 From: Julien CHICHA <julien.chicha@epitech.eu>
 Date: Sat, 6 Oct 2018 12:27:06 +0200
-Subject: [PATCH] Added a 'keep_grouped' flag to Detectron op
+Subject: [PATCH 3/3] collect_proposals
 
 ---
  ...ect_and_distribute_fpn_rpn_proposals_op.cc | 43 +++++++++++++++++++
@@ -9,11 +9,11 @@ Subject: [PATCH] Added a 'keep_grouped' flag to Detectron op
  2 files changed, 46 insertions(+)
 
 diff --git a/caffe2/operators/collect_and_distribute_fpn_rpn_proposals_op.cc b/caffe2/operators/collect_and_distribute_fpn_rpn_proposals_op.cc
-index 256e21095..bdf9d2d0e 100644
+index 006f6212a..879354f5c 100644
 --- a/caffe2/operators/collect_and_distribute_fpn_rpn_proposals_op.cc
 +++ b/caffe2/operators/collect_and_distribute_fpn_rpn_proposals_op.cc
-@@ -223,6 +223,48 @@ bool CollectAndDistributeFpnRpnProposalsOp<CPUContext>::RunOnDevice() {
-                                               rois_idx_restore.size());
+@@ -225,6 +225,48 @@ bool CollectAndDistributeFpnRpnProposalsOp<CPUContext>::RunOnDevice() {
+       rois_idx_restore.size());
    rois_idx_restore_out_mat = rois_idx_restore;
  
 +  // GenerateProposals group their outputs based on the batch item they correspond to.
@@ -61,7 +61,7 @@ index 256e21095..bdf9d2d0e 100644
    return true;
  }
  
-@@ -252,6 +294,7 @@ Inputs and outputs are examples only; if min/max levels change,
+@@ -254,6 +296,7 @@ Inputs and outputs are examples only; if min/max levels change,
  the number of inputs and outputs, as well as their level numbering,
  will change.
  )DOC")
@@ -70,7 +70,7 @@ index 256e21095..bdf9d2d0e 100644
      .Arg("roi_canonical_level", "(int) ROI_CANONICAL_LEVEL")
      .Arg("roi_max_level", "(int) ROI_MAX_LEVEL")
 diff --git a/caffe2/operators/collect_and_distribute_fpn_rpn_proposals_op.h b/caffe2/operators/collect_and_distribute_fpn_rpn_proposals_op.h
-index d41aedcab..bd0e1d3d0 100644
+index 2ddd2db4b..1addebd63 100644
 --- a/caffe2/operators/collect_and_distribute_fpn_rpn_proposals_op.h
 +++ b/caffe2/operators/collect_and_distribute_fpn_rpn_proposals_op.h
 @@ -48,6 +48,8 @@ class CollectAndDistributeFpnRpnProposalsOp final : public Operator<Context> {
@@ -80,7 +80,7 @@ index d41aedcab..bd0e1d3d0 100644
 +        keep_grouped_(
 +            OperatorBase::GetSingleArgument<int>("keep_grouped", 0)),
          roi_canonical_scale_(
-             OperatorBase::GetSingleArgument<int>("roi_canonical_scale", 224)),
+             this->template GetSingleArgument<int>("roi_canonical_scale", 224)),
          roi_canonical_level_(
 @@ -81,6 +83,7 @@ class CollectAndDistributeFpnRpnProposalsOp final : public Operator<Context> {
    bool RunOnDevice() override;
