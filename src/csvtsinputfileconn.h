@@ -63,6 +63,16 @@ namespace dd
 
     ~CSVTSInputFileConn() {}
 
+  CSVTSInputFileConn(const CSVTSInputFileConn &i)
+    : CSVInputFileConn(i), _datadim(i._datadim), _csvtsdata(i._csvtsdata),
+      _csvtsdata_test(i._csvtsdata_test) {}
+
+
+
+    void fillup_parameters(const APIData &ad_input)
+    {
+      CSVInputFileConn::fillup_parameters(ad_input);
+    }
 
     void shuffle_data(std::vector<std::vector<CSVline>> cvstsdata);
     void shuffle_data_if_needed();
