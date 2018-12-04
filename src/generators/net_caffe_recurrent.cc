@@ -296,7 +296,7 @@ namespace dd
 
     if (layers.size() > 1)
       {
-        top =type+"_"+std::to_string(layers.size()-1);
+        top ="OUTPUT";
         add_basic_block(this->_net_params,bottom,
                         "cont_seq",top,
                         targets.size(), 0.0,type, layers.size()-1);
