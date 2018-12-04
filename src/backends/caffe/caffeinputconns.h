@@ -827,15 +827,29 @@ namespace dd
         reset_dv_test();
       }
   CSVTSCaffeInputFileConn(const CSVTSCaffeInputFileConn &i)
-    :CSVTSInputFileConn(i), CaffeInputInterface(i), _dv_index(i._dv_index), _dv_test_index(i._dv_test_index), _timesteps(i._timesteps)  {} ;
+    :CSVTSInputFileConn(i), CaffeInputInterface(i), _dv_index(i._dv_index), _dv_test_index(i._dv_test_index), _timesteps(i._timesteps)
+      {
+        _timesteps = i._timesteps;
+        this->_datadim = i._datadim;
+      }
     ~CSVTSCaffeInputFileConn() {}
+
+
 
     void init(const APIData &ad)
     {
+
       CSVTSInputFileConn::init(ad);
-      if (ad.has("timesteps"))
-        _timesteps= ad.get("timesteps").get<int>();
+      fillup_parameters(ad);
     }
+
+    void fillup_parameters(const APIData &ad_input)
+    {
+      CSVTSInputFileConn::fillup_parameters(ad_input);
+      if (ad_input.has("timesteps"))
+        _timesteps= ad_input.get("timesteps").get<int>();
+    }
+
 
     // size of each element in Caffe jargon
     int channels() const
