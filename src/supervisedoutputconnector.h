@@ -1705,7 +1705,7 @@ namespace dd
 	      }
 	    else
 	      {
-		if (target.at(i) >=0)
+               //		if (target.at(i) >=0)
 		  eucl += (predictions.at(i)-target.at(i))*(predictions.at(i)-target.at(i));
 	      }
 	}
@@ -1896,7 +1896,7 @@ namespace dd
              while(sit!=_vvcats.at(i)._series.end())
                {
                  APIData nad;
-                 nad.add("serie",(*sit).second.get("serie").get<std::vector<double>>());
+                 nad.add("out",(*sit).second.get("out").get<std::vector<double>>());
                  ++sit;
                  if (sit == _vvcats.at(i)._series.end())
                    nad.add(last,true);
