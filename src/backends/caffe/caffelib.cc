@@ -864,7 +864,7 @@ namespace dd
       if (ad.has("nclasses"))
         _nclasses = ad.get("nclasses").get<int>();
     // instantiate model template here, if any
-    if (ad.has("template"))
+    if (ad.has("template") && ad.get("template").get<std::string>() != "")
       instantiate_template(ad);
     else // model template instantiation is defered until training call
       {

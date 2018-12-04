@@ -766,7 +766,8 @@ namespace dd
     if (jout.HasMember("predictions"))
       jbody.AddMember("predictions",jout["predictions"],jpred.GetAllocator());
     jpred.AddMember("body",jbody,jpred.GetAllocator());
-    if (ad_data.getobj("parameters").getobj("output").has("template"))
+    if (ad_data.getobj("parameters").getobj("output").has("template")
+        && ad_data.getobj("parameters").getobj("output").get("template").get<std::string>() != "")
       {
 	APIData ad_params = ad_data.getobj("parameters");
 	APIData ad_output = ad_params.getobj("output");
