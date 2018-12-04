@@ -305,7 +305,6 @@ if (USE_CAFFE2)
     execute_process(COMMAND ln -s ${DETECTRON_PATH}
       ${CMAKE_BINARY_DIR}/python_path/detectron)
   endif()
-
 endif()
 
 if (USE_TF)
