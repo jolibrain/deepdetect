@@ -5,7 +5,8 @@ set(USE_HDF5 ON)
 
 option(USE_CAFFE2 "build caffe2 backend")
 option(USE_TF "use TF backend")
-option(USE_HDF5 "use HDF5")
+option(USE_NCNN "use NCNN backend")
+option(USE_HDF5 "use HDF5" ON)
 
 if (USE_TF AND USE_CAFFE2)
   message(FATAL_ERROR "Building with tensorflow AND caffe2 causes conflict
@@ -62,6 +63,7 @@ if (USE_TF)
   set(EIGEN3_INCLUDE_DIR ${TENSORFLOW_CC_DIR}/tensorflow/tensorflow/contrib/makefile/downloads/eigen/)
 elseif (USE_CAFFE2)
   set(PYTORCH_PATH ${CMAKE_BINARY_DIR}/pytorch/src/pytorch)
+  set(DETECTRON_PATH ${CMAKE_BINARY_DIR}/detectron/src/detectron)
   set(EIGEN3_INCLUDE_DIR ${PYTORCH_PATH}/third_party/eigen)
 else()
    find_package(PkgConfig)
@@ -75,7 +77,6 @@ include_directories("${EIGEN3_INCLUDE_DIR}")
 
 # hdf5
 if (USE_HDF5)
-  set(USE_HDF5 1)
   if (RPI3)
     set(HDF5_LIB /usr/lib/arm-linux-gnueabihf/hdf5/serial)
   else()
@@ -189,13 +190,36 @@ if (USE_CAFFE2)
   if (CUDA_FOUND AND NOT USE_CPU_ONLY)
     list(APPEND CAFFE2_LIB_DEPS -lcaffe2_gpu)
   endif()
+  include_directories(
+    ${PYTORCH_PATH}
+    ${PYTORCH_PATH}-build
+    ${PYTORCH_PATH}/aten/src
+  )
+  set(CAFFE2_PATCHES ${CMAKE_BINARY_DIR}/patches/caffe2)
 
-  set(PYTORCH_SUPPORTED_COMMIT 3749c58) # Release v0.4.0
-  list(APPEND CAFFE2_PATCHES
-    ${CMAKE_BINARY_DIR}/patches/caffe2/eigen.patch
-    ${CMAKE_BINARY_DIR}/patches/caffe2/logging.patch
-    ${CMAKE_BINARY_DIR}/patches/caffe2/VLOG.patch
+  set(PYTORCH_SUPPORTED_COMMIT ff608a9) # Pre-release v1.0rc1
+  set(PYTORCH_PATCHES
+    ${CAFFE2_PATCHES}/pytorch/0001-eigen.patch
+    ${CAFFE2_PATCHES}/pytorch/0002-logging.patch
+    ${CAFFE2_PATCHES}/pytorch/0003-collect_proposals.patch
     )
+
+  set(DETECTRON_SUPPORTED_COMMIT 8181a32) # Nov 7, 2018
+  set(DETECTRON_PATCHES
+    ${CAFFE2_PATCHES}/detectron/0001-dependencies.patch
+    ${CAFFE2_PATCHES}/detectron/0002-compiled.patch
+    ${CAFFE2_PATCHES}/detectron/0003-ops.patch
+    ${CAFFE2_PATCHES}/detectron/0004-import.patch
+    )
+
+  list(APPEND CAFFE2_OPS
+    ${CAFFE2_PATCHES}/custom_ops/bbox_to_roi_op.h
+    ${CAFFE2_PATCHES}/custom_ops/bbox_to_roi_op.cc
+    ${CAFFE2_PATCHES}/custom_ops/segment_mask_op.h
+    ${CAFFE2_PATCHES}/custom_ops/segment_mask_op.cc
+    ${CAFFE2_PATCHES}/custom_ops/multi_level_roi_op.h
+    ${CAFFE2_PATCHES}/custom_ops/multi_level_roi_op.cc
+  )
 
   list(APPEND PYTORCH_FLAGS
 
@@ -209,11 +233,10 @@ if (USE_CAFFE2)
 
     -DBUILD_TEST=OFF
     -DBUILD_BINARY=OFF
-    -DBUILD_PYTHON=OFF
     -DBUILD_DOCS=OFF
     )
 
-  # Only 12 / 28 submodules are currently used by caffe2
+  # Only a few submodules are currently used by caffe2
   # (No need to log, benchmark, compile for IOS, make python libraries, ...)
   list(APPEND PYTORCH_SUBMODULES
     third_party/cpuinfo
@@ -227,9 +250,12 @@ if (USE_CAFFE2)
     third_party/protobuf
     third_party/psimd
     third_party/pthreadpool
+    third_party/pybind11
     third_party/python-peachpy
+    third_party/sleef
     )
 
+  # Pytorch
   set(PYTORCH_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch-complete)
   ExternalProject_Add(
     pytorch
@@ -239,22 +265,47 @@ if (USE_CAFFE2)
     GIT_SUBMODULES ${PYTORCH_SUBMODULES}
     UPDATE_DISCONNECTED 1
     GIT_TAG ${PYTORCH_SUPPORTED_COMMIT}
-    PATCH_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || wget https://raw.githubusercontent.com/${CAFFE_DD_USER}/caffe/${CAFFE_DD_BRANCH}/src/caffe/proto/caffe.proto -O caffe/proto/caffe.proto && git am ${CAFFE2_PATCHES}
-    CONFIGURE_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || cmake ${PYTORCH_FLAGS}
+    PATCH_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || echo cp modules/detectron/*_op.* caffe2/operators | bash && cp ${CAFFE2_OPS} caffe2/operators && git am ${PYTORCH_PATCHES}
+    CONFIGURE_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || cmake ../pytorch ${PYTORCH_FLAGS}
     BUILD_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || make -j${N}
     INSTALL_COMMAND ""
-    BUILD_IN_SOURCE 1
     )
 
+  # Compilation path
   set(PROTOBUF_INCLUDE_DIR ${CMAKE_BINARY_DIR}/protobuf/include)
   set(PROTOBUF_LIB_DIR ${CMAKE_BINARY_DIR}/protobuf/lib)
   if (NOT EXISTS ${CMAKE_BINARY_DIR}/protobuf)
     execute_process(COMMAND mkdir ${CMAKE_BINARY_DIR}/protobuf)
     execute_process(COMMAND ln -s ${PYTORCH_PATH}/third_party/protobuf/src ${PROTOBUF_INCLUDE_DIR})
-    execute_process(COMMAND ln -s ${PYTORCH_PATH}/lib ${PROTOBUF_LIB_DIR})
-    execute_process(COMMAND ln -s ${PYTORCH_PATH}/bin ${CMAKE_BINARY_DIR}/protobuf/bin)
-    execute_process(COMMAND ln -s ${PYTORCH_PATH} ${CMAKE_BINARY_DIR}/pytorch_root)
+    execute_process(COMMAND ln -s ${PYTORCH_PATH}-build/lib ${PROTOBUF_LIB_DIR})
+    execute_process(COMMAND ln -s ${PYTORCH_PATH}-build/bin ${CMAKE_BINARY_DIR}/protobuf/bin)
   endif()
+
+  # Detectron
+  set(DETECTRON_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/detectron-complete)
+  ExternalProject_Add(
+    detectron
+    PREFIX detectron
+    INSTALL_DIR ${CMAKE_BINARY_DIR}
+    GIT_REPOSITORY https://github.com/facebookresearch/Detectron
+    UPDATE_DISCONNECTED 1
+    GIT_TAG ${DETECTRON_SUPPORTED_COMMIT}
+    PATCH_COMMAND test -f ${DETECTRON_COMPLETE} && echo Skipping || git am ${DETECTRON_PATCHES}
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+    )
+  add_dependencies(detectron pytorch)
+
+  # Python path
+  if (NOT EXISTS ${CMAKE_BINARY_DIR}/python_path)
+    execute_process(COMMAND mkdir ${CMAKE_BINARY_DIR}/python_path)
+    execute_process(COMMAND ln -s ${PYTORCH_PATH}-build
+      ${CMAKE_BINARY_DIR}/python_path/pytorch)
+    execute_process(COMMAND ln -s ${DETECTRON_PATH}
+      ${CMAKE_BINARY_DIR}/python_path/detectron)
+  endif()
+
 endif()
 
 if (USE_TF)
@@ -317,12 +368,6 @@ else()
     set(USE_SYSLOG 0)
   endif()
 
-  if (USE_CAFFE2)
-    set(PYTORCH_LINK 1)
-  else()
-    set(PYTORCH_LINK 0)
-  endif()
-
   # Set protoc path
   if (CUDA_FOUND
       AND NOT USE_CAFFE_CPU_ONLY
@@ -377,7 +422,6 @@ else()
     ln -sf ${CAFFE_DD_CONFIG_FILE} Makefile.config &&
     echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config &&
     echo "USE_SYSLOG:=${USE_SYSLOG}" >> Makefile.config &&
-    echo "PYTORCH_LINK:=${PYTORCH_LINK}" >> Makefile.config &&
     echo "DEBUG:=${CAFFE_DEBUG}" >> Makefile.config &&
     ${CAFFE_DD_MAKE} ${CAFFE_DD_MAKE_ARG} -j${N}
     )
@@ -433,7 +477,45 @@ if (USE_TF)
 endif()
 
 if (USE_CAFFE2)
-  add_dependencies(caffe_dd pytorch)
+  add_dependencies(caffe_dd detectron)
+endif()
+
+# NCNN
+if (USE_NCNN)
+  message(STATUS "Configuring NCNN")
+  add_definitions(-DUSE_NCNN)
+  set(NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src/libncnn.a)
+  set(NCNN_COMMIT_HASH "481722648cbfddde00d826cbaf9d1f877c61ca32")
+  list(APPEND NCNN_PATCHES
+    ${CMAKE_BINARY_DIR}/patches/ncnn/openmp.patch
+    )
+  if (RPI3)
+    ExternalProject_Add(
+      ncnn
+      PREFIX ncnn
+      INSTALL_DIR ${CMAKE_BINARY_DIR}
+      DOWNLOAD_COMMAND git clone --recursive https://github.com/Tencent/ncnn.git
+      PATCH_COMMAND git reset --hard ${NCNN_COMMIT_HASH} && git am ${NCNN_PATCHES}
+      CONFIGURE_COMMAND mkdir build && cd build && cmake .. -DPI3=ON -DCMAKE_TOOLCHAIN_FILE=../pi3.toolchain.cmake
+      BUILD_COMMAND cd build/ && make -j${N}
+      INSTALL_COMMAND ""
+      BUILD_IN_SOURCE 1
+    )
+  else ()
+    ExternalProject_Add(
+      ncnn
+      PREFIX ncnn
+      INSTALL_DIR ${CMAKE_BINARY_DIR}
+      DOWNLOAD_COMMAND git clone --recursive https://github.com/Tencent/ncnn.git
+      PATCH_COMMAND git reset --hard ${NCNN_COMMIT_HASH} && git am ${NCNN_PATCHES}
+      CONFIGURE_COMMAND mkdir build && cd build && cmake ..
+      BUILD_COMMAND cd build/ && make -j${N}
+      INSTALL_COMMAND ""
+      BUILD_IN_SOURCE 1
+    )
+  endif()
+  set(NCNN_INC_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/src ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src)
+  set(NCNN_LIB_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src)
 endif()
 
 # XGBoost
@@ -471,6 +553,7 @@ if (USE_XGBOOST)
   set(XGBOOST_LIB_DIR ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/lib ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/ ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/dmlc-core)
 endif()
 
+# T-SNE
 if (USE_TSNE)
   message(STATUS "Configuring T-SNE")
   add_definitions(-DUSE_TSNE)
@@ -504,6 +587,10 @@ if (USE_CAFFE2)
   include_directories(${PYTORCH_PATH})
 endif()
 
+if (USE_NCNN)
+  include_directories(${NCNN_INC_DIR})
+endif()
+
 # main library, main & tests
 include_directories ("${PROJECT_SOURCE_DIR}/src")
 add_subdirectory (src)
@@ -516,6 +603,7 @@ set(COMMON_LINK_DIRS
   ${TF_LIB_DIR}
   ${XGBOOST_LIB_DIR}
   ${TSNE_LIB_DIR}
+  ${NCNN_LIB_DIR}
   ${DLIB_LIB_DIR})
 if (USE_HDF5)
   set(COMMON_LINK_LIBS
@@ -525,6 +613,7 @@ if (USE_HDF5)
     ${TF_LIB_DEPS}
     ${XGBOOST_LIB_DEPS}
     ${TSNE_LIB_DEPS}
+    ${NCNN_LIB_DEPS}
     ${DLIB_LIB_DEPS})
 else()
   set(COMMON_LINK_LIBS
@@ -534,6 +623,7 @@ else()
     ${TF_LIB_DEPS}
     ${XGBOOST_LIB_DEPS}
     ${TSNE_LIB_DEPS}
+    ${NCNN_LIB_DEPS}
     ${DLIB_LIB_DEPS})
 endif()
 set(HTTP_LINK_LIBS cppnetlib-uri crypto ssl)

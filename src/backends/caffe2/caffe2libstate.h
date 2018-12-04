@@ -121,6 +121,7 @@ namespace dd {
 
     REGISTER_CONFIG(std::string, extract_layer, "");
     REGISTER_CONFIG(bool, bbox, false);
+    REGISTER_CONFIG(bool, mask, false);
 
     REGISTER_CONFIG(std::string, lr_policy, "fixed");
     REGISTER_CONFIG_FLOAT(base_lr, 0.01);
@@ -146,6 +147,7 @@ namespace dd {
 
       init_extract_layer();
       init_bbox();
+      init_mask();
 
       init_lr_policy();
       init_base_lr();

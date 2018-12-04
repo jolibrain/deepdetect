@@ -22,6 +22,7 @@
 //XXX Remove that to print the warnings
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <caffe2/core/db.h>
 #pragma GCC diagnostic pop
 
@@ -360,13 +361,13 @@ namespace dd {
   }
 
   void ImgCaffe2InputFileConn::mats_to_tensor(const std::vector<cv::Mat> &mats,
-					      caffe2::TensorCPU &tensor) const {
+					      caffe2::Tensor &tensor) const {
     // Fill with the current configuration
     CAFFE_ENFORCE(mats.size() == static_cast<size_t>(channels()));
     int h = _scaled ? mats[0].rows : _height;
     int w = _scaled ? mats[0].cols : _width;
     size_t channel_size = h * w * sizeof(float);
-    std::vector<caffe2::TIndex> dims({channels(), h, w});
+    std::vector<long int> dims({channels(), h, w});
 
     // Resize the tensor
     tensor.Resize(dims);
@@ -383,8 +384,8 @@ namespace dd {
   }
 
   void ImgCaffe2InputFileConn::im_info_to_tensor(const cv::Mat &img,
-						 caffe2::TensorCPU &tensor) const {
-    tensor.Resize(std::vector<caffe2::TIndex>({3}));
+						 caffe2::Tensor &tensor) const {
+    tensor.Resize(std::vector<long int>({3}));
     float *data = tensor.mutable_data<float>();
     data[0] = img.rows;
     data[1] = img.cols;
@@ -468,7 +469,7 @@ namespace dd {
     std::unique_ptr<caffe2::db::DB> db(caffe2::db::CreateDB(_db_type, dbname, caffe2::db::NEW));
     std::unique_ptr<caffe2::db::Transaction> txn(db->NewTransaction());
 
-    //TODO Manage Dectron-like databases (im_info blob, bbox, classes, ...)
+    //XXX Manage Dectron-like databases (im_info blob, bbox, classes, ...)
 
     // Prefill db entries
     caffe2::TensorProtos protos;
@@ -547,7 +548,7 @@ namespace dd {
 #ifdef CPU_ONLY
       false
 #else
-      (context._devices[0].device_type() == caffe2::CUDA)
+      (context._devices[0].device_type() == caffe2::DeviceTypeProto::PROTO_CUDA)
 #endif
       ;
 
@@ -557,7 +558,7 @@ namespace dd {
     }
 
     // Add an ImageInput
-    // TODO manage Detectron databases
+    //XXX manage Detectron databases
     DBInputSetter config_dbinput =
       [&](caffe2::OperatorDef &op, const std::string &reader, int batch_size) {
       Caffe2NetTools::ImageInput(op, reader, input, context._blob_label, batch_size,
@@ -582,9 +583,9 @@ namespace dd {
 
   int ImgCaffe2InputFileConn::use_test_dbreader(Caffe2NetTools::ModelContext &context,
 						int already_loaded) const {
-    caffe2::TensorDeserializer<caffe2::CPUContext> deserializer;
+    caffe2::TensorDeserializer deserializer;
     ProtosConverter convert_protos =
-      [&](const caffe2::TensorProtos &protos, std::vector<caffe2::TensorCPU> &tensors) {
+      [&](const caffe2::TensorProtos &protos, std::vector<caffe2::Tensor> &tensors) {
 
       // Convert the image
       std::vector<cv::Mat> mats;
@@ -605,13 +606,12 @@ namespace dd {
     }
 
     auto image = _images.begin() + already_loaded;
-    InputGetter get_tensors = [&](std::vector<caffe2::TensorCPU> &tensors) {
+    InputGetter get_tensors = [&](std::vector<caffe2::Tensor> &tensors) {
       std::vector<cv::Mat> chan;
       cv::split(*image, chan);
       mats_to_tensor(chan, tensors[0]);
       im_info_to_tensor(*image++, tensors[1]);
     };
-
     return insert_inputs(context, {context._input_blob, context._blob_im_info},
 			 _images.size() - already_loaded, get_tensors, false);
   }

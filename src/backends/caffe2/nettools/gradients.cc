@@ -169,7 +169,7 @@ namespace dd {
 
 	int device = -1;
 #ifndef CPU_ONLY
-	if (op.device_option().device_type() == caffe2::CUDA) {
+	if (op.device_option().device_type() == caffe2::DeviceTypeProto::PROTO_CUDA) {
 	  device = op.device_option().cuda_gpu_id();
 	}
 #endif
@@ -271,11 +271,11 @@ namespace dd {
 	caffe2::OperatorDef &op = Sum(net, inputs, name);
 #ifndef CPU_ONLY
 	if (info._device >= 0) {
-	  op.mutable_device_option()->set_device_type(caffe2::CUDA);
+	  op.mutable_device_option()->set_device_type(caffe2::DeviceTypeProto::PROTO_CUDA);
 	  op.mutable_device_option()->set_cuda_gpu_id(info._device);
 	} else
 #endif
-	  op.mutable_device_option()->set_device_type(caffe2::CPU);
+	  op.mutable_device_option()->set_device_type(caffe2::DeviceTypeProto::PROTO_CPU);
 	// Setting counter to a negative value so it won't trigger anymore
 	info._current--;
       }
@@ -397,7 +397,7 @@ namespace dd {
 
       std::vector<int> device_ids;
       for (const caffe2::DeviceOption &option : net._devices) {
-	CAFFE_ENFORCE(option.device_type() == caffe2::CUDA);
+	CAFFE_ENFORCE(option.device_type() == caffe2::DeviceTypeProto::PROTO_CUDA);
 	device_ids.push_back(option.cuda_gpu_id());
       }
 
@@ -405,7 +405,7 @@ namespace dd {
       net._rename_inputs = net._rename_outputs = false;
       if (blob == blob_iter) {
 	caffe2::DeviceOption option;
-	option.set_device_type(caffe2::CPU);
+	option.set_device_type(caffe2::DeviceTypeProto::PROTO_CPU);
 	net._devices = {option};
       }
 
@@ -426,7 +426,7 @@ namespace dd {
       std::vector<std::vector<int> > sum_order;
 
       for (const caffe2::DeviceOption &option : net._devices) {
-	CAFFE_ENFORCE(option.device_type() == caffe2::CUDA);
+	CAFFE_ENFORCE(option.device_type() == caffe2::DeviceTypeProto::PROTO_CUDA);
 	device_ids.push_back(option.cuda_gpu_id());
       }
 

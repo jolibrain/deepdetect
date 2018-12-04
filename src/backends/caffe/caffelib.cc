@@ -1,4 +1,3 @@
-
 /**
  * DeepDetect
  * Copyright (c) 2014-2018 Emmanuel Benazera
@@ -239,6 +238,7 @@ namespace dd
             if (lparam->type() == "SoftmaxWithLoss")
               {
                 lparam->set_type("MultiLabelSigmoidLoss");
+		lparam->clear_include();
                 caffe::NetStateRule *nsr = lparam->add_include();
                 nsr->set_phase(caffe::TRAIN);
                 break;
@@ -284,7 +284,7 @@ namespace dd
 	    
 	  }
 	else throw MLLibInternalException("Couldn't find Softmax layer to replace for multi-label training");
-	
+      
 	k = deploy_net_param.layer_size();
 	caffe::LayerParameter *lparam = deploy_net_param.mutable_layer(k-1);
 	if (lparam->type() == "Softmax")
@@ -303,7 +303,31 @@ namespace dd
               }
 	  }
       } // end multi_label
-      
+    else if (_regression)
+      {
+	int k = net_param.layer_size();
+        for (int l=k-1;l>0;l--)
+          {
+            caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+            if (lparam->type() == "SoftmaxWithLoss")
+              {
+                lparam->set_type("SigmoidCrossEntropyLoss");
+		lparam->clear_include();
+                caffe::NetStateRule *nsr = lparam->add_include();
+                nsr->set_phase(caffe::TRAIN);
+                break;
+              }
+	    else if (lparam->type() == "Softmax")
+	      {
+		lparam->set_type("Sigmoid");
+		lparam->clear_include();
+		caffe::NetStateRule *nsr = lparam->add_include();
+                nsr->set_phase(caffe::TEST);
+	      }
+	  }
+	
+      }
+          
 	// input size
 	caffe::LayerParameter *lparam = net_param.mutable_layer(1); // test
 	caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(0);
@@ -1318,7 +1342,7 @@ namespace dd
       }
     
     solver_param = caffe::SolverParameter();
-    if (this->_mlmodel.read_from_repository(this->_mlmodel._repo,this->_logger))
+    if (this->_mlmodel.read_from_repository(this->_mlmodel._repo,this->_logger,true))
       throw MLLibBadParamException("error reading or listing Caffe models in repository " + this->_mlmodel._repo);
     int cm = create_model();
     if (cm == 1)

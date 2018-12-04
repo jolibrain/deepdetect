@@ -1,0 +1,103 @@
+From 90161fb5990829dd3e1315cd8393c46832166bc7 Mon Sep 17 00:00:00 2001
+From: Julien CHICHA <julien.chicha@epitech.eu>
+Date: Sat, 17 Nov 2018 17:38:25 +0100
+Subject: [PATCH 1/4] dependencies
+
+---
+ detectron/core/test.py                                  | 1 -
+ detectron/datasets/cityscapes_json_dataset_evaluator.py | 1 -
+ detectron/datasets/json_dataset.py                      | 2 --
+ detectron/datasets/json_dataset_evaluator.py            | 1 -
+ detectron/tests/test_bbox_transform.py                  | 1 -
+ detectron/utils/segms.py                                | 1 -
+ detectron/utils/vis.py                                  | 1 -
+ 7 files changed, 8 deletions(-)
+
+diff --git a/detectron/core/test.py b/detectron/core/test.py
+index 3f99806..1a95b96 100644
+--- a/detectron/core/test.py
++++ b/detectron/core/test.py
+@@ -35,7 +35,6 @@ import numpy as np
+ 
+ from caffe2.python import core
+ from caffe2.python import workspace
+-import pycocotools.mask as mask_util
+ 
+ from detectron.core.config import cfg
+ from detectron.utils.timer import Timer
+diff --git a/detectron/datasets/cityscapes_json_dataset_evaluator.py b/detectron/datasets/cityscapes_json_dataset_evaluator.py
+index af7dbcc..949613a 100644
+--- a/detectron/datasets/cityscapes_json_dataset_evaluator.py
++++ b/detectron/datasets/cityscapes_json_dataset_evaluator.py
+@@ -25,7 +25,6 @@ import logging
+ import os
+ import uuid
+ 
+-import pycocotools.mask as mask_util
+ 
+ from detectron.core.config import cfg
+ from detectron.datasets.dataset_catalog import get_raw_dir
+diff --git a/detectron/datasets/json_dataset.py b/detectron/datasets/json_dataset.py
+index 702612a..fb08a42 100644
+--- a/detectron/datasets/json_dataset.py
++++ b/detectron/datasets/json_dataset.py
+@@ -35,8 +35,6 @@ import scipy.sparse
+ import detectron.utils.env as envu
+ envu.set_up_matplotlib()
+ # COCO API
+-from pycocotools import mask as COCOmask
+-from pycocotools.coco import COCO
+ 
+ from detectron.core.config import cfg
+ from detectron.utils.timer import Timer
+diff --git a/detectron/datasets/json_dataset_evaluator.py b/detectron/datasets/json_dataset_evaluator.py
+index c4c466d..55dc832 100644
+--- a/detectron/datasets/json_dataset_evaluator.py
++++ b/detectron/datasets/json_dataset_evaluator.py
+@@ -27,7 +27,6 @@ import os
+ import six
+ import uuid
+ 
+-from pycocotools.cocoeval import COCOeval
+ 
+ from detectron.core.config import cfg
+ from detectron.utils.io import save_object
+diff --git a/detectron/tests/test_bbox_transform.py b/detectron/tests/test_bbox_transform.py
+index 7d204f6..79d5c88 100644
+--- a/detectron/tests/test_bbox_transform.py
++++ b/detectron/tests/test_bbox_transform.py
+@@ -21,7 +21,6 @@ from __future__ import unicode_literals
+ import numpy as np
+ import unittest
+ 
+-from pycocotools import mask as COCOmask
+ 
+ import detectron.utils.boxes as box_utils
+ 
+diff --git a/detectron/utils/segms.py b/detectron/utils/segms.py
+index 4620a35..c5103c4 100644
+--- a/detectron/utils/segms.py
++++ b/detectron/utils/segms.py
+@@ -29,7 +29,6 @@ from __future__ import unicode_literals
+ 
+ import numpy as np
+ 
+-import pycocotools.mask as mask_util
+ 
+ # Type used for storing masks in polygon format
+ _POLY_TYPE = list
+diff --git a/detectron/utils/vis.py b/detectron/utils/vis.py
+index d3c8833..ff63a01 100644
+--- a/detectron/utils/vis.py
++++ b/detectron/utils/vis.py
+@@ -24,7 +24,6 @@ import cv2
+ import numpy as np
+ import os
+ 
+-import pycocotools.mask as mask_util
+ 
+ from detectron.utils.colormap import colormap
+ import detectron.utils.env as envu
+-- 
+2.19.1
+

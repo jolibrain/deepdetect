@@ -1,0 +1,23 @@
+From 314da24c254cf1185cb3fafeac0c7d601022f2d6 Mon Sep 17 00:00:00 2001
+From: Julien CHICHA <julien.chicha@epitech.eu>
+Date: Wed, 21 Nov 2018 15:49:42 +0100
+Subject: [PATCH 1/1] -fopenmp
+
+---
+ CMakeLists.txt | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 7ca537b..ac94a4b 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -32,6 +32,7 @@ option(NCNN_CMAKE_VERBOSE "print verbose cmake messages" OFF)
+
+ if(NCNN_OPENMP)
+     find_package(OpenMP)
++    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+     # For CMake < 3.9, we need to make the target ourselves
+     if(NOT TARGET OpenMP::OpenMP_CXX)
+         find_package(Threads REQUIRED)
+---
+2.19.1

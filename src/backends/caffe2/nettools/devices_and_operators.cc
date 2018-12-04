@@ -22,6 +22,7 @@
 //XXX Remove that to print the warnings
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <caffe2/core/operator.h>
 #pragma GCC diagnostic pop
 
@@ -68,7 +69,7 @@ namespace dd {
       return "gpu_" + std::to_string(id) + "/";
     }
     std::string get_device_prefix(const caffe2::DeviceOption &option) {
-      return option.device_type() == caffe2::CUDA ?
+      return option.device_type() == caffe2::DeviceTypeProto::PROTO_CUDA ?
 	device_id_to_prefix(option.cuda_gpu_id()) : "";
     }
 #endif
@@ -110,8 +111,8 @@ namespace dd {
     static bool set_op_device(caffe2::OperatorDef &op, const caffe2::DeviceOption &device) {
       caffe2::DeviceOption &op_device = *op.mutable_device_option();
       if (is_cpu_only(op.type())) {
-	op_device.set_device_type(caffe2::CPU);
-	return device.device_type() == caffe2::CPU;
+	op_device.set_device_type(caffe2::DeviceTypeProto::PROTO_CPU);
+	return device.device_type() == caffe2::DeviceTypeProto::PROTO_CPU;
       }
       op_device.CopyFrom(device);
       return true;
@@ -155,11 +156,7 @@ namespace dd {
 
       caffe2::NetDef tmp;
       for (const caffe2::OperatorDef &op : net.op()) {
-	if (is_cpu_only(op.type())) {
-	  add_op(tmp, op);
-	} else {
-	  add_op(tmp, op, device);
-	}
+	add_op(tmp, op, device);
       }
       net.mutable_op()->Swap(tmp.mutable_op());
     }
@@ -246,7 +243,7 @@ namespace dd {
       // Handle the _force_device tag
       std::vector<caffe2::DeviceOption> buffer(1);
       if (net._force_device >= 0) {
-	buffer[0].set_device_type(caffe2::CUDA);
+	buffer[0].set_device_type(caffe2::DeviceTypeProto::PROTO_CUDA);
 	buffer[0].set_cuda_gpu_id(net._force_device);
 	devices = &buffer;
       }
@@ -256,7 +253,7 @@ namespace dd {
 	caffe2::OperatorDef op;
 	init(op);
 #ifndef CPU_ONLY
-	if (option.device_type() == caffe2::CUDA) {
+	if (option.device_type() == caffe2::DeviceTypeProto::PROTO_CUDA) {
 	  std::string prefix = device_id_to_prefix(option.cuda_gpu_id());
 	  // Handle _rename_* tags
 	  if (net._rename_inputs) {
@@ -650,7 +647,7 @@ namespace dd {
       // Forcing the device (iter blobs must be run on CPU)
       ScopedNet init(init_def);
       caffe2::DeviceOption option;
-      option.set_device_type(caffe2::CPU);
+      option.set_device_type(caffe2::DeviceTypeProto::PROTO_CPU);
       init._devices = {option};
 
       std::string main_iter;
@@ -681,7 +678,9 @@ namespace dd {
 #ifndef CPU_ONLY
       std::vector<std::string> sync;
       const caffe2::DeviceOption &main_device = context._devices[0];
-      bool is_sync = main_device.device_type() == caffe2::CUDA && context._parallelized;
+      bool is_sync =
+	main_device.device_type() == caffe2::DeviceTypeProto::PROTO_CUDA
+	&& context._parallelized;
 
       if (is_sync) {
 	net._force_device = main_device.cuda_gpu_id();
@@ -720,41 +719,92 @@ namespace dd {
      *  Pre-computation
      */
 
+    typedef std::function<void(caffe2::NetDef&,int)> EnsureIsBatchable;
+    extern const std::map<std::string, EnsureIsBatchable> ensure_op_is_batchable;
+
     /*
-     * Currently the only the detectron models make us update the net in order to make it batchable.
+     * Currently only the detectron models make us update the net
+     * in order to make it batchable.
+     *
      * By default the 'batch_splits' blob is not used, so we need to place it into the net.
-     * See https://github.com/pytorch/pytorch/blob/master/caffe2/operators/box_with_nms_limit_op.cc
-     * and https://github.com/pytorch/pytorch/blob/master/caffe2/operators/bbox_transform_op.cc
+     * See in https://github.com/pytorch/pytorch/blob/master/caffe2/operators :
+     * box_with_nms_limit_op.cc and bbox_transform_op.cc
+     *
+     * Another problem occurs with CollectAndDistributeFpnRpnProposals
+     * that do not keep the data grouped by batch item.
+     * See in https://github.com/chichaj/deepdetect/blob/master/patches/caffe2 :
+     * collect_proposals.patch
      */
     void ensure_is_batchable(caffe2::NetDef &net) {
-
       // Loop over the operators
-      auto &ops = *net.mutable_op();
+      const auto &ops = net.op();
       for (int idx = ops.size(); idx-- > 0;) {
-	caffe2::OperatorDef &op = ops[idx];
-	auto &op_inputs = *op.mutable_input();
-	auto &op_outputs = *op.mutable_output();
-
-	// Find box NMS predictions that doesn't have a 'batch_splits' input
-	if (op.type() == "BoxWithNMSLimit" && op_inputs.size() == 2) {
-	  CAFFE_ENFORCE(op_outputs.size() == 3); // Should have a 'batch_splits' output
-
-	  // Find if the box-transform already generates thoses values
-	  caffe2::OperatorDef &box_op(ops[find_previous_update(net, op_inputs[1], idx - 1)]);
-	  CAFFE_ENFORCE(box_op.type() == "BBoxTransform");
-	  auto &box_op_outputs = *box_op.mutable_output();
-
-	  // If not, generate them
-	  if (box_op_outputs.size() == 1) {
-	    box_op_outputs.Add(std::move(box_op_outputs[0] + batch_splits_suffix));
-	  }
-
-	  // Link them to the current operator
-	  op_inputs.Add(std::string(box_op_outputs[1]));
-	  op_outputs.Add(std::move(op_outputs[0] + batch_splits_suffix));
+	auto it = ensure_op_is_batchable.find(ops[idx].type());
+	if (it != ensure_op_is_batchable.end()) {
+	  it->second(net, idx);
 	}
       }
     }
+
+    void make_input_batchable(caffe2::NetDef &net, int op_idx, int input_size,
+			      const std::string &prev_type, int input_idx, int output_idx) {
+      // Check if all the inputs are already present
+      auto &inputs = *net.mutable_op(op_idx)->mutable_input();
+      if (inputs.size() == input_size) {
+	return;
+      }
+      CAFFE_ENFORCE(inputs.size() == input_size - 1);
+      // Find a previous blob that can output the 'batch_splits' blob
+      int prev_idx = find_previous_update(net, inputs[input_idx], op_idx - 1);
+      const caffe2::OperatorDef &prev = net.op(prev_idx);
+      CAFFE_ENFORCE(prev.type() == prev_type);
+      // Add it the the input's list
+      ensure_op_is_batchable.at(prev_type)(net, prev_idx);
+      inputs.Add(std::string(prev.output(output_idx)));
+    }
+
+    void make_output_batchable(caffe2::NetDef &net, int op_idx, int output_size,
+			       int output_idx) {
+      // Check if all the outputs are already present
+      auto &outputs = *net.mutable_op(op_idx)->mutable_output();
+      if (outputs.size() == output_size) {
+	return;
+      }
+      // Output a 'batch_splits' blob
+      CAFFE_ENFORCE(outputs.size() == output_size - 1);
+      outputs.Add(std::move(outputs[output_idx] + batch_splits_suffix));
+    }
+
+    static void ensure_collect_proposals_is_batchable(caffe2::NetDef &net, int idx) {
+      caffe2::OperatorDef &op = *net.mutable_op(idx);
+      for (caffe2::Argument &arg : *op.mutable_arg()) {
+	if (arg.name() == "keep_grouped") {
+	  arg.set_i(true);
+	  return;
+	}
+      }
+      add_arg(op, "keep_grouped", true);
+    }
+
+    static inline void ensure_bbox_transform_is_batchable(caffe2::NetDef &net, int idx) {
+      make_output_batchable(net, idx, 2, 0);
+    }
+
+    static inline void ensure_box_nms_is_batchable(caffe2::NetDef &net, int idx) {
+      make_input_batchable(net, idx, 3, "BBoxTransform", 1, 1);
+      make_output_batchable(net, idx, 4, 0);
+    }
+
+    static inline void ensure_bbox_rois_is_batchable(caffe2::NetDef &net, int idx) {
+      make_input_batchable(net, idx, 3, "BoxWithNMSLimit", 0, 3);
+    }
+
+    const std::map<std::string, EnsureIsBatchable> ensure_op_is_batchable({
+	{ "CollectAndDistributeFpnRpnProposals", ensure_collect_proposals_is_batchable },
+	{ "BBoxTransform", ensure_bbox_transform_is_batchable },
+	{ "BoxWithNMSLimit", ensure_box_nms_is_batchable },
+	{ "BBoxToRoi", ensure_bbox_rois_is_batchable },
+    });
 
     /*
      *  Finalisation
@@ -816,7 +866,12 @@ namespace dd {
       net.mutable_op()->Swap(new_net.mutable_op());
     }
 
+    // We consider that nets are not splitted during a CPU/CUDA conversion
     static void remove_useless_casts(caffe2::NetDef &net) {
+
+      const auto &net_inputs(net.external_input());
+      const std::set<std::string> external_inputs(net_inputs.begin(), net_inputs.end());
+
       for (int i = 0; i < net.op().size(); ++i) {
 	caffe2::OperatorDef &op = *net.mutable_op(i);
 
@@ -825,17 +880,21 @@ namespace dd {
 	  const std::string &input = op.input(0);
 	  const std::string &output = op.output(0);
 
-	  // Check if the cast is used
-	  bool used = false;
-	  for (int j = i; j < net.op().size(); ++j) {
-	    if (has_input(net.op(j), output)) {
-	      used = true;
-	      break;
+	  bool internal = external_inputs.find(input) == external_inputs.end();
+	  if (!internal) {
+	    // The cast is not an external input, but may be an external output
+
+	    // Check if the cast is used
+	    for (int j = i; j < net.op().size(); ++j) {
+	      if (has_input(net.op(j), output)) {
+		internal = true;
+		break;
+	      }
 	    }
 	  }
 
-	  // Transform into a simple alias (in case the layer is an external output)
-	  if (!used) {
+	  // Transform into a simple alias
+	  if (!internal) {
 	    caffe2::OperatorDef new_op;
 	    Alias(new_op, input, output);
 	    op.Swap(&new_op);

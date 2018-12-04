@@ -21,9 +21,10 @@ if (USE_CAFFE2)
     backends/caffe2/nettools/devices_and_operators.cc
     backends/caffe2/nettools/workspace_and_nets.cc
     backends/caffe2/nettools/gradients.cc
+    backends/caffe2/nettools/netgroup.cc
     backends/caffe2/nettools/internal.cc
     backends/caffe2/nettools/debug.cc
-    )
+  )
 endif()
 if (USE_XGBOOST)
   list(APPEND ddetect_SOURCES backends/xgb/xgblib.cc backends/xgb/xgblib.h backends/xgb/xgbmodel.cc backends/xgb/xgbmodel.h backends/xgb/xgbinputconns.cc backends/xgb/xgbinputconns.h)
@@ -36,6 +37,12 @@ if (USE_SIMSEARCH)
 endif()
 if (USE_DLIB)
   list(APPEND ddetect_SOURCES backends/dlib/DNNStructures.h backends/dlib/dliblib.cc backends/dlib/dliblib.h backends/dlib/dlibmodel.cc backends/dlib/dlibmodel.h backends/dlib/dlibinputconns.h)
+endif()
+if (USE_NCNN)
+  list(APPEND ddetect_SOURCES
+    backends/ncnn/ncnnlib.cc
+    backends/ncnn/ncnnmodel.cc
+  )
 endif()
 add_library(ddetect ${ddetect_SOURCES})
 add_dependencies(ddetect caffe_dd)

@@ -75,6 +75,11 @@ namespace dd
         _bboxes.insert(std::pair<double,APIData>(prob,ad));
       }
 
+      inline void add_mask(const double &prob, const APIData &mask)
+      {
+        _masks.insert(std::pair<double,APIData>(prob,mask));
+      }
+
       inline void add_val(const double &prob, const APIData &ad)
       {
         _vals.insert(std::pair<double,APIData>(prob,ad));
@@ -99,6 +104,7 @@ namespace dd
       std::multimap<double,std::string,std::greater<double>> _cats; /**< categories and probabilities for this result */
       std::multimap<double,APIData,std::greater<double>> _bboxes; /**< bounding boxes information */
       std::multimap<double,APIData,std::greater<double>> _vals; /**< extra data or information added to output, e.g. roi */
+      std::multimap<double,APIData,std::greater<double>> _masks; /**< masks information */
 #ifdef USE_SIMSEARCH
       bool _indexed = false;
       std::multimap<double,URIData> _nns; /**< nearest neigbors. */
@@ -154,11 +160,14 @@ namespace dd
 	  std::vector<std::string> cats = ad.get("cats").get<std::vector<std::string>>();
 	  std::vector<APIData> bboxes;
 	  std::vector<APIData> rois;
+	  std::vector<APIData> masks;
 	  if (ad.has("bboxes"))
 	    bboxes = ad.getv("bboxes");
 	  if (ad.has("vals")) {
 	    rois = ad.getv("vals");
 	  }
+	  if (ad.has("masks"))
+	    masks = ad.getv("masks");
 	  if ((hit=_vcats.find(uri))==_vcats.end())
 	    {
 	      auto resit = _vcats.insert(std::pair<std::string,int>(uri,_vvcats.size()));
@@ -171,6 +180,8 @@ namespace dd
 		    _vvcats.at((*hit).second).add_bbox(probs.at(i),bboxes.at(i));
 		  if (!rois.empty())
 		    _vvcats.at((*hit).second).add_val(probs.at(i),rois.at(i));
+		  if (!masks.empty())
+		    _vvcats.at((*hit).second).add_mask(probs.at(i),masks.at(i));
 		}
 	    }
 	}
@@ -181,14 +192,15 @@ namespace dd
      * @param ad_out output data object
      * @param bcats supervised output connector
      */
-    void best_cats(const APIData &ad_out, SupervisedOutput &bcats, const int &nclasses, const bool &has_bbox, const bool &has_roi) const
+    void best_cats(const APIData &ad_out, SupervisedOutput &bcats, const int &nclasses,
+		   const bool &has_bbox, const bool &has_roi, const bool &has_mask) const
     {
       int best = _best;
       if (ad_out.has("best"))
 	best = ad_out.get("best").get<int>();
       if (best == -1)
 	best = nclasses;
-      if (!has_bbox && !has_roi)
+      if (!has_bbox && !has_roi && !has_mask)
 	{
 	  for (size_t i=0;i<_vvcats.size();i++)
 	    {
@@ -202,6 +214,9 @@ namespace dd
 	      if (!sresult._vals.empty())
 		std::copy_n(sresult._vals.begin(),std::min(best,static_cast<int>(sresult._vals.size())),
 			    std::inserter(bsresult._vals,bsresult._vals.end()));
+	      if (!sresult._masks.empty())
+		std::copy_n(sresult._masks.begin(),std::min(best,static_cast<int>(sresult._masks.size())),
+			    std::inserter(bsresult._masks,bsresult._masks.end()));
 	      
 	      bcats._vcats.insert(std::pair<std::string,int>(sresult._label,bcats._vvcats.size()));
 	      bcats._vvcats.push_back(bsresult);
@@ -230,12 +245,16 @@ namespace dd
 		  auto mit = sresult._cats.begin();
 		  auto mitx = sresult._bboxes.begin();
 		  auto mity = sresult._vals.begin();
+		  auto mitmask = sresult._masks.begin();
 		  while(mitx!=sresult._bboxes.end())
 		    {
 		      APIData bbad = (*mitx).second;
 		      APIData vvad;
 		      if (has_roi)
 			vvad = (*mity).second;
+		      APIData maskad;
+		      if (has_mask)
+			maskad = (*mitmask).second;
 		      std::string bbkey = std::to_string(bbad.get("xmin").get<double>())
 			+ "-" + std::to_string(bbad.get("ymin").get<double>())
 			+ "-" + std::to_string(bbad.get("xmax").get<double>())
@@ -249,6 +268,8 @@ namespace dd
 			      bsresult._bboxes.insert(std::pair<double,APIData>((*mitx).first,bbad));
 			      if (has_roi)
 				bsresult._vals.insert(std::pair<double,APIData>((*mity).first,vvad));
+			      if (has_mask)
+				bsresult._masks.insert(std::pair<double,APIData>((*mitmask).first,maskad));
 			    }
 			}
 		      else
@@ -258,11 +279,15 @@ namespace dd
 			  bsresult._bboxes.insert(std::pair<double,APIData>((*mitx).first,bbad));
 			  if (has_roi)
 			    bsresult._vals.insert(std::pair<double,APIData>((*mity).first,vvad));
+			  if (has_mask)
+			    bsresult._masks.insert(std::pair<double,APIData>((*mitmask).first,maskad));
 			}
 		      ++mitx;
 		      ++mit;
 		      if (has_roi)
 			++mity;
+		      if (has_mask)
+			++mitmask;
 		    }
 		}
 	      bcats._vcats.insert(std::pair<std::string,int>(sresult._label,bcats._vvcats.size()));
@@ -312,24 +337,19 @@ namespace dd
 	  _best = 1;
 	  ad_out.erase("autoencoder");
 	}
-      bool has_bbox = false;
-      bool has_roi = false;
-      bool has_multibox_rois = false;
-      if (ad_out.has("bbox") && ad_out.get("bbox").get<bool>())
+
+      bool has_bbox = ad_out.has("bbox") && ad_out.get("bbox").get<bool>();
+      bool has_roi = ad_out.has("roi") && ad_out.get("roi").get<bool>();
+      bool has_mask = ad_out.has("mask") && ad_out.get("mask").get<bool>();
+      bool has_multibox_rois = has_roi &&
+	ad_out.has("multibox_rois") && ad_out.get("multibox_rois").get<bool>();
+
+      if (has_bbox)
 	{
-	  has_bbox = true;
 	  ad_out.erase("nclasses");
 	  ad_out.erase("bbox");
 	}
-
-      if (ad_out.has("roi") && ad_out.get("roi").get<bool>())
-        {
-          has_roi = true;
-	  if (ad_out.has("multibox_rois") && ad_out.get("multibox_rois").get<bool>())
-	    has_multibox_rois = true;
-        }
-      
-      best_cats(ad_in,bcats,nclasses,has_bbox,has_roi);
+      best_cats(ad_in,bcats,nclasses,has_bbox,has_roi,has_mask);
       
       std::unordered_set<std::string> indexed_uris;
 #ifdef USE_SIMSEARCH
@@ -507,7 +527,7 @@ namespace dd
 
       if (has_multibox_rois)
 	has_roi = false;
-      bcats.to_ad(ad_out,regression,autoencoder,has_bbox,has_roi,indexed_uris);
+      bcats.to_ad(ad_out,regression,autoencoder,has_bbox,has_roi,has_mask,indexed_uris);
     }
     
     struct PredictionAndAnswer {
@@ -1622,10 +1642,11 @@ namespace dd
      * @param autoencoder whether an autoencoder architecture
      * @param has_bbox whether an object detection task
      * @param has_roi whether using feature extraction and object detection
+     * @param has_mask whether a mask creation task
      * @param indexed_uris list of indexed uris, if any
      */
     void to_ad(APIData &out, const bool &regression, const bool &autoencoder,
-	       const bool &has_bbox, const bool &has_roi,
+	       const bool &has_bbox, const bool &has_roi, const bool &has_mask,
 	       const std::unordered_set<std::string> &indexed_uris) const
     {
 #ifndef USE_SIMSEARCH
@@ -1637,6 +1658,7 @@ namespace dd
       static std::string bb = "bbox";
       static std::string roi = "vals";
       static std::string rois = "rois";
+      static std::string mask = "mask";
 
       static std::string phead = "prob";
       static std::string chead = "cat";
@@ -1652,6 +1674,7 @@ namespace dd
 	  auto bit = _vvcats.at(i)._bboxes.begin();
 	  auto vit = _vvcats.at(i)._vals.begin();
 	  auto mit = _vvcats.at(i)._cats.begin();
+	  auto maskit = _vvcats.at(i)._masks.begin();
 	  while(mit!=_vvcats.at(i)._cats.end())
 	    {
 	      APIData nad;
@@ -1662,7 +1685,7 @@ namespace dd
 	      else if (autoencoder)
 		nad.add(ahead,(*mit).first);
 	      else nad.add(phead,(*mit).first);
-	      if (has_bbox || has_roi)
+	      if (has_bbox || has_roi || has_mask)
 		{
 		  nad.add(bb,(*bit).second);
 		  ++bit;
@@ -1674,6 +1697,11 @@ namespace dd
 		  /* std::cout << std::endl; */
 		  nad.add(roi,(*vit).second.get("vals").get<std::vector<double>>());
 		  ++vit;
+		}
+	      if (has_mask)
+		{
+		  nad.add(mask,(*maskit).second);
+		  ++maskit;
 		}
 	      ++mit;
 	      if (mit == _vvcats.at(i)._cats.end())

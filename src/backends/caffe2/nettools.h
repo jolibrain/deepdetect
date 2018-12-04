@@ -293,7 +293,6 @@ namespace dd {
 	std::unique_ptr<caffe2::Workspace>(new caffe2::Workspace);
       std::vector<caffe2::DeviceOption> _devices;
       std::string _input_blob;
-      std::vector<std::string> _output_blobs;
       int _nclasses = 0;
 
       //XXX Should be optionals / configurables in the future
@@ -355,7 +354,7 @@ namespace dd {
        * \brief tries to find the blob of the given name on the given device,
        *        and to use the tensor to fill it
        */
-      void insert_tensor(int device_idx, const std::string &name, const caffe2::TensorCPU &tensor);
+      void insert_tensor(int device_idx, const std::string &name, const caffe2::Tensor &tensor);
 
       inline void reset_iter() { _loaded_iter = 0; }
 
@@ -382,7 +381,7 @@ namespace dd {
       /**
        * \brief adds a copy of the tensor on each device
        */
-      void broadcast_tensor(const std::string &name, const caffe2::TensorCPU &tensor);
+      void broadcast_tensor(const std::string &name, const caffe2::Tensor &tensor);
 
       /*
        *  Information extraction
@@ -392,7 +391,7 @@ namespace dd {
        * \brief tries to find the blob of the given name on the given device,
        *        and to use it to fill the tensor (true if successfull)
        */
-      bool extract_tensor(int device_idx, const std::string &name, caffe2::TensorCPU &tensor) const;
+      bool extract_tensor(int device_idx, const std::string &name, caffe2::Tensor &tensor) const;
 
       /**
        * \brief fetches the scaled losses of every devices and sums them
@@ -421,9 +420,10 @@ namespace dd {
        * @param results where to store the data
        * @param name name of the layer
        * @param sizes size of each element of the batch (split equally if empty)
+       * @param scale scale factor for the elements of the 'sizes' vector (inferred if 0)
        */
       void extract(std::vector<std::vector<float>> &results, const std::string &name,
-		   const std::vector<size_t> &sizes={}) const;
+		   const std::vector<size_t> &sizes={}, size_t scale=1) const;
 
       /*
        *  Network manipulation
@@ -445,7 +445,8 @@ namespace dd {
        * \bried appends a net's operators and inputs to another (its 'main' input is ignored)
        *        then adds gradients for the new operators
        */
-      void append_trainable_net(caffe2::NetDef &dst, const caffe2::NetDef &src) const;
+      void append_trainable_net(caffe2::NetDef &dst, const caffe2::NetDef &src,
+				const std::vector<std::string> &output_blobs) const;
 
     private:
 
@@ -456,21 +457,21 @@ namespace dd {
 
       // Extract from each device and return the total size
       size_t extract_tensors(const std::string &name,
-			     std::vector<caffe2::TensorCPU> &tensors) const;
+			     std::vector<caffe2::Tensor> &tensors) const;
 
       // Merge the tensors and re-split into a single batch of items
       template <typename Result, typename Data>
       void split_tensors(std::vector<Result> &results,
-			 std::vector<caffe2::TensorCPU> tensors,
+			 const std::vector<caffe2::Tensor> &tensors,
 			 const std::vector<size_t> &sizes,
 			 const Stockage<Result, Data> &store) const;
       template <typename T>
       void split_tensors(std::vector<T> &results,
-			 const std::vector<caffe2::TensorCPU> &tensors,
+			 const std::vector<caffe2::Tensor> &tensors,
 			 const std::vector<size_t> &sizes) const;
       template <typename T>
       void split_tensors(std::vector<std::vector<T>> &results,
-			 const std::vector<caffe2::TensorCPU> &tensors,
+			 const std::vector<caffe2::Tensor> &tensors,
 			 const std::vector<size_t> &sizes) const;
 
       // Fecth the data then split it
@@ -481,7 +482,8 @@ namespace dd {
       template <typename T>
       void extract_results(std::vector<T> &results,
 			   const std::string &name,
-			   const std::vector<size_t> &sizes) const;
+			   const std::vector<size_t> &sizes,
+			   size_t scale=0) const;
 
       // Fetch, split and cast the data
       template <typename Result, typename Data, typename Size>
@@ -618,12 +620,55 @@ namespace dd {
     /**
      * \brief reads a .pb or .pbtxt file
      */
-    void import_net(caffe2::NetDef &net, const std::string &file, bool unscoped = false);
+    void import_net(caffe2::NetDef &net, const std::string &file, bool unscoped = true);
 
     /**
      * \brief writes a .pb or .pbtxt file
      */
     void export_net(const caffe2::NetDef &net, const std::string &file, bool human_readable=false);
+
+    /**
+     * \brief extends a model with another
+     */
+    void append_model(caffe2::NetDef &dst_net, caffe2::NetDef &dst_init,
+		      const caffe2::NetDef &src_net, const caffe2::NetDef &src_init);
+
+    /**
+     * \brief A pack of three nets (initialization, training, prediction)
+     */
+    class NetGroup {
+    public:
+
+      const std::string _type;
+      caffe2::NetDef _init;
+      caffe2::NetDef _train;
+      caffe2::NetDef _predict;
+      std::vector<std::string> _output_blobs;
+
+      NetGroup(): _type("") {};
+      NetGroup(const std::string &type,
+	       const std::string &init,
+	       const std::string &predict,
+	       const std::string &train="");
+
+      /**
+       * \brief swap nets with another group
+       */
+      void swap(NetGroup &nets);
+
+      /**
+       * \brief rename each nets with the same prefix
+       */
+      void rename(const std::string &name);
+
+      /**
+       * \brief import protobuf files
+       */
+      void import(const std::string &init,
+		  const std::string &predict,
+		  const std::string &train="");
+
+    }; //! NetGroup
 
   }
 }
