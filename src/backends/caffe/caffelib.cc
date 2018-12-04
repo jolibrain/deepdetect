@@ -1809,7 +1809,7 @@ namespace dd
                         {
                           for (int k=0;k<nout;k++)
                             {
-                              predictions.push_back(lresults[slot]->cpu_data()[t*nout*dv_size+k+j*nout+k]);
+                              predictions.push_back(lresults[slot]->cpu_data()[t*nout*dv_size+j*nout+k]);
                             }
                         }
                     }
@@ -2348,34 +2348,47 @@ namespace dd
 	    }
            else if (typeid(inputc) == typeid(CSVTSCaffeInputFileConn)) // timeseries
              {
-               int slot = 0;
-               //               int scount = results[slot]->count();
-               //int scperel = scount / batch_size;
+               int slot = findOutputSlotNumberByBlobName(_net,"OUTPUT");
+               //results[slot] is TxNxDataDim , N is batchsize ...
                int nout = _ntargets;
+
+               const boost::shared_ptr<Blob<float>> contseq = _net->blob_by_name("cont_seq");
+               //cont_seq is TxN
 
                CSVTSCaffeInputFileConn* ic =
                  reinterpret_cast<CSVTSCaffeInputFileConn*>(&inputc);
-               for (int j=0;j<batch_size;j++)
-                 {
-                   APIData out;
-                   std::vector<APIData> series;
 
-                   for (int k=0;k<nout;k++)
+
+               APIData out;
+               std::vector<APIData> series;
+
+               for (int j=0; j<batch_size; ++j)
+                 {
+                   for (int t=0; t<ic->_timesteps; ++t)
                      {
+                       if (contseq->cpu_data()[t*batch_size+j] == 0 && series.size() != 0)
+                         // new seq -> push old one
+                         {
+                           if (series.size() > 1)
+                             {
+                               if (!inputc._ids.empty())
+                                 out.add("uri",inputc._ids.at(idoffset+j));
+                               else out.add("uri",std::to_string(idoffset+j));
+                               out.add("series", series);
+                               out.add("probs",std::vector<double>(series.size(),1.0));
+                               out.add("loss",0.0);
+                               vrad.push_back(out);
+                             }
+                           series.clear();
+                         }
+
                        std::vector<double> predictions;
-                       for (int t=0; t<ic->_timesteps; ++t)
-                         predictions.push_back(results[slot]->cpu_data()[t*nout*batch_size+k+j*nout+k]);
-                       APIData serie;
-                       serie.add("serie", predictions);
-                       series.push_back(serie);
+                       for (int k=0; k<nout; ++k)
+                         predictions.push_back(results[slot]->cpu_data()[t*nout*batch_size+j*nout+k]);
+                       APIData ts;
+                       ts.add("out", predictions);
+                       series.push_back(ts);
                      }
-                   if (!inputc._ids.empty())
-                     out.add("uri",inputc._ids.at(idoffset+j));
-                   else out.add("uri",std::to_string(idoffset+j));
-                   out.add("series", series);
-                   out.add("probs",std::vector<double>(nout,1.0));
-                   out.add("loss",0.0);
-                   vrad.push_back(out);
                  }
              }
 	    else // classification
@@ -3508,6 +3521,9 @@ namespace dd
     return -1;
   }
 
+
+
+
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   Blob<float>* CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::findOutputBlobByName(const caffe::Net<float> *net, const std::string blob_name)
   {
@@ -3520,6 +3536,8 @@ namespace dd
       }
     return nullptr;
   }
+
+
 
 
 
