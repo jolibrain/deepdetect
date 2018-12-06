@@ -67,7 +67,7 @@ namespace dd
                      std::string bottom, std::string top, int axis);
 
 
-    void add_permute(caffe::NetParameter *net_params, std::string top, std::string bottom);
+    void add_permute(caffe::NetParameter *net_params, std::string top, std::string bottom, int naxis,bool train, bool test);
 
   };
   

@@ -103,18 +103,32 @@ namespace dd
     lparam->add_bottom(bottom);
   }
 
-  void NetLayersCaffeRecurrent::add_permute(caffe::NetParameter *net_params, std::string top, std::string bottom)
+  void NetLayersCaffeRecurrent::add_permute(caffe::NetParameter *net_params, std::string top, std::string bottom, int naxis, bool train, bool test)
   {
     caffe::LayerParameter *lparam = net_params->add_layer();
     lparam->set_type("Permute");
-    lparam->set_name("permute_T_N");
+    lparam->set_name("permute_T_N"+top);
     lparam->add_top(top);
     lparam->add_bottom(bottom);
     caffe::PermuteParameter *pparam = lparam->mutable_permute_param();
     pparam->add_order(1);
     pparam->add_order(0);
     pparam->add_order(2);
-    pparam->add_order(3);
+    if (naxis == 4)
+      pparam->add_order(3);
+    if (train)
+      {
+        caffe::NetStateRule *nsr;
+        nsr = lparam->add_include();
+        nsr->set_phase(caffe::TRAIN);
+      }
+    else if (test)
+      {
+        caffe::NetStateRule *nsr;
+        nsr = lparam->add_include();
+        nsr->set_phase(caffe::TEST);
+      }
+
   }
 
   void NetLayersCaffeRecurrent::add_concat(caffe::NetParameter *net_params,
@@ -189,8 +203,8 @@ namespace dd
     std::sort(inputs.begin(), inputs.end());
 
     // first permute
-    add_permute(this->_net_params, "permuted_data", "data");
-    add_permute(this->_dnet_params, "permuted_data", "data");
+    add_permute(this->_net_params, "permuted_data", "data", 4,false,false);
+    add_permute(this->_dnet_params, "permuted_data", "data", 4,false,false);
 
 
     // slice
@@ -306,11 +320,17 @@ namespace dd
       }
 
 
-    caffe::LayerParameter *lparam;
-    caffe::NetStateRule *nsr;
-    lparam = CaffeCommon::add_layer(this->_net_params,top,"loss","loss",loss); // train
 
-    lparam->add_bottom("target_seq");
+    add_permute(this->_net_params, "permuted_OUPUT", "OUTPUT", 3,true,false);
+    add_permute(this->_net_params, "permuted_target_seq", "target_seq", 3,true,false);
+
+
+
+    caffe::LayerParameter *lparam;
+    lparam = CaffeCommon::add_layer(this->_net_params,"permuted_OUPUT","loss","loss",loss); // train
+
+    lparam->add_bottom("permuted_target_seq");
+    caffe::NetStateRule *nsr;
     nsr = lparam->add_include();
     nsr->set_phase(caffe::TRAIN);
     if (loss == "SmoothL1Loss")
