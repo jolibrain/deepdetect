@@ -49,11 +49,12 @@ namespace dd
     rparam->set_num_output(num_output);
     caffe::FillerParameter *weight_filler_param = rparam->mutable_weight_filler();
     weight_filler_param->set_type("uniform");
-    weight_filler_param->set_min(-1.0);
-    weight_filler_param->set_max(1.0);
+    weight_filler_param->set_min(-1.0/sqrt(num_output));
+    weight_filler_param->set_max(1.0/sqrt(num_output));
     caffe::FillerParameter *bias_filler_param = rparam->mutable_bias_filler();
-    bias_filler_param->set_type("constant");
-    bias_filler_param->set_value(0);
+    bias_filler_param->set_type("uniform");
+    bias_filler_param->set_min(-1.0/sqrt(num_output));
+    bias_filler_param->set_max(1.0/sqrt(num_output));
 
     if (dropout_ratio !=0)
       {
@@ -107,7 +108,7 @@ namespace dd
   {
     caffe::LayerParameter *lparam = net_params->add_layer();
     lparam->set_type("Permute");
-    lparam->set_name("permute_T_N"+top);
+    lparam->set_name("permute_T_N_"+bottom);
     lparam->add_top(top);
     lparam->add_bottom(bottom);
     caffe::PermuteParameter *pparam = lparam->mutable_permute_param();
@@ -321,13 +322,13 @@ namespace dd
 
 
 
-    add_permute(this->_net_params, "permuted_OUPUT", "OUTPUT", 3,true,false);
+    add_permute(this->_net_params, "permuted_OUTPUT", "OUTPUT", 3,true,false);
     add_permute(this->_net_params, "permuted_target_seq", "target_seq", 3,true,false);
 
 
 
     caffe::LayerParameter *lparam;
-    lparam = CaffeCommon::add_layer(this->_net_params,"permuted_OUPUT","loss","loss",loss); // train
+    lparam = CaffeCommon::add_layer(this->_net_params,"permuted_OUTPUT","loss","loss",loss); // train
 
     lparam->add_bottom("permuted_target_seq");
     caffe::NetStateRule *nsr;
