@@ -21,6 +21,7 @@
 
 #include "outputconnectorstrategy.h"
 #include <thread>
+#include "utils/utils.hpp"
 
 // NCNN
 #include "ncnnlib.h"
@@ -30,20 +31,11 @@
 
 namespace dd
 {
-    int my_hardware_concurrency()
-    {
-        std::ifstream cpuinfo("/proc/cpuinfo");
-
-        return std::count(std::istream_iterator<std::string>(cpuinfo),
-			  std::istream_iterator<std::string>(),
-			  std::string("processor"));
-    }
-  
     unsigned int hardware_concurrency()
     {
         unsigned int cores = std::thread::hardware_concurrency();
         if (!cores)
-            cores = my_hardware_concurrency();
+            cores = dd_utils::my_hardware_concurrency();
         return cores;
     }
 

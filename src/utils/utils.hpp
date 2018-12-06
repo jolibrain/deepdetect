@@ -22,6 +22,8 @@
 #ifndef DD_UTILS
 #define DD_UTILS
 
+#include <istream>
+
 namespace dd
 {
   class dd_utils
@@ -49,6 +51,16 @@ namespace dd
 	  return false;
       return true;
     }
+
+    static int my_hardware_concurrency()
+    {
+        std::ifstream cpuinfo("/proc/cpuinfo");
+
+        return std::count(std::istream_iterator<std::string>(cpuinfo),
+			  std::istream_iterator<std::string>(),
+			  std::string("processor"));
+    }
+
   };
 }
 
