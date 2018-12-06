@@ -1547,7 +1547,7 @@ namespace dd
 	  for (size_t i=0;i<target.size();i++)
            {
              int t = target.at(i);
-             if (has_ignore && static_cast<int>(t >=0 ? t+0.5 : t-0.5) == ignore_label)
+             if (has_ignore && t-static_cast<double>(ignore_label) < 1E-9)
                continue;
              double diff = predictions.at(i)-target.at(i);
              if (thres >= 0 )
