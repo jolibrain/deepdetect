@@ -35,6 +35,7 @@ namespace dd
         _cifc->read_csv(fname,true);
         _cifc->_csv_test_fname = testfname;
         _cifc->push_csv_to_csvts(is_test_data);
+        _cifc->_fnames.push_back(fname);
         return 0;
       }
     else return -1;

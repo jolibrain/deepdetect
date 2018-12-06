@@ -2361,6 +2361,7 @@ namespace dd
 
                APIData out;
                std::vector<APIData> series;
+               int serieNum = 0;
 
                for (int j=0; j<batch_size; ++j)
                  {
@@ -2372,8 +2373,8 @@ namespace dd
                            if (series.size() > 1)
                              {
                                if (!inputc._ids.empty())
-                                 out.add("uri",inputc._ids.at(idoffset+j));
-                               else out.add("uri",std::to_string(idoffset+j));
+                                 out.add("uri",inputc._ids.at(serieNum++));
+                               else out.add("uri",std::to_string(serieNum++));
                                out.add("series", series);
                                out.add("probs",std::vector<double>(series.size(),1.0));
                                out.add("loss",0.0);

@@ -112,6 +112,7 @@ namespace dd
 
     std::vector<std::vector<CSVline>> _csvtsdata;
     std::vector<std::vector<CSVline>> _csvtsdata_test;
+    std::vector<std::string> _fnames;
 
 
   };

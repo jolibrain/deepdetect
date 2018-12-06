@@ -1483,6 +1483,7 @@ namespace dd
         _cifc->read_csv(fname);
         _cifc->push_csv_to_csvts(is_test_data);
         _cifc->_csv_test_fname = test_file;
+        _cifc->_ids.push_back(fname);
         //_cifc->push_csv_to_csvts(is_test_data);
         return 0;
       }
@@ -1576,6 +1577,7 @@ namespace dd
 	  try
 	    {
 	      CSVTSInputFileConn::transform(ad);
+             this->_ids=this->_fnames;
 	    }
 	  catch (std::exception &e)
 	    {
