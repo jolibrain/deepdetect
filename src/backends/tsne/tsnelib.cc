@@ -27,14 +27,6 @@
 
 namespace dd
 { 
-  unsigned int hardware_concurrency()
-  {
-    unsigned int cores = std::thread::hardware_concurrency();
-    if (!cores)
-      cores = dd_utils::my_hardware_concurrency();
-    return cores;
-  }
-  
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   TSNELib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::TSNELib(const TSNEModel &cmodel)
     :MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TSNEModel>(cmodel)
@@ -100,7 +92,7 @@ namespace dd
 	N = inputc._N;
 	D = inputc._D;
 	std::cerr << "N=" << N << " / D=" << D << std::endl;
-	int num_threads = hardware_concurrency();
+	int num_threads = dd_utils::hardware_concurrency();
 	this->_logger->info("Detected {} cores", num_threads);
 	Y = new double[N*_no_dims]; // results
 	for (int i=0;i<N*_no_dims;i++)

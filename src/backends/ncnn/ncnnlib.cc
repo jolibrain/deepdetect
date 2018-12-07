@@ -31,14 +31,6 @@
 
 namespace dd
 {
-    unsigned int hardware_concurrency()
-    {
-        unsigned int cores = std::thread::hardware_concurrency();
-        if (!cores)
-            cores = dd_utils::my_hardware_concurrency();
-        return cores;
-    }
-
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
     ncnn::UnlockedPoolAllocator NCNNLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::_blob_pool_allocator
       = ncnn::UnlockedPoolAllocator();
@@ -84,7 +76,7 @@ namespace dd
         if (ad.has("threads"))
             _threads = ad.get("threads").get<int>();
         else
-            _threads = hardware_concurrency();
+            _threads = dd_utils::hardware_concurrency();
 
         _blob_pool_allocator.set_size_compare_ratio(0.0f);
         _workspace_pool_allocator.set_size_compare_ratio(0.5f);

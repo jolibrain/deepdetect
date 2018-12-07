@@ -52,6 +52,14 @@ namespace dd
       return true;
     }
 
+    static unsigned int hardware_concurrency()
+    {
+        unsigned int cores = std::thread::hardware_concurrency();
+        if (!cores)
+            cores = dd_utils::my_hardware_concurrency();
+        return cores;
+    }
+
     static int my_hardware_concurrency()
     {
         std::ifstream cpuinfo("/proc/cpuinfo");
