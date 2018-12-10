@@ -257,6 +257,33 @@ namespace dd
     if (!_id.empty() && !has_id)
       throw InputConnectorBadParamException("cannot find id column " + _id);
   }
+
+
+  void CSVInputFileConn::find_min_max(std::ifstream &csv_file)
+  {
+    int nlines = 0;
+    std::string hline;
+    while(std::getline(csv_file,hline))
+      {
+        hline.erase(std::remove(hline.begin(),hline.end(),'\r'),hline.end());
+        std::vector<double> vals;
+        std::string cid;
+        read_csv_line(hline,_delim,vals,cid,nlines);
+        if (nlines == 1)
+          _min_vals = _max_vals = vals;
+        else
+          {
+            for (size_t j=0;j<vals.size();j++)
+              {
+                _min_vals.at(j) = std::min(vals.at(j),_min_vals.at(j));
+                _max_vals.at(j) = std::max(vals.at(j),_max_vals.at(j));
+              }
+          }
+      }
+    csv_file.clear();
+    csv_file.seekg(0,std::ios::beg);
+    std::getline(csv_file,hline); // skip header line
+  }
   
   void CSVInputFileConn::read_csv(const std::string &fname, const bool forbid_shuffle)
   {
@@ -319,36 +346,7 @@ namespace dd
       int nlines = 0;
       if (_scale && _min_vals.empty() && _max_vals.empty())
 	{
-	  while(std::getline(csv_file,hline))
-	    {
-	      hline.erase(std::remove(hline.begin(),hline.end(),'\r'),hline.end());
-	      std::vector<double> vals;
-	      std::string cid;
-	      read_csv_line(hline,_delim,vals,cid,nlines);
-	      if (nlines == 1)
-		_min_vals = _max_vals = vals;
-	      else
-		{
-		  for (size_t j=0;j<vals.size();j++)
-		    {
-		      _min_vals.at(j) = std::min(vals.at(j),_min_vals.at(j));
-		      _max_vals.at(j) = std::max(vals.at(j),_max_vals.at(j));
-		    }
-		}
-	    }
-	  
-	  //debug
-	  /*std::cout << "min/max scales:\n";
-	  std::copy(_min_vals.begin(),_min_vals.end(),std::ostream_iterator<double>(std::cout," "));
-	  std::cout << std::endl;
-	  std::copy(_max_vals.begin(),_max_vals.end(),std::ostream_iterator<double>(std::cout," "));
-	  std::cout << std::endl;*/
-	  //debug
-	  
-	  csv_file.clear();
-	  csv_file.seekg(0,std::ios::beg);
-	  std::getline(csv_file,hline); // skip header line
-	  nlines = 0;
+         find_min_max(csv_file);
 	}
       
       // read data

@@ -496,6 +496,33 @@ namespace dd
 			 const std::string &val);
 
     void update_columns();
+
+
+    // below helpers for csvts
+    std::pair<std::vector<double>,std::vector<double>> get_min_max_vals(std::string& fname)
+      {
+        clear_min_max();
+        find_min_max(fname);
+        return get_min_max_vals();
+      }
+
+    void find_min_max(std::string &fname)
+    {
+      std::ifstream csv_file(fname,std::ios::binary);
+      find_min_max(csv_file);
+    }
+    void find_min_max(std::ifstream &csv_file);
+    void clear_min_max()
+    {
+      _min_vals.clear();
+      _max_vals.clear();
+    }
+    std::pair<std::vector<double>,std::vector<double>> get_min_max_vals()
+      {
+        return std::pair<std::vector<double>,std::vector<double>>(_min_vals,_max_vals);
+      }
+
+
     
     std::vector<double> one_hot_vector(const int &cnum,
 				       const int &size)

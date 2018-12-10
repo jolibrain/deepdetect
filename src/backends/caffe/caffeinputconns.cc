@@ -1525,13 +1525,70 @@ namespace dd
           allfiles_v.push_back(fname);
         auto rng = std::default_random_engine();
         std::shuffle(allfiles_v.begin(), allfiles_v.end(), rng);
+        bool scalorig = false;
+        if (_cifc->_scale)
+          {
+            scalorig = true;
+            _cifc->_scale = false;
+          }
         for (auto fname : allfiles_v)
           read_file(fname, is_test_data);
+        if (scalorig)
+          {
+            _cifc->_scale = true;
+            std::vector<double> min_vals = _cifc->_min_vals;
+            std::vector<double> max_vals = _cifc->_max_vals;
+            for (auto fname : allfiles)
+              {
+                std::pair<std::vector<double>,std::vector<double>> mm = _cifc->get_min_max_vals();
+                if (min_vals.empty())
+                  min_vals = mm.first;
+                else
+                  for (size_t j=0;j<mm.first.size();j++)
+                    min_vals.at(j) = std::min(mm.first.at(j),min_vals.at(j));
+                if (max_vals.empty())
+                  max_vals = mm.second;
+                else
+                  for (size_t j=0;j<mm.first.size();j++)
+                    max_vals.at(j) = std::max(mm.second.at(j),max_vals.at(j));
+              }
+            _cifc->_min_vals = min_vals;
+            _cifc->_max_vals = max_vals;
+          }
+
       }
     else
       {
+        bool scalorig = false;
+        if (_cifc->_scale)
+          {
+            scalorig = true;
+            _cifc->_scale = false;
+          }
         for (auto fname : allfiles)
           read_file(fname, is_test_data);
+        if (scalorig)
+          {
+            _cifc->_scale = true;
+            std::vector<double> min_vals = _cifc->_min_vals;
+            std::vector<double> max_vals = _cifc->_max_vals;
+            for (auto fname : allfiles)
+              {
+                std::pair<std::vector<double>,std::vector<double>> mm = _cifc->get_min_max_vals();
+                if (min_vals.empty())
+                  min_vals = mm.first;
+                else
+                  for (size_t j=0;j<mm.first.size();j++)
+                    min_vals.at(j) = std::min(mm.first.at(j),min_vals.at(j));
+                if (max_vals.empty())
+                  max_vals = mm.second;
+                else
+                  for (size_t j=0;j<mm.first.size();j++)
+                    max_vals.at(j) = std::max(mm.second.at(j),max_vals.at(j));
+              }
+            _cifc->_min_vals = min_vals;
+            _cifc->_max_vals = max_vals;
+          }
       }
     //    _cifc->shuffle_data_if_needed();
     //_cifc->dv_to_db(is_test_data);
