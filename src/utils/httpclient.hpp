@@ -46,6 +46,7 @@ namespace dd
       request.setOpt(curlpp::options::Url(url));
       request.setOpt(ws);
       request.setOpt(pr);
+      request.setOpt(cURLpp::Options::FollowLocation(true));
       request.perform();
       outstr = os.str();
       //std::cout << "outstr=" << outstr << std::endl;

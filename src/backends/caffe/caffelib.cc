@@ -868,8 +868,8 @@ namespace dd
       instantiate_template(ad);
     else // model template instantiation is defered until training call
       {
-	update_deploy_protofile_softmax(ad);
-	create_model();
+	update_deploy_protofile_softmax(ad); // temperature scaling
+	create_model(true);
       }
 
     // the first present measure will be used to snapshot best model
@@ -943,8 +943,8 @@ namespace dd
 	update_protofile_net(this->_mlmodel._repo + '/' + this->_mlmodel._model_template + ".prototxt",
 			     this->_mlmodel._repo + "/deploy.prototxt",
 			     inputc, has_class_weights, ignore_label, timesteps);
-	create_model(); // creates initial net.
       }
+    create_model(); // creates initial net.
 
     caffe::SolverParameter solver_param;
     if (!caffe::ReadProtoFromTextFile(this->_mlmodel._solver,&solver_param))

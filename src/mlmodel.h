@@ -31,6 +31,7 @@
 #include <unordered_map>
 #include "apidata.h"
 #include "utils/fileops.hpp"
+#include "utils/httpclient.hpp"
 #include "mllibstrategy.h"
 
 namespace dd
@@ -40,15 +41,22 @@ namespace dd
   public:
     MLModel() {}
 
-    MLModel(const APIData &ad)  {
+    MLModel(const APIData &ad, APIData &adg,
+	    const std::shared_ptr<spdlog::logger> &logger)  {
       init_repo_dir(ad);
+      read_config_json(adg,logger);
     }
 
+    MLModel(const APIData &ad)
+      {
+	init_repo_dir(ad);
+      }
+    
     MLModel(const std::string &repo)
       :_repo(repo) {}
 
 
-    MLModel(const APIData &ad, const std::string &repo)
+  MLModel(const APIData &ad, const std::string &repo)
     :_repo(repo)
     {
       init_repo_dir(ad);
@@ -146,17 +154,78 @@ namespace dd
   private:
     void init_repo_dir(const APIData &ad)
     {
-      std::string repo =  ad.get("repository").get<std::string>();
+      // auto-creation of model directory
+      _repo =  ad.get("repository").get<std::string>();
       bool create = ad.has("create_repository") && ad.get("create_repository").get<bool>();
       bool isDir;
-      bool exists = fileops::file_exists(repo, isDir);
+      bool exists = fileops::file_exists(_repo, isDir);
       if (exists && !isDir)
         throw MLLibBadParamException("file exists with same name as repository");
       if (!exists && create)
-        fileops::create_dir(repo,0775);
+        fileops::create_dir(_repo,0775);
 #ifdef USE_SIMSEARCH
       _index_preload = ad.has("index_preload") && ad.get("index_preload").get<bool>();
 #endif
+      // auto-install from model archive
+      if (ad.has("init"))
+	{
+	  std::string compressedf = ad.get("init").get<std::string>();
+
+	  if (compressedf.find("https://") != std::string::npos
+	      || compressedf.find("http://") != std::string::npos
+	      || compressedf.find("file://") != std::string::npos)
+	    {
+	      int outcode = -1;
+	      std::string content;
+	      try
+		{
+		  httpclient::get_call(compressedf,"GET",outcode,content);
+		}
+	      catch(...)
+		{
+		  throw MLLibBadParamException("failed fetching model archive: " + compressedf + " with code: " + std::to_string(outcode));
+		}
+	      std::string base_model_fname = compressedf.substr(compressedf.find_last_of("/") + 1);
+	      std::string modelf = _repo + "/" + base_model_fname;
+	      std::ofstream mof(modelf);
+	      mof << content;
+	      mof.close();
+	      compressedf = modelf;
+	    }
+	  
+	  if (fileops::uncompress(compressedf,_repo))
+	    throw MLLibBadParamException("failed installing model from archive, check 'init' argument to model");
+	}
+    }
+
+    void read_config_json(APIData &adg,
+			  const std::shared_ptr<spdlog::logger> &logger)
+    {
+      const std::string cf = _repo + "/config.json";
+      if (!fileops::file_exists(cf))
+	return;
+      std::ifstream is(cf);
+      std::stringstream jbuf;
+      jbuf << is.rdbuf();
+      rapidjson::Document d;
+      d.Parse(jbuf.str().c_str());
+      if (d.HasParseError())
+	{
+	  logger->error("config.json parsing error on string: {}",jbuf.str());
+	  throw MLLibBadParamException("Failed parsing config file " + cf);
+	}
+      APIData adcj;
+      try
+	{
+	  adcj = APIData(d);
+	}
+      catch(RapidjsonException &e)
+	{
+	  logger->error("JSON error {}",e.what());
+	  throw MLLibBadParamException("Failed converting JSON file to internal data format");
+	}
+      APIData adcj_parameters = adcj.getobj("parameters");
+      adg.add("parameters",adcj_parameters);
     }
   };
 }

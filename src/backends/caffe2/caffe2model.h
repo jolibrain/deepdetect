@@ -33,7 +33,8 @@ namespace dd {
   class Caffe2Model : public MLModel {
   public:
     Caffe2Model():MLModel() {}
-    Caffe2Model(const APIData &ad);
+    Caffe2Model(const APIData &ad, APIData &adg,
+		const std::shared_ptr<spdlog::logger> &logger);
     Caffe2Model(const std::string &repo)
       :MLModel(repo) {}
     ~Caffe2Model() {};

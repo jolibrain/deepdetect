@@ -25,8 +25,9 @@
 
 namespace dd {
 
-  Caffe2Model::Caffe2Model(const APIData &ad)
-    :MLModel()
+  Caffe2Model::Caffe2Model(const APIData &ad, APIData &adg,
+			   const std::shared_ptr<spdlog::logger> &logger)
+    :MLModel(ad, adg, logger)
   {
     std::map<std::string, std::string *> names =
       {
