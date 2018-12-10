@@ -22,6 +22,7 @@
 //XXX Remove that to print the warnings
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 
 #ifndef CPU_ONLY
 #include <caffe2/core/context_gpu.h>
@@ -54,7 +55,7 @@ namespace dd {
     void ModelContext::reset_devices() {
       _devices.clear();
       caffe2::DeviceOption option;
-      option.set_device_type(caffe2::CPU);
+      option.set_device_type(caffe2::DeviceTypeProto::PROTO_CPU);
       _devices.push_back(option);
       _parallelized = false;
     }
@@ -63,7 +64,7 @@ namespace dd {
     void ModelContext::reset_devices(const std::vector<int> &gpu_ids) {
       _devices.clear();
       caffe2::DeviceOption option;
-      option.set_device_type(caffe2::CUDA);
+      option.set_device_type(caffe2::DeviceTypeProto::PROTO_CUDA);
       for (int gpu_id : gpu_ids) {
 	option.set_cuda_gpu_id(gpu_id);
 	_devices.push_back(option);
@@ -74,33 +75,24 @@ namespace dd {
 
     bool ModelContext::extract_tensor(int device_idx,
 				      const std::string &name,
-				      caffe2::TensorCPU &tensor) const {
+				      caffe2::Tensor &tensor) const {
       const caffe2::Blob &blob = *_workspace->GetBlob(get_prefix(device_idx) + name);
-      if (!blob.meta().id()) {
-	return false; // nullptr (uninitialized)
+      bool init = blob.meta().Match<caffe2::Tensor>();
+      if (init) {
+	tensor.CopyFrom(blob.Get<caffe2::Tensor>());
       }
-#ifndef CPU_ONLY
-      if (blob.IsType<caffe2::TensorCUDA>()) {
-	tensor.CopyFrom(blob.Get<caffe2::TensorCUDA>());
-      } else
-#endif
-	tensor.CopyFrom(blob.Get<caffe2::TensorCPU>());
-      return true;
+      return init;
     }
 
     void ModelContext::insert_tensor(int device_idx,
 				     const std::string &name,
-				     const caffe2::TensorCPU &tensor) {
+				     const caffe2::Tensor &tensor) {
       caffe2::Blob &blob = *_workspace->CreateBlob(get_prefix(device_idx) + name);
-#ifndef CPU_ONLY
-      if (_devices[device_idx].device_type() == caffe2::CUDA) {
-	blob.GetMutable<caffe2::TensorCUDA>()->CopyFrom(tensor);
-      } else
-#endif
-	blob.GetMutable<caffe2::TensorCPU>()->CopyFrom(tensor);
+      caffe2::DeviceType type(caffe2::ProtoToType(_devices[device_idx].device_type()));
+      caffe2::BlobGetMutableTensor(&blob, type)->CopyFrom(tensor);
     }
 
-    void ModelContext::broadcast_tensor(const std::string &name, const caffe2::TensorCPU &tensor) {
+    void ModelContext::broadcast_tensor(const std::string &name, const caffe2::Tensor &tensor) {
       for (size_t i = 0; i < device_count(); ++i) {
 	insert_tensor(i, name, tensor);
       }
@@ -115,14 +107,14 @@ namespace dd {
       if (str == caffe2::TypeMeta().name()) {
 	return false; // nullptr (uninitialized)
       }
-      blob.Deserialize(str);
+      caffe2::DeserializeBlob(str, &blob);
       return true;
     }
 
     void ModelContext::load_iter(const std::string &path) {
       caffe2::Blob blob;
       CAFFE_ENFORCE(deserialize_blob(blob, path));
-      _loaded_iter = *blob.Get<caffe2::TensorCPU>().data<long>();
+      _loaded_iter = *blob.Get<caffe2::Tensor>().data<long>();
     }
 
     void ModelContext::load_blob(const std::string &path, const std::string &name) {
@@ -134,7 +126,7 @@ namespace dd {
       // A learning rate serialized during the first iteration is still uninitialized
       // In that case we just ignore it
       if (deserialize_blob(blob, path)) {
-	broadcast_tensor(blob_lr, blob.Get<caffe2::TensorCPU>());
+	broadcast_tensor(blob_lr, blob.Get<caffe2::Tensor>());
       }
     }
 
@@ -143,12 +135,13 @@ namespace dd {
      */
 
     size_t ModelContext::extract_tensors(const std::string &name,
-					 std::vector<caffe2::TensorCPU> &tensors) const {
+					 std::vector<caffe2::Tensor> &tensors) const {
       size_t size = 0;
       int devices = device_count();
-      tensors.resize(devices);
+      tensors.reserve(devices);
       for (int i = 0; i < devices; ++i) {
-	caffe2::TensorCPU &tensor(tensors[i]);
+	tensors.emplace_back(caffe2::CPU);
+	caffe2::Tensor &tensor(tensors[i]);
 	CAFFE_ENFORCE(extract_tensor(i, name, tensor));
 	size += tensor.size();
       }
@@ -157,7 +150,7 @@ namespace dd {
 
     template <typename Result, typename Data>
     void ModelContext::split_tensors(std::vector<Result> &results,
-				     std::vector<caffe2::TensorCPU> tensors,
+				     const std::vector<caffe2::Tensor> &tensors,
 				     const std::vector<size_t> &sizes,
 				     const Stockage<Result, Data> &store) const {
 
@@ -166,7 +159,7 @@ namespace dd {
       std::vector<size_t>::const_iterator size = sizes.begin();
 
       // Loop over the tensors
-      for (const caffe2::TensorCPU &tensor : tensors) {
+      for (const caffe2::Tensor &tensor : tensors) {
 	CAFFE_ENFORCE(tensor.IsType<Data>());
 	const Data *data = tensor.data<Data>();
 	const Data *data_end = data + tensor.size();
@@ -203,14 +196,14 @@ namespace dd {
 
     template <typename T>
     void ModelContext::split_tensors(std::vector<T> &results,
-				     const std::vector<caffe2::TensorCPU> &tensors,
+				     const std::vector<caffe2::Tensor> &tensors,
 				     const std::vector<size_t> &sizes) const {
       split_tensors(results, tensors, sizes, Stockage<T, T>(_store_single_value<T>));
     }
 
     template <typename T>
     void ModelContext::split_tensors(std::vector<std::vector<T>> &results,
-				     const std::vector<caffe2::TensorCPU> &tensors,
+				     const std::vector<caffe2::Tensor> &tensors,
 				     const std::vector<size_t> &sizes) const {
       split_tensors(results, tensors, sizes, Stockage<std::vector<T>, T>(_store_vector<T>));
     }
@@ -219,7 +212,7 @@ namespace dd {
     void ModelContext::extract_results(std::vector<T> &results,
 				       const std::string &name,
 				       size_t size) const {
-      std::vector<caffe2::TensorCPU> tensors;
+      std::vector<caffe2::Tensor> tensors;
       size_t data_size = extract_tensors(name, tensors);
       size_t data_count = results.size();
       if (!size) {
@@ -232,14 +225,21 @@ namespace dd {
     template <typename T>
     void ModelContext::extract_results(std::vector<T> &results,
 				       const std::string &name,
-				       const std::vector<size_t> &sizes) const {
-      std::vector<caffe2::TensorCPU> tensors;
+				       const std::vector<size_t> &sizes,
+				       size_t scale) const {
+      std::vector<caffe2::Tensor> tensors;
       size_t data_count = results.size();
       CAFFE_ENFORCE(data_count == sizes.size());
       size_t data_size1 = extract_tensors(name, tensors);
       size_t data_size2 = std::accumulate(sizes.begin(), sizes.end(), static_cast<size_t>(0));
-      CAFFE_ENFORCE(data_size1 == data_size2);
-      split_tensors(results, tensors, sizes);
+      if (!scale && data_size1) {
+	scale = data_size1 / data_size2;
+      }
+      CAFFE_ENFORCE(data_size1 == data_size2 * scale);
+      std::vector<size_t> scaled_sizes(data_count);
+      std::transform(sizes.begin(), sizes.end(), scaled_sizes.begin(),
+		     [&](float size){ return scale * size; });
+      split_tensors(results, tensors, scaled_sizes);
     }
 
     template <typename Result, typename Data, typename Size>
@@ -271,13 +271,14 @@ namespace dd {
       for (const std::string &name : _workspace->Blobs()) {
 	const caffe2::Blob &blob = *_workspace->GetBlob(name);
     	if (blob.IsType<caffe2::db::DBReader>()) {
-	  blobs[name] = blob.Serialize(name);
+	  blobs[name] = caffe2::SerializeBlob(blob, name);
 	}
       }
-      blobs["iter"] = _workspace->GetBlob(get_prefix(0) + blob_iter)->Serialize("iter");
+      const caffe2::Blob &iter(*_workspace->GetBlob(get_prefix(0) + blob_iter));
+      blobs["iter"] = caffe2::SerializeBlob(iter, "iter");
       caffe2::Blob lr;
-      if (extract_tensor(0, blob_lr, *lr.GetMutable<caffe2::TensorCPU>())) {
-	blobs["lr"] = lr.Serialize("lr");
+      if (extract_tensor(0, blob_lr, *caffe2::BlobGetMutableTensor(&lr, caffe2::CPU))) {
+	blobs["lr"] = caffe2::SerializeBlob(lr, "lr");
       } else { // Can fail during the first iteration of the net
 	blobs["lr"] = caffe2::TypeMeta().name(); // nullptr (uninitialized)
       }
@@ -285,9 +286,10 @@ namespace dd {
 
     void ModelContext::extract(std::vector<std::vector<float>> &results,
 			       const std::string &name,
-			       const std::vector<size_t> &sizes) const {
+			       const std::vector<size_t> &sizes,
+			       size_t scale) const {
       if (sizes.size()) {
-	extract_results(results, name, sizes);
+	extract_results(results, name, sizes, scale);
       } else {
 	extract_results(results, name);
       }
@@ -299,7 +301,7 @@ namespace dd {
 
     void ModelContext::create_init_net(const caffe2::NetDef &net, caffe2::NetDef &init) const {
       std::set<std::string> params;
-      caffe2::TensorCPU tensor;
+      caffe2::Tensor tensor(caffe2::CPU);
       collect_params(net, params, params, get_prefix(0));
       for (const std::string &param : params) {
 	CAFFE_ENFORCE(extract_tensor(0, param, tensor));
@@ -317,7 +319,8 @@ namespace dd {
       dst.add_external_input(_input_blob);
     }
 
-    void ModelContext::append_trainable_net(caffe2::NetDef &dst, const caffe2::NetDef &src) const {
+    void ModelContext::append_trainable_net(caffe2::NetDef &dst, const caffe2::NetDef &src,
+					    const std::vector<std::string> &output_blobs) const {
 
       // Prevent the gradients from reaching previous operators
       ScopedNet net = scope_net(dst);
@@ -336,8 +339,8 @@ namespace dd {
       add_ops_and_inputs(net, ref, { _input_blob });
 
       //XXX Manage other kinds of outputs (no-label, multi-label, bbox, etc.)
-      CAFFE_ENFORCE(_output_blobs.size() == 1);
-      LabelCrossEntropy(net, _output_blobs[0], _blob_label, blob_xent);
+      CAFFE_ENFORCE(output_blobs.size() == 1);
+      LabelCrossEntropy(net, output_blobs[0], _blob_label, blob_xent);
 
       std::string loss_grad = blob_loss_scale + gradient_suffix;
 
@@ -408,6 +411,19 @@ namespace dd {
 	f << net.DebugString();
       } else {
 	net.SerializeToOstream(&f);
+      }
+    }
+
+    void append_model(caffe2::NetDef &dst_net, caffe2::NetDef &dst_init,
+		      const caffe2::NetDef &src_net, const caffe2::NetDef &src_init) {
+      for (auto op : src_init.op()) {
+	dst_init.add_op()->CopyFrom(op);
+	for (const std::string blob : op.output()) {
+	  dst_net.add_external_input(blob);
+	}
+      }
+      for (auto op : src_net.op()) {
+	dst_net.add_op()->CopyFrom(op);
       }
     }
 

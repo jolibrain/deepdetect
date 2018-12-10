@@ -34,12 +34,15 @@ namespace dd
   public:
   CaffeModel(): MLModel() {}
     CaffeModel(const APIData &ad);
+    CaffeModel(const APIData &ad, APIData &adg,
+	       const std::shared_ptr<spdlog::logger> &logger);
   CaffeModel(const APIData &ad, const std::string &repo)
     :MLModel(ad, repo) {}
     ~CaffeModel() {};
 
     int read_from_repository(const std::string &repo,
-			     const std::shared_ptr<spdlog::logger> &logger);
+			     const std::shared_ptr<spdlog::logger> &logger,
+			     const bool &new_first=false);
 
     int copy_to_target(const std::string &source_repo,
 		       const std::string &target_repo,

@@ -23,6 +23,7 @@ if (USE_CAFFE2)
     backends/caffe2/nettools/devices_and_operators.cc
     backends/caffe2/nettools/workspace_and_nets.cc
     backends/caffe2/nettools/gradients.cc
+    backends/caffe2/nettools/netgroup.cc
     backends/caffe2/nettools/internal.cc
     backends/caffe2/nettools/debug.cc
     )

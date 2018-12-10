@@ -33,7 +33,8 @@ namespace dd {
   class Caffe2Model : public MLModel {
   public:
     Caffe2Model():MLModel() {}
-    Caffe2Model(const APIData &ad);
+    Caffe2Model(const APIData &ad, APIData &adg,
+		const std::shared_ptr<spdlog::logger> &logger);
     Caffe2Model(const std::string &repo)
       :MLModel(repo) {}
     ~Caffe2Model() {};
@@ -72,12 +73,20 @@ namespace dd {
     std::string _iter_state;
     std::string _lr_state;
 
-    std::string _model_template; // model template name, if any.
+    class Extension {
+    public:
+      std::string _init;
+      std::string _predict;
+      std::string _type;
+    }; //! Extension
+
+    std::vector<Extension> _extensions; // nets to append, if any
+    std::string _model_template; // model template name, if any
     std::string _weights; // external weights, if any
 
     // Files path (empty if non-existant)
-    std::string _predict;
     std::string _init;
+    std::string _predict;
     std::string _meanfile;
   };
 }

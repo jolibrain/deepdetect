@@ -123,7 +123,7 @@ if (GTEST_FOUND)
   set(VOC_EXAMPLE_MODEL_OUT "voc")
   if (NOT EXISTS "${VOC_EXAMPLE_PATH}${VOC_EXAMPLE_MODEL_ARCHIVE}")
     message(STATUS "Downloading object detection test model")
-    file(DOWNLOAD "http://deepdetect.com/dd/examples/caffe/voc/${VOC_EXAMPLE_MODEL_ARCHIVE}" "${VOC_EXAMPLE_PATH}${VOC_EXAMPLE_MODEL_ARCHIVE}")
+    file(DOWNLOAD "http://www.deepdetect.com/dd/examples/caffe/voc/${VOC_EXAMPLE_MODEL_ARCHIVE}" "${VOC_EXAMPLE_PATH}${VOC_EXAMPLE_MODEL_ARCHIVE}")
     execute_process(COMMAND ${CMAKE_COMMAND} -E tar xvzf ${VOC_EXAMPLE_PATH}${VOC_EXAMPLE_MODEL_ARCHIVE} -C ${VOC_EXAMPLE_PATH})
     execute_process(COMMAND ${CMAKE_COMMAND} -E rename ${VOC_EXAMPLE_MODEL_OUT} ${VOC_EXAMPLE_PATH}${VOC_EXAMPLE_MODEL_OUT})
   endif()
@@ -194,21 +194,27 @@ if (USE_CAFFE2)
     endif ()
   endfunction (ASSERT_EXISTS)
 
+  function (ASSERT_MODEL_EXISTS _MODEL)
+    ASSERT_EXISTS(${_MODEL} "corresp.txt" 0)
+    ASSERT_EXISTS(${_MODEL} "init_net.pb" 0)
+    ASSERT_EXISTS(${_MODEL} "predict_net.pb" 0)
+  endfunction (ASSERT_MODEL_EXISTS)
+
   # Tar GZ files
 
   ASSERT_EXISTS("boats_and_cars" "imgs" 1)
   ASSERT_EXISTS("detectron" "imgs" 1)
+  ASSERT_EXISTS("detectron_mask" "ext" 1)
   ASSERT_EXISTS("resnet_50_imagenet" "imgs" 1)
   ASSERT_EXISTS("resnet_50_imagenet" "fish.lmdb" 1)
 
-  # Classic files
+  # Models
 
-  ASSERT_EXISTS("detectron" "corresp.txt" 0)
-  ASSERT_EXISTS("detectron" "init_net.pb" 0)
-  ASSERT_EXISTS("detectron" "predict_net.pb" 0)
-  ASSERT_EXISTS("resnet_50_imagenet" "corresp.txt" 0)
-  ASSERT_EXISTS("resnet_50_imagenet" "init_net.pb" 0)
-  ASSERT_EXISTS("resnet_50_imagenet" "predict_net.pb" 0)
+  ASSERT_MODEL_EXISTS("detectron")
+  ASSERT_MODEL_EXISTS("detectron_mask")
+  ASSERT_MODEL_EXISTS("resnet_50_imagenet")
+
+  # Tests
 
   REGISTER_TEST(ut_caffe2api ut-caffe2api.cc)
 
@@ -224,7 +230,7 @@ if (USE_SIMSEARCH)
   set(VOC_EXAMPLE_MODEL_OUT "voc_roi")
   if (NOT EXISTS "${VOC_EXAMPLE_PATH}${VOC_EXAMPLE_MODEL_ARCHIVE}")
     message(STATUS "Downloading object detection test model with rois")
-    file(DOWNLOAD "http://deepdetect.com/dd/examples/caffe/voc_roi/${VOC_EXAMPLE_MODEL_ARCHIVE}" "${VOC_EXAMPLE_PATH}${VOC_EXAMPLE_MODEL_ARCHIVE}")
+    file(DOWNLOAD "http://www.deepdetect.com/dd/examples/caffe/voc_roi/${VOC_EXAMPLE_MODEL_ARCHIVE}" "${VOC_EXAMPLE_PATH}${VOC_EXAMPLE_MODEL_ARCHIVE}")
     execute_process(COMMAND ${CMAKE_COMMAND} -E tar xvzf ${VOC_EXAMPLE_PATH}${VOC_EXAMPLE_MODEL_ARCHIVE} -C ${VOC_EXAMPLE_PATH})
     execute_process(COMMAND ${CMAKE_COMMAND} -E rename ${VOC_EXAMPLE_MODEL_OUT} ${VOC_EXAMPLE_PATH}${VOC_EXAMPLE_MODEL_OUT})
   endif()

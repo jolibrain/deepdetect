@@ -1,0 +1,37 @@
+From 8d49854d928e3f07f735b8f97dd30039e191ba3e Mon Sep 17 00:00:00 2001
+From: Julien CHICHA <julien.chicha@epitech.eu>
+Date: Fri, 13 Jul 2018 12:09:52 +0200
+Subject: [PATCH 1/3] eigen
+
+---
+ cmake/Dependencies.cmake | 14 +-------------
+ 1 file changed, 1 insertion(+), 13 deletions(-)
+
+diff --git a/cmake/Dependencies.cmake b/cmake/Dependencies.cmake
+index d9ddfcdfc..e600420e3 100644
+--- a/cmake/Dependencies.cmake
++++ b/cmake/Dependencies.cmake
+@@ -310,19 +310,7 @@ endif()
+ # ---[ EIGEN
+ # Due to license considerations, we will only use the MPL2 parts of Eigen.
+ set(EIGEN_MPL2_ONLY 1)
+-if (USE_SYSTEM_EIGEN_INSTALL)
+-  find_package(Eigen3)
+-  if(EIGEN3_FOUND)
+-    message(STATUS "Found system Eigen at " ${EIGEN3_INCLUDE_DIR})
+-  else()
+-    message(STATUS "Did not find system Eigen. Using third party subdirectory.")
+-    set(EIGEN3_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/../third_party/eigen)
+-    caffe2_update_option(USE_SYSTEM_EIGEN_INSTALL OFF)
+-  endif()
+-else()
+-  message(STATUS "Using third party subdirectory Eigen.")
+-  set(EIGEN3_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/../third_party/eigen)
+-endif()
++set(EIGEN3_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/../third_party/eigen)
+ include_directories(SYSTEM ${EIGEN3_INCLUDE_DIR})
+ 
+ # ---[ Python + Numpy
+-- 
+2.18.0
+

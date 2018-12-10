@@ -90,7 +90,6 @@ namespace dd
     if (regression)
       {
 	add_euclidean_loss(this->_net_params,bottom,"label","losst",ntargets);
-	add_euclidean_loss(this->_net_params,bottom,"","loss",ntargets,true);
 	add_euclidean_loss(this->_dnet_params,bottom,"","loss",ntargets,true);
       }
     else if (autoencoder) //TODO: sigmoid crossentropy would be only for integer-type targets...

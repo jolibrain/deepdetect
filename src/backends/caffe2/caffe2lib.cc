@@ -22,6 +22,7 @@
 //XXX Remove that to print the warnings
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 
 #ifndef CPU_ONLY
 #include <caffe2/core/context_gpu.h>
@@ -56,9 +57,7 @@ namespace dd {
     this->_libname = "caffe2";
 
     _context = std::move(c2l._context);
-    _init_net = std::move(c2l._init_net);
-    _train_net = std::move(c2l._train_net);
-    _net = std::move(c2l._net);
+    _nets = std::move(c2l._nets);
     _state = c2l._state;
     _last_inputc = c2l._last_inputc;
   }
@@ -150,7 +149,7 @@ namespace dd {
 
       // Convert the prototxt file
       caffe2::NetDef buffer;
-      Caffe2NetTools::import_net(buffer, file.first, true);
+      Caffe2NetTools::import_net(buffer, file.first);
       Caffe2NetTools::export_net(buffer, file.second);
     }
 
@@ -198,8 +197,12 @@ namespace dd {
   void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
   create_model_train() {
 
+    //XXX Manage multi-net training
+    CAFFE_ENFORCE(_nets.size() == 1, "Extended nets doesn't support training yet.");
+    Caffe2NetTools::NetGroup &main_nets(find_net_group("main"));
+
     // Computation is done on new nets
-    caffe2::NetDef init_net, train_net, test_net;
+    Caffe2NetTools::NetGroup nets;
 
     //XXX Find a way to prevent code duplication when applying changes to the test net
 
@@ -213,27 +216,27 @@ namespace dd {
 
     } else {
 
-      _last_inputc.create_dbreader(init_net, true);
+      _last_inputc.create_dbreader(nets._init, true);
       if (_state.is_testing()) {
-	_last_inputc.create_dbreader(init_net);
+	_last_inputc.create_dbreader(nets._init);
       }
 
     }
 
     // Load batches from the database
-    _last_inputc.link_train_dbreader(_context, train_net);
+    _last_inputc.link_train_dbreader(_context, nets._train);
 
     // Apply input tranformations
-    _last_inputc.add_constant_layers(_context, init_net);
-    _last_inputc.add_transformation_layers(_context, train_net);
+    _last_inputc.add_constant_layers(_context, nets._init);
+    _last_inputc.add_transformation_layers(_context, nets._train);
     if (_state.is_testing()) {
-      _last_inputc.add_transformation_layers(_context, test_net);
+      _last_inputc.add_transformation_layers(_context, nets._predict);
     }
 
     // Add the requested net, with its loss and gradients
-    _context.append_trainable_net(train_net, _net);
+    _context.append_trainable_net(nets._train, main_nets._predict, main_nets._output_blobs);
     if (_state.is_testing()) {
-      _context.append_net(test_net, _net);
+      _context.append_net(nets._predict, main_nets._predict);
     }
 
     // The test net is complete
@@ -247,7 +250,7 @@ namespace dd {
     }
 
     // Duplicate the init net outputs on all the devices
-    Caffe2NetTools::copy_and_broadcast_operators(_context, init_net, _init_net);
+    Caffe2NetTools::copy_and_broadcast_operators(_context, nets._init, main_nets._init);
 
     // Forward the APIData configuration in an operator
     Caffe2NetTools::LROpModifier lr_config =
@@ -256,14 +259,12 @@ namespace dd {
 				   _state.stepsize(), _state.max_iter(),
 				   _state.gamma(), _state.power());
     };
-    Caffe2NetTools::insert_learning_operators(_context, train_net, init_net, lr_config);
+    Caffe2NetTools::insert_learning_operators(_context, nets._train, nets._init, lr_config);
     Caffe2NetTools::get_optimizer(_state.solver_type())
-      (_context, train_net, init_net, _state.momentum(), _state.rms_decay());
+      (_context, nets._train, nets._init, _state.momentum(), _state.rms_decay());
 
     // Apply changes
-    _net.Swap(&test_net);
-    _init_net.Swap(&init_net);
-    _train_net.Swap(&train_net);
+    main_nets.swap(nets);
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -272,19 +273,20 @@ namespace dd {
     _context._parallelized = false;
 
     // Computation is done on a new net
+    Caffe2NetTools::NetGroup &main_nets(find_net_group("main"));
     caffe2::NetDef tmp_net;
 
     // Add database informations
     if (!_last_inputc.is_load_manual()) {
-      _last_inputc.create_dbreader(_init_net);
+      _last_inputc.create_dbreader(main_nets._init);
     }
 
     // Add transformations
-    _last_inputc.add_constant_layers(_context, _init_net);
+    _last_inputc.add_constant_layers(_context, main_nets._init);
     _last_inputc.add_transformation_layers(_context, tmp_net);
 
     // Add the rest of the operators
-    _context.append_net(tmp_net, _net);
+    _context.append_net(tmp_net, main_nets._predict);
 
     std::string extract = _state.extract_layer();
     if (!extract.empty()) { // unsupervised
@@ -293,18 +295,20 @@ namespace dd {
     }
 
     // Force the device for every operators
-    Caffe2NetTools::set_net_device(tmp_net, _context._devices[0]);
-    Caffe2NetTools::set_net_device(_init_net, _context._devices[0]);
+    Caffe2NetTools::set_net_device(main_nets._init, _context._devices[0]);
+    for (auto nets_it = _nets.begin() + 1; nets_it < _nets.end(); ++nets_it) {
+      Caffe2NetTools::set_net_device(nets_it->_init, _context._devices[0]);
+      Caffe2NetTools::set_net_device(nets_it->_predict, _context._devices[0]);
+    }
 
     // Apply changes
-    _net.Swap(&tmp_net);
+    main_nets._predict.Swap(&tmp_net);
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
   create_model() {
     this->_logger->info("Re-creating the nets");
-    Caffe2NetTools::ensure_is_batchable(_net);
 
     // _input_blob and _output_blobs should have been initialized during init_mllib
     // (by "inputlayer" and "outputlayer" respectively)
@@ -312,12 +316,18 @@ namespace dd {
     //    - the input blob name is (or contains) "data"
     //    - the external inputs are sorted
     //    - all the outputs are created by the last operator
-    if (!_context._output_blobs.size()) {
-      const auto &outputs = _net.op(_net.op().size() - 1).output();
-      _context._output_blobs.assign(outputs.begin(), outputs.end());
+
+    for (Caffe2NetTools::NetGroup &nets : _nets) {
+      Caffe2NetTools::ensure_is_batchable(nets._predict);
+      if (!nets._output_blobs.size()) {
+	const auto &ops = nets._predict.op();
+	const auto &outputs = ops[ops.size() - 1].output();
+	nets._output_blobs.assign(outputs.begin(), outputs.end());
+      }
     }
+
     if (_context._input_blob.empty()) {
-      const auto &inputs = _net.external_input();
+      const auto &inputs = find_net_group("main")._predict.external_input();
       _context._input_blob = inputs[0];
       if (_context._input_blob.find("data") == std::string::npos) {
 	_context._input_blob = inputs[inputs.size() - 1];
@@ -343,29 +353,50 @@ namespace dd {
       create_model_predict();
     }
 
-    // Set an unique name to each net
-    _net.set_name("_net");
-    _init_net.set_name("_init_net");
-    _train_net.set_name("_train_net");
-
-    // Add the inputs
-    this->_logger->info("Run init net");
+    // Add the inputs and register the nets
     _context.create_input();
-    _context.run_net_once(_init_net);
+    for (size_t i = 0; i < _nets.size(); ++i) {
 
-    // Register the prediction net
-    if (!_state.is_training() || _state.is_testing()) {
-      this->_logger->info("Create predict net");
-      _context.create_net(_net);
-    }
+      Caffe2NetTools::NetGroup &nets(_nets[i]);
+      bool predict(!_state.is_training() || _state.is_testing());
+      bool train(_state.is_training());
 
-    // Register the training net
-    if (_state.is_training()) {
-      this->_logger->info("Create train net");
-      _context.create_net(_train_net);
+      this->_logger->info("Preparing {} nets", nets._type);
+      nets.rename("net" + std::to_string(i));
+      _context.run_net_once(nets._init);
+      if (predict) _context.create_net(nets._predict);
+      if (train) _context.create_net(nets._train);
     }
 
     this->_logger->info("Nets updated");
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
+  load_nets() {
+
+    std::string init_net_path = _state.is_training() && _state.resume() ?
+      this->_mlmodel._init_state : this->_mlmodel._init;
+
+    _nets.clear();
+    _nets.reserve(this->_mlmodel._extensions.size() + 1);
+
+    // Load the main net
+    _nets.emplace_back("main", init_net_path, this->_mlmodel._predict);
+    Caffe2NetTools::NetGroup &main_nets(_nets.back());
+
+    // Load the extensions
+    for (const Caffe2Model::Extension &ext : this->_mlmodel._extensions) {
+      _nets.emplace_back(ext._type, ext._init, ext._predict);
+      Caffe2NetTools::NetGroup &new_nets(_nets.back());
+
+      // Merge them if possible
+      if (new_nets._type == "append") {
+	Caffe2NetTools::append_model(main_nets._predict, main_nets._init,
+				     new_nets._predict, new_nets._init);
+	_nets.pop_back();
+      }
+    }
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -375,20 +406,17 @@ namespace dd {
     if (!_state.changed()) {
       if (_state.is_training()) {
 	this->_logger->info("Reseting the workspace");
-	_context.run_net_once(_init_net);
+	for (Caffe2NetTools::NetGroup &nets : _nets) {
+	  _context.run_net_once(nets._init);
+	}
       }
       return;
     }
 
     try {
 
-      // Reload from the disk
-      std::string init_net_path = _state.is_training() && _state.resume() ?
-	this->_mlmodel._init_state : this->_mlmodel._init;
-      Caffe2NetTools::import_net(_init_net, init_net_path);
-      Caffe2NetTools::import_net(_net, this->_mlmodel._predict);
-
-      // Reconfigure
+      // Reconfigure the model
+      load_nets();
       create_model();
 
     } catch (std::exception &e) {
@@ -408,7 +436,8 @@ namespace dd {
     std::map<std::string, std::string> blobs;
     // Blobs and nets are formatted here, so mlmodel just have to manage the files
     _context.extract_state(blobs);
-    _context.create_init_net(_train_net, init);
+    //XXX Manage multi-net models
+    _context.create_init_net(find_net_group("main")._train, init);
     this->_mlmodel.write_state(init, blobs);
     this->_logger->info("Dumped model state");
   }
@@ -417,23 +446,10 @@ namespace dd {
   void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
   init_mllib(const APIData &ad) {
 
-    // Store the net's general configuration
-    if (ad.has("inputlayer")) {
-      _context._input_blob = ad.get("inputlayer").get<std::string>();
-    }
-    if (ad.has("outputlayer")) {
-      apitools::get_vector(ad, "outputlayer", _context._output_blobs);
-    }
-    if (ad.has("nclasses")) {
-      _context._nclasses = ad.get("nclasses").get<int>();
-    }
-
-    //XXX Get more informations (targets for multi-label, autoencoder, regression, ...)
-
     // Store the net's default (but variable) configuration
     set_gpu_state(ad, true);
 
-    bool has_template = ad.has("template");
+    bool has_template = ad.has("template") && ad.get("template").get<std::string>() != "";
     if (has_template) {
       instantiate_template(ad);
     }
@@ -445,9 +461,27 @@ namespace dd {
     }
 
     // Load the model
-    Caffe2NetTools::import_net(_init_net, this->_mlmodel._init);
-    Caffe2NetTools::import_net(_net, this->_mlmodel._predict);
-    int current_nclasses = Caffe2NetTools::get_nclasses(_net, _init_net);
+    load_nets();
+    Caffe2NetTools::NetGroup &main_nets(find_net_group("main"));
+
+    // Store the net's general configuration
+    if (ad.has("inputlayer")) {
+      _context._input_blob = ad.get("inputlayer").get<std::string>();
+    }
+    if (ad.has("outputlayer")) {
+      //XXX Manage multi-net context
+      apitools::get_vector(ad, "outputlayer", main_nets._output_blobs);
+    }
+    if (ad.has("nclasses")) {
+      _context._nclasses = ad.get("nclasses").get<int>();
+    }
+
+    //XXX Get more informations (targets for multi-label, autoencoder, regression, ...)
+
+    //XXX See how get_nclasses and set_nclasses can be used with multi-net models
+
+    // Check the number of classes
+    int current_nclasses = Caffe2NetTools::get_nclasses(main_nets._predict, main_nets._init);
 
     // Keep the current shape
     if (!_context._nclasses) {
@@ -457,8 +491,8 @@ namespace dd {
     } else if (has_template) {
 
       // Reset parameters to ConstantFills, XaviersFills, etc.
-      Caffe2NetTools::set_nclasses(_net, _init_net, _context._nclasses);
-      Caffe2NetTools::export_net(_init_net, this->_mlmodel._init);
+      Caffe2NetTools::set_nclasses(main_nets._predict, main_nets._init, _context._nclasses);
+      Caffe2NetTools::export_net(main_nets._init, this->_mlmodel._init);
 
       // Assert the shape is correct
     } else {
@@ -495,6 +529,17 @@ namespace dd {
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  Caffe2NetTools::NetGroup &Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
+  find_net_group(const std::string &type) {
+    for (Caffe2NetTools::NetGroup &nets : _nets) {
+      if (nets._type == type) {
+	return nets;
+      }
+    }
+    CAFFE_THROW("The '", type, "' net could not be found");
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   float Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
   run_net(const std::string &net) {
     try {
@@ -510,21 +555,28 @@ namespace dd {
     }
   }
 
+  inline void extract_sizes(const Caffe2NetTools::ModelContext &context,
+			    std::vector<size_t> &sizes,
+			    int batch_size,
+			    const std::string &name) {
+    // Fetch the items size
+    std::vector<std::vector<float>> float_sizes(batch_size);
+    context.extract(float_sizes, name, std::vector<size_t>(batch_size, 1));
+    sizes.resize(batch_size);
+    std::transform(float_sizes.begin(), float_sizes.end(), sizes.begin(),
+		   [&](const std::vector<float> &size){ return size[0]; });
+  }
+
   inline void extract_layers(const Caffe2NetTools::ModelContext &context,
 			     std::vector<std::vector<std::vector<float>>> &results,
+			     std::vector<size_t> &sizes,
 			     int batch_size,
 			     const std::vector<std::string> &names,
-			     const std::string &size_layer = "",
 			     const std::vector<size_t> &scales = {}) {
-    // Fetch the items size
+
     size_t layers = names.size();
-    std::vector<std::vector<float>> sizes;
-    bool has_sizes = !size_layer.empty();
-    if (has_sizes) {
-      CAFFE_ENFORCE(scales.size() == layers);
-      sizes.resize(batch_size);
-      context.extract(sizes, size_layer, std::vector<size_t>(batch_size, 1));
-    }
+    bool no_sizes = sizes.empty();
+    CAFFE_ENFORCE(no_sizes || scales.size() == layers);
 
     // Fetch the layers
     results.resize(layers);
@@ -534,41 +586,73 @@ namespace dd {
 
       // Fetch the items
       result.resize(batch_size);
-      if (has_sizes) {
-	size_t scale = scales[i];
-	std::vector<size_t> scaled_sizes(batch_size);
-	std::transform(sizes.begin(), sizes.end(), scaled_sizes.begin(),
-		       [&](const std::vector<float> &size){ return scale * size[0]; });
-	context.extract(result, name, scaled_sizes);
-      } else {
+      if (no_sizes) {
 	context.extract(result, name);
+      } else {
+	context.extract(result, name, sizes, scales[i]);
       }
     }
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
-  extract_results(std::vector<std::vector<std::vector<float>>> &results, int batch_size) {
+  extract_results(std::vector<std::vector<std::vector<float>>> &results,
+		  std::vector<size_t> &sizes,
+		  int batch_size,
+		  const std::vector<std::string> &outputs) {
 
-    std::string extract = _state.extract_layer();
-    std::vector<std::string> outputs = _context._output_blobs;
+    size_t nb_output = outputs.size();
+    std::string extract_layer = _state.extract_layer();
 
-    // raw layer
-    if (!extract.empty()) {
-      return extract_layers(_context, results, batch_size, { extract });
-    }
+    auto extract_raw_layer = [&]() {
+      extract_layers(_context, results, sizes, batch_size, { extract_layer });
+    };
+
+    auto extract_class = [&]() {
+      CAFFE_ENFORCE(nb_output == 1, "classification outputs should fit in a single blob");
+      extract_layers(_context, results, sizes, batch_size, outputs);
+    };
 
     // scores, bboxes, classes, batch_splits
-    if (_state.bbox()) {
-      CAFFE_ENFORCE(outputs.size() == 4);
-      std::string sizes = outputs.back();
-      outputs.pop_back();
-      return extract_layers(_context, results, batch_size, outputs, sizes, {1, 4, 1});
-    }
+    auto extract_bbox = [&]() {
+      CAFFE_ENFORCE(nb_output == 4,
+		    "bboxes should be shaped like (scores, bboxes, classes, batch_splits)");
+      extract_sizes(_context, sizes, batch_size, outputs.back());
+      std::vector<std::string> bbox_layers(outputs.begin(), outputs.end() - 1);
+      extract_layers(_context, results, sizes, batch_size, bbox_layers, {1, 4, 1});
+    };
 
-    // Simple prediction
-    CAFFE_ENFORCE(outputs.size() == 1);
-    extract_layers(_context, results, batch_size, outputs);
+    // masks, im_info
+    auto extract_mask = [&]() {
+      if (nb_output == 4) return extract_bbox();
+      CAFFE_ENFORCE(nb_output == 2,
+		    "bboxes should be shaped like (scores, bboxes, classes, batch_splits) "
+		    "and masks should be shaped like (masks, im_info)");
+      extract_layers(_context, results, sizes, batch_size, { outputs[0] }, {0});
+      results.emplace_back(batch_size);
+      _context.extract(results.back(), outputs[1]);
+    };
+
+    if (!extract_layer.empty()) {
+      extract_raw_layer();
+    } else if (_state.mask()) {
+      extract_mask();
+    } else if (_state.bbox()) {
+      extract_bbox();
+    } else { // Default
+      extract_class();
+    }
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::
+  typed_prediction(std::vector<std::vector<std::vector<float>>> &results,
+		   std::vector<size_t> &sizes,
+		   int batch_size,
+		   const std::string &type) {
+    Caffe2NetTools::NetGroup &nets(find_net_group(type));
+    run_net(nets._predict.name());
+    extract_results(results, sizes, batch_size, nets._output_blobs);
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -639,6 +723,9 @@ namespace dd {
       _last_inputc.assert_context_validity(_context);
     }
 
+    //XXX Manage multi-net training
+    Caffe2NetTools::NetGroup &main_nets(find_net_group("main"));
+
     // Start the training
     const int start_iter = _context.extract_iter();
     this->clear_all_meas_per_iter();
@@ -651,7 +738,7 @@ namespace dd {
     for (int iter = start_iter; iter < iterations && this->_tjob_running.load(); ++iter) {
 
       // Add measures
-      float iter_time = run_net(_train_net.name());
+      float iter_time = run_net(main_nets._train.name());
       this->add_meas("iter_time", iter_time);
       this->add_meas("remain_time", iter_time * (iterations - iter) / 1000.0);
       this->add_meas("train_loss", _context.extract_loss());
@@ -709,7 +796,8 @@ namespace dd {
 
       this->_logger->info("Updating net parameters");
       caffe2::NetDef init;
-      _context.create_init_net(_train_net, init);
+      //XXX Manage multi-net models
+      _context.create_init_net(main_nets._train, init);
       caffe2::WriteProtoToTextFile(init, this->_mlmodel._init);
 
       // Forward informations the input connector wants to send
@@ -724,7 +812,8 @@ namespace dd {
   test(const APIData &ad, APIData &out) {
 
     //XXX Right now it means supervised single-label classification
-    CAFFE_ENFORCE(!_state.bbox() && _context._output_blobs.size() == 1);
+    CAFFE_ENFORCE(!_state.bbox() && !_state.mask() && _nets.size() == 1
+		  && _nets[0]._output_blobs.size() == 1);
 
     // Add already computed measures
     APIData ad_res;
@@ -746,11 +835,11 @@ namespace dd {
     // Loop while there is data to test
     int batch_size, total_size = 0;
     while ((batch_size = _last_inputc.load_batch(_context, total_size))) {
-      run_net(_net.name());
 
       // Extract results
       std::vector<std::vector<std::vector<float>>> results;
-      extract_results(results, batch_size);
+      std::vector<size_t> sizes;
+      typed_prediction(results, sizes, batch_size);
 
       //XXX Find how labels could be fetched when loading manually
       std::vector<float> labels(batch_size);
@@ -762,6 +851,7 @@ namespace dd {
 
 	//XXX 'target' and 'pred' format will change depending on the prediction mode
 	//(e.g. bbox or multi-label)
+	//XXX Support test of multi-net models
 	const std::vector<float> &result = results[0][item];
 	std::vector<double> predictions;
 	predictions.assign(result.begin(), result.end());
@@ -791,8 +881,12 @@ namespace dd {
     if (ad_output.has("confidence_threshold")) {
       apitools::get_float(ad_output, "confidence_threshold", confidence_threshold);
     }
+    std::function<bool(float)> pass_threshold([&](float value) {
+      return value >= confidence_threshold;
+    });
 
     _state.set_bbox(ad_output);
+    _state.set_mask(ad_output);
 
     //XXX More informations could be fetched in the future (bbox, rois, etc.)
 
@@ -810,6 +904,7 @@ namespace dd {
     update_model(); // Recreate the net from protobuf files if the configuration has changed
     _last_inputc.assert_context_validity(_context); // Check if everything is well configured
 
+
     // Special case where the net is runned by test()
     if (_state.is_testing()) {
       test(ad, out);
@@ -821,11 +916,15 @@ namespace dd {
 
     int batch_size, total_size = 0;
     while ((batch_size = _last_inputc.load_batch(_context, total_size))) {
-      run_net(_net.name());
 
       // Extract results
       std::vector<std::vector<std::vector<float>>> results;
-      extract_results(results, batch_size);
+      std::vector<size_t> sizes;
+      typed_prediction(results, sizes, batch_size);
+
+      //XXX Print the blobs shape after the first run
+      // _context._workspace->PrintBlobSizes()
+      // https://github.com/pytorch/pytorch/blob/master/caffe2/core/workspace.cc#L21
 
       // Loop on each item of the input batch
       for (int item = 0; item < batch_size; ++item, ++total_size) {
@@ -841,7 +940,7 @@ namespace dd {
 	  std::vector<double> vals(result.begin(), result.end()); // raw extracted layer
 	  rad.add("vals", vals);
 
-	} else if (_state.bbox()) {
+	} else if (_state.bbox() || _state.mask()) {
 
 	  // Fetch data
 	  const std::vector<float> &scale = _last_inputc.scales().at(total_size);
@@ -851,11 +950,31 @@ namespace dd {
 	  std::vector<double> probs;
 	  std::vector<std::string> cats;
 	  std::vector<APIData> bboxes;
+	  std::vector<APIData> masks;
 	  CAFFE_ENFORCE(scores.size() == classes.size());
 	  CAFFE_ENFORCE(scores.size() * 4 == coords.size());
 	  auto coords_it = coords.begin();
 
-	  for (size_t box = 0; box < scores.size(); ++box, coords_it += 4) {
+	  std::vector<uchar> raw_masks;
+	  size_t mask_h(0), mask_w(0), img_h(0), img_w(0), mask_size(0);
+	  if ( _state.mask() && std::count_if(scores.begin(), scores.end(), pass_threshold)) {
+	    std::vector<std::vector<std::vector<float>>> mask_results;
+	    //XXX Filter bboxes before comptuing masks
+	    typed_prediction(mask_results, sizes, batch_size, "mask");
+	    raw_masks.assign(mask_results[0][item].begin(), mask_results[0][item].end());
+	    std::vector<float> im_info = mask_results[1][item];
+	    CAFFE_ENFORCE(im_info.size() == 3);
+	    mask_h = im_info[0];
+	    mask_w = im_info[1];
+	    img_h = mask_h / scale[0];
+	    img_w = mask_w / scale[1];
+	    mask_size = mask_h * mask_w;
+	  }
+	  cv::Size img_size(img_w, img_h);
+	  uchar *masks_data = raw_masks.data();
+
+	  for (size_t box = 0; box < scores.size(); ++box,
+		 coords_it += 4, masks_data += mask_size) {
 
 	    // Ignore low score
 	    float prob = scores[box];
@@ -863,23 +982,46 @@ namespace dd {
 	      continue;
 	    }
 
-	    // Set the bounding box
-	    APIData ad_bbox;
-	    const std::vector<std::string> coord({"xmin", "ymin", "xmax", "ymax"});
-	    const std::vector<float> coord_scale({scale[1], scale[0], scale[1], scale[0]});
-	    for (int coord_idx = 0; coord_idx < 4; ++coord_idx) {
-	      ad_bbox.add(coord[coord_idx], *(coords_it + coord_idx) / coord_scale[coord_idx]);
-	    }
-
 	    // Append the data
 	    probs.push_back(prob);
 	    cats.push_back(this->_mlmodel.get_hcorresp(classes[box]));
-	    bboxes.push_back(ad_bbox);
+
+	    // Set the bounding box
+	    bboxes.emplace_back();
+	    APIData &ad_bbox = bboxes.back();
+	    const std::vector<std::string> coord({"xmin", "ymin", "xmax", "ymax"});
+	    const std::vector<float> coord_scale({scale[1], scale[0], scale[1], scale[0]});
+	    int scaled_coords[4];
+	    for (int coord_idx = 0; coord_idx < 4; ++coord_idx) {
+	      float scaled = *(coords_it + coord_idx) / coord_scale[coord_idx];
+	      scaled_coords[coord_idx] = scaled;
+	      ad_bbox.add(coord[coord_idx], scaled);
+	    }
+
+	    // Set the mask
+	    if ( _state.mask()) {
+	      masks.emplace_back();
+	      APIData &ad_mask = masks.back();
+	      cv::Mat img(mask_h, mask_w, CV_8U);
+	      img.data = masks_data;
+	      cv::resize(img, img, img_size, 0, 0, cv::INTER_NEAREST);
+	      int width = scaled_coords[2] - scaled_coords[0] + 1;
+	      int height = scaled_coords[3] - scaled_coords[1] + 1;
+	      cv::Mat mask;
+	      img(cv::Rect(scaled_coords[0], scaled_coords[1], width, height)).copyTo(mask);
+	      ad_mask.add("format", "HW");
+	      ad_mask.add("width", width);
+	      ad_mask.add("height", height);
+	      ad_mask.add("data", std::vector<int>(mask.data, mask.data + mask.total()));
+	    }
 	  }
 
 	  rad.add("probs", probs);
 	  rad.add("cats", cats);
 	  rad.add("bboxes", bboxes);
+	  if ( _state.mask()) {
+	    rad.add("masks", masks);
+	  }
 
 	} else { //XXX for now this means supervised classification
 
@@ -904,7 +1046,9 @@ namespace dd {
 
     tout.add_results(vrad);
 
-    out.add("bbox", bool(_state.bbox())); // ad_api_variants work with 'bool', not 'const bool &'
+    // ad_api_variants work with 'bool', not 'const bool &'
+    out.add("bbox", bool(_state.bbox()));
+    out.add("mask", bool( _state.mask()));
 
     //XXX More tags can be forwarded (regression, autoencoder, etc.)
 

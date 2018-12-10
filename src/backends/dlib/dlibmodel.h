@@ -32,7 +32,8 @@ namespace dd {
     public:
         DlibModel() : MLModel() {}
 
-        DlibModel(const APIData &ad);
+        DlibModel(const APIData &ad, APIData &adg,
+		  const std::shared_ptr<spdlog::logger> &logger);
 
         DlibModel(const std::string &repo)
                 : MLModel(repo) {}
