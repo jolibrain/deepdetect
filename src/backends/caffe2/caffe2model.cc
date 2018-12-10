@@ -43,9 +43,7 @@ namespace dd {
 	*it.second = ad.get(it.first).get<std::string>();
       }
     }
-
-    const std::shared_ptr<spdlog::logger> &logger = spdlog::get("api");
-
+    
     // Register repositories
     this->_repo = ad.get("repository").get<std::string>();
     this->_mlmodel_template_repo = ad.has("templates") ?
