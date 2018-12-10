@@ -82,19 +82,9 @@ namespace dd
     // then simply read them
     if (!_cifc)
       return -1;
-    bool scalorig = false;
-    if (_cifc->_scale)
+
+    if (_cifc->_scale && (_cifc->_min_vals.empty() || _cifc->_max_vals.empty()))
       {
-        scalorig = true;
-        _cifc->_scale = false;
-      }
-    for (auto fname : allfiles)
-      {
-        read_file(fname, is_test_data);
-      }
-    if (scalorig)
-      {
-        _cifc->_scale = true;
         std::vector<double> min_vals = _cifc->_min_vals;
         std::vector<double> max_vals = _cifc->_max_vals;
         for (auto fname : allfiles)
@@ -104,7 +94,7 @@ namespace dd
               min_vals = mm.first;
             else
               for (size_t j=0;j<mm.first.size();j++)
-                  min_vals.at(j) = std::min(mm.first.at(j),min_vals.at(j));
+                min_vals.at(j) = std::min(mm.first.at(j),min_vals.at(j));
             if (max_vals.empty())
               max_vals = mm.second;
             else
@@ -113,6 +103,11 @@ namespace dd
           }
         _cifc->_min_vals = min_vals;
         _cifc->_max_vals = max_vals;
+      }
+
+    for (auto fname : allfiles)
+      {
+        read_file(fname, is_test_data);
       }
 
     _cifc->shuffle_data_if_needed();

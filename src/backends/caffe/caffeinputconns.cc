@@ -1525,22 +1525,14 @@ namespace dd
           allfiles_v.push_back(fname);
         auto rng = std::default_random_engine();
         std::shuffle(allfiles_v.begin(), allfiles_v.end(), rng);
-        bool scalorig = false;
-        if (_cifc->_scale)
+
+        if (_cifc->_scale && (_cifc->_min_vals.empty() || _cifc->_max_vals.empty() ))
           {
-            scalorig = true;
-            _cifc->_scale = false;
-          }
-        for (auto fname : allfiles_v)
-          read_file(fname, is_test_data);
-        if (scalorig)
-          {
-            _cifc->_scale = true;
             std::vector<double> min_vals = _cifc->_min_vals;
             std::vector<double> max_vals = _cifc->_max_vals;
             for (auto fname : allfiles)
               {
-                std::pair<std::vector<double>,std::vector<double>> mm = _cifc->get_min_max_vals();
+                std::pair<std::vector<double>,std::vector<double>> mm = _cifc->get_min_max_vals(fname);
                 if (min_vals.empty())
                   min_vals = mm.first;
                 else
@@ -1556,25 +1548,18 @@ namespace dd
             _cifc->_max_vals = max_vals;
           }
 
+        for (auto fname : allfiles_v)
+          read_file(fname, is_test_data);
       }
     else
       {
-        bool scalorig = false;
-        if (_cifc->_scale)
+        if (_cifc->_scale && (_cifc->_min_vals.empty()||_cifc->_max_vals.empty()))
           {
-            scalorig = true;
-            _cifc->_scale = false;
-          }
-        for (auto fname : allfiles)
-          read_file(fname, is_test_data);
-        if (scalorig)
-          {
-            _cifc->_scale = true;
             std::vector<double> min_vals = _cifc->_min_vals;
             std::vector<double> max_vals = _cifc->_max_vals;
             for (auto fname : allfiles)
               {
-                std::pair<std::vector<double>,std::vector<double>> mm = _cifc->get_min_max_vals();
+                std::pair<std::vector<double>,std::vector<double>> mm = _cifc->get_min_max_vals(fname);
                 if (min_vals.empty())
                   min_vals = mm.first;
                 else
@@ -1589,6 +1574,8 @@ namespace dd
             _cifc->_min_vals = min_vals;
             _cifc->_max_vals = max_vals;
           }
+        for (auto fname : allfiles)
+          read_file(fname, is_test_data);
       }
     //    _cifc->shuffle_data_if_needed();
     //_cifc->dv_to_db(is_test_data);
