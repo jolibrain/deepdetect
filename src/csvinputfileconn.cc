@@ -344,7 +344,7 @@ namespace dd
 
       // scaling to [0,1]
       int nlines = 0;
-      if (_scale && _min_vals.empty() && _max_vals.empty())
+      if (_scale && (_min_vals.empty() || _max_vals.empty()))
 	{
          find_min_max(csv_file);
 	}
