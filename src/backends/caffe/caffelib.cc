@@ -2958,7 +2958,7 @@ namespace dd
 	  test_batch_size = ad_net.get("test_batch_size").get<int>();
 	if (batch_size == 0)
 	  throw MLLibBadParamException("batch size set to zero");
-	this->_logger->info("user batch_size={} / intpuc batch_size=",batch_size,inputc.batch_size());
+	this->_logger->info("user batch_size={} / inputc batch_size=",batch_size,inputc.batch_size());
 
 	// code below is required when Caffe (weirdly) requires the batch size 
 	// to be a multiple of the training dataset size.
