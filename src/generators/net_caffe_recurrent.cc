@@ -150,6 +150,31 @@ namespace dd
     cparam->set_axis(axis);
   }
 
+  void NetLayersCaffeRecurrent::add_conv1d(caffe::NetParameter *net_params,
+                                           std::string name,
+                                           std::string bottom,
+                                           std::string top,
+                                           int nin,
+                                           int nout)
+  {
+    caffe::LayerParameter *lparam = net_params->add_layer();
+    lparam->set_type("Convolution");
+    lparam->set_name(name);
+    lparam->add_top(top);
+    lparam->add_bottom(bottom);
+    caffe::ConvolutionParameter *cparam = lparam->mutable_convolution_param();
+    cparam->set_num_output(nout);
+    cparam->add_kernel_size(nin);
+    cparam->set_axis(2);
+    cparam->set_engine(caffe::ConvolutionParameter::CAFFE);
+    caffe::FillerParameter *wfparam = cparam->mutable_weight_filler();
+    wfparam->set_type("xavier");
+    caffe::FillerParameter *bfparam = cparam->mutable_bias_filler();
+    bfparam->set_type("xavier");
+
+
+  }
+
 
   void NetLayersCaffeRecurrent::configure_net(const APIData &ad_mllib)
   {
@@ -299,7 +324,7 @@ namespace dd
                     "cont_seq",bottom,first_num_output, first_dropout_ratio,type, 0);
     add_basic_block(this->_dnet_params,"input_seq",
                     "cont_seq",bottom,first_num_output, first_dropout_ratio,type, 0);
-    for (unsigned int i=1; i<layers.size()-1; ++i)
+    for (unsigned int i=1; i<layers.size(); ++i)
       {
         top = type+"_"+std::to_string(i);
         add_basic_block(this->_net_params,bottom,
@@ -309,18 +334,9 @@ namespace dd
         bottom = top;
       }
 
-    if (layers.size() > 1)
-      {
-        top ="OUTPUT";
-        add_basic_block(this->_net_params,bottom,
-                        "cont_seq",top,
-                        targets.size(), 0.0,type, layers.size()-1);
-        add_basic_block(this->_dnet_params,bottom,
-                        "cont_seq",top,
-                        targets.size(), 0.0,type, layers.size()-1);
-      }
 
-
+    add_conv1d(this->_net_params,"affine",bottom,"OUTPUT", hidden,targets.size());
+    add_conv1d(this->_dnet_params,"affine", bottom,"OUTPUT", hidden, targets.size());
 
     add_permute(this->_net_params, "permuted_OUTPUT", "OUTPUT", 3,true,false);
     add_permute(this->_net_params, "permuted_target_seq", "target_seq", 3,true,false);
