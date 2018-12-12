@@ -44,7 +44,8 @@ namespace dd
     MLModel(const APIData &ad, APIData &adg,
 	    const std::shared_ptr<spdlog::logger> &logger)  {
       init_repo_dir(ad);
-      read_config_json(adg,logger);
+      if (ad.has("init"))
+	read_config_json(adg,logger);
     }
 
     MLModel(const APIData &ad)
