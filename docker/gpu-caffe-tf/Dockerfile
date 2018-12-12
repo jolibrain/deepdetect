@@ -52,6 +52,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   vim \
   strace \
   curl \
+  libarchive-dev \
   libspdlog-dev \
   bash-completion \
   ca-certificates && \
