@@ -1,7 +1,7 @@
 /**
  * DeepDetect
- * Copyright (c) 2017 Emmanuel Benazera
- * Author: Emmanuel Benazera <beniz@droidnik.fr>
+ * Copyright (c) 2018 Jolibrain
+ * Author: Julien Chicha
  *
  * This file is part of deepdetect.
  *
@@ -19,34 +19,21 @@
  * along with deepdetect.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef TSNEMODEL_H
-#define TSNEMODEL_H
+#ifndef BBOXTOROIOP_H
+#define BBOXTOROIOP_H
 
-#include "mlmodel.h"
-#include "apidata.h"
-#include <string>
-#include <unordered_map>
+#include "caffe2/core/operator.h"
 
-namespace dd
-{
-  class TSNEModel : public MLModel
-  {
+namespace caffe2 {
+
+  template <class Context>
+    class BBoxToRoiOp final : public Operator<Context> {
   public:
-    TSNEModel():MLModel() {}
-  TSNEModel(const APIData &ad,APIData &adg,
-	    const std::shared_ptr<spdlog::logger> &logger)
-    :MLModel(ad,adg,logger)
-      {
-	if (ad.has("repository"))
-	  this->_repo = ad.get("repository").get<std::string>();
-	read_from_repository();	
-      }
-    TSNEModel(const std::string &repo)
-      :MLModel(repo) {}
-    ~TSNEModel() {}
 
-    //TODO: load and save
-    int read_from_repository() { return 0; };
+    USE_OPERATOR_CONTEXT_FUNCTIONS;
+    BBoxToRoiOp(const OperatorDef &op, Workspace *ws): Operator<Context>(op, ws) {}
+
+    bool RunOnDevice() override;
   };
 }
 

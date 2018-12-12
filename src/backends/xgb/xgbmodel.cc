@@ -25,8 +25,9 @@
 namespace dd
 {
 
-  XGBModel::XGBModel(const APIData &ad)
-    :MLModel(ad)
+  XGBModel::XGBModel(const APIData &ad, APIData &adg,
+		     const std::shared_ptr<spdlog::logger> &logger)
+    :MLModel(ad,adg,logger)
   {
     if (ad.has("repository"))
       this->_repo = ad.get("repository").get<std::string>();

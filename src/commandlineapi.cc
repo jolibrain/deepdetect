@@ -58,6 +58,7 @@ namespace dd
 	  {
 	    APIData model_ad;
 	    model_ad.add("repository",FLAGS_model_repo);
+	    APIData adg;
 	    CaffeModel cmodel(model_ad);
 	    add_service(FLAGS_service,std::move(MLService<CaffeLib,ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(FLAGS_service,cmodel)));
 	  }
@@ -87,6 +88,7 @@ namespace dd
 	  {
 	    APIData model_ad;
 	    model_ad.add("repository",FLAGS_model_repo);
+	    APIData adg;
 	    CaffeModel cmodel(model_ad);
 	    add_service(FLAGS_service,std::move(MLService<CaffeLib,ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(FLAGS_service,cmodel)));
 	    APIData ad, out;

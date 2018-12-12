@@ -1,4 +1,3 @@
-
 /**
  * DeepDetect
  * Copyright (c) 2014-2018 Emmanuel Benazera
@@ -239,6 +238,7 @@ namespace dd
             if (lparam->type() == "SoftmaxWithLoss")
               {
                 lparam->set_type("MultiLabelSigmoidLoss");
+                lparam->clear_include();
                 caffe::NetStateRule *nsr = lparam->add_include();
                 nsr->set_phase(caffe::TRAIN);
                 break;
@@ -284,7 +284,7 @@ namespace dd
 	    
 	  }
 	else throw MLLibInternalException("Couldn't find Softmax layer to replace for multi-label training");
-	
+      
 	k = deploy_net_param.layer_size();
 	caffe::LayerParameter *lparam = deploy_net_param.mutable_layer(k-1);
 	if (lparam->type() == "Softmax")
@@ -303,7 +303,31 @@ namespace dd
               }
 	  }
       } // end multi_label
-      
+    else if (_regression)
+      {
+	int k = net_param.layer_size();
+        for (int l=k-1;l>0;l--)
+          {
+            caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+            if (lparam->type() == "SoftmaxWithLoss")
+              {
+                lparam->set_type("SigmoidCrossEntropyLoss");
+		lparam->clear_include();
+                caffe::NetStateRule *nsr = lparam->add_include();
+                nsr->set_phase(caffe::TRAIN);
+                break;
+              }
+	    else if (lparam->type() == "Softmax")
+	      {
+		lparam->set_type("Sigmoid");
+		lparam->clear_include();
+		caffe::NetStateRule *nsr = lparam->add_include();
+                nsr->set_phase(caffe::TEST);
+	      }
+	  }
+	
+      }
+          
 	// input size
 	caffe::LayerParameter *lparam = net_param.mutable_layer(1); // test
 	caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(0);
@@ -840,12 +864,12 @@ namespace dd
       if (ad.has("nclasses"))
         _nclasses = ad.get("nclasses").get<int>();
     // instantiate model template here, if any
-    if (ad.has("template"))
+    if (ad.has("template") && ad.get("template").get<std::string>() != "")
       instantiate_template(ad);
     else // model template instantiation is defered until training call
       {
-	update_deploy_protofile_softmax(ad);
-	create_model();
+	update_deploy_protofile_softmax(ad); // temperature scaling
+	create_model(true);
       }
 
     // the first present measure will be used to snapshot best model
@@ -919,8 +943,8 @@ namespace dd
 	update_protofile_net(this->_mlmodel._repo + '/' + this->_mlmodel._model_template + ".prototxt",
 			     this->_mlmodel._repo + "/deploy.prototxt",
 			     inputc, has_class_weights, ignore_label, timesteps);
-	create_model(); // creates initial net.
       }
+    create_model(); // creates initial net.
 
     caffe::SolverParameter solver_param;
     if (!caffe::ReadProtoFromTextFile(this->_mlmodel._solver,&solver_param))
@@ -1318,7 +1342,7 @@ namespace dd
       }
     
     solver_param = caffe::SolverParameter();
-    if (this->_mlmodel.read_from_repository(this->_mlmodel._repo,this->_logger))
+    if (this->_mlmodel.read_from_repository(this->_mlmodel._repo,this->_logger,true))
       throw MLLibBadParamException("error reading or listing Caffe models in repository " + this->_mlmodel._repo);
     int cm = create_model();
     if (cm == 1)
@@ -1381,6 +1405,12 @@ namespace dd
     ad_res.add("iteration",this->get_meas("iteration"));
     ad_res.add("train_loss",this->get_meas("train_loss"));
     APIData ad_out = ad.getobj("parameters").getobj("output");
+
+    if (ad.getobj("parameters").getobj("mllib").has("ignore_label"))
+      {
+        int ignore_label = ad.getobj("parameters").getobj("mllib").get("ignore_label").get<int>();
+        ad_res.add("ignore_label", ignore_label);
+      }
 
     if (ad_out.has("measure"))
       {
@@ -1545,6 +1575,12 @@ namespace dd
 	      slot--;
 	    else if (_autoencoder && typeid(inputc) == typeid(ImgCaffeInputFileConn))
 	      slot = 0; // flatten output
+           else if (_regression && _ntargets == 1 && typeid(inputc) == typeid(CSVCaffeInputFileConn))
+             {
+               slot = findOutputSlotNumberByBlobName(net, "ip_losst");
+             }
+
+
 	    int scount = lresults[slot]->count();
 	    int scperel = scount / dv_size;
 
@@ -2922,7 +2958,7 @@ namespace dd
 	  test_batch_size = ad_net.get("test_batch_size").get<int>();
 	if (batch_size == 0)
 	  throw MLLibBadParamException("batch size set to zero");
-	this->_logger->info("user batch_size={} / intpuc batch_size=",batch_size,inputc.batch_size());
+	this->_logger->info("user batch_size={} / inputc batch_size=",batch_size,inputc.batch_size());
 
 	// code below is required when Caffe (weirdly) requires the batch size 
 	// to be a multiple of the training dataset size.
@@ -3375,6 +3411,35 @@ namespace dd
       }
 
   }
+
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  int CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::findOutputSlotNumberByBlobName(const caffe::Net<float> *net,
+                                     const std::string blob_name)
+  {
+    const std::vector<std::string> blob_names = net->blob_names();
+    const std::vector<int> output_blob_indices = net->output_blob_indices();
+    for (int i =0; i<net->num_outputs(); ++i)
+      {
+        if (blob_names[output_blob_indices[i]] == blob_name)
+          return i;
+      }
+    return -1;
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  Blob<float>* CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::findOutputBlobByName(const caffe::Net<float> *net, const std::string blob_name)
+  {
+    const std::vector<std::string> blob_names = net->blob_names();
+    const std::vector<int> output_blob_indices = net->output_blob_indices();
+    for (int i =0; i<net->num_outputs(); ++i)
+      {
+        if (blob_names[output_blob_indices[i]] == blob_name)
+          net->output_blobs().at(i);
+      }
+    return nullptr;
+  }
+
 
 
   template class CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>;

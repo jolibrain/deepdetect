@@ -1,0 +1,193 @@
+From 9b7e79c07ad4a1d93a65524c3e1c9f566bef0572 Mon Sep 17 00:00:00 2001
+From: Julien CHICHA <julien.chicha@epitech.eu>
+Date: Sat, 17 Nov 2018 17:39:11 +0100
+Subject: [PATCH 2/4] compiled
+
+---
+ detectron/core/test.py                       | 1 -
+ detectron/core/test_retinanet.py             | 1 -
+ detectron/datasets/json_dataset.py           | 1 -
+ detectron/datasets/json_dataset_evaluator.py | 1 -
+ detectron/datasets/roidb.py                  | 1 -
+ detectron/modeling/FPN.py                    | 1 -
+ detectron/ops/generate_proposals.py          | 1 -
+ detectron/roi_data/data_utils.py             | 1 -
+ detectron/roi_data/fast_rcnn.py              | 1 -
+ detectron/roi_data/mask_rcnn.py              | 1 -
+ detectron/roi_data/retinanet.py              | 1 -
+ detectron/roi_data/rpn.py                    | 1 -
+ detectron/tests/test_bbox_transform.py       | 1 -
+ tools/convert_cityscapes_to_coco.py          | 1 -
+ 14 files changed, 14 deletions(-)
+
+diff --git a/detectron/core/test.py b/detectron/core/test.py
+index 1a95b96..c42fa31 100644
+--- a/detectron/core/test.py
++++ b/detectron/core/test.py
+@@ -41,7 +41,6 @@ from detectron.utils.timer import Timer
+ import detectron.core.test_retinanet as test_retinanet
+ import detectron.modeling.FPN as fpn
+ import detectron.utils.blob as blob_utils
+-import detectron.utils.boxes as box_utils
+ import detectron.utils.image as image_utils
+ import detectron.utils.keypoints as keypoint_utils
+ 
+diff --git a/detectron/core/test_retinanet.py b/detectron/core/test_retinanet.py
+index 2c4e4f3..3668d5a 100644
+--- a/detectron/core/test_retinanet.py
++++ b/detectron/core/test_retinanet.py
+@@ -30,7 +30,6 @@ from detectron.core.config import cfg
+ from detectron.modeling.generate_anchors import generate_anchors
+ from detectron.utils.timer import Timer
+ import detectron.utils.blob as blob_utils
+-import detectron.utils.boxes as box_utils
+ 
+ logger = logging.getLogger(__name__)
+ 
+diff --git a/detectron/datasets/json_dataset.py b/detectron/datasets/json_dataset.py
+index fb08a42..83e4b0f 100644
+--- a/detectron/datasets/json_dataset.py
++++ b/detectron/datasets/json_dataset.py
+@@ -39,7 +39,6 @@ envu.set_up_matplotlib()
+ from detectron.core.config import cfg
+ from detectron.utils.timer import Timer
+ import detectron.datasets.dataset_catalog as dataset_catalog
+-import detectron.utils.boxes as box_utils
+ from detectron.utils.io import load_object
+ import detectron.utils.segms as segm_utils
+ 
+diff --git a/detectron/datasets/json_dataset_evaluator.py b/detectron/datasets/json_dataset_evaluator.py
+index 55dc832..0fdb08d 100644
+--- a/detectron/datasets/json_dataset_evaluator.py
++++ b/detectron/datasets/json_dataset_evaluator.py
+@@ -30,7 +30,6 @@ import uuid
+ 
+ from detectron.core.config import cfg
+ from detectron.utils.io import save_object
+-import detectron.utils.boxes as box_utils
+ 
+ logger = logging.getLogger(__name__)
+ 
+diff --git a/detectron/datasets/roidb.py b/detectron/datasets/roidb.py
+index 57b6e9c..4842982 100644
+--- a/detectron/datasets/roidb.py
++++ b/detectron/datasets/roidb.py
+@@ -26,7 +26,6 @@ import numpy as np
+ 
+ from detectron.core.config import cfg
+ from detectron.datasets.json_dataset import JsonDataset
+-import detectron.utils.boxes as box_utils
+ import detectron.utils.keypoints as keypoint_utils
+ import detectron.utils.segms as segm_utils
+ 
+diff --git a/detectron/modeling/FPN.py b/detectron/modeling/FPN.py
+index 46881e4..081dba1 100644
+--- a/detectron/modeling/FPN.py
++++ b/detectron/modeling/FPN.py
+@@ -30,7 +30,6 @@ from detectron.utils.c2 import gauss_fill
+ from detectron.utils.net import get_group_gn
+ import detectron.modeling.ResNet as ResNet
+ import detectron.utils.blob as blob_utils
+-import detectron.utils.boxes as box_utils
+ 
+ # Lowest and highest pyramid levels in the backbone network. For FPN, we assume
+ # that all networks have 5 spatial reductions, each by a factor of 2. Level 1
+diff --git a/detectron/ops/generate_proposals.py b/detectron/ops/generate_proposals.py
+index 7238c07..4b1382f 100644
+--- a/detectron/ops/generate_proposals.py
++++ b/detectron/ops/generate_proposals.py
+@@ -24,7 +24,6 @@
+ import numpy as np
+ 
+ from detectron.core.config import cfg
+-import detectron.utils.boxes as box_utils
+ 
+ 
+ class GenerateProposalsOp(object):
+diff --git a/detectron/roi_data/data_utils.py b/detectron/roi_data/data_utils.py
+index 54de8a3..2d8dd04 100644
+--- a/detectron/roi_data/data_utils.py
++++ b/detectron/roi_data/data_utils.py
+@@ -28,7 +28,6 @@ import threading
+ 
+ from detectron.core.config import cfg
+ from detectron.modeling.generate_anchors import generate_anchors
+-import detectron.utils.boxes as box_utils
+ 
+ logger = logging.getLogger(__name__)
+ 
+diff --git a/detectron/roi_data/fast_rcnn.py b/detectron/roi_data/fast_rcnn.py
+index 56e9698..0573457 100644
+--- a/detectron/roi_data/fast_rcnn.py
++++ b/detectron/roi_data/fast_rcnn.py
+@@ -32,7 +32,6 @@ import detectron.modeling.FPN as fpn
+ import detectron.roi_data.keypoint_rcnn as keypoint_rcnn_roi_data
+ import detectron.roi_data.mask_rcnn as mask_rcnn_roi_data
+ import detectron.utils.blob as blob_utils
+-import detectron.utils.boxes as box_utils
+ 
+ logger = logging.getLogger(__name__)
+ 
+diff --git a/detectron/roi_data/mask_rcnn.py b/detectron/roi_data/mask_rcnn.py
+index 8be01bb..8e43b76 100644
+--- a/detectron/roi_data/mask_rcnn.py
++++ b/detectron/roi_data/mask_rcnn.py
+@@ -28,7 +28,6 @@ import numpy as np
+ 
+ from detectron.core.config import cfg
+ import detectron.utils.blob as blob_utils
+-import detectron.utils.boxes as box_utils
+ import detectron.utils.segms as segm_utils
+ 
+ logger = logging.getLogger(__name__)
+diff --git a/detectron/roi_data/retinanet.py b/detectron/roi_data/retinanet.py
+index b737042..b559834 100644
+--- a/detectron/roi_data/retinanet.py
++++ b/detectron/roi_data/retinanet.py
+@@ -23,7 +23,6 @@ from __future__ import unicode_literals
+ import numpy as np
+ import logging
+ 
+-import detectron.utils.boxes as box_utils
+ import detectron.roi_data.data_utils as data_utils
+ from detectron.core.config import cfg
+ 
+diff --git a/detectron/roi_data/rpn.py b/detectron/roi_data/rpn.py
+index 6adb5a7..679aa9b 100644
+--- a/detectron/roi_data/rpn.py
++++ b/detectron/roi_data/rpn.py
+@@ -27,7 +27,6 @@ import numpy.random as npr
+ from detectron.core.config import cfg
+ import detectron.roi_data.data_utils as data_utils
+ import detectron.utils.blob as blob_utils
+-import detectron.utils.boxes as box_utils
+ 
+ logger = logging.getLogger(__name__)
+ 
+diff --git a/detectron/tests/test_bbox_transform.py b/detectron/tests/test_bbox_transform.py
+index 79d5c88..4dd1b7d 100644
+--- a/detectron/tests/test_bbox_transform.py
++++ b/detectron/tests/test_bbox_transform.py
+@@ -22,7 +22,6 @@ import numpy as np
+ import unittest
+ 
+ 
+-import detectron.utils.boxes as box_utils
+ 
+ 
+ def random_boxes(mean_box, stdev, N):
+diff --git a/tools/convert_cityscapes_to_coco.py b/tools/convert_cityscapes_to_coco.py
+index e8e4637..aac99d8 100644
+--- a/tools/convert_cityscapes_to_coco.py
++++ b/tools/convert_cityscapes_to_coco.py
+@@ -30,7 +30,6 @@ import sys
+ import cityscapesscripts.evaluation.instances2dict_with_polygons as cs
+ 
+ import detectron.utils.segms as segms_util
+-import detectron.utils.boxes as bboxs_util
+ 
+ 
+ def parse_args():
+-- 
+2.19.1
+

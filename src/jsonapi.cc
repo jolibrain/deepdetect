@@ -415,7 +415,7 @@ namespace dd
 #ifdef USE_CAFFE
 	else if (mllib == "caffe")
 	  {
-	    CaffeModel cmodel(ad_model);
+	    CaffeModel cmodel(ad_model,ad,_logger);
 	    if (type == "supervised")
 	      {
 		if (input == "image")
@@ -460,7 +460,7 @@ namespace dd
 #ifdef USE_CAFFE2
 
 	else if (mllib == "caffe2") {
-	  Caffe2Model c2model(ad_model);
+	  Caffe2Model c2model(ad_model,ad,_logger);
 	  if (type == "supervised") {
 
 	    if (input == "image")
@@ -496,7 +496,7 @@ namespace dd
 #ifdef USE_TF
 	else if (mllib == "tensorflow" || mllib == "tf")
 	  {
-	    TFModel tfmodel(ad_model);
+	    TFModel tfmodel(ad_model,ad,_logger);
 	    if (type == "supervised")
 	      {
 		if (input == "image")
@@ -525,7 +525,7 @@ namespace dd
 #endif
 #ifdef USE_DLIB
     else if (mllib == "dlib") {
-	    DlibModel dlibmodel(ad_model);
+            DlibModel dlibmodel(ad_model,ad,_logger);
 	    if (type == "supervised") {
 	        if (input == "image") {
 	            add_service(sname, std::move(MLService<DlibLib, ImgDlibInputFileConn, SupervisedOutput, DlibModel>(sname, dlibmodel, description)), ad);
@@ -546,7 +546,7 @@ namespace dd
 #ifdef USE_XGBOOST
 	else if (mllib == "xgboost")
 	  {
-	    XGBModel xmodel(ad_model);
+	    XGBModel xmodel(ad_model,ad,_logger);
 	    if (input == "csv")
 	      add_service(sname,std::move(MLService<XGBLib,CSVXGBInputFileConn,SupervisedOutput,XGBModel>(sname,xmodel,description)),ad);
 	    else if (input == "svm")
@@ -564,7 +564,7 @@ namespace dd
 #ifdef USE_TSNE
 	else if (mllib == "tsne")
 	  {
-	    TSNEModel tmodel(ad_model);
+	    TSNEModel tmodel(ad_model,ad,_logger);
 	    if (input == "csv")
 	      add_service(sname,std::move(MLService<TSNELib,CSVTSNEInputFileConn,UnsupervisedOutput,TSNEModel>(sname,tmodel,description)),ad);
 	    else if (input == "txt")
@@ -773,7 +773,8 @@ namespace dd
     if (jout.HasMember("predictions"))
       jbody.AddMember("predictions",jout["predictions"],jpred.GetAllocator());
     jpred.AddMember("body",jbody,jpred.GetAllocator());
-    if (ad_data.getobj("parameters").getobj("output").has("template"))
+    if (ad_data.getobj("parameters").getobj("output").has("template")
+        && ad_data.getobj("parameters").getobj("output").get("template").get<std::string>() != "")
       {
 	APIData ad_params = ad_data.getobj("parameters");
 	APIData ad_output = ad_params.getobj("output");

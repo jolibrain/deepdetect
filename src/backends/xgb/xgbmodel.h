@@ -34,7 +34,8 @@ namespace dd
   {
   public:
     XGBModel():MLModel() {}
-    XGBModel(const APIData &ad);
+    XGBModel(const APIData &ad, APIData &adg,
+	     const std::shared_ptr<spdlog::logger> &logger);
     XGBModel(const std::string &repo)
       :MLModel(repo) {}
     ~XGBModel() {}

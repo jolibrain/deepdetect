@@ -24,7 +24,9 @@
 #include <string>
 namespace dd
 {
-  TFModel::TFModel(const APIData &ad)
+  TFModel::TFModel(const APIData &ad, APIDat &adg,
+		   const std::shared_ptr<spdlog::logger> &logger)
+    :MLModel(ad,adg,logger)
   {
    if (ad.has("repository"))
       {
