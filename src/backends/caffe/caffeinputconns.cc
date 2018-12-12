@@ -1631,7 +1631,7 @@ namespace dd
 	  // transform to datum by filling up float_data
 	  if (_train)
 	    {
-             csvts_to_dv(false,true,true);
+             csvts_to_dv(false,true,true,true);
 	    }
 	  if (!_train)
 	    {
@@ -1647,7 +1647,7 @@ namespace dd
 	  // auto hit = _csvtsdata_test.begin();
 	  // while(hit!=_csvtsdata_test.end())
 	    // {
-         csvts_to_dv(true,true,true);
+         csvts_to_dv(true,true,true,false);
 	    // }
 	  _csvtsdata_test.clear();
 	}
@@ -1772,7 +1772,7 @@ namespace dd
     std::unique_ptr<caffe::db::Transaction> *txn_ptr = &_txn;
     std::unique_ptr<caffe::db::DB> *tdb_ptr = &_tdb;
 
-    csvts_to_dv(is_test_data,true,true);
+    csvts_to_dv(is_test_data,true,true,true);
     if (is_test_data)
       {
         dvtodump = _dv_test;
@@ -1848,7 +1848,7 @@ namespace dd
   }
 
 
-  void CSVTSCaffeInputFileConn::csvts_to_dv(bool test, bool clear_dv_first, bool clear_csvts_after)
+  void CSVTSCaffeInputFileConn::csvts_to_dv(bool test, bool clear_dv_first, bool clear_csvts_after, bool split_seqs)
   {
 
     std::vector<Datum> * dv;
@@ -1892,15 +1892,16 @@ namespace dd
 
     for (unsigned int si=0; si< data->size(); ++si)
       {
-        for (unsigned int ti=0; ti < data->at(si).size(); ++ti)
+        bool enough = true;
+        for (unsigned int ti=0; ti < data->at(si).size() && enough; ++ti)
           {
-            if (ti == 0)
+            if (ti == 0 || ((*index == 0) && split_seqs))
               d->set_float_data(*index*this->_datadim,0.0); // new sequence
             else
               d->set_float_data(*index*this->_datadim,1.0); // continue sequence
             for (int di = 0; di<this->_datadim-1; ++di)
               {
-                d->set_float_data(*index*this->_datadim + di + 1, data->at(si)[ti]._v[di]); // new sequence
+                d->set_float_data(*index*this->_datadim + di + 1, data->at(si)[ti]._v[di]);
               }
             (*index)++;
             if (*index == _timesteps)
@@ -1914,20 +1915,36 @@ namespace dd
                 dv->push_back(dprim);
                 d = &(dv->back());
                 *index = 0;
+                if (ti + _timesteps >= data->at(si).size())
+                  {
+                    enough = false;
+                    unsigned int tti = data->at(si).size() - _timesteps;
+                    for ( ; tti < data->at(si).size(); ++tti)
+                      {
+                        d->set_float_data(*index*this->_datadim,1.0); // continue sequence
+                        for (int di = 0; di<this->_datadim-1; ++di)
+                          d->set_float_data(*index*this->_datadim + di + 1, data->at(si)[tti]._v[di]);
+                        (*index)++;
+                      }
+                  }
               }
           }
+
         // at end of sequence start a new datum so that if the sequence
         //is smaller than the number of timesteps,  then every datum contains an independant sequence
         // is sequence is larger than timesteps, it will be splitted into independant sequences
-        Datum dprim;
-        dprim.set_channels(this->_timesteps);
-        dprim.set_height(this->_datadim);
-        for (int i=0; i< this->_timesteps*this->_datadim; ++i)
-          dprim.add_float_data(0.0);
-        dprim.set_width(1);
-        dv->push_back(dprim);
-        d = &(dv->back());
-        *index = 0;
+        if (si < data->size() -1)
+          {
+            Datum dprim;
+            dprim.set_channels(this->_timesteps);
+            dprim.set_height(this->_datadim);
+            for (int i=0; i< this->_timesteps*this->_datadim; ++i)
+              dprim.add_float_data(0.0);
+            dprim.set_width(1);
+            dv->push_back(dprim);
+            d = &(dv->back());
+            *index = 0;
+          }
       }
     if (clear_csvts_after)
         data->clear();

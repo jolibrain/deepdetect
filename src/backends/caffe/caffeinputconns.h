@@ -900,7 +900,7 @@ namespace dd
                     const std::string &testdbname,
                     const APIData &ad_input,
                     const std::string &backend="lmdb"); // lmdb, leveldb
-    void csvts_to_dv(bool is_test_data=false, bool clear_dv_first = false, bool clear_csvts_after=false);
+    void csvts_to_dv(bool is_test_data=false, bool clear_dv_first = false, bool clear_csvts_after=false, bool split_seqs=true);
     void dv_to_db(bool is_test_data=false);
 
     void write_csvts_to_db(const std::string &dbfullname,
