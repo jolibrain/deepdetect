@@ -895,6 +895,7 @@ namespace dd
       instantiate_template(ad);
     else // model template instantiation is defered until training call
       {
+
 	update_deploy_protofile_softmax(ad); // temperature scaling
 	create_model(true);
       }
@@ -971,6 +972,8 @@ namespace dd
 			     this->_mlmodel._repo + "/deploy.prototxt",
 			     inputc, has_class_weights, ignore_label, timesteps);
       }
+
+
     create_model(); // creates initial net.
 
     caffe::SolverParameter solver_param;
@@ -1899,6 +1902,7 @@ namespace dd
   {
     std::lock_guard<std::mutex> lock(_net_mutex); // no concurrent calls since the net is not re-instantiated
 
+
     // check for net
     if (!_net || _net->phase() == caffe::TRAIN)
       {
@@ -1934,6 +1938,23 @@ namespace dd
 	    confidence_threshold = static_cast<double>(ad_output.get("confidence_threshold").get<int>());
 	  }
       }
+
+
+    if (typeid(inputc) == typeid(CSVTSCaffeInputFileConn)
+        && ad.getobj("parameters").getobj("input").has("timesteps")
+      {
+        timesteps = ad.getobj("parameters").getobj("input").get("timesteps").get<int>();
+        update_timesteps(timesteps);
+        int cm = create_model(true);
+        if (cm != 0)
+          this->_logger->error("Error creating model for prediction");
+        if (cm == 1)
+          throw MLLibInternalException("no model in " + this->_mlmodel._repo + " for initializing the net");
+        else if (cm == 2)
+          throw MLLibBadParamException("no deploy file in " + this->_mlmodel._repo + " for initializing the net");
+      }
+
+
     if (ad_output.has("bbox") && ad_output.get("bbox").get<bool>())
       bbox = true;
     if (ad_output.has("rois")) {
@@ -2693,6 +2714,20 @@ namespace dd
     //caffe::WriteProtoToTextFile(*np,sp.net().c_str());
     sp.clear_net();
   }
+
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_timesteps(int timesteps)
+  {
+    std::string deploy_file = this->_mlmodel._repo + "/deploy.prototxt";
+    caffe::NetParameter deploy_net_param;
+    caffe::ReadProtoFromTextFile(deploy_file,&deploy_net_param);
+
+    caffe::LayerParameter *lparam = deploy_net_param.mutable_layer(0);
+    lparam->mutable_memory_data_param()->set_channels(timesteps);
+    caffe::WriteProtoToTextFile(deploy_net_param,deploy_file);
+  }
+
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_deploy_protofile_softmax(const APIData &ad)

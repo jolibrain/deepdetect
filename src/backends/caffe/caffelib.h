@@ -206,7 +206,13 @@ namespace dd
        * \brief updates the softmax temperature
        * @param mllib apidata object
        */
+
       void update_deploy_protofile_softmax(const APIData &ad);
+      /**
+       * \brief updates the channel / timeteps number for timeseries
+       * @param mllib apidata object
+       */
+      void update_timesteps(int timesteps);
       
     private:
       void update_protofile_classes(caffe::NetParameter &net_param);
