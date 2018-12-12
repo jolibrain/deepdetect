@@ -59,7 +59,7 @@ namespace dd
 
 
   CSVTSInputFileConn()
-    :CSVInputFileConn() {}
+    :CSVInputFileConn(),  _datadim(1) {}
 
     ~CSVTSInputFileConn() {}
 
@@ -108,7 +108,7 @@ namespace dd
     void push_csv_to_csvts(DDCsv &ddcsv);
     virtual void push_csv_to_csvts(bool is_test_data=false);
 
-    int _datadim = -1;
+    int _datadim;
 
     std::vector<std::vector<CSVline>> _csvtsdata;
     std::vector<std::vector<CSVline>> _csvtsdata_test;
