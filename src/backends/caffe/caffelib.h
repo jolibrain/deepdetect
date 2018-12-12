@@ -266,9 +266,11 @@ namespace dd
       int findOutputSlotNumberByBlobName(const caffe::Net<float> *net,
                                      const std::string blob_name);
 
-      Blob<float>* findOutputBlobByName(const caffe::Net<float> *net,
-                                        const std::string blob_name);
+      boost::shared_ptr<Blob<float>> findOutputBlobByName(const caffe::Net<float> *net,
+                                                   const std::string blob_name);
 
+      boost::shared_ptr<Blob<float>> findBlobByName(const caffe::Net<float> *net,
+                                             const std::string blob_name);
 
 
     public:

@@ -1617,10 +1617,6 @@ namespace dd
 	    else if (inputc._multi_label && ( inputc._db || ! (typeid(inputc) == typeid(ImgCaffeInputFileConn))
                                            ||  _nclasses <= 1))
 	      slot--;
-     else if (typeid(inputc) == typeid(CSVTSCaffeInputFileConn))
-             {
-               slot = 0;
-             }
 	    else if (_autoencoder && typeid(inputc) == typeid(ImgCaffeInputFileConn))
 	      slot = 0; // flatten output
            else if (_regression && _ntargets == 1 && typeid(inputc) == typeid(CSVCaffeInputFileConn))
@@ -1628,6 +1624,10 @@ namespace dd
                slot = findOutputSlotNumberByBlobName(net, "ip_loss");
              }
 
+           if (typeid(inputc) == typeid(CSVTSCaffeInputFileConn))
+             {
+               slot = findOutputSlotNumberByBlobName(net,"OUTPUT");
+             }
 
 	    int scount = lresults[slot]->count();
 	    int scperel = scount / dv_size;
@@ -1836,7 +1836,8 @@ namespace dd
                         {
                           for (int k=0;k<nout;k++)
                             {
-                              predictions.push_back(lresults[slot]->cpu_data()[t*nout*dv_size+j*nout+k]);
+                              std::vector<int> loc = {t,j,k};
+                              predictions.push_back(lresults[slot]->data_at(loc));
                             }
                         }
                     }
@@ -2430,7 +2431,10 @@ namespace dd
 
                        std::vector<double> predictions;
                        for (int k=0; k<nout; ++k)
-                         predictions.push_back(results[slot]->cpu_data()[t*nout*batch_size+j*nout+k]);
+                         {
+                           std::vector<int> loc = {t,j,k};
+                           predictions.push_back(results[slot]->data_at(loc));
+                         }
                        APIData ts;
                        ts.add("out", predictions);
                        series.push_back(ts);
@@ -3582,7 +3586,7 @@ namespace dd
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  Blob<float>* CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::findOutputBlobByName(const caffe::Net<float> *net, const std::string blob_name)
+  boost::shared_ptr<Blob<float>> CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::findOutputBlobByName(const caffe::Net<float> *net, const std::string blob_name)
   {
     const std::vector<std::string> blob_names = net->blob_names();
     const std::vector<int> output_blob_indices = net->output_blob_indices();
