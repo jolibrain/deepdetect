@@ -93,8 +93,6 @@ namespace dd
 
     caffe::SliceParameter *sparam = lparam->mutable_slice_param();
     sparam->set_slice_dim(2);
-    //sparam->add_slice_point(1);
-    slice_points.insert(1);
     for (std::set<int>::iterator i = slice_points.begin(); i!= slice_points.end(); ++i)
       {
         sparam->add_slice_point(*i);
@@ -184,11 +182,12 @@ namespace dd
     double dropout = 0.0;
     std::vector<int> targets = {1}; // index of csv columns to predict
     std::vector<int> inputs = {0}; // index of csv columns to use a input
+    std::vector<int> unused = {}; // index of csv columns to use a input
+    std::map<int,int> types;
     std::string loss = "SmoothL1Loss";
     std::string loss_temp;
     double sl1sigma = 10;
 
-    int ncols = 2;
     int hidden = 50;
     if (ad_mllib.has("layers"))
       layers = ad_mllib.get("layers").get<std::vector<std::string>>();
@@ -202,8 +201,8 @@ namespace dd
       targets = ad_mllib.get("targets").get<std::vector<int>>();
     if (ad_mllib.has("inputs"))
       inputs = ad_mllib.get("inputs").get<std::vector<int>>();
-    if (ad_mllib.has("ncols"))
-      ncols = ad_mllib.get("ncols").get<int>();
+    if (ad_mllib.has("ignore"))
+      unused = ad_mllib.get("ignore").get<std::vector<int>>();
     if (ad_mllib.has("hidden"))
       hidden = ad_mllib.get("hidden").get<int>();
     if (ad_mllib.has("loss"))
@@ -217,13 +216,6 @@ namespace dd
     else
       sl1sigma = 10.0; //override proto default in order to be sharp L1
 
-    // caffe::LayerParameter *i1param = this->_net_params->mutable_layer(0);
-    // caffe::MemoryDataParameter * mparam = i1param->mutable_memory_data_param();
-    // mparam->set_height(1+ncols);
-    // i1param = this->_net_params->mutable_layer(1);
-    // mparam = i1param->mutable_memory_data_param();
-    // mparam->set_height(1+ncols);
-
     std::string bottom = "data";
     std::sort(targets.begin(), targets.end());
     std::sort(inputs.begin(), inputs.end());
@@ -233,60 +225,28 @@ namespace dd
     add_permute(this->_dnet_params, "permuted_data", "data", 4,false,false);
 
 
-    // slice
-    // one output is continuation indicator,
-    // others are separation from input to ouput
-
     std::set<int> slice_points;
-    for (int unsigned i=0; i< targets.size(); ++i)
-      {
-        slice_points.insert(targets[i]+1);
-        slice_points.insert(targets[i]+2);
-      }
-    for (int unsigned i=0; i< inputs.size(); ++i)
-      {
-        slice_points.insert(inputs[i]+1);
-        slice_points.insert(inputs[i]+2);
-      }
-    slice_points.erase(ncols+1);
-
     std::vector<std::string> tops;
-    std::vector<std::string> bottoms;
-    std::vector<int> ttargets(targets);
-    std::vector<int> tinputs(inputs);
-    int last_treated = -1;
-    while (!ttargets.empty() || !tinputs.empty())
+
+
+    for (int i: targets)
+      types.insert(std::pair<int,int>(i,1));
+    for (int i: inputs)
+      types.insert(std::pair<int,int>(i,-1));
+    for (int i: unused)
+      types.insert(std::pair<int,int>(i,0));
+
+    for (auto it = types.begin(); it != types.end(); ++it)
       {
-        int first_t = *(ttargets.begin());
-        int first_i = *(tinputs.begin());
-        if (first_t < first_i || tinputs.empty())
+        slice_points.insert(it->first+1);
+        std::string topName;
+        switch (it->second)
           {
-            if (first_t > last_treated+1)
-              {
-                if (first_t-1 == last_treated+1)
-                  tops.push_back("unused_"+std::to_string(first_t -1));
-                else
-                  tops.push_back("unused_"+std::to_string(last_treated+1)+"_"
-                                 +std::to_string(first_t -1));
-              }
-            tops.push_back("target_"+std::to_string(first_t));
-            ttargets.erase(ttargets.begin());
-            last_treated = first_t;
+          case 1: topName = "target_"; break;
+          case -1: topName = "input_"; break;
+          default: topName = "unused_"; break;
           }
-        else
-          {
-            if (first_i > last_treated+1)
-              {
-                if (first_i-1 == last_treated+1)
-                  tops.push_back("unused_"+std::to_string(first_i -1));
-                else
-                  tops.push_back("unused_"+std::to_string(last_treated+1)+"_"
-                                 +std::to_string(first_i -1));
-              }
-            tops.push_back("input_"+std::to_string(first_i));
-            tinputs.erase(tinputs.begin());
-            last_treated = first_i;
-          }
+        tops.push_back(topName + std::to_string(it->first));
       }
 
     add_slicer(this->_net_params, slice_points, tops, "permuted_data","cont_seq_unshaped");
@@ -354,7 +314,7 @@ namespace dd
       {
         caffe::SmoothL1LossParameter *lp = lparam->mutable_smooth_l1_loss_param();
         lp->set_sigma(sl1sigma);
-        lp->set_norm_mode(::caffe::SmoothL1LossParameter::COUNT);
+        //        lp->set_norm_mode(::caffe::SmoothL1LossParameter::COUNT);
       }
   }
 
