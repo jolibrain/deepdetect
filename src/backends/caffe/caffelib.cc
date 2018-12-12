@@ -1941,9 +1941,9 @@ namespace dd
 
 
     if (typeid(inputc) == typeid(CSVTSCaffeInputFileConn)
-        && ad.getobj("parameters").getobj("input").has("timesteps")
+        && ad.getobj("parameters").getobj("input").has("timesteps"))
       {
-        timesteps = ad.getobj("parameters").getobj("input").get("timesteps").get<int>();
+        int timesteps = ad.getobj("parameters").getobj("input").get("timesteps").get<int>();
         update_timesteps(timesteps);
         int cm = create_model(true);
         if (cm != 0)
