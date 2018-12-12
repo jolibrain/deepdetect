@@ -186,7 +186,7 @@ namespace dd
     std::vector<int> inputs = {0}; // index of csv columns to use a input
     std::string loss = "SmoothL1Loss";
     std::string loss_temp;
-    double sl1sigma = 0.000000001;
+    double sl1sigma = 10;
 
     int ncols = 2;
     int hidden = 50;
@@ -354,6 +354,7 @@ namespace dd
       {
         caffe::SmoothL1LossParameter *lp = lparam->mutable_smooth_l1_loss_param();
         lp->set_sigma(sl1sigma);
+        lp->set_norm_mode(::caffe::SmoothL1LossParameter::COUNT);
       }
   }
 
