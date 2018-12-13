@@ -2053,6 +2053,9 @@ namespace dd
     std::vector<APIData> vrad;
     int nclasses = -1;
     int idoffset = 0;
+    std::vector<APIData> series;
+    int serieNum = 0;
+
     while(true)
       {
 	try
@@ -2061,7 +2064,25 @@ namespace dd
 	      {
 		std::vector<Datum> dv = inputc.get_dv_test(batch_size,has_mean_file);
 		if (dv.empty())
-		  break;
+                {
+                  if (typeid(inputc) == typeid(CSVTSCaffeInputFileConn)) // timeseries
+                    // in case of time series, need to output data of last serie at end
+                    {
+                      if (series.size() > 1)
+                        {
+                          APIData out;
+                          if (!inputc._ids.empty())
+                            out.add("uri",inputc._ids.at(serieNum++));
+                          else out.add("uri",std::to_string(serieNum++));
+                          out.add("series", series);
+                          out.add("probs",std::vector<double>(series.size(),1.0));
+                          out.add("loss",0.0);
+                          vrad.push_back(out);
+                        }
+                      series.clear();
+                    }
+                  break;
+                }
 		batch_size = dv.size();
 		if (boost::dynamic_pointer_cast<caffe::MemoryDataLayer<float>>(_net->layers()[0]) == 0)
 		    {
@@ -2405,19 +2426,18 @@ namespace dd
                  reinterpret_cast<CSVTSCaffeInputFileConn*>(&inputc);
 
 
-               APIData out;
-               std::vector<APIData> series;
-               int serieNum = 0;
 
                for (int j=0; j<batch_size; ++j)
                  {
                    for (int t=0; t<ic->_timesteps; ++t)
                      {
-                       if (contseq->cpu_data()[t*batch_size+j] == 0 && series.size() != 0)
+                       std::vector<int> loc0 = {t,j};
+                       if (contseq->data_at(loc0) == 0 && series.size() != 0)
                          // new seq -> push old one
                          {
                            if (series.size() > 1)
                              {
+                               APIData out;
                                if (!inputc._ids.empty())
                                  out.add("uri",inputc._ids.at(serieNum++));
                                else out.add("uri",std::to_string(serieNum++));
