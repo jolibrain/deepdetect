@@ -1516,7 +1516,7 @@ namespace dd
                            {
                              for (int k: _targets)
                                {
-                                 vals.push_back(dv.at(s).float_data(t*ic->_datadim+k));
+                                 vals.push_back(dv.at(s).float_data(t*ic->_datadim+k+1));
                                }
                            }
 			    dv_float_data.push_back(vals);
@@ -1826,7 +1826,7 @@ namespace dd
                     {
                       std::vector<double> target;
                       for (size_t k=0;k<dv_float_data.at(j).size();k++)
-                        target.push_back(dv_float_data.at(j).at(k));
+                          target.push_back(dv_float_data.at(j).at(k));
                       bad.add("target", target);
 
                       CSVTSCaffeInputFileConn* ic =
@@ -1945,14 +1945,18 @@ namespace dd
         && ad.getobj("parameters").getobj("input").has("timesteps"))
       {
         int timesteps = ad.getobj("parameters").getobj("input").get("timesteps").get<int>();
-        update_timesteps(timesteps);
-        int cm = create_model(true);
-        if (cm != 0)
-          this->_logger->error("Error creating model for prediction");
-        if (cm == 1)
-          throw MLLibInternalException("no model in " + this->_mlmodel._repo + " for initializing the net");
-        else if (cm == 2)
-          throw MLLibBadParamException("no deploy file in " + this->_mlmodel._repo + " for initializing the net");
+
+        bool changed = update_timesteps(timesteps);
+        if (changed)
+          {
+            int cm = create_model(true);
+            if (cm != 0)
+              this->_logger->error("Error creating model for prediction");
+            if (cm == 1)
+              throw MLLibInternalException("no model in " + this->_mlmodel._repo + " for initializing the net");
+            else if (cm == 2)
+              throw MLLibBadParamException("no deploy file in " + this->_mlmodel._repo + " for initializing the net");
+          }
       }
 
 
@@ -2741,15 +2745,19 @@ namespace dd
 
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_timesteps(int timesteps)
+  bool CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_timesteps(int timesteps)
   {
     std::string deploy_file = this->_mlmodel._repo + "/deploy.prototxt";
     caffe::NetParameter deploy_net_param;
     caffe::ReadProtoFromTextFile(deploy_file,&deploy_net_param);
 
     caffe::LayerParameter *lparam = deploy_net_param.mutable_layer(0);
+    int orig_timesteps = lparam->memory_data_param().channels();
+    if (orig_timesteps == timesteps)
+      return false;
     lparam->mutable_memory_data_param()->set_channels(timesteps);
     caffe::WriteProtoToTextFile(deploy_net_param,deploy_file);
+    return true;
   }
 
 
