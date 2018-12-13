@@ -350,7 +350,7 @@ cmake .. -DUSE_CAFFE2=ON
 
 Caffe remains the default backend for DeepDetect though it can be deactivated with cmake. However, at least one library needs to be specified:
 ```
-cmake .. -DUSE_CAFFE=NO -DUSE_XGBOOST=ON
+cmake .. -DUSE_CAFFE=OFF -DUSE_XGBOOST=ON
 ```
 
 #### Build with similarity search support
