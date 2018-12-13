@@ -69,11 +69,10 @@ namespace dd
 
     void add_permute(caffe::NetParameter *net_params, std::string top, std::string bottom, int naxis,bool train, bool test);
 
-    void add_conv1d(caffe::NetParameter *net_params,
+    void add_affine(caffe::NetParameter *net_params,
                     std::string name,
                     std::string bottom,
                     std::string top,
-                    int nin,
                     int nout);
 
 

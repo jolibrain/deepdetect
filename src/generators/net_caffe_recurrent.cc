@@ -148,29 +148,24 @@ namespace dd
     cparam->set_axis(axis);
   }
 
-  void NetLayersCaffeRecurrent::add_conv1d(caffe::NetParameter *net_params,
+  void NetLayersCaffeRecurrent::add_affine(caffe::NetParameter *net_params,
                                            std::string name,
                                            std::string bottom,
                                            std::string top,
-                                           int nin,
                                            int nout)
   {
     caffe::LayerParameter *lparam = net_params->add_layer();
-    lparam->set_type("Convolution");
+    lparam->set_type("InnerProduct");
     lparam->set_name(name);
     lparam->add_top(top);
     lparam->add_bottom(bottom);
-    caffe::ConvolutionParameter *cparam = lparam->mutable_convolution_param();
+    caffe::InnerProductParameter *cparam = lparam->mutable_inner_product_param();
     cparam->set_num_output(nout);
-    cparam->add_kernel_size(nin);
     cparam->set_axis(2);
-    cparam->set_engine(caffe::ConvolutionParameter::CAFFE);
     caffe::FillerParameter *wfparam = cparam->mutable_weight_filler();
     wfparam->set_type("xavier");
     caffe::FillerParameter *bfparam = cparam->mutable_bias_filler();
     bfparam->set_type("xavier");
-
-
   }
 
 
@@ -214,7 +209,7 @@ namespace dd
     if (ad_mllib.has("sl1sigma"))
       sl1sigma = ad_mllib.get("sl1sigma").get<double>();
     else
-      sl1sigma = 10.0; //override proto default in order to be sharp L1
+      sl1sigma = 100.0; //override proto default in order to be sharp L1
 
     std::string bottom = "data";
     std::sort(targets.begin(), targets.end());
@@ -295,8 +290,8 @@ namespace dd
       }
 
 
-    add_conv1d(this->_net_params,"affine",bottom,"OUTPUT", hidden,targets.size());
-    add_conv1d(this->_dnet_params,"affine", bottom,"OUTPUT", hidden, targets.size());
+    add_affine(this->_net_params,"affine",bottom,"OUTPUT", targets.size());
+    add_affine(this->_dnet_params,"affine", bottom,"OUTPUT",  targets.size());
 
     add_permute(this->_net_params, "permuted_OUTPUT", "OUTPUT", 3,true,false);
     add_permute(this->_net_params, "permuted_target_seq", "target_seq", 3,true,false);
@@ -312,9 +307,10 @@ namespace dd
     nsr->set_phase(caffe::TRAIN);
     if (loss == "SmoothL1Loss")
       {
-        caffe::SmoothL1LossParameter *lp = lparam->mutable_smooth_l1_loss_param();
-        lp->set_sigma(sl1sigma);
-        //        lp->set_norm_mode(::caffe::SmoothL1LossParameter::COUNT);
+        caffe::SmoothL1LossParameter *slp = lparam->mutable_smooth_l1_loss_param();
+        slp->set_sigma(sl1sigma);
+        caffe::LossParameter *lp = lparam->mutable_loss_param();
+        lp->set_normalization(::caffe::LossParameter::FULL);
       }
   }
 
