@@ -1631,7 +1631,7 @@ namespace dd
 	  // transform to datum by filling up float_data
 	  if (_train)
 	    {
-             csvts_to_dv(false,true,true,true);
+             csvts_to_dv(false,true,true,true,false);
 	    }
 	  if (!_train)
 	    {
@@ -1647,7 +1647,7 @@ namespace dd
 	  // auto hit = _csvtsdata_test.begin();
 	  // while(hit!=_csvtsdata_test.end())
 	    // {
-         csvts_to_dv(true,true,true,false);
+         csvts_to_dv(true,true,true,false,_continuation);
 	    // }
 	  _csvtsdata_test.clear();
 	}
@@ -1772,7 +1772,7 @@ namespace dd
     std::unique_ptr<caffe::db::Transaction> *txn_ptr = &_txn;
     std::unique_ptr<caffe::db::DB> *tdb_ptr = &_tdb;
 
-    csvts_to_dv(is_test_data,true,true,true);
+    csvts_to_dv(is_test_data,true,true,true,_continuation);
     if (is_test_data)
       {
         dvtodump = _dv_test;
@@ -1848,7 +1848,7 @@ namespace dd
   }
 
 
-  void CSVTSCaffeInputFileConn::csvts_to_dv(bool test, bool clear_dv_first, bool clear_csvts_after, bool split_seqs)
+  void CSVTSCaffeInputFileConn::csvts_to_dv(bool test, bool clear_dv_first, bool clear_csvts_after, bool split_seqs, bool first_is_cont)
   {
 
     std::vector<Datum> * dv;
@@ -1895,7 +1895,7 @@ namespace dd
         bool enough = true;
         for (unsigned int ti=0; ti < data->at(si).size() && enough; ++ti)
           {
-            if (ti == 0 || ((*index == 0) && split_seqs))
+            if ((ti == 0 && !first_is_cont) || ((*index == 0) && split_seqs))
               d->set_float_data(*index*this->_datadim,0.0); // new sequence
             else
               d->set_float_data(*index*this->_datadim,1.0); // continue sequence

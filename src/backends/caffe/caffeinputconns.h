@@ -822,12 +822,13 @@ namespace dd
   {
   public:
   CSVTSCaffeInputFileConn()
-    :CSVTSInputFileConn(), _dv_index(-1), _dv_test_index(-1), _timesteps(100)
+    :CSVTSInputFileConn(), _dv_index(-1), _dv_test_index(-1), _timesteps(100), _continuation(false)
       {
         reset_dv_test();
       }
   CSVTSCaffeInputFileConn(const CSVTSCaffeInputFileConn &i)
-    :CSVTSInputFileConn(i), CaffeInputInterface(i), _dv_index(i._dv_index), _dv_test_index(i._dv_test_index), _timesteps(i._timesteps)
+    :CSVTSInputFileConn(i), CaffeInputInterface(i), _dv_index(i._dv_index), _dv_test_index(i._dv_test_index),
+      _timesteps(i._timesteps), _continuation(i._continuation)
       {
         _timesteps = i._timesteps;
         this->_datadim = i._datadim;
@@ -848,6 +849,8 @@ namespace dd
       CSVTSInputFileConn::fillup_parameters(ad_input);
       if (ad_input.has("timesteps"))
         _timesteps= ad_input.get("timesteps").get<int>();
+      if (ad_input.has("contination"))
+        _continuation= ad_input.get("contination").get<bool>();
     }
 
 
@@ -900,7 +903,7 @@ namespace dd
                     const std::string &testdbname,
                     const APIData &ad_input,
                     const std::string &backend="lmdb"); // lmdb, leveldb
-    void csvts_to_dv(bool is_test_data=false, bool clear_dv_first = false, bool clear_csvts_after=false, bool split_seqs=true);
+    void csvts_to_dv(bool is_test_data=false, bool clear_dv_first = false, bool clear_csvts_after=false, bool split_seqs=true, bool first_is_cont = false);
     void dv_to_db(bool is_test_data=false);
 
     void write_csvts_to_db(const std::string &dbfullname,
@@ -921,6 +924,7 @@ namespace dd
     std::string _test_dbname = "test";
     std::string _correspname = "corresp.txt";
     int _timesteps;
+    bool _continuation;
 
   private:
     std::unique_ptr<caffe::db::Transaction> _txn;
