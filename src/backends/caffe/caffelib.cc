@@ -27,6 +27,7 @@
 #include "generators/net_caffe_resnet.h"
 #include "utils/fileops.hpp"
 #include "utils/utils.hpp"
+#include "utils/apitools.h"
 #include "caffe/sgd_solvers.hpp"
 #include <chrono>
 #include <iostream>
@@ -829,8 +830,9 @@ namespace dd
 #else
     Caffe::set_mode(Caffe::CPU);
 #endif
-    if (ad.has("scale"))
-      _scale = ad.get("scale").get<double>();
+    const std::string scale_key = "scale";
+    if (ad.has(scale_key))
+      apitools::get_float(ad, scale_key, _scale);
     if (ad.has("db"))
       this->_inputc._db = ad.get("db").get<bool>(); // XXX: API backward compatibility, if db is in mllib, assume it applies to input as well
     if (ad.has("nclasses"))
