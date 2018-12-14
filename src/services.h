@@ -27,10 +27,13 @@
 #include "apidata.h"
 #include "inputconnectorstrategy.h"
 #include "imginputfileconn.h"
+#include "csvinputfileconn.h"
 #include "txtinputfileconn.h"
 #include "svminputfileconn.h"
 #include "outputconnectorstrategy.h"
+#ifdef USE_CAFFE
 #include "backends/caffe/caffelib.h"
+#endif
 #ifdef USE_TF
 #include "backends/tf/tflib.h"
 #endif
@@ -55,33 +58,51 @@
 namespace dd
 {
   /* service types as variant type. */
-  typedef mapbox::util::variant<MLService<CaffeLib,ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>,
+  typedef mapbox::util::variant<
+#ifdef USE_CAFFE
+    MLService<CaffeLib,ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>,
     MLService<CaffeLib,CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>,
     MLService<CaffeLib,TxtCaffeInputFileConn,SupervisedOutput,CaffeModel>,
     MLService<CaffeLib,SVMCaffeInputFileConn,SupervisedOutput,CaffeModel>,
     MLService<CaffeLib,ImgCaffeInputFileConn,UnsupervisedOutput,CaffeModel>,
     MLService<CaffeLib,CSVCaffeInputFileConn,UnsupervisedOutput,CaffeModel>,
     MLService<CaffeLib,TxtCaffeInputFileConn,UnsupervisedOutput,CaffeModel>,
+    MLService<CaffeLib,SVMCaffeInputFileConn,UnsupervisedOutput,CaffeModel>
+#endif
 #ifdef USE_CAFFE2
+    #ifdef USE_CAFFE
+    ,
+    #endif
     MLService<Caffe2Lib,ImgCaffe2InputFileConn,SupervisedOutput,Caffe2Model>,
-    MLService<Caffe2Lib,ImgCaffe2InputFileConn,UnsupervisedOutput,Caffe2Model>,
+    MLService<Caffe2Lib,ImgCaffe2InputFileConn,UnsupervisedOutput,Caffe2Model>
 #endif
 #ifdef USE_TF
+    #if defined(USE_CAFFE) || defined(USE_CAFFE2)
+    ,
+    #endif
     MLService<TFLib,ImgTFInputFileConn,SupervisedOutput,TFModel>,
-    MLService<TFLib,ImgTFInputFileConn,UnsupervisedOutput,TFModel>,
+    MLService<TFLib,ImgTFInputFileConn,UnsupervisedOutput,TFModel>
 #endif
 #ifdef USE_DLIB
-	MLService<DlibLib,ImgDlibInputFileConn,SupervisedOutput,DlibModel>,
+    #if defined(USE_CAFFE) || defined(USE_CAFFE2) || defined(USE_TF)
+    ,
+    #endif
+    MLService<DlibLib,ImgDlibInputFileConn,SupervisedOutput,DlibModel>
 #endif
-    MLService<CaffeLib,SVMCaffeInputFileConn,UnsupervisedOutput,CaffeModel>
 #ifdef USE_XGBOOST
-    ,MLService<XGBLib,CSVXGBInputFileConn,SupervisedOutput,XGBModel>,
+    #if defined(USE_CAFFE) || defined(USE_CAFFE2) || defined(USE_TF) || defined(USE_DLIB)
+    ,
+    #endif
+    MLService<XGBLib,CSVXGBInputFileConn,SupervisedOutput,XGBModel>,
     MLService<XGBLib,SVMXGBInputFileConn,SupervisedOutput,XGBModel>,
     MLService<XGBLib,TxtXGBInputFileConn,SupervisedOutput,XGBModel>
 #endif
 #ifdef USE_TSNE
-    ,MLService<TSNELib,CSVTSNEInputFileConn,UnsupervisedOutput,TSNEModel>
-    ,MLService<TSNELib,TxtTSNEInputFileConn,UnsupervisedOutput,TSNEModel>
+    #if defined(USE_CAFFE) || defined(USE_CAFFE2) || defined(USE_TF) || defined(USE_DLIB) || defined(USE_XGBOOST)
+    ,
+    #endif
+    MLService<TSNELib,CSVTSNEInputFileConn,UnsupervisedOutput,TSNEModel>,
+    MLService<TSNELib,TxtTSNEInputFileConn,UnsupervisedOutput,TSNEModel>
 #endif
     > mls_variant_type;
 

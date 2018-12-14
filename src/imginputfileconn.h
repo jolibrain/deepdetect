@@ -553,11 +553,14 @@ namespace dd
   };
 }
 
+#ifdef USE_CAFFE
 #include "caffeinputconns.h"
+#endif
 
 #ifdef USE_TF
 #include "backends/tf/tfinputconns.h"
 #endif
+
 #ifdef USE_DLIB
 #include "backends/dlib/dlibinputconns.h"
 #endif

@@ -21,7 +21,6 @@
 
 #include "xgbmodel.h"
 #include <utils/fileops.hpp>
-#include <glog/logging.h>
 
 namespace dd
 {
