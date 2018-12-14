@@ -157,7 +157,7 @@ if (USE_DLIB)
           PREFIX dlib
           INSTALL_DIR ${CMAKE_BINARY_DIR}
           URL https://github.com/davisking/dlib/archive/${DLIB_RELEASE_VERSION}.tar.gz
-          CONFIGURE_COMMAND cd dlib && mkdir build && cd build && cmake .. -DDLIB_NO_GUI_SUPPORT=ON -DDLIB_USE_CUDA=ON -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/dlib/build && cmake --build . --config Release --target install
+          CONFIGURE_COMMAND cd dlib && mkdir -p build && cd build && cmake .. -DDLIB_NO_GUI_SUPPORT=ON -DDLIB_USE_CUDA=ON -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/dlib/build && cmake --build . --config Release --target install
           BUILD_COMMAND ""
           INSTALL_COMMAND ""
           BUILD_IN_SOURCE 1
@@ -170,7 +170,7 @@ if (USE_DLIB)
             PREFIX dlib
             INSTALL_DIR ${CMAKE_BINARY_DIR}
             URL https://github.com/davisking/dlib/archive/${DLIB_RELEASE_VERSION}.tar.gz
-            CONFIGURE_COMMAND cd dlib && mkdir build && cd build && cmake .. -DDLIB_NO_GUI_SUPPORT=ON -DDLIB_USE_CUDA=OFF -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/dlib/build && cmake --build . --config Release --target install
+            CONFIGURE_COMMAND cd dlib && mkdir -p build && cd build && cmake .. -DDLIB_NO_GUI_SUPPORT=ON -DDLIB_USE_CUDA=OFF -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/dlib/build && cmake --build . --config Release --target install
             BUILD_COMMAND ""
             INSTALL_COMMAND ""
             BUILD_IN_SOURCE 1
@@ -283,7 +283,7 @@ if (USE_CAFFE2)
   set(PROTOBUF_INCLUDE_DIR ${CMAKE_BINARY_DIR}/protobuf/include)
   set(PROTOBUF_LIB_DIR ${CMAKE_BINARY_DIR}/protobuf/lib)
   if (NOT EXISTS ${CMAKE_BINARY_DIR}/protobuf)
-    execute_process(COMMAND mkdir ${CMAKE_BINARY_DIR}/protobuf)
+    execute_process(COMMAND mkdir -p ${CMAKE_BINARY_DIR}/protobuf)
     execute_process(COMMAND ln -s ${PYTORCH_PATH}/third_party/protobuf/src ${PROTOBUF_INCLUDE_DIR})
     execute_process(COMMAND ln -s ${PYTORCH_PATH}-build/lib ${PROTOBUF_LIB_DIR})
     execute_process(COMMAND ln -s ${PYTORCH_PATH}-build/bin ${CMAKE_BINARY_DIR}/protobuf/bin)
@@ -307,7 +307,7 @@ if (USE_CAFFE2)
 
   # Python path
   if (NOT EXISTS ${CMAKE_BINARY_DIR}/python_path)
-    execute_process(COMMAND mkdir ${CMAKE_BINARY_DIR}/python_path)
+    execute_process(COMMAND mkdir -p ${CMAKE_BINARY_DIR}/python_path)
     execute_process(COMMAND ln -s ${PYTORCH_PATH}-build
       ${CMAKE_BINARY_DIR}/python_path/pytorch)
     execute_process(COMMAND ln -s ${DETECTRON_PATH}
@@ -332,7 +332,7 @@ if (USE_TF)
       PREFIX tensorflow_cc
       INSTALL_DIR ${CMAKE_BINARY_DIR}
       DOWNLOAD_COMMAND git clone https://github.com/beniz/tensorflow_cc.git
-      CONFIGURE_COMMAND cd tensorflow_cc && mkdir build && cd build && cmake -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED=ON .. && make && ln -s ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/tensorflow/tensorflow/contrib/makefile/gen/protobuf ${CMAKE_BINARY_DIR}/protobuf
+      CONFIGURE_COMMAND cd tensorflow_cc && mkdir -p build && cd build && cmake -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED=ON .. && make && ln -s ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/tensorflow/tensorflow/contrib/makefile/gen/protobuf ${CMAKE_BINARY_DIR}/protobuf
       BUILD_COMMAND ""
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
@@ -344,7 +344,7 @@ if (USE_TF)
       PREFIX tensorflow_cc
       INSTALL_DIR ${CMAKE_BINARY_DIR}
       DOWNLOAD_COMMAND git clone https://github.com/beniz/tensorflow_cc.git
-      CONFIGURE_COMMAND cd tensorflow_cc && mkdir build && cd build && cmake -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED_CPU=ON .. && make && ln -s ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/tensorflow/tensorflow/contrib/makefile/gen/protobuf ${CMAKE_BINARY_DIR}/protobuf
+      CONFIGURE_COMMAND cd tensorflow_cc && mkdir -p build && cd build && cmake -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED_CPU=ON .. && make && ln -s ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/tensorflow/tensorflow/contrib/makefile/gen/protobuf ${CMAKE_BINARY_DIR}/protobuf
       BUILD_COMMAND ""
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
@@ -511,7 +511,7 @@ if (USE_NCNN)
       INSTALL_DIR ${CMAKE_BINARY_DIR}
       DOWNLOAD_COMMAND git clone --recursive https://github.com/Tencent/ncnn.git
       PATCH_COMMAND git reset --hard ${NCNN_COMMIT_HASH}
-      CONFIGURE_COMMAND mkdir build && cd build && cmake .. -DPI3=ON -DCMAKE_TOOLCHAIN_FILE=../pi3.toolchain.cmake
+      CONFIGURE_COMMAND mkdir -p build && cd build && cmake .. -DPI3=ON -DCMAKE_TOOLCHAIN_FILE=../pi3.toolchain.cmake
       BUILD_COMMAND cd build/ && make -j${N}
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
@@ -523,7 +523,7 @@ if (USE_NCNN)
       INSTALL_DIR ${CMAKE_BINARY_DIR}
       DOWNLOAD_COMMAND git clone --recursive https://github.com/Tencent/ncnn.git
       PATCH_COMMAND git reset --hard ${NCNN_COMMIT_HASH}
-      CONFIGURE_COMMAND mkdir build && cd build && cmake ..
+      CONFIGURE_COMMAND mkdir -p build && cd build && cmake ..
       BUILD_COMMAND cd build/ && make -j${N}
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
@@ -548,7 +548,7 @@ if (USE_XGBOOST)
       PREFIX xgboost
       INSTALL_DIR ${CMAKE_BINARY_DIR}
       DOWNLOAD_COMMAND git clone --recursive https://github.com/dmlc/xgboost.git
-      CONFIGURE_COMMAND wget https://github.com/NVlabs/cub/archive/1.6.4.zip && unzip 1.6.4.zip && rm 1.6.4.zip && mkdir build && cd build &&
+      CONFIGURE_COMMAND wget https://github.com/NVlabs/cub/archive/1.6.4.zip && unzip 1.6.4.zip && rm 1.6.4.zip && mkdir -p build && cd build &&
       cmake .. -DPLUGIN_UPDATER_GPU=ON -DCUB_DIRECTORY=${CMAKE_BINARY_DIR}/xgboost/src/xgboost/cub-1.6.4/ -DCUDA_NVCC_FLAGS=-Xcompiler\ -fPIC\ --expt-extended-lambda\ -gencode\ arch=compute_30,code=compute_30\ -gencode\ arch=compute_35,code=compute_35\ -gencode\ arch=compute_50,code=compute_50\ -gencode\ arch=compute_52,code=compute_52\ -gencode\ arch=compute_61,code=compute_61 && make && make
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
@@ -577,7 +577,7 @@ if (USE_TSNE)
       PREFIX Multicore-TSNE
       INSTALL_DIR ${CMAKE_BINARY_DIR}
       DOWNLOAD_COMMAND git clone https://github.com/beniz/Multicore-TSNE.git
-      CONFIGURE_COMMAND cd multicore_tsne && mkdir build && cd build && cmake ..
+      CONFIGURE_COMMAND cd multicore_tsne && mkdir -p build && cd build && cmake ..
       BUILD_COMMAND cd multicore_tsne/build/ && make
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1

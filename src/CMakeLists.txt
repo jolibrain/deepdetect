@@ -41,6 +41,12 @@ endif()
 if (USE_DLIB)
   list(APPEND ddetect_SOURCES backends/dlib/DNNStructures.h backends/dlib/dliblib.cc backends/dlib/dliblib.h backends/dlib/dlibmodel.cc backends/dlib/dlibmodel.h backends/dlib/dlibinputconns.h)
 endif()
+if (USE_NCNN)
+  list(APPEND ddetect_SOURCES
+    backends/ncnn/ncnnlib.cc
+    backends/ncnn/ncnnmodel.cc
+  )
+endif()
 add_library(ddetect ${ddetect_SOURCES})
 if (USE_CAFFE)
   add_dependencies(ddetect caffe_dd)

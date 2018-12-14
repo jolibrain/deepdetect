@@ -76,7 +76,7 @@ namespace dd
         if (ad.has("threads"))
             _threads = ad.get("threads").get<int>();
         else
-            _threads = dd_utils::hardware_concurrency();
+            _threads = dd_utils::my_hardware_concurrency();
 
         _blob_pool_allocator.set_size_compare_ratio(0.0f);
         _workspace_pool_allocator.set_size_compare_ratio(0.5f);
