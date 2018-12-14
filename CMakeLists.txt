@@ -504,16 +504,13 @@ if (USE_NCNN)
   add_definitions(-DUSE_NCNN)
   set(NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src/libncnn.a)
   set(NCNN_COMMIT_HASH "569be5a19651373cca68933f6430c781d7d6fd97")
-  list(APPEND NCNN_PATCHES
-    ${CMAKE_BINARY_DIR}/patches/ncnn/openmp.patch
-    )
   if (RPI3)
     ExternalProject_Add(
       ncnn
       PREFIX ncnn
       INSTALL_DIR ${CMAKE_BINARY_DIR}
       DOWNLOAD_COMMAND git clone --recursive https://github.com/Tencent/ncnn.git
-      PATCH_COMMAND git reset --hard ${NCNN_COMMIT_HASH} && git am ${NCNN_PATCHES}
+      PATCH_COMMAND git reset --hard ${NCNN_COMMIT_HASH}
       CONFIGURE_COMMAND mkdir build && cd build && cmake .. -DPI3=ON -DCMAKE_TOOLCHAIN_FILE=../pi3.toolchain.cmake
       BUILD_COMMAND cd build/ && make -j${N}
       INSTALL_COMMAND ""
@@ -525,7 +522,7 @@ if (USE_NCNN)
       PREFIX ncnn
       INSTALL_DIR ${CMAKE_BINARY_DIR}
       DOWNLOAD_COMMAND git clone --recursive https://github.com/Tencent/ncnn.git
-      PATCH_COMMAND git reset --hard ${NCNN_COMMIT_HASH} && git am ${NCNN_PATCHES}
+      PATCH_COMMAND git reset --hard ${NCNN_COMMIT_HASH}
       CONFIGURE_COMMAND mkdir build && cd build && cmake ..
       BUILD_COMMAND cd build/ && make -j${N}
       INSTALL_COMMAND ""
