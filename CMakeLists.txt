@@ -618,7 +618,7 @@ if (USE_HDF5)
     ${TF_LIB_DEPS}
     ${XGBOOST_LIB_DEPS}
     ${TSNE_LIB_DEPS}
-    ${NCNN_LIB_DIR}
+    ${NCNN_LIB_DEPS}
     ${DLIB_LIB_DEPS})
 else()
   set(COMMON_LINK_LIBS
@@ -628,7 +628,7 @@ else()
     ${TF_LIB_DEPS}
     ${XGBOOST_LIB_DEPS}
     ${TSNE_LIB_DEPS}
-    ${NCNN_LIB_DIR}
+    ${NCNN_LIB_DEPS}
     ${DLIB_LIB_DEPS})
 endif()
 set(HTTP_LINK_LIBS cppnetlib-uri crypto ssl)
