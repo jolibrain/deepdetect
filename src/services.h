@@ -108,7 +108,10 @@ namespace dd
     MLService<TSNELib,TxtTSNEInputFileConn,UnsupervisedOutput,TSNEModel>
 #endif
 #ifdef USE_NCNN
-    ,MLService<NCNNLib,ImgNCNNInputFileConn,SupervisedOutput,NCNNModel>
+    #if defined(USE_CAFFE) || defined(USE_CAFFE2) || defined(USE_TF) || defined(USE_DLIB) || defined(USE_XGBOOST) || defined(USE_TSNE)
+    ,
+    #endif
+    MLService<NCNNLib,ImgNCNNInputFileConn,SupervisedOutput,NCNNModel>
 #endif
     > mls_variant_type;
 
