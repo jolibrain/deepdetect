@@ -3,6 +3,7 @@ project(deepdetect)
 
 option(USE_CAFFE2 "build caffe2 backend")
 option(USE_TF "use TF backend")
+option(USE_NCNN "use NCNN backend")
 option(USE_HDF5 "use HDF5" ON)
 option(USE_CAFFE "use Caffe backend" ON)
 
@@ -497,6 +498,44 @@ if (USE_CAFFE2)
   endif()
 endif()
 
+# NCNN
+if (USE_NCNN)
+  message(STATUS "Configuring NCNN")
+  add_definitions(-DUSE_NCNN)
+  set(NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src/libncnn.a)
+  set(NCNN_COMMIT_HASH "569be5a19651373cca68933f6430c781d7d6fd97")
+  list(APPEND NCNN_PATCHES
+    ${CMAKE_BINARY_DIR}/patches/ncnn/openmp.patch
+    )
+  if (RPI3)
+    ExternalProject_Add(
+      ncnn
+      PREFIX ncnn
+      INSTALL_DIR ${CMAKE_BINARY_DIR}
+      DOWNLOAD_COMMAND git clone --recursive https://github.com/Tencent/ncnn.git
+      PATCH_COMMAND git reset --hard ${NCNN_COMMIT_HASH} && git am ${NCNN_PATCHES}
+      CONFIGURE_COMMAND mkdir build && cd build && cmake .. -DPI3=ON -DCMAKE_TOOLCHAIN_FILE=../pi3.toolchain.cmake
+      BUILD_COMMAND cd build/ && make -j${N}
+      INSTALL_COMMAND ""
+      BUILD_IN_SOURCE 1
+    )
+  else ()
+    ExternalProject_Add(
+      ncnn
+      PREFIX ncnn
+      INSTALL_DIR ${CMAKE_BINARY_DIR}
+      DOWNLOAD_COMMAND git clone --recursive https://github.com/Tencent/ncnn.git
+      PATCH_COMMAND git reset --hard ${NCNN_COMMIT_HASH} && git am ${NCNN_PATCHES}
+      CONFIGURE_COMMAND mkdir build && cd build && cmake ..
+      BUILD_COMMAND cd build/ && make -j${N}
+      INSTALL_COMMAND ""
+      BUILD_IN_SOURCE 1
+    )
+  endif()
+  set(NCNN_INC_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/src ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src)
+  set(NCNN_LIB_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src)
+endif()
+
 # XGBoost
 if (USE_XGBOOST)
   message(STATUS "Configuring XGBoost")
@@ -556,6 +595,10 @@ include_directories("${PROJECT_BINARY_DIR}")
 include_directories(${CAFFE_INC_DIR} ${CAFFE2_INC_DIR} ${XGBOOST_INC_DIR} ${TSNE_INC_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/src/backends/caffe ${CMAKE_SOURCE_DIR}/backends/xgb ${CMAKE_SOURCE_DIR}/backends/tf ${CMAKE_SOURCE_DIR}/backends/dlib ${CMAKE_SOURCE_DIR}/backends/tsne)
 
+if (USE_NCNN)
+  include_directories(${NCNN_INC_DIR})
+endif()
+
 # main library, main & tests
 include_directories ("${PROJECT_SOURCE_DIR}/src")
 add_subdirectory (src)
@@ -568,6 +611,7 @@ set(COMMON_LINK_DIRS
   ${TF_LIB_DIR}
   ${XGBOOST_LIB_DIR}
   ${TSNE_LIB_DIR}
+  ${NCNN_LIB_DIR}
   ${DLIB_LIB_DIR})
 if (USE_HDF5)
   set(COMMON_LINK_LIBS
@@ -577,6 +621,7 @@ if (USE_HDF5)
     ${TF_LIB_DEPS}
     ${XGBOOST_LIB_DEPS}
     ${TSNE_LIB_DEPS}
+    ${NCNN_LIB_DIR}
     ${DLIB_LIB_DEPS})
 else()
   set(COMMON_LINK_LIBS
@@ -586,6 +631,7 @@ else()
     ${TF_LIB_DEPS}
     ${XGBOOST_LIB_DEPS}
     ${TSNE_LIB_DEPS}
+    ${NCNN_LIB_DIR}
     ${DLIB_LIB_DEPS})
 endif()
 set(HTTP_LINK_LIBS cppnetlib-uri crypto ssl)
