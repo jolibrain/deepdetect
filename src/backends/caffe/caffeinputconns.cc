@@ -610,6 +610,8 @@ namespace dd
 	    std::string img_path = elts.at(0);
 	    cv::Mat img = cv::imread(img_path, _unchanged_data ? CV_LOAD_IMAGE_UNCHANGED :
                                (_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR));
+	    if (img.empty())
+	      throw InputConnectorBadParamException("failed to read OCR image " + img_path);
 	    if (_align && img.rows > img.cols) // rotate so that width is longest axis
 	      {
 		cv::Mat timg;
