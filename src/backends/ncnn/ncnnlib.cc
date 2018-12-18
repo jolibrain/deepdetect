@@ -124,10 +124,14 @@ namespace dd
             bbox = true;
 
         // Extract detection or classification
+        int ret = 0;
         if (bbox == true) {
-            ex.extract("detection_out", inputc._out);
+            ret = ex.extract("detection_out", inputc._out);
         } else {
-            ex.extract("prob", inputc._out);
+            ret = ex.extract("prob", inputc._out);
+        }
+        if (ret == -1) {
+            throw MLLibInternalException("NCNN internal error");
         }
 
         std::vector<APIData> vrad;
