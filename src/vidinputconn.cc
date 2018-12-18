@@ -52,6 +52,7 @@ namespace dd
           if (dvid.read_element(this->_uris[0], this->_logger))
           {
             this->streamlib._input.set_filepath(this->_uris[0]);
+            this->streamlib.set_scale_size(this->_width, this->_height);
             this->streamlib.init();
             this->_logger->info("run async");
             this->streamlib.run_async();
@@ -66,8 +67,13 @@ namespace dd
           throw InputConnectorBadParamException("no video frame");
         }
         this->_images.push_back(rimg);
+        this->_images_size.push_back( std::pair<int,int>(
+            this->streamlib.get_original_width(),
+            this->streamlib.get_original_height())
+            );
+
       };
-      return;    
+      return;
     };
 
 

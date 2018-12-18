@@ -681,8 +681,9 @@ namespace dd
 		}
 	      _dv_test.push_back(datum);
 	      _ids.push_back(this->_uris.at(i));
-              // TODO: NBD img_size is constant
-	      //_imgs_size.insert(std::pair<std::string,std::pair<int,int>>(this->_uris.at(i),this->_images_size.at(i)));
+	      _imgs_size.insert(std::pair<std::string,
+                                          std::pair<int,int>>(this->_uris.at(i),
+                                                              this->_images_size.at(i)));
 	    }
 	  this->_images.clear();
 	  this->_images_size.clear();

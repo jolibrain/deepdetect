@@ -102,13 +102,13 @@ namespace dd
         // TODO: what for ? 
         return 30;
       };
-       int test_batch_size() const
-    {
-      
-      //return _test_images.size();
-      return MAX_FRAMES;
-    }
- 
+
+      int test_batch_size() const
+      {
+        //return _test_images.size();
+        return MAX_FRAMES;
+      };
+
       void transform(const APIData &ad);
 
       // data
@@ -117,7 +117,7 @@ namespace dd
       int _height = 300;
       bool _bw = false; /**< whether to convert to black & white. */
       std::vector<cv::Mat> _images;
-      std::vector<cv::Mat> _images_size;
+      std::vector<std::pair<int,int>> _images_size;
       unsigned long max_video_buffer = 300;
       std::string _current_uri;
 
