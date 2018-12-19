@@ -33,7 +33,7 @@ namespace dd
     public:
         NCNNModel():MLModel() {}
         NCNNModel(const APIData &ad)
-            :MLModel() {
+            :MLModel(ad) {
             if (ad.has("repository"))
 	            this->_repo = ad.get("repository").get<std::string>();
 	        read_from_repository(spdlog::get("api"));
