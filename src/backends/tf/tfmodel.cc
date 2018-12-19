@@ -24,7 +24,7 @@
 #include <string>
 namespace dd
 {
-  TFModel::TFModel(const APIData &ad, APIDat &adg,
+  TFModel::TFModel(const APIData &ad, APIData &adg,
 		   const std::shared_ptr<spdlog::logger> &logger)
     :MLModel(ad,adg,logger)
   {
