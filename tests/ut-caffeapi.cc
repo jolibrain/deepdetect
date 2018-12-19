@@ -1433,9 +1433,9 @@ TEST(caffeapi,service_train_csvts_lstm)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200,jd["status"]["code"]);
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
-  ASSERT_EQ("0",uri);
+  ASSERT_EQ("../examples/all/sinus//predict/seq_2.csv",uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
-  ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["serie"][0].GetDouble() >= -1.0);
+  ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["out"][0].GetDouble() >= -1.0);
 
   //  remove service
   jstr = "{\"clear\":\"full\"}";
@@ -1452,7 +1452,7 @@ TEST(caffeapi,service_train_csvts_db_lstm)
   std::string csvts_data = sinus + "/train";
   std::string csvts_test = sinus +"/test";
   std::string csvts_predict = sinus +"/predict";
-  std::string csvts_repo = "csvts";
+  std::string csvts_repo = "csvts_db";
   mkdir(csvts_repo.c_str(),0777);
   std::string sname = "my_service_csvts";
   std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my ts regressor\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  csvts_repo+"\",\"templates\":\"" + "/home/infantes/deepdetect/templates/caffe"+ "\"},\"parameters\":{\"input\":{\"connector\":\"csvts\",\"timesteps\":20,\"db\":true},\"mllib\":{\"template\":\"recurrent\",\"layers\":[\"L\",\"L\"],\"dropouts\":[0.0,0.0],\"regression\":true,\"targets\":[1],\"inputs\":[0],\"ncols\":2,\"hidden\":10,\"sl1sigma\":100.0,\"loss\":\"L1\",\"db\":true}}}";
@@ -1493,9 +1493,9 @@ TEST(caffeapi,service_train_csvts_db_lstm)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200,jd["status"]["code"]);
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
-  ASSERT_EQ("0",uri);
+  ASSERT_EQ("../examples/all/sinus//predict/seq_2.csv",uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
-  ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["serie"][0].GetDouble() >= -1.0);
+  ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["out"][0].GetDouble() >= -1.0);
 
   //  remove service
   jstr = "{\"clear\":\"full\"}";
