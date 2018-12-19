@@ -2739,6 +2739,18 @@ namespace dd
 	      }
 	  }
       }
+
+    if (typeid(inputc) == typeid(CSVTSCaffeInputFileConn))
+      {
+        caffe::LayerParameter *loss_scale_layer_param = find_layer_by_name(*np,"Loss_Scale");
+        if (loss_scale_layer_param != NULL)
+          {
+            loss_scale_layer_param->mutable_scale_param()->mutable_filler()->
+              set_value(1.0/(float)_ntargets/(float)inputc.batch_size());
+          }
+      }
+
+
     //caffe::WriteProtoToTextFile(*np,sp.net().c_str());
     sp.clear_net();
   }
@@ -2996,6 +3008,7 @@ namespace dd
 	if (_crop_size > 0)
 	  deploy_net_param.mutable_layer(0)->mutable_transform_param()->set_crop_size(_crop_size);
       }
+
     caffe::WriteProtoToTextFile(net_param,net_file);
     caffe::WriteProtoToTextFile(deploy_net_param,deploy_file);
   }

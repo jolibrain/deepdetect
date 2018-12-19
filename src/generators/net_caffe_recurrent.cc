@@ -179,9 +179,9 @@ namespace dd
     std::vector<int> inputs = {0}; // index of csv columns to use a input
     std::vector<int> unused = {}; // index of csv columns to use a input
     std::map<int,int> types;
-    std::string loss = "SmoothL1Loss";
+    std::string loss = "L1";
     std::string loss_temp;
-    double sl1sigma = 10;
+    //    double sl1sigma = 10;
 
     int hidden = 50;
     if (ad_mllib.has("layers"))
@@ -206,10 +206,10 @@ namespace dd
         if (loss_temp == "L2" || loss_temp == "euclidean")
           loss = "EuclideanLoss";
       }
-    if (ad_mllib.has("sl1sigma"))
-      sl1sigma = ad_mllib.get("sl1sigma").get<double>();
-    else
-      sl1sigma = 100.0; //override proto default in order to be sharp L1
+    // if (ad_mllib.has("sl1sigma"))
+    //   sl1sigma = ad_mllib.get("sl1sigma").get<double>();
+    // else
+    //   sl1sigma = 100.0; //override proto default in order to be sharp L1
 
     std::string bottom = "data";
     std::sort(targets.begin(), targets.end());
@@ -298,20 +298,68 @@ namespace dd
 
 
 
-    caffe::LayerParameter *lparam;
-    lparam = CaffeCommon::add_layer(this->_net_params,"permuted_OUTPUT","loss","loss",loss); // train
-
-    lparam->add_bottom("permuted_target_seq");
-    caffe::NetStateRule *nsr;
-    nsr = lparam->add_include();
-    nsr->set_phase(caffe::TRAIN);
-    if (loss == "SmoothL1Loss")
+    if (loss == "EuclideanLoss")
       {
-        caffe::SmoothL1LossParameter *slp = lparam->mutable_smooth_l1_loss_param();
-        slp->set_sigma(sl1sigma);
-        caffe::LossParameter *lp = lparam->mutable_loss_param();
-        lp->set_normalization(::caffe::LossParameter::FULL);
+        caffe::LayerParameter *lparam;
+        lparam = CaffeCommon::add_layer(this->_net_params,"permuted_OUTPUT","loss","loss",loss);
+        lparam->add_bottom("permuted_target_seq");
+        caffe::NetStateRule *nsr;
+        nsr = lparam->add_include();
+        nsr->set_phase(caffe::TRAIN);
       }
+    else
+      {
+
+        caffe::LayerParameter *lparam;
+        lparam = CaffeCommon::add_layer(this->_net_params,"permuted_target_seq", "permuted_target_seq_flattened",
+                                        "Target_Seq_Dim","Flatten");
+        caffe::FlattenParameter *ffp = lparam->mutable_flatten_param();
+        ffp->set_axis(2);
+        caffe::NetStateRule *nsr;
+        nsr = lparam->add_include();
+        nsr->set_phase(caffe::TRAIN);
+
+        lparam = CaffeCommon::add_layer(this->_net_params,"permuted_OUTPUT", "difference",
+                                        "Loss_Sum_Layer","Eltwise");
+        lparam->add_bottom("permuted_target_seq_flattened");
+        caffe::EltwiseParameter *ep = lparam->mutable_eltwise_param();
+        ep->set_operation(caffe::EltwiseParameter::SUM);
+        ep->add_coeff(1.0);
+        ep->add_coeff(-1.0);
+        nsr = lparam->add_include();
+        nsr->set_phase(caffe::TRAIN);
+
+        lparam = CaffeCommon::add_layer(this->_net_params,"difference","summed_difference",
+                                        "Loss_Reduction","Reduction");
+        caffe::ReductionParameter *rp = lparam->mutable_reduction_param();
+        rp->set_operation(caffe::ReductionParameter::ASUM);
+        rp->set_axis(1);
+        nsr = lparam->add_include();
+        nsr->set_phase(caffe::TRAIN);
+
+        lparam = CaffeCommon::add_layer(this->_net_params,"summed_difference","scaled_difference",
+                                        "Loss_Scale","Scale");
+        caffe::ScaleParameter *sp = lparam->mutable_scale_param();
+        caffe::FillerParameter *fp = sp->mutable_filler();
+        fp->set_type("constant");
+        fp->set_value(0.000025);
+        sp->set_axis(0);
+        sp->set_bias_term(false);
+        caffe::ParamSpec *ps = lparam->add_param();
+        ps->set_lr_mult(0.0);
+        ps->set_decay_mult(0.0);
+        nsr = lparam->add_include();
+        nsr->set_phase(caffe::TRAIN);
+
+        lparam = CaffeCommon::add_layer(this->_net_params,"scaled_difference","loss",
+                                        "Loss_Reduction_Batch","Reduction");
+        rp = lparam->mutable_reduction_param();
+        rp->set_operation(caffe::ReductionParameter::SUM);
+        lparam->add_loss_weight(1.0);
+        nsr = lparam->add_include();
+        nsr->set_phase(caffe::TRAIN);
+      }
+
   }
 
   template class NetCaffe<NetInputCaffe<CSVTSCaffeInputFileConn>,NetLayersCaffeRecurrent,NetLossCaffe>;
