@@ -4,6 +4,11 @@ project(deepdetect)
 option(USE_CAFFE2 "build caffe2 backend")
 option(USE_TF "use TF backend")
 option(USE_HDF5 "use HDF5" ON)
+option(USE_CAFFE "use Caffe backend" ON)
+
+if (USE_CAFFE)
+  add_definitions(-DUSE_CAFFE)
+endif()
 
 if (USE_TF AND USE_CAFFE2)
   message(FATAL_ERROR "Building with tensorflow AND caffe2 causes conflict
@@ -190,6 +195,11 @@ if (USE_CAFFE2)
   if (CUDA_FOUND AND NOT USE_CPU_ONLY)
     list(APPEND CAFFE2_LIB_DEPS -lcaffe2_gpu)
   endif()
+
+  if (NOT USE_CAFFE)
+    list(APPEND CAFFE2_LIB_DEPS -lprotobuf)
+  endif()
+
   include_directories(
     ${PYTORCH_PATH}
     ${PYTORCH_PATH}-build
@@ -359,7 +369,7 @@ message(STATUS "OpenCV ${OPENCV_VERSION} (${OpenCV_VERSION}) found (${OpenCV_CON
 # customized Caffe as external project
 if (CAFFE_INC_DIR AND CAFFE_LIB_DIR)
   # do nothing
-else()
+elseif(USE_CAFFE)
   message(STATUS "Configuring customized caffe")
 
   if (USE_DD_SYSLOG)
@@ -466,18 +476,28 @@ else()
 endif()
 
 # Caffe dependencies
-if (USE_HDF5)
-  set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lhdf5_hl -lhdf5 -lopenblas -lcaffe -lprotobuf)
-else()
-  set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lopenblas -lcaffe -lprotobuf)
+if (USE_CAFFE)
+  if (USE_HDF5)
+    set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lhdf5_hl -lhdf5 -lopenblas -lcaffe -lprotobuf)
+  else()
+    set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lopenblas -lcaffe -lprotobuf)
+  endif()
 endif()
 
 if (USE_TF)
-  add_dependencies(caffe_dd tensorflow_cc)
+  if (USE_CAFFE)
+    add_dependencies(caffe_dd tensorflow_cc)
+  endif()
 endif()
 
 if (USE_CAFFE2)
-  add_dependencies(caffe_dd detectron)
+  if (USE_CAFFE)
+    add_dependencies(caffe_dd pytorch)
+    add_dependencies(caffe_dd detectron)
+  else()
+    set(CAFFE2_INC_DIR ${PROTOBUF_INCLUDE_DIR})
+    set(CAFFE2_LIB_DIR ${PROTOBUF_LIB_DIR})
+  endif()
 endif()
 
 # XGBoost
@@ -518,7 +538,7 @@ endif()
 if (USE_TSNE)
   message(STATUS "Configuring T-SNE")
   add_definitions(-DUSE_TSNE)
-  set(TSNE_LIB_DEPS -ltsne_multicore)
+  set(TSNE_LIB_DEPS -ltsne_multicore -lglog)
   ExternalProject_Add(
       Multicore-TSNE
       PREFIX Multicore-TSNE
@@ -536,7 +556,7 @@ endif()
 # add the binary tree to the search path for include files
 # so that we will find dd_config.h
 include_directories("${PROJECT_BINARY_DIR}")
-include_directories(${CAFFE_INC_DIR} ${XGBOOST_INC_DIR} ${TSNE_INC_DIR})
+include_directories(${CAFFE_INC_DIR} ${CAFFE2_INC_DIR} ${XGBOOST_INC_DIR} ${TSNE_INC_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/src/backends/caffe ${CMAKE_SOURCE_DIR}/backends/xgb ${CMAKE_SOURCE_DIR}/backends/tf ${CMAKE_SOURCE_DIR}/backends/dlib ${CMAKE_SOURCE_DIR}/backends/tsne)
 
 # main library, main & tests

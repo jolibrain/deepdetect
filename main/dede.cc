@@ -23,12 +23,12 @@
 #include "commandlineapi.h"
 #include "commandlinejsonapi.h"
 #include "httpjsonapi.h"
-#include "caffelib.h"
 #include "imginputfileconn.h"
 #include "outputconnectorstrategy.h"
 #ifdef USE_XGBOOST
 #include <rabit/rabit.h>
 #endif
+#include <gflags/gflags.h>
 
 using namespace dd;
 
@@ -46,11 +46,13 @@ int main(int argc, char *argv[])
       DeepDetect<HttpJsonAPI> dd;
       dd.boot(argc,argv);
     }
+#ifdef USE_CAFFE
   else if (FLAGS_jsonapi == 2)
     {
       DeepDetect<CommandLineAPI> dd;
       dd.boot(argc,argv);
     }
+#endif
   else if (FLAGS_jsonapi == 1)
     {
       DeepDetect<CommandLineJsonAPI> dd;

@@ -104,7 +104,7 @@ namespace dd
     auto hit = lfiles.begin();
     while(hit!=lfiles.end())
       {
-	if ((*hit).find( meanf)!=std::string::npos)
+	if ((*hit).find(meanf)!=std::string::npos)
 	  {
 	    _has_mean_file = true;
 	  }
@@ -154,7 +154,7 @@ namespace dd
       _corresp = correspf;
     if (_solver.empty())
       _solver = solverf;
-    if (new_first || _weights.empty())
+    if (new_first || _sstate.empty())
       _sstate = sstatef;    
     return 0;
   }
