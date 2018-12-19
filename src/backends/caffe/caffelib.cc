@@ -2429,8 +2429,6 @@ namespace dd
                CSVTSCaffeInputFileConn* ic =
                  reinterpret_cast<CSVTSCaffeInputFileConn*>(&inputc);
 
-
-
                for (int j=0; j<batch_size; ++j)
                  {
                    for (int t=0; t<ic->_timesteps; ++t)
@@ -2457,7 +2455,20 @@ namespace dd
                        for (int k=0; k<nout; ++k)
                          {
                            std::vector<int> loc = {t,j,k};
-                           predictions.push_back(results[slot]->data_at(loc));
+                           APIData ad_input = ad.getobj("parameters").getobj("input");
+                           if (ad_input.has("unscale_outputs"))
+                             {
+                               std::vector<int> unscale_outputs = ad_input.get("unscale_outputs").get<std::vector<int>>();
+                               double res = results[slot]->data_at(loc);
+                               double max = ic->_max_vals[unscale_outputs[k]];
+                               double min = ic->_min_vals[unscale_outputs[k]];
+                               double unscaled_res = res * (max - min) + min;
+                               predictions.push_back(unscaled_res);
+                             }
+                           else
+                             {
+                               predictions.push_back(results[slot]->data_at(loc));
+                             }
                          }
                        APIData ts;
                        ts.add("out", predictions);
