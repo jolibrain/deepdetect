@@ -1459,7 +1459,7 @@ TEST(caffeapi,service_train_csvts_db_lstm)
   ASSERT_EQ(created_str,joutstr);
 
   // train
-  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"shuffle\":true,\"separator\":\",\",\"scale\":true,\"db\":true,\"timesteps\":20},\"mllib\":{\"db\":true,\"gpu\":true,\"gpuid\":"+gpuid+",\"solver\":{\"iterations\":" + iterations_lstm + ",\"test_interval\":500,\"base_lr\":0.001,\"snapshot\":500,\"test_initialization\":false},\"net\":{\"batch_size\":10}},\"output\":{\"measure\":[\"L1\",\"L2\"]}},\"data\":[\"" + csvts_data+"\",\""+csvts_test+"\"]}";
+  std::string jtrainstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"shuffle\":true,\"separator\":\",\",\"scale\":false,\"db\":true,\"timesteps\":20},\"mllib\":{\"db\":true,\"gpu\":true,\"gpuid\":"+gpuid+",\"solver\":{\"iterations\":" + iterations_lstm + ",\"test_interval\":500,\"base_lr\":0.001,\"snapshot\":500,\"test_initialization\":false},\"net\":{\"batch_size\":10}},\"output\":{\"measure\":[\"L1\",\"L2\"]}},\"data\":[\"" + csvts_data+"\",\""+csvts_test+"\"]}";
   std::cerr << "jtrainstr=" << jtrainstr << std::endl;
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
@@ -1477,14 +1477,10 @@ TEST(caffeapi,service_train_csvts_db_lstm)
   ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
   ASSERT_TRUE(jd["body"]["measure"].HasMember("L1_max_error"));
   ASSERT_TRUE(jd["body"]["measure"]["L1_mean_error"].GetDouble() > 0.0);
-  ASSERT_TRUE(jd["body"]["parameters"]["input"].HasMember("max_vals"));
-  ASSERT_TRUE(jd["body"]["parameters"]["input"].HasMember("min_vals"));
 
-  std::string str_min_vals = japi.jrender(jd["body"]["parameters"]["input"]["min_vals"]);
-  std::string str_max_vals = japi.jrender(jd["body"]["parameters"]["input"]["max_vals"]);
 
   // predict
-  std::string jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"connector\":\"csvts\",\"scale\":true,\"min_vals\":" + str_min_vals + ",\"max_vals\":" + str_max_vals + ",\"timesteps\":20},\"output\":{}},\"data\":[\"" + csvts_predict + "\"]}";
+  std::string jpredictstr = "{\"service\":\""+ sname + "\",\"parameters\":{\"input\":{\"connector\":\"csvts\",\"scale\":false,\"timesteps\":20},\"output\":{}},\"data\":[\"" + csvts_predict + "\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse(joutstr.c_str());
