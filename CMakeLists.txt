@@ -3,6 +3,7 @@ project(deepdetect)
 
 option(USE_CAFFE2 "build caffe2 backend")
 option(USE_TF "use TF backend")
+option(USE_NCNN "use NCNN backend")
 option(USE_HDF5 "use HDF5" ON)
 option(USE_CAFFE "use Caffe backend" ON)
 
@@ -156,7 +157,7 @@ if (USE_DLIB)
           PREFIX dlib
           INSTALL_DIR ${CMAKE_BINARY_DIR}
           URL https://github.com/davisking/dlib/archive/${DLIB_RELEASE_VERSION}.tar.gz
-          CONFIGURE_COMMAND cd dlib && mkdir build && cd build && cmake .. -DDLIB_NO_GUI_SUPPORT=ON -DDLIB_USE_CUDA=ON -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/dlib/build && cmake --build . --config Release --target install
+          CONFIGURE_COMMAND cd dlib && mkdir -p build && cd build && cmake .. -DDLIB_NO_GUI_SUPPORT=ON -DDLIB_USE_CUDA=ON -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/dlib/build && cmake --build . --config Release --target install
           BUILD_COMMAND ""
           INSTALL_COMMAND ""
           BUILD_IN_SOURCE 1
@@ -169,7 +170,7 @@ if (USE_DLIB)
             PREFIX dlib
             INSTALL_DIR ${CMAKE_BINARY_DIR}
             URL https://github.com/davisking/dlib/archive/${DLIB_RELEASE_VERSION}.tar.gz
-            CONFIGURE_COMMAND cd dlib && mkdir build && cd build && cmake .. -DDLIB_NO_GUI_SUPPORT=ON -DDLIB_USE_CUDA=OFF -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/dlib/build && cmake --build . --config Release --target install
+            CONFIGURE_COMMAND cd dlib && mkdir -p build && cd build && cmake .. -DDLIB_NO_GUI_SUPPORT=ON -DDLIB_USE_CUDA=OFF -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/dlib/build && cmake --build . --config Release --target install
             BUILD_COMMAND ""
             INSTALL_COMMAND ""
             BUILD_IN_SOURCE 1
@@ -282,7 +283,7 @@ if (USE_CAFFE2)
   set(PROTOBUF_INCLUDE_DIR ${CMAKE_BINARY_DIR}/protobuf/include)
   set(PROTOBUF_LIB_DIR ${CMAKE_BINARY_DIR}/protobuf/lib)
   if (NOT EXISTS ${CMAKE_BINARY_DIR}/protobuf)
-    execute_process(COMMAND mkdir ${CMAKE_BINARY_DIR}/protobuf)
+    execute_process(COMMAND mkdir -p ${CMAKE_BINARY_DIR}/protobuf)
     execute_process(COMMAND ln -s ${PYTORCH_PATH}/third_party/protobuf/src ${PROTOBUF_INCLUDE_DIR})
     execute_process(COMMAND ln -s ${PYTORCH_PATH}-build/lib ${PROTOBUF_LIB_DIR})
     execute_process(COMMAND ln -s ${PYTORCH_PATH}-build/bin ${CMAKE_BINARY_DIR}/protobuf/bin)
@@ -306,7 +307,7 @@ if (USE_CAFFE2)
 
   # Python path
   if (NOT EXISTS ${CMAKE_BINARY_DIR}/python_path)
-    execute_process(COMMAND mkdir ${CMAKE_BINARY_DIR}/python_path)
+    execute_process(COMMAND mkdir -p ${CMAKE_BINARY_DIR}/python_path)
     execute_process(COMMAND ln -s ${PYTORCH_PATH}-build
       ${CMAKE_BINARY_DIR}/python_path/pytorch)
     execute_process(COMMAND ln -s ${DETECTRON_PATH}
@@ -331,7 +332,7 @@ if (USE_TF)
       PREFIX tensorflow_cc
       INSTALL_DIR ${CMAKE_BINARY_DIR}
       DOWNLOAD_COMMAND git clone https://github.com/beniz/tensorflow_cc.git
-      CONFIGURE_COMMAND cd tensorflow_cc && mkdir build && cd build && cmake -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED=ON .. && make && ln -s ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/tensorflow/tensorflow/contrib/makefile/gen/protobuf ${CMAKE_BINARY_DIR}/protobuf
+      CONFIGURE_COMMAND cd tensorflow_cc && mkdir -p build && cd build && cmake -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED=ON .. && make && ln -s ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/tensorflow/tensorflow/contrib/makefile/gen/protobuf ${CMAKE_BINARY_DIR}/protobuf
       BUILD_COMMAND ""
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
@@ -343,7 +344,7 @@ if (USE_TF)
       PREFIX tensorflow_cc
       INSTALL_DIR ${CMAKE_BINARY_DIR}
       DOWNLOAD_COMMAND git clone https://github.com/beniz/tensorflow_cc.git
-      CONFIGURE_COMMAND cd tensorflow_cc && mkdir build && cd build && cmake -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED_CPU=ON .. && make && ln -s ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/tensorflow/tensorflow/contrib/makefile/gen/protobuf ${CMAKE_BINARY_DIR}/protobuf
+      CONFIGURE_COMMAND cd tensorflow_cc && mkdir -p build && cd build && cmake -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED_CPU=ON .. && make && ln -s ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/tensorflow/tensorflow/contrib/makefile/gen/protobuf ${CMAKE_BINARY_DIR}/protobuf
       BUILD_COMMAND ""
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
@@ -497,6 +498,41 @@ if (USE_CAFFE2)
   endif()
 endif()
 
+# NCNN
+if (USE_NCNN)
+  message(STATUS "Configuring NCNN")
+  add_definitions(-DUSE_NCNN)
+  set(NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src/libncnn.a)
+  set(NCNN_COMMIT_HASH "569be5a19651373cca68933f6430c781d7d6fd97")
+  if (RPI3)
+    ExternalProject_Add(
+      ncnn
+      PREFIX ncnn
+      INSTALL_DIR ${CMAKE_BINARY_DIR}
+      DOWNLOAD_COMMAND git clone --recursive https://github.com/Tencent/ncnn.git
+      PATCH_COMMAND git reset --hard ${NCNN_COMMIT_HASH}
+      CONFIGURE_COMMAND mkdir -p build && cd build && cmake .. -DPI3=ON -DCMAKE_TOOLCHAIN_FILE=../pi3.toolchain.cmake
+      BUILD_COMMAND cd build/ && make -j${N}
+      INSTALL_COMMAND ""
+      BUILD_IN_SOURCE 1
+    )
+  else ()
+    ExternalProject_Add(
+      ncnn
+      PREFIX ncnn
+      INSTALL_DIR ${CMAKE_BINARY_DIR}
+      DOWNLOAD_COMMAND git clone --recursive https://github.com/Tencent/ncnn.git
+      PATCH_COMMAND git reset --hard ${NCNN_COMMIT_HASH}
+      CONFIGURE_COMMAND mkdir -p build && cd build && cmake ..
+      BUILD_COMMAND cd build/ && make -j${N}
+      INSTALL_COMMAND ""
+      BUILD_IN_SOURCE 1
+    )
+  endif()
+  set(NCNN_INC_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/src ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src)
+  set(NCNN_LIB_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src)
+endif()
+
 # XGBoost
 if (USE_XGBOOST)
   message(STATUS "Configuring XGBoost")
@@ -512,7 +548,7 @@ if (USE_XGBOOST)
       PREFIX xgboost
       INSTALL_DIR ${CMAKE_BINARY_DIR}
       DOWNLOAD_COMMAND git clone --recursive https://github.com/dmlc/xgboost.git
-      CONFIGURE_COMMAND wget https://github.com/NVlabs/cub/archive/1.6.4.zip && unzip 1.6.4.zip && rm 1.6.4.zip && mkdir build && cd build &&
+      CONFIGURE_COMMAND wget https://github.com/NVlabs/cub/archive/1.6.4.zip && unzip 1.6.4.zip && rm 1.6.4.zip && mkdir -p build && cd build &&
       cmake .. -DPLUGIN_UPDATER_GPU=ON -DCUB_DIRECTORY=${CMAKE_BINARY_DIR}/xgboost/src/xgboost/cub-1.6.4/ -DCUDA_NVCC_FLAGS=-Xcompiler\ -fPIC\ --expt-extended-lambda\ -gencode\ arch=compute_30,code=compute_30\ -gencode\ arch=compute_35,code=compute_35\ -gencode\ arch=compute_50,code=compute_50\ -gencode\ arch=compute_52,code=compute_52\ -gencode\ arch=compute_61,code=compute_61 && make && make
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
@@ -541,7 +577,7 @@ if (USE_TSNE)
       PREFIX Multicore-TSNE
       INSTALL_DIR ${CMAKE_BINARY_DIR}
       DOWNLOAD_COMMAND git clone https://github.com/beniz/Multicore-TSNE.git
-      CONFIGURE_COMMAND cd multicore_tsne && mkdir build && cd build && cmake ..
+      CONFIGURE_COMMAND cd multicore_tsne && mkdir -p build && cd build && cmake ..
       BUILD_COMMAND cd multicore_tsne/build/ && make
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
@@ -556,6 +592,10 @@ include_directories("${PROJECT_BINARY_DIR}")
 include_directories(${CAFFE_INC_DIR} ${CAFFE2_INC_DIR} ${XGBOOST_INC_DIR} ${TSNE_INC_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/src/backends/caffe ${CMAKE_SOURCE_DIR}/backends/xgb ${CMAKE_SOURCE_DIR}/backends/tf ${CMAKE_SOURCE_DIR}/backends/dlib ${CMAKE_SOURCE_DIR}/backends/tsne)
 
+if (USE_NCNN)
+  include_directories(${NCNN_INC_DIR})
+endif()
+
 # main library, main & tests
 include_directories ("${PROJECT_SOURCE_DIR}/src")
 add_subdirectory (src)
@@ -568,6 +608,7 @@ set(COMMON_LINK_DIRS
   ${TF_LIB_DIR}
   ${XGBOOST_LIB_DIR}
   ${TSNE_LIB_DIR}
+  ${NCNN_LIB_DIR}
   ${DLIB_LIB_DIR})
 if (USE_HDF5)
   set(COMMON_LINK_LIBS
@@ -577,6 +618,7 @@ if (USE_HDF5)
     ${TF_LIB_DEPS}
     ${XGBOOST_LIB_DEPS}
     ${TSNE_LIB_DEPS}
+    ${NCNN_LIB_DEPS}
     ${DLIB_LIB_DEPS})
 else()
   set(COMMON_LINK_LIBS
@@ -586,6 +628,7 @@ else()
     ${TF_LIB_DEPS}
     ${XGBOOST_LIB_DEPS}
     ${TSNE_LIB_DEPS}
+    ${NCNN_LIB_DEPS}
     ${DLIB_LIB_DEPS})
 endif()
 set(HTTP_LINK_LIBS cppnetlib-uri crypto ssl)
