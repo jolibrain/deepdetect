@@ -186,6 +186,20 @@ if (USE_DLIB)
   REGISTER_TEST(ut_dlibapi ut-dlibapi.cc)
 endif()
 
+if (USE_NCNN)
+  set(NCNN_EXAMPLE_PATH "examples/ncnn/")
+  set(SSD_EXAMPLE_TAR "squeezenet-ssd-ncnn.tar.gz")
+  set(SSD_EXAMPLE_PATH "examples/ncnn/squeezenet_ssd_ncnn/")
+  set(SSD_EXAMPLE_BIN "squeezenet_ssd.bin")
+  if (NOT EXISTS "${SSD_EXAMPLE_PATH}${SSD_EXAMPLE_BIN}")
+    message(STATUS "Downloading NCNN test Squeezenet SSD model")
+    file(DOWNLOAD "https://www.deepdetect.com/dd/examples/ncnn/${SSD_EXAMPLE_TAR}" "${NCNN_EXAMPLE_PATH}${SSD_EXAMPLE_TAR}")
+    execute_process(COMMAND tar xvf ${NCNN_EXAMPLE_PATH}${SSD_EXAMPLE_TAR} -C ${NCNN_EXAMPLE_PATH})
+  endif()
+
+  REGISTER_TEST(ut_ncnnapi ut-ncnnapi.cc)
+endif()
+
 if (USE_CAFFE2)
 
   function (ASSERT_EXISTS _MODEL _FILE _UNTAR)

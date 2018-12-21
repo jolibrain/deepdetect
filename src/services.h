@@ -49,6 +49,9 @@
 #ifdef USE_TSNE
 #include "backends/tsne/tsnelib.h"
 #endif
+#ifdef USE_NCNN
+#include "backends/ncnn/ncnnlib.h"
+#endif
 #include <spdlog/spdlog.h>
 #include <vector>
 #include <mutex>
@@ -105,6 +108,12 @@ namespace dd
     #endif
     MLService<TSNELib,CSVTSNEInputFileConn,UnsupervisedOutput,TSNEModel>,
     MLService<TSNELib,TxtTSNEInputFileConn,UnsupervisedOutput,TSNEModel>
+#endif
+#ifdef USE_NCNN
+    #if defined(USE_CAFFE) || defined(USE_CAFFE2) || defined(USE_TF) || defined(USE_DLIB) || defined(USE_XGBOOST) || defined(USE_TSNE)
+    ,
+    #endif
+    MLService<NCNNLib,ImgNCNNInputFileConn,SupervisedOutput,NCNNModel>
 #endif
     > mls_variant_type;
 
