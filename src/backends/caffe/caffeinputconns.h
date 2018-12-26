@@ -822,15 +822,16 @@ namespace dd
   {
   public:
   CSVTSCaffeInputFileConn()
-    :CSVTSInputFileConn(), _dv_index(-1), _dv_test_index(-1), _timesteps(100), _continuation(false)
+    :CSVTSInputFileConn(), _dv_index(-1), _dv_test_index(-1), _timesteps(100), _continuation(false), _offset(100)
       {
         reset_dv_test();
       }
   CSVTSCaffeInputFileConn(const CSVTSCaffeInputFileConn &i)
     :CSVTSInputFileConn(i), CaffeInputInterface(i), _dv_index(i._dv_index), _dv_test_index(i._dv_test_index),
-      _timesteps(i._timesteps), _continuation(i._continuation)
+      _timesteps(i._timesteps), _continuation(i._continuation), _offset(i._offset)
       {
         _timesteps = i._timesteps;
+        _offset = i._offset;
         this->_datadim = i._datadim;
       }
     ~CSVTSCaffeInputFileConn() {}
@@ -848,9 +849,14 @@ namespace dd
     {
       CSVTSInputFileConn::fillup_parameters(ad_input);
       if (ad_input.has("timesteps"))
-        _timesteps= ad_input.get("timesteps").get<int>();
-      if (ad_input.has("contination"))
-        _continuation= ad_input.get("contination").get<bool>();
+        {
+          _timesteps= ad_input.get("timesteps").get<int>();
+          _offset = _timesteps;
+        }
+      if (ad_input.has("continuation"))
+        _continuation= ad_input.get("continuation").get<bool>();
+      if (ad_input.has("offset"))
+        _offset= ad_input.get("offset").get<int>();
     }
 
 
@@ -925,6 +931,7 @@ namespace dd
     std::string _correspname = "corresp.txt";
     int _timesteps;
     bool _continuation;
+    int _offset;
 
   private:
     std::unique_ptr<caffe::db::Transaction> _txn;

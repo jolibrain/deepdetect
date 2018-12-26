@@ -1894,8 +1894,9 @@ namespace dd
 
     for (unsigned int si=0; si< data->size(); ++si)
       {
-        bool enough = true;
-        for (unsigned int ti=0; ti < data->at(si).size() && enough; ++ti)
+        unsigned int offset = 0;
+        unsigned int ti = 0;
+        while (ti < data->at(si).size())
           {
             if ((ti == 0 && !first_is_cont) || ((*index == 0) && split_seqs))
               d->set_float_data(*index*this->_datadim,0.0); // new sequence
@@ -1906,7 +1907,8 @@ namespace dd
                 d->set_float_data(*index*this->_datadim + di + 1, data->at(si)[ti]._v[di]);
               }
             (*index)++;
-            if (*index == _timesteps)
+            ++ti;
+            if ((*index) == _timesteps)
               {
                 Datum dprim;
                 dprim.set_channels(this->_timesteps);
@@ -1916,19 +1918,24 @@ namespace dd
                 dprim.set_width(1);
                 dv->push_back(dprim);
                 d = &(dv->back());
-                *index = 0;
-                if (ti + _timesteps >= data->at(si).size())
+                (*index) = 0;
+                if (ti + _timesteps >= data->at(si).size()+1)
                   {
-                    enough = false;
                     unsigned int tti = data->at(si).size() - _timesteps;
                     for ( ; tti < data->at(si).size(); ++tti)
                       {
-                        d->set_float_data(*index*this->_datadim,1.0); // continue sequence
+                        if (split_seqs)
+                          d->set_float_data(*index*this->_datadim,0.0); // continue sequence
+                        else
+                          d->set_float_data(*index*this->_datadim,1.0); // continue sequence
                         for (int di = 0; di<this->_datadim-1; ++di)
                           d->set_float_data(*index*this->_datadim + di + 1, data->at(si)[tti]._v[di]);
                         (*index)++;
                       }
+                    break;
                   }
+                offset += _offset;
+                ti = offset;
               }
           }
 
@@ -1952,7 +1959,12 @@ namespace dd
         data->clear();
 
     if (!test && _shuffle)
-        std::random_shuffle(dv->begin(), dv->end());
+      {
+        std::cout << "shuffling " << _dv.size() << " sequences" << std::endl;
+        std::random_device rd;
+        std::mt19937 g(rd());
+        std::shuffle(_dv.begin(), _dv.end(),g);
+      }
 
   }
 
