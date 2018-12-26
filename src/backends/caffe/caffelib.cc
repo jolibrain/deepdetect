@@ -2759,7 +2759,7 @@ namespace dd
         if (loss_scale_layer_param != NULL)
           {
             loss_scale_layer_param->mutable_scale_param()->mutable_filler()->
-              set_value(1.0/(float)_ntargets/(float)inputc.batch_size());
+              set_value(1.0/(float)_ntargets/(float)batch_size);
           }
       }
 
