@@ -1960,6 +1960,7 @@ namespace dd
 
     if (!test && _shuffle)
       {
+        _logger->info("shuffling {} datum vectors",_dv.size());
         std::random_device rd;
         std::mt19937 g(rd());
         std::shuffle(_dv.begin(), _dv.end(),g);
