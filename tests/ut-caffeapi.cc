@@ -1389,9 +1389,9 @@ TEST(caffeapi,service_train_csvts_lstm)
 {
   // create service
   JsonAPI japi;
-  std::string csvts_data = sinus + "/train";
-  std::string csvts_test = sinus +"/test";
-  std::string csvts_predict = sinus +"/predict";
+  std::string csvts_data = sinus + "train";
+  std::string csvts_test = sinus +"test";
+  std::string csvts_predict = sinus +"predict";
   std::string csvts_repo = "csvts";
   mkdir(csvts_repo.c_str(),0777);
   std::string sname = "my_service_csvts";
