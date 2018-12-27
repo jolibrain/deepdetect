@@ -120,13 +120,21 @@ namespace dd
     // - check whether there's a risk of erasing model files
     if (this->_mlmodel.read_from_repository(this->_mlmodel._repo,this->_logger))
       throw MLLibBadParamException("error reading or listing Caffe models in repository " + this->_mlmodel._repo);
+    if (!this->_mlmodel._sstate.empty())
+      {
+	// we assuming training with resume from solverstate, error is deferred to the training
+	// call assessing the resume is set to true
+	update_deploy_protofile_softmax(ad); // temperature scaling
+	create_model(true); // phase changed to train as needed later on
+	return;
+      }
     if (!this->_mlmodel._weights.empty())
       {
 	if (ad.has("finetuning") && ad.get("finetuning").get<bool>()
 	    && !this->_mlmodel._trainf.empty()) // may want to finetune from a template only if no neural net definition present
 	  throw MLLibBadParamException("using template for finetuning but model prototxt already exists, remove 'template' from 'mllib', or remove existing 'prototxt' files ?");
-	else if (ad.has("resume") && ad.get("resume").get<bool>()) // resuming from state, may not want to override the exiting network definition (e.g. after finetuning)
-	  throw MLLibBadParamException("using template while resuming from existing model, remove 'template' from 'mllib' ?");
+	/*else if (ad.has("resume") && ad.get("resume").get<bool>()) // resuming from state, may not want to override the existing network definition (e.g. after finetuning)
+	  throw MLLibBadParamException("using template while resuming from existing model, remove 'template' from 'mllib' ?");*/
 	else if (!this->_mlmodel._trainf.empty())
 	  throw MLLibBadParamException("using template while network weights exist, remove 'template' from 'mllib' or would you like to 'finetune' instead ?");
       }
@@ -1159,6 +1167,11 @@ namespace dd
 		throw;
 	      }
 	  }
+      }
+    else if (!this->_mlmodel._sstate.empty())
+      {
+	this->_logger->error("not resuming with a .solverstate file in model repository");
+	throw MLLibBadParamException("a .solverstate file requires resuming training, otherwise delete with clear=lib to cleanup the model repository");
       }
     else if (!this->_mlmodel._weights.empty())
       {
