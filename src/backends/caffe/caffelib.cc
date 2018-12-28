@@ -3124,6 +3124,7 @@ namespace dd
     caffe::LayerParameter* mvn_param = insert_layer_before(net_param, softml_pos++);
     *mvn_param->mutable_name() = "normalization";
     *mvn_param->mutable_type() = "MVN";
+    mvn_param->mutable_mvn_param()->set_across_channels(true);
     mvn_param->add_bottom(logits);
     mvn_param->add_top(logits_norm);
 
@@ -3205,6 +3206,7 @@ namespace dd
     mvn_param = insert_layer_before(deploy_net_param, final_interp_pos++);
     *mvn_param->mutable_name() = "normalization";
     *mvn_param->mutable_type() = "MVN";
+    mvn_param->mutable_mvn_param()->set_across_channels(true);
     mvn_param->add_bottom(logits);
     mvn_param->add_top(logits_norm);
 
@@ -3257,6 +3259,7 @@ namespace dd
     caffe::LayerParameter* mvn_param = insert_layer_before(net_param, softml_pos++);
     *mvn_param->mutable_name() = "normalization";
     *mvn_param->mutable_type() = "MVN";
+    mvn_param->mutable_mvn_param()->set_across_channels(true);
     mvn_param->add_bottom(logits);
     mvn_param->add_top(logits_norm);
 
@@ -3325,6 +3328,7 @@ namespace dd
     mvn_param = insert_layer_before(deploy_net_param, final_pred++);
     *mvn_param->mutable_name() = "normalization";
     *mvn_param->mutable_type() = "MVN";
+    mvn_param->mutable_mvn_param()->set_across_channels(true);
     mvn_param->add_bottom(logits);
     mvn_param->add_top(logits_norm);
 
