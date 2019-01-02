@@ -13,7 +13,7 @@ make -j24'''
     stage('Tests GPU') {
       steps {
         sh '''cd build
-ctest -E "http" '''
+ctest -V -E "http" '''
       }
     }
     stage('cleanup') {
