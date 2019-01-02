@@ -167,7 +167,7 @@ TEST(simsearch,predict_simsearch_unsup)
   ASSERT_TRUE(jd["body"]["predictions"][0]["nns"][0]["uri"]=="../examples/caffe/mnist//sample_digit.png");
   
   // remove service
-  jstr = "{\"clear\":\"index\"}";
+  jstr = "{\"clear\":\"lib\"}";
   joutstr = japi.jrender(japi.service_delete(sname,jstr));
   ASSERT_EQ(ok_str,joutstr);
 
@@ -247,7 +247,7 @@ TEST(simsearch,predict_simsearch_sup)
   ASSERT_TRUE(jd["body"]["predictions"][0]["nns"][0]["uri"]=="../examples/caffe/mnist//sample_digit.png");
   
   // remove service
-  jstr = "{\"clear\":\"index\"}";
+  jstr = "{\"clear\":\"lib\"}";
   joutstr = japi.jrender(japi.service_delete(sname,jstr));
   ASSERT_EQ(ok_str,joutstr);
 
