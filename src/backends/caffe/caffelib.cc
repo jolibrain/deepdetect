@@ -124,6 +124,7 @@ namespace dd
       {
 	// we assuming training with resume from solverstate, error is deferred to the training
 	// call assessing the resume is set to true
+	this->_logger->warn("ignoring template argument since .solverstate file exists, assuming a training job will resume, and deferring errors to potential future training call");
 	update_deploy_protofile_softmax(ad); // temperature scaling
 	create_model(true); // phase changed to train as needed later on
 	return;
@@ -136,7 +137,7 @@ namespace dd
 	/*else if (ad.has("resume") && ad.get("resume").get<bool>()) // resuming from state, may not want to override the existing network definition (e.g. after finetuning)
 	  throw MLLibBadParamException("using template while resuming from existing model, remove 'template' from 'mllib' ?");*/
 	else if (!this->_mlmodel._trainf.empty())
-	  throw MLLibBadParamException("using template while network weights exist, remove 'template' from 'mllib' or would you like to 'finetune' instead ?");
+	  throw MLLibBadParamException("using template while model prototxt and network weights exist, remove 'template' from 'mllib' or remove prototxt files instead instead ?");
       }
       
     // - locate template repository
@@ -1170,8 +1171,8 @@ namespace dd
       }
     else if (!this->_mlmodel._sstate.empty())
       {
-	this->_logger->error("not resuming with a .solverstate file in model repository");
-	throw MLLibBadParamException("a .solverstate file requires resuming training, otherwise delete with clear=lib to cleanup the model repository");
+	this->_logger->error("not resuming while a .solverstate file remains in model repository");
+	throw MLLibBadParamException("a .solverstate file requires a resume argument for training, otherwise delete existing training state files (with clear=lib) to cleanup the model repository");
       }
     else if (!this->_mlmodel._weights.empty())
       {
