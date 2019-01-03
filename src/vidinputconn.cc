@@ -41,12 +41,17 @@ namespace dd
       if (this->_uris[0].empty())
       {
         // TODO : stop acquisition
+        this->is_running = false;
         return;
       }
       else
       {
+
         if ( this->_current_uri.compare(this->_uris[0]) != 0)
         {
+          
+          this->_logger->info("_current_uri = {}", this->_current_uri);
+          this->_logger->info("uris[0] = {}", this->_uris[0]);
           // New URI received start frame acquistion
           this->init(ad);
           if (dvid.read_element(this->_uris[0], this->_logger))
@@ -60,7 +65,10 @@ namespace dd
           }
 
           this->_current_uri = this->_uris[0];
+          this->is_running = true;
+          this->_logger->info("_current_uri = {} // {}", this->_current_uri, this->is_running);
         }
+
         video_buffer_size = this->streamlib.get_video_buffer(rimg);
         if (video_buffer_size == 0){
           // TODO non an exception ? just waiting frames of frame count finished

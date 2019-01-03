@@ -77,9 +77,22 @@ namespace dd
   {
     public:
       VidInputConn()
-        :InputConnectorStrategy(){}
+        :InputConnectorStrategy()
+      {
+           std::cout << "Normal constructor : " << std::endl;
+      }
+
       VidInputConn(const VidInputConn &i)
-        :InputConnectorStrategy(i) {}
+        :InputConnectorStrategy(i)
+         {
+
+           std::cout << "Copy constructor allocating ptr.: " << 
+             i._current_uri <<
+             " running: " <<
+              i.is_running <<
+             std::endl;
+
+         }
       ~VidInputConn() {}
 
       void init(const APIData &ad);
@@ -118,15 +131,17 @@ namespace dd
       bool _bw = false; /**< whether to convert to black & white. */
       std::vector<cv::Mat> _images;
       std::vector<std::pair<int,int>> _images_size;
-      unsigned long max_video_buffer = 300;
-      std::string _current_uri;
-
       vnn::StreamLibGstreamerDesktop<vnn::VnnInputConnectorFile,
         vnn::VnnOutputConnectorDummy>  streamlib;
 
       /* TODO: ImgInput heritage: deal what to do with that */
       bool _has_mean_scalar = false; /**< whether scalar is set. */
       std::vector<float> _mean; /**< mean image pixels, to be subtracted from images. */
+      unsigned long max_video_buffer = 300;
+    private:
+      std::string _current_uri;
+      bool is_running;
+
 
   };
 }
