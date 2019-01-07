@@ -1908,7 +1908,7 @@ namespace dd
               }
             (*index)++;
             ++ti;
-            if ((*index) == _timesteps)
+            if ((*index) == _timesteps  && ti < data->at(si).size() && si < data->size() -1)
               {
                 Datum dprim;
                 dprim.set_channels(this->_timesteps);
