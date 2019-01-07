@@ -1908,16 +1908,19 @@ namespace dd
               }
             (*index)++;
             ++ti;
-            if ((*index) == _timesteps  && ti < data->at(si).size() && si < data->size() -1)
+            if ((*index) == _timesteps)
               {
-                Datum dprim;
-                dprim.set_channels(this->_timesteps);
-                dprim.set_height(this->_datadim);
-                for (int i=0; i< this->_timesteps*this->_datadim; ++i)
-                  dprim.add_float_data(0.0);
-                dprim.set_width(1);
-                dv->push_back(dprim);
-                d = &(dv->back());
+                if (ti < data->at(si).size() && si < data->size() -1)
+                  {
+                    Datum dprim;
+                    dprim.set_channels(this->_timesteps);
+                    dprim.set_height(this->_datadim);
+                    for (int i=0; i< this->_timesteps*this->_datadim; ++i)
+                      dprim.add_float_data(0.0);
+                    dprim.set_width(1);
+                    dv->push_back(dprim);
+                    d = &(dv->back());
+                  }
                 (*index) = 0;
                 if (ti + _timesteps >= data->at(si).size()+1)
                   {
