@@ -46,6 +46,7 @@ namespace dd
       unsigned long video_buffer_size;
       cv::Mat rimg;
       DataEl <DDVid> dvid;
+      signed long timestamp;
       this->_logger->info("VidInputConn::transform");
 
       get_data(ad);
@@ -71,7 +72,7 @@ namespace dd
             this->_logger->info("run async");
             this->streamlib->run_async();
             this->streamlib->set_max_video_buffer(this->max_video_buffer);
-            std::this_thread::sleep_for(std::chrono::seconds(1));  
+            std::this_thread::sleep_for(std::chrono::seconds(1));
           }
 
           this->_current_uri = this->_uris[0];
@@ -79,7 +80,8 @@ namespace dd
           this->_logger->info("_current_uri = {} // {}", this->_current_uri, this->is_running);
         }
 
-        video_buffer_size = this->streamlib->get_video_buffer(rimg);
+        video_buffer_size = this->streamlib->get_video_buffer(rimg, timestamp);
+        this->_uris[0] = std::to_string(timestamp);
         if (video_buffer_size == 0){
           // TODO non an exception ? just waiting frames of frame count finished
           throw InputConnectorBadParamException("no video frame");
