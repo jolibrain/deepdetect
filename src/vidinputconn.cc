@@ -24,6 +24,17 @@
 
 namespace dd
 {
+
+  VidInputConn::VidInputConn(const VidInputConn &i)
+        :InputConnectorStrategy(i)
+    {
+      this->streamlib = i.streamlib;
+      this->_counter = i._counter;
+      this->_counter++;
+      std::cout <<  "VidInputConn Copy constructor counter = "<< this->_counter << std::endl;
+
+    };
+
     void VidInputConn::init(const APIData &ad) 
     {
         std::string video_path = "/tmp/bbb_60.mkv";
@@ -47,21 +58,20 @@ namespace dd
       else
       {
 
-        if ( this->_current_uri.compare(this->_uris[0]) != 0)
+        this->_logger->info(" is playing = {}", this->streamlib->is_playing());
+        if ( !this->streamlib->is_playing() )
         {
-          
-          this->_logger->info("_current_uri = {}", this->_current_uri);
-          this->_logger->info("uris[0] = {}", this->_uris[0]);
           // New URI received start frame acquistion
           this->init(ad);
           if (dvid.read_element(this->_uris[0], this->_logger))
           {
-            this->streamlib._input.set_filepath(this->_uris[0]);
-            this->streamlib.set_scale_size(this->_width, this->_height);
-            this->streamlib.init();
+            this->streamlib->_input.set_filepath(this->_uris[0]);
+            this->streamlib->set_scale_size(this->_width, this->_height);
+            this->streamlib->init();
             this->_logger->info("run async");
-            this->streamlib.run_async();
-            this->streamlib.set_max_video_buffer(this->max_video_buffer);
+            this->streamlib->run_async();
+            this->streamlib->set_max_video_buffer(this->max_video_buffer);
+            std::this_thread::sleep_for(std::chrono::seconds(1));  
           }
 
           this->_current_uri = this->_uris[0];
@@ -69,15 +79,15 @@ namespace dd
           this->_logger->info("_current_uri = {} // {}", this->_current_uri, this->is_running);
         }
 
-        video_buffer_size = this->streamlib.get_video_buffer(rimg);
+        video_buffer_size = this->streamlib->get_video_buffer(rimg);
         if (video_buffer_size == 0){
           // TODO non an exception ? just waiting frames of frame count finished
           throw InputConnectorBadParamException("no video frame");
         }
         this->_images.push_back(rimg);
         this->_images_size.push_back( std::pair<int,int>(
-            this->streamlib.get_original_width(),
-            this->streamlib.get_original_height())
+            this->streamlib->get_original_width(),
+            this->streamlib->get_original_height())
             );
 
       };

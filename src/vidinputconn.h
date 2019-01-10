@@ -80,19 +80,12 @@ namespace dd
         :InputConnectorStrategy()
       {
            std::cout << "Normal constructor : " << std::endl;
+           streamlib =  new vnn::StreamLibGstreamerDesktop
+             <vnn::VnnInputConnectorFile, vnn::VnnOutputConnectorDummy>();
       }
 
-      VidInputConn(const VidInputConn &i)
-        :InputConnectorStrategy(i)
-         {
+      VidInputConn(const VidInputConn &i);
 
-           std::cout << "Copy constructor allocating ptr.: " << 
-             i._current_uri <<
-             " running: " <<
-              i.is_running <<
-             std::endl;
-
-         }
       ~VidInputConn() {}
 
       void init(const APIData &ad);
@@ -132,15 +125,16 @@ namespace dd
       std::vector<cv::Mat> _images;
       std::vector<std::pair<int,int>> _images_size;
       vnn::StreamLibGstreamerDesktop<vnn::VnnInputConnectorFile,
-        vnn::VnnOutputConnectorDummy>  streamlib;
+        vnn::VnnOutputConnectorDummy>*  streamlib;
 
       /* TODO: ImgInput heritage: deal what to do with that */
       bool _has_mean_scalar = false; /**< whether scalar is set. */
       std::vector<float> _mean; /**< mean image pixels, to be subtracted from images. */
       unsigned long max_video_buffer = 300;
-    private:
       std::string _current_uri;
-      bool is_running;
+      bool is_running = false;
+      int _counter = 0 ;
+
 
 
   };
