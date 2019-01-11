@@ -46,7 +46,7 @@ namespace dd
       unsigned long video_buffer_size;
       cv::Mat rimg;
       DataEl <DDVid> dvid;
-      signed long timestamp;
+      long int  timestamp;
       this->_logger->info("VidInputConn::transform");
 
       get_data(ad);
