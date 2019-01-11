@@ -1,0 +1,14 @@
+net: "crnn_resnet_18.prototxt"
+
+test_iter: 1000
+test_interval: 1000
+base_lr: 0.0001
+lr_policy: "fixed"
+display: 50
+max_iter: 50000
+momentum: 0.9
+weight_decay: 0.0005
+snapshot: 1000
+snapshot_prefix: "crnn"
+solver_mode: GPU
+clip_gradients: 5000
