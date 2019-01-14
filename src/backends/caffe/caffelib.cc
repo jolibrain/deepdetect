@@ -207,7 +207,7 @@ namespace dd
 	caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
 	caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
 
-    if (this->_loss == "dice"  || _loss == "dice_multiclass" || _loss == "dice_weighted")
+       if (this->_loss.compare(0, 4, "dice",0,4) == 0)
       // dice loss!!
       {
         int ignore_label = -1;
