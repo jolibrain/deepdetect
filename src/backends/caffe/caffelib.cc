@@ -3193,6 +3193,10 @@ namespace dd
       dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS);
     else if (loss == "dice_weighted")
       dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED);
+    // else if (loss == "dice_weighted_batch")
+    //   dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED);
+    // else if (loss == "dice_weighted_all")
+    //   dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED);
 
 
     // now work on deploy.txt
