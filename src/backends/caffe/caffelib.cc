@@ -854,7 +854,7 @@ namespace dd
     if (ad.has("loss"))
       {
         _loss = ad.get("loss").get<std::string>();
-        if (_loss == "dice" || _loss == "dice_multiclass" || _loss == "dice_weighted")
+        if (this->_loss.compare(0, 4, "dice",0,4) == 0)
           if (! this->_inputc._segmentation)
             throw MLLibBadParamException("asked for  dice loss without segmentation");
       }
@@ -2739,6 +2739,11 @@ namespace dd
 		lparam->mutable_infogain_loss_param()->set_source(this->_mlmodel._repo + "/class_weights.binaryproto");
 		break;
 	      }
+           else if (lparam->type().compare("DiceCoefLoss") == 0)
+             {
+               lparam->mutable_dice_coef_loss_param()->set_weights(this->_mlmodel._repo + "/class_weights.binaryproto");
+               break;
+             }
 	  }
       }
 
@@ -3193,10 +3198,10 @@ namespace dd
       dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS);
     else if (loss == "dice_weighted")
       dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED);
-    // else if (loss == "dice_weighted_batch")
-    //   dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED);
-    // else if (loss == "dice_weighted_all")
-    //   dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED);
+    else if (loss == "dice_weighted_batch")
+      dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED_BATCH);
+    else if (loss == "dice_weighted_all")
+      dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED_ALL);
 
 
     // now work on deploy.txt
@@ -3242,7 +3247,7 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofiles_dice_one_hot(caffe::NetParameter &net_param, std::string loss, int nclasses)
   {
-    if (! (loss == "dice_multiclass" || loss == "dice_weighted"))
+    if (loss.compare(0, 4, "dice",0,4) != 0)
       return;
     caffe::LayerParameter* denseImageDataLayer = find_layer_by_type(net_param,"DenseImageData");
     caffe::DenseImageDataParameter *dp = denseImageDataLayer->mutable_dense_image_data_param();
@@ -3325,6 +3330,10 @@ namespace dd
       dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS);
     else if (loss == "dice_weighted")
       dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED);
+    else if (loss == "dice_weighted_batch")
+      dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED_BATCH);
+    else if (loss == "dice_weighted_all")
+      dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED_ALL);
 
     // BELOW DEPLOY
     int final_pred = find_index_layer_by_name(deploy_net_param, "pred");
