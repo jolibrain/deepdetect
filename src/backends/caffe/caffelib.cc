@@ -2112,8 +2112,25 @@ namespace dd
 	    
 	    if (inputc._segmentation)
 	      {
-		int slot = results.size() - 1;
-		nclasses = _nclasses;
+               int slot = results.size() - 1;
+               nclasses = _nclasses;
+
+               bool conf_best;
+               std::vector<bool> confidences(_nclasses,false);
+               if (ad_output.has("confidences"))
+                 {
+                   std::vector<std::string> smaps =
+                     ad_output.get("confidences").get<std::vector<std::string>>();
+                   for (std::string s: smaps)
+                     if (s == "all")
+                       for (int ci = 0; ci<_nclasses; ++ci)
+                         confidences[ci] = true;
+                     else if (s=="best")
+                       conf_best = true;
+                     else
+                       confidences[std::stoi(s)]= true;
+                 }
+
 		for (int j=0;j<batch_size;j++)
 		  {
 		    APIData rad;
@@ -2130,6 +2147,8 @@ namespace dd
 		      }
 		    rad.add("loss",loss);
 		    std::vector<double> vals;
+                  std::map<int,std::vector<double>> confidence_maps;
+                  std::vector<double> conf_map_best;
 		    int imgsize = inputc.width()*inputc.height();
 		    for (int i=0;i<imgsize;i++)
 		      {
@@ -2140,20 +2159,36 @@ namespace dd
 			    for (int k=0;k<nclasses;k++)
 			      {
 				double prob = results[slot]->cpu_data()[(j*nclasses+k)*imgsize+i];
+                            if (confidences[k])
+                              confidence_maps[k].push_back(prob);
 				if (prob > max_prob)
 				  {
 				    max_prob = prob;
 				    best_cat = static_cast<double>(k);
 				  }
 			      }
+                         if (conf_best)
+                           conf_map_best.push_back(max_prob);
 			  }
 			else
 			  {
 			    double prob = results[slot]->cpu_data()[(j)*imgsize+i];
+                         if (confidences[1])
+                           confidence_maps[1].push_back(prob);
+                         if (confidences[0])
+                           confidence_maps[0].push_back(1.0-prob);
 			    if (prob > 0.5)
-			      best_cat = 1;
+                           {
+                             if (conf_best)
+                               conf_map_best.push_back(prob);
+                             best_cat = 1;
+                           }
 			    else
-			      best_cat = 0;
+                           {
+                             if (conf_best)
+                               conf_map_best.push_back(1.0-prob);
+                             best_cat = 0;
+                           }
 			  }
 			vals.push_back(best_cat);
 		      }
@@ -2164,13 +2199,28 @@ namespace dd
 		    rad.add("imgsize",ad_imgsize);
 		    if (imgsize != (*bit).second.first*(*bit).second.second) // resizing output segmentation array
 		      {
-			cv::Mat segimg = cv::Mat(inputc.height(),inputc.width(), CV_64FC1);
-			std::memcpy(segimg.data,vals.data(),vals.size()*sizeof(double));
-			cv::Mat segimg_res;
-			cv::resize(segimg,segimg_res,cv::Size((*bit).second.second,(*bit).second.first),0,0,cv::INTER_NEAREST);
-			vals = std::vector<double>((double*)segimg_res.data,(double*)segimg_res.data+segimg_res.rows*segimg_res.cols);
+                      vals =  seg_resize(vals, inputc.height(), inputc.width(),
+                                         (*bit).second.first, (*bit).second.second);
+                     if (conf_best)
+                       conf_map_best = seg_resize(conf_map_best, inputc.height(), inputc.width(),
+                                                  (*bit).second.first, (*bit).second.second);
+                     for (auto cm : confidence_maps)
+                       confidence_maps[cm.first] =
+                         seg_resize(confidence_maps[cm.first],
+                                    inputc.height(), inputc.width(),
+                                    (*bit).second.first, (*bit).second.second);
 		      }
 		    rad.add("vals",vals);
+                  if (conf_best || !confidence_maps.empty())
+                    {
+                      APIData confs;
+                      if (conf_best)
+                        confs.add("best", conf_map_best);
+                      for (int ci=0; ci < _nclasses; ++ci)
+                        if (confidences[ci])
+                          confs.add(std::to_string(ci), confidence_maps[ci]);
+                      rad.add("confidences",confs);
+                    }
 		    vrad.push_back(rad);
 		  }
 	      }
@@ -3501,6 +3551,15 @@ namespace dd
     return nullptr;
   }
 
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+    std::vector<double> CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::seg_resize(const std::vector<double>& vals, const int height_net, const int width_net, const int height_dest, const int width_dest)
+  {
+    cv::Mat segimg = cv::Mat(height_net,width_net, CV_64FC1);
+    std::memcpy(segimg.data,vals.data(),vals.size()*sizeof(double));
+    cv::Mat segimg_res;
+    cv::resize(segimg,segimg_res,cv::Size(width_dest,height_dest),0,0,cv::INTER_NEAREST);
+    return std::vector<double>((double*)segimg_res.data,(double*)segimg_res.data+segimg_res.rows*segimg_res.cols);
+  }
 
 
   template class CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>;
