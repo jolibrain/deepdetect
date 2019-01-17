@@ -603,9 +603,9 @@ namespace dd
 		  }
 	      }
 	    if (ad_geometry.has("persp_factor"))
-	      gparam->set_persp_factor(ad_geometry.get("persp_factor").get<float>());
+	      gparam->set_persp_factor(ad_geometry.get("persp_factor").get<double>());
 	    if (ad_geometry.has("zoom_factor"))
-	      gparam->set_zoom_factor(ad_geometry.get("zoom_factor").get<float>());
+	      gparam->set_zoom_factor(ad_geometry.get("zoom_factor").get<double>());
 	    if (ad_geometry.has("pad_mode"))
 	      {
 		std::string pmode = ad_geometry.get("pad_mode").get<std::string>();
