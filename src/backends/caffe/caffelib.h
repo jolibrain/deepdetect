@@ -258,7 +258,7 @@ namespace dd
       Blob<float>* findOutputBlobByName(const caffe::Net<float> *net,
                                         const std::string blob_name);
 
-      std::vector<double> seg_resize(const std::vector<double>& vals,
+      std::vector<double> conf_resize(const std::vector<double>& vals,
                                      const int height_net,  const int width_net,
                                      const int height_dest, const int width_dest);
 
