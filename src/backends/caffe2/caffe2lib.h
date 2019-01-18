@@ -178,6 +178,12 @@ namespace dd {
 			int batch_size,
 			const std::string &type="main");
 
+  /**
+   * \brief detects and reports model type
+   * @param mltype output string variable
+   */
+  void model_type(std::string &mltype);
+  
   Caffe2NetTools::ModelContext _context;
   std::vector<Caffe2NetTools::NetGroup> _nets;
   Caffe2LibState _state;
