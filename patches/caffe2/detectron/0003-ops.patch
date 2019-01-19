@@ -1,7 +1,7 @@
-From 6a3dc72684694d491cfc02fabe77e0d0baa62e4e Mon Sep 17 00:00:00 2001
+From f750757337e12f2af7e4b3c7d242eaf431c03d90 Mon Sep 17 00:00:00 2001
 From: Julien CHICHA <julien.chicha@epitech.eu>
 Date: Sat, 17 Nov 2018 17:40:02 +0100
-Subject: [PATCH 3/4] ops
+Subject: [PATCH 3/7] ops
 
 ---
  detectron/tests/test_batch_permutation_op.py | 1 -
@@ -124,5 +124,5 @@ index 9e757b5..afc6e28 100755
  # OpenCL may be enabled by default in OpenCV3; disable it because it's not
  # thread safe and causes unwanted GPU memory allocations.
 -- 
-2.19.1
+2.20.1
 

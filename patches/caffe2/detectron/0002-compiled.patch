@@ -1,7 +1,7 @@
-From 9b7e79c07ad4a1d93a65524c3e1c9f566bef0572 Mon Sep 17 00:00:00 2001
+From 10cbbf3224eeaef4dcaf61216ed82cb239046b1a Mon Sep 17 00:00:00 2001
 From: Julien CHICHA <julien.chicha@epitech.eu>
 Date: Sat, 17 Nov 2018 17:39:11 +0100
-Subject: [PATCH 2/4] compiled
+Subject: [PATCH 2/7] compiled
 
 ---
  detectron/core/test.py                       | 1 -
@@ -189,5 +189,5 @@ index e8e4637..aac99d8 100644
  
  def parse_args():
 -- 
-2.19.1
+2.20.1
 

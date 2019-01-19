@@ -29,6 +29,8 @@ Download the weights (model_final.pkl) from the [model zoo](https://github.com/f
 
 And find the corresponding training [configuration file](https://github.com/facebookresearch/Detectron/tree/master/configs) (*.yaml)
 
+(You can also get some models on the ["Learning to Segment Every Thing"](https://github.com/ronghanghu/seg_every_thing#inference) repository)
+
 Then convert them using the [tool](https://github.com/facebookresearch/Detectron/blob/master/tools/convert_pkl_to_pb.py) provided in the Detectron repository
 
 And finally, place the .pb files into the model repository:
@@ -109,9 +111,14 @@ rmdir $WORKSPACE
 
 - #### With its class labels
 
-If you do not have access to the training dataset or the classes that were used during the training, it may imply that the default 80-classes COCO dataset was used. Its classes are listed [here](https://github.com/facebookresearch/Detectron/blob/master/detectron/datasets/dummy_datasets.py)
+If you do not have access to the training dataset or the classes that were used during the training, it may imply that one of the following was used:
 
-You can also generate a 'corresp.txt' file when converting the model (using the ```--coco``` flag of [this](convert_pkl_to_pb.py) script).
+- the 80-classes COCO dataset
+- the 3000-classes Visual Genome dataset
+
+Their classes are listed [here](https://github.com/ronghanghu/seg_every_thing/blob/master/lib/datasets/dummy_datasets.py).
+
+You can also generate a 'corresp.txt' file when converting the model (using the ```--corresp=XXX``` flag of [this](convert_pkl_to_pb.py) script).
 
 ### Create a service
 
