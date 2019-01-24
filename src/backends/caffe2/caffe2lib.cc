@@ -1063,6 +1063,7 @@ namespace dd {
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::model_type(std::string &mltype)
   {
+    // Search each net
     for (auto ext: this->_mlmodel._extensions)
       {
 	if (ext._type == "mask")
@@ -1071,7 +1072,22 @@ namespace dd {
 	    return;
 	  }
       }
-    //TODO: detect when detectron with bbox and no mask
+
+    // Search the layers of the main net
+    const caffe2::NetDef *main_net;
+    if (_state.is_training()) {
+      main_net = &_nets[0]._train;
+    } else {
+      main_net = &_nets[0]._predict;
+    }
+
+    for (const caffe2::OperatorDef &op : main_net->op()) {
+      if (op.type() == "BoxWithNMSLimit") {
+	mltype = "bbox";
+	return;
+      }
+    }
+
     mltype = "classification"; // at this stage, if not mask or bbox, it's a classification model
     return;
   }
