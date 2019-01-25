@@ -94,8 +94,8 @@ namespace dd
     std::unordered_map<std::string,std::pair<int,int>> _imgs_size; /**< image sizes, used in detection. */
     std::string _dbfullname = "train.lmdb";
     std::string _test_dbfullname = "test.lmdb";
-    int _timesteps = 100;  //default length for csv timeseries
-    int _datadim = 0; //default size of vector data for timeseries
+    int _timesteps = -1;  //default length for csv timeseries
+    int _datadim = -1; //default size of vector data for timeseries
 
   };
 
@@ -926,7 +926,6 @@ namespace dd
     std::string _dbname = "train";
     std::string _test_dbname = "test";
     std::string _correspname = "corresp.txt";
-    //    int _timesteps;
     bool _continuation;
     int _offset;
 

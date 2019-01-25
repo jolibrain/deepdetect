@@ -1177,7 +1177,7 @@ namespace dd
   {
     if (_cifc)
       {
-	_cifc->read_csv(fname);
+        _cifc->read_csv(fname);
 	return 0;
       }
     else return -1;
@@ -1584,7 +1584,7 @@ namespace dd
 
   void CSVTSCaffeInputFileConn::set_datadim(bool is_test_data)
   {
-    if (_datadim != 0)
+    if (_datadim != -1)
       return;
     if (is_test_data)
       _datadim = _csvtsdata_test[0][0]._v.size() +1;
