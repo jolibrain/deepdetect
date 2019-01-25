@@ -1512,13 +1512,11 @@ namespace dd
                      else if (typeid(inputc) == typeid(CSVTSCaffeInputFileConn))  // timeseries case
                        {
 			    std::vector<double> vals;
-                         CSVTSCaffeInputFileConn* ic =
-                           reinterpret_cast<CSVTSCaffeInputFileConn*>(&inputc);
-                         for (int t=0; t<ic->_timesteps; ++t)
+                         for (int t=0; t<inputc._timesteps; ++t)
                            {
                              for (int k: _targets)
                                {
-                                 vals.push_back(dv.at(s).float_data(t*ic->_datadim+k+1));
+                                 vals.push_back(dv.at(s).float_data(t*inputc._datadim+k+1));
                                }
                            }
 			    dv_float_data.push_back(vals);
@@ -1615,7 +1613,7 @@ namespace dd
 	    int slot = lresults.size() - 1;
 	    
 	    if (_regression && _ntargets > 1) // slicing is involved
-	      slot--; // labels appear to be lass
+	      slot--; // labels appear to be last
 	    else if (inputc._multi_label && ( inputc._db || ! (typeid(inputc) == typeid(ImgCaffeInputFileConn))
                                            ||  _nclasses <= 1))
 	      slot--;
@@ -1628,7 +1626,7 @@ namespace dd
 
            if (typeid(inputc) == typeid(CSVTSCaffeInputFileConn))
              {
-               slot = findOutputSlotNumberByBlobName(net,"OUTPUT");
+               slot = findOutputSlotNumberByBlobName(net,"rnn_pred");
              }
 
 	    int scount = lresults[slot]->count();
@@ -1831,10 +1829,7 @@ namespace dd
                           target.push_back(dv_float_data.at(j).at(k));
                       bad.add("target", target);
 
-                      CSVTSCaffeInputFileConn* ic =
-                        reinterpret_cast<CSVTSCaffeInputFileConn*>(&inputc);
-
-                      for (int t=0; t<ic->_timesteps; ++t)
+                      for (int t=0; t<inputc._timesteps; ++t)
                         {
                           for (int k=0;k<nout;k++)
                             {
@@ -2421,7 +2416,7 @@ namespace dd
 	    }
            else if (typeid(inputc) == typeid(CSVTSCaffeInputFileConn)) // timeseries
              {
-               int slot = findOutputSlotNumberByBlobName(_net,"OUTPUT");
+               int slot = findOutputSlotNumberByBlobName(_net,"rnn_pred");
                //results[slot] is TxNxDataDim , N is batchsize ...
                int nout = _ntargets;
 

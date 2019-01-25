@@ -410,7 +410,8 @@ namespace dd
 	}
 
       // shuffle before possible test data selection.
-      shuffle_data(_csvdata, forbid_shuffle);
+      if (!forbid_shuffle)
+        shuffle_data(_csvdata);
       
       if (_csv_test_fname.empty() && _test_split > 0)
 	{

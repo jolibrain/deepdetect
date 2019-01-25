@@ -1,3 +1,4 @@
+#generates a simple sinus in csvTS form for testing timeserie predicions
 import numpy as np
 import os
 

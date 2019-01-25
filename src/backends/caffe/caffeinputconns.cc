@@ -1579,16 +1579,24 @@ namespace dd
         for (auto fname : allfiles)
           read_file(fname, is_test_data);
       }
-    //    _cifc->shuffle_data_if_needed();
-    //_cifc->dv_to_db(is_test_data);
     return 0;
+  }
+
+  void CSVTSCaffeInputFileConn::set_datadim(bool is_test_data)
+  {
+    if (_datadim != 0)
+      return;
+    if (is_test_data)
+      _datadim = _csvtsdata_test[0][0]._v.size() +1;
+    else
+      _datadim = _csvtsdata[0][0]._v.size() +1;
   }
 
 
   void CSVTSCaffeInputFileConn::push_csv_to_csvts(bool is_test_data)
   {
-
     CSVTSInputFileConn::push_csv_to_csvts(is_test_data);
+    set_datadim(is_test_data);
     dv_to_db(is_test_data);
   }
 
@@ -1623,6 +1631,7 @@ namespace dd
 	  try
 	    {
 	      CSVTSInputFileConn::transform(ad);
+             set_datadim();
              this->_ids=this->_fnames;
 	    }
 	  catch (std::exception &e)
@@ -1646,11 +1655,7 @@ namespace dd
 	      _csvtsdata_test = std::move(_csvtsdata);
 	    }
 	  else _csvtsdata.clear();
-	  // auto hit = _csvtsdata_test.begin();
-	  // while(hit!=_csvtsdata_test.end())
-	    // {
          csvts_to_dv(true,true,true,false,_continuation);
-	    // }
 	  _csvtsdata_test.clear();
 	}
       _csvtsdata_test.clear();
@@ -1660,7 +1665,7 @@ namespace dd
   {
     _dt_vit = _dv_test.begin();
     _test_db_cursor = std::unique_ptr<caffe::db::Cursor>();
-    _test_db = std::unique_ptr<caffe::db::DB>();
+    _ttdb  = std::unique_ptr<caffe::db::DB>();
   }
 
 
@@ -1692,12 +1697,12 @@ namespace dd
     if (!_test_db_cursor)
       {
         // open db and create cursor
-        if (!_test_db)
+        if (!_ttdb)
           {
-            _test_db = std::unique_ptr<db::DB>(db::GetDB("lmdb"));
-            _test_db->Open(_test_dbfullname.c_str(),db::READ);
+            _ttdb = std::unique_ptr<db::DB>(db::GetDB("lmdb"));
+            _ttdb->Open(_test_dbfullname.c_str(),db::READ);
           }
-        _test_db_cursor = std::unique_ptr<db::Cursor>(_test_db->NewCursor());
+        _test_db_cursor = std::unique_ptr<db::Cursor>(_ttdb->NewCursor());
       }
     std::vector<caffe::Datum> dv;
     int i =0;

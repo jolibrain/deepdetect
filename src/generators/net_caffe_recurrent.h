@@ -1,7 +1,7 @@
 /**
  * DeepDetect
- * Copyright (c) 2014-2016 Emmanuel Benazera
- * Author: Emmanuel Benazera <beniz@droidnik.fr>
+ * Copyright (c) 2018-2019 Emmanuel Benazera
+ * Author: Guillaume Infantes <guillaume.infantes@jolibrain.com>
  *
  * This file is part of deepdetect.
  *

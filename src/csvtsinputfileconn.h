@@ -1,7 +1,7 @@
 /**
  * DeepDetect
- * Copyright (c) 2015 Emmanuel Benazera
- * Author: Emmanuel Benazera <beniz@droidnik.fr>
+ * Copyright (c) 2018-2019 Emmanuel Benazera
+ * Author: Guillaume Infantes <guillaume.infantes@jolibrain.com>
  *
  * This file is part of deepdetect.
  *
@@ -59,12 +59,12 @@ namespace dd
 
 
   CSVTSInputFileConn()
-    :CSVInputFileConn(),  _datadim(1) {}
+    :CSVInputFileConn() {}
 
     ~CSVTSInputFileConn() {}
 
   CSVTSInputFileConn(const CSVTSInputFileConn &i)
-    : CSVInputFileConn(i), _datadim(i._datadim), _csvtsdata(i._csvtsdata),
+    : CSVInputFileConn(i), _csvtsdata(i._csvtsdata),
       _csvtsdata_test(i._csvtsdata_test) {}
 
 
@@ -106,9 +106,8 @@ namespace dd
 
 
     void push_csv_to_csvts(DDCsv &ddcsv);
-    virtual void push_csv_to_csvts(bool is_test_data=false);
+    void push_csv_to_csvts(bool is_test_data=false);
 
-    int _datadim;
 
     std::vector<std::vector<CSVline>> _csvtsdata;
     std::vector<std::vector<CSVline>> _csvtsdata_test;

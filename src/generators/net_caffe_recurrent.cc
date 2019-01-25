@@ -1,7 +1,7 @@
 /**
  * DeepDetect
- * Copyright (c) 2014-2016 Emmanuel Benazera
- * Author: Emmanuel Benazera <beniz@droidnik.fr>
+ * Copyright (c) 2018-2019 Emmanuel Benazera
+ * Author: Guillaume Infantes <guillaume.infantes@jolibrain.com>
  *
  * This file is part of deepdetect.
  *
@@ -290,10 +290,10 @@ namespace dd
       }
 
 
-    add_affine(this->_net_params,"affine",bottom,"OUTPUT", targets.size());
-    add_affine(this->_dnet_params,"affine", bottom,"OUTPUT",  targets.size());
+    add_affine(this->_net_params,"affine",bottom,"rnn_pred", targets.size());
+    add_affine(this->_dnet_params,"affine", bottom,"rnn_pred",  targets.size());
 
-    add_permute(this->_net_params, "permuted_OUTPUT", "OUTPUT", 3,true,false);
+    add_permute(this->_net_params, "permuted_rnn_pred", "rnn_pred", 3,true,false);
     add_permute(this->_net_params, "permuted_target_seq", "target_seq", 3,true,false);
 
 
@@ -301,7 +301,7 @@ namespace dd
     if (loss == "EuclideanLoss")
       {
         caffe::LayerParameter *lparam;
-        lparam = CaffeCommon::add_layer(this->_net_params,"permuted_OUTPUT","loss","loss",loss);
+        lparam = CaffeCommon::add_layer(this->_net_params,"permuted_rnn_pred","loss","loss",loss);
         lparam->add_bottom("permuted_target_seq");
         caffe::NetStateRule *nsr;
         nsr = lparam->add_include();
@@ -319,7 +319,7 @@ namespace dd
         nsr = lparam->add_include();
         nsr->set_phase(caffe::TRAIN);
 
-        lparam = CaffeCommon::add_layer(this->_net_params,"permuted_OUTPUT", "difference",
+        lparam = CaffeCommon::add_layer(this->_net_params,"permuted_rnn_pred", "difference",
                                         "Loss_Sum_Layer","Eltwise");
         lparam->add_bottom("permuted_target_seq_flattened");
         caffe::EltwiseParameter *ep = lparam->mutable_eltwise_param();

@@ -1,7 +1,7 @@
 /**
  * DeepDetect
- * Copyright (c) 2015 Emmanuel Benazera
- * Author: Emmanuel Benazera <beniz@droidnik.fr>
+ * Copyright (c) 2018-2019 Emmanuel Benazera
+ * Author: Guillaume Infantes <guillaume.infantes@jolibrain.com>
  *
  * This file is part of deepdetect.
  *
@@ -275,13 +275,11 @@ namespace dd
           {
             _csvtsdata.push_back(_csvdata);
           }
-        _datadim = _csvdata.at(0)._v.size() + 1;
         _csvdata.clear();
       }
     if (_csvdata_test.size())
       {
         _csvtsdata_test.push_back(_csvdata_test);
-        _datadim = _csvdata_test.at(0)._v.size() +1;
         _csvdata_test.clear();
       }
   }

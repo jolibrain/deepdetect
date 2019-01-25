@@ -292,10 +292,9 @@ namespace dd
 	}
     }
 
-    void shuffle_data(std::vector<CSVline> &csvdata,
-                      const bool forbid_shuffle = false)
+    void shuffle_data(std::vector<CSVline> &csvdata)
     {
-      if (_shuffle && !forbid_shuffle)
+      if (_shuffle)
         std::shuffle(csvdata.begin(),csvdata.end(),_g);
     }
 

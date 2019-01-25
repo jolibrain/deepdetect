@@ -41,7 +41,7 @@ namespace dd
   public:
     CaffeInputInterface() {}
     CaffeInputInterface(const CaffeInputInterface &cii)
-      :_db(cii._db),_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed),_sequence_txt(cii._sequence_txt),_max_embed_id(cii._max_embed_id),_segmentation(cii._segmentation),_bbox(cii._bbox),_multi_label(cii._multi_label),_ctc(cii._ctc),_autoencoder(cii._autoencoder),_alphabet_size(cii._alphabet_size),_root_folder(cii._root_folder),_dbfullname(cii._dbfullname),_test_dbfullname(cii._test_dbfullname) {}
+      :_db(cii._db),_dv(cii._dv),_dv_test(cii._dv_test),_ids(cii._ids),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed),_sequence_txt(cii._sequence_txt),_max_embed_id(cii._max_embed_id),_segmentation(cii._segmentation),_bbox(cii._bbox),_multi_label(cii._multi_label),_ctc(cii._ctc),_autoencoder(cii._autoencoder),_alphabet_size(cii._alphabet_size),_root_folder(cii._root_folder),_dbfullname(cii._dbfullname),_test_dbfullname(cii._test_dbfullname), _timesteps(cii._timesteps), _datadim(cii._datadim) {}
 
     ~CaffeInputInterface() {}
 
@@ -76,7 +76,6 @@ namespace dd
     std::vector<caffe::Datum> _dv_test; /**< test input datum vector, when applicable in training mode */
     std::vector<caffe::SparseDatum> _dv_sparse;
     std::vector<caffe::SparseDatum> _dv_test_sparse;
-
     std::vector<std::string> _ids; /**< input ids (e.g. image ids) */
     bool _flat1dconv = false; /**< whether a 1D convolution model. */
     bool _has_mean_file = false; /**< image model mean.binaryproto. */
@@ -93,9 +92,10 @@ namespace dd
     int _alphabet_size = 0; /**< for sequence to sequence models. */
     std::string _root_folder; /**< root folder for image list layer. */
     std::unordered_map<std::string,std::pair<int,int>> _imgs_size; /**< image sizes, used in detection. */
-    //std::vector<int> _targets;
     std::string _dbfullname = "train.lmdb";
     std::string _test_dbfullname = "test.lmdb";
+    int _timesteps = 100;  //default length for csv timeseries
+    int _datadim = 0; //default size of vector data for timeseries
 
   };
 
@@ -547,7 +547,8 @@ namespace dd
     int read_file(const std::string &fname);
     int read_db(const std::string &fname);
     int read_mem(const std::string &content);
-    int read_dir(const std::string &dir){
+    int read_dir(const std::string &dir)
+    {
       throw InputConnectorBadParamException("uri " + dir + " is a directory, requires a CSV file");
     }
     
@@ -797,7 +798,7 @@ namespace dd
   };
 
   /**
-   * \brief caffe csv ts connector
+   * \brief caffe csv timeseries connector
    */
 
   class CSVTSCaffeInputFileConn;
@@ -822,16 +823,13 @@ namespace dd
   {
   public:
   CSVTSCaffeInputFileConn()
-    :CSVTSInputFileConn(), _dv_index(-1), _dv_test_index(-1), _timesteps(100), _continuation(false), _offset(100)
+    :CSVTSInputFileConn(), _dv_index(-1), _dv_test_index(-1), _continuation(false), _offset(100)
       {
         reset_dv_test();
       }
   CSVTSCaffeInputFileConn(const CSVTSCaffeInputFileConn &i)
-    :CSVTSInputFileConn(i), CaffeInputInterface(i), _dv_index(i._dv_index), _dv_test_index(i._dv_test_index),
-      _timesteps(i._timesteps), _continuation(i._continuation), _offset(i._offset)
+    :CSVTSInputFileConn(i), CaffeInputInterface(i), _dv_index(i._dv_index), _dv_test_index(i._dv_test_index), _continuation(i._continuation), _offset(i._offset)
       {
-        _timesteps = i._timesteps;
-        _offset = i._offset;
         this->_datadim = i._datadim;
       }
     ~CSVTSCaffeInputFileConn() {}
@@ -840,7 +838,6 @@ namespace dd
 
     void init(const APIData &ad)
     {
-
       CSVTSInputFileConn::init(ad);
       fillup_parameters(ad);
     }
@@ -896,14 +893,15 @@ namespace dd
         return 1;
     }
 
-    virtual void push_csv_to_csvts(bool is_test_data=false);
+    void push_csv_to_csvts(bool is_test_data=false);
+    void set_datadim(bool is_test_data = false);
+
 
     void transform(const APIData &ad); // calls CSVTSInputfileconn::transform and db stuff
     void reset_dv_test();
     std::vector<caffe::Datum> get_dv_test(const int &num,
                                           const bool &has_mean_file);
     std::vector<caffe::Datum> get_dv_test_db(const int &num);
-    std::vector<caffe::SparseDatum> get_dv_test_sparse_db(const int &num);
 
     int csvts_to_db(const std::string &traindbname,
                     const std::string &testdbname,
@@ -924,12 +922,11 @@ namespace dd
 
     int _db_batchsize = -1;
     int _db_testbatchsize = -1;
-    std::unique_ptr<caffe::db::DB> _test_db;
     std::unique_ptr<caffe::db::Cursor> _test_db_cursor;
     std::string _dbname = "train";
     std::string _test_dbname = "test";
     std::string _correspname = "corresp.txt";
-    int _timesteps;
+    //    int _timesteps;
     bool _continuation;
     int _offset;
 
