@@ -124,6 +124,7 @@ namespace dd
       {
 	// we assuming training with resume from solverstate, error is deferred to the training
 	// call assessing the resume is set to true
+	this->_logger->warn("ignoring template argument since .solverstate file exists, assuming a training job will resume, and deferring errors to potential future training call");
 	update_deploy_protofile_softmax(ad); // temperature scaling
 	create_model(true); // phase changed to train as needed later on
 	return;
@@ -136,7 +137,7 @@ namespace dd
 	/*else if (ad.has("resume") && ad.get("resume").get<bool>()) // resuming from state, may not want to override the existing network definition (e.g. after finetuning)
 	  throw MLLibBadParamException("using template while resuming from existing model, remove 'template' from 'mllib' ?");*/
 	else if (!this->_mlmodel._trainf.empty())
-	  throw MLLibBadParamException("using template while network weights exist, remove 'template' from 'mllib' or would you like to 'finetune' instead ?");
+	  throw MLLibBadParamException("using template while model prototxt and network weights exist, remove 'template' from 'mllib' or remove prototxt files instead instead ?");
       }
       
     // - locate template repository
@@ -207,7 +208,7 @@ namespace dd
 	caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
 	caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
 
-    if (this->_loss == "dice"  || _loss == "dice_multiclass" || _loss == "dice_weighted")
+       if (this->_loss.compare(0, 4, "dice",0,4) == 0)
       // dice loss!!
       {
         int ignore_label = -1;
@@ -574,6 +575,51 @@ namespace dd
 	if (ad_distort.has("prob"))
 	  nparam->set_prob(ad_distort.get("prob").get<double>());
       }
+    if(ad.has("geometry"))
+      {
+	std::vector<std::string> geometry_options = {
+	  "persp_horizontal", "persp_vertical", "zoom_out", "zoom_in"
+	};
+	APIData ad_geometry = ad.getobj("geometry");
+	caffe::LayerParameter *lparam = net_param.mutable_layer(0); // data input layer
+	caffe::TransformationParameter *trparam = lparam->mutable_transform_param();
+	caffe::GeometryParameter *gparam = trparam->mutable_geometry_param();
+	if (ad_geometry.has("all_effects") && ad_geometry.get("all_effects").get<bool>())
+	  gparam->set_all_effects(true);
+	else
+	  {
+	    for (auto s: geometry_options)
+	      {
+		if (ad_geometry.has(s))
+		  {
+		    if (s == "persp_horizontal")
+		      gparam->set_persp_horizontal(ad_geometry.get(s).get<bool>());
+		    else if (s == "persp_vertical")
+		      gparam->set_persp_vertical(ad_geometry.get(s).get<bool>());
+		    else if (s == "zoom_out")
+		      gparam->set_zoom_out(ad_geometry.get(s).get<bool>());
+		    else if (s == "zoom_in")
+		      gparam->set_zoom_in(ad_geometry.get(s).get<bool>());
+		  }
+	      }
+	    if (ad_geometry.has("persp_factor"))
+	      gparam->set_persp_factor(ad_geometry.get("persp_factor").get<double>());
+	    if (ad_geometry.has("zoom_factor"))
+	      gparam->set_zoom_factor(ad_geometry.get("zoom_factor").get<double>());
+	    if (ad_geometry.has("pad_mode"))
+	      {
+		std::string pmode = ad_geometry.get("pad_mode").get<std::string>();
+		if (pmode == "constant")
+		  gparam->set_pad_mode(::caffe::GeometryParameter_Pad_mode_CONSTANT);
+		else if (pmode == "mirrored")
+		  gparam->set_pad_mode(::caffe::GeometryParameter_Pad_mode_MIRRORED);
+		else if (pmode == "repeat_nearest")
+		  gparam->set_pad_mode(::caffe::GeometryParameter_Pad_mode_REPEAT_NEAREST);
+	      }
+	  }
+	if (ad_geometry.has("prob"))
+	  gparam->set_prob(ad_geometry.get("prob").get<double>());
+      }
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -854,7 +900,7 @@ namespace dd
     if (ad.has("loss"))
       {
         _loss = ad.get("loss").get<std::string>();
-        if (_loss == "dice" || _loss == "dice_multiclass" || _loss == "dice_weighted")
+        if (this->_loss.compare(0, 4, "dice",0,4) == 0)
           if (! this->_inputc._segmentation)
             throw MLLibBadParamException("asked for  dice loss without segmentation");
       }
@@ -1170,8 +1216,8 @@ namespace dd
       }
     else if (!this->_mlmodel._sstate.empty())
       {
-	this->_logger->error("not resuming with a .solverstate file in model repository");
-	throw MLLibBadParamException("a .solverstate file requires resuming training, otherwise delete with clear=lib to cleanup the model repository");
+	this->_logger->error("not resuming while a .solverstate file remains in model repository");
+	throw MLLibBadParamException("a .solverstate file requires a resume argument for training, otherwise delete existing training state files (with clear=lib) to cleanup the model repository");
       }
     else if (!this->_mlmodel._weights.empty())
       {
@@ -2740,6 +2786,11 @@ namespace dd
 		lparam->mutable_infogain_loss_param()->set_source(this->_mlmodel._repo + "/class_weights.binaryproto");
 		break;
 	      }
+           else if (lparam->type().compare("DiceCoefLoss") == 0)
+             {
+               lparam->mutable_dice_coef_loss_param()->set_weights(this->_mlmodel._repo + "/class_weights.binaryproto");
+               break;
+             }
 	  }
       }
 
@@ -3125,6 +3176,7 @@ namespace dd
     caffe::LayerParameter* mvn_param = insert_layer_before(net_param, softml_pos++);
     *mvn_param->mutable_name() = "normalization";
     *mvn_param->mutable_type() = "MVN";
+    mvn_param->mutable_mvn_param()->set_across_channels(true);
     mvn_param->add_bottom(logits);
     mvn_param->add_top(logits_norm);
 
@@ -3193,6 +3245,10 @@ namespace dd
       dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS);
     else if (loss == "dice_weighted")
       dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED);
+    else if (loss == "dice_weighted_batch")
+      dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED_BATCH);
+    else if (loss == "dice_weighted_all")
+      dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED_ALL);
 
 
     // now work on deploy.txt
@@ -3206,6 +3262,7 @@ namespace dd
     mvn_param = insert_layer_before(deploy_net_param, final_interp_pos++);
     *mvn_param->mutable_name() = "normalization";
     *mvn_param->mutable_type() = "MVN";
+    mvn_param->mutable_mvn_param()->set_across_channels(true);
     mvn_param->add_bottom(logits);
     mvn_param->add_top(logits_norm);
 
@@ -3237,7 +3294,7 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofiles_dice_one_hot(caffe::NetParameter &net_param, std::string loss, int nclasses)
   {
-    if (! (loss == "dice_multiclass" || loss == "dice_weighted"))
+    if (loss.compare(0, 4, "dice",0,4) != 0)
       return;
     caffe::LayerParameter* denseImageDataLayer = find_layer_by_type(net_param,"DenseImageData");
     caffe::DenseImageDataParameter *dp = denseImageDataLayer->mutable_dense_image_data_param();
@@ -3258,6 +3315,7 @@ namespace dd
     caffe::LayerParameter* mvn_param = insert_layer_before(net_param, softml_pos++);
     *mvn_param->mutable_name() = "normalization";
     *mvn_param->mutable_type() = "MVN";
+    mvn_param->mutable_mvn_param()->set_across_channels(true);
     mvn_param->add_bottom(logits);
     mvn_param->add_top(logits_norm);
 
@@ -3319,6 +3377,10 @@ namespace dd
       dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS);
     else if (loss == "dice_weighted")
       dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED);
+    else if (loss == "dice_weighted_batch")
+      dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED_BATCH);
+    else if (loss == "dice_weighted_all")
+      dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED_ALL);
 
     // BELOW DEPLOY
     int final_pred = find_index_layer_by_name(deploy_net_param, "pred");
@@ -3326,6 +3388,7 @@ namespace dd
     mvn_param = insert_layer_before(deploy_net_param, final_pred++);
     *mvn_param->mutable_name() = "normalization";
     *mvn_param->mutable_type() = "MVN";
+    mvn_param->mutable_mvn_param()->set_across_channels(true);
     mvn_param->add_bottom(logits);
     mvn_param->add_top(logits_norm);
 
