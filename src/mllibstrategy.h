@@ -243,6 +243,7 @@ namespace dd
       for (auto s: mkeys)
 	{
 	  std::vector<double> mdata = ad_metrics.get(s).get<std::vector<double>>();
+	  s.replace(s.find("_hist"),5,"");
 	  _meas_per_iter.insert(std::pair<std::string,std::vector<double>>(s,mdata));
 	}
     }
