@@ -2116,7 +2116,11 @@ namespace dd
                nclasses = _nclasses;
 
                bool conf_best;
-               std::vector<bool> confidences(_nclasses,false);
+               std::vector<bool> confidences;
+               if (_nclasses == 1)
+                 confidences = std::vector<bool>(2,false);
+               else
+                 confidences = std::vector<bool>(_nclasses,false);
                if (ad_output.has("confidences"))
                  {
                    std::vector<std::string> smaps =
