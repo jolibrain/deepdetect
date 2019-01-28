@@ -96,7 +96,6 @@ namespace dd
     std::string _test_dbfullname = "test.lmdb";
     int _timesteps = -1;  //default length for csv timeseries
     int _datadim = -1; //default size of vector data for timeseries
-
   };
 
   /**
@@ -834,8 +833,6 @@ namespace dd
       }
     ~CSVTSCaffeInputFileConn() {}
 
-
-
     void init(const APIData &ad)
     {
       CSVTSInputFileConn::init(ad);
@@ -895,8 +892,6 @@ namespace dd
 
     void push_csv_to_csvts(bool is_test_data=false);
     void set_datadim(bool is_test_data = false);
-
-
     void transform(const APIData &ad); // calls CSVTSInputfileconn::transform and db stuff
     void reset_dv_test();
     std::vector<caffe::Datum> get_dv_test(const int &num,
@@ -922,6 +917,7 @@ namespace dd
 
     int _db_batchsize = -1;
     int _db_testbatchsize = -1;
+    std::unique_ptr<caffe::db::DB> _test_db;
     std::unique_ptr<caffe::db::Cursor> _test_db_cursor;
     std::string _dbname = "train";
     std::string _test_dbname = "test";

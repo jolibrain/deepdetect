@@ -1178,7 +1178,7 @@ namespace dd
     if (_cifc)
       {
         _cifc->read_csv(fname);
-	return 0;
+        return 0;
       }
     else return -1;
   }
@@ -1592,9 +1592,9 @@ namespace dd
       _datadim = _csvtsdata[0][0]._v.size() +1;
   }
 
-
   void CSVTSCaffeInputFileConn::push_csv_to_csvts(bool is_test_data)
   {
+
     CSVTSInputFileConn::push_csv_to_csvts(is_test_data);
     set_datadim(is_test_data);
     dv_to_db(is_test_data);
@@ -1665,7 +1665,7 @@ namespace dd
   {
     _dt_vit = _dv_test.begin();
     _test_db_cursor = std::unique_ptr<caffe::db::Cursor>();
-    _ttdb  = std::unique_ptr<caffe::db::DB>();
+    _test_db  = std::unique_ptr<caffe::db::DB>();
   }
 
 
@@ -1697,12 +1697,12 @@ namespace dd
     if (!_test_db_cursor)
       {
         // open db and create cursor
-        if (!_ttdb)
+        if (!_test_db)
           {
-            _ttdb = std::unique_ptr<db::DB>(db::GetDB("lmdb"));
-            _ttdb->Open(_test_dbfullname.c_str(),db::READ);
+            _test_db = std::unique_ptr<db::DB>(db::GetDB("lmdb"));
+            _test_db->Open(_test_dbfullname.c_str(),db::READ);
           }
-        _test_db_cursor = std::unique_ptr<db::Cursor>(_ttdb->NewCursor());
+        _test_db_cursor = std::unique_ptr<db::Cursor>(_test_db->NewCursor());
       }
     std::vector<caffe::Datum> dv;
     int i =0;

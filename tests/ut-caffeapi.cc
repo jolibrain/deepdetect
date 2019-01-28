@@ -1448,9 +1448,9 @@ TEST(caffeapi,service_train_csvts_db_lstm)
 {
   // create service
   JsonAPI japi;
-  std::string csvts_data = sinus + "/train";
-  std::string csvts_test = sinus +"/test";
-  std::string csvts_predict = sinus +"/predict";
+  std::string csvts_data = sinus + "train";
+  std::string csvts_test = sinus +"test";
+  std::string csvts_predict = sinus +"predict";
   std::string csvts_repo = "csvts_db";
   mkdir(csvts_repo.c_str(),0777);
   std::string sname = "my_service_csvts";
@@ -1487,7 +1487,7 @@ TEST(caffeapi,service_train_csvts_db_lstm)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200,jd["status"]["code"]);
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
-  ASSERT_EQ("../examples/all/sinus//predict/seq_2.csv",uri);
+  ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv",uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["out"][0].GetDouble() >= -1.0);
 
