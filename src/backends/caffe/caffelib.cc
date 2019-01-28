@@ -2199,20 +2199,16 @@ namespace dd
 		    rad.add("imgsize",ad_imgsize);
 		    if (imgsize != (*bit).second.first*(*bit).second.second) // resizing output segmentation array
 		      {
-                      cv::Mat segimg = cv::Mat(inputc.height(),inputc.width(), CV_64FC1);
-                      std::memcpy(segimg.data,vals.data(),vals.size()*sizeof(double));
-                      cv::Mat segimg_res;
-                      cv::resize(segimg,segimg_res,cv::Size((*bit).second.second,(*bit).second.first),0,0,cv::INTER_NEAREST);
-                      vals = std::vector<double>((double*)segimg_res.data,(double*)segimg_res.data+segimg_res.rows*segimg_res.cols);
+                      vals =img_resize(vals,inputc.height(),inputc.width(),(*bit).second.first, (*bit).second.second,true);
                      if (conf_best)
-                       conf_map_best = conf_resize(conf_map_best, inputc.height(), inputc.width(),
-                                                  (*bit).second.first, (*bit).second.second);
+                       conf_map_best = img_resize(conf_map_best, inputc.height(), inputc.width(),
+                                                  (*bit).second.first, (*bit).second.second,false);
                      for (int ci=0; ci <_nclasses; ++ci)
                        if (confidences[ci])
                        confidence_maps[ci] =
-                         conf_resize(confidence_maps[ci],
+                         img_resize(confidence_maps[ci],
                                     inputc.height(), inputc.width(),
-                                    (*bit).second.first, (*bit).second.second);
+                                     (*bit).second.first, (*bit).second.second, false);
 		      }
 		    rad.add("vals",vals);
                   if (conf_best || !confidence_maps.empty())
@@ -3556,12 +3552,15 @@ namespace dd
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-    std::vector<double> CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::conf_resize(const std::vector<double>& vals, const int height_net, const int width_net, const int height_dest, const int width_dest)
+  std::vector<double> CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::img_resize(const std::vector<double>& vals, const int height_net, const int width_net, const int height_dest, const int width_dest, bool resize_nn)
   {
     cv::Mat segimg = cv::Mat(height_net,width_net, CV_64FC1);
     std::memcpy(segimg.data,vals.data(),vals.size()*sizeof(double));
     cv::Mat segimg_res;
-    cv::resize(segimg,segimg_res,cv::Size(width_dest,height_dest),0,0,cv::INTER_LINEAR);
+    if (resize_nn)
+      cv::resize(segimg,segimg_res,cv::Size(width_dest,height_dest),0,0,cv::INTER_NEAREST);
+    else
+      cv::resize(segimg,segimg_res,cv::Size(width_dest,height_dest),0,0,cv::INTER_LINEAR);
     return std::vector<double>((double*)segimg_res.data,(double*)segimg_res.data+segimg_res.rows*segimg_res.cols);
   }
 
