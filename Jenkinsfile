@@ -21,5 +21,10 @@ ctest -V -E "http" '''
         cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
       }
     }
+    stage('Notify Chat') {
+      steps {
+        rocketSend(avatar: 'beniz', channel: 'dev', message: 'Build Completed - ${env.JOB_NAME} ${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>)')
+      }
+    }
   }
 }
