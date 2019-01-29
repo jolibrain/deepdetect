@@ -1280,14 +1280,14 @@ namespace dd
 	    
 	    for (auto m: meas_str)
 	      {
-		if (m != "cmdiag" && m != "cmfull" && m != "clacc" && m != "labels") // do not report confusion matrix in server logs
+		if (m != "cmdiag" && m != "cmfull" && m != "clacc" && m != "labels" && m!= "cliou") // do not report confusion matrix in server logs
 		  {
 		    double mval = meas_obj.get(m).get<double>();
 		    this->_logger->info("{}={}",m,mval);
 		    this->add_meas(m,mval);
 		    this->add_meas_per_iter(m,mval);
 		  }
-		else if (m == "cmdiag" || m == "clacc")
+		else if (m == "cmdiag" || m == "clacc" || m == "cliou")
 		  {
 		    std::vector<double> mdiag = meas_obj.get(m).get<std::vector<double>>();
 		    std::vector<std::string> cnames;
