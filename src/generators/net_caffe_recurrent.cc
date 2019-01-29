@@ -173,7 +173,6 @@ namespace dd
 
     std::vector<std::string> layers = {"L","L"}; // default
     std::vector<double> dropouts; // default
-    double dropout = 0.0;
     std::map<int,int> types;
     std::string loss = "L1";
     std::string loss_temp;
@@ -184,11 +183,24 @@ namespace dd
     if (ad_mllib.has("layers"))
       layers = ad_mllib.get("layers").get<std::vector<std::string>>();
     if (ad_mllib.has("dropout"))
-      dropout = ad_mllib.get("dropout").get<double>();
-    if (ad_mllib.has("dropouts"))
-      dropouts = ad_mllib.get("dropouts").get<std::vector<double>>();
-    else
-      dropouts =std::vector<double>(layers.size(), dropout);
+      {
+        try
+          {
+            double dropout = ad_mllib.get("dropout").get<double>();
+            dropouts =std::vector<double>(layers.size(), dropout);
+          }
+        catch (std::exception &e)
+          {
+            try
+              {
+                dropouts = ad_mllib.get("dropout").get<std::vector<double>>();
+              }
+            catch(std::exception &e)
+		{
+		  throw InputConnectorBadParamException("wrong type for dropout parameter");
+		}
+          }
+      }
     if (ad_mllib.has("hidden"))
       hidden = ad_mllib.get("hidden").get<int>();
     if (ad_mllib.has("loss"))
