@@ -65,7 +65,10 @@ namespace dd
 
   CSVTSInputFileConn(const CSVTSInputFileConn &i)
     : CSVInputFileConn(i), _csvtsdata(i._csvtsdata),
-      _csvtsdata_test(i._csvtsdata_test) {}
+      _csvtsdata_test(i._csvtsdata_test)
+        {
+          this->_dont_scale_labels = false;
+        }
 
 
 

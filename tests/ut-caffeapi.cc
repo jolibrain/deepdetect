@@ -1395,7 +1395,7 @@ TEST(caffeapi,service_train_csvts_lstm)
   std::string csvts_repo = "csvts";
   mkdir(csvts_repo.c_str(),0777);
   std::string sname = "my_service_csvts";
-  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my ts regressor\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  csvts_repo+"\",\"templates\":\"" + model_templates_repo + "\"},\"parameters\":{\"input\":{\"connector\":\"csvts\",\"timesteps\":20},\"mllib\":{\"template\":\"recurrent\",\"layers\":[\"L\",\"L\"],\"dropouts\":[0.0,0.0,0.0],\"regression\":true,\"targets\":[1],\"inputs\":[0],\"ncols\":2,\"hidden\":10,\"sl1sigma\":100.0,\"loss\":\"L1\"}}}";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my ts regressor\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  csvts_repo+"\",\"templates\":\"" + model_templates_repo + "\"},\"parameters\":{\"input\":{\"connector\":\"csvts\",\"timesteps\":20,\"label\":[\"output\"]},\"mllib\":{\"template\":\"recurrent\",\"layers\":[\"L\",\"L\"],\"dropout\":[0.0,0.0,0.0],\"regression\":true,\"hidden\":10,\"sl1sigma\":100.0,\"loss\":\"L1\"}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
   ASSERT_EQ(created_str,joutstr);
 
@@ -1454,7 +1454,7 @@ TEST(caffeapi,service_train_csvts_db_lstm)
   std::string csvts_repo = "csvts_db";
   mkdir(csvts_repo.c_str(),0777);
   std::string sname = "my_service_csvts";
-  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my ts regressor\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  csvts_repo+"\",\"templates\":\"" + model_templates_repo+  "\"},\"parameters\":{\"input\":{\"connector\":\"csvts\",\"db\":true},\"mllib\":{\"template\":\"recurrent\",\"layers\":[\"L\",\"L\"],\"dropouts\":[0.0,0.0],\"regression\":true,\"targets\":[1],\"inputs\":[0],\"hidden\":10,\"loss\":\"L1\",\"db\":true}}}";
+  std::string jstr = "{\"mllib\":\"caffe\",\"description\":\"my ts regressor\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  csvts_repo+"\",\"templates\":\"" + model_templates_repo+  "\"},\"parameters\":{\"input\":{\"connector\":\"csvts\",\"db\":true,\"label\":[\"output\"]},\"mllib\":{\"template\":\"recurrent\",\"layers\":[\"L\",\"L\"],\"dropout\":[0.0,0.0],\"regression\":true,\"hidden\":10,\"loss\":\"L1\",\"db\":true}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
   ASSERT_EQ(created_str,joutstr);
 

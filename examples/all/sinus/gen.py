@@ -42,6 +42,10 @@ for i in range(N-3):
     csvdat[:,1] = target[i,:]
     filename = "train/seq_" + str(i) + ".csv"
     np.savetxt(filename, csvdat, delimiter=",")
+    with open(filename, 'r+') as f:
+        content = f.read()
+        f.seek(0,0)
+        f.write("input,output\n" + content)
 
 for i in range(2):
     csvdat = np.empty((L-1,2), 'float64')
@@ -49,9 +53,17 @@ for i in range(2):
     csvdat[:,1] = test_target[i,:]
     filename = "test/seq_" + str(i) + ".csv"
     np.savetxt(filename, csvdat, delimiter=",")
+    with open(filename, 'r+') as f:
+        content = f.read()
+        f.seek(0,0)
+        f.write("input,output\n" + content)
 
 csvdat = np.empty((L-1,2), 'float64')
 csvdat[:,0] = test_input[2,:]
 csvdat[:,1] = test_target[2,:]
 filename = "predict/seq_" + str(2) + ".csv"
-np.savetxt(filename, csvdat, delimiter=",")
+np.savetxt(filename, csvdat,  delimiter=",")
+with open(filename, 'r+') as f:
+    content = f.read()
+    f.seek(0,0)
+    f.write("input,output\n" + content)
