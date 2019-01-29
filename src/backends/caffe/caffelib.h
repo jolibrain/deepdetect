@@ -281,7 +281,7 @@ namespace dd
       bool _regression = false; /**< whether the net acts as a regressor. */
       std::string _loss = ""; /**< loss to use : 0 softmax+multinomail logistic or1: dice*/
       int _ntargets = 0; /**< number of classification or regression targets. */
-      std::vector<int> _targets; /**< id number of classification or regression targets. */
+      //      std::vector<int> _targets; /**< id number of classification or regression targets. */
       bool _autoencoder = false; /**< whether an autoencoder. */
       std::mutex _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as net is not re-instantiated. Use batches instead. */
       long int _flops = 0;  /**< model flops. */

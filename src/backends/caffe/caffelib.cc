@@ -59,7 +59,7 @@ namespace dd
     _nclasses = cl._nclasses;
     _regression = cl._regression;
     _ntargets = cl._ntargets;
-    _targets = cl._targets;
+    //    _targets = cl._targets;
     _autoencoder = cl._autoencoder;
     cl._net = nullptr;
     _crop_size = cl._crop_size;
@@ -772,6 +772,8 @@ namespace dd
 
     NetCaffe<NetInputCaffe<TInputConnectorStrategy>,NetLayersCaffeRecurrent,NetLossCaffe> netcaffe(&net_param,&dnet_param,this->_logger);
     netcaffe._nic.configure_inputs(ad,inputc);
+    // add ntargets to ad.
+    const_cast<APIData&>(ad).add("ntargets",this->_ntargets);
     netcaffe._nlac.configure_net(ad);
   }
 
@@ -875,11 +877,8 @@ namespace dd
 
     if (ad.has("ntargets"))
       _ntargets = ad.get("ntargets").get<int>();
-    if (ad.has("targets"))
-      {
-        _targets = ad.get("targets").get<std::vector<int>>();
-        _ntargets = _targets.size();
-      }
+    if (this->_inputc._ntargets != -1)
+      _ntargets = this->_inputc._ntargets;
     if (ad.has("autoencoder") && ad.get("autoencoder").get<bool>())
       _autoencoder = true;
     if (!_autoencoder && _nclasses == 0)
@@ -1514,7 +1513,7 @@ namespace dd
 			    std::vector<double> vals;
                          for (int t=0; t<inputc._timesteps; ++t)
                            {
-                             for (int k: _targets)
+                             for (int k=0; k<_ntargets; ++k)
                                {
                                  vals.push_back(dv.at(s).float_data(t*inputc._datadim+k+1));
                                }
@@ -1826,7 +1825,9 @@ namespace dd
                     {
                       std::vector<double> target;
                       for (size_t k=0;k<dv_float_data.at(j).size();k++)
+                        {
                           target.push_back(dv_float_data.at(j).at(k));
+                        }
                       bad.add("target", target);
 
                       for (int t=0; t<inputc._timesteps; ++t)

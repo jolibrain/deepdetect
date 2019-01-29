@@ -235,14 +235,17 @@ namespace dd
 	      ++lit;
 	      continue;
 	    }
-	  bool j_is_label = false;
-	  if (!_columns.empty() && std::find(_label_pos.begin(),_label_pos.end(),j)!=_label_pos.end())
-	    j_is_label = true;
-	  if (j_is_label)
-	    {
-	      ++lit;
-	      continue;
-	    }
+         if (_dont_scale_labels)
+           {
+             bool j_is_label = false;
+             if (!_columns.empty() && std::find(_label_pos.begin(),_label_pos.end(),j)!=_label_pos.end())
+               j_is_label = true;
+             if (j_is_label)
+               {
+                 ++lit;
+                 continue;
+               }
+           }
 	  
 	  vals.at(j) = (vals.at(j) - _min_vals.at(j)) / (_max_vals.at(j) - _min_vals.at(j));
 	  ++lit;
@@ -547,6 +550,7 @@ namespace dd
     std::unordered_set<int> _ignored_columns_pos;
     std::string _id;
     bool _scale = false; /**< whether to scale all data between 0 and 1 */
+    bool _dont_scale_labels = true; // original csv input conn do not scale labels, while it is needed for csv timeseries
     std::vector<double> _min_vals; /**< upper bound used for auto-scaling data */
     std::vector<double> _max_vals; /**< lower bound used for auto-scaling data */
     std::unordered_map<std::string,CCategorical> _categoricals; /**< auto-converted categorical variables */

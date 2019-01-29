@@ -1907,10 +1907,14 @@ namespace dd
               d->set_float_data(*index*this->_datadim,0.0); // new sequence
             else
               d->set_float_data(*index*this->_datadim,1.0); // continue sequence
+            for (unsigned int di =0; di < _label_pos.size(); ++di)
+                d->set_float_data(*index*this->_datadim + di + 1,
+                                  data->at(si)[ti]._v[_label_pos[di]]);
+            int ii =0;
             for (int di = 0; di<this->_datadim-1; ++di)
-              {
-                d->set_float_data(*index*this->_datadim + di + 1, data->at(si)[ti]._v[di]);
-              }
+              if (std::find(_label_pos.begin(),_label_pos.end(), di) == _label_pos.end())
+                  d->set_float_data(*index*this->_datadim + 1 + ii++ + _label_pos.size(),
+                                    data->at(si)[ti]._v[di]);
             (*index)++;
             ++ti;
             if ((*index) == _timesteps)
@@ -1935,8 +1939,14 @@ namespace dd
                           d->set_float_data(*index*this->_datadim,0.0); // continue sequence
                         else
                           d->set_float_data(*index*this->_datadim,1.0); // continue sequence
+                        for (unsigned int di =0; di < _label_pos.size(); ++di)
+                          d->set_float_data(*index*this->_datadim + di + 1,
+                                            data->at(si)[ti]._v[_label_pos[di]]);
+                        int ii =0;
                         for (int di = 0; di<this->_datadim-1; ++di)
-                          d->set_float_data(*index*this->_datadim + di + 1, data->at(si)[tti]._v[di]);
+                          if (std::find(_label_pos.begin(),_label_pos.end(), di) == _label_pos.end())
+                            d->set_float_data(*index*this->_datadim + 1 + ii++ + _label_pos.size(),
+                                              data->at(si)[ti]._v[di]);
                         (*index)++;
                       }
                     break;

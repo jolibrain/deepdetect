@@ -81,24 +81,23 @@ namespace dd
   }
 
   void NetLayersCaffeRecurrent::add_slicer(caffe::NetParameter *net_params,
-                                           std::set<int> slice_points,
-                                           std::vector<std::string> tops,
+                                           int slice_point,
                                            std::string bottom,
+                                           std::string targets_name,
+                                           std::string inputs_name,
                                            std::string cont_seq)
   {
     caffe::LayerParameter *lparam = net_params->add_layer();
     lparam->set_type("Slice");
     lparam->set_name("slice_timeseries");
-    lparam->add_top(cont_seq);
 
     caffe::SliceParameter *sparam = lparam->mutable_slice_param();
     sparam->set_slice_dim(2);
-    for (std::set<int>::iterator i = slice_points.begin(); i!= slice_points.end(); ++i)
-      {
-        sparam->add_slice_point(*i);
-      }
-    for (auto t:tops)
-      lparam->add_top(t);
+    sparam->add_slice_point(1);
+    sparam->add_slice_point(slice_point);
+    lparam->add_top(cont_seq);
+    lparam->add_top(targets_name);
+    lparam->add_top(inputs_name);
     lparam->add_bottom(bottom);
   }
 
@@ -175,12 +174,10 @@ namespace dd
     std::vector<std::string> layers = {"L","L"}; // default
     std::vector<double> dropouts; // default
     double dropout = 0.0;
-    std::vector<int> targets = {1}; // index of csv columns to predict
-    std::vector<int> inputs = {0}; // index of csv columns to use a input
-    std::vector<int> unused = {}; // index of csv columns to use a input
     std::map<int,int> types;
     std::string loss = "L1";
     std::string loss_temp;
+    int ntargets;
     //    double sl1sigma = 10;
 
     int hidden = 50;
@@ -192,12 +189,6 @@ namespace dd
       dropouts = ad_mllib.get("dropouts").get<std::vector<double>>();
     else
       dropouts =std::vector<double>(layers.size(), dropout);
-    if (ad_mllib.has("targets"))
-      targets = ad_mllib.get("targets").get<std::vector<int>>();
-    if (ad_mllib.has("inputs"))
-      inputs = ad_mllib.get("inputs").get<std::vector<int>>();
-    if (ad_mllib.has("ignore"))
-      unused = ad_mllib.get("ignore").get<std::vector<int>>();
     if (ad_mllib.has("hidden"))
       hidden = ad_mllib.get("hidden").get<int>();
     if (ad_mllib.has("loss"))
@@ -206,71 +197,28 @@ namespace dd
         if (loss_temp == "L2" || loss_temp == "euclidean")
           loss = "EuclideanLoss";
       }
-    // if (ad_mllib.has("sl1sigma"))
-    //   sl1sigma = ad_mllib.get("sl1sigma").get<double>();
-    // else
-    //   sl1sigma = 100.0; //override proto default in order to be sharp L1
+    ntargets = ad_mllib.get("ntargets").get<int>();
 
     std::string bottom = "data";
-    std::sort(targets.begin(), targets.end());
-    std::sort(inputs.begin(), inputs.end());
 
     // first permute
     add_permute(this->_net_params, "permuted_data", "data", 4,false,false);
     add_permute(this->_dnet_params, "permuted_data", "data", 4,false,false);
 
 
-    std::set<int> slice_points;
-    std::vector<std::string> tops;
+    int slice_point = 1 + ntargets;
 
-
-    for (int i: targets)
-      types.insert(std::pair<int,int>(i,1));
-    for (int i: inputs)
-      types.insert(std::pair<int,int>(i,-1));
-    for (int i: unused)
-      types.insert(std::pair<int,int>(i,0));
-
-    for (auto it = types.begin(); it != types.end(); ++it)
-      {
-        slice_points.insert(it->first+1);
-        std::string topName;
-        switch (it->second)
-          {
-          case 1: topName = "target_"; break;
-          case -1: topName = "input_"; break;
-          default: topName = "unused_"; break;
-          }
-        tops.push_back(topName + std::to_string(it->first));
-      }
-
-    add_slicer(this->_net_params, slice_points, tops, "permuted_data","cont_seq_unshaped");
-    add_slicer(this->_dnet_params, slice_points, tops, "permuted_data","cont_seq_unshaped");
+    add_slicer(this->_net_params, slice_point, "permuted_data",
+               "target_seq","input_seq","cont_seq_unshaped");
+    add_slicer(this->_dnet_params, slice_point, "permuted_data",
+               "target_seq","input_seq","cont_seq_unshaped");
 
     add_flatten(this->_net_params, "cont_seq_unshaped","cont_seq", 1);
     add_flatten(this->_dnet_params,"cont_seq_unshaped","cont_seq", 1);
 
-    std::vector<std::string> input_names;
-    for (unsigned int i = 0; i< inputs.size(); ++i)
-      {
-        input_names.push_back("input_"+std::to_string(inputs[i]));
-      }
-
-    add_concat(this->_net_params, "concat_inputs", "input_seq",input_names, 2);
-    add_concat(this->_dnet_params, "concat_inputs", "input_seq",input_names, 2);
-
-    std::vector<std::string> target_names;
-    for (unsigned int i = 0; i< targets.size(); ++i)
-      {
-        target_names.push_back("target_"+std::to_string(targets[i]));
-      }
-
-    add_concat(this->_net_params, "concat_targets", "target_seq",target_names, 2);
-    add_concat(this->_dnet_params, "concat_targets", "target_seq",target_names, 2);
-
     // lstm0
 
-    int first_num_output = layers.size() <=1 ? targets.size() : hidden;
+    int first_num_output = layers.size() <=1 ? ntargets : hidden;
     double first_dropout_ratio = layers.size() <=1 ? 0.0 : dropouts[0];
     std::string type = (layers[0] == "R"? "RNN":"LSTM");
     bottom = type+"_"+std::to_string(0);
@@ -290,8 +238,8 @@ namespace dd
       }
 
 
-    add_affine(this->_net_params,"affine",bottom,"rnn_pred", targets.size());
-    add_affine(this->_dnet_params,"affine", bottom,"rnn_pred",  targets.size());
+    add_affine(this->_net_params,"affine",bottom,"rnn_pred", ntargets);
+    add_affine(this->_dnet_params,"affine", bottom,"rnn_pred",  ntargets);
 
     add_permute(this->_net_params, "permuted_rnn_pred", "rnn_pred", 3,true,false);
     add_permute(this->_net_params, "permuted_target_seq", "target_seq", 3,true,false);

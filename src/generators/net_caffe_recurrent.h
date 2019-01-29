@@ -58,9 +58,10 @@ namespace dd
                     int axis);
 
     void add_slicer(caffe::NetParameter *net_params,
-                    std::set<int> slice_points,
-                    std::vector<std::string> tops,
+                    int slice_points,
                     std::string bottom,
+                    std::string targets_name,
+                    std::string inputs_name,
                     std::string cont_seq);
 
     void add_flatten(caffe::NetParameter *net_params,
