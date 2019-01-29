@@ -32,6 +32,8 @@ namespace dd
                                                 const std::string &top,
                                                 const int &num_output,
                                                 const double &dropout_ratio,
+                                                const std::string weight_filler,
+                                                const std::string bias_filler,
                                                 const std::string &type,
                                                 const int id)
   {
@@ -48,13 +50,19 @@ namespace dd
     caffe::RecurrentParameter *rparam = lparam->mutable_recurrent_param();
     rparam->set_num_output(num_output);
     caffe::FillerParameter *weight_filler_param = rparam->mutable_weight_filler();
-    weight_filler_param->set_type("uniform");
-    weight_filler_param->set_min(-1.0/sqrt(num_output));
-    weight_filler_param->set_max(1.0/sqrt(num_output));
+    weight_filler_param->set_type(weight_filler);
+    if (weight_filler == "uniform")
+      {
+        weight_filler_param->set_min(-1.0/sqrt(num_output));
+        weight_filler_param->set_max(1.0/sqrt(num_output));
+      }
     caffe::FillerParameter *bias_filler_param = rparam->mutable_bias_filler();
-    bias_filler_param->set_type("uniform");
-    bias_filler_param->set_min(-1.0/sqrt(num_output));
-    bias_filler_param->set_max(1.0/sqrt(num_output));
+    bias_filler_param->set_type(bias_filler);
+    if (bias_filler == "uniform")
+      {
+        bias_filler_param->set_min(-1.0/sqrt(num_output));
+        bias_filler_param->set_max(1.0/sqrt(num_output));
+      }
 
     if (dropout_ratio !=0)
       {
@@ -236,16 +244,18 @@ namespace dd
     bottom = type+"_"+std::to_string(0);
     std::string top = bottom;
     add_basic_block(this->_net_params,"input_seq",
-                    "cont_seq",bottom,first_num_output, first_dropout_ratio,type, 0);
+                    "cont_seq",bottom,first_num_output,
+                    first_dropout_ratio,"uniform", "uniform", type, 0);
     add_basic_block(this->_dnet_params,"input_seq",
-                    "cont_seq",bottom,first_num_output, first_dropout_ratio,type, 0);
+                    "cont_seq",bottom,first_num_output,
+                    first_dropout_ratio,"uniform", "uniform", type, 0);
     for (unsigned int i=1; i<layers.size(); ++i)
       {
         top = type+"_"+std::to_string(i);
         add_basic_block(this->_net_params,bottom,
-                        "cont_seq",top,hidden, dropouts[i],type, i);
+                        "cont_seq",top,hidden, dropouts[i],"uniform", "uniform", type, i);
         add_basic_block(this->_dnet_params,bottom,
-                        "cont_seq",top,hidden, dropouts[i],type, i);
+                        "cont_seq",top,hidden, dropouts[i],"uniform", "uniform",type, i);
         bottom = top;
       }
 

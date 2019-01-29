@@ -46,6 +46,8 @@ namespace dd
                          const std::string &top,
                          const int &num_output,
                          const double &dropout_ratio,
+                         const std::string weight_filler,
+                         const std::string bias_filler,
                          const std::string &type,
                          const int id);
 
