@@ -23,7 +23,7 @@ ctest -V -E "http" '''
     }
     stage('Notify Chat') {
       steps {
-        rocketSend(avatar: 'beniz', channel: 'dev', message: 'Build Completed')
+        rocketSend(avatar: 'jenkins', channel: 'dev', message: 'Build Completed')
       }
     }
   }
