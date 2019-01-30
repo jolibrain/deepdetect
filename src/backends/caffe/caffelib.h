@@ -206,13 +206,14 @@ namespace dd
     private:
       void update_protofile_classes(caffe::NetParameter &net_param);
 
-      void update_protofiles_dice_one_hot(caffe::NetParameter &net_param, std::string loss, int nclasses);
+      void update_protofiles_one_hot(caffe::NetParameter &net_param);
 
-      void update_protofiles_dice_deeplab_vgg16(caffe::NetParameter &net_param, caffe::NetParameter &deploy_net_param, std::string loss, int ignore_label);
-      void update_protofiles_dice_unet(caffe::NetParameter &net_param, caffe::NetParameter &deploy_net_param, std::string loss, int ignore_label);
+      void update_protofiles_dice_deeplab_vgg16(caffe::NetParameter &net_param, caffe::NetParameter &deploy_net_param, const APIData &ad);
+      void update_protofiles_dice_unet(caffe::NetParameter &net_param, caffe::NetParameter &deploy_net_param, const APIData &ad);
 
       void update_protofile_imageDataLayer(caffe::NetParameter &net_param);
 
+      void update_protofiles_dice_params(caffe::DiceCoefLossParameter*dclp,  const APIData &ad);
 
       void update_protofile_finetune(caffe::NetParameter &net_param);
 
