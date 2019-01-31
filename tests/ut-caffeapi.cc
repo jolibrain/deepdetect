@@ -1117,6 +1117,25 @@ TEST(caffeapi,service_train_images_seg)
   ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() >= 0.0);
 
+  //predict + conf map
+  std::string jpredictstr = "{\"service\":\"" + sname + "\",\"async\":false,\"parameters\":{\"input\":{\"segmentation\":true},\"mllib\":{\"gpu\":true,\"gpuid\":"+gpuid+",\"net\":{\"batch_size\":1,\"test_batch_size\":1}},\"output\":{\"confidences\":[\"best\",\"2\"]}},\"data\":[\"" + camvid_repo + "test/0001TP_008550.png\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr predict=" << joutstr << std::endl;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200,jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"][0].HasMember("vals"));
+  ASSERT_TRUE(jd["body"]["predictions"][0]["vals"].IsArray());
+  ASSERT_TRUE(jd["body"]["predictions"][0]["vals"].Size() == (480*480));
+  ASSERT_TRUE(jd["body"]["predictions"][0].HasMember("confidences"));
+  ASSERT_TRUE(jd["body"]["predictions"][0]["confidences"].HasMember("best"));
+  ASSERT_TRUE(jd["body"]["predictions"][0]["confidences"]["best"].IsArray());
+  ASSERT_TRUE(jd["body"]["predictions"][0]["confidences"]["best"].Size() == 480*480);
+  ASSERT_TRUE(jd["body"]["predictions"][0]["confidences"].HasMember("2"));
+  ASSERT_TRUE(jd["body"]["predictions"][0]["confidences"]["2"].IsArray());
+  ASSERT_TRUE(jd["body"]["predictions"][0]["confidences"]["2"].Size() == 480*480);
+
+
   // remove service
   jstr = "{\"clear\":\"full\"}";
   joutstr = japi.jrender(japi.service_delete(sname,jstr));
