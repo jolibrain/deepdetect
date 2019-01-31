@@ -39,10 +39,17 @@ layer {
   top: "conv1/7x7_s2"
   convolution_param {
     num_output: 64
-    bias_term: false
     pad: 3
     kernel_size: 7
     stride: 2
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
+    bias_filler {
+      	type: "constant"
+      	value: 0.2
+    }
   }
 }
 layer {
@@ -87,9 +94,12 @@ layer {
   top: "conv2_1_1x1_reduce"
   convolution_param {
     num_output: 64
-    bias_term: false
     kernel_size: 1
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -123,10 +133,13 @@ layer {
   top: "conv2_1_3x3"
   convolution_param {
     num_output: 64
-    bias_term: false
     pad: 1
     kernel_size: 3
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -160,9 +173,12 @@ layer {
   top: "conv2_1_1x1_increase"
   convolution_param {
     num_output: 256
-    bias_term: false
     kernel_size: 1
     stride: 1
+    weight_filler {
+      	type: "xavier"
+    }
+    bias_term: false
   }
 }
 layer {
@@ -203,6 +219,10 @@ layer {
     num_output: 16
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -220,6 +240,10 @@ layer {
     num_output: 256
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -235,9 +259,12 @@ layer {
   top: "conv2_1_1x1_proj"
   convolution_param {
     num_output: 256
-    bias_term: false
     kernel_size: 1
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -279,9 +306,12 @@ layer {
   top: "conv2_2_1x1_reduce"
   convolution_param {
     num_output: 64
-    bias_term: false
     kernel_size: 1
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -315,10 +345,13 @@ layer {
   top: "conv2_2_3x3"
   convolution_param {
     num_output: 64
-    bias_term: false
     pad: 1
     kernel_size: 3
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -352,9 +385,12 @@ layer {
   top: "conv2_2_1x1_increase"
   convolution_param {
     num_output: 256
-    bias_term: false
     kernel_size: 1
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -395,6 +431,10 @@ layer {
     num_output: 16
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -412,6 +452,10 @@ layer {
     num_output: 256
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -441,9 +485,12 @@ layer {
   top: "conv2_3_1x1_reduce"
   convolution_param {
     num_output: 64
-    bias_term: false
     kernel_size: 1
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -477,10 +524,13 @@ layer {
   top: "conv2_3_3x3"
   convolution_param {
     num_output: 64
-    bias_term: false
     pad: 1
     kernel_size: 3
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -514,9 +564,12 @@ layer {
   top: "conv2_3_1x1_increase"
   convolution_param {
     num_output: 256
-    bias_term: false
     kernel_size: 1
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -557,6 +610,10 @@ layer {
     num_output: 16
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -574,6 +631,10 @@ layer {
     num_output: 256
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -603,9 +664,12 @@ layer {
   top: "conv3_1_1x1_reduce"
   convolution_param {
     num_output: 128
-    bias_term: false
     kernel_size: 1
     stride: 2
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -639,10 +703,13 @@ layer {
   top: "conv3_1_3x3"
   convolution_param {
     num_output: 128
-    bias_term: false
     pad: 1
     kernel_size: 3
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -676,9 +743,12 @@ layer {
   top: "conv3_1_1x1_increase"
   convolution_param {
     num_output: 512
-    bias_term: false
     kernel_size: 1
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -719,6 +789,10 @@ layer {
     num_output: 32
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -736,6 +810,10 @@ layer {
     num_output: 512
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -751,9 +829,12 @@ layer {
   top: "conv3_1_1x1_proj"
   convolution_param {
     num_output: 512
-    bias_term: false
     kernel_size: 1
     stride: 2
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -795,9 +876,12 @@ layer {
   top: "conv3_2_1x1_reduce"
   convolution_param {
     num_output: 128
-    bias_term: false
     kernel_size: 1
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -831,10 +915,13 @@ layer {
   top: "conv3_2_3x3"
   convolution_param {
     num_output: 128
-    bias_term: false
     pad: 1
     kernel_size: 3
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -868,9 +955,12 @@ layer {
   top: "conv3_2_1x1_increase"
   convolution_param {
     num_output: 512
-    bias_term: false
     kernel_size: 1
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -911,6 +1001,10 @@ layer {
     num_output: 32
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -928,6 +1022,10 @@ layer {
     num_output: 512
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -957,9 +1055,12 @@ layer {
   top: "conv3_3_1x1_reduce"
   convolution_param {
     num_output: 128
-    bias_term: false
     kernel_size: 1
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -993,10 +1094,13 @@ layer {
   top: "conv3_3_3x3"
   convolution_param {
     num_output: 128
-    bias_term: false
     pad: 1
     kernel_size: 3
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -1030,9 +1134,12 @@ layer {
   top: "conv3_3_1x1_increase"
   convolution_param {
     num_output: 512
-    bias_term: false
     kernel_size: 1
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -1073,6 +1180,10 @@ layer {
     num_output: 32
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -1090,6 +1201,10 @@ layer {
     num_output: 512
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -1119,9 +1234,12 @@ layer {
   top: "conv3_4_1x1_reduce"
   convolution_param {
     num_output: 128
-    bias_term: false
     kernel_size: 1
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -1155,10 +1273,13 @@ layer {
   top: "conv3_4_3x3"
   convolution_param {
     num_output: 128
-    bias_term: false
     pad: 1
     kernel_size: 3
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -1192,9 +1313,12 @@ layer {
   top: "conv3_4_1x1_increase"
   convolution_param {
     num_output: 512
-    bias_term: false
     kernel_size: 1
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -1235,6 +1359,10 @@ layer {
     num_output: 32
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -1252,6 +1380,10 @@ layer {
     num_output: 512
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -1281,9 +1413,12 @@ layer {
   top: "conv4_1_1x1_reduce"
   convolution_param {
     num_output: 256
-    bias_term: false
     kernel_size: 1
     stride: 2
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -1317,10 +1452,13 @@ layer {
   top: "conv4_1_3x3"
   convolution_param {
     num_output: 256
-    bias_term: false
     pad: 1
     kernel_size: 3
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -1354,9 +1492,12 @@ layer {
   top: "conv4_1_1x1_increase"
   convolution_param {
     num_output: 1024
-    bias_term: false
     kernel_size: 1
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -1397,6 +1538,10 @@ layer {
     num_output: 64
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -1414,6 +1559,10 @@ layer {
     num_output: 1024
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -1429,9 +1578,12 @@ layer {
   top: "conv4_1_1x1_proj"
   convolution_param {
     num_output: 1024
-    bias_term: false
     kernel_size: 1
     stride: 2
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -1473,9 +1625,12 @@ layer {
   top: "conv4_2_1x1_reduce"
   convolution_param {
     num_output: 256
-    bias_term: false
     kernel_size: 1
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -1509,10 +1664,13 @@ layer {
   top: "conv4_2_3x3"
   convolution_param {
     num_output: 256
-    bias_term: false
     pad: 1
     kernel_size: 3
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -1546,9 +1704,12 @@ layer {
   top: "conv4_2_1x1_increase"
   convolution_param {
     num_output: 1024
-    bias_term: false
     kernel_size: 1
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -1589,6 +1750,10 @@ layer {
     num_output: 64
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -1606,6 +1771,10 @@ layer {
     num_output: 1024
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -1635,9 +1804,12 @@ layer {
   top: "conv4_3_1x1_reduce"
   convolution_param {
     num_output: 256
-    bias_term: false
     kernel_size: 1
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -1671,10 +1843,13 @@ layer {
   top: "conv4_3_3x3"
   convolution_param {
     num_output: 256
-    bias_term: false
     pad: 1
     kernel_size: 3
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -1708,9 +1883,12 @@ layer {
   top: "conv4_3_1x1_increase"
   convolution_param {
     num_output: 1024
-    bias_term: false
     kernel_size: 1
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -1751,6 +1929,10 @@ layer {
     num_output: 64
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -1768,6 +1950,10 @@ layer {
     num_output: 1024
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -1797,9 +1983,12 @@ layer {
   top: "conv4_4_1x1_reduce"
   convolution_param {
     num_output: 256
-    bias_term: false
     kernel_size: 1
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -1833,10 +2022,13 @@ layer {
   top: "conv4_4_3x3"
   convolution_param {
     num_output: 256
-    bias_term: false
     pad: 1
     kernel_size: 3
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -1870,9 +2062,12 @@ layer {
   top: "conv4_4_1x1_increase"
   convolution_param {
     num_output: 1024
-    bias_term: false
     kernel_size: 1
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -1913,6 +2108,10 @@ layer {
     num_output: 64
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -1930,6 +2129,10 @@ layer {
     num_output: 1024
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -1959,9 +2162,12 @@ layer {
   top: "conv4_5_1x1_reduce"
   convolution_param {
     num_output: 256
-    bias_term: false
     kernel_size: 1
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -1995,10 +2201,13 @@ layer {
   top: "conv4_5_3x3"
   convolution_param {
     num_output: 256
-    bias_term: false
     pad: 1
     kernel_size: 3
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -2032,9 +2241,12 @@ layer {
   top: "conv4_5_1x1_increase"
   convolution_param {
     num_output: 1024
-    bias_term: false
     kernel_size: 1
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -2075,6 +2287,10 @@ layer {
     num_output: 64
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -2092,6 +2308,10 @@ layer {
     num_output: 1024
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -2121,9 +2341,12 @@ layer {
   top: "conv4_6_1x1_reduce"
   convolution_param {
     num_output: 256
-    bias_term: false
     kernel_size: 1
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -2157,10 +2380,13 @@ layer {
   top: "conv4_6_3x3"
   convolution_param {
     num_output: 256
-    bias_term: false
     pad: 1
     kernel_size: 3
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -2194,9 +2420,12 @@ layer {
   top: "conv4_6_1x1_increase"
   convolution_param {
     num_output: 1024
-    bias_term: false
     kernel_size: 1
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -2237,6 +2466,10 @@ layer {
     num_output: 64
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    } 
   }
 }
 layer {
@@ -2254,6 +2487,10 @@ layer {
     num_output: 1024
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -2283,9 +2520,12 @@ layer {
   top: "conv5_1_1x1_reduce"
   convolution_param {
     num_output: 512
-    bias_term: false
     kernel_size: 1
     stride: 2
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -2319,10 +2559,13 @@ layer {
   top: "conv5_1_3x3"
   convolution_param {
     num_output: 512
-    bias_term: false
     pad: 1
     kernel_size: 3
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -2356,9 +2599,12 @@ layer {
   top: "conv5_1_1x1_increase"
   convolution_param {
     num_output: 2048
-    bias_term: false
     kernel_size: 1
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -2399,6 +2645,10 @@ layer {
     num_output: 128
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -2416,6 +2666,10 @@ layer {
     num_output: 2048
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -2431,9 +2685,12 @@ layer {
   top: "conv5_1_1x1_proj"
   convolution_param {
     num_output: 2048
-    bias_term: false
     kernel_size: 1
     stride: 2
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -2475,9 +2732,12 @@ layer {
   top: "conv5_2_1x1_reduce"
   convolution_param {
     num_output: 512
-    bias_term: false
     kernel_size: 1
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -2511,10 +2771,13 @@ layer {
   top: "conv5_2_3x3"
   convolution_param {
     num_output: 512
-    bias_term: false
     pad: 1
     kernel_size: 3
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -2548,9 +2811,12 @@ layer {
   top: "conv5_2_1x1_increase"
   convolution_param {
     num_output: 2048
-    bias_term: false
     kernel_size: 1
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -2591,6 +2857,10 @@ layer {
     num_output: 128
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -2608,6 +2878,10 @@ layer {
     num_output: 2048
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -2637,9 +2911,12 @@ layer {
   top: "conv5_3_1x1_reduce"
   convolution_param {
     num_output: 512
-    bias_term: false
     kernel_size: 1
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -2673,10 +2950,13 @@ layer {
   top: "conv5_3_3x3"
   convolution_param {
     num_output: 512
-    bias_term: false
     pad: 1
     kernel_size: 3
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -2710,9 +2990,12 @@ layer {
   top: "conv5_3_1x1_increase"
   convolution_param {
     num_output: 2048
-    bias_term: false
     kernel_size: 1
     stride: 1
+    bias_term: false
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -2753,6 +3036,10 @@ layer {
     num_output: 128
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
@@ -2770,6 +3057,10 @@ layer {
     num_output: 2048
     kernel_size: 1
     stride: 1
+    bias_term: true
+    weight_filler {
+      	type: "xavier"
+    }
   }
 }
 layer {
