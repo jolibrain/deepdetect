@@ -265,9 +265,6 @@ namespace dd
   {
     int nlines = 0;
     std::string hline;
-    // discard header
-    std::getline(csv_file,hline);
-    read_header(hline);
     while(std::getline(csv_file,hline))
       {
         hline.erase(std::remove(hline.begin(),hline.end(),'\r'),hline.end());
