@@ -283,6 +283,11 @@ inline void assert_first_test_at(const JDoc &jd, double d) {
   ASSERT_EQ(jd["body"]["measure_hist"]["iteration_hist"][0].GetDouble(), d);
 }
 
+inline void assert_last_test_at(const JDoc &jd, double d) {
+  size_t len_hist = jd["body"]["measure_hist"]["iteration_hist"].Size()-1;
+  ASSERT_EQ(jd["body"]["measure_hist"]["iteration_hist"][len_hist].GetDouble(), d);
+}
+
 // Paths
 
 #define TRAINED "../examples/caffe2/resnet_50_imagenet"
@@ -452,7 +457,7 @@ TEST(caffe2api, service_train) {
   train(japi, jd, train_boats_and_cars_resume);
   assert_accuracy(jd, 0.7);
   assert_loss(jd, 0.2);
-  assert_first_test_at(jd, 1200); // 300 iterations (1000, 1299), test at 1200
+  assert_last_test_at(jd, 1200); // 300 iterations (1000, 1299), test at 1200
 
   // Remove new data
   clean_repository(BC_REPO);
