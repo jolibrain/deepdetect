@@ -88,8 +88,9 @@ namespace dd
         }
         this->_images.push_back(rimg);
         this->_images_size.push_back( std::pair<int,int>(
-            this->streamlib->get_original_width(),
-            this->streamlib->get_original_height())
+           this->streamlib->get_original_height(),
+            this->streamlib->get_original_width()
+            )
             );
 
       };
