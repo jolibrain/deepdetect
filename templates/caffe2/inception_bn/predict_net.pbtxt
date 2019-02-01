@@ -1,0 +1,6063 @@
+name: "Inception21k"
+op {
+  input: "data"
+  input: "conv_conv1_w"
+  input: "conv_conv1_b"
+  output: "conv_conv1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 3
+  }
+  arg {
+    name: "kernel"
+    i: 7
+  }
+}
+op {
+  input: "conv_conv1"
+  input: "conv_conv1_scale"
+  input: "conv_conv1_bias"
+  input: "conv_conv1_mean"
+  input: "conv_conv1_var"
+  output: "conv_conv1_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_conv1_unique"
+  input: "conv_conv1_w_second"
+  output: "conv_conv1_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_conv1_internal"
+  input: "conv_conv1_b"
+  output: "conv_conv1"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_conv1"
+  output: "conv_conv1"
+  type: "Relu"
+}
+op {
+  input: "conv_conv1"
+  output: "pool1"
+  type: "MaxPool"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "pool1"
+  input: "conv_conv2red_w"
+  input: "conv_conv2red_b"
+  output: "conv_conv2red"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_conv2red"
+  input: "conv_conv2red_scale"
+  input: "conv_conv2red_bias"
+  input: "conv_conv2red_mean"
+  input: "conv_conv2red_var"
+  output: "conv_conv2red_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_conv2red_unique"
+  input: "conv_conv2red_w_second"
+  output: "conv_conv2red_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_conv2red_internal"
+  input: "conv_conv2red_b"
+  output: "conv_conv2red"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_conv2red"
+  output: "conv_conv2red"
+  type: "Relu"
+}
+op {
+  input: "conv_conv2red"
+  input: "conv_conv2_w"
+  input: "conv_conv2_b"
+  output: "conv_conv2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv_conv2"
+  input: "conv_conv2_scale"
+  input: "conv_conv2_bias"
+  input: "conv_conv2_mean"
+  input: "conv_conv2_var"
+  output: "conv_conv2_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_conv2_unique"
+  input: "conv_conv2_w_second"
+  output: "conv_conv2_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_conv2_internal"
+  input: "conv_conv2_b"
+  output: "conv_conv2"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_conv2"
+  output: "conv_conv2"
+  type: "Relu"
+}
+op {
+  input: "conv_conv2"
+  output: "pool2"
+  type: "MaxPool"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "pool2"
+  input: "conv_3a_1x1_w"
+  input: "conv_3a_1x1_b"
+  output: "conv_3a_1x1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_3a_1x1"
+  input: "conv_3a_1x1_scale"
+  input: "conv_3a_1x1_bias"
+  input: "conv_3a_1x1_mean"
+  input: "conv_3a_1x1_var"
+  output: "conv_3a_1x1_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_3a_1x1_unique"
+  input: "conv_3a_1x1_w_second"
+  output: "conv_3a_1x1_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3a_1x1_internal"
+  input: "conv_3a_1x1_b"
+  output: "conv_3a_1x1"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3a_1x1"
+  output: "conv_3a_1x1"
+  type: "Relu"
+}
+op {
+  input: "pool2"
+  input: "conv_3a_3x3_reduce_w"
+  input: "conv_3a_3x3_reduce_b"
+  output: "conv_3a_3x3_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_3a_3x3_reduce"
+  input: "conv_3a_3x3_reduce_scale"
+  input: "conv_3a_3x3_reduce_bias"
+  input: "conv_3a_3x3_reduce_mean"
+  input: "conv_3a_3x3_reduce_var"
+  output: "conv_3a_3x3_reduce_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_3a_3x3_reduce_unique"
+  input: "conv_3a_3x3_reduce_w_second"
+  output: "conv_3a_3x3_reduce_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3a_3x3_reduce_internal"
+  input: "conv_3a_3x3_reduce_b"
+  output: "conv_3a_3x3_reduce"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3a_3x3_reduce"
+  output: "conv_3a_3x3_reduce"
+  type: "Relu"
+}
+op {
+  input: "conv_3a_3x3_reduce"
+  input: "conv_3a_3x3_w"
+  input: "conv_3a_3x3_b"
+  output: "conv_3a_3x3"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv_3a_3x3"
+  input: "conv_3a_3x3_scale"
+  input: "conv_3a_3x3_bias"
+  input: "conv_3a_3x3_mean"
+  input: "conv_3a_3x3_var"
+  output: "conv_3a_3x3_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_3a_3x3_unique"
+  input: "conv_3a_3x3_w_second"
+  output: "conv_3a_3x3_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3a_3x3_internal"
+  input: "conv_3a_3x3_b"
+  output: "conv_3a_3x3"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3a_3x3"
+  output: "conv_3a_3x3"
+  type: "Relu"
+}
+op {
+  input: "pool2"
+  input: "conv_3a_double_3x3_reduce_w"
+  input: "conv_3a_double_3x3_reduce_b"
+  output: "conv_3a_double_3x3_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_3a_double_3x3_reduce"
+  input: "conv_3a_double_3x3_reduce_scale"
+  input: "conv_3a_double_3x3_reduce_bias"
+  input: "conv_3a_double_3x3_reduce_mean"
+  input: "conv_3a_double_3x3_reduce_var"
+  output: "conv_3a_double_3x3_reduce_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_3a_double_3x3_reduce_unique"
+  input: "conv_3a_double_3x3_reduce_w_second"
+  output: "conv_3a_double_3x3_reduce_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3a_double_3x3_reduce_internal"
+  input: "conv_3a_double_3x3_reduce_b"
+  output: "conv_3a_double_3x3_reduce"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3a_double_3x3_reduce"
+  output: "conv_3a_double_3x3_reduce"
+  type: "Relu"
+}
+op {
+  input: "conv_3a_double_3x3_reduce"
+  input: "conv_3a_double_3x3_0_w"
+  input: "conv_3a_double_3x3_0_b"
+  output: "conv_3a_double_3x3_0"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv_3a_double_3x3_0"
+  input: "conv_3a_double_3x3_0_scale"
+  input: "conv_3a_double_3x3_0_bias"
+  input: "conv_3a_double_3x3_0_mean"
+  input: "conv_3a_double_3x3_0_var"
+  output: "conv_3a_double_3x3_0_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_3a_double_3x3_0_unique"
+  input: "conv_3a_double_3x3_0_w_second"
+  output: "conv_3a_double_3x3_0_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3a_double_3x3_0_internal"
+  input: "conv_3a_double_3x3_0_b"
+  output: "conv_3a_double_3x3_0"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3a_double_3x3_0"
+  output: "conv_3a_double_3x3_0"
+  type: "Relu"
+}
+op {
+  input: "conv_3a_double_3x3_0"
+  input: "conv_3a_double_3x3_1_w"
+  input: "conv_3a_double_3x3_1_b"
+  output: "conv_3a_double_3x3_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv_3a_double_3x3_1"
+  input: "conv_3a_double_3x3_1_scale"
+  input: "conv_3a_double_3x3_1_bias"
+  input: "conv_3a_double_3x3_1_mean"
+  input: "conv_3a_double_3x3_1_var"
+  output: "conv_3a_double_3x3_1_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_3a_double_3x3_1_unique"
+  input: "conv_3a_double_3x3_1_w_second"
+  output: "conv_3a_double_3x3_1_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3a_double_3x3_1_internal"
+  input: "conv_3a_double_3x3_1_b"
+  output: "conv_3a_double_3x3_1"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3a_double_3x3_1"
+  output: "conv_3a_double_3x3_1"
+  type: "Relu"
+}
+op {
+  input: "pool2"
+  output: "ave_pool_3a_pool"
+  type: "AveragePool"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "ave_pool_3a_pool"
+  input: "conv_3a_proj_w"
+  input: "conv_3a_proj_b"
+  output: "conv_3a_proj"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_3a_proj"
+  input: "conv_3a_proj_scale"
+  input: "conv_3a_proj_bias"
+  input: "conv_3a_proj_mean"
+  input: "conv_3a_proj_var"
+  output: "conv_3a_proj_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_3a_proj_unique"
+  input: "conv_3a_proj_w_second"
+  output: "conv_3a_proj_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3a_proj_internal"
+  input: "conv_3a_proj_b"
+  output: "conv_3a_proj"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3a_proj"
+  output: "conv_3a_proj"
+  type: "Relu"
+}
+op {
+  input: "conv_3a_1x1"
+  input: "conv_3a_3x3"
+  input: "conv_3a_double_3x3_1"
+  input: "conv_3a_proj"
+  output: "ch_concat_3a_chconcat"
+  output: "_ch_concat_3a_chconcat_dims"
+  type: "Concat"
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "ch_concat_3a_chconcat"
+  input: "conv_3b_1x1_w"
+  input: "conv_3b_1x1_b"
+  output: "conv_3b_1x1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_3b_1x1"
+  input: "conv_3b_1x1_scale"
+  input: "conv_3b_1x1_bias"
+  input: "conv_3b_1x1_mean"
+  input: "conv_3b_1x1_var"
+  output: "conv_3b_1x1_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_3b_1x1_unique"
+  input: "conv_3b_1x1_w_second"
+  output: "conv_3b_1x1_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3b_1x1_internal"
+  input: "conv_3b_1x1_b"
+  output: "conv_3b_1x1"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3b_1x1"
+  output: "conv_3b_1x1"
+  type: "Relu"
+}
+op {
+  input: "ch_concat_3a_chconcat"
+  input: "conv_3b_3x3_reduce_w"
+  input: "conv_3b_3x3_reduce_b"
+  output: "conv_3b_3x3_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_3b_3x3_reduce"
+  input: "conv_3b_3x3_reduce_scale"
+  input: "conv_3b_3x3_reduce_bias"
+  input: "conv_3b_3x3_reduce_mean"
+  input: "conv_3b_3x3_reduce_var"
+  output: "conv_3b_3x3_reduce_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_3b_3x3_reduce_unique"
+  input: "conv_3b_3x3_reduce_w_second"
+  output: "conv_3b_3x3_reduce_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3b_3x3_reduce_internal"
+  input: "conv_3b_3x3_reduce_b"
+  output: "conv_3b_3x3_reduce"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3b_3x3_reduce"
+  output: "conv_3b_3x3_reduce"
+  type: "Relu"
+}
+op {
+  input: "conv_3b_3x3_reduce"
+  input: "conv_3b_3x3_w"
+  input: "conv_3b_3x3_b"
+  output: "conv_3b_3x3"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv_3b_3x3"
+  input: "conv_3b_3x3_scale"
+  input: "conv_3b_3x3_bias"
+  input: "conv_3b_3x3_mean"
+  input: "conv_3b_3x3_var"
+  output: "conv_3b_3x3_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_3b_3x3_unique"
+  input: "conv_3b_3x3_w_second"
+  output: "conv_3b_3x3_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3b_3x3_internal"
+  input: "conv_3b_3x3_b"
+  output: "conv_3b_3x3"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3b_3x3"
+  output: "conv_3b_3x3"
+  type: "Relu"
+}
+op {
+  input: "ch_concat_3a_chconcat"
+  input: "conv_3b_double_3x3_reduce_w"
+  input: "conv_3b_double_3x3_reduce_b"
+  output: "conv_3b_double_3x3_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_3b_double_3x3_reduce"
+  input: "conv_3b_double_3x3_reduce_scale"
+  input: "conv_3b_double_3x3_reduce_bias"
+  input: "conv_3b_double_3x3_reduce_mean"
+  input: "conv_3b_double_3x3_reduce_var"
+  output: "conv_3b_double_3x3_reduce_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_3b_double_3x3_reduce_unique"
+  input: "conv_3b_double_3x3_reduce_w_second"
+  output: "conv_3b_double_3x3_reduce_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3b_double_3x3_reduce_internal"
+  input: "conv_3b_double_3x3_reduce_b"
+  output: "conv_3b_double_3x3_reduce"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3b_double_3x3_reduce"
+  output: "conv_3b_double_3x3_reduce"
+  type: "Relu"
+}
+op {
+  input: "conv_3b_double_3x3_reduce"
+  input: "conv_3b_double_3x3_0_w"
+  input: "conv_3b_double_3x3_0_b"
+  output: "conv_3b_double_3x3_0"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv_3b_double_3x3_0"
+  input: "conv_3b_double_3x3_0_scale"
+  input: "conv_3b_double_3x3_0_bias"
+  input: "conv_3b_double_3x3_0_mean"
+  input: "conv_3b_double_3x3_0_var"
+  output: "conv_3b_double_3x3_0_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_3b_double_3x3_0_unique"
+  input: "conv_3b_double_3x3_0_w_second"
+  output: "conv_3b_double_3x3_0_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3b_double_3x3_0_internal"
+  input: "conv_3b_double_3x3_0_b"
+  output: "conv_3b_double_3x3_0"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3b_double_3x3_0"
+  output: "conv_3b_double_3x3_0"
+  type: "Relu"
+}
+op {
+  input: "conv_3b_double_3x3_0"
+  input: "conv_3b_double_3x3_1_w"
+  input: "conv_3b_double_3x3_1_b"
+  output: "conv_3b_double_3x3_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv_3b_double_3x3_1"
+  input: "conv_3b_double_3x3_1_scale"
+  input: "conv_3b_double_3x3_1_bias"
+  input: "conv_3b_double_3x3_1_mean"
+  input: "conv_3b_double_3x3_1_var"
+  output: "conv_3b_double_3x3_1_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_3b_double_3x3_1_unique"
+  input: "conv_3b_double_3x3_1_w_second"
+  output: "conv_3b_double_3x3_1_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3b_double_3x3_1_internal"
+  input: "conv_3b_double_3x3_1_b"
+  output: "conv_3b_double_3x3_1"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3b_double_3x3_1"
+  output: "conv_3b_double_3x3_1"
+  type: "Relu"
+}
+op {
+  input: "ch_concat_3a_chconcat"
+  output: "ave_pool_3b_pool"
+  type: "AveragePool"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "ave_pool_3b_pool"
+  input: "conv_3b_proj_w"
+  input: "conv_3b_proj_b"
+  output: "conv_3b_proj"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_3b_proj"
+  input: "conv_3b_proj_scale"
+  input: "conv_3b_proj_bias"
+  input: "conv_3b_proj_mean"
+  input: "conv_3b_proj_var"
+  output: "conv_3b_proj_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_3b_proj_unique"
+  input: "conv_3b_proj_w_second"
+  output: "conv_3b_proj_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3b_proj_internal"
+  input: "conv_3b_proj_b"
+  output: "conv_3b_proj"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3b_proj"
+  output: "conv_3b_proj"
+  type: "Relu"
+}
+op {
+  input: "conv_3b_1x1"
+  input: "conv_3b_3x3"
+  input: "conv_3b_double_3x3_1"
+  input: "conv_3b_proj"
+  output: "ch_concat_3b_chconcat"
+  output: "_ch_concat_3b_chconcat_dims"
+  type: "Concat"
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "ch_concat_3b_chconcat"
+  input: "conv_3c_3x3_reduce_w"
+  input: "conv_3c_3x3_reduce_b"
+  output: "conv_3c_3x3_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_3c_3x3_reduce"
+  input: "conv_3c_3x3_reduce_scale"
+  input: "conv_3c_3x3_reduce_bias"
+  input: "conv_3c_3x3_reduce_mean"
+  input: "conv_3c_3x3_reduce_var"
+  output: "conv_3c_3x3_reduce_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_3c_3x3_reduce_unique"
+  input: "conv_3c_3x3_reduce_w_second"
+  output: "conv_3c_3x3_reduce_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3c_3x3_reduce_internal"
+  input: "conv_3c_3x3_reduce_b"
+  output: "conv_3c_3x3_reduce"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3c_3x3_reduce"
+  output: "conv_3c_3x3_reduce"
+  type: "Relu"
+}
+op {
+  input: "conv_3c_3x3_reduce"
+  input: "conv_3c_3x3_w"
+  input: "conv_3c_3x3_b"
+  output: "conv_3c_3x3"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv_3c_3x3"
+  input: "conv_3c_3x3_scale"
+  input: "conv_3c_3x3_bias"
+  input: "conv_3c_3x3_mean"
+  input: "conv_3c_3x3_var"
+  output: "conv_3c_3x3_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_3c_3x3_unique"
+  input: "conv_3c_3x3_w_second"
+  output: "conv_3c_3x3_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3c_3x3_internal"
+  input: "conv_3c_3x3_b"
+  output: "conv_3c_3x3"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3c_3x3"
+  output: "conv_3c_3x3"
+  type: "Relu"
+}
+op {
+  input: "ch_concat_3b_chconcat"
+  input: "conv_3c_double_3x3_reduce_w"
+  input: "conv_3c_double_3x3_reduce_b"
+  output: "conv_3c_double_3x3_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_3c_double_3x3_reduce"
+  input: "conv_3c_double_3x3_reduce_scale"
+  input: "conv_3c_double_3x3_reduce_bias"
+  input: "conv_3c_double_3x3_reduce_mean"
+  input: "conv_3c_double_3x3_reduce_var"
+  output: "conv_3c_double_3x3_reduce_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_3c_double_3x3_reduce_unique"
+  input: "conv_3c_double_3x3_reduce_w_second"
+  output: "conv_3c_double_3x3_reduce_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3c_double_3x3_reduce_internal"
+  input: "conv_3c_double_3x3_reduce_b"
+  output: "conv_3c_double_3x3_reduce"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3c_double_3x3_reduce"
+  output: "conv_3c_double_3x3_reduce"
+  type: "Relu"
+}
+op {
+  input: "conv_3c_double_3x3_reduce"
+  input: "conv_3c_double_3x3_0_w"
+  input: "conv_3c_double_3x3_0_b"
+  output: "conv_3c_double_3x3_0"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv_3c_double_3x3_0"
+  input: "conv_3c_double_3x3_0_scale"
+  input: "conv_3c_double_3x3_0_bias"
+  input: "conv_3c_double_3x3_0_mean"
+  input: "conv_3c_double_3x3_0_var"
+  output: "conv_3c_double_3x3_0_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_3c_double_3x3_0_unique"
+  input: "conv_3c_double_3x3_0_w_second"
+  output: "conv_3c_double_3x3_0_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3c_double_3x3_0_internal"
+  input: "conv_3c_double_3x3_0_b"
+  output: "conv_3c_double_3x3_0"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3c_double_3x3_0"
+  output: "conv_3c_double_3x3_0"
+  type: "Relu"
+}
+op {
+  input: "conv_3c_double_3x3_0"
+  input: "conv_3c_double_3x3_1_w"
+  input: "conv_3c_double_3x3_1_b"
+  output: "conv_3c_double_3x3_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv_3c_double_3x3_1"
+  input: "conv_3c_double_3x3_1_scale"
+  input: "conv_3c_double_3x3_1_bias"
+  input: "conv_3c_double_3x3_1_mean"
+  input: "conv_3c_double_3x3_1_var"
+  output: "conv_3c_double_3x3_1_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_3c_double_3x3_1_unique"
+  input: "conv_3c_double_3x3_1_w_second"
+  output: "conv_3c_double_3x3_1_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3c_double_3x3_1_internal"
+  input: "conv_3c_double_3x3_1_b"
+  output: "conv_3c_double_3x3_1"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_3c_double_3x3_1"
+  output: "conv_3c_double_3x3_1"
+  type: "Relu"
+}
+op {
+  input: "ch_concat_3b_chconcat"
+  output: "max_pool_3c_pool"
+  type: "MaxPool"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "conv_3c_3x3"
+  input: "conv_3c_double_3x3_1"
+  input: "max_pool_3c_pool"
+  output: "ch_concat_3c_chconcat"
+  output: "_ch_concat_3c_chconcat_dims"
+  type: "Concat"
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "ch_concat_3c_chconcat"
+  input: "conv_4a_1x1_w"
+  input: "conv_4a_1x1_b"
+  output: "conv_4a_1x1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_4a_1x1"
+  input: "conv_4a_1x1_scale"
+  input: "conv_4a_1x1_bias"
+  input: "conv_4a_1x1_mean"
+  input: "conv_4a_1x1_var"
+  output: "conv_4a_1x1_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4a_1x1_unique"
+  input: "conv_4a_1x1_w_second"
+  output: "conv_4a_1x1_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4a_1x1_internal"
+  input: "conv_4a_1x1_b"
+  output: "conv_4a_1x1"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4a_1x1"
+  output: "conv_4a_1x1"
+  type: "Relu"
+}
+op {
+  input: "ch_concat_3c_chconcat"
+  input: "conv_4a_3x3_reduce_w"
+  input: "conv_4a_3x3_reduce_b"
+  output: "conv_4a_3x3_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_4a_3x3_reduce"
+  input: "conv_4a_3x3_reduce_scale"
+  input: "conv_4a_3x3_reduce_bias"
+  input: "conv_4a_3x3_reduce_mean"
+  input: "conv_4a_3x3_reduce_var"
+  output: "conv_4a_3x3_reduce_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4a_3x3_reduce_unique"
+  input: "conv_4a_3x3_reduce_w_second"
+  output: "conv_4a_3x3_reduce_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4a_3x3_reduce_internal"
+  input: "conv_4a_3x3_reduce_b"
+  output: "conv_4a_3x3_reduce"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4a_3x3_reduce"
+  output: "conv_4a_3x3_reduce"
+  type: "Relu"
+}
+op {
+  input: "conv_4a_3x3_reduce"
+  input: "conv_4a_3x3_w"
+  input: "conv_4a_3x3_b"
+  output: "conv_4a_3x3"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv_4a_3x3"
+  input: "conv_4a_3x3_scale"
+  input: "conv_4a_3x3_bias"
+  input: "conv_4a_3x3_mean"
+  input: "conv_4a_3x3_var"
+  output: "conv_4a_3x3_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4a_3x3_unique"
+  input: "conv_4a_3x3_w_second"
+  output: "conv_4a_3x3_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4a_3x3_internal"
+  input: "conv_4a_3x3_b"
+  output: "conv_4a_3x3"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4a_3x3"
+  output: "conv_4a_3x3"
+  type: "Relu"
+}
+op {
+  input: "ch_concat_3c_chconcat"
+  input: "conv_4a_double_3x3_reduce_w"
+  input: "conv_4a_double_3x3_reduce_b"
+  output: "conv_4a_double_3x3_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_4a_double_3x3_reduce"
+  input: "conv_4a_double_3x3_reduce_scale"
+  input: "conv_4a_double_3x3_reduce_bias"
+  input: "conv_4a_double_3x3_reduce_mean"
+  input: "conv_4a_double_3x3_reduce_var"
+  output: "conv_4a_double_3x3_reduce_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4a_double_3x3_reduce_unique"
+  input: "conv_4a_double_3x3_reduce_w_second"
+  output: "conv_4a_double_3x3_reduce_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4a_double_3x3_reduce_internal"
+  input: "conv_4a_double_3x3_reduce_b"
+  output: "conv_4a_double_3x3_reduce"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4a_double_3x3_reduce"
+  output: "conv_4a_double_3x3_reduce"
+  type: "Relu"
+}
+op {
+  input: "conv_4a_double_3x3_reduce"
+  input: "conv_4a_double_3x3_0_w"
+  input: "conv_4a_double_3x3_0_b"
+  output: "conv_4a_double_3x3_0"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv_4a_double_3x3_0"
+  input: "conv_4a_double_3x3_0_scale"
+  input: "conv_4a_double_3x3_0_bias"
+  input: "conv_4a_double_3x3_0_mean"
+  input: "conv_4a_double_3x3_0_var"
+  output: "conv_4a_double_3x3_0_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4a_double_3x3_0_unique"
+  input: "conv_4a_double_3x3_0_w_second"
+  output: "conv_4a_double_3x3_0_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4a_double_3x3_0_internal"
+  input: "conv_4a_double_3x3_0_b"
+  output: "conv_4a_double_3x3_0"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4a_double_3x3_0"
+  output: "conv_4a_double_3x3_0"
+  type: "Relu"
+}
+op {
+  input: "conv_4a_double_3x3_0"
+  input: "conv_4a_double_3x3_1_w"
+  input: "conv_4a_double_3x3_1_b"
+  output: "conv_4a_double_3x3_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv_4a_double_3x3_1"
+  input: "conv_4a_double_3x3_1_scale"
+  input: "conv_4a_double_3x3_1_bias"
+  input: "conv_4a_double_3x3_1_mean"
+  input: "conv_4a_double_3x3_1_var"
+  output: "conv_4a_double_3x3_1_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4a_double_3x3_1_unique"
+  input: "conv_4a_double_3x3_1_w_second"
+  output: "conv_4a_double_3x3_1_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4a_double_3x3_1_internal"
+  input: "conv_4a_double_3x3_1_b"
+  output: "conv_4a_double_3x3_1"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4a_double_3x3_1"
+  output: "conv_4a_double_3x3_1"
+  type: "Relu"
+}
+op {
+  input: "ch_concat_3c_chconcat"
+  output: "ave_pool_4a_pool"
+  type: "AveragePool"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "ave_pool_4a_pool"
+  input: "conv_4a_proj_w"
+  input: "conv_4a_proj_b"
+  output: "conv_4a_proj"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_4a_proj"
+  input: "conv_4a_proj_scale"
+  input: "conv_4a_proj_bias"
+  input: "conv_4a_proj_mean"
+  input: "conv_4a_proj_var"
+  output: "conv_4a_proj_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4a_proj_unique"
+  input: "conv_4a_proj_w_second"
+  output: "conv_4a_proj_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4a_proj_internal"
+  input: "conv_4a_proj_b"
+  output: "conv_4a_proj"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4a_proj"
+  output: "conv_4a_proj"
+  type: "Relu"
+}
+op {
+  input: "conv_4a_1x1"
+  input: "conv_4a_3x3"
+  input: "conv_4a_double_3x3_1"
+  input: "conv_4a_proj"
+  output: "ch_concat_4a_chconcat"
+  output: "_ch_concat_4a_chconcat_dims"
+  type: "Concat"
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "ch_concat_4a_chconcat"
+  input: "conv_4b_1x1_w"
+  input: "conv_4b_1x1_b"
+  output: "conv_4b_1x1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_4b_1x1"
+  input: "conv_4b_1x1_scale"
+  input: "conv_4b_1x1_bias"
+  input: "conv_4b_1x1_mean"
+  input: "conv_4b_1x1_var"
+  output: "conv_4b_1x1_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4b_1x1_unique"
+  input: "conv_4b_1x1_w_second"
+  output: "conv_4b_1x1_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4b_1x1_internal"
+  input: "conv_4b_1x1_b"
+  output: "conv_4b_1x1"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4b_1x1"
+  output: "conv_4b_1x1"
+  type: "Relu"
+}
+op {
+  input: "ch_concat_4a_chconcat"
+  input: "conv_4b_3x3_reduce_w"
+  input: "conv_4b_3x3_reduce_b"
+  output: "conv_4b_3x3_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_4b_3x3_reduce"
+  input: "conv_4b_3x3_reduce_scale"
+  input: "conv_4b_3x3_reduce_bias"
+  input: "conv_4b_3x3_reduce_mean"
+  input: "conv_4b_3x3_reduce_var"
+  output: "conv_4b_3x3_reduce_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4b_3x3_reduce_unique"
+  input: "conv_4b_3x3_reduce_w_second"
+  output: "conv_4b_3x3_reduce_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4b_3x3_reduce_internal"
+  input: "conv_4b_3x3_reduce_b"
+  output: "conv_4b_3x3_reduce"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4b_3x3_reduce"
+  output: "conv_4b_3x3_reduce"
+  type: "Relu"
+}
+op {
+  input: "conv_4b_3x3_reduce"
+  input: "conv_4b_3x3_w"
+  input: "conv_4b_3x3_b"
+  output: "conv_4b_3x3"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv_4b_3x3"
+  input: "conv_4b_3x3_scale"
+  input: "conv_4b_3x3_bias"
+  input: "conv_4b_3x3_mean"
+  input: "conv_4b_3x3_var"
+  output: "conv_4b_3x3_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4b_3x3_unique"
+  input: "conv_4b_3x3_w_second"
+  output: "conv_4b_3x3_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4b_3x3_internal"
+  input: "conv_4b_3x3_b"
+  output: "conv_4b_3x3"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4b_3x3"
+  output: "conv_4b_3x3"
+  type: "Relu"
+}
+op {
+  input: "ch_concat_4a_chconcat"
+  input: "conv_4b_double_3x3_reduce_w"
+  input: "conv_4b_double_3x3_reduce_b"
+  output: "conv_4b_double_3x3_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_4b_double_3x3_reduce"
+  input: "conv_4b_double_3x3_reduce_scale"
+  input: "conv_4b_double_3x3_reduce_bias"
+  input: "conv_4b_double_3x3_reduce_mean"
+  input: "conv_4b_double_3x3_reduce_var"
+  output: "conv_4b_double_3x3_reduce_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4b_double_3x3_reduce_unique"
+  input: "conv_4b_double_3x3_reduce_w_second"
+  output: "conv_4b_double_3x3_reduce_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4b_double_3x3_reduce_internal"
+  input: "conv_4b_double_3x3_reduce_b"
+  output: "conv_4b_double_3x3_reduce"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4b_double_3x3_reduce"
+  output: "conv_4b_double_3x3_reduce"
+  type: "Relu"
+}
+op {
+  input: "conv_4b_double_3x3_reduce"
+  input: "conv_4b_double_3x3_0_w"
+  input: "conv_4b_double_3x3_0_b"
+  output: "conv_4b_double_3x3_0"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv_4b_double_3x3_0"
+  input: "conv_4b_double_3x3_0_scale"
+  input: "conv_4b_double_3x3_0_bias"
+  input: "conv_4b_double_3x3_0_mean"
+  input: "conv_4b_double_3x3_0_var"
+  output: "conv_4b_double_3x3_0_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4b_double_3x3_0_unique"
+  input: "conv_4b_double_3x3_0_w_second"
+  output: "conv_4b_double_3x3_0_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4b_double_3x3_0_internal"
+  input: "conv_4b_double_3x3_0_b"
+  output: "conv_4b_double_3x3_0"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4b_double_3x3_0"
+  output: "conv_4b_double_3x3_0"
+  type: "Relu"
+}
+op {
+  input: "conv_4b_double_3x3_0"
+  input: "conv_4b_double_3x3_1_w"
+  input: "conv_4b_double_3x3_1_b"
+  output: "conv_4b_double_3x3_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv_4b_double_3x3_1"
+  input: "conv_4b_double_3x3_1_scale"
+  input: "conv_4b_double_3x3_1_bias"
+  input: "conv_4b_double_3x3_1_mean"
+  input: "conv_4b_double_3x3_1_var"
+  output: "conv_4b_double_3x3_1_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4b_double_3x3_1_unique"
+  input: "conv_4b_double_3x3_1_w_second"
+  output: "conv_4b_double_3x3_1_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4b_double_3x3_1_internal"
+  input: "conv_4b_double_3x3_1_b"
+  output: "conv_4b_double_3x3_1"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4b_double_3x3_1"
+  output: "conv_4b_double_3x3_1"
+  type: "Relu"
+}
+op {
+  input: "ch_concat_4a_chconcat"
+  output: "ave_pool_4b_pool"
+  type: "AveragePool"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "ave_pool_4b_pool"
+  input: "conv_4b_proj_w"
+  input: "conv_4b_proj_b"
+  output: "conv_4b_proj"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_4b_proj"
+  input: "conv_4b_proj_scale"
+  input: "conv_4b_proj_bias"
+  input: "conv_4b_proj_mean"
+  input: "conv_4b_proj_var"
+  output: "conv_4b_proj_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4b_proj_unique"
+  input: "conv_4b_proj_w_second"
+  output: "conv_4b_proj_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4b_proj_internal"
+  input: "conv_4b_proj_b"
+  output: "conv_4b_proj"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4b_proj"
+  output: "conv_4b_proj"
+  type: "Relu"
+}
+op {
+  input: "conv_4b_1x1"
+  input: "conv_4b_3x3"
+  input: "conv_4b_double_3x3_1"
+  input: "conv_4b_proj"
+  output: "ch_concat_4b_chconcat"
+  output: "_ch_concat_4b_chconcat_dims"
+  type: "Concat"
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "ch_concat_4b_chconcat"
+  input: "conv_4c_1x1_w"
+  input: "conv_4c_1x1_b"
+  output: "conv_4c_1x1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_4c_1x1"
+  input: "conv_4c_1x1_scale"
+  input: "conv_4c_1x1_bias"
+  input: "conv_4c_1x1_mean"
+  input: "conv_4c_1x1_var"
+  output: "conv_4c_1x1_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4c_1x1_unique"
+  input: "conv_4c_1x1_w_second"
+  output: "conv_4c_1x1_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4c_1x1_internal"
+  input: "conv_4c_1x1_b"
+  output: "conv_4c_1x1"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4c_1x1"
+  output: "conv_4c_1x1"
+  type: "Relu"
+}
+op {
+  input: "ch_concat_4b_chconcat"
+  input: "conv_4c_3x3_reduce_w"
+  input: "conv_4c_3x3_reduce_b"
+  output: "conv_4c_3x3_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_4c_3x3_reduce"
+  input: "conv_4c_3x3_reduce_scale"
+  input: "conv_4c_3x3_reduce_bias"
+  input: "conv_4c_3x3_reduce_mean"
+  input: "conv_4c_3x3_reduce_var"
+  output: "conv_4c_3x3_reduce_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4c_3x3_reduce_unique"
+  input: "conv_4c_3x3_reduce_w_second"
+  output: "conv_4c_3x3_reduce_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4c_3x3_reduce_internal"
+  input: "conv_4c_3x3_reduce_b"
+  output: "conv_4c_3x3_reduce"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4c_3x3_reduce"
+  output: "conv_4c_3x3_reduce"
+  type: "Relu"
+}
+op {
+  input: "conv_4c_3x3_reduce"
+  input: "conv_4c_3x3_w"
+  input: "conv_4c_3x3_b"
+  output: "conv_4c_3x3"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv_4c_3x3"
+  input: "conv_4c_3x3_scale"
+  input: "conv_4c_3x3_bias"
+  input: "conv_4c_3x3_mean"
+  input: "conv_4c_3x3_var"
+  output: "conv_4c_3x3_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4c_3x3_unique"
+  input: "conv_4c_3x3_w_second"
+  output: "conv_4c_3x3_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4c_3x3_internal"
+  input: "conv_4c_3x3_b"
+  output: "conv_4c_3x3"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4c_3x3"
+  output: "conv_4c_3x3"
+  type: "Relu"
+}
+op {
+  input: "ch_concat_4b_chconcat"
+  input: "conv_4c_double_3x3_reduce_w"
+  input: "conv_4c_double_3x3_reduce_b"
+  output: "conv_4c_double_3x3_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_4c_double_3x3_reduce"
+  input: "conv_4c_double_3x3_reduce_scale"
+  input: "conv_4c_double_3x3_reduce_bias"
+  input: "conv_4c_double_3x3_reduce_mean"
+  input: "conv_4c_double_3x3_reduce_var"
+  output: "conv_4c_double_3x3_reduce_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4c_double_3x3_reduce_unique"
+  input: "conv_4c_double_3x3_reduce_w_second"
+  output: "conv_4c_double_3x3_reduce_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4c_double_3x3_reduce_internal"
+  input: "conv_4c_double_3x3_reduce_b"
+  output: "conv_4c_double_3x3_reduce"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4c_double_3x3_reduce"
+  output: "conv_4c_double_3x3_reduce"
+  type: "Relu"
+}
+op {
+  input: "conv_4c_double_3x3_reduce"
+  input: "conv_4c_double_3x3_0_w"
+  input: "conv_4c_double_3x3_0_b"
+  output: "conv_4c_double_3x3_0"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv_4c_double_3x3_0"
+  input: "conv_4c_double_3x3_0_scale"
+  input: "conv_4c_double_3x3_0_bias"
+  input: "conv_4c_double_3x3_0_mean"
+  input: "conv_4c_double_3x3_0_var"
+  output: "conv_4c_double_3x3_0_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4c_double_3x3_0_unique"
+  input: "conv_4c_double_3x3_0_w_second"
+  output: "conv_4c_double_3x3_0_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4c_double_3x3_0_internal"
+  input: "conv_4c_double_3x3_0_b"
+  output: "conv_4c_double_3x3_0"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4c_double_3x3_0"
+  output: "conv_4c_double_3x3_0"
+  type: "Relu"
+}
+op {
+  input: "conv_4c_double_3x3_0"
+  input: "conv_4c_double_3x3_1_w"
+  input: "conv_4c_double_3x3_1_b"
+  output: "conv_4c_double_3x3_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv_4c_double_3x3_1"
+  input: "conv_4c_double_3x3_1_scale"
+  input: "conv_4c_double_3x3_1_bias"
+  input: "conv_4c_double_3x3_1_mean"
+  input: "conv_4c_double_3x3_1_var"
+  output: "conv_4c_double_3x3_1_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4c_double_3x3_1_unique"
+  input: "conv_4c_double_3x3_1_w_second"
+  output: "conv_4c_double_3x3_1_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4c_double_3x3_1_internal"
+  input: "conv_4c_double_3x3_1_b"
+  output: "conv_4c_double_3x3_1"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4c_double_3x3_1"
+  output: "conv_4c_double_3x3_1"
+  type: "Relu"
+}
+op {
+  input: "ch_concat_4b_chconcat"
+  output: "ave_pool_4c_pool"
+  type: "AveragePool"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "ave_pool_4c_pool"
+  input: "conv_4c_proj_w"
+  input: "conv_4c_proj_b"
+  output: "conv_4c_proj"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_4c_proj"
+  input: "conv_4c_proj_scale"
+  input: "conv_4c_proj_bias"
+  input: "conv_4c_proj_mean"
+  input: "conv_4c_proj_var"
+  output: "conv_4c_proj_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4c_proj_unique"
+  input: "conv_4c_proj_w_second"
+  output: "conv_4c_proj_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4c_proj_internal"
+  input: "conv_4c_proj_b"
+  output: "conv_4c_proj"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4c_proj"
+  output: "conv_4c_proj"
+  type: "Relu"
+}
+op {
+  input: "conv_4c_1x1"
+  input: "conv_4c_3x3"
+  input: "conv_4c_double_3x3_1"
+  input: "conv_4c_proj"
+  output: "ch_concat_4c_chconcat"
+  output: "_ch_concat_4c_chconcat_dims"
+  type: "Concat"
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "ch_concat_4c_chconcat"
+  input: "conv_4d_1x1_w"
+  input: "conv_4d_1x1_b"
+  output: "conv_4d_1x1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_4d_1x1"
+  input: "conv_4d_1x1_scale"
+  input: "conv_4d_1x1_bias"
+  input: "conv_4d_1x1_mean"
+  input: "conv_4d_1x1_var"
+  output: "conv_4d_1x1_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4d_1x1_unique"
+  input: "conv_4d_1x1_w_second"
+  output: "conv_4d_1x1_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4d_1x1_internal"
+  input: "conv_4d_1x1_b"
+  output: "conv_4d_1x1"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4d_1x1"
+  output: "conv_4d_1x1"
+  type: "Relu"
+}
+op {
+  input: "ch_concat_4c_chconcat"
+  input: "conv_4d_3x3_reduce_w"
+  input: "conv_4d_3x3_reduce_b"
+  output: "conv_4d_3x3_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_4d_3x3_reduce"
+  input: "conv_4d_3x3_reduce_scale"
+  input: "conv_4d_3x3_reduce_bias"
+  input: "conv_4d_3x3_reduce_mean"
+  input: "conv_4d_3x3_reduce_var"
+  output: "conv_4d_3x3_reduce_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4d_3x3_reduce_unique"
+  input: "conv_4d_3x3_reduce_w_second"
+  output: "conv_4d_3x3_reduce_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4d_3x3_reduce_internal"
+  input: "conv_4d_3x3_reduce_b"
+  output: "conv_4d_3x3_reduce"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4d_3x3_reduce"
+  output: "conv_4d_3x3_reduce"
+  type: "Relu"
+}
+op {
+  input: "conv_4d_3x3_reduce"
+  input: "conv_4d_3x3_w"
+  input: "conv_4d_3x3_b"
+  output: "conv_4d_3x3"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv_4d_3x3"
+  input: "conv_4d_3x3_scale"
+  input: "conv_4d_3x3_bias"
+  input: "conv_4d_3x3_mean"
+  input: "conv_4d_3x3_var"
+  output: "conv_4d_3x3_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4d_3x3_unique"
+  input: "conv_4d_3x3_w_second"
+  output: "conv_4d_3x3_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4d_3x3_internal"
+  input: "conv_4d_3x3_b"
+  output: "conv_4d_3x3"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4d_3x3"
+  output: "conv_4d_3x3"
+  type: "Relu"
+}
+op {
+  input: "ch_concat_4c_chconcat"
+  input: "conv_4d_double_3x3_reduce_w"
+  input: "conv_4d_double_3x3_reduce_b"
+  output: "conv_4d_double_3x3_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_4d_double_3x3_reduce"
+  input: "conv_4d_double_3x3_reduce_scale"
+  input: "conv_4d_double_3x3_reduce_bias"
+  input: "conv_4d_double_3x3_reduce_mean"
+  input: "conv_4d_double_3x3_reduce_var"
+  output: "conv_4d_double_3x3_reduce_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4d_double_3x3_reduce_unique"
+  input: "conv_4d_double_3x3_reduce_w_second"
+  output: "conv_4d_double_3x3_reduce_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4d_double_3x3_reduce_internal"
+  input: "conv_4d_double_3x3_reduce_b"
+  output: "conv_4d_double_3x3_reduce"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4d_double_3x3_reduce"
+  output: "conv_4d_double_3x3_reduce"
+  type: "Relu"
+}
+op {
+  input: "conv_4d_double_3x3_reduce"
+  input: "conv_4d_double_3x3_0_w"
+  input: "conv_4d_double_3x3_0_b"
+  output: "conv_4d_double_3x3_0"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv_4d_double_3x3_0"
+  input: "conv_4d_double_3x3_0_scale"
+  input: "conv_4d_double_3x3_0_bias"
+  input: "conv_4d_double_3x3_0_mean"
+  input: "conv_4d_double_3x3_0_var"
+  output: "conv_4d_double_3x3_0_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4d_double_3x3_0_unique"
+  input: "conv_4d_double_3x3_0_w_second"
+  output: "conv_4d_double_3x3_0_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4d_double_3x3_0_internal"
+  input: "conv_4d_double_3x3_0_b"
+  output: "conv_4d_double_3x3_0"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4d_double_3x3_0"
+  output: "conv_4d_double_3x3_0"
+  type: "Relu"
+}
+op {
+  input: "conv_4d_double_3x3_0"
+  input: "conv_4d_double_3x3_1_w"
+  input: "conv_4d_double_3x3_1_b"
+  output: "conv_4d_double_3x3_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv_4d_double_3x3_1"
+  input: "conv_4d_double_3x3_1_scale"
+  input: "conv_4d_double_3x3_1_bias"
+  input: "conv_4d_double_3x3_1_mean"
+  input: "conv_4d_double_3x3_1_var"
+  output: "conv_4d_double_3x3_1_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4d_double_3x3_1_unique"
+  input: "conv_4d_double_3x3_1_w_second"
+  output: "conv_4d_double_3x3_1_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4d_double_3x3_1_internal"
+  input: "conv_4d_double_3x3_1_b"
+  output: "conv_4d_double_3x3_1"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4d_double_3x3_1"
+  output: "conv_4d_double_3x3_1"
+  type: "Relu"
+}
+op {
+  input: "ch_concat_4c_chconcat"
+  output: "ave_pool_4d_pool"
+  type: "AveragePool"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "ave_pool_4d_pool"
+  input: "conv_4d_proj_w"
+  input: "conv_4d_proj_b"
+  output: "conv_4d_proj"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_4d_proj"
+  input: "conv_4d_proj_scale"
+  input: "conv_4d_proj_bias"
+  input: "conv_4d_proj_mean"
+  input: "conv_4d_proj_var"
+  output: "conv_4d_proj_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4d_proj_unique"
+  input: "conv_4d_proj_w_second"
+  output: "conv_4d_proj_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4d_proj_internal"
+  input: "conv_4d_proj_b"
+  output: "conv_4d_proj"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4d_proj"
+  output: "conv_4d_proj"
+  type: "Relu"
+}
+op {
+  input: "conv_4d_1x1"
+  input: "conv_4d_3x3"
+  input: "conv_4d_double_3x3_1"
+  input: "conv_4d_proj"
+  output: "ch_concat_4d_chconcat"
+  output: "_ch_concat_4d_chconcat_dims"
+  type: "Concat"
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "ch_concat_4d_chconcat"
+  input: "conv_4e_3x3_reduce_w"
+  input: "conv_4e_3x3_reduce_b"
+  output: "conv_4e_3x3_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_4e_3x3_reduce"
+  input: "conv_4e_3x3_reduce_scale"
+  input: "conv_4e_3x3_reduce_bias"
+  input: "conv_4e_3x3_reduce_mean"
+  input: "conv_4e_3x3_reduce_var"
+  output: "conv_4e_3x3_reduce_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4e_3x3_reduce_unique"
+  input: "conv_4e_3x3_reduce_w_second"
+  output: "conv_4e_3x3_reduce_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4e_3x3_reduce_internal"
+  input: "conv_4e_3x3_reduce_b"
+  output: "conv_4e_3x3_reduce"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4e_3x3_reduce"
+  output: "conv_4e_3x3_reduce"
+  type: "Relu"
+}
+op {
+  input: "conv_4e_3x3_reduce"
+  input: "conv_4e_3x3_w"
+  input: "conv_4e_3x3_b"
+  output: "conv_4e_3x3"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv_4e_3x3"
+  input: "conv_4e_3x3_scale"
+  input: "conv_4e_3x3_bias"
+  input: "conv_4e_3x3_mean"
+  input: "conv_4e_3x3_var"
+  output: "conv_4e_3x3_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4e_3x3_unique"
+  input: "conv_4e_3x3_w_second"
+  output: "conv_4e_3x3_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4e_3x3_internal"
+  input: "conv_4e_3x3_b"
+  output: "conv_4e_3x3"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4e_3x3"
+  output: "conv_4e_3x3"
+  type: "Relu"
+}
+op {
+  input: "ch_concat_4d_chconcat"
+  input: "conv_4e_double_3x3_reduce_w"
+  input: "conv_4e_double_3x3_reduce_b"
+  output: "conv_4e_double_3x3_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_4e_double_3x3_reduce"
+  input: "conv_4e_double_3x3_reduce_scale"
+  input: "conv_4e_double_3x3_reduce_bias"
+  input: "conv_4e_double_3x3_reduce_mean"
+  input: "conv_4e_double_3x3_reduce_var"
+  output: "conv_4e_double_3x3_reduce_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4e_double_3x3_reduce_unique"
+  input: "conv_4e_double_3x3_reduce_w_second"
+  output: "conv_4e_double_3x3_reduce_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4e_double_3x3_reduce_internal"
+  input: "conv_4e_double_3x3_reduce_b"
+  output: "conv_4e_double_3x3_reduce"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4e_double_3x3_reduce"
+  output: "conv_4e_double_3x3_reduce"
+  type: "Relu"
+}
+op {
+  input: "conv_4e_double_3x3_reduce"
+  input: "conv_4e_double_3x3_0_w"
+  input: "conv_4e_double_3x3_0_b"
+  output: "conv_4e_double_3x3_0"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv_4e_double_3x3_0"
+  input: "conv_4e_double_3x3_0_scale"
+  input: "conv_4e_double_3x3_0_bias"
+  input: "conv_4e_double_3x3_0_mean"
+  input: "conv_4e_double_3x3_0_var"
+  output: "conv_4e_double_3x3_0_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4e_double_3x3_0_unique"
+  input: "conv_4e_double_3x3_0_w_second"
+  output: "conv_4e_double_3x3_0_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4e_double_3x3_0_internal"
+  input: "conv_4e_double_3x3_0_b"
+  output: "conv_4e_double_3x3_0"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4e_double_3x3_0"
+  output: "conv_4e_double_3x3_0"
+  type: "Relu"
+}
+op {
+  input: "conv_4e_double_3x3_0"
+  input: "conv_4e_double_3x3_1_w"
+  input: "conv_4e_double_3x3_1_b"
+  output: "conv_4e_double_3x3_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv_4e_double_3x3_1"
+  input: "conv_4e_double_3x3_1_scale"
+  input: "conv_4e_double_3x3_1_bias"
+  input: "conv_4e_double_3x3_1_mean"
+  input: "conv_4e_double_3x3_1_var"
+  output: "conv_4e_double_3x3_1_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_4e_double_3x3_1_unique"
+  input: "conv_4e_double_3x3_1_w_second"
+  output: "conv_4e_double_3x3_1_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4e_double_3x3_1_internal"
+  input: "conv_4e_double_3x3_1_b"
+  output: "conv_4e_double_3x3_1"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_4e_double_3x3_1"
+  output: "conv_4e_double_3x3_1"
+  type: "Relu"
+}
+op {
+  input: "ch_concat_4d_chconcat"
+  output: "max_pool_4e_pool"
+  type: "MaxPool"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "conv_4e_3x3"
+  input: "conv_4e_double_3x3_1"
+  input: "max_pool_4e_pool"
+  output: "ch_concat_4e_chconcat"
+  output: "_ch_concat_4e_chconcat_dims"
+  type: "Concat"
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "ch_concat_4e_chconcat"
+  input: "conv_5a_1x1_w"
+  input: "conv_5a_1x1_b"
+  output: "conv_5a_1x1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_5a_1x1"
+  input: "conv_5a_1x1_scale"
+  input: "conv_5a_1x1_bias"
+  input: "conv_5a_1x1_mean"
+  input: "conv_5a_1x1_var"
+  output: "conv_5a_1x1_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_5a_1x1_unique"
+  input: "conv_5a_1x1_w_second"
+  output: "conv_5a_1x1_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_5a_1x1_internal"
+  input: "conv_5a_1x1_b"
+  output: "conv_5a_1x1"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_5a_1x1"
+  output: "conv_5a_1x1"
+  type: "Relu"
+}
+op {
+  input: "ch_concat_4e_chconcat"
+  input: "conv_5a_3x3_reduce_w"
+  input: "conv_5a_3x3_reduce_b"
+  output: "conv_5a_3x3_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_5a_3x3_reduce"
+  input: "conv_5a_3x3_reduce_scale"
+  input: "conv_5a_3x3_reduce_bias"
+  input: "conv_5a_3x3_reduce_mean"
+  input: "conv_5a_3x3_reduce_var"
+  output: "conv_5a_3x3_reduce_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_5a_3x3_reduce_unique"
+  input: "conv_5a_3x3_reduce_w_second"
+  output: "conv_5a_3x3_reduce_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_5a_3x3_reduce_internal"
+  input: "conv_5a_3x3_reduce_b"
+  output: "conv_5a_3x3_reduce"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_5a_3x3_reduce"
+  output: "conv_5a_3x3_reduce"
+  type: "Relu"
+}
+op {
+  input: "conv_5a_3x3_reduce"
+  input: "conv_5a_3x3_w"
+  input: "conv_5a_3x3_b"
+  output: "conv_5a_3x3"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv_5a_3x3"
+  input: "conv_5a_3x3_scale"
+  input: "conv_5a_3x3_bias"
+  input: "conv_5a_3x3_mean"
+  input: "conv_5a_3x3_var"
+  output: "conv_5a_3x3_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_5a_3x3_unique"
+  input: "conv_5a_3x3_w_second"
+  output: "conv_5a_3x3_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_5a_3x3_internal"
+  input: "conv_5a_3x3_b"
+  output: "conv_5a_3x3"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_5a_3x3"
+  output: "conv_5a_3x3"
+  type: "Relu"
+}
+op {
+  input: "ch_concat_4e_chconcat"
+  input: "conv_5a_double_3x3_reduce_w"
+  input: "conv_5a_double_3x3_reduce_b"
+  output: "conv_5a_double_3x3_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_5a_double_3x3_reduce"
+  input: "conv_5a_double_3x3_reduce_scale"
+  input: "conv_5a_double_3x3_reduce_bias"
+  input: "conv_5a_double_3x3_reduce_mean"
+  input: "conv_5a_double_3x3_reduce_var"
+  output: "conv_5a_double_3x3_reduce_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_5a_double_3x3_reduce_unique"
+  input: "conv_5a_double_3x3_reduce_w_second"
+  output: "conv_5a_double_3x3_reduce_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_5a_double_3x3_reduce_internal"
+  input: "conv_5a_double_3x3_reduce_b"
+  output: "conv_5a_double_3x3_reduce"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_5a_double_3x3_reduce"
+  output: "conv_5a_double_3x3_reduce"
+  type: "Relu"
+}
+op {
+  input: "conv_5a_double_3x3_reduce"
+  input: "conv_5a_double_3x3_0_w"
+  input: "conv_5a_double_3x3_0_b"
+  output: "conv_5a_double_3x3_0"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv_5a_double_3x3_0"
+  input: "conv_5a_double_3x3_0_scale"
+  input: "conv_5a_double_3x3_0_bias"
+  input: "conv_5a_double_3x3_0_mean"
+  input: "conv_5a_double_3x3_0_var"
+  output: "conv_5a_double_3x3_0_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_5a_double_3x3_0_unique"
+  input: "conv_5a_double_3x3_0_w_second"
+  output: "conv_5a_double_3x3_0_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_5a_double_3x3_0_internal"
+  input: "conv_5a_double_3x3_0_b"
+  output: "conv_5a_double_3x3_0"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_5a_double_3x3_0"
+  output: "conv_5a_double_3x3_0"
+  type: "Relu"
+}
+op {
+  input: "conv_5a_double_3x3_0"
+  input: "conv_5a_double_3x3_1_w"
+  input: "conv_5a_double_3x3_1_b"
+  output: "conv_5a_double_3x3_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv_5a_double_3x3_1"
+  input: "conv_5a_double_3x3_1_scale"
+  input: "conv_5a_double_3x3_1_bias"
+  input: "conv_5a_double_3x3_1_mean"
+  input: "conv_5a_double_3x3_1_var"
+  output: "conv_5a_double_3x3_1_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_5a_double_3x3_1_unique"
+  input: "conv_5a_double_3x3_1_w_second"
+  output: "conv_5a_double_3x3_1_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_5a_double_3x3_1_internal"
+  input: "conv_5a_double_3x3_1_b"
+  output: "conv_5a_double_3x3_1"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_5a_double_3x3_1"
+  output: "conv_5a_double_3x3_1"
+  type: "Relu"
+}
+op {
+  input: "ch_concat_4e_chconcat"
+  output: "ave_pool_5a_pool"
+  type: "AveragePool"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "ave_pool_5a_pool"
+  input: "conv_5a_proj_w"
+  input: "conv_5a_proj_b"
+  output: "conv_5a_proj"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_5a_proj"
+  input: "conv_5a_proj_scale"
+  input: "conv_5a_proj_bias"
+  input: "conv_5a_proj_mean"
+  input: "conv_5a_proj_var"
+  output: "conv_5a_proj_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_5a_proj_unique"
+  input: "conv_5a_proj_w_second"
+  output: "conv_5a_proj_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_5a_proj_internal"
+  input: "conv_5a_proj_b"
+  output: "conv_5a_proj"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_5a_proj"
+  output: "conv_5a_proj"
+  type: "Relu"
+}
+op {
+  input: "conv_5a_1x1"
+  input: "conv_5a_3x3"
+  input: "conv_5a_double_3x3_1"
+  input: "conv_5a_proj"
+  output: "ch_concat_5a_chconcat"
+  output: "_ch_concat_5a_chconcat_dims"
+  type: "Concat"
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "ch_concat_5a_chconcat"
+  input: "conv_5b_1x1_w"
+  input: "conv_5b_1x1_b"
+  output: "conv_5b_1x1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_5b_1x1"
+  input: "conv_5b_1x1_scale"
+  input: "conv_5b_1x1_bias"
+  input: "conv_5b_1x1_mean"
+  input: "conv_5b_1x1_var"
+  output: "conv_5b_1x1_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_5b_1x1_unique"
+  input: "conv_5b_1x1_w_second"
+  output: "conv_5b_1x1_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_5b_1x1_internal"
+  input: "conv_5b_1x1_b"
+  output: "conv_5b_1x1"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_5b_1x1"
+  output: "conv_5b_1x1"
+  type: "Relu"
+}
+op {
+  input: "ch_concat_5a_chconcat"
+  input: "conv_5b_3x3_reduce_w"
+  input: "conv_5b_3x3_reduce_b"
+  output: "conv_5b_3x3_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_5b_3x3_reduce"
+  input: "conv_5b_3x3_reduce_scale"
+  input: "conv_5b_3x3_reduce_bias"
+  input: "conv_5b_3x3_reduce_mean"
+  input: "conv_5b_3x3_reduce_var"
+  output: "conv_5b_3x3_reduce_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_5b_3x3_reduce_unique"
+  input: "conv_5b_3x3_reduce_w_second"
+  output: "conv_5b_3x3_reduce_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_5b_3x3_reduce_internal"
+  input: "conv_5b_3x3_reduce_b"
+  output: "conv_5b_3x3_reduce"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_5b_3x3_reduce"
+  output: "conv_5b_3x3_reduce"
+  type: "Relu"
+}
+op {
+  input: "conv_5b_3x3_reduce"
+  input: "conv_5b_3x3_w"
+  input: "conv_5b_3x3_b"
+  output: "conv_5b_3x3"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv_5b_3x3"
+  input: "conv_5b_3x3_scale"
+  input: "conv_5b_3x3_bias"
+  input: "conv_5b_3x3_mean"
+  input: "conv_5b_3x3_var"
+  output: "conv_5b_3x3_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_5b_3x3_unique"
+  input: "conv_5b_3x3_w_second"
+  output: "conv_5b_3x3_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_5b_3x3_internal"
+  input: "conv_5b_3x3_b"
+  output: "conv_5b_3x3"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_5b_3x3"
+  output: "conv_5b_3x3"
+  type: "Relu"
+}
+op {
+  input: "ch_concat_5a_chconcat"
+  input: "conv_5b_double_3x3_reduce_w"
+  input: "conv_5b_double_3x3_reduce_b"
+  output: "conv_5b_double_3x3_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_5b_double_3x3_reduce"
+  input: "conv_5b_double_3x3_reduce_scale"
+  input: "conv_5b_double_3x3_reduce_bias"
+  input: "conv_5b_double_3x3_reduce_mean"
+  input: "conv_5b_double_3x3_reduce_var"
+  output: "conv_5b_double_3x3_reduce_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_5b_double_3x3_reduce_unique"
+  input: "conv_5b_double_3x3_reduce_w_second"
+  output: "conv_5b_double_3x3_reduce_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_5b_double_3x3_reduce_internal"
+  input: "conv_5b_double_3x3_reduce_b"
+  output: "conv_5b_double_3x3_reduce"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_5b_double_3x3_reduce"
+  output: "conv_5b_double_3x3_reduce"
+  type: "Relu"
+}
+op {
+  input: "conv_5b_double_3x3_reduce"
+  input: "conv_5b_double_3x3_0_w"
+  input: "conv_5b_double_3x3_0_b"
+  output: "conv_5b_double_3x3_0"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv_5b_double_3x3_0"
+  input: "conv_5b_double_3x3_0_scale"
+  input: "conv_5b_double_3x3_0_bias"
+  input: "conv_5b_double_3x3_0_mean"
+  input: "conv_5b_double_3x3_0_var"
+  output: "conv_5b_double_3x3_0_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_5b_double_3x3_0_unique"
+  input: "conv_5b_double_3x3_0_w_second"
+  output: "conv_5b_double_3x3_0_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_5b_double_3x3_0_internal"
+  input: "conv_5b_double_3x3_0_b"
+  output: "conv_5b_double_3x3_0"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_5b_double_3x3_0"
+  output: "conv_5b_double_3x3_0"
+  type: "Relu"
+}
+op {
+  input: "conv_5b_double_3x3_0"
+  input: "conv_5b_double_3x3_1_w"
+  input: "conv_5b_double_3x3_1_b"
+  output: "conv_5b_double_3x3_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv_5b_double_3x3_1"
+  input: "conv_5b_double_3x3_1_scale"
+  input: "conv_5b_double_3x3_1_bias"
+  input: "conv_5b_double_3x3_1_mean"
+  input: "conv_5b_double_3x3_1_var"
+  output: "conv_5b_double_3x3_1_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_5b_double_3x3_1_unique"
+  input: "conv_5b_double_3x3_1_w_second"
+  output: "conv_5b_double_3x3_1_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_5b_double_3x3_1_internal"
+  input: "conv_5b_double_3x3_1_b"
+  output: "conv_5b_double_3x3_1"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_5b_double_3x3_1"
+  output: "conv_5b_double_3x3_1"
+  type: "Relu"
+}
+op {
+  input: "ch_concat_5a_chconcat"
+  output: "max_pool_5b_pool"
+  type: "MaxPool"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "max_pool_5b_pool"
+  input: "conv_5b_proj_w"
+  input: "conv_5b_proj_b"
+  output: "conv_5b_proj"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv_5b_proj"
+  input: "conv_5b_proj_scale"
+  input: "conv_5b_proj_bias"
+  input: "conv_5b_proj_mean"
+  input: "conv_5b_proj_var"
+  output: "conv_5b_proj_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv_5b_proj_unique"
+  input: "conv_5b_proj_w_second"
+  output: "conv_5b_proj_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_5b_proj_internal"
+  input: "conv_5b_proj_b"
+  output: "conv_5b_proj"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv_5b_proj"
+  output: "conv_5b_proj"
+  type: "Relu"
+}
+op {
+  input: "conv_5b_1x1"
+  input: "conv_5b_3x3"
+  input: "conv_5b_double_3x3_1"
+  input: "conv_5b_proj"
+  output: "ch_concat_5b_chconcat"
+  output: "_ch_concat_5b_chconcat_dims"
+  type: "Concat"
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "ch_concat_5b_chconcat"
+  output: "global_pool"
+  type: "AveragePool"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 0
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+  arg {
+    name: "global_pooling"
+    i: 1
+  }
+}
+op {
+  input: "global_pool"
+  input: "fc1_w"
+  input: "fc1_b"
+  output: "fc1"
+  type: "FC"
+}
+op {
+  input: "fc1"
+  output: "softmax"
+  type: "Softmax"
+}
+external_input: "data"
+external_input: "conv_conv1_w"
+external_input: "conv_conv1_b"
+external_input: "conv_conv1_scale"
+external_input: "conv_conv1_bias"
+external_input: "conv_conv1_mean"
+external_input: "conv_conv1_var"
+external_input: "conv_conv1_w_second"
+external_input: "conv_conv1_b_second"
+external_input: "conv_conv2red_w"
+external_input: "conv_conv2red_b"
+external_input: "conv_conv2red_scale"
+external_input: "conv_conv2red_bias"
+external_input: "conv_conv2red_mean"
+external_input: "conv_conv2red_var"
+external_input: "conv_conv2red_w_second"
+external_input: "conv_conv2red_b_second"
+external_input: "conv_conv2_w"
+external_input: "conv_conv2_b"
+external_input: "conv_conv2_scale"
+external_input: "conv_conv2_bias"
+external_input: "conv_conv2_mean"
+external_input: "conv_conv2_var"
+external_input: "conv_conv2_w_second"
+external_input: "conv_conv2_b_second"
+external_input: "conv_3a_1x1_w"
+external_input: "conv_3a_1x1_b"
+external_input: "conv_3a_1x1_scale"
+external_input: "conv_3a_1x1_bias"
+external_input: "conv_3a_1x1_mean"
+external_input: "conv_3a_1x1_var"
+external_input: "conv_3a_1x1_w_second"
+external_input: "conv_3a_1x1_b_second"
+external_input: "conv_3a_3x3_reduce_w"
+external_input: "conv_3a_3x3_reduce_b"
+external_input: "conv_3a_3x3_reduce_scale"
+external_input: "conv_3a_3x3_reduce_bias"
+external_input: "conv_3a_3x3_reduce_mean"
+external_input: "conv_3a_3x3_reduce_var"
+external_input: "conv_3a_3x3_reduce_w_second"
+external_input: "conv_3a_3x3_reduce_b_second"
+external_input: "conv_3a_3x3_w"
+external_input: "conv_3a_3x3_b"
+external_input: "conv_3a_3x3_scale"
+external_input: "conv_3a_3x3_bias"
+external_input: "conv_3a_3x3_mean"
+external_input: "conv_3a_3x3_var"
+external_input: "conv_3a_3x3_w_second"
+external_input: "conv_3a_3x3_b_second"
+external_input: "conv_3a_double_3x3_reduce_w"
+external_input: "conv_3a_double_3x3_reduce_b"
+external_input: "conv_3a_double_3x3_reduce_scale"
+external_input: "conv_3a_double_3x3_reduce_bias"
+external_input: "conv_3a_double_3x3_reduce_mean"
+external_input: "conv_3a_double_3x3_reduce_var"
+external_input: "conv_3a_double_3x3_reduce_w_second"
+external_input: "conv_3a_double_3x3_reduce_b_second"
+external_input: "conv_3a_double_3x3_0_w"
+external_input: "conv_3a_double_3x3_0_b"
+external_input: "conv_3a_double_3x3_0_scale"
+external_input: "conv_3a_double_3x3_0_bias"
+external_input: "conv_3a_double_3x3_0_mean"
+external_input: "conv_3a_double_3x3_0_var"
+external_input: "conv_3a_double_3x3_0_w_second"
+external_input: "conv_3a_double_3x3_0_b_second"
+external_input: "conv_3a_double_3x3_1_w"
+external_input: "conv_3a_double_3x3_1_b"
+external_input: "conv_3a_double_3x3_1_scale"
+external_input: "conv_3a_double_3x3_1_bias"
+external_input: "conv_3a_double_3x3_1_mean"
+external_input: "conv_3a_double_3x3_1_var"
+external_input: "conv_3a_double_3x3_1_w_second"
+external_input: "conv_3a_double_3x3_1_b_second"
+external_input: "conv_3a_proj_w"
+external_input: "conv_3a_proj_b"
+external_input: "conv_3a_proj_scale"
+external_input: "conv_3a_proj_bias"
+external_input: "conv_3a_proj_mean"
+external_input: "conv_3a_proj_var"
+external_input: "conv_3a_proj_w_second"
+external_input: "conv_3a_proj_b_second"
+external_input: "conv_3b_1x1_w"
+external_input: "conv_3b_1x1_b"
+external_input: "conv_3b_1x1_scale"
+external_input: "conv_3b_1x1_bias"
+external_input: "conv_3b_1x1_mean"
+external_input: "conv_3b_1x1_var"
+external_input: "conv_3b_1x1_w_second"
+external_input: "conv_3b_1x1_b_second"
+external_input: "conv_3b_3x3_reduce_w"
+external_input: "conv_3b_3x3_reduce_b"
+external_input: "conv_3b_3x3_reduce_scale"
+external_input: "conv_3b_3x3_reduce_bias"
+external_input: "conv_3b_3x3_reduce_mean"
+external_input: "conv_3b_3x3_reduce_var"
+external_input: "conv_3b_3x3_reduce_w_second"
+external_input: "conv_3b_3x3_reduce_b_second"
+external_input: "conv_3b_3x3_w"
+external_input: "conv_3b_3x3_b"
+external_input: "conv_3b_3x3_scale"
+external_input: "conv_3b_3x3_bias"
+external_input: "conv_3b_3x3_mean"
+external_input: "conv_3b_3x3_var"
+external_input: "conv_3b_3x3_w_second"
+external_input: "conv_3b_3x3_b_second"
+external_input: "conv_3b_double_3x3_reduce_w"
+external_input: "conv_3b_double_3x3_reduce_b"
+external_input: "conv_3b_double_3x3_reduce_scale"
+external_input: "conv_3b_double_3x3_reduce_bias"
+external_input: "conv_3b_double_3x3_reduce_mean"
+external_input: "conv_3b_double_3x3_reduce_var"
+external_input: "conv_3b_double_3x3_reduce_w_second"
+external_input: "conv_3b_double_3x3_reduce_b_second"
+external_input: "conv_3b_double_3x3_0_w"
+external_input: "conv_3b_double_3x3_0_b"
+external_input: "conv_3b_double_3x3_0_scale"
+external_input: "conv_3b_double_3x3_0_bias"
+external_input: "conv_3b_double_3x3_0_mean"
+external_input: "conv_3b_double_3x3_0_var"
+external_input: "conv_3b_double_3x3_0_w_second"
+external_input: "conv_3b_double_3x3_0_b_second"
+external_input: "conv_3b_double_3x3_1_w"
+external_input: "conv_3b_double_3x3_1_b"
+external_input: "conv_3b_double_3x3_1_scale"
+external_input: "conv_3b_double_3x3_1_bias"
+external_input: "conv_3b_double_3x3_1_mean"
+external_input: "conv_3b_double_3x3_1_var"
+external_input: "conv_3b_double_3x3_1_w_second"
+external_input: "conv_3b_double_3x3_1_b_second"
+external_input: "conv_3b_proj_w"
+external_input: "conv_3b_proj_b"
+external_input: "conv_3b_proj_scale"
+external_input: "conv_3b_proj_bias"
+external_input: "conv_3b_proj_mean"
+external_input: "conv_3b_proj_var"
+external_input: "conv_3b_proj_w_second"
+external_input: "conv_3b_proj_b_second"
+external_input: "conv_3c_3x3_reduce_w"
+external_input: "conv_3c_3x3_reduce_b"
+external_input: "conv_3c_3x3_reduce_scale"
+external_input: "conv_3c_3x3_reduce_bias"
+external_input: "conv_3c_3x3_reduce_mean"
+external_input: "conv_3c_3x3_reduce_var"
+external_input: "conv_3c_3x3_reduce_w_second"
+external_input: "conv_3c_3x3_reduce_b_second"
+external_input: "conv_3c_3x3_w"
+external_input: "conv_3c_3x3_b"
+external_input: "conv_3c_3x3_scale"
+external_input: "conv_3c_3x3_bias"
+external_input: "conv_3c_3x3_mean"
+external_input: "conv_3c_3x3_var"
+external_input: "conv_3c_3x3_w_second"
+external_input: "conv_3c_3x3_b_second"
+external_input: "conv_3c_double_3x3_reduce_w"
+external_input: "conv_3c_double_3x3_reduce_b"
+external_input: "conv_3c_double_3x3_reduce_scale"
+external_input: "conv_3c_double_3x3_reduce_bias"
+external_input: "conv_3c_double_3x3_reduce_mean"
+external_input: "conv_3c_double_3x3_reduce_var"
+external_input: "conv_3c_double_3x3_reduce_w_second"
+external_input: "conv_3c_double_3x3_reduce_b_second"
+external_input: "conv_3c_double_3x3_0_w"
+external_input: "conv_3c_double_3x3_0_b"
+external_input: "conv_3c_double_3x3_0_scale"
+external_input: "conv_3c_double_3x3_0_bias"
+external_input: "conv_3c_double_3x3_0_mean"
+external_input: "conv_3c_double_3x3_0_var"
+external_input: "conv_3c_double_3x3_0_w_second"
+external_input: "conv_3c_double_3x3_0_b_second"
+external_input: "conv_3c_double_3x3_1_w"
+external_input: "conv_3c_double_3x3_1_b"
+external_input: "conv_3c_double_3x3_1_scale"
+external_input: "conv_3c_double_3x3_1_bias"
+external_input: "conv_3c_double_3x3_1_mean"
+external_input: "conv_3c_double_3x3_1_var"
+external_input: "conv_3c_double_3x3_1_w_second"
+external_input: "conv_3c_double_3x3_1_b_second"
+external_input: "conv_4a_1x1_w"
+external_input: "conv_4a_1x1_b"
+external_input: "conv_4a_1x1_scale"
+external_input: "conv_4a_1x1_bias"
+external_input: "conv_4a_1x1_mean"
+external_input: "conv_4a_1x1_var"
+external_input: "conv_4a_1x1_w_second"
+external_input: "conv_4a_1x1_b_second"
+external_input: "conv_4a_3x3_reduce_w"
+external_input: "conv_4a_3x3_reduce_b"
+external_input: "conv_4a_3x3_reduce_scale"
+external_input: "conv_4a_3x3_reduce_bias"
+external_input: "conv_4a_3x3_reduce_mean"
+external_input: "conv_4a_3x3_reduce_var"
+external_input: "conv_4a_3x3_reduce_w_second"
+external_input: "conv_4a_3x3_reduce_b_second"
+external_input: "conv_4a_3x3_w"
+external_input: "conv_4a_3x3_b"
+external_input: "conv_4a_3x3_scale"
+external_input: "conv_4a_3x3_bias"
+external_input: "conv_4a_3x3_mean"
+external_input: "conv_4a_3x3_var"
+external_input: "conv_4a_3x3_w_second"
+external_input: "conv_4a_3x3_b_second"
+external_input: "conv_4a_double_3x3_reduce_w"
+external_input: "conv_4a_double_3x3_reduce_b"
+external_input: "conv_4a_double_3x3_reduce_scale"
+external_input: "conv_4a_double_3x3_reduce_bias"
+external_input: "conv_4a_double_3x3_reduce_mean"
+external_input: "conv_4a_double_3x3_reduce_var"
+external_input: "conv_4a_double_3x3_reduce_w_second"
+external_input: "conv_4a_double_3x3_reduce_b_second"
+external_input: "conv_4a_double_3x3_0_w"
+external_input: "conv_4a_double_3x3_0_b"
+external_input: "conv_4a_double_3x3_0_scale"
+external_input: "conv_4a_double_3x3_0_bias"
+external_input: "conv_4a_double_3x3_0_mean"
+external_input: "conv_4a_double_3x3_0_var"
+external_input: "conv_4a_double_3x3_0_w_second"
+external_input: "conv_4a_double_3x3_0_b_second"
+external_input: "conv_4a_double_3x3_1_w"
+external_input: "conv_4a_double_3x3_1_b"
+external_input: "conv_4a_double_3x3_1_scale"
+external_input: "conv_4a_double_3x3_1_bias"
+external_input: "conv_4a_double_3x3_1_mean"
+external_input: "conv_4a_double_3x3_1_var"
+external_input: "conv_4a_double_3x3_1_w_second"
+external_input: "conv_4a_double_3x3_1_b_second"
+external_input: "conv_4a_proj_w"
+external_input: "conv_4a_proj_b"
+external_input: "conv_4a_proj_scale"
+external_input: "conv_4a_proj_bias"
+external_input: "conv_4a_proj_mean"
+external_input: "conv_4a_proj_var"
+external_input: "conv_4a_proj_w_second"
+external_input: "conv_4a_proj_b_second"
+external_input: "conv_4b_1x1_w"
+external_input: "conv_4b_1x1_b"
+external_input: "conv_4b_1x1_scale"
+external_input: "conv_4b_1x1_bias"
+external_input: "conv_4b_1x1_mean"
+external_input: "conv_4b_1x1_var"
+external_input: "conv_4b_1x1_w_second"
+external_input: "conv_4b_1x1_b_second"
+external_input: "conv_4b_3x3_reduce_w"
+external_input: "conv_4b_3x3_reduce_b"
+external_input: "conv_4b_3x3_reduce_scale"
+external_input: "conv_4b_3x3_reduce_bias"
+external_input: "conv_4b_3x3_reduce_mean"
+external_input: "conv_4b_3x3_reduce_var"
+external_input: "conv_4b_3x3_reduce_w_second"
+external_input: "conv_4b_3x3_reduce_b_second"
+external_input: "conv_4b_3x3_w"
+external_input: "conv_4b_3x3_b"
+external_input: "conv_4b_3x3_scale"
+external_input: "conv_4b_3x3_bias"
+external_input: "conv_4b_3x3_mean"
+external_input: "conv_4b_3x3_var"
+external_input: "conv_4b_3x3_w_second"
+external_input: "conv_4b_3x3_b_second"
+external_input: "conv_4b_double_3x3_reduce_w"
+external_input: "conv_4b_double_3x3_reduce_b"
+external_input: "conv_4b_double_3x3_reduce_scale"
+external_input: "conv_4b_double_3x3_reduce_bias"
+external_input: "conv_4b_double_3x3_reduce_mean"
+external_input: "conv_4b_double_3x3_reduce_var"
+external_input: "conv_4b_double_3x3_reduce_w_second"
+external_input: "conv_4b_double_3x3_reduce_b_second"
+external_input: "conv_4b_double_3x3_0_w"
+external_input: "conv_4b_double_3x3_0_b"
+external_input: "conv_4b_double_3x3_0_scale"
+external_input: "conv_4b_double_3x3_0_bias"
+external_input: "conv_4b_double_3x3_0_mean"
+external_input: "conv_4b_double_3x3_0_var"
+external_input: "conv_4b_double_3x3_0_w_second"
+external_input: "conv_4b_double_3x3_0_b_second"
+external_input: "conv_4b_double_3x3_1_w"
+external_input: "conv_4b_double_3x3_1_b"
+external_input: "conv_4b_double_3x3_1_scale"
+external_input: "conv_4b_double_3x3_1_bias"
+external_input: "conv_4b_double_3x3_1_mean"
+external_input: "conv_4b_double_3x3_1_var"
+external_input: "conv_4b_double_3x3_1_w_second"
+external_input: "conv_4b_double_3x3_1_b_second"
+external_input: "conv_4b_proj_w"
+external_input: "conv_4b_proj_b"
+external_input: "conv_4b_proj_scale"
+external_input: "conv_4b_proj_bias"
+external_input: "conv_4b_proj_mean"
+external_input: "conv_4b_proj_var"
+external_input: "conv_4b_proj_w_second"
+external_input: "conv_4b_proj_b_second"
+external_input: "conv_4c_1x1_w"
+external_input: "conv_4c_1x1_b"
+external_input: "conv_4c_1x1_scale"
+external_input: "conv_4c_1x1_bias"
+external_input: "conv_4c_1x1_mean"
+external_input: "conv_4c_1x1_var"
+external_input: "conv_4c_1x1_w_second"
+external_input: "conv_4c_1x1_b_second"
+external_input: "conv_4c_3x3_reduce_w"
+external_input: "conv_4c_3x3_reduce_b"
+external_input: "conv_4c_3x3_reduce_scale"
+external_input: "conv_4c_3x3_reduce_bias"
+external_input: "conv_4c_3x3_reduce_mean"
+external_input: "conv_4c_3x3_reduce_var"
+external_input: "conv_4c_3x3_reduce_w_second"
+external_input: "conv_4c_3x3_reduce_b_second"
+external_input: "conv_4c_3x3_w"
+external_input: "conv_4c_3x3_b"
+external_input: "conv_4c_3x3_scale"
+external_input: "conv_4c_3x3_bias"
+external_input: "conv_4c_3x3_mean"
+external_input: "conv_4c_3x3_var"
+external_input: "conv_4c_3x3_w_second"
+external_input: "conv_4c_3x3_b_second"
+external_input: "conv_4c_double_3x3_reduce_w"
+external_input: "conv_4c_double_3x3_reduce_b"
+external_input: "conv_4c_double_3x3_reduce_scale"
+external_input: "conv_4c_double_3x3_reduce_bias"
+external_input: "conv_4c_double_3x3_reduce_mean"
+external_input: "conv_4c_double_3x3_reduce_var"
+external_input: "conv_4c_double_3x3_reduce_w_second"
+external_input: "conv_4c_double_3x3_reduce_b_second"
+external_input: "conv_4c_double_3x3_0_w"
+external_input: "conv_4c_double_3x3_0_b"
+external_input: "conv_4c_double_3x3_0_scale"
+external_input: "conv_4c_double_3x3_0_bias"
+external_input: "conv_4c_double_3x3_0_mean"
+external_input: "conv_4c_double_3x3_0_var"
+external_input: "conv_4c_double_3x3_0_w_second"
+external_input: "conv_4c_double_3x3_0_b_second"
+external_input: "conv_4c_double_3x3_1_w"
+external_input: "conv_4c_double_3x3_1_b"
+external_input: "conv_4c_double_3x3_1_scale"
+external_input: "conv_4c_double_3x3_1_bias"
+external_input: "conv_4c_double_3x3_1_mean"
+external_input: "conv_4c_double_3x3_1_var"
+external_input: "conv_4c_double_3x3_1_w_second"
+external_input: "conv_4c_double_3x3_1_b_second"
+external_input: "conv_4c_proj_w"
+external_input: "conv_4c_proj_b"
+external_input: "conv_4c_proj_scale"
+external_input: "conv_4c_proj_bias"
+external_input: "conv_4c_proj_mean"
+external_input: "conv_4c_proj_var"
+external_input: "conv_4c_proj_w_second"
+external_input: "conv_4c_proj_b_second"
+external_input: "conv_4d_1x1_w"
+external_input: "conv_4d_1x1_b"
+external_input: "conv_4d_1x1_scale"
+external_input: "conv_4d_1x1_bias"
+external_input: "conv_4d_1x1_mean"
+external_input: "conv_4d_1x1_var"
+external_input: "conv_4d_1x1_w_second"
+external_input: "conv_4d_1x1_b_second"
+external_input: "conv_4d_3x3_reduce_w"
+external_input: "conv_4d_3x3_reduce_b"
+external_input: "conv_4d_3x3_reduce_scale"
+external_input: "conv_4d_3x3_reduce_bias"
+external_input: "conv_4d_3x3_reduce_mean"
+external_input: "conv_4d_3x3_reduce_var"
+external_input: "conv_4d_3x3_reduce_w_second"
+external_input: "conv_4d_3x3_reduce_b_second"
+external_input: "conv_4d_3x3_w"
+external_input: "conv_4d_3x3_b"
+external_input: "conv_4d_3x3_scale"
+external_input: "conv_4d_3x3_bias"
+external_input: "conv_4d_3x3_mean"
+external_input: "conv_4d_3x3_var"
+external_input: "conv_4d_3x3_w_second"
+external_input: "conv_4d_3x3_b_second"
+external_input: "conv_4d_double_3x3_reduce_w"
+external_input: "conv_4d_double_3x3_reduce_b"
+external_input: "conv_4d_double_3x3_reduce_scale"
+external_input: "conv_4d_double_3x3_reduce_bias"
+external_input: "conv_4d_double_3x3_reduce_mean"
+external_input: "conv_4d_double_3x3_reduce_var"
+external_input: "conv_4d_double_3x3_reduce_w_second"
+external_input: "conv_4d_double_3x3_reduce_b_second"
+external_input: "conv_4d_double_3x3_0_w"
+external_input: "conv_4d_double_3x3_0_b"
+external_input: "conv_4d_double_3x3_0_scale"
+external_input: "conv_4d_double_3x3_0_bias"
+external_input: "conv_4d_double_3x3_0_mean"
+external_input: "conv_4d_double_3x3_0_var"
+external_input: "conv_4d_double_3x3_0_w_second"
+external_input: "conv_4d_double_3x3_0_b_second"
+external_input: "conv_4d_double_3x3_1_w"
+external_input: "conv_4d_double_3x3_1_b"
+external_input: "conv_4d_double_3x3_1_scale"
+external_input: "conv_4d_double_3x3_1_bias"
+external_input: "conv_4d_double_3x3_1_mean"
+external_input: "conv_4d_double_3x3_1_var"
+external_input: "conv_4d_double_3x3_1_w_second"
+external_input: "conv_4d_double_3x3_1_b_second"
+external_input: "conv_4d_proj_w"
+external_input: "conv_4d_proj_b"
+external_input: "conv_4d_proj_scale"
+external_input: "conv_4d_proj_bias"
+external_input: "conv_4d_proj_mean"
+external_input: "conv_4d_proj_var"
+external_input: "conv_4d_proj_w_second"
+external_input: "conv_4d_proj_b_second"
+external_input: "conv_4e_3x3_reduce_w"
+external_input: "conv_4e_3x3_reduce_b"
+external_input: "conv_4e_3x3_reduce_scale"
+external_input: "conv_4e_3x3_reduce_bias"
+external_input: "conv_4e_3x3_reduce_mean"
+external_input: "conv_4e_3x3_reduce_var"
+external_input: "conv_4e_3x3_reduce_w_second"
+external_input: "conv_4e_3x3_reduce_b_second"
+external_input: "conv_4e_3x3_w"
+external_input: "conv_4e_3x3_b"
+external_input: "conv_4e_3x3_scale"
+external_input: "conv_4e_3x3_bias"
+external_input: "conv_4e_3x3_mean"
+external_input: "conv_4e_3x3_var"
+external_input: "conv_4e_3x3_w_second"
+external_input: "conv_4e_3x3_b_second"
+external_input: "conv_4e_double_3x3_reduce_w"
+external_input: "conv_4e_double_3x3_reduce_b"
+external_input: "conv_4e_double_3x3_reduce_scale"
+external_input: "conv_4e_double_3x3_reduce_bias"
+external_input: "conv_4e_double_3x3_reduce_mean"
+external_input: "conv_4e_double_3x3_reduce_var"
+external_input: "conv_4e_double_3x3_reduce_w_second"
+external_input: "conv_4e_double_3x3_reduce_b_second"
+external_input: "conv_4e_double_3x3_0_w"
+external_input: "conv_4e_double_3x3_0_b"
+external_input: "conv_4e_double_3x3_0_scale"
+external_input: "conv_4e_double_3x3_0_bias"
+external_input: "conv_4e_double_3x3_0_mean"
+external_input: "conv_4e_double_3x3_0_var"
+external_input: "conv_4e_double_3x3_0_w_second"
+external_input: "conv_4e_double_3x3_0_b_second"
+external_input: "conv_4e_double_3x3_1_w"
+external_input: "conv_4e_double_3x3_1_b"
+external_input: "conv_4e_double_3x3_1_scale"
+external_input: "conv_4e_double_3x3_1_bias"
+external_input: "conv_4e_double_3x3_1_mean"
+external_input: "conv_4e_double_3x3_1_var"
+external_input: "conv_4e_double_3x3_1_w_second"
+external_input: "conv_4e_double_3x3_1_b_second"
+external_input: "conv_5a_1x1_w"
+external_input: "conv_5a_1x1_b"
+external_input: "conv_5a_1x1_scale"
+external_input: "conv_5a_1x1_bias"
+external_input: "conv_5a_1x1_mean"
+external_input: "conv_5a_1x1_var"
+external_input: "conv_5a_1x1_w_second"
+external_input: "conv_5a_1x1_b_second"
+external_input: "conv_5a_3x3_reduce_w"
+external_input: "conv_5a_3x3_reduce_b"
+external_input: "conv_5a_3x3_reduce_scale"
+external_input: "conv_5a_3x3_reduce_bias"
+external_input: "conv_5a_3x3_reduce_mean"
+external_input: "conv_5a_3x3_reduce_var"
+external_input: "conv_5a_3x3_reduce_w_second"
+external_input: "conv_5a_3x3_reduce_b_second"
+external_input: "conv_5a_3x3_w"
+external_input: "conv_5a_3x3_b"
+external_input: "conv_5a_3x3_scale"
+external_input: "conv_5a_3x3_bias"
+external_input: "conv_5a_3x3_mean"
+external_input: "conv_5a_3x3_var"
+external_input: "conv_5a_3x3_w_second"
+external_input: "conv_5a_3x3_b_second"
+external_input: "conv_5a_double_3x3_reduce_w"
+external_input: "conv_5a_double_3x3_reduce_b"
+external_input: "conv_5a_double_3x3_reduce_scale"
+external_input: "conv_5a_double_3x3_reduce_bias"
+external_input: "conv_5a_double_3x3_reduce_mean"
+external_input: "conv_5a_double_3x3_reduce_var"
+external_input: "conv_5a_double_3x3_reduce_w_second"
+external_input: "conv_5a_double_3x3_reduce_b_second"
+external_input: "conv_5a_double_3x3_0_w"
+external_input: "conv_5a_double_3x3_0_b"
+external_input: "conv_5a_double_3x3_0_scale"
+external_input: "conv_5a_double_3x3_0_bias"
+external_input: "conv_5a_double_3x3_0_mean"
+external_input: "conv_5a_double_3x3_0_var"
+external_input: "conv_5a_double_3x3_0_w_second"
+external_input: "conv_5a_double_3x3_0_b_second"
+external_input: "conv_5a_double_3x3_1_w"
+external_input: "conv_5a_double_3x3_1_b"
+external_input: "conv_5a_double_3x3_1_scale"
+external_input: "conv_5a_double_3x3_1_bias"
+external_input: "conv_5a_double_3x3_1_mean"
+external_input: "conv_5a_double_3x3_1_var"
+external_input: "conv_5a_double_3x3_1_w_second"
+external_input: "conv_5a_double_3x3_1_b_second"
+external_input: "conv_5a_proj_w"
+external_input: "conv_5a_proj_b"
+external_input: "conv_5a_proj_scale"
+external_input: "conv_5a_proj_bias"
+external_input: "conv_5a_proj_mean"
+external_input: "conv_5a_proj_var"
+external_input: "conv_5a_proj_w_second"
+external_input: "conv_5a_proj_b_second"
+external_input: "conv_5b_1x1_w"
+external_input: "conv_5b_1x1_b"
+external_input: "conv_5b_1x1_scale"
+external_input: "conv_5b_1x1_bias"
+external_input: "conv_5b_1x1_mean"
+external_input: "conv_5b_1x1_var"
+external_input: "conv_5b_1x1_w_second"
+external_input: "conv_5b_1x1_b_second"
+external_input: "conv_5b_3x3_reduce_w"
+external_input: "conv_5b_3x3_reduce_b"
+external_input: "conv_5b_3x3_reduce_scale"
+external_input: "conv_5b_3x3_reduce_bias"
+external_input: "conv_5b_3x3_reduce_mean"
+external_input: "conv_5b_3x3_reduce_var"
+external_input: "conv_5b_3x3_reduce_w_second"
+external_input: "conv_5b_3x3_reduce_b_second"
+external_input: "conv_5b_3x3_w"
+external_input: "conv_5b_3x3_b"
+external_input: "conv_5b_3x3_scale"
+external_input: "conv_5b_3x3_bias"
+external_input: "conv_5b_3x3_mean"
+external_input: "conv_5b_3x3_var"
+external_input: "conv_5b_3x3_w_second"
+external_input: "conv_5b_3x3_b_second"
+external_input: "conv_5b_double_3x3_reduce_w"
+external_input: "conv_5b_double_3x3_reduce_b"
+external_input: "conv_5b_double_3x3_reduce_scale"
+external_input: "conv_5b_double_3x3_reduce_bias"
+external_input: "conv_5b_double_3x3_reduce_mean"
+external_input: "conv_5b_double_3x3_reduce_var"
+external_input: "conv_5b_double_3x3_reduce_w_second"
+external_input: "conv_5b_double_3x3_reduce_b_second"
+external_input: "conv_5b_double_3x3_0_w"
+external_input: "conv_5b_double_3x3_0_b"
+external_input: "conv_5b_double_3x3_0_scale"
+external_input: "conv_5b_double_3x3_0_bias"
+external_input: "conv_5b_double_3x3_0_mean"
+external_input: "conv_5b_double_3x3_0_var"
+external_input: "conv_5b_double_3x3_0_w_second"
+external_input: "conv_5b_double_3x3_0_b_second"
+external_input: "conv_5b_double_3x3_1_w"
+external_input: "conv_5b_double_3x3_1_b"
+external_input: "conv_5b_double_3x3_1_scale"
+external_input: "conv_5b_double_3x3_1_bias"
+external_input: "conv_5b_double_3x3_1_mean"
+external_input: "conv_5b_double_3x3_1_var"
+external_input: "conv_5b_double_3x3_1_w_second"
+external_input: "conv_5b_double_3x3_1_b_second"
+external_input: "conv_5b_proj_w"
+external_input: "conv_5b_proj_b"
+external_input: "conv_5b_proj_scale"
+external_input: "conv_5b_proj_bias"
+external_input: "conv_5b_proj_mean"
+external_input: "conv_5b_proj_var"
+external_input: "conv_5b_proj_w_second"
+external_input: "conv_5b_proj_b_second"
+external_input: "fc1_w"
+external_input: "fc1_b"
+external_output: "softmax"

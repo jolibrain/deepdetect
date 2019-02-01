@@ -1,0 +1,2032 @@
+name: "GoogleNet"
+op {
+  input: "data"
+  input: "conv1/7x7_s2_w"
+  input: "conv1/7x7_s2_b"
+  output: "conv1/7x7_s2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 3
+  }
+  arg {
+    name: "kernel"
+    i: 7
+  }
+}
+op {
+  input: "conv1/7x7_s2"
+  output: "conv1/7x7_s2"
+  type: "Relu"
+}
+op {
+  input: "conv1/7x7_s2"
+  output: "pool1/3x3_s2"
+  type: "MaxPool"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "pool1/3x3_s2"
+  output: "pool1/norm1"
+  output: "_pool1/norm1_scale"
+  type: "LRN"
+  arg {
+    name: "size"
+    i: 5
+  }
+  arg {
+    name: "alpha"
+    f: 0.0001
+  }
+  arg {
+    name: "beta"
+    f: 0.75
+  }
+  arg {
+    name: "bias"
+    f: 1
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "pool1/norm1"
+  input: "conv2/3x3_reduce_w"
+  input: "conv2/3x3_reduce_b"
+  output: "conv2/3x3_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "conv2/3x3_reduce"
+  output: "conv2/3x3_reduce"
+  type: "Relu"
+}
+op {
+  input: "conv2/3x3_reduce"
+  input: "conv2/3x3_w"
+  input: "conv2/3x3_b"
+  output: "conv2/3x3"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv2/3x3"
+  output: "conv2/3x3"
+  type: "Relu"
+}
+op {
+  input: "conv2/3x3"
+  output: "conv2/norm2"
+  output: "_conv2/norm2_scale"
+  type: "LRN"
+  arg {
+    name: "size"
+    i: 5
+  }
+  arg {
+    name: "alpha"
+    f: 0.0001
+  }
+  arg {
+    name: "beta"
+    f: 0.75
+  }
+  arg {
+    name: "bias"
+    f: 1
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv2/norm2"
+  output: "pool2/3x3_s2"
+  type: "MaxPool"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "pool2/3x3_s2"
+  input: "inception_3a/1x1_w"
+  input: "inception_3a/1x1_b"
+  output: "inception_3a/1x1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_3a/1x1"
+  output: "inception_3a/1x1"
+  type: "Relu"
+}
+op {
+  input: "pool2/3x3_s2"
+  input: "inception_3a/3x3_reduce_w"
+  input: "inception_3a/3x3_reduce_b"
+  output: "inception_3a/3x3_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_3a/3x3_reduce"
+  output: "inception_3a/3x3_reduce"
+  type: "Relu"
+}
+op {
+  input: "inception_3a/3x3_reduce"
+  input: "inception_3a/3x3_w"
+  input: "inception_3a/3x3_b"
+  output: "inception_3a/3x3"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "inception_3a/3x3"
+  output: "inception_3a/3x3"
+  type: "Relu"
+}
+op {
+  input: "pool2/3x3_s2"
+  input: "inception_3a/5x5_reduce_w"
+  input: "inception_3a/5x5_reduce_b"
+  output: "inception_3a/5x5_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_3a/5x5_reduce"
+  output: "inception_3a/5x5_reduce"
+  type: "Relu"
+}
+op {
+  input: "inception_3a/5x5_reduce"
+  input: "inception_3a/5x5_w"
+  input: "inception_3a/5x5_b"
+  output: "inception_3a/5x5"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 2
+  }
+  arg {
+    name: "kernel"
+    i: 5
+  }
+}
+op {
+  input: "inception_3a/5x5"
+  output: "inception_3a/5x5"
+  type: "Relu"
+}
+op {
+  input: "pool2/3x3_s2"
+  output: "inception_3a/pool"
+  type: "MaxPool"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "inception_3a/pool"
+  input: "inception_3a/pool_proj_w"
+  input: "inception_3a/pool_proj_b"
+  output: "inception_3a/pool_proj"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_3a/pool_proj"
+  output: "inception_3a/pool_proj"
+  type: "Relu"
+}
+op {
+  input: "inception_3a/1x1"
+  input: "inception_3a/3x3"
+  input: "inception_3a/5x5"
+  input: "inception_3a/pool_proj"
+  output: "inception_3a/output"
+  output: "_inception_3a/output_dims"
+  type: "Concat"
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "inception_3a/output"
+  input: "inception_3b/1x1_w"
+  input: "inception_3b/1x1_b"
+  output: "inception_3b/1x1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_3b/1x1"
+  output: "inception_3b/1x1"
+  type: "Relu"
+}
+op {
+  input: "inception_3a/output"
+  input: "inception_3b/3x3_reduce_w"
+  input: "inception_3b/3x3_reduce_b"
+  output: "inception_3b/3x3_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_3b/3x3_reduce"
+  output: "inception_3b/3x3_reduce"
+  type: "Relu"
+}
+op {
+  input: "inception_3b/3x3_reduce"
+  input: "inception_3b/3x3_w"
+  input: "inception_3b/3x3_b"
+  output: "inception_3b/3x3"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "inception_3b/3x3"
+  output: "inception_3b/3x3"
+  type: "Relu"
+}
+op {
+  input: "inception_3a/output"
+  input: "inception_3b/5x5_reduce_w"
+  input: "inception_3b/5x5_reduce_b"
+  output: "inception_3b/5x5_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_3b/5x5_reduce"
+  output: "inception_3b/5x5_reduce"
+  type: "Relu"
+}
+op {
+  input: "inception_3b/5x5_reduce"
+  input: "inception_3b/5x5_w"
+  input: "inception_3b/5x5_b"
+  output: "inception_3b/5x5"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 2
+  }
+  arg {
+    name: "kernel"
+    i: 5
+  }
+}
+op {
+  input: "inception_3b/5x5"
+  output: "inception_3b/5x5"
+  type: "Relu"
+}
+op {
+  input: "inception_3a/output"
+  output: "inception_3b/pool"
+  type: "MaxPool"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "inception_3b/pool"
+  input: "inception_3b/pool_proj_w"
+  input: "inception_3b/pool_proj_b"
+  output: "inception_3b/pool_proj"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_3b/pool_proj"
+  output: "inception_3b/pool_proj"
+  type: "Relu"
+}
+op {
+  input: "inception_3b/1x1"
+  input: "inception_3b/3x3"
+  input: "inception_3b/5x5"
+  input: "inception_3b/pool_proj"
+  output: "inception_3b/output"
+  output: "_inception_3b/output_dims"
+  type: "Concat"
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "inception_3b/output"
+  output: "pool3/3x3_s2"
+  type: "MaxPool"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "pool3/3x3_s2"
+  input: "inception_4a/1x1_w"
+  input: "inception_4a/1x1_b"
+  output: "inception_4a/1x1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_4a/1x1"
+  output: "inception_4a/1x1"
+  type: "Relu"
+}
+op {
+  input: "pool3/3x3_s2"
+  input: "inception_4a/3x3_reduce_w"
+  input: "inception_4a/3x3_reduce_b"
+  output: "inception_4a/3x3_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_4a/3x3_reduce"
+  output: "inception_4a/3x3_reduce"
+  type: "Relu"
+}
+op {
+  input: "inception_4a/3x3_reduce"
+  input: "inception_4a/3x3_w"
+  input: "inception_4a/3x3_b"
+  output: "inception_4a/3x3"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "inception_4a/3x3"
+  output: "inception_4a/3x3"
+  type: "Relu"
+}
+op {
+  input: "pool3/3x3_s2"
+  input: "inception_4a/5x5_reduce_w"
+  input: "inception_4a/5x5_reduce_b"
+  output: "inception_4a/5x5_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_4a/5x5_reduce"
+  output: "inception_4a/5x5_reduce"
+  type: "Relu"
+}
+op {
+  input: "inception_4a/5x5_reduce"
+  input: "inception_4a/5x5_w"
+  input: "inception_4a/5x5_b"
+  output: "inception_4a/5x5"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 2
+  }
+  arg {
+    name: "kernel"
+    i: 5
+  }
+}
+op {
+  input: "inception_4a/5x5"
+  output: "inception_4a/5x5"
+  type: "Relu"
+}
+op {
+  input: "pool3/3x3_s2"
+  output: "inception_4a/pool"
+  type: "MaxPool"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "inception_4a/pool"
+  input: "inception_4a/pool_proj_w"
+  input: "inception_4a/pool_proj_b"
+  output: "inception_4a/pool_proj"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_4a/pool_proj"
+  output: "inception_4a/pool_proj"
+  type: "Relu"
+}
+op {
+  input: "inception_4a/1x1"
+  input: "inception_4a/3x3"
+  input: "inception_4a/5x5"
+  input: "inception_4a/pool_proj"
+  output: "inception_4a/output"
+  output: "_inception_4a/output_dims"
+  type: "Concat"
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "inception_4a/output"
+  input: "inception_4b/1x1_w"
+  input: "inception_4b/1x1_b"
+  output: "inception_4b/1x1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_4b/1x1"
+  output: "inception_4b/1x1"
+  type: "Relu"
+}
+op {
+  input: "inception_4a/output"
+  input: "inception_4b/3x3_reduce_w"
+  input: "inception_4b/3x3_reduce_b"
+  output: "inception_4b/3x3_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_4b/3x3_reduce"
+  output: "inception_4b/3x3_reduce"
+  type: "Relu"
+}
+op {
+  input: "inception_4b/3x3_reduce"
+  input: "inception_4b/3x3_w"
+  input: "inception_4b/3x3_b"
+  output: "inception_4b/3x3"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "inception_4b/3x3"
+  output: "inception_4b/3x3"
+  type: "Relu"
+}
+op {
+  input: "inception_4a/output"
+  input: "inception_4b/5x5_reduce_w"
+  input: "inception_4b/5x5_reduce_b"
+  output: "inception_4b/5x5_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_4b/5x5_reduce"
+  output: "inception_4b/5x5_reduce"
+  type: "Relu"
+}
+op {
+  input: "inception_4b/5x5_reduce"
+  input: "inception_4b/5x5_w"
+  input: "inception_4b/5x5_b"
+  output: "inception_4b/5x5"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 2
+  }
+  arg {
+    name: "kernel"
+    i: 5
+  }
+}
+op {
+  input: "inception_4b/5x5"
+  output: "inception_4b/5x5"
+  type: "Relu"
+}
+op {
+  input: "inception_4a/output"
+  output: "inception_4b/pool"
+  type: "MaxPool"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "inception_4b/pool"
+  input: "inception_4b/pool_proj_w"
+  input: "inception_4b/pool_proj_b"
+  output: "inception_4b/pool_proj"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_4b/pool_proj"
+  output: "inception_4b/pool_proj"
+  type: "Relu"
+}
+op {
+  input: "inception_4b/1x1"
+  input: "inception_4b/3x3"
+  input: "inception_4b/5x5"
+  input: "inception_4b/pool_proj"
+  output: "inception_4b/output"
+  output: "_inception_4b/output_dims"
+  type: "Concat"
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "inception_4b/output"
+  input: "inception_4c/1x1_w"
+  input: "inception_4c/1x1_b"
+  output: "inception_4c/1x1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_4c/1x1"
+  output: "inception_4c/1x1"
+  type: "Relu"
+}
+op {
+  input: "inception_4b/output"
+  input: "inception_4c/3x3_reduce_w"
+  input: "inception_4c/3x3_reduce_b"
+  output: "inception_4c/3x3_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_4c/3x3_reduce"
+  output: "inception_4c/3x3_reduce"
+  type: "Relu"
+}
+op {
+  input: "inception_4c/3x3_reduce"
+  input: "inception_4c/3x3_w"
+  input: "inception_4c/3x3_b"
+  output: "inception_4c/3x3"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "inception_4c/3x3"
+  output: "inception_4c/3x3"
+  type: "Relu"
+}
+op {
+  input: "inception_4b/output"
+  input: "inception_4c/5x5_reduce_w"
+  input: "inception_4c/5x5_reduce_b"
+  output: "inception_4c/5x5_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_4c/5x5_reduce"
+  output: "inception_4c/5x5_reduce"
+  type: "Relu"
+}
+op {
+  input: "inception_4c/5x5_reduce"
+  input: "inception_4c/5x5_w"
+  input: "inception_4c/5x5_b"
+  output: "inception_4c/5x5"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 2
+  }
+  arg {
+    name: "kernel"
+    i: 5
+  }
+}
+op {
+  input: "inception_4c/5x5"
+  output: "inception_4c/5x5"
+  type: "Relu"
+}
+op {
+  input: "inception_4b/output"
+  output: "inception_4c/pool"
+  type: "MaxPool"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "inception_4c/pool"
+  input: "inception_4c/pool_proj_w"
+  input: "inception_4c/pool_proj_b"
+  output: "inception_4c/pool_proj"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_4c/pool_proj"
+  output: "inception_4c/pool_proj"
+  type: "Relu"
+}
+op {
+  input: "inception_4c/1x1"
+  input: "inception_4c/3x3"
+  input: "inception_4c/5x5"
+  input: "inception_4c/pool_proj"
+  output: "inception_4c/output"
+  output: "_inception_4c/output_dims"
+  type: "Concat"
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "inception_4c/output"
+  input: "inception_4d/1x1_w"
+  input: "inception_4d/1x1_b"
+  output: "inception_4d/1x1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_4d/1x1"
+  output: "inception_4d/1x1"
+  type: "Relu"
+}
+op {
+  input: "inception_4c/output"
+  input: "inception_4d/3x3_reduce_w"
+  input: "inception_4d/3x3_reduce_b"
+  output: "inception_4d/3x3_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_4d/3x3_reduce"
+  output: "inception_4d/3x3_reduce"
+  type: "Relu"
+}
+op {
+  input: "inception_4d/3x3_reduce"
+  input: "inception_4d/3x3_w"
+  input: "inception_4d/3x3_b"
+  output: "inception_4d/3x3"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "inception_4d/3x3"
+  output: "inception_4d/3x3"
+  type: "Relu"
+}
+op {
+  input: "inception_4c/output"
+  input: "inception_4d/5x5_reduce_w"
+  input: "inception_4d/5x5_reduce_b"
+  output: "inception_4d/5x5_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_4d/5x5_reduce"
+  output: "inception_4d/5x5_reduce"
+  type: "Relu"
+}
+op {
+  input: "inception_4d/5x5_reduce"
+  input: "inception_4d/5x5_w"
+  input: "inception_4d/5x5_b"
+  output: "inception_4d/5x5"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 2
+  }
+  arg {
+    name: "kernel"
+    i: 5
+  }
+}
+op {
+  input: "inception_4d/5x5"
+  output: "inception_4d/5x5"
+  type: "Relu"
+}
+op {
+  input: "inception_4c/output"
+  output: "inception_4d/pool"
+  type: "MaxPool"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "inception_4d/pool"
+  input: "inception_4d/pool_proj_w"
+  input: "inception_4d/pool_proj_b"
+  output: "inception_4d/pool_proj"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_4d/pool_proj"
+  output: "inception_4d/pool_proj"
+  type: "Relu"
+}
+op {
+  input: "inception_4d/1x1"
+  input: "inception_4d/3x3"
+  input: "inception_4d/5x5"
+  input: "inception_4d/pool_proj"
+  output: "inception_4d/output"
+  output: "_inception_4d/output_dims"
+  type: "Concat"
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "inception_4d/output"
+  input: "inception_4e/1x1_w"
+  input: "inception_4e/1x1_b"
+  output: "inception_4e/1x1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_4e/1x1"
+  output: "inception_4e/1x1"
+  type: "Relu"
+}
+op {
+  input: "inception_4d/output"
+  input: "inception_4e/3x3_reduce_w"
+  input: "inception_4e/3x3_reduce_b"
+  output: "inception_4e/3x3_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_4e/3x3_reduce"
+  output: "inception_4e/3x3_reduce"
+  type: "Relu"
+}
+op {
+  input: "inception_4e/3x3_reduce"
+  input: "inception_4e/3x3_w"
+  input: "inception_4e/3x3_b"
+  output: "inception_4e/3x3"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "inception_4e/3x3"
+  output: "inception_4e/3x3"
+  type: "Relu"
+}
+op {
+  input: "inception_4d/output"
+  input: "inception_4e/5x5_reduce_w"
+  input: "inception_4e/5x5_reduce_b"
+  output: "inception_4e/5x5_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_4e/5x5_reduce"
+  output: "inception_4e/5x5_reduce"
+  type: "Relu"
+}
+op {
+  input: "inception_4e/5x5_reduce"
+  input: "inception_4e/5x5_w"
+  input: "inception_4e/5x5_b"
+  output: "inception_4e/5x5"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 2
+  }
+  arg {
+    name: "kernel"
+    i: 5
+  }
+}
+op {
+  input: "inception_4e/5x5"
+  output: "inception_4e/5x5"
+  type: "Relu"
+}
+op {
+  input: "inception_4d/output"
+  output: "inception_4e/pool"
+  type: "MaxPool"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "inception_4e/pool"
+  input: "inception_4e/pool_proj_w"
+  input: "inception_4e/pool_proj_b"
+  output: "inception_4e/pool_proj"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_4e/pool_proj"
+  output: "inception_4e/pool_proj"
+  type: "Relu"
+}
+op {
+  input: "inception_4e/1x1"
+  input: "inception_4e/3x3"
+  input: "inception_4e/5x5"
+  input: "inception_4e/pool_proj"
+  output: "inception_4e/output"
+  output: "_inception_4e/output_dims"
+  type: "Concat"
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "inception_4e/output"
+  output: "pool4/3x3_s2"
+  type: "MaxPool"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "pool4/3x3_s2"
+  input: "inception_5a/1x1_w"
+  input: "inception_5a/1x1_b"
+  output: "inception_5a/1x1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_5a/1x1"
+  output: "inception_5a/1x1"
+  type: "Relu"
+}
+op {
+  input: "pool4/3x3_s2"
+  input: "inception_5a/3x3_reduce_w"
+  input: "inception_5a/3x3_reduce_b"
+  output: "inception_5a/3x3_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_5a/3x3_reduce"
+  output: "inception_5a/3x3_reduce"
+  type: "Relu"
+}
+op {
+  input: "inception_5a/3x3_reduce"
+  input: "inception_5a/3x3_w"
+  input: "inception_5a/3x3_b"
+  output: "inception_5a/3x3"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "inception_5a/3x3"
+  output: "inception_5a/3x3"
+  type: "Relu"
+}
+op {
+  input: "pool4/3x3_s2"
+  input: "inception_5a/5x5_reduce_w"
+  input: "inception_5a/5x5_reduce_b"
+  output: "inception_5a/5x5_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_5a/5x5_reduce"
+  output: "inception_5a/5x5_reduce"
+  type: "Relu"
+}
+op {
+  input: "inception_5a/5x5_reduce"
+  input: "inception_5a/5x5_w"
+  input: "inception_5a/5x5_b"
+  output: "inception_5a/5x5"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 2
+  }
+  arg {
+    name: "kernel"
+    i: 5
+  }
+}
+op {
+  input: "inception_5a/5x5"
+  output: "inception_5a/5x5"
+  type: "Relu"
+}
+op {
+  input: "pool4/3x3_s2"
+  output: "inception_5a/pool"
+  type: "MaxPool"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "inception_5a/pool"
+  input: "inception_5a/pool_proj_w"
+  input: "inception_5a/pool_proj_b"
+  output: "inception_5a/pool_proj"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_5a/pool_proj"
+  output: "inception_5a/pool_proj"
+  type: "Relu"
+}
+op {
+  input: "inception_5a/1x1"
+  input: "inception_5a/3x3"
+  input: "inception_5a/5x5"
+  input: "inception_5a/pool_proj"
+  output: "inception_5a/output"
+  output: "_inception_5a/output_dims"
+  type: "Concat"
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "inception_5a/output"
+  input: "inception_5b/1x1_w"
+  input: "inception_5b/1x1_b"
+  output: "inception_5b/1x1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_5b/1x1"
+  output: "inception_5b/1x1"
+  type: "Relu"
+}
+op {
+  input: "inception_5a/output"
+  input: "inception_5b/3x3_reduce_w"
+  input: "inception_5b/3x3_reduce_b"
+  output: "inception_5b/3x3_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_5b/3x3_reduce"
+  output: "inception_5b/3x3_reduce"
+  type: "Relu"
+}
+op {
+  input: "inception_5b/3x3_reduce"
+  input: "inception_5b/3x3_w"
+  input: "inception_5b/3x3_b"
+  output: "inception_5b/3x3"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "inception_5b/3x3"
+  output: "inception_5b/3x3"
+  type: "Relu"
+}
+op {
+  input: "inception_5a/output"
+  input: "inception_5b/5x5_reduce_w"
+  input: "inception_5b/5x5_reduce_b"
+  output: "inception_5b/5x5_reduce"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_5b/5x5_reduce"
+  output: "inception_5b/5x5_reduce"
+  type: "Relu"
+}
+op {
+  input: "inception_5b/5x5_reduce"
+  input: "inception_5b/5x5_w"
+  input: "inception_5b/5x5_b"
+  output: "inception_5b/5x5"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 2
+  }
+  arg {
+    name: "kernel"
+    i: 5
+  }
+}
+op {
+  input: "inception_5b/5x5"
+  output: "inception_5b/5x5"
+  type: "Relu"
+}
+op {
+  input: "inception_5a/output"
+  output: "inception_5b/pool"
+  type: "MaxPool"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "inception_5b/pool"
+  input: "inception_5b/pool_proj_w"
+  input: "inception_5b/pool_proj_b"
+  output: "inception_5b/pool_proj"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "inception_5b/pool_proj"
+  output: "inception_5b/pool_proj"
+  type: "Relu"
+}
+op {
+  input: "inception_5b/1x1"
+  input: "inception_5b/3x3"
+  input: "inception_5b/5x5"
+  input: "inception_5b/pool_proj"
+  output: "inception_5b/output"
+  output: "_inception_5b/output_dims"
+  type: "Concat"
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "inception_5b/output"
+  output: "pool5/7x7_s1"
+  type: "AveragePool"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 7
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "pool5/7x7_s1"
+  output: "pool5/7x7_s1"
+  output: "_pool5/7x7_s1_mask"
+  type: "Dropout"
+  arg {
+    name: "ratio"
+    f: 0.4
+  }
+  arg {
+    name: "is_test"
+    i: 1
+  }
+}
+op {
+  input: "pool5/7x7_s1"
+  input: "loss3/classifier_w"
+  input: "loss3/classifier_b"
+  output: "loss3/classifier"
+  type: "FC"
+}
+op {
+  input: "loss3/classifier"
+  output: "prob"
+  type: "Softmax"
+}
+external_input: "data"
+external_input: "conv1/7x7_s2_w"
+external_input: "conv1/7x7_s2_b"
+external_input: "conv2/3x3_reduce_w"
+external_input: "conv2/3x3_reduce_b"
+external_input: "conv2/3x3_w"
+external_input: "conv2/3x3_b"
+external_input: "inception_3a/1x1_w"
+external_input: "inception_3a/1x1_b"
+external_input: "inception_3a/3x3_reduce_w"
+external_input: "inception_3a/3x3_reduce_b"
+external_input: "inception_3a/3x3_w"
+external_input: "inception_3a/3x3_b"
+external_input: "inception_3a/5x5_reduce_w"
+external_input: "inception_3a/5x5_reduce_b"
+external_input: "inception_3a/5x5_w"
+external_input: "inception_3a/5x5_b"
+external_input: "inception_3a/pool_proj_w"
+external_input: "inception_3a/pool_proj_b"
+external_input: "inception_3b/1x1_w"
+external_input: "inception_3b/1x1_b"
+external_input: "inception_3b/3x3_reduce_w"
+external_input: "inception_3b/3x3_reduce_b"
+external_input: "inception_3b/3x3_w"
+external_input: "inception_3b/3x3_b"
+external_input: "inception_3b/5x5_reduce_w"
+external_input: "inception_3b/5x5_reduce_b"
+external_input: "inception_3b/5x5_w"
+external_input: "inception_3b/5x5_b"
+external_input: "inception_3b/pool_proj_w"
+external_input: "inception_3b/pool_proj_b"
+external_input: "inception_4a/1x1_w"
+external_input: "inception_4a/1x1_b"
+external_input: "inception_4a/3x3_reduce_w"
+external_input: "inception_4a/3x3_reduce_b"
+external_input: "inception_4a/3x3_w"
+external_input: "inception_4a/3x3_b"
+external_input: "inception_4a/5x5_reduce_w"
+external_input: "inception_4a/5x5_reduce_b"
+external_input: "inception_4a/5x5_w"
+external_input: "inception_4a/5x5_b"
+external_input: "inception_4a/pool_proj_w"
+external_input: "inception_4a/pool_proj_b"
+external_input: "inception_4b/1x1_w"
+external_input: "inception_4b/1x1_b"
+external_input: "inception_4b/3x3_reduce_w"
+external_input: "inception_4b/3x3_reduce_b"
+external_input: "inception_4b/3x3_w"
+external_input: "inception_4b/3x3_b"
+external_input: "inception_4b/5x5_reduce_w"
+external_input: "inception_4b/5x5_reduce_b"
+external_input: "inception_4b/5x5_w"
+external_input: "inception_4b/5x5_b"
+external_input: "inception_4b/pool_proj_w"
+external_input: "inception_4b/pool_proj_b"
+external_input: "inception_4c/1x1_w"
+external_input: "inception_4c/1x1_b"
+external_input: "inception_4c/3x3_reduce_w"
+external_input: "inception_4c/3x3_reduce_b"
+external_input: "inception_4c/3x3_w"
+external_input: "inception_4c/3x3_b"
+external_input: "inception_4c/5x5_reduce_w"
+external_input: "inception_4c/5x5_reduce_b"
+external_input: "inception_4c/5x5_w"
+external_input: "inception_4c/5x5_b"
+external_input: "inception_4c/pool_proj_w"
+external_input: "inception_4c/pool_proj_b"
+external_input: "inception_4d/1x1_w"
+external_input: "inception_4d/1x1_b"
+external_input: "inception_4d/3x3_reduce_w"
+external_input: "inception_4d/3x3_reduce_b"
+external_input: "inception_4d/3x3_w"
+external_input: "inception_4d/3x3_b"
+external_input: "inception_4d/5x5_reduce_w"
+external_input: "inception_4d/5x5_reduce_b"
+external_input: "inception_4d/5x5_w"
+external_input: "inception_4d/5x5_b"
+external_input: "inception_4d/pool_proj_w"
+external_input: "inception_4d/pool_proj_b"
+external_input: "inception_4e/1x1_w"
+external_input: "inception_4e/1x1_b"
+external_input: "inception_4e/3x3_reduce_w"
+external_input: "inception_4e/3x3_reduce_b"
+external_input: "inception_4e/3x3_w"
+external_input: "inception_4e/3x3_b"
+external_input: "inception_4e/5x5_reduce_w"
+external_input: "inception_4e/5x5_reduce_b"
+external_input: "inception_4e/5x5_w"
+external_input: "inception_4e/5x5_b"
+external_input: "inception_4e/pool_proj_w"
+external_input: "inception_4e/pool_proj_b"
+external_input: "inception_5a/1x1_w"
+external_input: "inception_5a/1x1_b"
+external_input: "inception_5a/3x3_reduce_w"
+external_input: "inception_5a/3x3_reduce_b"
+external_input: "inception_5a/3x3_w"
+external_input: "inception_5a/3x3_b"
+external_input: "inception_5a/5x5_reduce_w"
+external_input: "inception_5a/5x5_reduce_b"
+external_input: "inception_5a/5x5_w"
+external_input: "inception_5a/5x5_b"
+external_input: "inception_5a/pool_proj_w"
+external_input: "inception_5a/pool_proj_b"
+external_input: "inception_5b/1x1_w"
+external_input: "inception_5b/1x1_b"
+external_input: "inception_5b/3x3_reduce_w"
+external_input: "inception_5b/3x3_reduce_b"
+external_input: "inception_5b/3x3_w"
+external_input: "inception_5b/3x3_b"
+external_input: "inception_5b/5x5_reduce_w"
+external_input: "inception_5b/5x5_reduce_b"
+external_input: "inception_5b/5x5_w"
+external_input: "inception_5b/5x5_b"
+external_input: "inception_5b/pool_proj_w"
+external_input: "inception_5b/pool_proj_b"
+external_input: "loss3/classifier_w"
+external_input: "loss3/classifier_b"
+external_output: "prob"
