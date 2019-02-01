@@ -47,7 +47,7 @@ python $DD_REPO/examples/caffe2/detectron/convert_pkl_to_pb.py \
     --mask_dir deepdetect_model/mask \
     --cfg detectron_model/config.yaml \
     --wts detectron_model/weights.pkl \
-    --coco
+    --corresp=coco
 
 
 # Register the service

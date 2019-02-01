@@ -1,7 +1,7 @@
-From 73c447c6ebbd06a09f1eb566075d18c3a1f5f104 Mon Sep 17 00:00:00 2001
+From 5528725330a7a0b27a374ce8db47361bf60b0c18 Mon Sep 17 00:00:00 2001
 From: Julien CHICHA <julien.chicha@epitech.eu>
 Date: Sat, 17 Nov 2018 17:51:40 +0100
-Subject: [PATCH 4/4] import
+Subject: [PATCH 4/7] import
 
 ---
  detectron/__init__.py | 3 +++
@@ -21,5 +21,5 @@ diff --git a/tools/__init__.py b/tools/__init__.py
 new file mode 100644
 index 0000000..e69de29
 -- 
-2.19.1
+2.20.1
 

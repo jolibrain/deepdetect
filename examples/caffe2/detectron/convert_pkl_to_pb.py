@@ -6,7 +6,6 @@ import os
 import sys
 import copy
 import numpy
-import cPickle
 import argparse
 from caffe2.python import core
 from caffe2.proto import caffe2_pb2
@@ -16,9 +15,31 @@ from detectron.core.config import merge_cfg_from_list
 from detectron.core.config import assert_and_infer_cfg
 import detectron.core.test_engine as infer_engine
 import detectron.utils.c2 as c2_utils
+import detectron.utils.io as io_utils
 import detectron.utils.model_convert_utils as mutils
 import detectron.datasets.dummy_datasets as dummy_datasets
 import tools.convert_pkl_to_pb as convert_tools
+
+#############################################################
+# Supposed to be used for "seg-every-thing models" training #
+# Set for compatibility but currenlty ignored               #
+from detectron.utils.collections import AttrDict
+cfg.MRCNN.BBOX2MASK = AttrDict()
+cfg.MRCNN.BBOX2MASK.BBOX2MASK_ON = False
+cfg.MRCNN.BBOX2MASK.TYPE = b''
+cfg.MRCNN.BBOX2MASK.USE_PRETRAINED_EMBED = False
+cfg.MRCNN.BBOX2MASK.PRETRAINED_EMBED_NAME = b''
+cfg.MRCNN.BBOX2MASK.PRETRAINED_EMBED_DIM = -1
+cfg.MRCNN.BBOX2MASK.STOP_DET_W_GRAD = True
+cfg.MRCNN.BBOX2MASK.INCLUDE_CLS_SCORE = True
+cfg.MRCNN.BBOX2MASK.INCLUDE_BBOX_PRED = False
+cfg.MRCNN.BBOX2MASK.USE_LEAKYRELU = True
+cfg.MRCNN.JOINT_FCN_MLP_HEAD = False
+cfg.MRCNN.MLP_MASK_BRANCH_TYPE = b''
+cfg.TRAIN.TRAIN_MASK_HEAD_ONLY = False
+cfg.TRAIN.MRCNN_FILTER_LABELS = False
+cfg.TRAIN.MRCNN_LABELS_TO_KEEP = ()
+#############################################################
 
 # Hardcoded values
 class Constants:
@@ -35,6 +56,14 @@ class Constants:
     idx_restore_suffix = '_idx_restore_int32'
     @staticmethod
     def fpn_level_suffix(level): return '_fpn' + str(level)
+
+    ### Defined by Learning to Segment Every Thing
+
+    # In seg_every_thing/lib/modeling/mask_rcnn_heads.py (see bbox2mask_weight_transfer)
+    mask_w = 'mask_fcn_logits_w'
+    mask_w_flat = 'mask_fcn_logits_w_flat'
+    mask_w_flat_inputs = (mask_w_flat + '_w', mask_w_flat + '_b')
+    mask_w_size = 3002
 
     ### Defined by Deepdetect
 
@@ -78,8 +107,9 @@ def parse_args():
     parser.add_argument('--cfg', required=True, help='cfg model file')
     parser.add_argument('--out_dir', required=True, help='output directory')
     parser.add_argument('--mask_dir', type=str, help='mask extension directory')
-    parser.add_argument('--coco', action='store_true',
-                        help='generate a corresp.txt file containing the 81 coco classes')
+    parser.add_argument('--corresp', default=None, choices=['coco', 'vg3k'],
+                        help='generate a corresp.txt file containing the classes '
+                        '(81 for the COCO dataset, 3002 for Visual Genome 3K)')
     parser.add_argument('--net_name', default='detectron',
                         type=str, help='optional name for the net')
     parser.add_argument('--fuse_af', default=1, type=int, help='1 to fuse_af')
@@ -107,9 +137,9 @@ def save_model(net, init_net, path):
 
 def convert_main_net(args, main_net, blobs):
     net = core.Net('')
-    net.Proto().op.extend(copy.deepcopy(main_net.Proto().op))
-    net.Proto().external_input.extend(copy.deepcopy(main_net.Proto().external_input))
-    net.Proto().external_output.extend(copy.deepcopy(main_net.Proto().external_output))
+    net.Proto().op.extend(copy.deepcopy(main_net.op))
+    net.Proto().external_input.extend(copy.deepcopy(main_net.external_input))
+    net.Proto().external_output.extend(copy.deepcopy(main_net.external_output))
     net.Proto().type = args.net_execution_type
     net.Proto().num_workers = 1 if args.net_execution_type == 'simple' else 4
     convert_tools.convert_net(args, net.Proto(), blobs)
@@ -132,8 +162,8 @@ def convert_mask_net(args, mask_net):
     # Initialization net
     init_net = caffe2_pb2.NetDef()
     net = caffe2_pb2.NetDef()
-    blobs = cPickle.load(open(args.wts))['blobs']
-    externals = set(c2_utils.UnscopeName(inp) for inp in mask_net.Proto().external_input)
+    blobs = io_utils.load_object(args.wts)['blobs']
+    externals = set(c2_utils.UnscopeName(inp) for inp in mask_net.external_input)
     for name in set(blobs.keys()).intersection(externals):
         blob = blobs[name]
         add_custom_op(init_net, 'GivenTensorFill', [], [name],
@@ -155,7 +185,7 @@ def convert_mask_net(args, mask_net):
                     canon_level = cfg.FPN.ROI_CANONICAL_LEVEL)
 
     # Generate the masks
-    net.op.extend(mask_net.Proto().op)
+    net.op.extend(mask_net.op)
 
     # Post-process the masks
     add_custom_op(net, 'SegmentMask',
@@ -167,17 +197,24 @@ def convert_mask_net(args, mask_net):
     init_net.name = args.net_name + '_mask_init'
     save_model(net, init_net, args.mask_dir)
 
+def create_corresp_file(args, dataset):
+    classes = dataset.classes
+    corresp = '\n'.join('{} {}'.format(i, classes[i]) for i, _ in enumerate(classes))
+    with open(args.out_dir + '/corresp.txt', 'w') as f:
+        f.write(corresp)
+
 def main():
     args = parse_args()
     merge_cfg_from_file(args.cfg)
     merge_cfg_from_list(args.opts)
     assert_and_infer_cfg()
     model, blobs = convert_tools.load_model(args)
-    convert_main_net(args, model.net, blobs)
+
+    convert_main_net(args, model.net.Proto(), blobs)
     if args.mask_dir:
-        convert_mask_net(args, model.mask_net)
-    if args.coco:
-        classes = dummy_datasets.get_coco_dataset().classes
+        convert_mask_net(args, model.mask_net.Proto())
+    if args.corresp:
+        classes = getattr(dummy_datasets, 'get_{}_dataset'.format(args.corresp))().classes
         corresp = '\n'.join('{} {}'.format(i, classes[i]) for i, _ in enumerate(classes))
         with open(args.out_dir + '/corresp.txt', 'w') as f:
             f.write(corresp)
