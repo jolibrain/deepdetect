@@ -1,41 +1,14 @@
-name: "ResNet-18"
+name: "CRNN-ResNet-18"
 layer {
-    name: "data"
-    type: "Data"
-    top: "data"
-    top: "label"
-    include {
-        phase: TRAIN
-    }
-    transform_param {
-#        mean_value: 104
-#        mean_value: 117
-#        mean_value: 123
-    }
-    data_param {
-        source: "train.lmdb"
-        batch_size: 32
-        backend: LMDB
-    }
-}
-layer {
-  name: "resnet_18"
+  name: "crnn"
   type: "MemoryData"
   top: "data"
   top: "label"
-  include {
-    phase: TEST
-  }
   memory_data_param {
-    batch_size: 32
+    batch_size: 1
     channels: 3
-    height: 224
-    width: 224
-  }
-  transform_param {
-#    mean_value: 104
-#    mean_value: 117
-#    mean_value: 123
+    height: 80
+    width: 220
   }
 }
 layer {
@@ -1076,55 +1049,113 @@ layer {
 }
 
 layer {
-    bottom: "res5b"
-    top: "pool5"
-    name: "pool5"
-    type: "Pooling"
-    pooling_param {
-        kernel_size: 7
-        stride: 1
-        pool: AVE
+  name: "reshape"
+  type: "Reshape"
+  bottom: "res5b"
+  top: "reshape"
+  reshape_param {
+    shape {
+      dim: 0
+      dim: -1
+      dim: 32
     }
-}
-
-layer {
-    bottom: "pool5"
-    top: "fc1000"
-    name: "fc1000"
-    type: "InnerProduct"
-    param {
-        lr_mult: 1
-        decay_mult: 1
-    }
-    param {
-        lr_mult: 2
-        decay_mult: 1
-    }
-    inner_product_param {
-        num_output: 1000
-        weight_filler {
-            type: "xavier"
-        }
-        bias_filler {
-            type: "constant"
-            value: 0
-        }
-    }
-}
-
-layer {
-    bottom: "fc1000"
-    bottom: "label"
-    name: "loss"
-    type: "SoftmaxWithLoss"
-    top: "loss"
+  }
 }
 layer {
-  name: "probt"
+  name: "permuted_data"
+  type: "Permute"
+  bottom: "reshape"
+  top: "permuted_data"
+  permute_param {
+    order: 2
+    order: 0
+    order: 1
+  }
+}
+layer {
+  name: "indicator"
+  type: "ContinuationIndicator"
+  bottom: "permuted_data"
+  top: "indicator"
+  continuation_indicator_param {
+    time_step: 32
+    axis: 1
+  }
+}
+layer {
+  name: "lstm1"
+  type: "LSTM"
+  bottom: "permuted_data"
+  bottom: "indicator"
+  top: "lstm1"
+  recurrent_param {
+    num_output: 256
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+layer {
+  name: "lstm2"
+  type: "LSTM"
+  bottom: "lstm1"
+  bottom: "indicator"
+  top: "lstm2"
+  recurrent_param {
+    num_output: 256
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+layer {
+  name: "lstm3"
+  type: "LSTM"
+  bottom: "lstm2"
+  bottom: "indicator"
+  top: "lstm3"
+  recurrent_param {
+    num_output: 256
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+layer {
+  name: "fc1"
+  type: "InnerProduct"
+  bottom: "lstm3"
+  top: "fc1"
+  inner_product_param {
+    num_output: 37
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+    axis: 2
+  }
+}
+layer {
+  name: "probs"
   type: "Softmax"
-  bottom: "fc1000"
-  top: "probt"
-  include {
-    phase: TEST
+  bottom: "fc1"
+  top: "probs"
+  softmax_param {
+    axis: 2
   }
 }

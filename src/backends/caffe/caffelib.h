@@ -269,8 +269,14 @@ namespace dd
       boost::shared_ptr<Blob<float>> findOutputBlobByName(const caffe::Net<float> *net,
                                                    const std::string blob_name);
 
+
       boost::shared_ptr<Blob<float>> findBlobByName(const caffe::Net<float> *net,
                                              const std::string blob_name);
+
+      std::vector<double> img_resize(const std::vector<double>& vals,
+                                     const int height_net,  const int width_net,
+                                     const int height_dest, const int width_dest, bool resize_nn);
+
 
 
     public:

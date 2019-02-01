@@ -13,12 +13,17 @@ make -j24'''
     stage('Tests GPU') {
       steps {
         sh '''cd build
-ctest -E "http" '''
+ctest -V -E "http" '''
       }
     }
     stage('cleanup') {
       steps {
         cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
+      }
+    }
+    stage('Notify Chat') {
+      steps {
+        rocketSend(avatar: 'jenkins', channel: 'dev', message: 'Build Completed')
       }
     }
   }

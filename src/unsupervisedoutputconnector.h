@@ -30,7 +30,7 @@ namespace dd
   public:
     unsup_result(const std::string &uri,
 		 const std::vector<double> &vals,
-		 const APIData &extra=APIData())
+                 const APIData &extra=APIData())
       :_uri(uri),_vals(vals),_extra(extra) {
     }
 
@@ -115,13 +115,12 @@ namespace dd
 	  if ((hit=_vres.find(uri))==_vres.end())
 	    {
 	      _vres.insert(std::pair<std::string,int>(uri,_vvres.size()));
-	      if (ad.has("imgsize"))
-		{
-		  APIData ad_imgsize;
-		  ad_imgsize.add("imgsize",ad.getobj("imgsize"));
-		  _vvres.push_back(unsup_result(uri,vals,ad_imgsize));
-		}
-	      else _vvres.push_back(unsup_result(uri,vals));
+             APIData extra;
+             if (ad.has("imgsize"))
+               extra.add("imgsize",ad.getobj("imgsize"));
+             if (ad.has("confidences"))
+               extra.add("confidences",ad.getobj("confidences"));
+             _vvres.push_back(unsup_result(uri,vals,extra));
 	    }
 	  
 	}
@@ -231,6 +230,8 @@ namespace dd
 	  else adpred.add("vals",_vvres.at(i)._vals);
 	  if (_vvres.at(i)._extra.has("imgsize"))
 	    adpred.add("imgsize",_vvres.at(i)._extra.getobj("imgsize"));
+	  if (_vvres.at(i)._extra.has("confidences"))
+	    adpred.add("confidences",_vvres.at(i)._extra.getobj("confidences"));
 	  if (i == _vvres.size()-1)
 	    adpred.add("last",true);
 #ifdef USE_SIMSEARCH

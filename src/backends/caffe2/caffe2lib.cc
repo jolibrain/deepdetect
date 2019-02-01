@@ -368,6 +368,8 @@ namespace dd {
       if (train) _context.create_net(nets._train);
     }
 
+    model_type(this->_mltype);
+    
     this->_logger->info("Nets updated");
   }
 
@@ -1058,6 +1060,38 @@ namespace dd {
     return 0;
   }
 
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void Caffe2Lib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::model_type(std::string &mltype)
+  {
+    // Search each net
+    for (auto ext: this->_mlmodel._extensions)
+      {
+	if (ext._type == "mask")
+	  {
+	    mltype = "instance_segmentation";
+	    return;
+	  }
+      }
+
+    // Search the layers of the main net
+    const caffe2::NetDef *main_net;
+    if (_state.is_training()) {
+      main_net = &_nets[0]._train;
+    } else {
+      main_net = &_nets[0]._predict;
+    }
+
+    for (const caffe2::OperatorDef &op : main_net->op()) {
+      if (op.type() == "BoxWithNMSLimit") {
+	mltype = "bbox";
+	return;
+      }
+    }
+
+    mltype = "classification"; // at this stage, if not mask or bbox, it's a classification model
+    return;
+  }
+  
   // Template instantiation
   template class Caffe2Lib<ImgCaffe2InputFileConn,SupervisedOutput,Caffe2Model>;
   template class Caffe2Lib<ImgCaffe2InputFileConn,UnsupervisedOutput,Caffe2Model>;

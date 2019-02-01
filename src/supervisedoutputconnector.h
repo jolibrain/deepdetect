@@ -1066,15 +1066,15 @@ namespace dd
 
 	      // mean acc over classes
 	      double c_total_targ = static_cast<double>((dtarg.array() == c).count());
-	      if (c_sum == 0 || c_total_targ == 0)
-		{}
+	      if (/* c_sum == 0 || */ c_total_targ == 0)
+               {
+               }
 	      else
 		{
 		  double accc = c_sum / c_total_targ;
 		  mean_acc[c] += accc;
 		  mean_acc_bs[c]++;
-
-        }
+              }
 
            // mean intersection over union
 	      double c_false_neg = static_cast<double>((ddiffc.array() == -2-c).count());
@@ -1104,6 +1104,7 @@ namespace dd
 	  meaniou += mean_iou[c];
 	}
       clacc = mean_acc;
+
       // corner case where prediction is wrong
       if (c_nclasses > 0) {
         meanacc /= static_cast<double>(c_nclasses);
