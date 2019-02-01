@@ -1248,7 +1248,8 @@ namespace dd
     const int start_iter = solver->iter_;
     int average_loss = solver->param_.average_loss();
     std::vector<float> losses;
-    this->clear_all_meas_per_iter();
+    if (!ad_mllib.has("resume") || !ad_mllib.get("resume").get<bool>())
+      this->clear_all_meas_per_iter();
     float smoothed_loss = 0.0;
     while(solver->iter_ < solver->param_.max_iter()
 	  && this->_tjob_running.load())

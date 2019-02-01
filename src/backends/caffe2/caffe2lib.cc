@@ -730,7 +730,8 @@ namespace dd {
 
     // Start the training
     const int start_iter = _context.extract_iter();
-    this->clear_all_meas_per_iter();
+    if (!_state.resume())
+      this->clear_all_meas_per_iter();
     this->_tjob_running = true;
     if (start_iter) {
       this->_logger->info("Training is restarting at iteration {}", start_iter);
