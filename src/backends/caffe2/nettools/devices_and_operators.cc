@@ -746,8 +746,9 @@ namespace dd {
       }
     }
 
-    void make_input_batchable(caffe2::NetDef &net, int op_idx, int input_size,
-			      const std::string &prev_type, int input_idx, int output_idx) {
+    static void make_input_batchable(caffe2::NetDef &net, int op_idx, int input_size,
+				     const std::string &prev_type, int input_idx,
+				     int output_idx) {
       // Check if all the inputs are already present
       auto &inputs = *net.mutable_op(op_idx)->mutable_input();
       if (inputs.size() == input_size) {
@@ -763,8 +764,8 @@ namespace dd {
       inputs.Add(std::string(prev.output(output_idx)));
     }
 
-    void make_output_batchable(caffe2::NetDef &net, int op_idx, int output_size,
-			       int output_idx) {
+    static void make_output_batchable(caffe2::NetDef &net, int op_idx, int output_size,
+				      int output_idx) {
       // Check if all the outputs are already present
       auto &outputs = *net.mutable_op(op_idx)->mutable_output();
       if (outputs.size() == output_size) {

@@ -255,6 +255,7 @@ namespace dd
       APIData jmrepo;
       jmrepo.add("repository",this->_mlmodel._repo);
       out.add("model",jmrepo);
+      this->fillup_measures_history(ad);
       if (!ad.has("async") || (ad.has("async") && ad.get("async").get<bool>()))
 	{
 	  std::lock_guard<std::mutex> lock(_tjobs_mutex);
@@ -317,13 +318,10 @@ namespace dd
 	      this->est_remain_time(out);
 	      std::chrono::time_point<std::chrono::system_clock> trun = std::chrono::system_clock::now();
 	      out.add("time",std::chrono::duration_cast<std::chrono::seconds>(trun-(*hit).second._tstart).count());
-	      if (ad_params_out.has("max_hist_points") || (ad_params_out.has("measure_hist") && ad_params_out.get("measure_hist").get<bool>()))
-		{
-		  int max_hist_points = 10000; // default
-		  if (ad_params_out.has("max_hist_points"))
-		    max_hist_points = ad_params_out.get("max_hist_points").get<int>();
-		  this->collect_measures_history(out,max_hist_points);
-		}
+	      int max_hist_points = 10000; // default
+	      if (ad_params_out.has("max_hist_points"))
+		max_hist_points = ad_params_out.get("max_hist_points").get<int>();
+	      this->collect_measures_history(out,max_hist_points);
 	    }
 	  else if (status == std::future_status::ready)
 	    {

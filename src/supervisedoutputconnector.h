@@ -681,11 +681,13 @@ namespace dd
 	{
 	  double meanacc, meaniou;
 	  std::vector<double> clacc;
-	  double accs = acc_v(ad_res,meanacc,meaniou,clacc);
+	  std::vector<double> cliou;
+	  double accs = acc_v(ad_res,meanacc,meaniou,clacc,cliou);
 	  meas_out.add("acc",accs);
 	  meas_out.add("meanacc",meanacc);
 	  meas_out.add("meaniou",meaniou);
 	  meas_out.add("clacc",clacc);
+         meas_out.add("cliou",cliou);
 	}
       if (mlacc)
 	{
@@ -1035,7 +1037,7 @@ namespace dd
       return accs;
     }
 
-    static double acc_v(const APIData &ad, double &meanacc, double &meaniou, std::vector<double> &clacc)
+    static double acc_v(const APIData &ad, double &meanacc, double &meaniou, std::vector<double> &clacc, std::vector<double> &cliou)
     {
       int nclasses = ad.get("nclasses").get<int>();
       int batch_size = ad.get("batch_size").get<int>();
@@ -1104,6 +1106,7 @@ namespace dd
 	  meaniou += mean_iou[c];
 	}
       clacc = mean_acc;
+      cliou = mean_iou;
 
       // corner case where prediction is wrong
       if (c_nclasses > 0) {

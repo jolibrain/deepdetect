@@ -1,7 +1,7 @@
-From 90161fb5990829dd3e1315cd8393c46832166bc7 Mon Sep 17 00:00:00 2001
+From 61ccadc4ea7d5b2d6513b4c7a56aaee25ce94d70 Mon Sep 17 00:00:00 2001
 From: Julien CHICHA <julien.chicha@epitech.eu>
 Date: Sat, 17 Nov 2018 17:38:25 +0100
-Subject: [PATCH 1/4] dependencies
+Subject: [PATCH 1/7] dependencies
 
 ---
  detectron/core/test.py                                  | 1 -
@@ -99,5 +99,5 @@ index d3c8833..ff63a01 100644
  from detectron.utils.colormap import colormap
  import detectron.utils.env as envu
 -- 
-2.19.1
+2.20.1
 

@@ -416,6 +416,7 @@ namespace dd
 	else if (mllib == "caffe")
 	  {
 	    CaffeModel cmodel(ad_model,ad,_logger);
+	    _mrepo = cmodel._repo;
 	    if (type == "supervised")
 	      {
 		if (input == "image")
@@ -465,6 +466,7 @@ namespace dd
 
 	else if (mllib == "caffe2") {
 	  Caffe2Model c2model(ad_model,ad,_logger);
+	  _mrepo = c2model._repo;
 	  if (type == "supervised") {
 
 	    if (input == "image")
@@ -502,6 +504,7 @@ namespace dd
   else if (mllib == "ncnn")
   {
     NCNNModel ncnnmodel(ad_model);
+    _mrepo = ncnnmodel._repo;
     if (type == "supervised")
     {
       if (input == "image")
@@ -527,6 +530,7 @@ namespace dd
 	else if (mllib == "tensorflow" || mllib == "tf")
 	  {
 	    TFModel tfmodel(ad_model,ad,_logger);
+	    _mrepo = tfmodel._repo;
 	    if (type == "supervised")
 	      {
 		if (input == "image")
@@ -556,6 +560,7 @@ namespace dd
 #ifdef USE_DLIB
     else if (mllib == "dlib") {
             DlibModel dlibmodel(ad_model,ad,_logger);
+	    _mrepo = dlibmodel._repo;
 	    if (type == "supervised") {
 	        if (input == "image") {
 	            add_service(sname, std::move(MLService<DlibLib, ImgDlibInputFileConn, SupervisedOutput, DlibModel>(sname, dlibmodel, description)), ad);
@@ -577,6 +582,7 @@ namespace dd
 	else if (mllib == "xgboost")
 	  {
 	    XGBModel xmodel(ad_model,ad,_logger);
+	    _mrepo = xmodel._repo;
 	    if (input == "csv")
 	      add_service(sname,std::move(MLService<XGBLib,CSVXGBInputFileConn,SupervisedOutput,XGBModel>(sname,xmodel,description)),ad);
 	    else if (input == "svm")
@@ -595,6 +601,7 @@ namespace dd
 	else if (mllib == "tsne")
 	  {
 	    TSNEModel tmodel(ad_model,ad,_logger);
+	    _mrepo = tmodel._repo;
 	    if (input == "csv")
 	      add_service(sname,std::move(MLService<TSNELib,CSVTSNEInputFileConn,UnsupervisedOutput,TSNEModel>(sname,tmodel,description)),ad);
 	    else if (input == "txt")
@@ -863,14 +870,34 @@ namespace dd
       }
     
     // training
-    std::string mrepo;
     APIData out;
     try
       {
+	// read any existing metrics.json here + check on resume + add to ad object
+	APIData ad_params = ad.getobj("parameters");
+	APIData ad_mllib = ad_params.getobj("mllib");
+	if (ad_mllib.has("resume") && ad_mllib.get("resume").get<bool>())
+	  {
+	    APIData ad_metrics;
+	    if (read_json_blob(_mrepo,"metrics.json",ad_metrics))
+	      _logger->error("failed reading any existing metrics.json file in model repository {}",_mrepo);
+	    else
+	      {
+		_logger->info("successfully read metrics.json file while resuming training job");
+		APIData ad_metrics_body = ad_metrics.getobj("body");
+		if (ad_metrics_body.has("measure_hist"))
+		  {
+		    APIData ad_metrics_hist = ad_metrics_body.getobj("measure_hist");
+		    APIData ad_params = ad.getobj("parameters");
+		    ad_params.add("metrics",ad_metrics_hist);
+		    ad.add("parameters",ad_params);
+		  }
+	      }
+	  }
+	
 	this->train(ad,sname,out); // we ignore return status, stored in out data object
-	mrepo = out.getobj("model").get("repository").get<std::string>();
-	if (JsonAPI::store_json_blob(mrepo,jstr)) // store successful call json blob
-	  _logger->error("couldn't write to {} file in model repository {}",JsonAPI::_json_blob_fname,mrepo);
+	if (JsonAPI::store_json_blob(_mrepo,jstr)) // store successful call json blob
+	  _logger->error("couldn't write to {} file in model repository {}",JsonAPI::_json_blob_fname,_mrepo);
       }
     catch (InputConnectorBadParamException &e)
       {
@@ -911,8 +938,8 @@ namespace dd
 	jtrain.AddMember("body",jout,jtrain.GetAllocator());
       }
     jtrain.AddMember("head",jhead,jtrain.GetAllocator());
-    if (JsonAPI::store_json_blob(mrepo,jrender(jtrain))) // store successful call json blob
-      _logger->error("couldn't write to {} file in model repository {}",JsonAPI::_json_blob_fname,mrepo);
+    if (JsonAPI::store_json_blob(_mrepo,jrender(jtrain))) // store successful call json blob
+      _logger->error("couldn't write to {} file in model repository {}",JsonAPI::_json_blob_fname,_mrepo);
     return jtrain;
   }
 
@@ -1029,9 +1056,8 @@ namespace dd
     jtrain.AddMember("body",jout,jtrain.GetAllocator());
     if (train_status == "finished" || train_status == "running")
       {
-	std::string mrepo = out.getobj("model").get("repository").get<std::string>();
-	if (JsonAPI::store_json_blob(mrepo,jrender(jtrain),"metrics.json"))
-	  _logger->error("couldn't write to metrics.json file in model repository {}",mrepo);
+	if (JsonAPI::store_json_blob(_mrepo,jrender(jtrain),"metrics.json"))
+	  _logger->error("couldn't write to metrics.json file in model repository {}",_mrepo);
       }
     return jtrain;
   }
@@ -1126,5 +1152,36 @@ namespace dd
     outf << jstr << std::endl;
     return 0;
   }
-  
+
+  // read_json file blob to apidata
+  int JsonAPI::read_json_blob(const std::string &model_repo,
+			      const std::string &jfilename,
+			      APIData &ad)
+  {
+    std::ifstream inf(model_repo + "/" + jfilename);
+    std::stringstream buffer;
+    try
+      {
+	buffer << inf.rdbuf();
+    }
+    catch (std::exception &e)
+      {
+	return 1;
+      }
+    rapidjson::Document d;
+    d.Parse(buffer.str().c_str());
+    if (d.HasParseError())
+      {
+	return 1;
+      }
+    try
+      {
+	ad = APIData(d);
+      }
+    catch(RapidjsonException &e)
+      {
+	return 1;
+      }
+    return 0;
+  }
 }

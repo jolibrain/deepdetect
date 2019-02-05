@@ -524,19 +524,6 @@ namespace dd {
      *	Gradient management
      */
 
-    /**
-     * \brief checks if the operator have a gradient
-     * @param op operator to check
-     * @param trainable used to store the input blobs that will be part of the gradient
-     * @param computed used to strore the other inputs
-     * @param needed outputs that needs to be added to the operator to compute its gradient
-     * @return true if trainable, false otherwise
-     */
-    bool is_trainable(const caffe2::OperatorDef &op,
-		      std::set<std::string> *trainable,
-		      std::set<std::string> *computed,
-		      std::vector<std::string> *needed);
-
     void add_gradient_ops(caffe2::NetDef &net, const std::set<std::string> &main_gradients);
 
     /*

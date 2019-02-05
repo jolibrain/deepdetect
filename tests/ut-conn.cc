@@ -138,7 +138,8 @@ TEST(outputconn,acc_v)
   SupervisedOutput so;
   double meanacc = 0.0, meaniou = 0.0;
   std::vector<double> clacc;
-  double acc = so.acc_v(res_ad,meanacc,meaniou,clacc);
+  std::vector<double> cliou;
+  double acc = so.acc_v(res_ad,meanacc,meaniou,clacc,cliou);
   ASSERT_EQ(0.75,acc);
   ASSERT_EQ(0.875,meaniou);
 }

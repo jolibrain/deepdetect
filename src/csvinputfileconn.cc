@@ -129,7 +129,7 @@ namespace dd
       {
 	if ((*lit) == _id)
 	  _id_pos = i;
-       else
+  else
          for (unsigned int j=0; j< _label.size(); ++j)
            if ((*lit) == _label[j])
              _label_pos[j] = i;

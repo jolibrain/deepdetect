@@ -107,8 +107,13 @@ namespace dd
     static int store_json_config_blob(const std::string &model_repo,
 				      const std::string &jstr);
 
+    static int read_json_blob(const std::string &model_repo,
+			      const std::string &jfilename,
+			      APIData &ad);
+    
     static std::string _json_blob_fname;
     static std::string _json_config_blob_fname;
+    std::string _mrepo; /**< service file repository */
   };
 
   /**
