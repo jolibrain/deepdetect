@@ -681,11 +681,13 @@ namespace dd
 	{
 	  double meanacc, meaniou;
 	  std::vector<double> clacc;
-	  double accs = acc_v(ad_res,meanacc,meaniou,clacc);
+	  std::vector<double> cliou;
+	  double accs = acc_v(ad_res,meanacc,meaniou,clacc,cliou);
 	  meas_out.add("acc",accs);
 	  meas_out.add("meanacc",meanacc);
 	  meas_out.add("meaniou",meaniou);
 	  meas_out.add("clacc",clacc);
+         meas_out.add("cliou",cliou);
 	}
       if (mlacc)
 	{
@@ -1035,7 +1037,7 @@ namespace dd
       return accs;
     }
 
-    static double acc_v(const APIData &ad, double &meanacc, double &meaniou, std::vector<double> &clacc)
+    static double acc_v(const APIData &ad, double &meanacc, double &meaniou, std::vector<double> &clacc, std::vector<double> &cliou)
     {
       int nclasses = ad.get("nclasses").get<int>();
       int batch_size = ad.get("batch_size").get<int>();
@@ -1066,15 +1068,15 @@ namespace dd
 
 	      // mean acc over classes
 	      double c_total_targ = static_cast<double>((dtarg.array() == c).count());
-	      if (c_sum == 0 || c_total_targ == 0)
-		{}
+	      if (/* c_sum == 0 || */ c_total_targ == 0)
+               {
+               }
 	      else
 		{
 		  double accc = c_sum / c_total_targ;
 		  mean_acc[c] += accc;
 		  mean_acc_bs[c]++;
-
-        }
+              }
 
            // mean intersection over union
 	      double c_false_neg = static_cast<double>((ddiffc.array() == -2-c).count());
@@ -1104,6 +1106,8 @@ namespace dd
 	  meaniou += mean_iou[c];
 	}
       clacc = mean_acc;
+      cliou = mean_iou;
+
       // corner case where prediction is wrong
       if (c_nclasses > 0) {
         meanacc /= static_cast<double>(c_nclasses);

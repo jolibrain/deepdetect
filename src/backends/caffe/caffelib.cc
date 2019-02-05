@@ -122,15 +122,24 @@ namespace dd
     // - check whether there's a risk of erasing model files
     if (this->_mlmodel.read_from_repository(this->_mlmodel._repo,this->_logger))
       throw MLLibBadParamException("error reading or listing Caffe models in repository " + this->_mlmodel._repo);
+    if (!this->_mlmodel._sstate.empty())
+      {
+	// we assuming training with resume from solverstate, error is deferred to the training
+	// call assessing the resume is set to true
+	this->_logger->warn("ignoring template argument since .solverstate file exists, assuming a training job will resume, and deferring errors to potential future training call");
+	update_deploy_protofile_softmax(ad); // temperature scaling
+	create_model(true); // phase changed to train as needed later on
+	return;
+      }
     if (!this->_mlmodel._weights.empty())
       {
 	if (ad.has("finetuning") && ad.get("finetuning").get<bool>()
 	    && !this->_mlmodel._trainf.empty()) // may want to finetune from a template only if no neural net definition present
 	  throw MLLibBadParamException("using template for finetuning but model prototxt already exists, remove 'template' from 'mllib', or remove existing 'prototxt' files ?");
-	else if (ad.has("resume") && ad.get("resume").get<bool>()) // resuming from state, may not want to override the exiting network definition (e.g. after finetuning)
-	  throw MLLibBadParamException("using template while resuming from existing model, remove 'template' from 'mllib' ?");
+	/*else if (ad.has("resume") && ad.get("resume").get<bool>()) // resuming from state, may not want to override the existing network definition (e.g. after finetuning)
+	  throw MLLibBadParamException("using template while resuming from existing model, remove 'template' from 'mllib' ?");*/
 	else if (!this->_mlmodel._trainf.empty())
-	  throw MLLibBadParamException("using template while network weights exist, remove 'template' from 'mllib' or would you like to 'finetune' instead ?");
+	  throw MLLibBadParamException("using template while model prototxt and network weights exist, remove 'template' from 'mllib' or remove prototxt files instead instead ?");
       }
       
     // - locate template repository
@@ -208,7 +217,7 @@ namespace dd
 	caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
 	caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
 
-    if (this->_loss == "dice"  || _loss == "dice_multiclass" || _loss == "dice_weighted")
+       if (this->_loss.compare(0, 4, "dice",0,4) == 0)
       // dice loss!!
       {
         int ignore_label = -1;
@@ -575,6 +584,51 @@ namespace dd
 	if (ad_distort.has("prob"))
 	  nparam->set_prob(ad_distort.get("prob").get<double>());
       }
+    if(ad.has("geometry"))
+      {
+	std::vector<std::string> geometry_options = {
+	  "persp_horizontal", "persp_vertical", "zoom_out", "zoom_in"
+	};
+	APIData ad_geometry = ad.getobj("geometry");
+	caffe::LayerParameter *lparam = net_param.mutable_layer(0); // data input layer
+	caffe::TransformationParameter *trparam = lparam->mutable_transform_param();
+	caffe::GeometryParameter *gparam = trparam->mutable_geometry_param();
+	if (ad_geometry.has("all_effects") && ad_geometry.get("all_effects").get<bool>())
+	  gparam->set_all_effects(true);
+	else
+	  {
+	    for (auto s: geometry_options)
+	      {
+		if (ad_geometry.has(s))
+		  {
+		    if (s == "persp_horizontal")
+		      gparam->set_persp_horizontal(ad_geometry.get(s).get<bool>());
+		    else if (s == "persp_vertical")
+		      gparam->set_persp_vertical(ad_geometry.get(s).get<bool>());
+		    else if (s == "zoom_out")
+		      gparam->set_zoom_out(ad_geometry.get(s).get<bool>());
+		    else if (s == "zoom_in")
+		      gparam->set_zoom_in(ad_geometry.get(s).get<bool>());
+		  }
+	      }
+	    if (ad_geometry.has("persp_factor"))
+	      gparam->set_persp_factor(ad_geometry.get("persp_factor").get<double>());
+	    if (ad_geometry.has("zoom_factor"))
+	      gparam->set_zoom_factor(ad_geometry.get("zoom_factor").get<double>());
+	    if (ad_geometry.has("pad_mode"))
+	      {
+		std::string pmode = ad_geometry.get("pad_mode").get<std::string>();
+		if (pmode == "constant")
+		  gparam->set_pad_mode(::caffe::GeometryParameter_Pad_mode_CONSTANT);
+		else if (pmode == "mirrored")
+		  gparam->set_pad_mode(::caffe::GeometryParameter_Pad_mode_MIRRORED);
+		else if (pmode == "repeat_nearest")
+		  gparam->set_pad_mode(::caffe::GeometryParameter_Pad_mode_REPEAT_NEAREST);
+	      }
+	  }
+	if (ad_geometry.has("prob"))
+	  gparam->set_prob(ad_geometry.get("prob").get<double>());
+      }
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -870,7 +924,7 @@ namespace dd
     if (ad.has("loss"))
       {
         _loss = ad.get("loss").get<std::string>();
-        if (_loss == "dice" || _loss == "dice_multiclass" || _loss == "dice_weighted")
+        if (this->_loss.compare(0, 4, "dice",0,4) == 0)
           if (! this->_inputc._segmentation)
             throw MLLibBadParamException("asked for  dice loss without segmentation");
       }
@@ -1189,6 +1243,11 @@ namespace dd
 	      }
 	  }
       }
+    else if (!this->_mlmodel._sstate.empty())
+      {
+	this->_logger->error("not resuming while a .solverstate file remains in model repository");
+	throw MLLibBadParamException("a .solverstate file requires a resume argument for training, otherwise delete existing training state files (with clear=lib) to cleanup the model repository");
+      }
     else if (!this->_mlmodel._weights.empty())
       {
 	try
@@ -1218,7 +1277,8 @@ namespace dd
     const int start_iter = solver->iter_;
     int average_loss = solver->param_.average_loss();
     std::vector<float> losses;
-    this->clear_all_meas_per_iter();
+    if (!ad_mllib.has("resume") || !ad_mllib.get("resume").get<bool>())
+      this->clear_all_meas_per_iter();
     float smoothed_loss = 0.0;
     while(solver->iter_ < solver->param_.max_iter()
 	  && this->_tjob_running.load())
@@ -1250,14 +1310,14 @@ namespace dd
 	    
 	    for (auto m: meas_str)
 	      {
-		if (m != "cmdiag" && m != "cmfull" && m != "clacc" && m != "labels") // do not report confusion matrix in server logs
+		if (m != "cmdiag" && m != "cmfull" && m != "clacc" && m != "labels" && m!= "cliou") // do not report confusion matrix in server logs
 		  {
 		    double mval = meas_obj.get(m).get<double>();
 		    this->_logger->info("{}={}",m,mval);
 		    this->add_meas(m,mval);
 		    this->add_meas_per_iter(m,mval);
 		  }
-		else if (m == "cmdiag" || m == "clacc")
+		else if (m == "cmdiag" || m == "clacc" || m == "cliou")
 		  {
 		    std::vector<double> mdiag = meas_obj.get(m).get<std::vector<double>>();
 		    std::vector<std::string> cnames;
@@ -2164,8 +2224,29 @@ namespace dd
 	    
 	    if (inputc._segmentation)
 	      {
-		int slot = results.size() - 1;
-		nclasses = _nclasses;
+               int slot = results.size() - 1;
+               nclasses = _nclasses;
+
+               bool conf_best;
+               std::vector<bool> confidences;
+               if (_nclasses == 1)
+                 confidences = std::vector<bool>(2,false);
+               else
+                 confidences = std::vector<bool>(_nclasses,false);
+               if (ad_output.has("confidences"))
+                 {
+                   std::vector<std::string> smaps =
+                     ad_output.get("confidences").get<std::vector<std::string>>();
+                   for (std::string s: smaps)
+                     if (s == "all")
+                       for (int ci = 0; ci<_nclasses; ++ci)
+                         confidences[ci] = true;
+                     else if (s=="best")
+                       conf_best = true;
+                     else
+                       confidences[std::stoi(s)]= true;
+                 }
+
 		for (int j=0;j<batch_size;j++)
 		  {
 		    APIData rad;
@@ -2182,6 +2263,8 @@ namespace dd
 		      }
 		    rad.add("loss",loss);
 		    std::vector<double> vals;
+                  std::map<int,std::vector<double>> confidence_maps;
+                  std::vector<double> conf_map_best;
 		    int imgsize = inputc.width()*inputc.height();
 		    for (int i=0;i<imgsize;i++)
 		      {
@@ -2192,20 +2275,36 @@ namespace dd
 			    for (int k=0;k<nclasses;k++)
 			      {
 				double prob = results[slot]->cpu_data()[(j*nclasses+k)*imgsize+i];
+                            if (confidences[k])
+                              confidence_maps[k].push_back(prob);
 				if (prob > max_prob)
 				  {
 				    max_prob = prob;
 				    best_cat = static_cast<double>(k);
 				  }
 			      }
+                         if (conf_best)
+                           conf_map_best.push_back(max_prob);
 			  }
 			else
 			  {
 			    double prob = results[slot]->cpu_data()[(j)*imgsize+i];
+                         if (confidences[1])
+                           confidence_maps[1].push_back(prob);
+                         if (confidences[0])
+                           confidence_maps[0].push_back(1.0-prob);
 			    if (prob > 0.5)
-			      best_cat = 1;
+                           {
+                             if (conf_best)
+                               conf_map_best.push_back(prob);
+                             best_cat = 1;
+                           }
 			    else
-			      best_cat = 0;
+                           {
+                             if (conf_best)
+                               conf_map_best.push_back(1.0-prob);
+                             best_cat = 0;
+                           }
 			  }
 			vals.push_back(best_cat);
 		      }
@@ -2216,13 +2315,28 @@ namespace dd
 		    rad.add("imgsize",ad_imgsize);
 		    if (imgsize != (*bit).second.first*(*bit).second.second) // resizing output segmentation array
 		      {
-			cv::Mat segimg = cv::Mat(inputc.height(),inputc.width(), CV_64FC1);
-			std::memcpy(segimg.data,vals.data(),vals.size()*sizeof(double));
-			cv::Mat segimg_res;
-			cv::resize(segimg,segimg_res,cv::Size((*bit).second.second,(*bit).second.first),0,0,cv::INTER_NEAREST);
-			vals = std::vector<double>((double*)segimg_res.data,(double*)segimg_res.data+segimg_res.rows*segimg_res.cols);
+                      vals =img_resize(vals,inputc.height(),inputc.width(),(*bit).second.first, (*bit).second.second,true);
+                     if (conf_best)
+                       conf_map_best = img_resize(conf_map_best, inputc.height(), inputc.width(),
+                                                  (*bit).second.first, (*bit).second.second,false);
+                     for (int ci=0; ci <_nclasses; ++ci)
+                       if (confidences[ci])
+                       confidence_maps[ci] =
+                         img_resize(confidence_maps[ci],
+                                    inputc.height(), inputc.width(),
+                                     (*bit).second.first, (*bit).second.second, false);
 		      }
 		    rad.add("vals",vals);
+                  if (conf_best || !confidence_maps.empty())
+                    {
+                      APIData confs;
+                      if (conf_best)
+                        confs.add("best", conf_map_best);
+                      for (int ci=0; ci < _nclasses; ++ci)
+                        if (confidences[ci])
+                          confs.add(std::to_string(ci), confidence_maps[ci]);
+                      rad.add("confidences",confs);
+                    }
 		    vrad.push_back(rad);
 		  }
 	      }
@@ -2930,6 +3044,11 @@ namespace dd
 		lparam->mutable_infogain_loss_param()->set_source(this->_mlmodel._repo + "/class_weights.binaryproto");
 		break;
 	      }
+           else if (lparam->type().compare("DiceCoefLoss") == 0)
+             {
+               lparam->mutable_dice_coef_loss_param()->set_weights(this->_mlmodel._repo + "/class_weights.binaryproto");
+               break;
+             }
 	  }
       }
 
@@ -3316,6 +3435,7 @@ namespace dd
     caffe::LayerParameter* mvn_param = insert_layer_before(net_param, softml_pos++);
     *mvn_param->mutable_name() = "normalization";
     *mvn_param->mutable_type() = "MVN";
+    mvn_param->mutable_mvn_param()->set_across_channels(true);
     mvn_param->add_bottom(logits);
     mvn_param->add_top(logits_norm);
 
@@ -3384,6 +3504,10 @@ namespace dd
       dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS);
     else if (loss == "dice_weighted")
       dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED);
+    else if (loss == "dice_weighted_batch")
+      dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED_BATCH);
+    else if (loss == "dice_weighted_all")
+      dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED_ALL);
 
 
     // now work on deploy.txt
@@ -3397,6 +3521,7 @@ namespace dd
     mvn_param = insert_layer_before(deploy_net_param, final_interp_pos++);
     *mvn_param->mutable_name() = "normalization";
     *mvn_param->mutable_type() = "MVN";
+    mvn_param->mutable_mvn_param()->set_across_channels(true);
     mvn_param->add_bottom(logits);
     mvn_param->add_top(logits_norm);
 
@@ -3428,7 +3553,7 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofiles_dice_one_hot(caffe::NetParameter &net_param, std::string loss, int nclasses)
   {
-    if (! (loss == "dice_multiclass" || loss == "dice_weighted"))
+    if (loss.compare(0, 4, "dice",0,4) != 0)
       return;
     caffe::LayerParameter* denseImageDataLayer = find_layer_by_type(net_param,"DenseImageData");
     caffe::DenseImageDataParameter *dp = denseImageDataLayer->mutable_dense_image_data_param();
@@ -3449,6 +3574,7 @@ namespace dd
     caffe::LayerParameter* mvn_param = insert_layer_before(net_param, softml_pos++);
     *mvn_param->mutable_name() = "normalization";
     *mvn_param->mutable_type() = "MVN";
+    mvn_param->mutable_mvn_param()->set_across_channels(true);
     mvn_param->add_bottom(logits);
     mvn_param->add_top(logits_norm);
 
@@ -3510,6 +3636,10 @@ namespace dd
       dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS);
     else if (loss == "dice_weighted")
       dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED);
+    else if (loss == "dice_weighted_batch")
+      dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED_BATCH);
+    else if (loss == "dice_weighted_all")
+      dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED_ALL);
 
     // BELOW DEPLOY
     int final_pred = find_index_layer_by_name(deploy_net_param, "pred");
@@ -3517,6 +3647,7 @@ namespace dd
     mvn_param = insert_layer_before(deploy_net_param, final_pred++);
     *mvn_param->mutable_name() = "normalization";
     *mvn_param->mutable_type() = "MVN";
+    mvn_param->mutable_mvn_param()->set_across_channels(true);
     mvn_param->add_bottom(logits);
     mvn_param->add_top(logits_norm);
 
@@ -3647,6 +3778,18 @@ namespace dd
     return nullptr;
   }
 
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  std::vector<double> CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::img_resize(const std::vector<double>& vals, const int height_net, const int width_net, const int height_dest, const int width_dest, bool resize_nn)
+  {
+    cv::Mat segimg = cv::Mat(height_net,width_net, CV_64FC1);
+    std::memcpy(segimg.data,vals.data(),vals.size()*sizeof(double));
+    cv::Mat segimg_res;
+    if (resize_nn)
+      cv::resize(segimg,segimg_res,cv::Size(width_dest,height_dest),0,0,cv::INTER_NEAREST);
+    else
+      cv::resize(segimg,segimg_res,cv::Size(width_dest,height_dest),0,0,cv::INTER_LINEAR);
+    return std::vector<double>((double*)segimg_res.data,(double*)segimg_res.data+segimg_res.rows*segimg_res.cols);
+  }
 
   template class CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>;
   template class CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>;

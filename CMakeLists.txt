@@ -218,6 +218,9 @@ if (USE_CAFFE2)
     ${CAFFE2_PATCHES}/detectron/0002-compiled.patch
     ${CAFFE2_PATCHES}/detectron/0003-ops.patch
     ${CAFFE2_PATCHES}/detectron/0004-import.patch
+    ${CAFFE2_PATCHES}/detectron/0005-visual_genome.patch
+    ${CAFFE2_PATCHES}/detectron/0006-pkl_cache.patch
+    ${CAFFE2_PATCHES}/detectron/0007-weight_transfer.patch
     )
 
   list(APPEND CAFFE2_OPS

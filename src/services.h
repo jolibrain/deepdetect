@@ -257,8 +257,16 @@ namespace dd
 	    std::string clear = _ad.get("clear").get<std::string>();
 	    if (clear == "full")
 	      mllib.clear_full();
+#ifdef USE_SIMSEARCH
+	    else if (clear == "lib")
+	      {
+		mllib.clear_mllib(_ad);
+		mllib.clear_index();
+	      }
+#else
 	    else if (clear == "lib")
 	      mllib.clear_mllib(_ad);
+#endif
            else if (clear == "dir")
              mllib.clear_dir();
 #ifdef USE_SIMSEARCH

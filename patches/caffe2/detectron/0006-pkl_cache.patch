@@ -1,0 +1,60 @@
+From e3c030adf444c98c45e072b991de34ab9ef73ed7 Mon Sep 17 00:00:00 2001
+From: Julien CHICHA <julien.chicha@epitech.eu>
+Date: Wed, 23 Jan 2019 19:15:46 +0100
+Subject: [PATCH 6/7] pkl_cache
+
+---
+ detectron/utils/io.py | 20 ++++++++++++++++++--
+ 1 file changed, 18 insertions(+), 2 deletions(-)
+
+diff --git a/detectron/utils/io.py b/detectron/utils/io.py
+index 2dbc8b1..0fe5c30 100644
+--- a/detectron/utils/io.py
++++ b/detectron/utils/io.py
+@@ -33,6 +33,9 @@ logger = logging.getLogger(__name__)
+ 
+ _DETECTRON_S3_BASE_URL = 'https://s3-us-west-2.amazonaws.com/detectron'
+ 
++# Keep a reference to pickled objects as a save/load can take several minutes in some cases
++# (e.g. weights from https://github.com/ronghanghu/seg_every_thing)
++_PKL_CACHE = {}
+ 
+ def save_object(obj, file_name, pickle_format=2):
+     """Save a Python object by pickling it.
+@@ -47,8 +50,17 @@ file is manifested or used, external to the system.
+     with open(file_name, 'wb') as f:
+         pickle.dump(obj, f, pickle_format)
+ 
++    # Save in cache
++    _PKL_CACHE[file_name] = obj
+ 
+ def load_object(file_name):
++
++    # Fetch from cache
++    file_name = os.path.abspath(file_name)
++    obj = _PKL_CACHE.get(file_name)
++    if obj is not None:
++        return obj
++
+     with open(file_name, 'rb') as f:
+         # The default encoding used while unpickling is 7-bit (ASCII.) However,
+         # the blobs are arbitrary 8-bit bytes which don't agree. The absolute
+@@ -57,9 +69,13 @@ def load_object(file_name):
+         # reasonable fix, however, is to treat it the encoding as 8-bit latin1
+         # (which agrees with the first 256 characters of Unicode anyway.)
+         if six.PY2:
+-            return pickle.load(f)
++            obj = pickle.load(f)
+         else:
+-            return pickle.load(f, encoding='latin1')
++            obj = pickle.load(f, encoding='latin1')
++
++    # Save in cache
++    _PKL_CACHE[file_name] = obj
++    return obj
+ 
+ 
+ def cache_url(url_or_file, cache_dir):
+-- 
+2.20.1
+

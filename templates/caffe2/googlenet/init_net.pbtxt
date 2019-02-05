@@ -1,0 +1,1109 @@
+op {
+  output: "conv1/7x7_s2_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 64
+    ints: 3
+    ints: 7
+    ints: 7
+  }
+}
+op {
+  output: "conv1/7x7_s2_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "conv2/3x3_reduce_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 64
+    ints: 64
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "conv2/3x3_reduce_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "conv2/3x3_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 192
+    ints: 64
+    ints: 3
+    ints: 3
+  }
+}
+op {
+  output: "conv2/3x3_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 192
+  }
+}
+op {
+  output: "inception_3a/1x1_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 64
+    ints: 192
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_3a/1x1_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "inception_3a/3x3_reduce_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 96
+    ints: 192
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_3a/3x3_reduce_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 96
+  }
+}
+op {
+  output: "inception_3a/3x3_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 128
+    ints: 96
+    ints: 3
+    ints: 3
+  }
+}
+op {
+  output: "inception_3a/3x3_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "inception_3a/5x5_reduce_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 16
+    ints: 192
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_3a/5x5_reduce_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 16
+  }
+}
+op {
+  output: "inception_3a/5x5_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 32
+    ints: 16
+    ints: 5
+    ints: 5
+  }
+}
+op {
+  output: "inception_3a/5x5_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 32
+  }
+}
+op {
+  output: "inception_3a/pool_proj_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 32
+    ints: 192
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_3a/pool_proj_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 32
+  }
+}
+op {
+  output: "inception_3b/1x1_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 128
+    ints: 256
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_3b/1x1_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "inception_3b/3x3_reduce_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 128
+    ints: 256
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_3b/3x3_reduce_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "inception_3b/3x3_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 192
+    ints: 128
+    ints: 3
+    ints: 3
+  }
+}
+op {
+  output: "inception_3b/3x3_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 192
+  }
+}
+op {
+  output: "inception_3b/5x5_reduce_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 32
+    ints: 256
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_3b/5x5_reduce_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 32
+  }
+}
+op {
+  output: "inception_3b/5x5_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 96
+    ints: 32
+    ints: 5
+    ints: 5
+  }
+}
+op {
+  output: "inception_3b/5x5_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 96
+  }
+}
+op {
+  output: "inception_3b/pool_proj_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 64
+    ints: 256
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_3b/pool_proj_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "inception_4a/1x1_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 192
+    ints: 480
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_4a/1x1_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 192
+  }
+}
+op {
+  output: "inception_4a/3x3_reduce_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 96
+    ints: 480
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_4a/3x3_reduce_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 96
+  }
+}
+op {
+  output: "inception_4a/3x3_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 208
+    ints: 96
+    ints: 3
+    ints: 3
+  }
+}
+op {
+  output: "inception_4a/3x3_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 208
+  }
+}
+op {
+  output: "inception_4a/5x5_reduce_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 16
+    ints: 480
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_4a/5x5_reduce_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 16
+  }
+}
+op {
+  output: "inception_4a/5x5_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 48
+    ints: 16
+    ints: 5
+    ints: 5
+  }
+}
+op {
+  output: "inception_4a/5x5_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 48
+  }
+}
+op {
+  output: "inception_4a/pool_proj_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 64
+    ints: 480
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_4a/pool_proj_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "inception_4b/1x1_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 160
+    ints: 512
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_4b/1x1_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 160
+  }
+}
+op {
+  output: "inception_4b/3x3_reduce_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 112
+    ints: 512
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_4b/3x3_reduce_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 112
+  }
+}
+op {
+  output: "inception_4b/3x3_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 224
+    ints: 112
+    ints: 3
+    ints: 3
+  }
+}
+op {
+  output: "inception_4b/3x3_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 224
+  }
+}
+op {
+  output: "inception_4b/5x5_reduce_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 24
+    ints: 512
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_4b/5x5_reduce_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 24
+  }
+}
+op {
+  output: "inception_4b/5x5_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 64
+    ints: 24
+    ints: 5
+    ints: 5
+  }
+}
+op {
+  output: "inception_4b/5x5_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "inception_4b/pool_proj_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 64
+    ints: 512
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_4b/pool_proj_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "inception_4c/1x1_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 128
+    ints: 512
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_4c/1x1_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "inception_4c/3x3_reduce_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 128
+    ints: 512
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_4c/3x3_reduce_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "inception_4c/3x3_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 256
+    ints: 128
+    ints: 3
+    ints: 3
+  }
+}
+op {
+  output: "inception_4c/3x3_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "inception_4c/5x5_reduce_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 24
+    ints: 512
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_4c/5x5_reduce_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 24
+  }
+}
+op {
+  output: "inception_4c/5x5_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 64
+    ints: 24
+    ints: 5
+    ints: 5
+  }
+}
+op {
+  output: "inception_4c/5x5_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "inception_4c/pool_proj_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 64
+    ints: 512
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_4c/pool_proj_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "inception_4d/1x1_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 112
+    ints: 512
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_4d/1x1_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 112
+  }
+}
+op {
+  output: "inception_4d/3x3_reduce_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 144
+    ints: 512
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_4d/3x3_reduce_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 144
+  }
+}
+op {
+  output: "inception_4d/3x3_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 288
+    ints: 144
+    ints: 3
+    ints: 3
+  }
+}
+op {
+  output: "inception_4d/3x3_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 288
+  }
+}
+op {
+  output: "inception_4d/5x5_reduce_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 32
+    ints: 512
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_4d/5x5_reduce_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 32
+  }
+}
+op {
+  output: "inception_4d/5x5_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 64
+    ints: 32
+    ints: 5
+    ints: 5
+  }
+}
+op {
+  output: "inception_4d/5x5_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "inception_4d/pool_proj_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 64
+    ints: 512
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_4d/pool_proj_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 64
+  }
+}
+op {
+  output: "inception_4e/1x1_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 256
+    ints: 528
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_4e/1x1_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "inception_4e/3x3_reduce_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 160
+    ints: 528
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_4e/3x3_reduce_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 160
+  }
+}
+op {
+  output: "inception_4e/3x3_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 320
+    ints: 160
+    ints: 3
+    ints: 3
+  }
+}
+op {
+  output: "inception_4e/3x3_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 320
+  }
+}
+op {
+  output: "inception_4e/5x5_reduce_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 32
+    ints: 528
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_4e/5x5_reduce_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 32
+  }
+}
+op {
+  output: "inception_4e/5x5_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 128
+    ints: 32
+    ints: 5
+    ints: 5
+  }
+}
+op {
+  output: "inception_4e/5x5_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "inception_4e/pool_proj_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 128
+    ints: 528
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_4e/pool_proj_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "inception_5a/1x1_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 256
+    ints: 832
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_5a/1x1_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 256
+  }
+}
+op {
+  output: "inception_5a/3x3_reduce_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 160
+    ints: 832
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_5a/3x3_reduce_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 160
+  }
+}
+op {
+  output: "inception_5a/3x3_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 320
+    ints: 160
+    ints: 3
+    ints: 3
+  }
+}
+op {
+  output: "inception_5a/3x3_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 320
+  }
+}
+op {
+  output: "inception_5a/5x5_reduce_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 32
+    ints: 832
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_5a/5x5_reduce_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 32
+  }
+}
+op {
+  output: "inception_5a/5x5_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 128
+    ints: 32
+    ints: 5
+    ints: 5
+  }
+}
+op {
+  output: "inception_5a/5x5_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "inception_5a/pool_proj_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 128
+    ints: 832
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_5a/pool_proj_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "inception_5b/1x1_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 384
+    ints: 832
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_5b/1x1_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 384
+  }
+}
+op {
+  output: "inception_5b/3x3_reduce_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 192
+    ints: 832
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_5b/3x3_reduce_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 192
+  }
+}
+op {
+  output: "inception_5b/3x3_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 384
+    ints: 192
+    ints: 3
+    ints: 3
+  }
+}
+op {
+  output: "inception_5b/3x3_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 384
+  }
+}
+op {
+  output: "inception_5b/5x5_reduce_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 48
+    ints: 832
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_5b/5x5_reduce_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 48
+  }
+}
+op {
+  output: "inception_5b/5x5_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 128
+    ints: 48
+    ints: 5
+    ints: 5
+  }
+}
+op {
+  output: "inception_5b/5x5_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "inception_5b/pool_proj_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 128
+    ints: 832
+    ints: 1
+    ints: 1
+  }
+}
+op {
+  output: "inception_5b/pool_proj_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 128
+  }
+}
+op {
+  output: "loss3/classifier_w"
+  type: "XavierFill"
+  arg {
+    name: "shape"
+    ints: 1000
+    ints: 1024
+  }
+}
+op {
+  output: "loss3/classifier_b"
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 1000
+  }
+}
+op {
+  output: "data"
+  name: ""
+  type: "ConstantFill"
+  arg {
+    name: "shape"
+    ints: 1
+  }
+}

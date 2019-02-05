@@ -227,6 +227,26 @@ namespace dd
 	}
       ad.add("measure_hist",meas_hist);
     }
+
+    /**
+     * \brief fill up the in-memory metrics from values gathered
+     *        from metrics.json file into the api data object
+     * @param ad the api data object holding the values
+     */
+    void fillup_measures_history(const APIData &ad)
+    {
+      APIData ad_params = ad.getobj("parameters");
+      if (!ad_params.has("metrics"))
+	return;
+      APIData ad_metrics = ad_params.getobj("metrics");
+      std::vector<std::string> mkeys = ad_metrics.list_keys();
+      for (auto s: mkeys)
+	{
+	  std::vector<double> mdata = ad_metrics.get(s).get<std::vector<double>>();
+	  s.replace(s.find("_hist"),5,"");
+	  _meas_per_iter.insert(std::pair<std::string,std::vector<double>>(s,mdata));
+	}
+    }
     
     /**
      * \brief sets current value of a measure

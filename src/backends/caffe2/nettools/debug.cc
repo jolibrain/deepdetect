@@ -31,7 +31,7 @@ namespace dd {
 
     void net_to_svg(const caffe2::NetDef &net, const std::string &path) {
       int size = net.op().size();
-      CAFFE_ENFORCE(size < 600);
+      CAFFE_ENFORCE(size < 600, "Net size is too big: ", size);
       auto graph = path + ".tmpgraph";
       std::ofstream file(graph);
       file << "digraph {" << std::endl;

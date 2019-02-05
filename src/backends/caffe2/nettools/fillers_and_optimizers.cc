@@ -303,24 +303,38 @@ namespace dd {
     };
 
     const std::map<std::string, std::map<int, float>> OutputShapePtrs::_forwarded_shapes({
-	{ "Softmax", {{ 0, 1 }} }, // One input, same shape
+
+	// One input, same shape
+	{ "AveragePool", {{ 0, 1 }} }, // (An end-of-net pooling should be a global pooling)
 	{ "CopyFromCPUInput", {{ 0, 1 }} },
 	{ "EnsureCPUOutput", {{ 0, 1 }} },
+	{ "Relu", {{ 0, 1 }} },
+	{ "Sigmoid", {{ 0, 1 }} },
+	{ "Softmax", {{ 0, 1 }} },
+
+	// An input that is already a group of bbox
 	{ "BBoxTransform", {
-	    { 1, 1 } // An input that is already a group of bbox
+	    { 1, 1 }
 	  }},
+
+	// 1 probablity per result
+	// 4 points per result
 	{ "BoxWithNMSLimit", {
-	    { 0, 1 }, // 1 probablity per result
-	    { 1, 4 }  // 4 points per result
+	    { 0, 1 },
+	    { 1, 4 }
 	  }}
+
       });
 
     const std::map<std::string, std::map<int, int>> OutputShapePtrs::_external_shapes({
+
+	// Weights have 2 dimensions (nb_output and nb_input), we want the first
+	// Bias have 1 dimension (nb_output), we also want the first
 	{ "Conv", {
-	    { 1, 0 }, // Weights have 2 dimensions (nb_output and nb_input), we want the first
-	    { 2, 0 }  // Bias have 1 dimension (nb_output), we also want the first
+	    { 1, 0 },
+	    { 2, 0 }
 	  }},
-	{ "FC", { // Same as 'Conv'
+	{ "FC", {
 	    { 1, 0 },
 	    { 2, 0 }
 	  }}
