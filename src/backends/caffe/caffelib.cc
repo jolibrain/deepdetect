@@ -2453,19 +2453,18 @@ namespace dd
                        for (int k=0; k<nout; ++k)
                          {
                            std::vector<int> loc = {t,j,k};
-                           APIData ad_input = ad.getobj("parameters").getobj("input");
-                           if (ad_input.has("unscale_outputs"))
+                           if (ic->_min_vals.empty() || ic->_max_vals.empty())
                              {
-                               std::vector<int> unscale_outputs = ad_input.get("unscale_outputs").get<std::vector<int>>();
-                               double res = results[slot]->data_at(loc);
-                               double max = ic->_max_vals[unscale_outputs[k]];
-                               double min = ic->_min_vals[unscale_outputs[k]];
-                               double unscaled_res = res * (max - min) + min;
-                               predictions.push_back(unscaled_res);
+                               this->_logger->info("not unscaling output because no bounds data found");
+                               predictions.push_back(results[slot]->data_at(loc));
                              }
                            else
                              {
-                               predictions.push_back(results[slot]->data_at(loc));
+                               double res = results[slot]->data_at(loc);
+                               double max = ic->_max_vals[ic->_label_pos[k]];
+                               double min = ic->_min_vals[ic->_label_pos[k]];
+                               double unscaled_res = res * (max - min) + min;
+                               predictions.push_back(unscaled_res);
                              }
                          }
                        APIData ts;

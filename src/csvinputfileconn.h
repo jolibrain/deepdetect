@@ -514,8 +514,14 @@ namespace dd
       // discard header
       std::string hline;
       std::getline(csv_file,hline);
-      read_header(hline);
-      find_min_max(csv_file);
+      if (_columns.empty())
+        {
+          read_header(hline);
+          find_min_max(csv_file);
+          update_columns();
+        }
+      else
+        find_min_max(csv_file);
     }
     void find_min_max(std::ifstream &csv_file);
     void clear_min_max()

@@ -1480,6 +1480,8 @@ namespace dd
   {
     if (_cifc)
       {
+        if (_cifc->_scale && (_cifc->_min_vals.empty() || _cifc->_max_vals.empty()))
+          _cifc->deserialize_bounds();
         std::string test_file = _cifc->_csv_test_fname;
         _cifc->_csv_test_fname = "";
         _cifc->read_csv(fname);
@@ -1495,6 +1497,9 @@ namespace dd
 
   int DDCCsvTS::read_db(const std::string &fname)
   {
+    if (_cifc->_scale && (_cifc->_min_vals.empty() || _cifc->_max_vals.empty()))
+      _cifc->deserialize_bounds();
+
     _cifc->_db_fname = fname;
     return 0;
   }
@@ -1504,7 +1509,6 @@ namespace dd
 
     if (!_cifc)
       return -1;
-
     _ddcsvts._cifc = _cifc;
     _ddcsvts.read_mem(content);
     return 0;
@@ -1520,6 +1524,33 @@ namespace dd
     // then simply read them
     if (!_cifc)
       return -1;
+
+    if (_cifc->_scale && (_cifc->_min_vals.empty() || _cifc->_max_vals.empty() ))
+      {
+        if (!_cifc->deserialize_bounds())
+          {
+            std::vector<double> min_vals = _cifc->_min_vals;
+            std::vector<double> max_vals = _cifc->_max_vals;
+            for (auto fname : allfiles)
+              {
+                std::pair<std::vector<double>,std::vector<double>> mm = _cifc->get_min_max_vals(fname);
+                if (min_vals.empty())
+                  min_vals = mm.first;
+                else
+                  for (size_t j=0;j<mm.first.size();j++)
+                    min_vals.at(j) = std::min(mm.first.at(j),min_vals.at(j));
+                if (max_vals.empty())
+                  max_vals = mm.second;
+                else
+                  for (size_t j=0;j<mm.first.size();j++)
+                    max_vals.at(j) = std::max(mm.second.at(j),max_vals.at(j));
+              }
+            _cifc->_min_vals = min_vals;
+            _cifc->_max_vals = max_vals;
+            _cifc->serialize_bounds();
+          }
+      }
+
     if (!is_test_data && _cifc->_shuffle)
       {
         std::vector<std::string> allfiles_v;
@@ -1527,60 +1558,16 @@ namespace dd
           allfiles_v.push_back(fname);
         auto rng = std::default_random_engine();
         std::shuffle(allfiles_v.begin(), allfiles_v.end(), rng);
-
-        if (_cifc->_scale && (_cifc->_min_vals.empty() || _cifc->_max_vals.empty() ))
-          {
-            std::vector<double> min_vals = _cifc->_min_vals;
-            std::vector<double> max_vals = _cifc->_max_vals;
-            for (auto fname : allfiles)
-              {
-                std::pair<std::vector<double>,std::vector<double>> mm = _cifc->get_min_max_vals(fname);
-                if (min_vals.empty())
-                  min_vals = mm.first;
-                else
-                  for (size_t j=0;j<mm.first.size();j++)
-                    min_vals.at(j) = std::min(mm.first.at(j),min_vals.at(j));
-                if (max_vals.empty())
-                  max_vals = mm.second;
-                else
-                  for (size_t j=0;j<mm.first.size();j++)
-                    max_vals.at(j) = std::max(mm.second.at(j),max_vals.at(j));
-              }
-            _cifc->_min_vals = min_vals;
-            _cifc->_max_vals = max_vals;
-          }
-
         for (auto fname : allfiles_v)
           read_file(fname, is_test_data);
       }
     else
-      {
-        if (_cifc->_scale && (_cifc->_min_vals.empty()||_cifc->_max_vals.empty()))
-          {
-            std::vector<double> min_vals = _cifc->_min_vals;
-            std::vector<double> max_vals = _cifc->_max_vals;
-            for (auto fname : allfiles)
-              {
-                std::pair<std::vector<double>,std::vector<double>> mm = _cifc->get_min_max_vals(fname);
-                if (min_vals.empty())
-                  min_vals = mm.first;
-                else
-                  for (size_t j=0;j<mm.first.size();j++)
-                    min_vals.at(j) = std::min(mm.first.at(j),min_vals.at(j));
-                if (max_vals.empty())
-                  max_vals = mm.second;
-                else
-                  for (size_t j=0;j<mm.first.size();j++)
-                    max_vals.at(j) = std::max(mm.second.at(j),max_vals.at(j));
-              }
-            _cifc->_min_vals = min_vals;
-            _cifc->_max_vals = max_vals;
-          }
-        for (auto fname : allfiles)
-          read_file(fname, is_test_data);
-      }
+
+      for (auto fname : allfiles)
+        read_file(fname, is_test_data);
+
     return 0;
-  }
+}
 
   void CSVTSCaffeInputFileConn::set_datadim(bool is_test_data)
   {

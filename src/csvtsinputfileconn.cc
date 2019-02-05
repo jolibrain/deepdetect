@@ -20,6 +20,7 @@
  */
 
 #include "csvtsinputfileconn.h"
+#include "utils/utils.hpp"
 #include <boost/tokenizer.hpp>
 
 namespace dd
@@ -29,6 +30,8 @@ namespace dd
   {
     if (_cifc)
       {
+        if (_cifc->_scale && (_cifc->_min_vals.empty() || _cifc->_max_vals.empty()))
+          _cifc->deserialize_bounds();
         _cifc->_columns.clear();
         std::string testfname = _cifc->_csv_test_fname;
         _cifc->_csv_test_fname = "";
@@ -43,6 +46,8 @@ namespace dd
 
   int DDCsvTS::read_db(const std::string &fname)
   {
+    if (_cifc->_scale && (_cifc->_min_vals.empty() || _cifc->_max_vals.empty()))
+      _cifc->deserialize_bounds();
     _cifc->_db_fname = fname;
     return 0;
   }
@@ -52,6 +57,8 @@ namespace dd
   {
     if (_cifc)
       {
+        if (_cifc->_scale && (_cifc->_min_vals.empty() || _cifc->_max_vals.empty()))
+          _cifc->deserialize_bounds();
         // tokenize on END_OF_SEQ  markers
         std::string delim="END_OF_SEQ";
         size_t start = 0;
@@ -85,30 +92,40 @@ namespace dd
 
     if (_cifc->_scale && (_cifc->_min_vals.empty() || _cifc->_max_vals.empty()))
       {
-        std::vector<double> min_vals = _cifc->_min_vals;
-        std::vector<double> max_vals = _cifc->_max_vals;
-        for (auto fname : allfiles)
+        if (!_cifc->deserialize_bounds())
           {
-            std::pair<std::vector<double>,std::vector<double>> mm = _cifc->get_min_max_vals(fname);
-            if (min_vals.empty())
-              min_vals = mm.first;
-            else
-              for (size_t j=0;j<mm.first.size();j++)
-                min_vals.at(j) = std::min(mm.first.at(j),min_vals.at(j));
-            if (max_vals.empty())
-              max_vals = mm.second;
-            else
-              for (size_t j=0;j<mm.first.size();j++)
-                max_vals.at(j) = std::max(mm.second.at(j),max_vals.at(j));
+            std::vector<double> min_vals(_cifc->_min_vals);
+            std::vector<double> max_vals(_cifc->_max_vals);
+            for (auto fname : allfiles)
+              {
+                std::pair<std::vector<double>,std::vector<double>> mm = _cifc->get_min_max_vals(fname);
+                if (min_vals.empty())
+                  {
+                    for (size_t j=0;j<mm.first.size();j++)
+                      min_vals.push_back(mm.first.at(j));
+                  }
+                else
+                  {
+                    for (size_t j=0;j<mm.first.size();j++)
+                      min_vals.at(j) = std::min(mm.first.at(j),min_vals.at(j));
+                  }
+                if (max_vals.empty())
+                  for (size_t j=0;j<mm.first.size();j++)
+                    max_vals.push_back(mm.second.at(j));
+                else
+                  for (size_t j=0;j<mm.first.size();j++)
+                    max_vals.at(j) = std::max(mm.second.at(j),max_vals.at(j));
+              }
+            _cifc->_min_vals = min_vals;
+            _cifc->_max_vals = max_vals;
+            _cifc->serialize_bounds();
           }
-        _cifc->_min_vals = min_vals;
-        _cifc->_max_vals = max_vals;
       }
 
-    for (auto fname : allfiles)
-      {
-        read_file(fname, is_test_data);
-      }
+    for (auto fname2 : allfiles)
+      read_file(fname2, is_test_data);
+
+
 
     _cifc->shuffle_data_if_needed();
     if (allow_read_test)
@@ -284,5 +301,86 @@ namespace dd
       }
   }
 
+  bool CSVTSInputFileConn::deserialize_bounds()
+  {
+    std::string boundsfname = _model_repo + "/" + _boundsfname;
+    if (!fileops::file_exists(boundsfname))
+      {
+        _logger->info("no bounds file {}", boundsfname);
+        return false;
+      }
+    std::ifstream in;
+    in.open(boundsfname);
+    if (!in.is_open())
+      {
+        _logger->warn("bounds file {} detected but cannot be opened", boundsfname);
+        return false;
+      }
+    std::string line;
+    std::vector<std::string> tokens;
+    int ncols = -1;
+    int nlabels = -1;
 
+    while (getline(in,line))
+      {
+        tokens = dd_utils::split(line,':');
+        if (tokens.empty())
+          continue;
+        std::string key = tokens.at(0);
+
+        if (key == "ncols")
+          ncols = std::atoi(tokens.at(1).c_str());
+        else if (key == "nlabels")
+          nlabels = std::atoi(tokens.at(1).c_str());
+        else if (key == "label_pos")
+          {
+            _label_pos.clear();
+            for (int i=0;i<nlabels; ++i)
+              _label_pos.push_back(std::atoi(tokens.at(i+1).c_str()));
+          }
+        else if (key == "min_vals")
+          {
+            _min_vals.clear();
+            for (int i=0;i<ncols; ++i)
+              _min_vals.push_back(std::atof(tokens.at(i+1).c_str()));
+          }
+        else if (key == "max_vals")
+          {
+            _max_vals.clear();
+            for (int i=0;i<ncols; ++i)
+              _max_vals.push_back(std::atof(tokens.at(i+1).c_str()));
+          }
+      }
+
+    _logger->info("bounds loaded");
+    in.close();
+    return true;
+  }
+
+  void CSVTSInputFileConn::serialize_bounds()
+  {
+    std::string boundsfname = _model_repo + "/" + _boundsfname;
+    std::string delim=":";
+    std::ofstream out;
+    out.open(boundsfname);
+    if (!out.is_open())
+      throw InputConnectorBadParamException("failed opening for writing bounds file " + boundsfname);
+
+    out << "ncols: " << _min_vals.size() << std::endl;
+    out << "nlabels: " << _label_pos.size() << std::endl;
+    out<<"label_pos: ";
+    for (unsigned int i = 0; i< _label_pos.size() -1; ++i)
+      out<< " " << _label_pos[i] << " " << delim;
+    out << " " <<_label_pos[_label_pos.size()-1] << std::endl;
+    out << "min_vals: " ;
+    for (unsigned int i = 0; i< _min_vals.size() -1; ++i)
+      out << " " << _min_vals[i] << " " << delim;
+    out << " " << _min_vals[_min_vals.size() -1] << std::endl;
+    out << "max_vals: " ;
+    for (unsigned int i = 0; i< _max_vals.size() -1; ++i)
+      out << " " << _max_vals[i] << " " << delim;
+    out << " " << _max_vals[_max_vals.size() -1] << std::endl;
+
+    out.close();
+  }
 }

@@ -96,7 +96,9 @@ namespace dd
       return 1;
     }
 
-
+    // read min max values, return false if not present
+    bool deserialize_bounds();
+    void serialize_bounds();
 
     /*   std::string s = "Boost,\"C++ Libraries\""; */
     /*   boost::escaped_list_separator<char> els('\\',_delim,'\"\''); */
@@ -111,6 +113,7 @@ namespace dd
     void push_csv_to_csvts(DDCsv &ddcsv);
     void push_csv_to_csvts(bool is_test_data=false);
 
+    std::string _boundsfname = "bounds.dat";
 
     std::vector<std::vector<CSVline>> _csvtsdata;
     std::vector<std::vector<CSVline>> _csvtsdata_test;
