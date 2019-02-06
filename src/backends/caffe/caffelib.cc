@@ -3702,7 +3702,7 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   bool CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::is_better(double v1, double v2, std::string metric_name)
   {
-    if (metric_name == "eucll" || metric_name == "delta_score_0.1")
+    if (metric_name == "eucll" || metric_name == "delta_score_0.1" || metric_name == "L1_mean_error")
       return (v2 > v1);
     return (v1 > v2);
   }
