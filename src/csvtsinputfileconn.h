@@ -74,6 +74,11 @@ namespace dd
 
     void fillup_parameters(const APIData &ad_input)
     {
+      if (ad_input.has("scale") && ad_input.get("scale").get<bool>())
+        {
+          _scale = true;
+          deserialize_bounds();
+        }
       CSVInputFileConn::fillup_parameters(ad_input);
     }
 

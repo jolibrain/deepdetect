@@ -30,8 +30,6 @@ namespace dd
   {
     if (_cifc)
       {
-        if (_cifc->_scale && (_cifc->_min_vals.empty() || _cifc->_max_vals.empty()))
-          _cifc->deserialize_bounds();
         _cifc->_columns.clear();
         std::string testfname = _cifc->_csv_test_fname;
         _cifc->_csv_test_fname = "";
@@ -46,8 +44,6 @@ namespace dd
 
   int DDCsvTS::read_db(const std::string &fname)
   {
-    if (_cifc->_scale && (_cifc->_min_vals.empty() || _cifc->_max_vals.empty()))
-      _cifc->deserialize_bounds();
     _cifc->_db_fname = fname;
     return 0;
   }
@@ -57,8 +53,6 @@ namespace dd
   {
     if (_cifc)
       {
-        if (_cifc->_scale && (_cifc->_min_vals.empty() || _cifc->_max_vals.empty()))
-          _cifc->deserialize_bounds();
         // tokenize on END_OF_SEQ  markers
         std::string delim="END_OF_SEQ";
         size_t start = 0;
@@ -92,34 +86,31 @@ namespace dd
 
     if (_cifc->_scale && (_cifc->_min_vals.empty() || _cifc->_max_vals.empty()))
       {
-        if (!_cifc->deserialize_bounds())
+        std::vector<double> min_vals(_cifc->_min_vals);
+        std::vector<double> max_vals(_cifc->_max_vals);
+        for (auto fname : allfiles)
           {
-            std::vector<double> min_vals(_cifc->_min_vals);
-            std::vector<double> max_vals(_cifc->_max_vals);
-            for (auto fname : allfiles)
+            std::pair<std::vector<double>,std::vector<double>> mm = _cifc->get_min_max_vals(fname);
+            if (min_vals.empty())
               {
-                std::pair<std::vector<double>,std::vector<double>> mm = _cifc->get_min_max_vals(fname);
-                if (min_vals.empty())
-                  {
-                    for (size_t j=0;j<mm.first.size();j++)
-                      min_vals.push_back(mm.first.at(j));
-                  }
-                else
-                  {
-                    for (size_t j=0;j<mm.first.size();j++)
-                      min_vals.at(j) = std::min(mm.first.at(j),min_vals.at(j));
-                  }
-                if (max_vals.empty())
-                  for (size_t j=0;j<mm.first.size();j++)
-                    max_vals.push_back(mm.second.at(j));
-                else
-                  for (size_t j=0;j<mm.first.size();j++)
-                    max_vals.at(j) = std::max(mm.second.at(j),max_vals.at(j));
+                for (size_t j=0;j<mm.first.size();j++)
+                  min_vals.push_back(mm.first.at(j));
               }
-            _cifc->_min_vals = min_vals;
-            _cifc->_max_vals = max_vals;
-            _cifc->serialize_bounds();
+            else
+              {
+                for (size_t j=0;j<mm.first.size();j++)
+                  min_vals.at(j) = std::min(mm.first.at(j),min_vals.at(j));
+              }
+            if (max_vals.empty())
+              for (size_t j=0;j<mm.first.size();j++)
+                max_vals.push_back(mm.second.at(j));
+            else
+              for (size_t j=0;j<mm.first.size();j++)
+                max_vals.at(j) = std::max(mm.second.at(j),max_vals.at(j));
           }
+        _cifc->_min_vals = min_vals;
+        _cifc->_max_vals = max_vals;
+        _cifc->serialize_bounds();
       }
 
     for (auto fname2 : allfiles)
