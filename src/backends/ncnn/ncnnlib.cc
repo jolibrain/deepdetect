@@ -205,20 +205,12 @@ namespace dd
 		  pred_label_seq.push_back(cur);
 		prev = cur;
 	      }
-	    APIData outseq;
 	    std::string outstr;
 	    std::ostringstream oss;
 	    for (auto l: pred_label_seq)
-	      {
-		outstr += char(std::atoi(this->_mlmodel.get_hcorresp(l).c_str()));
-		//utf8::append(this->_mlmodel.get_hcorresp(l),outstr);
-	      }
-	    std::vector<std::string> cats;
+	      outstr += char(std::atoi(this->_mlmodel.get_hcorresp(l).c_str()));
 	    cats.push_back(outstr);
-	    outseq.add("cats",cats);
-	    outseq.add("probs",std::vector<double>(1,1.0)); //XXX: in raw pred_label_seq_with_blank
-	    outseq.add("loss", 0.0);
-	    vrad.push_back(outseq);
+	    probs.push_back(1.0);
 	  }
 	else {
             std::vector<float> cls_scores;
@@ -246,13 +238,12 @@ namespace dd
             }
         }
 
-        //rad.add("uri", "1");
-        rad.add("loss", 0.0);
+	rad.add("uri",inputc._ids.at(0));
+	rad.add("loss", 0.0);
         rad.add("probs", probs);
         rad.add("cats", cats);
         if (bbox == true)
             rad.add("bboxes", bboxes);
-
         vrad.push_back(rad);
 	tout.add_results(vrad);
 	out.add("nclasses", this->_nclasses);
