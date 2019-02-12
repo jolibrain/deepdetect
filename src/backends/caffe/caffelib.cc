@@ -2116,7 +2116,7 @@ namespace dd
                int slot = results.size() - 1;
                nclasses = _nclasses;
 
-               bool conf_best;
+               bool conf_best = false;
                std::vector<bool> confidences;
                if (_nclasses == 1)
                  confidences = std::vector<bool>(2,false);
