@@ -21,6 +21,7 @@
 
 #include "outputconnectorstrategy.h"
 #include <thread>
+#include <algorithm>
 #include "utils/utils.hpp"
 
 // NCNN
@@ -120,16 +121,30 @@ namespace dd
 
         // Get bbox
         bool bbox = false;
-        if (ad_output.has("bbox") && ad_output.get("bbox").get<bool>())
-            bbox = true;
+        if (ad_output.has("bbox"))
+	  bbox = ad_output.get("bbox").get<bool>();
 
+	// Ctc model
+	bool ctc = false;
+	int blank_label = -1;
+	if (ad_output.has("ctc"))
+	  {
+	    ctc = ad_output.get("ctc").get<bool>();
+	    if (ctc)
+	      {
+		if (ad_output.has("blank_label"))
+		  blank_label = ad_output.get("blank_label").get<int>();
+	      }
+	  }
+	
         // Extract detection or classification
         int ret = 0;
-        if (bbox == true) {
-            ret = ex.extract("detection_out", inputc._out);
-        } else {
-            ret = ex.extract("prob", inputc._out);
-        }
+	std::string out_blob = "prob";
+        if (bbox == true)
+	  out_blob = "detection_out";
+	else if (ctc == true)
+	  out_blob = "probs";
+	ret = ex.extract(out_blob.c_str(),inputc._out);
         if (ret == -1) {
             throw MLLibInternalException("NCNN internal error");
         }
@@ -169,7 +184,35 @@ namespace dd
                 ad_bbox.add("ymin",values[5] * inputc._images_size.at(0).first);
                 bboxes.push_back(ad_bbox);
             }
-        } else {
+        }
+	else if (ctc == true)
+	  {
+	    int alphabet = inputc._out.w;
+	    int time_step = inputc._out.h;
+	    std::vector<int> pred_label_seq_with_blank(time_step);
+	    for (int t=0;t<time_step;++t)
+	      {
+		const float *values = inputc._out.row(t);
+		pred_label_seq_with_blank[t] = std::distance(values,std::max_element(values,values+alphabet));
+	      }
+
+	    std::vector<int> pred_label_seq;
+	    int prev = blank_label;
+	    for (int t=0;t<time_step;++t)
+	      {
+		int cur = pred_label_seq_with_blank[t];
+		if (cur != prev && cur != blank_label)
+		  pred_label_seq.push_back(cur);
+		prev = cur;
+	      }
+	    std::string outstr;
+	    std::ostringstream oss;
+	    for (auto l: pred_label_seq)
+	      outstr += char(std::atoi(this->_mlmodel.get_hcorresp(l).c_str()));
+	    cats.push_back(outstr);
+	    probs.push_back(1.0);
+	  }
+	else {
             std::vector<float> cls_scores;
 
             cls_scores.resize(inputc._out.w);
@@ -195,21 +238,20 @@ namespace dd
             }
         }
 
-        rad.add("uri", "1");
-        rad.add("loss", 0.0);
+	rad.add("uri",inputc._ids.at(0));
+	rad.add("loss", 0.0);
         rad.add("probs", probs);
         rad.add("cats", cats);
         if (bbox == true)
             rad.add("bboxes", bboxes);
-
         vrad.push_back(rad);
 	tout.add_results(vrad);
-        out.add("nclasses", this->_nclasses);
+	out.add("nclasses", this->_nclasses);
         if (bbox == true)
             out.add("bbox", true);
         out.add("roi", false);
         out.add("multibox_rois", false);
-        tout.finalize(ad.getobj("parameters").getobj("output"),out,static_cast<MLModel*>(&this->_mlmodel));
+	tout.finalize(ad.getobj("parameters").getobj("output"),out,static_cast<MLModel*>(&this->_mlmodel));
         out.add("status", 0);
 	return 0;
     }

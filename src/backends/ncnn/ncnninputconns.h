@@ -76,11 +76,13 @@ namespace dd
 
             _in = ncnn::Mat::from_pixels(bgr.data, ncnn::Mat::PIXEL_BGR, bgr.cols, bgr.rows);
             _in.substract_mean_normalize(&_mean[0], 0);
+	    _ids.push_back(this->_uris.at(0));
         }
 
         public:
             ncnn::Mat _in;
             ncnn::Mat _out;
+	    std::vector<std::string> _ids; /**< input ids (e.g. image ids) */
     };
 }
 
