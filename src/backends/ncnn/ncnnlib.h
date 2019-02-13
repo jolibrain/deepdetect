@@ -47,6 +47,9 @@ namespace dd
 
         int predict(const APIData &ad, APIData &out);
 
+        void model_type(const std::string &param_file,
+			std::string &mltype);
+    
     public:
         ncnn::Net *_net = nullptr;
         int _nclasses = 0;
