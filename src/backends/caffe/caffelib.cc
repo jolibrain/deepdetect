@@ -825,6 +825,9 @@ namespace dd
   {
 
     NetCaffe<NetInputCaffe<TInputConnectorStrategy>,NetLayersCaffeRecurrent,NetLossCaffe> netcaffe(&net_param,&dnet_param,this->_logger);
+    // will be changed at predict time
+    // small default for debug
+    dnet_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(10);
     netcaffe._nic.configure_inputs(ad,inputc);
     // add ntargets to ad.
     const_cast<APIData&>(ad).add("ntargets",this->_ntargets);
@@ -2130,7 +2133,7 @@ namespace dd
                   if (typeid(inputc) == typeid(CSVTSCaffeInputFileConn)) // timeseries
                     // in case of time series, need to output data of last serie at end
                     {
-                      if (series.size() > 1)
+                      if (series.size() > 0)
                         {
                           APIData out;
                           if (!inputc._ids.empty())
@@ -2227,7 +2230,7 @@ namespace dd
                int slot = results.size() - 1;
                nclasses = _nclasses;
 
-               bool conf_best;
+               bool conf_best = false;
                std::vector<bool> confidences;
                if (_nclasses == 1)
                  confidences = std::vector<bool>(2,false);
@@ -2549,7 +2552,7 @@ namespace dd
                        if (contseq->data_at(loc0) == 0 && series.size() != 0)
                          // new seq -> push old one
                          {
-                           if (series.size() > 1)
+                           if (series.size() > 0)
                              {
                                APIData out;
                                if (!inputc._ids.empty())

@@ -66,6 +66,7 @@ namespace dd
             start = next + delim.length();
           }
         std::string csvfile = content.substr(start, next-start);
+        _ddcsv._cifc = _cifc;
         _ddcsv.read_mem(csvfile);
         _cifc->push_csv_to_csvts();
         return 0;
