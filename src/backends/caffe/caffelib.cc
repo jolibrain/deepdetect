@@ -825,13 +825,13 @@ namespace dd
   {
 
     NetCaffe<NetInputCaffe<TInputConnectorStrategy>,NetLayersCaffeRecurrent,NetLossCaffe> netcaffe(&net_param,&dnet_param,this->_logger);
-    // will be changed at predict time
-    // small default for debug
-    dnet_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(10);
     netcaffe._nic.configure_inputs(ad,inputc);
     // add ntargets to ad.
     const_cast<APIData&>(ad).add("ntargets",this->_ntargets);
     netcaffe._nlac.configure_net(ad);
+    // will be changed at predict time
+    // small default for debug
+    dnet_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(10);
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
