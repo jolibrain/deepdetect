@@ -149,7 +149,7 @@ namespace dd
     
 #ifdef USE_SIMSEARCH
     SearchEngine<AnnoySE> *_se = nullptr;
-    bool _index_preload = true;
+    bool _index_preload = false;
 #endif
 
   private:
@@ -165,7 +165,8 @@ namespace dd
       if (!exists && create)
         fileops::create_dir(_repo,0775);
 #ifdef USE_SIMSEARCH
-      _index_preload = ad.has("index_preload") && ad.get("index_preload").get<bool>();
+      if (ad.has("index_preload") && ad.get("index_preload").get<bool>())
+	_index_preload = true;
 #endif
       // auto-install from model archive
       if (ad.has("init"))
