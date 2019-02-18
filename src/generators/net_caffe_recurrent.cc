@@ -21,6 +21,7 @@
 
 #include "net_caffe_recurrent.h"
 #include "imginputfileconn.h"
+#include "mllibstrategy.h"
 
 namespace dd
 {
@@ -176,10 +177,43 @@ namespace dd
   }
 
 
+  void NetLayersCaffeRecurrent::parse_recurrent_layers(const std::vector<std::string>&layers,
+                                                       std::vector<std::string> &r_layers,
+                                                       std::vector<int> &h_sizes)
+  {
+    for (auto s : layers)
+      {
+        size_t pos = 0;
+        if ((pos=s.find(_lstm_str))!= std::string::npos)
+          {
+            r_layers.push_back(_lstm_str);
+            h_sizes.push_back(std::stoi(s.substr(pos+_lstm_str.size())));
+          }
+        else if ((pos=s.find(_rnn_str))!= std::string::npos)
+          {
+            r_layers.push_back(_rnn_str);
+            h_sizes.push_back(std::stoi(s.substr(pos+_rnn_str.size())));
+          }
+        else
+          {
+            try
+              {
+                h_sizes.push_back(std::stoi(s));
+                r_layers.push_back(_lstm_str);
+              }
+            catch(std::exception &e)
+              {
+                throw MLLibBadParamException("timeseries template requires layers of the form \"L50\". L for LSTM, R for RNN and 50 for a hidden cell size of 50");
+              }
+          }
+      }
+  }
+
   void NetLayersCaffeRecurrent::configure_net(const APIData &ad_mllib)
   {
 
-    std::vector<std::string> layers = {"L","L"}; // default
+    std::vector<std::string> layers;
+    std::vector<int> hiddens;
     std::vector<double> dropouts; // default
     std::map<int,int> types;
     std::string loss = "L1";
@@ -187,9 +221,11 @@ namespace dd
     int ntargets;
     //    double sl1sigma = 10;
 
-    int hidden = 50;
     if (ad_mllib.has("layers"))
-      layers = ad_mllib.get("layers").get<std::vector<std::string>>();
+      {
+        std::vector<std::string> apilayers = ad_mllib.get("layers").get<std::vector<std::string>>();
+        parse_recurrent_layers(apilayers, layers, hiddens);
+      }
     if (ad_mllib.has("dropout"))
       {
         try
@@ -209,8 +245,6 @@ namespace dd
 		}
           }
       }
-    if (ad_mllib.has("hidden"))
-      hidden = ad_mllib.get("hidden").get<int>();
     if (ad_mllib.has("loss"))
       {
         loss_temp = ad_mllib.get("loss").get<std::string>();
@@ -218,8 +252,6 @@ namespace dd
           loss = "EuclideanLoss";
       }
     ntargets = ad_mllib.get("ntargets").get<int>();
-
-    std::string bottom = "data";
 
     // first permute
     add_permute(this->_net_params, "permuted_data", "data", 4,false,false);
@@ -238,24 +270,16 @@ namespace dd
 
     // lstm0
 
-    int first_num_output = layers.size() <=1 ? ntargets : hidden;
-    double first_dropout_ratio = layers.size() <=1 ? 0.0 : dropouts[0];
     std::string type = (layers[0] == "R"? "RNN":"LSTM");
-    bottom = type+"_"+std::to_string(0);
-    std::string top = bottom;
-    add_basic_block(this->_net_params,"input_seq",
-                    "cont_seq",bottom,first_num_output,
-                    first_dropout_ratio,"uniform", "uniform", type, 0);
-    add_basic_block(this->_dnet_params,"input_seq",
-                    "cont_seq",bottom,first_num_output,
-                    first_dropout_ratio,"uniform", "uniform", type, 0);
-    for (unsigned int i=1; i<layers.size(); ++i)
+    std::string bottom = "input_seq";
+    std::string top;
+    for (unsigned int i=0; i<layers.size(); ++i)
       {
         top = type+"_"+std::to_string(i);
         add_basic_block(this->_net_params,bottom,
-                        "cont_seq",top,hidden, dropouts[i],"uniform", "uniform", type, i);
+                        "cont_seq",top,hiddens[i], dropouts[i],"uniform", "uniform", layers[i], i);
         add_basic_block(this->_dnet_params,bottom,
-                        "cont_seq",top,hidden, dropouts[i],"uniform", "uniform",type, i);
+                        "cont_seq",top,hiddens[i], dropouts[i],"uniform", "uniform",layers[i], i);
         bottom = top;
       }
 
@@ -312,7 +336,7 @@ namespace dd
         caffe::ScaleParameter *sp = lparam->mutable_scale_param();
         caffe::FillerParameter *fp = sp->mutable_filler();
         fp->set_type("constant");
-        fp->set_value(0.000025);
+        fp->set_value(1.0);
         sp->set_axis(0);
         sp->set_bias_term(false);
         caffe::ParamSpec *ps = lparam->add_param();

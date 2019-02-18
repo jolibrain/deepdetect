@@ -78,6 +78,13 @@ namespace dd
                     std::string top,
                     int nout);
 
+    void parse_recurrent_layers(const std::vector<std::string>&layers,
+                                std::vector<std::string> &r_layers,
+                                std::vector<int> &h_sizes);
+
+  private:
+    const std::string _lstm_str = "L";
+    const std::string _rnn_str = "R";
 
   };
   
