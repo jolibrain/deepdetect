@@ -944,10 +944,10 @@ namespace dd
             }
         }
       mean_error_vector /= static_cast<float>(nts) ;
-      mean_error_vector *= timeseries * timeseries;
+      mean_error_vector *= timeseries;
 
       max_error = max_errors[0];
-      mean_error = mean_error_vector[0];
+      mean_error = mean_errors[0];
       for (int i =1; i<timeseries; ++i)
         {
           if (max_errors[i] > max_error)
