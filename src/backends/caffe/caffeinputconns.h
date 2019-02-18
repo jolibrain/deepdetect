@@ -843,6 +843,7 @@ namespace dd
     {
       CSVTSInputFileConn::fillup_parameters(ad_input);
       _ntargets = _label.size();
+      _offset = _timesteps;
       if (ad_input.has("timesteps"))
         {
           _timesteps= ad_input.get("timesteps").get<int>();

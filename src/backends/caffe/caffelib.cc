@@ -988,6 +988,16 @@ namespace dd
 	throw MLLibBadParamException("missing solver file in " + this->_mlmodel._repo);
       }
 
+
+    APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
+    int timesteps = 0;
+    if (ad_mllib.has("timesteps"))
+      timesteps = ad_mllib.get("timesteps").get<int>();
+    if (timesteps <= 0 && this->_inputc._ctc)
+      throw MLLibBadParamException("Need to specify timesteps > 0 with sequence (e.g. OCR / CTC) models");
+    if  (timesteps <= 0 && typeid(this->_inputc) == typeid(CSVTSCaffeInputFileConn))
+      throw MLLibBadParamException("Need to specify timesteps > 0 with recurrent  models");
+
     std::lock_guard<std::mutex> lock(_net_mutex); // XXX: not mandatory as train calls are locking resources from above
     TInputConnectorStrategy inputc(this->_inputc);
     this->_inputc._dv.clear();
@@ -1002,6 +1012,8 @@ namespace dd
       cad.add("crop_size",_crop_size);
     if (_autoencoder)
       cad.add("autoencoder",_autoencoder);
+    if (typeid(this->_inputc) == typeid(CSVTSCaffeInputFileConn))
+        inputc._timesteps = timesteps;
     try
       {
 	inputc.transform(cad);
@@ -1013,7 +1025,6 @@ namespace dd
     
     // instantiate model template here, as a defered from service initialization
     // since inputs are necessary in order to fit the inner net input dimension.
-    APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
     if (!this->_mlmodel._model_template.empty())
       {
 	// modifies model structure, template must have been copied at service creation with instantiate_template
@@ -1021,14 +1032,9 @@ namespace dd
 	int ignore_label = -1;
 	if (ad_mllib.has("ignore_label"))
 	  ignore_label = ad_mllib.get("ignore_label").get<int>();
-	int timesteps = 0;
-	if (ad_mllib.has("timesteps"))
-	  timesteps = ad_mllib.get("timesteps").get<int>();
-	if (timesteps == 0 && inputc._ctc)
-	  throw MLLibBadParamException("Need to specify timesteps > 0 with sequence (e.g. OCR / CTC) models");
 	update_protofile_net(this->_mlmodel._repo + '/' + this->_mlmodel._model_template + ".prototxt",
-			     this->_mlmodel._repo + "/deploy.prototxt",
-			     inputc, has_class_weights, ignore_label, timesteps);
+                            this->_mlmodel._repo + "/deploy.prototxt",
+                            inputc, has_class_weights, ignore_label, timesteps);
       }
 
 
@@ -2871,7 +2877,7 @@ namespace dd
         if (loss_scale_layer_param != NULL)
           {
             loss_scale_layer_param->mutable_scale_param()->mutable_filler()->
-              set_value(1.0/(float)_ntargets/(float)batch_size);
+              set_value(1.0/(float)_ntargets/(float)batch_size/(float)inputc._timesteps);
           }
       }
 
