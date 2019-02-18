@@ -943,7 +943,8 @@ namespace dd
                 }
             }
         }
-      mean_error_vector /= nts;
+      mean_error_vector /= static_cast<float>(nts) ;
+      mean_error_vector *= timeseries * timeseries;
 
       max_error = max_errors[0];
       mean_error = mean_error_vector[0];
