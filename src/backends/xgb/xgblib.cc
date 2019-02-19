@@ -173,7 +173,7 @@ namespace dd
       std::string tree_method = "auto";
       double sketch_eps = 0.03;
       double scale_pos_weight = 1.0;
-      std::string updater = "grow_colmaker,prune";
+      std::string updater = ""; // was grow_colmaker,prune, now automatic;
       bool refresh_leaf = true;
       std::string process_type = "default";
       std::string dart_sample_type = "uniform";
@@ -247,7 +247,8 @@ namespace dd
       add_cfg_param("tree_method",tree_method);
       add_cfg_param("sketch_eps",sketch_eps);
       add_cfg_param("scale_pos_weight",scale_pos_weight);
-      add_cfg_param("updater",updater);
+      if (!updater.empty())
+	add_cfg_param("updater",updater);
       add_cfg_param("refresh_leaf",refresh_leaf);
       add_cfg_param("process_type",process_type);
       add_cfg_param("sample_type",dart_sample_type);
