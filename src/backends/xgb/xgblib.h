@@ -24,6 +24,7 @@
 
 #include "mllibstrategy.h"
 #include "xgbmodel.h"
+#include <dmlc/build_config.h>
 #include <xgboost/learner.h>
 
 namespace xgboost
