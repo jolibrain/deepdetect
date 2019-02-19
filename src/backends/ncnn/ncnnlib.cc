@@ -87,6 +87,7 @@ namespace dd
         opt.blob_allocator = &_blob_pool_allocator;
         opt.workspace_allocator = &_workspace_pool_allocator;
         ncnn::set_default_option(opt);
+	model_type(this->_mlmodel._params,this->_mltype);
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -99,6 +100,9 @@ namespace dd
     int NCNNLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::train(const APIData &ad,
                                         APIData &out)
     {
+      (void)ad;
+      (void)out;
+      return 0;
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -256,5 +260,28 @@ namespace dd
 	return 0;
     }
 
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void NCNNLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::model_type(const std::string &param_file,
+										     std::string &mltype)
+    {
+      std::ifstream paramf(param_file);
+      std::stringstream content;
+      content << paramf.rdbuf();
+      
+      std::size_t found_detection = content.str().find("DetectionOutput");
+      if (found_detection != std::string::npos)
+	{
+	  mltype = "detection";
+	  return;
+	}
+      std::size_t found_ocr = content.str().find("ContinuationIndicator");
+      if (found_ocr != std::string::npos)
+	{
+	  mltype = "ctc";
+	  return;
+	}
+      mltype = "classification";
+    }
+  
     template class NCNNLib<ImgNCNNInputFileConn,SupervisedOutput,NCNNModel>;
 }
