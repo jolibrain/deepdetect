@@ -160,7 +160,10 @@ namespace dd
                                            std::string name,
                                            std::string bottom,
                                            std::string top,
-                                           int nout)
+                                           const std::string weight_filler,
+                                           const std::string bias_filler,
+                                           int nout,
+                                           int nin)
   {
     caffe::LayerParameter *lparam = net_params->add_layer();
     lparam->set_type("InnerProduct");
@@ -171,9 +174,19 @@ namespace dd
     cparam->set_num_output(nout);
     cparam->set_axis(2);
     caffe::FillerParameter *wfparam = cparam->mutable_weight_filler();
-    wfparam->set_type("xavier");
+    wfparam->set_type(weight_filler);
+    if (weight_filler == "uniform")
+      {
+        wfparam->set_min(-1.0/sqrt(nin));
+        wfparam->set_max(1.0/sqrt(nin));
+      }
     caffe::FillerParameter *bfparam = cparam->mutable_bias_filler();
-    bfparam->set_type("xavier");
+    bfparam->set_type(bias_filler);
+    if (bias_filler == "uniform")
+      {
+        bfparam->set_min(-1.0/sqrt(nin));
+        bfparam->set_max(1.0/sqrt(nin));
+      }
   }
 
 
@@ -218,6 +231,7 @@ namespace dd
     std::map<int,int> types;
     std::string loss = "L1";
     std::string loss_temp;
+    std::string init = "uniform";
     int ntargets;
     //    double sl1sigma = 10;
 
@@ -253,6 +267,12 @@ namespace dd
       }
     ntargets = ad_mllib.get("ntargets").get<int>();
 
+    if (ad_mllib.has("init"))
+      {
+        init = ad_mllib.get("init").get<std::string>();
+      }
+
+
     // first permute
     add_permute(this->_net_params, "permuted_data", "data", 4,false,false);
     add_permute(this->_dnet_params, "permuted_data", "data", 4,false,false);
@@ -277,15 +297,15 @@ namespace dd
       {
         top = type+"_"+std::to_string(i);
         add_basic_block(this->_net_params,bottom,
-                        "cont_seq",top,hiddens[i], dropouts[i],"uniform", "uniform", layers[i], i);
+                        "cont_seq",top,hiddens[i], dropouts[i],init,init, layers[i], i);
         add_basic_block(this->_dnet_params,bottom,
-                        "cont_seq",top,hiddens[i], dropouts[i],"uniform", "uniform",layers[i], i);
+                        "cont_seq",top,hiddens[i], dropouts[i],init, init,layers[i], i);
         bottom = top;
       }
 
 
-    add_affine(this->_net_params,"affine",bottom,"rnn_pred", ntargets);
-    add_affine(this->_dnet_params,"affine", bottom,"rnn_pred",  ntargets);
+    add_affine(this->_net_params,"affine",bottom,"rnn_pred", init, init, ntargets,hiddens[hiddens.size()-1]);
+    add_affine(this->_dnet_params,"affine", bottom,"rnn_pred",  init, init, ntargets,hiddens[hiddens.size()-1]);
 
     add_permute(this->_net_params, "permuted_rnn_pred", "rnn_pred", 3,true,false);
     add_permute(this->_net_params, "permuted_target_seq", "target_seq", 3,true,false);

@@ -76,7 +76,9 @@ namespace dd
                     std::string name,
                     std::string bottom,
                     std::string top,
-                    int nout);
+                    const std::string weight_filler,
+                    const std::string bias_filler,
+                    int nout, int nin);
 
     void parse_recurrent_layers(const std::vector<std::string>&layers,
                                 std::vector<std::string> &r_layers,
