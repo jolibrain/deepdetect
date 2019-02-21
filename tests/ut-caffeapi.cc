@@ -65,6 +65,7 @@ static std::string iterations_n20 = "1000";
 static std::string iterations_n20_char = "10";
 static std::string iterations_sflare = "2000";
 static std::string iterations_camvid = "2";
+static std::string iterations_lstm = "20";
 #endif
 
 static std::string gpuid = "0"; // change as needed
