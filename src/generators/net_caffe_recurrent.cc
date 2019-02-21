@@ -267,10 +267,10 @@ namespace dd
       }
     ntargets = ad_mllib.get("ntargets").get<int>();
 
-    if (ad_mllib.has("init"))
-      {
-        init = ad_mllib.get("init").get<std::string>();
-      }
+    // if (ad_mllib.has("init"))
+    //   {
+    //     init = ad_mllib.get("init").get<std::string>();
+    //   }
 
 
     // first permute
