@@ -29,7 +29,7 @@ namespace dd
   {
     if (_cifc)
       {
-	_cifc->read_csv(_adconf,fname);
+        _cifc->read_csv(fname);
 	return 0;
       }
     else return -1;
@@ -129,7 +129,7 @@ namespace dd
       {
 	if ((*lit) == _id)
 	  _id_pos = i;
-	else
+  else
          for (unsigned int j=0; j< _label.size(); ++j)
            if ((*lit) == _label[j])
              _label_pos[j] = i;
@@ -259,9 +259,35 @@ namespace dd
     if (!_id.empty() && !has_id)
       throw InputConnectorBadParamException("cannot find id column " + _id);
   }
+
+
+  void CSVInputFileConn::find_min_max(std::ifstream &csv_file)
+  {
+    int nlines = 0;
+    std::string hline;
+    while(std::getline(csv_file,hline))
+      {
+        hline.erase(std::remove(hline.begin(),hline.end(),'\r'),hline.end());
+        std::vector<double> vals;
+        std::string cid;
+        read_csv_line(hline,_delim,vals,cid,nlines);
+        if (nlines == 1)
+          _min_vals = _max_vals = vals;
+        else
+          {
+            for (size_t j=0;j<vals.size();j++)
+              {
+                _min_vals.at(j) = std::min(vals.at(j),_min_vals.at(j));
+                _max_vals.at(j) = std::max(vals.at(j),_max_vals.at(j));
+              }
+          }
+      }
+    csv_file.clear();
+    csv_file.seekg(0,std::ios::beg);
+    std::getline(csv_file,hline); // skip header line
+  }
   
-  void CSVInputFileConn::read_csv(const APIData &ad,
-				  const std::string &fname)
+  void CSVInputFileConn::read_csv(const std::string &fname, const bool forbid_shuffle)
   {
       std::ifstream csv_file(fname,std::ios::binary);
       _logger->info("fname={} / open={}",fname,csv_file.is_open());
@@ -320,38 +346,9 @@ namespace dd
 
       // scaling to [0,1]
       int nlines = 0;
-      if (_scale && _min_vals.empty() && _max_vals.empty())
+      if (_scale && (_min_vals.empty() || _max_vals.empty()))
 	{
-	  while(std::getline(csv_file,hline))
-	    {
-	      hline.erase(std::remove(hline.begin(),hline.end(),'\r'),hline.end());
-	      std::vector<double> vals;
-	      std::string cid;
-	      read_csv_line(hline,_delim,vals,cid,nlines);
-	      if (nlines == 1)
-		_min_vals = _max_vals = vals;
-	      else
-		{
-		  for (size_t j=0;j<vals.size();j++)
-		    {
-		      _min_vals.at(j) = std::min(vals.at(j),_min_vals.at(j));
-		      _max_vals.at(j) = std::max(vals.at(j),_max_vals.at(j));
-		    }
-		}
-	    }
-	  
-	  //debug
-	  /*std::cout << "min/max scales:\n";
-	  std::copy(_min_vals.begin(),_min_vals.end(),std::ostream_iterator<double>(std::cout," "));
-	  std::cout << std::endl;
-	  std::copy(_max_vals.begin(),_max_vals.end(),std::ostream_iterator<double>(std::cout," "));
-	  std::cout << std::endl;*/
-	  //debug
-	  
-	  csv_file.clear();
-	  csv_file.seekg(0,std::ios::beg);
-	  std::getline(csv_file,hline); // skip header line
-	  nlines = 0;
+         find_min_max(csv_file);
 	}
       
       // read data
@@ -415,11 +412,12 @@ namespace dd
 	}
 
       // shuffle before possible test data selection.
-      shuffle_data(ad);
+      if (!forbid_shuffle)
+        shuffle_data(_csvdata);
       
       if (_csv_test_fname.empty() && _test_split > 0)
 	{
-	  split_data();
+	  split_data(_csvdata, _csvdata_test);
 	  _logger->info("data split test size={} / remaining data size={}",_csvdata_test.size(),_csvdata.size());
 	}
       if (!_ignored_columns.empty() || !_categoricals.empty())

@@ -22,6 +22,7 @@
 #include "apidata.h"
 #include "imginputfileconn.h"
 #include "csvinputfileconn.h"
+#include "csvtsinputfileconn.h"
 #include "txtinputfileconn.h"
 #include "outputconnectorstrategy.h"
 #include "jsonapi.h"
@@ -521,6 +522,61 @@ TEST(inputconn,csv_ignore)
   ASSERT_EQ(4,cifc._columns.size());
   ASSERT_EQ("target",(*cifc._columns.begin()));
   remove("test.csv");
+}
+
+TEST(inputconn, csvts_basic)
+{
+  std::string header = "target,cap-shape,cap-surface,cap-color,bruises";
+  std::string d1 = "1,2,3,4,5";
+  std::string d2 = "6,7,8,9,10";
+  std::string d3 = "11,12,13,14,15";
+  std::string d4 = "16,17,18,19,20";
+  std::string d5 = "21,22,23,24,25";
+  std::string d6 = "26,27,28,29,30";
+  fileops::create_dir("csvts", 0777);
+  std::ofstream of1("csvts/ts1.csv");
+  std::ofstream of2("csvts/ts2.csv");
+  std::ofstream of3("csvts/ts3.csv");
+  of1 << header << std::endl;
+  of1 << d1 << std::endl;
+  of1 << d2 << std::endl;
+  of2 << header << std::endl;
+  of2 << d3 << std::endl;
+  of2 << d4 << std::endl;
+  of3 << header << std::endl;
+  of3 << d5 << std::endl;
+  of3 << d6 << std::endl;
+  std::vector<std::string> vdata = { "csvts" };
+  APIData ad;
+  ad.add("data",vdata);
+  APIData pad,pinp;
+  std::vector<APIData> vpinp = { pinp };
+  pad.add("input",vpinp);
+  std::vector<APIData> vpad = { pad };
+  ad.add("parameters",vpad);
+  CSVTSInputFileConn cifc;
+  cifc._logger = spdlog::stdout_logger_mt("test_csvts");
+  cifc._train = true;
+  try
+    {
+      cifc.transform(ad);
+    }
+  catch(InputConnectorBadParamException &e)
+    {
+      std::cerr << "exception=" << e.what() << std::endl;
+      ASSERT_FALSE(true);
+    }
+  ASSERT_EQ(3,cifc._csvtsdata.size());
+  ASSERT_EQ(5,cifc._csvtsdata.at(0).at(0)._v.size());
+  ASSERT_EQ(2,cifc._csvtsdata.at(0).size());
+  ASSERT_EQ(2,cifc._csvtsdata.at(1).size());
+  ASSERT_EQ(2,cifc._csvtsdata.at(2).size());
+
+  ASSERT_EQ(5,cifc._columns.size());
+
+  ASSERT_EQ("target",(*cifc._columns.begin()));
+  // fileops::clear_directory("test");
+  // fileops::remove_dir("test");
 }
 
 /*TEST(inputconn,txt_parse_content)

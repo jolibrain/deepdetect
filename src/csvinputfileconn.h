@@ -107,6 +107,21 @@ namespace dd
 
     void fillup_parameters(const APIData &ad_input)
     {
+
+      if (ad_input.has("shuffle") && ad_input.get("shuffle").get<bool>())
+        {
+          _shuffle = true;
+          if (ad_input.has("seed") && ad_input.get("seed").get<int>() >= 0)
+            {
+              _g = std::mt19937(ad_input.get("seed").get<int>());
+            }
+          else
+            {
+              std::random_device rd;
+              _g = std::mt19937(rd());
+            }
+        }
+
       if (ad_input.has("id"))
 	_id = ad_input.get("id").get<std::string>();
       if (ad_input.has("separator"))
@@ -220,14 +235,17 @@ namespace dd
 	      ++lit;
 	      continue;
 	    }
-	  bool j_is_label = false;
-	  if (!_columns.empty() && std::find(_label_pos.begin(),_label_pos.end(),j)!=_label_pos.end())
-	    j_is_label = true;
-	  if (j_is_label)
-	    {
-	      ++lit;
-	      continue;
-	    }
+         if (_dont_scale_labels)
+           {
+             bool j_is_label = false;
+             if (!_columns.empty() && std::find(_label_pos.begin(),_label_pos.end(),j)!=_label_pos.end())
+               j_is_label = true;
+             if (j_is_label)
+               {
+                 ++lit;
+                 continue;
+               }
+           }
 	  
 	  vals.at(j) = (vals.at(j) - _min_vals.at(j)) / (_max_vals.at(j) - _min_vals.at(j));
 	  ++lit;
@@ -277,44 +295,32 @@ namespace dd
 	}
     }
 
-    void shuffle_data(const APIData &ad)
+    void shuffle_data(std::vector<CSVline> &csvdata)
     {
-      if (ad.has("shuffle") && ad.get("shuffle").get<bool>())
-	{
-	  std::mt19937 g;
-	  if (ad.has("seed") && ad.get("seed").get<int>() >= 0)
-	    {
-	      g = std::mt19937(ad.get("seed").get<int>());
-	    }
-	  else
-	    {
-	      std::random_device rd;
-	      g = std::mt19937(rd());
-	    }
-	  std::shuffle(_csvdata.begin(),_csvdata.end(),g);
-	}
+      if (_shuffle)
+        std::shuffle(csvdata.begin(),csvdata.end(),_g);
     }
 
-    void split_data()
+    void split_data(std::vector<CSVline> &csvdata, std::vector<CSVline> &csvdata_test)
     {
       if (_test_split > 0.0)
 	{
-	  int split_size = std::floor(_csvdata.size() * (1.0-_test_split));
-	  auto chit = _csvdata.begin();
+	  int split_size = std::floor(csvdata.size() * (1.0-_test_split));
+	  auto chit = csvdata.begin();
 	  auto dchit = chit;
 	  int cpos = 0;
-	  while(chit!=_csvdata.end())
+	  while(chit!=csvdata.end())
 	    {
 	      if (cpos == split_size)
 		{
-		  if (dchit == _csvdata.begin())
+		  if (dchit == csvdata.begin())
 		    dchit = chit;
-		  _csvdata_test.push_back((*chit));
+		  csvdata_test.push_back((*chit));
 		}
 	      else ++cpos;
 	      ++chit;
 	    }
-	  _csvdata.erase(dchit,_csvdata.end());
+	  csvdata.erase(dchit,csvdata.end());
 	}
     }
     
@@ -380,9 +386,9 @@ namespace dd
 		      scale_vals(_csvdata.at(j)._v);
 		    }
 		}
-	      shuffle_data(ad_input);
+	      shuffle_data(_csvdata);
 	      if (_test_split > 0.0)
-		split_data();
+               split_data(_csvdata, _csvdata_test);
 	      //std::cerr << "data split test size=" << _csvdata_test.size() << " / remaining data size=" << _csvdata.size() << std::endl;
 	      if (!_ignored_columns.empty() || !_categoricals.empty())
 		update_columns();
@@ -417,8 +423,7 @@ namespace dd
 		       std::string &column_id,
 		       int &nlines);
     
-    void read_csv(const APIData &ad,
-		  const std::string &fname);
+    void read_csv(const std::string &fname, const bool forbid_shuffle = false);
 
     int batch_size() const
     {
@@ -493,6 +498,43 @@ namespace dd
 			 const std::string &val);
 
     void update_columns();
+
+
+    // below helpers for csvts
+    std::pair<std::vector<double>,std::vector<double>> get_min_max_vals(std::string& fname)
+      {
+        clear_min_max();
+        find_min_max(fname);
+        return get_min_max_vals();
+      }
+
+    void find_min_max(std::string &fname)
+    {
+      std::ifstream csv_file(fname,std::ios::binary);
+      // discard header
+      std::string hline;
+      std::getline(csv_file,hline);
+      if (_columns.empty())
+        {
+          read_header(hline);
+          find_min_max(csv_file);
+          update_columns();
+        }
+      else
+        find_min_max(csv_file);
+    }
+    void find_min_max(std::ifstream &csv_file);
+    void clear_min_max()
+    {
+      _min_vals.clear();
+      _max_vals.clear();
+    }
+    std::pair<std::vector<double>,std::vector<double>> get_min_max_vals()
+      {
+        return std::pair<std::vector<double>,std::vector<double>>(_min_vals,_max_vals);
+      }
+
+
     
     std::vector<double> one_hot_vector(const int &cnum,
 				       const int &size)
@@ -503,6 +545,8 @@ namespace dd
       }
 
     // options
+    bool _shuffle = false;
+    std::mt19937 _g;
     std::string _csv_fname;
     std::string _csv_test_fname;
     std::list<std::string> _columns;
@@ -516,6 +560,7 @@ namespace dd
     std::unordered_set<int> _ignored_columns_pos;
     std::string _id;
     bool _scale = false; /**< whether to scale all data between 0 and 1 */
+    bool _dont_scale_labels = true; // original csv input conn do not scale labels, while it is needed for csv timeseries
     std::vector<double> _min_vals; /**< upper bound used for auto-scaling data */
     std::vector<double> _max_vals; /**< lower bound used for auto-scaling data */
     std::unordered_map<std::string,CCategorical> _categoricals; /**< auto-converted categorical variables */

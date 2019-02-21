@@ -66,6 +66,13 @@ namespace dd
       return (stat(fname.c_str(),&bstat)==0);
     }
 
+    static bool dir_exists(const std::string &fname)
+    {
+      bool dir;
+      bool exists = file_exists(fname, dir);
+      return exists && dir;
+    }
+
     static bool file_exists(const std::string &fname,
 			    bool &directory)
     {
@@ -102,12 +109,15 @@ namespace dd
     static int list_directory(const std::string &repo,
                               const bool &files,
                               const bool &dirs,
+
                               const bool &sub_files,
                               std::unordered_set<std::string> &lfiles)
+
     {
       DIR *dir;
       struct dirent *ent;
       if ((dir = opendir(repo.c_str())) != NULL) {
+
         while ((ent = readdir(dir)) != NULL) {
           if ((files && (ent->d_type == DT_REG || ent->d_type == DT_LNK))
               || (dirs && (ent->d_type == DT_DIR || ent->d_type == DT_LNK) && ent->d_name[0] != '.'))
@@ -122,6 +132,7 @@ namespace dd
         {
           return 1;
         }
+
     }
 
     // remove everything, including first level directories within directory

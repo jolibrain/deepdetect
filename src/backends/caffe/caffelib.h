@@ -90,7 +90,12 @@ namespace dd
       void configure_ssd_template(const std::string &dest_net,
 				  const std::string &deploy_dest_net,
 				  const APIData &ad);
-      
+
+      void configure_recurrent_template(const APIData &ad,
+                                        const TInputConnectorStrategy &inputc,
+                                        caffe::NetParameter &net_param,
+                                        caffe::NetParameter &dnet_param);
+
     /**
      * \brief configure noise data augmentation in training template
      * @param ad the template data object
@@ -201,7 +206,13 @@ namespace dd
        * \brief updates the softmax temperature
        * @param mllib apidata object
        */
+
       void update_deploy_protofile_softmax(const APIData &ad);
+      /**
+       * \brief updates the channel / timeteps number for timeseries
+       * @param mllib apidata object
+       */
+      bool update_timesteps(int timesteps);
       
     private:
       void update_protofile_classes(caffe::NetParameter &net_param);
@@ -255,12 +266,17 @@ namespace dd
       int findOutputSlotNumberByBlobName(const caffe::Net<float> *net,
                                      const std::string blob_name);
 
-      Blob<float>* findOutputBlobByName(const caffe::Net<float> *net,
-                                        const std::string blob_name);
+      boost::shared_ptr<Blob<float>> findOutputBlobByName(const caffe::Net<float> *net,
+                                                   const std::string blob_name);
+
+
+      boost::shared_ptr<Blob<float>> findBlobByName(const caffe::Net<float> *net,
+                                             const std::string blob_name);
 
       std::vector<double> img_resize(const std::vector<double>& vals,
                                      const int height_net,  const int width_net,
                                      const int height_dest, const int width_dest, bool resize_nn);
+
 
 
     public:
@@ -271,13 +287,14 @@ namespace dd
       bool _regression = false; /**< whether the net acts as a regressor. */
       std::string _loss = ""; /**< loss to use : 0 softmax+multinomail logistic or1: dice*/
       int _ntargets = 0; /**< number of classification or regression targets. */
+      //      std::vector<int> _targets; /**< id number of classification or regression targets. */
       bool _autoencoder = false; /**< whether an autoencoder. */
       std::mutex _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as net is not re-instantiated. Use batches instead. */
       long int _flops = 0;  /**< model flops. */
       long int _params = 0;  /**< number of parameters in the model. */
       int _crop_size = -1; /**< cropping is part of Caffe transforms in input layers, storing here. */
       float _scale = 1.0; /**< scale is part of Caffe transforms in input layers, storing here. */
-      
+
       std::vector<std::string> _best_metrics; /**< metric to use for saving best model */
       double _best_metric_value; /**< best metric value  */
 

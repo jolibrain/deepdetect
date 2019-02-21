@@ -146,6 +146,17 @@ namespace dd
 		     const std::string &bottom,
 		     const double &ratio);
 
+    void add_lstm(caffe::NetParameter *net_param,
+                  const std::string &seq,
+                  const std::string &cont,
+                  const std::string &name);
+
+    void add_rnn(caffe::NetParameter *net_param,
+                 const std::string &seq,
+                 const std::string &cont,
+                 const std::string &name);
+
+
     void add_bn(caffe::NetParameter *net_param,
 		const std::string &bottom,
 		const std::string &top="");

@@ -86,6 +86,7 @@ namespace dd
     int width = inputc.width();
     int height = inputc.height();
     int channels = inputc.channels();
+    int batch_size = inputc.batch_size();
     bool flat1dconv = inputc._flat1dconv; // whether the model uses 1d-conv (e.g. character-level convnet for text)
     
     // train net
@@ -175,7 +176,7 @@ namespace dd
 	  lparam->set_type("MemorySparseData");
 	else lparam->set_type("MemoryData");
 	caffe::MemoryDataParameter *mdparam = lparam->mutable_memory_data_param();
-	mdparam->set_batch_size(32); // dummy value, updated before training
+	mdparam->set_batch_size(batch_size); // dummy value, updated before training
 	mdparam->set_channels(channels);
 	mdparam->set_height(height);
 	mdparam->set_width(width);
@@ -184,13 +185,13 @@ namespace dd
     lparam = CaffeCommon::add_layer(this->_net_params,"",top,"inputl",
 				    inputc._sparse ? "MemorySparseData" : "MemoryData",label); // test layer
     caffe::MemoryDataParameter *mdparam = lparam->mutable_memory_data_param();
-    mdparam->set_batch_size(32); // dummy value, updated before training
+    mdparam->set_batch_size(batch_size); // dummy value, updated before training
     mdparam->set_channels(channels);
     mdparam->set_height(height);
     mdparam->set_width(width);
     nsr = lparam->add_include();
     nsr->set_phase(caffe::TEST);
-    
+
     // deploy
     if (inputc._sparse)
       dlparam->set_type("MemorySparseData");
@@ -309,6 +310,36 @@ namespace dd
     //fparam->set_value(0.2); //TODO: option
   }
 
+
+
+  void NetLayersCaffe::add_lstm(caffe::NetParameter *net_param,
+                                const std::string &seq,
+                                const std::string &cont,
+                                const std::string &name)
+  {
+    caffe::LayerParameter *lparam = net_param->add_layer();
+    lparam->add_bottom(seq);
+    lparam->add_bottom(cont);
+    lparam->add_top(name);
+    lparam->set_name(name);
+    lparam->set_type("LSTM");
+  }
+
+  void NetLayersCaffe::add_rnn(caffe::NetParameter *net_param,
+                               const std::string &seq,
+                               const std::string &cont,
+                               const std::string &name)
+  {
+    caffe::LayerParameter *lparam = net_param->add_layer();
+    lparam->add_bottom(seq);
+    lparam->add_bottom(cont);
+    lparam->add_top(name);
+    lparam->set_name(name);
+    lparam->set_type("RNN");
+  }
+
+
+
   void NetLayersCaffe::add_deconv(caffe::NetParameter *net_param,
 				  const std::string &bottom,
 				  const std::string &top,
@@ -347,6 +378,7 @@ namespace dd
     //fparam->set_value(0.2); //TODO: option
   }
 
+
   void NetLayersCaffe::add_act(caffe::NetParameter *net_param,
 			       const std::string &bottom,
 			       const std::string &activation,
@@ -366,6 +398,7 @@ namespace dd
 	nsr->set_phase(caffe::TEST);
       }
   }
+
 
   void NetLayersCaffe::add_pooling(caffe::NetParameter *net_param,
 				   const std::string &bottom,
@@ -557,6 +590,7 @@ namespace dd
 
   template class NetInputCaffe<ImgCaffeInputFileConn>;
   template class NetInputCaffe<CSVCaffeInputFileConn>;
+  template class NetInputCaffe<CSVTSCaffeInputFileConn>;
   template class NetInputCaffe<TxtCaffeInputFileConn>;
   template class NetInputCaffe<SVMCaffeInputFileConn>;
 }
