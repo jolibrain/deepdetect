@@ -38,7 +38,7 @@ namespace dd
                                                 const std::string &type,
                                                 const int id)
   {
-    std::string ctype = (type == "R" ?  "RNN" : "LSTM");
+    std::string ctype = (type == _rnn_str ?  "RNN" : "LSTM");
     caffe::LayerParameter *lparam = net_param->add_layer();
     lparam->set_type(ctype);
     lparam->set_name(ctype+std::to_string(id));
@@ -207,6 +207,11 @@ namespace dd
             r_layers.push_back(_rnn_str);
             h_sizes.push_back(std::stoi(s.substr(pos+_rnn_str.size())));
           }
+        else if ((pos=s.find(_affine_str))!= std::string::npos)
+          {
+            r_layers.push_back(_affine_str);
+            h_sizes.push_back(std::stoi(s.substr(pos+_affine_str.size())));
+          }
         else
           {
             try
@@ -295,15 +300,18 @@ namespace dd
     std::string top;
     for (unsigned int i=0; i<layers.size(); ++i)
       {
-        if (layers[i] == "R")
+        if (layers[i] == _rnn_str)
           type = "RNN";
-        else if (layers[i] == "L")
+        else if (layers[i] == _lstm_str)
           type = "LSTM";
-        else if (layers[i] == "A")
+        else if (layers[i] == _affine_str)
           type = "AFFINE";
 
         top = type+"_"+std::to_string(i);
-
+        if ((i == layers.size() -1) && osize[osize.size()-1] == ntargets)
+          top = "rnn_pred";
+        else
+          top = type+"_"+std::to_string(i);
         if (type == "AFFINE")
           {
             int isize = i==0? osize[i] : osize[i-1]; //used only for initing weights
