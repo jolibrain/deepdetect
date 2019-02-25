@@ -216,7 +216,7 @@ namespace dd
               }
             catch(std::exception &e)
               {
-                throw MLLibBadParamException("timeseries template requires layers of the form \"L50\". L for LSTM, R for RNN and 50 for a hidden cell size of 50");
+                throw MLLibBadParamException("timeseries template requires layers of the form \"L50\". L for LSTM, R for RNN, A for affine dimension reduction,  and 50 for a hidden cell size of 50");
               }
           }
       }
@@ -226,7 +226,7 @@ namespace dd
   {
 
     std::vector<std::string> layers;
-    std::vector<int> hiddens;
+    std::vector<int> osize;
     std::vector<double> dropouts; // default
     std::map<int,int> types;
     std::string loss = "L1";
@@ -238,7 +238,7 @@ namespace dd
     if (ad_mllib.has("layers"))
       {
         std::vector<std::string> apilayers = ad_mllib.get("layers").get<std::vector<std::string>>();
-        parse_recurrent_layers(apilayers, layers, hiddens);
+        parse_recurrent_layers(apilayers, layers, osize);
       }
     if (ad_mllib.has("dropout"))
       {
@@ -288,24 +288,47 @@ namespace dd
     add_flatten(this->_net_params, "cont_seq_unshaped","cont_seq", 1);
     add_flatten(this->_dnet_params,"cont_seq_unshaped","cont_seq", 1);
 
-    // lstm0
 
-    std::string type = (layers[0] == "R"? "RNN":"LSTM");
+
+    std::string type;
     std::string bottom = "input_seq";
     std::string top;
     for (unsigned int i=0; i<layers.size(); ++i)
       {
+        if (layers[i] == "R")
+          type = "RNN";
+        else if (layers[i] == "L")
+          type = "LSTM";
+        else if (layers[i] == "A")
+          type = "AFFINE";
+
         top = type+"_"+std::to_string(i);
-        add_basic_block(this->_net_params,bottom,
-                        "cont_seq",top,hiddens[i], dropouts[i],init,init, layers[i], i);
-        add_basic_block(this->_dnet_params,bottom,
-                        "cont_seq",top,hiddens[i], dropouts[i],init, init,layers[i], i);
+
+        if (type == "AFFINE")
+          {
+            int isize = i==0? osize[i] : osize[i-1]; //used only for initing weights
+            add_affine(this->_net_params,"affine_"+std::to_string(i),bottom,top, init, init,
+                       osize[i],isize);
+            add_affine(this->_dnet_params,"affine_"+std::to_string(i), bottom,top,  init, init,
+                       osize[i],isize);
+
+          }
+        else
+          {
+            add_basic_block(this->_net_params,bottom,
+                            "cont_seq",top,osize[i], dropouts[i],init,init,layers[i], i);
+            add_basic_block(this->_dnet_params,bottom,
+                            "cont_seq",top,osize[i], dropouts[i],init,init,layers[i], i);
+          }
         bottom = top;
       }
 
-
-    add_affine(this->_net_params,"affine",bottom,"rnn_pred", init, init, ntargets,hiddens[hiddens.size()-1]);
-    add_affine(this->_dnet_params,"affine", bottom,"rnn_pred",  init, init, ntargets,hiddens[hiddens.size()-1]);
+    // add affine dim reduction only if num of  outputs of last layer  do not match ntarget number
+    if (osize[osize.size()-1] != ntargets)
+      {
+        add_affine(this->_net_params,"affine_final",bottom,"rnn_pred", init, init, ntargets,osize[osize.size()-1]);
+        add_affine(this->_dnet_params,"affine_final", bottom,"rnn_pred",  init, init, ntargets,osize[osize.size()-1]);
+      }
 
     add_permute(this->_net_params, "permuted_rnn_pred", "rnn_pred", 3,true,false);
     add_permute(this->_net_params, "permuted_target_seq", "target_seq", 3,true,false);
