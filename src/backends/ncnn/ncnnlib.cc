@@ -55,7 +55,8 @@ namespace dd
 	_net = tl._net;
 	tl._net = nullptr;
 	_nclasses = tl._nclasses;
-    _threads = tl._threads;
+       _threads = tl._threads;
+       _timeserie = tl._timeserie;
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -79,6 +80,11 @@ namespace dd
         else
             _threads = dd_utils::my_hardware_concurrency();
 
+        if (typeid(this->_inputc) == typeid(CSVTSNCNNInputFileConn))
+          {
+            _timeserie = true;
+          }
+
         _blob_pool_allocator.set_size_compare_ratio(0.0f);
         _workspace_pool_allocator.set_size_compare_ratio(0.5f);
         ncnn::Option opt;
@@ -87,7 +93,7 @@ namespace dd
         opt.blob_allocator = &_blob_pool_allocator;
         opt.workspace_allocator = &_workspace_pool_allocator;
         ncnn::set_default_option(opt);
-	model_type(this->_mlmodel._params,this->_mltype);
+        model_type(this->_mlmodel._params,this->_mltype);
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -117,7 +123,21 @@ namespace dd
             throw;
         }
 
+        // if height (timestep) changes we need to clear net before recreating an extractor with new
+        // height,
+        // and to reload params and models after clear()
+        if (_old_height != -1 && _old_height != inputc.height())
+          {
+            // in case of new prediction with different timesteps value, clear old net
+            _net->clear();
+            _net->load_param(this->_mlmodel._params.c_str());
+            _net->load_model(this->_mlmodel._weights.c_str());
+            _old_height = inputc.height();
+          }
+        _net->set_input_h(inputc.height());
+
         ncnn::Extractor ex = _net->create_extractor();
+
         ex.set_num_threads(_threads);
         ex.input("data", inputc._in);
 
@@ -140,7 +160,7 @@ namespace dd
 		  blank_label = ad_output.get("blank_label").get<int>();
 	      }
 	  }
-	
+
         // Extract detection or classification
         int ret = 0;
 	std::string out_blob = "prob";
@@ -148,6 +168,8 @@ namespace dd
 	  out_blob = "detection_out";
 	else if (ctc == true)
 	  out_blob = "probs";
+       else if (_timeserie)
+         out_blob = "rnn_pred";
 	ret = ex.extract(out_blob.c_str(),inputc._out);
         if (ret == -1) {
             throw MLLibInternalException("NCNN internal error");
@@ -157,6 +179,7 @@ namespace dd
         std::vector<double> probs;
         std::vector<std::string> cats;
         std::vector<APIData> bboxes;
+        std::vector<APIData> series;
         APIData rad;
 	
         // Get confidence_threshold
@@ -182,10 +205,10 @@ namespace dd
                 probs.push_back(values[1]);
 
                 APIData ad_bbox;
-                ad_bbox.add("xmin",values[2] * inputc._images_size.at(0).second);
-                ad_bbox.add("ymax",values[3] * inputc._images_size.at(0).first);
-                ad_bbox.add("xmax",values[4] * inputc._images_size.at(0).second);
-                ad_bbox.add("ymin",values[5] * inputc._images_size.at(0).first);
+                ad_bbox.add("xmin",values[2] * inputc.width());
+                ad_bbox.add("ymax",values[3] * inputc.height());
+                ad_bbox.add("xmax",values[4] * inputc.width());
+                ad_bbox.add("ymin",values[5] * inputc.height());
                 bboxes.push_back(ad_bbox);
             }
         }
@@ -216,7 +239,27 @@ namespace dd
 	    cats.push_back(outstr);
 	    probs.push_back(1.0);
 	  }
-	else {
+	else if (_timeserie)
+         {
+           std::vector<int> tsl = inputc._timeseries_lengths;
+           for (unsigned int tsi = 0; tsi< tsl.size(); ++tsi)
+             {
+               for (int ti = 0; ti<tsl[tsi]; ++ti)
+                 {
+                   std::vector<double> predictions;
+                   for (int k =0; k< inputc._ntargets; ++k)
+                     {
+                       double res = inputc._out.row(ti)[k];
+                       predictions.push_back(inputc.unscale_res(res,k));
+                     }
+                   APIData ts;
+                   ts.add("out", predictions);
+                   series.push_back(ts);
+                 }
+             }
+         }
+       else
+         {
             std::vector<float> cls_scores;
 
             cls_scores.resize(inputc._out.w);
@@ -242,17 +285,28 @@ namespace dd
             }
         }
 
-	rad.add("uri",inputc._ids.at(0));
-	rad.add("loss", 0.0);
-        rad.add("probs", probs);
+        rad.add("uri",inputc._ids.at(0));
+        rad.add("loss", 0.0);
         rad.add("cats", cats);
         if (bbox == true)
             rad.add("bboxes", bboxes);
+        if (_timeserie)
+          {
+            rad.add("series", series);
+            rad.add("probs",std::vector<double>(series.size(),1.0));
+          }
+        else
+          rad.add("probs", probs);
+
+        if (_timeserie)
+          out.add("timeseries",true);
+
+
         vrad.push_back(rad);
-	tout.add_results(vrad);
-	out.add("nclasses", this->_nclasses);
+        tout.add_results(vrad);
+        out.add("nclasses", this->_nclasses);
         if (bbox == true)
-            out.add("bbox", true);
+          out.add("bbox", true);
         out.add("roi", false);
         out.add("multibox_rois", false);
 	tout.finalize(ad.getobj("parameters").getobj("output"),out,static_cast<MLModel*>(&this->_mlmodel));
@@ -284,4 +338,5 @@ namespace dd
     }
   
     template class NCNNLib<ImgNCNNInputFileConn,SupervisedOutput,NCNNModel>;
+  template class NCNNLib<CSVTSNCNNInputFileConn,SupervisedOutput,NCNNModel>;
 }

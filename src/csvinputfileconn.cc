@@ -83,6 +83,7 @@ namespace dd
 	else _cifc->add_train_csvline(std::to_string(_cifc->_csvdata.size()+1),vals);
 	++l;
       }
+    _cifc->update_columns();
     return 0;
   }
 
