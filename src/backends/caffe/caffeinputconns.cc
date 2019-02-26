@@ -693,7 +693,11 @@ namespace dd
 	std::string dbchunkname = dbfullname + "_" + std::to_string(ch) + ".h5";
 	dbchunks.push_back(dbchunkname);
 	H5::H5File hdffile(dbchunkname, H5F_ACC_TRUNC);
-	_logger->info("created hdf5 train dataset for chunk {}",ch);
+	std::string dname;
+	if (train_db)
+	  dname = "train";
+	else dname = "test";
+	_logger->info("created hdf5 {} dataset for chunk {}",dname,ch);
 	
 	// create datasets
 	// image data
