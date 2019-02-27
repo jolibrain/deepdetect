@@ -128,6 +128,7 @@ namespace dd
       this->_inputc.init(_init_parameters.getobj("input"));
       this->_outputc.init(_init_parameters.getobj("output"));
       this->init_mllib(_init_parameters.getobj("mllib"));
+      this->fillup_measures_history(ad);
     }
 
     /**
@@ -255,7 +256,7 @@ namespace dd
       APIData jmrepo;
       jmrepo.add("repository",this->_mlmodel._repo);
       out.add("model",jmrepo);
-      this->fillup_measures_history(ad);
+      //this->fillup_measures_history(ad);
       if (!ad.has("async") || (ad.has("async") && ad.get("async").get<bool>()))
 	{
 	  std::lock_guard<std::mutex> lock(_tjobs_mutex);

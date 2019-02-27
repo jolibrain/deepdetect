@@ -110,10 +110,13 @@ namespace dd
     static int read_json_blob(const std::string &model_repo,
 			      const std::string &jfilename,
 			      APIData &ad);
+
+    static void read_metrics_json(const std::string &model_repo,
+				  APIData &ad);
     
     static std::string _json_blob_fname;
     static std::string _json_config_blob_fname;
-    std::string _mrepo; /**< service file repository */
+    //std::string _mrepo; /**< service file repository */
   };
 
   /**
