@@ -101,7 +101,7 @@ namespace dd
     lparam->set_name("slice_timeseries");
 
     caffe::SliceParameter *sparam = lparam->mutable_slice_param();
-    sparam->set_slice_dim(2);
+    sparam->set_axis(2);
     sparam->add_slice_point(1);
     sparam->add_slice_point(slice_point);
     lparam->add_top(cont_seq);
