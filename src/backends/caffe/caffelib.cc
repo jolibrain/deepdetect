@@ -217,25 +217,22 @@ namespace dd
 	caffe::ReadProtoFromTextFile(dest_net,&net_param); //TODO: catch parsing error (returns bool true on success)
 	caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
 
-       if (this->_loss.compare(0, 4, "dice",0,4) == 0)
+       if (this->_loss == "dice")
       // dice loss!!
       {
-        int ignore_label = -1;
-        if (ad.has("ignore_label"))
-          ignore_label = ad.get("ignore_label").get<int>();
+        if (_nclasses > 2)
+          update_protofiles_one_hot(net_param);
 
         if (net_param.name().compare("deeplab_vgg16")==0
 	    || net_param.name().compare("pspnet_vgg16")==0
 	    || net_param.name().compare("pspnet_50")==0
 	    || net_param.name().compare("pspnet_101")==0)
           {
-            update_protofiles_dice_one_hot(net_param, this->_loss, _nclasses);
-            update_protofiles_dice_deeplab_vgg16(net_param, deploy_net_param, this->_loss, ignore_label);
+            update_protofiles_dice_deeplab_vgg16(net_param, deploy_net_param, ad);
 	  }
         else if (net_param.name().compare("unet") == 0)
           {
-            update_protofiles_dice_one_hot(net_param, this->_loss, _nclasses);
-            update_protofiles_dice_unet(net_param,deploy_net_param, this->_loss, ignore_label);
+            update_protofiles_dice_unet(net_param,deploy_net_param, ad);
 	  }
 
       }
@@ -927,7 +924,7 @@ namespace dd
     if (ad.has("loss"))
       {
         _loss = ad.get("loss").get<std::string>();
-        if (this->_loss.compare(0, 4, "dice",0,4) == 0)
+        if (this->_loss == "dice")
           if (! this->_inputc._segmentation)
             throw MLLibBadParamException("asked for  dice loss without segmentation");
       }
@@ -3166,7 +3163,7 @@ namespace dd
 	    if (lparam->has_convolution_param())
 	      {
             int num_output = lparam->mutable_convolution_param()->num_output();
-            if (_loss == "dice" && lparam->name() == "linear_aggregation" && num_output == 1)
+            if (_loss == "dice" && _nclasses <= 2 && lparam->name() == "linear_aggregation" && num_output == 1)
               continue;
             if (last_layer || num_output == 0)
               lparam->mutable_convolution_param()->set_num_output(_nclasses);
@@ -3427,7 +3424,7 @@ namespace dd
   
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofiles_dice_deeplab_vgg16(caffe::NetParameter &net_param,caffe::NetParameter &deploy_net_param, std::string loss, int ignore_label)
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofiles_dice_deeplab_vgg16(caffe::NetParameter &net_param,caffe::NetParameter &deploy_net_param, const APIData& ad)
   {
     caffe::LayerParameter *shrink_param = find_layer_by_name(net_param,"label_shrink");
     shrink_param->add_include();
@@ -3448,7 +3445,7 @@ namespace dd
     mvn_param->add_bottom(logits);
     mvn_param->add_top(logits_norm);
 
-    if (loss == "dice")
+    if (_nclasses <= 2)
       {
         caffe::LayerParameter* conv_param = insert_layer_before(net_param, softml_pos++);
         *conv_param->mutable_name() = "linear_aggregation";
@@ -3486,7 +3483,7 @@ namespace dd
 
 
     caffe::LayerParameter* final_interp_param = find_layer_by_name(net_param,"final_interp");
-    if (loss == "dice")
+    if (_nclasses <= 2)
       {
         *final_interp_param->mutable_bottom(0) = agg_output;
         caffe::LayerParameter* probt_param = find_layer_by_name(net_param, "probt");
@@ -3505,24 +3502,13 @@ namespace dd
     *lossparam->mutable_type() = "DiceCoefLoss";
     *lossparam->mutable_bottom(0) = loss_input;
     caffe::DiceCoefLossParameter* dclp = lossparam->mutable_dice_coef_loss_param();
-    if (ignore_label != -1 && loss != "dice")
-      dclp->set_ignore_label(ignore_label);
-    if (loss == "dice")
-      dclp->set_generalization(caffe::DiceCoefLossParameter::NONE);
-    else if (loss == "dice_multiclass")
-      dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS);
-    else if (loss == "dice_weighted")
-      dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED);
-    else if (loss == "dice_weighted_batch")
-      dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED_BATCH);
-    else if (loss == "dice_weighted_all")
-      dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED_ALL);
 
+    update_protofiles_dice_params(dclp, ad);
 
     // now work on deploy.txt
     int final_interp_pos = find_index_layer_by_type(deploy_net_param, "Interp");
     final_interp_param = deploy_net_param.mutable_layer(final_interp_pos);
-    if (loss == "dice")
+    if (_nclasses <= 2)
       *final_interp_param->mutable_bottom(0) = agg_output;
     else
       *final_interp_param->mutable_bottom(0) = logits_norm;
@@ -3535,7 +3521,7 @@ namespace dd
     mvn_param->add_top(logits_norm);
 
 
-    if (loss == "dice")
+    if (_nclasses <= 2)
       {
         caffe::LayerParameter *conv_param = insert_layer_before(deploy_net_param, final_interp_pos);
         *conv_param->mutable_name() = "linear_aggregation";
@@ -3560,18 +3546,129 @@ namespace dd
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofiles_dice_one_hot(caffe::NetParameter &net_param, std::string loss, int nclasses)
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofiles_one_hot(caffe::NetParameter &net_param)
   {
-    if (loss.compare(0, 4, "dice",0,4) != 0)
-      return;
     caffe::LayerParameter* denseImageDataLayer = find_layer_by_type(net_param,"DenseImageData");
     caffe::DenseImageDataParameter *dp = denseImageDataLayer->mutable_dense_image_data_param();
-    dp->set_one_hot_nclasses(nclasses);
+    dp->set_one_hot_nclasses(_nclasses);
+  }
+
+
+    template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofiles_dice_params(caffe::DiceCoefLossParameter*dclp,  const APIData &ad)
+  {
+
+    caffe::DiceCoefLossParameter::GeneralizationMode genMode =
+      caffe::DiceCoefLossParameter::MULTICLASS;
+    caffe::DiceCoefLossParameter::WeightMode weightMode =
+      caffe::DiceCoefLossParameter::INVERSE_VOLUME;
+    caffe::DiceCoefLossParameter::ContourShape contours =
+      caffe::DiceCoefLossParameter::NO;
+    int contour_size = 7;
+    float contour_amplitude = 5.0;
+    if (ad.has("dice_param"))
+      {
+        APIData diceParams = ad.getobj("dice_param");
+        if (diceParams.has("class_weighting"))
+          {
+            APIData cwd = diceParams.getobj("class_weighting");
+            if (cwd.has("compute_on"))
+              {
+                std::string wm = cwd.get("compute_on").get<std::string>();
+                if (wm == "image")
+                  genMode = caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED;
+                else if (wm == "batch")
+                  genMode = caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED_BATCH;
+                else if (wm == "all")
+                  genMode = caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED_ALL;
+                else
+                  {
+                    this->_logger->warn("dice class weighting on {} unrecognized , setting to all",wm);
+                    genMode = caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED_ALL;
+                  }
+              }
+            if (cwd.has("weight"))
+              {
+                std::string wm = cwd.get("weight").get<std::string>();
+                if (wm == "equalize_classes")
+                  weightMode = caffe::DiceCoefLossParameter::EQUALIZE_CLASSES;
+                else if (wm == "extra_small_volumes")
+                  weightMode = caffe::DiceCoefLossParameter::EXTRA_SMALL_VOLUMES;
+                else if (wm == "inverse_volume")
+                  weightMode = caffe::DiceCoefLossParameter::INVERSE_VOLUME;
+                else
+                  {
+                    this->_logger->warn("dice weight mode {} unrecognized , setting to inverse volume",wm);
+                    weightMode = caffe::DiceCoefLossParameter::INVERSE_VOLUME;
+                  }
+              }
+          }
+
+
+        if (diceParams.has("contour"))
+          {
+            APIData contourdata = diceParams.getobj("contour");
+
+            if (contourdata.has("shape"))
+              {
+                std::string cs = contourdata.get("shape").get<std::string>();
+                if (cs == "simple")
+                  contours = caffe::DiceCoefLossParameter::SIMPLE;
+                else if (cs == "sharp")
+                  contours = caffe::DiceCoefLossParameter::SHARP;
+                else
+                  {
+                    this->_logger->warn("dice contour shape {} unrecognized , setting to sharp",cs);
+                    contours = caffe::DiceCoefLossParameter::SHARP;
+                  }
+              }
+            if (contourdata.has("size"))
+              {
+                try
+                  {
+                    contour_size = contourdata.get("size").get<int>();
+                  }
+                catch (std::exception &e)
+                  {
+                    this->_logger->warn("dice contour size unrecognized, (odd) int expected");
+                  }
+
+              }
+            if (contourdata.has("amplitude"))
+              {
+                try
+                  {
+                    contour_amplitude = contourdata.get("amplitude").get<double>();
+                  }
+                catch (std::exception &e)
+                  {
+                    this->_logger->warn("dice contour amplitude unrecognized, float expected");
+                  }
+              }
+          }
+      }
+
+
+    if (_nclasses <= 2)
+      dclp->set_generalization(caffe::DiceCoefLossParameter::NONE);
+    else
+      {
+        dclp->set_generalization(genMode);
+        if (genMode != caffe::DiceCoefLossParameter::MULTICLASS)
+          dclp->set_weight_mode(weightMode);
+      }
+
+    dclp->set_contour_shape(contours);
+    if (contours != caffe::DiceCoefLossParameter::NO)
+      {
+        dclp->set_contour_size(contour_size);
+        dclp->set_contour_amplitude(contour_amplitude);
+      }
   }
 
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofiles_dice_unet(caffe::NetParameter &net_param,caffe::NetParameter &deploy_net_param, std::string loss, int ignore_label)
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofiles_dice_unet(caffe::NetParameter &net_param,caffe::NetParameter &deploy_net_param,  const APIData&ad)
   {
     int softml_pos = find_index_layer_by_type(net_param,"SoftmaxWithLoss");
 
@@ -3588,7 +3685,7 @@ namespace dd
     mvn_param->add_top(logits_norm);
 
 
-    if (loss == "dice")
+    if (_nclasses <= 2)
       {
         caffe::LayerParameter* conv_param = insert_layer_before(net_param, softml_pos++);
         *conv_param->mutable_name() = "linear_aggregation";
@@ -3636,19 +3733,8 @@ namespace dd
     *lossparam->mutable_type() = "DiceCoefLoss";
     *lossparam->mutable_bottom(0) = loss_input;
     caffe::DiceCoefLossParameter* dclp = lossparam->mutable_dice_coef_loss_param();
-    dclp->set_generalization(caffe::DiceCoefLossParameter::NONE);
-    if (ignore_label != -1 && loss != "dice")
-      dclp->set_ignore_label(ignore_label);
-    if (loss == "dice")
-      dclp->set_generalization(caffe::DiceCoefLossParameter::NONE);
-    else if (loss == "dice_multiclass")
-      dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS);
-    else if (loss == "dice_weighted")
-      dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED);
-    else if (loss == "dice_weighted_batch")
-      dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED_BATCH);
-    else if (loss == "dice_weighted_all")
-      dclp->set_generalization(caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED_ALL);
+
+    update_protofiles_dice_params(dclp, ad);
 
     // BELOW DEPLOY
     int final_pred = find_index_layer_by_name(deploy_net_param, "pred");
@@ -3660,7 +3746,7 @@ namespace dd
     mvn_param->add_bottom(logits);
     mvn_param->add_top(logits_norm);
 
-    if (loss == "dice")
+    if (_nclasses <= 2)
       {
         caffe::LayerParameter* conv_param = insert_layer_before(deploy_net_param, final_pred);
         *conv_param->mutable_name() = "linear_aggregation";

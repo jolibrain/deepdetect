@@ -610,7 +610,18 @@ TEST(caffelib, configure_deeplabvgg16_diceloss)
 {
   APIData ad;
   ad.add("template","deeplab_vgg16");
-  ad.add("loss","dice_weighted");
+  ad.add("loss","dice");
+  APIData dice_param;
+  APIData dice_class_weighting;
+  dice_class_weighting.add("compute_on","batch");
+  dice_class_weighting.add("weight","equalize_classes");
+  dice_param.add("class_weighting",dice_class_weighting);
+  APIData dice_contour;
+  dice_contour.add("shape","simple");
+  dice_contour.add("size",3);
+  dice_contour.add("amplitude",20.5);
+  dice_param.add("contour",dice_contour);
+  ad.add("dice_param",dice_param);
   ad.add("ignore_label",0);
   ad.add("templates","../templates/caffe");
   ad.add("repository","./");
@@ -629,14 +640,24 @@ TEST(caffelib, configure_deeplabvgg16_diceloss)
 
   bool found = false;
   int k = net_param.layer_size();
-
+  caffe::LayerParameter *lparam;
   for (int l=k-1;l>0;l--)
     {
-      caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+      lparam = net_param.mutable_layer(l);
       if (lparam->type() == "DiceCoefLoss")
-        found = true;
+        {
+          found = true;
+          break;
+        }
     }
   ASSERT_TRUE(found);
+
+  const caffe::DiceCoefLossParameter &clp = lparam->dice_coef_loss_param();
+  ASSERT_TRUE(clp.generalization() == caffe::DiceCoefLossParameter::NONE);
+  ASSERT_TRUE(clp.contour_shape() == caffe::DiceCoefLossParameter::SIMPLE);
+  ASSERT_TRUE(clp.contour_size() == 3);
+  ASSERT_TRUE(clp.contour_amplitude() == 20.5);
+
 
   remove("./deeplab_vgg16.prototxt");
   remove("./deeplab_vgg16_solver.prototxt");
