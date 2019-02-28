@@ -87,6 +87,7 @@ namespace dd
   private:
     const std::string _lstm_str = "L";
     const std::string _rnn_str = "R";
+    const std::string _affine_str = "A";
 
   };
   
