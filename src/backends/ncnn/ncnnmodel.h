@@ -32,8 +32,9 @@ namespace dd
     {
     public:
         NCNNModel():MLModel() {}
-        NCNNModel(const APIData &ad)
-            :MLModel(ad) {
+        NCNNModel(const APIData &ad, APIData &adg,
+		  const std::shared_ptr<spdlog::logger> &logger)
+	   :MLModel(ad,adg,logger) {
             if (ad.has("repository"))
 	            this->_repo = ad.get("repository").get<std::string>();
 	        read_from_repository(spdlog::get("api"));
