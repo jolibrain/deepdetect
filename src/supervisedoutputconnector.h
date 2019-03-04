@@ -189,15 +189,14 @@ namespace dd
 	      hit = resit.first;
 	      for (size_t i=0;i<probs.size();i++)
 		{
-                if (!cats.empty())
-                  _vvcats.at((*hit).second).add_cat(probs.at(i),cats.at(i));
+		  if (!cats.empty())
+		    _vvcats.at((*hit).second).add_cat(probs.at(i),cats.at(i));
 		  if (!bboxes.empty())
 		    _vvcats.at((*hit).second).add_bbox(probs.at(i),bboxes.at(i));
 		  if (!rois.empty())
 		    _vvcats.at((*hit).second).add_val(probs.at(i),rois.at(i));
 		  if (!series.empty())
 		    _vvcats.at((*hit).second).add_timeseries(probs.at(i),series.at(i));
-
 		  if (!masks.empty())
 		    _vvcats.at((*hit).second).add_mask(probs.at(i),masks.at(i));
 		}
