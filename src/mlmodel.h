@@ -42,15 +42,16 @@ namespace dd
     MLModel() {}
 
     MLModel(const APIData &ad, APIData &adg,
-	    const std::shared_ptr<spdlog::logger> &logger)  {
-      init_repo_dir(ad);
-      if (ad.has("init"))
-	read_config_json(adg,logger);
-    }
-
+	    const std::shared_ptr<spdlog::logger> &logger)
+      {
+	init_repo_dir(ad,logger.get());
+	if (ad.has("init"))
+	  read_config_json(adg,logger);
+      }
+    
     MLModel(const APIData &ad)
       {
-	init_repo_dir(ad);
+	init_repo_dir(ad,nullptr);
       }
     
     MLModel(const std::string &repo)
@@ -60,7 +61,7 @@ namespace dd
   MLModel(const APIData &ad, const std::string &repo)
     :_repo(repo)
     {
-      init_repo_dir(ad);
+      init_repo_dir(ad,nullptr);
     }
 
     ~MLModel() {
@@ -153,7 +154,8 @@ namespace dd
 #endif
 
   private:
-    void init_repo_dir(const APIData &ad)
+    void init_repo_dir(const APIData &ad,
+		       spdlog::logger *logger)
     {
       // auto-creation of model directory
       _repo =  ad.get("repository").get<std::string>();
@@ -173,6 +175,16 @@ namespace dd
 	{
 	  std::string compressedf = ad.get("init").get<std::string>();
 
+	  // check whether already in the directory
+	  std::string base_model_fname = compressedf.substr(compressedf.find_last_of("/") + 1);
+	  std::string modelf = _repo + "/" + base_model_fname;
+	  if (fileops::file_exists(modelf))
+	    {
+	      if (logger)
+		logger->warn("Init model {} is already in directory, not fetching it",modelf);
+	      compressedf = modelf;
+	    }
+	  
 	  if (compressedf.find("https://") != std::string::npos
 	      || compressedf.find("http://") != std::string::npos
 	      || compressedf.find("file://") != std::string::npos)
@@ -187,8 +199,6 @@ namespace dd
 		{
 		  throw MLLibBadParamException("failed fetching model archive: " + compressedf + " with code: " + std::to_string(outcode));
 		}
-	      std::string base_model_fname = compressedf.substr(compressedf.find_last_of("/") + 1);
-	      std::string modelf = _repo + "/" + base_model_fname;
 	      std::ofstream mof(modelf);
 	      mof << content;
 	      mof.close();

@@ -503,7 +503,7 @@ namespace dd
 #ifdef USE_NCNN
   else if (mllib == "ncnn")
   {
-    NCNNModel ncnnmodel(ad_model);
+    NCNNModel ncnnmodel(ad_model,ad,_logger);
     read_metrics_json(ncnnmodel._repo,ad);
     if (type == "supervised")
     {
