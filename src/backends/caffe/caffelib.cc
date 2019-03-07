@@ -202,7 +202,8 @@ namespace dd
     else if (model_tmpl.find("ssd")!=std::string::npos
 	     || model_tmpl.find("refinedet")!=std::string::npos)
       {
-	configure_ssd_template(dest_net,dest_deploy_net,ad);
+	bool refinedet = (model_tmpl.find("refinedet")!=std::string::npos);
+	configure_ssd_template(dest_net,dest_deploy_net,ad,refinedet);
       }
     else if (model_tmpl.find("recurrent") != std::string::npos)
       {
@@ -690,7 +691,8 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_ssd_template(const std::string &dest_net,
 												   const std::string &dest_deploy_net,
-												   const APIData &ad)
+												   const APIData &ad,
+												   const bool &refinedet)
   {
     //- load prototxt
     caffe::NetParameter net_param,deploy_net_param;
@@ -729,9 +731,9 @@ namespace dd
 	      }
 	  }
 	//- set correct layer parameters based on nclasses
-	if (lparam->name() == "mbox_loss" || lparam->name() == "odm_loss" || lparam->name() == "arm_loss")
+	if (lparam->name() == "mbox_loss" || lparam->name() == "odm_loss")
 	  {
-	    lparam->mutable_multibox_loss_param()->set_num_classes(_nclasses);
+	      lparam->mutable_multibox_loss_param()->set_num_classes(_nclasses);
 	  }
 	else if (lparam->name() == "detection_out")
 	  {
@@ -742,8 +744,7 @@ namespace dd
 	    lparam->mutable_detection_evaluate_param()->set_num_classes(_nclasses);
 	  }
 	else if (lparam->name().find("mbox_conf_reshape") != std::string::npos
-		 || lparam->name().find("odm_conf_reshape") != std::string::npos
-		 || lparam->name().find("arm_conf_reshape") != std::string::npos)
+		 || lparam->name().find("odm_conf_reshape") != std::string::npos)
 	  {
 	    lparam->mutable_reshape_param()->mutable_shape()->set_dim(2,_nclasses);
 	  }
@@ -753,8 +754,14 @@ namespace dd
     for (int l=0;l<k;l++)
       {
 	caffe::LayerParameter *lparam = net_param.mutable_layer(l);
-	if (lparam->name().find("mbox_conf") != std::string::npos
+	if (!refinedet && lparam->name().find("mbox_conf") != std::string::npos
 	    && lparam->type() == "Convolution")
+	  {
+	    int num_priors_per_location = lparam->mutable_convolution_param()->num_output() / 2;
+	    lparam->mutable_convolution_param()->set_num_output(num_priors_per_location * _nclasses);
+	  }
+	else if (refinedet && lparam->name().find("mbox_conf") != std::string::npos
+		 && lparam->name()[0] == 'P' && lparam->type() == "Convolution")
 	  {
 	    int num_priors_per_location = lparam->mutable_convolution_param()->num_output() / 2;
 	    lparam->mutable_convolution_param()->set_num_output(num_priors_per_location * _nclasses);
