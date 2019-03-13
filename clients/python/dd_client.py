@@ -164,8 +164,10 @@ class DD(object):
         sname -- service name as a resource
         clear -- 'full','lib' or 'mem', optionally clears model repository data
         """
-        data = {"clear": clear} if clear else None
-        return self.delete(self.__urls["services"] + '/%s' % sname, json=data)
+        lurl = '/%s' % sname
+        if clear:
+            lurl += '?clear=' + clear
+        return self.delete(self.__urls["services"] + lurl)
 
     # API train
     def post_train(self, sname, data, parameters_input, parameters_mllib, parameters_output, async=True):
