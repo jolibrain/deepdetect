@@ -797,8 +797,14 @@ namespace dd
 	      }
 	  }
 	//- set correct layer parameters based on nclasses
-	if (lparam->name().find("mbox_conf") != std::string::npos
+	if (!refinedet && lparam->name().find("mbox_conf") != std::string::npos
 	    && lparam->type() == "Convolution")
+	  {
+	    int num_priors_per_location = lparam->mutable_convolution_param()->num_output() / 2;
+	    lparam->mutable_convolution_param()->set_num_output(num_priors_per_location * _nclasses);
+	  }
+	else if (refinedet && lparam->name().find("mbox_conf") != std::string::npos
+		 && lparam->name()[0] == 'P' && lparam->type() == "Convolution")
 	  {
 	    int num_priors_per_location = lparam->mutable_convolution_param()->num_output() / 2;
 	    lparam->mutable_convolution_param()->set_num_output(num_priors_per_location * _nclasses);
@@ -809,7 +815,6 @@ namespace dd
 	  }
 	else if (lparam->name().find("mbox_conf_reshape") != std::string::npos
 		 || lparam->name().find("odm_conf_reshape") != std::string::npos
-		 || lparam->name().find("arm_conf_reshape") != std::string::npos)
 	  {
 	    lparam->mutable_reshape_param()->mutable_shape()->set_dim(2,_nclasses);
 	  }
