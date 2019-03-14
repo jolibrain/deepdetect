@@ -2,7 +2,7 @@
 
 This repository contains the Dockerfiles for building the CPU and GPU images for deepdetect.
 
-Also see https://hub.docker.com/u/beniz/starred/ for pre-built images
+Also see https://hub.docker.com/u/jolibrain for the latest pre-built images
 
 The docker images contain:
 - a running `dede` server ready to be used, no install required
@@ -13,17 +13,17 @@ This allows to run the container and set an image classification model based on 
 ### Getting and running official images
 
 ```
-docker pull beniz/deepdetect_cpu
+docker pull jolibrain/deepdetect_cpu
 ```
 or
 ```
-docker pull beniz/deepdetect_gpu
+docker pull jolibrain/deepdetect_gpu
 ```
 
 #### Running the CPU image
 
 ```
-docker run -d -p 8080:8080 beniz/deepdetect_cpu
+docker run -d -p 8080:8080 jolibrain/deepdetect_cpu
 ```
 
 `dede` server is now listening on your port `8080`:
@@ -57,7 +57,7 @@ The following steps are required:
 - install `nvidia-docker`: https://github.com/NVIDIA/nvidia-docker
 - run with
 ```
-nvidia-docker run -d -p 8080:8080 beniz/deepdetect_gpu
+nvidia-docker run -d -p 8080:8080 jolibrain/deepdetect_gpu
 ```
 
 Notes:
@@ -88,14 +88,14 @@ Example:
 
 - start container and server:
 ```
-> docker run -d -p 8080:8080 beniz/deepdetect_cpu
+> docker run -d -p 8080:8080 jolibrain/deepdetect_cpu
 ```
 
 - look for container:
 ```
 > docker ps
 CONTAINER ID        IMAGE                  COMMAND                  CREATED              STATUS              PORTS                    NAMES
-d9944734d5d6        beniz/deepdetect_cpu   "/bin/sh -c './dede -"   17 seconds ago       Up 16 seconds       0.0.0.0:8080->8080/tcp   loving_shaw
+d9944734d5d6        jolibrain/deepdetect_cpu   "/bin/sh -c './dede -"   17 seconds ago       Up 16 seconds       0.0.0.0:8080->8080/tcp   loving_shaw
 ```
 
 - access server logs:
@@ -108,7 +108,7 @@ Running DeepDetect HTTP server on 0.0.0.0:8080
 
 - share a volume with the image:
 ```
-docker run -d -p 8080:8080 -v /path/to/volume:/mnt beniz/deepdetect_cpu
+docker run -d -p 8080:8080 -v /path/to/volume:/mnt jolibrain/deepdetect_cpu
 ```
 where `path/to/volume` is the path to your local volume that you'd like to attach to `/opt/deepdetect/`. This is useful for sharing / saving models, etc...
 
@@ -117,5 +117,5 @@ where `path/to/volume` is the path to your local volume that you'd like to attac
 Example goes with the CPU image:
 ```
 cd cpu
-docker build -t beniz/deepdetect_cpu --no-cache .
+docker build -t jolibrain/deepdetect_cpu --no-cache .
 ```
