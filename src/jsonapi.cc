@@ -509,6 +509,8 @@ namespace dd
     {
       if (input == "image")
         add_service(sname, std::move(MLService<NCNNLib,ImgNCNNInputFileConn,SupervisedOutput,NCNNModel>(sname,ncnnmodel,description)), ad);
+      else if (input == "csv_ts" || input == "csvts")
+        add_service(sname,std::move(MLService<NCNNLib,CSVTSNCNNInputFileConn,SupervisedOutput,NCNNModel>(sname,ncnnmodel,description)),ad);
       else return dd_input_connector_not_found_1004();
       if (JsonAPI::store_json_blob(ncnnmodel._repo, jstr))
         _logger->error("couldn't write {} file in model repository {}", JsonAPI::_json_blob_fname, ncnnmodel._repo);
