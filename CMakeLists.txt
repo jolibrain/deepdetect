@@ -93,22 +93,26 @@ endif()
 find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system iostreams)
 
 # annoy
-if (USE_SIMSEARCH)
-  message(STATUS "Fetching Annoy")
-  add_definitions(-DUSE_SIMSEARCH)
-  ExternalProject_Add(
-    annoy
-    PREFIX annoy
-    INSTALL_DIR ${CMAKE_BINARY_DIR}
-    DOWNLOAD_COMMAND git clone https://github.com/spotify/annoy.git
-    CONFIGURE_COMMAND python setup.py build
-    BUILD_COMMAND ""
-    INSTALL_COMMAND ""
-    BUILD_IN_SOURCE 1
-    )
-
-  set(ANNOY_INCLUDE_DIR ${CMAKE_BINARY_DIR}/annoy/src/annoy/src/)
-  include_directories("${ANNOY_INCLUDE_DIR}")
+if (USE_CAFFE)
+  if (USE_SIMSEARCH)
+    message(STATUS "Fetching Annoy")
+    add_definitions(-DUSE_SIMSEARCH)
+    ExternalProject_Add(
+      annoy
+      PREFIX annoy
+      INSTALL_DIR ${CMAKE_BINARY_DIR}
+      DOWNLOAD_COMMAND git clone https://github.com/spotify/annoy.git
+      CONFIGURE_COMMAND python setup.py build
+      BUILD_COMMAND ""
+      INSTALL_COMMAND ""
+      BUILD_IN_SOURCE 1
+      )
+    
+    set(ANNOY_INCLUDE_DIR ${CMAKE_BINARY_DIR}/annoy/src/annoy/src/)
+    include_directories("${ANNOY_INCLUDE_DIR}")
+  endif()
+else()
+  set(USE_SIMSEARCH OFF)
 endif()
   
 # optional packages
