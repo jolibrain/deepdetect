@@ -74,7 +74,7 @@ RUN wget -O /opt/curlpp-v0.8.1.zip https://github.com/jpbarrette/curlpp/archive/
 RUN git clone https://github.com/beniz/deepdetect.git && cd deepdetect && mkdir build
 
 WORKDIR /opt/deepdetect/build
-RUN cmake .. -DUSE_TF=ON -DUSE_TF_CPU_ONLY=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON && \
+RUN cmake .. -DUSE_TF=ON -DUSE_TF_CPU_ONLY=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_NCNN=ON && \
     make
 
 # external volume to be mapped, e.g. for models or training data
