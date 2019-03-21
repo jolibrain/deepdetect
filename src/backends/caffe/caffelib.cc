@@ -221,9 +221,6 @@ namespace dd
        if (this->_loss == "dice")
       // dice loss!!
       {
-        if (_nclasses > 2)
-          update_protofiles_one_hot(net_param);
-
         if (net_param.name().compare("deeplab_vgg16")==0
 	    || net_param.name().compare("pspnet_vgg16")==0
 	    || net_param.name().compare("pspnet_50")==0
@@ -3442,6 +3439,9 @@ namespace dd
     shrink_param->add_include();
     caffe::NetStateRule *nsr = shrink_param->mutable_include(0);
     nsr->set_phase(caffe::TRAIN);
+    caffe::InterpParameter *ip = shrink_param->mutable_interp_param();
+    ip->set_mode(caffe::InterpParameter::NEAREST);
+
 
     int softml_pos = find_index_layer_by_type(net_param,"SoftmaxWithLoss");
     std::string logits = net_param.layer(softml_pos).bottom(0);
