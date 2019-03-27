@@ -147,7 +147,7 @@ if (USE_DLIB)
     # Dlib
 
     # Currently supported release version of dlib
-    set(DLIB_RELEASE_VERSION v19.13)
+    set(DLIB_RELEASE_VERSION v19.17)
     message(STATUS "Using Dlib version ${DLIB_RELEASE_VERSION}")
     add_definitions(-DUSE_DLIB)
     set(DLIB_LIB_DEPS -ldlib)
