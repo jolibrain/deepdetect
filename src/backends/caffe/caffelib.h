@@ -248,7 +248,7 @@ namespace dd
       void set_gpuid(const APIData &ad);
 
       void model_complexity(long int &flops,
-			    long int &params);
+                            long int &params);
 
       void model_type(caffe::Net<float> *net,
 		      std::string &mltype);
@@ -292,8 +292,6 @@ namespace dd
       //      std::vector<int> _targets; /**< id number of classification or regression targets. */
       bool _autoencoder = false; /**< whether an autoencoder. */
       std::mutex _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as net is not re-instantiated. Use batches instead. */
-      long int _flops = 0;  /**< model flops. */
-      long int _params = 0;  /**< number of parameters in the model. */
       int _crop_size = -1; /**< cropping is part of Caffe transforms in input layers, storing here. */
       float _scale = 1.0; /**< scale is part of Caffe transforms in input layers, storing here. */
 

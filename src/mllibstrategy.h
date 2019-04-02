@@ -347,7 +347,12 @@ namespace dd
 			     When not, prediction calls are rejected while training is running. */
 
     std::shared_ptr<spdlog::logger> _logger; /**< mllib logger. */
-    
+
+    long int _flops = 0;  /**< model flops. */
+    long int _params = 0;  /**< number of parameters in the model. */
+    long int _mem_used_train = 0; /**< amount  of memory used. */
+    long int _mem_used_test = 0; /**< amount  of memory used. */
+
   protected:
     mutable std::mutex _meas_per_iter_mutex; /**< mutex over measures history. */
     mutable std::mutex _meas_mutex; /** mutex around current measures. */
