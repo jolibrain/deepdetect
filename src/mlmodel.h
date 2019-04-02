@@ -193,6 +193,8 @@ namespace dd
 	      std::string content;
 	      try
 		{
+		  if (logger)
+		    logger->info("Downloading init model {}",compressedf);
 		  httpclient::get_call(compressedf,"GET",outcode,content);
 		}
 	      catch(...)

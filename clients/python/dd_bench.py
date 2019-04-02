@@ -26,6 +26,7 @@ Instructions:
 import time
 import sys
 import argparse
+import csv
 from dd_client import DD
 
 parser = argparse.ArgumentParser(description='DeepDetect benchmark tool')
@@ -35,6 +36,7 @@ parser.add_argument('--sname',help='service name')
 parser.add_argument('--img-width',help='image width',type=int,default=224)
 parser.add_argument('--img-height',help='image height',type=int,default=224)
 parser.add_argument('--gpu',help='whether to bench GPU',action='store_true')
+parser.add_argument('--gpuid',help='gpu id to use',type=int,default=0)
 parser.add_argument('--cpu',help='whether to bench CPU',action='store_true')
 parser.add_argument('--remote-bench-data-dir',help='when bench data directory, when available remotely on the server')
 parser.add_argument('--max-batch-size',help='max batch size to be tested',type=int,default=256)
@@ -46,6 +48,7 @@ parser.add_argument('--search-multibox',help='whether benching a multibox simila
 parser.add_argument('--create',help='model\'s folder name to create a service')
 parser.add_argument('--nclasses',help='number of classes for service creation',type=int,default=1000)
 parser.add_argument('--auto-kill',help='auto kill the service after benchmarking',action='store_true')
+parser.add_argument('--csv-output',help='CSV file output')
 args = parser.parse_args()
 
 host = args.host
@@ -67,6 +70,13 @@ if args.create:
 else:
     pass
 
+out_csv = None
+csv_writer = None
+if args.csv_output:
+  out_csv = open(args.csv_output,'w+')
+  csv_writer = csv.writer(out_csv)
+  csv_writer.writerow(['batch_size','mean processing time','mean time per img'])
+  
 list_bench_files = []
 with open(args.list_bench_files) as f:
     for l in f:
@@ -82,10 +92,9 @@ while l <= args.max_batch_size:
         l += 16
 
 parameters_input = {}
-parameters_mllib = {'gpu':args.gpu}
+parameters_mllib = {'gpu':args.gpu,'gpuid':args.gpuid}
 parameters_output = {}
 if args.detection:
-
     parameters_output['confidence_threshold'] = 0.1
     if args.search or args.search_multibox:
       parameters_output['search'] = True
@@ -126,7 +135,11 @@ for b in batch_sizes:
             classif = dd.post_predict(args.sname,data,parameters_input,parameters_mllib,parameters_output)
             fail = True
             break
+    mean_processing_time = mean_ptime/args.npasses
+    mean_time_per_img = mean_ptime_per_img/args.npasses
     print '>>> batch size =',b,' / mean processing time =',mean_ptime/args.npasses, ' / mean time per image =',mean_ptime_per_img/args.npasses, ' / fail =',fail
+    if args.csv_output:
+      csv_writer.writerow([b,mean_processing_time,mean_time_per_img])
     #break
 
 if autokill:
