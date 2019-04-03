@@ -60,7 +60,7 @@ The reference platforms with support are **Ubuntu 14.04 LTS** and **Ubuntu 16.04
 
 Supported images that come with pre-trained image classification deep (residual) neural nets:
 
-- **docker images** for CPU and GPU machines are available at https://hub.docker.com/r/beniz/deepdetect_cpu/ and https://hub.docker.com/r/beniz/deepdetect_gpu/ respectively. See https://github.com/beniz/deepdetect/tree/master/docker/README.md for details on how to use them.
+- **docker images** for CPU and GPU machines are available at https://hub.docker.com/r/jolibrain/deepdetect_cpu/ and https://hub.docker.com/r/jolibrain/deepdetect_gpu/ respectively. See https://github.com/jolibrain/deepdetect/tree/master/docker/README.md for details on how to use them.
 
 - For **Amazon AMI** see official builds documentation at https://deepdetect.com/products/ami/, and direct links to [GPU AMI](https://aws.amazon.com/marketplace/pp/B01N4D483M) and [CPU AMI](https://aws.amazon.com/marketplace/pp/B01N1RGWQZ).
 
@@ -106,11 +106,11 @@ Current features include:
 ##### Clients
 
 - Python client:
-  - REST client: https://github.com/beniz/deepdetect/tree/master/clients/python
+  - REST client: https://github.com/jolibrain/deepdetect/tree/master/clients/python
   - 'a la scikit' bindings: https://github.com/ArdalanM/pyDD
 - Javacript client: https://github.com/jolibrain/deepdetect-js
 - Java client: https://github.com/kfadhel/deepdetect-api-java
-- Early C# client: https://github.com/beniz/deepdetect/pull/98
+- Early C# client: https://github.com/jolibrain/deepdetect/pull/98
 
 ##### Tools
 
@@ -153,7 +153,7 @@ None outside of C++ compiler and make
 
 ##### Caffe version
 
-By default DeepDetect automatically relies on a modified version of Caffe, https://github.com/beniz/caffe/tree/master
+By default DeepDetect automatically relies on a modified version of Caffe, https://github.com/jolibrain/caffe/tree/master
 This version includes many improvements over the original Caffe, such as sparse input data support, exception handling, class weights, object detection, segmentation, and various additional losses and layers.
 
 ##### Implementation
@@ -163,16 +163,16 @@ The code makes use of C++ policy design for modularity, performance and putting 
 ##### Demo
 
 - Image classification Web interface:
-HTML and javascript classification image demo in [demo/imgdetect](https://github.com/beniz/deepdetect/tree/master/demo/imgdetect)
+HTML and javascript classification image demo in [demo/imgdetect](https://github.com/jolibrain/deepdetect/tree/master/demo/imgdetect)
 
 - Image similarity search:
-Python script for indexing and searching images is in [demo/imgsearch](https://github.com/beniz/deepdetect/tree/master/demo/imgsearch)
+Python script for indexing and searching images is in [demo/imgsearch](https://github.com/jolibrain/deepdetect/tree/master/demo/imgsearch)
 
 - Image object detection:
-Python script for object detection within images is in [demo/objdetect](https://github.com/beniz/deepdetect/tree/master/demo/objdetect)
+Python script for object detection within images is in [demo/objdetect](https://github.com/jolibrain/deepdetect/tree/master/demo/objdetect)
 
 - Image segmentation:
-Python script for image segmentation is in [demo/segmentation](https://github.com/beniz/deepdetect/tree/master/demo/segmentation)
+Python script for image segmentation is in [demo/segmentation](https://github.com/jolibrain/deepdetect/tree/master/demo/segmentation)
 
 ##### Examples
 
@@ -238,7 +238,7 @@ DeepDetect is designed, implemented and supported by [Jolibrain](http://jolibrai
 
 ### Build
 
-Below are instructions for Ubuntu 14.04 LTS and 16.04 LTS. For other Linux and Unix systems, steps may differ, CUDA, Caffe and other libraries may prove difficult to setup. If you are building on 16.04 LTS, look at https://github.com/beniz/deepdetect/issues/126 that tells you how to proceed.
+Below are instructions for Ubuntu 14.04 LTS and 16.04 LTS. For other Linux and Unix systems, steps may differ, CUDA, Caffe and other libraries may prove difficult to setup. If you are building on 16.04 LTS, look at https://github.com/jolibrain/deepdetect/issues/126 that tells you how to proceed.
 
 Beware of dependencies, typically on Debian/Ubuntu Linux, do:
 ```
