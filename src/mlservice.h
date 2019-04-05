@@ -238,6 +238,12 @@ namespace dd
 	  vad.push_back(jad);
 	  ++hit;
 	}
+      APIData stats;
+      stats.add("flops",this->_flops);
+      stats.add("params",this->_params);
+      stats.add("data_mem_train",this->_mem_used_train * sizeof(float));
+      stats.add("data_mem_test",this->_mem_used_test * sizeof(float));
+      ad.add("stats", stats);
       ad.add("jobs",vad);
       ad.add("parameters",_init_parameters);
       ad.add("repository",this->_inputc._model_repo);
