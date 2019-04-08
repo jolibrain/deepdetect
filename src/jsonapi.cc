@@ -616,6 +616,31 @@ namespace dd
 		_logger->error("couldn't write {} file in model repository {}",JsonAPI::_json_config_blob_fname,tmodel._repo);
 	  }
 #endif
+#ifdef USE_TENSORRT
+	else if (mllib == "tensorrt" || mllib == "tensorRT" || mllib == "TensorRT")
+	  {
+	    TensorRTModel  tensorRTmodel(ad_model,ad,_logger);
+	    read_metrics_json(tensorRTmodel._repo,ad);
+	    if (type == "supervised")
+	      {
+		if (input == "image")
+		  add_service(sname, std::move(MLService<TensorRTLib,ImgTensorRTInputFileConn,SupervisedOutput,TensorRTModel>(sname,tensorRTmodel,description)), ad);
+		else return dd_input_connector_not_found_1004();
+		if (JsonAPI::store_json_blob(tensorRTmodel._repo, jstr))
+		  _logger->error("couldn't write {} file in model repository {}", JsonAPI::_json_blob_fname, tensorRTmodel._repo);
+		// store model configuration json blob
+		if (store_config && JsonAPI::store_json_config_blob(tensorRTmodel._repo, jstr)) {
+		  _logger->error("couldn't write {} file in model repository {}",
+				 JsonAPI::_json_config_blob_fname, tensorRTmodel._repo);
+		}
+	      }
+	    else
+	      {
+		// unknown type
+		return dd_service_bad_request_1006();
+	      }
+	  }
+#endif
 	else
 	  {
 	    return dd_unknown_library_1000();

@@ -52,6 +52,9 @@
 #ifdef USE_NCNN
 #include "backends/ncnn/ncnnlib.h"
 #endif
+#ifdef USE_TENSORRT
+#include "backends/tensorrt/tensorrtlib.h"
+#endif
 #include <spdlog/spdlog.h>
 #include <vector>
 #include <mutex>
@@ -115,6 +118,12 @@ namespace dd
     #endif
     MLService<NCNNLib,CSVTSNCNNInputFileConn,SupervisedOutput,NCNNModel>,
     MLService<NCNNLib,ImgNCNNInputFileConn,SupervisedOutput,NCNNModel>
+#endif
+#ifdef USE_TENSORRT
+#if defined(USE_CAFFE) || defined(USE_CAFFE2) || defined(USE_TF) || defined(USE_DLIB) || defined(USE_XGBOOST) || defined(USE_TSNE) || defined(USE_NCNN)
+    ,
+#endif
+    MLService<TensorRTLib,ImgTensorRTInputFileConn,SupervisedOutput,TensorRTModel>
 #endif
     > mls_variant_type;
 

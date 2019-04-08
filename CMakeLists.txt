@@ -6,6 +6,7 @@ option(USE_TF "use TF backend")
 option(USE_NCNN "use NCNN backend")
 option(USE_HDF5 "use HDF5" ON)
 option(USE_CAFFE "use Caffe backend" ON)
+option(USE_TENSORRT "use TensorRT backend" OFF)
 
 if (USE_CAFFE)
   add_definitions(-DUSE_CAFFE)
@@ -133,7 +134,14 @@ if (USE_CAFFE)
 else()
   set(USE_SIMSEARCH OFF)
 endif()
-  
+
+if (USE_TENSORRT)
+  add_definitions(-DUSE_TENSORRT)
+  message(STATUS "TensorRT backend requires CUDA + CUDNN, enabling GPU, CUDA and CUDNN")
+  set(USE_CPU_ONLY OFF)
+  set(USE_CUDNN ON)
+endif()
+
 # optional packages
 if (USE_CPU_ONLY)
   set(USE_CAFFE_CPU_ONLY ON)
@@ -160,6 +168,9 @@ if (CUDA_FOUND)
 else()
   set(CUDA_LIB_DEPS "")
   add_definitions(-DCPU_ONLY)
+  if (USE_TENSORRT)
+    message(FATAL_ERROR "Could not find CUDA, unable to build with TensorRT backend, aborting")
+  endif()
 endif()
 
 if (USE_DLIB)
@@ -340,6 +351,15 @@ if (USE_CAFFE2)
       ${CMAKE_BINARY_DIR}/python_path/detectron)
   endif()
 
+  if (USE_TENSORRT)
+    add_custom_command(TARGET pytorch POST_BUILD
+      COMMAND ${CMAKE_BINARY_DIR}/protobuf/bin/protoc
+      --proto_path=${CMAKE_SOURCE_DIR}/src/backends/tensorrt
+      --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_SOURCE_DIR}/src/backends/tensorrt/caffe.proto
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+      COMMENT "generating caffe.pb.*")
+  endif()
+
 endif()
 
 if (USE_TF)
@@ -381,6 +401,14 @@ set(TF_INC_DIR ${TENSORFLOW_CC_DIR}/tensorflow/ ${TENSORFLOW_CC_DIR}/tensorflow/
 set(TF_LIB_DIR ${TENSORFLOW_CC_DIR}/tensorflow/bazel-bin/tensorflow/)
 
 include_directories("${TF_INC_DIR}")
+if (USE_TENSORRT)
+  add_custom_command(TARGET tensorflow_cc POST_BUILD
+    COMMAND ${CMAKE_BINARY_DIR}/protobuf/bin/protoc
+    --proto_path=${CMAKE_SOURCE_DIR}/src/backends/tensorrt
+    --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_SOURCE_DIR}/src/backends/tensorrt/caffe.proto
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    COMMENT "generating caffe.pb.*")
+endif()
 
 endif() # USE_TF
 
@@ -623,13 +651,55 @@ if (USE_NCNN)
   include_directories(${NCNN_INC_DIR})
 endif()
 
+if (USE_TENSORRT)
+  if (NOT USE_CAFFE2 AND NOT USE_TF)
+    find_package(Protobuf REQUIRED)
+    if (Protobuf_FOUND)
+      set(PROTOBUF_INCLUDE_DIR ${Protobuf_INCLUDE_DIRS})
+      set(PROTOBUF_LIB_DIR ${Protobuf_LIBRARIES})
+    else()
+      message(FATAL_ERROR "could not find system protobuf")
+    endif()
+  endif()
+
+  include_directories(${CMAKE_CURRENT_BINARY_DIR})
+  set(TENSORRT_LIB_DEPS -lprotobuf -lnvinfer -lnvparsers -lnvinfer_plugin -lnvonnxparser)
+
+  if (JETSON)
+    set(TRTTESTDIR /usr/lib/aarch64-linux-gnu)
+    set(TENSORRT_LIB_DIR ${PROTOBUF_LIB_DIR} /usr/lib/aarch64-linux-gnu)
+    set(TENSORRT_INC_DIR ${PROTOBUF_INCLUDE_DIR} /usr/include/aarch64-linux-gnu)
+  elseif(DEFINED TENSORRT_DIR)
+    set(TRTTESTDIR ${TENSORRT_DIR}/lib)
+    set(TENSORRT_LIB_DIR ${PROTOBUF_LIB_DIR} ${TENSORRT_DIR}/lib )
+    set(TENSORRT_INC_DIR ${PROTOBUF_INCLUDE_DIR} ${TENSORRT_DIR}/include)
+  elseif (DEFINED TENSORRT_LIB_DIR AND DEFINED TENSORRT_INC_DIR)
+    set(TRTTESTDIR TENSORRT_LIB_DIR)
+  else()
+    set(TRTTESTDIR /usr/lib/x86_64-linux-gnu)
+    set(TENSORRT_LIB_DIR ${PROTOBUF_LIB_DIR} /usr/lib/x86_64-linux-gnu)
+    set(TENSORRT_INC_DIR ${PROTOBUF_INCLUDE_DIR} /usr/include/x86_64-linux-gnu)
+  endif()
+  if (NOT EXISTS "${TRTTESTDIR}/libnvinfer.so")
+    message(FATAL_ERROR "Could not find TensorRT ${TENSORRT_LIB_DIR}/libnvinfer.so, please provide tensorRT location as TENSORRT_DIR or (TENSORRT_LIB_DIR _and_ TENSORRT_INC_DIR)")
+  else()
+    message(STATUS "Found TensorRT libraries : ${TRTTESTDIR}/libnvinfer.so")
+  endif()
+  include_directories(${TENSORRT_INC_DIR})
+endif()
+
 # main library, main & tests
 include_directories ("${PROJECT_SOURCE_DIR}/src")
 add_subdirectory (src)
 
 # Flags used by the subdirectories
-set(COMMON_INCLUDE_DIRS ${Boost_INCLUDE_DIRS})
+if (CUDA_FOUND)
+  set(COMMON_INCLUDE_DIRS ${Boost_INCLUDE_DIRS} ${CUDA_INCLUDE_DIRS})
+else()
+  set(COMMON_INCLUDE_DIRS ${Boost_INCLUDE_DIRS})
+endif()
 set(COMMON_LINK_DIRS
+  ${TENSORRT_LIB_DIR}
   ${CAFFE_LIB_DIR}
   ${CAFFE2_LIB_DIR}
   ${TF_LIB_DIR}
@@ -639,7 +709,7 @@ set(COMMON_LINK_DIRS
   ${DLIB_LIB_DIR})
 if (USE_HDF5)
   set(COMMON_LINK_LIBS
-    ddetect ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl hdf5_cpp ${Boost_LIBRARIES} archive
+    ddetect ${TENSORRT_LIB_DEPS} ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl hdf5_cpp ${Boost_LIBRARIES} archive
     ${CAFFE_LIB_DEPS}
     ${CAFFE2_LIB_DEPS}
     ${TF_LIB_DEPS}
@@ -649,7 +719,7 @@ if (USE_HDF5)
     ${DLIB_LIB_DEPS})
 else()
   set(COMMON_LINK_LIBS
-    ddetect ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} archive
+    ddetect ${TENSORRT_LIB_DEPS} ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} archive
     ${CAFFE_LIB_DEPS}
     ${CAFFE2_LIB_DEPS}
     ${TF_LIB_DEPS}

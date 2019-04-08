@@ -21,6 +21,7 @@ DeepDetect relies on external machine learning libraries through a very generic 
 | Tensorflow | N        | Y          | Y              | N         |   N       |   N        | N           | N           |
 | T-SNE      | Y        | N/A        | N/A            | N/A       |   N/A     |   N/A      | N/A         | N           |
 | Dlib       | N        | Y          | Y              | Y         |   N       |   N        | N           | N           |
+| TensorRT   | N        | Y          | Y              | Y         |   N       |   N        | N           | N           |
 
 
 #### GPU support per library
@@ -33,6 +34,7 @@ DeepDetect relies on external machine learning libraries through a very generic 
 | Tensorflow | N        | Y          |
 | T-SNE      | Y        | N          |
 | Dlib       | N        | Y          |
+| TensorRT   | N        | Y          |
 
 #### Input data support per library (current):
 
@@ -44,6 +46,7 @@ DeepDetect relies on external machine learning libraries through a very generic 
 | Tensorflow | N   | N   | N          | N               | Y      |
 | T-SNE      | Y   | N   | N          | N               | Y      | (*)
 | Dlib       | N   | N   | N          | N               | Y      |
+| TensorRT   | N   | N   | N          | N               | Y      |
 (*) more input support for T-SNE is pending
 
 #### Main functionalities
@@ -359,6 +362,13 @@ If you would like to constrain Dlib to CPU, use:
 ```
 cmake .. -DUSE_DLIB=ON -DUSE_DLIB_CPU_ONLY=ON
 ```
+
+#### Build with TensorRT support
+Specify the following option via cmake:
+```$xslt
+cmake .. -DUSE_TENSORRT=ON
+```
+TensorRT requires GPU and CUDNN, they are automatically switched on. 
 
 #### Build with Caffe2 support
 
