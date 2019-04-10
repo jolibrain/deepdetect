@@ -32,6 +32,9 @@
 #include <unordered_map>
 #include <chrono>
 #include <iostream>
+#if !defined USE_DD_SYSLOG
+#include <spdlog/sinks/stdout_sinks.h>
+#endif
 
 namespace dd
 {
