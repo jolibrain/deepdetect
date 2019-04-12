@@ -348,8 +348,8 @@ namespace dd
 
     std::shared_ptr<spdlog::logger> _logger; /**< mllib logger. */
 
-    long int _flops = 0;  /**< model flops. */
-    long int _params = 0;  /**< number of parameters in the model. */
+    long int _model_flops = 0;  /**< model flops. */
+    long int _model_params = 0;  /**< number of parameters in the model. */
     long int _mem_used_train = 0; /**< amount  of memory used. */
     long int _mem_used_test = 0; /**< amount  of memory used. */
 

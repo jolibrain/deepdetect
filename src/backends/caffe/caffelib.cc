@@ -874,7 +874,7 @@ namespace dd
 	  }
 	try
 	  {
-             model_complexity(this->_flops,this->_params);
+             model_complexity(this->_model_flops,this->_model_params);
 	  }
 	catch(std::exception &e)
 	  {

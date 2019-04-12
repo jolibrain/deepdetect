@@ -239,8 +239,8 @@ namespace dd
 	  ++hit;
 	}
       APIData stats;
-      stats.add("flops",this->_flops);
-      stats.add("params",this->_params);
+      stats.add("flops",this->_model_flops);
+      stats.add("params",this->_model_params);
       stats.add("data_mem_train",this->_mem_used_train * sizeof(float));
       stats.add("data_mem_test",this->_mem_used_test * sizeof(float));
       ad.add("stats", stats);
