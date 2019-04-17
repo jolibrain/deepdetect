@@ -2408,8 +2408,6 @@ namespace dd
 			outr += det_size;
 			if (detection[2] < confidence_threshold)
 			  continue;
-			probs.push_back(detection[2]);
-			cats.push_back(this->_mlmodel.get_hcorresp(detection[1]));
 			APIData ad_bbox;
 			bool skip = false;
 			for (int d=3;d<7;d++)
@@ -2423,6 +2421,8 @@ namespace dd
 			  }
 			if (skip)
 			  continue; // does not record this bbox
+			probs.push_back(detection[2]);
+			cats.push_back(this->_mlmodel.get_hcorresp(detection[1]));
 			ad_bbox.add("xmin",detection[3]*cols);
 			ad_bbox.add("ymax",detection[4]*rows);
 			ad_bbox.add("xmax",detection[5]*cols);
