@@ -29,6 +29,7 @@
 #include "ncnninputconns.h"
 #include "cpu.h"
 #include "net.h"
+#include <iostream>
 
 namespace dd
 {
@@ -57,6 +58,7 @@ namespace dd
 	_nclasses = tl._nclasses;
        _threads = tl._threads;
        _timeserie = tl._timeserie;
+       _old_height = tl._old_height;
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -71,6 +73,8 @@ namespace dd
     {
         _net->load_param(this->_mlmodel._params.c_str());
         _net->load_model(this->_mlmodel._weights.c_str());
+        _old_height = this->_inputc.height();
+        _net->set_input_h(_old_height);
 
         if (ad.has("nclasses"))
 	        _nclasses = ad.get("nclasses").get<int>();
@@ -115,6 +119,7 @@ namespace dd
     int NCNNLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::predict(const APIData &ad,
 										APIData &out)
     {
+
         TInputConnectorStrategy inputc(this->_inputc);
         TOutputConnectorStrategy tout;
         try {
@@ -122,6 +127,7 @@ namespace dd
         } catch (...) {
             throw;
         }
+
 
         // if height (timestep) changes we need to clear net before recreating an extractor with new
         // height,
@@ -133,8 +139,8 @@ namespace dd
             _net->load_param(this->_mlmodel._params.c_str());
             _net->load_model(this->_mlmodel._weights.c_str());
             _old_height = inputc.height();
+            _net->set_input_h(_old_height);
           }
-        _net->set_input_h(inputc.height());
 
         ncnn::Extractor ex = _net->create_extractor();
 
