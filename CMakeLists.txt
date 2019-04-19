@@ -29,6 +29,9 @@ set (deepdetect_VERSION_MINOR 1)
 # options
 OPTION(BUILD_TESTS "Should the tests be built")
 OPTION(BUILD_TOOLS "Should the tools be built")
+OPTION(USE_COMMAND_LINE "build command line JSON API" ON)
+OPTION(USE_JSON_API "build internal JSON API" ON)
+OPTION(USE_HTTP_SERVER "build http JSON API " ON)
  
 # Get the current working branch
 execute_process(
@@ -47,7 +50,23 @@ execute_process(
 )
 
 set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -fopenmp -O2 -fPIC -std=c++11  -DUSE_OPENCV -DUSE_LMDB")
-  
+
+if (USE_COMMAND_LINE)
+  if (NOT USE_CAFFE)
+    set(USE_JSON_API ON)
+  endif()
+  string(APPEND CMAKE_CXX_FLAGS " -DUSE_COMMANDLINE")
+endif()
+
+if (USE_HTTP_SERVER)
+  set(USE_JSON_API ON)
+  string(APPEND CMAKE_CXX_FLAGS " -DUSE_HTTP")
+endif()
+
+if (USE_JSON_API)
+  string(APPEND CMAKE_CXX_FLAGS " -DUSE_JSON_API")
+endif()
+
 # configure a header file to pass some of the CMake settings
 # to the source code
 configure_file (
