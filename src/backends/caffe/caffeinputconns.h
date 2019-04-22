@@ -545,7 +545,7 @@ namespace dd
     VidCaffeInputConn()
       :VidInputConn() {}
     VidCaffeInputConn(const VidCaffeInputConn &i)
-      :VidInputConn(i),CaffeInputInterface(i) {/* _db = true;*/ }
+      :VidInputConn(i),CaffeInputInterface(i) {}
     ~VidCaffeInputConn() {}
 
     // size of each element in Caffe jargon
@@ -563,7 +563,6 @@ namespace dd
     int width() const
     {
       return _width;
-
     }
 
     int batch_size() const
@@ -584,14 +583,9 @@ namespace dd
       else return VidInputConn::test_batch_size();
     }
 
-
-
     void init(const APIData &ad)
     {
-      // TODO: verify usage of those init fields for DB
       VidInputConn::init(ad);
-      if (ad.has("db"))
-	_db = ad.get("db").get<bool>();
       if (ad.has("multi_label"))
 	_multi_label = ad.get("multi_label").get<bool>();
       if (ad.has("root_folder"))
@@ -647,10 +641,6 @@ namespace dd
           {
 	      caffe::Datum datum;
 	      caffe::CVMatToDatum(this->_images.at(i),&datum);
-              /* TODO: comented  by nbd check if neededs
-	      if (!_test_labels.empty())
-		datum.set_label(_test_labels.at(i));
-                */
 	      if (_data_mean.count() != 0)
 		{
 		  int height = datum.height();
@@ -713,65 +703,6 @@ namespace dd
     void reset_dv_test();
 
   private:
-
-    void create_test_db_for_imagedatalayer(const std::string &test_lst,
-                                           const std::string &testdbname,
-                                           const std::string &backend="lmdb", // lmdb, leveldb
-                                           const bool &encoded=true, // save the encoded image in datum
-                                           const std::string &encode_type=""); // 'png', 'jpg', ...
-
-    int images_to_db(const std::vector<std::string> &rfolders,
-		     const std::string &traindbname,
-                     const std::string &testdbname,
-		     const std::string &backend="lmdb", // lmdb, leveldb
-		     const bool &encoded=true, // save the encoded image in datum
-		     const std::string &encode_type=""); // 'png', 'jpg', ...
-
-    void write_image_to_db(const std::string &dbfullname,
-			   const std::vector<std::pair<std::string,int>> &lfiles,
-			   const std::string &backend,
-			   const bool &encoded,
-			   const std::string &encode_type);
-
-    void write_image_to_db_multilabel(const std::string &dbfullname,
-				      const std::vector<std::pair<std::string,std::vector<float>>> &lfiles,
-				      const std::string &backend,
-				      const bool &encoded,
-				      const std::string &encode_type);
-
-    void images_to_hdf5(const std::vector<std::string> &img_lists,
-			const std::string &traindbname,
-			const std::string &testdbname);
-
-    void write_images_to_hdf5(const std::string &inputfilename,
-			      const std::string &dbfullbame,
-			      const std::string &dblistfilename,
-			      std::unordered_map<uint32_t,int> &alphabet,
-			      int &max_ocr_length,
-			      const bool &train_db);
-
-    int objects_to_db(const std::vector<std::string> &rfolders,
-		      const int &db_height,
-		      const int &db_width,
-		      const std::string &traindbname,
-		      const std::string &testdbname,
-		      const bool &encoded=true,
-		      const std::string &encode_type="",
-		      const std::string &backend="lmdb");
-
-    void write_objects_to_db(const std::string &dbfullname,
-			     const int &db_height,
-			     const int &db_width,
-			     const std::vector<std::pair<std::string,std::string>> &lines,
-			     const bool &encoded,
-			     const std::string &encode_type,
-			     const std::string &backend,
-			     const bool &train);
-    
-    int compute_images_mean(const std::string &dbname,
-			    const std::string &meanfile,
-			    const std::string &backend="lmdb");
-
     std::string guess_encoding(const std::string &file);
     
   public:

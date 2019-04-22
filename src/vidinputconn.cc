@@ -1,6 +1,6 @@
 /**
  * DeepDetect
- * Copyright (c) 2015 Emmanuel Benazera
+ * Copyright (c) 2019 Jolibrain
  * Author: Emmanuel Benazera <beniz@droidnik.fr>
  *
  * This file is part of deepdetect.
@@ -31,8 +31,6 @@ namespace dd
       this->streamlib = i.streamlib;
       this->_counter = i._counter;
       this->_counter++;
-      std::cout <<  "VidInputConn Copy constructor counter = "<< this->_counter << std::endl;
-
     };
 
     void VidInputConn::init(const APIData &ad) 
@@ -47,7 +45,7 @@ namespace dd
       cv::Mat rimg;
       DataEl <DDVid> dvid;
       long int  timestamp;
-      this->_logger->info("VidInputConn::transform");
+      //this->_logger->info("VidInputConn::transform");
 
       get_data(ad);
       if (this->_uris[0].empty())
@@ -59,7 +57,7 @@ namespace dd
       else
       {
 
-        this->_logger->info(" is playing = {}", this->streamlib->is_playing());
+        //this->_logger->info(" is playing = {}", this->streamlib->is_playing());
         if ( !this->streamlib->is_playing() )
         {
           // New URI received start frame acquistion

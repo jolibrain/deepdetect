@@ -1174,6 +1174,8 @@ namespace dd
     _test_db = std::unique_ptr<caffe::db::DB>();
     _dt_seg = 0;
   }
+
+  /*- VidCaffeInputConn -*/
   void VidCaffeInputConn::reset_dv_test()
   {
     _dt_vit = _dv_test.begin();
@@ -1181,8 +1183,6 @@ namespace dd
     _test_db = std::unique_ptr<caffe::db::DB>();
     _dt_seg = 0;
   }
-
-
 
   /*- DDCCsv -*/
   int DDCCsv::read_file(const std::string &fname)
