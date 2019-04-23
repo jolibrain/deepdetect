@@ -750,12 +750,16 @@ if (USE_TENSORRT)
 if (USE_LIBVNN)
   message(STATUS "Fetching libvnn")
   add_definitions(-DUSE_LIBVNN)
+  set(VNN_JETSON "")
+  if (JETSON)
+    set(VNN_JETSON -DUSE_TX2=ON)
+  endif()
   ExternalProject_Add(
     libvnn
     PREFIX libvnn
     INSTALL_DIR ${CMAKE_BINARY_DIR}
     DOWNLOAD_COMMAND git clone https://github.com/jolibrain/libvnn.git
-    CONFIGURE_COMMAND mkdir -p build && cd build && cmake ..
+    CONFIGURE_COMMAND mkdir -p build && cd build && cmake .. ${VNN_JETSON}
     BUILD_COMMAND cd build && make -j${N}
     INSTALL_COMMAND ""
     BUILD_IN_SOURCE 1
