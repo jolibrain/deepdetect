@@ -27,7 +27,9 @@
 #include "csvtsinputfileconn.h"
 #include "txtinputfileconn.h"
 #include "svminputfileconn.h"
+#ifdef USE_LIBVNN
 #include "vidinputconn.h"
+#endif
 #include "caffe/caffe.hpp"
 #include "caffe/util/db.hpp"
 #include "utils/fileops.hpp"
@@ -536,6 +538,7 @@ namespace dd
     bool _align = false;
   };
 
+#ifdef USE_LIBVNN
   /**
    * \brief Video image connector, supports both files and camera stream
    */
@@ -720,7 +723,8 @@ namespace dd
     int _dt_seg = 0;
     bool _align = false;
   };
-
+#endif
+  
   /**
    * \brief Caffe CSV connector
    * \note use 'label_offset' in API to make sure that labels start at 0

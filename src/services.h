@@ -28,7 +28,9 @@
 #include "inputconnectorstrategy.h"
 #include "imginputfileconn.h"
 #include "csvinputfileconn.h"
+#ifdef USE_LIBVNN
 #include "vidinputconn.h"
+#endif
 #include "txtinputfileconn.h"
 #include "svminputfileconn.h"
 #include "outputconnectorstrategy.h"
@@ -71,7 +73,9 @@ namespace dd
   typedef mapbox::util::variant<
 #ifdef USE_CAFFE
     MLService<CaffeLib,ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>,
+#ifdef USE_LIBVNN
     MLService<CaffeLib,VidCaffeInputConn,SupervisedOutput,CaffeModel>,
+#endif
     MLService<CaffeLib,CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>,
     MLService<CaffeLib,CSVTSCaffeInputFileConn,SupervisedOutput,CaffeModel>,
     MLService<CaffeLib,TxtCaffeInputFileConn,SupervisedOutput,CaffeModel>,

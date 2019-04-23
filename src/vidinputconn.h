@@ -1,7 +1,7 @@
 /**
  * DeepDetect
- * Copyright (c) 2014 Emmanuel Benazera
- * Author: Emmanuel Benazera <beniz@droidnik.fr>
+ * Copyright (c) 2018 Jolibrain
+ * Author: Nicolas Bertrand <nicolas@davionbertrand.net>
  *
  * This file is part of deepdetect.
  *
@@ -25,6 +25,7 @@
 #include "inputconnectorstrategy.h"
 
 #include "streamlibgstreamerdesktop.h"
+//TODO: streamlibgstreamertx2.h
 #include "vnninputconnectorfile.h"
 #include "vnnoutputconnectordummy.h"
 #include "utils/apitools.h"
@@ -79,14 +80,17 @@ namespace dd
       VidInputConn()
         :InputConnectorStrategy()
       {
-           std::cout << "Normal constructor : " << std::endl;
-           streamlib =  new vnn::StreamLibGstreamerDesktop
+	   //std::cout << "Normal constructor : " << std::endl;
+           _streamlib =  new vnn::StreamLibGstreamerDesktop
              <vnn::VnnInputConnectorFile, vnn::VnnOutputConnectorDummy>();
       }
 
       VidInputConn(const VidInputConn &i);
 
-      ~VidInputConn() {}
+      ~VidInputConn()
+	{
+	  //delete _streamlib;
+	}
 
       void init(const APIData &ad);
 
@@ -105,13 +109,13 @@ namespace dd
 
       int feature_size() const
       {
-        // TODO: what for ? 
-        return 30;
+	if (_bw)
+	  return _width * _height;
+	else return _width * _height * 3; // RGB
       };
 
       int test_batch_size() const
       {
-        //return _test_images.size();
         return MAX_FRAMES;
       };
 
@@ -119,24 +123,21 @@ namespace dd
 
       // data
       unsigned int MAX_FRAMES = 30;
-      int _width = 300;
+      int _width = 300; /**< default value. */
       int _height = 300;
       bool _bw = false; /**< whether to convert to black & white. */
       std::vector<cv::Mat> _images;
       std::vector<std::pair<int,int>> _images_size;
       vnn::StreamLibGstreamerDesktop<vnn::VnnInputConnectorFile,
-        vnn::VnnOutputConnectorDummy>*  streamlib;
+        vnn::VnnOutputConnectorDummy> *_streamlib;
+      //TODO: tx2 stream
 
-      /* TODO: ImgInput heritage: deal what to do with that */
       bool _has_mean_scalar = false; /**< whether scalar is set. */
       std::vector<float> _mean; /**< mean image pixels, to be subtracted from images. */
       unsigned long max_video_buffer = 300;
       std::string _current_uri;
       bool is_running = false;
       int _counter = 0 ;
-
-
-
   };
 }
 

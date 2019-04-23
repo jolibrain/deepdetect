@@ -453,8 +453,10 @@ namespace dd
 	      {
 		if (input == "image")
 		  add_service(sname,std::move(MLService<CaffeLib,ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
+#ifdef USE_LIBVNN
 		else if (input == "video")
 		  add_service(sname,std::move(MLService<CaffeLib,VidCaffeInputConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
+#endif
 		else if (input == "csv")
 		  add_service(sname,std::move(MLService<CaffeLib,CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>(sname,cmodel,description)),ad);
 		else if (input == "csv_ts" || input == "csvts")

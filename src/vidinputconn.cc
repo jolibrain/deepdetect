@@ -1,7 +1,7 @@
 /**
  * DeepDetect
- * Copyright (c) 2019 Jolibrain
- * Author: Emmanuel Benazera <beniz@droidnik.fr>
+ * Copyright (c) 2018 Jolibrain
+ * Author: Nicolas Bertrand <nicolas@davionbertrand.net>
  *
  * This file is part of deepdetect.
  *
@@ -28,14 +28,14 @@ namespace dd
   VidInputConn::VidInputConn(const VidInputConn &i)
         :InputConnectorStrategy(i)
     {
-      this->streamlib = i.streamlib;
+      this->_streamlib = i._streamlib;
       this->_counter = i._counter;
       this->_counter++;
     };
 
     void VidInputConn::init(const APIData &ad) 
     {
-        std::string video_path = "/tmp/bbb_60.mkv";
+        //std::string video_path = "/tmp/bbb_60.mkv";
         fillup_parameters(ad);
     };
 
@@ -58,19 +58,20 @@ namespace dd
       {
 
         //this->_logger->info(" is playing = {}", this->streamlib->is_playing());
-        if ( !this->streamlib->is_playing() )
+        if ( !this->_streamlib->is_playing() )
         {
           // New URI received start frame acquistion
           this->init(ad);
           if (dvid.read_element(this->_uris[0], this->_logger))
           {
-            this->streamlib->_input.set_filepath(this->_uris[0]);
-            this->streamlib->set_scale_size(this->_width, this->_height);
-            this->streamlib->init();
+            this->_streamlib->_input.set_filepath(this->_uris[0]);
+            this->_streamlib->set_scale_size(this->_width, this->_height);
+	    this->_streamlib->_scalesink_sync = true;
+            this->_streamlib->init();
             this->_logger->info("run async");
-            this->streamlib->run_async();
-            this->streamlib->set_max_video_buffer(this->max_video_buffer);
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            this->_streamlib->run_async();
+            this->_streamlib->set_max_video_buffer(this->max_video_buffer);
+            //std::this_thread::sleep_for(std::chrono::seconds(1)); //beniz: deactivated
           }
 
           this->_current_uri = this->_uris[0];
@@ -78,7 +79,7 @@ namespace dd
           this->_logger->info("_current_uri = {} // {}", this->_current_uri, this->is_running);
         }
 
-        video_buffer_size = this->streamlib->get_video_buffer(rimg, timestamp);
+        video_buffer_size = this->_streamlib->get_video_buffer(rimg, timestamp);
         this->_uris[0] = std::to_string(timestamp);
         if (video_buffer_size == 0){
           // TODO non an exception ? just waiting frames of frame count finished
@@ -86,8 +87,8 @@ namespace dd
         }
         this->_images.push_back(rimg);
         this->_images_size.push_back( std::pair<int,int>(
-           this->streamlib->get_original_height(),
-            this->streamlib->get_original_width()
+           this->_streamlib->get_original_height(),
+            this->_streamlib->get_original_width()
             )
             );
 

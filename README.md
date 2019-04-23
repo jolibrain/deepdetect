@@ -391,6 +391,13 @@ Specify the following option via cmake:
 cmake .. -DUSE_SIMSEARCH=ON
 ```
 
+#### Build with video input connector
+
+Specify the following option via cmake:
+```
+cmake .. -DUSE_LIBVNN=ON
+```
+
 #### Build with logs output into syslog
 
 Specify the following option via cmake:

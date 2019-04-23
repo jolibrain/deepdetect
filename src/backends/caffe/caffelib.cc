@@ -4019,7 +4019,9 @@ namespace dd
   }
 
   template class CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>;
+#ifdef USE_LIBVNN
   template class CaffeLib<VidCaffeInputConn,SupervisedOutput,CaffeModel>;
+#endif
   template class CaffeLib<CSVCaffeInputFileConn,SupervisedOutput,CaffeModel>;
   template class CaffeLib<CSVTSCaffeInputFileConn,SupervisedOutput,CaffeModel>;
   template class CaffeLib<TxtCaffeInputFileConn,SupervisedOutput,CaffeModel>;
