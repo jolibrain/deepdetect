@@ -24,9 +24,13 @@
 
 #include "inputconnectorstrategy.h"
 
+#ifndef USE_JETSON_TX
 #include "streamlibgstreamerdesktop.h"
-//TODO: streamlibgstreamertx2.h
 #include "vnninputconnectorfile.h"
+#else
+#include "streamlibgstreamertx2.h"
+#include "vnninputconnectorfiletx2.h"
+#endif
 #include "vnnoutputconnectordummy.h"
 #include "utils/apitools.h"
 #include <opencv2/imgproc/imgproc.hpp>
@@ -81,8 +85,14 @@ namespace dd
         :InputConnectorStrategy()
       {
 	   //std::cout << "Normal constructor : " << std::endl;
+#ifndef USE_JETSON_TX
            _streamlib =  new vnn::StreamLibGstreamerDesktop
              <vnn::VnnInputConnectorFile, vnn::VnnOutputConnectorDummy>();
+#else
+	   _streamlib = new vnn::StreamLibGstreamerTX2
+	     <vnn::VnnInputConnectorFileTX2, vnn::VnnOutputConnectorDummy>();
+#endif
+	   //TODO: stream
       }
 
       VidInputConn(const VidInputConn &i);
@@ -128,9 +138,13 @@ namespace dd
       bool _bw = false; /**< whether to convert to black & white. */
       std::vector<cv::Mat> _images;
       std::vector<std::pair<int,int>> _images_size;
+#ifndef USE_JETSON_TX
       vnn::StreamLibGstreamerDesktop<vnn::VnnInputConnectorFile,
         vnn::VnnOutputConnectorDummy> *_streamlib;
-      //TODO: tx2 stream
+#else
+      vnn::StreamLibGstreamerTX2<vnn::VnnInputConnectorFileTX2,
+	vnn::VnnOutputConnectorDummy> *_streamlib;
+#endif
 
       bool _has_mean_scalar = false; /**< whether scalar is set. */
       std::vector<float> _mean; /**< mean image pixels, to be subtracted from images. */
