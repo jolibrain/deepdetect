@@ -29,6 +29,7 @@
 #include <mutex>
 //#include <shared_mutex>
 #include <boost/thread/shared_mutex.hpp>
+#include <boost/thread/lock_types.hpp>
 #include <unordered_map>
 #include <chrono>
 #include <iostream>
