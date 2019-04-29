@@ -73,7 +73,6 @@ namespace dd
     {
         _net->load_param(this->_mlmodel._params.c_str());
         _net->load_model(this->_mlmodel._weights.c_str());
-        _old_height = this->_inputc.height();
         _net->set_input_h(_old_height);
 
         if (ad.has("nclasses"))
