@@ -22,7 +22,9 @@
 #include "deepdetect.h"
 #include "commandlineapi.h"
 #include "commandlinejsonapi.h"
+#ifdef USE_HTTP
 #include "httpjsonapi.h"
+#endif
 #include "imginputfileconn.h"
 #include "outputconnectorstrategy.h"
 #ifdef USE_XGBOOST
