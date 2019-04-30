@@ -50,19 +50,10 @@ layer {
 }
 layer {
   name: "bn0_1"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "concat0_1"
-  top: "bn0_1_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn0_1"
-  type: "Scale"
-  bottom: "bn0_1_bn"
   top: "bn0_1"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -88,19 +79,10 @@ layer {
 }
 layer {
   name: "bn1_0_0"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv1_0_0"
-  top: "bn1_0_0_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn1_0_0"
-  type: "Scale"
-  bottom: "bn1_0_0_bn"
   top: "bn1_0_0"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -127,19 +109,10 @@ layer {
 }
 layer {
   name: "bn1_0_1"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv1_0_1"
-  top: "bn1_0_1_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn1_0_1"
-  type: "Scale"
-  bottom: "bn1_0_1_bn"
   top: "bn1_0_1"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -165,19 +138,10 @@ layer {
 }
 layer {
   name: "bn1_0_2"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv1_0_2"
-  top: "bn1_0_2_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn1_0_2"
-  type: "Scale"
-  bottom: "bn1_0_2_bn"
   top: "bn1_0_2"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -209,19 +173,10 @@ layer {
 }
 layer {
   name: "bn1_0_4"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv1_0_4"
-  top: "bn1_0_4_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn1_0_4"
-  type: "Scale"
-  bottom: "bn1_0_4_bn"
   top: "bn1_0_4"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -254,19 +209,10 @@ layer {
 }
 layer {
   name: "bn1_1_0"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv1_1_0"
-  top: "bn1_1_0_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn1_1_0"
-  type: "Scale"
-  bottom: "bn1_1_0_bn"
   top: "bn1_1_0"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -293,19 +239,10 @@ layer {
 }
 layer {
   name: "bn1_1_1"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv1_1_1"
-  top: "bn1_1_1_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn1_1_1"
-  type: "Scale"
-  bottom: "bn1_1_1_bn"
   top: "bn1_1_1"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -331,19 +268,10 @@ layer {
 }
 layer {
   name: "bn1_1_2"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv1_1_2"
-  top: "bn1_1_2_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn1_1_2"
-  type: "Scale"
-  bottom: "bn1_1_2_bn"
   top: "bn1_1_2"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -376,19 +304,10 @@ layer {
 }
 layer {
   name: "bn1_2_0"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv1_2_0"
-  top: "bn1_2_0_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn1_2_0"
-  type: "Scale"
-  bottom: "bn1_2_0_bn"
   top: "bn1_2_0"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -415,19 +334,10 @@ layer {
 }
 layer {
   name: "bn1_2_1"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv1_2_1"
-  top: "bn1_2_1_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn1_2_1"
-  type: "Scale"
-  bottom: "bn1_2_1_bn"
   top: "bn1_2_1"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -453,19 +363,10 @@ layer {
 }
 layer {
   name: "bn1_2_2"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv1_2_2"
-  top: "bn1_2_2_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn1_2_2"
-  type: "Scale"
-  bottom: "bn1_2_2_bn"
   top: "bn1_2_2"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -498,19 +399,10 @@ layer {
 }
 layer {
   name: "bn1_3_0"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv1_3_0"
-  top: "bn1_3_0_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn1_3_0"
-  type: "Scale"
-  bottom: "bn1_3_0_bn"
   top: "bn1_3_0"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -537,19 +429,10 @@ layer {
 }
 layer {
   name: "bn1_3_1"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv1_3_1"
-  top: "bn1_3_1_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn1_3_1"
-  type: "Scale"
-  bottom: "bn1_3_1_bn"
   top: "bn1_3_1"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -575,19 +458,10 @@ layer {
 }
 layer {
   name: "bn1_3_2"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv1_3_2"
-  top: "bn1_3_2_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn1_3_2"
-  type: "Scale"
-  bottom: "bn1_3_2_bn"
   top: "bn1_3_2"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -620,19 +494,10 @@ layer {
 }
 layer {
   name: "bn1_4_0"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv1_4_0"
-  top: "bn1_4_0_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn1_4_0"
-  type: "Scale"
-  bottom: "bn1_4_0_bn"
   top: "bn1_4_0"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -659,19 +524,10 @@ layer {
 }
 layer {
   name: "bn1_4_1"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv1_4_1"
-  top: "bn1_4_1_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn1_4_1"
-  type: "Scale"
-  bottom: "bn1_4_1_bn"
   top: "bn1_4_1"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -697,19 +553,10 @@ layer {
 }
 layer {
   name: "bn1_4_2"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv1_4_2"
-  top: "bn1_4_2_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn1_4_2"
-  type: "Scale"
-  bottom: "bn1_4_2_bn"
   top: "bn1_4_2"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -742,19 +589,10 @@ layer {
 }
 layer {
   name: "bn2_0_0"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv2_0_0"
-  top: "bn2_0_0_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn2_0_0"
-  type: "Scale"
-  bottom: "bn2_0_0_bn"
   top: "bn2_0_0"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -781,19 +619,10 @@ layer {
 }
 layer {
   name: "bn2_0_1"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv2_0_1"
-  top: "bn2_0_1_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn2_0_1"
-  type: "Scale"
-  bottom: "bn2_0_1_bn"
   top: "bn2_0_1"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -819,19 +648,10 @@ layer {
 }
 layer {
   name: "bn2_0_2"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv2_0_2"
-  top: "bn2_0_2_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn2_0_2"
-  type: "Scale"
-  bottom: "bn2_0_2_bn"
   top: "bn2_0_2"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -863,19 +683,10 @@ layer {
 }
 layer {
   name: "bn2_0_4"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv2_0_4"
-  top: "bn2_0_4_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn2_0_4"
-  type: "Scale"
-  bottom: "bn2_0_4_bn"
   top: "bn2_0_4"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -908,19 +719,10 @@ layer {
 }
 layer {
   name: "bn2_1_0"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv2_1_0"
-  top: "bn2_1_0_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn2_1_0"
-  type: "Scale"
-  bottom: "bn2_1_0_bn"
   top: "bn2_1_0"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -947,19 +749,10 @@ layer {
 }
 layer {
   name: "bn2_1_1"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv2_1_1"
-  top: "bn2_1_1_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn2_1_1"
-  type: "Scale"
-  bottom: "bn2_1_1_bn"
   top: "bn2_1_1"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -985,19 +778,10 @@ layer {
 }
 layer {
   name: "bn2_1_2"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv2_1_2"
-  top: "bn2_1_2_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn2_1_2"
-  type: "Scale"
-  bottom: "bn2_1_2_bn"
   top: "bn2_1_2"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -1030,19 +814,10 @@ layer {
 }
 layer {
   name: "bn2_2_0"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv2_2_0"
-  top: "bn2_2_0_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn2_2_0"
-  type: "Scale"
-  bottom: "bn2_2_0_bn"
   top: "bn2_2_0"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -1070,19 +845,10 @@ layer {
 }
 layer {
   name: "bn2_2_1"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv2_2_1"
-  top: "bn2_2_1_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn2_2_1"
-  type: "Scale"
-  bottom: "bn2_2_1_bn"
   top: "bn2_2_1"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -1108,19 +874,10 @@ layer {
 }
 layer {
   name: "bn2_2_2"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv2_2_2"
-  top: "bn2_2_2_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn2_2_2"
-  type: "Scale"
-  bottom: "bn2_2_2_bn"
   top: "bn2_2_2"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -1153,19 +910,10 @@ layer {
 }
 layer {
   name: "bn2_3_0"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv2_3_0"
-  top: "bn2_3_0_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn2_3_0"
-  type: "Scale"
-  bottom: "bn2_3_0_bn"
   top: "bn2_3_0"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -1210,19 +958,10 @@ layer {
 }
 layer {
   name: "bn2_3_1"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv2_3_1"
-  top: "bn2_3_1_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn2_3_1"
-  type: "Scale"
-  bottom: "bn2_3_1_bn"
   top: "bn2_3_1"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -1248,19 +987,10 @@ layer {
 }
 layer {
   name: "bn2_3_2"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv2_3_2"
-  top: "bn2_3_2_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn2_3_2"
-  type: "Scale"
-  bottom: "bn2_3_2_bn"
   top: "bn2_3_2"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -1293,19 +1023,10 @@ layer {
 }
 layer {
   name: "bn2_4_0"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv2_4_0"
-  top: "bn2_4_0_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn2_4_0"
-  type: "Scale"
-  bottom: "bn2_4_0_bn"
   top: "bn2_4_0"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -1333,19 +1054,10 @@ layer {
 }
 layer {
   name: "bn2_4_1"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv2_4_1"
-  top: "bn2_4_1_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn2_4_1"
-  type: "Scale"
-  bottom: "bn2_4_1_bn"
   top: "bn2_4_1"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -1371,19 +1083,10 @@ layer {
 }
 layer {
   name: "bn2_4_2"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv2_4_2"
-  top: "bn2_4_2_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn2_4_2"
-  type: "Scale"
-  bottom: "bn2_4_2_bn"
   top: "bn2_4_2"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -1416,19 +1119,10 @@ layer {
 }
 layer {
   name: "bn2_5_0"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv2_5_0"
-  top: "bn2_5_0_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn2_5_0"
-  type: "Scale"
-  bottom: "bn2_5_0_bn"
   top: "bn2_5_0"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -1455,19 +1149,10 @@ layer {
 }
 layer {
   name: "bn2_5_1"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv2_5_1"
-  top: "bn2_5_1_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn2_5_1"
-  type: "Scale"
-  bottom: "bn2_5_1_bn"
   top: "bn2_5_1"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -1493,19 +1178,10 @@ layer {
 }
 layer {
   name: "bn2_5_2"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv2_5_2"
-  top: "bn2_5_2_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn2_5_2"
-  type: "Scale"
-  bottom: "bn2_5_2_bn"
   top: "bn2_5_2"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -1538,19 +1214,10 @@ layer {
 }
 layer {
   name: "bn2_6_0"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv2_6_0"
-  top: "bn2_6_0_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn2_6_0"
-  type: "Scale"
-  bottom: "bn2_6_0_bn"
   top: "bn2_6_0"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -1578,19 +1245,10 @@ layer {
 }
 layer {
   name: "bn2_6_1"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv2_6_1"
-  top: "bn2_6_1_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn2_6_1"
-  type: "Scale"
-  bottom: "bn2_6_1_bn"
   top: "bn2_6_1"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -1616,19 +1274,10 @@ layer {
 }
 layer {
   name: "bn2_6_2"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv2_6_2"
-  top: "bn2_6_2_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn2_6_2"
-  type: "Scale"
-  bottom: "bn2_6_2_bn"
   top: "bn2_6_2"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -1661,19 +1310,10 @@ layer {
 }
 layer {
   name: "bn2_7_0"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv2_7_0"
-  top: "bn2_7_0_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn2_7_0"
-  type: "Scale"
-  bottom: "bn2_7_0_bn"
   top: "bn2_7_0"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -1718,19 +1358,10 @@ layer {
 }
 layer {
   name: "bn2_7_1"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv2_7_1"
-  top: "bn2_7_1_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn2_7_1"
-  type: "Scale"
-  bottom: "bn2_7_1_bn"
   top: "bn2_7_1"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -1756,19 +1387,10 @@ layer {
 }
 layer {
   name: "bn2_7_2"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv2_7_2"
-  top: "bn2_7_2_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn2_7_2"
-  type: "Scale"
-  bottom: "bn2_7_2_bn"
   top: "bn2_7_2"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -1801,19 +1423,10 @@ layer {
 }
 layer {
   name: "bn2_8_0"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv2_8_0"
-  top: "bn2_8_0_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn2_8_0"
-  type: "Scale"
-  bottom: "bn2_8_0_bn"
   top: "bn2_8_0"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -1841,19 +1454,10 @@ layer {
 }
 layer {
   name: "bn2_8_1"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv2_8_1"
-  top: "bn2_8_1_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn2_8_1"
-  type: "Scale"
-  bottom: "bn2_8_1_bn"
   top: "bn2_8_1"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -1879,19 +1483,10 @@ layer {
 }
 layer {
   name: "bn2_8_2"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv2_8_2"
-  top: "bn2_8_2_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn2_8_2"
-  type: "Scale"
-  bottom: "bn2_8_2_bn"
   top: "bn2_8_2"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -1924,19 +1519,10 @@ layer {
 }
 layer {
   name: "bn3_1_0"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv3_1_0"
-  top: "bn3_1_0_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn3_1_0"
-  type: "Scale"
-  bottom: "bn3_1_0_bn"
   top: "bn3_1_0"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -1963,19 +1549,10 @@ layer {
 }
 layer {
   name: "bn3_1_1"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv3_1_1"
-  top: "bn3_1_1_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn3_1_1"
-  type: "Scale"
-  bottom: "bn3_1_1_bn"
   top: "bn3_1_1"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -2001,19 +1578,10 @@ layer {
 }
 layer {
   name: "bn3_1_2"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv3_1_2"
-  top: "bn3_1_2_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn3_1_2"
-  type: "Scale"
-  bottom: "bn3_1_2_bn"
   top: "bn3_1_2"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -2046,19 +1614,10 @@ layer {
 }
 layer {
   name: "bn3_2_0"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv3_2_0"
-  top: "bn3_2_0_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn3_2_0"
-  type: "Scale"
-  bottom: "bn3_2_0_bn"
   top: "bn3_2_0"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -2086,19 +1645,10 @@ layer {
 }
 layer {
   name: "bn3_2_1"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv3_2_1"
-  top: "bn3_2_1_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn3_2_1"
-  type: "Scale"
-  bottom: "bn3_2_1_bn"
   top: "bn3_2_1"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -2124,19 +1674,10 @@ layer {
 }
 layer {
   name: "bn3_2_2"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv3_2_2"
-  top: "bn3_2_2_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn3_2_2"
-  type: "Scale"
-  bottom: "bn3_2_2_bn"
   top: "bn3_2_2"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -2169,19 +1710,10 @@ layer {
 }
 layer {
   name: "bn3_3_0"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv3_3_0"
-  top: "bn3_3_0_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn3_3_0"
-  type: "Scale"
-  bottom: "bn3_3_0_bn"
   top: "bn3_3_0"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -2226,19 +1758,10 @@ layer {
 }
 layer {
   name: "bn3_3_1"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv3_3_1"
-  top: "bn3_3_1_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn3_3_1"
-  type: "Scale"
-  bottom: "bn3_3_1_bn"
   top: "bn3_3_1"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -2264,19 +1787,10 @@ layer {
 }
 layer {
   name: "bn3_3_2"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv3_3_2"
-  top: "bn3_3_2_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn3_3_2"
-  type: "Scale"
-  bottom: "bn3_3_2_bn"
   top: "bn3_3_2"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -2309,19 +1823,10 @@ layer {
 }
 layer {
   name: "bn3_4_0"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv3_4_0"
-  top: "bn3_4_0_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn3_4_0"
-  type: "Scale"
-  bottom: "bn3_4_0_bn"
   top: "bn3_4_0"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -2349,19 +1854,10 @@ layer {
 }
 layer {
   name: "bn3_4_1"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv3_4_1"
-  top: "bn3_4_1_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn3_4_1"
-  type: "Scale"
-  bottom: "bn3_4_1_bn"
   top: "bn3_4_1"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -2387,19 +1883,10 @@ layer {
 }
 layer {
   name: "bn3_4_2"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv3_4_2"
-  top: "bn3_4_2_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn3_4_2"
-  type: "Scale"
-  bottom: "bn3_4_2_bn"
   top: "bn3_4_2"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -2432,19 +1919,10 @@ layer {
 }
 layer {
   name: "bn3_5_0"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv3_5_0"
-  top: "bn3_5_0_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn3_5_0"
-  type: "Scale"
-  bottom: "bn3_5_0_bn"
   top: "bn3_5_0"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -2471,19 +1949,10 @@ layer {
 }
 layer {
   name: "bn3_5_1"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv3_5_1"
-  top: "bn3_5_1_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn3_5_1"
-  type: "Scale"
-  bottom: "bn3_5_1_bn"
   top: "bn3_5_1"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -2509,19 +1978,10 @@ layer {
 }
 layer {
   name: "bn3_5_2"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv3_5_2"
-  top: "bn3_5_2_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn3_5_2"
-  type: "Scale"
-  bottom: "bn3_5_2_bn"
   top: "bn3_5_2"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -2554,19 +2014,10 @@ layer {
 }
 layer {
   name: "bn3_6_0"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv3_6_0"
-  top: "bn3_6_0_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn3_6_0"
-  type: "Scale"
-  bottom: "bn3_6_0_bn"
   top: "bn3_6_0"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -2594,19 +2045,10 @@ layer {
 }
 layer {
   name: "bn3_6_1"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv3_6_1"
-  top: "bn3_6_1_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn3_6_1"
-  type: "Scale"
-  bottom: "bn3_6_1_bn"
   top: "bn3_6_1"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -2632,19 +2074,10 @@ layer {
 }
 layer {
   name: "bn3_6_2"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv3_6_2"
-  top: "bn3_6_2_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn3_6_2"
-  type: "Scale"
-  bottom: "bn3_6_2_bn"
   top: "bn3_6_2"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -2677,19 +2110,10 @@ layer {
 }
 layer {
   name: "bn3_7_0"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv3_7_0"
-  top: "bn3_7_0_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn3_7_0"
-  type: "Scale"
-  bottom: "bn3_7_0_bn"
   top: "bn3_7_0"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -2734,19 +2158,10 @@ layer {
 }
 layer {
   name: "bn3_7_1"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv3_7_1"
-  top: "bn3_7_1_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn3_7_1"
-  type: "Scale"
-  bottom: "bn3_7_1_bn"
   top: "bn3_7_1"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -2772,19 +2187,10 @@ layer {
 }
 layer {
   name: "bn3_7_2"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv3_7_2"
-  top: "bn3_7_2_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn3_7_2"
-  type: "Scale"
-  bottom: "bn3_7_2_bn"
   top: "bn3_7_2"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -2817,19 +2223,10 @@ layer {
 }
 layer {
   name: "bn3_8_0"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv3_8_0"
-  top: "bn3_8_0_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn3_8_0"
-  type: "Scale"
-  bottom: "bn3_8_0_bn"
   top: "bn3_8_0"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -2857,19 +2254,10 @@ layer {
 }
 layer {
   name: "bn3_8_1"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv3_8_1"
-  top: "bn3_8_1_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn3_8_1"
-  type: "Scale"
-  bottom: "bn3_8_1_bn"
   top: "bn3_8_1"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -2895,19 +2283,10 @@ layer {
 }
 layer {
   name: "bn3_8_2"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv3_8_2"
-  top: "bn3_8_2_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn3_8_2"
-  type: "Scale"
-  bottom: "bn3_8_2_bn"
   top: "bn3_8_2"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -2940,19 +2319,10 @@ layer {
 }
 layer {
   name: "bn4_0_0"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv4_0_0"
-  top: "bn4_0_0_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn4_0_0"
-  type: "Scale"
-  bottom: "bn4_0_0_bn"
   top: "bn4_0_0"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -2975,19 +2345,10 @@ layer {
 }
 layer {
   name: "bn4_0_1"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "deconv4_0_1"
-  top: "bn4_0_1_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn4_0_1"
-  type: "Scale"
-  bottom: "bn4_0_1_bn"
   top: "bn4_0_1"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -3013,19 +2374,10 @@ layer {
 }
 layer {
   name: "bn4_0_2"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv4_0_2"
-  top: "bn4_0_2_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn4_0_2"
-  type: "Scale"
-  bottom: "bn4_0_2_bn"
   top: "bn4_0_2"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -3045,19 +2397,10 @@ layer {
 }
 layer {
   name: "bn4_0_4"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv4_0_4"
-  top: "bn4_0_4_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn4_0_4"
-  type: "Scale"
-  bottom: "bn4_0_4_bn"
   top: "bn4_0_4"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -3100,19 +2443,10 @@ layer {
 }
 layer {
   name: "bn4_1_0"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv4_1_0"
-  top: "bn4_1_0_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn4_1_0"
-  type: "Scale"
-  bottom: "bn4_1_0_bn"
   top: "bn4_1_0"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -3139,19 +2473,10 @@ layer {
 }
 layer {
   name: "bn4_1_1"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv4_1_1"
-  top: "bn4_1_1_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn4_1_1"
-  type: "Scale"
-  bottom: "bn4_1_1_bn"
   top: "bn4_1_1"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -3177,19 +2502,10 @@ layer {
 }
 layer {
   name: "bn4_1_2"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv4_1_2"
-  top: "bn4_1_2_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn4_1_2"
-  type: "Scale"
-  bottom: "bn4_1_2_bn"
   top: "bn4_1_2"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -3222,19 +2538,10 @@ layer {
 }
 layer {
   name: "bn4_2_0"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv4_2_0"
-  top: "bn4_2_0_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn4_2_0"
-  type: "Scale"
-  bottom: "bn4_2_0_bn"
   top: "bn4_2_0"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -3261,19 +2568,10 @@ layer {
 }
 layer {
   name: "bn4_2_1"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv4_2_1"
-  top: "bn4_2_1_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn4_2_1"
-  type: "Scale"
-  bottom: "bn4_2_1_bn"
   top: "bn4_2_1"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -3299,19 +2597,10 @@ layer {
 }
 layer {
   name: "bn4_2_2"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv4_2_2"
-  top: "bn4_2_2_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn4_2_2"
-  type: "Scale"
-  bottom: "bn4_2_2_bn"
   top: "bn4_2_2"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -3344,19 +2633,10 @@ layer {
 }
 layer {
   name: "bn5_0_0"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv5_0_0"
-  top: "bn5_0_0_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn5_0_0"
-  type: "Scale"
-  bottom: "bn5_0_0_bn"
   top: "bn5_0_0"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -3379,19 +2659,10 @@ layer {
 }
 layer {
   name: "bn5_0_1"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "deconv5_0_1"
-  top: "bn5_0_1_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn5_0_1"
-  type: "Scale"
-  bottom: "bn5_0_1_bn"
   top: "bn5_0_1"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -3417,19 +2688,10 @@ layer {
 }
 layer {
   name: "bn5_0_2"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv5_0_2"
-  top: "bn5_0_2_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn5_0_2"
-  type: "Scale"
-  bottom: "bn5_0_2_bn"
   top: "bn5_0_2"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -3449,19 +2711,10 @@ layer {
 }
 layer {
   name: "bn5_0_4"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv5_0_4"
-  top: "bn5_0_4_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn5_0_4"
-  type: "Scale"
-  bottom: "bn5_0_4_bn"
   top: "bn5_0_4"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -3504,19 +2757,10 @@ layer {
 }
 layer {
   name: "bn5_1_0"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv5_1_0"
-  top: "bn5_1_0_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn5_1_0"
-  type: "Scale"
-  bottom: "bn5_1_0_bn"
   top: "bn5_1_0"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -3543,19 +2787,10 @@ layer {
 }
 layer {
   name: "bn5_1_1"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv5_1_1"
-  top: "bn5_1_1_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn5_1_1"
-  type: "Scale"
-  bottom: "bn5_1_1_bn"
   top: "bn5_1_1"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -3581,19 +2816,10 @@ layer {
 }
 layer {
   name: "bn5_1_2"
-  type: "BatchNorm"
+  type: "MVN"
   bottom: "conv5_1_2"
-  top: "bn5_1_2_bn"
-  batch_norm_param {
-  }
-}
-layer {
-  name: "scale_bn5_1_2"
-  type: "Scale"
-  bottom: "bn5_1_2_bn"
   top: "bn5_1_2"
-  scale_param {
-    bias_term: true
+  batch_norm_param {
   }
 }
 layer {
@@ -3622,9 +2848,8 @@ layer {
   }
 }
 layer {
-  name: "pred"
+  name: "probt"
   type: "Softmax"
   bottom: "deconv6_0_0"
   top: "pred"
 }
-

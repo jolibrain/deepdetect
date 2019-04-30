@@ -224,7 +224,8 @@ namespace dd
         if (net_param.name().compare("deeplab_vgg16")==0
 	    || net_param.name().compare("pspnet_vgg16")==0
 	    || net_param.name().compare("pspnet_50")==0
-	    || net_param.name().compare("pspnet_101")==0)
+	    || net_param.name().compare("pspnet_101")==0
+	    || net_param.name().compare("ENet") == 0)
           {
             update_protofiles_dice_deeplab_vgg16(net_param, deploy_net_param, ad);
 	  }
@@ -3442,11 +3443,15 @@ namespace dd
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofiles_dice_deeplab_vgg16(caffe::NetParameter &net_param,caffe::NetParameter &deploy_net_param, const APIData& ad)
   {
     caffe::LayerParameter *shrink_param = find_layer_by_name(net_param,"label_shrink");
-    shrink_param->add_include();
-    caffe::NetStateRule *nsr = shrink_param->mutable_include(0);
-    nsr->set_phase(caffe::TRAIN);
-    caffe::InterpParameter *ip = shrink_param->mutable_interp_param();
-    ip->set_mode(caffe::InterpParameter::NEAREST);
+    caffe::NetStateRule *nsr = nullptr;
+    if (shrink_param)
+      {
+	shrink_param->add_include();
+	nsr = shrink_param->mutable_include(0);
+	nsr->set_phase(caffe::TRAIN);
+	caffe::InterpParameter *ip = shrink_param->mutable_interp_param();
+	ip->set_mode(caffe::InterpParameter::NEAREST);
+      }
 
 
     int softml_pos = find_index_layer_by_type(net_param,"SoftmaxWithLoss");
@@ -3501,47 +3506,89 @@ namespace dd
 
 
     caffe::LayerParameter* final_interp_param = find_layer_by_name(net_param,"final_interp");
-    if (_nclasses <= 2)
+    if (final_interp_param)
       {
-        *final_interp_param->mutable_bottom(0) = agg_output;
-        caffe::LayerParameter* probt_param = find_layer_by_name(net_param, "probt");
-        *probt_param->mutable_type() = "Sigmoid";
+	if (_nclasses <= 2)
+	  {
+	    *final_interp_param->mutable_bottom(0) = agg_output;
+	    caffe::LayerParameter* probt_param = find_layer_by_name(net_param, "probt");
+	    *probt_param->mutable_type() = "Sigmoid";
+	  }
+	else
+	  {
+	    *final_interp_param->mutable_bottom(0) = logits_norm;
+	    caffe::LayerParameter* probt_param = find_layer_by_name(net_param, "probt");
+	    *probt_param->mutable_type() = "Softmax";
+	  }
       }
     else
       {
-        *final_interp_param->mutable_bottom(0) = logits_norm;
-        caffe::LayerParameter* probt_param = find_layer_by_name(net_param, "probt");
-        *probt_param->mutable_type() = "Softmax";
+	if (_nclasses <= 2)
+	  {
+	    caffe::LayerParameter* probt_param = find_layer_by_name(net_param, "probt");
+	    *probt_param->mutable_type() = "Sigmoid";
+	    *probt_param->mutable_bottom(0) = agg_output;
+	  }
+	else
+	  {
+	    caffe::LayerParameter* probt_param = find_layer_by_name(net_param, "probt");
+	    *probt_param->mutable_type() = "Softmax";
+	    *probt_param->mutable_bottom(0) = logits_norm;
+	  }
       }
-
-
 
     caffe::LayerParameter *lossparam = net_param.mutable_layer(softml_pos);
     *lossparam->mutable_type() = "DiceCoefLoss";
     *lossparam->mutable_bottom(0) = loss_input;
     caffe::DiceCoefLossParameter* dclp = lossparam->mutable_dice_coef_loss_param();
 
+    std::cerr << "done with dice params\n";
+    
     update_protofiles_dice_params(dclp, ad);
 
     // now work on deploy.txt
+    std::cerr << "dice on deploy\n";
+    int final_pred_pos = -1;
     int final_interp_pos = find_index_layer_by_type(deploy_net_param, "Interp");
-    final_interp_param = deploy_net_param.mutable_layer(final_interp_pos);
-    if (_nclasses <= 2)
-      *final_interp_param->mutable_bottom(0) = agg_output;
+    std::cerr << "final_interp_pos= " << final_interp_pos << std::endl;
+    if (final_interp_pos >= 0)
+      {
+	final_interp_param = deploy_net_param.mutable_layer(final_interp_pos);
+	if (_nclasses <= 2)
+	  *final_interp_param->mutable_bottom(0) = agg_output;
+	else
+	  *final_interp_param->mutable_bottom(0) = logits_norm;
+      }
     else
-      *final_interp_param->mutable_bottom(0) = logits_norm;
+      {
+	final_pred_pos = find_index_layer_by_type(deploy_net_param, "Softmax");
+	std::cerr << "final_pred_pos=" << final_pred_pos << std::endl;
+	caffe::LayerParameter* final_pred_param = deploy_net_param.mutable_layer(final_pred_pos);
+	std::cerr << "final_pred_param=" << final_pred_param << std::endl;
+	if (_nclasses <= 2)
+	  *final_pred_param->mutable_bottom(0) = agg_output;
+	else *final_pred_param->mutable_bottom(0) = logits_norm;
+      }
+    
+    std::cerr << "mvn\n";
+    //mvn_param = insert_layer_before(deploy_net_param, final_interp_pos++);
 
-    mvn_param = insert_layer_before(deploy_net_param, final_interp_pos++);
+    mvn_param = insert_layer_before(deploy_net_param, final_pred_pos++);
+    
     *mvn_param->mutable_name() = "normalization";
     *mvn_param->mutable_type() = "MVN";
     mvn_param->mutable_mvn_param()->set_across_channels(true);
     mvn_param->add_bottom(logits);
     mvn_param->add_top(logits_norm);
 
-
+    std::cerr << "done with normalization\n";
+    
     if (_nclasses <= 2)
       {
-        caffe::LayerParameter *conv_param = insert_layer_before(deploy_net_param, final_interp_pos);
+	caffe::LayerParameter *conv_param = nullptr;
+	if (final_interp_pos >= 0)
+	  conv_param = insert_layer_before(deploy_net_param, final_interp_pos);
+	else conv_param = insert_layer_before(deploy_net_param, final_pred_pos);
         *conv_param->mutable_name() = "linear_aggregation";
         *conv_param->mutable_type() = "Convolution";
         conv_param->add_bottom(logits_norm);
@@ -3561,6 +3608,7 @@ namespace dd
         caffe::LayerParameter *probt_param = find_layer_by_name(deploy_net_param, "probt");
         *probt_param->mutable_type() = "Softmax";
       }
+    std::cerr << "end of dice setup\n";
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
