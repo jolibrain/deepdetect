@@ -42,7 +42,7 @@ namespace dd
   
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
     NCNNLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::NCNNLib(const NCNNModel &cmodel)
-        :MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,NCNNModel>(cmodel)
+      :MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,NCNNModel>(cmodel), _threads(1), _old_height(-1)
     {
         this->_libname = "ncnn";
         _net = new ncnn::Net();
