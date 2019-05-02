@@ -20,9 +20,15 @@
  */
 
 #include "deepdetect.h"
+#ifdef USE_COMMAND_LINE
+#ifdef USE_CAFFE
 #include "commandlineapi.h"
+#endif //USE_CAFFE
+#ifdef USE_JSON_API
 #include "commandlinejsonapi.h"
-#ifdef USE_HTTP
+#endif // USE_JSON_API
+#endif // USE_COMMAND_LINE
+#ifdef USE_HTTP_SERVER
 #include "httpjsonapi.h"
 #endif
 #include "imginputfileconn.h"
@@ -35,15 +41,17 @@
 using namespace dd;
 
 DEFINE_int32(jsonapi,0,"whether to use the JSON command line API ("
-#ifdef USE_HTTP
+#ifdef USE_HTTP_SERVER
          "0: HTTP server JSON "
-#endif
-#ifdef USE_COMMANDLINE
+#endif // USE_HTTP_SERVER
+#ifdef USE_COMMAND_LINE
 #ifdef USE_JSON_API
          "1: commandline JSON  "
-#endif
+#endif // USE_JSON_API
+#ifdef USE_CAFFE
          "2: commandline no JSON  "
-#endif
+#endif // USE_CAFFE
+#endif // USE_COMMAND_LINE
 
 );
 
@@ -52,15 +60,15 @@ int main(int argc, char *argv[])
   google::ParseCommandLineFlags(&argc, &argv, true);
 #ifdef USE_XGBOOST
   rabit::Init(argc,argv);
-#endif
+#endif // USE_XGBOOST
 
-#ifdef USE_HTTP
+#ifdef USE_HTTP_SERVER
   if (FLAGS_jsonapi == 0)
     {
       DeepDetect<HttpJsonAPI> dd;
       dd.boot(argc,argv);
     }
-#endif // USE_HTTP
+#endif // USE_HTTP_SERVER
 #ifdef USE_COMMANDLINE
 #ifdef USE_CAFFE
   if (FLAGS_jsonapi == 2)

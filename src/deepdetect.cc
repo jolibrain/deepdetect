@@ -20,10 +20,19 @@
  */
 
 #include "deepdetect.h"
+#ifdef USE_COMMAND_LINE
+#ifdef USE_CAFFE
 #include "commandlineapi.h"
+#endif // USE_CAFFE
+#ifdef USE_JSON_API
 #include "commandlinejsonapi.h"
-#ifdef USE_HTTP
+#endif // USE_JSON_API
+#endif // USE_COMMAND_LINE
+#if defined(USE_HTTP_SERVER) && defined(USE_JSON_API)
 #include "httpjsonapi.h"
+#endif // USE_HTTP_SERVER && USE_JSON_API
+#if defined(USE_JSON_API) && !defined(USE_HTTP_SERVER) && !defined(USE_COMMAND_LINE)
+#include "jsonapi.h"
 #endif
 #include "dd_config.h"
 #include "githash.h"
@@ -45,19 +54,19 @@ namespace dd
   }
 
 #ifdef USE_CAFFE
-#ifdef USE_COMMANDLINE
+#ifdef USE_COMMAND_LINE
   template class DeepDetect<CommandLineAPI>;
 #endif
 #endif
 
 #ifdef USE_JSON_API
-#ifdef USE_COMMANDLINE
+#ifdef USE_COMMAND_LINE
   template class DeepDetect<CommandLineJsonAPI>;
 #endif
-#ifdef USE_HTTP
+#ifdef USE_HTTP_SERVER
   template class DeepDetect<HttpJsonAPI>;
 #endif
-  #if !defined(USE_COMMANDLINE) && !defined(USE_HTTP)
+  #if !defined(USE_COMMAND_LINE) && !defined(USE_HTTP)
     template class DeepDetect<JsonAPI>;
   #endif
 #endif

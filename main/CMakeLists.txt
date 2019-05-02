@@ -1,4 +1,6 @@
 include_directories(${COMMON_INCLUDE_DIRS})
 link_directories(${COMMON_LINK_DIRS})
+if (USE_COMMAND_LINE OR USE_HTTP_SERVER)
 add_executable (dede dede.cc)
 target_link_libraries(dede ${COMMON_LINK_LIBS} ${HTTP_LINK_LIBS})
+endif()
