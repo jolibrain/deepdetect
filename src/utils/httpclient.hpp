@@ -19,12 +19,10 @@
  * along with deepdetect.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef WIN32
 #include <curlpp/cURLpp.hpp>
 #include <curlpp/Easy.hpp>
 #include <curlpp/Options.hpp>
 #include <curlpp/Infos.hpp>
-#endif
 
 #ifndef DD_HTTPCLIENT_H
 #define DD_HTTPCLIENT_H
@@ -40,7 +38,6 @@ namespace dd
 			 int &outcode,
 			 std::string &outstr)
     {
-#ifndef WIN32
       curlpp::Cleanup cl;
       std::ostringstream os;
       curlpp::Easy request;
@@ -54,7 +51,6 @@ namespace dd
       outstr = os.str();
       //std::cout << "outstr=" << outstr << std::endl;
       outcode = curlpp::infos::ResponseCode::get(request);
-#endif
     }
     
     static void post_call(const std::string &url,
@@ -64,7 +60,6 @@ namespace dd
 			  std::string &outstr,
 			  const std::string &content_type="Content-Type: application/json")
     {
-#ifndef WIN32
       curlpp::Cleanup cl;
       std::ostringstream os;
       curlpp::Easy request_put;
@@ -82,7 +77,6 @@ namespace dd
       outstr = os.str();
       //std::cout << "outstr=" << outstr << std::endl;
       outcode = curlpp::infos::ResponseCode::get(request_put);
-#endif
     }
     
   };

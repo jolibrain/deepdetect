@@ -31,7 +31,9 @@
 #include <unordered_map>
 #include "apidata.h"
 #include "utils/fileops.hpp"
+#ifndef WIN32
 #include "utils/httpclient.hpp"
+#endif
 #include "mllibstrategy.h"
 
 namespace dd
@@ -189,6 +191,9 @@ namespace dd
 	      || compressedf.find("http://") != std::string::npos
 	      || compressedf.find("file://") != std::string::npos)
 	    {
+#ifdef WIN32
+          throw MLLibBadParamException("Fetching model archive: " + compressedf + " not implemented on Windows");
+#else
 	      int outcode = -1;
 	      std::string content;
 	      try
@@ -205,6 +210,7 @@ namespace dd
 	      mof << content;
 	      mof.close();
 	      compressedf = modelf;
+#endif
 	    }
 	  
 	  if (fileops::uncompress(compressedf,_repo))
