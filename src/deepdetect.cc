@@ -22,7 +22,9 @@
 #include "deepdetect.h"
 #include "commandlineapi.h"
 #include "commandlinejsonapi.h"
+#ifdef USE_HTTP
 #include "httpjsonapi.h"
+#endif
 #include "dd_config.h"
 #include "githash.h"
 
@@ -48,7 +50,6 @@ namespace dd
 #endif
 #endif
 
-
 #ifdef USE_JSON_API
 #ifdef USE_COMMANDLINE
   template class DeepDetect<CommandLineJsonAPI>;
@@ -56,7 +57,7 @@ namespace dd
 #ifdef USE_HTTP
   template class DeepDetect<HttpJsonAPI>;
 #endif
-  #if not defined(USE_COMMANDLINE) && not defined (USE_HTTP)
+  #if !defined(USE_COMMANDLINE) && !defined(USE_HTTP)
     template class DeepDetect<JsonAPI>;
   #endif
 #endif
