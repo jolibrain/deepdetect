@@ -23,9 +23,6 @@
 #include "jsonapi.h"
 #include <gtest/gtest.h>
 #include <stdio.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <iostream>
 
 using namespace dd;

@@ -24,7 +24,9 @@
 
 #include "apidata.h"
 #include "utils/fileops.hpp"
+#ifndef WIN32
 #include "utils/httpclient.hpp"
+#endif
 #include <spdlog/spdlog.h>
 #include <exception>
 
@@ -50,6 +52,9 @@ namespace dd
 	  || uri.find("http://") != std::string::npos
 	  || uri.find("file://") != std::string::npos)
 	{
+#ifdef WIN32
+      return -1;
+#else
 	  int outcode = -1;
 	  try
 	    {
@@ -62,6 +67,7 @@ namespace dd
 	  if (outcode != 200)
 	    return -1;
 	  return _ctype.read_mem(_content);
+#endif
 	}
       else if (fileops::file_exists(uri,dir))
 	{

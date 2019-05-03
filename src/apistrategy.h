@@ -26,6 +26,12 @@
 #include "services.h"
 #include <spdlog/spdlog.h>
 
+#ifdef USE_DD_SYSLOG
+#include <spdlog/sinks/syslog_sink.h>
+#else
+#include <spdlog/sinks/stdout_sinks.h>
+#endif
+
 namespace dd
 {
 
