@@ -384,10 +384,21 @@ namespace dd
 	  // check whether index has been created
 	  if (!mlm->_se)
 	    {
+	      bool create_index = true;
 	      int index_dim = _best;
 	      if (has_roi)
-		index_dim = (*bcats._vvcats.at(0)._vals.begin()).second.get("vals").get<std::vector<double>>().size(); // lookup to the first roi dimensions
-	      mlm->create_sim_search(index_dim);
+		{
+		  if (!bcats._vvcats.empty())
+		    {
+		      if (!bcats._vvcats.at(0)._vals.empty()
+			  && (*bcats._vvcats.at(0)._vals.begin()).second.has("vals"))  
+			index_dim = (*bcats._vvcats.at(0)._vals.begin()).second.get("vals").get<std::vector<double>>().size(); // lookup to the first roi dimensions
+		      else create_index = false;
+		    }
+		  else create_index = false;
+		}
+	      if (create_index)
+		mlm->create_sim_search(index_dim);
 	    }
 
 	  // index output content
