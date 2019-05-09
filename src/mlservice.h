@@ -24,6 +24,7 @@
 
 #include "mllibstrategy.h"
 #include "mlmodel.h"
+#include "outputconnectorstrategy.h"
 #include <string>
 #include <future>
 #include <mutex>
@@ -249,6 +250,9 @@ namespace dd
       ad.add("parameters",_init_parameters);
       ad.add("repository",this->_inputc._model_repo);
       ad.add("mltype",this->_mltype);
+      if (typeid(this->_outputc) == typeid(UnsupervisedOutput))
+	ad.add("type","unsupervised");
+      else ad.add("type","supervised");
       return ad;
     }
 
