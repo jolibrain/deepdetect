@@ -21,7 +21,7 @@
 
 #include "csvtsinputfileconn.h"
 #include "utils/utils.hpp"
-#include <boost/tokenizer.hpp>
+#include <iomanip>
 
 namespace dd
 {
@@ -74,7 +74,8 @@ namespace dd
     else return -1;
   }
 
-  int DDCsvTS::read_dir(const std::string &dir, bool is_test_data, bool allow_read_test)
+  int DDCsvTS::read_dir(const std::string &dir, bool is_test_data, bool allow_read_test,
+                        bool update_bounds)
   {
     // first recursive list csv files
     std::unordered_set<std::string> allfiles;
@@ -85,11 +86,16 @@ namespace dd
     if (!_cifc)
       return -1;
 
-    if (_cifc->_scale && (_cifc->_min_vals.empty() || _cifc->_max_vals.empty()))
+    if (update_bounds && _cifc->_scale && (_cifc->_min_vals.empty() || _cifc->_max_vals.empty()))
       {
+        std::unordered_set<std::string> reallyallfiles;
+        if (allow_read_test)
+          ret = fileops::list_directory(_cifc->_csv_test_fname, true, false, true, reallyallfiles);
+        reallyallfiles.insert(allfiles.begin(), allfiles.end());
+
         std::vector<double> min_vals(_cifc->_min_vals);
         std::vector<double> max_vals(_cifc->_max_vals);
-        for (auto fname : allfiles)
+        for (auto fname : reallyallfiles)
           {
             std::pair<std::vector<double>,std::vector<double>> mm = _cifc->get_min_max_vals(fname);
             if (min_vals.empty())
@@ -117,11 +123,9 @@ namespace dd
     for (auto fname2 : allfiles)
       read_file(fname2, is_test_data);
 
-
-
     _cifc->shuffle_data_if_needed();
     if (allow_read_test)
-      read_dir(_cifc->_csv_test_fname, true,false);
+      read_dir(_cifc->_csv_test_fname, true,false,false);
     return 0;
   }
 
@@ -293,8 +297,10 @@ namespace dd
       }
   }
 
-  bool CSVTSInputFileConn::deserialize_bounds()
+  bool CSVTSInputFileConn::deserialize_bounds(bool force)
   {
+    if (!force && !_min_vals.empty() && !_max_vals.empty())
+      return true;
     std::string boundsfname = _model_repo + "/" + _boundsfname;
     if (!fileops::file_exists(boundsfname))
       {
@@ -343,8 +349,7 @@ namespace dd
               _max_vals.push_back(std::atof(tokens.at(i+1).c_str()));
           }
       }
-
-    _logger->info("bounds loaded");
+    this->_logger->info("bounds loaded");
     in.close();
     return true;
   }
@@ -366,13 +371,14 @@ namespace dd
     out << " " <<_label_pos[_label_pos.size()-1] << std::endl;
     out << "min_vals: " ;
     for (unsigned int i = 0; i< _min_vals.size() -1; ++i)
-      out << " " << _min_vals[i] << " " << delim;
-    out << " " << _min_vals[_min_vals.size() -1] << std::endl;
+      out << " " << std::setprecision(_boundsprecision) <<  _min_vals[i] << " " << delim;
+    out << " " << std::setprecision(_boundsprecision) << _min_vals[_min_vals.size() -1] << std::endl;
     out << "max_vals: " ;
     for (unsigned int i = 0; i< _max_vals.size() -1; ++i)
-      out << " " << _max_vals[i] << " " << delim;
-    out << " " << _max_vals[_max_vals.size() -1] << std::endl;
+      out << " " << std::setprecision(_boundsprecision) << _max_vals[i] << " " << delim;
+    out << " " << std::setprecision(_boundsprecision) << _max_vals[_max_vals.size() -1] << std::endl;
 
     out.close();
+    deserialize_bounds(true);
   }
 }

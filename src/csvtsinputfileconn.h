@@ -43,7 +43,8 @@ namespace dd
     int read_file(const std::string &fname, bool is_test_data = false);
     int read_db(const std::string &fname);
     int read_mem(const std::string &content);
-    int read_dir(const std::string &dir, bool is_test_data = false, bool allow_read_test = true);
+    int read_dir(const std::string &dir, bool is_test_data = false, bool allow_read_test = true,
+                 bool update_bounds = true);
 
     DDCsv _ddcsv;
     CSVTSInputFileConn *_cifc = nullptr;
@@ -59,7 +60,11 @@ namespace dd
 
 
   CSVTSInputFileConn()
-    :CSVInputFileConn() {}
+    :CSVInputFileConn()
+      {
+        this->_dont_scale_labels = false;
+        this->_scale_between_minus1_and_1 = true;
+      }
 
     ~CSVTSInputFileConn() {}
 
@@ -67,19 +72,25 @@ namespace dd
     : CSVInputFileConn(i), _csvtsdata(i._csvtsdata),
       _csvtsdata_test(i._csvtsdata_test)
         {
-          this->_dont_scale_labels = false;
+          this->_scale_between_minus1_and_1 = i._scale_between_minus1_and_1;
+          this->_dont_scale_labels = i._dont_scale_labels;
+          this->_min_vals = i._min_vals;
+          this->_max_vals = i._max_vals;
         }
 
-
+    void init(const APIData &ad)
+    {
+      fillup_parameters(ad);
+    }
 
     void fillup_parameters(const APIData &ad_input)
     {
       if (ad_input.has("scale") && ad_input.get("scale").get<bool>())
         {
           _scale = true;
-          deserialize_bounds();
         }
       CSVInputFileConn::fillup_parameters(ad_input);
+      deserialize_bounds();
     }
 
     void shuffle_data(std::vector<std::vector<CSVline>> cvstsdata);
@@ -102,7 +113,7 @@ namespace dd
     }
 
     // read min max values, return false if not present
-    bool deserialize_bounds();
+    bool deserialize_bounds(bool force = false);
     void serialize_bounds();
 
     /*   std::string s = "Boost,\"C++ Libraries\""; */
@@ -124,7 +135,7 @@ namespace dd
     std::vector<std::vector<CSVline>> _csvtsdata_test;
     std::vector<std::string> _fnames;
 
-
+    int _boundsprecision = 15;
   };
 }
 

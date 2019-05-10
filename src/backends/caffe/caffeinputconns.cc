@@ -1512,7 +1512,7 @@ namespace dd
     return 0;
   }
 
-  int DDCCsvTS::read_dir(const std::string &dir, bool is_test_data)
+  int DDCCsvTS::read_dir(const std::string &dir, bool is_test_data, bool update_bounds)
   {
     // first recursive list csv files
     std::unordered_set<std::string> allfiles;
@@ -1523,11 +1523,15 @@ namespace dd
     if (!_cifc)
       return -1;
 
-    if (_cifc->_scale && (_cifc->_min_vals.empty() || _cifc->_max_vals.empty() ))
+    if (update_bounds && _cifc->_scale && (_cifc->_min_vals.empty() || _cifc->_max_vals.empty() ))
       {
+        std::unordered_set<std::string> reallyallfiles;
+        ret = fileops::list_directory(_cifc->_csv_test_fname, true, false, true, reallyallfiles);
+        reallyallfiles.insert(allfiles.begin(), allfiles.end());
+
         std::vector<double> min_vals = _cifc->_min_vals;
         std::vector<double> max_vals = _cifc->_max_vals;
-        for (auto fname : allfiles)
+        for (auto fname : reallyallfiles)
           {
             std::pair<std::vector<double>,std::vector<double>> mm = _cifc->get_min_max_vals(fname);
             if (min_vals.empty())
@@ -1824,8 +1828,8 @@ namespace dd
     DDCCsvTS ddccsvts;
     ddccsvts._cifc = this;
     ddccsvts._adconf = ad_input;
-    ddccsvts.read_dir(_csv_fname);
-    ddccsvts.read_dir(_csv_test_fname,true);
+    ddccsvts.read_dir(_csv_fname,false,true);
+    ddccsvts.read_dir(_csv_test_fname,true,false);
 
 
     _txn->Commit();
