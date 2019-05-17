@@ -385,7 +385,10 @@ include_directories("${TF_INC_DIR}")
 endif() # USE_TF
 
 # OpenCV
-find_package(OpenCV REQUIRED)
+find_package(OpenCV 3 QUIET)
+if (NOT OpenCV_FOUND)
+  find_package(OpenCV 2 REQUIRED)
+endif()
 set(OPENCV_VERSION ${OpenCV_VERSION_MAJOR})
 include_directories(${OpenCV_INCLUDE_DIRS})
 message(STATUS "OpenCV ${OPENCV_VERSION} (${OpenCV_VERSION}) found (${OpenCV_CONFIG_PATH})")
