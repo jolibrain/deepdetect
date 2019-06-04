@@ -286,6 +286,32 @@ namespace dd
       return 0;
     }
 
+    static int replace_string_in_file(const std::string &filename,
+                                      const std::string &search,
+                                      const std::string &replace)
+    {
+      int nr = 0;
+      std::ifstream ifs(filename.c_str(),
+                        std::ios::in | std::ios::binary | std::ios::ate);
+      std::stringstream sstr;
+      sstr << ifs.rdbuf();
+      ifs.close();
+      std::string filestring = sstr.str();
+
+      size_t pos = 0;
+      while ((pos = filestring.find(search, pos)) != std::string::npos)
+        {
+          filestring.replace(pos, search.length(), replace);
+          pos += replace.length();
+          nr++;
+        }
+      std::ofstream out(filename.c_str(),
+                        std::ios::out | std::ios::binary | std::ios::trunc);
+      out << filestring;
+      out.close();
+      return nr;
+    }
+
     static int copy_uncompressed_data(struct archive *ar, struct archive *aw)
     {
       int r;
