@@ -212,6 +212,10 @@ namespace dd
               {
                 std::vector<std::string> selts = dd_utils::split((*hit), '/');
                 fileops::copy_file((*hit), target_repo + '/' + selts.back());
+                if (selts.back().find(".json") != std::string::npos)
+                  fileops::replace_string_in_file(target_repo + '/'
+                                                      + selts.back(),
+                                                  "db\":true", "db\":false");
               }
             ++hit;
           }
