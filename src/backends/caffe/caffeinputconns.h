@@ -810,7 +810,7 @@ namespace dd
     int read_file(const std::string &fname, bool is_test_data=false);
     int read_db(const std::string &fname);
     int read_mem(const std::string &content);
-    int read_dir(const std::string &dir, bool is_test_data=false);
+    int read_dir(const std::string &dir, bool is_test_data=false, bool update_bounds = true);
 
     DDCsvTS _ddcsvts;
     CSVTSCaffeInputFileConn *_cifc = nullptr;

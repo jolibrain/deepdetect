@@ -222,34 +222,35 @@ namespace dd
     {
       auto lit = _columns.begin();
       for (int j=0;j<(int)vals.size();j++)
-	{
-	  bool j_is_id = (_columns.empty() || _id.empty()) ? false : (*lit) == _id;
-	  if (j_is_id)
-	    {
-	      ++lit;
-	      continue;
-	    }
-	  bool equal_bounds = (_max_vals.at(j) == _min_vals.at(j));
-	  if (equal_bounds)
-	    {
-	      ++lit;
-	      continue;
-	    }
-         if (_dont_scale_labels)
-           {
-             bool j_is_label = false;
-             if (!_columns.empty() && std::find(_label_pos.begin(),_label_pos.end(),j)!=_label_pos.end())
-               j_is_label = true;
-             if (j_is_label)
-               {
-                 ++lit;
-                 continue;
-               }
-           }
-	  
-	  vals.at(j) = (vals.at(j) - _min_vals.at(j)) / (_max_vals.at(j) - _min_vals.at(j));
-	  ++lit;
-	}
+        {
+          bool j_is_id = (_columns.empty() || _id.empty()) ? false : (*lit) == _id;
+          if (j_is_id)
+            {
+              ++lit;
+              continue;
+            }
+          bool equal_bounds = (_max_vals.at(j) == _min_vals.at(j));
+          if (equal_bounds)
+            {
+              ++lit;
+              continue;
+            }
+          if (_dont_scale_labels)
+            {
+              bool j_is_label = false;
+              if (!_columns.empty() && std::find(_label_pos.begin(),_label_pos.end(),j)!=_label_pos.end())
+                j_is_label = true;
+              if (j_is_label)
+                {
+                  ++lit;
+                  continue;
+                }
+            }
+          vals.at(j) = (vals.at(j) - _min_vals.at(j)) / (_max_vals.at(j) - _min_vals.at(j));
+          if (_scale_between_minus1_and_1)
+            vals.at(j) = vals.at(j)-0.5;
+          ++lit;
+        }
     }
 
     void read_scale_vals(const APIData &ad_input)
@@ -561,6 +562,7 @@ namespace dd
     std::string _id;
     bool _scale = false; /**< whether to scale all data between 0 and 1 */
     bool _dont_scale_labels = true; // original csv input conn do not scale labels, while it is needed for csv timeseries
+    bool _scale_between_minus1_and_1 = false;
     std::vector<double> _min_vals; /**< upper bound used for auto-scaling data */
     std::vector<double> _max_vals; /**< lower bound used for auto-scaling data */
     std::unordered_map<std::string,CCategorical> _categoricals; /**< auto-converted categorical variables */

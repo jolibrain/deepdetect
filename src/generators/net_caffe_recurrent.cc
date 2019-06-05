@@ -28,7 +28,7 @@ namespace dd
 
 
   void NetLayersCaffeRecurrent::add_basic_block(caffe::NetParameter *net_param,
-                                                const std::string &bottom_seq,
+                                                const std::vector<std::string> &bottom_seqs,
                                                 const std::string &bottom_cont,
                                                 const std::string &top,
                                                 const int &num_output,
@@ -38,10 +38,30 @@ namespace dd
                                                 const std::string &type,
                                                 const int id)
   {
+
+    std::string bottom_seq;
     std::string ctype = (type == _rnn_str ?  "RNN" : "LSTM");
+    std::string name =ctype+std::to_string(id);
+
+    if (bottom_seqs.size() > 1)
+      {
+        // add concat
+        caffe::LayerParameter *lparam = net_param->add_layer();
+        lparam->set_type("Concat");
+        lparam->set_name(name+"_concat");
+        lparam->add_top(name+"_concat");
+        bottom_seq = name+"_concat";
+        for (std::string s:bottom_seqs)
+          lparam->add_bottom(s);
+        caffe::ConcatParameter *cparam = lparam->mutable_concat_param();
+        cparam->set_axis(2);
+      }
+    else
+      bottom_seq = bottom_seqs[0];
+
     caffe::LayerParameter *lparam = net_param->add_layer();
     lparam->set_type(ctype);
-    lparam->set_name(ctype+std::to_string(id));
+    lparam->set_name(name);
     if (dropout_ratio ==0)
       lparam->add_top(top);
     else
@@ -78,11 +98,12 @@ namespace dd
   }
 
   void NetLayersCaffeRecurrent::add_flatten(caffe::NetParameter *net_params,
-                                            std::string bottom, std::string top, int axis)
+                                            std::string name, std::string bottom,
+                                            std::string top, int axis)
   {
     caffe::LayerParameter *lparam = net_params->add_layer();
     lparam->set_type("Flatten");
-    lparam->set_name("shape_cont_seq");
+    lparam->set_name(name);
     lparam->add_top(top);
     lparam->add_bottom(bottom);
     caffe::FlattenParameter * fparam = lparam->mutable_flatten_param();
@@ -158,13 +179,31 @@ namespace dd
 
   void NetLayersCaffeRecurrent::add_affine(caffe::NetParameter *net_params,
                                            std::string name,
-                                           std::string bottom,
+                                           const std::vector<std::string> &bottoms,
                                            std::string top,
                                            const std::string weight_filler,
                                            const std::string bias_filler,
                                            int nout,
                                            int nin)
   {
+    std::string bottom;
+
+    if (bottoms.size() > 1)
+      {
+        // add concat
+        caffe::LayerParameter *lparam = net_params->add_layer();
+        lparam->set_type("Concat");
+        lparam->set_name(name+"_concat");
+        lparam->add_top(name+"_concat");
+        bottom = name+"_concat";
+        for (std::string s:bottoms)
+          lparam->add_bottom(s);
+        caffe::ConcatParameter *cparam = lparam->mutable_concat_param();
+        cparam->set_axis(2);
+      }
+    else
+      bottom = bottoms[0];
+
     caffe::LayerParameter *lparam = net_params->add_layer();
     lparam->set_type("InnerProduct");
     lparam->set_name(name);
@@ -272,6 +311,12 @@ namespace dd
       }
     ntargets = ad_mllib.get("ntargets").get<int>();
 
+    bool residual = false;
+    if (ad_mllib.has("residual"))
+      {
+        residual = ad_mllib.get("residual").get<bool>();
+      }
+
     // if (ad_mllib.has("init"))
     //   {
     //     init = ad_mllib.get("init").get<std::string>();
@@ -290,13 +335,15 @@ namespace dd
     add_slicer(this->_dnet_params, slice_point, "permuted_data",
                "target_seq","input_seq","cont_seq_unshaped");
 
-    add_flatten(this->_net_params, "cont_seq_unshaped","cont_seq", 1);
-    add_flatten(this->_dnet_params,"cont_seq_unshaped","cont_seq", 1);
+    add_flatten(this->_net_params, "shape_cont_seq", "cont_seq_unshaped","cont_seq", 1);
+    add_flatten(this->_dnet_params,"shape_cont_seq", "cont_seq_unshaped","cont_seq", 1);
 
+    add_flatten(this->_net_params, "flatten_input", "input_seq","input_seq_flattened", 2);
+    add_flatten(this->_dnet_params,"flatten_input", "input_seq","input_seq_flattened", 2);
 
 
     std::string type;
-    std::string bottom = "input_seq";
+    std::vector<std::string> bottoms = {"input_seq_flattened"};
     std::string top;
     for (unsigned int i=0; i<layers.size(); ++i)
       {
@@ -315,27 +362,29 @@ namespace dd
         if (type == "AFFINE")
           {
             int isize = i==0? osize[i] : osize[i-1]; //used only for initing weights
-            add_affine(this->_net_params,"affine_"+std::to_string(i),bottom,top, init, init,
+            add_affine(this->_net_params,"affine_"+std::to_string(i),bottoms,top, init, init,
                        osize[i],isize);
-            add_affine(this->_dnet_params,"affine_"+std::to_string(i), bottom,top,  init, init,
+            add_affine(this->_dnet_params,"affine_"+std::to_string(i), bottoms,top,  init, init,
                        osize[i],isize);
 
           }
         else
           {
-            add_basic_block(this->_net_params,bottom,
+            add_basic_block(this->_net_params,bottoms,
                             "cont_seq",top,osize[i], dropouts[i],init,init,layers[i], i);
-            add_basic_block(this->_dnet_params,bottom,
+            add_basic_block(this->_dnet_params,bottoms,
                             "cont_seq",top,osize[i], dropouts[i],init,init,layers[i], i);
           }
-        bottom = top;
+        if (!residual)
+          bottoms.clear();
+        bottoms.push_back(top);
       }
 
     // add affine dim reduction only if num of  outputs of last layer  do not match ntarget number
     if (osize[osize.size()-1] != ntargets)
       {
-        add_affine(this->_net_params,"affine_final",bottom,"rnn_pred", init, init, ntargets,osize[osize.size()-1]);
-        add_affine(this->_dnet_params,"affine_final", bottom,"rnn_pred",  init, init, ntargets,osize[osize.size()-1]);
+        add_affine(this->_net_params,"affine_final",bottoms,"rnn_pred", init, init, ntargets,osize[osize.size()-1]);
+        add_affine(this->_dnet_params,"affine_final", bottoms,"rnn_pred",  init, init, ntargets,osize[osize.size()-1]);
       }
 
     add_permute(this->_net_params, "permuted_rnn_pred", "rnn_pred", 3,true,false);

@@ -83,10 +83,10 @@ namespace dd
     bool autoencoder = false;
     if (ad_mllib.has("autoencoder"))
       autoencoder = ad_mllib.get("autoencoder").get<bool>();
-    int width = inputc.width();
-    int height = inputc.height();
-    int channels = inputc.channels();
-    int batch_size = inputc.batch_size();
+    int width = inputc.width() > 0 ? inputc.width() : 1;
+    int height = inputc.height() > 0 ? inputc.height() : 1;
+    int channels = inputc.channels() > 0 ? inputc.channels() : 1;
+    int batch_size = inputc.batch_size() > 0 ? inputc.batch_size() : 1;
     bool flat1dconv = inputc._flat1dconv; // whether the model uses 1d-conv (e.g. character-level convnet for text)
     
     // train net
