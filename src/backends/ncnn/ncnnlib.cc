@@ -59,6 +59,8 @@ namespace dd
        _threads = tl._threads;
        _timeserie = tl._timeserie;
        _old_height = tl._old_height;
+       _inputBlob = tl._inputBlob;
+       _outputBlob = tl._outputBlob;
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -103,6 +105,18 @@ namespace dd
         _timeserie = this->_inputc._timeserie;
         if (_timeserie)
           this->_mltype = "timeserie";
+
+        // setting the value of Input Layer
+        if (ad.has("inputblob"))
+          {
+            _inputBlob = ad.get("inputblob").get<std::string>();
+          }
+        // setting the final Output Layer
+        if (ad.has("outputblob"))
+          {
+            _outputBlob = ad.get("outputblob").get<std::string>();
+          }
+
         _blob_pool_allocator.set_size_compare_ratio(0.0f);
         _workspace_pool_allocator.set_size_compare_ratio(0.5f);
         ncnn::Option opt;
@@ -159,7 +173,7 @@ namespace dd
         ncnn::Extractor ex = _net->create_extractor();
 
         ex.set_num_threads(_threads);
-        ex.input("data", inputc._in);
+        ex.input(_inputBlob.c_str(), inputc._in);
 
         APIData ad_output = ad.getobj("parameters").getobj("output");
 
@@ -183,14 +197,19 @@ namespace dd
 
         // Extract detection or classification
         int ret = 0;
-	std::string out_blob = "prob";
-        if (bbox == true)
-	  out_blob = "detection_out";
-	else if (ctc == true)
-	  out_blob = "probs";
-       else if (_timeserie)
-         out_blob = "rnn_pred";
-	ret = ex.extract(out_blob.c_str(),inputc._out);
+        std::string out_blob = _outputBlob;
+        if (out_blob.empty())
+          {
+            if (bbox == true)
+              out_blob = "detection_out";
+            else if (ctc == true)
+              out_blob = "probs";
+            else if (_timeserie)
+              out_blob = "rnn_pred";
+            else
+              out_blob = "prob";
+          }
+        ret = ex.extract(out_blob.c_str(),inputc._out);
         if (ret == -1) {
             throw MLLibInternalException("NCNN internal error");
         }

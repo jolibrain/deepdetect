@@ -60,6 +60,8 @@ namespace dd
     protected:
         int _threads = 1;
     int _old_height = -1;
+    std::string _inputBlob = "data";
+    std::string _outputBlob;
     };
 }
 
