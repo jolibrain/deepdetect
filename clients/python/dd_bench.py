@@ -40,6 +40,7 @@ parser.add_argument('--gpuid',help='gpu id to use',type=int,default=0)
 parser.add_argument('--cpu',help='whether to bench CPU',action='store_true')
 parser.add_argument('--remote-bench-data-dir',help='when bench data directory, when available remotely on the server')
 parser.add_argument('--max-batch-size',help='max batch size to be tested',type=int,default=256)
+parser.add_argument('--max-workspace-size',help='max workspace size for tensort bench',type=int,default=1024)
 parser.add_argument('--list-bench-files',help='file holding the list of bench files',default='list_bench_files.txt')
 parser.add_argument('--npasses',help='number of passes for every batch size',type=int,default=5)
 parser.add_argument('--detection',help='whether benching a detection model',action='store_true')
@@ -49,6 +50,10 @@ parser.add_argument('--create',help='model\'s folder name to create a service')
 parser.add_argument('--nclasses',help='number of classes for service creation',type=int,default=1000)
 parser.add_argument('--auto-kill',help='auto kill the service after benchmarking',action='store_true')
 parser.add_argument('--csv-output',help='CSV file output')
+parser.add_argument('--mllib', help='mllib to bench, ie [tensorrt|ncnn|caffe]', default='caffe')
+parser.add_argument('--datatype', help='datatype for tensorrt [fp16|fp32]', default='fp32')
+parser.add_argument('--recreate', help='recreate service between every batchsize, useful for batch_size dependent precompiling backends (ie tensorRT)', action='store_true', default=False)
+parser.add_argument('--dla', help='use dla', action='store_true', default = False)
 args = parser.parse_args()
 
 host = args.host
@@ -57,17 +62,22 @@ dd = DD(host,port)
 dd.set_return_format(dd.RETURN_PYTHON)
 autokill = args.auto_kill
 
-# Create a service
-if args.create:
-  description = 'image classification service'
-  mllib = 'caffe'
-  model = {'repository':args.create}
-  parameters_input = {'connector':'image','width':args.img_width,'height':args.img_height}
-  parameters_mllib = {'nclasses':args.nclasses}
-  parameters_output = {}
-  dd.put_service(args.sname,model,description,mllib,
-                 parameters_input,parameters_mllib,parameters_output)
-else:
+
+def service_create(bs):
+  # Create a service
+  if args.create:
+    description = 'image classification service'
+    mllib = args.mllib
+    model = {'repository':args.create}
+    parameters_input = {'connector':'image','width':args.img_width,'height':args.img_height}
+    if args.dla:
+        parameters_mllib = {'nclasses':args.nclasses,'datatype':args.datatype,'readEngine':False,'writeEngine':False,'maxBatchSize':bs,'dla':0, 'maxWorkspaceSize':args.max_workspace_size}
+    else:    
+        parameters_mllib = {'nclasses':args.nclasses,'datatype':args.datatype,'readEngine':False,'writeEngine':False,'maxBatchSize':bs,'maxWorkspaceSize':args.max_workspace_size}
+    parameters_output = {}
+    dd.put_service(args.sname,model,description,mllib,
+                   parameters_input,parameters_mllib,parameters_output)
+  else:
     pass
 
 out_csv = None
@@ -109,12 +119,18 @@ elif args.search:
       
 # First call to load model
 data = list_bench_files[:1]
-classif = dd.post_predict(args.sname,data,parameters_input,parameters_mllib,parameters_output)
+if not args.recreate:
+  service_create(1)
+  classif = dd.post_predict(args.sname,data,parameters_input,parameters_mllib,parameters_output)
 
 for b in batch_sizes:
     data = list_bench_files[:b]
     #print data
     fail = False
+    if args.recreate:
+      service_create(b)
+      for i in range(5):
+        classif = dd.post_predict(args.sname,data,parameters_input,parameters_mllib,parameters_output)
     mean_ptime = 0
     mean_ptime_per_img = 0
     for i in range(0,args.npasses+1):
@@ -141,7 +157,10 @@ for b in batch_sizes:
     if args.csv_output:
       csv_writer.writerow([b,mean_processing_time,mean_time_per_img])
     #break
+    if args.recreate:
+      dd.delete_service(args.sname)
 
+    
 if autokill:
   dd.delete_service(args.sname)
   
