@@ -221,9 +221,6 @@ namespace dd
        if (this->_loss == "dice")
       // dice loss!!
       {
-        if (_nclasses > 2)
-          update_protofiles_one_hot(net_param);
-
         if (net_param.name().compare("deeplab_vgg16")==0
 	    || net_param.name().compare("pspnet_vgg16")==0
 	    || net_param.name().compare("pspnet_50")==0
@@ -877,7 +874,7 @@ namespace dd
 	  }
 	try
 	  {
-	    model_complexity(_flops,_params);
+             model_complexity(this->_model_flops,this->_model_params);
 	  }
 	catch(std::exception &e)
 	  {
@@ -1056,7 +1053,7 @@ namespace dd
     int user_batch_size, batch_size, test_batch_size, test_iter;
     update_in_memory_net_and_solver(solver_param,cad,inputc,has_mean_file,user_batch_size,batch_size,test_batch_size,test_iter);
     //caffe::ReadProtoFromTextFile(this->_mlmodel._solver,&solver_param);
-    
+
     // parameters
 #if !defined(CPU_ONLY) && !defined(USE_CAFFE_CPU_ONLY)
     bool gpu = _gpu;
@@ -1291,6 +1288,10 @@ namespace dd
 	for (size_t i=1;i<_syncs.size();++i)
 	  _syncs[i]->StartInternalThread();
       }
+
+    this->_mem_used_train = solver->net_->memory_used();
+    for (caffe::shared_ptr<caffe::Net<float > > n: solver->test_nets())
+      this->_mem_used_test+= n->memory_used();
 
     const int start_iter = solver->iter_;
     int average_loss = solver->param_.average_loss();
@@ -2198,7 +2199,9 @@ namespace dd
 	    _net = nullptr;
 	    throw;
 	  }
-	
+
+       this->_mem_used_test = _net->memory_used();
+
 	float loss = 0.0;
 	if (extract_layer.empty() || inputc._segmentation) // supervised or segmentation
 	  {
@@ -3442,6 +3445,9 @@ namespace dd
     shrink_param->add_include();
     caffe::NetStateRule *nsr = shrink_param->mutable_include(0);
     nsr->set_phase(caffe::TRAIN);
+    caffe::InterpParameter *ip = shrink_param->mutable_interp_param();
+    ip->set_mode(caffe::InterpParameter::NEAREST);
+
 
     int softml_pos = find_index_layer_by_type(net_param,"SoftmaxWithLoss");
     std::string logits = net_param.layer(softml_pos).bottom(0);

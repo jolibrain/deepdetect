@@ -22,14 +22,19 @@
 #ifndef DD_FILEOPS_H
 #define DD_FILEOPS_H
 
-#include <dirent.h>
 #include <fstream>
 #include <unordered_set>
 #include <sys/stat.h>
 #include <stdio.h>
-#include <unistd.h>
-#include <archive.h>
-#include <archive_entry.h>
+
+#if defined(WIN32)
+  #include <boost/filesystem.hpp>
+#else
+  #include <dirent.h>
+  #include <unistd.h>
+  #include <archive.h>
+  #include <archive_entry.h>
+#endif
 
 namespace dd
 {
@@ -37,6 +42,93 @@ namespace dd
   {
   public:
 
+#if defined(WIN32)
+    static bool create_dir(const std::string &dirName, int mode)
+	{
+        assert(false);
+        return false;
+    }
+
+    static bool file_exists(const std::string &fname)
+    {
+        boost::filesystem::path p(fname);
+
+        return boost::filesystem::exists(p);
+    }
+
+    static bool file_exists(const std::string &fname, bool &directory)
+    {
+        boost::filesystem::path p(fname);
+
+        directory = boost::filesystem::is_directory(p);
+        return boost::filesystem::exists(p);
+    }
+
+    static bool is_db(const std::string &fname)
+    {
+        const std::vector<std::string> db_exts = { ".lmdb" }; // add more here
+        for (auto e : db_exts)
+            if (fname.find(e) != std::string::npos)
+                return true;
+        return false;
+    }
+
+    static long int file_last_modif(const std::string &fname)
+    {
+        boost::filesystem::path p(fname);
+
+        return boost::filesystem::last_write_time(p);
+    }
+
+    static int list_directory(const std::string &repo,
+        const bool &files,
+        const bool &dirs,
+        const bool &sub_files,
+        std::unordered_set<std::string> &lfiles)
+    {
+        boost::filesystem::path p(repo);
+
+        if (!boost::filesystem::is_directory(p))
+            return 1;
+
+        boost::filesystem::directory_iterator dir_iter(p);
+        boost::filesystem::directory_iterator end_iter;
+        for (; dir_iter != end_iter; ++dir_iter)
+        {
+            if ((dirs && boost::filesystem::is_directory(dir_iter->status())) ||
+                (files && boost::filesystem::is_regular_file(dir_iter->status())) ||
+                ((dirs||files) && boost::filesystem::is_symlink(dir_iter->status())))
+                lfiles.insert(dir_iter->path().string());
+
+            if (sub_files &&
+                (boost::filesystem::is_directory(dir_iter->status()) ||
+                    boost::filesystem::is_symlink(dir_iter->status())))
+                list_directory(dir_iter->path().string(), files, dirs, sub_files, lfiles);
+        }
+
+        return 0;
+    }
+
+    static int clear_directory(const std::string &repo)
+    {
+        assert(false);
+        return -1;
+    }
+
+    static int remove_dir(const std::string &d)
+    {
+        assert(false);
+        return -1;
+    }
+
+    static int uncompress(const std::string &fc,
+        const std::string &repo)
+    {
+        assert(false);
+        return -1;
+    }
+
+#else
     static bool create_dir(const std::string &dirName, mode_t mode)
     {
       std::string s = dirName;
@@ -319,6 +411,7 @@ namespace dd
 
       return 0;
     }
+#endif
   };  
 }
 

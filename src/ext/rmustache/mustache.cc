@@ -19,6 +19,10 @@
 #include <fstream>
 #include <vector>
 
+#ifdef WIN32
+#define strcasecmp _stricmp
+#endif
+
 #include <boost/algorithm/string.hpp>
 #include <boost/foreach.hpp>
 

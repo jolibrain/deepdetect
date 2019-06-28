@@ -384,10 +384,21 @@ namespace dd
 	  // check whether index has been created
 	  if (!mlm->_se)
 	    {
+	      bool create_index = true;
 	      int index_dim = _best;
 	      if (has_roi)
-		index_dim = (*bcats._vvcats.at(0)._vals.begin()).second.get("vals").get<std::vector<double>>().size(); // lookup to the first roi dimensions
-	      mlm->create_sim_search(index_dim);
+		{
+		  if (!bcats._vvcats.empty())
+		    {
+		      if (!bcats._vvcats.at(0)._vals.empty()
+			  && (*bcats._vvcats.at(0)._vals.begin()).second.has("vals"))  
+			index_dim = (*bcats._vvcats.at(0)._vals.begin()).second.get("vals").get<std::vector<double>>().size(); // lookup to the first roi dimensions
+		      else create_index = false;
+		    }
+		  else create_index = false;
+		}
+	      if (create_index)
+		mlm->create_sim_search(index_dim);
 	    }
 
 	  // index output content
@@ -824,9 +835,9 @@ namespace dd
          if (timeserie)
            {
              // we have timeseries outputs (flattened / interleaved in preds!)
-             double max_errors[timeseries];
-             int indexes_max_error[timeseries];
-             double mean_errors[timeseries];
+             std::vector<double> max_errors(timeseries);
+             std::vector<int> indexes_max_error(timeseries);
+             std::vector<double> mean_errors(timeseries);
              double max_error;
              double mean_error;
 
@@ -844,7 +855,7 @@ namespace dd
 
              if (L1)
                {
-                 timeSeriesErrors(ad_res, timeseries, max_errors, indexes_max_error, mean_errors, max_error, mean_error, true);
+                 timeSeriesErrors(ad_res, timeseries, &max_errors[0], &indexes_max_error[0], &mean_errors[0], max_error, mean_error, true);
                  for (int i=0; i<timeseries; ++i)
                    {
                      meas_out.add("L1_max_error_" + std::to_string(i),max_errors[i]);
@@ -858,7 +869,7 @@ namespace dd
                }
              if (L2)
                {
-                 timeSeriesErrors(ad_res, timeseries, max_errors, indexes_max_error, mean_errors, max_error, mean_error, false);
+                 timeSeriesErrors(ad_res, timeseries, &max_errors[0], &indexes_max_error[0], &mean_errors[0], max_error, mean_error, false);
                  for (int i=0; i<timeseries; ++i)
                    {
                      meas_out.add("L2_max_error_" + std::to_string(i),max_errors[i]);
@@ -917,7 +928,7 @@ namespace dd
             error = error.array() * error.array();
           //          std::cout << "error: " << error << std::endl;
           dVec batchmax = error.colwise().maxCoeff();
-          int batch_max_indexes[timeseries];
+          std::vector<int> batch_max_indexes(timeseries);
           for (int j =0; j<timeseries; ++j)
               error.col(j).maxCoeff(&(batch_max_indexes[j]));
 
@@ -1751,9 +1762,10 @@ namespace dd
     
     // measure: gini coefficient
     static double comp_gini(const std::vector<double> &a, const std::vector<double> &p) {
-      struct K {double a, p;} k[a.size()];
+      struct K { double a, p; };
+      std::vector<K> k(a.size());
       for (size_t i = 0; i != a.size(); ++i) k[i] = {a[i], p[i]};
-      std::stable_sort(k, k+a.size(), [](const K &a, const K &b) {return a.p > b.p;});
+      std::stable_sort(k.begin(), k.end(), [](const K &a, const K &b) {return a.p > b.p;});
       double accPopPercSum=0, accLossPercSum=0, giniSum=0, sum=0;
       for (auto &i: a) sum += i;
       for (auto &i: k) 

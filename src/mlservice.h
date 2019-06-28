@@ -24,11 +24,13 @@
 
 #include "mllibstrategy.h"
 #include "mlmodel.h"
+#include "outputconnectorstrategy.h"
 #include <string>
 #include <future>
 #include <mutex>
 //#include <shared_mutex>
 #include <boost/thread/shared_mutex.hpp>
+#include <boost/thread/lock_types.hpp>
 #include <unordered_map>
 #include <chrono>
 #include <iostream>
@@ -238,10 +240,19 @@ namespace dd
 	  vad.push_back(jad);
 	  ++hit;
 	}
+      APIData stats;
+      stats.add("flops",this->_model_flops);
+      stats.add("params",this->_model_params);
+      stats.add("data_mem_train",this->_mem_used_train * sizeof(float));
+      stats.add("data_mem_test",this->_mem_used_test * sizeof(float));
+      ad.add("stats", stats);
       ad.add("jobs",vad);
       ad.add("parameters",_init_parameters);
       ad.add("repository",this->_inputc._model_repo);
       ad.add("mltype",this->_mltype);
+      if (typeid(this->_outputc) == typeid(UnsupervisedOutput))
+	ad.add("type","unsupervised");
+      else ad.add("type","supervised");
       return ad;
     }
 

@@ -91,7 +91,8 @@ namespace dd
             _width = bgr.cols;
 
             _in = ncnn::Mat::from_pixels(bgr.data, ncnn::Mat::PIXEL_BGR, bgr.cols, bgr.rows);
-            _in.substract_mean_normalize(&_mean[0], 0);
+            if (_has_mean_scalar)
+              _in.substract_mean_normalize(&_mean[0], 0);
 	    _ids.push_back(this->_uris.at(0));
         }
 

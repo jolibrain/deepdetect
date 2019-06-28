@@ -50,6 +50,14 @@ namespace dd
       return true;
     }
 
+#ifdef WIN32
+    static int my_hardware_concurrency()
+    {
+      SYSTEM_INFO si;
+      GetSystemInfo(&si);
+      return si.dwNumberOfProcessors;
+    }
+#else
     static int my_hardware_concurrency()
     {
         std::ifstream cpuinfo("/proc/cpuinfo");
@@ -58,6 +66,7 @@ namespace dd
 			  std::istream_iterator<std::string>(),
 			  std::string("processor"));
     }
+#endif
   };
 }
 
