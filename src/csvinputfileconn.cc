@@ -351,7 +351,7 @@ namespace dd
 	{
          find_min_max(csv_file);
 	}
-      
+
       // read data
       while(std::getline(csv_file,hline))
 	{
@@ -422,7 +422,7 @@ namespace dd
 	  _logger->info("data split test size={} / remaining data size={}",_csvdata_test.size(),_csvdata.size());
 	}
       if (!_ignored_columns.empty() || !_categoricals.empty())
-	update_columns();
+        update_columns();
   }
   
 }

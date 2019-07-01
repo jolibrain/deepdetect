@@ -41,7 +41,7 @@ namespace dd
     ~NetLayersCaffeRecurrent() {}
 
     void add_basic_block(caffe::NetParameter *net_param,
-                         const std::string &bottom_seq,
+                         const std::vector<std::string> &bottom_seq,
                          const std::string &bottom_cont,
                          const std::string &top,
                          const int &num_output,
@@ -66,7 +66,7 @@ namespace dd
                     std::string inputs_name,
                     std::string cont_seq);
 
-    void add_flatten(caffe::NetParameter *net_params,
+    void add_flatten(caffe::NetParameter *net_params, std::string name,
                      std::string bottom, std::string top, int axis);
 
 
@@ -74,7 +74,7 @@ namespace dd
 
     void add_affine(caffe::NetParameter *net_params,
                     std::string name,
-                    std::string bottom,
+                    const std::vector<std::string> &bottom,
                     std::string top,
                     const std::string weight_filler,
                     const std::string bias_filler,

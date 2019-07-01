@@ -573,4 +573,8 @@ namespace dd
 #include "backends/caffe2/caffe2inputconns.h"
 #endif
 
+#ifdef USE_TENSORRT
+#include "backends/tensorrt/tensorrtinputconns.h"
+#endif
+
 #endif

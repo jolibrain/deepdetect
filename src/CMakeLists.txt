@@ -59,10 +59,40 @@ if (USE_NCNN)
     backends/ncnn/ncnnmodel.cc
   )
 endif()
+if (USE_TENSORRT)
+  file(DOWNLOAD https://raw.githubusercontent.com/jolibrain/caffe/master/src/caffe/proto/caffe.proto ${CMAKE_SOURCE_DIR}/src/backends/tensorrt/caffe.proto)
+  if (NOT USE_CAFFE2 AND NOT USE_TF)
+    execute_process(COMMAND protoc --proto_path=${CMAKE_SOURCE_DIR}/src/backends/tensorrt --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_SOURCE_DIR}/src/backends/tensorrt/caffe.proto)
+  endif()
+
+  set_source_files_properties(
+    ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
+    ${CMAKE_BINARY_DIR}/src/caffe.pb.h
+    PROPERTIES GENERATED TRUE)
+
+  list(APPEND ddetect_SOURCES
+    ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
+    ${CMAKE_BINARY_DIR}/src/caffe.pb.h
+    backends/tensorrt/tensorrtlib.h
+    backends/tensorrt/tensorrtlib.cc
+    backends/tensorrt/protoUtils.h
+    backends/tensorrt/protoUtils.cc
+    backends/tensorrt/tensorrtinputconns.h
+    backends/tensorrt/tensorrtinputconns.cc
+    backends/tensorrt/tensorrtmodel.h
+    backends/tensorrt/tensorrtmodel.cc
+    )
+endif()
+
 add_library(ddetect ${ddetect_SOURCES})
-if (USE_NCNN)                                                                                 
-  add_dependencies(ddetect ncnn)                                                              
+if (USE_NCNN)
+  add_dependencies(ddetect ncnn)
 endif()
 if (USE_CAFFE)
   add_dependencies(ddetect caffe_dd)
+endif()
+if (USE_TENSORRT)
+  if (USE_CAFFE2)
+    add_dependencies(ddetect pytorch)
+  endif()
 endif()
