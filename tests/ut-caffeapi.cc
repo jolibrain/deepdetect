@@ -100,8 +100,8 @@ TEST(caffeapi,service_train)
   jstr = "{\"clear\":\"lib\"}";
   joutstr = japi.jrender(japi.service_delete(sname,jstr));
   ASSERT_EQ(ok_str,joutstr);
-  ASSERT_TRUE(!fileops::file_exists(mnist_repo + "mylenet_iter_101.caffemodel"));
-  ASSERT_TRUE(!fileops::file_exists(mnist_repo + "mylenet_iter_101.solverstate"));
+  ASSERT_TRUE(!fileops::file_exists(mnist_repo + "model_iter_250.caffemodel"));
+  ASSERT_TRUE(!fileops::file_exists(mnist_repo + "model_iter_250.solverstate"));
   }
 
 TEST(caffeapi,service_train_async_status_delete)
