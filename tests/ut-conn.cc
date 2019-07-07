@@ -346,7 +346,7 @@ TEST(inputconn,csv_mem2)
   APIData ad;
   ad.add("data",vdata);
   APIData pad,pinp;
-  pinp.add("id","id");
+  pinp.add("id",std::string("id"));
   std::vector<APIData> vpinp = { pinp };
   pad.add("input",vpinp);
   std::vector<APIData> vpad = { pad };
@@ -379,8 +379,8 @@ TEST(inputconn,csv_copy)
   APIData ad;
   ad.add("data",vdata);
   APIData pad,pinp;
-  pinp.add("id","id");
-  pinp.add("label","val5");
+  pinp.add("id",std::string("id"));
+  pinp.add("label",std::string("val5"));
   std::vector<APIData> vpinp = { pinp };
   pad.add("input",vpinp);
   std::vector<APIData> vpad = { pad };
@@ -404,7 +404,7 @@ TEST(inputconn,csv_categoricals1)
   APIData ad;
   ad.add("data",vdata);
   APIData pad,pinp;
-  pinp.add("label","target");
+  pinp.add("label",std::string("target"));
   std::vector<std::string> vcats = {"target","cap-shape","cap-surface","cap-color","bruises"};
   pinp.add("categoricals",vcats);
   std::vector<APIData> vpinp = { pinp };
@@ -444,7 +444,7 @@ TEST(inputconn,csv_categoricals2)
   APIData ad;
   ad.add("data",vdata);
   APIData pad,pinp;
-  pinp.add("label","target");
+  pinp.add("label",std::string("target"));
   std::vector<std::string> vcats = {"target","cap-shape","cap-surface","cap-color","bruises"};
   pinp.add("categoricals",vcats);
   std::vector<APIData> vpinp = { pinp };
@@ -498,7 +498,7 @@ TEST(inputconn,csv_ignore)
   APIData ad;
   ad.add("data",vdata);
   APIData pad,pinp;
-  pinp.add("label","target");
+  pinp.add("label",std::string("target"));
   std::vector<std::string> vign = {"cap-shape"};
   pinp.add("ignore",vign);
   std::vector<APIData> vpinp = { pinp };

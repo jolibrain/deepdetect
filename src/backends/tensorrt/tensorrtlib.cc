@@ -537,10 +537,10 @@ namespace dd
 		    probs.push_back(detection[2]);
 		    cats.push_back(this->_mlmodel.get_hcorresp(detection[1]));
 		    APIData ad_bbox;
-		    ad_bbox.add("xmin",detection[3]*cols);
-		    ad_bbox.add("ymax",detection[4]*rows);
-		    ad_bbox.add("xmax",detection[5]*cols);
-		    ad_bbox.add("ymin",detection[6]*rows);
+		    ad_bbox.add("xmin",static_cast<double>(detection[3]*cols));
+		    ad_bbox.add("ymax",static_cast<double>(detection[4]*rows));
+		    ad_bbox.add("xmax",static_cast<double>(detection[5]*cols));
+		    ad_bbox.add("ymin",static_cast<double>(detection[6]*rows));
 		    bboxes.push_back(ad_bbox);
 		  }
 		if (leave)

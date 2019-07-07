@@ -185,10 +185,10 @@ namespace dd
 	      jad.add("job",(*hit).first);
 	      int jstatus = (*hit).second._status;
 	      if (jstatus == 0)
-		jad.add("status","not started");
+		jad.add("status",std::string("not started"));
 	      else if (jstatus == 1)
 		{
-		  jad.add("status","running");
+		  jad.add("status",std::string("running"));
 		  APIData tjob;
 		  std::future_status status = (*hit).second._ft.wait_for(std::chrono::seconds(0));
 		  if (status == std::future_status::timeout)
@@ -200,7 +200,7 @@ namespace dd
 		    }
 		}
 	      else if (jstatus == 2)
-		jad.add("status","finished");
+		jad.add("status",std::string("finished"));
 	      vad.push_back(jad);
 	      ++hit;
 	    }
@@ -232,27 +232,27 @@ namespace dd
 	  jad.add("job",(*hit).first);
 	  int jstatus = (*hit).second._status;
 	  if (jstatus == 0)
-	    jad.add("status","not started");
+	    jad.add("status",std::string("not started"));
 	  else if (jstatus == 1)
-	    jad.add("status","running");
+	    jad.add("status",std::string("running"));
 	  else if (jstatus == 2)
-	    jad.add("status","finished");
+	    jad.add("status",std::string("finished"));
 	  vad.push_back(jad);
 	  ++hit;
 	}
       APIData stats;
       stats.add("flops",this->_model_flops);
       stats.add("params",this->_model_params);
-      stats.add("data_mem_train",this->_mem_used_train * sizeof(float));
-      stats.add("data_mem_test",this->_mem_used_test * sizeof(float));
+      stats.add("data_mem_train",static_cast<long int>(this->_mem_used_train * sizeof(float)));
+      stats.add("data_mem_test",static_cast<long int>(this->_mem_used_test * sizeof(float)));
       ad.add("stats", stats);
       ad.add("jobs",vad);
       ad.add("parameters",_init_parameters);
       ad.add("repository",this->_inputc._model_repo);
       ad.add("mltype",this->_mltype);
       if (typeid(this->_outputc) == typeid(UnsupervisedOutput))
-	ad.add("type","unsupervised");
-      else ad.add("type","supervised");
+	ad.add("type",std::string("unsupervised"));
+      else ad.add("type",std::string("supervised"));
       return ad;
     }
 
@@ -322,7 +322,7 @@ namespace dd
 	  std::future_status status = (*hit).second._ft.wait_for(std::chrono::seconds(secs));
 	  if (status == std::future_status::timeout)
 	    {
-	      out.add("status","running");
+	      out.add("status",std::string("running"));
 	      APIData jmrepo;
 	      jmrepo.add("repository",this->_mlmodel._repo);
 	      out.add("model",jmrepo);
@@ -358,10 +358,10 @@ namespace dd
 		}
 	      if (st == 0)
 		{
-		  out.add("status","finished");
+		  out.add("status",std::string("finished"));
 		  this->_has_predict = true;
 		}
-	      else out.add("status","unknown error");
+	      else out.add("status",std::string("unknown error"));
 	      //this->collect_measures(out); // XXX: beware if there was a queue, since the job has finished, there might be a new one running.
 	      APIData jmrepo;
 	      jmrepo.add("repository",this->_mlmodel._repo);
@@ -405,7 +405,7 @@ namespace dd
 	    {
 	      this->_tjob_running.store(false); // signals the process
 	      (*hit).second._ft.wait(); // XXX: default timeout in case the process does not return ?
-	      out.add("status","terminated");
+	      out.add("status",std::string("terminated"));
 	      std::chrono::time_point<std::chrono::system_clock> trun = std::chrono::system_clock::now();
 	      out.add("time",std::chrono::duration_cast<std::chrono::seconds>(trun-(*hit).second._tstart).count());
 	      _training_jobs.erase(hit);
@@ -415,7 +415,7 @@ namespace dd
 	    }
 	  else if ((*hit).second._status == 0)
 	    {
-	      out.add("status","not started");
+	      out.add("status",std::string("not started"));
 	    }
 	  return 0;
 	}

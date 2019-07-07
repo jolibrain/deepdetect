@@ -35,11 +35,11 @@ TEST(apidata,visitor_vad)
   APIData ad;
   std::vector<APIData> vad;
   APIData ivad1;
-  ivad1.add("cat","car");
+  ivad1.add("cat",std::string("car"));
   ivad1.add("prob",prob1);
   vad.push_back(ivad1);
   APIData ivad2;
-  ivad2.add("cat","wolf");
+  ivad2.add("cat",std::string("wolf"));
   ivad2.add("prob",prob2);
   vad.push_back(ivad2);
   ad.add("classes",vad);
@@ -63,7 +63,7 @@ TEST(apidata,to_from_json)
 
   // to JSON
   APIData ad;
-  ad.add("string","string");
+  ad.add("string",std::string("string"));
   ad.add("double",2.3);
   ad.add("int",3);
   ad.add("bool",true);
@@ -73,11 +73,11 @@ TEST(apidata,to_from_json)
   ad.add("vstring",vs);
   std::vector<APIData> vad;
   APIData ivad1;
-  ivad1.add("cat","car");
+  ivad1.add("cat",std::string("car"));
   ivad1.add("prob",prob1);
   vad.push_back(ivad1);
   APIData ivad2;
-  ivad2.add("cat","wolf");
+  ivad2.add("cat",std::string("wolf"));
   ivad2.add("prob",prob2);
   vad.push_back(ivad2);
   ad.add("classes",vad);
