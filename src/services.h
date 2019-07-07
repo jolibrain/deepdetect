@@ -31,6 +31,7 @@
 #include "txtinputfileconn.h"
 #include "svminputfileconn.h"
 #include "outputconnectorstrategy.h"
+#include "chain.h"
 #ifdef USE_CAFFE
 #include "backends/caffe/caffelib.h"
 #endif
@@ -137,6 +138,17 @@ namespace dd
   private:
     std::string _s;
   };
+
+  class ServiceNotFoundException : public std::exception
+  {
+  public:
+    ServiceNotFoundException(const std::string &s)
+      :_s(s) {}
+    ~ServiceNotFoundException() {}
+    const char* what() const noexcept { return _s.c_str(); }
+  private:
+    std::string _s;
+  };
   
   class output
   {
@@ -161,12 +173,13 @@ namespace dd
     template<typename T>
       output operator() (T &mllib)
       {
-        int r = mllib.predict_job(_ad,_out);
+        int r = mllib.predict_job(_ad,_out,_chain);
 	return output(r,_out);
       }
     
     APIData _ad;
     APIData _out;
+    bool _chain = false;
   };
 
   /**
@@ -289,6 +302,41 @@ namespace dd
     APIData _ad;
   };
 
+  /*class visitor_chain_put_data : public mapbox::util::static_visitor<>
+  {
+  public:
+    visitor_chain_put_data() {}
+    ~visitor_chain_put_data() {}
+
+    template<typename T>
+      void operator() (T &mllib)
+      {
+	std::cerr << "add_inter_data to " << _sname << std::endl;
+	mllib._chaindata.add_inter_data(_sname,_out);
+	std::cerr << "done adding inter data\n";
+      }
+
+    std::string _sname;
+    APIData _out;
+  };
+
+  class visitor_chain_get_data : public mapbox::util::static_visitor<output>
+  {
+  public:
+    visitor_chain_get_data() {}
+    ~visitor_chain_get_data() {}
+
+    template<typename T>
+      output operator() (T &mllib)
+      {
+	_out = mllib._chaindata.get_inter_data(_sname);
+	return output(0,_out);
+      }
+
+    std::string _sname;
+    APIData _out;
+    };*/
+  
   /**
    * \brief class for deepetect machine learning services.
    *        Each service instanciates a machine learning library and channels
@@ -545,11 +593,12 @@ namespace dd
      * @param sname service name
      * @param out output data object
      */
-    int predict(const APIData &ad, const std::string &sname, APIData &out)
+    int predict(const APIData &ad, const std::string &sname, APIData &out, const bool &chain=false)
     {
       std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();
       visitor_predict vp;
       vp._ad = ad;
+      vp._chain = chain;
       output pout;
       auto llog = spdlog::get(sname);
       try
@@ -601,6 +650,127 @@ namespace dd
       return pout._status;
     }
 
+    int chain(const APIData &ad, const std::string &cname, APIData &out)
+    {
+      std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();
+
+      //TODO:
+      // - iterate chain of calls
+      // - if predict call, use the visitor to execute it
+      //      - this requires storing output into mlservice object / have a flag for telling the called service it's part of a chain
+      // - if action call, execute the generic code for it
+      std::vector<APIData> ad_calls = ad.getobj("chain").getv("calls");
+      std::cerr << "[chain] number of calls=" << ad_calls.size() << std::endl;
+
+      // debug
+      std::vector<std::string> ckeys = ad.list_keys();
+      for (auto s: ckeys)
+	std::cerr << s << std::endl;
+      //debug
+
+      ChainData cdata;
+      
+      std::string prec_pred_sname;
+      std::string prec_action_type;
+      for (size_t i=0;i<ad_calls.size();i++)
+	{
+	  APIData adc = ad_calls.at(i);
+	  if (adc.has("service"))
+	    {
+	      std::string pred_sname = adc.get("service").get<std::string>();
+
+	      std::cerr << "[chain] " << i << " / executing predict on " << pred_sname << std::endl;
+
+	      //TODO: need to check that service exists, since it's done earlier outside of chain
+	      if (!service_exists(pred_sname))
+		throw ServiceNotFoundException("Service " + pred_sname + " does not exist");
+
+	      //TODO: if not first predict call in the chain, need to setup the input data!
+	      if (i != 0)
+		{
+		  //TODO: take data from the previous action
+		  std::cerr << "[chain] filling up model from previous action data\n";
+		  
+		  APIData act_data = cdata.get_action_data(prec_action_type);
+		  //TODO: test empty action data
+
+		  std::cerr << "act_data has data=" << act_data.has("data") << std::endl;
+		  adc.add("data",act_data.get("data").get<std::vector<std::string>>()); // action output data must be string for now (more types to be supported / auto-detected) // TODO;
+		  adc.add("ids",act_data.get("cids").get<std::vector<std::string>>()); // chain ids of processed elements
+		}
+	      else cdata._first_sname = pred_sname;
+	      
+	      // predict service call
+	      std::cerr << "adc has data=" << adc.has("data") << std::endl;
+	      std::cerr << "adc data size=" << adc.get("data").get<std::vector<std::string>>().size() << std::endl;
+	      APIData pred_out;
+	      int pred_status = predict(adc,pred_sname,pred_out,true);
+	      std::cerr << "pred_status=" << pred_status << std::endl;
+
+	      // store model output
+	      cdata.add_model_data(pred_sname,pred_out);
+	      
+	      prec_pred_sname = pred_sname;
+	    }
+	  else if (adc.has("action"))
+	    {
+	      std::cerr << "action\n";
+	      //TODO: chain action
+	      //TODO: grab in-memory inputs here
+	      std::string action_type = adc.getobj("action").get("type").get<std::string>();
+	      std::cerr << "[chain] executing action " << action_type << std::endl;
+
+	      APIData prev_data = cdata.get_model_data(prec_pred_sname);
+	      std::cerr << "prev_data has input=" << prev_data.has("input") << std::endl;
+	      std::cerr << "predictions size=" << prev_data.getobj("predictions").size() << std::endl;
+	      if (!prev_data.getobj("predictions").size())
+		{
+		  // no prediction to work from
+		  //TODO: catch earlier, leave earlier
+		  std::cerr << "[chain] no prediction to act on\n";
+		  continue;
+		}
+	
+	      // call chain action factory
+	      ChainActionFactory caf;
+	      caf.apply_action(action_type,
+			       prev_data,
+			       cdata._action_data);
+	      //TODO: replace prev_data in cdata for prec_pred_sname
+	      std::cerr << "[chain] added modified model out for " << prec_pred_sname << std::endl;
+	      cdata.add_model_data(prec_pred_sname,prev_data);
+
+	      /*std::vector<APIData> tvad = prev_data.getv("predictions");
+		std::cerr << "copy prev_data predictions size=" << tvad.size() << std::endl;*/
+	      
+	      prec_action_type = action_type;
+
+	      /*APIData cpred_data = cdata.get_model_data(prec_pred_sname);
+		std::vector<APIData> tpred = cpred_data.getv("predictions");
+		std::cerr << "fetched tpred precisions size=" << tpred.size() << std::endl;*/
+	    }
+	}
+      std::cerr << "[chain] finished executing chain\n";
+      
+      //TODO: nested outputs
+      // - take the chain of model outputs and match from first to last, by chain ids
+      // - merge_ids function in APIData or elsewhere using a dedicated visitor
+      // - use "predictions"/"classes" array element ids to merge
+      // - fct signature similar to merge_ids(std::vector<APIData> models_out)
+      APIData nested_out = cdata.nested_chain_output();
+      
+      //std::cerr << "final prec_pred_sname=" << prec_pred_sname << std::endl;
+      //std::cerr << "model first sname=" << cdata._first_sname << std::endl;
+      //out = cdata.get_model_data(cdata._first_sname);
+      
+      out = nested_out;
+      std::chrono::time_point<std::chrono::system_clock> tstop = std::chrono::system_clock::now();
+      double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(tstop-tstart).count();
+      out.add("time",elapsed);
+      
+      return 0; //TODO
+    }
+    
     std::unordered_map<std::string,mls_variant_type> _mlservices; /**< container of instanciated services. */
     
   protected:

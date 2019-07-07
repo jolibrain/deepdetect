@@ -398,6 +398,14 @@ public:
 	      }
 	    fillup_response(response,_hja->service_predict(body),access_log,code,tstart,accept_encoding);
 	  }
+	else if (rscs.at(0) == _rsc_chain)
+	  {
+	    std::string cname = rscs.at(1);
+	    if (req_method == "PUT" || req_method == "POST")
+	      {
+		fillup_response(response,_hja->service_chain(cname,body),access_log,code,tstart,accept_encoding);
+	      }
+	  }
 	else if (rscs.at(0) == _rsc_train)
 	  {
 	    if (req_method == "GET")
@@ -438,6 +446,7 @@ public:
   std::string _rsc_services = "services";
   std::string _rsc_predict = "predict";
   std::string _rsc_train = "train";
+  std::string _rsc_chain = "chain";
   std::shared_ptr<spdlog::logger> _logger;
 };
 

@@ -68,7 +68,7 @@ namespace dd
     std::chrono::time_point<std::chrono::system_clock> _tstart; /**< date at which the training job has started*/
     int _status = 0; /**< 0: not started, 1: running, 2: finished or terminated */
   };
-
+  
   /**
    * \brief main machine learning service encapsulation
    */
@@ -428,8 +428,11 @@ namespace dd
      * @param out output data object
      * @return predict job status
      */
-    int predict_job(const APIData &ad, APIData &out)
+    int predict_job(const APIData &ad, APIData &out, const bool &chain=false)
     {
+      //TODO: collect input transformed data for chain, store it here in memory
+      // -> beware, the input connector is a copy...
+      
       if (!this->_online)
 	{
 	  if (!_train_mutex.try_lock_shared())
@@ -437,6 +440,8 @@ namespace dd
 	  int err = 0;
 	  try
 	    {
+	      if (chain)
+		const_cast<APIData&>(ad).add("chain",true);
 	      err = this->predict(ad,out);
 	    }
 	  catch(std::exception &e)
@@ -463,7 +468,6 @@ namespace dd
     std::atomic<int> _tjobs_counter = {0}; /**< training jobs counter. */
     std::unordered_map<int,tjob> _training_jobs; // XXX: the futures' dtor blocks if the object is being terminated
     std::unordered_map<int,APIData> _training_out;
-
     boost::shared_mutex _train_mutex;
   };
   

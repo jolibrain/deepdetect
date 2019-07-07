@@ -27,6 +27,7 @@
 #include "ext/rapidjson/rapidjson.h"
 #include "ext/rapidjson/stringbuffer.h"
 #include "ext/rapidjson/writer.h"
+#include <opencv2/core/core.hpp>
 #include "dd_types.h"
 #include <unordered_map>
 #include <vector>
@@ -40,6 +41,7 @@ namespace dd
   // recursive variant container, see utils/variant.hpp and utils/recursive_wrapper.hpp
   typedef mapbox::util::variant<std::string,double,int,long int,bool,
     std::vector<std::string>,std::vector<double>,std::vector<int>,std::vector<bool>,
+    std::vector<cv::Mat>,std::vector<std::pair<int,int>>,
     mapbox::util::recursive_wrapper<APIData>,
     mapbox::util::recursive_wrapper<std::vector<APIData>>> ad_variant_type;
 
@@ -88,6 +90,8 @@ namespace dd
     vout operator()(const std::vector<int> &vd);
     vout operator()(const std::vector<bool> &vd);
     vout operator()(const std::vector<std::string> &vs);
+    vout operator()(const std::vector<cv::Mat> &vcv);
+    vout operator()(const std::vector<std::pair<int,int>> &vpi);
     vout operator()(const APIData &ad);
     vout operator()(const std::vector<APIData> &vad);
     
@@ -391,6 +395,16 @@ namespace dd
       if (!_jv)
 	_jd->AddMember(_jvkey,jarr,_jd->GetAllocator());
       else _jv->AddMember(_jvkey,jarr,_jd->GetAllocator());
+    }
+    void operator()(const std::vector<cv::Mat> &vcv)
+    {
+      (void)vcv;
+      // Not Implemented
+    }
+    void operator()(const std::vector<std::pair<int,int>> &vpi)
+    {
+      (void)vpi;
+      // Not Implemented
     }
     void operator()(const std::vector<APIData> &vad)
     {

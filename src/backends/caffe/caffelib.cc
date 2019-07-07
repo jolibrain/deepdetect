@@ -2732,6 +2732,19 @@ namespace dd
 	unsupo.add_results(vrad);
 	unsupo.finalize(ad.getobj("parameters").getobj("output"),out,static_cast<MLModel*>(&this->_mlmodel));
       }
+    if (ad.has("chain") && ad.get("chain").get<bool>())
+      {
+	if (typeid(inputc) == typeid(ImgCaffeInputFileConn))
+	  {
+	    APIData chain_input;
+	    if (!reinterpret_cast<ImgCaffeInputFileConn*>(&inputc)->_orig_images.empty())
+	      chain_input.add("imgs",reinterpret_cast<ImgCaffeInputFileConn*>(&inputc)->_orig_images);
+	    else chain_input.add("imgs",reinterpret_cast<ImgCaffeInputFileConn*>(&inputc)->_images);
+	    chain_input.add("imgs_size",reinterpret_cast<ImgCaffeInputFileConn*>(&inputc)->_images_size);
+	    out.add("input",chain_input);
+	  }
+      }
+    
     out.add("status",0);
     
     return 0;

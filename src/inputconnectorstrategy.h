@@ -161,6 +161,8 @@ namespace dd
       try
 	{
 	  _uris = ad.get("data").get<std::vector<std::string>>();
+	  if (ad.has("ids"))
+	    _ids = ad.get("ids").get<std::vector<std::string>>();
 	}
       catch(...)
 	{
@@ -187,6 +189,7 @@ namespace dd
     bool _shuffle = false; /**< whether to shuffle the dataset, usually before splitting. */
 
     std::vector<std::string> _uris;
+    std::vector<std::string> _ids;
     std::string _model_repo; /**< model repository, useful when connector needs to read from saved data (e.g. vocabulary). */
     std::shared_ptr<spdlog::logger> _logger;
   };
