@@ -694,15 +694,15 @@ namespace dd
 		  APIData act_data = cdata.get_action_data(prec_action_type);
 		  //TODO: test empty action data
 
-		  std::cerr << "act_data has data=" << act_data.has("data") << std::endl;
+		  //std::cerr << "act_data has data=" << act_data.has("data") << std::endl;
 		  adc.add("data",act_data.get("data").get<std::vector<std::string>>()); // action output data must be string for now (more types to be supported / auto-detected) // TODO;
 		  adc.add("ids",act_data.get("cids").get<std::vector<std::string>>()); // chain ids of processed elements
 		}
 	      else cdata._first_sname = pred_sname;
 	      
 	      // predict service call
-	      std::cerr << "adc has data=" << adc.has("data") << std::endl;
-	      std::cerr << "adc data size=" << adc.get("data").get<std::vector<std::string>>().size() << std::endl;
+	      /*std::cerr << "adc has data=" << adc.has("data") << std::endl;
+		std::cerr << "adc data size=" << adc.get("data").get<std::vector<std::string>>().size() << std::endl;*/
 	      APIData pred_out;
 	      int pred_status = predict(adc,pred_sname,pred_out,true);
 	      std::cerr << "pred_status=" << pred_status << std::endl;
@@ -714,15 +714,15 @@ namespace dd
 	    }
 	  else if (adc.has("action"))
 	    {
-	      std::cerr << "action\n";
+	      //std::cerr << "action\n";
 	      //TODO: chain action
 	      //TODO: grab in-memory inputs here
 	      std::string action_type = adc.getobj("action").get("type").get<std::string>();
 	      std::cerr << "[chain] executing action " << action_type << std::endl;
 
 	      APIData prev_data = cdata.get_model_data(prec_pred_sname);
-	      std::cerr << "prev_data has input=" << prev_data.has("input") << std::endl;
-	      std::cerr << "predictions size=" << prev_data.getobj("predictions").size() << std::endl;
+	      /*std::cerr << "prev_data has input=" << prev_data.has("input") << std::endl;
+		std::cerr << "predictions size=" << prev_data.getobj("predictions").size() << std::endl;*/
 	      if (!prev_data.getobj("predictions").size())
 		{
 		  // no prediction to work from
@@ -736,18 +736,12 @@ namespace dd
 	      caf.apply_action(action_type,
 			       prev_data,
 			       cdata._action_data);
-	      //TODO: replace prev_data in cdata for prec_pred_sname
+	      
+	      // replace prev_data in cdata for prec_pred_sname
 	      std::cerr << "[chain] added modified model out for " << prec_pred_sname << std::endl;
 	      cdata.add_model_data(prec_pred_sname,prev_data);
-
-	      /*std::vector<APIData> tvad = prev_data.getv("predictions");
-		std::cerr << "copy prev_data predictions size=" << tvad.size() << std::endl;*/
 	      
 	      prec_action_type = action_type;
-
-	      /*APIData cpred_data = cdata.get_model_data(prec_pred_sname);
-		std::vector<APIData> tpred = cpred_data.getv("predictions");
-		std::cerr << "fetched tpred precisions size=" << tpred.size() << std::endl;*/
 	    }
 	}
       std::cerr << "[chain] finished executing chain\n";
