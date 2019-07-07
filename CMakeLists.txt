@@ -177,7 +177,7 @@ if (USE_DLIB)
     # Dlib
 
     # Currently supported release version of dlib
-    set(DLIB_RELEASE_VERSION v19.13)
+    set(DLIB_RELEASE_VERSION v19.17)
     message(STATUS "Using Dlib version ${DLIB_RELEASE_VERSION}")
     add_definitions(-DUSE_DLIB)
     set(DLIB_LIB_DEPS -ldlib)
@@ -699,34 +699,32 @@ else()
   set(COMMON_INCLUDE_DIRS ${Boost_INCLUDE_DIRS})
 endif()
 set(COMMON_LINK_DIRS
+  ${DLIB_LIB_DIR}
   ${TENSORRT_LIB_DIR}
   ${CAFFE_LIB_DIR}
   ${CAFFE2_LIB_DIR}
   ${TF_LIB_DIR}
   ${XGBOOST_LIB_DIR}
   ${TSNE_LIB_DIR}
-  ${NCNN_LIB_DIR}
-  ${DLIB_LIB_DIR})
+  ${NCNN_LIB_DIR})
 if (USE_HDF5)
   set(COMMON_LINK_LIBS
-    ddetect ${TENSORRT_LIB_DEPS} ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl hdf5_cpp ${Boost_LIBRARIES} archive
+    ddetect ${DLIB_LIB_DEPS} ${TENSORRT_LIB_DEPS} ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl hdf5_cpp ${Boost_LIBRARIES} archive
     ${CAFFE_LIB_DEPS}
     ${CAFFE2_LIB_DEPS}
     ${TF_LIB_DEPS}
     ${XGBOOST_LIB_DEPS}
     ${TSNE_LIB_DEPS}
-    ${NCNN_LIB_DEPS}
-    ${DLIB_LIB_DEPS})
+    ${NCNN_LIB_DEPS})
 else()
   set(COMMON_LINK_LIBS
-    ddetect ${TENSORRT_LIB_DEPS} ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} archive
+    ddetect ${DLIB_LIB_DEPS} ${TENSORRT_LIB_DEPS} ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} archive
     ${CAFFE_LIB_DEPS}
     ${CAFFE2_LIB_DEPS}
     ${TF_LIB_DEPS}
     ${XGBOOST_LIB_DEPS}
     ${TSNE_LIB_DEPS}
-    ${NCNN_LIB_DEPS}
-    ${DLIB_LIB_DEPS})
+    ${NCNN_LIB_DEPS})
 endif()
 set(HTTP_LINK_LIBS cppnetlib-uri crypto ssl)
 
