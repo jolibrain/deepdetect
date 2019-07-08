@@ -41,7 +41,7 @@ namespace dd {
         DlibInputInterface() {}
 
         DlibInputInterface(const DlibInputInterface &tii)
-                : _dv(tii._dv), _ids(tii._ids) {}
+                : _dv(tii._dv) {}
 
         ~DlibInputInterface() {}
 
@@ -49,7 +49,6 @@ namespace dd {
         // parameters common to all Dlib input connectors
         std::vector<dlib::matrix<dlib::rgb_pixel>> _dv;
         std::vector<dlib::matrix<dlib::rgb_pixel>> _dv_test;
-        std::vector<std::string> _ids; // input ids (eg. Image Ids).
         std::unordered_map<std::string,std::pair<int,int>> _imgs_size; /**< image sizes, used in detection. */
     };
 
@@ -101,6 +100,10 @@ namespace dd {
             catch (InputConnectorBadParamException &e) {
                 throw;
             }
+	    // ids
+	    bool set_ids = false;
+	    if (this->_ids.empty())
+	      set_ids = true;
             for (size_t i = 0; i < _images.size(); i++) {
                 dlib::matrix<dlib::rgb_pixel> inputImg;
                 if (_bw) {
@@ -109,7 +112,8 @@ namespace dd {
                     dlib::assign_image(inputImg, dlib::cv_image<dlib::rgb_pixel>(_images.at(i)));
                 }
                 _dv.push_back(inputImg);
-                _ids.push_back(_uris.at(i));
+		if (set_ids)
+		  this->_ids.push_back(_uris.at(i));
                 _imgs_size.insert(std::pair<std::string,std::pair<int,int>>(this->_uris.at(i),this->_images_size.at(i)));
             }
             this->_images.clear();

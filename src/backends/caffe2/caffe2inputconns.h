@@ -54,7 +54,9 @@ namespace dd {
     /**
      * \brief asserts that the context can be used with the current input configuration
      */
-    void assert_context_validity(Caffe2NetTools::ModelContext &context, bool train = false) const;
+    void assert_context_validity(Caffe2NetTools::ModelContext &context,
+				 const std::vector<std::string> &ids,
+				 bool train = false) const;
 
     /* Functions that should be re-implemented by childrens */
 
@@ -108,7 +110,8 @@ namespace dd {
 
     /* Internal functions */
 
-    void set_batch_sizes(const APIData &ad, bool train);
+    void set_batch_sizes(const APIData &ad, bool train,
+			 const std::vector<std::string> &ids);
 
   protected:
 
@@ -117,8 +120,8 @@ namespace dd {
     void init(InputConnectorStrategy *child);
 
     // Should be called AFTER the children has initialized protected members
-    void finalize_transform_predict(const APIData &ad);
-    void finalize_transform_train(const APIData &ad);
+    void finalize_transform_predict(const APIData &ad, const std::vector<std::string> &ids);
+    void finalize_transform_train(const APIData &ad, const std::vector<std::string> &ids);
 
     /**
      * \brief used to alert Caffe2Lib that the nets should be reconstructed
@@ -194,7 +197,6 @@ namespace dd {
     bool _is_testable = false; // whether test data is available
     bool _is_load_manual = true; // whether data is manually loaded (as opposed to database-loaded)
     bool _is_batchable = true; // whether inputs can be pre-computed into the same format
-    std::vector<std::string> _ids; // input ids
     std::vector<std::vector<float>> _scales; // input scale coefficients
 
     /* Public getters */
@@ -202,7 +204,7 @@ namespace dd {
 #define _GETTER(name) inline const decltype(_##name) &name() const { return _##name; }
     _GETTER(is_testable);
     _GETTER(is_load_manual);
-    _GETTER(ids);
+    //    _GETTER(ids);
     _GETTER(scales);
 #undef _GETTER
   };

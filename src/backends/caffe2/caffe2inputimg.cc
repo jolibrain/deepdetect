@@ -93,10 +93,10 @@ namespace dd {
     // Prepare the images
     if (_train) {
       transform_train(ad);
-      finalize_transform_train(ad);
+      finalize_transform_train(ad,this->_ids);
     } else {
       transform_predict(ad);
-      finalize_transform_predict(ad);
+      finalize_transform_predict(ad,this->_ids);
     }
   }
 

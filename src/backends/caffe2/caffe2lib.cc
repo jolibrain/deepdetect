@@ -720,9 +720,9 @@ namespace dd {
     update_model(); // Recreate the net from protobuf files if the configuration has changed
 
     // Check if everything is well configured
-    _last_inputc.assert_context_validity(_context, true);
+    _last_inputc.assert_context_validity(_context, _last_inputc._ids, true);
     if (_state.is_testing()) {
-      _last_inputc.assert_context_validity(_context);
+      _last_inputc.assert_context_validity(_context, _last_inputc._ids);
     }
 
     //XXX Manage multi-net training
@@ -905,7 +905,7 @@ namespace dd {
     }
 
     update_model(); // Recreate the net from protobuf files if the configuration has changed
-    _last_inputc.assert_context_validity(_context); // Check if everything is well configured
+    _last_inputc.assert_context_validity(_context, _last_inputc._ids); // Check if everything is well configured
 
 
     // Special case where the net is runned by test()
@@ -934,7 +934,7 @@ namespace dd {
 
 	vrad.emplace_back();
 	APIData &rad = vrad.back();
-	rad.add("uri", _last_inputc.ids().at(total_size)); // Store its name
+	rad.add("uri", _last_inputc._ids.at(total_size)); // Store its name
 	rad.add("loss", 0.0); //XXX Needed but not relevant
 
 	if (!_state.extract_layer().empty()) {
