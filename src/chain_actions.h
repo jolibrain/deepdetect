@@ -43,6 +43,13 @@ namespace dd
 
     ~ChainAction() {}
 
+    std::string genid(const std::string &uri,
+		      const std::string &local_id)
+      {
+	std::string str = uri+local_id;
+	return std::to_string(std::hash<std::string>{}(str));
+      }
+    
     int apply(APIData &model_out,
 	      std::unordered_map<std::string,APIData> &actions_data);
 
@@ -58,11 +65,6 @@ namespace dd
       :ChainAction(action_type) {}
 
     ~ImgsCropAction() {}
-
-    std::string genid(const int &i)
-      {
-	return "bbox_" + std::to_string(i); //TODO: needs UUID (from URI + bbox number) if batch_size > 1
-      }
     
     //TODO: will except on missing data, e.g. bbox
     int apply(APIData &model_out,

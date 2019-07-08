@@ -45,7 +45,7 @@ namespace dd
       //TODO: get image batch
       for (size_t i=0;i<vad.size();i++)
 	{
-	  //std::cerr << "uri=" << vad.at(i).get("uri").get<std::string>() << std::endl;
+	  std::string uri = vad.at(i).get("uri").get<std::string>();
 	  
 	  //TODO: crop from cv::Mat
 	  cv::Mat img = imgs.at(i);
@@ -63,7 +63,7 @@ namespace dd
 	      //std::cerr << "bbox size=" << bbox.size() << std::endl;
 
 	      // adding modified object chain id
-	      std::string bbox_id = genid(j);
+	      std::string bbox_id = genid(uri,"bbox"+std::to_string(j));
 	      bbox_ids.push_back(bbox_id);
 	      APIData ad_cid;
 	      //ad_cid.add("chainid",bbox_id);
