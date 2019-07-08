@@ -154,8 +154,8 @@ namespace dd {
       compute_db_sizes();
       _is_testable = false; //XXX Can't infer labels from raw data
       _is_load_manual = true;
-      _ids = _uris;
-      _scales.resize(_ids.size());
+      this->_ids = _uris;
+      _scales.resize(this->_ids.size());
       std::transform(_images.begin(), _images.end(), _images_size.begin(), _scales.begin(),
 		     compute_scale);
 
@@ -165,12 +165,12 @@ namespace dd {
       compute_db_sizes();
       _is_testable = true;
       _is_load_manual = false;
-      _ids.resize(_db_size);
+      this->_ids.resize(_db_size);
       _scales.resize(_db_size);
 
       // Set indices as ids
       for (int id = 0; id < _db_size; ++id) {
-	_ids[id] = std::to_string(id);
+	this->_ids[id] = std::to_string(id);
       }
       // No pre-computation
       std::fill(_scales.begin(), _scales.end(), std::vector<float>({1, 1}));
