@@ -858,7 +858,7 @@ namespace dd {
 	const std::vector<float> &result = results[0][item];
 	std::vector<double> predictions;
 	predictions.assign(result.begin(), result.end());
-	bad.add("target", std::string(labels[item]));
+	bad.add("target", static_cast<double>(labels[item]));
 	bad.add("pred", predictions);
 
 	ad_res.add(std::to_string(total_size), bad);
