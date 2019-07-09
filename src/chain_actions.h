@@ -38,8 +38,12 @@ namespace dd
   class ChainAction
   {
   public:
-    ChainAction(const std::string &action_type)
-      :_action_type(action_type) {}
+  ChainAction(const APIData &adc,
+	      const std::string &action_type)
+    :_action_type(action_type)
+    {
+      _params = adc.getobj("parameters");
+    }
 
     ~ChainAction() {}
 
@@ -54,6 +58,7 @@ namespace dd
 	      std::unordered_map<std::string,APIData> &actions_data);
 
     std::string _action_type;
+    APIData _params;
     bool _in_place = false;
   };
 
@@ -61,8 +66,9 @@ namespace dd
   class ImgsCropAction : public ChainAction
   {
   public:
-    ImgsCropAction(const std::string &action_type)
-      :ChainAction(action_type) {}
+    ImgsCropAction(const APIData &adc,
+		   const std::string &action_type)
+      :ChainAction(adc,action_type) {}
 
     ~ImgsCropAction() {}
     
@@ -74,15 +80,20 @@ namespace dd
   class ClassFilter : public ChainAction
   {
   public:
-    ClassFilter(const std::string &action_type)
-      :ChainAction(action_type) {_in_place = true;}
+    ClassFilter(const APIData &adc,
+		const std::string &action_type)
+      :ChainAction(adc,action_type) {_in_place = true;}
     ~ClassFilter() {}
+
+    int apply(APIData &model_out,
+	      std::unordered_map<std::string,APIData> &action_out);
   };
 
   class ChainActionFactory
   {
   public:
-    ChainActionFactory() {}
+    ChainActionFactory(const APIData &adc)
+      :_adc(adc) {}
     ~ChainActionFactory() {}
 
     int apply_action(const std::string &action_type,
@@ -91,7 +102,12 @@ namespace dd
     {
       if (action_type == "crop")
 	{
-	  ImgsCropAction act(action_type);
+	  ImgsCropAction act(_adc,action_type);
+	  return act.apply(model_out,action_out);
+	}
+      else if (action_type == "filter")
+	{
+	  ClassFilter act(_adc,action_type);
 	  return act.apply(model_out,action_out);
 	}
       else
@@ -100,6 +116,8 @@ namespace dd
 	  std::cerr << "[chain] ignoring action " << action_type << std::endl;
 	}
     }
+
+    APIData _adc; /**< action ad object. */
   };
   
 } // end of namespace

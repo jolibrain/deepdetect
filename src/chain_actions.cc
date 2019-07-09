@@ -21,6 +21,7 @@
 
 #include "chain_actions.h"
 #include <opencv2/opencv.hpp>
+#include <unordered_set>
 
 namespace dd
 {
@@ -122,6 +123,55 @@ namespace dd
 
       // updated model data with chain ids
       model_out.add("predictions",cvad);
+
+      return 0;
     }
-  
-}
+
+
+  int ClassFilter::apply(APIData &model_out,
+			 std::unordered_map<std::string,APIData> &actions_data)
+  {
+    std::cerr << "[chain] applying filter action\n";
+
+    if (!_params.has("classes"))
+      {
+	std::cerr << "Action filter is missing classes parameter\n";
+	return 1;
+	//TODO: throw
+      }
+    std::vector<std::string> on_classes = _params.get("classes").get<std::vector<std::string>>();
+    std::unordered_set<std::string> on_classes_us;
+    for (auto s: on_classes)
+      on_classes_us.insert(s);
+    std::unordered_set<std::string>::const_iterator usit;
+    
+    std::vector<APIData> vad = model_out.getv("predictions");
+    std::vector<APIData> cvad;
+    
+    for (size_t i=0;i<vad.size();i++)
+      {
+	std::vector<APIData> ad_cls = vad.at(i).getv("classes");
+	std::vector<APIData> cad_cls;
+
+	for (size_t j=0;j<ad_cls.size();j++)
+	  {
+	    std::string cat = ad_cls.at(j).get("cat").get<std::string>();
+	    std::cerr << "cat=" << cat << std::endl;
+	    if ((usit=on_classes_us.find(cat))!=on_classes_us.end())
+	      {
+		std::cerr << "filtered cat=" << cat << std::endl;
+		cad_cls.push_back(ad_cls.at(j));
+	      }
+	  }
+	APIData ccls;
+	ccls.add("classes",cad_cls);
+	cvad.push_back(ccls);
+      }
+    
+    // updated model data
+    model_out.add("predictions",cvad);
+    
+    return 0;
+  }
+
+} // end of namespace

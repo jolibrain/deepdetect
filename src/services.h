@@ -669,7 +669,8 @@ namespace dd
       //debug
 
       ChainData cdata;
-      
+
+      int npredicts = 0;
       std::string prec_pred_sname;
       std::string prec_action_type;
       for (size_t i=0;i<ad_calls.size();i++)
@@ -677,6 +678,7 @@ namespace dd
 	  APIData adc = ad_calls.at(i);
 	  if (adc.has("service"))
 	    {
+	      ++npredicts;
 	      std::string pred_sname = adc.get("service").get<std::string>();
 
 	      std::cerr << "[chain] " << i << " / executing predict on " << pred_sname << std::endl;
@@ -732,7 +734,7 @@ namespace dd
 		}
 	
 	      // call chain action factory
-	      ChainActionFactory caf;
+	      ChainActionFactory caf(adc.getobj("action"));
 	      caf.apply_action(action_type,
 			       prev_data,
 			       cdata._action_data);
@@ -751,7 +753,10 @@ namespace dd
       // - merge_ids function in APIData or elsewhere using a dedicated visitor
       // - use "predictions"/"classes" array element ids to merge
       // - fct signature similar to merge_ids(std::vector<APIData> models_out)
-      APIData nested_out = cdata.nested_chain_output();
+      APIData nested_out;
+      if (npredicts > 1)
+	nested_out = cdata.nested_chain_output();
+      else nested_out = cdata.get_model_data(cdata._first_sname);
       
       //std::cerr << "final prec_pred_sname=" << prec_pred_sname << std::endl;
       //std::cerr << "model first sname=" << cdata._first_sname << std::endl;
