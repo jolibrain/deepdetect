@@ -47,7 +47,7 @@ TEST(caffelib,configure_mlp_template_1_nt)
   std::vector<int> layers = {200};
   APIData ad;
   ad.add("layers",layers);
-  ad.add("activation","prelu");
+  ad.add("activation",std::string("prelu"));
   ad.add("dropout",0.6);
   ad.add("nclasses",nclasses);
   
@@ -91,7 +91,7 @@ TEST(caffelib,configure_mlp_template_1_db)
   std::vector<int> layers = {200};
   APIData ad;
   ad.add("layers",layers);
-  ad.add("activation","prelu");
+  ad.add("activation",std::string("prelu"));
   ad.add("dropout",0.2);
   ad.add("db",true);
   ad.add("nclasses",nclasses);
@@ -140,7 +140,7 @@ TEST(caffelib,configure_mlp_template_n_nt)
   std::vector<int> layers = {200,150,75};
   APIData ad;
   ad.add("layers",layers);
-  ad.add("activation","prelu");
+  ad.add("activation",std::string("prelu"));
   ad.add("dropout",0.6);
   ad.add("nclasses",nclasses);
 
@@ -192,7 +192,7 @@ TEST(caffelib,configure_mlp_template_n_mt)
   std::vector<int> layers = {200,150,75};
   APIData ad;
   ad.add("layers",layers);
-  ad.add("activation","prelu");
+  ad.add("activation",std::string("prelu"));
   ad.add("dropout",0.6);
   ad.add("ntargets",ntargets);
 
@@ -250,7 +250,7 @@ TEST(caffelib,configure_convnet_template_1)
   std::vector<std::string> layers = {"1CR64"};
   APIData ad;
   ad.add("layers",layers);
-  ad.add("activation","prelu");
+  ad.add("activation",std::string("prelu"));
   ad.add("dropout",0.2);
   ad.add("nclasses",nclasses);
 
@@ -296,7 +296,7 @@ TEST(caffelib,configure_convnet_template_1_db)
   std::vector<std::string> layers = {"1CR64"};
   APIData ad;
   ad.add("layers",layers);
-  ad.add("activation","prelu");
+  ad.add("activation",std::string("prelu"));
   ad.add("dropout",0.2);
   ad.add("db",true);
   ad.add("nclasses",nclasses);
@@ -347,7 +347,7 @@ TEST(caffelib,configure_convnet_template_2)
   std::vector<std::string> layers = {"1CR64","1CR128","1000"};
   APIData ad;
   ad.add("layers",layers);
-  ad.add("activation","prelu");
+  ad.add("activation",std::string("prelu"));
   ad.add("dropout",0.2);
   ad.add("nclasses",nclasses);
 
@@ -424,7 +424,7 @@ TEST(caffelib,configure_convnet_template_3)
   std::vector<std::string> layers = {"2CR64"};
   APIData ad;
   ad.add("layers",layers);
-  ad.add("activation","prelu");
+  ad.add("activation",std::string("prelu"));
   ad.add("dropout",0.2);
   ad.add("nclasses",nclasses);
 
@@ -480,7 +480,7 @@ TEST(caffelib,configure_convnet_template_n)
   std::vector<std::string> layers = {"2CR32","2CR64","2CR128","4096","1024"};
   APIData ad;
   ad.add("layers",layers);
-  ad.add("activation","prelu");
+  ad.add("activation",std::string("prelu"));
   ad.add("dropout",0.2);
   ad.add("nclasses",nclasses);
   ad.add("db",true);
@@ -507,7 +507,7 @@ TEST(caffelib,configure_convnet_template_n_1D)
   std::vector<std::string> layers = {"1CR256","1CR256","4CR256","1024","1024"};
   APIData ad;
   ad.add("layers",layers);
-  ad.add("activation","prelu");
+  ad.add("activation",std::string("prelu"));
   ad.add("dropout",0.2);
   ad.add("db",true);
   ad.add("nclasses",nclasses);
@@ -588,7 +588,7 @@ TEST(caffelib,configure_resnet_template_n_nt)
   std::vector<std::string> layers = {"Res50"};
   APIData ad;
   ad.add("layers",layers);
-  ad.add("activation","relu");
+  ad.add("activation",std::string("relu"));
   //ad.add("dropout",0.6);
   ad.add("nclasses",nclasses);
   
@@ -609,22 +609,22 @@ TEST(caffelib,configure_resnet_template_n_nt)
 TEST(caffelib, configure_deeplabvgg16_diceloss)
 {
   APIData ad;
-  ad.add("template","deeplab_vgg16");
-  ad.add("loss","dice");
+  ad.add("template",std::string("deeplab_vgg16"));
+  ad.add("loss",std::string("dice"));
   APIData dice_param;
   APIData dice_class_weighting;
-  dice_class_weighting.add("compute_on","batch");
-  dice_class_weighting.add("weight","equalize_classes");
+  dice_class_weighting.add("compute_on",std::string("batch"));
+  dice_class_weighting.add("weight",std::string("equalize_classes"));
   dice_param.add("class_weighting",dice_class_weighting);
   APIData dice_contour;
-  dice_contour.add("shape","simple");
+  dice_contour.add("shape",std::string("simple"));
   dice_contour.add("size",3);
   dice_contour.add("amplitude",20.5);
   dice_param.add("contour",dice_contour);
   ad.add("dice_param",dice_param);
   ad.add("ignore_label",0);
-  ad.add("templates","../templates/caffe");
-  ad.add("repository","./");
+  ad.add("templates",std::string("../templates/caffe"));
+  ad.add("repository",std::string("./"));
   ad.add("nclasses",2);
   ad.add("segmentation",true);
   CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel> *caff = new CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(CaffeModel(ad));
@@ -672,17 +672,17 @@ TEST(caffelib,configure_service_images_autoenc_geometry)
   adg.add("persp_vertical",false);
   adg.add("zoom_in",true);
   adg.add("zoom_out",true);
-  adg.add("pad_mode","mirrored");
+  adg.add("pad_mode",std::string("mirrored"));
   adg.add("prob",0.1);
   APIData ad;
-  ad.add("template","convnet");
+  ad.add("template",std::string("convnet"));
   std::vector<std::string> net = {"1CR32","1CR64","1CR128","DR128","1CR128","DR64","1CR64","DR32","1CR32"};
   ad.add("layers", net);
-  ad.add("activation","relu");
+  ad.add("activation",std::string("relu"));
   ad.add("autoencoder",true);
   ad.add("geometry",adg);
-  ad.add("templates","../templates/caffe");
-  ad.add("repository","./");
+  ad.add("templates",std::string("../templates/caffe"));
+  ad.add("repository",std::string("./"));
   ad.add("width",224);
   ad.add("height",224);
 
@@ -716,10 +716,10 @@ TEST(caffelib,configure_service_images_autoenc_geometry)
 TEST(caffelib, configure_unet_diceloss)
 {
   APIData ad;
-  ad.add("template","unet");
-  ad.add("loss","dice");
-  ad.add("templates","../templates/caffe");
-  ad.add("repository","./");
+  ad.add("template",std::string("unet"));
+  ad.add("loss",std::string("dice"));
+  ad.add("templates",std::string("../templates/caffe"));
+  ad.add("repository",std::string("./"));
   ad.add("nclasses",2);
   ad.add("segmentation",true);
   CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel> *caff = new CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(CaffeModel(ad));

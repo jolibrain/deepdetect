@@ -455,7 +455,7 @@ namespace dd
 	  if (!adparams.has("input"))
 	    {
 	      APIData adinput;
-	      adinput.add("connector","csv");
+	      adinput.add("connector",std::string("csv"));
 	      adparams.add("input",adinput);
 	    }
 	}

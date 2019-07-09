@@ -663,7 +663,7 @@ namespace dd
 	      for (auto ap: aps)
                {
                  std::string s = "map_" + std::to_string(ap.first);
-                 meas_out.add(s,ap.second);
+                 meas_out.add(s,static_cast<double>(ap.second));
 	       }
 	    }
 	}

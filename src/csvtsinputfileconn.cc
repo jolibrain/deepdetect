@@ -259,7 +259,7 @@ namespace dd
         if (!adparams.has("input"))
           {
             APIData adinput;
-            adinput.add("connector","csvts");
+            adinput.add("connector",std::string("csvts"));
             adparams.add("input",adinput);
           }
       }

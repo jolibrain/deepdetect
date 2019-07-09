@@ -2282,7 +2282,7 @@ namespace dd
 			uri = std::to_string(idoffset+j);
 			rad.add("uri",uri);
 		      }
-		    rad.add("loss",loss);
+		    rad.add("loss",static_cast<double>(loss));
 		    std::vector<double> vals;
                   std::map<int,std::vector<double>> confidence_maps;
                   std::vector<double> conf_map_best;
@@ -2417,10 +2417,10 @@ namespace dd
 			probs.push_back(detection[2]);
 			cats.push_back(this->_mlmodel.get_hcorresp(detection[1]));
 			APIData ad_bbox;
-			ad_bbox.add("xmin",detection[3]*(cols-1));
-			ad_bbox.add("ymax",detection[4]*(rows-1));
-			ad_bbox.add("xmax",detection[5]*(cols-1));
-			ad_bbox.add("ymin",detection[6]*(rows-1));
+			ad_bbox.add("xmin",static_cast<double>(detection[3]*(cols-1)));
+			ad_bbox.add("ymax",static_cast<double>(detection[4]*(rows-1)));
+			ad_bbox.add("xmax",static_cast<double>(detection[5]*(cols-1)));
+			ad_bbox.add("ymin",static_cast<double>(detection[6]*(rows-1)));
 			bboxes.push_back(ad_bbox);
 		      }
 		    if (leave)
@@ -2484,10 +2484,10 @@ namespace dd
 		    cats.push_back(this->_mlmodel.get_hcorresp(results[1]->cpu_data()[iroi]));
 		    probs.push_back(results[2]->cpu_data()[iroi]);
 		    APIData ad_bbox;
-		    ad_bbox.add("xmin",results[3]->cpu_data()[iroi*4]*cols);
-		    ad_bbox.add("ymax",results[3]->cpu_data()[iroi*4+1]*rows);
-		    ad_bbox.add("xmax",results[3]->cpu_data()[iroi*4+2]*cols);
-		    ad_bbox.add("ymin",results[3]->cpu_data()[iroi*4+3]*rows);
+		    ad_bbox.add("xmin",static_cast<double>(results[3]->cpu_data()[iroi*4]*cols));
+		    ad_bbox.add("ymax",static_cast<double>(results[3]->cpu_data()[iroi*4+1]*rows));
+		    ad_bbox.add("xmax",static_cast<double>(results[3]->cpu_data()[iroi*4+2]*cols));
+		    ad_bbox.add("ymin",static_cast<double>(results[3]->cpu_data()[iroi*4+3]*rows));
 		    bboxes.push_back(ad_bbox);
 		    std::vector<double> pooled_data;
 		    int poolsize = results.at(4)->count()/nroi;
@@ -2639,7 +2639,7 @@ namespace dd
 		    if (!inputc._ids.empty())
 		      rad.add("uri",inputc._ids.at(idoffset+j));
 		    else rad.add("uri",std::to_string(idoffset+j));
-		    rad.add("loss",loss);
+		    rad.add("loss",static_cast<double>(loss));
 		    std::vector<double> probs;
 		    std::vector<std::string> cats;
 		    for (int i=0;i<nclasses;i++)
@@ -2687,7 +2687,7 @@ namespace dd
 	      {
 		APIData rad;
 		rad.add("uri",inputc._ids.at(idoffset+j));
-		rad.add("loss",loss);
+		rad.add("loss",static_cast<double>(loss));
 		std::vector<double> vals;
 		int cpos = 0;
 		for (int c=0;c<results.at(slot)->shape(1);c++)

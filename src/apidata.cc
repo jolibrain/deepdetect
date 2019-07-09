@@ -24,60 +24,66 @@
 namespace dd
 {
   /*- visitor_vad -*/
-  vout visitor_vad::process(const std::string &str)
+  vout visitor_vad::operator()(const std::string &str)
   {
     (void)str;
     return vout();
   }
   
-  vout visitor_vad::process(const double &d)
+  vout visitor_vad::operator()(const double &d)
   {
     (void)d;
     return vout();
   }
 
-  vout visitor_vad::process(const int &i)
+  vout visitor_vad::operator()(const int &i)
+  {
+    (void)i;
+    return vout();
+  }
+
+  vout visitor_vad::operator()(const long int &i)
   {
     (void)i;
     return vout();
   }
   
-  vout visitor_vad::process(const bool &b)
+  vout visitor_vad::operator()(const bool &b)
   {
     (void)b;
     return vout();
   }
 
-  vout visitor_vad::process(const APIData &ad)
+  vout visitor_vad::operator()(const APIData &ad)
   {
     return vout(ad);
   }
   
-  vout visitor_vad::process(const std::vector<double> &vd)
+  vout visitor_vad::operator()(const std::vector<double> &vd)
   {
     (void)vd;
     return vout();
   }
   
-  vout visitor_vad::process(const std::vector<int> &vd)
+  vout visitor_vad::operator()(const std::vector<int> &vd)
   {
     (void)vd;
     return vout();
   }
   
-  vout visitor_vad::process(const std::vector<bool> &vd)
+  vout visitor_vad::operator()(const std::vector<bool> &vd)
   {
     (void)vd;
     return vout();
   }
 
-  vout visitor_vad::process(const std::vector<std::string> &vs)
+  vout visitor_vad::operator()(const std::vector<std::string> &vs)
   {
     (void)vs;
     return vout();
   }
   
-  vout visitor_vad::process(const std::vector<APIData> &vad)
+  vout visitor_vad::operator()(const std::vector<APIData> &vad)
   {
     return vout(vad);
   }
@@ -163,7 +169,7 @@ namespace dd
 	  }
 	else if (cit->value.IsString())
 	  {
-	    add(cit->name.GetString(),cit->value.GetString());
+	    add(cit->name.GetString(),std::string(cit->value.GetString()));
 	  }
 	else if (cit->value.IsDouble())
 	  {

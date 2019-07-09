@@ -152,7 +152,7 @@ namespace dd
     APIData _out;
   };
 
-  class visitor_predict : public mapbox::util::static_visitor<output>
+  class visitor_predict
   {
   public:
     visitor_predict() {}
@@ -172,7 +172,7 @@ namespace dd
   /**
    * \brief training job visitor class
    */
-  class visitor_train : public mapbox::util::static_visitor<output>
+  class visitor_train
   {
   public:
     visitor_train() {}
@@ -192,7 +192,7 @@ namespace dd
   /**
    * \brief training job status visitor class
    */
-  class visitor_train_status : public mapbox::util::static_visitor<output>
+  class visitor_train_status
   {
   public:
     visitor_train_status() {}
@@ -212,7 +212,7 @@ namespace dd
   /**
    * \brief training job deletion class
    */
-  class visitor_train_delete : public mapbox::util::static_visitor<output>
+  class visitor_train_delete
   {
   public:
     visitor_train_delete() {}
@@ -232,7 +232,7 @@ namespace dd
   /**
    * \brief service initialization visitor class
    */
-  class visitor_init : public mapbox::util::static_visitor<>
+  class visitor_init
   {
   public:
     visitor_init(const APIData &ad)
@@ -251,7 +251,7 @@ namespace dd
   /**
    * \brief service deletion visitor class
    */
-  class visitor_clear : public mapbox::util::static_visitor<>
+  class visitor_clear
   {
   public:
     visitor_clear(const APIData &ad)
@@ -473,7 +473,7 @@ namespace dd
       if (ad.has("async") && ad.get("async").get<bool>())
 	{
 	  out.add("job",pout._status); // status holds the job id...
-	  out.add("status","running");
+	  out.add("status",std::string("running"));
 	  return 0; // status is OK i.e. the job has started.
 	}
       else

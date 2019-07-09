@@ -858,7 +858,7 @@ namespace dd {
 	const std::vector<float> &result = results[0][item];
 	std::vector<double> predictions;
 	predictions.assign(result.begin(), result.end());
-	bad.add("target", labels[item]);
+	bad.add("target", static_cast<double>(labels[item]));
 	bad.add("pred", predictions);
 
 	ad_res.add(std::to_string(total_size), bad);
@@ -935,7 +935,7 @@ namespace dd {
 	vrad.emplace_back();
 	APIData &rad = vrad.back();
 	rad.add("uri", _last_inputc.ids().at(total_size)); // Store its name
-	rad.add("loss", 0.f); //XXX Needed but not relevant
+	rad.add("loss", 0.0); //XXX Needed but not relevant
 
 	if (!_state.extract_layer().empty()) {
 
@@ -996,7 +996,7 @@ namespace dd {
 	    const std::vector<float> coord_scale({scale[1], scale[0], scale[1], scale[0]});
 	    int scaled_coords[4];
 	    for (int coord_idx = 0; coord_idx < 4; ++coord_idx) {
-	      float scaled = *(coords_it + coord_idx) / coord_scale[coord_idx];
+	      double scaled = *(coords_it + coord_idx) / coord_scale[coord_idx];
 	      scaled_coords[coord_idx] = scaled;
 	      ad_bbox.add(coord[coord_idx], scaled);
 	    }
@@ -1012,7 +1012,7 @@ namespace dd {
 	      int height = scaled_coords[3] - scaled_coords[1] + 1;
 	      cv::Mat mask;
 	      img(cv::Rect(scaled_coords[0], scaled_coords[1], width, height)).copyTo(mask);
-	      ad_mask.add("format", "HW");
+	      ad_mask.add("format", std::string("HW"));
 	      ad_mask.add("width", width);
 	      ad_mask.add("height", height);
 	      ad_mask.add("data", std::vector<int>(mask.data, mask.data + mask.total()));

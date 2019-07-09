@@ -122,7 +122,7 @@ namespace dd
   /**
    * \brief visitor class for service info call
    */
-  class visitor_info : public mapbox::util::static_visitor<APIData>
+  class visitor_info
   {
   public:
     visitor_info(const bool &status):_status(status) {}
@@ -139,7 +139,7 @@ namespace dd
   /**
    * \brief visitor class for service status call
    */
-  class visitor_status : public mapbox::util::static_visitor<APIData>
+  class visitor_status
   {
   public:
     visitor_status() {}

@@ -23,6 +23,7 @@
 #define DD_FILEOPS_H
 
 #include <fstream>
+#include <iostream>
 #include <unordered_set>
 #include <sys/stat.h>
 #include <stdio.h>
