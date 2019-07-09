@@ -277,6 +277,22 @@ namespace dd
     return jd;
   }
 #endif
+
+  JDoc JsonAPI::dd_action_bad_request_1012(const std::string &msg) const
+  {
+    JDoc jd;
+    jd.SetObject();
+    render_status(jd,400,"BadRequest",1012, msg);
+    return jd;
+  }
+
+  JDoc JsonAPI::dd_action_internal_error_1013(const std::string &msg) const
+  {
+    JDoc jd;
+    jd.SetObject();
+    render_status(jd,400,"InternalError",1013, msg);
+    return jd;
+  }
   
   std::string JsonAPI::jrender(const JDoc &jst) const
   {
@@ -1197,13 +1213,19 @@ namespace dd
 	return dd_sim_search_error_1011();
       }
 #endif
+    catch (ActionBadParamException &e)
+      {
+	return dd_action_bad_request_1012(e.what());
+      }
+    catch (ActionInternalException &e)
+      {
+	return dd_action_internal_error_1013(e.what());
+      }
     catch (std::exception &e)
       {
 	return dd_internal_mllib_error_1007(e.what());
       }
 
-    //TODO: gather results
-    std::cerr << "rendering JSON results\n";
     JDoc jpred = dd_ok_200();
     JVal jout(rapidjson::kObjectType);
     out.toJVal(jpred,jout);
@@ -1217,22 +1239,6 @@ namespace dd
     if (jout.HasMember("predictions"))
       jbody.AddMember("predictions",jout["predictions"],jpred.GetAllocator());
     jpred.AddMember("body",jbody,jpred.GetAllocator());
-    /*if (ad_data.getobj("parameters").getobj("output").has("template")
-        && ad_data.getobj("parameters").getobj("output").get("template").get<std::string>() != "")
-      {
-	APIData ad_params = ad_data.getobj("parameters");
-	APIData ad_output = ad_params.getobj("output");
-	jpred.AddMember("template",JVal().SetString(ad_output.get("template").get<std::string>().c_str(),jpred.GetAllocator()),jpred.GetAllocator());
-	}*/
-    /*if (ad_data.getobj("parameters").getobj("output").has("network"))
-      {
-	APIData ad_params = ad_data.getobj("parameters");
-	APIData ad_output = ad_params.getobj("output");
-	APIData ad_net = ad_output.getobj("network");
-	JVal jnet(rapidjson::kObjectType);
-	ad_net.toJVal(jpred,jnet);
-	jpred.AddMember("network",jnet,jpred.GetAllocator());
-	}*/
     return jpred;
   }
   

@@ -301,41 +301,6 @@ namespace dd
     
     APIData _ad;
   };
-
-  /*class visitor_chain_put_data : public mapbox::util::static_visitor<>
-  {
-  public:
-    visitor_chain_put_data() {}
-    ~visitor_chain_put_data() {}
-
-    template<typename T>
-      void operator() (T &mllib)
-      {
-	std::cerr << "add_inter_data to " << _sname << std::endl;
-	mllib._chaindata.add_inter_data(_sname,_out);
-	std::cerr << "done adding inter data\n";
-      }
-
-    std::string _sname;
-    APIData _out;
-  };
-
-  class visitor_chain_get_data : public mapbox::util::static_visitor<output>
-  {
-  public:
-    visitor_chain_get_data() {}
-    ~visitor_chain_get_data() {}
-
-    template<typename T>
-      output operator() (T &mllib)
-      {
-	_out = mllib._chaindata.get_inter_data(_sname);
-	return output(0,_out);
-      }
-
-    std::string _sname;
-    APIData _out;
-    };*/
   
   /**
    * \brief class for deepetect machine learning services.

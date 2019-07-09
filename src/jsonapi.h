@@ -81,6 +81,8 @@ namespace dd
     JDoc dd_output_connector_network_error_1009() const;
     JDoc dd_sim_index_error_1010() const;
     JDoc dd_sim_search_error_1011() const;
+    JDoc dd_action_bad_request_1012(const std::string &what="") const;
+    JDoc dd_action_internal_error_1013(const std::string &what="") const;
     
     // JSON rendering
     std::string jrender(const JDoc &jst) const;

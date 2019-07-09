@@ -28,13 +28,28 @@
 namespace dd
 {
 
-  //TODO: exception classes
-  
-  //TODO: chain_action class
-  // - action type
-  // - apply(APIData in, out) ?
-  //TODO: derivatives to the chain_action class, e.g. crop_img, ...
+  class ActionBadParamException : public std::exception
+  {
+  public:
+    ActionBadParamException(const std::string &s)
+      :_s(s) {}
+    ~ActionBadParamException() {}
+    const char* what() const noexcept { return _s.c_str(); }
+  private:
+    std::string _s;
+  };
 
+  class ActionInternalException : public std::exception
+  {
+  public:
+    ActionInternalException(const std::string &s)
+      :_s(s) {}
+    ~ActionInternalException() {}
+    const char* what() const noexcept { return _s.c_str(); }
+  private:
+    std::string _s;
+  };
+  
   class ChainAction
   {
   public:
@@ -54,8 +69,8 @@ namespace dd
 	return std::to_string(std::hash<std::string>{}(str));
       }
     
-    int apply(APIData &model_out,
-	      std::unordered_map<std::string,APIData> &actions_data);
+    void apply(APIData &model_out,
+	       std::unordered_map<std::string,APIData> &actions_data);
 
     std::string _action_type;
     APIData _params;
@@ -72,9 +87,8 @@ namespace dd
 
     ~ImgsCropAction() {}
     
-    //TODO: will except on missing data, e.g. bbox
-    int apply(APIData &model_out,
-	      std::unordered_map<std::string,APIData> &actions_data);
+    void apply(APIData &model_out,
+	       std::unordered_map<std::string,APIData> &actions_data);
   };
 
   class ClassFilter : public ChainAction
@@ -85,8 +99,8 @@ namespace dd
       :ChainAction(adc,action_type) {_in_place = true;}
     ~ClassFilter() {}
 
-    int apply(APIData &model_out,
-	      std::unordered_map<std::string,APIData> &action_out);
+    void apply(APIData &model_out,
+	       std::unordered_map<std::string,APIData> &action_out);
   };
 
   class ChainActionFactory
@@ -96,24 +110,23 @@ namespace dd
       :_adc(adc) {}
     ~ChainActionFactory() {}
 
-    int apply_action(const std::string &action_type,
-		     APIData &model_out,
-		     std::unordered_map<std::string,APIData> &action_out)
+    void apply_action(const std::string &action_type,
+		      APIData &model_out,
+		      std::unordered_map<std::string,APIData> &action_out)
     {
       if (action_type == "crop")
 	{
 	  ImgsCropAction act(_adc,action_type);
-	  return act.apply(model_out,action_out);
+	  act.apply(model_out,action_out);
 	}
       else if (action_type == "filter")
 	{
 	  ClassFilter act(_adc,action_type);
-	  return act.apply(model_out,action_out);
+	  act.apply(model_out,action_out);
 	}
       else
 	{
-	  //TODO: exception or ignore
-	  std::cerr << "[chain] ignoring action " << action_type << std::endl;
+	  throw ActionBadParamException("unknown action " + action_type);
 	}
     }
 
