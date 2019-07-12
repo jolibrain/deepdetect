@@ -70,7 +70,7 @@ namespace dd
       }
     
     void apply(APIData &model_out,
-	       std::unordered_map<std::string,APIData> &actions_data);
+	       std::vector<APIData> &actions_data);
 
     std::string _action_type;
     APIData _params;
@@ -88,7 +88,7 @@ namespace dd
     ~ImgsCropAction() {}
     
     void apply(APIData &model_out,
-	       std::unordered_map<std::string,APIData> &actions_data);
+	       std::vector<APIData> &actions_data);
   };
 
   class ClassFilter : public ChainAction
@@ -100,7 +100,7 @@ namespace dd
     ~ClassFilter() {}
 
     void apply(APIData &model_out,
-	       std::unordered_map<std::string,APIData> &action_out);
+	       std::vector<APIData> &action_data);
   };
 
   class ChainActionFactory
@@ -112,7 +112,7 @@ namespace dd
 
     void apply_action(const std::string &action_type,
 		      APIData &model_out,
-		      std::unordered_map<std::string,APIData> &action_out)
+		      std::vector<APIData> &action_out)
     {
       if (action_type == "crop")
 	{

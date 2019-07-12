@@ -637,7 +637,8 @@ namespace dd
 
       int npredicts = 0;
       std::string prec_pred_sname;
-      std::string prec_action_type;
+      int prec_action_id = 0;
+      int aid = 0;
       for (size_t i=0;i<ad_calls.size();i++)
 	{
 	  APIData adc = ad_calls.at(i);
@@ -658,7 +659,8 @@ namespace dd
 		  //TODO: take data from the previous action
 		  std::cerr << "[chain] filling up model from previous action data\n";
 		  
-		  APIData act_data = cdata.get_action_data(prec_action_type);
+		  //APIData act_data = cdata.get_action_data(prec_action_type);
+		  APIData act_data = cdata._action_data.at(prec_action_id);
 		  //TODO: test empty action data
 
 		  //std::cerr << "act_data has data=" << act_data.has("data") << std::endl;
@@ -688,8 +690,8 @@ namespace dd
 	      std::cerr << "[chain] executing action " << action_type << std::endl;
 
 	      APIData prev_data = cdata.get_model_data(prec_pred_sname);
-	      /*std::cerr << "prev_data has input=" << prev_data.has("input") << std::endl;
-		std::cerr << "predictions size=" << prev_data.getobj("predictions").size() << std::endl;*/
+	      std::cerr << "prev_data has input=" << prev_data.has("input") << std::endl;
+	      std::cerr << "predictions size=" << prev_data.getobj("predictions").size() << std::endl;
 	      if (!prev_data.getobj("predictions").size())
 		{
 		  // no prediction to work from
@@ -708,7 +710,8 @@ namespace dd
 	      std::cerr << "[chain] added modified model out for " << prec_pred_sname << std::endl;
 	      cdata.add_model_data(prec_pred_sname,prev_data);
 	      
-	      prec_action_type = action_type;
+	      prec_action_id = aid;
+	      ++aid;
 	    }
 	}
       std::cerr << "[chain] finished executing chain\n";

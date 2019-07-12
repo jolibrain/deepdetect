@@ -41,7 +41,7 @@ namespace dd
   public:
     CaffeInputInterface() {}
     CaffeInputInterface(const CaffeInputInterface &cii)
-      :_db(cii._db),_dv(cii._dv),_dv_test(cii._dv_test),/*_ids(cii._ids),*/_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed),_sequence_txt(cii._sequence_txt),_max_embed_id(cii._max_embed_id),_segmentation(cii._segmentation),_bbox(cii._bbox),_multi_label(cii._multi_label),_ctc(cii._ctc),_autoencoder(cii._autoencoder),_alphabet_size(cii._alphabet_size),_root_folder(cii._root_folder),_dbfullname(cii._dbfullname),_test_dbfullname(cii._test_dbfullname), _timesteps(cii._timesteps), _datadim(cii._datadim), _ntargets(cii._ntargets) {}
+      :_db(cii._db),_dv(cii._dv),_dv_test(cii._dv_test),_flat1dconv(cii._flat1dconv),_has_mean_file(cii._has_mean_file),_mean_values(cii._mean_values),_sparse(cii._sparse),_embed(cii._embed),_sequence_txt(cii._sequence_txt),_max_embed_id(cii._max_embed_id),_segmentation(cii._segmentation),_bbox(cii._bbox),_multi_label(cii._multi_label),_ctc(cii._ctc),_autoencoder(cii._autoencoder),_alphabet_size(cii._alphabet_size),_root_folder(cii._root_folder),_dbfullname(cii._dbfullname),_test_dbfullname(cii._test_dbfullname), _timesteps(cii._timesteps), _datadim(cii._datadim), _ntargets(cii._ntargets) {}
 
     ~CaffeInputInterface() {}
 
@@ -76,7 +76,6 @@ namespace dd
     std::vector<caffe::Datum> _dv_test; /**< test input datum vector, when applicable in training mode */
     std::vector<caffe::SparseDatum> _dv_sparse;
     std::vector<caffe::SparseDatum> _dv_test_sparse;
-    //std::vector<std::string> _ids; /**< input ids (e.g. image ids) */
     bool _flat1dconv = false; /**< whether a 1D convolution model. */
     bool _has_mean_file = false; /**< image model mean.binaryproto. */
     std::vector<float> _mean_values; /**< mean image values across a dataset. */
@@ -255,7 +254,7 @@ namespace dd
 	      _dv_test.push_back(datum);
 	      if (set_ids)
 		this->_ids.push_back(this->_uris.at(i));
-	      _imgs_size.insert(std::pair<std::string,std::pair<int,int>>(this->_uris.at(i),this->_images_size.at(i)));
+	      _imgs_size.insert(std::pair<std::string,std::pair<int,int>>(this->_ids.at(i),this->_images_size.at(i)));
 	    }
 	  //TODO: because of chain
 	  //this->_images.clear();

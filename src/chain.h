@@ -64,7 +64,7 @@ namespace dd
       _action_data.insert(std::pair<std::string,APIData>(aname,out));
       }*/
 
-    APIData get_action_data(const std::string &aname) const
+    /*APIData get_action_data(const std::string &aname) const
     {
       std::unordered_map<std::string,APIData>::const_iterator hit;
       if ((hit = _action_data.find(aname))!=_action_data.end())
@@ -74,12 +74,12 @@ namespace dd
 	  std::cerr << "[chain] could not find action data for action " << aname << std::endl;
 	  return APIData();
 	}
-    }
+	}*/
 
     APIData nested_chain_output();
 
     std::unordered_map<std::string,APIData> _model_data;
-    std::unordered_map<std::string,APIData> _action_data;
+    std::vector<APIData> _action_data;
     std::string _first_sname;
   };
 
@@ -108,6 +108,7 @@ namespace dd
     void operator()(const std::vector<APIData> &vad);
     
     std::unordered_map<std::string,APIData> *_replacements = nullptr;
+    std::string _key;
     APIData _ad;
     std::vector<APIData> _vad;
   };

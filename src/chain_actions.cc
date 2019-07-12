@@ -22,12 +22,13 @@
 #include "chain_actions.h"
 #include <opencv2/opencv.hpp>
 #include <unordered_set>
+#include "utils/utils.hpp"
 
 namespace dd
 {
 
   void ImgsCropAction::apply(APIData &model_out,
-			     std::unordered_map<std::string,APIData> &actions_data)
+			     std::vector<APIData> &actions_data)
     {
       std::cerr << "[chain] applying crops action\n";
       std::vector<APIData> vad = model_out.getv("predictions");
@@ -44,6 +45,7 @@ namespace dd
       for (size_t i=0;i<vad.size();i++)
 	{
 	  std::string uri = vad.at(i).get("uri").get<std::string>();
+	  std::cerr << "crop on URI=" << uri << std::endl;
 	  
 	  cv::Mat img = imgs.at(i);
 	  int orig_cols = imgs_size.at(i).second;
@@ -61,6 +63,7 @@ namespace dd
 	      
 	      // adding modified object chain id
 	      std::string bbox_id = genid(uri,"bbox"+std::to_string(j));
+	      std::cerr << "bbox_id=" << bbox_id << std::endl;
 	      bbox_ids.push_back(bbox_id);
 	      APIData ad_cid;
 	      ad_cls.at(j).add(bbox_id,ad_cid);
@@ -92,7 +95,9 @@ namespace dd
 	      cv::Mat cropped_img = img(roi);
 
 	      //debug
-	      //cv::imwrite("crop" + std::to_string(j) + ".png",cropped_img);
+	      std::string puri = dd_utils::split(uri,'/').back();
+	      std::cerr << "writing crop=" << "crop_" + puri + "_" + std::to_string(j) + ".png\n";
+	      cv::imwrite("crop_" + puri + "_" + std::to_string(j) + ".png",cropped_img);
 	      //debug
 	      
 	      // serialize crop into string (will be auto read by read_element in imginputconn)
@@ -104,6 +109,7 @@ namespace dd
 	      cropped_imgs.push_back(cropped_img_str);
 	    }
 	  APIData ccls;
+	  ccls.add("uri",uri);
 	  ccls.add("classes",cad_cls);
 	  cvad.push_back(ccls);
 	}
@@ -111,14 +117,15 @@ namespace dd
       APIData action_out;
       action_out.add("data",cropped_imgs);
       action_out.add("cids",bbox_ids);
-      actions_data.insert(std::pair<std::string,APIData>(_action_type,action_out));
+      //actions_data.insert(std::pair<std::string,APIData>(_action_type,action_out));
+      actions_data.push_back(action_out);
       
       // updated model data with chain ids
       model_out.add("predictions",cvad);
     }
 
   void ClassFilter::apply(APIData &model_out,
-			  std::unordered_map<std::string,APIData> &actions_data)
+			  std::vector<APIData> &actions_data)
   {
     std::cerr << "[chain] applying filter action\n";
     if (!_params.has("classes"))

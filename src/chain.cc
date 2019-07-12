@@ -27,44 +27,55 @@ namespace dd
   void visitor_nested::operator()(const APIData &ad)
   {
     (void)ad;
+    //TODO: add, e.g. uri
   }
   
   void visitor_nested::operator()(const std::vector<APIData> &vad)
   {
-    //std::vector<std::string> kadd;
-    std::unordered_map<std::string,APIData>::const_iterator rhit;
+    std::unordered_map<std::string,APIData>::iterator rhit;
     for (size_t i=0;i<vad.size();i++)
       {
 	APIData ad = vad.at(i);
+	APIData adc = ad;
 	auto hit = ad._data.begin();
 	while(hit!=ad._data.end())
 	  {
-	    //TODO: - if key is chainid -> replace + recursive visit to replacement
-	    //      - else recursive visit
 	    std::string ad_key = (*hit).first;
-	    //std::cerr << "ad_key=" << ad_key << std::endl;
 	    if ((rhit = _replacements->find(ad_key))!=_replacements->end()) 
 	      {
-		//std::cerr << "found key=" << ad_key << std::endl;
-
-		//TODO: recursive replacements for chains with > 2 models
-		//visitor_nested vn(_replacements);
-		//mapbox::util::apply_visitor(vn,(*rhit).second);
-
-		// this replaces the chainid object, not flexible for navigation as ids vary
-		//(*hit).second = (*rhit).second; // replacement
-
-		// we erase the chainid, and add up the model object
-		ad._data.erase(hit);
 		std::string nested_chain = (*rhit).second.list_keys().at(0);
-		ad.add(nested_chain,
-		       (*rhit).second.getobj(nested_chain));
-		_vad.push_back(ad);
+		
+		// we erase the chainid, and add up the model object
+		adc._data.erase(ad_key);
+		
+		// recursive replacements for chains with > 2 models
+		bool recursive_changes = false;
+		visitor_nested vn(_replacements);
+		vn._key = ad_key;
+		APIData nested_ad = (*rhit).second.getobj(nested_chain);
+		auto nhit = nested_ad._data.begin();
+		while(nhit!=nested_ad._data.end())
+		  {
+		    mapbox::util::apply_visitor(vn,(*nhit).second);
+		    if (!vn._vad.empty())
+		      {
+			adc.add(nested_chain,vn._vad);
+			recursive_changes = true;
+		      }
+		    ++nhit;
+		  }
+
+		if (!recursive_changes)
+		  adc.add(nested_chain,
+			  (*rhit).second.getobj(nested_chain));
+
+		_vad.push_back(adc);
 	      }
 	    else
 	      {
 		APIData vis_ad_out;
 		visitor_nested vn(_replacements);
+		vn._key = (*hit).first;
 		mapbox::util::apply_visitor(vn,(*hit).second);
 		if (!vn._vad.empty())
 		  {
@@ -123,9 +134,12 @@ namespace dd
     auto vhit = first_model_out._data.begin();
     while(vhit!=first_model_out._data.end())
       {
+	vn._key = (*vhit).first;
 	mapbox::util::apply_visitor(vn,(*vhit).second);
 	if (!vn._vad.empty())
-	  vis_ad_out.add((*vhit).first,vn._vad);
+	  {
+	    vis_ad_out.add((*vhit).first,vn._vad);
+	  }
 	++vhit;
       }
     return vis_ad_out;

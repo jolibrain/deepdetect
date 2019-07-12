@@ -2200,7 +2200,7 @@ namespace dd
 	    throw;
 	  }
 
-       this->_mem_used_test = _net->memory_used();
+	this->_mem_used_test = _net->memory_used();
 
 	float loss = 0.0;
 	if (extract_layer.empty() || inputc._segmentation) // supervised or segmentation

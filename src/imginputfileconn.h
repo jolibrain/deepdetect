@@ -84,6 +84,7 @@ namespace dd
 	cv::Mat img = cv::Mat(cv::imdecode(cv::Mat(vdat,true),
                                      _unchanged_data ? CV_LOAD_IMAGE_UNCHANGED :
                                      (_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR)));
+	std::cerr << "img width=" << img.cols << " / height=" << img.rows << std::endl;
 	_imgs_size.push_back(std::pair<int,int>(img.rows,img.cols));
     cv::Mat rimg;
 	if (_scaled)
@@ -491,11 +492,15 @@ namespace dd
 	      std::make_move_iterator(dimg._ctype._labels.begin()),
 	      std::make_move_iterator(dimg._ctype._labels.end()));
 	    if (!dimg._ctype._in_mem && dimg._ctype._imgs.size() == 1)
-	      uris.push_back(u);
+	      {
+		uris.push_back(u);
+	      }
 	    else if (!dimg._ctype._img_files.empty())
 	      uris.insert(uris.end(),
 	      std::make_move_iterator(dimg._ctype._img_files.begin()),
 	      std::make_move_iterator(dimg._ctype._img_files.end()));
+	    else if (!_ids.empty())
+	      uris.push_back(_ids.at(i));
 	    else uris.push_back(std::to_string(i));
 	  }
 	}
