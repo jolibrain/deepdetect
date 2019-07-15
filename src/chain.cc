@@ -27,7 +27,6 @@ namespace dd
   void visitor_nested::operator()(const APIData &ad)
   {
     (void)ad;
-    //TODO: add, e.g. uri
   }
   
   void visitor_nested::operator()(const std::vector<APIData> &vad)
@@ -51,7 +50,6 @@ namespace dd
 		// recursive replacements for chains with > 2 models
 		bool recursive_changes = false;
 		visitor_nested vn(_replacements);
-		vn._key = ad_key;
 		APIData nested_ad = (*rhit).second.getobj(nested_chain);
 		auto nhit = nested_ad._data.begin();
 		while(nhit!=nested_ad._data.end())
@@ -75,7 +73,6 @@ namespace dd
 	      {
 		APIData vis_ad_out;
 		visitor_nested vn(_replacements);
-		vn._key = (*hit).first;
 		mapbox::util::apply_visitor(vn,(*hit).second);
 		if (!vn._vad.empty())
 		  {
@@ -91,6 +88,7 @@ namespace dd
   APIData ChainData::nested_chain_output()
   {
     //  pre-compile models != first model
+    std::vector<std::string> uris;
     APIData first_model_out;
     std::unordered_map<std::string,APIData> other_models_out;
     std::unordered_map<std::string,APIData>::const_iterator hit = _model_data.begin();
@@ -98,7 +96,14 @@ namespace dd
       {
 	std::string model_name = (*hit).first;
 	if (model_name == _first_sname)
-	  first_model_out = (*hit).second;
+	  {
+	    first_model_out = (*hit).second;
+	    std::vector<APIData> predictions = first_model_out.getv("predictions");
+	    for (auto v: predictions)
+	      {
+		uris.push_back(v.get("uri").get<std::string>());
+	      }
+	  }
 	else
 	  {
 	    //TODO: predictions/classes or predictions/vals
@@ -134,7 +139,6 @@ namespace dd
     auto vhit = first_model_out._data.begin();
     while(vhit!=first_model_out._data.end())
       {
-	vn._key = (*vhit).first;
 	mapbox::util::apply_visitor(vn,(*vhit).second);
 	if (!vn._vad.empty())
 	  {
@@ -142,7 +146,11 @@ namespace dd
 	  }
 	++vhit;
       }
+    std::vector<APIData> predictions = vis_ad_out.getv("predictions");
+    for (size_t i=0;i<predictions.size();i++)
+      predictions.at(i).add("uri",uris.at(i));
+    vis_ad_out.add("predictions",predictions);
     return vis_ad_out;
   }
-
+  
 }

@@ -108,8 +108,6 @@ namespace dd
     void operator()(const std::vector<APIData> &vad);
     
     std::unordered_map<std::string,APIData> *_replacements = nullptr;
-    std::string _key;
-    APIData _ad;
     std::vector<APIData> _vad;
   };
   

@@ -95,9 +95,9 @@ namespace dd
 	      cv::Mat cropped_img = img(roi);
 
 	      //debug
-	      std::string puri = dd_utils::split(uri,'/').back();
+	      /*std::string puri = dd_utils::split(uri,'/').back();
 	      std::cerr << "writing crop=" << "crop_" + puri + "_" + std::to_string(j) + ".png\n";
-	      cv::imwrite("crop_" + puri + "_" + std::to_string(j) + ".png",cropped_img);
+	      cv::imwrite("crop_" + puri + "_" + std::to_string(j) + ".png",cropped_img);*/
 	      //debug
 	      
 	      // serialize crop into string (will be auto read by read_element in imginputconn)
