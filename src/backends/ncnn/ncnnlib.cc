@@ -96,7 +96,7 @@ namespace dd
         opt.num_threads = _threads;
         opt.blob_allocator = &_blob_pool_allocator;
         opt.workspace_allocator = &_workspace_pool_allocator;
-        ncnn::set_default_option(opt);
+	_net->opt = opt;
         model_type(this->_mlmodel._params,this->_mltype);
     }
 
