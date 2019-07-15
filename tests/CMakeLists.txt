@@ -210,6 +210,22 @@ if (USE_NCNN)
   endif()
 endif()
 
+if (USE_TORCH)
+  set(TORCH_EXAMPLE_PATH "examples/torch/")
+  set(RESNET_EXAMPLE_TAR "resnet50_torch.tar.gz")
+  set(RESNET_EXAMPLE_PATH "examples/torch/resnet50_torch/")
+  set(RESNET_EXAMPLE_MODEL "resnet50.pt")
+  if (NOT EXISTS "${RESNET_EXAMPLE_PATH}${RESNET_EXAMPLE_MODEL}")
+    message(STATUS "Downloading Torch test Resnet 50 model")
+    file(DOWNLOAD "https://www.deepdetect.com/dd/examples/torch/${RESNET_EXAMPLE_TAR}" "${TORCH_EXAMPLE_PATH}${RESNET_EXAMPLE_TAR}")
+    execute_process(COMMAND tar xvf ${TORCH_EXAMPLE_PATH}${RESNET_EXAMPLE_TAR} -C ${TORCH_EXAMPLE_PATH})
+  endif()
+
+  if(USE_JSON_API)
+    REGISTER_TEST(ut_torchapi ut-torchapi.cc)
+  endif()
+endif()
+
 if (USE_CAFFE2)
 
   function (ASSERT_EXISTS _MODEL _FILE _UNTAR)

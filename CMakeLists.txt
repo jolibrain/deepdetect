@@ -4,6 +4,7 @@ project(deepdetect)
 option(USE_CAFFE2 "build caffe2 backend")
 option(USE_TF "use TF backend")
 option(USE_NCNN "use NCNN backend")
+option(USE_TORCH "use libtorch backend")
 option(USE_HDF5 "use HDF5" ON)
 option(USE_CAFFE "use Caffe backend" ON)
 option(USE_TENSORRT "use TensorRT backend" OFF)
@@ -465,6 +466,13 @@ elseif(USE_CAFFE)
     list(APPEND CAFFE_DD_MAKE
       ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH}
       )
+  elseif (USE_TORCH)
+    message(STATUS "using ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/bin/protoc")
+    set(PROTOBUF_INCLUDE_DIR ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/include/)
+    set(PROTOBUF_LIB_DIR ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/lib/)
+    list(APPEND CAFFE_DD_MAKE
+      ${CMAKE_COMMAND} -E env LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR}:$ENV{LD_LIBRARY_PATH} PATH=${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/bin/:$ENV{PATH}
+      )
   endif()
   list(APPEND CAFFE_DD_MAKE make)
 
@@ -503,13 +511,27 @@ elseif(USE_CAFFE)
     set(CAFFE_DEBUG 0)
   endif()
 
-  list(APPEND CAFFE_DD_CONFIGURE_COMMAND
-    ln -sf ${CAFFE_DD_CONFIG_FILE} Makefile.config &&
-    echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config &&
-    echo "USE_SYSLOG:=${USE_SYSLOG}" >> Makefile.config &&
-    echo "DEBUG:=${CAFFE_DEBUG}" >> Makefile.config &&
-    ${CAFFE_DD_MAKE} ${CAFFE_DD_MAKE_ARG} -j${N}
-    )
+  if (USE_TORCH)
+    list(APPEND CAFFE_DD_CONFIGURE_COMMAND
+      ln -sf ${CAFFE_DD_CONFIG_FILE} Makefile.config &&
+      echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config &&
+      echo "USE_SYSLOG:=${USE_SYSLOG}" >> Makefile.config &&
+      echo "DEBUG:=${CAFFE_DEBUG}" >> Makefile.config &&
+      echo "INCLUDE_DIRS+=${PROTOBUF_INCLUDE_DIR}" >> Makefile.config &&
+      echo "LIBRARY_DIRS+=${PROTOBUF_LIB_DIR}" >> Makefile.config &&
+      ${CAFFE_DD_MAKE} ${CAFFE_DD_MAKE_ARG} -j${N}
+      )
+    message(STATUS "include_dirs : ${INCLUDE_DIRS}")
+
+  else()
+    list(APPEND CAFFE_DD_CONFIGURE_COMMAND
+      ln -sf ${CAFFE_DD_CONFIG_FILE} Makefile.config &&
+      echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config &&
+      echo "USE_SYSLOG:=${USE_SYSLOG}" >> Makefile.config &&
+      echo "DEBUG:=${CAFFE_DEBUG}" >> Makefile.config &&
+      ${CAFFE_DD_MAKE} ${CAFFE_DD_MAKE_ARG} -j${N}
+      )
+  endif()
 
   ExternalProject_Add(
     caffe_dd
@@ -565,6 +587,13 @@ if (USE_TF)
   endif()
 endif()
 
+if (USE_TORCH)
+  if (USE_CAFFE)
+    add_dependencies(caffe_dd pytorch)
+  endif()
+endif()
+
+
 if (USE_CAFFE2)
   if (USE_CAFFE)
     add_dependencies(caffe_dd pytorch)
@@ -616,6 +645,78 @@ if (USE_NCNN)
       message(FATAL_ERROR "could not find system protobuf")
     endif()
   endif()
+endif()
+
+# Torch
+if (USE_TORCH)
+
+  set(PROTOBUF_INCLUDE_DIR ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/include/)
+  set(PROTOBUF_LIB_DIR ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/lib/)
+
+  set(PYTORCH_PATCHES_PATH ${CMAKE_BINARY_DIR}/patches/pytorch)
+
+  set(PYTORCH_PATCHES
+    ${PYTORCH_PATCHES_PATH}/pytorch_log.patch
+    )
+
+  include_directories("${PROTOBUF_INCLUDE_DIR}")
+
+  message(STATUS "Configuring libtorch")
+  add_definitions(-DUSE_TORCH)
+
+  if (NOT TORCH_LOCATION)
+    set(PYTORCH_COMMIT 0b868b19063645afed59d6d49aff1e43d1665b88)
+    set(PYTORCH_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch-complete)
+
+    if(NOT USE_CPU_ONLY AND CUDA_FOUND)
+      set(PYTORCH_USE_CUDA 1)
+    else()
+      set(PYTORCH_USE_CUDA 0)
+    endif()
+
+    ExternalProject_Add(
+      pytorch
+      PREFIX pytorch
+      INSTALL_DIR ${CMAKE_BINARY_DIR}
+      GIT_REPOSITORY https://github.com/pytorch/pytorch.git
+      GIT_TAG ${PYTORCH_COMMIT}
+      UPDATE_DISCONNECTED 1
+      PATCH_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || git apply ${PYTORCH_PATCHES} && echo Applying ${PYTORCH_PATCHES}
+      CONFIGURE_COMMAND ""
+      BUILD_COMMAND ""
+      COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || export GLIBCXX_USE_CXX11_ABI=1 && export BUILD_TEST=0 && export USE_CUDA=${PYTORCH_USE_CUDA} && python3 ../pytorch/tools/build_libtorch.py
+      INSTALL_COMMAND ""
+    )
+
+    set(TORCH_LOCATION ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch)
+  endif()
+
+  #find_package(Torch
+  #  PATHS ${TORCH_LOCATION}
+  #  REQUIRED
+  #  )
+  #message(STATUS "Libraries are: ${TORCH_LIBRARIES}")
+
+  set(TORCH_LIB_DEPS torch caffe2 ${TORCH_LOCATION}/lib/libc10.so)
+  
+  if (NOT USE_CPU_ONLY AND CUDA_FOUND)
+    list(APPEND TORCH_LIB_DEPS caffe2_gpu ${TORCH_LOCATION}/lib/libc10_cuda.so)
+  else()
+    list(APPEND TORCH_LIB_DEPS iomp5)
+  endif()
+
+  set(TORCH_INC_DIR ${TORCH_LOCATION}/include/ ${TORCH_LOCATION}/include/torch/csrc/api/include/ ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/)
+  set(TORCH_LIB_DIR ${TORCH_LOCATION}/lib/)
+
+  if (USE_TENSORRT)
+    add_custom_command(TARGET pytorch POST_BUILD
+      COMMAND LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR}:$ENV{LD_LIBRARY_PATH} ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/bin/protoc
+      --proto_path=${CMAKE_SOURCE_DIR}/src/backends/tensorrt
+      --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_SOURCE_DIR}/src/backends/tensorrt/caffe.proto
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+      COMMENT "generating caffe.pb.*")
+  endif()
+
 endif()
 
 # XGBoost
@@ -674,7 +775,7 @@ endif()
 # add the binary tree to the search path for include files
 # so that we will find dd_config.h
 include_directories("${PROJECT_BINARY_DIR}")
-include_directories(${CAFFE_INC_DIR} ${CAFFE2_INC_DIR} ${XGBOOST_INC_DIR} ${TSNE_INC_DIR})
+include_directories(${CAFFE_INC_DIR} ${CAFFE2_INC_DIR} ${XGBOOST_INC_DIR} ${TSNE_INC_DIR} ${TORCH_INC_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/src/backends/caffe ${CMAKE_SOURCE_DIR}/backends/xgb ${CMAKE_SOURCE_DIR}/backends/tf ${CMAKE_SOURCE_DIR}/backends/dlib ${CMAKE_SOURCE_DIR}/backends/tsne)
 
 if (USE_NCNN)
@@ -736,7 +837,8 @@ set(COMMON_LINK_DIRS
   ${TF_LIB_DIR}
   ${XGBOOST_LIB_DIR}
   ${TSNE_LIB_DIR}
-  ${NCNN_LIB_DIR})
+  ${NCNN_LIB_DIR}
+  ${TORCH_LIB_DIR})
 if (USE_HDF5)
   set(COMMON_LINK_LIBS
     ddetect ${DLIB_LIB_DEPS} ${TENSORRT_LIB_DEPS} ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl hdf5_cpp ${Boost_LIBRARIES} archive
@@ -745,7 +847,8 @@ if (USE_HDF5)
     ${TF_LIB_DEPS}
     ${XGBOOST_LIB_DEPS}
     ${TSNE_LIB_DEPS}
-    ${NCNN_LIB_DEPS})
+    ${NCNN_LIB_DEPS}
+    ${TORCH_LIB_DEPS})
 else()
   set(COMMON_LINK_LIBS
     ddetect ${DLIB_LIB_DEPS} ${TENSORRT_LIB_DEPS} ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} archive
@@ -754,7 +857,8 @@ else()
     ${TF_LIB_DEPS}
     ${XGBOOST_LIB_DEPS}
     ${TSNE_LIB_DEPS}
-    ${NCNN_LIB_DEPS})
+    ${NCNN_LIB_DEPS}
+    ${TORCH_LIB_DEPS})
 endif()
 set(HTTP_LINK_LIBS cppnetlib-uri crypto ssl)
 
