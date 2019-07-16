@@ -124,6 +124,8 @@ namespace dd
 		    APIData vout;
 		    APIData vals;
 		    vals.add("vals",p.get("vals").get<std::vector<double>>());
+		    if (p.has("nns"))
+		      vals.add("nns",p.getv("nns"));
 		    vout.add(model_name,vals);
 		    other_models_out.insert(std::pair<std::string,APIData>(p.get("uri").get<std::string>(),
 									   vout));

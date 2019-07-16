@@ -155,6 +155,9 @@ namespace dd
 	ccls.add("classes",cad_cls);
 	cvad.push_back(ccls);
       }
+
+    // empty action data
+    actions_data.push_back(APIData());
     
     // updated model data
     model_out.add("predictions",cvad);

@@ -649,17 +649,16 @@ namespace dd
 
 	      std::cerr << "[chain] " << i << " / executing predict on " << pred_sname << std::endl;
 
-	      //TODO: need to check that service exists, since it's done earlier outside of chain
+	      // need to check that service exists
 	      if (!service_exists(pred_sname))
 		throw ServiceNotFoundException("Service " + pred_sname + " does not exist");
 
-	      //TODO: if not first predict call in the chain, need to setup the input data!
+	      // if not first predict call in the chain, need to setup the input data!
 	      if (i != 0)
 		{
 		  //TODO: take data from the previous action
 		  std::cerr << "[chain] filling up model from previous action data\n";
 		  
-		  //APIData act_data = cdata.get_action_data(prec_action_type);
 		  APIData act_data = cdata._action_data.at(prec_action_id);
 		  //TODO: test empty action data
 
