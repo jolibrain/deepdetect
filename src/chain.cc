@@ -106,7 +106,7 @@ namespace dd
 	  }
 	else
 	  {
-	    //TODO: predictions/classes or predictions/vals
+	    // predictions/classes or predictions/vals
 	    std::vector<APIData> preds = (*hit).second.getv("predictions");
 	    for (auto p: preds)
 	      {

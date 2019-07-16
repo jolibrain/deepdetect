@@ -28,7 +28,7 @@
 namespace dd
 {
 
-    /**
+  /**
    * \brief chain temporary data in between service calls
    */
   class ChainData
@@ -57,25 +57,7 @@ namespace dd
 	  return APIData();
 	}
     }
-
-    /*void add_action_data(const std::string &aname,
-			 const APIData &out)
-    {
-      _action_data.insert(std::pair<std::string,APIData>(aname,out));
-      }*/
-
-    /*APIData get_action_data(const std::string &aname) const
-    {
-      std::unordered_map<std::string,APIData>::const_iterator hit;
-      if ((hit = _action_data.find(aname))!=_action_data.end())
-	return (*hit).second;
-      else
-	{
-	  std::cerr << "[chain] could not find action data for action " << aname << std::endl;
-	  return APIData();
-	}
-	}*/
-
+    
     APIData nested_chain_output();
 
     std::unordered_map<std::string,APIData> _model_data;

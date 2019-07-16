@@ -45,7 +45,6 @@ namespace dd
       for (size_t i=0;i<vad.size();i++)
 	{
 	  std::string uri = vad.at(i).get("uri").get<std::string>();
-	  std::cerr << "crop on URI=" << uri << std::endl;
 	  
 	  cv::Mat img = imgs.at(i);
 	  int orig_cols = imgs_size.at(i).second;
@@ -63,7 +62,6 @@ namespace dd
 	      
 	      // adding modified object chain id
 	      std::string bbox_id = genid(uri,"bbox"+std::to_string(j));
-	      std::cerr << "bbox_id=" << bbox_id << std::endl;
 	      bbox_ids.push_back(bbox_id);
 	      APIData ad_cid;
 	      ad_cls.at(j).add(bbox_id,ad_cid);
@@ -117,7 +115,6 @@ namespace dd
       APIData action_out;
       action_out.add("data",cropped_imgs);
       action_out.add("cids",bbox_ids);
-      //actions_data.insert(std::pair<std::string,APIData>(_action_type,action_out));
       actions_data.push_back(action_out);
       
       // updated model data with chain ids
@@ -149,10 +146,8 @@ namespace dd
 	for (size_t j=0;j<ad_cls.size();j++)
 	  {
 	    std::string cat = ad_cls.at(j).get("cat").get<std::string>();
-	    std::cerr << "cat=" << cat << std::endl;
 	    if ((usit=on_classes_us.find(cat))!=on_classes_us.end())
 	      {
-		std::cerr << "filtered cat=" << cat << std::endl;
 		cad_cls.push_back(ad_cls.at(j));
 	      }
 	  }

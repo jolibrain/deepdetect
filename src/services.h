@@ -628,9 +628,9 @@ namespace dd
       std::cerr << "[chain] number of calls=" << ad_calls.size() << std::endl;
 
       // debug
-      std::vector<std::string> ckeys = ad.list_keys();
+      /*std::vector<std::string> ckeys = ad.list_keys();
       for (auto s: ckeys)
-	std::cerr << s << std::endl;
+      std::cerr << s << std::endl;*/
       //debug
 
       ChainData cdata;
@@ -669,12 +669,8 @@ namespace dd
 		}
 	      else cdata._first_sname = pred_sname;
 	      
-	      // predict service call
-	      /*std::cerr << "adc has data=" << adc.has("data") << std::endl;
-		std::cerr << "adc data size=" << adc.get("data").get<std::vector<std::string>>().size() << std::endl;*/
 	      APIData pred_out;
 	      int pred_status = predict(adc,pred_sname,pred_out,true);
-	      std::cerr << "pred_status=" << pred_status << std::endl;
 
 	      // store model output
 	      cdata.add_model_data(pred_sname,pred_out);
@@ -683,15 +679,10 @@ namespace dd
 	    }
 	  else if (adc.has("action"))
 	    {
-	      //std::cerr << "action\n";
-	      //TODO: chain action
-	      //TODO: grab in-memory inputs here
 	      std::string action_type = adc.getobj("action").get("type").get<std::string>();
 	      std::cerr << "[chain] executing action " << action_type << std::endl;
 
 	      APIData prev_data = cdata.get_model_data(prec_pred_sname);
-	      std::cerr << "prev_data has input=" << prev_data.has("input") << std::endl;
-	      std::cerr << "predictions size=" << prev_data.getobj("predictions").size() << std::endl;
 	      if (!prev_data.getobj("predictions").size())
 		{
 		  // no prediction to work from
@@ -707,35 +698,25 @@ namespace dd
 			       cdata._action_data);
 	      
 	      // replace prev_data in cdata for prec_pred_sname
-	      std::cerr << "[chain] added modified model out for " << prec_pred_sname << std::endl;
 	      cdata.add_model_data(prec_pred_sname,prev_data);
 	      
 	      prec_action_id = aid;
 	      ++aid;
 	    }
 	}
-      std::cerr << "[chain] finished executing chain\n";
       
-      //TODO: nested outputs
-      // - take the chain of model outputs and match from first to last, by chain ids
-      // - merge_ids function in APIData or elsewhere using a dedicated visitor
-      // - use "predictions"/"classes" array element ids to merge
-      // - fct signature similar to merge_ids(std::vector<APIData> models_out)
+      // producing a nested output
       APIData nested_out;
       if (npredicts > 1)
 	nested_out = cdata.nested_chain_output();
       else nested_out = cdata.get_model_data(cdata._first_sname);
-      
-      //std::cerr << "final prec_pred_sname=" << prec_pred_sname << std::endl;
-      //std::cerr << "model first sname=" << cdata._first_sname << std::endl;
-      //out = cdata.get_model_data(cdata._first_sname);
       
       out = nested_out;
       std::chrono::time_point<std::chrono::system_clock> tstop = std::chrono::system_clock::now();
       double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(tstop-tstart).count();
       out.add("time",elapsed);
       
-      return 0; //TODO
+      return 0;
     }
     
     std::unordered_map<std::string,mls_variant_type> _mlservices; /**< container of instanciated services. */
