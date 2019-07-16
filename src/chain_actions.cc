@@ -153,6 +153,7 @@ namespace dd
 	  }
 	APIData ccls;
 	ccls.add("classes",cad_cls);
+	ccls.add("uri",vad.at(i).get("uri").get<std::string>());
 	cvad.push_back(ccls);
       }
 
