@@ -534,13 +534,20 @@ namespace dd
 		    outr += det_size;
 		    if (detection[2] < confidence_threshold)
 		      continue;
+
+		    // Fix border of bboxes
+		    detection[3] = std::max(((float) detection[3]), 0.0f);
+		    detection[4] = std::max(((float) detection[4]), 0.0f);
+		    detection[5] = std::min(((float) detection[5]), 1.0f);
+		    detection[6] = std::min(((float) detection[6]), 1.0f);
+
 		    probs.push_back(detection[2]);
 		    cats.push_back(this->_mlmodel.get_hcorresp(detection[1]));
 		    APIData ad_bbox;
-		    ad_bbox.add("xmin",static_cast<double>(detection[3]*cols));
-		    ad_bbox.add("ymax",static_cast<double>(detection[4]*rows));
-		    ad_bbox.add("xmax",static_cast<double>(detection[5]*cols));
-		    ad_bbox.add("ymin",static_cast<double>(detection[6]*rows));
+		    ad_bbox.add("xmin",static_cast<double>(detection[3]*(cols-1)));
+		    ad_bbox.add("ymax",static_cast<double>(detection[4]*(rows-1)));
+		    ad_bbox.add("xmax",static_cast<double>(detection[5]*(cols-1)));
+		    ad_bbox.add("ymin",static_cast<double>(detection[6]*(rows-1)));
 		    bboxes.push_back(ad_bbox);
 		  }
 		if (leave)
