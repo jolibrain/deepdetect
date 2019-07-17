@@ -49,17 +49,17 @@ namespace dd
 	  cv::Mat img = imgs.at(i);
 	  int orig_cols = imgs_size.at(i).second;
 	  int orig_rows = imgs_size.at(i).first;
-	  
+
 	  std::vector<APIData> ad_cls = vad.at(i).getv("classes");
 	  std::vector<APIData> cad_cls;
 	  
 	  // iterate bboxes per image
 	  for (size_t j=0;j<ad_cls.size();j++)
-	    {	      
+	    {
 	      APIData bbox = ad_cls.at(j).getobj("bbox");
 	      if (bbox.empty())
 		throw ActionBadParamException("crop action cannot find bbox object for uri " + uri);
-	      
+
 	      // adding modified object chain id
 	      std::string bbox_id = genid(uri,"bbox"+std::to_string(j));
 	      bbox_ids.push_back(bbox_id);
