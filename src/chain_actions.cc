@@ -66,6 +66,8 @@ namespace dd
 	      APIData ad_cid;
 	      ad_cls.at(j).add(bbox_id,ad_cid);
 	      cad_cls.push_back(ad_cls.at(j));
+
+	      /*std::cerr << "initial bbox xmin=" << bbox.get("xmin").get<double>() << " / xmax=" << bbox.get("xmax").get<double>() << " / ymin=" << bbox.get("ymin").get<double>() << " / ymax=" << bbox.get("ymax").get<double>() << std::endl;*/
 	      
 	      double xmin = bbox.get("xmin").get<double>() / orig_cols * img.cols;
 	      double ymin = bbox.get("ymin").get<double>() / orig_rows * img.rows;
@@ -73,7 +75,7 @@ namespace dd
 	      double ymax = bbox.get("ymax").get<double>() / orig_rows * img.rows;
 
 	      /*std::cerr << "xmin=" << xmin << " / xmax=" << xmax << " / ymin= " << ymin << " / ymax=" << ymax << std::endl;
-		std::cerr << "img cols=" << img.cols << " / img rows=" << img.rows << std::endl;*/
+		std::cerr << "orig_cols=" << orig_cols << " / orig_rows=" << orig_rows << " / img cols=" << img.cols << " / img rows=" << img.rows << std::endl;*/
 	      
 	      /*double deltax = bratio * (xmax-xmin);
 		double deltay = bratio * (ymin-ymax);*/

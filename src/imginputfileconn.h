@@ -84,8 +84,10 @@ namespace dd
 	cv::Mat img = cv::Mat(cv::imdecode(cv::Mat(vdat,true),
                                      _unchanged_data ? CV_LOAD_IMAGE_UNCHANGED :
                                      (_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR)));
+	if (_keep_orig)
+	  _orig_imgs.push_back(img);
 	_imgs_size.push_back(std::pair<int,int>(img.rows,img.cols));
-    cv::Mat rimg;
+	cv::Mat rimg;
 	if (_scaled)
 	  scale(img, rimg);
 	else if (_width == 0 || _height == 0) {

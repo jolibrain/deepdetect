@@ -75,10 +75,16 @@ namespace dd
         throw;
       }
 
+    // ids
+    bool set_ids = false;
+    if (this->_ids.empty())
+      set_ids = true;
+    
     for (int i=0;i<(int)this->_images.size();i++)
-      {      
-	this->_ids.push_back(this->_uris.at(i));
-	_imgs_size.insert(std::pair<std::string,std::pair<int,int>>(this->_uris.at(i),this->_images_size.at(i)));
+      {
+	if (set_ids)
+	  this->_ids.push_back(this->_uris.at(i));
+	_imgs_size.insert(std::pair<std::string,std::pair<int,int>>(this->_ids.at(i),this->_images_size.at(i)));
       }
     _batch_index = 0;
   }
