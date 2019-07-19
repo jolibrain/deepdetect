@@ -618,6 +618,12 @@ namespace dd
 
     int chain(const APIData &ad, const std::string &cname, APIData &out)
     {
+#ifdef USE_DD_SYSLOG
+    std::shared_ptr<spdlog::logger> chain_logger = spdlog::syslog_logger(cname);
+#else
+    std::shared_ptr<spdlog::logger> chain_logger = spdlog::stdout_logger_mt(cname);
+#endif
+      
       std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();
 
       //TODO:
@@ -626,7 +632,7 @@ namespace dd
       //      - this requires storing output into mlservice object / have a flag for telling the called service it's part of a chain
       // - if action call, execute the generic code for it
       std::vector<APIData> ad_calls = ad.getobj("chain").getv("calls");
-      _chain_logger->info("[" + cname + "] / number of calls=" + std::to_string(ad_calls.size()));
+      chain_logger->info("number of calls=" + std::to_string(ad_calls.size()));
 
       // debug
       /*std::vector<std::string> ckeys = ad.list_keys();
@@ -647,7 +653,7 @@ namespace dd
 	    {
 	      std::string pred_sname = adc.get("service").get<std::string>();
 
-	      _chain_logger->info("[" + cname + "][" + std::to_string(i) + "] / executing predict on service " + pred_sname);
+	      chain_logger->info("[" + std::to_string(i) + "] / executing predict on service " + pred_sname);
 
 	      // need to check that service exists
 	      if (!service_exists(pred_sname))
@@ -671,7 +677,7 @@ namespace dd
 	      std::vector<APIData> vad = pred_out.getv("predictions");
 	      if (vad.empty())
 		{
-		  _chain_logger->info("[" + cname + "][" + std::to_string(i) + "] / no predictions");
+		  chain_logger->info("[" + std::to_string(i) + "]  no predictions");
 		  break;
 		}
 	      int classes_size = 0;
@@ -679,7 +685,7 @@ namespace dd
 		classes_size += vad.at(i).getv("classes").size();
 	      if (!classes_size)
 		{
-		  _chain_logger->info("[" + cname + "][" + std::to_string(i) + "] / no classes in prediction");
+		  chain_logger->info("[" + std::to_string(i) + "] / no classes in prediction");
 		  break;
 		}
 	      ++npredicts;
@@ -697,12 +703,12 @@ namespace dd
 	      if (!prev_data.getobj("predictions").size())
 		{
 		  // no prediction to work from
-		  _chain_logger->info("[chain] no prediction to act on");
+		  chain_logger->info("no prediction to act on");
 		  break;
 		}
 	
 	      // call chain action factory
-	      _chain_logger->info("[" + cname + "][" + std::to_string(i) + "] / executing action " + action_type);
+	      chain_logger->info("[" + std::to_string(i) + "] / executing action " + action_type);
 	      ChainActionFactory caf(adc.getobj("action"));
 	      caf.apply_action(action_type,
 			       prev_data,
@@ -734,11 +740,6 @@ namespace dd
     
   protected:
     std::mutex _mlservices_mtx; /**< mutex around adding/removing services. */
-#ifdef USE_DD_SYSLOG
-    std::shared_ptr<spdlog::logger> _chain_logger) = spdlog::syslog_logger("chain");
-#else
-    std::shared_ptr<spdlog::logger> _chain_logger = spdlog::stdout_logger_mt("chain");
-#endif
   };
   
 }
