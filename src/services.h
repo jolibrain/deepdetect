@@ -129,7 +129,8 @@ namespace dd
     #if defined(USE_CAFFE) || defined(USE_CAFFE2) || defined(USE_TF) || defined(USE_DLIB) || defined(USE_XGBOOST) || defined(USE_TSNE) || defined(USE_NCNN)
     ,
     #endif
-    MLService<TorchLib,ImgTorchInputFileConn,SupervisedOutput,TorchModel>
+    MLService<TorchLib,ImgTorchInputFileConn,SupervisedOutput,TorchModel>,
+    MLService<TorchLib,TxtTorchInputFileConn,SupervisedOutput,TorchModel>
 #endif
 #ifdef USE_TENSORRT
 #if defined(USE_CAFFE) || defined(USE_CAFFE2) || defined(USE_TF) || defined(USE_DLIB) || defined(USE_XGBOOST) || defined(USE_TSNE) || defined(USE_NCNN) || defined(USE_TORCH)

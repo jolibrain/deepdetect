@@ -242,53 +242,71 @@ namespace dd
     std::vector<std::string> cts;
     if (_sentences)
       {
-	boost::char_separator<char> sep("\n");
-	boost::tokenizer<boost::char_separator<char>> tokens(content,sep);
-	for (std::string s: tokens)
-	  cts.push_back(s);
+        boost::char_separator<char> sep("\n");
+        boost::tokenizer<boost::char_separator<char>> tokens(content,sep);
+        for (std::string s: tokens)
+        cts.push_back(s);
       }
     else
       {
-	cts.push_back(content);
+        cts.push_back(content);
       }
     for (std::string ct: cts)
       {
 	std::transform(ct.begin(),ct.end(),ct.begin(),::tolower);
 	if (!_characters)
 	  {
-	    TxtBowEntry *tbe = new TxtBowEntry(target);
 	    std::unordered_map<std::string,Word>::iterator vhit;
 	    boost::char_separator<char> sep("\n\t\f\r ,.;:`'!?)(-|><^·&\"\\/{}#$–=+");
 	    boost::tokenizer<boost::char_separator<char>> tokens(ct,sep);
-	    for (std::string w : tokens)
-	      {
-		if (static_cast<int>(w.length()) < _min_word_length)
-		  continue;
-		
-		// check and fillup vocab.
-		int pos = -1;
-		if ((vhit=_vocab.find(w))==_vocab.end())
-		  {
-		    if (_train)
-		      {
-			pos = _vocab.size();
-			_vocab.emplace(std::make_pair(w,Word(pos)));
-		      }
-		  }
-		else
-		  {
-		    if (_train)
-		      {
-			(*vhit).second._total_count++;
-			if (!tbe->has_word(w))
-			  (*vhit).second._total_docs++;
-		      }
-		  }
-		tbe->add_word(w,1.0,_count);
-	      }
-	    if (!test)
-	      _txt.push_back(tbe);
-	    else _test_txt.push_back(tbe);
+
+            if (_ordered_words) 
+              {
+                TxtOrderedWordsEntry *towe = new TxtOrderedWordsEntry(target);
+                std::unordered_map<std::string,Word>::iterator vhit;
+
+                for (std::string w : tokens)
+                  {
+                    towe->add_word(w, 0);
+                  }
+                
+                if (!test)
+                  _txt.push_back(towe);
+                else _test_txt.push_back(towe);
+              }
+            else
+              {
+                TxtBowEntry *tbe = new TxtBowEntry(target);
+                for (std::string w : tokens)
+                {
+                    if (static_cast<int>(w.length()) < _min_word_length)
+                      continue;
+                    
+                    // check and fillup vocab.
+                    int pos = -1;
+                    if ((vhit=_vocab.find(w))==_vocab.end())
+                    {
+                        if (_train)
+                        {
+                            pos = _vocab.size();
+                            _vocab.emplace(std::make_pair(w,Word(pos)));
+                        }
+                    }
+                    else
+                    {
+                        if (_train)
+                        {
+                            (*vhit).second._total_count++;
+                            if (!tbe->has_word(w))
+                            (*vhit).second._total_docs++;
+                        }
+                    }
+                    tbe->add_word(w,1.0,_count);
+                }
+                if (!test)
+                  _txt.push_back(tbe);
+                else _test_txt.push_back(tbe);
+              }
 	  }
 	else // character-level features
 	  {

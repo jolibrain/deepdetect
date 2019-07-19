@@ -174,6 +174,46 @@ namespace dd
     std::vector<uint32_t> _v;
     std::vector<uint32_t>::iterator _vit;
   };
+
+  class TxtOrderedWordsEntry: public TxtEntry<double> {
+  public:
+    TxtOrderedWordsEntry() :TxtEntry<double>() {}
+    TxtOrderedWordsEntry(const float &target) :TxtEntry<double>(target) {}
+    virtual ~TxtOrderedWordsEntry() {}
+
+    void add_word(const std::string &word, const uint32_t &id)
+    {
+      _v.push_back(word);
+    }
+
+    void reset()
+    {
+      _vit = _v.begin();
+    }
+
+    void get_next_elt(std::string &key, double &val)
+    {
+      if (_vit!=_v.end())
+      {
+        key = *_vit;
+        val = 1;
+        ++_vit;
+      }
+    }
+
+    bool has_elt() const
+    {
+      return _vit != _v.end();
+    }
+
+    size_t size() const 
+    {
+      return _v.size();
+    }
+
+    std::vector<std::string> _v;
+    std::vector<std::string>::iterator _vit;
+  };
   
   class TxtInputFileConn : public InputConnectorStrategy
   {
@@ -215,6 +255,8 @@ namespace dd
 	_sentences = ad_input.get("sentences").get<bool>();
       if (ad_input.has("characters"))
 	_characters = ad_input.get("characters").get<bool>();
+      if (ad_input.has("ordered_words"))
+	_ordered_words = ad_input.get("ordered_words").get<bool>();
       if (ad_input.has("alphabet"))
 	_alphabet_str = ad_input.get("alphabet").get<std::string>();
       if (_characters)
@@ -346,6 +388,7 @@ namespace dd
     int _min_word_length = 5; /**< min word length. */
     bool _sentences = false; /**< whether to consider every sentence (\n separated) as a document. */
     bool _characters = false; /**< whether to use character-level input features. */
+    bool _ordered_words = false; /**< whether to consider the position of each words in the sentence. */
     std::string _alphabet_str = "abcdefghijklmnopqrstuvwxyz0123456789,;.!?:'\"/\\|_@#$%^&*~`+-=<>()[]{}";
     std::unordered_map<uint32_t,int> _alphabet; /**< character-level alphabet. */
     int _sequence = 60; /**< sequence size when using character-level features. */

@@ -22,23 +22,30 @@
 #ifndef TORCHINPUTCONNS_H
 #define TORCHINPUTCONNS_H
 
+#include <vector>
+
+#include <torch/torch.h>
+
 #include "imginputfileconn.h"
 #include "txtinputfileconn.h"
-
-#include <vector>
 
 namespace dd
 {
     class TorchInputInterface
     {
     public:
-      TorchInputInterface() {}
-      TorchInputInterface(const TorchInputInterface &i)
-      {
+        TorchInputInterface() {}
+        TorchInputInterface(const TorchInputInterface &i) {}
 
-      }
+        ~TorchInputInterface() {}
 
-      ~TorchInputInterface() {}
+        torch::Tensor toLongTensor(std::vector<int64_t> &values) {
+            int64_t val_size = values.size();
+            return torch::from_blob(&values[0], at::IntList{val_size}, at::kLong);
+        }
+
+        at::Tensor _in;
+        at::Tensor _attention_mask;
     };
 
     class ImgTorchInputFileConn : public ImgInputFileConn, public TorchInputInterface
@@ -108,6 +115,36 @@ namespace dd
         at::Tensor _in;
 
         double _std = 1.0;
+    };
+
+
+    class TxtTorchInputFileConn : public TxtInputFileConn, public TorchInputInterface
+    {
+    public:
+        TxtTorchInputFileConn()
+            : TxtInputFileConn() {}
+        TxtTorchInputFileConn(const TxtTorchInputFileConn &i)
+            : TxtInputFileConn(i), TorchInputInterface(i) {}
+        ~TxtTorchInputFileConn() {}
+
+        // for API info only
+        int width() const
+        {
+            return _width;
+        }
+
+        // for API info only
+        int height() const
+        {
+            return _height;
+        }
+
+        void transform(const APIData &ad);
+
+    public:
+        int _width = 0;
+        int _height = 0;
+        int64_t _in_size = 500;
     };
 } // namespace dd
 
