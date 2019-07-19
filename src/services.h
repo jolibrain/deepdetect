@@ -644,7 +644,6 @@ namespace dd
 	  APIData adc = ad_calls.at(i);
 	  if (adc.has("service"))
 	    {
-	      ++npredicts;
 	      std::string pred_sname = adc.get("service").get<std::string>();
 
 	      std::cerr << "[chain] " << i << " / executing predict on " << pred_sname << std::endl;
@@ -671,6 +670,23 @@ namespace dd
 	      APIData pred_out;
 	      int pred_status = predict(adc,pred_sname,pred_out,true);
 
+	      // check on results
+	      std::vector<APIData> vad = pred_out.getv("predictions");
+	      if (vad.empty())
+		{
+		  std::cerr << "[chain] no predictions\n";
+		  break;
+		}
+	      int classes_size = 0;
+	      for (size_t i=0;i<vad.size();i++)
+		classes_size += vad.at(i).getv("classes").size();
+	      if (!classes_size)
+		{
+		  std::cerr << "[chain] no classes in prediction\n";
+		  break;
+		}
+	      ++npredicts;
+	      
 	      // store model output
 	      cdata.add_model_data(pred_sname,pred_out);
 	      
@@ -687,7 +703,7 @@ namespace dd
 		  // no prediction to work from
 		  //TODO: catch earlier, leave earlier
 		  std::cerr << "[chain] no prediction to act on\n";
-		  continue;
+		  break;
 		}
 	
 	      // call chain action factory
