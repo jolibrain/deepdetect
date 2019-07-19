@@ -681,11 +681,16 @@ namespace dd
 		  break;
 		}
 	      int classes_size = 0;
+	      int vals_size = 0;
 	      for (size_t i=0;i<vad.size();i++)
-		classes_size += vad.at(i).getv("classes").size();
-	      if (!classes_size)
 		{
-		  chain_logger->info("[" + std::to_string(i) + "] / no classes in prediction");
+		  classes_size += vad.at(i).getv("classes").size();
+		  vals_size += static_cast<int>(vad.at(i).has("vals"));
+		}
+	      
+	      if (!classes_size && !vals_size)
+		{
+		  chain_logger->info("[" + std::to_string(i) + "] / no result from prediction");
 		  break;
 		}
 	      ++npredicts;

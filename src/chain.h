@@ -52,10 +52,7 @@ namespace dd
       if ((hit = _model_data.find(sname))!=_model_data.end())
 	return (*hit).second;
       else
-	{
-	  std::cerr << "[chain] could not find model data for service " << sname << std::endl;
-	  return APIData();
-	}
+	return APIData();
     }
     
     APIData nested_chain_output();
