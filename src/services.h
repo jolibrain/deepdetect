@@ -619,9 +619,9 @@ namespace dd
     int chain(const APIData &ad, const std::string &cname, APIData &out)
     {
 #ifdef USE_DD_SYSLOG
-    std::shared_ptr<spdlog::logger> chain_logger = spdlog::syslog_logger(cname);
+      auto chain_logger = spdlog::syslog_logger(cname);
 #else
-    std::shared_ptr<spdlog::logger> chain_logger = spdlog::stdout_logger_mt(cname);
+      auto chain_logger = spdlog::stdout_logger_mt(cname);
 #endif
       
       std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();
@@ -732,6 +732,8 @@ namespace dd
       std::chrono::time_point<std::chrono::system_clock> tstop = std::chrono::system_clock::now();
       double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(tstop-tstart).count();
       out.add("time",elapsed);
+
+      spdlog::drop(cname);
       
       return 0;
     }
