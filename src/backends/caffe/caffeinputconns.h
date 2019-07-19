@@ -256,9 +256,11 @@ namespace dd
 		this->_ids.push_back(this->_uris.at(i));
 	      _imgs_size.insert(std::pair<std::string,std::pair<int,int>>(this->_ids.at(i),this->_images_size.at(i)));
 	    }
-	  //TODO: because of chain
-	  //this->_images.clear();
-	  //this->_images_size.clear();
+	  if (!ad.has("chain"))
+	    {
+	      this->_images.clear();
+	      this->_images_size.clear();
+	    }
 	}
       else
 	{

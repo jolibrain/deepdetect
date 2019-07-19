@@ -2114,7 +2114,9 @@ namespace dd
     std::string extract_layer;
     if (ad_mllib.has("extract_layer"))
       extract_layer = ad_mllib.get("extract_layer").get<std::string>();
-      
+    if (ad.has("chain") && ad.get("chain").get<bool>())
+      cad.add("chain",true);
+    
     try
       {
         inputc.transform(cad);
