@@ -23,7 +23,6 @@
 #define CHAIN_ACTIONS_H
 
 #include "apidata.h"
-#include <iostream>
 
 namespace dd
 {

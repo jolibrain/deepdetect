@@ -30,7 +30,6 @@ namespace dd
   void ImgsCropAction::apply(APIData &model_out,
 			     std::vector<APIData> &actions_data)
     {
-      std::cerr << "[chain] applying crops action\n";
       std::vector<APIData> vad = model_out.getv("predictions");
       std::vector<cv::Mat> imgs = model_out.getobj("input").get("imgs").get<std::vector<cv::Mat>>();
       std::vector<std::pair<int,int>> imgs_size = model_out.getobj("input").get("imgs_size").get<std::vector<std::pair<int,int>>>();
@@ -126,7 +125,6 @@ namespace dd
   void ClassFilter::apply(APIData &model_out,
 			  std::vector<APIData> &actions_data)
   {
-    std::cerr << "[chain] applying filter action\n";
     if (!_params.has("classes"))
       {
 	throw ActionBadParamException("filter action is missing classes parameter");

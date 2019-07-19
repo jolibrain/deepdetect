@@ -61,6 +61,7 @@
 #include <mutex>
 #include <chrono>
 #include <iostream>
+#include <spdlog/spdlog.h>
 
 namespace dd
 {
@@ -625,7 +626,7 @@ namespace dd
       //      - this requires storing output into mlservice object / have a flag for telling the called service it's part of a chain
       // - if action call, execute the generic code for it
       std::vector<APIData> ad_calls = ad.getobj("chain").getv("calls");
-      std::cerr << "[chain] number of calls=" << ad_calls.size() << std::endl;
+      _chain_logger->info("[" + cname + "] / number of calls=" + std::to_string(ad_calls.size()));
 
       // debug
       /*std::vector<std::string> ckeys = ad.list_keys();
@@ -646,7 +647,7 @@ namespace dd
 	    {
 	      std::string pred_sname = adc.get("service").get<std::string>();
 
-	      std::cerr << "[chain] " << i << " / executing predict on " << pred_sname << std::endl;
+	      _chain_logger->info("[" + cname + "][" + std::to_string(i) + "] / executing predict on service " + pred_sname);
 
 	      // need to check that service exists
 	      if (!service_exists(pred_sname))
@@ -655,14 +656,10 @@ namespace dd
 	      // if not first predict call in the chain, need to setup the input data!
 	      if (i != 0)
 		{
-		  //TODO: take data from the previous action
-		  std::cerr << "[chain] filling up model from previous action data\n";
-		  
+		  // take data from the previous action
 		  APIData act_data = cdata._action_data.at(prec_action_id);
-		  //TODO: test empty action data
-
-		  //std::cerr << "act_data has data=" << act_data.has("data") << std::endl;
-		  adc.add("data",act_data.get("data").get<std::vector<std::string>>()); // action output data must be string for now (more types to be supported / auto-detected) // TODO;
+		  
+		  adc.add("data",act_data.get("data").get<std::vector<std::string>>()); // action output data must be string for now (more types to be supported / auto-detected)
 		  adc.add("ids",act_data.get("cids").get<std::vector<std::string>>()); // chain ids of processed elements
 		}
 	      else cdata._first_sname = pred_sname;
@@ -674,7 +671,7 @@ namespace dd
 	      std::vector<APIData> vad = pred_out.getv("predictions");
 	      if (vad.empty())
 		{
-		  std::cerr << "[chain] no predictions\n";
+		  _chain_logger->info("[" + cname + "][" + std::to_string(i) + "] / no predictions");
 		  break;
 		}
 	      int classes_size = 0;
@@ -682,7 +679,7 @@ namespace dd
 		classes_size += vad.at(i).getv("classes").size();
 	      if (!classes_size)
 		{
-		  std::cerr << "[chain] no classes in prediction\n";
+		  _chain_logger->info("[" + cname + "][" + std::to_string(i) + "] / no classes in prediction");
 		  break;
 		}
 	      ++npredicts;
@@ -695,18 +692,17 @@ namespace dd
 	  else if (adc.has("action"))
 	    {
 	      std::string action_type = adc.getobj("action").get("type").get<std::string>();
-	      std::cerr << "[chain] executing action " << action_type << std::endl;
 
 	      APIData prev_data = cdata.get_model_data(prec_pred_sname);
 	      if (!prev_data.getobj("predictions").size())
 		{
 		  // no prediction to work from
-		  //TODO: catch earlier, leave earlier
-		  std::cerr << "[chain] no prediction to act on\n";
+		  _chain_logger->info("[chain] no prediction to act on");
 		  break;
 		}
 	
 	      // call chain action factory
+	      _chain_logger->info("[" + cname + "][" + std::to_string(i) + "] / executing action " + action_type);
 	      ChainActionFactory caf(adc.getobj("action"));
 	      caf.apply_action(action_type,
 			       prev_data,
@@ -738,6 +734,11 @@ namespace dd
     
   protected:
     std::mutex _mlservices_mtx; /**< mutex around adding/removing services. */
+#ifdef USE_DD_SYSLOG
+    std::shared_ptr<spdlog::logger> _chain_logger) = spdlog::syslog_logger("chain");
+#else
+    std::shared_ptr<spdlog::logger> _chain_logger = spdlog::stdout_logger_mt("chain");
+#endif
   };
   
 }
