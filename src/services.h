@@ -674,7 +674,15 @@ namespace dd
 	      else cdata._first_sname = pred_sname;
 	      
 	      APIData pred_out;
-	      int pred_status = predict(adc,pred_sname,pred_out,true);
+	      try
+		{
+		  int pred_status = predict(adc,pred_sname,pred_out,true);
+		}
+	      catch(...)
+		{
+		  spdlog::drop(cname);
+		  throw;
+		}
 
 	      // check on results
 	      std::vector<APIData> vad = pred_out.getv("predictions");
