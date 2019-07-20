@@ -641,7 +641,7 @@ namespace dd
       //debug
 
       ChainData cdata;
-
+      std::vector<std::string> meta_uris;
       int npredicts = 0;
       std::string prec_pred_sname;
       int prec_action_id = 0;
@@ -667,6 +667,7 @@ namespace dd
 		  
 		  adc.add("data",act_data.get("data").get<std::vector<std::string>>()); // action output data must be string for now (more types to be supported / auto-detected)
 		  adc.add("ids",act_data.get("cids").get<std::vector<std::string>>()); // chain ids of processed elements
+		  adc.add("meta_uris",meta_uris);
 		}
 	      else cdata._first_sname = pred_sname;
 	      
@@ -680,12 +681,30 @@ namespace dd
 		  chain_logger->info("[" + std::to_string(i) + "]  no predictions");
 		  break;
 		}
+	      
 	      int classes_size = 0;
 	      int vals_size = 0;
 	      for (size_t i=0;i<vad.size();i++)
 		{
-		  classes_size += vad.at(i).getv("classes").size();
+		  int npred_classes = vad.at(i).getv("classes").size();
+		  classes_size += npred_classes;
 		  vals_size += static_cast<int>(vad.at(i).has("vals"));
+		  if (i == 0) // first call's response contains uniformized top level URIs.
+		    {
+		      for (size_t j=0;j<npred_classes;j++)
+			{
+			  meta_uris.push_back(vad.at(i).get("uri").get<std::string>());
+			}
+		    }
+		  else // update meta uris to batch size at the current level of the chain
+		    {
+		      std::vector<std::string> nmeta_uris;
+		      for (size_t j=0;j<npred_classes;j++)
+			{
+			  nmeta_uris.push_back(meta_uris.at(i));
+			}
+		      meta_uris = nmeta_uris;
+		    }
 		}
 	      
 	      if (!classes_size && !vals_size)

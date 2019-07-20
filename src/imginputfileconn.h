@@ -434,6 +434,7 @@ namespace dd
       int catch_read = 0;
       std::string catch_msg;
       std::vector<std::string> uris;
+      std::vector<std::string> meta_uris;
       std::vector<std::string> failed_uris;
 #pragma omp parallel for
       for (size_t i=0;i<_uris.size();i++)
@@ -503,6 +504,8 @@ namespace dd
 	    else if (!_ids.empty())
 	      uris.push_back(_ids.at(i));
 	    else uris.push_back(std::to_string(i));
+	    if (!_meta_uris.empty())
+	      meta_uris.push_back(_meta_uris.at(i));
 	  }
 	}
       if (catch_read)
@@ -512,6 +515,7 @@ namespace dd
 	  throw InputConnectorBadParamException(catch_msg);
 	}
       _uris = uris;
+      _meta_uris = meta_uris;
       if (!_db_fname.empty())
 	return; // db filename is passed to backend
       

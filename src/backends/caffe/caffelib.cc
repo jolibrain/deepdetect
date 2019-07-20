@@ -2689,6 +2689,8 @@ namespace dd
 	      {
 		APIData rad;
 		rad.add("uri",inputc._ids.at(idoffset+j));
+		if (!inputc._meta_uris.empty())
+		  rad.add("meta_uri",inputc._meta_uris.at(idoffset+j));
 		rad.add("loss",static_cast<double>(loss));
 		std::vector<double> vals;
 		int cpos = 0;
