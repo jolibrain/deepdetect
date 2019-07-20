@@ -626,14 +626,13 @@ namespace dd
       
       std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();
 
-      //TODO:
       // - iterate chain of calls
       // - if predict call, use the visitor to execute it
       //      - this requires storing output into mlservice object / have a flag for telling the called service it's part of a chain
       // - if action call, execute the generic code for it
       std::vector<APIData> ad_calls = ad.getobj("chain").getv("calls");
       chain_logger->info("number of calls=" + std::to_string(ad_calls.size()));
-
+      
       // debug
       /*std::vector<std::string> ckeys = ad.list_keys();
       for (auto s: ckeys)
@@ -657,7 +656,10 @@ namespace dd
 
 	      // need to check that service exists
 	      if (!service_exists(pred_sname))
-		throw ServiceNotFoundException("Service " + pred_sname + " does not exist");
+		{
+		  spdlog::drop(cname);
+		  throw ServiceNotFoundException("Service " + pred_sname + " does not exist");
+		}
 
 	      // if not first predict call in the chain, need to setup the input data!
 	      if (i != 0)
@@ -681,12 +683,12 @@ namespace dd
 		  chain_logger->info("[" + std::to_string(i) + "]  no predictions");
 		  break;
 		}
-	      
+
 	      int classes_size = 0;
 	      int vals_size = 0;
 	      for (size_t i=0;i<vad.size();i++)
 		{
-		  int npred_classes = vad.at(i).getv("classes").size();
+		  size_t npred_classes = vad.at(i).getv("classes").size();
 		  classes_size += npred_classes;
 		  vals_size += static_cast<int>(vad.at(i).has("vals"));
 		  if (i == 0) // first call's response contains uniformized top level URIs.
@@ -724,7 +726,7 @@ namespace dd
 	      std::string action_type = adc.getobj("action").get("type").get<std::string>();
 
 	      APIData prev_data = cdata.get_model_data(prec_pred_sname);
-	      if (!prev_data.getobj("predictions").size())
+	      if (!prev_data.getv("predictions").size())
 		{
 		  // no prediction to work from
 		  chain_logger->info("no prediction to act on");
@@ -737,6 +739,29 @@ namespace dd
 	      caf.apply_action(action_type,
 			       prev_data,
 			       cdata._action_data);
+
+	      std::vector<APIData> vad = prev_data.getv("predictions");
+	      if (vad.empty())
+		{
+		  // no prediction to work from
+		  chain_logger->info("no prediction to act on after applying action " + action_type);
+		  break;
+		}
+
+	      int classes_size = 0;
+	      int vals_size = 0;
+	      for (size_t i=0;i<vad.size();i++)
+		{
+		  int npred_classes = vad.at(i).getv("classes").size();
+		  classes_size += npred_classes;
+		  vals_size += static_cast<int>(vad.at(i).has("vals"));
+		}
+	      
+	      if (!classes_size && !vals_size)
+		{
+		  chain_logger->info("[" + std::to_string(i) + "] / no result after applying action " + action_type);
+		  break;
+		}
 	      
 	      // replace prev_data in cdata for prec_pred_sname
 	      cdata.add_model_data(prec_pred_sname,prev_data);
