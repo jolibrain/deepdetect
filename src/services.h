@@ -740,6 +740,9 @@ namespace dd
 			       prev_data,
 			       cdata._action_data);
 
+	      // replace prev_data in cdata for prec_pred_sname
+	      cdata.add_model_data(prec_pred_sname,prev_data);
+	      
 	      std::vector<APIData> vad = prev_data.getv("predictions");
 	      if (vad.empty())
 		{
@@ -762,9 +765,6 @@ namespace dd
 		  chain_logger->info("[" + std::to_string(i) + "] / no result after applying action " + action_type);
 		  break;
 		}
-	      
-	      // replace prev_data in cdata for prec_pred_sname
-	      cdata.add_model_data(prec_pred_sname,prev_data);
 	      
 	      prec_action_id = aid;
 	      ++aid;
