@@ -694,28 +694,28 @@ namespace dd
 
 	      int classes_size = 0;
 	      int vals_size = 0;
-	      for (size_t i=0;i<vad.size();i++)
+	      std::vector<std::string> nmeta_uris;
+	      for (size_t j=0;j<vad.size();j++)
 		{
-		  size_t npred_classes = vad.at(i).getv("classes").size();
+		  size_t npred_classes = vad.at(j).getv("classes").size();
 		  classes_size += npred_classes;
-		  vals_size += static_cast<int>(vad.at(i).has("vals"));
+		  vals_size += static_cast<int>(vad.at(j).has("vals"));
 		  if (i == 0) // first call's response contains uniformized top level URIs.
 		    {
-		      for (size_t j=0;j<npred_classes;j++)
+		      for (size_t k=0;k<npred_classes;k++)
 			{
-			  meta_uris.push_back(vad.at(i).get("uri").get<std::string>());
+			  nmeta_uris.push_back(vad.at(j).get("uri").get<std::string>());
 			}
 		    }
 		  else // update meta uris to batch size at the current level of the chain
 		    {
-		      std::vector<std::string> nmeta_uris;
-		      for (size_t j=0;j<npred_classes;j++)
+		      for (size_t k=0;k<npred_classes;k++)
 			{
-			  nmeta_uris.push_back(meta_uris.at(i));
+			  nmeta_uris.push_back(meta_uris.at(j));
 			}
-		      meta_uris = nmeta_uris;
 		    }
 		}
+	      meta_uris = nmeta_uris;
 	      
 	      if (!classes_size && !vals_size)
 		{
