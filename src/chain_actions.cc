@@ -36,8 +36,10 @@ namespace dd
       std::vector<std::string> cropped_imgs;
       std::vector<std::string> bbox_ids;
 
-      //double bratio = 0.015; //TODO: action parameter
-
+      // check for action parameters
+      double bratio = 0.0;
+      if (_params.has("padding_ratio"))
+	bratio = _params.get("padding_ratio").get<double>(); // e.g. 0.055
       std::vector<APIData> cvad;
       
       // iterate image batch
@@ -67,7 +69,6 @@ namespace dd
 	      cad_cls.push_back(ad_cls.at(j));
 
 	      /*std::cerr << "initial bbox xmin=" << bbox.get("xmin").get<double>() << " / xmax=" << bbox.get("xmax").get<double>() << " / ymin=" << bbox.get("ymin").get<double>() << " / ymax=" << bbox.get("ymax").get<double>() << std::endl;*/
-	      
 	      double xmin = bbox.get("xmin").get<double>() / orig_cols * img.cols;
 	      double ymin = bbox.get("ymin").get<double>() / orig_rows * img.rows;
 	      double xmax = bbox.get("xmax").get<double>() / orig_cols * img.cols;
@@ -76,20 +77,20 @@ namespace dd
 	      /*std::cerr << "xmin=" << xmin << " / xmax=" << xmax << " / ymin= " << ymin << " / ymax=" << ymax << std::endl;
 		std::cerr << "orig_cols=" << orig_cols << " / orig_rows=" << orig_rows << " / img cols=" << img.cols << " / img rows=" << img.rows << std::endl;*/
 	      
-	      /*double deltax = bratio * (xmax-xmin);
-		double deltay = bratio * (ymin-ymax);*/
+	      double deltax = bratio * (xmax - xmin);
+	      double deltay = bratio * (ymax - ymin);
 
 	      //std::cerr << "deltax=" << deltax << " / deltay=" << deltay << " / xmax-xmin=" << xmax-xmin << " / ymin-ymax=" << ymin-ymax << std::endl;
 	      
-	      /*double cxmin = std::max(0.0,xmin-deltax);
+	      double cxmin = std::max(0.0,xmin-deltax);
 	      double cxmax = std::min(static_cast<double>(img.cols),xmax+deltax);
-	      double cymax = std::max(0.0,ymin-deltay);
-	      double cymin = std::min(static_cast<double>(img.rows),ymax+deltay);
+	      double cymax = std::max(0.0,ymax-deltay);
+	      double cymin = std::min(static_cast<double>(img.rows),ymin+deltay);
 
-	      std::cerr << "cxmin=" << cxmin << " / cxmax=" << cxmax << " / ymin= " << cymin << " / ymax=" << cymax << std::endl;*/
+	      //std::cerr << "cxmin=" << cxmin << " / cxmax=" << cxmax << " / ymin= " << cymin << " / ymax=" << cymax << std::endl;
 	      
-	      //cv::Rect roi(cxmin,cymax,cxmax-cxmin,cymax-cymin);
-	      cv::Rect roi(xmin,ymax,xmax-xmin,ymin-ymax);
+	      cv::Rect roi(cxmin,cymax,cxmax-cxmin,cymin-cymax);
+	      //cv::Rect roi(xmin,ymax,xmax-xmin,ymin-ymax);
 	      //std::cerr << "roi x=" << roi.x << " / y=" << roi.y << " / width=" << roi.width << " / height=" << roi.height << std::endl;
 	      cv::Mat cropped_img = img(roi);
 
