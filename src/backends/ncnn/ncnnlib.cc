@@ -71,8 +71,24 @@ namespace dd
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
     void NCNNLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::init_mllib(const APIData &ad)
     {
-        _net->load_param(this->_mlmodel._params.c_str());
-        _net->load_model(this->_mlmodel._weights.c_str());
+      int res = _net->load_param(this->_mlmodel._params.c_str());
+      if (res != 0)
+        {
+          this->_logger->error("problem while loading ncnn params {} from repo {}",
+                               this->_mlmodel._params, this->_mlmodel._repo);
+	      throw MLLibBadParamException("could not load ncnn params [" +
+                                       this->_mlmodel._params+"] from repo ["+
+                                       this->_mlmodel._repo+"]");
+        }
+      res =  _net->load_model(this->_mlmodel._weights.c_str());
+      if (res != 0)
+        {
+          this->_logger->error("problem while loading ncnn weigths {} from repo {}",
+                               this->_mlmodel._weights, this->_mlmodel._repo);
+	      throw MLLibBadParamException("could not load ncnn weights [" +
+                                       this->_mlmodel._weights+"] from repo ["+
+                                       this->_mlmodel._repo+"]");
+        }
         _old_height = this->_inputc.height();
         _net->set_input_h(_old_height);
 
