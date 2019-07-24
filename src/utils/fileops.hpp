@@ -27,10 +27,9 @@
 #include <unordered_set>
 #include <sys/stat.h>
 #include <stdio.h>
+#include <boost/filesystem.hpp>
 
-#if defined(WIN32)
-  #include <boost/filesystem.hpp>
-#else
+#if !defined(WIN32)
   #include <dirent.h>
   #include <unistd.h>
   #include <archive.h>
@@ -81,34 +80,6 @@ namespace dd
         return boost::filesystem::last_write_time(p);
     }
 
-    static int list_directory(const std::string &repo,
-        const bool &files,
-        const bool &dirs,
-        const bool &sub_files,
-        std::unordered_set<std::string> &lfiles)
-    {
-        boost::filesystem::path p(repo);
-
-        if (!boost::filesystem::is_directory(p))
-            return 1;
-
-        boost::filesystem::directory_iterator dir_iter(p);
-        boost::filesystem::directory_iterator end_iter;
-        for (; dir_iter != end_iter; ++dir_iter)
-        {
-            if ((dirs && boost::filesystem::is_directory(dir_iter->status())) ||
-                (files && boost::filesystem::is_regular_file(dir_iter->status())) ||
-                ((dirs||files) && boost::filesystem::is_symlink(dir_iter->status())))
-                lfiles.insert(dir_iter->path().string());
-
-            if (sub_files &&
-                (boost::filesystem::is_directory(dir_iter->status()) ||
-                    boost::filesystem::is_symlink(dir_iter->status())))
-                list_directory(dir_iter->path().string(), files, dirs, sub_files, lfiles);
-        }
-
-        return 0;
-    }
 
     static int clear_directory(const std::string &repo)
     {
@@ -200,102 +171,86 @@ namespace dd
     }
 
     static int list_directory(const std::string &repo,
-                              const bool &files,
-                              const bool &dirs,
-
-                              const bool &sub_files,
-                              std::unordered_set<std::string> &lfiles)
-
+        const bool &files,
+        const bool &dirs,
+        const bool &sub_files,
+        std::unordered_set<std::string> &lfiles)
     {
-      DIR *dir;
-      struct dirent *ent;
-      if ((dir = opendir(repo.c_str())) != NULL) {
+        boost::filesystem::path p(repo);
 
-        while ((ent = readdir(dir)) != NULL) {
-          if ((files && (ent->d_type == DT_REG || ent->d_type == DT_LNK))
-              || (dirs && (ent->d_type == DT_DIR || ent->d_type == DT_LNK) && ent->d_name[0] != '.'))
-            lfiles.insert(std::string(repo) + "/" + std::string(ent->d_name));
-          if (sub_files && (ent->d_type == DT_DIR || ent->d_type == DT_LNK) && ent->d_name[0] != '.')
-            list_directory(std::string(repo) + "/" + std::string(ent->d_name),files,dirs,sub_files,lfiles);
-        }
-        closedir(dir);
-        return 0;
-      }
-      else
+        if (!boost::filesystem::is_directory(p))
+            return 1;
+
+        boost::filesystem::directory_iterator dir_iter(p);
+        boost::filesystem::directory_iterator end_iter;
+        for (; dir_iter != end_iter; ++dir_iter)
         {
-          return 1;
+            if ((dirs && boost::filesystem::is_directory(dir_iter->status())) ||
+                (files && boost::filesystem::is_regular_file(dir_iter->status())) ||
+                ((dirs||files) && boost::filesystem::is_symlink(dir_iter->status())))
+                lfiles.insert(dir_iter->path().string());
+
+            if (sub_files &&
+                (boost::filesystem::is_directory(dir_iter->status()) ||
+                    boost::filesystem::is_symlink(dir_iter->status())))
+                list_directory(dir_iter->path().string(), files, dirs, sub_files, lfiles);
         }
 
+        return 0;
     }
 
     // remove everything, including first level directories within directory
     static int clear_directory(const std::string &repo)
     {
-      int err = 0;
-      DIR *dir;
-      struct dirent *ent;
-      if ((dir = opendir(repo.c_str())) != NULL) {
-	while ((ent = readdir(dir)) != NULL) 
-	  {
-	    if (ent->d_type == DT_DIR && ent->d_name[0] == '.')
-	      continue;
-	    else
-	      {
-		std::string f = std::string(repo) + "/" + std::string(ent->d_name);
-		if (ent->d_type == DT_DIR)
-		  {
-		    int errdf = remove_directory_files(f,std::vector<std::string>());
-		    int errd = rmdir(f.c_str());
-		    err += errdf + errd;
-		  }
-		else err += remove(f.c_str());
-	      }
-	  }
-	closedir(dir);
-	return err;
-      } 
-      else 
-	{
-	  return 1;
-	}
+      boost::system::error_code ercode;
+      boost::filesystem::directory_iterator dir_iter(repo,ercode);
+      boost::filesystem::directory_iterator end_iter;
+      int err = ercode.value();
+      if (ercode.value() != 0)
+        return ercode.value();
+
+      err = 0;
+      for (; dir_iter != end_iter; ++dir_iter)
+        {
+          boost::filesystem::remove_all(*dir_iter,ercode);
+          if (ercode.value() == ENOENT || ercode.value() == EACCES)
+            err++;
+        }
+      return err;
     }
 
     // empty extensions means a wildcard
     static int remove_directory_files(const std::string &repo,
 				      const std::vector<std::string> &extensions)
     {
-      int err = 0;
-      DIR *dir;
-      struct dirent *ent;
-      if ((dir = opendir(repo.c_str())) != NULL) {
-	while ((ent = readdir(dir)) != NULL) 
-	  {
-	    std::string lf = std::string(ent->d_name);
-	    if (ent->d_type == DT_DIR && ent->d_name[0] == '.')
-	      continue;
-	    if (extensions.empty())
-	      {
-		std::string f = std::string(repo) + "/" + lf;
-		err += remove(f.c_str());
-	      }
-	    else
-	      {
-		for (std::string s : extensions)
-		  if (lf.find(s) != std::string::npos)
-		    {
-		      std::string f = std::string(repo) + "/" + lf;
-		      err += remove(f.c_str());
-		      break;
-		    }
-	      }
-	  }
-	closedir(dir);
-	return err;
-      } 
-      else 
-	{
-	  return 1;
-	}
+      boost::system::error_code ercode;
+      boost::filesystem::directory_iterator dir_iter(repo,ercode);
+      boost::filesystem::directory_iterator end_iter;
+      int err = ercode.value();
+      if (ercode.value() != 0)
+        return ercode.value();
+
+      err = 0;
+      for (; dir_iter != end_iter; ++dir_iter)
+        {
+          if (extensions.empty())
+            {
+              boost::filesystem::remove_all(*dir_iter,ercode);
+              if (ercode.value() == ENOENT || ercode.value() == EACCES)
+                err++;
+            }
+          else
+            {
+              for (std::string s : extensions)
+                if (dir_iter->path().native().find(s) != std::string::npos)
+                  {
+                    boost::filesystem::remove(*dir_iter,ercode);
+                    if (ercode.value() == ENOENT || ercode.value() == EACCES)
+                      err++;
+                  }
+            }
+        }
+      return err;
     }
 
     static int copy_file(const std::string &fin,
