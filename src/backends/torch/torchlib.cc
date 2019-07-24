@@ -29,6 +29,64 @@ using namespace torch;
 
 namespace dd
 {
+    // ======= TORCH MODULE
+
+
+    void add_parameters(std::shared_ptr<torch::jit::script::Module> module, std::vector<Tensor> &params) { 
+        for (const auto &slot : module->get_parameters()) {
+            params.push_back(slot.value().toTensor());
+        }
+        for (auto child : module->get_modules()) {
+            add_parameters(child, params);
+        }
+    }
+
+    Tensor to_tensor_safe(const IValue &value) {
+        if (!value.isTensor())
+            throw MLLibInternalException("Model returned an invalid output. Please check your model.");
+        return value.toTensor();
+    }
+
+    c10::IValue TorchModule::forward(std::vector<c10::IValue> source) 
+    {
+        if (_traced)
+        {
+            source = { _traced->forward(source) };
+        }
+        c10::IValue out_val = source.at(0);
+        if (_classif)
+        {
+            out_val = _classif->forward(to_tensor_safe(out_val));
+        }
+        return out_val;
+    }
+
+    std::vector<Tensor> TorchModule::parameters() 
+    {
+        std::vector<Tensor> params;
+        if (_traced)
+            add_parameters(_traced, params);
+        if (_classif)
+        {
+            auto classif_params = _classif->parameters();
+            params.insert(params.end(), classif_params.begin(), classif_params.end());
+        }
+        return params;
+    }
+
+    void TorchModule::save(const std::string &filename) 
+    {
+       // Not yet implemented 
+    }
+
+    void TorchModule::load(const std::string &filename) 
+    {
+        // Not yet implemented
+    }
+
+
+    // ======= TORCHLIB
+
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
     TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::TorchLib(const TorchModel &tmodel)
         : MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TorchModel>(tmodel) 
@@ -41,10 +99,9 @@ namespace dd
         : MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TorchModel>(std::move(tl))
     {
         this->_libname = "torch";
-        _traced = std::move(tl._traced);
+        _module = std::move(tl._module);
         _nclasses = tl._nclasses;
         _device = tl._device;
-        _attention = tl._attention;
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -72,11 +129,11 @@ namespace dd
         _device = gpu ? torch::Device(DeviceType::CUDA, gpuid) : torch::Device(DeviceType::CPU);
 
         if (typeid(TInputConnectorStrategy) == typeid(TxtTorchInputFileConn)) {
-            _attention = true;
+            //_attention = true;
         }
 
-        _traced = torch::jit::load(this->_mlmodel._model_file, _device);
-        _traced->eval();
+        _module._traced = torch::jit::load(this->_mlmodel._model_file, _device);
+        _module._traced->eval();
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -106,32 +163,19 @@ namespace dd
         }
         torch::Device cpu("cpu");
 
+        inputc._dataset.reset();
         std::vector<c10::IValue> in_vals;
-        in_vals.push_back(inputc._in.to(_device));
-
-        if (_attention) {
-            // token_type_ids
-            in_vals.push_back(torch::zeros_like(inputc._in, at::kLong).to(_device));
-            in_vals.push_back(inputc._attention_mask.to(_device));
-        }
-
+        for (Tensor tensor : inputc._dataset.get_cached().data)
+            in_vals.push_back(tensor.to(_device));
         Tensor output;
         try
         {
-            c10::IValue out_val = _traced->forward(in_vals);
-            if (out_val.isTuple()) {
-                out_val = out_val.toTuple()->elements()[0];
-            }
-            if (!out_val.isTensor()) {
-                throw MLLibInternalException("Model returned an invalid output. Please check your model.");
-            }
-            output = out_val.toTensor().to(at::kFloat);
+            output = torch::softmax(to_tensor_safe(_module.forward(in_vals)), 1);
         }
         catch (std::exception &e)
         {
             throw MLLibInternalException(std::string("Libtorch error:") + e.what());
         }
-        output = torch::softmax(output, 1).to(cpu);
         
         // Output
         std::vector<APIData> results_ads;
@@ -173,7 +217,6 @@ namespace dd
 
         return 0;
     }
-
 
     template class TorchLib<ImgTorchInputFileConn,SupervisedOutput,TorchModel>;
     template class TorchLib<TxtTorchInputFileConn,SupervisedOutput,TorchModel>;

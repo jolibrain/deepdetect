@@ -31,12 +31,46 @@
 
 namespace dd
 {
+    typedef torch::data::Example<std::vector<at::Tensor>, std::vector<at::Tensor>> TorchBatch;
+
+    class TorchDataset : public torch::data::BatchDataset
+        <TorchDataset, c10::optional<TorchBatch>>
+    {
+    private:
+        bool _shuffle = false;
+        long _seed = -1;
+        std::vector<int64_t> _indices;
+
+    public:
+        std::vector<TorchBatch> _batches;
+
+
+        TorchDataset() {}
+
+        void add_batch(std::vector<at::Tensor> data, std::vector<at::Tensor> target = {});
+
+        void reset();
+
+        // Size of data loaded in memory
+        size_t cache_size() const { return _batches.size(); }
+
+        c10::optional<size_t> size() const override {
+            return cache_size();
+        }
+
+        c10::optional<TorchBatch> get_batch(BatchRequestType request) override;
+
+        // Returns a batch containing all the cached data
+        TorchBatch get_cached();
+    };
+
+
+
     class TorchInputInterface
     {
     public:
         TorchInputInterface() {}
-        TorchInputInterface(const TorchInputInterface &i)
-            : _in(i._in), _attention_mask(i._attention_mask) {}
+        TorchInputInterface(const TorchInputInterface &i) {}
 
         ~TorchInputInterface() {}
 
@@ -45,8 +79,8 @@ namespace dd
             return torch::from_blob(&values[0], at::IntList{val_size}, at::kLong);
         }
 
-        at::Tensor _in;
-        at::Tensor _attention_mask;
+        TorchDataset _dataset;
+        TorchDataset _test_dataset;
     };
 
     class ImgTorchInputFileConn : public ImgInputFileConn, public TorchInputInterface
@@ -55,7 +89,7 @@ namespace dd
         ImgTorchInputFileConn()
             :ImgInputFileConn() {}
         ImgTorchInputFileConn(const ImgTorchInputFileConn &i)
-            :ImgInputFileConn(i),TorchInputInterface(i) {}
+            :ImgInputFileConn(i),TorchInputInterface(i), _std{i._std} {}
         ~ImgTorchInputFileConn() {}
 
         // for API info only
@@ -108,8 +142,6 @@ namespace dd
                     imgt = imgt.mul(1. / _std);
                 tensors.push_back(imgt);
             }
-
-            _in = torch::stack(tensors, 0);
         }
 
     public:

@@ -32,6 +32,21 @@
 
 namespace dd
 {
+    class TorchModule {
+    public:
+        c10::IValue forward(std::vector<c10::IValue> source);
+
+        std::vector<torch::Tensor> parameters();
+
+        void save(const std::string &filename);
+
+        void load(const std::string &filename);
+    public:
+        std::shared_ptr<torch::jit::script::Module> _traced;
+        torch::nn::Linear _classif = nullptr;
+    };
+
+
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel=TorchModel>
     class TorchLib : public MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>
     {
@@ -49,11 +64,14 @@ namespace dd
 
         int predict(const APIData &ad, APIData &out);
 
+        int test(const APIData &ad, APIData &out);
+
     public:
         int _nclasses = 0;
-        bool _attention = false;
         torch::Device _device = torch::Device("cpu");
-        std::shared_ptr<torch::jit::script::Module> _traced;
+
+        // models
+        TorchModule _module;
     };
 }
 
