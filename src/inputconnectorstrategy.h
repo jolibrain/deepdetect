@@ -48,9 +48,9 @@ namespace dd
     {
       _ctype._logger = logger;
       bool dir = false;
-      if (uri.find("https://") != std::string::npos
-	  || uri.find("http://") != std::string::npos
-	  || uri.find("file://") != std::string::npos)
+      if (uri.rfind("https://", 0) == 0
+	  || uri.rfind("http://", 0) == 0
+	  || uri.rfind("file://", 0) == 0)
 	{
 #ifdef WIN32
       return -1;
