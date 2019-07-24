@@ -2428,6 +2428,8 @@ namespace dd
 		    if (leave)
 		      continue;
 		    rad.add("uri",uri);
+		    if (!inputc._index_uris.empty())
+		      rad.add("index_uri",inputc._index_uris.at(idoffset+j));
 		    rad.add("loss",0.0); // XXX: unused
 		    rad.add("probs",probs);
 		    rad.add("cats",cats);
@@ -2503,6 +2505,8 @@ namespace dd
 		rad.add("vals",vals);
 		rad.add("bboxes", bboxes);
 		rad.add("uri",inputc._ids.at(idoffset+iid));
+		if (!inputc._index_uris.empty())
+		  rad.add("index_uri",inputc._index_uris.at(idoffset+iid));
 		rad.add("loss",0.0); // XXX: unused
 		rad.add("probs",probs);
 		rad.add("cats",cats);
@@ -2691,6 +2695,8 @@ namespace dd
 		rad.add("uri",inputc._ids.at(idoffset+j));
 		if (!inputc._meta_uris.empty())
 		  rad.add("meta_uri",inputc._meta_uris.at(idoffset+j));
+		if (!inputc._index_uris.empty())
+		  rad.add("index_uri",inputc._index_uris.at(idoffset+j));
 		rad.add("loss",static_cast<double>(loss));
 		std::vector<double> vals;
 		int cpos = 0;

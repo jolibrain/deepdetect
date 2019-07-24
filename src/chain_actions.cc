@@ -110,6 +110,8 @@ namespace dd
 	    }
 	  APIData ccls;
 	  ccls.add("uri",uri);
+	  if (vad.at(i).has("index_uri"))
+	    ccls.add("index_uri",vad.at(i).get("index_uri").get<std::string>());
 	  ccls.add("classes",cad_cls);
 	  cvad.push_back(ccls);
 	}
@@ -154,6 +156,8 @@ namespace dd
 	  }
 	APIData ccls;
 	ccls.add("classes",cad_cls);
+	if (vad.at(i).has("index_uri"))
+	  ccls.add("index_uri",vad.at(i).get("index_uri").get<std::string>());
 	ccls.add("uri",vad.at(i).get("uri").get<std::string>());
 	cvad.push_back(ccls);
       }

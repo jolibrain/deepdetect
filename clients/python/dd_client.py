@@ -219,7 +219,7 @@ class DD(object):
 
     # API predict
     def post_predict(self, sname, data, parameters_input, parameters_mllib,
-                     parameters_output, use_base64=False):
+                     parameters_output, use_base64=False, index_uris=[]):
         """
         Makes prediction from data and model
         Parameters:
@@ -238,11 +238,13 @@ class DD(object):
                                "mllib": parameters_mllib,
                                "output": parameters_output},
                 "data": data}
+        if index_uris:
+            data["index_uris"] = index_uris
         return self.post(self.__urls["predict"], json=data)
 
     # API chain
     def make_call(self, sname, data, parameters_input, parameters_mllib,
-                  parameters_output, use_base64=False):
+                  parameters_output, use_base64=False, index_uris = []):
         """
         Creates a dictionary that holds the JSON call,
         to be added to an array and processed by 
@@ -260,6 +262,8 @@ class DD(object):
                                "output": parameters_output}}
         if data:
             call["data"] = data
+        if index_uris:
+            call["index_uris"] = index_uris
         
         return call
 

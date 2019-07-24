@@ -122,7 +122,9 @@ namespace dd
              if (ad.has("confidences"))
                extra.add("confidences",ad.getobj("confidences"));
 	     std::string meta_uri;
-	     if (ad.has("meta_uri"))
+	     if (ad.has("index_uri"))
+	       meta_uri = ad.get("index_uri").get<std::string>();
+	     else if (ad.has("meta_uri"))
 	       meta_uri = ad.get("meta_uri").get<std::string>();
 	     _vvres.push_back(unsup_result(uri,vals,extra,meta_uri));
 	    }

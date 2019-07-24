@@ -189,8 +189,8 @@ namespace dd
     {
       _in_mem = true;
       cv::Mat timg;
-      bool b64 = possibly_base64(content);
-      if (b64)
+      _b64 = possibly_base64(content);
+      if (_b64)
 	{
 	  std::string ccontent;
 	  Base64::Decode(content,&ccontent);
@@ -321,6 +321,7 @@ namespace dd
     int _scale_min = 600;
     int _scale_max = 1000;
     bool _keep_orig = false;
+    bool _b64 = false;
     std::string _db_fname;
     std::shared_ptr<spdlog::logger> _logger;
   };
@@ -435,6 +436,7 @@ namespace dd
       std::string catch_msg;
       std::vector<std::string> uris;
       std::vector<std::string> meta_uris;
+      std::vector<std::string> index_uris;
       std::vector<std::string> failed_uris;
 #pragma omp parallel for
       for (size_t i=0;i<_uris.size();i++)
@@ -493,10 +495,8 @@ namespace dd
 	      _test_labels.insert(_test_labels.end(),
 	      std::make_move_iterator(dimg._ctype._labels.begin()),
 	      std::make_move_iterator(dimg._ctype._labels.end()));
-	    if (!dimg._ctype._in_mem && dimg._ctype._imgs.size() == 1)
-	      {
-		uris.push_back(u);
-	      }
+	    if (!dimg._ctype._b64 && dimg._ctype._imgs.size() == 1)
+	      uris.push_back(u);
 	    else if (!dimg._ctype._img_files.empty())
 	      uris.insert(uris.end(),
 	      std::make_move_iterator(dimg._ctype._img_files.begin()),
@@ -506,6 +506,8 @@ namespace dd
 	    else uris.push_back(std::to_string(i));
 	    if (!_meta_uris.empty())
 	      meta_uris.push_back(_meta_uris.at(i));
+	    if (!_index_uris.empty())
+	      index_uris.push_back(_index_uris.at(i));
 	  }
 	}
       if (catch_read)
@@ -516,6 +518,7 @@ namespace dd
 	}
       _uris = uris;
       _meta_uris = meta_uris;
+      _index_uris = index_uris;
       if (!_db_fname.empty())
 	return; // db filename is passed to backend
       
