@@ -22,6 +22,8 @@
 #ifndef TORCHLIB_H
 #define TORCHLIB_H
 
+#include <random>
+
 #include <torch/torch.h>
 
 #include "apidata.h"
@@ -32,6 +34,41 @@
 
 namespace dd
 {
+    // TODO: Make TorchModule inherit torch::nn::Module ? And use the TORCH_MODULE macro
+    class TorchModule {
+    public:
+        TorchModule();
+
+        c10::IValue forward(std::vector<c10::IValue> source);
+
+        void freeze_traced(bool freeze);
+
+        std::vector<torch::Tensor> parameters();
+
+        /** Save traced module to checkpoint-[name].pt, and custom parts weights
+         * to checkpoint-[name].ptw */
+        // (Actually only _classif is saved in the .ptw)
+        void save_checkpoint(TorchModel &model, const std::string &name);
+
+        /** Load traced module from .pt and custom parts weights from .ptw */
+        void load(TorchModel &model);
+
+        void eval();
+        void train();
+
+        void free();
+    public:
+        std::shared_ptr<torch::jit::script::Module> _traced;
+        torch::nn::Linear _classif = nullptr;
+
+        torch::Device _device;
+        int _classif_in = 0; /**<id of the input of the classification layer */
+        bool _hidden_states = false; /**< Take BERT hidden states as input. */
+    private:
+        bool _freeze_traced = false; /**< Freeze weights of the traced module */
+    };
+
+
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel=TorchModel>
     class TorchLib : public MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>
     {
@@ -49,11 +86,19 @@ namespace dd
 
         int predict(const APIData &ad, APIData &out);
 
+        int test(const APIData &ad, TInputConnectorStrategy &inputc,
+                 TorchDataset &dataset,
+                 int batch_size, APIData &out);
+
     public:
         int _nclasses = 0;
-        bool _attention = false;
+        std::string _template;
+        bool _finetuning = false;
         torch::Device _device = torch::Device("cpu");
-        std::shared_ptr<torch::jit::script::Module> _traced;
+        bool _masked_lm = false;
+
+        // models
+        TorchModule _module;
     };
 }
 
