@@ -45,7 +45,7 @@ void TxtTorchInputFileConn::transform(const APIData &ad) {
             double val;
             tow->get_next_elt(word, val);
             std::unordered_map<std::string,Word>::iterator it;
-
+                
             if ((it = _vocab.find(word)) != _vocab.end())
             {
                 ids.push_back(it->second._pos);

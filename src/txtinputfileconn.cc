@@ -28,6 +28,53 @@
 namespace dd
 {
 
+  void WordPieceTokenizer::append_input(const std::string &word)
+  {
+      int start = 0;
+      std::vector<std::string> subtokens;
+      bool is_bad = false;
+
+      while (start < word.size())
+      {
+          int end = word.size();
+          std::string cur_substr = "";
+          while (start < end)
+          {
+              std::string substr = word.substr(start, end - start);
+              if (start > 0)
+              {
+                  substr = _prefix + substr;
+              }
+              if (in_vocab(substr))
+              {
+                  cur_substr = substr;
+                  break;
+              }
+              --end;
+          }
+          if (cur_substr == "")
+          {
+              is_bad = true;
+              break;
+          }
+          subtokens.push_back(cur_substr);
+          start = end;
+      }
+
+      if (is_bad)
+      {
+          _tokens.push_back(_unk_token);
+      }
+      else
+      {
+          _tokens.insert(_tokens.end(), subtokens.begin(), subtokens.end());
+      }
+  }
+
+  bool WordPieceTokenizer::in_vocab(const std::string &tok) {
+      return _ctfc->_vocab.find(tok) != _ctfc->_vocab.end();
+  }
+
   /*- DDTxt -*/
   int DDTxt::read_file(const std::string &fname)
   {
@@ -256,15 +303,53 @@ namespace dd
 	std::transform(ct.begin(),ct.end(),ct.begin(),::tolower);
 	if (!_characters)
 	  {
-	    std::unordered_map<std::string,Word>::iterator vhit;
-	    boost::char_separator<char> sep("\n\t\f\r ,.;:`'!?)(-|><^·&\"\\/{}#$–=+");
-	    boost::tokenizer<boost::char_separator<char>> tokens(ct,sep);
+            std::unordered_map<std::string,Word>::iterator vhit;
+            std::vector<std::string> tokens;
+            if (_ponctuation_tokens)
+            {
+                boost::char_separator<char> sep("\n\t\f\r ");
+                boost::tokenizer<boost::char_separator<char>> tokenizer(ct,sep);
+
+                // Split punctuation
+                std::string ponctuation_str = ",.;:`'!?)(-|><^·&\"\\/{}#$–=+[]%*";
+                std::unordered_set<char> ponctuation{ponctuation_str.begin(), ponctuation_str.end()};
+                for (std::string token : tokenizer)
+                {
+                    int start = 0;
+                    for (int i = 0; i < token.size(); ++i)
+                    {
+                        if (ponctuation.find(token[i]) != ponctuation.end())
+                        {
+                            if (i != start)
+                                tokens.push_back(token.substr(start, i - start));
+                            tokens.push_back(token.substr(i, 1));
+                            start = i + 1;
+                        }
+                    }
+                    if (start != token.size())
+                        tokens.push_back(token.substr(start));
+                }
+            }
+            else
+            {
+                boost::char_separator<char> sep("\n\t\f\r ,.;:`'!?)(-|><^·&\"\\/{}#$–=+");
+                boost::tokenizer<boost::char_separator<char>> tokenizer(ct,sep);
+                tokens.insert(tokens.end(), tokenizer.begin(), tokenizer.end());
+            }
+            if (_wordpiece_tokens)
+            {
+                _wordpiece_tokenizer.reset();
+                for (const std::string &token : tokens)
+                {
+                    _wordpiece_tokenizer.append_input(token);
+                }
+                tokens = std::move(_wordpiece_tokenizer._tokens);
+                _wordpiece_tokenizer._tokens = std::vector<std::string>();
+            }
 
             if (_ordered_words) 
               {
                 TxtOrderedWordsEntry *towe = new TxtOrderedWordsEntry(target);
-                std::unordered_map<std::string,Word>::iterator vhit;
-
                 for (std::string w : tokens)
                   {
                     towe->add_word(w, 0);
