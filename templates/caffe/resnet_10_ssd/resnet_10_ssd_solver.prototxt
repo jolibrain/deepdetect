@@ -1,4 +1,4 @@
-net: "squeezenet_ssd.prototxt"
+net: "resnet_10_ssd.prototxt"
 test_iter: 5000
 test_interval: 1000
 base_lr: 0.0001
@@ -7,7 +7,7 @@ max_iter: 35000
 lr_policy: "fixed"
 weight_decay: 0.0005
 snapshot: 1000
-snapshot_prefix: "SqueezeNet_SSD_300x300"
+snapshot_prefix: "ResNet10_SSD_300x300"
 solver_mode: GPU
 device_id: 0
 debug_info: false
