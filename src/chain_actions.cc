@@ -41,7 +41,11 @@ namespace dd
       if (_params.has("padding_ratio"))
 	bratio = _params.get("padding_ratio").get<double>(); // e.g. 0.055
       std::vector<APIData> cvad;
-      
+
+      bool save_crops = false;
+      if (_params.has("save_crops"))
+	save_crops = _params.get("save_crops").get<bool>();
+            
       // iterate image batch
       for (size_t i=0;i<vad.size();i++)
 	{
@@ -94,11 +98,13 @@ namespace dd
 	      //std::cerr << "roi x=" << roi.x << " / y=" << roi.y << " / width=" << roi.width << " / height=" << roi.height << std::endl;
 	      cv::Mat cropped_img = img(roi);
 
-	      //debug
-	      /*std::string puri = dd_utils::split(uri,'/').back();
-	      std::cerr << "writing crop=" << "crop_" + puri + "_" + std::to_string(j) + ".png\n";
-	      cv::imwrite("crop_" + puri + "_" + std::to_string(j) + ".png",cropped_img);*/
-	      //debug
+	      // save crops if requested
+	      if (save_crops)
+		{
+		  std::string puri = dd_utils::split(uri,'/').back();
+		  //std::cerr << "writing crop=" << "crop_" + puri + "_" + std::to_string(j) + ".png\n";
+		  cv::imwrite("crop_" + puri + "_" + std::to_string(j) + ".png",cropped_img);
+		}
 	      
 	      // serialize crop into string (will be auto read by read_element in imginputconn)
 	      std::vector<unsigned char> cropped_img_ser;
