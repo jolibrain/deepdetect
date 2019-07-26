@@ -195,11 +195,6 @@ namespace dd
 	    {
 	      throw;
 	    }
-
-	  // ids
-	  bool set_ids = false;
-	  if (this->_ids.empty())
-	    set_ids = true;
 	  
 	  float *mean = nullptr;
 	  std::string meanfullname = _model_repo + "/" + _meanfname;
@@ -252,8 +247,6 @@ namespace dd
 		  datum.clear_data();
 		}
 	      _dv_test.push_back(datum);
-	      if (set_ids)
-		this->_ids.push_back(this->_uris.at(i));
 	      _imgs_size.insert(std::pair<std::string,std::pair<int,int>>(this->_ids.at(i),this->_images_size.at(i)));
 	    }
 	  if (!ad.has("chain"))

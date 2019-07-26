@@ -495,14 +495,14 @@ namespace dd
 	      _test_labels.insert(_test_labels.end(),
 	      std::make_move_iterator(dimg._ctype._labels.begin()),
 	      std::make_move_iterator(dimg._ctype._labels.end()));
-	    if (!dimg._ctype._b64 && dimg._ctype._imgs.size() == 1)
+	    if (!_ids.empty())
+	      uris.push_back(_ids.at(i));
+	    else if (!dimg._ctype._b64 && dimg._ctype._imgs.size() == 1)
 	      uris.push_back(u);
 	    else if (!dimg._ctype._img_files.empty())
 	      uris.insert(uris.end(),
 	      std::make_move_iterator(dimg._ctype._img_files.begin()),
 	      std::make_move_iterator(dimg._ctype._img_files.end()));
-	    else if (!_ids.empty())
-	      uris.push_back(_ids.at(i));
 	    else uris.push_back(std::to_string(i));
 	    if (!_meta_uris.empty())
 	      meta_uris.push_back(_meta_uris.at(i));
@@ -517,6 +517,7 @@ namespace dd
 	  throw InputConnectorBadParamException(catch_msg);
 	}
       _uris = uris;
+      _ids = _uris; // since uris may be in different order than before transform
       _meta_uris = meta_uris;
       _index_uris = index_uris;
       if (!_db_fname.empty())

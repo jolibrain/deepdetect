@@ -65,44 +65,33 @@ namespace dd
 	      if (bbox.empty())
 		throw ActionBadParamException("crop action cannot find bbox object for uri " + uri);
 
-	      // adding modified object chain id
+	      // adding bbox id
 	      std::string bbox_id = genid(uri,"bbox"+std::to_string(j));
 	      bbox_ids.push_back(bbox_id);
 	      APIData ad_cid;
 	      ad_cls.at(j).add(bbox_id,ad_cid);
 	      cad_cls.push_back(ad_cls.at(j));
 
-	      /*std::cerr << "initial bbox xmin=" << bbox.get("xmin").get<double>() << " / xmax=" << bbox.get("xmax").get<double>() << " / ymin=" << bbox.get("ymin").get<double>() << " / ymax=" << bbox.get("ymax").get<double>() << std::endl;*/
 	      double xmin = bbox.get("xmin").get<double>() / orig_cols * img.cols;
 	      double ymin = bbox.get("ymin").get<double>() / orig_rows * img.rows;
 	      double xmax = bbox.get("xmax").get<double>() / orig_cols * img.cols;
 	      double ymax = bbox.get("ymax").get<double>() / orig_rows * img.rows;
 
-	      /*std::cerr << "xmin=" << xmin << " / xmax=" << xmax << " / ymin= " << ymin << " / ymax=" << ymax << std::endl;
-		std::cerr << "orig_cols=" << orig_cols << " / orig_rows=" << orig_rows << " / img cols=" << img.cols << " / img rows=" << img.rows << std::endl;*/
-	      
 	      double deltax = bratio * (xmax - xmin);
 	      double deltay = bratio * (ymax - ymin);
 
-	      //std::cerr << "deltax=" << deltax << " / deltay=" << deltay << " / xmax-xmin=" << xmax-xmin << " / ymin-ymax=" << ymin-ymax << std::endl;
-	      
 	      double cxmin = std::max(0.0,xmin-deltax);
 	      double cxmax = std::min(static_cast<double>(img.cols),xmax+deltax);
 	      double cymax = std::max(0.0,ymax-deltay);
 	      double cymin = std::min(static_cast<double>(img.rows),ymin+deltay);
-
-	      //std::cerr << "cxmin=" << cxmin << " / cxmax=" << cxmax << " / ymin= " << cymin << " / ymax=" << cymax << std::endl;
 	      
 	      cv::Rect roi(cxmin,cymax,cxmax-cxmin,cymin-cymax);
-	      //cv::Rect roi(xmin,ymax,xmax-xmin,ymin-ymax);
-	      //std::cerr << "roi x=" << roi.x << " / y=" << roi.y << " / width=" << roi.width << " / height=" << roi.height << std::endl;
 	      cv::Mat cropped_img = img(roi);
 
 	      // save crops if requested
 	      if (save_crops)
 		{
 		  std::string puri = dd_utils::split(uri,'/').back();
-		  //std::cerr << "writing crop=" << "crop_" + puri + "_" + std::to_string(j) + ".png\n";
 		  cv::imwrite("crop_" + puri + "_" + std::to_string(j) + ".png",cropped_img);
 		}
 	      
