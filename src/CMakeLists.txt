@@ -54,10 +54,27 @@ if (USE_DLIB)
   list(APPEND ddetect_SOURCES backends/dlib/DNNStructures.h backends/dlib/dliblib.cc backends/dlib/dliblib.h backends/dlib/dlibmodel.cc backends/dlib/dlibmodel.h backends/dlib/dlibinputconns.h)
 endif()
 if (USE_NCNN)
+  file(DOWNLOAD https://raw.githubusercontent.com/jolibrain/caffe/master/src/caffe/proto/caffe.proto ${CMAKE_SOURCE_DIR}/src/backends/ncnn/caffe.proto)
+  if (NOT USE_CAFFE2 AND NOT USE_TF)
+    execute_process(COMMAND protoc --proto_path=${CMAKE_SOURCE_DIR}/src/backends/ncnn --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_SOURCE_DIR}/src/backends/ncnn/caffe.proto)
+  endif()
+
+  set_source_files_properties(
+    ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
+    ${CMAKE_BINARY_DIR}/src/caffe.pb.h
+    PROPERTIES GENERATED TRUE)
+
   list(APPEND ddetect_SOURCES
     backends/ncnn/ncnnlib.cc
     backends/ncnn/ncnnmodel.cc
-  )
+    backends/ncnn/caffe2ncnn.cc
+    )
+
+  if (NOT USE_CAFFE)
+    list(APPEND ddetect_SOURCES
+      ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
+      )
+  endif()
 endif()
 if (USE_TENSORRT)
   file(DOWNLOAD https://raw.githubusercontent.com/jolibrain/caffe/master/src/caffe/proto/caffe.proto ${CMAKE_SOURCE_DIR}/src/backends/tensorrt/caffe.proto)
@@ -71,8 +88,6 @@ if (USE_TENSORRT)
     PROPERTIES GENERATED TRUE)
 
   list(APPEND ddetect_SOURCES
-    ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
-    ${CMAKE_BINARY_DIR}/src/caffe.pb.h
     backends/tensorrt/tensorrtlib.h
     backends/tensorrt/tensorrtlib.cc
     backends/tensorrt/protoUtils.h
@@ -82,6 +97,12 @@ if (USE_TENSORRT)
     backends/tensorrt/tensorrtmodel.h
     backends/tensorrt/tensorrtmodel.cc
     )
+
+  if (NOT USE_CAFFE)
+    list(APPEND ddetect_SOURCES
+      ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
+      )
+  endif()
 endif()
 
 add_library(ddetect ${ddetect_SOURCES})

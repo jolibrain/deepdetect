@@ -360,6 +360,16 @@ if (USE_CAFFE2)
       COMMENT "generating caffe.pb.*")
   endif()
 
+  if (USE_NCNN AND NOT USE_TENSORRT)
+    add_custom_command(TARGET pytorch POST_BUILD
+      COMMAND ${CMAKE_BINARY_DIR}/protobuf/bin/protoc
+      --proto_path=${CMAKE_BINARY_DIR}/src/backends/ncnn
+      --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_BINARY_DIR}/src/backends/ncnn/caffe.proto
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+      COMMENT "generating caffe.pb.*")
+  endif()
+
+
 endif()
 
 if (USE_TF)
@@ -409,6 +419,16 @@ if (USE_TENSORRT)
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     COMMENT "generating caffe.pb.*")
 endif()
+
+if (USE_NCNN AND NOT USE_TENSORRT)
+  add_custom_command(TARGET tensorflow_cc POST_BUILD
+    COMMAND ${CMAKE_BINARY_DIR}/protobuf/bin/protoc
+    --proto_path=${CMAKE_BINARY_DIR}/src/backends/ncnn
+    --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_BINARY_DIR}/src/backends/ncnn/caffe.proto
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    COMMENT "generating caffe.pb.*")
+endif()
+
 
 endif() # USE_TF
 
@@ -559,7 +579,8 @@ endif()
 if (USE_NCNN)
   message(STATUS "Configuring NCNN")
   add_definitions(-DUSE_NCNN)
-  set(NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src/libncnn.a)
+  include_directories(${CMAKE_CURRENT_BINARY_DIR})
+  set(NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src/libncnn.a -lprotobuf)
   set(NCNN_COMMIT_HASH "569be5a19651373cca68933f6430c781d7d6fd97")
   if (RPI3)
     ExternalProject_Add(
@@ -586,6 +607,15 @@ if (USE_NCNN)
   endif()
   set(NCNN_INC_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/src ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src)
   set(NCNN_LIB_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src)
+  if (NOT USE_CAFFE2 AND NOT USE_TF AND NOT USE_CAFFE AND NOT USE_TENSORRT)
+    find_package(Protobuf REQUIRED)
+    if (Protobuf_FOUND)
+      set(PROTOBUF_INCLUDE_DIR ${Protobuf_INCLUDE_DIRS})
+      set(PROTOBUF_LIB_DIR ${Protobuf_LIBRARIES})
+    else()
+      message(FATAL_ERROR "could not find system protobuf")
+    endif()
+  endif()
 endif()
 
 # XGBoost
