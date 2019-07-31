@@ -265,7 +265,7 @@ namespace dd
          _top_k = findTopK(this->_mlmodel._def);
 
 	if (_nclasses <=0)
-	  this->_logger->error("cound not determine number of classes");
+	  this->_logger->error("could not determine number of classes");
 	
 	bool engineRead = false;
 	
@@ -423,49 +423,56 @@ namespace dd
 	if (num_processed == 0)
 	  break;
 
-	if (_bbox)
+	try
 	  {
-	    if (inputc._bw)
-	      cudaMemcpyAsync(_buffers.data()[_inputIndex], inputc.data(),
-	       		      num_processed *  inputc._height * inputc._width * sizeof(float),
-	       		      cudaMemcpyHostToDevice, cstream);
-	    else
-	      cudaMemcpyAsync(_buffers.data()[_inputIndex], inputc.data(),
-	       		      num_processed * 3 * inputc._height * inputc._width * sizeof(float),
-	       		      cudaMemcpyHostToDevice, cstream);
-	    _context->enqueue(num_processed, _buffers.data(), cstream, nullptr);
-	     cudaMemcpyAsync(_floatOut.data(), _buffers.data()[_outputIndex0],
-	     		    num_processed * _top_k * 7 * sizeof(float),
-	     		    cudaMemcpyDeviceToHost, cstream);
-	     cudaMemcpyAsync(_keepCount.data(), _buffers.data()[_outputIndex1], num_processed * sizeof(int),
-			     cudaMemcpyDeviceToHost, cstream);
-	     cudaStreamSynchronize(cstream);
+	    if (_bbox)
+	      {
+		if (inputc._bw)
+		  cudaMemcpyAsync(_buffers.data()[_inputIndex], inputc.data(),
+				  num_processed *  inputc._height * inputc._width * sizeof(float),
+				  cudaMemcpyHostToDevice, cstream);
+		else
+		  cudaMemcpyAsync(_buffers.data()[_inputIndex], inputc.data(),
+				  num_processed * 3 * inputc._height * inputc._width * sizeof(float),
+				  cudaMemcpyHostToDevice, cstream);
+		_context->enqueue(num_processed, _buffers.data(), cstream, nullptr);
+		cudaMemcpyAsync(_floatOut.data(), _buffers.data()[_outputIndex0],
+				num_processed * _top_k * 7 * sizeof(float),
+				cudaMemcpyDeviceToHost, cstream);
+		cudaMemcpyAsync(_keepCount.data(), _buffers.data()[_outputIndex1], num_processed * sizeof(int),
+				cudaMemcpyDeviceToHost, cstream);
+		cudaStreamSynchronize(cstream);
+	      }
+	    else if (_ctc)
+	      {
+		throw MLLibBadParamException("ocr not yet implemented over tensorRT backend");
+	      }
+	    else if (_timeserie)
+	      {
+		throw MLLibBadParamException("timeseries not yet implemented over tensorRT backend");
+	      }
+	    else // classification
+	      {
+		if (inputc._bw)
+		  cudaMemcpyAsync(_buffers.data()[_inputIndex], inputc.data(),
+				  num_processed *  inputc._height * inputc._width * sizeof(float),
+				  cudaMemcpyHostToDevice, cstream);
+		else
+		  cudaMemcpyAsync(_buffers.data()[_inputIndex], inputc.data(),
+				  num_processed * 3 * inputc._height * inputc._width * sizeof(float),
+				  cudaMemcpyHostToDevice, cstream);
+		_context->enqueue(num_processed, _buffers.data(), cstream, nullptr);
+		cudaMemcpyAsync(_floatOut.data(), _buffers.data()[_outputIndex0],
+				num_processed * _nclasses * sizeof(float),
+				cudaMemcpyDeviceToHost, cstream);
+		cudaStreamSynchronize(cstream);
+	      }
 	  }
-	else if (_ctc)
+	catch(std::exception &e)
 	  {
-	    throw MLLibBadParamException("ocr not yet implemented over tensorRT backend");
-	  }
-	else if (_timeserie)
-	  {
-	    throw MLLibBadParamException("timeseries not yet implemented over tensorRT backend");
-	  }
-	else // classification
-	  {
-	    if (inputc._bw)
-	      cudaMemcpyAsync(_buffers.data()[_inputIndex], inputc.data(),
-	       		      num_processed *  inputc._height * inputc._width * sizeof(float),
-	       		      cudaMemcpyHostToDevice, cstream);
-	    else
-	      cudaMemcpyAsync(_buffers.data()[_inputIndex], inputc.data(),
-	       		      num_processed * 3 * inputc._height * inputc._width * sizeof(float),
-	       		      cudaMemcpyHostToDevice, cstream);
-	    _context->enqueue(num_processed, _buffers.data(), cstream, nullptr);
-	    cudaMemcpyAsync(_floatOut.data(), _buffers.data()[_outputIndex0],
-			    num_processed * _nclasses * sizeof(float),
-			    cudaMemcpyDeviceToHost, cstream);
-	    cudaStreamSynchronize(cstream);
-	  }
-		
+	    this->_logger->error("Error while processing forward TRT pass, not enough memory ? {}",e.what());
+	    throw;
+	  }		
 
 	std::vector<double> probs;
 	std::vector<std::string> cats;
