@@ -930,6 +930,9 @@ namespace dd
     	_nclasses = 1;
 	this->_mltype = "regression";
       }
+    if (this->_inputc._timeserie)
+      this->_mltype = "timeserie";
+
     if (ad.has("loss"))
       {
         _loss = ad.get("loss").get<std::string>();
@@ -1001,7 +1004,7 @@ namespace dd
       timesteps = ad_mllib.get("timesteps").get<int>();
     if (timesteps <= 0 && this->_inputc._ctc)
       throw MLLibBadParamException("Need to specify timesteps > 0 with sequence (e.g. OCR / CTC) models");
-    if  (timesteps <= 0 && typeid(this->_inputc) == typeid(CSVTSCaffeInputFileConn))
+    if  (timesteps <= 0 && this->_inputc._timeserie)
       throw MLLibBadParamException("Need to specify timesteps > 0 with recurrent  models");
 
     std::lock_guard<std::mutex> lock(_net_mutex); // XXX: not mandatory as train calls are locking resources from above
@@ -1018,8 +1021,8 @@ namespace dd
       cad.add("crop_size",_crop_size);
     if (_autoencoder)
       cad.add("autoencoder",_autoencoder);
-    if (typeid(this->_inputc) == typeid(CSVTSCaffeInputFileConn))
-        inputc._timesteps = timesteps;
+    if (this->_inputc._timeserie)
+      inputc._timesteps = timesteps;
     try
       {
 	inputc.transform(cad);
@@ -1587,7 +1590,7 @@ namespace dd
 			      vals.push_back(dv.at(s).float_data(k));
 			    dv_float_data.push_back(vals);
 			  }
-                     else if (typeid(inputc) == typeid(CSVTSCaffeInputFileConn))  // timeseries case
+                     else if (inputc._timeserie)  // timeseries case
                        {
 			    std::vector<double> vals;
                          for (int t=0; t<inputc._timesteps; ++t)
@@ -1702,7 +1705,7 @@ namespace dd
                slot = findOutputSlotNumberByBlobName(net, "ip_loss");
              }
 
-           if (typeid(inputc) == typeid(CSVTSCaffeInputFileConn))
+           if (inputc._timeserie)
              {
                slot = findOutputSlotNumberByBlobName(net,"rnn_pred");
              }
@@ -1900,7 +1903,7 @@ namespace dd
 			bad.add("target",targets);
 			bad.add("pred",predictions);
 		      }
-                  else if (typeid(inputc) == typeid(CSVTSCaffeInputFileConn))
+                  else if (inputc._timeserie)
                     {
                       std::vector<double> target;
                       for (size_t k=0;k<dv_float_data.at(j).size();k++)
@@ -1965,7 +1968,7 @@ namespace dd
 	  ad_res.add("regression",_regression);
 	if (inputc._ctc)
 	  ad_res.add("net_meas",true);
-       if (typeid(inputc) == typeid(CSVTSCaffeInputFileConn))
+       if (inputc._timeserie)
          {
            ad_res.add("timeserie",true);
            ad_res.add("timeseries",nout);
@@ -2018,7 +2021,7 @@ namespace dd
       }
 
 
-    if (typeid(inputc) == typeid(CSVTSCaffeInputFileConn)
+    if (inputc._timeserie
         && ad.getobj("parameters").getobj("input").has("timesteps"))
       {
         int timesteps = ad.getobj("parameters").getobj("input").get("timesteps").get<int>();
@@ -2146,7 +2149,7 @@ namespace dd
 		std::vector<Datum> dv = inputc.get_dv_test(batch_size,has_mean_file);
 		if (dv.empty())
                 {
-                  if (typeid(inputc) == typeid(CSVTSCaffeInputFileConn)) // timeseries
+                  if (inputc._timeserie) // timeseries
                     // in case of time series, need to output data of last serie at end
                     {
                       if (series.size() > 0)
@@ -2556,7 +2559,7 @@ namespace dd
 		  vrad.push_back(outseq);
 		}
 	    }
-           else if (typeid(inputc) == typeid(CSVTSCaffeInputFileConn)) // timeseries
+           else if (inputc._timeserie) // timeseries
              {
                int slot = findOutputSlotNumberByBlobName(_net,"rnn_pred");
                //results[slot] is TxNxDataDim , N is batchsize ...
@@ -2714,10 +2717,10 @@ namespace dd
 	  {
 	    out.add("autoencoder",true);
 	  }
-       if (typeid(inputc) == typeid(CSVTSCaffeInputFileConn))
-         {
-           out.add("timeseries",true);
-         }
+    if (inputc._timeserie)
+      {
+        out.add("timeseries",true);
+      }
       }
     
     out.add("nclasses",nclasses);
@@ -2856,7 +2859,7 @@ namespace dd
 	  {
 	    caffe::MemoryDataParameter *mdp = lp->mutable_memory_data_param();
 	    if (mdp->has_batch_size() && batch_size > 0 &&
-               ( (batch_size != inputc.batch_size()) || (typeid(inputc) == typeid(CSVTSCaffeInputFileConn)) ))
+            ( (batch_size != inputc.batch_size()) || inputc._timeserie ))
 	      {
 		if (i == 0) // training
 		  mdp->set_batch_size(batch_size);
@@ -2894,7 +2897,7 @@ namespace dd
 	  }
       }
 
-    if (typeid(inputc) == typeid(CSVTSCaffeInputFileConn))
+    if (inputc._timeserie)
       {
         caffe::LayerParameter *loss_scale_layer_param = find_layer_by_name(*np,"Loss_Scale");
         if (loss_scale_layer_param != NULL)
@@ -3008,7 +3011,7 @@ namespace dd
     if (net_param.mutable_layer(0)->has_memory_data_param()
 	|| net_param.mutable_layer(1)->has_memory_data_param())
       {
-        if (_ntargets == 0 || _ntargets == 1 || (typeid(this->_inputc) == typeid(CSVTSCaffeInputFileConn)))
+        if (_ntargets == 0 || _ntargets == 1 || this->_inputc._timeserie)
 	  {
 	    if (net_param.mutable_layer(0)->has_memory_data_param())
 	      {
@@ -3045,7 +3048,7 @@ namespace dd
       }
     
     // if autoencoder, set the last inner product layer output number to input size (i.e. inputc.channels())
-    if (_autoencoder && typeid(this->_inputc) == typeid(CSVCaffeInputFileConn))
+    if (_autoencoder && this->_inputc._timeserie)
       {
 	int k = net_param.layer_size();
 	std::string bottom;
@@ -3148,7 +3151,7 @@ namespace dd
     if (deploy_net_param.mutable_layer(0)->has_memory_data_param())
       {
 	// no batch size set on deploy model since it is adjusted for every prediction batch
-        if (_ntargets == 0 || _ntargets == 1  || (typeid(this->_inputc) == typeid(CSVTSCaffeInputFileConn)))
+        if (_ntargets == 0 || _ntargets == 1  || this->_inputc._timeserie)
 	  {
 	    deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels());
 	    deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_width(width);

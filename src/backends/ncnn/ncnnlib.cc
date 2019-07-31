@@ -100,11 +100,9 @@ namespace dd
         else
             _threads = dd_utils::my_hardware_concurrency();
 
-        if (typeid(this->_inputc) == typeid(CSVTSNCNNInputFileConn))
-          {
-            _timeserie = true;
-          }
-
+        _timeserie = this->_inputc._timeserie;
+        if (_timeserie)
+          this->_mltype = "timeserie";
         _blob_pool_allocator.set_size_compare_ratio(0.0f);
         _workspace_pool_allocator.set_size_compare_ratio(0.5f);
         ncnn::Option opt;

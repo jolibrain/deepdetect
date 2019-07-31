@@ -64,6 +64,7 @@ namespace dd
       {
         this->_dont_scale_labels = false;
         this->_scale_between_minus1_and_1 = true;
+        this->_timeserie = true;
       }
 
     ~CSVTSInputFileConn() {}
@@ -76,6 +77,7 @@ namespace dd
           this->_dont_scale_labels = i._dont_scale_labels;
           this->_min_vals = i._min_vals;
           this->_max_vals = i._max_vals;
+          this->_timeserie = true;
         }
 
     void init(const APIData &ad)
