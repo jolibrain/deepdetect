@@ -41,7 +41,7 @@ namespace dd
   public:
     XGBInputInterface() {}
     XGBInputInterface(const XGBInputInterface &xii)
-      :_missing(xii._missing),_ids(xii._ids) {}
+      :_missing(xii._missing) {}
     ~XGBInputInterface()
       {
       }
@@ -64,7 +64,6 @@ namespace dd
     
     // parameters
     float _missing;// = std::NAN; /**< represents missing values. */
-    std::vector<std::string> _ids; /**< input ids. */
   };
   
   class CSVXGBInputFileConn : public CSVInputFileConn, public XGBInputInterface

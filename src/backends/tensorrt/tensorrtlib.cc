@@ -636,6 +636,21 @@ namespace dd
     out.add("roi", false);
     out.add("multibox_rois", false);
     tout.finalize(ad.getobj("parameters").getobj("output"),out,static_cast<MLModel*>(&this->_mlmodel));
+
+    if (ad.has("chain") && ad.get("chain").get<bool>())
+      {
+	if (typeid(inputc) == typeid(ImgTensorRTInputFileConn))
+	  {
+	    APIData chain_input;
+	    if (!reinterpret_cast<ImgTensorRTInputFileConn*>(&inputc)->_orig_images.empty())
+	      chain_input.add("imgs",reinterpret_cast<ImgTensorRTInputFileConn*>(&inputc)->_orig_images);
+	    else
+	      chain_input.add("imgs",reinterpret_cast<ImgTensorRTInputFileConn*>(&inputc)->_images);
+	    chain_input.add("imgs_size",reinterpret_cast<ImgTensorRTInputFileConn*>(&inputc)->_images_size);
+	    out.add("input",chain_input);
+	  }
+      }
+
     out.add("status", 0);
     return 0;
   }

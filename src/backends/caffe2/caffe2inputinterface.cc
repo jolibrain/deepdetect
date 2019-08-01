@@ -48,9 +48,10 @@ namespace dd {
   }
 
   void Caffe2InputInterface::assert_context_validity(Caffe2NetTools::ModelContext &context,
+						     const std::vector<std::string> &ids,
 						     bool train) const {
     // Check the number of inputs
-    int nb_data = _is_load_manual ? _ids.size() : DB_SIZE(train);
+    int nb_data = _is_load_manual ? ids.size() : DB_SIZE(train);
     int devices = context.device_count();
     if (nb_data < devices) {
       throw InputConnectorBadParamException("cannot split " + std::to_string(nb_data) + " inputs"
@@ -213,7 +214,8 @@ namespace dd {
   //	        The names 'test_batch_size' and 'batch_size' are only kept to have a
   //		have a coherence over the APIs.
 
-  void Caffe2InputInterface::set_batch_sizes(const APIData &ad, bool train) {
+  void Caffe2InputInterface::set_batch_sizes(const APIData &ad, bool train,
+					     const std::vector<std::string> &ids) {
 
     // No need for further checks if the data can't be batched
     if (!_is_batchable) {
@@ -250,7 +252,7 @@ namespace dd {
 
       // Load all the data in one batch
       if (_is_load_manual) {
-	_batch_size = _ids.size();
+	_batch_size = ids.size();
       } else {
 	_batch_size = _db_size;
 	_train_batch_size = _train_db_size;
@@ -258,12 +260,14 @@ namespace dd {
     }
   }
 
-  void Caffe2InputInterface::finalize_transform_predict(const APIData &ad) {
-    set_batch_sizes(ad, false);
+  void Caffe2InputInterface::finalize_transform_predict(const APIData &ad,
+							const std::vector<std::string> &ids) {
+    set_batch_sizes(ad, false, ids);
   }
 
-  void Caffe2InputInterface::finalize_transform_train(const APIData &ad) {
-    set_batch_sizes(ad, true);
+  void Caffe2InputInterface::finalize_transform_train(const APIData &ad,
+						      const std::vector<std::string> &ids) {
+    set_batch_sizes(ad, true, ids);
   }
 
   bool Caffe2InputInterface::needs_reconfiguration(const Caffe2InputInterface &inputc) const {

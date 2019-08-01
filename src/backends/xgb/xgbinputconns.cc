@@ -121,7 +121,7 @@ namespace dd
 	    ++lit;
 	  }
 	mat.page_.offset.HostVector().push_back(mat.page_.offset.HostVector().back()+nelem);
-	_ids.push_back((*hit)._str);
+	this->_ids.push_back((*hit)._str);
 	++hit;
       }
     mat.info.num_nonzero_ = mat.page_.data.HostVector().size();
@@ -224,7 +224,7 @@ namespace dd
 	    std::vector<int> ids(_m->Info().num_row_);
 	    std::iota(std::begin(ids),std::end(ids),0);
 	    for (int i: ids)
-	      _ids.push_back(std::to_string(i));
+	      this->_ids.push_back(std::to_string(i));
 	  }
 	
       }
@@ -297,7 +297,7 @@ namespace dd
 	    ++nelem;
 	  }
 	mat.page_.offset.HostVector().push_back(mat.page_.offset.HostVector().back()+nelem);
-	_ids.push_back(std::to_string(nid));
+	this->_ids.push_back(std::to_string(nid));
 	++nid;
 	++hit;
       }

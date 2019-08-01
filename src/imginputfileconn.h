@@ -84,8 +84,10 @@ namespace dd
 	cv::Mat img = cv::Mat(cv::imdecode(cv::Mat(vdat,true),
                                      _unchanged_data ? CV_LOAD_IMAGE_UNCHANGED :
                                      (_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR)));
+	if (_keep_orig)
+	  _orig_imgs.push_back(img);
 	_imgs_size.push_back(std::pair<int,int>(img.rows,img.cols));
-    cv::Mat rimg;
+	cv::Mat rimg;
 	if (_scaled)
 	  scale(img, rimg);
 	else if (_width == 0 || _height == 0) {
@@ -131,6 +133,8 @@ namespace dd
     {
       cv::Mat img = cv::imread(fname, _unchanged_data ? CV_LOAD_IMAGE_UNCHANGED :
                                (_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR));
+      if (_keep_orig)
+	_orig_imgs.push_back(img);
       if (img.empty())
 	{
 	  _logger->error("empty image {}",fname);
@@ -183,6 +187,7 @@ namespace dd
     
     int read_mem(const std::string &content)
     {
+      _in_mem = true;
       cv::Mat timg;
       _b64 = possibly_base64(content);
       if (_b64)
@@ -253,6 +258,8 @@ namespace dd
 	  cv::Mat img = cv::imread(p.first, _unchanged_data ? CV_LOAD_IMAGE_UNCHANGED :
                              (_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR));
 	  _imgs_size.push_back(std::pair<int,int>(img.rows,img.cols));
+	  if (_keep_orig)
+	    _orig_imgs.push_back(img);
 	  cv::Mat rimg;
 
 	  try
@@ -299,10 +306,11 @@ namespace dd
     }
     
     std::vector<cv::Mat> _imgs;
+    std::vector<cv::Mat> _orig_imgs;
     std::vector<std::string> _img_files;
     std::vector<std::pair<int,int>> _imgs_size;
     bool _bw = false;
-    bool _b64 = false;
+    bool _in_mem = false;
     bool _unchanged_data = false;
     std::vector<int> _labels;
     int _width = 224;
@@ -312,6 +320,8 @@ namespace dd
     bool _scaled = false;
     int _scale_min = 600;
     int _scale_max = 1000;
+    bool _keep_orig = false;
+    bool _b64 = false;
     std::string _db_fname;
     std::shared_ptr<spdlog::logger> _logger;
   };
@@ -327,7 +337,8 @@ namespace dd
       _crop_width(i._crop_width),_crop_height(i._crop_height),
       _bw(i._bw),_unchanged_data(i._unchanged_data),
       _mean(i._mean),_has_mean_scalar(i._has_mean_scalar),
-      _scaled(i._scaled), _scale_min(i._scale_min), _scale_max(i._scale_max) {}
+      _scaled(i._scaled), _scale_min(i._scale_min), _scale_max(i._scale_max),
+      _keep_orig(i._keep_orig) {}
     ~ImgInputFileConn() {}
 
     void init(const APIData &ad)
@@ -379,6 +390,10 @@ namespace dd
 	_scale_min = ad.get("scale_min").get<int>();
       if (ad.has("scale_max"))
 	_scale_max = ad.get("scale_max").get<int>();
+
+      // whether to keep original image (for chained ops, e.g. cropping)
+      if (ad.has("keep_orig"))
+	_keep_orig = ad.get("keep_orig").get<bool>();
     }
     
     int feature_size() const
@@ -420,6 +435,8 @@ namespace dd
       int catch_read = 0;
       std::string catch_msg;
       std::vector<std::string> uris;
+      std::vector<std::string> meta_uris;
+      std::vector<std::string> index_uris;
       std::vector<std::string> failed_uris;
 #pragma omp parallel for
       for (size_t i=0;i<_uris.size();i++)
@@ -436,6 +453,7 @@ namespace dd
 	  dimg._ctype._scaled = _scaled;
 	  dimg._ctype._scale_min = _scale_min;
 	  dimg._ctype._scale_max = _scale_max;
+	  dimg._ctype._keep_orig = _keep_orig;
 	  try
 	    {
 	      if (dimg.read_element(u,this->_logger))
@@ -466,6 +484,10 @@ namespace dd
 	    _images.insert(_images.end(),
 	      std::make_move_iterator(dimg._ctype._imgs.begin()),
 	      std::make_move_iterator(dimg._ctype._imgs.end()));
+	    if (_keep_orig)
+	      _orig_images.insert(_orig_images.end(),
+				  std::make_move_iterator(dimg._ctype._orig_imgs.begin()),
+				  std::make_move_iterator(dimg._ctype._orig_imgs.end()));
 	    _images_size.insert(_images_size.end(),
 				std::make_move_iterator(dimg._ctype._imgs_size.begin()),
 				std::make_move_iterator(dimg._ctype._imgs_size.end()));
@@ -473,13 +495,19 @@ namespace dd
 	      _test_labels.insert(_test_labels.end(),
 	      std::make_move_iterator(dimg._ctype._labels.begin()),
 	      std::make_move_iterator(dimg._ctype._labels.end()));
-	    if (!dimg._ctype._b64 && dimg._ctype._imgs.size() == 1)
+	    if (!_ids.empty())
+	      uris.push_back(_ids.at(i));
+	    else if (!dimg._ctype._b64 && dimg._ctype._imgs.size() == 1)
 	      uris.push_back(u);
 	    else if (!dimg._ctype._img_files.empty())
 	      uris.insert(uris.end(),
 	      std::make_move_iterator(dimg._ctype._img_files.begin()),
 	      std::make_move_iterator(dimg._ctype._img_files.end()));
 	    else uris.push_back(std::to_string(i));
+	    if (!_meta_uris.empty())
+	      meta_uris.push_back(_meta_uris.at(i));
+	    if (!_index_uris.empty())
+	      index_uris.push_back(_index_uris.at(i));
 	  }
 	}
       if (catch_read)
@@ -489,6 +517,9 @@ namespace dd
 	  throw InputConnectorBadParamException(catch_msg);
 	}
       _uris = uris;
+      _ids = _uris; // since uris may be in different order than before transform
+      _meta_uris = meta_uris;
+      _index_uris = index_uris;
       if (!_db_fname.empty())
 	return; // db filename is passed to backend
       
@@ -532,6 +563,7 @@ namespace dd
 
     // data
     std::vector<cv::Mat> _images;
+    std::vector<cv::Mat> _orig_images; /**< stored upon request. */
     std::vector<cv::Mat> _test_images;
     std::vector<int> _test_labels;
     std::vector<std::pair<int,int>> _images_size;
@@ -550,6 +582,7 @@ namespace dd
     bool _scaled = false;
     int _scale_min = 600;
     int _scale_max = 1000;
+    bool _keep_orig = false;
   };
 }
 

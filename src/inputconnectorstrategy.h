@@ -161,6 +161,12 @@ namespace dd
       try
 	{
 	  _uris = ad.get("data").get<std::vector<std::string>>();
+	  if (ad.has("ids"))
+	    _ids = ad.get("ids").get<std::vector<std::string>>();
+	  if (ad.has("meta_uris"))
+	    _meta_uris = ad.get("meta_uris").get<std::vector<std::string>>();
+	  if (ad.has("index_uris"))
+	    _index_uris = ad.get("index_uris").get<std::vector<std::string>>();
 	}
       catch(...)
 	{
@@ -188,6 +194,9 @@ namespace dd
     bool _timeserie = false; /**< whether connector is a timeserie connector */
 
     std::vector<std::string> _uris;
+    std::vector<std::string> _ids;
+    std::vector<std::string> _meta_uris; /**< first level URIs, used with chains typically. */
+    std::vector<std::string> _index_uris; /**< URI to be stored in similarity search index. */
     std::string _model_repo; /**< model repository, useful when connector needs to read from saved data (e.g. vocabulary). */
     std::shared_ptr<spdlog::logger> _logger;
   };

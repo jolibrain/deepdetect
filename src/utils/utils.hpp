@@ -22,6 +22,8 @@
 #ifndef DD_UTILS
 #define DD_UTILS
 
+#include <fstream>
+
 namespace dd
 {
   class dd_utils

@@ -54,7 +54,7 @@ namespace dd
     ImgTensorRTInputFileConn()
       :ImgInputFileConn() {}
     ImgTensorRTInputFileConn(const ImgTensorRTInputFileConn &i)
-      :ImgInputFileConn(i),TensorRTInputInterface(i), _ids(i._ids), _imgs_size(i._imgs_size)
+      :ImgInputFileConn(i),TensorRTInputInterface(i), _imgs_size(i._imgs_size)
     {
       this->_has_mean_file = i._has_mean_file;
     }
@@ -83,7 +83,6 @@ namespace dd
     std::string _correspname = "corresp.txt";
     int _batch_index = 0;
     int process_batch(const unsigned int batch_size);
-    std::vector<std::string> _ids; /**< input ids (e.g. image ids) */
     std::unordered_map<std::string,std::pair<int,int>> _imgs_size; /**< image sizes, used in detection. */
 
   private:

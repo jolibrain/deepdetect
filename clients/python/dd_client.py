@@ -27,7 +27,8 @@ API_METHODS_URL = {
         "info": "/info",
         "services": "/services",
         "train": "/train",
-        "predict": "/predict"
+        "predict": "/predict",
+        "chain": "/chain"
     }
 }
 
@@ -218,7 +219,7 @@ class DD(object):
 
     # API predict
     def post_predict(self, sname, data, parameters_input, parameters_mllib,
-                     parameters_output, use_base64=False):
+                     parameters_output, use_base64=False, index_uris=[]):
         """
         Makes prediction from data and model
         Parameters:
@@ -237,8 +238,58 @@ class DD(object):
                                "mllib": parameters_mllib,
                                "output": parameters_output},
                 "data": data}
+        if index_uris:
+            data["index_uris"] = index_uris
         return self.post(self.__urls["predict"], json=data)
 
+    # API chain
+    def make_call(self, sname, data, parameters_input, parameters_mllib,
+                  parameters_output, use_base64=False, index_uris = []):
+        """
+        Creates a dictionary that holds the JSON call,
+        to be added to an array and processed by 
+        a post_chain API call. This basically eases the making
+        of chain calls from Python.
+        Parameters are the same as for a post_predict call
+        """
+        
+        if use_base64:
+            data = [_convert_base64(d) for d in data]
+
+        call = {"service": sname,
+                "parameters": {"input": parameters_input,
+                               "mllib": parameters_mllib,
+                               "output": parameters_output}}
+        if data:
+            call["data"] = data
+        if index_uris:
+            call["index_uris"] = index_uris
+        
+        return call
+
+    def make_action(self, action_type, parameters=[]):
+        """
+        Creates a dictionary that holds a JSON chain action.
+        Parameters:
+        action_type -- "crop" or "filter" for now
+        parameters -- action parameters
+        """
+        action = {"action": {"type":action_type}}
+        if parameters:
+            action["action"]["parameters"] = parameters
+        return action
+
+    def post_chain(self, cname, calls):
+        """
+        Makes a chained prediction
+        Parameters:
+        cname -- chain execution name
+        calls -- array of calls and actions, use make_call and make_action
+        """
+
+        chain = {"chain": { "calls": calls } }
+        return self.post(self.__urls["chain"] + '/%s' % cname, json=chain)
+    
 # test
 if __name__ == '__main__':
     dd = DD()

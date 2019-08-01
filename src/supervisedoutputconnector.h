@@ -115,6 +115,7 @@ namespace dd
       bool _indexed = false;
       std::multimap<double,URIData> _nns; /**< nearest neigbors. */
       std::vector<std::multimap<double,URIData>> _bbox_nns; /**< per bbox nearest neighbors. */
+      std::string _index_uri; /**< alternative URI to store in index in place of original URI. */
 #endif      
     };
 
@@ -161,6 +162,11 @@ namespace dd
       for (APIData ad: vrad)
 	{ 
 	  std::string uri = ad.get("uri").get<std::string>();
+	  std::string index_uri;
+#ifdef USE_SIMSEARCH
+	  if (ad.has("index_uri"))
+	    index_uri = ad.get("index_uri").get<std::string>();
+#endif
 	  double loss = ad.get("loss").get<double>();
 	  std::vector<double> probs = ad.get("probs").get<std::vector<double>>();
 	  std::vector<std::string> cats;
@@ -185,7 +191,13 @@ namespace dd
 	  if ((hit=_vcats.find(uri))==_vcats.end())
 	    {
 	      auto resit = _vcats.insert(std::pair<std::string,int>(uri,_vvcats.size()));
-	      _vvcats.push_back(sup_result(uri,loss));
+	      sup_result supres(uri,loss);
+
+#ifdef USE_SIMSEARCH
+	      if (!index_uri.empty())
+		supres._index_uri = index_uri;
+#endif
+	      _vvcats.push_back(supres);
 	      hit = resit.first;
 	      for (size_t i=0;i<probs.size();i++)
 		{
@@ -223,6 +235,9 @@ namespace dd
 	    {
 	      sup_result sresult = _vvcats.at(i);
 	      sup_result bsresult(sresult._label,sresult._loss);
+#ifdef USE_SIMSEARCH
+	      bsresult._index_uri = sresult._index_uri;
+#endif
 	      std::copy_n(sresult._cats.begin(),std::min(best,static_cast<int>(sresult._cats.size())),
 			  std::inserter(bsresult._cats,bsresult._cats.end()));
 	      if (!sresult._bboxes.empty())
@@ -245,7 +260,10 @@ namespace dd
 	    {
 	      sup_result sresult = _vvcats.at(i);
 	      sup_result bsresult(sresult._label,sresult._loss);
-
+#ifdef USE_SIMSEARCH
+	      bsresult._index_uri = sresult._index_uri;
+#endif
+	      
 	      if (best == nclasses)
 		{
 		  int nbest = sresult._cats.size();
@@ -354,8 +372,6 @@ namespace dd
 	  _best = 1;
 	  ad_out.erase("autoencoder");
 	}
-
-
 
       bool has_bbox = ad_out.has("bbox") && ad_out.get("bbox").get<bool>();
       bool has_roi = ad_out.has("roi") && ad_out.get("roi").get<bool>();
@@ -1901,6 +1917,8 @@ namespace dd
 	    adpred.add("loss",_vvcats.at(i)._loss);
 	  adpred.add("uri",_vvcats.at(i)._label);
 #ifdef USE_SIMSEARCH
+	  if (!_vvcats.at(i)._index_uri.empty())
+	    adpred.add("index_uri",_vvcats.at(i)._index_uri);
 	  if (!indexed_uris.empty() && (hit=indexed_uris.find(_vvcats.at(i)._label))!=indexed_uris.end())
 	    adpred.add("indexed",true);
 	  if (!_vvcats.at(i)._nns.empty() || !_vvcats.at(i)._bbox_nns.empty())

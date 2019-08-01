@@ -82,6 +82,18 @@ namespace dd
     (void)vs;
     return vout();
   }
+
+  vout visitor_vad::operator()(const std::vector<cv::Mat> &vcv)
+  {
+    (void)vcv;
+    return vout();
+  }
+
+  vout visitor_vad::operator()(const std::vector<std::pair<int,int>> &vpi)
+  {
+    (void)vpi;
+    return vout();
+  }
   
   vout visitor_vad::operator()(const std::vector<APIData> &vad)
   {

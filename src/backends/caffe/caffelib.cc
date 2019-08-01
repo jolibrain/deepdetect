@@ -2117,7 +2117,9 @@ namespace dd
     std::string extract_layer;
     if (ad_mllib.has("extract_layer"))
       extract_layer = ad_mllib.get("extract_layer").get<std::string>();
-      
+    if (ad.has("chain") && ad.get("chain").get<bool>())
+      cad.add("chain",true);
+    
     try
       {
         inputc.transform(cad);
@@ -2203,7 +2205,7 @@ namespace dd
 	    throw;
 	  }
 
-       this->_mem_used_test = _net->memory_used();
+	this->_mem_used_test = _net->memory_used();
 
 	float loss = 0.0;
 	if (extract_layer.empty() || inputc._segmentation) // supervised or segmentation
@@ -2429,6 +2431,8 @@ namespace dd
 		    if (leave)
 		      continue;
 		    rad.add("uri",uri);
+		    if (!inputc._index_uris.empty())
+		      rad.add("index_uri",inputc._index_uris.at(idoffset+j));
 		    rad.add("loss",0.0); // XXX: unused
 		    rad.add("probs",probs);
 		    rad.add("cats",cats);
@@ -2504,6 +2508,8 @@ namespace dd
 		rad.add("vals",vals);
 		rad.add("bboxes", bboxes);
 		rad.add("uri",inputc._ids.at(idoffset+iid));
+		if (!inputc._index_uris.empty())
+		  rad.add("index_uri",inputc._index_uris.at(idoffset+iid));
 		rad.add("loss",0.0); // XXX: unused
 		rad.add("probs",probs);
 		rad.add("cats",cats);
@@ -2690,6 +2696,10 @@ namespace dd
 	      {
 		APIData rad;
 		rad.add("uri",inputc._ids.at(idoffset+j));
+		if (!inputc._meta_uris.empty())
+		  rad.add("meta_uri",inputc._meta_uris.at(idoffset+j));
+		if (!inputc._index_uris.empty())
+		  rad.add("index_uri",inputc._index_uris.at(idoffset+j));
 		rad.add("loss",static_cast<double>(loss));
 		std::vector<double> vals;
 		int cpos = 0;
@@ -2735,6 +2745,19 @@ namespace dd
 	unsupo.add_results(vrad);
 	unsupo.finalize(ad.getobj("parameters").getobj("output"),out,static_cast<MLModel*>(&this->_mlmodel));
       }
+    if (ad.has("chain") && ad.get("chain").get<bool>())
+      {
+	if (typeid(inputc) == typeid(ImgCaffeInputFileConn))
+	  {
+	    APIData chain_input;
+	    if (!reinterpret_cast<ImgCaffeInputFileConn*>(&inputc)->_orig_images.empty())
+	      chain_input.add("imgs",reinterpret_cast<ImgCaffeInputFileConn*>(&inputc)->_orig_images);
+	    else chain_input.add("imgs",reinterpret_cast<ImgCaffeInputFileConn*>(&inputc)->_images);
+	    chain_input.add("imgs_size",reinterpret_cast<ImgCaffeInputFileConn*>(&inputc)->_images_size);
+	    out.add("input",chain_input);
+	  }
+      }
+    
     out.add("status",0);
     
     return 0;

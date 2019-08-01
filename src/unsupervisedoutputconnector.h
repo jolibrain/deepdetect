@@ -30,8 +30,9 @@ namespace dd
   public:
     unsup_result(const std::string &uri,
 		 const std::vector<double> &vals,
-                 const APIData &extra=APIData())
-      :_uri(uri),_vals(vals),_extra(extra) {
+                 const APIData &extra=APIData(),
+		 const std::string &meta_uri="")
+      :_uri(uri),_vals(vals),_extra(extra), _meta_uri(meta_uri) {
     }
 
     ~unsup_result() {}
@@ -72,6 +73,7 @@ namespace dd
     std::multimap<double,std::string> _nns; /**< nearest neigbors. */
 #endif
     APIData _extra; /**< other metadata, e.g. image size.*/
+    std::string _meta_uri; // used for indexing from a chain
   };
   
   /**
@@ -110,7 +112,6 @@ namespace dd
       for (APIData ad: vrad)
 	{
 	  std::string uri = ad.get("uri").get<std::string>();
-	  //double loss = ad.get("loss").get<double>();
 	  std::vector<double> vals = ad.get("vals").get<std::vector<double>>();
 	  if ((hit=_vres.find(uri))==_vres.end())
 	    {
@@ -120,7 +121,12 @@ namespace dd
                extra.add("imgsize",ad.getobj("imgsize"));
              if (ad.has("confidences"))
                extra.add("confidences",ad.getobj("confidences"));
-             _vvres.push_back(unsup_result(uri,vals,extra));
+	     std::string meta_uri;
+	     if (ad.has("index_uri"))
+	       meta_uri = ad.get("index_uri").get<std::string>();
+	     else if (ad.has("meta_uri"))
+	       meta_uri = ad.get("meta_uri").get<std::string>();
+	     _vvres.push_back(unsup_result(uri,vals,extra,meta_uri));
 	    }
 	  
 	}
@@ -173,7 +179,10 @@ namespace dd
 	  // index output content -> vector (XXX: will need to flatten in case of multiple vectors)
 	  for (size_t i=0;i<_vvres.size();i++)
 	    {
-	      URIData urid(_vvres.at(i)._uri);
+	      URIData urid;
+	      if (_vvres.at(i)._meta_uri.empty())
+		urid = URIData(_vvres.at(i)._uri);
+	      else urid = URIData(_vvres.at(i)._meta_uri);
 	      mlm->_se->index(urid,_vvres.at(i)._vals);
 	      indexed_uris.insert(urid._uri);
 	    }

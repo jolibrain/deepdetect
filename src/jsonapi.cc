@@ -277,6 +277,22 @@ namespace dd
     return jd;
   }
 #endif
+
+  JDoc JsonAPI::dd_action_bad_request_1012(const std::string &msg) const
+  {
+    JDoc jd;
+    jd.SetObject();
+    render_status(jd,400,"BadRequest",1012, msg);
+    return jd;
+  }
+
+  JDoc JsonAPI::dd_action_internal_error_1013(const std::string &msg) const
+  {
+    JDoc jd;
+    jd.SetObject();
+    render_status(jd,400,"InternalError",1013, msg);
+    return jd;
+  }
   
   std::string JsonAPI::jrender(const JDoc &jst) const
   {
@@ -855,7 +871,7 @@ namespace dd
       }
     return jpred;
   }
-
+  
   JDoc JsonAPI::service_train(const std::string &jstr)
   {
     rapidjson::Document d;
@@ -1132,6 +1148,98 @@ namespace dd
     jout.AddMember("job",ad.get("job").get<int>(),jd.GetAllocator());
     jd.AddMember("head",jout,jd.GetAllocator());
     return jd;
+  }
+
+  JDoc JsonAPI::service_chain(const std::string &cname,
+			      const std::string &jstr)
+  {
+    rapidjson::Document d;
+    d.Parse(jstr.c_str());
+    if (d.HasParseError())
+      {
+	_logger->error("JSON parsing error on string: {}",jstr);
+	return dd_bad_request_400();
+      }
+
+    // data
+    APIData ad_data;
+    try
+      {
+	ad_data = APIData(d);
+      }
+    catch(RapidjsonException &e)
+      {
+	_logger->error("JSON error {}",e.what());
+	return dd_bad_request_400(e.what());
+      }
+    catch(...)
+      {
+	return dd_bad_request_400();
+      }
+
+    // chained predictions
+    APIData out;
+    try
+      {
+	this->chain(ad_data,cname,out);
+      }
+    catch (InputConnectorBadParamException &e)
+      {
+	return dd_service_input_bad_request_1005(e.what());
+      }
+    catch (MLLibBadParamException &e)
+      {
+	return dd_service_bad_request_1006(e.what());
+      }
+    catch (InputConnectorInternalException &e)
+      {
+	return dd_internal_error_500(e.what());
+      }
+    catch (MLLibInternalException &e)
+      {
+	return dd_internal_error_500(e.what());
+      }
+    catch (MLServiceLockException &e)
+      {
+	return dd_train_predict_conflict_1008();
+      }
+#ifdef USE_SIMSEARCH
+    catch (SimIndexException &e)
+      {
+	return dd_sim_index_error_1010();
+      }
+    catch (SimSearchException &e)
+      {
+	return dd_sim_search_error_1011();
+      }
+#endif
+    catch (ActionBadParamException &e)
+      {
+	return dd_action_bad_request_1012(e.what());
+      }
+    catch (ActionInternalException &e)
+      {
+	return dd_action_internal_error_1013(e.what());
+      }
+    catch (std::exception &e)
+      {
+	return dd_internal_mllib_error_1007(e.what());
+      }
+
+    JDoc jpred = dd_ok_200();
+    JVal jout(rapidjson::kObjectType);
+    out.toJVal(jpred,jout);
+    JVal jhead(rapidjson::kObjectType);
+    jhead.AddMember("method","/predict",jpred.GetAllocator());
+    //jhead.AddMember("service",d["service"],jpred.GetAllocator());
+    //if (!has_measure)
+    jhead.AddMember("time",jout["time"],jpred.GetAllocator());
+    jpred.AddMember("head",jhead,jpred.GetAllocator());
+    JVal jbody(rapidjson::kObjectType);
+    if (jout.HasMember("predictions"))
+      jbody.AddMember("predictions",jout["predictions"],jpred.GetAllocator());
+    jpred.AddMember("body",jbody,jpred.GetAllocator());
+    return jpred;
   }
   
   int JsonAPI::store_json_blob(const std::string &model_repo,
