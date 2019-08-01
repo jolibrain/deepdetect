@@ -39,7 +39,7 @@ namespace dd
   class APIData;
 
   // recursive variant container, see utils/variant.hpp and utils/recursive_wrapper.hpp
-  typedef mapbox::util::variant<std::string,double,int,long int,bool,
+  typedef mapbox::util::variant<std::string,double,int,long int,long long int,bool,
     std::vector<std::string>,std::vector<double>,std::vector<int>,std::vector<bool>,
     std::vector<cv::Mat>,std::vector<std::pair<int,int>>,
     mapbox::util::recursive_wrapper<APIData>,
@@ -85,6 +85,7 @@ namespace dd
     vout operator()(const double &d);
     vout operator()(const int &i);
     vout operator()(const long int &i);
+    vout operator()(const long long int &i);
     vout operator()(const bool &b);
     vout operator()(const std::vector<double> &vd);
     vout operator()(const std::vector<int> &vd);
@@ -322,8 +323,14 @@ namespace dd
     void operator()(const long int &i)
     {
       if (!_jv)
-	_jd->AddMember(_jvkey,JVal(i),_jd->GetAllocator());
-      else _jv->AddMember(_jvkey,JVal(i),_jd->GetAllocator());
+	_jd->AddMember(_jvkey,JVal(static_cast<uint64_t>(i)),_jd->GetAllocator());
+      else _jv->AddMember(_jvkey,JVal(static_cast<uint64_t>(i)),_jd->GetAllocator());
+    }
+    void operator()(const long long int &i)
+    {
+      if (!_jv)
+	_jd->AddMember(_jvkey,JVal(static_cast<uint64_t>(i)),_jd->GetAllocator());
+      else _jv->AddMember(_jvkey,JVal(static_cast<uint64_t>(i)),_jd->GetAllocator());
     }
     void operator()(const double &d)
     {

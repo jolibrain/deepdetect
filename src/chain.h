@@ -76,6 +76,7 @@ namespace dd
     void operator()(const double &d) { (void)d; }
     void operator()(const int &i) { (void)i; }
     void operator()(const long int &i) { (void)i; }
+    void operator()(const long long int &i) { (void)i; }
     void operator()(const bool &b) { (void)b; }
     void operator()(const std::vector<double> &vd) { (void)vd; }
     void operator()(const std::vector<int> &vd) { (void)vd; }

@@ -47,6 +47,12 @@ namespace dd
     (void)i;
     return vout();
   }
+
+  vout visitor_vad::operator()(const long long int &i)
+  {
+    (void)i;
+    return vout();
+  }
   
   vout visitor_vad::operator()(const bool &b)
   {
