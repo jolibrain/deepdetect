@@ -29,6 +29,7 @@
 #include <gflags/gflags.h>
 
 DEFINE_string(service_start_list,"","list of JSON calls to be executed at startup");
+DEFINE_bool(service_start_list_no_exit_on_failure, false, "do not exit on failure for any JSON calls executed at startup");
 
 namespace dd
 {
@@ -48,23 +49,25 @@ namespace dd
   {
     google::ParseCommandLineFlags(&argc, &argv, true);
     if (!FLAGS_service_start_list.empty())
-      service_autostart(FLAGS_service_start_list);
+      service_autostart(FLAGS_service_start_list, FLAGS_service_start_list_no_exit_on_failure);
     return 0;
   }
 
-  JDoc JsonAPI::service_autostart(const std::string &autostart_file)
+  JDoc JsonAPI::service_autostart(const std::string &autostart_file, const bool &no_exit_on_failure /* = true */)
   {
     if (autostart_file.empty())
       return 0;
     if (!fileops::file_exists(autostart_file))
       {
 	_logger->error("JSON autostart file not found: {}",autostart_file);
+	if (!no_exit_on_failure) exit(1);
 	return dd_bad_request_400();
       }
     std::ifstream injsonfile(autostart_file);
     if (!injsonfile.is_open())
       {
 	_logger->error("Failed opening JSON autostart file {}",autostart_file);
+	if (!no_exit_on_failure) exit(1);
 	return dd_internal_error_500();
       }
 
@@ -80,6 +83,7 @@ namespace dd
 	    || (api_call == "service_predict" && elts.size() != 2))
 	  {
 	    _logger->error("Error parsing autostart JSON file {} line {}: wrong number of elements",autostart_file,lines);
+	    if (!no_exit_on_failure) exit(1);
 	    return dd_bad_request_400();
 	  }
 	
@@ -89,11 +93,19 @@ namespace dd
 	    std::string sname = elts.at(1);
 	    std::string body = elts.at(2);
 	    calls_output.push_back(service_create(sname,body));
+	    if (calls_output.back() != dd_created_201()) {
+	        _logger->error("Service creation failed for {}",sname);
+	        if (!no_exit_on_failure) exit(1);
+	    }
 	  }
 	else if (api_call == "service_predict")
 	  {
 	    std::string body = elts.at(1);
 	    calls_output.push_back(service_predict(body));
+	    if (calls_output.back() != dd_ok_200()) {
+	        _logger->error("Service predict failed for {}",body);
+	        if (!no_exit_on_failure) exit(1);
+	    }
 	  }
 	++lines;
       }

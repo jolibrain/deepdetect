@@ -45,7 +45,7 @@ namespace dd
      * \brief service autostart from JSON file
      * @param autostart_file JSON file with service API call and JSON body
      */
-    JDoc service_autostart(const std::string &autostart_file);
+    JDoc service_autostart(const std::string &autostart_file, const bool &no_exit_on_failure = true);
     
     /**
      * \brief error status generation
