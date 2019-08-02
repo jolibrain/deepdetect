@@ -23,7 +23,7 @@ RUN cp /usr/local/lib/libcurlpp.* /usr/lib/
 
 WORKDIR /opt
 RUN echo 'Building DeepDetect'
-RUN git clone https://github.com/jolibrain/deepdetect.git && cd deepdetect && git checkout dd_ncnn2 && mkdir build
+RUN git clone https://github.com/jolibrain/deepdetect.git && cd deepdetect && mkdir build
 
 WORKDIR /opt/deepdetect/build
 RUN cmake .. -DUSE_NCNN=ON -DRPI3=ON -DUSE_HDF5=OFF -DUSE_CAFFE=OFF
