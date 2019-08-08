@@ -68,15 +68,26 @@ namespace dd
     // ======= TORCH MODULE
 
 
-    TorchModule::TorchModule() {}
+    TorchModule::TorchModule() : _device{"cpu"} {}
 
     c10::IValue TorchModule::forward(std::vector<c10::IValue> source) 
     {
         if (_traced)
         {
-            source = { _traced->forward(source) };
+            auto output = _traced->forward(source);
+            if (output.isTensorList()) {
+                auto &elems = output.toTensorList()->elements();
+                source = std::vector<c10::IValue>(elems.begin(), elems.end());
+            }
+            else if (output.isTuple()) {
+                auto &elems = output.toTuple()->elements();
+                source = std::vector<c10::IValue>(elems.begin(), elems.end());
+            }
+            else {
+                source = { output };
+            }
         }
-        c10::IValue out_val = source.at(0);
+        c10::IValue out_val = source.at(_classif_in);
         if (_classif)
         {
             out_val = _classif->forward(to_tensor_safe(out_val));
@@ -100,12 +111,31 @@ namespace dd
     void TorchModule::save_checkpoint(TorchModel &model, const std::string &name) 
     {
         if (_traced)
-            _traced->save(model._repo + "/checkpoint-" + name + ".pt");
+            _traced->save(model._repo + "/checkpoint-" + name + "-trace.pt");
+        if (_classif)
+            torch::save(_classif, model._repo + "/checkpoint-" + name + ".pt");
     }
 
-    void TorchModule::load_checkpoint(const std::string &filename) 
+    void TorchModule::load(TorchModel &model) 
     {
-        // Not yet implemented
+        if (!model._traced.empty())
+            _traced = torch::jit::load(model._traced, _device);
+        if (!model._weights.empty())
+            torch::load(_classif, model._weights);
+    }
+
+    void TorchModule::eval() {
+        if (_traced)
+            _traced->eval();
+        if (_classif)
+            _classif->eval();
+    }
+
+    void TorchModule::train() {
+        if (_traced)
+            _traced->train();
+        if (_classif)
+            _classif->train();
     }
 
 
@@ -124,6 +154,7 @@ namespace dd
     {
         this->_libname = "torch";
         _module = std::move(tl._module);
+        _template = tl._template;
         _nclasses = tl._nclasses;
         _device = tl._device;
     }
@@ -138,27 +169,45 @@ namespace dd
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
     void TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::init_mllib(const APIData &lib_ad)
     {
+        bool classification = true;
+        bool finetuning = false;
         bool gpu = false;
         int gpuid = -1;
 
-        if (lib_ad.has("gpu")) {
+        if (lib_ad.has("gpu"))
             gpu = lib_ad.get("gpu").get<bool>() && torch::cuda::is_available();
-        }
         if (lib_ad.has("gpuid"))
             gpuid = lib_ad.get("gpuid").get<int>();
-        if (lib_ad.has("nclasses")) {
+        if (lib_ad.has("nclasses"))
+        {
+            classification = true;
             _nclasses = lib_ad.get("nclasses").get<int>();
         }
+        if (lib_ad.has("template"))
+            _template = lib_ad.get("template").get<std::string>();
+        if (lib_ad.has("finetuning"))
+            finetuning = lib_ad.get("finetuning").get<bool>();
 
         _device = gpu ? torch::Device(DeviceType::CUDA, gpuid) : torch::Device(DeviceType::CPU);
+        _module._device = _device;
 
-        if (typeid(TInputConnectorStrategy) == typeid(TxtTorchInputFileConn)) {
-            //_attention = true;
+        // Create the model
+        if (this->_mlmodel._traced.empty())
+            throw MLLibInternalException("This template requires a traced net");
+
+        if (_template == "bert-classification")
+        {
+            if (!classification)
+                throw MLLibBadParamException("nclasses not specified");
+            
+            // XXX: dont hard code BERT output size
+            _module._classif = nn::Linear(768, _nclasses);
+            _module._classif->to(_device);
+
+            _module._classif_in = 1;
         }
 
-        // TODO load classification layer, or create it according to the number of classes
-        _module._traced = torch::jit::load(this->_mlmodel._model_file, _device);
-        _module._traced->eval();
+        _module.load(this->_mlmodel);
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -195,7 +244,7 @@ namespace dd
         int64_t batch_count = (inputc._dataset.cache_size() - 1) / batch_size + 1;
 
         // logging parameters
-        int64_t log_batch_period = 1;
+        int64_t log_batch_period = 20;
 
         if (ad_mllib.has("iterations"))
             iterations = ad_mllib.get("iterations").get<int>();
@@ -220,8 +269,24 @@ namespace dd
         }
 
         // create solver
-        // no care about solver type yet
-        optim::Adam optimizer(_module.parameters(), optim::AdamOptions(base_lr));
+        std::unique_ptr<optim::Optimizer> optimizer;
+        
+        if (solver_type == "ADAM")
+            optimizer = std::unique_ptr<optim::Optimizer>(
+                new optim::Adam(_module.parameters(), optim::AdamOptions(base_lr)));
+        else if (solver_type == "RMSPROP")
+            optimizer = std::unique_ptr<optim::Optimizer>(
+                new optim::RMSprop(_module.parameters(), optim::RMSpropOptions(base_lr)));
+        else if (solver_type == "ADAGRAD")
+            optimizer = std::unique_ptr<optim::Optimizer>(
+                new optim::Adagrad(_module.parameters(), optim::AdagradOptions(base_lr)));
+        else
+        {
+            if (solver_type != "SGD")
+                this->_logger->warn("Solver type {} not found, using SGD", solver_type);
+            optimizer = std::unique_ptr<optim::Optimizer>(
+                new optim::SGD(_module.parameters(), optim::SGDOptions(base_lr)));
+        }
 
         // create dataloader
         auto dataloader = torch::data::make_data_loader(
@@ -232,6 +297,7 @@ namespace dd
 
         for (int64_t epoch = 0; epoch < iterations; ++epoch)
         {
+            _module.train();
             this->add_meas("iteration", epoch);
             this->_logger->info("Iteration {}", epoch);
             int batch_id = 0;
@@ -244,13 +310,12 @@ namespace dd
                 Tensor y_pred = to_tensor_safe(_module.forward(in_vals));
                 Tensor y = to_one_hot(example.target.at(0), _nclasses).to(_device);
 
-                // TODO let loss be a parameter
                 auto loss = torch::mse_loss(y_pred, y);
                 double loss_val = loss.item<double>();
 
-                optimizer.zero_grad();
+                optimizer->zero_grad();
                 loss.backward();
-                optimizer.step();
+                optimizer->step();
 
                 this->add_meas("train_loss", loss_val);
                 this->add_meas_per_iter("train_loss", loss_val);
@@ -261,34 +326,38 @@ namespace dd
                 ++batch_id;
             }
             
-            if (epoch > 0 && epoch % test_interval == 0 && !eval_dataset.empty())
+            int64_t elapsed_it = epoch + 1;
+            if (elapsed_it % test_interval == 0 && !eval_dataset.empty())
             {
                 APIData meas_out;
                 test(ad, eval_dataset, test_batch_size, meas_out);
-                eval_dataset = inputc._test_dataset; // XXX eval_dataset is moved. find a way to unmove it
-	            APIData meas_obj = meas_out.getobj("measure");
+                APIData meas_obj = meas_out.getobj("measure");
                 std::vector<std::string> meas_names = meas_obj.list_keys();
 
                 for (auto name : meas_names)
                 {
-		            double mval = meas_obj.get(name).get<double>();
-                    this->_logger->info("{}={}", name, mval);
-                    this->add_meas(name, mval);
-                    this->add_meas_per_iter(name, mval);
+                    if (name != "cmdiag" && name != "cmfull" && name != "labels")
+                    {
+                        double mval = meas_obj.get(name).get<double>();
+                        this->_logger->info("{}={}", name, mval);
+                        this->add_meas(name, mval);
+                        this->add_meas_per_iter(name, mval);
+                    }
                 }
             }
 
-            int64_t check_id = epoch + 1;
-            if ((save_period != 0 && check_id % save_period == 0) || check_id == iterations)
+            if ((save_period != 0 && elapsed_it % save_period == 0) || elapsed_it == iterations)
             {
-                this->_logger->info("Saving checkpoint after {} iterations", check_id);
-                _module.save_checkpoint(this->_mlmodel, std::to_string(check_id));
+                this->_logger->info("Saving checkpoint after {} iterations", elapsed_it);
+                _module.save_checkpoint(this->_mlmodel, std::to_string(elapsed_it));
             }
         }
 
         test(ad, inputc._test_dataset, test_batch_size, out);
 
-        // TODO make model ready for predict after training
+        // Update model after training
+        this->_mlmodel.read_from_repository(this->_logger);
+        this->_mlmodel.read_corresp_file();
 
         inputc.response_params(out);
         this->_logger->info("Training done.");
@@ -309,6 +378,8 @@ namespace dd
             throw;
         }
         torch::Device cpu("cpu");
+
+        _module.eval();
 
         if (output_params.has("measure"))
         {
@@ -386,10 +457,11 @@ namespace dd
 
         // <!> std::move may lead to unexpected behaviour from the input connector
         auto dataloader = torch::data::make_data_loader(
-            std::move(dataset),
+            dataset,
             data::DataLoaderOptions(batch_size)
         );
 
+        _module.eval();
         int entry_id = 0;
         for (TorchBatch &batch : *dataloader)
         {
@@ -413,7 +485,7 @@ namespace dd
                 ad_res.add(std::to_string(entry_id), bad);
                 ++entry_id;
             }
-            this->_logger->info("Testing: {}/{} entries processed", entry_id, test_size);
+            // this->_logger->info("Testing: {}/{} entries processed", entry_id, test_size);
         }
 
         ad_res.add("iteration",this->get_meas("iteration"));

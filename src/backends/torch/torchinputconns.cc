@@ -4,6 +4,7 @@ namespace dd {
 
 using namespace torch;
 
+// ===== TorchDataset
 
 void TorchDataset::add_batch(std::vector<at::Tensor> data, std::vector<at::Tensor> target)
 {
@@ -88,6 +89,8 @@ TorchDataset TorchDataset::split(double start, double stop)
 }
 
 
+// ===== TxtTorchInputFileConn
+
 void TxtTorchInputFileConn::transform(const APIData &ad) {
     try
     {
@@ -98,15 +101,15 @@ void TxtTorchInputFileConn::transform(const APIData &ad) {
         throw;
     }
 
+    if (!_ordered_words || _characters)
+        throw InputConnectorBadParamException("Need ordered_words = true with backend torch");
+
     if (ad.has("parameters") && ad.getobj("parameters").has("input"))
     {
         APIData ad_input = ad.getobj("parameters").getobj("input");
         if (ad_input.has("width"))
             _width = ad_input.get("width").get<int>();
     }
-
-    if (!_ordered_words || _characters)
-        throw InputConnectorBadParamException("Need ordered_words = true with backend torch");
 
     fill_dataset(_dataset, _txt);
     if (!_test_txt.empty())
@@ -130,6 +133,9 @@ void TxtTorchInputFileConn::fill_dataset(TorchDataset &dataset,
 
         while(tow->has_elt())
         {
+            if (ids.size() >= _width - 1)
+                break;
+
             std::string word;
             double val;
             tow->get_next_elt(word, val);

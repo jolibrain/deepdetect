@@ -81,7 +81,7 @@ namespace dd
 
         torch::Tensor toLongTensor(std::vector<int64_t> &values) {
             int64_t val_size = values.size();
-            return torch::from_blob(&values[0], at::IntList{val_size}, at::kLong);
+            return torch::from_blob(&values[0], at::IntList{val_size}, at::kLong).clone();
         }
 
         TorchDataset _dataset;
@@ -184,6 +184,7 @@ namespace dd
 
         void fill_dataset(TorchDataset &dataset, const std::vector<TxtEntry<double>*> &entries);
     public:
+        /** width of the input tensor */
         int _width = 512;
         int _height = 0;
     };
