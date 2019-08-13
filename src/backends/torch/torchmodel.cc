@@ -26,8 +26,8 @@ namespace dd
     int TorchModel::read_from_repository(
         const std::shared_ptr<spdlog::logger> &logger) {
 
-        const std::string traced = "trace.pt";
-        const std::string weights = ".pt";
+        const std::string weights = ".ptw";
+        const std::string traced = ".pt";
         const std::string corresp = "corresp";
 
         std::unordered_set<std::string> files;
@@ -43,16 +43,16 @@ namespace dd
 
         for (const auto &file : files) {
             long int lm = fileops::file_last_modif(file);
-            if (file.find(traced) != std::string::npos) {
-                if (traced_t < lm) {
-                    tracedf = file;
-                    traced_t = lm;
-                }
-            }
-            else if (file.find(weights) != std::string::npos) {
+            if (file.find(weights) != std::string::npos) {
                 if (weights_t < lm) {
                     weightsf = file;
                     weights_t = lm;
+                }
+            }
+            else if (file.find(traced) != std::string::npos) {
+                if (traced_t < lm) {
+                    tracedf = file;
+                    traced_t = lm;
                 }
             }
             else if (file.find(corresp) != std::string::npos) {

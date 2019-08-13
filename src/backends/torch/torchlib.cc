@@ -111,9 +111,9 @@ namespace dd
     void TorchModule::save_checkpoint(TorchModel &model, const std::string &name) 
     {
         if (_traced)
-            _traced->save(model._repo + "/checkpoint-" + name + "-trace.pt");
+            _traced->save(model._repo + "/checkpoint-" + name + ".pt");
         if (_classif)
-            torch::save(_classif, model._repo + "/checkpoint-" + name + ".pt");
+            torch::save(_classif, model._repo + "/checkpoint-" + name + ".ptw");
     }
 
     void TorchModule::load(TorchModel &model) 
@@ -157,6 +157,7 @@ namespace dd
         _template = tl._template;
         _nclasses = tl._nclasses;
         _device = tl._device;
+        _masked_lm = tl._masked_lm;
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -195,25 +196,37 @@ namespace dd
         if (this->_mlmodel._traced.empty())
             throw MLLibInternalException("This template requires a traced net");
 
-        if (_template == "bert-classification")
+        if (_masked_lm)
         {
-            if (!classification)
-                throw MLLibBadParamException("nclasses not specified");
-            
-            // XXX: dont hard code BERT output size
-            _module._classif = nn::Linear(768, _nclasses);
-            _module._classif->to(_device);
-
-            _module._classif_in = 1;
+            _module._classif_in = 0;
         }
+        else
+        {
+            if (_template == "bert-classification")
+            {
+                if (!classification)
+                    throw MLLibBadParamException("nclasses not specified");
 
+                // XXX: dont hard code BERT output size
+                _module._classif = nn::Linear(768, _nclasses);
+                _module._classif->to(_device);
+
+                _module._classif_in = 1;
+            }
+        }
+        
+        this->_logger->info("Loading ml model from file {}.", this->_mlmodel._traced);
+        this->_logger->info("Loading weights from file {}.", this->_mlmodel._weights);
         _module.load(this->_mlmodel);
+
+        this->_mltype = "classification";
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
     void TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::clear_mllib(const APIData &ad) 
     {
-
+        std::vector<std::string> extensions{".json"};
+        fileops::remove_directory_files(this->_mlmodel._repo, extensions);
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -238,10 +251,10 @@ namespace dd
         std::string solver_type = "SGD";
         double base_lr = 0.0001;
         int64_t batch_size = 5;
+        int64_t iter_size = 1;
         int64_t test_batch_size = 1;
         int64_t test_interval = 1;
         int64_t save_period = 0;
-        int64_t batch_count = (inputc._dataset.cache_size() - 1) / batch_size + 1;
 
         // logging parameters
         int64_t log_batch_period = 20;
@@ -256,10 +269,15 @@ namespace dd
             test_interval = ad_mllib.get("test_interval").get<int>();
         if (ad_mllib.has("batch_size"))
             batch_size = ad_mllib.get("batch_size").get<int>();
+        if (ad_mllib.has("iter_size"))
+            iter_size = ad_mllib.get("iter_size").get<int>();
         if (ad_mllib.has("test_batch_size"))
             test_batch_size = ad_mllib.get("test_batch_size").get<int>();
         if (ad_mllib.has("save_period"))
             save_period = ad_mllib.get("save_period").get<int>();
+
+        if (iter_size <= 0)
+            iter_size = 1;
 
         // create dataset for evaluation during training
         TorchDataset eval_dataset;
@@ -287,73 +305,128 @@ namespace dd
             optimizer = std::unique_ptr<optim::Optimizer>(
                 new optim::SGD(_module.parameters(), optim::SGDOptions(base_lr)));
         }
+        optimizer->zero_grad();
+        _module.train();
 
         // create dataloader
         auto dataloader = torch::data::make_data_loader(
             std::move(inputc._dataset),
             data::DataLoaderOptions(batch_size)
         );
-        this->_logger->info("Training for {} iterations", iterations);
 
-        for (int64_t epoch = 0; epoch < iterations; ++epoch)
+        this->_logger->info("Training for {} iterations", iterations);
+        int it = 0;
+        int batch_id = 0;
+        using namespace std::chrono;
+
+        while (it < iterations)
         {
-            _module.train();
-            this->add_meas("iteration", epoch);
-            this->_logger->info("Iteration {}", epoch);
-            int batch_id = 0;
+            double train_loss = 0;
+            double avg_it_time = 0;
 
             for (TorchBatch &example : *dataloader)
             {
+                auto tstart = system_clock::now();
+                TorchBatch batch;
+                if (_masked_lm)
+                {
+                    batch = inputc.generate_masked_lm_batch(example);
+                }
+                else
+                {
+                    batch = example;
+                    batch.target.at(0) = to_one_hot(batch.target.at(0), _nclasses);
+                }
                 std::vector<c10::IValue> in_vals;
-                for (Tensor tensor : example.data)
+                for (Tensor tensor : batch.data)
                     in_vals.push_back(tensor.to(_device));
-                Tensor y_pred = to_tensor_safe(_module.forward(in_vals));
-                Tensor y = to_one_hot(example.target.at(0), _nclasses).to(_device);
+                Tensor y = batch.target.at(0).to(_device);
 
-                auto loss = torch::mse_loss(y_pred, y);
+                Tensor y_pred;
+                try
+                {
+                    y_pred = to_tensor_safe(_module.forward(in_vals));
+                }
+                catch (std::exception &e)
+                {
+                    throw MLLibInternalException(std::string("Libtorch error:") + e.what());
+                }
+
+                Tensor loss;
+                if (_masked_lm)
+                {
+                    loss = torch::nll_loss(
+                        torch::log_softmax(y_pred.view(IntList{-1, y_pred.size(2)}), 1),
+                        y.view(IntList{-1}),
+                        {}, Reduction::Mean, -1
+                    );
+                }
+                else
+                {
+                    // TODO: Better choice for the loss
+                    loss = torch::mse_loss(y_pred, y);
+                }
+                if (iter_size > 1)
+                    loss /= iter_size;
+
                 double loss_val = loss.item<double>();
-
-                optimizer->zero_grad();
+                train_loss += loss_val;
                 loss.backward();
-                optimizer->step();
+                auto tstop = system_clock::now();
+                avg_it_time += duration_cast<milliseconds>(tstop - tstart).count();
 
-                this->add_meas("train_loss", loss_val);
-                this->add_meas_per_iter("train_loss", loss_val);
-                if (log_batch_period != 0 && (batch_id + 1) % log_batch_period == 0)
+                if ((batch_id + 1) % iter_size == 0)
                 {
-                    this->_logger->info("Batch {}/{}: loss is {}", batch_id + 1, batch_count, loss_val);
-                }
-                ++batch_id;
-            }
-            
-            int64_t elapsed_it = epoch + 1;
-            if (elapsed_it % test_interval == 0 && !eval_dataset.empty())
-            {
-                APIData meas_out;
-                test(ad, eval_dataset, test_batch_size, meas_out);
-                APIData meas_obj = meas_out.getobj("measure");
-                std::vector<std::string> meas_names = meas_obj.list_keys();
-
-                for (auto name : meas_names)
-                {
-                    if (name != "cmdiag" && name != "cmfull" && name != "labels")
+                    optimizer->step();
+                    optimizer->zero_grad();
+                    avg_it_time /= iter_size;
+                    this->add_meas("iteration", it);
+                    this->add_meas("iter_time", avg_it_time);
+                    this->add_meas("remain_time", avg_it_time * iter_size * (iterations - it) / 1000.0);
+                    this->add_meas("train_loss", train_loss);
+                    this->add_meas_per_iter("train_loss", train_loss);
+                    int64_t elapsed_it = it + 1;
+                    if (log_batch_period != 0 && elapsed_it % log_batch_period == 0)
                     {
-                        double mval = meas_obj.get(name).get<double>();
-                        this->_logger->info("{}={}", name, mval);
-                        this->add_meas(name, mval);
-                        this->add_meas_per_iter(name, mval);
+                        this->_logger->info("Iteration {}/{}: loss is {}", elapsed_it, iterations, train_loss);
                     }
-                }
-            }
+                    train_loss = 0;
 
-            if ((save_period != 0 && elapsed_it % save_period == 0) || elapsed_it == iterations)
-            {
-                this->_logger->info("Saving checkpoint after {} iterations", elapsed_it);
-                _module.save_checkpoint(this->_mlmodel, std::to_string(elapsed_it));
+                    if (elapsed_it % test_interval == 0 && elapsed_it != iterations && !eval_dataset.empty())
+                    {
+                        APIData meas_out;
+                        test(ad, inputc, eval_dataset, test_batch_size, meas_out);
+                        APIData meas_obj = meas_out.getobj("measure");
+                        std::vector<std::string> meas_names = meas_obj.list_keys();
+
+                        for (auto name : meas_names)
+                        {
+                            if (name != "cmdiag" && name != "cmfull" && name != "labels")
+                            {
+                                double mval = meas_obj.get(name).get<double>();
+                                this->_logger->info("{}={}", name, mval);
+                                this->add_meas(name, mval);
+                                this->add_meas_per_iter(name, mval);
+                            }
+                        }
+                    }
+
+                    if ((save_period != 0 && elapsed_it % save_period == 0) || elapsed_it == iterations)
+                    {
+                        this->_logger->info("Saving checkpoint after {} iterations", elapsed_it);
+                        _module.save_checkpoint(this->_mlmodel, std::to_string(elapsed_it));
+                    }
+                    ++it;
+                    
+                    if (it >= iterations)
+                        break;
+                }
+
+                ++batch_id;
             }
         }
 
-        test(ad, inputc._test_dataset, test_batch_size, out);
+        test(ad, inputc, inputc._test_dataset, test_batch_size, out);
 
         // Update model after training
         this->_mlmodel.read_from_repository(this->_logger);
@@ -384,7 +457,7 @@ namespace dd
         if (output_params.has("measure"))
         {
             APIData meas_out;
-            test(ad, inputc._dataset, 1, meas_out);
+            test(ad, inputc, inputc._dataset, 1, meas_out);
             meas_out.erase("iteration");
             out.add("measure", meas_out.getobj("measure"));
             return 0;
@@ -447,6 +520,7 @@ namespace dd
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
     int TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::test(const APIData &ad, 
+                                                                                    TInputConnectorStrategy &inputc, 
                                                                                     TorchDataset &dataset,
                                                                                     int batch_size,
                                                                                     APIData &out) 
@@ -454,34 +528,85 @@ namespace dd
         APIData ad_res;
         APIData ad_out = ad.getobj("parameters").getobj("output");
         int test_size = dataset.cache_size();
+        int nclasses = _masked_lm ? inputc.vocab_size() : _nclasses;
 
-        // <!> std::move may lead to unexpected behaviour from the input connector
+        // confusion matrix is irrelevant to masked_lm training
+        if (_masked_lm && ad_out.has("measure"))
+        {
+            auto meas = ad_out.get("measure").get<std::vector<std::string>>();
+            std::vector<std::string>::iterator it;
+            if ((it = std::find(meas.begin(), meas.end(), "cmfull")) != meas.end())
+                meas.erase(it);
+            if ((it = std::find(meas.begin(), meas.end(), "cmdiag")) != meas.end())
+                meas.erase(it);
+            ad_out.add("measure", meas);
+        }
+
         auto dataloader = torch::data::make_data_loader(
             dataset,
             data::DataLoaderOptions(batch_size)
         );
+        torch::Device cpu("cpu");
 
         _module.eval();
         int entry_id = 0;
-        for (TorchBatch &batch : *dataloader)
+        for (TorchBatch &example : *dataloader)
         {
+            TorchBatch batch;
+            if (_masked_lm)
+            {
+                batch = inputc.generate_masked_lm_batch(example);
+            }
+            else
+            {
+                batch = example;
+            }
             std::vector<c10::IValue> in_vals;
             for (Tensor tensor : batch.data)
                 in_vals.push_back(tensor.to(_device));
-            Tensor output = torch::softmax(to_tensor_safe(_module.forward(in_vals)), 1);
+            
+            Tensor output;
+            try
+            {
+                output = to_tensor_safe(_module.forward(in_vals));
+            }
+            catch (std::exception &e)
+            {
+                throw MLLibInternalException(std::string("Libtorch error:") + e.what());
+            }
+
             if (batch.target.empty())
                 throw MLLibBadParamException("Missing label on data while testing");
             Tensor labels = batch.target[0];
-            
-            for (int j = 0; j < labels.size(0); ++j) {
+
+            if (_masked_lm)
+            {
+                output = output.view(IntList{-1, output.size(2)});
+                labels = labels.view(IntList{-1});
+            }
+            output = torch::softmax(output, 1).to(cpu);
+            auto output_acc = output.accessor<float,2>();
+            auto labels_acc = labels.accessor<int64_t,1>();
+
+            for (int j = 0; j < labels.size(0); ++j)
+            {
+                if (_masked_lm && labels_acc[j] == -1)
+                    continue;
+
                 APIData bad;
                 std::vector<double> predictions;
-                for (int c = 0; c < _nclasses; c++)
+                for (int c = 0; c < nclasses; c++)
                 {
-                    predictions.push_back(output[j][c].item<double>());
+                    predictions.push_back(output_acc[j][c]);
                 }
-                bad.add("target", labels[j].item<double>());
+                bad.add("target", static_cast<double>(labels_acc[j]));
                 bad.add("pred", predictions);
+                // auto &tinputc = reinterpret_cast<TxtTorchInputConnector&>(inputc);
+                /* 
+                std::cout << "target: " << labels_acc[j] << std::endl;
+                std::cout << "masking: " << batch.data[0][0][j] << " " << batch.data[2][0][j] << std::endl;
+                std::cout << "pred: " << std::distance(predictions.begin(), std::max_element(predictions.begin(), predictions.end())) << std::endl << std::endl;
+                */
                 ad_res.add(std::to_string(entry_id), bad);
                 ++entry_id;
             }
@@ -491,10 +616,10 @@ namespace dd
         ad_res.add("iteration",this->get_meas("iteration"));
         ad_res.add("train_loss",this->get_meas("train_loss"));
         std::vector<std::string> clnames;
-        for (int i=0;i<_nclasses;i++)
+        for (int i=0;i< nclasses;i++)
             clnames.push_back(this->_mlmodel.get_hcorresp(i));
         ad_res.add("clnames", clnames);
-        ad_res.add("nclasses", _nclasses);
+        ad_res.add("nclasses", nclasses);
         ad_res.add("batch_size", entry_id); // here batch_size = tested entries count
         SupervisedOutput::measure(ad_res, ad_out, out);
         return 0;

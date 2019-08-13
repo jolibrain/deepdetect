@@ -22,6 +22,8 @@
 #ifndef TORCHLIB_H
 #define TORCHLIB_H
 
+#include <random>
+
 #include <torch/torch.h>
 
 #include "apidata.h"
@@ -51,7 +53,7 @@ namespace dd
         torch::nn::Linear _classif = nullptr;
 
         torch::Device _device;
-        int _classif_in = 0;/**<id of the input of the classification layer */
+        int _classif_in = 0; /**<id of the input of the classification layer */
     };
 
 
@@ -72,13 +74,15 @@ namespace dd
 
         int predict(const APIData &ad, APIData &out);
 
-        int test(const APIData &ad, TorchDataset &dataset, 
+        int test(const APIData &ad, TInputConnectorStrategy &inputc,
+                 TorchDataset &dataset,
                  int batch_size, APIData &out);
 
     public:
         int _nclasses = 0;
         std::string _template;
         torch::Device _device = torch::Device("cpu");
+        bool _masked_lm = false;
 
         // models
         TorchModule _module;

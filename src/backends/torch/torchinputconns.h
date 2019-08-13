@@ -51,7 +51,7 @@ namespace dd
 
         void reset();
 
-        // Size of data loaded in memory
+        /// Size of data loaded in memory
         size_t cache_size() const { return _batches.size(); }
 
         c10::optional<size_t> size() const override {
@@ -62,20 +62,31 @@ namespace dd
 
         c10::optional<TorchBatch> get_batch(BatchRequestType request) override;
 
-        // Returns a batch containing all the cached data
+        /// Returns a batch containing all the cached data
         TorchBatch get_cached();
 
-        // Split a percentage of this dataset
+        /// Split a percentage of this dataset
         TorchDataset split(double start, double stop);
     };
 
+
+    struct MaskedLMParams
+    {
+        double _change_prob = 0.15; /**< When masked LM learning, probability of changing a token (mask/randomize/keep). */
+        double _mask_prob =  0.8; /**< When masked LM learning, probability of masking a token. */
+        double _rand_prob = 0.1; /**< When masked LM learning, probability of randomizing a token. */
+    };
 
 
     class TorchInputInterface
     {
     public:
         TorchInputInterface() {}
-        TorchInputInterface(const TorchInputInterface &i) {}
+        TorchInputInterface(const TorchInputInterface &i) {
+            _lm_params = i._lm_params;
+            _dataset = i._dataset;
+            _test_dataset = i._test_dataset;
+        }
 
         ~TorchInputInterface() {}
 
@@ -84,8 +95,15 @@ namespace dd
             return torch::from_blob(&values[0], at::IntList{val_size}, at::kLong).clone();
         }
 
+        TorchBatch generate_masked_lm_batch(const TorchBatch &example) { return {}; }
+
+        int64_t mask_id() const { return 0; }
+        int64_t vocab_size() const { return 0; }
+
         TorchDataset _dataset;
         TorchDataset _test_dataset;
+
+        MaskedLMParams _lm_params;
     };
 
     class ImgTorchInputFileConn : public ImgInputFileConn, public TorchInputInterface
@@ -180,13 +198,25 @@ namespace dd
             return _height;
         }
 
+        int64_t mask_id() const { return _mask_id; }
+
+        int64_t vocab_size() const { return _vocab.size(); }
+
         void transform(const APIData &ad);
+
+        TorchBatch generate_masked_lm_batch(const TorchBatch &example);
 
         void fill_dataset(TorchDataset &dataset, const std::vector<TxtEntry<double>*> &entries);
     public:
         /** width of the input tensor */
         int _width = 512;
         int _height = 0;
+        std::mt19937 _rng;
+
+        int64_t _mask_id = -1; /**< ID of mask token in the vocabulary. */
+        int64_t _cls_pos = -1;
+        int64_t _sep_pos = -1;
+        int64_t _unk_pos = -1;
     };
 } // namespace dd
 
