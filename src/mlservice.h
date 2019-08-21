@@ -29,6 +29,7 @@
 #include <future>
 #include <mutex>
 //#include <shared_mutex>
+#include "spdlog/sinks/stdout_sinks.h"
 #include <boost/thread/shared_mutex.hpp>
 #include <boost/thread/lock_types.hpp>
 #include <unordered_map>
