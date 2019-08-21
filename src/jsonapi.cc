@@ -29,6 +29,7 @@
 #include <gflags/gflags.h>
 
 DEFINE_string(service_start_list,"","list of JSON calls to be executed at startup");
+DEFINE_bool(service_start_list_no_exit_on_failure, false, "do not exit on failure for any JSON calls executed at startup");
 
 namespace dd
 {
@@ -47,15 +48,22 @@ namespace dd
   int JsonAPI::boot(int argc, char *argv[])
   {
     google::ParseCommandLineFlags(&argc, &argv, true);
-    if (!FLAGS_service_start_list.empty())
-      service_autostart(FLAGS_service_start_list);
+    if (!FLAGS_service_start_list.empty()) {
+        JDoc response = service_autostart(FLAGS_service_start_list, FLAGS_service_start_list_no_exit_on_failure);
+        if (!FLAGS_service_start_list_no_exit_on_failure) {
+            if (response != dd_created_201()) {
+                _logger->error("Service autostart failed, exiting");
+                exit(1);
+            }
+        }
+    }
     return 0;
   }
 
-  JDoc JsonAPI::service_autostart(const std::string &autostart_file)
+  JDoc JsonAPI::service_autostart(const std::string &autostart_file, const bool &no_exit_on_failure /* = true */)
   {
     if (autostart_file.empty())
-      return 0;
+      return dd_ok_200();
     if (!fileops::file_exists(autostart_file))
       {
 	_logger->error("JSON autostart file not found: {}",autostart_file);
@@ -89,11 +97,19 @@ namespace dd
 	    std::string sname = elts.at(1);
 	    std::string body = elts.at(2);
 	    calls_output.push_back(service_create(sname,body));
+	    if (calls_output.back() != dd_created_201()) {
+	        _logger->error("Service creation failed for {}",sname);
+	        if (!no_exit_on_failure) return dd_bad_request_400();
+	    }
 	  }
 	else if (api_call == "service_predict")
 	  {
 	    std::string body = elts.at(1);
 	    calls_output.push_back(service_predict(body));
+	    if (calls_output.back() != dd_ok_200()) {
+	        _logger->error("Service predict failed for {}",body);
+	        if (!no_exit_on_failure) return dd_bad_request_400();
+	    }
 	  }
 	++lines;
       }
