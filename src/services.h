@@ -616,6 +616,159 @@ namespace dd
       return pout._status;
     }
 
+    int chain_service(const std::string &cname,
+		      const std::shared_ptr<spdlog::logger> &chain_logger,
+		      APIData &adc,
+		      ChainData &cdata,
+		      const std::string &pred_sname,
+		      std::vector<std::string> &meta_uris,
+		      std::vector<std::string> &index_uris,
+		      const int &prec_action_id,
+		      const int chain_pos,
+		      int &npredicts)
+    {      
+      chain_logger->info("[" + std::to_string(chain_pos) + "] / executing predict on service " + pred_sname);
+      
+      // need to check that service exists
+      if (!service_exists(pred_sname))
+	{
+	  spdlog::drop(cname);
+	  throw ServiceNotFoundException("Service " + pred_sname + " does not exist");
+	}
+      
+      // if not first predict call in the chain, need to setup the input data!
+      if (chain_pos != 0)
+	{
+	  // take data from the previous action
+	  APIData act_data = cdata._action_data.at(prec_action_id);
+	  
+	  adc.add("data",act_data.get("data").get<std::vector<std::string>>()); // action output data must be string for now (more types to be supported / auto-detected)
+	  adc.add("ids",act_data.get("cids").get<std::vector<std::string>>()); // chain ids of processed elements
+	  adc.add("meta_uris",meta_uris);
+	  adc.add("index_uris",index_uris);
+	}
+      else cdata._first_sname = pred_sname;
+      
+      APIData pred_out;
+      try
+	{
+	  int pred_status = predict(adc,pred_sname,pred_out,true);
+	}
+      catch(...)
+	{
+	  spdlog::drop(cname);
+	  throw;
+	}
+      
+      // check on results
+      std::vector<APIData> vad = pred_out.getv("predictions");
+      if (vad.empty())
+	{
+	  chain_logger->info("[" + std::to_string(chain_pos) + "]  no predictions");
+	  //break;
+	  return 1;
+	}
+      
+      int classes_size = 0;
+      int vals_size = 0;
+      std::vector<std::string> nmeta_uris;
+      std::vector<std::string> nindex_uris;
+      for (size_t j=0;j<vad.size();j++)
+	{
+	  size_t npred_classes = vad.at(j).getv("classes").size();
+	  classes_size += npred_classes;
+	  vals_size += static_cast<int>(vad.at(j).has("vals"));
+	  if (chain_pos == 0) // first call's response contains uniformized top level URIs.
+	    {
+	      for (size_t k=0;k<npred_classes;k++)
+		{
+		  nmeta_uris.push_back(vad.at(j).get("uri").get<std::string>());
+		  if (vad.at(j).has("index_uri"))
+		    nindex_uris.push_back(vad.at(j).get("index_uri").get<std::string>());
+		}
+	    }
+	  else // update meta uris to batch size at the current level of the chain
+	    {
+	      for (size_t k=0;k<npred_classes;k++)
+		{
+		  nmeta_uris.push_back(meta_uris.at(j));
+		  if (!index_uris.empty())
+		    nindex_uris.push_back(index_uris.at(j));
+		}
+	    }
+	}
+      meta_uris = nmeta_uris;
+      index_uris = nindex_uris;
+      
+      if (!classes_size && !vals_size)
+	{
+	  chain_logger->info("[" + std::to_string(chain_pos) + "] / no result from prediction");
+	  return 1;
+	}
+      ++npredicts;
+      
+      // store model output
+      cdata.add_model_data(pred_sname,pred_out);
+      
+      //prec_pred_sname = pred_sname;
+
+      return 0;
+    }
+
+    int chain_action(const std::shared_ptr<spdlog::logger> &chain_logger,
+		     APIData &adc,
+		     ChainData &cdata,
+		     const int &chain_pos,
+		     const std::string &prec_pred_sname)
+    {
+      std::string action_type = adc.getobj("action").get("type").get<std::string>();
+      
+      APIData prev_data = cdata.get_model_data(prec_pred_sname);
+      if (!prev_data.getv("predictions").size())
+	{
+	  // no prediction to work from
+	  chain_logger->info("no prediction to act on");
+	  return 1;
+	}
+      
+      // call chain action factory
+      chain_logger->info("[" + std::to_string(chain_pos) + "] / executing action " + action_type);
+      ChainActionFactory caf(adc.getobj("action"));
+      caf.apply_action(action_type,
+		       prev_data,
+		       cdata._action_data);
+      
+      // replace prev_data in cdata for prec_pred_sname
+      cdata.add_model_data(prec_pred_sname,prev_data);
+      
+      std::vector<APIData> vad = prev_data.getv("predictions");
+      if (vad.empty())
+	{
+	  // no prediction to work from
+	  chain_logger->info("no prediction to act on after applying action " + action_type);
+	  return 1;
+	}
+      
+      int classes_size = 0;
+      int vals_size = 0;
+      for (size_t i=0;i<vad.size();i++)
+	{
+	  int npred_classes = vad.at(i).getv("classes").size();
+	  classes_size += npred_classes;
+	  vals_size += static_cast<int>(vad.at(i).has("vals"));
+	}
+      
+      if (!classes_size && !vals_size)
+	{
+	  chain_logger->info("[" + std::to_string(chain_pos) + "] / no result after applying action " + action_type);
+	  return 1;
+	}
+      
+      /*prec_action_id = aid;
+	++aid;*/
+      return 0;
+    }
+    
     int chain(const APIData &ad, const std::string &cname, APIData &out)
     {
 #ifdef USE_DD_SYSLOG
@@ -652,136 +805,14 @@ namespace dd
 	  if (adc.has("service"))
 	    {
 	      std::string pred_sname = adc.get("service").get<std::string>();
-
-	      chain_logger->info("[" + std::to_string(i) + "] / executing predict on service " + pred_sname);
-
-	      // need to check that service exists
-	      if (!service_exists(pred_sname))
-		{
-		  spdlog::drop(cname);
-		  throw ServiceNotFoundException("Service " + pred_sname + " does not exist");
-		}
-
-	      // if not first predict call in the chain, need to setup the input data!
-	      if (i != 0)
-		{
-		  // take data from the previous action
-		  APIData act_data = cdata._action_data.at(prec_action_id);
-		  
-		  adc.add("data",act_data.get("data").get<std::vector<std::string>>()); // action output data must be string for now (more types to be supported / auto-detected)
-		  adc.add("ids",act_data.get("cids").get<std::vector<std::string>>()); // chain ids of processed elements
-		  adc.add("meta_uris",meta_uris);
-		  adc.add("index_uris",index_uris);
-		}
-	      else cdata._first_sname = pred_sname;
-	      
-	      APIData pred_out;
-	      try
-		{
-		  int pred_status = predict(adc,pred_sname,pred_out,true);
-		}
-	      catch(...)
-		{
-		  spdlog::drop(cname);
-		  throw;
-		}
-
-	      // check on results
-	      std::vector<APIData> vad = pred_out.getv("predictions");
-	      if (vad.empty())
-		{
-		  chain_logger->info("[" + std::to_string(i) + "]  no predictions");
-		  break;
-		}
-
-	      int classes_size = 0;
-	      int vals_size = 0;
-	      std::vector<std::string> nmeta_uris;
-	      std::vector<std::string> nindex_uris;
-	      for (size_t j=0;j<vad.size();j++)
-		{
-		  size_t npred_classes = vad.at(j).getv("classes").size();
-		  classes_size += npred_classes;
-		  vals_size += static_cast<int>(vad.at(j).has("vals"));
-		  if (i == 0) // first call's response contains uniformized top level URIs.
-		    {
-		      for (size_t k=0;k<npred_classes;k++)
-			{
-			  nmeta_uris.push_back(vad.at(j).get("uri").get<std::string>());
-			  if (vad.at(j).has("index_uri"))
-			    nindex_uris.push_back(vad.at(j).get("index_uri").get<std::string>());
-			}
-		    }
-		  else // update meta uris to batch size at the current level of the chain
-		    {
-		      for (size_t k=0;k<npred_classes;k++)
-			{
-			  nmeta_uris.push_back(meta_uris.at(j));
-			  if (!index_uris.empty())
-			    nindex_uris.push_back(index_uris.at(j));
-			}
-		    }
-		}
-	      meta_uris = nmeta_uris;
-	      index_uris = nindex_uris;
-
-	      if (!classes_size && !vals_size)
-		{
-		  chain_logger->info("[" + std::to_string(i) + "] / no result from prediction");
-		  break;
-		}
-	      ++npredicts;
-	      
-	      // store model output
-	      cdata.add_model_data(pred_sname,pred_out);
-	      
+	      chain_service(cname,chain_logger,adc,cdata,
+			    pred_sname,meta_uris,index_uris,
+			    prec_action_id,i,npredicts);
 	      prec_pred_sname = pred_sname;
 	    }
 	  else if (adc.has("action"))
 	    {
-	      std::string action_type = adc.getobj("action").get("type").get<std::string>();
-
-	      APIData prev_data = cdata.get_model_data(prec_pred_sname);
-	      if (!prev_data.getv("predictions").size())
-		{
-		  // no prediction to work from
-		  chain_logger->info("no prediction to act on");
-		  break;
-		}
-	
-	      // call chain action factory
-	      chain_logger->info("[" + std::to_string(i) + "] / executing action " + action_type);
-	      ChainActionFactory caf(adc.getobj("action"));
-	      caf.apply_action(action_type,
-			       prev_data,
-			       cdata._action_data);
-
-	      // replace prev_data in cdata for prec_pred_sname
-	      cdata.add_model_data(prec_pred_sname,prev_data);
-	      
-	      std::vector<APIData> vad = prev_data.getv("predictions");
-	      if (vad.empty())
-		{
-		  // no prediction to work from
-		  chain_logger->info("no prediction to act on after applying action " + action_type);
-		  break;
-		}
-
-	      int classes_size = 0;
-	      int vals_size = 0;
-	      for (size_t i=0;i<vad.size();i++)
-		{
-		  int npred_classes = vad.at(i).getv("classes").size();
-		  classes_size += npred_classes;
-		  vals_size += static_cast<int>(vad.at(i).has("vals"));
-		}
-	      
-	      if (!classes_size && !vals_size)
-		{
-		  chain_logger->info("[" + std::to_string(i) + "] / no result after applying action " + action_type);
-		  break;
-		}
-	      
+	      chain_action(chain_logger,adc,cdata,i,prec_pred_sname);
 	      prec_action_id = aid;
 	      ++aid;
 	    }
