@@ -1403,11 +1403,14 @@ namespace dd
 	this->add_meas_per_iter("train_loss",smoothed_loss);
 	this->add_meas("iter_time",avg_fb_time);
 	this->add_meas("remain_time",est_remain_time);
+
+    caffe::SGDSolver<float> *sgd_solver = static_cast<caffe::SGDSolver<float>*>(solver.get());
+    this->add_meas("learning_rate", sgd_solver->GetLearningRate());
+    this->add_meas_per_iter("learning_rate", sgd_solver->GetLearningRate());
 	
 	if ((solver->param_.display() && solver->iter_ % solver->param_.display() == 0)
 	    || (solver->param_.test_interval() && solver->iter_ % solver->param_.test_interval() == 0))
 	  {
-	    caffe::SGDSolver<float> *sgd_solver = static_cast<caffe::SGDSolver<float>*>(solver.get());
 	    this->_logger->info("Iteration {}, lr = {}, smoothed_loss={}",solver->iter_,sgd_solver->GetLearningRate(),this->get_meas("train_loss"));
 	  }
 	try
@@ -1517,6 +1520,7 @@ namespace dd
     APIData ad_res;
     ad_res.add("iteration",this->get_meas("iteration"));
     ad_res.add("train_loss",this->get_meas("train_loss"));
+    ad_res.add("learning_rate",this->get_meas("learning_rate"));
     APIData ad_out = ad.getobj("parameters").getobj("output");
 
     if (ad.getobj("parameters").getobj("mllib").has("ignore_label"))
