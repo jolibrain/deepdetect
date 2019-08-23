@@ -1124,6 +1124,22 @@ namespace dd
 		solver_param.set_solver_type(caffe::SolverParameter_SolverType_ADAM);
         solver_param.set_amsgrad(true);
 	      }
+        else if (strcasecmp(solver_type.c_str(),"ADAMW") == 0)
+          {
+            solver_param.set_solver_type(caffe::SolverParameter_SolverType_ADAM);
+            solver_param.set_regularization_type("decoupled");
+          }
+        else if (strcasecmp(solver_type.c_str(),"SGDW") == 0)
+          {
+            solver_param.set_solver_type(caffe::SolverParameter_SolverType_SGD);
+            solver_param.set_regularization_type("decoupled");
+          }
+        else if (strcasecmp(solver_type.c_str(),"AMSGRADW") == 0)
+          {
+            solver_param.set_solver_type(caffe::SolverParameter_SolverType_ADAM);
+            solver_param.set_amsgrad(true);
+            solver_param.set_regularization_type("decoupled");
+          }
         caffe::UpgradeSolverType(&solver_param);
 	  }
 	if (ad_solver.has("test_interval"))
@@ -1182,6 +1198,10 @@ namespace dd
       {
 	solver.reset(caffe::SolverRegistry<float>::CreateSolver(solver_param));
     this->_logger->info("selected solver: " + solver_param.type());
+    if (solver_param.amsgrad())
+    this->_logger->info("solver flavor : AMSGRAD ");
+    if (solver_param.regularization_type() == "decoupled")
+      this->_logger->info("solver flavor: decoupled weight decay ");
       }
     catch(...)
       {
