@@ -595,6 +595,7 @@ namespace dd
     {
       APIData meas_out;
       bool tloss = ad_res.has("train_loss");
+      bool lr = ad_res.has("learning_rate");
       bool loss = ad_res.has("loss");
       bool iter = ad_res.has("iteration");
       bool regression = ad_res.has("regression");
@@ -904,6 +905,8 @@ namespace dd
 	  meas_out.add("train_loss",ad_res.get("train_loss").get<double>());
 	if (iter)
 	  meas_out.add("iteration",ad_res.get("iteration").get<double>());
+    if (lr)
+      meas_out.add("learning_rate",ad_res.get("learning_rate").get<double>());
 	out.add("measure",meas_out);
     }
 
