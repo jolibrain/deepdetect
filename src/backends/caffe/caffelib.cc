@@ -1124,6 +1124,7 @@ namespace dd
 		solver_param.set_solver_type(caffe::SolverParameter_SolverType_ADAM);
         solver_param.set_amsgrad(true);
 	      }
+        caffe::UpgradeSolverType(&solver_param);
 	  }
 	if (ad_solver.has("test_interval"))
 	  solver_param.set_test_interval(ad_solver.get("test_interval").get<int>());
@@ -1180,6 +1181,7 @@ namespace dd
     try
       {
 	solver.reset(caffe::SolverRegistry<float>::CreateSolver(solver_param));
+    this->_logger->info("selected solver: " + solver_param.type());
       }
     catch(...)
       {
