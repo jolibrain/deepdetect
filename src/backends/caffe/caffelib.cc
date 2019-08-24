@@ -1134,6 +1134,10 @@ namespace dd
 	  solver_param.set_lr_policy(ad_solver.get("lr_policy").get<std::string>());
 	if (ad_solver.has("base_lr"))
 	  solver_param.set_base_lr(ad_solver.get("base_lr").get<double>());
+    if (ad_solver.has("warmup_lr"))
+      solver_param.set_warmup_start_lr(ad_solver.get("warmup_lr").get<double>());
+    if (ad_solver.has("warmup_iter"))
+      solver_param.set_warmup_iter(ad_solver.get("warmup_iter").get<int>());
 	if (ad_solver.has("gamma"))
 	  solver_param.set_gamma(ad_solver.get("gamma").get<double>());
 	if (ad_solver.has("stepsize"))
@@ -1420,6 +1424,8 @@ namespace dd
 	    || (solver->param_.test_interval() && solver->iter_ % solver->param_.test_interval() == 0))
 	  {
 	    this->_logger->info("Iteration {}, lr = {}, smoothed_loss={}",solver->iter_,sgd_solver->GetLearningRate(),this->get_meas("train_loss"));
+        if (sgd_solver->param_.warmup_iter() > 0)
+          this->_logger->info("[doing warmup (start_lr = {}, iter = {})]",solver->param_.warmup_start_lr(),solver->param_.warmup_iter());
 	  }
 	try
 	  {
