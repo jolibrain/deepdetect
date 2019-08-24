@@ -1148,6 +1148,12 @@ namespace dd
 	  solver_param.set_rms_decay(ad_solver.get("rms_decay").get<double>());
 	if (ad_solver.has("iter_size"))
 	  solver_param.set_iter_size(ad_solver.get("iter_size").get<int>());
+    if (ad_solver.has("lookahead"))
+      solver_param.set_lookahead(ad_solver.get("lookahead").get<bool>());
+    if (ad_solver.has("lookahead_steps"))
+      solver_param.set_lookahead_steps(ad_solver.get("lookahead_steps").get<int>());
+    if (ad_solver.has("lookahead_alpha"))
+      solver_param.set_lookahead_alpha(ad_solver.get("lookahead_alpha").get<double>());
 
 	if (ad_solver.has("min_lr"))
 	  solver_param.set_min_lr(ad_solver.get("min_lr").get<double>());
