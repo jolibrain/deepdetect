@@ -745,7 +745,8 @@ if (USE_TENSORRT)
     message(STATUS "Found TensorRT libraries : ${TRTTESTDIR}/libnvinfer.so")
   endif()
   include_directories(${TENSORRT_INC_DIR})
-
+endif()
+  
 # libvnn
 if (USE_LIBVNN)
   message(STATUS "Fetching libvnn")
@@ -790,6 +791,8 @@ set(COMMON_LINK_DIRS
   ${XGBOOST_LIB_DIR}
   ${TSNE_LIB_DIR}
   ${NCNN_LIB_DIR})
+  ${LIBVNN_LIB_DIR}
+  )
 if (USE_HDF5)
   set(COMMON_LINK_LIBS
     ddetect ${DLIB_LIB_DEPS} ${TENSORRT_LIB_DEPS} ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl hdf5_cpp ${Boost_LIBRARIES} archive ${VNN_LIBS}
