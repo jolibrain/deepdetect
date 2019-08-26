@@ -94,8 +94,9 @@ namespace dd
     std::unordered_map<std::string,APIData>::const_iterator hit = _model_data.begin();
     while(hit!=_model_data.end())
       {
-	std::string model_name = (*hit).first;
-	if (model_name == _first_sname)
+	std::string model_id = (*hit).first;
+	std::string model_name = get_model_sname(model_id);
+	if (model_id == _first_id)
 	  {
 	    first_model_out = (*hit).second;
 	    std::vector<APIData> predictions = first_model_out.getv("predictions");

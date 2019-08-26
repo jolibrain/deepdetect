@@ -37,29 +37,47 @@ namespace dd
     ChainData() {}
     ~ChainData() {}
 
-    void add_model_data(const std::string &sname,
+    void add_model_data(const std::string &id,
 			const APIData &out)
     {
-      auto hit = _model_data.begin();
-      if ((hit=_model_data.find(sname))!=_model_data.end())
+      std::unordered_map<std::string,APIData>::iterator hit;
+      if ((hit=_model_data.find(id))!=_model_data.end())
 	_model_data.erase(hit);
-      _model_data.insert(std::pair<std::string,APIData>(sname,out));
+      _model_data.insert(std::pair<std::string,APIData>(id,out));
     }
 
-    APIData get_model_data(const std::string &sname) const
+    APIData get_model_data(const std::string &id) const
     {
       std::unordered_map<std::string,APIData>::const_iterator hit;
-      if ((hit = _model_data.find(sname))!=_model_data.end())
+      if ((hit=_model_data.find(id))!=_model_data.end())
 	return (*hit).second;
       else
 	return APIData();
+    }
+
+    void add_model_sname(const std::string &id,
+			 const std::string &sname)
+    {
+      std::unordered_map<std::string,std::string>::iterator hit;
+      if ((hit=_id_sname.find(id))==_id_sname.end())
+	_id_sname.insert(std::pair<std::string,std::string>(id,sname));
+    }
+
+    std::string get_model_sname(const std::string &id)
+    {
+      std::unordered_map<std::string,std::string>::const_iterator hit;
+      if ((hit=_id_sname.find(id))!=_id_sname.end())
+	return (*hit).second;
+      else return std::string();
     }
     
     APIData nested_chain_output();
 
     std::unordered_map<std::string,APIData> _model_data;
     std::vector<APIData> _action_data;
-    std::string _first_sname;
+    std::unordered_map<std::string,std::string> _id_sname;
+    //std::string _first_sname;
+    std::string _first_id;
   };
 
   /**
