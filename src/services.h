@@ -32,6 +32,7 @@
 #include "svminputfileconn.h"
 #include "outputconnectorstrategy.h"
 #include "chain.h"
+#include "chain_actions.h"
 #ifdef USE_CAFFE
 #include "backends/caffe/caffelib.h"
 #endif
@@ -616,6 +617,7 @@ namespace dd
       return pout._status;
     }
 
+    //TODO: parent_id
     int chain_service(const std::string &cname,
 		      const std::shared_ptr<spdlog::logger> &chain_logger,
 		      APIData &adc,
@@ -636,12 +638,18 @@ namespace dd
 	  spdlog::drop(cname);
 	  throw ServiceNotFoundException("Service " + sname + " does not exist");
 	}
+
+      // parent_id, if any
+      std::string parent_id;
+      if (adc.has("parent_id"))
+	parent_id = adc.get("parent_id").get<std::string>();
       
       // if not first predict call in the chain, need to setup the input data!
       if (chain_pos != 0)
 	{
 	  // take data from the previous action
-	  APIData act_data = cdata._action_data.at(prec_action_id);
+	  //APIData act_data = cdata._action_data.at(prec_action_id); //TODO: parent_id if != prec_action_id
+	  APIData act_data = cdata.get_action_data(std::to_string(prec_action_id));
 	  
 	  adc.add("data",act_data.get("data").get<std::vector<std::string>>()); // action output data must be string for now (more types to be supported / auto-detected)
 	  adc.add("ids",act_data.get("cids").get<std::vector<std::string>>()); // chain ids of processed elements
@@ -649,7 +657,6 @@ namespace dd
 	  adc.add("index_uris",index_uris);
 	}
       else {
-	//cdata._first_sname = sname;
 	cdata._first_id = pred_id;
       }
       
@@ -740,7 +747,7 @@ namespace dd
       ChainActionFactory caf(adc.getobj("action"));
       caf.apply_action(action_type,
 		       prev_data,
-		       cdata._action_data);
+		       cdata);
       
       // replace prev_data in cdata for prec_pred_id
       cdata.add_model_data(prec_pred_id,prev_data);

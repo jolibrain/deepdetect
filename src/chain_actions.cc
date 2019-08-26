@@ -28,7 +28,7 @@ namespace dd
 {
 
   void ImgsCropAction::apply(APIData &model_out,
-			     std::vector<APIData> &actions_data)
+			     ChainData &cdata)
     {
       std::vector<APIData> vad = model_out.getv("predictions");
       std::vector<cv::Mat> imgs = model_out.getobj("input").get("imgs").get<std::vector<cv::Mat>>();
@@ -114,14 +114,15 @@ namespace dd
       APIData action_out;
       action_out.add("data",cropped_imgs);
       action_out.add("cids",bbox_ids);
-      actions_data.push_back(action_out);
+      //actions_data.push_back(action_out);
+      cdata.add_action_data(_action_id,action_out);      
       
       // updated model data with chain ids
       model_out.add("predictions",cvad);
     }
 
   void ClassFilter::apply(APIData &model_out,
-			  std::vector<APIData> &actions_data)
+			  ChainData &cdata)
   {
     if (!_params.has("classes"))
       {
@@ -158,7 +159,8 @@ namespace dd
       }
 
     // empty action data
-    actions_data.push_back(APIData());
+    cdata.add_action_data(_action_id,APIData());
+    //actions_data.push_back(APIData());
     
     // updated model data
     model_out.add("predictions",cvad);

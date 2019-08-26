@@ -22,7 +22,7 @@
 #ifndef CHAIN_H
 #define CHAIN_H
 
-#include "chain_actions.h"
+#include "apidata.h"
 #include <iostream>
 
 namespace dd
@@ -55,6 +55,24 @@ namespace dd
 	return APIData();
     }
 
+    void add_action_data(const std::string &id,
+			 const APIData &out)
+    {
+      std::unordered_map<std::string,APIData>::iterator hit;
+      if ((hit=_action_data.find(id))!=_action_data.end())
+	_action_data.erase(hit);
+      _action_data.insert(std::pair<std::string,APIData>(id,out));
+    }
+
+    APIData get_action_data(const std::string &id) const
+    {
+      std::unordered_map<std::string,APIData>::const_iterator hit;
+      if ((hit=_action_data.find(id))!=_action_data.end())
+	return (*hit).second;
+      else
+	return APIData();
+    }
+
     void add_model_sname(const std::string &id,
 			 const std::string &sname)
     {
@@ -74,7 +92,7 @@ namespace dd
     APIData nested_chain_output();
 
     std::unordered_map<std::string,APIData> _model_data;
-    std::vector<APIData> _action_data;
+    std::unordered_map<std::string,APIData> _action_data;
     std::unordered_map<std::string,std::string> _id_sname;
     //std::string _first_sname;
     std::string _first_id;
