@@ -1140,6 +1140,10 @@ namespace dd
             solver_param.set_amsgrad(true);
             solver_param.set_regularization_type("decoupled");
           }
+        if (ad_solver.has("rectified") && ad_solver.get("rectified").get<bool>())
+          solver_param.set_rectified(true);
+
+
         caffe::UpgradeSolverType(&solver_param);
 	  }
 	if (ad_solver.has("test_interval"))
@@ -1210,8 +1214,12 @@ namespace dd
     this->_logger->info("selected solver: " + solver_param.type());
     if (solver_param.amsgrad())
     this->_logger->info("solver flavor : AMSGRAD ");
+    if (solver_param.rectified())
+      this->_logger->info("solver flavor : rectified ");
     if (solver_param.regularization_type() == "decoupled")
       this->_logger->info("solver flavor: decoupled weight decay ");
+    if (solver_param.lookahead())
+      this->_logger->info("solver flavor: lookahead ");
       }
     catch(...)
       {
