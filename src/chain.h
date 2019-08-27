@@ -104,7 +104,7 @@ namespace dd
   class visitor_nested
   {
   public:
-    visitor_nested(std::unordered_map<std::string,APIData> *r)
+    visitor_nested(std::unordered_multimap<std::string,APIData> *r)
       :_replacements(r) {}
     ~visitor_nested() {}
     
@@ -123,7 +123,7 @@ namespace dd
     void operator()(const APIData &ad);
     void operator()(const std::vector<APIData> &vad);
     
-    std::unordered_map<std::string,APIData> *_replacements = nullptr;
+    std::unordered_multimap<std::string,APIData> *_replacements = nullptr;
     std::vector<APIData> _vad;
   };
   

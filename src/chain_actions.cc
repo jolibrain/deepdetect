@@ -114,7 +114,6 @@ namespace dd
       APIData action_out;
       action_out.add("data",cropped_imgs);
       action_out.add("cids",bbox_ids);
-      //actions_data.push_back(action_out);
       cdata.add_action_data(_action_id,action_out);      
       
       // updated model data with chain ids

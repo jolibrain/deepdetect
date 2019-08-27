@@ -58,7 +58,8 @@ namespace dd
 	      const std::string &action_type)
     :_action_id(action_id),_action_type(action_type)
     {
-      _params = adc.getobj("parameters");
+      APIData action_adc = adc.getobj("action");
+      _params = action_adc.getobj("parameters");
     }
 
     ~ChainAction() {}

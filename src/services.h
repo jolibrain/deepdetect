@@ -643,14 +643,12 @@ namespace dd
       std::string parent_id;
       if (adc.has("parent_id"))
 	parent_id = adc.get("parent_id").get<std::string>();
-      
+            
       // if not first predict call in the chain, need to setup the input data!
       if (chain_pos != 0)
 	{
 	  // take data from the previous action
-	  //APIData act_data = cdata._action_data.at(prec_action_id); //TODO: parent_id if != prec_action_id
-	  APIData act_data = cdata.get_action_data(std::to_string(prec_action_id));
-	  
+	  APIData act_data = cdata.get_action_data(!parent_id.empty() ? parent_id : std::to_string(prec_action_id));
 	  adc.add("data",act_data.get("data").get<std::vector<std::string>>()); // action output data must be string for now (more types to be supported / auto-detected)
 	  adc.add("ids",act_data.get("cids").get<std::vector<std::string>>()); // chain ids of processed elements
 	  adc.add("meta_uris",meta_uris);
@@ -732,8 +730,6 @@ namespace dd
     {
       std::string action_type = adc.getobj("action").get("type").get<std::string>();
 
-      std::cerr << "[action] prec_pred_id=" << prec_pred_id << std::endl;
-      
       APIData prev_data = cdata.get_model_data(prec_pred_id);
       if (!prev_data.getv("predictions").size())
 	{
@@ -744,7 +740,7 @@ namespace dd
       
       // call chain action factory
       chain_logger->info("[" + std::to_string(chain_pos) + "] / executing action " + action_type);
-      ChainActionFactory caf(adc.getobj("action"));
+      ChainActionFactory caf(adc);
       caf.apply_action(action_type,
 		       prev_data,
 		       cdata);
@@ -817,7 +813,6 @@ namespace dd
 	      if (adc.has("id"))
 		pred_id = adc.get("id").get<std::string>();
 	      else pred_id = std::to_string(i);
-	      std::cerr << "[service] pred_id=" << pred_id << std::endl;
 	      cdata.add_model_sname(pred_id,adc.get("service").get<std::string>());
 	      chain_service(cname,chain_logger,adc,cdata,
 			    pred_id,meta_uris,index_uris,
