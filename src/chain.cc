@@ -48,9 +48,6 @@ namespace dd
 		  {
 		    std::string nested_chain = (*rhit).second.list_keys().at(0);
 		    
-		    // we erase the chainid, and add up the model object
-		    //adc._data.erase(ad_key);
-		    
 		    // recursive replacements for chains with > 2 models
 		    bool recursive_changes = false;
 		    visitor_nested vn(_replacements);
@@ -70,9 +67,10 @@ namespace dd
 		    if (!recursive_changes)
 		      adc.add(nested_chain,
 			      (*rhit).second.getobj(nested_chain));
-		    //_replacements->erase(rhit);
 		    
 		  }
+		// we erase the chainid, and add up the model object
+		adc._data.erase(ad_key);
 		_vad.push_back(adc);
 	      }
 	    else
