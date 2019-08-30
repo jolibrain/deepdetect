@@ -1128,17 +1128,48 @@ namespace dd
           {
             solver_param.set_solver_type(caffe::SolverParameter_SolverType_ADAM);
             solver_param.set_regularization_type("decoupled");
+            int periods = 4;
+            int mult = 2;
+            if (ad_solver.has("decoupled_wd_mult"))
+              solver_param.set_decoupled_wd_t0(ad_solver.get("decoupled_wd_mult").get<double>());
+            if (ad_solver.has("decoupled_wd_periods"))
+              periods = ad_solver.get("decoupled_wd_periods").get<int>();
+            if (max_iter > 0)
+              solver_param.set_decoupled_wd_t0(max_iter/ (pow(mult,periods)-1));
+            else
+              throw MLLibBadParamException("decoupled weight decay requires iterations to be set");
+
           }
         else if (strcasecmp(solver_type.c_str(),"SGDW") == 0)
           {
             solver_param.set_solver_type(caffe::SolverParameter_SolverType_SGD);
             solver_param.set_regularization_type("decoupled");
+            int periods = 4;
+            int mult = 2;
+            if (ad_solver.has("decoupled_wd_mult"))
+              solver_param.set_decoupled_wd_t0(ad_solver.get("decoupled_wd_mult").get<double>());
+            if (ad_solver.has("decoupled_wd_periods"))
+              periods = ad_solver.get("decoupled_wd_periods").get<int>();
+            if (max_iter > 0)
+              solver_param.set_decoupled_wd_t0(max_iter /  (pow(mult,periods)-1));
+            else
+              throw MLLibBadParamException("decoupled weight decay requires iterations to be set");
           }
         else if (strcasecmp(solver_type.c_str(),"AMSGRADW") == 0)
           {
             solver_param.set_solver_type(caffe::SolverParameter_SolverType_ADAM);
             solver_param.set_amsgrad(true);
             solver_param.set_regularization_type("decoupled");
+            int periods = 4;
+            int mult = 2;
+            if (ad_solver.has("decoupled_wd_mult"))
+              solver_param.set_decoupled_wd_t0(ad_solver.get("decoupled_wd_mult").get<double>());
+            if (ad_solver.has("decoupled_wd_periods"))
+              periods = ad_solver.get("decoupled_wd_periods").get<int>();
+            if (max_iter > 0)
+              solver_param.set_decoupled_wd_t0(max_iter/ (pow(mult,periods)-1));
+            else
+              throw MLLibBadParamException("decoupled weight decay requires iterations to be set");
           }
         if (ad_solver.has("rectified") && ad_solver.get("rectified").get<bool>())
           solver_param.set_rectified(true);
