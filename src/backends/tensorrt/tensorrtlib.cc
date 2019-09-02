@@ -42,7 +42,16 @@ namespace dd
       {
 	if (s.find(engineFileName) != std::string::npos)
 	  {
-	    return std::stoi(s.substr(repo.length()+engineFileName.length()+1));
+	    std::string bs_str;
+	    for (auto it = s.crbegin(); it != s.crend(); ++it)
+	      {
+		if (isdigit(*it))
+		  bs_str += (*it);
+		else break;
+	      }
+	    std::reverse(bs_str.begin(),bs_str.end());
+	    int bs = std::stoi(bs_str);
+	    return bs;
 	  }
       }
     return -1;
@@ -325,7 +334,7 @@ namespace dd
 	      network->markOutput(*blobNameToTensor->find("keep_count"));
 	    _builder->setMaxBatchSize(_max_batch_size);	
 	    _builder->setMaxWorkspaceSize(_max_workspace_size);
-	    
+
 	    network->getLayer(0)->setPrecision(nvinfer1::DataType::kFLOAT);
 	    
 	    nvinfer1::ILayer *outl = NULL;
