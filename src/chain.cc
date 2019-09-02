@@ -40,33 +40,37 @@ namespace dd
 	while(hit!=ad._data.end())
 	  {
 	    std::string ad_key = (*hit).first;
-	    if ((rhit = _replacements->find(ad_key))!=_replacements->end()) 
+	    auto rhit_range = _replacements->equal_range(ad_key);
+	    int rcount = std::distance(rhit_range.first,rhit_range.second);
+	    if (rcount > 0)
 	      {
-		std::string nested_chain = (*rhit).second.list_keys().at(0);
-		
+		for (auto rhit=rhit_range.first; rhit!=rhit_range.second; ++rhit)
+		  {
+		    std::string nested_chain = (*rhit).second.list_keys().at(0);
+		    
+		    // recursive replacements for chains with > 2 models
+		    bool recursive_changes = false;
+		    visitor_nested vn(_replacements);
+		    APIData nested_ad = (*rhit).second.getobj(nested_chain);
+		    auto nhit = nested_ad._data.begin();
+		    while(nhit!=nested_ad._data.end())
+		      {
+			mapbox::util::apply_visitor(vn,(*nhit).second);
+			if (!vn._vad.empty())
+			  {
+			    adc.add(nested_chain,vn._vad);
+			    recursive_changes = true;
+			  }
+			++nhit;
+		      }
+		    
+		    if (!recursive_changes)
+		      adc.add(nested_chain,
+			      (*rhit).second.getobj(nested_chain));
+		    
+		  }
 		// we erase the chainid, and add up the model object
 		adc._data.erase(ad_key);
-		
-		// recursive replacements for chains with > 2 models
-		bool recursive_changes = false;
-		visitor_nested vn(_replacements);
-		APIData nested_ad = (*rhit).second.getobj(nested_chain);
-		auto nhit = nested_ad._data.begin();
-		while(nhit!=nested_ad._data.end())
-		  {
-		    mapbox::util::apply_visitor(vn,(*nhit).second);
-		    if (!vn._vad.empty())
-		      {
-			adc.add(nested_chain,vn._vad);
-			recursive_changes = true;
-		      }
-		    ++nhit;
-		  }
-
-		if (!recursive_changes)
-		  adc.add(nested_chain,
-			  (*rhit).second.getobj(nested_chain));
-
 		_vad.push_back(adc);
 	      }
 	    else
@@ -90,12 +94,13 @@ namespace dd
     //  pre-compile models != first model
     std::vector<std::string> uris;
     APIData first_model_out;
-    std::unordered_map<std::string,APIData> other_models_out;
+    std::unordered_multimap<std::string,APIData> other_models_out;
     std::unordered_map<std::string,APIData>::const_iterator hit = _model_data.begin();
     while(hit!=_model_data.end())
       {
-	std::string model_name = (*hit).first;
-	if (model_name == _first_sname)
+	std::string model_id = (*hit).first;
+	std::string model_name = get_model_sname(model_id);
+	if (model_id == _first_id)
 	  {
 	    first_model_out = (*hit).second;
 	    std::vector<APIData> predictions = first_model_out.getv("predictions");

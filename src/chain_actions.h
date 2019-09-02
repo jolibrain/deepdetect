@@ -23,6 +23,7 @@
 #define CHAIN_ACTIONS_H
 
 #include "apidata.h"
+#include "chain.h"
 
 namespace dd
 {
@@ -53,10 +54,12 @@ namespace dd
   {
   public:
   ChainAction(const APIData &adc,
+	      const std::string &action_id,
 	      const std::string &action_type)
-    :_action_type(action_type)
+    :_action_id(action_id),_action_type(action_type)
     {
-      _params = adc.getobj("parameters");
+      APIData action_adc = adc.getobj("action");
+      _params = action_adc.getobj("parameters");
     }
 
     ~ChainAction() {}
@@ -69,8 +72,9 @@ namespace dd
       }
     
     void apply(APIData &model_out,
-	       std::vector<APIData> &actions_data);
+	       ChainData &cdata);
 
+    std::string _action_id;
     std::string _action_type;
     APIData _params;
     bool _in_place = false;
@@ -81,25 +85,27 @@ namespace dd
   {
   public:
     ImgsCropAction(const APIData &adc,
+		   const std::string &action_id,
 		   const std::string &action_type)
-      :ChainAction(adc,action_type) {}
+      :ChainAction(adc,action_id,action_type) {}
 
     ~ImgsCropAction() {}
     
     void apply(APIData &model_out,
-	       std::vector<APIData> &actions_data);
+	       ChainData &cdata);
   };
 
   class ClassFilter : public ChainAction
   {
   public:
     ClassFilter(const APIData &adc,
+		const std::string &action_id,
 		const std::string &action_type)
-      :ChainAction(adc,action_type) {_in_place = true;}
+      :ChainAction(adc,action_id,action_type) {_in_place = true;}
     ~ClassFilter() {}
 
     void apply(APIData &model_out,
-	       std::vector<APIData> &action_data);
+	       ChainData &cdata);
   };
 
   class ChainActionFactory
@@ -111,17 +117,21 @@ namespace dd
 
     void apply_action(const std::string &action_type,
 		      APIData &model_out,
-		      std::vector<APIData> &action_out)
+		      ChainData &cdata)
     {
+      std::string action_id;
+      if (_adc.has("id"))
+	action_id = _adc.get("id").get<std::string>();
+      else action_id = std::to_string(cdata._action_data.size());
       if (action_type == "crop")
 	{
-	  ImgsCropAction act(_adc,action_type);
-	  act.apply(model_out,action_out);
+	  ImgsCropAction act(_adc,action_id,action_type);
+	  act.apply(model_out,cdata);
 	}
       else if (action_type == "filter")
 	{
-	  ClassFilter act(_adc,action_type);
-	  act.apply(model_out,action_out);
+	  ClassFilter act(_adc,action_id,action_type);
+	  act.apply(model_out,cdata);
 	}
       else
 	{
