@@ -27,6 +27,9 @@
 #include "csvtsinputfileconn.h"
 #include "txtinputfileconn.h"
 #include "svminputfileconn.h"
+#ifdef USE_LIBVNN
+#include "vidinputconn.h"
+#endif
 #include "caffe/caffe.hpp"
 #include "caffe/util/db.hpp"
 #include "utils/fileops.hpp"
@@ -535,6 +538,193 @@ namespace dd
     bool _align = false;
   };
 
+#ifdef USE_LIBVNN
+  /**
+   * \brief Video image connector, supports both files and camera stream
+   */
+  class VidCaffeInputConn : public VidInputConn, public CaffeInputInterface
+  {
+  public:
+    VidCaffeInputConn()
+      :VidInputConn() {}
+    VidCaffeInputConn(const VidCaffeInputConn &i)
+      :VidInputConn(i),CaffeInputInterface(i) {}
+    ~VidCaffeInputConn() {}
+
+    // size of each element in Caffe jargon
+    int channels() const
+    {
+      if (_bw) return 1;
+      else return 3; // RGB
+    }
+
+    int height() const
+    {
+      return _height;
+    }
+
+    int width() const
+    {
+      return _width;
+    }
+
+    int batch_size() const
+    {
+      if (_db_batchsize > 0)
+	return _db_batchsize;
+      else if (!_dv.empty())
+	return _dv.size();
+      else return VidInputConn::test_batch_size();
+    }
+ 
+    int test_batch_size() const
+    {
+      if (_db_testbatchsize > 0)
+	return _db_testbatchsize;
+      else if (!_dv_test.empty())
+	return _dv_test.size();
+      else return VidInputConn::test_batch_size();
+    }
+
+    void init(const APIData &ad)
+    {
+      VidInputConn::init(ad);
+      if (ad.has("multi_label"))
+	_multi_label = ad.get("multi_label").get<bool>();
+      if (ad.has("root_folder"))
+	_root_folder = ad.get("root_folder").get<std::string>();
+      if (ad.has("segmentation"))
+	_segmentation = ad.get("segmentation").get<bool>();
+      if (ad.has("bbox"))
+	_bbox = ad.get("bbox").get<bool>();
+      if (ad.has("ctc"))
+	_ctc = ad.get("ctc").get<bool>();
+    }
+
+    void transform(const APIData &ad)
+    {
+      // in prediction mode only, convert the images to Datum, a Caffe data structure
+      if (!_train)
+	{
+	  // if no img height x width, we assume 224x224 (works if user is lucky, i.e. the best we can do)
+	  if (_width == -1)
+	    _width = 224;
+	  if (_height == -1)
+	    _height = 224;
+	  if (ad.has("has_mean_file"))
+	    _has_mean_file = ad.get("has_mean_file").get<bool>();
+	  APIData ad_input = ad.getobj("parameters").getobj("input");
+	  if (ad_input.has("segmentation"))
+	    _segmentation = ad_input.get("segmentation").get<bool>();
+	  if (ad_input.has("bbox"))
+	    _bbox = ad_input.get("bbox").get<bool>();
+	  if (ad_input.has("multi_label"))
+	    _multi_label = ad_input.get("multi_label").get<bool>();
+	  if (ad.has("root_folder"))
+	    _root_folder = ad.get("root_folder").get<std::string>();
+	  try
+	    {
+	      VidInputConn::transform(ad);
+	    }
+	  catch (InputConnectorBadParamException &e)
+	    {
+	      throw;
+	    }
+	  float *mean = nullptr;
+	  std::string meanfullname = _model_repo + "/" + _meanfname;
+	  if (_data_mean.count() == 0 && _has_mean_file)
+	    {
+	      caffe::BlobProto blob_proto;
+	      caffe::ReadProtoFromBinaryFile(meanfullname.c_str(),&blob_proto);
+	      _data_mean.FromProto(blob_proto);
+	      mean = _data_mean.mutable_cpu_data();
+	    }
+	  else _db = false;
+	  for (int i=0;i<(int)this->_images.size();i++)
+          {
+	      caffe::Datum datum;
+	      caffe::CVMatToDatum(this->_images.at(i),&datum);
+	      if (_data_mean.count() != 0)
+		{
+		  int height = datum.height();
+		  int width = datum.width();
+		  for (int c=0;c<datum.channels();++c)
+		    for (int h=0;h<height;++h)
+		      for (int w=0;w<width;++w)
+			{
+			  int data_index = (c*height+h)*width+w;
+			  float datum_element = static_cast<float>(static_cast<uint8_t>(datum.data()[data_index]));
+			  datum.add_float_data(datum_element - mean[data_index]);
+			}
+		  datum.clear_data();
+		}
+	      else if (_has_mean_scalar)
+		{
+		  int height = datum.height();
+		  int width = datum.width();
+		  for (int c=0;c<datum.channels();++c)
+		    for (int h=0;h<height;++h)
+		      for (int w=0;w<width;++w)
+			{
+			  int data_index = (c*height+h)*width+w;
+			  float datum_element = static_cast<float>(static_cast<uint8_t>(datum.data()[data_index]));
+			  datum.add_float_data(datum_element - _mean[c]);
+			}
+		  datum.clear_data();
+		}
+	      _dv_test.push_back(datum);
+	      _ids.push_back(this->_uris.at(i));
+	      _imgs_size.insert(std::pair<std::string,
+                                          std::pair<int,int>>(this->_uris.at(i),
+                                                              this->_images_size.at(i)));
+	    }
+	  this->_images.clear();
+	  this->_images_size.clear();
+	}
+    }
+
+    std::vector<caffe::Datum> get_dv_test(const int &num,
+        const bool &has_mean_file)
+    {
+      (void)has_mean_file;
+      std::vector<caffe::Datum> dv;
+
+      if ( _images.empty())
+      {
+        int i = 0;
+        while(_dt_vit!=_dv_test.end()
+            && i < num)
+        {
+          dv.push_back((*_dt_vit));
+          ++i;
+          ++_dt_vit;
+        }
+      }
+      return dv;
+    }
+
+    void reset_dv_test();
+
+  private:
+    std::string guess_encoding(const std::string &file);
+    
+  public:
+    int _db_batchsize = -1;
+    int _db_testbatchsize = -1;
+    std::unique_ptr<caffe::db::DB> _test_db;
+    std::unique_ptr<caffe::db::Cursor> _test_db_cursor;
+    std::string _dbname = "train";
+    std::string _test_dbname = "test";
+    std::string _meanfname = "mean.binaryproto";
+    std::string _correspname = "corresp.txt";
+    caffe::Blob<float> _data_mean; // mean binary image if available.
+    std::vector<caffe::Datum>::const_iterator _dt_vit;
+    std::vector<std::pair<std::string,std::string>> _segmentation_data_lines;
+    int _dt_seg = 0;
+    bool _align = false;
+  };
+#endif
+  
   /**
    * \brief Caffe CSV connector
    * \note use 'label_offset' in API to make sure that labels start at 0

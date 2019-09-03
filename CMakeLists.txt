@@ -7,6 +7,7 @@ option(USE_NCNN "use NCNN backend")
 option(USE_HDF5 "use HDF5" ON)
 option(USE_CAFFE "use Caffe backend" ON)
 option(USE_TENSORRT "use TensorRT backend" OFF)
+option(USE_LIBVNN "use libvnn connector")
 
 if (USE_CAFFE)
   add_definitions(-DUSE_CAFFE)
@@ -465,6 +466,13 @@ elseif(USE_CAFFE)
     list(APPEND CAFFE_DD_MAKE
       ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH}
       )
+  elseif (USE_TORCH)
+    message(STATUS "using ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/bin/protoc")
+    set(PROTOBUF_INCLUDE_DIR ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/include/)
+    set(PROTOBUF_LIB_DIR ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/lib/)
+    list(APPEND CAFFE_DD_MAKE
+      ${CMAKE_COMMAND} -E env LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR}:$ENV{LD_LIBRARY_PATH} PATH=${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/bin/:$ENV{PATH}
+      )
   endif()
   list(APPEND CAFFE_DD_MAKE make)
 
@@ -503,13 +511,27 @@ elseif(USE_CAFFE)
     set(CAFFE_DEBUG 0)
   endif()
 
-  list(APPEND CAFFE_DD_CONFIGURE_COMMAND
-    ln -sf ${CAFFE_DD_CONFIG_FILE} Makefile.config &&
-    echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config &&
-    echo "USE_SYSLOG:=${USE_SYSLOG}" >> Makefile.config &&
-    echo "DEBUG:=${CAFFE_DEBUG}" >> Makefile.config &&
-    ${CAFFE_DD_MAKE} ${CAFFE_DD_MAKE_ARG} -j${N}
-    )
+  if (USE_TORCH)
+    list(APPEND CAFFE_DD_CONFIGURE_COMMAND
+      ln -sf ${CAFFE_DD_CONFIG_FILE} Makefile.config &&
+      echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config &&
+      echo "USE_SYSLOG:=${USE_SYSLOG}" >> Makefile.config &&
+      echo "DEBUG:=${CAFFE_DEBUG}" >> Makefile.config &&
+      echo "INCLUDE_DIRS+=${PROTOBUF_INCLUDE_DIR}" >> Makefile.config &&
+      echo "LIBRARY_DIRS+=${PROTOBUF_LIB_DIR}" >> Makefile.config &&
+      ${CAFFE_DD_MAKE} ${CAFFE_DD_MAKE_ARG} -j${N}
+      )
+    message(STATUS "include_dirs : ${INCLUDE_DIRS}")
+
+  else()
+    list(APPEND CAFFE_DD_CONFIGURE_COMMAND
+      ln -sf ${CAFFE_DD_CONFIG_FILE} Makefile.config &&
+      echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config &&
+      echo "USE_SYSLOG:=${USE_SYSLOG}" >> Makefile.config &&
+      echo "DEBUG:=${CAFFE_DEBUG}" >> Makefile.config &&
+      ${CAFFE_DD_MAKE} ${CAFFE_DD_MAKE_ARG} -j${N}
+      )
+  endif()
 
   ExternalProject_Add(
     caffe_dd
@@ -564,6 +586,13 @@ if (USE_TF)
     add_dependencies(caffe_dd tensorflow_cc)
   endif()
 endif()
+
+if (USE_TORCH)
+  if (USE_CAFFE)
+    add_dependencies(caffe_dd pytorch)
+  endif()
+endif()
+
 
 if (USE_CAFFE2)
   if (USE_CAFFE)
@@ -717,6 +746,31 @@ if (USE_TENSORRT)
   endif()
   include_directories(${TENSORRT_INC_DIR})
 endif()
+  
+# libvnn
+if (USE_LIBVNN)
+  message(STATUS "Fetching libvnn")
+  add_definitions(-DUSE_LIBVNN)
+  add_definitions(-DUSE_JETSON_TX)
+  set(VNN_JETSON "")
+  if (JETSON)
+    set(VNN_JETSON -DUSE_TX2=ON)
+  endif()
+  ExternalProject_Add(
+    libvnn
+    PREFIX libvnn
+    INSTALL_DIR ${CMAKE_BINARY_DIR}
+    DOWNLOAD_COMMAND git clone https://github.com/jolibrain/libvnn.git
+    CONFIGURE_COMMAND mkdir -p build && cd build && cmake .. ${VNN_JETSON}
+    BUILD_COMMAND cd build && make -j${N}
+    INSTALL_COMMAND ""
+    BUILD_IN_SOURCE 1
+    )
+set(LIBVNN_LIB_DIR ${CMAKE_BINARY_DIR}/libvnn/src/libvnn/build/src)
+set(LIBVNN_INCLUDE_DIR ${CMAKE_BINARY_DIR}/libvnn/src/libvnn/src)
+set(VNN_LIBS vnn gobject-2.0 glib-2.0 gstapp-1.0 gstbase-1.0 gstreamer-1.0 gstpbutils-1.0)
+include_directories("${LIBVNN_INCLUDE_DIR}")
+endif()
 
 # main library, main & tests
 include_directories ("${PROJECT_SOURCE_DIR}/src")
@@ -736,10 +790,12 @@ set(COMMON_LINK_DIRS
   ${TF_LIB_DIR}
   ${XGBOOST_LIB_DIR}
   ${TSNE_LIB_DIR}
-  ${NCNN_LIB_DIR})
+  ${NCNN_LIB_DIR}
+  ${LIBVNN_LIB_DIR}
+  )
 if (USE_HDF5)
   set(COMMON_LINK_LIBS
-    ddetect ${DLIB_LIB_DEPS} ${TENSORRT_LIB_DEPS} ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl hdf5_cpp ${Boost_LIBRARIES} archive
+    ddetect ${DLIB_LIB_DEPS} ${TENSORRT_LIB_DEPS} ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl hdf5_cpp ${Boost_LIBRARIES} archive ${VNN_LIBS}
     ${CAFFE_LIB_DEPS}
     ${CAFFE2_LIB_DEPS}
     ${TF_LIB_DEPS}
@@ -748,7 +804,7 @@ if (USE_HDF5)
     ${NCNN_LIB_DEPS})
 else()
   set(COMMON_LINK_LIBS
-    ddetect ${DLIB_LIB_DEPS} ${TENSORRT_LIB_DEPS} ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} archive
+    ddetect ${DLIB_LIB_DEPS} ${TENSORRT_LIB_DEPS} ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} archive ${VNN_LIBS}
     ${CAFFE_LIB_DEPS}
     ${CAFFE2_LIB_DEPS}
     ${TF_LIB_DEPS}
@@ -756,6 +812,7 @@ else()
     ${TSNE_LIB_DEPS}
     ${NCNN_LIB_DEPS})
 endif()
+
 set(HTTP_LINK_LIBS cppnetlib-uri crypto ssl)
 
 add_subdirectory(main)
