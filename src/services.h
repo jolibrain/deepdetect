@@ -617,7 +617,6 @@ namespace dd
       return pout._status;
     }
 
-    //TODO: parent_id
     int chain_service(const std::string &cname,
 		      const std::shared_ptr<spdlog::logger> &chain_logger,
 		      APIData &adc,
@@ -674,7 +673,6 @@ namespace dd
       if (vad.empty())
 	{
 	  chain_logger->info("[" + std::to_string(chain_pos) + "]  no predictions");
-	  //break;
 	  return 1;
 	}
       
@@ -776,6 +774,8 @@ namespace dd
     
     int chain(const APIData &ad, const std::string &cname, APIData &out)
     {
+      try
+	{
 #ifdef USE_DD_SYSLOG
       auto chain_logger = spdlog::syslog_logger(cname);
 #else
@@ -800,6 +800,8 @@ namespace dd
       ChainData cdata;
       std::vector<std::string> meta_uris;
       std::vector<std::string> index_uris;
+      std::unordered_map<std::string,std::vector<std::string>> um_meta_uris;
+      std::unordered_map<std::string,std::vector<std::string>> um_index_uris;
       int npredicts = 0;
       std::string prec_pred_id;
       int prec_action_id = 0;
@@ -813,16 +815,32 @@ namespace dd
 	      if (adc.has("id"))
 		pred_id = adc.get("id").get<std::string>();
 	      else pred_id = std::to_string(i);
+
+	      std::string parent_id;
+	      if (adc.has("parent_id"))
+		parent_id = adc.get("parent_id").get<std::string>();
+	      else parent_id = std::to_string(prec_action_id);
+	      
+	      auto hit = um_meta_uris.find(parent_id);
+	      if (hit!=um_meta_uris.end())
+		meta_uris = (*hit).second;
+	      hit = um_index_uris.find(parent_id);
+	      if (hit!=um_index_uris.end())
+		index_uris = (*hit).second;
 	      cdata.add_model_sname(pred_id,adc.get("service").get<std::string>());
-	      chain_service(cname,chain_logger,adc,cdata,
-			    pred_id,meta_uris,index_uris,
-			    prec_action_id,i,npredicts);
+	      if (chain_service(cname,chain_logger,adc,cdata,
+				pred_id,meta_uris,index_uris,
+				prec_action_id,i,npredicts))
+		break;
 	      prec_pred_id = pred_id;
 	    }
 	  else if (adc.has("action"))
 	    {
-	      chain_action(chain_logger,adc,cdata,i,prec_pred_id);
+	      if (chain_action(chain_logger,adc,cdata,i,prec_pred_id))
+		break;
 	      prec_action_id = aid;
+	      um_meta_uris.insert(std::pair<std::string,std::vector<std::string>>(std::to_string(prec_action_id),meta_uris));
+	      um_index_uris.insert(std::pair<std::string,std::vector<std::string>>(std::to_string(prec_action_id),index_uris));
 	      ++aid;
 	    }
 	}
@@ -837,9 +855,14 @@ namespace dd
       std::chrono::time_point<std::chrono::system_clock> tstop = std::chrono::system_clock::now();
       double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(tstop-tstart).count();
       out.add("time",elapsed);
-
+	}
+      catch(...)
+	{
+	  spdlog::drop(cname);
+	  throw;
+	}
       spdlog::drop(cname);
-      
+
       return 0;
     }
     
