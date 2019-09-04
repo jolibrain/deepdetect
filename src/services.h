@@ -624,7 +624,7 @@ namespace dd
 		      const std::string &pred_id,
 		      std::vector<std::string> &meta_uris,
 		      std::vector<std::string> &index_uris,
-		      const int &prec_action_id,
+		      const std::string &parent_id,
 		      const int chain_pos,
 		      int &npredicts)
     {
@@ -638,16 +638,16 @@ namespace dd
 	  throw ServiceNotFoundException("Service " + sname + " does not exist");
 	}
 
-      // parent_id, if any
-      std::string parent_id;
-      if (adc.has("parent_id"))
-	parent_id = adc.get("parent_id").get<std::string>();
-            
       // if not first predict call in the chain, need to setup the input data!
       if (chain_pos != 0)
 	{
 	  // take data from the previous action
-	  APIData act_data = cdata.get_action_data(!parent_id.empty() ? parent_id : std::to_string(prec_action_id));
+	  APIData act_data = cdata.get_action_data(parent_id);
+	  if (act_data.empty())
+	    {
+	      spdlog::drop(cname);
+	      throw InputConnectorBadParamException("no action data for action id " + parent_id);
+	    }
 	  adc.add("data",act_data.get("data").get<std::vector<std::string>>()); // action output data must be string for now (more types to be supported / auto-detected)
 	  adc.add("ids",act_data.get("cids").get<std::vector<std::string>>()); // chain ids of processed elements
 	  adc.add("meta_uris",meta_uris);
@@ -804,7 +804,7 @@ namespace dd
       std::unordered_map<std::string,std::vector<std::string>> um_index_uris;
       int npredicts = 0;
       std::string prec_pred_id;
-      int prec_action_id = 0;
+      std::string prec_action_id;
       int aid = 0;
       for (size_t i=0;i<ad_calls.size();i++)
 	{
@@ -819,7 +819,7 @@ namespace dd
 	      std::string parent_id;
 	      if (adc.has("parent_id"))
 		parent_id = adc.get("parent_id").get<std::string>();
-	      else parent_id = std::to_string(prec_action_id);
+	      else parent_id = prec_action_id;
 	      
 	      auto hit = um_meta_uris.find(parent_id);
 	      if (hit!=um_meta_uris.end())
@@ -830,7 +830,7 @@ namespace dd
 	      cdata.add_model_sname(pred_id,adc.get("service").get<std::string>());
 	      if (chain_service(cname,chain_logger,adc,cdata,
 				pred_id,meta_uris,index_uris,
-				prec_action_id,i,npredicts))
+				parent_id,i,npredicts))
 		break;
 	      prec_pred_id = pred_id;
 	    }
@@ -838,9 +838,11 @@ namespace dd
 	    {
 	      if (chain_action(chain_logger,adc,cdata,i,prec_pred_id))
 		break;
-	      prec_action_id = aid;
-	      um_meta_uris.insert(std::pair<std::string,std::vector<std::string>>(std::to_string(prec_action_id),meta_uris));
-	      um_index_uris.insert(std::pair<std::string,std::vector<std::string>>(std::to_string(prec_action_id),index_uris));
+	      if (adc.has("id"))
+		prec_action_id = adc.get("id").get<std::string>();
+	      else prec_action_id = std::to_string(aid);
+	      um_meta_uris.insert(std::pair<std::string,std::vector<std::string>>(prec_action_id,meta_uris));
+	      um_index_uris.insert(std::pair<std::string,std::vector<std::string>>(prec_action_id,index_uris));
 	      ++aid;
 	    }
 	}
