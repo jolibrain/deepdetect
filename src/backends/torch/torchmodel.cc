@@ -29,6 +29,7 @@ namespace dd
         const std::string weights = ".ptw";
         const std::string traced = ".pt";
         const std::string corresp = "corresp";
+        const std::string sstate = "solver";
 
         std::unordered_set<std::string> files;
         int err = fileops::list_directory(_repo, true, false, false, files);
@@ -38,12 +39,18 @@ namespace dd
             return 1;
         }
 
-        std::string tracedf,weightsf,correspf;
-        int traced_t = -1, weights_t = -1, corresp_t = -1;
+        std::string tracedf,weightsf,correspf,sstatef;
+        int traced_t = -1, weights_t = -1, corresp_t = -1, sstate_t = -1;
 
         for (const auto &file : files) {
             long int lm = fileops::file_last_modif(file);
-            if (file.find(weights) != std::string::npos) {
+            if (file.find(sstate) != std::string::npos) {
+                if (sstate_t < lm) {
+                    sstatef = file;
+                    sstate_t = lm;
+                }
+            }
+            else if (file.find(weights) != std::string::npos) {
                 if (weights_t < lm) {
                     weightsf = file;
                     weights_t = lm;
@@ -66,6 +73,7 @@ namespace dd
         _traced = tracedf;
         _weights = weightsf;
         _corresp = correspf;
+        _sstate = sstatef;
 
         return 0;
     }

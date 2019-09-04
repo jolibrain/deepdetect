@@ -227,6 +227,7 @@ namespace dd
     {
         std::vector<std::string> extensions{".json"};
         fileops::remove_directory_files(this->_mlmodel._repo, extensions);
+        this->_logger->info("Torchlib service cleared");
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -304,6 +305,12 @@ namespace dd
                 this->_logger->warn("Solver type {} not found, using SGD", solver_type);
             optimizer = std::unique_ptr<optim::Optimizer>(
                 new optim::SGD(_module.parameters(), optim::SGDOptions(base_lr)));
+        }
+        // reload solver
+        if (!this->_mlmodel._sstate.empty())
+        {
+            this->_logger->info("Reload solver from {}", this->_mlmodel._sstate);
+            torch::load(*optimizer, this->_mlmodel._sstate);
         }
         optimizer->zero_grad();
         _module.train();
@@ -415,6 +422,8 @@ namespace dd
                     {
                         this->_logger->info("Saving checkpoint after {} iterations", elapsed_it);
                         _module.save_checkpoint(this->_mlmodel, std::to_string(elapsed_it));
+                        // Save optimizer
+                        torch::save(*optimizer, this->_mlmodel._repo + "/solver-" + std::to_string(elapsed_it) + ".pt");
                     }
                     ++it;
                     

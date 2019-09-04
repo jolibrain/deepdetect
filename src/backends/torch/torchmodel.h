@@ -50,6 +50,7 @@ namespace dd
     public:
         std::string _traced;/**< path of the traced part of the net. */
         std::string _weights;/**< path of the weights of the net. */
+        std::string _sstate;/**< current solver state to resume training */
     };
 }
 
