@@ -120,7 +120,6 @@ namespace dd
         _blob_pool_allocator.set_size_compare_ratio(0.0f);
         _workspace_pool_allocator.set_size_compare_ratio(0.5f);
         ncnn::Option opt;
-        opt.lightmode = true;
         opt.num_threads = _threads;
         opt.blob_allocator = &_blob_pool_allocator;
         opt.workspace_allocator = &_workspace_pool_allocator;

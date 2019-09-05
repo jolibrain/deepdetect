@@ -28,6 +28,8 @@
 #include <google/protobuf/message.h>
 
 #include "src/caffe.pb.h"
+#include "upgrade_proto.hpp"
+
 
 
 static inline size_t alignSize(size_t sz, int n)
@@ -298,25 +300,30 @@ static bool read_proto_from_text(const char* filepath, google::protobuf::Message
     return success;
 }
 
-static bool read_proto_from_binary(const char* filepath, google::protobuf::Message* message)
+static bool read_proto_from_binary(const char* filepath, caffe::NetParameter* message)
 {
-    std::ifstream fs(filepath, std::ifstream::in | std::ifstream::binary);
-    if (!fs.is_open())
+  std::ifstream fs(filepath, std::ifstream::in | std::ifstream::binary);
+  if (!fs.is_open())
     {
-        fprintf(stderr, "open failed %s\n", filepath);
-        return false;
+      fprintf(stderr, "open failed %s\n", filepath);
+      return false;
     }
 
-    google::protobuf::io::IstreamInputStream input(&fs);
-    google::protobuf::io::CodedInputStream codedstr(&input);
+  google::protobuf::io::IstreamInputStream input(&fs);
+  google::protobuf::io::CodedInputStream codedstr(&input);
 
-    codedstr.SetTotalBytesLimit(INT_MAX, INT_MAX / 2);
+  codedstr.SetTotalBytesLimit(INT_MAX, INT_MAX / 2);
 
-    bool success = message->ParseFromCodedStream(&codedstr);
+  bool success = message->ParseFromCodedStream(&codedstr);
 
-    fs.close();
+  fs.close();
 
+  if (!success)
     return success;
+
+  UpgradeNetAsNeeded(message); // from caffe/upgrade_proto.cpp
+
+  return success;
 }
 
 int convert_caffe_to_ncnn(bool ocr, const char* caffeproto, const char* caffemodel,
@@ -330,14 +337,12 @@ int convert_caffe_to_ncnn(bool ocr, const char* caffeproto, const char* caffemod
     bool s0 = read_proto_from_text(caffeproto, &proto);
     if (!s0)
     {
-        fprintf(stderr, "read_proto_from_text failed\n");
         return -1;
     }
 
     bool s1 = read_proto_from_binary(caffemodel, &net);
     if (!s1)
     {
-        fprintf(stderr, "read_proto_from_binary failed\n");
         return -1;
     }
 
@@ -604,7 +609,6 @@ int convert_caffe_to_ncnn(bool ocr, const char* caffeproto, const char* caffemod
         else if (layer.type() == "Convolution" || layer.type() == "ConvolutionDepthwise" || layer.type() == "DepthwiseConvolution")
         {
             const caffe::LayerParameter& binlayer = net.layer(netidx);
-
             const caffe::BlobProto& weight_blob = binlayer.blobs(0);
             const caffe::ConvolutionParameter& convolution_param = layer.convolution_param();
             fprintf(pp, " 0=%d", convolution_param.num_output());

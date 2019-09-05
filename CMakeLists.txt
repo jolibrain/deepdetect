@@ -364,8 +364,8 @@ if (USE_CAFFE2)
   if (USE_NCNN AND NOT USE_TENSORRT)
     add_custom_command(TARGET pytorch POST_BUILD
       COMMAND ${CMAKE_BINARY_DIR}/protobuf/bin/protoc
-      --proto_path=${CMAKE_BINARY_DIR}/src/backends/ncnn
-      --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_BINARY_DIR}/src/backends/ncnn/caffe.proto
+      --proto_path=${CMAKE_SOURCE_DIR}/src/backends/ncnn
+      --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_SOURCE_DIR}/src/backends/ncnn/caffe.proto
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
       COMMENT "generating caffe.pb.*")
   endif()
