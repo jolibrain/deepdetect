@@ -35,7 +35,8 @@ namespace dd
     {
     public:
         TorchInputInterface() {}
-        TorchInputInterface(const TorchInputInterface &i) {}
+        TorchInputInterface(const TorchInputInterface &i)
+            : _in(i._in), _attention_mask(i._attention_mask) {}
 
         ~TorchInputInterface() {}
 
@@ -124,7 +125,8 @@ namespace dd
         TxtTorchInputFileConn()
             : TxtInputFileConn() {}
         TxtTorchInputFileConn(const TxtTorchInputFileConn &i)
-            : TxtInputFileConn(i), TorchInputInterface(i) {}
+            : TxtInputFileConn(i), TorchInputInterface(i),
+              _width(i._width), _height(i._height) {}
         ~TxtTorchInputFileConn() {}
 
         // for API info only
@@ -142,9 +144,8 @@ namespace dd
         void transform(const APIData &ad);
 
     public:
-        int _width = 0;
+        int _width = 512;
         int _height = 0;
-        int64_t _in_size = 500;
     };
 } // namespace dd
 

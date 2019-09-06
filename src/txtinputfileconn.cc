@@ -305,7 +305,7 @@ namespace dd
 	  {
             std::unordered_map<std::string,Word>::iterator vhit;
             std::vector<std::string> tokens;
-            if (_ponctuation_tokens)
+            if (_punctuation_tokens)
             {
                 boost::char_separator<char> sep("\n\t\f\r ");
                 boost::tokenizer<boost::char_separator<char>> tokenizer(ct,sep);

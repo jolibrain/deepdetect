@@ -92,7 +92,7 @@ namespace dd
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-    int TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::predict(const APIData &ad, APIData &out) 
+    int TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::predict(const APIData &ad, APIData &out)
     {
         APIData params = ad.getobj("parameters");
         APIData output_params = params.getobj("output");
@@ -106,7 +106,6 @@ namespace dd
         }
         torch::Device cpu("cpu");
 
-        
         std::vector<c10::IValue> in_vals;
         in_vals.push_back(inputc._in.to(_device));
 
@@ -119,7 +118,10 @@ namespace dd
         Tensor output;
         try
         {
-            c10::IValue out_val = _traced->forward({inputc._in.to(_device)});
+            c10::IValue out_val = _traced->forward(in_vals);
+            if (out_val.isTuple()) {
+                out_val = out_val.toTuple()->elements()[0];
+            }
             if (!out_val.isTensor()) {
                 throw MLLibInternalException("Model returned an invalid output. Please check your model.");
             }

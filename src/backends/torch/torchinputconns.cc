@@ -12,8 +12,15 @@ void TxtTorchInputFileConn::transform(const APIData &ad) {
         throw;
     }
 
+    if (ad.has("parameters") && ad.getobj("parameters").has("input"))
+    {
+        APIData ad_input = ad.getobj("parameters").getobj("input");
+        if (ad_input.has("width"))
+            _width = ad_input.get("width").get<int>();
+    }
+
     if (!_ordered_words || _characters)
-        throw InputConnectorBadParamException("Need ordered_words = true");
+        throw InputConnectorBadParamException("Need ordered_words = true with backend torch");
 
     int cls_pos = _vocab.at("[CLS]")._pos;
     int sep_pos = _vocab.at("[SEP]")._pos;
@@ -28,15 +35,6 @@ void TxtTorchInputFileConn::transform(const APIData &ad) {
         tow->reset();
 
         std::vector<int64_t> ids;
-        /* // Exemple in:
-        {
-            101, 2489, 4443, 1999, 1016, 1037, 1059, 2243, 2135, 4012, 2361,
-            2000, 2663, 6904, 2452, 2345, 1056, 25509, 2015, 7398, 2089, 2384,
-            1012, 3793, 6904, 2000, 6584, 12521, 2487, 2000, 4374, 4443, 3160,
-            1006, 2358, 2094, 19067, 2102, 3446, 1007, 1056, 1004, 1039, 1005,
-            1055, 6611, 5511, 19961, 22407, 18613, 23352, 7840, 15136, 1005, 1055, 102
-        }; */
-
         ids.push_back(cls_pos);
 
         while(tow->has_elt())
@@ -62,7 +60,7 @@ void TxtTorchInputFileConn::transform(const APIData &ad) {
         at::Tensor mask_tensor = torch::ones_like(ids_tensor);
         // at::Tensor token_type_ids_tensor = torch::zeros_like(ids_tensor);
 
-        int64_t padding_size = _in_size - ids_tensor.sizes().back();
+        int64_t padding_size = _width - ids_tensor.sizes().back();
         ids_tensor = torch::constant_pad_nd(
             ids_tensor, at::IntList{0, padding_size}, 0);
         mask_tensor = torch::constant_pad_nd(
