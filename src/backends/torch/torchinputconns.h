@@ -58,10 +58,15 @@ namespace dd
             return cache_size();
         }
 
+        bool empty() const { return cache_size() == 0; }
+
         c10::optional<TorchBatch> get_batch(BatchRequestType request) override;
 
         // Returns a batch containing all the cached data
         TorchBatch get_cached();
+
+        // Split a percentage of this dataset
+        TorchDataset split(double start, double stop);
     };
 
 
@@ -177,6 +182,7 @@ namespace dd
 
         void transform(const APIData &ad);
 
+        void fill_dataset(TorchDataset &dataset, const std::vector<TxtEntry<double>*> &entries);
     public:
         int _width = 512;
         int _height = 0;

@@ -43,6 +43,9 @@ namespace dd
             }
         }
 
+        // TODO detect and list checkpoints names
+        // detect last checkpoint
+        // detect classification layer for BERT
         return 0;
     }
 }

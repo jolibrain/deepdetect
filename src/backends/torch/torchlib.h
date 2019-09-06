@@ -34,13 +34,15 @@ namespace dd
 {
     class TorchModule {
     public:
+        TorchModule();
+
         c10::IValue forward(std::vector<c10::IValue> source);
 
         std::vector<torch::Tensor> parameters();
 
-        void save(const std::string &filename);
+        void save_checkpoint(TorchModel &model, const std::string &name);
 
-        void load(const std::string &filename);
+        void load_checkpoint(const std::string &name);
     public:
         std::shared_ptr<torch::jit::script::Module> _traced;
         torch::nn::Linear _classif = nullptr;
@@ -64,7 +66,8 @@ namespace dd
 
         int predict(const APIData &ad, APIData &out);
 
-        int test(const APIData &ad, APIData &out);
+        int test(const APIData &ad, TorchDataset &dataset, 
+                 int batch_size, APIData &out);
 
     public:
         int _nclasses = 0;

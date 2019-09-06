@@ -76,6 +76,17 @@ TorchBatch TorchDataset::get_cached() {
     return batch.value();
 }
 
+TorchDataset TorchDataset::split(double start, double stop)
+{
+    auto datasize = _batches.size();
+    auto start_it = _batches.begin() + static_cast<int64_t>(datasize * start);
+    auto stop_it = _batches.end() - static_cast<int64_t>(datasize * (1 - stop));
+
+    TorchDataset new_dataset;
+    new_dataset._batches.insert(new_dataset._batches.end(), start_it, stop_it);
+    return new_dataset;
+}
+
 
 void TxtTorchInputFileConn::transform(const APIData &ad) {
     try
@@ -97,11 +108,19 @@ void TxtTorchInputFileConn::transform(const APIData &ad) {
     if (!_ordered_words || _characters)
         throw InputConnectorBadParamException("Need ordered_words = true with backend torch");
 
+    fill_dataset(_dataset, _txt);
+    if (!_test_txt.empty())
+        fill_dataset(_test_dataset, _test_txt);
+}
+
+void TxtTorchInputFileConn::fill_dataset(TorchDataset &dataset, 
+                                         const std::vector<TxtEntry<double>*> &entries)
+{
     int cls_pos = _vocab.at("[CLS]")._pos;
     int sep_pos = _vocab.at("[SEP]")._pos;
     int unk_pos = _vocab.at("[UNK]")._pos;
 
-    for (auto *te : _txt)
+    for (auto *te : entries)
     {
         TxtOrderedWordsEntry *tow = static_cast<TxtOrderedWordsEntry *>(te);
         tow->reset();
@@ -140,7 +159,15 @@ void TxtTorchInputFileConn::transform(const APIData &ad) {
         token_type_ids_tensor = torch::constant_pad_nd(
             token_type_ids_tensor, at::IntList{0, padding_size}, 0);
 
-        _dataset.add_batch({ids_tensor, token_type_ids_tensor, mask_tensor}, {});
+        std::vector<Tensor> target_vec;
+        int target_val = static_cast<int>(tow->_target);
+        if (target_val != -1)
+        {
+            Tensor target_tensor = torch::full(1, target_val, torch::kLong);
+            target_vec.push_back(target_tensor);
+        }
+
+        dataset.add_batch({ids_tensor, token_type_ids_tensor, mask_tensor}, std::move(target_vec));
     }
 }
 

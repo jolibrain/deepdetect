@@ -347,7 +347,7 @@ namespace dd
       if (_alphabet.empty() && _characters)
 	build_alphabet();
       
-      if (!_characters && !_train && _vocab.empty())
+      if (!_characters && (!_train || _ordered_words) && _vocab.empty())
 	deserialize_vocab();
       
       for (std::string u: _uris)
