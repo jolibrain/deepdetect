@@ -560,6 +560,32 @@ namespace dd
   }
 #endif // USE_NCNN
 
+#ifdef USE_TORCH
+  else if (mllib == "torch")
+  {
+    TorchModel torchmodel(ad_model,ad,_logger);
+    read_metrics_json(torchmodel._repo,ad);
+    if (type == "supervised")
+    {
+      if (input == "image")
+        add_service(sname, std::move(MLService<TorchLib,ImgTorchInputFileConn,SupervisedOutput,TorchModel>(sname,torchmodel,description)), ad);
+      else return dd_input_connector_not_found_1004();
+      if (JsonAPI::store_json_blob(torchmodel._repo, jstr))
+        _logger->error("couldn't write {} file in model repository {}", JsonAPI::_json_blob_fname, torchmodel._repo);
+      // store model configuration json blob
+      if (store_config && JsonAPI::store_json_config_blob(torchmodel._repo, jstr)) {
+        _logger->error("couldn't write {} file in model repository {}",
+		    JsonAPI::_json_config_blob_fname, torchmodel._repo);
+      }
+    }
+    else
+      {
+        // unknown type
+        return dd_service_bad_request_1006();
+      }
+  }
+#endif // USE_TORCH
+
 #ifdef USE_TF
 	else if (mllib == "tensorflow" || mllib == "tf")
 	  {

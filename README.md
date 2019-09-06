@@ -22,6 +22,7 @@ DeepDetect relies on external machine learning libraries through a very generic 
 | T-SNE      | Y        | N/A        | N/A            | N/A       |   N/A     |   N/A      | N/A         | N           |
 | Dlib       | N        | Y          | Y              | Y         |   N       |   N        | N           | N           |
 | TensorRT   | N        | Y          | Y              | Y         |   N       |   N        | N           | N           |
+| Libtorch   | N        | Y          | Y              | N         |   N       |   N        | N           | N           |
 
 
 #### GPU support per library
@@ -35,6 +36,7 @@ DeepDetect relies on external machine learning libraries through a very generic 
 | T-SNE      | Y        | N          |
 | Dlib       | N        | Y          |
 | TensorRT   | N        | Y          |
+| Libtorch   | N        | Y          |
 
 #### Input data support per library (current):
 
@@ -47,6 +49,7 @@ DeepDetect relies on external machine learning libraries through a very generic 
 | T-SNE      | Y   | N   | N          | N               | Y      | (*)
 | Dlib       | N   | N   | N          | N               | Y      |
 | TensorRT   | N   | N   | N          | N               | Y      |
+| Libtorch   | N   | N   | N          | N               | Y      |
 (*) more input support for T-SNE is pending
 
 #### Main functionalities
@@ -369,6 +372,14 @@ Specify the following option via cmake:
 cmake .. -DUSE_TENSORRT=ON
 ```
 TensorRT requires GPU and CUDNN, they are automatically switched on. 
+
+#### Build with Libtorch support
+
+Specify the following option via cmake:
+```
+cmake .. -DUSE_TORCH=ON
+```
+If you call cmake with the `-DUSE_CPU_ONLY` option, a cpu-only version of libtorch will be used.
 
 #### Build with Caffe2 support
 

@@ -84,6 +84,8 @@ namespace dd
 	cv::Mat img = cv::Mat(cv::imdecode(cv::Mat(vdat,true),
                                      _unchanged_data ? CV_LOAD_IMAGE_UNCHANGED :
                                      (_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR)));
+        if (_rgb)
+          cv::cvtColor(img, img, CV_BGR2RGB);
 	if (_keep_orig)
 	  _orig_imgs.push_back(img);
 	_imgs_size.push_back(std::pair<int,int>(img.rows,img.cols));
@@ -133,6 +135,8 @@ namespace dd
     {
       cv::Mat img = cv::imread(fname, _unchanged_data ? CV_LOAD_IMAGE_UNCHANGED :
                                (_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR));
+      if (_rgb)
+        cv::cvtColor(img, img, CV_BGR2RGB);
       if (_keep_orig)
 	_orig_imgs.push_back(img);
       if (img.empty())
@@ -258,6 +262,8 @@ namespace dd
 	  cv::Mat img = cv::imread(p.first, _unchanged_data ? CV_LOAD_IMAGE_UNCHANGED :
                              (_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR));
 	  _imgs_size.push_back(std::pair<int,int>(img.rows,img.cols));
+          if (_rgb)
+            cv::cvtColor(img, img, CV_BGR2RGB);
 	  if (_keep_orig)
 	    _orig_imgs.push_back(img);
 	  cv::Mat rimg;
@@ -310,6 +316,7 @@ namespace dd
     std::vector<std::string> _img_files;
     std::vector<std::pair<int,int>> _imgs_size;
     bool _bw = false;
+    bool _rgb = false;
     bool _in_mem = false;
     bool _unchanged_data = false;
     std::vector<int> _labels;
@@ -369,6 +376,8 @@ namespace dd
 	  }
       if (ad.has("bw"))
 	_bw = ad.get("bw").get<bool>();
+      if (ad.has("rgb"))
+	_rgb = ad.get("rgb").get<bool>();
       if (ad.has("unchanged_data"))
         _unchanged_data = ad.get("unchanged_data").get<bool>();
       if (ad.has("shuffle"))
@@ -445,6 +454,7 @@ namespace dd
 	  std::string u = _uris.at(i);
 	  DataEl<DDImg> dimg;
 	  dimg._ctype._bw = _bw;
+          dimg._ctype._rgb = _rgb;
 	  dimg._ctype._unchanged_data = _unchanged_data;
 	  dimg._ctype._width = _width;
 	  dimg._ctype._height = _height;
@@ -573,6 +583,7 @@ namespace dd
     int _crop_width = 0;
     int _crop_height = 0;
     bool _bw = false; /**< whether to convert to black & white. */
+    bool _rgb = false; /**< whether to convert to rgb. */
     bool _unchanged_data = false; /**< IMREAD_UNCHANGED flag. */
     double _test_split = 0.0; /**< auto-split of the dataset. */
     int _seed = -1; /**< shuffling seed. */
