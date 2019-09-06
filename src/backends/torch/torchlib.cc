@@ -586,12 +586,10 @@ namespace dd
 
             if (batch.target.empty())
                 throw MLLibBadParamException("Missing label on data while testing");
-            Tensor labels = batch.target[0];
-
+            Tensor labels = batch.target[0].view(IntList{-1});
             if (_masked_lm)
             {
                 output = output.view(IntList{-1, output.size(2)});
-                labels = labels.view(IntList{-1});
             }
             output = torch::softmax(output, 1).to(cpu);
             auto output_acc = output.accessor<float,2>();
@@ -610,12 +608,6 @@ namespace dd
                 }
                 bad.add("target", static_cast<double>(labels_acc[j]));
                 bad.add("pred", predictions);
-                // auto &tinputc = reinterpret_cast<TxtTorchInputConnector&>(inputc);
-                /* 
-                std::cout << "target: " << labels_acc[j] << std::endl;
-                std::cout << "masking: " << batch.data[0][0][j] << " " << batch.data[2][0][j] << std::endl;
-                std::cout << "pred: " << std::distance(predictions.begin(), std::max_element(predictions.begin(), predictions.end())) << std::endl << std::endl;
-                */
                 ad_res.add(std::to_string(entry_id), bad);
                 ++entry_id;
             }
