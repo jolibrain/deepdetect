@@ -684,7 +684,7 @@ if (USE_TORCH)
       PATCH_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || git apply ${PYTORCH_PATCHES} && echo Applying ${PYTORCH_PATCHES}
       CONFIGURE_COMMAND ""
       BUILD_COMMAND ""
-      COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || export GLIBCXX_USE_CXX11_ABI=1 && export BUILD_TEST=0 && export USE_CUDA=${PYTORCH_USE_CUDA} && python3 ../pytorch/tools/build_libtorch.py
+      COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || GLIBCXX_USE_CXX11_ABI=1 BUILD_TEST=0 USE_CUDA=${PYTORCH_USE_CUDA} python3 ../pytorch/tools/build_libtorch.py
       INSTALL_COMMAND ""
     )
 

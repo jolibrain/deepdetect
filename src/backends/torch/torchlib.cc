@@ -42,6 +42,8 @@ namespace dd
     {
         this->_libname = "torch";
         _traced = std::move(tl._traced);
+        _nclasses = tl._nclasses;
+        _device = tl._device;
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -52,11 +54,10 @@ namespace dd
 
     /*- from mllib -*/
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-    void TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::init_mllib(const APIData &ad) 
+    void TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::init_mllib(const APIData &lib_ad)
     {
         bool gpu = false;
         int gpuid = -1;
-        APIData lib_ad = ad.getobj("parameters").getobj("mllib");
 
         if (lib_ad.has("gpu")) {
             gpu = lib_ad.get("gpu").get<bool>() && torch::cuda::is_available();
