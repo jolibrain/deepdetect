@@ -123,7 +123,9 @@ namespace dd
     {
     public:
         TxtTorchInputFileConn()
-            : TxtInputFileConn() {}
+            : TxtInputFileConn() {
+            _vocab_sep = '\t';
+        }
         TxtTorchInputFileConn(const TxtTorchInputFileConn &i)
             : TxtInputFileConn(i), TorchInputInterface(i),
               _width(i._width), _height(i._height) {}

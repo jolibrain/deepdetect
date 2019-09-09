@@ -261,6 +261,7 @@ namespace dd
       _sequence(i._sequence),
       _seq_forward(i._seq_forward),
       _vocab(i._vocab),
+      _vocab_sep(i._vocab_sep),
       _wordpiece_tokenizer(i._wordpiece_tokenizer)
       {
         _wordpiece_tokenizer._ctfc = this;
@@ -446,6 +447,7 @@ namespace dd
     std::unordered_map<std::string,Word> _vocab; /**< string to word stats, including word */
     std::string _vocabfname = "vocab.dat";
     std::string _correspname = "corresp.txt";
+    char _vocab_sep = ','; /**< vocabulary separator */
     int _dirs = 0; /**< directories as input. */
     WordPieceTokenizer _wordpiece_tokenizer;
     
