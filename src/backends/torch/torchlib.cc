@@ -31,7 +31,9 @@ namespace dd
 {
     void add_parameters(std::shared_ptr<torch::jit::script::Module> module, std::vector<Tensor> &params) { 
         for (const auto &slot : module->get_parameters()) {
-            params.push_back(slot.value().toTensor());
+            Tensor tensor = slot.value().toTensor();
+            if (tensor.requires_grad())
+                params.push_back(slot.value().toTensor());
         }
         for (auto child : module->get_modules()) {
             add_parameters(child, params);
@@ -188,6 +190,8 @@ namespace dd
             _template = lib_ad.get("template").get<std::string>();
         if (lib_ad.has("finetuning"))
             finetuning = lib_ad.get("finetuning").get<bool>();
+        if (lib_ad.has("masked_lm"))
+            _masked_lm = lib_ad.get("masked_lm").get<bool>();
 
         _device = gpu ? torch::Device(DeviceType::CUDA, gpuid) : torch::Device(DeviceType::CPU);
         _module._device = _device;
@@ -479,7 +483,8 @@ namespace dd
         Tensor output;
         try
         {
-            output = torch::softmax(to_tensor_safe(_module.forward(in_vals)), 1);
+            output = to_tensor_safe(_module.forward(in_vals));
+            output = torch::softmax(output, 1).to(cpu);
         }
         catch (std::exception &e)
         {

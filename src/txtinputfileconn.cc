@@ -488,7 +488,9 @@ namespace dd
     while(getline(in,line))
       {
 	std::vector<std::string> tokens = dd_utils::split(line,_vocab_sep);
-	std::string key = tokens.at(0);
+	if (tokens.size() < 2)
+            throw InputConnectorBadParamException("Error in vocabulary file " + vocabfname);
+       std::string key = tokens.at(0);
 	int pos = std::atoi(tokens.at(1).c_str());
 	_vocab.emplace(std::make_pair(key,Word(pos)));
       }
