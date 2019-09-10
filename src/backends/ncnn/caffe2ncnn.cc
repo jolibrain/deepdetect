@@ -1520,7 +1520,7 @@ int convert_caffe_to_ncnn(bool ocr, const char* caffeproto, const char* caffemod
 		// h dim is correctly computed
 		fprintf(pp, " 0=%ld 1=%ld 2=%ld", bs.dim(2), bs.dim(1), 1L);
 	      else
-		fprintf(pp, " 0=%ld 1=%ld 2=%ld", bs.dim(2), bs.dim(1), bs.dim(0));
+		fprintf(pp, " 0=%ld 1=%ld 2=-233", bs.dim(2), bs.dim(1));
             }
             else // bs.dim_size() == 4
             {

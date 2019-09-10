@@ -54,6 +54,7 @@ namespace dd
         ncnn::Net *_net = nullptr;
         int _nclasses = 0;
         bool _timeserie =  false;
+        bool _lightmode = true;
     private:
         static ncnn::UnlockedPoolAllocator _blob_pool_allocator;
         static ncnn::PoolAllocator _workspace_pool_allocator;
