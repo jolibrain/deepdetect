@@ -21,6 +21,7 @@
 
 #include "deepdetect.h"
 #include "jsonapi.h"
+#include "txtinputfileconn.h"
 #include <gtest/gtest.h>
 #include <stdio.h>
 #include <iostream>
@@ -82,4 +83,25 @@ TEST(torchapi, service_predict_txt_classification)
     std::string cl1 = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
     ASSERT_TRUE(cl1 == "spam");
     ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble() > 0.7);
+}
+
+TEST(inputconn, txt_tokenize_ordered_words) {
+    std::string str = "everything runs fine, right?";
+    TxtInputFileConn tifc;
+    tifc._ordered_words = true;
+    tifc._wordpiece_tokens = true;
+    tifc._punctuation_tokens = true;
+
+    tifc._vocab["every"] = Word();
+    tifc._vocab["##ing"] = Word();
+    tifc._vocab["##thing"] = Word();
+    tifc._vocab["fine"] = Word();
+    tifc._vocab[","] = Word();
+    tifc._vocab["?"] = Word();
+    tifc._vocab["right"] = Word();
+
+    tifc.parse_content(str,1);
+    TxtOrderedWordsEntry &towe = *dynamic_cast<TxtOrderedWordsEntry*>(tifc._txt.at(0));
+    std::vector<std::string> tokens{"every", "##thing", "[UNK]", "fine", ",", "right", "?"};
+    ASSERT_EQ(tokens, towe._v);
 }

@@ -311,14 +311,19 @@ namespace dd
                 boost::tokenizer<boost::char_separator<char>> tokenizer(ct,sep);
 
                 // Split punctuation
-                std::string ponctuation_str = ",.;:`'!?)(-|><^·&\"\\/{}#$–=+[]%*";
-                std::unordered_set<char> ponctuation{ponctuation_str.begin(), ponctuation_str.end()};
+                auto is_punct = [] (char i)
+                {
+                    return i >= 33 && i <= 47
+                        || i >= 58 && i <= 64
+                        || i >= 91 && i <= 96
+                        || i >= 123 && i <= 126;
+                };
                 for (std::string token : tokenizer)
                 {
                     int start = 0;
                     for (int i = 0; i < token.size(); ++i)
                     {
-                        if (ponctuation.find(token[i]) != ponctuation.end())
+                        if (is_punct(token[i]))
                         {
                             if (i != start)
                                 tokens.push_back(token.substr(start, i - start));
@@ -453,7 +458,7 @@ namespace dd
   void TxtInputFileConn::serialize_vocab()
   {
     std::string vocabfname = _model_repo + "/" + _vocabfname;
-    std::string delim=",";
+    std::string delim=std::string(&_vocab_sep, 1);
     std::ofstream out;
     out.open(vocabfname);
     if (!out.is_open())
