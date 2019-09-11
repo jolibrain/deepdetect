@@ -783,7 +783,7 @@ if (USE_NCNN)
 endif()
 
 if (USE_TENSORRT)
-  if (NOT USE_CAFFE2 AND NOT USE_TF)
+  if (NOT USE_CAFFE2 AND NOT USE_TF AND NOT USE_TORCH)
     find_package(Protobuf REQUIRED)
     if (Protobuf_FOUND)
       set(PROTOBUF_INCLUDE_DIR ${Protobuf_INCLUDE_DIRS})
