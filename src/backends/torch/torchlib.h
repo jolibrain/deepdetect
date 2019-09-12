@@ -54,6 +54,8 @@ namespace dd
 
         torch::Device _device;
         int _classif_in = 0; /**<id of the input of the classification layer */
+        // XXX: This parameter is too specific
+        bool _hidden_states = false; /**< Take BERT hidden states as input. */ 
     };
 
 

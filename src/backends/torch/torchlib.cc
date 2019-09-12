@@ -90,6 +90,13 @@ namespace dd
             }
         }
         c10::IValue out_val = source.at(_classif_in);
+        if (_hidden_states)
+        {
+            // out_val is a tuple containing tensors of dimension n_batch * seq_len * n_features
+            // We want a tensor of size n_batch * n_features from the last hidden state
+            auto &elems = out_val.toTuple()->elements();
+            out_val = elems.back().toTensor().slice(1, 0, 1).squeeze(1);
+        }
         if (_classif)
         {
             out_val = _classif->forward(to_tensor_safe(out_val));
@@ -122,7 +129,7 @@ namespace dd
     {
         if (!model._traced.empty())
             _traced = torch::jit::load(model._traced, _device);
-        if (!model._weights.empty())
+        if (!model._weights.empty() && _classif)
             torch::load(_classif, model._weights);
     }
 
@@ -215,6 +222,7 @@ namespace dd
                 _module._classif = nn::Linear(768, _nclasses);
                 _module._classif->to(_device);
 
+                _module._hidden_states = true;
                 _module._classif_in = 1;
             }
         }
