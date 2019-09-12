@@ -626,7 +626,6 @@ namespace dd
       return pout._status;
     }
 
-    //TODO: parent_id
     int chain_service(const std::string &cname,
 		      const std::shared_ptr<spdlog::logger> &chain_logger,
 		      APIData &adc,
@@ -634,7 +633,7 @@ namespace dd
 		      const std::string &pred_id,
 		      std::vector<std::string> &meta_uris,
 		      std::vector<std::string> &index_uris,
-		      const int &prec_action_id,
+		      const std::string &parent_id,
 		      const int chain_pos,
 		      int &npredicts)
     {
@@ -648,16 +647,16 @@ namespace dd
 	  throw ServiceNotFoundException("Service " + sname + " does not exist");
 	}
 
-      // parent_id, if any
-      std::string parent_id;
-      if (adc.has("parent_id"))
-	parent_id = adc.get("parent_id").get<std::string>();
-            
       // if not first predict call in the chain, need to setup the input data!
       if (chain_pos != 0)
 	{
 	  // take data from the previous action
-	  APIData act_data = cdata.get_action_data(!parent_id.empty() ? parent_id : std::to_string(prec_action_id));
+	  APIData act_data = cdata.get_action_data(parent_id);
+	  if (act_data.empty())
+	    {
+	      spdlog::drop(cname);
+	      throw InputConnectorBadParamException("no action data for action id " + parent_id);
+	    }
 	  adc.add("data",act_data.get("data").get<std::vector<std::string>>()); // action output data must be string for now (more types to be supported / auto-detected)
 	  adc.add("ids",act_data.get("cids").get<std::vector<std::string>>()); // chain ids of processed elements
 	  adc.add("meta_uris",meta_uris);
@@ -683,7 +682,6 @@ namespace dd
       if (vad.empty())
 	{
 	  chain_logger->info("[" + std::to_string(chain_pos) + "]  no predictions");
-	  //break;
 	  return 1;
 	}
       
@@ -785,68 +783,95 @@ namespace dd
     
     int chain(const APIData &ad, const std::string &cname, APIData &out)
     {
-#ifdef USE_DD_SYSLOG
-      auto chain_logger = spdlog::syslog_logger(cname);
-#else
-      auto chain_logger = spdlog::stdout_logger_mt(cname);
-#endif
-      
-      std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();
-
-      // - iterate chain of calls
-      // - if predict call, use the visitor to execute it
-      //      - this requires storing output into mlservice object / have a flag for telling the called service it's part of a chain
-      // - if action call, execute the generic code for it
-      std::vector<APIData> ad_calls = ad.getobj("chain").getv("calls");
-      chain_logger->info("number of calls=" + std::to_string(ad_calls.size()));
-      
-      // debug
-      /*std::vector<std::string> ckeys = ad.list_keys();
-      for (auto s: ckeys)
-      std::cerr << s << std::endl;*/
-      //debug
-
-      ChainData cdata;
-      std::vector<std::string> meta_uris;
-      std::vector<std::string> index_uris;
-      int npredicts = 0;
-      std::string prec_pred_id;
-      int prec_action_id = 0;
-      int aid = 0;
-      for (size_t i=0;i<ad_calls.size();i++)
+      try
 	{
-	  APIData adc = ad_calls.at(i);
-	  if (adc.has("service"))
+#ifdef USE_DD_SYSLOG
+	  auto chain_logger = spdlog::syslog_logger(cname);
+#else
+	  auto chain_logger = spdlog::stdout_logger_mt(cname);
+#endif
+	  
+	  std::chrono::time_point<std::chrono::system_clock> tstart = std::chrono::system_clock::now();
+	  
+	  // - iterate chain of calls
+	  // - if predict call, use the visitor to execute it
+	  //      - this requires storing output into mlservice object / have a flag for telling the called service it's part of a chain
+	  // - if action call, execute the generic code for it
+	  std::vector<APIData> ad_calls = ad.getobj("chain").getv("calls");
+	  chain_logger->info("number of calls=" + std::to_string(ad_calls.size()));
+	  
+	  // debug
+	  /*std::vector<std::string> ckeys = ad.list_keys();
+	    for (auto s: ckeys)
+	    std::cerr << s << std::endl;*/
+	  //debug
+	  
+	  ChainData cdata;
+	  std::vector<std::string> meta_uris;
+	  std::vector<std::string> index_uris;
+	  std::unordered_map<std::string,std::vector<std::string>> um_meta_uris;
+	  std::unordered_map<std::string,std::vector<std::string>> um_index_uris;
+	  int npredicts = 0;
+	  std::string prec_pred_id;
+	  std::string prec_action_id;
+	  int aid = 0;
+	  for (size_t i=0;i<ad_calls.size();i++)
 	    {
-	      std::string pred_id;
-	      if (adc.has("id"))
-		pred_id = adc.get("id").get<std::string>();
-	      else pred_id = std::to_string(i);
-	      cdata.add_model_sname(pred_id,adc.get("service").get<std::string>());
-	      chain_service(cname,chain_logger,adc,cdata,
-			    pred_id,meta_uris,index_uris,
-			    prec_action_id,i,npredicts);
-	      prec_pred_id = pred_id;
+	      APIData adc = ad_calls.at(i);
+	      if (adc.has("service"))
+		{
+		  std::string pred_id;
+		  if (adc.has("id"))
+		    pred_id = adc.get("id").get<std::string>();
+		  else pred_id = std::to_string(i);
+		  
+		  std::string parent_id;
+		  if (adc.has("parent_id"))
+		    parent_id = adc.get("parent_id").get<std::string>();
+		  else parent_id = prec_action_id;
+		  
+		  auto hit = um_meta_uris.find(parent_id);
+		  if (hit!=um_meta_uris.end())
+		    meta_uris = (*hit).second;
+		  hit = um_index_uris.find(parent_id);
+		  if (hit!=um_index_uris.end())
+		    index_uris = (*hit).second;
+		  cdata.add_model_sname(pred_id,adc.get("service").get<std::string>());
+		  if (chain_service(cname,chain_logger,adc,cdata,
+				    pred_id,meta_uris,index_uris,
+				    parent_id,i,npredicts))
+		    break;
+		  prec_pred_id = pred_id;
+		}
+	      else if (adc.has("action"))
+		{
+		  if (chain_action(chain_logger,adc,cdata,i,prec_pred_id))
+		    break;
+		  if (adc.has("id"))
+		    prec_action_id = adc.get("id").get<std::string>();
+		  else prec_action_id = std::to_string(aid);
+		  um_meta_uris.insert(std::pair<std::string,std::vector<std::string>>(prec_action_id,meta_uris));
+		  um_index_uris.insert(std::pair<std::string,std::vector<std::string>>(prec_action_id,index_uris));
+		  ++aid;
+		}
 	    }
-	  else if (adc.has("action"))
-	    {
-	      chain_action(chain_logger,adc,cdata,i,prec_pred_id);
-	      prec_action_id = aid;
-	      ++aid;
-	    }
+	  
+	  // producing a nested output
+	  APIData nested_out;
+	  if (npredicts > 1)
+	    nested_out = cdata.nested_chain_output();
+	  else nested_out = cdata.get_model_data(cdata._first_id);
+	  
+	  out = nested_out;
+	  std::chrono::time_point<std::chrono::system_clock> tstop = std::chrono::system_clock::now();
+	  double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(tstop-tstart).count();
+	  out.add("time",elapsed);
 	}
-      
-      // producing a nested output
-      APIData nested_out;
-      if (npredicts > 1)
-	nested_out = cdata.nested_chain_output();
-      else nested_out = cdata.get_model_data(cdata._first_id);
-      
-      out = nested_out;
-      std::chrono::time_point<std::chrono::system_clock> tstop = std::chrono::system_clock::now();
-      double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(tstop-tstart).count();
-      out.add("time",elapsed);
-
+      catch(...)
+	{
+	  spdlog::drop(cname);
+	  throw;
+	}
       spdlog::drop(cname);
       
       return 0;
