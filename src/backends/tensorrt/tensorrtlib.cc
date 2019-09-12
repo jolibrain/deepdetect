@@ -121,16 +121,8 @@ namespace dd
       if (ad.has("maxBatchSize"))
 	{
 	  int nmbs =  ad.get("maxBatchSize").get<int>();
-	  if (nmbs < _max_batch_size)
-	    {
-	      _max_batch_size = nmbs;
-	      this->_logger->info("setting max batch size to {}", _max_batch_size);
-	    }
-	  else
-	    {
-	      this->_logger->warn("asked for max_batch_size {}, larger than {}, using {}",
-				  nmbs, _max_batch_size, _max_batch_size);
-	    }
+	  _max_batch_size = nmbs;
+	  this->_logger->info("setting max batch size to {}", _max_batch_size);
 	}      
 
       if (ad.has("dla"))

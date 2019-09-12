@@ -120,7 +120,10 @@ elif args.search:
 # First call to load model
 data = list_bench_files[:1]
 if not args.recreate:
-  service_create(1)
+  if not args.mllib == "tensorrt" or args.recreate:
+    service_create(1)
+  else:
+    service_create(args.max_batch_size)
   classif = dd.post_predict(args.sname,data,parameters_input,parameters_mllib,parameters_output)
 
 for b in batch_sizes:
