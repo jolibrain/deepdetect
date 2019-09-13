@@ -295,8 +295,13 @@ if (USE_SIMSEARCH)
     execute_process(COMMAND ${CMAKE_COMMAND} -E tar xvzf ${VOC_EXAMPLE_PATH}${VOC_EXAMPLE_MODEL_ARCHIVE} -C ${VOC_EXAMPLE_PATH})
     execute_process(COMMAND ${CMAKE_COMMAND} -E rename ${VOC_EXAMPLE_MODEL_OUT} ${VOC_EXAMPLE_PATH}${VOC_EXAMPLE_MODEL_OUT})
   endif()
-
+if (USE_ANNOY)
   REGISTER_TEST(ut_simsearch ut-simsearch.cc)
+endif()
+if (USE_FAISS)
+  REGISTER_TEST(ut_simsearch_faiss ut-simsearch-faiss.cc)
+endif()
+
 endif()
 
 endif()

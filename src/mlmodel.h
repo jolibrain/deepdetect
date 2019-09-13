@@ -106,13 +106,50 @@ namespace dd
     /**
      * \brief create similarity search engine
      */
-    void create_sim_search(const int &dim)
+    void create_sim_search(const int &dim, const APIData ad)
     {
       if (!_se)
 	{
+#ifdef USE_ANNOY
 	  _se = new SearchEngine<AnnoySE>(dim,_repo);
 	  _se->_tse->_map_populate = _index_preload;
-	  _se->create_index();
+#endif
+#ifdef USE_FAISS
+	  _se = new SearchEngine<FaissSE>(dim,_repo);
+      if (ad.has("index_type"))
+        _se->_tse->_index_key = ad.get("index_type").get<std::string>();
+      if (ad.has("train_samples"))
+        _se->_tse->_train_samples_size = ad.get("train_samples").get<int>();
+      if (ad.has("ondisk"))
+        _se->_tse->_ondisk = ad.get("ondisk").get<bool>();
+      if (ad.has("nprobe"))
+        _se->_tse->_nprobe = ad.get("nprobe").get<int>();
+      #ifdef USE_GPU_FAISS
+      if (ad.has("index_gpu"))
+        _se->_tse->_gpu = ad.get("index_gpu").get<bool>();
+      if (ad.has("index_gpuid"))
+        {
+          _se->_tse->_gpu = true;
+          try
+            {
+              int gpuid = ad.get("index_gpuid").get<int>();
+              _se->_tse->_gpuids.push_back(gpuid);
+            }
+          catch (std::exception &e)
+            {
+              try
+                {
+                  _se->_tse->_gpuids = ad.get("index_gpuid").get<std::vector<int>>();
+                }
+              catch(std::exception &e)
+                {
+                  throw MLLibBadParamException("wrong type for index_gpuid : id or [id0, id1, ...]");
+                }
+            }
+        }
+      #endif
+#endif
+      _se->create_index();
 	}
     }
 
@@ -151,7 +188,11 @@ namespace dd
     std::string _best_model_filename = "/best_model.txt";
     
 #ifdef USE_SIMSEARCH
+#ifdef USE_ANNOY
     SearchEngine<AnnoySE> *_se = nullptr;
+#elif USE_FAISS
+    SearchEngine<FaissSE> *_se = nullptr;
+#endif
     bool _index_preload = false;
 #endif
 

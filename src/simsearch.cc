@@ -22,6 +22,15 @@
 #include "simsearch.h"
 #include "utils/fileops.hpp"
 #include "utils/utils.hpp"
+#ifdef USE_FAISS
+#include "faiss/IndexIVF.h"
+#include "faiss/OnDiskInvertedLists.h"
+#include "faiss/IndexPreTransform.h"
+#include "faiss/index_factory.h"
+#ifdef USE_GPU_FAISS
+#include "faiss/gpu/GpuCloner.h"
+#endif
+#endif
 
 namespace dd
 {
@@ -96,7 +105,16 @@ namespace dd
     std::lock_guard<std::mutex> lock(_index_mutex);
     _tse->index(uri,data);
   }
-  
+
+  template <class TSE>
+  void SearchEngine<TSE>::index(const std::vector<URIData> &uris,
+                                const std::vector<std::vector<double>> &datas)
+  {
+    std::lock_guard<std::mutex> lock(_index_mutex);
+    _tse->index(uris,datas);
+  }
+
+
   template <class TSE>
   void SearchEngine<TSE>::search(const std::vector<double> &data,
 				 const int &nn,
@@ -106,6 +124,8 @@ namespace dd
     _tse->search(data,nn,uris,distances);
   }
 
+
+#ifdef USE_ANNOY
   /*- AnnoySE -*/
 
   AnnoySE::AnnoySE(const int &f,
@@ -195,7 +215,17 @@ namespace dd
     ++_index_size;
     add_to_db(idx,uri);
   }
-  
+
+  void AnnoySE::index(const std::vector<URIData> &uris,
+                      const std::vector<std::vector<double>> &vecs)
+  {
+    for (int i =0; i<uris.size(); ++i)
+      {
+        index(uris[i], vecs[i]);
+      }
+  }
+
+
   void AnnoySE::search(const std::vector<double> &vec,
 		       const int &nn,
 		       std::vector<URIData> &uris,
@@ -237,4 +267,275 @@ namespace dd
   
 
   template class SearchEngine<AnnoySE>;
+#endif
+
+#ifdef USE_FAISS
+  FaissSE::FaissSE(const int &f,
+                   const std::string &model_repo)
+    :_f(f),_model_repo(model_repo)
+  {
+    _db = caffe::db::GetDB(_db_backend);
+    _index_key = std::string("Flat");
+  }
+
+  FaissSE::~FaissSE()
+  {
+    delete _findex;
+    if (_db)
+      _db->Close();
+    delete _db;
+  }
+
+  void FaissSE::create_index()
+  {
+    if (_findex)
+      delete _findex;
+    std::string index_filename = _model_repo + "/" + _index_name;
+    if (fileops::file_exists(index_filename))
+      {
+        if (_ondisk)
+          _findex = faiss::read_index(index_filename.c_str(),faiss::IO_FLAG_MMAP);
+        else
+          _findex = faiss::read_index(index_filename.c_str());
+        _index_size = _findex->ntotal;
+      }
+    else
+      {
+        _findex = faiss::index_factory(_f,_index_key.c_str());
+        if (_ondisk)
+          {
+            std::string odilfn =  _model_repo + "/" + _il_name;
+            faiss::IndexIVF * iivf = dynamic_cast<faiss::IndexIVF*>(_findex);
+            if (iivf)
+              {
+                faiss::OnDiskInvertedLists* odil =
+                  new faiss::OnDiskInvertedLists(iivf->nlist, iivf->code_size,  odilfn.c_str());
+                iivf->own_invlists = true;
+                iivf->replace_invlists(odil, true);
+              }
+            else
+              {
+                faiss::IndexPreTransform * ipivf = dynamic_cast<faiss::IndexPreTransform*>(_findex);
+                if (ipivf)
+                  {
+                    faiss::IndexIVF * iivf = dynamic_cast<faiss::IndexIVF*>(ipivf->index);
+                    if (iivf)
+                      {
+                        faiss::OnDiskInvertedLists* odil =
+                          new faiss::OnDiskInvertedLists(iivf->nlist, iivf->code_size, odilfn.c_str());
+                        iivf->own_invlists = true;
+                        iivf->replace_invlists(odil, true);
+                      }
+                  }
+                else
+                  std::cerr << "cannot put index on disk : neither IVF nor vectorTransform+IVF\n";
+              }
+          }
+        _index_size = 0;
+      }
+
+
+#ifdef USE_GPU_FAISS
+    if (_gpu)
+      {
+        if (_gpuids.size() == 0)
+          {
+            int ngpus = faiss::gpu::getNumDevices();
+            for(int i = 0; i < ngpus; i++)
+              _gpuids.push_back(i);
+          }
+        for (unsigned int i=0; i< _gpuids.size(); ++i)
+          {
+            _gpu_res.push_back(new faiss::gpu::StandardGpuResources);
+          }
+
+        if (_gpuids.size() > 1)
+          {
+            faiss::Index* gindex = faiss::gpu::index_cpu_to_gpu_multiple(_gpu_res, _gpuids, _findex);
+            delete _findex;
+            _findex  = gindex;
+          }
+        else
+          {
+            faiss::Index*  gindex = faiss::gpu::index_cpu_to_gpu(_gpu_res[0], _gpuids[0], _findex);
+            delete _findex;
+            _findex = gindex;
+          }
+      }
+#endif
+
+
+    std::string db_filename = _model_repo + "/" + _db_name;
+    if (fileops::file_exists(db_filename))
+      {
+        std::cerr << "open existing index db\n";
+        _db->Open(db_filename,caffe::db::WRITE);
+      }
+    else
+      {
+        std::cerr << "create index db\n";
+        _db->Open(db_filename,caffe::db::NEW);
+      }
+
+  }
+
+  void FaissSE::train()
+  {
+    // train
+    try
+      {
+        _findex->train(_train_samples.size()/_f,_train_samples.data());
+      }
+    catch (std::exception &e)
+      {
+        std::cerr << "could not train, maybe not enough data to train with selected index type. index likely to be  empty" << e.what() << std::endl;
+        return;
+      }
+    // then add data to index
+    _findex->add(_train_samples.size()/_f,_train_samples.data());
+    // then throw away data
+    _train_samples.clear();
+  }
+
+  void FaissSE::update_index()
+  {
+    if (!_findex->is_trained)
+      train();
+    std::string index_path = _model_repo + "/" + _index_name;
+#ifdef USE_GPU_FAISS
+    if (_gpu)
+      {
+        faiss::Index* cindex = faiss::gpu::index_gpu_to_cpu(_findex);
+        faiss::write_index(cindex, index_path.c_str());
+        delete cindex;
+      }
+    else
+      {
+        faiss::write_index(_findex, index_path.c_str());
+      }
+#else
+    faiss::write_index(_findex, index_path.c_str());
+#endif
+    _txn->Commit();
+    _txn = std::unique_ptr<caffe::db::Transaction>(_db->NewTransaction());
+  }
+
+
+  void FaissSE::remove_index()
+  {
+    fileops::remove_file(_model_repo,_index_name);
+    fileops::remove_file(_model_repo,_il_name);
+    std::string db_filename = _model_repo + "/" + _db_name;
+    fileops::clear_directory(db_filename);
+    rmdir(db_filename.c_str());
+  }
+
+  void FaissSE::index(const URIData &uri,
+             const std::vector<double> &data)
+  {
+    if (!_findex->is_trained && _index_size >= _train_samples_size)
+      train();
+    long int idx = _index_size;
+    if (_findex->is_trained)
+      {
+        std::vector<float> d(data.begin(),data.end());
+        _findex->add(1,d.data());
+      }
+    else
+      {
+        _train_samples.insert(_train_samples.end(),data.begin(),data.end());
+      }
+    ++_index_size;
+    add_to_db(idx,uri);
+  }
+
+  void FaissSE::index(const std::vector<URIData> &uris,
+                      const std::vector<std::vector<double>> &datas)
+  {
+    if (!_findex->is_trained && _index_size >= _train_samples_size)
+      train();
+    long int idx = _index_size;
+    if (_findex->is_trained)
+      {
+        std::vector<float> d;
+        for (std::vector<double> data: datas)
+          d.insert(d.end(), data.begin(),data.end());
+        _findex->add(uris.size(),d.data());
+      }
+    else
+      {
+        for (std::vector<double> data : datas)
+          _train_samples.insert(_train_samples.end(),data.begin(),data.end());
+      }
+    _index_size += uris.size();
+    for (unsigned long int i =0; i<uris.size(); ++i)
+      add_to_db(idx+i,uris[i]);
+  }
+
+
+  void FaissSE::search(const std::vector<double> &vec,
+                       const int &nn,
+                       std::vector<URIData> &uris,
+                       std::vector<double> &distances)
+  {
+    if (!_findex->is_trained)
+      train();
+    std::vector<long int> labels(nn,-1);
+    std::vector<float> d(nn,-1.0);
+    std::vector<float> v(vec.begin(),vec.end());
+    faiss::IndexIVF * iivf = dynamic_cast<faiss::IndexIVF*>(_findex);
+    if (iivf)
+      {
+        if (_nprobe == -1)
+          {
+            int np = iivf->nlist / 50;
+            if (np < 2)
+              iivf->nprobe = 2;
+            else
+              iivf->nprobe = np;
+          }
+        else
+          iivf->nprobe = _nprobe;
+      }
+
+    _findex->search(1,v.data(),nn,d.data(),labels.data());
+    for (int i = 0; i< nn ; ++i)
+      {
+        long int label = labels[i];
+        if (label != -1)
+          {
+            URIData uri;
+            get_from_db(label,uri);
+            uris.push_back(uri);
+            distances.push_back(d[i]/((double)vec.size()));
+          }
+      }
+  }
+
+
+  void FaissSE::add_to_db(const int &idx,
+                          const URIData &fmap)
+  {
+    if (_count_put == 0)
+      _txn = std::unique_ptr<caffe::db::Transaction>(_db->NewTransaction());
+    _txn->Put(std::to_string(idx),fmap.encode());
+    ++_count_put;
+    if (_count_put % _count_put_max == 0)
+      {
+        _txn->Commit(); // batch commit
+        _txn = std::unique_ptr<caffe::db::Transaction>(_db->NewTransaction());
+      }
+  }
+
+  void FaissSE::get_from_db(const int &idx,
+                            URIData &fmap)
+  {
+    std::string tmp;
+    _db->Get(std::to_string(idx),tmp);
+    fmap.decode(tmp);
+  }
+
+  template class SearchEngine<FaissSE>;
+
+#endif
 }
