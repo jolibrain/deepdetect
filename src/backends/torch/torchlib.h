@@ -40,6 +40,8 @@ namespace dd
 
         c10::IValue forward(std::vector<c10::IValue> source);
 
+        void freeze_traced(bool freeze);
+
         std::vector<torch::Tensor> parameters();
 
         void save_checkpoint(TorchModel &model, const std::string &name);
@@ -48,6 +50,8 @@ namespace dd
 
         void eval();
         void train();
+
+        void free();
     public:
         std::shared_ptr<torch::jit::script::Module> _traced;
         torch::nn::Linear _classif = nullptr;
@@ -55,7 +59,9 @@ namespace dd
         torch::Device _device;
         int _classif_in = 0; /**<id of the input of the classification layer */
         // XXX: This parameter is too specific
-        bool _hidden_states = false; /**< Take BERT hidden states as input. */ 
+        bool _hidden_states = false; /**< Take BERT hidden states as input. */
+    private:
+        bool _freeze_traced = false; /**< Freeze weights of the traced module */
     };
 
 
@@ -83,6 +89,7 @@ namespace dd
     public:
         int _nclasses = 0;
         std::string _template;
+        bool _finetuning = false;
         torch::Device _device = torch::Device("cpu");
         bool _masked_lm = false;
 

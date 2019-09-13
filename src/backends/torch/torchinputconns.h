@@ -82,11 +82,11 @@ namespace dd
     {
     public:
         TorchInputInterface() {}
-        TorchInputInterface(const TorchInputInterface &i) {
-            _lm_params = i._lm_params;
-            _dataset = i._dataset;
-            _test_dataset = i._test_dataset;
-        }
+        TorchInputInterface(const TorchInputInterface &i)
+             : _finetuning(i._finetuning),
+             _lm_params(i._lm_params),
+             _dataset(i._dataset),
+             _test_dataset(i._test_dataset) { }
 
         ~TorchInputInterface() {}
 
@@ -104,6 +104,7 @@ namespace dd
         TorchDataset _test_dataset;
 
         MaskedLMParams _lm_params;
+        bool _finetuning;
     };
 
     class ImgTorchInputFileConn : public ImgInputFileConn, public TorchInputInterface
@@ -131,7 +132,7 @@ namespace dd
         {
             ImgInputFileConn::init(ad);
         }
-        
+
         void transform(const APIData &ad)
         {
             try
@@ -154,7 +155,6 @@ namespace dd
                 }
             }
 
-            std::vector<at::Tensor> tensors;
             std::vector<int64_t> sizes{ _height, _width, 3 };
             at::TensorOptions options(at::ScalarType::Byte);
 
@@ -163,7 +163,7 @@ namespace dd
                 imgt = imgt.toType(at::kFloat).permute({2, 0, 1});
                 if (_std != 1.0)
                     imgt = imgt.mul(1. / _std);
-                tensors.push_back(imgt);
+                _dataset.add_batch({imgt});
             }
         }
 
@@ -185,6 +185,14 @@ namespace dd
             : TxtInputFileConn(i), TorchInputInterface(i),
               _width(i._width), _height(i._height) {}
         ~TxtTorchInputFileConn() {}
+
+        void init(const APIData &ad)
+        {
+            TxtInputFileConn::init(ad);
+            fillup_parameters(ad);
+        }
+
+        void fillup_parameters(const APIData &ad_input);
 
         // for API info only
         int width() const

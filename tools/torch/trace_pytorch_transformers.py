@@ -18,6 +18,7 @@ parser.add_argument('-p', "--not-pretrained", dest="pretrained", action='store_f
                     help="Whether the exported models should not be pretrained")
 parser.add_argument('-t', '--template', default="", type=str, help="Template name of the model, as specified by pytorch-transformers")
 parser.add_argument('--cpu', action='store_true', help="Force models to be exported for CPU device")
+parser.add_argument('--gpuid', type=int, help="If cuda, trace model on given gpu.")
 parser.add_argument('--input-size', type=int, default=512, help="Length of the input sequence")
 parser.add_argument('--vocab', action='store_true', help="Export the vocab.dat file along with the model.")
 parser.add_argument('--train', action='store_true', help="Prepare model for training")
@@ -28,14 +29,14 @@ args = parser.parse_args()
 if args.verbose:
     logging.basicConfig(level=logging.INFO)
 
+logging.info("pytorch version %s, from %s" % (torch.__version__, torch.__file__))
+logging.info("pytorch-transformers version %s, from %s" % (M.__version__, M.__file__))
+
 model_classes = {
-    "bert": M.BertModel,
-    "bert_masked_lm": M.BertForMaskedLM,
+    "bert": M.BertForMaskedLM,
     "bert_classif": M.BertForSequenceClassification,
-    "roberta": M.RobertaModel,
-    "roberta_masked_lm": M.RobertaForMaskedLM,
-    "gpt2": M.GPT2Model,
-    "gpt2_lm": M.GPT2LMHeadModel,
+    "roberta": M.RobertaForMaskedLM,
+    "gpt2": M.GPT2LMHeadModel,
 }
 
 def get_model_type(mname):
@@ -70,6 +71,8 @@ elif not args.models:
     sys.exit(-1)
 
 device = 'cuda' if torch.cuda.is_available() and not args.cpu else 'cpu'
+if device == 'cuda' and args.gpuid:
+    device += ':' + str(args.gpuid)
 logging.info("Device: %s", device)
 
 if args.input_size > 512 or args.input_size <= 0:
@@ -121,18 +124,12 @@ for mname in args.models:
         model.train()
 
     # Trace the model with the correct inputs
-    if mname in ["bert", "bert_masked_lm", "bert_classif", "roberta", "roberta_masked_lm"]:
+    if mname in ["bert", "roberta"]:
         traced_model = torch.jit.trace(model, (input_ids, token_type_ids, att_mask))
-    elif mname in ["distilbert", "distilbert_masked_lm"]:
+    elif mname in ["distilbert"]:
         traced_model = torch.jit.trace(model, (input_ids, att_mask))
-    elif mname in ["gpt2", "gpt2_lm"]:
-        # change order of positional arguments
-        def real_forward(self, i, p):
-            return self.p_forward(input_ids=i, position_ids=p)
-        setattr(mclass, 'p_forward', mclass.forward)
-        setattr(mclass, 'forward', real_forward)
-        
-        traced_model = torch.jit.trace(model, (input_ids, position_ids))
+    elif mname in ["gpt2"]:
+        traced_model = torch.jit.trace(model, (input_ids,))
     else:
         raise ValueError("there is no method to trace this model: %s" % mname)
     

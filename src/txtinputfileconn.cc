@@ -208,9 +208,8 @@ namespace dd
       }
 
     // post-processing
-    // XXX: might want to use post-processing with ordered_words too
     size_t initial_vocab_size = _ctfc->_vocab.size();
-    if (!_ctfc->_ordered_words && _ctfc->_train && !test_dir)
+    if (_ctfc->_generate_vocab && _ctfc->_train && !test_dir)
       {
 	auto vhit = _ctfc->_vocab.begin();
 	while(vhit!=_ctfc->_vocab.end())
@@ -233,7 +232,7 @@ namespace dd
 	  }
       }
 
-    if (!_ctfc->_ordered_words && !_ctfc->_characters && !test_dir && (initial_vocab_size != _ctfc->_vocab.size() || _ctfc->_tfidf))
+    if (_ctfc->_generate_vocab && !_ctfc->_characters && !test_dir && (initial_vocab_size != _ctfc->_vocab.size() || _ctfc->_tfidf))
       {
 	// clearing up the corpus + tfidf
 	std::unordered_map<std::string,Word>::iterator whit;
@@ -314,10 +313,10 @@ namespace dd
                 // Split punctuation
                 auto is_punct = [] (char i)
                 {
-                    return i >= 33 && i <= 47
-                        || i >= 58 && i <= 64
-                        || i >= 91 && i <= 96
-                        || i >= 123 && i <= 126;
+                    return (i >= 33 && i <= 47)
+                        || (i >= 58 && i <= 64)
+                        || (i >= 91 && i <= 96)
+                        || (i >= 123 && i <= 126);
                 };
                 for (std::string token : tokenizer)
                 {

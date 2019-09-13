@@ -40,7 +40,7 @@ c10::optional<TorchBatch> TorchDataset::get_batch(BatchRequestType request)
     while(count != 0) {
         auto id = _indices.back();
         auto entry = _batches[id];
-        
+
         for (int i = 0; i < entry.data.size(); ++i)
         {
             while (i >= data.size())
@@ -53,7 +53,7 @@ c10::optional<TorchBatch> TorchDataset::get_batch(BatchRequestType request)
                 target.emplace_back();
             target[i].push_back(entry.target.at(i));
         }
-        
+
         _indices.pop_back();
         count--;
     }
@@ -91,7 +91,16 @@ TorchDataset TorchDataset::split(double start, double stop)
 
 // ===== TxtTorchInputFileConn
 
+void TxtTorchInputFileConn::fillup_parameters(const APIData &ad_input)
+{
+    _width = this->_sequence;
+}
+
 void TxtTorchInputFileConn::transform(const APIData &ad) {
+    // if (_finetuning)
+    // XXX: Generating vocab from scratch is not currently
+    _generate_vocab = false;
+
     try
     {
         TxtInputFileConn::transform(ad);
@@ -107,8 +116,7 @@ void TxtTorchInputFileConn::transform(const APIData &ad) {
     if (ad.has("parameters") && ad.getobj("parameters").has("input"))
     {
         APIData ad_input = ad.getobj("parameters").getobj("input");
-        if (ad_input.has("width"))
-            _width = ad_input.get("width").get<int>();
+        fillup_parameters(ad_input);
     }
 
     _cls_pos = _vocab.at("[CLS]")._pos;
@@ -121,10 +129,10 @@ void TxtTorchInputFileConn::transform(const APIData &ad) {
         fill_dataset(_test_dataset, _test_txt);
 }
 
-TorchBatch TxtTorchInputFileConn::generate_masked_lm_batch(const TorchBatch &example) 
+TorchBatch TxtTorchInputFileConn::generate_masked_lm_batch(const TorchBatch &example)
 {
     std::uniform_real_distribution<double> uniform(0, 1);
-    std::uniform_int_distribution<int64_t> vocab_distrib(0, vocab_size());
+    std::uniform_int_distribution<int64_t> vocab_distrib(0, vocab_size() - 1);
     Tensor input_ids = example.data.at(0).clone();
     Tensor lm_labels = torch::ones_like(input_ids, TensorOptions(kLong)) * -1;
 
@@ -141,7 +149,7 @@ TorchBatch TxtTorchInputFileConn::generate_masked_lm_batch(const TorchBatch &exa
             if (rand_num < _lm_params._change_prob && input_acc[i][j] != _sep_pos)
             {
                 labels_acc[i][j] = input_acc[i][j];
-                
+
                 rand_num = uniform(_rng);
                 if (rand_num < _lm_params._mask_prob)
                 {
@@ -166,7 +174,7 @@ TorchBatch TxtTorchInputFileConn::generate_masked_lm_batch(const TorchBatch &exa
     return output;
 }
 
-void TxtTorchInputFileConn::fill_dataset(TorchDataset &dataset, 
+void TxtTorchInputFileConn::fill_dataset(TorchDataset &dataset,
                                          const std::vector<TxtEntry<double>*> &entries)
 {
     for (auto *te : entries)
@@ -185,7 +193,7 @@ void TxtTorchInputFileConn::fill_dataset(TorchDataset &dataset,
             double val;
             tow->get_next_elt(word, val);
             std::unordered_map<std::string,Word>::iterator it;
-                
+
             if ((it = _vocab.find(word)) != _vocab.end())
             {
                 ids.push_back(it->second._pos);
