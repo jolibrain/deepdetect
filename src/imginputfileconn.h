@@ -23,9 +23,7 @@
 #define IMGINPUTFILECONN_H
 
 #include "inputconnectorstrategy.h"
-#include <opencv2/core/core.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/opencv.hpp> 
 #include "ext/base64/base64.h"
 #include "utils/apitools.h"
 #include <random>
@@ -74,7 +72,7 @@ namespace dd
     void scale(const cv::Mat &src, cv::Mat &dst) const {
       float coef = std::min(static_cast<float>(_scale_max) / std::max(src.rows, src.cols),
 			    static_cast<float>(_scale_min) / std::min(src.rows, src.cols));
-      cv::resize(src, dst, cv::Size(), coef, coef, CV_INTER_CUBIC);
+      cv::resize(src, dst, cv::Size(), coef, coef, select_cv_interp());
     }
 
     // decode image
@@ -101,11 +99,11 @@ namespace dd
 			// XXX - This may cause issues if batch images are different resolutions
 			size_t currMaxDim = std::max(img.rows, img.cols);
 			double scale = static_cast<double>(std::max(_width, _height)) / static_cast<double>(currMaxDim);
-			cv::resize(img,rimg,cv::Size(),scale,scale,CV_INTER_CUBIC);
+			cv::resize(img,rimg,cv::Size(),scale,scale,select_cv_interp());
 		}
 	} else {
 		// Resize normally to the specified width and height
-		cv::resize(img,rimg,cv::Size(_width,_height),0,0,CV_INTER_CUBIC);
+		cv::resize(img,rimg,cv::Size(_width,_height),0,0,select_cv_interp());
 	}
 
 	if (_crop_width != 0 && _crop_height != 0) {
@@ -159,11 +157,11 @@ namespace dd
 				// XXX - This may cause issues if batch images are different resolutions
 				size_t currMaxDim = std::max(img.rows, img.cols);
 				double scale = static_cast<double>(std::max(_width, _height)) / static_cast<double>(currMaxDim);
-				cv::resize(img,rimg,cv::Size(),scale,scale,CV_INTER_CUBIC);
+				cv::resize(img,rimg,cv::Size(),scale,scale,select_cv_interp());
 			}
 		} else {
 			// Resize normally to the specified width and height
-			cv::resize(img,rimg,cv::Size(_width,_height),0,0,CV_INTER_CUBIC);
+			cv::resize(img,rimg,cv::Size(_width,_height),0,0,select_cv_interp());
 		}
 	}
       catch(...)
@@ -281,11 +279,11 @@ namespace dd
 					// XXX - This may cause issues if batch images are different resolutions
 					size_t currMaxDim = std::max(img.rows, img.cols);
 					double scale = static_cast<double>(std::max(_width, _height)) / static_cast<double>(currMaxDim);
-					cv::resize(img,rimg,cv::Size(),scale,scale,CV_INTER_CUBIC);
+					cv::resize(img,rimg,cv::Size(),scale,scale,select_cv_interp());
 				}
 			} else {
 				// Resize normally to the specified width and height
-				cv::resize(img,rimg,cv::Size(_width,_height),0,0,CV_INTER_CUBIC);
+				cv::resize(img,rimg,cv::Size(_width,_height),0,0,select_cv_interp());
 			}
 	    }
 	  catch(...)
@@ -310,6 +308,20 @@ namespace dd
 	}
       return 0;
     }
+
+    int select_cv_interp() const
+    {
+      if (_interp == "nearest")
+	return cv::INTER_NEAREST;
+      else if (_interp == "linear")
+	return cv::INTER_LINEAR;
+      else if (_interp == "area")
+	return cv::INTER_AREA;
+      else if (_interp == "lanczos4")
+	return cv::INTER_LANCZOS4;
+      else /* if (_interp == "cubic") */
+	return cv::INTER_CUBIC; // default
+    }
     
     std::vector<cv::Mat> _imgs;
     std::vector<cv::Mat> _orig_imgs;
@@ -329,6 +341,7 @@ namespace dd
     int _scale_max = 1000;
     bool _keep_orig = false;
     bool _b64 = false;
+    std::string _interp = "cubic";
     std::string _db_fname;
     std::shared_ptr<spdlog::logger> _logger;
   };
@@ -403,6 +416,10 @@ namespace dd
       // whether to keep original image (for chained ops, e.g. cropping)
       if (ad.has("keep_orig"))
 	_keep_orig = ad.get("keep_orig").get<bool>();
+
+      // image interpolation method
+      if (ad.has("interp"))
+	_interp = ad.get("interp").get<std::string>();
     }
     
     int feature_size() const
@@ -464,6 +481,7 @@ namespace dd
 	  dimg._ctype._scale_min = _scale_min;
 	  dimg._ctype._scale_max = _scale_max;
 	  dimg._ctype._keep_orig = _keep_orig;
+	  dimg._ctype._interp = _interp;
 	  try
 	    {
 	      if (dimg.read_element(u,this->_logger))
@@ -594,6 +612,7 @@ namespace dd
     int _scale_min = 600;
     int _scale_max = 1000;
     bool _keep_orig = false;
+    std::string _interp = "cubic";
   };
 }
 
