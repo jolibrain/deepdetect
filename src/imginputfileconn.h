@@ -23,7 +23,10 @@
 #define IMGINPUTFILECONN_H
 
 #include "inputconnectorstrategy.h"
-#include <opencv2/opencv.hpp> 
+#include <opencv2/opencv.hpp>
+#ifdef USE_CUDA_CV
+#include <opencv2/cudaimgproc.hpp>
+#endif
 #include "ext/base64/base64.h"
 #include "utils/apitools.h"
 #include <random>
@@ -69,10 +72,29 @@ namespace dd
       else return false;
     }
 
+    void resize(const cv::Mat &src, cv::Mat &dst,
+		const cv::Size &cvsize,
+		const double &fx, const double &fy) const
+    {
+#ifdef USE_CUDA_CV
+      if (_cuda)
+	{
+	  cv::cuda::GpuMat d_src;
+	  d_src.upload(src);
+	  cv::cuda::GpuMat d_dst;
+	  cv::cuda::resize(d_src, d_dst, cvsize, fx, fy, select_cv_interp());
+	  d_dst.download(dst);
+	}
+      else
+#endif
+	cv::resize(src, dst, cvsize, fx, fy, select_cv_interp());
+    }
+    
     void scale(const cv::Mat &src, cv::Mat &dst) const {
       float coef = std::min(static_cast<float>(_scale_max) / std::max(src.rows, src.cols),
 			    static_cast<float>(_scale_min) / std::min(src.rows, src.cols));
-      cv::resize(src, dst, cv::Size(), coef, coef, select_cv_interp());
+      
+      resize(src, dst, cv::Size(), coef, coef);
     }
 
     // decode image
@@ -99,11 +121,11 @@ namespace dd
 			// XXX - This may cause issues if batch images are different resolutions
 			size_t currMaxDim = std::max(img.rows, img.cols);
 			double scale = static_cast<double>(std::max(_width, _height)) / static_cast<double>(currMaxDim);
-			cv::resize(img,rimg,cv::Size(),scale,scale,select_cv_interp());
+			resize(img,rimg,cv::Size(),scale,scale);
 		}
 	} else {
 		// Resize normally to the specified width and height
-		cv::resize(img,rimg,cv::Size(_width,_height),0,0,select_cv_interp());
+		resize(img,rimg,cv::Size(_width,_height),0,0);
 	}
 
 	if (_crop_width != 0 && _crop_height != 0) {
@@ -157,11 +179,11 @@ namespace dd
 				// XXX - This may cause issues if batch images are different resolutions
 				size_t currMaxDim = std::max(img.rows, img.cols);
 				double scale = static_cast<double>(std::max(_width, _height)) / static_cast<double>(currMaxDim);
-				cv::resize(img,rimg,cv::Size(),scale,scale,select_cv_interp());
+				resize(img,rimg,cv::Size(),scale,scale);
 			}
 		} else {
 			// Resize normally to the specified width and height
-			cv::resize(img,rimg,cv::Size(_width,_height),0,0,select_cv_interp());
+			resize(img,rimg,cv::Size(_width,_height),0,0);
 		}
 	}
       catch(...)
@@ -279,11 +301,11 @@ namespace dd
 					// XXX - This may cause issues if batch images are different resolutions
 					size_t currMaxDim = std::max(img.rows, img.cols);
 					double scale = static_cast<double>(std::max(_width, _height)) / static_cast<double>(currMaxDim);
-					cv::resize(img,rimg,cv::Size(),scale,scale,select_cv_interp());
+					resize(img,rimg,cv::Size(),scale,scale);
 				}
 			} else {
 				// Resize normally to the specified width and height
-				cv::resize(img,rimg,cv::Size(_width,_height),0,0,select_cv_interp());
+				resize(img,rimg,cv::Size(_width,_height),0,0);
 			}
 	    }
 	  catch(...)
@@ -342,6 +364,9 @@ namespace dd
     bool _keep_orig = false;
     bool _b64 = false;
     std::string _interp = "cubic";
+#ifdef USE_CUDA_CV
+    bool _cuda = false;
+#endif
     std::string _db_fname;
     std::shared_ptr<spdlog::logger> _logger;
   };
@@ -363,6 +388,9 @@ namespace dd
 
     void init(const APIData &ad)
     {
+#ifdef USE_CUDA_CV
+      cv::Mat::setDefaultAllocator(cv::cuda::HostMem::getAllocator (cv::cuda::HostMem::AllocType::SHARED));
+#endif
       fillup_parameters(ad);
     }
 
@@ -420,6 +448,12 @@ namespace dd
       // image interpolation method
       if (ad.has("interp"))
 	_interp = ad.get("interp").get<std::string>();
+
+#ifdef USE_CUDA_CV
+      // image resizing on GPU
+      if (ad.has("cuda"))
+	_cuda = ad.get("cuda").get<bool>();
+#endif
     }
     
     int feature_size() const
@@ -482,6 +516,9 @@ namespace dd
 	  dimg._ctype._scale_max = _scale_max;
 	  dimg._ctype._keep_orig = _keep_orig;
 	  dimg._ctype._interp = _interp;
+#ifdef USE_CUDA_CV
+	  dimg._ctype._cuda = _cuda;
+#endif
 	  try
 	    {
 	      if (dimg.read_element(u,this->_logger))
@@ -613,6 +650,9 @@ namespace dd
     int _scale_max = 1000;
     bool _keep_orig = false;
     std::string _interp = "cubic";
+#ifdef USE_CUDA_CV
+    bool _cuda = false;
+#endif
   };
 }
 

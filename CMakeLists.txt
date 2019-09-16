@@ -8,6 +8,7 @@ option(USE_TORCH "use libtorch backend")
 option(USE_HDF5 "use HDF5" ON)
 option(USE_CAFFE "use Caffe backend" ON)
 option(USE_TENSORRT "use TensorRT backend" OFF)
+option(USE_CUDA_CV "use CUDA with OpenCV (Requires OpenCV build for CUDA)" OFF)
 
 if (USE_CAFFE)
   add_definitions(-DUSE_CAFFE)
@@ -51,7 +52,7 @@ execute_process(
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
-set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -fopenmp -O2 -fPIC -std=c++11  -DUSE_OPENCV -DUSE_LMDB")
+set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -fopenmp -O2 -fPIC -std=c++11 -DUSE_OPENCV -DUSE_LMDB")
 
 if (USE_COMMAND_LINE)
   if (NOT USE_CAFFE)
@@ -441,6 +442,10 @@ endif()
 set(OPENCV_VERSION ${OpenCV_VERSION_MAJOR})
 include_directories(${OpenCV_INCLUDE_DIRS})
 message(STATUS "OpenCV ${OPENCV_VERSION} (${OpenCV_VERSION}) found (${OpenCV_CONFIG_PATH})")
+if (CUDA_FOUND AND USE_CUDA_CV)
+  message(STATUS "Using CUDA OpenCV")
+  string(APPEND CMAKE_CXX_FLAGS " -DUSE_CUDA_CV")
+endif()
 
 # customized Caffe as external project
 if (CAFFE_INC_DIR AND CAFFE_LIB_DIR)

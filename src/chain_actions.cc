@@ -76,7 +76,7 @@ namespace dd
 	      double ymin = bbox.get("ymin").get<double>() / orig_rows * img.rows;
 	      double xmax = bbox.get("xmax").get<double>() / orig_cols * img.cols;
 	      double ymax = bbox.get("ymax").get<double>() / orig_rows * img.rows;
-
+	      
 	      double deltax = bratio * (xmax - xmin);
 	      double deltay = bratio * (ymax - ymin);
 
@@ -84,7 +84,7 @@ namespace dd
 	      double cxmax = std::min(static_cast<double>(img.cols),xmax+deltax);
 	      double cymax = std::max(0.0,ymax-deltay);
 	      double cymin = std::min(static_cast<double>(img.rows),ymin+deltay);
-	      
+
 	      cv::Rect roi(cxmin,cymax,cxmax-cxmin,cymin-cymax);
 	      cv::Mat cropped_img = img(roi);
 
