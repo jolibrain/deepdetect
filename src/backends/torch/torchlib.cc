@@ -101,7 +101,7 @@ namespace dd
         c10::IValue out_val = source.at(_classif_in);
         if (_hidden_states)
         {
-            // out_val is a tuple containing tensors of dimension n_batch * seq_len * n_features
+            // out_val is a tuple containing tensors of dimension n_batch * sequence_lenght * n_features
             // We want a tensor of size n_batch * n_features from the last hidden state
             auto &elems = out_val.toTuple()->elements();
             out_val = elems.back().toTensor().slice(1, 0, 1).squeeze(1);
@@ -244,6 +244,7 @@ namespace dd
         if (this->_mlmodel._traced.empty())
             throw MLLibInternalException("Use of libtorch backend without traced net is not supported yet");
 
+        this->_inputc._input_format = "bert";
         if (_template == "bert")
         {
             if (classification)
@@ -268,7 +269,11 @@ namespace dd
                 throw MLLibBadParamException("BERT only supports self-supervised or classification");
             }
         }
-        else if (!_template .empty())
+        else if (_template == "gpt2")
+        {
+            this->_inputc._input_format = "gpt2";
+        }
+        else if (!_template.empty())
         {
             throw MLLibBadParamException("template");
         }
@@ -585,13 +590,27 @@ namespace dd
         }
 
         inputc._dataset.reset();
+        TorchBatch batch = inputc._dataset.get_cached();
+
         std::vector<c10::IValue> in_vals;
-        for (Tensor tensor : inputc._dataset.get_cached().data)
+        for (Tensor tensor : batch.data)
             in_vals.push_back(tensor.to(_device));
         Tensor output;
         try
         {
             output = to_tensor_safe(_module.forward(in_vals));
+            if (_template == "gpt2")
+            {
+                // Keep only the prediction for the last token
+                Tensor input_ids = batch.data[0];
+                std::vector<Tensor> outputs;
+                for (int i = 0; i < input_ids.size(0); ++i)
+                {
+                    // output is (n_batch * sequence_length * vocab_size)
+                    outputs.push_back(output[i][inputc._lengths.at(i) - 1]);
+                }
+                output = torch::stack(outputs);
+            }
             output = torch::softmax(output, 1).to(cpu);
         }
         catch (std::exception &e)
@@ -619,7 +638,7 @@ namespace dd
                 {
                     probs.push_back(probs_acc[i][j]);
                     int index = indices_acc[i][j];
-                    cats.push_back(this->_mlmodel.get_hcorresp(index));
+                    cats.push_back(std::to_string(index));
                 }
 
                 results_ad.add("uri", inputc._uris.at(results_ads.size()));

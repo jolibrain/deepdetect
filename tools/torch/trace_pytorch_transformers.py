@@ -129,7 +129,13 @@ for mname in args.models:
     elif mname in ["distilbert"]:
         traced_model = torch.jit.trace(model, (input_ids, att_mask))
     elif mname in ["gpt2"]:
-        traced_model = torch.jit.trace(model, (input_ids,))
+        # change order of positional arguments
+        def real_forward(self, i, p):
+            return self.p_forward(input_ids=i, position_ids=p)
+        setattr(mclass, 'p_forward', mclass.forward)
+        setattr(mclass, 'forward', real_forward)
+
+        traced_model = torch.jit.trace(model, (input_ids, position_ids))
     else:
         raise ValueError("there is no method to trace this model: %s" % mname)
     

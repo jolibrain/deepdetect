@@ -87,7 +87,8 @@ namespace dd
              : _finetuning(i._finetuning),
              _lm_params(i._lm_params),
              _dataset(i._dataset),
-             _test_dataset(i._test_dataset) { }
+             _test_dataset(i._test_dataset),
+             _input_format(i._input_format) { }
 
         ~TorchInputInterface() {}
 
@@ -106,6 +107,10 @@ namespace dd
 
         MaskedLMParams _lm_params;
         bool _finetuning;
+        /** Tell which inputs should be provided to the models.
+         * see*/
+        std::string _input_format;
+        std::vector<int64_t> _lengths;/**< length of each sentence with txt connector. */
     };
 
     class ImgTorchInputFileConn : public ImgInputFileConn, public TorchInputInterface

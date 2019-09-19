@@ -120,11 +120,14 @@ void TxtTorchInputFileConn::transform(const APIData &ad) {
         APIData ad_input = ad.getobj("parameters").getobj("input");
         fillup_parameters(ad_input);
     }
-
-    _cls_pos = _vocab.at("[CLS]")._pos;
-    _sep_pos = _vocab.at("[SEP]")._pos;
-    _unk_pos = _vocab.at("[UNK]")._pos;
-    _mask_id = _vocab.at("[MASK]")._pos;
+    
+    if (_input_format == "bert")
+    {
+        _cls_pos = _vocab.at("[CLS]")._pos;
+        _sep_pos = _vocab.at("[SEP]")._pos;
+        _unk_pos = _vocab.at("[UNK]")._pos;
+        _mask_id = _vocab.at("[MASK]")._pos;
+    }
 
     fill_dataset(_dataset, _txt);
     if (!_test_txt.empty())
@@ -186,7 +189,8 @@ void TxtTorchInputFileConn::fill_dataset(TorchDataset &dataset,
         TxtOrderedWordsEntry *tow = static_cast<TxtOrderedWordsEntry *>(te);
         tow->reset();
         std::vector<int64_t> ids;
-        ids.push_back(_cls_pos);
+        if (_input_format == "bert")
+            ids.push_back(_cls_pos);
 
         while(tow->has_elt())
         {
@@ -202,25 +206,31 @@ void TxtTorchInputFileConn::fill_dataset(TorchDataset &dataset,
             {
                 ids.push_back(it->second._pos);
             }
-            else
+            else if (_input_format == "bert")
             {
                 ids.push_back(_unk_pos);
+            } else {
+                std::cout << word << std::endl;
             }
         }
 
-        ids.push_back(_sep_pos);
+        if (_input_format == "bert")
+            ids.push_back(_sep_pos);
 
         at::Tensor ids_tensor = toLongTensor(ids);
         at::Tensor mask_tensor = torch::ones_like(ids_tensor);
         at::Tensor token_type_ids_tensor = torch::zeros_like(ids_tensor);
 
-        int64_t padding_size = _width - ids_tensor.sizes().back();
+        int64_t seq_len = ids_tensor.sizes().back();
+        int64_t padding_size = _width - seq_len;
+        _lengths.push_back(seq_len);
         ids_tensor = torch::constant_pad_nd(
             ids_tensor, at::IntList{0, padding_size}, 0);
         mask_tensor = torch::constant_pad_nd(
             mask_tensor, at::IntList{0, padding_size}, 0);
         token_type_ids_tensor = torch::constant_pad_nd(
             token_type_ids_tensor, at::IntList{0, padding_size}, 0);
+        at::Tensor position_ids = torch::arange(_width, at::kLong);
 
         std::vector<Tensor> target_vec;
         int target_val = static_cast<int>(tow->_target);
@@ -230,7 +240,10 @@ void TxtTorchInputFileConn::fill_dataset(TorchDataset &dataset,
             target_vec.push_back(target_tensor);
         }
 
-        dataset.add_batch({ids_tensor, token_type_ids_tensor, mask_tensor}, std::move(target_vec));
+        if (_input_format == "bert")
+            dataset.add_batch({ids_tensor, token_type_ids_tensor, mask_tensor}, std::move(target_vec));
+        else if (_input_format == "gpt2")
+            dataset.add_batch({ids_tensor, position_ids}, std::move(target_vec));
     }
 }
 

@@ -229,10 +229,11 @@ namespace dd
       }
 
       void append_input(const std::string &word);
-  private:
+  public:
       bool in_vocab(const std::string &tok);
 
-      std::string _prefix = "##";
+      std::string _suffix_start = "##";/**< Suffix tokens in vocabulary are prefixed by this */
+      std::string _word_start = "";/**< Tokens corresponding to word or word beggining in the vocabulary are prefixed by this */
       std::string _unk_token = "[UNK]";
   };
 
@@ -304,6 +305,10 @@ namespace dd
 	_ordered_words = ad_input.get("ordered_words").get<bool>();
       if (ad_input.has("wordpiece_tokens"))
 	_wordpiece_tokens = ad_input.get("wordpiece_tokens").get<bool>();
+      if (ad_input.has("word_start"))
+        _wordpiece_tokenizer._word_start = ad_input.get("word_start").get<std::string>();
+      if (ad_input.has("suffix_start"))
+        _wordpiece_tokenizer._suffix_start = ad_input.get("suffix_start").get<std::string>();
       if (ad_input.has("punctuation_tokens"))
 	_punctuation_tokens = ad_input.get("punctuation_tokens").get<bool>();
       if (ad_input.has("alphabet"))

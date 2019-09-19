@@ -43,7 +43,11 @@ namespace dd
               std::string substr = word.substr(start, end - start);
               if (start > 0)
               {
-                  substr = _prefix + substr;
+                  substr = _suffix_start + substr;
+              }
+              else
+              {
+                  substr = _word_start + substr;
               }
               if (in_vocab(substr))
               {
