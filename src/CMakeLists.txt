@@ -68,6 +68,7 @@ if (USE_NCNN)
     backends/ncnn/ncnnlib.cc
     backends/ncnn/ncnnmodel.cc
     backends/ncnn/caffe2ncnn.cc
+    backends/ncnn/upgrade_proto.cpp
     )
 
   if (NOT USE_CAFFE)
