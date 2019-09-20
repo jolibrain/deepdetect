@@ -358,7 +358,7 @@ namespace dd
       _bw(i._bw),_unchanged_data(i._unchanged_data),
       _mean(i._mean),_has_mean_scalar(i._has_mean_scalar),
       _scaled(i._scaled), _scale_min(i._scale_min), _scale_max(i._scale_max),
-      _keep_orig(i._keep_orig) {}
+      _keep_orig(i._keep_orig), _interp(i._inter) {}
     ~ImgInputFileConn() {}
 
     void init(const APIData &ad)
