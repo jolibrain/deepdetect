@@ -27,6 +27,13 @@
 #ifdef USE_CUDA_CV
 #include <opencv2/cudaimgproc.hpp>
 #endif
+#if CV_VERSION_MAJOR >= 3
+#define CV_LOAD_IMAGE_COLOR cv::IMREAD_COLOR
+#define CV_LOAD_IMAGE_GRAYSCALE cv::IMREAD_GRAYSCALE
+#define CV_LOAD_IMAGE_UNCHANGED cv::IMREAD_UNCHANGED
+#define CV_BGR2RGB cv::COLOR_BGR2RGB
+#define CV_INTER_CUBIC cv::INTER_CUBIC
+#endif
 #include "ext/base64/base64.h"
 #include "utils/apitools.h"
 #include <random>
@@ -83,11 +90,17 @@ namespace dd
 	  d_src.upload(src);
 	  cv::cuda::GpuMat d_dst;
 	  cv::cuda::resize(d_src, d_dst, cvsize, fx, fy, select_cv_interp());
+	  if (_rgb)
+	    cv::cuda::cvtColor(d_dst, d_dst, CV_BGR2RGB);
 	  d_dst.download(dst);
 	}
       else
 #endif
-	cv::resize(src, dst, cvsize, fx, fy, select_cv_interp());
+	{
+	  cv::resize(src, dst, cvsize, fx, fy, select_cv_interp());
+	  if (_rgb)
+	    cv::cvtColor(dst, dst, CV_BGR2RGB);
+	}
     }
     
     void scale(const cv::Mat &src, cv::Mat &dst) const {
@@ -101,12 +114,10 @@ namespace dd
     void decode(const std::string &str)
       {
 	std::vector<unsigned char> vdat(str.begin(),str.end());
-	cv::Mat img = cv::Mat(cv::imdecode(cv::Mat(vdat,true),
+	cv::Mat img = cv::Mat(cv::imdecode(cv::Mat(vdat,false),
                                      _unchanged_data ? CV_LOAD_IMAGE_UNCHANGED :
                                      (_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR)));
-        if (_rgb)
-          cv::cvtColor(img, img, CV_BGR2RGB);
-	if (_keep_orig)
+      	if (_keep_orig)
 	  _orig_imgs.push_back(img);
 	_imgs_size.push_back(std::pair<int,int>(img.rows,img.cols));
 	cv::Mat rimg;
@@ -133,7 +144,7 @@ namespace dd
 		int heightBorder = (_height - _crop_height)/2;
 		rimg = rimg(cv::Rect(widthBorder, heightBorder, _crop_width, _crop_height));
 	}
-	_imgs.push_back(rimg);
+	_imgs.push_back(std::move(rimg));
       }
     
     // deserialize image, independent of format
@@ -154,9 +165,7 @@ namespace dd
     int read_file(const std::string &fname)
     {
       cv::Mat img = cv::imread(fname, _unchanged_data ? CV_LOAD_IMAGE_UNCHANGED :
-                               (_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR));
-      if (_rgb)
-        cv::cvtColor(img, img, CV_BGR2RGB);
+			       (_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR));
       if (_keep_orig)
 	_orig_imgs.push_back(img);
       if (img.empty())
@@ -168,38 +177,38 @@ namespace dd
       cv::Mat rimg;
       try
 	{
-		if (_scaled)
-		  scale(img, rimg);
-		else if (_width == 0 || _height == 0) {
-			if (_width == 0 && _height == 0) {
-				// Do nothing and keep native resolution. May cause issues if batched images are different resolutions
-				rimg = img;
-			} else {
-				// Resize so that the larger dimension is set to whichever (width or height) is non-zero, maintaining aspect ratio
-				// XXX - This may cause issues if batch images are different resolutions
-				size_t currMaxDim = std::max(img.rows, img.cols);
-				double scale = static_cast<double>(std::max(_width, _height)) / static_cast<double>(currMaxDim);
-				resize(img,rimg,cv::Size(),scale,scale);
-			}
-		} else {
-			// Resize normally to the specified width and height
-			resize(img,rimg,cv::Size(_width,_height),0,0);
-		}
+	  if (_scaled)
+	    scale(img, rimg);
+	  else if (_width == 0 || _height == 0) {
+	    if (_width == 0 && _height == 0) {
+	      // Do nothing and keep native resolution. May cause issues if batched images are different resolutions
+	      rimg = img;
+	    } else {
+	      // Resize so that the larger dimension is set to whichever (width or height) is non-zero, maintaining aspect ratio
+	      // XXX - This may cause issues if batch images are different resolutions
+	      size_t currMaxDim = std::max(img.rows, img.cols);
+	      double scale = static_cast<double>(std::max(_width, _height)) / static_cast<double>(currMaxDim);
+	      resize(img,rimg,cv::Size(),scale,scale);
+	    }
+	  } else {
+	    // Resize normally to the specified width and height
+	    resize(img,rimg,cv::Size(_width,_height),0,0);
+	  }
 	}
       catch(...)
 	{
 	  throw InputConnectorBadParamException("failed resizing image " + fname);
 	}
-		if (_crop_width != 0 && _crop_height != 0) {
-			int widthBorder = (_width - _crop_width)/2;
-			int heightBorder = (_height - _crop_height)/2;
-			try {
-				rimg = rimg(cv::Rect(widthBorder, heightBorder, _crop_width, _crop_height));
-			} catch(...) {
-				throw InputConnectorBadParamException("failed cropping image " + fname);
-			}
-		}
-      _imgs.push_back(rimg);
+      if (_crop_width != 0 && _crop_height != 0) {
+	int widthBorder = (_width - _crop_width)/2;
+	int heightBorder = (_height - _crop_height)/2;
+	try {
+	  rimg = rimg(cv::Rect(widthBorder, heightBorder, _crop_width, _crop_height));
+	} catch(...) {
+	  throw InputConnectorBadParamException("failed cropping image " + fname);
+	}
+      }
+      _imgs.push_back(std::move(rimg));
       return 0;
     }
 
@@ -282,31 +291,29 @@ namespace dd
 	  cv::Mat img = cv::imread(p.first, _unchanged_data ? CV_LOAD_IMAGE_UNCHANGED :
                              (_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR));
 	  _imgs_size.push_back(std::pair<int,int>(img.rows,img.cols));
-          if (_rgb)
-            cv::cvtColor(img, img, CV_BGR2RGB);
 	  if (_keep_orig)
 	    _orig_imgs.push_back(img);
 	  cv::Mat rimg;
 
 	  try
 	    {
-		if (_scaled)
-		  scale(img, rimg);
-		else if (_width == 0 || _height == 0) {
-				if (_width == 0 && _height == 0) {
-					// Do nothing and keep native resolution. May cause issues if batched images are different resolutions
-					rimg = img;
-				} else {
-					// Resize so that the larger dimension is set to whichever (width or height) is non-zero, maintaining aspect ratio
-					// XXX - This may cause issues if batch images are different resolutions
-					size_t currMaxDim = std::max(img.rows, img.cols);
-					double scale = static_cast<double>(std::max(_width, _height)) / static_cast<double>(currMaxDim);
-					resize(img,rimg,cv::Size(),scale,scale);
-				}
-			} else {
-				// Resize normally to the specified width and height
-				resize(img,rimg,cv::Size(_width,_height),0,0);
-			}
+	      if (_scaled)
+		scale(img, rimg);
+	      else if (_width == 0 || _height == 0) {
+		if (_width == 0 && _height == 0) {
+		  // Do nothing and keep native resolution. May cause issues if batched images are different resolutions
+		  rimg = img;
+		} else {
+		  // Resize so that the larger dimension is set to whichever (width or height) is non-zero, maintaining aspect ratio
+		  // XXX - This may cause issues if batch images are different resolutions
+		  size_t currMaxDim = std::max(img.rows, img.cols);
+		  double scale = static_cast<double>(std::max(_width, _height)) / static_cast<double>(currMaxDim);
+		  resize(img,rimg,cv::Size(),scale,scale);
+		}
+	      } else {
+		// Resize normally to the specified width and height
+		resize(img,rimg,cv::Size(_width,_height),0,0);
+	      }
 	    }
 	  catch(...)
 	    {
@@ -321,10 +328,10 @@ namespace dd
 				throw InputConnectorBadParamException("failed cropping image " + p.first);
 			}
 		}
-	  _imgs.push_back(rimg);
-	  _img_files.push_back(p.first);
-	  if (p.second >= 0)
-	    _labels.push_back(p.second);
+		_imgs.push_back(std::move(rimg));
+		_img_files.push_back(p.first);
+		if (p.second >= 0)
+		  _labels.push_back(p.second);
 	  if (_imgs.size() % 1000 == 0)
 	    _logger->info("read {} images",_imgs.size());
 	}
@@ -383,14 +390,11 @@ namespace dd
       _bw(i._bw),_unchanged_data(i._unchanged_data),
       _mean(i._mean),_has_mean_scalar(i._has_mean_scalar),
       _scaled(i._scaled), _scale_min(i._scale_min), _scale_max(i._scale_max),
-      _keep_orig(i._keep_orig) {}
+      _keep_orig(i._keep_orig), _interp(i._interp), _cuda(i._cuda) {}
     ~ImgInputFileConn() {}
 
     void init(const APIData &ad)
     {
-#ifdef USE_CUDA_CV
-      cv::Mat::setDefaultAllocator(cv::cuda::HostMem::getAllocator (cv::cuda::HostMem::AllocType::SHARED));
-#endif
       fillup_parameters(ad);
     }
 

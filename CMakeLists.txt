@@ -437,6 +437,9 @@ endif() # USE_TF
 # OpenCV
 find_package(OpenCV 3 QUIET)
 if (NOT OpenCV_FOUND)
+  find_package(OpenCV 4 QUIET)
+endif()
+if (NOT OpenCV_FOUND)
   find_package(OpenCV 2 REQUIRED)
 endif()
 set(OPENCV_VERSION ${OpenCV_VERSION_MAJOR})
