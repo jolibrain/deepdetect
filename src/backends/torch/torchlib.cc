@@ -44,6 +44,7 @@ namespace dd
         _traced = std::move(tl._traced);
         _nclasses = tl._nclasses;
         _device = tl._device;
+        _attention = tl._attention;
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -70,8 +71,11 @@ namespace dd
 
         _device = gpu ? torch::Device(DeviceType::CUDA, gpuid) : torch::Device(DeviceType::CPU);
 
-        _traced = torch::jit::load(this->_mlmodel._model_file);
-        _traced->to(_device);
+        if (typeid(TInputConnectorStrategy) == typeid(TxtTorchInputFileConn)) {
+            _attention = true;
+        }
+
+        _traced = torch::jit::load(this->_mlmodel._model_file, _device);
         _traced->eval();
     }
 
@@ -88,7 +92,7 @@ namespace dd
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-    int TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::predict(const APIData &ad, APIData &out) 
+    int TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::predict(const APIData &ad, APIData &out)
     {
         APIData params = ad.getobj("parameters");
         APIData output_params = params.getobj("output");
@@ -102,10 +106,26 @@ namespace dd
         }
         torch::Device cpu("cpu");
 
+        std::vector<c10::IValue> in_vals;
+        in_vals.push_back(inputc._in.to(_device));
+
+        if (_attention) {
+            // token_type_ids
+            in_vals.push_back(torch::zeros_like(inputc._in, at::kLong).to(_device));
+            in_vals.push_back(inputc._attention_mask.to(_device));
+        }
+
         Tensor output;
         try
         {
-            output = _traced->forward({inputc._in.to(_device)}).toTensor().to(at::kFloat);
+            c10::IValue out_val = _traced->forward(in_vals);
+            if (out_val.isTuple()) {
+                out_val = out_val.toTuple()->elements()[0];
+            }
+            if (!out_val.isTensor()) {
+                throw MLLibInternalException("Model returned an invalid output. Please check your model.");
+            }
+            output = out_val.toTensor().to(at::kFloat);
         }
         catch (std::exception &e)
         {
@@ -156,4 +176,5 @@ namespace dd
 
 
     template class TorchLib<ImgTorchInputFileConn,SupervisedOutput,TorchModel>;
+    template class TorchLib<TxtTorchInputFileConn,SupervisedOutput,TorchModel>;
 }

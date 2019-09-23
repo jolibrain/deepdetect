@@ -31,7 +31,7 @@
 namespace dd
 {
   class TxtInputFileConn;
-  
+
   class DDTxt
   {
   public:
@@ -174,14 +174,98 @@ namespace dd
     std::vector<uint32_t> _v;
     std::vector<uint32_t>::iterator _vit;
   };
-  
+
+  class TxtOrderedWordsEntry: public TxtEntry<double> {
+  public:
+    TxtOrderedWordsEntry() :TxtEntry<double>() {}
+    TxtOrderedWordsEntry(const float &target) :TxtEntry<double>(target) {}
+    virtual ~TxtOrderedWordsEntry() {}
+
+    void add_word(const std::string &word, const uint32_t &id)
+    {
+      _v.push_back(word);
+    }
+
+    void reset()
+    {
+      _vit = _v.begin();
+    }
+
+    void get_next_elt(std::string &key, double &val)
+    {
+      if (_vit!=_v.end())
+      {
+        key = *_vit;
+        val = 1;
+        ++_vit;
+      }
+    }
+
+    bool has_elt() const
+    {
+      return _vit != _v.end();
+    }
+
+    size_t size() const 
+    {
+      return _v.size();
+    }
+
+    std::vector<std::string> _v;
+    std::vector<std::string>::iterator _vit;
+  };
+
+  /** Tokenizer that uses greedy longest-match-first search to cut words
+   * in pieces */
+  class WordPieceTokenizer {
+  public:
+      std::vector<std::string> _tokens;
+      TxtInputFileConn *_ctfc = nullptr;
+
+      WordPieceTokenizer() {}
+
+      void reset() {
+          _tokens.clear();
+      }
+
+      void append_input(const std::string &word);
+  private:
+      bool in_vocab(const std::string &tok);
+
+      std::string _prefix = "##";
+      std::string _unk_token = "[UNK]";
+  };
+
   class TxtInputFileConn : public InputConnectorStrategy
   {
   public:
     TxtInputFileConn()
-      :InputConnectorStrategy() {}
+      :InputConnectorStrategy()
+      {
+        _wordpiece_tokenizer._ctfc = this;
+      }
     TxtInputFileConn(const TxtInputFileConn &i)
-      :InputConnectorStrategy(i),_iterator(i._iterator),_tokenizer(i._tokenizer),_count(i._count),_tfidf(i._tfidf),_min_count(i._min_count),_min_word_length(i._min_word_length),_sentences(i._sentences),_characters(i._characters),_alphabet_str(i._alphabet_str),_alphabet(i._alphabet),_sequence(i._sequence),_seq_forward(i._seq_forward),_vocab(i._vocab) {}
+      :InputConnectorStrategy(i),
+      _iterator(i._iterator),
+      _count(i._count),
+      _tfidf(i._tfidf),
+      _min_count(i._min_count),
+      _min_word_length(i._min_word_length),
+      _sentences(i._sentences),
+      _characters(i._characters),
+      _ordered_words(i._ordered_words),
+      _wordpiece_tokens(i._wordpiece_tokens),
+      _punctuation_tokens(i._punctuation_tokens),
+      _alphabet_str(i._alphabet_str),
+      _alphabet(i._alphabet),
+      _sequence(i._sequence),
+      _seq_forward(i._seq_forward),
+      _vocab(i._vocab),
+      _vocab_sep(i._vocab_sep),
+      _wordpiece_tokenizer(i._wordpiece_tokenizer)
+      {
+        _wordpiece_tokenizer._ctfc = this;
+      }
     ~TxtInputFileConn()
       {
 	destroy_txt_entries(_txt);
@@ -215,6 +299,12 @@ namespace dd
 	_sentences = ad_input.get("sentences").get<bool>();
       if (ad_input.has("characters"))
 	_characters = ad_input.get("characters").get<bool>();
+      if (ad_input.has("ordered_words"))
+	_ordered_words = ad_input.get("ordered_words").get<bool>();
+      if (ad_input.has("wordpiece_tokens"))
+	_wordpiece_tokens = ad_input.get("wordpiece_tokens").get<bool>();
+      if (ad_input.has("punctuation_tokens"))
+	_punctuation_tokens = ad_input.get("punctuation_tokens").get<bool>();
       if (ad_input.has("alphabet"))
 	_alphabet_str = ad_input.get("alphabet").get<std::string>();
       if (_characters)
@@ -336,7 +426,6 @@ namespace dd
     
     // options
     std::string _iterator = "document";
-    std::string _tokenizer = "bow";
     bool _shuffle = false;
     int _seed = -1;
     double _test_split = 0.0;
@@ -346,6 +435,9 @@ namespace dd
     int _min_word_length = 5; /**< min word length. */
     bool _sentences = false; /**< whether to consider every sentence (\n separated) as a document. */
     bool _characters = false; /**< whether to use character-level input features. */
+    bool _ordered_words = false; /**< whether to consider the position of each words in the sentence. */
+    bool _wordpiece_tokens = false; /**< whether to try to match word pieces from the vocabulary. */
+    bool _punctuation_tokens = false; /**< accept punctuation tokens. */
     std::string _alphabet_str = "abcdefghijklmnopqrstuvwxyz0123456789,;.!?:'\"/\\|_@#$%^&*~`+-=<>()[]{}";
     std::unordered_map<uint32_t,int> _alphabet; /**< character-level alphabet. */
     int _sequence = 60; /**< sequence size when using character-level features. */
@@ -355,7 +447,9 @@ namespace dd
     std::unordered_map<std::string,Word> _vocab; /**< string to word stats, including word */
     std::string _vocabfname = "vocab.dat";
     std::string _correspname = "corresp.txt";
+    char _vocab_sep = ','; /**< vocabulary separator */
     int _dirs = 0; /**< directories as input. */
+    WordPieceTokenizer _wordpiece_tokenizer;
     
     // data
     std::vector<TxtEntry<double>*> _txt;

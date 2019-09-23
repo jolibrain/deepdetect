@@ -51,6 +51,7 @@ namespace dd
 
     public:
         int _nclasses = 0;
+        bool _attention = false;
         torch::Device _device = torch::Device("cpu");
         std::shared_ptr<torch::jit::script::Module> _traced;
     };

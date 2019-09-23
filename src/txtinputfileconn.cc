@@ -28,6 +28,53 @@
 namespace dd
 {
 
+  void WordPieceTokenizer::append_input(const std::string &word)
+  {
+      int start = 0;
+      std::vector<std::string> subtokens;
+      bool is_bad = false;
+
+      while (start < word.size())
+      {
+          int end = word.size();
+          std::string cur_substr = "";
+          while (start < end)
+          {
+              std::string substr = word.substr(start, end - start);
+              if (start > 0)
+              {
+                  substr = _prefix + substr;
+              }
+              if (in_vocab(substr))
+              {
+                  cur_substr = substr;
+                  break;
+              }
+              --end;
+          }
+          if (cur_substr == "")
+          {
+              is_bad = true;
+              break;
+          }
+          subtokens.push_back(cur_substr);
+          start = end;
+      }
+
+      if (is_bad)
+      {
+          _tokens.push_back(_unk_token);
+      }
+      else
+      {
+          _tokens.insert(_tokens.end(), subtokens.begin(), subtokens.end());
+      }
+  }
+
+  bool WordPieceTokenizer::in_vocab(const std::string &tok) {
+      return _ctfc->_vocab.find(tok) != _ctfc->_vocab.end();
+  }
+
   /*- DDTxt -*/
   int DDTxt::read_file(const std::string &fname)
   {
@@ -242,53 +289,114 @@ namespace dd
     std::vector<std::string> cts;
     if (_sentences)
       {
-	boost::char_separator<char> sep("\n");
-	boost::tokenizer<boost::char_separator<char>> tokens(content,sep);
-	for (std::string s: tokens)
-	  cts.push_back(s);
+        boost::char_separator<char> sep("\n");
+        boost::tokenizer<boost::char_separator<char>> tokens(content,sep);
+        for (std::string s: tokens)
+        cts.push_back(s);
       }
     else
       {
-	cts.push_back(content);
+        cts.push_back(content);
       }
     for (std::string ct: cts)
       {
 	std::transform(ct.begin(),ct.end(),ct.begin(),::tolower);
 	if (!_characters)
 	  {
-	    TxtBowEntry *tbe = new TxtBowEntry(target);
-	    std::unordered_map<std::string,Word>::iterator vhit;
-	    boost::char_separator<char> sep("\n\t\f\r ,.;:`'!?)(-|><^·&\"\\/{}#$–=+");
-	    boost::tokenizer<boost::char_separator<char>> tokens(ct,sep);
-	    for (std::string w : tokens)
-	      {
-		if (static_cast<int>(w.length()) < _min_word_length)
-		  continue;
-		
-		// check and fillup vocab.
-		int pos = -1;
-		if ((vhit=_vocab.find(w))==_vocab.end())
-		  {
-		    if (_train)
-		      {
-			pos = _vocab.size();
-			_vocab.emplace(std::make_pair(w,Word(pos)));
-		      }
-		  }
-		else
-		  {
-		    if (_train)
-		      {
-			(*vhit).second._total_count++;
-			if (!tbe->has_word(w))
-			  (*vhit).second._total_docs++;
-		      }
-		  }
-		tbe->add_word(w,1.0,_count);
-	      }
-	    if (!test)
-	      _txt.push_back(tbe);
-	    else _test_txt.push_back(tbe);
+            std::unordered_map<std::string,Word>::iterator vhit;
+            std::vector<std::string> tokens;
+            if (_punctuation_tokens)
+            {
+                boost::char_separator<char> sep("\n\t\f\r ");
+                boost::tokenizer<boost::char_separator<char>> tokenizer(ct,sep);
+
+                // Split punctuation
+                auto is_punct = [] (char i)
+                {
+                    return i >= 33 && i <= 47
+                        || i >= 58 && i <= 64
+                        || i >= 91 && i <= 96
+                        || i >= 123 && i <= 126;
+                };
+                for (std::string token : tokenizer)
+                {
+                    int start = 0;
+                    for (int i = 0; i < token.size(); ++i)
+                    {
+                        if (is_punct(token[i]))
+                        {
+                            if (i != start)
+                                tokens.push_back(token.substr(start, i - start));
+                            tokens.push_back(token.substr(i, 1));
+                            start = i + 1;
+                        }
+                    }
+                    if (start != token.size())
+                        tokens.push_back(token.substr(start));
+                }
+            }
+            else
+            {
+                boost::char_separator<char> sep("\n\t\f\r ,.;:`'!?)(-|><^·&\"\\/{}#$–=+");
+                boost::tokenizer<boost::char_separator<char>> tokenizer(ct,sep);
+                tokens.insert(tokens.end(), tokenizer.begin(), tokenizer.end());
+            }
+            if (_wordpiece_tokens)
+            {
+                _wordpiece_tokenizer.reset();
+                for (const std::string &token : tokens)
+                {
+                    _wordpiece_tokenizer.append_input(token);
+                }
+                tokens = std::move(_wordpiece_tokenizer._tokens);
+                _wordpiece_tokenizer._tokens = std::vector<std::string>();
+            }
+
+            if (_ordered_words) 
+              {
+                TxtOrderedWordsEntry *towe = new TxtOrderedWordsEntry(target);
+                for (std::string w : tokens)
+                  {
+                    towe->add_word(w, 0);
+                  }
+                
+                if (!test)
+                  _txt.push_back(towe);
+                else _test_txt.push_back(towe);
+              }
+            else
+              {
+                TxtBowEntry *tbe = new TxtBowEntry(target);
+                for (std::string w : tokens)
+                {
+                    if (static_cast<int>(w.length()) < _min_word_length)
+                      continue;
+                    
+                    // check and fillup vocab.
+                    int pos = -1;
+                    if ((vhit=_vocab.find(w))==_vocab.end())
+                    {
+                        if (_train)
+                        {
+                            pos = _vocab.size();
+                            _vocab.emplace(std::make_pair(w,Word(pos)));
+                        }
+                    }
+                    else
+                    {
+                        if (_train)
+                        {
+                            (*vhit).second._total_count++;
+                            if (!tbe->has_word(w))
+                            (*vhit).second._total_docs++;
+                        }
+                    }
+                    tbe->add_word(w,1.0,_count);
+                }
+                if (!test)
+                  _txt.push_back(tbe);
+                else _test_txt.push_back(tbe);
+              }
 	  }
 	else // character-level features
 	  {
@@ -350,7 +458,7 @@ namespace dd
   void TxtInputFileConn::serialize_vocab()
   {
     std::string vocabfname = _model_repo + "/" + _vocabfname;
-    std::string delim=",";
+    std::string delim=std::string(&_vocab_sep, 1);
     std::ofstream out;
     out.open(vocabfname);
     if (!out.is_open())
@@ -378,7 +486,7 @@ namespace dd
     std::string line;
     while(getline(in,line))
       {
-	std::vector<std::string> tokens = dd_utils::split(line,',');
+	std::vector<std::string> tokens = dd_utils::split(line,_vocab_sep);
 	std::string key = tokens.at(0);
 	int pos = std::atoi(tokens.at(1).c_str());
 	_vocab.emplace(std::make_pair(key,Word(pos)));
