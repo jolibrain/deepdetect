@@ -304,7 +304,8 @@ namespace dd
       }
     for (std::string ct: cts)
       {
-	std::transform(ct.begin(),ct.end(),ct.begin(),::tolower);
+	if (_lower_case)
+        std::transform(ct.begin(),ct.end(),ct.begin(),::tolower);
 	if (!_characters)
 	  {
             std::unordered_map<std::string,Word>::iterator vhit;

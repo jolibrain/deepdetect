@@ -255,6 +255,7 @@ namespace dd
       _sentences(i._sentences),
       _characters(i._characters),
       _ordered_words(i._ordered_words),
+      _lower_case(i._lower_case),
       _wordpiece_tokens(i._wordpiece_tokens),
       _punctuation_tokens(i._punctuation_tokens),
       _alphabet_str(i._alphabet_str),
@@ -303,6 +304,8 @@ namespace dd
 	_characters = ad_input.get("characters").get<bool>();
       if (ad_input.has("ordered_words"))
 	_ordered_words = ad_input.get("ordered_words").get<bool>();
+      if (ad_input.has("lower_case"))
+	_lower_case = ad_input.get("lower_case").get<bool>();
       if (ad_input.has("wordpiece_tokens"))
 	_wordpiece_tokens = ad_input.get("wordpiece_tokens").get<bool>();
       if (ad_input.has("word_start"))
@@ -442,6 +445,7 @@ namespace dd
     bool _sentences = false; /**< whether to consider every sentence (\n separated) as a document. */
     bool _characters = false; /**< whether to use character-level input features. */
     bool _ordered_words = false; /**< whether to consider the position of each words in the sentence. */
+    bool _lower_case = true; /**< whether the input should be lower cased before processing */
     bool _wordpiece_tokens = false; /**< whether to try to match word pieces from the vocabulary. */
     bool _punctuation_tokens = false; /**< accept punctuation tokens. */
     std::string _alphabet_str = "abcdefghijklmnopqrstuvwxyz0123456789,;.!?:'\"/\\|_@#$%^&*~`+-=<>()[]{}";
