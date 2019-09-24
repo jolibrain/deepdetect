@@ -115,6 +115,9 @@ void TxtTorchInputFileConn::transform(const APIData &ad) {
     if (!_ordered_words || _characters)
         throw InputConnectorBadParamException("Need ordered_words = true with backend torch");
 
+    // XXX: move in txtinputconn?
+    make_inv_vocab();
+
     if (ad.has("parameters") && ad.getobj("parameters").has("input"))
     {
         APIData ad_input = ad.getobj("parameters").getobj("input");
@@ -127,6 +130,10 @@ void TxtTorchInputFileConn::transform(const APIData &ad) {
         _sep_pos = _vocab.at("[SEP]")._pos;
         _unk_pos = _vocab.at("[UNK]")._pos;
         _mask_id = _vocab.at("[MASK]")._pos;
+    }
+    else if (_input_format == "gpt2")
+    {
+        _eot_pos = _vocab.at("<|endoftext|>")._pos;
     }
 
     fill_dataset(_dataset, _txt);
@@ -188,17 +195,15 @@ void TxtTorchInputFileConn::fill_dataset(TorchDataset &dataset,
     {
         TxtOrderedWordsEntry *tow = static_cast<TxtOrderedWordsEntry *>(te);
         tow->reset();
+        std::string word;
+        double val;
         std::vector<int64_t> ids;
-        if (_input_format == "bert")
-            ids.push_back(_cls_pos);
 
         while(tow->has_elt())
         {
-            if (ids.size() >= _width - 1)
+            if (ids.size() >= _width)
                 break;
 
-            std::string word;
-            double val;
             tow->get_next_elt(word, val);
             std::unordered_map<std::string,Word>::iterator it;
 
@@ -209,13 +214,37 @@ void TxtTorchInputFileConn::fill_dataset(TorchDataset &dataset,
             else if (_input_format == "bert")
             {
                 ids.push_back(_unk_pos);
-            } else {
-                std::cout << word << std::endl;
             }
         }
 
+        // Extract last token (needed by gpt2)
+        int64_t last_token = 0;
+        if (tow->has_elt())
+        {
+            tow->get_next_elt(word, val);
+            std::unordered_map<std::string,Word>::iterator it;
+
+            if ((it = _vocab.find(word)) != _vocab.end())
+                last_token = it->second._pos;
+        }
+
+        // Post-processing for each model
         if (_input_format == "bert")
+        {
+            // make room for cls and sep token
+            while (ids.size() > _width - 2)
+                ids.pop_back();
+
+            ids.insert(ids.begin(), _cls_pos);
             ids.push_back(_sep_pos);
+        }
+        else if (_input_format == "gpt2")
+        {
+            if (ids.size() < _width)
+            {
+                ids.push_back(_eot_pos);
+            }
+        }
 
         at::Tensor ids_tensor = toLongTensor(ids);
         at::Tensor mask_tensor = torch::ones_like(ids_tensor);
@@ -234,6 +263,7 @@ void TxtTorchInputFileConn::fill_dataset(TorchDataset &dataset,
 
         std::vector<Tensor> target_vec;
         int target_val = static_cast<int>(tow->_target);
+
         if (target_val != -1)
         {
             Tensor target_tensor = torch::full(1, target_val, torch::kLong);
@@ -243,7 +273,12 @@ void TxtTorchInputFileConn::fill_dataset(TorchDataset &dataset,
         if (_input_format == "bert")
             dataset.add_batch({ids_tensor, token_type_ids_tensor, mask_tensor}, std::move(target_vec));
         else if (_input_format == "gpt2")
+        {
+            std::vector<Tensor> out_vec { ids_tensor.slice(0, 1) };
+            out_vec.push_back(torch::full(1, last_token, torch::kLong));
+            target_vec.insert(target_vec.begin(), torch::cat(out_vec, 0));
             dataset.add_batch({ids_tensor, position_ids}, std::move(target_vec));
+        }
     }
 }
 

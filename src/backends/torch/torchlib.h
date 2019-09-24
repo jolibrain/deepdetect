@@ -96,6 +96,7 @@ namespace dd
         bool _finetuning = false;
         torch::Device _device = torch::Device("cpu");
         bool _masked_lm = false;
+        bool _seq_training = false; 
 
         // models
         TorchModule _module;

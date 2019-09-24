@@ -101,6 +101,8 @@ namespace dd
 
         int64_t mask_id() const { return 0; }
         int64_t vocab_size() const { return 0; }
+        std::string get_word(int64_t id) const { return ""; }
+
 
         TorchDataset _dataset;
         TorchDataset _test_dataset;
@@ -216,6 +218,10 @@ namespace dd
 
         int64_t vocab_size() const { return _vocab.size(); }
 
+        std::string get_word(int64_t id) const {
+            return _inv_vocab.at(id);
+        }
+
         void transform(const APIData &ad);
 
         TorchBatch generate_masked_lm_batch(const TorchBatch &example);
@@ -226,11 +232,24 @@ namespace dd
         int _width = 512;
         int _height = 0;
         std::mt19937 _rng;
+        /// token id to vocabulary word
+        std::map<int, std::string> _inv_vocab;
 
         int64_t _mask_id = -1; /**< ID of mask token in the vocabulary. */
         int64_t _cls_pos = -1;
         int64_t _sep_pos = -1;
         int64_t _unk_pos = -1;
+        int64_t _eot_pos = -1; /**< end of text */
+
+
+        void make_inv_vocab() {
+            _inv_vocab.clear();
+
+            for (auto &entry : _vocab)
+            {
+                _inv_vocab[entry.second._pos] = entry.first;
+            }
+        }
     };
 } // namespace dd
 

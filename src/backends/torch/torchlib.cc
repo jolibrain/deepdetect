@@ -196,6 +196,7 @@ namespace dd
         _nclasses = tl._nclasses;
         _device = tl._device;
         _masked_lm = tl._masked_lm;
+        _seq_training = tl._seq_training;
         _finetuning = tl._finetuning;
     }
 
@@ -263,6 +264,7 @@ namespace dd
                 }
                 this->_logger->info("Masked Language model");
                 _masked_lm = true;
+                _seq_training = true;
             }
             else
             {
@@ -272,6 +274,7 @@ namespace dd
         else if (_template == "gpt2")
         {
             this->_inputc._input_format = "gpt2";
+            _seq_training = true;
         }
         else if (!_template.empty())
         {
@@ -438,7 +441,7 @@ namespace dd
 
                 // As CrossEntropy is not available (Libtorch 1.1) we use nllloss + log_softmax
                 Tensor loss;
-                if (_masked_lm)
+                if (_seq_training)
                 {
                     // Convert [n_batch, sequence_length, vocab_size] to [n_batch * sequence_length, vocab_size]
                     // + ignore non-masked tokens (== -1 in target)
@@ -607,7 +610,8 @@ namespace dd
                 for (int i = 0; i < input_ids.size(0); ++i)
                 {
                     // output is (n_batch * sequence_length * vocab_size)
-                    outputs.push_back(output[i][inputc._lengths.at(i) - 1]);
+                    // With gpt2, last token is endoftext so we need to take the previous output.
+                    outputs.push_back(output[i][inputc._lengths.at(i) - 2]);
                 }
                 output = torch::stack(outputs);
             }
@@ -638,7 +642,14 @@ namespace dd
                 {
                     probs.push_back(probs_acc[i][j]);
                     int index = indices_acc[i][j];
-                    cats.push_back(std::to_string(index));
+                    if (_seq_training)
+                    {
+                        cats.push_back(inputc.get_word(index));
+                    }
+                    else
+                    {
+                        cats.push_back(this->_mlmodel.get_hcorresp(index));
+                    }
                 }
 
                 results_ad.add("uri", inputc._uris.at(results_ads.size()));
@@ -712,7 +723,7 @@ namespace dd
             if (batch.target.empty())
                 throw MLLibBadParamException("Missing label on data while testing");
             Tensor labels = batch.target[0].view(IntList{-1});
-            if (_masked_lm)
+            if (_seq_training)
             {
                 // Convert [n_batch, sequence_length, vocab_size] to [n_batch * sequence_length, vocab_size]
                 output = output.view(IntList{-1, output.size(2)});
