@@ -35,6 +35,8 @@ static std::string not_found_str = "{\"status\":{\"code\":404,\"msg\":\"NotFound
 
 static std::string incept_repo = "../examples/torch/resnet50_torch/";
 static std::string bert_classif_repo = "../examples/torch/bert_inference_torch/";
+static std::string bert_train_repo = "../examples/torch/bert_training_torch/";
+static std::string bert_train_data = "../examples/torch/bert_training_torch/data/";
 
 TEST(torchapi, service_predict)
 {
@@ -105,3 +107,69 @@ TEST(inputconn, txt_tokenize_ordered_words) {
     std::vector<std::string> tokens{"every", "##thing", "[UNK]", "fine", ",", "right", "?"};
     ASSERT_EQ(tokens, towe._v);
 }
+
+// Training tests
+
+#if !defined(CPU_ONLY)
+
+TEST(torchapi, service_train_txt_lm)
+{
+    // create service
+    JsonAPI japi;
+    std::string sname = "txtserv";
+    std::string jstr = "{\"mllib\":\"torch\",\"description\":\"bert\",\"type\":\"supervised\",\"model\":{\"repository\":\""
+        + bert_train_repo + "\"},\"parameters\":{\"input\":{\"connector\":\"txt\",\"ordered_words\":true,"
+        "\"wordpiece_tokens\":true,\"punctuation_tokens\":true,\"sequence\":512},\"mllib\":{\"template\":\"bert\","
+        "\"self_supervised\":\"mask\",\"finetuning\":true,\"gpu\":true}}}";
+    std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
+    ASSERT_EQ(created_str,joutstr);
+
+    // train
+    std::string jtrainstr = "{\"service\":\"txtserv\",\"async\":false,\"parameters\":{"
+        "\"mllib\":{\"iterations\":3,\"base_lr\":1e-5,\"batch_size\":2,\"iter_size\":2,\"solver_type\":\"ADAM\"},"
+        "\"input\":{\"shuffle\":true,\"test_split\":0.25},"
+        "\"output\":{\"measure\":[\"f1\",\"acc\"]}},\"data\":[\"" + bert_train_data + "\"]}";
+    joutstr = japi.jrender(japi.service_train(jtrainstr));
+    JDoc jd;
+    std::cout << "joutstr=" << joutstr << std::endl;
+    jd.Parse(joutstr.c_str());
+    ASSERT_TRUE(!jd.HasParseError());
+    ASSERT_EQ(201, jd["status"]["code"]);
+    ASSERT_TRUE(jd["body"]["measure"]["iteration"] == 2) << "iterations";
+    // This assertion is non-deterministic
+    // ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() > 1.0) << "train_loss";
+    ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() <= 1) << "accuracy";
+    ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() <= 1) << "f1";
+}
+
+TEST(torchapi, service_train_txt_classification)
+{
+    // create service
+    JsonAPI japi;
+    std::string sname = "txtserv";
+    std::string jstr = "{\"mllib\":\"torch\",\"description\":\"bert\",\"type\":\"supervised\",\"model\":{\"repository\":\""
+        + bert_train_repo + "\"},\"parameters\":{\"input\":{\"connector\":\"txt\",\"ordered_words\":true,"
+        "\"wordpiece_tokens\":true,\"punctuation_tokens\":true,\"sequence\":512},\"mllib\":{\"template\":\"bert\","
+        "\"nclasses\":2,\"finetuning\":true,\"gpu\":true}}}";
+    std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
+    ASSERT_EQ(created_str,joutstr);
+
+    // train
+    std::string jtrainstr = "{\"service\":\"txtserv\",\"async\":false,\"parameters\":{"
+        "\"mllib\":{\"iterations\":3,\"base_lr\":1e-5,\"batch_size\":2,\"iter_size\":2,\"solver_type\":\"ADAM\"},"
+        "\"input\":{\"shuffle\":true,\"test_split\":0.25},"
+        "\"output\":{\"measure\":[\"f1\",\"acc\",\"mcll\",\"cmdiag\",\"cmfull\"]}},\"data\":[\"" + bert_train_data + "\"]}";
+    joutstr = japi.jrender(japi.service_train(jtrainstr));
+    JDoc jd;
+    std::cout << "joutstr=" << joutstr << std::endl;
+    jd.Parse(joutstr.c_str());
+    ASSERT_TRUE(!jd.HasParseError());
+    ASSERT_EQ(201, jd["status"]["code"]);
+    ASSERT_TRUE(abs(jd["body"]["measure"]["iteration"].GetDouble() - 2) < 0.00001) << "iterations";
+    // This assertion is non-deterministic
+    // ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() > 1.0) << "train_loss";
+    ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() <= 1) << "accuracy";
+    ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() <= 1) << "f1";
+}
+
+#endif
