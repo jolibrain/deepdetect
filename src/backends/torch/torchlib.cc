@@ -311,10 +311,10 @@ namespace dd
         APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
 
         // solver params
-        int64_t iterations = 100;
+        int64_t iterations = 1;
         std::string solver_type = "SGD";
         double base_lr = 0.0001;
-        int64_t batch_size = 5;
+        int64_t batch_size = 1;
         int64_t iter_size = 1;
         int64_t test_batch_size = 1;
         int64_t test_interval = 1;
@@ -323,22 +323,31 @@ namespace dd
         // logging parameters
         int64_t log_batch_period = 20;
 
-        if (ad_mllib.has("iterations"))
-            iterations = ad_mllib.get("iterations").get<int>();
-        if (ad_mllib.has("solver_type"))
-            solver_type = ad_mllib.get("solver_type").get<std::string>();
-        if (ad_mllib.has("base_lr"))
-            base_lr = ad_mllib.get("base_lr").get<double>();
-        if (ad_mllib.has("test_interval"))
-            test_interval = ad_mllib.get("test_interval").get<int>();
-        if (ad_mllib.has("batch_size"))
-            batch_size = ad_mllib.get("batch_size").get<int>();
-        if (ad_mllib.has("iter_size"))
-            iter_size = ad_mllib.get("iter_size").get<int>();
-        if (ad_mllib.has("test_batch_size"))
-            test_batch_size = ad_mllib.get("test_batch_size").get<int>();
-        if (ad_mllib.has("snapshot"))
-            save_period = ad_mllib.get("snapshot").get<int>();
+        if (ad_mllib.has("solver"))
+        {
+            APIData ad_solver = ad_mllib.getobj("solver");
+            if (ad_solver.has("iterations"))
+                iterations = ad_solver.get("iterations").get<int>();
+            if (ad_solver.has("solver_type"))
+                solver_type = ad_solver.get("solver_type").get<std::string>();
+            if (ad_solver.has("base_lr"))
+                base_lr = ad_solver.get("base_lr").get<double>();
+            if (ad_solver.has("test_interval"))
+                test_interval = ad_solver.get("test_interval").get<int>();
+            if (ad_solver.has("iter_size"))
+                iter_size = ad_solver.get("iter_size").get<int>();
+            if (ad_solver.has("snapshot"))
+                save_period = ad_solver.get("snapshot").get<int>();
+        }
+
+        if (ad_mllib.has("net"))
+        {
+            APIData ad_net = ad_mllib.getobj("net");
+            if (ad_net.has("batch_size"))
+                batch_size = ad_net.get("batch_size").get<int>();
+            if (ad_net.has("test_batch_size"))
+                test_batch_size = ad_net.get("test_batch_size").get<int>();
+        }
 
         if (iter_size <= 0)
             iter_size = 1;

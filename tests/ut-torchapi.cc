@@ -126,7 +126,7 @@ TEST(torchapi, service_train_txt_lm)
 
     // train
     std::string jtrainstr = "{\"service\":\"txtserv\",\"async\":false,\"parameters\":{"
-        "\"mllib\":{\"iterations\":3,\"base_lr\":1e-5,\"batch_size\":2,\"iter_size\":2,\"solver_type\":\"ADAM\"},"
+        "\"mllib\":{\"solver\":{\"iterations\":3,\"base_lr\":1e-5,\"iter_size\":2,\"solver_type\":\"ADAM\"},\"net\":{\"batch_size\":2}},"
         "\"input\":{\"shuffle\":true,\"test_split\":0.25},"
         "\"output\":{\"measure\":[\"f1\",\"acc\"]}},\"data\":[\"" + bert_train_data + "\"]}";
     joutstr = japi.jrender(japi.service_train(jtrainstr));
@@ -156,7 +156,7 @@ TEST(torchapi, service_train_txt_classification)
 
     // train
     std::string jtrainstr = "{\"service\":\"txtserv\",\"async\":false,\"parameters\":{"
-        "\"mllib\":{\"iterations\":3,\"base_lr\":1e-5,\"batch_size\":2,\"iter_size\":2,\"solver_type\":\"ADAM\"},"
+        "\"mllib\":{\"solver\":{\"iterations\":3,\"base_lr\":1e-5,\"iter_size\":2,\"solver_type\":\"ADAM\"},\"net\":{\"batch_size\":2}},"
         "\"input\":{\"shuffle\":true,\"test_split\":0.25},"
         "\"output\":{\"measure\":[\"f1\",\"acc\",\"mcll\",\"cmdiag\",\"cmfull\"]}},\"data\":[\"" + bert_train_data + "\"]}";
     joutstr = japi.jrender(japi.service_train(jtrainstr));
