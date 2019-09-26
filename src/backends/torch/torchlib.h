@@ -34,6 +34,7 @@
 
 namespace dd
 {
+    // TODO: Make TorchModule inherit torch::nn::Module ? And use the TORCH_MODULE macro
     class TorchModule {
     public:
         TorchModule();
@@ -44,8 +45,12 @@ namespace dd
 
         std::vector<torch::Tensor> parameters();
 
+        /** Save traced module to checkpoint-[name].pt, and custom parts weights
+         * to checkpoint-[name].ptw */
+        // (Actually only _classif is saved in the .ptw)
         void save_checkpoint(TorchModel &model, const std::string &name);
 
+        /** Load traced module from .pt and custom parts weights from .ptw */
         void load(TorchModel &model);
 
         void eval();
@@ -58,7 +63,6 @@ namespace dd
 
         torch::Device _device;
         int _classif_in = 0; /**<id of the input of the classification layer */
-        // XXX: This parameter is too specific
         bool _hidden_states = false; /**< Take BERT hidden states as input. */
     private:
         bool _freeze_traced = false; /**< Freeze weights of the traced module */

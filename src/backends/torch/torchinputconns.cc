@@ -26,6 +26,8 @@ void TorchDataset::reset()
     }
 }
 
+// `request` holds the size of the batch
+// Data selection and batch construction are done in this method
 c10::optional<TorchBatch> TorchDataset::get_batch(BatchRequestType request)
 {
     size_t count = request[0];
@@ -134,6 +136,8 @@ TorchBatch TxtTorchInputFileConn::generate_masked_lm_batch(const TorchBatch &exa
     std::uniform_real_distribution<double> uniform(0, 1);
     std::uniform_int_distribution<int64_t> vocab_distrib(0, vocab_size() - 1);
     Tensor input_ids = example.data.at(0).clone();
+    // lm_labels: n_batch * sequence_length
+    // equals to input_ids where tokens are masked, and -1 otherwise
     Tensor lm_labels = torch::ones_like(input_ids, TensorOptions(kLong)) * -1;
 
     // mask random tokens

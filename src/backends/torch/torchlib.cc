@@ -398,6 +398,7 @@ namespace dd
         int batch_id = 0;
         using namespace std::chrono;
 
+        // it is the iteration count (not epoch)
         while (it < iterations)
         {
             if (!this->_tjob_running.load())
@@ -430,9 +431,12 @@ namespace dd
                     throw MLLibInternalException(std::string("Libtorch error:") + e.what());
                 }
 
+                // As CrossEntropy is not available (Libtorch 1.1) we use nllloss + log_softmax
                 Tensor loss;
                 if (_masked_lm)
                 {
+                    // Convert [n_batch, sequence_length, vocab_size] to [n_batch * sequence_length, vocab_size]
+                    // + ignore non-masked tokens (== -1 in target)
                     loss = torch::nll_loss(
                         torch::log_softmax(y_pred.view(IntList{-1, y_pred.size(2)}), 1),
                         y.view(IntList{-1}),
@@ -691,6 +695,7 @@ namespace dd
             Tensor labels = batch.target[0].view(IntList{-1});
             if (_masked_lm)
             {
+                // Convert [n_batch, sequence_length, vocab_size] to [n_batch * sequence_length, vocab_size]
                 output = output.view(IntList{-1, output.size(2)});
             }
             output = torch::softmax(output, 1).to(cpu);

@@ -42,6 +42,7 @@ namespace dd
         std::vector<int64_t> _indices;
 
     public:
+        /// Vector containing the whole dataset (the "cached data").
         std::vector<TorchBatch> _batches;
 
 
