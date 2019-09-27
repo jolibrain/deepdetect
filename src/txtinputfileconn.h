@@ -181,7 +181,7 @@ namespace dd
     TxtOrderedWordsEntry(const float &target) :TxtEntry<double>(target) {}
     virtual ~TxtOrderedWordsEntry() {}
 
-    void add_word(const std::string &word, const uint32_t &id)
+    void add_word(const std::string &word, const uint32_t &)
     {
       _v.push_back(word);
     }
@@ -260,6 +260,7 @@ namespace dd
       _alphabet(i._alphabet),
       _sequence(i._sequence),
       _seq_forward(i._seq_forward),
+      _generate_vocab(i._generate_vocab),
       _vocab(i._vocab),
       _vocab_sep(i._vocab_sep),
       _wordpiece_tokenizer(i._wordpiece_tokenizer)
@@ -347,7 +348,7 @@ namespace dd
       if (_alphabet.empty() && _characters)
 	build_alphabet();
       
-      if (!_characters && !_train && _vocab.empty())
+      if (!_characters && (!_train || _ordered_words) && _vocab.empty())
 	deserialize_vocab();
       
       for (std::string u: _uris)
@@ -444,6 +445,7 @@ namespace dd
     bool _seq_forward = false; /**< whether to read character-based sequences forward. */
     
     // internals
+    bool _generate_vocab = true;
     std::unordered_map<std::string,Word> _vocab; /**< string to word stats, including word */
     std::string _vocabfname = "vocab.dat";
     std::string _correspname = "corresp.txt";
