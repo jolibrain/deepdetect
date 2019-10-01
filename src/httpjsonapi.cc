@@ -400,6 +400,12 @@ public:
 	  }
 	else if (rscs.at(0) == _rsc_chain)
 	  {
+	    if (rscs.size() < 2)
+	      {
+		fillup_response(response,_hja->dd_bad_request_400(),access_log,code,tstart);
+		_logger->error(access_log);
+		return;
+	      }
 	    std::string cname = rscs.at(1);
 	    if (req_method == "PUT" || req_method == "POST")
 	      {
