@@ -44,14 +44,13 @@ namespace dd
   public:
     TFInputInterface() {}
     TFInputInterface(const TFInputInterface &tii)
-    :_dv(tii._dv),_ids(tii._ids){}
+    :_dv(tii._dv)
     ~TFInputInterface() {}
 
   public:
     // parameters common to all TF input connectors
     std::vector<tensorflow::Tensor> _dv; // main tensor for prediction.
     std::vector<tensorflow::Tensor> _dv_test;
-    std::vector<std::string> _ids; // input ids (eg. Image Ids).
   };
 
   class ImgTFInputFileConn : public ImgInputFileConn, public TFInputInterface
@@ -152,7 +151,7 @@ namespace dd
 	  }
 	  
 	  _dv.push_back(input_tensor);
-	  _ids.push_back(_uris.at(i));
+	  this->_ids.push_back(_uris.at(i));
 	}
       _images.clear();
     }
