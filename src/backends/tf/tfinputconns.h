@@ -44,7 +44,7 @@ namespace dd
   public:
     TFInputInterface() {}
     TFInputInterface(const TFInputInterface &tii)
-    :_dv(tii._dv)
+      :_dv(tii._dv) {}
     ~TFInputInterface() {}
 
   public:
