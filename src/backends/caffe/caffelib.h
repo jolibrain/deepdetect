@@ -214,6 +214,11 @@ namespace dd
        * @param mllib apidata object
        */
       bool update_timesteps(int timesteps);
+
+      /**
+         update detection evaluation layer 's threshold if asked for
+       */
+      bool update_bbox_overlap_threshold(caffe::Net<float> *net, float t);
       
     private:
       void update_protofile_classes(caffe::NetParameter &net_param);

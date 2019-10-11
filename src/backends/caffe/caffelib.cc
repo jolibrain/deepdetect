@@ -30,6 +30,7 @@
 #include "utils/utils.hpp"
 #include "utils/apitools.h"
 #include "caffe/sgd_solvers.hpp"
+#include "caffe/layers/detection_evaluate_layer.hpp"
 #include <chrono>
 #include <iostream>
 
@@ -1582,6 +1583,21 @@ namespace dd
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  bool CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_bbox_overlap_threshold(caffe::Net<float> *net, float t)
+  {
+    caffe::Layer<float>* l = net->layers()[net->layer_names_index().
+                                           at(std::string("detection_eval"))].get();
+    if (l == NULL)
+      return false;
+    caffe::DetectionEvaluateLayer<float> *del = dynamic_cast<caffe::DetectionEvaluateLayer<float>*>(l);
+    if (del == NULL)
+      return false;
+    del->set_overlap_threshold(t);
+    return true;
+  }
+
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::test(caffe::Net<float> *net,
 										 const APIData &ad,
 										 TInputConnectorStrategy &inputc,
@@ -1595,6 +1611,18 @@ namespace dd
     ad_res.add("train_loss",this->get_meas("train_loss"));
     ad_res.add("learning_rate",this->get_meas("learning_rate"));
     APIData ad_out = ad.getobj("parameters").getobj("output");
+
+    if (ad.getobj("parameters").getobj("output").has("overlap_threshold"))
+      {
+        float thres = ad.getobj("parameters").getobj("output").
+          get("overlap_threshold").get<double>();
+        bool ok = update_bbox_overlap_threshold(net, thres);
+        if (ok)
+          this->_logger->info("setting bbox overlap threshold to {}",thres);
+        else
+          this->_logger->warn("failed setting bbox overlap threshold to {} using default", thres);
+
+      }
 
     if (ad.getobj("parameters").getobj("mllib").has("ignore_label"))
       {
