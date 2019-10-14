@@ -31,7 +31,7 @@ namespace dd
 {
 
   static int _default_timeout = 600; // 10 mins
-  static int _max_timeout = 6000; // 10 hours
+  static int _max_timeout = 36000; // 10 hours
   
   class httpclient
   {
