@@ -1361,7 +1361,7 @@ namespace dd
     if (ad_input.has("label_offset"))
     _label_offset = ad_input.get("label_offset").get<int>();*/
     
-    DataEl<DDCCsv> ddcsv;
+    DataEl<DDCCsv> ddcsv(this->_input_timeout);
     ddcsv._ctype._cifc = this;
     ddcsv._ctype._adconf = ad_input;
     ddcsv.read_element(_csv_fname,this->_logger);
@@ -2281,7 +2281,7 @@ namespace dd
     if (_uris.size() > 1)
       _svm_test_fname = _uris.at(1);
 
-    DataEl<DDSvm> ddsvm;
+    DataEl<DDSvm> ddsvm(this->_input_timeout);
     ddsvm._ctype._cifc = this;
     ddsvm._ctype._adconf = ad_input;
     ddsvm.read_element(_svm_fname,this->_logger);

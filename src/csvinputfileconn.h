@@ -195,6 +195,9 @@ namespace dd
 	  for (std::string v: vcats)
 	    _categoricals.emplace(std::make_pair(v,CCategorical()));
 	}
+
+      // timeout
+      this->set_timeout(ad_input);
     }
 
     void read_categoricals(const APIData &ad_input)
@@ -366,7 +369,7 @@ namespace dd
 	  
 	  if (!_csv_fname.empty()) // when training from file
 	    {
-	      DataEl<DDCsv> ddcsv;
+	      DataEl<DDCsv> ddcsv(this->_input_timeout);
 	      ddcsv._ctype._cifc = this;
 	      ddcsv._ctype._adconf = ad_input;
 	      ddcsv.read_element(_csv_fname,this->_logger);
@@ -375,7 +378,7 @@ namespace dd
 	    {
 	      for (size_t i=uri_offset;i<_uris.size();i++)
 		{
-		  DataEl<DDCsv> ddcsv;
+		  DataEl<DDCsv> ddcsv(this->_input_timeout);
 		  ddcsv._ctype._cifc = this;
 		  ddcsv._ctype._adconf = ad_input;
 		  ddcsv.read_element(_uris.at(i),this->_logger);
@@ -406,7 +409,7 @@ namespace dd
 		}
 	      /*else if (!_categoricals.empty())
 		throw InputConnectorBadParamException("use of categoricals_mapping requires a CSV header");*/
-	      DataEl<DDCsv> ddcsv;
+	      DataEl<DDCsv> ddcsv(this->_input_timeout);
 	      ddcsv._ctype._cifc = this;
 	      ddcsv._ctype._adconf = ad_input;
 	      ddcsv.read_element(_uris.at(i),this->_logger);

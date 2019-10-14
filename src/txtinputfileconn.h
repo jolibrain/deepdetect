@@ -313,6 +313,9 @@ namespace dd
 	_sequence = ad_input.get("sequence").get<int>();
       if (ad_input.has("read_forward"))
 	_seq_forward = ad_input.get("read_forward").get<bool>();
+
+      // timeout
+      this->set_timeout(ad_input);
     }
 
     int feature_size() const
@@ -352,7 +355,7 @@ namespace dd
       
       for (std::string u: _uris)
 	{
-	  DataEl<DDTxt> dtxt;
+	  DataEl<DDTxt> dtxt(this->_input_timeout);
 	  dtxt._ctype._ctfc = this;
 	  if (dtxt.read_element(u,this->_logger) || (_txt.empty() && _db_fname.empty()))
 	    {

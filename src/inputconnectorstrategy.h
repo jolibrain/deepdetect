@@ -40,7 +40,11 @@ namespace dd
   template <class DDT> class DataEl
   {
   public:
-    DataEl() {}
+    DataEl(const int &timeout)
+      {
+	if (timeout != -1)
+	  _timeout = timeout;
+      }
     ~DataEl() {}
 
     int read_element(const std::string &uri,
@@ -58,7 +62,7 @@ namespace dd
 	  int outcode = -1;
 	  try
 	    {
-	      httpclient::get_call(uri,"GET",outcode,_content);
+	      httpclient::get_call(uri,"GET",outcode,_content,_timeout);
 	    }
 	  catch(...)
 	    {
@@ -82,6 +86,7 @@ namespace dd
     }
     
     std::string _content;
+    int _timeout = 600; // 10 mins is default
     DDT _ctype;
   };
   
@@ -121,7 +126,8 @@ namespace dd
   public:
     InputConnectorStrategy() {}
     InputConnectorStrategy(const InputConnectorStrategy &i)
-      :_model_repo(i._model_repo),_logger(i._logger) {}
+      :_model_repo(i._model_repo),_logger(i._logger),
+       _input_timeout(i._input_timeout) {}
     ~InputConnectorStrategy() {}
     
     /**
@@ -178,6 +184,12 @@ namespace dd
 	}
     }
 
+    void set_timeout(const APIData &ad)
+    {
+      if (ad.has("timeout"))
+	_input_timeout = ad.get("timeout").get<int>();
+    }
+    
     /**
      * \brief input parameters to return to user through API,
      *        especially when they have been automatically modified,
@@ -199,6 +211,8 @@ namespace dd
     std::vector<std::string> _index_uris; /**< URI to be stored in similarity search index. */
     std::string _model_repo; /**< model repository, useful when connector needs to read from saved data (e.g. vocabulary). */
     std::shared_ptr<spdlog::logger> _logger;
+
+    int _input_timeout = -1; /**< timeout on input data retrieval: -1 means using default (600sec), otherwise set via input parameters. */
   };
   
 }

@@ -30,15 +30,18 @@
 namespace dd
 {
 
+  static int _default_timeout = 600; // 10 mins
+  static int _max_timeout = 6000; // 10 hours
+  
   class httpclient
   {
   public:
     static void get_call(const std::string &url,
 			 const std::string &http_method,
 			 int &outcode,
-			 std::string &outstr)
+			 std::string &outstr,
+			 const int &timeout=_default_timeout)
     {
-      curlpp::Cleanup cl;
       std::ostringstream os;
       curlpp::Easy request;
       curlpp::options::WriteStream ws(&os);
@@ -47,9 +50,14 @@ namespace dd
       request.setOpt(ws);
       request.setOpt(pr);
       request.setOpt(cURLpp::Options::FollowLocation(true));
+      if (timeout > _max_timeout)
+	{
+	  outcode = 400;
+	  throw std::runtime_error("timeout value is above max default timeout (6000)");
+	}
+      request.setOpt(cURLpp::Options::Timeout(timeout));
       request.perform();
       outstr = os.str();
-      //std::cout << "outstr=" << outstr << std::endl;
       outcode = curlpp::infos::ResponseCode::get(request);
     }
     
@@ -60,7 +68,6 @@ namespace dd
 			  std::string &outstr,
 			  const std::string &content_type="Content-Type: application/json")
     {
-      curlpp::Cleanup cl;
       std::ostringstream os;
       curlpp::Easy request_put;
       curlpp::options::WriteStream ws(&os);
@@ -78,7 +85,6 @@ namespace dd
       //std::cout << "outstr=" << outstr << std::endl;
       outcode = curlpp::infos::ResponseCode::get(request_put);
     }
-    
   };
   
 }

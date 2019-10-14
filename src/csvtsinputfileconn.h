@@ -93,6 +93,9 @@ namespace dd
         }
       CSVInputFileConn::fillup_parameters(ad_input);
       deserialize_bounds();
+
+      // timeout
+      this->set_timeout(ad_input);
     }
 
     void shuffle_data(std::vector<std::vector<CSVline>> cvstsdata);
