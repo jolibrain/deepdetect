@@ -702,7 +702,7 @@ namespace dd
     std::string ssd_mining_type;
     double ssd_neg_pos_ratio = -1.0;
     double ssd_neg_overlap = -1.0;
-    int ssd_keep_top_k = -1.0;
+    int ssd_keep_top_k = -1;
     if (ad.has("net"))
       {
 	APIData ad_net = ad.getobj("net");
