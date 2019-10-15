@@ -683,6 +683,13 @@ namespace dd
                  meas_out.add(s,static_cast<double>(ap.second));
 	       }
 	    }
+      bool raw = (std::find(measures.begin(),measures.end(),"raw")!=measures.end());
+      if (raw)
+        {
+          std::vector<std::string> clnames = ad_res.get("clnames").get<std::vector<std::string>>();
+          APIData ap = raw_detection_results(ad_res,clnames);
+          meas_out.add("raw", ap);
+        }
 	}
       if (net_meas) // measure is coming from the net directly
 	{
@@ -1542,7 +1549,67 @@ namespace dd
 	    }
 	}
     }
-    
+
+    static APIData raw_detection_results(const APIData &ad, std::vector<std::string> clnames)
+    {
+      APIData raw_res;
+      std::vector<std::string> preds;
+      std::vector<std::string> targets;
+      std::vector<double> confs;
+      APIData bad = ad.getobj("0");
+      int pos_count = ad.get("pos_count").get<int>();
+      for (int i=0;i<pos_count;i++)
+        {
+          std::vector<APIData> vbad = bad.getv(std::to_string(i));
+          for (size_t j=0;j<vbad.size();j++)
+            {
+              std::vector<double> tp_d = vbad.at(j).get("tp_d").get<std::vector<double>>();
+              std::vector<int> tp_i = vbad.at(j).get("tp_i").get<std::vector<int>>();
+              std::vector<double> fp_d = vbad.at(j).get("fp_d").get<std::vector<double>>();
+              std::vector<int> fp_i = vbad.at(j).get("fp_i").get<std::vector<int>>();
+              int num_pos = vbad.at(j).get("num_pos").get<int>();
+              int label = vbad.at(j).get("label").get<int>();
+
+              // below true positives
+              for (unsigned int k = 0; k<tp_d.size(); ++k)
+                {
+                  if (tp_i[k] == 1)
+                    {
+                      targets.push_back(clnames[label]);
+                      preds.push_back(clnames[label]);
+                      confs.push_back(tp_d[k]);
+                    }
+                }
+              //below false positives
+              for (unsigned int k = 0; k<fp_d.size(); ++k)
+                {
+                  if (fp_i[k] == 1)
+                    {
+                      preds.push_back(clnames[label]);
+                      targets.push_back(std::string("UNDEFINED_GT"));
+                      confs.push_back(fp_d[k]);
+                    }
+                }
+              //blow false negatives
+              int ntp = 0;
+              for (unsigned int k = 0; k< tp_i.size(); ++k)
+                if (tp_i[k] == 1)
+                  ntp++;
+              for (int  k= 0; k<(num_pos - ntp); ++k)
+                {
+                  targets.push_back(clnames[label]);
+                  confs.push_back(1.0);
+                  preds.push_back("NO_DETECTION");
+                }
+            }
+        }
+      raw_res.add("truths", targets);
+      raw_res.add("estimations", preds);
+      raw_res.add("confidences", confs);
+      return raw_res;
+    }
+
+
     static double compute_ap(const std::vector<std::pair<double,int>> &tp,
 			     const std::vector<std::pair<double,int>> &fp,
 			     const int &num_pos)
@@ -1578,7 +1645,8 @@ namespace dd
       ap += cur_rec * cur_prec;
       return ap;
     }
-    
+
+
     static double ap(const APIData &ad,  std::map<int,float>& APs)
     {
       double mmAP = 0.0;
