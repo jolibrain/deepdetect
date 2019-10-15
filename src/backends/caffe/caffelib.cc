@@ -696,30 +696,26 @@ namespace dd
     caffe::ReadProtoFromTextFile(dest_net,&net_param);
     caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
 
-    // get ssd detailed params, if any, from the 'net' object.
+    // get ssd detailed params, if any.
     double ssd_expand_prob = -1.0;
     double ssd_max_expand_ratio = -1.0;
     std::string ssd_mining_type;
     double ssd_neg_pos_ratio = -1.0;
     double ssd_neg_overlap = -1.0;
     int ssd_keep_top_k = -1;
-    if (ad.has("net"))
-      {
-	APIData ad_net = ad.getobj("net");
-	if (ad_net.has("ssd_expand_prob"))
-	  ssd_expand_prob = ad_net.get("ssd_expand_prob").get<double>();
-	if (ad_net.has("ssd_max_expand_ratio"))
-	  ssd_max_expand_ratio = ad_net.get("ssd_max_expand_ratio").get<double>();
-	if (ad_net.has("ssd_mining_type"))
-	  ssd_mining_type = ad_net.get("ssd_mining_type").get<std::string>();
-	if (ad_net.has("ssd_neg_pos_ratio"))
-	  ssd_neg_pos_ratio = ad_net.get("ssd_neg_pos_ratio").get<double>();
-	if (ad_net.has("ssd_neg_overlap"))
-	  ssd_neg_pos_ratio = ad_net.get("ssd_neg_overlap").get<double>();
-	if (ad_net.has("ssd_keep_top_k"))
-	  ssd_keep_top_k = ad_net.get("ssd_keep_top_k").get<int>();
-      }
-    
+    if (ad.has("ssd_expand_prob"))
+      ssd_expand_prob = ad.get("ssd_expand_prob").get<double>();
+    if (ad.has("ssd_max_expand_ratio"))
+      ssd_max_expand_ratio = ad.get("ssd_max_expand_ratio").get<double>();
+    if (ad.has("ssd_mining_type"))
+      ssd_mining_type = ad.get("ssd_mining_type").get<std::string>();
+    if (ad.has("ssd_neg_pos_ratio"))
+      ssd_neg_pos_ratio = ad.get("ssd_neg_pos_ratio").get<double>();
+    if (ad.has("ssd_neg_overlap"))
+      ssd_neg_pos_ratio = ad.get("ssd_neg_overlap").get<double>();
+    if (ad.has("ssd_keep_top_k"))
+      ssd_keep_top_k = ad.get("ssd_keep_top_k").get<int>();
+          
     //- if finetuning, change the proper layer names
     std::string postfix = "_ftune";
     const bool finetune = (ad.has("finetuning") && ad.get("finetuning").get<bool>());
