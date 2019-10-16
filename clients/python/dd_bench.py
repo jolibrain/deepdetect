@@ -54,6 +54,8 @@ parser.add_argument('--mllib', help='mllib to bench, ie [tensorrt|ncnn|caffe]', 
 parser.add_argument('--datatype', help='datatype for tensorrt [fp16|fp32]', default='fp32')
 parser.add_argument('--recreate', help='recreate service between every batchsize, useful for batch_size dependent precompiling backends (ie tensorRT)', action='store_true', default=False)
 parser.add_argument('--dla', help='use dla', action='store_true', default = False)
+parser.add_argument('--gpu-resize',help='image resizing on gpu', action='store_true', default = False)
+parser.add_argument('--image-interp',help='image interpolation method (nearest, linear, cubic, ...)')
 args = parser.parse_args()
 
 host = args.host
@@ -71,9 +73,9 @@ def service_create(bs):
     model = {'repository':args.create}
     parameters_input = {'connector':'image','width':args.img_width,'height':args.img_height}
     if args.dla:
-        parameters_mllib = {'nclasses':args.nclasses,'datatype':args.datatype,'readEngine':False,'writeEngine':False,'maxBatchSize':bs,'dla':0, 'maxWorkspaceSize':args.max_workspace_size}
+        parameters_mllib = {'nclasses':args.nclasses,'datatype':args.datatype,'readEngine':True,'writeEngine':True,'maxBatchSize':bs,'dla':0, 'maxWorkspaceSize':args.max_workspace_size}
     else:    
-        parameters_mllib = {'nclasses':args.nclasses,'datatype':args.datatype,'readEngine':False,'writeEngine':False,'maxBatchSize':bs,'maxWorkspaceSize':args.max_workspace_size}
+        parameters_mllib = {'nclasses':args.nclasses,'datatype':args.datatype,'readEngine':True,'writeEngine':True,'maxBatchSize':bs,'maxWorkspaceSize':args.max_workspace_size}
     parameters_output = {}
     dd.put_service(args.sname,model,description,mllib,
                    parameters_input,parameters_mllib,parameters_output)
@@ -102,6 +104,10 @@ while l <= args.max_batch_size:
         l += 16
 
 parameters_input = {}
+if not args.image_interp == '':
+  parameters_input['interp'] = args.image_interp
+if args.gpu_resize:
+  parameters_input['cuda'] = args.gpu_resize
 parameters_mllib = {'gpu':args.gpu,'gpuid':args.gpuid}
 parameters_output = {}
 if args.detection:
@@ -156,7 +162,7 @@ for b in batch_sizes:
             break
     mean_processing_time = mean_ptime/args.npasses
     mean_time_per_img = mean_ptime_per_img/args.npasses
-    print '>>> batch size =',b,' / mean processing time =',mean_ptime/args.npasses, ' / mean time per image =',mean_ptime_per_img/args.npasses, ' / fail =',fail
+    print '>>> batch size =',b,' / mean processing time =',mean_ptime/args.npasses, ' / mean time per image =',mean_ptime_per_img/args.npasses, ' / fps = ', 1000/(mean_ptime_per_img/args.npasses) , ' / fail =',fail
     if args.csv_output:
       csv_writer.writerow([b,mean_processing_time,mean_time_per_img])
     #break
