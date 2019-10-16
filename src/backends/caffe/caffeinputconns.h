@@ -197,9 +197,9 @@ namespace dd
 	    }
 	  
 	  float *mean = nullptr;
-	  std::string meanfullname = _model_repo + "/" + _meanfname;
 	  if (_data_mean.count() == 0 && _has_mean_file)
 	    {
+	      std::string meanfullname = _model_repo + "/" + _meanfname;
 	      caffe::BlobProto blob_proto;
 	      caffe::ReadProtoFromBinaryFile(meanfullname.c_str(),&blob_proto);
 	      _data_mean.FromProto(blob_proto);
