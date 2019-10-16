@@ -53,7 +53,7 @@ namespace dd
       if (timeout > _max_timeout)
 	{
 	  outcode = 400;
-	  throw std::runtime_error("timeout value is above max default timeout (6000)");
+	  throw std::runtime_error("timeout value is above max default timeout (" + std::to_string(_max_timeout) + ")");
 	}
       request.setOpt(cURLpp::Options::Timeout(timeout));
       request.perform();
