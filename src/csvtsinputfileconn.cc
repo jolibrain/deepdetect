@@ -192,7 +192,7 @@ namespace dd
 
           if (!_csv_fname.empty()) // when training from file
             {
-              DataEl<DDCsvTS> ddcsvts;
+              DataEl<DDCsvTS> ddcsvts(this->_input_timeout);
               ddcsvts._ctype._cifc = this;
               ddcsvts._ctype._adconf = ad_input;
               ddcsvts.read_element(_csv_fname,this->_logger);
@@ -202,7 +202,7 @@ namespace dd
           {
             for (size_t i=uri_offset;i<_uris.size();i++)
 		{
-		  DataEl<DDCsvTS> ddcsvts;
+		  DataEl<DDCsvTS> ddcsvts(this->_input_timeout);
 		  ddcsvts._ctype._cifc = this;
 		  ddcsvts._ctype._adconf = ad_input;
 		  ddcsvts.read_element(_uris.at(i),this->_logger);
@@ -236,7 +236,7 @@ namespace dd
                 }
               /*else if (!_categoricals.empty())
                 throw InputConnectorBadParamException("use of categoricals_mapping requires a CSV header");*/
-              DataEl<DDCsvTS> ddcsvts;
+              DataEl<DDCsvTS> ddcsvts(this->_input_timeout);
               ddcsvts._ctype._cifc = this;
               ddcsvts._ctype._adconf = ad_input;
               ddcsvts.read_element(_uris.at(i),this->_logger);

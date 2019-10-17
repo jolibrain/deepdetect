@@ -457,6 +457,9 @@ namespace dd
       if (ad.has("interp"))
 	_interp = ad.get("interp").get<std::string>();
 
+      // timeout
+      this->set_timeout(ad);
+      
 #ifdef USE_CUDA_CV
       // image resizing on GPU
       if (ad.has("cuda"))
@@ -511,7 +514,7 @@ namespace dd
 	{
 	  bool no_img = false;
 	  std::string u = _uris.at(i);
-	  DataEl<DDImg> dimg;
+	  DataEl<DDImg> dimg(this->_input_timeout);
 	  dimg._ctype._bw = _bw;
           dimg._ctype._rgb = _rgb;
 	  dimg._ctype._unchanged_data = _unchanged_data;
