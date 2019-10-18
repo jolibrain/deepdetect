@@ -414,25 +414,38 @@ namespace dd
 		  else create_index = false;
 		}
 	      if (create_index)
-		mlm->create_sim_search(index_dim);
+            mlm->create_sim_search(index_dim,ad_in);
 	    }
 
 	  // index output content
 	  if (!has_roi)
 	    {
+#ifdef USE_FAISS
+          std::vector<URIData> urids;
+          std::vector<std::vector<double>> probsv;
+#endif
 	      for (size_t i=0;i<bcats._vvcats.size();i++)
-		{
-		  std::vector<double> probs;
-		  auto mit = bcats._vvcats.at(i)._cats.begin();
-		  while(mit!=bcats._vvcats.at(i)._cats.end())
-		    {
-		      probs.push_back((*mit).first);
-		      ++mit;
-		    }
-		  URIData urid(bcats._vvcats.at(i)._label);
-		  mlm->_se->index(urid,probs);
-		  indexed_uris.insert(urid._uri);
-		}
+            {
+              std::vector<double> probs;
+              auto mit = bcats._vvcats.at(i)._cats.begin();
+              while(mit!=bcats._vvcats.at(i)._cats.end())
+                {
+                  probs.push_back((*mit).first);
+                  ++mit;
+                }
+              URIData urid(bcats._vvcats.at(i)._label);
+#ifdef USE_FAISS
+              urids.push_back(urid);
+              probsv.push_back(probs);
+#else
+              mlm->_se->index(urid,probs);
+#endif
+              indexed_uris.insert(urid._uri);
+            }
+#ifdef USE_FAISS
+          mlm->_se->index(urids,probsv);
+#endif
+
 	    }
 	  else // roi
 	    {
@@ -442,6 +455,10 @@ namespace dd
 		  auto vit = bcats._vvcats.at(i)._vals.begin();
 		  auto bit = bcats._vvcats.at(i)._bboxes.begin();
 		  auto mit = bcats._vvcats.at(i)._cats.begin();
+#ifdef USE_FAISS
+          std::vector<URIData> urids;
+          std::vector<std::vector<double>> datas;
+#endif
 		  while(mit!=bcats._vvcats.at(i)._cats.end())
 		    {
 		      std::vector<double> bbox = {(*bit).second.get("xmin").get<double>(),
@@ -452,13 +469,22 @@ namespace dd
 		      std::string cat = (*mit).second;
 		      URIData urid(bcats._vvcats.at(i)._label,
 				   bbox,prob,cat);
-		      mlm->_se->index(urid,(*vit).second.get("vals").get<std::vector<double>>());
+#ifdef USE_FAISS
+              urids.push_back(urid);
+              datas.push_back((*vit).second.get("vals").get<std::vector<double>>());
+#else
+              mlm->_se->index(urid,(*vit).second.get("vals").get<std::vector<double>>());
+#endif
 		      ++mit;
 		      ++vit;
 		      ++bit;
 		      ++nrois;
 		      indexed_uris.insert(urid._uri);
 		    }
+#ifdef USE_FAISS
+          mlm->_se->index(urids,datas);
+#endif
+
 		}
 	    }
 	}
@@ -481,7 +507,7 @@ namespace dd
 	      if (has_roi && !bcats._vvcats.at(0)._vals.empty())
 		{
 		  index_dim = (*bcats._vvcats.at(0)._vals.begin()).second.get("vals").get<std::vector<double>>().size(); // lookup to the first roi dimensions
-		  mlm->create_sim_search(index_dim);
+		  mlm->create_sim_search(index_dim,ad_in);
 		}
 	    }
 	  
@@ -490,6 +516,10 @@ namespace dd
 	    search_nn = _search_nn;
 	  if (ad_in.has("search_nn"))
 	    search_nn = ad_in.get("search_nn").get<int>();
+#ifdef USE_FAISS
+      if (ad_in.has("nprobe"))
+        mlm->_se->_tse->_nprobe = ad_in.get("nprobe").get<int>();
+#endif
 	  if (!has_roi)
 	    {
 	      for (size_t i=0;i<bcats._vvcats.size();i++)

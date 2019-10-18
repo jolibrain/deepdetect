@@ -173,19 +173,31 @@ namespace dd
 	  if (!mlm->_se)
 	    {
 	      int index_dim = _vvres.at(0)._vals.size(); //XXX: lookup to the batch's first output, as they should all have the same size
-	      mlm->create_sim_search(index_dim);
+	      mlm->create_sim_search(index_dim,ad_in);
 	    }
 	      
 	  // index output content -> vector (XXX: will need to flatten in case of multiple vectors)
+#ifdef USE_FAISS
+      std::vector<URIData> urids;
+      std::vector<std::vector<double>> vvals;
+#endif
 	  for (size_t i=0;i<_vvres.size();i++)
 	    {
 	      URIData urid;
 	      if (_vvres.at(i)._meta_uri.empty())
 		urid = URIData(_vvres.at(i)._uri);
 	      else urid = URIData(_vvres.at(i)._meta_uri);
+#ifdef USE_FAISS
+          urids.push_back(urid);
+          vvals.push_back(_vvres.at(i)._vals);
+#else
 	      mlm->_se->index(urid,_vvres.at(i)._vals);
+#endif
 	      indexed_uris.insert(urid._uri);
 	    }
+#ifdef USE_FAISS
+      mlm->_se->index(urids,vvals);
+#endif
 	}
       if (ad_in.has("build_index") && ad_in.get("build_index").get<bool>())
 	{
@@ -199,12 +211,16 @@ namespace dd
 	  if (!mlm->_se)
 	    {
 	      int index_dim = _vvres.at(0)._vals.size(); //XXX: lookup to the batch's first output, as they should all have the same size
-	      mlm->create_sim_search(index_dim);
+	      mlm->create_sim_search(index_dim,ad_in);
 	    }
 	  
 	  int search_nn = _search_nn;
 	  if (ad_in.has("search_nn"))
 	    search_nn = ad_in.get("search_nn").get<int>();
+#ifdef USE_FAISS
+      if (ad_in.has("nprobe"))
+        mlm->_se->_tse->_nprobe = ad_in.get("nprobe").get<int>();
+#endif
 	  for (size_t i=0;i<_vvres.size();i++)
 	    {
 	      std::vector<URIData> nn_uris;

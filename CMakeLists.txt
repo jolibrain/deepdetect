@@ -9,6 +9,9 @@ option(USE_HDF5 "use HDF5" ON)
 option(USE_CAFFE "use Caffe backend" ON)
 option(USE_TENSORRT "use TensorRT backend" OFF)
 option(USE_CUDA_CV "use CUDA with OpenCV (Requires OpenCV build for CUDA)" OFF)
+option(USE_SIMSEARCH "build index and search services" OFF)
+option(USE_ANNOY "use annoy as indexer" ON)
+option(USE_FAISS "use FAISS as indexer" OFF)
 
 if (USE_CAFFE)
   add_definitions(-DUSE_CAFFE)
@@ -114,36 +117,6 @@ endif()
 # dependency on Boost
 find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system iostreams)
 
-# annoy
-if (USE_CAFFE)
-  if (USE_SIMSEARCH)
-    message(STATUS "Fetching Annoy")
-    add_definitions(-DUSE_SIMSEARCH)
-    ExternalProject_Add(
-      annoy
-      PREFIX annoy
-      INSTALL_DIR ${CMAKE_BINARY_DIR}
-      DOWNLOAD_COMMAND git clone https://github.com/spotify/annoy.git
-      CONFIGURE_COMMAND python setup.py build
-      BUILD_COMMAND ""
-      INSTALL_COMMAND ""
-      BUILD_IN_SOURCE 1
-      )
-    
-    set(ANNOY_INCLUDE_DIR ${CMAKE_BINARY_DIR}/annoy/src/annoy/src/)
-    include_directories("${ANNOY_INCLUDE_DIR}")
-  endif()
-else()
-  set(USE_SIMSEARCH OFF)
-endif()
-
-if (USE_TENSORRT)
-  add_definitions(-DUSE_TENSORRT)
-  message(STATUS "TensorRT backend requires CUDA + CUDNN, enabling GPU, CUDA and CUDNN")
-  set(USE_CPU_ONLY OFF)
-  set(USE_CUDNN ON)
-endif()
-
 # optional packages
 if (USE_CPU_ONLY)
   set(USE_CAFFE_CPU_ONLY ON)
@@ -160,6 +133,68 @@ else()
     endif()
 include(cmake/Cuda.cmake) # cuda + cudnn
 endif()
+
+
+# annoy
+if (USE_CAFFE)
+  if (USE_SIMSEARCH)
+    if (USE_ANNOY)
+      message(STATUS "Fetching Annoy")
+      add_definitions(-DUSE_SIMSEARCH)
+      add_definitions(-DUSE_ANNOY)
+      ExternalProject_Add(
+        annoy
+        PREFIX annoy
+        INSTALL_DIR ${CMAKE_BINARY_DIR}
+        DOWNLOAD_COMMAND git clone https://github.com/spotify/annoy.git
+        CONFIGURE_COMMAND python setup.py build
+        BUILD_COMMAND ""
+        INSTALL_COMMAND ""
+        BUILD_IN_SOURCE 1
+        )
+    
+      set(ANNOY_INCLUDE_DIR ${CMAKE_BINARY_DIR}/annoy/src/annoy/src/)
+      include_directories("${ANNOY_INCLUDE_DIR}")
+    else()
+      if (NOT USE_CPU_ONLY AND CUDA_FOUND)
+        string(REPLACE "/include" "" CUDA_PREFIX ${CUDA_INCLUDE_DIRS})
+        string(REPLACE "arch" "=arch" FAISS_NVCC_FLAGS ${NVCC_FLAGS_EXTRA})
+        set(CONFIGURE_OPTS --with-cuda=${CUDA_PREFIX} --with-cuda-arch="${FAISS_NVCC_FLAGS}")
+        add_definitions(-DUSE_GPU_FAISS)
+      else()
+        set(CONFIGURE_OPTS "--without-cuda")
+      endif()
+      message(STATUS "Fetching FAISS")
+      add_definitions(-DUSE_FAISS)
+      add_definitions(-DUSE_SIMSEARCH)
+      ExternalProject_Add(
+        faisslib
+        PREFIX faiss
+        INSTALL_DIR ${CMAKE_BINARY_DIR}
+        DOWNLOAD_COMMAND git clone https://github.com/fantes/faiss
+        CONFIGURE_COMMAND cd ${CMAKE_BINARY_DIR}/faiss/src/faiss && ./configure ${CONFIGURE_OPTS}
+        BUILD_COMMAND cd ${CMAKE_BINARY_DIR}/faiss/src/faiss && make -j${N}
+        INSTALL_COMMAND ""
+        BUILD_IN_SOURCE 1
+        )
+
+      set(FAISS_INCLUDE_DIR ${CMAKE_BINARY_DIR}/faiss/src/)
+      include_directories("${FAISS_INCLUDE_DIR}")
+      set(FAISS_LIB_DIR ${CMAKE_BINARY_DIR}/faiss/src/faiss)
+      set(FAISS_LIB_DEPS faiss)
+    endif()
+  endif()
+else()
+  set(USE_SIMSEARCH OFF)
+endif()
+
+if (USE_TENSORRT)
+  add_definitions(-DUSE_TENSORRT)
+  message(STATUS "TensorRT backend requires CUDA + CUDNN, enabling GPU, CUDA and CUDNN")
+  set(USE_CPU_ONLY OFF)
+  set(USE_CUDNN ON)
+endif()
+
 
 # CUDA dependencies
 if (CUDA_FOUND)
@@ -846,6 +881,7 @@ set(COMMON_LINK_DIRS
   ${XGBOOST_LIB_DIR}
   ${TSNE_LIB_DIR}
   ${NCNN_LIB_DIR}
+  ${FAISS_LIB_DIR}
   ${TORCH_LIB_DIR})
 if (USE_HDF5)
   set(COMMON_LINK_LIBS
@@ -856,6 +892,7 @@ if (USE_HDF5)
     ${XGBOOST_LIB_DEPS}
     ${TSNE_LIB_DEPS}
     ${NCNN_LIB_DEPS}
+    ${FAISS_LIB_DEPS}
     ${TORCH_LIB_DEPS})
 else()
   set(COMMON_LINK_LIBS
@@ -866,6 +903,7 @@ else()
     ${XGBOOST_LIB_DEPS}
     ${TSNE_LIB_DEPS}
     ${NCNN_LIB_DEPS}
+    ${FAISS_LIB_DEPS}
     ${TORCH_LIB_DEPS})
 endif()
 set(HTTP_LINK_LIBS cppnetlib-uri crypto ssl)

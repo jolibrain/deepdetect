@@ -23,8 +23,20 @@
 #define SIMSEARCH_H
 
 #include "apidata.h"
+#ifdef USE_ANNOY
 #include "annoylib.h"
 #include "kissrandom.h"
+#else
+#include <faiss/IndexFlat.h>
+#include <faiss/index_io.h>
+#include <faiss/AutoTune.h>
+#ifdef USE_GPU_FAISS
+#include <faiss/gpu/GpuAutoTune.h>
+#include <faiss/gpu/GpuIndexIVFFlat.h>
+#include <faiss/gpu/StandardGpuResources.h>
+#include <faiss/gpu/GpuIndexFlat.h>
+#endif
+#endif
 #include "caffe/util/db.hpp"
 #include <mutex>
 
@@ -99,6 +111,10 @@ namespace dd
       
       void index(const URIData &uri,
 		 const std::vector<double> &data);
+
+      //batch index
+      void index(const std::vector<URIData> &uris,
+                 const std::vector<std::vector<double>> &data);
       
       void search(const std::vector<double> &data,
 		  const int &nn,
@@ -110,6 +126,9 @@ namespace dd
       std::mutex _index_mutex; /**< mutex around indexing calls. */
     };
 
+
+
+#ifdef USE_ANNOY
   class AnnoySE
   {
   public:
@@ -125,6 +144,9 @@ namespace dd
 
     void index(const URIData &uri,
 	       const std::vector<double> &data);
+
+    void index(const std::vector<URIData> &uris,
+               const std::vector<std::vector<double>> &datas);
     
     void search(const std::vector<double> &vec,
 		const int &nn,
@@ -162,7 +184,66 @@ namespace dd
     bool _built_index = false; /**< whether the index has been built. */
     bool _map_populate = true; /**< whether to use MAP_POPULATE when mmapping the full index. */
   };
-  
+#endif
+
+#ifdef USE_FAISS
+  class FaissSE
+  {
+  public:
+    FaissSE(const int &f, const std::string &model_repo);
+    ~FaissSE();
+
+    // interface
+    void create_index();
+
+    void update_index();
+
+    void remove_index();
+
+    void index(const URIData &uri,
+               const std::vector<double> &data);
+
+    void index(const std::vector<URIData> &uris,
+               const std::vector<std::vector<double>> &datas);
+
+    void search(const std::vector<double> &vec,
+                const int &nn,
+                std::vector<URIData> &uris,
+                std::vector<double> &distances);
+
+
+    void train();
+    void add_to_db(const int &idx, const URIData &fmap);
+    void get_from_db(const int &idx, URIData &fmap);
+
+    faiss::Index * _findex = nullptr;
+    std::string _index_key;
+
+    int _f = 128; /**< indexed vector length. */
+    long int _index_size = 0;
+    std::string _model_repo; /**< model directory */
+    const std::string _db_name = "names.bin";
+    const std::string _db_backend = "lmdb";
+    const std::string _index_name = "index.faiss";
+    const std::string _il_name = "index_mmap.faiss";
+    caffe::db::DB *_db = nullptr;
+    std::unique_ptr<caffe::db::Transaction> _txn;
+    int _count_put = 0;
+    int _count_put_max = 1000;
+    int _train_samples_size = 100000;
+    bool _ondisk = true;
+    int _nprobe = -1;
+    std::vector<float> _train_samples;
+
+#ifdef USE_GPU_FAISS
+    bool _gpu = false;
+    faiss::Index * _gpu_index;
+    std::vector<faiss::gpu::GpuResources*> _gpu_res;
+    std::vector<int> _gpuids;
+#endif
+  };
+#endif
+
 }
 
 #endif
