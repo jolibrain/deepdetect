@@ -52,6 +52,4 @@ template <typename SUBNET> using rconFace5  = dlib::relu<dlib::affine<con5<45,SU
 
 using net_type_faceDetector = dlib::loss_mmod<dlib::con<1,9,9,1,1,rconFace5<rconFace5<rconFace5<downsampler<dlib::input_rgb_image_pyramid<dlib::pyramid_down<6>>>>>>>>;
 
-template<class T> using net_type = dlib::loss_mmod<T>;
-
 #endif
