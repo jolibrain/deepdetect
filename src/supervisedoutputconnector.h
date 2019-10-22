@@ -676,7 +676,10 @@ namespace dd
       float mlsoft_r2_thres = -1;
       bool mlsoft_deltas = false;
       float mlsoft_deltas_thres = -1;
-      
+      bool raw = false;
+
+      raw = std::find(measures.begin(),measures.end(),"raw")!=measures.end();
+
        if (segmentation)
 	    baccv = (std::find(measures.begin(),measures.end(),"acc")!=measures.end());
        if (multilabel && !regression)
@@ -879,6 +882,11 @@ namespace dd
 	      meas_out.add("mcc",mmcc);
 	      
 	    }
+      if (raw)
+        {
+          APIData raw_res = raw_results(ad_res,ad_res.get("clnames").get<std::vector<std::string>>());
+          meas_out.add("raw",raw_res);
+        }
          if (timeserie)
            {
              // we have timeseries outputs (flattened / interleaved in preds!)
@@ -1518,6 +1526,44 @@ namespace dd
 
     }
 
+
+    static APIData raw_results(const APIData &ad, std::vector<std::string> clnames)
+    {
+      APIData raw_res;
+      int nclasses = ad.get("nclasses").get<int>();
+      int batch_size = ad.get("batch_size").get<int>();
+      std::vector<std::string> preds;
+      std::vector<std::string> targets;
+      std::vector<double> confs;
+      for (int i=0;i<batch_size;i++)
+        {
+          APIData bad = ad.getobj(std::to_string(i));
+          std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
+          double target = bad.get("target").get<double>();
+          if (target < 0)
+            throw OutputConnectorBadParamException("negative supervised discrete target (e.g. wrong use of label_offset ?");
+          else if (target >= nclasses)
+            throw OutputConnectorBadParamException("target class has id " + std::to_string(target) + " is higher than the number of classes " + std::to_string(nclasses) + " (e.g. wrong number of classes specified with nclasses");
+          // TODO : find max predictions -> argmax = estimation   max = confidence
+          targets.push_back(clnames[static_cast<int>(target)]);
+          double max_pred = predictions[0];
+          int best_cat = 0;
+          for (unsigned int j=1; j<predictions.size(); ++j)
+            {
+              if (predictions[j] > max_pred)
+                {
+                  best_cat = j;
+                  max_pred = predictions[j];
+                }
+            }
+          preds.push_back(clnames[static_cast<int>(best_cat)]);
+          confs.push_back(max_pred);
+        }
+      raw_res.add("truths",targets);
+      raw_res.add("estimations",preds);
+      raw_res.add("confidences",confs);
+      return raw_res;
+    }
 
     // measure: F1
     static double mf1(const APIData &ad, double &precision, double &recall, double &acc, dMat &conf_diag, dMat &conf_matrix)
