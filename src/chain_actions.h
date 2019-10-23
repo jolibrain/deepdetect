@@ -72,7 +72,9 @@ namespace dd
       }
     
     void apply(APIData &model_out,
-	       ChainData &cdata);
+	       ChainData &cdata,
+	       std::vector<std::string> &meta_uris,
+	       std::vector<std::string> &index_uris);
 
     std::string _action_id;
     std::string _action_type;
@@ -92,9 +94,26 @@ namespace dd
     ~ImgsCropAction() {}
     
     void apply(APIData &model_out,
-	       ChainData &cdata);
+	       ChainData &cdata,
+	       std::vector<std::string> &meta_uris,
+	       std::vector<std::string> &index_uris);
   };
 
+  class RandomCrops : public ChainAction
+  {
+  public:
+    RandomCrops(const APIData &adc,
+		const std::string &action_id,
+		const std::string &action_type)
+      :ChainAction(adc,action_id,action_type) {}
+    ~RandomCrops() {}
+
+    void apply(APIData &model_out,
+	       ChainData &cdata,
+	       std::vector<std::string> &meta_uris,
+	       std::vector<std::string> &index_uris);
+  };
+  
   class ClassFilter : public ChainAction
   {
   public:
@@ -105,9 +124,11 @@ namespace dd
     ~ClassFilter() {}
 
     void apply(APIData &model_out,
-	       ChainData &cdata);
+	       ChainData &cdata,
+	       std::vector<std::string> &meta_uris,
+	       std::vector<std::string> &index_uris);
   };
-
+  
   class ChainActionFactory
   {
   public:
@@ -117,7 +138,9 @@ namespace dd
 
     void apply_action(const std::string &action_type,
 		      APIData &model_out,
-		      ChainData &cdata)
+		      ChainData &cdata,
+		      std::vector<std::string> &meta_uris,
+		      std::vector<std::string> &index_uris)
     {
       std::string action_id;
       if (_adc.has("id"))
@@ -126,12 +149,17 @@ namespace dd
       if (action_type == "crop")
 	{
 	  ImgsCropAction act(_adc,action_id,action_type);
-	  act.apply(model_out,cdata);
+	  act.apply(model_out,cdata,meta_uris,index_uris);
+	}
+      else if (action_type == "random_crops")
+	{
+	  RandomCrops act(_adc,action_id,action_type);
+	  act.apply(model_out,cdata,meta_uris,index_uris);
 	}
       else if (action_type == "filter")
 	{
 	  ClassFilter act(_adc,action_id,action_type);
-	  act.apply(model_out,cdata);
+	  act.apply(model_out,cdata,meta_uris,index_uris);
 	}
       else
 	{

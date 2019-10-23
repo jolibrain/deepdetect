@@ -572,7 +572,9 @@ namespace dd
 	      std::make_move_iterator(dimg._ctype._labels.begin()),
 	      std::make_move_iterator(dimg._ctype._labels.end()));
 	    if (!_ids.empty())
-	      uris.push_back(_ids.at(i));
+	      {
+		uris.push_back(_ids.at(i));
+	      }
 	    else if (!dimg._ctype._b64 && dimg._ctype._imgs.size() == 1)
 	      uris.push_back(u);
 	    else if (!dimg._ctype._img_files.empty())

@@ -706,7 +706,7 @@ namespace dd
 	    }
 	  else // update meta uris to batch size at the current level of the chain
 	    {
-	      for (size_t k=0;k<npred_classes;k++)
+	      for (size_t k=0;k<npred_classes;k++) //TODO: fix for random crops
 		{
 		  nmeta_uris.push_back(meta_uris.at(j));
 		  if (!index_uris.empty())
@@ -732,6 +732,8 @@ namespace dd
 
     int chain_action(const std::shared_ptr<spdlog::logger> &chain_logger,
 		     APIData &adc,
+		     std::vector<std::string> &meta_uris,
+		     std::vector<std::string> &index_uris,
 		     ChainData &cdata,
 		     const int &chain_pos,
 		     const std::string &prec_pred_id)
@@ -751,7 +753,9 @@ namespace dd
       ChainActionFactory caf(adc);
       caf.apply_action(action_type,
 		       prev_data,
-		       cdata);
+		       cdata,
+		       meta_uris,
+		       index_uris);
       
       // replace prev_data in cdata for prec_pred_id
       cdata.add_model_data(prec_pred_id,prev_data);
@@ -810,8 +814,8 @@ namespace dd
 	  ChainData cdata;
 	  std::vector<std::string> meta_uris;
 	  std::vector<std::string> index_uris;
-	  std::unordered_map<std::string,std::vector<std::string>> um_meta_uris;
-	  std::unordered_map<std::string,std::vector<std::string>> um_index_uris;
+	  std::unordered_map<std::string,std::vector<std::string>> um_meta_uris; /**< node id / meta_uris */
+	  std::unordered_map<std::string,std::vector<std::string>> um_index_uris; /**< node id / index_uris */
 	  int npredicts = 0;
 	  std::string prec_pred_id;
 	  std::string prec_action_id;
@@ -831,26 +835,35 @@ namespace dd
 		    parent_id = adc.get("parent_id").get<std::string>();
 		  else parent_id = prec_action_id;
 		  
+		  // fill up meta uris & index_uris from parent node
 		  auto hit = um_meta_uris.find(parent_id);
 		  if (hit!=um_meta_uris.end())
 		    meta_uris = (*hit).second;
 		  hit = um_index_uris.find(parent_id);
 		  if (hit!=um_index_uris.end())
 		    index_uris = (*hit).second;
+
+		  // store service name
 		  cdata.add_model_sname(pred_id,adc.get("service").get<std::string>());
+
+		  // call to service
 		  if (chain_service(cname,chain_logger,adc,cdata,
 				    pred_id,meta_uris,index_uris,
 				    parent_id,i,npredicts))
 		    break;
-		  prec_pred_id = pred_id;
+		  prec_pred_id = pred_id; // update preceding prediction id
 		}
 	      else if (adc.has("action"))
 		{
-		  if (chain_action(chain_logger,adc,cdata,i,prec_pred_id))
+		  // call to action
+		  if (chain_action(chain_logger,adc,meta_uris,index_uris,cdata,i,prec_pred_id))
 		    break;
+		  
 		  if (adc.has("id"))
 		    prec_action_id = adc.get("id").get<std::string>();
 		  else prec_action_id = std::to_string(aid);
+
+		  // update meta_uris and index_uris
 		  um_meta_uris.insert(std::pair<std::string,std::vector<std::string>>(prec_action_id,meta_uris));
 		  um_index_uris.insert(std::pair<std::string,std::vector<std::string>>(prec_action_id,index_uris));
 		  ++aid;
