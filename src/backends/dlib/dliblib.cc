@@ -51,8 +51,9 @@ namespace dd {
             _net_type = ad.get("model_type").get<std::string>();
         }
 
-        if (_net_type.empty() || (_net_type != "obj_detector" && _net_type != "face_detector")) {
-            throw MLLibBadParamException("Must specify model type (obj_detector or face_detector)");
+        if (_net_type.empty() ||
+            (_net_type != "obj_detector" && _net_type != "face_detector" && _net_type != "face_feature_extractor")) {
+            throw MLLibBadParamException("Must specify model type (obj_detector, face_detector, or face_feature_extractor)");
         }
 
         this->_mlmodel.read_from_repository(this->_mlmodel._repo, this->_logger);
@@ -124,6 +125,8 @@ namespace dd {
                 dlib::deserialize(this->_mlmodel._modelName) >> _objDetector;
             } else if (_net_type == "face_detector") {
                 dlib::deserialize(this->_mlmodel._modelName) >> _faceDetector;
+            } else if (_net_type == "face_feature_extractor") {
+                dlib::deserialize(this->_mlmodel._modelName) >> _faceFeatureExtractor;
             } else {
                 throw MLLibBadParamException("Unrecognized net type: " + _net_type);
             }
@@ -141,6 +144,7 @@ namespace dd {
             // running the loaded model and saving the generated output
             std::chrono::time_point <std::chrono::system_clock> tstart = std::chrono::system_clock::now();
             std::vector <std::vector<dlib::mmod_rect>> detections;
+            std::vector<dlib::matrix<float, 0, 1>> face_descriptors;
             if (_net_type == "obj_detector") {
                 try {
                     detections = _objDetector(dv, batch_size);
@@ -150,6 +154,12 @@ namespace dd {
             } else if (_net_type == "face_detector") {
                 try {
                     detections = _faceDetector(dv, batch_size);
+                } catch (dlib::error &e) {
+                    throw MLLibInternalException(e.what());
+                }
+            } else if (_net_type == "face_feature_extractor"){
+                try {
+                    face_descriptors = _faceFeatureExtractor(dv, batch_size);
                 } catch (dlib::error &e) {
                     throw MLLibInternalException(e.what());
                 }
@@ -178,26 +188,38 @@ namespace dd {
                 std::vector<double> probs;
                 std::vector <std::string> cats;
                 std::vector <APIData> bboxes;
-                this->_logger->info("[Input {}] Found {} objects", i, detections[i].size());
-                for (auto &d : detections[i]) {
-                    this->_logger->info("Found obj: {} - {} ({})", d.label, d.detection_confidence, d.rect);
+                if (_net_type == "face_feature_extractor") {
+                    // Only for feature extractor models
+                    this->_logger->info("[Input {}] Extracted feature representation of size {}", i, face_descriptors[i].size());
+                    std::vector<double> vals(face_descriptors[i].begin(), face_descriptors[i].end());
+                    rad.add("vals",vals);
+                } else {
+                    // Only for detector-type models
+                    this->_logger->info("[Input {}] Found {} objects", i, detections[i].size());
+                    for (auto &d : detections[i]) {
+                        this->_logger->info("Found obj: {} - {} ({})", d.label, d.detection_confidence, d.rect);
 
-                    if (d.detection_confidence < confidence_threshold) continue; // Skip if it doesn't pass the conf threshold
+                        if (d.detection_confidence < confidence_threshold)
+                            continue; // Skip if it doesn't pass the conf threshold
 
-                    probs.push_back(d.detection_confidence);
-                    cats.push_back(d.label);
+                        probs.push_back(d.detection_confidence);
+                        cats.push_back(d.label);
 
-                    if (bbox) {
-                        // bbox can be formed with d.rect.left()/top()/right()/bottom()
-                        APIData ad_bbox;
-                        ad_bbox.add("xmin", std::round((static_cast<double>(d.rect.left()) / static_cast<double>(width)) * cols));
-                        ad_bbox.add("ymax", std::round((static_cast<double>(height - d.rect.top()) / static_cast<double>(height)) * rows));
-                        ad_bbox.add("xmax", std::round((static_cast<double>(d.rect.right()) / static_cast<double>(width)) * cols));
-                        ad_bbox.add("ymin", std::round((static_cast<double>(height - d.rect.bottom()) / static_cast<double>(height)) * rows));
-                        bboxes.push_back(ad_bbox);
+                        if (bbox) {
+                            // bbox can be formed with d.rect.left()/top()/right()/bottom()
+                            APIData ad_bbox;
+                            ad_bbox.add("xmin", std::round(
+                                    (static_cast<double>(d.rect.left()) / static_cast<double>(width)) * cols));
+                            ad_bbox.add("ymax", std::round(
+                                    (static_cast<double>(height - d.rect.top()) / static_cast<double>(height)) * rows));
+                            ad_bbox.add("xmax", std::round(
+                                    (static_cast<double>(d.rect.right()) / static_cast<double>(width)) * cols));
+                            ad_bbox.add("ymin", std::round(
+                                    (static_cast<double>(height - d.rect.bottom()) / static_cast<double>(height)) *
+                                    rows));
+                            bboxes.push_back(ad_bbox);
+                        }
                     }
-
-
                 }
                 rad.add("probs", probs);
                 rad.add("cats", cats);
@@ -214,7 +236,6 @@ namespace dd {
         return 0;
     }
 
-
-    template
-    class DlibLib<ImgDlibInputFileConn, SupervisedOutput, DlibModel>;
+    template class DlibLib<ImgDlibInputFileConn, SupervisedOutput, DlibModel>;
+    template class DlibLib<ImgDlibInputFileConn, UnsupervisedOutput, DlibModel>;
 }
