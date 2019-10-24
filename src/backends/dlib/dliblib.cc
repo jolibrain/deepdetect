@@ -232,6 +232,17 @@ namespace dd {
         tout.add_results(vrad);
         out.add("bbox", bbox);
         tout.finalize(ad.getobj("parameters").getobj("output"), out, static_cast<MLModel *>(&this->_mlmodel));
+        if (ad.has("chain") && ad.get("chain").get<bool>()) {
+            if (typeid(inputc) == typeid(ImgDlibInputFileConn)) {
+                APIData chain_input;
+                if (!reinterpret_cast<ImgDlibInputFileConn*>(&inputc)->_orig_images.empty())
+                    chain_input.add("imgs",reinterpret_cast<ImgDlibInputFileConn*>(&inputc)->_orig_images);
+                else
+                    chain_input.add("imgs",reinterpret_cast<ImgDlibInputFileConn*>(&inputc)->_images);
+                chain_input.add("imgs_size",reinterpret_cast<ImgDlibInputFileConn*>(&inputc)->_images_size);
+                out.add("input",chain_input);
+            }
+        }
         out.add("status", 0);
         return 0;
     }

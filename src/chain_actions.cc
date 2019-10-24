@@ -24,8 +24,109 @@
 #include <unordered_set>
 #include "utils/utils.hpp"
 
+
 namespace dd
 {
+
+#ifdef USE_DLIB
+void DlibShapePredictorAction::apply(APIData &model_out,
+			     ChainData &cdata)
+    {
+      std::vector<APIData> vad = model_out.getv("predictions");
+      std::vector<cv::Mat> imgs = model_out.getobj("input").get("imgs").get<std::vector<cv::Mat>>();
+      std::vector<std::pair<int,int>> imgs_size = model_out.getobj("input").get("imgs_size").get<std::vector<std::pair<int,int>>>();
+      std::vector<std::string> cropped_imgs;
+      std::vector<std::string> bbox_ids;
+
+      // check for action parameters
+      double bratio = 0.25;
+      int chip_size = 150;
+      if (_params.has("padding_ratio")) {
+          bratio = _params.get("padding_ratio").get<double>(); // e.g. 0.055
+      }
+      if (_params.has("chip_size")) {
+          chip_size = _params.get("chip_size").get<int>(); // in pixels
+      }
+      std::vector<APIData> cvad;
+
+      bool save_crops = false;
+      if (_params.has("save_crops")) {
+          save_crops = _params.get("save_crops").get<bool>();
+      }
+
+      // iterate image batch
+      for (size_t i=0;i<vad.size();i++) {
+          std::string uri = vad.at(i).get("uri").get<std::string>();
+
+          cv::Mat cvimg = imgs.at(i);
+          dlib::matrix<dlib::rgb_pixel> img;
+          dlib::assign_image(img, dlib::cv_image<dlib::rgb_pixel>(cvimg));
+
+          int orig_cols = imgs_size.at(i).second;
+          int orig_rows = imgs_size.at(i).first;
+
+          std::vector<APIData> ad_cls = vad.at(i).getv("classes");
+          std::vector<APIData> cad_cls;
+
+          // iterate bboxes per image
+          for (size_t j=0;j<ad_cls.size();j++)
+            {
+              APIData bbox = ad_cls.at(j).getobj("bbox");
+              if (bbox.empty()) {
+                throw ActionBadParamException("crop action cannot find bbox object for uri " + uri);
+              }
+
+              // adding bbox id
+              std::string bbox_id = genid(uri,"bbox"+std::to_string(j));
+              bbox_ids.push_back(bbox_id);
+              APIData ad_cid;
+              ad_cls.at(j).add(bbox_id,ad_cid);
+              cad_cls.push_back(ad_cls.at(j));
+
+              long left = static_cast<long>(std::round(bbox.get("xmin").get<double>() / orig_cols * img.nc()));
+              long top = static_cast<long>(std::round(-1* ((bbox.get("ymax").get<double>() / orig_rows * img.nr()) - img.nr())));
+              long right = static_cast<long>(std::round(bbox.get("xmax").get<double>() / orig_cols * img.nc()));
+              long bottom = static_cast<long>(std::round(-1* ((bbox.get("ymin").get<double>() / orig_rows * img.nr()) - img.nr())));
+
+              dlib::rectangle rect(left, top, right, bottom);
+              auto shape = _shapePredictor(img, rect);
+              dlib::matrix<dlib::rgb_pixel> r;
+              dlib::extract_image_chip(img, dlib::get_face_chip_details(shape,chip_size,bratio), r);
+              cv::Mat cropped_img = dlib::toMat(r);
+
+              // save crops if requested
+              if (save_crops)
+            {
+              std::string puri = dd_utils::split(uri,'/').back();
+              cv::imwrite("crop_" + puri + "_" + std::to_string(j) + ".png", cropped_img);
+            }
+
+              // serialize crop into string (will be auto read by read_element in imginputconn)
+              std::vector<unsigned char> cropped_img_ser;
+              bool str_encoding = cv::imencode(".png",cropped_img,cropped_img_ser);
+              if (!str_encoding)
+            throw ActionInternalException("crop encoding error for uri " + uri);
+              std::string cropped_img_str = std::string(cropped_img_ser.begin(),cropped_img_ser.end());
+              cropped_imgs.push_back(cropped_img_str);
+            }
+	  APIData ccls;
+	  ccls.add("uri",uri);
+	  if (vad.at(i).has("index_uri"))
+	    ccls.add("index_uri",vad.at(i).get("index_uri").get<std::string>());
+	  ccls.add("classes",cad_cls);
+	  cvad.push_back(ccls);
+	}
+      // store serialized crops into action output store
+      APIData action_out;
+      action_out.add("data",cropped_imgs);
+      action_out.add("cids",bbox_ids);
+      cdata.add_action_data(_action_id,action_out);
+
+      // updated model data with chain ids
+      model_out.add("predictions",cvad);
+    }
+#endif
+
 
   void ImgsCropAction::apply(APIData &model_out,
 			     ChainData &cdata)
@@ -45,7 +146,7 @@ namespace dd
       bool save_crops = false;
       if (_params.has("save_crops"))
 	save_crops = _params.get("save_crops").get<bool>();
-            
+
       // iterate image batch
       for (size_t i=0;i<vad.size();i++)
 	{

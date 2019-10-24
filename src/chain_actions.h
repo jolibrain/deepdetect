@@ -25,6 +25,16 @@
 #include "apidata.h"
 #include "chain.h"
 
+#ifdef USE_DLIB
+#include "opencv2/opencv.hpp"
+#include "dlib/data_io.h"
+#include "dlib/image_io.h"
+#include "dlib/image_transforms.h"
+#include "dlib/image_processing.h"
+#include "dlib/opencv/to_open_cv.h"
+#include "dlib/opencv/cv_image.h"
+#endif
+
 namespace dd
 {
 
@@ -80,6 +90,28 @@ namespace dd
     bool _in_place = false;
   };
 
+#ifdef USE_DLIB
+  class DlibShapePredictorAction : public ChainAction
+  {
+  public:
+    DlibShapePredictorAction(const APIData &adc,
+		   const std::string &action_id,
+		   const std::string &action_type)
+      :ChainAction(adc,action_id,action_type) {
+        dlib::deserialize(_shape_predictor_path) >> _shapePredictor;
+    }
+
+    ~DlibShapePredictorAction() {}
+
+    void apply(APIData &model_out,
+	       ChainData &cdata);
+
+    std::string _shape_predictor_path = "shape_predictor_5_face_landmarks.dat";
+    dlib::shape_predictor _shapePredictor;
+  };
+
+
+#endif
 
   class ImgsCropAction : public ChainAction
   {
@@ -133,6 +165,13 @@ namespace dd
 	  ClassFilter act(_adc,action_id,action_type);
 	  act.apply(model_out,cdata);
 	}
+#ifdef USE_DLIB
+      else if (action_type == "dlib_shape_predictor")
+    {
+        DlibShapePredictorAction act(_adc,action_id,action_type);
+        act.apply(model_out,cdata);
+    }
+#endif
       else
 	{
 	  throw ActionBadParamException("unknown action " + action_type);

@@ -112,12 +112,13 @@ namespace dd {
                     dlib::assign_image(inputImg, dlib::cv_image<dlib::rgb_pixel>(_images.at(i)));
                 }
                 _dv.push_back(inputImg);
-		if (set_ids)
-		  this->_ids.push_back(_uris.at(i));
+		        if (set_ids) this->_ids.push_back(_uris.at(i));
                 _imgs_size.insert(std::pair<std::string,std::pair<int,int>>(this->_uris.at(i),this->_images_size.at(i)));
             }
-            this->_images.clear();
-            this->_images_size.clear();
+            if (!ad.has("chain")) {
+                this->_images.clear();
+                this->_images_size.clear();
+            }
         }
 
         std::vector<dlib::matrix<dlib::rgb_pixel>> get_dv(const int &num) {
