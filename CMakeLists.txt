@@ -218,7 +218,7 @@ if (USE_DLIB)
     set(DLIB_RELEASE_VERSION v19.18)
     message(STATUS "Using Dlib version ${DLIB_RELEASE_VERSION}")
     add_definitions(-DUSE_DLIB)
-    set(DLIB_LIB_DEPS -ldlib -llapack -lcblas)
+    set(DLIB_LIB_DEPS -ldlib -lopenblas)
 
     if (CUDA_FOUND AND NOT USE_DLIB_CPU_ONLY)
         if (NOT USE_CUDNN)
