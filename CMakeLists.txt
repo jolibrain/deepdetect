@@ -424,7 +424,7 @@ if (USE_TF)
       tensorflow_cc
       PREFIX tensorflow_cc
       INSTALL_DIR ${CMAKE_BINARY_DIR}
-      DOWNLOAD_COMMAND git clone https://github.com/beniz/tensorflow_cc.git
+      DOWNLOAD_COMMAND git clone https://github.com/FloopCZ/tensorflow_cc.git
       CONFIGURE_COMMAND cd tensorflow_cc && mkdir -p build && cd build && cmake -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED=ON .. && make && ln -s ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/tensorflow/tensorflow/contrib/makefile/gen/protobuf ${CMAKE_BINARY_DIR}/protobuf
       BUILD_COMMAND ""
       INSTALL_COMMAND ""
@@ -436,15 +436,15 @@ if (USE_TF)
       tensorflow_cc
       PREFIX tensorflow_cc
       INSTALL_DIR ${CMAKE_BINARY_DIR}
-      DOWNLOAD_COMMAND git clone https://github.com/beniz/tensorflow_cc.git
-      CONFIGURE_COMMAND cd tensorflow_cc && mkdir -p build && cd build && cmake -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED_CPU=ON .. && make && ln -s ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/tensorflow/tensorflow/contrib/makefile/gen/protobuf ${CMAKE_BINARY_DIR}/protobuf
+      DOWNLOAD_COMMAND git clone https://github.com/FloopCZ/tensorflow_cc.git
+      CONFIGURE_COMMAND cd tensorflow_cc && mkdir -p build && cd build && cmake -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED=ON -DALLOW_CUDA=OFF .. && make && ln -s ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/tensorflow/tensorflow/contrib/makefile/gen/protobuf ${CMAKE_BINARY_DIR}/protobuf
       BUILD_COMMAND ""
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
       )
   endif()
 
-set(TF_INC_DIR ${TENSORFLOW_CC_DIR}/tensorflow/ ${TENSORFLOW_CC_DIR}/tensorflow/bazel-genfiles/ ${TENSORFLOW_CC_DIR}/tensorflow/tensorflow/contrib/makefile/downloads/nsync/public/)
+set(TF_INC_DIR ${TENSORFLOW_CC_DIR}/tensorflow/ ${TENSORFLOW_CC_DIR}/tensorflow/bazel-genfiles/ ${TENSORFLOW_CC_DIR}/tensorflow/tensorflow/contrib/makefile/downloads/nsync/public/ ${TENSORFLOW_CC_DIR}/tensorflow/tensorflow/contrib/makefile/downloads/absl/)
 set(TF_LIB_DIR ${TENSORFLOW_CC_DIR}/tensorflow/bazel-bin/tensorflow/)
 
 include_directories("${TF_INC_DIR}")
