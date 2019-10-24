@@ -113,6 +113,20 @@ namespace dd
 
 #endif
 
+  class ImgsCopyAction : public ChainAction
+  {
+  public:
+    ImgsCopyAction(const APIData &adc,
+               const std::string &action_id,
+               const std::string &action_type)
+        :ChainAction(adc,action_id,action_type) {}
+
+    ~ImgsCopyAction() {}
+
+    void apply(APIData &model_out,
+               ChainData &cdata);
+  };
+
   class ImgsCropAction : public ChainAction
   {
   public:
@@ -165,6 +179,11 @@ namespace dd
 	  ClassFilter act(_adc,action_id,action_type);
 	  act.apply(model_out,cdata);
 	}
+      else if (action_type == "copy")
+    {
+        ImgsCopyAction act(_adc,action_id,action_type);
+        act.apply(model_out,cdata);
+    }
 #ifdef USE_DLIB
       else if (action_type == "dlib_shape_predictor")
     {

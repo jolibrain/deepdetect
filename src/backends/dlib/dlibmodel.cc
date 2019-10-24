@@ -38,6 +38,7 @@ namespace dd {
     int DlibModel::read_from_repository(const std::string &repo,
                                         const std::shared_ptr<spdlog::logger> &logger) {
         std::string modelName = ".dat";
+        std::string shapePredictorName = ".shapepredictor";
         this->_repo = repo;
         std::unordered_set<std::string> lfiles;
         int e = fileops::list_directory(repo, true, false, false, lfiles);
@@ -48,7 +49,7 @@ namespace dd {
 
         auto hit = lfiles.begin();
         std::string modelf;
-        long int state_t = -1;
+        long int state_t = -1, state_t_sp = -1;
         while (hit != lfiles.end()) {
             if ((*hit).find(modelName) != std::string::npos) {
                 // stat file to pick the latest one
@@ -56,6 +57,13 @@ namespace dd {
                 if (st > state_t) {
                     modelf = (*hit);
                     state_t = st;
+                }
+            }
+            if (_hasShapePredictor && (*hit).find(shapePredictorName) != std::string::npos) {
+                long int st = fileops::file_last_modif((*hit));
+                if (st > state_t_sp) {
+                    _shapePredictorName = (*hit);
+                    state_t_sp = st;
                 }
             }
             ++hit;

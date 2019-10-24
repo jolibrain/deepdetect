@@ -56,7 +56,19 @@ namespace dd {
             throw MLLibBadParamException("Must specify model type (obj_detector, face_detector, or face_feature_extractor)");
         }
 
+        if (ad.has("shape_predictor")) {
+            this->_mlmodel._hasShapePredictor = true;
+        }
+
         this->_mlmodel.read_from_repository(this->_mlmodel._repo, this->_logger);
+        // If provided, use this as the chip_size for the shape predictor. Default: 150
+        if (ad.has("chip_size")) {
+            _chip_size = ad.get("chip_size").get<int>();
+        }
+        // If provided, use this as the padding ratio for the shape predictor. Default: 0.25
+        if (ad.has("padding")) {
+            _padding = ad.get("padding").get<double>();
+        }
     }
 
     template<class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -110,10 +122,23 @@ namespace dd {
             bbox = true;
         }
 
+        // If provided, use this as the chip_size for the shape predictor. Default: 150
+        int chip_size = _chip_size;
+        if (ad_mllib.has("chip_size")) {
+            chip_size = ad_mllib.get("chip_size").get<int>();
+        }
+        double padding = _padding;
+        // If provided, use this as the padding ratio for the shape predictor. Default: 0.25
+        if (ad_mllib.has("padding")) {
+            padding = ad_mllib.get("padding").get<double>();
+        }
+
         const std::string modelFile = this->_mlmodel._modelName;
         if (modelFile.empty()) {
             throw MLLibBadParamException("No pre-trained model found in model repository");
         }
+        const std::string shapePredictorFile = this->_mlmodel._shapePredictorName;
+
         this->_logger->info("predict: using modelFile dir={}", modelFile);
 
         // Load the model into memory if not already
@@ -122,19 +147,24 @@ namespace dd {
             if (_net_type.empty()) {
                 throw MLLibBadParamException("Net type not specified");
             } else if (_net_type == "obj_detector") {
-                dlib::deserialize(this->_mlmodel._modelName) >> _objDetector;
+                dlib::deserialize(modelFile) >> _objDetector;
             } else if (_net_type == "face_detector") {
-                dlib::deserialize(this->_mlmodel._modelName) >> _faceDetector;
+                dlib::deserialize(modelFile) >> _faceDetector;
             } else if (_net_type == "face_feature_extractor") {
-                dlib::deserialize(this->_mlmodel._modelName) >> _faceFeatureExtractor;
+                dlib::deserialize(modelFile) >> _faceFeatureExtractor;
             } else {
                 throw MLLibBadParamException("Unrecognized net type: " + _net_type);
+            }
+            if (!shapePredictorFile.empty()) {
+                dlib::deserialize(shapePredictorFile) >> _shapePredictor;
+                this->_logger->info("predict: loaded shape predictor into memory ({})", shapePredictorFile);
             }
             _modelLoaded = true;
         }
 
         // vector for storing  the outputAPI of the file
         std::vector <APIData> vrad;
+        std::vector<cv::Mat> cropped_imgs;
         inputc.reset_dv();
         int idoffset = 0;
         while (true) {
@@ -218,6 +248,14 @@ namespace dd {
                                     (static_cast<double>(height - d.rect.bottom()) / static_cast<double>(height)) *
                                     rows));
                             bboxes.push_back(ad_bbox);
+
+                            if (ad.has("chain") && ad.get("chain").get<bool>() && !shapePredictorFile.empty()) {
+                                auto shape = _shapePredictor(dv[i], d.rect);
+                                dlib::matrix<dlib::rgb_pixel> r;
+                                dlib::extract_image_chip(dv[i], dlib::get_face_chip_details(shape,chip_size,padding), r);
+                                cv::Mat cropped_img = dlib::toMat(r);
+                                cropped_imgs.push_back(cropped_img);
+                            }
                         }
                     }
                 }
@@ -233,7 +271,12 @@ namespace dd {
         out.add("bbox", bbox);
         tout.finalize(ad.getobj("parameters").getobj("output"), out, static_cast<MLModel *>(&this->_mlmodel));
         if (ad.has("chain") && ad.get("chain").get<bool>()) {
-            if (typeid(inputc) == typeid(ImgDlibInputFileConn)) {
+            if (!shapePredictorFile.empty()) {
+                APIData chain_input;
+                chain_input.add("imgs", cropped_imgs);
+                chain_input.add("imgs_size",reinterpret_cast<ImgDlibInputFileConn*>(&inputc)->_images_size);
+                out.add("input", chain_input);
+            } else if (typeid(inputc) == typeid(ImgDlibInputFileConn)) {
                 APIData chain_input;
                 if (!reinterpret_cast<ImgDlibInputFileConn*>(&inputc)->_orig_images.empty())
                     chain_input.add("imgs",reinterpret_cast<ImgDlibInputFileConn*>(&inputc)->_orig_images);

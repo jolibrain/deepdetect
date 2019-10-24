@@ -45,6 +45,8 @@ namespace dd {
 
         std::string _modelName; // Name of the graph
         std::string _modelRepo;
+        bool _hasShapePredictor = false;
+        std::string _shapePredictorName;
     };
 
 }
