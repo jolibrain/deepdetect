@@ -43,7 +43,7 @@ namespace dd {
         int e = fileops::list_directory(repo, true, false, false, lfiles);
         if (e != 0) {
             logger->error("error reading or listing dlib models in repository {}", repo);
-            return 1;
+            throw MLLibBadParamException("error reading or listing dlib models in repository " + _repo);
         }
 
         auto hit = lfiles.begin();
