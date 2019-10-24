@@ -1,0 +1,27 @@
+os: linux
+sudo: required
+dist: trusty
+language: cpp
+compiler: gcc
+
+env:
+  global:
+    - BUILD_CCACHE_DIR=~/build/ccache
+  matrix:
+    - BUILD=linux
+#    - BUILD=linux-cuda
+
+cache:
+  directories:
+    - $BUILD_CCACHE_DIR
+    - $HOME/.ccache
+
+before_install:
+  - source .travis/setup.sh
+
+install:
+  - ./.travis/install.sh
+  - ./.travis/build.sh
+
+script:
+  -

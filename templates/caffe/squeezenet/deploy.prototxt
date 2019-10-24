@@ -1,11 +1,17 @@
-name : "SqueezeNet"
+# please cite:
+# @article{SqueezeNet,
+#     Author = {Forrest N. Iandola and Matthew W. Moskewicz and Khalid Ashraf and Song Han and William J. Dally and Kurt Keutzer},
+#     Title = {SqueezeNet: AlexNet-level accuracy with 50x fewer parameters and $<$1MB model size},
+#     Journal = {arXiv:1602.07360},
+#     Year = {2016}
+# }
 layer {
   name: "squeezenet"
   type: "MemoryData"
   top: "data"
   top: "label"
   memory_data_param {
-    batch_size: 10
+    batch_size: 1
     channels: 3
     height: 227
     width: 227
@@ -17,9 +23,12 @@ layer {
   bottom: "data"
   top: "conv1"
   convolution_param {
-    num_output: 96
-    kernel_size: 7
+    num_output: 64
+    kernel_size: 3
     stride: 2
+    weight_filler {
+      type: "xavier"
+    }
   }
 }
 layer {
@@ -47,6 +56,9 @@ layer {
   convolution_param {
     num_output: 16
     kernel_size: 1
+    weight_filler {
+      type: "xavier"
+    }
   }
 }
 layer {
@@ -63,6 +75,9 @@ layer {
   convolution_param {
     num_output: 64
     kernel_size: 1
+    weight_filler {
+      type: "xavier"
+    }
   }
 }
 layer {
@@ -80,6 +95,9 @@ layer {
     num_output: 64
     pad: 1
     kernel_size: 3
+    weight_filler {
+      type: "xavier"
+    }
   }
 }
 layer {
@@ -103,6 +121,9 @@ layer {
   convolution_param {
     num_output: 16
     kernel_size: 1
+    weight_filler {
+      type: "xavier"
+    }
   }
 }
 layer {
@@ -119,6 +140,9 @@ layer {
   convolution_param {
     num_output: 64
     kernel_size: 1
+    weight_filler {
+      type: "xavier"
+    }
   }
 }
 layer {
@@ -136,6 +160,9 @@ layer {
     num_output: 64
     pad: 1
     kernel_size: 3
+    weight_filler {
+      type: "xavier"
+    }
   }
 }
 layer {
@@ -152,13 +179,27 @@ layer {
   top: "fire3/concat"
 }
 layer {
+  name: "pool3"
+  type: "Pooling"
+  bottom: "fire3/concat"
+  top: "pool3"
+  pooling_param {
+    pool: MAX
+    kernel_size: 3
+    stride: 2
+  }
+}
+layer {
   name: "fire4/squeeze1x1"
   type: "Convolution"
-  bottom: "fire3/concat"
+  bottom: "pool3"
   top: "fire4/squeeze1x1"
   convolution_param {
     num_output: 32
     kernel_size: 1
+    weight_filler {
+      type: "xavier"
+    }
   }
 }
 layer {
@@ -175,6 +216,9 @@ layer {
   convolution_param {
     num_output: 128
     kernel_size: 1
+    weight_filler {
+      type: "xavier"
+    }
   }
 }
 layer {
@@ -192,6 +236,9 @@ layer {
     num_output: 128
     pad: 1
     kernel_size: 3
+    weight_filler {
+      type: "xavier"
+    }
   }
 }
 layer {
@@ -208,24 +255,16 @@ layer {
   top: "fire4/concat"
 }
 layer {
-  name: "pool4"
-  type: "Pooling"
-  bottom: "fire4/concat"
-  top: "pool4"
-  pooling_param {
-    pool: MAX
-    kernel_size: 3
-    stride: 2
- }
-}
-layer {
   name: "fire5/squeeze1x1"
   type: "Convolution"
-  bottom: "pool4"
+  bottom: "fire4/concat"
   top: "fire5/squeeze1x1"
   convolution_param {
     num_output: 32
     kernel_size: 1
+    weight_filler {
+      type: "xavier"
+    }
   }
 }
 layer {
@@ -242,6 +281,9 @@ layer {
   convolution_param {
     num_output: 128
     kernel_size: 1
+    weight_filler {
+      type: "xavier"
+    }
   }
 }
 layer {
@@ -259,6 +301,9 @@ layer {
     num_output: 128
     pad: 1
     kernel_size: 3
+    weight_filler {
+      type: "xavier"
+    }
   }
 }
 layer {
@@ -275,13 +320,27 @@ layer {
   top: "fire5/concat"
 }
 layer {
+  name: "pool5"
+  type: "Pooling"
+  bottom: "fire5/concat"
+  top: "pool5"
+  pooling_param {
+    pool: MAX
+    kernel_size: 3
+    stride: 2
+  }
+}
+layer {
   name: "fire6/squeeze1x1"
   type: "Convolution"
-  bottom: "fire5/concat"
+  bottom: "pool5"
   top: "fire6/squeeze1x1"
   convolution_param {
     num_output: 48
     kernel_size: 1
+    weight_filler {
+      type: "xavier"
+    }
   }
 }
 layer {
@@ -298,6 +357,9 @@ layer {
   convolution_param {
     num_output: 192
     kernel_size: 1
+    weight_filler {
+      type: "xavier"
+    }
   }
 }
 layer {
@@ -315,6 +377,9 @@ layer {
     num_output: 192
     pad: 1
     kernel_size: 3
+    weight_filler {
+      type: "xavier"
+    }
   }
 }
 layer {
@@ -338,6 +403,9 @@ layer {
   convolution_param {
     num_output: 48
     kernel_size: 1
+    weight_filler {
+      type: "xavier"
+    }
   }
 }
 layer {
@@ -354,6 +422,9 @@ layer {
   convolution_param {
     num_output: 192
     kernel_size: 1
+    weight_filler {
+      type: "xavier"
+    }
   }
 }
 layer {
@@ -371,6 +442,9 @@ layer {
     num_output: 192
     pad: 1
     kernel_size: 3
+    weight_filler {
+      type: "xavier"
+    }
   }
 }
 layer {
@@ -394,6 +468,9 @@ layer {
   convolution_param {
     num_output: 64
     kernel_size: 1
+    weight_filler {
+      type: "xavier"
+    }
   }
 }
 layer {
@@ -410,6 +487,9 @@ layer {
   convolution_param {
     num_output: 256
     kernel_size: 1
+    weight_filler {
+      type: "xavier"
+    }
   }
 }
 layer {
@@ -427,6 +507,9 @@ layer {
     num_output: 256
     pad: 1
     kernel_size: 3
+    weight_filler {
+      type: "xavier"
+    }
   }
 }
 layer {
@@ -443,24 +526,16 @@ layer {
   top: "fire8/concat"
 }
 layer {
-  name: "pool8"
-  type: "Pooling"
-  bottom: "fire8/concat"
-  top: "pool8"
-  pooling_param {
-    pool: MAX
-    kernel_size: 3
-    stride: 2
- }
-}
-layer {
   name: "fire9/squeeze1x1"
   type: "Convolution"
-  bottom: "pool8"
+  bottom: "fire8/concat"
   top: "fire9/squeeze1x1"
   convolution_param {
     num_output: 64
     kernel_size: 1
+    weight_filler {
+      type: "xavier"
+    }
   }
 }
 layer {
@@ -477,6 +552,9 @@ layer {
   convolution_param {
     num_output: 256
     kernel_size: 1
+    weight_filler {
+      type: "xavier"
+    }
   }
 }
 layer {
@@ -494,6 +572,9 @@ layer {
     num_output: 256
     pad: 1
     kernel_size: 3
+    weight_filler {
+      type: "xavier"
+    }
   }
 }
 layer {
@@ -516,8 +597,12 @@ layer {
   top: "conv10"
   convolution_param {
     num_output: 1000
-    pad: 1
     kernel_size: 1
+    weight_filler {
+      type: "gaussian"
+      mean: 0.0
+      std: 0.01
+    }
   }
 }
 layer {

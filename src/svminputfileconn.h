@@ -46,6 +46,7 @@ namespace dd
     
     SVMInputFileConn *_cifc = nullptr;
     APIData _adconf;
+    std::shared_ptr<spdlog::logger> _logger;
   };
   
   class SVMline
@@ -79,6 +80,9 @@ namespace dd
     {
       if (ad_input.has("test_split"))
 	_test_split = ad_input.get("test_split").get<double>();
+
+      // timeout
+      this->set_timeout(ad_input);
     }
 
     void shuffle_data(const APIData &ad)
@@ -139,19 +143,19 @@ namespace dd
 	    }
 	  if (!_svm_fname.empty()) // when training from file
 	    {
-	      DataEl<DDSvm> ddsvm;
+	      DataEl<DDSvm> ddsvm(this->_input_timeout);
 	      ddsvm._ctype._cifc = this;
 	      ddsvm._ctype._adconf = ad_input;
-	      ddsvm.read_element(_svm_fname);
+	      ddsvm.read_element(_svm_fname,this->_logger);
 	    }
 	  else // training from posted data (in-memory)
 	    {
 	      for (size_t i=1;i<_uris.size();i++)
 		{
-		  DataEl<DDSvm> ddsvm;
+		  DataEl<DDSvm> ddsvm(this->_input_timeout);
 		  ddsvm._ctype._cifc = this;
 		  ddsvm._ctype._adconf = ad_input;
-		  ddsvm.read_element(_uris.at(i));
+		  ddsvm.read_element(_uris.at(i),this->_logger);
 		}
 	      /*if (_scale)
 		{
@@ -174,10 +178,10 @@ namespace dd
 	    {
 	      if (_uris.at(i).empty())
 		throw InputConnectorBadParamException("no data could be found for input " + std::to_string(i));
-	      DataEl<DDSvm> ddsvm;
+	      DataEl<DDSvm> ddsvm(this->_input_timeout);
 	      ddsvm._ctype._cifc = this;
 	      ddsvm._ctype._adconf = ad_input;
-	      ddsvm.read_element(_uris.at(i));
+	      ddsvm.read_element(_uris.at(i),this->_logger);
 	    }
 	}
       if (_db_fname.empty() && _svmdata.empty())
@@ -219,7 +223,7 @@ namespace dd
     int feature_size() const
     {
       // total number of indices
-      return _max_id;
+      return _max_id + 1;
     }
 
     // serialization of vocabulary

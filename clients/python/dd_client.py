@@ -13,6 +13,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 """
 
+import base64
+import os
+import re
+import warnings
+
 import requests
 
 DD_TIMEOUT = 2000  # seconds, for long blocking training calls, as needed
@@ -22,9 +27,27 @@ API_METHODS_URL = {
         "info": "/info",
         "services": "/services",
         "train": "/train",
-        "predict": "/predict"
+        "predict": "/predict",
+        "chain": "/chain"
     }
 }
+
+def _convert_base64(filename):  # return type: Optional[str]
+    if os.path.isfile(filename):
+        with open(filename, 'rb') as fh:
+            data = fh.read()
+            x = base64.encodebytes(data)
+            return x.decode('ascii').replace('\n', '')
+    if re.match('^http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|'
+                '[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+$', filename):
+        result = requests.get(filename)
+        if result.status_code != 200:
+            warnings.warn("{} returned status {}".format(filename, status))
+            return
+        x = base64.encodebytes(result.content)
+        return x.decode('ascii').replace('\n', '')
+    warnings.warn("Unable to understand file type:"
+                  " file not found or url not valid", RuntimeWarning)
 
 
 class DD(object):
@@ -39,7 +62,7 @@ class DD(object):
     __HTTP = 0
     __HTTPS = 1
 
-    def __init__(self, host="localhost", port=8080, proto=0, apiversion="0.1"):
+    def __init__(self, host="localhost", port=8080, proto=0, path='', apiversion="0.1"):
         """ DD class constructor
         Parameters:
         host -- the DeepDetect server host
@@ -50,13 +73,16 @@ class DD(object):
         self.__urls = API_METHODS_URL[apiversion]
         self.__host = host
         self.__port = port
+        self.__path = path
         self.__proto = proto
         self.__returntype = self.RETURN_PYTHON
         if proto == self.__HTTP:
             self.__ddurl = 'http://%s:%d' % (host, port)
         else:
             self.__ddurl = 'https://%s:%d' % (host, port)
-
+        if path:
+            self.__ddurl += path
+            
     def set_return_format(self, f):
         assert f == self.RETURN_PYTHON or f == self.RETURN_JSON or f == self.RETURN_NONE
         self.__returntype = f
@@ -139,8 +165,10 @@ class DD(object):
         sname -- service name as a resource
         clear -- 'full','lib' or 'mem', optionally clears model repository data
         """
-        data = {"clear": clear} if clear else None
-        return self.delete(self.__urls["services"] + '/%s' % sname, json=data)
+        lurl = '/%s' % sname
+        if clear:
+            lurl += '?clear=' + clear
+        return self.delete(self.__urls["services"] + lurl)
 
     # API train
     def post_train(self, sname, data, parameters_input, parameters_mllib, parameters_output, async=True):
@@ -190,7 +218,8 @@ class DD(object):
         return self.delete(self.__urls["train"], params=params)
 
     # API predict
-    def post_predict(self, sname, data, parameters_input, parameters_mllib, parameters_output):
+    def post_predict(self, sname, data, parameters_input, parameters_mllib,
+                     parameters_output, use_base64=False, index_uris=[]):
         """
         Makes prediction from data and model
         Parameters:
@@ -200,13 +229,67 @@ class DD(object):
         parameters_mllib -- dict ML library parameters
         parameters_output -- dict of output parameters
         """
+
+        if use_base64:
+            data = [_convert_base64(d) for d in data]
+
         data = {"service": sname,
                 "parameters": {"input": parameters_input,
                                "mllib": parameters_mllib,
                                "output": parameters_output},
                 "data": data}
+        if index_uris:
+            data["index_uris"] = index_uris
         return self.post(self.__urls["predict"], json=data)
 
+    # API chain
+    def make_call(self, sname, data, parameters_input, parameters_mllib,
+                  parameters_output, use_base64=False, index_uris = []):
+        """
+        Creates a dictionary that holds the JSON call,
+        to be added to an array and processed by 
+        a post_chain API call. This basically eases the making
+        of chain calls from Python.
+        Parameters are the same as for a post_predict call
+        """
+        
+        if use_base64:
+            data = [_convert_base64(d) for d in data]
+
+        call = {"service": sname,
+                "parameters": {"input": parameters_input,
+                               "mllib": parameters_mllib,
+                               "output": parameters_output}}
+        if data:
+            call["data"] = data
+        if index_uris:
+            call["index_uris"] = index_uris
+        
+        return call
+
+    def make_action(self, action_type, parameters=[]):
+        """
+        Creates a dictionary that holds a JSON chain action.
+        Parameters:
+        action_type -- "crop" or "filter" for now
+        parameters -- action parameters
+        """
+        action = {"action": {"type":action_type}}
+        if parameters:
+            action["action"]["parameters"] = parameters
+        return action
+
+    def post_chain(self, cname, calls):
+        """
+        Makes a chained prediction
+        Parameters:
+        cname -- chain execution name
+        calls -- array of calls and actions, use make_call and make_action
+        """
+
+        chain = {"chain": { "calls": calls } }
+        return self.post(self.__urls["chain"] + '/%s' % cname, json=chain)
+    
 # test
 if __name__ == '__main__':
     dd = DD()

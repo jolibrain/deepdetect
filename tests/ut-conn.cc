@@ -22,6 +22,7 @@
 #include "apidata.h"
 #include "imginputfileconn.h"
 #include "csvinputfileconn.h"
+#include "csvtsinputfileconn.h"
 #include "txtinputfileconn.h"
 #include "outputconnectorstrategy.h"
 #include "jsonapi.h"
@@ -29,6 +30,61 @@
 #include <iostream>
 
 using namespace dd;
+
+TEST(outputconn,mlsoft)
+{
+  std::vector<double> targets = {0.1, 0.6, 0.0, 0.9};
+  std::vector<double> preds = {0.0, 0.5, 0.1, 0.9};
+  APIData res_ad;
+  res_ad.add("batch_size",2);
+  for (size_t i=0;i<2;i++)
+    {
+      APIData bad;
+      bad.add("pred",preds);
+      bad.add("target",targets);
+      std::vector<APIData> vad = {bad};
+      res_ad.add(std::to_string(i),vad);
+    }
+  SupervisedOutput so;
+  std::vector<std::string> measures = {"acc"};
+  double kl = so.multilabel_soft_kl(res_ad,-1);
+  double js = so.multilabel_soft_js(res_ad,-1);
+  double was = so.multilabel_soft_was(res_ad,-1);
+  double ks = so.multilabel_soft_ks(res_ad,-1);
+  double dc = so.multilabel_soft_dc(res_ad,-1);
+  double r2 = so.multilabel_soft_r2(res_ad,-1);;
+  std::vector<double> delta_scores {0,0,0,0};
+  std::vector<double> deltas {0.05, 0.1, 0.2, 0.5};
+  so.multilabel_soft_deltas(res_ad,delta_scores, deltas,-1);
+  ASSERT_NEAR(0.257584,kl, 0.0001); // val checked with def
+  ASSERT_NEAR(0.0178739,js, 0.0001);
+  ASSERT_NEAR(0.0866025,was, 0.0001);
+  ASSERT_EQ(0.1,ks);
+  ASSERT_NEAR(0.987,dc,0.001);
+  ASSERT_NEAR(0.94444,r2,0.0001);
+  ASSERT_EQ(0.25,delta_scores[0]);
+  ASSERT_EQ(0.5,delta_scores[1]);
+  ASSERT_EQ(1,delta_scores[2]);
+  ASSERT_EQ(1,delta_scores[3]);
+  measures = {"kl-0.1","dc"};
+  bool do_kl = false;
+  bool do_js = true;
+  bool do_dc = false;
+  float kl_thres = -2 ;
+  float js_thres = -2 ;
+  float dc_thres = -1 ;
+  so.find_presence_and_thres("kl", measures, do_kl, kl_thres);
+  so.find_presence_and_thres("js", measures, do_js, js_thres);
+  so.find_presence_and_thres("dc", measures, do_dc, dc_thres);
+  ASSERT_EQ(do_kl, true);
+  ASSERT_EQ(do_js, true);
+  ASSERT_EQ(do_dc, true);
+  ASSERT_NEAR(kl_thres, 0.1, 0.001);
+  ASSERT_NEAR(js_thres, -2, 0.001);
+  ASSERT_NEAR(dc_thres, 0, 0.001);
+
+
+}
 
 TEST(outputconn,acc)
 {
@@ -52,6 +108,40 @@ TEST(outputconn,acc)
   std::vector<std::string> measures = {"acc"};
   std::map<std::string,double> accs = so.acc(res_ad,measures);
   ASSERT_EQ(0.75,accs["acc"]);
+}
+
+TEST(outputconn,acc_v)
+{
+  APIData res_ad;
+  res_ad.add("batch_size",static_cast<int>(2));
+  res_ad.add("nclasses",static_cast<int>(2));
+
+  APIData bad;
+  std::vector<double> targets = {0.0, 1.0 };
+  std::vector<double> pred1 = {0.0, 1.0};
+  bad.add("pred",pred1);
+  bad.add("target",targets);
+  std::vector<APIData> vad = {bad};
+  res_ad.add(std::to_string(0),vad);
+
+
+  APIData bad2;
+  std::vector<double> targets2 = {0.0, 0.0};
+  std::vector<double> pred2 = {0.0, 1.0};
+  bad2.add("pred",pred2);
+  bad2.add("target",targets2);
+  std::vector<APIData> vad2 = {bad2};
+  res_ad.add(std::to_string(1),vad2);
+
+
+
+  SupervisedOutput so;
+  double meanacc = 0.0, meaniou = 0.0;
+  std::vector<double> clacc;
+  std::vector<double> cliou;
+  double acc = so.acc_v(res_ad,meanacc,meaniou,clacc,cliou);
+  ASSERT_EQ(0.75,acc);
+  ASSERT_EQ(0.875,meaniou);
 }
 
 TEST(outputconn,acck)
@@ -180,9 +270,9 @@ TEST(outputconn,cmfull)
   SupervisedOutput::measure(res_ad,ad_out,out);
   APIData meas_out = out.getobj("measure");
   auto lkeys = meas_out.list_keys();
-  /*std::cerr << "lkeys size=" << lkeys.size() << std::endl;
-  for (auto k: lkeys)
-  std::cerr << k << std::endl;*/
+  ///std::cerr << "lkeys size=" << lkeys.size() << std::endl;
+  //for (auto k: lkeys)
+  //std::cerr << k << std::endl;
   ASSERT_EQ(0.5,meas_out.get("accp").get<double>());
   
   // cmfull
@@ -199,7 +289,7 @@ TEST(inputconn,img)
 {
   std::string mnist_repo = "../examples/caffe/mnist/";
   APIData ad;
-  std::vector<std::string> uris = {mnist_repo + "/sample_digit.png","https://deepdetect.com/dd/examples/caffe/mnist/sample_digit.png"};
+  std::vector<std::string> uris = {mnist_repo + "/sample_digit.png","https://www.deepdetect.com/dd/examples/caffe/mnist/sample_digit.png"};
   ad.add("data",uris);
   ImgInputFileConn iifc;
   try
@@ -231,6 +321,7 @@ TEST(inputconn,csv_mem1)
   APIData ad;
   ad.add("data",vdata);
   CSVInputFileConn cifc;
+  cifc._logger = spdlog::stdout_logger_mt("test");
   cifc._train = false; // prediction mode
   try
     {
@@ -255,12 +346,13 @@ TEST(inputconn,csv_mem2)
   APIData ad;
   ad.add("data",vdata);
   APIData pad,pinp;
-  pinp.add("id","id");
+  pinp.add("id",std::string("id"));
   std::vector<APIData> vpinp = { pinp };
   pad.add("input",vpinp);
   std::vector<APIData> vpad = { pad };
   ad.add("parameters",vpad);
   CSVInputFileConn cifc;
+  cifc._logger = spdlog::stdout_logger_mt("test1");
   cifc._train = false;
   try
     {
@@ -287,13 +379,14 @@ TEST(inputconn,csv_copy)
   APIData ad;
   ad.add("data",vdata);
   APIData pad,pinp;
-  pinp.add("id","id");
-  pinp.add("label","val5");
+  pinp.add("id",std::string("id"));
+  pinp.add("label",std::string("val5"));
   std::vector<APIData> vpinp = { pinp };
   pad.add("input",vpinp);
   std::vector<APIData> vpad = { pad };
   ad.add("parameters",vpad);
   CSVInputFileConn cifc;
+  cifc._logger = spdlog::stdout_logger_mt("test2");
   cifc.init(ad.getobj("parameters").getobj("input"));
   CSVInputFileConn cifc2 = cifc;
   ASSERT_EQ("val5",cifc2._label[0]);
@@ -311,7 +404,7 @@ TEST(inputconn,csv_categoricals1)
   APIData ad;
   ad.add("data",vdata);
   APIData pad,pinp;
-  pinp.add("label","target");
+  pinp.add("label",std::string("target"));
   std::vector<std::string> vcats = {"target","cap-shape","cap-surface","cap-color","bruises"};
   pinp.add("categoricals",vcats);
   std::vector<APIData> vpinp = { pinp };
@@ -319,6 +412,7 @@ TEST(inputconn,csv_categoricals1)
   std::vector<APIData> vpad = { pad };
   ad.add("parameters",vpad);
   CSVInputFileConn cifc;
+  cifc._logger = spdlog::stdout_logger_mt("test3");
   cifc._train = true;
   try
     {
@@ -350,7 +444,7 @@ TEST(inputconn,csv_categoricals2)
   APIData ad;
   ad.add("data",vdata);
   APIData pad,pinp;
-  pinp.add("label","target");
+  pinp.add("label",std::string("target"));
   std::vector<std::string> vcats = {"target","cap-shape","cap-surface","cap-color","bruises"};
   pinp.add("categoricals",vcats);
   std::vector<APIData> vpinp = { pinp };
@@ -358,6 +452,7 @@ TEST(inputconn,csv_categoricals2)
   std::vector<APIData> vpad = { pad };
   ad.add("parameters",vpad);
   CSVInputFileConn cifc;
+  cifc._logger = spdlog::stdout_logger_mt("test4");
   cifc._train = true;
   cifc.transform(ad);
   ASSERT_EQ(3,cifc._csvdata.size());
@@ -384,6 +479,7 @@ TEST(inputconn,csv_read_categoricals)
   ASSERT_TRUE(ap.has("categoricals_mapping"));
   APIData ap_cm = ap.getobj("categoricals_mapping");
   CSVInputFileConn cifc;
+  cifc._logger = spdlog::stdout_logger_mt("test5");
   cifc._train = true;
   cifc.read_categoricals(ap);
   ASSERT_EQ(23,cifc._categoricals.size());
@@ -402,7 +498,7 @@ TEST(inputconn,csv_ignore)
   APIData ad;
   ad.add("data",vdata);
   APIData pad,pinp;
-  pinp.add("label","target");
+  pinp.add("label",std::string("target"));
   std::vector<std::string> vign = {"cap-shape"};
   pinp.add("ignore",vign);
   std::vector<APIData> vpinp = { pinp };
@@ -410,6 +506,7 @@ TEST(inputconn,csv_ignore)
   std::vector<APIData> vpad = { pad };
   ad.add("parameters",vpad);
   CSVInputFileConn cifc;
+  cifc._logger = spdlog::stdout_logger_mt("test6");
   cifc._train = true;
   try
     {
@@ -425,6 +522,61 @@ TEST(inputconn,csv_ignore)
   ASSERT_EQ(4,cifc._columns.size());
   ASSERT_EQ("target",(*cifc._columns.begin()));
   remove("test.csv");
+}
+
+TEST(inputconn, csvts_basic)
+{
+  std::string header = "target,cap-shape,cap-surface,cap-color,bruises";
+  std::string d1 = "1,2,3,4,5";
+  std::string d2 = "6,7,8,9,10";
+  std::string d3 = "11,12,13,14,15";
+  std::string d4 = "16,17,18,19,20";
+  std::string d5 = "21,22,23,24,25";
+  std::string d6 = "26,27,28,29,30";
+  fileops::create_dir("csvts", 0777);
+  std::ofstream of1("csvts/ts1.csv");
+  std::ofstream of2("csvts/ts2.csv");
+  std::ofstream of3("csvts/ts3.csv");
+  of1 << header << std::endl;
+  of1 << d1 << std::endl;
+  of1 << d2 << std::endl;
+  of2 << header << std::endl;
+  of2 << d3 << std::endl;
+  of2 << d4 << std::endl;
+  of3 << header << std::endl;
+  of3 << d5 << std::endl;
+  of3 << d6 << std::endl;
+  std::vector<std::string> vdata = { "csvts" };
+  APIData ad;
+  ad.add("data",vdata);
+  APIData pad,pinp;
+  std::vector<APIData> vpinp = { pinp };
+  pad.add("input",vpinp);
+  std::vector<APIData> vpad = { pad };
+  ad.add("parameters",vpad);
+  CSVTSInputFileConn cifc;
+  cifc._logger = spdlog::stdout_logger_mt("test_csvts");
+  cifc._train = true;
+  try
+    {
+      cifc.transform(ad);
+    }
+  catch(InputConnectorBadParamException &e)
+    {
+      std::cerr << "exception=" << e.what() << std::endl;
+      ASSERT_FALSE(true);
+    }
+  ASSERT_EQ(3,cifc._csvtsdata.size());
+  ASSERT_EQ(5,cifc._csvtsdata.at(0).at(0)._v.size());
+  ASSERT_EQ(2,cifc._csvtsdata.at(0).size());
+  ASSERT_EQ(2,cifc._csvtsdata.at(1).size());
+  ASSERT_EQ(2,cifc._csvtsdata.at(2).size());
+
+  ASSERT_EQ(5,cifc._columns.size());
+
+  ASSERT_EQ("target",(*cifc._columns.begin()));
+  // fileops::clear_directory("test");
+  // fileops::remove_dir("test");
 }
 
 /*TEST(inputconn,txt_parse_content)

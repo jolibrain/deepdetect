@@ -1,0 +1,12 @@
+include_directories(${COMMON_INCLUDE_DIRS})
+link_directories(${COMMON_LINK_DIRS})
+
+if (USE_CAFFE2)
+  function(ADD_TOOl _NAME)
+    add_executable (${_NAME} caffe2/${_NAME}.cc)
+    target_link_libraries(${_NAME} ${COMMON_LINK_LIBS})
+  endfunction()
+  ADD_TOOL(convert_proto)
+  ADD_TOOL(net2template)
+  ADD_TOOL(net2svg)
+endif()

@@ -399,6 +399,7 @@ layer {
       type: "constant"
       value: 0
     }
+    dilation: 1
   }
 }
 layer {
@@ -431,6 +432,7 @@ layer {
       type: "constant"
       value: 0
     }
+    dilation: 1
   }
 }
 layer {
@@ -463,6 +465,7 @@ layer {
       type: "constant"
       value: 0
     }
+    dilation: 1
   }
 }
 layer {
@@ -727,9 +730,9 @@ layer {
   }
   convolution_param {
     num_output: 256
-    pad: 1
+    pad: 0
     kernel_size: 3
-    stride: 2
+    stride: 1
     weight_filler {
       type: "xavier"
     }
@@ -746,14 +749,70 @@ layer {
   top: "conv8_2"
 }
 layer {
-  name: "pool6"
-  type: "Pooling"
+  name: "conv9_1"
+  type: "Convolution"
   bottom: "conv8_2"
-  top: "pool6"
-  pooling_param {
-    pool: AVE
-    global_pooling: true
+  top: "conv9_1"
+  param {
+    lr_mult: 1
+    decay_mult: 1
   }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  convolution_param {
+    num_output: 128
+    pad: 0
+    kernel_size: 1
+    stride: 1
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+layer {
+  name: "conv9_1_relu"
+  type: "ReLU"
+  bottom: "conv9_1"
+  top: "conv9_1"
+}
+layer {
+  name: "conv9_2"
+  type: "Convolution"
+  bottom: "conv9_1"
+  top: "conv9_2"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  convolution_param {
+    num_output: 256
+    pad: 0
+    kernel_size: 3
+    stride: 1
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+layer {
+  name: "conv9_2_relu"
+  type: "ReLU"
+  bottom: "conv9_2"
+  top: "conv9_2"
 }
 layer {
   name: "conv4_3_norm"
@@ -783,7 +842,7 @@ layer {
     decay_mult: 0
   }
   convolution_param {
-    num_output: 12
+    num_output: 16
     pad: 1
     kernel_size: 3
     stride: 1
@@ -831,7 +890,7 @@ layer {
     decay_mult: 0
   }
   convolution_param {
-    num_output: 6
+    num_output: 8
     pad: 1
     kernel_size: 3
     stride: 1
@@ -873,13 +932,16 @@ layer {
   top: "conv4_3_norm_mbox_priorbox"
   prior_box_param {
     min_size: 30.0
+    max_size: 60.0
     aspect_ratio: 2
     flip: true
-    clip: true
+    clip: false
     variance: 0.1
     variance: 0.1
     variance: 0.2
     variance: 0.2
+    step: 8
+    offset: 0.5
   }
 }
 layer {
@@ -986,15 +1048,17 @@ layer {
   top: "fc7_mbox_priorbox"
   prior_box_param {
     min_size: 60.0
-    max_size: 114.0
+    max_size: 111.0
     aspect_ratio: 2
     aspect_ratio: 3
     flip: true
-    clip: true
+    clip: false
     variance: 0.1
     variance: 0.1
     variance: 0.2
     variance: 0.2
+    step: 16
+    offset: 0.5
   }
 }
 layer {
@@ -1100,16 +1164,18 @@ layer {
   bottom: "data"
   top: "conv6_2_mbox_priorbox"
   prior_box_param {
-    min_size: 114.0
-    max_size: 168.0
+    min_size: 111.0
+    max_size: 162.0
     aspect_ratio: 2
     aspect_ratio: 3
     flip: true
-    clip: true
+    clip: false
     variance: 0.1
     variance: 0.1
     variance: 0.2
     variance: 0.2
+    step: 32
+    offset: 0.5
   }
 }
 layer {
@@ -1215,16 +1281,18 @@ layer {
   bottom: "data"
   top: "conv7_2_mbox_priorbox"
   prior_box_param {
-    min_size: 168.0
-    max_size: 222.0
+    min_size: 162.0
+    max_size: 213.0
     aspect_ratio: 2
     aspect_ratio: 3
     flip: true
-    clip: true
+    clip: false
     variance: 0.1
     variance: 0.1
     variance: 0.2
     variance: 0.2
+    step: 64
+    offset: 0.5
   }
 }
 layer {
@@ -1241,7 +1309,7 @@ layer {
     decay_mult: 0
   }
   convolution_param {
-    num_output: 24
+    num_output: 16
     pad: 1
     kernel_size: 3
     stride: 1
@@ -1289,7 +1357,7 @@ layer {
     decay_mult: 0
   }
   convolution_param {
-    num_output: 12
+    num_output: 8
     pad: 1
     kernel_size: 3
     stride: 1
@@ -1330,23 +1398,24 @@ layer {
   bottom: "data"
   top: "conv8_2_mbox_priorbox"
   prior_box_param {
-    min_size: 222.0
-    max_size: 276.0
+    min_size: 213.0
+    max_size: 264.0
     aspect_ratio: 2
-    aspect_ratio: 3
     flip: true
-    clip: true
+    clip: false
     variance: 0.1
     variance: 0.1
     variance: 0.2
     variance: 0.2
+    step: 100
+    offset: 0.5
   }
 }
 layer {
-  name: "pool6_mbox_loc"
+  name: "conv9_2_mbox_loc"
   type: "Convolution"
-  bottom: "pool6"
-  top: "pool6_mbox_loc"
+  bottom: "conv9_2"
+  top: "conv9_2_mbox_loc"
   param {
     lr_mult: 1
     decay_mult: 1
@@ -1356,7 +1425,7 @@ layer {
     decay_mult: 0
   }
   convolution_param {
-    num_output: 24
+    num_output: 16
     pad: 1
     kernel_size: 3
     stride: 1
@@ -1370,10 +1439,10 @@ layer {
   }
 }
 layer {
-  name: "pool6_mbox_loc_perm"
+  name: "conv9_2_mbox_loc_perm"
   type: "Permute"
-  bottom: "pool6_mbox_loc"
-  top: "pool6_mbox_loc_perm"
+  bottom: "conv9_2_mbox_loc"
+  top: "conv9_2_mbox_loc_perm"
   permute_param {
     order: 0
     order: 2
@@ -1382,19 +1451,19 @@ layer {
   }
 }
 layer {
-  name: "pool6_mbox_loc_flat"
+  name: "conv9_2_mbox_loc_flat"
   type: "Flatten"
-  bottom: "pool6_mbox_loc_perm"
-  top: "pool6_mbox_loc_flat"
+  bottom: "conv9_2_mbox_loc_perm"
+  top: "conv9_2_mbox_loc_flat"
   flatten_param {
     axis: 1
   }
 }
 layer {
-  name: "pool6_mbox_conf"
+  name: "conv9_2_mbox_conf"
   type: "Convolution"
-  bottom: "pool6"
-  top: "pool6_mbox_conf"
+  bottom: "conv9_2"
+  top: "conv9_2_mbox_conf"
   param {
     lr_mult: 1
     decay_mult: 1
@@ -1404,7 +1473,7 @@ layer {
     decay_mult: 0
   }
   convolution_param {
-    num_output: 12
+    num_output: 8
     pad: 1
     kernel_size: 3
     stride: 1
@@ -1418,10 +1487,10 @@ layer {
   }
 }
 layer {
-  name: "pool6_mbox_conf_perm"
+  name: "conv9_2_mbox_conf_perm"
   type: "Permute"
-  bottom: "pool6_mbox_conf"
-  top: "pool6_mbox_conf_perm"
+  bottom: "conv9_2_mbox_conf"
+  top: "conv9_2_mbox_conf_perm"
   permute_param {
     order: 0
     order: 2
@@ -1430,31 +1499,32 @@ layer {
   }
 }
 layer {
-  name: "pool6_mbox_conf_flat"
+  name: "conv9_2_mbox_conf_flat"
   type: "Flatten"
-  bottom: "pool6_mbox_conf_perm"
-  top: "pool6_mbox_conf_flat"
+  bottom: "conv9_2_mbox_conf_perm"
+  top: "conv9_2_mbox_conf_flat"
   flatten_param {
     axis: 1
   }
 }
 layer {
-  name: "pool6_mbox_priorbox"
+  name: "conv9_2_mbox_priorbox"
   type: "PriorBox"
-  bottom: "pool6"
+  bottom: "conv9_2"
   bottom: "data"
-  top: "pool6_mbox_priorbox"
+  top: "conv9_2_mbox_priorbox"
   prior_box_param {
-    min_size: 276.0
-    max_size: 330.0
+    min_size: 264.0
+    max_size: 315.0
     aspect_ratio: 2
-    aspect_ratio: 3
     flip: true
-    clip: true
+    clip: false
     variance: 0.1
     variance: 0.1
     variance: 0.2
     variance: 0.2
+    step: 300
+    offset: 0.5
   }
 }
 layer {
@@ -1465,7 +1535,7 @@ layer {
   bottom: "conv6_2_mbox_loc_flat"
   bottom: "conv7_2_mbox_loc_flat"
   bottom: "conv8_2_mbox_loc_flat"
-  bottom: "pool6_mbox_loc_flat"
+  bottom: "conv9_2_mbox_loc_flat"
   top: "mbox_loc"
   concat_param {
     axis: 1
@@ -1479,7 +1549,7 @@ layer {
   bottom: "conv6_2_mbox_conf_flat"
   bottom: "conv7_2_mbox_conf_flat"
   bottom: "conv8_2_mbox_conf_flat"
-  bottom: "pool6_mbox_conf_flat"
+  bottom: "conv9_2_mbox_conf_flat"
   top: "mbox_conf"
   concat_param {
     axis: 1
@@ -1493,7 +1563,7 @@ layer {
   bottom: "conv6_2_mbox_priorbox"
   bottom: "conv7_2_mbox_priorbox"
   bottom: "conv8_2_mbox_priorbox"
-  bottom: "pool6_mbox_priorbox"
+  bottom: "conv9_2_mbox_priorbox"
   top: "mbox_priorbox"
   concat_param {
     axis: 2
@@ -1544,6 +1614,8 @@ layer {
     nms_param {
       nms_threshold: 0.45
       top_k: 400
+      soft_nms: false
+      theta: 0.5
     }
     code_type: CENTER_SIZE
     keep_top_k: 200

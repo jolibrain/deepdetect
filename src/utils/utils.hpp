@@ -22,6 +22,8 @@
 #ifndef DD_UTILS
 #define DD_UTILS
 
+#include <fstream>
+
 namespace dd
 {
   class dd_utils
@@ -49,6 +51,24 @@ namespace dd
 	  return false;
       return true;
     }
+
+#ifdef WIN32
+    static int my_hardware_concurrency()
+    {
+      SYSTEM_INFO si;
+      GetSystemInfo(&si);
+      return si.dwNumberOfProcessors;
+    }
+#else
+    static int my_hardware_concurrency()
+    {
+        std::ifstream cpuinfo("/proc/cpuinfo");
+
+        return std::count(std::istream_iterator<std::string>(cpuinfo),
+			  std::istream_iterator<std::string>(),
+			  std::string("processor"));
+    }
+#endif
   };
 }
 

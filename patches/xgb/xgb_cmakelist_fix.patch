@@ -1,0 +1,13 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index a4a7642..95b1328 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -98,7 +98,7 @@ else()
+     set(CMAKE_SHARED_LIBRARY_PREFIX "")
+ endif()
+ 
+-set(LINK_LIBRARIES dmlccore rabit)
++set(LINK_LIBRARIES dmlc rabit)
+ 
+ if(PLUGIN_UPDATER_GPU)
+     # nccl

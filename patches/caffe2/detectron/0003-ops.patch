@@ -1,0 +1,128 @@
+From f750757337e12f2af7e4b3c7d242eaf431c03d90 Mon Sep 17 00:00:00 2001
+From: Julien CHICHA <julien.chicha@epitech.eu>
+Date: Sat, 17 Nov 2018 17:40:02 +0100
+Subject: [PATCH 3/7] ops
+
+---
+ detectron/tests/test_batch_permutation_op.py | 1 -
+ detectron/tests/test_restore_checkpoint.py   | 1 -
+ detectron/tests/test_smooth_l1_loss_op.py    | 1 -
+ detectron/tests/test_spatial_narrow_as_op.py | 1 -
+ tools/convert_pkl_to_pb.py                   | 1 -
+ tools/infer.py                               | 1 -
+ tools/infer_simple.py                        | 1 -
+ tools/test_net.py                            | 1 -
+ tools/train_net.py                           | 1 -
+ 9 files changed, 9 deletions(-)
+
+diff --git a/detectron/tests/test_batch_permutation_op.py b/detectron/tests/test_batch_permutation_op.py
+index 28aa84f..b85ab53 100644
+--- a/detectron/tests/test_batch_permutation_op.py
++++ b/detectron/tests/test_batch_permutation_op.py
+@@ -105,7 +105,6 @@ class BatchPermutationOpTest(unittest.TestCase):
+ 
+ if __name__ == '__main__':
+     workspace.GlobalInit(['caffe2', '--caffe2_log_level=0'])
+-    c2_utils.import_detectron_ops()
+     assert 'BatchPermutation' in workspace.RegisteredOperators()
+     logging_utils.setup_logging(__name__)
+     unittest.main()
+diff --git a/detectron/tests/test_restore_checkpoint.py b/detectron/tests/test_restore_checkpoint.py
+index 2694eee..1c9ba1c 100644
+--- a/detectron/tests/test_restore_checkpoint.py
++++ b/detectron/tests/test_restore_checkpoint.py
+@@ -35,7 +35,6 @@ from detectron.utils.logging import setup_logging
+ import detectron.utils.c2 as c2_utils
+ import detectron.utils.net as nu
+ 
+-c2_utils.import_detectron_ops()
+ 
+ 
+ def get_params(model):
+diff --git a/detectron/tests/test_smooth_l1_loss_op.py b/detectron/tests/test_smooth_l1_loss_op.py
+index bd0bdb1..44aaf01 100644
+--- a/detectron/tests/test_smooth_l1_loss_op.py
++++ b/detectron/tests/test_smooth_l1_loss_op.py
+@@ -74,7 +74,6 @@ class SmoothL1LossTest(unittest.TestCase):
+ 
+ 
+ if __name__ == '__main__':
+-    c2_utils.import_detectron_ops()
+     assert 'SmoothL1Loss' in workspace.RegisteredOperators()
+     logging_utils.setup_logging(__name__)
+     unittest.main()
+diff --git a/detectron/tests/test_spatial_narrow_as_op.py b/detectron/tests/test_spatial_narrow_as_op.py
+index ca101aa..a31c6d2 100644
+--- a/detectron/tests/test_spatial_narrow_as_op.py
++++ b/detectron/tests/test_spatial_narrow_as_op.py
+@@ -85,7 +85,6 @@ class SpatialNarrowAsOpTest(unittest.TestCase):
+ 
+ if __name__ == '__main__':
+     workspace.GlobalInit(['caffe2', '--caffe2_log_level=0'])
+-    c2_utils.import_detectron_ops()
+     assert 'SpatialNarrowAs' in workspace.RegisteredOperators()
+     logging_utils.setup_logging(__name__)
+     unittest.main()
+diff --git a/tools/convert_pkl_to_pb.py b/tools/convert_pkl_to_pb.py
+index e447adf..82289cc 100644
+--- a/tools/convert_pkl_to_pb.py
++++ b/tools/convert_pkl_to_pb.py
+@@ -57,7 +57,6 @@ import detectron.utils.model_convert_utils as mutils
+ import detectron.utils.vis as vis_utils
+ 
+ c2_utils.import_contrib_ops()
+-c2_utils.import_detectron_ops()
+ 
+ # OpenCL may be enabled by default in OpenCV3; disable it because it's not
+ # thread safe and causes unwanted GPU memory allocations.
+diff --git a/tools/infer.py b/tools/infer.py
+index 1c01996..3caa6cf 100644
+--- a/tools/infer.py
++++ b/tools/infer.py
+@@ -49,7 +49,6 @@ import detectron.utils.c2 as c2_utils
+ import detectron.utils.env as envu
+ import detectron.utils.vis as vis_utils
+ 
+-c2_utils.import_detectron_ops()
+ 
+ # OpenCL may be enabled by default in OpenCV3; disable it because it's not
+ # thread safe and causes unwanted GPU memory allocations.
+diff --git a/tools/infer_simple.py b/tools/infer_simple.py
+index 63506ba..63a2779 100644
+--- a/tools/infer_simple.py
++++ b/tools/infer_simple.py
+@@ -46,7 +46,6 @@ import detectron.datasets.dummy_datasets as dummy_datasets
+ import detectron.utils.c2 as c2_utils
+ import detectron.utils.vis as vis_utils
+ 
+-c2_utils.import_detectron_ops()
+ 
+ # OpenCL may be enabled by default in OpenCV3; disable it because it's not
+ # thread safe and causes unwanted GPU memory allocations.
+diff --git a/tools/test_net.py b/tools/test_net.py
+index 4afa4c6..e017972 100755
+--- a/tools/test_net.py
++++ b/tools/test_net.py
+@@ -39,7 +39,6 @@ from detectron.core.test_engine import run_inference
+ from detectron.utils.logging import setup_logging
+ import detectron.utils.c2 as c2_utils
+ 
+-c2_utils.import_detectron_ops()
+ 
+ # OpenCL may be enabled by default in OpenCV3; disable it because it's not
+ # thread safe and causes unwanted GPU memory allocations.
+diff --git a/tools/train_net.py b/tools/train_net.py
+index 9e757b5..afc6e28 100755
+--- a/tools/train_net.py
++++ b/tools/train_net.py
+@@ -41,7 +41,6 @@ import detectron.utils.c2 as c2_utils
+ import detectron.utils.train
+ 
+ c2_utils.import_contrib_ops()
+-c2_utils.import_detectron_ops()
+ 
+ # OpenCL may be enabled by default in OpenCV3; disable it because it's not
+ # thread safe and causes unwanted GPU memory allocations.
+-- 
+2.20.1
+

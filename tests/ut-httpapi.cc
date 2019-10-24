@@ -34,10 +34,13 @@ std::string serv = "myserv";
 std::string serv_put = "{\"mllib\":\"caffe\",\"description\":\"example classification service\",\"type\":\"supervised\",\"parameters\":{\"input\":{\"connector\":\"csv\"},\"mllib\":{\"template\":\"mlp\",\"nclasses\":2,\"layers\":[50,50,50],\"activation\":\"PReLU\"}},\"model\":{\"templates\":\"../templates/caffe/\",\"repository\":\".\"}}";
 
 #ifndef CPU_ONLY
-static std::string iterations_mnist = "250";
+static std::string iterations_mnist = "10000";
 #else
 static std::string iterations_mnist = "10";
 #endif
+
+
+
 
 TEST(httpjsonapi,uri_query_to_json)
 {
@@ -54,11 +57,13 @@ TEST(httpjsonapi,uri_query_to_json)
   std::string q3 = q + "&parameters.output.measure_hist=false";
   p = uri_query_to_json(q3);
   ASSERT_EQ("{\"service\":\"myserv\",\"job\":1,\"parameters\":{\"output\":{\"measure_hist\":false}}}",p);
+  std::string q4 = q + "&parameters.output.measure_hist=true&parameters.output.max_hist_points=100";
+  p = uri_query_to_json(q4);
+  ASSERT_EQ("{\"service\":\"myserv\",\"job\":1,\"parameters\":{\"output\":{\"measure_hist\":true,\"max_hist_points\":100}}}",p);
 }
 
 TEST(httpjsonapi,info)
 {
-  ::google::InitGoogleLogging("ut_httpapi");
   HttpJsonAPI hja;
   hja.start_server_daemon(host,std::to_string(port),nthreads);
   std::string luri = "http://" + host + ":" + std::to_string(port);
@@ -171,7 +176,7 @@ TEST(httpjsonapi,train)
   ASSERT_TRUE(d.HasMember("body"));
   ASSERT_TRUE(d["body"].HasMember("measure"));
 #ifndef CPU_ONLY
-  ASSERT_EQ(249,d["body"]["measure"]["iteration"].GetDouble());
+  ASSERT_EQ(9999,d["body"]["measure"]["iteration"].GetDouble());
 #else
   ASSERT_EQ(9,d["body"]["measure"]["iteration"].GetDouble());
 #endif
@@ -215,7 +220,7 @@ TEST(httpjsonapi,train)
   bool running = true;
   while(running)
     {
-      httpclient::get_call(luri+"/train?service="+serv+"&job=1&timeout=1&parameters.output.measure_hist=true","GET",code,jstr);
+      httpclient::get_call(luri+"/train?service="+serv+"&job=1&timeout=1&parameters.output.max_hist_points=100","GET",code,jstr);
       running = jstr.find("running") != std::string::npos;
       if (running)
 	{
@@ -237,6 +242,7 @@ TEST(httpjsonapi,train)
 	  ASSERT_TRUE(jd2["body"]["measure"].HasMember("iteration"));
 	  ASSERT_TRUE(jd2["body"]["measure"]["iteration"].GetDouble() >= 0);
 	  ASSERT_TRUE(jd2["body"].HasMember("measure_hist"));
+	  ASSERT_TRUE(100 >= jd2["body"]["measure_hist"]["train_loss_hist"].Size());
 	}
       else ASSERT_TRUE(jstr.find("finished")!=std::string::npos);
     }

@@ -20,7 +20,6 @@
  */
 
 #include "csvinputfileconn.h"
-#include <glog/logging.h>
 
 namespace dd
 {
@@ -30,7 +29,7 @@ namespace dd
   {
     if (_cifc)
       {
-	_cifc->read_csv(_adconf,fname);
+        _cifc->read_csv(fname);
 	return 0;
       }
     else return -1;
@@ -84,6 +83,7 @@ namespace dd
 	else _cifc->add_train_csvline(std::to_string(_cifc->_csvdata.size()+1),vals);
 	++l;
       }
+    _cifc->update_columns();
     return 0;
   }
 
@@ -130,18 +130,20 @@ namespace dd
       {
 	if ((*lit) == _id)
 	  _id_pos = i;
-	else if (!_label.empty() && (*lit) == _label[0])
-	  _label_pos[0] = i;
+  else
+         for (unsigned int j=0; j< _label.size(); ++j)
+           if ((*lit) == _label[j])
+             _label_pos[j] = i;
 	++i;
 	++lit;
       }
 
     //debug
-    /*std::cout << "number of new columns=" << _columns.size() << std::endl;
-    std::cout << "new CSV columns:\n";
+    /*std::cerr << "number of new columns=" << _columns.size() << std::endl;
+    std::cerr << "new CSV columns:\n";
     std::copy(_columns.begin(),_columns.end(),
 	      std::ostream_iterator<std::string>(std::cout," "));
-	      std::cout << std::endl;*/
+	      std::cerr << std::endl;*/
     //debug
   }
   
@@ -209,6 +211,12 @@ namespace dd
 	      // not a number, skip for now
 	      if (column_id == col) // if id is string, replace with number / TODO: better scheme
 		vals.push_back(c);
+	      else
+		{
+		  _logger->error("line {}: skipping column {} / not a number",nlines,col_name);
+		  _logger->error(hline);
+		  throw InputConnectorBadParamException("column " + col_name + " is not a number, use categoricals or ignore parameters instead");
+		}
 	    }
 	  ++lit;
 	}
@@ -245,18 +253,45 @@ namespace dd
 	  }
 	++i;
       }
+    _detect_cols = i;
     for (size_t j=0;j<_label_pos.size();j++)
       if (_label_pos.at(j) < 0 && _train)
 	throw InputConnectorBadParamException("cannot find label column " + _label[j]);
     if (!_id.empty() && !has_id)
       throw InputConnectorBadParamException("cannot find id column " + _id);
   }
+
+
+  void CSVInputFileConn::find_min_max(std::ifstream &csv_file)
+  {
+    int nlines = 0;
+    std::string hline;
+    while(std::getline(csv_file,hline))
+      {
+        hline.erase(std::remove(hline.begin(),hline.end(),'\r'),hline.end());
+        std::vector<double> vals;
+        std::string cid;
+        read_csv_line(hline,_delim,vals,cid,nlines);
+        if (nlines == 1)
+          _min_vals = _max_vals = vals;
+        else
+          {
+            for (size_t j=0;j<vals.size();j++)
+              {
+                _min_vals.at(j) = std::min(vals.at(j),_min_vals.at(j));
+                _max_vals.at(j) = std::max(vals.at(j),_max_vals.at(j));
+              }
+          }
+      }
+    csv_file.clear();
+    csv_file.seekg(0,std::ios::beg);
+    std::getline(csv_file,hline); // skip header line
+  }
   
-  void CSVInputFileConn::read_csv(const APIData &ad,
-				  const std::string &fname)
+  void CSVInputFileConn::read_csv(const std::string &fname, const bool forbid_shuffle)
   {
       std::ifstream csv_file(fname,std::ios::binary);
-      LOG(INFO) << "fname=" << fname << " / open=" << csv_file.is_open() << std::endl;
+      _logger->info("fname={} / open={}",fname,csv_file.is_open());
       if (!csv_file.is_open())
 	throw InputConnectorBadParamException("cannot open file " + fname);
       std::string hline;
@@ -264,16 +299,18 @@ namespace dd
       read_header(hline);
       
       //debug
+      /*std::cerr << "found " << _detect_cols << " columns\n";
       std::cerr << "label size=" << _label.size() << " / label_pos size=" << _label_pos.size() << std::endl;
       std::cout << "CSV columns:\n";
       std::copy(_columns.begin(),_columns.end(),
 		std::ostream_iterator<std::string>(std::cout," "));
-      std::cout << std::endl;
+		std::cout << std::endl;*/
       //debug
 
       // categorical variables
-      if (!_categoricals.empty())
+      if (_train && !_categoricals.empty())
 	{
+	  int l = 0;
 	  while(std::getline(csv_file,hline))
 	    {
 	      hline.erase(std::remove(hline.begin(),hline.end(),'\r'),hline.end());
@@ -286,6 +323,12 @@ namespace dd
 	      int cu = 0;
 	      while(std::getline(sh,col,_delim[0]))
 		{
+		  if (cu >= _detect_cols)
+		    {
+		      _logger->error("line {} has more columns than headers",l);
+		      _logger->error(hline);
+		      throw InputConnectorBadParamException("line has more columns than headers");
+		    }
 		  if ((igit=_ignored_columns_pos.find(cu))!=_ignored_columns_pos.end())
 		    {
 		      ++cu;
@@ -295,6 +338,7 @@ namespace dd
 		  ++hit;
 		  ++cu;
 		}
+	      ++l;
 	    }
 	  csv_file.clear();
 	  csv_file.seekg(0,std::ios::beg);
@@ -303,40 +347,11 @@ namespace dd
 
       // scaling to [0,1]
       int nlines = 0;
-      if (_scale && _min_vals.empty() && _max_vals.empty())
+      if (_scale && (_min_vals.empty() || _max_vals.empty()))
 	{
-	  while(std::getline(csv_file,hline))
-	    {
-	      hline.erase(std::remove(hline.begin(),hline.end(),'\r'),hline.end());
-	      std::vector<double> vals;
-	      std::string cid;
-	      read_csv_line(hline,_delim,vals,cid,nlines);
-	      if (nlines == 1)
-		_min_vals = _max_vals = vals;
-	      else
-		{
-		  for (size_t j=0;j<vals.size();j++)
-		    {
-		      _min_vals.at(j) = std::min(vals.at(j),_min_vals.at(j));
-		      _max_vals.at(j) = std::max(vals.at(j),_max_vals.at(j));
-		    }
-		}
-	    }
-	  
-	  //debug
-	  /*std::cout << "min/max scales:\n";
-	  std::copy(_min_vals.begin(),_min_vals.end(),std::ostream_iterator<double>(std::cout," "));
-	  std::cout << std::endl;
-	  std::copy(_max_vals.begin(),_max_vals.end(),std::ostream_iterator<double>(std::cout," "));
-	  std::cout << std::endl;*/
-	  //debug
-	  
-	  csv_file.clear();
-	  csv_file.seekg(0,std::ios::beg);
-	  std::getline(csv_file,hline); // skip header line
-	  nlines = 0;
+         find_min_max(csv_file);
 	}
-      
+
       // read data
       while(std::getline(csv_file,hline))
 	{
@@ -360,7 +375,7 @@ namespace dd
 	    std::cout << std::endl;*/
 	  //debug
 	}
-      LOG(INFO) << "read " << nlines << " lines from " << fname << std::endl;
+      _logger->info("read {} lines from {}",nlines,fname);
       csv_file.close();
       
       // test file, if any.
@@ -393,20 +408,21 @@ namespace dd
 		std::cout << std::endl;*/
 	      //debug
 	    }
-	  LOG(INFO) << "read " << nlines << " lines from " << _csv_test_fname << std::endl;
+	  _logger->info("read {} lines from {}", nlines, _csv_test_fname);
 	  csv_test_file.close();
 	}
 
       // shuffle before possible test data selection.
-      shuffle_data(ad);
+      if (!forbid_shuffle)
+        shuffle_data(_csvdata);
       
       if (_csv_test_fname.empty() && _test_split > 0)
 	{
-	  split_data();
-	  LOG(INFO) << "data split test size=" << _csvdata_test.size() << " / remaining data size=" << _csvdata.size() << std::endl;
+	  split_data(_csvdata, _csvdata_test);
+	  _logger->info("data split test size={} / remaining data size={}",_csvdata_test.size(),_csvdata.size());
 	}
       if (!_ignored_columns.empty() || !_categoricals.empty())
-	update_columns();
+        update_columns();
   }
   
 }

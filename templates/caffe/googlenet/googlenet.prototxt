@@ -9,7 +9,6 @@ layer {
   }
   transform_param {
     mirror: true
-    crop_size: 224
 #    mean_value: 104
 #    mean_value: 117
 #    mean_value: 123
@@ -2466,16 +2465,16 @@ layer {
   top: "loss3/loss3"
   loss_weight: 1
 }
-layer {
-  name: "loss3/top-1"
-  type: "Accuracy"
-  bottom: "loss3/classifier"
-  bottom: "label"
-  top: "loss3/top-1"
-  include {
-    phase: TEST
-  }
-}
+#layer {
+#  name: "loss3/top-1"
+#  type: "Accuracy"
+#  bottom: "loss3/classifier"
+#  bottom: "label"
+#  top: "loss3/top-1"
+#  include {
+#    phase: TEST
+#  }
+#}
 #layer {
 #  name: "loss3/top-5"
 #  type: "Accuracy"

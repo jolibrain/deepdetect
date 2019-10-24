@@ -24,7 +24,10 @@
 
 #include "apidata.h"
 #include "utils/fileops.hpp"
+#ifndef WIN32
 #include "utils/httpclient.hpp"
+#endif
+#include <spdlog/spdlog.h>
 #include <exception>
 
 namespace dd
@@ -37,20 +40,29 @@ namespace dd
   template <class DDT> class DataEl
   {
   public:
-    DataEl() {}
+    DataEl(const int &timeout)
+      {
+	if (timeout != -1)
+	  _timeout = timeout;
+      }
     ~DataEl() {}
 
-    int read_element(const std::string &uri)
+    int read_element(const std::string &uri,
+		     std::shared_ptr<spdlog::logger> &logger)
     {
+      _ctype._logger = logger;
       bool dir = false;
-      if (uri.find("https://") != std::string::npos
-	  || uri.find("http://") != std::string::npos
-	  || uri.find("file://") != std::string::npos)
+      if (uri.rfind("https://", 0) == 0
+	  || uri.rfind("http://", 0) == 0
+	  || uri.rfind("file://", 0) == 0)
 	{
+#ifdef WIN32
+      return -1;
+#else
 	  int outcode = -1;
 	  try
 	    {
-	      httpclient::get_call(uri,"GET",outcode,_content);
+	      httpclient::get_call(uri,"GET",outcode,_content,_timeout);
 	    }
 	  catch(...)
 	    {
@@ -59,6 +71,7 @@ namespace dd
 	  if (outcode != 200)
 	    return -1;
 	  return _ctype.read_mem(_content);
+#endif
 	}
       else if (fileops::file_exists(uri,dir))
 	{
@@ -73,6 +86,7 @@ namespace dd
     }
     
     std::string _content;
+    int _timeout = 600; // 10 mins is default
     DDT _ctype;
   };
   
@@ -112,7 +126,8 @@ namespace dd
   public:
     InputConnectorStrategy() {}
     InputConnectorStrategy(const InputConnectorStrategy &i)
-      :_model_repo(i._model_repo) {}
+      :_model_repo(i._model_repo),_logger(i._logger),
+       _input_timeout(i._input_timeout) {}
     ~InputConnectorStrategy() {}
     
     /**
@@ -152,6 +167,12 @@ namespace dd
       try
 	{
 	  _uris = ad.get("data").get<std::vector<std::string>>();
+	  if (ad.has("ids"))
+	    _ids = ad.get("ids").get<std::vector<std::string>>();
+	  if (ad.has("meta_uris"))
+	    _meta_uris = ad.get("meta_uris").get<std::vector<std::string>>();
+	  if (ad.has("index_uris"))
+	    _index_uris = ad.get("index_uris").get<std::vector<std::string>>();
 	}
       catch(...)
 	{
@@ -163,6 +184,12 @@ namespace dd
 	}
     }
 
+    void set_timeout(const APIData &ad)
+    {
+      if (ad.has("timeout"))
+	_input_timeout = ad.get("timeout").get<int>();
+    }
+    
     /**
      * \brief input parameters to return to user through API,
      *        especially when they have been automatically modified,
@@ -175,8 +202,17 @@ namespace dd
     }
     
     bool _train = false; /**< whether in train or predict mode. */
+    bool _shuffle = false; /**< whether to shuffle the dataset, usually before splitting. */
+    bool _timeserie = false; /**< whether connector is a timeserie connector */
+
     std::vector<std::string> _uris;
+    std::vector<std::string> _ids;
+    std::vector<std::string> _meta_uris; /**< first level URIs, used with chains typically. */
+    std::vector<std::string> _index_uris; /**< URI to be stored in similarity search index. */
     std::string _model_repo; /**< model repository, useful when connector needs to read from saved data (e.g. vocabulary). */
+    std::shared_ptr<spdlog::logger> _logger;
+
+    int _input_timeout = -1; /**< timeout on input data retrieval: -1 means using default (600sec), otherwise set via input parameters. */
   };
   
 }

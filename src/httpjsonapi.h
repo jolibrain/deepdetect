@@ -51,6 +51,8 @@ namespace dd
 		     const int &nthreads);
     int boot(int argc, char *argv[]);
     static void terminate(int param);
+    void mergeJObj(JVal& to, JVal& from, JDoc& jd);
+
     
     http_server *_dd_server = nullptr; /**< main reusable pointer to server object */
     std::future<int> _ft; /**< holds the results from the main server thread */

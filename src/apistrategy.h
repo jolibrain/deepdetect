@@ -24,6 +24,13 @@
 
 #include "dd_types.h"
 #include "services.h"
+#include <spdlog/spdlog.h>
+
+#ifdef USE_DD_SYSLOG
+#include <spdlog/sinks/syslog_sink.h>
+#else
+#include <spdlog/sinks/stdout_sinks.h>
+#endif
 
 namespace dd
 {
@@ -34,13 +41,24 @@ namespace dd
   class APIStrategy : public Services
     {
     public:
-      APIStrategy() {};
-      ~APIStrategy() {};
+      APIStrategy()
+	{
+#ifdef USE_DD_SYSLOG
+	  _logger = spdlog::syslog_logger("api");
+#else
+	  _logger = spdlog::stdout_logger_mt("api");
+#endif
+	};
+      ~APIStrategy()
+	{
+	  spdlog::drop("api");
+	}
       
       /**
        * \brief handling of command line parameters
        */
       int boot(int argc, char *argv[]);
+      std::shared_ptr<spdlog::logger> _logger; /**< api logger. */
     };
 }
 

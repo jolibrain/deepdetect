@@ -37,7 +37,6 @@ RAPIDJSON_DIAG_OFF(4127) // conditional expression is constant
 RAPIDJSON_DIAG_PUSH
 RAPIDJSON_DIAG_OFF(effc++)
 #endif
-
 ///////////////////////////////////////////////////////////////////////////////
 // RAPIDJSON_HAS_STDSTRING
 

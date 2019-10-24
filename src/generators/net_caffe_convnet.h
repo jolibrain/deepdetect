@@ -27,12 +27,26 @@
 namespace dd
 {
 
+  class ConvBlock
+  {
+  public:
+    ConvBlock(const std::string &layer,
+	      const int &nconv,
+	      const int &num_output)
+      :_layer(layer),_nconv(nconv),_num_output(num_output) {}
+    ~ConvBlock() {}
+    std::string _layer; // from C: conv, D: deconv, U: upsample
+    int _nconv;
+    int _num_output;
+  };
+  
   class NetLayersCaffeConvnet: public NetLayersCaffeMLP
   {
   public:
   NetLayersCaffeConvnet(caffe::NetParameter *net_params,
-			caffe::NetParameter *dnet_params)
-    :NetLayersCaffeMLP(net_params,dnet_params) 
+			caffe::NetParameter *dnet_params,
+			std::shared_ptr<spdlog::logger> &logger)
+    :NetLayersCaffeMLP(net_params,dnet_params,logger) 
       {
 	net_params->set_name("convnet");
 	dnet_params->set_name("convnet");
@@ -41,10 +55,10 @@ namespace dd
 
   protected:
     void parse_conv_layers(const std::vector<std::string> &layers,
-			   std::vector<std::pair<int,int>> &cr_layers,
+			   std::vector<ConvBlock> &cr_layers,
 			   std::vector<int> &fc_layers);
   private:
-    void add_basic_block(caffe::NetParameter *net_param,
+    std::string add_basic_block(caffe::NetParameter *net_param,
 			 const std::string &bottom,
 			 const std::string &top,
 			 const int &nconv,

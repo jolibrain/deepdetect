@@ -24,6 +24,7 @@
 
 #include "apidata.h"
 #include "utils/fileops.hpp"
+#include <spdlog/spdlog.h>
 #include <atomic>
 #include <exception>
 #include <mutex>
@@ -75,7 +76,7 @@ namespace dd
      * \brief copy-constructor
      */
     MLLib(MLLib &&mll) noexcept
-      :_inputc(mll._inputc),_outputc(mll._outputc),_mlmodel(mll._mlmodel),_meas(mll._meas),_tjob_running(mll._tjob_running.load())
+      :_inputc(mll._inputc),_outputc(mll._outputc),_mltype(mll._mltype),_mlmodel(mll._mlmodel),_meas(mll._meas),_meas_per_iter(mll._meas_per_iter),_tjob_running(mll._tjob_running.load()),_logger(mll._logger)
       {}
     
     /**
@@ -95,6 +96,16 @@ namespace dd
      */
     void clear_mllib(const APIData &ad);
 
+#ifdef USE_SIMSEARCH
+    /**
+     * \brief removes search index from model repository
+     */
+    void clear_index()
+    {
+      _mlmodel.remove_index();
+    }
+#endif
+    
     /**
      * \brief removes everything in model repository
      */
@@ -106,6 +117,19 @@ namespace dd
       else if (err < 0)
 	throw MLLibInternalException("Failed deleting all files in directory " + _mlmodel._repo);
     }
+
+    /**
+     * \brief removes everything in model repository + rmdir
+     */
+    void clear_dir()
+    {
+      clear_full();
+      int err = fileops::remove_dir(_mlmodel._repo);
+      if (err < 0)
+        throw MLLibBadParamException("unable to remove dir " + _mlmodel._repo);
+
+    }
+
 
     /**
      * \brief train new model
@@ -147,7 +171,19 @@ namespace dd
       std::lock_guard<std::mutex> lock(_meas_per_iter_mutex);
       auto hit = _meas_per_iter.find(meas);
       if (hit!=_meas_per_iter.end())
-	(*hit).second.push_back(l);
+	{
+	  (*hit).second.push_back(l);
+	  if ((int)(*hit).second.size() >= _max_meas_points)
+	    {
+	      // resolution is halved
+	      std::vector<double> vmeas_short;
+	      vmeas_short.reserve(_max_meas_points/2);
+	      int di = 0;
+	      for (size_t j=0;j<(*hit).second.size();j+=2)
+		vmeas_short.at(di++) = (*hit).second.at(j);
+	      (*hit).second = vmeas_short;
+	    }
+	}
       else
 	{
 	  std::vector<double> vmeas = {l};
@@ -156,22 +192,62 @@ namespace dd
     }
 
     /**
-     * \brief collect current measures history into a data object
-     * 
+     * \brief sub-samples measure history to fit a fixed number of points at max
+     * @param hist measure history vector
+     * @param npoints max number of output points
      */
-    void collect_measures_history(APIData &ad)
+    std::vector<double> subsample_hist(const std::vector<double> &hist,
+				       const int &npoints) const
+    {
+      std::vector<double> sub_hist;
+      sub_hist.reserve(npoints);
+      int rpoints = std::ceil(hist.size() / npoints) + 1;
+      for (size_t i=0;i<hist.size();i+=rpoints)
+	sub_hist.push_back(hist.at(i));
+      return sub_hist;
+    }
+    
+    /**
+     * \brief collect current measures history into a data object
+     * @param ad api data object
+     * @param npoints max number of output points, < 0 if unbounded
+     */
+    void collect_measures_history(APIData &ad,
+				  const int &npoints=-1) const
     {
       APIData meas_hist;
       std::lock_guard<std::mutex> lock(_meas_per_iter_mutex);
       auto hit = _meas_per_iter.begin();
       while(hit!=_meas_per_iter.end())
 	{
-	  meas_hist.add((*hit).first+"_hist",(*hit).second);
+	  if (npoints > 0 && (int)(*hit).second.size() > npoints)
+	    meas_hist.add((*hit).first+"_hist",subsample_hist((*hit).second,npoints));
+	  else meas_hist.add((*hit).first+"_hist",(*hit).second);
 	  ++hit;
 	}
       ad.add("measure_hist",meas_hist);
     }
 
+    /**
+     * \brief fill up the in-memory metrics from values gathered
+     *        from metrics.json file into the api data object
+     * @param ad the api data object holding the values
+     */
+    void fillup_measures_history(const APIData &ad)
+    {
+      APIData ad_params = ad.getobj("parameters");
+      if (!ad_params.has("metrics"))
+	return;
+      APIData ad_metrics = ad_params.getobj("metrics");
+      std::vector<std::string> mkeys = ad_metrics.list_keys();
+      for (auto s: mkeys)
+	{
+	  std::vector<double> mdata = ad_metrics.get(s).get<std::vector<double>>();
+	  s.replace(s.find("_hist"),5,"");
+	  _meas_per_iter.insert(std::pair<std::string,std::vector<double>>(s,mdata));
+	}
+    }
+    
     /**
      * \brief sets current value of a measure
      * @param meas measure name
@@ -186,12 +262,28 @@ namespace dd
       else _meas.insert(std::pair<std::string,double>(meas,l));
     }
 
+    void add_meas(const std::string &meas, const std::vector<double> &vl,
+		  const std::vector<std::string> &cnames)
+    {
+      std::lock_guard<std::mutex> lock(_meas_mutex);
+      int c = 0;
+      for (double l: vl)
+	{
+	  std::string measl = meas + '_' + cnames.at(c);//std::to_string(c);
+	  auto hit = _meas.find(measl);
+	  if (hit!=_meas.end())
+	    (*hit).second = l;
+	  else _meas.insert(std::pair<std::string,double>(measl,l));
+	  ++c;
+	}
+    }
+    
     /**
      * \brief get currentvalue of argument measure
      * @param meas measure name
      * @return current value of measure
      */
-    double get_meas(const std::string &meas)
+    double get_meas(const std::string &meas) const
     {
       std::lock_guard<std::mutex> lock(_meas_mutex);
       auto hit = _meas.find(meas);
@@ -204,7 +296,7 @@ namespace dd
      * \brief collect current measures into a data object
      * @param ad data object to hold the measures
      */
-    void collect_measures(APIData &ad)
+    void collect_measures(APIData &ad) const
     {
       APIData meas;
       std::lock_guard<std::mutex> lock(_meas_mutex);
@@ -217,10 +309,30 @@ namespace dd
       ad.add("measure",meas);
     }
 
+    /**
+     * \brief render estimated remaining time
+     * @param ad data object to hold the estimate
+     */
+    void est_remain_time(APIData &out) const
+    {
+      APIData meas = out.getobj("measure");
+      if (meas.has("remain_time")){    
+        int est_remain_time = static_cast<int>(meas.get("remain_time").get<double>());
+        int seconds = est_remain_time % 60;
+        int minutes = (est_remain_time / 60) % 60;
+        int hours = (est_remain_time / 60 / 60) % 24;
+        int days = est_remain_time / 60 / 60 / 24;
+        std::string est_remain_time_str = std::to_string(days) + "d:" + std::to_string(hours) + "h:" + std::to_string(minutes) + "m:" + std::to_string(seconds) + "s";
+        meas.add("remain_time_str",est_remain_time_str);
+        out.add("measure",meas);
+      }
+    }
+
     TInputConnectorStrategy _inputc; /**< input connector strategy for channeling data in. */
     TOutputConnectorStrategy _outputc; /**< output connector strategy for passing results back to API. */
 
-    bool _has_train = false; /**< whether training is available. */
+    std::string _mltype = ""; /**< ml lib service instantiated type (e.g. regression, segmentation, detection, ...) */
+    
     bool _has_predict = true; /**< whether prediction is available. */
 
     TMLModel _mlmodel; /**< statistical model template. */
@@ -234,9 +346,17 @@ namespace dd
     bool _online = false; /**< whether the algorithm is online, i.e. it interleaves training and prediction calls.
 			     When not, prediction calls are rejected while training is running. */
 
+    std::shared_ptr<spdlog::logger> _logger; /**< mllib logger. */
+
+    long int _model_flops = 0;  /**< model flops. */
+    long int _model_params = 0;  /**< number of parameters in the model. */
+    long int _mem_used_train = 0; /**< amount  of memory used. */
+    long int _mem_used_test = 0; /**< amount  of memory used. */
+
   protected:
-    std::mutex _meas_per_iter_mutex; /**< mutex over measures history. */
-    std::mutex _meas_mutex; /** mutex around current measures. */
+    mutable std::mutex _meas_per_iter_mutex; /**< mutex over measures history. */
+    mutable std::mutex _meas_mutex; /** mutex around current measures. */
+    const int _max_meas_points = 1e7; // 10M points max per measure
   };  
   
 }

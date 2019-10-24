@@ -24,6 +24,7 @@
 
 #include "net_generator.h"
 #include "caffe/caffe.hpp"
+#include <spdlog/spdlog.h>
 
 namespace dd
 {
@@ -53,7 +54,7 @@ namespace dd
   public:
   NetInputCaffe(caffe::NetParameter *net_params,
 		caffe::NetParameter *dnet_params)
-    :NetInput<TInputCaffe>(),_net_params(net_params),_dnet_params(dnet_params) 
+    :NetInput<TInputCaffe>(),_net_params(net_params),_dnet_params(dnet_params)
     {
       _net_params->set_name("net");
       _dnet_params->set_name("dnet");
@@ -63,6 +64,12 @@ namespace dd
     void configure_inputs(const APIData &ad_mllib,
 			  const TInputCaffe &inputc);
     
+    void add_embed(caffe::NetParameter *net_param,
+		   const std::string &bottom,
+		   const std::string &top,
+		   const int &input_dim,
+		   const int &num_output);
+
     caffe::NetParameter *_net_params;
     caffe::NetParameter *_dnet_params;
   };
@@ -71,8 +78,9 @@ namespace dd
   {
   public:
     NetLayersCaffe(caffe::NetParameter *net_params,
-		   caffe::NetParameter *dnet_params)
-      :NetLayers(),_net_params(net_params),_dnet_params(dnet_params) {}
+		   caffe::NetParameter *dnet_params,
+		   std::shared_ptr<spdlog::logger> &logger)
+      :NetLayers(),_net_params(net_params),_dnet_params(dnet_params),_logger(logger) {}
     
     //void add_basic_block() {}
     void configure_net(const APIData &ad) { (void)ad; }
@@ -102,11 +110,26 @@ namespace dd
 		  const std::string &name="",
 		  const std::string &init="msra");
 
+    void add_deconv(caffe::NetParameter *net_param,
+		    const std::string &bottom,
+		    const std::string &top,
+		    const int &num_output,
+		    const int &kernel_size,
+		    const int &pad,
+		    const int &stride,
+		    const int &kernel_w=0,
+		    const int &kernel_h=0,
+		    const int &pad_w=0,
+		    const int &pad_h=0,
+		    const std::string &name="",
+		    const std::string &init="msra");
+
     void add_act(caffe::NetParameter *net_param,
 		 const std::string &bottom,
 		 const std::string &activation,
 		 const double &elu_alpha=1.0,
-		 const double &negative_slope=0.0);
+		 const double &negative_slope=0.0,
+		 const bool &test=false);
 
     void add_pooling(caffe::NetParameter *net_param,
 		     const std::string &bottom,
@@ -123,6 +146,17 @@ namespace dd
 		     const std::string &bottom,
 		     const double &ratio);
 
+    void add_lstm(caffe::NetParameter *net_param,
+                  const std::string &seq,
+                  const std::string &cont,
+                  const std::string &name);
+
+    void add_rnn(caffe::NetParameter *net_param,
+                 const std::string &seq,
+                 const std::string &cont,
+                 const std::string &name);
+
+
     void add_bn(caffe::NetParameter *net_param,
 		const std::string &bottom,
 		const std::string &top="");
@@ -136,7 +170,7 @@ namespace dd
 		     const std::string &bottom,
 		     const std::string &top,
 		     const caffe::ReshapeParameter &r_param); //TODO
-    
+
     // requires a fully connected layer (all losses ?)
     void add_softmax(caffe::NetParameter *net_param,
 		     const std::string &bottom,
@@ -151,9 +185,29 @@ namespace dd
 			    const std::string &top,
 			    const int &num_output,
 			    const bool &deploy=false);
+
+    void add_sigmoid_crossentropy_loss(caffe::NetParameter *net_param,
+				       const std::string &bottom,
+				       const std::string &label,
+				       const std::string &top,
+				       const int &num_output,
+				       const bool &deploy=false,
+				       const bool &fc=true);
+
+    void add_interp(caffe::NetParameter *net_param,
+		    const std::string &bottom,
+		    const std::string &top,
+		    const int &interp_width,
+		    const int &interp_height);
+
+    void add_flatten(caffe::NetParameter *net_param,
+		     const std::string &bottom,
+		     const std::string &top,
+		     const bool &test=false);
     
     caffe::NetParameter *_net_params;
     caffe::NetParameter *_dnet_params;
+    std::shared_ptr<spdlog::logger> _logger;
   };
 
   class NetLossCaffe
@@ -167,9 +221,10 @@ namespace dd
     {
     public:
       NetCaffe(caffe::NetParameter *net_params,
-	       caffe::NetParameter *dnet_params)
+	       caffe::NetParameter *dnet_params,
+	       std::shared_ptr<spdlog::logger> &logger)
 	:_net_params(net_params),_dnet_params(dnet_params),
-	_nic(net_params,dnet_params),_nlac(net_params,dnet_params) {}
+	_nic(net_params,dnet_params),_nlac(net_params,dnet_params,logger),_logger(logger) {}
       ~NetCaffe() {}
 
     public:
@@ -179,10 +234,9 @@ namespace dd
       TNetInputCaffe _nic;
       TNetLayersCaffe _nlac;
       //TNetLossCaffe _nloc
+      std::shared_ptr<spdlog::logger> _logger;
     };
   
 }
-
-//#include "net_caffe_mlp.h"
 
 #endif

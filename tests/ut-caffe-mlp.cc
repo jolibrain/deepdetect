@@ -39,7 +39,7 @@ static std::string doconvnet_file = "nconvnet_deploy.prototxt";
 static std::string oresnet_file = "nresnet.prototxt";
 static std::string doresnet_file = "nresnet_deploy.prototxt";
 
-/*TEST(caffelib,configure_mlp_template_1_nt)
+TEST(caffelib,configure_mlp_template_1_nt)
 {
   int nclasses = 7;
   caffe::NetParameter net_param, deploy_net_param;
@@ -47,7 +47,7 @@ static std::string doresnet_file = "nresnet_deploy.prototxt";
   std::vector<int> layers = {200};
   APIData ad;
   ad.add("layers",layers);
-  ad.add("activation","prelu");
+  ad.add("activation",std::string("prelu"));
   ad.add("dropout",0.6);
   ad.add("nclasses",nclasses);
   
@@ -91,7 +91,7 @@ TEST(caffelib,configure_mlp_template_1_db)
   std::vector<int> layers = {200};
   APIData ad;
   ad.add("layers",layers);
-  ad.add("activation","prelu");
+  ad.add("activation",std::string("prelu"));
   ad.add("dropout",0.2);
   ad.add("db",true);
   ad.add("nclasses",nclasses);
@@ -140,7 +140,7 @@ TEST(caffelib,configure_mlp_template_n_nt)
   std::vector<int> layers = {200,150,75};
   APIData ad;
   ad.add("layers",layers);
-  ad.add("activation","prelu");
+  ad.add("activation",std::string("prelu"));
   ad.add("dropout",0.6);
   ad.add("nclasses",nclasses);
 
@@ -192,7 +192,7 @@ TEST(caffelib,configure_mlp_template_n_mt)
   std::vector<int> layers = {200,150,75};
   APIData ad;
   ad.add("layers",layers);
-  ad.add("activation","prelu");
+  ad.add("activation",std::string("prelu"));
   ad.add("dropout",0.6);
   ad.add("ntargets",ntargets);
 
@@ -250,7 +250,7 @@ TEST(caffelib,configure_convnet_template_1)
   std::vector<std::string> layers = {"1CR64"};
   APIData ad;
   ad.add("layers",layers);
-  ad.add("activation","prelu");
+  ad.add("activation",std::string("prelu"));
   ad.add("dropout",0.2);
   ad.add("nclasses",nclasses);
 
@@ -271,7 +271,7 @@ TEST(caffelib,configure_convnet_template_1)
   lparam = net_param.mutable_layer(5);
   ASSERT_EQ("InnerProduct",lparam->type());
   ASSERT_EQ(nclasses,lparam->mutable_inner_product_param()->num_output());
-  ASSERT_EQ("ip0",lparam->bottom(0));
+  ASSERT_EQ("ip0_conv_0",lparam->bottom(0));
 
   //ASSERT_EQ(6,deploy_net_param.layer_size());
   caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(1);
@@ -284,7 +284,7 @@ TEST(caffelib,configure_convnet_template_1)
   dlparam = deploy_net_param.mutable_layer(4);
   ASSERT_EQ("InnerProduct",dlparam->type());
   ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
-  ASSERT_EQ("ip0",dlparam->bottom(0));
+  ASSERT_EQ("ip0_conv_0",dlparam->bottom(0));
   delete caff;
 }
 
@@ -296,7 +296,7 @@ TEST(caffelib,configure_convnet_template_1_db)
   std::vector<std::string> layers = {"1CR64"};
   APIData ad;
   ad.add("layers",layers);
-  ad.add("activation","prelu");
+  ad.add("activation",std::string("prelu"));
   ad.add("dropout",0.2);
   ad.add("db",true);
   ad.add("nclasses",nclasses);
@@ -322,7 +322,7 @@ TEST(caffelib,configure_convnet_template_1_db)
   lparam = net_param.mutable_layer(5);
   ASSERT_EQ("InnerProduct",lparam->type());
   ASSERT_EQ(nclasses,lparam->mutable_inner_product_param()->num_output());
-  ASSERT_EQ("ip0",lparam->bottom(0));
+  ASSERT_EQ("ip0_conv_0",lparam->bottom(0));
 
   ASSERT_EQ(6,deploy_net_param.layer_size());
   caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(1);
@@ -335,7 +335,7 @@ TEST(caffelib,configure_convnet_template_1_db)
   dlparam = deploy_net_param.mutable_layer(4);
   ASSERT_EQ("InnerProduct",dlparam->type());
   ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
-  ASSERT_EQ("ip0",dlparam->bottom(0));
+  ASSERT_EQ("ip0_conv_0",dlparam->bottom(0));
   delete caff;
 }
 
@@ -347,7 +347,7 @@ TEST(caffelib,configure_convnet_template_2)
   std::vector<std::string> layers = {"1CR64","1CR128","1000"};
   APIData ad;
   ad.add("layers",layers);
-  ad.add("activation","prelu");
+  ad.add("activation",std::string("prelu"));
   ad.add("dropout",0.2);
   ad.add("nclasses",nclasses);
 
@@ -375,7 +375,7 @@ TEST(caffelib,configure_convnet_template_2)
   lparam = net_param.mutable_layer(8);
   ASSERT_EQ("InnerProduct",lparam->type());
   ASSERT_EQ(1000,lparam->mutable_inner_product_param()->num_output());
-  ASSERT_EQ("ip1",lparam->bottom(0));
+  ASSERT_EQ("ip1_conv_0",lparam->bottom(0));
   lparam = net_param.mutable_layer(9);
   ASSERT_EQ("PReLU",lparam->type());
   lparam = net_param.mutable_layer(10);
@@ -405,7 +405,7 @@ TEST(caffelib,configure_convnet_template_2)
   dlparam = deploy_net_param.mutable_layer(7);
   ASSERT_EQ("InnerProduct",dlparam->type());
   ASSERT_EQ(1000,dlparam->mutable_inner_product_param()->num_output());
-  ASSERT_EQ("ip1",dlparam->bottom(0));
+  ASSERT_EQ("ip1_conv_0",dlparam->bottom(0));
   dlparam = deploy_net_param.mutable_layer(8);
   ASSERT_EQ("PReLU",dlparam->type());
   dlparam = deploy_net_param.mutable_layer(9);
@@ -424,7 +424,7 @@ TEST(caffelib,configure_convnet_template_3)
   std::vector<std::string> layers = {"2CR64"};
   APIData ad;
   ad.add("layers",layers);
-  ad.add("activation","prelu");
+  ad.add("activation",std::string("prelu"));
   ad.add("dropout",0.2);
   ad.add("nclasses",nclasses);
 
@@ -450,7 +450,7 @@ TEST(caffelib,configure_convnet_template_3)
   lparam = net_param.mutable_layer(7);
   ASSERT_EQ("InnerProduct",lparam->type());
   ASSERT_EQ(nclasses,lparam->mutable_inner_product_param()->num_output());
-  ASSERT_EQ("ip0",lparam->bottom(0));
+  ASSERT_EQ("ip0_conv_1",lparam->bottom(0));
   
   ASSERT_EQ(8,deploy_net_param.layer_size());
   caffe::LayerParameter *dlparam = deploy_net_param.mutable_layer(1);
@@ -468,7 +468,7 @@ TEST(caffelib,configure_convnet_template_3)
   dlparam = deploy_net_param.mutable_layer(6);
   ASSERT_EQ("InnerProduct",dlparam->type());
   ASSERT_EQ(nclasses,dlparam->mutable_inner_product_param()->num_output());
-  ASSERT_EQ("ip0",dlparam->bottom(0));
+  ASSERT_EQ("ip0_conv_1",dlparam->bottom(0));
   delete caff;
 }
 
@@ -480,7 +480,7 @@ TEST(caffelib,configure_convnet_template_n)
   std::vector<std::string> layers = {"2CR32","2CR64","2CR128","4096","1024"};
   APIData ad;
   ad.add("layers",layers);
-  ad.add("activation","prelu");
+  ad.add("activation",std::string("prelu"));
   ad.add("dropout",0.2);
   ad.add("nclasses",nclasses);
   ad.add("db",true);
@@ -507,7 +507,7 @@ TEST(caffelib,configure_convnet_template_n_1D)
   std::vector<std::string> layers = {"1CR256","1CR256","4CR256","1024","1024"};
   APIData ad;
   ad.add("layers",layers);
-  ad.add("activation","prelu");
+  ad.add("activation",std::string("prelu"));
   ad.add("dropout",0.2);
   ad.add("db",true);
   ad.add("nclasses",nclasses);
@@ -573,7 +573,7 @@ TEST(caffelib,configure_convnet_template_n_1D)
   ASSERT_EQ(3,lparam->mutable_convolution_param()->kernel_h());
   ASSERT_EQ(1,lparam->mutable_convolution_param()->kernel_w());
   delete caff;
-}*/
+}
 
 //TODO: lregression template
 
@@ -588,11 +588,12 @@ TEST(caffelib,configure_resnet_template_n_nt)
   std::vector<std::string> layers = {"Res50"};
   APIData ad;
   ad.add("layers",layers);
-  ad.add("activation","relu");
+  ad.add("activation",std::string("relu"));
   //ad.add("dropout",0.6);
   ad.add("nclasses",nclasses);
   
   CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel> *caff = new CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(CaffeModel());
+  caff->_logger = spdlog::stdout_logger_mt("test");
   caff->configure_resnet_template(ad,ImgCaffeInputFileConn(),net_param,deploy_net_param);
   
   caffe::WriteProtoToTextFile(net_param,oresnet_file);
@@ -600,7 +601,147 @@ TEST(caffelib,configure_resnet_template_n_nt)
   bool succ = caffe::ReadProtoFromTextFile(oresnet_file,&net_param);
   ASSERT_TRUE(succ);
 
-  ASSERT_EQ(274,net_param.layer_size());
-  ASSERT_EQ(272,deploy_net_param.layer_size());
+  ASSERT_EQ(278,net_param.layer_size());
+  ASSERT_EQ(276,deploy_net_param.layer_size());
   delete caff;
+}
+
+TEST(caffelib, configure_deeplabvgg16_diceloss)
+{
+  APIData ad;
+  ad.add("template",std::string("deeplab_vgg16"));
+  ad.add("loss",std::string("dice"));
+  APIData dice_param;
+  APIData dice_class_weighting;
+  dice_class_weighting.add("compute_on",std::string("batch"));
+  dice_class_weighting.add("weight",std::string("equalize_classes"));
+  dice_param.add("class_weighting",dice_class_weighting);
+  APIData dice_contour;
+  dice_contour.add("shape",std::string("simple"));
+  dice_contour.add("size",3);
+  dice_contour.add("amplitude",20.5);
+  dice_param.add("contour",dice_contour);
+  ad.add("dice_param",dice_param);
+  ad.add("ignore_label",0);
+  ad.add("templates",std::string("../templates/caffe"));
+  ad.add("repository",std::string("./"));
+  ad.add("nclasses",2);
+  ad.add("segmentation",true);
+  CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel> *caff = new CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(CaffeModel(ad));
+  caff->_logger = spdlog::stdout_logger_mt("UT-deeplab_vgg16");
+  caff->_inputc.init(ad);
+  caff->init_mllib(ad);
+  caff->instantiate_template(ad);
+  caff->_loss = 1;
+
+  caffe::NetParameter net_param, deploy_net_param;
+  bool succ = caffe::ReadProtoFromTextFile("./deeplab_vgg16.prototxt",&net_param);
+  ASSERT_TRUE(succ);
+
+  bool found = false;
+  int k = net_param.layer_size();
+  caffe::LayerParameter *lparam;
+  for (int l=k-1;l>0;l--)
+    {
+      lparam = net_param.mutable_layer(l);
+      if (lparam->type() == "DiceCoefLoss")
+        {
+          found = true;
+          break;
+        }
+    }
+  ASSERT_TRUE(found);
+
+  const caffe::DiceCoefLossParameter &clp = lparam->dice_coef_loss_param();
+  ASSERT_TRUE(clp.generalization() == caffe::DiceCoefLossParameter::NONE);
+  ASSERT_TRUE(clp.contour_shape() == caffe::DiceCoefLossParameter::SIMPLE);
+  ASSERT_TRUE(clp.contour_size() == 3);
+  ASSERT_TRUE(clp.contour_amplitude() == 20.5);
+
+
+  remove("./deeplab_vgg16.prototxt");
+  remove("./deeplab_vgg16_solver.prototxt");
+  remove("./deploy.prototxt");
+}
+
+TEST(caffelib,configure_service_images_autoenc_geometry)
+{
+  APIData adg;
+  adg.add("all_effects",false);
+  adg.add("persp_horizontal",true);
+  adg.add("persp_vertical",false);
+  adg.add("zoom_in",true);
+  adg.add("zoom_out",true);
+  adg.add("pad_mode",std::string("mirrored"));
+  adg.add("prob",0.1);
+  APIData ad;
+  ad.add("template",std::string("convnet"));
+  std::vector<std::string> net = {"1CR32","1CR64","1CR128","DR128","1CR128","DR64","1CR64","DR32","1CR32"};
+  ad.add("layers", net);
+  ad.add("activation",std::string("relu"));
+  ad.add("autoencoder",true);
+  ad.add("geometry",adg);
+  ad.add("templates",std::string("../templates/caffe"));
+  ad.add("repository",std::string("./"));
+  ad.add("width",224);
+  ad.add("height",224);
+
+  CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel> *caff = new CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(CaffeModel(ad));
+  caff->_logger = spdlog::stdout_logger_mt("UT-geom");
+  caff->_inputc.init(ad);
+  //caff->init_mllib(ad);
+  caff->instantiate_template(ad);
+
+
+  caffe::NetParameter net_param;
+  std::string prototxt = "convnet.prototxt";;
+  bool succ = caffe::ReadProtoFromTextFile(prototxt,&net_param);
+  ASSERT_TRUE(succ);
+
+
+  caffe::LayerParameter *lparam = net_param.mutable_layer(0);
+  caffe::GeometryParameter gparam = lparam->transform_param().geometry_param();
+  ASSERT_FLOAT_EQ(gparam.prob(), 0.1);
+  ASSERT_EQ(gparam.persp_horizontal(),true);
+  ASSERT_EQ(gparam.persp_vertical(),false);
+  ASSERT_EQ(gparam.zoom_out(),true);
+  ASSERT_EQ(gparam.zoom_in(),true);
+  ASSERT_EQ(gparam.pad_mode(),caffe::GeometryParameter_Pad_mode_MIRRORED);
+  remove("./convnet.prototxt");
+  remove("./convnet_solver.prototxt");
+  remove("./deploy.prototxt");
+
+}
+
+TEST(caffelib, configure_unet_diceloss)
+{
+  APIData ad;
+  ad.add("template",std::string("unet"));
+  ad.add("loss",std::string("dice"));
+  ad.add("templates",std::string("../templates/caffe"));
+  ad.add("repository",std::string("./"));
+  ad.add("nclasses",2);
+  ad.add("segmentation",true);
+  CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel> *caff = new CaffeLib<ImgCaffeInputFileConn,SupervisedOutput,CaffeModel>(CaffeModel(ad));
+  caff->_logger = spdlog::stdout_logger_mt("UT-unet");
+  caff->_inputc.init(ad);
+  caff->init_mllib(ad);
+  caff->instantiate_template(ad);
+  caff->_loss = 1;
+
+  caffe::NetParameter net_param, deploy_net_param;
+  bool succ = caffe::ReadProtoFromTextFile("./unet.prototxt",&net_param);
+  ASSERT_TRUE(succ);
+
+  bool found = false;
+  int k = net_param.layer_size();
+
+  for (int l=k-1;l>0;l--)
+    {
+      caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+      if (lparam->type() == "DiceCoefLoss")
+        found = true;
+    }
+  ASSERT_TRUE(found);
+
 }

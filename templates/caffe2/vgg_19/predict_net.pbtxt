@@ -1,0 +1,614 @@
+name: "VGG_ILSVRC_19_layers"
+op {
+  input: "data"
+  input: "conv1_1_w"
+  input: "conv1_1_b"
+  output: "conv1_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv1_1"
+  output: "conv1_1"
+  type: "Relu"
+}
+op {
+  input: "conv1_1"
+  input: "conv1_2_w"
+  input: "conv1_2_b"
+  output: "conv1_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv1_2"
+  output: "conv1_2"
+  type: "Relu"
+}
+op {
+  input: "conv1_2"
+  output: "pool1"
+  type: "MaxPool"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 2
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "pool1"
+  input: "conv2_1_w"
+  input: "conv2_1_b"
+  output: "conv2_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv2_1"
+  output: "conv2_1"
+  type: "Relu"
+}
+op {
+  input: "conv2_1"
+  input: "conv2_2_w"
+  input: "conv2_2_b"
+  output: "conv2_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv2_2"
+  output: "conv2_2"
+  type: "Relu"
+}
+op {
+  input: "conv2_2"
+  output: "pool2"
+  type: "MaxPool"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 2
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "pool2"
+  input: "conv3_1_w"
+  input: "conv3_1_b"
+  output: "conv3_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv3_1"
+  output: "conv3_1"
+  type: "Relu"
+}
+op {
+  input: "conv3_1"
+  input: "conv3_2_w"
+  input: "conv3_2_b"
+  output: "conv3_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv3_2"
+  output: "conv3_2"
+  type: "Relu"
+}
+op {
+  input: "conv3_2"
+  input: "conv3_3_w"
+  input: "conv3_3_b"
+  output: "conv3_3"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv3_3"
+  output: "conv3_3"
+  type: "Relu"
+}
+op {
+  input: "conv3_3"
+  input: "conv3_4_w"
+  input: "conv3_4_b"
+  output: "conv3_4"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv3_4"
+  output: "conv3_4"
+  type: "Relu"
+}
+op {
+  input: "conv3_4"
+  output: "pool3"
+  type: "MaxPool"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 2
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "pool3"
+  input: "conv4_1_w"
+  input: "conv4_1_b"
+  output: "conv4_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv4_1"
+  output: "conv4_1"
+  type: "Relu"
+}
+op {
+  input: "conv4_1"
+  input: "conv4_2_w"
+  input: "conv4_2_b"
+  output: "conv4_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv4_2"
+  output: "conv4_2"
+  type: "Relu"
+}
+op {
+  input: "conv4_2"
+  input: "conv4_3_w"
+  input: "conv4_3_b"
+  output: "conv4_3"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv4_3"
+  output: "conv4_3"
+  type: "Relu"
+}
+op {
+  input: "conv4_3"
+  input: "conv4_4_w"
+  input: "conv4_4_b"
+  output: "conv4_4"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv4_4"
+  output: "conv4_4"
+  type: "Relu"
+}
+op {
+  input: "conv4_4"
+  output: "pool4"
+  type: "MaxPool"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 2
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "pool4"
+  input: "conv5_1_w"
+  input: "conv5_1_b"
+  output: "conv5_1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv5_1"
+  output: "conv5_1"
+  type: "Relu"
+}
+op {
+  input: "conv5_1"
+  input: "conv5_2_w"
+  input: "conv5_2_b"
+  output: "conv5_2"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv5_2"
+  output: "conv5_2"
+  type: "Relu"
+}
+op {
+  input: "conv5_2"
+  input: "conv5_3_w"
+  input: "conv5_3_b"
+  output: "conv5_3"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv5_3"
+  output: "conv5_3"
+  type: "Relu"
+}
+op {
+  input: "conv5_3"
+  input: "conv5_4_w"
+  input: "conv5_4_b"
+  output: "conv5_4"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "conv5_4"
+  output: "conv5_4"
+  type: "Relu"
+}
+op {
+  input: "conv5_4"
+  output: "pool5"
+  type: "MaxPool"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 2
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "pool5"
+  input: "fc6_w"
+  input: "fc6_b"
+  output: "fc6"
+  type: "FC"
+}
+op {
+  input: "fc6"
+  output: "fc6"
+  type: "Relu"
+}
+op {
+  input: "fc6"
+  output: "fc6"
+  output: "_fc6_mask"
+  type: "Dropout"
+  arg {
+    name: "ratio"
+    f: 0.5
+  }
+  arg {
+    name: "is_test"
+    i: 1
+  }
+}
+op {
+  input: "fc6"
+  input: "fc7_w"
+  input: "fc7_b"
+  output: "fc7"
+  type: "FC"
+}
+op {
+  input: "fc7"
+  output: "fc7"
+  type: "Relu"
+}
+op {
+  input: "fc7"
+  output: "fc7"
+  output: "_fc7_mask"
+  type: "Dropout"
+  arg {
+    name: "ratio"
+    f: 0.5
+  }
+  arg {
+    name: "is_test"
+    i: 1
+  }
+}
+op {
+  input: "fc7"
+  input: "fc8_w"
+  input: "fc8_b"
+  output: "fc8"
+  type: "FC"
+}
+op {
+  input: "fc8"
+  output: "prob"
+  type: "Softmax"
+}
+external_input: "data"
+external_input: "conv1_1_w"
+external_input: "conv1_1_b"
+external_input: "conv1_2_w"
+external_input: "conv1_2_b"
+external_input: "conv2_1_w"
+external_input: "conv2_1_b"
+external_input: "conv2_2_w"
+external_input: "conv2_2_b"
+external_input: "conv3_1_w"
+external_input: "conv3_1_b"
+external_input: "conv3_2_w"
+external_input: "conv3_2_b"
+external_input: "conv3_3_w"
+external_input: "conv3_3_b"
+external_input: "conv3_4_w"
+external_input: "conv3_4_b"
+external_input: "conv4_1_w"
+external_input: "conv4_1_b"
+external_input: "conv4_2_w"
+external_input: "conv4_2_b"
+external_input: "conv4_3_w"
+external_input: "conv4_3_b"
+external_input: "conv4_4_w"
+external_input: "conv4_4_b"
+external_input: "conv5_1_w"
+external_input: "conv5_1_b"
+external_input: "conv5_2_w"
+external_input: "conv5_2_b"
+external_input: "conv5_3_w"
+external_input: "conv5_3_b"
+external_input: "conv5_4_w"
+external_input: "conv5_4_b"
+external_input: "fc6_w"
+external_input: "fc6_b"
+external_input: "fc7_w"
+external_input: "fc7_b"
+external_input: "fc8_w"
+external_input: "fc8_b"
+external_output: "prob"

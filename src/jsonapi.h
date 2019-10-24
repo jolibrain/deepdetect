@@ -42,6 +42,12 @@ namespace dd
     int boot(int argc, char *argv[]);
 
     /**
+     * \brief service autostart from JSON file
+     * @param autostart_file JSON file with service API call and JSON body
+     */
+    JDoc service_autostart(const std::string &autostart_file, const bool &no_exit_on_failure = true);
+    
+    /**
      * \brief error status generation
      * @param jst JSON document object
      * @param code error HTTP code
@@ -56,11 +62,11 @@ namespace dd
     // errors
     JDoc dd_ok_200() const;
     JDoc dd_created_201() const;
-    JDoc dd_bad_request_400() const;
+    JDoc dd_bad_request_400(const std::string &msg="") const;
     JDoc dd_forbidden_403() const;
     JDoc dd_not_found_404() const;
     JDoc dd_conflict_409() const;
-    JDoc dd_internal_error_500() const;
+    JDoc dd_internal_error_500(const std::string &msg="") const;
 
     // specific errors
     JDoc dd_unknown_library_1000() const;
@@ -68,11 +74,15 @@ namespace dd
     JDoc dd_service_not_found_1002() const;
     JDoc dd_job_not_found_1003() const;
     JDoc dd_input_connector_not_found_1004() const;
-    JDoc dd_service_input_bad_request_1005() const;
-    JDoc dd_service_bad_request_1006() const;
+    JDoc dd_service_input_bad_request_1005(const std::string &what="") const;
+    JDoc dd_service_bad_request_1006(const std::string &what="") const;
     JDoc dd_internal_mllib_error_1007(const std::string &what) const;
     JDoc dd_train_predict_conflict_1008() const;
     JDoc dd_output_connector_network_error_1009() const;
+    JDoc dd_sim_index_error_1010() const;
+    JDoc dd_sim_search_error_1011() const;
+    JDoc dd_action_bad_request_1012(const std::string &what="") const;
+    JDoc dd_action_internal_error_1013(const std::string &what="") const;
     
     // JSON rendering
     std::string jrender(const JDoc &jst) const;
@@ -80,7 +90,7 @@ namespace dd
 
     // resources
     // return a JSON document for every API call
-    JDoc info() const;
+    JDoc info(const std::string &jstr) const;
     JDoc service_create(const std::string &sname, const std::string &jstr);
     JDoc service_status(const std::string &sname);
     JDoc service_delete(const std::string &sname,
@@ -92,32 +102,48 @@ namespace dd
     JDoc service_train_status(const std::string &jstr);
     JDoc service_train_delete(const std::string &jstr);
 
+    JDoc service_chain(const std::string &cname, const std::string &jstr);
+    
     static int store_json_blob(const std::string &model_repo,
-			       const std::string &jstr);
+			       const std::string &jstr,
+			       const std::string &jfilename="");
 
+    static int store_json_config_blob(const std::string &model_repo,
+				      const std::string &jstr);
+
+    static int read_json_blob(const std::string &model_repo,
+			      const std::string &jfilename,
+			      APIData &ad);
+
+    static void read_metrics_json(const std::string &model_repo,
+				  APIData &ad);
+    
     static std::string _json_blob_fname;
+    static std::string _json_config_blob_fname;
+    //std::string _mrepo; /**< service file repository */
   };
 
   /**
    * \brief visitor class for service info call
    */
-  class visitor_info : public mapbox::util::static_visitor<APIData>
+  class visitor_info
   {
   public:
-    visitor_info() {}
+    visitor_info(const bool &status):_status(status) {}
     ~visitor_info() {}
 
     template<typename T>
       APIData operator() (T &mllib)
       {
-	return mllib.info();
+	return mllib.info(_status);
       }
+    bool _status = false;
   };
 
   /**
    * \brief visitor class for service status call
    */
-  class visitor_status : public mapbox::util::static_visitor<APIData>
+  class visitor_status
   {
   public:
     visitor_status() {}

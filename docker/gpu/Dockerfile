@@ -1,5 +1,4 @@
-#FROM nvidia/cuda:7.5-cudnn4-devel
-FROM nvidia/cuda
+FROM nvidia/cuda:8.0-cudnn7-devel
 
 RUN echo 'building GPU DeepDetect image'
 
@@ -12,7 +11,7 @@ RUN ln -sf /dev/stderr /var/log/deepdetect.log
 
 RUN useradd -ms /bin/bash dd
 
-RUN apt-get update && apt-get install -y git cmake build-essential libgoogle-glog-dev libgflags-dev libeigen3-dev libopencv-dev libcppnetlib-dev libboost-dev libboost-iostreams-dev libcurl4-openssl-dev protobuf-compiler libopenblas-dev libhdf5-dev libprotobuf-dev libleveldb-dev libsnappy-dev liblmdb-dev libutfcpp-dev wget unzip
+RUN apt-get update && apt-get install -y git cmake build-essential libgoogle-glog-dev libgflags-dev libeigen3-dev libopencv-dev libcppnetlib-dev libboost-dev libboost-iostreams-dev libcurl4-openssl-dev protobuf-compiler libopenblas-dev libhdf5-dev libprotobuf-dev libleveldb-dev libsnappy-dev liblmdb-dev libutfcpp-dev wget unzip libspdlog-dev python-setuptools python-dev libarchive-dev
 
 WORKDIR /opt
 RUN git clone https://github.com/jpbarrette/curlpp.git
@@ -25,7 +24,7 @@ WORKDIR /opt
 RUN git clone https://github.com/beniz/deepdetect.git && cd deepdetect && mkdir build
 
 WORKDIR /opt/deepdetect/build
-RUN cmake .. -DUSE_CUDNN=ON -DUSE_XGBOOST=ON
+RUN cmake .. -DUSE_CUDNN=ON -DUSE_XGBOOST=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DCUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_53,code=sm_53 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_62,code=sm_62"
 RUN make
 
 # external volume to be mapped, e.g. for models or training data
@@ -37,6 +36,7 @@ RUN mkdir /opt/models
 WORKDIR /opt/models
 RUN mkdir ggnet && cd ggnet && wget http://www.deepdetect.com/models/ggnet/bvlc_googlenet.caffemodel
 RUN mkdir resnet_50 && cd resnet_50 && wget http://www.deepdetect.com/models/resnet/ResNet-50-model.caffemodel && wget http://www.deepdetect.com/models/resnet/ResNet_mean.binaryproto
+RUN mv /opt/models/resnet_50/ResNet_mean.binaryproto /opt/models/resnet_50/mean.binaryproto
 RUN cp /opt/deepdetect/datasets/imagenet/corresp_ilsvrc12.txt /opt/models/ggnet/corresp.txt
 RUN cp /opt/deepdetect/datasets/imagenet/corresp_ilsvrc12.txt /opt/models/resnet_50/corresp.txt
 RUN cp /opt/deepdetect/templates/caffe/googlenet/*prototxt /opt/models/ggnet/

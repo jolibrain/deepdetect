@@ -27,6 +27,7 @@
 #include "ext/rapidjson/rapidjson.h"
 #include "ext/rapidjson/stringbuffer.h"
 #include "ext/rapidjson/writer.h"
+#include <opencv2/core/core.hpp>
 #include "dd_types.h"
 #include <unordered_map>
 #include <vector>
@@ -38,8 +39,9 @@ namespace dd
   class APIData;
 
   // recursive variant container, see utils/variant.hpp and utils/recursive_wrapper.hpp
-  typedef mapbox::util::variant<std::string,double,int,bool,
+  typedef mapbox::util::variant<std::string,double,int,long int,long long int,bool,
     std::vector<std::string>,std::vector<double>,std::vector<int>,std::vector<bool>,
+    std::vector<cv::Mat>,std::vector<std::pair<int,int>>,
     mapbox::util::recursive_wrapper<APIData>,
     mapbox::util::recursive_wrapper<std::vector<APIData>>> ad_variant_type;
 
@@ -73,28 +75,32 @@ namespace dd
   /**
    * \brief visitor class for easy access to variant vector container
    */
-  class visitor_vad : public mapbox::util::static_visitor<vout>
+  class visitor_vad
   {
   public:
     visitor_vad() {}
     ~visitor_vad() {};
     
-    vout process(const std::string &str);
-    vout process(const double &d);
-    vout process(const int &i);
-    vout process(const bool &b);
-    vout process(const std::vector<double> &vd);
-    vout process(const std::vector<int> &vd);
-    vout process(const std::vector<bool> &vd);
-    vout process(const std::vector<std::string> &vs);
-    vout process(const APIData &ad);
-    vout process(const std::vector<APIData> &vad);
+    vout operator()(const std::string &str);
+    vout operator()(const double &d);
+    vout operator()(const int &i);
+    vout operator()(const long int &i);
+    vout operator()(const long long int &i);
+    vout operator()(const bool &b);
+    vout operator()(const std::vector<double> &vd);
+    vout operator()(const std::vector<int> &vd);
+    vout operator()(const std::vector<bool> &vd);
+    vout operator()(const std::vector<std::string> &vs);
+    vout operator()(const std::vector<cv::Mat> &vcv);
+    vout operator()(const std::vector<std::pair<int,int>> &vpi);
+    vout operator()(const APIData &ad);
+    vout operator()(const std::vector<APIData> &vad);
     
-    template<typename T>
+    /*template<typename T>
       vout operator() (const T &t)
       {
 	return process(t);
-      }
+	}*/
   };
 
   /**
@@ -158,7 +164,7 @@ namespace dd
       std::unordered_map<std::string,ad_variant_type>::const_iterator hit;
       if ((hit=_data.find(key))!=_data.end())
 	return (*hit).second;
-      else return ""; // beware
+      else return std::string(); // beware
     }
     
     /**
@@ -288,7 +294,7 @@ namespace dd
   /**
    * \brief visitor class for conversion to JSON
    */
-  class visitor_rjson : public mapbox::util::static_visitor<>
+  class visitor_rjson
   {
   public:    
     visitor_rjson(JDoc *jd):_jd(jd) {}
@@ -302,31 +308,43 @@ namespace dd
       _jvkey.SetString(key.c_str(),_jd->GetAllocator());
     }
 
-    void process(const std::string &str)
+    void operator()(const std::string &str)
     {
       if (!_jv)
 	_jd->AddMember(_jvkey,JVal().SetString(str.c_str(),_jd->GetAllocator()),_jd->GetAllocator());
       else _jv->AddMember(_jvkey,JVal().SetString(str.c_str(),_jd->GetAllocator()),_jd->GetAllocator());
     }
-    void process(const int &i)
+    void operator()(const int &i)
     {
       if (!_jv)
 	_jd->AddMember(_jvkey,JVal(i),_jd->GetAllocator());
       else _jv->AddMember(_jvkey,JVal(i),_jd->GetAllocator());
     }
-    void process(const double &d)
+    void operator()(const long int &i)
+    {
+      if (!_jv)
+	_jd->AddMember(_jvkey,JVal(static_cast<uint64_t>(i)),_jd->GetAllocator());
+      else _jv->AddMember(_jvkey,JVal(static_cast<uint64_t>(i)),_jd->GetAllocator());
+    }
+    void operator()(const long long int &i)
+    {
+      if (!_jv)
+	_jd->AddMember(_jvkey,JVal(static_cast<uint64_t>(i)),_jd->GetAllocator());
+      else _jv->AddMember(_jvkey,JVal(static_cast<uint64_t>(i)),_jd->GetAllocator());
+    }
+    void operator()(const double &d)
     {
       if (!_jv)
 	_jd->AddMember(_jvkey,JVal(d),_jd->GetAllocator());
       else _jv->AddMember(_jvkey,JVal(d),_jd->GetAllocator());
     }
-    void process(const bool &b)
+    void operator()(const bool &b)
     {
       if (!_jv)
 	_jd->AddMember(_jvkey,JVal(b),_jd->GetAllocator());
       else _jv->AddMember(_jvkey,JVal(b),_jd->GetAllocator());
     }
-    void process(const APIData &ad)
+    void operator()(const APIData &ad)
     {
       JVal jv(rapidjson::kObjectType); 
       visitor_rjson vrj(_jd,&jv);
@@ -341,7 +359,7 @@ namespace dd
 	_jd->AddMember(_jvkey,jv,_jd->GetAllocator());
       else _jv->AddMember(_jvkey,jv,_jd->GetAllocator());
     }
-    void process(const std::vector<double> &vd)
+    void operator()(const std::vector<double> &vd)
     {
       JVal jarr(rapidjson::kArrayType);
       for (size_t i=0;i<vd.size();i++)
@@ -352,7 +370,7 @@ namespace dd
 	_jd->AddMember(_jvkey,jarr,_jd->GetAllocator());
       else _jv->AddMember(_jvkey,jarr,_jd->GetAllocator());
     }
-    void process(const std::vector<int> &vd)
+    void operator()(const std::vector<int> &vd)
     {
       JVal jarr(rapidjson::kArrayType);
       for (size_t i=0;i<vd.size();i++)
@@ -363,7 +381,7 @@ namespace dd
 	_jd->AddMember(_jvkey,jarr,_jd->GetAllocator());
       else _jv->AddMember(_jvkey,jarr,_jd->GetAllocator());
     }
-    void process(const std::vector<bool> &vd)
+    void operator()(const std::vector<bool> &vd)
     {
       JVal jarr(rapidjson::kArrayType);
       for (size_t i=0;i<vd.size();i++)
@@ -374,7 +392,7 @@ namespace dd
 	_jd->AddMember(_jvkey,jarr,_jd->GetAllocator());
       else _jv->AddMember(_jvkey,jarr,_jd->GetAllocator());
     }
-    void process(const std::vector<std::string> &vs)
+    void operator()(const std::vector<std::string> &vs)
     {
       JVal jarr(rapidjson::kArrayType);
       for (size_t i=0;i<vs.size();i++)
@@ -385,7 +403,17 @@ namespace dd
 	_jd->AddMember(_jvkey,jarr,_jd->GetAllocator());
       else _jv->AddMember(_jvkey,jarr,_jd->GetAllocator());
     }
-    void process(const std::vector<APIData> &vad)
+    void operator()(const std::vector<cv::Mat> &vcv)
+    {
+      (void)vcv;
+      // Not Implemented
+    }
+    void operator()(const std::vector<std::pair<int,int>> &vpi)
+    {
+      (void)vpi;
+      // Not Implemented
+    }
+    void operator()(const std::vector<APIData> &vad)
     {
       JVal jov(rapidjson::kObjectType);
       jov = JVal(rapidjson::kArrayType);
@@ -408,11 +436,11 @@ namespace dd
       else _jv->AddMember(_jvkey,jov,_jd->GetAllocator());
     }
 
-    template<typename T>
+    /*template<typename T>
       void operator() (T &t)
       {
 	process(t);
-      }
+	}*/
 
     JVal _jvkey;
     JDoc *_jd = nullptr;

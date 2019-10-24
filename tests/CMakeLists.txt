@@ -1,89 +1,62 @@
-include_directories(${Boost_INCLUDE_DIRS})# ${PROTOBUF_INCLUDE_DIRS})
-if (CUDA_FOUND)
-  set(CUDA_LIB_DEPS ${CUDA_LIBRARIES})
-else()
-  set(CUDA_LIB_DEPS "")
-  add_definitions(-DCPU_ONLY)
-endif()
-set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lhdf5_hl -lhdf5 -lopenblas -lcaffe -lprotobuf)
-if (USE_TF)
-  set(TF_LIB_DEPS -ltensorflow ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/tensorflow/bazel-out/local_linux-opt/bin/tensorflow/cc/libcc_ops.lo ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/tensorflow/bazel-out/local_linux-opt/bin/tensorflow/cc/libconst_op.a ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/tensorflow/bazel-out/local_linux-opt/bin/tensorflow/cc/libops.a ${CMAKE_BINARY_DIR}/tensorflow/src/tensorflow/dbuild/execroot/tensorflow/bazel-out/local_linux-opt/bin/tensorflow/cc/libscope.a tcmalloc_minimal)
-else()
-  set(TF_LIB_DEPS)
-endif()
-link_directories(${CAFFE_LIB_DIR})
-link_directories(${TF_LIB_DIR})
-link_directories(${XGBOOST_LIB_DIR})
-link_directories(${TSNE_LIB_DIR})
-
-if (USE_XGBOOST)
-  if (CUDA_FOUND AND USE_XGBOOST_GPU)
-    set(XGBOOST_LIB_DEPS -Wl,--whole-archive ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/liblibxgboost.a -Wl,--no-whole-archive ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/dmlc-core/libdmlc.a ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/librabit.a ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/libupdater_gpu.a)
-  else()
-    set(XGBOOST_LIB_DEPS -Wl,--whole-archive ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/liblibxgboost.a -Wl,--no-whole-archive ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/dmlc-core/libdmlc.a ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/librabit.a)
-  endif()
-else()
-  set(XGBOOST_LIB_DEPS)
-endif()
-
-if (USE_TSNE)
-  set(TSNE_LIB_DEPS -ltsne_multicore)
-endif()
+include_directories(${COMMON_INCLUDE_DIRS})
+link_directories(${COMMON_LINK_DIRS})
 
 find_package(GTest)
 include_directories(${GTEST_INCLUDE_DIRS})
+
+# Optional libraries can be passed (stored in ARGN)
+function (REGISTER_TEST _NAME _FILE)
+  add_executable(${_NAME} ${_FILE})
+  target_link_libraries(${_NAME} ${COMMON_LINK_LIBS} gtest gtest_main ${ARGN})
+  add_test(NAME ${_NAME} COMMAND ${_NAME})
+endfunction ()
+
+find_package(PythonInterp 2.7 REQUIRED)
+
 if (GTEST_FOUND)
-  add_executable(ut_apidata ut-apidata.cc)
-  target_link_libraries(ut_apidata ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
-  add_test(
-    NAME ut_apidata
-    COMMAND ut_apidata
-    )
-  
-  add_executable(ut_conn ut-conn.cc)
-  target_link_libraries(ut_conn ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
-  add_test(
-    NAME ut_conn
-    COMMAND ut_conn
-    )
-  
-  add_executable(ut_jsonapi ut-jsonapi.cc)
-  target_link_libraries(ut_jsonapi ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
-  add_test(
-    NAME ut_jsonapi
-    COMMAND ut_jsonapi
-    )
+  if (USE_JSON_API)
+    REGISTER_TEST(ut_apidata ut-apidata.cc)
+  endif()
+  if (USE_CAFFE)
+    if (USE_JSON_API)
+      REGISTER_TEST(ut_conn ut-conn.cc)
+      REGISTER_TEST(ut_jsonapi ut-jsonapi.cc)
+    endif()
+  endif()
 
   if (USE_TF)
     add_executable(opencv_tensor opencv_tensor.cc)
-    target_link_libraries(opencv_tensor ${OpenCV_LIBS} boost_thread boost_system crypto ssl ${TF_LIB_DEPS})
+    if (USE_HDF5)
+      target_link_libraries(opencv_tensor ${OpenCV_LIBS} boost_thread boost_system crypto ssl hdf5_cpp ${TF_LIB_DEPS})
+    else()
+      target_link_libraries(opencv_tensor ${OpenCV_LIBS} boost_thread boost_system crypto ssl ${TF_LIB_DEPS})
+    endif()
   endif()
-  
+
   add_executable(test_server test-server.cc)
   target_link_libraries(test_server boost_thread cppnetlib-uri cppnetlib-client-connections boost_system crypto ssl)
 
-  add_executable(ut_caffe_mlp ut-caffe-mlp.cc)
-  target_link_libraries(ut_caffe_mlp ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
-  add_test(
-    NAME ut_caffe_mlp
-    COMMAND ut_caffe_mlp
-    )
+  if (USE_CAFFE)
+    REGISTER_TEST(ut_caffe_mlp ut-caffe-mlp.cc)
+  endif()
 
-  set(MNIST_EXAMPLE_PATH "examples/caffe/mnist/")
-  set(MNIST_EXAMPLE_TRAIN_ARCHIVE "mnist_train_lmdb.tar.bz2")
-  set(MNIST_EXAMPLE_TEST_ARCHIVE "mnist_test_lmdb.tar.bz2")
-  set(MNIST_EXAMPLE_TRAIN_OUT "mnist_train_lmdb")
-  set(MNIST_EXAMPLE_TEST_OUT "mnist_test_lmdb")
-  set(MNIST_EXAMPLE_TRAIN_OUT_T "train.lmdb")
-  set(MNIST_EXAMPLE_TEST_OUT_T "test.lmdb")
-  if (NOT EXISTS "${MNIST_EXAMPLE_PATH}${MNIST_EXAMPLE_TRAIN_ARCHIVE}")
-    message(STATUS "Downloading MNIST dataset")
-    file(DOWNLOAD "http://www.deepdetect.com/dd/examples/caffe/mnist/mnist_train_lmdb.tar.bz2" "${MNIST_EXAMPLE_PATH}/${MNIST_EXAMPLE_TRAIN_ARCHIVE}")
-    file(DOWNLOAD "http://www.deepdetect.com/dd/examples/caffe/mnist/mnist_test_lmdb.tar.bz2" "${MNIST_EXAMPLE_PATH}/${MNIST_EXAMPLE_TEST_ARCHIVE}")
-    execute_process(COMMAND ${CMAKE_COMMAND} -E tar xvjf ${MNIST_EXAMPLE_PATH}${MNIST_EXAMPLE_TRAIN_ARCHIVE} -C ${MNIST_EXAMPLE_PATH}) # XXX: output directory doesn't work here, maybe because of special cmake handling
-    execute_process(COMMAND ${CMAKE_COMMAND} -E tar xvjf ${MNIST_EXAMPLE_PATH}${MNIST_EXAMPLE_TEST_ARCHIVE} -C ${MNIST_EXAMPLE_PATH})
-    execute_process(COMMAND ${CMAKE_COMMAND} -E rename ${MNIST_EXAMPLE_TRAIN_OUT} ${MNIST_EXAMPLE_PATH}${MNIST_EXAMPLE_TRAIN_OUT_T})
-    execute_process(COMMAND ${CMAKE_COMMAND} -E rename ${MNIST_EXAMPLE_TEST_OUT} ${MNIST_EXAMPLE_PATH}${MNIST_EXAMPLE_TEST_OUT_T})
+  if (USE_CAFFE)
+    set(MNIST_EXAMPLE_PATH "examples/caffe/mnist/")
+    set(MNIST_EXAMPLE_TRAIN_ARCHIVE "mnist_train_lmdb.tar.bz2")
+    set(MNIST_EXAMPLE_TEST_ARCHIVE "mnist_test_lmdb.tar.bz2")
+    set(MNIST_EXAMPLE_TRAIN_OUT "mnist_train_lmdb")
+    set(MNIST_EXAMPLE_TEST_OUT "mnist_test_lmdb")
+    set(MNIST_EXAMPLE_TRAIN_OUT_T "train.lmdb")
+    set(MNIST_EXAMPLE_TEST_OUT_T "test.lmdb")
+    if (NOT EXISTS "${MNIST_EXAMPLE_PATH}${MNIST_EXAMPLE_TRAIN_ARCHIVE}")
+      message(STATUS "Downloading MNIST dataset")
+      file(DOWNLOAD "http://www.deepdetect.com/dd/examples/caffe/mnist/mnist_train_lmdb.tar.bz2" "${MNIST_EXAMPLE_PATH}/${MNIST_EXAMPLE_TRAIN_ARCHIVE}")
+      file(DOWNLOAD "http://www.deepdetect.com/dd/examples/caffe/mnist/mnist_test_lmdb.tar.bz2" "${MNIST_EXAMPLE_PATH}/${MNIST_EXAMPLE_TEST_ARCHIVE}")
+      execute_process(COMMAND ${CMAKE_COMMAND} -E tar xvjf ${MNIST_EXAMPLE_PATH}${MNIST_EXAMPLE_TRAIN_ARCHIVE} -C ${MNIST_EXAMPLE_PATH}) # XXX: output directory doesn't work here, maybe because of special cmake handling
+      execute_process(COMMAND ${CMAKE_COMMAND} -E tar xvjf ${MNIST_EXAMPLE_PATH}${MNIST_EXAMPLE_TEST_ARCHIVE} -C ${MNIST_EXAMPLE_PATH})
+      execute_process(COMMAND ${CMAKE_COMMAND} -E rename ${MNIST_EXAMPLE_TRAIN_OUT} ${MNIST_EXAMPLE_PATH}${MNIST_EXAMPLE_TRAIN_OUT_T})
+      execute_process(COMMAND ${CMAKE_COMMAND} -E rename ${MNIST_EXAMPLE_TEST_OUT} ${MNIST_EXAMPLE_PATH}${MNIST_EXAMPLE_TEST_OUT_T})
+    endif()
   endif()
 
   set(FOREST_EXAMPLE_PATH "examples/all/forest_type/")
@@ -103,14 +76,20 @@ if (GTEST_FOUND)
     file(DOWNLOAD "http://www.deepdetect.com/dd/examples/all/farm_ads/farm-ads.svm" "${FARM_EXAMPLE_PATH}${FARM_EXAMPLE_TRAIN_OUT}")
   endif()
 
-  set(PLANK_EXAMPLE_PATH "examples/caffe/plankton/")
-  set(PLANK_EXAMPLE_TRAIN_ARCHIVE "train.tar.bz2")
-  set(PLANK_EXAMPLE_TRAIN_OUT "train")
-  if (NOT EXISTS "${PLANK_EXAMPLE_PATH}${PLANK_EXAMPLE_TRAIN_ARCHIVE}")
-    message(STATUS "Downloading image test dataset")
-    file(DOWNLOAD "http://www.deepdetect.com/dd/examples/caffe/plankton/${PLANK_EXAMPLE_TRAIN_ARCHIVE}" "${PLANK_EXAMPLE_PATH}${PLANK_EXAMPLE_TRAIN_ARCHIVE}")
-    execute_process(COMMAND ${CMAKE_COMMAND} -E tar xvjf ${PLANK_EXAMPLE_PATH}${PLANK_EXAMPLE_TRAIN_ARCHIVE} -C ${PLANK_EXAMPLE_PATH})
-    execute_process(COMMAND ${CMAKE_COMMAND} -E rename ${PLANK_EXAMPLE_TRAIN_OUT} ${PLANK_EXAMPLE_PATH}${PLANK_EXAMPLE_TRAIN_OUT})
+  if (USE_CAFFE)
+    set(PLANK_EXAMPLE_PATH "examples/caffe/plankton/")
+    set(PLANK_EXAMPLE_TRAIN_ARCHIVE "train.tar.bz2")
+    set(PLANK_EXAMPLE_TRAIN_OUT "train")
+    if (NOT EXISTS "${PLANK_EXAMPLE_PATH}${PLANK_EXAMPLE_TRAIN_ARCHIVE}")
+      message(STATUS "Downloading image test dataset")
+      file(DOWNLOAD "http://www.deepdetect.com/dd/examples/caffe/plankton/${PLANK_EXAMPLE_TRAIN_ARCHIVE}" "${PLANK_EXAMPLE_PATH}${PLANK_EXAMPLE_TRAIN_ARCHIVE}")
+      execute_process(COMMAND ${CMAKE_COMMAND} -E tar xvjf ${PLANK_EXAMPLE_PATH}${PLANK_EXAMPLE_TRAIN_ARCHIVE} -C ${PLANK_EXAMPLE_PATH})
+      execute_process(COMMAND ${CMAKE_COMMAND} -E rename ${PLANK_EXAMPLE_TRAIN_OUT} ${PLANK_EXAMPLE_PATH}${PLANK_EXAMPLE_TRAIN_OUT})
+      execute_process(COMMAND ${CMAKE_COMMAND} -E rename file-lst-ml.txt ${PLANK_EXAMPLE_PATH}file-lst-ml.txt)
+      execute_process(COMMAND ${CMAKE_COMMAND} -E rename file-lst-test-ml.txt ${PLANK_EXAMPLE_PATH}file-lst-test-ml.txt)
+      execute_process(COMMAND ${CMAKE_COMMAND} -E rename file-lst.txt ${PLANK_EXAMPLE_PATH}file-lst.txt)
+      execute_process(COMMAND ${CMAKE_COMMAND} -E rename file-lst-test.txt ${PLANK_EXAMPLE_PATH}file-lst-test.txt)
+    endif()
   endif()
 
   set(N20_EXAMPLE_PATH "examples/all/n20/")
@@ -123,6 +102,16 @@ if (GTEST_FOUND)
     execute_process(COMMAND ${CMAKE_COMMAND} -E rename ${N20_EXAMPLE_TRAIN_OUT} ${N20_EXAMPLE_PATH}${N20_EXAMPLE_TRAIN_OUT})
   endif()
 
+  set(SINUS_EXAMPLE_PATH ${CMAKE_SOURCE_DIR}/examples/all/sinus/)
+  set(SINUS_EXAMPLE_OUT "examples/all/sinus")
+  set(SINUS_EXAMPLE_TRAIN_OUT "examples/all/sinus/train")
+  if (NOT EXISTS ${SINUS_EXAMPLE_TRAIN_OUT})
+    message(STATUS "Generating sinus data for time series tests ")
+    execute_process(COMMAND "mkdir ${SINUS_EXAMPLE_OUT} 2>/dev/null")
+    execute_process(COMMAND cp ${SINUS_EXAMPLE_PATH}/gen.py ${SINUS_EXAMPLE_OUT})
+    execute_process(COMMAND ${PYTHON_EXECUTABLE} ./gen.py WORKING_DIRECTORY ${SINUS_EXAMPLE_OUT})
+  endif()
+
   set(SFLARE_EXAMPLE_PATH "examples/all/sflare/")
   set(SFLARE_EXAMPLE_TRAIN_ARCHIVE "flare.csv")
   set(SFLARE_EXAMPLE_TRAIN_OUT "sflare")
@@ -130,21 +119,38 @@ if (GTEST_FOUND)
     message(STATUS "Downloading regression test model")
     file(DOWNLOAD "http://www.deepdetect.com/dd/examples/all/sflare/${SFLARE_EXAMPLE_TRAIN_ARCHIVE}" "${SFLARE_EXAMPLE_PATH}${SFLARE_EXAMPLE_TRAIN_ARCHIVE}")
   endif()
-  
-  add_executable(ut_caffeapi ut-caffeapi.cc)
-  target_link_libraries(ut_caffeapi ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
-  add_test(
-    NAME ut_caffeapi
-    COMMAND ut_caffeapi
-    )
-  
-  add_executable(ut_httpapi ut-httpapi.cc)
-  target_link_libraries(ut_httpapi ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS}  ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS} cppnetlib-uri curlpp curl crypto ssl)
-  add_test(
-    NAME ut_httpapi
-    COMMAND ut_httpapi
-    )
 
+  if (USE_CAFFE)
+    set(CAMVID_EXAMPLE_PATH "examples/caffe/camvid/")
+    set(CAMVID_EXAMPLE_TRAIN_ARCHIVE "camvid_square.tar.gz")
+    set(CAMVID_EXAMPLE_TRAIN_OUT "CamVid_square")
+    if (NOT EXISTS "${CAMVID_EXAMPLE_PATH}${CAMVID_EXAMPLE_TRAIN_ARCHIVE}")
+      message(STATUS "Downloading image segmentation dataset")
+      file(DOWNLOAD "http://www.deepdetect.com/dd/examples/caffe/camvid/${CAMVID_EXAMPLE_TRAIN_ARCHIVE}" "${CAMVID_EXAMPLE_PATH}${CAMVID_EXAMPLE_TRAIN_ARCHIVE}")
+      execute_process(COMMAND ${CMAKE_COMMAND} -E tar xvzf ${CAMVID_EXAMPLE_PATH}${CAMVID_EXAMPLE_TRAIN_ARCHIVE} -C ${CAMVID_EXAMPLE_PATH})
+      execute_process(COMMAND ${CMAKE_COMMAND} -E rename ${CAMVID_EXAMPLE_TRAIN_OUT} ${CAMVID_EXAMPLE_PATH}${CAMVID_EXAMPLE_TRAIN_OUT})
+    endif()
+
+    set(VOC_EXAMPLE_PATH "examples/caffe/voc/")
+    set(VOC_EXAMPLE_MODEL_ARCHIVE "voc0712_dd.tar.gz")
+    set(VOC_EXAMPLE_MODEL_OUT "voc")
+    if (NOT EXISTS "${VOC_EXAMPLE_PATH}${VOC_EXAMPLE_MODEL_ARCHIVE}")
+      message(STATUS "Downloading object detection test model")
+      file(DOWNLOAD "http://deepdetect.com/dd/examples/caffe/voc/${VOC_EXAMPLE_MODEL_ARCHIVE}" "${VOC_EXAMPLE_PATH}${VOC_EXAMPLE_MODEL_ARCHIVE}")
+      execute_process(COMMAND ${CMAKE_COMMAND} -E tar xvzf ${VOC_EXAMPLE_PATH}${VOC_EXAMPLE_MODEL_ARCHIVE} -C ${VOC_EXAMPLE_PATH})
+      execute_process(COMMAND ${CMAKE_COMMAND} -E rename ${VOC_EXAMPLE_MODEL_OUT} ${VOC_EXAMPLE_PATH}${VOC_EXAMPLE_MODEL_OUT})
+    endif()
+  endif()
+
+if (USE_CAFFE)  
+  if (USE_JSON_API)
+    REGISTER_TEST(ut_caffeapi ut-caffeapi.cc)
+  endif()
+  if (USE_HTTP_SERVER)
+    REGISTER_TEST(ut_httpapi ut-httpapi.cc ${HTTP_LINK_LIBS})
+  endif()
+endif()
+  
 if (USE_TF)
   set(INCEPT_EXAMPLE_PATH "examples/tf/inception/")
   set(INCEPT_EXAMPLE_MODEL_OUT "inception_v1.pb")
@@ -159,21 +165,143 @@ if (USE_TF)
     file(DOWNLOAD "http://www.deepdetect.com/models/tf/${INCEPT_CORRESP}" "${INCEPT_EXAMPLE_PATH}${INCEPT_CORRESP}")
   endif()
 
-  add_executable(ut_tfapi ut-tfapi.cc)
-  target_link_libraries(ut_tfapi ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main opencv_core opencv_highgui opencv_imgproc curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS} ${TF_LIB_DEPS} ${XGBOOST_LIB_DEPS} ${TSNE_LIB_DEPS})
-  add_test(
-    NAME ut_tfapi
-    COMMAND ut_tfapi
-    )
+  REGISTER_TEST(ut_tfapi ut-tfapi.cc)
 endif()
-  
+
+if (USE_DLIB)
+  set(FACE_EXAMPLE_PATH "examples/dlib/face/")
+  set(FACE_EXAMPLE_MODEL_OUT "mmod_human_face_detector.dat")
+  set(FACE_IMG1 "grace_hopper.jpg")
+  set(FACE_IMG2 "cat.jpg")
+  if (NOT EXISTS "${FACE_EXAMPLE_PATH}${FACE_EXAMPLE_MODEL_OUT}")
+    message(STATUS "Downloading Dlib test face model")
+    file(DOWNLOAD "http://dlib.net/files/${FACE_EXAMPLE_MODEL_OUT}.bz2" "${FACE_EXAMPLE_PATH}${FACE_EXAMPLE_MODEL_OUT}.bz2")
+    execute_process(COMMAND bzip2 -d ${FACE_EXAMPLE_PATH}${FACE_EXAMPLE_MODEL_OUT}.bz2)
+    file(DOWNLOAD "https://www.deepdetect.com/models/tf/${FACE_IMG1}" "${FACE_EXAMPLE_PATH}${FACE_IMG1}")
+    file(DOWNLOAD "https://www.deepdetect.com/models/tf/${FACE_IMG2}" "${FACE_EXAMPLE_PATH}${FACE_IMG2}")
+  endif()
+
+  set(OBJ_EXAMPLE_PATH "examples/dlib/obj/")
+  set(OBJ_EXAMPLE_MODEL_OUT "mmod_front_and_rear_end_vehicle_detector.dat")
+  set(OBJ_IMG1 "mmod_cars_test_image2.jpg")
+  if (NOT EXISTS "${OBJ_EXAMPLE_PATH}${OBJ_EXAMPLE_MODEL_OUT}")
+    message(STATUS "Downloading Dlib test object detector model")
+    file(DOWNLOAD "http://dlib.net/files/${OBJ_EXAMPLE_MODEL_OUT}.bz2" "${OBJ_EXAMPLE_PATH}${OBJ_EXAMPLE_MODEL_OUT}.bz2")
+    execute_process(COMMAND bzip2 -d ${OBJ_EXAMPLE_PATH}${OBJ_EXAMPLE_MODEL_OUT}.bz2)
+    file(DOWNLOAD "https://github.com/davisking/dlib/raw/master/examples/${OBJ_IMG1}" "${OBJ_EXAMPLE_PATH}${OBJ_IMG1}")
+  endif()
+
+  REGISTER_TEST(ut_dlibapi ut-dlibapi.cc)
+endif()
+
+if (USE_NCNN)
+  set(NCNN_EXAMPLE_PATH "examples/ncnn/")
+  set(SSD_EXAMPLE_TAR "squeezenet-ssd-ncnn.tar.gz")
+  set(SSD_EXAMPLE_PATH "examples/ncnn/squeezenet_ssd_ncnn/")
+  set(SSD_EXAMPLE_BIN "squeezenet_ssd.bin")
+  if (NOT EXISTS "${SSD_EXAMPLE_PATH}${SSD_EXAMPLE_BIN}")
+    message(STATUS "Downloading NCNN test Squeezenet SSD model")
+    file(DOWNLOAD "https://www.deepdetect.com/dd/examples/ncnn/${SSD_EXAMPLE_TAR}" "${NCNN_EXAMPLE_PATH}${SSD_EXAMPLE_TAR}")
+    execute_process(COMMAND tar xvf ${NCNN_EXAMPLE_PATH}${SSD_EXAMPLE_TAR} -C ${NCNN_EXAMPLE_PATH})
+  endif()
+
+  if(USE_JSON_API)
+    REGISTER_TEST(ut_ncnnapi ut-ncnnapi.cc)
+  endif()
+endif()
+
+if (USE_TORCH)
+  set(TORCH_EXAMPLE_PATH "examples/torch/")
+  set(RESNET_EXAMPLE_TAR "resnet50_torch.tar.gz")
+  set(RESNET_EXAMPLE_PATH "examples/torch/resnet50_torch/")
+  set(RESNET_EXAMPLE_MODEL "resnet50.pt")
+  if (NOT EXISTS "${RESNET_EXAMPLE_PATH}${RESNET_EXAMPLE_MODEL}")
+    message(STATUS "Downloading Torch test Resnet 50 model")
+    file(DOWNLOAD "https://www.deepdetect.com/dd/examples/torch/${RESNET_EXAMPLE_TAR}" "${TORCH_EXAMPLE_PATH}${RESNET_EXAMPLE_TAR}")
+    execute_process(COMMAND tar xvf ${TORCH_EXAMPLE_PATH}${RESNET_EXAMPLE_TAR} -C ${TORCH_EXAMPLE_PATH})
+  endif()
+
+  set(BERT_INFERENCE_EXAMPLE_TAR "bert_inference_torch.tar.gz")
+  set(BERT_INFERENCE_EXAMPLE_PATH "examples/torch/bert_inference_torch/")
+  set(BERT_INFERENCE_EXAMPLE_MODEL "bert_classif-pretrained.pt")
+  if (NOT EXISTS "${BERT_INFERENCE_EXAMPLE_PATH}${BERT_INFERENCE_EXAMPLE_MODEL}")
+    message(STATUS "Downloading Torch BERT classification test model")
+    file(DOWNLOAD "https://www.deepdetect.com/dd/examples/torch/${BERT_INFERENCE_EXAMPLE_TAR}" "${TORCH_EXAMPLE_PATH}${BERT_INFERENCE_EXAMPLE_TAR}")
+    execute_process(COMMAND tar xvf ${TORCH_EXAMPLE_PATH}${BERT_INFERENCE_EXAMPLE_TAR} -C ${TORCH_EXAMPLE_PATH})
+  endif()
+
+  if(USE_JSON_API)
+    REGISTER_TEST(ut_torchapi ut-torchapi.cc)
+  endif()
+endif()
+
+if (USE_CAFFE2)
+
+  function (ASSERT_EXISTS _MODEL _FILE _UNTAR)
+    set(_FINAL_PATH "examples/caffe2/${_MODEL}/${_FILE}") # File to get
+    set(_LOCAL_PATH "${_FINAL_PATH}")
+    if (_UNTAR)
+      set(_LOCAL_PATH "${_LOCAL_PATH}.tar.gz") # File to download
+    endif ()
+    set(_REMOTE_PATH "http://www.deepdetect.com/dd/${_LOCAL_PATH}") # Url of the file
+    if (NOT EXISTS ${_LOCAL_PATH}) # Download
+      message(STATUS "Downloading Caffe2 ${_MODEL} ${_FILE}")
+      file(DOWNLOAD ${_REMOTE_PATH} ${_LOCAL_PATH})
+    endif ()
+    if (_UNTAR AND NOT EXISTS ${_FINAL_PATH}) # Untar
+      message(STATUS "Extracting Caffe2 ${_MODEL} ${_FILE}")
+      execute_process(COMMAND tar xvzf ${_LOCAL_PATH})
+      execute_process(COMMAND mv ${_FILE} ${_FINAL_PATH})
+    endif ()
+  endfunction (ASSERT_EXISTS)
+
+  function (ASSERT_MODEL_EXISTS _MODEL)
+    ASSERT_EXISTS(${_MODEL} "corresp.txt" 0)
+    ASSERT_EXISTS(${_MODEL} "init_net.pb" 0)
+    ASSERT_EXISTS(${_MODEL} "predict_net.pb" 0)
+  endfunction (ASSERT_MODEL_EXISTS)
+
+  # Tar GZ files
+
+  ASSERT_EXISTS("boats_and_cars" "imgs" 1)
+  ASSERT_EXISTS("detectron" "imgs" 1)
+  ASSERT_EXISTS("detectron_mask" "ext" 1)
+  ASSERT_EXISTS("resnet_50_imagenet" "imgs" 1)
+  ASSERT_EXISTS("resnet_50_imagenet" "fish.lmdb" 1)
+
+  # Models
+
+  ASSERT_MODEL_EXISTS("detectron")
+  ASSERT_MODEL_EXISTS("detectron_mask")
+  ASSERT_MODEL_EXISTS("resnet_50_imagenet")
+
+  # Tests
+
+  REGISTER_TEST(ut_caffe2api ut-caffe2api.cc)
+
+endif()
+
 if (USE_XGBOOST)
-  add_executable(ut_xgbapi ut-xgbapi.cc)
-  target_link_libraries(ut_xgbapi ddetect ${CUDA_LIB_DEPS} glog gflags gtest gtest_main ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} ${CAFFE_LIB_DEPS}  ${XGBOOST_LIB_DEPS} ${TF_LIB_DEPS} ${TSNE_LIB_DEPS})
-  add_test(
-    NAME ut_xgbapi
-    COMMAND ut_xgbapi
-    )
+  REGISTER_TEST(ut_xgbapi ut-xgbapi.cc)
 endif()
-  
+
+if (USE_SIMSEARCH)
+  set(VOC_EXAMPLE_PATH "examples/caffe/voc_roi/")
+  set(VOC_EXAMPLE_MODEL_ARCHIVE "voc0712_dd_roi.tar.gz")
+  set(VOC_EXAMPLE_MODEL_OUT "voc_roi")
+  if (NOT EXISTS "${VOC_EXAMPLE_PATH}${VOC_EXAMPLE_MODEL_ARCHIVE}")
+    message(STATUS "Downloading object detection test model with rois")
+    file(DOWNLOAD "http://www.deepdetect.com/dd/examples/caffe/voc_roi/${VOC_EXAMPLE_MODEL_ARCHIVE}" "${VOC_EXAMPLE_PATH}${VOC_EXAMPLE_MODEL_ARCHIVE}")
+    execute_process(COMMAND ${CMAKE_COMMAND} -E tar xvzf ${VOC_EXAMPLE_PATH}${VOC_EXAMPLE_MODEL_ARCHIVE} -C ${VOC_EXAMPLE_PATH})
+    execute_process(COMMAND ${CMAKE_COMMAND} -E rename ${VOC_EXAMPLE_MODEL_OUT} ${VOC_EXAMPLE_PATH}${VOC_EXAMPLE_MODEL_OUT})
+  endif()
+if (USE_ANNOY)
+  REGISTER_TEST(ut_simsearch ut-simsearch.cc)
+endif()
+if (USE_FAISS)
+  REGISTER_TEST(ut_simsearch_faiss ut-simsearch-faiss.cc)
+endif()
+
+endif()
+
 endif()

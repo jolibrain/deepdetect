@@ -21,7 +21,6 @@
 
 #include "svminputfileconn.h"
 #include "utils/utils.hpp"
-#include <glog/logging.h>
 
 namespace dd
 {
@@ -106,13 +105,15 @@ namespace dd
 	    throw InputConnectorBadParamException("error reading SVM format line: " + content);
 	  }
       }
+      if (vals.empty())
+        throw InputConnectorBadParamException("Issue while reading svm example (index might be out of boundsi)");
   }
   
   void SVMInputFileConn::read_svm(const APIData &ad,
 				  const std::string &fname)
   {
     std::ifstream svm_file(fname,std::ios::binary);
-    LOG(INFO) << "SVM fname=" << fname << " / open=" << svm_file.is_open() << std::endl;
+    _logger->info("SVM fname={} / open={}",fname,svm_file.is_open());
     if (!svm_file.is_open())
       throw InputConnectorBadParamException("cannot open file " + fname);
     std::string hline;
@@ -143,8 +144,8 @@ namespace dd
     svm_file.clear();
     svm_file.seekg(0,std::ios::beg);
 
-    LOG(INFO) << "total number of dimensions=" << _fids.size() << std::endl;
-
+    _logger->info("total number of dimensions={}",_fids.size());
+    
     // read data
     int nlines = 0;
     while(std::getline(svm_file,hline))
@@ -156,8 +157,8 @@ namespace dd
 	++nlines;
       }
       svm_file.close();
-      LOG(INFO) << "read " << nlines << " lines from SVM data file";
-
+      _logger->info("read {} lines from SVM data file",nlines);
+  
       if (!_svm_test_fname.empty())
 	{
 	  int tnlines = 0;
@@ -182,7 +183,7 @@ namespace dd
       if (_svm_test_fname.empty() && _test_split > 0)
 	{
 	  split_data();
-	  LOG(INFO) << "data split test size=" << _svmdata_test.size() << " / remaining data size=" << _svmdata.size() << std::endl;
+	  _logger->info("data split test size={} / remaining data size={}",_svmdata_test.size(),_svmdata.size());
 	}
   }
 
@@ -226,7 +227,7 @@ namespace dd
 	_fids.insert(fid);
       }
     in.close();
-    LOG(INFO) << "loaded SVM vocabulary of size=" << _fids.size() << std::endl;
+    _logger->info("loaded SVM vocabulary of size={}",_fids.size());
   }
   
 }

@@ -1,0 +1,1684 @@
+name: ""
+op {
+  input: "data"
+  input: "conv1_w"
+  output: "conv1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 3
+  }
+  arg {
+    name: "kernel"
+    i: 7
+  }
+}
+op {
+  input: "conv1"
+  input: "conv1_scale"
+  input: "conv1_bias"
+  input: "conv1_mean"
+  input: "conv1_var"
+  output: "conv1_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "conv1_unique"
+  input: "conv1_w_second"
+  output: "conv1_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv1_internal"
+  input: "conv1_b"
+  output: "conv1"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "conv1"
+  output: "conv1"
+  type: "Relu"
+}
+op {
+  input: "conv1"
+  output: "pool1"
+  type: "MaxPool"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+}
+op {
+  input: "pool1"
+  input: "res2a_branch2a_w"
+  output: "res2a_branch2a"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "res2a_branch2a"
+  input: "res2a_branch2a_scale"
+  input: "res2a_branch2a_bias"
+  input: "res2a_branch2a_mean"
+  input: "res2a_branch2a_var"
+  output: "res2a_branch2a_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "res2a_branch2a_unique"
+  input: "res2a_branch2a_w_second"
+  output: "res2a_branch2a_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res2a_branch2a_internal"
+  input: "res2a_branch2a_b"
+  output: "res2a_branch2a"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res2a_branch2a"
+  output: "res2a_branch2a"
+  type: "Relu"
+}
+op {
+  input: "res2a_branch2a"
+  input: "res2a_branch2b_w"
+  output: "res2a_branch2b"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "res2a_branch2b"
+  input: "res2a_branch2b_scale"
+  input: "res2a_branch2b_bias"
+  input: "res2a_branch2b_mean"
+  input: "res2a_branch2b_var"
+  output: "res2a_branch2b_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "res2a_branch2b_unique"
+  input: "res2a_branch2b_w_second"
+  output: "res2a_branch2b_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res2a_branch2b_internal"
+  input: "res2a_branch2b_b"
+  output: "res2a_branch2b"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "pool1"
+  input: "res2a_branch2b"
+  output: "res2a"
+  type: "Sum"
+}
+op {
+  input: "res2a"
+  output: "res2a"
+  type: "Relu"
+}
+op {
+  input: "res2a"
+  input: "res2b_branch2a_w"
+  output: "res2b_branch2a"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "res2b_branch2a"
+  input: "res2b_branch2a_scale"
+  input: "res2b_branch2a_bias"
+  input: "res2b_branch2a_mean"
+  input: "res2b_branch2a_var"
+  output: "res2b_branch2a_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "res2b_branch2a_unique"
+  input: "res2b_branch2a_w_second"
+  output: "res2b_branch2a_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res2b_branch2a_internal"
+  input: "res2b_branch2a_b"
+  output: "res2b_branch2a"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res2b_branch2a"
+  output: "res2b_branch2a"
+  type: "Relu"
+}
+op {
+  input: "res2b_branch2a"
+  input: "res2b_branch2b_w"
+  output: "res2b_branch2b"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "res2b_branch2b"
+  input: "res2b_branch2b_scale"
+  input: "res2b_branch2b_bias"
+  input: "res2b_branch2b_mean"
+  input: "res2b_branch2b_var"
+  output: "res2b_branch2b_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "res2b_branch2b_unique"
+  input: "res2b_branch2b_w_second"
+  output: "res2b_branch2b_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res2b_branch2b_internal"
+  input: "res2b_branch2b_b"
+  output: "res2b_branch2b"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res2a"
+  input: "res2b_branch2b"
+  output: "res2b"
+  type: "Sum"
+}
+op {
+  input: "res2b"
+  output: "res2b"
+  type: "Relu"
+}
+op {
+  input: "res2b"
+  input: "res3a_branch1_w"
+  output: "res3a_branch1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "res3a_branch1"
+  input: "res3a_branch1_scale"
+  input: "res3a_branch1_bias"
+  input: "res3a_branch1_mean"
+  input: "res3a_branch1_var"
+  output: "res3a_branch1_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "res3a_branch1_unique"
+  input: "res3a_branch1_w_second"
+  output: "res3a_branch1_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res3a_branch1_internal"
+  input: "res3a_branch1_b"
+  output: "res3a_branch1"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res2b"
+  input: "res3a_branch2a_w"
+  output: "res3a_branch2a"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "res3a_branch2a"
+  input: "res3a_branch2a_scale"
+  input: "res3a_branch2a_bias"
+  input: "res3a_branch2a_mean"
+  input: "res3a_branch2a_var"
+  output: "res3a_branch2a_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "res3a_branch2a_unique"
+  input: "res3a_branch2a_w_second"
+  output: "res3a_branch2a_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res3a_branch2a_internal"
+  input: "res3a_branch2a_b"
+  output: "res3a_branch2a"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res3a_branch2a"
+  output: "res3a_branch2a"
+  type: "Relu"
+}
+op {
+  input: "res3a_branch2a"
+  input: "res3a_branch2b_w"
+  output: "res3a_branch2b"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "res3a_branch2b"
+  input: "res3a_branch2b_scale"
+  input: "res3a_branch2b_bias"
+  input: "res3a_branch2b_mean"
+  input: "res3a_branch2b_var"
+  output: "res3a_branch2b_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "res3a_branch2b_unique"
+  input: "res3a_branch2b_w_second"
+  output: "res3a_branch2b_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res3a_branch2b_internal"
+  input: "res3a_branch2b_b"
+  output: "res3a_branch2b"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res3a_branch1"
+  input: "res3a_branch2b"
+  output: "res3a"
+  type: "Sum"
+}
+op {
+  input: "res3a"
+  output: "res3a"
+  type: "Relu"
+}
+op {
+  input: "res3a"
+  input: "res3b_branch2a_w"
+  output: "res3b_branch2a"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "res3b_branch2a"
+  input: "res3b_branch2a_scale"
+  input: "res3b_branch2a_bias"
+  input: "res3b_branch2a_mean"
+  input: "res3b_branch2a_var"
+  output: "res3b_branch2a_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "res3b_branch2a_unique"
+  input: "res3b_branch2a_w_second"
+  output: "res3b_branch2a_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res3b_branch2a_internal"
+  input: "res3b_branch2a_b"
+  output: "res3b_branch2a"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res3b_branch2a"
+  output: "res3b_branch2a"
+  type: "Relu"
+}
+op {
+  input: "res3b_branch2a"
+  input: "res3b_branch2b_w"
+  output: "res3b_branch2b"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "res3b_branch2b"
+  input: "res3b_branch2b_scale"
+  input: "res3b_branch2b_bias"
+  input: "res3b_branch2b_mean"
+  input: "res3b_branch2b_var"
+  output: "res3b_branch2b_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "res3b_branch2b_unique"
+  input: "res3b_branch2b_w_second"
+  output: "res3b_branch2b_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res3b_branch2b_internal"
+  input: "res3b_branch2b_b"
+  output: "res3b_branch2b"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res3a"
+  input: "res3b_branch2b"
+  output: "res3b"
+  type: "Sum"
+}
+op {
+  input: "res3b"
+  output: "res3b"
+  type: "Relu"
+}
+op {
+  input: "res3b"
+  input: "res4a_branch1_w"
+  output: "res4a_branch1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "res4a_branch1"
+  input: "res4a_branch1_scale"
+  input: "res4a_branch1_bias"
+  input: "res4a_branch1_mean"
+  input: "res4a_branch1_var"
+  output: "res4a_branch1_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "res4a_branch1_unique"
+  input: "res4a_branch1_w_second"
+  output: "res4a_branch1_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res4a_branch1_internal"
+  input: "res4a_branch1_b"
+  output: "res4a_branch1"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res3b"
+  input: "res4a_branch2a_w"
+  output: "res4a_branch2a"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "res4a_branch2a"
+  input: "res4a_branch2a_scale"
+  input: "res4a_branch2a_bias"
+  input: "res4a_branch2a_mean"
+  input: "res4a_branch2a_var"
+  output: "res4a_branch2a_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "res4a_branch2a_unique"
+  input: "res4a_branch2a_w_second"
+  output: "res4a_branch2a_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res4a_branch2a_internal"
+  input: "res4a_branch2a_b"
+  output: "res4a_branch2a"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res4a_branch2a"
+  output: "res4a_branch2a"
+  type: "Relu"
+}
+op {
+  input: "res4a_branch2a"
+  input: "res4a_branch2b_w"
+  output: "res4a_branch2b"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "res4a_branch2b"
+  input: "res4a_branch2b_scale"
+  input: "res4a_branch2b_bias"
+  input: "res4a_branch2b_mean"
+  input: "res4a_branch2b_var"
+  output: "res4a_branch2b_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "res4a_branch2b_unique"
+  input: "res4a_branch2b_w_second"
+  output: "res4a_branch2b_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res4a_branch2b_internal"
+  input: "res4a_branch2b_b"
+  output: "res4a_branch2b"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res4a_branch1"
+  input: "res4a_branch2b"
+  output: "res4a"
+  type: "Sum"
+}
+op {
+  input: "res4a"
+  output: "res4a"
+  type: "Relu"
+}
+op {
+  input: "res4a"
+  input: "res4b_branch2a_w"
+  output: "res4b_branch2a"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "res4b_branch2a"
+  input: "res4b_branch2a_scale"
+  input: "res4b_branch2a_bias"
+  input: "res4b_branch2a_mean"
+  input: "res4b_branch2a_var"
+  output: "res4b_branch2a_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "res4b_branch2a_unique"
+  input: "res4b_branch2a_w_second"
+  output: "res4b_branch2a_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res4b_branch2a_internal"
+  input: "res4b_branch2a_b"
+  output: "res4b_branch2a"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res4b_branch2a"
+  output: "res4b_branch2a"
+  type: "Relu"
+}
+op {
+  input: "res4b_branch2a"
+  input: "res4b_branch2b_w"
+  output: "res4b_branch2b"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "res4b_branch2b"
+  input: "res4b_branch2b_scale"
+  input: "res4b_branch2b_bias"
+  input: "res4b_branch2b_mean"
+  input: "res4b_branch2b_var"
+  output: "res4b_branch2b_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "res4b_branch2b_unique"
+  input: "res4b_branch2b_w_second"
+  output: "res4b_branch2b_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res4b_branch2b_internal"
+  input: "res4b_branch2b_b"
+  output: "res4b_branch2b"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res4a"
+  input: "res4b_branch2b"
+  output: "res4b"
+  type: "Sum"
+}
+op {
+  input: "res4b"
+  output: "res4b"
+  type: "Relu"
+}
+op {
+  input: "res4b"
+  input: "res5a_branch1_w"
+  output: "res5a_branch1"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 1
+  }
+}
+op {
+  input: "res5a_branch1"
+  input: "res5a_branch1_scale"
+  input: "res5a_branch1_bias"
+  input: "res5a_branch1_mean"
+  input: "res5a_branch1_var"
+  output: "res5a_branch1_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "res5a_branch1_unique"
+  input: "res5a_branch1_w_second"
+  output: "res5a_branch1_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res5a_branch1_internal"
+  input: "res5a_branch1_b"
+  output: "res5a_branch1"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res4b"
+  input: "res5a_branch2a_w"
+  output: "res5a_branch2a"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 2
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "res5a_branch2a"
+  input: "res5a_branch2a_scale"
+  input: "res5a_branch2a_bias"
+  input: "res5a_branch2a_mean"
+  input: "res5a_branch2a_var"
+  output: "res5a_branch2a_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "res5a_branch2a_unique"
+  input: "res5a_branch2a_w_second"
+  output: "res5a_branch2a_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res5a_branch2a_internal"
+  input: "res5a_branch2a_b"
+  output: "res5a_branch2a"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res5a_branch2a"
+  output: "res5a_branch2a"
+  type: "Relu"
+}
+op {
+  input: "res5a_branch2a"
+  input: "res5a_branch2b_w"
+  output: "res5a_branch2b"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "res5a_branch2b"
+  input: "res5a_branch2b_scale"
+  input: "res5a_branch2b_bias"
+  input: "res5a_branch2b_mean"
+  input: "res5a_branch2b_var"
+  output: "res5a_branch2b_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "res5a_branch2b_unique"
+  input: "res5a_branch2b_w_second"
+  output: "res5a_branch2b_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res5a_branch2b_internal"
+  input: "res5a_branch2b_b"
+  output: "res5a_branch2b"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res5a_branch1"
+  input: "res5a_branch2b"
+  output: "res5a"
+  type: "Sum"
+}
+op {
+  input: "res5a"
+  output: "res5a"
+  type: "Relu"
+}
+op {
+  input: "res5a"
+  input: "res5b_branch2a_w"
+  output: "res5b_branch2a"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "res5b_branch2a"
+  input: "res5b_branch2a_scale"
+  input: "res5b_branch2a_bias"
+  input: "res5b_branch2a_mean"
+  input: "res5b_branch2a_var"
+  output: "res5b_branch2a_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "res5b_branch2a_unique"
+  input: "res5b_branch2a_w_second"
+  output: "res5b_branch2a_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res5b_branch2a_internal"
+  input: "res5b_branch2a_b"
+  output: "res5b_branch2a"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res5b_branch2a"
+  output: "res5b_branch2a"
+  type: "Relu"
+}
+op {
+  input: "res5b_branch2a"
+  input: "res5b_branch2b_w"
+  output: "res5b_branch2b"
+  type: "Conv"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 1
+  }
+  arg {
+    name: "kernel"
+    i: 3
+  }
+}
+op {
+  input: "res5b_branch2b"
+  input: "res5b_branch2b_scale"
+  input: "res5b_branch2b_bias"
+  input: "res5b_branch2b_mean"
+  input: "res5b_branch2b_var"
+  output: "res5b_branch2b_unique"
+  type: "SpatialBN"
+  arg {
+    name: "is_test"
+    i: 1
+  }
+  arg {
+    name: "epsilon"
+    f: 1e-05
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+}
+op {
+  input: "res5b_branch2b_unique"
+  input: "res5b_branch2b_w_second"
+  output: "res5b_branch2b_internal"
+  type: "Mul"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res5b_branch2b_internal"
+  input: "res5b_branch2b_b"
+  output: "res5b_branch2b"
+  type: "Add"
+  arg {
+    name: "axis"
+    i: 1
+  }
+  arg {
+    name: "broadcast"
+    i: 1
+  }
+}
+op {
+  input: "res5a"
+  input: "res5b_branch2b"
+  output: "res5b"
+  type: "Sum"
+}
+op {
+  input: "res5b"
+  output: "res5b"
+  type: "Relu"
+}
+op {
+  input: "res5b"
+  output: "pool5"
+  type: "AveragePool"
+  arg {
+    name: "stride"
+    i: 1
+  }
+  arg {
+    name: "pad"
+    i: 0
+  }
+  arg {
+    name: "kernel"
+    i: 0
+  }
+  arg {
+    name: "order"
+    s: "NCHW"
+  }
+  arg {
+    name: "legacy_pad"
+    i: 3
+  }
+  arg {
+    name: "global_pooling"
+    i: 1
+  }
+}
+op {
+  input: "pool5"
+  input: "fc1000_w"
+  input: "fc1000_b"
+  output: "fc1000"
+  type: "FC"
+}
+op {
+  input: "fc1000"
+  output: "prob"
+  type: "Softmax"
+}
+external_input: "data"
+external_input: "conv1_w"
+external_input: "conv1_scale"
+external_input: "conv1_bias"
+external_input: "conv1_mean"
+external_input: "conv1_var"
+external_input: "conv1_w_second"
+external_input: "conv1_b"
+external_input: "res2a_branch2a_w"
+external_input: "res2a_branch2a_scale"
+external_input: "res2a_branch2a_bias"
+external_input: "res2a_branch2a_mean"
+external_input: "res2a_branch2a_var"
+external_input: "res2a_branch2a_w_second"
+external_input: "res2a_branch2a_b"
+external_input: "res2a_branch2b_w"
+external_input: "res2a_branch2b_scale"
+external_input: "res2a_branch2b_bias"
+external_input: "res2a_branch2b_mean"
+external_input: "res2a_branch2b_var"
+external_input: "res2a_branch2b_w_second"
+external_input: "res2a_branch2b_b"
+external_input: "res2b_branch2a_w"
+external_input: "res2b_branch2a_scale"
+external_input: "res2b_branch2a_bias"
+external_input: "res2b_branch2a_mean"
+external_input: "res2b_branch2a_var"
+external_input: "res2b_branch2a_w_second"
+external_input: "res2b_branch2a_b"
+external_input: "res2b_branch2b_w"
+external_input: "res2b_branch2b_scale"
+external_input: "res2b_branch2b_bias"
+external_input: "res2b_branch2b_mean"
+external_input: "res2b_branch2b_var"
+external_input: "res2b_branch2b_w_second"
+external_input: "res2b_branch2b_b"
+external_input: "res3a_branch1_w"
+external_input: "res3a_branch1_scale"
+external_input: "res3a_branch1_bias"
+external_input: "res3a_branch1_mean"
+external_input: "res3a_branch1_var"
+external_input: "res3a_branch1_w_second"
+external_input: "res3a_branch1_b"
+external_input: "res3a_branch2a_w"
+external_input: "res3a_branch2a_scale"
+external_input: "res3a_branch2a_bias"
+external_input: "res3a_branch2a_mean"
+external_input: "res3a_branch2a_var"
+external_input: "res3a_branch2a_w_second"
+external_input: "res3a_branch2a_b"
+external_input: "res3a_branch2b_w"
+external_input: "res3a_branch2b_scale"
+external_input: "res3a_branch2b_bias"
+external_input: "res3a_branch2b_mean"
+external_input: "res3a_branch2b_var"
+external_input: "res3a_branch2b_w_second"
+external_input: "res3a_branch2b_b"
+external_input: "res3b_branch2a_w"
+external_input: "res3b_branch2a_scale"
+external_input: "res3b_branch2a_bias"
+external_input: "res3b_branch2a_mean"
+external_input: "res3b_branch2a_var"
+external_input: "res3b_branch2a_w_second"
+external_input: "res3b_branch2a_b"
+external_input: "res3b_branch2b_w"
+external_input: "res3b_branch2b_scale"
+external_input: "res3b_branch2b_bias"
+external_input: "res3b_branch2b_mean"
+external_input: "res3b_branch2b_var"
+external_input: "res3b_branch2b_w_second"
+external_input: "res3b_branch2b_b"
+external_input: "res4a_branch1_w"
+external_input: "res4a_branch1_scale"
+external_input: "res4a_branch1_bias"
+external_input: "res4a_branch1_mean"
+external_input: "res4a_branch1_var"
+external_input: "res4a_branch1_w_second"
+external_input: "res4a_branch1_b"
+external_input: "res4a_branch2a_w"
+external_input: "res4a_branch2a_scale"
+external_input: "res4a_branch2a_bias"
+external_input: "res4a_branch2a_mean"
+external_input: "res4a_branch2a_var"
+external_input: "res4a_branch2a_w_second"
+external_input: "res4a_branch2a_b"
+external_input: "res4a_branch2b_w"
+external_input: "res4a_branch2b_scale"
+external_input: "res4a_branch2b_bias"
+external_input: "res4a_branch2b_mean"
+external_input: "res4a_branch2b_var"
+external_input: "res4a_branch2b_w_second"
+external_input: "res4a_branch2b_b"
+external_input: "res4b_branch2a_w"
+external_input: "res4b_branch2a_scale"
+external_input: "res4b_branch2a_bias"
+external_input: "res4b_branch2a_mean"
+external_input: "res4b_branch2a_var"
+external_input: "res4b_branch2a_w_second"
+external_input: "res4b_branch2a_b"
+external_input: "res4b_branch2b_w"
+external_input: "res4b_branch2b_scale"
+external_input: "res4b_branch2b_bias"
+external_input: "res4b_branch2b_mean"
+external_input: "res4b_branch2b_var"
+external_input: "res4b_branch2b_w_second"
+external_input: "res4b_branch2b_b"
+external_input: "res5a_branch1_w"
+external_input: "res5a_branch1_scale"
+external_input: "res5a_branch1_bias"
+external_input: "res5a_branch1_mean"
+external_input: "res5a_branch1_var"
+external_input: "res5a_branch1_w_second"
+external_input: "res5a_branch1_b"
+external_input: "res5a_branch2a_w"
+external_input: "res5a_branch2a_scale"
+external_input: "res5a_branch2a_bias"
+external_input: "res5a_branch2a_mean"
+external_input: "res5a_branch2a_var"
+external_input: "res5a_branch2a_w_second"
+external_input: "res5a_branch2a_b"
+external_input: "res5a_branch2b_w"
+external_input: "res5a_branch2b_scale"
+external_input: "res5a_branch2b_bias"
+external_input: "res5a_branch2b_mean"
+external_input: "res5a_branch2b_var"
+external_input: "res5a_branch2b_w_second"
+external_input: "res5a_branch2b_b"
+external_input: "res5b_branch2a_w"
+external_input: "res5b_branch2a_scale"
+external_input: "res5b_branch2a_bias"
+external_input: "res5b_branch2a_mean"
+external_input: "res5b_branch2a_var"
+external_input: "res5b_branch2a_w_second"
+external_input: "res5b_branch2a_b"
+external_input: "res5b_branch2b_w"
+external_input: "res5b_branch2b_scale"
+external_input: "res5b_branch2b_bias"
+external_input: "res5b_branch2b_mean"
+external_input: "res5b_branch2b_var"
+external_input: "res5b_branch2b_w_second"
+external_input: "res5b_branch2b_b"
+external_input: "fc1000_w"
+external_input: "fc1000_b"
+external_output: "prob"

@@ -31,8 +31,9 @@ namespace dd
   {
   public:
   NetLayersCaffeMLP(caffe::NetParameter *net_params,
-		    caffe::NetParameter *dnet_params)
-    :NetLayersCaffe(net_params,dnet_params) 
+		    caffe::NetParameter *dnet_params,
+		    std::shared_ptr<spdlog::logger> &logger)
+    :NetLayersCaffe(net_params,dnet_params,logger) 
       {
 	net_params->set_name("mlp");
 	dnet_params->set_name("mlp");
