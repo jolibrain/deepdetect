@@ -33,7 +33,7 @@ namespace dd
       std::vector<APIData> vad = model_out.getv("predictions");
       std::vector<cv::Mat> imgs = model_out.getobj("input").get("imgs").get<std::vector<cv::Mat>>();
       std::vector<std::pair<int,int>> imgs_size = model_out.getobj("input").get("imgs_size").get<std::vector<std::pair<int,int>>>();
-      std::vector<std::string> cropped_imgs;
+      std::vector<cv::Mat> cropped_imgs;
       std::vector<std::string> bbox_ids;
 
       // check for action parameters
@@ -94,14 +94,7 @@ namespace dd
 		  std::string puri = dd_utils::split(uri,'/').back();
 		  cv::imwrite("crop_" + puri + "_" + std::to_string(j) + ".png",cropped_img);
 		}
-	      
-	      // serialize crop into string (will be auto read by read_element in imginputconn)
-	      std::vector<unsigned char> cropped_img_ser;
-	      bool str_encoding = cv::imencode(".bmp",cropped_img,cropped_img_ser);
-	      if (!str_encoding)
-		throw ActionInternalException("crop encoding error for uri " + uri);
-	      std::string cropped_img_str = std::string(cropped_img_ser.begin(),cropped_img_ser.end());
-	      cropped_imgs.push_back(cropped_img_str);
+	      cropped_imgs.push_back(cropped_img);
 	    }
 	  APIData ccls;
 	  ccls.add("uri",uri);
@@ -112,7 +105,7 @@ namespace dd
 	}
       // store serialized crops into action output store
       APIData action_out;
-      action_out.add("data",cropped_imgs);
+      action_out.add("data_raw_img",cropped_imgs);
       action_out.add("cids",bbox_ids);
       cdata.add_action_data(_action_id,action_out);      
       
