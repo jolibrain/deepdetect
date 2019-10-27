@@ -94,7 +94,7 @@ namespace dd
 		  std::string puri = dd_utils::split(uri,'/').back();
 		  cv::imwrite("crop_" + puri + "_" + std::to_string(j) + ".png",cropped_img);
 		}
-	      cropped_imgs.push_back(cropped_img);
+	      cropped_imgs.push_back(std::move(cropped_img));
 	    }
 	  APIData ccls;
 	  ccls.add("uri",uri);
