@@ -75,7 +75,15 @@ namespace dd
             _attention = true;
         }
 
-        _traced = torch::jit::load(this->_mlmodel._model_file, _device);
+	try
+	  {
+	    _traced = torch::jit::load(this->_mlmodel._model_file, _device);
+	  }
+	catch (std::exception&)
+	  {
+	    throw MLLibBadParamException("failed loading torch model file " + this->_mlmodel._model_file);
+	  }
+	
         _traced->eval();
     }
 
