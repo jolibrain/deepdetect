@@ -93,9 +93,19 @@ namespace dd
                 {
                     APIData input_ad = ad_param.getobj("input");
                     if (input_ad.has("std"))
-                        _std = input_ad.get("std").get<double>();
-                }
-            }
+		      {
+			try
+			  {
+			    _std = input_ad.get("std").get<double>();
+			  }
+			catch (std::exception&)
+			  {
+			    // try from int
+			    _std = input_ad.get("std").get<int>();
+			  }
+		      }
+		}
+	    }
 
             std::vector<at::Tensor> tensors;
             std::vector<int64_t> sizes{ _height, _width, 3 };
