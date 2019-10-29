@@ -115,8 +115,8 @@ namespace dd
       {
 	std::vector<unsigned char> vdat(str.begin(),str.end());
 	cv::Mat img = cv::Mat(cv::imdecode(cv::Mat(vdat,false),
-                                     _unchanged_data ? CV_LOAD_IMAGE_UNCHANGED :
-                                     (_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR)));
+					   _unchanged_data ? CV_LOAD_IMAGE_UNCHANGED :
+					   (_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR)));
       	if (_keep_orig)
 	  _orig_imgs.push_back(img);
 	_imgs_size.push_back(std::pair<int,int>(img.rows,img.cols));

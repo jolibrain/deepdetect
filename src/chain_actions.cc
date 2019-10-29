@@ -259,7 +259,7 @@ void ImgsCopyAction::apply(APIData &model_out,
 	      
 	      // serialize crop into string (will be auto read by read_element in imginputconn)
 	      std::vector<unsigned char> cropped_img_ser;
-	      bool str_encoding = cv::imencode(".png",cropped_img,cropped_img_ser);
+	      bool str_encoding = cv::imencode(".bmp",cropped_img,cropped_img_ser);
 	      if (!str_encoding)
 		throw ActionInternalException("crop encoding error for uri " + uri);
 	      std::string cropped_img_str = std::string(cropped_img_ser.begin(),cropped_img_ser.end());
