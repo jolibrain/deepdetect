@@ -131,60 +131,82 @@ void DlibShapePredictorAction::apply(APIData &model_out,
 void ImgsCopyAction::apply(APIData &model_out,
                                ChainData &cdata)
     {
-        std::vector<APIData> vad = model_out.getv("predictions");
-        std::vector<cv::Mat> imgs = model_out.getobj("input").get("imgs").get<std::vector<cv::Mat>>();
-        std::vector<std::pair<int,int>> imgs_size = model_out.getobj("input").get("imgs_size").get<std::vector<std::pair<int,int>>>();
-        std::vector<std::string> copied_imgs;
-        std::vector<std::string> bbox_ids;
-
-        std::vector<APIData> cvad;
-
-        // iterate image batch
-        for (size_t i=0;i<vad.size();i++)
-        {
-            std::string uri = vad.at(i).get("uri").get<std::string>();
-            cv::Mat img = imgs.at(i);
-
-            std::vector<APIData> ad_cls = vad.at(i).getv("classes");
-            std::vector<APIData> cad_cls;
-
-            // iterate bboxes per image
-            for (size_t j=0;j<ad_cls.size();j++)
-            {
-                APIData bbox = ad_cls.at(j).getobj("bbox");
-                if (bbox.empty())
-                    throw ActionBadParamException("crop action cannot find bbox object for uri " + uri);
-
-                // adding bbox id
-                std::string bbox_id = genid(uri,"bbox"+std::to_string(j));
-                bbox_ids.push_back(bbox_id);
-                APIData ad_cid;
-                ad_cls.at(j).add(bbox_id,ad_cid);
-                cad_cls.push_back(ad_cls.at(j));
-
-                // serialize crop into string (will be auto read by read_element in imginputconn)
-                std::vector<unsigned char> img_ser;
-                bool str_encoding = cv::imencode(".png",img,img_ser);
-                if (!str_encoding)
-                    throw ActionInternalException("encoding error for uri " + uri);
-                std::string img_str = std::string(img_ser.begin(),img_ser.end());
-                copied_imgs.push_back(img_str);
-            }
-            APIData ccls;
-            ccls.add("uri",uri);
-            if (vad.at(i).has("index_uri"))
-                ccls.add("index_uri",vad.at(i).get("index_uri").get<std::string>());
-            ccls.add("classes",cad_cls);
-            cvad.push_back(ccls);
+        if (!model_out.has("input") || !model_out.getobj("input").has("imgs")) {
+            throw ActionBadParamException("copy action cannot find imgs");
         }
-        // store serialized crops into action output store
+
         APIData action_out;
-        action_out.add("data",copied_imgs);
-        action_out.add("cids",bbox_ids);
+        action_out.add("data_raw_img", model_out.getobj("input").get("imgs").get<std::vector<cv::Mat>>());
+
+//        std::vector<APIData> vad = model_out.getv("predictions");
+//        std::vector<std::string> cids;
+//        for (size_t i=0; i<vad.size(); i++) {
+//            const std::string uri = vad.at(i).get("uri").get<std::string>();
+//            cids.push_back(uri);
+//            std::vector<APIData> ad_cls = vad.at(i).getv("classes");
+//            std::vector<APIData> cad_cls;
+//        }
+
+        if (model_out.getobj("input").has("cids")) {
+            action_out.add("cids", model_out.getobj("input").get("cids").get<std::vector<std::string>>());
+        }
+
         cdata.add_action_data(_action_id,action_out);
 
-        // updated model data with chain ids
-        model_out.add("predictions",cvad);
+//        std::vector<APIData> vad = model_out.getv("predictions");
+//        std::vector<cv::Mat> imgs = model_out.getobj("input").get("imgs").get<std::vector<cv::Mat>>();
+//        std::vector<std::pair<int,int>> imgs_size = model_out.getobj("input").get("imgs_size").get<std::vector<std::pair<int,int>>>();
+//        std::vector<std::string> copied_imgs;
+//        std::vector<std::string> bbox_ids;
+//
+//        std::vector<APIData> cvad;
+//
+//        // iterate image batch
+//        for (size_t i=0;i<vad.size();i++)
+//        {
+//            std::string uri = vad.at(i).get("uri").get<std::string>();
+//            cv::Mat img = imgs.at(i);
+//
+//            std::vector<APIData> ad_cls = vad.at(i).getv("classes");
+//            std::vector<APIData> cad_cls;
+//
+//            // iterate bboxes per image
+//            for (size_t j=0;j<ad_cls.size();j++)
+//            {
+//                APIData bbox = ad_cls.at(j).getobj("bbox");
+//                if (bbox.empty())
+//                    throw ActionBadParamException("copy action cannot find bbox object for uri " + uri);
+//
+//                // adding bbox id
+//                std::string bbox_id = genid(uri,"bbox"+std::to_string(j));
+//                bbox_ids.push_back(bbox_id);
+//                APIData ad_cid;
+//                ad_cls.at(j).add(bbox_id,ad_cid);
+//                cad_cls.push_back(ad_cls.at(j));
+//
+//                // serialize crop into string (will be auto read by read_element in imginputconn)
+//                std::vector<unsigned char> img_ser;
+//                bool str_encoding = cv::imencode(".png",img,img_ser);
+//                if (!str_encoding)
+//                    throw ActionInternalException("encoding error for uri " + uri);
+//                std::string img_str = std::string(img_ser.begin(),img_ser.end());
+//                copied_imgs.push_back(img_str);
+//            }
+//            APIData ccls;
+//            ccls.add("uri",uri);
+//            if (vad.at(i).has("index_uri"))
+//                ccls.add("index_uri",vad.at(i).get("index_uri").get<std::string>());
+//            ccls.add("classes",cad_cls);
+//            cvad.push_back(ccls);
+//        }
+//        // store serialized crops into action output store
+//        APIData action_out;
+//        action_out.add("data",copied_imgs);
+//        action_out.add("cids",bbox_ids);
+//        cdata.add_action_data(_action_id,action_out);
+//
+//        // updated model data with chain ids
+//        model_out.add("predictions",cvad);
     }
 
 

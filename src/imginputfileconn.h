@@ -510,7 +510,11 @@ namespace dd
 	  for (auto img: _images)
 	    {
 	      cv::Mat rimg;
-	      resize(img,rimg,cv::Size(_width,_height),0,0);
+	      if (_width == 0 && _height == 0) {
+	          rimg = img;
+	      } else {
+              resize(img, rimg, cv::Size(_width, _height), 0, 0);
+          }
 	      _images_size.push_back(std::pair<int,int>(img.rows,img.cols));
 	      if (_keep_orig)
 		_orig_images.push_back(std::move(img));

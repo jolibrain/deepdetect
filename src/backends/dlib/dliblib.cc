@@ -165,6 +165,7 @@ namespace dd {
         // vector for storing  the outputAPI of the file
         std::vector <APIData> vrad;
         std::vector<cv::Mat> cropped_imgs;
+        std::vector<std::string> cids;
         inputc.reset_dv();
         int idoffset = 0;
         while (true) {
@@ -226,7 +227,8 @@ namespace dd {
                 } else {
                     // Only for detector-type models
                     this->_logger->info("[Input {}] Found {} objects", i, detections[i].size());
-                    for (auto &d : detections[i]) {
+                    for (size_t j=0; j < detections[i].size(); j++) {
+                        auto d = detections[i][j];
                         this->_logger->info("Found obj: {} - {} ({})", d.label, d.detection_confidence, d.rect);
 
                         if (d.detection_confidence < confidence_threshold)
@@ -255,6 +257,9 @@ namespace dd {
                                 dlib::extract_image_chip(dv[i], dlib::get_face_chip_details(shape,chip_size,padding), r);
                                 cv::Mat cropped_img = dlib::toMat(r);
                                 cropped_imgs.push_back(cropped_img);
+                                std::string bboxstr = uri+"bbox"+std::to_string(j);
+                                std::string bbox_id = std::to_string(std::hash<std::string>{}(bboxstr));
+                                cids.push_back(bbox_id);
                             }
                         }
                     }
@@ -275,6 +280,7 @@ namespace dd {
                 APIData chain_input;
                 chain_input.add("imgs", cropped_imgs);
                 chain_input.add("imgs_size",reinterpret_cast<ImgDlibInputFileConn*>(&inputc)->_images_size);
+                chain_input.add("cids", cids);
                 out.add("input", chain_input);
             } else if (typeid(inputc) == typeid(ImgDlibInputFileConn)) {
                 APIData chain_input;
