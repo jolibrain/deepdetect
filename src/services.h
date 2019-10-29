@@ -659,7 +659,14 @@ namespace dd
 	      spdlog::drop(cname);
 	      throw InputConnectorBadParamException("no action data for action id " + parent_id);
 	    }
-	  adc.add("data",act_data.get("data").get<std::vector<std::string>>()); // action output data must be string for now (more types to be supported / auto-detected)
+	  if (act_data.has("data"))
+	    {
+	      adc.add("data",act_data.get("data").get<std::vector<std::string>>()); // action output data must be string for now (more types to be supported / auto-detected)
+	    }
+	  else if (act_data.has("data_raw_img")) // raw images
+	    {
+	      adc.add("data_raw_img",act_data.get("data_raw_img").get<std::vector<cv::Mat>>());
+	    }
 	  adc.add("ids",act_data.get("cids").get<std::vector<std::string>>()); // chain ids of processed elements
 	  adc.add("meta_uris",meta_uris);
 	  adc.add("index_uris",index_uris);
