@@ -24,9 +24,9 @@
 
 #include "utils/variant.hpp"
 #include "ext/rmustache/mustache.h"
-#include "ext/rapidjson/rapidjson.h"
-#include "ext/rapidjson/stringbuffer.h"
-#include "ext/rapidjson/writer.h"
+#include <rapidjson/rapidjson.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
 #include <opencv2/core/core.hpp>
 #include "dd_types.h"
 #include <unordered_map>

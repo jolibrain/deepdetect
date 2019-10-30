@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "ext/rapidjson/document.h"
+#include <rapidjson/document.h>
 #include <sstream>
 
 // Routines for rendering Mustache (http://mustache.github.io) templates with RapidJson

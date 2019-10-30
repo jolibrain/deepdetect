@@ -22,10 +22,10 @@
 #include "jsonapi.h"
 #include "dd_config.h"
 #include "githash.h"
-#include "ext/rapidjson/document.h"
-#include "ext/rapidjson/stringbuffer.h"
-#include "ext/rapidjson/reader.h"
-#include "ext/rapidjson/writer.h"
+#include <rapidjson/document.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/reader.h>
+#include <rapidjson/writer.h>
 #include <gflags/gflags.h>
 
 DEFINE_string(service_start_list, "",
