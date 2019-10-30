@@ -22,7 +22,31 @@
 #ifndef DDTYPES_H
 #define DDTYPES_H
 
-#include "ext/rapidjson/document.h"
+#include <exception>
+class RapidjsonException : public std::exception
+{
+public:
+  RapidjsonException(const char *s) : _s(s)
+  {
+  }
+  ~RapidjsonException()
+  {
+  }
+
+  const char *what() const noexcept
+  {
+    return _s;
+  }
+
+private:
+  const char *_s;
+};
+
+#define RAPIDJSON_ASSERT(x)                                                   \
+  if (!(x))                                                                   \
+  throw RapidjsonException(RAPIDJSON_STRINGIFY(x))
+
+#include <rapidjson/document.h>
 
 typedef rapidjson::Document JDoc;
 typedef rapidjson::Value JVal;
