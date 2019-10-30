@@ -32,6 +32,7 @@
 #define CV_LOAD_IMAGE_GRAYSCALE cv::IMREAD_GRAYSCALE
 #define CV_LOAD_IMAGE_UNCHANGED cv::IMREAD_UNCHANGED
 #define CV_BGR2RGB cv::COLOR_BGR2RGB
+#define CV_BGR2GRAY cv::COLOR_BGR2GRAY
 #define CV_INTER_CUBIC cv::INTER_CUBIC
 #endif
 #include "ext/base64/base64.h"
@@ -511,6 +512,12 @@ namespace dd
 	    {
 	      cv::Mat rimg;
 	      resize(img,rimg,cv::Size(_width,_height),0,0);
+	      if (_bw)
+		{
+		  cv::Mat bwimg;
+		  cv::cvtColor(rimg, bwimg, CV_BGR2GRAY);
+		  rimg = bwimg;
+		}
 	      _images_size.push_back(std::pair<int,int>(img.rows,img.cols));
 	      if (_keep_orig)
 		_orig_images.push_back(std::move(img));
