@@ -41,12 +41,12 @@ TEST(torchapi, service_predict)
     // create service
     JsonAPI japi;
     std::string sname = "imgserv";
-    std::string jstr = "{\"mllib\":\"torch\",\"description\":\"resnet-50\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  incept_repo + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":224,\"width\":224,\"rgb\":true,\"std\":255.0}}}";
+    std::string jstr = "{\"mllib\":\"torch\",\"description\":\"resnet-50\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  incept_repo + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":224,\"width\":224,\"rgb\":true,\"scale\":0.0039}}}";
     std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
     ASSERT_EQ(created_str,joutstr);
 
     // predict
-    std::string jpredictstr = "{\"service\":\"imgserv\",\"parameters\":{\"input\":{\"height\":224,\"width\":224,\"rgb\":true,\"std\":255.0},\"output\":{\"best\":1}},\"data\":[\"" + incept_repo + "cat.jpg\"]}";
+    std::string jpredictstr = "{\"service\":\"imgserv\",\"parameters\":{\"input\":{\"height\":224,\"width\":224,\"rgb\":true,\"scale\":0.0039},\"output\":{\"best\":1}},\"data\":[\"" + incept_repo + "cat.jpg\"]}";
     joutstr = japi.jrender(japi.service_predict(jpredictstr));
     JDoc jd;
     std::cout << "joutstr=" << joutstr << std::endl;
