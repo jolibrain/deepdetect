@@ -288,6 +288,51 @@ namespace dd
     action_out.add("cids",bbox_ids);
     cdata.add_action_data(_action_id,action_out);      
   }
+
+  // XXX: assumes batch size is 1 so all crops belong to the same URI
+  void MulticropEnsembling::apply(APIData &model_out,
+				  ChainData &cdata,
+				  std::vector<std::string> &meta_uris,
+				  std::vector<std::string> &index_uris)
+  {
+    std::vector<APIData> vad = model_out.getv("predictions");
+    std::unordered_map<std::string,std::pair<double,int>> multibox_nn;
+    std::unordered_map<std::string,std::pair<double,int>>::iterator hit;
+    for (size_t i=0;i<vad.size();++i)
+      {
+	std::vector<APIData> nns_vad = vad.at(i).getv("nns");
+	for (size_t j=0;j<nns_vad.size();++j)
+	  {
+	    std::string nns_uri = nns_vad.at(j).get("uri").get<std::string>();
+	    double nns_dist = nns_vad.at(j).get("dist").get<double>();
+	    if ((hit=multibox_nn.find(nns_uri))==multibox_nn.end())
+	      multibox_nn.insert(std::pair<std::string,std::pair<double,int>>(nns_uri,std::pair<double,int>(nns_dist,1)));
+	    else
+	      {
+		(*hit).second.first += nns_dist;
+		(*hit).second.second += 1;
+	      }
+	  }
+      }
+
+    // final ranking
+    hit = multibox_nn.begin();
+    std::multimap<double,APIData> box_nns;
+    while(hit!=multibox_nn.end())
+      {
+	APIData nn;
+	nn.add("uri",(*hit).first);
+	double ensembled_dist = (*hit).second.first / static_cast<double>((*hit).second.second);
+	nn.add("dist",ensembled_dist);
+	box_nns.insert(std::pair<double,APIData>(ensembled_dist,nn));
+	++hit;
+      }
+    std::vector<APIData> ranked_nns;
+    for (auto mit=box_nns.begin();mit!=box_nns.end();++mit)
+      ranked_nns.push_back((*mit).second);
+
+    model_out.add("global_nns",ranked_nns);
+  }
   
   void ClassFilter::apply(APIData &model_out,
 			  ChainData &cdata,

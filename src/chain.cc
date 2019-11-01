@@ -94,6 +94,7 @@ namespace dd
     //  pre-compile models != first model
     std::vector<std::string> uris;
     APIData first_model_out;
+    std::vector<APIData> global_nns;
     std::unordered_multimap<std::string,APIData> other_models_out;
     std::unordered_map<std::string,APIData>::const_iterator hit = _model_data.begin();
     while(hit!=_model_data.end())
@@ -136,6 +137,8 @@ namespace dd
 									   vout));
 		  }
 	      }
+	    if ((*hit).second.has("global_nns")) // multicrop ensembling
+	      global_nns = (*hit).second.getv("global_nns");
 	  }
 	++hit;
       }
@@ -156,6 +159,8 @@ namespace dd
     std::vector<APIData> predictions = vis_ad_out.getv("predictions");
     for (size_t i=0;i<predictions.size();i++)
       predictions.at(i).add("uri",uris.at(i));
+    if (!global_nns.empty()) // multicrop ensembling
+      predictions.at(0).add("nns",global_nns);
     vis_ad_out.add("predictions",predictions);
     return vis_ad_out;
   }
