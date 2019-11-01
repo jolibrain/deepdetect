@@ -124,26 +124,27 @@ namespace dd
 	if (_scaled)
 	  scale(img, rimg);
 	else if (_width == 0 || _height == 0) {
-		if (_width == 0 && _height == 0) {
-			// XXX - Do nothing and keep native resolution. May cause issues if batched images are different resolutions
+	  if (_width == 0 && _height == 0) {
+	    // XXX - Do nothing and keep native resolution. May cause issues if batched images are different resolutions
             rimg = img;
-		} else {
-			// Resize so that the larger dimension is set to whichever (width or height) is non-zero, maintaining aspect ratio
-			// XXX - This may cause issues if batch images are different resolutions
-			size_t currMaxDim = std::max(img.rows, img.cols);
-			double scale = static_cast<double>(std::max(_width, _height)) / static_cast<double>(currMaxDim);
-			resize(img,rimg,cv::Size(),scale,scale);
-		}
+	  } else {
+	    // Resize so that the larger dimension is set to whichever (width or height) is non-zero, maintaining aspect ratio
+	    // XXX - This may cause issues if batch images are different resolutions
+	    size_t currMaxDim = std::max(img.rows, img.cols);
+	    double scale = static_cast<double>(std::max(_width, _height)) / static_cast<double>(currMaxDim);
+	    resize(img,rimg,cv::Size(),scale,scale);
+	  }
 	} else {
-		// Resize normally to the specified width and height
-		resize(img,rimg,cv::Size(_width,_height),0,0);
+	  // Resize normally to the specified width and height
+	  resize(img,rimg,cv::Size(_width,_height),0,0);
+	}
+	
+	if (_crop_width != 0 && _crop_height != 0) {
+	  int widthBorder = (_width - _crop_width)/2;
+	  int heightBorder = (_height - _crop_height)/2;
+	  rimg = rimg(cv::Rect(widthBorder, heightBorder, _crop_width, _crop_height));
 	}
 
-	if (_crop_width != 0 && _crop_height != 0) {
-		int widthBorder = (_width - _crop_width)/2;
-		int heightBorder = (_height - _crop_height)/2;
-		rimg = rimg(cv::Rect(widthBorder, heightBorder, _crop_width, _crop_height));
-	}
 	_imgs.push_back(std::move(rimg));
       }
     
@@ -319,19 +320,19 @@ namespace dd
 	    {
 	      throw InputConnectorBadParamException("failed resizing image " + p.first);
 	    }
-		if (_crop_width != 0 && _crop_height != 0) {
-			int widthBorder = (_width - _crop_width)/2;
-			int heightBorder = (_height - _crop_height)/2;
-			try {
-				rimg = rimg(cv::Rect(widthBorder, heightBorder, _crop_width, _crop_height));
-			} catch(...) {
-				throw InputConnectorBadParamException("failed cropping image " + p.first);
-			}
-		}
-		_imgs.push_back(std::move(rimg));
-		_img_files.push_back(p.first);
-		if (p.second >= 0)
-		  _labels.push_back(p.second);
+	  if (_crop_width != 0 && _crop_height != 0) {
+	    int widthBorder = (_width - _crop_width)/2;
+	    int heightBorder = (_height - _crop_height)/2;
+	    try {
+	      rimg = rimg(cv::Rect(widthBorder, heightBorder, _crop_width, _crop_height));
+	    } catch(...) {
+	      throw InputConnectorBadParamException("failed cropping image " + p.first);
+	    }
+	  }
+	  _imgs.push_back(std::move(rimg));
+	  _img_files.push_back(p.first);
+	  if (p.second >= 0)
+	    _labels.push_back(p.second);
 	  if (_imgs.size() % 1000 == 0)
 	    _logger->info("read {} images",_imgs.size());
 	}
@@ -365,6 +366,7 @@ namespace dd
     int _height = 224;
     int _crop_width = 0;
     int _crop_height = 0;
+    float _scale = 1.0;
     bool _scaled = false;
     int _scale_min = 600;
     int _scale_max = 1000;
@@ -388,7 +390,7 @@ namespace dd
       _width(i._width),_height(i._height),
       _crop_width(i._crop_width),_crop_height(i._crop_height),
       _bw(i._bw),_unchanged_data(i._unchanged_data),
-      _mean(i._mean),_has_mean_scalar(i._has_mean_scalar),
+      _mean(i._mean),_has_mean_scalar(i._has_mean_scalar),_scale(i._scale),
       _scaled(i._scaled), _scale_min(i._scale_min), _scale_max(i._scale_max),
       _keep_orig(i._keep_orig), _interp(i._interp)
 #ifdef USE_CUDA_CV
@@ -440,8 +442,14 @@ namespace dd
 	  apitools::get_floats(ad, "mean", _mean);
 	  _has_mean_scalar = true;
 	}
-
+      if (ad.has("std"))
+	{
+	  apitools::get_floats(ad, "std", _std);
+	}
+      
       // Variable size
+      if (ad.has("scale"))
+	  _scale = ad.get("scale").get<double>();
       if (ad.has("scaled") || ad.has("scale_min") || ad.has("scale_max"))
 	_scaled = true;
       if (ad.has("scale_min"))
@@ -522,6 +530,7 @@ namespace dd
 	  dimg._ctype._height = _height;
 	  dimg._ctype._crop_width = _crop_width;
 	  dimg._ctype._crop_height = _crop_height;
+	  dimg._ctype._scale = _scale;
 	  dimg._ctype._scaled = _scaled;
 	  dimg._ctype._scale_min = _scale_min;
 	  dimg._ctype._scale_max = _scale_max;
@@ -654,8 +663,10 @@ namespace dd
     double _test_split = 0.0; /**< auto-split of the dataset. */
     int _seed = -1; /**< shuffling seed. */
     std::vector<float> _mean; /**< mean image pixels, to be subtracted from images. */
+    std::vector<float> _std; /**< std, to divide image values. */
     bool _has_mean_scalar = false; /**< whether scalar is set. */
     std::string _db_fname;
+    double _scale = 1.0;
     bool _scaled = false;
     int _scale_min = 600;
     int _scale_max = 1000;
