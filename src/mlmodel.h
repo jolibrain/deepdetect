@@ -111,6 +111,7 @@ namespace dd
       if (!_se)
 	{
 #ifdef USE_ANNOY
+	  (void)ad;
 	  _se = new SearchEngine<AnnoySE>(dim,_repo);
 	  _se->_tse->_map_populate = _index_preload;
 #endif
