@@ -95,7 +95,8 @@ namespace dd
 
 	      cv::Rect roi(cxmin,cymax,cxmax-cxmin,cymin-cymax);
 	      cv::Mat cropped_img = img(roi);
-
+	      std::vector<cv::Mat> random_cropped_imgs;
+	      
 	      // inner random cropping here
 	      //TODO: keep orig crop ?
 	      if (random_crops)
@@ -119,6 +120,7 @@ namespace dd
 		      cv::Rect roi(rxmin,rymin,rxmax-rxmin,rymax-rymin);
 		      //std::cerr << "roi.x=" << roi.x << " / roi.y=" << roi.y << " / roi.width=" << roi.width << " / roi.height=" << roi.height << std::endl;
 		      cv::Mat cropped_img_rand = cropped_img(roi);
+		      random_cropped_imgs.push_back(cropped_img_rand);
 		      
 		      // serialize crop into string (will be auto read by read_element in imginputconn)
 		      std::vector<unsigned char> cropped_img_ser;
@@ -169,6 +171,8 @@ namespace dd
 	      if (save_crops)
 		{
 		  std::string puri = dd_utils::split(uri,'/').back();
+		  for (size_t ci=0;ci<random_cropped_imgs.size();++ci)
+		    cv::imwrite("crop_" + puri + "_" + std::to_string(j) + "_" + std::to_string(ci) + ".png",random_cropped_imgs.at(ci));
 		  cv::imwrite("crop_" + puri + "_" + std::to_string(j) + ".png",cropped_img);
 		}
 	    }
