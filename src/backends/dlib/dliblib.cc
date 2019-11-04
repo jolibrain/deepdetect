@@ -229,7 +229,7 @@ namespace dd {
                     this->_logger->info("[Input {}] Found {} objects", i, detections[i].size());
                     for (size_t j=0; j < detections[i].size(); j++) {
                         auto d = detections[i][j];
-                        this->_logger->info("Found obj: {} - {} ({})", d.label, d.detection_confidence, d.rect);
+                        this->_logger->info("Found obj: {} - {} ([({}, {}) ({}, {})])", d.label, d.detection_confidence, d.rect.left(), d.rect.top(), d.rect.right(), d.rect.bottom());
 
                         if (d.detection_confidence < confidence_threshold)
                             continue; // Skip if it doesn't pass the conf threshold
