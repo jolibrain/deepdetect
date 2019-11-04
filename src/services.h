@@ -663,9 +663,10 @@ namespace dd
 	  adc.add("meta_uris",meta_uris);
 	  adc.add("index_uris",index_uris);
 	}
-      else {
-	cdata._first_id = pred_id;
-      }
+      else // chain starts with a service
+	{
+	  cdata._first_id = pred_id;
+	}
       
       APIData pred_out;
       try
@@ -741,7 +742,12 @@ namespace dd
       std::string action_type = adc.getobj("action").get("type").get<std::string>();
 
       APIData prev_data = cdata.get_model_data(prec_pred_id);
-      if (!prev_data.getv("predictions").size())
+      
+      if (prev_data.empty()) // action comes first in the chain
+	{
+	  // do nothing, in this case data must be passed along with the action
+	}
+      else if (!prev_data.getv("predictions").size())
 	{
 	  // no prediction to work from
 	  chain_logger->info("no prediction to act on");
@@ -856,6 +862,8 @@ namespace dd
 	      else if (adc.has("action"))
 		{
 		  // call to action
+		  if (prec_pred_id.empty())
+		    prec_pred_id = "0";
 		  if (chain_action(chain_logger,adc,meta_uris,index_uris,cdata,i,prec_pred_id))
 		    break;
 		  
@@ -872,10 +880,10 @@ namespace dd
 	  
 	  // producing a nested output
 	  APIData nested_out;
-	  if (npredicts > 1)
+	  if (cdata._model_data.size() > 1)
 	    nested_out = cdata.nested_chain_output();
 	  else nested_out = cdata.get_model_data(cdata._first_id);
-	  
+
 	  out = nested_out;
 	  std::chrono::time_point<std::chrono::system_clock> tstop = std::chrono::system_clock::now();
 	  double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(tstop-tstart).count();

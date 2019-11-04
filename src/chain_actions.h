@@ -89,7 +89,11 @@ namespace dd
     ImgsCropAction(const APIData &adc,
 		   const std::string &action_id,
 		   const std::string &action_type)
-      :ChainAction(adc,action_id,action_type) {}
+      :ChainAction(adc,action_id,action_type)
+      {
+	if (adc.has("data"))
+	  _uris = adc.get("data").get<std::vector<std::string>>();
+      }
 
     ~ImgsCropAction() {}
     
@@ -97,21 +101,8 @@ namespace dd
 	       ChainData &cdata,
 	       std::vector<std::string> &meta_uris,
 	       std::vector<std::string> &index_uris);
-  };
 
-  class RandomCrops : public ChainAction
-  {
-  public:
-    RandomCrops(const APIData &adc,
-		const std::string &action_id,
-		const std::string &action_type)
-      :ChainAction(adc,action_id,action_type) {}
-    ~RandomCrops() {}
-
-    void apply(APIData &model_out,
-	       ChainData &cdata,
-	       std::vector<std::string> &meta_uris,
-	       std::vector<std::string> &index_uris);
+    std::vector<std::string> _uris;
   };
   
   class ClassFilter : public ChainAction
@@ -164,11 +155,6 @@ namespace dd
       if (action_type == "crop")
 	{
 	  ImgsCropAction act(_adc,action_id,action_type);
-	  act.apply(model_out,cdata,meta_uris,index_uris);
-	}
-      else if (action_type == "random_crops")
-	{
-	  RandomCrops act(_adc,action_id,action_type);
 	  act.apply(model_out,cdata,meta_uris,index_uris);
 	}
       else if (action_type == "multibox_ensembling")

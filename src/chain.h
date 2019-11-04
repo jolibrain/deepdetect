@@ -94,8 +94,7 @@ namespace dd
     std::unordered_map<std::string,APIData> _model_data;
     std::unordered_map<std::string,APIData> _action_data;
     std::unordered_map<std::string,std::string> _id_sname;
-    //std::string _first_sname;
-    std::string _first_id;
+    std::string _first_id = "0";
   };
 
   /**

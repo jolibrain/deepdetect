@@ -267,7 +267,7 @@ class DD(object):
         
         return call
 
-    def make_action(self, action_type, parameters=[]):
+    def make_action(self, action_type, parameters=[], data=[]):
         """
         Creates a dictionary that holds a JSON chain action.
         Parameters:
@@ -277,6 +277,8 @@ class DD(object):
         action = {"action": {"type":action_type}}
         if parameters:
             action["action"]["parameters"] = parameters
+        if data:
+            action["data"] = data
         return action
 
     def post_chain(self, cname, calls):
