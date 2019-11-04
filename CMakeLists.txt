@@ -740,7 +740,7 @@ if (USE_TORCH)
   set(TORCH_LIB_DEPS torch caffe2 ${TORCH_LOCATION}/lib/libc10.so)
   
   if (NOT USE_CPU_ONLY AND CUDA_FOUND)
-    list(APPEND TORCH_LIB_DEPS caffe2_gpu ${TORCH_LOCATION}/lib/libc10_cuda.so)
+    list(APPEND TORCH_LIB_DEPS caffe2_gpu ${TORCH_LOCATION}/lib/libc10_cuda.so iomp5)
   else()
     list(APPEND TORCH_LIB_DEPS iomp5)
   endif()
