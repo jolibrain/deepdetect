@@ -140,7 +140,6 @@ namespace dd
 	  }
 	if ((*hit).second.has("global_nns")) // multicrop ensembling
 	  {
-	    std::cerr << "has global_nns\n";
 	    global_nns = (*hit).second.getv("global_nns");
 	  }
 	++hit;
