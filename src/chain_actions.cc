@@ -123,6 +123,12 @@ namespace dd
 	      double cymax = std::max(0.0,ymax-deltay);
 	      double cymin = std::min(static_cast<double>(img.rows),ymin+deltay);
 
+	      /*std::cerr << "xmin=" << xmin << " / xmax=" << cxmax << " / ymin=" << cymin << " / ymax=" << cymax << std::endl;
+		std::cerr << "cxmin=" << cxmin << " / cxmax=" << cxmax << " / cymin=" << cymin << " / cymax=" << cymax << std::endl;*/
+
+	      if (cxmax-cxmin <= 0 || cymin-cymax <= 0)
+		throw ActionInternalException("wrong bounding box values for uri " + uri);
+	      
 	      cv::Rect roi(cxmin,cymax,cxmax-cxmin,cymin-cymax);
 	      cv::Mat cropped_img = img(roi);
 	      std::vector<cv::Mat> random_cropped_imgs;
@@ -231,7 +237,9 @@ namespace dd
 				  std::vector<std::string> &meta_uris,
 				  std::vector<std::string> &index_uris)
   {
-    (void) index_uris;
+    (void)meta_uris;
+    (void)index_uris;
+    (void)cdata;
     std::vector<APIData> vad = model_out.getv("predictions");
     std::unordered_map<std::string,std::pair<double,int>> multibox_nn;
     std::unordered_map<std::string,std::pair<double,int>>::iterator hit;
@@ -276,6 +284,8 @@ namespace dd
 			  std::vector<std::string> &meta_uris,
 			  std::vector<std::string> &index_uris)
   {
+    (void)meta_uris;
+    (void)index_uris;
     if (!_params.has("classes"))
       {
 	throw ActionBadParamException("filter action is missing classes parameter");
