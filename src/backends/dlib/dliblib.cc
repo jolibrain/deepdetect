@@ -122,17 +122,6 @@ namespace dd {
             bbox = true;
         }
 
-        // If provided, use this as the chip_size for the shape predictor. Default: 150
-        int chip_size = _chip_size;
-        if (ad_mllib.has("chip_size")) {
-            chip_size = ad_mllib.get("chip_size").get<int>();
-        }
-        double padding = _padding;
-        // If provided, use this as the padding ratio for the shape predictor. Default: 0.25
-        if (ad_mllib.has("padding")) {
-            padding = ad_mllib.get("padding").get<double>();
-        }
-
         const std::string modelFile = this->_mlmodel._modelName;
         if (modelFile.empty()) {
             throw MLLibBadParamException("No pre-trained model found in model repository");
