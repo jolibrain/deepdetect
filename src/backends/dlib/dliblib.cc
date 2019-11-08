@@ -165,7 +165,6 @@ namespace dd {
         // vector for storing  the outputAPI of the file
         std::vector <APIData> vrad;
         std::vector<cv::Mat> cropped_imgs;
-        std::vector<std::string> cids;
         inputc.reset_dv();
         int idoffset = 0;
         while (true) {
@@ -235,7 +234,7 @@ namespace dd {
                             continue; // Skip if it doesn't pass the conf threshold
 
                         probs.push_back(d.detection_confidence);
-                        cats.push_back(d.label);
+                        cats.push_back((d.label == "") ? "1" : d.label);
 
                         if (bbox) {
                             // bbox can be formed with d.rect.left()/top()/right()/bottom()
@@ -249,18 +248,33 @@ namespace dd {
                             ad_bbox.add("ymin", std::round(
                                     (static_cast<double>(height - d.rect.bottom()) / static_cast<double>(height)) *
                                     rows));
-                            bboxes.push_back(ad_bbox);
 
-                            if (ad.has("chain") && ad.get("chain").get<bool>() && !shapePredictorFile.empty()) {
+                            if (!shapePredictorFile.empty()) {
                                 auto shape = _shapePredictor(dv[i], d.rect);
-                                dlib::matrix<dlib::rgb_pixel> r;
-                                dlib::extract_image_chip(dv[i], dlib::get_face_chip_details(shape,chip_size,padding), r);
-                                cv::Mat cropped_img = dlib::toMat(r);
-                                cropped_imgs.push_back(cropped_img);
-                                std::string bboxstr = uri+"bbox"+std::to_string(j);
-                                std::string bbox_id = std::to_string(std::hash<std::string>{}(bboxstr));
-                                cids.push_back(bbox_id);
+                                const auto &shape_rect = shape.get_rect();
+                                APIData ad_shape;
+                                ad_shape.add("left", shape_rect.left());
+                                ad_shape.add("top", shape_rect.top());
+                                ad_shape.add("right", shape_rect.right());
+                                ad_shape.add("bottom", shape_rect.bottom());
+                                std::vector<double> points;
+                                for (size_t idx = 0; idx < shape.num_parts(); idx++) {
+                                    const auto &p = shape.part(idx);
+                                    if (p == dlib::OBJECT_PART_NOT_PRESENT) {
+                                        // Push (-1, -1) to indicate the part is not present
+                                        points.push_back(-1.0);
+                                        points.push_back(-1.0);
+                                    } else {
+                                        points.push_back(static_cast<double>(p.x()));
+                                        points.push_back(static_cast<double>(p.y()));
+                                    }
+                                }
+                                this->_logger->info("num points: {}", points.size());
+                                ad_shape.add("points", points);
+                                ad_bbox.add("shape", ad_shape);
                             }
+
+                            bboxes.push_back(ad_bbox);
                         }
                     }
                 }
@@ -276,13 +290,7 @@ namespace dd {
         out.add("bbox", bbox);
         tout.finalize(ad.getobj("parameters").getobj("output"), out, static_cast<MLModel *>(&this->_mlmodel));
         if (ad.has("chain") && ad.get("chain").get<bool>()) {
-            if (!shapePredictorFile.empty()) {
-                APIData chain_input;
-                chain_input.add("imgs", cropped_imgs);
-                chain_input.add("imgs_size",reinterpret_cast<ImgDlibInputFileConn*>(&inputc)->_images_size);
-                chain_input.add("cids", cids);
-                out.add("input", chain_input);
-            } else if (typeid(inputc) == typeid(ImgDlibInputFileConn)) {
+            if (typeid(inputc) == typeid(ImgDlibInputFileConn)) {
                 APIData chain_input;
                 if (!reinterpret_cast<ImgDlibInputFileConn*>(&inputc)->_orig_images.empty())
                     chain_input.add("imgs",reinterpret_cast<ImgDlibInputFileConn*>(&inputc)->_orig_images);

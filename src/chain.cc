@@ -144,15 +144,15 @@ namespace dd
     APIData vis_ad_out;
     visitor_nested vn(&other_models_out);
     auto vhit = first_model_out._data.begin();
-//    while(vhit!=first_model_out._data.end())
-//      {
-//	mapbox::util::apply_visitor(vn,(*vhit).second);
-//	if (!vn._vad.empty())
-//	  {
-//	    vis_ad_out.add((*vhit).first,vn._vad);
-//	  }
-//	++vhit;
-//      }
+    while(vhit!=first_model_out._data.end())
+      {
+	mapbox::util::apply_visitor(vn,(*vhit).second);
+	if (!vn._vad.empty())
+	  {
+	    vis_ad_out.add((*vhit).first,vn._vad);
+	  }
+	++vhit;
+      }
     std::vector<APIData> predictions = vis_ad_out.getv("predictions");
     for (size_t i=0;i<predictions.size();i++)
       predictions.at(i).add("uri",uris.at(i));

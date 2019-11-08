@@ -91,26 +91,19 @@ namespace dd
   };
 
 #ifdef USE_DLIB
-  class DlibShapePredictorAction : public ChainAction
+  class DlibAlignCropAction : public ChainAction
   {
   public:
-    DlibShapePredictorAction(const APIData &adc,
+    DlibAlignCropAction(const APIData &adc,
 		   const std::string &action_id,
 		   const std::string &action_type)
-      :ChainAction(adc,action_id,action_type) {
-        dlib::deserialize(_shape_predictor_path) >> _shapePredictor;
-    }
+      :ChainAction(adc,action_id,action_type) {}
 
-    ~DlibShapePredictorAction() {}
+    ~DlibAlignCropAction() {}
 
     void apply(APIData &model_out,
 	       ChainData &cdata);
-
-    std::string _shape_predictor_path = "shape_predictor_5_face_landmarks.dat";
-    dlib::shape_predictor _shapePredictor;
   };
-
-
 #endif
 
   class ImgsCopyAction : public ChainAction
@@ -185,9 +178,9 @@ namespace dd
         act.apply(model_out,cdata);
     }
 #ifdef USE_DLIB
-      else if (action_type == "dlib_shape_predictor")
+      else if (action_type == "dlib_align_crop")
     {
-        DlibShapePredictorAction act(_adc,action_id,action_type);
+        DlibAlignCropAction act(_adc,action_id,action_type);
         act.apply(model_out,cdata);
     }
 #endif

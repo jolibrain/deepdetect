@@ -29,7 +29,7 @@ namespace dd
 {
 
 #ifdef USE_DLIB
-void DlibShapePredictorAction::apply(APIData &model_out,
+void DlibAlignCropAction::apply(APIData &model_out,
 			     ChainData &cdata)
     {
       std::vector<APIData> vad = model_out.getv("predictions");
@@ -73,7 +73,11 @@ void DlibShapePredictorAction::apply(APIData &model_out,
             {
               APIData bbox = ad_cls.at(j).getobj("bbox");
               if (bbox.empty()) {
-                throw ActionBadParamException("crop action cannot find bbox object for uri " + uri);
+                throw ActionBadParamException("align/crop action cannot find bbox object for uri " + uri);
+              }
+              APIData ad_shape = bbox.getobj("shape");
+              if (ad_shape.empty()) {
+                  throw ActionBadParamException("align/crop action cannot find shape object for uri " + uri);
               }
 
               // adding bbox id
@@ -82,14 +86,17 @@ void DlibShapePredictorAction::apply(APIData &model_out,
               APIData ad_cid;
               ad_cls.at(j).add(bbox_id,ad_cid);
               cad_cls.push_back(ad_cls.at(j));
+              const dlib::rectangle shape_rect(ad_shape.get("left").get<long>(),
+                                               ad_shape.get("top").get<long>(),
+                                               ad_shape.get("right").get<long>(),
+                                               ad_shape.get("bottom").get<long>());
+              std::vector<dlib::point> parts;
+              std::vector<double> points = ad_shape.get("points").get<std::vector<double>>();
+              for (size_t idx=0; idx < points.size()-1; idx += 2) {
+                  parts.push_back(dlib::point(static_cast<long>(points[idx]), static_cast<long>(points[idx+1])));
+              }
 
-              long left = static_cast<long>(std::round(bbox.get("xmin").get<double>() / orig_cols * img.nc()));
-              long top = static_cast<long>(std::round(-1* ((bbox.get("ymax").get<double>() / orig_rows * img.nr()) - img.nr())));
-              long right = static_cast<long>(std::round(bbox.get("xmax").get<double>() / orig_cols * img.nc()));
-              long bottom = static_cast<long>(std::round(-1* ((bbox.get("ymin").get<double>() / orig_rows * img.nr()) - img.nr())));
-
-              dlib::rectangle rect(left, top, right, bottom);
-              auto shape = _shapePredictor(img, rect);
+              dlib::full_object_detection shape(shape_rect, parts);
               dlib::matrix<dlib::rgb_pixel> r;
               dlib::extract_image_chip(img, dlib::get_face_chip_details(shape,chip_size,bratio), r);
               cv::Mat cropped_img = dlib::toMat(r);
@@ -131,7 +138,7 @@ void DlibShapePredictorAction::apply(APIData &model_out,
 void ImgsCopyAction::apply(APIData &model_out,
                                ChainData &cdata)
     {
-/*
+
         if (!model_out.has("input") || !model_out.getobj("input").has("imgs")) {
             throw ActionBadParamException("copy action cannot find imgs");
         }
@@ -153,9 +160,9 @@ void ImgsCopyAction::apply(APIData &model_out,
         }
 
         cdata.add_action_data(_action_id,action_out);
-*/
 
 
+/*
 
         std::vector<APIData> vad = model_out.getv("predictions");
         std::vector<cv::Mat> imgs = model_out.getobj("input").get("imgs").get<std::vector<cv::Mat>>();
@@ -201,7 +208,7 @@ void ImgsCopyAction::apply(APIData &model_out,
 
         // updated model data with chain ids
         model_out.add("predictions",cvad);
-
+*/
     }
 
 
