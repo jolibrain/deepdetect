@@ -25,16 +25,6 @@
 #include "apidata.h"
 #include "chain.h"
 
-#ifdef USE_DLIB
-#include "opencv2/opencv.hpp"
-#include "dlib/data_io.h"
-#include "dlib/image_io.h"
-#include "dlib/image_transforms.h"
-#include "dlib/image_processing.h"
-#include "dlib/opencv/to_open_cv.h"
-#include "dlib/opencv/cv_image.h"
-#endif
-
 namespace dd
 {
 
@@ -90,36 +80,6 @@ namespace dd
     bool _in_place = false;
   };
 
-#ifdef USE_DLIB
-  class DlibAlignCropAction : public ChainAction
-  {
-  public:
-    DlibAlignCropAction(const APIData &adc,
-		   const std::string &action_id,
-		   const std::string &action_type)
-      :ChainAction(adc,action_id,action_type) {}
-
-    ~DlibAlignCropAction() {}
-
-    void apply(APIData &model_out,
-	       ChainData &cdata);
-  };
-#endif
-
-  class ImgsCopyAction : public ChainAction
-  {
-  public:
-    ImgsCopyAction(const APIData &adc,
-               const std::string &action_id,
-               const std::string &action_type)
-        :ChainAction(adc,action_id,action_type) {}
-
-    ~ImgsCopyAction() {}
-
-    void apply(APIData &model_out,
-               ChainData &cdata);
-  };
-
   class ImgsCropAction : public ChainAction
   {
   public:
@@ -156,39 +116,7 @@ namespace dd
 
     void apply_action(const std::string &action_type,
 		      APIData &model_out,
-		      ChainData &cdata)
-    {
-      std::string action_id;
-      if (_adc.has("id"))
-	action_id = _adc.get("id").get<std::string>();
-      else action_id = std::to_string(cdata._action_data.size());
-      if (action_type == "crop")
-	{
-	  ImgsCropAction act(_adc,action_id,action_type);
-	  act.apply(model_out,cdata);
-	}
-      else if (action_type == "filter")
-	{
-	  ClassFilter act(_adc,action_id,action_type);
-	  act.apply(model_out,cdata);
-	}
-      else if (action_type == "copy")
-    {
-        ImgsCopyAction act(_adc,action_id,action_type);
-        act.apply(model_out,cdata);
-    }
-#ifdef USE_DLIB
-      else if (action_type == "dlib_align_crop")
-    {
-        DlibAlignCropAction act(_adc,action_id,action_type);
-        act.apply(model_out,cdata);
-    }
-#endif
-      else
-	{
-	  throw ActionBadParamException("unknown action " + action_type);
-	}
-    }
+		      ChainData &cdata);
 
     APIData _adc; /**< action ad object. */
   };
