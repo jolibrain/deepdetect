@@ -57,7 +57,7 @@ TEST(dlibapi,service_predict_face)
     ASSERT_EQ(200,jd["status"]["code"]);
     ASSERT_TRUE(jd["body"]["predictions"].IsArray());
     std::string cl1 = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
-    ASSERT_TRUE(cl1 == ""); // Face model does not have labels
+    ASSERT_EQ("1", cl1); // default label is "1" when no label is provided
     ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble() > 0.4);
     ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0].HasMember("bbox"));
     ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["bbox"].HasMember("xmin"));
@@ -79,7 +79,7 @@ TEST(dlibapi,service_predict_face)
     }
     ASSERT_TRUE(jd["body"]["predictions"][grace_hopper_idx]["classes"].Size() > 0);
     cl1 = jd["body"]["predictions"][grace_hopper_idx]["classes"][0]["cat"].GetString();
-    ASSERT_TRUE(cl1 == ""); // Face model does not have labels
+    ASSERT_EQ("1", cl1); // default label is "1" when no label is provided
     ASSERT_TRUE(jd["body"]["predictions"][grace_hopper_idx]["classes"][0]["prob"].GetDouble() > 0.4);
     ASSERT_TRUE(jd["body"]["predictions"][grace_hopper_idx]["classes"][0].HasMember("bbox"));
     ASSERT_TRUE(jd["body"]["predictions"][grace_hopper_idx]["classes"][0]["bbox"].HasMember("xmin"));
