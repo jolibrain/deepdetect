@@ -523,6 +523,11 @@ namespace dd
 		_orig_images.push_back(std::move(img));
 	      if (!_ids.empty())
 		uris.push_back(_ids.at(i));
+	      else
+		{
+		  _ids.push_back(std::to_string(i));
+		  uris.push_back(_ids.back());
+		}
 	      rimgs.push_back(std::move(rimg));
 	      ++i;
 	    }
