@@ -160,7 +160,9 @@ None outside of C++ compiler and make
 **Note:** The version of OpenBLAS (v0.2.20) shipped with Ubuntu 18.04 is not up to date and includes a bug. You must install a later version of OpenBLAS >= v0.3.0 to use Dlib on Ubuntu 18.04.
 
 The easiest way currently is to manually install the Ubuntu 19.10 `libopenblas-base` and `libopenblas-dev` packages. You may download them here:
+
 http://launchpadlibrarian.net/410583809/libopenblas-base_0.3.5+ds-2_amd64.deb
+
 http://launchpadlibrarian.net/410583808/libopenblas-dev_0.3.5+ds-2_amd64.deb
 
 and install them with `sudo apt-get install ./package-name.deb` to automatically handle dependencies.
