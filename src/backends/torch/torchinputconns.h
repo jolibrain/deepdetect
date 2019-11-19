@@ -85,18 +85,7 @@ namespace dd
             {
                 throw;
             }
-
-            if (ad.has("parameters"))
-            {
-                APIData ad_param = ad.getobj("parameters");
-                if (ad_param.has("input"))
-                {
-                    APIData input_ad = ad_param.getobj("input");
-                    if (input_ad.has("std"))
-                        _std = input_ad.get("std").get<double>();
-                }
-            }
-
+	    
             std::vector<at::Tensor> tensors;
             std::vector<int64_t> sizes{ _height, _width, 3 };
             at::TensorOptions options(at::ScalarType::Byte);
@@ -104,8 +93,17 @@ namespace dd
             for (const cv::Mat &bgr : this->_images) {
                 at::Tensor imgt = torch::from_blob(bgr.data, at::IntList(sizes), options);
                 imgt = imgt.toType(at::kFloat).permute({2, 0, 1});
-                if (_std != 1.0)
-                    imgt = imgt.mul(1. / _std);
+		size_t nchannels = imgt.size(0);
+		if (_scale != 1.0)
+		  imgt = imgt.mul(_scale);
+		if (!_mean.empty() && _mean.size() != nchannels)
+		  throw InputConnectorBadParamException("mean vector be of size the number of channels (" + std::to_string(nchannels) + ")");
+		for (size_t m=0;m<_mean.size();m++)
+		  imgt[0][m] = imgt[0][m].sub_(_mean.at(m));
+		if (!_std.empty() && _std.size() != nchannels)
+		  throw InputConnectorBadParamException("std vector be of size the number of channels (" + std::to_string(nchannels) + ")");
+		for (size_t s=0;s<_std.size();s++)
+		  imgt[0][s] = imgt[0][s].div_(_std.at(s));
                 tensors.push_back(imgt);
             }
 
@@ -114,8 +112,6 @@ namespace dd
 
     public:
         at::Tensor _in;
-
-        double _std = 1.0;
     };
 
 

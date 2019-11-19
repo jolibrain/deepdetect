@@ -75,20 +75,28 @@ namespace dd
             _attention = true;
         }
 
-        _traced = torch::jit::load(this->_mlmodel._model_file, _device);
+	try
+	  {
+	    _traced = torch::jit::load(this->_mlmodel._model_file, _device);
+	  }
+	catch (std::exception&)
+	  {
+	    throw MLLibBadParamException("failed loading torch model file " + this->_mlmodel._model_file);
+	  }
+	
         _traced->eval();
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
     void TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::clear_mllib(const APIData &ad) 
     {
-
+      (void)ad;
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
     int TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::train(const APIData &ad, APIData &out) 
     {
-        
+      (void)out;
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -136,36 +144,33 @@ namespace dd
         // Output
         std::vector<APIData> results_ads;
 
-        if (output_params.has("best"))
-        {
-            const int best_count = output_params.get("best").get<int>();
-            std::tuple<Tensor, Tensor> sorted_output = output.sort(1, true);
-            auto probs_acc = std::get<0>(sorted_output).accessor<float,2>();
-            auto indices_acc = std::get<1>(sorted_output).accessor<int64_t,2>();
+	// classification
+	std::tuple<Tensor, Tensor> sorted_output = output.sort(1, true);
+	auto probs_acc = std::get<0>(sorted_output).accessor<float,2>();
+	auto indices_acc = std::get<1>(sorted_output).accessor<int64_t,2>();
 
-            for (int i = 0; i < output.size(0); ++i)
-            {
-                APIData results_ad;
-                std::vector<double> probs;
-                std::vector<std::string> cats;
+	for (int i = 0; i < output.size(0); ++i)
+	  {
+	    APIData results_ad;
+	    std::vector<double> probs;
+	    std::vector<std::string> cats;
+	    
+	    for (int j = 0; j < probs_acc.size(1); ++j)
+	      {
+		probs.push_back(probs_acc[i][j]);
+		int index = indices_acc[i][j];
+		cats.push_back(this->_mlmodel.get_hcorresp(index));
+	      }
+	    
+	    results_ad.add("uri", inputc._uris.at(results_ads.size()));
+	    results_ad.add("loss", 0.0);
+	    results_ad.add("cats", cats);
+	    results_ad.add("probs", probs);
+	    
+	    results_ads.push_back(results_ad);
+	  }
 
-                for (int j = 0; j < best_count; ++j)
-                {
-                    probs.push_back(probs_acc[i][j]);
-                    int index = indices_acc[i][j];
-                    cats.push_back(this->_mlmodel.get_hcorresp(index));
-                }
-
-                results_ad.add("uri", inputc._uris.at(results_ads.size()));
-                results_ad.add("loss", 0.0);
-                results_ad.add("cats", cats);
-                results_ad.add("probs", probs);
-                results_ad.add("nclasses", _nclasses);
-
-                results_ads.push_back(results_ad);
-            }
-        }
-
+	out.add("nclasses",static_cast<int>(probs_acc.size(1)));
         outputc.add_results(results_ads);
         outputc.finalize(output_params, out, static_cast<MLModel*>(&this->_mlmodel));
 
