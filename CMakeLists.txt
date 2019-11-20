@@ -214,7 +214,7 @@ if (USE_DLIB)
     # Dlib
 
     # Currently supported release version of dlib
-    set(DLIB_RELEASE_VERSION v19.17)
+    set(DLIB_RELEASE_VERSION v19.18)
     message(STATUS "Using Dlib version ${DLIB_RELEASE_VERSION}")
     add_definitions(-DUSE_DLIB)
     set(DLIB_LIB_DEPS -ldlib)
@@ -233,8 +233,6 @@ if (USE_DLIB)
           INSTALL_COMMAND ""
           BUILD_IN_SOURCE 1
         )
-        set(DLIB_INC_DIR ${CMAKE_BINARY_DIR}/dlib/build/include)
-        set(DLIB_LIB_DIR ${CMAKE_BINARY_DIR}/dlib/build/lib)
     else()
         ExternalProject_Add(
             dlib
@@ -246,10 +244,9 @@ if (USE_DLIB)
             INSTALL_COMMAND ""
             BUILD_IN_SOURCE 1
         )
-        set(DLIB_INC_DIR ${CMAKE_BINARY_DIR}/dlib/build/include)
-        set(DLIB_LIB_DIR ${CMAKE_BINARY_DIR}/dlib/build/lib)
     endif()
-
+    set(DLIB_INC_DIR ${CMAKE_BINARY_DIR}/dlib/build/include)
+    set(DLIB_LIB_DIR ${CMAKE_BINARY_DIR}/dlib/build/lib)
     include_directories("${DLIB_INC_DIR}")
     message(STATUS "Dlib will be built")
 endif()

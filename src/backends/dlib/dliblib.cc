@@ -180,7 +180,7 @@ namespace dd {
                 std::vector <APIData> bboxes;
                 this->_logger->info("[Input {}] Found {} objects", i, detections[i].size());
                 for (auto &d : detections[i]) {
-                    this->_logger->info("Found obj: {} - {} ({})", d.label, d.detection_confidence, d.rect);
+                    this->_logger->info("Found obj: {} - {} ([({}, {}) ({}, {})])", d.label, d.detection_confidence, d.rect.left(), d.rect.top(), d.rect.right(), d.rect.bottom());
 
                     if (d.detection_confidence < confidence_threshold) continue; // Skip if it doesn't pass the conf threshold
 
