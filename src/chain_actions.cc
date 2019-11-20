@@ -23,19 +23,56 @@
 #include <opencv2/opencv.hpp>
 #include <unordered_set>
 #include "utils/utils.hpp"
+#include "imginputfileconn.h"
+#include <random>
+#include <algorithm>
 
 namespace dd
 {
 
   void ImgsCropAction::apply(APIData &model_out,
-			     ChainData &cdata)
+			     ChainData &cdata,
+			     std::vector<std::string> &meta_uris,
+			     std::vector<std::string> &index_uris)
     {
-      std::vector<APIData> vad = model_out.getv("predictions");
-      std::vector<cv::Mat> imgs = model_out.getobj("input").get("imgs").get<std::vector<cv::Mat>>();
-      std::vector<std::pair<int,int>> imgs_size = model_out.getobj("input").get("imgs_size").get<std::vector<std::pair<int,int>>>();
+      std::vector<APIData> vad;
+      std::vector<cv::Mat> imgs;
+      std::vector<std::pair<int,int>> imgs_size;
+      if (!_uris.empty()) // the chain may start with an action
+	{
+	  model_out.add("data",_uris);
+	  ImgInputFileConn imgin;
+	  imgin.transform(model_out);
+	  imgs = imgin._images;
+	  imgs_size = imgin._images_size;
+	  
+	  APIData cls;
+	  APIData bbox;
+	  bbox.add("xmin",0.0);
+	  bbox.add("ymax",0.0);
+	  bbox.add("xmax",static_cast<double>(imgs_size.at(0).second)-1.0);
+	  bbox.add("ymin",static_cast<double>(imgs_size.at(0).first)-1.0);
+	  cls.add("bbox",bbox);
+	  std::vector<APIData> ccls;
+	  ccls.push_back(cls);
+	  APIData allcls;
+	  allcls.add("classes",ccls);
+	  allcls.add("uri",_uris.at(0)); //XXX: random crops only support single batch.
+	  std::vector<APIData> pred;
+	  pred.push_back(allcls);
+	  model_out.add("predictions",pred);
+	}
+      else
+	{
+	  imgs = model_out.getobj("input").get("imgs").get<std::vector<cv::Mat>>();
+	  imgs_size = model_out.getobj("input").get("imgs_size").get<std::vector<std::pair<int,int>>>();
+	}
+      vad = model_out.getv("predictions");
+      
       std::vector<std::string> cropped_imgs;
       std::vector<std::string> bbox_ids;
-
+      std::vector<std::string> nmeta_uris;
+      
       // check for action parameters
       double bratio = 0.0;
       if (_params.has("padding_ratio"))
@@ -45,7 +82,15 @@ namespace dd
       bool save_crops = false;
       if (_params.has("save_crops"))
 	save_crops = _params.get("save_crops").get<bool>();
-            
+
+      int random_crops = 0;
+      if (_params.has("random_crops"))
+	random_crops = _params.get("random_crops").get<int>();
+
+      double min_size_ratio = 1.0;
+      if (_params.has("min_size_ratio"))
+	min_size_ratio = _params.get("min_size_ratio").get<double>();
+
       // iterate image batch
       for (size_t i=0;i<vad.size();i++)
 	{
@@ -57,20 +102,13 @@ namespace dd
 
 	  std::vector<APIData> ad_cls = vad.at(i).getv("classes");
 	  std::vector<APIData> cad_cls;
-	  
+
 	  // iterate bboxes per image
 	  for (size_t j=0;j<ad_cls.size();j++)
 	    {
 	      APIData bbox = ad_cls.at(j).getobj("bbox");
 	      if (bbox.empty())
 		throw ActionBadParamException("crop action cannot find bbox object for uri " + uri);
-
-	      // adding bbox id
-	      std::string bbox_id = genid(uri,"bbox"+std::to_string(j));
-	      bbox_ids.push_back(bbox_id);
-	      APIData ad_cid;
-	      ad_cls.at(j).add(bbox_id,ad_cid);
-	      cad_cls.push_back(ad_cls.at(j));
 
 	      double xmin = bbox.get("xmin").get<double>() / orig_cols * img.cols;
 	      double ymin = bbox.get("ymin").get<double>() / orig_rows * img.rows;
@@ -85,23 +123,92 @@ namespace dd
 	      double cymax = std::max(0.0,ymax-deltay);
 	      double cymin = std::min(static_cast<double>(img.rows),ymin+deltay);
 
+	      /*std::cerr << "xmin=" << xmin << " / xmax=" << cxmax << " / ymin=" << cymin << " / ymax=" << cymax << std::endl;
+		std::cerr << "cxmin=" << cxmin << " / cxmax=" << cxmax << " / cymin=" << cymin << " / cymax=" << cymax << std::endl;*/
+
+	      if (cxmax-cxmin <= 0 || cymin-cymax <= 0)
+		throw ActionInternalException("wrong bounding box values for uri " + uri);
+	      
 	      cv::Rect roi(cxmin,cymax,cxmax-cxmin,cymin-cymax);
 	      cv::Mat cropped_img = img(roi);
+	      std::vector<cv::Mat> random_cropped_imgs;
 
+	      // inner random cropping here
+	      //TODO: keep orig crop ?
+	      if (random_crops)
+		{
+		  int x_min_side_pixels = std::ceil(cropped_img.cols * min_size_ratio);
+		  int y_min_side_pixels = std::ceil(cropped_img.rows * min_size_ratio);
+
+		  for (int nc=0;nc<random_crops;nc++)
+		    {
+		      // generate random bbox coordinates
+   		      int rxmin = std::rand() % (cropped_img.cols - x_min_side_pixels); // from 0 to orig_cols-x_min_side_pixels-1
+		      int rxmax = std::rand() % (cropped_img.cols - rxmin - x_min_side_pixels) + rxmin + x_min_side_pixels; // from xmin to right of image
+		      int rymin = std::rand() % (cropped_img.rows - y_min_side_pixels); // from 0 to max img height - min size
+		      int rymax = std::rand() % (cropped_img.rows - rymin - y_min_side_pixels) + rymin + y_min_side_pixels;
+		      
+		      // crop
+		      cv::Rect roi(rxmin,rymin,rxmax-rxmin,rymax-rymin);
+		      //std::cerr << "roi.x=" << roi.x << " / roi.y=" << roi.y << " / roi.width=" << roi.width << " / roi.height=" << roi.height << std::endl;
+		      cv::Mat cropped_img_rand = cropped_img(roi);
+		      random_cropped_imgs.push_back(cropped_img_rand);
+		      
+		      // serialize crop into string (will be auto read by read_element in imginputconn)
+		      std::vector<unsigned char> cropped_img_ser;
+		      bool str_encoding = cv::imencode(".bmp",cropped_img_rand,cropped_img_ser);
+		      if (!str_encoding)
+			throw ActionInternalException("crop encoding error for uri " + uri);
+		      std::string cropped_img_str = std::string(cropped_img_ser.begin(),cropped_img_ser.end());
+		      cropped_imgs.push_back(cropped_img_str);
+
+		      // bbox / would appear into every output branch
+		      /*APIData ad_bbox;
+		      ad_bbox.add("xmin",rxmin);
+		      ad_bbox.add("ymin",rymin);
+		      ad_bbox.add("xmax",rxmax);
+		      ad_bbox.add("ymax",rymax);
+		      ad_cls.at(j).add("random_bbox"+std::to_string(nc),ad_bbox);*/
+		      
+		      // bbox id
+		      std::string bbox_id = genid(uri,"bbox"+std::to_string(j) + "_" + std::to_string(nc));
+		      APIData ad_cid;
+		      bbox_ids.push_back(bbox_id);
+		      ad_cls.at(j).add(bbox_id,ad_cid);
+		      
+		      if (!meta_uris.empty())
+			nmeta_uris.push_back(meta_uris.at(i));
+		      else nmeta_uris.push_back(uri);
+		    }
+		  cad_cls.push_back(ad_cls.at(j));
+		}
+	      else
+		{
+		  // adding bbox id
+		  std::string bbox_id = genid(uri,"bbox"+std::to_string(j));
+		  bbox_ids.push_back(bbox_id);
+		  APIData ad_cid;
+		  ad_cls.at(j).add(bbox_id,ad_cid);
+		  cad_cls.push_back(ad_cls.at(j));
+		  
+		  // serialize crop into string (will be auto read by read_element in imginputconn)
+		  std::vector<unsigned char> cropped_img_ser;
+		  bool str_encoding = cv::imencode(".bmp",cropped_img,cropped_img_ser);
+		  if (!str_encoding)
+		    throw ActionInternalException("crop encoding error for uri " + uri);
+		  std::string cropped_img_str = std::string(cropped_img_ser.begin(),cropped_img_ser.end());
+		  cropped_imgs.push_back(cropped_img_str);
+		  //nmeta_uris.push_back(meta_uris.at(i));
+		}
+	      
 	      // save crops if requested
 	      if (save_crops)
 		{
 		  std::string puri = dd_utils::split(uri,'/').back();
+		  for (size_t ci=0;ci<random_cropped_imgs.size();++ci)
+		    cv::imwrite("crop_" + puri + "_" + std::to_string(j) + "_" + std::to_string(ci) + ".png",random_cropped_imgs.at(ci));
 		  cv::imwrite("crop_" + puri + "_" + std::to_string(j) + ".png",cropped_img);
 		}
-	      
-	      // serialize crop into string (will be auto read by read_element in imginputconn)
-	      std::vector<unsigned char> cropped_img_ser;
-	      bool str_encoding = cv::imencode(".bmp",cropped_img,cropped_img_ser);
-	      if (!str_encoding)
-		throw ActionInternalException("crop encoding error for uri " + uri);
-	      std::string cropped_img_str = std::string(cropped_img_ser.begin(),cropped_img_ser.end());
-	      cropped_imgs.push_back(cropped_img_str);
 	    }
 	  APIData ccls;
 	  ccls.add("uri",uri);
@@ -110,19 +217,75 @@ namespace dd
 	  ccls.add("classes",cad_cls);
 	  cvad.push_back(ccls);
 	}
+
+      if (!nmeta_uris.empty())
+	meta_uris = nmeta_uris;
+      
       // store serialized crops into action output store
       APIData action_out;
       action_out.add("data",cropped_imgs);
       action_out.add("cids",bbox_ids);
-      cdata.add_action_data(_action_id,action_out);      
+      cdata.add_action_data(_action_id,action_out);
       
       // updated model data with chain ids
       model_out.add("predictions",cvad);
     }
 
-  void ClassFilter::apply(APIData &model_out,
-			  ChainData &cdata)
+  // XXX: assumes batch size is 1 so all crops belong to the same URI
+  void MulticropEnsembling::apply(APIData &model_out,
+				  ChainData &cdata,
+				  std::vector<std::string> &meta_uris,
+				  std::vector<std::string> &index_uris)
   {
+    (void)meta_uris;
+    (void)index_uris;
+    (void)cdata;
+    std::vector<APIData> vad = model_out.getv("predictions");
+    std::unordered_map<std::string,std::pair<double,int>> multibox_nn;
+    std::unordered_map<std::string,std::pair<double,int>>::iterator hit;
+    for (size_t i=0;i<vad.size();++i)
+      {
+	std::vector<APIData> nns_vad = vad.at(i).getv("nns");
+	for (size_t j=0;j<nns_vad.size();++j)
+	  {
+	    std::string nns_uri = nns_vad.at(j).get("uri").get<std::string>();
+	    double nns_dist = nns_vad.at(j).get("dist").get<double>();
+	    if ((hit=multibox_nn.find(nns_uri))==multibox_nn.end())
+	      multibox_nn.insert(std::pair<std::string,std::pair<double,int>>(nns_uri,std::pair<double,int>(nns_dist,1)));
+	    else
+	      {
+		(*hit).second.first += nns_dist;
+		(*hit).second.second += 1;
+	      }
+	  }
+      }
+
+    // final ranking
+    hit = multibox_nn.begin();
+    std::multimap<double,APIData> box_nns;
+    while(hit!=multibox_nn.end())
+      {
+	APIData nn;
+	nn.add("uri",(*hit).first);
+	double ensembled_dist = (*hit).second.first / static_cast<double>((*hit).second.second);
+	nn.add("dist",ensembled_dist);
+	box_nns.insert(std::pair<double,APIData>(ensembled_dist,nn));
+	++hit;
+      }
+    std::vector<APIData> ranked_nns;
+    for (auto mit=box_nns.begin();mit!=box_nns.end();++mit)
+      ranked_nns.push_back((*mit).second);
+
+    model_out.add("global_nns",ranked_nns);
+  }
+  
+  void ClassFilter::apply(APIData &model_out,
+			  ChainData &cdata,
+			  std::vector<std::string> &meta_uris,
+			  std::vector<std::string> &index_uris)
+  {
+    (void)meta_uris;
+    (void)index_uris;
     if (!_params.has("classes"))
       {
 	throw ActionBadParamException("filter action is missing classes parameter");

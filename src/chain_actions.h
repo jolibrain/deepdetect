@@ -72,7 +72,9 @@ namespace dd
       }
     
     void apply(APIData &model_out,
-	       ChainData &cdata);
+	       ChainData &cdata,
+	       std::vector<std::string> &meta_uris,
+	       std::vector<std::string> &index_uris);
 
     std::string _action_id;
     std::string _action_type;
@@ -87,14 +89,22 @@ namespace dd
     ImgsCropAction(const APIData &adc,
 		   const std::string &action_id,
 		   const std::string &action_type)
-      :ChainAction(adc,action_id,action_type) {}
+      :ChainAction(adc,action_id,action_type)
+      {
+	if (adc.has("data"))
+	  _uris = adc.get("data").get<std::vector<std::string>>();
+      }
 
     ~ImgsCropAction() {}
     
     void apply(APIData &model_out,
-	       ChainData &cdata);
-  };
+	       ChainData &cdata,
+	       std::vector<std::string> &meta_uris,
+	       std::vector<std::string> &index_uris);
 
+    std::vector<std::string> _uris;
+  };
+  
   class ClassFilter : public ChainAction
   {
   public:
@@ -105,9 +115,26 @@ namespace dd
     ~ClassFilter() {}
 
     void apply(APIData &model_out,
-	       ChainData &cdata);
+	       ChainData &cdata,
+	       std::vector<std::string> &meta_uris,
+	       std::vector<std::string> &index_uris);
   };
 
+  class MulticropEnsembling : public ChainAction
+  {
+  public:
+    MulticropEnsembling(const APIData &adc,
+			const std::string &action_id,
+			const std::string &action_type)
+      :ChainAction(adc,action_id,action_type) {}
+    ~MulticropEnsembling() {}
+    
+    void apply(APIData &model_out,
+	       ChainData &cdata,
+	       std::vector<std::string> &meta_uris,
+	       std::vector<std::string> &index_uris);
+  };
+  
   class ChainActionFactory
   {
   public:
@@ -117,7 +144,9 @@ namespace dd
 
     void apply_action(const std::string &action_type,
 		      APIData &model_out,
-		      ChainData &cdata)
+		      ChainData &cdata,
+		      std::vector<std::string> &meta_uris,
+		      std::vector<std::string> &index_uris)
     {
       std::string action_id;
       if (_adc.has("id"))
@@ -126,12 +155,17 @@ namespace dd
       if (action_type == "crop")
 	{
 	  ImgsCropAction act(_adc,action_id,action_type);
-	  act.apply(model_out,cdata);
+	  act.apply(model_out,cdata,meta_uris,index_uris);
+	}
+      else if (action_type == "multibox_ensembling")
+	{
+	  MulticropEnsembling act(_adc,action_id,action_type);
+	  act.apply(model_out,cdata,meta_uris,index_uris);
 	}
       else if (action_type == "filter")
 	{
 	  ClassFilter act(_adc,action_id,action_type);
-	  act.apply(model_out,cdata);
+	  act.apply(model_out,cdata,meta_uris,index_uris);
 	}
       else
 	{
