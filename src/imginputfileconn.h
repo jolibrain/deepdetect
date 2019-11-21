@@ -32,6 +32,7 @@
 #define CV_LOAD_IMAGE_GRAYSCALE cv::IMREAD_GRAYSCALE
 #define CV_LOAD_IMAGE_UNCHANGED cv::IMREAD_UNCHANGED
 #define CV_BGR2RGB cv::COLOR_BGR2RGB
+#define CV_BGR2GRAY cv::COLOR_BGR2GRAY
 #define CV_INTER_CUBIC cv::INTER_CUBIC
 #endif
 #include "ext/base64/base64.h"
@@ -498,11 +499,55 @@ namespace dd
     {
       return _test_images.size();
     }
+
+    void get_data(const APIData &ad)
+    {
+      // check for raw cv::Mat
+      if (ad.has("data_raw_img"))
+	{
+	  if (ad.has("ids"))
+	    _ids = ad.get("ids").get<std::vector<std::string>>();
+	  if (ad.has("meta_uris"))
+	    _meta_uris = ad.get("meta_uris").get<std::vector<std::string>>();
+	  if (ad.has("index_uris"))
+	    _index_uris = ad.get("index_uris").get<std::vector<std::string>>();
+	  
+	  _images = ad.get("data_raw_img").get<std::vector<cv::Mat>>();
+	  std::vector<cv::Mat> rimgs;
+	  std::vector<std::string> uris;
+	  int i = 0;
+	  for (auto img: _images)
+	    {
+	      cv::Mat rimg;
+	      resize(img,rimg,cv::Size(_width,_height),0,0);
+	      if (_bw)
+		{
+		  cv::Mat bwimg;
+		  cv::cvtColor(rimg, bwimg, CV_BGR2GRAY);
+		  rimg = bwimg;
+		}
+	      _images_size.push_back(std::pair<int,int>(img.rows,img.cols));
+	      if (_keep_orig)
+		_orig_images.push_back(std::move(img));
+	      if (!_ids.empty())
+		uris.push_back(_ids.at(i));
+	      else
+		{
+		  _ids.push_back(std::to_string(i));
+		  uris.push_back(_ids.back());
+		}
+	      rimgs.push_back(std::move(rimg));
+	      ++i;
+	    }
+	  _images = rimgs;
+	  if (!uris.empty())
+	    _uris = uris;
+	}
+      else InputConnectorStrategy::get_data(ad);
+    }
     
     void transform(const APIData &ad)
     {
-      get_data(ad);
-      
       if (ad.has("parameters")) // hotplug of parameters, overriding the defaults
 	{
 	  APIData ad_param = ad.getobj("parameters");
@@ -511,6 +556,13 @@ namespace dd
 	      fillup_parameters(ad_param.getobj("input"));
 	    }
 	}
+
+      get_data(ad);
+      if (!_images.empty()) // got ready raw images
+	{
+	  return;
+	}
+      
       int catch_read = 0;
       std::string catch_msg;
       std::vector<std::string> uris;
@@ -652,6 +704,7 @@ namespace dd
     std::vector<cv::Mat> _test_images;
     std::vector<int> _test_labels;
     std::vector<std::pair<int,int>> _images_size;
+    
     // image parameters
     int _width = 224;
     int _height = 224;
