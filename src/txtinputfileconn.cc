@@ -34,7 +34,7 @@ namespace dd
       std::vector<std::string> subtokens;
       bool is_bad = false;
 
-      while (start < word.size())
+      while (start < static_cast<int>(word.size()))
       {
           int end = word.size();
           std::string cur_substr = "";
@@ -313,15 +313,15 @@ namespace dd
                 // Split punctuation
                 auto is_punct = [] (char i)
                 {
-                    return i >= 33 && i <= 47
-                        || i >= 58 && i <= 64
-                        || i >= 91 && i <= 96
-                        || i >= 123 && i <= 126;
+		  return (i >= 33 && i <= 47)
+		        || (i >= 58 && i <= 64)
+		        || (i >= 91 && i <= 96)
+		        || (i >= 123 && i <= 126);
                 };
                 for (std::string token : tokenizer)
                 {
                     int start = 0;
-                    for (int i = 0; i < token.size(); ++i)
+                    for (int i = 0; i < static_cast<int>(token.size()); ++i)
                     {
                         if (is_punct(token[i]))
                         {
@@ -331,7 +331,7 @@ namespace dd
                             start = i + 1;
                         }
                     }
-                    if (start != token.size())
+                    if (start != static_cast<int>(token.size()))
                         tokens.push_back(token.substr(start));
                 }
             }
@@ -357,7 +357,7 @@ namespace dd
                 TxtOrderedWordsEntry *towe = new TxtOrderedWordsEntry(target);
                 for (std::string w : tokens)
                   {
-                    towe->add_word(w, 0);
+                    towe->add_word(w);
                   }
                 
                 if (!test)

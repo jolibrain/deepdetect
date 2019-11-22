@@ -11,8 +11,8 @@ option(USE_TENSORRT "use TensorRT backend" OFF)
 option(USE_DLIB "use Dlib backend" OFF)
 option(USE_CUDA_CV "use CUDA with OpenCV (Requires OpenCV build for CUDA)" OFF)
 option(USE_SIMSEARCH "build index and search services" OFF)
-option(USE_ANNOY "use annoy as indexer" ON)
-option(USE_FAISS "use FAISS as indexer" OFF)
+option(USE_ANNOY "use annoy as indexer" OFF)
+option(USE_FAISS "use FAISS as indexer" ON)
 
 if (USE_CAFFE)
   add_definitions(-DUSE_CAFFE)
@@ -22,6 +22,7 @@ if (USE_TF AND USE_CAFFE2)
   message(FATAL_ERROR "Building with tensorflow AND caffe2 causes conflict
 (The two libraries have their own protobuf embed)")
 endif()
+
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
@@ -139,7 +140,15 @@ endif()
 # annoy
 if (USE_CAFFE)
   if (USE_SIMSEARCH)
-    if (USE_ANNOY)
+    if (USE_FAISS AND USE_ANNOY)
+      message (STATUS "ANNOY selected, using ANNOY as simsearch backend")
+      set(USE_FAISS OFF)
+    endif()
+    if (NOT USE_FAISS AND NOT USE_ANNOY)
+      message (STATUS "FAISS deselected , using ANNOY as simssearch backend")
+      set(USE_ANNOY ON)
+    endif()
+    IF (USE_ANNOY)
       message(STATUS "Fetching Annoy")
       add_definitions(-DUSE_SIMSEARCH)
       add_definitions(-DUSE_ANNOY)
@@ -156,7 +165,8 @@ if (USE_CAFFE)
     
       set(ANNOY_INCLUDE_DIR ${CMAKE_BINARY_DIR}/annoy/src/annoy/src/)
       include_directories("${ANNOY_INCLUDE_DIR}")
-    else()
+    endif()
+    if(USE_FAISS)
       if (NOT USE_CPU_ONLY AND CUDA_FOUND)
         string(REPLACE "/include" "" CUDA_PREFIX ${CUDA_INCLUDE_DIRS})
         string(REPLACE "arch" "=arch" FAISS_NVCC_FLAGS ${NVCC_FLAGS_EXTRA})
@@ -422,7 +432,7 @@ if (USE_TF)
       tensorflow_cc
       PREFIX tensorflow_cc
       INSTALL_DIR ${CMAKE_BINARY_DIR}
-      DOWNLOAD_COMMAND git clone https://github.com/beniz/tensorflow_cc.git
+      DOWNLOAD_COMMAND git clone https://github.com/FloopCZ/tensorflow_cc.git
       CONFIGURE_COMMAND cd tensorflow_cc && mkdir -p build && cd build && cmake -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED=ON .. && make && ln -s ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/tensorflow/tensorflow/contrib/makefile/gen/protobuf ${CMAKE_BINARY_DIR}/protobuf
       BUILD_COMMAND ""
       INSTALL_COMMAND ""
@@ -434,15 +444,15 @@ if (USE_TF)
       tensorflow_cc
       PREFIX tensorflow_cc
       INSTALL_DIR ${CMAKE_BINARY_DIR}
-      DOWNLOAD_COMMAND git clone https://github.com/beniz/tensorflow_cc.git
-      CONFIGURE_COMMAND cd tensorflow_cc && mkdir -p build && cd build && cmake -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED_CPU=ON .. && make && ln -s ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/tensorflow/tensorflow/contrib/makefile/gen/protobuf ${CMAKE_BINARY_DIR}/protobuf
+      DOWNLOAD_COMMAND git clone https://github.com/FloopCZ/tensorflow_cc.git
+      CONFIGURE_COMMAND cd tensorflow_cc && mkdir -p build && cd build && cmake -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED=ON -DALLOW_CUDA=OFF .. && make && ln -s ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/tensorflow/tensorflow/contrib/makefile/gen/protobuf ${CMAKE_BINARY_DIR}/protobuf
       BUILD_COMMAND ""
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
       )
   endif()
 
-set(TF_INC_DIR ${TENSORFLOW_CC_DIR}/tensorflow/ ${TENSORFLOW_CC_DIR}/tensorflow/bazel-genfiles/ ${TENSORFLOW_CC_DIR}/tensorflow/tensorflow/contrib/makefile/downloads/nsync/public/)
+set(TF_INC_DIR ${TENSORFLOW_CC_DIR}/tensorflow/ ${TENSORFLOW_CC_DIR}/tensorflow/bazel-genfiles/ ${TENSORFLOW_CC_DIR}/tensorflow/tensorflow/contrib/makefile/downloads/nsync/public/ ${TENSORFLOW_CC_DIR}/tensorflow/tensorflow/contrib/makefile/downloads/absl/)
 set(TF_LIB_DIR ${TENSORFLOW_CC_DIR}/tensorflow/bazel-bin/tensorflow/)
 
 include_directories("${TF_INC_DIR}")
@@ -741,7 +751,7 @@ if (USE_TORCH)
   set(TORCH_LIB_DEPS torch caffe2 ${TORCH_LOCATION}/lib/libc10.so)
   
   if (NOT USE_CPU_ONLY AND CUDA_FOUND)
-    list(APPEND TORCH_LIB_DEPS caffe2_gpu ${TORCH_LOCATION}/lib/libc10_cuda.so)
+    list(APPEND TORCH_LIB_DEPS caffe2_gpu ${TORCH_LOCATION}/lib/libc10_cuda.so iomp5)
   else()
     list(APPEND TORCH_LIB_DEPS iomp5)
   endif()

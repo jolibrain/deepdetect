@@ -678,7 +678,7 @@ namespace dd
       APIData pred_out;
       try
 	{
-	  int pred_status = predict(adc,sname,pred_out,true);
+	  predict(adc,sname,pred_out,true);
 	}
       catch(...)
 	{

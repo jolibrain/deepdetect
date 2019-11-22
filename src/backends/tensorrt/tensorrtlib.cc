@@ -227,6 +227,8 @@ namespace dd
   int TensorRTLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::predict(const APIData &ad,
                                                                                       APIData &out)
   {
+    std::lock_guard<std::mutex> lock(_net_mutex); // no concurrent calls since the net is not re-instantiated
+    
     APIData ad_output = ad.getobj("parameters").getobj("output");    
     int blank_label = -1;
     std::string out_blob = "prob";

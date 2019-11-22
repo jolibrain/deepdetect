@@ -181,7 +181,7 @@ namespace dd
     TxtOrderedWordsEntry(const float &target) :TxtEntry<double>(target) {}
     virtual ~TxtOrderedWordsEntry() {}
 
-    void add_word(const std::string &word, const uint32_t &id)
+    void add_word(const std::string &word)
     {
       _v.push_back(word);
     }

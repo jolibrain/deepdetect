@@ -142,6 +142,8 @@ namespace dd
 
     std::vector<float> _floatOut;
     std::vector<int> _keepCount;
+
+    std::mutex _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as net is not re-instantiated. Use batches instead. */
     };
 
 }

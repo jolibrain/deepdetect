@@ -219,7 +219,7 @@ namespace dd
   void AnnoySE::index(const std::vector<URIData> &uris,
                       const std::vector<std::vector<double>> &vecs)
   {
-    for (int i =0; i<uris.size(); ++i)
+    for (size_t i =0; i<uris.size(); ++i)
       {
         index(uris[i], vecs[i]);
       }
