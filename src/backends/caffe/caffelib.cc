@@ -1266,7 +1266,8 @@ namespace dd
       solver_param.set_lookahead_steps(ad_solver.get("lookahead_steps").get<int>());
     if (ad_solver.has("lookahead_alpha"))
       solver_param.set_lookahead_alpha(ad_solver.get("lookahead_alpha").get<double>());
-
+    if (ad_solver.has("lr_dropout"))
+      solver_param.set_lr_dropout(ad_solver.get("lr_dropout").get<double>());
 	if (ad_solver.has("min_lr"))
 	  solver_param.set_min_lr(ad_solver.get("min_lr").get<double>());
 	if (ad_solver.has("lr_mult"))
@@ -1308,6 +1309,8 @@ namespace dd
       this->_logger->info("solver flavor: decoupled weight decay ");
     if (solver_param.lookahead())
       this->_logger->info("solver flavor: lookahead ");
+    if (solver_param.lr_dropout() != 1.0)
+      this->_logger->info("solver flavor: lr dropout " + std::to_string(solver_param.lr_dropout()));
       }
     catch(...)
       {
