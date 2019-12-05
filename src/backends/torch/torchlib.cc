@@ -77,7 +77,8 @@ namespace dd
 
 	try
 	  {
-	    _traced = torch::jit::load(this->_mlmodel._model_file, _device);
+	    _traced = std::make_shared<torch::jit::script::Module>
+          (torch::jit::load(this->_mlmodel._model_file, _device));
 	  }
 	catch (std::exception&)
 	  {
