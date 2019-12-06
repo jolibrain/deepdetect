@@ -707,6 +707,7 @@ if (USE_TORCH)
 
   set(PYTORCH_PATCHES
     ${PYTORCH_PATCHES_PATH}/pytorch_compile.patch
+    ${PYTORCH_PATCHES_PATH}/pytorch_logging.patch
     )
 
   include_directories("${PROTOBUF_INCLUDE_DIR}")
