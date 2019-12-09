@@ -45,7 +45,7 @@ namespace dd
                 params.push_back(tensor);
         }
         for (auto child : module->get_modules()) {
-            add_parameters(child, params);
+          add_parameters(std::make_shared<torch::jit::script::Module>(child), params);
         }
     }
 
@@ -87,7 +87,7 @@ namespace dd
         {
             auto output = _traced->forward(source);
             if (output.isTensorList()) {
-                auto &elems = output.toTensorList()->elements();
+                auto elems = output.toTensorList();
                 source = std::vector<c10::IValue>(elems.begin(), elems.end());
             }
             else if (output.isTuple()) {
@@ -151,7 +151,8 @@ namespace dd
     void TorchModule::load(TorchModel &model)
     {
         if (!model._traced.empty())
-            _traced = torch::jit::load(model._traced, _device);
+          _traced = std::make_shared<torch::jit::script::Module>
+            (torch::jit::load(model._traced, _device));
         if (!model._weights.empty() && _classif)
             torch::load(_classif, model._weights);
     }

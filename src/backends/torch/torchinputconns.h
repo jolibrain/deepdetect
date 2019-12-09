@@ -114,7 +114,7 @@ namespace dd
         ImgTorchInputFileConn()
             :ImgInputFileConn() {}
         ImgTorchInputFileConn(const ImgTorchInputFileConn &i)
-            :ImgInputFileConn(i),TorchInputInterface(i), _std{i._std} {}
+            :ImgInputFileConn(i),TorchInputInterface(i)  {}
         ~ImgTorchInputFileConn() {}
 
         // for API info only
