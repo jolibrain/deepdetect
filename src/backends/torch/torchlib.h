@@ -58,7 +58,8 @@ namespace dd
 
         void free();
     public:
-        std::shared_ptr<torch::jit::script::Module> _traced;
+        torch::jit::script::Module _traced;
+        bool _is_traced = false;
         torch::nn::Linear _classif = nullptr;
 
         torch::Device _device;

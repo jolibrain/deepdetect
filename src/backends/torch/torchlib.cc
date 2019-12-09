@@ -38,14 +38,14 @@ namespace dd
         #endif
     }
 
-    void add_parameters(std::shared_ptr<torch::jit::script::Module> module, std::vector<Tensor> &params, bool requires_grad = true) {
-        for (const auto &slot : module->get_parameters()) {
+    void add_parameters(torch::jit::script::Module module, std::vector<Tensor> &params, bool requires_grad = true) {
+        for (const auto &slot : module.get_parameters()) {
             Tensor tensor = slot.value().toTensor();
             if (tensor.requires_grad() && requires_grad)
                 params.push_back(tensor);
         }
-        for (auto child : module->get_modules()) {
-          add_parameters(std::make_shared<torch::jit::script::Module>(child), params);
+        for (auto child : module.get_modules()) {
+          add_parameters(child, params);
         }
     }
 
@@ -83,9 +83,9 @@ namespace dd
 
     c10::IValue TorchModule::forward(std::vector<c10::IValue> source)
     {
-        if (_traced)
+        if (_is_traced)
         {
-            auto output = _traced->forward(source);
+            auto output = _traced.forward(source);
             if (output.isTensorList()) {
                 auto elems = output.toTensorList();
                 source = std::vector<c10::IValue>(elems.begin(), elems.end());
@@ -130,7 +130,7 @@ namespace dd
     std::vector<Tensor> TorchModule::parameters()
     {
         std::vector<Tensor> params;
-        if (_traced)
+        if (_is_traced)
             add_parameters(_traced, params);
         if (_classif)
         {
@@ -142,8 +142,8 @@ namespace dd
 
     void TorchModule::save_checkpoint(TorchModel &model, const std::string &name)
     {
-        if (_traced)
-            _traced->save(model._repo + "/checkpoint-" + name + ".pt");
+        if (_is_traced)
+            _traced.save(model._repo + "/checkpoint-" + name + ".pt");
         if (_classif)
             torch::save(_classif, model._repo + "/checkpoint-" + name + ".ptw");
     }
@@ -151,29 +151,31 @@ namespace dd
     void TorchModule::load(TorchModel &model)
     {
         if (!model._traced.empty())
-          _traced = std::make_shared<torch::jit::script::Module>
-            (torch::jit::load(model._traced, _device));
+          {
+            _traced = torch::jit::load(model._traced, _device);
+            _is_traced = true;
+          }
         if (!model._weights.empty() && _classif)
             torch::load(_classif, model._weights);
     }
 
     void TorchModule::eval() {
-        if (_traced)
-            _traced->eval();
+        if (_is_traced)
+            _traced.eval();
         if (_classif)
             _classif->eval();
     }
 
     void TorchModule::train() {
-        if (_traced)
-            _traced->train();
+        if (_is_traced)
+            _traced.train();
         if (_classif)
             _classif->train();
     }
 
     void TorchModule::free()
     {
-        _traced = nullptr;
+        _is_traced = false;
         _classif = nullptr;
     }
 
@@ -425,6 +427,7 @@ namespace dd
                 Tensor y_pred;
                 try
                 {
+
                     y_pred = to_tensor_safe(_module.forward(in_vals));
                 }
                 catch (std::exception &e)
