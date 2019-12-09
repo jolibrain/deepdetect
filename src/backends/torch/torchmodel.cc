@@ -26,6 +26,11 @@ namespace dd
     int TorchModel::read_from_repository(
         const std::shared_ptr<spdlog::logger> &logger) {
 
+        const std::string weights = ".ptw";
+        const std::string traced = ".pt";
+        const std::string corresp = "corresp";
+        const std::string sstate = "solver";
+
         std::unordered_set<std::string> files;
         int err = fileops::list_directory(_repo, true, false, false, files);
 
@@ -34,14 +39,41 @@ namespace dd
             return 1;
         }
 
+        std::string tracedf,weightsf,correspf,sstatef;
+        int traced_t = -1, weights_t = -1, corresp_t = -1, sstate_t = -1;
+
         for (const auto &file : files) {
-            if (file.find(".pt") != std::string::npos) {
-                _model_file = file;
+            long int lm = fileops::file_last_modif(file);
+            if (file.find(sstate) != std::string::npos) {
+                if (sstate_t < lm) {
+                    sstatef = file;
+                    sstate_t = lm;
+                }
             }
-            else if (file.find("corresp") != std::string::npos) {
-                _corresp = file;
+            else if (file.find(weights) != std::string::npos) {
+                if (weights_t < lm) {
+                    weightsf = file;
+                    weights_t = lm;
+                }
+            }
+            else if (file.find(traced) != std::string::npos) {
+                if (traced_t < lm) {
+                    tracedf = file;
+                    traced_t = lm;
+                }
+            }
+            else if (file.find(corresp) != std::string::npos) {
+                if (corresp_t < lm) {
+                    correspf = file;
+                    corresp_t = lm;
+                }
             }
         }
+
+        _traced = tracedf;
+        _weights = weightsf;
+        _corresp = correspf;
+        _sstate = sstatef;
 
         return 0;
     }

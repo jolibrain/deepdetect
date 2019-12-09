@@ -48,7 +48,9 @@ namespace dd
         int read_from_repository(const std::shared_ptr<spdlog::logger> &logger);
 
     public:
-        std::string _model_file;
+        std::string _traced;/**< path of the traced part of the net. */
+        std::string _weights;/**< path of the weights of the net. */
+        std::string _sstate;/**< current solver state to resume training */
     };
 }
 
