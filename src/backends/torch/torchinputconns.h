@@ -114,7 +114,7 @@ namespace dd
         ImgTorchInputFileConn()
             :ImgInputFileConn() {}
         ImgTorchInputFileConn(const ImgTorchInputFileConn &i)
-            :ImgInputFileConn(i),TorchInputInterface(i) {}
+            :ImgInputFileConn(i),TorchInputInterface(i), _std{i._std} {}
         ~ImgTorchInputFileConn() {}
 
         // for API info only
@@ -145,11 +145,14 @@ namespace dd
                 throw;
             }
 
+
             std::vector<at::Tensor> tensors;
+
             std::vector<int64_t> sizes{ _height, _width, 3 };
             at::TensorOptions options(at::ScalarType::Byte);
 
             for (const cv::Mat &bgr : this->_images) {
+
               at::Tensor imgt = torch::from_blob(bgr.data, at::IntList(sizes), options);
               imgt = imgt.toType(at::kFloat).permute({2, 0, 1});
               size_t nchannels = imgt.size(0);
@@ -165,6 +168,8 @@ namespace dd
                 imgt[0][s] = imgt[0][s].div_(_std.at(s));
               tensors.push_back(imgt);
               _dataset.add_batch({imgt});
+
+                _dataset.add_batch({imgt});
             }
         }
 

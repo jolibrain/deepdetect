@@ -251,7 +251,6 @@ namespace dd
             {
                 _module._classif = nn::Linear(embedding_size, _nclasses);
                 _module._classif->to(_device);
-
                 _module._hidden_states = true;
                 _module._classif_in = 1;
             }
@@ -704,7 +703,6 @@ namespace dd
             {
                 if (_masked_lm && labels_acc[j] == -1)
                     continue;
-
                 APIData bad;
                 std::vector<double> predictions;
                 for (int c = 0; c < nclasses; c++)

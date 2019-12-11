@@ -230,6 +230,7 @@ if (USE_TORCH)
     execute_process(COMMAND tar xvf ${TORCH_EXAMPLE_PATH}${BERT_INFERENCE_EXAMPLE_TAR} -C ${TORCH_EXAMPLE_PATH})
   endif()
 
+
   set(BERT_TRAINING_EXAMPLE_TAR "bert_training_torch_131.tar.gz")
   set(BERT_TRAINING_EXAMPLE_PATH "examples/torch/bert_training_torch/")
   set(BERT_TRAINING_EXAMPLE_MODEL "bert-pretrained.pt")
