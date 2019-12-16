@@ -120,7 +120,8 @@ namespace dd
     int _top_k = 200;  // top_k parameters in ssd in dede templates, can be overriden
     std::string _engineFileName = "TRTengine_bs";
     bool _readEngine = true;
-    bool _writeEngine = true;    
+    bool _writeEngine = true;
+    int _gpuid = 0;
 
     //!< The TensorRT engine used to run the network
     std::shared_ptr<nvinfer1::ICudaEngine> _engine = nullptr;

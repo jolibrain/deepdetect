@@ -141,9 +141,13 @@ namespace dd
 	  else if (datatype == "int8")
 	    _datatype = nvinfer1::DataType::kINT8;
 	}
+
+      if (ad.has("gpuid"))
+        _gpuid = ad.get("gpuid").get<int>();
+      cudaSetDevice(_gpuid);
       
       model_type(this->_mlmodel._def,this->_mltype);
-      
+
       _builder = std::shared_ptr<nvinfer1::IBuilder>(nvinfer1::createInferBuilder(trtLogger),
 						     [=] (nvinfer1::IBuilder* b) {b->destroy();});
       if (_dla != -1)
@@ -228,7 +232,11 @@ namespace dd
                                                                                       APIData &out)
   {
     std::lock_guard<std::mutex> lock(_net_mutex); // no concurrent calls since the net is not re-instantiated
-    
+
+    if (ad.getobj("parameters").getobj("mllib").has("gpuid"))
+      _gpuid = ad.getobj("parameters").getobj("mllib").get("gpuid").get<int>();
+    cudaSetDevice(_gpuid);
+
     APIData ad_output = ad.getobj("parameters").getobj("output");    
     int blank_label = -1;
     std::string out_blob = "prob";
@@ -345,7 +353,7 @@ namespace dd
 	      }
 	    // force output to be float32
 	    outl->setPrecision(nvinfer1::DataType::kFLOAT);
-	    
+
 	    nvinfer1::ICudaEngine * le = _builder->buildCudaEngine(*network);
 	    _engine = std::shared_ptr<nvinfer1::ICudaEngine>
 	      (le, [=] (nvinfer1::ICudaEngine* e) {e->destroy();});
@@ -416,6 +424,7 @@ namespace dd
     int idoffset = 0;
     std::vector<APIData> vrad;
 
+    cudaSetDevice(_gpuid);
     cudaStream_t cstream;
     cudaStreamCreate(&cstream);	
 
