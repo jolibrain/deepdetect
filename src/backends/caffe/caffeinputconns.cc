@@ -606,6 +606,11 @@ namespace dd
 	int nline = 0;
 	while (std::getline(train_file, line))
 	  {
+	    if (line.empty())
+	      {
+		_logger->warn("empty line in ocr dataset file {}:{}",inputfilename,nline);
+		continue;
+	      }
 	    std::vector<std::string> elts = dd_utils::split(line,' ');
 	    
 	    // first elt is the image path
