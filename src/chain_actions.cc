@@ -49,6 +49,10 @@ namespace dd
       if (_params.has("save_crops"))
 	save_crops = _params.get("save_crops").get<bool>();
 
+      std::string save_path;
+      if (_params.has("save_path"))
+	save_path = _params.get("save_path").get<std::string>() + "/";
+      
       // iterate image batch
       for (size_t i=0;i<vad.size();i++)
 	{
@@ -95,7 +99,7 @@ namespace dd
 	      if (save_crops)
 		{
 		  std::string puri = dd_utils::split(uri,'/').back();
-		  cv::imwrite("crop_" + puri + "_" + std::to_string(j) + ".png",cropped_img);
+		  cv::imwrite(save_path + "crop_" + puri + "_" + std::to_string(j) + ".png",cropped_img);
 		}
 	      cropped_imgs.push_back(std::move(cropped_img));
 	    }
