@@ -787,7 +787,10 @@ namespace dd
       {
 	std::vector<std::string> elts = dd_utils::split(line,' ');
 	if (elts.size() != 2)
-	  throw InputConnectorBadParamException("wrong line " + std::to_string(clines) + " in data file " + filelists.at(0));
+      {
+        _logger->error("wrong line {} : \"{}\" in data file {}", std::to_string(clines), line, filelists.at(0));
+        throw InputConnectorBadParamException("wrong line " + std::to_string(clines) + " in data file " + filelists.at(0));
+      }
 	lines.push_back(std::pair<std::string,std::string>(elts.at(0),elts.at(1)));
 	++clines;
       }
@@ -811,7 +814,10 @@ namespace dd
       {
 	std::vector<std::string> elts = dd_utils::split(line,' ');
 	if (elts.size() != 2)
-	  throw InputConnectorBadParamException("wrong line " + std::to_string(clines) + " in data file " + filelists.at(1));
+      {
+        _logger->error("wrong line {} : \"{}\" in data file {}", std::to_string(clines), line, filelists.at(1));
+        throw InputConnectorBadParamException("wrong line " + std::to_string(clines) + " in data file " + filelists.at(1));
+      }
 	tlines.push_back(std::pair<std::string,std::string>(elts.at(0),elts.at(1)));
 	++clines;
       }

@@ -889,7 +889,7 @@ namespace dd
 	      meas_out.add("mcc",mmcc);
 	      
 	    }
-      if (raw)
+      if (raw && !bbox)
         {
           APIData raw_res = raw_results(ad_res,ad_res.get("clnames").get<std::vector<std::string>>());
           meas_out.add("raw",raw_res);
