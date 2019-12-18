@@ -94,6 +94,20 @@ namespace dd
 	       ChainData &cdata);
   };
 
+  class ImgsRotateAction : public ChainAction
+  {
+  public:
+    ImgsRotateAction(const APIData &adc,
+		     const std::string &action_id,
+		     const std::string &action_type)
+      :ChainAction(adc,action_id,action_type) {}
+
+    ~ImgsRotateAction() {}
+    
+    void apply(APIData &model_out,
+	       ChainData &cdata);
+  };
+  
   class ClassFilter : public ChainAction
   {
   public:
@@ -117,7 +131,7 @@ namespace dd
     void apply_action(const std::string &action_type,
 		      APIData &model_out,
 		      ChainData &cdata);
-
+    
     APIData _adc; /**< action ad object. */
   };
   

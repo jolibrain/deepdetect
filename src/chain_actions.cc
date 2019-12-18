@@ -106,7 +106,7 @@ namespace dd
 	  ccls.add("classes",cad_cls);
 	  cvad.push_back(ccls);
 	}
-      // store serialized crops into action output store
+      // store crops into action output store
       APIData action_out;
       action_out.add("data_raw_img",cropped_imgs);
       action_out.add("cids",bbox_ids);
@@ -116,6 +116,58 @@ namespace dd
       model_out.add("predictions",cvad);
     }
 
+  void ImgsRotateAction::apply(APIData &model_out,
+			       ChainData &cdata)
+  {
+    // get label
+    std::vector<APIData> vad = model_out.getv("predictions");
+    std::vector<cv::Mat> imgs = model_out.getobj("input").get("imgs").get<std::vector<cv::Mat>>();
+    std::vector<std::pair<int,int>> imgs_size = model_out.getobj("input").get("imgs_size").get<std::vector<std::pair<int,int>>>();
+    std::vector<cv::Mat> rimgs;
+    std::vector<std::string> uris;
+    
+    //std::vector<APIData> cvad;
+    for (size_t i=0;i<vad.size();i++) // iterate predictions
+      {
+	std::string uri = vad.at(i).get("uri").get<std::string>();
+	uris.push_back(uri);
+	cv::Mat img = imgs.at(i);
+	std::vector<APIData> ad_cls = vad.at(i).getv("classes");
+	std::vector<APIData> cad_cls;
+
+	// rotate and make image available to next service
+	if (ad_cls.size() > 0)
+	  {
+	    std::string cat1 = ad_cls.at(0).get("cat").get<std::string>();
+	    cv::Mat rimg, timg;
+	    if (cat1 == "0")
+	      {
+		rimg = img;
+	      }
+	    else if (cat1 == "90")
+	      {
+		cv::transpose(img,timg);
+		cv::flip(timg,rimg,1);
+	      }
+	    else if (cat1 == "180")
+	      {
+		cv::flip(img,rimg,-1);
+	      }
+	    else if (cat1 == "270")
+	      {
+		cv::transpose(img,timg);
+		cv::flip(timg,rimg,0);
+	      }
+	    rimgs.push_back(rimg);
+	  }
+      }
+    // store rotated images into action output store
+    APIData action_out;
+    action_out.add("data_raw_img",rimgs);
+    action_out.add("cids",uris);
+    cdata.add_action_data(_action_id,action_out);
+  }
+  
   void ClassFilter::apply(APIData &model_out,
 			  ChainData &cdata)
   {
@@ -168,19 +220,27 @@ namespace dd
     if (_adc.has("id"))
         action_id = _adc.get("id").get<std::string>();
     else action_id = std::to_string(cdata._action_data.size());
-    if (action_type == "crop") {
+    if (action_type == "crop")
+      {
         ImgsCropAction act(_adc, action_id, action_type);
         act.apply(model_out, cdata);
-    } else if (action_type == "filter") {
+      }
+    else if (action_type == "rotate")
+      {
+	ImgsRotateAction act(_adc,action_id,action_type);
+	act.apply(model_out,cdata);
+      }
+    else if (action_type == "filter")
+      {
         ClassFilter act(_adc, action_id, action_type);
         act.apply(model_out, cdata);
-    }
+      }
 #ifdef USE_DLIB
-        else if (action_type == "dlib_align_crop")
-{
-DlibAlignCropAction act(_adc,action_id,action_type);
-act.apply(model_out,cdata);
-}
+    else if (action_type == "dlib_align_crop")
+      {
+	DlibAlignCropAction act(_adc,action_id,action_type);
+	act.apply(model_out,cdata);
+      }
 #endif
     else {
         throw ActionBadParamException("unknown action " + action_type);
