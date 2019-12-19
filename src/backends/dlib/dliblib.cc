@@ -56,7 +56,7 @@ namespace dd {
             throw MLLibBadParamException("Must specify model type (obj_detector, face_detector, or face_feature_extractor)");
         }
 
-        if (ad.has("shape_predictor")) {
+        if (ad.has("shape_predictor") && ad.get("shape_predictor").get<bool>()) {
             this->_mlmodel._hasShapePredictor = true;
         }
 
@@ -153,7 +153,7 @@ namespace dd {
 
         // vector for storing  the outputAPI of the file
         std::vector <APIData> vrad;
-        std::vector<cv::Mat> cropped_imgs;
+
         inputc.reset_dv();
         int idoffset = 0;
         while (true) {
