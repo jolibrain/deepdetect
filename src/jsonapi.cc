@@ -633,7 +633,14 @@ namespace dd
                 _logger->error("couldn't write {} file in model repository {}", JsonAPI::_json_blob_fname, dlibmodel._repo);
             }
 	    } else if (type == "unsupervised") {
-	        return dd_service_bad_request_1006(); // Unsupervised not yet supported
+	        if (input == "image") {
+	            add_service(sname, std::move(MLService<DlibLib, ImgDlibInputFileConn, UnsupervisedOutput, DlibModel>(sname, dlibmodel, description)), ad);
+            } else {
+	            return dd_input_connector_not_found_1004();
+            }
+            if (JsonAPI::store_json_blob(dlibmodel._repo,jstr)) { // store successful call json blob
+                _logger->error("couldn't write {} file in model repository {}", JsonAPI::_json_blob_fname, dlibmodel._repo);
+            }
 	    } else {
 	        // unknown type
 	        return dd_service_bad_request_1006();

@@ -101,7 +101,8 @@ namespace dd
     #if defined(USE_CAFFE) || defined(USE_CAFFE2) || defined(USE_TF)
     ,
     #endif
-    MLService<DlibLib,ImgDlibInputFileConn,SupervisedOutput,DlibModel>
+    MLService<DlibLib,ImgDlibInputFileConn,SupervisedOutput,DlibModel>,
+    MLService<DlibLib,ImgDlibInputFileConn,UnsupervisedOutput,DlibModel>
 #endif
 #ifdef USE_XGBOOST
     #if defined(USE_CAFFE) || defined(USE_CAFFE2) || defined(USE_TF) || defined(USE_DLIB)

@@ -77,12 +77,10 @@ namespace dd
   {
   public:
     URIData() {}
-    URIData(const std::string &uri)
-      :_uri(uri) {}
     URIData(const std::string &uri,
-	    const std::vector<double> &bbox,
-	    const double &prob,
-	    const std::string &cat)
+	    const std::vector<double> &bbox = {},
+	    const double &prob = 0.0,
+	    const std::string &cat = "")
       :_uri(uri),_bbox(bbox),_prob(prob),_cat(cat) {}
     ~URIData() {}
 

@@ -1,6 +1,6 @@
 /**
  * DeepDetect
- * Copyright (c) 2018 Pixel Forensics, Inc.
+ * Copyright (c) 2019 Pixel Forensics, Inc.
  * Author: Cheni Chadowitz <cchadowitz@pixelforensics.com>
  *
  * This file is part of deepdetect.
@@ -18,37 +18,26 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with deepdetect.  If not, see <http://www.gnu.org/licenses/>.
  */
+#ifndef DEEPDETECT_DLIB_ACTIONS_H
+#define DEEPDETECT_DLIB_ACTIONS_H
 
-#ifndef DLIBMODEL_H
-#define DLIBMODEL_H
-
-#include "mlmodel.h"
-#include "apidata.h"
-#include <spdlog/spdlog.h>
-#include <string>
+#include "chain_actions.h"
 
 namespace dd {
-    class DlibModel : public MLModel {
+
+    class DlibAlignCropAction : public ChainAction
+    {
     public:
-        DlibModel() : MLModel() {}
+        DlibAlignCropAction(const APIData &adc,
+                            const std::string &action_id,
+                            const std::string &action_type)
+                :ChainAction(adc,action_id,action_type) {}
 
-        DlibModel(const APIData &ad, APIData &adg,
-		  const std::shared_ptr<spdlog::logger> &logger);
+        ~DlibAlignCropAction() {}
 
-        DlibModel(const std::string &repo)
-                : MLModel(repo) {}
-
-        ~DlibModel() {}
-
-        int read_from_repository(const std::string &repo,
-                                 const std::shared_ptr<spdlog::logger> &logger);
-
-        std::string _modelName; // Name of the graph
-        std::string _modelRepo;
-        bool _hasShapePredictor = false;
-        std::string _shapePredictorName;
+        void apply(APIData &model_out,
+                   ChainData &cdata);
     };
-
 }
 
-#endif
+#endif //DEEPDETECT_DLIB_ACTIONS_H

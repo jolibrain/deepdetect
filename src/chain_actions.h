@@ -80,7 +80,6 @@ namespace dd
     bool _in_place = false;
   };
 
-
   class ImgsCropAction : public ChainAction
   {
   public:
@@ -117,27 +116,7 @@ namespace dd
 
     void apply_action(const std::string &action_type,
 		      APIData &model_out,
-		      ChainData &cdata)
-    {
-      std::string action_id;
-      if (_adc.has("id"))
-	action_id = _adc.get("id").get<std::string>();
-      else action_id = std::to_string(cdata._action_data.size());
-      if (action_type == "crop")
-	{
-	  ImgsCropAction act(_adc,action_id,action_type);
-	  act.apply(model_out,cdata);
-	}
-      else if (action_type == "filter")
-	{
-	  ClassFilter act(_adc,action_id,action_type);
-	  act.apply(model_out,cdata);
-	}
-      else
-	{
-	  throw ActionBadParamException("unknown action " + action_type);
-	}
-    }
+		      ChainData &cdata);
 
     APIData _adc; /**< action ad object. */
   };

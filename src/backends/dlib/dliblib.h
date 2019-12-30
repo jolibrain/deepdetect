@@ -58,6 +58,10 @@ namespace dd {
         // model, depending on type specified
         net_type_objDetector _objDetector;
         net_type_faceDetector _faceDetector;
+        net_type_faceFeatureExtractor _faceFeatureExtractor;
+        dlib::shape_predictor _shapePredictor;
+        int _chip_size = 150;
+        double _padding = 0.25;
         // whether the model has been loaded yet
         bool _modelLoaded = false;
         std::mutex _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as net is not re-instantiated. Use batches instead. */

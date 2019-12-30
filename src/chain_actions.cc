@@ -24,9 +24,12 @@
 #include <unordered_set>
 #include "utils/utils.hpp"
 
+#ifdef USE_DLIB
+#include "backends/dlib/dlib_actions.h"
+#endif
+
 namespace dd
 {
-
   void ImgsCropAction::apply(APIData &model_out,
 			     ChainData &cdata)
     {
@@ -45,7 +48,7 @@ namespace dd
       bool save_crops = false;
       if (_params.has("save_crops"))
 	save_crops = _params.get("save_crops").get<bool>();
-            
+
       // iterate image batch
       for (size_t i=0;i<vad.size();i++)
 	{
@@ -156,6 +159,32 @@ namespace dd
     
     // updated model data
     model_out.add("predictions",cvad);
+  }
+
+  void ChainActionFactory::apply_action(const std::string &action_type,
+                          APIData &model_out,
+                          ChainData &cdata) {
+    std::string action_id;
+    if (_adc.has("id"))
+        action_id = _adc.get("id").get<std::string>();
+    else action_id = std::to_string(cdata._action_data.size());
+    if (action_type == "crop") {
+        ImgsCropAction act(_adc, action_id, action_type);
+        act.apply(model_out, cdata);
+    } else if (action_type == "filter") {
+        ClassFilter act(_adc, action_id, action_type);
+        act.apply(model_out, cdata);
+    }
+#ifdef USE_DLIB
+        else if (action_type == "dlib_align_crop")
+{
+DlibAlignCropAction act(_adc,action_id,action_type);
+act.apply(model_out,cdata);
+}
+#endif
+    else {
+        throw ActionBadParamException("unknown action " + action_type);
+    }
   }
 
 } // end of namespace
