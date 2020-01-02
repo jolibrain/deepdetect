@@ -50,8 +50,9 @@ namespace dd
 		else break;
 	      }
 	    std::reverse(bs_str.begin(),bs_str.end());
-	    int bs = std::stoi(bs_str);
-	    return bs;
+        if (bs_str.length() == 0)
+          return -1;
+	    return std::stoi(bs_str);
 	  }
       }
     return -1;
@@ -106,7 +107,7 @@ namespace dd
       initLibNvInferPlugins(&trtLogger,"");
 
       if (ad.has("tensorRTEngineFile"))
-	_engineFileName = ad.get("tensorRTfile").get<std::string>();
+	_engineFileName = ad.get("tensorRTEngineFile").get<std::string>();
       if (ad.has("readEngine"))
 	_readEngine = ad.get("readEngine").get<bool>();
       if (ad.has("writeEngine"))
@@ -285,7 +286,7 @@ namespace dd
 	    int bs = findEngineBS(this->_mlmodel._repo, _engineFileName);
 	    if (bs != _max_batch_size && bs != -1)
 		this->_logger->warn("found existing engine with max_batch_size {}, using it",  bs);
-	    std::ifstream file(this->_mlmodel._repo+"/"+_engineFileName+std::to_string(bs),
+	    std::ifstream file(this->_mlmodel._repo+"/"+_engineFileName+"_bs"+std::to_string(bs),
 			       std::ios::binary);
 	    if (file.good())
 	      {
@@ -360,7 +361,7 @@ namespace dd
 	
 	    if (_writeEngine)
 	      {
-		std::ofstream p(this->_mlmodel._repo+"/"+_engineFileName+std::to_string(_max_batch_size), std::ios::binary);
+		std::ofstream p(this->_mlmodel._repo+"/"+_engineFileName+"_bs"+std::to_string(_max_batch_size), std::ios::binary);
 		nvinfer1::IHostMemory* trtModelStream  = _engine->serialize();
 		p.write(reinterpret_cast<const char*>(trtModelStream->data()), trtModelStream->size());
 		trtModelStream->destroy();
