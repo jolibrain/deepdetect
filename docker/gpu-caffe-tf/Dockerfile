@@ -1,8 +1,8 @@
-FROM nvidia/cuda:8.0-cudnn7-devel-ubuntu16.04
+FROM nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04
 
 RUN echo 'building GPU DeepDetect image'
 
-MAINTAINER Emmanuel Benazera "beniz@droidnik.fr"
+MAINTAINER Emmanuel Benazera "emmanuel.benazera@jolibrain.com"
 
 LABEL description="DeepDetect deep learning server & API / GPU version"
 
@@ -56,7 +56,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libspdlog-dev \
   bash-completion \
   ca-certificates && \
-  wget -O /tmp/bazel.deb https://github.com/bazelbuild/bazel/releases/download/0.21.0/bazel_0.21.0-linux-x86_64.deb && \
+  wget -O /tmp/bazel.deb https://github.com/bazelbuild/bazel/releases/download/0.24.1/bazel_0.24.1-linux-x86_64.deb && \
   dpkg -i /tmp/bazel.deb && \
   apt-get remove -y libcurlpp0 && \
   apt-get clean && \
@@ -77,7 +77,7 @@ RUN if [ ! -f /usr/local/cuda/include/cudnn.h -a -f /usr/include/cudnn.h ]; then
     if [ ! -f /usr/local/cuda/lib64/libcudnn.so -a -f /usr/lib/x86_64-linux-gnu/libcudnn.so ]; then ln -s /usr/lib/x86_64-linux-gnu/libcudnn* /usr/local/cuda/lib64/; fi
 
 WORKDIR /opt
-RUN git clone https://github.com/beniz/deepdetect.git && cd deepdetect && mkdir build
+RUN git clone https://github.com/jolibrain/deepdetect.git && cd deepdetect && mkdir build
 
 WORKDIR /opt/deepdetect/build
 RUN export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64

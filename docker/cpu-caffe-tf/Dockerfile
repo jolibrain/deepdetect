@@ -2,7 +2,7 @@ FROM ubuntu:16.04
 
 RUN echo 'building CPU DeepDetect image'
 
-MAINTAINER Emmanuel Benazera "beniz@droidnik.fr"
+MAINTAINER Emmanuel Benazera "emmanuel.benazera@jolibrain.com"
 LABEL description="DeepDetect deep learning server & API / CPU version"
 
 RUN ln -sf /dev/stdout /var/log/deepdetect.log
@@ -41,6 +41,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   autoconf \
   libtool-bin \
   python-numpy \
+  python-future \
   swig \
   python-dev \
   python-setuptools \
@@ -55,7 +56,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   bash-completion \
   libspdlog-dev \
   ca-certificates && \
-  wget -O /tmp/bazel.deb https://github.com/bazelbuild/bazel/releases/download/0.21.0/bazel_0.21.0-linux-x86_64.deb && \
+  wget -O /tmp/bazel.deb https://github.com/bazelbuild/bazel/releases/download/0.24.1/bazel_0.24.1-linux-x86_64.deb && \
   dpkg -i /tmp/bazel.deb && \
   apt-get remove -y libcurlpp0 && \
   apt-get clean && \
@@ -71,10 +72,10 @@ RUN wget -O /opt/curlpp-v0.8.1.zip https://github.com/jpbarrette/curlpp/archive/
     cd /opt && \
     rm -rf curlpp-0.8.1 curlpp-v0.8.1.zip
 
-RUN git clone https://github.com/beniz/deepdetect.git && cd deepdetect && mkdir build
+RUN git clone https://github.com/jolibrain/deepdetect.git && cd deepdetect && mkdir build
 
 WORKDIR /opt/deepdetect/build
-RUN cmake .. -DUSE_TF=ON -DUSE_TF_CPU_ONLY=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_NCNN=ON && \
+RUN cmake .. -DUSE_TF=ON -DUSE_TF_CPU_ONLY=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_NCNN=OFF && \
     make
 
 # external volume to be mapped, e.g. for models or training data
