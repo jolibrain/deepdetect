@@ -129,8 +129,12 @@ namespace dd
     std::vector<std::pair<int,int>> imgs_size = model_out.getobj("input").get("imgs_size").get<std::vector<std::pair<int,int>>>();
     std::vector<cv::Mat> rimgs;
     std::vector<std::string> uris;
+
+    // check for action parameters
+    std::string orientation = "relative"; // other: absolute
+    if (_params.has("orientation"))
+      orientation = _params.get("orientation").get<std::string>();
     
-    //std::vector<APIData> cvad;
     for (size_t i=0;i<vad.size();i++) // iterate predictions
       {
 	std::string uri = vad.at(i).get("uri").get<std::string>();
@@ -138,20 +142,23 @@ namespace dd
 	cv::Mat img = imgs.at(i);
 	std::vector<APIData> ad_cls = vad.at(i).getv("classes");
 	std::vector<APIData> cad_cls;
-
+	
 	// rotate and make image available to next service
 	if (ad_cls.size() > 0)
 	  {
 	    std::string cat1 = ad_cls.at(0).get("cat").get<std::string>();
 	    cv::Mat rimg, timg;
-	    if (cat1 == "0")
+	    if (cat1 == "0")  // all tests in absolute orientation
 	      {
 		rimg = img;
 	      }
 	    else if (cat1 == "90")
 	      {
 		cv::transpose(img,timg);
-		cv::flip(timg,rimg,1);
+		int orient = 1;
+		if (orientation == "relative")
+		  orient = 0; // 270
+		cv::flip(timg,rimg,orient);
 	      }
 	    else if (cat1 == "180")
 	      {
@@ -160,9 +167,13 @@ namespace dd
 	    else if (cat1 == "270")
 	      {
 		cv::transpose(img,timg);
-		cv::flip(timg,rimg,0);
+		int orient = 0;
+		if (orientation == "relative")
+		  orient = 1; // 90
+		cv::flip(timg,rimg,orient);
 	      }
-	    rimgs.push_back(rimg);
+	    if (!rimg.empty())
+	      rimgs.push_back(rimg);
 	  }
       }
     // store rotated images into action output store
