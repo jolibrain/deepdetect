@@ -1865,13 +1865,12 @@ namespace dd
 	      }
 	    else if (inputc._bbox)
 	      {
-		for (size_t j=0;j<lresults.size();j++)
-		  {
-		    if (lresults[j]->width() != 5)
+            boost::shared_ptr<Blob<float>> detection_eval = findBlobByName(net,"detection_eval");
+		    if (detection_eval->width() != 5)
 		      throw MLLibBadParamException("wrong width in bbox result");
-		    int pos = tresults + j;
-		    const float *result_vec = lresults[j]->cpu_data();
-		    int num_det = lresults[j]->height();
+		    int pos = tresults;
+		    const float *result_vec = detection_eval->cpu_data();
+		    int num_det = detection_eval->height();
 		    for (int k=0;k<num_det;k++)
 		      {
 			int item_id = static_cast<int>(result_vec[k * 5]);
@@ -1897,7 +1896,6 @@ namespace dd
 			  all_true_pos[pos][label].push_back(std::make_pair(score, tp));
 			  all_false_pos[pos][label].push_back(std::make_pair(score, fp));
 			}
-		      }
 		  }
 
 		// wrapping up
@@ -4051,18 +4049,19 @@ namespace dd
     return -1;
   }
 
+
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  boost::shared_ptr<Blob<float>> CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::findOutputBlobByName(const caffe::Net<float> *net, const std::string blob_name)
+  boost::shared_ptr<Blob<float>> CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::findBlobByName(const caffe::Net<float> *net, const std::string blob_name)
   {
-    const std::vector<std::string> blob_names = net->blob_names();
     const std::vector<int> output_blob_indices = net->output_blob_indices();
-    for (int i =0; i<net->num_outputs(); ++i)
+    for (unsigned int i =0; i<net->blob_names().size(); ++i)
       {
-        if (blob_names[output_blob_indices[i]] == blob_name)
-          net->output_blobs().at(i);
+        if (net->blob_names()[i]  == blob_name)
+          return net->blobs()[i];
       }
     return nullptr;
   }
+
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   std::vector<double> CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::img_resize(const std::vector<double>& vals, const int height_net, const int width_net, const int height_dest, const int width_dest, bool resize_nn)
