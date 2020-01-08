@@ -1542,11 +1542,13 @@ namespace dd
       std::vector<std::string> preds;
       std::vector<std::string> targets;
       std::vector<double> confs;
+      std::vector<std::vector<double>> logits;
       for (int i=0;i<batch_size;i++)
         {
           APIData bad = ad.getobj(std::to_string(i));
           std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
           double target = bad.get("target").get<double>();
+          logits.push_back(bad.get("logits").get<std::vector<double>>());
           if (target < 0)
             throw OutputConnectorBadParamException("negative supervised discrete target (e.g. wrong use of label_offset ?");
           else if (target >= nclasses)
@@ -1569,6 +1571,18 @@ namespace dd
       raw_res.add("truths",targets);
       raw_res.add("estimations",preds);
       raw_res.add("confidences",confs);
+      if (logits.size() >0)
+        {
+          std::vector<APIData> adlogit;
+          for (std::vector<double> l: logits)
+            {
+              APIData lad;
+              lad.add("logits",l);
+              adlogit.push_back(lad);
+            }
+          raw_res.add("all_logits",adlogit);
+        }
+
       return raw_res;
     }
 
@@ -1632,6 +1646,8 @@ namespace dd
       std::vector<std::string> preds;
       std::vector<std::string> targets;
       std::vector<double> confs;
+      std::vector<APIData> really_all_logits;
+      bool output_logits = false;
       APIData bad = ad.getobj("0");
       int pos_count = ad.get("pos_count").get<int>();
       for (int i=0;i<pos_count;i++)
@@ -1655,10 +1671,6 @@ namespace dd
                       preds.push_back(clnames[label]);
                       confs.push_back(tp_d[k]);
                     }
-                }
-              //below false positives
-              for (unsigned int k = 0; k<fp_d.size(); ++k)
-                {
                   if (fp_i[k] == 1)
                     {
                       preds.push_back(clnames[label]);
@@ -1677,11 +1689,30 @@ namespace dd
                   confs.push_back(1.0);
                   preds.push_back("NO_DETECTION");
                 }
+
+              if (vbad.at(j).has("all_logits"))
+                {
+                  output_logits = true;
+                  const std::vector<APIData>& logits = vbad.at(j).getv("all_logits");
+                  really_all_logits.insert(really_all_logits.end(),logits.begin(), logits.end());
+                  for (int  k= 0; k<(num_pos - ntp); ++k)
+                    {
+                      APIData background_logits_ad;
+                      std::vector<double> background_logits;
+                      background_logits.push_back(0.5+0.5/(float)clnames.size());
+                      for (unsigned int c = 1; c<clnames.size(); ++c)
+                        background_logits.push_back(1.0/(float)clnames.size()/2.0);
+                      background_logits_ad.add("logits",background_logits);
+                      really_all_logits.push_back(background_logits_ad);
+                    }
+                }
             }
         }
       raw_res.add("truths", targets);
       raw_res.add("estimations", preds);
       raw_res.add("confidences", confs);
+      if (output_logits)
+        raw_res.add("all_logits", really_all_logits);
       return raw_res;
     }
 
