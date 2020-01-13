@@ -134,6 +134,14 @@ namespace dd
     std::string orientation = "relative"; // other: absolute
     if (_params.has("orientation"))
       orientation = _params.get("orientation").get<std::string>();
+
+    bool save_img = false;
+    if (_params.has("save_img"))
+      save_img = _params.get("save_img").get<bool>();
+
+    std::string save_path;
+    if (_params.has("save_path"))
+      save_path = _params.get("save_path").get<std::string>() + "/";
     
     for (size_t i=0;i<vad.size();i++) // iterate predictions
       {
@@ -173,7 +181,16 @@ namespace dd
 		cv::flip(timg,rimg,orient);
 	      }
 	    if (!rimg.empty())
-	      rimgs.push_back(rimg);
+	      {
+		rimgs.push_back(rimg);
+
+		// save image if requested
+		if (save_img)
+		  {
+		    std::string puri = dd_utils::split(uri,'/').back();
+		    cv::imwrite(save_path + "rot_" + puri + "_" + cat1 + ".png",rimg);
+		  }
+	      }
 	  }
       }
     // store rotated images into action output store
