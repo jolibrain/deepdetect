@@ -244,9 +244,9 @@ namespace dd
 
                 APIData ad_bbox;
                 ad_bbox.add("xmin",static_cast<double>(values[2] * inputc.width()));
-                ad_bbox.add("ymax",static_cast<double>(values[3] * inputc.height()));
+                ad_bbox.add("ymin",static_cast<double>(values[3] * inputc.height()));
                 ad_bbox.add("xmax",static_cast<double>(values[4] * inputc.width()));
-                ad_bbox.add("ymin",static_cast<double>(values[5] * inputc.height()));
+                ad_bbox.add("ymax",static_cast<double>(values[5] * inputc.height()));
                 bboxes.push_back(ad_bbox);
             }
         }

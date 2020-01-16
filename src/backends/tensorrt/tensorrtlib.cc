@@ -564,9 +564,9 @@ namespace dd
 		    cats.push_back(this->_mlmodel.get_hcorresp(detection[1]));
 		    APIData ad_bbox;
 		    ad_bbox.add("xmin",static_cast<double>(detection[3]*(cols-1)));
-		    ad_bbox.add("ymax",static_cast<double>(detection[4]*(rows-1)));
+		    ad_bbox.add("ymin",static_cast<double>(detection[4]*(rows-1)));
 		    ad_bbox.add("xmax",static_cast<double>(detection[5]*(cols-1)));
-		    ad_bbox.add("ymin",static_cast<double>(detection[6]*(rows-1)));
+		    ad_bbox.add("ymax",static_cast<double>(detection[6]*(rows-1)));
 		    bboxes.push_back(ad_bbox);
 		  }
 		if (leave)

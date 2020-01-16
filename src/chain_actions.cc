@@ -82,16 +82,16 @@ namespace dd
 
 	      double cxmin = std::max(0.0,xmin-deltax);
 	      double cxmax = std::min(static_cast<double>(img.cols),xmax+deltax);
-	      double cymax = std::max(0.0,ymax-deltay);
-	      double cymin = std::min(static_cast<double>(img.rows),ymin+deltay);
+	      double cymin = std::max(0.0,ymin-deltay);
+	      double cymax = std::min(static_cast<double>(img.rows),ymax+deltay);
 
-	      if (cxmin > img.cols || cymax > img.rows || cxmax < 0 || cymin < 0)
+	      if (cxmin > img.cols || cymin > img.rows || cxmax < 0 || cymax < 0)
 		{
 		  _chain_logger->warn("bounding box does not intersect image, skipping crop action");
 		  continue;
 		}
 	      
-	      cv::Rect roi(cxmin,cymax,cxmax-cxmin,cymin-cymax);
+	      cv::Rect roi(cxmin,cymax,cxmax-cxmin,cymax-cymin);
 	      cv::Mat cropped_img = img(roi);
 
 	      // adding bbox id
