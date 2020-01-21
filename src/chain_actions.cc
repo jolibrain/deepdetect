@@ -88,6 +88,12 @@ namespace dd
 	      double cymax = std::max(0.0,ymax-deltay);
 	      double cymin = std::min(static_cast<double>(img.rows),ymin+deltay);
 
+	      if (cxmin > img.cols || cymax > img.rows)
+		{
+		  _chain_logger->warn("bounding box does not intersect image, skipping crop action");
+		  continue;
+		}
+	      
 	      cv::Rect roi(cxmin,cymax,cxmax-cxmin,cymin-cymax);
 	      cv::Mat cropped_img = img(roi);
 
@@ -162,25 +168,27 @@ namespace dd
   }
 
   void ChainActionFactory::apply_action(const std::string &action_type,
-                          APIData &model_out,
-                          ChainData &cdata) {
+					APIData &model_out,
+					ChainData &cdata,
+					const std::shared_ptr<spdlog::logger> &chain_logger)
+  {
     std::string action_id;
     if (_adc.has("id"))
         action_id = _adc.get("id").get<std::string>();
     else action_id = std::to_string(cdata._action_data.size());
     if (action_type == "crop") {
-        ImgsCropAction act(_adc, action_id, action_type);
+        ImgsCropAction act(_adc, action_id, action_type, chain_logger);
         act.apply(model_out, cdata);
     } else if (action_type == "filter") {
-        ClassFilter act(_adc, action_id, action_type);
+        ClassFilter act(_adc, action_id, action_type, chain_logger);
         act.apply(model_out, cdata);
     }
 #ifdef USE_DLIB
-        else if (action_type == "dlib_align_crop")
-{
-DlibAlignCropAction act(_adc,action_id,action_type);
-act.apply(model_out,cdata);
-}
+      else if (action_type == "dlib_align_crop")
+   {
+       DlibAlignCropAction act(_adc,action_id,action_type, chain_logger);
+       act.apply(model_out,cdata);
+   }
 #endif
     else {
         throw ActionBadParamException("unknown action " + action_type);

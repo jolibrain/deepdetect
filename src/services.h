@@ -759,7 +759,8 @@ namespace dd
       ChainActionFactory caf(adc);
       caf.apply_action(action_type,
 		       prev_data,
-		       cdata);
+		       cdata,
+		       chain_logger);
       
       // replace prev_data in cdata for prec_pred_id
       cdata.add_model_data(prec_pred_id,prev_data);
