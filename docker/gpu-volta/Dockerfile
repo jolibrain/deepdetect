@@ -2,7 +2,7 @@ FROM nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04
 
 RUN echo 'building GPU DeepDetect image'
 
-MAINTAINER Emmanuel Benazera "beniz@droidnik.fr"
+MAINTAINER Emmanuel Benazera "emmanuel.benazera@jolibrain.com"
 
 LABEL description="DeepDetect deep learning server & API / GPU version"
 
@@ -21,7 +21,7 @@ RUN make install
 RUN cp /usr/local/lib/libcurlpp.* /usr/lib/
 
 WORKDIR /opt
-RUN git clone https://github.com/beniz/deepdetect.git && cd deepdetect && mkdir build
+RUN git clone https://github.com/jolibrain/deepdetect.git && cd deepdetect && mkdir build
 
 WORKDIR /opt/deepdetect/build
 RUN cmake .. -DUSE_CUDNN=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DCUDA_ARCH="-gencode arch=compute_70,code=sm_70"

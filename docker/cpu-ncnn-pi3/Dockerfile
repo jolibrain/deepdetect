@@ -2,7 +2,7 @@ FROM armv7/armhf-ubuntu:16.04
 
 RUN echo 'Building CPU NCNN RPi3 DeepDetect image'
 
-MAINTAINER Emmanuel Benazera "beniz@droidnik.fr"
+MAINTAINER Emmanuel Benazera "emmanuel.benazera@jolibrain.com"
 LABEL description="DeepDetect deep learning server & API / CPU NCNN-only RPi3 version"
 
 RUN ln -sf /dev/stdout /var/log/deepdetect.log
