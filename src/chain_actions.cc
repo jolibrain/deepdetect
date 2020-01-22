@@ -68,13 +68,6 @@ namespace dd
 	      if (bbox.empty())
 		throw ActionBadParamException("crop action cannot find bbox object for uri " + uri);
 
-	      // adding bbox id
-	      std::string bbox_id = genid(uri,"bbox"+std::to_string(j));
-	      bbox_ids.push_back(bbox_id);
-	      APIData ad_cid;
-	      ad_cls.at(j).add(bbox_id,ad_cid);
-	      cad_cls.push_back(ad_cls.at(j));
-
 	      double xmin = bbox.get("xmin").get<double>() / orig_cols * img.cols;
 	      double ymin = bbox.get("ymin").get<double>() / orig_rows * img.rows;
 	      double xmax = bbox.get("xmax").get<double>() / orig_cols * img.cols;
@@ -97,6 +90,13 @@ namespace dd
 	      cv::Rect roi(cxmin,cymax,cxmax-cxmin,cymin-cymax);
 	      cv::Mat cropped_img = img(roi);
 
+	      // adding bbox id
+	      std::string bbox_id = genid(uri,"bbox"+std::to_string(j));
+	      bbox_ids.push_back(bbox_id);
+	      APIData ad_cid;
+	      ad_cls.at(j).add(bbox_id,ad_cid);
+	      cad_cls.push_back(ad_cls.at(j));
+	      
 	      // save crops if requested
 	      if (save_crops)
 		{
