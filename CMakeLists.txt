@@ -710,8 +710,9 @@ if (USE_TORCH)
   set(PYTORCH_PATCHES_PATH ${CMAKE_BINARY_DIR}/patches/pytorch)
 
   set(PYTORCH_PATCHES
-    ${PYTORCH_PATCHES_PATH}/pytorch_compile.patch
-    ${PYTORCH_PATCHES_PATH}/pytorch_logging.patch
+    ${PYTORCH_PATCHES_PATH}/pytorch_14_compile.patch
+    ${PYTORCH_PATCHES_PATH}/pytorch_14_logging.patch
+    ${PYTORCH_PATCHES_PATH}/pytorch_14_namespace.patch
     )
 
   include_directories("${PROTOBUF_INCLUDE_DIR}")
@@ -721,7 +722,9 @@ if (USE_TORCH)
 
   if (NOT TORCH_LOCATION)
     # below version 1.3.1
-    set(PYTORCH_COMMIT ee77ccbb6da4e2efd83673e798acf7081bc03564)
+    #set(PYTORCH_COMMIT ee77ccbb6da4e2efd83673e798acf7081bc03564)
+    # below version 1.4
+    set(PYTORCH_COMMIT 7f73f1d591afba823daa4a99a939217fb54d7688)
     set(PYTORCH_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch-complete)
 
     if(NOT USE_CPU_ONLY AND CUDA_FOUND)

@@ -1,0 +1,141 @@
+diff --git a/caffe2/opt/converter.cc b/caffe2/opt/converter.cc
+index 44b8b0c190..970faf1d27 100644
+--- a/caffe2/opt/converter.cc
++++ b/caffe2/opt/converter.cc
+@@ -125,7 +125,7 @@ class ConvConverter : public Converter {
+     std::unique_ptr<repr::NeuralNetOperator> nnOp;
+     auto argMap = getArgumentsFromOperator(op);
+     auto kernelShape = getKernelShape(argMap);
+-    nnOp = util::make_unique<repr::Conv>(kernelShape);
++    nnOp = nom::util::make_unique<repr::Conv>(kernelShape);
+     auto c = dyn_cast<repr::Conv>(nnOp.get());
+ 
+     c->setStrides(getStrides(argMap));
+@@ -146,7 +146,7 @@ class ConvTransposeConverter : public Converter {
+     std::unique_ptr<repr::NeuralNetOperator> nnOp;
+     auto argMap = getArgumentsFromOperator(op);
+     auto kernelShape = getKernelShape(argMap);
+-    nnOp = util::make_unique<repr::ConvTranspose>(kernelShape);
++    nnOp = nom::util::make_unique<repr::ConvTranspose>(kernelShape);
+     auto c = dyn_cast<repr::ConvTranspose>(nnOp.get());
+ 
+     c->setStrides(getStrides(argMap));
+@@ -193,7 +193,7 @@ class ClipConverter : public Converter {
+       max = static_cast<float>(argMap["max"].f());
+     }
+ 
+-    return util::make_unique<repr::Clip>(min, max);
++    return nom::util::make_unique<repr::Clip>(min, max);
+   }
+   // Does not override default converter to OperatorDef
+ 
+@@ -207,7 +207,7 @@ class AveragePoolConverter : public Converter {
+     std::unique_ptr<repr::NeuralNetOperator> nnOp;
+     auto argMap = getArgumentsFromOperator(op);
+     auto kernelShape = getKernelShape(argMap);
+-    nnOp = util::make_unique<repr::AveragePool>(kernelShape);
++    nnOp = nom::util::make_unique<repr::AveragePool>(kernelShape);
+     return nnOp;
+   }
+   // Does not override default converter to OperatorDef
+@@ -222,7 +222,7 @@ class MaxPoolConverter : public Converter {
+     std::unique_ptr<repr::NeuralNetOperator> nnOp;
+     auto argMap = getArgumentsFromOperator(op);
+     auto kernelShape = getKernelShape(argMap);
+-    nnOp = util::make_unique<repr::MaxPool>(kernelShape);
++    nnOp = nom::util::make_unique<repr::MaxPool>(kernelShape);
+     return nnOp;
+   }
+   // Does not override default converter to OperatorDef
+@@ -235,7 +235,7 @@ class ConcatConverter : public Converter {
+   std::unique_ptr<nom::repr::NeuralNetOperator> convertToNeuralNetOperator(
+       const OperatorDef& op) override {
+     std::unique_ptr<repr::NeuralNetOperator> nnOp =
+-        util::make_unique<repr::Concat>();
++      nom::util::make_unique<repr::Concat>();
+     auto argMap = getArgumentsFromOperator(op);
+ 
+     auto c = dyn_cast<repr::Concat>(nnOp.get());
+@@ -261,7 +261,7 @@ class FCConverter : public Converter {
+   std::unique_ptr<nom::repr::NeuralNetOperator> convertToNeuralNetOperator(
+       const OperatorDef& op) override {
+     std::unique_ptr<repr::NeuralNetOperator> nnOp =
+-        util::make_unique<repr::FC>();
++      nom::util::make_unique<repr::FC>();
+     auto argMap = getArgumentsFromOperator(op);
+ 
+     auto c = dyn_cast<repr::FC>(nnOp.get());
+@@ -298,13 +298,13 @@ std::unique_ptr<repr::NeuralNetOperator> convertToNeuralNetOperator(
+   }
+ 
+   if (!nnOp) {
+-    nnOp = util::make_unique<repr::GenericOperator>(op.type());
++    nnOp = nom::util::make_unique<repr::GenericOperator>(op.type());
+   }
+ 
+   // Generic attributes associated with Ops here
+   nnOp->setLayout(getLayout(argMap));
+ 
+-  auto annotation = util::make_unique<Caffe2Annotation>();
++  auto annotation = nom::util::make_unique<Caffe2Annotation>();
+   annotation->setOperatorDef(op);
+ 
+   auto device_name = op.device_option().node_name();
+@@ -351,7 +351,7 @@ repr::NNModule convertToNNModule(
+     for (const auto& input : op.input()) {
+       // If we've never seen this tensor, make one.
+       if (!blobMap.count(input)) {
+-        auto tensor = util::make_unique<repr::Tensor>(input);
++        auto tensor = nom::util::make_unique<repr::Tensor>(input);
+         blobMap[input] =
+             dfg.createNode(unique_dyn_cast<repr::NeuralNetData>(tensor));
+         if (externalInputNames.count(input)) {
+@@ -366,7 +366,7 @@ repr::NNModule convertToNNModule(
+ 
+     // Then save outputs into the blobMap for later consumption.
+     for (const auto& output : op.output()) {
+-      auto tensor = util::make_unique<repr::Tensor>(output);
++      auto tensor = nom::util::make_unique<repr::Tensor>(output);
+       auto tensorNode =
+           dfg.createNode(unique_dyn_cast<repr::NeuralNetData>(tensor));
+       dfg.createEdge(opNode, tensorNode);
+@@ -399,7 +399,7 @@ repr::NNModule convertToNNModule(
+       // Otherwise, we add the blobs to the graph as no-ops
+     } else {
+       for (const auto& input : externalInputNames) {
+-        blobMap[input] = dfg.createNode(util::make_unique<repr::Tensor>(input));
++        blobMap[input] = dfg.createNode(nom::util::make_unique<repr::Tensor>(input));
+       }
+     }
+   }
+@@ -453,7 +453,7 @@ Caffe2Annotation* getOrAddCaffe2Annotation(
+   auto* nnOp = repr::nn::get<repr::NeuralNetOperator>(instrNode);
+   auto* annotation = nnOp->getMutableAnnotation();
+   if (!annotation) {
+-    auto new_annot = util::make_unique<Caffe2Annotation>();
++    auto new_annot = nom::util::make_unique<Caffe2Annotation>();
+     new_annot->setOperatorDef(convertToOperatorDef(instrNode));
+     nnOp->setAnnotation(std::move(new_annot));
+     annotation = nnOp->getMutableAnnotation();
+diff --git a/caffe2/opt/device.cc b/caffe2/opt/device.cc
+index 6bb101ad7a..7669abfb0a 100644
+--- a/caffe2/opt/device.cc
++++ b/caffe2/opt/device.cc
+@@ -99,7 +99,7 @@ void insertCopies(
+       if (!newInput) {
+         auto data = nn::get<NeuralNetData>(input);
+         newInput = nn->dataFlow.createNode(
+-            util::make_unique<repr::Tensor>(data->getName() + "_opencl_0"));
++            nom::util::make_unique<repr::Tensor>(data->getName() + "_opencl_0"));
+         nn->dataFlow.createEdge(input, copyNode);
+         nn->dataFlow.createEdge(copyNode, newInput);
+       }
+@@ -120,7 +120,7 @@ void insertCopies(
+       auto data = nn::get<NeuralNetData>(output);
+ 
+       auto newOutput = nn->dataFlow.createNode(
+-          util::make_unique<repr::Tensor>(data->getName() + "_opencl_0"));
++          nom::util::make_unique<repr::Tensor>(data->getName() + "_opencl_0"));
+ 
+       output->removeInEdge(edge);
+       edge->setHead(newOutput);

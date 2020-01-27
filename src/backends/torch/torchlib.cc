@@ -39,12 +39,11 @@ namespace dd
     }
 
     void add_parameters(std::shared_ptr<torch::jit::script::Module> module, std::vector<Tensor> &params, bool requires_grad = true) {
-        for (const auto &slot : module->get_parameters()) {
-            Tensor tensor = slot.value().toTensor();
+        for (const auto &tensor : module->parameters()) {
             if (tensor.requires_grad() && requires_grad)
                 params.push_back(tensor);
         }
-        for (auto child : module->get_modules()) {
+        for (auto child : module->children()) {
           add_parameters(std::make_shared<torch::jit::script::Module>(child), params);
         }
     }

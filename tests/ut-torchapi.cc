@@ -35,8 +35,8 @@ static std::string not_found_str = "{\"status\":{\"code\":404,\"msg\":\"NotFound
 
 static std::string incept_repo = "../examples/torch/resnet50_torch/";
 static std::string bert_classif_repo = "../examples/torch/bert_inference_torch/";
-static std::string bert_train_repo = "../examples/torch/bert_training_torch_131_transformers_221/";
-static std::string bert_train_data = "../examples/torch/bert_training_torch_131_transformers_221/data/";
+static std::string bert_train_repo = "../examples/torch/bert_training_torch_140_transformers_251/";
+static std::string bert_train_data = "../examples/torch/bert_training_torch_140_transformers_251/data/";
 
 TEST(torchapi, service_predict)
 {
