@@ -2660,6 +2660,7 @@ namespace dd
 	      for (int j=0;j<batch_size;j++)
 		{
 		  std::vector<int> pred_label_seq_with_blank(time_step);
+		  std::vector<double> pred_conf_seq(time_step);
 		  std::vector<std::vector<float>> pred_sample;
 
 		  const float *pred_cur = pred_data;
@@ -2667,6 +2668,7 @@ namespace dd
 		  for (int t=0;t<time_step;t++)
 		    {
 		      pred_label_seq_with_blank[t] = std::max_element(pred_cur, pred_cur + alphabet_size) - pred_cur;
+		      pred_conf_seq[t] = static_cast<double>(pred_cur[pred_label_seq_with_blank[t]]);
 		      pred_cur += batch_size * alphabet_size;
 		    }
 
@@ -2694,7 +2696,7 @@ namespace dd
 		    outseq.add("uri",inputc._ids.at(idoffset+j));
 		  else outseq.add("uri",std::to_string(idoffset+j));
 		  outseq.add("cats",cats);
-		  outseq.add("probs",std::vector<double>(1,1.0)); //XXX: in raw pred_label_seq_with_blank
+		  outseq.add("probs",std::vector<double>(1,std::accumulate(pred_conf_seq.begin(),pred_conf_seq.end(), 0.0) / static_cast<double>(pred_conf_seq.size()))); // average confidence over all characters
 		  outseq.add("loss",0.0);
 		  vrad.push_back(outseq);
 		}
