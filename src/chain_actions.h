@@ -104,8 +104,9 @@ namespace dd
   public:
     ImgsRotateAction(const APIData &adc,
 		     const std::string &action_id,
-		     const std::string &action_type)
-      :ChainAction(adc,action_id,action_type) {}
+		     const std::string &action_type,
+		     const std::shared_ptr<spdlog::logger> chain_logger)
+      :ChainAction(adc,action_id,action_type,chain_logger) {}
 
     ~ImgsRotateAction() {}
     
