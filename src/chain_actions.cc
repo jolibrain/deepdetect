@@ -85,7 +85,7 @@ namespace dd
 	      double cymax = std::max(0.0,ymax-deltay);
 	      double cymin = std::min(static_cast<double>(img.rows),ymin+deltay);
 
-	      if (cxmin > img.cols || cymax > img.rows)
+	      if (cxmin > img.cols || cymax > img.rows || cxmax < 0 || cymin < 0)
 		{
 		  _chain_logger->warn("bounding box does not intersect image, skipping crop action");
 		  continue;
