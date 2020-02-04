@@ -72,13 +72,6 @@ namespace dd
 	      if (bbox.empty())
 		throw ActionBadParamException("crop action cannot find bbox object for uri " + uri);
 
-	      // adding bbox id
-	      std::string bbox_id = genid(uri,"bbox"+std::to_string(j));
-	      bbox_ids.push_back(bbox_id);
-	      APIData ad_cid;
-	      ad_cls.at(j).add(bbox_id,ad_cid);
-	      cad_cls.push_back(ad_cls.at(j));
-
 	      double xmin = bbox.get("xmin").get<double>() / orig_cols * img.cols;
 	      double ymin = bbox.get("ymin").get<double>() / orig_rows * img.rows;
 	      double xmax = bbox.get("xmax").get<double>() / orig_cols * img.cols;
@@ -92,9 +85,22 @@ namespace dd
 	      double cymax = std::max(0.0,ymax-deltay);
 	      double cymin = std::min(static_cast<double>(img.rows),ymin+deltay);
 
+	      if (cxmin > img.cols || cymax > img.rows || cxmax < 0 || cymin < 0)
+		{
+		  _chain_logger->warn("bounding box does not intersect image, skipping crop action");
+		  continue;
+		}
+	      
 	      cv::Rect roi(cxmin,cymax,cxmax-cxmin,cymin-cymax);
 	      cv::Mat cropped_img = img(roi);
 
+	      // adding bbox id
+	      std::string bbox_id = genid(uri,"bbox"+std::to_string(j));
+	      bbox_ids.push_back(bbox_id);
+	      APIData ad_cid;
+	      ad_cls.at(j).add(bbox_id,ad_cid);
+	      cad_cls.push_back(ad_cls.at(j));
+	      
 	      // save crops if requested
 	      if (save_crops)
 		{
@@ -246,33 +252,35 @@ namespace dd
   }
 
   void ChainActionFactory::apply_action(const std::string &action_type,
-                          APIData &model_out,
-                          ChainData &cdata) {
+					APIData &model_out,
+					ChainData &cdata,
+					const std::shared_ptr<spdlog::logger> &chain_logger)
+  {
     std::string action_id;
     if (_adc.has("id"))
         action_id = _adc.get("id").get<std::string>();
     else action_id = std::to_string(cdata._action_data.size());
     if (action_type == "crop")
       {
-        ImgsCropAction act(_adc, action_id, action_type);
+        ImgsCropAction act(_adc, action_id, action_type, chain_logger);
         act.apply(model_out, cdata);
       }
     else if (action_type == "rotate")
       {
-	ImgsRotateAction act(_adc,action_id,action_type);
-	act.apply(model_out,cdata);
+	ImgsRotateAction act(_adc, action_id,action_type, chain_logger);
+	act.apply(model_out, cdata);
       }
     else if (action_type == "filter")
       {
-        ClassFilter act(_adc, action_id, action_type);
+        ClassFilter act(_adc, action_id, action_type, chain_logger);
         act.apply(model_out, cdata);
       }
 #ifdef USE_DLIB
-    else if (action_type == "dlib_align_crop")
-      {
-	DlibAlignCropAction act(_adc,action_id,action_type);
-	act.apply(model_out,cdata);
-      }
+      else if (action_type == "dlib_align_crop")
+   {
+       DlibAlignCropAction act(_adc,action_id,action_type, chain_logger);
+       act.apply(model_out,cdata);
+   }
 #endif
     else {
         throw ActionBadParamException("unknown action " + action_type);

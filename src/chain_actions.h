@@ -24,6 +24,8 @@
 
 #include "apidata.h"
 #include "chain.h"
+#include <memory>
+#include <spdlog/spdlog.h>
 
 namespace dd
 {
@@ -55,8 +57,9 @@ namespace dd
   public:
   ChainAction(const APIData &adc,
 	      const std::string &action_id,
-	      const std::string &action_type)
-    :_action_id(action_id),_action_type(action_type)
+	      const std::string &action_type,
+	      const std::shared_ptr<spdlog::logger> chain_logger)
+    :_action_id(action_id),_action_type(action_type),_chain_logger(chain_logger)
     {
       APIData action_adc = adc.getobj("action");
       _params = action_adc.getobj("parameters");
@@ -78,6 +81,7 @@ namespace dd
     std::string _action_type;
     APIData _params;
     bool _in_place = false;
+    std::shared_ptr<spdlog::logger> _chain_logger;
   };
 
   class ImgsCropAction : public ChainAction
@@ -85,8 +89,9 @@ namespace dd
   public:
     ImgsCropAction(const APIData &adc,
 		   const std::string &action_id,
-		   const std::string &action_type)
-      :ChainAction(adc,action_id,action_type) {}
+		   const std::string &action_type,
+		   const std::shared_ptr<spdlog::logger> chain_logger)
+      :ChainAction(adc,action_id,action_type,chain_logger) {}
 
     ~ImgsCropAction() {}
     
@@ -99,8 +104,9 @@ namespace dd
   public:
     ImgsRotateAction(const APIData &adc,
 		     const std::string &action_id,
-		     const std::string &action_type)
-      :ChainAction(adc,action_id,action_type) {}
+		     const std::string &action_type,
+		     const std::shared_ptr<spdlog::logger> chain_logger)
+      :ChainAction(adc,action_id,action_type,chain_logger) {}
 
     ~ImgsRotateAction() {}
     
@@ -113,8 +119,9 @@ namespace dd
   public:
     ClassFilter(const APIData &adc,
 		const std::string &action_id,
-		const std::string &action_type)
-      :ChainAction(adc,action_id,action_type) {_in_place = true;}
+		const std::string &action_type,
+		const std::shared_ptr<spdlog::logger> chain_logger)
+      :ChainAction(adc,action_id,action_type,chain_logger) {_in_place = true;}
     ~ClassFilter() {}
 
     void apply(APIData &model_out,
@@ -130,8 +137,9 @@ namespace dd
 
     void apply_action(const std::string &action_type,
 		      APIData &model_out,
-		      ChainData &cdata);
-    
+		      ChainData &cdata,
+		      const std::shared_ptr<spdlog::logger> &chain_logger);
+
     APIData _adc; /**< action ad object. */
   };
   
