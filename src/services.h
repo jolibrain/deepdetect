@@ -728,6 +728,7 @@ namespace dd
       if (!classes_size && !vals_size)
 	{
 	  chain_logger->info("[" + std::to_string(chain_pos) + "] / no result from prediction");
+	  cdata.add_model_data(pred_id,pred_out); // store empty model output
 	  return 1;
 	}
       ++npredicts;
