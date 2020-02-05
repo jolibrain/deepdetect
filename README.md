@@ -383,6 +383,13 @@ cmake .. -DUSE_TENSORRT=ON
 ```
 TensorRT requires GPU and CUDNN, they are automatically switched on. 
 
+#### Build with TensorRT support + TRT oss parts
+Specify the following option via cmake:
+```$xslt
+cmake .. -DUSE_TENSORRT=ON -DUSE_TENSORRT_OSS=ON
+```
+This compiles against https://github.com/NVIDIA/TensorRT , ie opensource parts (mainly parsers)
+
 #### Build with Libtorch support
 
 Specify the following option via cmake:

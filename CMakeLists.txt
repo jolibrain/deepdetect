@@ -8,6 +8,7 @@ option(USE_TORCH "use libtorch backend")
 option(USE_HDF5 "use HDF5" ON)
 option(USE_CAFFE "use Caffe backend" ON)
 option(USE_TENSORRT "use TensorRT backend" OFF)
+option(USE_TENSORRT_OSS "use TensorRT OSS parts" OFF)
 option(USE_DLIB "use Dlib backend" OFF)
 option(USE_CUDA_CV "use CUDA with OpenCV (Requires OpenCV build for CUDA)" OFF)
 option(USE_SIMSEARCH "build index and search services" OFF)
@@ -355,6 +356,7 @@ if (USE_CAFFE2)
     GIT_SUBMODULES ${PYTORCH_SUBMODULES}
     UPDATE_DISCONNECTED 1
     GIT_TAG ${PYTORCH_SUPPORTED_COMMIT}
+    GIT_CONFIG advice.detachedHead=false
     PATCH_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || echo cp modules/detectron/*_op.* caffe2/operators | bash && cp ${CAFFE2_OPS} caffe2/operators && git am ${PYTORCH_PATCHES}
     CONFIGURE_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || cmake ../pytorch ${PYTORCH_FLAGS}
     BUILD_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || make -j${N}
@@ -380,6 +382,7 @@ if (USE_CAFFE2)
     GIT_REPOSITORY https://github.com/facebookresearch/Detectron
     UPDATE_DISCONNECTED 1
     GIT_TAG ${DETECTRON_SUPPORTED_COMMIT}
+    GIT_CONFIG advice.detachedHead=false
     PATCH_COMMAND test -f ${DETECTRON_COMPLETE} && echo Skipping || git am ${DETECTRON_PATCHES}
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
@@ -733,6 +736,7 @@ if (USE_TORCH)
       INSTALL_DIR ${CMAKE_BINARY_DIR}
       GIT_REPOSITORY https://github.com/pytorch/pytorch.git
       GIT_TAG ${PYTORCH_COMMIT}
+      GIT_CONFIG advice.detachedHead=false
       UPDATE_DISCONNECTED 1
       PATCH_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || git apply ${PYTORCH_PATCHES} && echo Applying ${PYTORCH_PATCHES}
       CONFIGURE_COMMAND ""
@@ -846,30 +850,86 @@ if (USE_TENSORRT)
     endif()
   endif()
 
-  include_directories(${CMAKE_CURRENT_BINARY_DIR})
-  set(TENSORRT_LIB_DEPS -lprotobuf -lnvinfer -lnvparsers -lnvinfer_plugin -lnvonnxparser)
+  if (EXISTS ${TENSORRT_DIR}/libprotobuf.a)
+    message(ERROR "there is a protobuf in ${TENSORRT_DIR}, it is very likely to cause link problem, you should remove it, we use system or internal ones")
+  endif()
 
   if (JETSON)
     set(TRTTESTDIR /usr/lib/aarch64-linux-gnu)
-    set(TENSORRT_LIB_DIR ${PROTOBUF_LIB_DIR} /usr/lib/aarch64-linux-gnu)
-    set(TENSORRT_INC_DIR ${PROTOBUF_INCLUDE_DIR} /usr/include/aarch64-linux-gnu)
+      set(TENSORRT_LIB_DIR  /usr/lib/aarch64-linux-gnu)
+      set(TENSORRT_INC_DIR ${PROTOBUF_INCLUDE_DIR} /usr/include/aarch64-linux-gnu)
   elseif(DEFINED TENSORRT_DIR)
     set(TRTTESTDIR ${TENSORRT_DIR}/lib)
-    set(TENSORRT_LIB_DIR ${PROTOBUF_LIB_DIR} ${TENSORRT_DIR}/lib )
-    set(TENSORRT_INC_DIR ${PROTOBUF_INCLUDE_DIR} ${TENSORRT_DIR}/include)
+      set(TENSORRT_LIB_DIR  ${TENSORRT_DIR}/lib )
+      set(TENSORRT_INC_DIR ${PROTOBUF_INCLUDE_DIR} ${TENSORRT_DIR}/include)
   elseif (DEFINED TENSORRT_LIB_DIR AND DEFINED TENSORRT_INC_DIR)
     set(TRTTESTDIR TENSORRT_LIB_DIR)
   else()
     set(TRTTESTDIR /usr/lib/x86_64-linux-gnu)
-    set(TENSORRT_LIB_DIR ${PROTOBUF_LIB_DIR} /usr/lib/x86_64-linux-gnu)
-    set(TENSORRT_INC_DIR ${PROTOBUF_INCLUDE_DIR} /usr/include/x86_64-linux-gnu)
+      set(TENSORRT_LIB_DIR  /usr/lib/x86_64-linux-gnu)
+      set(TENSORRT_INC_DIR ${PROTOBUF_INCLUDE_DIR} /usr/include/x86_64-linux-gnu)
   endif()
+
   if (NOT EXISTS "${TRTTESTDIR}/libnvinfer.so")
     message(FATAL_ERROR "Could not find TensorRT ${TENSORRT_LIB_DIR}/libnvinfer.so, please provide tensorRT location as TENSORRT_DIR or (TENSORRT_LIB_DIR _and_ TENSORRT_INC_DIR)")
   else()
     message(STATUS "Found TensorRT libraries : ${TRTTESTDIR}/libnvinfer.so")
   endif()
-  include_directories(${TENSORRT_INC_DIR})
+
+  if (NOT USE_TENSORRT_OSS)
+    include_directories(${CMAKE_CURRENT_BINARY_DIR})
+      set(TENSORRT_LIBS ${Protobuf_LIBRARIES} nvinfer nvparsers nvinfer_plugin nvonnxparser )
+
+  else()
+    set(TENSORRT_LIB_DIR ${CMAKE_BINARY_DIR}/tensorrt-oss/bin ${TENSORRT_LIB_DIR})
+    include_directories(${CMAKE_CURRENT_BINARY_DIR})
+    set(TENSORRT_LIBS ${Protobuf_LIBRARIES} nvinfer nvcaffeparser nvinfer_plugin nvonnxparser )
+
+    if (EXISTS "${TRTTESTDIR}/libnvinfer.so.7")
+      set(TENSORRT_COMMIT 572d54f91791448c015e74a4f1d6923b77b79795)
+      message(STATUS "Found TensorRT libraries version 7")
+    elseif(EXISTS "${TRTTESTDIR}/libnvinfer.so.6")
+      set(TENSORRT_COMMIT 639d11abcc7d1f1a4933e87b95c126e6c82e2a5c)
+      message(STATUS "Found TensorRT libraries version 6")
+    elseif(EXISTS "${TRTTESTDIR}/libnvinfer.so.5")
+      set(TENSORRT_COMMIT 0d36bbb29732cdefbed6a60b51039ea1fa747742)
+      message(STATUS "Found TensorRT libraries version 5")
+    endif()
+
+
+    list(APPEND TRT_FLAGS
+      -DTRT_LIB_DIR=${TENSORRT_DIR}/lib
+      -DCUDA_VERSION=10.0
+      -DTRT_BIN_DIR=${CMAKE_BINARY_DIR}/tensorrt-oss/bin
+      -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc
+      )
+
+    if (JETSON)
+      list(APPEND TRT_FLAGS
+        -DCMAKE_C_COMPILER=/usr/bin/cc
+        )
+    endif()
+
+
+    set(TRT_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/tensorrt-oss-complete)
+
+    ExternalProject_Add(
+      tensorrt-oss
+      PREFIX tensorrt-oss
+      INSTALL_DIR ${CMAKE_BINARY_DIR}
+      GIT_REPOSITORY https://github.com/NVIDIA/TensorRT.git
+      GIT_TAG ${TENSORRT_COMMIT}
+      GIT_CONFIG advice.detachedHead=false
+      UPDATE_DISCONNECTED 1
+      #    PATCH_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || git apply ${PYTORCH_PATCHES} && echo Applying ${PYTORCH_PATCHES}
+      CONFIGURE_COMMAND test -f ${TRT_COMPLETE} && echo Skipping || cmake ../tensorrt-oss ${TRT_FLAGS}
+      BUILD_COMMAND test -f ${TRT_COMPLETE} && echo Skipping || make -j${N}
+      INSTALL_COMMAND ""
+      )
+
+    endif()
+
+    include_directories(${TENSORRT_INC_DIR})
 endif()
 
 # main library, main & tests
@@ -895,7 +955,7 @@ set(COMMON_LINK_DIRS
   ${TORCH_LIB_DIR})
 if (USE_HDF5)
   set(COMMON_LINK_LIBS
-    ddetect ${DLIB_LIB_DEPS} ${TENSORRT_LIB_DEPS} ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl hdf5_cpp ${Boost_LIBRARIES} archive
+    ddetect ${DLIB_LIB_DEPS} ${TENSORRT_LIBS} ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl hdf5_cpp ${Boost_LIBRARIES} archive
     ${CAFFE_LIB_DEPS}
     ${CAFFE2_LIB_DEPS}
     ${TF_LIB_DEPS}
@@ -906,7 +966,7 @@ if (USE_HDF5)
     ${TORCH_LIB_DEPS})
 else()
   set(COMMON_LINK_LIBS
-    ddetect ${DLIB_LIB_DEPS} ${TENSORRT_LIB_DEPS} ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} archive
+    ddetect ${DLIB_LIB_DEPS} ${TENSORRT_LIBS} ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} archive
     ${CAFFE_LIB_DEPS}
     ${CAFFE2_LIB_DEPS}
     ${TF_LIB_DEPS}
