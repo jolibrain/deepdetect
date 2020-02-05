@@ -229,10 +229,11 @@ namespace dd
       }
 
       void append_input(const std::string &word);
-  private:
+  public:
       bool in_vocab(const std::string &tok);
 
-      std::string _prefix = "##";
+      std::string _suffix_start = "##";/**< Suffix tokens in vocabulary are prefixed by this */
+      std::string _word_start = "";/**< Tokens corresponding to word or word beggining in the vocabulary are prefixed by this */
       std::string _unk_token = "[UNK]";
   };
 
@@ -254,12 +255,14 @@ namespace dd
       _sentences(i._sentences),
       _characters(i._characters),
       _ordered_words(i._ordered_words),
+      _lower_case(i._lower_case),
       _wordpiece_tokens(i._wordpiece_tokens),
       _punctuation_tokens(i._punctuation_tokens),
       _alphabet_str(i._alphabet_str),
       _alphabet(i._alphabet),
       _sequence(i._sequence),
       _seq_forward(i._seq_forward),
+      _generate_vocab(i._generate_vocab),
       _vocab(i._vocab),
       _vocab_sep(i._vocab_sep),
       _wordpiece_tokenizer(i._wordpiece_tokenizer)
@@ -301,8 +304,14 @@ namespace dd
 	_characters = ad_input.get("characters").get<bool>();
       if (ad_input.has("ordered_words"))
 	_ordered_words = ad_input.get("ordered_words").get<bool>();
+      if (ad_input.has("lower_case"))
+	_lower_case = ad_input.get("lower_case").get<bool>();
       if (ad_input.has("wordpiece_tokens"))
 	_wordpiece_tokens = ad_input.get("wordpiece_tokens").get<bool>();
+      if (ad_input.has("word_start"))
+        _wordpiece_tokenizer._word_start = ad_input.get("word_start").get<std::string>();
+      if (ad_input.has("suffix_start"))
+        _wordpiece_tokenizer._suffix_start = ad_input.get("suffix_start").get<std::string>();
       if (ad_input.has("punctuation_tokens"))
 	_punctuation_tokens = ad_input.get("punctuation_tokens").get<bool>();
       if (ad_input.has("alphabet"))
@@ -350,7 +359,7 @@ namespace dd
       if (_alphabet.empty() && _characters)
 	build_alphabet();
       
-      if (!_characters && !_train && _vocab.empty())
+      if (!_characters && (!_train || _ordered_words) && _vocab.empty())
 	deserialize_vocab();
       
       for (std::string u: _uris)
@@ -439,6 +448,7 @@ namespace dd
     bool _sentences = false; /**< whether to consider every sentence (\n separated) as a document. */
     bool _characters = false; /**< whether to use character-level input features. */
     bool _ordered_words = false; /**< whether to consider the position of each words in the sentence. */
+    bool _lower_case = true; /**< whether the input should be lower cased before processing */
     bool _wordpiece_tokens = false; /**< whether to try to match word pieces from the vocabulary. */
     bool _punctuation_tokens = false; /**< accept punctuation tokens. */
     std::string _alphabet_str = "abcdefghijklmnopqrstuvwxyz0123456789,;.!?:'\"/\\|_@#$%^&*~`+-=<>()[]{}";
@@ -447,6 +457,7 @@ namespace dd
     bool _seq_forward = false; /**< whether to read character-based sequences forward. */
     
     // internals
+    bool _generate_vocab = true;
     std::unordered_map<std::string,Word> _vocab; /**< string to word stats, including word */
     std::string _vocabfname = "vocab.dat";
     std::string _correspname = "corresp.txt";

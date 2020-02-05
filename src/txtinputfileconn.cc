@@ -43,7 +43,11 @@ namespace dd
               std::string substr = word.substr(start, end - start);
               if (start > 0)
               {
-                  substr = _prefix + substr;
+                  substr = _suffix_start + substr;
+              }
+              else
+              {
+                  substr = _word_start + substr;
               }
               if (in_vocab(substr))
               {
@@ -209,7 +213,7 @@ namespace dd
 
     // post-processing
     size_t initial_vocab_size = _ctfc->_vocab.size();
-    if (_ctfc->_train && !test_dir)
+    if (_ctfc->_generate_vocab && _ctfc->_train && !test_dir)
       {
 	auto vhit = _ctfc->_vocab.begin();
 	while(vhit!=_ctfc->_vocab.end())
@@ -232,7 +236,7 @@ namespace dd
 	  }
       }
 
-    if (!_ctfc->_characters && !test_dir && (initial_vocab_size != _ctfc->_vocab.size() || _ctfc->_tfidf))
+    if (_ctfc->_generate_vocab && !_ctfc->_characters && !test_dir && (initial_vocab_size != _ctfc->_vocab.size() || _ctfc->_tfidf))
       {
 	// clearing up the corpus + tfidf
 	std::unordered_map<std::string,Word>::iterator whit;
@@ -300,7 +304,8 @@ namespace dd
       }
     for (std::string ct: cts)
       {
-	std::transform(ct.begin(),ct.end(),ct.begin(),::tolower);
+	if (_lower_case)
+        std::transform(ct.begin(),ct.end(),ct.begin(),::tolower);
 	if (!_characters)
 	  {
             std::unordered_map<std::string,Word>::iterator vhit;
@@ -313,10 +318,10 @@ namespace dd
                 // Split punctuation
                 auto is_punct = [] (char i)
                 {
-		  return (i >= 33 && i <= 47)
-		        || (i >= 58 && i <= 64)
-		        || (i >= 91 && i <= 96)
-		        || (i >= 123 && i <= 126);
+                    return (i >= 33 && i <= 47)
+                        || (i >= 58 && i <= 64)
+                        || (i >= 91 && i <= 96)
+                        || (i >= 123 && i <= 126);
                 };
                 for (std::string token : tokenizer)
                 {
@@ -487,7 +492,9 @@ namespace dd
     while(getline(in,line))
       {
 	std::vector<std::string> tokens = dd_utils::split(line,_vocab_sep);
-	std::string key = tokens.at(0);
+	if (tokens.size() < 2)
+            throw InputConnectorBadParamException("Error in vocabulary file " + vocabfname);
+       std::string key = tokens.at(0);
 	int pos = std::atoi(tokens.at(1).c_str());
 	_vocab.emplace(std::make_pair(key,Word(pos)));
       }

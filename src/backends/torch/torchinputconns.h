@@ -31,22 +31,88 @@
 
 namespace dd
 {
+    typedef torch::data::Example<std::vector<at::Tensor>, std::vector<at::Tensor>> TorchBatch;
+
+    class TorchDataset : public torch::data::BatchDataset
+        <TorchDataset, c10::optional<TorchBatch>>
+    {
+    private:
+        bool _shuffle = false;
+        long _seed = -1;
+        std::vector<int64_t> _indices;
+
+    public:
+        /// Vector containing the whole dataset (the "cached data").
+        std::vector<TorchBatch> _batches;
+
+
+        TorchDataset() {}
+
+        void add_batch(std::vector<at::Tensor> data, std::vector<at::Tensor> target = {});
+
+        void reset();
+
+        /// Size of data loaded in memory
+        size_t cache_size() const { return _batches.size(); }
+
+        c10::optional<size_t> size() const override {
+            return cache_size();
+        }
+
+        bool empty() const { return cache_size() == 0; }
+
+        c10::optional<TorchBatch> get_batch(BatchRequestType request) override;
+
+        /// Returns a batch containing all the cached data
+        TorchBatch get_cached();
+
+        /// Split a percentage of this dataset
+        TorchDataset split(double start, double stop);
+    };
+
+
+    struct MaskedLMParams
+    {
+        double _change_prob = 0.15; /**< When masked LM learning, probability of changing a token (mask/randomize/keep). */
+        double _mask_prob =  0.8; /**< When masked LM learning, probability of masking a token. */
+        double _rand_prob = 0.1; /**< When masked LM learning, probability of randomizing a token. */
+    };
+
+
     class TorchInputInterface
     {
     public:
         TorchInputInterface() {}
         TorchInputInterface(const TorchInputInterface &i)
-            : _in(i._in), _attention_mask(i._attention_mask) {}
+             : _finetuning(i._finetuning),
+             _lm_params(i._lm_params),
+             _dataset(i._dataset),
+             _test_dataset(i._test_dataset),
+             _input_format(i._input_format) { }
 
         ~TorchInputInterface() {}
 
         torch::Tensor toLongTensor(std::vector<int64_t> &values) {
             int64_t val_size = values.size();
-            return torch::from_blob(&values[0], at::IntList{val_size}, at::kLong);
+            return torch::from_blob(&values[0], at::IntList{val_size}, at::kLong).clone();
         }
 
-        at::Tensor _in;
-        at::Tensor _attention_mask;
+        TorchBatch generate_masked_lm_batch(const TorchBatch &example) { return {}; }
+
+        int64_t mask_id() const { return 0; }
+        int64_t vocab_size() const { return 0; }
+        std::string get_word(int64_t id) const { return ""; }
+
+
+        TorchDataset _dataset;
+        TorchDataset _test_dataset;
+
+        MaskedLMParams _lm_params;
+        bool _finetuning;
+        /** Tell which inputs should be provided to the models.
+         * see*/
+        std::string _input_format;
+        std::vector<int64_t> _lengths;/**< length of each sentence with txt connector. */
     };
 
     class ImgTorchInputFileConn : public ImgInputFileConn, public TorchInputInterface
@@ -74,7 +140,7 @@ namespace dd
         {
             ImgInputFileConn::init(ad);
         }
-        
+
         void transform(const APIData &ad)
         {
             try
@@ -85,29 +151,28 @@ namespace dd
             {
                 throw;
             }
-	    
+
             std::vector<at::Tensor> tensors;
             std::vector<int64_t> sizes{ _height, _width, 3 };
             at::TensorOptions options(at::ScalarType::Byte);
 
             for (const cv::Mat &bgr : this->_images) {
-                at::Tensor imgt = torch::from_blob(bgr.data, at::IntList(sizes), options);
-                imgt = imgt.toType(at::kFloat).permute({2, 0, 1});
-		size_t nchannels = imgt.size(0);
-		if (_scale != 1.0)
-		  imgt = imgt.mul(_scale);
-		if (!_mean.empty() && _mean.size() != nchannels)
-		  throw InputConnectorBadParamException("mean vector be of size the number of channels (" + std::to_string(nchannels) + ")");
-		for (size_t m=0;m<_mean.size();m++)
-		  imgt[0][m] = imgt[0][m].sub_(_mean.at(m));
-		if (!_std.empty() && _std.size() != nchannels)
-		  throw InputConnectorBadParamException("std vector be of size the number of channels (" + std::to_string(nchannels) + ")");
-		for (size_t s=0;s<_std.size();s++)
-		  imgt[0][s] = imgt[0][s].div_(_std.at(s));
-                tensors.push_back(imgt);
+              at::Tensor imgt = torch::from_blob(bgr.data, at::IntList(sizes), options);
+              imgt = imgt.toType(at::kFloat).permute({2, 0, 1});
+              size_t nchannels = imgt.size(0);
+              if (_scale != 1.0)
+                imgt = imgt.mul(_scale);
+              if (!_mean.empty() && _mean.size() != nchannels)
+                throw InputConnectorBadParamException("mean vector be of size the number of channels (" + std::to_string(nchannels) + ")");
+              for (size_t m=0;m<_mean.size();m++)
+                imgt[0][m] = imgt[0][m].sub_(_mean.at(m));
+              if (!_std.empty() && _std.size() != nchannels)
+                throw InputConnectorBadParamException("std vector be of size the number of channels (" + std::to_string(nchannels) + ")");
+              for (size_t s=0;s<_std.size();s++)
+                imgt[0][s] = imgt[0][s].div_(_std.at(s));
+              tensors.push_back(imgt);
+              _dataset.add_batch({imgt});
             }
-
-            _in = torch::stack(tensors, 0);
         }
 
     public:
@@ -127,6 +192,14 @@ namespace dd
               _width(i._width), _height(i._height) {}
         ~TxtTorchInputFileConn() {}
 
+        void init(const APIData &ad)
+        {
+            TxtInputFileConn::init(ad);
+            fillup_parameters(ad);
+        }
+
+        void fillup_parameters(const APIData &ad_input);
+
         // for API info only
         int width() const
         {
@@ -139,11 +212,42 @@ namespace dd
             return _height;
         }
 
+        int64_t mask_id() const { return _mask_id; }
+
+        int64_t vocab_size() const { return _vocab.size(); }
+
+        std::string get_word(int64_t id) const {
+            return _inv_vocab.at(id);
+        }
+
         void transform(const APIData &ad);
 
+        TorchBatch generate_masked_lm_batch(const TorchBatch &example);
+
+        void fill_dataset(TorchDataset &dataset, const std::vector<TxtEntry<double>*> &entries);
     public:
+        /** width of the input tensor */
         int _width = 512;
         int _height = 0;
+        std::mt19937 _rng;
+        /// token id to vocabulary word
+        std::map<int, std::string> _inv_vocab;
+
+        int64_t _mask_id = -1; /**< ID of mask token in the vocabulary. */
+        int64_t _cls_pos = -1;
+        int64_t _sep_pos = -1;
+        int64_t _unk_pos = -1;
+        int64_t _eot_pos = -1; /**< end of text */
+
+
+        void make_inv_vocab() {
+            _inv_vocab.clear();
+
+            for (auto &entry : _vocab)
+            {
+                _inv_vocab[entry.second._pos] = entry.first;
+            }
+        }
     };
 } // namespace dd
 

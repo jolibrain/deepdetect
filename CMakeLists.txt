@@ -707,7 +707,8 @@ if (USE_TORCH)
   set(PYTORCH_PATCHES_PATH ${CMAKE_BINARY_DIR}/patches/pytorch)
 
   set(PYTORCH_PATCHES
-    ${PYTORCH_PATCHES_PATH}/pytorch_log.patch
+    ${PYTORCH_PATCHES_PATH}/pytorch_compile.patch
+    ${PYTORCH_PATCHES_PATH}/pytorch_logging.patch
     )
 
   include_directories("${PROTOBUF_INCLUDE_DIR}")
@@ -716,7 +717,8 @@ if (USE_TORCH)
   add_definitions(-DUSE_TORCH)
 
   if (NOT TORCH_LOCATION)
-    set(PYTORCH_COMMIT 0b868b19063645afed59d6d49aff1e43d1665b88)
+    # below version 1.3.1
+    set(PYTORCH_COMMIT ee77ccbb6da4e2efd83673e798acf7081bc03564)
     set(PYTORCH_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch-complete)
 
     if(NOT USE_CPU_ONLY AND CUDA_FOUND)
@@ -735,7 +737,7 @@ if (USE_TORCH)
       PATCH_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || git apply ${PYTORCH_PATCHES} && echo Applying ${PYTORCH_PATCHES}
       CONFIGURE_COMMAND ""
       BUILD_COMMAND ""
-      COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || GLIBCXX_USE_CXX11_ABI=1 BUILD_TEST=0 USE_CUDA=${PYTORCH_USE_CUDA} python3 ../pytorch/tools/build_libtorch.py
+      COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || GLIBCXX_USE_CXX11_ABI=1 BUILD_TEST=0 USE_CUDA=${PYTORCH_USE_CUDA} CAFFE2_LINK_LOCAL_PROTOBUF=0 MAX_JOBS=8 python3 ../pytorch/tools/build_libtorch.py
       INSTALL_COMMAND ""
     )
 
@@ -748,10 +750,10 @@ if (USE_TORCH)
   #  )
   #message(STATUS "Libraries are: ${TORCH_LIBRARIES}")
 
-  set(TORCH_LIB_DEPS torch caffe2 ${TORCH_LOCATION}/lib/libc10.so)
+  set(TORCH_LIB_DEPS torch ${TORCH_LOCATION}/lib/libc10.so)
   
   if (NOT USE_CPU_ONLY AND CUDA_FOUND)
-    list(APPEND TORCH_LIB_DEPS caffe2_gpu ${TORCH_LOCATION}/lib/libc10_cuda.so iomp5)
+    list(APPEND TORCH_LIB_DEPS  ${TORCH_LOCATION}/lib/libc10_cuda.so iomp5)
   else()
     list(APPEND TORCH_LIB_DEPS iomp5)
   endif()
