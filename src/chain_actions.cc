@@ -90,8 +90,8 @@ namespace dd
 		  _chain_logger->warn("bounding box does not intersect image, skipping crop action");
 		  continue;
 		}
-	      
-	      cv::Rect roi(cxmin,cymax,cxmax-cxmin,cymax-cymin);
+
+	      cv::Rect roi(cxmin,cymin,cxmax-cxmin,cymax-cymin);
 	      cv::Mat cropped_img = img(roi);
 
 	      // adding bbox id
