@@ -35,8 +35,8 @@ static std::string not_found_str = "{\"status\":{\"code\":404,\"msg\":\"NotFound
 
 static std::string incept_repo = "../examples/torch/resnet50_torch/";
 static std::string bert_classif_repo = "../examples/torch/bert_inference_torch/";
-static std::string bert_train_repo = "../examples/torch/bert_training_torch/";
-static std::string bert_train_data = "../examples/torch/bert_training_torch/data/";
+static std::string bert_train_repo = "../examples/torch/bert_training_torch_131_transformers_221/";
+static std::string bert_train_data = "../examples/torch/bert_training_torch_131_transformers_221/data/";
 
 TEST(torchapi, service_predict)
 {
@@ -140,6 +140,8 @@ TEST(torchapi, service_train_txt_lm)
     // ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() > 1.0) << "train_loss";
     ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() <= 1) << "accuracy";
     ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() <= 1) << "f1";
+    fileops::remove_file(bert_train_repo,"checkpoint-3.pt");
+    fileops::remove_file(bert_train_repo,"solver-3.pt");
 }
 
 TEST(torchapi, service_train_txt_classification)
@@ -170,6 +172,9 @@ TEST(torchapi, service_train_txt_classification)
     // ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() > 1.0) << "train_loss";
     ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() <= 1) << "accuracy";
     ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() <= 1) << "f1";
+    fileops::remove_file(bert_train_repo,"checkpoint-3.ptw");
+    fileops::remove_file(bert_train_repo,"checkpoint-3.pt");
+    fileops::remove_file(bert_train_repo,"solver-3.pt");
 }
 
 #endif

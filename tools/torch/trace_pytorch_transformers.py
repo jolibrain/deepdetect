@@ -124,7 +124,7 @@ for mname in args.models:
         model.train()
 
     # Trace the model with the correct inputs
-    if mname in ["bert", "roberta"]:
+    if mname in ["bert", "roberta", "bert_classif"]:
         traced_model = torch.jit.trace(model, (input_ids, token_type_ids, att_mask))
     elif mname in ["distilbert"]:
         traced_model = torch.jit.trace(model, (input_ids, att_mask))
