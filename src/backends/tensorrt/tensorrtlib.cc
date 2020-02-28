@@ -415,7 +415,7 @@ namespace dd
     
     APIData cad = ad;
 
-    TOutputConnectorStrategy tout;
+    TOutputConnectorStrategy tout(this->_outputc);
     try {
       inputc.transform(cad);
     } catch (...) {

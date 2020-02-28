@@ -453,7 +453,7 @@ namespace dd
       batch_size /= nclasses;
     else if (_objective == "binary:logistic")
       nclasses--;
-    TOutputConnectorStrategy tout;
+    TOutputConnectorStrategy tout(this->_outputc);
     std::vector<APIData> vrad;
     for (int j=0;j<batch_size;j++)
       {

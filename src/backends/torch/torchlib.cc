@@ -571,7 +571,7 @@ namespace dd
         APIData output_params = params.getobj("output");
 
         TInputConnectorStrategy inputc(this->_inputc);
-        TOutputConnectorStrategy outputc;
+        TOutputConnectorStrategy outputc(this->_outputc);;
         try {
             inputc.transform(ad);
         } catch (...) {

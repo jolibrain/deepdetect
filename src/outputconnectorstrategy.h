@@ -73,6 +73,13 @@ namespace dd
     OutputConnectorStrategy() {}
     ~OutputConnectorStrategy() {}
 
+  OutputConnectorStrategy(const OutputConnectorStrategy &out)
+    : OutputConnectorStrategy()
+      {
+        this->_logger = out._logger;
+      }
+
+
     /**
      * \brief output data reading
      */

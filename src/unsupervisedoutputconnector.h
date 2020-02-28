@@ -88,9 +88,8 @@ namespace dd
       }
 
     UnsupervisedOutput(const UnsupervisedOutput &uout)
-      :OutputConnectorStrategy()
+      :OutputConnectorStrategy(uout)
       {
-	(void)uout;
       }
 
     ~UnsupervisedOutput() {}
@@ -112,6 +111,11 @@ namespace dd
       for (APIData ad: vrad)
 	{
 	  std::string uri = ad.get("uri").get<std::string>();
+      if (!ad.has("vals"))
+        {
+          this->_logger->error("unsupervised output needs mllib.extract_layer param");
+          return;
+        }
 	  std::vector<double> vals = ad.get("vals").get<std::vector<double>>();
 	  if ((hit=_vres.find(uri))==_vres.end())
 	    {
