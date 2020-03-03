@@ -1612,10 +1612,14 @@ namespace dd
       acc = conf_diag.sum() / conf_matrix.sum();
       precision = conf_diag.transpose().cwiseQuotient(conf_csum + eps.transpose()).sum() / static_cast<double>(nclasses);
       recall = conf_diag.cwiseQuotient(conf_rsum + eps).sum() / static_cast<double>(nclasses);
-      f1 = (2.0*precision*recall) / (precision+recall);
+      if ((precision + recall) > 0)
+        f1 = (2.0*precision*recall) / (precision+recall);
+      else
+        f1 = 0.0;
       conf_diag = conf_diag.transpose().cwiseQuotient(conf_csum+eps.transpose()).transpose();
       for (int i=0;i<conf_matrix.cols();i++)
-	conf_matrix.col(i) /= conf_csum(i);
+        if (conf_csum(i) > 0)
+          conf_matrix.col(i) /= conf_csum(i);
       return f1;
     }
 
