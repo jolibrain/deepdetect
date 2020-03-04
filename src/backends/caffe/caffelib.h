@@ -97,6 +97,8 @@ namespace dd
                                         caffe::NetParameter &net_param,
                                         caffe::NetParameter &dnet_param);
 
+      void configure_geometry_augmentation(const APIData &ad, caffe::TransformationParameter * trp);
+
     /**
      * \brief configure noise data augmentation in training template
      * @param ad the template data object

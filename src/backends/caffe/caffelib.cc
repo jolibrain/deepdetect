@@ -579,51 +579,8 @@ namespace dd
 	if (ad_distort.has("prob"))
 	  nparam->set_prob(ad_distort.get("prob").get<double>());
       }
-    if(ad.has("geometry"))
-      {
-	std::vector<std::string> geometry_options = {
-	  "persp_horizontal", "persp_vertical", "zoom_out", "zoom_in"
-	};
-	APIData ad_geometry = ad.getobj("geometry");
-	caffe::LayerParameter *lparam = net_param.mutable_layer(0); // data input layer
-	caffe::TransformationParameter *trparam = lparam->mutable_transform_param();
-	caffe::GeometryParameter *gparam = trparam->mutable_geometry_param();
-	if (ad_geometry.has("all_effects") && ad_geometry.get("all_effects").get<bool>())
-	  gparam->set_all_effects(true);
-	else
-	  {
-	    for (auto s: geometry_options)
-	      {
-		if (ad_geometry.has(s))
-		  {
-		    if (s == "persp_horizontal")
-		      gparam->set_persp_horizontal(ad_geometry.get(s).get<bool>());
-		    else if (s == "persp_vertical")
-		      gparam->set_persp_vertical(ad_geometry.get(s).get<bool>());
-		    else if (s == "zoom_out")
-		      gparam->set_zoom_out(ad_geometry.get(s).get<bool>());
-		    else if (s == "zoom_in")
-		      gparam->set_zoom_in(ad_geometry.get(s).get<bool>());
-		  }
-	      }
-	    if (ad_geometry.has("persp_factor"))
-	      gparam->set_persp_factor(ad_geometry.get("persp_factor").get<double>());
-	    if (ad_geometry.has("zoom_factor"))
-	      gparam->set_zoom_factor(ad_geometry.get("zoom_factor").get<double>());
-	    if (ad_geometry.has("pad_mode"))
-	      {
-		std::string pmode = ad_geometry.get("pad_mode").get<std::string>();
-		if (pmode == "constant")
-		  gparam->set_pad_mode(::caffe::GeometryParameter_Pad_mode_CONSTANT);
-		else if (pmode == "mirrored")
-		  gparam->set_pad_mode(::caffe::GeometryParameter_Pad_mode_MIRRORED);
-		else if (pmode == "repeat_nearest")
-		  gparam->set_pad_mode(::caffe::GeometryParameter_Pad_mode_REPEAT_NEAREST);
-	      }
-	  }
-	if (ad_geometry.has("prob"))
-	  gparam->set_prob(ad_geometry.get("prob").get<double>());
-      }
+
+    configure_geometry_augmentation(ad,net_param.mutable_layer(0)->mutable_transform_param());
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -686,6 +643,56 @@ namespace dd
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_geometry_augmentation(const APIData&ad, caffe::TransformationParameter * trparam)
+  {
+    if(!ad.has("geometry"))
+      return;
+
+    std::vector<std::string> geometry_options = {
+      "persp_horizontal", "persp_vertical", "zoom_out", "zoom_in"
+    };
+
+    APIData ad_geometry = ad.getobj("geometry");
+    caffe::GeometryParameter *gparam = trparam->mutable_geometry_param();
+
+    if (ad_geometry.has("all_effects") && ad_geometry.get("all_effects").get<bool>())
+      gparam->set_all_effects(true);
+    else
+      {
+        for (auto s: geometry_options)
+          {
+            if (ad_geometry.has(s))
+              {
+                if (s == "persp_horizontal")
+                  gparam->set_persp_horizontal(ad_geometry.get(s).get<bool>());
+                else if (s == "persp_vertical")
+                  gparam->set_persp_vertical(ad_geometry.get(s).get<bool>());
+                else if (s == "zoom_out")
+                  gparam->set_zoom_out(ad_geometry.get(s).get<bool>());
+                else if (s == "zoom_in")
+                  gparam->set_zoom_in(ad_geometry.get(s).get<bool>());
+              }
+          }
+        if (ad_geometry.has("persp_factor"))
+          gparam->set_persp_factor(ad_geometry.get("persp_factor").get<double>());
+        if (ad_geometry.has("zoom_factor"))
+          gparam->set_zoom_factor(ad_geometry.get("zoom_factor").get<double>());
+        if (ad_geometry.has("pad_mode"))
+          {
+            std::string pmode = ad_geometry.get("pad_mode").get<std::string>();
+            if (pmode == "constant")
+              gparam->set_pad_mode(::caffe::GeometryParameter_Pad_mode_CONSTANT);
+            else if (pmode == "mirrored")
+              gparam->set_pad_mode(::caffe::GeometryParameter_Pad_mode_MIRRORED);
+            else if (pmode == "repeat_nearest")
+              gparam->set_pad_mode(::caffe::GeometryParameter_Pad_mode_REPEAT_NEAREST);
+          }
+      }
+    if (ad_geometry.has("prob"))
+      gparam->set_prob(ad_geometry.get("prob").get<double>());
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_ssd_template(const std::string &dest_net,
 												   const std::string &dest_deploy_net,
 												   const APIData &ad,
@@ -735,6 +742,7 @@ namespace dd
 		if (ssd_max_expand_ratio >= 0.0)
 		  exparam->set_max_expand_ratio(ssd_max_expand_ratio);
 	      }
+        configure_geometry_augmentation(ad,trparam);
 	  }
 	
 	if (finetune)
