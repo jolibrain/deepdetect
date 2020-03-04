@@ -197,13 +197,15 @@ namespace dd
        * @param has_class_weights whether training uses class weights
        * @param ignore_label label to be ignored, -1 otherwise
        * @param timesteps number of timesteps for recurrent models
+       * @param ad_mllib in order to change engine CUDNN vs CAFFE for cudnn memory consumption problems
        */
       void update_protofile_net(const std::string &net_file,
 				const std::string &deploy_file,
 				const TInputConnectorStrategy &inputc,
 				const bool &has_class_weights,
 				const int &ignore_label,
-				const int &timesteps);
+                const int &timesteps,
+                const APIData& ad_mllib);
 
       /**
        * \brief updates the softmax temperature
@@ -219,6 +221,9 @@ namespace dd
       
     private:
       void update_protofile_classes(caffe::NetParameter &net_param);
+
+      void update_protofile_engine(const APIData&ad);
+      void update_protofile_engine(caffe::NetParameter &net_param, const APIData&ad);
 
       void update_protofiles_one_hot(caffe::NetParameter &net_param);
 
