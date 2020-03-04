@@ -74,11 +74,13 @@ namespace dd {
             for (size_t j = 0; j < ad_cls.size(); j++) {
                 APIData bbox = ad_cls.at(j).getobj("bbox");
                 if (bbox.empty()) {
-                    throw ActionBadParamException("align/crop action cannot find bbox object for uri " + uri);
+                  _chain_logger->warn("align/crop action cannot find bbox object for uri " + uri);
+                  throw ActionBadParamException("align/crop action cannot find bbox object for uri " + uri);
                 }
                 APIData ad_shape = bbox.getobj("shape");
                 if (ad_shape.empty()) {
-                    throw ActionBadParamException("align/crop action cannot find shape object for uri " + uri);
+                  _chain_logger->warn("align/crop action cannot find shape object for uri " + uri);
+                  throw ActionBadParamException("align/crop action cannot find shape object for uri " + uri);
                 }
 
                 // adding bbox id
