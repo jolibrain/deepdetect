@@ -222,8 +222,10 @@ namespace dd
     private:
       void update_protofile_classes(caffe::NetParameter &net_param);
 
+#ifdef USE_CUDNN
       void update_protofile_engine(const APIData&ad);
       void update_protofile_engine(caffe::NetParameter &net_param, const APIData&ad);
+#endif
 
       void update_protofiles_one_hot(caffe::NetParameter &net_param);
 
