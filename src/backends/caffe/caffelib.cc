@@ -363,8 +363,10 @@ namespace dd
 	if (typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
 	  configure_image_augmentation(ad,net_param);
 
+#ifdef USE_CUDNN
     update_protofile_engine(net_param, ad);
     update_protofile_engine(deploy_net_param, ad);
+#endif
 
 	// adapt number of neuron output
 	update_protofile_classes(net_param);
@@ -1030,7 +1032,9 @@ namespace dd
       instantiate_template(ad);
     else // model template instantiation is defered until training call
       {
+#ifdef USE_CUDNN
         update_protofile_engine(ad);
+#endif
         update_deploy_protofile_softmax(ad); // temperature scaling
         create_model(true);
       }
@@ -1114,6 +1118,12 @@ namespace dd
                          inputc, has_class_weights, ignore_label, timesteps,ad_mllib);
       }
 
+#ifdef USE_CUDNN
+    caffe::NetParameter net_param;
+    caffe::ReadProtoFromTextFile(this->_mlmodel._trainf,&net_param); //TODO: catch parsing error (returns bool true on success)
+    update_protofile_engine(net_param, ad_mllib);
+    caffe::WriteProtoToTextFile(net_param,this->_mlmodel._trainf);
+#endif
 
     create_model(); // creates initial net.
 
@@ -3211,8 +3221,6 @@ namespace dd
     if (_crop_size > 0)
       width = height = _crop_size;
 
-    update_protofile_engine(net_param, ad_mllib);
-
     if (!inputc._db && !inputc._bbox && !inputc._ctc && typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
       {
             caffe::LayerParameter *lparam = net_param.mutable_layer(0);
@@ -3343,8 +3351,10 @@ namespace dd
       }
 
     caffe::NetParameter deploy_net_param;
-    caffe::ReadProtoFromTextFile(deploy_file,&deploy_net_param);    
+    caffe::ReadProtoFromTextFile(deploy_file,&deploy_net_param);
+#ifdef USE_CUDNN
     update_protofile_engine(deploy_net_param, ad_mllib);
+#endif
 
     if (this->_inputc._ctc) // crnn
       {
@@ -3418,7 +3428,7 @@ namespace dd
     caffe::WriteProtoToTextFile(deploy_net_param,deploy_file);
   }
 
-
+#ifdef USE_CUDNN
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofile_engine(const APIData& ad)
   {
@@ -3440,7 +3450,6 @@ namespace dd
 	caffe::WriteProtoToTextFile(net_param,train_file);
   }
 
-
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
 void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofile_engine(caffe::NetParameter &net_param, const APIData& ad)
 {
@@ -3453,8 +3462,28 @@ void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update
       caffe::LayerParameter *lparam = net_param.mutable_layer(l);
       if (lparam->type() == "Convolution" || lparam->type() == "Deconvolution")
         {
+          bool use_dilation = false;
+          for (int i = 0; i< lparam->convolution_param().dilation_size(); ++i)
+            if (lparam->convolution_param().dilation(i) > 1)
+              {
+                lparam->mutable_convolution_param()->set_engine(::caffe::ConvolutionParameter::DEFAULT);
+                lparam->mutable_convolution_param()->clear_cudnn_flavor();
+                use_dilation = true;
+                break;
+              }
+          if (use_dilation)
+              continue;
+
+          if (ad.get("engine").get<std::string>() == "DEFAULT")
+            {
+              lparam->mutable_convolution_param()->set_engine(::caffe::ConvolutionParameter::DEFAULT);
+              lparam->mutable_convolution_param()->clear_cudnn_flavor();
+            }
           if (ad.get("engine").get<std::string>() == "CAFFE")
-            lparam->mutable_convolution_param()->set_engine(::caffe::ConvolutionParameter::CAFFE);
+            {
+              lparam->mutable_convolution_param()->set_engine(::caffe::ConvolutionParameter::CAFFE);
+              lparam->mutable_convolution_param()->clear_cudnn_flavor();
+            }
           else if (ad.get("engine").get<std::string>() == "CUDNN")
             {
               lparam->mutable_convolution_param()->set_engine(::caffe::ConvolutionParameter::CUDNN);
@@ -3471,50 +3500,9 @@ void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update
               lparam->mutable_convolution_param()->set_cudnn_flavor(::caffe::ConvolutionParameter::MIN_MEMORY);
             }
         }
-      else if (lparam->type() == "ReLU")
-        {
-          if (ad.get("engine").get<std::string>() == "CAFFE")
-            lparam->mutable_relu_param()->set_engine(::caffe::ReLUParameter::CAFFE);
-          else if (ad.get("engine").get<std::string>() == "CUDNN")
-            lparam->mutable_relu_param()->set_engine(::caffe::ReLUParameter::CUDNN);
-        }
-      else if (lparam->type() == "TanH")
-        {
-          if (ad.get("engine").get<std::string>() == "CAFFE")
-            lparam->mutable_tanh_param()->set_engine(::caffe::TanHParameter::CAFFE);
-          else if (ad.get("engine").get<std::string>() == "CUDNN")
-            lparam->mutable_tanh_param()->set_engine(::caffe::TanHParameter::CUDNN);
-        }
-      else if(lparam->type() == "Pooling")
-        {
-          if (ad.get("engine").get<std::string>() == "CAFFE")
-            lparam->mutable_pooling_param()->set_engine(::caffe::PoolingParameter::CAFFE);
-          else if (ad.get("engine").get<std::string>() == "CUDNN")
-            lparam->mutable_pooling_param()->set_engine(::caffe::PoolingParameter::CUDNN);
-        }
-      else if(lparam->type() == "LRN")
-        {
-          if (ad.get("engine").get<std::string>() == "CAFFE")
-            lparam->mutable_lrn_param()->set_engine(::caffe::LRNParameter::CAFFE);
-          else if (ad.get("engine").get<std::string>() == "CUDNN")
-            lparam->mutable_lrn_param()->set_engine(::caffe::LRNParameter::CUDNN);
-        }
-      else if(lparam->type() == "Sigmoid")
-        {
-          if (ad.get("engine").get<std::string>() == "CAFFE")
-            lparam->mutable_sigmoid_param()->set_engine(::caffe::SigmoidParameter::CAFFE);
-          else if (ad.get("engine").get<std::string>() == "CUDNN")
-            lparam->mutable_sigmoid_param()->set_engine(::caffe::SigmoidParameter::CUDNN);
-        }
-      else if(lparam->type() == "Softmax")
-        {
-          if (ad.get("engine").get<std::string>() == "CAFFE")
-            lparam->mutable_softmax_param()->set_engine(::caffe::SoftmaxParameter::CAFFE);
-          else if (ad.get("engine").get<std::string>() == "CUDNN")
-            lparam->mutable_softmax_param()->set_engine(::caffe::SoftmaxParameter::CUDNN);
-        }
     }
 }
+#endif
 
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
