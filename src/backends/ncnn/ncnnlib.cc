@@ -148,7 +148,7 @@ namespace dd
     {
 
         TInputConnectorStrategy inputc(this->_inputc);
-        TOutputConnectorStrategy tout;
+        TOutputConnectorStrategy tout(this->_outputc);
         try {
             inputc.transform(ad);
         } catch (...) {

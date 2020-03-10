@@ -127,7 +127,7 @@ namespace dd
       }
 
     // capture of results
-    TOutputConnectorStrategy tout;
+    TOutputConnectorStrategy tout(this->_outputc);
     std::vector<APIData> vrad;
     for (int i=0;i<N;i++)
       {

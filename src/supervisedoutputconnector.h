@@ -133,7 +133,7 @@ namespace dd
      * @param sout supervised output connector
      */
     SupervisedOutput(const SupervisedOutput &sout)
-      :OutputConnectorStrategy(),_best(sout._best)
+      :OutputConnectorStrategy(sout),_best(sout._best)
       {
       }
     

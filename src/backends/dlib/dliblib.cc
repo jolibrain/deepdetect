@@ -101,7 +101,7 @@ namespace dd {
             confidence_threshold = ad_output.get("confidence_threshold").get<double>();
         }
         TInputConnectorStrategy inputc(this->_inputc);
-        TOutputConnectorStrategy tout;
+        TOutputConnectorStrategy tout(this->_outputc);
         APIData cad = ad;
         cad.add("model_repo", this->_mlmodel._repo);
         try {

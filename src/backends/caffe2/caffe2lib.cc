@@ -875,7 +875,7 @@ namespace dd {
   predict(const APIData &ad, APIData &out) {
     set_train_mode(ad, false);
 
-    TOutputConnectorStrategy tout;
+    TOutputConnectorStrategy tout(this->_outputc);
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
     APIData ad_output = ad.getobj("parameters").getobj("output");
 

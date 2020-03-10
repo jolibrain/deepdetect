@@ -2219,7 +2219,7 @@ namespace dd
       }
 
     TInputConnectorStrategy inputc(this->_inputc);
-    TOutputConnectorStrategy tout;
+    TOutputConnectorStrategy tout(this->_outputc);
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
     APIData ad_output = ad.getobj("parameters").getobj("output");
     bool bbox = false;
