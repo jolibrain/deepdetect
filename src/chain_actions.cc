@@ -152,7 +152,6 @@ namespace dd
     for (size_t i=0;i<vad.size();i++) // iterate predictions
       {
 	std::string uri = vad.at(i).get("uri").get<std::string>();
-	uris.push_back(uri);
 	cv::Mat img = imgs.at(i);
 	std::vector<APIData> ad_cls = vad.at(i).getv("classes");
 	std::vector<APIData> cad_cls;
@@ -160,6 +159,7 @@ namespace dd
 	// rotate and make image available to next service
 	if (ad_cls.size() > 0)
 	  {
+	    uris.push_back(uri);
 	    std::string cat1 = ad_cls.at(0).get("cat").get<std::string>();
 	    cv::Mat rimg, timg;
 	    if (cat1 == "0")  // all tests in absolute orientation
