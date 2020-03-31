@@ -44,6 +44,7 @@ parser.add_argument('--max-workspace-size',help='max workspace size for tensort 
 parser.add_argument('--list-bench-files',help='file holding the list of bench files',default='list_bench_files.txt')
 parser.add_argument('--npasses',help='number of passes for every batch size',type=int,default=5)
 parser.add_argument('--detection',help='whether benching a detection model',action='store_true')
+parser.add_argument('--segmentation',help='whether benching a segmentation model',action='store_true')
 parser.add_argument('--search',help='whether benching a similarity search service',action='store_true')
 parser.add_argument('--search-multibox',help='whether benching a multibox similarity search service',action='store_true')
 parser.add_argument('--create',help='model\'s folder name to create a service')
@@ -72,6 +73,8 @@ def service_create(bs):
     mllib = args.mllib
     model = {'repository':args.create}
     parameters_input = {'connector':'image','width':args.img_width,'height':args.img_height}
+    if args.segmentation:
+      parameters_input['segmentation'] = True
     if args.dla:
         parameters_mllib = {'nclasses':args.nclasses,'datatype':args.datatype,'readEngine':True,'writeEngine':True,'maxBatchSize':bs,'dla':0, 'maxWorkspaceSize':args.max_workspace_size}
     else:    
@@ -120,6 +123,8 @@ if args.detection:
       parameters_output['bbox'] = True
     if args.search_multibox:
       parameters_output['multibox_rois'] = True
+elif args.segmentation:
+  parameters_input['segmentation'] = True
 elif args.search:
   parameters_output['search'] = True
       
