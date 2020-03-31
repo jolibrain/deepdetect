@@ -757,7 +757,7 @@ if (USE_TORCH)
   #  )
   #message(STATUS "Libraries are: ${TORCH_LIBRARIES}")
 
-  set(TORCH_LIB_DEPS torch ${TORCH_LOCATION}/lib/libc10.so)
+  set(TORCH_LIB_DEPS torch ${TORCH_LOCATION}/lib/libc10.so -lprotobuf)
   
   if (NOT USE_CPU_ONLY AND CUDA_FOUND)
     list(APPEND TORCH_LIB_DEPS  ${TORCH_LOCATION}/lib/libc10_cuda.so iomp5)
