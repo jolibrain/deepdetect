@@ -64,6 +64,7 @@ namespace dd
         torch::Device _device;
         int _classif_in = 0; /**<id of the input of the classification layer */
         bool _hidden_states = false; /**< Take BERT hidden states as input. */
+        bool _extract_layer = false;
     private:
         bool _freeze_traced = false; /**< Freeze weights of the traced module */
     };
@@ -96,7 +97,9 @@ namespace dd
         bool _finetuning = false;
         torch::Device _device = torch::Device("cpu");
         bool _masked_lm = false;
-        bool _seq_training = false; 
+        bool _seq_training = false;
+        bool _extract_layer = false;
+        std::string _layer_to_extract = "";
 
         // models
         TorchModule _module;

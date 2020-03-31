@@ -97,6 +97,7 @@ namespace dd
                 source = { output };
             }
         }
+        // if not in classification mode, _classif_in == zero
         c10::IValue out_val = source.at(_classif_in);
         if (_hidden_states)
         {
@@ -198,6 +199,7 @@ namespace dd
         _masked_lm = tl._masked_lm;
         _seq_training = tl._seq_training;
         _finetuning = tl._finetuning;
+        _extract_layer = tl._extract_layer;
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -267,7 +269,8 @@ namespace dd
             }
             else
             {
-                throw MLLibBadParamException("BERT only supports self-supervised or classification");
+              this->_logger->info("neither classification nor self_supervised selected, will output raw values");
+              _module._extract_layer = true;
             }
         }
         else if (_template == "gpt2")
@@ -568,6 +571,25 @@ namespace dd
     {
         APIData params = ad.getobj("parameters");
         APIData output_params = params.getobj("output");
+        APIData ad_mllib = params.getobj("mllib");
+
+        if (ad_mllib.has("extract_layer"))
+          {
+            _extract_layer = true;
+            _module._extract_layer = true;
+            _layer_to_extract = ad_mllib.get("extract_layer").get<std::string>();
+            if (_template == "bert")
+              {
+                if (_layer_to_extract == "hidden_states")
+                  {
+                    _module._hidden_states = true;
+                    _module._classif_in = 1; // we extract hidden states from second tuple
+                  }
+                else
+                  _module._hidden_states = false;
+              }
+          }
+
 
         TInputConnectorStrategy inputc(this->_inputc);
         TOutputConnectorStrategy outputc(this->_outputc);;
@@ -614,7 +636,10 @@ namespace dd
                 }
                 output = torch::stack(outputs);
             }
-            output = torch::softmax(output, 1).to(cpu);
+            if (!_extract_layer)
+              output = torch::softmax(output, 1).to(cpu);
+            else
+              output = output.to(cpu);
         }
         catch (std::exception &e)
         {
@@ -660,6 +685,22 @@ namespace dd
                 results_ads.push_back(results_ad);
             }
         }
+        else if (_extract_layer)
+          {
+            for (int i = 0; i < output.size(0); ++i)
+              {
+                APIData results_ad;
+                int valn = 1;
+                for (int j = 1; j< output.sizes().size(); ++j)
+                  valn *= output.size(j);
+                std::vector<double> vals(output.data<float>()+i*valn, output.data<float>()+(i+1)*valn);
+                results_ad.add("uri", inputc._uris.at(results_ads.size()));
+                results_ad.add("vals", vals);
+                results_ad.add("loss",0.0);
+                results_ads.push_back(results_ad);
+              }
+          }
+
 
         outputc.add_results(results_ads);
         outputc.finalize(output_params, out, static_cast<MLModel*>(&this->_mlmodel));
@@ -764,5 +805,7 @@ namespace dd
 
 
     template class TorchLib<ImgTorchInputFileConn,SupervisedOutput,TorchModel>;
+    template class TorchLib<ImgTorchInputFileConn,UnsupervisedOutput,TorchModel>;
     template class TorchLib<TxtTorchInputFileConn,SupervisedOutput,TorchModel>;
+    template class TorchLib<TxtTorchInputFileConn,UnsupervisedOutput,TorchModel>;
 }
