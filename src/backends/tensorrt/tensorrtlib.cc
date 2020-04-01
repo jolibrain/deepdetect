@@ -498,13 +498,6 @@ namespace dd
 	  apitools::get_float(ad_output, "confidence_threshold", confidence_threshold);
 	}
 
-	// Get best
-        int best = 0;
-        if (ad_output.has("best")) {
-            best = ad_output.get("best").get<int>();
-        }
-
-	
 	if (_bbox)
 	  {
 	    int results_height = _top_k; 
@@ -601,33 +594,6 @@ namespace dd
 		std::vector<double> probs;
 		std::vector<std::string> cats;
 		
-		if (best != 0)
-		  {
-		    std::vector<float> cls_scores;
-		    cls_scores.resize(_nclasses);
-		    for (int i = 0; i < _nclasses; i++) {
-		      cls_scores[j] = _floatOut.at(j*_nclasses+i);
-		    }
-		     
-		    std::vector< std::pair<float, int> > vec;
-		    vec.resize(_nclasses);
-		    for (int i = 0; i < _nclasses; i++) {
-		      vec[i] = std::make_pair(cls_scores[i], i);
-		    }
-        
-		    std::partial_sort(vec.begin(), vec.begin() + best, vec.end(),
-				      std::greater< std::pair<float, int> >());
-		    
-		    for (int i = 0; i < best; i++)
-		      {
-			if (vec[i].first < confidence_threshold)
-			  continue;
-			cats.push_back(this->_mlmodel.get_hcorresp(vec[i].second));
-			probs.push_back(vec[i].first);
-		      }
-		  }
-		else
-		  {		    
 		    for (int i=0;i<_nclasses;i++)
 		      {
 			double prob = _floatOut.at(j*_nclasses+i);
@@ -636,8 +602,7 @@ namespace dd
 			probs.push_back(prob);
 			cats.push_back(this->_mlmodel.get_hcorresp(i));
 		      }
-		  }
-		
+
 		rad.add("probs",probs);
 		rad.add("cats",cats);
 		vrad.push_back(rad);
