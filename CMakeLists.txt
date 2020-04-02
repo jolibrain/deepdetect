@@ -666,14 +666,13 @@ if (USE_NCNN)
   add_definitions(-DUSE_NCNN)
   include_directories(${CMAKE_CURRENT_BINARY_DIR})
   set(NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src/libncnn.a -lprotobuf)
-  set(NCNN_COMMIT_HASH "569be5a19651373cca68933f6430c781d7d6fd97")
   if (RPI3)
     ExternalProject_Add(
       ncnn
       PREFIX ncnn
       INSTALL_DIR ${CMAKE_BINARY_DIR}
       DOWNLOAD_COMMAND git clone --recursive https://github.com/jolibrain/ncnn.git
-      CONFIGURE_COMMAND mkdir -p build && cd build && cmake .. -DPI3=ON -DCMAKE_TOOLCHAIN_FILE=../toolchains/pi3.toolchain.cmake && git checkout 510d3c6c4691d5cab0c848b5994105e11b4497e8
+      CONFIGURE_COMMAND mkdir -p build && cd build && cmake .. -DPI3=ON -DCMAKE_TOOLCHAIN_FILE=../toolchains/pi3.toolchain.cmake
       BUILD_COMMAND cd build/ && make -j${N}
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
@@ -683,7 +682,7 @@ if (USE_NCNN)
       ncnn
       PREFIX ncnn
       INSTALL_DIR ${CMAKE_BINARY_DIR}
-      DOWNLOAD_COMMAND git clone --recursive https://github.com/jolibrain/ncnn.git && cd ncnn && git checkout 510d3c6c4691d5cab0c848b5994105e11b4497e8
+      DOWNLOAD_COMMAND git clone --recursive https://github.com/jolibrain/ncnn.git && cd ncnn
       CONFIGURE_COMMAND mkdir -p build && cd build && cmake ..
       BUILD_COMMAND cd build/ && make -j${N}
       INSTALL_COMMAND ""
