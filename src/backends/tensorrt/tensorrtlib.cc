@@ -331,8 +331,11 @@ namespace dd
 	      = caffeParser->parse(std::string(this->_mlmodel._repo + "/" +"net_tensorRT.proto").c_str(),
 				   this->_mlmodel._weights.c_str(),
 				   *network, _datatype);
+	    if (!blobNameToTensor)
+	      throw MLLibInternalException("Error while parsing caffe model for conversion to TensorRT");
 	    
 	    network->markOutput(*blobNameToTensor->find(out_blob.c_str()));
+	    
 	    if (out_blob == "detection_out")
 	      network->markOutput(*blobNameToTensor->find("keep_count"));
 	    _builder->setMaxBatchSize(_max_batch_size);	
