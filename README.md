@@ -13,7 +13,7 @@ DeepDetect relies on external machine learning libraries through a very generic 
 
 #### Machine Learning functionalities per library (current):
 
-|            | Training | Prediction | Classification | Object Detection | Segmentation | Regression | Autoencoder | OCR / Seq2Seq |
+|            | Training | Inference | Classification | Object Detection | Segmentation | Regression | Autoencoder | OCR / Seq2Seq |
 |------------|----------|------------|----------------|-----------|-----------|------------|-------------|-------------|
 | Caffe      | Y        | Y          | Y              | Y         |   Y       |   Y        | Y           | Y           |
 | Caffe2     | Y        | Y          | Y              | Y         |   N       |   N        | N           | N           |
@@ -21,13 +21,13 @@ DeepDetect relies on external machine learning libraries through a very generic 
 | Tensorflow | N        | Y          | Y              | N         |   N       |   N        | N           | N           |
 | T-SNE      | Y        | N/A        | N/A            | N/A       |   N/A     |   N/A      | N/A         | N           |
 | Dlib       | N        | Y          | Y              | Y         |   N       |   N        | N           | N           |
-| TensorRT   | N        | Y          | Y              | Y         |   N       |   N        | N           | N           |
-| Libtorch   | N        | Y          | Y              | N         |   N       |   N        | N           | N           |
+| TensorRT   | N/A        | Y          | Y              | Y         |   N       |   N        | N           | N           |
+| Libtorch   | Y        | Y          | Y              | N         |   N       |   N        | N           | N           |
 
 
 #### GPU support per library
 
-|            | Training | Prediction |
+|            | Training | Inference |
 |------------|----------|------------|
 | Caffe      | Y        | Y          |
 | Caffe2     | Y        | Y          |
@@ -35,8 +35,8 @@ DeepDetect relies on external machine learning libraries through a very generic 
 | Tensorflow | N        | Y          |
 | T-SNE      | Y        | N          |
 | Dlib       | N        | Y          |
-| TensorRT   | N        | Y          |
-| Libtorch   | N        | Y          |
+| TensorRT   | N/A        | Y          |
+| Libtorch   | Y        | Y          |
 
 #### Input data support per library (current):
 
