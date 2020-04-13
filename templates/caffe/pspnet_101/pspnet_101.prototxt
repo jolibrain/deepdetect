@@ -50,7 +50,7 @@ layer {
   }
 }
 layer {
-  name: "conv1_1_3x3_s2/bn"
+  name: "conv1_1_3x3_s2/bnc"
   type: "BatchNorm"
   bottom: "conv1_1_3x3_s2"
   top: "conv1_1_3x3_s2"
@@ -94,7 +94,7 @@ layer {
   }
 }
 layer {
-  name: "conv1_2_3x3/bn"
+  name: "conv1_2_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv1_2_3x3"
   top: "conv1_2_3x3"
@@ -138,7 +138,7 @@ layer {
   }
 }
 layer {
-  name: "conv1_3_3x3/bn"
+  name: "conv1_3_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv1_3_3x3"
   top: "conv1_3_3x3"
@@ -194,7 +194,7 @@ layer {
   }
 }
 layer {
-  name: "conv2_1_1x1_reduce/bn"
+  name: "conv2_1_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv2_1_1x1_reduce"
   top: "conv2_1_1x1_reduce"
@@ -238,7 +238,7 @@ layer {
   }
 }
 layer {
-  name: "conv2_1_3x3/bn"
+  name: "conv2_1_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv2_1_3x3"
   top: "conv2_1_3x3"
@@ -282,7 +282,7 @@ layer {
   }
 }
 layer {
-  name: "conv2_1_1x1_increase/bn"
+  name: "conv2_1_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv2_1_1x1_increase"
   top: "conv2_1_1x1_increase"
@@ -320,7 +320,7 @@ layer {
   }
 }
 layer {
-  name: "conv2_1_1x1_proj/bn"
+  name: "conv2_1_1x1_proj/bnc"
   type: "BatchNorm"
   bottom: "conv2_1_1x1_proj"
   top: "conv2_1_1x1_proj"
@@ -374,7 +374,7 @@ layer {
   }
 }
 layer {
-  name: "conv2_2_1x1_reduce/bn"
+  name: "conv2_2_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv2_2_1x1_reduce"
   top: "conv2_2_1x1_reduce"
@@ -418,7 +418,7 @@ layer {
   }
 }
 layer {
-  name: "conv2_2_3x3/bn"
+  name: "conv2_2_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv2_2_3x3"
   top: "conv2_2_3x3"
@@ -462,7 +462,7 @@ layer {
   }
 }
 layer {
-  name: "conv2_2_1x1_increase/bn"
+  name: "conv2_2_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv2_2_1x1_increase"
   top: "conv2_2_1x1_increase"
@@ -516,7 +516,7 @@ layer {
   }
 }
 layer {
-  name: "conv2_3_1x1_reduce/bn"
+  name: "conv2_3_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv2_3_1x1_reduce"
   top: "conv2_3_1x1_reduce"
@@ -560,7 +560,7 @@ layer {
   }
 }
 layer {
-  name: "conv2_3_3x3/bn"
+  name: "conv2_3_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv2_3_3x3"
   top: "conv2_3_3x3"
@@ -604,7 +604,7 @@ layer {
   }
 }
 layer {
-  name: "conv2_3_1x1_increase/bn"
+  name: "conv2_3_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv2_3_1x1_increase"
   top: "conv2_3_1x1_increase"
@@ -658,7 +658,7 @@ layer {
   }
 }
 layer {
-  name: "conv3_1_1x1_reduce/bn"
+  name: "conv3_1_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv3_1_1x1_reduce"
   top: "conv3_1_1x1_reduce"
@@ -702,7 +702,7 @@ layer {
   }
 }
 layer {
-  name: "conv3_1_3x3/bn"
+  name: "conv3_1_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv3_1_3x3"
   top: "conv3_1_3x3"
@@ -746,7 +746,7 @@ layer {
   }
 }
 layer {
-  name: "conv3_1_1x1_increase/bn"
+  name: "conv3_1_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv3_1_1x1_increase"
   top: "conv3_1_1x1_increase"
@@ -784,7 +784,7 @@ layer {
   }
 }
 layer {
-  name: "conv3_1_1x1_proj/bn"
+  name: "conv3_1_1x1_proj/bnc"
   type: "BatchNorm"
   bottom: "conv3_1_1x1_proj"
   top: "conv3_1_1x1_proj"
@@ -838,7 +838,7 @@ layer {
   }
 }
 layer {
-  name: "conv3_2_1x1_reduce/bn"
+  name: "conv3_2_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv3_2_1x1_reduce"
   top: "conv3_2_1x1_reduce"
@@ -882,7 +882,7 @@ layer {
   }
 }
 layer {
-  name: "conv3_2_3x3/bn"
+  name: "conv3_2_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv3_2_3x3"
   top: "conv3_2_3x3"
@@ -926,7 +926,7 @@ layer {
   }
 }
 layer {
-  name: "conv3_2_1x1_increase/bn"
+  name: "conv3_2_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv3_2_1x1_increase"
   top: "conv3_2_1x1_increase"
@@ -980,7 +980,7 @@ layer {
   }
 }
 layer {
-  name: "conv3_3_1x1_reduce/bn"
+  name: "conv3_3_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv3_3_1x1_reduce"
   top: "conv3_3_1x1_reduce"
@@ -1024,7 +1024,7 @@ layer {
   }
 }
 layer {
-  name: "conv3_3_3x3/bn"
+  name: "conv3_3_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv3_3_3x3"
   top: "conv3_3_3x3"
@@ -1068,7 +1068,7 @@ layer {
   }
 }
 layer {
-  name: "conv3_3_1x1_increase/bn"
+  name: "conv3_3_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv3_3_1x1_increase"
   top: "conv3_3_1x1_increase"
@@ -1122,7 +1122,7 @@ layer {
   }
 }
 layer {
-  name: "conv3_4_1x1_reduce/bn"
+  name: "conv3_4_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv3_4_1x1_reduce"
   top: "conv3_4_1x1_reduce"
@@ -1166,7 +1166,7 @@ layer {
   }
 }
 layer {
-  name: "conv3_4_3x3/bn"
+  name: "conv3_4_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv3_4_3x3"
   top: "conv3_4_3x3"
@@ -1210,7 +1210,7 @@ layer {
   }
 }
 layer {
-  name: "conv3_4_1x1_increase/bn"
+  name: "conv3_4_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv3_4_1x1_increase"
   top: "conv3_4_1x1_increase"
@@ -1264,7 +1264,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_1_1x1_reduce/bn"
+  name: "conv4_1_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv4_1_1x1_reduce"
   top: "conv4_1_1x1_reduce"
@@ -1309,7 +1309,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_1_3x3/bn"
+  name: "conv4_1_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv4_1_3x3"
   top: "conv4_1_3x3"
@@ -1353,7 +1353,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_1_1x1_increase/bn"
+  name: "conv4_1_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv4_1_1x1_increase"
   top: "conv4_1_1x1_increase"
@@ -1391,7 +1391,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_1_1x1_proj/bn"
+  name: "conv4_1_1x1_proj/bnc"
   type: "BatchNorm"
   bottom: "conv4_1_1x1_proj"
   top: "conv4_1_1x1_proj"
@@ -1445,7 +1445,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_2_1x1_reduce/bn"
+  name: "conv4_2_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv4_2_1x1_reduce"
   top: "conv4_2_1x1_reduce"
@@ -1490,7 +1490,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_2_3x3/bn"
+  name: "conv4_2_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv4_2_3x3"
   top: "conv4_2_3x3"
@@ -1534,7 +1534,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_2_1x1_increase/bn"
+  name: "conv4_2_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv4_2_1x1_increase"
   top: "conv4_2_1x1_increase"
@@ -1588,7 +1588,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_3_1x1_reduce/bn"
+  name: "conv4_3_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv4_3_1x1_reduce"
   top: "conv4_3_1x1_reduce"
@@ -1633,7 +1633,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_3_3x3/bn"
+  name: "conv4_3_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv4_3_3x3"
   top: "conv4_3_3x3"
@@ -1677,7 +1677,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_3_1x1_increase/bn"
+  name: "conv4_3_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv4_3_1x1_increase"
   top: "conv4_3_1x1_increase"
@@ -1731,7 +1731,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_4_1x1_reduce/bn"
+  name: "conv4_4_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv4_4_1x1_reduce"
   top: "conv4_4_1x1_reduce"
@@ -1776,7 +1776,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_4_3x3/bn"
+  name: "conv4_4_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv4_4_3x3"
   top: "conv4_4_3x3"
@@ -1820,7 +1820,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_4_1x1_increase/bn"
+  name: "conv4_4_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv4_4_1x1_increase"
   top: "conv4_4_1x1_increase"
@@ -1874,7 +1874,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_5_1x1_reduce/bn"
+  name: "conv4_5_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv4_5_1x1_reduce"
   top: "conv4_5_1x1_reduce"
@@ -1919,7 +1919,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_5_3x3/bn"
+  name: "conv4_5_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv4_5_3x3"
   top: "conv4_5_3x3"
@@ -1963,7 +1963,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_5_1x1_increase/bn"
+  name: "conv4_5_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv4_5_1x1_increase"
   top: "conv4_5_1x1_increase"
@@ -2017,7 +2017,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_6_1x1_reduce/bn"
+  name: "conv4_6_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv4_6_1x1_reduce"
   top: "conv4_6_1x1_reduce"
@@ -2062,7 +2062,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_6_3x3/bn"
+  name: "conv4_6_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv4_6_3x3"
   top: "conv4_6_3x3"
@@ -2106,7 +2106,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_6_1x1_increase/bn"
+  name: "conv4_6_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv4_6_1x1_increase"
   top: "conv4_6_1x1_increase"
@@ -2160,7 +2160,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_7_1x1_reduce/bn"
+  name: "conv4_7_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv4_7_1x1_reduce"
   top: "conv4_7_1x1_reduce"
@@ -2205,7 +2205,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_7_3x3/bn"
+  name: "conv4_7_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv4_7_3x3"
   top: "conv4_7_3x3"
@@ -2249,7 +2249,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_7_1x1_increase/bn"
+  name: "conv4_7_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv4_7_1x1_increase"
   top: "conv4_7_1x1_increase"
@@ -2303,7 +2303,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_8_1x1_reduce/bn"
+  name: "conv4_8_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv4_8_1x1_reduce"
   top: "conv4_8_1x1_reduce"
@@ -2348,7 +2348,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_8_3x3/bn"
+  name: "conv4_8_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv4_8_3x3"
   top: "conv4_8_3x3"
@@ -2392,7 +2392,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_8_1x1_increase/bn"
+  name: "conv4_8_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv4_8_1x1_increase"
   top: "conv4_8_1x1_increase"
@@ -2446,7 +2446,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_9_1x1_reduce/bn"
+  name: "conv4_9_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv4_9_1x1_reduce"
   top: "conv4_9_1x1_reduce"
@@ -2491,7 +2491,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_9_3x3/bn"
+  name: "conv4_9_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv4_9_3x3"
   top: "conv4_9_3x3"
@@ -2535,7 +2535,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_9_1x1_increase/bn"
+  name: "conv4_9_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv4_9_1x1_increase"
   top: "conv4_9_1x1_increase"
@@ -2589,7 +2589,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_10_1x1_reduce/bn"
+  name: "conv4_10_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv4_10_1x1_reduce"
   top: "conv4_10_1x1_reduce"
@@ -2634,7 +2634,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_10_3x3/bn"
+  name: "conv4_10_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv4_10_3x3"
   top: "conv4_10_3x3"
@@ -2678,7 +2678,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_10_1x1_increase/bn"
+  name: "conv4_10_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv4_10_1x1_increase"
   top: "conv4_10_1x1_increase"
@@ -2732,7 +2732,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_11_1x1_reduce/bn"
+  name: "conv4_11_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv4_11_1x1_reduce"
   top: "conv4_11_1x1_reduce"
@@ -2777,7 +2777,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_11_3x3/bn"
+  name: "conv4_11_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv4_11_3x3"
   top: "conv4_11_3x3"
@@ -2821,7 +2821,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_11_1x1_increase/bn"
+  name: "conv4_11_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv4_11_1x1_increase"
   top: "conv4_11_1x1_increase"
@@ -2875,7 +2875,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_12_1x1_reduce/bn"
+  name: "conv4_12_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv4_12_1x1_reduce"
   top: "conv4_12_1x1_reduce"
@@ -2920,7 +2920,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_12_3x3/bn"
+  name: "conv4_12_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv4_12_3x3"
   top: "conv4_12_3x3"
@@ -2964,7 +2964,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_12_1x1_increase/bn"
+  name: "conv4_12_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv4_12_1x1_increase"
   top: "conv4_12_1x1_increase"
@@ -3018,7 +3018,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_13_1x1_reduce/bn"
+  name: "conv4_13_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv4_13_1x1_reduce"
   top: "conv4_13_1x1_reduce"
@@ -3063,7 +3063,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_13_3x3/bn"
+  name: "conv4_13_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv4_13_3x3"
   top: "conv4_13_3x3"
@@ -3107,7 +3107,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_13_1x1_increase/bn"
+  name: "conv4_13_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv4_13_1x1_increase"
   top: "conv4_13_1x1_increase"
@@ -3161,7 +3161,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_14_1x1_reduce/bn"
+  name: "conv4_14_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv4_14_1x1_reduce"
   top: "conv4_14_1x1_reduce"
@@ -3206,7 +3206,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_14_3x3/bn"
+  name: "conv4_14_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv4_14_3x3"
   top: "conv4_14_3x3"
@@ -3250,7 +3250,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_14_1x1_increase/bn"
+  name: "conv4_14_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv4_14_1x1_increase"
   top: "conv4_14_1x1_increase"
@@ -3304,7 +3304,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_15_1x1_reduce/bn"
+  name: "conv4_15_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv4_15_1x1_reduce"
   top: "conv4_15_1x1_reduce"
@@ -3349,7 +3349,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_15_3x3/bn"
+  name: "conv4_15_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv4_15_3x3"
   top: "conv4_15_3x3"
@@ -3393,7 +3393,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_15_1x1_increase/bn"
+  name: "conv4_15_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv4_15_1x1_increase"
   top: "conv4_15_1x1_increase"
@@ -3447,7 +3447,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_16_1x1_reduce/bn"
+  name: "conv4_16_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv4_16_1x1_reduce"
   top: "conv4_16_1x1_reduce"
@@ -3492,7 +3492,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_16_3x3/bn"
+  name: "conv4_16_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv4_16_3x3"
   top: "conv4_16_3x3"
@@ -3536,7 +3536,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_16_1x1_increase/bn"
+  name: "conv4_16_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv4_16_1x1_increase"
   top: "conv4_16_1x1_increase"
@@ -3590,7 +3590,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_17_1x1_reduce/bn"
+  name: "conv4_17_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv4_17_1x1_reduce"
   top: "conv4_17_1x1_reduce"
@@ -3635,7 +3635,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_17_3x3/bn"
+  name: "conv4_17_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv4_17_3x3"
   top: "conv4_17_3x3"
@@ -3679,7 +3679,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_17_1x1_increase/bn"
+  name: "conv4_17_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv4_17_1x1_increase"
   top: "conv4_17_1x1_increase"
@@ -3733,7 +3733,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_18_1x1_reduce/bn"
+  name: "conv4_18_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv4_18_1x1_reduce"
   top: "conv4_18_1x1_reduce"
@@ -3778,7 +3778,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_18_3x3/bn"
+  name: "conv4_18_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv4_18_3x3"
   top: "conv4_18_3x3"
@@ -3822,7 +3822,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_18_1x1_increase/bn"
+  name: "conv4_18_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv4_18_1x1_increase"
   top: "conv4_18_1x1_increase"
@@ -3876,7 +3876,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_19_1x1_reduce/bn"
+  name: "conv4_19_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv4_19_1x1_reduce"
   top: "conv4_19_1x1_reduce"
@@ -3921,7 +3921,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_19_3x3/bn"
+  name: "conv4_19_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv4_19_3x3"
   top: "conv4_19_3x3"
@@ -3965,7 +3965,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_19_1x1_increase/bn"
+  name: "conv4_19_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv4_19_1x1_increase"
   top: "conv4_19_1x1_increase"
@@ -4019,7 +4019,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_20_1x1_reduce/bn"
+  name: "conv4_20_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv4_20_1x1_reduce"
   top: "conv4_20_1x1_reduce"
@@ -4064,7 +4064,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_20_3x3/bn"
+  name: "conv4_20_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv4_20_3x3"
   top: "conv4_20_3x3"
@@ -4108,7 +4108,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_20_1x1_increase/bn"
+  name: "conv4_20_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv4_20_1x1_increase"
   top: "conv4_20_1x1_increase"
@@ -4162,7 +4162,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_21_1x1_reduce/bn"
+  name: "conv4_21_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv4_21_1x1_reduce"
   top: "conv4_21_1x1_reduce"
@@ -4207,7 +4207,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_21_3x3/bn"
+  name: "conv4_21_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv4_21_3x3"
   top: "conv4_21_3x3"
@@ -4251,7 +4251,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_21_1x1_increase/bn"
+  name: "conv4_21_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv4_21_1x1_increase"
   top: "conv4_21_1x1_increase"
@@ -4305,7 +4305,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_22_1x1_reduce/bn"
+  name: "conv4_22_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv4_22_1x1_reduce"
   top: "conv4_22_1x1_reduce"
@@ -4350,7 +4350,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_22_3x3/bn"
+  name: "conv4_22_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv4_22_3x3"
   top: "conv4_22_3x3"
@@ -4394,7 +4394,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_22_1x1_increase/bn"
+  name: "conv4_22_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv4_22_1x1_increase"
   top: "conv4_22_1x1_increase"
@@ -4448,7 +4448,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_23_1x1_reduce/bn"
+  name: "conv4_23_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv4_23_1x1_reduce"
   top: "conv4_23_1x1_reduce"
@@ -4493,7 +4493,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_23_3x3/bn"
+  name: "conv4_23_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv4_23_3x3"
   top: "conv4_23_3x3"
@@ -4537,7 +4537,7 @@ layer {
   }
 }
 layer {
-  name: "conv4_23_1x1_increase/bn"
+  name: "conv4_23_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv4_23_1x1_increase"
   top: "conv4_23_1x1_increase"
@@ -4591,7 +4591,7 @@ layer {
   }
 }
 layer {
-  name: "conv5_1_1x1_reduce/bn"
+  name: "conv5_1_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv5_1_1x1_reduce"
   top: "conv5_1_1x1_reduce"
@@ -4636,7 +4636,7 @@ layer {
   }
 }
 layer {
-  name: "conv5_1_3x3/bn"
+  name: "conv5_1_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv5_1_3x3"
   top: "conv5_1_3x3"
@@ -4680,7 +4680,7 @@ layer {
   }
 }
 layer {
-  name: "conv5_1_1x1_increase/bn"
+  name: "conv5_1_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv5_1_1x1_increase"
   top: "conv5_1_1x1_increase"
@@ -4718,7 +4718,7 @@ layer {
   }
 }
 layer {
-  name: "conv5_1_1x1_proj/bn"
+  name: "conv5_1_1x1_proj/bnc"
   type: "BatchNorm"
   bottom: "conv5_1_1x1_proj"
   top: "conv5_1_1x1_proj"
@@ -4772,7 +4772,7 @@ layer {
   }
 }
 layer {
-  name: "conv5_2_1x1_reduce/bn"
+  name: "conv5_2_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv5_2_1x1_reduce"
   top: "conv5_2_1x1_reduce"
@@ -4817,7 +4817,7 @@ layer {
   }
 }
 layer {
-  name: "conv5_2_3x3/bn"
+  name: "conv5_2_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv5_2_3x3"
   top: "conv5_2_3x3"
@@ -4861,7 +4861,7 @@ layer {
   }
 }
 layer {
-  name: "conv5_2_1x1_increase/bn"
+  name: "conv5_2_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv5_2_1x1_increase"
   top: "conv5_2_1x1_increase"
@@ -4915,7 +4915,7 @@ layer {
   }
 }
 layer {
-  name: "conv5_3_1x1_reduce/bn"
+  name: "conv5_3_1x1_reduce/bnc"
   type: "BatchNorm"
   bottom: "conv5_3_1x1_reduce"
   top: "conv5_3_1x1_reduce"
@@ -4960,7 +4960,7 @@ layer {
   }
 }
 layer {
-  name: "conv5_3_3x3/bn"
+  name: "conv5_3_3x3/bnc"
   type: "BatchNorm"
   bottom: "conv5_3_3x3"
   top: "conv5_3_3x3"
@@ -5004,7 +5004,7 @@ layer {
   }
 }
 layer {
-  name: "conv5_3_1x1_increase/bn"
+  name: "conv5_3_1x1_increase/bnc"
   type: "BatchNorm"
   bottom: "conv5_3_1x1_increase"
   top: "conv5_3_1x1_increase"
@@ -5067,7 +5067,7 @@ layer {
   }
 }
 layer {
-  name: "conv5_3_pool1_conv/bn"
+  name: "conv5_3_pool1_conv/bnc"
   type: "BatchNorm"
   bottom: "conv5_3_pool1_conv"
   top: "conv5_3_pool1_conv"
@@ -5131,7 +5131,7 @@ layer {
   }
 }
 layer {
-  name: "conv5_3_pool2_conv/bn"
+  name: "conv5_3_pool2_conv/bnc"
   type: "BatchNorm"
   bottom: "conv5_3_pool2_conv"
   top: "conv5_3_pool2_conv"
@@ -5195,7 +5195,7 @@ layer {
   }
 }
 layer {
-  name: "conv5_3_pool3_conv/bn"
+  name: "conv5_3_pool3_conv/bnc"
   type: "BatchNorm"
   bottom: "conv5_3_pool3_conv"
   top: "conv5_3_pool3_conv"
@@ -5259,7 +5259,7 @@ layer {
   }
 }
 layer {
-  name: "conv5_3_pool6_conv/bn"
+  name: "conv5_3_pool6_conv/bnc"
   type: "BatchNorm"
   bottom: "conv5_3_pool6_conv"
   top: "conv5_3_pool6_conv"
@@ -5323,7 +5323,7 @@ layer {
   }
 }
 layer {
-  name: "conv5_4/bn"
+  name: "conv5_4/bnc"
   type: "BatchNorm"
   bottom: "conv5_4"
   top: "conv5_4"
