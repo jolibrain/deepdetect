@@ -6,10 +6,10 @@ DeepDetect (http://www.deepdetect.com/) is a machine learning API and server wri
 
 DeepDetect relies on external machine learning libraries through a very generic and flexible API. At the moment it has support for:
 
-- the deep learning libraries [Caffe](https://github.com/BVLC/caffe), [Tensorflow](https://tensorflow.org), [Caffe2](https://caffe2.ai/) and [Dlib](http://dlib.net/ml.html)
+- the deep learning libraries [Caffe](https://github.com/BVLC/caffe), [Tensorflow](https://tensorflow.org), [Caffe2](https://caffe2.ai/), [Torch](https://pytorch.org/) and [Dlib](http://dlib.net/ml.html)
 - distributed gradient boosting library [XGBoost](https://github.com/dmlc/xgboost)
 - clustering with [T-SNE](https://github.com/DmitryUlyanov/Multicore-TSNE)
-- similarity search with [Annoy](https://github.com/spotify/annoy/)
+- similarity search with [Annoy](https://github.com/spotify/annoy/) and [FAISS](https://github.com/facebookresearch/faiss)
 
 #### Machine Learning functionalities per library (current):
 
@@ -33,7 +33,7 @@ DeepDetect relies on external machine learning libraries through a very generic 
 | Caffe2     | Y        | Y          |
 | XGBoost    | Y        | Y          |
 | Tensorflow | N        | Y          |
-| T-SNE      | Y        | N          |
+| T-SNE      | Y        | N/A          |
 | Dlib       | N        | Y          |
 | TensorRT   | N/A        | Y          |
 | Libtorch   | Y        | Y          |
@@ -46,11 +46,10 @@ DeepDetect relies on external machine learning libraries through a very generic 
 | Caffe2     | N   | N   | N          | N               | Y      |
 | XGBoost    | Y   | Y   | Y          | N               | N      |
 | Tensorflow | N   | N   | N          | N               | Y      |
-| T-SNE      | Y   | N   | N          | N               | Y      | (*)
+| T-SNE      | Y   | N   | N          | Y               | Y      | 
 | Dlib       | N   | N   | N          | N               | Y      |
 | TensorRT   | N   | N   | N          | N               | Y      |
 | Libtorch   | N   | N   | N          | N               | Y      |
-(*) more input support for T-SNE is pending
 
 #### Main functionalities
 
@@ -62,7 +61,7 @@ Please join either the community on [Gitter](https://gitter.im/beniz/deepdetect)
 
 #### Supported Platforms
 
-The reference platforms with support are **Ubuntu 14.04 LTS** and **Ubuntu 16.04 LTS**.
+The reference platforms with support are **Ubuntu 16.04 LTS** and **Ubuntu 18.04 LTS**.
 
 Supported images that come with pre-trained image classification deep (residual) neural nets:
 
