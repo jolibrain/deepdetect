@@ -142,6 +142,10 @@ TEST(torchapi, service_train_txt_lm)
     ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() <= 1) << "f1";
     fileops::remove_file(bert_train_repo,"checkpoint-3.pt");
     fileops::remove_file(bert_train_repo,"solver-3.pt");
+    fileops::remove_file(bert_train_repo,"checkpoint-2.pt");
+    fileops::remove_file(bert_train_repo,"solver-2.pt");
+    fileops::remove_file(bert_train_repo,"checkpoint-1.pt");
+    fileops::remove_file(bert_train_repo,"solver-1.pt");
 }
 
 TEST(torchapi, service_train_txt_classification)
@@ -175,6 +179,12 @@ TEST(torchapi, service_train_txt_classification)
     fileops::remove_file(bert_train_repo,"checkpoint-3.ptw");
     fileops::remove_file(bert_train_repo,"checkpoint-3.pt");
     fileops::remove_file(bert_train_repo,"solver-3.pt");
+    fileops::remove_file(bert_train_repo,"checkpoint-1.ptw");
+    fileops::remove_file(bert_train_repo,"checkpoint-1.pt");
+    fileops::remove_file(bert_train_repo,"solver-1.pt");
+    fileops::remove_file(bert_train_repo,"checkpoint-2.ptw");
+    fileops::remove_file(bert_train_repo,"checkpoint-2.pt");
+    fileops::remove_file(bert_train_repo,"solver-2.pt");
 }
 
 #endif
