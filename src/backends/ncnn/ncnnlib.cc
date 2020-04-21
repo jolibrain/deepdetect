@@ -46,6 +46,11 @@ namespace dd
     {
         this->_libname = "ncnn";
         _net = new ncnn::Net();
+        _net->opt.lightmode = true;
+        _net->opt.num_threads = _threads;
+        _net->opt.blob_allocator = &_blob_pool_allocator;
+        _net->opt.workspace_allocator = &_workspace_pool_allocator;
+        _net->opt.lightmode = _lightmode;
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -106,6 +111,12 @@ namespace dd
         if (_timeserie)
           this->_mltype = "timeserie";
 
+        if(ad.has("lightmode"))
+          {
+            _lightmode = ad.get("lightmode").get<bool>();
+            _net->opt.lightmode = _lightmode;
+          }
+
         // setting the value of Input Layer
         if (ad.has("inputblob"))
           {
@@ -119,11 +130,6 @@ namespace dd
 
         _blob_pool_allocator.set_size_compare_ratio(0.0f);
         _workspace_pool_allocator.set_size_compare_ratio(0.5f);
-        ncnn::Option opt;
-        opt.num_threads = _threads;
-        opt.blob_allocator = &_blob_pool_allocator;
-        opt.workspace_allocator = &_workspace_pool_allocator;
-        ncnn::set_default_option(opt);
         model_type(this->_mlmodel._params,this->_mltype);
     }
 

@@ -2,59 +2,60 @@
 
 [![Join the chat at https://gitter.im/beniz/deepdetect](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/beniz/deepdetect?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Build Status](https://travis-ci.org/beniz/deepdetect.png)](https://travis-ci.org/jolibrain/deepdetect)
 
-DeepDetect (http://www.deepdetect.com/) is a machine learning API and server written in C++11. It makes state of the art machine learning easy to work with and integrate into existing applications.
+DeepDetect (http://www.deepdetect.com/) is a machine learning API and server written in C++11. It makes state of the art machine learning easy to work with and integrate into existing applications. It has support for both training and inference, with automatic conversion to embedded platforms with TensorRT (NVidia GPU) and NCNN (ARM CPU).
 
 DeepDetect relies on external machine learning libraries through a very generic and flexible API. At the moment it has support for:
 
-- the deep learning libraries [Caffe](https://github.com/BVLC/caffe), [Tensorflow](https://tensorflow.org), [Caffe2](https://caffe2.ai/) and [Dlib](http://dlib.net/ml.html)
+- the deep learning libraries [Caffe](https://github.com/BVLC/caffe), [Tensorflow](https://tensorflow.org), [Caffe2](https://caffe2.ai/), [Torch](https://pytorch.org/), [NCNN](https://github.com/Tencent/ncnn) and [Dlib](http://dlib.net/ml.html)
 - distributed gradient boosting library [XGBoost](https://github.com/dmlc/xgboost)
 - clustering with [T-SNE](https://github.com/DmitryUlyanov/Multicore-TSNE)
-- similarity search with [Annoy](https://github.com/spotify/annoy/)
+- similarity search with [Annoy](https://github.com/spotify/annoy/) and [FAISS](https://github.com/facebookresearch/faiss)
 
 #### Machine Learning functionalities per library (current):
 
-|            | Training | Prediction | Classification | Object Detection | Segmentation | Regression | Autoencoder | OCR / Seq2Seq |
-|------------|----------|------------|----------------|-----------|-----------|------------|-------------|-------------|
-| Caffe      | Y        | Y          | Y              | Y         |   Y       |   Y        | Y           | Y           |
-| Caffe2     | Y        | Y          | Y              | Y         |   N       |   N        | N           | N           |
-| XGBoost    | Y        | Y          | Y              | N         |   N       |   Y        | N/A         | N           |
-| Tensorflow | N        | Y          | Y              | N         |   N       |   N        | N           | N           |
-| T-SNE      | Y        | N/A        | N/A            | N/A       |   N/A     |   N/A      | N/A         | N           |
-| Dlib       | N        | Y          | Y              | Y         |   N       |   N        | N           | N           |
-| TensorRT   | N        | Y          | Y              | Y         |   N       |   N        | N           | N           |
-| Libtorch   | N        | Y          | Y              | N         |   N       |   N        | N           | N           |
+|            | Training | Inference | Classification | Object Detection | Segmentation | Regression | Autoencoder | OCR / Seq2Seq | Time-Series |
+|------------|----------|------------|----------------|-----------|-----------|------------|-------------|-------------|-------------|
+| Caffe      | Y        | Y          | Y              | Y         |   Y       |   Y        | Y           | Y           |Y |
+| Caffe2     | Y        | Y          | Y              | Y         |   N       |   N        | N           | N           |N |
+| XGBoost    | Y        | Y          | Y              | N         |   N       |   Y        | N/A         | N           |N |
+| Tensorflow | N        | Y          | Y              | N         |   N       |   N        | N           | N           |N |
+| T-SNE      | Y        | N/A        | N/A            | N/A       |   N/A     |   N/A      | N/A         | N           |N |
+| Dlib       | N        | Y          | Y              | Y         |   N       |   N        | N           | N           |N |
+| TensorRT   | N/A      | Y          | Y              | Y         |   N       |   N        | N           | N           |N |
+| NCNN       | N/A      | Y          | Y              | Y         |   N       |   N        | N           | Y           |Y |
+| Libtorch   | Y        | Y          | Y              | N         |   N       |   N        | N           | N           |N |
 
 
 #### GPU support per library
 
-|            | Training | Prediction |
+|            | Training | Inference |
 |------------|----------|------------|
 | Caffe      | Y        | Y          |
 | Caffe2     | Y        | Y          |
 | XGBoost    | Y        | Y          |
 | Tensorflow | N        | Y          |
-| T-SNE      | Y        | N          |
+| T-SNE      | Y        | N/A          |
 | Dlib       | N        | Y          |
-| TensorRT   | N        | Y          |
-| Libtorch   | N        | Y          |
+| TensorRT   | N/A        | Y          |
+| NCNN       | N/A       | Y         |
+| Libtorch   | Y        | Y          |
 
 #### Input data support per library (current):
 
-|            | CSV | SVM | Text words | Text characters | Images |
-|------------|-----|-----|------------|-----------------|--------|
-| Caffe      | Y   | Y   | Y          | Y               | Y      |
-| Caffe2     | N   | N   | N          | N               | Y      |
-| XGBoost    | Y   | Y   | Y          | N               | N      |
-| Tensorflow | N   | N   | N          | N               | Y      |
-| T-SNE      | Y   | N   | N          | N               | Y      | (*)
-| Dlib       | N   | N   | N          | N               | Y      |
-| TensorRT   | N   | N   | N          | N               | Y      |
-| Libtorch   | N   | N   | N          | N               | Y      |
-(*) more input support for T-SNE is pending
+|            | CSV | SVM | Text words | Text characters | Images | Time-Series |
+|------------|-----|-----|------------|-----------------|--------|-------------|
+| Caffe      | Y   | Y   | Y          | Y               | Y      |Y            |
+| Caffe2     | N   | N   | N          | N               | Y      |N            |
+| XGBoost    | Y   | Y   | Y          | N               | N      |N            |
+| Tensorflow | N   | N   | N          | N               | Y      |N            |
+| T-SNE      | Y   | N   | N          | Y               | Y      |N            |
+| Dlib       | N   | N   | N          | N               | Y      |N            |
+| TensorRT   | N   | N   | N          | N               | Y      |N            |
+| Libtorch   | N   | N   | N          | N               | Y      |N            |
 
 #### Main functionalities
 
-DeepDetect implements support for supervised and unsupervised deep learning of images, text and other data, with focus on simplicity and ease of use, test and connection into existing applications. It supports classification, object detection, segmentation, regression, autoencoders, ...
+DeepDetect implements support for supervised and unsupervised deep learning of images, text, time series and other data, with focus on simplicity and ease of use, test and connection into existing applications. It supports classification, object detection, segmentation, regression, autoencoders, ...
 
 #### Support
 
@@ -62,13 +63,13 @@ Please join either the community on [Gitter](https://gitter.im/beniz/deepdetect)
 
 #### Supported Platforms
 
-The reference platforms with support are **Ubuntu 14.04 LTS** and **Ubuntu 16.04 LTS**.
+The reference platforms with support are **Ubuntu 16.04 LTS** and **Ubuntu 18.04 LTS**.
 
 Supported images that come with pre-trained image classification deep (residual) neural nets:
 
-- **docker images** for CPU and GPU machines are available at https://hub.docker.com/r/jolibrain/deepdetect_cpu/ and https://hub.docker.com/r/jolibrain/deepdetect_gpu/ respectively. See https://github.com/jolibrain/deepdetect/tree/master/docker/README.md for details on how to use them.
+- **docker images** for CPU and GPU machines are available at https://hub.docker.com/u/jolibrain. See https://github.com/jolibrain/deepdetect/tree/master/docker/README.md for details on how to use them.
 
-- For **Amazon AMI** see official builds documentation at https://deepdetect.com/products/ami/, and direct links to [GPU AMI](https://aws.amazon.com/marketplace/pp/B01N4D483M) and [CPU AMI](https://aws.amazon.com/marketplace/pp/B01N1RGWQZ).
+- For **Amazon AMI** see links for [GPU AMI](https://aws.amazon.com/marketplace/pp/B01N4D483M) and [CPU AMI](https://aws.amazon.com/marketplace/pp/B01N1RGWQZ).
 
 #### Performances
 
@@ -76,19 +77,19 @@ See https://github.com/jolibrain/dd_performances for a report on performances on
 
 #### Quickstart
 Setup an image classifier API service in a few minutes:
-http://www.deepdetect.com/tutorials/imagenet-classifier/
+https://www.deepdetect.com/server/docs/imagenet-classifier/
 
 #### Tutorials
-List of tutorials, training from text, data and images, setup of prediction services, and export to external software (e.g. ElasticSearch): http://www.deepdetect.com/tutorials/tutorials/
+List of tutorials, training from text, data and images, setup of prediction services, and export to external software (e.g. ElasticSearch): https://www.deepdetect.com/server/docs/server_docs/
 
 #### Features and Documentation
 Current features include:
 
 - high-level API for machine learning and deep learning
-- support for Caffe, Tensorflow, XGBoost and T-SNE
-- classification, regression, autoencoders, object detection, segmentation
+- support for Caffe, Tensorflow, XGBoost, T-SNE, Caffe2, NCNN, TensorRT, Pytorch
+- classification, regression, autoencoders, object detection, segmentation, time-series
 - JSON communication format
-- remote Python client library
+- remote Python and Javacript clients
 - dedicated server with support for asynchronous training calls
 - high performances, benefit from multicore CPU and GPU
 - built-in similarity search via neural embeddings
@@ -97,11 +98,12 @@ Current features include:
 - connector to handle text files, sentences, and character-based models
 - connector to handle SVM file format for sparse data
 - range of built-in model assessment measures (e.g. F1, multiclass log loss, ...)
+- range of special losses (e.g Dice, contour, ...)
 - no database dependency and sync, all information and model parameters organized and available from the filesystem
 - flexible template output format to simplify connection to external applications
-- templates for the most useful neural architectures (e.g. Googlenet, Alexnet, ResNet, convnet, character-based convnet, mlp, logistic regression)
+- templates for the most useful neural architectures (e.g. Googlenet, Alexnet, ResNet, convnet, character-based convnet, mlp, logistic regression, SSD, DeepLab, PSPNet, U-Net, CRNN, ShuffleNet, SqueezeNet, MobileNet, RefineDet, VOVNet, ...)
 - support for sparse features and computations on both GPU and CPU
-- built-in similarity indexing and search of predicted features and probability distributions
+- built-in similarity indexing and search of predicted features, images, objects and probability distributions
 
 ##### Documentation
 
@@ -156,21 +158,19 @@ None outside of C++ compiler and make
 #### Dlib Dependencies
 
 - CUDA 9 or 8 and cuDNN 7 for GPU mode. CUDA 10 for Ubuntu 18.04
+  **Note:** The version of OpenBLAS (v0.2.20) shipped with Ubuntu 18.04 is not up to date and includes a bug. You must install a later version of OpenBLAS >= v0.3.0 to use Dlib on Ubuntu 18.04.
 
-**Note:** The version of OpenBLAS (v0.2.20) shipped with Ubuntu 18.04 is not up to date and includes a bug. You must install a later version of OpenBLAS >= v0.3.0 to use Dlib on Ubuntu 18.04.
-
-The easiest way currently is to manually install the Ubuntu 19.10 `libopenblas-base` and `libopenblas-dev` packages. You may download them here:
-
-http://launchpadlibrarian.net/410583809/libopenblas-base_0.3.5+ds-2_amd64.deb
-
-http://launchpadlibrarian.net/410583808/libopenblas-dev_0.3.5+ds-2_amd64.deb
-
-and install them with `sudo apt-get install ./package-name.deb` to automatically handle dependencies.
+  The easiest way currently is to manually install the Ubuntu 19.10 `libopenblas-base` and `libopenblas-dev` packages. You may download them here:
+  http://launchpadlibrarian.net/410583809/libopenblas-base_0.3.5+ds-2_amd64.deb
+  http://launchpadlibrarian.net/410583808/libopenblas-dev_0.3.5+ds-2_amd64.deb
+  and install them with `sudo apt-get install ./package-name.deb` to automatically handle dependencies.
 
 ##### Caffe version
 
 By default DeepDetect automatically relies on a modified version of Caffe, https://github.com/jolibrain/caffe/tree/master
 This version includes many improvements over the original Caffe, such as sparse input data support, exception handling, class weights, object detection, segmentation, and various additional losses and layers.
+
+We use Caffe as default since it has excellent conversion to production inference libraries such as TensorRT and NCNN, that are also supported by DeepDetect.
 
 ##### Implementation
 
@@ -254,7 +254,9 @@ DeepDetect is designed, implemented and supported by [Jolibrain](http://jolibrai
 
 ### Build
 
-Below are instructions for Ubuntu 14.04 LTS and 16.04 LTS. For other Linux and Unix systems, steps may differ, CUDA, Caffe and other libraries may prove difficult to setup. If you are building on 16.04 LTS, look at https://github.com/jolibrain/deepdetect/issues/126 that tells you how to proceed.
+Please refer to instructions here: https://www.deepdetect.com/quickstart-server/
+
+Below are instructions for Ubuntu 16.04 LTS and 18.04 LTS. For other Linux and Unix systems, steps may differ, CUDA, Caffe and other libraries may prove difficult to setup. If you are building on 16.04 LTS, look at https://github.com/jolibrain/deepdetect/issues/126 that tells you how to proceed.
 
 Beware of dependencies, typically on Debian/Ubuntu Linux, do:
 ```
@@ -524,6 +526,6 @@ See tutorials from http://www.deepdetect.com/tutorials/tutorials/
 ### References
 
 - DeepDetect (http://www.deepdetect.com/)
-- Caffe (https://github.com/BVLC/caffe)
+- Caffe (https://github.com/jolibrain/caffe)
 - XGBoost (https://github.com/dmlc/xgboost)
 - T-SNE (https://github.com/DmitryUlyanov/Multicore-TSNE)

@@ -364,8 +364,8 @@ namespace dd
 	  configure_image_augmentation(ad,net_param);
 
 #ifdef USE_CUDNN
-    update_protofile_engine(net_param, ad);
-    update_protofile_engine(deploy_net_param, ad);
+	update_protofile_engine(net_param, ad);
+	update_protofile_engine(deploy_net_param, ad);
 #endif
 
 	// adapt number of neuron output
@@ -826,7 +826,9 @@ namespace dd
 	    lparam->mutable_convolution_param()->set_num_output(num_priors_per_location * _nclasses);
 	  }
 	else if (refinedet && lparam->name().find("mbox_conf") != std::string::npos
-		 && lparam->name()[0] == 'P' && lparam->type() == "Convolution")
+		 && (lparam->name()[0] == 'P' && lparam->type() == "Convolution"
+		     || lparam->name().substr(0,4) == "resP" && lparam->type() == "Convolution"))
+		 
 	  {
 	    int num_priors_per_location = lparam->mutable_convolution_param()->num_output() / 2;
 	    lparam->mutable_convolution_param()->set_num_output(num_priors_per_location * _nclasses);
@@ -1027,6 +1029,13 @@ namespace dd
     if (_regression && multi) // multisoft case
       if (ad.has("nclasses"))
         _nclasses = ad.get("nclasses").get<int>();
+
+    // import model from existing directory upon request
+    if (ad.has("from_repository"))
+      this->_mlmodel.copy_to_target(ad.get("from_repository").get<std::string>(),
+				    this->_mlmodel._repo,
+				    this->_logger);
+    
     // instantiate model template here, if any
     if (ad.has("template") && ad.get("template").get<std::string>() != "")
       instantiate_template(ad);
@@ -1042,12 +1051,6 @@ namespace dd
     // the first present measure will be used to snapshot best model
     _best_metrics = {"map", "meaniou", "mlacc", "delta_score_0.1", "bacc", "f1", "net_meas", "acc", "L1_mean_error", "eucll"};
     _best_metric_value = std::numeric_limits<double>::infinity();
-
-    // import model from existing directory upon request
-    if (ad.has("from_repository"))
-      this->_mlmodel.copy_to_target(ad.get("from_repository").get<std::string>(),
-				    this->_mlmodel._repo,
-				    this->_logger);
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -3437,7 +3440,7 @@ namespace dd
 	std::string deploy_file = this->_mlmodel._repo + "/deploy.prototxt";
 	caffe::NetParameter deploy_net_param;
 	caffe::ReadProtoFromTextFile(deploy_file,&deploy_net_param);
-    update_protofile_engine(deploy_net_param, ad);
+	update_protofile_engine(deploy_net_param, ad);
 	caffe::WriteProtoToTextFile(deploy_net_param,deploy_file);
 
     if (this->_mlmodel._model_template.empty())
