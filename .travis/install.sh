@@ -22,7 +22,6 @@ if [ "$TRAVIS_OS_NAME" = 'linux' ]; then
 	libcppnetlib-dev \
 	libboost-dev \
 	libboost-iostreams-dev \
-	libcurlpp-dev \
 	libcurl4-openssl-dev \
 	protobuf-compiler \
 	libopenblas-dev \
@@ -32,30 +31,49 @@ if [ "$TRAVIS_OS_NAME" = 'linux' ]; then
 	libsnappy-dev \
 	liblmdb-dev \
 	libutfcpp-dev \
-	libarchive-dev
+	libarchive-dev \
+	cmake \
+	libgoogle-perftools-dev \
+	unzip \
+	python-setuptools \
+	python-dev \
+	libspdlog-dev \
+	python-six \
+	python-enum34
 
         # Install ccache symlink wrappers
-        pushd /usr/local/bin
-        sudo ln -sf "$(which ccache)" gcc
-        sudo ln -sf "$(which ccache)" g++
-        popd
+        #pushd /usr/local/bin
+        #sudo ln -sf "$(which ccache)" gcc
+        #sudo ln -sf "$(which ccache)" g++
+        #popd
 
         ################
         # Install GCC4.9 #
         ################
-        sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-        sudo apt-get update
-        $APT_INSTALL_CMD g++-4.9
-        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 60 \
-            --slave /usr/bin/g++ g++ /usr/bin/g++-4.9
+        #sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+        #sudo apt-get update
+        #$APT_INSTALL_CMD g++-4.9
+        #sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 60 \
+        #    --slave /usr/bin/g++ g++ /usr/bin/g++-4.9
 
 	##################
         # Install spdlog #
         ##################
         # Not available on 14.04 trusty via package
-	git clone https://github.com/gabime/spdlog.git
-	cd spdlog && git checkout v0.17.0 && cd ..
-	sudo cp -r spdlog/include/spdlog /usr/include/
+	#git clone https://github.com/gabime/spdlog.git
+	#cd spdlog && git checkout v0.17.0 && cd ..
+	#sudo cp -r spdlog/include/spdlog /usr/include/
+
+	##################
+	# Install curlpp #
+	#################
+	sudo apt-get remove libcurlpp-dev
+	git clone https://github.com/jpbarrette/curlpp.git
+	cd curlpp
+	cmake .
+	sudo make install
+	sudo cp /usr/local/lib/libcurlpp.* /usr/lib/
+
 	
         if [ "$BUILD_CUDA" = 'true' ]; then
         ##################
