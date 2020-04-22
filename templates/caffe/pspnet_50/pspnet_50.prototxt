@@ -1197,7 +1197,7 @@ layer {
   convolution_param {
     num_output: 256
     bias_term: false
-    pad: 1
+    pad: 2
     kernel_size: 3
     stride: 1
     weight_filler {
@@ -1207,6 +1207,8 @@ layer {
       type: "constant"
       value: 0.2
     }
+    engine: DEFAULT
+    dilation: 2
   }
 }
 layer {
@@ -1333,7 +1335,7 @@ layer {
   convolution_param {
     num_output: 256
     bias_term: false
-    pad: 1
+    pad: 2
     kernel_size: 3
     stride: 1
     weight_filler {
@@ -1343,6 +1345,8 @@ layer {
       type: "constant"
       value: 0.2
     }
+    engine: DEFAULT
+    dilation: 2
   }
 }
 layer {
@@ -1469,7 +1473,7 @@ layer {
   convolution_param {
     num_output: 256
     bias_term: false
-    pad: 1
+    pad: 2
     kernel_size: 3
     stride: 1
     weight_filler {
@@ -1479,6 +1483,8 @@ layer {
       type: "constant"
       value: 0.2
     }
+    engine: DEFAULT
+    dilation: 2
   }
 }
 layer {
@@ -1605,7 +1611,7 @@ layer {
   convolution_param {
     num_output: 256
     bias_term: false
-    pad: 1
+    pad: 2
     kernel_size: 3
     stride: 1
     weight_filler {
@@ -1615,6 +1621,8 @@ layer {
       type: "constant"
       value: 0.2
     }
+    engine: DEFAULT
+    dilation: 2
   }
 }
 layer {
@@ -1741,7 +1749,7 @@ layer {
   convolution_param {
     num_output: 256
     bias_term: false
-    pad: 1
+    pad: 2
     kernel_size: 3
     stride: 1
     weight_filler {
@@ -1751,6 +1759,8 @@ layer {
       type: "constant"
       value: 0.2
     }
+    engine: DEFAULT
+    dilation: 2
   }
 }
 layer {
@@ -1877,7 +1887,7 @@ layer {
   convolution_param {
     num_output: 256
     bias_term: false
-    pad: 1
+    pad: 2
     kernel_size: 3
     stride: 1
     weight_filler {
@@ -1887,6 +1897,8 @@ layer {
       type: "constant"
       value: 0.2
     }
+    engine: DEFAULT
+    dilation: 2
   }
 }
 layer {
@@ -2050,7 +2062,7 @@ layer {
   convolution_param {
     num_output: 512
     bias_term: false
-    pad: 1
+    pad: 4
     kernel_size: 3
     stride: 1
     weight_filler {
@@ -2060,6 +2072,8 @@ layer {
       type: "constant"
       value: 0.2
     }
+    engine: DEFAULT
+    dilation: 4
   }
 }
 layer {
@@ -2186,7 +2200,7 @@ layer {
   convolution_param {
     num_output: 512
     bias_term: false
-    pad: 1
+    pad: 4
     kernel_size: 3
     stride: 1
     weight_filler {
@@ -2196,6 +2210,8 @@ layer {
       type: "constant"
       value: 0.2
     }
+    engine: DEFAULT
+    dilation: 4
   }
 }
 layer {
@@ -2322,7 +2338,7 @@ layer {
   convolution_param {
     num_output: 512
     bias_term: false
-    pad: 1
+    pad: 4
     kernel_size: 3
     stride: 1
     weight_filler {
@@ -2332,6 +2348,8 @@ layer {
       type: "constant"
       value: 0.2
     }
+    engine: DEFAULT
+    dilation: 4
   }
 }
 layer {

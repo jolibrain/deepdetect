@@ -1178,7 +1178,7 @@ layer {
   convolution_param {
     num_output: 256
     bias_term: false
-    pad: 1
+    pad: 2
     kernel_size: 3
     stride: 1
     weight_filler {
@@ -1188,6 +1188,8 @@ layer {
       type: "constant"
       value: 0.2
     }
+    engine: DEFAULT
+    dilation: 2
   }
 }
 layer {
@@ -1314,7 +1316,7 @@ layer {
   convolution_param {
     num_output: 256
     bias_term: false
-    pad: 1
+    pad: 2
     kernel_size: 3
     stride: 1
     weight_filler {
@@ -1324,6 +1326,8 @@ layer {
       type: "constant"
       value: 0.2
     }
+    engine: DEFAULT
+    dilation: 2
   }
 }
 layer {
@@ -1450,7 +1454,7 @@ layer {
   convolution_param {
     num_output: 256
     bias_term: false
-    pad: 1
+    pad: 2
     kernel_size: 3
     stride: 1
     weight_filler {
@@ -1460,6 +1464,8 @@ layer {
       type: "constant"
       value: 0.2
     }
+    engine: DEFAULT
+    dilation: 2
   }
 }
 layer {
@@ -1586,7 +1592,7 @@ layer {
   convolution_param {
     num_output: 256
     bias_term: false
-    pad: 1
+    pad: 2
     kernel_size: 3
     stride: 1
     weight_filler {
@@ -1596,6 +1602,8 @@ layer {
       type: "constant"
       value: 0.2
     }
+    engine: DEFAULT
+    dilation: 2
   }
 }
 layer {
@@ -1722,7 +1730,7 @@ layer {
   convolution_param {
     num_output: 256
     bias_term: false
-    pad: 1
+    pad: 2
     kernel_size: 3
     stride: 1
     weight_filler {
@@ -1732,6 +1740,8 @@ layer {
       type: "constant"
       value: 0.2
     }
+    engine: DEFAULT
+    dilation: 2
   }
 }
 layer {
@@ -1858,7 +1868,7 @@ layer {
   convolution_param {
     num_output: 256
     bias_term: false
-    pad: 1
+    pad: 2
     kernel_size: 3
     stride: 1
     weight_filler {
@@ -1868,6 +1878,8 @@ layer {
       type: "constant"
       value: 0.2
     }
+    engine: DEFAULT
+    dilation: 2
   }
 }
 layer {
@@ -2031,7 +2043,7 @@ layer {
   convolution_param {
     num_output: 512
     bias_term: false
-    pad: 1
+    pad: 4
     kernel_size: 3
     stride: 1
     weight_filler {
@@ -2041,6 +2053,8 @@ layer {
       type: "constant"
       value: 0.2
     }
+    engine: DEFAULT
+    dilation: 4
   }
 }
 layer {
@@ -2167,7 +2181,7 @@ layer {
   convolution_param {
     num_output: 512
     bias_term: false
-    pad: 1
+    pad: 4
     kernel_size: 3
     stride: 1
     weight_filler {
@@ -2177,6 +2191,8 @@ layer {
       type: "constant"
       value: 0.2
     }
+    engine: DEFAULT
+    dilation: 4
   }
 }
 layer {
@@ -2303,7 +2319,7 @@ layer {
   convolution_param {
     num_output: 512
     bias_term: false
-    pad: 1
+    pad: 4
     kernel_size: 3
     stride: 1
     weight_filler {
@@ -2313,6 +2329,8 @@ layer {
       type: "constant"
       value: 0.2
     }
+    engine: DEFAULT
+    dilation: 4
   }
 }
 layer {
@@ -2415,6 +2433,8 @@ layer {
   bottom: "conv5_3_pool1"
   top: "conv5_3_pool1_conv"
   param {
+    lr_mult: 1
+    decay_mult: 1
   }
   convolution_param {
     num_output: 512
@@ -2474,6 +2494,8 @@ layer {
   bottom: "conv5_3_pool2"
   top: "conv5_3_pool2_conv"
   param {
+    lr_mult: 1
+    decay_mult: 1
   }
   convolution_param {
     num_output: 512
@@ -2533,6 +2555,8 @@ layer {
   bottom: "conv5_3_pool3"
   top: "conv5_3_pool3_conv"
   param {
+    lr_mult: 1
+    decay_mult: 1
   }
   convolution_param {
     num_output: 512
@@ -2592,6 +2616,8 @@ layer {
   bottom: "conv5_3_pool6"
   top: "conv5_3_pool6_conv"
   param {
+    lr_mult: 1
+    decay_mult: 1
   }
   convolution_param {
     num_output: 512
@@ -2650,6 +2676,8 @@ layer {
   bottom: "conv5_3_concat"
   top: "conv5_4"
   param {
+    lr_mult: 1
+    decay_mult: 1
   }
   convolution_param {
     num_output: 512
@@ -2682,6 +2710,14 @@ layer {
   type: "Convolution"
   bottom: "conv5_4"
   top: "conv6"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
   convolution_param {
     num_output: 2
     kernel_size: 1
