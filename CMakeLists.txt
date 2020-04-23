@@ -266,7 +266,7 @@ if (USE_DLIB)
 endif()
 
 set(CAFFE_DD_USER jolibrain)
-set(CAFFE_DD_BRANCH master)
+set(CAFFE_DD_BRANCH broadcastmul_layer)
 
 if (USE_CAFFE2)
 
