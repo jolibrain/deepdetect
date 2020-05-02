@@ -301,6 +301,7 @@ namespace dd
     
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
     int batch_size = inputc.batch_size();
+    this->stat_inference_count(batch_size);
     if (ad_mllib.has("test_batch_size"))
       batch_size = ad_mllib.get("test_batch_size").get<int>();
 

@@ -2347,6 +2347,7 @@ namespace dd
     
     try
       {
+	//TODO: time preprocessing
         inputc.transform(cad);
       }
     catch (std::exception &e)
@@ -2354,6 +2355,7 @@ namespace dd
         throw;
       }
     int batch_size = inputc.test_batch_size();
+    this->stat_inference_count(batch_size);
     if (ad_mllib.has("net"))
       {
 	APIData ad_net = ad_mllib.getobj("net");

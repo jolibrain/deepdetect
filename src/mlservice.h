@@ -211,6 +211,7 @@ namespace dd
 	      ad.add("repository",this->_inputc._model_repo);
 	      ad.add("width",this->_inputc.width());
 	      ad.add("height",this->_inputc.height());
+	      this->collect_stats(ad);
 	    }
 	}
       return ad;
@@ -246,7 +247,7 @@ namespace dd
       stats.add("params",this->_model_params);
       stats.add("data_mem_train",static_cast<long int>(this->_mem_used_train * sizeof(float)));
       stats.add("data_mem_test",static_cast<long int>(this->_mem_used_test * sizeof(float)));
-      ad.add("stats", stats);
+      ad.add("model", stats);
       ad.add("jobs",vad);
       ad.add("parameters",_init_parameters);
       ad.add("repository",this->_inputc._model_repo);
@@ -254,6 +255,7 @@ namespace dd
       if (typeid(this->_outputc) == typeid(UnsupervisedOutput))
 	ad.add("type",std::string("unsupervised"));
       else ad.add("type",std::string("supervised"));
+      this->collect_stats(ad);
       return ad;
     }
 
@@ -431,34 +433,26 @@ namespace dd
      */
     int predict_job(const APIData &ad, APIData &out, const bool &chain=false)
     {
-      //TODO: collect input transformed data for chain, store it here in memory
-      // -> beware, the input connector is a copy...
-      
-      if (!this->_online)
+      if (!_train_mutex.try_lock_shared())
+	throw MLServiceLockException("Predict call while training with an offline learning algorithm");
+      this->add_stat("predict_count",1,true);
+      int err = 0;
+      try
 	{
-	  if (!_train_mutex.try_lock_shared())
-	    throw MLServiceLockException("Predict call while training with an offline learning algorithm");
-	  int err = 0;
-	  try
-	    {
-	      if (chain)
-		const_cast<APIData&>(ad).add("chain",true);
-	      err = this->predict(ad,out);
-	    }
-	  catch(std::exception &e)
-	    {
-	      _train_mutex.unlock_shared();
-	      throw;
-	    }
+	  if (chain)
+	    const_cast<APIData&>(ad).add("chain",true);
+	  err = this->predict(ad,out);
+	}
+      catch(std::exception &e)
+	{
 	  _train_mutex.unlock_shared();
-	  return err;
+	  this->add_stat("predict_fail",1,true);
+	  throw;
 	}
-      else // wait til a lock can be acquired
-	{
-	  boost::shared_lock< boost::shared_mutex > lock(_train_mutex);
-	  return this->predict(ad,out);
-	}
-      return 0;
+      this->add_stat("predict_success",1,true);
+      this->stat_avg_count();
+      _train_mutex.unlock_shared();
+      return err;
     }
 
     std::string _sname; /**< service name. */

@@ -161,6 +161,7 @@ namespace dd
             throw;
         }
 
+	this->stat_inference_count(inputc._ids.size());
 
         // if height (timestep) changes we need to clear net before recreating an extractor with new
         // height,

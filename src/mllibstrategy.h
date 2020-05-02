@@ -76,7 +76,7 @@ namespace dd
      * \brief copy-constructor
      */
     MLLib(MLLib &&mll) noexcept
-      :_inputc(mll._inputc),_outputc(mll._outputc),_mltype(mll._mltype),_mlmodel(mll._mlmodel),_meas(mll._meas),_meas_per_iter(mll._meas_per_iter),_tjob_running(mll._tjob_running.load()),_logger(mll._logger)
+      :_inputc(mll._inputc),_outputc(mll._outputc),_mltype(mll._mltype),_mlmodel(mll._mlmodel),_meas(mll._meas),_meas_per_iter(mll._meas_per_iter),_stats(mll._stats),_tjob_running(mll._tjob_running.load()),_logger(mll._logger)
       {}
     
     /**
@@ -261,7 +261,7 @@ namespace dd
 	(*hit).second = l;
       else _meas.insert(std::pair<std::string,double>(meas,l));
     }
-
+    
     void add_meas(const std::string &meas, const std::vector<double> &vl,
 		  const std::vector<std::string> &cnames)
     {
@@ -269,8 +269,8 @@ namespace dd
       int c = 0;
       for (double l: vl)
 	{
-	  std::string measl = meas + '_' + cnames.at(c);//std::to_string(c);
-	  auto hit = _meas.find(measl);
+	  std::string measl = meas + '_' + cnames.at(c);
+	  auto hit = _meas.find(measl); // not reusing add_meas since need a global lock
 	  if (hit!=_meas.end())
 	    (*hit).second = l;
 	  else _meas.insert(std::pair<std::string,double>(measl,l));
@@ -279,7 +279,7 @@ namespace dd
     }
     
     /**
-     * \brief get currentvalue of argument measure
+     * \brief get current value of argument measure
      * @param meas measure name
      * @return current value of measure
      */
@@ -308,7 +308,7 @@ namespace dd
 	}
       ad.add("measure",meas);
     }
-
+    
     /**
      * \brief render estimated remaining time
      * @param ad data object to hold the estimate
@@ -328,6 +328,67 @@ namespace dd
       }
     }
 
+    /**
+     * \brief adds current value of a stat/metric
+     * @param stat metric name
+     * @param l metric value
+     */
+    void add_stat(const std::string &stat, const double &l,
+		  const bool &incr=false)
+    {
+      std::lock_guard<std::mutex> lock(_stats_mutex);
+      auto hit = _stats.find(stat);
+      if (hit!=_stats.end())
+	{
+	  if (incr)
+	    (*hit).second += l;
+	  else (*hit).second = l;
+	}
+      else
+	_stats.insert(std::pair<std::string,double>(stat,l));
+    }
+
+    double get_stat(const std::string &stat)
+    {
+      std::lock_guard<std::mutex> lock(_stats_mutex);
+      auto hit = _stats.find(stat);
+      if (hit!=_stats.end())
+	return (*hit).second;
+      else return std::numeric_limits<double>::quiet_NaN();
+    }
+    
+    void stat_inference_count(const double &l)
+    {
+      add_stat("inference_count_current",l,false);
+    }
+
+    void stat_avg_count()
+    {
+      // avg inference batch size
+      add_stat("inference_count",get_stat("inference_count_current"),true);
+      _stats.erase("inference_count_current");
+      double predicts = get_stat("predict_success");
+      double inferences = get_stat("inference_count");
+      add_stat("avg_batch_size",inferences/predicts,false);
+    }
+
+    /**
+     * \brief collect current stats into a data object
+     * @param ad data object to hold the stats
+     */
+    void collect_stats(APIData &ad) const
+    {
+      APIData stats;
+      std::lock_guard<std::mutex> lock(_stats_mutex);
+      auto hit = _stats.begin();
+      while(hit!=_stats.end())
+	{
+	  stats.add((*hit).first,(*hit).second);
+	  ++hit;
+	}
+      ad.add("stats",stats);
+    }
+
     TInputConnectorStrategy _inputc; /**< input connector strategy for channeling data in. */
     TOutputConnectorStrategy _outputc; /**< output connector strategy for passing results back to API. */
 
@@ -340,11 +401,9 @@ namespace dd
     
     std::unordered_map<std::string,double> _meas; /**< model measures, used as a per service value. */
     std::unordered_map<std::string,std::vector<double>> _meas_per_iter; /**< model measures per iteration. */
+    std::unordered_map<std::string,double> _stats; /**< service statistics/metrics .*/
 
     std::atomic<bool> _tjob_running = {false}; /**< whether a training job is running with this lib instance. */
-
-    bool _online = false; /**< whether the algorithm is online, i.e. it interleaves training and prediction calls.
-			     When not, prediction calls are rejected while training is running. */
 
     std::shared_ptr<spdlog::logger> _logger; /**< mllib logger. */
 
@@ -355,7 +414,8 @@ namespace dd
 
   protected:
     mutable std::mutex _meas_per_iter_mutex; /**< mutex over measures history. */
-    mutable std::mutex _meas_mutex; /** mutex around current measures. */
+    mutable std::mutex _meas_mutex; /**< mutex around current measures. */
+    mutable std::mutex _stats_mutex; /**< mutex around current stats. */
     const int _max_meas_points = 1e7; // 10M points max per measure
   };  
   

@@ -448,6 +448,7 @@ namespace dd
     // results
     //float loss = 0.0; // XXX: how to acquire loss ?
     int batch_size = preds.Size();
+    this->stat_inference_count(batch_size);
     int nclasses = _nclasses;
     if (_objective == "multi:softprob")
       batch_size /= nclasses;
