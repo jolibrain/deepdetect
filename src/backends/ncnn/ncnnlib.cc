@@ -177,6 +177,8 @@ namespace dd
 
     TInputConnectorStrategy inputc(this->_inputc);
     TOutputConnectorStrategy tout(this->_outputc);
+
+    this->_stats.transform_start();
     try
       {
         inputc.transform(ad);
@@ -185,6 +187,9 @@ namespace dd
       {
         throw;
       }
+    this->_stats.transform_end();
+
+    this->_stats.inc_inference_count(inputc._ids.size());
 
     // if height (timestep) changes we need to clear net before recreating an
     // extractor with new height, and to reload params and models after clear()

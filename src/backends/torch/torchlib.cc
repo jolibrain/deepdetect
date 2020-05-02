@@ -37,8 +37,8 @@
 #include "generators/net_caffe.h"
 #include "generators/net_caffe_recurrent.h"
 
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <fcntl.h>
 
 #include "native/native.h"
@@ -1020,6 +1020,7 @@ namespace dd
     if (_module._native != nullptr)
       _module._native->update_input_connector(inputc);
 
+    this->_stats.transform_start();
     TOutputConnectorStrategy outputc(this->_outputc);
     try
       {
@@ -1039,6 +1040,8 @@ namespace dd
       {
         throw;
       }
+    this->_stats.transform_end();
+
     torch::Device cpu("cpu");
     _module.eval();
 
@@ -1074,6 +1077,8 @@ namespace dd
           {
             in_vals.push_back(tensor.to(_device));
           }
+        this->_stats.inc_inference_count(in_vals.size());
+
         Tensor output;
         try
           {
@@ -1336,4 +1341,4 @@ namespace dd
   template class TorchLib<TxtTorchInputFileConn, SupervisedOutput, TorchModel>;
   template class TorchLib<CSVTSTorchInputFileConn, SupervisedOutput,
                           TorchModel>;
-}
+} // namespace dd

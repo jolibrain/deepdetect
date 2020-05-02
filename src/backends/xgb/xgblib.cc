@@ -452,6 +452,8 @@ namespace dd
     // data
     TInputConnectorStrategy inputc(this->_inputc);
     APIData cad = ad;
+
+    this->_stats.transform_start();
     try
       {
         inputc.transform(cad);
@@ -460,6 +462,7 @@ namespace dd
       {
         throw;
       }
+    this->_stats.transform_end();
 
     // load existing model as needed
     if (!_learner)
@@ -503,6 +506,7 @@ namespace dd
     // results
     // float loss = 0.0; // XXX: how to acquire loss ?
     int batch_size = preds.Size();
+    this->_stats.inc_inference_count(batch_size);
     int nclasses = _nclasses;
     if (_objective == "multi:softprob")
       batch_size /= nclasses;

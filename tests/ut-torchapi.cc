@@ -413,6 +413,21 @@ TEST(torchapi, service_train_csvts_nbeats_gpu)
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["out"][0].GetDouble()
               >= -1.0);
 
+  joutstr = japi.jrender(japi.service_status(sname));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(jd["body"]["service_stats"].HasMember("predict_count"));
+  ASSERT_TRUE(jd["body"]["service_stats"]["inference_count"].GetInt() == 20);
+  ASSERT_TRUE(jd["body"]["service_stats"]["predict_count"].GetInt() == 1);
+  ASSERT_TRUE(jd["body"]["service_stats"]["predict_failure"].GetInt() == 0);
+  ASSERT_TRUE(jd["body"]["service_stats"]["predict_success"].GetInt() == 1);
+  ASSERT_TRUE(jd["body"]["service_stats"]["avg_batch_size"].GetDouble()
+              == 20.0);
+  ASSERT_TRUE(jd["body"]["service_stats"]["avg_transform_duration"].GetDouble()
+              > 0.0);
+  ASSERT_TRUE(jd["body"]["service_stats"]["avg_predict_duration"].GetDouble()
+              > 0.0);
+
   //  remove service
   jstr = "{\"clear\":\"full\"}";
   joutstr = japi.jrender(japi.service_delete(sname, jstr));
