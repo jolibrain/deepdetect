@@ -1575,8 +1575,6 @@ namespace dd
     out.toJVal(jpred, jout);
     JVal jhead(rapidjson::kObjectType);
     jhead.AddMember("method", "/chain", jpred.GetAllocator());
-    // jhead.AddMember("service",d["service"],jpred.GetAllocator());
-    // if (!has_measure)
     jhead.AddMember("time", jout["time"], jpred.GetAllocator());
     jpred.AddMember("head", jhead, jpred.GetAllocator());
     JVal jbody(rapidjson::kObjectType);

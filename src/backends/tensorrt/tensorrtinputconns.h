@@ -90,6 +90,7 @@ namespace dd
     std::string _meanfname = "mean.binaryproto";
     std::string _correspname = "corresp.txt";
     int _batch_index = 0;
+    int _batch_size = 0;
     int process_batch(const unsigned int batch_size);
     std::unordered_map<std::string, std::pair<int, int>>
         _imgs_size; /**< image sizes, used in detection. */

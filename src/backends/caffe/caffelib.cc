@@ -2810,6 +2810,7 @@ namespace dd
     cad.add("has_mean_file", has_mean_file);
     if (ad_output.has("measure"))
       {
+        // FIXME(sileht): Should we create service_stats here ?
         try
           {
             inputc.transform(cad);
@@ -2842,15 +2843,13 @@ namespace dd
     if (ad.has("chain") && ad.get("chain").get<bool>())
       cad.add("chain", true);
 
-    try
-      {
-        inputc.transform(cad);
-      }
-    catch (std::exception &e)
-      {
-        throw;
-      }
+    this->_stats.transform_start();
+    inputc.transform(cad);
+    this->_stats.transform_end();
+
     int batch_size = inputc.test_batch_size();
+    this->_stats.inc_inference_count(batch_size);
+
     if (ad_mllib.has("net"))
       {
         APIData ad_net = ad_mllib.getobj("net");
