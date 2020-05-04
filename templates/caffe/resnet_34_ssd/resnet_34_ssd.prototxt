@@ -137,7 +137,6 @@ layer {
       max_sample: 1
       max_trials: 50
     }
-    label_map_file: "data/VOC0712/labelmap_voc.prototxt"
   }
 }
 layer {
