@@ -594,7 +594,7 @@ namespace dd
         inputc._dataset.reset();
         TorchBatch batch = inputc._dataset.get_cached();
 
-	int bach_size = 0;
+	int batch_size = 0;
         std::vector<c10::IValue> in_vals;
         for (Tensor tensor : batch.data)
 	  {
