@@ -425,7 +425,7 @@ namespace dd
       throw;
     }
 
-    this->stat_add_inference_count(inputc._batch_size);
+    this->stat_inference_count(inputc._batch_size);
     
     int idoffset = 0;
     std::vector<APIData> vrad;
