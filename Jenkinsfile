@@ -14,7 +14,7 @@ make -j24'''
     stage('Tests GPU') {
       steps {
         sh '''cd build
-ctest -VV -R "torch" '''
+ctest -VV -E "http" '''
       }
     }
 
