@@ -10,21 +10,25 @@ cmake .. -DBUILD_TESTS=ON -DUSE_CUDNN=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_
 make -j24'''
       }
     }
+
     stage('Tests GPU') {
       steps {
         sh '''cd build
-ctest -VV -E "http" '''
+ctest -V -E "http" '''
       }
     }
+
     stage('cleanup') {
       steps {
         cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
       }
     }
+
     stage('Notify Chat') {
       steps {
         rocketSend(avatar: 'jenkins', channel: 'build', message: 'Build Completed')
       }
     }
+
   }
 }
