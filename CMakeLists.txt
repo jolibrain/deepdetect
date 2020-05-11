@@ -358,7 +358,6 @@ if (USE_CAFFE2)
     GIT_SUBMODULES ${PYTORCH_SUBMODULES}
     UPDATE_DISCONNECTED 1
     GIT_TAG ${PYTORCH_SUPPORTED_COMMIT}
-    GIT_CONFIG advice.detachedHead=false
     PATCH_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || echo cp modules/detectron/*_op.* caffe2/operators | bash && cp ${CAFFE2_OPS} caffe2/operators && git am ${PYTORCH_PATCHES}
     CONFIGURE_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || cmake ../pytorch ${PYTORCH_FLAGS}
     BUILD_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || make -j${N}
@@ -384,7 +383,6 @@ if (USE_CAFFE2)
     GIT_REPOSITORY https://github.com/facebookresearch/Detectron
     UPDATE_DISCONNECTED 1
     GIT_TAG ${DETECTRON_SUPPORTED_COMMIT}
-    GIT_CONFIG advice.detachedHead=false
     PATCH_COMMAND test -f ${DETECTRON_COMPLETE} && echo Skipping || git am ${DETECTRON_PATCHES}
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
@@ -437,7 +435,7 @@ if (USE_TF)
       tensorflow_cc
       PREFIX tensorflow_cc
       INSTALL_DIR ${CMAKE_BINARY_DIR}
-      DOWNLOAD_COMMAND git clone https://github.com/FloopCZ/tensorflow_cc.git
+      DOWNLOAD_COMMAND git clone --branch v1.15.0 https://github.com/FloopCZ/tensorflow_cc.git
       CONFIGURE_COMMAND cd tensorflow_cc && mkdir -p build && cd build && cmake -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED=ON .. && make && ln -s ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/tensorflow/tensorflow/contrib/makefile/gen/protobuf ${CMAKE_BINARY_DIR}/protobuf
       BUILD_COMMAND ""
       INSTALL_COMMAND ""
@@ -449,7 +447,7 @@ if (USE_TF)
       tensorflow_cc
       PREFIX tensorflow_cc
       INSTALL_DIR ${CMAKE_BINARY_DIR}
-      DOWNLOAD_COMMAND git clone https://github.com/FloopCZ/tensorflow_cc.git
+      DOWNLOAD_COMMAND git clone --branch v1.15.0 https://github.com/FloopCZ/tensorflow_cc.git
       CONFIGURE_COMMAND cd tensorflow_cc && mkdir -p build && cd build && cmake -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED=ON -DALLOW_CUDA=OFF .. && make && ln -s ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/tensorflow/tensorflow/contrib/makefile/gen/protobuf ${CMAKE_BINARY_DIR}/protobuf
       BUILD_COMMAND ""
       INSTALL_COMMAND ""

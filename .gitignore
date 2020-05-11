@@ -1,4 +1,8 @@
-build/
+build/*
+!build/README.md
+!build/build.sh
+!build/get_models.sh
+!build/get_libs.sh
 model/
 models/
 clients/
