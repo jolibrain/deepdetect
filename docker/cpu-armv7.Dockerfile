@@ -50,17 +50,24 @@ RUN cmake . && \
     make install && \
     cp /usr/local/lib/libcurlpp.* /usr/lib/
 
-# Build Deepdetect
+# Copy Deepdetect sources files
 ADD ./ /opt/deepdetect
 WORKDIR /opt/deepdetect/
-RUN ./build.sh
-# Copy libs to /tmp/libs for next build stage
-RUN ./get_libs.sh
 
+# Build Deepdetect
+RUN mkdir build && \
+    cd build && \
+    cp -a ../build.sh . && \
+    ./build.sh
+
+# Copy libs to /tmp/libs for next build stage
+RUN ./docker/get_libs.sh
+
+# Build final Docker image
 FROM armv7/armhf-ubuntu:16.04
 
 # Copy Deepdetect binaries from previous step
-COPY --from=build /opt/deepdetect/main /opt/deepdetect/main
+COPY --from=build /opt/deepdetect/build/main /opt/deepdetect/build/main
 
 LABEL maintainer="emmanuel.benazera@jolibrain.com"
 LABEL description="DeepDetect deep learning server & API / CPU NCNN-only RPi3 version"
@@ -99,7 +106,7 @@ RUN mkdir /opt/models
 # Copy missings libs from build step
 COPY --from=build /tmp/lib/* /usr/lib/
 
-WORKDIR /opt/deepdetect/main
+WORKDIR /opt/deepdetect/build/main
 VOLUME ["/data"]
 
 # Set entrypoint

@@ -114,7 +114,7 @@ where `path/to/volume` is the path to your local volume that you'd like to attac
 
 ## Build Deepdetect Docker images
 
-Dockerfiles  are stored in the "docker" folder, but **you must launch build from root directory**.
+Dockerfiles are stored in the "docker" folder, but **you must launch build from root directory**.
 
 We choose to prefix Dockerfiles with target architecture :
 * cpu-armv7.Dockerfile
@@ -123,7 +123,7 @@ We choose to prefix Dockerfiles with target architecture :
 
 ### Build script 
 
-Build script is avaliable in docker path : build/build.sh
+Build script is available in docker path : build/build.sh
 
 Docker build-arg : DEEPDETECT_BUILD
 
@@ -145,6 +145,16 @@ Expected values :
   * volta-faiss
   * faiss
   * default
+
+#### Prepare build environment
+
+Create build directory and put build script inside :
+
+```bash
+mkdir build
+cd build
+cp -a ../build.sh .
+```
 
 #### Launch build with environments variables
 

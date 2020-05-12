@@ -11,7 +11,6 @@ RUN apt update && \
 # Install build dependencies
 RUN apt-get update -y && \
     apt-get install -y git \
-    cmake \
     automake \
     build-essential \
     openjdk-8-jdk \
@@ -59,6 +58,16 @@ RUN apt-get update -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+# Need cmake > 3.10 : https://github.com/jolibrain/ncnn/blob/master/CMakeLists.txt#L14
+RUN mkdir /tmp/cmake && cd /tmp/cmake && \
+    apt remove cmake && \
+    wget https://cmake.org/files/v3.10/cmake-3.10.3.tar.gz && \
+    tar xf cmake-3.10.3.tar.gz && \
+    cd cmake-3.10.3 && \
+    ./configure && \
+    make install && \
+    rm -rf /tmp/cmake
+
 WORKDIR /opt
 RUN git clone https://github.com/jpbarrette/curlpp.git
 WORKDIR /opt/curlpp
@@ -66,21 +75,28 @@ RUN cmake . && \
     make install && \
     cp /usr/local/lib/libcurlpp.* /usr/lib/
 
-# Build Deepdetect
+# Copy Deepdetect sources files
 ADD ./ /opt/deepdetect
-ADD ./docker/*.sh /opt/deepdetect
 WORKDIR /opt/deepdetect/
-RUN ./build.sh
-# Copy libs to /tmp/libs for next build stage
-RUN ./get_libs.sh
 
+# Build Deepdetect
+RUN mkdir build && \
+    cd build && \
+    cp -a ../build.sh . && \
+    ./build.sh
+
+# Copy libs to /tmp/libs for next build stage
+RUN ./docker/get_libs.sh
+
+# Build final Docker image
 FROM ubuntu:16.04
 
 # Download default Deepdetect models
 ARG DEEPDETECT_DEFAULT_MODELS=true
 
 # Copy Deepdetect binaries from previous step
-COPY --from=build /opt/deepdetect/main /opt/deepdetect/main
+COPY --from=build /opt/deepdetect/build/main /opt/deepdetect/build/main
+COPY --from=build /opt/deepdetect/get_models.sh /opt/deepdetect/get_models.sh
 
 LABEL maintainer="emmanuel.benazera@jolibrain.com"
 LABEL description="DeepDetect deep learning server & API / CPU version"
@@ -126,7 +142,7 @@ COPY --chown=dd --from=build /opt/deepdetect/templates/caffe/googlenet/*prototxt
 COPY --chown=dd --from=build /opt/deepdetect/templates/caffe/resnet_50/*prototxt /opt/models/resnet_50/
 COPY --from=build /tmp/lib/* /usr/lib/
 
-WORKDIR /opt/deepdetect/main
+WORKDIR /opt/deepdetect/build/main
 VOLUME ["/data"]
 
 # Set entrypoint
