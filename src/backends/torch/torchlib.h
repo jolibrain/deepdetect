@@ -1,7 +1,8 @@
 /**
  * DeepDetect
- * Copyright (c) 2019 Jolibrain
- * Author: Louis Jean <ljean@etud.insa-toulouse.fr>
+ * Copyright (c) 2019-2020 Jolibrain
+ * Authors: Louis Jean <ljean@etud.insa-toulouse.fr>
+ *          Guillaume Infantes <guillaume.infantes@jolibrain.com>
  *
  * This file is part of deepdetect.
  *
@@ -28,9 +29,11 @@
 
 #include "apidata.h"
 #include "mllibstrategy.h"
+#include "caffe.pb.h"
 
 #include "torchmodel.h"
 #include "torchinputconns.h"
+#include "torchgraphbackend.h"
 
 namespace dd
 {
@@ -59,6 +62,7 @@ namespace dd
         void free();
     public:
         std::shared_ptr<torch::jit::script::Module> _traced;
+        std::shared_ptr<TorchGraphBackend> _native;	/**< native module : torchgraphbackend has same interface as torch::module */
         torch::nn::Linear _classif = nullptr;
 
         torch::Device _device;
@@ -90,13 +94,17 @@ namespace dd
                  TorchDataset &dataset,
                  int batch_size, APIData &out);
 
+
     public:
-        int _nclasses = 0;
+        unsigned int _nclasses = 0;
         std::string _template;
         bool _finetuning = false;
         torch::Device _device = torch::Device("cpu");
         bool _masked_lm = false;
-        bool _seq_training = false; 
+        bool _seq_training = false;
+        bool _classification = false;
+		bool _timeserie = false;
+	    std::string _loss = "";
 
         // models
         TorchModule _module;
