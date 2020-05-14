@@ -1,7 +1,8 @@
 /**
  * DeepDetect
  * Copyright (c) 2019 Jolibrain
- * Author: Louis Jean <ljean@etud.insa-toulouse.fr>
+ * Authors: Louis Jean <ljean@etud.insa-toulouse.fr>
+ *          Guillaume Infantes <guillaume.infantes@jolibrain.com>
  *
  * This file is part of deepdetect.
  *
@@ -31,6 +32,7 @@
 #include "txtinputfileconn.h"
 #include "backends/torch/db.hpp"
 #include "backends/torch/db_lmdb.hpp"
+#include "csvtsinputfileconn.h"
 
 #define TORCH_TEXT_TRANSATION_SIZE 100
 #define TORCH_IMG_TRANSACTION_SIZE 10
@@ -61,18 +63,17 @@ namespace dd
         std::vector<TorchBatch> _batches;
         std::string _dbFullName;
 
-
         TorchDataset() {}
 
 
 
       TorchDataset(const TorchDataset &d)
-        : _shuffle(d._shuffle), _seed(d._seed), _indices(d._indices), _batches(d._batches),
-          _current_index(d._current_index),  _dbFullName(d._dbFullName),
-          _backend(d._backend), _db(d._db), _dbData(d._dbData), _txn(d._txn), _logger(d._logger),
-          _batches_per_transaction(d._batches_per_transaction)
-      {
-      }
+        : _shuffle(d._shuffle), _seed(d._seed), _current_index(d._current_index),
+		  _backend(d._backend), _db(d._db),
+		  _batches_per_transaction(d._batches_per_transaction),
+		  _txn(d._txn), _logger(d._logger),
+		  _dbData(d._dbData), _indices(d._indices), _batches(d._batches),
+		  _dbFullName(d._dbFullName)   {}
 
         void set_transation_size(int32_t tsize) {_batches_per_transaction = tsize;}
 
@@ -83,7 +84,7 @@ namespace dd
 
         void write_tensors_to_db(std::vector<at::Tensor> data, std::vector<at::Tensor> target);
 
-        void reset(db::Mode dbmode = db::READ);
+        void reset(bool shuffle = true, db::Mode dbmode = db::READ);
 
         void set_shuffle(bool shuf) {_shuffle = shuf;}
 
@@ -148,17 +149,15 @@ namespace dd
                _dataset(i._dataset),
                _test_dataset(i._test_dataset),
                _input_format(i._input_format),
-          _db(i._db), _tilogger(i._tilogger) {}
-
+		  _ntargets(i._ntargets),
+          _tilogger(i._tilogger), _db(i._db)  {}
 
         ~TorchInputInterface() {}
 
       void init(const APIData &ad, std::string model_repo, std::shared_ptr<spdlog::logger> logger)
         {
           if (ad.has("db") && ad.get("db").get<bool>())
-            {
-              _db = true;
-            }
+			_db = true;
           if (ad.has("shuffle"))
             _dataset.set_shuffle(ad.get("shuffle").get<bool>());
           _dataset.set_dbParams(_db, _backend, model_repo + "/train");
@@ -198,6 +197,9 @@ namespace dd
         TorchDataset _dataset;
         TorchDataset _test_dataset;
         std::string _input_format;
+
+		int _ntargets = -1;
+
         std::vector<int64_t> _lengths;/**< length of each sentence with txt connector. */
         std::shared_ptr<spdlog::logger> _tilogger;
 
@@ -338,7 +340,7 @@ namespace dd
     public:
         /** width of the input tensor */
         int _width = 512;
-        int _height = 0;
+		int _height = 0;
         std::mt19937 _rng;
         /// token id to vocabulary word
         std::map<int, std::string> _inv_vocab;
@@ -359,6 +361,93 @@ namespace dd
             }
         }
     };
+
+
+	class CSVTSTorchInputFileConn : public CSVTSInputFileConn, public TorchInputInterface
+	{
+	public:
+
+		CSVTSTorchInputFileConn() :	CSVTSInputFileConn() {}
+
+		CSVTSTorchInputFileConn(const CSVTSTorchInputFileConn&i) :
+			CSVTSInputFileConn(i), TorchInputInterface(i), _offset(i._offset),
+			_channels(i._channels), _timesteps(i._timesteps), _datadim(i._datadim) {}
+		~CSVTSTorchInputFileConn() {}
+
+		void transform(const APIData &ad); // calls CSVTSInputfileconn::transform and db stuff
+		void set_datadim(bool is_test_data = false);
+
+	  void fill_dataset(TorchDataset &dataset, bool use_csvtsdata_test);
+		void init(const APIData &ad)
+		{
+		  TorchInputInterface::init(ad, _model_repo, _logger);
+		  fillup_parameters(ad);
+		}
+
+		void fillup_parameters(const APIData &ad_input)
+		{
+		  CSVTSInputFileConn::fillup_parameters(ad_input);
+		  if (_ntargets == -1 && ad_input.has("label"))
+			{
+			  try
+				{
+				  _ntargets = ad_input.get("label").get<std::vector<std::string>>().size();
+				}
+			  catch(std::exception &e)
+				{
+				  try
+					{
+					  std::string l = ad_input.get("label").get<std::string>();
+					  _ntargets = 1;
+					}
+				  catch(std::exception &e)
+					{
+					  throw InputConnectorBadParamException("no label given in input parameters, cannot determine output size");
+					}
+				}
+			}
+			_offset = _timesteps;
+			if (ad_input.has("timesteps"))
+				{
+					_timesteps= ad_input.get("timesteps").get<int>();
+					_offset = _timesteps;
+				}
+			if (ad_input.has("offset"))
+				_offset= ad_input.get("offset").get<int>();
+
+		}
+
+
+		int channels() const
+		{
+			return _timesteps;
+		}
+
+		int height() const
+		{
+			return _datadim;
+		}
+
+		int width() const
+		{
+			return 1;
+		}
+
+		int batch_size() const
+		{
+			return 1;
+		}
+
+		int test_batch_size() const
+		{
+			return 1;
+		}
+
+		int _offset = -1;
+		int _channels = 0;
+		int _timesteps = -1;
+		int _datadim = -1;
+	};
 } // namespace dd
 
 #endif // TORCHINPUTCONNS_H

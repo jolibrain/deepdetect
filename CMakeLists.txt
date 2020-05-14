@@ -58,7 +58,7 @@ execute_process(
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
-set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -fopenmp -O2 -fPIC -std=c++14 -DUSE_OPENCV -DUSE_LMDB")
+set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter -fopenmp -O2 -fPIC -std=c++14 -DUSE_OPENCV -DUSE_LMDB")
 
 if (USE_COMMAND_LINE)
   if (NOT USE_CAFFE)
@@ -754,43 +754,22 @@ if (USE_TORCH)
   set(TORCH_LIB_DEPS ${TORCH_LOCATION}/lib/libtorch.so ${TORCH_LOCATION}/lib/libtorch_cpu.so ${TORCH_LOCATION}/lib/libc10.so -llmdb -lprotobuf)
 
   if (NOT USE_CPU_ONLY AND CUDA_FOUND)
-    list(APPEND TORCH_LIB_DEPS ${TORCH_LOCATION}/lib/libc10_cuda.so ${TORCH_LOCATION}/lib/libtorch_cuda.so  iomp5)
+    list(APPEND TORCH_LIB_DEPS ${TORCH_LOCATION}/lib/libc10_cuda.so ${TORCH_LOCATION}/lib/libtorch_cuda.so)
   else()
     list(APPEND TORCH_LIB_DEPS iomp5)
   endif()
 
-  set(TORCH_INC_DIR ${TORCH_LOCATION}/include/ ${TORCH_LOCATION}/include/torch/csrc/api/include/ ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/include/torch/csrc/api/include/)
+  set(TORCH_INC_DIR ${TORCH_LOCATION}/include/ ${TORCH_LOCATION}/include/torch/csrc/api/include/ ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/include/torch/csrc/api/include ${TORCH_LOCATION}/.. ${CMAKE_BINARY_DIR}/src)
   set(TORCH_LIB_DIR ${TORCH_LOCATION}/lib/)
 
-  if (USE_TENSORRT)
-    add_custom_command(TARGET pytorch POST_BUILD
-      COMMAND LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR}:$ENV{LD_LIBRARY_PATH} ${CMAKE_BINARY_DIR}/pytorch/src/pytorch-build/build/bin/protoc
-      --proto_path=${CMAKE_SOURCE_DIR}/src/backends/tensorrt
-      --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_SOURCE_DIR}/src/backends/tensorrt/caffe.proto
+  if (NOT EXISTS ${CMAKE_BINARY_DIR}/src/caffe.pb.h)
+	add_custom_command(TARGET pytorch POST_BUILD
+      COMMAND LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR}:$ENV{LD_LIBRARY_PATH} ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/bin/protoc
+      --proto_path=${CMAKE_SOURCE_DIR}/src
+      --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_SOURCE_DIR}/src/caffe.proto
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
       COMMENT "generating caffe.pb.*")
   endif()
-
-
-  if (USE_TENSORRT)
-    add_custom_command(TARGET pytorch POST_BUILD
-      COMMAND ${CMAKE_BINARY_DIR}/pytorch/src/pytorch-build/build/bin/protoc
-      --proto_path=${CMAKE_SOURCE_DIR}/src/backends/tensorrt
-      --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_SOURCE_DIR}/src/backends/tensorrt/caffe.proto
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-      COMMENT "generating caffe.pb.*")
-  endif()
-
-  if (USE_NCNN AND NOT USE_TENSORRT)
-    add_custom_command(TARGET pytorch POST_BUILD
-      COMMAND ${CMAKE_BINARY_DIR}/pytorch/src/pytorch-build/build/bin/protoc
-      --proto_path=${CMAKE_SOURCE_DIR}/src/backends/ncnn
-      --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_SOURCE_DIR}/src/backends/ncnn/caffe.proto
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-      COMMENT "generating caffe.pb.*")
-  endif()
-
-
 
 endif()
 

@@ -33,6 +33,7 @@
 #endif // USE_HDF5
 #include <memory>
 #include "utf8.h"
+#include "caffe/util/db.hpp"
 
 using namespace caffe;
 
@@ -1070,10 +1071,10 @@ namespace dd
 	// open db and create cursor
 	if (!_test_db)
 	  {
-	    _test_db = std::unique_ptr<db::DB>(db::GetDB("lmdb"));
-	    _test_db->Open(_test_dbfullname.c_str(),db::READ);
+	    _test_db = std::unique_ptr<caffe::db::DB>(caffe::db::GetDB("lmdb"));
+	    _test_db->Open(_test_dbfullname.c_str(),caffe::db::READ);
 	  }
-	_test_db_cursor = std::unique_ptr<db::Cursor>(_test_db->NewCursor());
+	_test_db_cursor = std::unique_ptr<caffe::db::Cursor>(_test_db->NewCursor());
 	
 	// open mean file if any
 	std::string meanfullname = _model_repo + "/" + _meanfname;
@@ -1354,12 +1355,12 @@ namespace dd
 						  const std::string &backend)
   {
     // Create new DB
-    _tdb = std::unique_ptr<db::DB>(db::GetDB(backend));
-    _tdb->Open(dbfullname.c_str(), db::NEW);
-    _txn = std::unique_ptr<db::Transaction>(_tdb->NewTransaction());
-    _ttdb = std::unique_ptr<db::DB>(db::GetDB(backend));
-    _ttdb->Open(testdbfullname.c_str(), db::NEW);
-    _ttxn = std::unique_ptr<db::Transaction>(_ttdb->NewTransaction());
+    _tdb = std::unique_ptr<caffe::db::DB>(caffe::db::GetDB(backend));
+    _tdb->Open(dbfullname.c_str(), caffe::db::NEW);
+    _txn = std::unique_ptr<caffe::db::Transaction>(_tdb->NewTransaction());
+    _ttdb = std::unique_ptr<caffe::db::DB>(caffe::db::GetDB(backend));
+    _ttdb->Open(testdbfullname.c_str(), caffe::db::NEW);
+    _ttxn = std::unique_ptr<caffe::db::Transaction>(_ttdb->NewTransaction());
 
     _csv_fname = _uris.at(0); // training only from file
     if (!fileops::file_exists(_csv_fname))
@@ -1394,10 +1395,10 @@ namespace dd
 	// open db and create cursor
 	if (!_test_db)
 	  {
-	    _test_db = std::unique_ptr<db::DB>(db::GetDB("lmdb"));
-	    _test_db->Open(_test_dbfullname.c_str(),db::READ);
+	    _test_db = std::unique_ptr<caffe::db::DB>(caffe::db::GetDB("lmdb"));
+	    _test_db->Open(_test_dbfullname.c_str(),caffe::db::READ);
 	  }
-	_test_db_cursor = std::unique_ptr<db::Cursor>(_test_db->NewCursor());
+	_test_db_cursor = std::unique_ptr<caffe::db::Cursor>(_test_db->NewCursor());
       }
     std::vector<caffe::Datum> dv;
     int i =0;
@@ -1581,6 +1582,7 @@ namespace dd
 
   void CSVTSCaffeInputFileConn::set_datadim(bool is_test_data)
   {
+	//+1 because of mandatory continuation indicator
     if (_datadim != -1)
       return;
     if (is_test_data)
@@ -1696,10 +1698,10 @@ namespace dd
         // open db and create cursor
         if (!_test_db)
           {
-            _test_db = std::unique_ptr<db::DB>(db::GetDB("lmdb"));
-            _test_db->Open(_test_dbfullname.c_str(),db::READ);
+            _test_db = std::unique_ptr<caffe::db::DB>(caffe::db::GetDB("lmdb"));
+            _test_db->Open(_test_dbfullname.c_str(),caffe::db::READ);
           }
-        _test_db_cursor = std::unique_ptr<db::Cursor>(_test_db->NewCursor());
+        _test_db_cursor = std::unique_ptr<caffe::db::Cursor>(_test_db->NewCursor());
       }
     std::vector<caffe::Datum> dv;
     int i =0;
@@ -1824,12 +1826,12 @@ namespace dd
                                                   const std::string &backend)
   {
     // Create new DB
-    _tdb = std::unique_ptr<db::DB>(db::GetDB(backend));
-    _tdb->Open(dbfullname.c_str(), db::NEW);
-    _txn = std::unique_ptr<db::Transaction>(_tdb->NewTransaction());
-    _ttdb = std::unique_ptr<db::DB>(db::GetDB(backend));
-    _ttdb->Open(testdbfullname.c_str(), db::NEW);
-    _ttxn = std::unique_ptr<db::Transaction>(_ttdb->NewTransaction());
+    _tdb = std::unique_ptr<caffe::db::DB>(caffe::db::GetDB(backend));
+    _tdb->Open(dbfullname.c_str(), caffe::db::NEW);
+    _txn = std::unique_ptr<caffe::db::Transaction>(_tdb->NewTransaction());
+    _ttdb = std::unique_ptr<caffe::db::DB>(caffe::db::GetDB(backend));
+    _ttdb->Open(testdbfullname.c_str(), caffe::db::NEW);
+    _ttxn = std::unique_ptr<caffe::db::Transaction>(_ttdb->NewTransaction());
     _csv_fname = _uris.at(0); // training only from file
 
     if (!fileops::dir_exists(_csv_fname))
@@ -2094,10 +2096,10 @@ namespace dd
 	// open db and create cursor
 	if (!_test_db)
 	  {
-	    _test_db = std::unique_ptr<db::DB>(db::GetDB("lmdb"));
-	    _test_db->Open(_test_dbfullname.c_str(),db::READ);
+	    _test_db = std::unique_ptr<caffe::db::DB>(caffe::db::GetDB("lmdb"));
+	    _test_db->Open(_test_dbfullname.c_str(),caffe::db::READ);
 	  }
-	_test_db_cursor = std::unique_ptr<db::Cursor>(_test_db->NewCursor());
+	_test_db_cursor = std::unique_ptr<caffe::db::Cursor>(_test_db->NewCursor());
       }
     int i =0;
     std::vector<caffe::Datum> dv;
@@ -2126,10 +2128,10 @@ namespace dd
 	// open db and create cursor
 	if (!_test_db)
 	  {
-	    _test_db = std::unique_ptr<db::DB>(db::GetDB("lmdb"));
-	    _test_db->Open(_test_dbfullname.c_str(),db::READ);
+	    _test_db = std::unique_ptr<caffe::db::DB>(caffe::db::GetDB("lmdb"));
+	    _test_db->Open(_test_dbfullname.c_str(),caffe::db::READ);
 	  }
-	_test_db_cursor = std::unique_ptr<db::Cursor>(_test_db->NewCursor());
+	_test_db_cursor = std::unique_ptr<caffe::db::Cursor>(_test_db->NewCursor());
       }
     int i =0;
     std::vector<caffe::SparseDatum> dv;
@@ -2278,12 +2280,12 @@ namespace dd
     _logger->info("SVM line to db / dbfullname={}",dbfullname);
 
     // Create new DB
-    _tdb = std::unique_ptr<db::DB>(db::GetDB(backend));
-    _tdb->Open(dbfullname.c_str(), db::NEW);
-    _txn = std::unique_ptr<db::Transaction>(_tdb->NewTransaction());
-    _ttdb = std::unique_ptr<db::DB>(db::GetDB(backend));
-    _ttdb->Open(testdbfullname.c_str(), db::NEW);
-    _ttxn = std::unique_ptr<db::Transaction>(_ttdb->NewTransaction());
+    _tdb = std::unique_ptr<caffe::db::DB>(caffe::db::GetDB(backend));
+    _tdb->Open(dbfullname.c_str(), caffe::db::NEW);
+    _txn = std::unique_ptr<caffe::db::Transaction>(_tdb->NewTransaction());
+    _ttdb = std::unique_ptr<caffe::db::DB>(caffe::db::GetDB(backend));
+    _ttdb->Open(testdbfullname.c_str(), caffe::db::NEW);
+    _ttxn = std::unique_ptr<caffe::db::Transaction>(_ttdb->NewTransaction());
     _logger->info("dbs {} / {} opened",dbfullname,testdbfullname);
     
     _svm_fname = _uris.at(0); // training only from file
@@ -2314,10 +2316,10 @@ namespace dd
 	// open db and create cursor
 	if (!_test_db)
 	  {
-	    _test_db = std::unique_ptr<db::DB>(db::GetDB("lmdb"));
-	    _test_db->Open(_test_dbfullname.c_str(),db::READ);
+	    _test_db = std::unique_ptr<caffe::db::DB>(caffe::db::GetDB("lmdb"));
+	    _test_db->Open(_test_dbfullname.c_str(),caffe::db::READ);
 	  }
-	_test_db_cursor = std::unique_ptr<db::Cursor>(_test_db->NewCursor());
+	_test_db_cursor = std::unique_ptr<caffe::db::Cursor>(_test_db->NewCursor());
       }
     std::vector<caffe::SparseDatum> dv;
     int i =0;

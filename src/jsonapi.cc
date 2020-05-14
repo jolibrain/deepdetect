@@ -571,6 +571,8 @@ namespace dd
         add_service(sname, std::move(MLService<TorchLib,ImgTorchInputFileConn,SupervisedOutput,TorchModel>(sname,torchmodel,description)), ad);
       else if (input  == "txt")
         add_service(sname, std::move(MLService<TorchLib,TxtTorchInputFileConn,SupervisedOutput,TorchModel>(sname,torchmodel,description)), ad);
+	  else if (input == "csvts")
+		add_service(sname, std::move(MLService<TorchLib,CSVTSTorchInputFileConn,SupervisedOutput,TorchModel>(sname,torchmodel,description)), ad);
       else return dd_input_connector_not_found_1004();
       if (JsonAPI::store_json_blob(torchmodel._repo, jstr))
         _logger->error("couldn't write {} file in model repository {}", JsonAPI::_json_blob_fname, torchmodel._repo);

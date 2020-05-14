@@ -135,7 +135,7 @@ TEST(torchapi, service_train_txt_lm)
     jd.Parse(joutstr.c_str());
     ASSERT_TRUE(!jd.HasParseError());
     ASSERT_EQ(201, jd["status"]["code"]);
-    ASSERT_TRUE(jd["body"]["measure"]["iteration"] == 2) << "iterations";
+    ASSERT_TRUE(jd["body"]["measure"]["iteration"] == 3) << "iterations";
     // This assertion is non-deterministic
     // ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() > 1.0) << "train_loss";
     ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() <= 1) << "accuracy";
@@ -171,7 +171,7 @@ TEST(torchapi, service_train_txt_classification)
     jd.Parse(joutstr.c_str());
     ASSERT_TRUE(!jd.HasParseError());
     ASSERT_EQ(201, jd["status"]["code"]);
-    ASSERT_TRUE(abs(jd["body"]["measure"]["iteration"].GetDouble() - 2) < 0.00001) << "iterations";
+    ASSERT_TRUE(abs(jd["body"]["measure"]["iteration"].GetDouble() - 3) < 0.00001) << "iterations";
     // This assertion is non-deterministic
     // ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() > 1.0) << "train_loss";
     ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() <= 1) << "accuracy";

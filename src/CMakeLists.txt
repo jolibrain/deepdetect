@@ -79,16 +79,42 @@ if (USE_NCNN)
 endif()
 if (USE_TORCH)
   list(APPEND ddetect_SOURCES
+	generators/net_caffe.cc
+	generators/net_caffe_recurrent.cc
     backends/torch/torchlib.cc
     backends/torch/torchmodel.cc
     backends/torch/torchinputconns.cc
     backends/torch/db.cpp
     backends/torch/db_lmdb.cpp
-  )
+	basegraph.cc
+	caffegraphinput.cc
+	backends/torch/torchgraphbackend.cc
+	graph.cc
+	)
+  if (NOT EXISTS ${CMAKE_SOURCE_DIR}/src/caffe.proto)
+	file(DOWNLOAD https://raw.githubusercontent.com/jolibrain/caffe/master/src/caffe/proto/caffe.proto ${CMAKE_SOURCE_DIR}/src/caffe.proto)
+	execute_process(COMMAND LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR}:$ENV{LD_LIBRARY_PATH} ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/bin/protoc
+      --proto_path=${CMAKE_SOURCE_DIR}/src
+      --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_SOURCE_DIR}/src/caffe.proto
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+      )
+  endif()
+	set_source_files_properties(
+      ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
+      ${CMAKE_BINARY_DIR}/src/caffe.pb.h
+      PROPERTIES GENERATED TRUE)
+  if (NOT USE_CAFFE)
+    list(APPEND ddetect_SOURCES
+      ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
+      )
+  endif()
+
 endif()
+
 if (USE_TENSORRT)
-  file(DOWNLOAD https://raw.githubusercontent.com/jolibrain/caffe/master/src/caffe/proto/caffe.proto ${CMAKE_SOURCE_DIR}/src/backends/tensorrt/caffe.proto)
-  if (NOT USE_CAFFE2 AND NOT USE_TF)
+
+  if (NOT USE_CAFFE2 AND NOT USE_TF AND NOT USE_TORCH)
+	file(DOWNLOAD https://raw.githubusercontent.com/jolibrain/caffe/master/src/caffe/proto/caffe.proto ${CMAKE_SOURCE_DIR}/src/backends/tensorrt/caffe.proto)
     execute_process(COMMAND protoc --proto_path=${CMAKE_SOURCE_DIR}/src/backends/tensorrt --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_SOURCE_DIR}/src/backends/tensorrt/caffe.proto)
   endif()
 
