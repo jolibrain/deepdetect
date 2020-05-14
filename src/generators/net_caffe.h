@@ -23,16 +23,11 @@
 #define NET_CAFFE_H
 
 #include "net_generator.h"
-#include "caffe/caffe.hpp"
+#include "caffe.pb.h"
 #include <spdlog/spdlog.h>
 
 namespace dd
 {
-
-  using caffe::Caffe;
-  using caffe::Net;
-  using caffe::Blob;
-  using caffe::Datum;
 
   class CaffeCommon
   {

@@ -270,9 +270,21 @@ if (USE_TORCH)
     execute_process(COMMAND tar xvf ${TORCH_EXAMPLE_PATH}${BERT_TRAINING_EXAMPLE_TAR} -C ${TORCH_EXAMPLE_PATH})
   endif()
 
+  set(SINUS_EXAMPLE_PATH ${CMAKE_SOURCE_DIR}/examples/all/sinus/)
+  set(SINUS_EXAMPLE_OUT "examples/all/sinus")
+  set(SINUS_EXAMPLE_TRAIN_OUT "examples/all/sinus/train")
+  if (NOT EXISTS ${SINUS_EXAMPLE_TRAIN_OUT})
+    message(STATUS "Generating sinus data for time series tests ")
+    execute_process(COMMAND "mkdir ${SINUS_EXAMPLE_OUT} 2>/dev/null")
+    execute_process(COMMAND cp ${SINUS_EXAMPLE_PATH}/gen.py ${SINUS_EXAMPLE_OUT})
+    execute_process(COMMAND ${PYTHON_EXECUTABLE} ./gen.py WORKING_DIRECTORY ${SINUS_EXAMPLE_OUT})
+  endif()
+
+
   if(USE_JSON_API)
     REGISTER_TEST(ut_torchapi ut-torchapi.cc)
   endif()
+  REGISTER_TEST(ut_graph ut-graph.cc)
 endif()
 
 if (USE_CAFFE2)

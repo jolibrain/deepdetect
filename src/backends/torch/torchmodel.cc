@@ -1,8 +1,8 @@
 /**
  * DeepDetect
- * Copyright (c) 2019 Jolibrain
- * Author: Louis Jean <ljean@etud.insa-toulouse.fr>
- *
+ * Copyright (c) 2019-2020 Jolibrain
+ * Authors: Louis Jean <ljean@etud.insa-toulouse.fr>
+ *           Guillaume Infantes <guillaume.infantes@jolibrain.com>
  * This file is part of deepdetect.
  *
  * deepdetect is free software: you can redistribute it and/or modify
@@ -29,7 +29,10 @@ namespace dd
         const std::string weights = ".ptw";
         const std::string traced = ".pt";
         const std::string corresp = "corresp";
-        const std::string sstate = "solver";
+		//solver. may lead to _solver.prototxt when generated from caffe generator
+		//we save solver states as solver-##.pt where ## is iteration number
+        const std::string sstate = "solver-";
+        const std::string proto = "proto";
 
         std::unordered_set<std::string> files;
         int err = fileops::list_directory(_repo, true, false, false, files);
@@ -39,8 +42,8 @@ namespace dd
             return 1;
         }
 
-        std::string tracedf,weightsf,correspf,sstatef;
-        int traced_t = -1, weights_t = -1, corresp_t = -1, sstate_t = -1;
+        std::string tracedf,weightsf,correspf,sstatef,protof;
+        int traced_t = -1, weights_t = -1, corresp_t = -1, sstate_t = -1, proto_t = -1;
 
         for (const auto &file : files) {
             long int lm = fileops::file_last_modif(file);
@@ -68,12 +71,19 @@ namespace dd
                     corresp_t = lm;
                 }
             }
+            else if (file.find(proto) != std::string::npos) {
+              if (proto_t < lm) {
+                protof = file;
+                proto_t = lm;
+              }
+            }
         }
 
         _traced = tracedf;
         _weights = weightsf;
         _corresp = correspf;
         _sstate = sstatef;
+        _proto = protof;
 
         return 0;
     }
