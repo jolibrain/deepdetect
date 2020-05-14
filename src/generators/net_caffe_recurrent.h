@@ -90,7 +90,21 @@ namespace dd
     const std::string _affine_str = "A";
 
   };
-  
+
+
+  /**
+   * \brief	create recurrent.prototxt using api data
+   * @param ad input apidata
+   * @param inputc input connector
+   * @param net_param prototxt infos
+   */
+  template<class TInputConnectorStrategy>
+  void configure_recurrent_template(const APIData &ad,
+                                    TInputConnectorStrategy &inputc,
+                                    caffe::NetParameter &net_param,
+                                    std::shared_ptr<spdlog::logger> &logger);
+
+
 }
 
 #endif

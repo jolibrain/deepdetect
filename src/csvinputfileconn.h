@@ -148,7 +148,20 @@ namespace dd
 	  try
 	    {
 	      std::string label = ad_input.get("label").get<std::string>();
-	      _label.push_back(label);
+		  // weird stuff may happen if label is given as single string (not vector) both at service
+		  // creation and at train (mutiple calls may be possible
+		  // due to csvts fillup parameters everywhere it can)
+		  bool already_in_labels = false;
+		  for (std::string l : _label)
+			{
+			  if (l == label)
+				{
+				  already_in_labels = true;
+				  break;
+				}
+			}
+		  if (!already_in_labels)
+			_label.push_back(label);
 	    }
 	  catch(std::exception &e)
 	    {
@@ -161,6 +174,7 @@ namespace dd
 		  throw InputConnectorBadParamException("wrong type for label parameter");
 		}
 	    }
+	  _label_pos.clear();
 	  for (size_t l=0;l<_label.size();l++)
 	    {
 	      _label_pos.push_back(-1);

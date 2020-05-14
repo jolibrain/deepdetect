@@ -1,7 +1,8 @@
 /**
  * DeepDetect
- * Copyright (c) 2019 Jolibrain
- * Author: Louis Jean <ljean@etud.insa-toulouse.fr>
+ * Copyright (c) 2019-2020 Jolibrain
+ * Authors: Louis Jean <ljean@etud.insa-toulouse.fr>
+ *           Guillaume Infantes <guillaume.infantes@jolibrain.com>
  *
  * This file is part of deepdetect.
  *
@@ -51,6 +52,7 @@ namespace dd
         std::string _traced;/**< path of the traced part of the net. */
         std::string _weights;/**< path of the weights of the net. */
         std::string _sstate;/**< current solver state to resume training */
+        std::string _proto;/**< prototxt file generated or read as graph */
     };
 }
 

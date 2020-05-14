@@ -132,7 +132,7 @@ Current features include:
 - [gflags](https://code.google.com/p/gflags/) for command line parsing;
 - OpenCV >= 2.4
 - [cppnetlib](http://cpp-netlib.org/)
-- Boost
+- Boost , Boost::graph
 - [curl](http://curl.haxx.se/)
 - [curlpp](http://www.curlpp.org/)
 - [utfcpp](http://utfcpp.sourceforge.net/)

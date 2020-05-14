@@ -1,7 +1,8 @@
 /**
  * DeepDetect
- * Copyright (c) 2014-2016 Emmanuel Benazera
- * Author: Emmanuel Benazera <beniz@droidnik.fr>
+ * Copyright (c) 2014-2020 Jolibrain
+ * Authors: Emmanuel Benazera <beniz@droidnik.fr>
+ *         Guillaume Infantes <guillaume.infantes@jolibrain.com>
  *
  * This file is part of deepdetect.
  *
@@ -230,7 +231,41 @@ namespace dd
 	add_embed(this->_dnet_params,top,"embed",input_dim,num_output);
       }
   }
-  
+
+	template <>
+	void NetInputCaffe<ImgTorchInputFileConn>::configure_inputs(const APIData &ad_mllib,
+																  const ImgTorchInputFileConn &inputc)
+	{
+	}
+
+	template <>
+	void NetInputCaffe<TxtTorchInputFileConn>::configure_inputs(const APIData &ad_mllib,
+																  const TxtTorchInputFileConn &inputc)
+	{
+	}
+
+	/*- NetInputCaffe for proto/torch backend => only lstm for now  -*/
+	template <>
+	void NetInputCaffe<CSVTSTorchInputFileConn>::configure_inputs(const APIData &ad_mllib,
+													  const CSVTSTorchInputFileConn &inputc)
+	{
+		int width = inputc.width() > 0 ? inputc.width() : 1;
+		int height = inputc.height() > 0 ? inputc.height() : 1;
+		int channels = inputc.channels() > 0 ? inputc.channels() : 1;
+		int batch_size = inputc.batch_size() > 0 ? inputc.batch_size() : 1;
+		std::string top = "data";
+		std::string label = "label";
+		caffe::LayerParameter *lparam = CaffeCommon::add_layer(this->_net_params,"",top,"inputl","",label);
+		lparam->set_type("MemoryData");
+		caffe::MemoryDataParameter *mdparam = lparam->mutable_memory_data_param();
+		mdparam->set_batch_size(batch_size); // dummy value, updated before training
+		mdparam->set_channels(channels);
+		mdparam->set_height(height);
+		mdparam->set_width(width);
+	}
+
+
+
   template <class TInputCaffe>
   void NetInputCaffe<TInputCaffe>::add_embed(caffe::NetParameter *net_param,
 					     const std::string &bottom,
@@ -588,9 +623,18 @@ namespace dd
     
   }*/
 
+#ifdef USE_CAFFE
   template class NetInputCaffe<ImgCaffeInputFileConn>;
   template class NetInputCaffe<CSVCaffeInputFileConn>;
   template class NetInputCaffe<CSVTSCaffeInputFileConn>;
   template class NetInputCaffe<TxtCaffeInputFileConn>;
   template class NetInputCaffe<SVMCaffeInputFileConn>;
+#endif
+#ifdef USE_TORCH
+  template class NetInputCaffe<CSVTSTorchInputFileConn>;
+  template class NetInputCaffe<ImgTorchInputFileConn>;
+  template class NetInputCaffe<TxtTorchInputFileConn>;
+#endif
+
+
 }
