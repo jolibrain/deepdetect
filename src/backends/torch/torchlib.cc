@@ -1,7 +1,8 @@
 /**
  * DeepDetect
- * Copyright (c) 2019 Jolibrain
+ * Copyright (c) 2019-2020 Jolibrain
  * Author: Louis Jean <ljean@etud.insa-toulouse.fr>
+ *        Guillaume Infantes <guillaume.infantes@jolibrain.com>
  *
  * This file is part of deepdetect.
  *
@@ -27,11 +28,46 @@
 #endif
 
 #include "outputconnectorstrategy.h"
+#include "graph.h"
+
+#include <google/protobuf/io/coded_stream.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <google/protobuf/text_format.h>
+
+#include "generators/net_caffe.h"
+#include "generators/net_caffe_recurrent.h"
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 
 using namespace torch;
 
+using google::protobuf::io::FileInputStream;
+using google::protobuf::io::FileOutputStream;
+using google::protobuf::io::ZeroCopyInputStream;
+using google::protobuf::io::CodedInputStream;
+using google::protobuf::io::ZeroCopyOutputStream;
+using google::protobuf::io::CodedOutputStream;
+
+
 namespace dd
 {
+
+  bool TorchWriteProtoToTextFile(const google::protobuf::Message& proto, std::string filename)
+	{
+	  int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+		if (fd == -1)
+			return false;
+		FileOutputStream* output = new FileOutputStream(fd);
+		bool success = google::protobuf::TextFormat::Print(proto, output);
+		delete output;
+		close(fd);
+		return success;
+	}
+
+
     inline void empty_cuda_cache() {
         #if !defined(CPU_ONLY)
         c10::cuda::CUDACachingAllocator::emptyCache();
@@ -82,6 +118,8 @@ namespace dd
 
     c10::IValue TorchModule::forward(std::vector<c10::IValue> source)
     {
+	  if (_native) // native modules take only one tensor as input for now
+		return _native->forward(to_tensor_safe(source[0]));
         if (_traced)
         {
             auto output = _traced->forward(source);
@@ -128,50 +166,67 @@ namespace dd
 
     std::vector<Tensor> TorchModule::parameters()
     {
-        std::vector<Tensor> params;
-        if (_traced)
+	  if (_native)
+		return _native->parameters();
+	  std::vector<Tensor> params;
+	  if (_traced)
             add_parameters(_traced, params);
-        if (_classif)
+	  if (_classif)
         {
-            auto classif_params = _classif->parameters();
-            params.insert(params.end(), classif_params.begin(), classif_params.end());
+		  auto classif_params = _classif->parameters();
+		  params.insert(params.end(), classif_params.begin(), classif_params.end());
         }
-        return params;
+	  return params;
     }
 
     void TorchModule::save_checkpoint(TorchModel &model, const std::string &name)
     {
-        if (_traced)
+	    if (_traced)
             _traced->save(model._repo + "/checkpoint-" + name + ".pt");
         if (_classif)
             torch::save(_classif, model._repo + "/checkpoint-" + name + ".ptw");
+        if (_native)
+            torch::save(_native, model._repo + "/checkpoint-" + name + ".pt");
     }
 
     void TorchModule::load(TorchModel &model)
     {
         if (!model._traced.empty())
-          _traced = std::make_shared<torch::jit::script::Module>
-            (torch::jit::load(model._traced, _device));
+			_traced = std::make_shared<torch::jit::script::Module>
+			  (torch::jit::load(model._traced, _device));
         if (!model._weights.empty() && _classif)
             torch::load(_classif, model._weights);
+        if (!model._proto.empty())
+			{
+				_native = std::make_shared<CaffeToTorch>(model._proto);
+				if (!model._traced.empty())
+					torch::load(_native, model._traced);
+			}
     }
 
-    void TorchModule::eval() {
-        if (_traced)
-            _traced->eval();
-        if (_classif)
-            _classif->eval();
+    void TorchModule::eval()
+	{
+	  if (_native)
+		  _native->eval();
+	  if (_traced)
+		  _traced->eval();
+	  if (_classif)
+		  _classif->eval();
     }
 
-    void TorchModule::train() {
+    void TorchModule::train()
+	{
+        if (_native)
+          _native->train();
         if (_traced)
-            _traced->train();
+          _traced->train();
         if (_classif)
-            _classif->train();
+          _classif->train();
     }
 
     void TorchModule::free()
     {
+	    _native = nullptr;
         _traced = nullptr;
         _classif = nullptr;
     }
@@ -188,7 +243,7 @@ namespace dd
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
     TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::TorchLib(TorchLib &&tl) noexcept
-        : MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TorchModel>(std::move(tl))
+	  : MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TorchModel>(std::move(tl))
     {
         this->_libname = "torch";
         _module = std::move(tl._module);
@@ -200,6 +255,8 @@ namespace dd
         _finetuning = tl._finetuning;
         _best_metrics = tl._best_metrics;
         _best_metric_value = tl._best_metric_value;
+		_timeserie = tl._timeserie;
+		_loss = tl._loss;
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -213,7 +270,6 @@ namespace dd
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
     void TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::init_mllib(const APIData &lib_ad)
     {
-        bool classification = false;
         bool gpu = false;
         int gpuid = -1;
         bool freeze_traced = false;
@@ -228,7 +284,7 @@ namespace dd
             gpuid = lib_ad.get("gpuid").get<int>();
         if (lib_ad.has("nclasses"))
         {
-            classification = true;
+            _classification = true;
             _nclasses = lib_ad.get("nclasses").get<int>();
         }
         if (lib_ad.has("self_supervised"))
@@ -239,18 +295,31 @@ namespace dd
             _finetuning = lib_ad.get("finetuning").get<bool>();
         if (lib_ad.has("freeze_traced"))
             freeze_traced = lib_ad.get("freeze_traced").get<bool>();
+		if (lib_ad.has("loss"))
+			_loss = lib_ad.get("loss").get<std::string>();
+
 
         _device = gpu ? torch::Device(DeviceType::CUDA, gpuid) : torch::Device(DeviceType::CPU);
         _module._device = _device;
 
-        // Create the model
-        if (this->_mlmodel._traced.empty())
-            throw MLLibInternalException("Use of libtorch backend without traced net is not supported yet");
+		if (_template.find("recurrent")!= std::string::npos)
+		 	{
+			  // call caffe net generator before verything else
+				caffe::NetParameter net_param;
+				configure_recurrent_template(lib_ad,this->_inputc,net_param);
+				std::string dest_net = this->_mlmodel._repo + '/' + _template + ".prototxt";
+				TorchWriteProtoToTextFile(net_param,dest_net);
+				this->_mlmodel._proto = dest_net;
+		 	}
+
+		// Create the model
+		if (this->_mlmodel._traced.empty() && this->_mlmodel._proto.empty())
+            throw MLLibInternalException("Use of libtorch backend needs either traced net or protofile");
 
         this->_inputc._input_format = "bert";
         if (_template == "bert")
         {
-            if (classification)
+            if (_classification)
             {
                 _module._classif = nn::Linear(embedding_size, _nclasses);
                 _module._classif->to(_device);
@@ -277,23 +346,46 @@ namespace dd
             this->_inputc._input_format = "gpt2";
             _seq_training = true;
         }
+		else if (_template.find("recurrent")!= std::string::npos)
+		  {
+			_timeserie = true;
+		  }
         else if (!_template.empty())
         {
             throw MLLibBadParamException("template");
         }
 
-        this->_logger->info("Loading ml model from file {}.", this->_mlmodel._traced);
+        if (!this->_mlmodel._traced.empty())
+          this->_logger->info("Loading ml model from file {}.", this->_mlmodel._traced);
+        if (!this->_mlmodel._proto.empty())
+          this->_logger->info("Loading ml model from file {}.", this->_mlmodel._proto);
         if (!this->_mlmodel._weights.empty())
             this->_logger->info("Loading weights from file {}.", this->_mlmodel._weights);
         _module.load(this->_mlmodel);
         _module.freeze_traced(freeze_traced);
 
-        this->_mltype = "classification";
+		if (_classification)
+		  this->_mltype = "classification";
 
-        _best_metrics = {"map", "meaniou", "mlacc", "delta_score_0.1", "bacc", "f1", "net_meas", "acc", "L1_mean_error", "eucll"};
-        _best_metric_value = std::numeric_limits<double>::infinity();
+		_best_metrics = {"map", "meaniou", "mlacc", "delta_score_0.1", "bacc", "f1", "net_meas", "acc", "L1_mean_error", "eucll"};
+		_best_metric_value = std::numeric_limits<double>::infinity();
 
-    }
+			}
+
+	template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+	void TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::configure_recurrent_template(const APIData &ad, TInputConnectorStrategy &inputc, caffe::NetParameter &net_param)
+	{
+		caffe::NetParameter dnet_param;
+		NetCaffe<NetInputCaffe<TInputConnectorStrategy>,NetLayersCaffeRecurrent,NetLossCaffe> netcaffe(&net_param,&dnet_param,this->_logger);
+		netcaffe._nic.configure_inputs(ad,inputc);
+		// add ntargets to ad
+		const_cast<APIData&>(ad).add("ntargets",inputc._ntargets);
+		netcaffe._nlac.configure_net(ad);
+		// will be changed at predict time
+		// small default for debug
+		net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(10);
+
+	}
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
     void TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::clear_mllib(const APIData &ad)
@@ -398,6 +490,14 @@ namespace dd
         try
         {
             inputc.transform(ad);
+			if (_module._native)
+			  {
+				auto batchoptional = inputc._dataset.get_batch({1});
+				TorchBatch batch = batchoptional.value();
+				torch::Tensor td = batch.data[0];
+				_module._native->finalize(td.sizes());
+				_module._native->to(_device);
+			  }
         }
         catch (...)
         {
@@ -509,6 +609,7 @@ namespace dd
         _module.train();
 
         // create dataloader
+		inputc._dataset.reset();
         auto dataloader = torch::data::make_data_loader(
             std::move(inputc._dataset),
             data::DataLoaderOptions(batch_size)
@@ -540,7 +641,9 @@ namespace dd
                 }
                 std::vector<c10::IValue> in_vals;
                 for (Tensor tensor : batch.data)
+				  {
                     in_vals.push_back(tensor.to(_device));
+				  }
                 Tensor y = batch.target.at(0).to(_device);
 
                 Tensor y_pred;
@@ -566,6 +669,15 @@ namespace dd
                         class_weights, Reduction::Mean, -1
                     );
                 }
+				else if (_timeserie)
+					{
+						if (_loss.empty() || _loss == "L1" || _loss == "l1")
+							loss = torch::l1_loss(y_pred, y);
+						else if (_loss == "L2" || _loss == "l2" || _loss == "eucl")
+							loss= torch::mse_loss(y_pred, y);
+						else
+							throw MLLibBadParamException("unknown loss " + _loss);
+					}
                 else
                 {
                   loss = torch::nll_loss(torch::log_softmax(y_pred, 1),
@@ -711,15 +823,31 @@ namespace dd
               }
           }
 
+
+		bool lstm_continuation = false;
         TInputConnectorStrategy inputc(this->_inputc);
         TOutputConnectorStrategy outputc(this->_outputc);;
-        try {
+        try
+		  {
             inputc.transform(ad);
-        } catch (...) {
-            throw;
+			if (_module._native)
+			  {
+				if (ad.getobj("parameters").getobj("input").has("continuation") &&
+					ad.getobj("parameters").getobj("input").get("continuation").get<bool>())
+				  {
+					lstm_continuation = true;
+					_module._native->lstm_continues(true);
+				  }
+				else
+				  {
+					lstm_continuation = false;
+					_module._native->lstm_continues(false);
+				  }
+			  }
+		  } catch (...) {
+		  throw;
         }
         torch::Device cpu("cpu");
-
         _module.eval();
 
         if (output_params.has("measure"))
@@ -733,85 +861,130 @@ namespace dd
             return 0;
         }
 
-        auto dataloader = torch::data::make_data_loader(
-              std::move(inputc._dataset),
-              data::DataLoaderOptions(predict_batch_size)
-        );
+        inputc._dataset.reset(false);
 
-        std::vector<APIData> results_ads;
+		int batch_size = inputc._dataset.cache_size();
+		if (lstm_continuation)
+		  batch_size = 1;
 
-        for (TorchBatch batch : *dataloader)
-        {
+		 auto dataloader = torch::data::make_data_loader
+		   ( std::move(inputc._dataset),
+			 data::DataLoaderOptions(batch_size));
 
-          std::vector<c10::IValue> in_vals;
-          for (Tensor tensor : batch.data)
-            in_vals.push_back(tensor.to(_device));
-          Tensor output;
-          try
-            {
-              output = to_tensor_safe(_module.forward(in_vals));
-              if (_template == "gpt2")
-                {
-                  // Keep only the prediction for the last token
-                  Tensor input_ids = batch.data[0];
-                  std::vector<Tensor> outputs;
-                  for (int i = 0; i < input_ids.size(0); ++i)
-                    {
-                      // output is (n_batch * sequence_length * vocab_size)
-                      // With gpt2, last token is endoftext so we need to take the previous output.
-                      outputs.push_back(output[i][inputc._lengths.at(i) - 2]);
-                    }
-                  output = torch::stack(outputs);
-                }
-              output = torch::softmax(output, 1).to(cpu);
-            }
-          catch (std::exception &e)
-            {
-              throw MLLibInternalException(std::string("Libtorch error: ") + e.what());
-            }
+		 std::vector<APIData> results_ads;
+		 int nsample = 0;
 
-          // Output
+		 for (TorchBatch batch : *dataloader)
+		  {
 
-          if (output_params.has("best"))
-          {
-            const int best_count = output_params.get("best").get<int>();
-            std::tuple<Tensor, Tensor> sorted_output = output.sort(1, true);
-            auto probs_acc = std::get<0>(sorted_output).accessor<float,2>();
-            auto indices_acc = std::get<1>(sorted_output).accessor<int64_t,2>();
+			std::vector<c10::IValue> in_vals;
+			for (Tensor tensor : batch.data)
+			  {
+				in_vals.push_back(tensor.to(_device));
+			  }
+			Tensor output;
+			try
+			  {
+				output = to_tensor_safe(_module.forward(in_vals));
+				if (_timeserie)
+				  {
+					//DO NOTHING
+				  }
+				else
+				  {
+					if (_template == "gpt2")
+					  {
+						// Keep only the prediction for the last token
+						Tensor input_ids = batch.data[0];
+						std::vector<Tensor> outputs;
+						for (int i = 0; i < input_ids.size(0); ++i)
+						  {
+							// output is (n_batch * sequence_length * vocab_size)
+							// With gpt2, last token is endoftext so we need to take the previous output.
+							outputs.push_back(output[i][inputc._lengths.at(i) - 2]);
+						  }
+						output = torch::stack(outputs);
+					  }
+					output = torch::softmax(output, 1).to(cpu);
+				  }
+			  }
+			catch (std::exception &e)
+			  {
+				throw MLLibInternalException(std::string("Libtorch error:") + e.what());
+			  }
 
-            for (int i = 0; i < output.size(0); ++i)
-              {
-                APIData results_ad;
-                std::vector<double> probs;
-                std::vector<std::string> cats;
+			// Output
 
-                for (int j = 0; j < best_count; ++j)
-                {
-                  probs.push_back(probs_acc[i][j]);
-                  int index = indices_acc[i][j];
-                  if (_seq_training)
-                    {
-                      cats.push_back(inputc.get_word(index));
-                    }
-                  else
-                    {
-                      cats.push_back(this->_mlmodel.get_hcorresp(index));
-                    }
-                }
+			if (output_params.has("best"))
+			  {
+				const int best_count = output_params.get("best").get<int>();
+				std::tuple<Tensor, Tensor> sorted_output = output.sort(1, true);
+				auto probs_acc = std::get<0>(sorted_output).accessor<float,2>();
+				auto indices_acc = std::get<1>(sorted_output).accessor<int64_t,2>();
 
-                results_ad.add("uri", inputc._uris.at(results_ads.size()));
-                results_ad.add("loss", 0.0);
-                results_ad.add("cats", cats);
-                results_ad.add("probs", probs);
-                results_ad.add("nclasses", _nclasses);
+				for (int i = 0; i < output.size(0); ++i)
+				  {
+					APIData results_ad;
+					std::vector<double> probs;
+					std::vector<std::string> cats;
 
-                results_ads.push_back(results_ad);
-              }
-          }
-        }
+					for (int j = 0; j < best_count; ++j)
+					  {
+						probs.push_back(probs_acc[i][j]);
+						int index = indices_acc[i][j];
+						if (_seq_training)
+						  {
+							cats.push_back(inputc.get_word(index));
+						  }
+						else
+						  {
+							cats.push_back(this->_mlmodel.get_hcorresp(index));
+						  }
+					  }
 
-        outputc.add_results(results_ads);
-        outputc.finalize(output_params, out, static_cast<MLModel*>(&this->_mlmodel));
+					results_ad.add("uri", inputc._uris.at(results_ads.size()));
+					results_ad.add("loss", 0.0);
+					results_ad.add("cats", cats);
+					results_ad.add("probs", probs);
+					results_ad.add("nclasses", _nclasses);
+
+					results_ads.push_back(results_ad);
+				  }
+			  }
+			else if (_timeserie)
+			  {
+				output = output.to(cpu);
+				auto output_acc = output.accessor<float,3>();
+				for (int j=0; j<output.size(0); ++j)
+				  {
+					std::vector<APIData> series;
+					for (int t=0; t<output.size(1); ++t)
+					  {
+						std::vector<double> preds;
+						for (int k=0; k<this->_inputc._ntargets; ++k)
+						  {
+							preds.push_back(output_acc[j][t][k]);
+						  }
+						APIData ts;
+						ts.add("out", preds);
+						series.push_back(ts);
+					  }
+					APIData result_ad;
+					if (!inputc._ids.empty())
+					  result_ad.add("uri",inputc._ids.at(nsample++));
+					else result_ad.add("uri",std::to_string(nsample++));
+					result_ad.add("series", series);
+					result_ad.add("probs",std::vector<double>(series.size(),1.0));
+					result_ad.add("loss",0.0);
+					results_ads.push_back(result_ad);
+				  }
+			  }
+		  }
+		 outputc.add_results(results_ads);
+
+		 if (_timeserie)
+		   out.add("timeseries",true);
+		 outputc.finalize(output_params, out, static_cast<MLModel*>(&this->_mlmodel));
 
         out.add("status", 0);
         return 0;
@@ -870,48 +1043,89 @@ namespace dd
 
             if (batch.target.empty())
                 throw MLLibBadParamException("Missing label on data while testing");
-            Tensor labels = batch.target[0].view(IntList{-1});
-            if (_masked_lm)
-            {
-                // Convert [n_batch, sequence_length, vocab_size] to [n_batch * sequence_length, vocab_size]
-                output = output.view(IntList{-1, output.size(2)});
-            }
-            output = torch::softmax(output, 1).to(cpu);
-            auto output_acc = output.accessor<float,2>();
-            auto labels_acc = labels.accessor<int64_t,1>();
+            Tensor labels;
+			if (_timeserie)
+			  {
+				//iterate over data in batch
+				labels = batch.target[0];
+				output = output.to(cpu);
+				labels = labels.to(cpu);
+				auto output_acc = output.accessor<float,3>();
+				auto target_acc = labels.accessor<float,3>();
 
-            for (int j = 0; j < labels.size(0); ++j)
-            {
-                if (_masked_lm && labels_acc[j] == -1)
-                    continue;
+				// tensors are test_batch_size x timesteps x ntargets
+				for (int j=0; j<labels.size(0); ++j)
+				  {
+					std::vector<double> targets;
+					std::vector<double> predictions;
+					for (int t=0; t<labels.size(1); ++t)
+					  for (int k=0; k<this->_inputc._ntargets; ++k)
+						{
+						  targets.push_back(target_acc[j][t][k]);
+						  predictions.push_back(output_acc[j][t][k]);
+						}
+					APIData bad;
+					bad.add("target", targets);
+					bad.add("pred", predictions);
+					ad_res.add(std::to_string(entry_id), bad);
+					++entry_id;
+				  }
+			  }
+			else
+			  {
+				labels = batch.target[0].view(IntList{-1});
+				if (_masked_lm)
+				  {
+					// Convert [n_batch, sequence_length, vocab_size] to [n_batch * sequence_length, vocab_size]
+					output = output.view(IntList{-1, output.size(2)});
+				  }
+				output = torch::softmax(output, 1).to(cpu);
+				auto output_acc = output.accessor<float,2>();
+				auto labels_acc = labels.accessor<int64_t,1>();
 
-                APIData bad;
-                std::vector<double> predictions;
-                for (int c = 0; c < nclasses; c++)
-                {
-                    predictions.push_back(output_acc[j][c]);
-                }
-                bad.add("target", static_cast<double>(labels_acc[j]));
-                bad.add("pred", predictions);
-                ad_res.add(std::to_string(entry_id), bad);
-                ++entry_id;
-            }
+				for (int j = 0; j < labels.size(0); ++j)
+				  {
+					if (_masked_lm && labels_acc[j] == -1)
+					  continue;
+
+					APIData bad;
+					std::vector<double> predictions;
+					for (int c = 0; c < nclasses; c++)
+					  {
+						predictions.push_back(output_acc[j][c]);
+					  }
+					bad.add("target", static_cast<double>(labels_acc[j]));
+					bad.add("pred", predictions);
+					ad_res.add(std::to_string(entry_id), bad);
+					++entry_id;
+				  }
+			  }
             // this->_logger->info("Testing: {}/{} entries processed", entry_id, test_size);
         }
 
-        ad_res.add("iteration",this->get_meas("iteration"));
+        ad_res.add("iteration",this->get_meas("iteration")+1);
         ad_res.add("train_loss",this->get_meas("train_loss"));
-        std::vector<std::string> clnames;
-        for (int i=0;i< nclasses;i++)
-            clnames.push_back(this->_mlmodel.get_hcorresp(i));
-        ad_res.add("clnames", clnames);
-        ad_res.add("nclasses", nclasses);
+		if (_timeserie)
+		  {
+			ad_res.add("timeserie", true);
+			ad_res.add("timeseries", this->_inputc._ntargets);
+		  }
+		else
+		  {
+			std::vector<std::string> clnames;
+			for (int i=0;i< nclasses;i++)
+			  clnames.push_back(this->_mlmodel.get_hcorresp(i));
+			ad_res.add("clnames", clnames);
+			ad_res.add("nclasses", nclasses);
+		  }
         ad_res.add("batch_size", entry_id); // here batch_size = tested entries count
         SupervisedOutput::measure(ad_res, ad_out, out);
+		_module.train();
         return 0;
     }
 
 
     template class TorchLib<ImgTorchInputFileConn,SupervisedOutput,TorchModel>;
     template class TorchLib<TxtTorchInputFileConn,SupervisedOutput,TorchModel>;
+    template class TorchLib<CSVTSTorchInputFileConn,SupervisedOutput,TorchModel>;
 }

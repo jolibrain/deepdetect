@@ -1,3 +1,25 @@
+/**
+ * DeepDetect
+ * Copyright (c) 2020 Jolibrain
+ * Authors: Louis Jean <ljean@etud.insa-toulouse.fr>
+ *    Guillaume Infantes <guillaume.infantes@jolibrain.com>
+ *
+ * This file is part of deepdetect.
+ *
+ * deepdetect is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * deepdetect is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with deepdetect.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include "torchinputconns.h"
 
 namespace dd {
@@ -171,9 +193,9 @@ void TorchInputInterface::build_test_datadb_from_full_datadb(double tsplit)
       write_tensors_to_db(data, target);
 }
 
-void TorchDataset::reset(db::Mode dbmode)
+void TorchDataset::reset(bool shuffle, db::Mode dbmode)
 {
-
+  _shuffle = shuffle;
   if (!_db)
     {
       _indices.clear();
@@ -477,7 +499,7 @@ TorchBatch TxtTorchInputFileConn::generate_masked_lm_batch(const TorchBatch &exa
     TorchBatch output;
     output.target.push_back(lm_labels);
     output.data.push_back(input_ids);
-    for (int i = 1; i < example.data.size(); ++i)
+    for (unsigned int i = 1; i < example.data.size(); ++i)
     {
         output.data.push_back(example.data[i]);
     }
@@ -579,6 +601,141 @@ void TxtTorchInputFileConn::fill_dataset(TorchDataset &dataset,
         }
         _ndbed++;
     }
+}
+
+void CSVTSTorchInputFileConn::set_datadim(bool is_test_data)
+{
+  if (_train && _ntargets != _label.size())
+	{
+	  _logger->warn("something went wrong in ntargets, computed  " + std::to_string(_ntargets) + " at service creation time, and " + std::to_string(_label.size()) + " at data processing time");
+	  throw InputConnectorBadParamException("something went wrong in ntargets, computed  " + std::to_string(_ntargets) + " at service creation time, and " + std::to_string(_label.size()) + " at data processing time");
+	}
+
+	if (_datadim != -1)
+		return;
+	if (is_test_data)
+		_datadim = _csvtsdata_test[0][0]._v.size();
+	else
+		_datadim = _csvtsdata[0][0]._v.size();
+
+}
+
+void CSVTSTorchInputFileConn::transform(const APIData &ad)
+{
+	APIData ad_param = ad.getobj("parameters");
+	APIData ad_input = ad_param.getobj("input");
+	APIData ad_mllib = ad_param.getobj("mllib");
+
+	init(ad_input);
+	get_data(ad);
+
+	try
+		{
+			CSVTSInputFileConn::transform(ad);
+			set_datadim();
+		}
+	catch (std::exception &e)
+		{
+			throw;
+		}
+
+	if (_train)
+		{
+			fill_dataset(_dataset,false);
+			_csvtsdata.clear();
+			fill_dataset(_test_dataset,true);
+			_csvtsdata_test.clear();
+		}
+	else
+		{
+			fill_dataset(_dataset, false);
+			_csvtsdata.clear();
+			_csvtsdata_test.clear();
+		}
+}
+
+void CSVTSTorchInputFileConn::fill_dataset(TorchDataset& dataset, bool use_csvtsdata_test)
+{
+  _ids.clear();
+	// we have _csvtsdata and csvtsdata_test to put into TorchDataset _dataset , _test_dataset
+	std::vector<std::vector<CSVline>> * data;
+	if (use_csvtsdata_test)
+	  data = &this->_csvtsdata_test;
+	else
+	  data = &this->_csvtsdata;
+
+	unsigned int label_size = _label_pos.size();
+	unsigned int data_size = _datadim - label_size;
+	int vecindex = -1;
+
+	for (std::vector<CSVline>& seq : *data)
+	  {
+		vecindex++;
+		std::div_t dv{};
+		dv = std::div(seq.size()-_timesteps, _offset);
+		for (int i=0; i<= dv.quot; ++i)
+		  // construct timeseries here	, using timesteps and offset from data pointer above
+		  {
+			std::vector<at::Tensor> data_sequence;
+			std::vector<at::Tensor> label_sequence;
+			int tstart = i*_offset;
+			_ids.push_back(_fnames[vecindex] +" #" +std::to_string(tstart)
+						   + "_"+std::to_string(tstart+_timesteps-1));
+			for (int ti=tstart; ti<tstart+_timesteps; ++ti)
+			  {
+				std::vector<double> datavec;
+				std::vector<double> labelvec;
+
+				for (unsigned int li =0; li < label_size; ++li)
+				  labelvec.push_back(seq[ti]._v[_label_pos[li]]);
+				for (int di = 0; di<this->_datadim-1; ++di)
+				  if (std::find(_label_pos.begin(),_label_pos.end(), di) == _label_pos.end())
+					datavec.push_back(seq[ti]._v[di]);
+
+				at::Tensor data = torch::from_blob(&datavec[0],
+												   at::IntList{data_size},
+												   torch::kFloat64).clone().to(torch::kFloat32);
+				at::Tensor label = torch::from_blob(&labelvec[0],
+													at::IntList{label_size},
+													torch::kFloat64).clone().to(torch::kFloat32);
+				data_sequence.push_back(data);
+				label_sequence.push_back(label);
+			  }
+			at::Tensor dst = torch::stack(data_sequence);
+			at::Tensor lst = torch::stack(label_sequence);
+			dataset.add_batch({dst}, {lst});
+		  }
+		if (dv.rem != 0)
+		  {
+			std::vector<at::Tensor> data_sequence;
+			std::vector<at::Tensor> label_sequence;
+
+			int tstart  = seq.size()-_timesteps;
+			_ids.push_back(_fnames[vecindex] +" #" +std::to_string(tstart)
+						   + "_"+std::to_string(tstart+_timesteps-1));
+			for (int ti=tstart; ti<tstart+_timesteps; ++ti)
+			  {
+				std::vector<double> datavec;
+				std::vector<double> labelvec;
+				for (unsigned int li =0; li < label_size; ++li)
+				  labelvec.push_back(seq[ti]._v[_label_pos[li]]);
+				for (int di = 0; di<this->_datadim-1; ++di)
+				  if (std::find(_label_pos.begin(),_label_pos.end(), di) == _label_pos.end())
+					datavec.push_back(seq[ti]._v[di]);
+
+				at::Tensor data = torch::from_blob(&datavec[0],
+												   at::IntList{data_size},
+												   torch::kFloat64).clone().to(torch::kFloat32);
+				at::Tensor label = torch::from_blob(&labelvec[0],
+													at::IntList{label_size},
+													torch::kFloat64).clone().to(torch::kFloat32);
+				data_sequence.push_back(data);
+				label_sequence.push_back(label);
+			  }
+			dataset.add_batch({torch::stack(data_sequence)}, {torch::stack(label_sequence)});
+		  }
+	  }
+	dataset.reset();
 }
 
 }

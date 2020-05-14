@@ -755,4 +755,8 @@ namespace dd
 #include "backends/tensorrt/tensorrtinputconns.h"
 #endif
 
+#ifdef USE_TORCH
+#include "backends/torch/torchinputconns.h"
+#endif
+
 #endif
