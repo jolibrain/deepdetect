@@ -109,17 +109,17 @@ cpu_build() {
 
     "caffe-tf")
         cmake .. -DUSE_TF=ON -DUSE_TF_CPU_ONLY=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_NCNN=OFF
-        make -j
+        make
         ;;
 
     "armv7")
         cmake .. -DUSE_NCNN=ON -DRPI3=ON -DUSE_HDF5=OFF -DUSE_CAFFE=OFF
-        make -j
+        make
         ;;
 
     *)
         cmake .. -DUSE_XGBOOST=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_NCNN=ON
-        make -j
+        make
         ;;
     esac
 
@@ -131,12 +131,12 @@ gpu_build() {
 
     "tf")
         cmake .. -DUSE_TF=ON -DUSE_CUDNN=ON -DUSE_XGBOOST=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DCUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_53,code=sm_53 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_62,code=sm_62"
-        make -j
+        make
         ;;
 
     "tf-cpu")
         cmake .. -DUSE_TF=ON -DUSE_TF_CPU_ONLY=ON -DUSE_CUDNN=ON -DUSE_XGBOOST=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DCUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_53,code=sm_53 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_62,code=sm_62"
-        make -j
+        make
         ;;
 
     "caffe-cpu-tf")
@@ -146,37 +146,37 @@ gpu_build() {
 
     "caffe-tf")
         cmake .. -DUSE_TF=ON -DUSE_CUDNN=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DCUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_53,code=sm_53 -gencode arch=compute_61,code=sm_61"
-        make -j
+        make
         ;;
 
     "caffe2")
         cmake .. -DUSE_CUDNN=ON -DUSE_XGBOOST=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_CAFFE2=ON -DCUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_53,code=sm_53 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_62,code=sm_62"
-        make -j
+        make
         ;;
 
     "p100")
         cmake .. -DUSE_CUDNN=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DCUDA_ARCH="-gencode arch=compute_60,code=sm_60"
-        make -j
+        make
         ;;
 
     "volta")
         cmake .. -DUSE_CUDNN=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DCUDA_ARCH="-gencode arch=compute_70,code=sm_70"
-        make -j
+        make
         ;;
 
     "volta-faiss")
         cmake .. -DUSE_CUDNN=ON -DUSE_FAISS=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DCUDA_ARCH="-gencode arch=compute_70,code=sm_70"
-        make -j
+        make
         ;;
 
     "faiss")
         cmake .. -DUSE_CUDNN=ON -DUSE_FAISS=ON -DUSE_XGBOOST=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DCUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_53,code=sm_53 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_62,code=sm_62"
-        make -j
+        make
         ;;
 
     *)
         cmake .. -DUSE_CUDNN=ON -DUSE_XGBOOST=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DCUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_53,code=sm_53 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_62,code=sm_62"
-        make -j
+        make
         ;;
     esac
 
