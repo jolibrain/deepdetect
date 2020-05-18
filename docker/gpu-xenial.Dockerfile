@@ -1,18 +1,18 @@
 # Default CUDA version
-ARG CUDA_VERSION=10.2-cudnn7
+ARG CUDA_VERSION=9.0-cudnn7
 
 # Download default Deepdetect models
 ARG DEEPDETECT_DEFAULT_MODELS=true
 
-FROM nvidia/cuda:${CUDA_VERSION}-devel-ubuntu18.04 AS build
+FROM nvidia/cuda:${CUDA_VERSION}-devel-ubuntu16.04 AS build
 
 ARG DEEPDETECT_ARCH=gpu
 ARG DEEPDETECT_BUILD=default
 
 # Install build dependencies
-RUN export DEBIAN_FRONTEND=noninteractive && \
-    apt-get update && \
+RUN apt-get update && \
     apt-get install -y git \
+    cmake \
     automake \
     build-essential \
     openjdk-8-jdk \
@@ -24,14 +24,9 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     libgflags-dev \
     libeigen3-dev \
     libopencv-dev \
+    libcppnetlib-dev \
     libboost-dev \
-    libboost-filesystem-dev \
-    libboost-thread-dev \
-    libboost-system-dev \
     libboost-iostreams-dev \
-    libboost-program-options-dev \
-    libboost-test-dev \
-    libssl-dev \
     libcurlpp-dev \
     libcurl4-openssl-dev \
     protobuf-compiler \
@@ -54,8 +49,6 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     python-dev \
     python-wheel \
     python-pip \
-    python-six \
-    python-enum34 \
     unzip \
     libgoogle-perftools-dev \
     curl \
@@ -68,34 +61,13 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Need recent cmake version for cuda 10
-RUN mkdir /tmp/cmake && cd /tmp/cmake && \
-    apt remove cmake && \
-    wget https://cmake.org/files/v3.14/cmake-3.14.0.tar.gz && \
-    tar xf cmake-3.14.0.tar.gz && \
-    cd cmake-3.14.0 && \
-    ./configure && \
-    make install && \
-    rm -rf /tmp/cmake
-
-# Build cpp-netlib
-RUN wget https://github.com/cpp-netlib/cpp-netlib/archive/cpp-netlib-0.11.2-final.tar.gz && \
-    tar xvzf cpp-netlib-0.11.2-final.tar.gz && \
-    cd cpp-netlib-cpp-netlib-0.11.2-final && \
-    mkdir build && \
-    cd build && \
-    cmake .. && \
-    make && \
-    make install
-
 # Fix "ImportError: No module named builtins"
-RUN pip install future pyyaml typing
+RUN pip install future pyyaml typing six enum enum34
 
 # Git config
 RUN git config --global user.email "build@local.local" && \
     git config --global user.name "Build"
 
-# Build curlpp
 WORKDIR /opt
 RUN git clone https://github.com/jpbarrette/curlpp.git
 WORKDIR /opt/curlpp
@@ -117,7 +89,7 @@ RUN mkdir build && \
 RUN ./docker/get_libs.sh
 
 # Build final Docker image
-FROM nvidia/cuda:${CUDA_VERSION}-runtime-ubuntu18.04
+FROM nvidia/cuda:${CUDA_VERSION}-runtime-ubuntu16.04
 
 # Download default Deepdetect models
 ARG DEEPDETECT_DEFAULT_MODELS=true
@@ -132,21 +104,21 @@ LABEL description="DeepDetect deep learning server & API / GPU version"
 # Install tools and dependencies
 RUN apt-get update && \ 
     apt-get install -y wget \
-	libopenblas-base \
-	liblmdb0 \
-	libleveldb1v5 \
-    libboost-regex1.62.0 \
-	libgoogle-glog0v5 \
-	libopencv-highgui3.2 \
-	libgflags2.2 \
-	libcurl4 \
-	libhdf5-cpp-100 \
-	libboost-filesystem1.65.1 \
-	libboost-thread1.65.1 \
-	libboost-iostreams1.65.1 \
-    libboost-regex1.65.1 \
-	libarchive13 \
-	libprotobuf10 && \
+    libopenblas-base \
+    liblmdb0 \
+    libleveldb1v5 \
+    libboost-regex1.58.0 \
+    libgoogle-glog0v5 \
+    libopencv-highgui2.4v5 \
+    libcppnetlib0 \
+    libgflags2v5 \
+    libcurl3 \
+    libhdf5-cpp-11 \
+    libboost-filesystem1.58.0 \
+    libboost-thread1.58.0 \
+    libboost-iostreams1.58.0 \
+    libarchive13 \
+    libprotobuf9v5 && \
     rm -rf /var/lib/apt/lists/*
 
 # Fix permissions
