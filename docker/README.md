@@ -114,7 +114,7 @@ where `path/to/volume` is the path to your local volume that you'd like to attac
 
 ## Build Deepdetect Docker images
 
-Dockerfiles are presents on project root folder.
+Dockerfiles are stored in the "docker" folder, but **you must launch build from root directory**.
 
 We choose to prefix Dockerfiles with target architecture :
 * cpu-armv7.Dockerfile
@@ -123,7 +123,7 @@ We choose to prefix Dockerfiles with target architecture :
 
 ### Build script 
 
-Build script is avaliable in docker path : build/build.sh
+Build script is available in docker path : build/build.sh
 
 Docker build-arg : DEEPDETECT_BUILD
 
@@ -145,6 +145,16 @@ Expected values :
   * volta-faiss
   * faiss
   * default
+
+#### Prepare build environment
+
+Create build directory and put build script inside :
+
+```bash
+mkdir build
+cd build
+cp -a ../build.sh .
+```
 
 #### Launch build with environments variables
 
@@ -170,34 +180,36 @@ Params usage: ./build.sh [options...]
 
 #### Build examples
 
+> You must launch build from root directory
+
 Example with CPU image:
 ```
 # Build with default cmake 
-docker build -t jolibrain/deepdetect_cpu --no-cache -f cpu.Dockerfile .
+docker build -t jolibrain/deepdetect_cpu --no-cache -f docker/cpu.Dockerfile .
 
 # Build with default cmake and without default models
 docker build --build-arg DEEPDETECT_DEFAULT_MODELS=false -t jolibrain/deepdetect_cpu --no-cache -f cpu.Dockerfile .
 
 # Build with custom cmake
-docker build --build-arg DEEPDETECT_BUILD=caffe-tf -t jolibrain/deepdetect_cpu --no-cache -f cpu.Dockerfile .
+docker build --build-arg DEEPDETECT_BUILD=caffe-tf -t jolibrain/deepdetect_cpu --no-cache -f docker/cpu.Dockerfile .
 
 ```
 
 Example with CPU (armv7) image:
 ```
 # Build with default cmake 
-docker build -t jolibrain/deepdetect_cpu:armv7 --no-cache -f cpu-armv7.Dockerfile .
+docker build -t jolibrain/deepdetect_cpu:armv7 --no-cache -f docker/cpu-armv7.Dockerfile .
 
 ```
 
 Example with GPU image:
 ```
 # Build with default cmake 
-docker build -t jolibrain/deepdetect_gpu --no-cache -f gpu.Dockerfile .
+docker build -t jolibrain/deepdetect_gpu --no-cache -f docker/gpu.Dockerfile .
 
 # Build with default cmake and without default models
-docker build --build-arg DEEPDETECT_DEFAULT_MODELS=false -t jolibrain/deepdetect_gpu --no-cache -f gpu.Dockerfile .
+docker build --build-arg DEEPDETECT_DEFAULT_MODELS=false -t jolibrain/deepdetect_gpu --no-cache -f docker/gpu.Dockerfile .
 
 # Build with custom cmake
-docker build --build-arg DEEPDETECT_BUILD=caffe-tf -t jolibrain/deepdetect_gpu --no-cache -f gpu.Dockerfile .
+docker build --build-arg DEEPDETECT_BUILD=caffe-tf -t jolibrain/deepdetect_gpu --no-cache -f docker/gpu.Dockerfile .
 ```
