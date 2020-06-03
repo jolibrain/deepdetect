@@ -1,3 +1,5 @@
-cpu.Dockerfile
-gpu.Dockerfile
-cpu-armv7.Dockerfile
+docker/cpu.Dockerfile
+docker/cpu-armv7.Dockerfile
+docker/gpu.Dockerfile
+docker/gpu-xenial.Dockerfile
+build/

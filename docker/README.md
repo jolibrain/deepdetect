@@ -117,9 +117,11 @@ where `path/to/volume` is the path to your local volume that you'd like to attac
 Dockerfiles are stored in the "docker" folder, but **you must launch build from root directory**.
 
 We choose to prefix Dockerfiles with target architecture :
-* cpu-armv7.Dockerfile
+
 * cpu.Dockerfile
+* cpu-armv7.Dockerfile
 * gpu.Dockerfile
+* gpu-xenial.Dockerfile
 
 ### Build script 
 
@@ -139,7 +141,7 @@ Expected values :
   * tf-cpu
   * caffe-cpu-tf
   * caffe-tf
-  * caffe2
+  * caffe2 (Only with gpu-xenial.Dockerfile)
   * p100
   * volta
   * volta-faiss
