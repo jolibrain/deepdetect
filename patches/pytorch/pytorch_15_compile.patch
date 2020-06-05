@@ -1,0 +1,12 @@
+diff --git a/tools/setup_helpers/cmake.py b/tools/setup_helpers/cmake.py
+index f19606f81e..c631053100 100644
+--- a/tools/setup_helpers/cmake.py
++++ b/tools/setup_helpers/cmake.py
+@@ -231,6 +231,7 @@ class CMake:
+              'CUDNN_LIBRARY',
+              'CUDNN_INCLUDE_DIR',
+              'CUDNN_ROOT',
++             'CAFFE2_LINK_LOCAL_PROTOBUF',
+              'EXPERIMENTAL_SINGLE_THREAD_POOL',
+              'INSTALL_TEST',
+              'JAVA_HOME',
