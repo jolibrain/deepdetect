@@ -58,7 +58,7 @@ execute_process(
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
-set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -fopenmp -O2 -fPIC -std=c++11 -DUSE_OPENCV -DUSE_LMDB")
+set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -fopenmp -O2 -fPIC -std=c++14 -DUSE_OPENCV -DUSE_LMDB")
 
 if (USE_COMMAND_LINE)
   if (NOT USE_CAFFE)
@@ -170,8 +170,10 @@ if (USE_CAFFE)
     if(USE_FAISS)
       if (NOT USE_CPU_ONLY AND CUDA_FOUND)
         string(REPLACE "/include" "" CUDA_PREFIX ${CUDA_INCLUDE_DIRS})
-        string(REPLACE "arch" "=arch" FAISS_NVCC_FLAGS ${NVCC_FLAGS_EXTRA})
-        set(CONFIGURE_OPTS --with-cuda=${CUDA_PREFIX} --with-cuda-arch="${FAISS_NVCC_FLAGS}")
+        if (NOT CUDA_ARCH)
+          string(REPLACE ";" " " CUDA_ARCH "${CUDA_NVCC_FLAGS}")
+        endif()
+        set(CONFIGURE_OPTS --with-cuda=${CUDA_PREFIX} --with-cuda-arch=${CUDA_ARCH})
         add_definitions(-DUSE_GPU_FAISS)
       else()
         set(CONFIGURE_OPTS "--without-cuda")
@@ -356,7 +358,6 @@ if (USE_CAFFE2)
     GIT_SUBMODULES ${PYTORCH_SUBMODULES}
     UPDATE_DISCONNECTED 1
     GIT_TAG ${PYTORCH_SUPPORTED_COMMIT}
-    GIT_CONFIG advice.detachedHead=false
     PATCH_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || echo cp modules/detectron/*_op.* caffe2/operators | bash && cp ${CAFFE2_OPS} caffe2/operators && git am ${PYTORCH_PATCHES}
     CONFIGURE_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || cmake ../pytorch ${PYTORCH_FLAGS}
     BUILD_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || make -j${N}
@@ -382,7 +383,6 @@ if (USE_CAFFE2)
     GIT_REPOSITORY https://github.com/facebookresearch/Detectron
     UPDATE_DISCONNECTED 1
     GIT_TAG ${DETECTRON_SUPPORTED_COMMIT}
-    GIT_CONFIG advice.detachedHead=false
     PATCH_COMMAND test -f ${DETECTRON_COMPLETE} && echo Skipping || git am ${DETECTRON_PATCHES}
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
@@ -435,7 +435,7 @@ if (USE_TF)
       tensorflow_cc
       PREFIX tensorflow_cc
       INSTALL_DIR ${CMAKE_BINARY_DIR}
-      DOWNLOAD_COMMAND git clone https://github.com/FloopCZ/tensorflow_cc.git
+      DOWNLOAD_COMMAND git clone --branch v1.15.0 https://github.com/FloopCZ/tensorflow_cc.git
       CONFIGURE_COMMAND cd tensorflow_cc && mkdir -p build && cd build && cmake -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED=ON .. && make && ln -s ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/tensorflow/tensorflow/contrib/makefile/gen/protobuf ${CMAKE_BINARY_DIR}/protobuf
       BUILD_COMMAND ""
       INSTALL_COMMAND ""
@@ -447,7 +447,7 @@ if (USE_TF)
       tensorflow_cc
       PREFIX tensorflow_cc
       INSTALL_DIR ${CMAKE_BINARY_DIR}
-      DOWNLOAD_COMMAND git clone https://github.com/FloopCZ/tensorflow_cc.git
+      DOWNLOAD_COMMAND git clone --branch v1.15.0 https://github.com/FloopCZ/tensorflow_cc.git
       CONFIGURE_COMMAND cd tensorflow_cc && mkdir -p build && cd build && cmake -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED=ON -DALLOW_CUDA=OFF .. && make && ln -s ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/tensorflow/tensorflow/contrib/makefile/gen/protobuf ${CMAKE_BINARY_DIR}/protobuf
       BUILD_COMMAND ""
       INSTALL_COMMAND ""
@@ -664,14 +664,13 @@ if (USE_NCNN)
   add_definitions(-DUSE_NCNN)
   include_directories(${CMAKE_CURRENT_BINARY_DIR})
   set(NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src/libncnn.a -lprotobuf)
-  set(NCNN_COMMIT_HASH "569be5a19651373cca68933f6430c781d7d6fd97")
   if (RPI3)
     ExternalProject_Add(
       ncnn
       PREFIX ncnn
       INSTALL_DIR ${CMAKE_BINARY_DIR}
       DOWNLOAD_COMMAND git clone --recursive https://github.com/jolibrain/ncnn.git
-      CONFIGURE_COMMAND mkdir -p build && cd build && cmake .. -DPI3=ON -DCMAKE_TOOLCHAIN_FILE=../toolchains/pi3.toolchain.cmake && git checkout 510d3c6c4691d5cab0c848b5994105e11b4497e8
+      CONFIGURE_COMMAND mkdir -p build && cd build && cmake .. -DPI3=ON -DCMAKE_TOOLCHAIN_FILE=../toolchains/pi3.toolchain.cmake
       BUILD_COMMAND cd build/ && make -j${N}
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
@@ -681,7 +680,7 @@ if (USE_NCNN)
       ncnn
       PREFIX ncnn
       INSTALL_DIR ${CMAKE_BINARY_DIR}
-      DOWNLOAD_COMMAND git clone --recursive https://github.com/jolibrain/ncnn.git && cd ncnn && git checkout 510d3c6c4691d5cab0c848b5994105e11b4497e8
+      DOWNLOAD_COMMAND git clone --recursive https://github.com/jolibrain/ncnn.git && cd ncnn
       CONFIGURE_COMMAND mkdir -p build && cd build && cmake ..
       BUILD_COMMAND cd build/ && make -j${N}
       INSTALL_COMMAND ""
@@ -704,14 +703,16 @@ endif()
 # Torch
 if (USE_TORCH)
 
+  set(CMAKE_EXE_LINKER_FLAGS "-Wl,--no-as-needed")
+
   set(PROTOBUF_INCLUDE_DIR ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/include/)
   set(PROTOBUF_LIB_DIR ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/lib/)
 
   set(PYTORCH_PATCHES_PATH ${CMAKE_BINARY_DIR}/patches/pytorch)
 
   set(PYTORCH_PATCHES
-    ${PYTORCH_PATCHES_PATH}/pytorch_14_compile.patch
-    ${PYTORCH_PATCHES_PATH}/pytorch_14_logging.patch
+    ${PYTORCH_PATCHES_PATH}/pytorch_15_compile.patch
+    ${PYTORCH_PATCHES_PATH}/pytorch_15_logging.patch
     ${PYTORCH_PATCHES_PATH}/pytorch_14_namespace.patch
     )
 
@@ -721,10 +722,9 @@ if (USE_TORCH)
   add_definitions(-DUSE_TORCH)
 
   if (NOT TORCH_LOCATION)
-    # below version 1.3.1
-    #set(PYTORCH_COMMIT ee77ccbb6da4e2efd83673e798acf7081bc03564)
-    # below version 1.4
-    set(PYTORCH_COMMIT 7f73f1d591afba823daa4a99a939217fb54d7688)
+    #set(PYTORCH_COMMIT ee77ccbb6da4e2efd83673e798acf7081bc03564) # 1.3.1
+    #set(PYTORCH_COMMIT 7f73f1d591afba823daa4a99a939217fb54d7688) # 1.4
+    set(PYTORCH_COMMIT 4ff3872a2099993bf7e8c588f7182f3df777205b)  # 1.5
     set(PYTORCH_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch-complete)
 
     if(NOT USE_CPU_ONLY AND CUDA_FOUND)
@@ -744,38 +744,53 @@ if (USE_TORCH)
       PATCH_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || git apply ${PYTORCH_PATCHES} && echo Applying ${PYTORCH_PATCHES}
       CONFIGURE_COMMAND ""
       BUILD_COMMAND ""
-      COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || GLIBCXX_USE_CXX11_ABI=1 BUILD_TEST=0 USE_CUDA=${PYTORCH_USE_CUDA} CAFFE2_LINK_LOCAL_PROTOBUF=0 MAX_JOBS=8 python3 ../pytorch/tools/build_libtorch.py
+      COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || GLIBCXX_USE_CXX11_ABI=1 BUILD_TEST=0 USE_CUDA=${PYTORCH_USE_CUDA} BUILD_CAFFE2_OPS=0 USE_GLOG=0 CAFFE2_LINK_LOCAL_PROTOBUF=0 MAX_JOBS=8 python3 ../pytorch/tools/build_libtorch.py
       INSTALL_COMMAND ""
     )
 
     set(TORCH_LOCATION ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch)
   endif()
 
-  #find_package(Torch
-  #  PATHS ${TORCH_LOCATION}
-  #  REQUIRED
-  #  )
-  #message(STATUS "Libraries are: ${TORCH_LIBRARIES}")
-
-  set(TORCH_LIB_DEPS torch ${TORCH_LOCATION}/lib/libc10.so -lprotobuf)
+  set(TORCH_LIB_DEPS ${TORCH_LOCATION}/lib/libtorch.so ${TORCH_LOCATION}/lib/libtorch_cpu.so ${TORCH_LOCATION}/lib/libc10.so -lprotobuf)
   
   if (NOT USE_CPU_ONLY AND CUDA_FOUND)
-    list(APPEND TORCH_LIB_DEPS  ${TORCH_LOCATION}/lib/libc10_cuda.so iomp5)
+    list(APPEND TORCH_LIB_DEPS ${TORCH_LOCATION}/lib/libc10_cuda.so ${TORCH_LOCATION}/lib/libtorch_cuda.so  iomp5)
   else()
     list(APPEND TORCH_LIB_DEPS iomp5)
   endif()
 
-  set(TORCH_INC_DIR ${TORCH_LOCATION}/include/ ${TORCH_LOCATION}/include/torch/csrc/api/include/ ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/)
+  set(TORCH_INC_DIR ${TORCH_LOCATION}/include/ ${TORCH_LOCATION}/include/torch/csrc/api/include/ ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/include/torch/csrc/api/include/)
   set(TORCH_LIB_DIR ${TORCH_LOCATION}/lib/)
 
   if (USE_TENSORRT)
     add_custom_command(TARGET pytorch POST_BUILD
-      COMMAND LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR}:$ENV{LD_LIBRARY_PATH} ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/bin/protoc
+      COMMAND LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR}:$ENV{LD_LIBRARY_PATH} ${CMAKE_BINARY_DIR}/pytorch/src/pytorch-build/build/bin/protoc
       --proto_path=${CMAKE_SOURCE_DIR}/src/backends/tensorrt
       --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_SOURCE_DIR}/src/backends/tensorrt/caffe.proto
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
       COMMENT "generating caffe.pb.*")
   endif()
+
+
+  if (USE_TENSORRT)
+    add_custom_command(TARGET pytorch POST_BUILD
+      COMMAND ${CMAKE_BINARY_DIR}/pytorch/src/pytorch-build/build/bin/protoc
+      --proto_path=${CMAKE_SOURCE_DIR}/src/backends/tensorrt
+      --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_SOURCE_DIR}/src/backends/tensorrt/caffe.proto
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+      COMMENT "generating caffe.pb.*")
+  endif()
+
+  if (USE_NCNN AND NOT USE_TENSORRT)
+    add_custom_command(TARGET pytorch POST_BUILD
+      COMMAND ${CMAKE_BINARY_DIR}/pytorch/src/pytorch-build/build/bin/protoc
+      --proto_path=${CMAKE_SOURCE_DIR}/src/backends/ncnn
+      --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_SOURCE_DIR}/src/backends/ncnn/caffe.proto
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+      COMMENT "generating caffe.pb.*")
+  endif()
+
+
 
 endif()
 
