@@ -319,28 +319,63 @@ namespace dd
       } // end multi_label
     else if (_regression)
       {
-	int k = net_param.layer_size();
+		int k = net_param.layer_size();
         for (int l=k-1;l>0;l--)
           {
             caffe::LayerParameter *lparam = net_param.mutable_layer(l);
             if (lparam->type() == "SoftmaxWithLoss")
               {
-                lparam->set_type("SigmoidCrossEntropyLoss");
-		lparam->clear_include();
+				if ( _loss.empty() || _loss == "L2")
+				  {
+					lparam->set_type("EuclideanLoss");
+				  }
+				else if (_loss == "L1")
+				  {
+					lparam->set_type("SmoothL1Loss");
+					lparam->mutable_smooth_l1_loss_param()->set_sigma(10.0);
+				  }
+				else if (_loss == "sigmoid")
+				  {
+					lparam->set_type("SigmoidCrossEntropyLoss");
+				  }
+				lparam->clear_include();
                 caffe::NetStateRule *nsr = lparam->add_include();
                 nsr->set_phase(caffe::TRAIN);
                 break;
               }
-	    else if (lparam->type() == "Softmax")
-	      {
-		lparam->set_type("Sigmoid");
-		lparam->clear_include();
-		caffe::NetStateRule *nsr = lparam->add_include();
-                nsr->set_phase(caffe::TEST);
-	      }
+			else if (lparam->type() == "Softmax")
+			  {
+				lparam->set_name("pred");
+                *lparam->mutable_top(0) = "pred";
+				if (_loss.empty() || _loss == "L1" || _loss == "L2")
+				  lparam->set_type("Flatten");
+				else if (_loss == "sigmoid")
+				  lparam->set_type("Sigmoid");
+				lparam->clear_include();
+				caffe::NetStateRule *nsr = lparam->add_include();
+				nsr->set_phase(caffe::TEST);
+			  }
+		  }
+
+		k = deploy_net_param.layer_size();
+		for (int l=k-1;l>0;l--)
+		  {
+            caffe::LayerParameter *lparam = deploy_net_param.mutable_layer(l);
+			if (lparam->type() == "Softmax")
+			  {
+				lparam->set_name("pred");
+                *lparam->mutable_top(0) = "pred";
+				if (_loss.empty() || _loss == "L1" || _loss == "L2")
+				  lparam->set_type("Flatten");
+				else if (_loss == "sigmoid")
+				  lparam->set_type("Sigmoid");
+				lparam->clear_include();
+				caffe::NetStateRule *nsr = lparam->add_include();
+				nsr->set_phase(caffe::TEST);
+				break;
+			  }
+		  }
 	  }
-	
-      }
           
 	// input size
 	caffe::LayerParameter *lparam = net_param.mutable_layer(1); // test
