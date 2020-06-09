@@ -85,7 +85,7 @@ RUN wget https://github.com/cpp-netlib/cpp-netlib/archive/cpp-netlib-0.11.2-fina
     mkdir build && \
     cd build && \
     cmake .. && \
-    make && \
+    make -j && \
     make install
 
 # Fix "ImportError: No module named builtins"
@@ -104,7 +104,7 @@ RUN cmake . && \
     cp /usr/local/lib/libcurlpp.* /usr/lib/
 
 # Copy Deepdetect sources files
-ADD ./ /opt/deepdetect
+RUN git clone https://github.com/jolibrain/deepdetect.git /opt/deepdetect
 WORKDIR /opt/deepdetect/
 
 # Build Deepdetect
