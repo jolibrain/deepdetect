@@ -1,4 +1,4 @@
-name: "ROOT_RES34_VOC0712_SSD_root_res34_300x300_train"
+name: "ROOT_RES34_SSD_300x300"
 layer {
   name: "data"
   type: "AnnotatedData"

@@ -1,4 +1,4 @@
-name: "ROOT_RES18_VOC0712_SSD_root_res18_300x300_deploy"
+name: "ROOT_RES18_SSD_300x300"
 layer {
   name: "data"
   type: "MemoryData"
