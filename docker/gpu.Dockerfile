@@ -169,6 +169,7 @@ COPY --chown=dd --from=build /opt/deepdetect/datasets/imagenet/corresp_ilsvrc12.
 COPY --chown=dd --from=build /opt/deepdetect/templates/caffe/googlenet/*prototxt /opt/models/ggnet/
 COPY --chown=dd --from=build /opt/deepdetect/templates/caffe/resnet_50/*prototxt /opt/models/resnet_50/
 COPY --from=build /tmp/lib/* /usr/lib/
+COPY --from=build /opt/deepdetect/templates /opt/deepdetect/build/templates
 
 WORKDIR /opt/deepdetect/build/main
 VOLUME ["/data"]
