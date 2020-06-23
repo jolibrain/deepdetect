@@ -9,6 +9,7 @@ layer {
   }
   transform_param {
     mirror: true
+    force_color: true
     resize_param {
       prob: 1.0
       resize_mode: WARP
@@ -23,8 +24,13 @@ layer {
     emit_constraint {
       emit_type: CENTER
     }
+    noise_param {
+      prob: 0.001
+      all_effects: false
+    }
     distort_param {
       prob: 0.5
+      all_effects: false
       brightness: true
       brightness_delta: 32.0
       contrast: true
@@ -43,7 +49,7 @@ layer {
     }
   }
   data_param {
-    source: "examples/VOC0712/VOC0712_trainval_lmdb"
+    source: "train.lmdb"
     batch_size: 32
     backend: LMDB
   }
@@ -141,7 +147,6 @@ layer {
     phase: TEST
   }
   transform_param {
-    force_color: true
     resize_param {
       prob: 1
       resize_mode: WARP
