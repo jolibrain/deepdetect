@@ -1456,7 +1456,7 @@ namespace dd
     std::vector<caffe::SparseDatum> get_dv_test_sparse_db(const int &num);
     std::vector<caffe::SparseDatum> get_dv_test_sparse(const int &num)
       {
-	if (!_db)
+	if (!_db || !_train)
 	  {
 	    int i = 0;
 	    std::vector<caffe::SparseDatum> dv;
