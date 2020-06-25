@@ -2895,7 +2895,7 @@ namespace dd
 		int slot = results.size() - 1;
 		if (_regression)
 		  {
-		    if (_ntargets > 1)
+		    if (_ntargets > 1 || typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
 		      slot = 1;
 		    else slot = 0; // XXX: more in-depth testing required
 		  }
@@ -2916,8 +2916,6 @@ namespace dd
 		    for (int i=0;i<nclasses;i++)
 		      {
 			double prob = results[slot]->cpu_data()[j*scperel+i];
-			if (prob < confidence_threshold)
-			  continue;
 			probs.push_back(prob);
 			cats.push_back(this->_mlmodel.get_hcorresp(i));
 		      }
