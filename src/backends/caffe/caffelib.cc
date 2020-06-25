@@ -2916,6 +2916,8 @@ namespace dd
 		    for (int i=0;i<nclasses;i++)
 		      {
 			double prob = results[slot]->cpu_data()[j*scperel+i];
+			if (prob < confidence_threshold && !_regression)
+			  continue;
 			probs.push_back(prob);
 			cats.push_back(this->_mlmodel.get_hcorresp(i));
 		      }
