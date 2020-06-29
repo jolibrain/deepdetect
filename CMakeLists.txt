@@ -928,6 +928,11 @@ if (USE_TENSORRT)
         )
     endif()
 
+	set(TRT_PATCHES_PATH ${CMAKE_BINARY_DIR}/patches/trt)
+
+	set(TRT_PATCHES
+	  ${TRT_PATCHES_PATH}/0001-support-for-refinedet.patch
+	  )
 
     set(TRT_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/tensorrt-oss-complete)
 
@@ -936,10 +941,10 @@ if (USE_TENSORRT)
       PREFIX tensorrt-oss
       INSTALL_DIR ${CMAKE_BINARY_DIR}
       GIT_REPOSITORY https://github.com/NVIDIA/TensorRT.git
-      GIT_TAG ${TENSORRT_COMMIT}
+	  GIT_TAG ${TENSORRT_COMMIT}
       GIT_CONFIG advice.detachedHead=false
       UPDATE_DISCONNECTED 1
-      #    PATCH_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || git apply ${PYTORCH_PATCHES} && echo Applying ${PYTORCH_PATCHES}
+	  PATCH_COMMAND test -f ${TRT_COMPLETE} && echo Skipping || git apply ${TRT_PATCHES} && echo Applying ${TRT_PATCHES}
       CONFIGURE_COMMAND test -f ${TRT_COMPLETE} && echo Skipping || cmake ../tensorrt-oss ${TRT_FLAGS}
       BUILD_COMMAND test -f ${TRT_COMPLETE} && echo Skipping || make -j${N}
       INSTALL_COMMAND ""
