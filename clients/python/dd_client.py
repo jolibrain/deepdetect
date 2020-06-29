@@ -42,7 +42,7 @@ def _convert_base64(filename):  # return type: Optional[str]
                 '[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+$', filename):
         result = requests.get(filename)
         if result.status_code != 200:
-            warnings.warn("{} returned status {}".format(filename, status))
+            warnings.warn("{} returned status {}".format(filename, result.status_code))
             return
         x = base64.encodebytes(result.content)
         return x.decode('ascii').replace('\n', '')
