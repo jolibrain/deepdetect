@@ -26,11 +26,18 @@
 
 #include <torch/torch.h>
 
+
 #include "imginputfileconn.h"
 #include "txtinputfileconn.h"
+#include "backends/torch/db.hpp"
+#include "backends/torch/db_lmdb.hpp"
+
+#define TORCH_TEXT_TRANSATION_SIZE 100
+#define TORCH_IMG_TRANSACTION_SIZE 10
 
 namespace dd
 {
+
     typedef torch::data::Example<std::vector<at::Tensor>, std::vector<at::Tensor>> TorchBatch;
 
     class TorchDataset : public torch::data::BatchDataset
@@ -39,18 +46,66 @@ namespace dd
     private:
         bool _shuffle = false;
         long _seed = -1;
-        std::vector<int64_t> _indices;
+        int64_t _current_index = 0;
+        std::string _backend;
+        bool _db;
+        int32_t _batches_per_transaction = 10;
+      std::shared_ptr<db::Transaction> _txn;
+      std::shared_ptr<spdlog::logger> _logger;
+
 
     public:
+      std::shared_ptr<db::DB> _dbData;
+        std::vector<int64_t> _indices;
         /// Vector containing the whole dataset (the "cached data").
         std::vector<TorchBatch> _batches;
+        std::string _dbFullName;
 
 
         TorchDataset() {}
 
-        void add_batch(std::vector<at::Tensor> data, std::vector<at::Tensor> target = {});
 
-        void reset();
+
+      TorchDataset(const TorchDataset &d)
+        : _shuffle(d._shuffle), _seed(d._seed), _indices(d._indices), _batches(d._batches),
+          _current_index(d._current_index),  _dbFullName(d._dbFullName),
+          _backend(d._backend), _db(d._db), _dbData(d._dbData), _txn(d._txn), _logger(d._logger),
+          _batches_per_transaction(d._batches_per_transaction)
+      {
+      }
+
+        void set_transation_size(int32_t tsize) {_batches_per_transaction = tsize;}
+
+        void add_batch(std::vector<at::Tensor> data, std::vector<at::Tensor> target = {});
+        void finalize_db();
+        void pop(int64_t index, std::string&data, std::string&target);
+        void add_elt(int64_t index, std::string data, std::string target);
+
+        void write_tensors_to_db(std::vector<at::Tensor> data, std::vector<at::Tensor> target);
+
+        void reset(db::Mode dbmode = db::READ);
+
+        void set_shuffle(bool shuf) {_shuffle = shuf;}
+
+        void set_dbParams(bool db, std::string backend, std::string dbname)
+        {
+          _db = db;
+          _backend = backend;
+          _dbFullName = dbname + "." + _backend;
+        }
+
+        void set_dbFile(std::string dbfname)
+        {
+          _db = true;
+          _backend = "lmdb";
+          _dbFullName = dbfname;
+        }
+
+
+      void set_logger(std::shared_ptr<spdlog::logger> logger)
+      {
+        _logger = logger;
+      }
 
         /// Size of data loaded in memory
         size_t cache_size() const { return _batches.size(); }
@@ -59,7 +114,10 @@ namespace dd
             return cache_size();
         }
 
-        bool empty() const { return cache_size() == 0; }
+        bool empty() const
+        {
+          return (!_db && cache_size() == 0) || (_db && _dbFullName.empty());
+        }
 
         c10::optional<TorchBatch> get_batch(BatchRequestType request) override;
 
@@ -68,6 +126,7 @@ namespace dd
 
         /// Split a percentage of this dataset
         TorchDataset split(double start, double stop);
+
     };
 
 
@@ -82,15 +141,36 @@ namespace dd
     class TorchInputInterface
     {
     public:
-        TorchInputInterface() {}
+        TorchInputInterface()  {}
         TorchInputInterface(const TorchInputInterface &i)
              : _finetuning(i._finetuning),
              _lm_params(i._lm_params),
-             _dataset(i._dataset),
-             _test_dataset(i._test_dataset),
-             _input_format(i._input_format) { }
+               _dataset(i._dataset),
+               _test_dataset(i._test_dataset),
+               _input_format(i._input_format),
+          _db(i._db), _tilogger(i._tilogger) {}
+
 
         ~TorchInputInterface() {}
+
+      void init(const APIData &ad, std::string model_repo, std::shared_ptr<spdlog::logger> logger)
+        {
+          if (ad.has("db") && ad.get("db").get<bool>())
+            {
+              _db = true;
+            }
+          if (ad.has("shuffle"))
+            _dataset.set_shuffle(ad.get("shuffle").get<bool>());
+          _dataset.set_dbParams(_db, _backend, model_repo + "/train");
+          _dataset.set_logger(logger);
+          _tilogger = logger;
+          _test_dataset.set_dbParams(_db, _backend, model_repo + "/test");
+          _test_dataset.set_logger(logger);
+        }
+
+      void build_test_datadb_from_full_datadb(double tsplit);
+
+      bool has_to_create_db(const APIData&ad, double tsplit);
 
         torch::Tensor toLongTensor(std::vector<int64_t> &values) {
             int64_t val_size = values.size();
@@ -99,29 +179,45 @@ namespace dd
 
         TorchBatch generate_masked_lm_batch(const TorchBatch &example) { return {}; }
 
+        void set_transation_size(int32_t tsize)
+        {
+          _dataset.set_transation_size(tsize);
+          _test_dataset.set_transation_size(tsize);
+        }
+
         int64_t mask_id() const { return 0; }
         int64_t vocab_size() const { return 0; }
         std::string get_word(int64_t id) const { return ""; }
 
 
-        TorchDataset _dataset;
-        TorchDataset _test_dataset;
 
-        MaskedLMParams _lm_params;
         bool _finetuning;
+        MaskedLMParams _lm_params;
         /** Tell which inputs should be provided to the models.
          * see*/
+        TorchDataset _dataset;
+        TorchDataset _test_dataset;
         std::string _input_format;
         std::vector<int64_t> _lengths;/**< length of each sentence with txt connector. */
+        std::shared_ptr<spdlog::logger> _tilogger;
+
+        bool _db = false;
+        std::string _dbname = "train";
+        std::string _db_fname;
+        std::string _test_db_name = "test";
+        std::string _backend = "lmdb";
     };
 
     class ImgTorchInputFileConn : public ImgInputFileConn, public TorchInputInterface
     {
     public:
         ImgTorchInputFileConn()
-            :ImgInputFileConn() {}
+            :ImgInputFileConn()
+        {
+          set_transation_size(TORCH_IMG_TRANSACTION_SIZE);
+        }
         ImgTorchInputFileConn(const ImgTorchInputFileConn &i)
-            :ImgInputFileConn(i),TorchInputInterface(i) {}
+          :ImgInputFileConn(i),TorchInputInterface(i) {set_transation_size(10);}
         ~ImgTorchInputFileConn() {}
 
         // for API info only
@@ -138,6 +234,7 @@ namespace dd
 
         void init(const APIData &ad)
         {
+          TorchInputInterface::init(ad, _model_repo, _logger);
             ImgInputFileConn::init(ad);
         }
 
@@ -186,16 +283,22 @@ namespace dd
         TxtTorchInputFileConn()
             : TxtInputFileConn() {
             _vocab_sep = '\t';
+            set_transation_size(100);
         }
         TxtTorchInputFileConn(const TxtTorchInputFileConn &i)
             : TxtInputFileConn(i), TorchInputInterface(i),
-              _width(i._width), _height(i._height) {}
+        _width(i._width), _height(i._height)
+        {
+          set_transation_size(TORCH_TEXT_TRANSATION_SIZE);
+        }
         ~TxtTorchInputFileConn() {}
 
         void init(const APIData &ad)
         {
             TxtInputFileConn::init(ad);
+            TorchInputInterface::init(ad, _model_repo, _logger);
             fillup_parameters(ad);
+
         }
 
         void fillup_parameters(const APIData &ad_input);
@@ -225,6 +328,13 @@ namespace dd
         TorchBatch generate_masked_lm_batch(const TorchBatch &example);
 
         void fill_dataset(TorchDataset &dataset, const std::vector<TxtEntry<double>*> &entries);
+
+        virtual void parse_content(const std::string &content,
+                                   const float &target=-1,
+                                   const bool &test=false);
+
+        void push_to_db(bool test);
+
     public:
         /** width of the input tensor */
         int _width = 512;

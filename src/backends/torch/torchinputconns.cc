@@ -4,19 +4,207 @@ namespace dd {
 
 using namespace torch;
 
-// ===== TorchDataset
 
-void TorchDataset::add_batch(std::vector<at::Tensor> data, std::vector<at::Tensor> target)
+void TorchInputInterface::build_test_datadb_from_full_datadb(double tsplit)
 {
-    _batches.push_back(TorchBatch(data, target));
+  _tilogger->info("splitting : using {} of dataset as test set", tsplit);
+  _dataset.reset(db::WRITE);
+  std::vector<int64_t> indicestest;
+  int64_t ntest = _dataset._indices.size() * tsplit;
+  auto seed = static_cast<long>(time(NULL));
+  std::mt19937 rng(seed);
+
+  for (int64_t i=0; i< ntest; i++)
+    {
+      std::uniform_int_distribution<int64_t> index_distrib(0, _dataset._indices.size()-1);
+      int64_t index = _dataset._indices[index_distrib(rng)];
+      std::string data;
+      std::string target;
+      _dataset.pop(index,data,target);
+      _test_dataset.add_elt(index, data,target);
+    }
+  _test_dataset.finalize_db();
+  _dataset.finalize_db();
 }
 
-void TorchDataset::reset()
-{
-    _indices.clear();
+  bool TorchInputInterface::has_to_create_db(const APIData&ad, double test_split)
+  {
+    //here force db paths manually if given at call time
+    std::vector<std::string> uris = ad.get("data").get<std::vector<std::string>>();
 
-    for (int64_t i = 0; i < _batches.size(); ++i) {
+    if (uris.size() >=1)
+      {
+        if (fileops::dir_exists(uris[0]) && fileops::is_db(uris[0]))
+          {
+            _dataset._dbFullName = uris[0];
+            if (uris.size() == 2 && fileops::is_db(uris[1]))
+              _test_dataset._dbFullName = uris[1];
+          }
+      }
+    if (fileops::file_exists(_dataset._dbFullName))
+      {
+        _tilogger->warn("db {} already exists, not rebuilding it",_dataset._dbFullName);
+        if (!fileops::file_exists(_test_dataset._dbFullName))
+          {
+            if (test_split != 0.0)
+              build_test_datadb_from_full_datadb(test_split);
+          }
+        else
+          {
+            _tilogger->warn("test db {} already exists, not rebuilding it",
+                          _test_dataset._dbFullName);
+          }
+        return false;
+      }
+    return true;
+  }
+
+  // ===== TorchDataset
+
+  void TorchDataset::finalize_db()
+  {
+    if (_current_index % _batches_per_transaction != 0) {
+      _txn->Commit();
+      _logger->info("Put {} tensors in db",_current_index);
+    }
+    if (_dbData != nullptr)
+      {
+        _dbData->Close();
+        _txn.reset();
+      }
+    _dbData = nullptr;
+    _current_index = 0;
+  }
+
+  void TorchDataset::pop(int64_t index, std::string&data, std::string&target)
+  {
+    if (_dbData == nullptr)
+      {
+        _dbData = std::shared_ptr<db::DB>(db::GetDB(_backend));
+        _dbData->Open(_dbFullName, db::WRITE);
+      }
+    std::stringstream data_key;
+    std::stringstream target_key;
+
+    data_key<< std::to_string(index)<<"_data";
+    target_key << std::to_string(index) << "_target";
+
+    _dbData->Get(data_key.str(), data);
+    _dbData->Get(target_key.str(), target);
+
+    _dbData->Remove(data_key.str());
+    _dbData->Remove(target_key.str());
+
+    auto it = _indices.begin();
+    while (it != _indices.end())
+      {
+        if (*it == index)
+          {
+            _indices.erase(it);
+            break;
+          }
+        it++;
+      }
+  }
+
+
+  void TorchDataset::add_elt(int64_t index, std::string data, std::string target)
+  {
+    if (_dbData == nullptr)
+      {
+        _dbData = std::shared_ptr<db::DB>(db::GetDB(_backend));
+        _dbData->Open(_dbFullName, db::NEW);
+        _txn = std::shared_ptr<db::Transaction>(_dbData->NewTransaction());
+      }
+    std::stringstream data_key;
+    std::stringstream target_key;
+
+    data_key<< std::to_string(index)<<"_data";
+    target_key << std::to_string(index) << "_target";
+    _txn->Put(data_key.str(), data);
+    _txn->Put(target_key.str(), target);
+    _txn->Commit();
+    _txn.reset(_dbData->NewTransaction());
+    _indices.push_back(index);
+  }
+
+
+  void TorchDataset::write_tensors_to_db(std::vector<at::Tensor> data, std::vector<at::Tensor> target)
+  {
+    std::ostringstream dstream;
+    torch::save(data, dstream);
+    std::ostringstream tstream;
+    torch::save(data, tstream);
+
+    if (_dbData == nullptr)
+      {
+        _dbData = std::shared_ptr<db::DB>(db::GetDB(_backend));
+        _dbData->Open(_dbFullName, db::NEW);
+        _txn = std::shared_ptr<db::Transaction>(_dbData->NewTransaction());
+      }
+
+    std::stringstream data_key;
+    std::stringstream target_key;
+
+    data_key<< std::to_string(_current_index)<<"_data";
+    target_key << std::to_string(_current_index) << "_target";
+
+    _txn->Put(data_key.str(), dstream.str());
+    _txn->Put(target_key.str(), tstream.str());
+
+
+    //should not commit transations every time;
+    if (++_current_index % _batches_per_transaction == 0)
+      {
+        _txn->Commit();
+        _txn.reset(_dbData->NewTransaction());
+        _logger->info("Put {} tensors in db", _current_index);
+      }
+  }
+
+
+  void TorchDataset::add_batch(std::vector<at::Tensor> data, std::vector<at::Tensor> target)
+{
+  if (!_db)
+      _batches.push_back(TorchBatch(data, target));
+  else
+      write_tensors_to_db(data, target);
+}
+
+void TorchDataset::reset(db::Mode dbmode)
+{
+
+  if (!_db)
+    {
+      _indices.clear();
+
+      for (unsigned int i = 0; i < _batches.size(); ++i) {
         _indices.push_back(i);
+      }
+    }
+  else  //below db case
+    {
+      _indices.clear();
+      if (_dbData == nullptr)
+        {
+          _dbData = std::shared_ptr<db::DB>(db::GetDB(_backend));
+          _dbData->Open(_dbFullName, dbmode);
+        }
+
+      db::Cursor* cursor = _dbData->NewCursor();
+      while(cursor->valid())
+        {
+          std::string key = cursor->key();
+          size_t pos = key.find("_data");
+          if (pos != std::string::npos)
+            {
+              std::string sid = key.substr(0,pos);
+              int64_t id = std::stoll(sid);
+              _indices.push_back(id);
+            }
+          cursor->Next();
+        }
+      delete(cursor);
     }
 
     if (_shuffle)
@@ -31,42 +219,84 @@ void TorchDataset::reset()
 c10::optional<TorchBatch> TorchDataset::get_batch(BatchRequestType request)
 {
     size_t count = request[0];
+    std::vector<Tensor> data_tensors;
+    std::vector<Tensor> target_tensors;
+
     count = count < _indices.size() ? count : _indices.size();
 
     if (count == 0) {
-        return torch::nullopt;
+      return torch::nullopt;
     }
 
     std::vector<std::vector<Tensor>> data, target;
 
-    while(count != 0) {
-        auto id = _indices.back();
-        auto entry = _batches[id];
+    if (!_db)
+      {
+        while(count != 0) {
+          auto id = _indices.back();
+          auto entry = _batches[id];
 
-        for (int i = 0; i < entry.data.size(); ++i)
-        {
-            while (i >= data.size())
+          for (unsigned int i = 0; i < entry.data.size(); ++i)
+            {
+              while (i >= data.size())
                 data.emplace_back();
-            data[i].push_back(entry.data.at(i));
-        }
-        for (int i = 0; i < entry.target.size(); ++i)
-        {
-            while (i >= target.size())
+              data[i].push_back(entry.data.at(i));
+            }
+          for (unsigned int i = 0; i < entry.target.size(); ++i)
+            {
+              while (i >= target.size())
                 target.emplace_back();
-            target[i].push_back(entry.target.at(i));
+              target[i].push_back(entry.target.at(i));
+            }
+
+          _indices.pop_back();
+          count--;
         }
+      }
+    else // below db case
+      {
+        while(count != 0) {
+          auto id = _indices.back();
+          std::stringstream data_key;
+          std::stringstream target_key;
+          data_key << id << "_data";
+          target_key << id << "_target";
 
-        _indices.pop_back();
-        count--;
-    }
+          std::string targets;
+          std::string datas;
+          _dbData->Get(data_key.str(), datas);
+          _dbData->Get(target_key.str(), targets);
+          std::stringstream datastream(datas);
+          std::stringstream targetstream(targets);
+          std::vector<Tensor> d;
+          std::vector<Tensor> t;
+          torch::load(d, datastream);
+          torch::load(t, targetstream);
 
-    std::vector<Tensor> data_tensors;
+          for (unsigned int i = 0; i < d.size(); ++i)
+            {
+              while (i >= data.size())
+                data.emplace_back();
+              data[i].push_back(d.at(i));
+            }
+          for (unsigned int i = 0; i < t.size(); ++i)
+            {
+              while (i >= target.size())
+                target.emplace_back();
+              target[i].push_back(t.at(i));
+            }
+
+          _indices.pop_back();
+          count--;
+        }
+      }
+
     for (auto vec : data)
-        data_tensors.push_back(torch::stack(vec));
+      data_tensors.push_back(torch::stack(vec));
 
-    std::vector<Tensor> target_tensors;
     for (auto vec : target)
-        target_tensors.push_back(torch::stack(vec));
+      target_tensors.push_back(torch::stack(vec));
+
 
     return TorchBatch{ data_tensors, target_tensors };
 }
@@ -93,52 +323,118 @@ TorchDataset TorchDataset::split(double start, double stop)
 
 // ===== TxtTorchInputFileConn
 
+  void TxtTorchInputFileConn::parse_content(const std::string &content,
+                                            const float &target,
+                                            const bool &test)
+  {
+    _ndbed = 0;
+    TxtInputFileConn::parse_content(content, target, test);
+    if (_db)
+      push_to_db(test);
+  }
+
 void TxtTorchInputFileConn::fillup_parameters(const APIData &ad_input)
 {
   TxtInputFileConn::fillup_parameters(ad_input);
+  if (ad_input.has("db"))
+	_db = ad_input.get("db").get<bool>();
+
+}
+
+
+void TxtTorchInputFileConn::push_to_db(bool test)
+{
+  if (!test)
+    {
+      _logger->info("pushing to train_db");
+      fill_dataset(_dataset, _txt);
+      destroy_txt_entries(_txt);
+    }
+  else
+    {
+      _logger->info("pushing to test_db");
+      fill_dataset(_test_dataset, _test_txt);
+      destroy_txt_entries(_test_txt);
+    }
 }
 
 void TxtTorchInputFileConn::transform(const APIData &ad) {
     // if (_finetuning)
     // XXX: Generating vocab from scratch is not currently
-    _generate_vocab = false;
+
+  if (!_ordered_words || _characters)
+    throw InputConnectorBadParamException("Need ordered_words = true with backend torch");
+
+
+
+  _generate_vocab = false;
+
+  if (!_characters && (!_train || _ordered_words) && _vocab.empty())
+	deserialize_vocab();
+
+
+    // XXX: move in txtinputconn?
+    make_inv_vocab();
+
+    if (_input_format == "bert")
+      {
+        _cls_pos = _vocab.at("[CLS]")._pos;
+        _sep_pos = _vocab.at("[SEP]")._pos;
+        _unk_pos = _vocab.at("[UNK]")._pos;
+        _mask_id = _vocab.at("[MASK]")._pos;
+      }
+    else if (_input_format == "gpt2")
+      {
+        _eot_pos = _vocab.at("<|endoftext|>")._pos;
+      }
+
+
+    if (ad.has("parameters") && ad.getobj("parameters").has("input"))
+      {
+        APIData ad_input = ad.getobj("parameters").getobj("input");
+        fillup_parameters(ad_input);
+      }
 
     try
     {
-        TxtInputFileConn::transform(ad);
+
+      if (_db)
+        {
+          if (TorchInputInterface::has_to_create_db(ad,_test_split))
+            {
+              double save_ts = _test_split;
+              _test_split = 0.0;
+              TxtInputFileConn::transform(ad);
+              _test_split = save_ts;
+              _dataset.finalize_db();
+              bool has_test_data = _test_dataset._dbData != nullptr;
+              _test_dataset.finalize_db();
+              if (_test_split != 0.0 && !has_test_data)
+                build_test_datadb_from_full_datadb(_test_split);
+            }
+          }
+      else
+        {
+          TxtInputFileConn::transform(ad);
+        }
+
     }
     catch(const std::exception& e)
     {
         throw;
     }
 
-    if (!_ordered_words || _characters)
-        throw InputConnectorBadParamException("Need ordered_words = true with backend torch");
 
-    // XXX: move in txtinputconn?
-    make_inv_vocab();
-
-    if (ad.has("parameters") && ad.getobj("parameters").has("input"))
-    {
-        APIData ad_input = ad.getobj("parameters").getobj("input");
-        fillup_parameters(ad_input);
-    }
-    
-    if (_input_format == "bert")
-    {
-        _cls_pos = _vocab.at("[CLS]")._pos;
-        _sep_pos = _vocab.at("[SEP]")._pos;
-        _unk_pos = _vocab.at("[UNK]")._pos;
-        _mask_id = _vocab.at("[MASK]")._pos;
-    }
-    else if (_input_format == "gpt2")
-    {
-        _eot_pos = _vocab.at("<|endoftext|>")._pos;
-    }
-
-    fill_dataset(_dataset, _txt);
-    if (!_test_txt.empty())
-        fill_dataset(_test_dataset, _test_txt);
+    if (!_db)
+      {
+        fill_dataset(_dataset, _txt);
+        destroy_txt_entries(_txt);
+        if (!_test_txt.empty())
+          {
+            fill_dataset(_test_dataset, _test_txt);
+            destroy_txt_entries(_test_txt);
+          }
+      }
 }
 
 TorchBatch TxtTorchInputFileConn::generate_masked_lm_batch(const TorchBatch &example)
@@ -191,6 +487,8 @@ TorchBatch TxtTorchInputFileConn::generate_masked_lm_batch(const TorchBatch &exa
 void TxtTorchInputFileConn::fill_dataset(TorchDataset &dataset,
                                          const std::vector<TxtEntry<double>*> &entries)
 {
+
+  _ndbed = 0;
     for (auto *te : entries)
     {
         TxtOrderedWordsEntry *tow = static_cast<TxtOrderedWordsEntry *>(te);
@@ -279,6 +577,7 @@ void TxtTorchInputFileConn::fill_dataset(TorchDataset &dataset,
             target_vec.insert(target_vec.begin(), torch::cat(out_vec, 0));
             dataset.add_batch({ids_tensor, position_ids}, std::move(target_vec));
         }
+        _ndbed++;
     }
 }
 

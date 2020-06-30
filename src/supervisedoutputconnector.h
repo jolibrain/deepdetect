@@ -1548,7 +1548,8 @@ namespace dd
           APIData bad = ad.getobj(std::to_string(i));
           std::vector<double> predictions = bad.get("pred").get<std::vector<double>>();
           double target = bad.get("target").get<double>();
-          logits.push_back(bad.get("logits").get<std::vector<double>>());
+          if (bad.has("logits"))
+			  logits.push_back(bad.get("logits").get<std::vector<double>>());
           if (target < 0)
             throw OutputConnectorBadParamException("negative supervised discrete target (e.g. wrong use of label_offset ?");
           else if (target >= nclasses)

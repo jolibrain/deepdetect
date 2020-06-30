@@ -82,6 +82,8 @@ if (USE_TORCH)
     backends/torch/torchlib.cc
     backends/torch/torchmodel.cc
     backends/torch/torchinputconns.cc
+    backends/torch/db.cpp
+    backends/torch/db_lmdb.cpp
   )
 endif()
 if (USE_TENSORRT)
@@ -137,4 +139,7 @@ if (USE_SIMSEARCH)
   else()
     add_dependencies(ddetect faisslib)
   endif()
+endif()
+if (USE_TENSORRT_OSS)
+  add_dependencies(ddetect tensorrt-oss)
 endif()
