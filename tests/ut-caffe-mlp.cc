@@ -616,11 +616,12 @@ TEST(caffelib, configure_deeplabvgg16_diceloss)
   dice_class_weighting.add("compute_on",std::string("batch"));
   dice_class_weighting.add("weight",std::string("equalize_classes"));
   dice_param.add("class_weighting",dice_class_weighting);
-  APIData dice_contour;
-  dice_contour.add("shape",std::string("simple"));
-  dice_contour.add("size",3);
-  dice_contour.add("amplitude",20.5);
-  dice_param.add("contour",dice_contour);
+  // contour should not been used until fixed
+  // APIData dice_contour;
+  // dice_contour.add("shape",std::string("simple"));
+  // dice_contour.add("size",3);
+  // dice_contour.add("amplitude",20.5);
+  // dice_param.add("contour",dice_contour);
   ad.add("dice_param",dice_param);
   ad.add("ignore_label",0);
   ad.add("templates",std::string("../templates/caffe"));
@@ -653,10 +654,13 @@ TEST(caffelib, configure_deeplabvgg16_diceloss)
   ASSERT_TRUE(found);
 
   const caffe::DiceCoefLossParameter &clp = lparam->dice_coef_loss_param();
-  ASSERT_TRUE(clp.generalization() == caffe::DiceCoefLossParameter::NONE);
-  ASSERT_TRUE(clp.contour_shape() == caffe::DiceCoefLossParameter::SIMPLE);
-  ASSERT_TRUE(clp.contour_size() == 3);
-  ASSERT_TRUE(clp.contour_amplitude() == 20.5);
+  ASSERT_TRUE(clp.generalization() == caffe::DiceCoefLossParameter::MULTICLASS_WEIGHTED_BATCH);
+
+  //ASSERT_TRUE(clp.contour_shape() == caffe::DiceCoefLossParameter::SIMPLE);
+  // since 2020 05 20, contour is forced to no, because of an unfound bug
+  ASSERT_TRUE(clp.contour_shape() == caffe::DiceCoefLossParameter::NO);
+  //ASSERT_TRUE(clp.contour_size() == 3);
+  //ASSERT_TRUE(clp.contour_amplitude() == 20.5);
 
 
   remove("./deeplab_vgg16.prototxt");
