@@ -265,7 +265,9 @@ namespace dd
       _generate_vocab(i._generate_vocab),
       _vocab(i._vocab),
       _vocab_sep(i._vocab_sep),
-      _wordpiece_tokenizer(i._wordpiece_tokenizer)
+      _wordpiece_tokenizer(i._wordpiece_tokenizer),
+      _test_split(i._test_split),
+      _ndbed(i._ndbed)
       {
         _wordpiece_tokenizer._ctfc = this;
       }
@@ -366,15 +368,19 @@ namespace dd
 	{
 	  DataEl<DDTxt> dtxt(this->_input_timeout);
 	  dtxt._ctype._ctfc = this;
-	  if (dtxt.read_element(u,this->_logger) || (_txt.empty() && _db_fname.empty()))
+	  if (dtxt.read_element(u,this->_logger) ||( _txt.empty()  && _db_fname.empty() && _ndbed == 0))
 	    {
 	      throw InputConnectorBadParamException("no data for text in " + u);
 	    }
-	  if (_db_fname.empty())
-	    _txt.back()->_uri = u;
-	  else return; // single db
+
+      if (_ndbed == 0)
+        {
+          if (_db_fname.empty())
+            _txt.back()->_uri = u;
+          else return; // single db
+        }
 	}
-      
+
       if (_train)
 	{
 	  _shuffle = true;
@@ -382,7 +388,7 @@ namespace dd
 	}
 
       // shuffle entries if requested
-      if (_train && _shuffle)
+      if (_train && _shuffle && _ndbed ==0)
 	{
 	  std::mt19937 g;
 	  if (_seed >= 0)
@@ -396,7 +402,7 @@ namespace dd
 	}
       
       // split for test set
-      if (_train && _test_split > 0)
+      if (_train && _test_split > 0 && _ndbed == 0)
 	{
 	  int split_size = std::floor(_txt.size() * (1.0-_test_split));
 	  auto chit = _txt.begin();
@@ -414,17 +420,19 @@ namespace dd
 	      ++chit;
 	    }
 	  _txt.erase(dchit,_txt.end());
-	  std::cout << "data split test size=" << _test_txt.size() << " / remaining data size=" << _txt.size() << std::endl;
-	  std::cout << "vocab size=" << _vocab.size() << std::endl;
+        _logger->info("data split test size=" + std::to_string(_test_txt.size()) +
+                      " / remaining data size=" + std::to_string(_txt.size()));
 	}
-      if (_txt.empty())
+      if (_txt.empty() && _ndbed ==0)
+        //if _nbded != 0 _txt has be already db_ed and freed
+        // and splitting / shuffling is done somewhere else
 	throw InputConnectorBadParamException("no text could be found");
     }
 
     // text tokenization for BOW
-    void parse_content(const std::string &content,
-		       const float &target=-1,
-		       const bool &test=false);
+    virtual void parse_content(const std::string &content,
+                               const float &target=-1,
+                               const bool &test=false);
 
     // serialization of vocabulary
     void serialize_vocab();
@@ -469,6 +477,8 @@ namespace dd
     std::vector<TxtEntry<double>*> _txt;
     std::vector<TxtEntry<double>*> _test_txt;
     std::string _db_fname;
+
+    int64_t _ndbed = 0;
   };
   
 }
