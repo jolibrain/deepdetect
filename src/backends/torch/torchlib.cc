@@ -38,7 +38,7 @@ namespace dd
         #endif
     }
 
-    void add_parameters(std::shared_ptr<torch::jit::script::Module> module, std::vector<Tensor> &params, bool requires_grad = true) {
+  void add_parameters(std::shared_ptr<torch::jit::script::Module> module, std::vector<Tensor> &params, bool requires_grad = true) {
         for (const auto &tensor : module->parameters()) {
             if (tensor.requires_grad() && requires_grad)
                 params.push_back(tensor);
@@ -198,6 +198,8 @@ namespace dd
         _masked_lm = tl._masked_lm;
         _seq_training = tl._seq_training;
         _finetuning = tl._finetuning;
+        _best_metrics = tl._best_metrics;
+        _best_metric_value = tl._best_metric_value;
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -287,6 +289,10 @@ namespace dd
         _module.freeze_traced(freeze_traced);
 
         this->_mltype = "classification";
+
+        _best_metrics = {"map", "meaniou", "mlacc", "delta_score_0.1", "bacc", "f1", "net_meas", "acc", "L1_mean_error", "eucll"};
+        _best_metric_value = std::numeric_limits<double>::infinity();
+
     }
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
@@ -296,6 +302,85 @@ namespace dd
         fileops::remove_directory_files(this->_mlmodel._repo, extensions);
         this->_logger->info("Torchlib service cleared");
     }
+
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  bool TorchLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::is_better(double v1, double v2, std::string metric_name)
+  {
+    if (metric_name == "eucll" || metric_name == "delta_score_0.1" || metric_name == "L1_mean_error")
+      return (v2 > v1);
+    return (v1 > v2);
+  }
+
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  int64_t TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::save_if_best(APIData& meas_out, int64_t elapsed_it, optim::Optimizer& optimizer, int64_t best_to_remove)
+  {
+    double cur_meas = std::numeric_limits<double>::infinity();
+    std::string meas;
+    for (auto m: _best_metrics)
+      {
+        if (meas_out.has(m))
+          {
+            cur_meas = meas_out.get(m).get<double>();
+            meas = m;
+            break;
+          }
+      }
+    if (cur_meas == std::numeric_limits<double>::infinity())
+      {
+        // could not find value for measuring best
+        this->_logger->info("could not find any value for measuring best model");
+        return false;
+      }
+    if (_best_metric_value == std::numeric_limits<double>::infinity() ||
+        is_better(cur_meas, _best_metric_value, meas))
+      {
+        if (best_to_remove != -1)
+          {
+            remove_model(best_to_remove);
+          }
+        _best_metric_value = cur_meas;
+        this->snapshot(elapsed_it, optimizer);
+        try
+          {
+            std::ofstream bestfile;
+            std::string bestfilename = this->_mlmodel._repo + this->_mlmodel._best_model_filename;
+            bestfile.open(bestfilename,std::ios::out);
+            bestfile << "iteration:" <<  elapsed_it << std::endl;
+            bestfile <<  meas << ":" << cur_meas << std::endl;
+            bestfile.close();
+          }
+        catch(std::exception &e)
+          {
+            this->_logger->error("could not write best model file");
+          }
+        return elapsed_it;
+      }
+    return best_to_remove;
+  }
+
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::remove_model(int64_t elapsed_it)
+  {
+    this->_logger->info("Deleting superseeded model {} ", elapsed_it);
+    std::remove((this->_mlmodel._repo+"/solver-" + std::to_string(elapsed_it) + ".pt").c_str());
+    std::remove((this->_mlmodel._repo+"/checkpoint-" + std::to_string(elapsed_it) + ".pt").c_str());
+    std::remove((this->_mlmodel._repo+"/checkpoint-" + std::to_string(elapsed_it) + ".ptw").c_str());
+  }
+
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::snapshot(int64_t elapsed_it, optim::Optimizer& optimizer)
+  {
+    this->_logger->info("Saving checkpoint after {} iterations", elapsed_it);
+    this->_module.save_checkpoint(this->_mlmodel, std::to_string(elapsed_it));
+    // Save optimizer
+    torch::save(optimizer, this->_mlmodel._repo + "/solver-" + std::to_string(elapsed_it) + ".pt");
+
+  }
+
 
     template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
     int TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::train(const APIData &ad, APIData &out)
@@ -331,6 +416,9 @@ namespace dd
         int64_t test_interval = 1;
         int64_t save_period = 0;
 
+        Tensor class_weights = {};
+
+
         // logging parameters
         int64_t log_batch_period = 20;
 
@@ -359,6 +447,22 @@ namespace dd
             if (ad_net.has("test_batch_size"))
                 test_batch_size = ad_net.get("test_batch_size").get<int>();
         }
+
+        if (ad_mllib.has("class_weights"))
+          {
+            std::vector<double> cwv = ad_mllib.get("class_weights").get<std::vector<double>>();
+            if (cwv.size() != _nclasses)
+              {
+                this->_logger->error("class weights given, but number of weights {} do not match number of classes {}, ignoring", cwv.size(), _nclasses);
+              }
+            else
+              {
+                this->_logger->info("using class weights");
+                auto options = torch::TensorOptions().dtype(torch::kFloat64);
+                class_weights = torch::from_blob(cwv.data(),{_nclasses},options).to(torch::kFloat32).to(_device);
+              }
+          }
+
 
         if (iter_size <= 0)
             iter_size = 1;
@@ -389,10 +493,16 @@ namespace dd
             optimizer = std::unique_ptr<optim::Optimizer>(
                 new optim::SGD(_module.parameters(), optim::SGDOptions(base_lr)));
         }
-        // reload solver
+
+        int it = 0;
+        // reload solver and set it value accordingly
         if (!this->_mlmodel._sstate.empty())
         {
             this->_logger->info("Reload solver from {}", this->_mlmodel._sstate);
+            size_t start = this->_mlmodel._sstate.rfind("-")+1;
+            size_t end = this->_mlmodel._sstate.rfind(".");
+            it = std::stoi(this->_mlmodel._sstate.substr(start,end-start));
+            this->_logger->info("Restarting optimization from iter {}", it);
             torch::load(*optimizer, this->_mlmodel._sstate);
         }
         optimizer->zero_grad();
@@ -404,10 +514,11 @@ namespace dd
             data::DataLoaderOptions(batch_size)
         );
 
-        this->_logger->info("Training for {} iterations", iterations);
-        int it = 0;
+        this->_logger->info("Training for {} iterations", iterations-it);
         int batch_id = 0;
         using namespace std::chrono;
+
+        int64_t best_to_remove = -1;
 
         // it is the iteration count (not epoch)
         while (it < iterations)
@@ -452,12 +563,14 @@ namespace dd
                     loss = torch::nll_loss(
                         torch::log_softmax(y_pred.view(IntList{-1, y_pred.size(2)}), 1),
                         y.view(IntList{-1}),
-                        {}, Reduction::Mean, -1
+                        class_weights, Reduction::Mean, -1
                     );
                 }
                 else
                 {
-                    loss = torch::nll_loss(torch::log_softmax(y_pred, 1), y.view(IntList{-1}));
+                  loss = torch::nll_loss(torch::log_softmax(y_pred, 1),
+                                         y.view(IntList{-1}),
+                                         class_weights);
                 }
                 if (iter_size > 1)
                     loss /= iter_size;
@@ -515,6 +628,8 @@ namespace dd
                         APIData meas_obj = meas_out.getobj("measure");
                         std::vector<std::string> meas_names = meas_obj.list_keys();
 
+                        best_to_remove = save_if_best(meas_obj, elapsed_it, *optimizer, best_to_remove);
+
                         for (auto name : meas_names)
                         {
                             if (name != "cmdiag" && name != "cmfull" && name != "labels")
@@ -543,10 +658,12 @@ namespace dd
 
                     if ((save_period != 0 && elapsed_it % save_period == 0) || elapsed_it == iterations)
                     {
-                        this->_logger->info("Saving checkpoint after {} iterations", elapsed_it);
-                        _module.save_checkpoint(this->_mlmodel, std::to_string(elapsed_it));
-                        // Save optimizer
-                        torch::save(*optimizer, this->_mlmodel._repo + "/solver-" + std::to_string(elapsed_it) + ".pt");
+                      if (best_to_remove == elapsed_it)
+                        // current model already snapshoted as best model,
+                        // do not remove regular snapshot if it is  best model
+                        best_to_remove = -1;
+                      else
+                        snapshot(elapsed_it, *optimizer);
                     }
                     ++it;
 

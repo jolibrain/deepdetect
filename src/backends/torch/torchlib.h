@@ -100,7 +100,26 @@ namespace dd
 
         // models
         TorchModule _module;
+
+        std::vector<std::string> _best_metrics; /**< metric to use for saving best model */
+        double _best_metric_value; /**< best metric value  */
+
+    private:
+        /**
+         * \brief checks wether v1 is better than v2
+         */
+         bool is_better(double v1, double v2, std::string metric_name);
+
+        /**
+        * \brief generates a file containing best iteration so far
+        */
+    int64_t save_if_best(APIData &meas_out,int64_t elapsed_it, torch::optim::Optimizer& optimizer, int64_t best_to_remove);
+
+        void snapshot(int64_t elapsed_it, torch::optim::Optimizer& optimizer);
+
+        void remove_model(int64_t it);
     };
+
 }
 
 #endif // TORCHLIB_H
