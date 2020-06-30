@@ -285,7 +285,7 @@ namespace dd
                                      const int height_net,  const int width_net,
                                      const int height_dest, const int width_dest, bool resize_nn);
 
-
+	  bool is_refinedet(caffe::NetParameter &net_param);
 
     public:
       caffe::Net<float> *_net = nullptr; /**< neural net. */
