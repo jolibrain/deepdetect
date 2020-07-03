@@ -90,6 +90,7 @@ namespace dd
       void configure_ssd_template(const std::string &dest_net,
 				  const std::string &deploy_dest_net,
 				  const APIData &ad,
+				  TInputConnectorStrategy &inputc,
 				  const bool &refinedet);
 
       void configure_recurrent_template(const APIData &ad,

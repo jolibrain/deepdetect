@@ -202,8 +202,8 @@ namespace dd
     else if (model_tmpl.find("ssd")!=std::string::npos
 	     || model_tmpl.find("refinedet")!=std::string::npos)
       {
-		bool refinedet = (model_tmpl.find("refinedet")!=std::string::npos);
-	configure_ssd_template(dest_net,dest_deploy_net,ad,refinedet);
+	bool refinedet = (model_tmpl.find("refinedet")!=std::string::npos);
+	configure_ssd_template(dest_net,dest_deploy_net,ad,this->_inputc,refinedet);
       }
     else if (model_tmpl.find("recurrent") != std::string::npos)
       {
@@ -736,6 +736,7 @@ namespace dd
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_ssd_template(const std::string &dest_net,
 												   const std::string &dest_deploy_net,
 												   const APIData &ad,
+												   TInputConnectorStrategy &inputc,
 												   const bool &refinedet)
   {
     //- load prototxt
@@ -743,6 +744,9 @@ namespace dd
     caffe::ReadProtoFromTextFile(dest_net,&net_param);
     caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
 
+    // get image input connector
+    ImgCaffeInputFileConn *timg = reinterpret_cast<ImgCaffeInputFileConn*>(&inputc);
+    
     // get ssd detailed params, if any.
     double ssd_expand_prob = -1.0;
     double ssd_max_expand_ratio = -1.0;
@@ -770,19 +774,28 @@ namespace dd
     for (int l=0;l<k;l++)
       {
 	caffe::LayerParameter *lparam = net_param.mutable_layer(l);
-
-	if (l == 0 && lparam->type() == "AnnotatedData")
+	
+ 	if ((l==0 || l==1) && lparam->type() == "AnnotatedData")
 	  {
 	    caffe::TransformationParameter *trparam = lparam->mutable_transform_param();
-	    if (ssd_expand_prob >= 0.0 || ssd_max_expand_ratio >= 0.0)
+	    if (timg->_bw)
 	      {
-		caffe::ExpansionParameter *exparam = trparam->mutable_expand_param();
-		if (ssd_expand_prob >= 0.0)
-		  exparam->set_prob(ssd_expand_prob);
-		if (ssd_max_expand_ratio >= 0.0)
-		  exparam->set_max_expand_ratio(ssd_max_expand_ratio);
+		trparam->set_force_gray(true);
+		trparam->set_force_color(false);
 	      }
-        configure_geometry_augmentation(ad,trparam);
+
+	    if (l==0)
+	      {
+		if (ssd_expand_prob >= 0.0 || ssd_max_expand_ratio >= 0.0)
+		  {
+		    caffe::ExpansionParameter *exparam = trparam->mutable_expand_param();
+		    if (ssd_expand_prob >= 0.0)
+		      exparam->set_prob(ssd_expand_prob);
+		    if (ssd_max_expand_ratio >= 0.0)
+		      exparam->set_max_expand_ratio(ssd_max_expand_ratio);
+		  }
+		configure_geometry_augmentation(ad,trparam);
+	      }
 	  }
 	
 	if (finetune)
