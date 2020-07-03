@@ -3503,8 +3503,7 @@ namespace dd
 {
 
   bool refinedet = is_refinedet(net_param);
-  std::cout << "REFINEDET : " << refinedet << std::endl;
-
+  
   if (!ad.has("engine") && !refinedet)
     return;
 
