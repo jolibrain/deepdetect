@@ -369,6 +369,7 @@ namespace dd
     int count = 0;
     const int kMaxKeyLength = 256;
     char key_cstr[kMaxKeyLength];
+    bool key_overflow = false;
     
     for (int line_id = 0; line_id < (int)lfiles.size(); ++line_id) {
       Datum datum;
@@ -388,7 +389,9 @@ namespace dd
       // sequential
       int length = snprintf(key_cstr, kMaxKeyLength, "%08d_%s", line_id,
 			    lfiles[line_id].first.c_str());
-
+      if (lfiles[line_id].first.size() > kMaxKeyLength)
+	key_overflow = true;
+      
       // put in db
       std::string out;
       if(!datum.SerializeToString(&out))
@@ -407,6 +410,9 @@ namespace dd
       txn->Commit();
       _logger->info("Processed {} files",count);
     }
+    if (key_overflow)
+      _logger->warn("Some of the keys in {} have been truncated to fit the 256 max key length requirement",
+		    dbfullname);
   }
 
   void ImgCaffeInputFileConn::write_image_to_db_multilabel(const std::string &dbfullname,
@@ -425,6 +431,7 @@ namespace dd
     int count = 0;
     const int kMaxKeyLength = 256;
     char key_cstr[kMaxKeyLength];
+    bool key_overflow = false;
     
     for (int line_id = 0; line_id < (int)lfiles.size(); ++line_id) {
       Datum datum;
@@ -449,6 +456,8 @@ namespace dd
       // sequential
       int length = snprintf(key_cstr, kMaxKeyLength, "%08d_%s", line_id,
 			    lfiles[line_id].first.c_str());
+      if (lfiles[line_id].first.size() > kMaxKeyLength)
+	key_overflow = true;
       
       // put in db
       std::string out;
@@ -468,6 +477,9 @@ namespace dd
       txn->Commit();
       _logger->info("Processed {} files",count);
     }
+    if (key_overflow)
+      _logger->warn("Some of the keys in {} have been truncated to fit the 256 max key length requirement",
+		    dbfullname);
   }
 
   // - fixed size in-memory arrays put down to disk at once
