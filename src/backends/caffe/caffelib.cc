@@ -202,7 +202,7 @@ namespace dd
     else if (model_tmpl.find("ssd")!=std::string::npos
 	     || model_tmpl.find("refinedet")!=std::string::npos)
       {
-	bool refinedet = (model_tmpl.find("refinedet")!=std::string::npos);
+		bool refinedet = (model_tmpl.find("refinedet")!=std::string::npos);
 	configure_ssd_template(dest_net,dest_deploy_net,ad,refinedet);
       }
     else if (model_tmpl.find("recurrent") != std::string::npos)
@@ -1073,13 +1073,11 @@ namespace dd
     
     // instantiate model template here, if any
     if (ad.has("template") && ad.get("template").get<std::string>() != "")
-      instantiate_template(ad);
+	  {
+		instantiate_template(ad);
+	  }
     else // model template instantiation is defered until training call
       {
-#ifdef USE_CUDNN
-        update_protofile_engine(ad);
-#endif
-        update_deploy_protofile_softmax(ad); // temperature scaling
         create_model(true);
       }
 
@@ -3470,8 +3468,7 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofile_engine(const APIData& ad)
   {
-    if (!ad.has("engine"))
-      return;
+
 	std::string deploy_file = this->_mlmodel._repo + "/deploy.prototxt";
 	caffe::NetParameter deploy_net_param;
 	caffe::ReadProtoFromTextFile(deploy_file,&deploy_net_param);
@@ -3488,11 +3485,27 @@ namespace dd
 	caffe::WriteProtoToTextFile(net_param,train_file);
   }
 
+
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofile_engine(caffe::NetParameter &net_param, const APIData& ad)
+  bool CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::is_refinedet(caffe::NetParameter &net_param)
+  {
+    for (int l=net_param.layer_size()-1;l>0;l--)
+      {
+		caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+		if (lparam->type() == "DetectionOutput" && lparam->bottom().size() > 3)
+		  return true;
+	  }
+	return false;
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofile_engine(caffe::NetParameter &net_param, const APIData& ad)
 {
 
-  if (!ad.has("engine"))
+  bool refinedet = is_refinedet(net_param);
+  std::cout << "REFINEDET : " << refinedet << std::endl;
+
+  if (!ad.has("engine") && !refinedet)
     return;
 
   for (int l=0; l< net_param.layer_size();l++)
@@ -3512,27 +3525,27 @@ void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update
           if (use_dilation)
               continue;
 
-          if (ad.get("engine").get<std::string>() == "DEFAULT")
+          if (!refinedet && ad.has("engine") && ad.get("engine").get<std::string>() == "DEFAULT")
             {
               lparam->mutable_convolution_param()->set_engine(::caffe::ConvolutionParameter::DEFAULT);
               lparam->mutable_convolution_param()->clear_cudnn_flavor();
             }
-          if (ad.get("engine").get<std::string>() == "CAFFE")
+          else if (!refinedet && ad.has("engine") && ad.get("engine").get<std::string>() == "CAFFE")
             {
               lparam->mutable_convolution_param()->set_engine(::caffe::ConvolutionParameter::CAFFE);
               lparam->mutable_convolution_param()->clear_cudnn_flavor();
             }
-          else if (ad.get("engine").get<std::string>() == "CUDNN")
+          else if (!refinedet && ad.has("engine") && ad.get("engine").get<std::string>() == "CUDNN")
             {
               lparam->mutable_convolution_param()->set_engine(::caffe::ConvolutionParameter::CUDNN);
               lparam->mutable_convolution_param()->set_cudnn_flavor(::caffe::ConvolutionParameter::MULTIPLE_HANDLES);
             }
-          else if (ad.get("engine").get<std::string>() == "CUDNN_SINGLE_HANDLE")
+          else if (!refinedet && ad.has("engine") &&  ad.get("engine").get<std::string>() == "CUDNN_SINGLE_HANDLE")
             {
               lparam->mutable_convolution_param()->set_engine(::caffe::ConvolutionParameter::CUDNN);
               lparam->mutable_convolution_param()->set_cudnn_flavor(::caffe::ConvolutionParameter::SINGLE_HANDLE);
             }
-          else if (ad.get("engine").get<std::string>() == "CUDNN_MIN_MEMORY")
+          else if (refinedet || (ad.has("engine") && ad.get("engine").get<std::string>() == "CUDNN_MIN_MEMORY") )
             {
               lparam->mutable_convolution_param()->set_engine(::caffe::ConvolutionParameter::CUDNN);
               lparam->mutable_convolution_param()->set_cudnn_flavor(::caffe::ConvolutionParameter::MIN_MEMORY);
