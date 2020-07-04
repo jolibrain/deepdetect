@@ -744,6 +744,9 @@ namespace dd
     caffe::ReadProtoFromTextFile(dest_net,&net_param);
     caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
 
+    // image augmentation
+    configure_image_augmentation(ad,net_param);
+    
     // get image input connector
     ImgCaffeInputFileConn *timg = reinterpret_cast<ImgCaffeInputFileConn*>(&inputc);
     
@@ -887,6 +890,10 @@ namespace dd
     for (int l=0;l<k;l++)
       {
 	caffe::LayerParameter *lparam = deploy_net_param.mutable_layer(l);
+	if (lparam->type() == "MemoryData" && timg->_bw)
+	  {
+	    lparam->mutable_memory_data_param()->set_channels(timg->channels());
+	  }
 	if (finetune)
 	  {
 	    if (lparam->name().find("mbox_conf") != std::string::npos
