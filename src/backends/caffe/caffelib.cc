@@ -766,10 +766,10 @@ namespace dd
     if (ad.has("ssd_neg_pos_ratio"))
       ssd_neg_pos_ratio = ad.get("ssd_neg_pos_ratio").get<double>();
     if (ad.has("ssd_neg_overlap"))
-      ssd_neg_pos_ratio = ad.get("ssd_neg_overlap").get<double>();
+      ssd_neg_overlap = ad.get("ssd_neg_overlap").get<double>();
     if (ad.has("ssd_keep_top_k"))
       ssd_keep_top_k = ad.get("ssd_keep_top_k").get<int>();
-          
+    
     //- if finetuning, change the proper layer names
     std::string postfix = "_ftune";
     const bool finetune = (ad.has("finetuning") && ad.get("finetuning").get<bool>());
