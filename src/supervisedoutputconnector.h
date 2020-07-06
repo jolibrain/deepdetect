@@ -654,6 +654,7 @@ namespace dd
 		  }
 	    }
 	  bool bf1 = (std::find(measures.begin(),measures.end(),"f1")!=measures.end());
+	  bool bf1full = (std::find(measures.begin(),measures.end(),"f1full")!=measures.end());
 	  bool bmcll = (std::find(measures.begin(),measures.end(),"mcll")!=measures.end());
 	  bool bgini = (std::find(measures.begin(),measures.end(),"gini")!=measures.end());
 	  bool beucll = false;
@@ -832,16 +833,36 @@ namespace dd
             }
         }
 
-	  if (!multilabel && !segmentation && !bbox && bf1)
+	  if (!multilabel && !segmentation && !bbox && (bf1 || bf1full))
 	    {
 	      double f1,precision,recall,acc;
 	      dMat conf_diag,conf_matrix;
-	      f1 = mf1(ad_res,precision,recall,acc,conf_diag,conf_matrix);
+		  dVec precisionV, recallV, f1V;
+	      f1 = mf1(ad_res,precision,recall,acc,precisionV, recallV, f1V, conf_diag,conf_matrix);
 	      meas_out.add("f1",f1);
 	      meas_out.add("precision",precision);
 	      meas_out.add("recall",recall);
 	      meas_out.add("accp",acc);
-	      if (std::find(measures.begin(),measures.end(),"cmdiag")!=measures.end())
+		  if (std::find(measures.begin(), measures.end(), "f1full") != measures.end())
+			{
+			  std::vector<double> allPrecisions;
+			  std::vector<double> allRecalls;
+			  std::vector<double> allF1s;
+			  for (int i=0; i<precisionV.size(); ++i)
+				{
+				  allPrecisions.push_back(precisionV(i));
+				  allRecalls.push_back(recallV(i));
+				  allF1s.push_back(f1V(i));
+				}
+			  meas_out.add("precisions", allPrecisions);
+			  meas_out.add("recalls", allRecalls);
+			  meas_out.add("f1s", allF1s);
+			  if (std::find(measures.begin(),measures.end(),"cmdiag")==measures.end())
+				meas_out.add("labels",ad_res.get("clnames").get<std::vector<std::string>>());
+			}
+
+		  if (std::find(measures.begin(),measures.end(),"cmdiag")!=measures.end())
+
 		{
 		  std::vector<double> cmdiagv;
 		  for (int i=0;i<conf_diag.rows();i++)
@@ -1588,7 +1609,8 @@ namespace dd
     }
 
     // measure: F1
-    static double mf1(const APIData &ad, double &precision, double &recall, double &acc, dMat &conf_diag, dMat &conf_matrix)
+    static double mf1(const APIData &ad, double &precision, double &recall, double &acc,
+					  dVec &precisionV, dVec &recallV, dVec &f1V, dMat &conf_diag, dMat &conf_matrix)
     {
       int nclasses = ad.get("nclasses").get<int>();
       double f1=0.0;
@@ -1611,12 +1633,12 @@ namespace dd
       dMat conf_rsum = conf_matrix.rowwise().sum();
       dMat eps = dMat::Constant(nclasses,1,1e-8);
       acc = conf_diag.sum() / conf_matrix.sum();
-      precision = conf_diag.transpose().cwiseQuotient(conf_csum + eps.transpose()).sum() / static_cast<double>(nclasses);
-      recall = conf_diag.cwiseQuotient(conf_rsum + eps).sum() / static_cast<double>(nclasses);
-      if ((precision+recall) > 0)
-        f1 = (2.0*precision*recall) / (precision+recall);
-      else
-        f1 = 0.0;
+	  recallV = (conf_diag.transpose().cwiseQuotient(conf_csum + eps.transpose())).transpose();
+	  recall = recallV.sum() / static_cast<double>(nclasses);
+	  precisionV = conf_diag.cwiseQuotient(conf_rsum + eps);
+      precision = precisionV.sum() / static_cast<double>(nclasses);
+	  f1V = (2.0*precisionV.cwiseProduct(recallV)).cwiseQuotient(precisionV + recallV + eps);
+	  f1 = f1V.sum() / static_cast<double>(nclasses);
       conf_diag = conf_diag.transpose().cwiseQuotient(conf_csum+eps.transpose()).transpose();
       for (int i=0;i<conf_matrix.cols();i++)
         if (conf_csum(i) > 0)
