@@ -1319,14 +1319,20 @@ namespace dd
 	  solver_param.set_lr_policy(ad_solver.get("lr_policy").get<std::string>());
 	if (ad_solver.has("base_lr"))
 	  solver_param.set_base_lr(ad_solver.get("base_lr").get<double>());
-    if (ad_solver.has("warmup_lr"))
-      solver_param.set_warmup_start_lr(ad_solver.get("warmup_lr").get<double>());
-    if (ad_solver.has("warmup_iter"))
-      solver_param.set_warmup_iter(ad_solver.get("warmup_iter").get<int>());
+	if (ad_solver.has("warmup_lr"))
+	  solver_param.set_warmup_start_lr(ad_solver.get("warmup_lr").get<double>());
+	if (ad_solver.has("warmup_iter"))
+	  solver_param.set_warmup_iter(ad_solver.get("warmup_iter").get<int>());
 	if (ad_solver.has("gamma"))
 	  solver_param.set_gamma(ad_solver.get("gamma").get<double>());
 	if (ad_solver.has("stepsize"))
 	  solver_param.set_stepsize(ad_solver.get("stepsize").get<int>());
+	if (ad_solver.has("stepvalue"))
+	  {
+	    std::vector<int> stepvalues = ad_solver.get("stepvalue").get<std::vector<int>>();
+	    for (auto sv: stepvalues)
+	      solver_param.add_stepvalue(sv);
+	  }
 	if (ad_solver.has("momentum") && solver_param.solver_type() != caffe::SolverParameter_SolverType_ADAGRAD)
 	  solver_param.set_momentum(ad_solver.get("momentum").get<double>());
 	if (ad_solver.has("weight_decay"))
@@ -1337,14 +1343,14 @@ namespace dd
 	  solver_param.set_rms_decay(ad_solver.get("rms_decay").get<double>());
 	if (ad_solver.has("iter_size"))
 	  solver_param.set_iter_size(ad_solver.get("iter_size").get<int>());
-    if (ad_solver.has("lookahead"))
-      solver_param.set_lookahead(ad_solver.get("lookahead").get<bool>());
-    if (ad_solver.has("lookahead_steps"))
-      solver_param.set_lookahead_steps(ad_solver.get("lookahead_steps").get<int>());
-    if (ad_solver.has("lookahead_alpha"))
-      solver_param.set_lookahead_alpha(ad_solver.get("lookahead_alpha").get<double>());
-    if (ad_solver.has("lr_dropout"))
-      solver_param.set_lr_dropout(ad_solver.get("lr_dropout").get<double>());
+	if (ad_solver.has("lookahead"))
+	  solver_param.set_lookahead(ad_solver.get("lookahead").get<bool>());
+	if (ad_solver.has("lookahead_steps"))
+	  solver_param.set_lookahead_steps(ad_solver.get("lookahead_steps").get<int>());
+	if (ad_solver.has("lookahead_alpha"))
+	  solver_param.set_lookahead_alpha(ad_solver.get("lookahead_alpha").get<double>());
+	if (ad_solver.has("lr_dropout"))
+	  solver_param.set_lr_dropout(ad_solver.get("lr_dropout").get<double>());
 	if (ad_solver.has("min_lr"))
 	  solver_param.set_min_lr(ad_solver.get("min_lr").get<double>());
 	if (ad_solver.has("lr_mult"))
