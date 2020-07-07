@@ -27,6 +27,7 @@ import time
 import sys
 import argparse
 import csv
+import json
 from dd_client import DD
 
 parser = argparse.ArgumentParser(description='DeepDetect benchmark tool')
@@ -51,6 +52,7 @@ parser.add_argument('--create',help='model\'s folder name to create a service')
 parser.add_argument('--nclasses',help='number of classes for service creation',type=int,default=1000)
 parser.add_argument('--auto-kill',help='auto kill the service after benchmarking',action='store_true')
 parser.add_argument('--csv-output',help='CSV file output')
+parser.add_argument('--json-output',help='JSON file output')
 parser.add_argument('--mllib', help='mllib to bench, ie [tensorrt|ncnn|caffe]', default='caffe')
 parser.add_argument('--datatype', help='datatype for tensorrt [fp16|fp32]', default='fp32')
 parser.add_argument('--recreate', help='recreate service between every batchsize, useful for batch_size dependent precompiling backends (ie tensorRT)', action='store_true', default=False)
@@ -85,6 +87,7 @@ def service_create(bs):
   else:
     pass
 
+out_json = []
 out_csv = None
 csv_writer = None
 if args.csv_output:
@@ -168,12 +171,20 @@ for b in batch_sizes:
     mean_processing_time = mean_ptime/args.npasses
     mean_time_per_img = mean_ptime_per_img/args.npasses
     print '>>> batch size =',b,' / mean processing time =',mean_ptime/args.npasses, ' / mean time per image =',mean_ptime_per_img/args.npasses, ' / fps = ', 1000/(mean_ptime_per_img/args.npasses) , ' / fail =',fail
+    out_json.append({
+      'batch_size': b,
+      'mean_processing_time': mean_processing_time,
+      'mean_time_per_img': mean_time_per_img
+    })
     if args.csv_output:
       csv_writer.writerow([b,mean_processing_time,mean_time_per_img])
     #break
     if args.recreate:
       dd.delete_service(args.sname)
 
+if args.json_output:
+  with open(args.json_output, 'w') as outfile:
+    json.dump(out_json, outfile)
     
 if autokill:
   dd.delete_service(args.sname)
