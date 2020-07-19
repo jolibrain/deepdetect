@@ -1815,8 +1815,8 @@ namespace dd
 			// imagedata layer
 			//- store labels in float_data
 			//- similar to segmentation for computing multi-label accuracy
-			else if (inputc._multi_label && !(inputc._db) && typeid(inputc) == typeid(ImgCaffeInputFileConn)
-				 && _nclasses > 1)
+			else if ((inputc._multi_label || _regression) && !(inputc._db) && typeid(inputc) == typeid(ImgCaffeInputFileConn)
+				 && (_nclasses > 1 || _ntargets > 1))
 			  {
 			    std::vector<double> vals;
 			    for (int k=0;k<dv.at(s).float_data_size();k++)
@@ -2221,9 +2221,7 @@ namespace dd
 			for (size_t k=0;k<dv_float_data.at(j).size();k++)
 			  target.push_back(dv_float_data.at(j).at(k));
 			for (int k=0;k<nout;k++)
-			  {
-			    predictions.push_back(lresults[slot]->cpu_data()[j*scperel+k]);
-			  }
+			  predictions.push_back(lresults[slot]->cpu_data()[j*scperel+k]);
 			bad.add("target",target);
 		      }
 		    if (!inputc._segmentation)
