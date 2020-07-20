@@ -64,7 +64,6 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     bash-completion && \
     wget -O /tmp/bazel.deb https://github.com/bazelbuild/bazel/releases/download/0.24.1/bazel_0.24.1-linux-x86_64.deb && \
     dpkg -i /tmp/bazel.deb && \
-    apt-get remove -y libcurlpp0 && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
@@ -95,15 +94,8 @@ RUN pip install future pyyaml typing
 RUN git config --global user.email "build@local.local" && \
     git config --global user.name "Build"
 
-# Build curlpp
-WORKDIR /opt
-RUN git clone https://github.com/jpbarrette/curlpp.git
-WORKDIR /opt/curlpp
-RUN cmake . && \
-    make install && \
-    cp /usr/local/lib/libcurlpp.* /usr/lib/
-
 # Copy Deepdetect sources files
+WORKDIR /opt
 RUN git clone https://github.com/jolibrain/deepdetect.git /opt/deepdetect
 WORKDIR /opt/deepdetect/
 
