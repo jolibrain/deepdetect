@@ -1819,8 +1819,8 @@ namespace dd
 			// imagedata layer
 			//- store labels in float_data
 			//- similar to segmentation for computing multi-label accuracy
-			else if (inputc._multi_label && !(inputc._db) && typeid(inputc) == typeid(ImgCaffeInputFileConn)
-				 && _nclasses > 1)
+			else if ((inputc._multi_label || _regression) && !(inputc._db) && typeid(inputc) == typeid(ImgCaffeInputFileConn)
+				 && (_nclasses > 1 || _ntargets > 1))
 			  {
 			    std::vector<double> vals;
 			    for (int k=0;k<dv.at(s).float_data_size();k++)
@@ -1930,7 +1930,8 @@ namespace dd
 	      }
 	    int slot = lresults.size() - 1;
 	    
-	    if (_regression && _ntargets > 1) // slicing is involved
+	    if (_regression && _ntargets > 1
+		&& typeid(inputc) != typeid(ImgCaffeInputFileConn)) // slicing is involved
 	      slot--; // labels appear to be last
 	    else if (inputc._multi_label && ( inputc._db || ! (typeid(inputc) == typeid(ImgCaffeInputFileConn))
                                            ||  _nclasses <= 1))
@@ -2202,16 +2203,16 @@ namespace dd
 		    else if ((!_regression && !_autoencoder)|| _ntargets == 1)
 		      {
 			double target = dv_labels.at(j);
-            if (output_logits)
-              {
-                std::vector<double> logits;
-                for (int k=0;k<nout;k++)
-                  {
-                    logits.push_back(logits_blob->cpu_data()[j*scperel+k]);
-                  }
-                bad.add("logits",logits);
-              }
-            std::vector<double> logits;
+			if (output_logits)
+			  {
+			    std::vector<double> logits;
+			    for (int k=0;k<nout;k++)
+			      {
+				logits.push_back(logits_blob->cpu_data()[j*scperel+k]);
+			      }
+			    bad.add("logits",logits);
+			  }
+			std::vector<double> logits;
 			for (int k=0;k<nout;k++)
 			  {
 			    predictions.push_back(lresults[slot]->cpu_data()[j*scperel+k]);
@@ -2224,9 +2225,7 @@ namespace dd
 			for (size_t k=0;k<dv_float_data.at(j).size();k++)
 			  target.push_back(dv_float_data.at(j).at(k));
 			for (int k=0;k<nout;k++)
-			  {
-			    predictions.push_back(lresults[slot]->cpu_data()[j*scperel+k]);
-			  }
+			  predictions.push_back(lresults[slot]->cpu_data()[j*scperel+k]);
 			bad.add("target",target);
 		      }
 		    if (!inputc._segmentation)
@@ -3342,13 +3341,14 @@ namespace dd
 		net_param.mutable_layer(1)->mutable_memory_data_param()->set_height(height);
 	      }
 	  }
-	else
+	else if (typeid(this->_inputc) != typeid(ImgCaffeInputFileConn))
 	  {
 	    if (net_param.mutable_layer(0)->has_memory_data_param())
 	      net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels()+_ntargets);
 	    if (net_param.mutable_layer(1)->has_memory_data_param())
 	      net_param.mutable_layer(1)->mutable_memory_data_param()->set_channels(inputc.channels()+_ntargets);
-	    net_param.mutable_layer(2)->mutable_slice_param()->set_slice_point(0,inputc.channels());
+	    if (net_param.mutable_layer(2)->has_slice_param())
+	      net_param.mutable_layer(2)->mutable_slice_param()->set_slice_point(0,inputc.channels());
 	  }
       }
     
@@ -3476,10 +3476,11 @@ namespace dd
 	    deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_width(width);
 	    deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_height(height);
 	  }
-	else
+	else if (typeid(this->_inputc) != typeid(ImgCaffeInputFileConn))
 	  {
 	    deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels()+_ntargets);
-	    deploy_net_param.mutable_layer(1)->mutable_slice_param()->set_slice_point(0,inputc.channels());
+	    if (deploy_net_param.mutable_layer(1)->has_slice_param())
+	      deploy_net_param.mutable_layer(1)->mutable_slice_param()->set_slice_point(0,inputc.channels());
 	  }
 	if (!_autoencoder)
 	  for (size_t d=0;d<inputc._mean_values.size();d++)
@@ -3728,7 +3729,7 @@ namespace dd
 	if (batch_size == 0)
 	  throw MLLibBadParamException("batch size set to zero");
 	this->_logger->info("user batch_size={} / inputc batch_size=",batch_size,inputc.batch_size());
-
+	
 	// code below is required when Caffe (weirdly) requires the batch size 
 	// to be a multiple of the training dataset size.
 	if (!inputc._ctc && !inputc._segmentation && !(!inputc._db && typeid(inputc) == typeid(ImgCaffeInputFileConn)))
@@ -4102,13 +4103,17 @@ namespace dd
     caffe::LayerParameter *lparam = net_param.mutable_layer(0);
     caffe::ImageDataParameter* image_data_parameter = lparam->mutable_image_data_param();
     lparam->set_type("ImageData");
-    image_data_parameter->set_source(this->_inputc._root_folder);
+    image_data_parameter->set_source(this->_inputc._root_folder); // placeholder
     image_data_parameter->set_batch_size(this->_inputc.batch_size());
     image_data_parameter->set_shuffle(this->_inputc._shuffle);
     image_data_parameter->set_new_height(this->_inputc.height());
     image_data_parameter->set_new_width(this->_inputc.width());
+    ImgCaffeInputFileConn *timg = reinterpret_cast<ImgCaffeInputFileConn*>(&this->_inputc);
+    image_data_parameter->set_is_color(!timg->_bw);
     if (this->_inputc._multi_label)
       image_data_parameter->set_label_size(_nclasses);
+    else if (_regression)
+      image_data_parameter->set_label_size(_ntargets);
     else
       image_data_parameter->set_label_size(1);
     if (this->_inputc._has_mean_file)
