@@ -132,6 +132,7 @@ RUN apt-get update && \
 	libopencv-highgui3.2 \
 	libgflags2.2 \
 	libcurl4 \
+	libcurlpp0 \
 	libhdf5-cpp-100 \
 	libboost-filesystem1.65.1 \
 	libboost-thread1.65.1 \
