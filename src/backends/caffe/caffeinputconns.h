@@ -1419,6 +1419,7 @@ namespace dd
 		  _db = true;
 		  return; // done
 		}
+	      else _test_dbfullname = "";
 	      _svmdata_test = std::move(_svmdata);
 	    }
 	  else _svmdata.clear();
@@ -1456,7 +1457,7 @@ namespace dd
     std::vector<caffe::SparseDatum> get_dv_test_sparse_db(const int &num);
     std::vector<caffe::SparseDatum> get_dv_test_sparse(const int &num)
       {
-	if (!_db || !_train)
+	if (_test_dbfullname.empty())
 	  {
 	    int i = 0;
 	    std::vector<caffe::SparseDatum> dv;
