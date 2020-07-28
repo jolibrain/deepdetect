@@ -1368,7 +1368,8 @@ namespace dd
       APIData ad_param = ad.getobj("parameters");
       APIData ad_input = ad_param.getobj("input");
       APIData ad_mllib = ad_param.getobj("mllib");
-      
+
+      _test_dbfullname = "";
       if (_train && ad_input.has("db") && ad_input.get("db").get<bool>())
 	{
 	  _dbfullname = _model_repo + "/" + _dbfullname;
@@ -1456,7 +1457,7 @@ namespace dd
     std::vector<caffe::SparseDatum> get_dv_test_sparse_db(const int &num);
     std::vector<caffe::SparseDatum> get_dv_test_sparse(const int &num)
       {
-	if (!_db || !_train)
+	if (_test_dbfullname.empty())
 	  {
 	    int i = 0;
 	    std::vector<caffe::SparseDatum> dv;
