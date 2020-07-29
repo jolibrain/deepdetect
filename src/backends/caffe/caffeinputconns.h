@@ -1489,7 +1489,6 @@ namespace dd
       APIData ad_input = ad_param.getobj("input");
       APIData ad_mllib = ad_param.getobj("mllib");
 
-      _test_dbfullname = "";
       if (_train && ad_input.has("db") && ad_input.get("db").get<bool>())
         {
           _dbfullname = _model_repo + "/" + _dbfullname;
@@ -1511,6 +1510,7 @@ namespace dd
         }
       else
         {
+          _test_dbfullname = "";
           try
             {
               SVMInputFileConn::transform(ad);
