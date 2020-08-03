@@ -90,6 +90,7 @@ namespace dd
       void configure_ssd_template(const std::string &dest_net,
 				  const std::string &deploy_dest_net,
 				  const APIData &ad,
+				  TInputConnectorStrategy &inputc,
 				  const bool &refinedet);
 
       void configure_recurrent_template(const APIData &ad,
@@ -285,7 +286,7 @@ namespace dd
                                      const int height_net,  const int width_net,
                                      const int height_dest, const int width_dest, bool resize_nn);
 
-
+	  bool is_refinedet(caffe::NetParameter &net_param);
 
     public:
       caffe::Net<float> *_net = nullptr; /**< neural net. */

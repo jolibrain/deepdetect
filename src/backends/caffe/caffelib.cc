@@ -203,7 +203,7 @@ namespace dd
 	     || model_tmpl.find("refinedet")!=std::string::npos)
       {
 	bool refinedet = (model_tmpl.find("refinedet")!=std::string::npos);
-	configure_ssd_template(dest_net,dest_deploy_net,ad,refinedet);
+	configure_ssd_template(dest_net,dest_deploy_net,ad,this->_inputc,refinedet);
       }
     else if (model_tmpl.find("recurrent") != std::string::npos)
       {
@@ -736,6 +736,7 @@ namespace dd
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::configure_ssd_template(const std::string &dest_net,
 												   const std::string &dest_deploy_net,
 												   const APIData &ad,
+												   TInputConnectorStrategy &inputc,
 												   const bool &refinedet)
   {
     //- load prototxt
@@ -743,6 +744,12 @@ namespace dd
     caffe::ReadProtoFromTextFile(dest_net,&net_param);
     caffe::ReadProtoFromTextFile(dest_deploy_net,&deploy_net_param);
 
+    // image augmentation
+    configure_image_augmentation(ad,net_param);
+    
+    // get image input connector
+    ImgCaffeInputFileConn *timg = reinterpret_cast<ImgCaffeInputFileConn*>(&inputc);
+    
     // get ssd detailed params, if any.
     double ssd_expand_prob = -1.0;
     double ssd_max_expand_ratio = -1.0;
@@ -759,10 +766,10 @@ namespace dd
     if (ad.has("ssd_neg_pos_ratio"))
       ssd_neg_pos_ratio = ad.get("ssd_neg_pos_ratio").get<double>();
     if (ad.has("ssd_neg_overlap"))
-      ssd_neg_pos_ratio = ad.get("ssd_neg_overlap").get<double>();
+      ssd_neg_overlap = ad.get("ssd_neg_overlap").get<double>();
     if (ad.has("ssd_keep_top_k"))
       ssd_keep_top_k = ad.get("ssd_keep_top_k").get<int>();
-          
+    
     //- if finetuning, change the proper layer names
     std::string postfix = "_ftune";
     const bool finetune = (ad.has("finetuning") && ad.get("finetuning").get<bool>());
@@ -770,19 +777,28 @@ namespace dd
     for (int l=0;l<k;l++)
       {
 	caffe::LayerParameter *lparam = net_param.mutable_layer(l);
-
-	if (l == 0 && lparam->type() == "AnnotatedData")
+	
+ 	if ((l==0 || l==1) && lparam->type() == "AnnotatedData")
 	  {
 	    caffe::TransformationParameter *trparam = lparam->mutable_transform_param();
-	    if (ssd_expand_prob >= 0.0 || ssd_max_expand_ratio >= 0.0)
+	    if (timg->_bw)
 	      {
-		caffe::ExpansionParameter *exparam = trparam->mutable_expand_param();
-		if (ssd_expand_prob >= 0.0)
-		  exparam->set_prob(ssd_expand_prob);
-		if (ssd_max_expand_ratio >= 0.0)
-		  exparam->set_max_expand_ratio(ssd_max_expand_ratio);
+		trparam->set_force_gray(true);
+		trparam->set_force_color(false);
 	      }
-        configure_geometry_augmentation(ad,trparam);
+
+	    if (l==0)
+	      {
+		if (ssd_expand_prob >= 0.0 || ssd_max_expand_ratio >= 0.0)
+		  {
+		    caffe::ExpansionParameter *exparam = trparam->mutable_expand_param();
+		    if (ssd_expand_prob >= 0.0)
+		      exparam->set_prob(ssd_expand_prob);
+		    if (ssd_max_expand_ratio >= 0.0)
+		      exparam->set_max_expand_ratio(ssd_max_expand_ratio);
+		  }
+		configure_geometry_augmentation(ad,trparam);
+	      }
 	  }
 	
 	if (finetune)
@@ -874,6 +890,10 @@ namespace dd
     for (int l=0;l<k;l++)
       {
 	caffe::LayerParameter *lparam = deploy_net_param.mutable_layer(l);
+	if (lparam->type() == "MemoryData" && timg->_bw)
+	  {
+	    lparam->mutable_memory_data_param()->set_channels(timg->channels());
+	  }
 	if (finetune)
 	  {
 	    if (lparam->name().find("mbox_conf") != std::string::npos
@@ -1073,13 +1093,11 @@ namespace dd
     
     // instantiate model template here, if any
     if (ad.has("template") && ad.get("template").get<std::string>() != "")
-      instantiate_template(ad);
+	  {
+		instantiate_template(ad);
+	  }
     else // model template instantiation is defered until training call
       {
-#ifdef USE_CUDNN
-        update_protofile_engine(ad);
-#endif
-        update_deploy_protofile_softmax(ad); // temperature scaling
         create_model(true);
       }
 
@@ -1301,14 +1319,20 @@ namespace dd
 	  solver_param.set_lr_policy(ad_solver.get("lr_policy").get<std::string>());
 	if (ad_solver.has("base_lr"))
 	  solver_param.set_base_lr(ad_solver.get("base_lr").get<double>());
-    if (ad_solver.has("warmup_lr"))
-      solver_param.set_warmup_start_lr(ad_solver.get("warmup_lr").get<double>());
-    if (ad_solver.has("warmup_iter"))
-      solver_param.set_warmup_iter(ad_solver.get("warmup_iter").get<int>());
+	if (ad_solver.has("warmup_lr"))
+	  solver_param.set_warmup_start_lr(ad_solver.get("warmup_lr").get<double>());
+	if (ad_solver.has("warmup_iter"))
+	  solver_param.set_warmup_iter(ad_solver.get("warmup_iter").get<int>());
 	if (ad_solver.has("gamma"))
 	  solver_param.set_gamma(ad_solver.get("gamma").get<double>());
 	if (ad_solver.has("stepsize"))
 	  solver_param.set_stepsize(ad_solver.get("stepsize").get<int>());
+	if (ad_solver.has("stepvalue"))
+	  {
+	    std::vector<int> stepvalues = ad_solver.get("stepvalue").get<std::vector<int>>();
+	    for (auto sv: stepvalues)
+	      solver_param.add_stepvalue(sv);
+	  }
 	if (ad_solver.has("momentum") && solver_param.solver_type() != caffe::SolverParameter_SolverType_ADAGRAD)
 	  solver_param.set_momentum(ad_solver.get("momentum").get<double>());
 	if (ad_solver.has("weight_decay"))
@@ -1319,14 +1343,14 @@ namespace dd
 	  solver_param.set_rms_decay(ad_solver.get("rms_decay").get<double>());
 	if (ad_solver.has("iter_size"))
 	  solver_param.set_iter_size(ad_solver.get("iter_size").get<int>());
-    if (ad_solver.has("lookahead"))
-      solver_param.set_lookahead(ad_solver.get("lookahead").get<bool>());
-    if (ad_solver.has("lookahead_steps"))
-      solver_param.set_lookahead_steps(ad_solver.get("lookahead_steps").get<int>());
-    if (ad_solver.has("lookahead_alpha"))
-      solver_param.set_lookahead_alpha(ad_solver.get("lookahead_alpha").get<double>());
-    if (ad_solver.has("lr_dropout"))
-      solver_param.set_lr_dropout(ad_solver.get("lr_dropout").get<double>());
+	if (ad_solver.has("lookahead"))
+	  solver_param.set_lookahead(ad_solver.get("lookahead").get<bool>());
+	if (ad_solver.has("lookahead_steps"))
+	  solver_param.set_lookahead_steps(ad_solver.get("lookahead_steps").get<int>());
+	if (ad_solver.has("lookahead_alpha"))
+	  solver_param.set_lookahead_alpha(ad_solver.get("lookahead_alpha").get<double>());
+	if (ad_solver.has("lr_dropout"))
+	  solver_param.set_lr_dropout(ad_solver.get("lr_dropout").get<double>());
 	if (ad_solver.has("min_lr"))
 	  solver_param.set_min_lr(ad_solver.get("min_lr").get<double>());
 	if (ad_solver.has("lr_mult"))
@@ -1522,14 +1546,18 @@ namespace dd
 	    
 	    for (auto m: meas_str)
 	      {
-		if (m != "cmdiag" && m != "cmfull" && m != "clacc" && m != "labels" && m!= "cliou") // do not report confusion matrix in server logs
+
+			if (m != "cmdiag" && m != "cmfull" && m != "clacc" && m != "labels" && m!= "cliou"
+				&& m != "precisions" && m != "recalls" && m != "f1s")
+			  // do not report confusion matrix in server logs
 		  {
 		    double mval = meas_obj.get(m).get<double>();
 		    this->_logger->info("{}={}",m,mval);
 		    this->add_meas(m,mval);
 		    this->add_meas_per_iter(m,mval);
 		  }
-		else if (m == "cmdiag" || m == "clacc" || m == "cliou")
+		else if (m == "cmdiag" || m == "clacc" || m == "cliou"
+				 || m == "precisions" || m == "recalls" || m == "f1s")
 		  {
 		    std::vector<double> mdiag = meas_obj.get(m).get<std::vector<double>>();
 		    std::vector<std::string> cnames;
@@ -1791,8 +1819,8 @@ namespace dd
 			// imagedata layer
 			//- store labels in float_data
 			//- similar to segmentation for computing multi-label accuracy
-			else if (inputc._multi_label && !(inputc._db) && typeid(inputc) == typeid(ImgCaffeInputFileConn)
-				 && _nclasses > 1)
+			else if ((inputc._multi_label || _regression) && !(inputc._db) && typeid(inputc) == typeid(ImgCaffeInputFileConn)
+				 && (_nclasses > 1 || _ntargets > 1))
 			  {
 			    std::vector<double> vals;
 			    for (int k=0;k<dv.at(s).float_data_size();k++)
@@ -1902,7 +1930,8 @@ namespace dd
 	      }
 	    int slot = lresults.size() - 1;
 	    
-	    if (_regression && _ntargets > 1) // slicing is involved
+	    if (_regression && _ntargets > 1
+		&& typeid(inputc) != typeid(ImgCaffeInputFileConn)) // slicing is involved
 	      slot--; // labels appear to be last
 	    else if (inputc._multi_label && ( inputc._db || ! (typeid(inputc) == typeid(ImgCaffeInputFileConn))
                                            ||  _nclasses <= 1))
@@ -2174,16 +2203,16 @@ namespace dd
 		    else if ((!_regression && !_autoencoder)|| _ntargets == 1)
 		      {
 			double target = dv_labels.at(j);
-            if (output_logits)
-              {
-                std::vector<double> logits;
-                for (int k=0;k<nout;k++)
-                  {
-                    logits.push_back(logits_blob->cpu_data()[j*scperel+k]);
-                  }
-                bad.add("logits",logits);
-              }
-            std::vector<double> logits;
+			if (output_logits)
+			  {
+			    std::vector<double> logits;
+			    for (int k=0;k<nout;k++)
+			      {
+				logits.push_back(logits_blob->cpu_data()[j*scperel+k]);
+			      }
+			    bad.add("logits",logits);
+			  }
+			std::vector<double> logits;
 			for (int k=0;k<nout;k++)
 			  {
 			    predictions.push_back(lresults[slot]->cpu_data()[j*scperel+k]);
@@ -2196,9 +2225,7 @@ namespace dd
 			for (size_t k=0;k<dv_float_data.at(j).size();k++)
 			  target.push_back(dv_float_data.at(j).at(k));
 			for (int k=0;k<nout;k++)
-			  {
-			    predictions.push_back(lresults[slot]->cpu_data()[j*scperel+k]);
-			  }
+			  predictions.push_back(lresults[slot]->cpu_data()[j*scperel+k]);
 			bad.add("target",target);
 		      }
 		    if (!inputc._segmentation)
@@ -3314,13 +3341,14 @@ namespace dd
 		net_param.mutable_layer(1)->mutable_memory_data_param()->set_height(height);
 	      }
 	  }
-	else
+	else if (typeid(this->_inputc) != typeid(ImgCaffeInputFileConn))
 	  {
 	    if (net_param.mutable_layer(0)->has_memory_data_param())
 	      net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels()+_ntargets);
 	    if (net_param.mutable_layer(1)->has_memory_data_param())
 	      net_param.mutable_layer(1)->mutable_memory_data_param()->set_channels(inputc.channels()+_ntargets);
-	    net_param.mutable_layer(2)->mutable_slice_param()->set_slice_point(0,inputc.channels());
+	    if (net_param.mutable_layer(2)->has_slice_param())
+	      net_param.mutable_layer(2)->mutable_slice_param()->set_slice_point(0,inputc.channels());
 	  }
       }
     
@@ -3448,10 +3476,11 @@ namespace dd
 	    deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_width(width);
 	    deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_height(height);
 	  }
-	else
+	else if (typeid(this->_inputc) != typeid(ImgCaffeInputFileConn))
 	  {
 	    deploy_net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(inputc.channels()+_ntargets);
-	    deploy_net_param.mutable_layer(1)->mutable_slice_param()->set_slice_point(0,inputc.channels());
+	    if (deploy_net_param.mutable_layer(1)->has_slice_param())
+	      deploy_net_param.mutable_layer(1)->mutable_slice_param()->set_slice_point(0,inputc.channels());
 	  }
 	if (!_autoencoder)
 	  for (size_t d=0;d<inputc._mean_values.size();d++)
@@ -3470,8 +3499,7 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofile_engine(const APIData& ad)
   {
-    if (!ad.has("engine"))
-      return;
+
 	std::string deploy_file = this->_mlmodel._repo + "/deploy.prototxt";
 	caffe::NetParameter deploy_net_param;
 	caffe::ReadProtoFromTextFile(deploy_file,&deploy_net_param);
@@ -3488,11 +3516,26 @@ namespace dd
 	caffe::WriteProtoToTextFile(net_param,train_file);
   }
 
+
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofile_engine(caffe::NetParameter &net_param, const APIData& ad)
+  bool CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::is_refinedet(caffe::NetParameter &net_param)
+  {
+    for (int l=net_param.layer_size()-1;l>0;l--)
+      {
+		caffe::LayerParameter *lparam = net_param.mutable_layer(l);
+		if (lparam->type() == "DetectionOutput" && lparam->bottom().size() > 3)
+		  return true;
+	  }
+	return false;
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update_protofile_engine(caffe::NetParameter &net_param, const APIData& ad)
 {
 
-  if (!ad.has("engine"))
+  bool refinedet = is_refinedet(net_param);
+  
+  if (!ad.has("engine") && !refinedet)
     return;
 
   for (int l=0; l< net_param.layer_size();l++)
@@ -3512,27 +3555,27 @@ void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update
           if (use_dilation)
               continue;
 
-          if (ad.get("engine").get<std::string>() == "DEFAULT")
+          if (!refinedet && ad.has("engine") && ad.get("engine").get<std::string>() == "DEFAULT")
             {
               lparam->mutable_convolution_param()->set_engine(::caffe::ConvolutionParameter::DEFAULT);
               lparam->mutable_convolution_param()->clear_cudnn_flavor();
             }
-          if (ad.get("engine").get<std::string>() == "CAFFE")
+          else if (!refinedet && ad.has("engine") && ad.get("engine").get<std::string>() == "CAFFE")
             {
               lparam->mutable_convolution_param()->set_engine(::caffe::ConvolutionParameter::CAFFE);
               lparam->mutable_convolution_param()->clear_cudnn_flavor();
             }
-          else if (ad.get("engine").get<std::string>() == "CUDNN")
+          else if (!refinedet && ad.has("engine") && ad.get("engine").get<std::string>() == "CUDNN")
             {
               lparam->mutable_convolution_param()->set_engine(::caffe::ConvolutionParameter::CUDNN);
               lparam->mutable_convolution_param()->set_cudnn_flavor(::caffe::ConvolutionParameter::MULTIPLE_HANDLES);
             }
-          else if (ad.get("engine").get<std::string>() == "CUDNN_SINGLE_HANDLE")
+          else if (!refinedet && ad.has("engine") &&  ad.get("engine").get<std::string>() == "CUDNN_SINGLE_HANDLE")
             {
               lparam->mutable_convolution_param()->set_engine(::caffe::ConvolutionParameter::CUDNN);
               lparam->mutable_convolution_param()->set_cudnn_flavor(::caffe::ConvolutionParameter::SINGLE_HANDLE);
             }
-          else if (ad.get("engine").get<std::string>() == "CUDNN_MIN_MEMORY")
+          else if (refinedet || (ad.has("engine") && ad.get("engine").get<std::string>() == "CUDNN_MIN_MEMORY") )
             {
               lparam->mutable_convolution_param()->set_engine(::caffe::ConvolutionParameter::CUDNN);
               lparam->mutable_convolution_param()->set_cudnn_flavor(::caffe::ConvolutionParameter::MIN_MEMORY);
@@ -3686,7 +3729,7 @@ void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update
 	if (batch_size == 0)
 	  throw MLLibBadParamException("batch size set to zero");
 	this->_logger->info("user batch_size={} / inputc batch_size=",batch_size,inputc.batch_size());
-
+	
 	// code below is required when Caffe (weirdly) requires the batch size 
 	// to be a multiple of the training dataset size.
 	if (!inputc._ctc && !inputc._segmentation && !(!inputc._db && typeid(inputc) == typeid(ImgCaffeInputFileConn)))
@@ -4060,13 +4103,17 @@ void CaffeLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>::update
     caffe::LayerParameter *lparam = net_param.mutable_layer(0);
     caffe::ImageDataParameter* image_data_parameter = lparam->mutable_image_data_param();
     lparam->set_type("ImageData");
-    image_data_parameter->set_source(this->_inputc._root_folder);
+    image_data_parameter->set_source(this->_inputc._root_folder); // placeholder
     image_data_parameter->set_batch_size(this->_inputc.batch_size());
     image_data_parameter->set_shuffle(this->_inputc._shuffle);
     image_data_parameter->set_new_height(this->_inputc.height());
     image_data_parameter->set_new_width(this->_inputc.width());
+    ImgCaffeInputFileConn *timg = reinterpret_cast<ImgCaffeInputFileConn*>(&this->_inputc);
+    image_data_parameter->set_is_color(!timg->_bw);
     if (this->_inputc._multi_label)
       image_data_parameter->set_label_size(_nclasses);
+    else if (_regression)
+      image_data_parameter->set_label_size(_ntargets);
     else
       image_data_parameter->set_label_size(1);
     if (this->_inputc._has_mean_file)
