@@ -135,6 +135,15 @@ namespace dd
 		    other_models_out.insert(std::pair<std::string,APIData>(p.get("uri").get<std::string>(),
 									   vout));
 		  }
+		else if (p.has("vector"))
+		  {
+		    APIData clout;
+		    APIData cls;
+		    cls.add("vector",p.getv("vector"));
+		    clout.add(model_name,cls);
+		    other_models_out.insert(std::pair<std::string,APIData>(p.get("uri").get<std::string>(),
+									   clout));
+		  }
 	      }
 	  }
 	++hit;

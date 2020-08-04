@@ -58,6 +58,48 @@ execute_process(
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
+
+if (NOT EXISTS ${CMAKE_BINARY_DIR}/src)
+  execute_process(
+	COMMAND  bash -c "mkdir ${CMAKE_BINARY_DIR}/src")
+endif()
+
+if (NOT EXISTS ${CMAKE_SOURCE_DIR}/caffe.proto)
+  file(DOWNLOAD https://raw.githubusercontent.com/jolibrain/caffe/master/src/caffe/proto/caffe.proto ${CMAKE_SOURCE_DIR}/caffe.proto)
+endif()
+
+if (USE_TORCH)
+  set(PB_GENERATOR_TORCH ON)
+elseif(USE_CAFFE2)
+  set(PB_GENERATOR_CAFFE2 ON)
+elseif(USE_TF)
+  set(PB_GENERATOR_TF ON)
+else()
+  set(PB_GENERATOR_SYSTEM ON)
+endif()
+
+
+if (${PB_GENERATOR_SYSTEM})
+  message(STATUS "using system protoc")
+  find_package(Protobuf REQUIRED)
+  if (Protobuf_FOUND)
+    set(PROTOBUF_INCLUDE_DIR ${Protobuf_INCLUDE_DIRS})
+    set(PROTOBUF_LIB_DIR ${Protobuf_LIBRARIES})
+  else()
+    message(FATAL_ERROR "could not find system protobuf")
+  endif()
+  execute_process(
+	COMMAND  bash -c "test -f ${CMAKE_BINARY_DIR}/src/caffe.pb.h   ||
+	( protoc \
+	  --proto_path=${CMAKE_SOURCE_DIR}/ \
+	  --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_SOURCE_DIR}/caffe.proto \
+	  && echo generating caffe.pb.* by system protoc )"
+	WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+endif()
+
+
+set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -fopenmp -O2 -fPIC -std=c++14 -DUSE_OPENCV -DUSE_LMDB")
+#below makes torch compilation readable
 set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter -fopenmp -O2 -fPIC -std=c++14 -DUSE_OPENCV -DUSE_LMDB")
 
 if (USE_COMMAND_LINE)
@@ -399,24 +441,15 @@ if (USE_CAFFE2)
       ${CMAKE_BINARY_DIR}/python_path/detectron)
   endif()
 
-  if (USE_TENSORRT)
-    add_custom_command(TARGET pytorch POST_BUILD
-      COMMAND ${CMAKE_BINARY_DIR}/protobuf/bin/protoc
-      --proto_path=${CMAKE_SOURCE_DIR}/src/backends/tensorrt
-      --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_SOURCE_DIR}/src/backends/tensorrt/caffe.proto
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-      COMMENT "generating caffe.pb.*")
-  endif()
-
-  if (USE_NCNN AND NOT USE_TENSORRT)
-    add_custom_command(TARGET pytorch POST_BUILD
-      COMMAND ${CMAKE_BINARY_DIR}/protobuf/bin/protoc
-      --proto_path=${CMAKE_SOURCE_DIR}/src/backends/ncnn
-      --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_SOURCE_DIR}/src/backends/ncnn/caffe.proto
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-      COMMENT "generating caffe.pb.*")
-  endif()
-
+  if (${PB_GENERATOR_CAFFE2})
+	  add_custom_command(TARGET pytorch POST_BUILD
+		COMMAND test -f ${CMAKE_BINARY_DIR}/src/caffe.pb.h  ||
+		${CMAKE_BINARY_DIR}/protobuf/bin/protoc
+		--proto_path=${CMAKE_SOURCE_DIR}/
+		--cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_SOURCE_DIR}/caffe.proto
+		&& echo generating caffe.pb.* by caffe2 protoc
+		WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+	endif()
 
 endif()
 
@@ -459,22 +492,15 @@ set(TF_INC_DIR ${TENSORFLOW_CC_DIR}/tensorflow/ ${TENSORFLOW_CC_DIR}/tensorflow/
 set(TF_LIB_DIR ${TENSORFLOW_CC_DIR}/tensorflow/bazel-bin/tensorflow/)
 
 include_directories("${TF_INC_DIR}")
-if (USE_TENSORRT)
-  add_custom_command(TARGET tensorflow_cc POST_BUILD
-    COMMAND ${CMAKE_BINARY_DIR}/protobuf/bin/protoc
-    --proto_path=${CMAKE_SOURCE_DIR}/src/backends/tensorrt
-    --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_SOURCE_DIR}/src/backends/tensorrt/caffe.proto
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    COMMENT "generating caffe.pb.*")
-endif()
 
-if (USE_NCNN AND NOT USE_TENSORRT)
+if (${PB_GENERATOR_TF})
   add_custom_command(TARGET tensorflow_cc POST_BUILD
-    COMMAND ${CMAKE_BINARY_DIR}/protobuf/bin/protoc
-    --proto_path=${CMAKE_BINARY_DIR}/src/backends/ncnn
-    --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_BINARY_DIR}/src/backends/ncnn/caffe.proto
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    COMMENT "generating caffe.pb.*")
+    COMMAND test -f ${CMAKE_BINARY_DIR}/src/caffe.pb.h  ||
+	${CMAKE_BINARY_DIR}/protobuf/bin/protoc
+      --proto_path=${CMAKE_SOURCE_DIR}
+      --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_SOURCE_DIR}/caffe.proto
+	  && echo generating caffe.pb.* with tf protoc
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 endif()
 
 
@@ -509,23 +535,25 @@ elseif(USE_CAFFE)
   endif()
 
   # Set protoc path
-  if (CUDA_FOUND
-      AND NOT USE_CAFFE_CPU_ONLY
-      AND NOT (HAVE_CUDNN AND USE_CUDNN)
-      AND USE_TF)
-    list(APPEND CAFFE_DD_MAKE
-      ${CMAKE_COMMAND} -E env PATH=${TENSORFLOW_CC_DIR}/tensorflow/tensorflow/contrib/makefile/gen/protobuf/bin:$ENV{PATH}
-      )
-  elseif (USE_TF OR USE_CAFFE2)
-    list(APPEND CAFFE_DD_MAKE
-      ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH}
-      )
-  elseif (USE_TORCH)
+  if (USE_TORCH)
     message(STATUS "using ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/bin/protoc")
     set(PROTOBUF_INCLUDE_DIR ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/include/)
     set(PROTOBUF_LIB_DIR ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/lib/)
     list(APPEND CAFFE_DD_MAKE
       ${CMAKE_COMMAND} -E env LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR}:$ENV{LD_LIBRARY_PATH} PATH=${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/bin/:$ENV{PATH}
+      )
+  elseif (CUDA_FOUND
+      AND NOT USE_CAFFE_CPU_ONLY
+      AND NOT (HAVE_CUDNN AND USE_CUDNN)
+      AND USE_TF)
+    message(STATUS "using TF protoc")
+    list(APPEND CAFFE_DD_MAKE
+      ${CMAKE_COMMAND} -E env PATH=${TENSORFLOW_CC_DIR}/tensorflow/tensorflow/contrib/makefile/gen/protobuf/bin:$ENV{PATH}
+      )
+  elseif (USE_TF OR USE_CAFFE2)
+    message(STATUS "using TF protoc")
+    list(APPEND CAFFE_DD_MAKE
+      ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH}
       )
   endif()
   list(APPEND CAFFE_DD_MAKE make)
@@ -689,15 +717,6 @@ if (USE_NCNN)
   endif()
   set(NCNN_INC_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/src ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src)
   set(NCNN_LIB_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src)
-  if (NOT USE_CAFFE2 AND NOT USE_TF AND NOT USE_CAFFE AND NOT USE_TENSORRT)
-    find_package(Protobuf REQUIRED)
-    if (Protobuf_FOUND)
-      set(PROTOBUF_INCLUDE_DIR ${Protobuf_INCLUDE_DIRS})
-      set(PROTOBUF_LIB_DIR ${Protobuf_LIBRARIES})
-    else()
-      message(FATAL_ERROR "could not find system protobuf")
-    endif()
-  endif()
 endif()
 
 # Torch
@@ -762,13 +781,16 @@ if (USE_TORCH)
   set(TORCH_INC_DIR ${TORCH_LOCATION}/include/ ${TORCH_LOCATION}/include/torch/csrc/api/include/ ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/include/torch/csrc/api/include ${TORCH_LOCATION}/.. ${CMAKE_BINARY_DIR}/src)
   set(TORCH_LIB_DIR ${TORCH_LOCATION}/lib/)
 
-  if (NOT EXISTS ${CMAKE_BINARY_DIR}/src/caffe.pb.h)
-	add_custom_command(TARGET pytorch POST_BUILD
-      COMMAND LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR}:$ENV{LD_LIBRARY_PATH} ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/bin/protoc
-      --proto_path=${CMAKE_SOURCE_DIR}/src
-      --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_SOURCE_DIR}/src/caffe.proto
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-      COMMENT "generating caffe.pb.*")
+
+  if (${PB_GENERATOR_TORCH})
+    add_custom_command(TARGET pytorch POST_BUILD
+      COMMAND test -f ${CMAKE_BINARY_DIR}/src/caffe.pb.h ||
+	   ${CMAKE_BINARY_DIR}/pytorch/src/pytorch-build/build/bin/protoc
+		--proto_path=${CMAKE_SOURCE_DIR}
+		--cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_SOURCE_DIR}/caffe.proto &&
+		echo generating caffe.pb.* with pytorch protoc
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR} )
+
   endif()
 
 endif()
@@ -837,15 +859,6 @@ if (USE_NCNN)
 endif()
 
 if (USE_TENSORRT)
-  if (NOT USE_CAFFE2 AND NOT USE_TF AND NOT USE_TORCH)
-    find_package(Protobuf REQUIRED)
-    if (Protobuf_FOUND)
-      set(PROTOBUF_INCLUDE_DIR ${Protobuf_INCLUDE_DIRS})
-      set(PROTOBUF_LIB_DIR ${Protobuf_LIBRARIES})
-    else()
-      message(FATAL_ERROR "could not find system protobuf")
-    endif()
-  endif()
 
   if (EXISTS ${TENSORRT_DIR}/libprotobuf.a)
     message(ERROR "there is a protobuf in ${TENSORRT_DIR}, it is very likely to cause link problem, you should remove it, we use system or internal ones")
@@ -875,12 +888,12 @@ if (USE_TENSORRT)
 
   if (NOT USE_TENSORRT_OSS)
     include_directories(${CMAKE_CURRENT_BINARY_DIR})
-      set(TENSORRT_LIBS ${Protobuf_LIBRARIES} nvinfer nvparsers nvinfer_plugin nvonnxparser )
+	set(TENSORRT_LIBS protobuf nvinfer nvparsers nvinfer_plugin nvonnxparser )
 
   else()
     set(TENSORRT_LIB_DIR ${CMAKE_BINARY_DIR}/tensorrt-oss/bin ${TENSORRT_LIB_DIR})
     include_directories(${CMAKE_CURRENT_BINARY_DIR})
-    set(TENSORRT_LIBS ${Protobuf_LIBRARIES} nvinfer nvcaffeparser nvinfer_plugin nvonnxparser )
+	set(TENSORRT_LIBS protobuf nvinfer nvcaffeparser nvinfer_plugin nvonnxparser )
 
     if (EXISTS "${TRTTESTDIR}/libnvinfer.so.7")
       set(TENSORRT_COMMIT 572d54f91791448c015e74a4f1d6923b77b79795)

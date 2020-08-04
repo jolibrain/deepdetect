@@ -520,7 +520,7 @@ namespace dd
 	    {
 	      cv::Mat rimg;
 	      resize(img,rimg,cv::Size(_width,_height),0,0);
-	      if (_bw)
+	      if (_bw && rimg.channels() > 1)
 		{
 		  cv::Mat bwimg;
 		  cv::cvtColor(rimg, bwimg, CV_BGR2GRAY);

@@ -701,7 +701,7 @@ namespace dd
       std::vector<std::string> nindex_uris;
       for (size_t j=0;j<vad.size();j++)
 	{
-	  size_t npred_classes = vad.at(j).getv("classes").size();
+	  size_t npred_classes = std::max(vad.at(j).getv("classes").size(),vad.at(j).getv("vector").size());
 	  classes_size += npred_classes;
 	  vals_size += static_cast<int>(vad.at(j).has("vals"));
 	  if (chain_pos == 0) // first call's response contains uniformized top level URIs.
@@ -779,7 +779,7 @@ namespace dd
       int vals_size = 0;
       for (size_t i=0;i<vad.size();i++)
 	{
-	  int npred_classes = vad.at(i).getv("classes").size();
+	  int npred_classes = std::max(vad.at(i).getv("classes").size(),vad.at(i).getv("vector").size());
 	  classes_size += npred_classes;
 	  vals_size += static_cast<int>(vad.at(i).has("vals"));
 	}

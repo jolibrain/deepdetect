@@ -54,11 +54,6 @@ if (USE_DLIB)
   list(APPEND ddetect_SOURCES backends/dlib/DNNStructures.h backends/dlib/dliblib.cc backends/dlib/dliblib.h backends/dlib/dlibmodel.cc backends/dlib/dlibmodel.h backends/dlib/dlibinputconns.h backends/dlib/dlib_actions.cpp backends/dlib/dlib_actions.h)
 endif()
 if (USE_NCNN)
-  file(DOWNLOAD https://raw.githubusercontent.com/jolibrain/caffe/master/src/caffe/proto/caffe.proto ${CMAKE_SOURCE_DIR}/src/backends/ncnn/caffe.proto)
-  if (NOT USE_CAFFE2 AND NOT USE_TF)
-    execute_process(COMMAND protoc --proto_path=${CMAKE_SOURCE_DIR}/src/backends/ncnn --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_SOURCE_DIR}/src/backends/ncnn/caffe.proto)
-  endif()
-
   set_source_files_properties(
     ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
     ${CMAKE_BINARY_DIR}/src/caffe.pb.h
@@ -112,11 +107,6 @@ if (USE_TORCH)
 endif()
 
 if (USE_TENSORRT)
-
-  if (NOT USE_CAFFE2 AND NOT USE_TF AND NOT USE_TORCH)
-	file(DOWNLOAD https://raw.githubusercontent.com/jolibrain/caffe/master/src/caffe/proto/caffe.proto ${CMAKE_SOURCE_DIR}/src/backends/tensorrt/caffe.proto)
-    execute_process(COMMAND protoc --proto_path=${CMAKE_SOURCE_DIR}/src/backends/tensorrt --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_SOURCE_DIR}/src/backends/tensorrt/caffe.proto)
-  endif()
 
   set_source_files_properties(
     ${CMAKE_BINARY_DIR}/src/caffe.pb.cc

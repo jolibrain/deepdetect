@@ -56,7 +56,6 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     bash-completion && \
     wget -O /tmp/bazel.deb https://github.com/bazelbuild/bazel/releases/download/0.24.1/bazel_0.24.1-linux-x86_64.deb && \
     dpkg -i /tmp/bazel.deb && \
-    apt-get remove -y libcurlpp0 && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
@@ -70,15 +69,8 @@ RUN wget https://github.com/cpp-netlib/cpp-netlib/archive/cpp-netlib-0.11.2-fina
     make -j && \
     make install
 
-# Build curlpp
-WORKDIR /opt
-RUN git clone https://github.com/jpbarrette/curlpp.git
-WORKDIR /opt/curlpp
-RUN cmake . && \
-    make install && \
-    cp /usr/local/lib/libcurlpp.* /usr/lib/
-
 # Copy Deepdetect sources files
+WORKDIR /opt
 RUN git clone https://github.com/jolibrain/deepdetect.git /opt/deepdetect
 WORKDIR /opt/deepdetect/
 
@@ -115,6 +107,7 @@ RUN apt-get update && \
 	libopencv-highgui3.2 \
 	libgflags2.2 \
 	libcurl4 \
+	libcurlpp0 \
 	libhdf5-cpp-100 \
 	libboost-filesystem1.65.1 \
 	libboost-thread1.65.1 \

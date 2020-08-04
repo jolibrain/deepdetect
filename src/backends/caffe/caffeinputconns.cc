@@ -360,7 +360,7 @@ namespace dd
 						const std::string &backend,
 						const bool &encoded,
 						const std::string &encode_type)
-  {
+  {    
     // Create new DB
     std::unique_ptr<db::DB> db(db::GetDB(backend));
     db->Open(dbfullname.c_str(), db::NEW);
@@ -370,6 +370,7 @@ namespace dd
     int count = 0;
     const int kMaxKeyLength = 256;
     char key_cstr[kMaxKeyLength];
+    bool key_overflow = false;
     
     for (int line_id = 0; line_id < (int)lfiles.size(); ++line_id) {
       Datum datum;
@@ -389,7 +390,9 @@ namespace dd
       // sequential
       int length = snprintf(key_cstr, kMaxKeyLength, "%08d_%s", line_id,
 			    lfiles[line_id].first.c_str());
-
+      if (lfiles[line_id].first.size() > kMaxKeyLength)
+	key_overflow = true;
+      
       // put in db
       std::string out;
       if(!datum.SerializeToString(&out))
@@ -408,6 +411,9 @@ namespace dd
       txn->Commit();
       _logger->info("Processed {} files",count);
     }
+    if (key_overflow)
+      _logger->warn("Some of the keys in {} have been truncated to fit the 256 max key length requirement",
+		    dbfullname);
   }
 
   void ImgCaffeInputFileConn::write_image_to_db_multilabel(const std::string &dbfullname,
@@ -422,10 +428,10 @@ namespace dd
     std::unique_ptr<db::Transaction> txn(db->NewTransaction());
     
     // Storing to db
-    //Datum datum;
     int count = 0;
     const int kMaxKeyLength = 256;
     char key_cstr[kMaxKeyLength];
+    bool key_overflow = false;
     
     for (int line_id = 0; line_id < (int)lfiles.size(); ++line_id) {
       Datum datum;
@@ -438,7 +444,10 @@ namespace dd
 				lfiles[line_id].second[0], _height, _width, !_bw, // XXX: passing first label, fixing labels below
 				enc, &datum);
       if (status == false)
-	_logger->error("failed reading image {}",lfiles[line_id].first);
+	{
+	  _logger->error("failed reading image {}",lfiles[line_id].first);
+	  continue;
+	}
       
       // store multi labels into float_data in the datum (encoded image should be into data as bytes)
       std::vector<float> labels = lfiles[line_id].second;
@@ -450,6 +459,8 @@ namespace dd
       // sequential
       int length = snprintf(key_cstr, kMaxKeyLength, "%08d_%s", line_id,
 			    lfiles[line_id].first.c_str());
+      if (lfiles[line_id].first.size() > kMaxKeyLength)
+	key_overflow = true;
       
       // put in db
       std::string out;
@@ -469,6 +480,9 @@ namespace dd
       txn->Commit();
       _logger->info("Processed {} files",count);
     }
+    if (key_overflow)
+      _logger->warn("Some of the keys in {} have been truncated to fit the 256 max key length requirement",
+		    dbfullname);
   }
 
   // - fixed size in-memory arrays put down to disk at once
