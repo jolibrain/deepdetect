@@ -728,7 +728,7 @@ if (USE_TORCH)
 
   set(PYTORCH_PATCHES
     ${PYTORCH_PATCHES_PATH}/pytorch_15_compile.patch
-    ${PYTORCH_PATCHES_PATH}/pytorch_15_logging.patch
+    ${PYTORCH_PATCHES_PATH}/pytorch_16_logging.patch
     ${PYTORCH_PATCHES_PATH}/pytorch_14_namespace.patch
     )
 
@@ -740,7 +740,8 @@ if (USE_TORCH)
   if (NOT TORCH_LOCATION)
     #set(PYTORCH_COMMIT ee77ccbb6da4e2efd83673e798acf7081bc03564) # 1.3.1
     #set(PYTORCH_COMMIT 7f73f1d591afba823daa4a99a939217fb54d7688) # 1.4
-    set(PYTORCH_COMMIT 4ff3872a2099993bf7e8c588f7182f3df777205b)  # 1.5
+    #set(PYTORCH_COMMIT 4ff3872a2099993bf7e8c588f7182f3df777205b)  # 1.5
+	set(PYTORCH_COMMIT b31f58de6fa8bbda5353b3c77d9be4914399724d)  # 1.6
     set(PYTORCH_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch-complete)
 
     if(NOT USE_CPU_ONLY AND CUDA_FOUND)
