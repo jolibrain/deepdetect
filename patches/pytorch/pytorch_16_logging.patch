@@ -1,0 +1,812 @@
+diff --git a/aten/src/ATen/record_function.cpp b/aten/src/ATen/record_function.cpp
+index d4475759bd..e101c2dd95 100644
+--- a/aten/src/ATen/record_function.cpp
++++ b/aten/src/ATen/record_function.cpp
+@@ -152,11 +152,11 @@ class CallbackManager {
+       return true;
+     } catch (const std::exception &e) {
+       LOG(WARNING) << "Exception in RecordFunction callback: "
+-          << e.what() << " , for the range " << rf.name();
++				   << e.what() << " , for the range " << rf.name().str();
+       return false;
+     } catch (...) {
+       LOG(WARNING) << "Exception in RecordFunction callback: unknown"
+-          << " , for the range " << rf.name();
++				   << " , for the range " << rf.name().str();
+       return false;
+     }
+   }
+diff --git a/c10/util/Logging.cpp b/c10/util/Logging.cpp
+index 4b889b3443..ce8afab02f 100644
+--- a/c10/util/Logging.cpp
++++ b/c10/util/Logging.cpp
+@@ -205,110 +205,16 @@ void ShowLogInfoToStderr() {
+ #include <android/log.h>
+ #endif // ANDROID
+ 
+-C10_DEFINE_int(
+-    caffe2_log_level,
+-    WARNING,
+-    "The minimum log level that caffe2 will output.");
+-
+ namespace c10 {
+ bool InitCaffeLogging(int* argc, char** argv) {
+-  // When doing InitCaffeLogging, we will assume that caffe's flag paser has
+-  // already finished.
+-  if (*argc == 0)
+-    return true;
+-  if (!c10::CommandLineFlagsHasBeenParsed()) {
+-    std::cerr << "InitCaffeLogging() has to be called after "
+-                 "c10::ParseCommandLineFlags. Modify your program to make sure "
+-                 "of this."
+-              << std::endl;
+-    return false;
+-  }
+-  if (FLAGS_caffe2_log_level > FATAL) {
+-    std::cerr << "The log level of Caffe2 has to be no larger than FATAL("
+-              << FATAL << "). Capping it to FATAL." << std::endl;
+-    FLAGS_caffe2_log_level = FATAL;
+-  }
+   return true;
+ }
+ 
+ void UpdateLoggingLevelsFromFlags() {}
+ 
+ void ShowLogInfoToStderr() {
+-  FLAGS_caffe2_log_level = INFO;
+ }
+ 
+-MessageLogger::MessageLogger(const char* file, int line, int severity)
+-    : severity_(severity) {
+-  if (severity_ < FLAGS_caffe2_log_level) {
+-    // Nothing needs to be logged.
+-    return;
+-  }
+-#ifdef ANDROID
+-  tag_ = "native";
+-#else // !ANDROID
+-  tag_ = "";
+-#endif // ANDROID
+-  /*
+-  time_t rawtime;
+-  struct tm * timeinfo;
+-  time(&rawtime);
+-  timeinfo = localtime(&rawtime);
+-  std::chrono::nanoseconds ns =
+-      std::chrono::duration_cast<std::chrono::nanoseconds>(
+-          std::chrono::high_resolution_clock::now().time_since_epoch());
+-  */
+-  stream_ << "["
+-          << CAFFE2_SEVERITY_PREFIX[std::min(4, FATAL - severity_)]
+-          //<< (timeinfo->tm_mon + 1) * 100 + timeinfo->tm_mday
+-          //<< std::setfill('0')
+-          //<< " " << std::setw(2) << timeinfo->tm_hour
+-          //<< ":" << std::setw(2) << timeinfo->tm_min
+-          //<< ":" << std::setw(2) << timeinfo->tm_sec
+-          //<< "." << std::setw(9) << ns.count() % 1000000000
+-          << " " << c10::detail::StripBasename(std::string(file)) << ":" << line
+-          << "] ";
+-}
+-
+-// Output the contents of the stream to the proper channel on destruction.
+-MessageLogger::~MessageLogger() {
+-  if (severity_ < FLAGS_caffe2_log_level) {
+-    // Nothing needs to be logged.
+-    return;
+-  }
+-  stream_ << "\n";
+-#ifdef ANDROID
+-  static const int android_log_levels[] = {
+-      ANDROID_LOG_FATAL, // LOG_FATAL
+-      ANDROID_LOG_ERROR, // LOG_ERROR
+-      ANDROID_LOG_WARN, // LOG_WARNING
+-      ANDROID_LOG_INFO, // LOG_INFO
+-      ANDROID_LOG_DEBUG, // VLOG(1)
+-      ANDROID_LOG_VERBOSE, // VLOG(2) .. VLOG(N)
+-  };
+-  int android_level_index = FATAL - std::min(FATAL, severity_);
+-  int level = android_log_levels[std::min(android_level_index, 5)];
+-  // Output the log string the Android log at the appropriate level.
+-  __android_log_print(level, tag_, "%s", stream_.str().c_str());
+-  // Indicate termination if needed.
+-  if (severity_ == FATAL) {
+-    __android_log_print(ANDROID_LOG_FATAL, tag_, "terminating.\n");
+-  }
+-#else // !ANDROID
+-  if (severity_ >= FLAGS_caffe2_log_level) {
+-    // If not building on Android, log all output to std::cerr.
+-    std::cerr << stream_.str();
+-    // Simulating the glog default behavior: if the severity is above INFO,
+-    // we flush the stream so that the output appears immediately on std::cerr.
+-    // This is expected in some of our tests.
+-    if (severity_ > INFO) {
+-      std::cerr << std::flush;
+-    }
+-  }
+-#endif // ANDROID
+-  if (severity_ == FATAL) {
+-    DealWithFatal();
+-  }
+-}
+ 
+ } // namespace c10
+ 
+diff --git a/c10/util/logging_is_not_google_glog.h b/c10/util/logging_is_not_google_glog.h
+index f172fbc470..30ac514d8f 100644
+--- a/c10/util/logging_is_not_google_glog.h
++++ b/c10/util/logging_is_not_google_glog.h
+@@ -12,243 +12,94 @@
+ #include <string>
+ #include <vector>
+ 
+-#include <c10/util/Flags.h>
++#include <google/protobuf/message.h>
++#include "caffe/llogging.h"
+ 
+-// Log severity level constants.
+-const int FATAL = 3;
+-#if !defined(_MSC_VER) || !defined(ERROR)
+-// Windows defines the ERROR macro already, and as a result we will
+-// simply use that one. The downside is that one will now mix LOG(INFO)
+-// and LOG(ERROR) because ERROR is defined to be zero. Anyway, the
+-// recommended way is to use glog so fixing this is a low-pri item.
+-const int ERROR = 2;
++#include <c10/util/Flags.h>
++#include "c10/util/ArrayRef.h"
++#include "c10/util/typeid.h"
++#include "c10/core/DeviceType.h"
++#include "c10/core/Device.h"
++
++#ifndef VLOG
++#define DEBUG "none"
++static const std::string VLogLevels[4] = {DEBUG, DEBUG, DEBUG, DEBUG};
++#define VLOG(n) LOG(VLogLevels[n])
+ #endif
+-const int WARNING = 1;
+-const int INFO = 0;
+-const char CAFFE2_SEVERITY_PREFIX[] = "FEWIV";
+-
+-namespace c10 {
+-class C10_API MessageLogger {
+- public:
+-  MessageLogger(const char* file, int line, int severity);
+-  ~MessageLogger();
+-  // Return the stream associated with the logger object.
+-  std::stringstream& stream() {
+-    return stream_;
+-  }
+ 
+- private:
+-  // When there is a fatal log, we simply abort.
+-  void DealWithFatal() {
+-    abort();
+-  }
++#define LOG_AS_STRING(l, o)                     \
++  std::stringstream ss;                         \
++  ss << o;                                      \
++  return l << ss.str();
+ 
+-  const char* tag_;
+-  std::stringstream stream_;
+-  int severity_;
+-};
+-
+-// This class is used to explicitly ignore values in the conditional
+-// logging macros.  This avoids compiler warnings like "value computed
+-// is not used" and "statement has no effect".
+-class C10_API LoggerVoidify {
+- public:
+-  LoggerVoidify() {}
+-  // This has to be an operator with a precedence lower than << but
+-  // higher than ?:
+-  void operator&(const std::ostream& s) {}
+-};
+-
+-// Log a message and terminate.
+-template <class T>
+-void LogMessageFatal(const char* file, int line, const T& message) {
+-  MessageLogger(file, line, FATAL).stream() << message;
++inline CaffeLogger &operator<<(const CaffeLogger &out, const std::_Setprecision &o) {
++  LOG_AS_STRING(out, o);
+ }
+-
+-// Helpers for CHECK_NOTNULL(). Two are necessary to support both raw pointers
+-// and smart pointers.
+-template <typename T>
+-T& CheckNotNullCommon(const char* file, int line, const char* names, T& t) {
+-  if (t == nullptr) {
+-    LogMessageFatal(file, line, std::string(names));
+-  }
+-  return t;
++inline CaffeLogger &operator<<(const CaffeLogger &out, std::ostream&(*o)(std::ostream&)) {
++  LOG_AS_STRING(out, o);
+ }
+-
+-template <typename T>
+-T* CheckNotNull(const char* file, int line, const char* names, T* t) {
+-  return CheckNotNullCommon(file, line, names, t);
++inline CaffeLogger &operator<<(const CaffeLogger &out, const void *o) {
++  LOG_AS_STRING(out, o);
+ }
+-
+-template <typename T>
+-T& CheckNotNull(const char* file, int line, const char* names, T& t) {
+-  return CheckNotNullCommon(file, line, names, t);
++inline CaffeLogger &operator<<(const CaffeLogger &out, const c10::DeviceType &o) {
++  LOG_AS_STRING(out, o);
++}
++inline CaffeLogger &operator<<(const CaffeLogger &out, const c10::Device &o) {
++  LOG_AS_STRING(out, o);
++}
++inline CaffeLogger &operator<<(const CaffeLogger &out, const c10::IntArrayRef &o) {
++  LOG_AS_STRING(out, o);
++}
++inline CaffeLogger &operator<<(const CaffeLogger &out, const caffe2::TypeMeta &o) {
++  LOG_AS_STRING(out, o);
++}
++inline CaffeLogger &operator<<(const CaffeLogger &out, const google::protobuf::Message &o) {
++  return out << o.SerializeAsString();
++}
++inline CaffeLogger &operator<<(const CaffeLogger &out, const c10::string_view &o) {
++  LOG_AS_STRING(out, std::basic_string<char>(o));
+ }
+-} // namespace c10
+-
+-// ---------------------- Logging Macro definitions --------------------------
+-
+-static_assert(
+-    CAFFE2_LOG_THRESHOLD <= FATAL,
+-    "CAFFE2_LOG_THRESHOLD should at most be FATAL.");
+-// If n is under the compile time caffe log threshold, The _CAFFE_LOG(n)
+-// should not generate anything in optimized code.
+-#define LOG(n)                   \
+-  if (n >= CAFFE2_LOG_THRESHOLD) \
+-  ::c10::MessageLogger((char*)__FILE__, __LINE__, n).stream()
+-#define VLOG(n) LOG((-n))
+-
+-#define LOG_IF(n, condition)                    \
+-  if (n >= CAFFE2_LOG_THRESHOLD && (condition)) \
+-  ::c10::MessageLogger((char*)__FILE__, __LINE__, n).stream()
+-#define VLOG_IF(n, condition) LOG_IF((-n), (condition))
+-
+-#define VLOG_IS_ON(verboselevel) (CAFFE2_LOG_THRESHOLD <= -(verboselevel))
+-
+-// Log with source location information override (to be used in generic
+-// warning/error handlers implemented as functions, not macros)
+-#define LOG_AT_FILE_LINE(n, file, line) \
+-  if (n >= CAFFE2_LOG_THRESHOLD)        \
+-  ::c10::MessageLogger(file, line, n).stream()
+-
+-// Log only if condition is met.  Otherwise evaluates to void.
+-#define FATAL_IF(condition)            \
+-  condition ? (void)0                  \
+-            : ::c10::LoggerVoidify() & \
+-          ::c10::MessageLogger((char*)__FILE__, __LINE__, FATAL).stream()
+-
+-// Check for a given boolean condition.
+-#define CHECK(condition) FATAL_IF(condition) << "Check failed: " #condition " "
+-
+-#ifndef NDEBUG
+-// Debug only version of CHECK
+-#define DCHECK(condition) FATAL_IF(condition) << "Check failed: " #condition " "
+-#else
+-// Optimized version - generates no code.
+-#define DCHECK(condition) \
+-  while (false)           \
+-  CHECK(condition)
+-#endif // NDEBUG
+-
+-#define CHECK_OP(val1, val2, op)                      \
+-  FATAL_IF(((val1) op (val2)))                        \
+-    << "Check failed: " #val1 " " #op " " #val2 " ("  \
+-    << (val1) << " vs. " << (val2) << ") "
+-
+-// Check_op macro definitions
+-#define CHECK_EQ(val1, val2) CHECK_OP(val1, val2, ==)
+-#define CHECK_NE(val1, val2) CHECK_OP(val1, val2, !=)
+-#define CHECK_LE(val1, val2) CHECK_OP(val1, val2, <=)
+-#define CHECK_LT(val1, val2) CHECK_OP(val1, val2, <)
+-#define CHECK_GE(val1, val2) CHECK_OP(val1, val2, >=)
+-#define CHECK_GT(val1, val2) CHECK_OP(val1, val2, >)
+-
+-#ifndef NDEBUG
+-// Debug only versions of CHECK_OP macros.
+-#define DCHECK_EQ(val1, val2) CHECK_OP(val1, val2, ==)
+-#define DCHECK_NE(val1, val2) CHECK_OP(val1, val2, !=)
+-#define DCHECK_LE(val1, val2) CHECK_OP(val1, val2, <=)
+-#define DCHECK_LT(val1, val2) CHECK_OP(val1, val2, <)
+-#define DCHECK_GE(val1, val2) CHECK_OP(val1, val2, >=)
+-#define DCHECK_GT(val1, val2) CHECK_OP(val1, val2, >)
+-#else // !NDEBUG
+-// These versions generate no code in optimized mode.
+-#define DCHECK_EQ(val1, val2) \
+-  while (false)               \
+-  CHECK_OP(val1, val2, ==)
+-#define DCHECK_NE(val1, val2) \
+-  while (false)               \
+-  CHECK_OP(val1, val2, !=)
+-#define DCHECK_LE(val1, val2) \
+-  while (false)               \
+-  CHECK_OP(val1, val2, <=)
+-#define DCHECK_LT(val1, val2) \
+-  while (false)               \
+-  CHECK_OP(val1, val2, <)
+-#define DCHECK_GE(val1, val2) \
+-  while (false)               \
+-  CHECK_OP(val1, val2, >=)
+-#define DCHECK_GT(val1, val2) \
+-  while (false)               \
+-  CHECK_OP(val1, val2, >)
+-#endif // NDEBUG
+-
+-// Check that a pointer is not null.
+-#define CHECK_NOTNULL(val) \
+-  ::c10::CheckNotNull(     \
+-      __FILE__, __LINE__, "Check failed: '" #val "' Must be non NULL", (val))
+-
+-#ifndef NDEBUG
+-// Debug only version of CHECK_NOTNULL
+-#define DCHECK_NOTNULL(val) \
+-  ::c10::CheckNotNull(      \
+-      __FILE__, __LINE__, "Check failed: '" #val "' Must be non NULL", (val))
+-#else // !NDEBUG
+-// Optimized version - generates no code.
+-#define DCHECK_NOTNULL(val) \
+-  while (false)             \
+-  CHECK_NOTNULL(val)
+-#endif // NDEBUG
+-
+-// ---------------------- Support for std objects --------------------------
+-// These are adapted from glog to support a limited set of logging capability
+-// for STL objects.
+ 
+-namespace std {
+-// Forward declare these two, and define them after all the container streams
+-// operators so that we can recurse from pair -> container -> container -> pair
+-// properly.
+-template <class First, class Second>
+-std::ostream& operator<<(std::ostream& out, const std::pair<First, Second>& p);
+-} // namespace std
+ 
+-namespace c10 {
+-template <class Iter>
+-void PrintSequence(std::ostream& ss, Iter begin, Iter end);
+-} // namespace c10
+ 
+ namespace std {
+-#define INSTANTIATE_FOR_CONTAINER(container)               \
+-  template <class... Types>                                \
+-  std::ostream& operator<<(                                \
+-      std::ostream& out, const container<Types...>& seq) { \
+-    c10::PrintSequence(out, seq.begin(), seq.end());       \
+-    return out;                                            \
++
++#define LOG_PAIR(s)                                                     \
++  template<class First, class Second>                                   \
++    inline s& operator<<(s& out, const std::pair<First, Second>& p) {	\
++    return out << '(' << p.first << ", " << p.second << ')';            \
+   }
+ 
+-INSTANTIATE_FOR_CONTAINER(std::vector)
+-INSTANTIATE_FOR_CONTAINER(std::map)
+-INSTANTIATE_FOR_CONTAINER(std::set)
+-#undef INSTANTIATE_FOR_CONTAINER
+-
+-template <class First, class Second>
+-inline std::ostream& operator<<(
+-    std::ostream& out,
+-    const std::pair<First, Second>& p) {
+-  out << '(' << p.first << ", " << p.second << ')';
+-  return out;
+-}
++LOG_PAIR(std::ostream)
++LOG_PAIR(CaffeLogger)
++
++#define LOG_CONTAINER(s, c)                                 \
++  template <class... Types>                                 \
++    s& operator<<(s& out, const c<Types...>& seq) {         \
++    int i = 0;                                              \
++    for (auto it = seq.begin(); it != seq.end(); ++it) {    \
++      if (i++) {                                            \
++        out << ' ';                                         \
++      }                                                     \
++      if (i > 100) {                                        \
++        return out << "...";                                \
++      }                                                     \
++      out << *it;                                           \
++    }                                                       \
++    return out;                                             \
++  }
++
++
++  LOG_CONTAINER(std::ostream, std::vector)
++  LOG_CONTAINER(std::ostream, std::map)
++  LOG_CONTAINER(std::ostream, std::set)
++
++  LOG_CONTAINER(CaffeLogger, std::vector)
++  LOG_CONTAINER(CaffeLogger, std::map)
++  LOG_CONTAINER(CaffeLogger, std::set)
+ 
+-inline std::ostream& operator<<(
+-    std::ostream& out, const std::nullptr_t&) {
+-  out << "(null)";
+-  return out;
+-}
+ } // namespace std
+ 
+-namespace c10 {
+-template <class Iter>
+-inline void PrintSequence(std::ostream& out, Iter begin, Iter end) {
+-  // Output at most 100 elements -- appropriate if used for logging.
+-  for (int i = 0; begin != end && i < 100; ++i, ++begin) {
+-    if (i > 0)
+-      out << ' ';
+-    out << *begin;
+-  }
+-  if (begin != end) {
+-    out << " ...";
+-  }
+-}
+-} // namespace c10
++#define VLOG_IS_ON(n) true
+ 
+ #endif // C10_UTIL_LOGGING_IS_NOT_GOOGLE_GLOG_H_
+diff --git a/caffe/llogging.h b/caffe/llogging.h
+new file mode 100644
+index 0000000000..d44c78ea6a
+--- /dev/null
++++ b/caffe/llogging.h
+@@ -0,0 +1,264 @@
++/**
++ * Author: Emmanuel Benazera <beniz@droidnik.fr>
++ */
++
++#ifndef LLOGGING_H
++#define LLOGGING_H
++
++#include <spdlog/spdlog.h>
++#include <boost/algorithm/string.hpp>
++#include <iostream>
++
++class DateLogger {
++ public:
++  DateLogger() {
++#if defined(_MSC_VER)
++    _tzset();
++#endif
++  }
++  const char* HumanDate() {
++#if defined(_MSC_VER)
++    _strtime_s(buffer_, sizeof(buffer_));
++#else
++    time_t time_value = time(NULL);
++    struct tm *pnow;
++#if !defined(_WIN32)
++    struct tm now;
++    pnow = localtime_r(&time_value, &now);
++#else
++    pnow = localtime(&time_value);  // NOLINT(*)
++#endif
++    snprintf(buffer_, sizeof(buffer_), "%02d:%02d:%02d",
++             pnow->tm_hour, pnow->tm_min, pnow->tm_sec);
++#endif
++    return buffer_;
++  }
++
++ private:
++  char buffer_[9];
++};
++
++// avoid fatal checks from glog
++#define CAFFE_THROW_ON_ERROR
++
++// make sure we erase definitions by glog if any
++#undef LOG
++#undef LOG_IF
++#undef CHECK
++#undef CHECK_OP_LOG
++#undef CHECK_EQ
++#undef CHECK_LT
++#undef CHECK_GT
++#undef CHECK_LE
++#undef CHECK_GE
++#undef CHECK_EQ
++#undef CHECK_NE
++#undef CHECK_OP_LOG
++#undef CHECK_NOTNULL
++#undef DCHECK
++#undef DCHECK_LT
++#undef DCHECK_GT
++#undef DCHECK_LE
++#undef DCHECK_GE
++#undef DCHECK_EQ
++#undef DCHECK_NE
++#undef DLOG
++#undef DFATAL
++#undef LOG_DFATAL
++#undef LOG_EVERY_N
++
++#ifdef CAFFE_THROW_ON_ERROR
++#include <sstream>
++#define SSTR( x ) dynamic_cast< std::ostringstream & >( \
++		 ( std::ostringstream() << std::dec << x ) ).str()
++class CaffeErrorException : public std::exception
++{
++public:
++  CaffeErrorException(const std::string &s):_s(s) {}
++  ~CaffeErrorException() throw() {}
++  const char* what() const throw() { return _s.c_str(); }
++  std::string _s;
++};
++
++static std::string INFO="INFO";
++static std::string WARNING="WARNING";
++static std::string ERROR="ERROR";
++static std::string FATAL="FATAL";
++
++#define GLOG_NO_ABBREVIATED_SEVERITIES
++
++#define INFO INFO
++#define WARNING WARNING
++#define ERROR ERROR
++#define FATAL FATAL
++
++static std::ostream nullstream(0);
++
++#define CHECK(condition)						\
++  if (!(condition)) \
++    throw CaffeErrorException(std::string(__FILE__) + ":" + SSTR(__LINE__) + " / Check failed (custom): " #condition ""); \
++  nullstream									\
++  << "Check failed (custom): " #condition " "
++
++#define CHECK_LT(x, y) CHECK((x) < (y))
++#define CHECK_GT(x, y) CHECK((x) > (y))
++#define CHECK_LE(x, y) CHECK((x) <= (y))
++#define CHECK_GE(x, y) CHECK((x) >= (y))
++#define CHECK_EQ(x, y) CHECK((x) == (y))
++#define CHECK_NE(x, y) CHECK((x) != (y))
++
++#define CHECK_OP_LOG(name, op, val1, val2, log) CHECK((val1) op (val2))
++/* #ifdef DEBUG */
++/* #define CHECK_EQ(val1,val2) if (0) std::cerr */
++/* #endif */
++#endif
++
++#define CHECK_NOTNULL(x) \
++  ((x) == NULL ? LOG(FATAL) << "Check  notnull: "  #x << ' ', (x) : (x)) // NOLINT(*)
++
++#ifdef NDEBUG
++#define DCHECK(x) \
++  while (false) CHECK(x)
++#define DCHECK_LT(x, y) \
++  while (false) CHECK((x) < (y))
++#define DCHECK_GT(x, y) \
++  while (false) CHECK((x) > (y))
++#define DCHECK_LE(x, y) \
++  while (false) CHECK((x) <= (y))
++#define DCHECK_GE(x, y) \
++  while (false) CHECK((x) >= (y))
++#define DCHECK_EQ(x, y) \
++  while (false) CHECK((x) == (y))
++#define DCHECK_NE(x, y) \
++  while (false) CHECK((x) != (y))
++#else
++#define DCHECK(x) CHECK(x)
++#define DCHECK_LT(x, y) CHECK((x) < (y))
++#define DCHECK_GT(x, y) CHECK((x) > (y))
++#define DCHECK_LE(x, y) CHECK((x) <= (y))
++#define DCHECK_GE(x, y) CHECK((x) >= (y))
++#define DCHECK_EQ(x, y) CHECK((x) == (y))
++#define DCHECK_NE(x, y) CHECK((x) != (y))
++#endif  // NDEBUG
++
++class CaffeLogger
++{
++ public:
++  CaffeLogger(const std::string &severity)
++    :_severity(severity)
++  {
++    _console = spdlog::get("pytorch");
++    if (!_console)
++#ifdef USE_SYSLOG
++      _console = spdlog::syslog_logger("pytorch");
++#else
++      _console = spdlog::stdout_logger_mt("pytorch");
++#endif
++  }
++
++  ~CaffeLogger()
++    {
++      if (_severity == "none" || _str.empty()) // ignore
++	{}
++      else if (_severity == INFO)
++	_console->info(_str);
++      else if (_severity == WARNING)
++	_console->warn(_str);
++      else if (_severity == ERROR)
++	_console->error(_str);
++    }
++  
++  friend CaffeLogger& operator<<(const CaffeLogger &cl, const std::string &rstr)
++  {
++    std::string str = rstr;
++    const_cast<CaffeLogger&>(cl)._str += str;
++    return const_cast<CaffeLogger&>(cl);
++  }
++
++  friend CaffeLogger& operator<<(const CaffeLogger &cl, const double &d)
++  {
++    std::string str = std::to_string(d);
++    boost::trim_right_if(str,boost::is_any_of("\n"));
++    const_cast<CaffeLogger&>(cl)._str += str;
++    return const_cast<CaffeLogger&>(cl);
++  }
++
++  friend CaffeLogger& operator<<(const CaffeLogger &cl, const std::ostream &out)
++  {
++    std::stringstream sstr;
++    sstr << out.rdbuf();
++    const_cast<CaffeLogger&>(cl)._str += sstr.str();
++    return const_cast<CaffeLogger&>(cl);
++  }
++  
++  std::string _severity = INFO;
++  std::shared_ptr<spdlog::logger> _console;
++  std::string _str;
++};
++
++inline CaffeLogger LOG(const std::string &severity)
++{
++  if (severity != FATAL)
++  {
++    return CaffeLogger(severity);
++  }
++  else
++    {
++      throw CaffeErrorException(std::string(__FILE__) + ":" + SSTR(__LINE__) + " / Fatal Caffe error"); // XXX: cannot report the exact location of the trigger...
++    }
++}
++
++inline CaffeLogger LOG_IF(const std::string &severity,const bool &condition)
++{
++  if (condition)
++    return LOG(severity);
++  else return CaffeLogger("none");
++}
++
++inline CaffeLogger LOG_AT_FILE_LINE(const std::string &severity,const char* file, const uint32_t line)
++{
++  return LOG(severity) << "source file:" << file << "  line: " << line;
++}
++
++
++#ifdef NDEBUG
++inline CaffeLogger DFATAL(const std::string &severity)
++{
++  (void)severity;
++  return CaffeLogger("none");
++}
++inline CaffeLogger LOG_DFATAL(const std::string &severity)
++{
++  (void)severity;
++  return CaffeLogger("none");
++}
++inline CaffeLogger DLOG(const std::string &severity)
++{
++  (void)severity;
++  return CaffeLogger("none");
++}
++#else
++inline CaffeLogger DFATAL(const std::string &severity)
++{
++  (void)severity;
++  return LOG(FATAL);
++}
++inline CaffeLogger LOG_DFATAL(const std::string &severity)
++{
++  (void)severity;
++  return LOG(FATAL);
++}
++inline CaffeLogger DLOG(const std::string &severity)
++{
++  return LOG(severity);
++}
++#endif
++
++// Poor man's version...
++inline CaffeLogger LOG_EVERY_N(const std::string &severity, const int &n)
++{
++  (void)n;
++  return LOG(severity);
++}
++
++#endif
+diff --git a/torch/csrc/distributed/rpc/rref_impl.cpp b/torch/csrc/distributed/rpc/rref_impl.cpp
+index 2f64231a91..826d653402 100644
+--- a/torch/csrc/distributed/rpc/rref_impl.cpp
++++ b/torch/csrc/distributed/rpc/rref_impl.cpp
+@@ -270,6 +270,13 @@ std::ostream& operator<<(std::ostream& os, const RRef& rref) {
+   }
+ }
+ 
++CaffeLogger& operator<<(CaffeLogger & out, const RRef& rref) {
++  std::stringstream ss;
++  ss << rref;
++  return out << ss.str();
++}
++
++
+ } // namespace rpc
+ } // namespace distributed
+ } // namespace torch
+diff --git a/torch/csrc/distributed/rpc/rref_impl.h b/torch/csrc/distributed/rpc/rref_impl.h
+index 7a3cc6932c..4655135da3 100644
+--- a/torch/csrc/distributed/rpc/rref_impl.h
++++ b/torch/csrc/distributed/rpc/rref_impl.h
+@@ -398,6 +398,7 @@ class TORCH_API OwnerRRef final : public RRef {
+ };
+ 
+ TORCH_API std::ostream& operator<<(std::ostream& os, const RRef& rref);
++TORCH_API CaffeLogger& operator<<(CaffeLogger& out, const RRef& rref);
+ 
+ } // namespace rpc
+ } // namespace distributed
+diff --git a/torch/csrc/distributed/rpc/types.h b/torch/csrc/distributed/rpc/types.h
+index 1b9c03b05d..8573c55d55 100644
+--- a/torch/csrc/distributed/rpc/types.h
++++ b/torch/csrc/distributed/rpc/types.h
+@@ -44,6 +44,13 @@ TORCH_API std::ostream& operator<<(
+     std::ostream& os,
+     const GloballyUniqueId& globalId);
+ 
++inline CaffeLogger &operator<<(CaffeLogger &out, const GloballyUniqueId &o) {
++  std::stringstream ss;
++  ss << o;
++  return out << ss.str();
++}
++
++
+ using RRefId = GloballyUniqueId;
+ using ForkId = GloballyUniqueId;
+ using ProfilingId = GloballyUniqueId;
+diff --git a/torch/csrc/jit/tensorexpr/ir_printer.h b/torch/csrc/jit/tensorexpr/ir_printer.h
+index 66e7b3e94d..bdb63f8d6a 100644
+--- a/torch/csrc/jit/tensorexpr/ir_printer.h
++++ b/torch/csrc/jit/tensorexpr/ir_printer.h
+@@ -88,8 +88,18 @@ class TORCH_API IRPrinter : public IRVisitor {
+ };
+ 
+ TORCH_API std::ostream& operator<<(std::ostream& stream, const Expr&);
++inline CaffeLogger &operator<<(CaffeLogger &out, const Expr &o) {
++  std::stringstream ss;
++  ss << o;
++  return out << ss.str();
++}
+ TORCH_API std::ostream& operator<<(std::ostream& stream, const ExprHandle&);
+ TORCH_API std::ostream& operator<<(std::ostream& stream, const Stmt&);
++inline CaffeLogger &operator<<(CaffeLogger &out, const Stmt &o) {
++  std::stringstream ss;
++  ss << o;
++  return out << ss.str();
++}
+ TORCH_API std::ostream& operator<<(std::ostream& stream, const Tensor&);
+ TORCH_API std::ostream& operator<<(std::ostream& stream, const Function&);
+ 
+diff --git a/torch/csrc/jit/tensorexpr/types.h b/torch/csrc/jit/tensorexpr/types.h
+index 8dd67c8b71..f506542e49 100644
+--- a/torch/csrc/jit/tensorexpr/types.h
++++ b/torch/csrc/jit/tensorexpr/types.h
+@@ -82,6 +82,13 @@ class TORCH_API Dtype {
+   int lanes_; // the width of the element for a vector time
+ };
+ 
++inline CaffeLogger &operator<<(CaffeLogger &out, const Dtype &o) {
++  std::stringstream ss;
++  ss << o;
++  return out << ss.str();
++}
++
++
+ extern TORCH_API Dtype kUninitialized;
+ extern TORCH_API Dtype kHandle;
+ extern TORCH_API Dtype kVoid;
