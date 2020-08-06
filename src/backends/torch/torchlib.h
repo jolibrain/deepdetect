@@ -62,8 +62,8 @@ namespace dd
         void free();
     public:
         std::shared_ptr<torch::jit::script::Module> _traced;
-        std::shared_ptr<TorchGraphBackend> _graph;	/**< native module : torchgraphbackend has same interface as torch::module */
-	     std::shared_ptr<torch::nn::Module> _native;
+	  std::shared_ptr<TorchGraphBackend> _graph;	/**< graph module : torchgraphbackend has same interface as torch::module */
+	  std::shared_ptr<torch::nn::Module> _native; /**< native module : directly written in C++ */
         torch::nn::Linear _classif = nullptr;
 
         torch::Device _device;

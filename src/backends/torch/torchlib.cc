@@ -205,8 +205,8 @@ namespace dd
         if (!model._proto.empty())
 			{
 				_graph = std::make_shared<CaffeToTorch>(model._proto);
-				if (!model._weights.empty())
-					torch::load(_graph, model._weights);
+				if (!model._traced.empty())
+				  torch::load(_graph, model._traced);
 			}
 		if (!model._native.empty())
 		  torch::load(_native, model._native);
@@ -508,7 +508,7 @@ namespace dd
         try
         {
             inputc.transform(ad);
-			if (_module._graph)
+			if (_module._native)
 			  {
 				auto batchoptional = inputc._dataset.get_batch({1});
 				TorchBatch batch = batchoptional.value();
