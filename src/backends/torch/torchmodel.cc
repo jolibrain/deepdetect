@@ -43,13 +43,8 @@ namespace dd
             return 1;
         }
 
-<<<<<<< HEAD
         std::string tracedf,weightsf,correspf,sstatef,protof, nativef;
         int traced_t = -1, weights_t = -1, corresp_t = -1, sstate_t = -1, proto_t = -1, native_t = -1;
-=======
-        std::string tracedf,weightsf,correspf,sstatef,protof;
-        int traced_t = -1, weights_t = -1, corresp_t = -1, sstate_t = -1, proto_t = -1;
->>>>>>> d8093630ec38a03d9b7284bc722773af31f5ad69
 
         for (const auto &file : files) {
             long int lm = fileops::file_last_modif(file);
