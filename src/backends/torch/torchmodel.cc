@@ -27,6 +27,7 @@ namespace dd
         const std::shared_ptr<spdlog::logger> &logger) {
 
         const std::string weights = ".ptw";
+        const std::string native = ".native.pt";
         const std::string traced = ".pt";
         const std::string corresp = "corresp";
 		//solver. may lead to _solver.prototxt when generated from caffe generator
@@ -42,8 +43,8 @@ namespace dd
             return 1;
         }
 
-        std::string tracedf,weightsf,correspf,sstatef,protof;
-        int traced_t = -1, weights_t = -1, corresp_t = -1, sstate_t = -1, proto_t = -1;
+        std::string tracedf,weightsf,correspf,sstatef,protof, nativef;
+        int traced_t = -1, weights_t = -1, corresp_t = -1, sstate_t = -1, proto_t = -1, native_t = -1;
 
         for (const auto &file : files) {
             long int lm = fileops::file_last_modif(file);
@@ -58,6 +59,12 @@ namespace dd
                     weightsf = file;
                     weights_t = lm;
                 }
+            }
+            else if (file.find(native) != std::string::npos) {
+			  if (native_t < lm) {
+				nativef = file;
+				native_t = lm;
+			  }
             }
             else if (file.find(traced) != std::string::npos) {
                 if (traced_t < lm) {
@@ -84,6 +91,7 @@ namespace dd
         _corresp = correspf;
         _sstate = sstatef;
         _proto = protof;
+		_native = nativef;
 
         return 0;
     }

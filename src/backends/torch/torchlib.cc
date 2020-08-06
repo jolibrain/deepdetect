@@ -118,36 +118,38 @@ namespace dd
 
     c10::IValue TorchModule::forward(std::vector<c10::IValue> source)
     {
-	  if (_native) // native modules take only one tensor as input for now
+	  if (_graph) // native modules take only one tensor as input for now
+		return _graph->forward(to_tensor_safe(source[0]));
+	  if (_native)
 		return _native->forward(to_tensor_safe(source[0]));
-        if (_traced)
+	  if (_traced)
         {
-            auto output = _traced->forward(source);
-            if (output.isTensorList()) {
-                auto elems = output.toTensorList();
-                source = std::vector<c10::IValue>(elems.begin(), elems.end());
-            }
-            else if (output.isTuple()) {
-                auto &elems = output.toTuple()->elements();
-                source = std::vector<c10::IValue>(elems.begin(), elems.end());
-            }
-            else {
-                source = { output };
-            }
+		  auto output = _traced->forward(source);
+		  if (output.isTensorList()) {
+			auto elems = output.toTensorList();
+			source = std::vector<c10::IValue>(elems.begin(), elems.end());
+		  }
+		  else if (output.isTuple()) {
+			auto &elems = output.toTuple()->elements();
+			source = std::vector<c10::IValue>(elems.begin(), elems.end());
+		  }
+		  else {
+			source = { output };
+		  }
         }
-        c10::IValue out_val = source.at(_classif_in);
-        if (_hidden_states)
+	  c10::IValue out_val = source.at(_classif_in);
+	  if (_hidden_states)
         {
-            // out_val is a tuple containing tensors of dimension n_batch * sequence_lenght * n_features
-            // We want a tensor of size n_batch * n_features from the last hidden state
-            auto &elems = out_val.toTuple()->elements();
-            out_val = elems.back().toTensor().slice(1, 0, 1).squeeze(1);
+		  // out_val is a tuple containing tensors of dimension n_batch * sequence_lenght * n_features
+		  // We want a tensor of size n_batch * n_features from the last hidden state
+		  auto &elems = out_val.toTuple()->elements();
+		  out_val = elems.back().toTensor().slice(1, 0, 1).squeeze(1);
         }
-        if (_classif)
-        {
-            out_val = _classif->forward(to_tensor_safe(out_val));
+	  if (_classif)
+		{
+		  out_val = _classif->forward(to_tensor_safe(out_val));
         }
-        return out_val;
+	  return out_val;
     }
 
     void TorchModule::freeze_traced(bool freeze)
@@ -166,6 +168,8 @@ namespace dd
 
     std::vector<Tensor> TorchModule::parameters()
     {
+	  if (_graph)
+		return _graph->parameters();
 	  if (_native)
 		return _native->parameters();
 	  std::vector<Tensor> params;
@@ -185,8 +189,10 @@ namespace dd
             _traced->save(model._repo + "/checkpoint-" + name + ".pt");
         if (_classif)
             torch::save(_classif, model._repo + "/checkpoint-" + name + ".ptw");
+        if (_graph)
+            torch::save(_graph, model._repo + "/checkpoint-" + name + ".pt");
         if (_native)
-            torch::save(_native, model._repo + "/checkpoint-" + name + ".pt");
+		  torch::save(_native, model._repo + "/checkpoint-" + name + ".pt");
     }
 
     void TorchModule::load(TorchModel &model)
@@ -198,37 +204,44 @@ namespace dd
             torch::load(_classif, model._weights);
         if (!model._proto.empty())
 			{
-				_native = std::make_shared<CaffeToTorch>(model._proto);
+				_graph = std::make_shared<CaffeToTorch>(model._proto);
 				if (!model._weights.empty())
-					torch::load(_native, model._weights);
+					torch::load(_graph, model._weights);
 			}
+		if (!model._native.empty())
+		  torch::load(_native, model._native);
     }
 
     void TorchModule::eval()
 	{
-	  if (_native)
-		  _native->eval();
+	  if (_graph)
+		  _graph->eval();
 	  if (_traced)
 		  _traced->eval();
 	  if (_classif)
 		  _classif->eval();
+	  if (_native)
+		_native->eval();
     }
 
     void TorchModule::train()
 	{
-        if (_native)
-          _native->train();
+        if (_graph)
+          _graph->train();
         if (_traced)
           _traced->train();
         if (_classif)
           _classif->train();
+		if (_native)
+		  _native->eval();
     }
 
     void TorchModule::free()
     {
-	    _native = nullptr;
+	    _graph = nullptr;
         _traced = nullptr;
         _classif = nullptr;
+		_native = nullptr;
     }
 
 
@@ -311,6 +324,10 @@ namespace dd
 				TorchWriteProtoToTextFile(net_param,dest_net);
 				this->_mlmodel._proto = dest_net;
 		 	}
+		if (_template.find("nbeats") != std::string::npos)
+		  {
+			configure_nbeats_native(lib_ad, this->_inputc);
+		  }
 
 		// Create the model
 		if (this->_mlmodel._traced.empty() && this->_mlmodel._proto.empty())
@@ -346,7 +363,8 @@ namespace dd
             this->_inputc._input_format = "gpt2";
             _seq_training = true;
         }
-		else if (_template.find("recurrent")!= std::string::npos)
+		else if (_template.find("recurrent")!= std::string::npos ||
+				 _template.find("nbeats")!= std::string::npos)
 		  {
 			_timeserie = true;
 		  }
@@ -490,12 +508,16 @@ namespace dd
         try
         {
             inputc.transform(ad);
-			if (_module._native)
+			if (_module._graph)
 			  {
 				auto batchoptional = inputc._dataset.get_batch({1});
 				TorchBatch batch = batchoptional.value();
 				torch::Tensor td = batch.data[0];
-				_module._native->finalize(td.sizes());
+				_module._graph->finalize(td.sizes());
+				_module._graph->to(_device);
+			  }
+			if (_module._native)
+			  {
 				_module._native->to(_device);
 			  }
         }
@@ -830,18 +852,18 @@ namespace dd
         try
 		  {
             inputc.transform(ad);
-			if (_module._native)
+			if (_module._graph)
 			  {
 				if (ad.getobj("parameters").getobj("input").has("continuation") &&
 					ad.getobj("parameters").getobj("input").get("continuation").get<bool>())
 				  {
 					lstm_continuation = true;
-					_module._native->lstm_continues(true);
+					_module._graph->lstm_continues(true);
 				  }
 				else
 				  {
 					lstm_continuation = false;
-					_module._native->lstm_continues(false);
+					_module._graph->lstm_continues(false);
 				  }
 			  }
 		  } catch (...) {
