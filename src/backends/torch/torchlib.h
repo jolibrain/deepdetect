@@ -34,6 +34,7 @@
 #include "torchmodel.h"
 #include "torchinputconns.h"
 #include "torchgraphbackend.h"
+#include "native/nbeats.h"
 
 namespace dd
 {
@@ -63,7 +64,7 @@ namespace dd
     public:
         std::shared_ptr<torch::jit::script::Module> _traced;
 	  std::shared_ptr<TorchGraphBackend> _graph;	/**< graph module : torchgraphbackend has same interface as torch::module */
-	  std::shared_ptr<torch::nn::Module> _native; /**< native module : directly written in C++ */
+	  std::shared_ptr<NativeModule> _native; /**< native module : directly written in C++ */
         torch::nn::Linear _classif = nullptr;
 
         torch::Device _device;

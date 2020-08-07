@@ -41,6 +41,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include "native/native_net.h"
 
 using namespace torch;
 
@@ -209,7 +210,11 @@ namespace dd
 				  torch::load(_graph, model._traced);
 			}
 		if (!model._native.empty())
-		  torch::load(_native, model._native);
+		  {
+			std::shared_ptr<NativeModule> m;
+			torch::load(m, model._native);
+			_native= m;
+		  }
     }
 
     void TorchModule::eval()
@@ -326,7 +331,8 @@ namespace dd
 		 	}
 		if (_template.find("nbeats") != std::string::npos)
 		  {
-			configure_nbeats_native(lib_ad, this->_inputc);
+			CSVTSTorchInputFileConn* ctip = reinterpret_cast<CSVTSTorchInputFileConn*> (&this->_inputc);
+			_module._native = std::make_shared<NBeats>(lib_ad, *ctip);
 		  }
 
 		// Create the model

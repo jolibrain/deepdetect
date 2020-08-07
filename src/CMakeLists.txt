@@ -81,6 +81,7 @@ if (USE_TORCH)
     backends/torch/torchinputconns.cc
     backends/torch/db.cpp
     backends/torch/db_lmdb.cpp
+	backends/torch/native/nbeats.cc
 	basegraph.cc
 	caffegraphinput.cc
 	backends/torch/torchgraphbackend.cc
