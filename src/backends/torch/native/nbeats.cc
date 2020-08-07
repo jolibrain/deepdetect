@@ -46,10 +46,22 @@ namespace dd
 
   torch::Tensor NBeats::SeasonalityBlock::seasonality_model(torch::Tensor x, const std::vector<float>& times)
   {
-	//TODO
-	int p = x.sizes().back();
-	int p1 = p / 2;
-	int p2 = (p % 2 == 0) ? p/2 : p/2 + 1;
+	auto options = torch::TensorOptions().dtype(torch::kFloat32);
+	unsigned int p = x.sizes().back();
+	unsigned int p1 = p / 2;
+	unsigned int p2 = (p % 2 == 0) ? p/2 : p/2 + 1;
+	std::vector<float> data;
+	for (unsigned int i = 0; i<p1; ++i)
+	  for (unsigned int j = 0; j< times.size(); ++j)
+		data.push_back(std::cos(2*M_PI * i * times[j]));
+	torch::Tensor s1 = torch::from_blob(data.data(),{p1,times.size()},options);
+	data.clear();
+	for (unsigned int i = 0; i<p2; ++i)
+	  for (unsigned int j = 0; j< times.size(); ++j)
+		data.push_back(std::sin(2*M_PI * i * times[j]));
+	torch::Tensor s2 = torch::from_blob(data.data(),{p2,times.size()},options);
+	torch::Tensor S = torch::cat({s1,s2});
+	return x.mm(S.to(this->_dtype).to(this->_device));
   }
 
 
@@ -64,7 +76,14 @@ namespace dd
 
   torch::Tensor NBeats::TrendBlock::trend_model(torch::Tensor x, const std::vector<float>& times)
   {
-	//TODO
+	auto options = torch::TensorOptions().dtype(torch::kFloat32);
+	unsigned int p = x.sizes().back();
+	std::vector<float> data;
+	for (unsigned int i = 0; i<p; ++i)
+	  for (unsigned int j = 0; j< times.size(); ++j)
+		data.push_back(std::pow(times[j],i));
+	torch::Tensor T = torch::from_blob(data.data(),{p,times.size()},options);
+	return x.mm(T.to(_dtype).to(_device));
   }
 
 

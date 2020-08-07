@@ -13,6 +13,45 @@ namespace dd
   public:
 	virtual torch::Tensor forward(torch::Tensor x) = 0;
 	virtual ~NativeModule() {}
+	/**
+	 * \brief see torch::module::to
+	 * @param device cpu / gpu
+	 * @param non_blocking
+	 */
+	virtual void to(torch::Device device, bool non_blocking = false)
+	{
+	  torch::nn::Module::to(device, non_blocking);
+	  _device = device;
+	}
+
+	/**
+	 * \brief see torch::module::to
+	 * @param dtype : torch::kFloat32 or torch::kFloat64
+	 * @param non_blocking
+	 */
+	virtual void to(torch::Dtype dtype, bool non_blocking = false)
+	{
+	  torch::nn::Module::to(dtype, non_blocking);
+	  _dtype = dtype;
+	}
+
+
+	/**
+	 * \brief see torch::module::to
+	 * @param device cpu / gpu
+	 * @param dtype : torch::kFloat32 or torch::kFloat64
+	 * @param non_blocking
+	 */
+	virtual void to(torch::Device device, torch::Dtype dtype, bool non_blocking = false)
+	{
+	  torch::nn::Module::to(device, dtype, non_blocking);
+	  _device = device;
+	  _dtype = dtype;
+	}
+  protected:
+	torch::Dtype _dtype = torch::kFloat32; /**< type of data stored in tensors */
+	torch::Device _device = torch::DeviceType::CPU; /**< device to compute on */
+
   };
 }
 

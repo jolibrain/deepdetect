@@ -29,14 +29,45 @@ namespace dd
 
 	  torch::Tensor forward(torch::Tensor x);
 
+	  virtual void to(torch::Device device, bool non_blocking = false)
+	  {
+		torch::nn::Module::to(device, non_blocking);
+		_device = device;
+	  }
+
+	  /**
+	   * \brief see torch::module::to
+	   * @param dtype : torch::kFloat32 or torch::kFloat64
+	   * @param non_blocking
+	   */
+	  virtual void to(torch::Dtype dtype, bool non_blocking = false)
+	  {
+		torch::nn::Module::to(dtype, non_blocking);
+		_dtype = dtype;
+	  }
+
+
+	  /**
+	   * \brief see torch::module::to
+	   * @param device cpu / gpu
+	   * @param dtype : torch::kFloat32 or torch::kFloat64
+	   * @param non_blocking
+	   */
+	  virtual void to(torch::Device device, torch::Dtype dtype, bool non_blocking = false)
+	  {
+		torch::nn::Module::to(device, dtype, non_blocking);
+		_device = device;
+		_dtype = dtype;
+	  }
+
 	protected:
 
 	  void init_block();
 
-	  int _units;
-	  int _thetas_dim;
-	  int _backcast_length;
-	  int _forecast_length;
+	  unsigned int _units;
+	  unsigned int _thetas_dim;
+	  unsigned int _backcast_length;
+	  unsigned int _forecast_length;
 	  bool _share_thetas;
 	  std::vector<float> _backcast_linspace;
 	  std::vector<float> _forecast_linspace;
@@ -46,6 +77,8 @@ namespace dd
 	  torch::nn::Linear _fc4{nullptr};
 	  torch::nn::Linear _theta_b_fc{nullptr};
 	  torch::nn::Linear _theta_f_fc{nullptr};
+	  torch::Dtype _dtype;
+	  torch::Device _device = torch::Device("cpu");
 	};
 
 	class SeasonalityBlock : public Block
@@ -130,6 +163,45 @@ namespace dd
 	{
 	  create_nbeats();
 	}
+	virtual void to(torch::Device device, bool non_blocking = false)
+	{
+	  torch::nn::Module::to(device, non_blocking);
+	  _device = device;
+	  for (auto s : _stacks)
+		for (auto b: s)
+		  b.to(device);
+	}
+
+	/**
+	 * \brief see torch::module::to
+	 * @param dtype : torch::kFloat32 or torch::kFloat64
+	 * @param non_blocking
+	 */
+	virtual void to(torch::Dtype dtype, bool non_blocking = false)
+	{
+	  torch::nn::Module::to(dtype, non_blocking);
+	  _dtype = dtype;
+	  for (auto s : _stacks)
+		for (auto b: s)
+		  b.to(dtype);
+	}
+
+
+	/**
+	 * \brief see torch::module::to
+	 * @param device cpu / gpu
+	 * @param dtype : torch::kFloat32 or torch::kFloat64
+	 * @param non_blocking
+	 */
+	virtual void to(torch::Device device, torch::Dtype dtype, bool non_blocking = false)
+	{
+	  torch::nn::Module::to(device, dtype, non_blocking);
+	  _device = device;
+	  _dtype = dtype;
+	  for (auto s : _stacks)
+		for (auto b: s)
+		  b.to(device, dtype);
+	}
 
 
 	virtual torch::Tensor forward(torch::Tensor x);
@@ -138,10 +210,10 @@ namespace dd
 
   protected:
 
-	int _forecast_length;
-	int _backcast_length;
-	int _hidden_layer_units;
-	int _nb_blocks_per_stack;
+	unsigned int _forecast_length;
+	unsigned int _backcast_length;
+	unsigned int _hidden_layer_units;
+	unsigned int _nb_blocks_per_stack;
 	bool _share_weights_in_stack;
 	std::vector<BlockType> _stack_types;
 	std::vector<Stack> _stacks;
