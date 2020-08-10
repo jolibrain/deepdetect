@@ -15,14 +15,23 @@ namespace dd
 	  {seasonality, trend, generic};
 
 
-	class Block : public torch::nn::Module
+	class BlockImpl : public torch::nn::Module
 	{
 	public:
-	  Block(int units, int thetas_dim,
+	  BlockImpl(int units, int thetas_dim,
 			int backcast_length, int forecast_length,
 			bool share_thetas) :
 		_units(units), _thetas_dim(thetas_dim), _backcast_length(backcast_length),
 		_forecast_length(forecast_length), _share_thetas(share_thetas)
+	  {
+		init_block();
+	  }
+
+	  BlockImpl(BlockImpl &b): torch::nn::Module(b),_units(b._units),
+		_thetas_dim(b._thetas_dim),
+		_backcast_length(b._backcast_length),
+		_forecast_length(b._forecast_length),
+		_share_thetas(b._share_thetas)
 	  {
 		init_block();
 	  }
@@ -81,45 +90,67 @@ namespace dd
 	  torch::Device _device = torch::Device("cpu");
 	};
 
-	class SeasonalityBlock : public Block
+	typedef torch::nn::ModuleHolder<BlockImpl> Block;
+
+	class SeasonalityBlockImpl : public BlockImpl
 	{
 	public:
-	  SeasonalityBlock(int units, int thetas_dim,
-					   int backcast_length, int forecast_length) :
-		Block(units, thetas_dim, backcast_length, forecast_length, true) {}
+	  SeasonalityBlockImpl(int units, int thetas_dim,
+						   int backcast_length, int forecast_length) :
+		BlockImpl(units, thetas_dim, backcast_length, forecast_length, true) {}
+
+	  SeasonalityBlockImpl(SeasonalityBlockImpl& b) : BlockImpl(b) {}
+
 	  std::tuple<torch::Tensor,torch::Tensor> forward(torch:: Tensor x);
 	protected:
 	  torch::Tensor seasonality_model(torch::Tensor x, const std::vector<float>& times);
 	};
 
-	class TrendBlock : public Block
+	typedef torch::nn::ModuleHolder<SeasonalityBlockImpl> SeasonalityBlock;
+
+	class TrendBlockImpl : public BlockImpl
 	{
 	public:
-	  TrendBlock(int units, int thetas_dim,
+	  TrendBlockImpl(int units, int thetas_dim,
 				 int backcast_length, int forecast_length):
-		Block(units, thetas_dim, backcast_length, forecast_length, true) {}
+		BlockImpl(units, thetas_dim, backcast_length, forecast_length, true) {}
+
+	  TrendBlockImpl(TrendBlockImpl& b) : BlockImpl(b) {}
+
 	  std::tuple<torch::Tensor,torch::Tensor> forward(torch:: Tensor x);
 	protected:
 	  torch::Tensor trend_model(torch::Tensor x, const std::vector<float>& times);
 	};
 
-	class GenericBlock: public Block
+	typedef torch::nn::ModuleHolder<TrendBlockImpl> TrendBlock;
+
+	class GenericBlockImpl: public BlockImpl
 	{
-	  GenericBlock(int units, int thetas_dim,
+	public:
+	  GenericBlockImpl(int units, int thetas_dim,
 				   int backcast_length, int forecast_length):
-		Block(units, thetas_dim, backcast_length, forecast_length, false)
+		BlockImpl(units, thetas_dim, backcast_length, forecast_length, false)
 	  {
 		_fc1 = register_module("fc1", torch::nn::Linear(_backcast_length, _units));
 		_fc2 = register_module("fc2", torch::nn::Linear(_units, _units));
 
 	  }
+
+	  GenericBlockImpl(GenericBlockImpl &b): BlockImpl(b)
+	  {
+		_fc1 = register_module("fc1", torch::nn::Linear(_backcast_length, _units));
+		_fc2 = register_module("fc2", torch::nn::Linear(_units, _units));
+	  }
+
 	  std::tuple<torch::Tensor,torch::Tensor> forward(torch:: Tensor x);
 	protected:
 	  torch::nn::Linear _backcast_fc{nullptr};
 	  torch::nn::Linear _forecast_fc{nullptr};
 	};
 
-	typedef std::vector<Block> Stack;
+	typedef torch::nn::ModuleHolder<GenericBlockImpl> GenericBlock;
+
+	typedef std::vector<torch::nn::AnyModule> Stack;
 
 
 
@@ -169,7 +200,7 @@ namespace dd
 	  _device = device;
 	  for (auto s : _stacks)
 		for (auto b: s)
-		  b.to(device);
+		  b.get<BlockImpl>().to(device);
 	}
 
 	/**
@@ -183,7 +214,7 @@ namespace dd
 	  _dtype = dtype;
 	  for (auto s : _stacks)
 		for (auto b: s)
-		  b.to(dtype);
+		  b.get<BlockImpl>().to(dtype);
 	}
 
 
@@ -200,7 +231,7 @@ namespace dd
 	  _dtype = dtype;
 	  for (auto s : _stacks)
 		for (auto b: s)
-		  b.to(device, dtype);
+		  b.get<BlockImpl>().to(device, dtype);
 	}
 
 

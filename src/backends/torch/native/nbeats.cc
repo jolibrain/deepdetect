@@ -2,7 +2,7 @@
 
 namespace dd
 {
-  void NBeats::Block::init_block()
+  void NBeats::BlockImpl::init_block()
   {
 	_fc1 = register_module("fc1", torch::nn::Linear(_backcast_length, _units));
 	_fc2 = register_module("fc2", torch::nn::Linear(_units, _units));
@@ -27,7 +27,7 @@ namespace dd
 	  _forecast_linspace.push_back(_backcast_linspace[_backcast_length-1] + (i+1)*step);
   }
 
-  torch::Tensor NBeats::Block::forward(torch::Tensor x)
+  torch::Tensor NBeats::BlockImpl::forward(torch::Tensor x)
   {
 	x = torch::relu(_fc1->forward(x));
 	x = torch::relu(_fc2->forward(x));
@@ -36,15 +36,15 @@ namespace dd
 	return x;
   }
 
-  std::tuple<torch::Tensor,torch::Tensor> NBeats::SeasonalityBlock::forward(torch::Tensor x)
+  std::tuple<torch::Tensor,torch::Tensor> NBeats::SeasonalityBlockImpl::forward(torch::Tensor x)
   {
-	x = Block::forward(x);
+	x = BlockImpl::forward(x);
 	torch::Tensor backcast = seasonality_model(_theta_b_fc->forward(x),_backcast_linspace);
 	torch::Tensor forecast = seasonality_model(_theta_f_fc->forward(x),_forecast_linspace);
 	return std::make_tuple(backcast,forecast);
   }
 
-  torch::Tensor NBeats::SeasonalityBlock::seasonality_model(torch::Tensor x, const std::vector<float>& times)
+  torch::Tensor NBeats::SeasonalityBlockImpl::seasonality_model(torch::Tensor x, const std::vector<float>& times)
   {
 	auto options = torch::TensorOptions().dtype(torch::kFloat32);
 	unsigned int p = x.sizes().back();
@@ -54,27 +54,27 @@ namespace dd
 	for (unsigned int i = 0; i<p1; ++i)
 	  for (unsigned int j = 0; j< times.size(); ++j)
 		data.push_back(std::cos(2*M_PI * i * times[j]));
-	torch::Tensor s1 = torch::from_blob(data.data(),{p1,times.size()},options);
+	torch::Tensor s1 = torch::from_blob(data.data(),{p1,static_cast<long int>(times.size())},options);
 	data.clear();
 	for (unsigned int i = 0; i<p2; ++i)
 	  for (unsigned int j = 0; j< times.size(); ++j)
 		data.push_back(std::sin(2*M_PI * i * times[j]));
-	torch::Tensor s2 = torch::from_blob(data.data(),{p2,times.size()},options);
+	torch::Tensor s2 = torch::from_blob(data.data(),{p2,static_cast<long int>(times.size())},options);
 	torch::Tensor S = torch::cat({s1,s2});
 	return x.mm(S.to(this->_dtype).to(this->_device));
   }
 
 
 
-  std::tuple<torch::Tensor,torch::Tensor> NBeats::TrendBlock::forward(torch::Tensor x)
+  std::tuple<torch::Tensor,torch::Tensor> NBeats::TrendBlockImpl::forward(torch::Tensor x)
   {
-	x = Block::forward(x);
+	x = BlockImpl::forward(x);
 	torch::Tensor backcast = trend_model(_theta_b_fc->forward(x),_backcast_linspace);
 	torch::Tensor forecast = trend_model(_theta_f_fc->forward(x),_forecast_linspace);
 	return std::make_tuple(backcast,forecast);
   }
 
-  torch::Tensor NBeats::TrendBlock::trend_model(torch::Tensor x, const std::vector<float>& times)
+  torch::Tensor NBeats::TrendBlockImpl::trend_model(torch::Tensor x, const std::vector<float>& times)
   {
 	auto options = torch::TensorOptions().dtype(torch::kFloat32);
 	unsigned int p = x.sizes().back();
@@ -82,14 +82,14 @@ namespace dd
 	for (unsigned int i = 0; i<p; ++i)
 	  for (unsigned int j = 0; j< times.size(); ++j)
 		data.push_back(std::pow(times[j],i));
-	torch::Tensor T = torch::from_blob(data.data(),{p,times.size()},options);
+	torch::Tensor T = torch::from_blob(data.data(),{p,static_cast<long int>(times.size())},options);
 	return x.mm(T.to(_dtype).to(_device));
   }
 
 
-  std::tuple<torch::Tensor,torch::Tensor> NBeats::GenericBlock::forward(torch::Tensor x)
+  std::tuple<torch::Tensor,torch::Tensor> NBeats::GenericBlockImpl::forward(torch::Tensor x)
   {
-	x = Block::forward(x);
+	x = BlockImpl::forward(x);
 	torch::Tensor theta_b =	torch::relu(_theta_b_fc->forward(x));
 	torch::Tensor theta_f =	torch::relu(_theta_f_fc->forward(x));
 
@@ -100,18 +100,63 @@ namespace dd
 
   void NBeats::update_params(const APIData &adlib, const CSVTSTorchInputFileConn &inputc)
   {
-	//TODO
   }
 
 
   void NBeats::create_nbeats()
   {
-	//TODO
+	unsigned int stack_id = 0;
+	for (BlockType bt : _stack_types)
+	  {
+		Stack s;
+		switch (bt)
+		  {
+		  case seasonality:
+			for (unsigned int i=0; i<_nb_blocks_per_stack; ++i)
+			  s.push_back(torch::nn::AnyModule(register_module("seasonalityBlock_"+std::to_string(i) +
+															   "_stack_"+std::to_string(stack_id),
+															   SeasonalityBlock(_hidden_layer_units,
+																				_thetas_dims[stack_id],
+																				_backcast_length,
+																				_forecast_length))));
+			break;
+		  case trend:
+			for (unsigned int i=0; i<_nb_blocks_per_stack; ++i)
+			  s.push_back(torch::nn::AnyModule(register_module("trendBlock_"+std::to_string(i) +
+															   "_stack_"+std::to_string(stack_id),
+															   TrendBlock(_hidden_layer_units,
+																		  _thetas_dims[stack_id],
+																		  _backcast_length,
+																		  _forecast_length))));
+			break;
+		  case generic:
+			for (unsigned int i=0; i<_nb_blocks_per_stack; ++i)
+			  s.push_back(torch::nn::AnyModule(register_module("genericBlock_"+std::to_string(i) +
+															   "_stack_"+std::to_string(stack_id),
+															   GenericBlock(_hidden_layer_units,
+																			_thetas_dims[stack_id],
+																			_backcast_length,
+																			_forecast_length))));
+			break;
+		  default:
+			break;
+		  }
+		_stacks.push_back(s);
+	  }
   }
 
 
   torch::Tensor NBeats::forward(torch::Tensor x)
   {
-	//TODO
+	torch::Tensor b = x;
+	torch::Tensor f;
+	for (Stack s: _stacks)
+	  for (torch::nn::AnyModule m: s)
+		{
+		  auto bf = m.forward<std::tuple<torch::Tensor,torch::Tensor>>(b);
+		  b = b.to(_device) - std::get<0>(bf);
+		  f = f.to(_device) + std::get<1>(bf);
+		}
+	return f;
   }
 }
