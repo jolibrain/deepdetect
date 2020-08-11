@@ -888,12 +888,12 @@ if (USE_TENSORRT)
 	set(TENSORRT_LIBS protobuf nvinfer nvparsers nvinfer_plugin nvonnxparser )
 
   else()
-    set(TENSORRT_LIB_DIR ${CMAKE_BINARY_DIR}/tensorrt-oss/bin ${TENSORRT_LIB_DIR})
+    set(TENSORRT_LIB_DIR ${CMAKE_BINARY_DIR}/tensorrt-oss/src/tensorrt-oss-build ${TENSORRT_LIB_DIR})
     include_directories(${CMAKE_CURRENT_BINARY_DIR})
 	set(TENSORRT_LIBS protobuf nvinfer nvcaffeparser nvinfer_plugin nvonnxparser )
 
     if (EXISTS "${TRTTESTDIR}/libnvinfer.so.7")
-      set(TENSORRT_COMMIT 572d54f91791448c015e74a4f1d6923b77b79795)
+      set(TENSORRT_COMMIT 9a9cae75e7155b2114454f37ccc49eca9d3352dc)
       message(STATUS "Found TensorRT libraries version 7")
     elseif(EXISTS "${TRTTESTDIR}/libnvinfer.so.6")
       set(TENSORRT_COMMIT 639d11abcc7d1f1a4933e87b95c126e6c82e2a5c)
@@ -907,7 +907,7 @@ if (USE_TENSORRT)
     list(APPEND TRT_FLAGS
       -DTRT_LIB_DIR=${TENSORRT_DIR}/lib
       -DCUDA_VERSION=10.0
-      -DTRT_BIN_DIR=${CMAKE_BINARY_DIR}/tensorrt-oss/bin
+      -DTRT_OUT_DIR=${CMAKE_BINARY_DIR}/tensorrt-oss/bin
       -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc
       )
 
