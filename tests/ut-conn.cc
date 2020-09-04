@@ -265,7 +265,7 @@ TEST(outputconn,cmfull)
   res_ad.add("clnames",clnames);
   APIData ad_out;
   ad_out.add("measure",measures);
-  
+
   APIData out;
   SupervisedOutput::measure(res_ad,ad_out,out);
   APIData meas_out = out.getobj("measure");
@@ -274,7 +274,7 @@ TEST(outputconn,cmfull)
   //for (auto k: lkeys)
   //std::cerr << k << std::endl;
   ASSERT_EQ(0.5,meas_out.get("accp").get<double>());
-  
+
   // cmfull
   JsonAPI japi;
   JDoc jpred = japi.dd_ok_200();
@@ -284,6 +284,123 @@ TEST(outputconn,cmfull)
   std::cerr << "jstr=" << jstr << std::endl;
   ASSERT_TRUE(jstr.find("\"cmfull\":[{\"zero\":[0.5,0.5,0.0,0.0]},{\"one\":[0.0,1.0,0.0,0.0]},{\"two\":[0.0,1.0,0.0,0.0]},{\"three\":[2.696539702293474e308,2.696539702293474e308,2.696539702293474e308,2.696539702293474e308]}]"));
 }
+
+TEST(inputconn,img_histogram_bw)
+{
+  std::string voc_roi_repo = "../examples/caffe/voc_roi";
+  std::vector<std::string> uris = {voc_roi_repo + "/000010_bw.jpg"};
+
+  APIData ad_default, pad_default, pinp_default;
+  ad_default.add("data",uris);
+  pinp_default.add("bw", true);
+  std::vector<APIData> vpinp_default = { pinp_default };
+  pad_default.add("input",vpinp_default);
+  std::vector<APIData> vpad_default = { pad_default };
+  ad_default.add("parameters", vpad_default);
+
+  ImgInputFileConn iifc_default;
+  iifc_default.transform(ad_default);
+
+  APIData ad_histogram, pad_histogram, pinp_histogram;
+  ad_histogram.add("data",uris);
+  pinp_histogram.add("bw", true);
+  pinp_histogram.add("histogram_equalization", true);
+  std::vector<APIData> vpinp_histogram = { pinp_histogram };
+  pad_histogram.add("input",vpinp_histogram);
+  std::vector<APIData> vpad_histogram = { pad_histogram };
+  ad_histogram.add("parameters", vpad_histogram);
+  ImgInputFileConn iifc_histogram;
+  iifc_histogram.transform(ad_histogram);
+
+  ASSERT_EQ(1,iifc_default._uris.size());
+  ASSERT_EQ(1,iifc_default._images.size());
+  ASSERT_EQ(1,iifc_histogram._uris.size());
+  ASSERT_EQ(1,iifc_histogram._images.size());
+
+  /* To take a look at the generated file:
+   *    cv::imwrite(voc_roi_repo + "/000010_bw_histogram_equalizer_default.jpg", iifc_default._images.at(0));
+   *    cv::imwrite(voc_roi_repo + "/000010_bw_histogram_equalizer_histogram.jpg", iifc_histogram._images.at(0));
+   *
+   * To save a new expected_img:
+   *   cv::FileStorage file_out(voc_roi_repo + "/000010_bw_histogram_equalizer.yml", cv::FileStorage::WRITE | cv::FileStorage::FORMAT_YAML);
+   *   file_out << "mat" << iifc_histogram._images.at(0);
+   *   file_out.release();
+   */
+
+  cv::Mat diff;
+  std::vector<cv::Mat> channels(1);
+
+  cv::compare(iifc_default._images.at(0), iifc_histogram._images.at(0), diff,cv::CMP_NE);
+  cv::split(diff, channels);
+  ASSERT_TRUE(cv::countNonZero(channels.at(0)) > 0); // the two images must be different
+
+  cv::FileStorage file(voc_roi_repo + "/000010_bw_histogram_equalizer.yml", cv::FileStorage::READ);
+  cv::Mat expected_img;
+  file["mat"] >> expected_img;
+  file.release();
+
+  cv::compare(iifc_histogram._images.at(0), expected_img, diff,cv::CMP_NE);
+  cv::split(diff, channels);
+  ASSERT_TRUE(cv::countNonZero(channels.at(0))==0); // the two images must be identical
+
+}
+
+
+TEST(inputconn,img_histogram_color)
+{
+  std::string voc_roi_repo = "../examples/caffe/voc_roi";
+  std::vector<std::string> uris = {voc_roi_repo + "/voc_roi/000010.jpg"};
+
+  APIData ad_default;
+  ad_default.add("data",uris);
+  ImgInputFileConn iifc_default;
+  iifc_default.transform(ad_default);
+
+  APIData ad_histogram, pad_histogram, pinp_histogram;
+  ad_histogram.add("data",uris);
+  pinp_histogram.add("histogram_equalization", true);
+  std::vector<APIData> vpinp_histogram = { pinp_histogram };
+  pad_histogram.add("input",vpinp_histogram);
+  std::vector<APIData> vpad_histogram = { pad_histogram };
+  ad_histogram.add("parameters", vpad_histogram);
+  ImgInputFileConn iifc_histogram;
+  iifc_histogram.transform(ad_histogram);
+
+  ASSERT_EQ(1,iifc_default._uris.size());
+  ASSERT_EQ(1,iifc_default._images.size());
+  ASSERT_EQ(1,iifc_histogram._uris.size());
+  ASSERT_EQ(1,iifc_histogram._images.size());
+
+  /* To take a look at the generated file:
+   *    cv::imwrite(voc_roi_repo + "/000010_histogram_equalizer_default.jpg", iifc_default._images.at(0));
+   *    cv::imwrite(voc_roi_repo + "/000010_histogram_equalizer_histogram.jpg", iifc_histogram._images.at(0));
+   *
+   * To save a new expected_img:
+   *   cv::FileStorage file_out(voc_roi_repo + "/000010_histogram_equalizer.yml", cv::FileStorage::WRITE | cv::FileStorage::FORMAT_YAML);
+   *   file_out << "mat" << iifc_histogram._images.at(0);
+   *   file_out.release();
+   */
+
+  cv::Mat diff;
+  std::vector<cv::Mat> channels(3);
+
+  cv::compare(iifc_default._images.at(0), iifc_histogram._images.at(0), diff,cv::CMP_NE);
+  cv::split(diff, channels);
+  for (int i=0;i<3;i++)
+    ASSERT_TRUE(cv::countNonZero(channels.at(i)) > 0); // the two images must be different
+
+  cv::FileStorage file(voc_roi_repo + "/000010_histogram_equalizer.yml", cv::FileStorage::READ);
+  cv::Mat expected_img;
+  file["mat"] >> expected_img;
+  file.release();
+
+  cv::compare(iifc_histogram._images.at(0), expected_img, diff,cv::CMP_NE);
+  cv::split(diff, channels);
+  for (int i=0;i<3;i++)
+    ASSERT_TRUE(cv::countNonZero(channels.at(i))==0); // the two images must be identical
+
+}
+
 
 TEST(inputconn,img)
 {
