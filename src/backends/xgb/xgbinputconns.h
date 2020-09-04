@@ -26,7 +26,7 @@
 #include "txtinputfileconn.h"
 
 #define DMLC_THROW_EXCEPTION noexcept(false)
-#define DMLC_NO_EXCEPTION  noexcept(true)
+#define DMLC_NO_EXCEPTION noexcept(true)
 
 #include <dmlc/base.h>
 #include <dmlc/io.h>
@@ -39,15 +39,18 @@ namespace dd
   class XGBInputInterface
   {
   public:
-    XGBInputInterface() {}
-    XGBInputInterface(const XGBInputInterface &xii)
-      :_missing(xii._missing) {}
+    XGBInputInterface()
+    {
+    }
+    XGBInputInterface(const XGBInputInterface &xii) : _missing(xii._missing)
+    {
+    }
     ~XGBInputInterface()
-      {
-      }
+    {
+    }
 
   public:
-    std::shared_ptr<xgboost::DMatrix>_m;
+    std::shared_ptr<xgboost::DMatrix> _m;
     std::shared_ptr<xgboost::DMatrix> _mtest;
 
     // for API info only
@@ -61,61 +64,73 @@ namespace dd
     {
       return -1;
     }
-    
+
     // parameters
-    float _missing;// = std::NAN; /**< represents missing values. */
+    float _missing; // = std::NAN; /**< represents missing values. */
   };
-  
+
   class CSVXGBInputFileConn : public CSVInputFileConn, public XGBInputInterface
   {
   public:
-    CSVXGBInputFileConn()
-      :CSVInputFileConn() {}
+    CSVXGBInputFileConn() : CSVInputFileConn()
+    {
+    }
     CSVXGBInputFileConn(const CSVXGBInputFileConn &i)
-      :CSVInputFileConn(i),XGBInputInterface(i),_direct_csv(i._direct_csv) {}
-    ~CSVXGBInputFileConn() {}
-    
+        : CSVInputFileConn(i), XGBInputInterface(i), _direct_csv(i._direct_csv)
+    {
+    }
+    ~CSVXGBInputFileConn()
+    {
+    }
+
     void init(const APIData &ad)
     {
       if (ad.has("direct_csv") && ad.get("direct_csv").get<bool>())
-	_direct_csv = true;
+        _direct_csv = true;
       CSVInputFileConn::init(ad);
     }
 
     void transform(const APIData &ad);
 
-    xgboost::DMatrix* create_from_mat(const std::vector<CSVline> &csvl);
+    xgboost::DMatrix *create_from_mat(const std::vector<CSVline> &csvl);
 
   public:
-    bool _direct_csv = false; /**< whether to use the xgboost built-in CSV reader. */
+    bool _direct_csv
+        = false; /**< whether to use the xgboost built-in CSV reader. */
   };
 
-  class SVMXGBInputFileConn : public InputConnectorStrategy, public XGBInputInterface
+  class SVMXGBInputFileConn : public InputConnectorStrategy,
+                              public XGBInputInterface
   {
   public:
-    SVMXGBInputFileConn()
-      :InputConnectorStrategy() {}
+    SVMXGBInputFileConn() : InputConnectorStrategy()
+    {
+    }
     SVMXGBInputFileConn(const SVMXGBInputFileConn &i)
-      :InputConnectorStrategy(i),XGBInputInterface(i) {}
-    ~SVMXGBInputFileConn() {}
-    
+        : InputConnectorStrategy(i), XGBInputInterface(i)
+    {
+    }
+    ~SVMXGBInputFileConn()
+    {
+    }
+
     void fillup_parameters(const APIData &ad_input)
     {
       if (ad_input.has("shuffle"))
-	_shuffle = ad_input.get("shuffle").get<bool>();
+        _shuffle = ad_input.get("shuffle").get<bool>();
       if (ad_input.has("seed"))
-	_seed = ad_input.get("seed").get<int>();
+        _seed = ad_input.get("seed").get<int>();
       if (ad_input.has("test_split"))
-	_test_split = ad_input.get("test_split").get<double>();
+        _test_split = ad_input.get("test_split").get<double>();
     }
-    
+
     void init(const APIData &ad)
     {
       fillup_parameters(ad);
     }
-    
+
     void transform(const APIData &ad);
-    
+
   public:
     bool _shuffle = false;
     int _seed = -1;
@@ -125,11 +140,16 @@ namespace dd
   class TxtXGBInputFileConn : public TxtInputFileConn, public XGBInputInterface
   {
   public:
-    TxtXGBInputFileConn()
-      :TxtInputFileConn() {}
+    TxtXGBInputFileConn() : TxtInputFileConn()
+    {
+    }
     TxtXGBInputFileConn(const TxtXGBInputFileConn &i)
-      :TxtInputFileConn(i),XGBInputInterface(i) {}
-    ~TxtXGBInputFileConn() {}
+        : TxtInputFileConn(i), XGBInputInterface(i)
+    {
+    }
+    ~TxtXGBInputFileConn()
+    {
+    }
 
     void init(const APIData &ad)
     {
@@ -138,10 +158,10 @@ namespace dd
 
     void transform(const APIData &ad);
 
-    xgboost::DMatrix* create_from_mat(const std::vector<TxtEntry<double>*> &txt);
-    
+    xgboost::DMatrix *
+    create_from_mat(const std::vector<TxtEntry<double> *> &txt);
   };
-  
+
 }
 
 #endif

@@ -17,54 +17,55 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-
 #include "tensorrtmodel.h"
 
 namespace dd
 {
-  int TensorRTModel::read_from_repository(const std::shared_ptr<spdlog::logger> &logger)
+  int TensorRTModel::read_from_repository(
+      const std::shared_ptr<spdlog::logger> &logger)
   {
     static std::string deploy = "deploy.prototxt";
     static std::string weights = ".caffemodel";
     static std::string corresp = "corresp";
     static std::string meanf = "mean.binaryproto";
     std::unordered_set<std::string> lfiles;
-    int e = fileops::list_directory(_repo,true,false,false,lfiles);
+    int e = fileops::list_directory(_repo, true, false, false, lfiles);
     if (e != 0)
       {
-        logger->error("error reading or listing caffe models in repository {}",_repo);
+        logger->error("error reading or listing caffe models in repository {}",
+                      _repo);
         return 1;
       }
-    std::string deployf,weightsf,correspf;
-    long int  weight_t=-1;
+    std::string deployf, weightsf, correspf;
+    long int weight_t = -1;
     auto hit = lfiles.begin();
-    while(hit!=lfiles.end())
+    while (hit != lfiles.end())
       {
-	if ((*hit).find(meanf)!=std::string::npos)
-	  {
-	    _has_mean_file = true;
-	  }
-	else if ((*hit).find(weights)!=std::string::npos)
-	  {
-	    // stat file to pick the latest one
-	    long int wt = fileops::file_last_modif((*hit));
-	    if (wt > weight_t)
-	      {
-		weightsf = (*hit);
-		weight_t = wt;
-	      }
-	  }
-	else if ((*hit).find(corresp)!=std::string::npos)
-	  correspf = (*hit);
-	else if ((*hit).find("~")!=std::string::npos
-	    || (*hit).find(".prototxt")==std::string::npos)
-	  {
-	    ++hit;
-	    continue;
-	  }
-	else if ((*hit).find(deploy)!=std::string::npos)
-	  deployf = (*hit);
-	++hit;
+        if ((*hit).find(meanf) != std::string::npos)
+          {
+            _has_mean_file = true;
+          }
+        else if ((*hit).find(weights) != std::string::npos)
+          {
+            // stat file to pick the latest one
+            long int wt = fileops::file_last_modif((*hit));
+            if (wt > weight_t)
+              {
+                weightsf = (*hit);
+                weight_t = wt;
+              }
+          }
+        else if ((*hit).find(corresp) != std::string::npos)
+          correspf = (*hit);
+        else if ((*hit).find("~") != std::string::npos
+                 || (*hit).find(".prototxt") == std::string::npos)
+          {
+            ++hit;
+            continue;
+          }
+        else if ((*hit).find(deploy) != std::string::npos)
+          deployf = (*hit);
+        ++hit;
       }
     if (_def.empty())
       _def = deployf;

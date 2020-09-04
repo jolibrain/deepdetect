@@ -35,7 +35,7 @@ typedef http::server<APIHandler> http_server;
 namespace dd
 {
   std::string uri_query_to_json(const std::string &req_query);
-  
+
   class HttpJsonAPI : public JsonAPI
   {
   public:
@@ -43,18 +43,16 @@ namespace dd
     ~HttpJsonAPI();
 
     void stop_server();
-    int start_server_daemon(const std::string &host,
-			    const std::string &port,
-			    const int &nthreads);
-    int start_server(const std::string &host,
-		     const std::string &port,
-		     const int &nthreads);
+    int start_server_daemon(const std::string &host, const std::string &port,
+                            const int &nthreads);
+    int start_server(const std::string &host, const std::string &port,
+                     const int &nthreads);
     int boot(int argc, char *argv[]);
     static void terminate(int param);
-    void mergeJObj(JVal& to, JVal& from, JDoc& jd);
+    void mergeJObj(JVal &to, JVal &from, JDoc &jd);
 
-    
-    http_server *_dd_server = nullptr; /**< main reusable pointer to server object */
+    http_server *_dd_server
+        = nullptr;        /**< main reusable pointer to server object */
     std::future<int> _ft; /**< holds the results from the main server thread */
   };
 }

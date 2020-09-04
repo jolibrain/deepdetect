@@ -34,21 +34,22 @@ namespace dd
       std::vector<std::string> elems;
       std::stringstream ss(s);
       std::string item;
-      while (std::getline(ss, item, delim)) {
-	if (!item.empty())
-	  elems.push_back(item);
-      }
+      while (std::getline(ss, item, delim))
+        {
+          if (!item.empty())
+            elems.push_back(item);
+        }
       return elems;
     }
-    
-    static bool iequals(const std::string& a, const std::string& b)
+
+    static bool iequals(const std::string &a, const std::string &b)
     {
       unsigned int sz = a.size();
       if (b.size() != sz)
-	return false;
+        return false;
       for (unsigned int i = 0; i < sz; ++i)
-	if (std::tolower(a[i]) != std::tolower(b[i]))
-	  return false;
+        if (std::tolower(a[i]) != std::tolower(b[i]))
+          return false;
       return true;
     }
 
@@ -62,11 +63,11 @@ namespace dd
 #else
     static int my_hardware_concurrency()
     {
-        std::ifstream cpuinfo("/proc/cpuinfo");
+      std::ifstream cpuinfo("/proc/cpuinfo");
 
-        return std::count(std::istream_iterator<std::string>(cpuinfo),
-			  std::istream_iterator<std::string>(),
-			  std::string("processor"));
+      return std::count(std::istream_iterator<std::string>(cpuinfo),
+                        std::istream_iterator<std::string>(),
+                        std::string("processor"));
     }
 #endif
   };

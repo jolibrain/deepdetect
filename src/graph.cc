@@ -19,14 +19,13 @@
  * along with deepdetect.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #include "graph.h"
 
 namespace dd
 {
-  template<class TBackend>
-  Graph<CaffeGraphInput,TBackend>::Graph(std::string protofilename)
+  template <class TBackend>
+  Graph<CaffeGraphInput, TBackend>::Graph(std::string protofilename)
   {
-	this->from_proto(protofilename);
+    this->from_proto(protofilename);
   }
 }

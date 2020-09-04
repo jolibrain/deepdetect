@@ -30,54 +30,51 @@ namespace dd
   class ConvBlock
   {
   public:
-    ConvBlock(const std::string &layer,
-	      const int &nconv,
-	      const int &num_output)
-      :_layer(layer),_nconv(nconv),_num_output(num_output) {}
-    ~ConvBlock() {}
+    ConvBlock(const std::string &layer, const int &nconv,
+              const int &num_output)
+        : _layer(layer), _nconv(nconv), _num_output(num_output)
+    {
+    }
+    ~ConvBlock()
+    {
+    }
     std::string _layer; // from C: conv, D: deconv, U: upsample
     int _nconv;
     int _num_output;
   };
-  
-  class NetLayersCaffeConvnet: public NetLayersCaffeMLP
+
+  class NetLayersCaffeConvnet : public NetLayersCaffeMLP
   {
   public:
-  NetLayersCaffeConvnet(caffe::NetParameter *net_params,
-			caffe::NetParameter *dnet_params,
-			std::shared_ptr<spdlog::logger> &logger)
-    :NetLayersCaffeMLP(net_params,dnet_params,logger) 
-      {
-	net_params->set_name("convnet");
-	dnet_params->set_name("convnet");
-      }
-    ~NetLayersCaffeConvnet() {}
+    NetLayersCaffeConvnet(caffe::NetParameter *net_params,
+                          caffe::NetParameter *dnet_params,
+                          std::shared_ptr<spdlog::logger> &logger)
+        : NetLayersCaffeMLP(net_params, dnet_params, logger)
+    {
+      net_params->set_name("convnet");
+      dnet_params->set_name("convnet");
+    }
+    ~NetLayersCaffeConvnet()
+    {
+    }
 
   protected:
     void parse_conv_layers(const std::vector<std::string> &layers,
-			   std::vector<ConvBlock> &cr_layers,
-			   std::vector<int> &fc_layers);
+                           std::vector<ConvBlock> &cr_layers,
+                           std::vector<int> &fc_layers);
+
   private:
-    std::string add_basic_block(caffe::NetParameter *net_param,
-			 const std::string &bottom,
-			 const std::string &top,
-			 const int &nconv,
-			 const int &num_output,
-			 const int &kernel_size,
-			 const int &pad,
-			 const int &stride,
-			 const std::string &activation,
-			 const double &dropout_ratio,
-			 const bool &bn,
-			 const int &pl_kernel_size,
-			 const int &pl_stride,
-			 const std::string &pl_type,
-			 const int &kernel_w=0,
-			 const int &kernel_h=0,
-			 const int &pl_kernel_w=0,
-			 const int &pl_kernel_h=0,
-			 const int &pl_stride_w=0,
-			 const int &pl_stride_h=0); //TODO: class of convolution parameters ? use caffe proto ?
+    std::string add_basic_block(
+        caffe::NetParameter *net_param, const std::string &bottom,
+        const std::string &top, const int &nconv, const int &num_output,
+        const int &kernel_size, const int &pad, const int &stride,
+        const std::string &activation, const double &dropout_ratio,
+        const bool &bn, const int &pl_kernel_size, const int &pl_stride,
+        const std::string &pl_type, const int &kernel_w = 0,
+        const int &kernel_h = 0, const int &pl_kernel_w = 0,
+        const int &pl_kernel_h = 0, const int &pl_stride_w = 0,
+        const int &pl_stride_h
+        = 0); // TODO: class of convolution parameters ? use caffe proto ?
 
   public:
     void configure_net(const APIData &ad_mllib);

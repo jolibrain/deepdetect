@@ -34,67 +34,69 @@ namespace dd
   class ChainData
   {
   public:
-    ChainData() {}
-    ~ChainData() {}
-
-    void add_model_data(const std::string &id,
-			const APIData &out)
+    ChainData()
     {
-      std::unordered_map<std::string,APIData>::iterator hit;
-      if ((hit=_model_data.find(id))!=_model_data.end())
-	_model_data.erase(hit);
-      _model_data.insert(std::pair<std::string,APIData>(id,out));
+    }
+    ~ChainData()
+    {
+    }
+
+    void add_model_data(const std::string &id, const APIData &out)
+    {
+      std::unordered_map<std::string, APIData>::iterator hit;
+      if ((hit = _model_data.find(id)) != _model_data.end())
+        _model_data.erase(hit);
+      _model_data.insert(std::pair<std::string, APIData>(id, out));
     }
 
     APIData get_model_data(const std::string &id) const
     {
-      std::unordered_map<std::string,APIData>::const_iterator hit;
-      if ((hit=_model_data.find(id))!=_model_data.end())
-	return (*hit).second;
+      std::unordered_map<std::string, APIData>::const_iterator hit;
+      if ((hit = _model_data.find(id)) != _model_data.end())
+        return (*hit).second;
       else
-	return APIData();
+        return APIData();
     }
 
-    void add_action_data(const std::string &id,
-			 const APIData &out)
+    void add_action_data(const std::string &id, const APIData &out)
     {
-      std::unordered_map<std::string,APIData>::iterator hit;
-      if ((hit=_action_data.find(id))!=_action_data.end())
-	_action_data.erase(hit);
-      _action_data.insert(std::pair<std::string,APIData>(id,out));
+      std::unordered_map<std::string, APIData>::iterator hit;
+      if ((hit = _action_data.find(id)) != _action_data.end())
+        _action_data.erase(hit);
+      _action_data.insert(std::pair<std::string, APIData>(id, out));
     }
 
     APIData get_action_data(const std::string &id) const
     {
-      std::unordered_map<std::string,APIData>::const_iterator hit;
-      if ((hit=_action_data.find(id))!=_action_data.end())
-	return (*hit).second;
+      std::unordered_map<std::string, APIData>::const_iterator hit;
+      if ((hit = _action_data.find(id)) != _action_data.end())
+        return (*hit).second;
       else
-	return APIData();
+        return APIData();
     }
 
-    void add_model_sname(const std::string &id,
-			 const std::string &sname)
+    void add_model_sname(const std::string &id, const std::string &sname)
     {
-      std::unordered_map<std::string,std::string>::iterator hit;
-      if ((hit=_id_sname.find(id))==_id_sname.end())
-	_id_sname.insert(std::pair<std::string,std::string>(id,sname));
+      std::unordered_map<std::string, std::string>::iterator hit;
+      if ((hit = _id_sname.find(id)) == _id_sname.end())
+        _id_sname.insert(std::pair<std::string, std::string>(id, sname));
     }
 
     std::string get_model_sname(const std::string &id)
     {
-      std::unordered_map<std::string,std::string>::const_iterator hit;
-      if ((hit=_id_sname.find(id))!=_id_sname.end())
-	return (*hit).second;
-      else return std::string();
+      std::unordered_map<std::string, std::string>::const_iterator hit;
+      if ((hit = _id_sname.find(id)) != _id_sname.end())
+        return (*hit).second;
+      else
+        return std::string();
     }
-    
+
     APIData nested_chain_output();
 
-    std::unordered_map<std::string,APIData> _model_data;
-    std::unordered_map<std::string,APIData> _action_data;
-    std::unordered_map<std::string,std::string> _id_sname;
-    //std::string _first_sname;
+    std::unordered_map<std::string, APIData> _model_data;
+    std::unordered_map<std::string, APIData> _action_data;
+    std::unordered_map<std::string, std::string> _id_sname;
+    // std::string _first_sname;
     std::string _first_id;
   };
 
@@ -104,29 +106,69 @@ namespace dd
   class visitor_nested
   {
   public:
-    visitor_nested(std::unordered_multimap<std::string,APIData> *r)
-      :_replacements(r) {}
-    ~visitor_nested() {}
-    
-    void operator()(const std::string &str) { (void)str; }
-    void operator()(const double &d) { (void)d; }
-    void operator()(const int &i) { (void)i; }
-    void operator()(const long int &i) { (void)i; }
-    void operator()(const long long int &i) { (void)i; }
-    void operator()(const bool &b) { (void)b; }
-    void operator()(const std::vector<double> &vd) { (void)vd; }
-    void operator()(const std::vector<int> &vd) { (void)vd; }
-    void operator()(const std::vector<bool> &vd) { (void)vd; }
-    void operator()(const std::vector<std::string> &vs) { (void)vs; }
-    void operator()(const std::vector<cv::Mat> &vcv) { (void)vcv; }
-    void operator()(const std::vector<std::pair<int,int>> &vpi) { (void)vpi; }
+    visitor_nested(std::unordered_multimap<std::string, APIData> *r)
+        : _replacements(r)
+    {
+    }
+    ~visitor_nested()
+    {
+    }
+
+    void operator()(const std::string &str)
+    {
+      (void)str;
+    }
+    void operator()(const double &d)
+    {
+      (void)d;
+    }
+    void operator()(const int &i)
+    {
+      (void)i;
+    }
+    void operator()(const long int &i)
+    {
+      (void)i;
+    }
+    void operator()(const long long int &i)
+    {
+      (void)i;
+    }
+    void operator()(const bool &b)
+    {
+      (void)b;
+    }
+    void operator()(const std::vector<double> &vd)
+    {
+      (void)vd;
+    }
+    void operator()(const std::vector<int> &vd)
+    {
+      (void)vd;
+    }
+    void operator()(const std::vector<bool> &vd)
+    {
+      (void)vd;
+    }
+    void operator()(const std::vector<std::string> &vs)
+    {
+      (void)vs;
+    }
+    void operator()(const std::vector<cv::Mat> &vcv)
+    {
+      (void)vcv;
+    }
+    void operator()(const std::vector<std::pair<int, int>> &vpi)
+    {
+      (void)vpi;
+    }
     void operator()(const APIData &ad);
     void operator()(const std::vector<APIData> &vad);
-    
-    std::unordered_multimap<std::string,APIData> *_replacements = nullptr;
+
+    std::unordered_multimap<std::string, APIData> *_replacements = nullptr;
     std::vector<APIData> _vad;
   };
-  
+
 }
 
 #endif
