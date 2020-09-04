@@ -22,6 +22,10 @@
 #ifndef MLSERVICE_H
 #define MLSERVICE_H
 
+#ifdef USE_DD_SYSLOG
+#define SPDLOG_ENABLE_SYSLOG
+#endif
+
 #include "mllibstrategy.h"
 #include "mlmodel.h"
 #include "outputconnectorstrategy.h"
@@ -29,7 +33,7 @@
 #include <future>
 #include <mutex>
 //#include <shared_mutex>
-#include "spdlog/sinks/stdout_sinks.h"
+#include "dd_spdlog.h"
 #include <boost/thread/shared_mutex.hpp>
 #include <boost/thread/lock_types.hpp>
 #include <unordered_map>
@@ -108,11 +112,7 @@ namespace dd
             mlmodel),
           _sname(sname), _description(description), _tjobs_counter(0)
     {
-#ifdef USE_DD_SYSLOG
-      this->_logger = spdlog::syslog_logger(_sname);
-#else
-      this->_logger = spdlog::stdout_logger_mt(_sname);
-#endif
+      this->_logger = DD_SPDLOG_LOGGER(_sname);
     }
 
     /**

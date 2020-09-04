@@ -27,7 +27,7 @@
 #ifndef WIN32
 #include "utils/httpclient.hpp"
 #endif
-#include <spdlog/spdlog.h>
+#include "dd_spdlog.h"
 #include <exception>
 
 namespace dd
