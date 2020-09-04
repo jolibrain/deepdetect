@@ -23,8 +23,10 @@
 #define NET_CAFFE_H
 
 #include "net_generator.h"
+
 #include "caffe.pb.h"
-#include <spdlog/spdlog.h>
+#include "caffe/caffe.hpp"
+#include "dd_spdlog.h"
 
 namespace dd
 {

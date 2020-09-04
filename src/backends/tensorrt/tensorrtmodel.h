@@ -20,7 +20,7 @@
 #ifndef TENSORRTMODEL_H
 #define TENSORRTMODEL_H
 
-#include <spdlog/spdlog.h>
+#include "dd_spdlog.h"
 #include "mlmodel.h"
 #include "apidata.h"
 

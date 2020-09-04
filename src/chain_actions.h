@@ -25,7 +25,7 @@
 #include "apidata.h"
 #include "chain.h"
 #include <memory>
-#include <spdlog/spdlog.h>
+#include "dd_spdlog.h"
 
 namespace dd
 {
