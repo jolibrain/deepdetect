@@ -77,7 +77,7 @@ Try the `POST` call twice: first time loads the net so it takes slightly below a
 
 ### Access to server logs
 
-To look at server logs, use 
+To look at server logs, use
 ```
 docker logs -f <container name>
 ```
@@ -100,7 +100,7 @@ d9944734d5d6        jolibrain/deepdetect_cpu   "/bin/sh -c './dede -"   17 secon
 
 - access server logs:
 ```
-> docker logs -f loving_shaw 
+> docker logs -f loving_shaw
 
 DeepDetect [ commit 4e2c9f4cbd55eeba3a93fae71d9d62377e91ffa5 ]
 Running DeepDetect HTTP server on 0.0.0.0:8080
@@ -123,7 +123,7 @@ We choose to prefix Dockerfiles with target architecture :
 * gpu.Dockerfile
 * gpu-xenial.Dockerfile
 
-### Build script 
+### Build script
 
 Build script is available in docker path : build/build.sh
 
@@ -186,7 +186,7 @@ Params usage: ./build.sh [options...]
 
 Example with CPU image:
 ```
-# Build with default cmake 
+# Build with default cmake
 docker build -t jolibrain/deepdetect_cpu --no-cache -f docker/cpu.Dockerfile .
 
 # Build with default cmake and without default models
@@ -197,16 +197,23 @@ docker build --build-arg DEEPDETECT_BUILD=caffe-tf -t jolibrain/deepdetect_cpu -
 
 ```
 
+Example with CPU and local files instead of git clone deepdetect
+
+```
+export DOCKER_BUILDKIT=1
+docker build -t jolibrain/deepdetect_cpu:local_dev -f docker/cpu-dev.Dockerfile .
+```
+
 Example with CPU (armv7) image:
 ```
-# Build with default cmake 
+# Build with default cmake
 docker build -t jolibrain/deepdetect_cpu:armv7 --no-cache -f docker/cpu-armv7.Dockerfile .
 
 ```
 
 Example with GPU image:
 ```
-# Build with default cmake 
+# Build with default cmake
 docker build -t jolibrain/deepdetect_gpu --no-cache -f docker/gpu.Dockerfile .
 
 # Build with default cmake and without default models

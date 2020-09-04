@@ -17,6 +17,8 @@ pipeline {
         sh '''
         docker build -t jolibrain/deepdetect_cpu -f docker/cpu.Dockerfile .
         docker build --build-arg DEEPDETECT_DEFAULT_MODELS=false -f docker/gpu.Dockerfile .
+        export DOCKER_BUILDKIT=1
+        docker build -f docker/cpu-dev.Dockerfile .
         docker image prune -f
         '''
       }
