@@ -41,7 +41,7 @@ OPTION(BUILD_TOOLS "Should the tools be built")
 OPTION(USE_COMMAND_LINE "build command line JSON API" ON)
 OPTION(USE_JSON_API "build internal JSON API" ON)
 OPTION(USE_HTTP_SERVER "build http JSON API " ON)
- 
+
 # Get the current working branch
 execute_process(
   COMMAND git rev-parse --abbrev-ref HEAD
@@ -202,7 +202,7 @@ if (USE_CAFFE)
         INSTALL_COMMAND ""
         BUILD_IN_SOURCE 1
         )
-    
+
       set(ANNOY_INCLUDE_DIR ${CMAKE_BINARY_DIR}/annoy/src/annoy/src/)
       include_directories("${ANNOY_INCLUDE_DIR}")
     endif()
@@ -805,8 +805,8 @@ if (USE_XGBOOST)
       xgboost
       PREFIX xgboost
       INSTALL_DIR ${CMAKE_BINARY_DIR}
-      DOWNLOAD_COMMAND git clone --recursive https://github.com/dmlc/xgboost.git
-      CONFIGURE_COMMAND git checkout 84d992babcc370bff6cf4fe89985f072b0b91a64 && cd dmlc-core && git checkout 13d5acb8ba7e79550bbf2f730f1a3944ff0fa68b && cd .. && wget https://github.com/NVlabs/cub/archive/1.6.4.zip && unzip 1.6.4.zip && rm 1.6.4.zip && mkdir -p build && cd build &&
+      DOWNLOAD_COMMAND git clone https://github.com/dmlc/xgboost.git
+      CONFIGURE_COMMAND git checkout 84d992babcc370bff6cf4fe89985f072b0b91a64 && git submodule update --init --recursive && cd dmlc-core && git checkout 13d5acb8ba7e79550bbf2f730f1a3944ff0fa68b && cd .. && wget https://github.com/NVlabs/cub/archive/1.6.4.zip && unzip 1.6.4.zip && rm 1.6.4.zip && mkdir -p build && cd build &&
       cmake .. -DPLUGIN_UPDATER_GPU=ON -DCUB_DIRECTORY=${CMAKE_BINARY_DIR}/xgboost/src/xgboost/cub-1.6.4/ -DCUDA_NVCC_FLAGS=-Xcompiler\ -fPIC\ --expt-extended-lambda\ -gencode\ arch=compute_30,code=compute_30\ -gencode\ arch=compute_35,code=compute_35\ -gencode\ arch=compute_50,code=compute_50\ -gencode\ arch=compute_52,code=compute_52\ -gencode\ arch=compute_61,code=compute_61 && make && make
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
@@ -816,8 +816,8 @@ if (USE_XGBOOST)
       xgboost
       PREFIX xgboost
       INSTALL_DIR ${CMAKE_BINARY_DIR}
-      DOWNLOAD_COMMAND git clone --recursive https://github.com/dmlc/xgboost.git
-      CONFIGURE_COMMAND git checkout 84d992babcc370bff6cf4fe89985f072b0b91a64 && cd dmlc-core && git checkout 13d5acb8ba7e79550bbf2f730f1a3944ff0fa68b && cd .. && mkdir build && cd build && cmake .. && make -j ${N}
+      DOWNLOAD_COMMAND git clone https://github.com/dmlc/xgboost.git
+      CONFIGURE_COMMAND git checkout 84d992babcc370bff6cf4fe89985f072b0b91a64 && git submodule update --init --recursive && cd dmlc-core && git checkout 13d5acb8ba7e79550bbf2f730f1a3944ff0fa68b && cd .. && mkdir build && cd build && cmake .. && make -j ${N}
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
       )
