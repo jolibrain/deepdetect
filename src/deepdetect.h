@@ -31,16 +31,16 @@ namespace dd
   /**
    * \brief main deepdetect class, deriving API
    */
-  template <class TAPIStrategy>
-    class DeepDetect : public TAPIStrategy
-    {
-    public:
-      DeepDetect();
-      ~DeepDetect();
+  template <class TAPIStrategy> class DeepDetect : public TAPIStrategy
+  {
+  public:
+    DeepDetect();
+    ~DeepDetect();
 
-      static std::string _commit_version; /**< stores the current commit version */
-    };
-  
+    static std::string
+        _commit_version; /**< stores the current commit version */
+  };
+
 }
 
 #endif

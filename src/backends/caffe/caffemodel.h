@@ -32,31 +32,38 @@ namespace dd
   class CaffeModel : public MLModel
   {
   public:
-  CaffeModel(): MLModel() {}
+    CaffeModel() : MLModel()
+    {
+    }
     CaffeModel(const APIData &ad);
     CaffeModel(const APIData &ad, APIData &adg,
-	       const std::shared_ptr<spdlog::logger> &logger);
-  CaffeModel(const APIData &ad, const std::string &repo)
-    :MLModel(ad, repo) {}
-    ~CaffeModel() {};
+               const std::shared_ptr<spdlog::logger> &logger);
+    CaffeModel(const APIData &ad, const std::string &repo) : MLModel(ad, repo)
+    {
+    }
+    ~CaffeModel(){};
 
     int read_from_repository(const std::string &repo,
-			     const std::shared_ptr<spdlog::logger> &logger,
-			     const bool &new_first=false);
+                             const std::shared_ptr<spdlog::logger> &logger,
+                             const bool &new_first = false);
 
     int copy_to_target(const std::string &source_repo,
-		       const std::string &target_repo,
-		       const std::shared_ptr<spdlog::logger> &logger);
-    
-    std::string _def; /**< file name of the model definition in the form of a protocol buffer message description. */
-    std::string _trainf; /**< file name of the training model definition. */
+                       const std::string &target_repo,
+                       const std::shared_ptr<spdlog::logger> &logger);
+
+    std::string _def; /**< file name of the model definition in the form of a
+                         protocol buffer message description. */
+    std::string _trainf;  /**< file name of the training model definition. */
     std::string _weights; /**< file name of the network's weights. */
-    std::string _solver; /**< solver description file, included here as part of the model, very specific to Caffe. */
-    std::string _sstate; /**< current solver state, useful for resuming training. */
+    std::string _solver; /**< solver description file, included here as part of
+                            the model, very specific to Caffe. */
+    std::string
+        _sstate; /**< current solver state, useful for resuming training. */
     std::string _model_template; /**< model template name, if any. */
-    bool _has_mean_file = false; /**< whether a mean.binaryproto file is available, for image models only. */
-};
-  
+    bool _has_mean_file = false; /**< whether a mean.binaryproto file is
+                                    available, for image models only. */
+  };
+
 }
 
 #endif

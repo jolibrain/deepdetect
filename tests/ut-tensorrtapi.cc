@@ -28,55 +28,79 @@
 using namespace dd;
 
 static std::string ok_str = "{\"status\":{\"code\":200,\"msg\":\"OK\"}}";
-static std::string created_str = "{\"status\":{\"code\":201,\"msg\":\"Created\"}}";
-static std::string bad_param_str = "{\"status\":{\"code\":400,\"msg\":\"BadRequest\"}}";
-static std::string not_found_str = "{\"status\":{\"code\":404,\"msg\":\"NotFound\"}}";
+static std::string created_str
+    = "{\"status\":{\"code\":201,\"msg\":\"Created\"}}";
+static std::string bad_param_str
+    = "{\"status\":{\"code\":400,\"msg\":\"BadRequest\"}}";
+static std::string not_found_str
+    = "{\"status\":{\"code\":404,\"msg\":\"NotFound\"}}";
 
 static std::string incept_repo = "../examples/trt/squeezenet_ssd_trt/";
 static std::string age_repo = "../examples/trt/age_real/";
 
-TEST(tensorrtapi,service_predict)
+TEST(tensorrtapi, service_predict)
 {
   // create service
   JsonAPI japi;
   std::string sname = "imgserv";
-  std::string jstr = "{\"mllib\":\"tensorrt\",\"description\":\"squeezenet-ssd\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  incept_repo + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":300,\"width\":300},\"mllib\":{\"nclasses\":21}}}";
-  std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
-  ASSERT_EQ(created_str,joutstr);
+  std::string jstr
+      = "{\"mllib\":\"tensorrt\",\"description\":\"squeezenet-ssd\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+        + incept_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
+          "300,\"width\":300},\"mllib\":{\"nclasses\":21}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
 
   // predict
-  std::string jpredictstr = "{\"service\":\"imgserv\",\"parameters\":{\"input\":{\"height\":300,\"width\":300},\"output\":{\"bbox\":true}},\"data\":[\"" + incept_repo + "face.jpg\"]}";
+  std::string jpredictstr
+      = "{\"service\":\"imgserv\",\"parameters\":{\"input\":{\"height\":300,"
+        "\"width\":300},\"output\":{\"bbox\":true}},\"data\":[\""
+        + incept_repo + "face.jpg\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   JDoc jd;
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200,jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"]);
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
-  std::string cl1 = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
+  std::string cl1
+      = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
   ASSERT_TRUE(cl1 == "15");
-  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble() > 0.4);
+  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
+              > 0.4);
 }
 
-TEST(tensorrtapi,service_predict_best)
+TEST(tensorrtapi, service_predict_best)
 {
   // create service
   JsonAPI japi;
   std::string sname = "age";
-  std::string jstr = "{\"mllib\":\"tensorrt\",\"description\":\"age_classif\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  age_repo + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":224,\"width\":224},\"mllib\":{\"datatype\":\"fp32\",\"maxBatchSize\":1,\"maxWorkspaceSize\":6096,\"tensorRTEngineFile\":\"TRTengine_bs\",\"gpuid\":0}}}";
-  std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
-  ASSERT_EQ(created_str,joutstr);
+  std::string jstr
+      = "{\"mllib\":\"tensorrt\",\"description\":\"age_classif\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+        + age_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
+          "224,\"width\":224},\"mllib\":{\"datatype\":\"fp32\","
+          "\"maxBatchSize\":1,\"maxWorkspaceSize\":6096,"
+          "\"tensorRTEngineFile\":\"TRTengine_bs\",\"gpuid\":0}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
 
   // predict
-  std::string jpredictstr = "{\"service\":\"age\",\"parameters\":{\"input\":{\"height\":224,\"width\":224},\"output\":{\"best\":2}},\"data\":[\"" + incept_repo + "face.jpg\"]}";
+  std::string jpredictstr
+      = "{\"service\":\"age\",\"parameters\":{\"input\":{\"height\":224,"
+        "\"width\":224},\"output\":{\"best\":2}},\"data\":[\""
+        + incept_repo + "face.jpg\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   JDoc jd;
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200,jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"]);
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
-  ASSERT_EQ(2,jd["body"]["predictions"][0]["classes"].Size());
-  std::string age = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
+  ASSERT_EQ(2, jd["body"]["predictions"][0]["classes"].Size());
+  std::string age
+      = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
   ASSERT_TRUE(age == "29");
 }

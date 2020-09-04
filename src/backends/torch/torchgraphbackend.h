@@ -34,11 +34,19 @@ namespace dd
   class TorchGraphException : public std::exception
   {
   public:
-	TorchGraphException(const std::string &s) : _s(s) {}
-	~TorchGraphException() {}
-	const char* what() const noexcept { return _s.c_str(); }
+    TorchGraphException(const std::string &s) : _s(s)
+    {
+    }
+    ~TorchGraphException()
+    {
+    }
+    const char *what() const noexcept
+    {
+      return _s.c_str();
+    }
+
   private:
-	std::string _s;
+    std::string _s;
   };
 
   /**
@@ -47,126 +55,145 @@ namespace dd
    * redefines to() and parameters()
    * allocates torch modules based on embedded basegraph
    * should not be used as is
-   * it only add torch::module traits ie to(), forward() parameters()...  to a base graph
+   * it only add torch::module traits ie to(), forward() parameters()...  to a
+   * base graph
    */
   class TorchGraphBackend : public virtual BaseGraph, public torch::nn::Module
   {
   public:
+    /**
+     * \brief
+     * empty constructor : do nothing this class is not meant to be constructed
+     * alone
+     *
+     */
+    TorchGraphBackend()
+    {
+    }
 
-	/**
-	 * \brief
-	 * empty constructor : do nothing this class is not meant to be constructed alone
-	 *
-	 */
-	TorchGraphBackend() {}
+    /**
+     * \brief torch::module forward :  inference of the NN
+     * @param x input tensor
+     * @return output tensor
+     */
+    torch::Tensor forward(torch::Tensor x);
 
-	/**
-	 * \brief torch::module forward :  inference of the NN
-	 * @param x input tensor
-	 * @return output tensor
-	 */
-	torch::Tensor forward(torch::Tensor x);
+    /**
+     * \brief allocates torch modules base on real input dimension
+     * @param inputdim input tensor dimension, in int64_t
+     */
+    void finalize(std::vector<int64_t> inputdim);
 
-	/**
-	 * \brief allocates torch modules base on real input dimension
-	 * @param inputdim input tensor dimension, in int64_t
-	 */
-	void finalize(std::vector<int64_t> inputdim);
+    /**
+     * \brief allocates torch modules base on real input dimension
+     * @param inputdim input tensor dimension, in int
+     */
+    void finalize(std::vector<int> inputdim);
 
-	/**
-	 * \brief allocates torch modules base on real input dimension
-	 * @param inputdim input tensor dimension, in int
-	 */
-	void finalize(std::vector<int> inputdim);
+    /**
+     * \brief allocates torch modules base on real input dimension
+     * @param inputdim input tensor dimension, in torch :: IntArrayRef
+     */
+    void finalize(at::IntArrayRef inputdim);
 
-	/**
-	 * \brief allocates torch modules base on real input dimension
-	 * @param inputdim input tensor dimension, in torch :: IntArrayRef
-	 */
-	void finalize(at::IntArrayRef inputdim);
+    /**
+     * \brief allocates torch modules base on current inputdim
+     * hides basegraph::finalize() on purpose
+     * generally should not be used except for very special cases
+     */
+    void finalize();
 
-	/**
-	 * \brief allocates torch modules base on current inputdim
-	 * hides basegraph::finalize() on purpose
-	 * generally should not be used except for very special cases
-	 */
-	void finalize();
+    /**
+     * \brief see torch::module::to
+     * @param device cpu / gpu
+     * @param non_blocking
+     */
+    virtual void to(torch::Device device, bool non_blocking = false);
 
-	/**
-	 * \brief see torch::module::to
-	 * @param device cpu / gpu
-	 * @param non_blocking
-	 */
-	virtual void to(torch::Device device, bool non_blocking = false);
+    /**
+     * \brief see torch::module::to
+     * @param dtype : torch::kFloat32 or torch::kFloat64
+     * @param non_blocking
+     */
+    virtual void to(torch::Dtype dtype, bool non_blocking = false);
 
-	/**
-	 * \brief see torch::module::to
-	 * @param dtype : torch::kFloat32 or torch::kFloat64
-	 * @param non_blocking
-	 */
-	virtual void to(torch::Dtype dtype, bool non_blocking = false);
+    /**
+     * \brief see torch::module::to
+     * @param device cpu / gpu
+     * @param dtype : torch::kFloat32 or torch::kFloat64
+     * @param non_blocking
+     */
+    virtual void to(torch::Device device, torch::Dtype dtype,
+                    bool non_blocking = false);
 
-	/**
-	 * \brief see torch::module::to
-	 * @param device cpu / gpu
-	 * @param dtype : torch::kFloat32 or torch::kFloat64
-	 * @param non_blocking
-	 */
-	virtual void to(torch::Device device, torch::Dtype dtype, bool non_blocking = false);
+    /**
+     * see torch::modules::parameters()
+     * override in order to warn if reallocation is needed while parameters are
+     * used
+     * @param recurse
+     *
+     * @return
+     */
+    std::vector<torch::Tensor> parameters(bool recurse = true);
 
-	/**
-	 * see torch::modules::parameters()
-	 * override in order to warn if reallocation is needed while parameters are used
-	 * @param recurse
-	 *
-	 * @return
-	 */std::vector<torch::Tensor> parameters(bool recurse = true);
+    /**
+     * set lstm continuation : if true then previous hidden state of lstm is
+     * used for upcoming forward()
+     * @param lc
+     */
+    void lstm_continues(bool lc)
+    {
+      _lstm_continuation = lc;
+    }
 
-	/**
-	 * set lstm continuation : if true then previous hidden state of lstm is used for upcoming forward()
-	 * @param lc
-	 */
-	void lstm_continues(bool lc) {_lstm_continuation = lc;}
-
-
-	/**
-	 * informs torchgraphbackend that parameters are no more used,
-	 * ie reallocation can be done w/o warning
-	 */
-	void parameters_release() {_parameters_used = false;}
+    /**
+     * informs torchgraphbackend that parameters are no more used,
+     * ie reallocation can be done w/o warning
+     */
+    void parameters_release()
+    {
+      _parameters_used = false;
+    }
 
   protected:
+    /**
+     * internal torch module allocation, called whithin (finalize)
+     * @param force
+     */
+    void allocate_modules();
 
-	/**
-	 * internal torch module allocation, called whithin (finalize)
-	 * @param force
-	 */
-	void allocate_modules();
+    std::unordered_map<std::string, torch::nn::AnyModule>
+        _modules; /**< torch modules, per name/id */
+    std::unordered_map<std::string, torch::Tensor>
+        _variables; /**< torch intermediate tensors / blobs  */
 
-	std::unordered_map<std::string,torch::nn::AnyModule> _modules; /**< torch modules, per name/id */
-	std::unordered_map<std::string,torch::Tensor> _variables; /**< torch intermediate tensors / blobs  */
+    /**
+     * \brief internal forward on basegraph
+     * @param v vertex to forward
+     * @return all outpurs
+     */
+    std::vector<torch::Tensor> forward(BaseGraph::Vertex v);
 
-	/**
-	 * \brief internal forward on basegraph
-	 * @param v vertex to forward
-	 * @return all outpurs
-	 */
-	std::vector<torch::Tensor> forward(BaseGraph::Vertex v);
+    /**
+     * \brief internal set tensor input , used by forward
+     * @param in   input tensor
+     */
+    void set_input(torch::Tensor in);
 
-	/**
-	 * \brief internal set tensor input , used by forward
-	 * @param in   input tensor
-	 */
-	void set_input(torch::Tensor in);
-
-	torch::Dtype _dtype = torch::kFloat32; /**< type of data stored in tensors */
-	torch::Device _device = torch::DeviceType::CPU; /**< device to compute on */
-	bool _parameters_used = false; /**< if parameters are use => warn if realloc */
-	bool _lstm_continuation = false; /**< if lstm should use previous hidden state value */
-	std::unordered_map<std::string, std::tuple<torch::Tensor, torch::Tensor>> _rnn_memories; /**< values of previsous hidden states */
-	std::unordered_map<std::string, bool> _rnn_has_memories; /**< true if previsous hidden values are available */
+    torch::Dtype _dtype
+        = torch::kFloat32; /**< type of data stored in tensors */
+    torch::Device _device
+        = torch::DeviceType::CPU; /**< device to compute on */
+    bool _parameters_used
+        = false; /**< if parameters are use => warn if realloc */
+    bool _lstm_continuation
+        = false; /**< if lstm should use previous hidden state value */
+    std::unordered_map<std::string, std::tuple<torch::Tensor, torch::Tensor>>
+        _rnn_memories; /**< values of previsous hidden states */
+    std::unordered_map<std::string, bool>
+        _rnn_has_memories; /**< true if previsous hidden values are available
+                            */
   };
-
 
 }
 

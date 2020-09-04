@@ -27,60 +27,52 @@
 namespace dd
 {
 
-  class NetLayersCaffeRecurrent: public NetLayersCaffe
+  class NetLayersCaffeRecurrent : public NetLayersCaffe
   {
   public:
-  NetLayersCaffeRecurrent(caffe::NetParameter *net_params,
-                          caffe::NetParameter *dnet_params,
-                          std::shared_ptr<spdlog::logger> &logger)
-    :NetLayersCaffe(net_params,dnet_params,logger) 
-      {
-	net_params->set_name("recurrent");
-	dnet_params->set_name("recurrent");
-      }
-    ~NetLayersCaffeRecurrent() {}
+    NetLayersCaffeRecurrent(caffe::NetParameter *net_params,
+                            caffe::NetParameter *dnet_params,
+                            std::shared_ptr<spdlog::logger> &logger)
+        : NetLayersCaffe(net_params, dnet_params, logger)
+    {
+      net_params->set_name("recurrent");
+      dnet_params->set_name("recurrent");
+    }
+    ~NetLayersCaffeRecurrent()
+    {
+    }
 
     void add_basic_block(caffe::NetParameter *net_param,
                          const std::vector<std::string> &bottom_seq,
                          const std::string &bottom_cont,
-                         const std::string &top,
-                         const int &num_output,
+                         const std::string &top, const int &num_output,
                          const double &dropout_ratio,
                          const std::string weight_filler,
                          const std::string bias_filler,
-                         const std::string &type,
-                         const int id);
+                         const std::string &type, const int id);
 
     void configure_net(const APIData &ad_mllib);
 
-    void add_concat(caffe::NetParameter *net_params,
-                    std::string name,
-                    std::string top,
-                    std::vector<std::string> bottoms,
+    void add_concat(caffe::NetParameter *net_params, std::string name,
+                    std::string top, std::vector<std::string> bottoms,
                     int axis);
 
-    void add_slicer(caffe::NetParameter *net_params,
-                    int slice_points,
-                    std::string bottom,
-                    std::string targets_name,
-                    std::string inputs_name,
-                    std::string cont_seq);
+    void add_slicer(caffe::NetParameter *net_params, int slice_points,
+                    std::string bottom, std::string targets_name,
+                    std::string inputs_name, std::string cont_seq);
 
     void add_flatten(caffe::NetParameter *net_params, std::string name,
                      std::string bottom, std::string top, int axis);
 
+    void add_permute(caffe::NetParameter *net_params, std::string top,
+                     std::string bottom, int naxis, bool train, bool test);
 
-    void add_permute(caffe::NetParameter *net_params, std::string top, std::string bottom, int naxis,bool train, bool test);
-
-    void add_affine(caffe::NetParameter *net_params,
-                    std::string name,
-                    const std::vector<std::string> &bottom,
-                    std::string top,
+    void add_affine(caffe::NetParameter *net_params, std::string name,
+                    const std::vector<std::string> &bottom, std::string top,
                     const std::string weight_filler,
-                    const std::string bias_filler,
-                    int nout, int nin);
+                    const std::string bias_filler, int nout, int nin);
 
-    void parse_recurrent_layers(const std::vector<std::string>&layers,
+    void parse_recurrent_layers(const std::vector<std::string> &layers,
                                 std::vector<std::string> &r_layers,
                                 std::vector<int> &h_sizes);
 
@@ -88,9 +80,7 @@ namespace dd
     const std::string _lstm_str = "L";
     const std::string _rnn_str = "R";
     const std::string _affine_str = "A";
-
   };
-
 
   /**
    * \brief	create recurrent.prototxt using api data
@@ -98,12 +88,11 @@ namespace dd
    * @param inputc input connector
    * @param net_param prototxt infos
    */
-  template<class TInputConnectorStrategy>
+  template <class TInputConnectorStrategy>
   void configure_recurrent_template(const APIData &ad,
                                     TInputConnectorStrategy &inputc,
                                     caffe::NetParameter &net_param,
                                     std::shared_ptr<spdlog::logger> &logger);
-
 
 }
 

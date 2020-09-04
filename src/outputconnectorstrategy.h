@@ -42,10 +42,17 @@ namespace dd
   class OutputConnectorBadParamException : public std::exception
   {
   public:
-    OutputConnectorBadParamException(const std::string &s)
-      :_s(s) {}
-    ~OutputConnectorBadParamException() {}
-    const char* what() const noexcept { return _s.c_str(); }
+    OutputConnectorBadParamException(const std::string &s) : _s(s)
+    {
+    }
+    ~OutputConnectorBadParamException()
+    {
+    }
+    const char *what() const noexcept
+    {
+      return _s.c_str();
+    }
+
   private:
     std::string _s;
   };
@@ -56,35 +63,45 @@ namespace dd
   class OutputConnectorInternalException : public std::exception
   {
   public:
-    OutputConnectorInternalException(const std::string &s)
-      :_s(s) {}
-    ~OutputConnectorInternalException() {}
-    const char* what() const noexcept { return _s.c_str(); }
+    OutputConnectorInternalException(const std::string &s) : _s(s)
+    {
+    }
+    ~OutputConnectorInternalException()
+    {
+    }
+    const char *what() const noexcept
+    {
+      return _s.c_str();
+    }
+
   private:
     std::string _s;
   };
-  
+
   /**
    * \brief main output connector class
    */
   class OutputConnectorStrategy
   {
   public:
-    OutputConnectorStrategy() {}
-    ~OutputConnectorStrategy() {}
+    OutputConnectorStrategy()
+    {
+    }
+    ~OutputConnectorStrategy()
+    {
+    }
 
-  OutputConnectorStrategy(const OutputConnectorStrategy &out)
-    : OutputConnectorStrategy()
-      {
-        this->_logger = out._logger;
-      }
-
+    OutputConnectorStrategy(const OutputConnectorStrategy &out)
+        : OutputConnectorStrategy()
+    {
+      this->_logger = out._logger;
+    }
 
     /**
      * \brief output data reading
      */
-    //int transform() { return 1; }
-    
+    // int transform() { return 1; }
+
     /**
      * \brief initialization of output data connector
      * @param ad data object for "parameters/output"
@@ -102,7 +119,8 @@ namespace dd
      * @param ad_in data output object from the API call
      * @param ad_out data object as the call response
      */
-    void finalize(const APIData &ad_in, APIData &ad_out, MLModel *mlm=nullptr);
+    void finalize(const APIData &ad_in, APIData &ad_out,
+                  MLModel *mlm = nullptr);
 
     std::shared_ptr<spdlog::logger> _logger;
   };
@@ -113,11 +131,14 @@ namespace dd
   class NoOutputConn : public OutputConnectorStrategy
   {
   public:
-    NoOutputConn()
-      :OutputConnectorStrategy() {}
-    ~NoOutputConn() {}
+    NoOutputConn() : OutputConnectorStrategy()
+    {
+    }
+    ~NoOutputConn()
+    {
+    }
   };
-  
+
 }
 
 #include "supervisedoutputconnector.h"

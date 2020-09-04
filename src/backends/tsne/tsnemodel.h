@@ -32,21 +32,29 @@ namespace dd
   class TSNEModel : public MLModel
   {
   public:
-    TSNEModel():MLModel() {}
-  TSNEModel(const APIData &ad,APIData &adg,
-	    const std::shared_ptr<spdlog::logger> &logger)
-    :MLModel(ad,adg,logger)
-      {
-	if (ad.has("repository"))
-	  this->_repo = ad.get("repository").get<std::string>();
-	read_from_repository();	
-      }
-    TSNEModel(const std::string &repo)
-      :MLModel(repo) {}
-    ~TSNEModel() {}
+    TSNEModel() : MLModel()
+    {
+    }
+    TSNEModel(const APIData &ad, APIData &adg,
+              const std::shared_ptr<spdlog::logger> &logger)
+        : MLModel(ad, adg, logger)
+    {
+      if (ad.has("repository"))
+        this->_repo = ad.get("repository").get<std::string>();
+      read_from_repository();
+    }
+    TSNEModel(const std::string &repo) : MLModel(repo)
+    {
+    }
+    ~TSNEModel()
+    {
+    }
 
-    //TODO: load and save
-    int read_from_repository() { return 0; };
+    // TODO: load and save
+    int read_from_repository()
+    {
+      return 0;
+    };
   };
 }
 

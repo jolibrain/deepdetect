@@ -31,10 +31,12 @@ namespace dd
   /**
    * Multicore TSNE wrapper
    */
-    template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel=TSNEModel>
-    class TSNELib : public MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>
-    {
-    public:
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+            class TMLModel = TSNEModel>
+  class TSNELib : public MLLib<TInputConnectorStrategy,
+                               TOutputConnectorStrategy, TMLModel>
+  {
+  public:
     TSNELib(const TSNEModel &tmodel);
     TSNELib(TSNELib &&tl) noexcept;
     ~TSNELib();
@@ -54,13 +56,14 @@ namespace dd
       return 0;
     }
 
-    public:
+  public:
     int _iterations = 5000;
     int _perplexity = 30;
-    const int _no_dims = 2; /**< target dimensionality, backend lib only supports 2D */
+    const int _no_dims
+        = 2; /**< target dimensionality, backend lib only supports 2D */
     double _theta = 0.5; /**< angle */
     std::mutex _tsne_mutex;
-    };
+  };
 
 }
 

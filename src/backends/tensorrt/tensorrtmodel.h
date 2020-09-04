@@ -17,7 +17,6 @@
 /* You should have received a copy of the GNU General Public License */
 /* along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
-
 #ifndef TENSORRTMODEL_H
 #define TENSORRTMODEL_H
 
@@ -25,15 +24,18 @@
 #include "mlmodel.h"
 #include "apidata.h"
 
-
 namespace dd
 {
   class TensorRTModel : public MLModel
   {
   public:
-  TensorRTModel() : MLModel() {}
-    TensorRTModel(const APIData &ad, APIData &adg, const std::shared_ptr<spdlog::logger> &logger)
-      :MLModel(ad,adg,logger) {
+    TensorRTModel() : MLModel()
+    {
+    }
+    TensorRTModel(const APIData &ad, APIData &adg,
+                  const std::shared_ptr<spdlog::logger> &logger)
+        : MLModel(ad, adg, logger)
+    {
       if (ad.has("repository"))
         {
           this->_repo = ad.get("repository").get<std::string>();
@@ -41,12 +43,15 @@ namespace dd
           read_corresp_file();
         }
     }
-    TensorRTModel(const std::string &repo) : MLModel(repo) {}
+    TensorRTModel(const std::string &repo) : MLModel(repo)
+    {
+    }
 
-    ~TensorRTModel() {}
+    ~TensorRTModel()
+    {
+    }
 
     int read_from_repository(const std::shared_ptr<spdlog::logger> &logger);
-
 
     std::string _def;
     std::string _weights;

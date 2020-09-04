@@ -28,19 +28,26 @@
 
 namespace dd
 {
-  typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> dMatR;
-  
+  typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic,
+                        Eigen::RowMajor>
+      dMatR;
+
   class TSNEInputInterface
   {
   public:
-    TSNEInputInterface() {}
+    TSNEInputInterface()
+    {
+    }
     TSNEInputInterface(const TSNEInputInterface &tii)
-      :_X(tii._X),_D(tii._D),_N(tii._N) // XXX: avoid copying data ?
-      {
-      }
-    ~TSNEInputInterface() {}
+        : _X(tii._X), _D(tii._D), _N(tii._N) // XXX: avoid copying data ?
+    {
+    }
+    ~TSNEInputInterface()
+    {
+    }
+
   public:
-    dMatR _X; /**< data holder */
+    dMatR _X;    /**< data holder */
     int _D = -1; /**< problem dimensions */
     int _N = -1; /**< number of samples */
 
@@ -55,18 +62,24 @@ namespace dd
     {
       return -1;
     }
-    
-    //TODO: parameters, ids
+
+    // TODO: parameters, ids
   };
 
-  class CSVTSNEInputFileConn : public CSVInputFileConn, public TSNEInputInterface
+  class CSVTSNEInputFileConn : public CSVInputFileConn,
+                               public TSNEInputInterface
   {
   public:
-    CSVTSNEInputFileConn()
-      :CSVInputFileConn() {}
+    CSVTSNEInputFileConn() : CSVInputFileConn()
+    {
+    }
     CSVTSNEInputFileConn(const CSVTSNEInputFileConn &i)
-      :CSVInputFileConn(i),TSNEInputInterface(i) {}
-    ~CSVTSNEInputFileConn() {}
+        : CSVInputFileConn(i), TSNEInputInterface(i)
+    {
+    }
+    ~CSVTSNEInputFileConn()
+    {
+    }
 
     void init(const APIData &ad)
     {
@@ -76,14 +89,20 @@ namespace dd
     void transform(const APIData &ad);
   };
 
-  class TxtTSNEInputFileConn : public TxtInputFileConn, public TSNEInputInterface
+  class TxtTSNEInputFileConn : public TxtInputFileConn,
+                               public TSNEInputInterface
   {
   public:
-    TxtTSNEInputFileConn()
-      :TxtInputFileConn() {}
+    TxtTSNEInputFileConn() : TxtInputFileConn()
+    {
+    }
     TxtTSNEInputFileConn(const TxtTSNEInputFileConn &i)
-      :TxtInputFileConn(i),TSNEInputInterface(i) {}
-    ~TxtTSNEInputFileConn() {}
+        : TxtInputFileConn(i), TSNEInputInterface(i)
+    {
+    }
+    ~TxtTSNEInputFileConn()
+    {
+    }
 
     void init(const APIData &ad)
     {
@@ -92,7 +111,7 @@ namespace dd
 
     void transform(const APIData &ad);
   };
-  
+
 }
 
 #endif

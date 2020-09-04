@@ -37,24 +37,38 @@ namespace dd
   class MLLibBadParamException : public std::exception
   {
   public:
-    MLLibBadParamException(const std::string &s)
-      :_s(s) {}
-    ~MLLibBadParamException() {}
-    const char* what() const noexcept { return _s.c_str(); }
+    MLLibBadParamException(const std::string &s) : _s(s)
+    {
+    }
+    ~MLLibBadParamException()
+    {
+    }
+    const char *what() const noexcept
+    {
+      return _s.c_str();
+    }
+
   private:
     std::string _s;
   };
-  
+
   /**
    * \brief ML library internal error exception
    */
   class MLLibInternalException : public std::exception
   {
   public:
-    MLLibInternalException(const std::string &s)
-      :_s(s) {}
-    ~MLLibInternalException() {}
-    const char* what() const noexcept { return _s.c_str(); }
+    MLLibInternalException(const std::string &s) : _s(s)
+    {
+    }
+    ~MLLibInternalException()
+    {
+    }
+    const char *what() const noexcept
+    {
+      return _s.c_str();
+    }
+
   private:
     std::string _s;
   };
@@ -62,27 +76,35 @@ namespace dd
   /**
    * \brief main class for machine learning library encapsulation
    */
-  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-    class MLLib
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+            class TMLModel>
+  class MLLib
   {
   public:
     /**
      * \brief constructor from model
      */
-    MLLib(const TMLModel &mlmodel)
-      :_mlmodel(mlmodel),_tjob_running(false) {}
-    
+    MLLib(const TMLModel &mlmodel) : _mlmodel(mlmodel), _tjob_running(false)
+    {
+    }
+
     /**
      * \brief copy-constructor
      */
     MLLib(MLLib &&mll) noexcept
-      :_inputc(mll._inputc),_outputc(mll._outputc),_mltype(mll._mltype),_mlmodel(mll._mlmodel),_meas(mll._meas),_meas_per_iter(mll._meas_per_iter),_tjob_running(mll._tjob_running.load()),_logger(mll._logger)
-      {}
-    
+        : _inputc(mll._inputc), _outputc(mll._outputc), _mltype(mll._mltype),
+          _mlmodel(mll._mlmodel), _meas(mll._meas),
+          _meas_per_iter(mll._meas_per_iter),
+          _tjob_running(mll._tjob_running.load()), _logger(mll._logger)
+    {
+    }
+
     /**
      * \brief destructor
      */
-    ~MLLib() {}
+    ~MLLib()
+    {
+    }
 
     /**
      * \brief initializes ML lib
@@ -105,7 +127,7 @@ namespace dd
       _mlmodel.remove_index();
     }
 #endif
-    
+
     /**
      * \brief removes everything in model repository
      */
@@ -113,9 +135,12 @@ namespace dd
     {
       int err = fileops::clear_directory(_mlmodel._repo);
       if (err > 0)
-	throw MLLibBadParamException("Failed opening directory " + _mlmodel._repo + " for deleting files within");
+        throw MLLibBadParamException("Failed opening directory "
+                                     + _mlmodel._repo
+                                     + " for deleting files within");
       else if (err < 0)
-	throw MLLibInternalException("Failed deleting all files in directory " + _mlmodel._repo);
+        throw MLLibInternalException("Failed deleting all files in directory "
+                                     + _mlmodel._repo);
     }
 
     /**
@@ -127,9 +152,7 @@ namespace dd
       int err = fileops::remove_dir(_mlmodel._repo);
       if (err < 0)
         throw MLLibBadParamException("unable to remove dir " + _mlmodel._repo);
-
     }
-
 
     /**
      * \brief train new model
@@ -146,12 +169,12 @@ namespace dd
      * @return 0 if OK, 1 otherwise
      */
     int predict(const APIData &ad, APIData &out);
-    
+
     /**
      * \brief ML library status
      */
     int status() const;
-    
+
     /**
      * \brief clear all measures history
      */
@@ -170,62 +193,65 @@ namespace dd
     {
       std::lock_guard<std::mutex> lock(_meas_per_iter_mutex);
       auto hit = _meas_per_iter.find(meas);
-      if (hit!=_meas_per_iter.end())
-	{
-	  (*hit).second.push_back(l);
-	  if ((int)(*hit).second.size() >= _max_meas_points)
-	    {
-	      // resolution is halved
-	      std::vector<double> vmeas_short;
-	      vmeas_short.reserve(_max_meas_points/2);
-	      int di = 0;
-	      for (size_t j=0;j<(*hit).second.size();j+=2)
-		vmeas_short.at(di++) = (*hit).second.at(j);
-	      (*hit).second = vmeas_short;
-	    }
-	}
+      if (hit != _meas_per_iter.end())
+        {
+          (*hit).second.push_back(l);
+          if ((int)(*hit).second.size() >= _max_meas_points)
+            {
+              // resolution is halved
+              std::vector<double> vmeas_short;
+              vmeas_short.reserve(_max_meas_points / 2);
+              int di = 0;
+              for (size_t j = 0; j < (*hit).second.size(); j += 2)
+                vmeas_short.at(di++) = (*hit).second.at(j);
+              (*hit).second = vmeas_short;
+            }
+        }
       else
-	{
-	  std::vector<double> vmeas = {l};
-	  _meas_per_iter.insert(std::pair<std::string,std::vector<double>>(meas,vmeas));
-	}
+        {
+          std::vector<double> vmeas = { l };
+          _meas_per_iter.insert(
+              std::pair<std::string, std::vector<double>>(meas, vmeas));
+        }
     }
 
     /**
-     * \brief sub-samples measure history to fit a fixed number of points at max
+     * \brief sub-samples measure history to fit a fixed number of points at
+     * max
      * @param hist measure history vector
      * @param npoints max number of output points
      */
     std::vector<double> subsample_hist(const std::vector<double> &hist,
-				       const int &npoints) const
+                                       const int &npoints) const
     {
       std::vector<double> sub_hist;
       sub_hist.reserve(npoints);
       int rpoints = std::ceil(hist.size() / npoints) + 1;
-      for (size_t i=0;i<hist.size();i+=rpoints)
-	sub_hist.push_back(hist.at(i));
+      for (size_t i = 0; i < hist.size(); i += rpoints)
+        sub_hist.push_back(hist.at(i));
       return sub_hist;
     }
-    
+
     /**
      * \brief collect current measures history into a data object
      * @param ad api data object
      * @param npoints max number of output points, < 0 if unbounded
      */
-    void collect_measures_history(APIData &ad,
-				  const int &npoints=-1) const
+    void collect_measures_history(APIData &ad, const int &npoints = -1) const
     {
       APIData meas_hist;
       std::lock_guard<std::mutex> lock(_meas_per_iter_mutex);
       auto hit = _meas_per_iter.begin();
-      while(hit!=_meas_per_iter.end())
-	{
-	  if (npoints > 0 && (int)(*hit).second.size() > npoints)
-	    meas_hist.add((*hit).first+"_hist",subsample_hist((*hit).second,npoints));
-	  else meas_hist.add((*hit).first+"_hist",(*hit).second);
-	  ++hit;
-	}
-      ad.add("measure_hist",meas_hist);
+      while (hit != _meas_per_iter.end())
+        {
+          if (npoints > 0 && (int)(*hit).second.size() > npoints)
+            meas_hist.add((*hit).first + "_hist",
+                          subsample_hist((*hit).second, npoints));
+          else
+            meas_hist.add((*hit).first + "_hist", (*hit).second);
+          ++hit;
+        }
+      ad.add("measure_hist", meas_hist);
     }
 
     /**
@@ -237,17 +263,19 @@ namespace dd
     {
       APIData ad_params = ad.getobj("parameters");
       if (!ad_params.has("metrics"))
-	return;
+        return;
       APIData ad_metrics = ad_params.getobj("metrics");
       std::vector<std::string> mkeys = ad_metrics.list_keys();
-      for (auto s: mkeys)
-	{
-	  std::vector<double> mdata = ad_metrics.get(s).get<std::vector<double>>();
-	  s.replace(s.find("_hist"),5,"");
-	  _meas_per_iter.insert(std::pair<std::string,std::vector<double>>(s,mdata));
-	}
+      for (auto s : mkeys)
+        {
+          std::vector<double> mdata
+              = ad_metrics.get(s).get<std::vector<double>>();
+          s.replace(s.find("_hist"), 5, "");
+          _meas_per_iter.insert(
+              std::pair<std::string, std::vector<double>>(s, mdata));
+        }
     }
-    
+
     /**
      * \brief sets current value of a measure
      * @param meas measure name
@@ -257,27 +285,29 @@ namespace dd
     {
       std::lock_guard<std::mutex> lock(_meas_mutex);
       auto hit = _meas.find(meas);
-      if (hit!=_meas.end())
-	(*hit).second = l;
-      else _meas.insert(std::pair<std::string,double>(meas,l));
+      if (hit != _meas.end())
+        (*hit).second = l;
+      else
+        _meas.insert(std::pair<std::string, double>(meas, l));
     }
 
     void add_meas(const std::string &meas, const std::vector<double> &vl,
-		  const std::vector<std::string> &cnames)
+                  const std::vector<std::string> &cnames)
     {
       std::lock_guard<std::mutex> lock(_meas_mutex);
       int c = 0;
-      for (double l: vl)
-	{
-	  std::string measl = meas + '_' + cnames.at(c);//std::to_string(c);
-	  auto hit = _meas.find(measl);
-	  if (hit!=_meas.end())
-	    (*hit).second = l;
-	  else _meas.insert(std::pair<std::string,double>(measl,l));
-	  ++c;
-	}
+      for (double l : vl)
+        {
+          std::string measl = meas + '_' + cnames.at(c); // std::to_string(c);
+          auto hit = _meas.find(measl);
+          if (hit != _meas.end())
+            (*hit).second = l;
+          else
+            _meas.insert(std::pair<std::string, double>(measl, l));
+          ++c;
+        }
     }
-    
+
     /**
      * \brief get currentvalue of argument measure
      * @param meas measure name
@@ -287,9 +317,10 @@ namespace dd
     {
       std::lock_guard<std::mutex> lock(_meas_mutex);
       auto hit = _meas.find(meas);
-      if (hit!=_meas.end())
-	return (*hit).second;
-      else return std::numeric_limits<double>::quiet_NaN();
+      if (hit != _meas.end())
+        return (*hit).second;
+      else
+        return std::numeric_limits<double>::quiet_NaN();
     }
 
     /**
@@ -301,12 +332,12 @@ namespace dd
       APIData meas;
       std::lock_guard<std::mutex> lock(_meas_mutex);
       auto hit = _meas.begin();
-      while(hit!=_meas.end())
-	{
-	  meas.add((*hit).first,(*hit).second);
-	  ++hit;
-	}
-      ad.add("measure",meas);
+      while (hit != _meas.end())
+        {
+          meas.add((*hit).first, (*hit).second);
+          ++hit;
+        }
+      ad.add("measure", meas);
     }
 
     /**
@@ -316,49 +347,64 @@ namespace dd
     void est_remain_time(APIData &out) const
     {
       APIData meas = out.getobj("measure");
-      if (meas.has("remain_time")){    
-        int est_remain_time = static_cast<int>(meas.get("remain_time").get<double>());
-        int seconds = est_remain_time % 60;
-        int minutes = (est_remain_time / 60) % 60;
-        int hours = (est_remain_time / 60 / 60) % 24;
-        int days = est_remain_time / 60 / 60 / 24;
-        std::string est_remain_time_str = std::to_string(days) + "d:" + std::to_string(hours) + "h:" + std::to_string(minutes) + "m:" + std::to_string(seconds) + "s";
-        meas.add("remain_time_str",est_remain_time_str);
-        out.add("measure",meas);
-      }
+      if (meas.has("remain_time"))
+        {
+          int est_remain_time
+              = static_cast<int>(meas.get("remain_time").get<double>());
+          int seconds = est_remain_time % 60;
+          int minutes = (est_remain_time / 60) % 60;
+          int hours = (est_remain_time / 60 / 60) % 24;
+          int days = est_remain_time / 60 / 60 / 24;
+          std::string est_remain_time_str
+              = std::to_string(days) + "d:" + std::to_string(hours)
+                + "h:" + std::to_string(minutes)
+                + "m:" + std::to_string(seconds) + "s";
+          meas.add("remain_time_str", est_remain_time_str);
+          out.add("measure", meas);
+        }
     }
 
-    TInputConnectorStrategy _inputc; /**< input connector strategy for channeling data in. */
-    TOutputConnectorStrategy _outputc; /**< output connector strategy for passing results back to API. */
+    TInputConnectorStrategy
+        _inputc; /**< input connector strategy for channeling data in. */
+    TOutputConnectorStrategy _outputc; /**< output connector strategy for
+                                          passing results back to API. */
 
-    std::string _mltype = ""; /**< ml lib service instantiated type (e.g. regression, segmentation, detection, ...) */
-    
+    std::string _mltype = ""; /**< ml lib service instantiated type (e.g.
+                                 regression, segmentation, detection, ...) */
+
     bool _has_predict = true; /**< whether prediction is available. */
 
-    TMLModel _mlmodel; /**< statistical model template. */
+    TMLModel _mlmodel;    /**< statistical model template. */
     std::string _libname; /**< ml lib name. */
-    
-    std::unordered_map<std::string,double> _meas; /**< model measures, used as a per service value. */
-    std::unordered_map<std::string,std::vector<double>> _meas_per_iter; /**< model measures per iteration. */
 
-    std::atomic<bool> _tjob_running = {false}; /**< whether a training job is running with this lib instance. */
+    std::unordered_map<std::string, double>
+        _meas; /**< model measures, used as a per service value. */
+    std::unordered_map<std::string, std::vector<double>>
+        _meas_per_iter; /**< model measures per iteration. */
 
-    bool _online = false; /**< whether the algorithm is online, i.e. it interleaves training and prediction calls.
-			     When not, prediction calls are rejected while training is running. */
+    std::atomic<bool> _tjob_running = {
+      false
+    }; /**< whether a training job is running with this lib instance. */
+
+    bool _online
+        = false; /**< whether the algorithm is online, i.e. it interleaves
+                    training and prediction calls. When not, prediction calls
+                    are rejected while training is running. */
 
     std::shared_ptr<spdlog::logger> _logger; /**< mllib logger. */
 
-    long int _model_flops = 0;  /**< model flops. */
-    long int _model_params = 0;  /**< number of parameters in the model. */
+    long int _model_flops = 0;    /**< model flops. */
+    long int _model_params = 0;   /**< number of parameters in the model. */
     long int _mem_used_train = 0; /**< amount  of memory used. */
-    long int _mem_used_test = 0; /**< amount  of memory used. */
+    long int _mem_used_test = 0;  /**< amount  of memory used. */
 
   protected:
-    mutable std::mutex _meas_per_iter_mutex; /**< mutex over measures history. */
-    mutable std::mutex _meas_mutex; /** mutex around current measures. */
+    mutable std::mutex
+        _meas_per_iter_mutex;         /**< mutex over measures history. */
+    mutable std::mutex _meas_mutex;   /** mutex around current measures. */
     const int _max_meas_points = 1e7; // 10M points max per measure
-  };  
-  
+  };
+
 }
 
 #endif

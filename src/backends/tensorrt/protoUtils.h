@@ -18,14 +18,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-
 #ifndef PROTO_UTILS_H
 #define PROTO_UTILS_H
 
-
-#include <google/protobuf/io/coded_stream.h>                                                            
-#include <google/protobuf/io/zero_copy_stream_impl.h>                                                   
-#include <google/protobuf/text_format.h>                                                                
+#include <google/protobuf/io/coded_stream.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <google/protobuf/text_format.h>
 
 namespace dd
 {
@@ -37,7 +35,9 @@ namespace dd
   int fixProto(const std::string dest, const std::string source);
   int findNClasses(const std::string source, bool bbox);
   int findTopK(const std::string source);
-  bool TRTReadProtoFromTextFile(const char* filename, google::protobuf::Message* proto);
-  bool TRTWriteProtoToTextFile(const google::protobuf::Message& proto, const char* filename);
+  bool TRTReadProtoFromTextFile(const char *filename,
+                                google::protobuf::Message *proto);
+  bool TRTWriteProtoToTextFile(const google::protobuf::Message &proto,
+                               const char *filename);
 }
 #endif

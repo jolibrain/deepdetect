@@ -43,30 +43,31 @@ namespace dd
   };
 
   template <class TBackend>
-  class Graph<CaffeGraphInput,TBackend>: public CaffeGraphInput, public TBackend
+  class Graph<CaffeGraphInput, TBackend> : public CaffeGraphInput,
+                                           public TBackend
   {
   public:
-	Graph(std::string protofilename);
+    Graph(std::string protofilename);
   };
 #ifdef USE_TORCH
   template <>
-  class Graph<CaffeGraphInput,dd::TorchGraphBackend>: public CaffeGraphInput, public TorchGraphBackend
+  class Graph<CaffeGraphInput, dd::TorchGraphBackend>
+      : public CaffeGraphInput, public TorchGraphBackend
   {
   public:
-	Graph(std::string protofilename, std::vector<int> inputdim) : CaffeGraphInput(protofilename)
-	{
-	  finalize(inputdim);
-	}
-	Graph(std::string protofilename) : CaffeGraphInput(protofilename)
-	{
-	  // we should no finalize in case input dims has not been specified
-	  //	  finalize();
-	}
+    Graph(std::string protofilename, std::vector<int> inputdim)
+        : CaffeGraphInput(protofilename)
+    {
+      finalize(inputdim);
+    }
+    Graph(std::string protofilename) : CaffeGraphInput(protofilename)
+    {
+      // we should no finalize in case input dims has not been specified
+      //	  finalize();
+    }
   };
-
-
 }
-template class dd::Graph<dd::CaffeGraphInput,dd::TorchGraphBackend>;
-typedef dd::Graph<dd::CaffeGraphInput,dd::TorchGraphBackend> CaffeToTorch;
+template class dd::Graph<dd::CaffeGraphInput, dd::TorchGraphBackend>;
+typedef dd::Graph<dd::CaffeGraphInput, dd::TorchGraphBackend> CaffeToTorch;
 #endif
 #endif

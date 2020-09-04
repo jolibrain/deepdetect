@@ -25,77 +25,83 @@
 namespace dd
 {
   TFModel::TFModel(const APIData &ad, APIData &adg,
-		   const std::shared_ptr<spdlog::logger> &logger)
-    :MLModel(ad,adg,logger)
+                   const std::shared_ptr<spdlog::logger> &logger)
+      : MLModel(ad, adg, logger)
   {
-   if (ad.has("repository"))
+    if (ad.has("repository"))
       {
-	read_from_repository(ad.get("repository").get<std::string>(),spdlog::get("api")); // XXX: beware, error not caught
-	this-> _modelRepo = ad.get("repository").get<std::string>();
+        read_from_repository(
+            ad.get("repository").get<std::string>(),
+            spdlog::get("api")); // XXX: beware, error not caught
+        this->_modelRepo = ad.get("repository").get<std::string>();
       }
-   read_corresp_file(spdlog::get("api"));
+    read_corresp_file(spdlog::get("api"));
   }
 
-  int TFModel::read_from_repository(const std::string &repo,
-				    const std::shared_ptr<spdlog::logger> &logger)
+  int TFModel::read_from_repository(
+      const std::string &repo, const std::shared_ptr<spdlog::logger> &logger)
   {
     std::string graphName = ".pb";
     std::string labelFile = ".txt";
     this->_repo = repo;
     std::unordered_set<std::string> lfiles;
-  	int e = fileops::list_directory(repo,true,false, false, lfiles);
+    int e = fileops::list_directory(repo, true, false, false, lfiles);
     if (e != 0)
       {
-	logger->error("error reading or listing tensorflow models in repository {}",repo);
-	return 1;
+        logger->error(
+            "error reading or listing tensorflow models in repository {}",
+            repo);
+        return 1;
       }
-      
-  	auto hit = lfiles.begin();
-  	std::string graphf,labelf;
-  	long int state_t=-1;
-  	while(hit!=lfiles.end())
+
+    auto hit = lfiles.begin();
+    std::string graphf, labelf;
+    long int state_t = -1;
+    while (hit != lfiles.end())
       {
-	if ((*hit).find(graphName)!=std::string::npos)
-	  {
-	    // stat file to pick the latest one
-	    long int st = fileops::file_last_modif((*hit));
-	    if (st > state_t)
-	      {
-			graphf = (*hit);
-			state_t = st;
-	      }
-	  }
-	else if ((*hit).find(labelFile)!=std::string::npos)
-	  labelf = (*hit);
+        if ((*hit).find(graphName) != std::string::npos)
+          {
+            // stat file to pick the latest one
+            long int st = fileops::file_last_modif((*hit));
+            if (st > state_t)
+              {
+                graphf = (*hit);
+                state_t = st;
+              }
+          }
+        else if ((*hit).find(labelFile) != std::string::npos)
+          labelf = (*hit);
 
-	++hit;
-	}
-	_graphName = graphf;
-	_corresp = labelf;
+        ++hit;
+      }
+    _graphName = graphf;
+    _corresp = labelf;
 
-	return 0;
+    return 0;
   }
 
   int TFModel::read_corresp_file(const std::shared_ptr<spdlog::logger> &logger)
   {
     if (!_corresp.empty())
       {
-	std::ifstream ff(_corresp);
-	if (!ff.is_open())
-	  logger->error("cannot open TF model corresp file={}",_corresp);
-	else{
-	  std::string line;
-	  while(!ff.eof())
-	    {
-	      std::getline(ff,line);
-	      std::string key = line.substr(0,line.find(' '));
-	      if (!key.empty())
-		{
-		  std::string value = line.substr(line.find(' ')+1);
-		  _hcorresp.insert(std::pair<int,std::string>(std::stoi(key),value));
-		}
-	    }
-	}
+        std::ifstream ff(_corresp);
+        if (!ff.is_open())
+          logger->error("cannot open TF model corresp file={}", _corresp);
+        else
+          {
+            std::string line;
+            while (!ff.eof())
+              {
+                std::getline(ff, line);
+                std::string key = line.substr(0, line.find(' '));
+                if (!key.empty())
+                  {
+                    std::string value = line.substr(line.find(' ') + 1);
+                    _hcorresp.insert(
+                        std::pair<int, std::string>(std::stoi(key), value));
+                  }
+              }
+          }
       }
     return 0;
   }

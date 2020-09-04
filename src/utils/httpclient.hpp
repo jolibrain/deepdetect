@@ -31,16 +31,15 @@ namespace dd
 {
 
   static int _default_timeout = 600; // 10 mins
-  static int _max_timeout = 36000; // 10 hours
-  
+  static int _max_timeout = 36000;   // 10 hours
+
   class httpclient
   {
   public:
     static void get_call(const std::string &url,
-			 const std::string &http_method,
-			 int &outcode,
-			 std::string &outstr,
-			 const int &timeout=_default_timeout)
+                         const std::string &http_method, int &outcode,
+                         std::string &outstr,
+                         const int &timeout = _default_timeout)
     {
       std::ostringstream os;
       curlpp::Easy request;
@@ -51,22 +50,23 @@ namespace dd
       request.setOpt(pr);
       request.setOpt(cURLpp::Options::FollowLocation(true));
       if (timeout > _max_timeout)
-	{
-	  outcode = 400;
-	  throw std::runtime_error("timeout value is above max default timeout (" + std::to_string(_max_timeout) + ")");
-	}
+        {
+          outcode = 400;
+          throw std::runtime_error(
+              "timeout value is above max default timeout ("
+              + std::to_string(_max_timeout) + ")");
+        }
       request.setOpt(cURLpp::Options::Timeout(timeout));
       request.perform();
       outstr = os.str();
       outcode = curlpp::infos::ResponseCode::get(request);
     }
-    
-    static void post_call(const std::string &url,
-			  const std::string &jcontent,
-			  const std::string &http_method,
-			  int &outcode,
-			  std::string &outstr,
-			  const std::string &content_type="Content-Type: application/json")
+
+    static void post_call(const std::string &url, const std::string &jcontent,
+                          const std::string &http_method, int &outcode,
+                          std::string &outstr,
+                          const std::string &content_type
+                          = "Content-Type: application/json")
     {
       std::ostringstream os;
       curlpp::Easy request_put;
@@ -82,11 +82,11 @@ namespace dd
       request_put.setOpt(curlpp::options::PostFieldSize(jcontent.length()));
       request_put.perform();
       outstr = os.str();
-      //std::cout << "outstr=" << outstr << std::endl;
+      // std::cout << "outstr=" << outstr << std::endl;
       outcode = curlpp::infos::ResponseCode::get(request_put);
     }
   };
-  
+
 }
 
 #endif

@@ -48,10 +48,17 @@ namespace dd
   class SimIndexException : public std::exception
   {
   public:
-    SimIndexException(const std::string &s)
-      :_s(s) {}
-    ~SimIndexException() {}
-    const char* what() const noexcept { return _s.c_str(); }
+    SimIndexException(const std::string &s) : _s(s)
+    {
+    }
+    ~SimIndexException()
+    {
+    }
+    const char *what() const noexcept
+    {
+      return _s.c_str();
+    }
+
   private:
     std::string _s;
   };
@@ -62,10 +69,17 @@ namespace dd
   class SimSearchException : public std::exception
   {
   public:
-    SimSearchException(const std::string &s)
-      :_s(s) {}
-    ~SimSearchException() {}
-    const char* what() const noexcept { return _s.c_str(); }
+    SimSearchException(const std::string &s) : _s(s)
+    {
+    }
+    ~SimSearchException()
+    {
+    }
+    const char *what() const noexcept
+    {
+      return _s.c_str();
+    }
+
   private:
     std::string _s;
   };
@@ -76,55 +90,53 @@ namespace dd
   class URIData
   {
   public:
-    URIData() {}
-    URIData(const std::string &uri,
-	    const std::vector<double> &bbox = {},
-	    const double &prob = 0.0,
-	    const std::string &cat = "")
-      :_uri(uri),_bbox(bbox),_prob(prob),_cat(cat) {}
-    ~URIData() {}
+    URIData()
+    {
+    }
+    URIData(const std::string &uri, const std::vector<double> &bbox = {},
+            const double &prob = 0.0, const std::string &cat = "")
+        : _uri(uri), _bbox(bbox), _prob(prob), _cat(cat)
+    {
+    }
+    ~URIData()
+    {
+    }
 
     std::string encode() const;
     void decode(const std::string &str);
-    
+
     std::string _uri;
     std::vector<double> _bbox;
     double _prob = 0.0;
     std::string _cat;
     static char _enc_char;
   };
-  
-  template <class TSE>
-    class SearchEngine
-    {
-    public:
-      SearchEngine(const int &dim, const std::string &model_repo);
-      ~SearchEngine();
-      
-      void create_index();
 
-      void update_index();
+  template <class TSE> class SearchEngine
+  {
+  public:
+    SearchEngine(const int &dim, const std::string &model_repo);
+    ~SearchEngine();
 
-      void remove_index();
-      
-      void index(const URIData &uri,
-		 const std::vector<double> &data);
+    void create_index();
 
-      //batch index
-      void index(const std::vector<URIData> &uris,
-                 const std::vector<std::vector<double>> &data);
-      
-      void search(const std::vector<double> &data,
-		  const int &nn,
-		  std::vector<URIData> &uris,
-		  std::vector<double> &distances);
+    void update_index();
 
-      const int _dim = 128; /**< indexed vector length. */
-      TSE *_tse = nullptr;
-      std::mutex _index_mutex; /**< mutex around indexing calls. */
-    };
+    void remove_index();
 
+    void index(const URIData &uri, const std::vector<double> &data);
 
+    // batch index
+    void index(const std::vector<URIData> &uris,
+               const std::vector<std::vector<double>> &data);
+
+    void search(const std::vector<double> &data, const int &nn,
+                std::vector<URIData> &uris, std::vector<double> &distances);
+
+    const int _dim = 128; /**< indexed vector length. */
+    TSE *_tse = nullptr;
+    std::mutex _index_mutex; /**< mutex around indexing calls. */
+  };
 
 #ifdef USE_ANNOY
   class AnnoySE
@@ -137,38 +149,36 @@ namespace dd
     void create_index();
 
     void update_index();
-    
+
     void remove_index();
 
-    void index(const URIData &uri,
-	       const std::vector<double> &data);
+    void index(const URIData &uri, const std::vector<double> &data);
 
     void index(const std::vector<URIData> &uris,
                const std::vector<std::vector<double>> &datas);
-    
-    void search(const std::vector<double> &vec,
-		const int &nn,
-		std::vector<URIData> &uris,
-		std::vector<double> &distances);
-      
+
+    void search(const std::vector<double> &vec, const int &nn,
+                std::vector<URIData> &uris, std::vector<double> &distances);
+
     // internal functions
     void build_tree();
 
     void unbuild_tree();
 
     void save_tree();
-    
-    void add_to_db(const int &idx,
-		   const URIData &fmap);
-    
-    void get_from_db(const int &idx,
-		     URIData &fmap);
 
-    void set_ntrees(const int &ntrees) { _ntrees = ntrees; }
-    
-    int _f = 128; /**< indexed vector length. */
+    void add_to_db(const int &idx, const URIData &fmap);
+
+    void get_from_db(const int &idx, URIData &fmap);
+
+    void set_ntrees(const int &ntrees)
+    {
+      _ntrees = ntrees;
+    }
+
+    int _f = 128;      /**< indexed vector length. */
     int _ntrees = 100; /**< number of trees. */
-    AnnoyIndex<int,double,Angular,Kiss32Random> *_aindex = nullptr;
+    AnnoyIndex<int, double, Angular, Kiss32Random> *_aindex = nullptr;
     int _index_size = 0;
     std::string _model_repo; /**< model directory */
     const std::string _db_name = "names.bin";
@@ -178,9 +188,10 @@ namespace dd
     int _count_put = 0;
     int _count_put_max = 1000;
     const std::string _index_name = "index.ann";
-    bool _saved_tree = false; /**< whether the tree has been saved. */
+    bool _saved_tree = false;  /**< whether the tree has been saved. */
     bool _built_index = false; /**< whether the index has been built. */
-    bool _map_populate = true; /**< whether to use MAP_POPULATE when mmapping the full index. */
+    bool _map_populate = true; /**< whether to use MAP_POPULATE when mmapping
+                                  the full index. */
   };
 #endif
 
@@ -198,23 +209,19 @@ namespace dd
 
     void remove_index();
 
-    void index(const URIData &uri,
-               const std::vector<double> &data);
+    void index(const URIData &uri, const std::vector<double> &data);
 
     void index(const std::vector<URIData> &uris,
                const std::vector<std::vector<double>> &datas);
 
-    void search(const std::vector<double> &vec,
-                const int &nn,
-                std::vector<URIData> &uris,
-                std::vector<double> &distances);
-
+    void search(const std::vector<double> &vec, const int &nn,
+                std::vector<URIData> &uris, std::vector<double> &distances);
 
     void train();
     void add_to_db(const int &idx, const URIData &fmap);
     void get_from_db(const int &idx, URIData &fmap);
 
-    faiss::Index * _findex = nullptr;
+    faiss::Index *_findex = nullptr;
     std::string _index_key;
 
     int _f = 128; /**< indexed vector length. */
@@ -235,8 +242,8 @@ namespace dd
 
 #ifdef USE_GPU_FAISS
     bool _gpu = false;
-    faiss::Index * _gpu_index;
-    std::vector<faiss::gpu::GpuResources*> _gpu_res;
+    faiss::Index *_gpu_index;
+    std::vector<faiss::gpu::GpuResources *> _gpu_res;
     std::vector<int> _gpuids;
 #endif
   };

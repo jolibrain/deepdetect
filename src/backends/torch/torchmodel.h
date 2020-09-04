@@ -28,32 +28,38 @@
 
 namespace dd
 {
-    class TorchModel : public MLModel
+  class TorchModel : public MLModel
+  {
+  public:
+    TorchModel() : MLModel()
     {
-    public:
-        TorchModel() : MLModel() {}
+    }
 
-        TorchModel(const APIData &ad, APIData &adg,
-		    const std::shared_ptr<spdlog::logger> &logger)
-	        : MLModel(ad, adg, logger) {
+    TorchModel(const APIData &ad, APIData &adg,
+               const std::shared_ptr<spdlog::logger> &logger)
+        : MLModel(ad, adg, logger)
+    {
 
-	        read_from_repository(spdlog::get("api"));
-            read_corresp_file();
-        }
+      read_from_repository(spdlog::get("api"));
+      read_corresp_file();
+    }
 
-        TorchModel(const std::string &repo)
-            : MLModel(repo) {}
-        
-        ~TorchModel() {}
+    TorchModel(const std::string &repo) : MLModel(repo)
+    {
+    }
 
-        int read_from_repository(const std::shared_ptr<spdlog::logger> &logger);
+    ~TorchModel()
+    {
+    }
 
-    public:
-        std::string _traced;/**< path of the traced part of the net. */
-        std::string _weights;/**< path of the weights of the net. */
-        std::string _sstate;/**< current solver state to resume training */
-        std::string _proto;/**< prototxt file generated or read as graph */
-    };
+    int read_from_repository(const std::shared_ptr<spdlog::logger> &logger);
+
+  public:
+    std::string _traced;  /**< path of the traced part of the net. */
+    std::string _weights; /**< path of the weights of the net. */
+    std::string _sstate;  /**< current solver state to resume training */
+    std::string _proto;   /**< prototxt file generated or read as graph */
+  };
 }
 
 #endif // TORCHMODEL_H

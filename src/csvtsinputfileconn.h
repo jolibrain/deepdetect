@@ -37,14 +37,18 @@ namespace dd
   class DDCsvTS
   {
   public:
-  DDCsvTS(): _ddcsv()  {}
-    ~DDCsvTS() {}
+    DDCsvTS() : _ddcsv()
+    {
+    }
+    ~DDCsvTS()
+    {
+    }
 
     int read_file(const std::string &fname, bool is_test_data = false);
     int read_db(const std::string &fname);
     int read_mem(const std::string &content);
-    int read_dir(const std::string &dir, bool is_test_data = false, bool allow_read_test = true,
-                 bool update_bounds = true);
+    int read_dir(const std::string &dir, bool is_test_data = false,
+                 bool allow_read_test = true, bool update_bounds = true);
 
     DDCsv _ddcsv;
     CSVTSInputFileConn *_cifc = nullptr;
@@ -52,33 +56,30 @@ namespace dd
     std::shared_ptr<spdlog::logger> _logger;
   };
 
-
   class CSVTSInputFileConn : public CSVInputFileConn
   {
   public:
+    CSVTSInputFileConn() : CSVInputFileConn()
+    {
+      this->_dont_scale_labels = false;
+      this->_scale_between_minus1_and_1 = true;
+      this->_timeserie = true;
+    }
 
+    ~CSVTSInputFileConn()
+    {
+    }
 
-
-  CSVTSInputFileConn()
-    :CSVInputFileConn()
-      {
-        this->_dont_scale_labels = false;
-        this->_scale_between_minus1_and_1 = true;
-        this->_timeserie = true;
-      }
-
-    ~CSVTSInputFileConn() {}
-
-  CSVTSInputFileConn(const CSVTSInputFileConn &i)
-    : CSVInputFileConn(i), _csvtsdata(i._csvtsdata),
-      _csvtsdata_test(i._csvtsdata_test)
-        {
-          this->_scale_between_minus1_and_1 = i._scale_between_minus1_and_1;
-          this->_dont_scale_labels = i._dont_scale_labels;
-          this->_min_vals = i._min_vals;
-          this->_max_vals = i._max_vals;
-          this->_timeserie = true;
-        }
+    CSVTSInputFileConn(const CSVTSInputFileConn &i)
+        : CSVInputFileConn(i), _csvtsdata(i._csvtsdata),
+          _csvtsdata_test(i._csvtsdata_test)
+    {
+      this->_scale_between_minus1_and_1 = i._scale_between_minus1_and_1;
+      this->_dont_scale_labels = i._dont_scale_labels;
+      this->_min_vals = i._min_vals;
+      this->_max_vals = i._max_vals;
+      this->_timeserie = true;
+    }
 
     void init(const APIData &ad)
     {
@@ -100,7 +101,6 @@ namespace dd
 
     void shuffle_data(std::vector<std::vector<CSVline>> cvstsdata);
     void shuffle_data_if_needed();
-
 
     void split_data(std::vector<std::vector<CSVline>> cvstsdata,
                     std::vector<std::vector<CSVline>> cvstsdata_test);
@@ -130,9 +130,8 @@ namespace dd
 
     void response_params(APIData &out);
 
-
     void push_csv_to_csvts(DDCsv &ddcsv);
-    void push_csv_to_csvts(bool is_test_data=false);
+    void push_csv_to_csvts(bool is_test_data = false);
 
     std::string _boundsfname = "bounds.dat";
 

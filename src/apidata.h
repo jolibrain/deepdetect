@@ -38,12 +38,16 @@ namespace dd
 {
   class APIData;
 
-  // recursive variant container, see utils/variant.hpp and utils/recursive_wrapper.hpp
-  typedef mapbox::util::variant<std::string,double,int,long int,long long int,bool,
-    std::vector<std::string>,std::vector<double>,std::vector<int>,std::vector<bool>,
-    std::vector<cv::Mat>,std::vector<std::pair<int,int>>,
-    mapbox::util::recursive_wrapper<APIData>,
-    mapbox::util::recursive_wrapper<std::vector<APIData>>> ad_variant_type;
+  // recursive variant container, see utils/variant.hpp and
+  // utils/recursive_wrapper.hpp
+  typedef mapbox::util::variant<
+      std::string, double, int, long int, long long int, bool,
+      std::vector<std::string>, std::vector<double>, std::vector<int>,
+      std::vector<bool>, std::vector<cv::Mat>,
+      std::vector<std::pair<int, int>>,
+      mapbox::util::recursive_wrapper<APIData>,
+      mapbox::util::recursive_wrapper<std::vector<APIData>>>
+      ad_variant_type;
 
   /**
    * \brief data conversion exception
@@ -51,24 +55,40 @@ namespace dd
   class DataConversionException : public std::exception
   {
   public:
-    DataConversionException(const std::string &s)
-      :_s(s) {}
-    ~DataConversionException() {}
-    const char *what() const noexcept { return _s.c_str(); }
+    DataConversionException(const std::string &s) : _s(s)
+    {
+    }
+    ~DataConversionException()
+    {
+    }
+    const char *what() const noexcept
+    {
+      return _s.c_str();
+    }
+
   private:
     std::string _s;
   };
-  
+
   /**
    * \brief object for visitor output
    */
   class vout
   {
   public:
-    vout() {}
-    vout(const APIData &ad) { _vad.push_back(ad); }
-    vout(const std::vector<APIData> &vad):_vad(vad) {}
-    ~vout() {}
+    vout()
+    {
+    }
+    vout(const APIData &ad)
+    {
+      _vad.push_back(ad);
+    }
+    vout(const std::vector<APIData> &vad) : _vad(vad)
+    {
+    }
+    ~vout()
+    {
+    }
     std::vector<APIData> _vad;
   };
 
@@ -78,9 +98,11 @@ namespace dd
   class visitor_vad
   {
   public:
-    visitor_vad() {}
-    ~visitor_vad() {};
-    
+    visitor_vad()
+    {
+    }
+    ~visitor_vad(){};
+
     vout operator()(const std::string &str);
     vout operator()(const double &d);
     vout operator()(const int &i);
@@ -92,15 +114,15 @@ namespace dd
     vout operator()(const std::vector<bool> &vd);
     vout operator()(const std::vector<std::string> &vs);
     vout operator()(const std::vector<cv::Mat> &vcv);
-    vout operator()(const std::vector<std::pair<int,int>> &vpi);
+    vout operator()(const std::vector<std::pair<int, int>> &vpi);
     vout operator()(const APIData &ad);
     vout operator()(const std::vector<APIData> &vad);
-    
+
     /*template<typename T>
       vout operator() (const T &t)
       {
-	return process(t);
-	}*/
+        return process(t);
+        }*/
   };
 
   /**
@@ -112,21 +134,25 @@ namespace dd
     /**
      * \brief empty constructor
      */
-    APIData() {}
-    
+    APIData()
+    {
+    }
+
     /**
      * \brief constructor from rapidjson JSON object, see dd_types.h
      */
     APIData(const JVal &jval);
 
-    APIData(const APIData &ad)
-      :_data(ad._data)
-    {}
-    
+    APIData(const APIData &ad) : _data(ad._data)
+    {
+    }
+
     /**
      * \brief destructor
      */
-    ~APIData() {}
+    ~APIData()
+    {
+    }
 
     /**
      * \brief add key / object to data object
@@ -136,9 +162,9 @@ namespace dd
     inline void add(const std::string &key, const ad_variant_type &val)
     {
       auto hit = _data.begin();
-      if ((hit=_data.find(key))!=_data.end())
-	_data.erase(hit);
-      _data.insert(std::pair<std::string,ad_variant_type>(key,val));
+      if ((hit = _data.find(key)) != _data.end())
+        _data.erase(hit);
+      _data.insert(std::pair<std::string, ad_variant_type>(key, val));
     }
 
     /**
@@ -148,25 +174,26 @@ namespace dd
     inline void erase(const std::string &key)
     {
       auto hit = _data.begin();
-      if ((hit=_data.find(key))!=_data.end())
-	_data.erase(hit);
+      if ((hit = _data.find(key)) != _data.end())
+        _data.erase(hit);
     }
-    
+
     /**
      * \brief get value from data object
-     *        at this stage, type of value is unknown and the typed object 
+     *        at this stage, type of value is unknown and the typed object
      *        must be later acquired with e.g. 'get<std::string>(val)
      * @param key string unique key
      * @return variant value
      */
     inline ad_variant_type get(const std::string &key) const
     {
-      std::unordered_map<std::string,ad_variant_type>::const_iterator hit;
-      if ((hit=_data.find(key))!=_data.end())
-	return (*hit).second;
-      else return std::string(); // beware
+      std::unordered_map<std::string, ad_variant_type>::const_iterator hit;
+      if ((hit = _data.find(key)) != _data.end())
+        return (*hit).second;
+      else
+        return std::string(); // beware
     }
-    
+
     /**
      * \brief get vector container as variant value
      * @param key string unique value
@@ -175,7 +202,7 @@ namespace dd
     inline std::vector<APIData> getv(const std::string &key) const
     {
       visitor_vad vv;
-      vout v = mapbox::util::apply_visitor(vv,get(key));
+      vout v = mapbox::util::apply_visitor(vv, get(key));
       return v._vad;
     }
 
@@ -187,9 +214,9 @@ namespace dd
     inline APIData getobj(const std::string &key) const
     {
       visitor_vad vv;
-      vout v = mapbox::util::apply_visitor(vv,get(key));
+      vout v = mapbox::util::apply_visitor(vv, get(key));
       if (v._vad.empty())
-	return APIData();
+        return APIData();
       return v._vad.at(0);
     }
 
@@ -199,13 +226,14 @@ namespace dd
      * @param key string unique key to look for
      * @return APIData as recursive variant value object
      */
-    static APIData findv(const std::vector<APIData> &vad, const std::string &key)
+    static APIData findv(const std::vector<APIData> &vad,
+                         const std::string &key)
     {
       for (const APIData &v : vad)
-	{
-	  if (v.has(key))
-	    return v;
-	}
+        {
+          if (v.has(key))
+            return v;
+        }
       return APIData();
     }
 
@@ -216,21 +244,22 @@ namespace dd
      */
     inline bool has(const std::string &key) const
     {
-      std::unordered_map<std::string,ad_variant_type>::const_iterator hit;
-      if ((hit=_data.find(key))!=_data.end())
-	return true;
-      else return false;
+      std::unordered_map<std::string, ad_variant_type>::const_iterator hit;
+      if ((hit = _data.find(key)) != _data.end())
+        return true;
+      else
+        return false;
     }
 
     std::vector<std::string> list_keys() const
-      {
-	std::vector<std::string> keys;
-	for (auto kv: _data)
-	  {
-	    keys.push_back(kv.first);
-	  }
-	return keys;
-      }
+    {
+      std::vector<std::string> keys;
+      for (auto kv : _data)
+        {
+          keys.push_back(kv.first);
+        }
+      return keys;
+    }
 
     /**
      * \brief number of hosted keys at this level of the object
@@ -260,7 +289,7 @@ namespace dd
      * @param jval destination JSON value
      */
     void toJVal(JDoc &jd, JVal &jv) const;
-    
+
   public:
     /**
      * \brief render Mustache template based on this APIData object
@@ -278,7 +307,7 @@ namespace dd
       d.Accept(writer);
       std::string reststring = buffer.GetString();
       std::cout << "to jdoc=" << reststring << std::endl;*/
-      
+
       mustache::RenderTemplate(tpl, "", d, &ss);
       return ss.str();
     }
@@ -287,8 +316,9 @@ namespace dd
     {
       return _data.empty();
     }
-    
-    std::unordered_map<std::string,ad_variant_type> _data; /**< data as hashtable of variant types. */
+
+    std::unordered_map<std::string, ad_variant_type>
+        _data; /**< data as hashtable of variant types. */
   };
 
   /**
@@ -296,119 +326,148 @@ namespace dd
    */
   class visitor_rjson
   {
-  public:    
-    visitor_rjson(JDoc *jd):_jd(jd) {}
-    visitor_rjson(JDoc *jd, JVal *jv):_jd(jd),_jv(jv) {}
-    visitor_rjson(const visitor_rjson &vrj):_jd(vrj._jd),_jv(vrj._jv)
-      { _jvkey.CopyFrom(vrj._jvkey,_jd->GetAllocator()); }
-    ~visitor_rjson() {}
+  public:
+    visitor_rjson(JDoc *jd) : _jd(jd)
+    {
+    }
+    visitor_rjson(JDoc *jd, JVal *jv) : _jd(jd), _jv(jv)
+    {
+    }
+    visitor_rjson(const visitor_rjson &vrj) : _jd(vrj._jd), _jv(vrj._jv)
+    {
+      _jvkey.CopyFrom(vrj._jvkey, _jd->GetAllocator());
+    }
+    ~visitor_rjson()
+    {
+    }
 
     void set_key(const std::string &key)
     {
-      _jvkey.SetString(key.c_str(),_jd->GetAllocator());
+      _jvkey.SetString(key.c_str(), _jd->GetAllocator());
     }
 
     void operator()(const std::string &str)
     {
       if (!_jv)
-	_jd->AddMember(_jvkey,JVal().SetString(str.c_str(),_jd->GetAllocator()),_jd->GetAllocator());
-      else _jv->AddMember(_jvkey,JVal().SetString(str.c_str(),_jd->GetAllocator()),_jd->GetAllocator());
+        _jd->AddMember(_jvkey,
+                       JVal().SetString(str.c_str(), _jd->GetAllocator()),
+                       _jd->GetAllocator());
+      else
+        _jv->AddMember(_jvkey,
+                       JVal().SetString(str.c_str(), _jd->GetAllocator()),
+                       _jd->GetAllocator());
     }
     void operator()(const int &i)
     {
       if (!_jv)
-	_jd->AddMember(_jvkey,JVal(i),_jd->GetAllocator());
-      else _jv->AddMember(_jvkey,JVal(i),_jd->GetAllocator());
+        _jd->AddMember(_jvkey, JVal(i), _jd->GetAllocator());
+      else
+        _jv->AddMember(_jvkey, JVal(i), _jd->GetAllocator());
     }
     void operator()(const long int &i)
     {
       if (!_jv)
-	_jd->AddMember(_jvkey,JVal(static_cast<uint64_t>(i)),_jd->GetAllocator());
-      else _jv->AddMember(_jvkey,JVal(static_cast<uint64_t>(i)),_jd->GetAllocator());
+        _jd->AddMember(_jvkey, JVal(static_cast<uint64_t>(i)),
+                       _jd->GetAllocator());
+      else
+        _jv->AddMember(_jvkey, JVal(static_cast<uint64_t>(i)),
+                       _jd->GetAllocator());
     }
     void operator()(const long long int &i)
     {
       if (!_jv)
-	_jd->AddMember(_jvkey,JVal(static_cast<uint64_t>(i)),_jd->GetAllocator());
-      else _jv->AddMember(_jvkey,JVal(static_cast<uint64_t>(i)),_jd->GetAllocator());
+        _jd->AddMember(_jvkey, JVal(static_cast<uint64_t>(i)),
+                       _jd->GetAllocator());
+      else
+        _jv->AddMember(_jvkey, JVal(static_cast<uint64_t>(i)),
+                       _jd->GetAllocator());
     }
     void operator()(const double &d)
     {
       if (!_jv)
-	_jd->AddMember(_jvkey,JVal(d),_jd->GetAllocator());
-      else _jv->AddMember(_jvkey,JVal(d),_jd->GetAllocator());
+        _jd->AddMember(_jvkey, JVal(d), _jd->GetAllocator());
+      else
+        _jv->AddMember(_jvkey, JVal(d), _jd->GetAllocator());
     }
     void operator()(const bool &b)
     {
       if (!_jv)
-	_jd->AddMember(_jvkey,JVal(b),_jd->GetAllocator());
-      else _jv->AddMember(_jvkey,JVal(b),_jd->GetAllocator());
+        _jd->AddMember(_jvkey, JVal(b), _jd->GetAllocator());
+      else
+        _jv->AddMember(_jvkey, JVal(b), _jd->GetAllocator());
     }
     void operator()(const APIData &ad)
     {
-      JVal jv(rapidjson::kObjectType); 
-      visitor_rjson vrj(_jd,&jv);
+      JVal jv(rapidjson::kObjectType);
+      visitor_rjson vrj(_jd, &jv);
       auto hit = ad._data.begin();
-      while(hit!=ad._data.end())
-	{
-	  vrj.set_key((*hit).first);
-	  mapbox::util::apply_visitor(vrj,(*hit).second);
-	  ++hit;
-	}
+      while (hit != ad._data.end())
+        {
+          vrj.set_key((*hit).first);
+          mapbox::util::apply_visitor(vrj, (*hit).second);
+          ++hit;
+        }
       if (!_jv)
-	_jd->AddMember(_jvkey,jv,_jd->GetAllocator());
-      else _jv->AddMember(_jvkey,jv,_jd->GetAllocator());
+        _jd->AddMember(_jvkey, jv, _jd->GetAllocator());
+      else
+        _jv->AddMember(_jvkey, jv, _jd->GetAllocator());
     }
     void operator()(const std::vector<double> &vd)
     {
       JVal jarr(rapidjson::kArrayType);
-      for (size_t i=0;i<vd.size();i++)
-	{
-	  jarr.PushBack(JVal(vd.at(i)),_jd->GetAllocator());
-	}
+      for (size_t i = 0; i < vd.size(); i++)
+        {
+          jarr.PushBack(JVal(vd.at(i)), _jd->GetAllocator());
+        }
       if (!_jv)
-	_jd->AddMember(_jvkey,jarr,_jd->GetAllocator());
-      else _jv->AddMember(_jvkey,jarr,_jd->GetAllocator());
+        _jd->AddMember(_jvkey, jarr, _jd->GetAllocator());
+      else
+        _jv->AddMember(_jvkey, jarr, _jd->GetAllocator());
     }
     void operator()(const std::vector<int> &vd)
     {
       JVal jarr(rapidjson::kArrayType);
-      for (size_t i=0;i<vd.size();i++)
-	{
-	  jarr.PushBack(JVal(vd.at(i)),_jd->GetAllocator());
-	}
+      for (size_t i = 0; i < vd.size(); i++)
+        {
+          jarr.PushBack(JVal(vd.at(i)), _jd->GetAllocator());
+        }
       if (!_jv)
-	_jd->AddMember(_jvkey,jarr,_jd->GetAllocator());
-      else _jv->AddMember(_jvkey,jarr,_jd->GetAllocator());
+        _jd->AddMember(_jvkey, jarr, _jd->GetAllocator());
+      else
+        _jv->AddMember(_jvkey, jarr, _jd->GetAllocator());
     }
     void operator()(const std::vector<bool> &vd)
     {
       JVal jarr(rapidjson::kArrayType);
-      for (size_t i=0;i<vd.size();i++)
-	{
-	  jarr.PushBack(JVal(vd.at(i)),_jd->GetAllocator());
-	}
+      for (size_t i = 0; i < vd.size(); i++)
+        {
+          jarr.PushBack(JVal(vd.at(i)), _jd->GetAllocator());
+        }
       if (!_jv)
-	_jd->AddMember(_jvkey,jarr,_jd->GetAllocator());
-      else _jv->AddMember(_jvkey,jarr,_jd->GetAllocator());
+        _jd->AddMember(_jvkey, jarr, _jd->GetAllocator());
+      else
+        _jv->AddMember(_jvkey, jarr, _jd->GetAllocator());
     }
     void operator()(const std::vector<std::string> &vs)
     {
       JVal jarr(rapidjson::kArrayType);
-      for (size_t i=0;i<vs.size();i++)
-	{
-	  jarr.PushBack(JVal().SetString(vs.at(i).c_str(),_jd->GetAllocator()),_jd->GetAllocator());
-	}
+      for (size_t i = 0; i < vs.size(); i++)
+        {
+          jarr.PushBack(
+              JVal().SetString(vs.at(i).c_str(), _jd->GetAllocator()),
+              _jd->GetAllocator());
+        }
       if (!_jv)
-	_jd->AddMember(_jvkey,jarr,_jd->GetAllocator());
-      else _jv->AddMember(_jvkey,jarr,_jd->GetAllocator());
+        _jd->AddMember(_jvkey, jarr, _jd->GetAllocator());
+      else
+        _jv->AddMember(_jvkey, jarr, _jd->GetAllocator());
     }
     void operator()(const std::vector<cv::Mat> &vcv)
     {
       (void)vcv;
       // Not Implemented
     }
-    void operator()(const std::vector<std::pair<int,int>> &vpi)
+    void operator()(const std::vector<std::pair<int, int>> &vpi)
     {
       (void)vpi;
       // Not Implemented
@@ -417,36 +476,37 @@ namespace dd
     {
       JVal jov(rapidjson::kObjectType);
       jov = JVal(rapidjson::kArrayType);
-      for (size_t i=0;i<vad.size();i++)
-	{
-	  JVal jv(rapidjson::kObjectType); 
-	  visitor_rjson vrj(_jd,&jv);
-	  APIData ad = vad.at(i);
-	  auto hit = ad._data.begin();
-	  while(hit!=ad._data.end())
-	    {
-	      vrj.set_key((*hit).first);
-	      mapbox::util::apply_visitor(vrj,(*hit).second);
-	      ++hit;
-	    }
-	  jov.PushBack(jv,_jd->GetAllocator());
-	}
+      for (size_t i = 0; i < vad.size(); i++)
+        {
+          JVal jv(rapidjson::kObjectType);
+          visitor_rjson vrj(_jd, &jv);
+          APIData ad = vad.at(i);
+          auto hit = ad._data.begin();
+          while (hit != ad._data.end())
+            {
+              vrj.set_key((*hit).first);
+              mapbox::util::apply_visitor(vrj, (*hit).second);
+              ++hit;
+            }
+          jov.PushBack(jv, _jd->GetAllocator());
+        }
       if (!_jv)
-	_jd->AddMember(_jvkey,jov,_jd->GetAllocator());
-      else _jv->AddMember(_jvkey,jov,_jd->GetAllocator());
+        _jd->AddMember(_jvkey, jov, _jd->GetAllocator());
+      else
+        _jv->AddMember(_jvkey, jov, _jd->GetAllocator());
     }
 
     /*template<typename T>
       void operator() (T &t)
       {
-	process(t);
-	}*/
+        process(t);
+        }*/
 
     JVal _jvkey;
     JDoc *_jd = nullptr;
     JVal *_jv = nullptr;
   };
-  
+
 }
 
 #endif

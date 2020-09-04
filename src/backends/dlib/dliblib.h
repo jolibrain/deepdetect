@@ -29,43 +29,48 @@
 
 #include <string>
 
-namespace dd {
-    template<class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel=DlibModel>
-    class DlibLib : public MLLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel> {
-    public:
-        DlibLib(const DlibModel &tfmodel);
+namespace dd
+{
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+            class TMLModel = DlibModel>
+  class DlibLib : public MLLib<TInputConnectorStrategy,
+                               TOutputConnectorStrategy, TMLModel>
+  {
+  public:
+    DlibLib(const DlibModel &tfmodel);
 
-        DlibLib(DlibLib &&tl) noexcept;
+    DlibLib(DlibLib &&tl) noexcept;
 
-        ~DlibLib();
+    ~DlibLib();
 
-        /*- from mllib -*/
-        void init_mllib(const APIData &ad);
+    /*- from mllib -*/
+    void init_mllib(const APIData &ad);
 
-        void clear_mllib(const APIData &d);
+    void clear_mllib(const APIData &d);
 
-        int train(const APIData &ad, APIData &out);
+    int train(const APIData &ad, APIData &out);
 
-        void test(const APIData &ad, APIData &out);
+    void test(const APIData &ad, APIData &out);
 
-        int predict(const APIData &ad, APIData &out);
+    int predict(const APIData &ad, APIData &out);
 
+  public:
+    // general parameters
 
-    public:
-        // general parameters
-
-        std::string _net_type; // model type
-        // model, depending on type specified
-        net_type_objDetector _objDetector;
-        net_type_faceDetector _faceDetector;
-        net_type_faceFeatureExtractor _faceFeatureExtractor;
-        dlib::shape_predictor _shapePredictor;
-        int _chip_size = 150;
-        double _padding = 0.25;
-        // whether the model has been loaded yet
-        bool _modelLoaded = false;
-        std::mutex _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as net is not re-instantiated. Use batches instead. */
-    };
+    std::string _net_type; // model type
+    // model, depending on type specified
+    net_type_objDetector _objDetector;
+    net_type_faceDetector _faceDetector;
+    net_type_faceFeatureExtractor _faceFeatureExtractor;
+    dlib::shape_predictor _shapePredictor;
+    int _chip_size = 150;
+    double _padding = 0.25;
+    // whether the model has been loaded yet
+    bool _modelLoaded = false;
+    std::mutex
+        _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as
+                       net is not re-instantiated. Use batches instead. */
+  };
 
 }
 
