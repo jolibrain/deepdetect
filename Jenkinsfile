@@ -21,10 +21,13 @@ ctest -V -E "http" '''
         cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
       }
     }
-    stage('Notify Chat') {
-      steps {
-        rocketSend(avatar: 'jenkins', channel: 'build', message: 'Build Completed')
+  }
+  post {
+      success {
+          rocketSend(channel: 'build', message: 'Build succeed')
       }
-    }
+      failure {
+          rocketSend(channel: 'build', message: 'Build failed')
+      }
   }
 }
