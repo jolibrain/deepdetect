@@ -198,7 +198,7 @@ namespace dd
         TorchDataset _test_dataset;
         std::string _input_format;
 
-		int _ntargets = -1;
+		unsigned int _ntargets = 0;
 
         std::vector<int64_t> _lengths;/**< length of each sentence with txt connector. */
         std::shared_ptr<spdlog::logger> _tilogger;
@@ -339,8 +339,8 @@ namespace dd
 
     public:
         /** width of the input tensor */
-        int _width = 512;
-		int _height = 0;
+        unsigned int _width = 512;
+		unsigned int _height = 0;
         std::mt19937 _rng;
         /// token id to vocabulary word
         std::map<int, std::string> _inv_vocab;
@@ -387,7 +387,7 @@ namespace dd
 		void fillup_parameters(const APIData &ad_input)
 		{
 		  CSVTSInputFileConn::fillup_parameters(ad_input);
-		  if (_ntargets == -1 && ad_input.has("label"))
+		  if (_ntargets == 0 && ad_input.has("label"))
 			{
 			  try
 				{

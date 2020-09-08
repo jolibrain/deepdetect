@@ -91,8 +91,8 @@ namespace dd
         {
           _scale = true;
         }
-      CSVInputFileConn::fillup_parameters(ad_input);
       deserialize_bounds();
+      CSVInputFileConn::fillup_parameters(ad_input);
 
       // timeout
       this->set_timeout(ad_input);

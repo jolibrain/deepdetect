@@ -59,7 +59,8 @@ namespace dd
 	}
 	Graph(std::string protofilename) : CaffeGraphInput(protofilename)
 	{
-	  finalize();
+	  // we should no finalize in case input dims has not been specified
+	  //	  finalize();
 	}
   };
 

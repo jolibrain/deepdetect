@@ -95,7 +95,7 @@ TEST(graphapi, simple_lstm_train)
 	double l9;
 
 	auto tstart = std::chrono::system_clock::now();
-	for (unsigned int i = 0; i< std::stoi(iterations_lstm_cpu); ++i)
+	for (int i = 0; i< std::stoi(iterations_lstm_cpu); ++i)
 		{
 		  output = ctt.forward(input);
 			loss = torch::l1_loss(output,target);
@@ -149,7 +149,7 @@ TEST(graphapi, simple_lstm_train_gpu)
 	double l9;
 
 	tstart = std::chrono::system_clock::now();
-	for (unsigned int i = 0; i< std::stoi(iterations_lstm_gpu); ++i)
+	for (int i = 0; i< std::stoi(iterations_lstm_gpu); ++i)
 		{
 			output = ctt.forward(input);
 			loss = torch::l1_loss(output,target);
@@ -223,7 +223,7 @@ TEST(graphapi, intermediate_lstm_train)
 									torch::data::DataLoaderOptions(100));
 
 	auto tstart = std::chrono::system_clock::now();
-	for (unsigned int i = 0; i< std::stoi(iterations_lstm_cpu); ++i)
+	for (int i = 0; i< std::stoi(iterations_lstm_cpu); ++i)
 	  {
 		int nbatches = 0;
 		double train_loss = 0;
@@ -302,7 +302,7 @@ TEST(graphapi, complete_lstm_train)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200,jd["status"]["code"]);
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
-  ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_19",uri);
+  ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_998",uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["out"][0].GetDouble() >= -1.0);
 
@@ -362,7 +362,7 @@ TEST(graphapi, complete_lstm_train_gpu)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200,jd["status"]["code"]);
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
-  ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_19",uri);
+  ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_998",uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["out"][0].GetDouble() >= -1.0);
 

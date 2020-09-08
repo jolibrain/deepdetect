@@ -579,7 +579,7 @@ void TxtTorchInputFileConn::fill_dataset(TorchDataset &dataset,
             mask_tensor, at::IntList{0, padding_size}, 0);
         token_type_ids_tensor = torch::constant_pad_nd(
             token_type_ids_tensor, at::IntList{0, padding_size}, 0);
-        at::Tensor position_ids = torch::arange(_width, at::kLong);
+        at::Tensor position_ids = torch::arange((int)_width, at::kLong);
 
         std::vector<Tensor> target_vec;
         int target_val = static_cast<int>(tow->_target);
@@ -648,9 +648,11 @@ void CSVTSTorchInputFileConn::transform(const APIData &ad)
 		}
 	else
 		{
-			fill_dataset(_dataset, false);
-			_csvtsdata.clear();
-			_csvtsdata_test.clear();
+          // in test mode, prevent connector to split serie in training chunks
+          _timesteps = _csvtsdata[0].size();
+		  fill_dataset(_dataset, false);
+          _csvtsdata.clear();
+          _csvtsdata_test.clear();
 		}
 }
 

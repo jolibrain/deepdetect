@@ -403,7 +403,7 @@ namespace dd
 		NetCaffe<NetInputCaffe<TInputConnectorStrategy>,NetLayersCaffeRecurrent,NetLossCaffe> netcaffe(&net_param,&dnet_param,this->_logger);
 		netcaffe._nic.configure_inputs(ad,inputc);
 		// add ntargets to ad
-		const_cast<APIData&>(ad).add("ntargets",inputc._ntargets);
+		const_cast<APIData&>(ad).add("ntargets",(int) inputc._ntargets);
 		netcaffe._nlac.configure_net(ad);
 		// will be changed at predict time
 		// small default for debug
@@ -514,12 +514,15 @@ namespace dd
         try
         {
             inputc.transform(ad);
-			if (_module._native)
+			if (_module._graph)
 			  {
 				auto batchoptional = inputc._dataset.get_batch({1});
 				TorchBatch batch = batchoptional.value();
 				torch::Tensor td = batch.data[0];
 				_module._graph->finalize(td.sizes());
+                // reload params after finalize
+                if (!this->_mlmodel._traced.empty())
+                  torch::load(_module._graph, this->_mlmodel._traced, _device);
 				_module._graph->to(_device);
 			  }
 			if (_module._native)
@@ -860,6 +863,15 @@ namespace dd
             inputc.transform(ad);
 			if (_module._graph)
 			  {
+				auto batchoptional = inputc._dataset.get_batch({1});
+				TorchBatch batch = batchoptional.value();
+				torch::Tensor td = batch.data[0];
+                _module._graph->finalize(td.sizes());
+                // reload params after finalize
+                if (!this->_mlmodel._traced.empty())
+                  torch::load(_module._graph, this->_mlmodel._traced, _device);
+                _module._graph->to(_device);
+
 				if (ad.getobj("parameters").getobj("input").has("continuation") &&
 					ad.getobj("parameters").getobj("input").get("continuation").get<bool>())
 				  {
@@ -974,7 +986,7 @@ namespace dd
 					results_ad.add("loss", 0.0);
 					results_ad.add("cats", cats);
 					results_ad.add("probs", probs);
-					results_ad.add("nclasses", _nclasses);
+					results_ad.add("nclasses", (int)_nclasses);
 
 					results_ads.push_back(results_ad);
 				  }
@@ -1136,7 +1148,7 @@ namespace dd
 		if (_timeserie)
 		  {
 			ad_res.add("timeserie", true);
-			ad_res.add("timeseries", this->_inputc._ntargets);
+			ad_res.add("timeseries", (int) this->_inputc._ntargets);
 		  }
 		else
 		  {

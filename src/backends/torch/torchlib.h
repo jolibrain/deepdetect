@@ -105,7 +105,7 @@ namespace dd
 	void configure_recurrent_template(const APIData &ad, TInputConnectorStrategy &inputc, caffe::NetParameter &net_param);
 
     public:
-        int _nclasses = 0;
+        unsigned int _nclasses = 0;
         std::string _template;
         bool _finetuning = false;
         torch::Device _device = torch::Device("cpu");

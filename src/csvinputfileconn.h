@@ -174,6 +174,7 @@ namespace dd
 		  throw InputConnectorBadParamException("wrong type for label parameter");
 		}
 	    }
+	  _label_pos.clear();
 	  for (size_t l=0;l<_label.size();l++)
 	    {
 	      _label_pos.push_back(-1);
