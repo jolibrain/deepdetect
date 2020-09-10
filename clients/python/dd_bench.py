@@ -2,7 +2,7 @@
 DeepDetect benchmark tool
 
 Licence:
-Copyright (c) 2017 Emmanuel Benazera
+Copyright (c) 2017 Emmanuel Benazationa
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -37,6 +37,7 @@ parser.add_argument('--sname',help='service name')
 parser.add_argument('--img-width',help='image width',type=int,default=224)
 parser.add_argument('--img-height',help='image height',type=int,default=224)
 parser.add_argument('--bw',help='whether images are bw',action='store_true')
+parser.add_argument('--histogram-equalization', '--eqhist', help='whether we apply an histogram equalization to images', action='store_true')
 parser.add_argument('--gpu',help='whether to bench GPU',action='store_true')
 parser.add_argument('--gpuid',help='gpu id to use',type=int,default=0)
 parser.add_argument('--cpu',help='whether to bench CPU',action='store_true')
@@ -75,7 +76,13 @@ def service_create(bs):
     description = 'image classification service'
     mllib = args.mllib
     model = {'repository':args.create}
-    parameters_input = {'connector':'image','width':args.img_width,'height':args.img_height,'bw':args.bw}
+    parameters_input = {
+        'connector':'image',
+        'width':args.img_width,
+        'height':args.img_height,
+        'bw':args.bw,
+        'histogram_equalization': args.histogram_equalization
+    }
     if args.segmentation:
       parameters_input['segmentation'] = True
     if args.dla:
