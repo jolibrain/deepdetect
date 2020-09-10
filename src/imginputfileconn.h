@@ -33,6 +33,10 @@
 #define CV_LOAD_IMAGE_UNCHANGED cv::IMREAD_UNCHANGED
 #define CV_BGR2RGB cv::COLOR_BGR2RGB
 #define CV_BGR2GRAY cv::COLOR_BGR2GRAY
+#define CV_GRAY2RGB cv::COLOR_GRAY2RGB
+#define CV_YCrCb2RGB cv::COLOR_YCrCb2RGB
+#define CV_YCrCb2BGR cv::COLOR_YCrCb2BGR
+#define CV_BGR2YCrCb cv::COLOR_BGR2YCrCb
 #define CV_INTER_CUBIC cv::INTER_CUBIC
 #endif
 #include "ext/base64/base64.h"
@@ -94,16 +98,75 @@ namespace dd
           d_src.upload(src);
           cv::cuda::GpuMat d_dst;
           cv::cuda::resize(d_src, d_dst, cvsize, fx, fy, select_cv_interp());
-          if (_rgb)
+
+          if (_histogram_equalization)
+            {
+              if (_bw)
+                {
+                  cv::cuda::equalizeHist(d_dst, d_dst);
+                  if (_rgb)
+                    cv::cuda::cvtColor(d_dst, d_dst, CV_GRAY2RGB);
+                }
+              else
+                {
+                  // We don't apply equalizeHist on each BGR channels to keep
+                  // the color balance of the image. equalizeHist(V) of HSV can
+                  // works too, the result is almost the same
+                  cv::cuda::cvtColor(d_dst, d_dst, CV_BGR2YCrCb);
+                  std::vector<cv::cuda::GpuMat> vec_channels;
+                  cv::cuda::split(d_dst, vec_channels);
+                  cv::cuda::equalizeHist(vec_channels[0], vec_channels[0]);
+                  cv::cuda::merge(vec_channels, d_dst);
+                  if (_rgb)
+                    cv::cuda::cvtColor(d_dst, d_dst, CV_YCrCb2RGB);
+                  else
+                    cv::cuda::cvtColor(d_dst, d_dst, CV_YCrCb2BGR);
+                }
+            }
+          else if (_rgb)
+            {
+              if (_bw)
+                cv::cuda::cvtColor(d_dst, d_dst, CV_GRAY2RGB);
+              else:
             cv::cuda::cvtColor(d_dst, d_dst, CV_BGR2RGB);
+            }
           d_dst.download(dst);
         }
       else
 #endif
         {
           cv::resize(src, dst, cvsize, fx, fy, select_cv_interp());
-          if (_rgb)
-            cv::cvtColor(dst, dst, CV_BGR2RGB);
+          if (_histogram_equalization)
+            {
+              if (_bw)
+                {
+                  cv::equalizeHist(dst, dst);
+                  if (_rgb)
+                    cv::cvtColor(dst, dst, CV_GRAY2RGB);
+                }
+              else
+                {
+                  // We don't apply equalizeHist on each BGR channels to keep
+                  // the color balance of the image. equalizeHist(V) of HSV can
+                  // works too, the result is almost the same
+                  cv::cvtColor(dst, dst, CV_BGR2YCrCb);
+                  std::vector<cv::Mat> vec_channels;
+                  cv::split(dst, vec_channels);
+                  cv::equalizeHist(vec_channels[0], vec_channels[0]);
+                  cv::merge(vec_channels, dst);
+                  if (_rgb)
+                    cv::cvtColor(dst, dst, CV_YCrCb2RGB);
+                  else
+                    cv::cvtColor(dst, dst, CV_YCrCb2BGR);
+                }
+            }
+          else if (_rgb)
+            {
+              if (_bw)
+                cv::cvtColor(dst, dst, CV_GRAY2RGB);
+              else
+                cv::cvtColor(dst, dst, CV_BGR2RGB);
+            }
         }
     }
 
@@ -425,6 +488,7 @@ namespace dd
     std::vector<std::pair<int, int>> _imgs_size;
     bool _bw = false;
     bool _rgb = false;
+    bool _histogram_equalization = false;
     bool _in_mem = false;
     bool _unchanged_data = false;
     std::vector<int> _labels;
@@ -507,6 +571,8 @@ namespace dd
         _bw = ad.get("bw").get<bool>();
       if (ad.has("rgb"))
         _rgb = ad.get("rgb").get<bool>();
+      if (ad.has("histogram_equalization"))
+        _histogram_equalization = ad.get("histogram_equalization").get<bool>();
       if (ad.has("unchanged_data"))
         _unchanged_data = ad.get("unchanged_data").get<bool>();
       if (ad.has("shuffle"))
@@ -662,6 +728,7 @@ namespace dd
           DataEl<DDImg> dimg(this->_input_timeout);
           dimg._ctype._bw = _bw;
           dimg._ctype._rgb = _rgb;
+          dimg._ctype._histogram_equalization = _histogram_equalization;
           dimg._ctype._unchanged_data = _unchanged_data;
           dimg._ctype._width = _width;
           dimg._ctype._height = _height;
@@ -805,8 +872,10 @@ namespace dd
     int _height = 224;
     int _crop_width = 0;
     int _crop_height = 0;
-    bool _bw = false;             /**< whether to convert to black & white. */
-    bool _rgb = false;            /**< whether to convert to rgb. */
+    bool _bw = false;  /**< whether to convert to black & white. */
+    bool _rgb = false; /**< whether to convert to rgb. */
+    bool _histogram_equalization
+        = false;                  /**< whether to apply histogram equalizer. */
     bool _unchanged_data = false; /**< IMREAD_UNCHANGED flag. */
     double _test_split = 0.0;     /**< auto-split of the dataset. */
     int _seed = -1;               /**< shuffling seed. */
