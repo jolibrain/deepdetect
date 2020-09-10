@@ -1,0 +1,227 @@
+name: "recurrent"
+layer {
+  name: "inputl"
+  type: "MemoryData"
+  top: "data"
+  top: "label"
+  include {
+    phase: TRAIN
+  }
+  memory_data_param {
+    batch_size: 1
+    channels: 50
+    height: 9
+    width: 1
+  }
+}
+layer {
+  name: "inputl"
+  type: "MemoryData"
+  top: "data"
+  top: "label"
+  include {
+    phase: TEST
+  }
+  memory_data_param {
+    batch_size: 1
+    channels: 50
+    height: 9
+    width: 1
+  }
+}
+layer {
+  name: "permute_T_N_data"
+  type: "Permute"
+  bottom: "data"
+  top: "permuted_data"
+  permute_param {
+    order: 1
+    order: 0
+    order: 2
+    order: 3
+  }
+}
+layer {
+  name: "slice_timeseries"
+  type: "Slice"
+  bottom: "permuted_data"
+  top: "cont_seq_unshaped"
+  top: "target_seq"
+  top: "input_seq"
+  slice_param {
+    slice_point: 1
+    slice_point: 4
+    axis: 2
+  }
+}
+layer {
+  name: "shape_cont_seq"
+  type: "Flatten"
+  bottom: "cont_seq_unshaped"
+  top: "cont_seq"
+  flatten_param {
+    axis: 1
+  }
+}
+layer {
+  name: "LSTM0"
+  type: "LSTM"
+  bottom: "input_seq"
+  bottom: "cont_seq"
+  top: "LSTM_0"
+  recurrent_param {
+    num_output: 50
+    weight_filler {
+      type: "uniform"
+      min: -0.14142136
+      max: 0.14142136
+    }
+    bias_filler {
+      type: "uniform"
+      min: -0.14142136
+      max: 0.14142136
+    }
+  }
+}
+layer {
+  name: "LSTM1"
+  type: "LSTM"
+  bottom: "LSTM_0"
+  bottom: "cont_seq"
+  top: "LSTM_1"
+  recurrent_param {
+    num_output: 50
+    weight_filler {
+      type: "uniform"
+      min: -0.14142136
+      max: 0.14142136
+    }
+    bias_filler {
+      type: "uniform"
+      min: -0.14142136
+      max: 0.14142136
+    }
+  }
+}
+layer {
+  name: "affine_2"
+  type: "InnerProduct"
+  bottom: "LSTM_1"
+  top: "rnn_pred"
+  inner_product_param {
+    num_output: 3
+    weight_filler {
+      type: "uniform"
+      min: -0.14142136
+      max: 0.14142136
+    }
+    bias_filler {
+      type: "uniform"
+      min: -0.14142136
+      max: 0.14142136
+    }
+    axis: 2
+  }
+}
+layer {
+  name: "permute_T_N_rnn_pred"
+  type: "Permute"
+  bottom: "rnn_pred"
+  top: "permuted_rnn_pred"
+  include {
+    phase: TRAIN
+  }
+  permute_param {
+    order: 1
+    order: 0
+    order: 2
+  }
+}
+layer {
+  name: "permute_T_N_target_seq"
+  type: "Permute"
+  bottom: "target_seq"
+  top: "permuted_target_seq"
+  include {
+    phase: TRAIN
+  }
+  permute_param {
+    order: 1
+    order: 0
+    order: 2
+  }
+}
+layer {
+  name: "Target_Seq_Dim"
+  type: "Flatten"
+  bottom: "permuted_target_seq"
+  top: "permuted_target_seq_flattened"
+  include {
+    phase: TRAIN
+  }
+  flatten_param {
+    axis: 2
+  }
+}
+layer {
+  name: "Loss_Sum_Layer"
+  type: "Eltwise"
+  bottom: "permuted_rnn_pred"
+  bottom: "permuted_target_seq_flattened"
+  top: "difference"
+  include {
+    phase: TRAIN
+  }
+  eltwise_param {
+    operation: SUM
+    coeff: 1
+    coeff: -1
+  }
+}
+layer {
+  name: "Loss_Reduction"
+  type: "Reduction"
+  bottom: "difference"
+  top: "summed_difference"
+  include {
+    phase: TRAIN
+  }
+  reduction_param {
+    operation: ASUM
+    axis: 1
+  }
+}
+layer {
+  name: "Loss_Scale"
+  type: "Scale"
+  bottom: "summed_difference"
+  top: "scaled_difference"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  include {
+    phase: TRAIN
+  }
+  scale_param {
+    axis: 0
+    filler {
+      type: "constant"
+      value: 1
+    }
+    bias_term: false
+  }
+}
+layer {
+  name: "Loss_Reduction_Batch"
+  type: "Reduction"
+  bottom: "scaled_difference"
+  top: "loss"
+  loss_weight: 1
+  include {
+    phase: TRAIN
+  }
+  reduction_param {
+    operation: SUM
+  }
+}

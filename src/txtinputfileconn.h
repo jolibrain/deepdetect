@@ -248,6 +248,7 @@ namespace dd
     TxtInputFileConn(const TxtInputFileConn &i)
       :InputConnectorStrategy(i),
       _iterator(i._iterator),
+	  _test_split(i._test_split),
       _count(i._count),
       _tfidf(i._tfidf),
       _min_count(i._min_count),
@@ -266,7 +267,6 @@ namespace dd
       _vocab(i._vocab),
       _vocab_sep(i._vocab_sep),
       _wordpiece_tokenizer(i._wordpiece_tokenizer),
-      _test_split(i._test_split),
       _ndbed(i._ndbed)
       {
         _wordpiece_tokenizer._ctfc = this;

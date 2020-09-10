@@ -456,7 +456,42 @@ namespace dd
 
   }
 
+  template <class TInputConnectorStrategy>
+  void configure_recurrent_template(const APIData &ad,
+                                    TInputConnectorStrategy &inputc,
+                                    caffe::NetParameter &net_param,
+                                    std::shared_ptr<spdlog::logger> &logger)
+  {
+    caffe::NetParameter dnet_param;
+    NetCaffe<NetInputCaffe<TInputConnectorStrategy>,NetLayersCaffeRecurrent,NetLossCaffe> netcaffe(&net_param,&dnet_param,logger);
+    netcaffe._nic.configure_inputs(ad,inputc);
+    // add ntargets to ad
+    const_cast<APIData&>(ad).add("ntargets",(int)inputc._ntargets);
+    netcaffe._nlac.configure_net(ad);
+    // will be changed at predict time
+    // small default for debug
+    net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(10);
+
+  }
+
+
+#ifdef USE_CAFFE
   template class NetCaffe<NetInputCaffe<CSVTSCaffeInputFileConn>,NetLayersCaffeRecurrent,NetLossCaffe>;
+#endif
+#ifdef USE_TORCH
+  template void configure_recurrent_template<CSVTSTorchInputFileConn>(const APIData &ad,
+                                                                      CSVTSTorchInputFileConn &inputc,
+                                                                      caffe::NetParameter &net_param,
+                                                                      std::shared_ptr<spdlog::logger> &logger);
+  template void configure_recurrent_template<ImgTorchInputFileConn>(const APIData &ad,
+                                                                      ImgTorchInputFileConn &inputc,
+                                                                      caffe::NetParameter &net_param,
+                                                                      std::shared_ptr<spdlog::logger> &logger);
+  template void configure_recurrent_template<TxtTorchInputFileConn>(const APIData &ad,
+                                                                      TxtTorchInputFileConn &inputc,
+                                                                      caffe::NetParameter &net_param,
+                                                                      std::shared_ptr<spdlog::logger> &logger);
+#endif
   // template class NetCaffe<NetInputCaffe<ImgCaffeInputFileConn>,NetLayersCaffeRecurrent,NetLossCaffe>;
   // template class NetCaffe<NetInputCaffe<CSVCaffeInputFileConn>,NetLayersCaffeRecurrent,NetLossCaffe>;
   // template class NetCaffe<NetInputCaffe<TxtCaffeInputFileConn>,NetLayersCaffeRecurrent,NetLossCaffe>;
