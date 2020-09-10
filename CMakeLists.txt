@@ -945,6 +945,7 @@ endif()
 
 # main library, main & tests
 include_directories ("${PROJECT_SOURCE_DIR}/src")
+include_directories(${CMAKE_BINARY_DIR}/src)
 add_subdirectory (src)
 
 # Flags used by the subdirectories

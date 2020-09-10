@@ -251,6 +251,7 @@ namespace dd
       }
   }
 
+#ifdef USE_TORCH
   template <>
   void NetInputCaffe<ImgTorchInputFileConn>::configure_inputs(
       const APIData &ad_mllib, const ImgTorchInputFileConn &inputc)
@@ -284,6 +285,7 @@ namespace dd
     mdparam->set_height(height);
     mdparam->set_width(width);
   }
+#endif
 
   template <class TInputCaffe>
   void NetInputCaffe<TInputCaffe>::add_embed(caffe::NetParameter *net_param,
