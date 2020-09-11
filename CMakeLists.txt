@@ -1033,7 +1033,7 @@ add_custom_target(
         ${ALL_SOURCE_FILES}
 )
 
-option(INSTALL_GIT_HOOKS "install client side git hook" ON)
+option(INSTALL_GIT_HOOKS "install client side git hook" OFF)
 if (INSTALL_GIT_HOOKS)
     configure_file(${CMAKE_CURRENT_SOURCE_DIR}/tools/git-pre-commit-hook
                    ${CMAKE_CURRENT_SOURCE_DIR}/.git/hooks/pre-commit @ONLY)
