@@ -725,7 +725,7 @@ namespace dd
             at::Tensor lst = torch::stack(label_sequence);
             dataset.add_batch({ dst }, { lst });
           }
-        if (dv.rem != 0)
+        if (dv.rem != 0 && seq.size() >= _timesteps)
           {
             std::vector<at::Tensor> data_sequence;
             std::vector<at::Tensor> label_sequence;
