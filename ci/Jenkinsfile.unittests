@@ -13,7 +13,10 @@ cmake .. -DBUILD_TESTS=ON -DUSE_CUDNN=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_
     }
     stage('Check codestyle') {
       steps {
-        sh 'make clang-format-check'
+        sh '''
+cd build
+make clang-format-check
+'''
       }
     }
 
@@ -32,8 +35,7 @@ touch build/CMakeFiles/pytorch-complete
       steps {
         sh '''
 export PATH="/usr/lib/ccache/:$PATH"
-make clang-format-check
-
+cd build
 make -j24
 ccache -s
 '''
