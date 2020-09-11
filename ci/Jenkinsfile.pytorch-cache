@@ -20,11 +20,6 @@ ccache -s
         sh 'tar -cvf pytorch-${GIT_COMMIT}.tar build/pytorch'
       }
     }
-    stage('cleanup') {
-      steps {
-        cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenUnstable: true, cleanupMatrixParent: true)
-      }
-    }
   }
   post {
       success {
@@ -33,6 +28,9 @@ ccache -s
       }
       unsuccessful {
           rocketSend(channel: 'build', message: 'Build failed')
+      }
+      always {
+        cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
       }
   }
 }

@@ -21,9 +21,6 @@ ctest -V -E "http" '''
       }
     }
     stage('cleanup') {
-      steps {
-        cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
-      }
     }
   }
   post {
@@ -32,6 +29,9 @@ ctest -V -E "http" '''
       }
       unsuccessful {
           rocketSend(channel: 'build', message: 'Build failed')
+      }
+      always {
+        cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
       }
   }
 }
