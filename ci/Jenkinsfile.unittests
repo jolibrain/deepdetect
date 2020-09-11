@@ -1,14 +1,37 @@
 pipeline {
   agent any
   stages {
-    stage('Build GPU') {
+    stage('Configure') {
       steps {
         sh '''
 export PATH="/usr/lib/ccache/:$PATH"
 mkdir -p build
 cd build
 cmake .. -DBUILD_TESTS=ON -DUSE_CUDNN=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_XGBOOST=ON -DUSE_TORCH=ON -DUSE_NCNN=ON -DUSE_TENSORRT=ON -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61"
+
+    stage('Check codestyle') {
+      steps {
+        sh 'make clang-format-check'
+      }
+    }
+
+    stage('Installing prebuilt pytorch') {
+      steps {
+         copyArtifacts(projectName: 'deepdetect-pytorch');
+        sh '''
+tar -xf pytorch-*.tar
+rm -f pytorch-*.tar
+touch build/CMakeFiles/pytorch-complete
+'''
+      }
+    }
+
+    stage('Build GPU') {
+      steps {
+        sh '''
+export PATH="/usr/lib/ccache/:$PATH"
 make clang-format-check
+
 make -j24
 ccache -s
 '''
