@@ -39,27 +39,27 @@ namespace dd
    * \brief main API class, built on top of Services
    */
   class APIStrategy : public Services
+  {
+  public:
+    APIStrategy()
     {
-    public:
-      APIStrategy()
-	{
 #ifdef USE_DD_SYSLOG
-	  _logger = spdlog::syslog_logger("api");
+      _logger = spdlog::syslog_logger("api");
 #else
-	  _logger = spdlog::stdout_logger_mt("api");
+      _logger = spdlog::stdout_logger_mt("api");
 #endif
-	};
-      ~APIStrategy()
-	{
-	  spdlog::drop("api");
-	}
-      
-      /**
-       * \brief handling of command line parameters
-       */
-      int boot(int argc, char *argv[]);
-      std::shared_ptr<spdlog::logger> _logger; /**< api logger. */
     };
+    ~APIStrategy()
+    {
+      spdlog::drop("api");
+    }
+
+    /**
+     * \brief handling of command line parameters
+     */
+    int boot(int argc, char *argv[]);
+    std::shared_ptr<spdlog::logger> _logger; /**< api logger. */
+  };
 }
 
 #endif

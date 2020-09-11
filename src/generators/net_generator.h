@@ -28,45 +28,62 @@ namespace dd
 {
 
   template <class TNetInput, class TNetLayers, class TNetLoss>
-    class NetGenerator
+  class NetGenerator
   {
   public:
-    NetGenerator() {}
-    ~NetGenerator() {}
+    NetGenerator()
+    {
+    }
+    ~NetGenerator()
+    {
+    }
   };
 
-  template <class TInputConnectorStrategy>
-    class NetInput
+  template <class TInputConnectorStrategy> class NetInput
   {
   public:
-    NetInput() {}
-    ~NetInput() {}
-    
+    NetInput()
+    {
+    }
+    ~NetInput()
+    {
+    }
+
     void configure_inputs(const APIData &ad_input,
-			  const TInputConnectorStrategy &inputc) {}
+                          const TInputConnectorStrategy &inputc)
+    {
+    }
   };
 
   class NetLayers
   {
   public:
-    NetLayers() {}
-    ~NetLayers() {}
+    NetLayers()
+    {
+    }
+    ~NetLayers()
+    {
+    }
 
-    //void add_basic_block();
+    // void add_basic_block();
     void configure_net(const APIData &ad_mllib);
 
-    //TODO: basic layers, e.g. conv, etc ?
+    // TODO: basic layers, e.g. conv, etc ?
   };
 
   class NetLoss
   {
   public:
-    NetLoss() {}
-    ~NetLoss() {}
+    NetLoss()
+    {
+    }
+    ~NetLoss()
+    {
+    }
 
-    //TODO
+    // TODO
   };
-  
+
 }
 
 #endif

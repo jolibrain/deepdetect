@@ -27,14 +27,14 @@
 namespace dd
 {
   class CommandLineAPI : public APIStrategy
-    {
-    public:
-      CommandLineAPI();
-      ~CommandLineAPI();
-      
-      int boot(int argc, char *argv[]);
-    };
-  
+  {
+  public:
+    CommandLineAPI();
+    ~CommandLineAPI();
+
+    int boot(int argc, char *argv[]);
+  };
+
 }
 
 #endif

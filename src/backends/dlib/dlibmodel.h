@@ -27,27 +27,34 @@
 #include <spdlog/spdlog.h>
 #include <string>
 
-namespace dd {
-    class DlibModel : public MLModel {
-    public:
-        DlibModel() : MLModel() {}
+namespace dd
+{
+  class DlibModel : public MLModel
+  {
+  public:
+    DlibModel() : MLModel()
+    {
+    }
 
-        DlibModel(const APIData &ad, APIData &adg,
-		  const std::shared_ptr<spdlog::logger> &logger);
+    DlibModel(const APIData &ad, APIData &adg,
+              const std::shared_ptr<spdlog::logger> &logger);
 
-        DlibModel(const std::string &repo)
-                : MLModel(repo) {}
+    DlibModel(const std::string &repo) : MLModel(repo)
+    {
+    }
 
-        ~DlibModel() {}
+    ~DlibModel()
+    {
+    }
 
-        int read_from_repository(const std::string &repo,
-                                 const std::shared_ptr<spdlog::logger> &logger);
+    int read_from_repository(const std::string &repo,
+                             const std::shared_ptr<spdlog::logger> &logger);
 
-        std::string _modelName; // Name of the graph
-        std::string _modelRepo;
-        bool _hasShapePredictor = false;
-        std::string _shapePredictorName;
-    };
+    std::string _modelName; // Name of the graph
+    std::string _modelRepo;
+    bool _hasShapePredictor = false;
+    std::string _shapePredictorName;
+  };
 
 }
 

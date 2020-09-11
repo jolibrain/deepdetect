@@ -30,176 +30,186 @@ namespace dd
   {
     if (_cifc)
       {
-	_cifc->read_svm(_adconf,fname);
-	return 0;
+        _cifc->read_svm(_adconf, fname);
+        return 0;
       }
-    else return -1;
+    else
+      return -1;
   }
 
   int DDSvm::read_db(const std::string &fname)
-    {
-      _cifc->_db_fname = fname;
-      return 0;
-    }
-  
+  {
+    _cifc->_db_fname = fname;
+    return 0;
+  }
+
   int DDSvm::read_mem(const std::string &content)
   {
     if (!_cifc)
       return -1;
-    std::unordered_map<int,double> vals;
+    std::unordered_map<int, double> vals;
     int label = -1;
-    //int nlines = 0;
-    _cifc->read_svm_line(content,vals,label);
+    // int nlines = 0;
+    _cifc->read_svm_line(content, vals, label);
     /*if (_cifc->_scale)
       {
-	if (!_cifc->_train) // in prediction mode, on-the-fly scaling
-	  {
-	    _cifc->scale_vals(vals);
-	  }
-	else // in training mode, collect bounds, then scale in another pass over the data
-	  {
-	    if (_cifc->_min_vals.empty() && _cifc->_max_vals.empty())
-	      _cifc->_min_vals = _cifc->_max_vals = vals;
-	    for (size_t j=0;j<vals.size();j++)
-	      {
-		_cifc->_min_vals.at(j) = std::min(vals.at(j),_cifc->_min_vals.at(j));
-		_cifc->_max_vals.at(j) = std::max(vals.at(j),_cifc->_max_vals.at(j));
-	      }
-	  }
-	  }*/
-    _cifc->add_train_svmline(label,vals,0);
+        if (!_cifc->_train) // in prediction mode, on-the-fly scaling
+          {
+            _cifc->scale_vals(vals);
+          }
+        else // in training mode, collect bounds, then scale in another pass
+      over the data
+          {
+            if (_cifc->_min_vals.empty() && _cifc->_max_vals.empty())
+              _cifc->_min_vals = _cifc->_max_vals = vals;
+            for (size_t j=0;j<vals.size();j++)
+              {
+                _cifc->_min_vals.at(j) =
+      std::min(vals.at(j),_cifc->_min_vals.at(j)); _cifc->_max_vals.at(j) =
+      std::max(vals.at(j),_cifc->_max_vals.at(j));
+              }
+          }
+          }*/
+    _cifc->add_train_svmline(label, vals, 0);
     return 0;
   }
 
   void SVMInputFileConn::read_svm_line(const std::string &content,
-				       std::unordered_map<int,double> &vals,
-				       int &label)
+                                       std::unordered_map<int, double> &vals,
+                                       int &label)
   {
     bool fpos = true;
     std::string col;
     std::stringstream sh(content);
     std::unordered_set<int>::const_iterator fit;
-    while(std::getline(sh,col,' '))
+    while (std::getline(sh, col, ' '))
       {
-	try
-	  {
-	    if (fpos)
-	      {
-		label = std::stod(col);
-		fpos = false;
-	      }
-	    std::vector<std::string> res = dd_utils::split(col,':');
-	    if (res.size() == 2)
-	      {
-		int fid = std::stoi(res.at(0));
-		if ((fit=_fids.find(fid))!=_fids.end())
-		  vals.insert(std::pair<int,double>(fid,std::stod(res.at(1))));
-	      }
-	  }
-	catch (std::invalid_argument &e)
-	  {
-	    throw InputConnectorBadParamException("invalid argument error reading SVM format line: " + content);
-	  }
-	catch (...)
-	  {
-	    throw InputConnectorBadParamException("error reading SVM format line: " + content);
-	  }
+        try
+          {
+            if (fpos)
+              {
+                label = std::stod(col);
+                fpos = false;
+              }
+            std::vector<std::string> res = dd_utils::split(col, ':');
+            if (res.size() == 2)
+              {
+                int fid = std::stoi(res.at(0));
+                if ((fit = _fids.find(fid)) != _fids.end())
+                  vals.insert(
+                      std::pair<int, double>(fid, std::stod(res.at(1))));
+              }
+          }
+        catch (std::invalid_argument &e)
+          {
+            throw InputConnectorBadParamException(
+                "invalid argument error reading SVM format line: " + content);
+          }
+        catch (...)
+          {
+            throw InputConnectorBadParamException(
+                "error reading SVM format line: " + content);
+          }
       }
-      if (vals.empty())
-        throw InputConnectorBadParamException("Issue while reading svm example (index might be out of boundsi)");
+    if (vals.empty())
+      throw InputConnectorBadParamException(
+          "Issue while reading svm example (index might be out of boundsi)");
   }
-  
-  void SVMInputFileConn::read_svm(const APIData &ad,
-				  const std::string &fname)
+
+  void SVMInputFileConn::read_svm(const APIData &ad, const std::string &fname)
   {
-    std::ifstream svm_file(fname,std::ios::binary);
-    _logger->info("SVM fname={} / open={}",fname,svm_file.is_open());
+    std::ifstream svm_file(fname, std::ios::binary);
+    _logger->info("SVM fname={} / open={}", fname, svm_file.is_open());
     if (!svm_file.is_open())
       throw InputConnectorBadParamException("cannot open file " + fname);
     std::string hline;
 
     // first pass to get max index
     std::string col;
-    while(std::getline(svm_file,hline))
+    while (std::getline(svm_file, hline))
       {
-	bool fpos = true;
-      	std::stringstream sh(hline);
-	while(std::getline(sh,col,' '))
-	  {
-	    if (fpos)
-	      {
-		fpos = false;
-		continue;
-	      }
-	    std::vector<std::string> res = dd_utils::split(col,':');
-	    if (_train && res.size() == 2)
-	      {
-		int fid = std::stoi(res.at(0));
-		if (fid > _max_id)
-		  _max_id = fid;
-		_fids.insert(fid);
-	      }
-	  }
+        bool fpos = true;
+        std::stringstream sh(hline);
+        while (std::getline(sh, col, ' '))
+          {
+            if (fpos)
+              {
+                fpos = false;
+                continue;
+              }
+            std::vector<std::string> res = dd_utils::split(col, ':');
+            if (_train && res.size() == 2)
+              {
+                int fid = std::stoi(res.at(0));
+                if (fid > _max_id)
+                  _max_id = fid;
+                _fids.insert(fid);
+              }
+          }
       }
     svm_file.clear();
-    svm_file.seekg(0,std::ios::beg);
+    svm_file.seekg(0, std::ios::beg);
 
-    _logger->info("total number of dimensions={}",_fids.size());
-    
+    _logger->info("total number of dimensions={}", _fids.size());
+
     // read data
     int nlines = 0;
-    while(std::getline(svm_file,hline))
+    while (std::getline(svm_file, hline))
       {
-	std::unordered_map<int,double> vals;
-	int label;
-	read_svm_line(hline,vals,label);
-	add_train_svmline(label,vals,nlines);
-	++nlines;
+        std::unordered_map<int, double> vals;
+        int label;
+        read_svm_line(hline, vals, label);
+        add_train_svmline(label, vals, nlines);
+        ++nlines;
       }
-      svm_file.close();
-      _logger->info("read {} lines from SVM data file",nlines);
-  
-      if (!_svm_test_fname.empty())
-	{
-	  int tnlines = 0;
-	  std::ifstream svm_test_file(_svm_test_fname,std::ios::binary);
-	  if (!svm_test_file.is_open())
-	    throw InputConnectorBadParamException("cannot open SVM test file " + fname);
-	  while(std::getline(svm_test_file,hline))
-	    {
-	      hline.erase(std::remove(hline.begin(),hline.end(),'\r'),hline.end());
-	      std::unordered_map<int,double> vals;
-	      int label;
-	      read_svm_line(hline,vals,label);
-	      add_test_svmline(label,vals,tnlines);
-	      ++tnlines;
-	    }
-	  svm_test_file.close();
-	}
-      
-      // shuffle before test selection, if any
-      shuffle_data(ad);
-      
-      if (_svm_test_fname.empty() && _test_split > 0)
-	{
-	  split_data();
-	  _logger->info("data split test size={} / remaining data size={}",_svmdata_test.size(),_svmdata.size());
-	}
+    svm_file.close();
+    _logger->info("read {} lines from SVM data file", nlines);
+
+    if (!_svm_test_fname.empty())
+      {
+        int tnlines = 0;
+        std::ifstream svm_test_file(_svm_test_fname, std::ios::binary);
+        if (!svm_test_file.is_open())
+          throw InputConnectorBadParamException("cannot open SVM test file "
+                                                + fname);
+        while (std::getline(svm_test_file, hline))
+          {
+            hline.erase(std::remove(hline.begin(), hline.end(), '\r'),
+                        hline.end());
+            std::unordered_map<int, double> vals;
+            int label;
+            read_svm_line(hline, vals, label);
+            add_test_svmline(label, vals, tnlines);
+            ++tnlines;
+          }
+        svm_test_file.close();
+      }
+
+    // shuffle before test selection, if any
+    shuffle_data(ad);
+
+    if (_svm_test_fname.empty() && _test_split > 0)
+      {
+        split_data();
+        _logger->info("data split test size={} / remaining data size={}",
+                      _svmdata_test.size(), _svmdata.size());
+      }
   }
 
   void SVMInputFileConn::serialize_vocab()
   {
     std::string vocabfname = _model_repo + "/" + _vocabfname;
-    std::string delim=",";
+    std::string delim = ",";
     std::ofstream out;
     out.open(vocabfname);
     if (!out.is_open())
-      throw InputConnectorBadParamException("failed opening SVM vocabulary file " + vocabfname);
+      throw InputConnectorBadParamException(
+          "failed opening SVM vocabulary file " + vocabfname);
     auto fit = _fids.begin();
-    while(fit!=_fids.end())
+    while (fit != _fids.end())
       {
-	out << (*fit) << std::endl;
-	++fit;
+        out << (*fit) << std::endl;
+        ++fit;
       }
     out.close();
   }
@@ -209,25 +219,28 @@ namespace dd
     std::string vocabfname = _model_repo + "/" + _vocabfname;
     if (!fileops::file_exists(vocabfname))
       {
-	if (required)
-	  throw InputConnectorBadParamException("cannot find vocabulary file " + vocabfname);
-	else return;
+        if (required)
+          throw InputConnectorBadParamException("cannot find vocabulary file "
+                                                + vocabfname);
+        else
+          return;
       }
     std::ifstream in;
     in.open(vocabfname);
     if (!in.is_open())
-      throw InputConnectorBadParamException("failed opening vocabulary file " + vocabfname);
+      throw InputConnectorBadParamException("failed opening vocabulary file "
+                                            + vocabfname);
     std::string line;
-    while(getline(in,line))
+    while (getline(in, line))
       {
-	std::string cline = line.substr(0,line.size());
-	int fid = std::atoi(cline.c_str());
-	if (fid > _max_id)
-	  _max_id = fid;
-	_fids.insert(fid);
+        std::string cline = line.substr(0, line.size());
+        int fid = std::atoi(cline.c_str());
+        if (fid > _max_id)
+          _max_id = fid;
+        _fids.insert(fid);
       }
     in.close();
-    _logger->info("loaded SVM vocabulary of size={}",_fids.size());
+    _logger->info("loaded SVM vocabulary of size={}", _fids.size());
   }
-  
+
 }

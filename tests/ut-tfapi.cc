@@ -31,67 +31,97 @@
 using namespace dd;
 
 static std::string ok_str = "{\"status\":{\"code\":200,\"msg\":\"OK\"}}";
-static std::string created_str = "{\"status\":{\"code\":201,\"msg\":\"Created\"}}";
-static std::string bad_param_str = "{\"status\":{\"code\":400,\"msg\":\"BadRequest\"}}";
-static std::string not_found_str = "{\"status\":{\"code\":404,\"msg\":\"NotFound\"}}";
+static std::string created_str
+    = "{\"status\":{\"code\":201,\"msg\":\"Created\"}}";
+static std::string bad_param_str
+    = "{\"status\":{\"code\":400,\"msg\":\"BadRequest\"}}";
+static std::string not_found_str
+    = "{\"status\":{\"code\":404,\"msg\":\"NotFound\"}}";
 
 static std::string incept_repo = "../examples/tf/inception/";
 
-TEST(tfapi,service_predict)
+TEST(tfapi, service_predict)
 {
   // create service
   JsonAPI japi;
   std::string sname = "imgserv";
-  std::string jstr = "{\"mllib\":\"tensorflow\",\"description\":\"my classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\"" +  incept_repo + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":224,\"width\":224,\"inputlayer\":\"InputImage\"},\"mllib\":{\"nclasses\":1001}}}";
-  std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
-  ASSERT_EQ(created_str,joutstr);
+  std::string jstr
+      = "{\"mllib\":\"tensorflow\",\"description\":\"my "
+        "classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\""
+        + incept_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
+          "224,\"width\":224,\"inputlayer\":\"InputImage\"},\"mllib\":{"
+          "\"nclasses\":1001}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
 
   // predict
-  std::string jpredictstr = "{\"service\":\"imgserv\",\"parameters\":{\"output\":{\"best\":3}},\"data\":[\"" + incept_repo + "grace_hopper.jpg\"]}";
+  std::string jpredictstr = "{\"service\":\"imgserv\",\"parameters\":{"
+                            "\"output\":{\"best\":3}},\"data\":[\""
+                            + incept_repo + "grace_hopper.jpg\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   JDoc jd;
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200,jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"]);
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
-  std::string cl1 = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
+  std::string cl1
+      = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
   ASSERT_TRUE(cl1 == "n03763968 military uniform");
-  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble() > 0.4);
+  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
+              > 0.4);
 
   // predict batch
-  jpredictstr = "{\"service\":\"imgserv\",\"parameters\":{\"output\":{\"best\":3}},\"data\":[\"" + incept_repo + "grace_hopper.jpg\",\"" + incept_repo + "cat.jpg\"]}";
+  jpredictstr = "{\"service\":\"imgserv\",\"parameters\":{\"output\":{"
+                "\"best\":3}},\"data\":[\""
+                + incept_repo + "grace_hopper.jpg\",\"" + incept_repo
+                + "cat.jpg\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200,jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"]);
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
-  ASSERT_EQ(2,jd["body"]["predictions"].Size());
+  ASSERT_EQ(2, jd["body"]["predictions"].Size());
   cl1 = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
-  std::string cl2 = jd["body"]["predictions"][1]["classes"][0]["cat"].GetString();
-  ASSERT_TRUE((cl1 == "n03763968 military uniform" && cl2 == "n02123045 tabby, tabby cat")
-	      || (cl1 == "n02123045 tabby, tabby cat" && cl2 == "n03763968 military uniform"));
-  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble() > 0.4);
-  ASSERT_TRUE(jd["body"]["predictions"][1]["classes"][0]["prob"].GetDouble() > 0.4);
-  }
+  std::string cl2
+      = jd["body"]["predictions"][1]["classes"][0]["cat"].GetString();
+  ASSERT_TRUE((cl1 == "n03763968 military uniform"
+               && cl2 == "n02123045 tabby, tabby cat")
+              || (cl1 == "n02123045 tabby, tabby cat"
+                  && cl2 == "n03763968 military uniform"));
+  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
+              > 0.4);
+  ASSERT_TRUE(jd["body"]["predictions"][1]["classes"][0]["prob"].GetDouble()
+              > 0.4);
+}
 
-TEST(tfapi,service_predict_unsup)
+TEST(tfapi, service_predict_unsup)
 {
   // create service
   JsonAPI japi;
   std::string sname = "imgserv";
-  std::string jstr = "{\"mllib\":\"tensorflow\",\"description\":\"my classifier\",\"type\":\"unsupervised\",\"model\":{\"repository\":\"" +  incept_repo + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":224,\"width\":224,\"inputlayer\":\"InputImage\"},\"mllib\":{\"nclasses\":1001}}}";
-  std::string joutstr = japi.jrender(japi.service_create(sname,jstr));
-  ASSERT_EQ(created_str,joutstr);
+  std::string jstr
+      = "{\"mllib\":\"tensorflow\",\"description\":\"my "
+        "classifier\",\"type\":\"unsupervised\",\"model\":{\"repository\":\""
+        + incept_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
+          "224,\"width\":224,\"inputlayer\":\"InputImage\"},\"mllib\":{"
+          "\"nclasses\":1001}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
 
   // predict
-  std::string jpredictstr = "{\"service\":\"imgserv\",\"parameters\":{\"mllib\":{\"extract_layer\":\"InceptionV1/InceptionV1/Mixed_5c/concat\"}},\"data\":[\"" + incept_repo + "grace_hopper.jpg\"]}";
+  std::string jpredictstr
+      = "{\"service\":\"imgserv\",\"parameters\":{\"mllib\":{\"extract_"
+        "layer\":\"InceptionV1/InceptionV1/Mixed_5c/concat\"}},\"data\":[\""
+        + incept_repo + "grace_hopper.jpg\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   JDoc jd;
-  //std::cout << "joutstr=" << joutstr << std::endl;
+  // std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200,jd["status"]["code"]);
-  ASSERT_EQ(50176,jd["body"]["predictions"][0]["vals"].Size());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(50176, jd["body"]["predictions"][0]["vals"].Size());
 }

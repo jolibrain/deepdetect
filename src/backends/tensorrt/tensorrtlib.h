@@ -28,11 +28,9 @@
 namespace dd
 {
 
-
   struct TRTInferDeleter
   {
-    template <typename T>
-    void operator()(T* obj) const
+    template <typename T> void operator()(T *obj) const
     {
       if (obj)
         {
@@ -42,17 +40,18 @@ namespace dd
   };
 
   template <typename T>
-    using TRTUniquePtr = std::unique_ptr<T, TRTInferDeleter>;
+  using TRTUniquePtr = std::unique_ptr<T, TRTInferDeleter>;
 
   class TRTLogger : public nvinfer1::ILogger
   {
-  public :
-    TRTLogger(nvinfer1::ILogger::Severity severity = nvinfer1::ILogger::Severity::kWARNING)
-      : mReportableSeverity(severity)
+  public:
+    TRTLogger(nvinfer1::ILogger::Severity severity
+              = nvinfer1::ILogger::Severity::kWARNING)
+        : mReportableSeverity(severity)
     {
     }
 
-    void log(nvinfer1::ILogger::Severity severity, const char* msg) override
+    void log(nvinfer1::ILogger::Severity severity, const char *msg) override
     {
       switch (severity)
         {
@@ -75,25 +74,23 @@ namespace dd
       mReportableSeverity = severity;
     }
 
-
-    void setLogger(std::shared_ptr<spdlog::logger>& l)
+    void setLogger(std::shared_ptr<spdlog::logger> &l)
     {
       _logger = l.get();
     }
-    
+
   private:
     nvinfer1::ILogger::Severity mReportableSeverity;
-    spdlog::logger* _logger;
+    spdlog::logger *_logger;
   };
 
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+            class TMLModel = TensorRTModel>
+  class TensorRTLib : public MLLib<TInputConnectorStrategy,
+                                   TOutputConnectorStrategy, TMLModel>
+  {
 
-  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel=TensorRTModel>
-    class TensorRTLib : public MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>
-    {
-
-
-
-    public:
+  public:
     TensorRTLib(const TensorRTModel &tmodel);
     TensorRTLib(TensorRTLib &&tl) noexcept;
     ~TensorRTLib();
@@ -107,17 +104,16 @@ namespace dd
 
     int predict(const APIData &ad, APIData &out);
 
-    void model_type(const std::string &param_file,
-                    std::string &mltype);
+    void model_type(const std::string &param_file, std::string &mltype);
 
-
-    public:
+  public:
     int _nclasses = 0;
     int _dla = -1;
     nvinfer1::DataType _datatype = nvinfer1::DataType::kFLOAT;
     int _max_batch_size = 48;
     int _max_workspace_size = 1 << 30; // 1GB
-    int _top_k = 200;  // top_k parameters in ssd in dede templates, can be overriden
+    int _top_k
+        = 200; // top_k parameters in ssd in dede templates, can be overriden
     std::string _engineFileName = "TRTengine";
     bool _readEngine = true;
     bool _writeEngine = true;
@@ -128,11 +124,10 @@ namespace dd
     std::shared_ptr<nvinfer1::IBuilder> _builder = nullptr;
     std::shared_ptr<nvinfer1::IExecutionContext> _context = nullptr;
 
-
     bool _bbox = false;
     bool _ctc = false;
-    
-    std::vector<void*> _buffers;
+
+    std::vector<void *> _buffers;
 
     bool _TRTContextReady = false;
     bool _timeserie = false;
@@ -144,8 +139,10 @@ namespace dd
     std::vector<float> _floatOut;
     std::vector<int> _keepCount;
 
-    std::mutex _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as net is not re-instantiated. Use batches instead. */
-    };
+    std::mutex
+        _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as
+                       net is not re-instantiated. Use batches instead. */
+  };
 
 }
 #endif

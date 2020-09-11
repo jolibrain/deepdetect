@@ -31,7 +31,8 @@
 #if defined(USE_HTTP_SERVER) && defined(USE_JSON_API)
 #include "httpjsonapi.h"
 #endif // USE_HTTP_SERVER && USE_JSON_API
-#if defined(USE_JSON_API) && !defined(USE_HTTP_SERVER) && !defined(USE_COMMAND_LINE)
+#if defined(USE_JSON_API) && !defined(USE_HTTP_SERVER)                        \
+    && !defined(USE_COMMAND_LINE)
 #include "jsonapi.h"
 #endif
 #include "dd_config.h"
@@ -39,17 +40,16 @@
 
 namespace dd
 {
-  template<class TAPIStrategy>
+  template <class TAPIStrategy>
   std::string DeepDetect<TAPIStrategy>::_commit_version = GIT_COMMIT_HASH;
 
-  template<class TAPIStrategy>
-  DeepDetect<TAPIStrategy>::DeepDetect()
+  template <class TAPIStrategy> DeepDetect<TAPIStrategy>::DeepDetect()
   {
-    std::cout << "DeepDetect [ commit " << DeepDetect::_commit_version << " ]\n";
+    std::cout << "DeepDetect [ commit " << DeepDetect::_commit_version
+              << " ]\n";
   }
 
-  template<class TAPIStrategy>
-  DeepDetect<TAPIStrategy>::~DeepDetect()
+  template <class TAPIStrategy> DeepDetect<TAPIStrategy>::~DeepDetect()
   {
   }
 
@@ -66,10 +66,9 @@ namespace dd
 #ifdef USE_HTTP_SERVER
   template class DeepDetect<HttpJsonAPI>;
 #endif
-  #if !defined(USE_COMMAND_LINE) && !defined(USE_HTTP)
-    template class DeepDetect<JsonAPI>;
-  #endif
+#if !defined(USE_COMMAND_LINE) && !defined(USE_HTTP)
+  template class DeepDetect<JsonAPI>;
 #endif
-
+#endif
 
 }

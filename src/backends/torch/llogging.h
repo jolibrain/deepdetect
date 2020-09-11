@@ -9,14 +9,17 @@
 #include <boost/algorithm/string.hpp>
 #include <iostream>
 
-class DateLogger {
- public:
-  DateLogger() {
+class DateLogger
+{
+public:
+  DateLogger()
+  {
 #if defined(_MSC_VER)
     _tzset();
 #endif
   }
-  const char* HumanDate() {
+  const char *HumanDate()
+  {
 #if defined(_MSC_VER)
     _strtime_s(buffer_, sizeof(buffer_));
 #else
@@ -26,15 +29,15 @@ class DateLogger {
     struct tm now;
     pnow = localtime_r(&time_value, &now);
 #else
-    pnow = localtime(&time_value);  // NOLINT(*)
+    pnow = localtime(&time_value); // NOLINT(*)
 #endif
-    snprintf(buffer_, sizeof(buffer_), "%02d:%02d:%02d",
-             pnow->tm_hour, pnow->tm_min, pnow->tm_sec);
+    snprintf(buffer_, sizeof(buffer_), "%02d:%02d:%02d", pnow->tm_hour,
+             pnow->tm_min, pnow->tm_sec);
 #endif
     return buffer_;
   }
 
- private:
+private:
   char buffer_[9];
 };
 
@@ -69,21 +72,29 @@ class DateLogger {
 
 #ifdef CAFFE_THROW_ON_ERROR
 #include <sstream>
-#define SSTR( x ) dynamic_cast< std::ostringstream & >( \
-		 ( std::ostringstream() << std::dec << x ) ).str()
+#define SSTR(x)                                                               \
+  dynamic_cast<std::ostringstream &>((std::ostringstream() << std::dec << x)) \
+      .str()
 class CaffeErrorException : public std::exception
 {
 public:
-  CaffeErrorException(const std::string &s):_s(s) {}
-  ~CaffeErrorException() throw() {}
-  const char* what() const throw() { return _s.c_str(); }
+  CaffeErrorException(const std::string &s) : _s(s)
+  {
+  }
+  ~CaffeErrorException() throw()
+  {
+  }
+  const char *what() const throw()
+  {
+    return _s.c_str();
+  }
   std::string _s;
 };
 
-static std::string INFO="INFO";
-static std::string WARNING="WARNING";
-static std::string ERROR="ERROR";
-static std::string FATAL="FATAL";
+static std::string INFO = "INFO";
+static std::string WARNING = "WARNING";
+static std::string ERROR = "ERROR";
+static std::string FATAL = "FATAL";
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES
 
@@ -94,11 +105,11 @@ static std::string FATAL="FATAL";
 
 static std::ostream nullstream(0);
 
-#define CHECK(condition)						\
-  if (!(condition)) \
-    throw CaffeErrorException(std::string(__FILE__) + ":" + SSTR(__LINE__) + " / Check failed (custom): " #condition ""); \
-  nullstream									\
-  << "Check failed (custom): " #condition " "
+#define CHECK(condition)                                                      \
+  if (!(condition))                                                           \
+    throw CaffeErrorException(std::string(__FILE__) + ":" + SSTR(__LINE__)    \
+                              + " / Check failed (custom): " #condition "");  \
+  nullstream << "Check failed (custom): " #condition " "
 
 #define CHECK_LT(x, y) CHECK((x) < (y))
 #define CHECK_GT(x, y) CHECK((x) > (y))
@@ -107,30 +118,38 @@ static std::ostream nullstream(0);
 #define CHECK_EQ(x, y) CHECK((x) == (y))
 #define CHECK_NE(x, y) CHECK((x) != (y))
 
-#define CHECK_OP_LOG(name, op, val1, val2, log) CHECK((val1) op (val2))
+#define CHECK_OP_LOG(name, op, val1, val2, log) CHECK((val1)op(val2))
 /* #ifdef DEBUG */
 /* #define CHECK_EQ(val1,val2) if (0) std::cerr */
 /* #endif */
 #endif
 
-#define CHECK_NOTNULL(x) \
-  ((x) == NULL ? LOG(FATAL) << "Check  notnull: "  #x << ' ', (x) : (x)) // NOLINT(*)
+#define CHECK_NOTNULL(x)                                                      \
+  ((x) == NULL ? LOG(FATAL) << "Check  notnull: " #x << ' ',                  \
+   (x) : (x)) // NOLINT(*)
 
 #ifdef NDEBUG
-#define DCHECK(x) \
-  while (false) CHECK(x)
-#define DCHECK_LT(x, y) \
-  while (false) CHECK((x) < (y))
-#define DCHECK_GT(x, y) \
-  while (false) CHECK((x) > (y))
-#define DCHECK_LE(x, y) \
-  while (false) CHECK((x) <= (y))
-#define DCHECK_GE(x, y) \
-  while (false) CHECK((x) >= (y))
-#define DCHECK_EQ(x, y) \
-  while (false) CHECK((x) == (y))
-#define DCHECK_NE(x, y) \
-  while (false) CHECK((x) != (y))
+#define DCHECK(x)                                                             \
+  while (false)                                                               \
+  CHECK(x)
+#define DCHECK_LT(x, y)                                                       \
+  while (false)                                                               \
+  CHECK((x) < (y))
+#define DCHECK_GT(x, y)                                                       \
+  while (false)                                                               \
+  CHECK((x) > (y))
+#define DCHECK_LE(x, y)                                                       \
+  while (false)                                                               \
+  CHECK((x) <= (y))
+#define DCHECK_GE(x, y)                                                       \
+  while (false)                                                               \
+  CHECK((x) >= (y))
+#define DCHECK_EQ(x, y)                                                       \
+  while (false)                                                               \
+  CHECK((x) == (y))
+#define DCHECK_NE(x, y)                                                       \
+  while (false)                                                               \
+  CHECK((x) != (y))
 #else
 #define DCHECK(x) CHECK(x)
 #define DCHECK_LT(x, y) CHECK((x) < (y))
@@ -139,13 +158,12 @@ static std::ostream nullstream(0);
 #define DCHECK_GE(x, y) CHECK((x) >= (y))
 #define DCHECK_EQ(x, y) CHECK((x) == (y))
 #define DCHECK_NE(x, y) CHECK((x) != (y))
-#endif  // NDEBUG
+#endif // NDEBUG
 
 class CaffeLogger
 {
- public:
-  CaffeLogger(const std::string &severity)
-    :_severity(severity)
+public:
+  CaffeLogger(const std::string &severity) : _severity(severity)
   {
     _console = spdlog::get("torchlib");
     if (!_console)
@@ -157,40 +175,43 @@ class CaffeLogger
   }
 
   ~CaffeLogger()
-    {
-      if (_severity == "none" || _str.empty()) // ignore
-	{}
-      else if (_severity == INFO)
-	_console->info(_str);
-      else if (_severity == WARNING)
-	_console->warn(_str);
-      else if (_severity == ERROR)
-	_console->error(_str);
-    }
-  
-  friend CaffeLogger& operator<<(const CaffeLogger &cl, const std::string &rstr)
+  {
+    if (_severity == "none" || _str.empty()) // ignore
+      {
+      }
+    else if (_severity == INFO)
+      _console->info(_str);
+    else if (_severity == WARNING)
+      _console->warn(_str);
+    else if (_severity == ERROR)
+      _console->error(_str);
+  }
+
+  friend CaffeLogger &operator<<(const CaffeLogger &cl,
+                                 const std::string &rstr)
   {
     std::string str = rstr;
-    const_cast<CaffeLogger&>(cl)._str += str;
-    return const_cast<CaffeLogger&>(cl);
+    const_cast<CaffeLogger &>(cl)._str += str;
+    return const_cast<CaffeLogger &>(cl);
   }
 
-  friend CaffeLogger& operator<<(const CaffeLogger &cl, const double &d)
+  friend CaffeLogger &operator<<(const CaffeLogger &cl, const double &d)
   {
     std::string str = std::to_string(d);
-    boost::trim_right_if(str,boost::is_any_of("\n"));
-    const_cast<CaffeLogger&>(cl)._str += str;
-    return const_cast<CaffeLogger&>(cl);
+    boost::trim_right_if(str, boost::is_any_of("\n"));
+    const_cast<CaffeLogger &>(cl)._str += str;
+    return const_cast<CaffeLogger &>(cl);
   }
 
-  friend CaffeLogger& operator<<(const CaffeLogger &cl, const std::ostream &out)
+  friend CaffeLogger &operator<<(const CaffeLogger &cl,
+                                 const std::ostream &out)
   {
     std::stringstream sstr;
     sstr << out.rdbuf();
-    const_cast<CaffeLogger&>(cl)._str += sstr.str();
-    return const_cast<CaffeLogger&>(cl);
+    const_cast<CaffeLogger &>(cl)._str += sstr.str();
+    return const_cast<CaffeLogger &>(cl);
   }
-  
+
   std::string _severity = INFO;
   std::shared_ptr<spdlog::logger> _console;
   std::string _str;
@@ -199,20 +220,24 @@ class CaffeLogger
 inline CaffeLogger LOG(const std::string &severity)
 {
   if (severity != FATAL)
-  {
-    return CaffeLogger(severity);
-  }
+    {
+      return CaffeLogger(severity);
+    }
   else
     {
-      throw CaffeErrorException(std::string(__FILE__) + ":" + SSTR(__LINE__) + " / Fatal Caffe error"); // XXX: cannot report the exact location of the trigger...
+      throw CaffeErrorException(
+          std::string(__FILE__) + ":" + SSTR(__LINE__)
+          + " / Fatal Caffe error"); // XXX: cannot report the exact location
+                                     // of the trigger...
     }
 }
 
-inline CaffeLogger LOG_IF(const std::string &severity,const bool &condition)
+inline CaffeLogger LOG_IF(const std::string &severity, const bool &condition)
 {
   if (condition)
     return LOG(severity);
-  else return CaffeLogger("none");
+  else
+    return CaffeLogger("none");
 }
 
 #ifdef NDEBUG

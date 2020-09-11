@@ -27,14 +27,14 @@
 namespace dd
 {
   class CommandLineJsonAPI : public JsonAPI
-    {
-    public:
-      CommandLineJsonAPI();
-      ~CommandLineJsonAPI();
-      
-      int boot(int argc, char *argv[]);
-    };
-  
+  {
+  public:
+    CommandLineJsonAPI();
+    ~CommandLineJsonAPI();
+
+    int boot(int argc, char *argv[]);
+  };
+
 }
 
 #endif

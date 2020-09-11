@@ -200,7 +200,7 @@ http://www.deepdetect.com/overview/examples/
 |                          | Caffe | Tensorflow | Source        | Top-1 Accuracy (ImageNet) |
 |--------------------------|-------|------------|---------------|---------------------------|
 | AlexNet                  | Y     | N          | BVLC          |          57.1%                 |
-| SqueezeNet               | [Y](https://deepdetect.com/models/squeezenet/squeezenet_v1.1.caffemodel)     | N          | DeepScale              |       59.5%                    | 
+| SqueezeNet               | [Y](https://deepdetect.com/models/squeezenet/squeezenet_v1.1.caffemodel)     | N          | DeepScale              |       59.5%                    |
 | Inception v1 / GoogleNet | [Y](https://deepdetect.com/models/ggnet/bvlc_googlenet.caffemodel)     | [Y](https://deepdetect.com/models/tf/inception_v1.pb)          | BVLC / Google |             67.9%              |
 | Inception v2             | N     | [Y](https://deepdetect.com/models/tf/inception_v2.pb)          | Google        |     72.2%                      |
 | Inception v3             | N     | [Y](https://deepdetect.com/models/tf/inception_v3.pb)          | Google        |         76.9%                  |
@@ -263,7 +263,7 @@ Beware of dependencies, typically on Debian/Ubuntu Linux, do:
 sudo apt-get install build-essential libgoogle-glog-dev libgflags-dev libeigen3-dev libopencv-dev libcppnetlib-dev libboost-dev libboost-iostreams-dev libcurlpp-dev libcurl4-openssl-dev protobuf-compiler libopenblas-dev libhdf5-dev libprotobuf-dev libleveldb-dev libsnappy-dev liblmdb-dev libutfcpp-dev cmake libgoogle-perftools-dev unzip python-setuptools python-dev libspdlog-dev python-six python-enum34 libarchive-dev
 ```
 
-#### Choosing interfaces : 
+#### Choosing interfaces :
 
 DeepDetect can be used:
 - directly from command line for caffe models. To build the executable use:
@@ -274,7 +274,7 @@ cmake .. -DUSE_COMMAND_LINE=ON
 ```
 cmake .. -DUSE_COMMAND_LINE=ON -DUSE_JSON_API=ON
 ```
-- as a REST server (using JSON API). To build the server executable use (`USE_JSON_API` is auto-selected): 
+- as a REST server (using JSON API). To build the server executable use (`USE_JSON_API` is auto-selected):
 ```
 cmake .. -DUSE_HTTP_SERVER=ON
 ```
@@ -383,7 +383,7 @@ Specify the following option via cmake:
 ```$xslt
 cmake .. -DUSE_TENSORRT=ON
 ```
-TensorRT requires GPU and CUDNN, they are automatically switched on. 
+TensorRT requires GPU and CUDNN, they are automatically switched on.
 
 #### Build with TensorRT support + TRT oss parts
 Specify the following option via cmake:
@@ -442,6 +442,19 @@ Run tests with:
 ctest
 ```
 
+### Code Style Rules
+
+`clang-format` is used to enforce code style.
+
+You can automatically format it with:
+
+```
+cmake ..
+make clang-format
+```
+
+Or use your favorite editor with a clang-format plugin.
+
 ### Start the server
 
 ```
@@ -481,7 +494,7 @@ where `sname` is the service name and the JSON is a string without external quot
 - service prediction
 ```
 service_predict;JSON string
-``` 
+```
 
 ### Pure command line JSON API
 
@@ -502,7 +515,7 @@ where `<other options>` stands for the command line parameters from the command 
 -service_train (/train POST call JSON string) type: string default: ""
 -service_train_delete (/train DELETE call JSON string) type: string default: ""
 -service_train_status (/train GET call JSON string) type: string default: ""
-							  
+
 ```
 
 The options above can be obtained from running

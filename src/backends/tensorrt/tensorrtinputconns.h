@@ -32,33 +32,41 @@ namespace dd
   {
   public:
     TensorRTInputInterface()
-      {
-      }
-  TensorRTInputInterface(const TensorRTInputInterface &i) : _buf(i._buf)
-   { }
+    {
+    }
+    TensorRTInputInterface(const TensorRTInputInterface &i) : _buf(i._buf)
+    {
+    }
 
-    ~TensorRTInputInterface() {}
+    ~TensorRTInputInterface()
+    {
+    }
 
     bool _has_mean_file = false; /**< image model mean.binaryproto. */
     std::vector<float> _buf;
 
-    float * data()
+    float *data()
     {
       return _buf.data();
     }
   };
 
-  class ImgTensorRTInputFileConn : public ImgInputFileConn, public TensorRTInputInterface
+  class ImgTensorRTInputFileConn : public ImgInputFileConn,
+                                   public TensorRTInputInterface
   {
   public:
-    ImgTensorRTInputFileConn()
-      :ImgInputFileConn() {}
+    ImgTensorRTInputFileConn() : ImgInputFileConn()
+    {
+    }
     ImgTensorRTInputFileConn(const ImgTensorRTInputFileConn &i)
-      :ImgInputFileConn(i),TensorRTInputInterface(i), _imgs_size(i._imgs_size)
+        : ImgInputFileConn(i), TensorRTInputInterface(i),
+          _imgs_size(i._imgs_size)
     {
       this->_has_mean_file = i._has_mean_file;
     }
-    ~ImgTensorRTInputFileConn() {}
+    ~ImgTensorRTInputFileConn()
+    {
+    }
 
     // for API info only
     int width() const
@@ -76,23 +84,22 @@ namespace dd
     {
       ImgInputFileConn::init(ad);
     }
-        
+
     void transform(const APIData &ad);
 
     std::string _meanfname = "mean.binaryproto";
     std::string _correspname = "corresp.txt";
     int _batch_index = 0;
     int process_batch(const unsigned int batch_size);
-    std::unordered_map<std::string,std::pair<int,int>> _imgs_size; /**< image sizes, used in detection. */
+    std::unordered_map<std::string, std::pair<int, int>>
+        _imgs_size; /**< image sizes, used in detection. */
 
   private:
     void applyMeanToRTBuf(int channels, int i);
     void applyMeanToRTBuf(float *mean, int channels, int i);
     void CVMatToRTBuffer(cv::Mat &img, int i);
+  };
 
-    };
-
-
-  }
+}
 
 #endif

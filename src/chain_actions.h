@@ -33,10 +33,17 @@ namespace dd
   class ActionBadParamException : public std::exception
   {
   public:
-    ActionBadParamException(const std::string &s)
-      :_s(s) {}
-    ~ActionBadParamException() {}
-    const char* what() const noexcept { return _s.c_str(); }
+    ActionBadParamException(const std::string &s) : _s(s)
+    {
+    }
+    ~ActionBadParamException()
+    {
+    }
+    const char *what() const noexcept
+    {
+      return _s.c_str();
+    }
+
   private:
     std::string _s;
   };
@@ -44,38 +51,45 @@ namespace dd
   class ActionInternalException : public std::exception
   {
   public:
-    ActionInternalException(const std::string &s)
-      :_s(s) {}
-    ~ActionInternalException() {}
-    const char* what() const noexcept { return _s.c_str(); }
+    ActionInternalException(const std::string &s) : _s(s)
+    {
+    }
+    ~ActionInternalException()
+    {
+    }
+    const char *what() const noexcept
+    {
+      return _s.c_str();
+    }
+
   private:
     std::string _s;
   };
-  
+
   class ChainAction
   {
   public:
-  ChainAction(const APIData &adc,
-	      const std::string &action_id,
-	      const std::string &action_type,
-	      const std::shared_ptr<spdlog::logger> chain_logger)
-    :_action_id(action_id),_action_type(action_type),_chain_logger(chain_logger)
+    ChainAction(const APIData &adc, const std::string &action_id,
+                const std::string &action_type,
+                const std::shared_ptr<spdlog::logger> chain_logger)
+        : _action_id(action_id), _action_type(action_type),
+          _chain_logger(chain_logger)
     {
       APIData action_adc = adc.getobj("action");
       _params = action_adc.getobj("parameters");
     }
 
-    ~ChainAction() {}
+    ~ChainAction()
+    {
+    }
 
-    std::string genid(const std::string &uri,
-		      const std::string &local_id)
-      {
-	std::string str = uri+local_id;
-	return std::to_string(std::hash<std::string>{}(str));
-      }
-    
-    void apply(APIData &model_out,
-	       ChainData &cdata);
+    std::string genid(const std::string &uri, const std::string &local_id)
+    {
+      std::string str = uri + local_id;
+      return std::to_string(std::hash<std::string>{}(str));
+    }
+
+    void apply(APIData &model_out, ChainData &cdata);
 
     std::string _action_id;
     std::string _action_type;
@@ -87,62 +101,71 @@ namespace dd
   class ImgsCropAction : public ChainAction
   {
   public:
-    ImgsCropAction(const APIData &adc,
-		   const std::string &action_id,
-		   const std::string &action_type,
-		   const std::shared_ptr<spdlog::logger> chain_logger)
-      :ChainAction(adc,action_id,action_type,chain_logger) {}
+    ImgsCropAction(const APIData &adc, const std::string &action_id,
+                   const std::string &action_type,
+                   const std::shared_ptr<spdlog::logger> chain_logger)
+        : ChainAction(adc, action_id, action_type, chain_logger)
+    {
+    }
 
-    ~ImgsCropAction() {}
-    
-    void apply(APIData &model_out,
-	       ChainData &cdata);
+    ~ImgsCropAction()
+    {
+    }
+
+    void apply(APIData &model_out, ChainData &cdata);
   };
 
   class ImgsRotateAction : public ChainAction
   {
   public:
-    ImgsRotateAction(const APIData &adc,
-		     const std::string &action_id,
-		     const std::string &action_type,
-		     const std::shared_ptr<spdlog::logger> chain_logger)
-      :ChainAction(adc,action_id,action_type,chain_logger) {}
+    ImgsRotateAction(const APIData &adc, const std::string &action_id,
+                     const std::string &action_type,
+                     const std::shared_ptr<spdlog::logger> chain_logger)
+        : ChainAction(adc, action_id, action_type, chain_logger)
+    {
+    }
 
-    ~ImgsRotateAction() {}
-    
-    void apply(APIData &model_out,
-	       ChainData &cdata);
+    ~ImgsRotateAction()
+    {
+    }
+
+    void apply(APIData &model_out, ChainData &cdata);
   };
-  
+
   class ClassFilter : public ChainAction
   {
   public:
-    ClassFilter(const APIData &adc,
-		const std::string &action_id,
-		const std::string &action_type,
-		const std::shared_ptr<spdlog::logger> chain_logger)
-      :ChainAction(adc,action_id,action_type,chain_logger) {_in_place = true;}
-    ~ClassFilter() {}
+    ClassFilter(const APIData &adc, const std::string &action_id,
+                const std::string &action_type,
+                const std::shared_ptr<spdlog::logger> chain_logger)
+        : ChainAction(adc, action_id, action_type, chain_logger)
+    {
+      _in_place = true;
+    }
+    ~ClassFilter()
+    {
+    }
 
-    void apply(APIData &model_out,
-	       ChainData &cdata);
+    void apply(APIData &model_out, ChainData &cdata);
   };
 
   class ChainActionFactory
   {
   public:
-    ChainActionFactory(const APIData &adc)
-      :_adc(adc) {}
-    ~ChainActionFactory() {}
+    ChainActionFactory(const APIData &adc) : _adc(adc)
+    {
+    }
+    ~ChainActionFactory()
+    {
+    }
 
-    void apply_action(const std::string &action_type,
-		      APIData &model_out,
-		      ChainData &cdata,
-		      const std::shared_ptr<spdlog::logger> &chain_logger);
+    void apply_action(const std::string &action_type, APIData &model_out,
+                      ChainData &cdata,
+                      const std::shared_ptr<spdlog::logger> &chain_logger);
 
     APIData _adc; /**< action ad object. */
   };
-  
+
 } // end of namespace
 
 #endif

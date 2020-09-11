@@ -27,31 +27,30 @@
 namespace dd
 {
 
-  class NetLayersCaffeMLP: public NetLayersCaffe
+  class NetLayersCaffeMLP : public NetLayersCaffe
   {
   public:
-  NetLayersCaffeMLP(caffe::NetParameter *net_params,
-		    caffe::NetParameter *dnet_params,
-		    std::shared_ptr<spdlog::logger> &logger)
-    :NetLayersCaffe(net_params,dnet_params,logger) 
-      {
-	net_params->set_name("mlp");
-	dnet_params->set_name("mlp");
-      }
-    ~NetLayersCaffeMLP() {}
+    NetLayersCaffeMLP(caffe::NetParameter *net_params,
+                      caffe::NetParameter *dnet_params,
+                      std::shared_ptr<spdlog::logger> &logger)
+        : NetLayersCaffe(net_params, dnet_params, logger)
+    {
+      net_params->set_name("mlp");
+      dnet_params->set_name("mlp");
+    }
+    ~NetLayersCaffeMLP()
+    {
+    }
 
     void add_basic_block(caffe::NetParameter *net_param,
-			 const std::string &bottom,
-			 const std::string &top,
-			 const int &num_output,
-			 const std::string &activation,
-			 const double &dropout_ratio,
-			 const bool &bn,
-			 const bool &sparse);
-    
+                         const std::string &bottom, const std::string &top,
+                         const int &num_output, const std::string &activation,
+                         const double &dropout_ratio, const bool &bn,
+                         const bool &sparse);
+
     void configure_net(const APIData &ad_mllib);
   };
-  
+
 }
 
 #endif

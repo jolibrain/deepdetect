@@ -33,22 +33,28 @@ namespace dd
   class XGBModel : public MLModel
   {
   public:
-    XGBModel():MLModel() {}
+    XGBModel() : MLModel()
+    {
+    }
     XGBModel(const APIData &ad, APIData &adg,
-	     const std::shared_ptr<spdlog::logger> &logger);
-    XGBModel(const std::string &repo)
-      :MLModel(repo) {}
-    ~XGBModel() {}
+             const std::shared_ptr<spdlog::logger> &logger);
+    XGBModel(const std::string &repo) : MLModel(repo)
+    {
+    }
+    ~XGBModel()
+    {
+    }
 
     int read_from_repository(const std::shared_ptr<spdlog::logger> &logger);
 
-    std::string lookup_objective(const std::string &modelfile,
-				 const std::shared_ptr<spdlog::logger> &logger);
-    
-    //TODO
+    std::string
+    lookup_objective(const std::string &modelfile,
+                     const std::shared_ptr<spdlog::logger> &logger);
+
+    // TODO
     std::string _weights; /**< file with model weights. */
   };
-  
+
 }
 
 #endif
