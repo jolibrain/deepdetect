@@ -10,7 +10,8 @@ set
 mkdir -p build
 cd build
 cmake .. -DUSE_TORCH=ON -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61"
-make -j24 pytorch
+mkdir -p build/pytorch/testing-tarball-scripts
+#make -j24 pytorch
 ccache -s
 '''
       }
@@ -23,7 +24,7 @@ ccache -s
   }
   post {
       success {
-          archiveArtifacts(artifacts: 'pytorch-*.tar', fingerprint: true)
+          archiveArtifacts(artifacts: 'pytorch-*.tar')
           rocketSend(channel: 'build', message: 'Build succeed')
       }
       unsuccessful {
