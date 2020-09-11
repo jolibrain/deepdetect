@@ -43,8 +43,9 @@ ccache -s
     }
     stage('Tests GPU') {
       steps {
-        sh '''cd build
-ctest -V -E "http" '''
+        lock('GPU') {
+          sh 'cd build && ctest -V -E "http"'
+          }
       }
     }
   }
