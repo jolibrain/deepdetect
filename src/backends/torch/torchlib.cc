@@ -41,6 +41,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include "native/native.h"
+
 using namespace torch;
 
 using google::protobuf::io::CodedInputStream;
@@ -125,9 +127,98 @@ namespace dd
   {
   }
 
+  void TorchModule::to(torch::Device device)
+  {
+    if (_graph)
+      _graph->to(device);
+    if (_native)
+      _native->to(device);
+    if (_traced)
+      _traced->to(device);
+  }
+
+  void TorchModule::to(torch::Dtype dtype)
+  {
+    if (_graph)
+      _graph->to(dtype);
+    if (_native)
+      _native->to(dtype);
+    if (_traced)
+      _traced->to(dtype);
+  }
+
+  void TorchModule::to(torch::Device device, torch::Dtype dtype)
+  {
+    if (_graph)
+      _graph->to(device, dtype);
+    if (_native)
+      _native->to(device, dtype);
+    if (_traced)
+      _traced->to(device, dtype);
+  }
+
+  template <class TInputConnectorStrategy>
+  void TorchModule::post_transform(const std::string tmpl,
+                                   const APIData &template_params,
+                                   const TInputConnectorStrategy &inputc,
+                                   const TorchModel &tmodel,
+                                   const torch::Device &device)
+  {
+    this->_native = std::shared_ptr<NativeModule>(
+        NativeFactory::from_template<TInputConnectorStrategy>(
+            tmpl, template_params, inputc));
+
+    if (_native)
+      if (!tmodel._native.empty())
+        torch::load(_native, tmodel._native, device);
+
+    if (_graph)
+      {
+        std::vector<long int> dims = inputc._dataset.datasize(0);
+        dims.insert(dims.begin(), 1); // dummy batch size
+        _graph->finalize(dims);
+        // reload params after finalize
+        if (!tmodel._traced.empty())
+          torch::load(_graph, tmodel._traced, _device);
+      }
+    to(_device);
+  }
+
+  template <class TInputConnectorStrategy>
+  void TorchModule::post_transform_train(const std::string tmpl,
+                                         const APIData &template_params,
+                                         const TInputConnectorStrategy &inputc,
+                                         const TorchModel &tmodel,
+                                         const torch::Device &device)
+  {
+    post_transform(tmpl, template_params, inputc, tmodel, device);
+  }
+
+  template <class TInputConnectorStrategy>
+  void TorchModule::post_transform_predict(
+      const std::string tmpl, const APIData &template_params,
+      const TInputConnectorStrategy &inputc, const TorchModel &tmodel,
+      const torch::Device &device, const APIData &ad)
+  {
+    post_transform(tmpl, template_params, inputc, tmodel, device);
+    if (_graph)
+      {
+        if (ad.getobj("parameters").getobj("input").has("continuation")
+            && ad.getobj("parameters")
+                   .getobj("input")
+                   .get("continuation")
+                   .get<bool>())
+          _graph->lstm_continues(true);
+        else
+          _graph->lstm_continues(false);
+      }
+  }
+
   c10::IValue TorchModule::forward(std::vector<c10::IValue> source)
   {
-    if (_native) // native modules take only one tensor as input for now
+    if (_graph) // native modules take only one tensor as input for now
+      return _graph->forward(to_tensor_safe(source[0]));
+    if (_native)
       return _native->forward(to_tensor_safe(source[0]));
     if (_traced)
       {
@@ -179,6 +270,8 @@ namespace dd
 
   std::vector<Tensor> TorchModule::parameters()
   {
+    if (_graph)
+      return _graph->parameters();
     if (_native)
       return _native->parameters();
     std::vector<Tensor> params;
@@ -199,8 +292,10 @@ namespace dd
       _traced->save(model._repo + "/checkpoint-" + name + ".pt");
     if (_classif)
       torch::save(_classif, model._repo + "/checkpoint-" + name + ".ptw");
+    if (_graph)
+      torch::save(_graph, model._repo + "/checkpoint-" + name + ".pt");
     if (_native)
-      torch::save(_native, model._repo + "/checkpoint-" + name + ".pt");
+      torch::save(_native, model._repo + "/checkpoint-" + name + ".npt");
   }
 
   void TorchModule::load(TorchModel &model)
@@ -212,37 +307,48 @@ namespace dd
       torch::load(_classif, model._weights, _device);
     if (!model._proto.empty())
       {
-        _native = std::make_shared<CaffeToTorch>(model._proto);
+        _graph = std::make_shared<CaffeToTorch>(model._proto);
         if (!model._traced.empty())
-          torch::load(_native, model._traced, _device);
+          torch::load(_graph, model._traced, _device);
+      }
+    if (!model._native.empty())
+      {
+        std::shared_ptr<NativeModule> m;
+        torch::load(m, model._native);
+        _native = m;
       }
   }
 
   void TorchModule::eval()
   {
-    if (_native)
-      _native->eval();
+    if (_graph)
+      _graph->eval();
     if (_traced)
       _traced->eval();
     if (_classif)
       _classif->eval();
+    if (_native)
+      _native->eval();
   }
 
   void TorchModule::train()
   {
-    if (_native)
-      _native->train();
+    if (_graph)
+      _graph->train();
     if (_traced)
       _traced->train();
     if (_classif)
       _classif->train();
+    if (_native)
+      _native->train();
   }
 
   void TorchModule::free()
   {
-    _native = nullptr;
+    _graph = nullptr;
     _traced = nullptr;
     _classif = nullptr;
+    _native = nullptr;
   }
 
   // ======= TORCHLIB
@@ -277,6 +383,7 @@ namespace dd
     _classification = tl._classification;
     _timeserie = tl._timeserie;
     _loss = tl._loss;
+    _template_params = tl._template_params;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
@@ -346,11 +453,14 @@ namespace dd
         this->_mlmodel._proto = dest_net;
       }
 
-    // Create the model
-    if (this->_mlmodel._traced.empty() && this->_mlmodel._proto.empty())
-      throw MLLibInternalException(
-          "Use of libtorch backend needs either traced net or protofile");
+    bool unsupported_model_configuration
+        = this->_mlmodel._traced.empty() && this->_mlmodel._proto.empty()
+          && !NativeFactory::valid_template_def(_template);
 
+    if (unsupported_model_configuration)
+      throw MLLibInternalException("Use of libtorch backend needs either: "
+                                   "traced net, protofile or native template");
+    // Create the model
     this->_inputc._input_format = "bert";
     if (_template == "bert")
       {
@@ -382,7 +492,8 @@ namespace dd
         this->_inputc._input_format = "gpt2";
         _seq_training = true;
       }
-    else if (_template.find("recurrent") != std::string::npos)
+    else if (_template.find("recurrent") != std::string::npos
+             || NativeFactory::is_timeserie(_template))
       {
         _timeserie = true;
       }
@@ -409,6 +520,9 @@ namespace dd
     _best_metrics = { "map", "meaniou",  "mlacc", "delta_score_0.1", "bacc",
                       "f1",  "net_meas", "acc",   "L1_mean_error",   "eucll" };
     _best_metric_value = std::numeric_limits<double>::infinity();
+
+    if (lib_ad.has("template_params"))
+      _template_params = lib_ad;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
@@ -536,17 +650,8 @@ namespace dd
     try
       {
         inputc.transform(ad);
-        if (_module._native)
-          {
-            auto batchoptional = inputc._dataset.get_batch({ 1 });
-            TorchBatch batch = batchoptional.value();
-            torch::Tensor td = batch.data[0];
-            _module._native->finalize(td.sizes());
-            // reload params after finalize
-            if (!this->_mlmodel._traced.empty())
-              torch::load(_module._native, this->_mlmodel._traced, _device);
-            _module._native->to(_device);
-          }
+        _module.post_transform_train<TInputConnectorStrategy>(
+            _template, _template_params, inputc, this->_mlmodel, _device);
       }
     catch (...)
       {
@@ -569,6 +674,9 @@ namespace dd
 
     // logging parameters
     int64_t log_batch_period = 20;
+
+    if (ad_mllib.has("template_params"))
+      _template_params = ad_mllib;
 
     if (ad_mllib.has("solver"))
       {
@@ -602,10 +710,10 @@ namespace dd
             = ad_mllib.get("class_weights").get<std::vector<double>>();
         if (cwv.size() != _nclasses)
           {
-            this->_logger->error(
-                "class weights given, but number of weights {} do not match "
-                "number of classes {}, ignoring",
-                cwv.size(), _nclasses);
+            this->_logger->error("class weights given, but number of "
+                                 "weights {} do not match "
+                                 "number of classes {}, ignoring",
+                                 cwv.size(), _nclasses);
           }
         else
           {
@@ -712,13 +820,15 @@ namespace dd
                                              + e.what());
               }
 
-            // As CrossEntropy is not available (Libtorch 1.1) we use nllloss +
-            // log_softmax
             Tensor loss;
+            // As CrossEntropy is not available (Libtorch 1.1) we use
+            // nllloss
+            // + log_softmax
             if (_seq_training)
               {
-                // Convert [n_batch, sequence_length, vocab_size] to [n_batch *
-                // sequence_length, vocab_size]
+                // Convert [n_batch, sequence_length, vocab_size] to
+                // [n_batch
+                // * sequence_length, vocab_size]
                 // + ignore non-masked tokens (== -1 in target)
                 loss = torch::nll_loss(
                     torch::log_softmax(
@@ -727,12 +837,18 @@ namespace dd
               }
             else if (_timeserie)
               {
-                if (_loss.empty() || _loss == "L1" || _loss == "l1")
-                  loss = torch::l1_loss(y_pred, y);
-                else if (_loss == "L2" || _loss == "l2" || _loss == "eucl")
-                  loss = torch::mse_loss(y_pred, y);
+                if (_module._native != nullptr)
+                  loss = _module._native->loss(_loss, in_vals[0].toTensor(),
+                                               y_pred, y);
                 else
-                  throw MLLibBadParamException("unknown loss " + _loss);
+                  {
+                    if (_loss.empty() || _loss == "L1" || _loss == "l1")
+                      loss = torch::l1_loss(y_pred, y);
+                    else if (_loss == "L2" || _loss == "l2" || _loss == "eucl")
+                      loss = torch::mse_loss(y_pred, y);
+                    else
+                      throw MLLibBadParamException("unknown loss " + _loss);
+                  }
               }
             else
               {
@@ -845,7 +961,8 @@ namespace dd
                   {
                     if (best_to_remove == elapsed_it)
                       // current model already snapshoted as best model,
-                      // do not remove regular snapshot if it is  best model
+                      // do not remove regular snapshot if it is  best
+                      // model
                       best_to_remove = -1;
                     else
                       snapshot(elapsed_it, *optimizer);
@@ -900,37 +1017,23 @@ namespace dd
 
     bool lstm_continuation = false;
     TInputConnectorStrategy inputc(this->_inputc);
+    if (_module._native != nullptr)
+      _module._native->update_input_connector(inputc);
+
     TOutputConnectorStrategy outputc(this->_outputc);
-    ;
     try
       {
         inputc.transform(ad);
-        if (_module._native)
-          {
-            auto batchoptional = inputc._dataset.get_batch({ 1 });
-            TorchBatch batch = batchoptional.value();
-            torch::Tensor td = batch.data[0];
-            _module._native->finalize(td.sizes());
-            // reload params after finalize
-            if (!this->_mlmodel._traced.empty())
-              torch::load(_module._native, this->_mlmodel._traced, _device);
-            _module._native->to(_device);
-
-            if (ad.getobj("parameters").getobj("input").has("continuation")
-                && ad.getobj("parameters")
-                       .getobj("input")
-                       .get("continuation")
-                       .get<bool>())
-              {
-                lstm_continuation = true;
-                _module._native->lstm_continues(true);
-              }
-            else
-              {
-                lstm_continuation = false;
-                _module._native->lstm_continues(false);
-              }
-          }
+        _module.post_transform_predict(_template, _template_params, inputc,
+                                       this->_mlmodel, _device, ad);
+        if (ad.getobj("parameters").getobj("input").has("continuation")
+            && ad.getobj("parameters")
+                   .getobj("input")
+                   .get("continuation")
+                   .get<bool>())
+          lstm_continuation = true;
+        else
+          lstm_continuation = false;
       }
     catch (...)
       {
@@ -1006,6 +1109,9 @@ namespace dd
           }
 
         // Output
+
+        if (_module._native != nullptr)
+          output = _module._native->cleanup_output(output);
 
         if (output_params.has("best"))
           {
@@ -1142,6 +1248,9 @@ namespace dd
         Tensor labels;
         if (_timeserie)
           {
+
+            if (_module._native != nullptr)
+              output = _module._native->cleanup_output(output);
             // iterate over data in batch
             labels = batch.target[0];
             output = output.to(cpu);
@@ -1172,8 +1281,8 @@ namespace dd
             labels = batch.target[0].view(IntList{ -1 });
             if (_masked_lm)
               {
-                // Convert [n_batch, sequence_length, vocab_size] to [n_batch *
-                // sequence_length, vocab_size]
+                // Convert [n_batch, sequence_length, vocab_size] to [n_batch
+                // * sequence_length, vocab_size]
                 output = output.view(IntList{ -1, output.size(2) });
               }
             output = torch::softmax(output, 1).to(cpu);
