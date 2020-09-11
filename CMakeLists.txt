@@ -781,6 +781,7 @@ if (USE_TORCH)
   if (${PB_GENERATOR_TORCH})
     add_custom_command(TARGET pytorch POST_BUILD
       COMMAND test -f ${CMAKE_BINARY_DIR}/src/caffe.pb.h ||
+       env LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR}:$ENV{LD_LIBRARY_PATH} PATH=${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/bin/:$ENV{PATH}
 	   ${CMAKE_BINARY_DIR}/pytorch/src/pytorch-build/build/bin/protoc
 		--proto_path=${CMAKE_SOURCE_DIR}
 		--cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_SOURCE_DIR}/caffe.proto &&
