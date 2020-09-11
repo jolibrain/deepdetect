@@ -16,7 +16,9 @@ ccache -s
       }
     }
     stage('Preparing archive') {
-       sh 'tar -cvf pytorch-${GIT_COMMIT}.tar build/pytorch'
+      steps {
+        sh 'tar -cvf pytorch-${GIT_COMMIT}.tar build/pytorch'
+      }
     }
     stage('cleanup') {
       steps {
