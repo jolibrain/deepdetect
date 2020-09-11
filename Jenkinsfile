@@ -30,7 +30,7 @@ ctest -V -E "http" '''
       success {
           rocketSend(channel: 'build', message: 'Build succeed')
       }
-      failure {
+      unsuccessful {
           rocketSend(channel: 'build', message: 'Build failed')
       }
   }
