@@ -22,7 +22,7 @@ make clang-format-check
 
     stage('Installing prebuilt pytorch') {
       steps {
-        copyArtifacts(projectName: 'deepdetect-pytorch')
+        copyArtifacts(projectName: 'deepdetect-pytorch/master')
         sh '''
 tar -xf pytorch-*.tar
 rm -f pytorch-*.tar
