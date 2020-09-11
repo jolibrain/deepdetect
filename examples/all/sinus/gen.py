@@ -31,7 +31,6 @@ if os.path.exists("./predict"):
         os.remove("predict/"+f)
     os.rmdir("predict")
 
-
 os.mkdir("train")
 os.mkdir("test")
 os.mkdir("predict")

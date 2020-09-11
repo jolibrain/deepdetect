@@ -138,6 +138,8 @@ namespace dd
 
     c10::optional<TorchBatch> get_batch(BatchRequestType request) override;
 
+    std::vector<long int> datasize(long int i) const;
+
     /// Returns a batch containing all the cached data
     TorchBatch get_cached();
 
@@ -165,7 +167,8 @@ namespace dd
         : _finetuning(i._finetuning), _lm_params(i._lm_params),
           _dataset(i._dataset), _test_dataset(i._test_dataset),
           _input_format(i._input_format), _ntargets(i._ntargets),
-          _tilogger(i._tilogger), _db(i._db)
+          _tilogger(i._tilogger), _db(i._db),
+          _split_ts_for_predict(i._split_ts_for_predict)
     {
     }
 
@@ -242,6 +245,7 @@ namespace dd
     std::string _db_fname;
     std::string _test_db_name = "test";
     std::string _backend = "lmdb";
+    bool _split_ts_for_predict = false;
   };
 
   class ImgTorchInputFileConn : public ImgInputFileConn,
@@ -430,6 +434,7 @@ namespace dd
           _datadim(i._datadim)
     {
     }
+
     ~CSVTSTorchInputFileConn()
     {
     }
