@@ -10,8 +10,7 @@ set
 mkdir -p build
 cd build
 cmake .. -DUSE_TORCH=ON -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61"
-mkdir -p build/pytorch/testing-tarball-scripts
-#make -j24 pytorch
+make -j24 pytorch
 ccache -s
 '''
       }
