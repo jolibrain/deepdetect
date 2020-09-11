@@ -9,7 +9,7 @@ export PATH="/usr/lib/ccache/:$PATH"
 set
 mkdir -p build
 cd build
-cmake .. -DUSE_TORCH -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61"
+cmake .. -DUSE_TORCH=ON
 make -j24 pytorch
 ccache -s
 '''
