@@ -32,29 +32,37 @@ namespace dd
   class TFModel : public MLModel
   {
   public:
-    TFModel():MLModel() {}
+    TFModel() : MLModel()
+    {
+    }
     TFModel(const APIData &ad, APIData &adg,
-	    const std::shared_ptr<spdlog::logger> &logger);
-    TFModel(const std::string &repo)
-      :MLModel(repo) {}
-    ~TFModel() {}
-    
-    int read_from_repository(const std:: string &repo,
-			     const std::shared_ptr<spdlog::logger> &logger);
+            const std::shared_ptr<spdlog::logger> &logger);
+    TFModel(const std::string &repo) : MLModel(repo)
+    {
+    }
+    ~TFModel()
+    {
+    }
+
+    int read_from_repository(const std::string &repo,
+                             const std::shared_ptr<spdlog::logger> &logger);
 
     int read_corresp_file(const std::shared_ptr<spdlog::logger> &logger);
 
     inline std::string get_hcorresp(const int &i)
     {
       if (_hcorresp.empty())
-	return std::to_string(i);
-      else return _hcorresp[i];
+        return std::to_string(i);
+      else
+        return _hcorresp[i];
     }
-    
-    std::string _graphName; // Name of the graph 
+
+    std::string _graphName; // Name of the graph
     std::string _modelRepo;
-    std::string _corresp; /**< file name of the class correspondences (e.g. house / 23) */
-    std::unordered_map<int,std::string> _hcorresp; /**< table of class correspondences. */
+    std::string _corresp; /**< file name of the class correspondences (e.g.
+                             house / 23) */
+    std::unordered_map<int, std::string>
+        _hcorresp; /**< table of class correspondences. */
   };
 
 }

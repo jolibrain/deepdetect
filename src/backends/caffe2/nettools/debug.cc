@@ -22,48 +22,59 @@
 #include <fstream>
 #include "backends/caffe2/nettools/internal.h"
 
-namespace dd {
-  namespace Caffe2NetTools {
+namespace dd
+{
+  namespace Caffe2NetTools
+  {
 
     /*
      *  Debug
      */
 
-    void net_to_svg(const caffe2::NetDef &net, const std::string &path) {
+    void net_to_svg(const caffe2::NetDef &net, const std::string &path)
+    {
       int size = net.op().size();
       CAFFE_ENFORCE(size < 600, "Net size is too big: ", size);
       auto graph = path + ".tmpgraph";
       std::ofstream file(graph);
       file << "digraph {" << std::endl;
       file << '\t' << "node [shape=box];";
-      for (int i = 0; i < size; ++i) {
-	file << ' ' << net.op(i).type() + '_' + std::to_string(i);
-      }
+      for (int i = 0; i < size; ++i)
+        {
+          file << ' ' << net.op(i).type() + '_' + std::to_string(i);
+        }
       file << "; node [shape=oval];" << std::endl;
-      for (int i = 0; i < size; ++i) {
-	const caffe2::OperatorDef &op = net.op(i);
-	std::string name = op.type() + '_' + std::to_string(i);
-	for (const std::string &blob : op.input()) {
-	  file << "\t\"" << blob << "\" -> \"" << name << "\";" << std::endl;
-	}
-	for (const std::string &blob : op.output()) {
-	  file << "\t\"" << name << "\" -> \"" << blob << "\";" << std::endl;
-	}
-      }
+      for (int i = 0; i < size; ++i)
+        {
+          const caffe2::OperatorDef &op = net.op(i);
+          std::string name = op.type() + '_' + std::to_string(i);
+          for (const std::string &blob : op.input())
+            {
+              file << "\t\"" << blob << "\" -> \"" << name << "\";"
+                   << std::endl;
+            }
+          for (const std::string &blob : op.output())
+            {
+              file << "\t\"" << name << "\" -> \"" << blob << "\";"
+                   << std::endl;
+            }
+        }
       file << "}" << std::endl;
       file.close();
       CAFFE_ENFORCE(!system(("dot -Tsvg -o" + path + " " + graph).c_str()));
       remove(graph.c_str());
     }
 
-    void dump_net(const caffe2::NetDef &net, const std::string &path) {
-      export_net(net, path + ".pb"); // Raw protobuf file
+    void dump_net(const caffe2::NetDef &net, const std::string &path)
+    {
+      export_net(net, path + ".pb");          // Raw protobuf file
       export_net(net, path + ".pbtxt", true); // Human-readable protobuf file
-      net_to_svg(net, path + ".svg"); // SVG file
+      net_to_svg(net, path + ".svg");         // SVG file
     }
 
     void _reset_init_net(const caffe2::NetDef &net, caffe2::NetDef &init);
-    void untrain_model(const std::string &input, const std::string &output) {
+    void untrain_model(const std::string &input, const std::string &output)
+    {
       caffe2::NetDef net, init;
       import_net(net, input + "/predict_net.pb");
       import_net(init, input + "/init_net.pb");

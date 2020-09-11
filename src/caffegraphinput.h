@@ -22,54 +22,56 @@
 #ifndef CAFFE_GRAPH_INPUT_H
 #define CAFFE_GRAPH_INPUT_H
 
-
 #include <google/protobuf/text_format.h>
 #include "src/caffe.pb.h"
 
 #include "basegraph.h"
 
-
 namespace dd
 {
 
   /**
-   *  this class add from_proto trait to basegraph, ie allows to build a base graph from a prototxt file
+   *  this class add from_proto trait to basegraph, ie allows to build a base
+   * graph from a prototxt file
    */
   class CaffeGraphInput : public virtual BaseGraph
   {
   public:
+    /**
+     *  simple contructor to build a basegraph from a prototxt
+     */
+    CaffeGraphInput(std::string filename)
+    {
+      from_proto(filename);
+    }
 
-	/**
-	 *  simple contructor to build a basegraph from a prototxt
-	 */
-	CaffeGraphInput(std::string filename) {from_proto(filename);}
   private:
+    /**
+     * create basegraph from proto
+     */
+    int from_proto(std::string filename);
 
-	/**
-	 * create basegraph from proto
-	 */
-	int from_proto(std::string filename);
+    /**
+     * read protofile
+     */
+    bool read_proto(std::string filename, google::protobuf::Message *proto);
 
-	/**
-	 * read protofile
-	 */
-	bool read_proto(std::string filename, google::protobuf::Message* proto);
+    /**
+     * check if we are in all permute / ssplit / concat stuff needed by caffe
+     * before lstm
+     * @return
+     */
+    bool lstm_preparation(caffe::NetParameter &net, int i);
 
-	/**
-	 * check if we are in all permute / ssplit / concat stuff needed by caffe before lstm
-	 * @return
-	 */
-	bool lstm_preparation(caffe::NetParameter& net, int i);
+    /**
+     * check if protofile is an lstm definition created by dede
+     */
+    bool is_simple_lstm(caffe::NetParameter &net);
 
-	/**
-	 * check if protofile is an lstm definition created by dede
-	 */
-	bool is_simple_lstm(caffe::NetParameter &net);
-
-	/**
-	 * create basegraph from lstm protofile created by dede
-	 */
-	bool parse_simple_lstm(caffe::NetParameter &net);
+    /**
+     * create basegraph from lstm protofile created by dede
+     */
+    bool parse_simple_lstm(caffe::NetParameter &net);
   };
 }
 #endif

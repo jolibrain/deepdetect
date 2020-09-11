@@ -37,96 +37,103 @@
 
 namespace dd
 {
-    // TODO: Make TorchModule inherit torch::nn::Module ? And use the TORCH_MODULE macro
-    class TorchModule {
-    public:
-        TorchModule();
+  // TODO: Make TorchModule inherit torch::nn::Module ? And use the
+  // TORCH_MODULE macro
+  class TorchModule
+  {
+  public:
+    TorchModule();
 
-        c10::IValue forward(std::vector<c10::IValue> source);
+    c10::IValue forward(std::vector<c10::IValue> source);
 
-        void freeze_traced(bool freeze);
+    void freeze_traced(bool freeze);
 
-        std::vector<torch::Tensor> parameters();
+    std::vector<torch::Tensor> parameters();
 
-        /** Save traced module to checkpoint-[name].pt, and custom parts weights
-         * to checkpoint-[name].ptw */
-        // (Actually only _classif is saved in the .ptw)
-        void save_checkpoint(TorchModel &model, const std::string &name);
+    /** Save traced module to checkpoint-[name].pt, and custom parts weights
+     * to checkpoint-[name].ptw */
+    // (Actually only _classif is saved in the .ptw)
+    void save_checkpoint(TorchModel &model, const std::string &name);
 
-        /** Load traced module from .pt and custom parts weights from .ptw */
-        void load(TorchModel &model);
+    /** Load traced module from .pt and custom parts weights from .ptw */
+    void load(TorchModel &model);
 
-        void eval();
-        void train();
+    void eval();
+    void train();
 
-        void free();
-    public:
-        std::shared_ptr<torch::jit::script::Module> _traced;
-        std::shared_ptr<TorchGraphBackend> _native;	/**< native module : torchgraphbackend has same interface as torch::module */
-        torch::nn::Linear _classif = nullptr;
+    void free();
 
-        torch::Device _device;
-        int _classif_in = 0; /**<id of the input of the classification layer */
-        bool _hidden_states = false; /**< Take BERT hidden states as input. */
-    private:
-        bool _freeze_traced = false; /**< Freeze weights of the traced module */
-    };
+  public:
+    std::shared_ptr<torch::jit::script::Module> _traced;
+    std::shared_ptr<TorchGraphBackend>
+        _native; /**< native module : torchgraphbackend has same interface as
+                    torch::module */
+    torch::nn::Linear _classif = nullptr;
 
+    torch::Device _device;
+    int _classif_in = 0; /**<id of the input of the classification layer */
+    bool _hidden_states = false; /**< Take BERT hidden states as input. */
+  private:
+    bool _freeze_traced = false; /**< Freeze weights of the traced module */
+  };
 
-    template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel=TorchModel>
-    class TorchLib : public MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>
-    {
-    public:
-        TorchLib(const TorchModel &tmodel);
-        TorchLib(TorchLib &&tl) noexcept;
-        ~TorchLib();
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+            class TMLModel = TorchModel>
+  class TorchLib : public MLLib<TInputConnectorStrategy,
+                                TOutputConnectorStrategy, TMLModel>
+  {
+  public:
+    TorchLib(const TorchModel &tmodel);
+    TorchLib(TorchLib &&tl) noexcept;
+    ~TorchLib();
 
-        /*- from mllib -*/
-        void init_mllib(const APIData &ad);
+    /*- from mllib -*/
+    void init_mllib(const APIData &ad);
 
-        void clear_mllib(const APIData &ad);
+    void clear_mllib(const APIData &ad);
 
-        int train(const APIData &ad, APIData &out);
+    int train(const APIData &ad, APIData &out);
 
-        int predict(const APIData &ad, APIData &out);
+    int predict(const APIData &ad, APIData &out);
 
-        int test(const APIData &ad, TInputConnectorStrategy &inputc,
-                 TorchDataset &dataset,
-                 int batch_size, APIData &out);
+    int test(const APIData &ad, TInputConnectorStrategy &inputc,
+             TorchDataset &dataset, int batch_size, APIData &out);
 
+  public:
+    unsigned int _nclasses = 0;
+    std::string _template;
+    bool _finetuning = false;
+    torch::Device _device = torch::Device("cpu");
+    bool _masked_lm = false;
+    bool _seq_training = false;
+    bool _classification = false;
+    bool _timeserie = false;
+    std::string _loss = "";
 
-    public:
-        unsigned int _nclasses = 0;
-        std::string _template;
-        bool _finetuning = false;
-        torch::Device _device = torch::Device("cpu");
-        bool _masked_lm = false;
-        bool _seq_training = false;
-        bool _classification = false;
-		bool _timeserie = false;
-	    std::string _loss = "";
+    // models
+    TorchModule _module;
 
-        // models
-        TorchModule _module;
+    std::vector<std::string>
+        _best_metrics;         /**< metric to use for saving best model */
+    double _best_metric_value; /**< best metric value  */
 
-        std::vector<std::string> _best_metrics; /**< metric to use for saving best model */
-        double _best_metric_value; /**< best metric value  */
+  private:
+    /**
+     * \brief checks wether v1 is better than v2
+     */
+    bool is_better(double v1, double v2, std::string metric_name);
 
-    private:
-        /**
-         * \brief checks wether v1 is better than v2
-         */
-         bool is_better(double v1, double v2, std::string metric_name);
+    /**
+     * \brief generates a file containing best iteration so far
+     */
+    int64_t save_if_best(APIData &meas_out, int64_t elapsed_it,
+                         torch::optim::Optimizer &optimizer,
+                         int64_t best_to_remove);
 
-        /**
-        * \brief generates a file containing best iteration so far
-        */
-    int64_t save_if_best(APIData &meas_out,int64_t elapsed_it, torch::optim::Optimizer& optimizer, int64_t best_to_remove);
+    void snapshot(int64_t elapsed_it, torch::optim::Optimizer &optimizer);
 
-        void snapshot(int64_t elapsed_it, torch::optim::Optimizer& optimizer);
-
-        void remove_model(int64_t it);
-    };
+    void remove_model(int64_t it);
+  };
 
 }
 

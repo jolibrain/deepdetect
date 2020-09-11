@@ -8,91 +8,124 @@
 
 #include "db.hpp"
 
-namespace dd { namespace db {
+namespace dd
+{
+  namespace db
+  {
 
- inline void MDB_CHECK(int mdb_status) {
-   CHECK_EQ(mdb_status, MDB_SUCCESS) << mdb_strerror(mdb_status);
- }
-
-class LMDBCursor : public Cursor {
- public:
-  explicit LMDBCursor(MDB_txn* mdb_txn, MDB_cursor* mdb_cursor)
-    : mdb_txn_(mdb_txn), mdb_cursor_(mdb_cursor), valid_(false) {
-    SeekToFirst();
-  }
-  virtual ~LMDBCursor() {
-    mdb_cursor_close(mdb_cursor_);
-    mdb_txn_abort(mdb_txn_);
-  }
-  virtual void SeekToFirst() { Seek(MDB_FIRST); }
-  virtual void Next() { Seek(MDB_NEXT); }
-  virtual std::string key() {
-    return std::string(static_cast<const char*>(mdb_key_.mv_data), mdb_key_.mv_size);
-  }
-  virtual std::string value() {
-    return std::string(static_cast<const char*>(mdb_value_.mv_data),
-        mdb_value_.mv_size);
-  }
-  virtual bool valid() { return valid_; }
-  
- private:
-  void Seek(MDB_cursor_op op) {
-    int mdb_status = mdb_cursor_get(mdb_cursor_, &mdb_key_, &mdb_value_, op);
-    if (mdb_status == MDB_NOTFOUND) {
-      valid_ = false;
-    } else {
-      //      MDB_CHECK(mdb_status);
-      valid_ = true;
+    inline void MDB_CHECK(int mdb_status)
+    {
+      CHECK_EQ(mdb_status, MDB_SUCCESS) << mdb_strerror(mdb_status);
     }
-  }
 
-  MDB_txn* mdb_txn_;
-  MDB_cursor* mdb_cursor_;
-  MDB_val mdb_key_, mdb_value_;
-  bool valid_;
-};
+    class LMDBCursor : public Cursor
+    {
+    public:
+      explicit LMDBCursor(MDB_txn *mdb_txn, MDB_cursor *mdb_cursor)
+          : mdb_txn_(mdb_txn), mdb_cursor_(mdb_cursor), valid_(false)
+      {
+        SeekToFirst();
+      }
+      virtual ~LMDBCursor()
+      {
+        mdb_cursor_close(mdb_cursor_);
+        mdb_txn_abort(mdb_txn_);
+      }
+      virtual void SeekToFirst()
+      {
+        Seek(MDB_FIRST);
+      }
+      virtual void Next()
+      {
+        Seek(MDB_NEXT);
+      }
+      virtual std::string key()
+      {
+        return std::string(static_cast<const char *>(mdb_key_.mv_data),
+                           mdb_key_.mv_size);
+      }
+      virtual std::string value()
+      {
+        return std::string(static_cast<const char *>(mdb_value_.mv_data),
+                           mdb_value_.mv_size);
+      }
+      virtual bool valid()
+      {
+        return valid_;
+      }
 
-class LMDBTransaction : public Transaction {
- public:
-  explicit LMDBTransaction(MDB_env* mdb_env)
-    : mdb_env_(mdb_env) { }
-  virtual void Put(const std::string& key, const std::string& value);
-  virtual void Commit();
+    private:
+      void Seek(MDB_cursor_op op)
+      {
+        int mdb_status
+            = mdb_cursor_get(mdb_cursor_, &mdb_key_, &mdb_value_, op);
+        if (mdb_status == MDB_NOTFOUND)
+          {
+            valid_ = false;
+          }
+        else
+          {
+            //      MDB_CHECK(mdb_status);
+            valid_ = true;
+          }
+      }
 
- private:
-  MDB_env* mdb_env_;
-  std::vector<std::string> keys, values;
+      MDB_txn *mdb_txn_;
+      MDB_cursor *mdb_cursor_;
+      MDB_val mdb_key_, mdb_value_;
+      bool valid_;
+    };
 
-  void DoubleMapSize();
+    class LMDBTransaction : public Transaction
+    {
+    public:
+      explicit LMDBTransaction(MDB_env *mdb_env) : mdb_env_(mdb_env)
+      {
+      }
+      virtual void Put(const std::string &key, const std::string &value);
+      virtual void Commit();
 
-  DISABLE_COPY_AND_ASSIGN(LMDBTransaction);
-};
+    private:
+      MDB_env *mdb_env_;
+      std::vector<std::string> keys, values;
 
-class LMDB : public DB {
- public:
-  LMDB() : mdb_env_(NULL) { }
-  virtual ~LMDB() { Close(); }
-  virtual void Open(const std::string& source, Mode mode);
-  virtual void Close() {
-    if (mdb_env_ != NULL) {
-      mdb_dbi_close(mdb_env_, mdb_dbi_);
-      mdb_env_close(mdb_env_);
-      mdb_env_ = NULL;
-    }
-  }
-  virtual LMDBCursor* NewCursor();
-  virtual LMDBTransaction* NewTransaction();
-  virtual int Count();
-  virtual void Get(const std::string &keym,
-		   std::string &data_val);
-  virtual void Remove(const std::string &key);
+      void DoubleMapSize();
 
- private:
-  MDB_env* mdb_env_;
-  MDB_dbi mdb_dbi_;
-};
+      DISABLE_COPY_AND_ASSIGN(LMDBTransaction);
+    };
 
-}  // namespace db
-}  // namespace caffe
+    class LMDB : public DB
+    {
+    public:
+      LMDB() : mdb_env_(NULL)
+      {
+      }
+      virtual ~LMDB()
+      {
+        Close();
+      }
+      virtual void Open(const std::string &source, Mode mode);
+      virtual void Close()
+      {
+        if (mdb_env_ != NULL)
+          {
+            mdb_dbi_close(mdb_env_, mdb_dbi_);
+            mdb_env_close(mdb_env_);
+            mdb_env_ = NULL;
+          }
+      }
+      virtual LMDBCursor *NewCursor();
+      virtual LMDBTransaction *NewTransaction();
+      virtual int Count();
+      virtual void Get(const std::string &keym, std::string &data_val);
+      virtual void Remove(const std::string &key);
 
-#endif  // CAFFE_UTIL_DB_LMDB_HPP
+    private:
+      MDB_env *mdb_env_;
+      MDB_dbi mdb_dbi_;
+    };
+
+  } // namespace db
+} // namespace caffe
+
+#endif // CAFFE_UTIL_DB_LMDB_HPP

@@ -30,40 +30,43 @@
 
 namespace dd
 {
-    template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel=NCNNModel>
-    class NCNNLib : public MLLib<TInputConnectorStrategy,TOutputConnectorStrategy,TMLModel>
-    {
-    public:
-        NCNNLib(const NCNNModel &tmodel);
-        NCNNLib(NCNNLib &&tl) noexcept;
-        ~NCNNLib();
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+            class TMLModel = NCNNModel>
+  class NCNNLib : public MLLib<TInputConnectorStrategy,
+                               TOutputConnectorStrategy, TMLModel>
+  {
+  public:
+    NCNNLib(const NCNNModel &tmodel);
+    NCNNLib(NCNNLib &&tl) noexcept;
+    ~NCNNLib();
 
-        /*- from mllib -*/
-        void init_mllib(const APIData &ad);
+    /*- from mllib -*/
+    void init_mllib(const APIData &ad);
 
-        void clear_mllib(const APIData &ad);
+    void clear_mllib(const APIData &ad);
 
-        int train(const APIData &ad, APIData &out);
+    int train(const APIData &ad, APIData &out);
 
-        int predict(const APIData &ad, APIData &out);
+    int predict(const APIData &ad, APIData &out);
 
-        void model_type(const std::string &param_file,
-			std::string &mltype);
-    
-    public:
-        ncnn::Net *_net = nullptr;
-        int _nclasses = 0;
-        bool _timeserie =  false;
-        bool _lightmode = true;
-    private:
-        static ncnn::UnlockedPoolAllocator _blob_pool_allocator;
-        static ncnn::PoolAllocator _workspace_pool_allocator;
-    protected:
-        int _threads = 1;
+    void model_type(const std::string &param_file, std::string &mltype);
+
+  public:
+    ncnn::Net *_net = nullptr;
+    int _nclasses = 0;
+    bool _timeserie = false;
+    bool _lightmode = true;
+
+  private:
+    static ncnn::UnlockedPoolAllocator _blob_pool_allocator;
+    static ncnn::PoolAllocator _workspace_pool_allocator;
+
+  protected:
+    int _threads = 1;
     int _old_height = -1;
     std::string _inputBlob = "data";
     std::string _outputBlob;
-    };
+  };
 }
 
 #endif

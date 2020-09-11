@@ -21,39 +21,45 @@
 
 #include "backends/caffe2/nettools.h"
 
-namespace dd {
-  namespace Caffe2NetTools {
+namespace dd
+{
+  namespace Caffe2NetTools
+  {
 
     /*
      *  NetGroup
      */
 
-    void NetGroup::swap(NetGroup &nets) {
+    void NetGroup::swap(NetGroup &nets)
+    {
       _init.Swap(&nets._init);
       _train.Swap(&nets._train);
       _predict.Swap(&nets._predict);
     }
 
-    void NetGroup::rename(const std::string &name) {
+    void NetGroup::rename(const std::string &name)
+    {
       std::string prefix("(" + _type + ")" + name);
       _init.set_name(prefix + "_init");
       _train.set_name(prefix + "_train");
       _predict.set_name(prefix + "_predict");
     }
 
-    void NetGroup::import(const std::string &init,
-			  const std::string &predict,
-			  const std::string &train) {
-      if (init.size()) import_net(_init, init);
-      if (predict.size()) import_net(_predict, predict);
-      if (train.size()) import_net(_train, train);
+    void NetGroup::import(const std::string &init, const std::string &predict,
+                          const std::string &train)
+    {
+      if (init.size())
+        import_net(_init, init);
+      if (predict.size())
+        import_net(_predict, predict);
+      if (train.size())
+        import_net(_train, train);
     }
 
-    NetGroup::NetGroup(const std::string &type,
-		       const std::string &init,
-		       const std::string &predict,
-		       const std::string &train)
-      : _type(type) {
+    NetGroup::NetGroup(const std::string &type, const std::string &init,
+                       const std::string &predict, const std::string &train)
+        : _type(type)
+    {
       import(init, predict, train);
     }
 

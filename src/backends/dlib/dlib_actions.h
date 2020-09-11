@@ -23,22 +23,25 @@
 
 #include "chain_actions.h"
 
-namespace dd {
+namespace dd
+{
 
-    class DlibAlignCropAction : public ChainAction
+  class DlibAlignCropAction : public ChainAction
+  {
+  public:
+    DlibAlignCropAction(const APIData &adc, const std::string &action_id,
+                        const std::string &action_type,
+                        const std::shared_ptr<spdlog::logger> chain_logger)
+        : ChainAction(adc, action_id, action_type, chain_logger)
     {
-    public:
-        DlibAlignCropAction(const APIData &adc,
-                            const std::string &action_id,
-                            const std::string &action_type,
-                            const std::shared_ptr<spdlog::logger> chain_logger)
-          :ChainAction(adc,action_id,action_type,chain_logger) {}
+    }
 
-        ~DlibAlignCropAction() {}
+    ~DlibAlignCropAction()
+    {
+    }
 
-        void apply(APIData &model_out,
-                   ChainData &cdata);
-    };
+    void apply(APIData &model_out, ChainData &cdata);
+  };
 }
 
-#endif //DEEPDETECT_DLIB_ACTIONS_H
+#endif // DEEPDETECT_DLIB_ACTIONS_H

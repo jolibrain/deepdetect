@@ -28,28 +28,34 @@
 
 namespace dd
 {
-    class NCNNModel : public MLModel
+  class NCNNModel : public MLModel
+  {
+  public:
+    NCNNModel() : MLModel()
     {
-    public:
-        NCNNModel():MLModel() {}
-        NCNNModel(const APIData &ad, APIData &adg,
-		  const std::shared_ptr<spdlog::logger> &logger)
-	   :MLModel(ad,adg,logger) {
-            if (ad.has("repository"))
-	            this->_repo = ad.get("repository").get<std::string>();
-	        read_from_repository(spdlog::get("api"));
-            read_corresp_file();
-        }
-        NCNNModel(const std::string &repo)
-            :MLModel(repo) {}
-        ~NCNNModel() {}
+    }
+    NCNNModel(const APIData &ad, APIData &adg,
+              const std::shared_ptr<spdlog::logger> &logger)
+        : MLModel(ad, adg, logger)
+    {
+      if (ad.has("repository"))
+        this->_repo = ad.get("repository").get<std::string>();
+      read_from_repository(spdlog::get("api"));
+      read_corresp_file();
+    }
+    NCNNModel(const std::string &repo) : MLModel(repo)
+    {
+    }
+    ~NCNNModel()
+    {
+    }
 
-        int read_from_repository(const std::shared_ptr<spdlog::logger> &logger);
+    int read_from_repository(const std::shared_ptr<spdlog::logger> &logger);
 
-    public:
-        std::string _weights;
-        std::string _params;
-    };
+  public:
+    std::string _weights;
+    std::string _params;
+  };
 }
 
 #endif

@@ -26,8 +26,8 @@ namespace dd
 {
 
   XGBModel::XGBModel(const APIData &ad, APIData &adg,
-		     const std::shared_ptr<spdlog::logger> &logger)
-    :MLModel(ad,adg,logger)
+                     const std::shared_ptr<spdlog::logger> &logger)
+      : MLModel(ad, adg, logger)
   {
     if (ad.has("repository"))
       this->_repo = ad.get("repository").get<std::string>();
@@ -35,43 +35,46 @@ namespace dd
     read_corresp_file();
   }
 
-  int XGBModel::read_from_repository(const std::shared_ptr<spdlog::logger> &logger)
+  int XGBModel::read_from_repository(
+      const std::shared_ptr<spdlog::logger> &logger)
   {
     static std::string weights = ".model";
     static std::string corresp = "corresp";
     std::unordered_set<std::string> lfiles;
-    int e = fileops::list_directory(_repo,true,false,false,lfiles);
+    int e = fileops::list_directory(_repo, true, false, false, lfiles);
     if (e != 0)
       {
-	logger->error("error reading or listing XGBoost models in repository {}",_repo);
-	return 1;
+        logger->error(
+            "error reading or listing XGBoost models in repository {}", _repo);
+        return 1;
       }
-    std::string weightsf,correspf;
-    int weight_t=-1;
+    std::string weightsf, correspf;
+    int weight_t = -1;
     auto hit = lfiles.begin();
-    while(hit!=lfiles.end())
+    while (hit != lfiles.end())
       {
-	if ((*hit).find(weights)!=std::string::npos)
-	  {
-	    // stat file to pick the latest one
-	    long int wt = fileops::file_last_modif((*hit));
-	    if (wt > weight_t)
-	      {
-		weightsf = (*hit);
-		weight_t = wt;
-	      }
-	  }
-	else if ((*hit).find(corresp)!=std::string::npos)
-	  correspf = (*hit);
-	++hit;
+        if ((*hit).find(weights) != std::string::npos)
+          {
+            // stat file to pick the latest one
+            long int wt = fileops::file_last_modif((*hit));
+            if (wt > weight_t)
+              {
+                weightsf = (*hit);
+                weight_t = wt;
+              }
+          }
+        else if ((*hit).find(corresp) != std::string::npos)
+          correspf = (*hit);
+        ++hit;
       }
     _weights = weightsf;
     _corresp = correspf;
     return 0;
   }
 
-  std::string XGBModel::lookup_objective(const std::string &modelfile,
-					 const std::shared_ptr<spdlog::logger> &logger)
+  std::string
+  XGBModel::lookup_objective(const std::string &modelfile,
+                             const std::shared_ptr<spdlog::logger> &logger)
   {
     static std::string objective_softprob = "multi:softprob";
     static std::string objective_binary = "binary:logistic";
@@ -80,23 +83,24 @@ namespace dd
     std::ifstream ff(modelfile);
     if (!ff.is_open())
       {
-	logger->info("cannot open xgb model file {} for looking objective up",modelfile);
-	return "";
+        logger->info("cannot open xgb model file {} for looking objective up",
+                     modelfile);
+        return "";
       }
     std::string line;
-    while(!ff.eof())
+    while (!ff.eof())
       {
-	std::getline(ff,line);
-	if (line.find(objective_softprob,0)!=std::string::npos)
-	  return objective_softprob;
-	else if (line.find(objective_binary,0)!=std::string::npos)
-	  return objective_binary;
-	else if (line.find(objective_reg_linear,0)!=std::string::npos)
-	  return objective_reg_linear;
-	else if (line.find(objective_reg_logistic,0)!=std::string::npos)
-	  return objective_reg_logistic;
+        std::getline(ff, line);
+        if (line.find(objective_softprob, 0) != std::string::npos)
+          return objective_softprob;
+        else if (line.find(objective_binary, 0) != std::string::npos)
+          return objective_binary;
+        else if (line.find(objective_reg_linear, 0) != std::string::npos)
+          return objective_reg_linear;
+        else if (line.find(objective_reg_logistic, 0) != std::string::npos)
+          return objective_reg_logistic;
       }
     return "";
   }
-  
+
 }
