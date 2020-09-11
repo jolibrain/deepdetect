@@ -25,13 +25,12 @@ ccache -s
   post {
       success {
           archiveArtifacts(artifacts: 'pytorch-*.tar')
+          cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
           rocketSend(channel: 'build', message: 'Build succeed')
       }
       unsuccessful {
+          cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
           rocketSend(channel: 'build', message: 'Build failed')
-      }
-      always {
-        cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
       }
   }
 }
