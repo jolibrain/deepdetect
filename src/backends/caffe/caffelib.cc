@@ -391,8 +391,7 @@ namespace dd
                     else if (_loss == "L1")
                       {
                         lparam->set_type("SmoothL1Loss");
-                        lparam->mutable_smooth_l1_loss_param()->set_sigma(
-                            10.0);
+                        lparam->mutable_smooth_l1_loss_param()->set_sigma(1.0);
                       }
                     else if (_loss == "sigmoid")
                       {
