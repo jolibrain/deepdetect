@@ -356,6 +356,8 @@ namespace dd
           meas.add("remain_time_str", est_remain_time_str);
         }
 
+      meas.add("flops", this->_model_flops);
+
       ad.add("measure", meas);
     }
 
