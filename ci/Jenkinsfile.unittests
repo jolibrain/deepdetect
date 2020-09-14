@@ -40,7 +40,7 @@ touch build/CMakeFiles/pytorch-complete
         sh '''
 export PATH="/usr/lib/ccache/:$PATH"
 cd build
-make -j24
+schedtool -B -n 1 -e ionice -n 1 make -j 6
 ccache -s
 '''
       }
