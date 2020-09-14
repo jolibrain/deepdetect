@@ -246,6 +246,8 @@ namespace dd
 
     void update_protofile_imageDataLayer(caffe::NetParameter &net_param);
 
+    void update_protofile_denseImageDataLayer(caffe::NetParameter &net_param);
+
     void update_protofiles_dice_params(caffe::DiceCoefLossParameter *dclp,
                                        const APIData &ad);
 
