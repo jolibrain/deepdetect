@@ -1,6 +1,13 @@
 pipeline {
   agent any
   stages {
+    stage('Init') { steps {
+      script {
+          def common = load("ci/Jenkinsfile.common")
+          common.cancelPreviousBuilds()
+      }
+    }}
+
     stage('Installating prebuilt examples/ datasets') {
       steps {
         copyArtifacts(projectName: 'deepdetect-examples-dataset/master')
