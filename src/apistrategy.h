@@ -22,15 +22,13 @@
 #ifndef APISTRATEGY_H
 #define APISTRATEGY_H
 
+#ifdef USE_DD_SYSLOG
+#define SPDLOG_ENABLE_SYSLOG
+#endif
+
 #include "dd_types.h"
 #include "services.h"
-#include <spdlog/spdlog.h>
-
-#ifdef USE_DD_SYSLOG
-#include <spdlog/sinks/syslog_sink.h>
-#else
-#include <spdlog/sinks/stdout_sinks.h>
-#endif
+#include "dd_spdlog.h"
 
 namespace dd
 {
@@ -43,11 +41,7 @@ namespace dd
   public:
     APIStrategy()
     {
-#ifdef USE_DD_SYSLOG
-      _logger = spdlog::syslog_logger("api");
-#else
-      _logger = spdlog::stdout_logger_mt("api");
-#endif
+      _logger = DD_SPDLOG_LOGGER("api");
     };
     ~APIStrategy()
     {

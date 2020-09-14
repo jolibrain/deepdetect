@@ -24,7 +24,7 @@
 
 #include "apidata.h"
 #include "utils/fileops.hpp"
-#include <spdlog/spdlog.h>
+#include "dd_spdlog.h"
 #include <atomic>
 #include <exception>
 #include <mutex>

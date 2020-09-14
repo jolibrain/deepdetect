@@ -22,6 +22,10 @@
 #ifndef SERVICES_H
 #define SERVICES_H
 
+#ifdef USE_DD_SYSLOG
+#define SPDLOG_ENABLE_SYSLOG
+#endif
+
 #include "utils/variant.hpp"
 #include "mlservice.h"
 #include "apidata.h"
@@ -60,12 +64,11 @@
 #ifdef USE_TENSORRT
 #include "backends/tensorrt/tensorrtlib.h"
 #endif
-#include <spdlog/spdlog.h>
+#include "dd_spdlog.h"
 #include <vector>
 #include <mutex>
 #include <chrono>
 #include <iostream>
-#include <spdlog/spdlog.h>
 
 namespace dd
 {
@@ -886,11 +889,7 @@ namespace dd
     {
       try
         {
-#ifdef USE_DD_SYSLOG
-          auto chain_logger = spdlog::syslog_logger(cname);
-#else
-          auto chain_logger = spdlog::stdout_logger_mt(cname);
-#endif
+          auto chain_logger = DD_SPDLOG_LOGGER(cname);
 
           std::chrono::time_point<std::chrono::system_clock> tstart
               = std::chrono::system_clock::now();

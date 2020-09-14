@@ -29,7 +29,7 @@
 #include "ext/rapidjson/stringbuffer.h"
 #include "ext/rapidjson/reader.h"
 #include "ext/rapidjson/writer.h"
-#include <spdlog/spdlog.h>
+#include "dd_spdlog.h"
 #include <gflags/gflags.h>
 #include "utils/httpclient.hpp"
 #include <boost/iostreams/filtering_stream.hpp>
