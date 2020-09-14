@@ -1,6 +1,14 @@
+
 pipeline {
   agent any
   stages {
+    stage('Init') { steps {
+      script {
+          def common = load("ci/Jenkinsfile.common")
+          common.cancelPreviousBuilds()
+      }
+    }}
+
     stage('Preparing prebuilt datasets') {
       steps {
         sh '''
