@@ -227,7 +227,6 @@ namespace dd
                   if (status == std::future_status::timeout)
                     {
                       this->collect_measures(jad);
-                      this->est_remain_time(jad);
                       std::chrono::time_point<std::chrono::system_clock> trun
                           = std::chrono::system_clock::now();
                       jad.add("time",
@@ -375,7 +374,6 @@ namespace dd
               jmrepo.add("repository", this->_mlmodel._repo);
               out.add("model", jmrepo);
               this->collect_measures(out);
-              this->est_remain_time(out);
               std::chrono::time_point<std::chrono::system_clock> trun
                   = std::chrono::system_clock::now();
               out.add("time", std::chrono::duration_cast<std::chrono::seconds>(

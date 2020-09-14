@@ -330,23 +330,17 @@ namespace dd
     void collect_measures(APIData &ad) const
     {
       APIData meas;
-      std::lock_guard<std::mutex> lock(_meas_mutex);
-      auto hit = _meas.begin();
-      while (hit != _meas.end())
-        {
-          meas.add((*hit).first, (*hit).second);
-          ++hit;
-        }
-      ad.add("measure", meas);
-    }
 
-    /**
-     * \brief render estimated remaining time
-     * @param ad data object to hold the estimate
-     */
-    void est_remain_time(APIData &out) const
-    {
-      APIData meas = out.getobj("measure");
+      {
+        std::lock_guard<std::mutex> lock(_meas_mutex);
+        auto hit = _meas.begin();
+        while (hit != _meas.end())
+          {
+            meas.add((*hit).first, (*hit).second);
+            ++hit;
+          }
+      }
+
       if (meas.has("remain_time"))
         {
           int est_remain_time
@@ -360,8 +354,9 @@ namespace dd
                 + "h:" + std::to_string(minutes)
                 + "m:" + std::to_string(seconds) + "s";
           meas.add("remain_time_str", est_remain_time_str);
-          out.add("measure", meas);
         }
+
+      ad.add("measure", meas);
     }
 
     TInputConnectorStrategy
