@@ -295,6 +295,10 @@ namespace dd
           {
             update_protofile_imageDataLayer(net_param);
           }
+        else if (this->_inputc._segmentation)
+          {
+            update_protofile_denseImageDataLayer(net_param);
+          }
 
         // input should be ok, now do the output
         if (this->_inputc._multi_label)
@@ -391,8 +395,7 @@ namespace dd
                     else if (_loss == "L1")
                       {
                         lparam->set_type("SmoothL1Loss");
-                        lparam->mutable_smooth_l1_loss_param()->set_sigma(
-                            10.0);
+                        lparam->mutable_smooth_l1_loss_param()->set_sigma(1.0);
                       }
                     else if (_loss == "sigmoid")
                       {
@@ -638,6 +641,8 @@ namespace dd
                 this->_inputc.height());
             lparam->mutable_dense_image_data_param()->set_new_width(
                 this->_inputc.width());
+            lparam->mutable_dense_image_data_param()->set_is_color(
+                this->_inputc.channels() == 3);
             // XXX: DenseImageData supports crop_height and crop_width
           }
       }
@@ -4880,6 +4885,21 @@ namespace dd
       image_data_parameter->set_mean_file("mean.binaryproto");
     lparam->clear_data_param();
     lparam->clear_transform_param();
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+            class TMLModel>
+  void CaffeLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::
+      update_protofile_denseImageDataLayer(caffe::NetParameter &net_param)
+  {
+    caffe::LayerParameter *lparam = net_param.mutable_layer(0);
+    caffe::DenseImageDataParameter *image_data_parameter
+        = lparam->mutable_dense_image_data_param();
+    image_data_parameter->set_new_height(this->_inputc.height());
+    image_data_parameter->set_new_width(this->_inputc.width());
+    ImgCaffeInputFileConn *timg
+        = reinterpret_cast<ImgCaffeInputFileConn *>(&this->_inputc);
+    image_data_parameter->set_is_color(!timg->_bw);
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,

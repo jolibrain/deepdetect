@@ -29,7 +29,7 @@
 #include <numeric>
 #include <Eigen/Dense>
 #include "utils/utils.hpp"
-#include <spdlog/spdlog.h>
+#include "dd_spdlog.h"
 
 namespace dd
 {

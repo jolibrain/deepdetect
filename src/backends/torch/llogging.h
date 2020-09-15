@@ -5,7 +5,18 @@
 #ifndef LLOGGING_H
 #define LLOGGING_H
 
+#ifdef USE_DD_SYSLOG
+#define SPDLOG_ENABLE_SYSLOG
+#endif
+
 #include <spdlog/spdlog.h>
+
+#ifdef USE_DD_SYSLOG
+#if SPDLOG_VER_MAJOR > 0
+#include <spdlog/sinks/syslog_sinks.h>
+#endif
+#endif
+
 #include <boost/algorithm/string.hpp>
 #include <iostream>
 
@@ -167,8 +178,12 @@ public:
   {
     _console = spdlog::get("torchlib");
     if (!_console)
-#ifdef USE_SYSLOG
+#ifdef USE_DD_SYSLOG
+#if SPDLOG_VER_MAJOR > 0
+      _console = spdlog::syslog_logger_mt("torchlib");
+#else
       _console = spdlog::syslog_logger("torchlib");
+#endif
 #else
       _console = spdlog::stdout_logger_mt("torchlib");
 #endif

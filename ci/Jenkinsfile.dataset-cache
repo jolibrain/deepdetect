@@ -9,29 +9,22 @@ pipeline {
       }
     }}
 
-    stage('Building pytorch') {
+    stage('Preparing prebuilt datasets') {
       steps {
         sh '''
-export PATH="/usr/lib/ccache/:$PATH"
-
 set
 mkdir -p build
 cd build
-cmake .. -DUSE_TORCH=ON -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61"
-make -j24 pytorch
-ccache -s
+cmake .. -DBUILD_TESTS=ON -DUSE_CUDNN=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_XGBOOST=ON -DUSE_TORCH=ON -DUSE_NCNN=ON -DUSE_TENSORRT=ON -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61"
+cd -
+tar -cvf examples-${GIT_COMMIT}.tar build/examples
 '''
-      }
-    }
-    stage('Preparing archive') {
-      steps {
-        sh 'tar -cvf pytorch-${GIT_COMMIT}.tar build/pytorch'
       }
     }
   }
   post {
       success {
-          archiveArtifacts(artifacts: 'pytorch-*.tar')
+          archiveArtifacts(artifacts: 'examples-*.tar')
           cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
           rocketSend(channel: 'build', message: 'Build succeed')
       }

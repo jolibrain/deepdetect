@@ -24,7 +24,7 @@
 
 #include "mlmodel.h"
 #include "apidata.h"
-#include <spdlog/spdlog.h>
+#include "dd_spdlog.h"
 #include <string>
 #include <unordered_map>
 
