@@ -32,13 +32,16 @@ cd build && cmake .. -DBUILD_TESTS=ON -DUSE_CUDNN=ON -DUSE_SIMSEARCH=ON -DUSE_TS
     }
 
     stage('Installing prebuilt pytorch') {
+      when {
+       expression { !env.CHANGE_ID || pullRequest.labels.findAll { it == "pytorch-upgrade" }.size() == 1 }
+      }
       steps {
         copyArtifacts(projectName: 'deepdetect-pytorch/master')
         sh '''
-tar -xf pytorch-*.tar
-rm -f pytorch-*.tar
-touch build/CMakeFiles/pytorch-complete
-'''
+    tar -xf pytorch-*.tar
+    rm -f pytorch-*.tar
+    touch build/CMakeFiles/pytorch-complete
+    '''
       }
     }
 
