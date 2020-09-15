@@ -6,6 +6,7 @@ pipeline {
           def common = load("ci/Jenkinsfile.common")
           common.cancelPreviousBuilds()
       }
+      sh 'printenv | sort'
     }}
 
     stage('Installating prebuilt examples/ datasets') {
