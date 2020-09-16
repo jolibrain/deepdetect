@@ -889,9 +889,9 @@ if (USE_TENSORRT)
 	set(TENSORRT_LIBS protobuf nvinfer nvparsers nvinfer_plugin nvonnxparser )
 
   else()
-    set(TENSORRT_LIB_DIR ${CMAKE_BINARY_DIR}/tensorrt-oss/src/tensorrt-oss-build ${TENSORRT_LIB_DIR})
+    set(TENSORRT_LIB_DIR ${CMAKE_BINARY_DIR}/tensorrt-oss/bin/ ${TENSORRT_LIB_DIR})
     include_directories(${CMAKE_CURRENT_BINARY_DIR})
-	set(TENSORRT_LIBS protobuf nvinfer nvcaffeparser nvinfer_plugin nvonnxparser )
+	set(TENSORRT_LIBS protobuf nvinfer nvparsers nvcaffeparser nvinfer_plugin nvonnxparser )
 
     if (EXISTS "${TRTTESTDIR}/libnvinfer.so.7")
       set(TENSORRT_COMMIT 9a9cae75e7155b2114454f37ccc49eca9d3352dc)
