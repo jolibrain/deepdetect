@@ -65,13 +65,20 @@ ccache -s
     }
   }
   post {
-      success {
+      always {
         cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
-        rocketSend(channel: 'build', message: 'Build succeed')
       }
-      unsuccessful {
-        cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
-        rocketSend(channel: 'build', message: 'Build failed')
+      success {
+        rocketSend(channel: 'build', message: 'Build succeed' ,color: 'green' )
+      }
+      aborted {
+        rocketSend(channel: 'build', message: 'Build superseded or aborted')
+      }
+      unstable {
+        rocketSend(channel: 'build', message: 'Build failed', color: 'red')
+      }
+      failure {
+        rocketSend(channel: 'build', message: 'Build failed', color: 'red')
       }
   }
 }
