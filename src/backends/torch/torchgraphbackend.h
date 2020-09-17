@@ -24,7 +24,10 @@
 
 #include "basegraph.h"
 #include <exception>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <torch/torch.h>
+#pragma GCC diagnostic pop
 
 namespace dd
 {

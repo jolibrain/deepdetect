@@ -25,7 +25,10 @@
 
 #include <random>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <torch/torch.h>
+#pragma GCC diagnostic pop
 
 #include "apidata.h"
 #include "mllibstrategy.h"
