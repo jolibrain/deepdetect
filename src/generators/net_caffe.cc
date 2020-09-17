@@ -254,20 +254,23 @@ namespace dd
 #ifdef USE_TORCH
   template <>
   void NetInputCaffe<ImgTorchInputFileConn>::configure_inputs(
-      const APIData &ad_mllib, const ImgTorchInputFileConn &inputc)
+      __attribute__((unused)) const APIData &ad_mllib,
+      __attribute__((unused)) const ImgTorchInputFileConn &inputc)
   {
   }
 
   template <>
   void NetInputCaffe<TxtTorchInputFileConn>::configure_inputs(
-      const APIData &ad_mllib, const TxtTorchInputFileConn &inputc)
+      __attribute__((unused)) const APIData &ad_mllib,
+      __attribute__((unused)) const TxtTorchInputFileConn &inputc)
   {
   }
 
   /*- NetInputCaffe for proto/torch backend => only lstm for now  -*/
   template <>
   void NetInputCaffe<CSVTSTorchInputFileConn>::configure_inputs(
-      const APIData &ad_mllib, const CSVTSTorchInputFileConn &inputc)
+      __attribute__((unused)) const APIData &ad_mllib,
+      const CSVTSTorchInputFileConn &inputc)
   {
     int width = inputc.width() > 0 ? inputc.width() : 1;
     int height = inputc.height() > 0 ? inputc.height() : 1;
