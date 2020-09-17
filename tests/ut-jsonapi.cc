@@ -70,7 +70,7 @@ TEST(jsonapi, service_delete)
   ASSERT_EQ(ok_str, jdelstr);
   std::string jinfostr = japi.jrender(japi.info(""));
   JDoc jd;
-  jd.Parse(jinfostr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(jinfostr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(200, jd["status"]["code"]);
@@ -93,13 +93,13 @@ TEST(jsonapi, service_create)
   ASSERT_EQ(ok_str, jdelstr);
 
   JDoc jd;
-  jd.Parse(jstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
 
   // service
   joutstr = japi.jrender(japi.service_create("", jstr));
   ASSERT_EQ(not_found_str, joutstr);
-  jd.Parse(jstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
   std::string jstrt = japi.jrender(jd);
 
   // mllib
@@ -107,14 +107,14 @@ TEST(jsonapi, service_create)
   jstrt = japi.jrender(jd);
   joutstr = japi.jrender(japi.service_create(sname, jstrt));
   ASSERT_EQ(bad_param_str_false, joutstr);
-  jd.Parse(jstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
 
   // description
   jd.RemoveMember("description");
   jstrt = japi.jrender(jd);
   joutstr = japi.jrender(japi.service_create(sname, jstrt));
   ASSERT_EQ(created_str, joutstr);
-  jd.Parse(jstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
   deljstr = "{\"clear\":\"mem\"}";
   jdelstr = japi.jrender(japi.service_delete(sname, deljstr));
   ASSERT_EQ(ok_str, jdelstr);
@@ -145,7 +145,7 @@ TEST(jsonapi, info)
   std::string jinfostr = japi.jrender(japi.info(""));
   // std::cout << "jinfostr=" << jinfostr << std::endl;
   JDoc jd;
-  jd.Parse(jinfostr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(jinfostr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(200, jd["status"]["code"]);
@@ -176,7 +176,7 @@ TEST(jsonapi, service_status)
   std::string jstatstr = japi.jrender(japi.service_status(sname));
   // std::cout << "jstatstr=" << jstatstr << std::endl;
   JDoc jd;
-  jd.Parse(jstatstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(jstatstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(200, jd["status"]["code"]);
@@ -201,7 +201,7 @@ TEST(jsonapi, service_purge)
   ASSERT_EQ(ok_str, jdelstr);
   std::string jinfostr = japi.jrender(japi.info(""));
   JDoc jd;
-  jd.Parse(jinfostr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(jinfostr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(200, jd["status"]["code"]);

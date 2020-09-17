@@ -67,7 +67,7 @@ TEST(torchapi, service_predict)
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   JDoc jd;
   std::cout << "joutstr=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
@@ -103,7 +103,7 @@ TEST(torchapi, service_predict_txt_classification)
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   JDoc jd;
   std::cout << "joutstr=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
@@ -170,7 +170,7 @@ TEST(torchapi, service_train_txt_lm)
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   JDoc jd;
   std::cout << "joutstr=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(201, jd["status"]["code"]);
   ASSERT_TRUE(jd["body"]["measure"]["iteration"] == 3) << "iterations";
@@ -215,7 +215,7 @@ TEST(torchapi, service_train_txt_classification)
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   JDoc jd;
   std::cout << "joutstr=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(201, jd["status"]["code"]);
   ASSERT_TRUE(abs(jd["body"]["measure"]["iteration"].GetDouble() - 3)

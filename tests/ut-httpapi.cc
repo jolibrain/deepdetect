@@ -85,7 +85,7 @@ TEST(httpjsonapi, info)
 
   ASSERT_EQ(200, code);
   rapidjson::Document d;
-  d.Parse(jstr.c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
   ASSERT_FALSE(d.HasParseError());
   ASSERT_TRUE(d.HasMember("status"));
   ASSERT_TRUE(d.HasMember("head"));
@@ -110,7 +110,7 @@ TEST(httpjsonapi, services)
                         jstr);
   ASSERT_EQ(201, code);
   rapidjson::Document d;
-  d.Parse(jstr.c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
   ASSERT_FALSE(d.HasParseError());
   ASSERT_TRUE(d.HasMember("status"));
   ASSERT_EQ(201, d["status"]["code"].GetInt());
@@ -118,7 +118,7 @@ TEST(httpjsonapi, services)
   // service info
   httpclient::get_call(luri + "/services/" + serv, "GET", code, jstr);
   d = rapidjson::Document();
-  d.Parse(jstr.c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
   ASSERT_EQ(200, code);
   ASSERT_TRUE(d.HasMember("status"));
   ASSERT_TRUE(d.HasMember("body"));
@@ -129,7 +129,7 @@ TEST(httpjsonapi, services)
   // info call
   httpclient::get_call(luri + "/info", "GET", code, jstr);
   d = rapidjson::Document();
-  d.Parse(jstr.c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
   ASSERT_EQ(200, code);
   ASSERT_TRUE(d["head"].HasMember("services"));
   ASSERT_EQ(1, d["head"]["services"].Size());
@@ -141,7 +141,7 @@ TEST(httpjsonapi, services)
   // info call
   httpclient::get_call(luri + "/info", "GET", code, jstr);
   d = rapidjson::Document();
-  d.Parse(jstr.c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
   ASSERT_EQ(200, code);
   ASSERT_TRUE(d["head"].HasMember("services"));
   ASSERT_EQ(0, d["head"]["services"].Size());
@@ -149,7 +149,7 @@ TEST(httpjsonapi, services)
   // service info
   httpclient::get_call(luri + "/services/" + serv, "GET", code, jstr);
   d = rapidjson::Document();
-  d.Parse(jstr.c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
   ASSERT_EQ(404, code);
 
   hja.stop_server();
@@ -178,7 +178,7 @@ TEST(httpjsonapi, train)
                         jstr);
   ASSERT_EQ(201, code);
   rapidjson::Document d;
-  d.Parse(jstr.c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
   ASSERT_FALSE(d.HasParseError());
   ASSERT_TRUE(d.HasMember("status"));
   ASSERT_EQ(201, d["status"]["code"].GetInt());
@@ -190,7 +190,7 @@ TEST(httpjsonapi, train)
                            + iterations_mnist + "}}}}";
   httpclient::post_call(luri + "/train", train_post, "POST", code, jstr);
   ASSERT_EQ(201, code);
-  d.Parse(jstr.c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
   ASSERT_TRUE(d.HasMember("body"));
   ASSERT_TRUE(d["body"].HasMember("measure"));
 #ifndef CPU_ONLY
@@ -209,7 +209,7 @@ TEST(httpjsonapi, train)
   httpclient::post_call(luri + "/services/" + serv, serv_put2, "PUT", code,
                         jstr);
   ASSERT_EQ(201, code);
-  d.Parse(jstr.c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
   ASSERT_FALSE(d.HasParseError());
   ASSERT_TRUE(d.HasMember("status"));
   ASSERT_EQ(201, d["status"]["code"].GetInt());
@@ -221,7 +221,7 @@ TEST(httpjsonapi, train)
                + iterations_mnist + "}}}}";
   httpclient::post_call(luri + "/train", train_post, "POST", code, jstr);
   ASSERT_EQ(201, code);
-  d.Parse(jstr.c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
   ASSERT_FALSE(d.HasMember("body"));
 
   sleep(1);
@@ -229,7 +229,7 @@ TEST(httpjsonapi, train)
   // service info
   httpclient::get_call(luri + "/services/" + serv, "GET", code, jstr);
   d = rapidjson::Document();
-  d.Parse(jstr.c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
   ASSERT_EQ(200, code);
   ASSERT_TRUE(d.HasMember("status"));
   ASSERT_TRUE(d.HasMember("body"));
@@ -251,7 +251,7 @@ TEST(httpjsonapi, train)
         {
           std::cerr << "jstr=" << jstr << std::endl;
           JDoc jd2;
-          jd2.Parse(jstr.c_str());
+          jd2.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
           ASSERT_TRUE(!jd2.HasParseError());
           ASSERT_TRUE(jd2.HasMember("status"));
           ASSERT_EQ(200, jd2["status"]["code"]);
@@ -306,7 +306,7 @@ TEST(httpjsonapi, multiservices)
                         jstr);
   ASSERT_EQ(201, code);
   rapidjson::Document d;
-  d.Parse(jstr.c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
   ASSERT_FALSE(d.HasParseError());
   ASSERT_TRUE(d.HasMember("status"));
   ASSERT_EQ(201, d["status"]["code"].GetInt());
@@ -316,7 +316,7 @@ TEST(httpjsonapi, multiservices)
   httpclient::post_call(luri + "/services/" + serv2, serv_put2, "PUT", code,
                         jstr);
   ASSERT_EQ(201, code);
-  d.Parse(jstr.c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
   ASSERT_FALSE(d.HasParseError());
   ASSERT_TRUE(d.HasMember("status"));
   ASSERT_EQ(201, d["status"]["code"].GetInt());
@@ -324,7 +324,7 @@ TEST(httpjsonapi, multiservices)
   // info call
   httpclient::get_call(luri + "/info", "GET", code, jstr);
   d = rapidjson::Document();
-  d.Parse(jstr.c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
   ASSERT_EQ(200, code);
   ASSERT_TRUE(d["head"].HasMember("services"));
   ASSERT_EQ(2, d["head"]["services"].Size());
@@ -365,7 +365,7 @@ TEST(httpjsonapi, concurrency)
                         jstr);
   ASSERT_EQ(201, code);
   rapidjson::Document d;
-  d.Parse(jstr.c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
   ASSERT_FALSE(d.HasParseError());
   ASSERT_TRUE(d.HasMember("status"));
   ASSERT_EQ(201, d["status"]["code"].GetInt());
@@ -377,7 +377,7 @@ TEST(httpjsonapi, concurrency)
           "\"solver\":{\"iterations\":10000}}}}";
   httpclient::post_call(luri + "/train", train_post, "POST", code, jstr);
   ASSERT_EQ(201, code);
-  d.Parse(jstr.c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
   ASSERT_FALSE(d.HasMember("body"));
 
   // service creation
@@ -385,7 +385,7 @@ TEST(httpjsonapi, concurrency)
   httpclient::post_call(luri + "/services/" + serv2, serv_put2, "PUT", code,
                         jstr);
   ASSERT_EQ(201, code);
-  d.Parse(jstr.c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
   ASSERT_FALSE(d.HasParseError());
   ASSERT_TRUE(d.HasMember("status"));
   ASSERT_EQ(201, d["status"]["code"].GetInt());
@@ -393,7 +393,7 @@ TEST(httpjsonapi, concurrency)
   // info call
   httpclient::get_call(luri + "/info", "GET", code, jstr);
   d = rapidjson::Document();
-  d.Parse(jstr.c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
   ASSERT_EQ(200, code);
   ASSERT_TRUE(d["head"].HasMember("services"));
   ASSERT_EQ(2, d["head"]["services"].Size());
@@ -406,7 +406,7 @@ TEST(httpjsonapi, concurrency)
                  "\"solver\":{\"iterations\":10000}}}}";
   httpclient::post_call(luri + "/train", train_post, "POST", code, jstr);
   ASSERT_EQ(201, code);
-  d.Parse(jstr.c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
   ASSERT_FALSE(d.HasMember("body"));
 
   sleep(1);
@@ -429,7 +429,7 @@ TEST(httpjsonapi, concurrency)
         {
           std::cerr << "jstr=" << jstr << std::endl;
           JDoc jd2;
-          jd2.Parse(jstr.c_str());
+          jd2.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
           ASSERT_TRUE(!jd2.HasParseError());
           ASSERT_TRUE(jd2.HasMember("status"));
           ASSERT_EQ(200, jd2["status"]["code"]);
@@ -455,7 +455,7 @@ TEST(httpjsonapi, concurrency)
   httpclient::get_call(luri + "/train?service=" + serv + "&job=1", "DELETE",
                        code, jstr);
   ASSERT_EQ(200, code);
-  d.Parse(jstr.c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
   ASSERT_TRUE(d.HasMember("head"));
   ASSERT_TRUE(d["head"].HasMember("status"));
   ASSERT_EQ("terminated", d["head"]["status"]);
@@ -471,7 +471,7 @@ TEST(httpjsonapi, concurrency)
   httpclient::get_call(luri + "/train?service=" + serv2 + "&job=1", "DELETE",
                        code, jstr);
   ASSERT_EQ(200, code);
-  d.Parse(jstr.c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
   ASSERT_TRUE(d.HasMember("head"));
   ASSERT_TRUE(d["head"].HasMember("status"));
   ASSERT_EQ("terminated", d["head"]["status"]);
@@ -516,7 +516,7 @@ TEST(httpjsonapi, predict)
                         jstr);
   ASSERT_EQ(201, code);
   rapidjson::Document d;
-  d.Parse(jstr.c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
   ASSERT_FALSE(d.HasParseError());
   ASSERT_TRUE(d.HasMember("status"));
   ASSERT_EQ(201, d["status"]["code"].GetInt());
@@ -532,7 +532,7 @@ TEST(httpjsonapi, predict)
   std::cerr << "jstr=" << jstr << std::endl;
   ASSERT_EQ(201, code);
   JDoc jd;
-  jd.Parse(jstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
@@ -556,7 +556,7 @@ TEST(httpjsonapi, predict)
   std::cerr << "code=" << code << std::endl;
   ASSERT_EQ(200, code);
   std::cerr << "jstr=" << jstr << std::endl;
-  jd.Parse(jstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()

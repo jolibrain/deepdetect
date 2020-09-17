@@ -96,7 +96,7 @@ TEST(caffeapi, service_train)
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
@@ -139,7 +139,7 @@ TEST(caffeapi, service_train_async_status_delete)
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"]);
@@ -155,7 +155,7 @@ TEST(caffeapi, service_train_async_status_delete)
   joutstr = japi.jrender(japi.service_train_status(jstatusstr));
   std::cout << "status joutstr=" << joutstr << std::endl;
   JDoc jd2;
-  jd2.Parse(joutstr.c_str());
+  jd2.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd2.HasParseError());
   ASSERT_TRUE(jd2.HasMember("status"));
   ASSERT_EQ(200, jd2["status"]["code"]);
@@ -174,7 +174,7 @@ TEST(caffeapi, service_train_async_status_delete)
   joutstr = japi.jrender(japi.service_train_delete(jdelstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd3;
-  jd3.Parse(joutstr.c_str());
+  jd3.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd3.HasParseError());
   ASSERT_TRUE(jd3.HasMember("status"));
   ASSERT_EQ(200, jd3["status"]["code"]);
@@ -214,7 +214,7 @@ TEST(caffeapi, service_train_async_final_status)
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"]);
@@ -237,7 +237,7 @@ TEST(caffeapi, service_train_async_final_status)
       if (!running)
         {
           JDoc jd2;
-          jd2.Parse(joutstr.c_str());
+          jd2.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
           ASSERT_TRUE(!jd2.HasParseError());
           ASSERT_TRUE(jd2.HasMember("status"));
           ASSERT_EQ(200, jd2["status"]["code"]);
@@ -290,7 +290,7 @@ TEST(caffeapi, service_train_async_and_predict)
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"]);
@@ -313,7 +313,7 @@ TEST(caffeapi, service_train_async_and_predict)
                             + mnist_repo + "/sample_digit.png\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(409, jd["status"]["code"]);
   ASSERT_EQ(1008, jd["status"]["dd_code"]);
@@ -350,7 +350,7 @@ TEST(caffeapi, service_predict)
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
@@ -371,7 +371,7 @@ TEST(caffeapi, service_predict)
         + mnist_repo + "/sample_digit.png\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr predict=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(500, jd["status"]["code"]);
   ASSERT_EQ(1007, jd["status"]["dd_code"]);
@@ -384,7 +384,7 @@ TEST(caffeapi, service_predict)
                 + "/sample_digit2.png\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
@@ -411,7 +411,7 @@ TEST(caffeapi, service_predict)
                 + b64_str + "\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
@@ -425,7 +425,7 @@ TEST(caffeapi, service_predict)
                   "example.com/my_image.png\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(400, jd["status"]["code"]);
 
@@ -437,7 +437,7 @@ TEST(caffeapi, service_predict)
                 + mnist_repo + "/test.lmdb\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() > 0.0);
@@ -449,7 +449,7 @@ TEST(caffeapi, service_predict)
                 + mnist_repo + "/test.lmdb\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   uri = jd["body"]["predictions"][0]["uri"].GetString();
@@ -493,7 +493,7 @@ TEST(caffeapi, service_train_csv)
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
@@ -557,7 +557,7 @@ TEST(caffeapi, service_train_csv)
         + mem_data + "\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(200, jd["status"]["code"].GetInt());
@@ -590,7 +590,7 @@ TEST(caffeapi, service_train_csv)
                 + "\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(200, jd["status"]["code"].GetInt());
@@ -655,7 +655,7 @@ TEST(caffeapi, service_train_csv_in_memory)
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
@@ -729,7 +729,7 @@ TEST(caffeapi, service_train_csv_resnet)
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
@@ -793,7 +793,7 @@ TEST(caffeapi, service_train_csv_resnet)
         + mem_data + "\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(200, jd["status"]["code"].GetInt());
@@ -826,7 +826,7 @@ TEST(caffeapi, service_train_csv_resnet)
                 + "\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(200, jd["status"]["code"].GetInt());
@@ -878,7 +878,7 @@ TEST(caffeapi, service_train_svm)
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
@@ -997,7 +997,7 @@ TEST(caffeapi, service_train_svm)
                             + mem_data + "\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(200, jd["status"]["code"].GetInt());
@@ -1048,7 +1048,7 @@ TEST(caffeapi, service_train_svm_resnet)
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
@@ -1165,7 +1165,7 @@ TEST(caffeapi, service_train_svm_resnet)
                             + mem_data + "\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(200, jd["status"]["code"].GetInt());
@@ -1216,7 +1216,7 @@ TEST(caffeapi, service_train_images)
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
@@ -1276,7 +1276,7 @@ TEST(caffeapi, service_train_images_imagedatalayer_1label)
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
@@ -1333,7 +1333,7 @@ TEST(caffeapi, service_train_images_imagedatalayer_multilabel)
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
@@ -1387,7 +1387,7 @@ TEST(caffeapi, service_train_images_imagedatalayer_multilabel_softprob)
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
@@ -1454,7 +1454,7 @@ TEST(caffeapi, service_train_images_convnet)
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
@@ -1509,7 +1509,7 @@ TEST(caffeapi, service_train_images_resnet)
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
@@ -1567,7 +1567,7 @@ TEST(caffeapi, service_train_images_autoenc)
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
@@ -1640,7 +1640,7 @@ TEST(caffeapi, service_train_images_autoenc_geometry)
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
@@ -1696,7 +1696,7 @@ TEST(caffeapi, service_train_images_seg)
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
@@ -1720,7 +1720,7 @@ TEST(caffeapi, service_train_images_seg)
         + camvid_repo + "test/0001TP_008550.png\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   // std::cout << "joutstr predict=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   ASSERT_TRUE(jd["body"]["predictions"][0].HasMember("vals"));
@@ -1768,7 +1768,7 @@ TEST(caffeapi, service_test_bbox)
   std::cerr << "jpredictstr=" << jpredictstr << std::endl;
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr predict=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   ASSERT_TRUE(jd["body"]["predictions"][0].HasMember("classes"));
@@ -1807,7 +1807,7 @@ TEST(caffeapi, service_train_txt)
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
@@ -1832,7 +1832,7 @@ TEST(caffeapi, service_train_txt)
         + n20_repo + "news20\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(200, jd["status"]["code"].GetInt());
@@ -1878,7 +1878,7 @@ TEST(caffeapi, service_train_txt_sparse)
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
@@ -1903,7 +1903,7 @@ TEST(caffeapi, service_train_txt_sparse)
         + n20_repo + "news20\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(200, jd["status"]["code"].GetInt());
@@ -1950,7 +1950,7 @@ TEST(caffeapi, service_train_txt_sparse_lr)
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
@@ -1975,7 +1975,7 @@ TEST(caffeapi, service_train_txt_sparse_lr)
         + n20_repo + "news20\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(200, jd["status"]["code"].GetInt());
@@ -2023,7 +2023,7 @@ TEST(caffeapi, service_train_txt_char)
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
@@ -2078,7 +2078,7 @@ TEST(caffeapi, service_train_txt_char_resnet)
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
@@ -2135,7 +2135,7 @@ TEST(caffeapi, service_train_csv_mt_regression)
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
@@ -2173,7 +2173,7 @@ TEST(caffeapi, service_train_csv_mt_regression)
                             + "\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
@@ -2226,7 +2226,7 @@ TEST(caffeapi, service_train_csvts_lstm)
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
@@ -2256,7 +2256,7 @@ TEST(caffeapi, service_train_csvts_lstm)
         + "},\"output\":{}},\"data\":[\"" + csvts_predict + "\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
@@ -2309,7 +2309,7 @@ TEST(caffeapi, service_train_csvts_db_lstm)
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
@@ -2331,7 +2331,7 @@ TEST(caffeapi, service_train_csvts_db_lstm)
         + csvts_predict + "\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();

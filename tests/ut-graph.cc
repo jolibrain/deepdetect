@@ -320,7 +320,7 @@ TEST(graphapi, complete_lstm_train)
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
@@ -351,7 +351,7 @@ TEST(graphapi, complete_lstm_train)
         + "},\"output\":{}},\"data\":[\"" + csvts_predict + "\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
@@ -405,7 +405,7 @@ TEST(graphapi, complete_lstm_train_gpu)
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
@@ -436,7 +436,7 @@ TEST(graphapi, complete_lstm_train_gpu)
         + "},\"output\":{}},\"data\":[\"" + csvts_predict + "\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();

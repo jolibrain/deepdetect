@@ -499,7 +499,7 @@ TEST(inputconn, csv_read_categoricals)
         "color-below-ring\":{\"w\":0,\"p\":1,\"y\":6,\"c\":8,\"g\":2,\"b\":3,"
         "\"e\":5,\"n\":4,\"o\":7}}}";
   JDoc d;
-  d.Parse(json_categorical_mapping.c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(json_categorical_mapping.c_str());
   ASSERT_FALSE(d.HasParseError());
   APIData ap(d);
   ASSERT_EQ(1, ap.size());

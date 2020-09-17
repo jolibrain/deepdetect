@@ -303,7 +303,9 @@ namespace dd
       toJDoc(d);
 
       /*rapidjson::StringBuffer buffer;
-      rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+      rapidjson::Writer<rapidjson::StringBuffer, rapidjson::UTF8<>,
+                        rapidjson::UTF8<>, rapidjson::CrtAllocator,
+                        rapidjson::kWriteNanAndInfFlag> writer(buffer);
       d.Accept(writer);
       std::string reststring = buffer.GetString();
       std::cout << "to jdoc=" << reststring << std::endl;*/
@@ -466,12 +468,19 @@ namespace dd
     {
       (void)vcv;
       // Not Implemented
+      throw DataConversionException(
+          "JSON conversion of std::vector<cv::Mat> is not supported");
     }
+
     void operator()(const std::vector<std::pair<int, int>> &vpi)
     {
       (void)vpi;
       // Not Implemented
+      throw DataConversionException(
+          "JSON conversion of std::vector<std::pair<int,int>> is not "
+          "supported");
     }
+
     void operator()(const std::vector<APIData> &vad)
     {
       JVal jov(rapidjson::kObjectType);
