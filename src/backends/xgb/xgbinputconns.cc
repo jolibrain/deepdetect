@@ -20,8 +20,11 @@
  */
 
 #include "xgbinputconns.h"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <dmlc/data.h>
 #include <dmlc/registry.h>
+#pragma GCC diagnostic pop
 #include "data/simple_csr_source.h"
 #include "common/math.h"
 
