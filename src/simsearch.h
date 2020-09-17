@@ -37,7 +37,10 @@
 #include <faiss/gpu/GpuIndexFlat.h>
 #endif
 #endif
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include "caffe/util/db.hpp"
+#pragma GCC diagnostic pop
 #include <mutex>
 
 namespace dd

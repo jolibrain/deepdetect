@@ -27,8 +27,11 @@
 #include "csvtsinputfileconn.h"
 #include "txtinputfileconn.h"
 #include "svminputfileconn.h"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include "caffe/caffe.hpp"
 #include "caffe/util/db.hpp"
+#pragma GCC diagnostic pop
 #include "utils/fileops.hpp"
 
 namespace dd
