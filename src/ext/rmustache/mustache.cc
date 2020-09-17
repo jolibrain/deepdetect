@@ -10,6 +10,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wterminate"
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+
 #include "mustache.h"
 
 #include <rapidjson/stringbuffer.h>
@@ -398,3 +403,4 @@ void RenderTemplate(const string& document, const string& document_root,
 }
 
 }
+#pragma GCC diagnostic pop
