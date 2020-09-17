@@ -69,16 +69,16 @@ ccache -s
         cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
       }
       success {
-        rocketSend(channel: 'build', message: 'Build succeed' ,color: 'green' )
+        rocketSend(channel: 'build', message: 'Build succeed' ,color: 'green', rawMessage: true)
       }
       aborted {
-        rocketSend(channel: 'build', message: 'Build superseded or aborted')
+        rocketSend(channel: 'build', message: 'Build superseded or aborted', rawMessage: true)
       }
       unstable {
-        rocketSend(channel: 'build', message: 'Build failed', color: 'red')
+        rocketSend(channel: 'build', message: 'Build failed', color: 'red', rawMessage: true)
       }
       failure {
-        rocketSend(channel: 'build', message: 'Build failed', color: 'red')
+        rocketSend(channel: 'build', message: 'Build failed', color: 'red', rawMessage: true)
       }
   }
 }
