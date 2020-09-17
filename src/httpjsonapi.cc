@@ -24,11 +24,16 @@
 #include <algorithm>
 #include <csignal>
 #include <iostream>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wterminate"
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include "ext/rmustache/mustache.h"
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/reader.h>
 #include <rapidjson/writer.h>
+#pragma GCC diagnostic pop
 #include "dd_spdlog.h"
 #include <gflags/gflags.h>
 #include "utils/httpclient.hpp"
