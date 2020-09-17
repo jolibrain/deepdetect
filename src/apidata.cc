@@ -200,6 +200,10 @@ namespace dd
           {
             add(cit->name.GetString(), cit->value.GetInt());
           }
+        else
+          {
+            throw DataConversionException("conversion error: unknown type");
+          }
       }
   }
 

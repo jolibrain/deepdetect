@@ -292,7 +292,7 @@ namespace dd
       std::stringstream jbuf;
       jbuf << is.rdbuf();
       rapidjson::Document d;
-      d.Parse(jbuf.str().c_str());
+      d.Parse<rapidjson::kParseNanAndInfFlag>(jbuf.str().c_str());
       if (d.HasParseError())
         {
           logger->error("config.json parsing error on string: {}", jbuf.str());
