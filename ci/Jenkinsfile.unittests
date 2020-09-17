@@ -8,6 +8,7 @@ pipeline {
       }
       sh 'printenv | sort'
     }}
+    /*
 
     stage('Installating prebuilt examples/ datasets') {
       steps {
@@ -63,22 +64,15 @@ ccache -s
           }
       }
     }
+    */
   }
   post {
-      always {
-        cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
+    always {
+      script {
+        def common = load("ci/Jenkinsfile.common")
+        common.rocketCustomSend()
       }
-      success {
-        rocketSend(channel: 'build', message: 'Build succeed' ,color: 'green' )
-      }
-      aborted {
-        rocketSend(channel: 'build', message: 'Build superseded or aborted')
-      }
-      unstable {
-        rocketSend(channel: 'build', message: 'Build failed', color: 'red')
-      }
-      failure {
-        rocketSend(channel: 'build', message: 'Build failed', color: 'red')
-      }
+      cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
+    }
   }
 }

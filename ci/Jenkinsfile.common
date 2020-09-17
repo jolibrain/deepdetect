@@ -1,4 +1,34 @@
 @NonCPS
+def rocketCustomSend() {
+    def emoji = ""
+
+    if (currentBuild.currentResult == "SUCCESS") {
+        emoji = "✅"
+    } else if (currentBuild.currentResult == "ABORTED") {
+        emoji = "⏹ "
+    } else {
+        emoji = "❌"
+    }
+
+    def message = env.CHANGE_URL
+    if (!url) {
+        message = env.GIT_URL.replace(".git", "tree${env.GIT_BRANCH}")
+    }
+    message += " ${env.BUILD_DISPLAY_NAME}"
+
+    if (env.CHANGE_AUTHOR) {
+        message += " (@${env.CHANGE_AUTHOR})"
+    }
+
+    message += ", Build status is ${currentBuild.currentResult}" ${emoji}, ${env.RUN_DISPLAY_URL}
+
+    rocketSend(
+        channel = 'build',
+        message=message, rawMessage= true
+    )
+}
+
+@NonCPS
 def cancelPreviousBuilds() {
     def jobName = env.JOB_NAME
     def buildNumber = env.BUILD_NUMBER.toInteger()
