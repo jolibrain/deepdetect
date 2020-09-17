@@ -29,7 +29,10 @@
 #include "utils/fileops.hpp"
 #include "utils/utils.hpp"
 #include "utils/apitools.h"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include "caffe/sgd_solvers.hpp"
+#pragma GCC diagnostic pop
 #include <chrono>
 #include <iostream>
 
