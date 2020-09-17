@@ -1033,10 +1033,10 @@ namespace dd
           }
         else if (refinedet
                  && lparam->name().find("mbox_conf") != std::string::npos
-                 && (lparam->name()[0] == 'P'
-                         && lparam->type() == "Convolution"
-                     || lparam->name().substr(0, 4) == "resP"
-                            && lparam->type() == "Convolution"))
+                 && ((lparam->name()[0] == 'P'
+                      && lparam->type() == "Convolution")
+                     || (lparam->name().substr(0, 4) == "resP"
+                         && lparam->type() == "Convolution")))
 
           {
             int num_priors_per_location
@@ -3871,7 +3871,7 @@ namespace dd
                            const TInputConnectorStrategy &inputc,
                            const bool &has_class_weights,
                            const int &ignore_label, const int &timesteps,
-                           const APIData &ad_mllib)
+                           __attribute__((unused)) const APIData &ad_mllib)
   {
     caffe::NetParameter net_param;
     caffe::ReadProtoFromTextFile(net_file,
