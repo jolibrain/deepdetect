@@ -25,7 +25,10 @@
 
 #include <vector>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <torch/torch.h>
+#pragma GCC diagnostic pop
 
 #include "imginputfileconn.h"
 #include "txtinputfileconn.h"
