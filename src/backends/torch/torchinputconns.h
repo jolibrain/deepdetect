@@ -198,7 +198,8 @@ namespace dd
           .clone();
     }
 
-    TorchBatch generate_masked_lm_batch(const TorchBatch &example)
+    TorchBatch generate_masked_lm_batch(__attribute__((unused))
+                                        const TorchBatch &example)
     {
       return {};
     }
@@ -217,7 +218,7 @@ namespace dd
     {
       return 0;
     }
-    std::string get_word(int64_t id) const
+    std::string get_word(__attribute__((unused)) int64_t id) const
     {
       return "";
     }
