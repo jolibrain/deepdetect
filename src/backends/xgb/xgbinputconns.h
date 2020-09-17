@@ -28,11 +28,14 @@
 #define DMLC_THROW_EXCEPTION noexcept(false)
 #define DMLC_NO_EXCEPTION noexcept(true)
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <dmlc/base.h>
 #include <dmlc/io.h>
 #include <dmlc/build_config.h>
 #include <data/parser.h> // dmlc
 #include <xgboost/data.h>
+#pragma GCC diagnostic pop
 
 namespace dd
 {
