@@ -1,26 +1,8 @@
-From 94a1f210f116d864f3d6cc1c01c22bfb352a7d4c Mon Sep 17 00:00:00 2001
-From: Guillaume Infantes <guillaume.infantes@jolibrain.com>
-Date: Mon, 29 Jun 2020 16:01:00 +0200
-Subject: [PATCH] support for refinedet
-
----
- include/NvInferPluginUtils.h              |   2 +-
- parsers/caffe/caffeParser/caffeParser.cpp |   5 +
- parsers/caffe/proto/trtcaffe.proto        |   2 +
- plugin/common/kernels/OSPermuteData.cu    | 159 ++++++++++++++++++++++
- plugin/common/kernels/decodeBBoxes.cu     | 152 ++++++++++++++++++++-
- plugin/common/kernels/detectionForward.cu |  67 ++++++---
- plugin/common/kernels/kernel.h            |  12 +-
- plugin/nmsPlugin/nmsPlugin.cpp            |  30 +++-
- plugin/nmsPlugin/nmsPlugin.h              |   1 +
- 9 files changed, 394 insertions(+), 36 deletions(-)
- create mode 100644 plugin/common/kernels/OSPermuteData.cu
-
 diff --git a/include/NvInferPluginUtils.h b/include/NvInferPluginUtils.h
-index fbe8197..6b6e868 100644
+index a92488c..d9cb5fc 100644
 --- a/include/NvInferPluginUtils.h
 +++ b/include/NvInferPluginUtils.h
-@@ -181,7 +181,7 @@ struct DetectionOutputParameters
+@@ -182,7 +182,7 @@ struct DetectionOutputParameters
  {
      bool shareLocation, varianceEncodedInTarget;
      int backgroundLabelId, numClasses, topK, keepTopK;
@@ -30,10 +12,10 @@ index fbe8197..6b6e868 100644
      int inputOrder[3];
      bool confSigmoid;
 diff --git a/parsers/caffe/caffeParser/caffeParser.cpp b/parsers/caffe/caffeParser/caffeParser.cpp
-index 511bbf2..2ba26e2 100644
+index 9fb28d6..00a28bf 100644
 --- a/parsers/caffe/caffeParser/caffeParser.cpp
 +++ b/parsers/caffe/caffeParser/caffeParser.cpp
-@@ -195,6 +195,11 @@ std::vector<nvinfer1::PluginField> CaffeParser::parseDetectionOutputParam(const
+@@ -195,6 +195,12 @@ std::vector<nvinfer1::PluginField> CaffeParser::parseDetectionOutputParam(const
      *nmsThreshold = nmsp.nms_threshold();
      f.emplace_back("nmsThreshold", nmsThreshold, PluginFieldType::kFLOAT32, 1);
  
@@ -42,11 +24,12 @@ index 511bbf2..2ba26e2 100644
 +	*objectnessScore = p.objectness_score();
 +	f.emplace_back("objectnessScore", objectnessScore, PluginFieldType::kFLOAT32, 1);
 +
++
      // input order = {0, 1, 2} in Caffe
      int* inputOrder = allocMemory<int32_t>(3);
      inputOrder[0] = 0;
 diff --git a/parsers/caffe/proto/trtcaffe.proto b/parsers/caffe/proto/trtcaffe.proto
-index 0168dec..6f9686e 100644
+index d79980b..e4eafff 100644
 --- a/parsers/caffe/proto/trtcaffe.proto
 +++ b/parsers/caffe/proto/trtcaffe.proto
 @@ -980,6 +980,8 @@ message DetectionOutputParameter {
@@ -58,176 +41,11 @@ index 0168dec..6f9686e 100644
    // If true, visualize the detection results.
    optional bool visualize = 10 [default = false];
    // The threshold used to visualize the detection results.
-diff --git a/plugin/common/kernels/OSPermuteData.cu b/plugin/common/kernels/OSPermuteData.cu
-new file mode 100644
-index 0000000..50d9c53
---- /dev/null
-+++ b/plugin/common/kernels/OSPermuteData.cu
-@@ -0,0 +1,159 @@
-+/*
-+ * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
-+ *
-+ * Licensed under the Apache License, Version 2.0 (the "License");
-+ * you may not use this file except in compliance with the License.
-+ * You may obtain a copy of the License at
-+ *
-+ *     http://www.apache.org/licenses/LICENSE-2.0
-+ *
-+ * Unless required by applicable law or agreed to in writing, software
-+ * distributed under the License is distributed on an "AS IS" BASIS,
-+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-+ * See the License for the specific language governing permissions and
-+ * limitations under the License.
-+ */
-+#include <vector>
-+#include "kernel.h"
-+
-+template <typename Dtype, unsigned nthds_per_cta>
-+__launch_bounds__(nthds_per_cta)
-+    __global__ void OSPermuteData_kernel(
-+        const int nthreads,
-+        const int num_classes,
-+        const int num_data,
-+        const int num_dim,
-+        bool confSigmoid,
-+        const Dtype* data,
-+		const Dtype* arm_data,
-+		float objectness_score,
-+        Dtype* new_data)
-+{
-+    // data format: [batch_size, num_data, num_classes, num_dim]
-+    for (int index = blockIdx.x * nthds_per_cta + threadIdx.x;
-+         index < nthreads;
-+         index += nthds_per_cta * gridDim.x)
-+    {
-+        const int i = index % num_dim;
-+        const int c = (index / num_dim) % num_classes;
-+        const int d = (index / num_dim / num_classes) % num_data;
-+        const int n = index / num_dim / num_classes / num_data;
-+        const int new_index = ((n * num_classes + c) * num_data + d) * num_dim + i;
-+
-+		const int arm_index = ((n * num_data + d) * 2 + 1) * num_dim + i;
-+		if (arm_data[arm_index] < objectness_score)
-+		  {
-+			if (c==0)
-+			  new_data[new_index] = 1.0;
-+			else
-+			  new_data[new_index] = 0.0;
-+		  }
-+		else
-+		  {
-+			float result = data[index];
-+			if (confSigmoid)
-+			  result = exp(result) / (1 + exp(result));
-+			new_data[new_index] = result;
-+		  }
-+    }
-+    // new data format: [batch_size, num_classes, num_data, num_dim]
-+}
-+
-+template <typename Dtype>
-+pluginStatus_t OSPermuteData_gpu(
-+    cudaStream_t stream,
-+    const int nthreads,
-+    const int num_classes,
-+    const int num_data,
-+    const int num_dim,
-+    bool confSigmoid,
-+    const void* data,
-+	const void* arm_data,
-+	float objectness_score,
-+    void* new_data)
-+{
-+    const int BS = 512;
-+    const int GS = (nthreads + BS - 1) / BS;
-+    OSPermuteData_kernel<Dtype, BS><<<GS, BS, 0, stream>>>(nthreads, num_classes, num_data, num_dim, confSigmoid,
-+                                                         (const Dtype*) data, (const Dtype*) arm_data, objectness_score, (Dtype*) new_data);
-+    CSC(cudaGetLastError(), STATUS_FAILURE);
-+    return STATUS_SUCCESS;
-+}
-+
-+// permuteData LAUNCH CONFIG 
-+typedef pluginStatus_t (*ospdFunc)(cudaStream_t,
-+								   const int,
-+								   const int,
-+								   const int,
-+								   const int,
-+								   bool,
-+								   const void*,
-+								   const void*,
-+								   const float,
-+								   void*);
-+
-+struct ospdLaunchConfig
-+{
-+    DataType t_data;
-+    ospdFunc function;
-+
-+    ospdLaunchConfig(DataType t_data)
-+        : t_data(t_data)
-+    {
-+    }
-+    ospdLaunchConfig(DataType t_data, ospdFunc function)
-+        : t_data(t_data)
-+        , function(function)
-+    {
-+    }
-+    bool operator==(const ospdLaunchConfig& other)
-+    {
-+        return t_data == other.t_data;
-+    }
-+};
-+
-+static std::vector<ospdLaunchConfig> ospdFuncVec;
-+
-+bool OSPermuteDataInit()
-+{
-+    ospdFuncVec.push_back(ospdLaunchConfig(DataType::kFLOAT,
-+                                       OSPermuteData_gpu<float>));
-+    return true;
-+}
-+
-+static bool initialized = OSPermuteDataInit();
-+
-+
-+pluginStatus_t OSPermuteData(cudaStream_t stream,
-+                        const int nthreads,
-+                        const int num_classes,
-+                        const int num_data,
-+                        const int num_dim,
-+                        const DataType DT_DATA,
-+                        bool confSigmoid,
-+                        const void* data,
-+						const void * arm_data,
-+						float objectness_score,
-+                        void* new_data)
-+{
-+    ospdLaunchConfig lc = ospdLaunchConfig(DT_DATA);
-+    for (unsigned i = 0; i < ospdFuncVec.size(); ++i)
-+    {
-+        if (lc == ospdFuncVec[i])
-+        {
-+            DEBUG_PRINTF("permuteData kernel %d\n", i);
-+            return ospdFuncVec[i].function(stream,
-+										   nthreads,
-+										   num_classes,
-+										   num_data,
-+										   num_dim,
-+										   confSigmoid,
-+										   data,
-+										   arm_data,
-+										 objectness_score,
-+										   new_data);
-+        }
-+    }
-+    return STATUS_BAD_PARAM;
-+}
-+
 diff --git a/plugin/common/kernels/decodeBBoxes.cu b/plugin/common/kernels/decodeBBoxes.cu
-index 2916585..f6c3af6 100644
+index 11a3571..5723d8d 100644
 --- a/plugin/common/kernels/decodeBBoxes.cu
 +++ b/plugin/common/kernels/decodeBBoxes.cu
-@@ -218,6 +218,127 @@ __launch_bounds__(nthds_per_cta)
+@@ -218,6 +218,128 @@ __launch_bounds__(nthds_per_cta)
      }
  }
  
@@ -352,10 +170,11 @@ index 2916585..f6c3af6 100644
 +
 +
 +
++
  template <typename T_BBOX>
  pluginStatus_t decodeBBoxes_gpu(
      cudaStream_t stream,
-@@ -231,15 +352,33 @@ pluginStatus_t decodeBBoxes_gpu(
+@@ -231,15 +353,34 @@ pluginStatus_t decodeBBoxes_gpu(
      const bool clip_bbox,
      const void* loc_data,
      const void* prior_data,
@@ -369,7 +188,7 @@ index 2916585..f6c3af6 100644
 -                                                           background_label_id, clip_bbox,
 -                                                           (const T_BBOX*) loc_data, (const T_BBOX*) prior_data,
 -                                                           (T_BBOX*) bbox_data);
-+	if (arm_loc_data == NULL)
++		if (arm_loc_data == NULL)
 +	  decodeBBoxes_kernel<T_BBOX, BS><<<GS, BS, 0, stream>>>(nthreads, code_type, variance_encoded_in_target,
 +															 num_priors, share_location, num_loc_classes,
 +															 background_label_id, clip_bbox,
@@ -378,12 +197,12 @@ index 2916585..f6c3af6 100644
 +															 (T_BBOX*) bbox_data);
 +	else
 +	  {
-+		decodeBBoxes_kernel<T_BBOX, BS><<<GS, BS, 0, stream>>>(nthreads, code_type, variance_encoded_in_target,
-+															   num_priors, share_location, num_loc_classes,
-+															   background_label_id, clip_bbox,
-+															   (const T_BBOX*) arm_loc_data,
-+															   (const T_BBOX*) prior_data,
-+															   (T_BBOX*) bbox_data);
++		 decodeBBoxes_kernel<T_BBOX, BS><<<GS, BS, 0, stream>>>(nthreads, code_type, variance_encoded_in_target,
++		 													   num_priors, share_location, num_loc_classes,
++		 													   background_label_id, clip_bbox,
++		 													   (const T_BBOX*) arm_loc_data,
++		 													   (const T_BBOX*) prior_data,
++		 													   (T_BBOX*) bbox_data);
 +		CasReg_decodeBBoxes_kernel<T_BBOX, BS><<<GS, BS, 0, stream>>>(nthreads, code_type, variance_encoded_in_target,
 +																   num_priors, share_location, num_loc_classes,
 +																   background_label_id, clip_bbox,
@@ -391,10 +210,11 @@ index 2916585..f6c3af6 100644
 +																   (const T_BBOX*) prior_data,
 +																   (T_BBOX*) bbox_data);
 +	  }
++
      CSC(cudaGetLastError(), STATUS_FAILURE);
      return STATUS_SUCCESS;
  }
-@@ -256,6 +395,7 @@ typedef pluginStatus_t (*dbbFunc)(cudaStream_t,
+@@ -256,6 +397,7 @@ typedef pluginStatus_t (*dbbFunc)(cudaStream_t,
                                 const bool,
                                 const void*,
                                 const void*,
@@ -402,7 +222,7 @@ index 2916585..f6c3af6 100644
                                 void*);
  
  struct dbbLaunchConfig
-@@ -302,6 +442,7 @@ pluginStatus_t decodeBBoxes(
+@@ -294,6 +436,7 @@ pluginStatus_t decodeBBoxes(
      const DataType DT_BBOX,
      const void* loc_data,
      const void* prior_data,
@@ -410,7 +230,7 @@ index 2916585..f6c3af6 100644
      void* bbox_data)
  {
      dbbLaunchConfig lc = dbbLaunchConfig(DT_BBOX);
-@@ -321,6 +462,7 @@ pluginStatus_t decodeBBoxes(
+@@ -313,6 +456,7 @@ pluginStatus_t decodeBBoxes(
                                            clip_bbox,
                                            loc_data,
                                            prior_data,
@@ -419,7 +239,7 @@ index 2916585..f6c3af6 100644
          }
      }
 diff --git a/plugin/common/kernels/detectionForward.cu b/plugin/common/kernels/detectionForward.cu
-index b2f5ef5..bc95c2a 100644
+index e5810c6..89379b3 100644
 --- a/plugin/common/kernels/detectionForward.cu
 +++ b/plugin/common/kernels/detectionForward.cu
 @@ -30,12 +30,15 @@ pluginStatus_t detectionInference(
@@ -438,44 +258,15 @@ index b2f5ef5..bc95c2a 100644
      void* keepCount,
      void* topDetections,
      void* workspace,
-@@ -57,19 +60,23 @@ pluginStatus_t detectionInference(
-     size_t bboxDataSize = detectionForwardBBoxDataSize(N, C1, DataType::kFLOAT);
-     void* bboxDataRaw = workspace;
- 
--    pluginStatus_t status = decodeBBoxes(stream,
--                                      locCount,
--                                      codeType,
--                                      varianceEncodedInTarget,
--                                      numPredsPerClass,
--                                      shareLocation,
--                                      numLocClasses,
--                                      backgroundLabelId,
--                                      clipBBox,
--                                      DataType::kFLOAT,
--                                      locData,
--                                      priorData,
--                                      bboxDataRaw);
-+    pluginStatus_t status;
-+
-+	status = decodeBBoxes(stream,
-+						  locCount,
-+						  codeType,
-+						  varianceEncodedInTarget,
-+						  numPredsPerClass,
-+						  shareLocation,
-+						  numLocClasses,
-+						  backgroundLabelId,
-+						  clipBBox,
-+						  DataType::kFLOAT,
-+						  locData,
-+						  priorData,
-+						  arm_locData,
-+						  bboxDataRaw);
-+
+@@ -69,6 +72,7 @@ pluginStatus_t detectionInference(
+                                       DataType::kFLOAT,
+                                       locData,
+                                       priorData,
++									  arm_locData,
+                                       bboxDataRaw);
  
      ASSERT_FAILURE(status == STATUS_SUCCESS);
- 
-@@ -121,15 +128,31 @@ pluginStatus_t detectionInference(
+@@ -121,15 +125,29 @@ pluginStatus_t detectionInference(
       * After permutation, bboxData format:
       * [batch_size, numClasses, numPredsPerClass, 1]
       */
@@ -488,7 +279,6 @@ index b2f5ef5..bc95c2a 100644
 -                         confSigmoid,
 -                         confData,
 -                         scores);
-+
 +	if (arm_confData == NULL)
 +	  status = permuteData(stream,
 +						   numScores,
@@ -501,45 +291,66 @@ index b2f5ef5..bc95c2a 100644
 +						   scores);
 +	else
 +	  status = OSPermuteData(stream,
-+						   numScores,
-+						   numClasses,
-+						   numPredsPerClass,
-+						   1,
-+						   DataType::kFLOAT,
-+						   confSigmoid,
-+						   confData,
-+						   arm_confData,
-+						   objectnessScore,
-+						   scores);
-+
++							 numScores,
++							 numClasses,
++							 numPredsPerClass,
++							 1,
++							 DataType::kFLOAT,
++							 confSigmoid,
++							 confData,
++							 arm_confData,
++							 objectnessScore,
++							 scores);
 +
      ASSERT_FAILURE(status == STATUS_SUCCESS);
  
      size_t indicesSize = detectionForwardPreNMSSize(N, C2);
+@@ -230,6 +248,8 @@ namespace plugin
+     const void* priorData,
+     const DataType DT_SCORE,
+     const void* confData,
++	const void* arm_confData,
++	const void* arm_locData,
+     void* keepCount,
+     void* topDetections,
+     void* workspace,
+@@ -263,6 +283,7 @@ namespace plugin
+                                       DataType::kFLOAT,
+                                       locData,
+                                       priorData,
++									  arm_locData,
+                                       bboxDataRaw);
+ 
+     ASSERT_FAILURE(status == STATUS_SUCCESS);
 diff --git a/plugin/common/kernels/kernel.h b/plugin/common/kernels/kernel.h
-index 7dad317..c4f1d9b 100644
+index 03a190e..09e128f 100644
 --- a/plugin/common/kernels/kernel.h
 +++ b/plugin/common/kernels/kernel.h
-@@ -38,8 +38,10 @@ pluginStatus_t allClassNMS(cudaStream_t stream, int num, int num_classes, int nu
+@@ -34,14 +34,16 @@ typedef enum
+ } DLayout_t;
+ 
+ pluginStatus_t allClassNMS(cudaStream_t stream, int num, int num_classes, int num_preds_per_class, int top_k,
+-    float nms_threshold, bool share_location, bool isNormalized, DataType DT_SCORE, DataType DT_BBOX, void* bbox_data,
++	float nms_threshold, bool share_location, bool isNormalized, DataType DT_SCORE, DataType DT_BBOX, void* bbox_data,
+     void* beforeNMS_scores, void* beforeNMS_index_array, void* afterNMS_scores, void* afterNMS_index_array,
+     bool flipXY = false);
  
  pluginStatus_t detectionInference(cudaStream_t stream, int N, int C1, int C2, bool shareLocation,
      bool varianceEncodedInTarget, int backgroundLabelId, int numPredsPerClass, int numClasses, int topK, int keepTopK,
 -    float confidenceThreshold, float nmsThreshold, CodeTypeSSD codeType, DataType DT_BBOX, const void* locData,
 -    const void* priorData, DataType DT_SCORE, const void* confData, void* keepCount, void* topDetections,
-+	  float confidenceThreshold, float nmsThreshold, float objectnessScore, CodeTypeSSD codeType, DataType DT_BBOX, const void* locData,
++	 float confidenceThreshold, float nmsThreshold, float objectnessScore, CodeTypeSSD codeType, DataType DT_BBOX, const void* locData,
 +    const void* priorData, DataType DT_SCORE, const void* confData,
-+	const void* arm_conf_data, const void* arm_loc_data,
-+	void* keepCount, void* topDetections,
++								  const void* arm_conf_data, const void* arm_loc_data,
++								  void* keepCount, void* topDetections,
      void* workspace, bool isNormalized = true, bool confSigmoid = false
  
  );
-@@ -71,13 +73,17 @@ const char* cublasGetErrorString(cublasStatus_t error);
+@@ -79,13 +81,15 @@ const char* cublasGetErrorString(cublasStatus_t error);
  pluginStatus_t permuteData(cudaStream_t stream, int nthreads, int num_classes, int num_data, int num_dim,
      DataType DT_DATA, bool confSigmoid, const void* data, void* new_data);
  
-+pluginStatus_t OSPermuteData(cudaStream_t stream, int nthreads, int num_classes, int num_data, int num_dim,
-+							 DataType DT_DATA, bool confSigmoid, const void* data, const void* arm_data, float objectness_score, void* new_data);
-+
++pluginStatus_t OSPermuteData(cudaStream_t stream, int nthreads, int num_classes, int num_data, int num_dim,	 DataType DT_DATA, bool confSigmoid, const void* data, const void* arm_data, float objectness_score, void* new_data);
 +
  size_t detectionForwardPreNMSSize(int N, int C2);
  
@@ -552,48 +363,285 @@ index 7dad317..c4f1d9b 100644
  
  size_t normalizePluginWorkspaceSize(bool acrossSpatial, int C, int H, int W);
  
+diff --git a/plugin/common/kernels/permuteData.cu b/plugin/common/kernels/permuteData.cu
+index c9e0174..6eeafef 100644
+--- a/plugin/common/kernels/permuteData.cu
++++ b/plugin/common/kernels/permuteData.cu
+@@ -127,3 +127,161 @@ pluginStatus_t permuteData(cudaStream_t stream,
+     return STATUS_BAD_PARAM;
+ }
+ 
++/*
++ * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++#include <vector>
++#include "kernel.h"
++
++template <typename Dtype, unsigned nthds_per_cta>
++__launch_bounds__(nthds_per_cta)
++    __global__ void OSPermuteData_kernel(
++        const int nthreads,
++        const int num_classes,
++        const int num_data,
++        const int num_dim,
++        bool confSigmoid,
++        const Dtype* data,
++		const Dtype* arm_data,
++		float objectness_score,
++        Dtype* new_data)
++{
++    // data format: [batch_size, num_data, num_classes, num_dim]
++    for (int index = blockIdx.x * nthds_per_cta + threadIdx.x;
++         index < nthreads;
++         index += nthds_per_cta * gridDim.x)
++    {
++        const int i = index % num_dim;
++        const int c = (index / num_dim) % num_classes;
++        const int d = (index / num_dim / num_classes) % num_data;
++        const int n = index / num_dim / num_classes / num_data;
++        const int new_index = ((n * num_classes + c) * num_data + d) * num_dim + i;
++
++		const int arm_index = ((n * num_data + d) * 2 + 1) * num_dim + i;
++		if (arm_data[arm_index] < objectness_score)
++		  {
++			if (c==0)
++			  new_data[new_index] = 1.0;
++			else
++			  new_data[new_index] = 0.0;
++		  }
++		else
++		  {
++			float result = data[index];
++			if (confSigmoid)
++			  result = exp(result) / (1 + exp(result));
++			new_data[new_index] = result;
++		  }
++    }
++    // new data format: [batch_size, num_classes, num_data, num_dim]
++}
++
++template <typename Dtype>
++pluginStatus_t OSPermuteData_gpu(
++    cudaStream_t stream,
++    const int nthreads,
++    const int num_classes,
++    const int num_data,
++    const int num_dim,
++    bool confSigmoid,
++    const void* data,
++	const void* arm_data,
++	float objectness_score,
++    void* new_data)
++{
++    const int BS = 512;
++    const int GS = (nthreads + BS - 1) / BS;
++    OSPermuteData_kernel<Dtype, BS><<<GS, BS, 0, stream>>>(nthreads, num_classes, num_data, num_dim, confSigmoid,
++                                                         (const Dtype*) data, (const Dtype*) arm_data, objectness_score, (Dtype*) new_data);
++    CSC(cudaGetLastError(), STATUS_FAILURE);
++    return STATUS_SUCCESS;
++}
++
++// permuteData LAUNCH CONFIG
++typedef pluginStatus_t (*ospdFunc)(cudaStream_t,
++								   const int,
++								   const int,
++								   const int,
++								   const int,
++								   bool,
++								   const void*,
++								   const void*,
++								   const float,
++								   void*);
++
++struct ospdLaunchConfig
++{
++    DataType t_data;
++    ospdFunc function;
++
++    ospdLaunchConfig(DataType t_data)
++        : t_data(t_data)
++    {
++    }
++    ospdLaunchConfig(DataType t_data, ospdFunc function)
++        : t_data(t_data)
++        , function(function)
++    {
++    }
++    bool operator==(const ospdLaunchConfig& other)
++    {
++        return t_data == other.t_data;
++    }
++};
++
++static std::vector<ospdLaunchConfig> ospdFuncVec;
++
++bool OSPermuteDataInit()
++{
++    ospdFuncVec.push_back(ospdLaunchConfig(DataType::kFLOAT,
++                                       OSPermuteData_gpu<float>));
++    return true;
++}
++
++static bool initialized = OSPermuteDataInit();
++
++
++pluginStatus_t OSPermuteData(cudaStream_t stream,
++                        const int nthreads,
++                        const int num_classes,
++                        const int num_data,
++                        const int num_dim,
++                        const DataType DT_DATA,
++                        bool confSigmoid,
++                        const void* data,
++						const void * arm_data,
++						float objectness_score,
++                        void* new_data)
++{
++    ospdLaunchConfig lc = ospdLaunchConfig(DT_DATA);
++    for (unsigned i = 0; i < ospdFuncVec.size(); ++i)
++    {
++        if (lc == ospdFuncVec[i])
++        {
++            DEBUG_PRINTF("permuteData kernel %d\n", i);
++            return ospdFuncVec[i].function(stream,
++										   nthreads,
++										   num_classes,
++										   num_data,
++										   num_dim,
++										   confSigmoid,
++										   data,
++										   arm_data,
++										 objectness_score,
++										   new_data);
++        }
++    }
++    return STATUS_BAD_PARAM;
++}
 diff --git a/plugin/nmsPlugin/nmsPlugin.cpp b/plugin/nmsPlugin/nmsPlugin.cpp
-index f455dfd..327570c 100644
+index 19e0b75..061d6af 100644
 --- a/plugin/nmsPlugin/nmsPlugin.cpp
 +++ b/plugin/nmsPlugin/nmsPlugin.cpp
-@@ -79,7 +79,7 @@ void DetectionOutput::terminate() {}
+@@ -39,11 +39,12 @@ DetectionOutput::DetectionOutput(DetectionOutputParameters params)
+ {
+ }
+ 
+-DetectionOutput::DetectionOutput(DetectionOutputParameters params, int C1, int C2, int numPriors)
++DetectionOutput::DetectionOutput(DetectionOutputParameters params, int C1, int C2, int numPriors, bool ARM)
+     : param(params)
+     , C1(C1)
+     , C2(C2)
+     , numPriors(numPriors)
++	, _ARM(ARM)
+ {
+ }
+ 
+@@ -60,6 +61,12 @@ DetectionOutput::DetectionOutput(const void* data, size_t length)
+     C2 = read<int>(d);
+     // Number of bounding boxes per sample
+     numPriors = read<int>(d);
++	int arm = read<int>(d);
++	if (arm == 0)
++	  _ARM = false;
++	else
++	  _ARM = true;
++
+     ASSERT(d == a + length);
+ }
+ 
+@@ -79,7 +86,7 @@ void DetectionOutput::terminate() {}
  // Returns output dimensions at given index
  Dims DetectionOutput::getOutputDimensions(int index, const Dims* inputs, int nbInputDims)
  {
 -    ASSERT(nbInputDims == 3);
-+  ASSERT(nbInputDims == 3 || nbInputDims == 5);
++    ASSERT(nbInputDims == 3 || nbInputDims == 5);
      ASSERT(index == 0 || index == 1);
      // Output dimensions
      // index 0 : Dimensions 1x param.keepTopK x 7
-@@ -106,6 +106,14 @@ int DetectionOutput::enqueue(
+@@ -104,8 +111,26 @@ int DetectionOutput::enqueue(
+ {
+     // Input order {loc, conf, prior}
      const void* const locData = inputs[param.inputOrder[0]];
-     const void* const confData = inputs[param.inputOrder[1]];
-     const void* const priorData = inputs[param.inputOrder[2]];
-+	const void* arm_conf_data = NULL;
-+	const void* arm_loc_data = NULL;
+-    const void* const confData = inputs[param.inputOrder[1]];
+-    const void* const priorData = inputs[param.inputOrder[2]];
 +
-+	if (_ARM)
-+	  {
-+		arm_conf_data = inputs[param.inputOrder[3]];
-+		arm_loc_data = inputs[param.inputOrder[4]];
-+	  }
++		const void* confData;
++		const void* priorData;
++		const void* arm_conf_data;
++		const void* arm_loc_data;
++
++	  	if (_ARM)
++	  	  {
++			confData = inputs[1];
++			priorData = inputs[2];
++			arm_conf_data = inputs[3];
++			arm_loc_data = inputs[4];
++		  }
++		else
++	  	  {
++			confData = inputs[param.inputOrder[1]];
++			priorData = inputs[param.inputOrder[2]];
++			arm_conf_data = NULL;
++			arm_loc_data = NULL;
++		  }
  
      // Output from plugin index 0: topDetections index 1: keepCount
      void* topDetections = outputs[0];
-@@ -113,8 +121,10 @@ int DetectionOutput::enqueue(
+@@ -113,8 +138,10 @@ int DetectionOutput::enqueue(
  
      pluginStatus_t status = detectionInference(stream, batchSize, C1, C2, param.shareLocation,
          param.varianceEncodedInTarget, param.backgroundLabelId, numPriors, param.numClasses, param.topK, param.keepTopK,
 -        param.confidenceThreshold, param.nmsThreshold, param.codeType, DataType::kFLOAT, locData, priorData,
 -        DataType::kFLOAT, confData, keepCount, topDetections, workspace, param.isNormalized, param.confSigmoid);
-+		 param.confidenceThreshold, param.nmsThreshold, param.objectnessScore, param.codeType, DataType::kFLOAT, locData, priorData,
-+		DataType::kFLOAT, confData,
-+		arm_conf_data, arm_loc_data,
-+		keepCount, topDetections, workspace, param.isNormalized, param.confSigmoid);
++											   param.confidenceThreshold, param.nmsThreshold, param.objectnessScore, param.codeType, DataType::kFLOAT, locData, priorData,
++        DataType::kFLOAT, confData,
++											   arm_conf_data, arm_loc_data,
++											   keepCount, topDetections, workspace, param.isNormalized, param.confSigmoid);
      ASSERT(status == STATUS_SUCCESS);
      return 0;
  }
-@@ -216,7 +226,10 @@ void DetectionOutput::configurePlugin(const Dims* inputDims, int nbInputs, const
+@@ -123,7 +150,7 @@ int DetectionOutput::enqueue(
+ size_t DetectionOutput::getSerializationSize() const
+ {
+     // DetectionOutputParameters, C1,C2,numPriors
+-    return sizeof(DetectionOutputParameters) + sizeof(int) * 3;
++    return sizeof(DetectionOutputParameters) + sizeof(int) * 4;
+ }
+ 
+ // Serialization of plugin parameters
+@@ -134,6 +161,11 @@ void DetectionOutput::serialize(void* buffer) const
+     write(d, C1);
+     write(d, C2);
+     write(d, numPriors);
++	if (_ARM)
++	  write(d, (int)1);
++	else
++	  write(d, (int)0);
++
+     ASSERT(d == a + getSerializationSize());
+ }
+ 
+@@ -165,7 +197,7 @@ void DetectionOutput::destroy()
+ IPluginV2Ext* DetectionOutput::clone() const
+ {
+     // Create a new instance
+-    IPluginV2Ext* plugin = new DetectionOutput(param, C1, C2, numPriors);
++  IPluginV2Ext* plugin = new DetectionOutput(param, C1, C2, numPriors, _ARM);
+ 
+     // Set the namespace
+     plugin->setPluginNamespace(mPluginNamespace.c_str());
+@@ -216,7 +248,10 @@ void DetectionOutput::configurePlugin(const Dims* inputDims, int nbInputs, const
      const bool* outputIsBroadcast, PluginFormat floatFormat, int maxBatchSize)
  {
      // Number of input dimension should be 3
@@ -605,15 +653,15 @@ index f455dfd..327570c 100644
  
      // Number of output dimension wil be 2
      ASSERT(nbOutputs == 2);
-@@ -270,6 +283,7 @@ NMSPluginCreator::NMSPluginCreator()
+@@ -270,6 +305,7 @@ NMSPluginCreator::NMSPluginCreator()
      mPluginAttributes.emplace_back(PluginField("keepTopK", nullptr, PluginFieldType::kINT32, 1));
      mPluginAttributes.emplace_back(PluginField("confidenceThreshold", nullptr, PluginFieldType::kFLOAT32, 1));
      mPluginAttributes.emplace_back(PluginField("nmsThreshold", nullptr, PluginFieldType::kFLOAT32, 1));
-+    mPluginAttributes.emplace_back(PluginField("objectnessScore", nullptr, PluginFieldType::kFLOAT32, 1));
++	mPluginAttributes.emplace_back(PluginField("objectnessScore", nullptr, PluginFieldType::kFLOAT32, 1));
      mPluginAttributes.emplace_back(PluginField("inputOrder", nullptr, PluginFieldType::kINT32, 3));
      mPluginAttributes.emplace_back(PluginField("confSigmoid", nullptr, PluginFieldType::kINT32, 1));
      mPluginAttributes.emplace_back(PluginField("isNormalized", nullptr, PluginFieldType::kINT32, 1));
-@@ -351,6 +365,12 @@ IPluginV2Ext* NMSPluginCreator::createPlugin(const char* name, const PluginField
+@@ -351,6 +387,11 @@ IPluginV2Ext* NMSPluginCreator::createPlugin(const char* name, const PluginField
              ASSERT(fields[i].type == PluginFieldType::kFLOAT32);
              params.nmsThreshold = static_cast<float>(*(static_cast<const float*>(fields[i].data)));
          }
@@ -622,31 +670,27 @@ index f455dfd..327570c 100644
 +			ASSERT(fields[i].type == PluginFieldType::kFLOAT32);
 +			params.objectnessScore = static_cast<float>(*(static_cast<const float*>(fields[i].data)));
 +		  }
-+
          else if (!strcmp(attrName, "confSigmoid"))
          {
              params.confSigmoid = static_cast<int>(*(static_cast<const int*>(fields[i].data)));
-@@ -372,7 +392,7 @@ IPluginV2Ext* NMSPluginCreator::createPlugin(const char* name, const PluginField
-         }
-         else if (!strcmp(attrName, "codeType"))
-         {
--            ASSERT(fields[i].type == PluginFieldType::kINT32);
-+		  ASSERT(fields[i].type == PluginFieldType::kINT32);
-             params.codeType = static_cast<CodeTypeSSD>(*(static_cast<const int*>(fields[i].data)));
-         }
-     }
 diff --git a/plugin/nmsPlugin/nmsPlugin.h b/plugin/nmsPlugin/nmsPlugin.h
-index d630f0b..7d0be46 100644
+index 29d0e21..81315fe 100644
 --- a/plugin/nmsPlugin/nmsPlugin.h
 +++ b/plugin/nmsPlugin/nmsPlugin.h
+@@ -32,7 +32,7 @@ class DetectionOutput : public IPluginV2Ext
+ public:
+     DetectionOutput(DetectionOutputParameters param);
+ 
+-    DetectionOutput(DetectionOutputParameters param, int C1, int C2, int numPriors);
++  DetectionOutput(DetectionOutputParameters param, int C1, int C2, int numPriors, bool ARM);
+ 
+     DetectionOutput(const void* data, size_t length);
+ 
 @@ -88,6 +88,7 @@ private:
      DetectionOutputParameters param;
      int C1, C2, numPriors;
-     const char* mPluginNamespace;
-+	bool _ARM = false;
+     std::string mPluginNamespace;
++  bool _ARM = false;
  };
  
  class NMSPluginCreator : public BaseCreator
--- 
-2.25.0
-

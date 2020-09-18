@@ -23,7 +23,7 @@ DeepDetect relies on external machine learning libraries through a very generic 
 | Dlib       | N        | Y          | Y              | Y         |   N       |   N        | N           | N           |N |
 | TensorRT   | N/A      | Y          | Y              | Y         |   N       |   N        | N           | N           |N |
 | NCNN       | N/A      | Y          | Y              | Y         |   N       |   N        | N           | Y           |Y |
-| Libtorch   | Y        | Y          | Y              | N         |   N       |   N        | N           | N           |N |
+| Libtorch   | Y        | Y          | Y              | N         |   N       |   N        | N           | N           |N | 
 
 
 #### GPU support per library

@@ -728,7 +728,7 @@ if (USE_TORCH)
 
   set(PYTORCH_PATCHES
     ${PYTORCH_PATCHES_PATH}/pytorch_15_compile.patch
-    ${PYTORCH_PATCHES_PATH}/pytorch_15_logging.patch
+    ${PYTORCH_PATCHES_PATH}/pytorch_16_logging.patch
     ${PYTORCH_PATCHES_PATH}/pytorch_14_namespace.patch
     )
 
@@ -740,7 +740,8 @@ if (USE_TORCH)
   if (NOT TORCH_LOCATION)
     #set(PYTORCH_COMMIT ee77ccbb6da4e2efd83673e798acf7081bc03564) # 1.3.1
     #set(PYTORCH_COMMIT 7f73f1d591afba823daa4a99a939217fb54d7688) # 1.4
-    set(PYTORCH_COMMIT 4ff3872a2099993bf7e8c588f7182f3df777205b)  # 1.5
+    #set(PYTORCH_COMMIT 4ff3872a2099993bf7e8c588f7182f3df777205b)  # 1.5
+	set(PYTORCH_COMMIT b31f58de6fa8bbda5353b3c77d9be4914399724d)  # 1.6
     set(PYTORCH_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch-complete)
 
     if(NOT USE_CPU_ONLY AND CUDA_FOUND)
@@ -888,12 +889,12 @@ if (USE_TENSORRT)
 	set(TENSORRT_LIBS protobuf nvinfer nvparsers nvinfer_plugin nvonnxparser )
 
   else()
-    set(TENSORRT_LIB_DIR ${CMAKE_BINARY_DIR}/tensorrt-oss/bin ${TENSORRT_LIB_DIR})
+    set(TENSORRT_LIB_DIR ${CMAKE_BINARY_DIR}/tensorrt-oss/bin/ ${TENSORRT_LIB_DIR})
     include_directories(${CMAKE_CURRENT_BINARY_DIR})
-	set(TENSORRT_LIBS protobuf nvinfer nvcaffeparser nvinfer_plugin nvonnxparser )
+	set(TENSORRT_LIBS protobuf nvinfer nvparsers nvcaffeparser nvinfer_plugin nvonnxparser )
 
     if (EXISTS "${TRTTESTDIR}/libnvinfer.so.7")
-      set(TENSORRT_COMMIT 572d54f91791448c015e74a4f1d6923b77b79795)
+      set(TENSORRT_COMMIT 9a9cae75e7155b2114454f37ccc49eca9d3352dc)
       message(STATUS "Found TensorRT libraries version 7")
     elseif(EXISTS "${TRTTESTDIR}/libnvinfer.so.6")
       set(TENSORRT_COMMIT 639d11abcc7d1f1a4933e87b95c126e6c82e2a5c)
@@ -907,7 +908,7 @@ if (USE_TENSORRT)
     list(APPEND TRT_FLAGS
       -DTRT_LIB_DIR=${TENSORRT_DIR}/lib
       -DCUDA_VERSION=10.0
-      -DTRT_BIN_DIR=${CMAKE_BINARY_DIR}/tensorrt-oss/bin
+      -DTRT_OUT_DIR=${CMAKE_BINARY_DIR}/tensorrt-oss/bin
       -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc
       )
 
