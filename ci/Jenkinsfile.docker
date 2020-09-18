@@ -1,0 +1,30 @@
+
+pipeline {
+  agent any
+  stages {
+    stage('Init') { steps {
+      script {
+          def common = load("ci/Jenkinsfile.common")
+          common.cancelPreviousBuilds()
+      }
+    }}
+
+    stage('Building docker images') {
+      steps {
+        sh '''
+        docker build -t jolibrain/deepdetect_cpu -f docker/cpu.Dockerfile .
+        '''
+      }
+    }
+  }
+  post {
+      success {
+          cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
+          rocketSend(channel: 'build', message: 'Build succeed')
+      }
+      unsuccessful {
+          cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
+          rocketSend(channel: 'build', message: 'Build failed')
+      }
+  }
+}
