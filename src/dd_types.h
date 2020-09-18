@@ -42,6 +42,7 @@ private:
   const char *_s;
 };
 
+#undef RAPIDJSON_ASSERT
 #define RAPIDJSON_ASSERT(x)                                                   \
   if (!(x))                                                                   \
   throw RapidjsonException(RAPIDJSON_STRINGIFY(x))
