@@ -99,7 +99,8 @@ namespace dd
   }
 
   /// Convert id Tensor to one_hot Tensor
-  void fill_one_hot(Tensor &one_hot, Tensor ids, int nclasses)
+  void fill_one_hot(Tensor &one_hot, Tensor ids,
+                    __attribute__((unused)) int nclasses)
   {
     one_hot.zero_();
     for (int i = 0; i < ids.size(0); ++i)
@@ -413,7 +414,8 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel>
   void TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy,
-                TMLModel>::clear_mllib(const APIData &ad)
+                TMLModel>::clear_mllib(__attribute__((unused))
+                                       const APIData &ad)
   {
     std::vector<std::string> extensions{ ".json", ".pt", ".ptw" };
     fileops::remove_directory_files(this->_mlmodel._repo, extensions);
