@@ -30,7 +30,10 @@
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/message.h>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include "src/caffe.pb.h"
+#pragma GCC diagnostic pop
 #include "upgrade_proto.hpp"
 
 static inline size_t alignSize(size_t sz, int n)
