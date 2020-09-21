@@ -25,10 +25,10 @@
 #include <csignal>
 #include <iostream>
 #include "ext/rmustache/mustache.h"
-#include "ext/rapidjson/document.h"
-#include "ext/rapidjson/stringbuffer.h"
-#include "ext/rapidjson/reader.h"
-#include "ext/rapidjson/writer.h"
+#include <rapidjson/document.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/reader.h>
+#include <rapidjson/writer.h>
 #include "dd_spdlog.h"
 #include <gflags/gflags.h>
 #include "utils/httpclient.hpp"

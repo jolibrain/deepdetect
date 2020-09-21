@@ -60,7 +60,7 @@ TEST(tensorrtapi, service_predict)
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   JDoc jd;
   std::cout << "joutstr=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
@@ -95,7 +95,7 @@ TEST(tensorrtapi, service_predict_best)
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   JDoc jd;
   std::cout << "joutstr=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());

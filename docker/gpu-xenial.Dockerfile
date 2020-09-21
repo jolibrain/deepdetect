@@ -37,6 +37,7 @@ RUN apt-get update && \
     libsnappy-dev \
     liblmdb-dev \
     libutfcpp-dev \
+    rapidjson-dev \
     wget \
     autoconf \
     libtool-bin \
@@ -102,7 +103,7 @@ LABEL maintainer="emmanuel.benazera@jolibrain.com"
 LABEL description="DeepDetect deep learning server & API / GPU version"
 
 # Install tools and dependencies
-RUN apt-get update && \ 
+RUN apt-get update && \
     apt-get install -y wget \
     libopenblas-base \
     liblmdb0 \

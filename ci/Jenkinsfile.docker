@@ -1,0 +1,35 @@
+
+pipeline {
+  agent any
+  triggers {
+     cron('H 22 * * 1-5')
+  }
+  stages {
+    stage('Init') { steps {
+      script {
+          def common = load("ci/Jenkinsfile.common")
+          common.cancelPreviousBuilds()
+      }
+    }}
+
+    stage('Building docker images') {
+      steps {
+        sh '''
+        docker build -t jolibrain/deepdetect_cpu -f docker/cpu.Dockerfile .
+        docker build --build-arg DEEPDETECT_DEFAULT_MODELS=false -f docker/gpu.Dockerfile .
+        docker image prune -f
+        '''
+      }
+    }
+  }
+  post {
+      success {
+          cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
+          rocketSend(channel: 'build', message: 'Build succeed')
+      }
+      unsuccessful {
+          cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
+          rocketSend(channel: 'build', message: 'Build failed')
+      }
+  }
+}

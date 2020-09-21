@@ -158,14 +158,16 @@ inline void create(JsonAPI &japi, const std::string &json)
 
 inline void predict(JsonAPI &japi, JDoc &jd, const std::string &json)
 {
-  jd.Parse(japi.jrender(japi.service_predict(json)).c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(
+      japi.jrender(japi.service_predict(json)).c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
 }
 
 inline void train(JsonAPI &japi, JDoc &jd, const std::string &json)
 {
-  jd.Parse(japi.jrender(japi.service_train(json)).c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(
+      japi.jrender(japi.service_train(json)).c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
   ASSERT_EQ("Created", jd["status"]["msg"]);

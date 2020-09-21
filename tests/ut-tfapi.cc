@@ -62,7 +62,7 @@ TEST(tfapi, service_predict)
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   JDoc jd;
   std::cout << "joutstr=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
@@ -79,7 +79,7 @@ TEST(tfapi, service_predict)
                 + "cat.jpg\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
@@ -120,7 +120,7 @@ TEST(tfapi, service_predict_unsup)
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   JDoc jd;
   // std::cout << "joutstr=" << joutstr << std::endl;
-  jd.Parse(joutstr.c_str());
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   ASSERT_EQ(50176, jd["body"]["predictions"][0]["vals"].Size());

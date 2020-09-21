@@ -22,10 +22,11 @@
 #include "jsonapi.h"
 #include "dd_config.h"
 #include "githash.h"
-#include "ext/rapidjson/document.h"
-#include "ext/rapidjson/stringbuffer.h"
-#include "ext/rapidjson/reader.h"
-#include "ext/rapidjson/writer.h"
+#include <rapidjson/allocators.h>
+#include <rapidjson/document.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/reader.h>
+#include <rapidjson/writer.h>
 #include <gflags/gflags.h>
 
 DEFINE_string(service_start_list, "",
@@ -341,16 +342,26 @@ namespace dd
   std::string JsonAPI::jrender(const JDoc &jst) const
   {
     rapidjson::StringBuffer buffer;
-    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-    jst.Accept(writer);
+    rapidjson::Writer<rapidjson::StringBuffer, rapidjson::UTF8<>,
+                      rapidjson::UTF8<>, rapidjson::CrtAllocator,
+                      rapidjson::kWriteNanAndInfFlag>
+        writer(buffer);
+    bool done = jst.Accept(writer);
+    if (!done)
+      throw DataConversionException("JSON rendering failed");
     return buffer.GetString();
   }
 
   std::string JsonAPI::jrender(const JVal &jval) const
   {
     rapidjson::StringBuffer buffer;
-    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-    jval.Accept(writer);
+    rapidjson::Writer<rapidjson::StringBuffer, rapidjson::UTF8<>,
+                      rapidjson::UTF8<>, rapidjson::CrtAllocator,
+                      rapidjson::kWriteNanAndInfFlag>
+        writer(buffer);
+    bool done = jval.Accept(writer);
+    if (!done)
+      throw DataConversionException("JSON rendering failed");
     return buffer.GetString();
   }
 
@@ -361,7 +372,7 @@ namespace dd
     if (!jstr.empty())
       {
         rapidjson::Document d;
-        d.Parse(jstr.c_str());
+        d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
         if (d.HasParseError())
           {
             _logger->error("JSON parsing error on string: {}", jstr);
@@ -428,7 +439,7 @@ namespace dd
       }
 
     rapidjson::Document d;
-    d.Parse(jstr.c_str());
+    d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
     if (d.HasParseError())
       {
         _logger->error("JSON parsing error on string: {}", jstr);
@@ -1013,7 +1024,7 @@ namespace dd
     rapidjson::Document d;
     if (!jstr.empty())
       {
-        d.Parse(jstr.c_str());
+        d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
         if (d.HasParseError())
           {
             _logger->error("JSON parsing error on string: {}", jstr);
@@ -1056,7 +1067,7 @@ namespace dd
   JDoc JsonAPI::service_predict(const std::string &jstr)
   {
     rapidjson::Document d;
-    d.Parse(jstr.c_str());
+    d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
     if (d.HasParseError())
       {
         _logger->error("JSON parsing error on string: {}", jstr);
@@ -1187,7 +1198,7 @@ namespace dd
   JDoc JsonAPI::service_train(const std::string &jstr)
   {
     rapidjson::Document d;
-    d.Parse(jstr.c_str());
+    d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
     if (d.HasParseError())
       {
         _logger->error("JSON parsing error on string: {}", jstr);
@@ -1290,7 +1301,7 @@ namespace dd
   JDoc JsonAPI::service_train_status(const std::string &jstr)
   {
     rapidjson::Document d;
-    d.Parse(jstr.c_str());
+    d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
     if (d.HasParseError())
       {
         _logger->error("JSON parsing error on string: {}", jstr);
@@ -1422,7 +1433,7 @@ namespace dd
   JDoc JsonAPI::service_train_delete(const std::string &jstr)
   {
     rapidjson::Document d;
-    d.Parse(jstr.c_str());
+    d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
     if (d.HasParseError())
       {
         _logger->error("JSON parsing error on string: {}", jstr);
@@ -1487,7 +1498,7 @@ namespace dd
                               const std::string &jstr)
   {
     rapidjson::Document d;
-    d.Parse(jstr.c_str());
+    d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
     if (d.HasParseError())
       {
         _logger->error("JSON parsing error on string: {}", jstr);
@@ -1620,7 +1631,7 @@ namespace dd
         return 1;
       }
     rapidjson::Document d;
-    d.Parse(buffer.str().c_str());
+    d.Parse<rapidjson::kParseNanAndInfFlag>(buffer.str().c_str());
     if (d.HasParseError())
       {
         return 1;
