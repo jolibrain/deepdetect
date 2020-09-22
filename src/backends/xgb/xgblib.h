@@ -24,8 +24,10 @@
 
 #include "mllibstrategy.h"
 #include "xgbmodel.h"
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+#include "xgb_dmlc_macro_fix.h"
 #include <dmlc/build_config.h>
 #include <xgboost/learner.h>
 #pragma GCC diagnostic pop
