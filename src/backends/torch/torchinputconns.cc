@@ -22,6 +22,8 @@
 
 #include "torchinputconns.h"
 
+#include "utils/utils.hpp"
+
 namespace dd
 {
 
@@ -30,7 +32,7 @@ namespace dd
   void TorchInputInterface::build_test_datadb_from_full_datadb(double tsplit)
   {
     _tilogger->info("splitting : using {} of dataset as test set", tsplit);
-    _dataset.reset(db::WRITE);
+    _dataset.reset(true, db::WRITE);
     std::vector<int64_t> indicestest;
     int64_t ntest = _dataset._indices.size() * tsplit;
     auto seed = static_cast<long>(time(NULL));
@@ -83,6 +85,21 @@ namespace dd
         return false;
       }
     return true;
+  }
+
+  std::vector<c10::IValue>
+  TorchInputInterface::get_input_example(torch::Device device)
+  {
+    _dataset.reset();
+    auto batchopt = _dataset.get_batch({ 1 });
+    TorchBatch batch = batchopt.value();
+    std::vector<c10::IValue> input_example;
+
+    for (auto &t : batch.data)
+      {
+        input_example.push_back(t.to(device));
+      }
+    return input_example;
   }
 
   // ===== TorchDataset
@@ -155,9 +172,8 @@ namespace dd
     _indices.push_back(index);
   }
 
-  void TorchDataset::write_tensors_to_db(
-      std::vector<at::Tensor> data,
-      __attribute__((unused)) std::vector<at::Tensor> target)
+  void TorchDataset::write_tensors_to_db(const std::vector<at::Tensor> &data,
+                                         const std::vector<at::Tensor> &target)
   {
     std::ostringstream dstream;
     torch::save(data, dstream);
@@ -180,7 +196,7 @@ namespace dd
     _txn->Put(data_key.str(), dstream.str());
     _txn->Put(target_key.str(), tstream.str());
 
-    // should not commit transations every time;
+    // should not commit transactions every time;
     if (++_current_index % _batches_per_transaction == 0)
       {
         _txn->Commit();
@@ -189,8 +205,8 @@ namespace dd
       }
   }
 
-  void TorchDataset::add_batch(std::vector<at::Tensor> data,
-                               std::vector<at::Tensor> target)
+  void TorchDataset::add_batch(const std::vector<at::Tensor> &data,
+                               const std::vector<at::Tensor> &target)
   {
     if (!_db)
       _batches.push_back(TorchBatch(data, target));
@@ -367,6 +383,277 @@ namespace dd
     TorchDataset new_dataset;
     new_dataset._batches.insert(new_dataset._batches.end(), start_it, stop_it);
     return new_dataset;
+  }
+
+  // ===== ImgTorchInputFileConn
+
+  void ImgTorchInputFileConn::read_image_folder(
+      std::vector<std::pair<std::string, int>> &lfiles,
+      std::unordered_map<int, std::string> &hcorresp,
+      std::unordered_map<std::string, int> &hcorresp_r,
+      const std::string &folderPath)
+  {
+
+    // TODO Put file parsing from caffe in common files to use it in other
+    // backends
+    int cl = 0;
+
+    std::unordered_set<std::string> subdirs;
+    if (fileops::list_directory(folderPath, false, true, false, subdirs))
+      throw InputConnectorBadParamException(
+          "failed reading image train data directory " + folderPath);
+
+    auto uit = subdirs.begin();
+    while (uit != subdirs.end())
+      {
+        std::unordered_set<std::string> subdir_files;
+        if (fileops::list_directory((*uit), true, false, true, subdir_files))
+          throw InputConnectorBadParamException(
+              "failed reading image train data sub-directory " + (*uit));
+        std::string cls = dd_utils::split((*uit), '/').back();
+        hcorresp.insert(std::pair<int, std::string>(cl, cls));
+        hcorresp_r.insert(std::pair<std::string, int>(cls, cl));
+        auto fit = subdir_files.begin();
+        while (
+            fit
+            != subdir_files.end()) // XXX: re-iterating the file is not optimal
+          {
+            lfiles.push_back(std::pair<std::string, int>((*fit), cl));
+            ++fit;
+          }
+        ++cl;
+        ++uit;
+      }
+  }
+
+  void ImgTorchInputFileConn::transform(const APIData &ad)
+  {
+    if (!_train)
+      {
+        try
+          {
+            ImgInputFileConn::transform(ad);
+          }
+        catch (InputConnectorBadParamException &e)
+          {
+            throw;
+          }
+
+        // XXX: No predict from db yet
+        _dataset.set_dbParams(false, "", "");
+
+        for (size_t i = 0; i < this->_images.size(); ++i)
+          {
+            _dataset.add_batch({ image_to_tensor(this->_images[i]) });
+          }
+      }
+    else // if (!_train)
+      {
+        // This must be done since we don't call ImgInputFileConn::transform
+        if (ad.has("parameters")) // overriding default parameters
+          {
+            APIData ad_param = ad.getobj("parameters");
+            if (ad_param.has("input"))
+              {
+                fillup_parameters(ad_param.getobj("input"));
+              }
+          }
+
+        // Read all parsed files and create tensor datasets
+        bool createDb
+            = _db && TorchInputInterface::has_to_create_db(ad, _test_split);
+        bool shouldLoad = !_db || createDb;
+
+        if (shouldLoad)
+          {
+            if (_db)
+              _tilogger->info("Load from db");
+            // Get files paths
+            try
+              {
+                get_data(ad);
+              }
+            catch (InputConnectorBadParamException &e)
+              {
+                throw;
+              }
+
+            bool dir_images = true;
+            fileops::file_exists(_uris.at(0), dir_images);
+
+            // Parse URIs and retrieve images
+            std::unordered_map<int, std::string>
+                hcorresp; // correspondence class number / class name
+            std::unordered_map<std::string, int>
+                hcorresp_r; // reverse correspondence for test set.
+            std::vector<std::pair<std::string, int>> lfiles; // labeled files
+            std::vector<std::pair<std::string, int>> test_lfiles;
+
+            bool folder = dir_images;
+
+            if (folder)
+              {
+                read_image_folder(lfiles, hcorresp, hcorresp_r, _uris.at(0));
+                // TODO manage test split
+
+                if (_uris.size() > 1)
+                  {
+                    std::unordered_map<int, std::string>
+                        test_hcorresp; // correspondence class number / class
+                                       // name
+                    std::unordered_map<std::string, int>
+                        test_hcorresp_r; // reverse correspondence for test
+                                         // set.
+
+                    read_image_folder(test_lfiles, test_hcorresp,
+                                      test_hcorresp_r, _uris.at(1));
+                  }
+              }
+            else
+              {
+                throw InputConnectorBadParamException(
+                    "Torch image input connector expects folders");
+              }
+
+            bool has_test_data = test_lfiles.size() != 0;
+
+            if (_test_split > 0.0 && !has_test_data)
+              {
+                // TODO Code for shuffling based on seed / splitting should
+                // should be put in a common place
+
+                // shuffle
+                std::mt19937 g;
+                if (_seed >= 0)
+                  g = std::mt19937(_seed);
+                else
+                  {
+                    std::random_device rd;
+                    g = std::mt19937(rd());
+                  }
+                std::shuffle(lfiles.begin(), lfiles.end(), g);
+
+                // Split
+                int split_pos
+                    = std::floor(lfiles.size() * (1.0 - _test_split));
+
+                auto split_begin = lfiles.begin();
+                std::advance(split_begin, split_pos);
+                test_lfiles.insert(test_lfiles.begin(), split_begin,
+                                   lfiles.end());
+                lfiles.erase(split_begin, lfiles.end());
+
+                _logger->info(
+                    "data split test size={} / remaining data size={}",
+                    test_lfiles.size(), lfiles.size());
+              }
+
+            // Read data
+            for (const std::pair<std::string, int> &lfile : lfiles)
+              {
+                add_image_file(_dataset, lfile.first, lfile.second);
+              }
+
+            for (const std::pair<std::string, int> &lfile : test_lfiles)
+              {
+                add_image_file(_test_dataset, lfile.first, lfile.second);
+              }
+
+            // Write corresp file
+            std::ofstream correspf(_model_repo + "/" + _correspname,
+                                   std::ios::binary);
+            auto hit = hcorresp.begin();
+            while (hit != hcorresp.end())
+              {
+                correspf << (*hit).first << " " << (*hit).second << std::endl;
+                ++hit;
+              }
+            correspf.close();
+          }
+
+        if (createDb)
+          {
+            _dataset.finalize_db();
+            _test_dataset.finalize_db();
+          }
+      }
+  }
+
+  int ImgTorchInputFileConn::add_image_file(TorchDataset &dataset,
+                                            const std::string &fname,
+                                            int target)
+  {
+    DDImg dimg;
+    dimg._bw = _bw;
+    dimg._rgb = _rgb;
+    dimg._histogram_equalization = _histogram_equalization;
+    dimg._unchanged_data = _unchanged_data;
+    dimg._crop_width = _crop_width;
+    dimg._crop_height = _crop_height;
+    dimg._scale = _scale;
+    dimg._scaled = _scaled;
+    dimg._scale_min = _scale_min;
+    dimg._scale_max = _scale_max;
+    dimg._keep_orig = _keep_orig;
+    dimg._interp = _interp;
+
+    dimg._width = _width;
+    dimg._height = _height;
+
+    try
+      {
+        if (dimg.read_file(fname))
+          {
+            this->_logger->error("Uri failed: {}", fname);
+          }
+      }
+    catch (std::exception &e)
+      {
+        this->_logger->error("Uri failed: {}", fname);
+      }
+    if (dimg._imgs.size() != 0)
+      {
+        at::Tensor imgt = image_to_tensor(dimg._imgs[0]);
+        at::Tensor targett{ torch::full(1, target, torch::kLong) };
+
+        dataset.add_batch({ imgt }, { targett });
+        return 0;
+      }
+    else
+      {
+        return -1;
+      }
+  }
+
+  at::Tensor ImgTorchInputFileConn::image_to_tensor(const cv::Mat &bgr)
+  {
+    std::vector<int64_t> sizes{ _height, _width, bgr.channels() };
+    at::TensorOptions options(at::ScalarType::Byte);
+
+    at::Tensor imgt = torch::from_blob(bgr.data, at::IntList(sizes), options);
+    imgt = imgt.toType(at::kFloat).permute({ 2, 0, 1 });
+    size_t nchannels = imgt.size(0);
+
+    if (_scale != 1.0)
+      imgt = imgt.mul(_scale);
+
+    if (!_mean.empty() && _mean.size() != nchannels)
+      throw InputConnectorBadParamException(
+          "mean vector be of size the number of channels ("
+          + std::to_string(nchannels) + ")");
+
+    for (size_t m = 0; m < _mean.size(); m++)
+      imgt[0][m] = imgt[0][m].sub_(_mean.at(m));
+
+    if (!_std.empty() && _std.size() != nchannels)
+      throw InputConnectorBadParamException(
+          "std vector be of size the number of channels ("
+          + std::to_string(nchannels) + ")");
+
+    for (size_t s = 0; s < _std.size(); s++)
+      imgt[0][s] = imgt[0][s].div_(_std.at(s));
+
+    return imgt;
   }
 
   // ===== TxtTorchInputFileConn

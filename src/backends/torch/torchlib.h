@@ -45,8 +45,7 @@
 
 namespace dd
 {
-  // TODO: Make TorchModule inherit torch::nn::Module ? And use the
-  // TORCH_MODULE macro
+  // TODO TorchModule may be merged with TorchGraph in the future
   class TorchModule
   {
   public:
@@ -55,6 +54,11 @@ namespace dd
     c10::IValue forward(std::vector<c10::IValue> source);
 
     void freeze_traced(bool freeze);
+
+    /** Add linear model at the end of module. Automatically detects size of
+     * the last layer thanks to the provided example output.*/
+    void setup_classification(int nclasses,
+                              std::vector<c10::IValue> input_example);
 
     std::vector<torch::Tensor> parameters();
 
@@ -126,6 +130,13 @@ namespace dd
     torch::Device _device;
     int _classif_in = 0; /**<id of the input of the classification layer */
     bool _hidden_states = false; /**< Take BERT hidden states as input. */
+
+    bool _require_classif_layer = false;
+    std::string
+        _classif_layer_file; /** < if require_classif_layer == true, this is
+                                the file where the weights are stored */
+    unsigned int _nclasses = 0;
+
   private:
     bool _freeze_traced = false; /**< Freeze weights of the traced module */
   };
