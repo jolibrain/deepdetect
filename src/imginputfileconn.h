@@ -519,9 +519,9 @@ namespace dd
     ImgInputFileConn(const ImgInputFileConn &i)
         : InputConnectorStrategy(i), _width(i._width), _height(i._height),
           _crop_width(i._crop_width), _crop_height(i._crop_height), _bw(i._bw),
-          _unchanged_data(i._unchanged_data), _mean(i._mean),
-          _has_mean_scalar(i._has_mean_scalar), _scale(i._scale),
-          _scaled(i._scaled), _scale_min(i._scale_min),
+          _unchanged_data(i._unchanged_data), _test_split(i._test_split),
+          _mean(i._mean), _has_mean_scalar(i._has_mean_scalar),
+          _scale(i._scale), _scaled(i._scaled), _scale_min(i._scale_min),
           _scale_max(i._scale_max), _keep_orig(i._keep_orig),
           _interp(i._interp)
 #ifdef USE_CUDA_CV
