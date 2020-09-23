@@ -22,7 +22,7 @@
 #ifndef APIDATA_H
 #define APIDATA_H
 
-#include "utils/variant.hpp"
+#include <mapbox/variant.hpp>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wterminate"
 #pragma GCC diagnostic ignored "-Wsign-compare"
