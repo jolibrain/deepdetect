@@ -26,7 +26,7 @@
 #define SPDLOG_ENABLE_SYSLOG
 #endif
 
-#include "utils/variant.hpp"
+#include <mapbox/variant.hpp>
 #include "mlservice.h"
 #include "apidata.h"
 #include "inputconnectorstrategy.h"

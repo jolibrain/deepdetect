@@ -24,8 +24,10 @@
 
 #include "net_generator.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include "caffe.pb.h"
-#include "caffe/caffe.hpp"
+#pragma GCC diagnostic pop
 #include "dd_spdlog.h"
 
 namespace dd

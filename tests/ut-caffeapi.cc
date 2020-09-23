@@ -851,25 +851,27 @@ TEST(caffeapi, service_train_svm)
 {
   // create service
   JsonAPI japi;
+  std::string farm_repo_loc = "farm";
   std::string sname = "my_service";
   std::string jstr
       = "{\"mllib\":\"caffe\",\"description\":\"my "
         "classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\""
-        + farm_repo + "\",\"templates\":\"" + model_templates_repo
-        + "\"},\"parameters\":{\"input\":{\"connector\":\"svm\"},\"mllib\":{"
-          "\"template\":\"mlp\",\"nclasses\":2,\"activation\":\"prelu\"}}}";
+        + farm_repo_loc + "\",\"templates\":\"" + model_templates_repo
+        + "\",\"create_repository\":true},\"parameters\":{\"input\":{"
+          "\"connector\":\"svm\"},\"mllib\":{\"template\":\"mlp\","
+          "\"nclasses\":2,\"activation\":\"prelu\",\"db\":true}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
   ASSERT_EQ(created_str, joutstr);
 
   // assert json blob file
   ASSERT_TRUE(
-      fileops::file_exists(farm_repo + "/" + JsonAPI::_json_blob_fname));
+      fileops::file_exists(farm_repo_loc + "/" + JsonAPI::_json_blob_fname));
 
   // train
   std::string jtrainstr
       = "{\"service\":\"" + sname
-        + "\",\"async\":false,\"parameters\":{\"input\":{\"test_split\":0.1,"
-          "\"shuffle\":true},\"mllib\":{\"gpu\":true,\"gpuid\":"
+        + "\",\"async\":false,\"parameters\":{\"input\":{\"db\":true,\"test_"
+          "split\":0.1,\"shuffle\":true},\"mllib\":{\"gpu\":true,\"gpuid\":"
         + gpuid + ",\"solver\":{\"iterations\":" + iterations_farm
         + ",\"base_lr\":0.01},\"net\":{\"batch_size\":100}},\"output\":{"
           "\"measure\":[\"acc\",\"mcll\",\"f1\",\"cmdiag\",\"cmfull\"]}},"
@@ -897,12 +899,10 @@ TEST(caffeapi, service_train_svm)
 #endif
   ASSERT_EQ(jd["body"]["measure"]["accp"].GetDouble(),
             jd["body"]["measure"]["acc"].GetDouble());
-  ASSERT_TRUE(jd["body"].HasMember("parameters"));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("cmdiag"));
   ASSERT_EQ(2, jd["body"]["measure"]["cmdiag"].Size());
   ASSERT_TRUE(jd["body"]["measure"]["cmdiag"][0].GetDouble() >= 0);
   ASSERT_TRUE(jd["body"]["measure"]["cmfull"].Size());
-  ASSERT_EQ(16, jd["body"]["parameters"]["mllib"]["batch_size"].GetInt());
 
   std::string mem_data
       = "8:1 9:1 23:1 31:1 32:1 34:1 45:1 46:1 49:1 50:1 52:1 54:1 57:1 60:1 "
@@ -1006,34 +1006,34 @@ TEST(caffeapi, service_train_svm)
   ASSERT_TRUE("1" == cat0);
 
   // remove service
-  jstr = "{\"clear\":\"lib\"}";
+  jstr = "{\"clear\":\"full\"}";
   joutstr = japi.jrender(japi.service_delete(sname, jstr));
   ASSERT_EQ(ok_str, joutstr);
 
   // assert json blob file is still there (or gone if clear=full)
   ASSERT_TRUE(
-      !fileops::file_exists(farm_repo + "/" + JsonAPI::_json_blob_fname));
-  ASSERT_TRUE(!fileops::remove_directory_files(farm_repo, { ".prototxt" }));
+      !fileops::file_exists(farm_repo_loc + "/" + JsonAPI::_json_blob_fname));
 }
 
 TEST(caffeapi, service_train_svm_resnet)
 {
   // create service
   JsonAPI japi;
+  std::string farm_repo_loc = "farm";
   std::string sname = "my_service";
   std::string jstr
       = "{\"mllib\":\"caffe\",\"description\":\"my "
         "classifier\",\"type\":\"supervised\",\"model\":{\"repository\":\""
-        + farm_repo + "\",\"templates\":\"" + model_templates_repo
-        + "\"},\"parameters\":{\"input\":{\"connector\":\"svm\"},\"mllib\":{"
-          "\"template\":\"resnet\",\"nclasses\":2,\"activation\":\"prelu\","
-          "\"layers\":[30,25,15]}}}";
+        + farm_repo_loc + "\",\"templates\":\"" + model_templates_repo
+        + "\",\"create_repository\":true},\"parameters\":{\"input\":{"
+          "\"connector\":\"svm\"},\"mllib\":{\"template\":\"resnet\","
+          "\"nclasses\":2,\"activation\":\"prelu\",\"layers\":[30,25,15]}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
   ASSERT_EQ(created_str, joutstr);
 
   // assert json blob file
   ASSERT_TRUE(
-      fileops::file_exists(farm_repo + "/" + JsonAPI::_json_blob_fname));
+      fileops::file_exists(farm_repo_loc + "/" + JsonAPI::_json_blob_fname));
 
   // train
   std::string jtrainstr
@@ -1174,14 +1174,13 @@ TEST(caffeapi, service_train_svm_resnet)
   ASSERT_TRUE("1" == cat0);
 
   // remove service
-  jstr = "{\"clear\":\"lib\"}";
+  jstr = "{\"clear\":\"full\"}";
   joutstr = japi.jrender(japi.service_delete(sname, jstr));
   ASSERT_EQ(ok_str, joutstr);
 
   // assert json blob file is still there (or gone if clear=full)
   ASSERT_TRUE(
-      !fileops::file_exists(farm_repo + "/" + JsonAPI::_json_blob_fname));
-  ASSERT_TRUE(!fileops::remove_directory_files(farm_repo, { ".prototxt" }));
+      !fileops::file_exists(farm_repo_loc + "/" + JsonAPI::_json_blob_fname));
 }
 
 TEST(caffeapi, service_train_images)

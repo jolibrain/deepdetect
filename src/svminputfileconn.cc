@@ -113,7 +113,7 @@ namespace dd
       }
     if (vals.empty())
       throw InputConnectorBadParamException(
-          "Issue while reading svm example (index might be out of boundsi)");
+          "Issue while reading svm example (index might be out of bounds)");
   }
 
   void SVMInputFileConn::read_svm(const APIData &ad, const std::string &fname)
@@ -126,6 +126,7 @@ namespace dd
 
     // first pass to get max index
     std::string col;
+    int total_lines = 0;
     while (std::getline(svm_file, hline))
       {
         bool fpos = true;
@@ -146,20 +147,34 @@ namespace dd
                 _fids.insert(fid);
               }
           }
+        ++total_lines;
       }
     svm_file.clear();
     svm_file.seekg(0, std::ios::beg);
 
     _logger->info("total number of dimensions={}", _fids.size());
 
+    int train_lines = 0;
+    if (_test_split > 0.0)
+      {
+        train_lines = total_lines * (1.0 - _test_split);
+      }
+
     // read data
     int nlines = 0;
+    int tnlines = 0;
     while (std::getline(svm_file, hline))
       {
         std::unordered_map<int, double> vals;
         int label;
         read_svm_line(hline, vals, label);
-        add_train_svmline(label, vals, nlines);
+        if (train_lines == 0 || (train_lines > 0 && nlines < train_lines))
+          add_train_svmline(label, vals, nlines);
+        else
+          {
+            add_test_svmline(label, vals, tnlines);
+            ++tnlines;
+          }
         ++nlines;
       }
     svm_file.close();
@@ -167,7 +182,6 @@ namespace dd
 
     if (!_svm_test_fname.empty())
       {
-        int tnlines = 0;
         std::ifstream svm_test_file(_svm_test_fname, std::ios::binary);
         if (!svm_test_file.is_open())
           throw InputConnectorBadParamException("cannot open SVM test file "

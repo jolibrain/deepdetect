@@ -27,8 +27,12 @@
 #include "csvtsinputfileconn.h"
 #include "txtinputfileconn.h"
 #include "svminputfileconn.h"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#include "caffe/llogging.h"
 #include "caffe/caffe.hpp"
 #include "caffe/util/db.hpp"
+#pragma GCC diagnostic pop
 #include "utils/fileops.hpp"
 
 namespace dd
@@ -1485,7 +1489,6 @@ namespace dd
       APIData ad_input = ad_param.getobj("input");
       APIData ad_mllib = ad_param.getobj("mllib");
 
-      _test_dbfullname = "";
       if (_train && ad_input.has("db") && ad_input.get("db").get<bool>())
         {
           _dbfullname = _model_repo + "/" + _dbfullname;
@@ -1507,6 +1510,7 @@ namespace dd
         }
       else
         {
+          _test_dbfullname = "";
           try
             {
               SVMInputFileConn::transform(ad);

@@ -23,7 +23,10 @@
 #define CAFFE_GRAPH_INPUT_H
 
 #include <google/protobuf/text_format.h>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include "src/caffe.pb.h"
+#pragma GCC diagnostic pop
 
 #include "basegraph.h"
 

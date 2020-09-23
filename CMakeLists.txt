@@ -99,7 +99,6 @@ endif()
 
 set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -fopenmp -O2 -fPIC -std=c++14 -DUSE_OPENCV -DUSE_LMDB -fdiagnostics-color=always")
 
-
 if (USE_COMMAND_LINE)
   if (NOT USE_CAFFE)
     set(USE_JSON_API ON)

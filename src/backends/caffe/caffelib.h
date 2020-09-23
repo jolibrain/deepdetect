@@ -24,9 +24,12 @@
 
 #include "mllibstrategy.h"
 #include "caffemodel.h"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include "caffe/caffe.hpp"
 #include "caffe/layers/memory_data_layer.hpp"
 #include "caffe/layers/memory_sparse_data_layer.hpp"
+#pragma GCC diagnostic pop
 
 using caffe::Blob;
 

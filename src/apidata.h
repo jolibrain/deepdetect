@@ -22,11 +22,16 @@
 #ifndef APIDATA_H
 #define APIDATA_H
 
-#include "utils/variant.hpp"
+#include <mapbox/variant.hpp>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wterminate"
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include "ext/rmustache/mustache.h"
 #include <rapidjson/rapidjson.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
+#pragma GCC diagnostic pop
 #include <opencv2/core/core.hpp>
 #include "dd_types.h"
 #include <unordered_map>

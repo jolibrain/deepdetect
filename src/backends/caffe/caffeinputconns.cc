@@ -33,7 +33,10 @@
 #endif // USE_HDF5
 #include <memory>
 #include "utf8.h"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include "caffe/util/db.hpp"
+#pragma GCC diagnostic pop
 
 using namespace caffe;
 
@@ -2463,7 +2466,7 @@ namespace dd
       const int &label, const std::unordered_map<int, double> &vals,
       const int &count)
   {
-    if (!_db)
+    if (!_db || !_train)
       {
         SVMInputFileConn::add_test_svmline(label, vals, count);
         return;
