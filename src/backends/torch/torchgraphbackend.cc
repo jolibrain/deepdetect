@@ -100,11 +100,9 @@ namespace dd
     auto opname_v = opname(v);
     std::vector<torch::Tensor> output;
     std::string optype = this->optype(v);
+
     if (optype == "LSTM" || optype == "RNN")
       {
-        // get<0>(f()) for all outputs / hidden
-        // get<0>(get<1>(f)) for last output
-        // get<1>(get<1>(f)) for last internal state
         std::tuple<torch::Tensor, std::tuple<torch::Tensor, torch::Tensor>>
             full_output;
         if (_lstm_continuation && _rnn_has_memories[opname_v])
@@ -122,7 +120,11 @@ namespace dd
               = _modules[opname_v]
                     .forward<std::tuple<Tensor, std::tuple<Tensor, Tensor>>>(
                         inputsTensor[0]);
-        output.push_back(std::get<0>(full_output));
+        output.push_back(std::get<0>(full_output)); // all outputs
+        output.push_back(
+            std::get<0>(std::get<1>(full_output))); // last hidden value
+        output.push_back(
+            std::get<1>(std::get<1>(full_output))); // last memory / c  value
         if (_lstm_continuation)
           {
             _rnn_memories[opname_v] = std::get<1>(full_output);
@@ -131,6 +133,18 @@ namespace dd
       }
     else if (optype == "InnerProduct")
       output.push_back(_modules[opname_v].forward(inputsTensor[0]));
+    else if (optype == "Tile")
+      {
+        torch::Tensor x = inputsTensor[0];
+        std::vector<long int> rssizes = x.sizes().vec();
+        rssizes.erase(rssizes.begin()); // remove first dim because it is
+        // 1 : num_layers * num_directions
+        rssizes.insert(rssizes.begin() + _graph[v].axis, 1L);
+        torch::Tensor y = x.reshape(rssizes);
+        std::vector<long int> tiless(rssizes.size(), 1);
+        tiless[_graph[v].axis] = _graph[v].dim[_graph[v].axis];
+        output.push_back(y.repeat(tiless));
+      }
     else
       throw TorchGraphException("unknown optype " + optype + " for operator "
                                 + opname_v);
@@ -146,7 +160,8 @@ namespace dd
         if (_parameters_used)
           throw TorchGraphException(
               "parameters reallocation necessary while they are used "
-              "elsewhere. You should module.forward() / module.set_input() / "
+              "elsewhere. You should module.forward() / module.set_input() "
+              "/ "
               "module.finalize() with correct input dimensions before "
               "modules.parameters() or  module.parameters_release() if you "
               "know what you are doing");
@@ -158,7 +173,8 @@ namespace dd
         torch::nn::AnyModule m;
         if (optype == "LSTM")
           {
-            // dim(v,0,2) is 2nd dimension of input 0 of v, ie datadim for lstm
+            // dim(v,0,2) is 2nd dimension of input 0 of v, ie datadim for
+            // lstm
             LSTM m = register_module(
                 opname, LSTM(LSTMOptions(dim(v, 0, 2), num_output(v))
                                  .num_layers(1)
@@ -171,7 +187,8 @@ namespace dd
           }
         else if (optype == "RNN")
           {
-            // dim(v,0,2) is 2nd dimension of input 0 of v, ie datadim for lstm
+            // dim(v,0,2) is 2nd dimension of input 0 of v, ie datadim for
+            // lstm
             RNN m = register_module(opname,
                                     RNN(RNNOptions(dim(v, 0, 2), num_output(v))
                                             .num_layers(1)
@@ -183,14 +200,16 @@ namespace dd
           }
         else if (optype == "InnerProduct")
           {
-            // dim(v,0,2) is 2nd dimension of input 0 of v, ie datadim for lstm
-            // output
+            // dim(v,0,2) is 2nd dimension of input 0 of v, ie datadim for
+            // lstm output
             Linear m = register_module(
                 opname,
                 Linear(LinearOptions(dim(v, 0, 2), num_output(v)).bias(true)));
             _modules[opname] = AnyModule(m);
             _graph[v].alloc_needed = false;
           }
+        else if (optype == "Tile")
+          _graph[v].alloc_needed = false;
       }
     to(_device, _dtype);
   }
@@ -248,5 +267,4 @@ namespace dd
         return torch::nn::Module::parameters(recurse);
       }
   }
-
 }
