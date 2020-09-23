@@ -251,7 +251,6 @@ namespace dd
     cudaSetDevice(_gpuid);
 
     APIData ad_output = ad.getobj("parameters").getobj("output");
-    int blank_label = -1;
     std::string out_blob = "prob";
     TInputConnectorStrategy inputc(this->_inputc);
 
