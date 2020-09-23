@@ -156,6 +156,10 @@ namespace dd
 
     model_type(this->_mlmodel._def, this->_mltype);
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    /* NOTE(sileht): nvinfer1::createInferBuilder is deprecated */
+
     _builder = std::shared_ptr<nvinfer1::IBuilder>(
         nvinfer1::createInferBuilder(trtLogger),
         [=](nvinfer1::IBuilder *b) { b->destroy(); });
@@ -211,6 +215,7 @@ namespace dd
             _builder->setFp16Mode(false);
           }
       }
+#pragma GCC diagnostic push
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
