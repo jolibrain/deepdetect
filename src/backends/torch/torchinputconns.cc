@@ -155,8 +155,9 @@ namespace dd
     _indices.push_back(index);
   }
 
-  void TorchDataset::write_tensors_to_db(std::vector<at::Tensor> data,
-                                         std::vector<at::Tensor> target)
+  void TorchDataset::write_tensors_to_db(
+      std::vector<at::Tensor> data,
+      __attribute__((unused)) std::vector<at::Tensor> target)
   {
     std::ostringstream dstream;
     torch::save(data, dstream);
