@@ -224,7 +224,7 @@ sentences | bool | yes | false | whether to turn every line into a document (req
 characters | bool | yes | false | character-level text processing, as opposed to word-based text processing
 sequence | int | yes | N/A | for character-level text processing, the fixed length of each sample of text
 read_forward | bool | yes | false | for character-level text processing, whether to read content from left to right
-alphabet | string | yes | abcdefghijklmnopqrstuvwxyz0123456789,;.!?:'\"/\\|_@#$%^&*~`+-=<>()[]{} | for character-level text processing, the alphabet of recognized symbols
+alphabet | string | yes | abcdefghijklmnopqrstuvwxyz 0123456789 ,;.!?:'"/\\\| _@#$%^&*~`+-=<>()[]{} | for character-level text processing, the alphabet of recognized symbols
 sparse | bool | yes | false | whether to use sparse features (and sparce computations with Caffe for huge memory savings, for xgboost use `svm` connector instead)
 ordered_words | bool | yes | false | enable word-based processing with positionnal information, mandatory for bert/gpt2 like models
 wordpiece_tokens | bool | yes | false | set to true if vocabulary contains partial words, ie like in bert/gpt2 models
@@ -457,13 +457,13 @@ Blocking calls block the communication with the server, and returns results once
 
 Asynchronous calls run the training in the background as a separate thread (`PUT /train`). Status of the training job can be consulted live with by calling on the server (`GET /train`). The final report on an asynchronous training job is consumed by the first `GET /train` call after completion of the job. After that, the job is definitely destroyed.
 
-<aside class="notice">
-Asynchronous training calls are the default, use of blocking calls is useful for testing and debugging
-</aside>
+<div class="alert alert-primary mx-2" style="width: 49%">
+⚠️ Asynchronous training calls are the default, use of blocking calls is useful for testing and debugging
+</div>
 
-<aside class="warning">
-The current integration of the Caffe back-end for deep learning does not allow making predictions while training. However, two different services can train and predict at the same time.
-</aside>
+<div class="alert alert-danger mx-2" style="width: 49%">
+⚠️ The current integration of the Caffe back-end for deep learning does not allow making predictions while training. However, two different services can train and predict at the same time.
+</div>
 
 ## Launch a training job
 
@@ -619,7 +619,7 @@ sentences | bool | yes | false | whether to turn every line into a document (req
 characters | bool | yes | false | character-level text processing, as opposed to word-based text processing
 sequence | int | yes | N/A | for character-level text processing, the fixed length of each sample of text
 read_forward | bool | yes | false | for character-level text processing, whether to read content from left to right
-alphabet | string | yes | abcdefghijklmnopqrstuvwxyz0123456789,;.!?:'\"/\\|_@#$%^&*~`+-=<>()[]{} | for character-level text processing, the alphabet of recognized symbols
+alphabet | string | yes | abcdefghijklmnopqrstuvwxyz 0123456789 ,;.!?:'"/\\\| _@#$%^&*~`+-=<>()[]{} | for character-level text processing, the alphabet of recognized symbols
 test_split | real | yes | 0 | Test split part of the dataset
 shuffle | bool | yes | false | Whether to shuffle the training set (prior to splitting)
 seed | int | yes | -1 | Shuffling seed for reproducible results (-1 for random seeding)
@@ -997,7 +997,7 @@ sentences | bool | yes | false | whether to turn every line into a document (req
 characters | bool | yes | false | character-level text processing, as opposed to word-based text processing
 sequence | int | yes | N/A | for character-level text processing, the fixed length of each sample of text
 read_forward | bool | yes | false | for character-level text processing, whether to read content from left to right
-alphabet | string | yes | abcdefghijklmnopqrstuvwxyz0123456789,;.!?:'\"/\\|_@#$%^&*~`+-=<>()[]{} | for character-level text processing, the alphabet of recognized symbols
+alphabet | string | yes | abcdefghijklmnopqrstuvwxyz 0123456789 ,;.!?:'"/\\\| _@#$%^&*~`+-=<>()[]{} | for character-level text processing, the alphabet of recognized symbols
 sparse | bool | yes | false | whether to use sparse features (and sparce computations with Caffe for huge memory savings, for xgboost use `svm` connector instead)
 
 - SVM (`svm`)
@@ -1168,7 +1168,7 @@ sentences | bool | yes | false | whether to turn every line into a document (req
 characters | bool | yes | false | character-level text processing, as opposed to word-based text processing
 sequence | int | yes | N/A | for character-level text processing, the fixed length of each sample of text
 read_forward | bool | yes | false | for character-level text processing, whether to read content from left to right
-alphabet | string | yes | abcdefghijklmnopqrstuvwxyz0123456789,;.!?:'\"/\\|_@#$%^&*~`+-=<>()[]{} | for character-level text processing, the alphabet of recognized symbols
+alphabet | string | yes | abcdefghijklmnopqrstuvwxyz 0123456789 ,;.!?:'"/\\\| _@#$%^&*~`+-=<>()[]{} | for character-level text processing, the alphabet of recognized symbols
 test_split | real | yes | 0 | Test split part of the dataset
 shuffle | bool | yes | false | Whether to shuffle the training set (prior to splitting)
 seed | int | yes | -1 | Shuffling seed for reproducible results (-1 for random seeding)
@@ -1241,7 +1241,9 @@ url | string | no | N/A | URL of the remote service to connect to (e.g http://lo
 http_method | string | yes | POST | HTTP connecting method, from "POST", "PUT", etc...
 content_type | string | yes | Content-Type: application/json | Content type HTTP header string
 
-Using Mustache, you can turn the JSON into anything, from XML to specialized formats, with application to indexing into search engines, post-processing, UI rendering, etc...# Model Templates
+Using Mustache, you can turn the JSON into anything, from XML to specialized formats, with application to indexing into search engines, post-processing, UI rendering, etc...
+
+# Model Templates
 
 > Example of a 3-layer MLP with 512 hidden units in each layer and PReLU activations:
 
@@ -1294,7 +1296,35 @@ dropout | real | yes | 0.5 | Dropout rate between layers ("mlp" and "convnet" on
 regression | bool | yes | false | Whether the model is a regressor ("mlp" and "convnet" only)
 crop_size | int | yes | N/A | Size of random image crops as input images
 rotate | bool | yes | false | Whether to apply random rotations to input images
-mirror | bool | yes | false | Whether to apply random mirroring of input images# Examples
+mirror | bool | yes | false | Whether to apply random mirroring of input images
+
+# Errors
+
+The DeepDetect API uses the following error HTTP and associated custom error codes when applicable:
+
+
+HTTP Status Code | Meaning
+---------------- | -------
+400 | Bad Request -- Malformed syntax in request or JSON body
+403 | Forbidden -- The requested resource or method cannot be accessed
+404 | Not Found -- The requested resource, service or model does not exist
+409 | Conflict -- The requested method cannot be processed due to a conflict
+500 | Internal Server Error -- Other errors, including internal Machine Learning libraries errors
+
+DeepDetect Error Code | Meaning
+--------------------- | -------
+1000 | Unknown Library -- The requested Machine Learning library is unknown
+1001 | No Data -- Empty data provided
+1002 | Service Not Found -- Machine Learning service not found
+1003 | Job Not Found -- Training job not found
+1004 | Input Connector Not Found -- Unknown or incompatible input connector and service
+1005 | Service Input Bad Request -- Any service error from input connector
+1006 | Service Bad Request -- Any bad parameter request error from Machine Learning library
+1007 | Internal ML Library Error -- Internal Machine Learning library error
+1008 | Train Predict Conflict -- Algorithm does not support prediction while training
+1009 | Output Connector Network Error -- Output connector has failed to connect to external software via network
+
+# Examples
 
 See the <a href="https://deepdetect.com/overview/examples/">Examples</a> page, and the <a href="https://deepdetect.com/overview/faq/">FAQ</a> for tips and tricks.
 
