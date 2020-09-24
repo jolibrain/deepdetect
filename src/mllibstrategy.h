@@ -89,7 +89,7 @@ namespace dd
     }
 
     /**
-     * \brief copy-constructor
+     * \brief move-constructor
      */
     MLLib(MLLib &&mll) noexcept
         : _inputc(mll._inputc), _outputc(mll._outputc), _mltype(mll._mltype),

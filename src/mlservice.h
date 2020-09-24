@@ -116,7 +116,7 @@ namespace dd
     }
 
     /**
-     * \brief copy-constructor
+     * \brief move-constructor
      * @param mls ML service
      */
     MLService(MLService &&mls) noexcept
