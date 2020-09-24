@@ -846,7 +846,7 @@ service                           | string | no       | N/A     | name of the se
 job                               | int    | no       | N/A     | job identifier
 timeout                           | int    | yes      | 0       | timeout before the status is obtained
 parameters.output.measure_hist    | bool   | yes      | false   | whether to return the full measure history until current point, useful for plotting
-parameters.output.max_hist_points | int    | yes      | max number of measure history points (subsampled from history)
+parameters.output.max_hist_points | int    | yes      | 10000   | max number of measure history points (subsampled from history)
 
 ## Delete a training job
 
