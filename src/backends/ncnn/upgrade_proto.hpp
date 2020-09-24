@@ -3,7 +3,11 @@
 
 #include <string>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #include "src/caffe.pb.h"
+#pragma GCC diagnostic pop
 
 // Return true iff the net is not the current version.
 bool NetNeedsUpgrade(const caffe::NetParameter &net_param);

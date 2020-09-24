@@ -1,7 +1,10 @@
 #ifndef NBEATS_H
 #define NBEATS_H
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include "torch/torch.h"
+#pragma GCC diagnostic pop
 #include "../../torchinputconns.h"
 #include "mllibstrategy.h"
 #include "../native_net.h"

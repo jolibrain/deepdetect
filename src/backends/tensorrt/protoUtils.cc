@@ -27,7 +27,12 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #include "src/caffe.pb.h"
+#pragma GCC diagnostic pop
 
 using google::protobuf::io::CodedInputStream;
 using google::protobuf::io::CodedOutputStream;

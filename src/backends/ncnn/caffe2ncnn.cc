@@ -32,6 +32,7 @@
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #include "src/caffe.pb.h"
 #pragma GCC diagnostic pop
 #include "upgrade_proto.hpp"
@@ -336,7 +337,7 @@ static bool read_proto_from_binary(const char *filepath,
   google::protobuf::io::IstreamInputStream input(&fs);
   google::protobuf::io::CodedInputStream codedstr(&input);
 
-  codedstr.SetTotalBytesLimit(INT_MAX, INT_MAX / 2);
+  codedstr.SetTotalBytesLimit(INT_MAX);
 
   bool success = message->ParseFromCodedStream(&codedstr);
 

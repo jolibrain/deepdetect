@@ -34,6 +34,7 @@
 #include "mllibstrategy.h"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #include "caffe.pb.h"
 #pragma GCC diagnostic pop
 

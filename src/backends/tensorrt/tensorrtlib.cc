@@ -17,7 +17,7 @@
 
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
-
+//
 #include "outputconnectorstrategy.h"
 #include "tensorrtlib.h"
 #include "utils/apitools.h"
@@ -156,6 +156,10 @@ namespace dd
 
     model_type(this->_mlmodel._def, this->_mltype);
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    /* NOTE(sileht): nvinfer1::createInferBuilder is deprecated */
+
     _builder = std::shared_ptr<nvinfer1::IBuilder>(
         nvinfer1::createInferBuilder(trtLogger),
         [=](nvinfer1::IBuilder *b) { b->destroy(); });
@@ -211,6 +215,7 @@ namespace dd
             _builder->setFp16Mode(false);
           }
       }
+#pragma GCC diagnostic push
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
@@ -251,7 +256,6 @@ namespace dd
     cudaSetDevice(_gpuid);
 
     APIData ad_output = ad.getobj("parameters").getobj("output");
-    int blank_label = -1;
     std::string out_blob = "prob";
     TInputConnectorStrategy inputc(this->_inputc);
 
@@ -266,7 +270,8 @@ namespace dd
             if (_ctc)
               {
                 if (ad_output.has("blank_label"))
-                  blank_label = ad_output.get("blank_label").get<int>();
+                  throw MLLibBadParamException(
+                      "blank_label not yet implemented over tensorRT backend");
               }
           }
 
