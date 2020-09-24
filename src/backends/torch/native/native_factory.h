@@ -12,15 +12,15 @@ namespace dd
   {
   public:
     template <class TInputConnectorStrategy>
-    static NativeModule *from_template(const std::string tdef,
-                                       const APIData template_params,
-                                       const TInputConnectorStrategy &inputc)
-    {
-      (void)(tdef);
-      (void)(template_params);
-      (void)(inputc);
-      return nullptr;
-    }
+      static native_variant_type from_template(std::string tdef,
+					       APIData template_params,
+					       TInputConnectorStrategy &inputc)
+   {
+     (void)tdef;
+     (void)inputc;
+     (void)template_params;
+     throw std::exception();
+   }
 
     static bool valid_template_def(std::string tdef)
     {
@@ -37,19 +37,27 @@ namespace dd
     }
   };
 
-  template <>
-  NativeModule *NativeFactory::from_template<CSVTSTorchInputFileConn>(
-      const std::string tdef, const APIData template_params,
-      const CSVTSTorchInputFileConn &inputc)
+  template<>
+    native_variant_type NativeFactory::from_template<CSVTSTorchInputFileConn>(
+  //native_variant_type NativeFactory::from_template(
+						   std::string tdef, APIData template_params,
+						   CSVTSTorchInputFileConn &inputc)
   {
     if (tdef.find("nbeats") != std::string::npos)
       {
         std::vector<std::string> p = template_params.get("template_params")
-                                         .get<std::vector<std::string>>();
-        return new NBeats(inputc, p);
+	  .get<std::vector<std::string>>();
+        return std::make_shared<NBeats>(inputc, p);
       }
-    else
-      return nullptr;
-  }
+      else
+	{
+	  // beware
+	  //return torch::nn::Module();//NativeModule();
+	  throw std::exception();
+	  //return nullptr;
+	}
+    }
+  
+  
 }
 #endif

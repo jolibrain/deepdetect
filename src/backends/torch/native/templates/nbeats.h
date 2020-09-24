@@ -7,13 +7,13 @@
 #pragma GCC diagnostic pop
 #include "../../torchinputconns.h"
 #include "mllibstrategy.h"
-#include "../native_net.h"
+//#include "../native_net.h"
 
 namespace dd
 {
-  class NBeats : public NativeModule
+  class NBeats : public torch::nn::Module
   {
-
+    
     enum BlockType
     {
       seasonality,
@@ -45,7 +45,7 @@ namespace dd
 
       torch::Tensor first_forward(torch::Tensor x);
 
-      virtual void to(torch::Device device, bool non_blocking = false)
+      void to(torch::Device device, bool non_blocking = false)
       {
         torch::nn::Module::to(device, non_blocking);
         _device = device;
@@ -56,7 +56,7 @@ namespace dd
        * @param dtype : torch::kFloat32 or torch::kFloat64
        * @param non_blocking
        */
-      virtual void to(torch::Dtype dtype, bool non_blocking = false)
+      void to(torch::Dtype dtype, bool non_blocking = false)
       {
         torch::nn::Module::to(dtype, non_blocking);
         _dtype = dtype;
@@ -68,12 +68,12 @@ namespace dd
        * @param dtype : torch::kFloat32 or torch::kFloat64
        * @param non_blocking
        */
-      virtual void to(torch::Device device, torch::Dtype dtype,
+      void to(torch::Device device, torch::Dtype dtype,
                       bool non_blocking = false)
       {
         torch::nn::Module::to(device, dtype, non_blocking);
         _device = device;
-        _dtype = dtype;
+	_dtype = dtype;
       }
 
     protected:
@@ -198,7 +198,8 @@ namespace dd
       update_params(inputc);
       create_nbeats();
     }
-    NBeats()
+
+  NBeats()
         : _data_size(1), _output_size(1), _backcast_length(50),
           _forecast_length(10), _hidden_layer_units(1024),
           _nb_blocks_per_stack(3), _share_weights_in_stack(false),
@@ -265,7 +266,7 @@ namespace dd
         }
     }
 
-    virtual void to(torch::Device device, bool non_blocking = false)
+    void to(torch::Device device, bool non_blocking = false)
     {
       torch::nn::Module::to(device, non_blocking);
       _device = device;
@@ -298,7 +299,7 @@ namespace dd
      * @param dtype : torch::kFloat32 or torch::kFloat64
      * @param non_blocking
      */
-    virtual void to(torch::Dtype dtype, bool non_blocking = false)
+    void to(torch::Dtype dtype, bool non_blocking = false)
     {
       torch::nn::Module::to(dtype, non_blocking);
       _dtype = dtype;
@@ -332,7 +333,7 @@ namespace dd
      * @param dtype : torch::kFloat32 or torch::kFloat64
      * @param non_blocking
      */
-    virtual void to(torch::Device device, torch::Dtype dtype,
+    void to(torch::Device device, torch::Dtype dtype,
                     bool non_blocking = false)
     {
       torch::nn::Module::to(device, dtype, non_blocking);
@@ -362,14 +363,14 @@ namespace dd
       _fcn->to(device, dtype);
     }
 
-    virtual torch::Tensor forward(torch::Tensor x);
+    torch::Tensor forward(torch::Tensor x);
 
-    virtual torch::Tensor cleanup_output(torch::Tensor output)
+    torch::Tensor cleanup_output(torch::Tensor output)
     {
       return torch::chunk(output, 2, 0)[1].flatten(0, 1);
     }
 
-    virtual torch::Tensor loss(std::string loss, torch::Tensor input,
+    torch::Tensor loss(std::string loss, torch::Tensor input,
                                torch::Tensor output, torch::Tensor target)
     {
       std::vector<torch::Tensor> chunks = torch::chunk(output, 2, 0);
@@ -383,12 +384,12 @@ namespace dd
       throw MLLibBadParamException("unknown loss " + loss);
     }
 
-    virtual void update_input_connector(TorchInputInterface &inputc)
+    void update_input_connector(TorchInputInterface &inputc)
     {
       inputc._split_ts_for_predict = true;
     }
 
-    virtual ~NBeats()
+    ~NBeats()
     {
     }
 
@@ -404,7 +405,6 @@ namespace dd
     std::vector<Stack> _stacks;
     std::vector<int> _thetas_dims;
     torch::nn::Linear _fcn{ nullptr };
-    torch::Device _device = torch::Device("cpu");
     std::vector<float> _backcast_linspace;
     std::vector<float> _forecast_linspace;
     std::tuple<torch::Tensor, torch::Tensor> create_sin_basis(int thetas_dim);
@@ -415,6 +415,11 @@ namespace dd
     std::string _season_str = "s";
     std::string _generic_str = "g";
     std::string _nbblock_str = "b";
+
+    torch::Dtype _dtype
+      = torch::kFloat32; /**< type of data stored in tensors */
+    torch::Device _device
+      = torch::DeviceType::CPU; /**< device to compute on */
   };
 }
 #endif

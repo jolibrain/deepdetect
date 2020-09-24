@@ -132,7 +132,12 @@ namespace dd
     if (_graph)
       _graph->to(device);
     if (_native)
-      _native->to(device);
+      {
+	//_native->to(device);
+	visitor_to_device vtd;
+	vtd._device = device;
+	mapbox::util::apply_visitor(vtd,*_native.get());
+      }
     if (_traced)
       _traced->to(device);
   }
@@ -142,7 +147,12 @@ namespace dd
     if (_graph)
       _graph->to(dtype);
     if (_native)
-      _native->to(dtype);
+      {
+	//_native->to(dtype);
+	visitor_to_type vtt;
+	vtt._dtype = dtype;
+	mapbox::util::apply_visitor(vtt,*_native.get());
+      }
     if (_traced)
       _traced->to(dtype);
   }
@@ -152,7 +162,13 @@ namespace dd
     if (_graph)
       _graph->to(device, dtype);
     if (_native)
-      _native->to(device, dtype);
+      {
+	//_native->to(device, dtype);
+	visitor_to_device_type vttd;
+	vttd._device = device;
+	vttd._dtype = dtype;
+	mapbox::util::apply_visitor(vttd,*_native.get());
+      }
     if (_traced)
       _traced->to(device, dtype);
   }
@@ -164,14 +180,29 @@ namespace dd
                                    const TorchModel &tmodel,
                                    const torch::Device &device)
   {
-    this->_native = std::shared_ptr<NativeModule>(
+    /*this->_native = std::shared_ptr<NativeModule>(
         NativeFactory::from_template<TInputConnectorStrategy>(
-            tmpl, template_params, inputc));
+	tmpl, template_params, inputc));*/
+    try
+	  {
+	    this->_native = std::make_shared<native_variant_type>(
+								  NativeFactory::from_template(tmpl, template_params, inputc));
+	  }
+	catch(...)
+	  {
+	    this->_native = nullptr;
+	  }
 
-    if (_native)
+    if (this->_native)
       if (!tmodel._native.empty())
-        torch::load(_native, tmodel._native, device);
-
+	{
+	  //torch::load(_native, tmodel._native, device);
+	  visitor_native_load_device vl;
+	  vl._fname = tmodel._native;
+	  vl._device = device;
+	  mapbox::util::apply_visitor(vl,*this->_native.get());
+	}
+    
     if (_graph)
       {
         std::vector<long int> dims = inputc._dataset.datasize(0);
@@ -219,7 +250,15 @@ namespace dd
     if (_graph) // native modules take only one tensor as input for now
       return _graph->forward(to_tensor_safe(source[0]));
     if (_native)
-      return _native->forward(to_tensor_safe(source[0]));
+      {
+	std::cerr << "native forward\n";
+	//return _native->forward(to_tensor_safe(source[0]));
+	visitor_forward vf;
+	vf._source = to_tensor_safe(source[0]);
+	mapbox::util::apply_visitor(vf,*_native.get());
+	std::cerr << "end native forward\n";
+	return vf._out;
+      }
     if (_traced)
       {
         auto output = _traced->forward(source);
@@ -273,7 +312,12 @@ namespace dd
     if (_graph)
       return _graph->parameters();
     if (_native)
-      return _native->parameters();
+      {
+	//return _native->parameters();
+	visitor_parameters vp;
+	mapbox::util::apply_visitor(vp,*_native.get());
+	return vp._params;
+      }
     std::vector<Tensor> params;
     if (_traced)
       add_parameters(_traced, params);
@@ -295,7 +339,12 @@ namespace dd
     if (_graph)
       torch::save(_graph, model._repo + "/checkpoint-" + name + ".pt");
     if (_native)
-      torch::save(_native, model._repo + "/checkpoint-" + name + ".npt");
+      {
+	//torch::save(_native, model._repo + "/checkpoint-" + name + ".npt");
+	visitor_native_save vs;
+	vs._fname = model._repo + "/checkpoint-" + name + ".npt";
+	mapbox::util::apply_visitor(vs,*_native.get());
+      }
   }
 
   void TorchModule::load(TorchModel &model)
@@ -313,9 +362,19 @@ namespace dd
       }
     if (!model._native.empty())
       {
-        std::shared_ptr<NativeModule> m;
-        torch::load(m, model._native);
-        _native = m;
+	//good
+	//std::shared_ptr<torch::nn::Module> m;
+	//torch::load(m, model._native);
+
+	//good
+	/*std::shared_ptr<NBeats> m; //TODO: at this stage the template is unknown, instantiate first
+	torch::load(m,model._native);
+	_native = std::make_shared<native_variant_type>(*m.get());*/
+
+	visitor_native_load vl;
+	vl._fname = model._native;
+	mapbox::util::apply_visitor(vl,*_native.get());
+
       }
   }
 
@@ -328,7 +387,11 @@ namespace dd
     if (_classif)
       _classif->eval();
     if (_native)
-      _native->eval();
+      {
+	//_native->eval();
+	visitor_native_eval ve;
+	mapbox::util::apply_visitor(ve,*_native.get());
+      }
   }
 
   void TorchModule::train()
@@ -340,7 +403,11 @@ namespace dd
     if (_classif)
       _classif->train();
     if (_native)
-      _native->train();
+      {
+	//_native->train();
+	visitor_native_train vt;
+	mapbox::util::apply_visitor(vt,*_native.get());
+      }
   }
 
   void TorchModule::free()
@@ -652,6 +719,7 @@ namespace dd
         inputc.transform(ad);
         _module.post_transform_train<TInputConnectorStrategy>(
             _template, _template_params, inputc, this->_mlmodel, _device);
+
       }
     catch (...)
       {
@@ -838,8 +906,17 @@ namespace dd
             else if (_timeserie)
               {
                 if (_module._native != nullptr)
-                  loss = _module._native->loss(_loss, in_vals[0].toTensor(),
-                                               y_pred, y);
+		  {
+		    /*loss = _module._native->loss(_loss, in_vals[0].toTensor(),
+		      y_pred, y);*/
+		    visitor_native_loss vl;
+		    vl._loss = _loss;
+		    vl._input = in_vals[0].toTensor();
+		    vl._output = y_pred;
+		    vl._target = y;
+		    mapbox::util::apply_visitor(vl,*_module._native.get());
+		    loss = vl._loutput;
+		  }
                 else
                   {
                     if (_loss.empty() || _loss == "L1" || _loss == "l1")
@@ -1018,7 +1095,12 @@ namespace dd
     bool lstm_continuation = false;
     TInputConnectorStrategy inputc(this->_inputc);
     if (_module._native != nullptr)
-      _module._native->update_input_connector(inputc);
+      {
+	//_module._native->update_input_connector(inputc);
+	visitor_native_input_conn<TInputConnectorStrategy> vnic;
+	vnic._inputc = TInputConnectorStrategy(this->_inputc);
+	mapbox::util::apply_visitor(vnic,*_module._native.get());
+      }
 
     TOutputConnectorStrategy outputc(this->_outputc);
     try
@@ -1074,10 +1156,13 @@ namespace dd
           {
             in_vals.push_back(tensor.to(_device));
           }
+	std::cerr << "in_vals size=" << in_vals.size() << std::endl;
         Tensor output;
         try
           {
+	    std::cerr << "forward call\n";
             output = to_tensor_safe(_module.forward(in_vals));
+	    std::cerr << "end forward call\n";
             if (_timeserie)
               {
                 // DO NOTHING
@@ -1111,7 +1196,13 @@ namespace dd
         // Output
 
         if (_module._native != nullptr)
-          output = _module._native->cleanup_output(output);
+	  {
+	    //output = _module._native->cleanup_output(output);
+	    visitor_native_output vo;
+	    vo._output = output;
+	    mapbox::util::apply_visitor(vo,*_module._native.get());
+	    output = vo._output;
+	  }
 
         if (output_params.has("best"))
           {
@@ -1250,7 +1341,14 @@ namespace dd
           {
 
             if (_module._native != nullptr)
-              output = _module._native->cleanup_output(output);
+	      {
+		//output = _module._native->cleanup_output(output);
+		visitor_native_output vo;
+		vo._output = output;
+		mapbox::util::apply_visitor(vo,*_module._native.get());
+		output = vo._output;
+	      }
+	    
             // iterate over data in batch
             labels = batch.target[0];
             output = output.to(cpu);

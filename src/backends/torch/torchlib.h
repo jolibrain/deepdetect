@@ -118,9 +118,11 @@ namespace dd
     std::shared_ptr<TorchGraphBackend>
         _graph; /**< graph module : torchgraphbackend has same interface as
                    torch::module */
-    std::shared_ptr<NativeModule>
-        _native; /**< native module : directly written in C++ */
+    /*std::shared_ptr<NativeModule>
+      _native;*/ /**< native module : directly written in C++ */
 
+    std::shared_ptr<native_variant_type> _native = nullptr;
+    
     torch::nn::Linear _classif = nullptr;
 
     torch::Device _device;
