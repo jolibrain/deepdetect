@@ -457,11 +457,11 @@ Blocking calls block the communication with the server, and returns results once
 
 Asynchronous calls run the training in the background as a separate thread (`PUT /train`). Status of the training job can be consulted live with by calling on the server (`GET /train`). The final report on an asynchronous training job is consumed by the first `GET /train` call after completion of the job. After that, the job is definitely destroyed.
 
-<div class="alert alert-primary mx-2" style="width: 49%">
+<div class="alert alert-primary mx-2" style="width: 60%">
 ⚠️ Asynchronous training calls are the default, use of blocking calls is useful for testing and debugging
 </div>
 
-<div class="alert alert-danger mx-2" style="width: 49%">
+<div class="alert alert-danger mx-2" style="width: 60%">
 ⚠️ The current integration of the Caffe back-end for deep learning does not allow making predictions while training. However, two different services can train and predict at the same time.
 </div>
 
@@ -1113,9 +1113,9 @@ The DeepDetect API supports the control of input and output connectors.
 }
 ```
 
-<aside class="notice">
-Connectors are defined at service creation but their options can be modified in `train` and `predict` calls as needed.
-</aside>
+<div class="alert alert-primary mx-2" style="width: 60%">
+⚠️ Connectors are defined at service creation but their options can be modified in `train` and `predict` calls as needed.
+</div>
 
 ## Input connectors
 The `connector` field defines its type:
