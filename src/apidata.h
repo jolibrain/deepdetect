@@ -267,6 +267,31 @@ namespace dd
     void toJDoc(JDoc &jd) const;
 
     /**
+     * \brief converts APIData to oat++ DTO
+     */
+    template <typename T> inline std::shared_ptr<T> createSharedDTO() const
+    {
+      rapidjson::Document d;
+      d.SetObject();
+      toJDoc(reinterpret_cast<JDoc &>(d));
+
+      rapidjson::StringBuffer buffer;
+      rapidjson::Writer<rapidjson::StringBuffer, rapidjson::UTF8<>,
+                        rapidjson::UTF8<>, rapidjson::CrtAllocator,
+                        rapidjson::kWriteNanAndInfFlag>
+          writer(buffer);
+      bool done = d.Accept(writer);
+      if (!done)
+        throw DataConversionException("JSON rendering failed");
+
+      std::shared_ptr<oatpp::data::mapping::ObjectMapper> object_mapper
+          = oatpp::parser::json::mapping::ObjectMapper::createShared();
+      return object_mapper
+          ->readFromString<oatpp::Object<T>>(buffer.GetString())
+          .getPtr();
+    }
+
+    /**
      * \brief converts APIData to rapidjson JSON value
      * @param jd JSON Document hosting the destination JSON value
      * @param jval destination JSON value
