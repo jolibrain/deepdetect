@@ -57,7 +57,7 @@ namespace dd
     Caffe2Lib(const Caffe2Model &c2model);
 
     /**
-     * \brief copy-constructor
+     * \brief move-constructor
      */
     Caffe2Lib(Caffe2Lib &&cl) noexcept;
 

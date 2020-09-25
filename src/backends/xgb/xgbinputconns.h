@@ -30,6 +30,7 @@
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+#include "xgb_dmlc_macro_fix.h"
 #include <dmlc/base.h>
 #include <dmlc/io.h>
 #include <dmlc/build_config.h>

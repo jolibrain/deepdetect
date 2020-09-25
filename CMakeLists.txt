@@ -97,7 +97,7 @@ if (${PB_GENERATOR_SYSTEM})
 endif()
 
 
-set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -fopenmp -O2 -fPIC -std=c++14 -DUSE_OPENCV -DUSE_LMDB -fdiagnostics-color=always")
+set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -Werror -fopenmp -O2 -fPIC -std=c++14 -DUSE_OPENCV -DUSE_LMDB -fdiagnostics-color=always")
 
 if (USE_COMMAND_LINE)
   if (NOT USE_CAFFE)
@@ -773,7 +773,7 @@ if (USE_TORCH)
   if (NOT USE_CPU_ONLY AND CUDA_FOUND)
     list(APPEND TORCH_LIB_DEPS ${TORCH_LOCATION}/lib/libc10_cuda.so ${TORCH_LOCATION}/lib/libtorch_cuda.so)
   else()
-    list(APPEND TORCH_LIB_DEPS iomp5)
+    list(APPEND TORCH_LIB_DEPS ${TORCH_LOCATION}/lib/libtorch_cpu.so iomp5)
   endif()
 
   set(TORCH_INC_DIR ${TORCH_LOCATION}/include/ ${TORCH_LOCATION}/include/torch/csrc/api/include/ ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/include/torch/csrc/api/include ${TORCH_LOCATION}/.. ${CMAKE_BINARY_DIR}/src)

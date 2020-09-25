@@ -34,12 +34,14 @@
 #include "mllibstrategy.h"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #include "caffe.pb.h"
 #pragma GCC diagnostic pop
 
 #include "torchmodel.h"
 #include "torchinputconns.h"
 #include "torchgraphbackend.h"
+#include "native/native_net.h"
 
 namespace dd
 {
@@ -69,11 +71,56 @@ namespace dd
 
     void free();
 
+    template <class TInputConnectorStrategy>
+    void post_transform(const std::string tmpl, const APIData &template_params,
+                        const TInputConnectorStrategy &inputc,
+                        const TorchModel &tmodel, const torch::Device &device);
+
+    template <class TInputConnectorStrategy>
+    void post_transform_train(const std::string tmpl,
+                              const APIData &template_params,
+                              const TInputConnectorStrategy &inputc,
+                              const TorchModel &tmodel,
+                              const torch::Device &device);
+
+    template <class TInputConnectorStrategy>
+    void post_transform_predict(const std::string tmpl,
+                                const APIData &template_params,
+                                const TInputConnectorStrategy &inputc,
+                                const TorchModel &tmodel,
+                                const torch::Device &device,
+                                const APIData &ad);
+
+    /**
+     * \brief see torch::module::to
+     * @param device cpu / gpu
+     * @param non_blocking
+     */
+    void to(torch::Device device);
+
+    /**
+     * \brief see torch::module::to
+     * @param dtype : torch::kFloat32 or torch::kFloat64
+     * @param non_blocking
+     */
+    void to(torch::Dtype dtype);
+
+    /**
+     * \brief see torch::module::to
+     * @param device cpu / gpu
+     * @param dtype : torch::kFloat32 or torch::kFloat64
+     * @param non_blocking
+     */
+    void to(torch::Device device, torch::Dtype dtype);
+
   public:
     std::shared_ptr<torch::jit::script::Module> _traced;
     std::shared_ptr<TorchGraphBackend>
-        _native; /**< native module : torchgraphbackend has same interface as
-                    torch::module */
+        _graph; /**< graph module : torchgraphbackend has same interface as
+                   torch::module */
+    std::shared_ptr<NativeModule>
+        _native; /**< native module : directly written in C++ */
+
     torch::nn::Linear _classif = nullptr;
 
     torch::Device _device;
@@ -116,6 +163,8 @@ namespace dd
     bool _timeserie = false;
     std::string _loss = "";
 
+    APIData _template_params;
+
     // models
     TorchModule _module;
 
@@ -140,7 +189,6 @@ namespace dd
 
     void remove_model(int64_t it);
   };
-
 }
 
 #endif // TORCHLIB_H

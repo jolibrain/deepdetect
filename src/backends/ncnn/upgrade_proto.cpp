@@ -5,7 +5,12 @@
 #include <map>
 #include <string>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #include "src/caffe.pb.h"
+#pragma GCC diagnostic pop
+
 #include "upgrade_proto.hpp"
 
 bool NetNeedsUpgrade(const caffe::NetParameter &net_param)

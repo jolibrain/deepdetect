@@ -155,13 +155,14 @@ namespace dd
     _indices.push_back(index);
   }
 
-  void TorchDataset::write_tensors_to_db(std::vector<at::Tensor> data,
-                                         std::vector<at::Tensor> target)
+  void TorchDataset::write_tensors_to_db(
+      std::vector<at::Tensor> data,
+      __attribute__((unused)) std::vector<at::Tensor> target)
   {
     std::ostringstream dstream;
     torch::save(data, dstream);
     std::ostringstream tstream;
-    torch::save(data, tstream);
+    torch::save(target, tstream);
 
     if (_dbData == nullptr)
       {
@@ -239,6 +240,23 @@ namespace dd
         auto seed = _seed == -1 ? static_cast<long>(time(NULL)) : _seed;
         std::shuffle(_indices.begin(), _indices.end(), std::mt19937(seed));
       }
+  }
+
+  std::vector<long int> TorchDataset::datasize(long int i) const
+  {
+    if (!_db)
+      return _batches[0].data[i].sizes().vec();
+
+    auto id = _indices.back();
+    std::stringstream data_key;
+    data_key << id << "_data";
+    std::string datas;
+    _dbData->Get(data_key.str(), datas);
+    std::stringstream datastream(datas);
+    std::vector<Tensor> d;
+    torch::load(d, datastream);
+
+    return d.at(i).sizes().vec();
   }
 
   // `request` holds the size of the batch
@@ -659,7 +677,9 @@ namespace dd
     else
       {
         // in test mode, prevent connector to split serie in training chunks
-        _timesteps = _csvtsdata[0].size();
+        // but for nbeats
+        if (!_split_ts_for_predict)
+          _timesteps = _csvtsdata[0].size();
         fill_dataset(_dataset, false);
         _csvtsdata.clear();
         _csvtsdata_test.clear();
@@ -685,18 +705,17 @@ namespace dd
     for (std::vector<CSVline> &seq : *data)
       {
         vecindex++;
-        std::div_t dv{};
-        dv = std::div(seq.size() - _timesteps, _offset);
-        for (int i = 0; i <= dv.quot; ++i)
+        long int tstart = 0;
+        for (; tstart + _timesteps < static_cast<long int>(seq.size());
+             tstart += _offset)
           // construct timeseries here	, using timesteps and offset from data
           // pointer above
           {
             std::vector<at::Tensor> data_sequence;
             std::vector<at::Tensor> label_sequence;
-            int tstart = i * _offset;
             _ids.push_back(_fnames[vecindex] + " #" + std::to_string(tstart)
                            + "_" + std::to_string(tstart + _timesteps - 1));
-            for (int ti = tstart; ti < tstart + _timesteps; ++ti)
+            for (long int ti = tstart; ti < tstart + _timesteps; ++ti)
               {
                 std::vector<double> datavec;
                 std::vector<double> labelvec;
@@ -725,12 +744,13 @@ namespace dd
             at::Tensor lst = torch::stack(label_sequence);
             dataset.add_batch({ dst }, { lst });
           }
-        if (dv.rem != 0 && seq.size() >= _timesteps)
+        if (tstart < static_cast<long int>(seq.size()) - 1
+            && static_cast<long int>(seq.size()) >= _timesteps)
           {
             std::vector<at::Tensor> data_sequence;
             std::vector<at::Tensor> label_sequence;
 
-            int tstart = seq.size() - _timesteps;
+            tstart = seq.size() - _timesteps;
             _ids.push_back(_fnames[vecindex] + " #" + std::to_string(tstart)
                            + "_" + std::to_string(tstart + _timesteps - 1));
             for (int ti = tstart; ti < tstart + _timesteps; ++ti)
@@ -763,5 +783,4 @@ namespace dd
       }
     dataset.reset();
   }
-
 }
