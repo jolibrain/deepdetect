@@ -58,6 +58,10 @@ if (USE_NCNN)
     ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
     ${CMAKE_BINARY_DIR}/src/caffe.pb.h
     PROPERTIES GENERATED TRUE)
+  set_source_files_properties(
+      ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
+      ${CMAKE_BINARY_DIR}/src/caffe.pb.h
+      PROPERTIES COMPILE_FLAGS -Wno-unused-parameter)
 
   list(APPEND ddetect_SOURCES
     backends/ncnn/ncnnlib.cc
@@ -99,6 +103,11 @@ if (USE_TORCH)
       ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
       ${CMAKE_BINARY_DIR}/src/caffe.pb.h
       PROPERTIES GENERATED TRUE)
+    set_source_files_properties(
+      ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
+      ${CMAKE_BINARY_DIR}/src/caffe.pb.h
+      PROPERTIES COMPILE_FLAGS -Wno-unused-parameter)
+
   if (NOT USE_CAFFE)
     list(APPEND ddetect_SOURCES
       ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
@@ -113,6 +122,11 @@ if (USE_TENSORRT)
     ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
     ${CMAKE_BINARY_DIR}/src/caffe.pb.h
     PROPERTIES GENERATED TRUE)
+  set_source_files_properties(
+    ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
+    ${CMAKE_BINARY_DIR}/src/caffe.pb.h
+    PROPERTIES COMPILE_FLAGS -Wno-unused-parameter)
+
 
   list(APPEND ddetect_SOURCES
     backends/tensorrt/tensorrtlib.h
