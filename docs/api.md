@@ -1,7 +1,7 @@
 ---
 title: API Reference
 layout: api
-
+aliases: [/api/]
 ---
 
 # Introduction
