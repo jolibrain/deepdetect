@@ -67,6 +67,42 @@ namespace dd
     finalize(dimint);
   }
 
+  bool TorchGraphBackend::extractable(std::string extract_layer)
+  {
+    for (BaseGraph::Vertex v : _sortedVars)
+      if (varname(v) == extract_layer)
+        return true;
+    return false;
+  }
+
+  std::vector<std::string> TorchGraphBackend::extractable_layers() const
+  {
+    std::vector<std::string> allvars;
+    for (BaseGraph::Vertex v : _sortedVars)
+      allvars.push_back(varname(v));
+    return allvars;
+  }
+
+  torch::Tensor TorchGraphBackend::extract(torch::Tensor inputTensor,
+                                           std::string extract_layer)
+  {
+    set_input(inputTensor);
+    for (BaseGraph::Vertex o : _sortedOps)
+      {
+        std::vector<torch::Tensor> out = forward(o);
+        std::vector<BaseGraph::Vertex> outputVars = this->outputs(o);
+        for (unsigned int i = 0; i < outputVars.size(); ++i)
+          {
+            _variables[varname(outputVars[i])] = out[i];
+            if (varname(outputVars[i]) == extract_layer)
+              return out[i];
+          }
+      }
+    throw TorchGraphException(
+        "could not extract layer, extract layer could not be computed from "
+        "input please check graph structure");
+  }
+
   torch::Tensor TorchGraphBackend::forward(torch::Tensor inputTensor)
   {
     set_input(inputTensor);

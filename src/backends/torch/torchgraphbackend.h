@@ -82,6 +82,25 @@ namespace dd
     torch::Tensor forward(torch::Tensor x);
 
     /**
+     * \brief torch::module forward until some layer:  inference of the NN
+     * @param x input tensor
+     * @return output tensor
+     */
+    torch::Tensor extract(torch::Tensor x, std::string extract_layer);
+
+    /**
+     * \brief check is string correspond to some data in the net
+     * @param the name of the data node
+     * @return true if it exists in the net
+     */
+    bool extractable(std::string extract_layer);
+
+    /**
+     * \brief return all canidates for extraction, ie all data nodes of the net
+     */
+    std::vector<std::string> extractable_layers() const;
+
+    /**
      * \brief allocates torch modules base on real input dimension
      * @param inputdim input tensor dimension, in int64_t
      */
