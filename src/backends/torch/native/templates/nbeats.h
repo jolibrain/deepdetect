@@ -290,8 +290,7 @@ namespace dd
 
     virtual void to(torch::Device device, bool non_blocking = false)
     {
-      torch::nn::Module::to(device, non_blocking);
-      _device = device;
+      this->_generic_to(device, non_blocking);
       for (unsigned int i = 0; i < _stack_types.size(); ++i)
         {
           Stack s = _stacks[i];
@@ -323,8 +322,7 @@ namespace dd
      */
     virtual void to(torch::Dtype dtype, bool non_blocking = false)
     {
-      torch::nn::Module::to(dtype, non_blocking);
-      _dtype = dtype;
+      this->_generic_to(dtype, non_blocking);
       for (unsigned int i = 0; i < _stack_types.size(); ++i)
         {
           Stack s = _stacks[i];
@@ -358,9 +356,7 @@ namespace dd
     virtual void to(torch::Device device, torch::Dtype dtype,
                     bool non_blocking = false)
     {
-      torch::nn::Module::to(device, dtype, non_blocking);
-      _device = device;
-      _dtype = dtype;
+      this->_generic_to(device, dtype, non_blocking);
       for (unsigned int i = 0; i < _stack_types.size(); ++i)
         {
           Stack s = _stacks[i];
@@ -427,7 +423,6 @@ namespace dd
     std::vector<Stack> _stacks;
     std::vector<int> _thetas_dims = NBEATS_DEFAULT_THETAS;
     torch::nn::Linear _fcn{ nullptr };
-    torch::Device _device = torch::Device("cpu");
     std::vector<float> _backcast_linspace;
     std::vector<float> _forecast_linspace;
     std::tuple<torch::Tensor, torch::Tensor> create_sin_basis(int thetas_dim);
