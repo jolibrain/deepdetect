@@ -948,18 +948,23 @@ if (USE_TENSORRT)
     include_directories(${TENSORRT_INC_DIR})
 endif()
 
+set(LOCAL_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/src/ext/include)
+include_directories(${LOCAL_INCLUDE_DIRS})
+
 # main library, main & tests
-include_directories ("${PROJECT_SOURCE_DIR}/src")
+include_directories(${PROJECT_SOURCE_DIR}/src)
 include_directories(${CMAKE_BINARY_DIR}/src)
 add_subdirectory (src)
 
+
 # Flags used by the subdirectories
 if (CUDA_FOUND)
-  set(COMMON_INCLUDE_DIRS ${Boost_INCLUDE_DIRS} ${CUDA_INCLUDE_DIRS})
+  set(COMMON_INCLUDE_DIRS ${Boost_INCLUDE_DIRS} ${CUDA_INCLUDE_DIRS} ${LOCAL_INCLUDE_DIRS})
 else()
-  set(COMMON_INCLUDE_DIRS ${Boost_INCLUDE_DIRS})
+  set(COMMON_INCLUDE_DIRS ${Boost_INCLUDE_DIRS} ${LOCAL_INCLUDE_DIRS})
 endif()
 set(COMMON_LINK_DIRS
+  ${INCLUDE_LIB_DIR}
   ${DLIB_LIB_DIR}
   ${TENSORRT_LIB_DIR}
   ${CAFFE_LIB_DIR}
@@ -972,7 +977,7 @@ set(COMMON_LINK_DIRS
   ${TORCH_LIB_DIR})
 if (USE_HDF5)
   set(COMMON_LINK_LIBS
-    ddetect ${DLIB_LIB_DEPS} ${TENSORRT_LIBS} ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl hdf5_cpp ${Boost_LIBRARIES} archive
+    ddetect ${DLIB_LIB_DEPS} ${TENSORRT_LIBS} ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl hdf5_cpp ${Boost_LIBRARIES} archive staticjson
     ${CAFFE_LIB_DEPS}
     ${CAFFE2_LIB_DEPS}
     ${TF_LIB_DEPS}
@@ -983,7 +988,7 @@ if (USE_HDF5)
     ${TORCH_LIB_DEPS})
 else()
   set(COMMON_LINK_LIBS
-    ddetect ${DLIB_LIB_DEPS} ${TENSORRT_LIBS} ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} archive
+    ddetect ${DLIB_LIB_DEPS} ${TENSORRT_LIBS} ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} archive staticjson
     ${CAFFE_LIB_DEPS}
     ${CAFFE2_LIB_DEPS}
     ${TF_LIB_DEPS}
@@ -993,6 +998,7 @@ else()
     ${FAISS_LIB_DEPS}
     ${TORCH_LIB_DEPS})
 endif()
+
 set(HTTP_LINK_LIBS cppnetlib-uri crypto ssl)
 
 add_subdirectory(main)

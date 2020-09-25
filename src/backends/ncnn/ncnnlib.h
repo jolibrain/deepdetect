@@ -22,14 +22,51 @@
 #ifndef NCNNLIB_H
 #define NCNNLIB_H
 
+#include <staticjson/staticjson.hpp>
+#include "apidata.h"
+#include "utils/utils.hpp"
+
 // NCNN
 #include "net.h"
 #include "ncnnmodel.h"
 
-#include "apidata.h"
-
 namespace dd
 {
+  /* autodoc: nccn init parameters */
+  struct NCNNLibInitParameters
+  {
+
+    /* number of output classes */
+    int nclasses = 0;
+
+    /* number of threads to use, 0 means all cpu cores */
+    int threads = 0;
+
+    /* light mode */
+    bool lightmode = false;
+
+    /* network input blob name */
+    std::string inputBlob = "data";
+
+    /* network output blob name */
+    std::string outputBlob;
+
+    void post_init()
+    {
+      if (threads <= 0)
+        threads = dd_utils::my_hardware_concurrency();
+    }
+    void staticjson_init(staticjson::ObjectHandler *h)
+    {
+      h->add_property("nclasses", &nclasses, staticjson::Flags::Optional);
+      h->add_property("threads", &threads, staticjson::Flags::Optional);
+      h->add_property("lightmode", &lightmode, staticjson::Flags::Optional);
+      h->add_property("inputblob", &inputBlob, staticjson::Flags::Optional);
+      h->add_property("outputblob", &outputBlob, staticjson::Flags::Optional);
+      h->set_flags(staticjson::Flags::DisallowUnknownKey);
+    }
+  };
+
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel = NCNNModel>
   class NCNNLib : public MLLib<TInputConnectorStrategy,
@@ -53,20 +90,17 @@ namespace dd
 
   public:
     ncnn::Net *_net = nullptr;
-    int _nclasses = 0;
     bool _timeserie = false;
-    bool _lightmode = true;
 
   private:
+    NCNNLibInitParameters _mllib_params;
     static ncnn::UnlockedPoolAllocator _blob_pool_allocator;
     static ncnn::PoolAllocator _workspace_pool_allocator;
 
   protected:
-    int _threads = 1;
     int _old_height = -1;
-    std::string _inputBlob = "data";
-    std::string _outputBlob;
   };
+
 }
 
 #endif

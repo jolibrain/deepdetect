@@ -31,6 +31,7 @@
 #include <rapidjson/rapidjson.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
+#include <staticjson/staticjson.hpp>
 #pragma GCC diagnostic pop
 #include <opencv2/core/core.hpp>
 #include "dd_types.h"
@@ -287,6 +288,12 @@ namespace dd
      * @param jd destination JSON Document
      */
     void toJDoc(JDoc &jd) const;
+
+    /**
+     * \brief converts APIData to staticjson parameters
+     * @param params destination staticjson structure
+     */
+    template <class T> void toParams(T *params) const;
 
     /**
      * \brief converts APIData to rapidjson JSON value

@@ -185,3 +185,6 @@ endif()
 if (USE_TNSE)
   add_dependencies(ddetect Multicore-TSNE)
 endif()
+
+add_library(staticjson ext/staticjson.cpp)
+target_link_libraries(ddetect staticjson)

@@ -22,7 +22,7 @@
 #include "outputconnectorstrategy.h"
 #include <thread>
 #include <algorithm>
-#include "utils/utils.hpp"
+#include <staticjson/staticjson.hpp>
 
 // NCNN
 #include "ncnnlib.h"
@@ -55,11 +55,10 @@ namespace dd
   {
     this->_libname = "ncnn";
     _net = new ncnn::Net();
-    _net->opt.lightmode = true;
-    _net->opt.num_threads = _threads;
+    _net->opt.num_threads = _mllib_params.threads;
     _net->opt.blob_allocator = &_blob_pool_allocator;
     _net->opt.workspace_allocator = &_workspace_pool_allocator;
-    _net->opt.lightmode = _lightmode;
+    _net->opt.lightmode = _mllib_params.lightmode;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
@@ -72,12 +71,8 @@ namespace dd
     this->_libname = "ncnn";
     _net = tl._net;
     tl._net = nullptr;
-    _nclasses = tl._nclasses;
-    _threads = tl._threads;
     _timeserie = tl._timeserie;
     _old_height = tl._old_height;
-    _inputBlob = tl._inputBlob;
-    _outputBlob = tl._outputBlob;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
@@ -94,6 +89,8 @@ namespace dd
   void NCNNLib<TInputConnectorStrategy, TOutputConnectorStrategy,
                TMLModel>::init_mllib(const APIData &ad)
   {
+    ad.toParams(&_mllib_params);
+
     int res = _net->load_param(this->_mlmodel._params.c_str());
     if (res != 0)
       {
@@ -117,35 +114,11 @@ namespace dd
     _old_height = this->_inputc.height();
     _net->set_input_h(_old_height);
 
-    if (ad.has("nclasses"))
-      _nclasses = ad.get("nclasses").get<int>();
-
-    if (ad.has("threads"))
-      _threads = ad.get("threads").get<int>();
-    else
-      _threads = dd_utils::my_hardware_concurrency();
-
     _timeserie = this->_inputc._timeserie;
     if (_timeserie)
       this->_mltype = "timeserie";
 
-    if (ad.has("lightmode"))
-      {
-        _lightmode = ad.get("lightmode").get<bool>();
-        _net->opt.lightmode = _lightmode;
-      }
-
-    // setting the value of Input Layer
-    if (ad.has("inputblob"))
-      {
-        _inputBlob = ad.get("inputblob").get<std::string>();
-      }
-    // setting the final Output Layer
-    if (ad.has("outputblob"))
-      {
-        _outputBlob = ad.get("outputblob").get<std::string>();
-      }
-
+    _net->opt.lightmode = _mllib_params.lightmode;
     _blob_pool_allocator.set_size_compare_ratio(0.0f);
     _workspace_pool_allocator.set_size_compare_ratio(0.5f);
     model_type(this->_mlmodel._params, this->_mltype);
@@ -206,8 +179,8 @@ namespace dd
 
     ncnn::Extractor ex = _net->create_extractor();
 
-    ex.set_num_threads(_threads);
-    ex.input(_inputBlob.c_str(), inputc._in);
+    ex.set_num_threads(_mllib_params.threads);
+    ex.input(_mllib_params.inputBlob.c_str(), inputc._in);
 
     APIData ad_output = ad.getobj("parameters").getobj("output");
 
@@ -231,7 +204,7 @@ namespace dd
 
     // Extract detection or classification
     int ret = 0;
-    std::string out_blob = _outputBlob;
+    std::string out_blob = _mllib_params.outputBlob;
     if (out_blob.empty())
       {
         if (bbox == true)
@@ -388,7 +361,7 @@ namespace dd
 
     vrad.push_back(rad);
     tout.add_results(vrad);
-    out.add("nclasses", this->_nclasses);
+    out.add("nclasses", this->_mllib_params.nclasses);
     if (bbox == true)
       out.add("bbox", true);
     out.add("roi", false);

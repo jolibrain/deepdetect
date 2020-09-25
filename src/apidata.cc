@@ -235,4 +235,15 @@ namespace dd
       }
   }
 
+  template <class T> void APIData::toParams(T *params) const
+  {
+    rapidjson::Document d;
+    d.SetObject();
+    toJDoc(reinterpret_cast<JDoc &>(d));
+
+    // FIXME(sileht): get ParseStatus and check it instead of passing nullptr
+    staticjson::from_json_document(d, &params, nullptr);
+    params.post_init();
+  }
+
 }
