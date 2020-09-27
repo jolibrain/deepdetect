@@ -1669,6 +1669,7 @@ namespace dd
   {
     if (_cifc)
       {
+        _cifc->_columns.clear();
         std::string test_file = _cifc->_csv_test_fname;
         _cifc->_csv_test_fname = "";
         _cifc->read_csv(fname);
@@ -1697,63 +1698,100 @@ namespace dd
     return 0;
   }
 
-  int DDCCsvTS::read_dir(const std::string &dir, bool is_test_data,
-                         bool update_bounds)
+  int DDCCsvTS::read_dir(const std::string &dir)
   {
-    // first recursive list csv files
-    std::unordered_set<std::string> allfiles;
-    int ret = fileops::list_directory(dir, true, false, true, allfiles);
+    //- list all CSV files in directory
+    std::unordered_set<std::string> trainfiles;
+    int ret = fileops::list_directory(dir, true, false, true, trainfiles);
     if (ret != 0)
       return ret;
     // then simply read them
     if (!_cifc)
       return -1;
 
-    if (update_bounds && _cifc->_scale
+    //- pick one file up and read header once
+    std::string fname = (*trainfiles.begin());
+    std::ifstream csv_file(fname, std::ios::binary);
+    if (!csv_file.is_open())
+      throw InputConnectorBadParamException("cannot open file " + fname);
+    std::string hline;
+    std::getline(csv_file, hline);
+    _cifc->read_header(hline);
+
+    //- read all test files
+    std::unordered_set<std::string> testfiles;
+    if (!_cifc->_csv_test_fname.empty())
+      fileops::list_directory(_cifc->_csv_test_fname, true, false, true,
+                              testfiles);
+
+    std::unordered_set<std::string> allfiles = trainfiles;
+
+    //- aggregate all files = train + test
+    allfiles.insert(testfiles.begin(), testfiles.end());
+
+    //- read categoricals first if any as it affects the number of columns (and
+    // thus bounds)
+    if (!_cifc->_categoricals.empty())
+      {
+        std::unordered_map<std::string, CCategorical> categoricals;
+        for (auto fname : allfiles)
+          {
+            csv_file = std::ifstream(fname, std::ios::binary);
+            if (!csv_file.is_open())
+              throw InputConnectorBadParamException("cannot open file "
+                                                    + fname);
+            std::string hline;
+            std::getline(csv_file, hline); // skip header
+
+            // read on categoricals
+            _cifc->fillup_categoricals(csv_file);
+            _cifc->merge_categoricals(categoricals);
+          }
+      }
+
+    //- read bounds across all TS CSV files
+    if (_cifc->_scale
         && (_cifc->_min_vals.empty() || _cifc->_max_vals.empty()))
       {
-        std::unordered_set<std::string> reallyallfiles;
-        ret = fileops::list_directory(_cifc->_csv_test_fname, true, false,
-                                      true, reallyallfiles);
-        reallyallfiles.insert(allfiles.begin(), allfiles.end());
-
-        std::vector<double> min_vals = _cifc->_min_vals;
-        std::vector<double> max_vals = _cifc->_max_vals;
-        for (auto fname : reallyallfiles)
+        std::vector<double> min_vals(_cifc->_min_vals);
+        std::vector<double> max_vals(_cifc->_max_vals);
+        for (auto fname : allfiles)
           {
-            std::pair<std::vector<double>, std::vector<double>> mm
-                = _cifc->get_min_max_vals(fname);
-            if (min_vals.empty())
-              min_vals = mm.first;
-            else
-              for (size_t j = 0; j < mm.first.size(); j++)
-                min_vals.at(j) = std::min(mm.first.at(j), min_vals.at(j));
-            if (max_vals.empty())
-              max_vals = mm.second;
-            else
-              for (size_t j = 0; j < mm.first.size(); j++)
-                max_vals.at(j) = std::max(mm.second.at(j), max_vals.at(j));
+            csv_file = std::ifstream(fname, std::ios::binary);
+            if (!csv_file.is_open())
+              throw InputConnectorBadParamException("cannot open file "
+                                                    + fname);
+            std::string hline;
+            std::getline(csv_file, hline); // skip header
+
+            //- read bounds min/max
+            _cifc->_min_vals.clear();
+            _cifc->_max_vals.clear();
+            _cifc->find_min_max(csv_file);
+            _cifc->merge_min_max(min_vals, max_vals);
           }
+
+        //- update global bounds
         _cifc->_min_vals = min_vals;
         _cifc->_max_vals = max_vals;
         _cifc->serialize_bounds();
       }
 
-    if (!is_test_data && _cifc->_shuffle)
+    // shuffle training data as needed
+    std::vector<std::string> trainfiles_v;
+    for (auto fname : trainfiles)
+      trainfiles_v.push_back(fname);
+    if (_cifc->_shuffle)
       {
-        std::vector<std::string> allfiles_v;
-        for (auto fname : allfiles)
-          allfiles_v.push_back(fname);
         auto rng = std::default_random_engine();
-        std::shuffle(allfiles_v.begin(), allfiles_v.end(), rng);
-        for (auto fname : allfiles_v)
-          read_file(fname, is_test_data);
+        std::shuffle(trainfiles_v.begin(), trainfiles_v.end(), rng);
       }
-    else
 
-      for (auto fname : allfiles)
-        read_file(fname, is_test_data);
-
+    for (auto fname : trainfiles_v)
+      read_file(fname, false);
+    for (auto fname : testfiles)
+      read_file(fname, true);
+    _cifc->update_columns();
     return 0;
   }
 
@@ -2034,8 +2072,7 @@ namespace dd
     DDCCsvTS ddccsvts;
     ddccsvts._cifc = this;
     ddccsvts._adconf = ad_input;
-    ddccsvts.read_dir(_csv_fname, false, true);
-    ddccsvts.read_dir(_csv_test_fname, true, false);
+    ddccsvts.read_dir(_csv_fname);
 
     _txn->Commit();
     _ttxn->Commit();
