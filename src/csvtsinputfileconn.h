@@ -47,8 +47,7 @@ namespace dd
     int read_file(const std::string &fname, bool is_test_data = false);
     int read_db(const std::string &fname);
     int read_mem(const std::string &content);
-    int read_dir(const std::string &dir, bool is_test_data = false,
-                 bool allow_read_test = true, bool update_bounds = true);
+    int read_dir(const std::string &dir);
 
     DDCsv _ddcsv;
     CSVTSInputFileConn *_cifc = nullptr;
@@ -117,16 +116,25 @@ namespace dd
       return 1;
     }
 
+    /**
+     * \brief merge the local and argument categorical variable list and
+     * values, both maps end up containing the merged variables.
+     * @param categoricals list of categoricals to be merged
+     */
+    void merge_categoricals(
+        std::unordered_map<std::string, CCategorical> &categoricals);
+
+    /**
+     * \brief merge the local min/max values into the argument vectors
+     * @param min_vals min bounds to be updated
+     * @param max_vals max bounds to be updated
+     */
+    void merge_min_max(std::vector<double> &min_vals,
+                       std::vector<double> &max_vals);
+
     // read min max values, return false if not present
     bool deserialize_bounds(bool force = false);
     void serialize_bounds();
-
-    /*   std::string s = "Boost,\"C++ Libraries\""; */
-    /*   boost::escaped_list_separator<char> els('\\',_delim,'\"\''); */
-    /*   tokenizer<boost::escaped_list_separator<char> tok(s,els); */
-    /*   for (const auto &t : tok) */
-    /*     std::cout << t << '\n'; */
-    /* } */
 
     void response_params(APIData &out);
 
