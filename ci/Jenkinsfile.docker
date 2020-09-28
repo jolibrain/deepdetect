@@ -17,16 +17,16 @@ pipeline {
         stage('Building docker cpu image') {
           steps {
             sh '''
-              docker build -t ceres:5000/jolibrain/deepdetect_gpu:ci -f docker/gpu.Dockerfile .
+              docker build -t ceres:5000/jolibrain/deepdetect_cpu:ci -f docker/cpu.Dockerfile .
               docker push ceres:5000/jolibrain/deepdetect_cpu:ci
               '''
           }
         }
-        stage('Building docker cpu image') {
+        stage('Building docker gpu image') {
           steps {
             sh '''
               docker build -t ceres:5000/jolibrain/deepdetect_gpu:ci -f docker/gpu.Dockerfile .
-              docker push ceres:5000/jolibrain/deepdetect_cpu:ci
+              docker push ceres:5000/jolibrain/deepdetect_gpu:ci
               '''
           }
         }
