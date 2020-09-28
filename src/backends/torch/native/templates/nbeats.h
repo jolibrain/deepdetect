@@ -155,11 +155,11 @@ namespace dd
                       false, data_size)
       {
         _backcast_fc = register_module(
-            "backcast_fc", torch::nn::Linear(_thetas_dim * _data_size,
-                                             _backcast_length * _data_size));
+            "backcast_fc",
+            torch::nn::Linear(_thetas_dim, _backcast_length * _data_size));
         _forecast_fc = register_module(
-            "forecast_fc", torch::nn::Linear(_thetas_dim * _data_size,
-                                             _forecast_length * _data_size));
+            "forecast_fc",
+            torch::nn::Linear(_thetas_dim, _forecast_length * _data_size));
       }
 
       GenericBlockImpl(GenericBlockImpl &b) : BlockImpl(b)
