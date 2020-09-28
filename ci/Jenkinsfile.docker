@@ -15,15 +15,10 @@ pipeline {
     stage('Building docker images') {
       steps {
         sh '''
-        version=$(git describe --tags)
-        docker build -t jolibrain/deepdetect_cpu:ci-${version} -f docker/cpu.Dockerfile .
-        docker build -t jolibrain/deepdetect_gpu:ci-${version} -f docker/gpu.Dockerfile .
-        docket tag  jolibrain/deepdetect_cpu:ci-${version} jolibrain/deepdetect_cpu:ci-latest
-        docket tag  jolibrain/deepdetect_gpu:ci-${version} jolibrain/deepdetect_gpu:ci-latest
-
-        # Keep only the 5 last build of each
-        docker images jolibrain/deepdetect_gpu --format "{{.Tag}} {{.ID}}" | grep '^ci' | grep -v "^ci-latest" | sort -nr | sed '1,5d' | awk '{print $2}' | xargs docker rmi
-        docker images jolibrain/deepdetect_cpu --format "{{.Tag}} {{.ID}}" | grep '^ci' | grep -v "^ci-latest" | sort -nr | sed '1,5d' | awk '{print $2}' | xargs docker rmi
+        for arch in cpu gpu; do
+            docker build -t ceres:5000/jolibrain/deepdetect_${arch}:ci -f docker/gpu.Dockerfile .
+            docker push ceres:5000/jolibrain/deepdetect_${arch}:ci
+        done
         docker images -q -f dangling=true | xargs docker rmi
         docker image prune -f
         '''
