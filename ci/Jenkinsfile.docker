@@ -1,38 +1,48 @@
-
 pipeline {
   agent any
-  triggers {
-     cron('H 22 * * 1-5')
-  }
+    triggers {
+      cron('H 22 * * 1-5')
+    }
   stages {
     stage('Init') { steps {
       script {
-          def common = load("ci/Jenkinsfile.common")
-          common.cancelPreviousBuilds()
+        def common = load("ci/Jenkinsfile.common");
+        common.cancelPreviousBuilds();
       }
     }}
-
-    stage('Building docker images') {
-      steps {
-        sh '''
-        for arch in cpu gpu; do
-            docker build -t ceres:5000/jolibrain/deepdetect_${arch}:ci -f docker/gpu.Dockerfile .
-            docker push ceres:5000/jolibrain/deepdetect_${arch}:ci
-        done
-        docker images -q -f dangling=true | xargs docker rmi
-        docker image prune -f
-        '''
+    parallel {
+      stage('Building docker cpu image') {
+        steps {
+          sh '''
+            docker build -t ceres:5000/jolibrain/deepdetect_gpu:ci -f docker/gpu.Dockerfile .
+            docker push ceres:5000/jolibrain/deepdetect_cpu:ci
+            '''
+        }
+      }
+      stage('Building docker cpu image') {
+        steps {
+          sh '''
+            docker build -t ceres:5000/jolibrain/deepdetect_gpu:ci -f docker/gpu.Dockerfile .
+            docker push ceres:5000/jolibrain/deepdetect_cpu:ci
+            '''
+        }
       }
     }
   }
   post {
-      success {
-          cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
-          rocketSend(channel: 'build', message: 'Build succeed')
-      }
-      unsuccessful {
-          cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
-          rocketSend(channel: 'build', message: 'Build failed')
-      }
+    always {
+      sh '''
+        docker images -q -f dangling=true | xargs docker rmi
+        docker image prune -f
+        '''
+    }
+    success {
+      cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true);
+      rocketSend(channel: 'build', message: 'Build succeed');
+    }
+    unsuccessful {
+      cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true);
+      rocketSend(channel: 'build', message: 'Build failed');
+    }
   }
 }
