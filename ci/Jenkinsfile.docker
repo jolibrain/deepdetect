@@ -4,30 +4,33 @@ pipeline {
       cron('H 22 * * 1-5')
     }
   stages {
-    stage('Init') { steps {
-      script {
-        def common = load("ci/Jenkinsfile.common");
-        common.cancelPreviousBuilds();
-      }
-    }}
-    parallel {
-      stage('Building docker cpu image') {
-        steps {
-          sh '''
-            docker build -t ceres:5000/jolibrain/deepdetect_gpu:ci -f docker/gpu.Dockerfile .
-            docker push ceres:5000/jolibrain/deepdetect_cpu:ci
-            '''
-        }
-      }
-      stage('Building docker cpu image') {
-        steps {
-          sh '''
-            docker build -t ceres:5000/jolibrain/deepdetect_gpu:ci -f docker/gpu.Dockerfile .
-            docker push ceres:5000/jolibrain/deepdetect_cpu:ci
-            '''
+    stage('Init') {
+      steps {
+        script {
+          def common = load("ci/Jenkinsfile.common");
+          common.cancelPreviousBuilds();
         }
       }
     }
+    stage('Building docker images') {
+      parallel {
+        stage('Building docker cpu image') {
+          steps {
+            sh '''
+              docker build -t ceres:5000/jolibrain/deepdetect_gpu:ci -f docker/gpu.Dockerfile .
+              docker push ceres:5000/jolibrain/deepdetect_cpu:ci
+              '''
+          }
+        }
+        stage('Building docker cpu image') {
+          steps {
+            sh '''
+              docker build -t ceres:5000/jolibrain/deepdetect_gpu:ci -f docker/gpu.Dockerfile .
+              docker push ceres:5000/jolibrain/deepdetect_cpu:ci
+              '''
+          }
+        }
+      }}
   }
   post {
     always {
