@@ -8,7 +8,6 @@ pipeline {
       }
       sh 'printenv | sort'
     }}
-
     stage('Installating prebuilt examples/ datasets') {
       steps {
         copyArtifacts(projectName: 'deepdetect-examples-dataset/master')
@@ -58,8 +57,11 @@ ccache -s
     }
     stage('Tests GPU') {
       steps {
-        lock('GPU') {
-          sh 'cd build && ctest -V -E "http"'
+        lock(resource: null, label: 'gpu', variable: 'LOCKED_GPU', quantity: 1) {
+          sh '''
+          export CUDA_VISIBLE_DEVICES=${LOCKED_GPU##GPU }
+          cd build && ctest -V -E "http"
+          '''
           }
       }
     }
