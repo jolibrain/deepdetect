@@ -482,6 +482,8 @@ namespace dd
 
     void read_header(std::string &hline);
 
+    void fillup_categoricals(std::ifstream &csv_file);
+
     void read_csv_line(const std::string &hline, const std::string &delim,
                        std::vector<double> &vals, std::string &column_id,
                        int &nlines);

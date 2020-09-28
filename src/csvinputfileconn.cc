@@ -280,6 +280,49 @@ namespace dd
       throw InputConnectorBadParamException("cannot find id column " + _id);
   }
 
+  void CSVInputFileConn::fillup_categoricals(std::ifstream &csv_file)
+  {
+    int l = 0;
+    std::string hline;
+    while (std::getline(csv_file, hline))
+      {
+        hline.erase(std::remove(hline.begin(), hline.end(), '\r'),
+                    hline.end());
+        std::vector<double> vals;
+        std::string cid;
+        std::string col;
+        auto hit = _columns.begin();
+        std::unordered_set<int>::const_iterator igit;
+        std::stringstream sh(hline);
+        int cu = 0;
+        while (std::getline(sh, col, _delim[0]))
+          {
+            if (cu >= _detect_cols)
+              {
+                _logger->error("line {} has more columns than headers / this "
+                               "line: {} / header: {}",
+                               l, cu, _detect_cols);
+                _logger->error(hline);
+                throw InputConnectorBadParamException(
+                    "line has more columns than headers");
+              }
+            if ((igit = _ignored_columns_pos.find(cu))
+                != _ignored_columns_pos.end())
+              {
+                ++cu;
+                continue;
+              }
+            update_category((*hit), col);
+            ++hit;
+            ++cu;
+          }
+        ++l;
+      }
+    csv_file.clear();
+    csv_file.seekg(0, std::ios::beg);
+    std::getline(csv_file, hline); // skip header line
+  }
+
   void CSVInputFileConn::find_min_max(std::ifstream &csv_file)
   {
     int nlines = 0;
@@ -330,42 +373,7 @@ namespace dd
     // categorical variables
     if (_train && !_categoricals.empty())
       {
-        int l = 0;
-        while (std::getline(csv_file, hline))
-          {
-            hline.erase(std::remove(hline.begin(), hline.end(), '\r'),
-                        hline.end());
-            std::vector<double> vals;
-            std::string cid;
-            std::string col;
-            auto hit = _columns.begin();
-            std::unordered_set<int>::const_iterator igit;
-            std::stringstream sh(hline);
-            int cu = 0;
-            while (std::getline(sh, col, _delim[0]))
-              {
-                if (cu >= _detect_cols)
-                  {
-                    _logger->error("line {} has more columns than headers", l);
-                    _logger->error(hline);
-                    throw InputConnectorBadParamException(
-                        "line has more columns than headers");
-                  }
-                if ((igit = _ignored_columns_pos.find(cu))
-                    != _ignored_columns_pos.end())
-                  {
-                    ++cu;
-                    continue;
-                  }
-                update_category((*hit), col);
-                ++hit;
-                ++cu;
-              }
-            ++l;
-          }
-        csv_file.clear();
-        csv_file.seekg(0, std::ios::beg);
-        std::getline(csv_file, hline); // skip header line
+        fillup_categoricals(csv_file);
       }
 
     // scaling to [0,1]
@@ -397,8 +405,8 @@ namespace dd
         // debug
         /*std::cout << "csv data line #" << nlines << "= " << vals.size() <<
           std::endl;
-          std::copy(vals.begin(),vals.end(),std::ostream_iterator<double>(std::cout,"
-          ")); std::cout << std::endl;*/
+          std::copy(vals.begin(),vals.end(),std::ostream_iterator<double>(std::cout,""));
+          std::cout << std::endl;*/
         // debug
       }
     _logger->info("read {} lines from {}", nlines, fname);
@@ -454,5 +462,4 @@ namespace dd
     if (!_ignored_columns.empty() || !_categoricals.empty())
       update_columns();
   }
-
 }
