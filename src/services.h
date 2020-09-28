@@ -216,25 +216,28 @@ namespace dd
     APIData _out;
   };
 
-  class visitor_predict
+  namespace visitor_mllib
   {
-  public:
-    visitor_predict()
+    class v_predict_job
     {
-    }
-    ~visitor_predict()
-    {
-    }
+    public:
+      const APIData &_in;
+      APIData &_out;
+      bool _chain;
 
-    template <typename T> output operator()(T &mllib)
-    {
-      int r = mllib.predict_job(_ad, _out, _chain);
-      return output(r, _out);
-    }
+      template <typename T> int operator()(T &mllib)
+      {
+        return mllib.predict_job(_in, _out, _chain);
+      }
+    };
 
-    APIData _ad;
-    APIData _out;
-    bool _chain = false;
+    template <typename T>
+    static int predict_job(T &mllib, const APIData &in, APIData &out,
+                           bool chain)
+    {
+      visitor_mllib::v_predict_job vp{ in, out, chain };
+      return mapbox::util::apply_visitor(vp, mllib);
+    }
   };
 
   /**
@@ -636,43 +639,42 @@ namespace dd
      * @param sname service name
      * @param out output data object
      */
-    int predict(const APIData &ad, const std::string &sname, APIData &out,
-                const bool &chain = false)
+    int predict(const APIData &ad_in, const std::string &sname,
+                APIData &ad_out, const bool &chain = false)
     {
       std::chrono::time_point<std::chrono::system_clock> tstart
           = std::chrono::system_clock::now();
-      visitor_predict vp;
-      vp._ad = ad;
-      vp._chain = chain;
-      output pout;
+
+      int status = 0;
       auto llog = spdlog::get(sname);
       try
         {
           auto hit = get_service_it(sname);
-          pout = mapbox::util::apply_visitor(vp, (*hit).second);
+          auto &mllib = (*hit).second;
+          status = visitor_mllib::predict_job(mllib, ad_in, ad_out, chain);
         }
       catch (InputConnectorBadParamException &e)
         {
           llog->error("mllib bad param: {}", e.what());
-          pout._status = -2;
+          status = -2;
           throw;
         }
       catch (MLLibBadParamException &e)
         {
           llog->error("mllib bad param: {}", e.what());
-          pout._status = -2;
+          status = -2;
           throw;
         }
       catch (MLLibInternalException &e)
         {
           llog->error("mllib internal error: {}", e.what());
-          pout._status = -1;
+          status = -1;
           throw;
         }
       catch (MLServiceLockException &e)
         {
           llog->error("mllib lock error: {}", e.what());
-          pout._status = -3;
+          status = -3;
           throw;
         }
       catch (const std::exception &e)
@@ -680,23 +682,22 @@ namespace dd
           // catch anything thrown within try block that derives from
           // std::exception
           llog->error("other error: {}", e.what());
-          pout._status = -1;
+          status = -1;
           throw;
         }
       catch (...)
         {
           llog->error("prediction call failed");
-          pout._status = -1;
+          status = -1;
           throw;
         }
-      out = pout._out;
       std::chrono::time_point<std::chrono::system_clock> tstop
           = std::chrono::system_clock::now();
       double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                            tstop - tstart)
                            .count();
-      out.add("time", elapsed);
-      return pout._status;
+      ad_out.add("time", elapsed);
+      return status;
     }
 
     int chain_service(const std::string &cname,
