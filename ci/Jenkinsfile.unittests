@@ -60,6 +60,11 @@ ccache -s
         lock(resource: null, label: 'gpu', variable: 'LOCKED_GPU', quantity: 1) {
           sh '''
           export CUDA_VISIBLE_DEVICES=${LOCKED_GPU##GPU }
+          echo "****************************"
+          echo
+          python -c 'import torch, sys; c=torch.cuda.device_count() ; print(f"CUDA VISIBLE GPU: {c}"); sys.exit(bool(c == 0 ))'
+          echo
+          echo "****************************"
           cd build && ctest -V -E "http"
           '''
           }
