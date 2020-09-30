@@ -1286,6 +1286,9 @@ namespace dd
       }
     else // model template instantiation is defered until training call
       {
+#ifdef USE_CUDNN
+        update_protofile_engine(ad);
+#endif
         create_model(true);
       }
 
@@ -4164,6 +4167,8 @@ namespace dd
   {
 
     std::string deploy_file = this->_mlmodel._repo + "/deploy.prototxt";
+    if (!fileops::file_exists(deploy_file))
+      return;
     caffe::NetParameter deploy_net_param;
     caffe::ReadProtoFromTextFile(deploy_file, &deploy_net_param);
     update_protofile_engine(deploy_net_param, ad);
