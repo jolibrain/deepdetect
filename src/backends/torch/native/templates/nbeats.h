@@ -295,6 +295,11 @@ namespace dd
               _nb_blocks_per_stack
                   = std::stoi(s.substr(pos + _nbblock_str.size()));
             }
+          else if ((pos = s.find(_hsize_str)) != std::string::npos)
+            {
+              _hidden_layer_units
+                  = std::stoi(s.substr(pos + _hsize_str.size()));
+            }
           else
             {
               throw MLLibBadParamException(
@@ -460,6 +465,7 @@ namespace dd
     std::string _season_str = "s";
     std::string _generic_str = "g";
     std::string _nbblock_str = "b";
+    std::string _hsize_str = "h";
   };
 }
 #endif

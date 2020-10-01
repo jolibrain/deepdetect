@@ -727,7 +727,16 @@ nclasses        | int    | yes      | none    | if set to some int, add a classi
 self_supervised | string | yes      | ""      | self-supervised mode: "mask" for masked language model
 embedding_size  | int    | yes      | 768     | embedding size for NLP models
 freeze_traced   | bool   | yes      | false   | Freeze the traced part of the net during finetuning (e.g. for classification)
-template        | string | yes      | ""      | for language models, either "bert" or "gpt2"
+template        | string | yes      | ""      | for language models, either "bert" or "gpt2", "recurrent" for LSTM-like models (including autoencoder), "nbeats" for nbeats model
+
+
+Model instantiation parameters:
+
+Parameter       | Template  | Type            | Default                      | Description
+---------       | --------- | ------          | ---------------------------- | -----------
+template_params | nbeats    | array of string | ["t2","s8","g3","b3","h10" ] | default means: trend stack with theta = 2, seasonal stack with theta = 8 , generic stack with theta = 3, 3 blocks per stacks, hidden unit size of 10 everywhere
+layers          | recurrent | array of string | []                           | ["L50","L50"] means 2 layers of LSTMs with hidden size of 50. ["L100","L100", "T", "L300"] means an lstm autoencoder with encoder composed of 2 LSTM layers of hidden size 100 and decoder is one LSTM layer of hidden size 300
+
 
 Solver:
 
