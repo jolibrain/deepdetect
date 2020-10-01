@@ -894,7 +894,7 @@ if (USE_TENSORRT)
 	set(TENSORRT_LIBS protobuf nvinfer nvparsers nvcaffeparser nvinfer_plugin nvonnxparser )
 
     if (EXISTS "${TRTTESTDIR}/libnvinfer.so.7")
-      set(TENSORRT_COMMIT 9a9cae75e7155b2114454f37ccc49eca9d3352dc)
+      set(TENSORRT_COMMIT f693a6d723ef2766be36deb5e7987cd50159973a) # https://github.com/NVIDIA/TensorRT/releases/tag/20.09
       message(STATUS "Found TensorRT libraries version 7")
     elseif(EXISTS "${TRTTESTDIR}/libnvinfer.so.6")
       set(TENSORRT_COMMIT 639d11abcc7d1f1a4933e87b95c126e6c82e2a5c)
