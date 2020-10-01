@@ -993,6 +993,13 @@ namespace dd
       {
         vecindex++;
         long int tstart = 0;
+        if (static_cast<long int>(seq.size()) < _timesteps)
+          {
+            _tilogger->warn(
+                "file " + _fnames[vecindex]
+                + " does not contains enough timesteps, discarding");
+            continue;
+          }
         for (; tstart + _timesteps < static_cast<long int>(seq.size());
              tstart += _offset)
           // construct timeseries here	, using timesteps and offset from data
