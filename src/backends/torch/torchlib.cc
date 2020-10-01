@@ -489,7 +489,7 @@ namespace dd
           {
             caffe::NetParameter net_param;
             configure_recurrent_template(lib_ad, this->_inputc, net_param,
-                                         this->_logger);
+                                         this->_logger, true);
             torch_write_proto_to_text_file(net_param, dest_net);
           }
         else

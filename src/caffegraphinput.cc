@@ -82,6 +82,9 @@ namespace dd
     else
       firstl = ninput + 3;
 
+    if (net.layer(firstl).type() == "DummyData")
+      firstl++;
+
     caffe::LayerParameter lparam = net.layer(firstl);
     if (lparam.type() != "LSTM" && lparam.type() != "RNN"
         && lparam.type() != "InnerProduct")
@@ -131,7 +134,8 @@ namespace dd
             std::vector<BaseGraph::Vertex> vi = add_inputs(v, inputs);
 
             std::vector<std::string> outputs;
-            outputs.push_back(lparam.top(0));
+            for (unsigned int i = 0; i < lparam.top_size(); ++i)
+              outputs.push_back(lparam.top(i));
             std::vector<BaseGraph::Vertex> vo = add_outputs(v, outputs);
             set_output_name(lparam.top(0));
           }
@@ -155,6 +159,18 @@ namespace dd
             outputs.push_back(lparam.top(0));
             std::vector<BaseGraph::Vertex> vo = add_outputs(v, outputs);
             set_output_name(lparam.top(0));
+          }
+        else if (lparam.type() == "Tile")
+          {
+            Vertex v = add_layer(lparam.name(), lparam.type());
+            std::vector<std::string> inputs;
+            inputs.push_back(lparam.bottom(0));
+            add_inputs(v, inputs);
+            std::vector<std::string> outputs;
+            outputs.push_back(lparam.top(0));
+            add_outputs(v, outputs);
+            set_output_name(lparam.top(0));
+            _graph[v].axis = lparam.tile_param().axis();
           }
       }
 

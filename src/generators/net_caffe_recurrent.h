@@ -49,9 +49,10 @@ namespace dd
                          const double &dropout_ratio,
                          const std::string weight_filler,
                          const std::string bias_filler,
-                         const std::string &type, const int id);
+                         const std::string &type, const int id,
+                         bool expose_hidden = false);
 
-    void configure_net(const APIData &ad_mllib);
+    void configure_net(const APIData &ad_mllib, bool expose_hidden = false);
 
     void add_concat(caffe::NetParameter *net_params, std::string name,
                     std::string top, std::vector<std::string> bottoms,
@@ -72,6 +73,9 @@ namespace dd
                     const std::string weight_filler,
                     const std::string bias_filler, int nout, int nin);
 
+    void add_tile(caffe::NetParameter *net_param, const std::string layer_name,
+                  const std::string bottom_name, const std::string top_name);
+
     void parse_recurrent_layers(const std::vector<std::string> &layers,
                                 std::vector<std::string> &r_layers,
                                 std::vector<int> &h_sizes);
@@ -80,6 +84,7 @@ namespace dd
     const std::string _lstm_str = "L";
     const std::string _rnn_str = "R";
     const std::string _affine_str = "A";
+    const std::string _tile_str = "T";
   };
 
   /**
@@ -92,8 +97,8 @@ namespace dd
   void configure_recurrent_template(const APIData &ad,
                                     TInputConnectorStrategy &inputc,
                                     caffe::NetParameter &net_param,
-                                    std::shared_ptr<spdlog::logger> &logger);
-
+                                    std::shared_ptr<spdlog::logger> &logger,
+                                    bool expose_hidden = false);
 }
 
 #endif

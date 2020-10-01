@@ -3814,8 +3814,18 @@ namespace dd
                 ->mutable_filler()
                 ->set_value(1.0 / (float)_ntargets / (float)batch_size);
           }
+        for (int i = 0; i < np->layers_size(); i++)
+          {
+            caffe::LayerParameter *lp = np->mutable_layer(i);
+            if (lp->has_dummy_data_param())
+              {
+                lp->mutable_dummy_data_param()->mutable_shape(0)->set_dim(
+                    0, batch_size);
+                lp->mutable_dummy_data_param()->mutable_shape(1)->set_dim(
+                    0, batch_size);
+              }
+          }
       }
-
     // caffe::WriteProtoToTextFile(*np,sp.net().c_str());
     sp.clear_net();
   }
@@ -3834,6 +3844,16 @@ namespace dd
     if (orig_timesteps == timesteps)
       return false;
     lparam->mutable_memory_data_param()->set_channels(timesteps);
+    // also update timesteps in case of autoencoder
+    for (unsigned int i = 0; i < deploy_net_param.layer_size(); ++i)
+      {
+        caffe::LayerParameter *lp = deploy_net_param.mutable_layer(i);
+        if (lp->has_tile_param())
+          {
+            lp->mutable_tile_param()->set_tiles(timesteps);
+            break;
+          }
+      }
     caffe::WriteProtoToTextFile(deploy_net_param, deploy_file);
     return true;
   }
@@ -3995,8 +4015,8 @@ namespace dd
             ->set_dim(2, inputc._sequence_txt);
       }
 
-    // if autoencoder, set the last inner product layer output number to input
-    // size (i.e. inputc.channels())
+    // if autoencoder, set the last inner product layer output number to
+    // input size (i.e. inputc.channels())
     if (_autoencoder && this->_inputc._timeserie)
       {
         int k = net_param.layer_size();
@@ -4050,6 +4070,17 @@ namespace dd
               {
                 lparam->mutable_loss_param()->set_ignore_label(ignore_label);
               }
+          }
+      }
+
+    // update tile number with time steps (autoencoder)
+    for (unsigned int i = 0; i < net_param.layer_size(); ++i)
+      {
+        caffe::LayerParameter *lp = net_param.mutable_layer(i);
+        if (lp->has_tile_param())
+          {
+            lp->mutable_tile_param()->set_tiles(timesteps);
+            break;
           }
       }
 
@@ -4153,6 +4184,17 @@ namespace dd
           deploy_net_param.mutable_layer(0)
               ->mutable_transform_param()
               ->set_crop_size(_crop_size);
+      }
+
+    // update tile number with time steps (autoencoder)
+    for (unsigned int i = 0; i < deploy_net_param.layer_size(); ++i)
+      {
+        caffe::LayerParameter *lp = deploy_net_param.mutable_layer(i);
+        if (lp->has_tile_param())
+          {
+            lp->mutable_tile_param()->set_tiles(timesteps);
+            break;
+          }
       }
 
     caffe::WriteProtoToTextFile(net_param, net_file);
@@ -4384,8 +4426,8 @@ namespace dd
       }
     // fix class numbers
     // this procedure looks for the first bottom layer with a 'num_output'
-    // field and rename the layer so that its weights can be reinitialized and
-    // the net finetuned
+    // field and rename the layer so that its weights can be reinitialized
+    // and the net finetuned
     int k = net_param.layer_size();
     for (int l = net_param.layer_size() - 1; l > 0; l--)
       {
@@ -4433,8 +4475,8 @@ namespace dd
     APIData ad_net = ad.getobj("parameters").getobj("mllib").getobj("net");
     if (ad_net.has("batch_size"))
       {
-        // adjust batch size so that it is a multiple of the number of training
-        // samples (Caffe requirement)
+        // adjust batch size so that it is a multiple of the number of
+        // training samples (Caffe requirement)
         user_batch_size = batch_size = test_batch_size
             = ad_net.get("batch_size").get<int>();
         if (ad_net.has("test_batch_size"))
@@ -4444,8 +4486,8 @@ namespace dd
         this->_logger->info("user batch_size={} / inputc batch_size=",
                             batch_size, inputc.batch_size());
 
-        // code below is required when Caffe (weirdly) requires the batch size
-        // to be a multiple of the training dataset size.
+        // code below is required when Caffe (weirdly) requires the batch
+        // size to be a multiple of the training dataset size.
         if (!inputc._ctc && !inputc._segmentation
             && !(!inputc._db
                  && typeid(inputc) == typeid(ImgCaffeInputFileConn)))
@@ -4569,9 +4611,9 @@ namespace dd
               mltype = "rois";
             break;
           }
-        if (ltype == "ContinuationIndicator") // XXX: CTC layer does not appear
-                                              // in deploy file, this is a hack
-                                              // used by our LSTMs
+        if (ltype == "ContinuationIndicator") // XXX: CTC layer does not
+                                              // appear in deploy file, this
+                                              // is a hack used by our LSTMs
           {
             mltype = "ctc";
             break;
@@ -4583,7 +4625,8 @@ namespace dd
           {
             mltype = "segmentation";
             has_deconv = true;
-            // we don't break since some detection tasks may use deconvolutions
+            // we don't break since some detection tasks may use
+            // deconvolutions
           }
         if (!has_deconv && ltype == "Sigmoid" && l == net->layers().size() - 1)
           {
@@ -4770,8 +4813,8 @@ namespace dd
                   }
                 catch (std::exception &e)
                   {
-                    this->_logger->warn(
-                        "dice contour size unrecognized, (odd) int expected");
+                    this->_logger->warn("dice contour size unrecognized, "
+                                        "(odd) int expected");
                   }
               }
             if (contourdata.has("amplitude"))
@@ -4783,8 +4826,8 @@ namespace dd
                   }
                 catch (std::exception &e)
                   {
-                    this->_logger->warn(
-                        "dice contour amplitude unrecognized, float expected");
+                    this->_logger->warn("dice contour amplitude "
+                                        "unrecognized, float expected");
                   }
               }
             this->_logger->warn(

@@ -257,6 +257,13 @@ namespace dd
           outputdim.push_back(_graph[inputs[0]].dim[i]);
         outputdim.push_back(_graph[producer].num_output);
       }
+    else if (_graph[producer].type == "Tile")
+      {
+        // BIG FAT WARNING : this is a hack for tile in autoencoders only
+        // because exposed hidden ouputs are computed as of full size
+        outputdim.push_back(_graph[inputs[0]].dim[1]); // timesteps
+        outputdim.push_back(_graph[inputs[0]].dim[2]); // hidden_size
+      }
     return std::tie(inputdim, outputdim);
   }
 
@@ -265,6 +272,7 @@ namespace dd
     auto es = boost::in_edges(v, _graph);
     auto eit = es.first;
     BaseGraph::Vertex producer = boost::source(*eit, _graph);
+
     auto newdims = compute_dims_from_producer(producer);
     update_alloc_status(newdims, producer);
     _graph[producer].dim = std::get<1>(newdims);
