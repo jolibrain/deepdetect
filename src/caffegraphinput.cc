@@ -134,7 +134,7 @@ namespace dd
             std::vector<BaseGraph::Vertex> vi = add_inputs(v, inputs);
 
             std::vector<std::string> outputs;
-            for (unsigned int i = 0; i < lparam.top_size(); ++i)
+            for (int i = 0; i < lparam.top_size(); ++i)
               outputs.push_back(lparam.top(i));
             std::vector<BaseGraph::Vertex> vo = add_outputs(v, outputs);
             set_output_name(lparam.top(0));
