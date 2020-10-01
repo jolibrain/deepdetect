@@ -23,6 +23,7 @@
 #define MLLIBSTRATEGY_H
 
 #include "apidata.h"
+#include "service_stats.h"
 #include "utils/fileops.hpp"
 #include "dd_spdlog.h"
 #include <atomic>
@@ -94,7 +95,7 @@ namespace dd
     MLLib(MLLib &&mll) noexcept
         : _inputc(mll._inputc), _outputc(mll._outputc), _mltype(mll._mltype),
           _mlmodel(mll._mlmodel), _meas(mll._meas),
-          _meas_per_iter(mll._meas_per_iter),
+          _meas_per_iter(mll._meas_per_iter), _stats(mll._stats),
           _tjob_running(mll._tjob_running.load()), _logger(mll._logger)
     {
     }
@@ -298,8 +299,9 @@ namespace dd
       int c = 0;
       for (double l : vl)
         {
-          std::string measl = meas + '_' + cnames.at(c); // std::to_string(c);
-          auto hit = _meas.find(measl);
+          std::string measl = meas + '_' + cnames.at(c);
+          auto hit = _meas.find(
+              measl); // not reusing add_meas since need a global lock
           if (hit != _meas.end())
             (*hit).second = l;
           else
@@ -309,7 +311,7 @@ namespace dd
     }
 
     /**
-     * \brief get currentvalue of argument measure
+     * \brief get current value of argument measure
      * @param meas measure name
      * @return current value of measure
      */
@@ -379,14 +381,11 @@ namespace dd
     std::unordered_map<std::string, std::vector<double>>
         _meas_per_iter; /**< model measures per iteration. */
 
+    ServiceStats _stats; /**< service statistics/metrics .*/
+
     std::atomic<bool> _tjob_running = {
       false
     }; /**< whether a training job is running with this lib instance. */
-
-    bool _online
-        = false; /**< whether the algorithm is online, i.e. it interleaves
-                    training and prediction calls. When not, prediction calls
-                    are rejected while training is running. */
 
     std::shared_ptr<spdlog::logger> _logger; /**< mllib logger. */
 
@@ -398,7 +397,7 @@ namespace dd
   protected:
     mutable std::mutex
         _meas_per_iter_mutex;         /**< mutex over measures history. */
-    mutable std::mutex _meas_mutex;   /** mutex around current measures. */
+    mutable std::mutex _meas_mutex;   /**< mutex around current measures. */
     const int _max_meas_points = 1e7; // 10M points max per measure
   };
 

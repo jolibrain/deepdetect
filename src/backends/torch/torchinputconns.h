@@ -36,7 +36,7 @@
 #include "backends/torch/db_lmdb.hpp"
 #include "csvtsinputfileconn.h"
 
-#define TORCH_TEXT_TRANSATION_SIZE 100
+#define TORCH_TEXT_TRANSACTION_SIZE 100
 #define TORCH_IMG_TRANSACTION_SIZE 10
 
 namespace dd
@@ -80,19 +80,19 @@ namespace dd
     {
     }
 
-    void set_transation_size(int32_t tsize)
+    void set_transaction_size(int32_t tsize)
     {
       _batches_per_transaction = tsize;
     }
 
-    void add_batch(std::vector<at::Tensor> data,
-                   std::vector<at::Tensor> target = {});
+    void add_batch(const std::vector<at::Tensor> &data,
+                   const std::vector<at::Tensor> &target = {});
     void finalize_db();
     void pop(int64_t index, std::string &data, std::string &target);
     void add_elt(int64_t index, std::string data, std::string target);
 
-    void write_tensors_to_db(std::vector<at::Tensor> data,
-                             std::vector<at::Tensor> target);
+    void write_tensors_to_db(const std::vector<at::Tensor> &data,
+                             const std::vector<at::Tensor> &target);
 
     void reset(bool shuffle = true, db::Mode dbmode = db::READ);
 
@@ -176,16 +176,16 @@ namespace dd
     {
     }
 
-    void init(const APIData &ad, std::string model_repo,
+    void init(const APIData &ad_in, std::string model_repo,
               std::shared_ptr<spdlog::logger> logger)
     {
-      if (ad.has("db") && ad.get("db").get<bool>())
+      _tilogger = logger;
+      if (ad_in.has("shuffle"))
+        _dataset.set_shuffle(ad_in.get("shuffle").get<bool>());
+      if (ad_in.has("db") && ad_in.get("db").get<bool>())
         _db = true;
-      if (ad.has("shuffle"))
-        _dataset.set_shuffle(ad.get("shuffle").get<bool>());
       _dataset.set_dbParams(_db, _backend, model_repo + "/train");
       _dataset.set_logger(logger);
-      _tilogger = logger;
       _test_dataset.set_dbParams(_db, _backend, model_repo + "/test");
       _test_dataset.set_logger(logger);
     }
@@ -207,10 +207,10 @@ namespace dd
       return {};
     }
 
-    void set_transation_size(int32_t tsize)
+    void set_transaction_size(int32_t tsize)
     {
-      _dataset.set_transation_size(tsize);
-      _test_dataset.set_transation_size(tsize);
+      _dataset.set_transaction_size(tsize);
+      _test_dataset.set_transaction_size(tsize);
     }
 
     int64_t mask_id() const
@@ -225,6 +225,8 @@ namespace dd
     {
       return "";
     }
+
+    std::vector<c10::IValue> get_input_example(torch::Device device);
 
     bool _finetuning;
     MaskedLMParams _lm_params;
@@ -245,6 +247,7 @@ namespace dd
     std::string _db_fname;
     std::string _test_db_name = "test";
     std::string _backend = "lmdb";
+    std::string _correspname = "corresp.txt";
     bool _split_ts_for_predict = false;
   };
 
@@ -254,12 +257,12 @@ namespace dd
   public:
     ImgTorchInputFileConn() : ImgInputFileConn()
     {
-      set_transation_size(TORCH_IMG_TRANSACTION_SIZE);
+      set_transaction_size(TORCH_IMG_TRANSACTION_SIZE);
     }
     ImgTorchInputFileConn(const ImgTorchInputFileConn &i)
         : ImgInputFileConn(i), TorchInputInterface(i)
     {
-      set_transation_size(10);
+      set_transaction_size(10);
     }
     ~ImgTorchInputFileConn()
     {
@@ -283,48 +286,18 @@ namespace dd
       ImgInputFileConn::init(ad);
     }
 
-    void transform(const APIData &ad)
-    {
-      try
-        {
-          ImgInputFileConn::transform(ad);
-        }
-      catch (const std::exception &e)
-        {
-          throw;
-        }
+    void read_image_folder(std::vector<std::pair<std::string, int>> &lfiles,
+                           std::unordered_map<int, std::string> &hcorresp,
+                           std::unordered_map<std::string, int> &hcorresp_r,
+                           const std::string &folderPath);
 
-      std::vector<at::Tensor> tensors;
-      std::vector<int64_t> sizes{ _height, _width, 3 };
-      at::TensorOptions options(at::ScalarType::Byte);
+    void transform(const APIData &ad);
 
-      for (const cv::Mat &bgr : this->_images)
-        {
-          at::Tensor imgt
-              = torch::from_blob(bgr.data, at::IntList(sizes), options);
-          imgt = imgt.toType(at::kFloat).permute({ 2, 0, 1 });
-          size_t nchannels = imgt.size(0);
-          if (_scale != 1.0)
-            imgt = imgt.mul(_scale);
-          if (!_mean.empty() && _mean.size() != nchannels)
-            throw InputConnectorBadParamException(
-                "mean vector be of size the number of channels ("
-                + std::to_string(nchannels) + ")");
-          for (size_t m = 0; m < _mean.size(); m++)
-            imgt[0][m] = imgt[0][m].sub_(_mean.at(m));
-          if (!_std.empty() && _std.size() != nchannels)
-            throw InputConnectorBadParamException(
-                "std vector be of size the number of channels ("
-                + std::to_string(nchannels) + ")");
-          for (size_t s = 0; s < _std.size(); s++)
-            imgt[0][s] = imgt[0][s].div_(_std.at(s));
-          tensors.push_back(imgt);
-          _dataset.add_batch({ imgt });
-        }
-    }
+  private:
+    int add_image_file(TorchDataset &dataset, const std::string &fname,
+                       int target);
 
-  public:
-    at::Tensor _in;
+    at::Tensor image_to_tensor(const cv::Mat &bgr);
   };
 
   class TxtTorchInputFileConn : public TxtInputFileConn,
@@ -334,13 +307,13 @@ namespace dd
     TxtTorchInputFileConn() : TxtInputFileConn()
     {
       _vocab_sep = '\t';
-      set_transation_size(100);
+      set_transaction_size(100);
     }
     TxtTorchInputFileConn(const TxtTorchInputFileConn &i)
         : TxtInputFileConn(i), TorchInputInterface(i), _width(i._width),
           _height(i._height)
     {
-      set_transation_size(TORCH_TEXT_TRANSATION_SIZE);
+      set_transaction_size(TORCH_TEXT_TRANSACTION_SIZE);
     }
     ~TxtTorchInputFileConn()
     {

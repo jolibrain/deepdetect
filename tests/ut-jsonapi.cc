@@ -183,6 +183,14 @@ TEST(jsonapi, service_status)
   ASSERT_EQ("OK", jd["status"]["msg"]);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"].HasMember("description"));
+
+  ASSERT_TRUE(jd["body"].HasMember("service_stats"));
+  ASSERT_TRUE(jd["body"]["service_stats"].HasMember("predict_count"));
+  ASSERT_TRUE(jd["body"]["service_stats"]["predict_count"].GetInt() == 0);
+  ASSERT_TRUE(jd["body"]["service_stats"]["inference_count"].GetInt() == 0);
+  ASSERT_TRUE(jd["body"]["service_stats"]["predict_failure"].GetInt() == 0);
+  ASSERT_TRUE(jd["body"]["service_stats"]["predict_success"].GetInt() == 0);
+  ASSERT_TRUE(jd["body"]["service_stats"]["avg_batch_size"].GetDouble() == -1);
 }
 
 TEST(jsonapi, service_purge)

@@ -464,6 +464,7 @@ namespace dd
     APIData cad = ad;
 
     TOutputConnectorStrategy tout(this->_outputc);
+    this->_stats.transform_start();
     try
       {
         inputc.transform(cad);
@@ -472,6 +473,9 @@ namespace dd
       {
         throw;
       }
+    this->_stats.transform_end();
+
+    this->_stats.inc_inference_count(inputc._batch_size);
 
     int idoffset = 0;
     std::vector<APIData> vrad;

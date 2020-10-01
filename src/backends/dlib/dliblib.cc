@@ -141,6 +141,8 @@ namespace dd
     TOutputConnectorStrategy tout(this->_outputc);
     APIData cad = ad;
     cad.add("model_repo", this->_mlmodel._repo);
+
+    this->_stats.transform_start();
     try
       {
         inputc.transform(cad);
@@ -149,9 +151,12 @@ namespace dd
       {
         throw;
       }
+    this->_stats.transform_end();
 
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
     int batch_size = inputc.batch_size();
+    this->_stats.inc_inference_count(batch_size);
+
     if (ad_mllib.has("test_batch_size"))
       {
         batch_size = ad_mllib.get("test_batch_size").get<int>();

@@ -1286,6 +1286,9 @@ namespace dd
       }
     else // model template instantiation is defered until training call
       {
+#ifdef USE_CUDNN
+        update_protofile_engine(ad);
+#endif
         create_model(true);
       }
 
@@ -2810,6 +2813,7 @@ namespace dd
     cad.add("has_mean_file", has_mean_file);
     if (ad_output.has("measure"))
       {
+        // FIXME(sileht): Should we create service_stats here ?
         try
           {
             inputc.transform(cad);
@@ -2842,15 +2846,13 @@ namespace dd
     if (ad.has("chain") && ad.get("chain").get<bool>())
       cad.add("chain", true);
 
-    try
-      {
-        inputc.transform(cad);
-      }
-    catch (std::exception &e)
-      {
-        throw;
-      }
+    this->_stats.transform_start();
+    inputc.transform(cad);
+    this->_stats.transform_end();
+
     int batch_size = inputc.test_batch_size();
+    this->_stats.inc_inference_count(batch_size);
+
     if (ad_mllib.has("net"))
       {
         APIData ad_net = ad_mllib.getobj("net");
@@ -4165,6 +4167,8 @@ namespace dd
   {
 
     std::string deploy_file = this->_mlmodel._repo + "/deploy.prototxt";
+    if (!fileops::file_exists(deploy_file))
+      return;
     caffe::NetParameter deploy_net_param;
     caffe::ReadProtoFromTextFile(deploy_file, &deploy_net_param);
     update_protofile_engine(deploy_net_param, ad);

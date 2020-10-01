@@ -57,8 +57,8 @@ namespace dd
     std::vector<float> tdata;
 
     for (unsigned int i = 0; i < p1; ++i)
-      for (unsigned int d2 = 0; d2 < _data_size; ++d2)
-        for (unsigned int j = 0; j < _forecast_linspace.size(); ++j)
+      for (unsigned int j = 0; j < _forecast_linspace.size(); ++j)
+        for (unsigned int d2 = 0; d2 < _data_size; ++d2)
           tdata.push_back(std::cos(2 * M_PI * i * _forecast_linspace[j]));
     torch::Tensor s1
         = torch::from_blob(
@@ -70,8 +70,8 @@ namespace dd
 
     tdata.clear();
     for (unsigned int i = 0; i < p2; ++i)
-      for (unsigned int d2 = 0; d2 < _data_size; ++d2)
-        for (unsigned int j = 0; j < _forecast_linspace.size(); ++j)
+      for (unsigned int j = 0; j < _forecast_linspace.size(); ++j)
+        for (unsigned int d2 = 0; d2 < _data_size; ++d2)
           tdata.push_back(std::sin(2 * M_PI * i * _forecast_linspace[j]));
     torch::Tensor s2
         = torch::from_blob(
@@ -84,8 +84,8 @@ namespace dd
 
     tdata.clear();
     for (unsigned int i = 0; i < p1; ++i)
-      for (unsigned int d2 = 0; d2 < _data_size; ++d2)
-        for (unsigned int j = 0; j < _backcast_linspace.size(); ++j)
+      for (unsigned int j = 0; j < _backcast_linspace.size(); ++j)
+        for (unsigned int d2 = 0; d2 < _data_size; ++d2)
           tdata.push_back(std::cos(2 * M_PI * i * _backcast_linspace[j]));
     torch::Tensor ss1
         = torch::from_blob(
@@ -97,8 +97,8 @@ namespace dd
 
     tdata.clear();
     for (unsigned int i = 0; i < p2; ++i)
-      for (unsigned int d2 = 0; d2 < _data_size; ++d2)
-        for (unsigned int j = 0; j < _backcast_linspace.size(); ++j)
+      for (unsigned int j = 0; j < _backcast_linspace.size(); ++j)
+        for (unsigned int d2 = 0; d2 < _data_size; ++d2)
           tdata.push_back(std::sin(2 * M_PI * i * _backcast_linspace[j]));
     torch::Tensor ss2
         = torch::from_blob(
@@ -121,8 +121,8 @@ namespace dd
     std::vector<float> tdata;
 
     for (unsigned int i = 0; i < p; ++i)
-      for (unsigned int d2 = 0; d2 < _data_size; ++d2)
-        for (unsigned int j = 0; j < _forecast_linspace.size(); ++j)
+      for (unsigned int j = 0; j < _forecast_linspace.size(); ++j)
+        for (unsigned int d2 = 0; d2 < _data_size; ++d2)
           {
             tdata.push_back(static_cast<float>(
                 powf(_forecast_linspace[j], static_cast<float>(i))));
@@ -137,8 +137,8 @@ namespace dd
 
     tdata.clear();
     for (unsigned int i = 0; i < p; ++i)
-      for (unsigned int d2 = 0; d2 < _data_size; ++d2)
-        for (unsigned int j = 0; j < _backcast_linspace.size(); ++j)
+      for (unsigned int j = 0; j < _backcast_linspace.size(); ++j)
+        for (unsigned int d2 = 0; d2 < _data_size; ++d2)
           tdata.push_back(static_cast<float>(
               powf(_backcast_linspace[j], static_cast<float>(i))));
     bT = torch::from_blob(tdata.data(),
@@ -188,14 +188,12 @@ namespace dd
 
   void NBeats::create_nbeats()
   {
-    float step = (float)(_backcast_length + _forecast_length)
-                 / (float)(_backcast_length + _forecast_length - 1);
+    float back_step = 1.0 / (float)(_backcast_length);
     for (unsigned int i = 0; i < _backcast_length; ++i)
-      _backcast_linspace.push_back(
-          (-(float)_backcast_length + (float)step * (float)i));
+      _backcast_linspace.push_back(back_step * static_cast<float>(i));
+    float fore_step = 1.0 / (float)(_forecast_length);
     for (unsigned int i = 0; i < _forecast_length; ++i)
-      _forecast_linspace.push_back(_backcast_linspace[_backcast_length - 1]
-                                   + (float)(i + 1) * (float)step);
+      _forecast_linspace.push_back(fore_step * static_cast<float>(i));
 
     std::tuple<torch::Tensor, torch::Tensor> S;
     std::tuple<torch::Tensor, torch::Tensor> T;

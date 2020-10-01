@@ -37,8 +37,8 @@
 #include "generators/net_caffe.h"
 #include "generators/net_caffe_recurrent.h"
 
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <fcntl.h>
 
 #include "native/native.h"
@@ -135,6 +135,8 @@ namespace dd
       _native->to(device);
     if (_traced)
       _traced->to(device);
+    if (_classif)
+      _classif->to(device);
   }
 
   void TorchModule::to(torch::Dtype dtype)
@@ -145,6 +147,8 @@ namespace dd
       _native->to(dtype);
     if (_traced)
       _traced->to(dtype);
+    if (_classif)
+      _classif->to(dtype);
   }
 
   void TorchModule::to(torch::Device device, torch::Dtype dtype)
@@ -155,6 +159,8 @@ namespace dd
       _native->to(device, dtype);
     if (_traced)
       _traced->to(device, dtype);
+    if (_classif)
+      _classif->to(device, dtype);
   }
 
   template <class TInputConnectorStrategy>
@@ -180,6 +186,23 @@ namespace dd
         // reload params after finalize
         if (!tmodel._traced.empty())
           torch::load(_graph, tmodel._traced, _device);
+      }
+    if (_require_classif_layer && !_classif)
+      {
+        try
+          {
+            // TODO const cast because getting an input example actually
+            // *modifies* the connector (it must be reset after that)
+            // -> find a way to get an example without modifying the dataset?
+            setup_classification(_nclasses,
+                                 const_cast<TInputConnectorStrategy &>(inputc)
+                                     .get_input_example(device));
+          }
+        catch (std::exception &e)
+          {
+            throw MLLibInternalException(std::string("Libtorch error: ")
+                                         + e.what());
+          }
       }
     to(_device);
   }
@@ -268,6 +291,21 @@ namespace dd
       }
   }
 
+  void
+  TorchModule::setup_classification(int nclasses,
+                                    std::vector<c10::IValue> input_example)
+  {
+    _classif = nullptr;
+    // First dimension is batch id
+    int outdim = to_tensor_safe(forward(input_example)).sizes()[1];
+    _classif = torch::nn::Linear(outdim, nclasses);
+
+    if (!_classif_layer_file.empty())
+      {
+        torch::load(_classif, _classif_layer_file, _device);
+      }
+  }
+
   std::vector<Tensor> TorchModule::parameters()
   {
     if (_graph)
@@ -303,8 +341,17 @@ namespace dd
     if (!model._traced.empty() && model._proto.empty())
       _traced = std::make_shared<torch::jit::script::Module>(
           torch::jit::load(model._traced, _device));
-    if (!model._weights.empty() && _classif)
-      torch::load(_classif, model._weights, _device);
+    if (!model._weights.empty())
+      {
+        if (_classif)
+          {
+            torch::load(_classif, model._weights, _device);
+          }
+        else if (_require_classif_layer)
+          {
+            _classif_layer_file = model._weights;
+          }
+      }
     if (!model._proto.empty())
       {
         _graph = std::make_shared<CaffeToTorch>(model._proto);
@@ -502,6 +549,20 @@ namespace dd
         throw MLLibBadParamException("template");
       }
 
+    if (_classification)
+      {
+        this->_mltype = "classification";
+        _module._nclasses = _nclasses;
+
+        if (!this->_mlmodel._traced.empty() && !_module._classif)
+          {
+            _module._require_classif_layer = true;
+            this->_logger->info(
+                "Add classification layer on top of the traced model");
+          }
+      }
+
+    // Load weights
     if (!this->_mlmodel._traced.empty())
       this->_logger->info("Loading ml model from file {}.",
                           this->_mlmodel._traced);
@@ -513,9 +574,6 @@ namespace dd
                           this->_mlmodel._weights);
     _module.load(this->_mlmodel);
     _module.freeze_traced(freeze_traced);
-
-    if (_classification)
-      this->_mltype = "classification";
 
     _best_metrics = { "map", "meaniou",  "mlacc", "delta_score_0.1", "bacc",
                       "f1",  "net_meas", "acc",   "L1_mean_error",   "eucll" };
@@ -805,6 +863,12 @@ namespace dd
               {
                 in_vals.push_back(tensor.to(_device));
               }
+
+            if (batch.target.size() == 0)
+              {
+                throw MLLibInternalException(
+                    "Batch " + std::to_string(batch_id) + ": no target");
+              }
             Tensor y = batch.target.at(0).to(_device);
 
             Tensor y_pred;
@@ -1020,6 +1084,7 @@ namespace dd
     if (_module._native != nullptr)
       _module._native->update_input_connector(inputc);
 
+    this->_stats.transform_start();
     TOutputConnectorStrategy outputc(this->_outputc);
     try
       {
@@ -1039,6 +1104,8 @@ namespace dd
       {
         throw;
       }
+    this->_stats.transform_end();
+
     torch::Device cpu("cpu");
     _module.eval();
 
@@ -1074,6 +1141,8 @@ namespace dd
           {
             in_vals.push_back(tensor.to(_device));
           }
+        this->_stats.inc_inference_count(in_vals.size());
+
         Tensor output;
         try
           {
@@ -1336,4 +1405,4 @@ namespace dd
   template class TorchLib<TxtTorchInputFileConn, SupervisedOutput, TorchModel>;
   template class TorchLib<CSVTSTorchInputFileConn, SupervisedOutput,
                           TorchModel>;
-}
+} // namespace dd

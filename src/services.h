@@ -199,182 +199,162 @@ namespace dd
     std::string _s;
   };
 
-  class output
+  namespace visitor_mllib
   {
-  public:
-    output()
+    /**
+     * \brief service mllib.predict_job() visitor class
+     */
+    class v_predict_job
     {
-    }
-    output(const int &status, const APIData &out) : _status(status), _out(out)
+    public:
+      const APIData &_in;
+      APIData &_out;
+      bool _chain;
+
+      template <typename T> int operator()(T &mllib)
+      {
+        return mllib.predict_job(_in, _out, _chain);
+      }
+    };
+    template <typename T>
+    static int predict_job(T &mllib, const APIData &in, APIData &out,
+                           bool chain)
     {
-    }
-    ~output()
-    {
+      visitor_mllib::v_predict_job v{ in, out, chain };
+      return mapbox::util::apply_visitor(v, mllib);
     }
 
-    int _status = 0;
-    APIData _out;
-  };
+    /**
+     * \brief service mllib.train_job() visitor class
+     */
+    class v_train_job
+    {
+    public:
+      const APIData &_in;
+      APIData &_out;
+      template <typename T> int operator()(T &mllib)
+      {
+        return mllib.train_job(_in, _out);
+      }
+    };
 
-  class visitor_predict
-  {
-  public:
-    visitor_predict()
+    template <typename T>
+    static int train_job(T &mllib, const APIData &in, APIData &out)
     {
-    }
-    ~visitor_predict()
-    {
-    }
-
-    template <typename T> output operator()(T &mllib)
-    {
-      int r = mllib.predict_job(_ad, _out, _chain);
-      return output(r, _out);
-    }
-
-    APIData _ad;
-    APIData _out;
-    bool _chain = false;
-  };
-
-  /**
-   * \brief training job visitor class
-   */
-  class visitor_train
-  {
-  public:
-    visitor_train()
-    {
-    }
-    ~visitor_train()
-    {
+      visitor_mllib::v_train_job v{ in, out };
+      return mapbox::util::apply_visitor(v, mllib);
     }
 
-    template <typename T> output operator()(T &mllib)
+    /**
+     * \brief service mllib.training_job_status() visitor class
+     */
+    class v_training_job_status
     {
-      int r = mllib.train_job(_ad, _out);
-      return output(r, _out);
+    public:
+      const APIData &_in;
+      APIData &_out;
+      template <typename T> int operator()(T &mllib)
+      {
+        return mllib.training_job_status(_in, _out);
+      }
+    };
+
+    template <typename T>
+    static int training_job_status(T &mllib, const APIData &in, APIData &out)
+    {
+      visitor_mllib::v_training_job_status v{ in, out };
+      return mapbox::util::apply_visitor(v, mllib);
     }
 
-    APIData _ad;
-    APIData _out;
-  };
+    /**
+     * \brief service mllib.train_init() visitor class
+     */
+    class v_init
+    {
+    public:
+      const APIData &_in;
+      template <typename T> void operator()(T &mllib)
+      {
+        mllib.init(_in);
+      }
+    };
 
-  /**
-   * \brief training job status visitor class
-   */
-  class visitor_train_status
-  {
-  public:
-    visitor_train_status()
+    template <typename T> static void init(T &mllib, const APIData &in)
     {
-    }
-    ~visitor_train_status()
-    {
-    }
-
-    template <typename T> output operator()(T &mllib)
-    {
-      int r = mllib.training_job_status(_ad, _out);
-      return output(r, _out);
+      visitor_mllib::v_init v{ in };
+      mapbox::util::apply_visitor(v, mllib);
     }
 
-    APIData _ad;
-    APIData _out;
-  };
+    /**
+     * \brief service mllib.training_job_delete() visitor class
+     */
+    class v_training_job_delete
+    {
+    public:
+      const APIData &_in;
+      APIData &_out;
+      template <typename T> int operator()(T &mllib)
+      {
+        return mllib.training_job_delete(_in, _out);
+      }
+    };
 
-  /**
-   * \brief training job deletion class
-   */
-  class visitor_train_delete
-  {
-  public:
-    visitor_train_delete()
+    template <typename T>
+    static int training_job_delete(T &mllib, const APIData &in, APIData &out)
     {
-    }
-    ~visitor_train_delete()
-    {
-    }
-
-    template <typename T> output operator()(T &mllib)
-    {
-      int r = mllib.training_job_delete(_ad, _out);
-      return output(r, _out);
+      visitor_mllib::v_training_job_delete v{ in, out };
+      return mapbox::util::apply_visitor(v, mllib);
     }
 
-    APIData _ad;
-    APIData _out;
-  };
+    /**
+     * \brief service mllib.kill_job() visitor class
+     */
 
-  /**
-   * \brief service initialization visitor class
-   */
-  class visitor_init
-  {
-  public:
-    visitor_init(const APIData &ad) : _ad(ad)
+    class v_clear
     {
-    }
-    ~visitor_init()
-    {
-    }
-
-    template <typename T> void operator()(T &mllib)
-    {
-      mllib.init(_ad);
-    }
-
-    APIData _ad;
-  };
-
-  /**
-   * \brief service deletion visitor class
-   */
-  class visitor_clear
-  {
-  public:
-    visitor_clear(const APIData &ad) : _ad(ad)
-    {
-    }
-    ~visitor_clear()
-    {
-    }
-
-    template <typename T> void operator()(T &mllib)
-    {
-      mllib.kill_jobs();
-      if (_ad.has("clear"))
-        {
-          std::string clear = _ad.get("clear").get<std::string>();
-          if (clear == "full")
-            mllib.clear_full();
+    public:
+      const APIData &_ad;
+      template <typename T> void operator()(T &mllib)
+      {
+        mllib.kill_jobs();
+        if (_ad.has("clear"))
+          {
+            std::string clear = _ad.get("clear").get<std::string>();
+            if (clear == "full")
+              mllib.clear_full();
 #ifdef USE_SIMSEARCH
-          else if (clear == "lib")
-            {
-              mllib.clear_mllib(_ad);
-              mllib.clear_index();
-            }
+            else if (clear == "lib")
+              {
+                mllib.clear_mllib(_ad);
+                mllib.clear_index();
+              }
 #else
-          else if (clear == "lib")
-            mllib.clear_mllib(_ad);
+            else if (clear == "lib")
+              mllib.clear_mllib(_ad);
 #endif
-          else if (clear == "dir")
-            mllib.clear_dir();
+            else if (clear == "dir")
+              mllib.clear_dir();
 #ifdef USE_SIMSEARCH
-          else if (clear == "index")
-            mllib.clear_index();
+            else if (clear == "index")
+              mllib.clear_index();
 #endif
-        }
+          }
+      }
+    };
+
+    template <typename T> static void clear(T &mllib, const APIData &ad)
+    {
+      visitor_mllib::v_clear v{ ad };
+      return mapbox::util::apply_visitor(v, mllib);
     }
 
-    APIData _ad;
   };
 
   /**
    * \brief class for deepetect machine learning services.
-   *        Each service instanciates a machine learning library and channels
-   *        data for training and prediction along with parameters from API
-   *        Service uses a variant type and store instances in a single
+   *        Each service instanciates a machine learning library and
+   * channels data for training and prediction along with parameters from
+   * API Service uses a variant type and store instances in a single
    * iterable container.
    */
   class Services
@@ -412,10 +392,9 @@ namespace dd
         }
 
       auto llog = spdlog::get(sname);
-      visitor_init vi(ad);
       try
         {
-          mapbox::util::apply_visitor(vi, mls);
+          visitor_mllib::init(mls, ad);
           std::lock_guard<std::mutex> lock(_mlservices_mtx);
           _mlservices.insert(
               std::pair<std::string, mls_variant_type>(sname, std::move(mls)));
@@ -447,7 +426,8 @@ namespace dd
      * \brief removes and destroys a service
      * @param sname service name
      * @param ad root data object
-     * @return true if service was removed, false otherwise (i.e. not found)
+     * @return true if service was removed, false otherwise (i.e. not
+     * found)
      */
     bool remove_service(const std::string &sname, const APIData &ad)
     {
@@ -458,10 +438,10 @@ namespace dd
           auto llog = spdlog::get(sname);
           if (ad.has("clear"))
             {
-              visitor_clear vc(ad);
               try
                 {
-                  mapbox::util::apply_visitor(vc, (*hit).second);
+                  auto &mls = (*hit).second;
+                  visitor_mllib::clear(mls, ad);
                 }
               catch (MLLibBadParamException &e)
                 {
@@ -524,43 +504,38 @@ namespace dd
     {
       std::chrono::time_point<std::chrono::system_clock> tstart
           = std::chrono::system_clock::now();
-      visitor_train vt;
-      vt._ad = ad;
-      output pout;
       auto llog = spdlog::get(sname);
+      int status = 0;
       try
         {
           auto hit = get_service_it(sname);
-          pout = mapbox::util::apply_visitor(vt, (*hit).second);
+          auto &mls = (*hit).second;
+          status = visitor_mllib::train_job(mls, ad, out);
         }
       catch (InputConnectorBadParamException &e)
         {
           llog->error("mllib bad param: {}", e.what());
-          pout._status = -2;
           throw;
         }
       catch (MLLibBadParamException &e)
         {
           llog->error("mllib bad param: {}", e.what());
-          pout._status = -2;
           throw;
         }
       catch (MLLibInternalException &e)
         {
           llog->error("mllib internal error: {}", e.what());
-          pout._status = -1;
           throw;
         }
       catch (...)
         {
           llog->error("training call failed");
-          pout._status = -1;
           throw;
         }
-      out = pout._out;
+
       if (ad.has("async") && ad.get("async").get<bool>())
         {
-          out.add("job", pout._status); // status holds the job id...
+          out.add("job", status); // status holds the job id...
           out.add("status", std::string("running"));
           return 0; // status is OK i.e. the job has started.
         }
@@ -572,8 +547,8 @@ namespace dd
                                tstop - tstart)
                                .count();
           out.add("time", elapsed);
+          return status;
         }
-      return pout._status;
     }
 
     /**
@@ -584,23 +559,18 @@ namespace dd
      */
     int train_status(const APIData &ad, const std::string &sname, APIData &out)
     {
-      visitor_train_status vt;
-      vt._ad = ad;
-      output pout;
       try
         {
           auto hit = get_service_it(sname);
-          pout = mapbox::util::apply_visitor(vt, (*hit).second);
+          auto &mls = (*hit).second;
+          return visitor_mllib::training_job_status(mls, ad, out);
         }
       catch (...)
         {
           auto llog = spdlog::get(sname);
           llog->error("training status call failed");
-          pout._status = -1;
           throw;
         }
-      out = pout._out;
-      return pout._status;
     }
 
     /**
@@ -611,23 +581,18 @@ namespace dd
      */
     int train_delete(const APIData &ad, const std::string &sname, APIData &out)
     {
-      visitor_train_delete vt;
-      vt._ad = ad;
-      output pout;
       try
         {
           auto hit = get_service_it(sname);
-          pout = mapbox::util::apply_visitor(vt, (*hit).second);
+          auto &mls = (*hit).second;
+          return visitor_mllib::training_job_delete(mls, ad, out);
         }
       catch (...)
         {
           auto llog = spdlog::get(sname);
           llog->error("training delete call failed");
-          pout._status = -1;
           throw;
         }
-      out = pout._out;
-      return pout._status;
     }
 
     /**
@@ -636,43 +601,38 @@ namespace dd
      * @param sname service name
      * @param out output data object
      */
-    int predict(const APIData &ad, const std::string &sname, APIData &out,
-                const bool &chain = false)
+    int predict(const APIData &ad_in, const std::string &sname,
+                APIData &ad_out, const bool &chain = false)
     {
       std::chrono::time_point<std::chrono::system_clock> tstart
           = std::chrono::system_clock::now();
-      visitor_predict vp;
-      vp._ad = ad;
-      vp._chain = chain;
-      output pout;
+
+      int status = 0;
       auto llog = spdlog::get(sname);
       try
         {
           auto hit = get_service_it(sname);
-          pout = mapbox::util::apply_visitor(vp, (*hit).second);
+          auto &mllib = (*hit).second;
+          status = visitor_mllib::predict_job(mllib, ad_in, ad_out, chain);
         }
       catch (InputConnectorBadParamException &e)
         {
           llog->error("mllib bad param: {}", e.what());
-          pout._status = -2;
           throw;
         }
       catch (MLLibBadParamException &e)
         {
           llog->error("mllib bad param: {}", e.what());
-          pout._status = -2;
           throw;
         }
       catch (MLLibInternalException &e)
         {
           llog->error("mllib internal error: {}", e.what());
-          pout._status = -1;
           throw;
         }
       catch (MLServiceLockException &e)
         {
           llog->error("mllib lock error: {}", e.what());
-          pout._status = -3;
           throw;
         }
       catch (const std::exception &e)
@@ -680,23 +640,20 @@ namespace dd
           // catch anything thrown within try block that derives from
           // std::exception
           llog->error("other error: {}", e.what());
-          pout._status = -1;
           throw;
         }
       catch (...)
         {
           llog->error("prediction call failed");
-          pout._status = -1;
           throw;
         }
-      out = pout._out;
       std::chrono::time_point<std::chrono::system_clock> tstop
           = std::chrono::system_clock::now();
       double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                            tstop - tstart)
                            .count();
-      out.add("time", elapsed);
-      return pout._status;
+      ad_out.add("time", elapsed);
+      return status;
     }
 
     int chain_service(const std::string &cname,
@@ -720,7 +677,8 @@ namespace dd
                                          + " does not exist");
         }
 
-      // if not first predict call in the chain, need to setup the input data!
+      // if not first predict call in the chain, need to setup the input
+      // data!
       if (chain_pos != 0)
         {
           // take data from the previous action
@@ -733,14 +691,14 @@ namespace dd
             }
           if (act_data.has("data"))
             {
-              adc.add(
-                  "data",
-                  act_data.get("data")
-                      .get<std::vector<std::string>>()); // action output data
-                                                         // must be string for
-                                                         // now (more types to
-                                                         // be supported /
-                                                         // auto-detected)
+              adc.add("data",
+                      act_data.get("data")
+                          .get<std::vector<std::string>>()); // action output
+                                                             // data must be
+                                                             // string for now
+                                                             // (more types to
+                                                             // be supported /
+                                                             // auto-detected)
             }
           else if (act_data.has("data_raw_img")) // raw images
             {
@@ -790,8 +748,8 @@ namespace dd
                                           vad.at(j).getv("vector").size());
           classes_size += npred_classes;
           vals_size += static_cast<int>(vad.at(j).has("vals"));
-          if (chain_pos == 0) // first call's response contains uniformized top
-                              // level URIs.
+          if (chain_pos == 0) // first call's response contains uniformized
+                              // top level URIs.
             {
               for (size_t k = 0; k < npred_classes; k++)
                 {
@@ -802,8 +760,8 @@ namespace dd
                         vad.at(j).get("index_uri").get<std::string>());
                 }
             }
-          else // update meta uris to batch size at the current level of the
-               // chain
+          else // update meta uris to batch size at the current level of
+               // the chain
             {
               for (size_t k = 0; k < npred_classes; k++)
                 {
@@ -820,7 +778,8 @@ namespace dd
         {
           chain_logger->info("[" + std::to_string(chain_pos)
                              + "] / no result from prediction");
-          cdata.add_model_data(pred_id, pred_out); // store empty model output
+          cdata.add_model_data(pred_id,
+                               pred_out); // store empty model output
           return 1;
         }
       ++npredicts;
@@ -896,8 +855,9 @@ namespace dd
 
           // - iterate chain of calls
           // - if predict call, use the visitor to execute it
-          //      - this requires storing output into mlservice object / have a
-          //      flag for telling the called service it's part of a chain
+          //      - this requires storing output into mlservice object /
+          //      have a flag for telling the called service it's part of a
+          //      chain
           // - if action call, execute the generic code for it
           std::vector<APIData> ad_calls = ad.getobj("chain").getv("calls");
           chain_logger->info("number of calls="
@@ -1001,7 +961,6 @@ namespace dd
   protected:
     std::mutex _mlservices_mtx; /**< mutex around adding/removing services. */
   };
-
 }
 
 #endif
