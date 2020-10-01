@@ -3845,7 +3845,7 @@ namespace dd
       return false;
     lparam->mutable_memory_data_param()->set_channels(timesteps);
     // also update timesteps in case of autoencoder
-    for (unsigned int i = 0; i < deploy_net_param.layer_size(); ++i)
+    for (int i = 0; i < deploy_net_param.layer_size(); ++i)
       {
         caffe::LayerParameter *lp = deploy_net_param.mutable_layer(i);
         if (lp->has_tile_param())
@@ -4074,7 +4074,7 @@ namespace dd
       }
 
     // update tile number with time steps (autoencoder)
-    for (unsigned int i = 0; i < net_param.layer_size(); ++i)
+    for (int i = 0; i < net_param.layer_size(); ++i)
       {
         caffe::LayerParameter *lp = net_param.mutable_layer(i);
         if (lp->has_tile_param())
@@ -4187,7 +4187,7 @@ namespace dd
       }
 
     // update tile number with time steps (autoencoder)
-    for (unsigned int i = 0; i < deploy_net_param.layer_size(); ++i)
+    for (int i = 0; i < deploy_net_param.layer_size(); ++i)
       {
         caffe::LayerParameter *lp = deploy_net_param.mutable_layer(i);
         if (lp->has_tile_param())
