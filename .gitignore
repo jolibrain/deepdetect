@@ -6,3 +6,4 @@ build/*
 model/
 models/
 clients/
+tools/build-cpp-netlib/
