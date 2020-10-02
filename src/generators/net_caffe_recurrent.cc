@@ -26,13 +26,28 @@
 namespace dd
 {
 
+  void NetLayersCaffeRecurrent::add_tile(caffe::NetParameter *net_param,
+                                         const std::string layer_name,
+                                         const std::string bottom_name,
+                                         const std::string top_name)
+  {
+    caffe::LayerParameter *lparam = net_param->add_layer();
+    lparam->set_type("Tile");
+    lparam->set_name(layer_name);
+    lparam->add_top(top_name);
+    lparam->add_bottom(bottom_name);
+    caffe::TileParameter *tparam = lparam->mutable_tile_param();
+    tparam->set_axis(1);
+    tparam->set_tiles(32);
+  }
+
   void NetLayersCaffeRecurrent::add_basic_block(
       caffe::NetParameter *net_param,
       const std::vector<std::string> &bottom_seqs,
       const std::string &bottom_cont, const std::string &top,
       const int &num_output, const double &dropout_ratio,
       const std::string weight_filler, const std::string bias_filler,
-      const std::string &type, const int id)
+      const std::string &type, const int id, bool expose_hidden)
   {
 
     std::string bottom_seq;
@@ -55,17 +70,46 @@ namespace dd
     else
       bottom_seq = bottom_seqs[0];
 
-    caffe::LayerParameter *lparam = net_param->add_layer();
+    caffe::LayerParameter *lparam;
+    if (expose_hidden)
+      {
+        lparam = net_param->add_layer();
+        lparam->set_type("DummyData");
+        lparam->set_name(name + "_hidden_init");
+        lparam->add_top(name + "_h_init");
+        lparam->add_top(name + "_c_init");
+        caffe::DummyDataParameter *dparam = lparam->mutable_dummy_data_param();
+        caffe::BlobShape *b = dparam->add_shape();
+        b->add_dim(32);
+        b->add_dim(num_output);
+        b = dparam->add_shape();
+        b->add_dim(32);
+        b->add_dim(num_output);
+      }
+
+    lparam = net_param->add_layer();
     lparam->set_type(ctype);
     lparam->set_name(name);
     if (dropout_ratio == 0)
       lparam->add_top(top);
     else
       lparam->add_top(ctype + std::to_string(id) + "_undropped");
+    if (expose_hidden)
+      {
+        lparam->add_top(name + "_final_h");
+        lparam->add_top(name + "_final_c");
+      }
     lparam->add_bottom(bottom_seq);
     lparam->add_bottom(bottom_cont);
+    if (expose_hidden)
+      {
+        lparam->add_bottom(name + "_h_init");
+        lparam->add_bottom(name + "_c_init");
+      }
     caffe::RecurrentParameter *rparam = lparam->mutable_recurrent_param();
     rparam->set_num_output(num_output);
+    if (expose_hidden)
+      rparam->set_expose_hidden(true);
     caffe::FillerParameter *weight_filler_param
         = rparam->mutable_weight_filler();
     weight_filler_param->set_type(weight_filler);
@@ -246,6 +290,11 @@ namespace dd
             r_layers.push_back(_affine_str);
             h_sizes.push_back(std::stoi(s.substr(pos + _affine_str.size())));
           }
+        else if ((pos = s.find(_tile_str)) != std::string::npos)
+          {
+            r_layers.push_back(_tile_str);
+            h_sizes.push_back(-1);
+          }
         else
           {
             try
@@ -256,15 +305,18 @@ namespace dd
             catch (std::exception &e)
               {
                 throw MLLibBadParamException(
-                    "timeseries template requires layers of the form \"L50\". "
-                    "L for LSTM, R for RNN, A for affine dimension reduction, "
+                    "timeseries template requires layers of the form "
+                    "\"L50\". "
+                    "L for LSTM, R for RNN, A for affine dimension "
+                    "reduction, "
                     " and 50 for a hidden cell size of 50");
               }
           }
       }
   }
 
-  void NetLayersCaffeRecurrent::configure_net(const APIData &ad_mllib)
+  void NetLayersCaffeRecurrent::configure_net(const APIData &ad_mllib,
+                                              bool expose_hidden)
   {
 
     std::vector<std::string> layers;
@@ -354,6 +406,8 @@ namespace dd
           type = "LSTM";
         else if (layers[i] == _affine_str)
           type = "AFFINE";
+        else if (layers[i] == _tile_str)
+          type = "TILE";
 
         top = type + "_" + std::to_string(i);
         if ((i == layers.size() - 1) && osize[osize.size() - 1] == ntargets)
@@ -369,12 +423,26 @@ namespace dd
             add_affine(this->_dnet_params, "affine_" + std::to_string(i),
                        bottoms, top, init, init, osize[i], isize);
           }
+        else if (type == "TILE")
+          {
+            // get previous layer name
+            std::string prevname;
+            if (layers[i - 1] == _rnn_str)
+              prevname = "RNN" + std::to_string(i - 1) + "_final_h";
+            prevname = "LSTM" + std::to_string(i - 1) + "_final_h";
+            add_tile(this->_net_params, "tile_" + std::to_string(i), prevname,
+                     top);
+            add_tile(this->_dnet_params, "tile_" + std::to_string(i), prevname,
+                     top);
+          }
         else
           {
             add_basic_block(this->_net_params, bottoms, "cont_seq", top,
-                            osize[i], dropouts[i], init, init, layers[i], i);
+                            osize[i], dropouts[i], init, init, layers[i], i,
+                            expose_hidden);
             add_basic_block(this->_dnet_params, bottoms, "cont_seq", top,
-                            osize[i], dropouts[i], init, init, layers[i], i);
+                            osize[i], dropouts[i], init, init, layers[i], i,
+                            expose_hidden);
           }
         if (!residual)
           bottoms.clear();
@@ -469,7 +537,8 @@ namespace dd
   void configure_recurrent_template(const APIData &ad,
                                     TInputConnectorStrategy &inputc,
                                     caffe::NetParameter &net_param,
-                                    std::shared_ptr<spdlog::logger> &logger)
+                                    std::shared_ptr<spdlog::logger> &logger,
+                                    bool expose_hidden)
   {
     caffe::NetParameter dnet_param;
     NetCaffe<NetInputCaffe<TInputConnectorStrategy>, NetLayersCaffeRecurrent,
@@ -478,7 +547,7 @@ namespace dd
     netcaffe._nic.configure_inputs(ad, inputc);
     // add ntargets to ad
     const_cast<APIData &>(ad).add("ntargets", (int)inputc._ntargets);
-    netcaffe._nlac.configure_net(ad);
+    netcaffe._nlac.configure_net(ad, expose_hidden);
     // will be changed at predict time
     // small default for debug
     net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(10);
@@ -491,13 +560,16 @@ namespace dd
 #ifdef USE_TORCH
   template void configure_recurrent_template<CSVTSTorchInputFileConn>(
       const APIData &ad, CSVTSTorchInputFileConn &inputc,
-      caffe::NetParameter &net_param, std::shared_ptr<spdlog::logger> &logger);
+      caffe::NetParameter &net_param, std::shared_ptr<spdlog::logger> &logger,
+      bool expose_hidden);
   template void configure_recurrent_template<ImgTorchInputFileConn>(
       const APIData &ad, ImgTorchInputFileConn &inputc,
-      caffe::NetParameter &net_param, std::shared_ptr<spdlog::logger> &logger);
+      caffe::NetParameter &net_param, std::shared_ptr<spdlog::logger> &logger,
+      bool expose_hidden);
   template void configure_recurrent_template<TxtTorchInputFileConn>(
       const APIData &ad, TxtTorchInputFileConn &inputc,
-      caffe::NetParameter &net_param, std::shared_ptr<spdlog::logger> &logger);
+      caffe::NetParameter &net_param, std::shared_ptr<spdlog::logger> &logger,
+      bool expose_hidden);
 #endif
   // template class
   // NetCaffe<NetInputCaffe<ImgCaffeInputFileConn>,NetLayersCaffeRecurrent,NetLossCaffe>;
@@ -507,5 +579,4 @@ namespace dd
   // NetCaffe<NetInputCaffe<TxtCaffeInputFileConn>,NetLayersCaffeRecurrent,NetLossCaffe>;
   // template class
   // NetCaffe<NetInputCaffe<SVMCaffeInputFileConn>,NetLayersCaffeRecurrent,NetLossCaffe>;
-
 }

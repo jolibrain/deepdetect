@@ -58,7 +58,7 @@ static std::string sinus = "../examples/all/sinus/";
 static std::string iterations_nbeats_cpu = "100";
 static std::string iterations_nbeats_gpu = "1000";
 
-static std::string iterations_resnet50 = "1000";
+static std::string iterations_resnet50 = "2000";
 
 TEST(torchapi, service_predict)
 {
@@ -192,7 +192,7 @@ TEST(torchapi, service_train_images_split)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(201, jd["status"]["code"]);
 
-  ASSERT_TRUE(jd["body"]["measure"]["iteration"] == 1000) << "iterations";
+  ASSERT_TRUE(jd["body"]["measure"]["iteration"] == 2000) << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() <= 1) << "accuracy";
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() >= 0.6)
       << "accuracy good";
@@ -244,7 +244,6 @@ TEST(torchapi, service_train_images)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(201, jd["status"]["code"]);
 
-  ASSERT_TRUE(jd["body"]["measure"]["iteration"] == 1000) << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() <= 1) << "accuracy";
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() >= 0.6)
       << "accuracy good";
