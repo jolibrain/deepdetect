@@ -45,6 +45,9 @@ RUN --mount=type=cache,target=/var/cache/apt --mount=type=cache,target=/var/lib/
     libboost-iostreams-dev \
     libboost-program-options-dev \
     libboost-test-dev \
+    libboost-regex-dev \
+    libboost-date-time-dev \
+    libboost-chrono-dev \
     libssl-dev \
     libcurlpp-dev \
     libcurl4-openssl-dev \
@@ -81,18 +84,11 @@ RUN --mount=type=cache,target=/var/cache/apt --mount=type=cache,target=/var/lib/
     libarchive-dev \
     bash-completion
 
-## Need recent cmake version for cuda 10
-#RUN mkdir /tmp/cmake && cd /tmp/cmake && \
-#    apt remove cmake && \
-#    wget https://cmake.org/files/v3.14/cmake-3.14.0.tar.gz && \
-#    tar xf cmake-3.14.0.tar.gz && \
-#    cd cmake-3.14.0 && \
-#    ./configure && \
-#    make install && \
-#    rm -rf /tmp/cmake
-
-RUN wget -O /tmp/bazel.deb https://github.com/bazelbuild/bazel/releases/download/0.24.1/bazel_0.24.1-linux-x86_64.deb && \
-    dpkg -i /tmp/bazel.deb && rm -rf /tmp/bazel.deb
+RUN for url in \
+        https://deepdetect.com/dd/pkgs/ubuntu-18.04/libcppnetlib0_0.11.2+dfsg1-2_amd64.deb \
+        https://deepdetect.com/dd/pkgs/ubuntu-18.04/libcppnetlib-dev_0.11.2+dfsg1-2_amd64.deb \
+        https://github.com/bazelbuild/bazel/releases/download/0.24.1/bazel_0.24.1-linux-x86_64.deb \
+        ; do curl -L -s -o /tmp/p.deb $url && dpkg -i /tmp/p.deb && rm -rf /tmp/p.deb; done
 
 # Fix "ImportError: No module named builtins"
 # RUN pip install future pyyaml typing
@@ -103,18 +99,6 @@ WORKDIR /opt/deepdetect/
 ENV CCACHE_DIR=/ccache
 ENV PATH=/usr/lib/ccache:/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-# Build cpp-netlib
-# TODO(sileht): move to a package version
-RUN --mount=type=cache,target=/ccache/ \
-    wget https://github.com/cpp-netlib/cpp-netlib/archive/cpp-netlib-0.11.2-final.tar.gz && \
-    tar xvzf cpp-netlib-0.11.2-final.tar.gz && \
-    cd cpp-netlib-cpp-netlib-0.11.2-final && \
-    mkdir build && \
-    cd build && \
-    cmake .. && \
-    make -j && \
-    make install
-
 # Build Deepdetect
 ENV TERM=xterm
 RUN --mount=type=cache,target=/ccache/ mkdir build && cd build && ../build.sh
@@ -123,7 +107,8 @@ RUN --mount=type=cache,target=/ccache/ mkdir build && cd build && ../build.sh
 RUN ./docker/get_libs.sh
 
 # Build final Docker image
-FROM ubuntu:18.04
+FROM ubuntu:18.04 AS runtime
+
 ARG DEEPDETECT_ARCH=gpu
 
 # Copy Deepdetect binaries from previous step
@@ -135,7 +120,7 @@ LABEL maintainer="emmanuel.benazera@jolibrain.com"
 
 # Install tools and dependencies
 RUN --mount=type=cache,target=/var/cache/apt --mount=type=cache,target=/var/lib/apt \
-    apt-get update -y && \ apt-get install -y \
+    apt-get update -y && apt-get install -y \
     wget \
 	libopenblas-base \
 	liblmdb0 \
@@ -152,7 +137,7 @@ RUN --mount=type=cache,target=/var/cache/apt --mount=type=cache,target=/var/lib/
 	libboost-iostreams1.65.1 \
     libboost-regex1.65.1 \
 	libarchive13 \
-	libprotobuf10 && \
+	libprotobuf10
 
 # Fix permissions
 RUN ln -sf /dev/stdout /var/log/deepdetect.log && \
