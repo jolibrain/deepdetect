@@ -85,39 +85,6 @@ if (NOT EXISTS ${CMAKE_BINARY_DIR}/src)
 	COMMAND  bash -c "mkdir ${CMAKE_BINARY_DIR}/src")
 endif()
 
-if (NOT EXISTS ${CMAKE_SOURCE_DIR}/caffe.proto)
-  file(DOWNLOAD https://raw.githubusercontent.com/jolibrain/caffe/master/src/caffe/proto/caffe.proto ${CMAKE_SOURCE_DIR}/caffe.proto)
-endif()
-
-if (USE_TORCH)
-  set(PB_GENERATOR_TORCH ON)
-elseif(USE_CAFFE2)
-  set(PB_GENERATOR_CAFFE2 ON)
-elseif(USE_TF)
-  set(PB_GENERATOR_TF ON)
-else()
-  set(PB_GENERATOR_SYSTEM ON)
-endif()
-
-
-if (${PB_GENERATOR_SYSTEM})
-  message(STATUS "using system protoc")
-  find_package(Protobuf REQUIRED)
-  if (Protobuf_FOUND)
-    set(PROTOBUF_INCLUDE_DIR ${Protobuf_INCLUDE_DIRS})
-    set(PROTOBUF_LIB_DIR ${Protobuf_LIBRARIES})
-  else()
-    message(FATAL_ERROR "could not find system protobuf")
-  endif()
-  execute_process(
-	COMMAND  bash -c "test -f ${CMAKE_BINARY_DIR}/src/caffe.pb.h   ||
-	( protoc \
-	  --proto_path=${CMAKE_SOURCE_DIR}/ \
-	  --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_SOURCE_DIR}/caffe.proto \
-	  && echo generating caffe.pb.* by system protoc )"
-	WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-endif()
-
 set(CMAKE_CXX_FLAGS "-g -O2 -Wall -Wextra -Werror -fopenmp -fPIC -std=c++14 -DUSE_OPENCV -DUSE_LMDB")
 
 if(RELEASE)
@@ -142,6 +109,53 @@ endif()
 if (USE_JSON_API)
   string(APPEND CMAKE_CXX_FLAGS " -DUSE_JSON_API")
 endif()
+
+# PROTOBUF
+
+# use protobuf same version as pytorch one
+set(PROTOBUF_VERSION 3.11.4)
+ExternalProject_Add(
+   protobuf
+   PREFIX protobuf
+   URL https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOBUF_VERSION}/protobuf-cpp-${PROTOBUF_VERSION}.tar.gz
+   URL_HASH SHA256=ba4bbc3e6b58d2ccfe406e616576ef48710a2aae205f463618025fc691549cfe
+   SOURCE_SUBDIR cmake
+   CMAKE_ARGS
+    -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE
+    -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
+    -DBUILD_SHARED_LIBS:BOOL=ON
+    -Dprotobuf_BUILD_TESTS:BOOL=OFF
+    -Dprotobuf_BUILD_EXAMPLES:BOOL=OFF
+   INSTALL_COMMAND ""
+)
+set(PROTOBUF_INCLUDE_DIR SYSTEM ${CMAKE_BINARY_DIR}/protobuf/src/protobuf/src)
+set(PROTOBUF_LIB_DIR ${CMAKE_BINARY_DIR}/protobuf/src/protobuf-build/)
+set(PROTOBUF_LIB_DEPS ${PROTOBUF_LIB_DIR}/libprotobuf.so ${PROTOBUF_LIB_DIR}/libprotoc.so ${PROTOBUF_LIB_DIR}/libprotobuf-lite.so)
+link_directories(${PROTOBUF_LIB_DIR})
+include_directories(${PROTOBUF_INCLUDE_DIR})
+
+file(
+    DOWNLOAD https://raw.githubusercontent.com/jolibrain/caffe/master/src/caffe/proto/caffe.proto ${CMAKE_BINARY_DIR}/caffe.proto
+    EXPECTED_HASH SHA256=e82a1d51635be93e964c6debcb4cd76514fada46348fa7b30355c14850767360
+)
+add_custom_target(
+    caffe_pb_h
+    ${PROTOBUF_LIB_DIR}/protoc --proto_path=${CMAKE_BINARY_DIR} --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_BINARY_DIR}/caffe.proto
+    BYPRODUCTS ${CMAKE_BINARY_DIR}/src/caffe.pb.h ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
+    COMMENT Generating caffe.pb.h and caffe.pb.cc
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    DEPENDS protobuf
+)
+
+set_source_files_properties(
+  ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
+  ${CMAKE_BINARY_DIR}/src/caffe.pb.h
+  PROPERTIES GENERATED TRUE)
+set_source_files_properties(
+  ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
+  ${CMAKE_BINARY_DIR}/src/caffe.pb.h
+  PROPERTIES COMPILE_FLAGS -Wno-unused-parameter)
+
 
 # dependency on Eigen for confusion matrix fast computation
 if (USE_TF)
@@ -333,10 +347,6 @@ if (USE_CAFFE2)
     list(APPEND CAFFE2_LIB_DEPS -lcaffe2_gpu)
   endif()
 
-  if (NOT USE_CAFFE)
-    list(APPEND CAFFE2_LIB_DEPS -lprotobuf)
-  endif()
-
   include_directories(
     ${PYTORCH_PATH}
     ${PYTORCH_PATH}-build
@@ -373,6 +383,7 @@ if (USE_CAFFE2)
 
   list(APPEND PYTORCH_FLAGS
 
+    -DBUILD_CUSTOM_PROTOBUF=OFF
     -DCAFFE2_LINK_LOCAL_PROTOBUF=0
 
     -DUSE_OPENMP=ON
@@ -384,7 +395,7 @@ if (USE_CAFFE2)
     -DBUILD_TEST=OFF
     -DBUILD_BINARY=OFF
     -DBUILD_DOCS=OFF
-    )
+  )
 
   # Only a few submodules are currently used by caffe2
   # (No need to log, benchmark, compile for IOS, make python libraries, ...)
@@ -397,7 +408,6 @@ if (USE_CAFFE2)
     third_party/gloo
     third_party/NNPACK
     third_party/onnx
-    third_party/protobuf
     third_party/psimd
     third_party/pthreadpool
     third_party/pybind11
@@ -416,20 +426,11 @@ if (USE_CAFFE2)
     UPDATE_DISCONNECTED 1
     GIT_TAG ${PYTORCH_SUPPORTED_COMMIT}
     PATCH_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || echo cp modules/detectron/*_op.* caffe2/operators | bash && cp ${CAFFE2_OPS} caffe2/operators && git am ${PYTORCH_PATCHES}
-    CONFIGURE_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || cmake ../pytorch ${PYTORCH_FLAGS}
+    CONFIGURE_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || PATH=${PROTOBUF_LIB_DIR}:$ENV{PATH} cmake ../pytorch ${PYTORCH_FLAGS}
     BUILD_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || make -j${N}
     INSTALL_COMMAND ""
-    )
-
-  # Compilation path
-  set(PROTOBUF_INCLUDE_DIR ${CMAKE_BINARY_DIR}/protobuf/include)
-  set(PROTOBUF_LIB_DIR ${CMAKE_BINARY_DIR}/protobuf/lib)
-  if (NOT EXISTS ${CMAKE_BINARY_DIR}/protobuf)
-    execute_process(COMMAND mkdir -p ${CMAKE_BINARY_DIR}/protobuf)
-    execute_process(COMMAND ln -s ${PYTORCH_PATH}/third_party/protobuf/src ${PROTOBUF_INCLUDE_DIR})
-    execute_process(COMMAND ln -s ${PYTORCH_PATH}-build/lib ${PROTOBUF_LIB_DIR})
-    execute_process(COMMAND ln -s ${PYTORCH_PATH}-build/bin ${CMAKE_BINARY_DIR}/protobuf/bin)
-  endif()
+    DEPENDS protobuf
+  )
 
   # Detectron
   set(DETECTRON_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/detectron-complete)
@@ -444,8 +445,8 @@ if (USE_CAFFE2)
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
     INSTALL_COMMAND ""
-    )
-  add_dependencies(detectron pytorch)
+    DEPENDS protobuf
+  )
 
   # Python path
   if (NOT EXISTS ${CMAKE_BINARY_DIR}/python_path)
@@ -456,24 +457,9 @@ if (USE_CAFFE2)
       ${CMAKE_BINARY_DIR}/python_path/detectron)
   endif()
 
-  if (${PB_GENERATOR_CAFFE2})
-	  add_custom_command(TARGET pytorch POST_BUILD
-		COMMAND test -f ${CMAKE_BINARY_DIR}/src/caffe.pb.h  ||
-		${CMAKE_BINARY_DIR}/protobuf/bin/protoc
-		--proto_path=${CMAKE_SOURCE_DIR}/
-		--cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_SOURCE_DIR}/caffe.proto
-		&& echo generating caffe.pb.* by caffe2 protoc
-		WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-	endif()
-
 endif()
 
 if (USE_TF)
-  # protobuf with tf
-  set(PROTOBUF_INCLUDE_DIR ${CMAKE_BINARY_DIR}/protobuf/include/)
-  set(PROTOBUF_LIB_DIR ${CMAKE_BINARY_DIR}/protobuf/lib/)
-  include_directories("${PROTOBUF_INCLUDE_DIR}")
-
   # Tensorflow
   message(STATUS "Fetching Tensorflow")
   add_definitions(-DUSE_TF)
@@ -484,7 +470,7 @@ if (USE_TF)
       PREFIX tensorflow_cc
       INSTALL_DIR ${CMAKE_BINARY_DIR}
       DOWNLOAD_COMMAND git clone --branch v1.15.0 https://github.com/FloopCZ/tensorflow_cc.git
-      CONFIGURE_COMMAND cd tensorflow_cc && mkdir -p build && cd build && cmake -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED=ON .. && make && ln -s ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/tensorflow/tensorflow/contrib/makefile/gen/protobuf ${CMAKE_BINARY_DIR}/protobuf
+      CONFIGURE_COMMAND cd tensorflow_cc && mkdir -p build && cd build && cmake -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED=ON .. && make
       BUILD_COMMAND ""
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
@@ -496,28 +482,17 @@ if (USE_TF)
       PREFIX tensorflow_cc
       INSTALL_DIR ${CMAKE_BINARY_DIR}
       DOWNLOAD_COMMAND git clone --branch v1.15.0 https://github.com/FloopCZ/tensorflow_cc.git
-      CONFIGURE_COMMAND cd tensorflow_cc && mkdir -p build && cd build && cmake -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED=ON -DALLOW_CUDA=OFF .. && make && ln -s ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/tensorflow/tensorflow/contrib/makefile/gen/protobuf ${CMAKE_BINARY_DIR}/protobuf
+      CONFIGURE_COMMAND cd tensorflow_cc && mkdir -p build && cd build && cmake -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED=ON -DALLOW_CUDA=OFF .. && make
       BUILD_COMMAND ""
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
       )
   endif()
 
-set(TF_INC_DIR ${TENSORFLOW_CC_DIR}/tensorflow/ ${TENSORFLOW_CC_DIR}/tensorflow/bazel-genfiles/ ${TENSORFLOW_CC_DIR}/tensorflow/tensorflow/contrib/makefile/downloads/nsync/public/ ${TENSORFLOW_CC_DIR}/tensorflow/tensorflow/contrib/makefile/downloads/absl/)
-set(TF_LIB_DIR ${TENSORFLOW_CC_DIR}/tensorflow/bazel-bin/tensorflow/)
+  set(TF_INC_DIR ${TENSORFLOW_CC_DIR}/tensorflow/ ${TENSORFLOW_CC_DIR}/tensorflow/bazel-genfiles/ ${TENSORFLOW_CC_DIR}/tensorflow/tensorflow/contrib/makefile/downloads/nsync/public/ ${TENSORFLOW_CC_DIR}/tensorflow/tensorflow/contrib/makefile/downloads/absl/)
+  set(TF_LIB_DIR ${TENSORFLOW_CC_DIR}/tensorflow/bazel-bin/tensorflow/)
 
-include_directories("${TF_INC_DIR}")
-
-if (${PB_GENERATOR_TF})
-  add_custom_command(TARGET tensorflow_cc POST_BUILD
-    COMMAND test -f ${CMAKE_BINARY_DIR}/src/caffe.pb.h  ||
-	${CMAKE_BINARY_DIR}/protobuf/bin/protoc
-      --proto_path=${CMAKE_SOURCE_DIR}
-      --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_SOURCE_DIR}/caffe.proto
-	  && echo generating caffe.pb.* with tf protoc
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-endif()
-
+  include_directories("${TF_INC_DIR}")
 
 endif() # USE_TF
 
@@ -549,29 +524,6 @@ elseif(USE_CAFFE)
     set(USE_SYSLOG 0)
   endif()
 
-  # Set protoc path
-  if (USE_TORCH)
-    message(STATUS "using ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/bin/protoc")
-    set(PROTOBUF_INCLUDE_DIR ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/include/)
-    set(PROTOBUF_LIB_DIR ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/lib/)
-    list(APPEND CAFFE_DD_MAKE
-      ${CMAKE_COMMAND} -E env LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR}:$ENV{LD_LIBRARY_PATH} PATH=${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/bin/:$ENV{PATH}
-      )
-  elseif (CUDA_FOUND
-      AND NOT USE_CAFFE_CPU_ONLY
-      AND NOT (HAVE_CUDNN AND USE_CUDNN)
-      AND USE_TF)
-    message(STATUS "using TF protoc")
-    list(APPEND CAFFE_DD_MAKE
-      ${CMAKE_COMMAND} -E env PATH=${TENSORFLOW_CC_DIR}/tensorflow/tensorflow/contrib/makefile/gen/protobuf/bin:$ENV{PATH}
-      )
-  elseif (USE_TF OR USE_CAFFE2)
-    message(STATUS "using TF protoc")
-    list(APPEND CAFFE_DD_MAKE
-      ${CMAKE_COMMAND} -E env PATH=${CMAKE_BINARY_DIR}/protobuf/bin:$ENV{PATH}
-      )
-  endif()
-  list(APPEND CAFFE_DD_MAKE make)
 
   # Set cuda arch
   if (CUDA_FOUND AND NOT USE_CAFFE_CPU_ONLY)
@@ -608,27 +560,22 @@ elseif(USE_CAFFE)
     set(CAFFE_DEBUG 0)
   endif()
 
-  if (USE_TORCH)
-    list(APPEND CAFFE_DD_CONFIGURE_COMMAND
-      ln -sf ${CAFFE_DD_CONFIG_FILE} Makefile.config &&
-      echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config &&
-      echo "USE_SYSLOG:=${USE_SYSLOG}" >> Makefile.config &&
-      echo "DEBUG:=${CAFFE_DEBUG}" >> Makefile.config &&
-      echo "INCLUDE_DIRS+=${PROTOBUF_INCLUDE_DIR}" >> Makefile.config &&
-      echo "LIBRARY_DIRS+=${PROTOBUF_LIB_DIR}" >> Makefile.config &&
-      ${CAFFE_DD_MAKE} ${CAFFE_DD_MAKE_ARG} -j${N}
-      )
-    message(STATUS "include_dirs : ${INCLUDE_DIRS}")
+  list(APPEND CAFFE_DD_CONFIGURE_COMMAND
+    sh -c "\
+        diff ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/.build_release/src/caffe/proto/caffe.pb.cc ${CMAKE_CURRENT_BINARY_DIR}/src/caffe.pb.cc > /dev/null 2>&1 \
+        && ( echo 'caffe version of caffe.pb.h/caffe.pb.cc is already up to date') \
+        || ( echo 'Updating caffe version of caffe.pb.h/caffe.pb.cc' && rm -rf ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/.build_release/src/caffe/proto ) \
+    " &&
+    ln -sf ${CAFFE_DD_CONFIG_FILE} Makefile.config &&
+    echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config &&
+    echo "USE_SYSLOG:=${USE_SYSLOG}" >> Makefile.config &&
+    echo "DEBUG:=${CAFFE_DEBUG}" >> Makefile.config &&
+    echo "INCLUDE_DIRS+=${PROTOBUF_INCLUDE_DIR}" >> Makefile.config &&
+    echo "LIBRARY_DIRS+=${PROTOBUF_LIB_DIR}" >> Makefile.config &&
+    ${CMAKE_COMMAND} -E env LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR}:$ENV{LD_LIBRARY_PATH} PATH=${PROTOBUF_LIB_DIR}:$ENV{PATH} make -j${N}
+  )
 
-  else()
-    list(APPEND CAFFE_DD_CONFIGURE_COMMAND
-      ln -sf ${CAFFE_DD_CONFIG_FILE} Makefile.config &&
-      echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config &&
-      echo "USE_SYSLOG:=${USE_SYSLOG}" >> Makefile.config &&
-      echo "DEBUG:=${CAFFE_DEBUG}" >> Makefile.config &&
-      ${CAFFE_DD_MAKE} ${CAFFE_DD_MAKE_ARG} -j${N}
-      )
-  endif()
+  message(STATUS "include_dirs : ${INCLUDE_DIRS}")
 
   ExternalProject_Add(
     caffe_dd
@@ -638,7 +585,8 @@ elseif(USE_CAFFE)
     CONFIGURE_COMMAND ${CAFFE_DD_CONFIGURE_COMMAND}
     INSTALL_COMMAND ""
     BUILD_IN_SOURCE 1
-    )
+    DEPENDS caffe_pb_h protobuf
+  )
 
   if (USE_HDF5)
     if (JETSON)
@@ -652,19 +600,19 @@ elseif(USE_CAFFE)
 
   if (USE_HDF5)
     if (CUDA_FOUND)
-      set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${CUDA_INCLUDE_DIRS} ${PROTOBUF_INCLUDE_DIR})
-      set(CAFFE_LIB_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${HDF5_LIB} ${PROTOBUF_LIB_DIR})
+      set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${CUDA_INCLUDE_DIRS})
+      set(CAFFE_LIB_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${HDF5_LIB})
     else()
-      set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src /usr/include/hdf5/serial ${PROTOBUF_INCLUDE_DIR})
-      set(CAFFE_LIB_DIR $ENV{HOME}/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${HDF5_LIB} ${PROTOBUF_LIB_DIR})
+      set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src /usr/include/hdf5/serial)
+      set(CAFFE_LIB_DIR $ENV{HOME}/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${HDF5_LIB})
     endif()
   else()
     if (CUDA_FOUND)
-      set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${CUDA_INCLUDE_DIRS} ${PROTOBUF_INCLUDE_DIR})
-      set(CAFFE_LIB_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${PROTOBUF_LIB_DIR})
+      set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${CUDA_INCLUDE_DIRS})
+      set(CAFFE_LIB_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src)
     else()
-      set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${PROTOBUF_INCLUDE_DIR})
-      set(CAFFE_LIB_DIR $ENV{HOME}/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${PROTOBUF_LIB_DIR})
+      set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src)
+      set(CAFFE_LIB_DIR $ENV{HOME}/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src)
     endif()
   endif()
 endif()
@@ -672,9 +620,9 @@ endif()
 # Caffe dependencies
 if (USE_CAFFE)
   if (USE_HDF5)
-    set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lhdf5_hl -lhdf5 -lopenblas -lcaffe -lprotobuf)
+    set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lhdf5_hl -lhdf5 -lopenblas -lcaffe)
   else()
-    set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lopenblas -lcaffe -lprotobuf)
+    set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lopenblas -lcaffe)
   endif()
 endif()
 
@@ -695,9 +643,6 @@ if (USE_CAFFE2)
   if (USE_CAFFE)
     add_dependencies(caffe_dd pytorch)
     add_dependencies(caffe_dd detectron)
-  else()
-    set(CAFFE2_INC_DIR ${PROTOBUF_INCLUDE_DIR})
-    set(CAFFE2_LIB_DIR ${PROTOBUF_LIB_DIR})
   endif()
 endif()
 
@@ -706,7 +651,7 @@ if (USE_NCNN)
   message(STATUS "Configuring NCNN")
   add_definitions(-DUSE_NCNN)
   include_directories(${CMAKE_CURRENT_BINARY_DIR})
-  set(NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src/libncnn.a -lprotobuf)
+  set(NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src/libncnn.a)
   if (RPI3)
     ExternalProject_Add(
       ncnn
@@ -732,15 +677,13 @@ if (USE_NCNN)
   endif()
   set(NCNN_INC_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/src ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src)
   set(NCNN_LIB_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src)
+  include_directories(${NCNN_INC_DIR})
 endif()
 
 # Torch
 if (USE_TORCH)
 
   set(CMAKE_EXE_LINKER_FLAGS "-Wl,--no-as-needed")
-
-  set(PROTOBUF_INCLUDE_DIR ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/include/)
-  set(PROTOBUF_LIB_DIR ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/lib/)
 
   set(PYTORCH_PATCHES_PATH ${CMAKE_BINARY_DIR}/patches/pytorch)
 
@@ -749,9 +692,7 @@ if (USE_TORCH)
     ${PYTORCH_PATCHES_PATH}/pytorch_16_logging.patch
     ${PYTORCH_PATCHES_PATH}/pytorch_14_namespace.patch
     ${PYTORCH_PATCHES_PATH}/pytorch_16_fatbin.patch
-    )
-
-  include_directories("${PROTOBUF_INCLUDE_DIR}")
+  )
 
   message(STATUS "Configuring libtorch")
   add_definitions(-DUSE_TORCH)
@@ -780,14 +721,14 @@ if (USE_TORCH)
       PATCH_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || git apply ${PYTORCH_PATCHES} && echo Applying ${PYTORCH_PATCHES}
       CONFIGURE_COMMAND ""
       BUILD_COMMAND ""
-      COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || GLIBCXX_USE_CXX11_ABI=1 BUILD_TEST=0 USE_CUDA=${PYTORCH_USE_CUDA} BUILD_CAFFE2_OPS=0 USE_GLOG=0 CAFFE2_LINK_LOCAL_PROTOBUF=0 MAX_JOBS=8 python3 ../pytorch/tools/build_libtorch.py
+      COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || PATH=${PROTOBUF_LIB_DIR}:$ENV{PATH} BUILD_CUSTOM_PROTOBUF=0 GLIBCXX_USE_CXX11_ABI=1 BUILD_TEST=0 USE_CUDA=${PYTORCH_USE_CUDA} BUILD_CAFFE2_OPS=0 USE_GLOG=0 CAFFE2_LINK_LOCAL_PROTOBUF=0 MAX_JOBS=8 python3 ../pytorch/tools/build_libtorch.py
       INSTALL_COMMAND ""
     )
 
     set(TORCH_LOCATION ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch)
   endif()
 
-  set(TORCH_LIB_DEPS ${TORCH_LOCATION}/lib/libtorch.so ${TORCH_LOCATION}/lib/libtorch_cpu.so ${TORCH_LOCATION}/lib/libc10.so -llmdb -lprotobuf)
+  set(TORCH_LIB_DEPS ${TORCH_LOCATION}/lib/libtorch.so ${TORCH_LOCATION}/lib/libtorch_cpu.so ${TORCH_LOCATION}/lib/libc10.so -llmdb)
 
   if (NOT USE_CPU_ONLY AND CUDA_FOUND)
     list(APPEND TORCH_LIB_DEPS ${TORCH_LOCATION}/lib/libc10_cuda.so ${TORCH_LOCATION}/lib/libtorch_cuda.so)
@@ -797,18 +738,6 @@ if (USE_TORCH)
 
   set(TORCH_INC_DIR ${TORCH_LOCATION}/include/ ${TORCH_LOCATION}/include/torch/csrc/api/include/ ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/include/torch/csrc/api/include ${TORCH_LOCATION}/.. ${CMAKE_BINARY_DIR}/src)
   set(TORCH_LIB_DIR ${TORCH_LOCATION}/lib/)
-
-  if (${PB_GENERATOR_TORCH})
-    add_custom_command(TARGET pytorch POST_BUILD
-      COMMAND test -f ${CMAKE_BINARY_DIR}/src/caffe.pb.h ||
-       env LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR}:$ENV{LD_LIBRARY_PATH} PATH=${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/bin/:$ENV{PATH}
-	   ${CMAKE_BINARY_DIR}/pytorch/src/pytorch-build/build/bin/protoc
-		--proto_path=${CMAKE_SOURCE_DIR}
-		--cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_SOURCE_DIR}/caffe.proto &&
-		echo generating caffe.pb.* with pytorch protoc
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR} )
-
-  endif()
 
 endif()
 
@@ -868,12 +797,8 @@ endif()
 # add the binary tree to the search path for include files
 # so that we will find dd_config.h
 include_directories("${PROJECT_BINARY_DIR}")
-include_directories(${CAFFE_INC_DIR} ${CAFFE2_INC_DIR} ${XGBOOST_INC_DIR} ${TSNE_INC_DIR} ${TORCH_INC_DIR})
+include_directories(${CAFFE_INC_DIR} ${XGBOOST_INC_DIR} ${TSNE_INC_DIR} ${TORCH_INC_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/src/backends/caffe ${CMAKE_SOURCE_DIR}/backends/xgb ${CMAKE_SOURCE_DIR}/backends/tf ${CMAKE_SOURCE_DIR}/backends/dlib ${CMAKE_SOURCE_DIR}/backends/tsne)
-
-if (USE_NCNN)
-  include_directories(${NCNN_INC_DIR})
-endif()
 
 if (USE_TENSORRT)
 
@@ -905,12 +830,12 @@ if (USE_TENSORRT)
 
   if (NOT USE_TENSORRT_OSS)
     include_directories(${CMAKE_CURRENT_BINARY_DIR})
-	set(TENSORRT_LIBS protobuf nvinfer nvparsers nvinfer_plugin nvonnxparser )
+	set(TENSORRT_LIBS nvinfer nvparsers nvinfer_plugin nvonnxparser )
 
   else()
     set(TENSORRT_LIB_DIR ${CMAKE_BINARY_DIR}/tensorrt-oss/bin/ ${TENSORRT_LIB_DIR})
     include_directories(${CMAKE_CURRENT_BINARY_DIR})
-	set(TENSORRT_LIBS protobuf nvinfer nvparsers nvcaffeparser nvinfer_plugin nvonnxparser )
+	set(TENSORRT_LIBS nvinfer nvparsers nvcaffeparser nvinfer_plugin nvonnxparser )
 
     if (EXISTS "${TRTTESTDIR}/libnvinfer.so.7")
       set(TENSORRT_COMMIT f693a6d723ef2766be36deb5e7987cd50159973a) # https://github.com/NVIDIA/TensorRT/releases/tag/20.09
@@ -927,22 +852,18 @@ if (USE_TENSORRT)
     list(APPEND TRT_FLAGS
       -DTRT_OUT_DIR=${CMAKE_BINARY_DIR}/tensorrt-oss/bin
       -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc
-      )
+    )
 
     if (JETSON)
-      list(APPEND TRT_FLAGS
-        -DCMAKE_C_COMPILER=/usr/bin/cc
-        )
+      list(APPEND TRT_FLAGS -DCMAKE_C_COMPILER=/usr/bin/cc)
     endif()
 
 	set(TRT_PATCHES_PATH ${CMAKE_BINARY_DIR}/patches/trt)
-
-	set(TRT_PATCHES
-	  ${TRT_PATCHES_PATH}/0001-support-for-refinedet.patch
-	  )
-
+	set(TRT_PATCHES ${TRT_PATCHES_PATH}/0001-support-for-refinedet.patch)
     set(TRT_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/tensorrt-oss-complete)
 
+    # Tensorrt uses its own protobuf version (3.0.0) and this cannot be overrided
+    # At best we can set the version it will internally build
     ExternalProject_Add(
       tensorrt-oss
       PREFIX tensorrt-oss
@@ -955,8 +876,7 @@ if (USE_TENSORRT)
       CONFIGURE_COMMAND test -f ${TRT_COMPLETE} && echo Skipping || cmake ../tensorrt-oss ${TRT_FLAGS}
       BUILD_COMMAND test -f ${TRT_COMPLETE} && echo Skipping || make -j${N}
       INSTALL_COMMAND ""
-      )
-
+    )
     endif()
 
     include_directories(${TENSORRT_INC_DIR})
@@ -985,7 +905,7 @@ include_directories("${PROJECT_SOURCE_DIR}/src")
 include_directories(${CMAKE_BINARY_DIR}/src)
 add_subdirectory(src)
 
-set(COMMON_INCLUDE_DIRS ${Boost_INCLUDE_DIRS} ${HTTP_INCLUDE_DIR})
+set(COMMON_INCLUDE_DIRS ${Boost_INCLUDE_DIRS} ${HTTP_INCLUDE_DIR} ${PROTOBUF_INCLUDE_DIR})
 
 if (CUDA_FOUND)
     list(APPEND COMMON_INCLUDE_DIRS ${CUDA_INCLUDE_DIRS})
@@ -1006,6 +926,7 @@ set(COMMON_LINK_DIRS
 
 set(COMMON_LINK_LIBS
     ddetect ${DLIB_LIB_DEPS} ${TENSORRT_LIBS} ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} archive
+    ${PROTOBUF_LIB_DEPS}
     ${HTTP_LIB_DEPS}
     ${CAFFE_LIB_DEPS}
     ${CAFFE2_LIB_DEPS}
