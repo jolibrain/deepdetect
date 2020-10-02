@@ -59,40 +59,6 @@ namespace dd
       torch::Tensor first_forward(torch::Tensor x);
       torch::Tensor first_extract(torch::Tensor x, std::string extract_layer);
 
-      virtual void to(torch::Device device, bool non_blocking = false)
-      {
-        torch::nn::Module::to(device, non_blocking);
-        _device = device;
-      }
-
-      /**
-       * \brief see torch::module::to
-       * @param dtype : torch::kFloat32 or torch::kFloat64
-       * @param non_blocking
-       */
-      virtual void to(torch::Dtype dtype, bool non_blocking = false)
-      {
-        torch::nn::Module::to(dtype, non_blocking);
-        _dtype = dtype;
-      }
-
-      /**
-       * \brief see torch::module::to
-       * @param device cpu / gpu
-       * @param dtype : torch::kFloat32 or torch::kFloat64
-       * @param non_blocking
-       */
-      virtual void to(torch::Device device, torch::Dtype dtype,
-                      bool non_blocking = false)
-      {
-        torch::nn::Module::to(device, dtype, non_blocking);
-        _device = device;
-        _dtype = dtype;
-      }
-
-      virtual torch::Tensor extract(torch::Tensor x, std::string extract_layer)
-          = 0;
-
     protected:
       void init_block();
 
@@ -107,8 +73,6 @@ namespace dd
       torch::nn::Linear _fc4{ nullptr };
       torch::nn::Linear _theta_b_fc{ nullptr };
       torch::nn::Linear _theta_f_fc{ nullptr };
-      torch::Dtype _dtype = torch::kFloat32;
-      torch::Device _device = torch::Device("cpu");
     };
 
     typedef torch::nn::ModuleHolder<BlockImpl> Block;
@@ -129,8 +93,7 @@ namespace dd
       }
 
       std::tuple<torch::Tensor, torch::Tensor> forward(torch::Tensor x);
-      virtual torch::Tensor extract(torch::Tensor x,
-                                    std::string extract_layer) override;
+      torch::Tensor extract(torch::Tensor x, std::string extract_layer);
 
     protected:
       torch::Tensor _bS, _fS;
@@ -153,8 +116,7 @@ namespace dd
       }
 
       std::tuple<torch::Tensor, torch::Tensor> forward(torch::Tensor x);
-      virtual torch::Tensor extract(torch::Tensor x,
-                                    std::string extract_layer) override;
+      torch::Tensor extract(torch::Tensor x, std::string extract_layer);
 
     protected:
       torch::Tensor _bT, _fT;
@@ -184,8 +146,7 @@ namespace dd
       }
 
       std::tuple<torch::Tensor, torch::Tensor> forward(torch::Tensor x);
-      virtual torch::Tensor extract(torch::Tensor x,
-                                    std::string extract_layer) override;
+      torch::Tensor extract(torch::Tensor x, std::string extract_layer);
 
     protected:
       torch::nn::Linear _backcast_fc{ nullptr };
@@ -311,103 +272,6 @@ namespace dd
         }
     }
 
-    virtual void to(torch::Device device, bool non_blocking = false)
-    {
-      torch::nn::Module::to(device, non_blocking);
-      _device = device;
-      for (unsigned int i = 0; i < _stack_types.size(); ++i)
-        {
-          Stack s = _stacks[i];
-          switch (_stack_types[i])
-            {
-            case seasonality:
-              for (auto b : s)
-                b.get<SeasonalityBlock>()->to(device);
-              break;
-            case trend:
-              for (auto b : s)
-                b.get<TrendBlock>()->to(device);
-              break;
-            case generic:
-              for (auto b : s)
-                b.get<GenericBlock>()->to(device);
-              break;
-            default:
-              break;
-            }
-        }
-      _fcn->to(device);
-    }
-
-    /**
-     * \brief see torch::module::to
-     * @param dtype : torch::kFloat32 or torch::kFloat64
-     * @param non_blocking
-     */
-    virtual void to(torch::Dtype dtype, bool non_blocking = false)
-    {
-      torch::nn::Module::to(dtype, non_blocking);
-      _dtype = dtype;
-      for (unsigned int i = 0; i < _stack_types.size(); ++i)
-        {
-          Stack s = _stacks[i];
-          switch (_stack_types[i])
-            {
-            case seasonality:
-              for (auto b : s)
-                b.get<SeasonalityBlock>()->to(dtype);
-              break;
-            case trend:
-              for (auto b : s)
-                b.get<TrendBlock>()->to(dtype);
-              break;
-            case generic:
-              for (auto b : s)
-                b.get<GenericBlock>()->to(dtype);
-              break;
-            default:
-              break;
-            }
-        }
-      _fcn->to(dtype);
-    }
-
-    /**
-     * \brief see torch::module::to
-     * @param device cpu / gpu
-     * @param dtype : torch::kFloat32 or torch::kFloat64
-     * @param non_blocking
-     */
-    virtual void to(torch::Device device, torch::Dtype dtype,
-                    bool non_blocking = false)
-    {
-      torch::nn::Module::to(device, dtype, non_blocking);
-      _device = device;
-      _dtype = dtype;
-      for (unsigned int i = 0; i < _stack_types.size(); ++i)
-        {
-          Stack s = _stacks[i];
-          switch (_stack_types[i])
-            {
-            case seasonality:
-              for (auto b : s)
-                b.get<SeasonalityBlock>()->to(device, dtype);
-              break;
-            case trend:
-              for (auto b : s)
-                b.get<TrendBlock>()->to(device, dtype);
-              break;
-            case generic:
-              for (auto b : s)
-                b.get<GenericBlock>()->to(device, dtype);
-              break;
-            default:
-              break;
-            }
-        }
-      _fcn->to(device, dtype);
-    }
-
     virtual torch::Tensor forward(torch::Tensor x);
     virtual torch::Tensor extract(torch::Tensor x, std::string extract_layer);
 
@@ -451,14 +315,15 @@ namespace dd
     unsigned int _nb_blocks_per_stack = NBEATS_DEFAULT_NB_BLOCKS;
     bool _share_weights_in_stack = NBEATS_DEFAULT_SHARE_WEIGHTS;
     std::vector<BlockType> _stack_types = NBEATS_DEFAULT_STACK_TYPES;
-    std::vector<Stack> _stacks;
     std::vector<int> _thetas_dims = NBEATS_DEFAULT_THETAS;
+
+    std::vector<Stack> _stacks;
     torch::nn::Linear _fcn{ nullptr };
-    torch::Device _device = torch::Device("cpu");
     std::vector<float> _backcast_linspace;
     std::vector<float> _forecast_linspace;
     std::tuple<torch::Tensor, torch::Tensor> create_sin_basis(int thetas_dim);
     std::tuple<torch::Tensor, torch::Tensor> create_exp_basis(int thetas_dim);
+    torch::Tensor _finit;
     void create_nbeats();
     void update_params(const CSVTSTorchInputFileConn &inputc);
     std::string _trend_str = "t";

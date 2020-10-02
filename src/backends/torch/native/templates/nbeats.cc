@@ -63,9 +63,9 @@ namespace dd
   {
     x = BlockImpl::first_forward(x);
     torch::Tensor tbfc = _theta_b_fc->forward(x);
-    torch::Tensor backcast = tbfc.mm(_bS.to(_device));
+    torch::Tensor backcast = tbfc.mm(_bS);
     torch::Tensor tffc = _theta_f_fc->forward(x);
-    torch::Tensor forecast = tffc.mm(_fS.to(_device));
+    torch::Tensor forecast = tffc.mm(_fS);
     return std::make_tuple(
         backcast.reshape({ backcast.size(0), _backcast_length, _data_size }),
         forecast.reshape({ forecast.size(0), _backcast_length, _data_size }));
@@ -79,12 +79,12 @@ namespace dd
     if (extract_layer != "theta_b_fc" && extract_layer != "theta_f_fc")
       return x;
     torch::Tensor tbfc = _theta_b_fc->forward(x);
-    torch::Tensor backcast = tbfc.mm(_bS.to(_device));
+    torch::Tensor backcast = tbfc.mm(_bS);
     if (extract_layer == "theta_b_fc")
       return backcast;
 
     torch::Tensor tffc = _theta_f_fc->forward(x);
-    torch::Tensor forecast = tffc.mm(_fS.to(_device));
+    torch::Tensor forecast = tffc.mm(_fS);
     return forecast;
   }
 
@@ -121,7 +121,7 @@ namespace dd
                         * _data_size },
               options)
               .clone();
-    torch::Tensor fS = torch::cat({ s1, s2 });
+    torch::Tensor fS = register_buffer("fS", torch::cat({ s1, s2 }));
 
     tdata.clear();
     for (unsigned int i = 0; i < p1; ++i)
@@ -149,8 +149,8 @@ namespace dd
               options)
               .clone();
 
-    torch::Tensor bS = torch::cat({ ss1, ss2 });
-    return std::make_tuple(bS.to(_device), fS.to(_device));
+    torch::Tensor bS = register_buffer("bS", torch::cat({ ss1, ss2 }));
+    return std::make_tuple(bS, fS);
   }
 
   std::tuple<torch::Tensor, torch::Tensor>
@@ -169,12 +169,14 @@ namespace dd
                 powf(_forecast_linspace[j], static_cast<float>(i))));
             ;
           }
-    fT = torch::from_blob(tdata.data(),
-                          { static_cast<long int>(p),
-                            static_cast<long int>(_forecast_linspace.size())
-                                * static_cast<long int>(_data_size) },
-                          options)
-             .clone();
+    fT = register_buffer(
+        "fT",
+        torch::from_blob(tdata.data(),
+                         { static_cast<long int>(p),
+                           static_cast<long int>(_forecast_linspace.size())
+                               * static_cast<long int>(_data_size) },
+                         options)
+            .clone());
 
     tdata.clear();
     for (unsigned int i = 0; i < p; ++i)
@@ -182,13 +184,15 @@ namespace dd
         for (unsigned int d2 = 0; d2 < _data_size; ++d2)
           tdata.push_back(static_cast<float>(
               powf(_backcast_linspace[j], static_cast<float>(i))));
-    bT = torch::from_blob(tdata.data(),
-                          { static_cast<long int>(p),
-                            static_cast<long int>(_backcast_linspace.size())
-                                * static_cast<long int>(_data_size) },
-                          options)
-             .clone();
-    return std::make_tuple(bT.to(_device), fT.to(_device));
+    bT = register_buffer(
+        "bT",
+        torch::from_blob(tdata.data(),
+                         { static_cast<long int>(p),
+                           static_cast<long int>(_backcast_linspace.size())
+                               * static_cast<long int>(_data_size) },
+                         options)
+            .clone());
+    return std::make_tuple(bT, fT);
   }
 
   torch::Tensor NBeats::TrendBlockImpl::extract(torch::Tensor x,
@@ -199,12 +203,12 @@ namespace dd
       return x;
 
     torch::Tensor tbfc = _theta_b_fc->forward(x);
-    torch::Tensor backcast = tbfc.mm(_bT.to(_device));
+    torch::Tensor backcast = tbfc.mm(_bT);
     if (extract_layer == "theta_b_fc")
       return backcast;
 
     torch::Tensor tffc = _theta_b_fc->forward(x);
-    torch::Tensor forecast = tffc.mm(_fT.to(_device));
+    torch::Tensor forecast = tffc.mm(_fT);
     return forecast;
   }
 
@@ -214,8 +218,8 @@ namespace dd
     x = BlockImpl::first_forward(x);
     torch::Tensor tbfc = _theta_b_fc->forward(x);
     torch::Tensor tffc = _theta_b_fc->forward(x);
-    torch::Tensor backcast = tbfc.mm(_bT.to(_device));
-    torch::Tensor forecast = tffc.mm(_fT.to(_device));
+    torch::Tensor backcast = tbfc.mm(_bT);
+    torch::Tensor forecast = tffc.mm(_fT);
 
     return std::make_tuple(
         backcast.reshape({ backcast.size(0), _backcast_length, _data_size }),
@@ -320,13 +324,14 @@ namespace dd
         _stacks.push_back(s);
       }
     _fcn = register_module("fcn", torch::nn::Linear(_data_size, _output_size));
+    _finit = register_buffer(
+        "finit", torch::zeros({ 1, _backcast_length, _data_size }));
   }
 
   torch::Tensor NBeats::forward(torch::Tensor x)
   {
     torch::Tensor b = x;
-    torch::Tensor f = torch::zeros({ x.size(0), _backcast_length, _data_size })
-                          .to(_device);
+    torch::Tensor f = _finit.repeat({ x.size(0), 1, 1 });
 
     int stack_counter = 0;
     for (Stack s : _stacks)
@@ -381,8 +386,7 @@ namespace dd
     bool endofblock = subst[2] == "end";
 
     torch::Tensor b = x;
-    torch::Tensor f = torch::zeros({ x.size(0), _backcast_length, _data_size })
-                          .to(_device);
+    torch::Tensor f = _finit.repeat({ x.size(0), 1, 1 });
 
     int stack_counter = 0;
     for (Stack s : _stacks)
