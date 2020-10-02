@@ -19,6 +19,10 @@ if (USE_CAFFE)
   add_definitions(-DUSE_CAFFE)
 endif()
 
+if (USE_TENSORRT_OSS)
+  set(USE_TENSORRT ON)
+endif()
+
 if (USE_TF AND USE_CAFFE2)
   message(FATAL_ERROR "Building with tensorflow AND caffe2 causes conflict
 (The two libraries have their own protobuf embed)")
@@ -906,8 +910,6 @@ if (USE_TENSORRT)
 
 
     list(APPEND TRT_FLAGS
-      -DTRT_LIB_DIR=${TENSORRT_DIR}/lib
-      -DCUDA_VERSION=10.0
       -DTRT_OUT_DIR=${CMAKE_BINARY_DIR}/tensorrt-oss/bin
       -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc
       )
