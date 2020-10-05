@@ -1,0 +1,32 @@
+pipeline {
+  agent any
+  environment {
+    GITHUB_TOKEN  = credentials('GITHUB_TOKEN_RELEASER')
+  }
+  stages {
+    stage('Release') {
+      steps {
+        sh '''
+          yarn
+          yarn run semantic-release
+        '''
+      }
+      steps {
+        script {
+          def common = load("ci/Jenkinsfile.common");
+          common.cancelPreviousBuilds();
+        }
+      }
+    }
+  }
+  post {
+    success {
+      cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true);
+      rocketSend(channel: 'build', message: 'Release succeed');
+    }
+    unsuccessful {
+      cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true);
+      rocketSend(channel: 'build', message: 'Release failed');
+    }
+  }
+}
