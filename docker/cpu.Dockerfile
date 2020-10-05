@@ -1,17 +1,35 @@
+# syntax = docker/dockerfile:1.0-experimental
 FROM ubuntu:18.04 AS build
 
 ARG DEEPDETECT_ARCH=cpu
 ARG DEEPDETECT_BUILD=default
+ARG DEEPDETECT_DEFAULT_MODELS=true
 
 # Install build dependencies
-RUN export DEBIAN_FRONTEND=noninteractive && \
-    apt-get update -y && \
-    apt-get install -y git \
+RUN rm -f /etc/apt/apt.conf.d/docker-clean; echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
+
+RUN --mount=type=cache,target=/var/cache/apt --mount=type=cache,target=/var/lib/apt \
+    export DEBIAN_FRONTEND=noninteractive && \
+    apt-get update -y && apt-get install -y python-dev apt-transport-https ca-certificates gnupg software-properties-common wget curl
+
+# CMake
+RUN curl https://apt.kitware.com/keys/kitware-archive-latest.asc | apt-key add -
+RUN apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
+
+# python2 pycompile + docker-buildkit is a bit buggy, it's slow as hell, so disable it for dev
+# bug closed as won't fix as python2 is eol: https://github.com/docker/for-linux/issues/502
+RUN cp /bin/true /usr/bin/pycompile
+
+RUN --mount=type=cache,target=/var/cache/apt --mount=type=cache,target=/var/lib/apt \
+    export DEBIAN_FRONTEND=noninteractive && \
+    apt-get update -y && apt-get install -y \
+    git \
+    ccache \
     automake \
-    cmake \
     build-essential \
     openjdk-8-jdk \
     pkg-config \
+    cmake \
     zip \
     g++ \
     gcc-7 g++-7 \
@@ -27,6 +45,9 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     libboost-iostreams-dev \
     libboost-program-options-dev \
     libboost-test-dev \
+    libboost-regex-dev \
+    libboost-date-time-dev \
+    libboost-chrono-dev \
     libssl-dev \
     libcurlpp-dev \
     libcurl4-openssl-dev \
@@ -39,11 +60,13 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     liblmdb-dev \
     libutfcpp-dev \
     rapidjson-dev \
-    wget \
+    libmapbox-variant-dev \
     autoconf \
     libtool-bin \
     python-numpy \
     python-future \
+    python-yaml \
+    python-typing \
     swig \
     curl \
     unzip \
@@ -51,55 +74,54 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     python-setuptools \
     python-dev \
     python-wheel \
+    python-pip \
+    python-six \
+    python-enum34 \
     unzip \
     libgoogle-perftools-dev \
+    curl \
+    libspdlog-dev \
     libarchive-dev \
-    bash-completion && \
-    wget -O /tmp/bazel.deb https://github.com/bazelbuild/bazel/releases/download/0.24.1/bazel_0.24.1-linux-x86_64.deb && \
-    dpkg -i /tmp/bazel.deb && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    bash-completion
 
-# Build cpp-netlib
-RUN wget https://github.com/cpp-netlib/cpp-netlib/archive/cpp-netlib-0.11.2-final.tar.gz && \
-    tar xvzf cpp-netlib-0.11.2-final.tar.gz && \
-    cd cpp-netlib-cpp-netlib-0.11.2-final && \
-    mkdir build && \
-    cd build && \
-    cmake .. && \
-    make -j && \
-    make install
+RUN for url in \
+        https://deepdetect.com/dd/pkgs/ubuntu-18.04/libcppnetlib0_0.11.2+dfsg1-2_amd64.deb \
+        https://deepdetect.com/dd/pkgs/ubuntu-18.04/libcppnetlib-dev_0.11.2+dfsg1-2_amd64.deb \
+        https://github.com/bazelbuild/bazel/releases/download/0.24.1/bazel_0.24.1-linux-x86_64.deb \
+        ; do curl -L -s -o /tmp/p.deb $url && dpkg -i /tmp/p.deb && rm -rf /tmp/p.deb; done
 
-# Copy Deepdetect sources files
-WORKDIR /opt
-RUN git clone https://github.com/jolibrain/deepdetect.git /opt/deepdetect
+# Fix "ImportError: No module named builtins"
+# RUN pip install future pyyaml typing
+
+ADD . /opt/deepdetect
 WORKDIR /opt/deepdetect/
 
+ENV CCACHE_DIR=/ccache
+ENV PATH=/usr/lib/ccache:/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
 # Build Deepdetect
-RUN mkdir build && \
-    cd build && \
-    cp -a ../build.sh . && \
-    ./build.sh
+ENV TERM=xterm
+RUN --mount=type=cache,target=/ccache/ mkdir build && cd build && ../build.sh
 
 # Copy libs to /tmp/libs for next build stage
 RUN ./docker/get_libs.sh
 
 # Build final Docker image
-FROM ubuntu:18.04
+FROM ubuntu:18.04 AS runtime
 
-# Download default Deepdetect models
-ARG DEEPDETECT_DEFAULT_MODELS=true
+ARG DEEPDETECT_ARCH=cpu
 
 # Copy Deepdetect binaries from previous step
 COPY --from=build /opt/deepdetect/build/main /opt/deepdetect/build/main
 COPY --from=build /opt/deepdetect/get_models.sh /opt/deepdetect/get_models.sh
 
+LABEL description="DeepDetect deep learning server & API / ${DEEPDETECT_ARCH} version"
 LABEL maintainer="emmanuel.benazera@jolibrain.com"
-LABEL description="DeepDetect deep learning server & API / CPU version"
 
 # Install tools and dependencies
-RUN apt-get update && \
-    apt-get install -y wget \
+RUN --mount=type=cache,target=/var/cache/apt --mount=type=cache,target=/var/lib/apt \
+    apt-get update -y && apt-get install -y \
+    wget \
 	libopenblas-base \
 	liblmdb0 \
 	libleveldb1v5 \
@@ -115,8 +137,7 @@ RUN apt-get update && \
 	libboost-iostreams1.65.1 \
     libboost-regex1.65.1 \
 	libarchive13 \
-	libprotobuf10 && \
-    rm -rf /var/lib/apt/lists/*
+	libprotobuf10
 
 # Fix permissions
 RUN ln -sf /dev/stdout /var/log/deepdetect.log && \

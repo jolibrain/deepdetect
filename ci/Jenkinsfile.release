@@ -1,10 +1,16 @@
 pipeline {
   agent any
-    triggers {
-      cron('H 22 * * 1-5')
-    }
+  environment {
+    GITHUB_TOKEN  = credentials('GITHUB_TOKEN_RELEASER')
+  }
   stages {
-    stage('Init') {
+    stage('Release') {
+      steps {
+        sh '''
+          yarn
+          yarn run semantic-release
+        '''
+      }
       steps {
         script {
           def common = load("ci/Jenkinsfile.common");
@@ -12,28 +18,15 @@ pipeline {
         }
       }
     }
-    stage('Building docker images') {
-      steps {
-        sh '''
-          tools/build-docker-images.sh
-        '''
-        }
-      }
-    }
-    post {
-      always {
-        sh '''
-        docker images -q -f dangling=true | xargs docker rmi
-        docker image prune -f
-        '''
-    }
+  }
+  post {
     success {
       cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true);
-      rocketSend(channel: 'build', message: 'Build succeed');
+      rocketSend(channel: 'build', message: 'Release succeed');
     }
     unsuccessful {
       cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true);
-      rocketSend(channel: 'build', message: 'Build failed');
+      rocketSend(channel: 'build', message: 'Release failed');
     }
   }
 }

@@ -52,6 +52,11 @@ namespace dd
     TorchModule();
 
     c10::IValue forward(std::vector<c10::IValue> source);
+    c10::IValue extract(std::vector<c10::IValue> source,
+                        std::string extract_layer);
+
+    bool extractable(std::string extract_layer) const;
+    std::vector<std::string> extractable_layers() const;
 
     void freeze_traced(bool freeze);
 

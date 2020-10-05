@@ -277,6 +277,66 @@ namespace dd
     return out_val;
   }
 
+  c10::IValue TorchModule::extract(std::vector<c10::IValue> source,
+                                   std::string extract_layer)
+  {
+    if (_graph) // native modules take only one tensor as input for now
+      return _graph->extract(to_tensor_safe(source[0]), extract_layer);
+    if (_native)
+      return _native->extract(to_tensor_safe(source[0]), extract_layer);
+    auto output = _traced->forward(source);
+    if (output.isTensorList())
+      {
+        auto elems = output.toTensorList();
+        source = std::vector<c10::IValue>(elems.begin(), elems.end());
+      }
+    else if (output.isTuple())
+      {
+        auto &elems = output.toTuple()->elements();
+        source = std::vector<c10::IValue>(elems.begin(), elems.end());
+      }
+    else
+      {
+        source = { output };
+      }
+    c10::IValue out_val = source.at(_classif_in);
+    if (_hidden_states)
+      {
+        // out_val is a tuple containing tensors of dimension n_batch *
+        // sequence_length * n_features We want a tensor of size n_batch *
+        // n_features from the last hidden state
+        auto &elems = out_val.toTuple()->elements();
+        out_val = elems.back().toTensor().slice(1, 0, 1).squeeze(1);
+      }
+    return out_val;
+  }
+
+  bool TorchModule::extractable(std::string extract_layer) const
+  {
+    if (_graph)
+      return _graph->extractable(extract_layer);
+    if (_native)
+      return _native->extractable(extract_layer);
+    if (_traced)
+      return extract_layer == "final";
+    return false;
+  }
+
+  std::vector<std::string> TorchModule::extractable_layers() const
+  {
+    if (_graph)
+      return _graph->extractable_layers();
+    if (_native)
+      return _native->extractable_layers();
+    if (_traced)
+      {
+        std::vector<std::string> ret;
+        ret.push_back("final");
+        return ret;
+      }
+    return std::vector<std::string>();
+  }
+
   void TorchModule::freeze_traced(bool freeze)
   {
     if (freeze != _freeze_traced)
@@ -1068,6 +1128,8 @@ namespace dd
     int64_t predict_batch_size = 1;
     APIData params = ad.getobj("parameters");
     APIData output_params = params.getobj("output");
+    std::string extract_layer;
+
     if (params.has("mllib"))
       {
         APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
@@ -1077,6 +1139,8 @@ namespace dd
             if (ad_net.has("test_batch_size"))
               predict_batch_size = ad_net.get("test_batch_size").get<int>();
           }
+        if (ad_mllib.has("extract_layer"))
+          extract_layer = ad_mllib.get("extract_layer").get<std::string>();
       }
 
     bool lstm_continuation = false;
@@ -1109,6 +1173,17 @@ namespace dd
     torch::Device cpu("cpu");
     _module.eval();
 
+    if (!extract_layer.empty() && !_module.extractable(extract_layer))
+      {
+        std::string els;
+        for (const auto &el : _module.extractable_layers())
+          els += el + " ";
+        this->_logger->error("Unknown extract layer " + extract_layer
+                             + "   candidates are " + els);
+        // or we could set back extract_layer to empty string and continue
+        throw MLLibBadParamException("unknown extract layer " + extract_layer);
+      }
+
     if (output_params.has("measure"))
       {
         APIData meas_out;
@@ -1135,7 +1210,6 @@ namespace dd
 
     for (TorchBatch batch : *dataloader)
       {
-
         std::vector<c10::IValue> in_vals;
         for (Tensor tensor : batch.data)
           {
@@ -1146,7 +1220,10 @@ namespace dd
         Tensor output;
         try
           {
-            output = to_tensor_safe(_module.forward(in_vals));
+            if (extract_layer.empty())
+              output = to_tensor_safe(_module.forward(in_vals));
+            else
+              output = to_tensor_safe(_module.extract(in_vals, extract_layer));
             if (_timeserie)
               {
                 // DO NOTHING
@@ -1179,83 +1256,129 @@ namespace dd
 
         // Output
 
-        if (_module._native != nullptr)
-          output = _module._native->cleanup_output(output);
-
-        if (output_params.has("best"))
+        if (!extract_layer.empty())
           {
-            const int best_count = output_params.get("best").get<int>();
-            std::tuple<Tensor, Tensor> sorted_output = output.sort(1, true);
-            auto probs_acc = std::get<0>(sorted_output).accessor<float, 2>();
-            auto indices_acc
-                = std::get<1>(sorted_output).accessor<int64_t, 2>();
-
-            for (int i = 0; i < output.size(0); ++i)
+            for (int j = 0; j < batch_size; j++)
               {
-                APIData results_ad;
-                std::vector<double> probs;
-                std::vector<std::string> cats;
+                APIData rad;
+                if (!inputc._ids.empty())
+                  rad.add("uri", inputc._ids.at(results_ads.size()));
+                else
+                  rad.add("uri", std::to_string(results_ads.size()));
+                if (!inputc._meta_uris.empty())
+                  rad.add("meta_uri",
+                          inputc._meta_uris.at(results_ads.size()));
+                if (!inputc._index_uris.empty())
+                  rad.add("index_uri",
+                          inputc._index_uris.at(results_ads.size()));
+                rad.add("loss", static_cast<double>(0.0));
+                torch::Tensor fo = torch::flatten(output)
+                                       .contiguous()
+                                       .to(torch::kFloat64)
+                                       .to(torch::Device("cpu"));
 
-                for (int j = 0; j < best_count; ++j)
-                  {
-                    probs.push_back(probs_acc[i][j]);
-                    int index = indices_acc[i][j];
-                    if (_seq_training)
-                      {
-                        cats.push_back(inputc.get_word(index));
-                      }
-                    else
-                      {
-                        cats.push_back(this->_mlmodel.get_hcorresp(index));
-                      }
-                  }
+                double *startout = fo.data_ptr<double>();
+                std::vector<double> vals(startout,
+                                         startout + torch ::numel(fo));
 
-                results_ad.add("uri", inputc._uris.at(results_ads.size()));
-                results_ad.add("loss", 0.0);
-                results_ad.add("cats", cats);
-                results_ad.add("probs", probs);
-                results_ad.add("nclasses", (int)_nclasses);
-
-                results_ads.push_back(results_ad);
+                rad.add("vals", vals);
+                results_ads.push_back(rad);
               }
           }
-        else if (_timeserie)
+        else
           {
-            output = output.to(cpu);
-            auto output_acc = output.accessor<float, 3>();
-            for (int j = 0; j < output.size(0); ++j)
+            if (_module._native != nullptr)
+              output = _module._native->cleanup_output(output);
+
+            if (output_params.has("best"))
               {
-                std::vector<APIData> series;
-                for (int t = 0; t < output.size(1); ++t)
+                const int best_count = output_params.get("best").get<int>();
+                std::tuple<Tensor, Tensor> sorted_output
+                    = output.sort(1, true);
+                auto probs_acc
+                    = std::get<0>(sorted_output).accessor<float, 2>();
+                auto indices_acc
+                    = std::get<1>(sorted_output).accessor<int64_t, 2>();
+
+                for (int i = 0; i < output.size(0); ++i)
                   {
-                    std::vector<double> preds;
-                    for (unsigned int k = 0; k < this->_inputc._ntargets; ++k)
+                    APIData results_ad;
+                    std::vector<double> probs;
+                    std::vector<std::string> cats;
+
+                    for (int j = 0; j < best_count; ++j)
                       {
-                        preds.push_back(output_acc[j][t][k]);
+                        probs.push_back(probs_acc[i][j]);
+                        int index = indices_acc[i][j];
+                        if (_seq_training)
+                          {
+                            cats.push_back(inputc.get_word(index));
+                          }
+                        else
+                          {
+                            cats.push_back(this->_mlmodel.get_hcorresp(index));
+                          }
                       }
-                    APIData ts;
-                    ts.add("out", preds);
-                    series.push_back(ts);
+
+                    results_ad.add("uri", inputc._uris.at(results_ads.size()));
+                    results_ad.add("loss", 0.0);
+                    results_ad.add("cats", cats);
+                    results_ad.add("probs", probs);
+                    results_ad.add("nclasses", (int)_nclasses);
+
+                    results_ads.push_back(results_ad);
                   }
-                APIData result_ad;
-                if (!inputc._ids.empty())
-                  result_ad.add("uri", inputc._ids.at(nsample++));
-                else
-                  result_ad.add("uri", std::to_string(nsample++));
-                result_ad.add("series", series);
-                result_ad.add("probs",
-                              std::vector<double>(series.size(), 1.0));
-                result_ad.add("loss", 0.0);
-                results_ads.push_back(result_ad);
+              }
+            else if (_timeserie)
+              {
+                output = output.to(cpu);
+                auto output_acc = output.accessor<float, 3>();
+                for (int j = 0; j < output.size(0); ++j)
+                  {
+                    std::vector<APIData> series;
+                    for (int t = 0; t < output.size(1); ++t)
+                      {
+                        std::vector<double> preds;
+                        for (unsigned int k = 0; k < this->_inputc._ntargets;
+                             ++k)
+                          {
+                            preds.push_back(output_acc[j][t][k]);
+                          }
+                        APIData ts;
+                        ts.add("out", preds);
+                        series.push_back(ts);
+                      }
+                    APIData result_ad;
+                    if (!inputc._ids.empty())
+                      result_ad.add("uri", inputc._ids.at(nsample++));
+                    else
+                      result_ad.add("uri", std::to_string(nsample++));
+                    result_ad.add("series", series);
+                    result_ad.add("probs",
+                                  std::vector<double>(series.size(), 1.0));
+                    result_ad.add("loss", 0.0);
+                    results_ads.push_back(result_ad);
+                  }
               }
           }
       }
-    outputc.add_results(results_ads);
 
-    if (_timeserie)
-      out.add("timeseries", true);
-    outputc.finalize(output_params, out,
-                     static_cast<MLModel *>(&this->_mlmodel));
+    if (extract_layer.empty())
+      {
+        outputc.add_results(results_ads);
+
+        if (_timeserie)
+          out.add("timeseries", true);
+        outputc.finalize(output_params, out,
+                         static_cast<MLModel *>(&this->_mlmodel));
+      }
+    else
+      {
+        UnsupervisedOutput unsupo;
+        unsupo.add_results(results_ads);
+        unsupo.finalize(ad.getobj("parameters").getobj("output"), out,
+                        static_cast<MLModel *>(&this->_mlmodel));
+      }
 
     out.add("status", 0);
     return 0;
