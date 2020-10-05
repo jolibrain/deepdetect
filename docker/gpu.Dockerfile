@@ -62,6 +62,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     curl \
     libspdlog-dev \
     libarchive-dev \
+    libmapbox-variant-dev \
     bash-completion && \
     wget -O /tmp/bazel.deb https://github.com/bazelbuild/bazel/releases/download/0.24.1/bazel_0.24.1-linux-x86_64.deb && \
     dpkg -i /tmp/bazel.deb && \
