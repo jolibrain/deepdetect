@@ -314,7 +314,8 @@ TEST(graphapi, complete_lstm_train)
         + iterations_lstm_cpu
         + ",\"test_interval\":10,\"base_lr\":0.1,\"snapshot\":500,\"test_"
           "initialization\":false},\"net\":{\"batch_size\":100,\"test_batch_"
-          "size\":10}},\"output\":{\"measure\":[\"L1\",\"L2\"]}},\"data\":[\""
+          "size\":10}},\"output\":{\"measure\":[\"L1\",\"L2\",\"mase\","
+          "\"smape\", \"mape\", \"owa\"]}},\"data\":[\""
         + csvts_data + "\",\"" + csvts_test + "\"]}";
   std::cerr << "jtrainstr=" << jtrainstr << std::endl;
   joutstr = japi.jrender(japi.service_train(jtrainstr));
@@ -333,6 +334,14 @@ TEST(graphapi, complete_lstm_train)
   ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
   ASSERT_TRUE(jd["body"]["measure"].HasMember("L1_mean_error"));
   ASSERT_TRUE(jd["body"]["measure"]["L1_max_error_0"].GetDouble() > 0.0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("MAPE_0"));
+  ASSERT_TRUE(jd["body"]["measure"]["MAPE_0"].GetDouble() > 0.0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("sMAPE_0"));
+  ASSERT_TRUE(jd["body"]["measure"]["sMAPE_0"].GetDouble() > 0.0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("MASE_0"));
+  ASSERT_TRUE(jd["body"]["measure"]["MASE_0"].GetDouble() > 0.0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("OWA_0"));
+  ASSERT_TRUE(jd["body"]["measure"]["OWA_0"].GetDouble() > 0.0);
   ASSERT_TRUE(jd["body"]["parameters"]["input"].HasMember("max_vals"));
   ASSERT_TRUE(jd["body"]["parameters"]["input"].HasMember("min_vals"));
 
@@ -399,7 +408,8 @@ TEST(graphapi, complete_lstm_train_gpu)
         + iterations_lstm_gpu
         + ",\"test_interval\":500,\"base_lr\":0.1,\"snapshot\":500,\"test_"
           "initialization\":false},\"net\":{\"batch_size\":100,\"test_batch_"
-          "size\":10}},\"output\":{\"measure\":[\"L1\",\"L2\"]}},\"data\":[\""
+          "size\":10}},\"output\":{\"measure\":[\"L1\",\"L2\",\"mape\","
+          "\"smape\",\"mase\",\"owa\"]}},\"data\":[\""
         + csvts_data + "\",\"" + csvts_test + "\"]}";
   std::cerr << "jtrainstr=" << jtrainstr << std::endl;
   joutstr = japi.jrender(japi.service_train(jtrainstr));
@@ -418,6 +428,14 @@ TEST(graphapi, complete_lstm_train_gpu)
   ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
   ASSERT_TRUE(jd["body"]["measure"].HasMember("L1_mean_error"));
   ASSERT_TRUE(jd["body"]["measure"]["L1_max_error_0"].GetDouble() > 0.0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("MAPE_0"));
+  ASSERT_TRUE(jd["body"]["measure"]["MAPE_0"].GetDouble() > 0.0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("sMAPE_0"));
+  ASSERT_TRUE(jd["body"]["measure"]["sMAPE_0"].GetDouble() > 0.0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("MASE_0"));
+  ASSERT_TRUE(jd["body"]["measure"]["MASE_0"].GetDouble() > 0.0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("OWA_0"));
+  ASSERT_TRUE(jd["body"]["measure"]["OWA_0"].GetDouble() > 0.0);
   ASSERT_TRUE(jd["body"]["parameters"]["input"].HasMember("max_vals"));
   ASSERT_TRUE(jd["body"]["parameters"]["input"].HasMember("min_vals"));
 

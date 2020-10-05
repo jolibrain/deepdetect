@@ -21,6 +21,7 @@
 
 #ifndef SUPERVISEDOUTPUTCONNECTOR_H
 #define SUPERVISEDOUTPUTCONNECTOR_H
+#define TS_METRICS_EPSILON 1E-2
 
 template <typename T>
 bool SortScorePairDescend(const std::pair<double, T> &pair1,
@@ -1081,6 +1082,10 @@ namespace dd
 
               bool L1 = false;
               bool L2 = false;
+              bool smape = false;
+              bool mape = false;
+              bool mase = false;
+              bool owa = false;
               if (ad_out.has("measure"))
                 {
                   std::vector<std::string> measures
@@ -1089,9 +1094,17 @@ namespace dd
                         != measures.end());
                   L2 = (std::find(measures.begin(), measures.end(), "L2")
                         != measures.end());
+                  smape = (std::find(measures.begin(), measures.end(), "smape")
+                           != measures.end());
+                  mape = (std::find(measures.begin(), measures.end(), "mape")
+                          != measures.end());
+                  mase = (std::find(measures.begin(), measures.end(), "mase")
+                          != measures.end());
+                  owa = (std::find(measures.begin(), measures.end(), "owa")
+                         != measures.end());
                 }
 
-              if (!L1 && !L2)
+              if (!L1 && !L2 && !smape && !mape && !mase && !owa)
                 L1 = true;
 
               if (L1)
@@ -1099,6 +1112,7 @@ namespace dd
                   timeSeriesErrors(ad_res, timeseries, &max_errors[0],
                                    &indexes_max_error[0], &mean_errors[0],
                                    max_error, mean_error, true);
+
                   for (int i = 0; i < timeseries; ++i)
                     {
                       meas_out.add("L1_max_error_" + std::to_string(i),
@@ -1114,6 +1128,7 @@ namespace dd
                   if (!L2)
                     meas_out.add("eucll", mean_error);
                 }
+
               if (L2)
                 {
                   timeSeriesErrors(ad_res, timeseries, &max_errors[0],
@@ -1133,6 +1148,26 @@ namespace dd
                   meas_out.add("L2_mean_error", mean_error);
                   meas_out.add("eucll", mean_error);
                 }
+              if (mape || smape || mase || owa)
+                {
+                  std::vector<double> mapev(timeseries);
+                  std::vector<double> smapev(timeseries);
+                  std::vector<double> masev(timeseries);
+                  std::vector<double> owav(timeseries);
+                  timeSeriesMetrics(ad_res, timeseries, mapev, smapev, masev,
+                                    owav);
+                  for (int i = 0; i < timeseries; ++i)
+                    {
+                      if (mape)
+                        meas_out.add("MAPE_" + std::to_string(i), mapev[i]);
+                      if (smape)
+                        meas_out.add("sMAPE_" + std::to_string(i), smapev[i]);
+                      if (mase)
+                        meas_out.add("MASE_" + std::to_string(i), masev[i]);
+                      if (owa)
+                        meas_out.add("OWA_" + std::to_string(i), owav[i]);
+                    }
+                }
             }
         }
       if (loss)
@@ -1147,6 +1182,115 @@ namespace dd
         meas_out.add("learning_rate",
                      ad_res.get("learning_rate").get<double>());
       out.add("measure", meas_out);
+    }
+
+    static void timeSeriesMetrics(const APIData &ad, const int timeseries,
+                                  std::vector<double> &mape,
+                                  std::vector<double> &smape,
+                                  std::vector<double> &mase,
+                                  std::vector<double> &owa)
+    {
+      Eigen::Map<dVec> global_mape_vector = dVec::Map(mape.data(), timeseries);
+      global_mape_vector.setZero();
+      Eigen::Map<dVec> global_smape_vector
+          = dVec::Map(smape.data(), timeseries);
+      global_smape_vector.setZero();
+      Eigen::Map<dVec> global_mase_vector = dVec::Map(mase.data(), timeseries);
+      global_mase_vector.setZero();
+      Eigen::Map<dVec> owa_vector = dVec::Map(owa.data(), timeseries);
+      owa_vector.setZero();
+
+      dVec global_smape_naive_vector(timeseries);
+      global_smape_naive_vector.setZero();
+
+      double nts = 0;
+      int batch_size = ad.get("batch_size").get<int>();
+      for (int i = 0; i < batch_size; i++)
+        {
+          APIData bad = ad.getobj(std::to_string(i));
+          std::vector<double> targets
+              = bad.get("target").get<std::vector<double>>();
+
+          std::vector<double> predictions
+              = bad.get("pred").get<std::vector<double>>();
+
+          nts += targets.size();
+
+          int dataduration = targets.size() / timeseries;
+          typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic,
+                                Eigen::RowMajor>
+              dMat;
+          dMat dpred = dMat::Map(&predictions.at(0), dataduration, timeseries);
+          dMat dtarg = dMat::Map(&targets.at(0), dataduration, timeseries);
+          // now can access dpred(timestep_number, serie_number)
+          dMat error;
+          error = (dpred - dtarg).cwiseAbs();
+          // error of first term is random in case of LSTM, which can be huge
+          // after normalization
+          error.row(0).setZero();
+
+          dMat dprednaive(dataduration, timeseries);
+          dprednaive.block(0, 0, 1, timeseries)
+              = dtarg.block(0, 0, 1, timeseries);
+          dprednaive.block(1, 0, dataduration - 1, timeseries)
+              = dtarg.block(0, 0, dataduration - 1, timeseries);
+
+          dMat errornaive = (dprednaive - dtarg).cwiseAbs();
+
+          dMat predAbs = dpred.cwiseAbs();
+          dMat targAbs = dtarg.cwiseAbs();
+          dMat dprednaiveAbs = dprednaive.cwiseAbs();
+
+          dVec mape_vector
+              = (error.cwiseQuotient(
+                     (targAbs.array() + TS_METRICS_EPSILON).matrix()))
+                    .colwise()
+                    .sum();
+
+          mape_vector /= static_cast<float>(dataduration);
+          global_mape_vector += mape_vector;
+
+          dVec smape_vector = (error.cwiseQuotient(((predAbs + targAbs).array()
+                                                    + TS_METRICS_EPSILON)
+                                                       .matrix()))
+                                  .colwise()
+                                  .sum();
+          smape_vector /= static_cast<float>(dataduration);
+          global_smape_vector += smape_vector;
+
+          dVec sumerrornaive
+              = errornaive.colwise().sum() / static_cast<float>(dataduration);
+
+          dVec ecs = error.colwise().sum() / static_cast<float>(dataduration);
+
+          dVec mase_vector = ecs.cwiseQuotient(
+              (sumerrornaive.array() + TS_METRICS_EPSILON).matrix());
+          mase_vector /= static_cast<float>(dataduration);
+          global_mase_vector += mase_vector;
+
+          dVec smape_naive_vector
+              = (errornaive.cwiseQuotient(
+                     ((targAbs + dprednaiveAbs).array() + TS_METRICS_EPSILON)
+                         .matrix()))
+                    .colwise()
+                    .sum();
+          smape_naive_vector /= static_cast<float>(dataduration);
+          global_smape_naive_vector += smape_naive_vector;
+        }
+
+      global_mape_vector /= static_cast<float>(batch_size);
+      global_mape_vector *= 100;
+      global_smape_vector /= static_cast<float>(batch_size);
+      global_smape_vector *= 200.0;
+      global_mase_vector /= static_cast<float>(batch_size);
+      global_smape_naive_vector /= static_cast<float>(batch_size);
+      global_smape_naive_vector *= 200.0;
+      owa_vector
+          = (global_smape_vector.cwiseQuotient(
+                 (global_smape_naive_vector.array() + TS_METRICS_EPSILON)
+                     .matrix())
+             + global_mase_vector);
+      owa_vector /= 2.0;
     }
 
     static void timeSeriesErrors(const APIData &ad, const int timeseries,
@@ -1182,11 +1326,11 @@ namespace dd
           int dataduration = targets.size() / timeseries;
           typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic,
                                 Eigen::RowMajor>
-              Mdat;
-          Mdat dpred = Mdat::Map(&predictions.at(0), dataduration, timeseries);
-          Mdat dtarg = Mdat::Map(&targets.at(0), dataduration, timeseries);
+              dMat;
+          dMat dpred = dMat::Map(&predictions.at(0), dataduration, timeseries);
+          dMat dtarg = dMat::Map(&targets.at(0), dataduration, timeseries);
           // now can access dpred(timestep_number, serie_number)
-          Mdat error;
+          dMat error;
           error = (dpred - dtarg).cwiseAbs();
           if (!L1)
             error = error.array() * error.array();
@@ -1338,8 +1482,8 @@ namespace dd
           std::vector<double> predictions
               = bad.get("pred").get<std::vector<double>>(); // all best-1
           std::vector<double> targets
-              = bad.get("target")
-                    .get<std::vector<double>>(); // all targets against best-1
+              = bad.get("target").get<std::vector<double>>(); // all targets
+                                                              // against best-1
           dVec dpred = dVec::Map(&predictions.at(0), predictions.size());
           dVec dtarg = dVec::Map(&targets.at(0), targets.size());
           dVec ddiff = dpred - dtarg;
@@ -1376,8 +1520,8 @@ namespace dd
                   = static_cast<double>((ddiffc.array() == -2 - c).count());
               double c_false_pos
                   = static_cast<double>((ddiffc.array() == c + 1).count());
-              // below corner case where nothing is to predict : put correct to
-              // zero but do not devide by zero
+              // below corner case where nothing is to predict : put correct
+              // to zero but do not devide by zero
               double iou = (c_sum == 0)
                                ? 0
                                : c_sum / (c_false_pos + c_sum + c_false_neg);
@@ -1385,8 +1529,8 @@ namespace dd
               // ... and divide one time less when normalizing by batch size
               if (c_total_targ != 0)
                 mean_iou_bs[c]++;
-              // another possible waywould be to put artificially iou to one if
-              // nothing is to be predicted for class c
+              // another possible waywould be to put artificially iou to one
+              // if nothing is to be predicted for class c
             }
         }
       int c_nclasses = 0;
@@ -1786,8 +1930,8 @@ namespace dd
             delta_scores[k] += (dif.array() < deltas[k]).count();
         }
       for (unsigned int k = 0; k < deltas.size(); ++k)
-        delta_scores[k] /= (double)
-            total_number; // gives proportion of good in 0:1 at every threshold
+        delta_scores[k] /= (double)total_number; // gives proportion of good
+                                                 // in 0:1 at every threshold
     }
 
     static APIData raw_results(const APIData &ad,
@@ -2101,8 +2245,8 @@ namespace dd
                   APs[label] += local_ap;
                   APs_count[label] += 1;
                 }
-              // std::cerr << "ap for label " << label << "=" << APs[label] <<
-              // std::endl;
+              // std::cerr << "ap for label " << label << "=" << APs[label]
+              // << std::endl;
               mAP += local_ap;
             }
           mAP /= static_cast<double>(vbad.size());
@@ -2322,7 +2466,8 @@ namespace dd
           a.at(i) = bad.get("target").get<double>();
           if (regression)
             p.at(i) = bad.get("pred").get<std::vector<double>>().at(
-                0); // XXX: could be vector for multi-dimensional regression ->
+                0); // XXX: could be vector for multi-dimensional regression
+                    // ->
                     // TODO: in supervised mode, get best pred index ?
           else
             {
@@ -2419,7 +2564,8 @@ namespace dd
                 }
               if (has_roi)
                 {
-                  /* std::vector<std::string> keys = (*vit).second.list_keys();
+                  /* std::vector<std::string> keys =
+                   * (*vit).second.list_keys();
                    */
                   /* std::copy(keys.begin(), keys.end(),
                    * std::ostream_iterator<std::string>(std::cout, "'")); */
@@ -2489,7 +2635,8 @@ namespace dd
                           ad_nns.push_back(ad_nn);
                           ++nnit;
                         }
-                      v.at(bb).add("nns", ad_nns); // v is in roi object vector
+                      v.at(bb).add("nns",
+                                   ad_nns); // v is in roi object vector
                     }
                 }
             }
@@ -2534,7 +2681,6 @@ namespace dd
     int _search_nn = 10; /**< default nearest neighbors per search. */
 #endif
   };
-
 }
 
 #endif
