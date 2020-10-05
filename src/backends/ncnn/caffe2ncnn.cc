@@ -337,7 +337,17 @@ static bool read_proto_from_binary(const char *filepath,
   google::protobuf::io::IstreamInputStream input(&fs);
   google::protobuf::io::CodedInputStream codedstr(&input);
 
+  /** NOTE(sileht): old version of protobuf need the second argument
+   * but protobuf shipped with caffe2/pytorch/tf have the second argument
+   * ignored and deprecated.
+   * At some point, we should just select one version of protobuf and make
+   * everybody use it to support only one version. And don't depends on which
+   * the backends are enabled
+   */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
   codedstr.SetTotalBytesLimit(INT_MAX, INT_MAX / 2);
+#pragma GCC diagnostic pop
 
   bool success = message->ParseFromCodedStream(&codedstr);
 
