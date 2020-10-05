@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "@semantic-release/git": "^9.0.0",
+    "@semantic-release/release-notes-generator": "^9.0.1",
+    "semantic-release": "^17.1.2",
+    "semantic-release-github-pr": "^6.0.1"
+  }
+}
