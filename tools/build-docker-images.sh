@@ -15,12 +15,13 @@ for target in $TARGETS ; do
     arch=${target%%/*}
     build=${target##*/}
     image_url="${image_url_prefix}_${arch}"
-    [ "$build" != "default"] && image_url="${image_url}_build"
+    [ "$build" != "default" ] && image_url="${image_url}_build"
 
     docker build \
         -t $image_url:$TMP_TAG \
         --build-arg DEEPDETECT_BUILD=$build \
-        -f docker/${arch}.Dockerfile
+        -f docker/${arch}.Dockerfile \
+        .
 
     images_to_push="${images_to_push} $image_url:$TMP_TAG"
 done
