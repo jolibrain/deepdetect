@@ -101,7 +101,7 @@ if (${PB_GENERATOR_SYSTEM})
 endif()
 
 
-set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -Werror -fopenmp -O2 -fPIC -std=c++14 -DUSE_OPENCV -DUSE_LMDB -fdiagnostics-color=always")
+set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -Werror -fopenmp -O2 -fPIC -std=c++14 -DUSE_OPENCV -DUSE_LMDB")
 
 if (USE_COMMAND_LINE)
   if (NOT USE_CAFFE)
