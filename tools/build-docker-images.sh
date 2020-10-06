@@ -2,7 +2,7 @@
 
 export DOCKER_BUILDKIT=1
 
-TARGETS="cpu/default" # gpu/default gpu/tf gpu/tensorrt"
+TARGETS="cpu/default gpu/default gpu/tf gpu/tensorrt"
 
 if [ "$GIT_BRANCH" == "master" ]; then
     TMP_TAG="ci"

@@ -4,28 +4,19 @@ pipeline {
       cron('H 22 * * 1-5')
     }
   stages {
-    stage('Init') {
+    stage('Building docker images') {
       steps {
         script {
           def common = load("ci/Jenkinsfile.common");
           common.cancelPreviousBuilds();
         }
+        sh 'tools/build-docker-images.sh'
       }
     }
-    stage('Building docker images') {
-      steps {
-        sh '''
-          tools/build-docker-images.sh
-        '''
-        }
-      }
-    }
-    post {
-      always {
-        sh '''
-        docker images -q -f dangling=true | xargs docker rmi
-        docker image prune -f
-        '''
+  }
+  post {
+    always {
+      sh 'docker image prune -f'
     }
     success {
       cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true);
