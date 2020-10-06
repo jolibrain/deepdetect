@@ -1,5 +1,8 @@
 #!/bin/bash
 
+set -e
+set -x
+
 export DOCKER_BUILDKIT=1
 
 selected=$1
@@ -16,9 +19,9 @@ if [ "$1" ]; then
 fi
 
 if [ "$TAG_NAME" ]; then
-    TMP_TAG=${TAG_NAME#v}
+    TMP_TAG="ci-$TAG_NAME"
 elif [ "$GIT_BRANCH" == "master" ]; then
-    TMP_TAG="ci"
+    TMP_TAG="ci-$GIT_BRANCH"
 else
     TMP_TAG="trash"
 fi
@@ -45,12 +48,13 @@ for name in $NAMES; do
         -f docker/${arch}.Dockerfile \
         .
 
+    images_to_push="${images_to_push} $image_url_ci:$TMP_TAG"
+
     if [ "$TAG_NAME" ]; then
-        docker tag $image_url_ci:$TMP_TAG $image_url_release:$TMP_TAG
+        docker tag $image_url_ci:$TMP_TAG $image_url_release:${TAG_NAME}
         docker tag $image_url_ci:$TMP_TAG $image_url_release:latest
     fi
 
-    images_to_push="${images_to_push} $image_url:$TMP_TAG"
 done
 
 for image in $images_to_push; do
