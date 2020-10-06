@@ -2,7 +2,18 @@
 
 export DOCKER_BUILDKIT=1
 
-TARGETS="cpu/default gpu/default gpu/tf gpu/tensorrt"
+selected=$1
+
+declare -A TARGETS
+TARGETS[cpu]="cpu/default"
+TARGETS[gpu]="gpu/default"
+TARGETS[gpu_tf]="gpu/tf"
+TARGETS[gpu_tensorrt]="gpu_tensorrt/tensorrt"
+
+NAMES=${!TARGETS[@]}
+if [ "$1" ]; then
+    NAMES="$1"
+fi
 
 if [ "$TAG_NAME" ]; then
     TMP_TAG=${TAG_NAME#v}
@@ -13,16 +24,20 @@ else
 fi
 
 image_url_prefix_release="jolibrain/deepdetect"
-image_url_prefix_ci="ceres:5000"
+image_url_prefix_ci="ceres:5000/${image_url_prefix_release}"
 images_to_push=
 
-for target in $TARGETS ; do
+for name in $NAMES; do
+    target=${TARGETS[$name]}
+    if [ ! "$target" ]; then
+        echo "$name target doesn't exists"
+        exit 1
+    fi
+
     arch=${target%%/*}
     build=${target##*/}
-    image_url_release="${image_url_prefix_release}_${arch}"
-    [ "$build" != "default" ] && image_url_release="${image_url}_${build}"
-
-    image_url_ci="${image_url_prefix_ci}/${image_url_prefix_release}"
+    image_url_release="${image_url_prefix_release}_${name}"
+    image_url_ci="${image_url_prefix_ci}_${name}"
 
     docker build \
         -t $image_url_ci:$TMP_TAG \
