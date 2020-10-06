@@ -20,7 +20,7 @@ for target in $TARGETS ; do
     arch=${target%%/*}
     build=${target##*/}
     image_url_release="${image_url_prefix_release}_${arch}"
-    [ "$build" != "default" ] && image_url_release="${image_url}_build"
+    [ "$build" != "default" ] && image_url_release="${image_url}_${build}"
 
     image_url_ci="${image_url_prefix_ci}/${image_url_prefix_release}"
 
