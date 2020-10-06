@@ -53,7 +53,7 @@ namespace dd
     /**
      * create basegraph from proto
      */
-    int from_proto(std::string filename);
+    void from_proto(std::string filename);
 
     /**
      * read protofile
