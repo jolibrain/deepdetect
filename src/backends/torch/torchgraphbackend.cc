@@ -189,6 +189,7 @@ namespace dd
 
   void TorchGraphBackend::allocate_modules()
   {
+    _allocation_done = false;
     for (BaseGraph::Vertex v : _sortedOps)
       {
         if (!_graph[v].alloc_needed)
@@ -220,6 +221,7 @@ namespace dd
             _modules[opname] = AnyModule(m);
             _graph[v].alloc_needed = false;
             _rnn_has_memories[opname] = false;
+            _allocation_done = true;
           }
         else if (optype == "RNN")
           {
@@ -233,6 +235,7 @@ namespace dd
             _modules[opname] = AnyModule(m);
             _graph[v].alloc_needed = false;
             _rnn_has_memories[opname] = false;
+            _allocation_done = true;
           }
         else if (optype == "InnerProduct")
           {
@@ -243,6 +246,7 @@ namespace dd
                 Linear(LinearOptions(dim(v, 0, 2), num_output(v)).bias(true)));
             _modules[opname] = AnyModule(m);
             _graph[v].alloc_needed = false;
+            _allocation_done = true;
           }
         else if (optype == "Tile")
           _graph[v].alloc_needed = false;
