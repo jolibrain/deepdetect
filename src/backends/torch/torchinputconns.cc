@@ -995,9 +995,14 @@ namespace dd
         long int tstart = 0;
         if (static_cast<long int>(seq.size()) < _timesteps)
           {
-            _tilogger->warn(
-                "file " + _fnames[vecindex]
-                + " does not contains enough timesteps, discarding");
+            if (use_csvtsdata_test)
+              _tilogger->warn(
+                  "file " + _test_fnames[vecindex]
+                  + " does not contains enough timesteps, discarding");
+            else
+              _tilogger->warn(
+                  "file " + _fnames[vecindex]
+                  + " does not contains enough timesteps, discarding");
             continue;
           }
         for (; tstart + _timesteps < static_cast<long int>(seq.size());
