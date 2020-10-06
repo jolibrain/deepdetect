@@ -1,11 +1,14 @@
 {
   "name": "deepdetect",
   "description": "Open Source Deep Learning Server & API",
+  "version": "0.9.7",
   "devDependencies": {
-    "@semantic-release/changelog": "^5.0.1",
-    "@semantic-release/git": "^9.0.0",
-    "@semantic-release/github": "^7.1.1",
-    "@semantic-release/release-notes-generator": "^9.0.1",
-    "semantic-release": "^17.1.2"
+    "standard-version": "^9.0.0"
+  },
+  "standard-version": {
+    "header": "# DeepDetect: Open Source Deep Learning Server & API (Changelog)\n",
+    "scripts": {
+      "postchangelog": "sed -i -e '/\\*\\*ci:\\*\\*/d' CHANGELOG.md"
+    }
   }
 }

@@ -146,6 +146,7 @@ namespace dd
     std::vector<std::vector<CSVline>> _csvtsdata;
     std::vector<std::vector<CSVline>> _csvtsdata_test;
     std::vector<std::string> _fnames;
+    std::vector<std::string> _test_fnames;
 
     int _boundsprecision = 15;
   };

@@ -122,6 +122,7 @@ LABEL maintainer="emmanuel.benazera@jolibrain.com"
 RUN --mount=type=cache,target=/var/cache/apt --mount=type=cache,target=/var/lib/apt \
     apt-get update -y && apt-get install -y \
     wget \
+    curl \
 	libopenblas-base \
 	liblmdb0 \
 	libleveldb1v5 \
@@ -138,6 +139,10 @@ RUN --mount=type=cache,target=/var/cache/apt --mount=type=cache,target=/var/lib/
     libboost-regex1.65.1 \
 	libarchive13 \
 	libprotobuf10
+
+RUN for url in \
+        https://deepdetect.com/dd/pkgs/ubuntu-18.04/libcppnetlib0_0.11.2+dfsg1-2_amd64.deb \
+        ; do curl -L -s -o /tmp/p.deb $url && dpkg -i /tmp/p.deb && rm -rf /tmp/p.deb; done
 
 # Fix permissions
 RUN ln -sf /dev/stdout /var/log/deepdetect.log && \
