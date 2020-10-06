@@ -502,6 +502,46 @@ namespace dd
     empty_cuda_cache();
   }
 
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+            class TMLModel>
+  double TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy,
+                  TMLModel>::unscale(double val, unsigned int k,
+                                     const TInputConnectorStrategy &inputc)
+  {
+    (void)inputc;
+    (void)k;
+    // unscaling is input connector specific
+    return val;
+  }
+
+  // full template specialization
+  template <>
+  double
+  TorchLib<CSVTSTorchInputFileConn, SupervisedOutput, TorchModel>::unscale(
+      double val, unsigned int k, const CSVTSTorchInputFileConn &inputc)
+
+  {
+    if (inputc._min_vals.empty() || inputc._max_vals.empty())
+      {
+        this->_logger->info("not unscaling output because no bounds "
+                            "data found");
+        return val;
+      }
+    else
+      {
+
+        if (!inputc._dont_scale_labels)
+          {
+            double max = inputc._max_vals[inputc._label_pos[k]];
+            double min = inputc._min_vals[inputc._label_pos[k]];
+            if (inputc._scale_between_minus1_and_1)
+              val += 0.5;
+            val = val * (max - min) + min;
+          }
+        return val;
+      }
+  }
+
   /*- from mllib -*/
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel>
@@ -1342,7 +1382,8 @@ namespace dd
                         for (unsigned int k = 0; k < this->_inputc._ntargets;
                              ++k)
                           {
-                            preds.push_back(output_acc[j][t][k]);
+                            double res = output_acc[j][t][k];
+                            preds.push_back(unscale(res, k, inputc));
                           }
                         APIData ts;
                         ts.add("out", preds);

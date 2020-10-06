@@ -204,6 +204,9 @@ namespace dd
     void snapshot(int64_t elapsed_it, torch::optim::Optimizer &optimizer);
 
     void remove_model(int64_t it);
+
+    double unscale(double val, unsigned int k,
+                   const TInputConnectorStrategy &inputc);
   };
 }
 
