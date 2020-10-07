@@ -221,7 +221,6 @@ namespace dd
           {
             // not a number, skip for now
             if (column_id == col) // if id is string, replace with number /
-                                  // TODO: better scheme
               vals.push_back(c);
             else
               {
@@ -351,7 +350,7 @@ namespace dd
   }
 
   void CSVInputFileConn::read_csv(const std::string &fname,
-                                  const bool forbid_shuffle)
+                                  const bool &forbid_shuffle)
   {
     std::ifstream csv_file(fname, std::ios::binary);
     _logger->info("fname={} / open={}", fname, csv_file.is_open());
@@ -434,10 +433,8 @@ namespace dd
               }
             if (!_id.empty())
               add_test_csvline(cid, vals);
-            //_csvdata_test.emplace_back(cid,vals);
             else
               add_test_csvline(std::to_string(nlines), vals);
-            //_csvdata_test.emplace_back(std::to_string(nlines),vals);
 
             // debug
             /*std::cout << "csv test data line=";

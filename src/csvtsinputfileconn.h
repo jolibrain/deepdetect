@@ -34,6 +34,9 @@ namespace dd
 
   class CSVTSInputFileConn;
 
+  /**
+   * \brief fetched data element for timeseries
+   */
   class DDCsvTS
   {
   public:
@@ -55,6 +58,9 @@ namespace dd
     std::shared_ptr<spdlog::logger> _logger;
   };
 
+  /**
+   * \brief generic CSV-TimeSeries input connector
+   */
   class CSVTSInputFileConn : public CSVInputFileConn
   {
   public:
@@ -99,10 +105,19 @@ namespace dd
     }
 
     void shuffle_data(std::vector<std::vector<CSVline>> cvstsdata);
+
+    /**
+     * \brief shuffles _csvtsdata if shuffle is set to true
+     */
     void shuffle_data_if_needed();
 
-    void split_data(std::vector<std::vector<CSVline>> cvstsdata,
-                    std::vector<std::vector<CSVline>> cvstsdata_test);
+    /**
+     * \brief uses _test_split value to split the input dataset
+     * @param cvstsdata full dataset, in output reduced to 1-_test_split size
+     * @param cvstsdata_test test dataset sink, in output of size _test_split
+     */
+    void split_data(std::vector<std::vector<CSVline>> &cvstsdata,
+                    std::vector<std::vector<CSVline>> &cvstsdata_test);
 
     void transform(const APIData &ad);
 
@@ -133,22 +148,39 @@ namespace dd
                        std::vector<double> &max_vals);
 
     // read min max values, return false if not present
-    bool deserialize_bounds(bool force = false);
+
+    /**
+     * \brief read min/max per variable bounds from file
+     * @param force to update the bounds even if they do already exist in
+     *        memory
+     * @return true if successful, false otherwise
+     */
+    bool deserialize_bounds(const bool &force = false);
+
+    /**
+     * \brief serializes per variable min/max bounds to file, throws on error
+     */
     void serialize_bounds();
 
+    /**
+     * \brief fills out response params from input connector values
+     * @param out APIData that holds the output values
+     */
     void response_params(APIData &out);
 
-    void push_csv_to_csvts(DDCsv &ddcsv);
-    void push_csv_to_csvts(bool is_test_data = false);
+    /**
+     * \brief transfers data read by the CSV connector to _csvtsdata holder
+     * @param is_test_data whether data is from test set
+     */
+    void push_csv_to_csvts(const bool &is_test_data = false);
 
-    std::string _boundsfname = "bounds.dat";
+    std::string _boundsfname
+        = "bounds.dat"; /**< variables min/max bounds filename. */
 
     std::vector<std::vector<CSVline>> _csvtsdata;
     std::vector<std::vector<CSVline>> _csvtsdata_test;
     std::vector<std::string> _fnames;
     std::vector<std::string> _test_fnames;
-
-    int _boundsprecision = 15;
   };
 }
 
