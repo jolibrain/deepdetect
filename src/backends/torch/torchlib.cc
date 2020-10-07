@@ -489,6 +489,7 @@ namespace dd
     _best_metric_value = tl._best_metric_value;
     _classification = tl._classification;
     _timeserie = tl._timeserie;
+    _use_cudnn = tl._use_cudnn;
     _loss = tl._loss;
     _template_params = tl._template_params;
   }
@@ -535,6 +536,11 @@ namespace dd
       freeze_traced = lib_ad.get("freeze_traced").get<bool>();
     if (lib_ad.has("loss"))
       _loss = lib_ad.get("loss").get<std::string>();
+
+    if (lib_ad.has("cudnn"))
+      _use_cudnn = lib_ad.get("cudnn").get<bool>();
+
+    at::globalContext().setUserEnabledCuDNN(_use_cudnn);
 
     _device = gpu ? torch::Device(DeviceType::CUDA, gpuid)
                   : torch::Device(DeviceType::CPU);
@@ -795,6 +801,11 @@ namespace dd
 
     if (ad_mllib.has("template_params"))
       _template_params = ad_mllib;
+
+    if (ad_mllib.has("cudnn"))
+      _use_cudnn = ad_mllib.get("cudnn").get<bool>();
+
+    at::globalContext().setUserEnabledCuDNN(_use_cudnn);
 
     if (ad_mllib.has("solver"))
       {
@@ -1133,6 +1144,12 @@ namespace dd
     if (params.has("mllib"))
       {
         APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
+
+        if (ad_mllib.has("cudnn"))
+          _use_cudnn = ad_mllib.get("cudnn").get<bool>();
+
+        at::globalContext().setUserEnabledCuDNN(_use_cudnn);
+
         if (ad_mllib.has("net"))
           {
             APIData ad_net = ad_mllib.getobj("net");

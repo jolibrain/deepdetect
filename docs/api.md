@@ -728,6 +728,7 @@ self_supervised | string | yes      | ""      | self-supervised mode: "mask" for
 embedding_size  | int    | yes      | 768     | embedding size for NLP models
 freeze_traced   | bool   | yes      | false   | Freeze the traced part of the net during finetuning (e.g. for classification)
 template        | string | yes      | ""      | for language models, either "bert" or "gpt2", "recurrent" for LSTM-like models (including autoencoder), "nbeats" for nbeats model
+cudnn           | bool   | yes      | true    | use cudnn or force cudnn not to be used
 
 
 Model instantiation parameters:
@@ -1085,6 +1086,7 @@ Parameter     | Type   | Optional | Default | Description
 gpu           | bool   | yes      | false   | Whether to use GPU
 gpuid         | int    | yes      | -1      | GPU id, use single int for single GPU, `-1` for using all GPUs.
 extract_layer | string | yes      | ""      | in bert models "hidden_state" allows to extract raw hidden_states values to return as output. Requires the service to be declared as 'unsupervised'
+cudnn         | bool   | yes      | true    | use cudnn or force cudnn not to be used
 
 
 - XGBoost

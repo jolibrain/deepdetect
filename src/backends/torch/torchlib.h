@@ -178,6 +178,7 @@ namespace dd
     bool _classification = false;
     bool _timeserie = false;
     std::string _loss = "";
+    bool _use_cudnn = true;
 
     APIData _template_params;
 
