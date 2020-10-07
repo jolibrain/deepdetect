@@ -47,9 +47,9 @@ for name in $NAMES; do
         .
 
     if [ "$TAG_NAME" ]; then
-        docker tag $image_url_ci:$TMP_TAG $image_url_release:${TAG_NAME}
-        docker push $image_url_release:${TAG_NAME}
+        docker tag $image_url:$TMP_TAG $image_url:${TAG_NAME}
+        docker push $image_url:${TAG_NAME}
     else
-        docker push $image_url_ci:$TMP_TAG
+        docker push $image_url:$TMP_TAG
     fi
 done
