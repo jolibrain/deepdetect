@@ -53,6 +53,7 @@ namespace dd
 
     int read_from_repository(const std::shared_ptr<spdlog::logger> &logger);
 
+    std::string _model;
     std::string _def;
     std::string _weights;
     bool _has_mean_file = false;

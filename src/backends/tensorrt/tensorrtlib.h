@@ -143,6 +143,10 @@ namespace dd
     std::mutex
         _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as
                        net is not re-instantiated. Use batches instead. */
+
+    nvinfer1::ICudaEngine *read_engine_from_caffe(const std::string &out_blob);
+
+    nvinfer1::ICudaEngine *read_engine_from_onnx();
   };
 
 }

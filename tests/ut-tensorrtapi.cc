@@ -37,6 +37,7 @@ static std::string not_found_str
 
 static std::string squeez_repo = "../examples/trt/squeezenet_ssd_trt/";
 static std::string age_repo = "../examples/trt/age_real/";
+static std::string resnet_onnx_repo = "../examples/trt/resnet_onnx_trt/";
 
 TEST(tensorrtapi, service_predict)
 {
@@ -117,4 +118,43 @@ TEST(tensorrtapi, service_predict_best)
   ASSERT_EQ(ok_str, joutstr);
   ASSERT_TRUE(!fileops::file_exists(age_repo + "net_tensorRT.proto"));
   ASSERT_TRUE(!fileops::file_exists(age_repo + "TRTengine_bs_bs1"));
+}
+
+TEST(tensorrtapi, service_predict_onnx)
+{
+  // create service
+  JsonAPI japi;
+  std::string sname = "onnx";
+  std::string jstr
+      = "{\"mllib\":\"tensorrt\",\"description\":\"Test onnx "
+        "import\",\"type\":\"supervised\",\"model\":{\"repository\":\""
+        + resnet_onnx_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
+          "224,\"width\":224,\"rgb\":true,\"scale\":0.0039},\"mllib\":{"
+          "\"maxBatchSize\":1,\"maxWorkspaceSize\":6096,\"gpuid\":0,"
+          "\"nclasses\":1000}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // predict
+  std::string jpredictstr
+      = "{\"service\":\"" + sname
+        + "\",\"parameters\":{\"input\":{\"height\":224,"
+          "\"width\":224},\"output\":{\"best\":1}},\"data\":[\""
+        + resnet_onnx_repo + "cat.jpg\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  JDoc jd;
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+  std::string cl1
+      = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
+  ASSERT_TRUE(cl1 == "n02123159 tiger cat");
+  std::cerr << "[WARNING] Confidence is > 1 because the model is traced "
+               "directly from torchvision and does not perform softmax."
+            << std::endl;
+  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
+              > 0.3);
 }
