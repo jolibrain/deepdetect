@@ -4,13 +4,20 @@ pipeline {
       cron('H 22 * * 1-5')
     }
   stages {
-    stage('Building docker images') {
+    stage('Init') {
       steps {
         script {
           def common = load("ci/Jenkinsfile.common");
           common.cancelPreviousBuilds();
         }
-        sh 'tools/build-docker-images.sh'
+      }
+    }
+    stage('Building docker images') {
+      parallel {
+        stage('cpu') { steps { sh 'tools/build-docker-images.sh cpu' } }
+        stage('gpu') { steps { sh 'tools/build-docker-images.sh gpu' } }
+        stage('gpu_tf') { steps { sh 'tools/build-docker-images.sh gpu_tf' } }
+        stage('gpu_tensort') { steps { sh 'tools/build-docker-images.sh gpu_tensorrt' } }
       }
     }
   }

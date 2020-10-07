@@ -11,7 +11,7 @@ for dest in "${!images[@]}" ; do
     image=${images[$dest]}
 
     sed \
-        -e "s,FROM [^ ]* AS build,FROM ${image} AS build,g" \
+        -e "s,FROM [^ ]*,FROM ${image},g" \
         -e "s,ARG DEEPDETECT_ARCH=.*,ARG DEEPDETECT_ARCH=gpu,g" \
         cpu.Dockerfile > ${dest}.Dockerfile
 done

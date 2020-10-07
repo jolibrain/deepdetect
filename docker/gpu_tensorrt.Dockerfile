@@ -1,5 +1,5 @@
 # syntax = docker/dockerfile:1.0-experimental
-FROM nvidia/cuda:10.2-cudnn7-devel-ubuntu18.04 AS build
+FROM nvcr.io/nvidia/tensorrt:20.03-py3 AS build
 
 ARG DEEPDETECT_ARCH=gpu
 ARG DEEPDETECT_BUILD=default
@@ -107,7 +107,7 @@ RUN --mount=type=cache,target=/ccache/ mkdir build && cd build && ../build.sh
 RUN ./docker/get_libs.sh
 
 # Build final Docker image
-FROM nvidia/cuda:10.2-cudnn7-devel-ubuntu18.04 AS runtime
+FROM nvcr.io/nvidia/tensorrt:20.03-py3 AS runtime
 
 ARG DEEPDETECT_ARCH=gpu
 
