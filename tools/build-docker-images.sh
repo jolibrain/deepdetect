@@ -48,15 +48,10 @@ for name in $NAMES; do
         -f docker/${arch}.Dockerfile \
         .
 
-    images_to_push="${images_to_push} $image_url_ci:$TMP_TAG"
-
     if [ "$TAG_NAME" ]; then
         docker tag $image_url_ci:$TMP_TAG $image_url_release:${TAG_NAME}
-        docker tag $image_url_ci:$TMP_TAG $image_url_release:latest
+        docker push $image_url_release:${TAG_NAME}
+    else
+        docker push $image_url_ci:$TMP_TAG
     fi
-
-done
-
-for image in $images_to_push; do
-    docker push $image
 done
