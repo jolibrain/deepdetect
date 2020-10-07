@@ -122,6 +122,7 @@ LABEL maintainer="emmanuel.benazera@jolibrain.com"
 RUN --mount=type=cache,target=/var/cache/apt --mount=type=cache,target=/var/lib/apt \
     apt-get update -y && apt-get install -y \
     wget \
+    curl \
 	libopenblas-base \
 	liblmdb0 \
 	libleveldb1v5 \
