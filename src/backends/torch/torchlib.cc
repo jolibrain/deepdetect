@@ -187,23 +187,6 @@ namespace dd
         if (!tmodel._traced.empty())
           torch::load(_graph, tmodel._traced, _device);
       }
-    if (_require_classif_layer && !_classif)
-      {
-        try
-          {
-            // TODO const cast because getting an input example actually
-            // *modifies* the connector (it must be reset after that)
-            // -> find a way to get an example without modifying the dataset?
-            setup_classification(_nclasses,
-                                 const_cast<TInputConnectorStrategy &>(inputc)
-                                     .get_input_example(device));
-          }
-        catch (std::exception &e)
-          {
-            throw MLLibInternalException(std::string("Libtorch error: ")
-                                         + e.what());
-          }
-      }
     to(_device);
   }
 
@@ -215,6 +198,25 @@ namespace dd
                                          const torch::Device &device)
   {
     post_transform(tmpl, template_params, inputc, tmodel, device);
+
+    if (_require_classif_layer && !_classif)
+      {
+        try
+          {
+            // TODO const cast because getting an input example actually
+            // *modifies* the connector (it must be reset after that)
+            // -> find a way to get an example without modifying the dataset?
+            setup_classification(_nclasses,
+                                 const_cast<TInputConnectorStrategy &>(inputc)
+                                     .get_input_example(device));
+            _classif->to(_device);
+          }
+        catch (std::exception &e)
+          {
+            throw MLLibInternalException(std::string("Libtorch error: ")
+                                         + e.what());
+          }
+      }
   }
 
   template <class TInputConnectorStrategy>
@@ -614,7 +616,7 @@ namespace dd
         this->_mltype = "classification";
         _module._nclasses = _nclasses;
 
-        if (!this->_mlmodel._traced.empty() && !_module._classif)
+        if (_finetuning)
           {
             _module._require_classif_layer = true;
             this->_logger->info(

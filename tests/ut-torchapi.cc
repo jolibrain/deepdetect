@@ -78,8 +78,7 @@ TEST(torchapi, service_predict)
   // predict
   std::string jpredictstr
       = "{\"service\":\"imgserv\",\"parameters\":{\"input\":{\"height\":224,"
-        "\"width\":224,\"rgb\":true,\"scale\":0.0039},\"output\":{\"best\":1}}"
-        ",\"data\":[\""
+        "\"width\":224},\"output\":{\"best\":1}},\"data\":[\""
         + incept_repo + "cat.jpg\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   JDoc jd;
