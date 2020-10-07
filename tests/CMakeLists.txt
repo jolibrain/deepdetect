@@ -267,11 +267,18 @@ if (GTEST_FOUND)
       "squeezenet_ssd_trt"
     )
     DOWNLOAD_DATASET(
-      "Downloading age test set"
+      "Age test set"
       "https://deepdetect.com/models/init/desktop/images/classification/age_real.tar.gz"
       "examples/trt/age_real"
       "age_real.tar.gz"
       "deploy.prototxt"
+    )
+    DOWNLOAD_DATASET(
+      "ONNX resnet model"
+      "https://deepdetect.com/models/init/desktop/images/classification/resnet_onnx_trt.tar.gz"
+      "examples/trt"
+      "resnet_onnx_trt.tar.gz"
+      "resnet_onnx_trt"
     )
 
     if(USE_JSON_API)

@@ -38,7 +38,8 @@ namespace dd
     for (int c = 0; c < channels; ++c)
       for (int h = 0; h < _height; ++h)
         for (int w = 0; w < _width; ++w)
-          fbuf[offset++] = cvbuf[(converted.cols * h + w) * channels + c];
+          fbuf[offset++]
+              = _scale * cvbuf[(converted.cols * h + w) * channels + c];
   }
 
   void ImgTensorRTInputFileConn::applyMeanToRTBuf(int channels, int i)
