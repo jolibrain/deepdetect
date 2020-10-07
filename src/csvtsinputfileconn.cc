@@ -180,8 +180,8 @@ namespace dd
   }
 
   void CSVTSInputFileConn::split_data(
-      std::vector<std::vector<CSVline>> csvtsdata,
-      std::vector<std::vector<CSVline>> csvtsdata_test)
+      std::vector<std::vector<CSVline>> &csvtsdata,
+      std::vector<std::vector<CSVline>> &csvtsdata_test)
   {
     if (_test_split > 0.0)
       {
@@ -318,7 +318,7 @@ namespace dd
     out.add("parameters", adparams);
   }
 
-  void CSVTSInputFileConn::push_csv_to_csvts(bool is_test_data)
+  void CSVTSInputFileConn::push_csv_to_csvts(const bool &is_test_data)
   {
     if (_csvdata.size())
       {
@@ -399,7 +399,7 @@ namespace dd
         max_vals.at(j) = std::max(_max_vals.at(j), max_vals.at(j));
   }
 
-  bool CSVTSInputFileConn::deserialize_bounds(bool force)
+  bool CSVTSInputFileConn::deserialize_bounds(const bool &force)
   {
     if (!force && !_min_vals.empty() && !_max_vals.empty())
       return true;
@@ -459,6 +459,7 @@ namespace dd
 
   void CSVTSInputFileConn::serialize_bounds()
   {
+    static int boundsprecision = 15;
     std::string boundsfname = _model_repo + "/" + _boundsfname;
     std::string delim = ":";
     std::ofstream out;
@@ -475,15 +476,15 @@ namespace dd
     out << " " << _label_pos[_label_pos.size() - 1] << std::endl;
     out << "min_vals: ";
     for (unsigned int i = 0; i < _min_vals.size() - 1; ++i)
-      out << " " << std::setprecision(_boundsprecision) << _min_vals[i] << " "
+      out << " " << std::setprecision(boundsprecision) << _min_vals[i] << " "
           << delim;
-    out << " " << std::setprecision(_boundsprecision)
+    out << " " << std::setprecision(boundsprecision)
         << _min_vals[_min_vals.size() - 1] << std::endl;
     out << "max_vals: ";
     for (unsigned int i = 0; i < _max_vals.size() - 1; ++i)
-      out << " " << std::setprecision(_boundsprecision) << _max_vals[i] << " "
+      out << " " << std::setprecision(boundsprecision) << _max_vals[i] << " "
           << delim;
-    out << " " << std::setprecision(_boundsprecision)
+    out << " " << std::setprecision(boundsprecision)
         << _max_vals[_max_vals.size() - 1] << std::endl;
 
     out.close();
