@@ -107,7 +107,7 @@ RUN --mount=type=cache,target=/ccache/ mkdir build && cd build && ../build.sh
 RUN ./docker/get_libs.sh
 
 # Build final Docker image
-FROM ubuntu:18.04 AS runtime
+FROM nvidia/cuda:10.2-cudnn7-devel-ubuntu18.04 AS runtime
 
 ARG DEEPDETECT_ARCH=gpu
 

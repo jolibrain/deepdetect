@@ -107,7 +107,7 @@ RUN --mount=type=cache,target=/ccache/ mkdir build && cd build && ../build.sh
 RUN ./docker/get_libs.sh
 
 # Build final Docker image
-FROM ubuntu:18.04 AS runtime
+FROM nvcr.io/nvidia/tensorrt:20.03-py3 AS runtime
 
 ARG DEEPDETECT_ARCH=gpu
 
@@ -122,6 +122,7 @@ LABEL maintainer="emmanuel.benazera@jolibrain.com"
 RUN --mount=type=cache,target=/var/cache/apt --mount=type=cache,target=/var/lib/apt \
     apt-get update -y && apt-get install -y \
     wget \
+    curl \
 	libopenblas-base \
 	liblmdb0 \
 	libleveldb1v5 \
