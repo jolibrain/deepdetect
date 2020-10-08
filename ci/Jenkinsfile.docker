@@ -16,8 +16,8 @@ pipeline {
       parallel {
         stage('cpu') { steps { sh 'tools/build-docker-images.sh cpu' } }
         stage('gpu') { steps { sh 'tools/build-docker-images.sh gpu' } }
-        stage('gpu_tf') { steps { sh 'tools/build-docker-images.sh gpu_tf' } }
-        stage('gpu_tensort') { steps { sh 'tools/build-docker-images.sh gpu_tensorrt' } }
+        #stage('gpu_tf') { steps { sh 'tools/build-docker-images.sh gpu_tf' } }
+        stage('gpu_tensorrt') { steps { sh 'tools/build-docker-images.sh gpu_tensorrt' } }
       }
     }
   }
