@@ -51,5 +51,9 @@ for name in $NAMES; do
         docker push $image_url:${TAG_NAME}
     else
         docker push $image_url:$TMP_TAG
+        if [ "$GIT_BRANCH" == "master" ]; then
+            docker tag $image_url:$TMP_TAG $image_url:latest
+            docker push $image_url:latest
+        fi
     fi
 done
