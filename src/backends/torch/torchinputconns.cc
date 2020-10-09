@@ -1049,8 +1049,9 @@ namespace dd
             std::vector<at::Tensor> label_sequence;
 
             tstart = seq.size() - _timesteps;
-            _ids.push_back(_fnames[vecindex] + " #" + std::to_string(tstart)
-                           + "_" + std::to_string(tstart + _timesteps - 1));
+            if (_fnames.size() > static_cast<unsigned int>(vecindex))
+              _ids.push_back(_fnames[vecindex] + " #" + std::to_string(tstart)
+                             + "_" + std::to_string(tstart + _timesteps - 1));
             for (int ti = tstart; ti < tstart + _timesteps; ++ti)
               {
                 std::vector<double> datavec;
