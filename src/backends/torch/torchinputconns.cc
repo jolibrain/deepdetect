@@ -942,7 +942,6 @@ namespace dd
     APIData ad_input = ad.getobj("parameters").getobj("input");
 
     init(ad_input);
-    get_data(ad);
 
     try
       {
