@@ -1,10 +1,17 @@
 {
-  "plugins": [
-    "@semantic-release/commit-analyzer",
-    "@semantic-release/release-notes-generator",
-    "@semantic-release/changelog",
-    "@semantic-release/git",
-    "@semantic-release/github"
-  ],
-  "branches": ["master"]
+  "branches": ["master"],
+  "types": [
+    {"type": "model", "hidden": "Models},
+    {"type": "feat", "section": "Features"},
+    {"type": "fix", "section": "Bug Fixes"},
+    {"type": "build", "hidden": "Build System},
+    {"type": "docker", "hidden": true},
+    {"type": "ci", "hidden": true},
+    {"type": "chore", "hidden": true},
+    {"type": "docs", "hidden": true},
+    {"type": "style", "hidden": true},
+    {"type": "refactor", "hidden": true},
+    {"type": "perf", "hidden": true},
+    {"type": "test", "hidden": true}
+  ]
 }
