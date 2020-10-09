@@ -187,23 +187,6 @@ namespace dd
         if (!tmodel._traced.empty())
           torch::load(_graph, tmodel._traced, _device);
       }
-    if (_require_classif_layer && !_classif)
-      {
-        try
-          {
-            // TODO const cast because getting an input example actually
-            // *modifies* the connector (it must be reset after that)
-            // -> find a way to get an example without modifying the dataset?
-            setup_classification(_nclasses,
-                                 const_cast<TInputConnectorStrategy &>(inputc)
-                                     .get_input_example(device));
-          }
-        catch (std::exception &e)
-          {
-            throw MLLibInternalException(std::string("Libtorch error: ")
-                                         + e.what());
-          }
-      }
     to(_device);
   }
 
@@ -215,6 +198,25 @@ namespace dd
                                          const torch::Device &device)
   {
     post_transform(tmpl, template_params, inputc, tmodel, device);
+
+    if (_require_classif_layer && !_classif)
+      {
+        try
+          {
+            // TODO const cast because getting an input example actually
+            // *modifies* the connector (it must be reset after that)
+            // -> find a way to get an example without modifying the dataset?
+            setup_classification(_nclasses,
+                                 const_cast<TInputConnectorStrategy &>(inputc)
+                                     .get_input_example(device));
+            _classif->to(_device);
+          }
+        catch (std::exception &e)
+          {
+            throw MLLibInternalException(std::string("Libtorch error: ")
+                                         + e.what());
+          }
+      }
   }
 
   template <class TInputConnectorStrategy>
@@ -502,6 +504,46 @@ namespace dd
     empty_cuda_cache();
   }
 
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+            class TMLModel>
+  double TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy,
+                  TMLModel>::unscale(double val, unsigned int k,
+                                     const TInputConnectorStrategy &inputc)
+  {
+    (void)inputc;
+    (void)k;
+    // unscaling is input connector specific
+    return val;
+  }
+
+  // full template specialization
+  template <>
+  double
+  TorchLib<CSVTSTorchInputFileConn, SupervisedOutput, TorchModel>::unscale(
+      double val, unsigned int k, const CSVTSTorchInputFileConn &inputc)
+
+  {
+    if (inputc._min_vals.empty() || inputc._max_vals.empty())
+      {
+        this->_logger->info("not unscaling output because no bounds "
+                            "data found");
+        return val;
+      }
+    else
+      {
+
+        if (!inputc._dont_scale_labels)
+          {
+            double max = inputc._max_vals[inputc._label_pos[k]];
+            double min = inputc._min_vals[inputc._label_pos[k]];
+            if (inputc._scale_between_minus1_and_1)
+              val += 0.5;
+            val = val * (max - min) + min;
+          }
+        return val;
+      }
+  }
+
   /*- from mllib -*/
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel>
@@ -614,7 +656,7 @@ namespace dd
         this->_mltype = "classification";
         _module._nclasses = _nclasses;
 
-        if (!this->_mlmodel._traced.empty() && !_module._classif)
+        if (_finetuning)
           {
             _module._require_classif_layer = true;
             this->_logger->info(
@@ -1342,7 +1384,8 @@ namespace dd
                         for (unsigned int k = 0; k < this->_inputc._ntargets;
                              ++k)
                           {
-                            preds.push_back(output_acc[j][t][k]);
+                            double res = output_acc[j][t][k];
+                            preds.push_back(unscale(res, k, inputc));
                           }
                         APIData ts;
                         ts.add("out", preds);
