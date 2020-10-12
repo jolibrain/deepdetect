@@ -13,5 +13,6 @@ for dest in "${!images[@]}" ; do
     sed \
         -e "s,FROM [^ ]*,FROM ${image},g" \
         -e "s,ARG DEEPDETECT_ARCH=.*,ARG DEEPDETECT_ARCH=gpu,g" \
+        -e "s/\(apt_\(cache\|lib\)\)_cpu/\1_${dest}/g" \
         cpu.Dockerfile > ${dest}.Dockerfile
 done
