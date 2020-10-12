@@ -100,7 +100,7 @@ select_gpu_build_profile() {
         echo "  $index. ${deepdetect_gpu_build_profiles[$index]}"
     done
     echo ""
-    
+
     local choice
     read -p "Enter choice : " choice
     DEEPDETECT_BUILD=${deepdetect_gpu_build_profiles[$choice]}
@@ -148,7 +148,7 @@ gpu_build() {
         "caffe2") extra_flags="-DUSE_CAFFE2=ON" ;;
         "tensorrt") extra_flags="-DUSE_TENSORRT_OSS=ON" ;;
     esac
-    cmake .. $extra_flags -DUSE_FAISS=ON -DUSE_CUDNN=ON -DUSE_XGBOOST=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DCUDA_ARCH="${DEEPDETECT_CUDA_ARCH}"
+    cmake .. $extra_flags -DUSE_FAISS=ON -DUSE_CUDNN=ON -DUSE_XGBOOST=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_TORCH=ON -DCUDA_ARCH="${DEEPDETECT_CUDA_ARCH}"
     make
 }
 
