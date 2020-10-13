@@ -4,58 +4,42 @@
 
 DeepDetect (http://www.deepdetect.com/) is a machine learning API and server written in C++11. It makes state of the art machine learning easy to work with and integrate into existing applications. It has support for both training and inference, with automatic conversion to embedded platforms with TensorRT (NVidia GPU) and NCNN (ARM CPU).
 
-DeepDetect relies on external machine learning libraries through a very generic and flexible API. At the moment it has support for:
+It implements support for supervised and unsupervised deep learning of images, text, time series and other data, with focus on simplicity and ease of use, test and connection into existing applications. It supports classification, object detection, segmentation, regression, autoencoders, ...
+
+And it relies on external machine learning libraries through a very generic and flexible API. At the moment it has support for:
 
 - the deep learning libraries [Caffe](https://github.com/BVLC/caffe), [Tensorflow](https://tensorflow.org), [Caffe2](https://caffe2.ai/), [Torch](https://pytorch.org/), [NCNN](https://github.com/Tencent/ncnn) and [Dlib](http://dlib.net/ml.html)
 - distributed gradient boosting library [XGBoost](https://github.com/dmlc/xgboost)
 - clustering with [T-SNE](https://github.com/DmitryUlyanov/Multicore-TSNE)
 - similarity search with [Annoy](https://github.com/spotify/annoy/) and [FAISS](https://github.com/facebookresearch/faiss)
 
+
 #### Machine Learning functionalities per library (current):
 
-|            | Training | Inference | Classification | Object Detection | Segmentation | Regression | Autoencoder | OCR / Seq2Seq | Time-Series |
-|------------|----------|------------|----------------|-----------|-----------|------------|-------------|-------------|-------------|
-| Caffe      | Y        | Y          | Y              | Y         |   Y       |   Y        | Y           | Y           |Y |
-| Caffe2     | Y        | Y          | Y              | Y         |   N       |   N        | N           | N           |N |
-| XGBoost    | Y        | Y          | Y              | N         |   N       |   Y        | N/A         | N           |N |
-| Tensorflow | N        | Y          | Y              | N         |   N       |   N        | N           | N           |N |
-| T-SNE      | Y        | N/A        | N/A            | N/A       |   N/A     |   N/A      | N/A         | N           |N |
-| Dlib       | N        | Y          | Y              | Y         |   N       |   N        | N           | N           |N |
-| TensorRT   | N/A      | Y          | Y              | Y         |   N       |   N        | N           | N           |N |
-| NCNN       | N/A      | Y          | Y              | Y         |   N       |   N        | N           | Y           |Y |
-| Libtorch   | Y        | Y          | Y              | N         |   N       |   N        | N           | N           |N |
-
-
-#### GPU support per library
-
-|            | Training | Inference |
-|------------|----------|------------|
-| Caffe      | Y        | Y          |
-| Caffe2     | Y        | Y          |
-| XGBoost    | Y        | Y          |
-| Tensorflow | N        | Y          |
-| T-SNE      | Y        | N/A          |
-| Dlib       | N        | Y          |
-| TensorRT   | N/A        | Y          |
-| NCNN       | N/A       | Y         |
-| Libtorch   | Y        | Y          |
-
-#### Input data support per library (current):
-
-|            | CSV | SVM | Text words | Text characters | Images | Time-Series |
-|------------|-----|-----|------------|-----------------|--------|-------------|
-| Caffe      | Y   | Y   | Y          | Y               | Y      |Y            |
-| Caffe2     | N   | N   | N          | N               | Y      |N            |
-| XGBoost    | Y   | Y   | Y          | N               | N      |N            |
-| Tensorflow | N   | N   | N          | N               | Y      |N            |
-| T-SNE      | Y   | N   | N          | Y               | Y      |N            |
-| Dlib       | N   | N   | N          | N               | Y      |N            |
-| TensorRT   | N   | N   | N          | N               | Y      |N            |
-| Libtorch   | N   | N   | N          | N               | Y      |N            |
-
-#### Main functionalities
-
-DeepDetect implements support for supervised and unsupervised deep learning of images, text, time series and other data, with focus on simplicity and ease of use, test and connection into existing applications. It supports classification, object detection, segmentation, regression, autoencoders, ...
+|                   | Caffe | Caffe2 | XGBoost | Tensorflow | T\-SNE | Dlib | TensorRT | NCNN | Libtorch |
+|------------------:|:-----:|:------:|:-------:|:----------:|:------:|:----:|:--------:|:----:|:--------:|
+| **Stage**         |       |        |         |            |        |      |          |      |          |
+| Training \(CPU\)  | Y     | Y      | Y       | N          | Y      | N    | N/A      | N/A  | Y        |
+| Training \(GPU\)  | Y     | Y      | Y       | N          | Y      | N    | N/A      | N/A  | Y        |
+| Inference \(CPU\) | Y     | Y      | Y       | Y          | N/A    | Y    | Y        | Y    | Y        |
+| Inference \(GPU\) | Y     | Y      | Y       | Y          | N/A    | Y    | Y        | Y    | Y        |
+|                   |       |        |         |            |        |      |          |      |          |
+| **Task**          |       |        |         |            |        |      |          |      |          |
+| Classification    | Y     | Y      | Y       | Y          | N/A    | Y    | Y        | Y    | Y        |
+| Object Detection  | Y     | Y      | N       | N          | N/A    | Y    | Y        | Y    | N        |
+| Segmentation      | Y     | N      | N       | N          | N/A    | N    | N        | N    | N        |
+| Regression        | Y     | N      | Y       | N          | N/A    | N    | N        | N    | N        |
+| Autoencoder       | Y     | N      | N/A     | N          | N/A    | N    | N        | N    | N        |
+| OCR / Seq2Seq     | Y     | N      | N       | N          | N      | N    | N        | Y    | N        |
+| Time\-Series      | Y     | N      | N       | N          | N      | N    | N        | Y    | N        |
+|                   |       |        |         |            |        |      |          |      |          |
+| **Input Data**    |       |        |         |            |        |      |          |      |          |
+| CSV               | Y     | N      | Y       | N          | Y      | N    | N        |      | N        |
+| SVM               | Y     | N      | Y       | N          | N      | N    | N        |      | N        |
+| Text words        | Y     | N      | Y       | N          | N      | N    | N        |      | N        |
+| Text characters   | Y     | N      | N       | N          | Y      | N    | N        |      | N        |
+| Images            | Y     | Y      | N       | Y          | Y      | Y    | Y        |      | Y        |
+| Time\-Series      | Y     | N      | N       | N          | N      | N    | N        |      | N        |
 
 #### Support
 
