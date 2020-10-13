@@ -47,7 +47,7 @@ Please join either the community on [Gitter](https://gitter.im/beniz/deepdetect)
 
 #### Supported Platforms
 
-The reference platforms with support are **Ubuntu 16.04 LTS** and **Ubuntu 18.04 LTS**.
+The reference platforms with support are **Ubuntu 18.04 LTS**.
 
 Supported images that come with pre-trained image classification deep (residual) neural nets:
 
@@ -240,7 +240,7 @@ DeepDetect is designed, implemented and supported by [Jolibrain](http://jolibrai
 
 Please refer to instructions here: https://www.deepdetect.com/quickstart-server/
 
-Below are instructions for Ubuntu 16.04 LTS and 18.04 LTS. For other Linux and Unix systems, steps may differ, CUDA, Caffe and other libraries may prove difficult to setup. If you are building on 16.04 LTS, look at https://github.com/jolibrain/deepdetect/issues/126 that tells you how to proceed.
+Below are instructions for 18.04 LTS. For other Linux and Unix systems, steps may differ, CUDA, Caffe and other libraries may prove difficult to setup.
 
 Beware of dependencies, typically on Debian/Ubuntu Linux, do:
 ```
