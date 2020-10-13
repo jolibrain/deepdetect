@@ -224,11 +224,15 @@ namespace dd
                    TMLModel>::clear_mllib(const APIData &ad)
   {
     (void)ad;
-    nvcaffeparser1::shutdownProtobufLibrary();
     cudaFree(_buffers.data()[_inputIndex]);
     cudaFree(_buffers.data()[_outputIndex0]);
     if (_bbox)
       cudaFree(_buffers.data()[_outputIndex1]);
+
+    // remove compiled model files.
+    std::vector<std::string> extensions
+        = { "TRTengine", "net_tensorRT.proto" };
+    fileops::remove_directory_files(this->_mlmodel._repo, extensions);
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
