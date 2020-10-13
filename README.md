@@ -1,4 +1,6 @@
-# DeepDetect : Open Source Deep Learning Server & API
+<img src="https://www.deepdetect.com/img/icons/menu/sidebar/deepdetect.svg" alt="DeepDetect Logo" width="100%" />
+
+# Open Source Deep Learning Server & API
 
 [![Join the chat at https://gitter.im/beniz/deepdetect](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/beniz/deepdetect?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Build Status](https://travis-ci.org/beniz/deepdetect.png)](https://travis-ci.org/jolibrain/deepdetect)
 
