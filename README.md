@@ -46,30 +46,30 @@ Please join either the community on [Gitter](https://gitter.im/beniz/deepdetect)
 
 ## Machine Learning functionalities per library
 
-|                   | Caffe | Caffe2 | XGBoost | Tensorflow | T\-SNE | Dlib | TensorRT | NCNN | Libtorch |
-|------------------:|:-----:|:------:|:-------:|:----------:|:------:|:----:|:--------:|:----:|:--------:|
-| **Stage**         |       |        |         |            |        |      |          |      |          |
-| Training \(CPU\)  | Y     | Y      | Y       | N          | Y      | N    | N/A      | N/A  | Y        |
-| Training \(GPU\)  | Y     | Y      | Y       | N          | Y      | N    | N/A      | N/A  | Y        |
-| Inference \(CPU\) | Y     | Y      | Y       | Y          | N/A    | Y    | Y        | Y    | Y        |
-| Inference \(GPU\) | Y     | Y      | Y       | Y          | N/A    | Y    | Y        | Y    | Y        |
-|                   |       |        |         |            |        |      |          |      |          |
-| **Task**          |       |        |         |            |        |      |          |      |          |
-| Classification    | Y     | Y      | Y       | Y          | N/A    | Y    | Y        | Y    | Y        |
-| Object Detection  | Y     | Y      | N       | N          | N/A    | Y    | Y        | Y    | N        |
-| Segmentation      | Y     | N      | N       | N          | N/A    | N    | N        | N    | N        |
-| Regression        | Y     | N      | Y       | N          | N/A    | N    | N        | N    | N        |
-| Autoencoder       | Y     | N      | N/A     | N          | N/A    | N    | N        | N    | N        |
-| OCR / Seq2Seq     | Y     | N      | N       | N          | N      | N    | N        | Y    | N        |
-| Time\-Series      | Y     | N      | N       | N          | N      | N    | N        | Y    | N        |
-|                   |       |        |         |            |        |      |          |      |          |
-| **Input Data**    |       |        |         |            |        |      |          |      |          |
-| CSV               | Y     | N      | Y       | N          | Y      | N    | N        |      | N        |
-| SVM               | Y     | N      | Y       | N          | N      | N    | N        |      | N        |
-| Text words        | Y     | N      | Y       | N          | N      | N    | N        |      | N        |
-| Text characters   | Y     | N      | N       | N          | Y      | N    | N        |      | N        |
-| Images            | Y     | Y      | N       | Y          | Y      | Y    | Y        |      | Y        |
-| Time\-Series      | Y     | N      | N       | N          | N      | N    | N        |      | N        |
+|                   | Caffe | Caffe2 | XGBoost | TensorRT | NCNN | Libtorch | Tensorflow | T\-SNE | Dlib |
+|------------------:|:-----:|:------:|:-------:|:--------:|:----:|:--------:|:----------:|:------:|:----:|
+| **Stage**         |       |        |         |          |      |          |            |        |      |
+| Training \(CPU\)  | Y     | Y      | Y       | N/A      | N/A  | Y        | N          | Y      | N    |
+| Training \(GPU\)  | Y     | Y      | Y       | N/A      | N/A  | Y        | N          | Y      | N    |
+| Inference \(CPU\) | Y     | Y      | Y       | Y        | Y    | Y        | Y          | N/A    | Y    |
+| Inference \(GPU\) | Y     | Y      | Y       | Y        | Y    | Y        | Y          | N/A    | Y    |
+|                   |       |        |         |          |      |          |            |        |      |
+| **Task**          |       |        |         |          |      |          |            |        |      |
+| Classification    | Y     | Y      | Y       | Y        | Y    | Y        | Y          | N/A    | Y    |
+| Object Detection  | Y     | Y      | N       | Y        | Y    | N        | N          | N/A    | Y    |
+| Segmentation      | Y     | N      | N       | N        | N    | N        | N          | N/A    | N    |
+| Regression        | Y     | N      | Y       | N        | N    | N        | N          | N/A    | N    |
+| Autoencoder       | Y     | N      | N/A     | N        | N    | N        | N          | N/A    | N    |
+| OCR / Seq2Seq     | Y     | N      | N       | N        | Y    | N        | N          | N      | N    |
+| Time\-Series      | Y     | N      | N       | N        | Y    | N        | N          | N      | N    |
+|                   |       |        |         |          |      |          |            |        |      |
+| **Input Data**    |       |        |         |          |      |          |            |        |      |
+| CSV               | Y     | N      | Y       | N        |      | N        | N          | Y      | N    |
+| SVM               | Y     | N      | Y       | N        |      | N        | N          | N      | N    |
+| Text words        | Y     | N      | Y       | N        |      | N        | N          | N      | N    |
+| Text characters   | Y     | N      | N       | N        |      | N        | N          | Y      | N    |
+| Images            | Y     | Y      | N       | Y        |      | Y        | Y          | Y      | Y    |
+| Time\-Series      | Y     | N      | N       | N        |      | N        | N          | N      | N    |
 
 ## Main features:
 
