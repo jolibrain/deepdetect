@@ -1,8 +1,8 @@
-## DeepDetect : Open Source Deep Learning Server & API
+# DeepDetect : Open Source Deep Learning Server & API
 
 [![Join the chat at https://gitter.im/beniz/deepdetect](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/beniz/deepdetect?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Build Status](https://travis-ci.org/beniz/deepdetect.png)](https://travis-ci.org/jolibrain/deepdetect)
 
-DeepDetect (http://www.deepdetect.com/) is a machine learning API and server written in C++11. It makes state of the art machine learning easy to work with and integrate into existing applications. It has support for both training and inference, with automatic conversion to embedded platforms with TensorRT (NVidia GPU) and NCNN (ARM CPU).
+DeepDetect (https://www.deepdetect.com/) is a machine learning API and server written in C++11. It makes state of the art machine learning easy to work with and integrate into existing applications. It has support for both training and inference, with automatic conversion to embedded platforms with TensorRT (NVidia GPU) and NCNN (ARM CPU).
 
 It implements support for supervised and unsupervised deep learning of images, text, time series and other data, with focus on simplicity and ease of use, test and connection into existing applications. It supports classification, object detection, segmentation, regression, autoencoders, ...
 
@@ -13,8 +13,38 @@ And it relies on external machine learning libraries through a very generic and 
 - clustering with [T-SNE](https://github.com/DmitryUlyanov/Multicore-TSNE)
 - similarity search with [Annoy](https://github.com/spotify/annoy/) and [FAISS](https://github.com/facebookresearch/faiss)
 
+Please join either the community on [Gitter](https://gitter.im/beniz/deepdetect), where we help users get through with installation, API, neural nets and connection to external applications.
 
-#### Machine Learning functionalities per library (current):
+---
+
+* [Machine Learning functionalities per library](#machine-learning-functionalities-per-library)
+* [Main features](#main-features)
+* [Installation](https://www.deepdetect.com/quickstart-server/)
+  * [From docker](https://github.com/jolibrain/deepdetect/tree/master/docs/docker.md)
+  * [From source](https://github.com/jolibrain/deepdetect/tree/master/docs/source.md)
+  * From Amazon AMI: [GPU](https://aws.amazon.com/marketplace/pp/B01N4D483M) and [CPU](https://aws.amazon.com/marketplace/pp/B01N1RGWQZ)
+
+* [Models ready to use](#models)
+* Ecosystem
+  * [Platform](https://www.deepdetect.com/platform/)
+  * [Tools and Clients](#tools-and-clients)
+* Documentation:
+  * [Introduction](https://www.deepdetect.com/overview/introduction/)
+  * [API Quickstart](https://www.deepdetect.com/server/docs/imagenet-classifier/): setup an image classifier API service in a few minutes
+  * [API Tutorials](https://www.deepdetect.com/server/docs/server_docs/): training from text, data and images, setup of prediction services, and export to external software (e.g. ElasticSearch)
+  * [API Reference](https://www.deepdetect.com/api/)
+  * [Examples](https://www.deepdetect.com/server/docs/examples/): MLP for data, text, multi-target regression to CNN and GoogleNet, finetuning, etc...)
+  * [FAQ](https://www.deepdetect.com/overview/faq/)
+* Demos:
+  * [Image classification Web application](https://github.com/jolibrain/deepdetect/tree/master/demo/imgdetect) using HTML and javascript
+  * [Image similarity search](https://github.com/jolibrain/deepdetect/tree/master/demo/imgsearch) using python client
+  * [Image object detection](https://github.com/jolibrain/deepdetect/tree/master/demo/objdetect) using python client
+  * [Image segmentation](https://github.com/jolibrain/deepdetect/tree/master/demo/segmentation) using python client
+* [Performance tools and report](https://github.com/jolibrain/dd_performances) done on NVidia Desktop and embedded GPUs, along with Raspberry Pi 3.
+* [References](#references)
+* [Authors](#authors)
+
+## Machine Learning functionalities per library
 
 |                   | Caffe | Caffe2 | XGBoost | Tensorflow | T\-SNE | Dlib | TensorRT | NCNN | Libtorch |
 |------------------:|:-----:|:------:|:-------:|:----------:|:------:|:----:|:--------:|:----:|:--------:|
@@ -41,33 +71,7 @@ And it relies on external machine learning libraries through a very generic and 
 | Images            | Y     | Y      | N       | Y          | Y      | Y    | Y        |      | Y        |
 | Time\-Series      | Y     | N      | N       | N          | N      | N    | N        |      | N        |
 
-#### Support
-
-Please join either the community on [Gitter](https://gitter.im/beniz/deepdetect), where we help users get through with installation, API, neural nets and connection to external applications.
-
-#### Supported Platforms
-
-The reference platforms with support are **Ubuntu 18.04 LTS**.
-
-Supported images that come with pre-trained image classification deep (residual) neural nets:
-
-- **docker images** for CPU and GPU machines are available at https://hub.docker.com/u/jolibrain. See https://github.com/jolibrain/deepdetect/tree/master/docker/README.md for details on how to use them.
-
-- For **Amazon AMI** see links for [GPU AMI](https://aws.amazon.com/marketplace/pp/B01N4D483M) and [CPU AMI](https://aws.amazon.com/marketplace/pp/B01N1RGWQZ).
-
-#### Performances
-
-See https://github.com/jolibrain/dd_performances for a report on performances on NVidia Desktop and embedded GPUs, along with Raspberry Pi 3.
-
-#### Quickstart
-Setup an image classifier API service in a few minutes:
-https://www.deepdetect.com/server/docs/imagenet-classifier/
-
-#### Tutorials
-List of tutorials, training from text, data and images, setup of prediction services, and export to external software (e.g. ElasticSearch): https://www.deepdetect.com/server/docs/server_docs/
-
-#### Features and Documentation
-Current features include:
+## Main features:
 
 - high-level API for machine learning and deep learning
 - support for Caffe, Tensorflow, XGBoost, T-SNE, Caffe2, NCNN, TensorRT, Pytorch
@@ -89,97 +93,17 @@ Current features include:
 - support for sparse features and computations on both GPU and CPU
 - built-in similarity indexing and search of predicted features, images, objects and probability distributions
 
-##### Documentation
+## Tools and Clients
 
-- Full documentation is available from http://www.deepdetect.com/overview/introduction/
-- API documentation is available from http://www.deepdetect.com/api/
-- FAQ is available from http://www.deepdetect.com/overview/faq/
+* Python client:
+  * REST client: https://github.com/jolibrain/deepdetect/tree/master/clients/python
+  * 'a la scikit' bindings: https://github.com/ArdalanM/pyDD
+* Javacript client: https://github.com/jolibrain/deepdetect-js
+* Java client: https://github.com/kfadhel/deepdetect-api-java
+* Early C# client: https://github.com/jolibrain/deepdetect/pull/98
+* Log DeepDetect training metrics via Tensorboard: https://github.com/jolibrain/dd_board
 
-##### Clients
-
-- Python client:
-  - REST client: https://github.com/jolibrain/deepdetect/tree/master/clients/python
-  - 'a la scikit' bindings: https://github.com/ArdalanM/pyDD
-- Javacript client: https://github.com/jolibrain/deepdetect-js
-- Java client: https://github.com/kfadhel/deepdetect-api-java
-- Early C# client: https://github.com/jolibrain/deepdetect/pull/98
-
-##### Tools
-
-- Log DeepDetect training metrics via Tensorboard with [dd_board](https://github.com/jolibrain/dd_board)
-
-##### Dependencies
-
-- C++, gcc >= 4.8 or clang with support for C++11 (there are issues with Clang + Boost)
-- [eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page) for all matrix operations;
-- [glog](https://code.google.com/p/google-glog/) for logging events and debug;
-- [gflags](https://code.google.com/p/gflags/) for command line parsing;
-- OpenCV >= 2.4
-- [cppnetlib](http://cpp-netlib.org/)
-- Boost , Boost::graph
-- [curl](http://curl.haxx.se/)
-- [curlpp](http://www.curlpp.org/)
-- [utfcpp](http://utfcpp.sourceforge.net/)
-- [gtest](https://code.google.com/p/googletest/) for unit testing (optional);
-
-##### Caffe Dependencies
-
-- CUDA 9 or 8 is recommended for GPU mode.
-- BLAS via ATLAS, MKL, or OpenBLAS.
-- [protobuf](https://github.com/google/protobuf)
-- IO libraries hdf5, leveldb, snappy, lmdb
-
-##### XGBoost Dependencies
-
-None outside of C++ compiler and make
-- CUDA 8 is recommended for GPU mode.
-
-#### Tensorflow Dependencies
-
-- Cmake > 3
-- [Bazel 0.8.x](https://www.bazel.io/versions/master/docs/install.html#install-on-ubuntu)
-
-#### Dlib Dependencies
-
-- CUDA 9 or 8 and cuDNN 7 for GPU mode. CUDA 10 for Ubuntu 18.04
-  **Note:** The version of OpenBLAS (v0.2.20) shipped with Ubuntu 18.04 is not up to date and includes a bug. You must install a later version of OpenBLAS >= v0.3.0 to use Dlib on Ubuntu 18.04.
-
-  The easiest way currently is to manually install the Ubuntu 19.10 `libopenblas-base` and `libopenblas-dev` packages. You may download them here:
-  http://launchpadlibrarian.net/410583809/libopenblas-base_0.3.5+ds-2_amd64.deb
-  http://launchpadlibrarian.net/410583808/libopenblas-dev_0.3.5+ds-2_amd64.deb
-  and install them with `sudo apt-get install ./package-name.deb` to automatically handle dependencies.
-
-##### Caffe version
-
-By default DeepDetect automatically relies on a modified version of Caffe, https://github.com/jolibrain/caffe/tree/master
-This version includes many improvements over the original Caffe, such as sparse input data support, exception handling, class weights, object detection, segmentation, and various additional losses and layers.
-
-We use Caffe as default since it has excellent conversion to production inference libraries such as TensorRT and NCNN, that are also supported by DeepDetect.
-
-##### Implementation
-
-The code makes use of C++ policy design for modularity, performance and putting the maximum burden on the checks at compile time. The implementation uses many features from C++11.
-
-##### Demo
-
-- Image classification Web interface:
-HTML and javascript classification image demo in [demo/imgdetect](https://github.com/jolibrain/deepdetect/tree/master/demo/imgdetect)
-
-- Image similarity search:
-Python script for indexing and searching images is in [demo/imgsearch](https://github.com/jolibrain/deepdetect/tree/master/demo/imgsearch)
-
-- Image object detection:
-Python script for object detection within images is in [demo/objdetect](https://github.com/jolibrain/deepdetect/tree/master/demo/objdetect)
-
-- Image segmentation:
-Python script for image segmentation is in [demo/segmentation](https://github.com/jolibrain/deepdetect/tree/master/demo/segmentation)
-
-##### Examples
-
-- List of examples, from MLP for data, text, multi-target regression to CNN and GoogleNet, finetuning, etc...:
-http://www.deepdetect.com/overview/examples/
-
-##### Models
+## Models
 
 |                          | Caffe | Tensorflow | Source        | Top-1 Accuracy (ImageNet) |
 |--------------------------|-------|------------|---------------|---------------------------|
@@ -217,9 +141,11 @@ http://www.deepdetect.com/overview/examples/
 
 More models:
 
-- List of free, even for commercial use, deep neural nets for image classification, and character-based convolutional nets for text classification: http://www.deepdetect.com/applications/list_models/
+- List of free, even for commercial use, deep neural nets for image classification, and character-based convolutional nets for text classification: https://www.deepdetect.com/applications/list_models/
 
-#### Templates
+<!---
+#FIXME(sileht): it's a feature detail, should be moved somewhere in deepdetect.com/server/docs/
+## Templates
 
 DeepDetect comes with a built-in system of neural network templates (Caffe backend only at the moment). This allows the creation of custom networks based on recognized architectures, for images, text and data, and with much simplicity.
 
@@ -232,297 +158,14 @@ Usage:
    - with images, e.g. `["Res50"]` where the main pattern is `ResX` with X the depth of the Resnet
    - with character-based models (text), use the `xCRy` pattern of convnets instead, with the main difference that `x` now specifies the number of chained `CR` blocks within a resnet block
    - for Resnets applied to CSV or SVM (sparse data), use the `mlp` pattern. In this latter case, at the moment, the `resnet` is built with blocks made of two layers for each specified layer after the first one. Here is an example: `[300,100,10]` means that a first hidden layer of size `300` is applied followed by a `resnet` block made of two `100` fully connected layer, and another block of two `10` fully connected layers. This is subjected to future changes and more control.
+-->
 
-### Authors
-DeepDetect is designed, implemented and supported by [Jolibrain](http://jolibrain.com/) with the help of other contributors.
+## References
 
-### Build
-
-Please refer to instructions here: https://www.deepdetect.com/quickstart-server/
-
-Below are instructions for 18.04 LTS. For other Linux and Unix systems, steps may differ, CUDA, Caffe and other libraries may prove difficult to setup.
-
-Beware of dependencies, typically on Debian/Ubuntu Linux, do:
-```
-sudo apt-get install build-essential libgoogle-glog-dev libgflags-dev libeigen3-dev libopencv-dev libcppnetlib-dev libboost-dev libboost-iostreams-dev libcurlpp-dev libcurl4-openssl-dev protobuf-compiler libopenblas-dev libhdf5-dev libprotobuf-dev libleveldb-dev libsnappy-dev liblmdb-dev libutfcpp-dev cmake libgoogle-perftools-dev unzip python-setuptools python-dev libspdlog-dev python-six python-enum34 libarchive-dev rapidjson-dev libmapbox-variant-dev
-```
-
-#### Choosing interfaces :
-
-DeepDetect can be used:
-- directly from command line for caffe models. To build the executable use:
-```
-cmake .. -DUSE_COMMAND_LINE=ON
-```
-- from command line using the JSON API. To build the executable use:
-```
-cmake .. -DUSE_COMMAND_LINE=ON -DUSE_JSON_API=ON
-```
-- as a REST server (using JSON API). To build the server executable use (`USE_JSON_API` is auto-selected):
-```
-cmake .. -DUSE_HTTP_SERVER=ON
-```
-- linked into another executable. To build only the library (and use a `dd::DeepDetect<dd::JSonAPI>` object in your own code) use:
-```
-cmake .. -DUSE_JSON_API=ON -DUSE_HTTP_SERVER=OFF -DUSE_COMMAND_LINE=OFF
-
-```
-
-#### Default build with Caffe
-For compiling along with Caffe:
-```
-mkdir build
-cd build
-cmake ..
-make
-```
-
-If you are building for one or more GPUs, you may need to add CUDA to your ld path:
-```
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64
-```
-
-If you would like to build with cuDNN, your `cmake` line should be:
-```
-cmake .. -DUSE_CUDNN=ON
-```
-
-To target the build of underlying Caffe to a specific CUDA architecture (e.g. Pascal), you can use:
-```
-cmake .. -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61"
-```
-
-If you would like to build on NVidia Jetson TX1:
-```
-cmake .. -DCUDA_ARCH="-gencode arch=compute_53,code=sm_53" -DUSE_CUDNN=ON -DJETSON=ON -DCUDA_USE_STATIC_CUDA_RUNTIME=OFF
-```
-On Jetson TX2, use `-DCUDA_ARCH="-gencode arch=compute_62,code=sm_62"`
-
-If you would like a CPU only build, use:
-```
-cmake .. -DUSE_CPU_ONLY=ON
-```
-
-If you would like to constrain Caffe to CPU only, use:
-```
-cmake .. -DUSE_CAFFE_CPU_ONLY=ON
-```
-
-#### Build with XGBoost support
-
-If you would like to build with XGBoost, include the `-DUSE_XGBOOST=ON` parameter to `cmake`:
-```
-cmake .. -DUSE_XGBOOST=ON
-```
-
-If you would like to build the GPU support for XGBoost (experimental from DMLC), use the `-DUSE_XGBOOST_GPU=ON` parameter to `cmake`:
-```
-cmake .. -DUSE_XGBOOST=ON -DUSE_XGBOOST_GPU=ON
-```
-
-#### Build with Tensorflow support
-First you must install [Bazel](https://www.bazel.io/versions/master/docs/install.html#install-on-ubuntu) and Cmake with version > 3.
-
-And other dependencies:
-```
-sudo apt-get install python-numpy swig python-dev python-wheel unzip
-```
-
-If you would like to build with Tensorflow, include the `-DUSE_TF=ON` paramter to `cmake`:
-```
-cmake .. -DUSE_TF=ON -DCUDA_USE_STATIC_CUDA_RUNTIME=OFF
-```
-
-If you would like to constrain Tensorflow to CPU, use:
-```
-cmake .. -DUSE_TF=ON -DUSE_TF_CPU_ONLY=ON
-```
-
-You can combine with XGBoost support with:
-```
-cmake .. -DUSE_TF=ON -DUSE_XGBOOST=ON
-```
-
-#### Build with T-SNE support
-
-Simply specify the option via cmake command line:
-```
-cmake .. -DUSE_TSNE=ON
-```
-
-#### Build with Dlib support
-Specify the following option via cmake:
-```$xslt
-cmake .. -DUSE_DLIB=ON
-```
-This will automatically build with GPU support if possible. Note: this will also enable cuDNN if available by default.
-
-If you would like to constrain Dlib to CPU, use:
-```
-cmake .. -DUSE_DLIB=ON -DUSE_DLIB_CPU_ONLY=ON
-```
-
-#### Build with TensorRT support
-Specify the following option via cmake:
-```$xslt
-cmake .. -DUSE_TENSORRT=ON
-```
-TensorRT requires GPU and CUDNN, they are automatically switched on.
-
-#### Build with TensorRT support + TRT oss parts
-Specify the following option via cmake:
-```$xslt
-cmake .. -DUSE_TENSORRT=ON -DUSE_TENSORRT_OSS=ON
-```
-This compiles against https://github.com/NVIDIA/TensorRT , ie opensource parts (mainly parsers)
-
-#### Build with Libtorch support
-
-Specify the following option via cmake:
-```
-cmake .. -DUSE_TORCH=ON
-```
-If you call cmake with the `-DUSE_CPU_ONLY` option, a cpu-only version of libtorch will be used.
-
-#### Build with Caffe2 support
-
-Specify the option via cmake:
-```
-cmake .. -DUSE_CAFFE2=ON
-```
-
-#### Build without Caffe
-
-Caffe remains the default backend for DeepDetect though it can be deactivated with cmake. However, at least one library needs to be specified:
-```
-cmake .. -DUSE_CAFFE=OFF -DUSE_XGBOOST=ON
-```
-
-#### Build with similarity search support
-
-Specify the following option via cmake:
-```
-cmake .. -DUSE_SIMSEARCH=ON
-```
-
-#### Build with logs output into syslog
-
-Specify the following option via cmake:
-```
-cmake .. -DUSE_DD_SYSLOG=ON
-```
-
-### Run tests
-
-Note: running tests requires the automated download of ~75Mb of datasets, and computations may take around thirty minutes on a CPU-only machines.
-
-To prepare for tests, compile with:
-```
-cmake -DBUILD_TESTS=ON ..
-make
-```
-Run tests with:
-```
-ctest
-```
-
-### Code Style Rules
-
-`clang-format` is used to enforce code style.
-
-You can automatically format it with:
-
-```
-cmake ..
-make clang-format
-```
-
-Or use your favorite editor with a clang-format plugin.
-
-### Start the server
-
-```
-cd build/main
-./dede
-
-DeepDetect [ commit 73d4e638498d51254862572fe577a21ab8de2ef1 ]
-Running DeepDetect HTTP server on localhost:8080
-```
-
-Main options are:
-- `-host` to select which host to run on, default is `localhost`, use `0.0.0.0` to listen on all interfaces
-- `-port` to select which port to listen to, default is `8080`
-- `-nthreads` to select the number of HTTP threads, default is `10`
-
-To see all options, do:
-```
-./dede --help
-```
-
-### Services auto-start
-
-A list of services can be stored into a file and passed to the `dede` server so that they are all created upon server start. A list fo predictions can also be run automatically upon server start. The file is passed with:
-
-```
-./dede -service_start_list <yourfile>
-```
-
-File format is as follows:
-
-- service creation:
-```
-service_create;sname;JSON string
-```
-where `sname` is the service name and the JSON is a string without external quotes
-
-- service prediction
-```
-service_predict;JSON string
-```
-
-### Pure command line JSON API
-
-To use deepdetect without the client/server architecture while passing the exact same JSON messages from the API:
-
-```
-./dede --jsonapi 1 <other options>
-```
-
-where `<other options>` stands for the command line parameters from the command line JSON API:
-
-```
--info (/info JSON call) type: bool default: false
--service_create (/service/service_name call JSON string) type: string default: ""
--service_delete (/service/service_name DELETE call JSON string) type: string default: ""
--service_name (service name string for JSON call /service/service_name) type: string default: ""
--service_predict (/predict POST call JSON string) type: string default: ""
--service_train (/train POST call JSON string) type: string default: ""
--service_train_delete (/train DELETE call JSON string) type: string default: ""
--service_train_status (/train GET call JSON string) type: string default: ""
-
-```
-
-The options above can be obtained from running
-
-```
-./dede --help
-```
-
-Example of creating a service then listing it:
-
-```
-./dede --jsonapi 1 --service_name test --service_create '{"mllib":"caffe","description":"classification service","type":"supervised","parameters":{"input":{"connector":"image"},"mllib":{"template":"googlenet","nclasses":10}},"model":{"templates":"/path/to/deepdetect/templates/caffe/","repository":"/path/to/model/"}}'
-```
-
-Note that in command line mode the `--service_xxx` calls are executed sequentially, and synchronously. Also note the logs are those from the server, the JSON API response is not available in pure command line mode.
-
-### Run examples
-
-See tutorials from http://www.deepdetect.com/tutorials/tutorials/
-
-### References
-
-- DeepDetect (http://www.deepdetect.com/)
+- DeepDetect (https://www.deepdetect.com/)
 - Caffe (https://github.com/jolibrain/caffe)
 - XGBoost (https://github.com/dmlc/xgboost)
 - T-SNE (https://github.com/DmitryUlyanov/Multicore-TSNE)
+
+## Authors
+DeepDetect is designed, implemented and supported by [Jolibrain](https://jolibrain.com/) with the help of other contributors.
