@@ -1,5 +1,7 @@
 #!/bin/bash
 
+here=$(dirname $(readlink -f $0))
+
 declare -A images
 images[gpu]="nvidia/cuda:10.2-cudnn7-devel-ubuntu18.04"
 # Ubuntu 18.04+cuda 10.2.80 + cuDNN 7.6.5 + TensorRT 7.0.0
@@ -14,5 +16,5 @@ for dest in "${!images[@]}" ; do
         -e "s,FROM [^ ]*,FROM ${image},g" \
         -e "s,ARG DEEPDETECT_ARCH=.*,ARG DEEPDETECT_ARCH=gpu,g" \
         -e "s/\(apt_\(cache\|lib\)\)_cpu/\1_${dest}/g" \
-        cpu.Dockerfile > ${dest}.Dockerfile
+        $here/cpu.Dockerfile > $here/${dest}.Dockerfile
 done
