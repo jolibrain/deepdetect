@@ -10,7 +10,7 @@ It implements support for supervised and unsupervised deep learning of images, t
 
 And it relies on external machine learning libraries through a very generic and flexible API. At the moment it has support for:
 
-- the deep learning libraries [Caffe](https://github.com/BVLC/caffe), [Tensorflow](https://tensorflow.org), [Caffe2](https://caffe2.ai/), [Torch](https://pytorch.org/), [NCNN](https://github.com/Tencent/ncnn) and [Dlib](http://dlib.net/ml.html)
+- the deep learning libraries [Caffe](https://github.com/BVLC/caffe), [Tensorflow](https://tensorflow.org), [Caffe2](https://caffe2.ai/), [Torch](https://pytorch.org/), [NCNN](https://github.com/Tencent/ncnn) [Tensorrt](https://github.com/NVIDIA/TensorRT) and [Dlib](http://dlib.net/ml.html)
 - distributed gradient boosting library [XGBoost](https://github.com/dmlc/xgboost)
 - clustering with [T-SNE](https://github.com/DmitryUlyanov/Multicore-TSNE)
 - similarity search with [Annoy](https://github.com/spotify/annoy/) and [FAISS](https://github.com/facebookresearch/faiss)
