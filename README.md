@@ -73,13 +73,13 @@ Please join either the community on [Gitter](https://gitter.im/beniz/deepdetect)
 
 |                   | Caffe | Caffe2 | XGBoost | TensorRT | NCNN | Libtorch | Tensorflow | T\-SNE | Dlib |
 |------------------:|:-----:|:------:|:-------:|:--------:|:----:|:--------:|:----------:|:------:|:----:|
-| **Stage**         |       |        |         |          |      |          |            |        |      |
+| **Serving**       |       |        |         |          |      |          |            |        |      |
 | Training \(CPU\)  | Y     | Y      | Y       | N/A      | N/A  | Y        | N          | Y      | N    |
 | Training \(GPU\)  | Y     | Y      | Y       | N/A      | N/A  | Y        | N          | Y      | N    |
 | Inference \(CPU\) | Y     | Y      | Y       | Y        | Y    | Y        | Y          | N/A    | Y    |
 | Inference \(GPU\) | Y     | Y      | Y       | Y        | Y    | Y        | Y          | N/A    | Y    |
 |                   |       |        |         |          |      |          |            |        |      |
-| **Task**          |       |        |         |          |      |          |            |        |      |
+| **Models**        |       |        |         |          |      |          |            |        |      |
 | Classification    | Y     | Y      | Y       | Y        | Y    | Y        | Y          | N/A    | Y    |
 | Object Detection  | Y     | Y      | N       | Y        | Y    | N        | N          | N/A    | Y    |
 | Segmentation      | Y     | N      | N       | N        | N    | N        | N          | N/A    | N    |
@@ -88,7 +88,7 @@ Please join either the community on [Gitter](https://gitter.im/beniz/deepdetect)
 | OCR / Seq2Seq     | Y     | N      | N       | N        | Y    | N        | N          | N      | N    |
 | Time\-Series      | Y     | N      | N       | N        | Y    | N        | N          | N      | N    |
 |                   |       |        |         |          |      |          |            |        |      |
-| **Input Data**    |       |        |         |          |      |          |            |        |      |
+| **Data**          |       |        |         |          |      |          |            |        |      |
 | CSV               | Y     | N      | Y       | N        |      | N        | N          | Y      | N    |
 | SVM               | Y     | N      | Y       | N        |      | N        | N          | N      | N    |
 | Text words        | Y     | N      | Y       | N        |      | N        | N          | N      | N    |
