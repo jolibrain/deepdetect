@@ -179,84 +179,15 @@ namespace dd
       resize(src, dst, cv::Size(), coef, coef);
     }
 
-    // decode image
-    void decode(const std::string &str)
+    /// Apply preprocessing to image and add it to the list of images
+    /// img_name: name of the image as displayed in error messages
+    int add_image(const cv::Mat &img, const std::string &img_name)
     {
-      std::vector<unsigned char> vdat(str.begin(), str.end());
-      cv::Mat img = cv::Mat(cv::imdecode(
-          cv::Mat(vdat, false),
-          _unchanged_data
-              ? CV_LOAD_IMAGE_UNCHANGED
-              : (_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR)));
-      if (_keep_orig)
-        _orig_imgs.push_back(img);
-      _imgs_size.push_back(std::pair<int, int>(img.rows, img.cols));
-      cv::Mat rimg;
-      if (_scaled)
-        scale(img, rimg);
-      else if (_width == 0 || _height == 0)
-        {
-          if (_width == 0 && _height == 0)
-            {
-              // XXX - Do nothing and keep native resolution. May cause issues
-              // if batched images are different resolutions
-              rimg = img;
-            }
-          else
-            {
-              // Resize so that the larger dimension is set to whichever (width
-              // or height) is non-zero, maintaining aspect ratio
-              // XXX - This may cause issues if batch images are different
-              // resolutions
-              size_t currMaxDim = std::max(img.rows, img.cols);
-              double scale = static_cast<double>(std::max(_width, _height))
-                             / static_cast<double>(currMaxDim);
-              resize(img, rimg, cv::Size(), scale, scale);
-            }
-        }
-      else
-        {
-          // Resize normally to the specified width and height
-          resize(img, rimg, cv::Size(_width, _height), 0, 0);
-        }
-
-      if (_crop_width != 0 && _crop_height != 0)
-        {
-          int widthBorder = (_width - _crop_width) / 2;
-          int heightBorder = (_height - _crop_height) / 2;
-          rimg = rimg(
-              cv::Rect(widthBorder, heightBorder, _crop_width, _crop_height));
-        }
-
-      _imgs.push_back(std::move(rimg));
-    }
-
-    // deserialize image, independent of format
-    void deserialize(std::stringstream &input)
-    {
-      size_t size = 0;
-      input.seekg(0, input.end);
-      size = input.tellg();
-      input.seekg(0, input.beg);
-      char *data = new char[size];
-      input.read(data, size);
-      std::string str(data, data + size);
-      delete[] data;
-      decode(str);
-    }
-
-    // data acquisition
-    int read_file(const std::string &fname)
-    {
-      cv::Mat img
-          = cv::imread(fname, _unchanged_data ? CV_LOAD_IMAGE_UNCHANGED
-                                              : (_bw ? CV_LOAD_IMAGE_GRAYSCALE
-                                                     : CV_LOAD_IMAGE_COLOR));
       if (_keep_orig)
         _orig_imgs.push_back(img);
       if (img.empty())
         {
-          _logger->error("empty image {}", fname);
+          _logger->error("empty image {}", img_name);
           return -1;
         }
       _imgs_size.push_back(std::pair<int, int>(img.rows, img.cols));
@@ -294,7 +225,7 @@ namespace dd
       catch (...)
         {
           throw InputConnectorBadParamException("failed resizing image "
-                                                + fname);
+                                                + img_name);
         }
       if (_crop_width != 0 && _crop_height != 0)
         {
@@ -308,11 +239,48 @@ namespace dd
           catch (...)
             {
               throw InputConnectorBadParamException("failed cropping image "
-                                                    + fname);
+                                                    + img_name);
             }
         }
+
       _imgs.push_back(std::move(rimg));
       return 0;
+    }
+
+    // decode image
+    void decode(const std::string &str)
+    {
+      std::vector<unsigned char> vdat(str.begin(), str.end());
+      cv::Mat img = cv::Mat(cv::imdecode(
+          cv::Mat(vdat, false),
+          _unchanged_data
+              ? CV_LOAD_IMAGE_UNCHANGED
+              : (_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR)));
+      add_image(img, "base64 image");
+    }
+
+    // deserialize image, independent of format
+    void deserialize(std::stringstream &input)
+    {
+      size_t size = 0;
+      input.seekg(0, input.end);
+      size = input.tellg();
+      input.seekg(0, input.beg);
+      char *data = new char[size];
+      input.read(data, size);
+      std::string str(data, data + size);
+      delete[] data;
+      decode(str);
+    }
+
+    // data acquisition
+    int read_file(const std::string &fname)
+    {
+      cv::Mat img
+          = cv::imread(fname, _unchanged_data ? CV_LOAD_IMAGE_UNCHANGED
+                                              : (_bw ? CV_LOAD_IMAGE_GRAYSCALE
+                                                     : CV_LOAD_IMAGE_COLOR));
+      return add_image(img, fname);
     }
 
     int read_db(const std::string &fname)
@@ -401,64 +369,7 @@ namespace dd
               p.first, _unchanged_data ? CV_LOAD_IMAGE_UNCHANGED
                                        : (_bw ? CV_LOAD_IMAGE_GRAYSCALE
                                               : CV_LOAD_IMAGE_COLOR));
-          _imgs_size.push_back(std::pair<int, int>(img.rows, img.cols));
-          if (_keep_orig)
-            _orig_imgs.push_back(img);
-          cv::Mat rimg;
-
-          try
-            {
-              if (_scaled)
-                scale(img, rimg);
-              else if (_width == 0 || _height == 0)
-                {
-                  if (_width == 0 && _height == 0)
-                    {
-                      // Do nothing and keep native resolution. May cause
-                      // issues if batched images are different resolutions
-                      rimg = img;
-                    }
-                  else
-                    {
-                      // Resize so that the larger dimension is set to
-                      // whichever (width or height) is non-zero, maintaining
-                      // aspect ratio
-                      // XXX - This may cause issues if batch images are
-                      // different resolutions
-                      size_t currMaxDim = std::max(img.rows, img.cols);
-                      double scale
-                          = static_cast<double>(std::max(_width, _height))
-                            / static_cast<double>(currMaxDim);
-                      resize(img, rimg, cv::Size(), scale, scale);
-                    }
-                }
-              else
-                {
-                  // Resize normally to the specified width and height
-                  resize(img, rimg, cv::Size(_width, _height), 0, 0);
-                }
-            }
-          catch (...)
-            {
-              throw InputConnectorBadParamException("failed resizing image "
-                                                    + p.first);
-            }
-          if (_crop_width != 0 && _crop_height != 0)
-            {
-              int widthBorder = (_width - _crop_width) / 2;
-              int heightBorder = (_height - _crop_height) / 2;
-              try
-                {
-                  rimg = rimg(cv::Rect(widthBorder, heightBorder, _crop_width,
-                                       _crop_height));
-                }
-              catch (...)
-                {
-                  throw InputConnectorBadParamException(
-                      "failed cropping image " + p.first);
-                }
-            }
-          _imgs.push_back(std::move(rimg));
+          add_image(img, p.first);
           _img_files.push_back(p.first);
           if (p.second >= 0)
             _labels.push_back(p.second);
@@ -620,6 +531,27 @@ namespace dd
 #endif
     }
 
+    void copy_parameters_to(DDImg &dimg) const
+    {
+      dimg._bw = _bw;
+      dimg._rgb = _rgb;
+      dimg._histogram_equalization = _histogram_equalization;
+      dimg._unchanged_data = _unchanged_data;
+      dimg._width = _width;
+      dimg._height = _height;
+      dimg._crop_width = _crop_width;
+      dimg._crop_height = _crop_height;
+      dimg._scale = _scale;
+      dimg._scaled = _scaled;
+      dimg._scale_min = _scale_min;
+      dimg._scale_max = _scale_max;
+      dimg._keep_orig = _keep_orig;
+      dimg._interp = _interp;
+#ifdef USE_CUDA_CV
+      dimg._cuda = _cuda;
+#endif
+    }
+
     int feature_size() const
     {
       if (_bw || _unchanged_data)
@@ -727,23 +659,8 @@ namespace dd
           bool no_img = false;
           std::string u = _uris.at(i);
           DataEl<DDImg> dimg(this->_input_timeout);
-          dimg._ctype._bw = _bw;
-          dimg._ctype._rgb = _rgb;
-          dimg._ctype._histogram_equalization = _histogram_equalization;
-          dimg._ctype._unchanged_data = _unchanged_data;
-          dimg._ctype._width = _width;
-          dimg._ctype._height = _height;
-          dimg._ctype._crop_width = _crop_width;
-          dimg._ctype._crop_height = _crop_height;
-          dimg._ctype._scale = _scale;
-          dimg._ctype._scaled = _scaled;
-          dimg._ctype._scale_min = _scale_min;
-          dimg._ctype._scale_max = _scale_max;
-          dimg._ctype._keep_orig = _keep_orig;
-          dimg._ctype._interp = _interp;
-#ifdef USE_CUDA_CV
-          dimg._ctype._cuda = _cuda;
-#endif
+          copy_parameters_to(dimg._ctype);
+
           try
             {
               if (dimg.read_element(u, this->_logger))
