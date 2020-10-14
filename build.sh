@@ -10,7 +10,7 @@ deepdetect_gpu_build_profiles=(default tf caffe2 tensorrt)
 # NOTE(sileht): list of all supported card by CUDA 10.2
 # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/
 if [ ! "$DEEPDETECT_CUDA_ARCH" ]; then
-    for card in 30 35 50 52 60 61 62 70 72; do
+    for card in 50 52 60 61 62 70 72; do
         DEEPDETECT_CUDA_ARCH="$DEEPDETECT_CUDA_ARCH -gencode arch=compute_${card},code=sm_${card}"
     done
     # trim spaces
