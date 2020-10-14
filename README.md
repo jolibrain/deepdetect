@@ -19,8 +19,8 @@ Please join either the community on [Gitter](https://gitter.im/beniz/deepdetect)
 
 ---
 
-* [Machine Learning functionalities per library](#machine-learning-functionalities-per-library)
 * [Main features](#main-features)
+* [Machine Learning functionalities per library](#machine-learning-functionalities-per-library)
 * [Installation](https://www.deepdetect.com/quickstart-server/)
   * [From docker](https://github.com/jolibrain/deepdetect/tree/master/docs/docker.md)
   * [From source](https://github.com/jolibrain/deepdetect/tree/master/docs/source.md)
@@ -45,6 +45,29 @@ Please join either the community on [Gitter](https://gitter.im/beniz/deepdetect)
 * [Performance tools and report](https://github.com/jolibrain/dd_performances) done on NVidia Desktop and embedded GPUs, along with Raspberry Pi 3.
 * [References](#references)
 * [Authors](#authors)
+
+## Main features:
+
+- high-level API for machine learning and deep learning
+- support for Caffe, Tensorflow, XGBoost, T-SNE, Caffe2, NCNN, TensorRT, Pytorch
+- classification, regression, autoencoders, object detection, segmentation, time-series
+- JSON communication format
+- remote Python and Javacript clients
+- dedicated server with support for asynchronous training calls
+- high performances, benefit from multicore CPU and GPU
+- built-in similarity search via neural embeddings
+- connector to handle large collections of images with on-the-fly data augmentation (e.g. rotations, mirroring)
+- connector to handle CSV files with preprocessing capabilities
+- connector to handle text files, sentences, and character-based models
+- connector to handle SVM file format for sparse data
+- range of built-in model assessment measures (e.g. F1, multiclass log loss, ...)
+- range of special losses (e.g Dice, contour, ...)
+- no database dependency and sync, all information and model parameters organized and available from the filesystem
+- flexible template output format to simplify connection to external applications
+- templates for the most useful neural architectures (e.g. Googlenet, Alexnet, ResNet, convnet, character-based convnet, mlp, logistic regression, SSD, DeepLab, PSPNet, U-Net, CRNN, ShuffleNet, SqueezeNet, MobileNet, RefineDet, VOVNet, ...)
+- support for sparse features and computations on both GPU and CPU
+- built-in similarity indexing and search of predicted features, images, objects and probability distributions
+
 
 ## Machine Learning functionalities per library
 
@@ -72,28 +95,6 @@ Please join either the community on [Gitter](https://gitter.im/beniz/deepdetect)
 | Text characters   | Y     | N      | N       | N        |      | N        | N          | Y      | N    |
 | Images            | Y     | Y      | N       | Y        |      | Y        | Y          | Y      | Y    |
 | Time\-Series      | Y     | N      | N       | N        |      | N        | N          | N      | N    |
-
-## Main features:
-
-- high-level API for machine learning and deep learning
-- support for Caffe, Tensorflow, XGBoost, T-SNE, Caffe2, NCNN, TensorRT, Pytorch
-- classification, regression, autoencoders, object detection, segmentation, time-series
-- JSON communication format
-- remote Python and Javacript clients
-- dedicated server with support for asynchronous training calls
-- high performances, benefit from multicore CPU and GPU
-- built-in similarity search via neural embeddings
-- connector to handle large collections of images with on-the-fly data augmentation (e.g. rotations, mirroring)
-- connector to handle CSV files with preprocessing capabilities
-- connector to handle text files, sentences, and character-based models
-- connector to handle SVM file format for sparse data
-- range of built-in model assessment measures (e.g. F1, multiclass log loss, ...)
-- range of special losses (e.g Dice, contour, ...)
-- no database dependency and sync, all information and model parameters organized and available from the filesystem
-- flexible template output format to simplify connection to external applications
-- templates for the most useful neural architectures (e.g. Googlenet, Alexnet, ResNet, convnet, character-based convnet, mlp, logistic regression, SSD, DeepLab, PSPNet, U-Net, CRNN, ShuffleNet, SqueezeNet, MobileNet, RefineDet, VOVNet, ...)
-- support for sparse features and computations on both GPU and CPU
-- built-in similarity indexing and search of predicted features, images, objects and probability distributions
 
 ## Tools and Clients
 
