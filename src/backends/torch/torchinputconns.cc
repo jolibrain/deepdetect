@@ -584,21 +584,7 @@ namespace dd
                                             int target)
   {
     DDImg dimg;
-    dimg._bw = _bw;
-    dimg._rgb = _rgb;
-    dimg._histogram_equalization = _histogram_equalization;
-    dimg._unchanged_data = _unchanged_data;
-    dimg._crop_width = _crop_width;
-    dimg._crop_height = _crop_height;
-    dimg._scale = _scale;
-    dimg._scaled = _scaled;
-    dimg._scale_min = _scale_min;
-    dimg._scale_max = _scale_max;
-    dimg._keep_orig = _keep_orig;
-    dimg._interp = _interp;
-
-    dimg._width = _width;
-    dimg._height = _height;
+    copy_parameters_to(dimg);
 
     try
       {
