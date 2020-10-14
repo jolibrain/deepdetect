@@ -177,10 +177,18 @@ namespace dd
       _parameters_used = false;
     }
 
+    /**
+     * tells if some allocation was done (needs to be called just after
+     * set_inputdim or finalize
+     */
+    bool needs_reload()
+    {
+      return _allocation_done;
+    }
+
   protected:
     /**
      * internal torch module allocation, called whithin (finalize)
-     * @param force
      */
     void allocate_modules();
 
@@ -215,8 +223,9 @@ namespace dd
     std::unordered_map<std::string, bool>
         _rnn_has_memories; /**< true if previsous hidden values are available
                             */
-  };
 
+    bool _allocation_done = false;
+  };
 }
 
 #endif

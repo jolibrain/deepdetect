@@ -163,6 +163,92 @@ namespace dd
       _classif->to(device, dtype);
   }
 
+  void TorchModule::proto_model_load(const TorchModel &model)
+  {
+    _logger->info("loading " + model._proto);
+    try
+      {
+        _graph = std::make_shared<CaffeToTorch>(model._proto);
+      }
+    catch (std::exception &e)
+      {
+        _logger->info("unable to load " + model._proto);
+        throw;
+      }
+  }
+
+  void TorchModule::graph_model_load(const TorchModel &tmodel)
+  {
+    if (!tmodel._traced.empty() && _graph->needs_reload())
+      {
+        _logger->info("loading " + tmodel._traced);
+        try
+          {
+            torch::load(_graph, tmodel._traced, _device);
+          }
+        catch (std::exception &e)
+          {
+            _logger->error("unable to load " + tmodel._traced);
+            throw;
+          }
+      }
+  }
+
+  void TorchModule::native_model_load(const TorchModel &tmodel)
+  {
+    if (!tmodel._native.empty())
+      {
+        _logger->info("loading " + tmodel._native);
+        try
+          {
+            torch::load(_native, tmodel._native);
+          }
+        catch (std::exception &e)
+          {
+            _logger->error("unable to load " + tmodel._native);
+            throw;
+          }
+      }
+  }
+
+  void TorchModule::classif_model_load(const TorchModel &model)
+  {
+    _logger->info("loading " + model._weights);
+    try
+      {
+        torch::load(_classif, model._weights, _device);
+      }
+    catch (std::exception &e)
+      {
+        _logger->error("unable to load " + model._weights);
+        throw;
+      }
+  }
+
+  void TorchModule::classif_layer_load()
+  {
+    if (!_classif_layer_file.empty())
+      {
+        _logger->info("loading " + _classif_layer_file);
+        torch::load(_classif, _classif_layer_file, _device);
+      }
+  }
+
+  void TorchModule::traced_model_load(TorchModel &model)
+  {
+    _logger->info("loading " + model._traced);
+    try
+      {
+        _traced = std::make_shared<torch::jit::script::Module>(
+            torch::jit::load(model._traced, _device));
+      }
+    catch (std::exception &e)
+      {
+        _logger->error("unable to load " + model._traced);
+        throw;
+      }
+  }
+
   template <class TInputConnectorStrategy>
   void TorchModule::post_transform(const std::string tmpl,
                                    const APIData &template_params,
@@ -170,22 +256,26 @@ namespace dd
                                    const TorchModel &tmodel,
                                    const torch::Device &device)
   {
+    _device = device;
     this->_native = std::shared_ptr<NativeModule>(
         NativeFactory::from_template<TInputConnectorStrategy>(
             tmpl, template_params, inputc));
 
     if (_native)
-      if (!tmodel._native.empty())
-        torch::load(_native, tmodel._native, device);
+      {
+        _logger->info("created net using template " + tmpl);
+        native_model_load(tmodel);
+      }
 
     if (_graph)
       {
         std::vector<long int> dims = inputc._dataset.datasize(0);
         dims.insert(dims.begin(), 1); // dummy batch size
         _graph->finalize(dims);
+        if (_graph->needs_reload())
+          _logger->info("net was reallocated due to input dim changes");
         // reload params after finalize
-        if (!tmodel._traced.empty())
-          torch::load(_graph, tmodel._traced, _device);
+        graph_model_load(tmodel);
       }
     to(_device);
   }
@@ -361,11 +451,7 @@ namespace dd
     // First dimension is batch id
     int outdim = to_tensor_safe(forward(input_example)).sizes()[1];
     _classif = torch::nn::Linear(outdim, nclasses);
-
-    if (!_classif_layer_file.empty())
-      {
-        torch::load(_classif, _classif_layer_file, _device);
-      }
+    classif_layer_load();
   }
 
   std::vector<Tensor> TorchModule::parameters()
@@ -401,13 +487,13 @@ namespace dd
   void TorchModule::load(TorchModel &model)
   {
     if (!model._traced.empty() && model._proto.empty())
-      _traced = std::make_shared<torch::jit::script::Module>(
-          torch::jit::load(model._traced, _device));
+      traced_model_load(model);
+
     if (!model._weights.empty())
       {
         if (_classif)
           {
-            torch::load(_classif, model._weights, _device);
+            classif_model_load(model);
           }
         else if (_require_classif_layer)
           {
@@ -416,16 +502,12 @@ namespace dd
       }
     if (!model._proto.empty())
       {
-        _graph = std::make_shared<CaffeToTorch>(model._proto);
-        if (!model._traced.empty())
-          torch::load(_graph, model._traced, _device);
+        proto_model_load(model);
+        graph_model_load(model);
       }
+
     if (!model._native.empty())
-      {
-        std::shared_ptr<NativeModule> m;
-        torch::load(m, model._native);
-        _native = m;
-      }
+      native_model_load(model);
   }
 
   void TorchModule::eval()
@@ -544,6 +626,33 @@ namespace dd
       }
   }
 
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+            class TMLModel>
+  void
+  TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy,
+           TMLModel>::solver_load(std::unique_ptr<optim::Optimizer> &optimizer)
+  {
+    if (!this->_mlmodel._sstate.empty())
+      {
+
+        this->_logger->info("Reload solver from {}", this->_mlmodel._sstate);
+        size_t start = this->_mlmodel._sstate.rfind("-") + 1;
+        size_t end = this->_mlmodel._sstate.rfind(".");
+        int it = std::stoi(this->_mlmodel._sstate.substr(start, end - start));
+        this->_logger->info("Restarting optimization from iter {}", it);
+        this->_logger->info("loading " + this->_mlmodel._sstate);
+        try
+          {
+            torch::load(*optimizer, this->_mlmodel._sstate);
+          }
+        catch (std::exception &e)
+          {
+            this->_logger->error("unable to load " + this->_mlmodel._sstate);
+            throw;
+          }
+      }
+  }
+
   /*- from mllib -*/
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel>
@@ -581,6 +690,7 @@ namespace dd
     _device = gpu ? torch::Device(DeviceType::CUDA, gpuid)
                   : torch::Device(DeviceType::CPU);
     _module._device = _device;
+    _module._logger = this->_logger;
 
     if (_template.find("recurrent") != std::string::npos)
       {
@@ -665,15 +775,6 @@ namespace dd
       }
 
     // Load weights
-    if (!this->_mlmodel._traced.empty())
-      this->_logger->info("Loading ml model from file {}.",
-                          this->_mlmodel._traced);
-    if (!this->_mlmodel._proto.empty())
-      this->_logger->info("Loading ml model from file {}.",
-                          this->_mlmodel._proto);
-    if (!this->_mlmodel._weights.empty())
-      this->_logger->info("Loading weights from file {}.",
-                          this->_mlmodel._weights);
     _module.load(this->_mlmodel);
     _module.freeze_traced(freeze_traced);
 
@@ -919,15 +1020,7 @@ namespace dd
 
     int it = 0;
     // reload solver and set it value accordingly
-    if (!this->_mlmodel._sstate.empty())
-      {
-        this->_logger->info("Reload solver from {}", this->_mlmodel._sstate);
-        size_t start = this->_mlmodel._sstate.rfind("-") + 1;
-        size_t end = this->_mlmodel._sstate.rfind(".");
-        it = std::stoi(this->_mlmodel._sstate.substr(start, end - start));
-        this->_logger->info("Restarting optimization from iter {}", it);
-        torch::load(*optimizer, this->_mlmodel._sstate);
-      }
+    solver_load(optimizer);
     optimizer->zero_grad();
     _module.train();
 
@@ -1422,7 +1515,6 @@ namespace dd
         unsupo.finalize(ad.getobj("parameters").getobj("output"), out,
                         static_cast<MLModel *>(&this->_mlmodel));
       }
-
     out.add("status", 0);
     return 0;
   }

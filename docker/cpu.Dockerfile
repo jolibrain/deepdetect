@@ -77,6 +77,7 @@ RUN --mount=type=cache,id=apt_cache_cpu,target=/var/cache/apt --mount=type=cache
     python-pip \
     python-six \
     python-enum34 \
+    python3-yaml \
     unzip \
     libgoogle-perftools-dev \
     curl \

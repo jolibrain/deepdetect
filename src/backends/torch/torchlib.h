@@ -142,8 +142,16 @@ namespace dd
                                 the file where the weights are stored */
     unsigned int _nclasses = 0;
 
+    std::shared_ptr<spdlog::logger> _logger; /**< mllib logger. */
+
   private:
     bool _freeze_traced = false; /**< Freeze weights of the traced module */
+    void proto_model_load(const TorchModel &tmodel);
+    void graph_model_load(const TorchModel &tmodel);
+    void native_model_load(const TorchModel &tmodel);
+    void classif_model_load(const TorchModel &tmodel);
+    void traced_model_load(TorchModel &model);
+    void classif_layer_load();
   };
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
@@ -202,6 +210,11 @@ namespace dd
                          int64_t best_to_remove);
 
     void snapshot(int64_t elapsed_it, torch::optim::Optimizer &optimizer);
+
+    /**
+     * \brief (re) load solver state
+     */
+    void solver_load(std::unique_ptr<torch::optim::Optimizer> &optimizer);
 
     void remove_model(int64_t it);
 

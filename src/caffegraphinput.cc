@@ -28,6 +28,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include "mllibstrategy.h"
+
 using google::protobuf::io::CodedInputStream;
 using google::protobuf::io::CodedOutputStream;
 using google::protobuf::io::FileInputStream;
@@ -177,19 +179,19 @@ namespace dd
     return true;
   }
 
-  int CaffeGraphInput::from_proto(std::string filename)
+  void CaffeGraphInput::from_proto(std::string filename)
   {
     caffe::NetParameter net;
     if (!read_proto(filename, &net))
-      return -1;
+      throw MLLibBadParamException("unable to parse protofile");
 
     bool simple_lstm = is_simple_lstm(net);
     if (simple_lstm)
       {
         parse_simple_lstm(net);
-        return 0;
+        return;
       }
-    return 0;
+    throw MLLibBadParamException(
+        "proto file do not contain a proper LSTM/autoencoder");
   }
-
 }
