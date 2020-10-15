@@ -200,6 +200,10 @@ namespace dd
           {
             add(cit->name.GetString(), cit->value.GetInt());
           }
+        else if (cit->value.IsInt64())
+          {
+            add(cit->name.GetString(), cit->value.GetInt64());
+          }
         else
           {
             throw DataConversionException("conversion error: unknown type");
