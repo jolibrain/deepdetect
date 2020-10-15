@@ -2,13 +2,15 @@
 pipeline {
   agent any
   stages {
-    stage('Init') { steps {
-      script {
-          def common = load("ci/Jenkinsfile.common")
-          common.cancelPreviousBuilds()
+    stage('Init') {
+      steps {
+        script {
+            def common = load("ci/Jenkinsfile.common")
+            common.cancelPreviousBuilds()
+        }
+        sh 'printenv | sort'
       }
-    }}
-
+    }
     stage('Preparing prebuilt datasets') {
       steps {
         sh '''
@@ -20,17 +22,32 @@ cd -
 tar -cvf examples-${GIT_COMMIT}.tar build/examples
 '''
       }
+      archiveArtifacts(artifacts: 'examples-*.tar')
     }
   }
   post {
-      success {
-          archiveArtifacts(artifacts: 'examples-*.tar')
-          cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
-          rocketSend(channel: 'build', message: 'Build succeed')
+    always {
+      cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true);
+    }
+    success {
+      catchError {
+        rocketSend(channel: 'build', message: 'Build succeed' ,color: 'green' )
       }
-      unsuccessful {
-          cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
-          rocketSend(channel: 'build', message: 'Build failed')
+    }
+    aborted {
+      catchError {
+        rocketSend(channel: 'build', message: 'Build superseded or aborted')
       }
+    }
+    unstable {
+      catchError {
+        rocketSend(channel: 'build', message: 'Build failed', color: 'red')
+      }
+    }
+    failure {
+      catchError {
+        rocketSend(channel: 'build', message: 'Build failed', color: 'red')
+      }
+    }
   }
 }

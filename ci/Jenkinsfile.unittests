@@ -1,13 +1,15 @@
 pipeline {
   agent any
   stages {
-    stage('Init') { steps {
-      script {
-          def common = load("ci/Jenkinsfile.common")
-          common.cancelPreviousBuilds()
+    stage('Init') {
+      steps {
+        script {
+            def common = load("ci/Jenkinsfile.common")
+            common.cancelPreviousBuilds()
+        }
+        sh 'printenv | sort'
       }
-      sh 'printenv | sort'
-    }}
+    }
     stage('Installating prebuilt examples/ datasets') {
       steps {
         copyArtifacts(projectName: 'deepdetect-examples-dataset/master')
@@ -72,20 +74,28 @@ ccache -s
     }
   }
   post {
-      always {
-        cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
-      }
-      success {
+    always {
+      cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
+    }
+    success {
+      catchError {
         rocketSend(channel: 'build', message: 'Build succeed' ,color: 'green' )
       }
-      aborted {
+    }
+    aborted {
+      catchError {
         rocketSend(channel: 'build', message: 'Build superseded or aborted')
       }
-      unstable {
+    }
+    unstable {
+      catchError {
         rocketSend(channel: 'build', message: 'Build failed', color: 'red')
       }
-      failure {
+    }
+    failure {
+      catchError {
         rocketSend(channel: 'build', message: 'Build failed', color: 'red')
       }
+    }
   }
 }
