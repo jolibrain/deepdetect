@@ -134,7 +134,8 @@ cpu_build() {
         ;;
 
     *)
-        cmake .. -DUSE_XGBOOST=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_NCNN=ON -DUSE_CPU_ONLY=ON
+        #cmake .. -DUSE_XGBOOST=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_NCNN=ON -DUSE_CPU_ONLY=ON
+        cmake .. -DUSE_XGBOOST=OFF -DUSE_SIMSEARCH=OFF -DUSE_TSNE=OFF -DUSE_NCNN=OFF -DUSE_CPU_ONLY=ON
         make
         ;;
     esac

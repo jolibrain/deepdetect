@@ -6,6 +6,12 @@ mkdir -p /tmp/lib
 
 libs=(
     /usr/local/lib/libcurlpp.*
+    /opt/deepdetect/build/pytorch/src/pytorch-build/build/lib/libprotobuf.so.3.11.4.0
+    /opt/deepdetect/build/pytorch/src/pytorch-build/build/lib/libtorch.so
+    /opt/deepdetect/build/pytorch/src/pytorch-build/build/lib/libtorch_cpu.so
+    /opt/deepdetect/build/pytorch/src/pytorch-build/build/lib/libtorch_cuda.so
+    /opt/deepdetect/build/pytorch/src/pytorch-build/build/lib/libc10.so
+    /opt/deepdetect/build/pytorch/src/pytorch-build/build/lib/libc10_cuda.so
     /opt/deepdetect/build/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/tensorflow/bazel-out/k8-opt/bin/tensorflow/libtensorflow_cc.so.1
     /opt/deepdetect/build/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/tensorflow/tensorflow/contrib/makefile/gen/protobuf-host/lib/libprotobuf.so.19
     /opt/deepdetect/build/caffe_dd/src/caffe_dd/.build_release/lib/libcaffe.so.1.0.0-rc3
@@ -23,3 +29,11 @@ for index in ${!libs[*]}; do
     fi
 
 done
+
+set +e
+LIBS=$(ldd build/main/dede | grep 'not found')
+if [ "$LIBS" ] ; then
+    echo "* missing libs"
+    echo $LIBS
+    exit 1
+fi

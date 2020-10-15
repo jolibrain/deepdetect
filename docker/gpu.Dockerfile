@@ -121,6 +121,7 @@ LABEL maintainer="emmanuel.benazera@jolibrain.com"
 
 # Install tools and dependencies
 RUN --mount=type=cache,id=apt_cache_gpu,target=/var/cache/apt --mount=type=cache,id=apt_lib_gpu,target=/var/lib/apt \
+    export DEBIAN_FRONTEND=noninteractive && \
     apt-get update -y && apt-get install -y \
     wget \
     curl \
@@ -129,11 +130,14 @@ RUN --mount=type=cache,id=apt_cache_gpu,target=/var/cache/apt --mount=type=cache
 	libleveldb1v5 \
     libboost-regex1.62.0 \
 	libgoogle-glog0v5 \
-	libopencv-highgui3.2 \
+	libopencv3.2 \
 	libgflags2.2 \
 	libcurl4 \
 	libcurlpp0 \
 	libhdf5-cpp-100 \
+    libboost-atomic1.65.1 \
+    libboost-chrono1.65.1 \
+    libboost-date-time1.65.1 \
 	libboost-filesystem1.65.1 \
 	libboost-thread1.65.1 \
 	libboost-iostreams1.65.1 \
