@@ -170,6 +170,9 @@ COPY --chown=dd --from=build /opt/deepdetect/templates/caffe/googlenet/*prototxt
 COPY --chown=dd --from=build /opt/deepdetect/templates/caffe/resnet_50/*prototxt /opt/models/resnet_50/
 COPY --from=build /tmp/lib/* /usr/lib/
 COPY --from=build /opt/deepdetect/templates /opt/deepdetect/build/templates
+COPY --from=build /opt/deepdetect/docker/check-dede-deps.sh /opt/deepdetect/
+
+RUN /opt/deepdetect/check-dede-deps.sh
 
 WORKDIR /opt/deepdetect/build/main
 VOLUME ["/data"]
