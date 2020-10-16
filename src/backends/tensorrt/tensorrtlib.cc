@@ -83,6 +83,7 @@ namespace dd
     _max_workspace_size = tl._max_workspace_size;
     _top_k = tl._top_k;
     _builder = tl._builder;
+    _builderc = tl._builderc;
     _engineFileName = tl._engineFileName;
     _readEngine = tl._readEngine;
     _writeEngine = tl._writeEngine;
@@ -156,13 +157,13 @@ namespace dd
 
     model_type(this->_mlmodel._def, this->_mltype);
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-    /* NOTE(sileht): nvinfer1::createInferBuilder is deprecated */
-
     _builder = std::shared_ptr<nvinfer1::IBuilder>(
         nvinfer1::createInferBuilder(trtLogger),
         [=](nvinfer1::IBuilder *b) { b->destroy(); });
+    _builderc = std::shared_ptr<nvinfer1::IBuilderConfig>(
+        _builder->createBuilderConfig(),
+        [=](nvinfer1::IBuilderConfig *b) { b->destroy(); });
+
     if (_dla != -1)
       {
         if (_builder->getNbDLACores() == 0)
@@ -181,41 +182,38 @@ namespace dd
                     "asked for float32 on dla : forcing float16");
                 _datatype = nvinfer1::DataType::kHALF;
               }
-            _builder->allowGPUFallback(true);
+            _builderc->setFlag(nvinfer1::BuilderFlag::kGPU_FALLBACK);
             if (_datatype == nvinfer1::DataType::kINT8)
               {
-                _builder->setInt8Mode(true);
-                _builder->setFp16Mode(false);
+                _builderc->setFlag(nvinfer1::BuilderFlag::kINT8);
               }
             else
               {
-                _builder->setInt8Mode(false);
-                _builder->setFp16Mode(true);
+                _builderc->setFlag(nvinfer1::BuilderFlag::kFP16);
               }
-            _builder->setDefaultDeviceType(nvinfer1::DeviceType::kDLA);
-            _builder->setDLACore(_dla);
+            _builderc->setDefaultDeviceType(nvinfer1::DeviceType::kDLA);
+            _builderc->setDLACore(_dla);
+            _builderc->setFlag(nvinfer1::BuilderFlag::kSTRICT_TYPES);
           }
       }
     else
       {
         if (_datatype == nvinfer1::DataType::kHALF)
           {
-            _builder->setInt8Mode(false);
+            _builderc->setFlag(nvinfer1::BuilderFlag::kINT8);
             if (_builder->platformHasFastFp16())
               {
-                _builder->setFp16Mode(true);
+                _builderc->setFlag(nvinfer1::BuilderFlag::kFP16);
                 this->_logger->info("Setting FP16 mode");
               }
             else
-              this->_logger->info("Platform does not has Fast TP16 mode");
+              this->_logger->info("Platform does not has Fast FP16 mode");
           }
         else
           {
-            _builder->setInt8Mode(false);
-            _builder->setFp16Mode(false);
+            // default is TF32 (aka 10-bit mantissas round-up)
           }
       }
-#pragma GCC diagnostic push
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
@@ -275,7 +273,8 @@ namespace dd
               {
                 if (ad_output.has("blank_label"))
                   throw MLLibBadParamException(
-                      "blank_label not yet implemented over tensorRT backend");
+                      "blank_label not yet implemented over tensorRT "
+                      "backend");
               }
           }
 
@@ -347,14 +346,15 @@ namespace dd
                     "TRT backend could not open model prototxt");
                 break;
               case 2:
-                this->_logger->error(
-                    "TRT backend  could not write transformed model prototxt");
+                this->_logger->error("TRT backend  could not write "
+                                     "transformed model prototxt");
                 break;
               default:
                 break;
               }
 
-            nvinfer1::INetworkDefinition *network = _builder->createNetwork();
+            nvinfer1::INetworkDefinition *network
+                = _builder->createNetworkV2(0U);
             nvcaffeparser1::ICaffeParser *caffeParser
                 = nvcaffeparser1::createCaffeParser();
 
@@ -373,7 +373,7 @@ namespace dd
             if (out_blob == "detection_out")
               network->markOutput(*blobNameToTensor->find("keep_count"));
             _builder->setMaxBatchSize(_max_batch_size);
-            _builder->setMaxWorkspaceSize(_max_workspace_size);
+            _builderc->setMaxWorkspaceSize(_max_workspace_size);
 
             network->getLayer(0)->setPrecision(nvinfer1::DataType::kFLOAT);
 
@@ -392,7 +392,8 @@ namespace dd
             // force output to be float32
             outl->setPrecision(nvinfer1::DataType::kFLOAT);
 
-            nvinfer1::ICudaEngine *le = _builder->buildCudaEngine(*network);
+            nvinfer1::ICudaEngine *le
+                = _builder->buildEngineWithConfig(*network, *_builderc);
             _engine = std::shared_ptr<nvinfer1::ICudaEngine>(
                 le, [=](nvinfer1::ICudaEngine *e) { e->destroy(); });
 
@@ -759,5 +760,4 @@ namespace dd
 
   template class TensorRTLib<ImgTensorRTInputFileConn, SupervisedOutput,
                              TensorRTModel>;
-
 }
