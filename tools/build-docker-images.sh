@@ -49,13 +49,19 @@ for name in $NAMES; do
         -f docker/${arch}.Dockerfile \
         .
 
-    if [ "$TAG_NAME" ]; then
-        docker tag $image_url:$TMP_TAG $image_url:${TAG_NAME}
-        docker push $image_url:${TAG_NAME}
-    elif [ "$GIT_BRANCH" == "master" ]; then
-        docker push $image_url:$TMP_TAG
+    if [ "$TMP_TAG" != "trash" ]; then
+        docker tag $image_url:$TMP_TAG ceres:5000/$image_url:$TMP_TAG
+        docker push ceres:5000/$image_url:$TMP_TAG
+        docker rmi ceres:5000/$image_url:$TMP_TAG
 
-        docker tag $image_url:$TMP_TAG $image_url:latest
-        docker push $image_url:latest
+        if [ "$TAG_NAME" ]; then
+            docker tag $image_url:$TMP_TAG $image_url:${TAG_NAME}
+            docker push $image_url:${TAG_NAME}
+        elif [ "$GIT_BRANCH" == "master" ]; then
+            docker push $image_url:$TMP_TAG
+
+            docker tag $image_url:$TMP_TAG $image_url:latest
+            docker push $image_url:latest
+        fi
     fi
 done
