@@ -29,11 +29,3 @@ for index in ${!libs[*]}; do
     fi
 
 done
-
-set +e
-LIBS=$(ldd build/main/dede | grep 'not found')
-if [ "$LIBS" ] ; then
-    echo "* missing libs"
-    echo $LIBS
-    exit 1
-fi
