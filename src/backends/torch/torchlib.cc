@@ -720,9 +720,9 @@ namespace dd
       throw MLLibInternalException("Use of libtorch backend needs either: "
                                    "traced net, protofile or native template");
     // Create the model
-    this->_inputc._input_format = "bert";
     if (_template == "bert")
       {
+        this->_inputc._input_format = "bert";
         if (_classification)
           {
             _module._classif = nn::Linear(embedding_size, _nclasses);

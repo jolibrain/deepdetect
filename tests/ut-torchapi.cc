@@ -99,13 +99,15 @@ TEST(torchapi, service_predict_txt_classification)
   // create service
   JsonAPI japi;
   std::string sname = "txtserv";
-  std::string jstr = "{\"mllib\":\"torch\",\"description\":\"bert\",\"type\":"
-                     "\"supervised\",\"model\":{\"repository\":\""
-                     + bert_classif_repo
-                     + "\"},\"parameters\":{\"input\":{\"connector\":\"txt\","
-                       "\"ordered_words\":true,"
-                       "\"wordpiece_tokens\":true,\"punctuation_tokens\":true,"
-                       "\"sequence\":512}}}";
+  std::string jstr
+      = "{\"mllib\":\"torch\",\"description\":\"bert\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+        + bert_classif_repo
+        + "\"}, \"parameters\":{ \"mllib\": {\"template\": \"bert\"}, "
+          " \"input\":{\"connector\":\"txt\","
+          "\"ordered_words\":true,"
+          "\"wordpiece_tokens\":true,\"punctuation_tokens\":true,"
+          "\"sequence\":512}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
   ASSERT_EQ(created_str, joutstr);
 
