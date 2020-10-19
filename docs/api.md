@@ -1245,7 +1245,7 @@ build_index          | bool   | yes      | false                   | whether to 
 search               | bool   | yes      | false                   | whether to use the predicted output for similarity search and return pre-indexed nearest neighbors
 multibox_rois        | bool   | yes      | false                   | aggregates bounding boxes ROIs features (requires `rois`) for image similarity search
 index_type           | string | yes      | Flat                    | for faiss index indexing backend only : a FAISS index factory string , see https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index
-index_gpu            | bool   | yes      | false                   | for faiss indexing backend only : if available, build idnex on GPU
+index_gpu            | bool   | yes      | false                   | for faiss indexing backend only : if available, build index on GPU
 index_gpuid          | int    | yes      | all                     | for faiss indexing backend only : which gpu to use if index_gpu is true
 train_samples        | int    | yes      | 100000                  | for faiss indexing backend only :  number of samples to use for training index. Larger values lead to better indexes (more evenly distributed) but cause much larger index training time. Many indexes need a minimal value depending on the number of clusters built,  see https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index.
 ondisk               | bool   | yes      | true                    | for faiss indexing backend only :  try to directly build indexes on mmaped files (IVF index_types only can do so)
