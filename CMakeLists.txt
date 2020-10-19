@@ -734,6 +734,7 @@ if (USE_TORCH)
     ${PYTORCH_PATCHES_PATH}/pytorch_15_compile.patch
     ${PYTORCH_PATCHES_PATH}/pytorch_16_logging.patch
     ${PYTORCH_PATCHES_PATH}/pytorch_14_namespace.patch
+    ${PYTORCH_PATCHES_PATH}/pytorch_16_fatbin.patch
     )
 
   include_directories("${PROTOBUF_INCLUDE_DIR}")

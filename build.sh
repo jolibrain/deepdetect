@@ -5,12 +5,12 @@ set -e
 # Deepdetect architecture and build profiles
 deepdetect_arch=(cpu gpu)
 deepdetect_cpu_build_profiles=(default tf armv7)
-deepdetect_gpu_build_profiles=(default tf caffe2 tensorrt)
+deepdetect_gpu_build_profiles=(default torch tf caffe2 tensorrt)
 
 # NOTE(sileht): list of all supported card by CUDA 10.2
 # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/
 if [ ! "$DEEPDETECT_CUDA_ARCH" ]; then
-    for card in 30 35 50 52 60 61 62 70 72; do
+    for card in 50 52 60 61 62 70 72; do
         DEEPDETECT_CUDA_ARCH="$DEEPDETECT_CUDA_ARCH -gencode arch=compute_${card},code=sm_${card}"
     done
     # trim spaces
@@ -146,9 +146,10 @@ gpu_build() {
     case ${DEEPDETECT_BUILD} in
         "tf") extra_flags="-DUSE_TF=ON" ;;
         "caffe2") extra_flags="-DUSE_CAFFE2=ON" ;;
+        "torch") extra_flags="-DUSE_TORCH=ON" ;;
         "tensorrt") extra_flags="-DUSE_TENSORRT_OSS=ON" ;;
     esac
-    cmake .. $extra_flags -DUSE_FAISS=ON -DUSE_CUDNN=ON -DUSE_XGBOOST=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_TORCH=ON -DCUDA_ARCH="${DEEPDETECT_CUDA_ARCH}"
+    cmake .. $extra_flags -DUSE_FAISS=ON -DUSE_CUDNN=ON -DUSE_XGBOOST=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DCUDA_ARCH="${DEEPDETECT_CUDA_ARCH}"
     make
 }
 

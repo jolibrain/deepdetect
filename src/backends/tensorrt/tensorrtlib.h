@@ -123,6 +123,7 @@ namespace dd
     std::shared_ptr<nvinfer1::ICudaEngine> _engine = nullptr;
     std::shared_ptr<nvinfer1::IBuilder> _builder = nullptr;
     std::shared_ptr<nvinfer1::IExecutionContext> _context = nullptr;
+    std::shared_ptr<nvinfer1::IBuilderConfig> _builderc = nullptr;
 
     bool _bbox = false;
     bool _ctc = false;
