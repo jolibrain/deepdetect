@@ -88,10 +88,11 @@ namespace dd
     _readEngine = tl._readEngine;
     _writeEngine = tl._writeEngine;
     _TRTContextReady = tl._TRTContextReady;
-    _timeserie = tl._timeserie;
     _buffers = tl._buffers;
     _bbox = tl._bbox;
     _ctc = tl._ctc;
+    _timeserie = tl._timeserie;
+    _regression = tl._regression;
     _inputIndex = tl._inputIndex;
     _outputIndex0 = tl._outputIndex0;
     _outputIndex1 = tl._outputIndex1;
@@ -265,6 +266,9 @@ namespace dd
       {
         if (ad_output.has("bbox"))
           _bbox = ad_output.get("bbox").get<bool>();
+        if (ad_output.has("regression"))
+          _regression = ad_output.get("regression").get<bool>();
+
         // Ctc model
         if (ad_output.has("ctc"))
           {
@@ -292,6 +296,8 @@ namespace dd
             throw MLLibBadParamException(
                 "timeseries not yet implemented over tensorRT backend");
           }
+        else if (_regression)
+          out_blob = "pred";
 
         _nclasses = findNClasses(this->_mlmodel._def, _bbox);
         if (_bbox)
@@ -449,9 +455,12 @@ namespace dd
             throw MLLibBadParamException(
                 "timeseries not yet implemented over tensorRT backend");
           }
-        else // classification
+        else // classification / regression
           {
-            _buffers.resize(2);
+            if (_regression)
+              _buffers.resize(1);
+            else
+              _buffers.resize(2);
             _floatOut.resize(_max_batch_size * this->_nclasses);
             if (inputc._bw)
               cudaMalloc(&_buffers.data()[_inputIndex],
@@ -532,7 +541,7 @@ namespace dd
                 throw MLLibBadParamException(
                     "timeseries not yet implemented over tensorRT backend");
               }
-            else // classification
+            else // classification / regression
               {
                 if (inputc._bw)
                   cudaMemcpyAsync(_buffers.data()[_inputIndex], inputc.data(),
@@ -665,7 +674,7 @@ namespace dd
             throw MLLibBadParamException(
                 "timeseries not yet implemented over tensorRT backend");
           }
-        else // classification
+        else // classification / regression
           {
             for (int j = 0; j < num_processed; j++)
               {
@@ -681,7 +690,7 @@ namespace dd
                 for (int i = 0; i < _nclasses; i++)
                   {
                     double prob = _floatOut.at(j * _nclasses + i);
-                    if (prob < confidence_threshold)
+                    if (prob < confidence_threshold && !_regression)
                       continue;
                     probs.push_back(prob);
                     cats.push_back(this->_mlmodel.get_hcorresp(i));
@@ -702,6 +711,8 @@ namespace dd
     out.add("nclasses", this->_nclasses);
     if (_bbox)
       out.add("bbox", true);
+    if (_regression)
+      out.add("regression", true);
     out.add("roi", false);
     out.add("multibox_rois", false);
     tout.finalize(ad.getobj("parameters").getobj("output"), out,
