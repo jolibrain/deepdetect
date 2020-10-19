@@ -86,8 +86,11 @@ namespace dd
     std::string _template; /**< template identifier (recurrent/bert/gpt2...)*/
     bool _finetuning = false; /**< add a custom layer (classif/regression...)
                                  after model */
-    torch::Device _device
-        = torch::Device("cpu"); /**<  where to execute model */
+    torch::Device _main_device
+        = torch::Device("cpu"); /**<  the main device where the module lives */
+    std::vector<torch::Device>
+        _devices; /**< all the devices used during training (e.g. for multi-gpu
+                     training) */
     bool _masked_lm = false;    /**< enable MLM self supervised pre training*/
     bool _seq_training = false; /**< true for bert/gpt2*/
     bool _classification = false; /**< select classification type problem*/

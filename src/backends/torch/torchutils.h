@@ -90,6 +90,8 @@ namespace dd
     void add_parameters(std::shared_ptr<torch::jit::script::Module> module,
                         std::vector<torch::Tensor> &params,
                         bool requires_grad = true);
+
+    std::vector<c10::IValue> unwrap_c10_vector(const c10::IValue &output);
   }
 }
 #endif
