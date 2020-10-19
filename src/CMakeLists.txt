@@ -91,10 +91,15 @@ if (USE_TORCH)
     backends/torch/db.cpp
     backends/torch/db_lmdb.cpp
     backends/torch/native/templates/nbeats.cc
+    backends/torch/native/native_factory.cc
 	basegraph.cc
 	caffegraphinput.cc
 	backends/torch/torchgraphbackend.cc
 	graph.cc
+    backends/torch/torchsolver.cc
+    backends/torch/torchmodule.cc
+    backends/torch/torchutils.cc
+    backends/torch/optim/ranger.cc
 	)
   if (NOT EXISTS ${CMAKE_SOURCE_DIR}/src/caffe.proto)
 	file(DOWNLOAD https://raw.githubusercontent.com/jolibrain/caffe/master/src/caffe/proto/caffe.proto ${CMAKE_SOURCE_DIR}/src/caffe.proto)
