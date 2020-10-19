@@ -752,7 +752,16 @@ Parameter     | Type   | Optional | Default | Description
 ---------     | ----   | -------- | ------- | -----------
 iterations    | int    | yes      | N/A     | Max number of solver's iterations
 snapshot      | int    | yes      | N/A     | Iterations between model snapshots
-solver_type   | string | yes      | SGD     | from "SGD", "ADAGRAD",  "RMSPROP", "ADAM"
+solver_type   | string | yes      | SGD     | from "SGD", "ADAGRAD",  "RMSPROP", "ADAM", "RANGER", "RANGER_PLUS"
+beta1         | real   | yes      | 0.9     | for RANGER* : beta1 param
+beta2         | real   | yes      | 0.999   | for RANGER* : beta2 param
+weight_decay  | real   | yes      | 0.0     | for RANGER* : weight decay
+rectified     | bool   | yes      | true    | for RANGER* : enable/disable rectified ADAM 
+lookahead     | bool   | yes      | true    | for RANGER* : enable/disable lookahead
+lookahead_steps | int  | yes      | 6       | for RANGER* : if lookahead enabled, number of steps 
+lookahead_alpha | real | yes      | 0.5     | for RANGER* : if lookahead enables, alpha param
+adabelief     | bool   | yes      | false for RANGER, true for RANGER_PLUS   | for RANGER* : enable/disable adabelief
+gradient_centralization | bool | yes | false for RANGER, true for RANGER_PLUS| for RANGER* : enable/disable gradient centralization
 test_interval | int    | yes      | N/A     | Number of iterations between testing phases
 base_lr       | real   | yes      | N/A     | Initial learning rate
 iter_size     | int    | yes      | 1       | Number of passes (iter_size * batch_size) at every iteration
