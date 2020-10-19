@@ -21,7 +21,8 @@ cmake .. -DBUILD_TESTS=ON -DUSE_CUDNN=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_
 cd -
 tar -cvf examples-${GIT_COMMIT}.tar build/examples
 '''
-      archiveArtifacts(artifacts: 'examples-*.tar')
+        archiveArtifacts(artifacts: 'examples-*.tar')
+      }
     }
   }
   post {
