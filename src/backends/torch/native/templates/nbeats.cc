@@ -292,6 +292,7 @@ namespace dd
 
   void NBeats::create_nbeats()
   {
+    _stacks.clear();
     float back_step = 1.0 / (float)(_backcast_length);
     for (unsigned int i = 0; i < _backcast_length; ++i)
       _backcast_linspace.push_back(back_step * static_cast<float>(i));
@@ -347,6 +348,11 @@ namespace dd
     _fcn = register_module("fcn", torch::nn::Linear(_data_size, _output_size));
     _finit = register_buffer(
         "finit", torch::zeros({ 1, _backcast_length, _data_size }));
+  }
+
+  void NBeats::reset()
+  {
+    create_nbeats();
   }
 
   torch::Tensor NBeats::forward(torch::Tensor x)

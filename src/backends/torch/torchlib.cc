@@ -65,7 +65,8 @@ namespace dd
     _module = std::move(tl._module);
     _template = tl._template;
     _nclasses = tl._nclasses;
-    _device = tl._device;
+    _main_device = tl._main_device;
+    _devices = tl._devices;
     _masked_lm = tl._masked_lm;
     _seq_training = tl._seq_training;
     _finetuning = tl._finetuning;
@@ -103,7 +104,6 @@ namespace dd
   double
   TorchLib<CSVTSTorchInputFileConn, SupervisedOutput, TorchModel>::unscale(
       double val, unsigned int k, const CSVTSTorchInputFileConn &inputc)
-
   {
     if (inputc._min_vals.empty() || inputc._max_vals.empty())
       {
@@ -113,7 +113,6 @@ namespace dd
       }
     else
       {
-
         if (!inputc._dont_scale_labels)
           {
             double max = inputc._max_vals[inputc._label_pos[k]];
@@ -133,7 +132,7 @@ namespace dd
                 TMLModel>::init_mllib(const APIData &lib_ad)
   {
     bool gpu = false;
-    int gpuid = -1;
+    std::vector<int> gpuids;
     bool freeze_traced = false;
     int embedding_size = 768;
     std::string self_supervised = "";
@@ -148,7 +147,12 @@ namespace dd
             "GPU is not available, service could not be created");
       }
     if (lib_ad.has("gpuid"))
-      gpuid = lib_ad.get("gpuid").get<int>();
+      {
+        if (lib_ad.get("gpuid").is<int>())
+          gpuids = { lib_ad.get("gpuid").get<int>() };
+        else
+          gpuids = lib_ad.get("gpuid").get<std::vector<int>>();
+      }
     if (lib_ad.has("nclasses"))
       {
         _classification = true;
@@ -165,9 +169,36 @@ namespace dd
     if (lib_ad.has("loss"))
       _loss = lib_ad.get("loss").get<std::string>();
 
-    _device = gpu ? torch::Device(DeviceType::CUDA, gpuid)
-                  : torch::Device(DeviceType::CPU);
-    _module._device = _device;
+    if (!gpu)
+      {
+        _main_device = torch::Device(DeviceType::CPU);
+        _devices = { _main_device };
+      }
+    else
+      {
+        // if gpuids = -1, we use all gpus
+        if (gpuids.size() == 1 && gpuids[0] == -1)
+          {
+            gpuids.resize(torch::cuda::device_count());
+            std::iota(gpuids.begin(), gpuids.end(), 0);
+          }
+
+        if (gpuids.empty())
+          gpuids.push_back(0);
+
+        for (int gpuid : gpuids)
+          _devices.push_back(torch::Device(DeviceType::CUDA, gpuid));
+        _main_device = _devices[0];
+
+        if (_devices.size() > 1)
+          {
+            std::string devices_str = std::to_string(gpuids[0]);
+            for (size_t i = 1; i < _devices.size(); ++i)
+              devices_str += "," + std::to_string(gpuids[i]);
+            this->_logger->info("Running on multiple devices: " + devices_str);
+          }
+      }
+    _module._device = _main_device;
     _module._logger = this->_logger;
 
     if (_template.find("recurrent") != std::string::npos)
@@ -204,7 +235,7 @@ namespace dd
         if (_classification)
           {
             _module._classif = nn::Linear(embedding_size, _nclasses);
-            _module._classif->to(_device);
+            _module._classif->to(_main_device);
             _module._hidden_states = true;
             _module._classif_in = 1;
           }
@@ -389,7 +420,7 @@ namespace dd
       {
         inputc.transform(ad);
         _module.post_transform_train<TInputConnectorStrategy>(
-            _template, _template_params, inputc, this->_mlmodel, _device);
+            _template, _template_params, inputc, this->_mlmodel, _main_device);
       }
     catch (...)
       {
@@ -457,12 +488,16 @@ namespace dd
             class_weights
                 = torch::from_blob(cwv.data(), { _nclasses }, options)
                       .to(torch::kFloat32)
-                      .to(_device);
+                      .to(_main_device);
           }
       }
 
     if (iter_size <= 0)
       iter_size = 1;
+
+    size_t gpu_count = _devices.size();
+    if (gpu_count > 1)
+      batch_size *= gpu_count;
 
     // create dataset for evaluation during training
     TorchDataset eval_dataset;
@@ -476,7 +511,7 @@ namespace dd
 
     int it = 0;
     // reload solver and set it value accordingly
-    it = tsolver.load(this->_mlmodel._sstate, _device);
+    it = tsolver.load(this->_mlmodel._sstate, _main_device);
 
     bool skip_training = it >= iterations;
     if (skip_training)
@@ -521,7 +556,7 @@ namespace dd
             std::vector<c10::IValue> in_vals;
             for (Tensor tensor : batch.data)
               {
-                in_vals.push_back(tensor.to(_device));
+                in_vals.push_back(tensor.to(_main_device));
               }
 
             if (batch.target.size() == 0)
@@ -529,12 +564,13 @@ namespace dd
                 throw MLLibInternalException(
                     "Batch " + std::to_string(batch_id) + ": no target");
               }
-            Tensor y = batch.target.at(0).to(_device);
+            Tensor y = batch.target.at(0).to(_main_device);
 
             Tensor y_pred;
             try
               {
-                y_pred = torch_utils::to_tensor_safe(_module.forward(in_vals));
+                y_pred = torch_utils::to_tensor_safe(
+                    _module.forward_on_devices(in_vals, _devices));
               }
             catch (std::exception &e)
               {
@@ -758,7 +794,7 @@ namespace dd
       {
         inputc.transform(ad);
         _module.post_transform_predict(_template, _template_params, inputc,
-                                       this->_mlmodel, _device, ad);
+                                       this->_mlmodel, _main_device, ad);
         if (ad.getobj("parameters").getobj("input").has("continuation")
             && ad.getobj("parameters")
                    .getobj("input")
@@ -817,7 +853,7 @@ namespace dd
         std::vector<c10::IValue> in_vals;
         for (Tensor tensor : batch.data)
           {
-            in_vals.push_back(tensor.to(_device));
+            in_vals.push_back(tensor.to(_main_device));
           }
         this->_stats.inc_inference_count(batch.data[0].size(0));
 
@@ -1027,7 +1063,7 @@ namespace dd
           }
         std::vector<c10::IValue> in_vals;
         for (Tensor tensor : batch.data)
-          in_vals.push_back(tensor.to(_device));
+          in_vals.push_back(tensor.to(_main_device));
 
         Tensor output;
         try

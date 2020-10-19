@@ -35,6 +35,7 @@ namespace dd
 
   void TorchModule::to(torch::Device device)
   {
+    _device = device;
     if (_graph)
       _graph->to(device);
     if (_native)
@@ -59,6 +60,7 @@ namespace dd
 
   void TorchModule::to(torch::Device device, torch::Dtype dtype)
   {
+    _device = device;
     if (_graph)
       _graph->to(device, dtype);
     if (_native)
@@ -238,27 +240,15 @@ namespace dd
 
   c10::IValue TorchModule::forward(std::vector<c10::IValue> source)
   {
-    if (_graph) // native modules take only one tensor as input for now
+    // graph and native modules take only one tensor as input for now
+    if (_graph)
       return _graph->forward(torch_utils::to_tensor_safe(source[0]));
     if (_native)
       return _native->forward(torch_utils::to_tensor_safe(source[0]));
     if (_traced)
       {
         auto output = _traced->forward(source);
-        if (output.isTensorList())
-          {
-            auto elems = output.toTensorList();
-            source = std::vector<c10::IValue>(elems.begin(), elems.end());
-          }
-        else if (output.isTuple())
-          {
-            auto &elems = output.toTuple()->elements();
-            source = std::vector<c10::IValue>(elems.begin(), elems.end());
-          }
-        else
-          {
-            source = { output };
-          }
+        source = torch_utils::unwrap_c10_vector(output);
       }
     c10::IValue out_val = source.at(_classif_in);
     if (_hidden_states)
@@ -276,6 +266,51 @@ namespace dd
     return out_val;
   }
 
+  c10::IValue
+  TorchModule::forward_on_devices(std::vector<c10::IValue> source,
+                                  const std::vector<torch::Device> &devices)
+  {
+    // Normal forward if only one device
+    if (devices.size() <= 1)
+      {
+        if (!devices.empty())
+          to(devices[0]);
+        return forward(source);
+      }
+
+    // graph and native modules take only one tensor as input for now
+    if (_graph)
+      {
+        throw MLLibBadParamException(
+            "Multigpu is not yet supported with graphs.");
+      }
+    if (_native)
+      {
+        return torch::nn::parallel::data_parallel(
+            _native, torch_utils::to_tensor_safe(source[0]), devices, _device);
+      }
+    if (_traced)
+      {
+        throw MLLibBadParamException(
+            "Multigpu is not yet supported with traced models");
+      }
+    c10::IValue out_val = source.at(_classif_in);
+    if (_hidden_states)
+      {
+        // out_val is a tuple containing tensors of dimension n_batch *
+        // sequence_lenght * n_features We want a tensor of size n_batch *
+        // n_features from the last hidden state
+        auto &elems = out_val.toTuple()->elements();
+        out_val = elems.back().toTensor().slice(1, 0, 1).squeeze(1);
+      }
+    if (_classif)
+      {
+        out_val = torch::nn::parallel::data_parallel(
+            _classif, torch_utils::to_tensor_safe(out_val), devices, _device);
+      }
+    return out_val;
+  }
+
   c10::IValue TorchModule::extract(std::vector<c10::IValue> source,
                                    std::string extract_layer)
   {
@@ -286,20 +321,8 @@ namespace dd
       return _native->extract(torch_utils::to_tensor_safe(source[0]),
                               extract_layer);
     auto output = _traced->forward(source);
-    if (output.isTensorList())
-      {
-        auto elems = output.toTensorList();
-        source = std::vector<c10::IValue>(elems.begin(), elems.end());
-      }
-    else if (output.isTuple())
-      {
-        auto &elems = output.toTuple()->elements();
-        source = std::vector<c10::IValue>(elems.begin(), elems.end());
-      }
-    else
-      {
-        source = { output };
-      }
+    source = torch_utils::unwrap_c10_vector(output);
+
     c10::IValue out_val = source.at(_classif_in);
     if (_hidden_states)
       {

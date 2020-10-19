@@ -734,7 +734,7 @@ General:
 Parameter       | Type   | Optional | Default | Description
 ---------       | ----   | -------- | ------- | -----------
 gpu             | bool   | yes      | false   | whether to use gpu
-gpuid           | int    | yes      | false   | id of gpu to use, defaults to -1 meaning all available
+gpuid           | int or array | yes | 0      | GPU id, use single int for single GPU, `-1` for using all GPUs, and array e.g. `[1,3]` for selecting among multiple GPUs
 nclasses        | int    | yes      | none    | if set to some int, add a classifier (linear/fullyConnected) with correposnding number of classes after torch traced model
 self_supervised | string | yes      | ""      | self-supervised mode: "mask" for masked language model
 embedding_size  | int    | yes      | 768     | embedding size for NLP models
@@ -1106,7 +1106,7 @@ test_batch_size | int  | yes      | N/A     | Prediction batch size (the server 
 Parameter     | Type   | Optional | Default | Description
 ---------     | ----   | -------- | ------- | -----------
 gpu           | bool   | yes      | false   | Whether to use GPU
-gpuid         | int    | yes      | -1      | GPU id, use single int for single GPU, `-1` for using all GPUs.
+gpuid         | int or array | yes | 0      | GPU id, use single int for single GPU, `-1` for using all GPUs, and array e.g. `[1,3]` for selecting among multiple GPUs
 extract_layer | string | yes      | ""      | in bert models "hidden_state" allows to extract raw hidden_states values to return as output. Requires the service to be declared as 'unsupervised'
 
 

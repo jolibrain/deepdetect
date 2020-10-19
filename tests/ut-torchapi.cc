@@ -568,6 +568,108 @@ TEST(torchapi, service_train_csvts_nbeats_gpu)
   ASSERT_EQ(ok_str, joutstr);
   rmdir(csvts_nbeats_repo.c_str());
 }
+
+TEST(torchapi, service_train_csvts_nbeats_multigpu)
+{
+  // create service
+  JsonAPI japi;
+  std::string sname = "nbeats";
+  std::string csvts_data = sinus + "train";
+  std::string csvts_test = sinus + "test";
+  std::string csvts_predict = sinus + "predict";
+  std::string csvts_nbeats_repo = "csvts_nbeats";
+  mkdir(csvts_nbeats_repo.c_str(), 0777);
+
+  std::string jstr
+      = "{\"mllib\":\"torch\",\"description\":\"nbeats\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+        + csvts_nbeats_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"csvts\",\"label\":["
+          "\"output\"],\"timesteps\":50},\"mllib\":{\"template\":\"nbeats\","
+          "\"template_params\":[\"t2\",\"s4\",\"g3\",\"b3\"],"
+          "\"loss\":\"L1\",\"gpu\":true,\"gpuid\":[0,1]}}}";
+
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // train
+  std::string jtrainstr
+      = "{\"service\":\"" + sname
+        + "\",\"async\":false,\"parameters\":{\"input\":{\"shuffle\":true,"
+          "\"separator\":\",\",\"scale\":true,\"timesteps\":50,\"label\":["
+          "\"output\"]},\"mllib\":{\"gpu\":true,\"gpuid\":[0, 1],\"solver\":{"
+          "\"iterations\":"
+        + iterations_nbeats_gpu
+        + ",\"test_interval\":100,\"base_lr\":0.001,\"snapshot\":500,\"test_"
+          "initialization\":false,\"solver_type\":\"ADAM\"},\"net\":{\"batch_"
+          "size\":2,\"test_batch_"
+          "size\":10}},\"output\":{\"measure\":[\"L1\",\"L2\"]}},\"data\":[\""
+        + csvts_data + "\",\"" + csvts_test + "\"]}";
+
+  std::cerr << "jtrainstr=" << jtrainstr << std::endl;
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  JDoc jd;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_TRUE(jd.HasMember("status"));
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
+  ASSERT_EQ("Created", jd["status"]["msg"]);
+  ASSERT_TRUE(jd.HasMember("head"));
+  ASSERT_EQ("/train", jd["head"]["method"]);
+  ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
+  ASSERT_TRUE(jd.HasMember("body"));
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
+  ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("L1_mean_error"));
+  ASSERT_TRUE(jd["body"]["measure"]["L1_max_error_0"].GetDouble() > 0.0);
+  ASSERT_TRUE(jd["body"]["parameters"]["input"].HasMember("max_vals"));
+  ASSERT_TRUE(jd["body"]["parameters"]["input"].HasMember("min_vals"));
+
+  std::string str_min_vals
+      = japi.jrender(jd["body"]["parameters"]["input"]["min_vals"]);
+  std::string str_max_vals
+      = japi.jrender(jd["body"]["parameters"]["input"]["max_vals"]);
+
+  //  predict
+  std::string jpredictstr
+      = "{\"service\":\"" + sname
+        + "\",\"parameters\":{\"input\":{\"timesteps\":50,\"connector\":"
+          "\"csvts\",\"scale\":true,\"label\":[\"output\"],\"min_vals\":"
+        + str_min_vals + ",\"max_vals\":" + str_max_vals
+        + "},\"output\":{}},\"data\":[\"" + csvts_predict + "\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
+  ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_49", uri);
+  ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
+  ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["out"][0].GetDouble()
+              >= -1.0);
+
+  joutstr = japi.jrender(japi.service_status(sname));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(jd["body"]["service_stats"].HasMember("predict_count"));
+  ASSERT_TRUE(jd["body"]["service_stats"]["inference_count"].GetInt() == 20);
+  ASSERT_TRUE(jd["body"]["service_stats"]["predict_count"].GetInt() == 1);
+  ASSERT_TRUE(jd["body"]["service_stats"]["predict_failure"].GetInt() == 0);
+  ASSERT_TRUE(jd["body"]["service_stats"]["predict_success"].GetInt() == 1);
+  ASSERT_TRUE(jd["body"]["service_stats"]["avg_batch_size"].GetDouble()
+              == 20.0);
+  ASSERT_TRUE(jd["body"]["service_stats"]["avg_transform_duration"].GetDouble()
+              > 0.0);
+  ASSERT_TRUE(jd["body"]["service_stats"]["avg_predict_duration"].GetDouble()
+              > 0.0);
+
+  //  remove service
+  jstr = "{\"clear\":\"full\"}";
+  joutstr = japi.jrender(japi.service_delete(sname, jstr));
+  ASSERT_EQ(ok_str, joutstr);
+  rmdir(csvts_nbeats_repo.c_str());
+}
 #endif
 
 TEST(torchapi, nbeats_extract_layers_simple)

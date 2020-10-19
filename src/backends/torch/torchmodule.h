@@ -23,6 +23,9 @@
 #ifndef TORCH_MODULE_H
 #define TORCH_MODULE_H
 
+// TODO this should normally be defined by pytorch
+#define AT_PARALLEL_OPENMP 1
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <torch/torch.h>
@@ -31,6 +34,8 @@
 #include "torchgraphbackend.h"
 #include "native/native_net.h"
 #include <torch/script.h>
+#include <torch/nn/pimpl.h>
+#include <torch/nn/parallel/data_parallel.h>
 
 namespace dd
 {
@@ -48,6 +53,14 @@ namespace dd
      * \brief forward (inference) pass over the network
      */
     c10::IValue forward(std::vector<c10::IValue> source);
+
+    /**
+     * \brief forward pass using the devices given in parameters.
+     * If more than one device is given, this method performs a multigpu
+     * forward.
+     */
+    c10::IValue forward_on_devices(std::vector<c10::IValue> source,
+                                   const std::vector<torch::Device> &devices);
 
     /**
      * \brief forward (inference) until extract_layer, return value of

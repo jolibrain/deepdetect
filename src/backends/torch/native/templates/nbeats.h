@@ -48,7 +48,7 @@
 
 namespace dd
 {
-  class NBeats : public NativeModule
+  class NBeats : public NativeModuleImpl<NBeats>
   {
 
     enum BlockType
@@ -58,7 +58,7 @@ namespace dd
       generic
     };
 
-    class BlockImpl : public torch::nn::Module
+    class BlockImpl : public virtual torch::nn::Module
     {
     public:
       BlockImpl(int units, int thetas_dim, int backcast_length,
@@ -69,10 +69,14 @@ namespace dd
         init_block();
       }
 
-      BlockImpl(BlockImpl &b)
+      BlockImpl(const BlockImpl &b)
           : torch::nn::Module(b), _units(b._units), _thetas_dim(b._thetas_dim),
             _data_size(b._data_size), _backcast_length(b._backcast_length),
             _share_thetas(b._share_thetas)
+      {
+      }
+
+      void reset()
       {
         init_block();
       }
@@ -98,7 +102,8 @@ namespace dd
 
     typedef torch::nn::ModuleHolder<BlockImpl> Block;
 
-    class SeasonalityBlockImpl : public BlockImpl
+    class SeasonalityBlockImpl : public BlockImpl,
+                                 public Cloneable<SeasonalityBlockImpl>
     {
     public:
       SeasonalityBlockImpl(int units, int thetas_dim, int backcast_length,
@@ -108,9 +113,25 @@ namespace dd
       {
       }
 
-      SeasonalityBlockImpl(SeasonalityBlockImpl &b)
-          : BlockImpl(b), _bS(b._bS), _fS(b._fS)
+      SeasonalityBlockImpl(const SeasonalityBlockImpl &b)
+          : torch::nn::Module(b), BlockImpl(b), _bS(b._bS), _fS(b._fS)
       {
+      }
+
+      SeasonalityBlockImpl &operator=(SeasonalityBlockImpl &&b)
+      {
+        // This operator is used when NBeats is cloned (e.g. for multigpu).
+        // bT and fT are not copied because they are set by NBeats::reset()
+        // With the default operator, unwanted copy of bT and fT resulting
+        // in them having the wrong device id.
+        torch::nn::Module::operator=(b);
+        BlockImpl::operator=(b);
+        return *this;
+      }
+
+      void reset() override
+      {
+        BlockImpl::reset();
       }
 
       std::tuple<torch::Tensor, torch::Tensor> forward(torch::Tensor x);
@@ -122,7 +143,7 @@ namespace dd
 
     typedef torch::nn::ModuleHolder<SeasonalityBlockImpl> SeasonalityBlock;
 
-    class TrendBlockImpl : public BlockImpl
+    class TrendBlockImpl : public BlockImpl, public Cloneable<TrendBlockImpl>
     {
     public:
       TrendBlockImpl(int units, int thetas_dim, int backcast_length,
@@ -132,8 +153,25 @@ namespace dd
       {
       }
 
-      TrendBlockImpl(TrendBlockImpl &b) : BlockImpl(b), _bT(b._bT), _fT(b._fT)
+      TrendBlockImpl(const TrendBlockImpl &b)
+          : torch::nn::Module(b), BlockImpl(b), _bT(b._bT), _fT(b._fT)
       {
+      }
+
+      TrendBlockImpl &operator=(TrendBlockImpl &&b)
+      {
+        // This operator is used when NBeats is cloned (e.g. for multigpu).
+        // bT and fT are not copied because they are set by NBeats::reset()
+        // With the default operator, unwanted copy of bT and fT resulting
+        // in them having the wrong device id.
+        torch::nn::Module::operator=(b);
+        BlockImpl::operator=(b);
+        return *this;
+      }
+
+      void reset() override
+      {
+        BlockImpl::reset();
       }
 
       std::tuple<torch::Tensor, torch::Tensor> forward(torch::Tensor x);
@@ -145,12 +183,35 @@ namespace dd
 
     typedef torch::nn::ModuleHolder<TrendBlockImpl> TrendBlock;
 
-    class GenericBlockImpl : public BlockImpl
+    class GenericBlockImpl : public BlockImpl,
+                             public Cloneable<GenericBlockImpl>
     {
     public:
       GenericBlockImpl(int units, int thetas_dim, int backcast_length,
                        int data_size)
           : BlockImpl(units, thetas_dim, backcast_length, false, data_size)
+      {
+        init_generic_block();
+      }
+
+      GenericBlockImpl(const GenericBlockImpl &b)
+          : torch::nn::Module(b), BlockImpl(b)
+      {
+        _backcast_fc = b._backcast_fc;
+        _forecast_fc = b._forecast_fc;
+      }
+
+      void reset() override
+      {
+        BlockImpl::reset();
+        init_generic_block();
+      }
+
+      std::tuple<torch::Tensor, torch::Tensor> forward(torch::Tensor x);
+      torch::Tensor extract(torch::Tensor x, std::string extract_layer);
+
+    protected:
+      void init_generic_block()
       {
         _backcast_fc = register_module(
             "backcast_fc",
@@ -160,16 +221,6 @@ namespace dd
             torch::nn::Linear(_thetas_dim, _backcast_length * _data_size));
       }
 
-      GenericBlockImpl(GenericBlockImpl &b) : BlockImpl(b)
-      {
-        _backcast_fc = b._backcast_fc;
-        _forecast_fc = b._forecast_fc;
-      }
-
-      std::tuple<torch::Tensor, torch::Tensor> forward(torch::Tensor x);
-      torch::Tensor extract(torch::Tensor x, std::string extract_layer);
-
-    protected:
       torch::nn::Linear _backcast_fc{ nullptr };
       torch::nn::Linear _forecast_fc{ nullptr };
     };
@@ -244,6 +295,8 @@ namespace dd
     {
       create_nbeats();
     }
+
+    void reset() override;
 
     void parse_stackdef(std::vector<std::string> stackdef)
     {

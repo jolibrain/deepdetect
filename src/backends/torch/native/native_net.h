@@ -32,7 +32,7 @@
 namespace dd
 {
 
-  class NativeModule : public torch::nn::Module
+  class NativeModule : public virtual torch::nn::Module
   {
   public:
     /**
@@ -64,9 +64,7 @@ namespace dd
      */
     virtual std::vector<std::string> extractable_layers() const = 0;
 
-    virtual ~NativeModule()
-    {
-    }
+    virtual ~NativeModule() = default;
 
     virtual torch::Tensor cleanup_output(torch::Tensor output) = 0;
 
@@ -75,6 +73,11 @@ namespace dd
         = 0;
 
     virtual void update_input_connector(TorchInputInterface &inputc) = 0;
+  };
+
+  template <typename T>
+  class NativeModuleImpl : public NativeModule, public torch::nn::Cloneable<T>
+  {
   };
 }
 
