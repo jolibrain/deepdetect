@@ -127,11 +127,12 @@ namespace dd
 
     bool _bbox = false;
     bool _ctc = false;
+    bool _regression = false;
+    bool _timeserie = false;
 
     std::vector<void *> _buffers;
 
     bool _TRTContextReady = false;
-    bool _timeserie = false;
 
     int _inputIndex;
     int _outputIndex0;

@@ -1223,6 +1223,7 @@ measure              | array  | yes      | empty   | Output measures requested, 
 template             | string | yes      | empty   | Output template in Mustache format
 confidence_threshold | double | yes      | 0.0     | only returns classifications or detections with probability strictly above threshold
 bbox                 | bool   | yes      | false   | returns bounding boxes around object when using an object detection model
+regression           | bool   | yes      | false   | whether the output of a model is a regression target (i.e. vector of one or more floats)
 
 The variables that are usable in the output template format are those from the standard JSON output. See the [output template](#output-templates) dedicated section for more details and examples.
 
