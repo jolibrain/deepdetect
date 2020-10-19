@@ -43,10 +43,14 @@ for name in $NAMES; do
     arch=${target%%/*}
     build=${target##*/}
     image_url="${image_url_prefix}_${name}"
+    release="OFF"
+    [ "$TAG_NAME" ] && release="ON"
 
     docker build \
         -t $image_url:$TMP_TAG \
+        --progress plain \
         --build-arg DEEPDETECT_BUILD=$build \
+        --build-arg DEEPDETECT_RELEASE=$release \
         -f docker/${arch}.Dockerfile \
         .
 

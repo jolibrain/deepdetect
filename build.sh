@@ -17,6 +17,7 @@ if [ ! "$DEEPDETECT_CUDA_ARCH" ]; then
     DEEPDETECT_CUDA_ARCH="$(echo ${DEEPDETECT_CUDA_ARCH} | xargs)"
 fi
 
+DEEPDETECT_RELEASE=${DEEPDETECT_RELEASE:-OFF}
 
 # Help menu with arguments descriptions
 help_menu() {
@@ -124,17 +125,17 @@ cpu_build() {
     case ${DEEPDETECT_BUILD} in
 
     "tf")
-        cmake .. -DUSE_TF=ON -DUSE_TF_CPU_ONLY=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_NCNN=OFF -DUSE_CPU_ONLY=ON
+        cmake .. -DUSE_TF=ON -DUSE_TF_CPU_ONLY=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_NCNN=OFF -DUSE_CPU_ONLY=ON -DRELEASE=${DEEPDETECT_RELEASE}
         make
         ;;
 
     "armv7")
-        cmake .. -DUSE_NCNN=ON -DRPI3=ON -DUSE_HDF5=OFF -DUSE_CAFFE=OFF
+        cmake .. -DUSE_NCNN=ON -DRPI3=ON -DUSE_HDF5=OFF -DUSE_CAFFE=OFF -DRELEASE=${DEEPDETECT_RELEASE}
         make
         ;;
 
     *)
-        cmake .. -DUSE_XGBOOST=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_NCNN=ON -DUSE_CPU_ONLY=ON
+        cmake .. -DUSE_XGBOOST=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_NCNN=ON -DUSE_CPU_ONLY=ON -DRELEASE=${DEEPDETECT_RELEASE}
         make
         ;;
     esac
@@ -149,7 +150,7 @@ gpu_build() {
         "torch") extra_flags="-DUSE_TORCH=ON" ;;
         "tensorrt") extra_flags="-DUSE_TENSORRT_OSS=ON" ;;
     esac
-    cmake .. $extra_flags -DUSE_FAISS=ON -DUSE_CUDNN=ON -DUSE_XGBOOST=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DCUDA_ARCH="${DEEPDETECT_CUDA_ARCH}"
+    cmake .. $extra_flags -DUSE_FAISS=ON -DUSE_CUDNN=ON -DUSE_XGBOOST=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DCUDA_ARCH="${DEEPDETECT_CUDA_ARCH} -DRELEASE=${DEEPDETECT_RELEASE}"
     make
 }
 

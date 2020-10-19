@@ -1,6 +1,7 @@
 # syntax = docker/dockerfile:1.0-experimental
 FROM ubuntu:18.04 AS build
 
+ARG DEEPDETECT_RELEASE=OFF
 ARG DEEPDETECT_ARCH=cpu
 ARG DEEPDETECT_BUILD=default
 ARG DEEPDETECT_DEFAULT_MODELS=true

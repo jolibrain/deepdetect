@@ -1,0 +1,22 @@
+#ifndef DD_CONFIG_H
+#define DD_CONFIG_H
+
+#define BUILD_TYPE "@BUILD_TYPE@"
+#define GIT_VERSION "@GIT_VERSION@"
+#define GIT_BRANCH "@GIT_BRANCH@"
+#define GIT_COMMIT_HASH "@GIT_COMMIT_HASH@"
+
+#define COMPLIE_FLAGS                                                         \
+  "USE_CAFFE2=@USE_CAFFE2@ USE_TF=@USE_TF@ USE_NCNN=@USE_NCNN@ "              \
+  "USE_TORCH=@USE_TORCH@ USE_HDF5=@USE_HDF5@ USE_CAFFE=@USE_CAFFE@ "          \
+  "USE_TENSORRT=@USE_TENSORRT@ USE_TENSORRT_OSS=@USE_TENSORRT_OSS@ "          \
+  "USE_DLIB=@USE_DLIB@ USE_CUDA_CV=@USE_CUDA_CV@ "                            \
+  "USE_SIMSEARCH=@USE_SIMSEARCH@ USE_ANNOY=@USE_ANNOY@ "                      \
+  "USE_FAISS=@USE_FAISS@ USE_COMMAND_LINE=@USE_COMMAND_LINE@ "                \
+  "USE_JSON_API=@USE_JSON_API@ USE_HTTP_SERVER=@USE_HTTP_SERVER@"
+
+#define DEPS_VERSION                                                          \
+  "OPENCV_VERSION=@OpenCV_VERSION@ "                                          \
+  "CUDA_VERSION_STRING=@CUDA_VERSION_STRING@ CUDNN_VERSION=@CUDNN_VERSION@"
+
+#endif

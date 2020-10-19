@@ -36,17 +36,15 @@
 #include "jsonapi.h"
 #endif
 #include "dd_config.h"
-#include "githash.h"
 
 namespace dd
 {
-  template <class TAPIStrategy>
-  std::string DeepDetect<TAPIStrategy>::_commit_version = GIT_COMMIT_HASH;
-
   template <class TAPIStrategy> DeepDetect<TAPIStrategy>::DeepDetect()
   {
-    std::cout << "DeepDetect [ commit " << DeepDetect::_commit_version
-              << " ]\n";
+    std::cout << "DeepDetect " << GIT_VERSION << " (" << BUILD_TYPE << ")\n";
+    std::cout << "GIT REF: " << GIT_BRANCH << ":" << GIT_COMMIT_HASH << "\n";
+    std::cout << "COMPILE_FLAGS: " << COMPLIE_FLAGS << "\n";
+    std::cout << "DEPS_VERSION: " << DEPS_VERSION << "\n ";
   }
 
   template <class TAPIStrategy> DeepDetect<TAPIStrategy>::~DeepDetect()

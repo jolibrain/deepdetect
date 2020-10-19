@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.8.8)
 project(deepdetect)
 
+option(RELEASE "release mode" OFF)
 option(USE_CAFFE2 "build caffe2 backend")
 option(USE_TF "use TF backend")
 option(USE_NCNN "use NCNN backend")
@@ -36,9 +37,6 @@ include(ProcessorCount)
 ProcessorCount(N)
 include(ExternalProject)
 
-set (deepdetect_VERSION_MAJOR 0)
-set (deepdetect_VERSION_MINOR 1)
-
 # options
 OPTION(BUILD_TESTS "Should the tests be built")
 OPTION(BUILD_TOOLS "Should the tools be built")
@@ -51,6 +49,14 @@ execute_process(
   COMMAND git rev-parse --abbrev-ref HEAD
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
   OUTPUT_VARIABLE GIT_BRANCH
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+# Get the current version
+execute_process(
+  COMMAND git describe --tags --dirty --broken
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE GIT_VERSION
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
@@ -100,8 +106,14 @@ if (${PB_GENERATOR_SYSTEM})
 	WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 endif()
 
+set(CMAKE_CXX_FLAGS "-g -O2 -Wall -Wextra -Werror -fopenmp -fPIC -std=c++14 -DUSE_OPENCV -DUSE_LMDB")
 
-set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -Werror -fopenmp -O2 -fPIC -std=c++14 -DUSE_OPENCV -DUSE_LMDB")
+if(RELEASE)
+    set(BUILD_TYPE release)
+else()
+    set(BUILD_TYPE dev)
+    string(APPEND CMAKE_CXX_FLAGS " -g")
+endif()
 
 if (USE_COMMAND_LINE)
   if (NOT USE_CAFFE)
@@ -118,18 +130,6 @@ endif()
 if (USE_JSON_API)
   string(APPEND CMAKE_CXX_FLAGS " -DUSE_JSON_API")
 endif()
-
-# configure a header file to pass some of the CMake settings
-# to the source code
-configure_file (
-  "${PROJECT_SOURCE_DIR}/dd_config.h.in"
-  "${PROJECT_BINARY_DIR}/dd_config.h"
-  )
-
-configure_file(
-  "${PROJECT_SOURCE_DIR}/src/githash.h.in"
-  "${PROJECT_BINARY_DIR}/githash.h"
-)
 
 # dependency on Eigen for confusion matrix fast computation
 if (USE_TF)
@@ -1044,6 +1044,13 @@ if (INSTALL_GIT_HOOKS)
     configure_file(${CMAKE_CURRENT_SOURCE_DIR}/tools/git-pre-commit-hook
                    ${CMAKE_CURRENT_SOURCE_DIR}/.git/hooks/pre-commit @ONLY)
 endif()
+
+# configure a header file to pass some of the CMake settings
+# to the source code
+configure_file (
+  "${PROJECT_SOURCE_DIR}/src/dd_config.h.in"
+  "${PROJECT_BINARY_DIR}/dd_config.h"
+)
 
 # status
 message(STATUS "Build Tests          : ${BUILD_TESTS}")
