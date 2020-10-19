@@ -689,8 +689,10 @@ Parameter            | Type         | Optional | Default | Description
 iterations           | int          | yes      | N/A     | Max number of solver's iterations
 snapshot             | int          | yes      | N/A     | Iterations between model snapshots
 snapshot_prefix      | string       | yes      | empty   | Prefix to snapshot file, supports repository
-solver_type          | string       | yes      | SGD     | from "SGD", "ADAGRAD", "NESTEROV", "RMSPROP", "ADADELTA", "ADAM",  "AMSGRAD", "ADAMW", "SGDW", "AMSGRADW" (*W version for decoupled weight decay)
+solver_type          | string       | yes      | SGD     | from "SGD", "ADAGRAD", "NESTEROV", "RMSPROP", "ADADELTA", "ADAM",  "AMSGRAD", "RANGER", "RANGER_PLUS", "ADAMW", "SGDW", "AMSGRADW" (*W version for decoupled weight decay, RANGER_PLUS is ranger + adabelief + centralized_gradient)
 rectified            | bool         | yes      | false   | rectified momentum variance ie https://arxiv.org/abs/1908.03265 valid for ADAM[W] and AMSGRAD[W]
+adabelief            | bool         | yes      | false   | adabelief mod for ADAM https://arxiv.org/abs/2010.07468
+gradient_centralization | bool         | yes      | false   | centralized gradient mod for ADAM ie https://arxiv.org/abs/2004.01461v2
 test_interval        | int          | yes      | N/A     | Number of iterations between testing phases
 test_initialization  | bool         | true     | N/A     | Whether to start training by testing the network
 lr_policy            | string       | yes      | N/A     | learning rate policy ("step", "inv", "fixed", "sgdr", ...)

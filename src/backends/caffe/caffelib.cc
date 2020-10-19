@@ -1480,6 +1480,22 @@ namespace dd
                     caffe::SolverParameter_SolverType_ADAM);
                 solver_param.set_amsgrad(true);
               }
+            else if (strcasecmp(solver_type.c_str(), "RANGER") == 0)
+              {
+                solver_param.set_solver_type(
+                    caffe::SolverParameter_SolverType_ADAM);
+                solver_param.set_rectified(true);
+                solver_param.set_lookahead(true);
+              }
+            else if (strcasecmp(solver_type.c_str(), "RANGER_PLUS") == 0)
+              {
+                solver_param.set_solver_type(
+                    caffe::SolverParameter_SolverType_ADAM);
+                solver_param.set_rectified(true);
+                solver_param.set_lookahead(true);
+                solver_param.set_adabelief(true);
+                solver_param.set_gc(true);
+              }
             else if (strcasecmp(solver_type.c_str(), "ADAMW") == 0)
               {
                 solver_param.set_solver_type(
@@ -1585,6 +1601,11 @@ namespace dd
           solver_param.set_rms_decay(ad_solver.get("rms_decay").get<double>());
         if (ad_solver.has("iter_size"))
           solver_param.set_iter_size(ad_solver.get("iter_size").get<int>());
+        if (ad_solver.has("adabelief"))
+          solver_param.set_adabelief(ad_solver.get("adabelief").get<bool>());
+        if (ad_solver.has("gradient_centralization"))
+          solver_param.set_gc(
+              ad_solver.get("gradient_centralization").get<bool>());
         if (ad_solver.has("lookahead"))
           solver_param.set_lookahead(ad_solver.get("lookahead").get<bool>());
         if (ad_solver.has("lookahead_steps"))
