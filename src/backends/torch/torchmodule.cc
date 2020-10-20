@@ -25,8 +25,132 @@
 #include "native/native.h"
 #include "torchutils.h"
 
+#include <torch/nn/parallel/data_parallel.h>
+
+/*
+#if AT_PARALLEL_OPENMP
+#pragma message("OpenMP")
+#elif AT_PARALLEL_NATIVE
+#pragma message("Native")
+#elif AT_PARALLEL_NATIVE_TBB
+#pragma message("Native TBB")
+#else
+#pragma message("No parallel")
+#endif
+*/
+
 namespace dd
 {
+  // TODO move in torch_utils
+  /// Copy of torch::nn::parallel::parallel_apply that supports c10::IValue
+  /// as input / output
+  template <typename ModuleType>
+  std::vector<c10::IValue>
+  parallel_apply_c10(std::vector<ModuleType> &modules,
+                     const std::vector<std::vector<c10::IValue>> &inputs,
+                     const std::vector<torch::Device> &devices)
+  {
+    std::vector<c10::IValue> outputs(modules.size());
+    std::mutex mutex;
+
+    // std::exception_ptr can be passed between threads:
+    // > An instance of std::exception_ptr may be passed to another function,
+    // > possibly on another thread, where the exception may be rethrown [...].
+    // https://en.cppreference.com/w/cpp/error/exception_ptr
+    std::exception_ptr exception;
+
+    at::parallel_for(
+        /*begin=*/0,
+        /*end=*/modules.size(),
+        /*grain_size=*/1,
+        [&modules, &inputs, &devices, &outputs, &mutex,
+         &exception](int64_t index, int64_t stop) {
+          for (; index < stop; ++index)
+            {
+              try
+                {
+                  auto output = modules[index]->forward(inputs[index]);
+                  // output = output.to(devices[index]);
+                  std::lock_guard<std::mutex> lock(mutex);
+                  outputs[index] = output;
+                }
+              catch (...)
+                {
+                  std::lock_guard<std::mutex> lock(mutex);
+                  if (!exception)
+                    {
+                      exception = std::current_exception();
+                    }
+                }
+            }
+        });
+
+    if (exception)
+      {
+        std::rethrow_exception(exception);
+      }
+
+    return outputs;
+  }
+
+  template <typename ModuleType>
+  std::vector<std::shared_ptr<ModuleType>>
+  replicate_torchscript(const std::shared_ptr<ModuleType> &module,
+                        const std::vector<torch::Device> &devices)
+  {
+    std::vector<std::shared_ptr<ModuleType>> replicas;
+    replicas.reserve(devices.size());
+
+    for (const auto &device : devices)
+      {
+        std::shared_ptr<ModuleType> clone{ new ModuleType(module->clone()) };
+        clone->to(device);
+        replicas.emplace_back(std::move(clone));
+      }
+    // Add replicate_grad_edges for torchscript
+    // replicate_grad_edges(module, replicas, devices);
+    return replicas;
+  }
+
+  /// torch::nn::parallel::data_parallel but it works for torchscript modules
+  /// that return IValue
+  /// This method can be extended in the future to add support for multiple
+  /// input
+  template <typename ModuleType>
+  torch::Tensor data_parallel_torchscript(
+      ModuleType module, const std::vector<c10::IValue> &inputs,
+      const std::vector<torch::Device> &devices,
+      const torch::Device &output_device, int64_t dim = 0)
+  {
+    torch::autograd::Scatter scatter(devices, /*chunk_sizes=*/c10::nullopt,
+                                     dim);
+
+    std::vector<std::vector<c10::IValue>> scattered_inputs;
+    for (c10::IValue input : inputs)
+      {
+        scattered_inputs.push_back(torch::fmap<c10::IValue>(
+            scatter.apply({ std::move(input.toTensor()) })));
+      }
+
+    // Replicate models for torchscript because original data_parallel
+    // only supports nn::Module
+    auto replicas = replicate_torchscript(module, devices);
+
+    // parallel apply: works with IValues as input and output vector of IValues
+    auto outputs = parallel_apply_c10(replicas, scattered_inputs, devices);
+
+    // XXX: does not support multi tensor output
+    std::vector<torch::Tensor> tensor_outputs;
+    for (auto output : outputs)
+      {
+        tensor_outputs.push_back(output.toTensor());
+      }
+    return torch::autograd::Gather(output_device, dim)
+        .apply(
+            torch::fmap<torch::autograd::Variable>(std::move(tensor_outputs)))
+        .front();
+  }
+
   // ======= TORCH MODULE
 
   TorchModule::TorchModule() : _device{ "cpu" }
@@ -319,8 +443,8 @@ namespace dd
       }
     if (_traced)
       {
-        throw MLLibBadParamException(
-            "Multigpu is not yet supported with traced models");
+        source = std::vector<c10::IValue>{ data_parallel_torchscript(
+            _traced, source, devices, _device) };
       }
     c10::IValue out_val = source.at(_linear_in);
     if (_hidden_states)
