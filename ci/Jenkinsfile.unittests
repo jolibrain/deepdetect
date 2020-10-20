@@ -11,6 +11,9 @@ pipeline {
       }
     }
     stage('Installating prebuilt examples/ datasets') {
+      when {
+       expression { !env.CHANGE_ID || pullRequest.labels.findAll { it == "ci:no-datasets-cache" }.size() == 0 }
+      }
       steps {
         copyArtifacts(projectName: 'deepdetect-examples-dataset/master')
         sh '''
@@ -23,7 +26,7 @@ rm -f examples-*.tar
       steps {
         sh '''
 export PATH="/usr/lib/ccache/:$PATH"
-cd build && cmake .. -DBUILD_TESTS=ON -DUSE_CUDNN=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_XGBOOST=ON -DUSE_TORCH=ON -DUSE_NCNN=ON -DUSE_TENSORRT=ON -DUSE_TENSORRT_OSS=ON -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61"
+mkdir -p build && cd build && cmake .. -DBUILD_TESTS=ON -DUSE_CUDNN=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_XGBOOST=ON -DUSE_TORCH=ON -DUSE_NCNN=ON -DUSE_TENSORRT=ON -DUSE_TENSORRT_OSS=ON -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61"
 '''
       }
     }
