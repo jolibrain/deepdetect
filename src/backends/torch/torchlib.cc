@@ -196,7 +196,8 @@ namespace dd
 
   void TorchModule::native_model_load(const TorchModel &tmodel)
   {
-    if (!tmodel._native.empty())
+    if (!tmodel._native.empty()
+        && _native != nullptr) //_native has to be instanciated before loading
       {
         _logger->info("loading " + tmodel._native);
         try

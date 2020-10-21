@@ -24,6 +24,7 @@
 #include "tensorrtinputconns.h"
 #include "utils/apitools.h"
 #include "NvInferPlugin.h"
+#include "NvOnnxParser.h"
 #include "protoUtils.h"
 #include <cuda_runtime_api.h>
 #include <string>
@@ -39,7 +40,12 @@ namespace dd
     fileops::list_directory(repo, true, false, false, lfiles);
     for (std::string s : lfiles)
       {
-        if (s.find(engineFileName) != std::string::npos)
+        // Ommiting directory name
+        auto fstart = s.find_last_of("/");
+        if (fstart == std::string::npos)
+          fstart = 0;
+
+        if (s.find(engineFileName, fstart) != std::string::npos)
           {
             std::string bs_str;
             for (auto it = s.crbegin(); it != s.crend(); ++it)
@@ -88,10 +94,11 @@ namespace dd
     _readEngine = tl._readEngine;
     _writeEngine = tl._writeEngine;
     _TRTContextReady = tl._TRTContextReady;
-    _timeserie = tl._timeserie;
     _buffers = tl._buffers;
     _bbox = tl._bbox;
     _ctc = tl._ctc;
+    _timeserie = tl._timeserie;
+    _regression = tl._regression;
     _inputIndex = tl._inputIndex;
     _outputIndex0 = tl._outputIndex0;
     _outputIndex1 = tl._outputIndex1;
@@ -133,6 +140,10 @@ namespace dd
         int nmbs = ad.get("maxBatchSize").get<int>();
         _max_batch_size = nmbs;
         this->_logger->info("setting max batch size to {}", _max_batch_size);
+      }
+    if (ad.has("nclasses"))
+      {
+        _nclasses = ad.get("nclasses").get<int>();
       }
 
     if (ad.has("dla"))
@@ -246,6 +257,114 @@ namespace dd
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel>
+  nvinfer1::ICudaEngine *
+  TensorRTLib<TInputConnectorStrategy, TOutputConnectorStrategy,
+              TMLModel>::read_engine_from_caffe(const std::string &out_blob)
+  {
+    int fixcode = fixProto(this->_mlmodel._repo + "/" + "net_tensorRT.proto",
+                           this->_mlmodel._def);
+    switch (fixcode)
+      {
+      case 1:
+        this->_logger->error("TRT backend could not open model prototxt");
+        break;
+      case 2:
+        this->_logger->error("TRT backend  could not write "
+                             "transformed model prototxt");
+        break;
+      default:
+        break;
+      }
+
+    nvinfer1::INetworkDefinition *network = _builder->createNetworkV2(0U);
+    nvcaffeparser1::ICaffeParser *caffeParser
+        = nvcaffeparser1::createCaffeParser();
+
+    const nvcaffeparser1::IBlobNameToTensor *blobNameToTensor
+        = caffeParser->parse(
+            std::string(this->_mlmodel._repo + "/" + "net_tensorRT.proto")
+                .c_str(),
+            this->_mlmodel._weights.c_str(), *network, _datatype);
+    if (!blobNameToTensor)
+      throw MLLibInternalException("Error while parsing caffe model "
+                                   "for conversion to TensorRT");
+
+    network->markOutput(*blobNameToTensor->find(out_blob.c_str()));
+
+    if (out_blob == "detection_out")
+      network->markOutput(*blobNameToTensor->find("keep_count"));
+    _builder->setMaxBatchSize(_max_batch_size);
+    _builderc->setMaxWorkspaceSize(_max_workspace_size);
+
+    network->getLayer(0)->setPrecision(nvinfer1::DataType::kFLOAT);
+
+    nvinfer1::ILayer *outl = NULL;
+    int idx = network->getNbLayers() - 1;
+    while (outl == NULL)
+      {
+        nvinfer1::ILayer *l = network->getLayer(idx);
+        if (strcmp(l->getName(), out_blob.c_str()) == 0)
+          {
+            outl = l;
+            break;
+          }
+        idx--;
+      }
+    // force output to be float32
+    outl->setPrecision(nvinfer1::DataType::kFLOAT);
+    nvinfer1::ICudaEngine *engine
+        = _builder->buildEngineWithConfig(*network, *_builderc);
+
+    network->destroy();
+    if (caffeParser != nullptr)
+      caffeParser->destroy();
+
+    return engine;
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+            class TMLModel>
+  nvinfer1::ICudaEngine *
+  TensorRTLib<TInputConnectorStrategy, TOutputConnectorStrategy,
+              TMLModel>::read_engine_from_onnx()
+  {
+    const auto explicitBatch
+        = 1U << static_cast<uint32_t>(
+              nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH);
+
+    nvinfer1::INetworkDefinition *network
+        = _builder->createNetworkV2(explicitBatch);
+
+    nvonnxparser::IParser *onnxParser
+        = nvonnxparser::createParser(*network, trtLogger);
+    onnxParser->parseFromFile(this->_mlmodel._model.c_str(),
+                              int(nvinfer1::ILogger::Severity::kWARNING));
+
+    if (onnxParser->getNbErrors() != 0)
+      {
+        for (int i = 0; i < onnxParser->getNbErrors(); ++i)
+          {
+            this->_logger->error(onnxParser->getError(i)->desc());
+          }
+        throw MLLibInternalException(
+            "Error while parsing onnx model for conversion to "
+            "TensorRT");
+      }
+    _builder->setMaxBatchSize(_max_batch_size);
+    _builderc->setMaxWorkspaceSize(_max_workspace_size);
+
+    nvinfer1::ICudaEngine *engine
+        = _builder->buildEngineWithConfig(*network, *_builderc);
+
+    network->destroy();
+    if (onnxParser != nullptr)
+      onnxParser->destroy();
+
+    return engine;
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+            class TMLModel>
   int TensorRTLib<TInputConnectorStrategy, TOutputConnectorStrategy,
                   TMLModel>::predict(const APIData &ad, APIData &out)
   {
@@ -265,6 +384,9 @@ namespace dd
       {
         if (ad_output.has("bbox"))
           _bbox = ad_output.get("bbox").get<bool>();
+        if (ad_output.has("regression"))
+          _regression = ad_output.get("regression").get<bool>();
+
         // Ctc model
         if (ad_output.has("ctc"))
           {
@@ -292,8 +414,15 @@ namespace dd
             throw MLLibBadParamException(
                 "timeseries not yet implemented over tensorRT backend");
           }
+        else if (_regression)
+          out_blob = "pred";
 
-        _nclasses = findNClasses(this->_mlmodel._def, _bbox);
+        if (_nclasses == 0)
+          {
+            this->_logger->info("try to determine number of classes...");
+            _nclasses = findNClasses(this->_mlmodel._def, _bbox);
+          }
+
         if (_bbox)
           _top_k = findTopK(this->_mlmodel._def);
 
@@ -335,65 +464,25 @@ namespace dd
 
         if (!engineRead)
           {
+            nvinfer1::ICudaEngine *le = nullptr;
 
-            int fixcode
-                = fixProto(this->_mlmodel._repo + "/" + "net_tensorRT.proto",
-                           this->_mlmodel._def);
-            switch (fixcode)
+            if (this->_mlmodel._model.find("net_tensorRT.proto")
+                    != std::string::npos
+                || !this->_mlmodel._def.empty())
               {
-              case 1:
-                this->_logger->error(
-                    "TRT backend could not open model prototxt");
-                break;
-              case 2:
-                this->_logger->error("TRT backend  could not write "
-                                     "transformed model prototxt");
-                break;
-              default:
-                break;
+                le = read_engine_from_caffe(out_blob);
+              }
+            else if (this->_mlmodel._model.find("net_tensorRT.onnx")
+                     != std::string::npos)
+              {
+                le = read_engine_from_onnx();
+              }
+            else
+              {
+                throw MLLibInternalException(
+                    "No model to parse for conversion to TensorRT");
               }
 
-            nvinfer1::INetworkDefinition *network
-                = _builder->createNetworkV2(0U);
-            nvcaffeparser1::ICaffeParser *caffeParser
-                = nvcaffeparser1::createCaffeParser();
-
-            const nvcaffeparser1::IBlobNameToTensor *blobNameToTensor
-                = caffeParser->parse(std::string(this->_mlmodel._repo + "/"
-                                                 + "net_tensorRT.proto")
-                                         .c_str(),
-                                     this->_mlmodel._weights.c_str(), *network,
-                                     _datatype);
-            if (!blobNameToTensor)
-              throw MLLibInternalException("Error while parsing caffe model "
-                                           "for conversion to TensorRT");
-
-            network->markOutput(*blobNameToTensor->find(out_blob.c_str()));
-
-            if (out_blob == "detection_out")
-              network->markOutput(*blobNameToTensor->find("keep_count"));
-            _builder->setMaxBatchSize(_max_batch_size);
-            _builderc->setMaxWorkspaceSize(_max_workspace_size);
-
-            network->getLayer(0)->setPrecision(nvinfer1::DataType::kFLOAT);
-
-            nvinfer1::ILayer *outl = NULL;
-            int idx = network->getNbLayers() - 1;
-            while (outl == NULL)
-              {
-                nvinfer1::ILayer *l = network->getLayer(idx);
-                if (strcmp(l->getName(), out_blob.c_str()) == 0)
-                  {
-                    outl = l;
-                    break;
-                  }
-                idx--;
-              }
-            // force output to be float32
-            outl->setPrecision(nvinfer1::DataType::kFLOAT);
-
-            nvinfer1::ICudaEngine *le
-                = _builder->buildEngineWithConfig(*network, *_builderc);
             _engine = std::shared_ptr<nvinfer1::ICudaEngine>(
                 le, [=](nvinfer1::ICudaEngine *e) { e->destroy(); });
 
@@ -407,9 +496,6 @@ namespace dd
                         trtModelStream->size());
                 trtModelStream->destroy();
               }
-
-            network->destroy();
-            caffeParser->destroy();
           }
 
         _context = std::shared_ptr<nvinfer1::IExecutionContext>(
@@ -449,9 +535,12 @@ namespace dd
             throw MLLibBadParamException(
                 "timeseries not yet implemented over tensorRT backend");
           }
-        else // classification
+        else // classification / regression
           {
-            _buffers.resize(2);
+            if (_regression)
+              _buffers.resize(1);
+            else
+              _buffers.resize(2);
             _floatOut.resize(_max_batch_size * this->_nclasses);
             if (inputc._bw)
               cudaMalloc(&_buffers.data()[_inputIndex],
@@ -532,7 +621,7 @@ namespace dd
                 throw MLLibBadParamException(
                     "timeseries not yet implemented over tensorRT backend");
               }
-            else // classification
+            else // classification / regression
               {
                 if (inputc._bw)
                   cudaMemcpyAsync(_buffers.data()[_inputIndex], inputc.data(),
@@ -665,7 +754,7 @@ namespace dd
             throw MLLibBadParamException(
                 "timeseries not yet implemented over tensorRT backend");
           }
-        else // classification
+        else // classification / regression
           {
             for (int j = 0; j < num_processed; j++)
               {
@@ -681,7 +770,7 @@ namespace dd
                 for (int i = 0; i < _nclasses; i++)
                   {
                     double prob = _floatOut.at(j * _nclasses + i);
-                    if (prob < confidence_threshold)
+                    if (prob < confidence_threshold && !_regression)
                       continue;
                     probs.push_back(prob);
                     cats.push_back(this->_mlmodel.get_hcorresp(i));
@@ -702,6 +791,8 @@ namespace dd
     out.add("nclasses", this->_nclasses);
     if (_bbox)
       out.add("bbox", true);
+    if (_regression)
+      out.add("regression", true);
     out.add("roi", false);
     out.add("multibox_rois", false);
     tout.finalize(ad.getobj("parameters").getobj("output"), out,
