@@ -1043,7 +1043,9 @@ template             | string | yes      | empty                   | Output temp
 network              | object | yes      | empty                   | Output network parameters for pushing the output into another listening software
 measure              | array  | yes      | empty                   | Output measures requested, from `acc`: accuracy, `acc-k`: top-k accuracy, replace k with number (e.g. `acc-5`), `f1`: f1, precision and recall, `mcll`: multi-class log loss, `auc`: area under the curve, `cmdiag`: diagonal of confusion matrix (requires `f1`), `cmfull`: full confusion matrix (requires `f1`), `mcc`: Matthews correlation coefficient
 confidence_threshold | double | yes      | 0.0                     | only returns classifications or detections with probability strictly above threshold
-bbox                 | bool   | yes      | false                   | returns bounding boxes around object when using an object detection model, such that (xmin,ymax) yields the top left corner and (xmax,ymin) the lower right corner of a box.
+bbox                 | bool   | yes      | false                   | returns bounding boxes around object when using an object detection model, such that (xmin,ymax) yields the top left corner and (xmax,ymin) the lower right corner of a
+box.
+regression           | bool   | yes      | false   | whether the output of a model is a regression target (i.e. vector of one or more floats)
 rois                 | string | yes      | empty                   | set the ROI layer from which to extract the features from bounding boxes. Both the boxes and features ar returned when using an object detection model with ROI pooling layer
 index                | bool   | yes      | false                   | whether to index the output from prediction, for similarity search
 build_index          | bool   | yes      | false                   | whether to build similarity index after prediction, no more indexing can be done afterward
@@ -1212,9 +1214,9 @@ No parameters
 
 ## Output connectors
 
-The output connector is at this stage very simple, and dedicated to supervised machine learning output.
+The output connector controls the output formats for supervised and unsupervised models.
 
-Its two main features are the control of the number of predictions per URI, and the output templating, which allows for custom output and seamless integration in external applications.
+Its two main features are the control of the number of predictions per URI, and the output templating, which allows for custom output and seamless integration in external applications. Other options modulates the output format.
 
 Parameter            | Type   | Optional | Default | Description
 ---------            | ----   | -------- | ------- | -----------
@@ -1224,6 +1226,22 @@ template             | string | yes      | empty   | Output template in Mustache
 confidence_threshold | double | yes      | 0.0     | only returns classifications or detections with probability strictly above threshold
 bbox                 | bool   | yes      | false   | returns bounding boxes around object when using an object detection model
 regression           | bool   | yes      | false   | whether the output of a model is a regression target (i.e. vector of one or more floats)
+rois                 | string | yes      | empty                   | set the ROI layer from which to extract the features from bounding boxes. Both the boxes and features ar returned when using an object detection model with ROI pooling layer
+index                | bool   | yes      | false                   | whether to index the output from prediction, for similarity search
+build_index          | bool   | yes      | false                   | whether to build similarity index after prediction, no more indexing can be done afterward
+search               | bool   | yes      | false                   | whether to use the predicted output for similarity search and return pre-indexed nearest neighbors
+multibox_rois        | bool   | yes      | false                   | aggregates bounding boxes ROIs features (requires `rois`) for image similarity search
+index_type           | string | yes      | Flat                    | for faiss index indexing backend only : a FAISS index factory string , see https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index
+index_gpu            | bool   | yes      | false                   | for faiss indexing backend only : if available, build idnex on GPU
+index_gpuid          | int    | yes      | all                     | for faiss indexing backend only : which gpu to use if index_gpu is true
+train_samples        | int    | yes      | 100000                  | for faiss indexing backend only :  number of samples to use for training index. Larger values lead to better indexes (more evenly distributed) but cause much larger index training time. Many indexes need a minimal value depending on the number of clusters built,  see https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index.
+ondisk               | bool   | yes      | true                    | for faiss indexing backend only :  try to directly build indexes on mmaped files (IVF index_types only can do so)
+nprobe               | int    | yes      | max(ninvertedlist/50,2) | for faiss indexing backend only : number of cluster searched for closest images: for highly compressing indexes, setting nprobe to larger values may allow better precision
+ctc                  | bool   | yes      | false                   | whether the output is a sequence (using CTC encoding)
+confidences          | array  | yes      | empty                   | Segmentation only: output confidence maps for "best" class, "all" classes, or classes being specified by number, e.g. "1","3".
+logits_blob          | string | yes      | ""                      | in classification services, this add raw logits to output. Usefull for calibration purposes
+logits               | bool   | yes      | False                   | in detection services, this add logits to output. Usefull for calibration purposes.
+
 
 The variables that are usable in the output template format are those from the standard JSON output. See the [output template](#output-templates) dedicated section for more details and examples.
 
@@ -1299,18 +1317,55 @@ All models below are used by passing their id to the `mllib/template` parameter 
 
 Model ID    | Type                     | Input          | Description
 --------    | ----                     | -----          | -----------
-lregression | linear                   | CSV            | logistic regression
-mlp         | neural net               | CSV            | multilayer perceptron, fully configurable from API, see parameters below
+lregression | linear                   | CSV / Txt            | logistic regression
+mlp         | neural net               | CSV / Txt            | multilayer perceptron, fully configurable from API, see parameters below
+recurrent   | recurrent neural net     | CSV / CSVTS    | LSTM-based networks, fully configurable from API 
 convnet     | convolutional neural net | Images         | convolutional neural net, with layers configurable from API, see parameters below
 alexnet     | deep neural net          | Images 227x227 | 'AlexNet', convolutional deep neural net, good accuracy, fast
 cifar       | deep neural net          | Images 32x32   | Convolutional deep neural net, very good for small images
 nin         | deep neural net          | Images 224x224 | 'Network in Network' convolutional deep neural net, good accuracy, very fast
 googlenet   | deep neural net          | Images 224x224 | 'GoogleNet', convolutional deep neural net, good accuracy
+resnet_10
 resnet_18   | deep neural net          | Image 224x224  | 'ResNet', 18-layers deep residual convolutional neural net, top accuracy
 resnet_32   | deep neural net          | Image 224x224  | 'ResNet', 32-layers deep residual convolutional neural net, top accuracy
 resnet_50   | deep neural net          | Image 224x224  | 'ResNet', 50-layers deep residual convolutional neural net, top accuracy
 resnet_101  | deep neural net          | Image 224x224  | 'ResNet', 101-layers deep residual convolutional neural net, top accuracy
 resnet_152  | deep neural net          | Image 224x224  | 'ResNet', 152-layers deep residual convolutional neural net, top accuracy
+crnn	    | deep neural net	       | Images   		| Convolutional network plus CTC head for OCR
+crnn_resnet_18 | deep neural net	       | Images   		| Convolutional network plus CTC head for OCR with ResNet-18 base
+crnn_resnet_50 | deep neural net	       | Images   		| Convolutional network plus CTC head for OCR with ResNet-50 base
+crnn_resnext_50 | deep neural net	       | Images   		| Convolutional network plus CTC head for OCR with ResNext-50 base
+enet | deep neural net	       | Images   		| Convolutional network for segmentation 
+mobilenet_v2 | deep neural net	       | Images   		| Lightweight network for image classification
+mobilenet_v2_ssd | deep neural net	       | Images   		| Lightweight network for object detection
+pspnet_50 | deep neural net	       | Images   		| Convolutional network for segmentation with ResNet-50 base
+pspnet_101 | deep neural net	       | Images   		| Convolutional network for segmentation with ResNet-101 base
+pspnet_vgg16 | deep neural net	       | Images   		| Convolutional network for segmentation with VGG-16 base 
+refinedet_512 | deep neural net	       | Images   		| Convolutional network for object detection with VGG-16 base
+refinedet_vovnet27slim_512 | deep neural net	       | Images   		| Convolutional network for object detection with VovNet-27-slim base
+refinedet_vovnet39_512 | deep neural net	       | Images   		| Convolutional network for object detection with VovNet-39 base
+resnet_10_ssd | deep neural net	       | Images   		| Convolutional network for object detection with ResNet-10 base
+resnet_18_ssd | deep neural net	       | Images   		| Convolutional network for object detection with ResNet-18 base
+resnet_34_ssd | deep neural net	       | Images   		| Convolutional network for object detection with ResNet-34 base
+segnet | deep neural net	       | Images   		| Convolutional network for segmentation
+se_net | deep neural net	       | Images   		| Convolutional network for segmentation
+se_resnet_50 | deep neural net	       | Images   		| Convolutional network for image classification
+se_resnet_101 | deep neural net	       | Images   		| Convolutional network for image classification
+se_resnet_152 | deep neural net	       | Images   		| Convolutional network for image classification
+se_resnext_50 | deep neural net	       | Images   		| Convolutional network for image classification
+se_resnext_101 | deep neural net	       | Images   		| Convolutional network for image classification
+se_resnet_50_ssd | deep neural net	       | Images   		| Convolutional network for image classification
+shufflenet | deep neural net	       | Images   		| Lightweight network for image classification
+squeezenet | deep neural net	       | Images   		| Lightweight network for image classification
+squeezenet_ssd | deep neural net	       | Images   		| Lightweight network for object detection
+ssd_300 | deep neural net	       | Images   		| Convolutional network for object detection
+ssd_300_res_128 | deep neural net	       | Images   		| Convolutional network for object detection wit ResNet tip
+ssd_512 | deep neural net	       | Images   		| Convolutional network for object detection
+ssd_512_res_128 | deep neural net	       | Images   		| Convolutional network for object detection with ResNet tip
+unet | deep neural net	       | Images   		|  Convolutional network for segmentation
+vdcnn_17 | deep neural net	       | Images   		| Convolutional network for text classification
+vdcnn_9 | deep neural net	       | Images   		| Convolutional network for text classification
+vgg_16 | deep neural net	       | Images   		| Convolutional network for image classification
 
 ## Parameters
 
@@ -1322,7 +1377,7 @@ nclasses   | int             | no (classification only) | N/A     | Number of ou
 ntargets   | int             | no (regression only)     | N/A     | Number of regression targets
 template   | string          | yes                      | empty   | Neural network template, from "lregression", "mlp", "convnet", "alexnet", "googlenet", "nin"
 layers     | array of int    | yes                      | [50]    | Number of neurons per layer ("mlp" only)
-layers     | array of string | yes                      | [1000]  | Type of layer and number of neurons peer layer: XCRY for X successive convolutional layers of Y filters with activation layers followed by a max pooling layer, an int as a string for specifying the final fully connected layers size, e.g. \["2CR32","2CR64","1000"\] ("convnet" only)
+layers     | array of string | yes                      | [1000]  | Type of layer and number of neurons peer layer: XCRY for X successive convolutional layers of Y filters with activation layers followed by a max pooling layer, an int as a string for specifying the final fully connected layers size, e.g. \["2CR32","2CR64","1000"\] ("convnet" only), ["L50","L50"] means 2 layers of LSTMs with hidden size of 50. ["L100","L100", "T", "L300"] means an lstm autoencoder with encoder composed of 2 LSTM layers of hidden size 100 and decoder is one LSTM layer of hidden size 300 ("recurrent" only)
 activation | string          | yes                      | relu    | Unit activation ("mlp" and "convnet" only), from "sigmoid","tanh","relu","prelu"
 dropout    | real            | yes                      | 0.5     | Dropout rate between layers ("mlp" and "convnet" only)
 regression | bool            | yes                      | false   | Whether the model is a regressor ("mlp" and "convnet" only)
