@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 2.8.8)
 project(deepdetect)
+cmake_minimum_required(VERSION 3.14)
 
 option(RELEASE "release mode" OFF)
 option(USE_CAFFE2 "build caffe2 backend")
