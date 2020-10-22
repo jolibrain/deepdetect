@@ -4,7 +4,30 @@ Below are instructions for 18.04 LTS. For other Linux and Unix systems, steps ma
 
 Beware of [dependencies](https://github.com/jolibrain/deepdetect/tree/master/docs/dependencies.md), typically on Debian/Ubuntu Linux, do:
 ```
-sudo apt-get install build-essential libgoogle-glog-dev libgflags-dev libeigen3-dev libopencv-dev libcppnetlib-dev libboost-dev libboost-iostreams-dev libcurlpp-dev libcurl4-openssl-dev protobuf-compiler libopenblas-dev libhdf5-dev libprotobuf-dev libleveldb-dev libsnappy-dev liblmdb-dev libutfcpp-dev cmake libgoogle-perftools-dev unzip python-setuptools python-dev libspdlog-dev python-six python-enum34 libarchive-dev rapidjson-dev libmapbox-variant-dev
+sudo apt-get install build-essential libgoogle-glog-dev libgflags-dev libeigen3-dev libopencv-dev libboost-all-dev libboost-iostreams-dev libcurlpp-dev libcurl4-openssl-dev protobuf-compiler libopenblas-dev libhdf5-dev libprotobuf-dev libleveldb-dev libsnappy-dev liblmdb-dev libutfcpp-dev cmake libgoogle-perftools-dev unzip python-setuptools python-dev libspdlog-dev python-six python-enum34 libarchive-dev rapidjson-dev libmapbox-variant-dev wget
+```
+
+On Ubuntu 18.04 or Nvidia Jetson, the network library cppnetlib is not part of the standard packages anymore and needs to be compiled beforehand:
+
+```
+wget https://github.com/cpp-netlib/cpp-netlib/archive/cpp-netlib-0.11.2-final.tar.gz
+tar xvzf cpp-netlib-0.11.2-final.tar.gz
+cd cpp-netlib-cpp-netlib-0.11.2-final
+mkdir build
+cd build
+cmake ..
+make
+sudo make install
+```
+
+With CUDA 10, a more recent version of cmake than that of Ubuntu 18.04 is required, and needs to be installed beforehand:
+
+```
+sudo apt-get install apt-transport-https ca-certificates gnupg software-properties-common
+wget -q -O- https://apt.kitware.com/keys/kitware-archive-latest.asc | sudo apt-key add -
+sudo apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
+sudo apt-get update
+sudo apt-get install cmake kitware-archive-keyring
 ```
 
 ## Choosing interfaces :
@@ -123,6 +146,12 @@ cmake .. -DUSE_DLIB=ON -DUSE_DLIB_CPU_ONLY=ON
 ```
 
 ## Build with TensorRT support
+
+Some NVidia libraires from TensorRT need to be installed first:
+```
+apt install libnvinfer-plugin-dev libnvparsers-dev libnvonnxparsers-dev
+```
+
 Specify the following option via cmake:
 ```$xslt
 cmake .. -DUSE_TENSORRT=ON
@@ -176,7 +205,11 @@ cmake .. -DUSE_DD_SYSLOG=ON
 
 Note: running tests requires the automated download of ~75Mb of datasets, and computations may take around thirty minutes on a CPU-only machines.
 
-To prepare for tests, compile with:
+To prepare for tests, install numpy:
+```
+sudo apt install python-numpy
+```
+then compile with:
 ```
 cmake -DBUILD_TESTS=ON ..
 make
