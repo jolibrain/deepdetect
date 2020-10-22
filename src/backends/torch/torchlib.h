@@ -28,6 +28,7 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <torch/torch.h>
+#include <torch/script.h>
 #pragma GCC diagnostic pop
 
 #include "apidata.h"
@@ -45,6 +46,70 @@
 
 namespace dd
 {
+  /* autodoc: nccn init parameters */
+  struct TorchLibInitParameters
+  {
+    /* network output blob name */
+    std::string _template = nullptr;
+
+    /* number of output classes */
+    unsigned int nclasses = 0;
+
+    /* classification mode */
+    bool classification = false;
+
+    /* finetuning */
+    bool finetuning = false;
+
+    /* gpu */
+    bool gpu = false;
+
+    /* gpuid */
+    int gpuid = -1;
+
+    /* device */
+    torch::Device device = torch::Device("cpu");
+
+    std::string self_supervised = "";
+
+    bool freeze_traced = false;
+
+    int embedding_size = 768;
+
+    std::string loss = "";
+
+    void post_init()
+    {
+      // FIXME(sileht): Maybe we should raise an error intead to
+      // fallback to CPU
+      if (gpu && !torch::cuda::is_available())
+        gpu = false;
+
+      device = gpu ? torch::Device(torch::DeviceType::CUDA, gpuid)
+                   : torch::Device(torch::DeviceType::CPU);
+
+      // FIXME(sileht): We should raise exception if the list of loss is wrong
+      // here
+    }
+    void staticjson_init(staticjson::ObjectHandler *h)
+    {
+      h->add_property("nclasses", &nclasses, staticjson::Flags::Optional);
+      h->add_property("template", &_template, staticjson::Flags::Optional);
+      h->add_property("finetuning", &finetuning, staticjson::Flags::Optional);
+      h->add_property("gpu", &gpu, staticjson::Flags::Optional);
+      h->add_property("gpuid", &gpuid, staticjson::Flags::Optional);
+      h->add_property("self_supervised", &self_supervised,
+                      staticjson::Flags::Optional);
+      h->add_property("freeze_traced", &freeze_traced,
+                      staticjson::Flags::Optional);
+      h->add_property("embedding_size", &embedding_size,
+                      staticjson::Flags::Optional);
+      h->add_property("loss", &loss, staticjson::Flags::Optional);
+
+      h->set_flags(staticjson::Flags::DisallowUnknownKey);
+    }
+  };
+
   // TODO TorchModule may be merged with TorchGraph in the future
   class TorchModule
   {
@@ -140,8 +205,6 @@ namespace dd
     std::string
         _classif_layer_file; /** < if require_classif_layer == true, this is
                                 the file where the weights are stored */
-    unsigned int _nclasses = 0;
-
     std::shared_ptr<spdlog::logger> _logger; /**< mllib logger. */
 
   private:
@@ -177,15 +240,12 @@ namespace dd
              TorchDataset &dataset, int batch_size, APIData &out);
 
   public:
-    unsigned int _nclasses = 0;
-    std::string _template;
-    bool _finetuning = false;
-    torch::Device _device = torch::Device("cpu");
+    bool _timeserie = false;
     bool _masked_lm = false;
     bool _seq_training = false;
     bool _classification = false;
-    bool _timeserie = false;
-    std::string _loss = "";
+
+    TorchLibInitParameters _mllib_params;
 
     APIData _template_params;
 

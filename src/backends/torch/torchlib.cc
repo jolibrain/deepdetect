@@ -564,17 +564,12 @@ namespace dd
   {
     this->_libname = "torch";
     _module = std::move(tl._module);
-    _template = tl._template;
-    _nclasses = tl._nclasses;
-    _device = tl._device;
     _masked_lm = tl._masked_lm;
     _seq_training = tl._seq_training;
-    _finetuning = tl._finetuning;
     _best_metrics = tl._best_metrics;
     _best_metric_value = tl._best_metric_value;
     _classification = tl._classification;
     _timeserie = tl._timeserie;
-    _loss = tl._loss;
     _template_params = tl._template_params;
   }
 
@@ -660,44 +655,19 @@ namespace dd
   void TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy,
                 TMLModel>::init_mllib(const APIData &lib_ad)
   {
-    bool gpu = false;
-    int gpuid = -1;
-    bool freeze_traced = false;
-    int embedding_size = 768;
-    std::string self_supervised = "";
+    lib_ad.toParams(&_mllib_params);
 
-    if (lib_ad.has("template"))
-      _template = lib_ad.get("template").get<std::string>();
-    if (lib_ad.has("gpu"))
-      gpu = lib_ad.get("gpu").get<bool>() && torch::cuda::is_available();
-    if (lib_ad.has("gpuid"))
-      gpuid = lib_ad.get("gpuid").get<int>();
-    if (lib_ad.has("nclasses"))
-      {
-        _classification = true;
-        _nclasses = lib_ad.get("nclasses").get<int>();
-      }
-    if (lib_ad.has("self_supervised"))
-      self_supervised = lib_ad.get("self_supervised").get<std::string>();
-    if (lib_ad.has("embedding_size"))
-      embedding_size = lib_ad.get("embedding_size").get<int>();
-    if (lib_ad.has("finetuning"))
-      _finetuning = lib_ad.get("finetuning").get<bool>();
-    if (lib_ad.has("freeze_traced"))
-      freeze_traced = lib_ad.get("freeze_traced").get<bool>();
-    if (lib_ad.has("loss"))
-      _loss = lib_ad.get("loss").get<std::string>();
+    if (_mllib_params.nclasses)
+      _classification = true;
 
-    _device = gpu ? torch::Device(DeviceType::CUDA, gpuid)
-                  : torch::Device(DeviceType::CPU);
-    _module._device = _device;
+    _module._device = _mllib_params.device;
     _module._logger = this->_logger;
 
-    if (_template.find("recurrent") != std::string::npos)
+    if (_mllib_params._template.find("recurrent") != std::string::npos)
       {
         // call caffe net generator before verything else
-        std::string dest_net
-            = this->_mlmodel._repo + '/' + _template + ".prototxt";
+        std::string dest_net = this->_mlmodel._repo + '/'
+                               + _mllib_params._template + ".prototxt";
         if (!fileops::file_exists(dest_net))
           {
             caffe::NetParameter net_param;
@@ -715,19 +685,20 @@ namespace dd
 
     bool unsupported_model_configuration
         = this->_mlmodel._traced.empty() && this->_mlmodel._proto.empty()
-          && !NativeFactory::valid_template_def(_template);
+          && !NativeFactory::valid_template_def(_mllib_params._template);
 
     if (unsupported_model_configuration)
       throw MLLibInternalException("Use of libtorch backend needs either: "
                                    "traced net, protofile or native template");
     // Create the model
     this->_inputc._input_format = "bert";
-    if (_template == "bert")
+    if (_mllib_params._template == "bert")
       {
         if (_classification)
           {
-            _module._classif = nn::Linear(embedding_size, _nclasses);
-            _module._classif->to(_device);
+            _module._classif
+                = nn::Linear(embedding_size, _mllib_params.nclasses);
+            _module._classif->to(_mllib_params.device);
             _module._hidden_states = true;
             _module._classif_in = 1;
           }
@@ -747,27 +718,27 @@ namespace dd
                 "BERT only supports self-supervised or classification");
           }
       }
-    else if (_template == "gpt2")
+    else if (_mllib_params._template == "gpt2")
       {
         this->_inputc._input_format = "gpt2";
         _seq_training = true;
       }
-    else if (_template.find("recurrent") != std::string::npos
-             || NativeFactory::is_timeserie(_template))
+    else if (_mllib_params._template.find("recurrent") != std::string::npos
+             || NativeFactory::is_timeserie(_mllib_params._template))
       {
         _timeserie = true;
       }
-    else if (!_template.empty())
+    else if (!_mllib_params._template.empty())
       {
         throw MLLibBadParamException("template");
       }
 
-    if (_classification)
+    if (_mllib_params.classification)
       {
         this->_mltype = "classification";
-        _module._nclasses = _nclasses;
+        _module._nclasses = _mllib_params.nclasses;
 
-        if (_finetuning)
+        if (_mllib_params.finetuning)
           {
             _module._require_classif_layer = true;
             this->_logger->info(
@@ -777,7 +748,7 @@ namespace dd
 
     // Load weights
     _module.load(this->_mlmodel);
-    _module.freeze_traced(freeze_traced);
+    _module.freeze_traced(_mllib_params.freeze_traced);
 
     _best_metrics = { "map", "meaniou",  "mlacc", "delta_score_0.1", "bacc",
                       "f1",  "net_meas", "acc",   "L1_mean_error",   "eucll" };
@@ -903,7 +874,7 @@ namespace dd
 
     TInputConnectorStrategy inputc(this->_inputc);
     inputc._train = true;
-    inputc._finetuning = _finetuning;
+    inputc._finetuning = _mllib_params.finetuning;
 
     APIData ad_input = ad.getobj("parameters").getobj("input");
     if (ad_input.has("shuffle"))
@@ -913,7 +884,8 @@ namespace dd
       {
         inputc.transform(ad);
         _module.post_transform_train<TInputConnectorStrategy>(
-            _template, _template_params, inputc, this->_mlmodel, _device);
+            _mllib_params._template, _template_params, inputc, this->_mlmodel,
+            _mllib_params.device);
       }
     catch (...)
       {
@@ -970,21 +942,22 @@ namespace dd
       {
         std::vector<double> cwv
             = ad_mllib.get("class_weights").get<std::vector<double>>();
-        if (cwv.size() != _nclasses)
+        if (cwv.size() != _mllib_params.nclasses)
           {
             this->_logger->error("class weights given, but number of "
                                  "weights {} do not match "
                                  "number of classes {}, ignoring",
-                                 cwv.size(), _nclasses);
+                                 cwv.size(), _mllib_params.nclasses);
           }
         else
           {
             this->_logger->info("using class weights");
             auto options = torch::TensorOptions().dtype(torch::kFloat64);
             class_weights
-                = torch::from_blob(cwv.data(), { _nclasses }, options)
+                = torch::from_blob(cwv.data(), { _mllib_params.nclasses },
+                                   options)
                       .to(torch::kFloat32)
-                      .to(_device);
+                      .to(_mllib_params.device);
           }
       }
 
@@ -1057,7 +1030,7 @@ namespace dd
             std::vector<c10::IValue> in_vals;
             for (Tensor tensor : batch.data)
               {
-                in_vals.push_back(tensor.to(_device));
+                in_vals.push_back(tensor.to(_mllib_params.device));
               }
 
             if (batch.target.size() == 0)
@@ -1065,7 +1038,7 @@ namespace dd
                 throw MLLibInternalException(
                     "Batch " + std::to_string(batch_id) + ": no target");
               }
-            Tensor y = batch.target.at(0).to(_device);
+            Tensor y = batch.target.at(0).to(_mllib_params.device);
 
             Tensor y_pred;
             try
@@ -1098,16 +1071,21 @@ namespace dd
             else if (_timeserie)
               {
                 if (_module._native != nullptr)
-                  loss = _module._native->loss(_loss, in_vals[0].toTensor(),
-                                               y_pred, y);
+                  loss = _module._native->loss(
+                      _mllib_params.loss, in_vals[0].toTensor(), y_pred, y);
                 else
                   {
-                    if (_loss.empty() || _loss == "L1" || _loss == "l1")
+                    if (_mllib_params.loss.empty()
+                        || _mllib_params.loss == "L1"
+                        || _mllib_params.loss == "l1")
                       loss = torch::l1_loss(y_pred, y);
-                    else if (_loss == "L2" || _loss == "l2" || _loss == "eucl")
+                    else if (_mllib_params.loss == "L2"
+                             || _mllib_params.loss == "l2"
+                             || _mllib_params.loss == "eucl")
                       loss = torch::mse_loss(y_pred, y);
                     else
-                      throw MLLibBadParamException("unknown loss " + _loss);
+                      throw MLLibBadParamException("unknown loss "
+                                                   + _mllib_params.loss);
                   }
               }
             else
@@ -1289,8 +1267,9 @@ namespace dd
     try
       {
         inputc.transform(ad);
-        _module.post_transform_predict(_template, _template_params, inputc,
-                                       this->_mlmodel, _device, ad);
+        _module.post_transform_predict(
+            _mllib_params._template, _template_params, inputc, this->_mlmodel,
+            _mllib_params.device, ad);
         if (ad.getobj("parameters").getobj("input").has("continuation")
             && ad.getobj("parameters")
                    .getobj("input")
@@ -1349,7 +1328,7 @@ namespace dd
         std::vector<c10::IValue> in_vals;
         for (Tensor tensor : batch.data)
           {
-            in_vals.push_back(tensor.to(_device));
+            in_vals.push_back(tensor.to(_mllib_params.device));
           }
         this->_stats.inc_inference_count(in_vals.size());
 
@@ -1366,7 +1345,7 @@ namespace dd
               }
             else
               {
-                if (_template == "gpt2")
+                if (_mllib_params._template == "gpt2")
                   {
                     // Keep only the prediction for the last token
                     Tensor input_ids = batch.data[0];
@@ -1460,7 +1439,7 @@ namespace dd
                     results_ad.add("loss", 0.0);
                     results_ad.add("cats", cats);
                     results_ad.add("probs", probs);
-                    results_ad.add("nclasses", (int)_nclasses);
+                    results_ad.add("nclasses", (int)_mllib_params.nclasses);
 
                     results_ads.push_back(results_ad);
                   }
@@ -1530,7 +1509,7 @@ namespace dd
   {
     APIData ad_res;
     APIData ad_out = ad.getobj("parameters").getobj("output");
-    int nclasses = _masked_lm ? inputc.vocab_size() : _nclasses;
+    int nclasses = _masked_lm ? inputc.vocab_size() : _mllib_params.nclasses;
 
     // confusion matrix is irrelevant to masked_lm training
     if (_masked_lm && ad_out.has("measure"))
@@ -1558,7 +1537,7 @@ namespace dd
           }
         std::vector<c10::IValue> in_vals;
         for (Tensor tensor : batch.data)
-          in_vals.push_back(tensor.to(_device));
+          in_vals.push_back(tensor.to(_mllib_params.device));
 
         Tensor output;
         try
