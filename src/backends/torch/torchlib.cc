@@ -1351,7 +1351,7 @@ namespace dd
           {
             in_vals.push_back(tensor.to(_device));
           }
-        this->_stats.inc_inference_count(in_vals.size());
+        this->_stats.inc_inference_count(batch.data[0].size(0));
 
         Tensor output;
         try
