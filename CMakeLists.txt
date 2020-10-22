@@ -43,6 +43,7 @@ OPTION(BUILD_TOOLS "Should the tools be built")
 OPTION(USE_COMMAND_LINE "build command line JSON API" ON)
 OPTION(USE_JSON_API "build internal JSON API" ON)
 OPTION(USE_HTTP_SERVER "build http JSON API " ON)
+OPTION(USE_HTTP_SERVER_BEAST "Use beast instead of cpp-netlib" OFF)
 
 # Get the current working branch
 execute_process(
@@ -106,7 +107,7 @@ if (${PB_GENERATOR_SYSTEM})
 	WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 endif()
 
-set(CMAKE_CXX_FLAGS "-g -O2 -Wall -Wextra -Werror -fopenmp -fPIC -std=c++14 -DUSE_OPENCV -DUSE_LMDB")
+set(CMAKE_CXX_FLAGS "-g -O2 -Wall -Wextra -Werror -fopenmp -fPIC -std=c++14 -DUSE_OPENCV -DUSE_LMDB -fmax-errors=1")
 
 if(RELEASE)
     set(BUILD_TYPE release)
@@ -125,11 +126,28 @@ endif()
 if (USE_HTTP_SERVER)
   set(USE_JSON_API ON)
   string(APPEND CMAKE_CXX_FLAGS " -DUSE_HTTP_SERVER")
+  if (USE_HTTP_SERVER_BEAST)
+    string(APPEND CMAKE_CXX_FLAGS " -DUSE_HTTP_SERVER_BEAST")
+  endif()
 endif()
 
 if (USE_JSON_API)
   string(APPEND CMAKE_CXX_FLAGS " -DUSE_JSON_API")
 endif()
+
+foreach(boost_lib asio beast config core graph mp11 optional system filesystem io)
+    ExternalProject_Add(
+        boost-${boost_lib}
+        PREFIX boost
+        GIT_REPOSITORY https://github.com/boostorg/${boost_lib}
+        GIT_TAG boost-1.74.0
+        CONFIGURE_COMMAND ""
+        BUILD_COMMAND ""
+        INSTALL_COMMAND ""
+    )
+    include_directories(SYSTEM "${CMAKE_BINARY_DIR}/boost/src/boost-${boost_lib}/include")
+endforeach(boost_lib)
+
 
 # dependency on Eigen for confusion matrix fast computation
 if (USE_TF)
@@ -955,9 +973,9 @@ add_subdirectory (src)
 
 # Flags used by the subdirectories
 if (CUDA_FOUND)
-  set(COMMON_INCLUDE_DIRS ${Boost_INCLUDE_DIRS} ${CUDA_INCLUDE_DIRS})
+  set(COMMON_INCLUDE_DIRS ${CUDA_INCLUDE_DIRS})
 else()
-  set(COMMON_INCLUDE_DIRS ${Boost_INCLUDE_DIRS})
+  set(COMMON_INCLUDE_DIRS)
 endif()
 set(COMMON_LINK_DIRS
   ${DLIB_LIB_DIR}

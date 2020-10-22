@@ -29,7 +29,11 @@
 #endif // USE_JSON_API
 #endif // USE_COMMAND_LINE
 #if defined(USE_HTTP_SERVER) && defined(USE_JSON_API)
+#if defined(USE_HTTP_SERVER_BEAST)
+#include "beasthttpjsonapi.h"
+#else
 #include "httpjsonapi.h"
+#endif // USE_HTTP_SERVER_BEAST
 #endif // USE_HTTP_SERVER && USE_JSON_API
 #if defined(USE_JSON_API) && !defined(USE_HTTP_SERVER)                        \
     && !defined(USE_COMMAND_LINE)
@@ -62,7 +66,11 @@ namespace dd
   template class DeepDetect<CommandLineJsonAPI>;
 #endif
 #ifdef USE_HTTP_SERVER
+#ifdef USE_HTTP_SERVER_BEAST
+  template class DeepDetect<BeastHttpJsonAPI>;
+#else
   template class DeepDetect<HttpJsonAPI>;
+#endif
 #endif
 #if !defined(USE_COMMAND_LINE) && !defined(USE_HTTP)
   template class DeepDetect<JsonAPI>;
