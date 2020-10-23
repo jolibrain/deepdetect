@@ -22,17 +22,11 @@
 
 #include "torchlib.h"
 
-#include <torch/script.h>
 #if !defined(CPU_ONLY)
 #include <c10/cuda/CUDACachingAllocator.h>
 #endif
 
 #include "outputconnectorstrategy.h"
-#include "graph.h"
-
-#include <google/protobuf/io/coded_stream.h>
-#include <google/protobuf/io/zero_copy_stream_impl.h>
-#include <google/protobuf/text_format.h>
 
 #include "generators/net_caffe.h"
 #include "generators/net_caffe_recurrent.h"
@@ -42,508 +36,13 @@
 #include <fcntl.h>
 
 #include "native/native.h"
+#include "torchsolver.h"
+#include "torchUtils.h"
 
 using namespace torch;
 
-using google::protobuf::io::CodedInputStream;
-using google::protobuf::io::CodedOutputStream;
-using google::protobuf::io::FileInputStream;
-using google::protobuf::io::FileOutputStream;
-using google::protobuf::io::ZeroCopyInputStream;
-using google::protobuf::io::ZeroCopyOutputStream;
-
 namespace dd
 {
-
-  bool torch_write_proto_to_text_file(const google::protobuf::Message &proto,
-                                      std::string filename)
-  {
-    int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (fd == -1)
-      return false;
-    FileOutputStream *output = new FileOutputStream(fd);
-    bool success = google::protobuf::TextFormat::Print(proto, output);
-    delete output;
-    close(fd);
-    return success;
-  }
-
-  inline void empty_cuda_cache()
-  {
-#if !defined(CPU_ONLY)
-    c10::cuda::CUDACachingAllocator::emptyCache();
-#endif
-  }
-
-  void add_parameters(std::shared_ptr<torch::jit::script::Module> module,
-                      std::vector<Tensor> &params, bool requires_grad = true)
-  {
-    for (const auto &tensor : module->parameters())
-      {
-        if (tensor.requires_grad() && requires_grad)
-          params.push_back(tensor);
-      }
-    for (auto child : module->children())
-      {
-        add_parameters(std::make_shared<torch::jit::script::Module>(child),
-                       params);
-      }
-  }
-
-  /// Convert IValue to Tensor and throw an exception if the IValue is not a
-  /// Tensor.
-  Tensor to_tensor_safe(const IValue &value)
-  {
-    if (!value.isTensor())
-      throw MLLibInternalException("Expected Tensor, found "
-                                   + value.tagKind());
-    return value.toTensor();
-  }
-
-  /// Convert id Tensor to one_hot Tensor
-  void fill_one_hot(Tensor &one_hot, Tensor ids,
-                    __attribute__((unused)) int nclasses)
-  {
-    one_hot.zero_();
-    for (int i = 0; i < ids.size(0); ++i)
-      {
-        one_hot[i][ids[i].item<int>()] = 1;
-      }
-  }
-
-  Tensor to_one_hot(Tensor ids, int nclasses)
-  {
-    Tensor one_hot = torch::zeros(IntList{ ids.size(0), nclasses });
-    for (int i = 0; i < ids.size(0); ++i)
-      {
-        one_hot[i][ids[i].item<int>()] = 1;
-      }
-    return one_hot;
-  }
-
-  // ======= TORCH MODULE
-
-  TorchModule::TorchModule() : _device{ "cpu" }
-  {
-  }
-
-  void TorchModule::to(torch::Device device)
-  {
-    if (_graph)
-      _graph->to(device);
-    if (_native)
-      _native->to(device);
-    if (_traced)
-      _traced->to(device);
-    if (_classif)
-      _classif->to(device);
-  }
-
-  void TorchModule::to(torch::Dtype dtype)
-  {
-    if (_graph)
-      _graph->to(dtype);
-    if (_native)
-      _native->to(dtype);
-    if (_traced)
-      _traced->to(dtype);
-    if (_classif)
-      _classif->to(dtype);
-  }
-
-  void TorchModule::to(torch::Device device, torch::Dtype dtype)
-  {
-    if (_graph)
-      _graph->to(device, dtype);
-    if (_native)
-      _native->to(device, dtype);
-    if (_traced)
-      _traced->to(device, dtype);
-    if (_classif)
-      _classif->to(device, dtype);
-  }
-
-  void TorchModule::proto_model_load(const TorchModel &model)
-  {
-    _logger->info("loading " + model._proto);
-    try
-      {
-        _graph = std::make_shared<CaffeToTorch>(model._proto);
-      }
-    catch (std::exception &e)
-      {
-        _logger->info("unable to load " + model._proto);
-        throw;
-      }
-  }
-
-  void TorchModule::graph_model_load(const TorchModel &tmodel)
-  {
-    if (!tmodel._traced.empty() && _graph->needs_reload())
-      {
-        _logger->info("loading " + tmodel._traced);
-        try
-          {
-            torch::load(_graph, tmodel._traced, _device);
-          }
-        catch (std::exception &e)
-          {
-            _logger->error("unable to load " + tmodel._traced);
-            throw;
-          }
-      }
-  }
-
-  void TorchModule::native_model_load(const TorchModel &tmodel)
-  {
-    if (!tmodel._native.empty()
-        && _native != nullptr) //_native has to be instanciated before loading
-      {
-        _logger->info("loading " + tmodel._native);
-        try
-          {
-            torch::load(_native, tmodel._native);
-          }
-        catch (std::exception &e)
-          {
-            _logger->error("unable to load " + tmodel._native);
-            throw;
-          }
-      }
-  }
-
-  void TorchModule::classif_model_load(const TorchModel &model)
-  {
-    _logger->info("loading " + model._weights);
-    try
-      {
-        torch::load(_classif, model._weights, _device);
-      }
-    catch (std::exception &e)
-      {
-        _logger->error("unable to load " + model._weights);
-        throw;
-      }
-  }
-
-  void TorchModule::classif_layer_load()
-  {
-    if (!_classif_layer_file.empty())
-      {
-        _logger->info("loading " + _classif_layer_file);
-        torch::load(_classif, _classif_layer_file, _device);
-      }
-  }
-
-  void TorchModule::traced_model_load(TorchModel &model)
-  {
-    _logger->info("loading " + model._traced);
-    try
-      {
-        _traced = std::make_shared<torch::jit::script::Module>(
-            torch::jit::load(model._traced, _device));
-      }
-    catch (std::exception &e)
-      {
-        _logger->error("unable to load " + model._traced);
-        throw;
-      }
-  }
-
-  template <class TInputConnectorStrategy>
-  void TorchModule::post_transform(const std::string tmpl,
-                                   const APIData &template_params,
-                                   const TInputConnectorStrategy &inputc,
-                                   const TorchModel &tmodel,
-                                   const torch::Device &device)
-  {
-    _device = device;
-    this->_native = std::shared_ptr<NativeModule>(
-        NativeFactory::from_template<TInputConnectorStrategy>(
-            tmpl, template_params, inputc));
-
-    if (_native)
-      {
-        _logger->info("created net using template " + tmpl);
-        native_model_load(tmodel);
-      }
-
-    if (_graph)
-      {
-        std::vector<long int> dims = inputc._dataset.datasize(0);
-        dims.insert(dims.begin(), 1); // dummy batch size
-        _graph->finalize(dims);
-        if (_graph->needs_reload())
-          _logger->info("net was reallocated due to input dim changes");
-        // reload params after finalize
-        graph_model_load(tmodel);
-      }
-    to(_device);
-  }
-
-  template <class TInputConnectorStrategy>
-  void TorchModule::post_transform_train(const std::string tmpl,
-                                         const APIData &template_params,
-                                         const TInputConnectorStrategy &inputc,
-                                         const TorchModel &tmodel,
-                                         const torch::Device &device)
-  {
-    post_transform(tmpl, template_params, inputc, tmodel, device);
-
-    if (_require_classif_layer && !_classif)
-      {
-        try
-          {
-            // TODO const cast because getting an input example actually
-            // *modifies* the connector (it must be reset after that)
-            // -> find a way to get an example without modifying the dataset?
-            setup_classification(_nclasses,
-                                 const_cast<TInputConnectorStrategy &>(inputc)
-                                     .get_input_example(device));
-            _classif->to(_device);
-          }
-        catch (std::exception &e)
-          {
-            throw MLLibInternalException(std::string("Libtorch error: ")
-                                         + e.what());
-          }
-      }
-  }
-
-  template <class TInputConnectorStrategy>
-  void TorchModule::post_transform_predict(
-      const std::string tmpl, const APIData &template_params,
-      const TInputConnectorStrategy &inputc, const TorchModel &tmodel,
-      const torch::Device &device, const APIData &ad)
-  {
-    post_transform(tmpl, template_params, inputc, tmodel, device);
-    if (_graph)
-      {
-        if (ad.getobj("parameters").getobj("input").has("continuation")
-            && ad.getobj("parameters")
-                   .getobj("input")
-                   .get("continuation")
-                   .get<bool>())
-          _graph->lstm_continues(true);
-        else
-          _graph->lstm_continues(false);
-      }
-  }
-
-  c10::IValue TorchModule::forward(std::vector<c10::IValue> source)
-  {
-    if (_graph) // native modules take only one tensor as input for now
-      return _graph->forward(to_tensor_safe(source[0]));
-    if (_native)
-      return _native->forward(to_tensor_safe(source[0]));
-    if (_traced)
-      {
-        auto output = _traced->forward(source);
-        if (output.isTensorList())
-          {
-            auto elems = output.toTensorList();
-            source = std::vector<c10::IValue>(elems.begin(), elems.end());
-          }
-        else if (output.isTuple())
-          {
-            auto &elems = output.toTuple()->elements();
-            source = std::vector<c10::IValue>(elems.begin(), elems.end());
-          }
-        else
-          {
-            source = { output };
-          }
-      }
-    c10::IValue out_val = source.at(_classif_in);
-    if (_hidden_states)
-      {
-        // out_val is a tuple containing tensors of dimension n_batch *
-        // sequence_lenght * n_features We want a tensor of size n_batch *
-        // n_features from the last hidden state
-        auto &elems = out_val.toTuple()->elements();
-        out_val = elems.back().toTensor().slice(1, 0, 1).squeeze(1);
-      }
-    if (_classif)
-      {
-        out_val = _classif->forward(to_tensor_safe(out_val));
-      }
-    return out_val;
-  }
-
-  c10::IValue TorchModule::extract(std::vector<c10::IValue> source,
-                                   std::string extract_layer)
-  {
-    if (_graph) // native modules take only one tensor as input for now
-      return _graph->extract(to_tensor_safe(source[0]), extract_layer);
-    if (_native)
-      return _native->extract(to_tensor_safe(source[0]), extract_layer);
-    auto output = _traced->forward(source);
-    if (output.isTensorList())
-      {
-        auto elems = output.toTensorList();
-        source = std::vector<c10::IValue>(elems.begin(), elems.end());
-      }
-    else if (output.isTuple())
-      {
-        auto &elems = output.toTuple()->elements();
-        source = std::vector<c10::IValue>(elems.begin(), elems.end());
-      }
-    else
-      {
-        source = { output };
-      }
-    c10::IValue out_val = source.at(_classif_in);
-    if (_hidden_states)
-      {
-        // out_val is a tuple containing tensors of dimension n_batch *
-        // sequence_length * n_features We want a tensor of size n_batch *
-        // n_features from the last hidden state
-        auto &elems = out_val.toTuple()->elements();
-        out_val = elems.back().toTensor().slice(1, 0, 1).squeeze(1);
-      }
-    return out_val;
-  }
-
-  bool TorchModule::extractable(std::string extract_layer) const
-  {
-    if (_graph)
-      return _graph->extractable(extract_layer);
-    if (_native)
-      return _native->extractable(extract_layer);
-    if (_traced)
-      return extract_layer == "final";
-    return false;
-  }
-
-  std::vector<std::string> TorchModule::extractable_layers() const
-  {
-    if (_graph)
-      return _graph->extractable_layers();
-    if (_native)
-      return _native->extractable_layers();
-    if (_traced)
-      {
-        std::vector<std::string> ret;
-        ret.push_back("final");
-        return ret;
-      }
-    return std::vector<std::string>();
-  }
-
-  void TorchModule::freeze_traced(bool freeze)
-  {
-    if (freeze != _freeze_traced)
-      {
-        _freeze_traced = freeze;
-        std::vector<Tensor> params;
-        add_parameters(_traced, params, false);
-        for (auto &param : params)
-          {
-            param.set_requires_grad(!freeze);
-          }
-      }
-  }
-
-  void
-  TorchModule::setup_classification(int nclasses,
-                                    std::vector<c10::IValue> input_example)
-  {
-    _classif = nullptr;
-    // First dimension is batch id
-    int outdim = to_tensor_safe(forward(input_example)).sizes()[1];
-    _classif = torch::nn::Linear(outdim, nclasses);
-    classif_layer_load();
-  }
-
-  std::vector<Tensor> TorchModule::parameters()
-  {
-    if (_graph)
-      return _graph->parameters();
-    if (_native)
-      return _native->parameters();
-    std::vector<Tensor> params;
-    if (_traced)
-      add_parameters(_traced, params);
-    if (_classif)
-      {
-        auto classif_params = _classif->parameters();
-        params.insert(params.end(), classif_params.begin(),
-                      classif_params.end());
-      }
-    return params;
-  }
-
-  void TorchModule::save_checkpoint(TorchModel &model, const std::string &name)
-  {
-    if (_traced)
-      _traced->save(model._repo + "/checkpoint-" + name + ".pt");
-    if (_classif)
-      torch::save(_classif, model._repo + "/checkpoint-" + name + ".ptw");
-    if (_graph)
-      torch::save(_graph, model._repo + "/checkpoint-" + name + ".pt");
-    if (_native)
-      torch::save(_native, model._repo + "/checkpoint-" + name + ".npt");
-  }
-
-  void TorchModule::load(TorchModel &model)
-  {
-    if (!model._traced.empty() && model._proto.empty())
-      traced_model_load(model);
-
-    if (!model._weights.empty())
-      {
-        if (_classif)
-          {
-            classif_model_load(model);
-          }
-        else if (_require_classif_layer)
-          {
-            _classif_layer_file = model._weights;
-          }
-      }
-    if (!model._proto.empty())
-      {
-        proto_model_load(model);
-        graph_model_load(model);
-      }
-
-    if (!model._native.empty())
-      native_model_load(model);
-  }
-
-  void TorchModule::eval()
-  {
-    if (_graph)
-      _graph->eval();
-    if (_traced)
-      _traced->eval();
-    if (_classif)
-      _classif->eval();
-    if (_native)
-      _native->eval();
-  }
-
-  void TorchModule::train()
-  {
-    if (_graph)
-      _graph->train();
-    if (_traced)
-      _traced->train();
-    if (_classif)
-      _classif->train();
-    if (_native)
-      _native->train();
-  }
-
-  void TorchModule::free()
-  {
-    _graph = nullptr;
-    _traced = nullptr;
-    _classif = nullptr;
-    _native = nullptr;
-  }
-
-  // ======= TORCHLIB
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel>
@@ -584,7 +83,7 @@ namespace dd
            TMLModel>::~TorchLib()
   {
     _module.free();
-    empty_cuda_cache();
+    torch_utils::empty_cuda_cache();
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
@@ -624,33 +123,6 @@ namespace dd
             val = val * (max - min) + min;
           }
         return val;
-      }
-  }
-
-  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
-            class TMLModel>
-  void
-  TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy,
-           TMLModel>::solver_load(std::unique_ptr<optim::Optimizer> &optimizer)
-  {
-    if (!this->_mlmodel._sstate.empty())
-      {
-
-        this->_logger->info("Reload solver from {}", this->_mlmodel._sstate);
-        size_t start = this->_mlmodel._sstate.rfind("-") + 1;
-        size_t end = this->_mlmodel._sstate.rfind(".");
-        int it = std::stoi(this->_mlmodel._sstate.substr(start, end - start));
-        this->_logger->info("Restarting optimization from iter {}", it);
-        this->_logger->info("loading " + this->_mlmodel._sstate);
-        try
-          {
-            torch::load(*optimizer, this->_mlmodel._sstate);
-          }
-        catch (std::exception &e)
-          {
-            this->_logger->error("unable to load " + this->_mlmodel._sstate);
-            throw;
-          }
       }
   }
 
@@ -703,7 +175,7 @@ namespace dd
             caffe::NetParameter net_param;
             configure_recurrent_template(lib_ad, this->_inputc, net_param,
                                          this->_logger, true);
-            torch_write_proto_to_text_file(net_param, dest_net);
+            torch_utils::torch_write_proto_to_text_file(net_param, dest_net);
           }
         else
           {
@@ -815,7 +287,7 @@ namespace dd
   int64_t TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy,
                    TMLModel>::save_if_best(APIData &meas_out,
                                            int64_t elapsed_it,
-                                           optim::Optimizer &optimizer,
+                                           TorchSolver &tsolver,
                                            int64_t best_to_remove)
   {
     double cur_meas = std::numeric_limits<double>::infinity();
@@ -844,7 +316,7 @@ namespace dd
             remove_model(best_to_remove);
           }
         _best_metric_value = cur_meas;
-        this->snapshot(elapsed_it, optimizer);
+        this->snapshot(elapsed_it, tsolver);
         try
           {
             std::ofstream bestfile;
@@ -884,14 +356,13 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel>
   void TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy,
-                TMLModel>::snapshot(int64_t elapsed_it,
-                                    optim::Optimizer &optimizer)
+                TMLModel>::snapshot(int64_t elapsed_it, TorchSolver &tsolver)
   {
     this->_logger->info("Saving checkpoint after {} iterations", elapsed_it);
     this->_module.save_checkpoint(this->_mlmodel, std::to_string(elapsed_it));
     // Save optimizer
-    torch::save(optimizer, this->_mlmodel._repo + "/solver-"
-                               + std::to_string(elapsed_it) + ".pt");
+    tsolver.save(this->_mlmodel._repo + "/solver-" + std::to_string(elapsed_it)
+                 + ".pt");
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
@@ -924,13 +395,12 @@ namespace dd
 
     // solver params
     int64_t iterations = 1;
-    std::string solver_type = "SGD";
-    double base_lr = 0.0001;
     int64_t batch_size = 1;
     int64_t iter_size = 1;
     int64_t test_batch_size = 1;
     int64_t test_interval = 1;
     int64_t save_period = 0;
+    TorchSolver tsolver(this->_logger);
 
     Tensor class_weights = {};
 
@@ -943,12 +413,10 @@ namespace dd
     if (ad_mllib.has("solver"))
       {
         APIData ad_solver = ad_mllib.getobj("solver");
+        tsolver.configure(ad_solver);
+
         if (ad_solver.has("iterations"))
           iterations = ad_solver.get("iterations").get<int>();
-        if (ad_solver.has("solver_type"))
-          solver_type = ad_solver.get("solver_type").get<std::string>();
-        if (ad_solver.has("base_lr"))
-          base_lr = ad_solver.get("base_lr").get<double>();
         if (ad_solver.has("test_interval"))
           test_interval = ad_solver.get("test_interval").get<int>();
         if (ad_solver.has("iter_size"))
@@ -999,30 +467,12 @@ namespace dd
       }
 
     // create solver
-    std::unique_ptr<optim::Optimizer> optimizer;
-
-    if (solver_type == "ADAM")
-      optimizer = std::unique_ptr<optim::Optimizer>(
-          new optim::Adam(_module.parameters(), optim::AdamOptions(base_lr)));
-    else if (solver_type == "RMSPROP")
-      optimizer = std::unique_ptr<optim::Optimizer>(new optim::RMSprop(
-          _module.parameters(), optim::RMSpropOptions(base_lr)));
-    else if (solver_type == "ADAGRAD")
-      optimizer = std::unique_ptr<optim::Optimizer>(new optim::Adagrad(
-          _module.parameters(), optim::AdagradOptions(base_lr)));
-    else
-      {
-        if (solver_type != "SGD")
-          this->_logger->warn("Solver type {} not found, using SGD",
-                              solver_type);
-        optimizer = std::unique_ptr<optim::Optimizer>(
-            new optim::SGD(_module.parameters(), optim::SGDOptions(base_lr)));
-      }
+    tsolver.create(_module);
 
     int it = 0;
     // reload solver and set it value accordingly
-    solver_load(optimizer);
-    optimizer->zero_grad();
+    it = tsolver.load(this->_mlmodel._sstate);
+    tsolver.zero_grad();
     _module.train();
 
     // create dataloader
@@ -1070,7 +520,7 @@ namespace dd
             Tensor y_pred;
             try
               {
-                y_pred = to_tensor_safe(_module.forward(in_vals));
+                y_pred = torch_utils::to_tensor_safe(_module.forward(in_vals));
               }
             catch (std::exception &e)
               {
@@ -1132,8 +582,8 @@ namespace dd
                   }
                 try
                   {
-                    optimizer->step();
-                    optimizer->zero_grad();
+                    tsolver.step();
+                    tsolver.zero_grad();
                   }
                 catch (std::exception &e)
                   {
@@ -1144,14 +594,14 @@ namespace dd
                   }
 
                 avg_it_time /= iter_size;
-                this->add_meas("learning_rate", base_lr);
+                this->add_meas("learning_rate", tsolver.base_lr());
                 this->add_meas("iteration", it);
                 this->add_meas("iter_time", avg_it_time);
                 this->add_meas("remain_time", avg_it_time * iter_size
                                                   * (iterations - it)
                                                   / 1000.0);
                 this->add_meas("train_loss", train_loss);
-                this->add_meas_per_iter("learning_rate", base_lr);
+                this->add_meas_per_iter("learning_rate", tsolver.base_lr());
                 this->add_meas_per_iter("train_loss", train_loss);
                 int64_t elapsed_it = it + 1;
                 if (log_batch_period != 0
@@ -1179,7 +629,7 @@ namespace dd
                     std::vector<std::string> meas_names = meas_obj.list_keys();
 
                     best_to_remove = save_if_best(meas_obj, elapsed_it,
-                                                  *optimizer, best_to_remove);
+                                                  tsolver, best_to_remove);
 
                     for (auto name : meas_names)
                       {
@@ -1225,7 +675,7 @@ namespace dd
                       // model
                       best_to_remove = -1;
                     else
-                      snapshot(elapsed_it, *optimizer);
+                      snapshot(elapsed_it, tsolver);
                   }
                 ++it;
 
@@ -1240,12 +690,12 @@ namespace dd
     if (!this->_tjob_running.load())
       {
         this->_logger->info("Training job interrupted at iteration {}", it);
-        empty_cuda_cache();
+        torch_utils::empty_cuda_cache();
         return -1;
       }
 
     test(ad, inputc, inputc._test_dataset, test_batch_size, out);
-    empty_cuda_cache();
+    torch_utils::empty_cuda_cache();
 
     // Update model after training
     this->_mlmodel.read_from_repository(this->_logger);
@@ -1327,7 +777,7 @@ namespace dd
         meas_out.erase("iteration");
         meas_out.erase("train_loss");
         out.add("measure", meas_out.getobj("measure"));
-        empty_cuda_cache();
+        torch_utils::empty_cuda_cache();
         return 0;
       }
 
@@ -1351,15 +801,16 @@ namespace dd
           {
             in_vals.push_back(tensor.to(_device));
           }
-        this->_stats.inc_inference_count(in_vals.size());
+        this->_stats.inc_inference_count(batch.data[0].size(0));
 
         Tensor output;
         try
           {
             if (extract_layer.empty())
-              output = to_tensor_safe(_module.forward(in_vals));
+              output = torch_utils::to_tensor_safe(_module.forward(in_vals));
             else
-              output = to_tensor_safe(_module.extract(in_vals, extract_layer));
+              output = torch_utils::to_tensor_safe(
+                  _module.extract(in_vals, extract_layer));
             if (_timeserie)
               {
                 // DO NOTHING
@@ -1563,7 +1014,7 @@ namespace dd
         Tensor output;
         try
           {
-            output = to_tensor_safe(_module.forward(in_vals));
+            output = torch_utils::to_tensor_safe(_module.forward(in_vals));
           }
         catch (std::exception &e)
           {

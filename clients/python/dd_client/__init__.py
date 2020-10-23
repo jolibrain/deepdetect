@@ -82,7 +82,7 @@ class DD(object):
             self.__ddurl = 'https://%s:%d' % (host, port)
         if path:
             self.__ddurl += path
-            
+
     def set_return_format(self, f):
         assert f == self.RETURN_PYTHON or f == self.RETURN_JSON or f == self.RETURN_NONE
         self.__returntype = f
@@ -247,12 +247,12 @@ class DD(object):
                   parameters_output, use_base64=False, index_uris = []):
         """
         Creates a dictionary that holds the JSON call,
-        to be added to an array and processed by 
+        to be added to an array and processed by
         a post_chain API call. This basically eases the making
         of chain calls from Python.
         Parameters are the same as for a post_predict call
         """
-        
+
         if use_base64:
             data = [_convert_base64(d) for d in data]
 
@@ -264,7 +264,7 @@ class DD(object):
             call["data"] = data
         if index_uris:
             call["index_uris"] = index_uris
-        
+
         return call
 
     def make_action(self, action_type, parameters=[]):
@@ -289,10 +289,13 @@ class DD(object):
 
         chain = {"chain": { "calls": calls } }
         return self.post(self.__urls["chain"] + '/%s' % cname, json=chain)
-    
-# test
-if __name__ == '__main__':
+
+def main():
     dd = DD()
     dd.set_return_format(dd.RETURN_PYTHON)
     inf = dd.info()
     print(inf)
+
+# test
+if __name__ == '__main__':
+    main()

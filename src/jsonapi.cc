@@ -21,7 +21,6 @@
 
 #include "jsonapi.h"
 #include "dd_config.h"
-#include "githash.h"
 #include <rapidjson/allocators.h>
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
@@ -402,16 +401,23 @@ namespace dd
     JDoc jinfo = dd_ok_200();
     JVal jhead(rapidjson::kObjectType);
     jhead.AddMember("method", "/info", jinfo.GetAllocator());
-    std::string sversion
-        = std::to_string(VERSION_MAJOR) + "." + std::to_string(VERSION_MINOR);
+    jhead.AddMember("build-type",
+                    JVal().SetString(BUILD_TYPE, jinfo.GetAllocator()),
+                    jinfo.GetAllocator());
     jhead.AddMember("version",
-                    JVal().SetString(sversion.c_str(), jinfo.GetAllocator()),
+                    JVal().SetString(GIT_VERSION, jinfo.GetAllocator()),
                     jinfo.GetAllocator());
     jhead.AddMember("branch",
                     JVal().SetString(GIT_BRANCH, jinfo.GetAllocator()),
                     jinfo.GetAllocator());
     jhead.AddMember("commit",
                     JVal().SetString(GIT_COMMIT_HASH, jinfo.GetAllocator()),
+                    jinfo.GetAllocator());
+    jhead.AddMember("compile_flags",
+                    JVal().SetString(COMPLIE_FLAGS, jinfo.GetAllocator()),
+                    jinfo.GetAllocator());
+    jhead.AddMember("deps_version",
+                    JVal().SetString(DEPS_VERSION, jinfo.GetAllocator()),
                     jinfo.GetAllocator());
     JVal jservs(rapidjson::kArrayType);
     auto hit = _mlservices.begin();

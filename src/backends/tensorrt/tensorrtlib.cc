@@ -211,14 +211,23 @@ namespace dd
       {
         if (_datatype == nvinfer1::DataType::kHALF)
           {
-            _builderc->setFlag(nvinfer1::BuilderFlag::kINT8);
-            if (_builder->platformHasFastFp16())
+            if (!_builder->platformHasFastFp16())
               {
                 _builderc->setFlag(nvinfer1::BuilderFlag::kFP16);
                 this->_logger->info("Setting FP16 mode");
               }
             else
-              this->_logger->info("Platform does not has Fast FP16 mode");
+              this->_logger->info("Platform does not have fast FP16 mode");
+          }
+        else if (_datatype == nvinfer1::DataType::kINT8)
+          {
+            if (_builder->platformHasFastInt8())
+              {
+                _builderc->setFlag(nvinfer1::BuilderFlag::kINT8);
+                this->_logger->info("Setting INT8 mode");
+              }
+            else
+              this->_logger->info("Platform does not have fast INT8 mode");
           }
         else
           {

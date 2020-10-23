@@ -1,7 +1,0 @@
-#ifndef DD_CONFIG_H
-#define DD_CONFIG_H
-
-#define VERSION_MAJOR @deepdetect_VERSION_MAJOR@
-#define VERSION_MINOR @deepdetect_VERSION_MINOR@
-
-#endif
