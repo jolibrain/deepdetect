@@ -25,6 +25,7 @@
 #include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
+#include <fcntl.h>
 
 using google::protobuf::io::CodedInputStream;
 using google::protobuf::io::CodedOutputStream;
