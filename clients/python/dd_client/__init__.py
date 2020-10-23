@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
-"""
-DeepDetect Python client
-
-Licence:
-Copyright (c) 2015 Emmanuel Benazera, Evgeny BAZAROV <baz.evgenii@gmail.com>
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-"""
+#
+# DeepDetect Python client
+#
+# Licence:
+# Copyright (c) 2015 Emmanuel Benazera, Evgeny BAZAROV <baz.evgenii@gmail.com>
+# Copyright (c) 2020 Jolibrain
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#
 
 import base64
 import os
@@ -19,6 +19,7 @@ import re
 import warnings
 
 import requests
+
 
 DD_TIMEOUT = 2000  # seconds, for long blocking training calls, as needed
 
@@ -28,31 +29,35 @@ API_METHODS_URL = {
         "services": "/services",
         "train": "/train",
         "predict": "/predict",
-        "chain": "/chain"
+        "chain": "/chain",
     }
 }
 
+
 def _convert_base64(filename):  # return type: Optional[str]
     if os.path.isfile(filename):
-        with open(filename, 'rb') as fh:
+        with open(filename, "rb") as fh:
             data = fh.read()
             x = base64.encodebytes(data)
-            return x.decode('ascii').replace('\n', '')
-    if re.match('^http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|'
-                '[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+$', filename):
+            return x.decode("ascii").replace("\n", "")
+    if re.match(
+        r"^http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+$",
+        filename,
+    ):
         result = requests.get(filename)
         if result.status_code != 200:
             warnings.warn("{} returned status {}".format(filename, result.status_code))
             return
         x = base64.encodebytes(result.content)
-        return x.decode('ascii').replace('\n', '')
-    warnings.warn("Unable to understand file type:"
-                  " file not found or url not valid", RuntimeWarning)
+        return x.decode("ascii").replace("\n", "")
+    warnings.warn(
+        "Unable to understand file type:" " file not found or url not valid",
+        RuntimeWarning,
+    )
 
 
 class DD(object):
-    """HTTP requests to the DeepDetect server
-    """
+    """HTTP requests to the DeepDetect server"""
 
     # return types
     RETURN_PYTHON = 0
@@ -62,8 +67,8 @@ class DD(object):
     __HTTP = 0
     __HTTPS = 1
 
-    def __init__(self, host="localhost", port=8080, proto=0, path='', apiversion="0.1"):
-        """ DD class constructor
+    def __init__(self, host="localhost", port=8080, proto=0, path="", apiversion="0.1"):
+        """DD class constructor
         Parameters:
         host -- the DeepDetect server host
         port -- the DeepDetect server port
@@ -77,9 +82,9 @@ class DD(object):
         self.__proto = proto
         self.__returntype = self.RETURN_PYTHON
         if proto == self.__HTTP:
-            self.__ddurl = 'http://%s:%d' % (host, port)
+            self.__ddurl = "http://%s:%d" % (host, port)
         else:
-            self.__ddurl = 'https://%s:%d' % (host, port)
+            self.__ddurl = "https://%s:%d" % (host, port)
         if path:
             self.__ddurl += path
 
@@ -129,7 +134,17 @@ class DD(object):
         return self.get(self.__urls["info"])
 
     # API services
-    def put_service(self, sname, model, description, mllib, parameters_input, parameters_mllib, parameters_output, mltype='supervised'):
+    def put_service(
+        self,
+        sname,
+        model,
+        description,
+        mllib,
+        parameters_input,
+        parameters_mllib,
+        parameters_output,
+        mltype="supervised",
+    ):
         """
         Create a service
         Parameters:
@@ -141,14 +156,18 @@ class DD(object):
         parameters_mllib -- dict ML library parameters
         parameters_output -- dict of output parameters
         """
-        data = {"description": description,
-                "mllib": mllib,
-                "type": mltype,
-                "parameters": {"input": parameters_input,
-                               "mllib": parameters_mllib,
-                               "output": parameters_output},
-                "model": model}
-        return self.put(self.__urls["services"] + '/%s' % sname, json=data)
+        data = {
+            "description": description,
+            "mllib": mllib,
+            "type": mltype,
+            "parameters": {
+                "input": parameters_input,
+                "mllib": parameters_mllib,
+                "output": parameters_output,
+            },
+            "model": model,
+        }
+        return self.put(self.__urls["services"] + "/%s" % sname, json=data)
 
     def get_service(self, sname):
         """
@@ -156,7 +175,7 @@ class DD(object):
         Parameters:
         sname -- service name as a resource
         """
-        return self.get(self.__urls["services"] + '/%s' % sname)
+        return self.get(self.__urls["services"] + "/%s" % sname)
 
     def delete_service(self, sname, clear=None):
         """
@@ -165,13 +184,21 @@ class DD(object):
         sname -- service name as a resource
         clear -- 'full','lib' or 'mem', optionally clears model repository data
         """
-        lurl = '/%s' % sname
+        lurl = "/%s" % sname
         if clear:
-            lurl += '?clear=' + clear
+            lurl += "?clear=" + clear
         return self.delete(self.__urls["services"] + lurl)
 
     # API train
-    def post_train(self, sname, data, parameters_input, parameters_mllib, parameters_output, jasync=True):
+    def post_train(
+        self,
+        sname,
+        data,
+        parameters_input,
+        parameters_mllib,
+        parameters_output,
+        jasync=True,
+    ):
         """
         Creates a training job
         Parameters:
@@ -182,12 +209,16 @@ class DD(object):
         parameters_mllib -- dict ML library parameters
         parameters_output -- dict of output parameters
         """
-        data = {"service": sname,
-                "async": jasync,
-                "parameters": {"input": parameters_input,
-                               "mllib": parameters_mllib,
-                               "output": parameters_output},
-                "data": data}
+        data = {
+            "service": sname,
+            "async": jasync,
+            "parameters": {
+                "input": parameters_input,
+                "mllib": parameters_mllib,
+                "output": parameters_output,
+            },
+            "data": data,
+        }
         return self.post(self.__urls["train"], json=data)
 
     def get_train(self, sname, job=1, timeout=0, measure_hist=False):
@@ -199,9 +230,7 @@ class DD(object):
         timeout -- timeout before obtaining the job status
         measure_hist -- whether to return the full measure history (e.g. for plotting)
         """
-        params = {"service": sname,
-                  "job": str(job),
-                  "timeout": str(timeout)}
+        params = {"service": sname, "job": str(job), "timeout": str(timeout)}
         if measure_hist:
             params["parameters.output.measure_hist"] = measure_hist
         return self.get(self.__urls["train"], params=params)
@@ -213,13 +242,20 @@ class DD(object):
         sname -- service name as a resource
         job -- job number on the service
         """
-        params = {"service": sname,
-                  "job": str(job)}
+        params = {"service": sname, "job": str(job)}
         return self.delete(self.__urls["train"], params=params)
 
     # API predict
-    def post_predict(self, sname, data, parameters_input, parameters_mllib,
-                     parameters_output, use_base64=False, index_uris=[]):
+    def post_predict(
+        self,
+        sname,
+        data,
+        parameters_input,
+        parameters_mllib,
+        parameters_output,
+        use_base64=False,
+        index_uris=[],
+    ):
         """
         Makes prediction from data and model
         Parameters:
@@ -233,18 +269,30 @@ class DD(object):
         if use_base64:
             data = [_convert_base64(d) for d in data]
 
-        data = {"service": sname,
-                "parameters": {"input": parameters_input,
-                               "mllib": parameters_mllib,
-                               "output": parameters_output},
-                "data": data}
+        data = {
+            "service": sname,
+            "parameters": {
+                "input": parameters_input,
+                "mllib": parameters_mllib,
+                "output": parameters_output,
+            },
+            "data": data,
+        }
         if index_uris:
             data["index_uris"] = index_uris
         return self.post(self.__urls["predict"], json=data)
 
     # API chain
-    def make_call(self, sname, data, parameters_input, parameters_mllib,
-                  parameters_output, use_base64=False, index_uris = []):
+    def make_call(
+        self,
+        sname,
+        data,
+        parameters_input,
+        parameters_mllib,
+        parameters_output,
+        use_base64=False,
+        index_uris=[],
+    ):
         """
         Creates a dictionary that holds the JSON call,
         to be added to an array and processed by
@@ -256,10 +304,14 @@ class DD(object):
         if use_base64:
             data = [_convert_base64(d) for d in data]
 
-        call = {"service": sname,
-                "parameters": {"input": parameters_input,
-                               "mllib": parameters_mllib,
-                               "output": parameters_output}}
+        call = {
+            "service": sname,
+            "parameters": {
+                "input": parameters_input,
+                "mllib": parameters_mllib,
+                "output": parameters_output,
+            },
+        }
         if data:
             call["data"] = data
         if index_uris:
@@ -274,7 +326,7 @@ class DD(object):
         action_type -- "crop" or "filter" for now
         parameters -- action parameters
         """
-        action = {"action": {"type":action_type}}
+        action = {"action": {"type": action_type}}
         if parameters:
             action["action"]["parameters"] = parameters
         return action
@@ -287,8 +339,9 @@ class DD(object):
         calls -- array of calls and actions, use make_call and make_action
         """
 
-        chain = {"chain": { "calls": calls } }
-        return self.post(self.__urls["chain"] + '/%s' % cname, json=chain)
+        chain = {"chain": {"calls": calls}}
+        return self.post(self.__urls["chain"] + "/%s" % cname, json=chain)
+
 
 def main():
     dd = DD()
@@ -296,6 +349,7 @@ def main():
     inf = dd.info()
     print(inf)
 
+
 # test
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

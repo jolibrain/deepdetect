@@ -35,6 +35,11 @@ mkdir -p build && cd build && cmake .. -DBUILD_TESTS=ON -DUSE_CUDNN=ON -DUSE_FAI
         sh 'cd build && make clang-format-check'
       }
     }
+    stage('Check python client') {
+      steps {
+        sh 'cd clients/python/ && tox -e pep8,py36,py27'
+      }
+    }
 
     stage('Installing prebuilt pytorch') {
       when {

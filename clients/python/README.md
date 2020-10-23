@@ -1,3 +1,7 @@
+# DeepDetect REST API client
+
+## Installation
+
 To use the Python DeepDetect client, install `python-requests`.
 
 Via pip:
@@ -28,3 +32,26 @@ not accessible to the deepdetect server. The base64 conversion is supported for
 images on the client filesystem or online (http/https), shall the url be only
 accessible to the client. A `base64` flag (default to `False`) is available in
 the `post_predict` method.
+
+## Code convention and testing
+
+The python code must be formatted with black and follow pep8 rules.
+
+Formatting and pep8 rules can be check with:
+
+```
+tox -e pep8
+```
+
+If your editor/ide doesn't have black support, you format the code with:
+
+```
+tox -e black
+```
+
+Tests can be run with:
+
+```
+tox -e py38
+tox -e py27
+```
