@@ -87,8 +87,6 @@ RUN --mount=type=cache,id=apt_cache_gpu,target=/var/cache/apt --mount=type=cache
     bash-completion
 
 RUN for url in \
-        https://deepdetect.com/dd/pkgs/ubuntu-18.04/libcppnetlib0_0.11.2+dfsg1-2_amd64.deb \
-        https://deepdetect.com/dd/pkgs/ubuntu-18.04/libcppnetlib-dev_0.11.2+dfsg1-2_amd64.deb \
         https://github.com/bazelbuild/bazel/releases/download/0.24.1/bazel_0.24.1-linux-x86_64.deb \
         ; do curl -L -s -o /tmp/p.deb $url && dpkg -i /tmp/p.deb && rm -rf /tmp/p.deb; done
 
@@ -145,10 +143,6 @@ RUN --mount=type=cache,id=apt_cache_gpu,target=/var/cache/apt --mount=type=cache
     libboost-regex1.65.1 \
 	libarchive13 \
 	libprotobuf10
-
-RUN for url in \
-        https://deepdetect.com/dd/pkgs/ubuntu-18.04/libcppnetlib0_0.11.2+dfsg1-2_amd64.deb \
-        ; do curl -L -s -o /tmp/p.deb $url && dpkg -i /tmp/p.deb && rm -rf /tmp/p.deb; done
 
 # Fix permissions
 RUN ln -sf /dev/stdout /var/log/deepdetect.log && \
