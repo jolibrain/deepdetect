@@ -75,11 +75,28 @@ ccache -s
           python3 -c 'import torch, sys; c=torch.cuda.device_count() ; print(f"CUDA VISIBLE GPU: {c}"); sys.exit(bool(c == 0 ))'
           echo
           echo "****************************"
-          cd build && ctest -V -E "http"
+          cd build && ctest -V -E "http|multigpu"
           '''
           }
       }
     }
+/*
+    stage('Tests multi-GPU') {
+      steps {
+        lock(resource: null, label: 'gpu', variable: 'LOCKED_GPU', quantity: 2) {
+          sh '''
+          export CUDA_VISIBLE_DEVICES=$(echo ${LOCKED_GPU} | sed "s/GPU //g")
+          echo "****************************"
+          echo
+          python3 -c 'import torch, sys; c=torch.cuda.device_count() ; print(f"CUDA VISIBLE GPU: {c}"); sys.exit(bool(c < 2))'
+          echo
+          echo "****************************"
+          cd build && ctest -V -E "http" -R "multigpu"
+          '''
+          }
+      }
+    }
+*/
   }
   post {
     always {
