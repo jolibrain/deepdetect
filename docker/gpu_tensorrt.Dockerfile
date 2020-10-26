@@ -1,8 +1,9 @@
 # syntax = docker/dockerfile:1.0-experimental
 FROM nvcr.io/nvidia/tensorrt:20.03-py3 AS build
 
+ARG DEEPDETECT_RELEASE=OFF
 ARG DEEPDETECT_ARCH=gpu
-ARG DEEPDETECT_BUILD=default
+ARG DEEPDETECT_BUILD=tensorrt
 ARG DEEPDETECT_DEFAULT_MODELS=true
 
 # Install build dependencies
