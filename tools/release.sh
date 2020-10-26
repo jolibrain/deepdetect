@@ -13,6 +13,7 @@ cat >> note.md <<EOF
 * CPU version: `docker pull jolibrain/deepdetect_cpu:$tag`
 * GPU (CUDA only): `docker pull jolibrain/deepdetect_gpu:$tag`
 * GPU (CUDA and Tensorrt) :`docker pull jolibrain/deepdetect_cpu_tensorrt:$tag`
+* GPU with torch backend: `docker pull jolibrain/deepdetect_gpu_torch:$tag`
 * All images available on https://hub.docker.com/u/jolibrain
 EOF
 
