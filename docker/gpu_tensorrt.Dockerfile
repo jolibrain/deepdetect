@@ -1,6 +1,7 @@
 # syntax = docker/dockerfile:1.0-experimental
 FROM nvcr.io/nvidia/tensorrt:20.03-py3 AS build
 
+ARG DEEPDETECT_RELEASE=OFF
 ARG DEEPDETECT_ARCH=gpu
 ARG DEEPDETECT_BUILD=default
 ARG DEEPDETECT_DEFAULT_MODELS=true
@@ -86,8 +87,6 @@ RUN --mount=type=cache,id=apt_cache_gpu_tensorrt,target=/var/cache/apt --mount=t
     bash-completion
 
 RUN for url in \
-        https://deepdetect.com/dd/pkgs/ubuntu-18.04/libcppnetlib0_0.11.2+dfsg1-2_amd64.deb \
-        https://deepdetect.com/dd/pkgs/ubuntu-18.04/libcppnetlib-dev_0.11.2+dfsg1-2_amd64.deb \
         https://github.com/bazelbuild/bazel/releases/download/0.24.1/bazel_0.24.1-linux-x86_64.deb \
         ; do curl -L -s -o /tmp/p.deb $url && dpkg -i /tmp/p.deb && rm -rf /tmp/p.deb; done
 
@@ -144,10 +143,6 @@ RUN --mount=type=cache,id=apt_cache_gpu_tensorrt,target=/var/cache/apt --mount=t
     libboost-regex1.65.1 \
 	libarchive13 \
 	libprotobuf10
-
-RUN for url in \
-        https://deepdetect.com/dd/pkgs/ubuntu-18.04/libcppnetlib0_0.11.2+dfsg1-2_amd64.deb \
-        ; do curl -L -s -o /tmp/p.deb $url && dpkg -i /tmp/p.deb && rm -rf /tmp/p.deb; done
 
 # Fix permissions
 RUN ln -sf /dev/stdout /var/log/deepdetect.log && \
