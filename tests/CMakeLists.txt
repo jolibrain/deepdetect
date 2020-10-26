@@ -6,9 +6,21 @@ include_directories(${GTEST_INCLUDE_DIRS})
 
 # Optional libraries can be passed (stored in ARGN)
 function (REGISTER_TEST _NAME _FILE)
-  add_executable(${_NAME} ${_FILE})
-  target_link_libraries(${_NAME} ${COMMON_LINK_LIBS} gtest gtest_main ${ARGN})
-  add_test(NAME ${_NAME} COMMAND ${_NAME})
+  if (NOT TARGET ${_NAME})
+    add_executable(${_NAME} ${_FILE})
+    target_link_libraries(${_NAME} ${COMMON_LINK_LIBS} gtest gtest_main ${ARGN})
+  endif()
+
+  add_test(NAME ${_NAME} COMMAND ${_NAME} "--gtest_filter=-*multigpu*")
+endfunction ()
+
+function (REGISTER_TEST_MULTIGPU _NAME _FILE)
+  if (NOT TARGET ${_NAME})
+    add_executable(${_NAME} ${_FILE})
+    target_link_libraries(${_NAME} ${COMMON_LINK_LIBS} gtest gtest_main ${ARGN})
+  endif()
+
+  add_test(NAME ${_NAME}_multigpu COMMAND ${_NAME} "--gtest_filter=*multigpu*")
 endfunction ()
 
 function (DOWNLOAD_DATASET _NAME _URL _WORKDIR _DEST _IN)
@@ -318,6 +330,7 @@ if (GTEST_FOUND)
 
     if(USE_JSON_API)
       REGISTER_TEST(ut_torchapi ut-torchapi.cc)
+      REGISTER_TEST_MULTIGPU(ut_torchapi ut-torchapi.cc)
     endif()
     REGISTER_TEST(ut_graph ut-graph.cc)
   endif()
