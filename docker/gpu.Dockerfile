@@ -1,6 +1,7 @@
 # syntax = docker/dockerfile:1.0-experimental
 FROM nvidia/cuda:10.2-cudnn7-devel-ubuntu18.04 AS build
 
+ARG DEEPDETECT_RELEASE=OFF
 ARG DEEPDETECT_ARCH=gpu
 ARG DEEPDETECT_BUILD=default
 ARG DEEPDETECT_DEFAULT_MODELS=true
