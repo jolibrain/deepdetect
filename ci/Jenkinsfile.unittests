@@ -60,8 +60,8 @@ mkdir -p build && cd build && cmake .. -DBUILD_TESTS=ON -DUSE_CUDNN=ON -DUSE_FAI
         sh '''
 export PATH="/usr/lib/ccache/:$PATH"
 cd build
-schedtool -B -n 1 -e ionice -n 1 make -j 6
-ccache -s
+#schedtool -B -n 1 -e ionice -n 1 make -j 6
+#ccache -s
 '''
       }
     }
@@ -69,15 +69,32 @@ ccache -s
       steps {
         lock(resource: null, label: 'gpu', variable: 'LOCKED_GPU', quantity: 1) {
           sh '''
-          export CUDA_VISIBLE_DEVICES=${LOCKED_GPU##GPU }
+          export CUDA_VISIBLE_DEVICES=$(echo ${LOCKED_GPU} | sed "s/GPU //g")
           echo "****************************"
           echo
           python3 -c 'import torch, sys; c=torch.cuda.device_count() ; print(f"CUDA VISIBLE GPU: {c}"); sys.exit(bool(c == 0 ))'
           echo
           echo "****************************"
-          cd build && ctest -V -E "http"
+          #cd build && ctest -V -E "http"
           '''
-          }
+        }
+      }
+    }
+    stage('Tests multi-GPU') {
+      steps {
+        lock(resource: null, label: 'gpu', variable: 'LOCKED_GPU', quantity: 2) {
+          sh '''
+          export CUDA_VISIBLE_DEVICES=$(echo ${LOCKED_GPU} | sed "s/GPU //g")
+          echo "****************************"
+          echo
+          python3 -c 'import torch, sys; c=torch.cuda.device_count() ; print(f"CUDA VISIBLE GPU: {c}"); sys.exit(bool(c < 2))'
+          echo
+          echo "****************************"
+          echo $CUDA_VISIBLE_DEVICES
+          echo $LOCKED_GPU
+          #cd build && ctest -V -E "http" -R "multigpu"
+          '''
+        }
       }
     }
   }
