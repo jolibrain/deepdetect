@@ -375,8 +375,8 @@ measure      | array of string | yes | depending on problem type | measure to us
 
 
 Problem type | Default | Possible values | Description
------------- | ------- | --------------- | 
-timeserie    |   L1    | L1, L2, mase, mape, smape, mase, owa | L1: mean error, L2: mean squared error, mase : mean absolute scaled error, mape: mean absolute percentage error, smape: symetric mean absolute percentage error, owa: overall weighted average. 
+------------ | ------- | --------------- |
+timeserie    |   L1    | L1, L2, mase, mape, smape, mase, owa | L1: mean error, L2: mean squared error, mase : mean absolute scaled error, mape: mean absolute percentage error, smape: symetric mean absolute percentage error, owa: overall weighted average.
 
 
 
@@ -758,9 +758,9 @@ solver_type   | string | yes      | SGD     | from "SGD", "ADAGRAD",  "RMSPROP",
 beta1         | real   | yes      | 0.9     | for RANGER* : beta1 param
 beta2         | real   | yes      | 0.999   | for RANGER* : beta2 param
 weight_decay  | real   | yes      | 0.0     | for RANGER* : weight decay
-rectified     | bool   | yes      | true    | for RANGER* : enable/disable rectified ADAM 
+rectified     | bool   | yes      | true    | for RANGER* : enable/disable rectified ADAM
 lookahead     | bool   | yes      | true    | for RANGER* : enable/disable lookahead
-lookahead_steps | int  | yes      | 6       | for RANGER* : if lookahead enabled, number of steps 
+lookahead_steps | int  | yes      | 6       | for RANGER* : if lookahead enabled, number of steps
 lookahead_alpha | real | yes      | 0.5     | for RANGER* : if lookahead enables, alpha param
 adabelief     | bool   | yes      | false for RANGER, true for RANGER_PLUS   | for RANGER* : enable/disable adabelief
 gradient_centralization | bool | yes | false for RANGER, true for RANGER_PLUS| for RANGER* : enable/disable gradient centralization
@@ -1330,7 +1330,7 @@ Model ID    | Type                     | Input          | Description
 --------    | ----                     | -----          | -----------
 lregression | linear                   | CSV / Txt            | logistic regression
 mlp         | neural net               | CSV / Txt            | multilayer perceptron, fully configurable from API, see parameters below
-recurrent   | recurrent neural net     | CSV / CSVTS    | LSTM-based networks, fully configurable from API 
+recurrent   | recurrent neural net     | CSV / CSVTS    | LSTM-based networks, fully configurable from API
 convnet     | convolutional neural net | Images         | convolutional neural net, with layers configurable from API, see parameters below
 alexnet     | deep neural net          | Images 227x227 | 'AlexNet', convolutional deep neural net, good accuracy, fast
 cifar       | deep neural net          | Images 32x32   | Convolutional deep neural net, very good for small images
@@ -1346,12 +1346,12 @@ crnn	    | deep neural net	       | Images   		| Convolutional network plus CTC 
 crnn_resnet_18 | deep neural net	       | Images   		| Convolutional network plus CTC head for OCR with ResNet-18 base
 crnn_resnet_50 | deep neural net	       | Images   		| Convolutional network plus CTC head for OCR with ResNet-50 base
 crnn_resnext_50 | deep neural net	       | Images   		| Convolutional network plus CTC head for OCR with ResNext-50 base
-enet | deep neural net	       | Images   		| Convolutional network for segmentation 
+enet | deep neural net	       | Images   		| Convolutional network for segmentation
 mobilenet_v2 | deep neural net	       | Images   		| Lightweight network for image classification
 mobilenet_v2_ssd | deep neural net	       | Images   		| Lightweight network for object detection
 pspnet_50 | deep neural net	       | Images   		| Convolutional network for segmentation with ResNet-50 base
 pspnet_101 | deep neural net	       | Images   		| Convolutional network for segmentation with ResNet-101 base
-pspnet_vgg16 | deep neural net	       | Images   		| Convolutional network for segmentation with VGG-16 base 
+pspnet_vgg16 | deep neural net	       | Images   		| Convolutional network for segmentation with VGG-16 base
 refinedet_512 | deep neural net	       | Images   		| Convolutional network for object detection with VGG-16 base
 refinedet_vovnet27slim_512 | deep neural net	       | Images   		| Convolutional network for object detection with VovNet-27-slim base
 refinedet_vovnet39_512 | deep neural net	       | Images   		| Convolutional network for object detection with VovNet-39 base
