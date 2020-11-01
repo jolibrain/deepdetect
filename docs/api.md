@@ -735,11 +735,13 @@ Parameter       | Type   | Optional | Default | Description
 ---------       | ----   | -------- | ------- | -----------
 gpu             | bool   | yes      | false   | whether to use gpu
 gpuid           | int or array | yes | 0      | GPU id, use single int for single GPU, `-1` for using all GPUs, and array e.g. `[1,3]` for selecting among multiple GPUs
-nclasses        | int    | yes      | none    | if set to some int, add a classifier (linear/fullyConnected) with correposnding number of classes after torch traced model
+nclasses        | int    | yes      | none    | if set to some int, add a classifier (linear/fullyConnected) with corresponding number of classes after torch traced model
+ntargets   | int             | no (regression only)     | N/A     | Number of regression targets
 self_supervised | string | yes      | ""      | self-supervised mode: "mask" for masked language model
 embedding_size  | int    | yes      | 768     | embedding size for NLP models
 freeze_traced   | bool   | yes      | false   | Freeze the traced part of the net during finetuning (e.g. for classification)
 template        | string | yes      | ""      | for language models, either "bert" or "gpt2", "recurrent" for LSTM-like models (including autoencoder), "nbeats" for nbeats model
+regression | bool            | yes                      | false   | Whether the model is a regressor
 
 
 Model instantiation parameters:
@@ -1393,7 +1395,7 @@ layers     | array of int    | yes                      | [50]    | Number of ne
 layers     | array of string | yes                      | [1000]  | Type of layer and number of neurons peer layer: XCRY for X successive convolutional layers of Y filters with activation layers followed by a max pooling layer, an int as a string for specifying the final fully connected layers size, e.g. \["2CR32","2CR64","1000"\] ("convnet" only), ["L50","L50"] means 2 layers of LSTMs with hidden size of 50. ["L100","L100", "T", "L300"] means an lstm autoencoder with encoder composed of 2 LSTM layers of hidden size 100 and decoder is one LSTM layer of hidden size 300 ("recurrent" only)
 activation | string          | yes                      | relu    | Unit activation ("mlp" and "convnet" only), from "sigmoid","tanh","relu","prelu"
 dropout    | real            | yes                      | 0.5     | Dropout rate between layers ("mlp" and "convnet" only)
-regression | bool            | yes                      | false   | Whether the model is a regressor ("mlp" and "convnet" only)
+regression | bool            | yes                      | false   | Whether the model is a regressor
 crop_size  | int             | yes                      | N/A     | Size of random image crops as input images
 rotate     | bool            | yes                      | false   | Whether to apply random rotations to input images
 mirror     | bool            | yes                      | false   | Whether to apply random mirroring of input images

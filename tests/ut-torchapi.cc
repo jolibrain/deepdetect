@@ -42,6 +42,8 @@ static std::string resnet50_train_repo
     = "../examples/torch/resnet50_training_torch/";
 static std::string resnet50_train_data
     = "../examples/torch/resnet50_training_torch/train/";
+static std::string resnet50_train_data_reg
+    = "../examples/torch/resnet50_training_torch/list_all_shuf_rel.txt";
 static std::string resnet50_test_data
     = "../examples/torch/resnet50_training_torch/test/";
 static std::string resnet50_test_image
@@ -268,6 +270,56 @@ TEST(torchapi, service_train_images)
   // ASSERT_TRUE(cl1 == "cats");
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
               > 0.0);
+
+  fileops::remove_file(resnet50_train_repo,
+                       "checkpoint-" + iterations_resnet50 + ".ptw");
+  fileops::remove_file(resnet50_train_repo,
+                       "checkpoint-" + iterations_resnet50 + ".pt");
+  fileops::remove_file(resnet50_train_repo,
+                       "solver-" + iterations_resnet50 + ".pt");
+  fileops::clear_directory(resnet50_train_repo + "train.lmdb");
+  fileops::clear_directory(resnet50_train_repo + "test.lmdb");
+  fileops::remove_dir(resnet50_train_repo + "train.lmdb");
+  fileops::remove_dir(resnet50_train_repo + "test.lmdb");
+}
+
+TEST(torchapi, service_train_images_split_regression)
+{
+  // Create service
+  JsonAPI japi;
+  std::string sname = "imgserv";
+  std::string jstr
+      = "{\"mllib\":\"torch\",\"description\":\"image\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+        + resnet50_train_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\","
+          "\"width\":224,\"height\":224,\"db\":true},\"mllib\":{\"ntargets\":"
+          "1,\"finetuning\":true,\"regression\":true,\"gpu\":true,\"loss\":"
+          "\"L2\"}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // Train
+  std::string jtrainstr
+      = "{\"service\":\"imgserv\",\"async\":false,\"parameters\":{"
+        "\"mllib\":{\"solver\":{\"iterations\":"
+        + iterations_resnet50
+        + ",\"base_lr\":1e-5,\"iter_size\":4,\"solver_type\":\"ADAM\",\"test_"
+          "interval\":"
+        + iterations_resnet50
+        + "},\"net\":{\"batch_size\":4},\"resume\":false},"
+          "\"input\":{\"db\":true,\"shuffle\":true,\"test_split\":0.1},"
+          "\"output\":{\"measure\":[\"eucll\"]}},\"data\":[\""
+        + resnet50_train_data_reg + "\"]}";
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
+  JDoc jd;
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(201, jd["status"]["code"]);
+
+  ASSERT_TRUE(jd["body"]["measure"]["iteration"] == 2000) << "iterations";
+  ASSERT_TRUE(jd["body"]["measure"]["eucll"].GetDouble() <= 3.0) << "eucll";
 
   fileops::remove_file(resnet50_train_repo,
                        "checkpoint-" + iterations_resnet50 + ".ptw");

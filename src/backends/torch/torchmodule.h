@@ -85,11 +85,11 @@ namespace dd
     void freeze_traced(bool freeze);
 
     /**
-     *  \brief Add linear model at the end of module. Automatically detects
-     * size of the last layer thanks to the provided example output.
+     * \brief Add linear model at the end of module. Automatically detects size
+     * of the last layer thanks to the provided example output.
      */
-    void setup_classification(int nclasses,
-                              std::vector<c10::IValue> input_example);
+    void setup_linear_layer(int nclasses,
+                            std::vector<c10::IValue> input_example);
 
     /**
      * \brief gives all learnable parameters
@@ -183,18 +183,16 @@ namespace dd
     std::shared_ptr<NativeModule>
         _native; /**< native module : directly written in C++ */
 
-    torch::nn::Linear _classif
-        = nullptr; /**< classification layer to append at end of net */
+    torch::nn::Linear _linear = nullptr;
 
-    torch::Device _device; /**< device to compute on */
-    int _classif_in = 0;   /**<id of the input of the classification layer */
+    torch::Device _device;
+    int _linear_in = 0; /**<id of the input of the final linear layer */
     bool _hidden_states = false; /**< Take BERT hidden states as input. */
 
-    bool _require_classif_layer
-        = false; /**< flag to see if we need a classif layer */
+    bool _require_linear_layer = false;
     std::string
-        _classif_layer_file;    /**< if require_classif_layer == true, this is
-                           the file where the weights are stored */
+        _linear_layer_file;     /** < if require_linear_layer == true, this is
+                                    the file where the weights are stored */
     unsigned int _nclasses = 0; /**< number of classes */
 
     std::shared_ptr<spdlog::logger> _logger; /**< mllib logger. */
@@ -218,9 +216,9 @@ namespace dd
     void native_model_load(const TorchModel &tmodel);
 
     /**
-     * load classif model  weights from pt format
+     * load linear model weights from pt format
      */
-    void classif_model_load(const TorchModel &tmodel);
+    void linear_model_load(const TorchModel &tmodel);
 
     /**
      * load traced net (def + weights) from  pt format
@@ -228,9 +226,9 @@ namespace dd
     void traced_model_load(TorchModel &model);
 
     /**
-     * load classif layer weights only from pt format
+     * load linear layer weights only from pt format
      */
-    void classif_layer_load();
+    void linear_layer_load();
   };
 }
 #endif
