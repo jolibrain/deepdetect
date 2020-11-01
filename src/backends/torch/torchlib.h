@@ -94,6 +94,7 @@ namespace dd
     bool _masked_lm = false;    /**< enable MLM self supervised pre training*/
     bool _seq_training = false; /**< true for bert/gpt2*/
     bool _classification = false; /**< select classification type problem*/
+    bool _regression = false;     /**< select regression type problem. */
     bool _timeserie = false;      /**< select timeserie type problem*/
     std::string _loss = "";       /**< selected loss*/
 

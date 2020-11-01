@@ -73,6 +73,7 @@ namespace dd
     _best_metrics = tl._best_metrics;
     _best_metric_value = tl._best_metric_value;
     _classification = tl._classification;
+    _regression = tl._regression;
     _timeserie = tl._timeserie;
     _loss = tl._loss;
     _template_params = tl._template_params;
@@ -158,6 +159,12 @@ namespace dd
         _classification = true;
         _nclasses = lib_ad.get("nclasses").get<int>();
       }
+    else if (lib_ad.has("ntargets"))
+      {
+        _regression = true;
+        _nclasses = lib_ad.get("ntargets").get<int>();
+      }
+
     if (lib_ad.has("self_supervised"))
       self_supervised = lib_ad.get("self_supervised").get<std::string>();
     if (lib_ad.has("embedding_size"))
@@ -234,10 +241,10 @@ namespace dd
       {
         if (_classification)
           {
-            _module._classif = nn::Linear(embedding_size, _nclasses);
-            _module._classif->to(_main_device);
+            _module._linear = nn::Linear(embedding_size, _nclasses);
+            _module._linear->to(_main_device);
             _module._hidden_states = true;
-            _module._classif_in = 1;
+            _module._linear_in = 1;
           }
         else if (!self_supervised.empty())
           {
@@ -277,11 +284,26 @@ namespace dd
 
         if (_finetuning)
           {
-            _module._require_classif_layer = true;
+            _module._require_linear_layer = true;
             this->_logger->info(
                 "Add classification layer on top of the traced model");
           }
       }
+    else if (_regression)
+      {
+        this->_mltype = "regression";
+        _module._nclasses = _nclasses;
+
+        if (_finetuning)
+          {
+            _module._require_linear_layer = true;
+            this->_logger->info(
+                "Add regression layer on top of the traced model");
+          }
+      }
+
+    if (!_regression && !_timeserie && self_supervised.empty())
+      _classification = true; // classification is default
 
     // Load weights
     _module.load(this->_mlmodel);
@@ -539,15 +561,14 @@ namespace dd
     while (it < iterations)
       {
         if (!this->_tjob_running.load())
-          {
-            break;
-          }
+          break;
 
         double train_loss = 0;
         double avg_it_time = 0;
 
         for (TorchBatch batch : *dataloader)
           {
+
             auto tstart = system_clock::now();
             if (_masked_lm)
               {
@@ -610,10 +631,23 @@ namespace dd
                       throw MLLibBadParamException("unknown loss " + _loss);
                   }
               }
-            else
+            else if (_regression)
+              {
+                if (_loss.empty() || _loss == "L1" || _loss == "l1")
+                  loss = torch::l1_loss(y_pred, y);
+                else if (_loss == "L2" || _loss == "l2" || _loss == "eucl")
+                  loss = torch::mse_loss(y_pred, y);
+                else
+                  throw MLLibBadParamException("unknown loss " + _loss);
+              }
+            else if (_classification)
               {
                 loss = torch::nll_loss(torch::log_softmax(y_pred, 1),
                                        y.view(IntList{ -1 }), class_weights);
+              }
+            else
+              {
+                throw MLLibBadParamException("unexpected model type");
               }
             if (iter_size > 1)
               loss /= iter_size;
@@ -738,6 +772,11 @@ namespace dd
 
             ++batch_id;
           }
+
+        if (batch_id == 0
+            && iterations > 1) // no batch has run, empty dataset ?
+          throw MLLibBadParamException(
+              "couldn't fetch any data bach while training");
       }
 
     if (!this->_tjob_running.load())
@@ -837,7 +876,6 @@ namespace dd
 
     inputc._dataset.reset(false);
 
-    //		int batch_size = inputc._dataset.cache_size();
     int batch_size = predict_batch_size;
     if (lstm_continuation)
       batch_size = 1;
@@ -886,7 +924,10 @@ namespace dd
                       }
                     output = torch::stack(outputs);
                   }
-                output = torch::softmax(output, 1).to(cpu);
+                if (_classification)
+                  output = torch::softmax(output, 1).to(cpu);
+                else
+                  output = output.to(cpu);
               }
           }
         catch (std::exception &e)
@@ -931,9 +972,11 @@ namespace dd
             if (_module._native != nullptr)
               output = _module._native->cleanup_output(output);
 
-            if (output_params.has("best"))
+            if (_classification)
               {
-                const int best_count = output_params.get("best").get<int>();
+                int best_count = _nclasses;
+                if (output_params.has("best"))
+                  best_count = output_params.get("best").get<int>();
                 std::tuple<Tensor, Tensor> sorted_output
                     = output.sort(1, true);
                 auto probs_acc
@@ -959,6 +1002,31 @@ namespace dd
                           {
                             cats.push_back(this->_mlmodel.get_hcorresp(index));
                           }
+                      }
+
+                    results_ad.add("uri", inputc._uris.at(results_ads.size()));
+                    results_ad.add("loss", 0.0);
+                    results_ad.add("cats", cats);
+                    results_ad.add("probs", probs);
+                    results_ad.add("nclasses", (int)_nclasses);
+
+                    results_ads.push_back(results_ad);
+                  }
+              }
+            else if (_regression)
+              {
+                auto probs_acc = output.accessor<float, 2>();
+
+                for (int i = 0; i < output.size(0); ++i)
+                  {
+                    APIData results_ad;
+                    std::vector<double> probs;
+                    std::vector<std::string> cats;
+
+                    for (size_t j = 0; j < _nclasses; ++j)
+                      {
+                        probs.push_back(probs_acc[i][j]);
+                        cats.push_back(this->_mlmodel.get_hcorresp(j));
                       }
 
                     results_ad.add("uri", inputc._uris.at(results_ads.size()));
@@ -1011,6 +1079,9 @@ namespace dd
 
         if (_timeserie)
           out.add("timeseries", true);
+        if (_regression)
+          out.add("regression", true);
+        out.add("nclasses", static_cast<int>(_nclasses));
         outputc.finalize(output_params, out,
                          static_cast<MLModel *>(&this->_mlmodel));
       }
@@ -1118,25 +1189,47 @@ namespace dd
                 // * sequence_length, vocab_size]
                 output = output.view(IntList{ -1, output.size(2) });
               }
-            output = torch::softmax(output, 1).to(cpu);
-            auto output_acc = output.accessor<float, 2>();
-            auto labels_acc = labels.accessor<int64_t, 1>();
-
-            for (int j = 0; j < labels.size(0); ++j)
+            if (_classification || _seq_training)
               {
-                if (_masked_lm && labels_acc[j] == -1)
-                  continue;
+                output = torch::softmax(output, 1).to(cpu);
+                auto output_acc = output.accessor<float, 2>();
+                auto labels_acc = labels.accessor<int64_t, 1>();
 
-                APIData bad;
-                std::vector<double> predictions;
-                for (int c = 0; c < nclasses; c++)
+                for (int j = 0; j < labels.size(0); ++j)
                   {
-                    predictions.push_back(output_acc[j][c]);
+                    if (_masked_lm && labels_acc[j] == -1)
+                      continue;
+
+                    APIData bad;
+                    std::vector<double> predictions;
+                    for (int c = 0; c < nclasses; ++c)
+                      {
+                        predictions.push_back(output_acc[j][c]);
+                      }
+                    bad.add("target", static_cast<double>(labels_acc[j]));
+                    bad.add("pred", predictions);
+                    ad_res.add(std::to_string(entry_id), bad);
+                    ++entry_id;
                   }
-                bad.add("target", static_cast<double>(labels_acc[j]));
-                bad.add("pred", predictions);
-                ad_res.add(std::to_string(entry_id), bad);
-                ++entry_id;
+              }
+            else if (_regression)
+              {
+                output = output.to(cpu);
+                auto output_acc = output.accessor<float, 2>();
+                auto labels_acc = labels.accessor<float, 1>();
+                for (int j = 0; j < labels.size(0); ++j)
+                  {
+                    APIData bad;
+                    std::vector<double> predictions;
+                    for (int c = 0; c < nclasses; ++c)
+                      {
+                        predictions.push_back(output_acc[j][c]);
+                      }
+                    bad.add("target", static_cast<double>(labels_acc[j]));
+                    bad.add("pred", predictions);
+                    ad_res.add(std::to_string(entry_id), bad);
+                    ++entry_id;
+                  }
               }
           }
         // this->_logger->info("Testing: {}/{} entries processed", entry_id,

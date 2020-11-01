@@ -393,6 +393,7 @@ namespace dd
       std::unordered_map<std::string, int> &hcorresp_r,
       const std::string &folderPath)
   {
+    _logger->info("Reading image folder {}", folderPath);
 
     // TODO Put file parsing from caffe in common files to use it in other
     // backends
@@ -424,6 +425,35 @@ namespace dd
         ++cl;
         ++uit;
       }
+  }
+
+  void ImgTorchInputFileConn::read_image_list(
+      std::vector<std::pair<std::string, std::vector<double>>> &lfiles,
+      const std::string &listfilePath)
+  {
+    _logger->info("Reading image list file {}", listfilePath);
+    std::ifstream infile(listfilePath);
+    std::string line;
+    int line_num = 1;
+    while (std::getline(infile, line))
+      {
+        std::istringstream iss(line);
+        string filename;
+        string label;
+        iss >> filename >> label;
+
+        std::vector<double> targets;
+        std::istringstream ill(label);
+        std::string targ;
+        while (ill >> targ)
+          targets.push_back(std::stod(targ));
+
+        ++line_num;
+        lfiles.push_back(
+            std::pair<std::string, std::vector<double>>(filename, targets));
+      }
+    _logger->info("Read {} lines in image list file {}", line_num,
+                  listfilePath);
   }
 
   void ImgTorchInputFileConn::transform(const APIData &ad)
@@ -479,23 +509,25 @@ namespace dd
               }
 
             bool dir_images = true;
-            fileops::file_exists(_uris.at(0), dir_images);
-
-            // Parse URIs and retrieve images
-            std::unordered_map<int, std::string>
-                hcorresp; // correspondence class number / class name
-            std::unordered_map<std::string, int>
-                hcorresp_r; // reverse correspondence for test set.
-            std::vector<std::pair<std::string, int>> lfiles; // labeled files
-            std::vector<std::pair<std::string, int>> test_lfiles;
-
+            bool fexists = fileops::file_exists(_uris.at(0), dir_images);
+            if (!fexists)
+              throw InputConnectorBadParamException(
+                  "Torch image input connector folders or image list "
+                  + _uris.at(0) + " does not exist");
             bool folder = dir_images;
 
+            // Parse URIs and retrieve images
             if (folder)
               {
-                read_image_folder(lfiles, hcorresp, hcorresp_r, _uris.at(0));
-                // TODO manage test split
+                std::unordered_map<int, std::string>
+                    hcorresp; // correspondence class number / class name
+                std::unordered_map<std::string, int>
+                    hcorresp_r; // reverse correspondence for test set.
+                std::vector<std::pair<std::string, int>>
+                    lfiles; // labeled files
+                std::vector<std::pair<std::string, int>> test_lfiles;
 
+                read_image_folder(lfiles, hcorresp, hcorresp_r, _uris.at(0));
                 if (_uris.size() > 1)
                   {
                     std::unordered_map<int, std::string>
@@ -508,67 +540,69 @@ namespace dd
                     read_image_folder(test_lfiles, test_hcorresp,
                                       test_hcorresp_r, _uris.at(1));
                   }
-              }
-            else
-              {
-                throw InputConnectorBadParamException(
-                    "Torch image input connector expects folders");
-              }
 
-            bool has_test_data = test_lfiles.size() != 0;
-
-            if (_test_split > 0.0 && !has_test_data)
-              {
-                // TODO Code for shuffling based on seed / splitting should
-                // should be put in a common place
-
-                // shuffle
-                std::mt19937 g;
-                if (_seed >= 0)
-                  g = std::mt19937(_seed);
-                else
+                bool has_test_data = test_lfiles.size() != 0;
+                if (_test_split > 0.0 && !has_test_data)
                   {
-                    std::random_device rd;
-                    g = std::mt19937(rd());
+                    split_dataset<int>(lfiles, test_lfiles);
                   }
-                std::shuffle(lfiles.begin(), lfiles.end(), g);
 
-                // Split
-                int split_pos
-                    = std::floor(lfiles.size() * (1.0 - _test_split));
+                // Read data
+                for (const std::pair<std::string, int> &lfile : lfiles)
+                  {
+                    add_image_file<int>(_dataset, lfile.first, lfile.second);
+                  }
 
-                auto split_begin = lfiles.begin();
-                std::advance(split_begin, split_pos);
-                test_lfiles.insert(test_lfiles.begin(), split_begin,
-                                   lfiles.end());
-                lfiles.erase(split_begin, lfiles.end());
+                for (const std::pair<std::string, int> &lfile : test_lfiles)
+                  {
+                    add_image_file<int>(_test_dataset, lfile.first,
+                                        lfile.second);
+                  }
 
-                _logger->info(
-                    "data split test size={} / remaining data size={}",
-                    test_lfiles.size(), lfiles.size());
+                // Write corresp file
+                std::ofstream correspf(_model_repo + "/" + _correspname,
+                                       std::ios::binary);
+                auto hit = hcorresp.begin();
+                while (hit != hcorresp.end())
+                  {
+                    correspf << (*hit).first << " " << (*hit).second
+                             << std::endl;
+                    ++hit;
+                  }
+                correspf.close();
               }
-
-            // Read data
-            for (const std::pair<std::string, int> &lfile : lfiles)
+            else // file exists, expects a list of files and targets, for
+                 // regression & multi-class
               {
-                add_image_file(_dataset, lfile.first, lfile.second);
-              }
+                std::vector<std::pair<std::string, std::vector<double>>>
+                    lfiles; // labeled files
+                std::vector<std::pair<std::string, std::vector<double>>>
+                    test_lfiles;
+                read_image_list(lfiles, _uris.at(0));
+                if (_uris.size() > 1)
+                  read_image_list(test_lfiles, _uris.at(1));
 
-            for (const std::pair<std::string, int> &lfile : test_lfiles)
-              {
-                add_image_file(_test_dataset, lfile.first, lfile.second);
-              }
+                bool has_test_data = test_lfiles.size() != 0;
+                if (_test_split > 0.0 && !has_test_data)
+                  {
+                    split_dataset<std::vector<double>>(lfiles, test_lfiles);
+                  }
 
-            // Write corresp file
-            std::ofstream correspf(_model_repo + "/" + _correspname,
-                                   std::ios::binary);
-            auto hit = hcorresp.begin();
-            while (hit != hcorresp.end())
-              {
-                correspf << (*hit).first << " " << (*hit).second << std::endl;
-                ++hit;
+                // Read data
+                for (const std::pair<std::string, std::vector<double>> &lfile :
+                     lfiles)
+                  {
+                    add_image_file<std::vector<double>>(_dataset, lfile.first,
+                                                        lfile.second);
+                  }
+
+                for (const std::pair<std::string, std::vector<double>> &lfile :
+                     test_lfiles)
+                  {
+                    add_image_file<std::vector<double>>(
+                        _test_dataset, lfile.first, lfile.second);
+                  }
               }
-            correspf.close();
           }
 
         if (createDb)
@@ -579,9 +613,9 @@ namespace dd
       }
   }
 
+  template <typename T>
   int ImgTorchInputFileConn::add_image_file(TorchDataset &dataset,
-                                            const std::string &fname,
-                                            int target)
+                                            const std::string &fname, T target)
   {
     DDImg dimg;
     copy_parameters_to(dimg);
@@ -600,7 +634,8 @@ namespace dd
     if (dimg._imgs.size() != 0)
       {
         at::Tensor imgt = image_to_tensor(dimg._imgs[0]);
-        at::Tensor targett{ torch::full(1, target, torch::kLong) };
+        // at::Tensor targett{ torch::full(1, target, torch::kLong) };
+        at::Tensor targett = target_to_tensor(target);
 
         dataset.add_batch({ imgt }, { targett });
         return 0;
@@ -640,6 +675,56 @@ namespace dd
       imgt[0][s] = imgt[0][s].div_(_std.at(s));
 
     return imgt;
+  }
+
+  at::Tensor ImgTorchInputFileConn::target_to_tensor(const int &target)
+  {
+    at::Tensor targett{ torch::full(1, target, torch::kLong) };
+    return targett;
+  }
+
+  at::Tensor
+  ImgTorchInputFileConn::target_to_tensor(const std::vector<double> &target)
+  {
+    int64_t tsize = target.size();
+
+    at::Tensor targett = torch::zeros(tsize, torch::kFloat32);
+    int n = 0;
+    for (auto i : target) // XXX: from_blob does not seem to work, fills up
+                          // with spurious values
+      {
+        targett[n] = i;
+        ++n;
+      }
+    return targett;
+  }
+
+  template <typename T>
+  void ImgTorchInputFileConn::split_dataset(
+      std::vector<std::pair<std::string, T>> &lfiles,
+      std::vector<std::pair<std::string, T>> &test_lfiles)
+  {
+    // shuffle
+    std::mt19937 g;
+    if (_seed >= 0)
+      g = std::mt19937(_seed);
+    else
+      {
+        std::random_device rd;
+        g = std::mt19937(rd());
+      }
+    std::shuffle(lfiles.begin(), lfiles.end(), g);
+
+    // Split
+    int split_pos = std::floor(lfiles.size() * (1.0 - _test_split));
+
+    auto split_begin = lfiles.begin();
+    std::advance(split_begin, split_pos);
+    test_lfiles.insert(test_lfiles.begin(), split_begin, lfiles.end());
+    lfiles.erase(split_begin, lfiles.end());
+
+    _logger->info("data split test size={} / remaining data size={}",
+                  test_lfiles.size(), lfiles.size());
   }
 
   // ===== TxtTorchInputFileConn

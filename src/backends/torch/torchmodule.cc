@@ -42,8 +42,8 @@ namespace dd
       _native->to(device);
     if (_traced)
       _traced->to(device);
-    if (_classif)
-      _classif->to(device);
+    if (_linear)
+      _linear->to(device);
   }
 
   void TorchModule::to(torch::Dtype dtype)
@@ -54,8 +54,8 @@ namespace dd
       _native->to(dtype);
     if (_traced)
       _traced->to(dtype);
-    if (_classif)
-      _classif->to(dtype);
+    if (_linear)
+      _linear->to(dtype);
   }
 
   void TorchModule::to(torch::Device device, torch::Dtype dtype)
@@ -67,8 +67,8 @@ namespace dd
       _native->to(device, dtype);
     if (_traced)
       _traced->to(device, dtype);
-    if (_classif)
-      _classif->to(device, dtype);
+    if (_linear)
+      _linear->to(device, dtype);
   }
 
   void TorchModule::proto_model_load(const TorchModel &model)
@@ -120,12 +120,12 @@ namespace dd
       }
   }
 
-  void TorchModule::classif_model_load(const TorchModel &model)
+  void TorchModule::linear_model_load(const TorchModel &model)
   {
     _logger->info("loading " + model._weights);
     try
       {
-        torch::load(_classif, model._weights, _device);
+        torch::load(_linear, model._weights, _device);
       }
     catch (std::exception &e)
       {
@@ -134,12 +134,12 @@ namespace dd
       }
   }
 
-  void TorchModule::classif_layer_load()
+  void TorchModule::linear_layer_load()
   {
-    if (!_classif_layer_file.empty())
+    if (!_linear_layer_file.empty())
       {
-        _logger->info("loading " + _classif_layer_file);
-        torch::load(_classif, _classif_layer_file, _device);
+        _logger->info("loading " + _linear_layer_file);
+        torch::load(_linear, _linear_layer_file, _device);
       }
   }
 
@@ -187,28 +187,18 @@ namespace dd
         graph_model_load(tmodel);
       }
     to(_device);
-  }
 
-  template <class TInputConnectorStrategy>
-  void TorchModule::post_transform_train(const std::string tmpl,
-                                         const APIData &template_params,
-                                         const TInputConnectorStrategy &inputc,
-                                         const TorchModel &tmodel,
-                                         const torch::Device &device)
-  {
-    post_transform(tmpl, template_params, inputc, tmodel, device);
-
-    if (_require_classif_layer && !_classif)
+    if (_require_linear_layer && !_linear)
       {
         try
           {
             // TODO const cast because getting an input example actually
             // *modifies* the connector (it must be reset after that)
             // -> find a way to get an example without modifying the dataset?
-            setup_classification(_nclasses,
-                                 const_cast<TInputConnectorStrategy &>(inputc)
-                                     .get_input_example(device));
-            _classif->to(_device);
+            setup_linear_layer(_nclasses,
+                               const_cast<TInputConnectorStrategy &>(inputc)
+                                   .get_input_example(device));
+            _linear->to(_device);
           }
         catch (std::exception &e)
           {
@@ -219,12 +209,23 @@ namespace dd
   }
 
   template <class TInputConnectorStrategy>
+  void TorchModule::post_transform_train(const std::string tmpl,
+                                         const APIData &template_params,
+                                         const TInputConnectorStrategy &inputc,
+                                         const TorchModel &tmodel,
+                                         const torch::Device &device)
+  {
+    post_transform(tmpl, template_params, inputc, tmodel, device);
+  }
+
+  template <class TInputConnectorStrategy>
   void TorchModule::post_transform_predict(
       const std::string tmpl, const APIData &template_params,
       const TInputConnectorStrategy &inputc, const TorchModel &tmodel,
       const torch::Device &device, const APIData &ad)
   {
     post_transform(tmpl, template_params, inputc, tmodel, device);
+
     if (_graph)
       {
         if (ad.getobj("parameters").getobj("input").has("continuation")
@@ -250,18 +251,19 @@ namespace dd
         auto output = _traced->forward(source);
         source = torch_utils::unwrap_c10_vector(output);
       }
-    c10::IValue out_val = source.at(_classif_in);
+    c10::IValue out_val = source.at(_linear_in);
     if (_hidden_states)
       {
         // out_val is a tuple containing tensors of dimension n_batch *
-        // sequence_lenght * n_features We want a tensor of size n_batch *
+        // sequence_length * n_features We want a tensor of size n_batch *
         // n_features from the last hidden state
         auto &elems = out_val.toTuple()->elements();
         out_val = elems.back().toTensor().slice(1, 0, 1).squeeze(1);
       }
-    if (_classif)
+
+    if (_linear)
       {
-        out_val = _classif->forward(torch_utils::to_tensor_safe(out_val));
+        out_val = _linear->forward(torch_utils::to_tensor_safe(out_val));
       }
     return out_val;
   }
@@ -294,19 +296,19 @@ namespace dd
         throw MLLibBadParamException(
             "Multigpu is not yet supported with traced models");
       }
-    c10::IValue out_val = source.at(_classif_in);
+    c10::IValue out_val = source.at(_linear_in);
     if (_hidden_states)
       {
         // out_val is a tuple containing tensors of dimension n_batch *
-        // sequence_lenght * n_features We want a tensor of size n_batch *
+        // sequence_length * n_features We want a tensor of size n_batch *
         // n_features from the last hidden state
         auto &elems = out_val.toTuple()->elements();
         out_val = elems.back().toTensor().slice(1, 0, 1).squeeze(1);
       }
-    if (_classif)
+    if (_linear)
       {
         out_val = torch::nn::parallel::data_parallel(
-            _classif, torch_utils::to_tensor_safe(out_val), devices, _device);
+            _linear, torch_utils::to_tensor_safe(out_val), devices, _device);
       }
     return out_val;
   }
@@ -323,7 +325,8 @@ namespace dd
     auto output = _traced->forward(source);
     source = torch_utils::unwrap_c10_vector(output);
 
-    c10::IValue out_val = source.at(_classif_in);
+    c10::IValue out_val = source.at(_linear_in);
+
     if (_hidden_states)
       {
         // out_val is a tuple containing tensors of dimension n_batch *
@@ -375,16 +378,15 @@ namespace dd
       }
   }
 
-  void
-  TorchModule::setup_classification(int nclasses,
-                                    std::vector<c10::IValue> input_example)
+  void TorchModule::setup_linear_layer(int nclasses,
+                                       std::vector<c10::IValue> input_example)
   {
-    _classif = nullptr;
+    _linear = nullptr;
     // First dimension is batch id
     int outdim
         = torch_utils::to_tensor_safe(forward(input_example)).sizes()[1];
-    _classif = torch::nn::Linear(outdim, nclasses);
-    classif_layer_load();
+    _linear = torch::nn::Linear(outdim, nclasses);
+    linear_layer_load();
   }
 
   std::vector<torch::Tensor> TorchModule::parameters()
@@ -396,11 +398,11 @@ namespace dd
     std::vector<torch::Tensor> params;
     if (_traced)
       torch_utils::add_parameters(_traced, params);
-    if (_classif)
+    if (_linear)
       {
-        auto classif_params = _classif->parameters();
-        params.insert(params.end(), classif_params.begin(),
-                      classif_params.end());
+        auto linear_params = _linear->parameters();
+        params.insert(params.end(), linear_params.begin(),
+                      linear_params.end());
       }
     return params;
   }
@@ -409,8 +411,8 @@ namespace dd
   {
     if (_traced)
       _traced->save(model._repo + "/checkpoint-" + name + ".pt");
-    if (_classif)
-      torch::save(_classif, model._repo + "/checkpoint-" + name + ".ptw");
+    if (_linear)
+      torch::save(_linear, model._repo + "/checkpoint-" + name + ".ptw");
     if (_graph)
       torch::save(_graph, model._repo + "/checkpoint-" + name + ".pt");
     if (_native)
@@ -424,13 +426,13 @@ namespace dd
 
     if (!model._weights.empty())
       {
-        if (_classif)
+        if (_linear)
           {
-            classif_model_load(model);
+            linear_model_load(model);
           }
-        else if (_require_classif_layer)
+        else if (_require_linear_layer)
           {
-            _classif_layer_file = model._weights;
+            _linear_layer_file = model._weights;
           }
       }
     if (!model._proto.empty())
@@ -449,8 +451,8 @@ namespace dd
       _graph->eval();
     if (_traced)
       _traced->eval();
-    if (_classif)
-      _classif->eval();
+    if (_linear)
+      _linear->eval();
     if (_native)
       _native->eval();
   }
@@ -461,8 +463,8 @@ namespace dd
       _graph->train();
     if (_traced)
       _traced->train();
-    if (_classif)
-      _classif->train();
+    if (_linear)
+      _linear->train();
     if (_native)
       _native->train();
   }
@@ -471,7 +473,7 @@ namespace dd
   {
     _graph = nullptr;
     _traced = nullptr;
-    _classif = nullptr;
+    _linear = nullptr;
     _native = nullptr;
   }
 

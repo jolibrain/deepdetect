@@ -83,7 +83,7 @@ Please join either the community on [Gitter](https://gitter.im/beniz/deepdetect)
 | Classification    | Y     | Y      | Y       | Y        | Y    | Y        | Y          | N/A    | Y    |
 | Object Detection  | Y     | Y      | N       | Y        | Y    | N        | N          | N/A    | Y    |
 | Segmentation      | Y     | N      | N       | N        | N    | N        | N          | N/A    | N    |
-| Regression        | Y     | N      | Y       | N        | N    | N        | N          | N/A    | N    |
+| Regression        | Y     | N      | Y       | N        | N    | Y        | N          | N/A    | N    |
 | Autoencoder       | Y     | N      | N/A     | N        | N    | N        | N          | N/A    | N    |
 | NLP               | Y     | N      | Y       | N        | N    | Y        | N          | Y      | N    |
 | OCR / Seq2Seq     | Y     | N      | N       | N        | Y    | N        | N          | N      | N    |

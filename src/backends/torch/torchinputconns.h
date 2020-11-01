@@ -415,15 +415,34 @@ namespace dd
                            const std::string &folderPath);
 
     /**
+     * \brief read images from txt list
+     */
+    void read_image_list(
+        std::vector<std::pair<std::string, std::vector<double>>> &lfiles,
+        const std::string &listfilePath);
+
+    /**
+     * \brief split dataset into train and test
+     */
+    template <typename T>
+    void split_dataset(std::vector<std::pair<std::string, T>> &lfiles,
+                       std::vector<std::pair<std::string, T>> &test_lfiles);
+
+    /**
      * \brief read data given apiData
      */
     void transform(const APIData &ad);
 
   private:
+    template <typename T>
     int add_image_file(TorchDataset &dataset, const std::string &fname,
-                       int target);
+                       T target);
 
     at::Tensor image_to_tensor(const cv::Mat &bgr);
+
+    at::Tensor target_to_tensor(const int &target);
+
+    at::Tensor target_to_tensor(const std::vector<double> &target);
   };
 
   /**
