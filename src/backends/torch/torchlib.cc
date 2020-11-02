@@ -141,7 +141,12 @@ namespace dd
     if (lib_ad.has("template"))
       _template = lib_ad.get("template").get<std::string>();
     if (lib_ad.has("gpu"))
-      gpu = lib_ad.get("gpu").get<bool>() && torch::cuda::is_available();
+      gpu = lib_ad.get("gpu").get<bool>();
+    if (gpu && !torch::cuda::is_available())
+      {
+        throw MLLibBadParamException(
+            "GPU is not available, service could not be created");
+      }
     if (lib_ad.has("gpuid"))
       gpuid = lib_ad.get("gpuid").get<int>();
     if (lib_ad.has("nclasses"))
