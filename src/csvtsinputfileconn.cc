@@ -90,6 +90,12 @@ namespace dd
       return -1;
 
     //- pick one file up and read header once
+    if (trainfiles.empty())
+      {
+        this->_logger->error("unable to find any files in " + dir);
+        throw InputConnectorBadParamException("unable to find any files in "
+                                              + dir);
+      }
     std::string fname = (*trainfiles.begin());
     std::ifstream csv_file(fname, std::ios::binary);
     if (!csv_file.is_open())
