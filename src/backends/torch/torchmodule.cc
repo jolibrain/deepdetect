@@ -23,7 +23,7 @@
 
 #include "graph.h"
 #include "native/native.h"
-#include "torchUtils.h"
+#include "torchutils.h"
 
 namespace dd
 {

@@ -40,6 +40,13 @@ namespace dd
 
   namespace torch_utils
   {
+
+    /**
+     * \brief empty cuda caching allocator, This should be called after every
+     * job that allocates a model. Pytorch keeps cuda memory allocated even
+     * after the deletion of tensors, to avoid reallocating later. Sometimes it
+     * means reserving all the GPU ram even if training is over.
+     */
     inline void empty_cuda_cache()
     {
 #if !defined(CPU_ONLY)
@@ -47,19 +54,39 @@ namespace dd
 #endif
     }
 
+    /**
+     * \brief torch version of writing a (caffe) protobu to file
+     * @return true on sucess
+     */
     bool torch_write_proto_to_text_file(const google::protobuf::Message &proto,
                                         std::string filename);
 
-    /// Convert IValue to Tensor and throw an exception if the IValue is not a
-    /// Tensor.
+    /**
+     * \brief Convert IValue to Tensor and throw an exception if the IValue is
+     * not a Tensor.
+     */
     torch::Tensor to_tensor_safe(const c10::IValue &value);
 
-    /// Convert id Tensor to one_hot Tensor
+    /**
+     * \brief convert vector of int to tensor
+     */
+    torch::Tensor toLongTensor(std::vector<int64_t> &values);
+
+    /**
+     * \brief  Convert id Tensor to one_hot Tensor (on already allocated
+     * tensor)
+     */
     void fill_one_hot(torch::Tensor &one_hot, torch::Tensor ids,
                       __attribute__((unused)) int nclasses);
 
+    /**
+     * \brief  Convert id Tensor to one_hot Tensor (allocates tensor)
+     */
     torch::Tensor to_one_hot(torch::Tensor ids, int nclasses);
 
+    /**
+     * \brief recursively add module parameters to params
+     */
     void add_parameters(std::shared_ptr<torch::jit::script::Module> module,
                         std::vector<torch::Tensor> &params,
                         bool requires_grad = true);

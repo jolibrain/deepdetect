@@ -37,7 +37,7 @@
 
 #include "native/native.h"
 #include "torchsolver.h"
-#include "torchUtils.h"
+#include "torchutils.h"
 
 using namespace torch;
 
@@ -374,7 +374,6 @@ namespace dd
 
     TInputConnectorStrategy inputc(this->_inputc);
     inputc._train = true;
-    inputc._finetuning = _finetuning;
 
     APIData ad_input = ad.getobj("parameters").getobj("input");
     if (ad_input.has("shuffle"))

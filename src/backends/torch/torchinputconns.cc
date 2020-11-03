@@ -862,7 +862,7 @@ namespace dd
               }
           }
 
-        at::Tensor ids_tensor = toLongTensor(ids);
+        at::Tensor ids_tensor = torch_utils::toLongTensor(ids);
         at::Tensor mask_tensor = torch::ones_like(ids_tensor);
         at::Tensor token_type_ids_tensor = torch::zeros_like(ids_tensor);
 
