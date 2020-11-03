@@ -734,8 +734,38 @@ TEST(inputconn, csvts_basic)
   ASSERT_EQ(5, cifc._columns.size());
 
   ASSERT_EQ("target", (*cifc._columns.begin()));
-  // fileops::clear_directory("test");
-  // fileops::remove_dir("test");
+  fileops::clear_directory("csvts");
+  fileops::remove_dir("csvts");
+}
+
+TEST(inputconn, csvts_error)
+{
+  std::string header = "target,cap-shape,cap-surface,cap-color,bruises";
+  fileops::create_dir("csvts", 0777);
+  std::vector<std::string> vdata = { "csvts" };
+  APIData ad;
+  ad.add("data", vdata);
+  APIData pad, pinp;
+  std::vector<APIData> vpinp = { pinp };
+  pad.add("input", vpinp);
+  std::vector<APIData> vpad = { pad };
+  ad.add("parameters", vpad);
+  CSVTSInputFileConn cifc;
+  cifc._logger = spdlog::stdout_logger_mt("test_csvts_error");
+  cifc._train = true;
+  try
+    {
+      cifc.transform(ad);
+      ASSERT_TRUE(false);
+    }
+  catch (InputConnectorBadParamException &e)
+    {
+      ASSERT_TRUE(
+          std::string(e.what()).compare("unable to find any files in csvts")
+          == 0);
+    }
+  fileops::clear_directory("csvts");
+  fileops::remove_dir("csvts");
 }
 
 /*TEST(inputconn,txt_parse_content)
