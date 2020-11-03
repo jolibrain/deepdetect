@@ -434,6 +434,7 @@ namespace dd
                      top);
             add_tile(this->_dnet_params, "tile_" + std::to_string(i), prevname,
                      top);
+            dropouts.insert(dropouts.begin() + i, 0.0);
           }
         else
           {
