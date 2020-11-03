@@ -31,10 +31,16 @@ namespace dd
   class TorchModel : public MLModel
   {
   public:
+    /**
+     * empty constructor
+     */
     TorchModel() : MLModel()
     {
     }
 
+    /**
+     * constructor that inits file names from repo
+     */
     TorchModel(const APIData &ad, APIData &adg,
                const std::shared_ptr<spdlog::logger> &logger)
         : MLModel(ad, adg, logger)
@@ -52,6 +58,9 @@ namespace dd
     {
     }
 
+    /**
+     * find files in repo
+     */
     int read_from_repository(const std::shared_ptr<spdlog::logger> &logger);
 
   public:
