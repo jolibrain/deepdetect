@@ -472,18 +472,15 @@ namespace dd
     void operator()(const std::vector<cv::Mat> &vcv)
     {
       (void)vcv;
-      // Not Implemented
-      throw DataConversionException(
-          "JSON conversion of std::vector<cv::Mat> is not supported");
+      // ignore this datatype for output, until output JSON API structure is
+      // automatically validated.
     }
 
     void operator()(const std::vector<std::pair<int, int>> &vpi)
     {
       (void)vpi;
-      // Not Implemented
-      throw DataConversionException(
-          "JSON conversion of std::vector<std::pair<int,int>> is not "
-          "supported");
+      // ignore this datatype for output, until output JSON API structure is
+      // automatically validated.
     }
 
     void operator()(const std::vector<APIData> &vad)
