@@ -31,10 +31,16 @@ if (USE_TENSORRT_OSS)
 endif()
 
 if (USE_TF AND USE_CAFFE2)
-  message(FATAL_ERROR "Building with tensorflow AND caffe2 causes conflict
-(The two libraries have their own protobuf embed)")
+  message(FATAL_ERROR "Building with tensorflow AND caffe2 can't be build together")
 endif()
 
+if (USE_TORCH AND USE_CAFFE2)
+  message(FATAL_ERROR "Building with torch AND caffe2 can't be build together")
+endif()
+
+if (USE_TF AND USE_CAFFE2)
+  message(FATAL_ERROR "Building with tensorflow AND torch can't be build together")
+endif()
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
@@ -318,6 +324,8 @@ set(CAFFE_DD_USER jolibrain)
 set(CAFFE_DD_BRANCH master)
 
 if (USE_CAFFE2)
+
+  message(DEPRECATION "CAFFE2 backend is deprecated and will be removed in the future")
 
   add_definitions(-DUSE_CAFFE2)
   list(APPEND CAFFE2_LIB_DEPS -lcaffe2)
