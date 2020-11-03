@@ -966,8 +966,8 @@ if (USE_HTTP_SERVER)
     ExternalProject_Add(
         cpp-netlib
         PREFIX cpp-netlib
-        URL http://downloads.cpp-netlib.org/0.13.0/cpp-netlib-0.13.0-final.tar.gz
-        URL_HASH SHA256=8cf190034b8dd10423ad63fadcb7e2ab0366625386c9863d7f28e9fb375821c7
+        URL http://downloads.cpp-netlib.org/0.11.2/cpp-netlib-0.11.2-final.tar.gz
+        URL_HASH SHA256=71953379c5a6fab618cbda9ac6639d87b35cab0600a4450a7392bc08c930f2b1
         BUILD_IN_SOURCE true
         CMAKE_ARGS
             -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE
@@ -976,7 +976,8 @@ if (USE_HTTP_SERVER)
         INSTALL_COMMAND ""
     )
     set(HTTP_LIB_DEPS ${CMAKE_BINARY_DIR}/cpp-netlib/src/cpp-netlib/libs/network/src/libcppnetlib-uri.a crypto ssl)
-    set(HTTP_INCLUDE_DIR "SYSTEM ${CMAKE_BINARY_DIR}/cpp-netlib/src/cpp-netlib")
+    set(HTTP_INCLUDE_DIR SYSTEM ${CMAKE_BINARY_DIR}/cpp-netlib/src/cpp-netlib)
+    include_directories(${HTTP_INCLUDE_DIR})
 endif()
 
 # main library, main & tests
