@@ -303,3 +303,6 @@ def main():
 
     if autokill:
         dd.delete_service(args.sname)
+        
+if __name__ == "__main__":
+    main()
