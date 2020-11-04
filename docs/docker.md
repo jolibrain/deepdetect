@@ -114,4 +114,4 @@ where `path/to/volume` is the path to your local volume that you'd like to attac
 
 ## Building docker images
 
-See https://github.com/jolibrain/deepdetect/tree/master/docs/docker/README.md
+See https://github.com/jolibrain/deepdetect/tree/master/docker/README.md
