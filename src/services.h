@@ -27,6 +27,7 @@
 #endif
 
 #include <mapbox/variant.hpp>
+#include <boost/exception/diagnostic_information.hpp>
 #include "mlservice.h"
 #include "apidata.h"
 #include "inputconnectorstrategy.h"
@@ -417,7 +418,8 @@ namespace dd
         }
       catch (...)
         {
-          llog->error("service creation call failed");
+          llog->error("service creation call failed: {}",
+                      boost::current_exception_diagnostic_information());
           throw;
         }
     }
@@ -455,7 +457,9 @@ namespace dd
                 }
               catch (...)
                 {
-                  llog->error("delete service call failed");
+                  llog->error(
+                      "delete service call failed: {}",
+                      boost::current_exception_diagnostic_information());
                   throw;
                 }
             }
@@ -529,7 +533,8 @@ namespace dd
         }
       catch (...)
         {
-          llog->error("training call failed");
+          llog->error("training call failed: {}",
+                      boost::current_exception_diagnostic_information());
           throw;
         }
 
@@ -568,7 +573,8 @@ namespace dd
       catch (...)
         {
           auto llog = spdlog::get(sname);
-          llog->error("training status call failed");
+          llog->error("training status call failed: {}",
+                      boost::current_exception_diagnostic_information());
           throw;
         }
     }
@@ -590,7 +596,8 @@ namespace dd
       catch (...)
         {
           auto llog = spdlog::get(sname);
-          llog->error("training delete call failed");
+          llog->error("training delete call failed: {}",
+                      boost::current_exception_diagnostic_information());
           throw;
         }
     }
@@ -635,16 +642,10 @@ namespace dd
           llog->error("mllib lock error: {}", e.what());
           throw;
         }
-      catch (const std::exception &e)
-        {
-          // catch anything thrown within try block that derives from
-          // std::exception
-          llog->error("other error: {}", e.what());
-          throw;
-        }
       catch (...)
         {
-          llog->error("prediction call failed");
+          llog->error("prediction call failed: {}",
+                      boost::current_exception_diagnostic_information());
           throw;
         }
       std::chrono::time_point<std::chrono::system_clock> tstop
