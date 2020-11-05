@@ -564,7 +564,7 @@ elseif(USE_CAFFE)
     sh -c "\
         diff ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/.build_release/src/caffe/proto/caffe.pb.cc ${CMAKE_CURRENT_BINARY_DIR}/src/caffe.pb.cc > /dev/null 2>&1 \
         && ( echo 'caffe version of caffe.pb.h/caffe.pb.cc is already up to date') \
-        || ( echo 'Updating caffe version of caffe.pb.h/caffe.pb.cc' && rm -rf ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/.build_release/src/caffe/proto ) \
+        || ( echo 'Updating caffe version of caffe.pb.h/caffe.pb.cc' && rm -rf ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/.build_release/src/caffe/proto && sync ) \
     " &&
     ln -sf ${CAFFE_DD_CONFIG_FILE} Makefile.config &&
     echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config &&
