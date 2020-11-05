@@ -545,7 +545,7 @@ TEST(torchapi, service_train_csvts_nbeats_gpu)
   ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_49", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["out"][0].GetDouble()
-              >= -1.0);
+              >= -1.1);
 
   joutstr = japi.jrender(japi.service_status(sname));
   std::cout << "joutstr=" << joutstr << std::endl;
