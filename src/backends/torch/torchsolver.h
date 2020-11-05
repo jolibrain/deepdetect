@@ -42,7 +42,7 @@ namespace dd
     void configure(APIData ad_solver);
     void create(TorchModule &module);
 
-    int load(std::string sstate);
+    int load(std::string sstate, torch::Device device);
     void save(std::string sfile);
 
     void zero_grad()

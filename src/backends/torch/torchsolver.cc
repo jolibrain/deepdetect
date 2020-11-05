@@ -128,7 +128,7 @@ namespace dd
     torch::save(*_optimizer, sfile);
   }
 
-  int TorchSolver::load(std::string sstate)
+  int TorchSolver::load(std::string sstate, torch::Device device)
   {
     if (!sstate.empty())
       {
@@ -140,7 +140,7 @@ namespace dd
         _logger->info("loading " + sstate);
         try
           {
-            torch::load(*_optimizer, sstate);
+            torch::load(*_optimizer, sstate, device);
           }
         catch (std::exception &e)
           {

@@ -471,7 +471,7 @@ namespace dd
 
     int it = 0;
     // reload solver and set it value accordingly
-    it = tsolver.load(this->_mlmodel._sstate);
+    it = tsolver.load(this->_mlmodel._sstate, _device);
     tsolver.zero_grad();
     _module.train();
 

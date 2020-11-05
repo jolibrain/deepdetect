@@ -75,6 +75,7 @@ namespace dd
     try
       {
         _graph = std::make_shared<CaffeToTorch>(model._proto);
+        _graph->to(_device);
       }
     catch (std::exception &e)
       {
@@ -107,7 +108,7 @@ namespace dd
         _logger->info("loading " + tmodel._native);
         try
           {
-            torch::load(_native, tmodel._native);
+            torch::load(_native, tmodel._native, _device);
           }
         catch (std::exception &e)
           {
