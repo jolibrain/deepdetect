@@ -59,6 +59,15 @@ if (USE_DLIB)
   list(APPEND ddetect_SOURCES backends/dlib/DNNStructures.h backends/dlib/dliblib.cc backends/dlib/dliblib.h backends/dlib/dlibmodel.cc backends/dlib/dlibmodel.h backends/dlib/dlibinputconns.h backends/dlib/dlib_actions.cpp backends/dlib/dlib_actions.h)
 endif()
 if (USE_NCNN)
+  set_source_files_properties(
+    ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
+    ${CMAKE_BINARY_DIR}/src/caffe.pb.h
+    PROPERTIES GENERATED TRUE)
+  set_source_files_properties(
+      ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
+      ${CMAKE_BINARY_DIR}/src/caffe.pb.h
+      PROPERTIES COMPILE_FLAGS -Wno-unused-parameter)
+
   list(APPEND ddetect_SOURCES
     backends/ncnn/ncnnlib.cc
     backends/ncnn/ncnnmodel.cc
@@ -92,14 +101,43 @@ if (USE_TORCH)
     backends/torch/torchutils.cc
     backends/torch/optim/ranger.cc
 	)
+  if (NOT EXISTS ${CMAKE_SOURCE_DIR}/src/caffe.proto)
+	file(DOWNLOAD https://raw.githubusercontent.com/jolibrain/caffe/master/src/caffe/proto/caffe.proto ${CMAKE_SOURCE_DIR}/src/caffe.proto)
+	execute_process(COMMAND LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR}:$ENV{LD_LIBRARY_PATH} ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/bin/protoc
+      --proto_path=${CMAKE_SOURCE_DIR}/src
+      --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_SOURCE_DIR}/src/caffe.proto
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+      )
+  endif()
+	set_source_files_properties(
+      ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
+      ${CMAKE_BINARY_DIR}/src/caffe.pb.h
+      PROPERTIES GENERATED TRUE)
+    set_source_files_properties(
+      ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
+      ${CMAKE_BINARY_DIR}/src/caffe.pb.h
+      PROPERTIES COMPILE_FLAGS -Wno-unused-parameter)
+
   if (NOT USE_CAFFE)
     list(APPEND ddetect_SOURCES
       ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
       )
   endif()
+
 endif()
 
 if (USE_TENSORRT)
+
+  set_source_files_properties(
+    ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
+    ${CMAKE_BINARY_DIR}/src/caffe.pb.h
+    PROPERTIES GENERATED TRUE)
+  set_source_files_properties(
+    ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
+    ${CMAKE_BINARY_DIR}/src/caffe.pb.h
+    PROPERTIES COMPILE_FLAGS -Wno-unused-parameter)
+
+
   list(APPEND ddetect_SOURCES
     backends/tensorrt/tensorrtlib.h
     backends/tensorrt/tensorrtlib.cc
@@ -120,37 +158,37 @@ endif()
 
 add_library(ddetect ${ddetect_SOURCES})
 if (USE_DLIB)
-  add_dependencies(ddetect protobuf dlib)
+  add_dependencies(ddetect dlib)
 endif()
 if (USE_NCNN)
-  add_dependencies(ddetect protobuf ncnn)
+  add_dependencies(ddetect ncnn)
 endif()
 if (USE_CAFFE)
-  add_dependencies(ddetect protobuf caffe_dd)
+  add_dependencies(ddetect caffe_dd)
 endif()
 if (USE_TENSORRT)
   if (USE_CAFFE2)
-    add_dependencies(ddetect protobuf pytorch)
+    add_dependencies(ddetect pytorch)
   endif()
 endif()
 if (USE_TORCH)
-  add_dependencies(ddetect protobuf pytorch)
+  add_dependencies(ddetect pytorch)
 endif()
 if (USE_SIMSEARCH)
   if (USE_ANNOY)
-    add_dependencies(ddetect protobuf annoy)
+    add_dependencies(ddetect annoy)
   else()
-    add_dependencies(ddetect protobuf faisslib)
+    add_dependencies(ddetect faisslib)
   endif()
 endif()
 if (USE_TENSORRT_OSS)
-  add_dependencies(ddetect protobuf tensorrt-oss)
+  add_dependencies(ddetect tensorrt-oss)
 endif()
 if (USE_XGBOOST)
-  add_dependencies(ddetect protobuf xgboost)
+  add_dependencies(ddetect xgboost)
 endif()
 if (USE_TNSE)
-  add_dependencies(ddetect protobuf Multicore-TSNE)
+  add_dependencies(ddetect Multicore-TSNE)
 endif()
 if (USE_HTTP_SERVER)
   add_dependencies(ddetect cpp-netlib)
