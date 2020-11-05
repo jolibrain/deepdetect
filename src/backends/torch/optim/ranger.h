@@ -74,7 +74,6 @@ namespace dd
     TORCH_ARG(int64_t, step) = 0;
     TORCH_ARG(torch::Tensor, exp_avg);
     TORCH_ARG(torch::Tensor, exp_avg_sq);
-    TORCH_ARG(torch::Tensor, max_exp_avg_sq) = {};
     TORCH_ARG(torch::Tensor, slow_buffer);
 
   public:

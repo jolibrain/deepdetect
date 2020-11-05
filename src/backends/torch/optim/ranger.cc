@@ -95,7 +95,8 @@ namespace dd
   {
     return ((lhs.step() == rhs.step())
             && torch::equal(lhs.exp_avg(), rhs.exp_avg())
-            && torch::equal(lhs.exp_avg_sq(), rhs.exp_avg_sq()));
+            && torch::equal(lhs.exp_avg_sq(), rhs.exp_avg_sq())
+            && torch::equal(lhs.slow_buffer(), rhs.slow_buffer()));
   }
 
   void
