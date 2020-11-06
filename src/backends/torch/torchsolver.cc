@@ -29,6 +29,9 @@ namespace dd
     if (ad_solver.has("solver_type"))
       _solver_type = ad_solver.get("solver_type").get<std::string>();
 
+    if (_solver_type == "RANGER" || _solver_type == "RANGER_PLUS")
+      _clip = true;
+
     if (_solver_type == "RANGER_PLUS")
       {
         _adabelief = true;
@@ -41,6 +44,10 @@ namespace dd
       _beta1 = ad_solver.get("beta1").get<double>();
     if (ad_solver.has("beta"))
       _beta2 = ad_solver.get("beta2").get<double>();
+    if (ad_solver.has("clip"))
+      _clip = ad_solver.get("clip").get<bool>();
+    if (ad_solver.has("clip_value"))
+      _clip_value = ad_solver.get("clip_value").get<double>();
     if (ad_solver.has("rectified"))
       _rectified = ad_solver.get("rectified").get<bool>();
     if (ad_solver.has("lookahead"))
@@ -102,10 +109,15 @@ namespace dd
                                      .adabelief(_adabelief)
                                      .gradient_centralization(_gc)
                                      .lsteps(_lsteps)
-                                     .lalpha(_lalpha)));
+                                     .lalpha(_lalpha)
+                                     .clip(_clip)
+                                     .clip_value(_clip_value)));
         this->_logger->info("base_lr: {}", _base_lr);
         this->_logger->info("beta_1: {}", _beta1);
         this->_logger->info("beta_2: {}", _beta2);
+        this->_logger->info("clip: {}", _clip);
+        if (_clip)
+          this->_logger->info("clip_value: {}", _clip_value);
         this->_logger->info("weight_decay: {}", _weight_decay);
         this->_logger->info("rectified: {}", _rectified);
         this->_logger->info("lookahead: {}", _lookahead);

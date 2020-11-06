@@ -105,6 +105,8 @@ namespace dd
     int _lsteps
         = 5; /**< for RANGER, if lookahead: number of lookahead steps */
     double _lalpha = 0.5; /**< for RANGER, if lookahead: weight of lookahead */
+    bool _clip = false;   /**< for RANGER , clip gradients */
+    double _clip_value = 5.0;   /**< for RANGER, value to clip gradients to */
     double _weight_decay = 0.0; /**< weight decay value*/
     bool _decoupled_wd = false; /**< for RANGER : use decoupled weight decay,
                                    NOT YET IMPLEMENTED */
