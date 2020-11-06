@@ -76,6 +76,11 @@ def main():
         action="store_true",
     )
     parser.add_argument(
+        "--regression",
+        help="whether benching a regression model",
+        action="store_true",
+    )
+    parser.add_argument(
         "--search",
         help="whether benching a similarity search service",
         action="store_true",
@@ -142,6 +147,8 @@ def main():
             }
             if args.segmentation:
                 parameters_input["segmentation"] = True
+            if args.regression:
+                parameters_input["regression"] = True
             if args.dla:
                 parameters_mllib = {
                     "nclasses": args.nclasses,
@@ -214,6 +221,8 @@ def main():
             parameters_output["multibox_rois"] = True
     elif args.segmentation:
         parameters_input["segmentation"] = True
+    elif args.regression:
+        parameters_input["regression"] = True
     elif args.search:
         parameters_output["search"] = True
 
