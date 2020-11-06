@@ -223,6 +223,13 @@ namespace dd
             "file exists with same name as repository");
       if (!exists && create)
         fileops::create_dir(_repo, 0775);
+
+      if (!fileops::is_directory_writable(_repo))
+        {
+          throw MLLibBadParamException(
+              "destination model directory is not writable");
+        }
+
 #ifdef USE_SIMSEARCH
       if (ad.has("index_preload") && ad.get("index_preload").get<bool>())
         _index_preload = true;

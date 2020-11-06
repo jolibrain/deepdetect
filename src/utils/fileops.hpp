@@ -257,6 +257,27 @@ namespace dd
       return err;
     }
 
+    static bool is_directory_writable(const std::string &d)
+    {
+      using namespace boost::filesystem;
+      if (!is_directory(d))
+        {
+          return false;
+        }
+
+      path p = path(d) / path(".tmp-deeptect-write-test");
+      try
+        {
+          create_directory(p);
+          remove(p);
+          return true;
+        }
+      catch (...)
+        {
+          return false;
+        }
+    }
+
     static int copy_file(const std::string &fin, const std::string &fout)
     {
       std::ifstream src(fin, std::ios::binary);
