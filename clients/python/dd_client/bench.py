@@ -222,7 +222,7 @@ def main():
     elif args.segmentation:
         parameters_input["segmentation"] = True
     elif args.regression:
-        parameters_input["regression"] = True
+        parameters_output["regression"] = True
     elif args.search:
         parameters_output["search"] = True
 
