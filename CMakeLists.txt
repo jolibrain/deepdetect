@@ -97,7 +97,6 @@ if(RELEASE)
     set(BUILD_TYPE release)
 else()
     set(BUILD_TYPE dev)
-    string(APPEND CMAKE_CXX_FLAGS " -g")
 endif()
 
 if (USE_COMMAND_LINE)
@@ -209,7 +208,8 @@ if (USE_HDF5)
 endif()
 
 # dependency on Boost
-find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system iostreams)
+find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system iostreams stacktrace_backtrace)
+string(APPEND CMAKE_CXX_FLAGS " -DBOOST_STACKTRACE_USE_BACKTRACE -DBOOST_STACKTRACE_LINK")
 
 # optional packages
 if (USE_CPU_ONLY)
