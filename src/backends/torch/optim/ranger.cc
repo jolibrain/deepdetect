@@ -47,7 +47,10 @@ namespace dd
            && (std::get<1>(lhs.betas()) == std::get<1>(rhs.betas()))
            && (lhs.eps() == rhs.eps())
            && (lhs.weight_decay() == rhs.weight_decay())
+           && (lhs.clip() == rhs.clip())
+           && (lhs.clip_value() == rhs.clip_value())
            && (lhs.rectified() == rhs.rectified())
+           && (lhs.decoupled_wd() == rhs.decoupled_wd())
            && (lhs.lookahead() == rhs.lookahead())
            && (lhs.adabelief() == rhs.adabelief())
            && (lhs.gradient_centralization() == rhs.gradient_centralization())
@@ -60,6 +63,8 @@ namespace dd
     _TORCH_OPTIM_SERIALIZE_TORCH_ARG(betas);
     _TORCH_OPTIM_SERIALIZE_TORCH_ARG(eps);
     _TORCH_OPTIM_SERIALIZE_TORCH_ARG(weight_decay);
+    _TORCH_OPTIM_SERIALIZE_TORCH_ARG(clip);
+    _TORCH_OPTIM_SERIALIZE_TORCH_ARG(clip_value);
     _TORCH_OPTIM_SERIALIZE_TORCH_ARG(decoupled_wd);
     _TORCH_OPTIM_SERIALIZE_TORCH_ARG(rectified);
     _TORCH_OPTIM_SERIALIZE_TORCH_ARG(lookahead);
@@ -75,6 +80,8 @@ namespace dd
     _TORCH_OPTIM_DESERIALIZE_TORCH_ARG(betas_t, betas);
     _TORCH_OPTIM_DESERIALIZE_TORCH_ARG(double, eps);
     _TORCH_OPTIM_DESERIALIZE_TORCH_ARG(double, weight_decay);
+    _TORCH_OPTIM_DESERIALIZE_TORCH_ARG(bool, clip);
+    _TORCH_OPTIM_DESERIALIZE_TORCH_ARG(double, clip_value);
     _TORCH_OPTIM_DESERIALIZE_TORCH_ARG(bool, decoupled_wd);
     _TORCH_OPTIM_DESERIALIZE_TORCH_ARG(bool, rectified);
     _TORCH_OPTIM_DESERIALIZE_TORCH_ARG(bool, lookahead);
@@ -126,8 +133,9 @@ namespace dd
                 continue;
               }
             auto grad = p.grad();
-            TORCH_CHECK(
-                !grad.is_sparse(), "Ranger does not support sparse gradients" /*, please consider SparseRanger instead*/);
+
+            TORCH_CHECK(!grad.is_sparse(),
+                        "Ranger does not support sparse gradients");
             auto param_state
                 = state_.find(c10::guts::to_string(p.unsafeGetTensorImpl()));
             auto &options = static_cast<RangerOptions &>(group.options());
@@ -173,6 +181,9 @@ namespace dd
                   dim.push_back(i);
                 grad.add_(-grad.mean(torch::IntArrayRef(dim), true));
               }
+
+            if (options.clip())
+              grad.clamp_(-options.clip_value(), options.clip_value());
 
             exp_avg.mul_(beta1).add_(grad, 1 - beta1); // m_t
 
