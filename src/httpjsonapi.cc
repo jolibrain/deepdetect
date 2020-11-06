@@ -40,6 +40,7 @@
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 #include <boost/iostreams/copy.hpp>
+#include <boost/stacktrace.hpp>
 #include <chrono>
 #include <ctime>
 
@@ -614,10 +615,19 @@ namespace dd
       }
   }
 
+  void HttpJsonAPI::abort(int signum)
+  {
+    std::signal(signum, SIG_DFL);
+    std::cout << boost::stacktrace::stacktrace() << std::endl;
+    std::raise(SIGABRT);
+  }
+
   int HttpJsonAPI::boot(int argc, char *argv[])
   {
     google::ParseCommandLineFlags(&argc, &argv, true);
     std::signal(SIGINT, terminate);
+    std::signal(SIGSEGV, abort);
+    std::signal(SIGABRT, abort);
     JsonAPI::boot(argc, argv);
     return start_server(FLAGS_host, FLAGS_port, FLAGS_nthreads);
   }
