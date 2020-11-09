@@ -298,7 +298,10 @@ namespace dd
       throw MLLibInternalException("Error while parsing caffe model "
                                    "for conversion to TensorRT");
 
-    network->markOutput(*blobNameToTensor->find(out_blob.c_str()));
+    auto bloboutput = blobNameToTensor->find(out_blob.c_str());
+    if (!bloboutput)
+      throw MLLibBadParamException("Cannot find output layer " + out_blob);
+    network->markOutput(*bloboutput);
 
     if (out_blob == "detection_out")
       network->markOutput(*blobNameToTensor->find("keep_count"));

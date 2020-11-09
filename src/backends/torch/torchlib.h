@@ -48,14 +48,25 @@
 namespace dd
 {
 
+  /**
+   * \brief core torchlib mllib wrapper
+   */
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel = TorchModel>
   class TorchLib : public MLLib<TInputConnectorStrategy,
                                 TOutputConnectorStrategy, TMLModel>
   {
   public:
+    /**
+     * constructor from a torchmodel
+     */
     TorchLib(const TorchModel &tmodel);
+
+    /**
+     * move constructor
+     */
     TorchLib(TorchLib &&tl) noexcept;
+
     ~TorchLib();
 
     /*- from mllib -*/
@@ -71,20 +82,23 @@ namespace dd
              TorchDataset &dataset, int batch_size, APIData &out);
 
   public:
-    unsigned int _nclasses = 0;
-    std::string _template;
-    bool _finetuning = false;
-    torch::Device _device = torch::Device("cpu");
-    bool _masked_lm = false;
-    bool _seq_training = false;
-    bool _classification = false;
-    bool _timeserie = false;
-    std::string _loss = "";
+    unsigned int _nclasses = 0; /**< number of classes*/
+    std::string _template; /**< template identifier (recurrent/bert/gpt2...)*/
+    bool _finetuning = false; /**< add a custom layer (classif/regression...)
+                                 after model */
+    torch::Device _device
+        = torch::Device("cpu"); /**<  where to execute model */
+    bool _masked_lm = false;    /**< enable MLM self supervised pre training*/
+    bool _seq_training = false; /**< true for bert/gpt2*/
+    bool _classification = false; /**< select classification type problem*/
+    bool _timeserie = false;      /**< select timeserie type problem*/
+    std::string _loss = "";       /**< selected loss*/
 
-    APIData _template_params;
+    APIData _template_params; /**< template parameters, for recurrent and
+                                 native models*/
 
-    // models
-    TorchModule _module;
+    TorchModule _module; /**< wrapper around different underlyng
+                            implementations (traced/native/graph...)*/
 
     std::vector<std::string>
         _best_metrics;         /**< metric to use for saving best model */
@@ -102,10 +116,19 @@ namespace dd
     int64_t save_if_best(APIData &meas_out, int64_t elapsed_it,
                          TorchSolver &tsolver, int64_t best_to_remove);
 
+    /**
+     * snapshop current optimizer state
+     */
     void snapshot(int64_t elapsed_it, TorchSolver &optimizer);
 
+    /**
+     * delete superseeded model
+     */
     void remove_model(int64_t it);
 
+    /**
+     * unscale value output from model, explicitely needed at prediction time
+     */
     double unscale(double val, unsigned int k,
                    const TInputConnectorStrategy &inputc);
   };

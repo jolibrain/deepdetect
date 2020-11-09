@@ -35,46 +35,92 @@
 namespace dd
 {
 
-  // TODO TorchModule may be merged with TorchGraph in the future
+  /**
+   * \brief wrapper  above different torch implementations :
+   * graph/native/traced ...
+   */
   class TorchModule
   {
   public:
     TorchModule();
 
+    /**
+     * \brief forward (inference) pass over the network
+     */
     c10::IValue forward(std::vector<c10::IValue> source);
+
+    /**
+     * \brief forward (inference) until extract_layer, return value of
+     * layer/blob
+     */
     c10::IValue extract(std::vector<c10::IValue> source,
                         std::string extract_layer);
 
+    /**
+     * \brief checks if extract_layer is extractible
+     */
     bool extractable(std::string extract_layer) const;
+
+    /**
+     * \brief gives all extractible layers
+     */
     std::vector<std::string> extractable_layers() const;
 
+    /**
+     * \brief freeze traced net so that it is not updated during learning
+     */
     void freeze_traced(bool freeze);
 
-    /** Add linear model at the end of module. Automatically detects size of
-     * the last layer thanks to the provided example output.*/
+    /**
+     *  \brief Add linear model at the end of module. Automatically detects
+     * size of the last layer thanks to the provided example output.
+     */
     void setup_classification(int nclasses,
                               std::vector<c10::IValue> input_example);
 
+    /**
+     * \brief gives all learnable parameters
+     */
     std::vector<torch::Tensor> parameters();
 
-    /** Save traced module to checkpoint-[name].pt, and custom parts weights
-     * to checkpoint-[name].ptw */
-    // (Actually only _classif is saved in the .ptw)
+    /**
+     * \brief Save traced module to checkpoint-[name].pt, and custom parts
+     * weights to checkpoint-[name].ptw (Actually only _classif is saved in the
+     * .ptw)
+     */
     void save_checkpoint(TorchModel &model, const std::string &name);
 
-    /** Load traced module from .pt and custom parts weights from .ptw */
+    /**
+     * \brief Load traced module from .pt and custom parts weights from .ptw
+     */
     void load(TorchModel &model);
 
+    /**
+     * \brief set net to be in eval mode (ie disable dropout ...)
+     */
     void eval();
+
+    /**
+     * \brief set net to be in train mode (ie enable dropout ...)
+     */
     void train();
 
+    /**
+     * \brief release all shared_ptr
+     */
     void free();
 
+    /**
+     * \brief generic part of hooks below
+     */
     template <class TInputConnectorStrategy>
     void post_transform(const std::string tmpl, const APIData &template_params,
                         const TInputConnectorStrategy &inputc,
                         const TorchModel &tmodel, const torch::Device &device);
 
+    /**
+     * \brief hook called after inputConnector::transform(data) during training
+     */
     template <class TInputConnectorStrategy>
     void post_transform_train(const std::string tmpl,
                               const APIData &template_params,
@@ -82,6 +128,9 @@ namespace dd
                               const TorchModel &tmodel,
                               const torch::Device &device);
 
+    /**
+     * \brief hook called after inputConnector::transform(data) during predict
+     */
     template <class TInputConnectorStrategy>
     void post_transform_predict(const std::string tmpl,
                                 const APIData &template_params,
@@ -113,34 +162,61 @@ namespace dd
     void to(torch::Device device, torch::Dtype dtype);
 
   public:
-    std::shared_ptr<torch::jit::script::Module> _traced;
+    std::shared_ptr<torch::jit::script::Module>
+        _traced; /**< traced (torchscript) module, if any */
     std::shared_ptr<TorchGraphBackend>
         _graph; /**< graph module : torchgraphbackend has same interface as
                    torch::module */
     std::shared_ptr<NativeModule>
         _native; /**< native module : directly written in C++ */
 
-    torch::nn::Linear _classif = nullptr;
+    torch::nn::Linear _classif
+        = nullptr; /**< classification layer to append at end of net */
 
-    torch::Device _device;
-    int _classif_in = 0; /**<id of the input of the classification layer */
+    torch::Device _device; /**< device to compute on */
+    int _classif_in = 0;   /**<id of the input of the classification layer */
     bool _hidden_states = false; /**< Take BERT hidden states as input. */
 
-    bool _require_classif_layer = false;
+    bool _require_classif_layer
+        = false; /**< flag to see if we need a classif layer */
     std::string
-        _classif_layer_file; /** < if require_classif_layer == true, this is
-                                the file where the weights are stored */
-    unsigned int _nclasses = 0;
+        _classif_layer_file;    /**< if require_classif_layer == true, this is
+                           the file where the weights are stored */
+    unsigned int _nclasses = 0; /**< number of classes */
 
     std::shared_ptr<spdlog::logger> _logger; /**< mllib logger. */
 
   private:
     bool _freeze_traced = false; /**< Freeze weights of the traced module */
+
+    /**
+     * load graph module from caffe prototxt definition
+     */
     void proto_model_load(const TorchModel &tmodel);
+
+    /**
+     * load graph module weight from pt format
+     */
     void graph_model_load(const TorchModel &tmodel);
+
+    /**
+     * load native module weight from pt format
+     */
     void native_model_load(const TorchModel &tmodel);
+
+    /**
+     * load classif model  weights from pt format
+     */
     void classif_model_load(const TorchModel &tmodel);
+
+    /**
+     * load traced net (def + weights) from  pt format
+     */
     void traced_model_load(TorchModel &model);
+
+    /**
+     * load classif layer weights only from pt format
+     */
     void classif_layer_load();
   };
 }
