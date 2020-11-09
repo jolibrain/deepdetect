@@ -319,7 +319,7 @@ namespace dd
       (void)input;
       (void)output;
       (void)target;
-      return torch::Tensor();
+      throw MLLibInternalException("ViT::loss not implemented");
     }
 
     virtual void update_input_connector(TorchInputInterface &inputc)

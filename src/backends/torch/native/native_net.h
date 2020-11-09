@@ -68,6 +68,9 @@ namespace dd
 
     virtual torch::Tensor cleanup_output(torch::Tensor output) = 0;
 
+    /**
+     * \brief compute custom loss
+     */
     virtual torch::Tensor loss(std::string loss, torch::Tensor input,
                                torch::Tensor output, torch::Tensor target)
         = 0;
