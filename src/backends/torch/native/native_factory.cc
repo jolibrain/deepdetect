@@ -53,13 +53,24 @@ namespace dd
       return nullptr;
   }
 
+  template <>
+  NativeModule *NativeFactory::from_template<ImgTorchInputFileConn>(
+      const std::string tdef, const APIData template_params,
+      const ImgTorchInputFileConn &inputc)
+  {
+    (void)template_params;
+    (void)inputc;
+    if (tdef.find("vit") != std::string::npos)
+      {
+        return new ViT(inputc, template_params);
+      }
+    else
+      return nullptr;
+  }
+
   template NativeModule *
   NativeFactory::from_template(const std::string tdef,
                                const APIData template_params,
                                const TxtTorchInputFileConn &inputc);
 
-  template NativeModule *
-  NativeFactory::from_template(const std::string tdef,
-                               const APIData template_params,
-                               const ImgTorchInputFileConn &inputc);
 }
