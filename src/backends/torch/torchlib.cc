@@ -560,6 +560,7 @@ namespace dd
         std::move(inputc._dataset), data::DataLoaderOptions(batch_size));
 
     int batch_id = 0;
+    double last_test_time = 0;
 
     // it is the iteration count (not epoch)
     while (it < iterations)
@@ -568,12 +569,12 @@ namespace dd
           break;
 
         double train_loss = 0;
-        double avg_it_time = 0;
+        double last_it_time = 0;
 
         for (TorchBatch batch : *dataloader)
           {
 
-            auto tstart = system_clock::now();
+            auto tstart = steady_clock::now();
             if (_masked_lm)
               {
                 batch = inputc.generate_masked_lm_batch(batch);
@@ -659,13 +660,17 @@ namespace dd
             double loss_val = loss.item<double>();
             train_loss += loss_val;
             loss.backward();
-            auto tstop = system_clock::now();
-            avg_it_time += duration_cast<milliseconds>(tstop - tstart).count();
+            auto tstop = steady_clock::now();
+            last_it_time
+                += duration_cast<milliseconds>(tstop - tstart).count();
 
             if ((batch_id + 1) % iter_size == 0)
               {
+                tstart = steady_clock::now();
+
                 if (!this->_tjob_running.load())
                   {
+                    // Interrupt training if the service was deleted
                     break;
                   }
                 try
@@ -680,14 +685,30 @@ namespace dd
                     throw MLLibInternalException(
                         std::string("Libtorch error: ") + e.what());
                   }
+                tstop = steady_clock::now();
 
-                avg_it_time /= iter_size;
                 this->add_meas("learning_rate", tsolver.base_lr());
                 this->add_meas("iteration", it);
-                this->add_meas("iter_time", avg_it_time);
-                this->add_meas("remain_time", avg_it_time * iter_size
-                                                  * (iterations - it)
-                                                  / 1000.0);
+                // without solver time:
+                this->add_meas("batch_duration_ms", last_it_time / iter_size);
+                // for backward compatibility:
+                this->add_meas("iter_time", last_it_time / iter_size);
+                // with solver time:
+                last_it_time
+                    += duration_cast<milliseconds>(tstop - tstart).count();
+                this->add_meas("iteration_duration_ms", last_it_time);
+
+                double remain_time_ms
+                    = last_it_time * iter_size * (iterations - it);
+
+                if (test_interval > 0)
+                  {
+                    int past_tests = (it / test_interval);
+                    int total_tests = ((iterations - 1) / test_interval) + 1;
+                    remain_time_ms
+                        += last_test_time * (total_tests - past_tests);
+                  }
+                this->add_meas("remain_time", remain_time_ms / 1000.0);
                 this->add_meas("train_loss", train_loss);
                 this->add_meas_per_iter("learning_rate", tsolver.base_lr());
                 this->add_meas_per_iter("train_loss", train_loss);
@@ -698,7 +719,7 @@ namespace dd
                     this->_logger->info("Iteration {}/{}: loss is {}",
                                         elapsed_it, iterations, train_loss);
                   }
-                avg_it_time = 0;
+                last_it_time = 0;
                 train_loss = 0;
 
                 if ((elapsed_it % test_interval == 0 && !eval_dataset.empty())
@@ -712,7 +733,12 @@ namespace dd
 
                     APIData meas_out;
                     this->_logger->info("Start test");
+                    tstart = steady_clock::now();
                     test(ad, inputc, eval_dataset, test_batch_size, meas_out);
+                    last_test_time = duration_cast<milliseconds>(
+                                         steady_clock::now() - tstart)
+                                         .count();
+
                     APIData meas_obj = meas_out.getobj("measure");
                     std::vector<std::string> meas_names = meas_obj.list_keys();
 
