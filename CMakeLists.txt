@@ -759,6 +759,28 @@ if (USE_TORCH)
   set(TORCH_INC_DIR ${TORCH_LOCATION}/include/ ${TORCH_LOCATION}/include/torch/csrc/api/include/ ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/include/torch/csrc/api/include ${TORCH_LOCATION}/.. ${CMAKE_BINARY_DIR}/src)
   set(TORCH_LIB_DIR ${TORCH_LOCATION}/lib/)
 
+  # TORCH VISION
+  message(STATUS "Configuring Pytorch Vision")
+  # set(PYTORCH_VISION_COMMIT "v0.6.0") # 0.6 & torch 1.5
+  set(PYTORCH_VISION_COMMIT "v0.7.0") # 0.7 & torch 1.6
+  set(TORCHVISION_LOCATION "${CMAKE_BINARY_DIR}/pytorch_vision/src/pytorch_vision-install")
+  ExternalProject_Add(
+    pytorch_vision
+    PREFIX pytorch_vision
+    INSTALL_DIR ${CMAKE_BINARY_DIR}
+    GIT_REPOSITORY https://github.com/pytorch/vision.git
+    GIT_TAG ${PYTORCH_VISION_COMMIT}
+    GIT_CONFIG advice.detachedHead=false
+    CMAKE_ARGS -DWITH_CUDA=${PYTORCH_USE_CUDA} -DCMAKE_PREFIX_PATH=${TORCH_LOCATION} -DCMAKE_INSTALL_PREFIX=${TORCHVISION_LOCATION}
+      -DCMAKE_INCLUDE_PATH=${PROJECT_INCLUDE_DIR} -DCMAKE_LIBRARY_PATH=${PROTOBUF_LIB_DIR}
+      "-DCMAKE_CXX_FLAGS=-isystem ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/" "-DCMAKE_CUDA_FLAGS=-isystem ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/"
+      -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc
+    DEPENDS protobuf pytorch
+  )
+
+  list(APPEND TORCH_INC_DIR "${TORCHVISION_LOCATION}/include/")
+  list(APPEND TORCH_LIB_DIR "${TORCHVISION_LOCATION}/lib/")
+  list(APPEND TORCH_LIB_DEPS torchvision)
 endif()
 
 # XGBoost

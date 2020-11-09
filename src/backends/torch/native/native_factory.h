@@ -27,6 +27,7 @@
 #include "./templates/vit.h"
 #include "../torchinputconns.h"
 #include "apidata.h"
+#include "templates/vision_models.h"
 
 namespace dd
 {
@@ -35,13 +36,15 @@ namespace dd
   public:
     template <class TInputConnectorStrategy>
     static NativeModule *from_template(const std::string tdef,
-                                       const APIData template_params,
+                                       const APIData &template_params,
                                        const TInputConnectorStrategy &inputc);
 
     static bool valid_template_def(std::string tdef)
     {
       if (tdef.find("nbeats") != std::string::npos
           || tdef.find("vit") != std::string::npos)
+        return true;
+      else if (VisionModelsFactory::is_vision_template(tdef))
         return true;
       return false;
     }

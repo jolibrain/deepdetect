@@ -77,6 +77,7 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     libspdlog-dev \
     python-setuptools \
     python-dev \
+    python3-dev \
     python-wheel \
     python-pip \
     python-six \

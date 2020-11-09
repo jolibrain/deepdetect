@@ -21,13 +21,16 @@
 
 #include "native_factory.h"
 
+#include <torchvision/vision.h>
+#include "native_wrapper.h"
+
 namespace dd
 {
 
   template <class TInputConnectorStrategy>
   NativeModule *
   NativeFactory::from_template(const std::string tdef,
-                               const APIData template_params,
+                               const APIData &template_params,
                                const TInputConnectorStrategy &inputc)
   {
     (void)(tdef);
@@ -38,7 +41,7 @@ namespace dd
 
   template <>
   NativeModule *NativeFactory::from_template<CSVTSTorchInputFileConn>(
-      const std::string tdef, const APIData template_params,
+      const std::string tdef, const APIData &template_params,
       const CSVTSTorchInputFileConn &inputc)
   {
     if (tdef.find("nbeats") != std::string::npos)
@@ -55,22 +58,26 @@ namespace dd
 
   template <>
   NativeModule *NativeFactory::from_template<ImgTorchInputFileConn>(
-      const std::string tdef, const APIData template_params,
+      const std::string tdef, const APIData &template_params,
       const ImgTorchInputFileConn &inputc)
   {
-    (void)template_params;
     (void)inputc;
+
     if (tdef.find("vit") != std::string::npos)
       {
         return new ViT(inputc, template_params);
       }
-    else
-      return nullptr;
+    else if (VisionModelsFactory::is_vision_template(tdef))
+      {
+        return VisionModelsFactory::from_template(tdef, template_params,
+                                                  inputc);
+      }
+    return nullptr;
   }
 
   template NativeModule *
   NativeFactory::from_template(const std::string tdef,
-                               const APIData template_params,
+                               const APIData &template_params,
                                const TxtTorchInputFileConn &inputc);
 
 }
