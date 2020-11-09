@@ -617,7 +617,8 @@ namespace dd
                 avg_it_time = 0;
                 train_loss = 0;
 
-                if (elapsed_it % test_interval == 0 && elapsed_it != iterations
+                if ((elapsed_it % test_interval == 0
+                     || elapsed_it == iterations)
                     && !eval_dataset.empty())
                   {
                     // Free memory
@@ -698,7 +699,6 @@ namespace dd
         return -1;
       }
 
-    test(ad, inputc, inputc._test_dataset, test_batch_size, out);
     torch_utils::empty_cuda_cache();
 
     // Update model after training
