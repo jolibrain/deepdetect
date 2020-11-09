@@ -21,7 +21,7 @@
  */
 #include "torchmodule.h"
 
-#include "graph.h"
+#include "graph/graph.h"
 #include "native/native.h"
 #include "torchutils.h"
 

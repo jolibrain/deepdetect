@@ -28,6 +28,24 @@
 namespace dd
 {
 
+  class BaseGraphException : public std::exception
+  {
+  public:
+    BaseGraphException(const std::string &s) : _s(s)
+    {
+    }
+    ~BaseGraphException()
+    {
+    }
+    const char *what() const noexcept
+    {
+      return _s.c_str();
+    }
+
+  private:
+    std::string _s;
+  };
+
   /**
    * base graph is the high level representation of the neural net and soon
    * other ops (chains/ data aug)
@@ -49,11 +67,15 @@ namespace dd
       std::string type; /**< type of the operator  */
       std::vector<int>
           dim; /**< output dim for operators, data dim for data blobs */
-      std::vector<int> inputdim; /**< input dims for operators, needed to see
-                                    if some change has occured */
-      bool alloc_needed = true;  /**< true if some dimensions have changed */
+      std::vector<std::vector<int>> inputsdims; /**< input dims for operators,
+                                    needed to see if some change has occured */
+      std::vector<std::vector<int>>
+          outputsdims;          /**< output dims for operators,
+                                needed to see if some change has occured */
+      bool alloc_needed = true; /**< true if some dimensions have changed */
       int num_output = -1; /**< number of output for some operator types */
-      int axis = -1; /**< axis parameters for innerproduct operator type */
+      int axis = -1;  /**< axis parameters for innerproduct operator type */
+      int tiles = -1; /**< tiling parameter for tile layer */
     };
 
     /**
@@ -345,30 +367,21 @@ namespace dd
     bool _sorted = false;    /**< is already sorted?  */
 
     /**
-     * \brief compute input/output dims of a data vertex, given is producer,
-     * @param producer
-     * @return input dim of producer, output dims of producer == dims of var
-     */
-    std::tuple<std::vector<int>, std::vector<int>>
-    compute_dims_from_producer(Vertex producer);
-
-    /**
-     * \brief compute dims of a data vertex
+     * \brief compute dims (inputs and outputs) of an operator  vertex
      * @param v
      */
-    void compute_dims(Vertex v);
+    void compute_dims_operator(Vertex v);
+
+    /**
+     * \brief compute dims of a data  vertex
+     * @param v
+     */
+    void compute_dims_var(Vertex v);
 
     /**
      * compute all data vertices sizes
      */
     void compute_blob_sizes();
-
-    /**
-     * \brief check if realloc is needed, in case of change of input/ouput dims
-     */
-    void
-    update_alloc_status(std::tuple<std::vector<int>, std::vector<int>> newdims,
-                        Vertex v);
 
     /**
      * check if everything is correclty allocated, ie do no need reallocation

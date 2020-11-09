@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <iostream>
 
-#include "graph.h"
+#include "graph/graph.h"
 #include "torch/torch.h"
 #include <sstream>
 #include <string>

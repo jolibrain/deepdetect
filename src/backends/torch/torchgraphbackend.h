@@ -22,7 +22,7 @@
 #ifndef TORCH_GRAPH_BACKEND_H
 #define TORCH_GRAPH_BACKEND_H
 
-#include "basegraph.h"
+#include "graph/basegraph.h"
 #include <exception>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -225,6 +225,11 @@ namespace dd
                             */
 
     bool _allocation_done = false;
+
+    long int _autoencoder_timesteps = -1;
+    /**< this var stores timesteps of an lstm autoencoder, read from lstm
+     * layers and given to tile/repeat layer, in order not to have to put it in
+     * prototxt */
   };
 }
 

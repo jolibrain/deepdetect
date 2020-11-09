@@ -85,10 +85,11 @@ if (USE_TORCH)
     backends/torch/native/templates/nbeats.cc
     backends/torch/native/templates/vit.cc
     backends/torch/native/native_factory.cc
-	basegraph.cc
-	caffegraphinput.cc
+	graph/basegraph.cc
+    graph/baseoperators.cc
+	graph/caffegraphinput.cc
 	backends/torch/torchgraphbackend.cc
-	graph.cc
+	graph/graph.cc
     backends/torch/torchsolver.cc
     backends/torch/torchmodule.cc
     backends/torch/torchutils.cc
