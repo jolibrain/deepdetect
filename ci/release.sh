@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 kind=${1:-minor}
 git rm CHANGELOG.md
 yarn run standard-version -r $kind
