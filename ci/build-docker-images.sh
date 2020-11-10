@@ -46,7 +46,7 @@ for name in $NAMES; do
     release="OFF"
     if [ "$TAG_NAME" ]; then
         DOCKER_CLI_EXPERIMENTAL=enabled docker manifest inspect ${image_url}:$TAG_NAME >/dev/null 2>&1
-        [ $? -ne 0 ] && echo "${image_url}:$TAG_NAME already built skipping" && exit 0
+        [ $? -eq 0 ] && echo "${image_url}:$TAG_NAME already built skipping" && exit 0
         release="ON"
     fi
 
