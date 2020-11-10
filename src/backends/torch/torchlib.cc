@@ -375,6 +375,7 @@ namespace dd
   int TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy,
                TMLModel>::train(const APIData &ad, APIData &out)
   {
+    using namespace std::chrono;
     this->_tjob_running.store(true);
 
     TInputConnectorStrategy inputc(this->_inputc);
@@ -476,6 +477,18 @@ namespace dd
     int it = 0;
     // reload solver and set it value accordingly
     it = tsolver.load(this->_mlmodel._sstate, _device);
+
+    bool skip_training = it >= iterations;
+    if (skip_training)
+      {
+        this->_logger->info(
+            "Model was trained for {} iterations, skipping training", it);
+      }
+    else
+      {
+        this->_logger->info("Training for {} iterations", iterations - it);
+      }
+
     tsolver.zero_grad();
     _module.train();
 
@@ -484,10 +497,7 @@ namespace dd
     auto dataloader = torch::data::make_data_loader(
         std::move(inputc._dataset), data::DataLoaderOptions(batch_size));
 
-    this->_logger->info("Training for {} iterations", iterations - it);
     int batch_id = 0;
-    using namespace std::chrono;
-
     int64_t best_to_remove = -1;
 
     // it is the iteration count (not epoch)
@@ -617,9 +627,8 @@ namespace dd
                 avg_it_time = 0;
                 train_loss = 0;
 
-                if ((elapsed_it % test_interval == 0
-                     || elapsed_it == iterations)
-                    && !eval_dataset.empty())
+                if ((elapsed_it % test_interval == 0 && !eval_dataset.empty())
+                    || elapsed_it == iterations)
                   {
                     // Free memory
                     loss = torch::empty(1);
@@ -669,6 +678,9 @@ namespace dd
                             this->add_meas(name, mdiag, cnames);
                           }
                       }
+
+                    if (elapsed_it == iterations)
+                      out = meas_out;
                   }
 
                 if ((save_period != 0 && elapsed_it % save_period == 0)
@@ -699,6 +711,8 @@ namespace dd
         return -1;
       }
 
+    if (skip_training)
+      test(ad, inputc, inputc._test_dataset, test_batch_size, out);
     torch_utils::empty_cuda_cache();
 
     // Update model after training
