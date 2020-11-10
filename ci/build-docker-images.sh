@@ -44,7 +44,11 @@ for name in $NAMES; do
     build=${target##*/}
     image_url="${image_url_prefix}_${name}"
     release="OFF"
-    [ "$TAG_NAME" ] && release="ON"
+    if [ "$TAG_NAME" ]; then
+        DOCKER_CLI_EXPERIMENTAL=enabled docker manifest inspect ${image_url}:$TAG_NAME >/dev/null 2>&1
+        [ $? -ne 0 ] && echo "${image_url}:$TAG_NAME already built skipping" && exit 0
+        release="ON"
+    fi
 
     docker build \
         -t $image_url:$TMP_TAG \
@@ -61,12 +65,11 @@ for name in $NAMES; do
 
         if [ "$TAG_NAME" ]; then
             docker tag $image_url:$TMP_TAG $image_url:${TAG_NAME}
+            docker tag $image_url:$TMP_TAG $image_url:latest
             docker push $image_url:${TAG_NAME}
+            docker push $image_url:latest
         elif [ "$GIT_BRANCH" == "master" ]; then
             docker push $image_url:$TMP_TAG
-
-            docker tag $image_url:$TMP_TAG $image_url:latest
-            docker push $image_url:latest
         fi
     fi
 done
