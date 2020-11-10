@@ -80,6 +80,11 @@ namespace dd
     std::vector<std::string> extractable_layers() const;
 
     /**
+     * \brief translate extract output to double vector
+     */
+    void to_extracted_vals(c10::IValue extracted, std::vector<double> &vals);
+
+    /**
      * \brief freeze traced net so that it is not updated during learning
      */
     void freeze_traced(bool freeze);

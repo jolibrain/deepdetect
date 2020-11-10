@@ -40,7 +40,7 @@ namespace dd
      * @param input tensor
      * @return value of output
      */
-    virtual torch::Tensor forward(torch::Tensor x) = 0;
+    virtual c10::IValue forward(c10::IValue x) = 0;
 
     /**
      * \brief extract layer from net
@@ -48,8 +48,7 @@ namespace dd
      * @param name of data to extract
      * @return extracted tensor
      */
-    virtual torch::Tensor extract(torch::Tensor x, std::string extract_layer)
-        = 0;
+    virtual c10::IValue extract(c10::IValue x, std::string extract_layer) = 0;
 
     /**
      * \brief check is string correspond to some layer in the net
@@ -66,10 +65,14 @@ namespace dd
 
     virtual ~NativeModule() = default;
 
-    virtual torch::Tensor cleanup_output(torch::Tensor output) = 0;
+    virtual void to_extracted_vals(c10::IValue extracted,
+                                   std::vector<double> &vals) const = 0;
 
-    virtual torch::Tensor loss(std::string loss, torch::Tensor input,
-                               torch::Tensor output, torch::Tensor target)
+    virtual c10::IValue cleanup_output(c10::IValue output) const = 0;
+
+    virtual torch::Tensor loss(std::string loss,
+                               std::vector<c10::IValue> input_ivalue,
+                               c10::IValue output_ivalue, torch::Tensor target)
         = 0;
 
     virtual void update_input_connector(TorchInputInterface &inputc) = 0;

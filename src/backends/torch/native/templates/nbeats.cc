@@ -355,8 +355,9 @@ namespace dd
     create_nbeats();
   }
 
-  torch::Tensor NBeats::forward(torch::Tensor x)
+  c10::IValue NBeats::forward(c10::IValue input)
   {
+    torch::Tensor x = torch_utils::to_tensor_safe(input);
     torch::Tensor b = x;
     torch::Tensor f = _finit.repeat({ x.size(0), 1, 1 });
 
@@ -371,7 +372,7 @@ namespace dd
           }
         stack_counter++;
       }
-    return torch::stack({ b, f }, 0);
+    return c10::IValue(std::make_tuple(b, f));
   }
 
   bool NBeats::extractable(std::string extract_layer) const
@@ -395,9 +396,9 @@ namespace dd
     return els;
   }
 
-  torch::Tensor NBeats::extract(torch::Tensor x, std::string extract_layer)
+  c10::IValue NBeats::extract(c10::IValue input, std::string extract_layer)
   {
-
+    torch::Tensor x = torch_utils::to_tensor_safe(input);
     std::vector<std::string> subst;
     std::string item;
     size_t pos_start = 0, pos_end;
@@ -440,12 +441,12 @@ namespace dd
                 f = f + std::get<1>(bf);
                 if (num_stack == stack_counter && num_block == block_counter
                     && endofblock)
-                  return torch::stack({ b, f }, 0);
+                  return c10::IValue(std::make_tuple(b, f));
                 block_counter++;
               }
           }
         stack_counter++;
       }
-    return torch::stack({ b, f }, 0);
+    return c10::IValue(std::make_tuple(b, f));
   }
 }

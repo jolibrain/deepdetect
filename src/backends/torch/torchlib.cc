@@ -566,11 +566,10 @@ namespace dd
               }
             Tensor y = batch.target.at(0).to(_main_device);
 
-            Tensor y_pred;
+            c10::IValue y_pred_ivalue;
             try
               {
-                y_pred = torch_utils::to_tensor_safe(
-                    _module.forward_on_devices(in_vals, _devices));
+                y_pred_ivalue = _module.forward_on_devices(in_vals, _devices);
               }
             catch (std::exception &e)
               {
@@ -590,6 +589,7 @@ namespace dd
                 // [n_batch
                 // * sequence_length, vocab_size]
                 // + ignore non-masked tokens (== -1 in target)
+                Tensor y_pred = torch_utils::to_tensor_safe(y_pred_ivalue);
                 loss = torch::nll_loss(
                     torch::log_softmax(
                         y_pred.view(IntList{ -1, y_pred.size(2) }), 1),
@@ -598,10 +598,11 @@ namespace dd
             else if (_timeserie)
               {
                 if (_module._native != nullptr)
-                  loss = _module._native->loss(_loss, in_vals[0].toTensor(),
-                                               y_pred, y);
+                  loss = _module._native->loss(_loss, in_vals, y_pred_ivalue,
+                                               y);
                 else
                   {
+                    Tensor y_pred = torch_utils::to_tensor_safe(y_pred_ivalue);
                     if (_loss.empty() || _loss == "L1" || _loss == "l1")
                       loss = torch::l1_loss(y_pred, y);
                     else if (_loss == "L2" || _loss == "l2" || _loss == "eucl")
@@ -612,6 +613,7 @@ namespace dd
               }
             else
               {
+                Tensor y_pred = torch_utils::to_tensor_safe(y_pred_ivalue);
                 loss = torch::nll_loss(torch::log_softmax(y_pred, 1),
                                        y.view(IntList{ -1 }), class_weights);
               }
@@ -668,7 +670,7 @@ namespace dd
                   {
                     // Free memory
                     loss = torch::empty(1);
-                    y_pred = torch::empty(1);
+                    y_pred_ivalue = torch::empty(1);
                     y = torch::empty(1);
                     in_vals.clear();
 
@@ -857,14 +859,14 @@ namespace dd
           }
         this->_stats.inc_inference_count(batch.data[0].size(0));
 
-        Tensor output;
+        c10::IValue output_ivalue;
+
         try
           {
             if (extract_layer.empty())
-              output = torch_utils::to_tensor_safe(_module.forward(in_vals));
+              output_ivalue = _module.forward(in_vals);
             else
-              output = torch_utils::to_tensor_safe(
-                  _module.extract(in_vals, extract_layer));
+              output_ivalue = _module.extract(in_vals, extract_layer);
             if (_timeserie)
               {
                 // DO NOTHING
@@ -875,6 +877,7 @@ namespace dd
                   {
                     // Keep only the prediction for the last token
                     Tensor input_ids = batch.data[0];
+                    Tensor output = torch_utils::to_tensor_safe(output_ivalue);
                     std::vector<Tensor> outputs;
                     for (int i = 0; i < input_ids.size(0); ++i)
                       {
@@ -884,9 +887,12 @@ namespace dd
                         outputs.push_back(
                             output[i][inputc._lengths.at(i) - 2]);
                       }
-                    output = torch::stack(outputs);
+                    output_ivalue = torch::stack(outputs);
                   }
-                output = torch::softmax(output, 1).to(cpu);
+                output_ivalue
+                    = torch::softmax(
+                          torch_utils::to_tensor_safe(output_ivalue), 1)
+                          .to(cpu);
               }
           }
         catch (std::exception &e)
@@ -913,14 +919,9 @@ namespace dd
                   rad.add("index_uri",
                           inputc._index_uris.at(results_ads.size()));
                 rad.add("loss", static_cast<double>(0.0));
-                torch::Tensor fo = torch::flatten(output)
-                                       .contiguous()
-                                       .to(torch::kFloat64)
-                                       .to(torch::Device("cpu"));
 
-                double *startout = fo.data_ptr<double>();
-                std::vector<double> vals(startout,
-                                         startout + torch ::numel(fo));
+                std::vector<double> vals;
+                _module.to_extracted_vals(output_ivalue, vals);
 
                 rad.add("vals", vals);
                 results_ads.push_back(rad);
@@ -928,8 +929,11 @@ namespace dd
           }
         else
           {
+
             if (_module._native != nullptr)
-              output = _module._native->cleanup_output(output);
+              output_ivalue = _module._native->cleanup_output(output_ivalue);
+
+            Tensor output = torch_utils::to_tensor_safe(output_ivalue);
 
             if (output_params.has("best"))
               {
@@ -1065,10 +1069,10 @@ namespace dd
         for (Tensor tensor : batch.data)
           in_vals.push_back(tensor.to(_main_device));
 
-        Tensor output;
+        c10::IValue output_ivalue;
         try
           {
-            output = torch_utils::to_tensor_safe(_module.forward(in_vals));
+            output_ivalue = _module.forward(in_vals);
           }
         catch (std::exception &e)
           {
@@ -1083,7 +1087,8 @@ namespace dd
           {
 
             if (_module._native != nullptr)
-              output = _module._native->cleanup_output(output);
+              output_ivalue = _module._native->cleanup_output(output_ivalue);
+            torch::Tensor output = torch_utils::to_tensor_safe(output_ivalue);
             // iterate over data in batch
             labels = batch.target[0];
             output = output.to(cpu);
@@ -1111,6 +1116,7 @@ namespace dd
           }
         else
           {
+            torch::Tensor output = torch_utils::to_tensor_safe(output_ivalue);
             labels = batch.target[0].view(IntList{ -1 });
             if (_masked_lm)
               {

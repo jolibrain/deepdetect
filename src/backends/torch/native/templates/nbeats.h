@@ -346,23 +346,71 @@ namespace dd
         }
     }
 
-    virtual torch::Tensor forward(torch::Tensor x);
-    virtual torch::Tensor extract(torch::Tensor x, std::string extract_layer);
+    virtual c10::IValue forward(c10::IValue input) override;
+    virtual c10::IValue extract(c10::IValue input,
+                                std::string extract_layer) override;
 
-    virtual bool extractable(std::string extract_layer) const;
-    virtual std::vector<std::string> extractable_layers() const;
+    virtual bool extractable(std::string extract_layer) const override;
+    virtual std::vector<std::string> extractable_layers() const override;
 
-    virtual torch::Tensor cleanup_output(torch::Tensor output)
+    virtual void to_extracted_vals(c10::IValue extracted,
+                                   std::vector<double> &vals) const override
     {
-      return torch::chunk(output, 2, 0)[1].flatten(0, 1);
+      if (extracted.isTuple())
+        {
+          auto bf = extracted.to<std::tuple<torch::Tensor, torch::Tensor>>();
+          torch::Tensor b = std::get<0>(bf);
+          torch::Tensor bo = torch::flatten(b)
+                                 .contiguous()
+                                 .to(torch::kFloat64)
+                                 .to(torch::Device("cpu"));
+          double *startout = bo.data_ptr<double>();
+          vals.assign(startout, startout + torch ::numel(bo));
+
+          torch::Tensor f = std::get<1>(bf);
+          torch::Tensor fo = torch::flatten(f)
+                                 .contiguous()
+                                 .to(torch::kFloat64)
+                                 .to(torch::Device("cpu"));
+          double *startout2 = bo.data_ptr<double>();
+          vals.insert(vals.end(), startout2, startout2 + torch ::numel(bo));
+        }
+      else
+        {
+          torch::Tensor t = torch_utils::to_tensor_safe(extracted);
+          torch::Tensor fo = torch::flatten(t)
+                                 .contiguous()
+                                 .to(torch::kFloat64)
+                                 .to(torch::Device("cpu"));
+
+          double *startout = fo.data_ptr<double>();
+          vals.assign(startout, startout + torch ::numel(fo));
+        }
     }
 
-    virtual torch::Tensor loss(std::string loss, torch::Tensor input,
-                               torch::Tensor output, torch::Tensor target)
+    virtual c10::IValue cleanup_output(c10::IValue output) const override
     {
-      std::vector<torch::Tensor> chunks = torch::chunk(output, 2, 0);
-      torch::Tensor x_pred = chunks[0].flatten(0, 1);
-      torch::Tensor y_pred = chunks[1].flatten(0, 1);
+      // forecast is second element of tuple
+
+      return std::get<1>(
+          output.to<std::tuple<torch::Tensor, torch::Tensor>>());
+      // torch::chunk(torch_utils::to_tensor_safe(output), 2, 0)[1].flatten(0,
+      // 1);
+    }
+
+    virtual torch::Tensor loss(std::string loss,
+                               std::vector<c10::IValue> input_ivalue,
+                               c10::IValue output_ivalue, torch::Tensor target)
+    {
+      torch::Tensor input = input_ivalue[0].toTensor();
+      // torch::Tensor output = torch_utils::to_tensor_safe(output_ivalue);
+      // std::vector<torch::Tensor> chunks = torch::chunk(output, 2, 0);
+
+      // torch::Tensor x_pred = chunks[0].flatten(0, 1);
+      // torch::Tensor y_pred = chunks[1].flatten(0, 1);
+      auto t = output_ivalue.to<std::tuple<torch::Tensor, torch::Tensor>>();
+      torch::Tensor x_pred = std::get<0>(t);
+      torch::Tensor y_pred = std::get<1>(t);
       if (loss.empty() || loss == "L1" || loss == "l1")
         return torch::l1_loss(y_pred, target) + torch::l1_loss(x_pred, input);
       if (loss == "L2" || loss == "l2" || loss == "eucl")

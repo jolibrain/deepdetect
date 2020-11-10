@@ -244,7 +244,7 @@ namespace dd
     if (_graph)
       return _graph->forward(torch_utils::to_tensor_safe(source[0]));
     if (_native)
-      return _native->forward(torch_utils::to_tensor_safe(source[0]));
+      return _native->forward(source[0]);
     if (_traced)
       {
         auto output = _traced->forward(source);
@@ -311,6 +311,26 @@ namespace dd
     return out_val;
   }
 
+  void TorchModule::to_extracted_vals(c10::IValue extracted,
+                                      std::vector<double> &vals)
+  {
+    if (_native)
+      {
+        _native->to_extracted_vals(extracted, vals);
+      }
+    else
+      {
+        torch::Tensor output = torch_utils::to_tensor_safe(extracted);
+        torch::Tensor fo = torch::flatten(output)
+                               .contiguous()
+                               .to(torch::kFloat64)
+                               .to(torch::Device("cpu"));
+
+        double *startout = fo.data_ptr<double>();
+        vals.assign(startout, startout + torch ::numel(fo));
+      }
+  }
+
   c10::IValue TorchModule::extract(std::vector<c10::IValue> source,
                                    std::string extract_layer)
   {
@@ -318,8 +338,7 @@ namespace dd
       return _graph->extract(torch_utils::to_tensor_safe(source[0]),
                              extract_layer);
     if (_native)
-      return _native->extract(torch_utils::to_tensor_safe(source[0]),
-                              extract_layer);
+      return _native->extract(source[0], extract_layer);
     auto output = _traced->forward(source);
     source = torch_utils::unwrap_c10_vector(output);
 

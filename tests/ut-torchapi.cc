@@ -695,12 +695,16 @@ TEST(torchapi, nbeats_extract_layers_simple)
   ASSERT_TRUE(nb.extractable("2:0:end"));
 
   torch::Tensor x = torch::randn({ 2, 50, 1 });
-  torch::Tensor y = nb.forward(x);
-  ASSERT_EQ(y.sizes(), std::vector<long int>({ 2, 2, 50, 1 }));
-  torch::Tensor z = nb.extract(x, "2:0:fc1");
-  ASSERT_EQ(z.sizes(), std::vector<long int>({ 2, 10 }));
-  torch::Tensor t = nb.extract(x, "1:1:end");
-  std::cout << t << std::endl;
+  torch::Tensor y = torch_utils::to_tensor_safe(
+      nb.cleanup_output(nb.forward(c10::IValue(x))));
+  ASSERT_EQ(y.sizes(), std::vector<long int>({ 2, 50, 1 }));
+
+  std::vector<double> extract1;
+  nb.to_extracted_vals(nb.extract(c10::IValue(x), "2:0:fc1"), extract1);
+  ASSERT_EQ(extract1.size(), 20);
+  std::vector<double> extract2;
+  nb.to_extracted_vals(nb.extract(c10::IValue(x), "1:1:end"), extract2);
+  ASSERT_EQ(extract2.size(), 200);
 }
 
 TEST(torchapi, nbeats_extract_layer_complete)
