@@ -45,7 +45,7 @@ for name in $NAMES; do
     image_url="${image_url_prefix}_${name}"
     release="OFF"
     if [ "$TAG_NAME" ]; then
-        already_exists=$(DOCKER_CLI_EXPERIMENTAL=enabled docker manifest inspect ${image_url}:$TAG_NAME 2>/dev/null)
+        already_exists=$(DOCKER_CLI_EXPERIMENTAL=enabled docker manifest inspect ${image_url}:$TAG_NAME 2>/dev/null || true)
         if [ "$already_exists" ]; then
             echo "${image_url}:$TAG_NAME already built skipping..."
             continue
