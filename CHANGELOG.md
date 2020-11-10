@@ -1,6 +1,52 @@
 # DeepDetect: Open Source Deep Learning Server & API (Changelog)
 
-## 0.10.0 (2020-10-09)
+## 0.11.0 (2020-11-10)
+
+
+### Features
+
+* **bench:** support for regression model benchmarking ([a385292](https://github.com/jolibrain/deepdetect/commit/a385292f708fa3a58b680a5c08f8671211b9f456))
+* make python client an install package ([ec2f5e2](https://github.com/jolibrain/deepdetect/commit/ec2f5e27470371d995e640d1f6c2722d08415051))
+* one protobuf to rule them all ([77912fe](https://github.com/jolibrain/deepdetect/commit/77912fed039067b6124326dfe3ac22957d2d430c))
+* **api:** add versions and compile flags to /info ([67b1d99](https://github.com/jolibrain/deepdetect/commit/67b1d992d029962b879512614bea353df9b9abfb)), closes [#897](https://github.com/jolibrain/deepdetect/issues/897)
+* **caffe:** add new optimizers flavors to API ([d534a16](https://github.com/jolibrain/deepdetect/commit/d534a16e56ecc7366ee109a4d4fefdf5873c5f0e))
+* **ml:** tensorrt support for regression models ([77a016b](https://github.com/jolibrain/deepdetect/commit/77a016b12cea8126ea96b1173a0116817591a8e9))
+* **tensorrt:** Add support for onnx image classification models ([a8b81f2](https://github.com/jolibrain/deepdetect/commit/a8b81f2f20c8d9d2ac2268d1542412dd46c9e001))
+* **torch:** ranger optimizer (ie rectified ADAM + lookahead) + \ ([a3004f0](https://github.com/jolibrain/deepdetect/commit/a3004f068fe92ddddab0905c0587aaac1a129378))
+
+
+### Bug Fixes
+
+* **torch:** best model was never saved on last iteration ([6d1aa4d](https://github.com/jolibrain/deepdetect/commit/6d1aa4d7b7110455d403d60cfb36331abe4bf863))
+* **torch:** clip gradient in rectified adam as stated in annex B of original paper ([1561269](https://github.com/jolibrain/deepdetect/commit/1561269ae8b83eafee16a7867764430c5fe7f27e))
+* **torch:** Raise an exception if gpu is not available ([1f0887a](https://github.com/jolibrain/deepdetect/commit/1f0887aaf379d069d7418848f7f0fb59b9c400d2))
+* add pytorch fatbin patch ([43a698c](https://github.com/jolibrain/deepdetect/commit/43a698cd52fd24ab4139146eec4becca618f903f))
+* add tool to generate debian buster image with the workaround ([5570db4](https://github.com/jolibrain/deepdetect/commit/5570db4574626f820d759d2d4e0f8092ede1c879))
+* building documentation up to date for 18.04, tensorrt and tests ([18ba916](https://github.com/jolibrain/deepdetect/commit/18ba916e2c82427f08dbbfaea792fa3fc8a91430))
+* docker adds missing pytorch deps ([314160c](https://github.com/jolibrain/deepdetect/commit/314160c49aaa41f06a47bbb3d44cc6d38f6d5530))
+* docker build readme link from doc ([c6682bf](https://github.com/jolibrain/deepdetect/commit/c6682bfa7eb5ec7ef8c495056cb5fe6e4b7b7eac))
+* handle int64 in conversion from json to APIData ([863e697](https://github.com/jolibrain/deepdetect/commit/863e697283ab4853714bdd36146dbd963dc38c4f))
+* ignore JSON conversion throw in partial chains output ([742c1c7](https://github.com/jolibrain/deepdetect/commit/742c1c7c307ff5d7ccfdce0f7ea005b2166a35c4))
+* missing main in bench.py ([8b8b196](https://github.com/jolibrain/deepdetect/commit/8b8b1968c6df221cdb372b83c6db4e83e490eacd))
+* proper cleanup of tensorrt models and services ([d6749d0](https://github.com/jolibrain/deepdetect/commit/d6749d0c55ab731310e3f4c1c316a1c3489083ff))
+* put useful informations in case of unexpected exception ([5ab90c7](https://github.com/jolibrain/deepdetect/commit/5ab90c7c2d64b1518dc3f556e4d4701811ab09aa))
+* readme table of backends, models and data formats ([f606aa8](https://github.com/jolibrain/deepdetect/commit/f606aa832fefc8ba06e78511585effd7205f111f))
+* regression benchmark tool parameter ([3840218](https://github.com/jolibrain/deepdetect/commit/3840218d8035172c681d96abc8872e5922afca0e))
+* tensorrt output layer lookup now throws when layer does not exist ([ba7c839](https://github.com/jolibrain/deepdetect/commit/ba7c8398bfc016b9b3224b9f6f132a2178a268d0))
+* **csvts/torch:** allow to read csv timeserie directly from query ([76023db](https://github.com/jolibrain/deepdetect/commit/76023db1bfafd02e2da7848b62ebec2efb4edcbd))
+* **doc:** update to neural network templates and output connector ([2916daf](https://github.com/jolibrain/deepdetect/commit/2916daf423eea2948e160ced1a3a0ee6775b037e))
+* **docker:** don't share apt cache between arch build ([75dc9e9](https://github.com/jolibrain/deepdetect/commit/75dc9e98ecfae303f3272c7881004ee192086f92))
+* **graph:** correctly discard dropout ([16409a6](https://github.com/jolibrain/deepdetect/commit/16409a6f0e9429f0ab5d70aa4a79e1f7e994839f))
+* **stats:** measure of inference count ([b517910](https://github.com/jolibrain/deepdetect/commit/b517910fed38d56c59c43a6d082e03f7a773486d))
+* **timeseries:** do not segfault if no valid files in train/test dir ([1977bba](https://github.com/jolibrain/deepdetect/commit/1977bba73cee43bbaf2e1cb1e1322cc21c0361ea))
+* **torch:** add missing header needed in case of building w/o caffe backend ([2563b74](https://github.com/jolibrain/deepdetect/commit/2563b74a0128c0934a0792eb16a50cdd2ff5ecdb))
+* **torch:** load weights only once ([0052a03](https://github.com/jolibrain/deepdetect/commit/0052a03027d08ea443a096c6ce0f2d351e19313d))
+* **torch:** reload solver params on API device ([30fa16f](https://github.com/jolibrain/deepdetect/commit/30fa16f2e9cf27d5214db77707e3448ab23cc92a))
+* tensorrt fp16 and int8 selector ([36c7488](https://github.com/jolibrain/deepdetect/commit/36c7488ee818a780c8d5aa82223c650f3b805316))
+* **torch/native:** prevent loading weights before instanciating native model ([b15d767](https://github.com/jolibrain/deepdetect/commit/b15d7672240a6d4261b1cc5ec2f1b7139350eaf3))
+* **torch/timeseries:** do not double read query data ([d54f60d](https://github.com/jolibrain/deepdetect/commit/d54f60df9fa453b403d393b87e591294eae29b21))
+
+### 0.10.1 (2020-10-09)
 
 
 ### Features
