@@ -2,6 +2,7 @@ project(deepdetect)
 cmake_minimum_required(VERSION 3.10)
 
 option(RELEASE "release mode" OFF)
+option(WARNING "enable warning" ON)
 option(USE_CAFFE "build caffe backend" ON)
 option(USE_CAFFE_DEBUG "enable caffe debug" OFF)
 option(USE_CAFFE2 "build caffe2 backend" OFF)
@@ -85,7 +86,11 @@ if (NOT EXISTS ${CMAKE_BINARY_DIR}/src)
 	COMMAND  bash -c "mkdir ${CMAKE_BINARY_DIR}/src")
 endif()
 
-set(CMAKE_CXX_FLAGS "-g -O2 -Wall -Wextra -Werror -fopenmp -fPIC -std=c++14 -DUSE_OPENCV -DUSE_LMDB")
+set(CMAKE_CXX_FLAGS "-g -O2 -Wall -Wextra -fopenmp -fPIC -std=c++14 -DUSE_OPENCV -DUSE_LMDB")
+
+if(WARNING)
+  string(APPEND CMAKE_CXX_FLAGS " -Werror")
+endif()
 
 if(RELEASE)
     set(BUILD_TYPE release)
@@ -985,6 +990,7 @@ configure_file (
 
 # status
 message(STATUS "RELEASE:               ${RELEASE}")
+message(STATUS "WARNING:               ${WARNING}")
 message(STATUS "USE_COMMAND_LINE:      ${USE_COMMAND_LINE}")
 message(STATUS "USE_JSON_API:          ${USE_JSON_API}")
 message(STATUS "USE_HTTP_SERVER:       ${USE_HTTP_SERVER}")
