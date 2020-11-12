@@ -1,5 +1,5 @@
 project(deepdetect)
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.10)
 
 option(RELEASE "release mode" OFF)
 option(USE_CAFFE "build caffe backend" ON)
@@ -188,7 +188,8 @@ else()
     if (USE_DLIB AND NOT USE_DLIB_CPU_ONLY)
         message(STATUS "Dlib enabled with CUDA requires cuDNN - enabling cuDNN")
         set(USE_CUDNN ON)
-    endif()
+      endif()
+cmake_minimum_required(VERSION 3.14)
 include(cmake/Cuda.cmake) # cuda + cudnn
 endif()
 
