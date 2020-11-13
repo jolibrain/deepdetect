@@ -10,23 +10,29 @@ pipeline {
         sh 'printenv | sort'
       }
     }
-    stage('Installating prebuilt examples/ datasets') {
+    stage('Installing prebuilt cache') {
       when {
-       expression { !env.CHANGE_ID || pullRequest.labels.findAll { it == "ci:no-datasets-cache" }.size() == 0 }
+       expression { !env.CHANGE_ID || pullRequest.labels.findAll { it == "ci:full-build" }.size() == 0 }
       }
       steps {
-        copyArtifacts(projectName: 'deepdetect-examples-dataset/master')
-        sh '''
-tar -xf examples-*.tar
-rm -f examples-*.tar
-'''
+        script {
+          try {
+            copyArtifacts(projectName: 'deepdetect-prebuilt-cache/master')
+            sh 'tar -xzf prebuilt-cache-*.tar'
+          } catch (err) {
+            echo "artefact copy fail, skipping it"
+            echo err.getMessage();
+          }
+        }
       }
     }
     stage('Configure') {
       steps {
         sh '''
 export PATH="/usr/lib/ccache/:$PATH"
-mkdir -p build && cd build && cmake .. -DBUILD_TESTS=ON -DUSE_CUDNN=ON -DUSE_FAISS=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_XGBOOST=ON -DUSE_TORCH=ON -DUSE_NCNN=ON -DUSE_TENSORRT=ON -DUSE_TENSORRT_OSS=ON -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61"
+mkdir -p build
+cd build
+cmake .. -DBUILD_TESTS=ON -DUSE_CUDNN=ON -DUSE_FAISS=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_XGBOOST=ON -DUSE_TORCH=ON -DUSE_NCNN=ON -DUSE_TENSORRT=ON -DUSE_TENSORRT_OSS=ON -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61"
 '''
       }
     }
@@ -40,26 +46,13 @@ mkdir -p build && cd build && cmake .. -DBUILD_TESTS=ON -DUSE_CUDNN=ON -DUSE_FAI
         sh 'cd clients/python/ && tox -e pep8,py36,py27'
       }
     }
-
-    stage('Installing prebuilt pytorch') {
-      when {
-       expression { !env.CHANGE_ID || pullRequest.labels.findAll { it == "pytorch-upgrade" }.size() == 0 }
-      }
-      steps {
-        copyArtifacts(projectName: 'deepdetect-pytorch/master')
-        sh '''
-    tar -xf pytorch-*.tar
-    rm -f pytorch-*.tar
-    touch build/CMakeFiles/pytorch-complete
-    '''
-      }
-    }
-
     stage('Build GPU') {
       steps {
         sh '''
 export PATH="/usr/lib/ccache/:$PATH"
 cd build
+schedtool -B -n 1 -e ionice -n 1 make -j24 pytorch caffe_dd Multicore-TSNE faisslib ncnn xgboost cpp-netlib tensorrt-oss
+# TODO(sileht): we should create the prebuilt artefacts here after each successful master branch build
 schedtool -B -n 1 -e ionice -n 1 make -j 6
 ccache -s
 '''
