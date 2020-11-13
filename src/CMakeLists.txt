@@ -88,6 +88,7 @@ if (USE_TORCH)
     backends/torch/torchlib.cc
     backends/torch/torchmodel.cc
     backends/torch/torchinputconns.cc
+    backends/torch/torchdataset.cc
     backends/torch/db.cpp
     backends/torch/db_lmdb.cpp
     backends/torch/native/templates/nbeats.cc
