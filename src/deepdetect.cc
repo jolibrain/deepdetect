@@ -31,11 +31,16 @@
 #if defined(USE_HTTP_SERVER) && defined(USE_JSON_API)
 #include "httpjsonapi.h"
 #endif // USE_HTTP_SERVER && USE_JSON_API
+#if defined(USE_HTTP_SERVER_OATPP) && defined(USE_JSON_API)
+#include "oatppjsonapi.h"
+#endif // USE_HTTP_SERVER_OATPP && USE_JSON_API
+
 #if defined(USE_JSON_API) && !defined(USE_HTTP_SERVER)                        \
-    && !defined(USE_COMMAND_LINE)
+    && !defined(USE_HTTP_SERVER_OATPP) && !defined(USE_COMMAND_LINE)
 #include "jsonapi.h"
 #endif
 #include "dd_config.h"
+#include "http/flags.h"
 
 namespace dd
 {
@@ -44,7 +49,7 @@ namespace dd
     std::cout << "DeepDetect " << GIT_VERSION << " (" << BUILD_TYPE << ")\n";
     std::cout << "GIT REF: " << GIT_BRANCH << ":" << GIT_COMMIT_HASH << "\n";
     std::cout << "COMPILE_FLAGS: " << COMPLIE_FLAGS << "\n";
-    std::cout << "DEPS_VERSION: " << DEPS_VERSION << "\n ";
+    std::cout << "DEPS_VERSION: " << DEPS_VERSION << "\n";
   }
 
   template <class TAPIStrategy> DeepDetect<TAPIStrategy>::~DeepDetect()
@@ -63,6 +68,9 @@ namespace dd
 #endif
 #ifdef USE_HTTP_SERVER
   template class DeepDetect<HttpJsonAPI>;
+#endif
+#ifdef USE_HTTP_SERVER_OATPP
+  template class DeepDetect<OatppJsonAPI>;
 #endif
 #if !defined(USE_COMMAND_LINE) && !defined(USE_HTTP)
   template class DeepDetect<JsonAPI>;
