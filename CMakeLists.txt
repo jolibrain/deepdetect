@@ -57,6 +57,7 @@ OPTION(BUILD_TOOLS "Should the tools be built")
 OPTION(USE_COMMAND_LINE "build command line JSON API" ON)
 OPTION(USE_JSON_API "build internal JSON API" ON)
 OPTION(USE_HTTP_SERVER "build http JSON API " ON)
+OPTION(USE_HTTP_SERVER_OATPP "use OAT instead cpp-netlib" OFF)
 
 # Get the current working branch
 execute_process(
@@ -109,6 +110,10 @@ endif()
 if (USE_HTTP_SERVER)
   set(USE_JSON_API ON)
   string(APPEND CMAKE_CXX_FLAGS " -DUSE_HTTP_SERVER")
+endif()
+if (USE_HTTP_SERVER_OATPP)
+  set(USE_JSON_API ON)
+  string(APPEND CMAKE_CXX_FLAGS " -DUSE_HTTP_SERVER_OATPP")
 endif()
 
 if (USE_JSON_API)
@@ -888,8 +893,69 @@ if (USE_TENSORRT)
     include_directories(${TENSORRT_INC_DIR})
 endif()
 
-if (USE_HTTP_SERVER)
+if (USE_HTTP_SERVER_OATPP)
     ExternalProject_Add(
+        oatpp
+        PREFIX oatpp
+        URL https://github.com/oatpp/oatpp/archive/1.2.0.tar.gz
+        URL_HASH SHA256=7f55669827ece429b6d85f4403b76da717d3fdf0e92721e9a0229cf8168e8e37
+        BUILD_IN_SOURCE true
+        CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DOATPP_INSTALL=OFF -DOATPP_BUILD_TESTS=OFF
+        INSTALL_COMMAND ""
+    )
+    ExternalProject_Add(
+        oatpp-zlib
+        PREFIX oatpp-zlib
+        URL https://github.com/oatpp/oatpp-zlib/archive/1.2.0.tar.gz
+        URL_HASH SHA256=cf9a5815ce0e845e4353ecd537e34a414bcd6ca4f09d0f763224dc56163d6477
+        CMAKE_ARGS
+            -DCMAKE_BUILD_TYPE=Release
+            -DBUILD_SHARED_LIBS=OFF
+            -DOATPP_BUILD_TESTS=OFF
+            -DOATPP_INSTALL=OFF
+            -DOATPP_MODULES_LOCATION=CUSTOM
+            -DOATPP_DIR_SRC=${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src
+            -DOATPP_DIR_LIB=${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src
+        BUILD_IN_SOURCE true
+        INSTALL_COMMAND ""
+        DEPENDS oatpp
+    )
+    ExternalProject_Add(
+        oatpp-swagger
+        PREFIX oatpp-swagger
+        URL https://github.com/oatpp/oatpp-swagger/archive/1.2.0.tar.gz
+        URL_HASH SHA256=8457c9d6f13165428df66f8ff648d3970d0108d572cf8c42bb87122a05e507e6
+        BUILD_IN_SOURCE true
+        INSTALL_COMMAND ""
+        CMAKE_ARGS
+            -DCMAKE_BUILD_TYPE=Release
+            -DBUILD_SHARED_LIBS=OFF
+            -DOATPP_BUILD_TESTS=OFF
+            -DOATPP_INSTALL=OFF
+            -DOATPP_MODULES_LOCATION=CUSTOM
+            -DOATPP_DIR_SRC=${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src
+            -DOATPP_DIR_LIB=${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src
+        DEPENDS oatpp
+    )
+
+    # FIXME(sileht): we should copy res outside build dir and dynamically looks at runtime at different places
+    add_definitions("-DOATPP_SWAGGER_RES_PATH=\"${CMAKE_BINARY_DIR}/oatpp-swagger/src/oatpp-swagger/res/\"")
+
+    set(OATPP_LIB_DEPS
+        ${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src/liboatpp.a
+        ${CMAKE_BINARY_DIR}/oatpp-zlib/src/oatpp-zlib/src/liboatpp-zlib.a
+        ${CMAKE_BINARY_DIR}/oatpp-swagger/src/oatpp-swagger/src/liboatpp-swagger.a
+        z  # zlib
+    )
+    include_directories(
+        SYSTEM ${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src
+        SYSTEM ${CMAKE_BINARY_DIR}/oatpp-zlib/src/oatpp-zlib/src
+        SYSTEM ${CMAKE_BINARY_DIR}/oatpp-swagger/src/oatpp-swagger/src
+    )
+endif()
+
+if (USE_HTTP_SERVER)
+        ExternalProject_Add(
         cpp-netlib
         PREFIX cpp-netlib
         URL http://downloads.cpp-netlib.org/0.11.2/cpp-netlib-0.11.2-final.tar.gz
@@ -902,8 +968,8 @@ if (USE_HTTP_SERVER)
         INSTALL_COMMAND ""
     )
     set(HTTP_LIB_DEPS ${CMAKE_BINARY_DIR}/cpp-netlib/src/cpp-netlib/libs/network/src/libcppnetlib-uri.a crypto ssl)
-    set(HTTP_INCLUDE_DIR SYSTEM ${CMAKE_BINARY_DIR}/cpp-netlib/src/cpp-netlib)
-    include_directories(${HTTP_INCLUDE_DIR})
+    set(HTTP_INCLUDE_DIR ${CMAKE_BINARY_DIR}/cpp-netlib/src/cpp-netlib)
+    include_directories(SYSTEM ${HTTP_INCLUDE_DIR})
 endif()
 
 # main library, main & tests
@@ -935,6 +1001,7 @@ set(COMMON_LINK_LIBS
     ${PROTOBUF_LIB_DEPS}
     ${HTTP_LIB_DEPS}
     ${SPDLOG_LIB_DEPS}
+    ${OATPP_LIB_DEPS}
     ${CAFFE_LIB_DEPS}
     ${CAFFE2_LIB_DEPS}
     ${TF_LIB_DEPS}
@@ -951,13 +1018,13 @@ endif()
 add_subdirectory(main)
 
 # templates
-file(COPY "templates" DESTINATION ".")
+execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/templates/ ${CMAKE_BINARY_DIR}/templates)
 
 # examples
-file(COPY "examples" DESTINATION ".")
+execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/examples/ ${CMAKE_BINARY_DIR}/examples)
 
 # patches
-file(COPY "patches" DESTINATION ".")
+execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/patches/ ${CMAKE_BINARY_DIR}/patches)
 
 # unit testing
 if (BUILD_TESTS)
@@ -1011,6 +1078,7 @@ message(STATUS "WARNING:               ${WARNING}")
 message(STATUS "USE_COMMAND_LINE:      ${USE_COMMAND_LINE}")
 message(STATUS "USE_JSON_API:          ${USE_JSON_API}")
 message(STATUS "USE_HTTP_SERVER:       ${USE_HTTP_SERVER}")
+message(STATUS "USE_HTTP_SERVER_OATPP: ${USE_HTTP_SERVER_OATPP}")
 message(STATUS "BUILD_TESTS:           ${BUILD_TESTS}")
 message(STATUS "BUILD_TOOLS:           ${BUILD_TOOLS}")
 message(STATUS "USE_CAFFE:             ${USE_CAFFE}")

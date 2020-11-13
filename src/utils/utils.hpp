@@ -23,6 +23,7 @@
 #define DD_UTILS
 
 #include <fstream>
+#include <vector>
 
 namespace dd
 {

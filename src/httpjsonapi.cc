@@ -24,6 +24,7 @@
 #include <algorithm>
 #include <csignal>
 #include <iostream>
+#include <vector>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wterminate"
 #pragma GCC diagnostic ignored "-Wsign-compare"
@@ -44,10 +45,10 @@
 #include <chrono>
 #include <ctime>
 
-DEFINE_string(host, "localhost", "host for running the server");
-DEFINE_string(port, "8080", "server port");
+DECLARE_string(host);
+DECLARE_uint32(port);
 DEFINE_int32(nthreads, 10, "number of HTTP server threads");
-DEFINE_string(allow_origin, "", "Access-Control-Allow-Origin for the server");
+DECLARE_string(allow_origin);
 
 using namespace boost::iostreams;
 
@@ -629,7 +630,8 @@ namespace dd
     std::signal(SIGSEGV, abort);
     std::signal(SIGABRT, abort);
     JsonAPI::boot(argc, argv);
-    return start_server(FLAGS_host, FLAGS_port, FLAGS_nthreads);
+    return start_server(FLAGS_host, std::to_string(FLAGS_port),
+                        FLAGS_nthreads);
   }
 
 }
