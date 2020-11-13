@@ -287,6 +287,10 @@ namespace dd
   {
     _output_size = inputc._label.size();
     _data_size = inputc._datadim - _output_size;
+    if (_output_size != _data_size)
+      throw MLLibBadParamException(
+          "NBEATS does not support different data dimensions for inputs and "
+          "outputs at the moment");
     _backcast_length = inputc._timesteps;
   }
 
