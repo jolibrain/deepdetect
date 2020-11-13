@@ -212,7 +212,9 @@ namespace dd
         return torch::nullopt;
       }
 
-    std::vector<std::vector<torch::Tensor>> data, target;
+    typedef std::vector<torch::Tensor> BatchToStack;
+    std::vector<BatchToStack> data, target;
+    bool first_iter = true;
 
     if (!_db)
       {
@@ -221,16 +223,19 @@ namespace dd
             auto id = _indices.back();
             auto entry = _batches[id];
 
-            for (unsigned int i = 0; i < entry.data.size(); ++i)
+            if (first_iter)
               {
-                while (i >= data.size())
-                  data.emplace_back();
+                data.resize(entry.data.size());
+                target.resize(entry.target.size());
+                first_iter = false;
+              }
+
+            for (unsigned int i = 0; i < data.size(); ++i)
+              {
                 data[i].push_back(entry.data.at(i));
               }
-            for (unsigned int i = 0; i < entry.target.size(); ++i)
+            for (unsigned int i = 0; i < target.size(); ++i)
               {
-                while (i >= target.size())
-                  target.emplace_back();
                 target[i].push_back(entry.target.at(i));
               }
 
@@ -277,10 +282,10 @@ namespace dd
           }
       }
 
-    for (auto vec : data)
+    for (const auto &vec : data)
       data_tensors.push_back(torch::stack(vec));
 
-    for (auto vec : target)
+    for (const auto &vec : target)
       target_tensors.push_back(torch::stack(vec));
 
     return TorchBatch{ data_tensors, target_tensors };
