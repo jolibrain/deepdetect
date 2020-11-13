@@ -18,7 +18,7 @@ pipeline {
         script {
           try {
             copyArtifacts(projectName: 'deepdetect-prebuilt-cache/master')
-            sh 'tar -xzf prebuilt-cache-*.tar'
+            sh 'tar -xzf prebuilt-cache-*.tar.gz'
           } catch (err) {
             echo "artefact copy fail, skipping it"
             echo err.getMessage();
