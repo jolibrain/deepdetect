@@ -22,7 +22,7 @@
  */
 
 #include "torchdataset.h"
-#include "inputconnectorstrategy.h"
+#include "torchinputconns.h"
 
 namespace dd
 {
@@ -310,5 +310,133 @@ namespace dd
     TorchDataset new_dataset;
     new_dataset._batches.insert(new_dataset._batches.end(), start_it, stop_it);
     return new_dataset;
+  }
+
+  /*-- image tools --*/
+  int TorchDataset::add_image_file(const std::string &fname, const int &target,
+                                   const int &height, const int &width)
+  {
+    ImgTorchInputFileConn *inputc
+        = reinterpret_cast<ImgTorchInputFileConn *>(_inputc);
+
+    DDImg dimg;
+    inputc->copy_parameters_to(dimg);
+
+    try
+      {
+        if (dimg.read_file(fname))
+          {
+            this->_logger->error("Uri failed: {}", fname);
+          }
+      }
+    catch (std::exception &e)
+      {
+        this->_logger->error("Uri failed: {}", fname);
+      }
+    if (dimg._imgs.size() != 0)
+      {
+        at::Tensor imgt = image_to_tensor(dimg._imgs[0], height, width);
+        // at::Tensor targett{ torch::full(1, target, torch::kLong) };
+        at::Tensor targett = target_to_tensor(target);
+
+        add_batch({ imgt }, { targett });
+        return 0;
+      }
+    else
+      {
+        return -1;
+      }
+  }
+
+  int TorchDataset::add_image_file(const std::string &fname,
+                                   const std::vector<double> &target,
+                                   const int &height, const int &width)
+  {
+    ImgTorchInputFileConn *inputc
+        = reinterpret_cast<ImgTorchInputFileConn *>(_inputc);
+
+    DDImg dimg;
+    inputc->copy_parameters_to(dimg);
+
+    try
+      {
+        if (dimg.read_file(fname))
+          {
+            this->_logger->error("Uri failed: {}", fname);
+          }
+      }
+    catch (std::exception &e)
+      {
+        this->_logger->error("Uri failed: {}", fname);
+      }
+    if (dimg._imgs.size() != 0)
+      {
+        at::Tensor imgt = image_to_tensor(dimg._imgs[0], height, width);
+        // at::Tensor targett{ torch::full(1, target, torch::kLong) };
+        at::Tensor targett = target_to_tensor(target);
+
+        add_batch({ imgt }, { targett });
+        return 0;
+      }
+    else
+      {
+        return -1;
+      }
+  }
+
+  at::Tensor TorchDataset::image_to_tensor(const cv::Mat &bgr,
+                                           const int &height, const int &width)
+  {
+    ImgTorchInputFileConn *inputc
+        = reinterpret_cast<ImgTorchInputFileConn *>(_inputc);
+
+    std::vector<int64_t> sizes{ height, width, bgr.channels() };
+    at::TensorOptions options(at::ScalarType::Byte);
+
+    at::Tensor imgt = torch::from_blob(bgr.data, at::IntList(sizes), options);
+    imgt = imgt.toType(at::kFloat).permute({ 2, 0, 1 });
+    size_t nchannels = imgt.size(0);
+
+    if (inputc->_scale != 1.0)
+      imgt = imgt.mul(inputc->_scale);
+
+    if (!inputc->_mean.empty() && inputc->_mean.size() != nchannels)
+      throw InputConnectorBadParamException(
+          "mean vector be of size the number of channels ("
+          + std::to_string(nchannels) + ")");
+
+    for (size_t m = 0; m < inputc->_mean.size(); m++)
+      imgt[0][m] = imgt[0][m].sub_(inputc->_mean.at(m));
+
+    if (!inputc->_std.empty() && inputc->_std.size() != nchannels)
+      throw InputConnectorBadParamException(
+          "std vector be of size the number of channels ("
+          + std::to_string(nchannels) + ")");
+
+    for (size_t s = 0; s < inputc->_std.size(); s++)
+      imgt[0][s] = imgt[0][s].div_(inputc->_std.at(s));
+
+    return imgt;
+  }
+
+  at::Tensor TorchDataset::target_to_tensor(const int &target)
+  {
+    at::Tensor targett{ torch::full(1, target, torch::kLong) };
+    return targett;
+  }
+
+  at::Tensor TorchDataset::target_to_tensor(const std::vector<double> &target)
+  {
+    int64_t tsize = target.size();
+
+    at::Tensor targett = torch::zeros(tsize, torch::kFloat32);
+    int n = 0;
+    for (auto i : target) // XXX: from_blob does not seem to work, fills up
+                          // with spurious values
+      {
+        targett[n] = i;
+        ++n;
+      }
+    return targett;
   }
 }
