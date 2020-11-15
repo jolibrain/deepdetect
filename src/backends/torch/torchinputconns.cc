@@ -308,18 +308,26 @@ namespace dd
                   }
 
                 // Read data
-                for (const std::pair<std::string, std::vector<double>> &lfile :
-                     lfiles)
+                if (_db)
                   {
-                    _dataset.add_image_file(lfile.first, lfile.second, _height,
-                                            _width);
-                  }
+                    for (const std::pair<std::string, std::vector<double>>
+                             &lfile : lfiles)
+                      {
+                        _dataset.add_image_file(lfile.first, lfile.second,
+                                                _height, _width);
+                      }
 
-                for (const std::pair<std::string, std::vector<double>> &lfile :
-                     test_lfiles)
+                    for (const std::pair<std::string, std::vector<double>>
+                             &lfile : test_lfiles)
+                      {
+                        _test_dataset.add_image_file(lfile.first, lfile.second,
+                                                     _height, _width);
+                      }
+                  }
+                else
                   {
-                    _test_dataset.add_image_file(lfile.first, lfile.second,
-                                                 _height, _width);
+                    _dataset.set_list(lfiles);
+                    _test_dataset.set_list(test_lfiles);
                   }
               }
           }

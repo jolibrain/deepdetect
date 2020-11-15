@@ -442,6 +442,8 @@ namespace dd
     APIData ad_input = ad.getobj("parameters").getobj("input");
     if (ad_input.has("shuffle"))
       inputc._dataset.set_shuffle(ad_input.get("shuffle").get<bool>());
+    inputc._dataset._classification = inputc._test_dataset._classification
+        = _classification;
 
     try
       {
@@ -530,8 +532,10 @@ namespace dd
     TorchDataset eval_dataset;
     if (!inputc._test_dataset.empty())
       {
-        eval_dataset = inputc._test_dataset; //.split(0, 0.1);
+        eval_dataset = inputc._test_dataset;
       }
+    else
+      throw MLLibBadParamException("empty test dataset");
 
     // create solver
     tsolver.create(_module);
