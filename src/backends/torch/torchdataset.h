@@ -31,6 +31,11 @@
 
 #include "backends/torch/db.hpp"
 #include "backends/torch/db_lmdb.hpp"
+
+#include "inputconnectorstrategy.h"
+#include "torchutils.h"
+
+#include <opencv2/opencv.hpp>
 #include <random>
 
 namespace dd
@@ -67,6 +72,7 @@ namespace dd
     std::vector<TorchBatch> _batches; /**< Vector containing the whole dataset
                                          (the "cached data") */
     std::string _dbFullName;          /**< db filename */
+    InputConnectorStrategy *_inputc = nullptr;
 
     /**
      * \brief empty constructor
@@ -83,7 +89,7 @@ namespace dd
           _current_index(d._current_index), _backend(d._backend), _db(d._db),
           _batches_per_transaction(d._batches_per_transaction), _txn(d._txn),
           _logger(d._logger), _dbData(d._dbData), _indices(d._indices),
-          _batches(d._batches), _dbFullName(d._dbFullName)
+          _batches(d._batches), _dbFullName(d._dbFullName), _inputc(d._inputc)
     {
     }
 
@@ -201,6 +207,17 @@ namespace dd
      * \brief Split a percentage of this dataset
      */
     TorchDataset split(double start, double stop);
+
+    /*-- image tools --*/
+    int add_image_file(const std::string &fname, const int &target,
+                       const int &height, const int &width);
+    int add_image_file(const std::string &fname,
+                       const std::vector<double> &target, const int &height,
+                       const int &width);
+    at::Tensor image_to_tensor(const cv::Mat &bgr, const int &height,
+                               const int &width);
+    at::Tensor target_to_tensor(const int &target);
+    at::Tensor target_to_tensor(const std::vector<double> &target);
 
   private:
     /**
