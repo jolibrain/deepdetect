@@ -142,10 +142,21 @@ namespace dd
     if (!_db)
       {
         _indices.clear();
-
-        for (unsigned int i = 0; i < _batches.size(); ++i)
+        if (!_lfiles.empty()) // list of files
           {
-            _indices.push_back(i);
+            _indices = std::vector<int64_t>(_lfiles.size());
+            std::iota(std::begin(_indices), std::end(_indices), 0);
+          }
+        else if (!_batches.empty())
+          {
+            for (unsigned int i = 0; i < _batches.size(); ++i)
+              {
+                _indices.push_back(i);
+              }
+          }
+        else
+          {
+            //
           }
       }
     else // below db case
@@ -218,29 +229,76 @@ namespace dd
 
     if (!_db)
       {
-        while (count != 0)
+        if (!_lfiles.empty()) // prefetch batch from file list
           {
-            auto id = _indices.back();
-            auto entry = _batches[id];
+            ImgTorchInputFileConn *inputc
+                = reinterpret_cast<ImgTorchInputFileConn *>(_inputc);
 
-            if (first_iter)
+            size_t nlfiles = 0;
+            while (nlfiles < count)
               {
+                auto id = _indices.back();
+                auto lfile = _lfiles.at(id);
+                if (_classification)
+                  add_image_file(lfile.first,
+                                 static_cast<int>(lfile.second.at(0)),
+                                 inputc->height(), inputc->width());
+                else // vector generic type, including regression
+                  add_image_file(lfile.first, lfile.second, inputc->height(),
+                                 inputc->width());
+                ++nlfiles;
+                _indices.pop_back();
+              }
+
+            if (first_iter && !_batches.empty())
+              {
+                auto entry = _batches[0];
                 data.resize(entry.data.size());
                 target.resize(entry.target.size());
                 first_iter = false;
               }
 
-            for (unsigned int i = 0; i < data.size(); ++i)
+            for (size_t id = 0; id < count; ++id)
               {
-                data[i].push_back(entry.data.at(i));
-              }
-            for (unsigned int i = 0; i < target.size(); ++i)
-              {
-                target[i].push_back(entry.target.at(i));
-              }
+                auto entry = _batches[id];
 
-            _indices.pop_back();
-            count--;
+                for (unsigned int i = 0; i < entry.data.size(); ++i)
+                  {
+                    data[i].push_back(entry.data.at(i));
+                  }
+                for (unsigned int i = 0; i < entry.target.size(); ++i)
+                  {
+                    target[i].push_back(entry.target.at(i));
+                  }
+              }
+            _batches.clear();
+          }
+        else // batches
+          {
+            while (count != 0)
+              {
+                auto id = _indices.back();
+                auto entry = _batches[id];
+
+                if (first_iter)
+                  {
+                    data.resize(entry.data.size());
+                    target.resize(entry.target.size());
+                    first_iter = false;
+                  }
+
+                for (unsigned int i = 0; i < entry.data.size(); ++i)
+                  {
+                    data[i].push_back(entry.data.at(i));
+                  }
+                for (unsigned int i = 0; i < entry.target.size(); ++i)
+                  {
+                    target[i].push_back(entry.target.at(i));
+                  }
+
+                _indices.pop_back();
+                count--;
+              }
           }
       }
     else // below db case
@@ -264,16 +322,19 @@ namespace dd
             torch::load(d, datastream);
             torch::load(t, targetstream);
 
+            if (first_iter)
+              {
+                data.resize(d.size());
+                target.resize(t.size());
+                first_iter = false;
+              }
+
             for (unsigned int i = 0; i < d.size(); ++i)
               {
-                while (i >= data.size())
-                  data.emplace_back();
                 data[i].push_back(d.at(i));
               }
             for (unsigned int i = 0; i < t.size(); ++i)
               {
-                while (i >= target.size())
-                  target.emplace_back();
                 target[i].push_back(t.at(i));
               }
 
@@ -336,7 +397,6 @@ namespace dd
     if (dimg._imgs.size() != 0)
       {
         at::Tensor imgt = image_to_tensor(dimg._imgs[0], height, width);
-        // at::Tensor targett{ torch::full(1, target, torch::kLong) };
         at::Tensor targett = target_to_tensor(target);
 
         add_batch({ imgt }, { targett });

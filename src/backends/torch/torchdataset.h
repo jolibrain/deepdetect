@@ -59,7 +59,7 @@ namespace dd
     int64_t _current_index
         = 0; /**< current index for batch parallel data extraction */
     std::string _backend; /**< db backend (currently only lmdb supported= */
-    bool _db;             /**< is data in db ? */
+    bool _db = false;     /**< is data in db ? */
     int32_t _batches_per_transaction
         = 10; /**< number of batches per db transaction */
     std::shared_ptr<db::Transaction> _txn;   /**< db transaction pointer */
@@ -68,11 +68,15 @@ namespace dd
   public:
     std::shared_ptr<db::DB> _dbData; /**< db data */
     std::vector<int64_t> _indices;   /**< id/key  of data points */
+    std::vector<std::pair<std::string, std::vector<double>>>
+        _lfiles; /**< list of files */
 
     std::vector<TorchBatch> _batches; /**< Vector containing the whole dataset
                                          (the "cached data") */
     std::string _dbFullName;          /**< db filename */
-    InputConnectorStrategy *_inputc = nullptr;
+    InputConnectorStrategy *_inputc
+        = nullptr;               /**< back ptr to input connector. */
+    bool _classification = true; /**< whether a classification dataset. */
 
     /**
      * \brief empty constructor
@@ -89,7 +93,8 @@ namespace dd
           _current_index(d._current_index), _backend(d._backend), _db(d._db),
           _batches_per_transaction(d._batches_per_transaction), _txn(d._txn),
           _logger(d._logger), _dbData(d._dbData), _indices(d._indices),
-          _batches(d._batches), _dbFullName(d._dbFullName), _inputc(d._inputc)
+          _lfiles(d._lfiles), _batches(d._batches), _dbFullName(d._dbFullName),
+          _inputc(d._inputc), _classification(d._classification)
     {
     }
 
@@ -156,6 +161,15 @@ namespace dd
     }
 
     /**
+     * \brief set list of files
+     */
+    void set_list(
+        const std::vector<std::pair<std::string, std::vector<double>>> &lfiles)
+    {
+      _lfiles = lfiles;
+    }
+
+    /**
      * \brief setter for _logger
      */
     void set_logger(std::shared_ptr<spdlog::logger> logger)
@@ -184,7 +198,8 @@ namespace dd
      */
     bool empty() const
     {
-      return (!_db && cache_size() == 0) || (_db && _dbFullName.empty());
+      return (!_db && cache_size() == 0 && _lfiles.empty())
+             || (_db && _dbFullName.empty());
     }
 
     /**
