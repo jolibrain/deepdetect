@@ -27,6 +27,5 @@ for dest in "${!runtime_images[@]}" ; do
         -e "s,FROM [^ ]* AS runtime,FROM ${runtime_image} AS runtime,g" \
         -e "s,ARG DEEPDETECT_ARCH=.*,ARG DEEPDETECT_ARCH=gpu,g" \
         -e "s,ARG DEEPDETECT_BUILD=.*,ARG DEEPDETECT_BUILD=${build},g" \
-        -e "s/\(apt_\(cache\|lib\)\)_cpu/\1_${dest}/g" \
         $here/cpu.Dockerfile > $here/${dest}.Dockerfile
 done
