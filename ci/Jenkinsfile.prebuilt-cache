@@ -19,8 +19,17 @@ mkdir -p build
 cd build
 cmake .. -DBUILD_TESTS=ON -DUSE_CUDNN=ON -DUSE_FAISS=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_XGBOOST=ON -DUSE_TORCH=ON -DUSE_NCNN=ON -DUSE_TENSORRT=ON -DUSE_TENSORRT_OSS=ON -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61"
 schedtool -B -n 1 -e ionice -n 1 make -j24 pytorch caffe_dd Multicore-TSNE faisslib ncnn xgboost cpp-netlib tensorrt-oss
-rm -rf CMakeFiles Makefile CMakeCache.txt cmake_install.cmake
 ccache -s
+
+# Remove cmake files
+find . -type d -name "CMakeFiles" -exec rm -rf {} +
+find . -type f -name "CMakeCache.txt" -exec rm -rf {} +
+find . -type f -name "cmake_install.cmake" -exec rm -rf {} +
+
+# For compat with current job
+touch prebuilt-cache-${GIT_COMMIT}
+tar -cvzf prebuilt-cache-${GIT_COMMIT}.tar.gz prebuilt-cache-${GIT_COMMIT}
+rm -f prebuilt-cache-${GIT_COMMIT}
 '''
       }
     }
@@ -31,7 +40,7 @@ ccache -s
     }
     stage('Saving archive') {
       steps {
-        archiveArtifacts(artifacts: 'prebuilt-cache-*.tar.gz')
+        archiveArtifacts(artifacts: 'build')
       }
     }
   }
