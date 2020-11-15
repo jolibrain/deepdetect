@@ -279,6 +279,13 @@ if (GTEST_FOUND)
       "examples/trt"
       "squeezenet-ssd-trt.tar.gz"
       "squeezenet_ssd_trt"
+      )
+    DOWNLOAD_DATASET(
+      "TensorRT test RefineDet model"
+      "https://www.deepdetect.com/dd/examples/tensorrt/faces-512-trt.tar.gz"
+      "examples/trt"
+      "faces-512-trt.tar.gz"
+      "faces_512"
     )
     DOWNLOAD_DATASET(
       "Age test set"
