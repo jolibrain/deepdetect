@@ -105,6 +105,13 @@ namespace dd
 
   void TorchModule::native_model_load(const TorchModel &tmodel)
   {
+    if (!_native)
+      {
+        _logger->warn(
+            "trying to load weights before allocating native module");
+        return;
+      }
+
     if (!tmodel._native.empty())
       {
         _logger->info("loading " + tmodel._native);
