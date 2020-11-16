@@ -743,6 +743,10 @@ embedding_size  | int    | yes      | 768     | embedding size for NLP models
 freeze_traced   | bool   | yes      | false   | Freeze the traced part of the net during finetuning (e.g. for classification)
 template        | string | yes      | ""      | for language models, either "bert" or "gpt2", "recurrent" for LSTM-like models (including autoencoder), "nbeats" for nbeats model
 regression | bool            | yes                      | false   | Whether the model is a regressor
+timesteps     | int            | yes      | N/A            | Number of timesteps for time models (LSTM/NBEATS...) : this sets the length of sequences that will be given for learning, every timestep contains inputs and outputs as defined by the csv/csvts connector
+offset        | int            | yes      | N/A            | Offset beween start point of sequences with connector `cvsts`, defining the overlap of input series
+forecast_timesteps      | int            | yes      | N/A       | for nbeats model, this gives the length of the forecast
+backcast_timesteps      | int            | yes      | N/A       | for nbeats model, this gives the length of the backcast
 
 
 Model instantiation parameters:

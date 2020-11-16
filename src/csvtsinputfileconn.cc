@@ -476,10 +476,13 @@ namespace dd
 
     out << "ncols: " << _min_vals.size() << std::endl;
     out << "nlabels: " << _label_pos.size() << std::endl;
-    out << "label_pos: ";
-    for (unsigned int i = 0; i < _label_pos.size() - 1; ++i)
-      out << " " << _label_pos[i] << " " << delim;
-    out << " " << _label_pos[_label_pos.size() - 1] << std::endl;
+    if (_label_pos.size() > 0)
+      {
+        out << "label_pos: ";
+        for (unsigned int i = 0; i < _label_pos.size() - 1; ++i)
+          out << " " << _label_pos[i] << " " << delim;
+        out << " " << _label_pos[_label_pos.size() - 1] << std::endl;
+      }
     out << "min_vals: ";
     for (unsigned int i = 0; i < _min_vals.size() - 1; ++i)
       out << " " << std::setprecision(boundsprecision) << _min_vals[i] << " "
