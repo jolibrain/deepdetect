@@ -1,7 +1,9 @@
+String cron_info = BRANCH_NAME == "master" ? "H 22 * * 1-5'" : ""
+
 pipeline {
   agent { node { label 'docker' } }
   triggers {
-    cron('H 22 * * 1-5')
+    cron(cron_info)
   }
   stages {
     stage('Init') {
