@@ -36,9 +36,8 @@
   }
 #define NBEATS_DEFAULT_NB_BLOCKS 3
 #define NBEATS_DEFAULT_DATA_SIZE 1
-#define NBEATS_DEFAULT_OUTPUT_SIZE 1
-#define NBEATS_DEFAULT_BACKCAST_LENGTH 50
-//#define NBEATS_DEFAULT_FORECAST_LENGTH 50
+#define NBEATS_DEFAULT_BACKCAST_LENGTH 500
+#define NBEATS_DEFAULT_FORECAST_LENGTH 50
 #define NBEATS_DEFAULT_THETAS                                                 \
   {                                                                           \
     2, 8, 3                                                                   \
@@ -62,9 +61,11 @@ namespace dd
     {
     public:
       BlockImpl(int units, int thetas_dim, int backcast_length,
-                bool share_thetas, unsigned int data_size = 1)
+                int forecast_length, bool share_thetas,
+                unsigned int data_size = 1)
           : _units(units), _thetas_dim(thetas_dim), _data_size(data_size),
-            _backcast_length(backcast_length), _share_thetas(share_thetas)
+            _backcast_length(backcast_length),
+            _forecast_length(forecast_length), _share_thetas(share_thetas)
       {
         init_block();
       }
@@ -72,6 +73,7 @@ namespace dd
       BlockImpl(const BlockImpl &b)
           : torch::nn::Module(b), _units(b._units), _thetas_dim(b._thetas_dim),
             _data_size(b._data_size), _backcast_length(b._backcast_length),
+            _forecast_length(b._forecast_length),
             _share_thetas(b._share_thetas)
       {
       }
@@ -91,6 +93,7 @@ namespace dd
       unsigned int _thetas_dim;
       unsigned int _data_size;
       unsigned int _backcast_length;
+      unsigned int _forecast_length;
       bool _share_thetas;
       torch::nn::Linear _fc1{ nullptr };
       torch::nn::Linear _fc2{ nullptr };
@@ -107,8 +110,10 @@ namespace dd
     {
     public:
       SeasonalityBlockImpl(int units, int thetas_dim, int backcast_length,
-                           int data_size, torch::Tensor bS, torch::Tensor fS)
-          : BlockImpl(units, thetas_dim, backcast_length, true, data_size),
+                           int forecast_length, int data_size,
+                           torch::Tensor bS, torch::Tensor fS)
+          : BlockImpl(units, thetas_dim, backcast_length, forecast_length,
+                      true, data_size),
             _bS(bS), _fS(fS)
       {
       }
@@ -147,8 +152,10 @@ namespace dd
     {
     public:
       TrendBlockImpl(int units, int thetas_dim, int backcast_length,
-                     int data_size, torch::Tensor bT, torch::Tensor fT)
-          : BlockImpl(units, thetas_dim, backcast_length, true, data_size),
+                     int forecast_length, int data_size, torch::Tensor bT,
+                     torch::Tensor fT)
+          : BlockImpl(units, thetas_dim, backcast_length, forecast_length,
+                      true, data_size),
             _bT(bT), _fT(fT)
       {
       }
@@ -188,8 +195,9 @@ namespace dd
     {
     public:
       GenericBlockImpl(int units, int thetas_dim, int backcast_length,
-                       int data_size)
-          : BlockImpl(units, thetas_dim, backcast_length, false, data_size)
+                       int forecast_length, int data_size)
+          : BlockImpl(units, thetas_dim, backcast_length, forecast_length,
+                      false, data_size)
       {
         init_generic_block();
       }
@@ -218,7 +226,7 @@ namespace dd
             torch::nn::Linear(_thetas_dim, _backcast_length * _data_size));
         _forecast_fc = register_module(
             "forecast_fc",
-            torch::nn::Linear(_thetas_dim, _backcast_length * _data_size));
+            torch::nn::Linear(_thetas_dim, _forecast_length * _data_size));
       }
 
       torch::nn::Linear _backcast_fc{ nullptr };
@@ -232,12 +240,13 @@ namespace dd
   public:
     NBeats(std::vector<std::string> stackdef,
            std::vector<BlockType> stackTypes = { trend, seasonality, generic },
-           int nb_blocks_per_stack = 3, int data_size = 1, int output_size = 1,
-           int backcast_length = 50,
+           int nb_blocks_per_stack = 3, int data_size = 1,
+           int backcast_length = NBEATS_DEFAULT_BACKCAST_LENGTH,
+           int forecast_length = NBEATS_DEFAULT_FORECAST_LENGTH,
            std::vector<int> thetas_dims = { 2, 8, 3 },
            bool share_weights_in_stack = false, int hidden_layer_units = 10)
-        : _data_size(data_size), _output_size(output_size),
-          _backcast_length(backcast_length),
+        : _data_size(data_size), _backcast_length(backcast_length),
+          _forecast_length(forecast_length),
           _hidden_layer_units(hidden_layer_units),
           _nb_blocks_per_stack(nb_blocks_per_stack),
           _share_weights_in_stack(share_weights_in_stack),
@@ -252,14 +261,13 @@ namespace dd
            std::vector<BlockType> stackTypes = NBEATS_DEFAULT_STACK_TYPES,
            int nb_blocks_per_stack = NBEATS_DEFAULT_NB_BLOCKS,
            int data_size = NBEATS_DEFAULT_DATA_SIZE,
-           int output_size = NBEATS_DEFAULT_OUTPUT_SIZE,
            int backcast_length = NBEATS_DEFAULT_BACKCAST_LENGTH,
-           //           int forecast_length = NBEATS_DEFAULT_FORECAST_LENGTH,
+           int forecast_length = NBEATS_DEFAULT_FORECAST_LENGTH,
            std::vector<int> thetas_dims = NBEATS_DEFAULT_THETAS,
            bool share_weights_in_stack = NBEATS_DEFAULT_SHARE_WEIGHTS,
            int hidden_layer_units = NBEATS_DEFAULT_HIDDEN_LAYER_UNITS)
-        : _data_size(data_size), _output_size(output_size),
-          _backcast_length(backcast_length),
+        : _data_size(data_size), _backcast_length(backcast_length),
+          _forecast_length(forecast_length),
           _hidden_layer_units(hidden_layer_units),
           _nb_blocks_per_stack(nb_blocks_per_stack),
           _share_weights_in_stack(share_weights_in_stack),
@@ -270,9 +278,8 @@ namespace dd
       create_nbeats();
     }
     NBeats()
-        : _data_size(1), _output_size(1),
-          _backcast_length(NBEATS_DEFAULT_BACKCAST_LENGTH),
-          //          _forecast_length(NBEATS_DEFAULT_FORECAST_LENGTH),
+        : _data_size(1), _backcast_length(NBEATS_DEFAULT_BACKCAST_LENGTH),
+          _forecast_length(NBEATS_DEFAULT_FORECAST_LENGTH),
           _hidden_layer_units(NBEATS_DEFAULT_HIDDEN_LAYER_UNITS),
           _nb_blocks_per_stack(NBEATS_DEFAULT_NB_BLOCKS),
           _share_weights_in_stack(NBEATS_DEFAULT_SHARE_WEIGHTS),
@@ -283,11 +290,11 @@ namespace dd
     }
 
     NBeats(std::vector<BlockType> stackTypes, int nb_blocks_per_stack,
-           int data_size, int output_size, int backcast_length,
+           int data_size, int backcast_length, int forecast_length,
            std::vector<int> thetas_dims, bool share_weights_in_stack,
            int hidden_layer_units)
-        : _data_size(data_size), _output_size(output_size),
-          _backcast_length(backcast_length),
+        : _data_size(data_size), _backcast_length(backcast_length),
+          _forecast_length(forecast_length),
           _hidden_layer_units(hidden_layer_units),
           _nb_blocks_per_stack(nb_blocks_per_stack),
           _share_weights_in_stack(share_weights_in_stack),
@@ -338,10 +345,11 @@ namespace dd
           else
             {
               throw MLLibBadParamException(
-                  "nbeats options is of the form ['t2', 's8', 'g3', 'b3'] for "
+                  "nbeats options is of the form ['t2', 's8', 'g3', 'b3', "
+                  "'h50'] for "
                   "1 trend stack of width 2 thetas, 1 seasonality stack of "
                   "width 8 thetas, 1 generic stack of width 3 thetas, 3 "
-                  "blocks per stack ");
+                  "blocks per stack, hidden representation of size 50 ");
             }
         }
     }
@@ -354,15 +362,16 @@ namespace dd
 
     virtual torch::Tensor cleanup_output(torch::Tensor output)
     {
-      return torch::chunk(output, 2, 0)[1].flatten(0, 1);
+      return torch::slice(output, 1, _backcast_length,
+                          _backcast_length + _forecast_length);
     }
 
     virtual torch::Tensor loss(std::string loss, torch::Tensor input,
                                torch::Tensor output, torch::Tensor target)
     {
-      std::vector<torch::Tensor> chunks = torch::chunk(output, 2, 0);
-      torch::Tensor x_pred = chunks[0].flatten(0, 1);
-      torch::Tensor y_pred = chunks[1].flatten(0, 1);
+      torch::Tensor x_pred = torch::slice(output, 1, 0, _backcast_length);
+      torch::Tensor y_pred = torch::slice(output, 1, _backcast_length,
+                                          _backcast_length + _forecast_length);
       if (loss.empty() || loss == "L1" || loss == "l1")
         return torch::l1_loss(y_pred, target) + torch::l1_loss(x_pred, input);
       if (loss == "L2" || loss == "l2" || loss == "eucl")
@@ -371,20 +380,14 @@ namespace dd
       throw MLLibBadParamException("unknown loss " + loss);
     }
 
-    virtual void update_input_connector(TorchInputInterface &inputc)
-    {
-      inputc._split_ts_for_predict = true;
-    }
-
     virtual ~NBeats()
     {
     }
 
   protected:
     unsigned int _data_size = NBEATS_DEFAULT_DATA_SIZE;
-    unsigned int _output_size = NBEATS_DEFAULT_OUTPUT_SIZE;
     unsigned int _backcast_length = NBEATS_DEFAULT_BACKCAST_LENGTH;
-    //    unsigned int _forecast_length = NBEATS_DEFAULT_FORECAST_LENGTH;
+    unsigned int _forecast_length = NBEATS_DEFAULT_FORECAST_LENGTH;
     unsigned int _hidden_layer_units = NBEATS_DEFAULT_HIDDEN_LAYER_UNITS;
     unsigned int _nb_blocks_per_stack = NBEATS_DEFAULT_NB_BLOCKS;
     bool _share_weights_in_stack = NBEATS_DEFAULT_SHARE_WEIGHTS;

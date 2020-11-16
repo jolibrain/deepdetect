@@ -71,8 +71,6 @@ namespace dd
     virtual torch::Tensor loss(std::string loss, torch::Tensor input,
                                torch::Tensor output, torch::Tensor target)
         = 0;
-
-    virtual void update_input_connector(TorchInputInterface &inputc) = 0;
   };
 
   template <typename T>
