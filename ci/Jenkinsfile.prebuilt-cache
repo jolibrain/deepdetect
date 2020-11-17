@@ -40,7 +40,7 @@ rm -f prebuilt-cache-${GIT_COMMIT}
     }
     stage('Saving archive') {
       steps {
-        archiveArtifacts(artifacts: 'build')
+        archiveArtifacts(artifacts: 'build/**/*')
       }
     }
   }
