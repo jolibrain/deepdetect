@@ -547,6 +547,61 @@ TEST(torchapi, service_train_csvts_nbeats)
   rmdir(csvts_nbeats_repo.c_str());
 }
 
+TEST(torchapi, service_train_csvts_nbeats_resume_fail)
+{
+  // create service
+  JsonAPI japi;
+  std::string sname = "nbeats";
+  std::string csvts_data = sinus + "train";
+  std::string csvts_test = sinus + "test";
+  std::string csvts_predict = sinus + "predict";
+  std::string csvts_nbeats_repo = "csvts_nbeats";
+  mkdir(csvts_nbeats_repo.c_str(), 0777);
+
+  std::string jstr
+      = "{\"mllib\":\"torch\",\"description\":\"nbeats\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+        + csvts_nbeats_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"csvts\",\"label\":["
+          "\"output\"],\"timesteps\":50},\"mllib\":{\"template\":\"nbeats\","
+          "\"template_params\":[\"t2\",\"s4\",\"g3\",\"b3\"],"
+          "\"loss\":\"L1\"}}}";
+
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // train
+  std::string jtrainstr
+      = "{\"service\":\"" + sname
+        + "\",\"async\":false,\"parameters\":{\"input\":{\"shuffle\":true,"
+          "\"separator\":\",\",\"scale\":true,\"timesteps\":50,\"label\":["
+          "\"output\"]},\"mllib\":{\"resume\":true,\"gpu\":false,\"solver\":{"
+          "\"iterations\":"
+        + iterations_nbeats_cpu
+        + ",\"test_interval\":10,\"base_lr\":0.1,\"snapshot\":500,\"test_"
+          "initialization\":false,\"solver_type\":\"ADAM\"},\"net\":{\"batch_"
+          "size\":2,\"test_batch_"
+          "size\":10}},\"output\":{\"measure\":[\"L1\",\"L2\"]}},\"data\":[\""
+        + csvts_data + "\",\"" + csvts_test + "\"]}";
+
+  std::cerr << "jtrainstr=" << jtrainstr << std::endl;
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  JDoc jd;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_TRUE(jd.HasMember("status"));
+  ASSERT_EQ(400, jd["status"]["code"].GetInt());
+  ASSERT_EQ("Service Bad Request Error: resuming a model requires a "
+            "solverstate file in model repository",
+            jd["status"]["dd_msg"]);
+  //  remove service
+  jstr = "{\"clear\":\"full\"}";
+  joutstr = japi.jrender(japi.service_delete(sname, jstr));
+  ASSERT_EQ(ok_str, joutstr);
+  rmdir(csvts_nbeats_repo.c_str());
+}
+
 #if !defined(CPU_ONLY)
 
 TEST(torchapi, service_train_csvts_nbeats_gpu)
