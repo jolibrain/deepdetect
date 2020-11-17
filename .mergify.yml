@@ -91,3 +91,11 @@ pull_request_rules:
       label:
         remove:
           - conflict
+
+  - name: add ci:docker label
+    conditions:
+      - files~=^docker/
+    actions:
+      label:
+        add:
+            - ci:docker
