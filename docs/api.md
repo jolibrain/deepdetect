@@ -1059,8 +1059,7 @@ template             | string | yes      | empty                   | Output temp
 network              | object | yes      | empty                   | Output network parameters for pushing the output into another listening software
 measure              | array  | yes      | empty                   | Output measures requested, from `acc`: accuracy, `acc-k`: top-k accuracy, replace k with number (e.g. `acc-5`), `f1`: f1, precision and recall, `mcll`: multi-class log loss, `auc`: area under the curve, `cmdiag`: diagonal of confusion matrix (requires `f1`), `cmfull`: full confusion matrix (requires `f1`), `mcc`: Matthews correlation coefficient
 confidence_threshold | double | yes      | 0.0                     | only returns classifications or detections with probability strictly above threshold
-bbox                 | bool   | yes      | false                   | returns bounding boxes around object when using an object detection model, such that (xmin,ymax) yields the top left corner and (xmax,ymin) the lower right corner of a
-box.
+bbox                 | bool   | yes      | false                   | returns bounding boxes around object when using an object detection model, such that (xmin,ymax) yields the top left corner and (xmax,ymin) the lower right corner of a box.
 regression           | bool   | yes      | false   | whether the output of a model is a regression target (i.e. vector of one or more floats)
 rois                 | string | yes      | empty                   | set the ROI layer from which to extract the features from bounding boxes. Both the boxes and features ar returned when using an object detection model with ROI pooling layer
 index                | bool   | yes      | false                   | whether to index the output from prediction, for similarity search
