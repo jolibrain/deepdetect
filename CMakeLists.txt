@@ -577,6 +577,7 @@ elseif(USE_CAFFE)
         echo "INCLUDE_DIRS+=${PROTOBUF_INCLUDE_DIR}" >> Makefile.config &&
         echo "LIBRARY_DIRS+=${PROTOBUF_LIB_DIR}" >> Makefile.config
     BUILD_COMMAND ${CMAKE_COMMAND} -E env LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR}:$ENV{LD_LIBRARY_PATH} PATH=${PROTOBUF_LIB_DIR}:$ENV{PATH} make -j${N} proto all
+    INSTALL_COMMAND ""
     BUILD_IN_SOURCE 1
     DEPENDS caffe_pb_h protobuf
   )
