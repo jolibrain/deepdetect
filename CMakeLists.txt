@@ -558,29 +558,25 @@ elseif(USE_CAFFE)
     set(CAFFE_DEBUG 0)
   endif()
 
-  list(APPEND CAFFE_DD_CONFIGURE_COMMAND
-    sh -c "\
-        diff ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/.build_release/src/caffe/proto/caffe.pb.cc ${CMAKE_CURRENT_BINARY_DIR}/src/caffe.pb.cc > /dev/null 2>&1 \
-        && ( echo 'caffe version of caffe.pb.h/caffe.pb.cc is already up to date') \
-        || ( echo 'caffe.pb.h/caffe.pb.cc have change rebuilding caffe' && rm -rf ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/.build_release ) \
-    " &&
-    ln -sf ${CAFFE_DD_CONFIG_FILE} Makefile.config &&
-    echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config &&
-    echo "USE_SYSLOG:=${USE_SYSLOG}" >> Makefile.config &&
-    echo "DEBUG:=${CAFFE_DEBUG}" >> Makefile.config &&
-    echo "INCLUDE_DIRS+=${PROTOBUF_INCLUDE_DIR}" >> Makefile.config &&
-    echo "LIBRARY_DIRS+=${PROTOBUF_LIB_DIR}" >> Makefile.config &&
-    ${CMAKE_COMMAND} -E env LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR}:$ENV{LD_LIBRARY_PATH} PATH=${PROTOBUF_LIB_DIR}:$ENV{PATH} make -j${N}
-  )
-
   message(STATUS "include_dirs : ${INCLUDE_DIRS}")
 
   ExternalProject_Add(
     caffe_dd
     PREFIX caffe_dd
     URL https://github.com/${CAFFE_DD_USER}/caffe/archive/${CAFFE_DD_BRANCH}.tar.gz
-    CONFIGURE_COMMAND ${CAFFE_DD_CONFIGURE_COMMAND}
-    INSTALL_COMMAND ""
+    CONFIGURE_COMMAND
+        sh -c "\
+            diff ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/.build_release/src/caffe/proto/caffe.pb.cc ${CMAKE_CURRENT_BINARY_DIR}/src/caffe.pb.cc > /dev/null 2>&1 \
+            && ( echo 'caffe version of caffe.pb.h/caffe.pb.cc is already up to date') \
+            || ( echo 'caffe.pb.h/caffe.pb.cc have change rebuilding caffe' && rm -rf ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/.build_release ) \
+        " &&
+        ln -sf ${CAFFE_DD_CONFIG_FILE} Makefile.config &&
+        echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config &&
+        echo "USE_SYSLOG:=${USE_SYSLOG}" >> Makefile.config &&
+        echo "DEBUG:=${CAFFE_DEBUG}" >> Makefile.config &&
+        echo "INCLUDE_DIRS+=${PROTOBUF_INCLUDE_DIR}" >> Makefile.config &&
+        echo "LIBRARY_DIRS+=${PROTOBUF_LIB_DIR}" >> Makefile.config
+    BUILD_COMMAND ${CMAKE_COMMAND} -E env LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR}:$ENV{LD_LIBRARY_PATH} PATH=${PROTOBUF_LIB_DIR}:$ENV{PATH} make -j${N} proto all
     BUILD_IN_SOURCE 1
     DEPENDS caffe_pb_h protobuf
   )

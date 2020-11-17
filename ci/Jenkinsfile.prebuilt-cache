@@ -18,8 +18,6 @@ export PATH="/usr/lib/ccache/:$PATH"
 mkdir -p build
 cd build
 cmake .. -DBUILD_TESTS=ON -DUSE_CUDNN=ON -DUSE_FAISS=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_XGBOOST=ON -DUSE_TORCH=ON -DUSE_NCNN=ON -DUSE_TENSORRT=ON -DUSE_TENSORRT_OSS=ON -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61"
-# Workaround caffe.pb.h bug
-schedtool -B -n 1 -e ionice -n 1 make -j24 protobuf caffe_dd || true 
 schedtool -B -n 1 -e ionice -n 1 make -j24 protobuf caffe_dd pytorch Multicore-TSNE faisslib ncnn xgboost cpp-netlib tensorrt-oss
 ccache -s
 
