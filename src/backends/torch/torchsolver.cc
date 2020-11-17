@@ -198,4 +198,59 @@ namespace dd
       }
     return 0;
   }
+
+  int TorchSolver::resume(const APIData &ad_mllib, const TorchModel &mlmodel,
+                          const torch::Device &main_device,
+                          double &best_metric_value,
+                          int64_t &best_iteration_number)
+  {
+    // reload solver if asked for and set it value accordingly
+    if (ad_mllib.has("resume") && ad_mllib.get("resume").get<bool>())
+      {
+        std::string bestfilename
+            = mlmodel._repo + mlmodel._best_model_filename;
+        std::ifstream bestfile;
+        try
+          {
+            std::string tmp;
+            std::string bin;
+            bestfile.open(bestfilename, std::ios::in);
+            // first three fields are thrown away
+            bestfile >> tmp >> bin >> tmp >> tmp;
+            bestfile.close();
+            best_iteration_number = std::atof(bin.c_str());
+            best_metric_value = std::atof(tmp.c_str());
+          }
+        catch (std::exception &e)
+          {
+            _logger->info("no previous best model file");
+          }
+        if (mlmodel._sstate.empty())
+          {
+            throw MLLibBadParamException(
+                "resuming a model requires a solverstate file in model "
+                "repository");
+          }
+        else
+          try
+            {
+              return load(mlmodel._sstate, main_device);
+            }
+          catch (std::exception &e)
+            {
+              this->_logger->error("Failed to load solver state");
+              throw;
+            }
+      }
+    else if (!mlmodel._sstate.empty())
+      {
+        this->_logger->error("not resuming while a solverstate file remains "
+                             "in model repository");
+        throw MLLibBadParamException(
+            "a solverstate file requires a resume argument for training, "
+            "otherwise delete existing training state files (with clear=lib) "
+            "to cleanup the model repository");
+      }
+    return 0;
+  }
 }
