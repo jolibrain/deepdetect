@@ -50,7 +50,9 @@ cmake .. -DBUILD_TESTS=ON -DUSE_CUDNN=ON -DUSE_FAISS=ON -DUSE_SIMSEARCH=ON -DUSE
         sh '''
 export PATH="/usr/lib/ccache/:$PATH"
 cd build
-schedtool -B -n 1 -e ionice -n 1 make -j24 protobuf pytorch caffe_dd Multicore-TSNE faisslib ncnn xgboost cpp-netlib tensorrt-oss
+# Workaround caffe.pb.h bug
+schedtool -B -n 1 -e ionice -n 1 make -j24 protobuf caffe_dd || true 
+schedtool -B -n 1 -e ionice -n 1 make -j24 protobuf caffe_dd pytorch Multicore-TSNE faisslib ncnn xgboost cpp-netlib tensorrt-oss
 # TODO(sileht): we should create the prebuilt artefacts here after each successful master branch build
 schedtool -B -n 1 -e ionice -n 1 make -j 6
 ccache -s
