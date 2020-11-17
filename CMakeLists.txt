@@ -145,7 +145,7 @@ file(
 )
 add_custom_target(
     caffe_pb_h
-    ${PROTOBUF_LIB_DIR}/protoc --proto_path=${CMAKE_BINARY_DIR} --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_BINARY_DIR}/caffe.proto
+    LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR} ${PROTOBUF_LIB_DIR}/protoc --proto_path=${CMAKE_BINARY_DIR} --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_BINARY_DIR}/caffe.proto
     BYPRODUCTS ${CMAKE_BINARY_DIR}/src/caffe.pb.h ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
     COMMENT Generating caffe.pb.h and caffe.pb.cc
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
