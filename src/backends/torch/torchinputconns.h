@@ -251,6 +251,12 @@ namespace dd
         const std::string &listfilePath);
 
     /**
+     * \brief shuffle dataset
+     */
+    template <typename T>
+    void shuffle_dataset(std::vector<std::pair<std::string, T>> &lfiles);
+
+    /**
      * \brief split dataset into train and test
      */
     template <typename T>

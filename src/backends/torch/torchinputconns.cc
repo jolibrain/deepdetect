@@ -260,6 +260,9 @@ namespace dd
                                       test_hcorresp_r, _uris.at(1));
                   }
 
+                if (_dataset._shuffle)
+                  shuffle_dataset<int>(lfiles);
+
                 bool has_test_data = test_lfiles.size() != 0;
                 if (_test_split > 0.0 && !has_test_data)
                   {
@@ -302,6 +305,9 @@ namespace dd
                 if (_uris.size() > 1)
                   read_image_list(test_lfiles, _uris.at(1));
 
+                if (_dataset._shuffle)
+                  shuffle_dataset<std::vector<double>>(lfiles);
+
                 bool has_test_data = test_lfiles.size() != 0;
                 if (_test_split > 0.0 && !has_test_data)
                   {
@@ -341,98 +347,10 @@ namespace dd
       }
   }
 
-  /*template <typename T>
-  int ImgTorchInputFileConn::add_image_file(TorchDataset &dataset,
-                                            const std::string &fname, T target)
-  {
-    DDImg dimg;
-    copy_parameters_to(dimg);
-
-    try
-      {
-        if (dimg.read_file(fname))
-          {
-            this->_logger->error("Uri failed: {}", fname);
-          }
-      }
-    catch (std::exception &e)
-      {
-        this->_logger->error("Uri failed: {}", fname);
-      }
-    if (dimg._imgs.size() != 0)
-      {
-        at::Tensor imgt = image_to_tensor(dimg._imgs[0]);
-        // at::Tensor targett{ torch::full(1, target, torch::kLong) };
-        at::Tensor targett = target_to_tensor(target);
-
-        dataset.add_batch({ imgt }, { targett });
-        return 0;
-      }
-    else
-      {
-        return -1;
-      }
-  }
-
-  at::Tensor ImgTorchInputFileConn::image_to_tensor(const cv::Mat &bgr)
-  {
-    std::vector<int64_t> sizes{ _height, _width, bgr.channels() };
-    at::TensorOptions options(at::ScalarType::Byte);
-
-    at::Tensor imgt = torch::from_blob(bgr.data, at::IntList(sizes), options);
-    imgt = imgt.toType(at::kFloat).permute({ 2, 0, 1 });
-    size_t nchannels = imgt.size(0);
-
-    if (_scale != 1.0)
-      imgt = imgt.mul(_scale);
-
-    if (!_mean.empty() && _mean.size() != nchannels)
-      throw InputConnectorBadParamException(
-          "mean vector be of size the number of channels ("
-          + std::to_string(nchannels) + ")");
-
-    for (size_t m = 0; m < _mean.size(); m++)
-      imgt[0][m] = imgt[0][m].sub_(_mean.at(m));
-
-    if (!_std.empty() && _std.size() != nchannels)
-      throw InputConnectorBadParamException(
-          "std vector be of size the number of channels ("
-          + std::to_string(nchannels) + ")");
-
-    for (size_t s = 0; s < _std.size(); s++)
-      imgt[0][s] = imgt[0][s].div_(_std.at(s));
-
-    return imgt;
-  }
-
-  at::Tensor ImgTorchInputFileConn::target_to_tensor(const int &target)
-  {
-    at::Tensor targett{ torch::full(1, target, torch::kLong) };
-    return targett;
-  }
-
-  at::Tensor
-  ImgTorchInputFileConn::target_to_tensor(const std::vector<double> &target)
-  {
-    int64_t tsize = target.size();
-
-    at::Tensor targett = torch::zeros(tsize, torch::kFloat32);
-    int n = 0;
-    for (auto i : target) // XXX: from_blob does not seem to work, fills up
-                          // with spurious values
-      {
-        targett[n] = i;
-        ++n;
-      }
-    return targett;
-    }*/
-
   template <typename T>
-  void ImgTorchInputFileConn::split_dataset(
-      std::vector<std::pair<std::string, T>> &lfiles,
-      std::vector<std::pair<std::string, T>> &test_lfiles)
+  void ImgTorchInputFileConn::shuffle_dataset(
+      std::vector<std::pair<std::string, T>> &lfiles)
   {
-    // shuffle
     std::mt19937 g;
     if (_seed >= 0)
       g = std::mt19937(_seed);
@@ -442,7 +360,13 @@ namespace dd
         g = std::mt19937(rd());
       }
     std::shuffle(lfiles.begin(), lfiles.end(), g);
+  }
 
+  template <typename T>
+  void ImgTorchInputFileConn::split_dataset(
+      std::vector<std::pair<std::string, T>> &lfiles,
+      std::vector<std::pair<std::string, T>> &test_lfiles)
+  {
     // Split
     int split_pos = std::floor(lfiles.size() * (1.0 - _test_split));
 
