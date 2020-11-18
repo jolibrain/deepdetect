@@ -109,7 +109,7 @@ namespace dd
       std::vector<std::pair<std::string, int>> &lfiles,
       std::unordered_map<int, std::string> &hcorresp,
       std::unordered_map<std::string, int> &hcorresp_r,
-      const std::string &folderPath)
+      const std::string &folderPath, const bool &test)
   {
     _logger->info("Reading image folder {}", folderPath);
 
@@ -117,6 +117,7 @@ namespace dd
     // backends
     int cl = 0;
 
+    std::unordered_map<std::string, int>::const_iterator hcit;
     std::unordered_set<std::string> subdirs;
     if (fileops::list_directory(folderPath, false, true, false, subdirs))
       throw InputConnectorBadParamException(
@@ -130,8 +131,18 @@ namespace dd
           throw InputConnectorBadParamException(
               "failed reading image train data sub-directory " + (*uit));
         std::string cls = dd_utils::split((*uit), '/').back();
-        hcorresp.insert(std::pair<int, std::string>(cl, cls));
-        hcorresp_r.insert(std::pair<std::string, int>(cls, cl));
+        if (!test)
+          {
+            hcorresp.insert(std::pair<int, std::string>(cl, cls));
+            hcorresp_r.insert(std::pair<std::string, int>(cls, cl));
+          }
+        else
+          {
+            if ((hcit = hcorresp_r.find(cls)) != hcorresp_r.end())
+              cl = (*hcit).second;
+            else
+              _logger->warn("unknown class {} in test set", cls);
+          }
         auto fit = subdir_files.begin();
         while (
             fit
@@ -140,7 +151,8 @@ namespace dd
             lfiles.push_back(std::pair<std::string, int>((*fit), cl));
             ++fit;
           }
-        ++cl;
+        if (!test)
+          ++cl;
         ++uit;
       }
   }
@@ -249,15 +261,8 @@ namespace dd
                 read_image_folder(lfiles, hcorresp, hcorresp_r, _uris.at(0));
                 if (_uris.size() > 1)
                   {
-                    std::unordered_map<int, std::string>
-                        test_hcorresp; // correspondence class number / class
-                                       // name
-                    std::unordered_map<std::string, int>
-                        test_hcorresp_r; // reverse correspondence for test
-                                         // set.
-
-                    read_image_folder(test_lfiles, test_hcorresp,
-                                      test_hcorresp_r, _uris.at(1));
+                    read_image_folder(test_lfiles, hcorresp, hcorresp_r,
+                                      _uris.at(1), true);
                   }
 
                 if (_dataset._shuffle)

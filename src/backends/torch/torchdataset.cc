@@ -116,6 +116,99 @@ namespace dd
       }
   }
 
+  void TorchDataset::write_image_to_db(const cv::Mat &bgr,
+                                       const torch::Tensor &target)
+  {
+    // serialize image
+    std::stringstream dstream;
+    std::vector<uint8_t> buffer;
+    std::vector<int> param = { cv::IMWRITE_JPEG_QUALITY, 100 };
+    cv::imencode(".jpg", bgr, buffer, param);
+    for (uint8_t c : buffer)
+      dstream << c;
+
+    // serialize target
+    std::ostringstream tstream;
+    torch::save(target, tstream);
+
+    // check on db
+    if (_dbData == nullptr)
+      {
+        _dbData = std::shared_ptr<db::DB>(db::GetDB(_backend));
+        _dbData->Open(_dbFullName, db::NEW);
+        _txn = std::shared_ptr<db::Transaction>(_dbData->NewTransaction());
+      }
+
+    // data & target keys
+    std::stringstream data_key;
+    std::stringstream target_key;
+    data_key << std::to_string(_current_index) << "_data";
+    target_key << std::to_string(_current_index) << "_target";
+
+    // store into db
+    _txn->Put(data_key.str(), dstream.str());
+    _txn->Put(target_key.str(), tstream.str());
+
+    // should not commit transactions every time;
+    if (++_current_index % _batches_per_transaction == 0)
+      {
+        _txn->Commit();
+        _txn.reset(_dbData->NewTransaction());
+        _logger->info("Put {} images in db", _current_index);
+      }
+  }
+
+  void TorchDataset::read_image_from_db(const std::string &datas,
+                                        const std::string &targets,
+                                        cv::Mat &bgr, torch::Tensor &targett,
+                                        const bool &bw)
+  {
+    std::vector<uint8_t> img_data(datas.begin(), datas.end());
+    bgr = cv::Mat(img_data, true);
+    bgr = cv::imdecode(bgr,
+                       bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR);
+    std::stringstream targetstream(targets);
+    torch::load(targett, targetstream);
+  }
+
+  // add image batch
+  void TorchDataset::add_image_batch(const cv::Mat &bgr, const int &width,
+                                     const int &height, const int &target)
+  {
+    if (!_db)
+      {
+        // to tensor
+        at::Tensor imgt = image_to_tensor(bgr, height, width);
+        at::Tensor targett = target_to_tensor(target);
+        add_batch({ imgt }, { targett });
+      }
+    else
+      {
+        // write to db
+        torch::Tensor targett = target_to_tensor(target);
+        write_image_to_db(bgr, targett);
+      }
+  }
+
+  void TorchDataset::add_image_batch(const cv::Mat &bgr, const int &width,
+                                     const int &height,
+                                     const std::vector<double> &target)
+  {
+    if (!_db)
+      {
+        // to tensor
+        at::Tensor imgt = image_to_tensor(bgr, height, width);
+        at::Tensor targett = target_to_tensor(target);
+        add_batch({ imgt }, { targett });
+      }
+    else
+      {
+        // write to db
+        torch::Tensor targett = target_to_tensor(target);
+        write_image_to_db(bgr, targett);
+      }
+  }
+
   void TorchDataset::add_batch(const std::vector<at::Tensor> &data,
                                const std::vector<at::Tensor> &target)
   {
@@ -309,13 +402,8 @@ namespace dd
             _dbData->Get(target_key.str(), targets);
             _dbCursor->Next();
 
-            std::stringstream datastream(datas);
-            std::stringstream targetstream(targets);
-
             std::vector<torch::Tensor> d;
             std::vector<torch::Tensor> t;
-            torch::load(d, datastream);
-            torch::load(t, targetstream);
 
             if (first_iter)
               {
@@ -324,12 +412,39 @@ namespace dd
                 first_iter = false;
               }
 
+            if (!_image)
+              {
+                std::stringstream datastream(datas);
+                std::stringstream targetstream(targets);
+                torch::load(d, datastream);
+                torch::load(t, targetstream);
+              }
+            else
+              {
+                ImgTorchInputFileConn *inputc
+                    = reinterpret_cast<ImgTorchInputFileConn *>(_inputc);
+
+                cv::Mat bgr;
+                torch::Tensor targett;
+                read_image_from_db(datas, targets, bgr, targett, inputc->_bw);
+
+                torch::Tensor imgt
+                    = image_to_tensor(bgr, inputc->height(), inputc->width());
+
+                d.push_back(imgt);
+                t.push_back(targett);
+              }
+
             for (unsigned int i = 0; i < d.size(); ++i)
               {
+                while (i >= data.size())
+                  data.emplace_back();
                 data[i].push_back(d.at(i));
               }
             for (unsigned int i = 0; i < t.size(); ++i)
               {
+                while (i >= target.size())
+                  target.emplace_back();
                 target[i].push_back(t.at(i));
               }
 
@@ -391,10 +506,7 @@ namespace dd
       }
     if (dimg._imgs.size() != 0)
       {
-        at::Tensor imgt = image_to_tensor(dimg._imgs[0], height, width);
-        at::Tensor targett = target_to_tensor(target);
-
-        add_batch({ imgt }, { targett });
+        add_image_batch(dimg._imgs[0], height, width, target);
         return 0;
       }
     else
@@ -426,10 +538,10 @@ namespace dd
       }
     if (dimg._imgs.size() != 0)
       {
-        at::Tensor imgt = image_to_tensor(dimg._imgs[0], height, width);
+        /*at::Tensor imgt = image_to_tensor(dimg._imgs[0], height, width);
         at::Tensor targett = target_to_tensor(target);
-
-        add_batch({ imgt }, { targett });
+        add_batch({ imgt }, { targett });*/
+        add_image_batch(dimg._imgs[0], height, width, target);
         return 0;
       }
     else
