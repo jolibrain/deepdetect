@@ -61,17 +61,6 @@ namespace dd
 
     _dbData->Remove(data_key.str());
     _dbData->Remove(target_key.str());
-
-    auto it = _indices.begin();
-    while (it != _indices.end())
-      {
-        if (*it == index)
-          {
-            _indices.erase(it);
-            break;
-          }
-        it++;
-      }
   }
 
   void TorchDataset::add_db_elt(int64_t index, std::string data,
@@ -92,7 +81,6 @@ namespace dd
     _txn->Put(target_key.str(), target);
     _txn->Commit();
     _txn.reset(_dbData->NewTransaction());
-    _indices.push_back(index);
   }
 
   void TorchDataset::write_tensors_to_db(const std::vector<at::Tensor> &data,
@@ -133,7 +121,7 @@ namespace dd
   {
     if (!_db)
       _batches.push_back(TorchBatch(data, target));
-    else
+    else // db
       write_tensors_to_db(data, target);
   }
 
@@ -142,7 +130,6 @@ namespace dd
     _shuffle = shuffle;
     if (!_db)
       {
-        _indices.clear();
         if (!_lfiles.empty()) // list of files
           {
             _indices = std::vector<int64_t>(_lfiles.size());
@@ -155,32 +142,22 @@ namespace dd
           }
         else
           {
-            // do nothing
+            _indices.clear();
           }
       }
     else // below db case
       {
-        _indices.clear();
-        if (_dbData == nullptr)
+        if (!_dbData)
           {
             _dbData = std::shared_ptr<db::DB>(db::GetDB(_backend));
             _dbData->Open(_dbFullName, dbmode);
           }
 
-        db::Cursor *cursor = _dbData->NewCursor();
-        while (cursor->valid())
-          {
-            std::string key = cursor->key();
-            size_t pos = key.find("_data");
-            if (pos != std::string::npos)
-              {
-                std::string sid = key.substr(0, pos);
-                int64_t id = std::stoll(sid);
-                _indices.push_back(id);
-              }
-            cursor->Next();
-          }
-        delete (cursor);
+        if (!_dbCursor)
+          _dbCursor = _dbData->NewCursor();
+
+        _indices = std::vector<int64_t>(_dbData->Count());
+        std::iota(std::begin(_indices), std::end(_indices), 0);
       }
 
     if (_shuffle)
@@ -304,18 +281,37 @@ namespace dd
       {
         while (count != 0)
           {
-            auto id = _indices.back();
             std::stringstream data_key;
             std::stringstream target_key;
-            data_key << id << "_data";
-            target_key << id << "_target";
+
+            if (!_dbCursor->valid())
+              {
+                delete _dbCursor;
+                _dbCursor = _dbData->NewCursor();
+              }
+            std::string key = _dbCursor->key();
+            size_t pos = key.find("_data");
+            if (pos != std::string::npos)
+              {
+                data_key << key;
+                std::string sid = key.substr(0, pos);
+                target_key << sid << "_target";
+              }
+            else // skip targets
+              {
+                _dbCursor->Next();
+                continue;
+              }
 
             std::string targets;
             std::string datas;
             _dbData->Get(data_key.str(), datas);
             _dbData->Get(target_key.str(), targets);
+            _dbCursor->Next();
+
             std::stringstream datastream(datas);
             std::stringstream targetstream(targets);
+
             std::vector<torch::Tensor> d;
             std::vector<torch::Tensor> t;
             torch::load(d, datastream);
@@ -431,7 +427,6 @@ namespace dd
     if (dimg._imgs.size() != 0)
       {
         at::Tensor imgt = image_to_tensor(dimg._imgs[0], height, width);
-        // at::Tensor targett{ torch::full(1, target, torch::kLong) };
         at::Tensor targett = target_to_tensor(target);
 
         add_batch({ imgt }, { targett });
