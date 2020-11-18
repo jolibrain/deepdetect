@@ -200,12 +200,18 @@ TEST(torchapi, service_train_images_split)
       << "accuracy good";
   ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() <= 1) << "f1";
 
-  fileops::remove_file(resnet50_train_repo,
-                       "checkpoint-" + iterations_resnet50 + ".ptw");
-  fileops::remove_file(resnet50_train_repo,
-                       "checkpoint-" + iterations_resnet50 + ".pt");
-  fileops::remove_file(resnet50_train_repo,
-                       "solver-" + iterations_resnet50 + ".pt");
+  std::unordered_set<std::string> lfiles;
+  fileops::list_directory(resnet50_train_repo, true, false, false, lfiles);
+  for (std::string ff : lfiles)
+    {
+      if (ff.find("checkpoint") != std::string::npos
+          || ff.find("solver") != std::string::npos)
+        remove(ff.c_str());
+    }
+  ASSERT_TRUE(!fileops::file_exists(resnet50_train_repo + "checkpoint-"
+                                    + iterations_resnet50 + ".ptw"));
+  ASSERT_TRUE(!fileops::file_exists(resnet50_train_repo + "checkpoint-"
+                                    + iterations_resnet50 + ".pt"));
   fileops::clear_directory(resnet50_train_repo + "train.lmdb");
   fileops::clear_directory(resnet50_train_repo + "test.lmdb");
   fileops::remove_dir(resnet50_train_repo + "train.lmdb");
@@ -271,12 +277,19 @@ TEST(torchapi, service_train_images)
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
               > 0.0);
 
-  fileops::remove_file(resnet50_train_repo,
-                       "checkpoint-" + iterations_resnet50 + ".ptw");
-  fileops::remove_file(resnet50_train_repo,
-                       "checkpoint-" + iterations_resnet50 + ".pt");
-  fileops::remove_file(resnet50_train_repo,
-                       "solver-" + iterations_resnet50 + ".pt");
+  std::unordered_set<std::string> lfiles;
+  fileops::list_directory(resnet50_train_repo, true, false, false, lfiles);
+  for (std::string ff : lfiles)
+    {
+      if (ff.find("checkpoint") != std::string::npos
+          || ff.find("solver") != std::string::npos)
+        remove(ff.c_str());
+    }
+  ASSERT_TRUE(!fileops::file_exists(resnet50_train_repo + "checkpoint-"
+                                    + iterations_resnet50 + ".ptw"));
+  ASSERT_TRUE(!fileops::file_exists(resnet50_train_repo + "checkpoint-"
+                                    + iterations_resnet50 + ".pt"));
+
   fileops::clear_directory(resnet50_train_repo + "train.lmdb");
   fileops::clear_directory(resnet50_train_repo + "test.lmdb");
   fileops::remove_dir(resnet50_train_repo + "train.lmdb");
@@ -321,12 +334,19 @@ TEST(torchapi, service_train_images_split_regression)
   ASSERT_TRUE(jd["body"]["measure"]["iteration"] == 2000) << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["eucll"].GetDouble() <= 3.0) << "eucll";
 
-  fileops::remove_file(resnet50_train_repo,
-                       "checkpoint-" + iterations_resnet50 + ".ptw");
-  fileops::remove_file(resnet50_train_repo,
-                       "checkpoint-" + iterations_resnet50 + ".pt");
-  fileops::remove_file(resnet50_train_repo,
-                       "solver-" + iterations_resnet50 + ".pt");
+  std::unordered_set<std::string> lfiles;
+  fileops::list_directory(resnet50_train_repo, true, false, false, lfiles);
+  for (std::string ff : lfiles)
+    {
+      if (ff.find("checkpoint") != std::string::npos
+          || ff.find("solver") != std::string::npos)
+        remove(ff.c_str());
+    }
+  ASSERT_TRUE(!fileops::file_exists(resnet50_train_repo + "checkpoint-"
+                                    + iterations_resnet50 + ".ptw"));
+  ASSERT_TRUE(!fileops::file_exists(resnet50_train_repo + "checkpoint-"
+                                    + iterations_resnet50 + ".pt"));
+
   fileops::clear_directory(resnet50_train_repo + "train.lmdb");
   fileops::clear_directory(resnet50_train_repo + "test.lmdb");
   fileops::remove_dir(resnet50_train_repo + "train.lmdb");
@@ -370,12 +390,17 @@ TEST(torchapi, service_train_txt_lm)
   // "train_loss";
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() <= 1) << "accuracy";
   ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() <= 1) << "f1";
-  fileops::remove_file(bert_train_repo, "checkpoint-3.pt");
-  fileops::remove_file(bert_train_repo, "solver-3.pt");
-  fileops::remove_file(bert_train_repo, "checkpoint-2.pt");
-  fileops::remove_file(bert_train_repo, "solver-2.pt");
-  fileops::remove_file(bert_train_repo, "checkpoint-1.pt");
-  fileops::remove_file(bert_train_repo, "solver-1.pt");
+
+  std::unordered_set<std::string> lfiles;
+  fileops::list_directory(bert_train_repo, true, false, false, lfiles);
+  for (std::string ff : lfiles)
+    {
+      if (ff.find("checkpoint") != std::string::npos
+          || ff.find("solver") != std::string::npos)
+        remove(ff.c_str());
+    }
+  ASSERT_TRUE(!fileops::file_exists(bert_train_repo + "checkpoint-3.pt"));
+  ASSERT_TRUE(!fileops::file_exists(bert_train_repo + "solver-3.pt"));
 }
 
 TEST(torchapi, service_train_txt_classification)
@@ -417,15 +442,17 @@ TEST(torchapi, service_train_txt_classification)
   // "train_loss";
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() <= 1) << "accuracy";
   ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() <= 1) << "f1";
-  fileops::remove_file(bert_train_repo, "checkpoint-3.ptw");
-  fileops::remove_file(bert_train_repo, "checkpoint-3.pt");
-  fileops::remove_file(bert_train_repo, "solver-3.pt");
-  fileops::remove_file(bert_train_repo, "checkpoint-1.ptw");
-  fileops::remove_file(bert_train_repo, "checkpoint-1.pt");
-  fileops::remove_file(bert_train_repo, "solver-1.pt");
-  fileops::remove_file(bert_train_repo, "checkpoint-2.ptw");
-  fileops::remove_file(bert_train_repo, "checkpoint-2.pt");
-  fileops::remove_file(bert_train_repo, "solver-2.pt");
+
+  std::unordered_set<std::string> lfiles;
+  fileops::list_directory(bert_train_repo, true, false, false, lfiles);
+  for (std::string ff : lfiles)
+    {
+      if (ff.find("checkpoint") != std::string::npos
+          || ff.find("solver") != std::string::npos)
+        remove(ff.c_str());
+    }
+  ASSERT_TRUE(!fileops::file_exists(bert_train_repo + "checkpoint-3.pt"));
+  ASSERT_TRUE(!fileops::file_exists(bert_train_repo + "solver-3.pt"));
 }
 
 #endif
@@ -1028,12 +1055,19 @@ TEST(torchapi, service_train_ranger)
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
               > 0.0);
 
-  fileops::remove_file(resnet50_train_repo,
-                       "checkpoint-" + iterations_resnet50 + ".ptw");
-  fileops::remove_file(resnet50_train_repo,
-                       "checkpoint-" + iterations_resnet50 + ".pt");
-  fileops::remove_file(resnet50_train_repo,
-                       "solver-" + iterations_resnet50 + ".pt");
+  std::unordered_set<std::string> lfiles;
+  fileops::list_directory(resnet50_train_repo, true, false, false, lfiles);
+  for (std::string ff : lfiles)
+    {
+      if (ff.find("checkpoint") != std::string::npos
+          || ff.find("solver") != std::string::npos)
+        remove(ff.c_str());
+    }
+  ASSERT_TRUE(!fileops::file_exists(resnet50_train_repo + "checkpoint-"
+                                    + iterations_resnet50 + ".ptw"));
+  ASSERT_TRUE(!fileops::file_exists(resnet50_train_repo + "checkpoint-"
+                                    + iterations_resnet50 + ".pt"));
+
   fileops::clear_directory(resnet50_train_repo + "train.lmdb");
   fileops::clear_directory(resnet50_train_repo + "test.lmdb");
   fileops::remove_dir(resnet50_train_repo + "train.lmdb");
@@ -1097,9 +1131,19 @@ TEST(torchapi, service_train_clip)
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
               > 0.0);
 
-  fileops::remove_file(resnet50_train_repo, "checkpoint-200.ptw");
-  fileops::remove_file(resnet50_train_repo, "checkpoint-200.pt");
-  fileops::remove_file(resnet50_train_repo, "solver-200.pt");
+  std::unordered_set<std::string> lfiles;
+  fileops::list_directory(resnet50_train_repo, true, false, false, lfiles);
+  for (std::string ff : lfiles)
+    {
+      if (ff.find("checkpoint") != std::string::npos
+          || ff.find("solver") != std::string::npos)
+        remove(ff.c_str());
+    }
+  ASSERT_TRUE(!fileops::file_exists(resnet50_train_repo + "checkpoint-"
+                                    + iterations_resnet50 + ".ptw"));
+  ASSERT_TRUE(!fileops::file_exists(resnet50_train_repo + "checkpoint-"
+                                    + iterations_resnet50 + ".pt"));
+
   fileops::clear_directory(resnet50_train_repo + "train.lmdb");
   fileops::clear_directory(resnet50_train_repo + "test.lmdb");
   fileops::remove_dir(resnet50_train_repo + "train.lmdb");
