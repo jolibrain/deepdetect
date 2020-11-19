@@ -773,6 +773,15 @@ namespace dd
       data = &this->_csvtsdata;
 
     unsigned int label_size = _label_pos.size();
+    if (static_cast<int>(label_size) >= _datadim)
+      {
+        std::string errmsg
+            = "label_size (output dim) " + std::to_string(label_size)
+              + " is larger than datadim " + std::to_string(_datadim)
+              + " leading to invalid input dim";
+        this->_logger->error(errmsg);
+        throw InputConnectorBadParamException(errmsg);
+      }
     unsigned int data_size = _datadim - label_size;
     int vecindex = -1;
 
@@ -794,8 +803,8 @@ namespace dd
           }
         for (; tstart + _timesteps < static_cast<long int>(seq.size());
              tstart += _offset)
-          // construct timeseries here	, using timesteps and offset from data
-          // pointer above
+          // construct timeseries here	, using timesteps and offset
+          // from data pointer above
           {
             std::vector<at::Tensor> data_sequence;
             std::vector<at::Tensor> label_sequence;
