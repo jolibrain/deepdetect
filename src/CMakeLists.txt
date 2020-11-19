@@ -83,6 +83,7 @@ if (USE_TORCH)
     backends/torch/db.cpp
     backends/torch/db_lmdb.cpp
     backends/torch/native/templates/nbeats.cc
+    backends/torch/native/templates/vit.cc
     backends/torch/native/native_factory.cc
 	basegraph.cc
 	caffegraphinput.cc
@@ -155,4 +156,7 @@ if (USE_TNSE)
 endif()
 if (USE_HTTP_SERVER)
   add_dependencies(ddetect cpp-netlib)
+endif()
+if (BUILD_SPDLOG)
+  add_dependencies(ddetect spdlog)
 endif()

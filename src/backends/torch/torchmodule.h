@@ -127,6 +127,12 @@ namespace dd
      * \brief generic part of hooks below
      */
     template <class TInputConnectorStrategy>
+    void create_native_template(const std::string &tmpl, const APIData &lib_ad,
+                                const TInputConnectorStrategy &inputc,
+                                const TorchModel &tmodel,
+                                const torch::Device &device);
+
+    template <class TInputConnectorStrategy>
     void post_transform(const std::string tmpl, const APIData &template_params,
                         const TInputConnectorStrategy &inputc,
                         const TorchModel &tmodel, const torch::Device &device);
