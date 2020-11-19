@@ -24,6 +24,7 @@
 
 #include "native_net.h"
 #include "./templates/nbeats.h"
+#include "./templates/vit.h"
 #include "../torchinputconns.h"
 #include "apidata.h"
 
@@ -39,7 +40,8 @@ namespace dd
 
     static bool valid_template_def(std::string tdef)
     {
-      if (tdef.find("nbeats") != std::string::npos)
+      if (tdef.find("nbeats") != std::string::npos
+          || tdef.find("vit") != std::string::npos)
         return true;
       return false;
     }

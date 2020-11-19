@@ -274,7 +274,12 @@ namespace dd
       }
     else if (!_template.empty())
       {
-        throw MLLibBadParamException("template");
+        if (NativeFactory::valid_template_def(_template))
+          _module.create_native_template<TInputConnectorStrategy>(
+              _template, lib_ad, this->_inputc, this->_mlmodel, _main_device);
+        else
+          throw MLLibBadParamException("invalid torch model template "
+                                       + _template);
       }
 
     if (_classification)
