@@ -30,6 +30,9 @@
 #include "apidata.h"
 #include "torchmodule.h"
 
+#define DEFAULT_CLIP_VALUE 5.0
+#define DEFAULT_CLIP_NORM 100.0
+
 namespace dd
 {
 
@@ -68,6 +71,16 @@ namespace dd
     void save(std::string sfile);
 
     /**
+     * \brief restore solver state, checks solverstate presence  and returns
+     * iteration number, best metric value and corresponding iteration number
+     * according to ad_mllib.resume param
+     */
+
+    int resume(const APIData &ad_mllib, const TorchModel &mlmodel,
+               const torch::Device &main_device, double &best_metric_value,
+               int64_t &best_iteration_number);
+
+    /**
      * \brief zero_grad() indirection in order to mimic native optimizer
      * behavior
      */
@@ -78,11 +91,9 @@ namespace dd
 
     /**
      * \brief step() indirection in order to mimic native optimizer behavior
+     * also applies gradient clipping if asked for
      */
-    void step()
-    {
-      _optimizer->step();
-    }
+    void step();
 
     /**
      * \brief get base lr for logging purposes
@@ -93,6 +104,9 @@ namespace dd
     }
 
   protected:
+    std::vector<at::Tensor> _params; /**< list of parameter to optimize,
+                   storing it here for gradient clipping */
+
     std::string _solver_type
         = "SGD"; /**< id of solver in {SGD, ADAM, RMSPROP, ADAGRAD, RANGER}*/
     double _base_lr = 0.0001; /**< base learning rate*/
@@ -105,8 +119,9 @@ namespace dd
     int _lsteps
         = 5; /**< for RANGER, if lookahead: number of lookahead steps */
     double _lalpha = 0.5; /**< for RANGER, if lookahead: weight of lookahead */
-    bool _clip = false;   /**< for RANGER , clip gradients */
-    double _clip_value = 5.0;   /**< for RANGER, value to clip gradients to */
+    bool _clip = false;   /**<  clip gradients */
+    double _clip_value = -1.0;  /**< value to clip gradients to */
+    double _clip_norm = -1.0;   /**<  norm to clip gradients to */
     double _weight_decay = 0.0; /**< weight decay value*/
     bool _decoupled_wd = false; /**< for RANGER : use decoupled weight decay,
                                    NOT YET IMPLEMENTED */

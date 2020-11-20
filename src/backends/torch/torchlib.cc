@@ -274,7 +274,12 @@ namespace dd
       }
     else if (!_template.empty())
       {
-        throw MLLibBadParamException("template");
+        if (NativeFactory::valid_template_def(_template))
+          _module.create_native_template<TInputConnectorStrategy>(
+              _template, lib_ad, this->_inputc, this->_mlmodel, _main_device);
+        else
+          throw MLLibBadParamException("invalid torch model template "
+                                       + _template);
       }
 
     if (_classification)
@@ -346,7 +351,7 @@ namespace dd
                    TMLModel>::save_if_best(APIData &meas_out,
                                            int64_t elapsed_it,
                                            TorchSolver &tsolver,
-                                           int64_t best_to_remove)
+                                           int64_t best_iteration_number)
   {
     double cur_meas = std::numeric_limits<double>::infinity();
     std::string meas;
@@ -369,9 +374,9 @@ namespace dd
     if (_best_metric_value == std::numeric_limits<double>::infinity()
         || is_better(cur_meas, _best_metric_value, meas))
       {
-        if (best_to_remove != -1)
+        if (best_iteration_number != -1)
           {
-            remove_model(best_to_remove);
+            remove_model(best_iteration_number);
           }
         _best_metric_value = cur_meas;
         this->snapshot(elapsed_it, tsolver);
@@ -391,7 +396,7 @@ namespace dd
           }
         return elapsed_it;
       }
-    return best_to_remove;
+    return best_iteration_number;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
@@ -530,10 +535,10 @@ namespace dd
 
     // create solver
     tsolver.create(_module);
+    int64_t best_iteration_number = -1;
 
-    int it = 0;
-    // reload solver and set it value accordingly
-    it = tsolver.load(this->_mlmodel._sstate, _main_device);
+    int it = tsolver.resume(ad_mllib, this->_mlmodel, _main_device,
+                            _best_metric_value, best_iteration_number);
 
     bool skip_training = it >= iterations;
     if (skip_training)
@@ -555,7 +560,6 @@ namespace dd
         std::move(inputc._dataset), data::DataLoaderOptions(batch_size));
 
     int batch_id = 0;
-    int64_t best_to_remove = -1;
 
     // it is the iteration count (not epoch)
     while (it < iterations)
@@ -712,8 +716,8 @@ namespace dd
                     APIData meas_obj = meas_out.getobj("measure");
                     std::vector<std::string> meas_names = meas_obj.list_keys();
 
-                    best_to_remove = save_if_best(meas_obj, elapsed_it,
-                                                  tsolver, best_to_remove);
+                    best_iteration_number = save_if_best(
+                        meas_obj, elapsed_it, tsolver, best_iteration_number);
 
                     for (auto name : meas_names)
                       {
@@ -756,11 +760,11 @@ namespace dd
                 if ((save_period != 0 && elapsed_it % save_period == 0)
                     || elapsed_it == iterations)
                   {
-                    if (best_to_remove == elapsed_it)
+                    if (best_iteration_number == elapsed_it)
                       // current model already snapshoted as best model,
                       // do not remove regular snapshot if it is  best
                       // model
-                      best_to_remove = -1;
+                      best_iteration_number = -1;
                     else
                       snapshot(elapsed_it, tsolver);
                   }

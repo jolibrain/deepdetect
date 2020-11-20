@@ -21,7 +21,7 @@
  */
 #include "torchmodule.h"
 
-#include "graph.h"
+#include "graph/graph.h"
 #include "native/native.h"
 #include "torchutils.h"
 
@@ -166,23 +166,33 @@ namespace dd
   }
 
   template <class TInputConnectorStrategy>
-  void TorchModule::post_transform(const std::string tmpl,
-                                   const APIData &template_params,
-                                   const TInputConnectorStrategy &inputc,
-                                   const TorchModel &tmodel,
-                                   const torch::Device &device)
+  void TorchModule::create_native_template(
+      const std::string &tmpl, const APIData &lib_ad,
+      const TInputConnectorStrategy &inputc, const TorchModel &tmodel,
+      const torch::Device &device)
   {
-    _device = device;
+    _device = device; // TODO: should be set with set_device elsewhere
     this->_native = std::shared_ptr<NativeModule>(
-        NativeFactory::from_template<TInputConnectorStrategy>(
-            tmpl, template_params, inputc));
+        NativeFactory::from_template<TInputConnectorStrategy>(tmpl, lib_ad,
+                                                              inputc));
 
     if (_native)
       {
         _logger->info("created net using template " + tmpl);
         native_model_load(tmodel);
       }
+  }
 
+  template <class TInputConnectorStrategy>
+  void TorchModule::post_transform(const std::string tmpl,
+                                   const APIData &template_params,
+                                   const TInputConnectorStrategy &inputc,
+                                   const TorchModel &tmodel,
+                                   const torch::Device &device)
+  {
+    if (!_native)
+      create_native_template<TInputConnectorStrategy>(tmpl, template_params,
+                                                      inputc, tmodel, device);
     if (_graph)
       {
         std::vector<long int> dims = inputc._dataset.datasize(0);

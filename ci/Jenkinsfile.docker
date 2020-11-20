@@ -1,4 +1,4 @@
-String cron_info = BRANCH_NAME == "master" ? "H 22 * * 1-5'" : ""
+String cron_info = BRANCH_NAME == "master" ? "H 22 * * 1-5" : ""
 
 pipeline {
   agent { node { label 'docker' } }
@@ -15,13 +15,28 @@ pipeline {
         sh 'printenv | sort'
       }
     }
-    stage('Building docker images') {
+    stage('Build docker images') {
       parallel {
         stage('cpu') { steps { sh 'ci/build-docker-images.sh cpu' } }
         stage('gpu') { steps { sh 'ci/build-docker-images.sh gpu' } }
         stage('gpu_torch') { steps { sh 'ci/build-docker-images.sh gpu_torch' } }
         // stage('gpu_tf') { steps { sh 'ci/build-docker-images.sh gpu_tf' } }
         stage('gpu_tensorrt') { steps { sh 'ci/build-docker-images.sh gpu_tensorrt' } }
+      }
+    }
+    stage('Update dockerhub readme') {
+      when {
+       expression { BRANCH_NAME == "master" }
+      }
+      steps {
+        sh '''
+wget https://github.com/christian-korneck/docker-pushrm/releases/download/v1.6.0/docker-pushrm_linux_amd64
+chmod +x docker-pushrm_linux_amd64
+./docker-pushrm_linux_amd64 jolibrain/deepdetect_cpu
+./docker-pushrm_linux_amd64 jolibrain/deepdetect_gpu
+./docker-pushrm_linux_amd64 jolibrain/deepdetect_gpu_torch
+./docker-pushrm_linux_amd64 jolibrain/deepdetect_gpu_tensorrt
+'''
       }
     }
   }

@@ -1,0 +1,101 @@
+pull_request_rules:
+  - name: "automatic merge with 2 reviews"
+    conditions:
+      - "base=master"
+      - "status-success=Semantic Pull Request"
+      - "status-success=Jenkins - Unit tests GPU"
+      - "label=process:ready-to-review"
+      - "label!=ci:docker"
+      - "label!=process:manual-merge"
+      - "#approved-reviews-by>=2"
+      - "#changes-requested-reviews-by=0"
+    actions:
+      merge:
+        strict: "smart"
+        method: rebase
+
+  - name: "automatic merge with 2 reviews and docker tests"
+    conditions:
+      - "base=master"
+      - "status-success=Semantic Pull Request"
+      - "status-success=Jenkins - Unit tests GPU"
+      - "status-success=Jenkins - Docker build"
+      - "label=process:ready-to-review"
+      - "label=ci:docker"
+      - "label!=process:manual-merge"
+      - "#approved-reviews-by>=2"
+      - "#changes-requested-reviews-by=0"
+    actions:
+      merge:
+        strict: "smart"
+        method: rebase
+
+  - name: "automatic merge with label process:no-need-review"
+    conditions:
+      - "base=master"
+      - "status-success=Semantic Pull Request"
+      - "status-success=Jenkins - Unit tests GPU"
+      - "label=process:no-need-review"
+      - "label!=ci:docker"
+      - "label!=process:manual-merge"
+      - "#changes-requested-reviews-by=0"
+    actions:
+      merge:
+        strict: "smart"
+        method: rebase
+        
+  - name: "automatic merge with labels process:no-need-review and ci:docker"
+    conditions:
+      - "base=master"
+      - "status-success=Semantic Pull Request"
+      - "status-success=Jenkins - Unit tests GPU"
+      - "status-success=Jenkins - Docker build"
+      - "label=process:no-need-review"
+      - "label=ci:docker"
+      - "label!=process:manual-merge"
+      - "#changes-requested-reviews-by=0"
+    actions:
+      merge:
+        strict: "smart"
+        method: rebase
+        
+  - name: "request review"
+    conditions:
+      - "label=process:ready-to-review"
+      - "#approved-reviews-by=0"
+      - "#changes-requested-reviews-by=0"
+      - -merged
+      - -closed
+    actions:
+      request_reviews:
+        users:
+          - BynaryCobweb
+          - beniz
+          - fantes
+          - sileht
+
+  - name: "warn on conflicts"
+    conditions:
+      - conflict
+    actions:
+      comment:
+        message: "This pull request is now in conflict :("
+      label:
+        add:
+          - conflict
+
+  - name: remove conflict label if not needed
+    conditions:
+      - -conflict
+    actions:
+      label:
+        remove:
+          - conflict
+
+  - name: add ci:docker label
+    conditions:
+      - files~=^docker/
+    actions:
+      label:
+        add:
+            - ci:docker

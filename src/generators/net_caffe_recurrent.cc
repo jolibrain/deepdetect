@@ -38,7 +38,7 @@ namespace dd
     lparam->add_bottom(bottom_name);
     caffe::TileParameter *tparam = lparam->mutable_tile_param();
     tparam->set_axis(1);
-    tparam->set_tiles(32);
+    tparam->set_tiles(-1); // -1 means timesteps to be found elsewhere
   }
 
   void NetLayersCaffeRecurrent::add_basic_block(

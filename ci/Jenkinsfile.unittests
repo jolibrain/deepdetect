@@ -50,7 +50,7 @@ cmake .. -DBUILD_TESTS=ON -DUSE_CUDNN=ON -DUSE_FAISS=ON -DUSE_SIMSEARCH=ON -DUSE
         sh '''
 export PATH="/usr/lib/ccache/:$PATH"
 cd build
-schedtool -B -n 1 -e ionice -n 1 make -j24 pytorch caffe_dd Multicore-TSNE faisslib ncnn xgboost cpp-netlib tensorrt-oss
+schedtool -B -n 1 -e ionice -n 1 make -j24 protobuf caffe_dd pytorch Multicore-TSNE faisslib ncnn xgboost cpp-netlib tensorrt-oss
 # TODO(sileht): we should create the prebuilt artefacts here after each successful master branch build
 schedtool -B -n 1 -e ionice -n 1 make -j 6
 ccache -s
@@ -58,6 +58,9 @@ ccache -s
       }
     }
     stage('Tests GPU') {
+      when {
+       expression { !env.CHANGE_ID || pullRequest.labels.findAll { it == "ci:skip" }.size() == 0 }
+      }
       steps {
         lock(resource: null, label: "${NODE_NAME}-gpu", variable: 'LOCKED_GPU', quantity: 1) {
           sh '''
@@ -74,6 +77,9 @@ ccache -s
     }
 /*
     stage('Tests multi-GPU') {
+      when {
+       expression { !env.CHANGE_ID || pullRequest.labels.findAll { it == "ci:skip" }.size() == 0 }
+      }
       steps {
         lock(resource: null, label: 'gpu', variable: 'LOCKED_GPU', quantity: 2) {
           sh '''
