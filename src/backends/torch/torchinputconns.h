@@ -190,6 +190,8 @@ namespace dd
      */
     ImgTorchInputFileConn() : ImgInputFileConn()
     {
+      _dataset._inputc = this;
+      _test_dataset._inputc = this;
       set_transaction_size(TORCH_IMG_TRANSACTION_SIZE);
     }
 
@@ -199,6 +201,8 @@ namespace dd
     ImgTorchInputFileConn(const ImgTorchInputFileConn &i)
         : ImgInputFileConn(i), TorchInputInterface(i)
     {
+      _dataset._inputc = this;
+      _test_dataset._inputc = this;
       set_transaction_size(TORCH_IMG_TRANSACTION_SIZE);
     }
 
@@ -257,17 +261,6 @@ namespace dd
      * \brief read data given apiData
      */
     void transform(const APIData &ad);
-
-  private:
-    template <typename T>
-    int add_image_file(TorchDataset &dataset, const std::string &fname,
-                       T target);
-
-    at::Tensor image_to_tensor(const cv::Mat &bgr);
-
-    at::Tensor target_to_tensor(const int &target);
-
-    at::Tensor target_to_tensor(const std::vector<double> &target);
   };
 
   /**
@@ -282,6 +275,8 @@ namespace dd
      */
     TxtTorchInputFileConn() : TxtInputFileConn()
     {
+      _dataset._inputc = this;
+      _test_dataset._inputc = this;
       _vocab_sep = '\t';
       set_transaction_size(TORCH_TEXT_TRANSACTION_SIZE);
     }
@@ -292,6 +287,8 @@ namespace dd
         : TxtInputFileConn(i), TorchInputInterface(i), _width(i._width),
           _height(i._height)
     {
+      _dataset._inputc = this;
+      _test_dataset._inputc = this;
       set_transaction_size(TORCH_TEXT_TRANSACTION_SIZE);
     }
 
@@ -431,6 +428,8 @@ namespace dd
         : CSVTSInputFileConn(i), TorchInputInterface(i), _offset(i._offset),
           _timesteps(i._timesteps), _datadim(i._datadim)
     {
+      _dataset._inputc = this;
+      _test_dataset._inputc = this;
     }
 
     ~CSVTSTorchInputFileConn()

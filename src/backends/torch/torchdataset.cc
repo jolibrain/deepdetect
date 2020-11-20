@@ -22,7 +22,7 @@
  */
 
 #include "torchdataset.h"
-#include "inputconnectorstrategy.h"
+#include "torchinputconns.h"
 
 namespace dd
 {
@@ -142,10 +142,21 @@ namespace dd
     if (!_db)
       {
         _indices.clear();
-
-        for (unsigned int i = 0; i < _batches.size(); ++i)
+        if (!_lfiles.empty()) // list of files
           {
-            _indices.push_back(i);
+            _indices = std::vector<int64_t>(_lfiles.size());
+            std::iota(std::begin(_indices), std::end(_indices), 0);
+          }
+        else if (!_batches.empty())
+          {
+            for (unsigned int i = 0; i < _batches.size(); ++i)
+              {
+                _indices.push_back(i);
+              }
+          }
+        else
+          {
+            //
           }
       }
     else // below db case
@@ -218,29 +229,76 @@ namespace dd
 
     if (!_db)
       {
-        while (count != 0)
+        if (!_lfiles.empty()) // prefetch batch from file list
           {
-            auto id = _indices.back();
-            auto entry = _batches[id];
+            ImgTorchInputFileConn *inputc
+                = reinterpret_cast<ImgTorchInputFileConn *>(_inputc);
 
-            if (first_iter)
+            size_t nlfiles = 0;
+            while (nlfiles < count)
               {
+                auto id = _indices.back();
+                auto lfile = _lfiles.at(id);
+                if (_classification)
+                  add_image_file(lfile.first,
+                                 static_cast<int>(lfile.second.at(0)),
+                                 inputc->height(), inputc->width());
+                else // vector generic type, including regression
+                  add_image_file(lfile.first, lfile.second, inputc->height(),
+                                 inputc->width());
+                ++nlfiles;
+                _indices.pop_back();
+              }
+
+            if (first_iter && !_batches.empty())
+              {
+                auto entry = _batches[0];
                 data.resize(entry.data.size());
                 target.resize(entry.target.size());
                 first_iter = false;
               }
 
-            for (unsigned int i = 0; i < data.size(); ++i)
+            for (size_t id = 0; id < count; ++id)
               {
-                data[i].push_back(entry.data.at(i));
-              }
-            for (unsigned int i = 0; i < target.size(); ++i)
-              {
-                target[i].push_back(entry.target.at(i));
-              }
+                auto entry = _batches[id];
 
-            _indices.pop_back();
-            count--;
+                for (unsigned int i = 0; i < entry.data.size(); ++i)
+                  {
+                    data[i].push_back(entry.data.at(i));
+                  }
+                for (unsigned int i = 0; i < entry.target.size(); ++i)
+                  {
+                    target[i].push_back(entry.target.at(i));
+                  }
+              }
+            _batches.clear();
+          }
+        else // batches
+          {
+            while (count != 0)
+              {
+                auto id = _indices.back();
+                auto entry = _batches[id];
+
+                if (first_iter)
+                  {
+                    data.resize(entry.data.size());
+                    target.resize(entry.target.size());
+                    first_iter = false;
+                  }
+
+                for (unsigned int i = 0; i < entry.data.size(); ++i)
+                  {
+                    data[i].push_back(entry.data.at(i));
+                  }
+                for (unsigned int i = 0; i < entry.target.size(); ++i)
+                  {
+                    target[i].push_back(entry.target.at(i));
+                  }
+
+                _indices.pop_back();
+                count--;
+              }
           }
       }
     else // below db case
@@ -264,16 +322,19 @@ namespace dd
             torch::load(d, datastream);
             torch::load(t, targetstream);
 
+            if (first_iter)
+              {
+                data.resize(d.size());
+                target.resize(t.size());
+                first_iter = false;
+              }
+
             for (unsigned int i = 0; i < d.size(); ++i)
               {
-                while (i >= data.size())
-                  data.emplace_back();
                 data[i].push_back(d.at(i));
               }
             for (unsigned int i = 0; i < t.size(); ++i)
               {
-                while (i >= target.size())
-                  target.emplace_back();
                 target[i].push_back(t.at(i));
               }
 
@@ -310,5 +371,132 @@ namespace dd
     TorchDataset new_dataset;
     new_dataset._batches.insert(new_dataset._batches.end(), start_it, stop_it);
     return new_dataset;
+  }
+
+  /*-- image tools --*/
+  int TorchDataset::add_image_file(const std::string &fname, const int &target,
+                                   const int &height, const int &width)
+  {
+    ImgTorchInputFileConn *inputc
+        = reinterpret_cast<ImgTorchInputFileConn *>(_inputc);
+
+    DDImg dimg;
+    inputc->copy_parameters_to(dimg);
+
+    try
+      {
+        if (dimg.read_file(fname))
+          {
+            this->_logger->error("Uri failed: {}", fname);
+          }
+      }
+    catch (std::exception &e)
+      {
+        this->_logger->error("Uri failed: {}", fname);
+      }
+    if (dimg._imgs.size() != 0)
+      {
+        at::Tensor imgt = image_to_tensor(dimg._imgs[0], height, width);
+        at::Tensor targett = target_to_tensor(target);
+
+        add_batch({ imgt }, { targett });
+        return 0;
+      }
+    else
+      {
+        return -1;
+      }
+  }
+
+  int TorchDataset::add_image_file(const std::string &fname,
+                                   const std::vector<double> &target,
+                                   const int &height, const int &width)
+  {
+    ImgTorchInputFileConn *inputc
+        = reinterpret_cast<ImgTorchInputFileConn *>(_inputc);
+
+    DDImg dimg;
+    inputc->copy_parameters_to(dimg);
+
+    try
+      {
+        if (dimg.read_file(fname))
+          {
+            this->_logger->error("Uri failed: {}", fname);
+          }
+      }
+    catch (std::exception &e)
+      {
+        this->_logger->error("Uri failed: {}", fname);
+      }
+    if (dimg._imgs.size() != 0)
+      {
+        at::Tensor imgt = image_to_tensor(dimg._imgs[0], height, width);
+        // at::Tensor targett{ torch::full(1, target, torch::kLong) };
+        at::Tensor targett = target_to_tensor(target);
+
+        add_batch({ imgt }, { targett });
+        return 0;
+      }
+    else
+      {
+        return -1;
+      }
+  }
+
+  at::Tensor TorchDataset::image_to_tensor(const cv::Mat &bgr,
+                                           const int &height, const int &width)
+  {
+    ImgTorchInputFileConn *inputc
+        = reinterpret_cast<ImgTorchInputFileConn *>(_inputc);
+
+    std::vector<int64_t> sizes{ height, width, bgr.channels() };
+    at::TensorOptions options(at::ScalarType::Byte);
+
+    at::Tensor imgt = torch::from_blob(bgr.data, at::IntList(sizes), options);
+    imgt = imgt.toType(at::kFloat).permute({ 2, 0, 1 });
+    size_t nchannels = imgt.size(0);
+
+    if (inputc->_scale != 1.0)
+      imgt = imgt.mul(inputc->_scale);
+
+    if (!inputc->_mean.empty() && inputc->_mean.size() != nchannels)
+      throw InputConnectorBadParamException(
+          "mean vector be of size the number of channels ("
+          + std::to_string(nchannels) + ")");
+
+    for (size_t m = 0; m < inputc->_mean.size(); m++)
+      imgt[0][m] = imgt[0][m].sub_(inputc->_mean.at(m));
+
+    if (!inputc->_std.empty() && inputc->_std.size() != nchannels)
+      throw InputConnectorBadParamException(
+          "std vector be of size the number of channels ("
+          + std::to_string(nchannels) + ")");
+
+    for (size_t s = 0; s < inputc->_std.size(); s++)
+      imgt[0][s] = imgt[0][s].div_(inputc->_std.at(s));
+
+    return imgt;
+  }
+
+  at::Tensor TorchDataset::target_to_tensor(const int &target)
+  {
+    at::Tensor targett{ torch::full(1, target, torch::kLong) };
+    return targett;
+  }
+
+  at::Tensor TorchDataset::target_to_tensor(const std::vector<double> &target)
+  {
+    int64_t tsize = target.size();
+
+    at::Tensor targett = torch::zeros(tsize, torch::kFloat32);
+    int n = 0;
+    for (auto i : target) // XXX: from_blob does not seem to work, fills up
+                          // with spurious values
+      {
+        targett[n] = i;
+        ++n;
+      }
+    return targett;
   }
 }

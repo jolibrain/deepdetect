@@ -26,6 +26,8 @@
 #include <iterator>
 #include <climits>
 
+#include "baseoperators.h"
+
 namespace dd
 {
   BaseGraph::Vertex BaseGraph::create_var(std::string name)
@@ -232,117 +234,64 @@ namespace dd
     _finalized = true;
   }
 
-  std::tuple<std::vector<int>, std::vector<int>>
-  BaseGraph::compute_dims_from_producer(BaseGraph::Vertex producer)
+  void BaseGraph::compute_dims_operator(BaseGraph::Vertex op)
   {
-    std::vector<int> outputdim;
-    std::vector<int> inputdim;
+    std::vector<std::vector<int>> inputsdims;
+
     std::vector<BaseGraph::Vertex> inputs;
-    auto es = boost::in_edges(producer, _graph);
+
+    auto es = boost::in_edges(op, _graph);
     for (auto eit = es.first; eit != es.second; ++eit)
       inputs.push_back(boost::source(*eit, _graph));
-    outputdim.push_back(_graph[inputs[0]].dim[0]); // batchsize
-    for (int d : _graph[inputs[0]].dim)
-      inputdim.push_back(d);
-    if (_graph[producer].type == "LSTM" || _graph[producer].type == "RNN")
+
+    for (unsigned int i = 0; i < inputs.size(); ++i)
       {
-        outputdim.push_back(_graph[inputs[0]].dim[1]);    // timesteps
-        outputdim.push_back(_graph[producer].num_output); // hidden_size
+        std::vector<int> dims;
+        for (int d : _graph[inputs[i]].dim)
+          dims.push_back(d);
+        inputsdims.push_back(dims);
       }
-    else if (_graph[producer].type == "InnerProduct")
-      {
-        unsigned int axis
-            = (_graph[producer].axis == -1) ? 1 : _graph[producer].axis;
-        for (unsigned int i = 1; i < axis; ++i)
-          outputdim.push_back(_graph[inputs[0]].dim[i]);
-        outputdim.push_back(_graph[producer].num_output);
-      }
-    else if (_graph[producer].type == "Tile")
-      {
-        // BIG FAT WARNING : this is a hack for tile in autoencoders only
-        // because exposed hidden ouputs are computed as of full size
-        outputdim.push_back(_graph[inputs[0]].dim[1]); // timesteps
-        outputdim.push_back(_graph[inputs[0]].dim[2]); // hidden_size
-      }
-    return std::tie(inputdim, outputdim);
+
+    std::vector<std::vector<int>> outputsdims;
+
+    basegraph::op::dispatcher::compute_outputs_dims(_graph[op], inputsdims,
+                                                    outputsdims);
+
+    basegraph::op::dispatcher::update_alloc_status(_graph[op], inputsdims,
+                                                   outputsdims);
+
+    _graph[op].outputsdims = outputsdims;
+    _graph[op].inputsdims = inputsdims;
   }
 
-  void BaseGraph::compute_dims(BaseGraph::Vertex v)
+  void BaseGraph::compute_dims_var(BaseGraph::Vertex var)
   {
-    auto es = boost::in_edges(v, _graph);
+    auto es = boost::in_edges(var, _graph);
     auto eit = es.first;
     BaseGraph::Vertex producer = boost::source(*eit, _graph);
 
-    auto newdims = compute_dims_from_producer(producer);
-    update_alloc_status(newdims, producer);
-    _graph[producer].dim = std::get<1>(newdims);
-    _graph[v].dim = std::get<1>(newdims);
-    _graph[producer].inputdim = std::get<0>(newdims);
-  }
-
-  void BaseGraph::update_alloc_status(
-      std::tuple<std::vector<int>, std::vector<int>> newdims,
-      BaseGraph::Vertex v)
-  {
-    std::vector<int> old_outputdims = _graph[v].dim;
-    std::vector<int> old_inputdims = _graph[v].inputdim;
-    std::vector<int> new_outputdims = std::get<1>(newdims);
-    std::vector<int> new_inputdims = std::get<0>(newdims);
-    if (old_outputdims.size() != new_outputdims.size())
+    auto ies = boost::out_edges(producer, _graph);
+    unsigned int outputindex = 0;
+    for (auto eit = ies.first; eit != ies.second; ++eit)
       {
-        _graph[v].alloc_needed = true;
-        return;
+        if (boost::target(*eit, _graph) == var)
+          break;
+        outputindex++;
       }
 
-    if (old_inputdims.size() != new_inputdims.size())
-      {
-        _graph[v].alloc_needed = true;
-        return;
-      }
-
-    // for lstm, rnn layers, special case for timesteps => no realloc needed
-    if ((old_inputdims[1] != new_inputdims[1]))
-      {
-        if (_graph[v].type != "LSTM" && _graph[v].type != "RNN"
-            && (_graph[v].type != "InnerProduct" || _graph[v].axis <= 1))
-          {
-            _graph[v].alloc_needed = true;
-            return;
-          }
-      }
-
-    // for every layer, if input dim > 2 , realloc needed
-    for (unsigned int i = 2; i < new_inputdims.size(); ++i)
-      if (old_inputdims[i] != new_inputdims[i])
-        {
-          _graph[v].alloc_needed = true;
-          return;
-        }
-
-    if ((old_outputdims[1] != new_outputdims[1]))
-      {
-        if (_graph[v].type != "LSTM" && _graph[v].type != "RNN"
-            && (_graph[v].type != "InnerProduct" || _graph[v].axis <= 1))
-          {
-            _graph[v].alloc_needed = true;
-            return;
-          }
-      }
-    for (unsigned int i = 2; i < old_outputdims.size(); ++i)
-      if (old_outputdims[i] != new_outputdims[i])
-        {
-          _graph[v].alloc_needed = true;
-          return;
-        }
+    _graph[var].dim = _graph[producer].outputsdims[outputindex];
   }
 
   void BaseGraph::compute_blob_sizes()
   {
-    for (BaseGraph::Vertex v : _sortedVars)
+    for (BaseGraph::Vertex v : _sortedAll)
       {
         if (v == _input)
           continue;
-        compute_dims(v);
+        if (_graph[v].op)
+          compute_dims_operator(v);
+        else
+          compute_dims_var(v);
       }
   }
 

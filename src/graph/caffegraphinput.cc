@@ -173,6 +173,7 @@ namespace dd
             add_outputs(v, outputs);
             set_output_name(lparam.top(0));
             _graph[v].axis = lparam.tile_param().axis();
+            _graph[v].tiles = lparam.tile_param().tiles();
           }
       }
 

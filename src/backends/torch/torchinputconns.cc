@@ -191,7 +191,8 @@ namespace dd
 
         for (size_t i = 0; i < this->_images.size(); ++i)
           {
-            _dataset.add_batch({ image_to_tensor(this->_images[i]) });
+            _dataset.add_batch({ _dataset.image_to_tensor(this->_images[i],
+                                                          _height, _width) });
           }
       }
     else // if (!_train)
@@ -267,13 +268,14 @@ namespace dd
                 // Read data
                 for (const std::pair<std::string, int> &lfile : lfiles)
                   {
-                    add_image_file<int>(_dataset, lfile.first, lfile.second);
+                    _dataset.add_image_file(lfile.first, lfile.second, _height,
+                                            _width);
                   }
 
                 for (const std::pair<std::string, int> &lfile : test_lfiles)
                   {
-                    add_image_file<int>(_test_dataset, lfile.first,
-                                        lfile.second);
+                    _test_dataset.add_image_file(lfile.first, lfile.second,
+                                                 _height, _width);
                   }
 
                 // Write corresp file
@@ -306,18 +308,26 @@ namespace dd
                   }
 
                 // Read data
-                for (const std::pair<std::string, std::vector<double>> &lfile :
-                     lfiles)
+                if (_db)
                   {
-                    add_image_file<std::vector<double>>(_dataset, lfile.first,
-                                                        lfile.second);
-                  }
+                    for (const std::pair<std::string, std::vector<double>>
+                             &lfile : lfiles)
+                      {
+                        _dataset.add_image_file(lfile.first, lfile.second,
+                                                _height, _width);
+                      }
 
-                for (const std::pair<std::string, std::vector<double>> &lfile :
-                     test_lfiles)
+                    for (const std::pair<std::string, std::vector<double>>
+                             &lfile : test_lfiles)
+                      {
+                        _test_dataset.add_image_file(lfile.first, lfile.second,
+                                                     _height, _width);
+                      }
+                  }
+                else
                   {
-                    add_image_file<std::vector<double>>(
-                        _test_dataset, lfile.first, lfile.second);
+                    _dataset.set_list(lfiles);
+                    _test_dataset.set_list(test_lfiles);
                   }
               }
           }
@@ -330,7 +340,7 @@ namespace dd
       }
   }
 
-  template <typename T>
+  /*template <typename T>
   int ImgTorchInputFileConn::add_image_file(TorchDataset &dataset,
                                             const std::string &fname, T target)
   {
@@ -414,7 +424,7 @@ namespace dd
         ++n;
       }
     return targett;
-  }
+    }*/
 
   template <typename T>
   void ImgTorchInputFileConn::split_dataset(
