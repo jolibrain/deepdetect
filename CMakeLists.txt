@@ -853,6 +853,7 @@ if (USE_TENSORRT)
 
 
     list(APPEND TRT_FLAGS
+      -DPROTOBUF_VERSION=${PROTOBUF_VERSION}
       -DTRT_OUT_DIR=${CMAKE_BINARY_DIR}/tensorrt-oss/bin
       -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc
     )
