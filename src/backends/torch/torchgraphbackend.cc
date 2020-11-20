@@ -156,6 +156,7 @@ namespace dd
               = _modules[opname_v]
                     .forward<std::tuple<Tensor, std::tuple<Tensor, Tensor>>>(
                         inputsTensor[0]);
+        _autoencoder_timesteps = std::get<0>(full_output).size(1);
         output.push_back(std::get<0>(full_output)); // all outputs
         output.push_back(
             std::get<0>(std::get<1>(full_output))); // last hidden value
@@ -178,7 +179,11 @@ namespace dd
         rssizes.insert(rssizes.begin() + _graph[v].axis, 1L);
         torch::Tensor y = x.reshape(rssizes);
         std::vector<long int> tiless(rssizes.size(), 1);
-        tiless[_graph[v].axis] = _graph[v].dim[_graph[v].axis];
+        if (_graph[v].outputsdims[0][_graph[v].axis]
+            < 0) // to be autodetermined : autoencoder LSTM case only for now
+          tiless[_graph[v].axis] = _autoencoder_timesteps;
+        else
+          tiless[_graph[v].axis] = _graph[v].outputsdims[0][_graph[v].axis];
         output.push_back(y.repeat(tiless));
       }
     else

@@ -71,6 +71,16 @@ namespace dd
     void save(std::string sfile);
 
     /**
+     * \brief restore solver state, checks solverstate presence  and returns
+     * iteration number, best metric value and corresponding iteration number
+     * according to ad_mllib.resume param
+     */
+
+    int resume(const APIData &ad_mllib, const TorchModel &mlmodel,
+               const torch::Device &main_device, double &best_metric_value,
+               int64_t &best_iteration_number);
+
+    /**
      * \brief zero_grad() indirection in order to mimic native optimizer
      * behavior
      */

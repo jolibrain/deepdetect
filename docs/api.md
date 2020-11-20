@@ -772,6 +772,7 @@ gradient_centralization | bool | yes | false for RANGER, true for RANGER_PLUS| f
 test_interval | int    | yes      | N/A     | Number of iterations between testing phases
 base_lr       | real   | yes      | N/A     | Initial learning rate
 iter_size     | int    | yes      | 1       | Number of passes (iter_size * batch_size) at every iteration
+resume        | bool   | yes      | false   | Whether to resume training from solver state 
 
 Net:
 
