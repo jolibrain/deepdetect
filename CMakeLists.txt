@@ -850,6 +850,7 @@ if (USE_TENSORRT)
     list(APPEND TRT_FLAGS
       -DTRT_OUT_DIR=${CMAKE_BINARY_DIR}/tensorrt-oss/bin
       -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc
+      -DBUILD_SAMPLES=OFF
     )
 
     if (JETSON)
