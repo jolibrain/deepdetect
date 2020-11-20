@@ -1,5 +1,9 @@
 #!/bin/bash
 
+set -x
+
+export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/opt/deepdetect/build/lib"
+
 DEDE="/opt/deepdetect/build/main/dede"
 
 echo "Checking dede dependencies"

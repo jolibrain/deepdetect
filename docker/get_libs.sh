@@ -6,6 +6,7 @@ mkdir -p /tmp/lib
 
 libs=(
     /usr/local/lib/libcurlpp.*
+    /opt/deepdetect/build/tensorrt-oss/bin/*
     /opt/deepdetect/build/protobuf/src/protobuf-build/lib*.so*
     /opt/deepdetect/build/pytorch/src/pytorch-build/build/lib/lib*.so*
     /opt/deepdetect/build/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/tensorflow/bazel-out/k8-opt/bin/tensorflow/libtensorflow_cc.so.1
