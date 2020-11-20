@@ -891,17 +891,19 @@ if (USE_TENSORRT)
     include_directories(${CMAKE_CURRENT_BINARY_DIR})
 	set(TENSORRT_LIBS nvinfer nvcaffeparser nvinfer_plugin nvonnxparser )
 
-    if (EXISTS "${TRTTESTDIR}/libnvinfer.so.7")
-      set(TENSORRT_COMMIT f693a6d723ef2766be36deb5e7987cd50159973a) # https://github.com/NVIDIA/TensorRT/releases/tag/20.09
-      message(STATUS "Found TensorRT libraries version 7")
-    elseif(EXISTS "${TRTTESTDIR}/libnvinfer.so.6")
-      set(TENSORRT_COMMIT 639d11abcc7d1f1a4933e87b95c126e6c82e2a5c)
-      message(STATUS "Found TensorRT libraries version 6")
-    elseif(EXISTS "${TRTTESTDIR}/libnvinfer.so.5")
-      set(TENSORRT_COMMIT 0d36bbb29732cdefbed6a60b51039ea1fa747742)
-      message(STATUS "Found TensorRT libraries version 5")
+    if (NOT TENSORRT_VERSION)
+        if (EXISTS "${TRTTESTDIR}/libnvinfer.so.7.1.3")
+            set(TENSORRT_VERSION 20.09)
+            message(STATUS "Found TensorRT libraries version 7.1.3")
+        elseif (EXISTS "${TRTTESTDIR}/libnvinfer.so.7")
+            # FIXME(sileht): remove this case when eris/ceres have been updated
+            set(TENSORRT_VERSION 20.09)
+            message(WARNING "No supported TensorRT version found assuming 20.09/7.1.3")
+        else()
+            message(FATAL_ERROR "No supported TensorRT version found")
+        endif()
     endif()
-
+    add_definitions(-DTENSORRT_VERSION=${TENSORRT_VERSION})
 
     set(TRT_FLAGS
       -DTRT_OUT_DIR=${CMAKE_BINARY_DIR}/tensorrt-oss/bin
@@ -922,7 +924,7 @@ if (USE_TENSORRT)
       tensorrt-oss
       PREFIX tensorrt-oss
       GIT_REPOSITORY https://github.com/NVIDIA/TensorRT.git
-	  GIT_TAG ${TENSORRT_COMMIT}
+      GIT_TAG ${TENSORRT_VERSION}
       GIT_CONFIG advice.detachedHead=false
 	  PATCH_COMMAND git reset --hard && git apply ${TRT_PATCHES}
       CMAKE_ARGS ${TRT_FLAGS}
