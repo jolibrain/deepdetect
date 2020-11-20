@@ -223,7 +223,7 @@ namespace dd
       caffe::NetParameter *net_params, std::string name,
       const std::vector<std::string> &bottoms, std::string top,
       const std::string weight_filler, const std::string bias_filler, int nout,
-      int nin)
+      int nin, bool relu)
   {
     std::string bottom;
 
@@ -246,7 +246,10 @@ namespace dd
     caffe::LayerParameter *lparam = net_params->add_layer();
     lparam->set_type("InnerProduct");
     lparam->set_name(name);
-    lparam->add_top(top);
+    if (relu)
+      lparam->add_top(top + "_unrelued");
+    else
+      lparam->add_top(top);
     lparam->add_bottom(bottom);
     caffe::InnerProductParameter *cparam
         = lparam->mutable_inner_product_param();
@@ -266,6 +269,15 @@ namespace dd
         bfparam->set_min(-1.0 / sqrt(nin));
         bfparam->set_max(1.0 / sqrt(nin));
       }
+
+    if (relu)
+      {
+        caffe::LayerParameter *lparam = net_params->add_layer();
+        lparam->set_name(name + "_ReLU");
+        lparam->set_type("ReLU");
+        lparam->add_bottom(top + "_unrelued");
+        lparam->add_top(top);
+      }
   }
 
   void NetLayersCaffeRecurrent::parse_recurrent_layers(
@@ -275,7 +287,13 @@ namespace dd
     for (auto s : layers)
       {
         size_t pos = 0;
-        if ((pos = s.find(_lstm_str)) != std::string::npos)
+        if ((pos = s.find(_affine_relu_str)) != std::string::npos)
+          {
+            r_layers.push_back(_affine_relu_str);
+            h_sizes.push_back(
+                std::stoi(s.substr(pos + _affine_relu_str.size())));
+          }
+        else if ((pos = s.find(_lstm_str)) != std::string::npos)
           {
             r_layers.push_back(_lstm_str);
             h_sizes.push_back(std::stoi(s.substr(pos + _lstm_str.size())));
@@ -308,7 +326,7 @@ namespace dd
                     "timeseries template requires layers of the form "
                     "\"L50\". "
                     "L for LSTM, R for RNN, A for affine dimension "
-                    "reduction, "
+                    "reduction, AR for affine + relu"
                     " and 50 for a hidden cell size of 50");
               }
           }
@@ -406,6 +424,8 @@ namespace dd
           type = "LSTM";
         else if (layers[i] == _affine_str)
           type = "AFFINE";
+        else if (layers[i] == _affine_relu_str)
+          type = "AFFINE_RELU";
         else if (layers[i] == _tile_str)
           type = "TILE";
 
@@ -419,9 +439,18 @@ namespace dd
             int isize = i == 0 ? osize[i]
                                : osize[i - 1]; // used only for initing weights
             add_affine(this->_net_params, "affine_" + std::to_string(i),
-                       bottoms, top, init, init, osize[i], isize);
+                       bottoms, top, init, init, osize[i], isize, false);
             add_affine(this->_dnet_params, "affine_" + std::to_string(i),
-                       bottoms, top, init, init, osize[i], isize);
+                       bottoms, top, init, init, osize[i], isize, false);
+          }
+        else if (type == "AFFINE_RELU")
+          {
+            int isize = i == 0 ? osize[i]
+                               : osize[i - 1]; // used only for initing weights
+            add_affine(this->_net_params, "affine_" + std::to_string(i),
+                       bottoms, top, init, init, osize[i], isize, true);
+            add_affine(this->_dnet_params, "affine_" + std::to_string(i),
+                       bottoms, top, init, init, osize[i], isize, true);
           }
         else if (type == "TILE")
           {
@@ -455,9 +484,9 @@ namespace dd
     if (osize[osize.size() - 1] != ntargets)
       {
         add_affine(this->_net_params, "affine_final", bottoms, "rnn_pred",
-                   init, init, ntargets, osize[osize.size() - 1]);
+                   init, init, ntargets, osize[osize.size() - 1], false);
         add_affine(this->_dnet_params, "affine_final", bottoms, "rnn_pred",
-                   init, init, ntargets, osize[osize.size() - 1]);
+                   init, init, ntargets, osize[osize.size() - 1], false);
       }
 
     add_permute(this->_net_params, "permuted_rnn_pred", "rnn_pred", 3, true,

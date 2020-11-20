@@ -203,6 +203,25 @@ namespace dd
         (void)outputsdims;
       }
 
+      void relu::compute_outputs_dims(
+          const BaseGraph::VertexProperty &v,
+          const std::vector<std::vector<int>> &inputsdims,
+          std::vector<std::vector<int>> &outputsdims)
+      {
+        (void)v;
+        outputsdims = inputsdims;
+      }
+
+      void relu::update_alloc_status(
+          BaseGraph::VertexProperty &v,
+          const std::vector<std::vector<int>> &inputsdims,
+          const std::vector<std::vector<int>> &outputsdims)
+      {
+        (void)v;
+        (void)inputsdims;
+        (void)outputsdims;
+      }
+
       void dispatcher::compute_outputs_dims(
           const BaseGraph::VertexProperty &v,
           const std::vector<std::vector<int>> &inputsdims,
@@ -216,6 +235,8 @@ namespace dd
           ip::compute_outputs_dims(v, inputsdims, outputsdims);
         else if (type == "Tile")
           tile::compute_outputs_dims(v, inputsdims, outputsdims);
+        else if (type == "ReLU")
+          relu::compute_outputs_dims(v, inputsdims, outputsdims);
         else
           throw BaseGraphException(
               "compute output dims : unknown operator type " + type);
@@ -233,6 +254,8 @@ namespace dd
           ip::update_alloc_status(v, inputsdims, outputsdims);
         else if (type == "Tile")
           tile::update_alloc_status(v, inputsdims, outputsdims);
+        else if (type == "ReLU")
+          relu::update_alloc_status(v, inputsdims, outputsdims);
         else
           throw BaseGraphException(
               "update alloc status  : unknown operator type " + type);
