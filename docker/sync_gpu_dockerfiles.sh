@@ -4,13 +4,13 @@ here=$(dirname $(readlink -f $0))
 
 declare -A runtime_images
 runtime_images[gpu]="nvidia/cuda:10.2-cudnn7-runtime-ubuntu18.04"
-# Ubuntu 18.04+cuda 10.2.80 + cuDNN 7.6.5 + TensorRT 7.0.0
-# https://docs.nvidia.com/deeplearning/tensorrt/container-release-notes/rel_20-03.html#rel_20-03
-runtime_images[gpu_tensorrt]="nvcr.io/nvidia/tensorrt:20.03-py3"
+# Ubuntu 18.04+cuda 11.1.3 + cuDNN 8.0.4 + TensorRT 7.1.3
+# https://docs.nvidia.com/deeplearning/tensorrt/container-release-notes/rel_20-09.html#rel_20-09
+runtime_images[gpu_tensorrt]="nvcr.io/nvidia/tensorrt:20.09-py3"
 
 declare -A devel_images
 devel_images[gpu]="nvidia/cuda:10.2-cudnn7-devel-ubuntu18.04"
-devel_images[gpu_tensorrt]="nvcr.io/nvidia/tensorrt:20.03-py3"
+devel_images[gpu_tensorrt]="nvcr.io/nvidia/tensorrt:20.09-py3"
 
 declare -A builds
 builds[gpu_tensorrt]="tensorrt"

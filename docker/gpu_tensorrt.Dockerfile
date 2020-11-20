@@ -1,5 +1,5 @@
 # syntax = docker/dockerfile:1.0-experimental
-FROM nvcr.io/nvidia/tensorrt:20.03-py3 AS build
+FROM nvcr.io/nvidia/tensorrt:20.09-py3 AS build
 
 ARG DEEPDETECT_RELEASE=OFF
 ARG DEEPDETECT_ARCH=gpu
@@ -111,7 +111,7 @@ RUN --mount=type=cache,target=/ccache/ mkdir build && cd build && ../build.sh
 RUN ./docker/get_libs.sh
 
 # Build final Docker image
-FROM nvcr.io/nvidia/tensorrt:20.03-py3 AS runtime
+FROM nvcr.io/nvidia/tensorrt:20.09-py3 AS runtime
 
 ARG DEEPDETECT_ARCH=gpu
 
