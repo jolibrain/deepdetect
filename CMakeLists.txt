@@ -840,17 +840,18 @@ if (USE_TENSORRT)
     include_directories(${CMAKE_CURRENT_BINARY_DIR})
 	set(TENSORRT_LIBS nvinfer nvcaffeparser nvinfer_plugin nvonnxparser )
 
-    if (EXISTS "${TRTTESTDIR}/libnvinfer.so.7")
-      set(TENSORRT_COMMIT f693a6d723ef2766be36deb5e7987cd50159973a) # https://github.com/NVIDIA/TensorRT/releases/tag/20.09
-      message(STATUS "Found TensorRT libraries version 7")
-    elseif(EXISTS "${TRTTESTDIR}/libnvinfer.so.6")
-      set(TENSORRT_COMMIT 639d11abcc7d1f1a4933e87b95c126e6c82e2a5c)
-      message(STATUS "Found TensorRT libraries version 6")
-    elseif(EXISTS "${TRTTESTDIR}/libnvinfer.so.5")
-      set(TENSORRT_COMMIT 0d36bbb29732cdefbed6a60b51039ea1fa747742)
-      message(STATUS "Found TensorRT libraries version 5")
+    if (NOT TENSORRT_TAG)
+        if (EXISTS "${TRTTESTDIR}/libnvinfer.so.7.1.3")
+            set(TENSORRT_TAG 20.09)
+            message(STATUS "Found TensorRT libraries version 7.1.3")
+        elseif (EXISTS "${TRTTESTDIR}/libnvinfer.so.7")
+            # FIXME(sileht): remove this case when eris/ceres have been updated
+            set(TENSORRT_TAG 20.09)
+            message(WARNING "No supported TensorRT version found assuming 20.09/7.1.3")
+        else()
+            message(FATAL_ERROR "No supported TensorRT version found")
+        endif()
     endif()
-
 
     set(TRT_FLAGS
       -DTRT_OUT_DIR=${CMAKE_BINARY_DIR}/tensorrt-oss/bin
@@ -865,13 +866,11 @@ if (USE_TENSORRT)
 	set(TRT_PATCHES_PATH ${CMAKE_BINARY_DIR}/patches/trt)
 	set(TRT_PATCHES ${TRT_PATCHES_PATH}/0001-support-for-refinedet.patch)
 
-    # Tensorrt uses its own protobuf version (3.0.0) and this cannot be overrided
-    # At best we can set the version it will internally build
     ExternalProject_Add(
       tensorrt-oss
       PREFIX tensorrt-oss
       GIT_REPOSITORY https://github.com/NVIDIA/TensorRT.git
-	  GIT_TAG ${TENSORRT_COMMIT}
+      GIT_TAG ${TENSORRT_TAG}
       GIT_CONFIG advice.detachedHead=false
 	  PATCH_COMMAND git reset --hard && git apply ${TRT_PATCHES}
       CMAKE_ARGS ${TRT_FLAGS}
@@ -1078,6 +1077,7 @@ message(STATUS "USE_TF:                ${USE_TF}")
 message(STATUS "USE_NCNN:              ${USE_NCNN}")
 message(STATUS "USE_HDF5:              ${USE_HDF5}")
 message(STATUS "USE_TENSORRT:          ${USE_TENSORRT}")
+message(STATUS "TENSORRT_TAG:          ${TENSORRT_TAG}")
 message(STATUS "USE_DLIB:              ${USE_DLIB}")
 message(STATUS "USE_ANNOY:             ${USE_ANNOY}")
 message(STATUS "USE_FAISS:             ${USE_FAISS}")
