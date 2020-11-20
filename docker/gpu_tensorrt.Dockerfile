@@ -9,7 +9,8 @@ ARG DEEPDETECT_DEFAULT_MODELS=true
 # Install build dependencies
 RUN rm -f /etc/apt/apt.conf.d/docker-clean; echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
 
-RUN --mount=type=cache,id=apt_cache_gpu_tensorrt,target=/var/cache/apt --mount=type=cache,id=apt_lib_gpu_tensorrt,target=/var/lib/apt \
+RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
+    --mount=type=cache,id=dede_apt_lib,sharing=locked,target=/var/lib/apt \
     export DEBIAN_FRONTEND=noninteractive && \
     apt-get update -y && apt-get install -y python-dev apt-transport-https ca-certificates gnupg software-properties-common wget curl
 
@@ -21,7 +22,8 @@ RUN apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
 # bug closed as won't fix as python2 is eol: https://github.com/docker/for-linux/issues/502
 RUN cp /bin/true /usr/bin/pycompile
 
-RUN --mount=type=cache,id=apt_cache_gpu_tensorrt,target=/var/cache/apt --mount=type=cache,id=apt_lib_gpu_tensorrt,target=/var/lib/apt \
+RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
+    --mount=type=cache,id=dede_apt_lib,sharing=locked,target=/var/lib/apt \
     export DEBIAN_FRONTEND=noninteractive && \
     apt-get update -y && apt-get install -y \
     git \
@@ -119,7 +121,8 @@ LABEL description="DeepDetect deep learning server & API / ${DEEPDETECT_ARCH} ve
 LABEL maintainer="emmanuel.benazera@jolibrain.com"
 
 # Install tools and dependencies
-RUN --mount=type=cache,id=apt_cache_gpu_tensorrt,target=/var/cache/apt --mount=type=cache,id=apt_lib_gpu_tensorrt,target=/var/lib/apt \
+RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
+    --mount=type=cache,id=dede_apt_lib,sharing=locked,target=/var/lib/apt \
     export DEBIAN_FRONTEND=noninteractive && \
     apt-get update -y && apt-get install -y \
     wget \
