@@ -772,6 +772,7 @@ gradient_centralization | bool | yes | false for RANGER, true for RANGER_PLUS| f
 test_interval | int    | yes      | N/A     | Number of iterations between testing phases
 base_lr       | real   | yes      | N/A     | Initial learning rate
 iter_size     | int    | yes      | 1       | Number of passes (iter_size * batch_size) at every iteration
+resume        | bool   | yes      | false   | Whether to resume training from solver state 
 
 Net:
 
@@ -1324,7 +1325,7 @@ Using Mustache, you can turn the JSON into anything, from XML to specialized for
 
 The DeepDetect server and API come with a set of Machine Learning model templates.
 
-At the moment these templates are available for the [Caffe]() Deep Learning library. They include some of the most powerful deep neural net architectures for image classification, and other customizable classic and useful architectures.
+At the moment these templates are available for the [Caffe](https://caffe.berkeleyvision.org/) Deep Learning library. They include some of the most powerful deep neural net architectures for image classification, and other customizable classic and useful architectures.
 
 ## Neural network templates
 
@@ -1340,7 +1341,7 @@ alexnet     | deep neural net          | Images 227x227 | 'AlexNet', convolution
 cifar       | deep neural net          | Images 32x32   | Convolutional deep neural net, very good for small images
 nin         | deep neural net          | Images 224x224 | 'Network in Network' convolutional deep neural net, good accuracy, very fast
 googlenet   | deep neural net          | Images 224x224 | 'GoogleNet', convolutional deep neural net, good accuracy
-resnet_10
+resnet_10   | deep neural net          | Image 224x224  | 'ResNet', 10-layers deep residual convolutional neural net, top accuracy
 resnet_18   | deep neural net          | Image 224x224  | 'ResNet', 18-layers deep residual convolutional neural net, top accuracy
 resnet_32   | deep neural net          | Image 224x224  | 'ResNet', 32-layers deep residual convolutional neural net, top accuracy
 resnet_50   | deep neural net          | Image 224x224  | 'ResNet', 50-layers deep residual convolutional neural net, top accuracy

@@ -22,6 +22,7 @@ option(USE_CUDA_CV "use CUDA with OpenCV (Requires OpenCV build for CUDA)" OFF)
 option(USE_SIMSEARCH "build index and search services" OFF)
 option(USE_ANNOY "use annoy as indexer" OFF)
 option(USE_FAISS "use FAISS as indexer" ON)
+option(BUILD_SPDLOG "build SPDLOG instead of using system library" OFF)
 
 if (USE_CAFFE)
   add_definitions(-DUSE_CAFFE)
@@ -179,6 +180,22 @@ endif()
 set(eigen_archive_hash "50812b426b7c")
 
 include_directories("${EIGEN3_INCLUDE_DIR}")
+
+# spdlog, usefull for ubuntu20.04/rhel/centos that ship a bugged version (missing header, don't compile with nvcc, ...)
+if (BUILD_SPDLOG)
+    ExternalProject_Add(
+        spdlog
+        PREFIX spdlog
+        URL https://github.com/gabime/spdlog/archive/v1.8.1.tar.gz
+        URL_HASH SHA256=5197b3147cfcfaa67dd564db7b878e4a4b3d9f3443801722b3915cdeced656cb
+        BUILD_IN_SOURCE true
+        PATCH_COMMAND patch -p1 < ${CMAKE_SOURCE_DIR}/patches/spdlog/1818.patch
+        INSTALL_COMMAND ""
+    )
+    set(SPDLOG_LIB_DEPS ${CMAKE_BINARY_DIR}/spdlog/src/spdlog/libspdlog.a)
+    set(SPDLOG_INCLUDE_DIR ${CMAKE_BINARY_DIR}/spdlog/src/spdlog/include)
+    include_directories(SYSTEM ${SPDLOG_INCLUDE_DIR})
+endif()
 
 # hdf5
 if (USE_HDF5)
@@ -574,6 +591,8 @@ elseif(USE_CAFFE)
         echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config &&
         echo "USE_SYSLOG:=${USE_SYSLOG}" >> Makefile.config &&
         echo "DEBUG:=${CAFFE_DEBUG}" >> Makefile.config &&
+        echo "INCLUDE_DIRS+=${SPDLOG_INCLUDE_DIR}" >> Makefile.config &&
+        echo "LIBRARIES+=${SPDLOG_LIB_DEPS}" >> Makefile.config &&
         echo "INCLUDE_DIRS+=${PROTOBUF_INCLUDE_DIR}" >> Makefile.config &&
         echo "LIBRARY_DIRS+=${PROTOBUF_LIB_DIR}" >> Makefile.config
     BUILD_COMMAND ${CMAKE_COMMAND} -E env LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR}:$ENV{LD_LIBRARY_PATH} PATH=${PROTOBUF_LIB_DIR}:$ENV{PATH} make -j${N} proto all
@@ -915,6 +934,7 @@ set(COMMON_LINK_LIBS
     ddetect ${DLIB_LIB_DEPS} ${TENSORRT_LIBS} ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} archive
     ${PROTOBUF_LIB_DEPS}
     ${HTTP_LIB_DEPS}
+    ${SPDLOG_LIB_DEPS}
     ${CAFFE_LIB_DEPS}
     ${CAFFE2_LIB_DEPS}
     ${TF_LIB_DEPS}
@@ -1010,3 +1030,4 @@ message(STATUS "USE_CUDNN:             ${USE_CUDNN}")
 message(STATUS "USE_XGBOOST:           ${USE_XGBOOST}")
 message(STATUS "USE_XGBOOST_GPU:       ${USE_XGBOOST_GPU}")
 message(STATUS "USE_TSNE:              ${USE_TSNE}")
+message(STATUS "BUILD_SPDLOG:          ${BUILD_SPDLOG}")

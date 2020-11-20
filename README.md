@@ -3,6 +3,10 @@
 <h1 align="center"> Open Source Deep Learning Server & API</h1>
 
 [![Join the chat at https://gitter.im/beniz/deepdetect](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/beniz/deepdetect?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/jolibrain/deepdetect?color=success&sort=semver)
+![GitHub Release Date](https://img.shields.io/github/release-date/jolibrain/deepdetect)
+![GitHub commits since latest release (by date)](https://img.shields.io/github/commits-since/jolibrain/deepdetect/latest/master)
+
 
 DeepDetect (https://www.deepdetect.com/) is a machine learning API and server written in C++11. It makes state of the art machine learning easy to work with and integrate into existing applications. It has support for both training and inference, with automatic conversion to embedded platforms with TensorRT (NVidia GPU) and NCNN (ARM CPU).
 
@@ -46,7 +50,15 @@ Please join either the community on [Gitter](https://gitter.im/beniz/deepdetect)
 * [References](#references)
 * [Authors](#authors)
 
-## Main features:
+| Build type | STABLE | DEVEL |
+|------|--------|-------|
+| SOURCE | <img src="https://img.shields.io/github/v/release/jolibrain/deepdetect?color=success&sort=semver"> | <img src="https://img.shields.io/github/commits-since/jolibrain/deepdetect/latest/master"> |
+| Docker image CPU | <img src="https://img.shields.io/docker/v/jolibrain/deepdetect_cpu?color=success&sort=semver" /> | <img src="https://img.shields.io/badge/dynamic/json?color=9cf&label=date&query=%24.tag_last_pushed&url=https%3A%2F%2Fhub.docker.com%2Fv2%2Frepositories%2Fjolibrain%2Fdeepdetect_cpu%2Ftags%2Fci-master"> |
+| Docker image GPU | <img src="https://img.shields.io/docker/v/jolibrain/deepdetect_gpu?color=success&sort=semver" /> | <img src="https://img.shields.io/badge/dynamic/json?color=9cf&label=date&query=%24.tag_last_pushed&url=https%3A%2F%2Fhub.docker.com%2Fv2%2Frepositories%2Fjolibrain%2Fdeepdetect_gpu%2Ftags%2Fci-master">  |
+| Docker image GPU+TORCH | <img src="https://img.shields.io/docker/v/jolibrain/deepdetect_gpu_torch?color=success&sort=semver" /> | <img src="https://img.shields.io/badge/dynamic/json?color=9cf&label=date&query=%24.tag_last_pushed&url=https%3A%2F%2Fhub.docker.com%2Fv2%2Frepositories%2Fjolibrain%2Fdeepdetect_gpu_tensorrt%2Ftags%2Fci-master"> |
+| Docker image GPU+TENSORRT | <img src="https://img.shields.io/docker/v/jolibrain/deepdetect_gpu_tensorrt?color=success&sort=semver" /> | <img src="https://img.shields.io/badge/dynamic/json?color=9cf&label=date&query=%24.tag_last_pushed&url=https%3A%2F%2Fhub.docker.com%2Fv2%2Frepositories%2Fjolibrain%2Fdeepdetect_gpu_torch%2Ftags%2Fci-master"> |
+
+## Main features
 
 - high-level API for machine learning and deep learning
 - support for Caffe, Tensorflow, XGBoost, T-SNE, Caffe2, NCNN, TensorRT, Pytorch
