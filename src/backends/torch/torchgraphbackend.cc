@@ -20,6 +20,7 @@
  */
 
 #include "torchgraphbackend.h"
+#include "mllibstrategy.h"
 
 namespace dd
 {
@@ -29,6 +30,7 @@ namespace dd
   using torch::nn::LinearOptions;
   using torch::nn::LSTM;
   using torch::nn::LSTMOptions;
+  using torch::nn::PReLU;
   using torch::nn::RNN;
   using torch::nn::RNNOptions;
 
@@ -137,7 +139,12 @@ namespace dd
     std::vector<torch::Tensor> output;
     std::string optype = this->optype(v);
 
-    if (optype == "LSTM" || optype == "RNN")
+    if (optype == "RNN")
+      {
+        throw MLLibInternalException(
+            "RNN layer type not supported, use LSTM instead");
+      }
+    else if (optype == "LSTM")
       {
         std::tuple<torch::Tensor, std::tuple<torch::Tensor, torch::Tensor>>
             full_output;
@@ -169,6 +176,8 @@ namespace dd
           }
       }
     else if (optype == "InnerProduct")
+      output.push_back(_modules[opname_v].forward(inputsTensor[0]));
+    else if (optype == "ReLU")
       output.push_back(_modules[opname_v].forward(inputsTensor[0]));
     else if (optype == "Tile")
       {
@@ -255,6 +264,13 @@ namespace dd
           }
         else if (optype == "Tile")
           _graph[v].alloc_needed = false;
+        else if (optype == "ReLU")
+          {
+            PReLU m = register_module(opname, PReLU());
+            _modules[opname] = AnyModule(m);
+            _graph[v].alloc_needed = false;
+            _allocation_done = true;
+          }
       }
     to(_device, _dtype);
   }

@@ -300,7 +300,8 @@ TEST(graphapi, complete_lstm_train)
         + csvts_repo
         + "\"},\"parameters\":{\"input\":{\"connector\":\"csvts\",\"label\":["
           "\"output\"]},\"mllib\":{\"template\":\"recurrent\",\"layers\":["
-          "\"L10\",\"L10\"],\"dropout\":[0.0,0.0,0.0],\"regression\":true,"
+          "\"AR5\",\"L10\",\"L10\"],\"dropout\":[0.0,0.0,0.0],\"regression\":"
+          "true,"
           "\"sl1sigma\":100.0,\"loss\":\"L1\"}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
   ASSERT_EQ(created_str, joutstr);

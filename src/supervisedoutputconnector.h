@@ -1053,11 +1053,28 @@ namespace dd
             }
           if (beucll)
             {
-              double meucll = eucll(ad_res, -1);
+              double meucll;
+              std::vector<double> all_meucll;
+              std::tie(meucll, all_meucll) = eucll(ad_res, -1);
               meas_out.add("eucll", meucll);
-              double meucll_thres = eucll(ad_res, beucll_thres);
+              if (all_meucll.size() > 1)
+                for (unsigned int i = 0; i < all_meucll.size(); ++i)
+                  meas_out.add("eucll_" + std::to_string(i), all_meucll[i]);
+
+              std::tuple<double, std::vector<double>> tmeucll_thres
+                  = eucll(ad_res, beucll_thres);
+              double meucll_thres = std::get<0>(tmeucll_thres);
               std::string b = "eucll_no_" + std::to_string(beucll_thres);
               meas_out.add(b, meucll_thres);
+              std::vector<double> all_meucll_thres
+                  = std::get<1>(tmeucll_thres);
+              if (all_meucll_thres.size() > 1)
+                for (unsigned int i = 0; i < all_meucll_thres.size(); ++i)
+                  {
+                    std::string b = "eucll_no_" + std::to_string(i) + "_"
+                                    + std::to_string(beucll_thres);
+                    meas_out.add(b, all_meucll_thres[i]);
+                  }
             }
           if (bmcc)
             {
@@ -2383,9 +2400,15 @@ namespace dd
       return mcc;
     }
 
-    static double eucll(const APIData &ad, float thres)
+    static std::tuple<double, std::vector<double>> eucll(const APIData &ad,
+                                                         float thres)
     {
       double eucl = 0.0;
+      unsigned int psize = ad.getobj(std::to_string(0))
+                               .get("pred")
+                               .get<std::vector<double>>()
+                               .size();
+      std::vector<double> all_eucl(psize, 0.0);
       int batch_size = ad.get("batch_size").get<int>();
       bool has_ignore = ad.has("ignore_label");
 
@@ -2404,25 +2427,34 @@ namespace dd
           else
             target.push_back(bad.get("target").get<double>());
           double leucl = 0;
-          for (size_t i = 0; i < target.size(); i++)
+          std::vector<double> all_leucl(predictions.size(), 0.0);
+          for (size_t j = 0; j < target.size(); j++)
             {
-              int t = target.at(i);
+              int t = target.at(j);
               if (has_ignore && t - static_cast<double>(ignore_label) < 1E-9)
                 continue;
-              double diff = predictions.at(i) - target.at(i);
+              double diff = fabs(predictions.at(j) - target.at(j));
               if (thres >= 0)
                 {
-                  if (fabs(diff) >= thres)
-                    leucl += diff * diff;
+                  if (diff >= thres)
+                    {
+                      leucl += diff * diff;
+                      all_eucl[j] += diff;
+                    }
                 }
               else
                 {
                   leucl += diff * diff;
+                  all_eucl[j] += diff;
                 }
             }
           eucl += sqrt(leucl);
         }
-      return eucl / static_cast<double>(batch_size);
+
+      for (unsigned int i = 0; i < all_eucl.size(); ++i)
+        all_eucl[i] /= static_cast<double>(batch_size);
+
+      return std::make_tuple(eucl / static_cast<double>(batch_size), all_eucl);
     }
 
     // measure: gini coefficient
