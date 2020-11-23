@@ -152,14 +152,6 @@ add_custom_target(
     DEPENDS protobuf
 )
 
-set_source_files_properties(
-  ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
-  ${CMAKE_BINARY_DIR}/src/caffe.pb.h
-  PROPERTIES GENERATED TRUE)
-set_source_files_properties(
-  ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
-  ${CMAKE_BINARY_DIR}/src/caffe.pb.h
-  PROPERTIES COMPILE_FLAGS -Wno-unused-parameter)
 
 
 # dependency on Eigen for confusion matrix fast computation
