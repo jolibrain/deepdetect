@@ -97,7 +97,6 @@ if(RELEASE)
     set(BUILD_TYPE release)
 else()
     set(BUILD_TYPE dev)
-    string(APPEND CMAKE_CXX_FLAGS " -g")
 endif()
 
 if (USE_COMMAND_LINE)
@@ -209,7 +208,8 @@ if (USE_HDF5)
 endif()
 
 # dependency on Boost
-find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system iostreams)
+find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system iostreams stacktrace_backtrace)
+string(APPEND CMAKE_CXX_FLAGS " -DBOOST_STACKTRACE_USE_BACKTRACE -DBOOST_STACKTRACE_LINK")
 
 # optional packages
 if (USE_CPU_ONLY)
@@ -842,7 +842,7 @@ if (USE_TENSORRT)
   else()
     set(TENSORRT_LIB_DIR ${CMAKE_BINARY_DIR}/tensorrt-oss/bin/ ${TENSORRT_LIB_DIR})
     include_directories(${CMAKE_CURRENT_BINARY_DIR})
-	set(TENSORRT_LIBS nvinfer nvparsers nvcaffeparser nvinfer_plugin nvonnxparser )
+	set(TENSORRT_LIBS nvinfer nvcaffeparser nvinfer_plugin nvonnxparser )
 
     if (EXISTS "${TRTTESTDIR}/libnvinfer.so.7")
       set(TENSORRT_COMMIT f693a6d723ef2766be36deb5e7987cd50159973a) # https://github.com/NVIDIA/TensorRT/releases/tag/20.09

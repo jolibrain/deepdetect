@@ -49,6 +49,7 @@ namespace dd
                      const int &nthreads);
     int boot(int argc, char *argv[]);
     static void terminate(int param);
+    static void abort(int param);
     void mergeJObj(JVal &to, JVal &from, JDoc &jd);
 
     http_server *_dd_server

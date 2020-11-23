@@ -31,6 +31,11 @@
 
 #include "backends/torch/db.hpp"
 #include "backends/torch/db_lmdb.hpp"
+
+#include "inputconnectorstrategy.h"
+#include "torchutils.h"
+
+#include <opencv2/opencv.hpp>
 #include <random>
 
 namespace dd
@@ -54,7 +59,7 @@ namespace dd
     int64_t _current_index
         = 0; /**< current index for batch parallel data extraction */
     std::string _backend; /**< db backend (currently only lmdb supported= */
-    bool _db;             /**< is data in db ? */
+    bool _db = false;     /**< is data in db ? */
     int32_t _batches_per_transaction
         = 10; /**< number of batches per db transaction */
     std::shared_ptr<db::Transaction> _txn;   /**< db transaction pointer */
@@ -63,10 +68,15 @@ namespace dd
   public:
     std::shared_ptr<db::DB> _dbData; /**< db data */
     std::vector<int64_t> _indices;   /**< id/key  of data points */
+    std::vector<std::pair<std::string, std::vector<double>>>
+        _lfiles; /**< list of files */
 
     std::vector<TorchBatch> _batches; /**< Vector containing the whole dataset
                                          (the "cached data") */
     std::string _dbFullName;          /**< db filename */
+    InputConnectorStrategy *_inputc
+        = nullptr;               /**< back ptr to input connector. */
+    bool _classification = true; /**< whether a classification dataset. */
 
     /**
      * \brief empty constructor
@@ -83,16 +93,9 @@ namespace dd
           _current_index(d._current_index), _backend(d._backend), _db(d._db),
           _batches_per_transaction(d._batches_per_transaction), _txn(d._txn),
           _logger(d._logger), _dbData(d._dbData), _indices(d._indices),
-          _batches(d._batches), _dbFullName(d._dbFullName)
+          _lfiles(d._lfiles), _batches(d._batches), _dbFullName(d._dbFullName),
+          _inputc(d._inputc), _classification(d._classification)
     {
-    }
-
-    /**
-     *  \brief setter for transaction size_t
-     */
-    void set_transaction_size(int32_t tsize)
-    {
-      _batches_per_transaction = tsize;
     }
 
     /**
@@ -100,21 +103,6 @@ namespace dd
      */
     void add_batch(const std::vector<at::Tensor> &data,
                    const std::vector<at::Tensor> &target = {});
-
-    /**
-     * \brief commits final db transactions
-     */
-    void finalize_db();
-
-    /**
-     * \brief get one elementt from dataset, remove it
-     */
-    void pop(int64_t index, std::string &data, std::string &target);
-
-    /**
-     * \brief add one element to dataset
-     */
-    void add_elt(int64_t index, std::string data, std::string target);
 
     /**
      * \brief reset dataset reading status : ie start new epoch
@@ -127,26 +115,6 @@ namespace dd
     void set_shuffle(bool shuf)
     {
       _shuffle = shuf;
-    }
-
-    /**
-     * \brief setter for db metadata
-     */
-    void set_dbParams(bool db, std::string backend, std::string dbname)
-    {
-      _db = db;
-      _backend = backend;
-      _dbFullName = dbname + "." + _backend;
-    }
-
-    /**
-     * \brief setter for db filename
-     */
-    void set_dbFile(std::string dbfname)
-    {
-      _db = true;
-      _backend = "lmdb";
-      _dbFullName = dbfname;
     }
 
     /**
@@ -178,7 +146,8 @@ namespace dd
      */
     bool empty() const
     {
-      return (!_db && cache_size() == 0) || (_db && _dbFullName.empty());
+      return (!_db && cache_size() == 0 && _lfiles.empty())
+             || (_db && _dbFullName.empty());
     }
 
     /**
@@ -201,6 +170,74 @@ namespace dd
      * \brief Split a percentage of this dataset
      */
     TorchDataset split(double start, double stop);
+
+    /**- db -**/
+
+    /**
+     *  \brief setter for transaction size_t
+     */
+    void set_db_transaction_size(int32_t tsize)
+    {
+      _batches_per_transaction = tsize;
+    }
+
+    /**
+     * \brief commits final db transactions
+     */
+    void db_finalize();
+
+    /**
+     * \brief setter for db metadata
+     */
+    void set_db_params(const bool &db, const std::string &backend,
+                       const std::string &dbname)
+    {
+      _db = db;
+      _backend = backend;
+      _dbFullName = dbname + "." + _backend;
+    }
+
+    /**
+     * \brief setter for db filename
+     */
+    void set_db_file(const std::string &dbfname)
+    {
+      _db = true;
+      _backend = "lmdb";
+      _dbFullName = dbfname;
+    }
+
+    /**
+     * \brief get one elementt from dataset, remove it
+     */
+    void pop_db_elt(int64_t index, std::string &data, std::string &target);
+
+    /**
+     * \brief add one element to dataset
+     */
+    void add_db_elt(int64_t index, std::string data, std::string target);
+
+    /*-- list --*/
+
+    /**
+     * \brief set list of files
+     */
+    void set_list(
+        const std::vector<std::pair<std::string, std::vector<double>>> &lfiles)
+    {
+      _lfiles = lfiles;
+    }
+
+    /*-- image tools --*/
+    int add_image_file(const std::string &fname, const int &target,
+                       const int &height, const int &width);
+    int add_image_file(const std::string &fname,
+                       const std::vector<double> &target, const int &height,
+                       const int &width);
+    at::Tensor image_to_tensor(const cv::Mat &bgr, const int &height,
+                               const int &width);
+    at::Tensor target_to_tensor(const int &target);
+    at::Tensor target_to_tensor(const std::vector<double> &target);
 
   private:
     /**

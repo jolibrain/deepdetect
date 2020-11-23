@@ -29,6 +29,7 @@ namespace dd
 
   using namespace torch;
 
+  // XXX (beniz): to be moved into torchdataset
   void TorchInputInterface::build_test_datadb_from_full_datadb(double tsplit)
   {
     _tilogger->info("splitting : using {} of dataset as test set", tsplit);
@@ -45,11 +46,11 @@ namespace dd
         int64_t index = _dataset._indices[index_distrib(rng)];
         std::string data;
         std::string target;
-        _dataset.pop(index, data, target);
-        _test_dataset.add_elt(index, data, target);
+        _dataset.pop_db_elt(index, data, target);
+        _test_dataset.add_db_elt(index, data, target);
       }
-    _test_dataset.finalize_db();
-    _dataset.finalize_db();
+    _test_dataset.db_finalize();
+    _dataset.db_finalize();
   }
 
   bool TorchInputInterface::has_to_create_db(const APIData &ad,
@@ -187,11 +188,12 @@ namespace dd
           }
 
         // XXX: No predict from db yet
-        _dataset.set_dbParams(false, "", "");
+        _dataset.set_db_params(false, "", "");
 
         for (size_t i = 0; i < this->_images.size(); ++i)
           {
-            _dataset.add_batch({ image_to_tensor(this->_images[i]) });
+            _dataset.add_batch({ _dataset.image_to_tensor(this->_images[i],
+                                                          _height, _width) });
           }
       }
     else // if (!_train)
@@ -267,13 +269,14 @@ namespace dd
                 // Read data
                 for (const std::pair<std::string, int> &lfile : lfiles)
                   {
-                    add_image_file<int>(_dataset, lfile.first, lfile.second);
+                    _dataset.add_image_file(lfile.first, lfile.second, _height,
+                                            _width);
                   }
 
                 for (const std::pair<std::string, int> &lfile : test_lfiles)
                   {
-                    add_image_file<int>(_test_dataset, lfile.first,
-                                        lfile.second);
+                    _test_dataset.add_image_file(lfile.first, lfile.second,
+                                                 _height, _width);
                   }
 
                 // Write corresp file
@@ -306,31 +309,39 @@ namespace dd
                   }
 
                 // Read data
-                for (const std::pair<std::string, std::vector<double>> &lfile :
-                     lfiles)
+                if (_db)
                   {
-                    add_image_file<std::vector<double>>(_dataset, lfile.first,
-                                                        lfile.second);
-                  }
+                    for (const std::pair<std::string, std::vector<double>>
+                             &lfile : lfiles)
+                      {
+                        _dataset.add_image_file(lfile.first, lfile.second,
+                                                _height, _width);
+                      }
 
-                for (const std::pair<std::string, std::vector<double>> &lfile :
-                     test_lfiles)
+                    for (const std::pair<std::string, std::vector<double>>
+                             &lfile : test_lfiles)
+                      {
+                        _test_dataset.add_image_file(lfile.first, lfile.second,
+                                                     _height, _width);
+                      }
+                  }
+                else
                   {
-                    add_image_file<std::vector<double>>(
-                        _test_dataset, lfile.first, lfile.second);
+                    _dataset.set_list(lfiles);
+                    _test_dataset.set_list(test_lfiles);
                   }
               }
           }
 
         if (createDb)
           {
-            _dataset.finalize_db();
-            _test_dataset.finalize_db();
+            _dataset.db_finalize();
+            _test_dataset.db_finalize();
           }
       }
   }
 
-  template <typename T>
+  /*template <typename T>
   int ImgTorchInputFileConn::add_image_file(TorchDataset &dataset,
                                             const std::string &fname, T target)
   {
@@ -414,7 +425,7 @@ namespace dd
         ++n;
       }
     return targett;
-  }
+    }*/
 
   template <typename T>
   void ImgTorchInputFileConn::split_dataset(
@@ -525,9 +536,9 @@ namespace dd
                 _test_split = 0.0;
                 TxtInputFileConn::transform(ad);
                 _test_split = save_ts;
-                _dataset.finalize_db();
+                _dataset.db_finalize();
                 bool has_test_data = _test_dataset._dbData != nullptr;
-                _test_dataset.finalize_db();
+                _test_dataset.db_finalize();
                 if (_test_split != 0.0 && !has_test_data)
                   build_test_datadb_from_full_datadb(_test_split);
               }
