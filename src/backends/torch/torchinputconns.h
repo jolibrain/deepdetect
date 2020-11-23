@@ -91,9 +91,9 @@ namespace dd
         _dataset.set_shuffle(ad_in.get("shuffle").get<bool>());
       if (ad_in.has("db") && ad_in.get("db").get<bool>())
         _db = true;
-      _dataset.set_dbParams(_db, _backend, model_repo + "/train");
+      _dataset.set_db_params(_db, _backend, model_repo + "/train");
       _dataset.set_logger(logger);
-      _test_dataset.set_dbParams(_db, _backend, model_repo + "/test");
+      _test_dataset.set_db_params(_db, _backend, model_repo + "/test");
       _test_dataset.set_logger(logger);
     }
 
@@ -120,10 +120,10 @@ namespace dd
     /**
      * \brief set transaction size on both dataset (train and test)
      */
-    void set_transaction_size(int32_t tsize)
+    void set_db_transaction_size(int32_t tsize)
     {
-      _dataset.set_transaction_size(tsize);
-      _test_dataset.set_transaction_size(tsize);
+      _dataset.set_db_transaction_size(tsize);
+      _test_dataset.set_db_transaction_size(tsize);
     }
 
     /**
@@ -192,7 +192,7 @@ namespace dd
     {
       _dataset._inputc = this;
       _test_dataset._inputc = this;
-      set_transaction_size(TORCH_IMG_TRANSACTION_SIZE);
+      set_db_transaction_size(TORCH_IMG_TRANSACTION_SIZE);
     }
 
     /**
@@ -203,7 +203,7 @@ namespace dd
     {
       _dataset._inputc = this;
       _test_dataset._inputc = this;
-      set_transaction_size(TORCH_IMG_TRANSACTION_SIZE);
+      set_db_transaction_size(TORCH_IMG_TRANSACTION_SIZE);
     }
 
     ~ImgTorchInputFileConn()
@@ -278,7 +278,7 @@ namespace dd
       _dataset._inputc = this;
       _test_dataset._inputc = this;
       _vocab_sep = '\t';
-      set_transaction_size(TORCH_TEXT_TRANSACTION_SIZE);
+      set_db_transaction_size(TORCH_TEXT_TRANSACTION_SIZE);
     }
     /**
      * \brief copy constructor
@@ -289,7 +289,7 @@ namespace dd
     {
       _dataset._inputc = this;
       _test_dataset._inputc = this;
-      set_transaction_size(TORCH_TEXT_TRANSACTION_SIZE);
+      set_db_transaction_size(TORCH_TEXT_TRANSACTION_SIZE);
     }
 
     ~TxtTorchInputFileConn()

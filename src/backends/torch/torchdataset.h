@@ -99,33 +99,10 @@ namespace dd
     }
 
     /**
-     *  \brief setter for transaction size_t
-     */
-    void set_transaction_size(int32_t tsize)
-    {
-      _batches_per_transaction = tsize;
-    }
-
-    /**
      * \brief add data to dataset
      */
     void add_batch(const std::vector<at::Tensor> &data,
                    const std::vector<at::Tensor> &target = {});
-
-    /**
-     * \brief commits final db transactions
-     */
-    void finalize_db();
-
-    /**
-     * \brief get one elementt from dataset, remove it
-     */
-    void pop(int64_t index, std::string &data, std::string &target);
-
-    /**
-     * \brief add one element to dataset
-     */
-    void add_elt(int64_t index, std::string data, std::string target);
 
     /**
      * \brief reset dataset reading status : ie start new epoch
@@ -138,35 +115,6 @@ namespace dd
     void set_shuffle(bool shuf)
     {
       _shuffle = shuf;
-    }
-
-    /**
-     * \brief setter for db metadata
-     */
-    void set_dbParams(bool db, std::string backend, std::string dbname)
-    {
-      _db = db;
-      _backend = backend;
-      _dbFullName = dbname + "." + _backend;
-    }
-
-    /**
-     * \brief setter for db filename
-     */
-    void set_dbFile(std::string dbfname)
-    {
-      _db = true;
-      _backend = "lmdb";
-      _dbFullName = dbfname;
-    }
-
-    /**
-     * \brief set list of files
-     */
-    void set_list(
-        const std::vector<std::pair<std::string, std::vector<double>>> &lfiles)
-    {
-      _lfiles = lfiles;
     }
 
     /**
@@ -222,6 +170,63 @@ namespace dd
      * \brief Split a percentage of this dataset
      */
     TorchDataset split(double start, double stop);
+
+    /**- db -**/
+
+    /**
+     *  \brief setter for transaction size_t
+     */
+    void set_db_transaction_size(int32_t tsize)
+    {
+      _batches_per_transaction = tsize;
+    }
+
+    /**
+     * \brief commits final db transactions
+     */
+    void db_finalize();
+
+    /**
+     * \brief setter for db metadata
+     */
+    void set_db_params(const bool &db, const std::string &backend,
+                       const std::string &dbname)
+    {
+      _db = db;
+      _backend = backend;
+      _dbFullName = dbname + "." + _backend;
+    }
+
+    /**
+     * \brief setter for db filename
+     */
+    void set_db_file(const std::string &dbfname)
+    {
+      _db = true;
+      _backend = "lmdb";
+      _dbFullName = dbfname;
+    }
+
+    /**
+     * \brief get one elementt from dataset, remove it
+     */
+    void pop_db_elt(int64_t index, std::string &data, std::string &target);
+
+    /**
+     * \brief add one element to dataset
+     */
+    void add_db_elt(int64_t index, std::string data, std::string target);
+
+    /*-- list --*/
+
+    /**
+     * \brief set list of files
+     */
+    void set_list(
+        const std::vector<std::pair<std::string, std::vector<double>>> &lfiles)
+    {
+      _lfiles = lfiles;
+    }
 
     /*-- image tools --*/
     int add_image_file(const std::string &fname, const int &target,

@@ -71,7 +71,8 @@ namespace dd
     void add_affine(caffe::NetParameter *net_params, std::string name,
                     const std::vector<std::string> &bottom, std::string top,
                     const std::string weight_filler,
-                    const std::string bias_filler, int nout, int nin);
+                    const std::string bias_filler, int nout, int nin,
+                    bool relu);
 
     void add_tile(caffe::NetParameter *net_param, const std::string layer_name,
                   const std::string bottom_name, const std::string top_name);
@@ -84,6 +85,7 @@ namespace dd
     const std::string _lstm_str = "L";
     const std::string _rnn_str = "R";
     const std::string _affine_str = "A";
+    const std::string _affine_relu_str = "AR";
     const std::string _tile_str = "T";
   };
 
