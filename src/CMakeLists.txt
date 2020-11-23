@@ -1,4 +1,14 @@
 # main library
+
+set_source_files_properties(
+  ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
+  ${CMAKE_BINARY_DIR}/src/caffe.pb.h
+  PROPERTIES GENERATED TRUE)
+set_source_files_properties(
+  ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
+  ${CMAKE_BINARY_DIR}/src/caffe.pb.h
+  PROPERTIES COMPILE_FLAGS -Wno-unused-parameter)
+
 if (USE_DD_SYSLOG)
   add_definitions(-DUSE_DD_SYSLOG)
 endif()
@@ -127,7 +137,9 @@ if (USE_TENSORRT)
   endif()
 endif()
 
+
 add_library(ddetect ${ddetect_SOURCES})
+add_dependencies(ddetect caffe_pb_h)
 if (USE_DLIB)
   add_dependencies(ddetect protobuf dlib)
 endif()

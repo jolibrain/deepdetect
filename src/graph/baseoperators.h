@@ -141,6 +141,28 @@ namespace dd
       }
 
       /**
+       * \brief contains all relu  specifics
+       */
+      namespace relu
+      {
+        /**
+         * \brief computes output dims for Tile/Repeat
+         */
+        void
+        update_alloc_status(BaseGraph::VertexProperty &v,
+                            const std::vector<std::vector<int>> &inputsdims,
+                            const std::vector<std::vector<int>> &outputsdims);
+        /**
+         * \brief checks if dims changed and if realloc is needed, for
+         * Tile/Repeat
+         */
+        void
+        compute_outputs_dims(const BaseGraph::VertexProperty &v,
+                             const std::vector<std::vector<int>> &inputsdims,
+                             std::vector<std::vector<int>> &outputsdims);
+      }
+
+      /**
        * \brief dispatches specific functions wrt type contained in graph
        */
       namespace dispatcher

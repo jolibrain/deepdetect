@@ -175,6 +175,17 @@ namespace dd
             _graph[v].axis = lparam.tile_param().axis();
             _graph[v].tiles = lparam.tile_param().tiles();
           }
+        else if (lparam.type() == "ReLU")
+          {
+            Vertex v = add_layer(lparam.name(), lparam.type());
+            std::vector<std::string> inputs;
+            inputs.push_back(lparam.bottom(0));
+            add_inputs(v, inputs);
+            std::vector<std::string> outputs;
+            outputs.push_back(lparam.top(0));
+            add_outputs(v, outputs);
+            set_output_name(lparam.top(0));
+          }
       }
 
     return true;
