@@ -219,15 +219,19 @@ namespace dd
       bool isDir;
       bool exists = fileops::file_exists(_repo, isDir);
       if (exists && !isDir)
-        throw MLLibBadParamException(
-            "file exists with same name as repository");
+        {
+          std::string errmsg = "file exists with same name as repository";
+          logger->error(errmsg);
+          throw MLLibBadParamException(errmsg);
+        }
       if (!exists && create)
         fileops::create_dir(_repo, 0775);
 
       if (!fileops::is_directory_writable(_repo))
         {
-          throw MLLibBadParamException(
-              "destination model directory is not writable");
+          std::string errmsg = "destination model directory is not writable";
+          logger->error(errmsg);
+          throw MLLibBadParamException(errmsg);
         }
 
 #ifdef USE_SIMSEARCH
@@ -271,9 +275,11 @@ namespace dd
                 }
               catch (...)
                 {
-                  throw MLLibBadParamException(
-                      "failed fetching model archive: " + compressedf
-                      + " with code: " + std::to_string(outcode));
+                  std::string errmsg
+                      = "failed fetching model archive: " + compressedf
+                        + " with code: " + std::to_string(outcode);
+                  logger->error(errmsg);
+                  throw MLLibBadParamException(errmsg);
                 }
               std::ofstream mof(modelf);
               mof << content;
@@ -283,9 +289,13 @@ namespace dd
             }
 
           if (fileops::uncompress(compressedf, _repo))
-            throw MLLibBadParamException(
-                "failed installing model from archive, check 'init' argument "
-                "to model");
+            {
+              std::string errmsg = "failed installing model from archive, "
+                                   "check 'init' argument "
+                                   "to model";
+              logger->error(errmsg);
+              throw MLLibBadParamException(errmsg);
+            }
         }
     }
 
