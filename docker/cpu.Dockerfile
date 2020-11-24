@@ -51,6 +51,7 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     libboost-regex-dev \
     libboost-date-time-dev \
     libboost-chrono-dev \
+    libboost-stacktrace-dev \
     libssl-dev \
     libcurlpp-dev \
     libcurl4-openssl-dev \
@@ -144,6 +145,7 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
 	libboost-thread1.65.1 \
 	libboost-iostreams1.65.1 \
     libboost-regex1.65.1 \
+    libboost-stacktrace1.65.1 \
 	libarchive13 \
 	libprotobuf10
 
