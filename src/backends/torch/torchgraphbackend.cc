@@ -328,4 +328,39 @@ namespace dd
         return torch::nn::Module::parameters(recurse);
       }
   }
+
+  std::vector<int> TorchGraphBackend::get_input_dims(
+      std::string optype,
+      torch::OrderedDict<std::string, torch::Tensor> params)
+  {
+    std::vector<int> dims;
+    if (optype == "LSTM")
+      {
+        torch::Tensor *val = params.find("weight_ih_l0");
+        dims.push_back(val->size(1));
+      }
+    else if (optype == "InnerProduct")
+      {
+        torch::Tensor *val = params.find("weight");
+        dims.push_back(val->size(1));
+      }
+    else
+      {
+        // TODO : others types are not yet implemented
+        dims.push_back(-1);
+      }
+    return dims;
+  }
+
+  std::vector<int> TorchGraphBackend::get_input_dims_from_loaded()
+  {
+    BaseGraph::Vertex o = _sortedOps[0];
+    auto opname_o = opname(o);
+    torch::nn::AnyModule am = _modules[opname_o];
+    std::shared_ptr<torch::nn::Module> m = am.ptr();
+    std::string optype_o = optype(o);
+    auto params = m->named_parameters();
+
+    return get_input_dims(optype_o, params);
+  }
 }
