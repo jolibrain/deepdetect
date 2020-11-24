@@ -164,7 +164,7 @@ add_custom_target(
 
 # dependency on Eigen for confusion matrix fast computation
 if (USE_TF)
-  set(TENSORFLOW_CC_DIR ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/)
+  set(TENSORFLOW_CC_DIR ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc-build/)
   set(EIGEN3_INCLUDE_DIR ${TENSORFLOW_CC_DIR}/tensorflow/tensorflow/contrib/makefile/downloads/eigen/)
 elseif (USE_CAFFE2)
   set(PYTORCH_PATH ${CMAKE_BINARY_DIR}/pytorch/src/pytorch)
@@ -248,12 +248,12 @@ if (USE_CAFFE)
       ExternalProject_Add(
         annoy
         PREFIX annoy
-        DOWNLOAD_COMMAND git clone https://github.com/spotify/annoy.git
+        GIT_REPOSITORY https://github.com/spotify/annoy.git
         CONFIGURE_COMMAND python setup.py build
         BUILD_COMMAND ""
         INSTALL_COMMAND ""
         BUILD_IN_SOURCE 1
-        )
+      )
 
       set(ANNOY_INCLUDE_DIR ${CMAKE_BINARY_DIR}/annoy/src/annoy/src/)
       include_directories("${ANNOY_INCLUDE_DIR}")
@@ -275,12 +275,12 @@ if (USE_CAFFE)
       ExternalProject_Add(
         faisslib
         PREFIX faiss
-        DOWNLOAD_COMMAND git clone https://github.com/fantes/faiss
-        CONFIGURE_COMMAND cd ${CMAKE_BINARY_DIR}/faiss/src/faiss && ./configure ${CONFIGURE_OPTS}
-        BUILD_COMMAND cd ${CMAKE_BINARY_DIR}/faiss/src/faiss && make -j${N}
+        SOURCE_DIR ${CMAKE_BINARY_DIR}/faiss/src/faiss
+        GIT_REPOSITORY https://github.com/fantes/faiss
+        CONFIGURE_COMMAND ./configure ${CONFIGURE_OPTS}
         INSTALL_COMMAND ""
         BUILD_IN_SOURCE 1
-        )
+      )
 
       set(FAISS_INCLUDE_DIR ${CMAKE_BINARY_DIR}/faiss/src/)
       include_directories("${FAISS_INCLUDE_DIR}")
@@ -485,9 +485,10 @@ if (USE_TF)
     ExternalProject_Add(
       tensorflow_cc
       PREFIX tensorflow_cc
-      DOWNLOAD_COMMAND git clone --branch v1.15.0 https://github.com/FloopCZ/tensorflow_cc.git
-      CONFIGURE_COMMAND cd tensorflow_cc && mkdir -p build && cd build && cmake -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED=ON .. && make
-      BUILD_COMMAND ""
+      GIT_REPOSITORY https://github.com/FloopCZ/tensorflow_cc.git
+      GIT_TAG v1.15.0
+      SOURCE_SUBDIR tensorflow_cc
+      CMAKE_ARGS -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED=ON
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
       )
@@ -496,9 +497,10 @@ if (USE_TF)
     ExternalProject_Add(
       tensorflow_cc
       PREFIX tensorflow_cc
-      DOWNLOAD_COMMAND git clone --branch v1.15.0 https://github.com/FloopCZ/tensorflow_cc.git
-      CONFIGURE_COMMAND cd tensorflow_cc && mkdir -p build && cd build && cmake -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED=ON -DALLOW_CUDA=OFF .. && make
-      BUILD_COMMAND ""
+      GIT_REPOSITORY https://github.com/FloopCZ/tensorflow_cc.git
+      GIT_TAG v1.15.0
+      SOURCE_SUBDIR tensorflow_cc
+      CMAKE_ARGS -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED=ON -DALLOW_CUDA=OFF
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
       )
@@ -664,30 +666,25 @@ if (USE_NCNN)
   message(STATUS "Configuring NCNN")
   add_definitions(-DUSE_NCNN)
   include_directories(${CMAKE_CURRENT_BINARY_DIR})
-  set(NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src/libncnn.a)
+  set(NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn-build/src/libncnn.a)
   if (RPI3)
     ExternalProject_Add(
       ncnn
       PREFIX ncnn
-      DOWNLOAD_COMMAND git clone --recursive https://github.com/jolibrain/ncnn.git
-      CONFIGURE_COMMAND mkdir -p build && cd build && cmake .. -DPI3=ON -DCMAKE_TOOLCHAIN_FILE=../toolchains/pi3.toolchain.cmake
-      BUILD_COMMAND cd build/ && make -j${N}
+      GIT_REPOSITORY https://github.com/jolibrain/ncnn.git
+      CMAKE_ARGS -DPI3=ON -DCMAKE_TOOLCHAIN_FILE=../toolchains/pi3.toolchain.cmake
       INSTALL_COMMAND ""
-      BUILD_IN_SOURCE 1
     )
   else ()
     ExternalProject_Add(
       ncnn
       PREFIX ncnn
-      DOWNLOAD_COMMAND git clone --recursive https://github.com/jolibrain/ncnn.git && cd ncnn
-      CONFIGURE_COMMAND mkdir -p build && cd build && cmake ..
-      BUILD_COMMAND cd build/ && make -j${N}
+      GIT_REPOSITORY https://github.com/jolibrain/ncnn.git
       INSTALL_COMMAND ""
-      BUILD_IN_SOURCE 1
     )
   endif()
-  set(NCNN_INC_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/src ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src)
-  set(NCNN_LIB_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src)
+  set(NCNN_INC_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/src ${CMAKE_BINARY_DIR}/ncnn/src/ncnn-build/src)
+  set(NCNN_LIB_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn-build/src)
   include_directories(${NCNN_INC_DIR})
 endif()
 
@@ -755,33 +752,56 @@ endif()
 if (USE_XGBOOST)
   message(STATUS "Configuring XGBoost")
   add_definitions(-DUSE_XGBOOST)
-  set(XGBOOST_LIB_DEPS -Wl,--whole-archive ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/lib/libxgboost.a -Wl,--no-whole-archive ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/dmlc-core/libdmlc.a ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/librabit.a)
+  set(XGBOOST_LIB_DEPS -Wl,--whole-archive ${CMAKE_BINARY_DIR}/xgboost/src/xgboost-build/libxgboost.a -Wl,--no-whole-archive ${CMAKE_BINARY_DIR}/xgboost/src/xgboost-build/dmlc-core/libdmlc.a ${CMAKE_BINARY_DIR}/xgboost/src/xgboost-build/librabit.a)
 
   if (CUDA_FOUND AND USE_XGBOOST_GPU)
     add_definitions(-DUSE_XGBOOST_GPU)
     list(APPEND XGBOOST_LIB_DEPS ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/CMakeFiles/gpuxgboost.dir/plugin/updater_gpu/src/gpuxgboost_generated_updater_gpu.cu.o ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/nccl/libnccl.a)
 #    set(XGB_NVCC_FLAGS,"--expt-extended-lambda;-gencode arch=compute_35,code=compute_35")
     ExternalProject_Add(
+      xgboost_cub
+      PREFIX xgboost_cub
+      URL https://github.com/NVlabs/cub/archive/1.6.4.zip
+      URL_HASH SHA256=4198e9c447a1e2a963b9e0e4d861df48baa47fb02e5e4fc507d1834afc99185a
+      INSTALL_COMMAND ""
+      BUILD_COMMAND ""
+      CONFIGURE_COMMAND ""
+    )
+    ExternalProject_Add(
       xgboost
       PREFIX xgboost
-      DOWNLOAD_COMMAND git clone https://github.com/dmlc/xgboost.git
-      CONFIGURE_COMMAND git checkout 84d992babcc370bff6cf4fe89985f072b0b91a64 && git submodule update --init --recursive && cd dmlc-core && git checkout 13d5acb8ba7e79550bbf2f730f1a3944ff0fa68b && cd .. && wget https://github.com/NVlabs/cub/archive/1.6.4.zip && unzip 1.6.4.zip && rm 1.6.4.zip && mkdir -p build && cd build &&
-      cmake .. -DPLUGIN_UPDATER_GPU=ON -DCUB_DIRECTORY=${CMAKE_BINARY_DIR}/xgboost/src/xgboost/cub-1.6.4/ -DCUDA_NVCC_FLAGS=-Xcompiler\ -fPIC\ --expt-extended-lambda\ -gencode\ arch=compute_30,code=compute_30\ -gencode\ arch=compute_35,code=compute_35\ -gencode\ arch=compute_50,code=compute_50\ -gencode\ arch=compute_52,code=compute_52\ -gencode\ arch=compute_61,code=compute_61 && make && make
+      GIT_REPOSITORY https://github.com/dmlc/xgboost.git
+      GIT_TAG 84d992babcc370bff6cf4fe89985f072b0b91a64
+      GIT_CONFIG advice.detachedHead=false
+      GIT_SUBMODULES_RECURSE ON
+      PATCH_COMMAND
+        git reset --hard &&
+        patch -p1 < ${CMAKE_SOURCE_DIR}/patches/xgboost/static-lib.patch &&
+        cd dmlc-core && git checkout 13d5acb8ba7e79550bbf2f730f1a3944ff0fa68b
+      CMAKE_ARGS
+        -DPLUGIN_UPDATER_GPU=ON
+        -DCUB_DIRECTORY=${CMAKE_BINARY_DIR}/xgboost_cub/src/xgboost_cub
+        -DCUDA_NVCC_FLAGS="-Xcompiler -fPIC --expt-extended-lambda -gencode arch=compute_30,code=compute_30 -gencode arch=compute_35,code=compute_35 -gencode arch=compute_50,code=compute_50 -gencode arch=compute_52,code=compute_52 -gencode arch=compute_61,code=compute_61"
       INSTALL_COMMAND ""
-      BUILD_IN_SOURCE 1
-      )
+      DEPENDS xgboost_cub
+    )
   else()
     ExternalProject_Add(
       xgboost
       PREFIX xgboost
-      DOWNLOAD_COMMAND git clone https://github.com/dmlc/xgboost.git
-      CONFIGURE_COMMAND git checkout 84d992babcc370bff6cf4fe89985f072b0b91a64 && git submodule update --init --recursive && cd dmlc-core && git checkout 13d5acb8ba7e79550bbf2f730f1a3944ff0fa68b && cd .. && mkdir build && cd build && cmake .. && make -j ${N}
+      GIT_REPOSITORY https://github.com/dmlc/xgboost.git
+      GIT_TAG 84d992babcc370bff6cf4fe89985f072b0b91a64
+      GIT_CONFIG advice.detachedHead=false
+      GIT_SUBMODULES_RECURSE ON
+      PATCH_COMMAND
+        git reset --hard &&
+        patch -p1 < ${CMAKE_SOURCE_DIR}/patches/xgboost/static-lib.patch &&
+        cd dmlc-core && git checkout 13d5acb8ba7e79550bbf2f730f1a3944ff0fa68b
       INSTALL_COMMAND ""
-      BUILD_IN_SOURCE 1
-      )
+    )
   endif()
   set(XGBOOST_INC_DIR ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/include ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/src ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/rabit/include ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/dmlc-core/include ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/dmlc-core/src/)
-  set(XGBOOST_LIB_DIR ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/lib ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/ ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/dmlc-core)
+  set(XGBOOST_LIB_DIR ${CMAKE_BINARY_DIR}/xgboost/src/xgboost-build/lib ${CMAKE_BINARY_DIR}/xgboost/src/xgboost-build/ ${CMAKE_BINARY_DIR}/xgboost/src/xgboost-build/dmlc-core)
 endif()
 
 if (USE_TSNE)
@@ -791,14 +811,13 @@ if (USE_TSNE)
   ExternalProject_Add(
       Multicore-TSNE
       PREFIX Multicore-TSNE
-      DOWNLOAD_COMMAND git clone https://github.com/beniz/Multicore-TSNE.git
-      CONFIGURE_COMMAND cd multicore_tsne && mkdir -p build && cd build && cmake ..
-      BUILD_COMMAND cd multicore_tsne/build/ && make
+      GIT_REPOSITORY https://github.com/beniz/Multicore-TSNE.git
+      SOURCE_SUBDIR multicore_tsne
+      CMAKE_ARGS -Wno-dev
       INSTALL_COMMAND ""
-      BUILD_IN_SOURCE 1
-      )
-    set(TSNE_INC_DIR ${CMAKE_BINARY_DIR}/Multicore-TSNE/src/Multicore-TSNE/multicore_tsne)
-    set(TSNE_LIB_DIR ${CMAKE_BINARY_DIR}/Multicore-TSNE/src/Multicore-TSNE/multicore_tsne/build)
+   )
+  set(TSNE_INC_DIR ${CMAKE_BINARY_DIR}/Multicore-TSNE/src/Multicore-TSNE/multicore_tsne)
+  set(TSNE_LIB_DIR ${CMAKE_BINARY_DIR}/Multicore-TSNE/src/Multicore-TSNE-build)
 endif()
 
 # add the binary tree to the search path for include files
