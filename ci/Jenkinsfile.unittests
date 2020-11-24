@@ -1,5 +1,11 @@
 pipeline {
-  agent { node { label 'gpu' } }
+  agent {
+    dockerfile {
+      label 'gpu'
+      filename 'ci/devel.Dockerfile'
+      args "-v /var/lib/jenkins/.ccache:/ccache -e CCACHE_DIR=/ccache --runtime nvidia"
+    }
+  }
   stages {
     stage('Init') {
       steps {
@@ -53,6 +59,7 @@ cmake .. \
         sh 'cd build && make clang-format-check'
       }
     }
+
     stage('Check python client') {
       steps {
         sh 'cd clients/python/ && tox -e pep8,py36,py27'

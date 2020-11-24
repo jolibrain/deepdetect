@@ -1,6 +1,11 @@
-
 pipeline {
-  agent any
+  agent {
+    dockerfile {
+      label 'gpu'
+      filename 'ci/devel.Dockerfile'
+      args "-v /var/lib/jenkins/.ccache:/ccache -e CCACHE_DIR=/ccache --runtime nvidia"
+    }
+  }
   stages {
     stage('Init') {
       steps {
