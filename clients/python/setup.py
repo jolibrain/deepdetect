@@ -2,5 +2,5 @@ import setuptools
 
 
 setuptools.setup(
-    setup_requires=["setuptools>=30.3.0"],
+    setup_requires=["setuptools>=30.3.0<45"],
 )
