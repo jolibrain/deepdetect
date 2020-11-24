@@ -148,15 +148,18 @@ file(
     DOWNLOAD https://raw.githubusercontent.com/jolibrain/caffe/master/src/caffe/proto/caffe.proto ${CMAKE_BINARY_DIR}/caffe.proto
     EXPECTED_HASH SHA256=e82a1d51635be93e964c6debcb4cd76514fada46348fa7b30355c14850767360
 )
-add_custom_target(
-    caffe_pb_h
-    LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR} ${PROTOBUF_LIB_DIR}/protoc --proto_path=${CMAKE_BINARY_DIR} --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_BINARY_DIR}/caffe.proto
-    BYPRODUCTS ${CMAKE_BINARY_DIR}/src/caffe.pb.h ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
+add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/src/caffe.pb.h ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
+    COMMAND LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR} ${PROTOBUF_LIB_DIR}/protoc --proto_path=${CMAKE_BINARY_DIR} --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_BINARY_DIR}/caffe.proto
+    MAIN_DEPENDENCY ${CMAKE_BINARY_DIR}/caffe.proto
     COMMENT Generating caffe.pb.h and caffe.pb.cc
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     DEPENDS protobuf
 )
-
+add_custom_target(
+    caffe_pb_h
+    DEPENDS ${CMAKE_BINARY_DIR}/src/caffe.pb.h ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
+)
 
 
 # dependency on Eigen for confusion matrix fast computation
