@@ -752,7 +752,6 @@ if (USE_XGBOOST)
       GIT_REPOSITORY https://github.com/dmlc/xgboost.git
       GIT_TAG 84d992babcc370bff6cf4fe89985f072b0b91a64
       GIT_CONFIG advice.detachedHead=false
-      GIT_SUBMODULES_RECURSE ON
       PATCH_COMMAND
         git reset --hard &&
         patch -p1 < ${CMAKE_SOURCE_DIR}/patches/xgboost/static-lib.patch &&
@@ -771,7 +770,6 @@ if (USE_XGBOOST)
       GIT_REPOSITORY https://github.com/dmlc/xgboost.git
       GIT_TAG 84d992babcc370bff6cf4fe89985f072b0b91a64
       GIT_CONFIG advice.detachedHead=false
-      GIT_SUBMODULES_RECURSE ON
       PATCH_COMMAND
         git reset --hard &&
         patch -p1 < ${CMAKE_SOURCE_DIR}/patches/xgboost/static-lib.patch &&
