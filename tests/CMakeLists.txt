@@ -1,7 +1,7 @@
 include_directories(${COMMON_INCLUDE_DIRS})
 link_directories(${COMMON_LINK_DIRS})
 
-find_package(GTest)
+find_package(GTest REQUIRED)
 include_directories(${GTEST_INCLUDE_DIRS})
 
 # Optional headers can be passed (stored in ARGN)
@@ -85,334 +85,331 @@ endfunction()
 
 find_package(PythonInterp 2.7 REQUIRED)
 
-if (GTEST_FOUND)
+if (USE_JSON_API)
+  REGISTER_TEST(ut_apidata ut-apidata.cc)
+endif()
+if (USE_CAFFE)
   if (USE_JSON_API)
-    REGISTER_TEST(ut_apidata ut-apidata.cc)
+    REGISTER_TEST(ut_conn ut-conn.cc)
+    REGISTER_TEST(ut_jsonapi ut-jsonapi.cc)
   endif()
-  if (USE_CAFFE)
-    if (USE_JSON_API)
-      REGISTER_TEST(ut_conn ut-conn.cc)
-      REGISTER_TEST(ut_jsonapi ut-jsonapi.cc)
-    endif()
-  endif()
+endif()
 
-  if (USE_TF)
-    add_executable(opencv_tensor opencv_tensor.cc)
-    if (USE_HDF5)
-      target_link_libraries(opencv_tensor ${OpenCV_LIBS} boost_thread boost_system crypto ssl hdf5_cpp ${TF_LIB_DEPS})
-    else()
-      target_link_libraries(opencv_tensor ${OpenCV_LIBS} boost_thread boost_system crypto ssl ${TF_LIB_DEPS})
-    endif()
-  endif()
-
-  add_executable(test_server test-server.cc)
-  target_link_libraries(test_server boost_thread cppnetlib-uri cppnetlib-client-connections boost_system crypto ssl)
-
-  if (USE_CAFFE)
-    REGISTER_TEST(ut_caffe_mlp ut-caffe-mlp.cc)
-  endif()
-
-  if (USE_CAFFE)
-    DOWNLOAD_DATASET(
-      "MNIST (train) dataset"
-      "http://www.deepdetect.com/dd/examples/caffe/mnist/mnist_train_lmdb.tar.bz2"
-      "examples/caffe/mnist"
-      "mnist_train_lmdb.tar.bz2"
-      "mnist_train_lmdb"
-      "train.lmdb"
-      )
-
-    DOWNLOAD_DATASET(
-      "MNIST (test) dataset"
-      "http://www.deepdetect.com/dd/examples/caffe/mnist/mnist_test_lmdb.tar.bz2"
-      "examples/caffe/mnist"
-      "mnist_test_lmdb.tar.bz2"
-      "mnist_test_lmdb"
-      "test.lmdb"
-      )
-
-    DOWNLOAD_DATASET(
-      "Image (test) dataset"
-      "http://www.deepdetect.com/dd/examples/caffe/plankton/train.tar.bz2"
-      "examples/caffe/plankton"
-      "train.tar.bz2"
-      "train"
-      )
-    DOWNLOAD_DATASET(
-      "image segmentation"
-      "http://www.deepdetect.com/dd/examples/caffe/camvid/camvid_square.tar.gz"
-      "examples/caffe/camvid"
-      "camvid_square.tar.gz"
-      "CamVid_square"
-      )
-    DOWNLOAD_DATASET(
-      "object detection test model"
-      "http://deepdetect.com/dd/examples/caffe/voc/voc0712_dd.tar.gz"
-      "examples/caffe/voc"
-      "voc0712_dd.tar.gz"
-      "voc"
-    )
-  endif()
-
-  DOWNLOAD_DATASET(
-    "CSV (test) dataset"
-    "http://www.deepdetect.com/dd/examples/all/forest_type/train.csv.tar.bz2"
-    "examples/all/forest_type"
-    "train.csv.tar.bz2"
-    "train.csv"
-    )
-  DOWNLOAD_DATASET(
-    "SVM (test) dataset"
-    "http://www.deepdetect.com/dd/examples/all/farm_ads/farm-ads.svm"
-    "examples/all/farm_ads"
-    "farm-ads.svm"
-    "farm-ads.svm"
-    )
-
-  DOWNLOAD_DATASET(
-    "Text (test) dataset"
-    "http://www.deepdetect.com/dd/examples/all/n20/news20.tar.bz2"
-    "examples/all/n20"
-    "news20.tar.bz2"
-    "news20"
-    )
-
-  set(SINUS_EXAMPLE_PATH ${CMAKE_SOURCE_DIR}/examples/all/sinus/)
-  set(SINUS_EXAMPLE_OUT "examples/all/sinus")
-  set(SINUS_EXAMPLE_TRAIN_OUT "examples/all/sinus/train")
-  if (NOT EXISTS ${SINUS_EXAMPLE_TRAIN_OUT})
-    message(STATUS "Generating sinus data for time series tests")
-    file(MAKE_DIRECTORY ${SINUS_EXAMPLE_OUT})
-    file(COPY ${SINUS_EXAMPLE_PATH}/gen.py DESTINATION ${SINUS_EXAMPLE_OUT})
-    execute_process(
-      COMMAND ${PYTHON_EXECUTABLE} ./gen.py
-      WORKING_DIRECTORY ${SINUS_EXAMPLE_OUT}
-      RESULT_VARIABLE _SINUS_GEN_RESULT
-    )
-    if (NOT _SINUS_GEN_RESULT EQUAL 0)
-      message(FATAL_ERROR "Sinus ./gen.py failed")
-    endif()
+if (USE_TF)
+  add_executable(opencv_tensor opencv_tensor.cc)
+  if (USE_HDF5)
+    target_link_libraries(opencv_tensor ${OpenCV_LIBS} boost_thread boost_system crypto ssl hdf5_cpp ${TF_LIB_DEPS})
   else()
-    message(STATUS "Reusing generated sinu data for time series tests")
+    target_link_libraries(opencv_tensor ${OpenCV_LIBS} boost_thread boost_system crypto ssl ${TF_LIB_DEPS})
   endif()
+endif()
+
+add_executable(test_server test-server.cc)
+target_link_libraries(test_server boost_thread cppnetlib-uri cppnetlib-client-connections boost_system crypto ssl)
+
+if (USE_CAFFE)
+  REGISTER_TEST(ut_caffe_mlp ut-caffe-mlp.cc)
+endif()
+
+if (USE_CAFFE)
+  DOWNLOAD_DATASET(
+    "MNIST (train) dataset"
+    "http://www.deepdetect.com/dd/examples/caffe/mnist/mnist_train_lmdb.tar.bz2"
+    "examples/caffe/mnist"
+    "mnist_train_lmdb.tar.bz2"
+    "mnist_train_lmdb"
+    "train.lmdb"
+    )
 
   DOWNLOAD_DATASET(
-    "Regression test model"
-    "http://www.deepdetect.com/dd/examples/all/sflare/flare.csv"
-    "examples/all/sflare"
-    "flare.csv"
-    "flare.csv"
+    "MNIST (test) dataset"
+    "http://www.deepdetect.com/dd/examples/caffe/mnist/mnist_test_lmdb.tar.bz2"
+    "examples/caffe/mnist"
+    "mnist_test_lmdb.tar.bz2"
+    "mnist_test_lmdb"
+    "test.lmdb"
+    )
+
+  DOWNLOAD_DATASET(
+    "Image (test) dataset"
+    "http://www.deepdetect.com/dd/examples/caffe/plankton/train.tar.bz2"
+    "examples/caffe/plankton"
+    "train.tar.bz2"
+    "train"
+    )
+  DOWNLOAD_DATASET(
+    "image segmentation"
+    "http://www.deepdetect.com/dd/examples/caffe/camvid/camvid_square.tar.gz"
+    "examples/caffe/camvid"
+    "camvid_square.tar.gz"
+    "CamVid_square"
+    )
+  DOWNLOAD_DATASET(
+    "object detection test model"
+    "http://deepdetect.com/dd/examples/caffe/voc/voc0712_dd.tar.gz"
+    "examples/caffe/voc"
+    "voc0712_dd.tar.gz"
+    "voc"
+  )
+endif()
+
+DOWNLOAD_DATASET(
+  "CSV (test) dataset"
+  "http://www.deepdetect.com/dd/examples/all/forest_type/train.csv.tar.bz2"
+  "examples/all/forest_type"
+  "train.csv.tar.bz2"
+  "train.csv"
+  )
+DOWNLOAD_DATASET(
+  "SVM (test) dataset"
+  "http://www.deepdetect.com/dd/examples/all/farm_ads/farm-ads.svm"
+  "examples/all/farm_ads"
+  "farm-ads.svm"
+  "farm-ads.svm"
   )
 
-  if (USE_CAFFE)
-    if (USE_JSON_API)
-      REGISTER_TEST(ut_caffeapi ut-caffeapi.cc)
-    endif()
-    if (USE_HTTP_SERVER)
-      REGISTER_TEST(ut_httpapi ut-httpapi.cc)
-      target_link_libraries(ut_httpapi ${OATPP_LIB_DEPS} ${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src/liboatpp-test.a)
-    endif()
-    if (USE_HTTP_SERVER_OATPP)
-      REGISTER_TEST(ut_oatpp ut-oatpp.cc ut-oatpp.h)
-      target_link_libraries(ut_oatpp ${OATPP_LIB_DEPS} ${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src/liboatpp-test.a)
-    endif()
+DOWNLOAD_DATASET(
+  "Text (test) dataset"
+  "http://www.deepdetect.com/dd/examples/all/n20/news20.tar.bz2"
+  "examples/all/n20"
+  "news20.tar.bz2"
+  "news20"
+  )
+
+set(SINUS_EXAMPLE_PATH ${CMAKE_SOURCE_DIR}/examples/all/sinus/)
+set(SINUS_EXAMPLE_OUT "examples/all/sinus")
+set(SINUS_EXAMPLE_TRAIN_OUT "examples/all/sinus/train")
+if (NOT EXISTS ${SINUS_EXAMPLE_TRAIN_OUT})
+  message(STATUS "Generating sinus data for time series tests")
+  file(MAKE_DIRECTORY ${SINUS_EXAMPLE_OUT})
+  file(COPY ${SINUS_EXAMPLE_PATH}/gen.py DESTINATION ${SINUS_EXAMPLE_OUT})
+  execute_process(
+    COMMAND ${PYTHON_EXECUTABLE} ./gen.py
+    WORKING_DIRECTORY ${SINUS_EXAMPLE_OUT}
+    RESULT_VARIABLE _SINUS_GEN_RESULT
+  )
+  if (NOT _SINUS_GEN_RESULT EQUAL 0)
+    message(FATAL_ERROR "Sinus ./gen.py failed")
   endif()
+else()
+  message(STATUS "Reusing generated sinu data for time series tests")
+endif()
 
-  if (USE_TF)
-    DOWNLOAD_FILES(
-      "http://www.deepdetect.com/models/tf/"
-      "examples/tf/inception/"
-      "inception_v1.pb"
-      "grace_hopper.jpg"
-      "cat.jpg"
-      "corresp_inception_clean.txt"
-    )
+DOWNLOAD_DATASET(
+  "Regression test model"
+  "http://www.deepdetect.com/dd/examples/all/sflare/flare.csv"
+  "examples/all/sflare"
+  "flare.csv"
+  "flare.csv"
+)
 
-    REGISTER_TEST(ut_tfapi ut-tfapi.cc)
+if (USE_CAFFE)
+  if (USE_JSON_API)
+    REGISTER_TEST(ut_caffeapi ut-caffeapi.cc)
   endif()
-
-  if (USE_DLIB)
-    DOWNLOAD_DATASET(
-      "Dlib test face model"
-      "http://dlib.net/files/mmod_human_face_detector.dat.bz2"
-      "examples/dlib/face"
-      "mmod_human_face_detector.dat.bz2"
-      "mmod_human_face_detector.dat"
-    )
-    DOWNLOAD_FILES(
-      "https://www.deepdetect.com/models/tf"
-      "examples/dlib/face/"
-      "grace_hopper.jpg"
-      "cat.jpg"
-    )
-
-    DOWNLOAD_DATASET(
-      "Dlib test object detector model"
-      "http://dlib.net/files/mmod_front_and_rear_end_vehicle_detector.dat.bz2"
-      "examples/dlib/obj"
-      "mmod_front_and_rear_end_vehicle_detector.dat"
-      "mmod_front_and_rear_end_vehicle_detector.dat"
-    )
-
-    DOWNLOAD_FILES(
-      "https://github.com/davisking/dlib/raw/master/examples/"
-      "examples/dlib/obj/"
-      "mmod_cars_test_image2.jpg"
-    )
-
-    REGISTER_TEST(ut_dlibapi ut-dlibapi.cc)
+  if (USE_HTTP_SERVER)
+    REGISTER_TEST(ut_httpapi ut-httpapi.cc)
+    target_link_libraries(ut_httpapi ${OATPP_LIB_DEPS} ${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src/liboatpp-test.a)
   endif()
+  if (USE_HTTP_SERVER_OATPP)
+    REGISTER_TEST(ut_oatpp ut-oatpp.cc ut-oatpp.h)
+    target_link_libraries(ut_oatpp ${OATPP_LIB_DEPS} ${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src/liboatpp-test.a)
+  endif()
+endif()
 
-  if (USE_NCNN)
-    DOWNLOAD_DATASET(
-      "NCNN test Squeezenet SSD model"
-      "https://www.deepdetect.com/dd/examples/ncnn/squeezenet-ssd-ncnn-caffe.tar.gz"
-      "examples/ncnn"
-      "squeezenet-ssd-ncnn-caffe.tar.gz"
-      "squeezenet_ssd_ncnn"
+if (USE_TF)
+  DOWNLOAD_FILES(
+    "http://www.deepdetect.com/models/tf/"
+    "examples/tf/inception/"
+    "inception_v1.pb"
+    "grace_hopper.jpg"
+    "cat.jpg"
+    "corresp_inception_clean.txt"
+  )
+
+  REGISTER_TEST(ut_tfapi ut-tfapi.cc)
+endif()
+
+if (USE_DLIB)
+  DOWNLOAD_DATASET(
+    "Dlib test face model"
+    "http://dlib.net/files/mmod_human_face_detector.dat.bz2"
+    "examples/dlib/face"
+    "mmod_human_face_detector.dat.bz2"
+    "mmod_human_face_detector.dat"
+  )
+  DOWNLOAD_FILES(
+    "https://www.deepdetect.com/models/tf"
+    "examples/dlib/face/"
+    "grace_hopper.jpg"
+    "cat.jpg"
+  )
+
+  DOWNLOAD_DATASET(
+    "Dlib test object detector model"
+    "http://dlib.net/files/mmod_front_and_rear_end_vehicle_detector.dat.bz2"
+    "examples/dlib/obj"
+    "mmod_front_and_rear_end_vehicle_detector.dat"
+    "mmod_front_and_rear_end_vehicle_detector.dat"
+  )
+
+  DOWNLOAD_FILES(
+    "https://github.com/davisking/dlib/raw/master/examples/"
+    "examples/dlib/obj/"
+    "mmod_cars_test_image2.jpg"
+  )
+
+  REGISTER_TEST(ut_dlibapi ut-dlibapi.cc)
+endif()
+
+if (USE_NCNN)
+  DOWNLOAD_DATASET(
+    "NCNN test Squeezenet SSD model"
+    "https://www.deepdetect.com/dd/examples/ncnn/squeezenet-ssd-ncnn-caffe.tar.gz"
+    "examples/ncnn"
+    "squeezenet-ssd-ncnn-caffe.tar.gz"
+    "squeezenet_ssd_ncnn"
+  )
+
+  if(USE_JSON_API)
+    REGISTER_TEST(ut_ncnnapi ut-ncnnapi.cc)
+  endif()
+endif()
+
+if (USE_TENSORRT)
+  DOWNLOAD_DATASET(
+    "TensorRT test Squeezenet SSD model"
+    "https://www.deepdetect.com/dd/examples/tensorrt/squeezenet-ssd-trt.tar.gz"
+    "examples/trt"
+    "squeezenet-ssd-trt.tar.gz"
+    "squeezenet_ssd_trt"
+    )
+  DOWNLOAD_DATASET(
+    "TensorRT test RefineDet model"
+    "https://www.deepdetect.com/dd/examples/tensorrt/faces-512-trt.tar.gz"
+    "examples/trt"
+    "faces-512-trt.tar.gz"
+    "faces_512"
+  )
+  DOWNLOAD_DATASET(
+    "Age test set"
+    "https://deepdetect.com/models/init/desktop/images/classification/age_real.tar.gz"
+    "examples/trt/age_real"
+    "age_real.tar.gz"
+    "deploy.prototxt"
+  )
+  DOWNLOAD_DATASET(
+    "ONNX resnet model"
+    "https://deepdetect.com/models/init/desktop/images/classification/resnet_onnx_trt.tar.gz"
+    "examples/trt"
+    "resnet_onnx_trt.tar.gz"
+    "resnet_onnx_trt"
+  )
+
+  if(USE_JSON_API)
+    REGISTER_TEST(ut_tensorrtapi ut-tensorrtapi.cc)
+  endif()
+endif()
+
+if (USE_TORCH)
+  DOWNLOAD_DATASET(
+    "Torch test Resnet 50 model"
+    "https://www.deepdetect.com/dd/examples/torch/resnet50_torch.tar.gz"
+    "examples/torch"
+    "resnet50_torch.tar.gz"
+    "resnet50_torch"
+    )
+  DOWNLOAD_DATASET(
+    "Torch training Resnet 50 model"
+    "https://www.deepdetect.com/dd/examples/torch/resnet50_training_torch.tar.gz"
+    "examples/torch"
+    "resnet50_training_torch.tar.gz"
+    "resnet50_training_torch"
+    )
+  DOWNLOAD_DATASET(
+    "Torch BERT classification test model"
+    "https://www.deepdetect.com/dd/examples/torch/bert_inference_torch.tar.gz"
+    "examples/torch"
+    "bert_inference_torch.tar.gz"
+    "bert_inference_torch"
+    )
+  DOWNLOAD_DATASET(
+    "Torch Torch BERT training test model"
+    "https://www.deepdetect.com/dd/examples/torch/bert_training_torch_140_transformers_251.tar.gz"
+    "examples/torch"
+    "bert_training_torch_140_transformers_251.tar.gz"
+    "bert_training_torch_140_transformers_251"
     )
 
-    if(USE_JSON_API)
-      REGISTER_TEST(ut_ncnnapi ut-ncnnapi.cc)
-    endif()
+  if(USE_JSON_API)
+    REGISTER_TEST(ut_torchapi ut-torchapi.cc)
+    REGISTER_TEST_MULTIGPU(ut_torchapi ut-torchapi.cc)
   endif()
+  REGISTER_TEST(ut_graph ut-graph.cc)
+endif()
 
-  if (USE_TENSORRT)
-    DOWNLOAD_DATASET(
-      "TensorRT test Squeezenet SSD model"
-      "https://www.deepdetect.com/dd/examples/tensorrt/squeezenet-ssd-trt.tar.gz"
-      "examples/trt"
-      "squeezenet-ssd-trt.tar.gz"
-      "squeezenet_ssd_trt"
-      )
-    DOWNLOAD_DATASET(
-      "TensorRT test RefineDet model"
-      "https://www.deepdetect.com/dd/examples/tensorrt/faces-512-trt.tar.gz"
-      "examples/trt"
-      "faces-512-trt.tar.gz"
-      "faces_512"
+if (USE_CAFFE2)
+  function (ASSERT_EXISTS _MODEL _FILE _UNTAR)
+    set(_FINAL_PATH "examples/caffe2/${_MODEL}/${_FILE}") # File to get
+    set(_LOCAL_PATH "${_FINAL_PATH}")
+    if (_UNTAR)
+      set(_LOCAL_PATH "${_LOCAL_PATH}.tar.gz") # File to download
+    endif ()
+    set(_REMOTE_PATH "http://www.deepdetect.com/dd/${_LOCAL_PATH}") # Url of the file
+    if (NOT EXISTS ${_LOCAL_PATH}) # Download
+      message(STATUS "Downloading Caffe2 ${_MODEL} ${_FILE}")
+      file(DOWNLOAD ${_REMOTE_PATH} ${_LOCAL_PATH})
+    endif ()
+    if (_UNTAR AND NOT EXISTS ${_FINAL_PATH}) # Untar
+      message(STATUS "Extracting Caffe2 ${_MODEL} ${_FILE}")
+      execute_process(COMMAND tar xvzf ${_LOCAL_PATH})
+      execute_process(COMMAND mv ${_FILE} ${_FINAL_PATH})
+    endif ()
+  endfunction (ASSERT_EXISTS)
+
+  function (ASSERT_MODEL_EXISTS _MODEL)
+    ASSERT_EXISTS(${_MODEL} "corresp.txt" 0)
+    ASSERT_EXISTS(${_MODEL} "init_net.pb" 0)
+    ASSERT_EXISTS(${_MODEL} "predict_net.pb" 0)
+  endfunction (ASSERT_MODEL_EXISTS)
+
+  # Tar GZ files
+
+  ASSERT_EXISTS("boats_and_cars" "imgs" 1)
+  ASSERT_EXISTS("detectron" "imgs" 1)
+  ASSERT_EXISTS("detectron_mask" "ext" 1)
+  ASSERT_EXISTS("resnet_50_imagenet" "imgs" 1)
+  ASSERT_EXISTS("resnet_50_imagenet" "fish.lmdb" 1)
+
+  # Models
+
+  ASSERT_MODEL_EXISTS("detectron")
+  ASSERT_MODEL_EXISTS("detectron_mask")
+  ASSERT_MODEL_EXISTS("resnet_50_imagenet")
+
+  # Tests
+
+  REGISTER_TEST(ut_caffe2api ut-caffe2api.cc)
+
+endif()
+
+if (USE_XGBOOST)
+  REGISTER_TEST(ut_xgbapi ut-xgbapi.cc)
+endif()
+
+if (USE_SIMSEARCH)
+  DOWNLOAD_DATASET(
+    "object detection test model with rois"
+    "http://www.deepdetect.com/dd/examples/caffe/voc_roi/voc0712_dd_roi.tar.gz"
+    "examples/caffe/voc_roi"
+    "voc0712_dd_roi.tar.gz"
+    "voc_roi"
     )
-    DOWNLOAD_DATASET(
-      "Age test set"
-      "https://deepdetect.com/models/init/desktop/images/classification/age_real.tar.gz"
-      "examples/trt/age_real"
-      "age_real.tar.gz"
-      "deploy.prototxt"
-    )
-    DOWNLOAD_DATASET(
-      "ONNX resnet model"
-      "https://deepdetect.com/models/init/desktop/images/classification/resnet_onnx_trt.tar.gz"
-      "examples/trt"
-      "resnet_onnx_trt.tar.gz"
-      "resnet_onnx_trt"
-    )
-
-    if(USE_JSON_API)
-      REGISTER_TEST(ut_tensorrtapi ut-tensorrtapi.cc)
-    endif()
+  if (USE_ANNOY)
+    REGISTER_TEST(ut_simsearch ut-simsearch.cc)
   endif()
-
-  if (USE_TORCH)
-    DOWNLOAD_DATASET(
-      "Torch test Resnet 50 model"
-      "https://www.deepdetect.com/dd/examples/torch/resnet50_torch.tar.gz"
-      "examples/torch"
-      "resnet50_torch.tar.gz"
-      "resnet50_torch"
-      )
-    DOWNLOAD_DATASET(
-      "Torch training Resnet 50 model"
-      "https://www.deepdetect.com/dd/examples/torch/resnet50_training_torch.tar.gz"
-      "examples/torch"
-      "resnet50_training_torch.tar.gz"
-      "resnet50_training_torch"
-      )
-    DOWNLOAD_DATASET(
-      "Torch BERT classification test model"
-      "https://www.deepdetect.com/dd/examples/torch/bert_inference_torch.tar.gz"
-      "examples/torch"
-      "bert_inference_torch.tar.gz"
-      "bert_inference_torch"
-      )
-    DOWNLOAD_DATASET(
-      "Torch Torch BERT training test model"
-      "https://www.deepdetect.com/dd/examples/torch/bert_training_torch_140_transformers_251.tar.gz"
-      "examples/torch"
-      "bert_training_torch_140_transformers_251.tar.gz"
-      "bert_training_torch_140_transformers_251"
-      )
-
-    if(USE_JSON_API)
-      REGISTER_TEST(ut_torchapi ut-torchapi.cc)
-      REGISTER_TEST_MULTIGPU(ut_torchapi ut-torchapi.cc)
-    endif()
-    REGISTER_TEST(ut_graph ut-graph.cc)
-  endif()
-
-  if (USE_CAFFE2)
-    function (ASSERT_EXISTS _MODEL _FILE _UNTAR)
-      set(_FINAL_PATH "examples/caffe2/${_MODEL}/${_FILE}") # File to get
-      set(_LOCAL_PATH "${_FINAL_PATH}")
-      if (_UNTAR)
-        set(_LOCAL_PATH "${_LOCAL_PATH}.tar.gz") # File to download
-      endif ()
-      set(_REMOTE_PATH "http://www.deepdetect.com/dd/${_LOCAL_PATH}") # Url of the file
-      if (NOT EXISTS ${_LOCAL_PATH}) # Download
-        message(STATUS "Downloading Caffe2 ${_MODEL} ${_FILE}")
-        file(DOWNLOAD ${_REMOTE_PATH} ${_LOCAL_PATH})
-      endif ()
-      if (_UNTAR AND NOT EXISTS ${_FINAL_PATH}) # Untar
-        message(STATUS "Extracting Caffe2 ${_MODEL} ${_FILE}")
-        execute_process(COMMAND tar xvzf ${_LOCAL_PATH})
-        execute_process(COMMAND mv ${_FILE} ${_FINAL_PATH})
-      endif ()
-    endfunction (ASSERT_EXISTS)
-
-    function (ASSERT_MODEL_EXISTS _MODEL)
-      ASSERT_EXISTS(${_MODEL} "corresp.txt" 0)
-      ASSERT_EXISTS(${_MODEL} "init_net.pb" 0)
-      ASSERT_EXISTS(${_MODEL} "predict_net.pb" 0)
-    endfunction (ASSERT_MODEL_EXISTS)
-
-    # Tar GZ files
-
-    ASSERT_EXISTS("boats_and_cars" "imgs" 1)
-    ASSERT_EXISTS("detectron" "imgs" 1)
-    ASSERT_EXISTS("detectron_mask" "ext" 1)
-    ASSERT_EXISTS("resnet_50_imagenet" "imgs" 1)
-    ASSERT_EXISTS("resnet_50_imagenet" "fish.lmdb" 1)
-
-    # Models
-
-    ASSERT_MODEL_EXISTS("detectron")
-    ASSERT_MODEL_EXISTS("detectron_mask")
-    ASSERT_MODEL_EXISTS("resnet_50_imagenet")
-
-    # Tests
-
-    REGISTER_TEST(ut_caffe2api ut-caffe2api.cc)
-
-  endif()
-
-  if (USE_XGBOOST)
-    REGISTER_TEST(ut_xgbapi ut-xgbapi.cc)
-  endif()
-
-  if (USE_SIMSEARCH)
-    DOWNLOAD_DATASET(
-      "object detection test model with rois"
-      "http://www.deepdetect.com/dd/examples/caffe/voc_roi/voc0712_dd_roi.tar.gz"
-      "examples/caffe/voc_roi"
-      "voc0712_dd_roi.tar.gz"
-      "voc_roi"
-      )
-    if (USE_ANNOY)
-      REGISTER_TEST(ut_simsearch ut-simsearch.cc)
-    endif()
-    if (USE_FAISS)
-      REGISTER_TEST(ut_simsearch_faiss ut-simsearch-faiss.cc)
-    endif()
-
+  if (USE_FAISS)
+    REGISTER_TEST(ut_simsearch_faiss ut-simsearch-faiss.cc)
   endif()
 
 endif()
