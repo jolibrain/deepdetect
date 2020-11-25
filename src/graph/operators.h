@@ -1,12 +1,12 @@
-#ifndef BASE_OEPRATORS_H
-#define BASE_OEPRATORS_H
+#ifndef BASE_OPERATORS_H
+#define BASE_OPERATORS_H
 
 #include "basegraph.h"
 
 namespace dd
 {
 
-  namespace basegraph
+  namespace graph
 
   {
     namespace utils
@@ -34,34 +34,34 @@ namespace dd
        * \brief checks if number of input blob have changed
        */
       bool
-      n_in_blob_changed(BaseGraph::VertexProperty &v,
+      n_in_blob_changed(VertexProperty &v,
                         const std::vector<std::vector<int>> &new_inputsdims);
       /**
        * \brief checks if number of output blob have changed
        */
       bool
-      n_out_blob_changed(BaseGraph::VertexProperty &v,
+      n_out_blob_changed(VertexProperty &v,
                          const std::vector<std::vector<int>> &new_outputsdims);
 
       /**
        * \brief checks if number of dimensions in input blobs chave changed
        */
       bool in_blob_ndims_changed(
-          BaseGraph::VertexProperty &v,
+          VertexProperty &v,
           const std::vector<std::vector<int>> &new_inputsdims);
 
       /**
        * \brief checks if number of dimensions in output blobs chave changed
        */
       bool out_blob_ndims_changed(
-          BaseGraph::VertexProperty &v,
+          VertexProperty &v,
           const std::vector<std::vector<int>> &new_outputsdims);
 
       /**
        * \brief checks if shape have changed (combines all above)
        */
       bool
-      general_shape_changed(BaseGraph::VertexProperty &v,
+      general_shape_changed(VertexProperty &v,
                             const std::vector<std::vector<int>> &inputsdims,
                             const std::vector<std::vector<int>> &outputsdims);
     }
@@ -81,7 +81,7 @@ namespace dd
          * \brief computes output dims for RNN / LTSM
          */
         void
-        compute_outputs_dims(const BaseGraph::VertexProperty &v,
+        compute_outputs_dims(const VertexProperty &v,
                              const std::vector<std::vector<int>> &inputsdims,
                              std::vector<std::vector<int>> &outputsdims);
 
@@ -90,7 +90,7 @@ namespace dd
          * LSTM
          */
         void
-        update_alloc_status(BaseGraph::VertexProperty &v,
+        update_alloc_status(VertexProperty &v,
                             const std::vector<std::vector<int>> &inputsdims,
                             const std::vector<std::vector<int>> &outputsdims);
       }
@@ -104,7 +104,7 @@ namespace dd
          * \brief computes output dims for InnerProduct/Linear
          */
         void
-        compute_outputs_dims(const BaseGraph::VertexProperty &v,
+        compute_outputs_dims(const VertexProperty &v,
                              const std::vector<std::vector<int>> &inputsdims,
                              std::vector<std::vector<int>> &outputsdims);
 
@@ -113,7 +113,7 @@ namespace dd
          * InnerProduct / Linear
          */
         void
-        update_alloc_status(BaseGraph::VertexProperty &v,
+        update_alloc_status(VertexProperty &v,
                             const std::vector<std::vector<int>> &inputsdims,
                             const std::vector<std::vector<int>> &outputsdims);
       }
@@ -127,7 +127,7 @@ namespace dd
          * \brief computes output dims for Tile/Repeat
          */
         void
-        update_alloc_status(BaseGraph::VertexProperty &v,
+        update_alloc_status(VertexProperty &v,
                             const std::vector<std::vector<int>> &inputsdims,
                             const std::vector<std::vector<int>> &outputsdims);
         /**
@@ -135,7 +135,7 @@ namespace dd
          * Tile/Repeat
          */
         void
-        compute_outputs_dims(const BaseGraph::VertexProperty &v,
+        compute_outputs_dims(const VertexProperty &v,
                              const std::vector<std::vector<int>> &inputsdims,
                              std::vector<std::vector<int>> &outputsdims);
       }
@@ -149,7 +149,7 @@ namespace dd
          * \brief computes output dims for Tile/Repeat
          */
         void
-        update_alloc_status(BaseGraph::VertexProperty &v,
+        update_alloc_status(VertexProperty &v,
                             const std::vector<std::vector<int>> &inputsdims,
                             const std::vector<std::vector<int>> &outputsdims);
         /**
@@ -157,7 +157,7 @@ namespace dd
          * Tile/Repeat
          */
         void
-        compute_outputs_dims(const BaseGraph::VertexProperty &v,
+        compute_outputs_dims(const VertexProperty &v,
                              const std::vector<std::vector<int>> &inputsdims,
                              std::vector<std::vector<int>> &outputsdims);
       }
@@ -172,7 +172,7 @@ namespace dd
          * functions
          */
         void
-        compute_outputs_dims(const BaseGraph::VertexProperty &v,
+        compute_outputs_dims(const VertexProperty &v,
                              const std::vector<std::vector<int>> &inputsdims,
                              std::vector<std::vector<int>> &outputsdims);
 
@@ -181,7 +181,7 @@ namespace dd
          * functions
          */
         void
-        update_alloc_status(BaseGraph::VertexProperty &v,
+        update_alloc_status(VertexProperty &v,
                             const std::vector<std::vector<int>> &inputsdims,
                             const std::vector<std::vector<int>> &outputsdims);
       }

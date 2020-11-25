@@ -19,7 +19,7 @@
  * along with deepdetect.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "caffegraphinput.h"
+#include "caffeinput.h"
 
 #include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
@@ -37,10 +37,11 @@ using google::protobuf::io::FileOutputStream;
 using google::protobuf::io::ZeroCopyInputStream;
 using google::protobuf::io::ZeroCopyOutputStream;
 
-namespace dd
+namespace dd::graph
 {
-  bool CaffeGraphInput::read_proto(std::string filename,
-                                   google::protobuf::Message *proto)
+
+  bool CaffeInput::read_proto(std::string filename,
+                              google::protobuf::Message *proto)
   {
     int fd = open(filename.c_str(), O_RDONLY);
     if (fd == -1)
@@ -52,7 +53,7 @@ namespace dd
     return success;
   }
 
-  bool CaffeGraphInput::lstm_preparation(caffe::NetParameter &net, int i)
+  bool CaffeInput::lstm_preparation(caffe::NetParameter &net, int i)
   {
     caffe::LayerParameter lparam = net.layer(i);
     int ninput = 1;
@@ -67,7 +68,7 @@ namespace dd
     return false;
   }
 
-  bool CaffeGraphInput::is_simple_lstm(caffe::NetParameter &net)
+  bool CaffeInput::is_simple_lstm(caffe::NetParameter &net)
   {
     // check if we are processing a simple lstm from dd_generators
     // ie (LSTM [;affine] ) * n
@@ -94,7 +95,7 @@ namespace dd
     return true;
   }
 
-  bool CaffeGraphInput::parse_simple_lstm(caffe::NetParameter &net)
+  bool CaffeInput::parse_simple_lstm(caffe::NetParameter &net)
   {
     if (!is_simple_lstm(net))
       return false;
@@ -133,12 +134,12 @@ namespace dd
               }
             else
               inputs.push_back(lparam.bottom(0));
-            std::vector<BaseGraph::Vertex> vi = add_inputs(v, inputs);
+            add_inputs(v, inputs);
 
             std::vector<std::string> outputs;
             for (int i = 0; i < lparam.top_size(); ++i)
               outputs.push_back(lparam.top(i));
-            std::vector<BaseGraph::Vertex> vo = add_outputs(v, outputs);
+            add_outputs(v, outputs);
             set_output_name(lparam.top(0));
           }
         else if (lparam.type() == "InnerProduct")
@@ -155,11 +156,11 @@ namespace dd
               }
             else
               inputs.push_back(lparam.bottom(0));
-            std::vector<BaseGraph::Vertex> vi = add_inputs(v, inputs);
+            add_inputs(v, inputs);
 
             std::vector<std::string> outputs;
             outputs.push_back(lparam.top(0));
-            std::vector<BaseGraph::Vertex> vo = add_outputs(v, outputs);
+            add_outputs(v, outputs);
             set_output_name(lparam.top(0));
           }
         else if (lparam.type() == "Tile")
@@ -191,7 +192,7 @@ namespace dd
     return true;
   }
 
-  void CaffeGraphInput::from_proto(std::string filename)
+  void CaffeInput::from_proto(std::string filename)
   {
     caffe::NetParameter net;
     if (!read_proto(filename, &net))
