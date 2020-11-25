@@ -242,6 +242,9 @@ namespace dd
   {
     hline.erase(std::remove(hline.begin(), hline.end(), '\r'),
                 hline.end()); // remove ^M if any
+    hline.erase(std::remove(hline.begin(), hline.end(), '\n'),
+                hline.end()); // remove \n if any (in case of hline coming
+                              // direclty from mem, and not parsed by line)
     std::stringstream sg(hline);
     std::string col;
 
