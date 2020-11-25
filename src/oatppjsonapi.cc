@@ -46,7 +46,6 @@ namespace dd
 
   OatppJsonAPI::OatppJsonAPI() : JsonAPI()
   {
-    _logger = spdlog::get("api-oatpp");
   }
 
   OatppJsonAPI::~OatppJsonAPI()
