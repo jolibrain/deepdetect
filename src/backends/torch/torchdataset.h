@@ -54,8 +54,7 @@ namespace dd
                                          c10::optional<TorchBatch>>
   {
   private:
-    bool _shuffle = false; /**< shuffle dataset upon reset() */
-    long _seed = -1;       /**< shuffle seed*/
+    long _seed = -1; /**< shuffle seed*/
     int64_t _current_index
         = 0; /**< current index for batch parallel data extraction */
     std::string _backend; /**< db backend (currently only lmdb supported= */
@@ -66,7 +65,9 @@ namespace dd
     std::shared_ptr<spdlog::logger> _logger; /**< dd logger */
 
   public:
+    bool _shuffle = false;           /**< shuffle dataset upon reset() */
     std::shared_ptr<db::DB> _dbData; /**< db data */
+    db::Cursor *_dbCursor = nullptr; /**< db cursor */
     std::vector<int64_t> _indices;   /**< id/key  of data points */
     std::vector<std::pair<std::string, std::vector<double>>>
         _lfiles; /**< list of files */
@@ -89,13 +90,20 @@ namespace dd
      * \brief copy constructor
      */
     TorchDataset(const TorchDataset &d)
-        : _shuffle(d._shuffle), _seed(d._seed),
-          _current_index(d._current_index), _backend(d._backend), _db(d._db),
+        : _seed(d._seed), _current_index(d._current_index),
+          _backend(d._backend), _db(d._db),
           _batches_per_transaction(d._batches_per_transaction), _txn(d._txn),
-          _logger(d._logger), _dbData(d._dbData), _indices(d._indices),
-          _lfiles(d._lfiles), _batches(d._batches), _dbFullName(d._dbFullName),
-          _inputc(d._inputc), _classification(d._classification)
+          _logger(d._logger), _shuffle(d._shuffle), _dbData(d._dbData),
+          _indices(d._indices), _lfiles(d._lfiles), _batches(d._batches),
+          _dbFullName(d._dbFullName), _inputc(d._inputc),
+          _classification(d._classification)
     {
+    }
+
+    virtual ~TorchDataset()
+    {
+      if (_dbCursor)
+        delete _dbCursor;
     }
 
     /**

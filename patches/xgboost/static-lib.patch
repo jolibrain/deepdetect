@@ -1,0 +1,22 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index af3611ba..0af44ad3 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -262,7 +262,7 @@ if(R_LIB)
+   MESSAGE(STATUS "LIBR_CORE_LIBRARY " ${LIBR_CORE_LIBRARY})
+ 
+   # Shared library target for the R package
+-  add_library(xgboost SHARED $<TARGET_OBJECTS:objxgboost>)
++  add_library(xgboost $<TARGET_OBJECTS:objxgboost>)
+   include_directories(xgboost
+     "${LIBR_INCLUDE_DIRS}"
+     "${PROJECT_SOURCE_DIR}"
+@@ -290,7 +290,7 @@ else()
+   target_link_libraries(runxgboost ${LINK_LIBRARIES})
+ 
+   # Shared library
+-  add_library(xgboost SHARED $<TARGET_OBJECTS:objxgboost>)
++  add_library(xgboost $<TARGET_OBJECTS:objxgboost>)
+   target_link_libraries(xgboost ${LINK_LIBRARIES})
+   set_output_directory(xgboost ${PROJECT_SOURCE_DIR}/lib)
+   if(MINGW)
