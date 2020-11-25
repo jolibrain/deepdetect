@@ -86,10 +86,10 @@ int main(int argc, char *argv[])
     case 0:
 #if defined(USE_HTTP_SERVER) || defined(USE_HTTP_SERVER_OATPP)
       {
-#ifdef USE_HTTP_SERVER
-        DeepDetect<HttpJsonAPI> dd;
-#else
+#ifdef USE_HTTP_SERVER_OATPP
         DeepDetect<OatppJsonAPI> dd;
+#else
+        DeepDetect<HttpJsonAPI> dd;
 #endif // USE_HTTP_SERVER_OATPP
         dd.boot(argc, argv);
       }
