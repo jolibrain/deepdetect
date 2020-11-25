@@ -31,8 +31,6 @@ namespace dd
 {
   class OatppJsonAPI : public JsonAPI
   {
-    std::shared_ptr<spdlog::logger> _logger;
-
   public:
     OatppJsonAPI();
     ~OatppJsonAPI();
