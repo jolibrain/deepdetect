@@ -317,9 +317,9 @@ if (USE_TORCH)
     )
   DOWNLOAD_DATASET(
     "Torch training Resnet 50 model"
-    "https://www.deepdetect.com/dd/examples/torch/resnet50_training_torch.tar.gz"
+    "https://www.deepdetect.com/dd/examples/torch/resnet50_training_torch_small.tar.gz"
     "examples/torch"
-    "resnet50_training_torch.tar.gz"
+    "resnet50_training_torch_small.tar.gz"
     "resnet50_training_torch"
     )
   DOWNLOAD_DATASET(
