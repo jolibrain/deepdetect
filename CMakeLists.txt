@@ -57,6 +57,7 @@ OPTION(BUILD_TOOLS "Should the tools be built")
 OPTION(USE_COMMAND_LINE "build command line JSON API" ON)
 OPTION(USE_JSON_API "build internal JSON API" ON)
 OPTION(USE_HTTP_SERVER "build http JSON API " ON)
+OPTION(USE_HTTP_SERVER_OATPP "use OAT instead cpp-netlib" OFF)
 
 # Get the current working branch
 execute_process(
@@ -110,6 +111,10 @@ if (USE_HTTP_SERVER)
   set(USE_JSON_API ON)
   string(APPEND CMAKE_CXX_FLAGS " -DUSE_HTTP_SERVER")
 endif()
+if (USE_HTTP_SERVER_OATPP)
+  set(USE_JSON_API ON)
+  string(APPEND CMAKE_CXX_FLAGS " -DUSE_HTTP_SERVER_OATPP")
+endif()
 
 if (USE_JSON_API)
   string(APPEND CMAKE_CXX_FLAGS " -DUSE_JSON_API")
@@ -143,28 +148,23 @@ file(
     DOWNLOAD https://raw.githubusercontent.com/jolibrain/caffe/master/src/caffe/proto/caffe.proto ${CMAKE_BINARY_DIR}/caffe.proto
     EXPECTED_HASH SHA256=e82a1d51635be93e964c6debcb4cd76514fada46348fa7b30355c14850767360
 )
-add_custom_target(
-    caffe_pb_h
-    LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR} ${PROTOBUF_LIB_DIR}/protoc --proto_path=${CMAKE_BINARY_DIR} --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_BINARY_DIR}/caffe.proto
-    BYPRODUCTS ${CMAKE_BINARY_DIR}/src/caffe.pb.h ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
+add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/src/caffe.pb.h ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
+    COMMAND LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR} ${PROTOBUF_LIB_DIR}/protoc --proto_path=${CMAKE_BINARY_DIR} --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_BINARY_DIR}/caffe.proto
+    MAIN_DEPENDENCY ${CMAKE_BINARY_DIR}/caffe.proto
     COMMENT Generating caffe.pb.h and caffe.pb.cc
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     DEPENDS protobuf
 )
-
-set_source_files_properties(
-  ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
-  ${CMAKE_BINARY_DIR}/src/caffe.pb.h
-  PROPERTIES GENERATED TRUE)
-set_source_files_properties(
-  ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
-  ${CMAKE_BINARY_DIR}/src/caffe.pb.h
-  PROPERTIES COMPILE_FLAGS -Wno-unused-parameter)
+add_custom_target(
+    caffe_pb_h
+    DEPENDS ${CMAKE_BINARY_DIR}/src/caffe.pb.h ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
+)
 
 
 # dependency on Eigen for confusion matrix fast computation
 if (USE_TF)
-  set(TENSORFLOW_CC_DIR ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc/tensorflow_cc/build/)
+  set(TENSORFLOW_CC_DIR ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc-build/)
   set(EIGEN3_INCLUDE_DIR ${TENSORFLOW_CC_DIR}/tensorflow/tensorflow/contrib/makefile/downloads/eigen/)
 elseif (USE_CAFFE2)
   set(PYTORCH_PATH ${CMAKE_BINARY_DIR}/pytorch/src/pytorch)
@@ -248,12 +248,12 @@ if (USE_CAFFE)
       ExternalProject_Add(
         annoy
         PREFIX annoy
-        DOWNLOAD_COMMAND git clone https://github.com/spotify/annoy.git
+        GIT_REPOSITORY https://github.com/spotify/annoy.git
         CONFIGURE_COMMAND python setup.py build
         BUILD_COMMAND ""
         INSTALL_COMMAND ""
         BUILD_IN_SOURCE 1
-        )
+      )
 
       set(ANNOY_INCLUDE_DIR ${CMAKE_BINARY_DIR}/annoy/src/annoy/src/)
       include_directories("${ANNOY_INCLUDE_DIR}")
@@ -275,12 +275,12 @@ if (USE_CAFFE)
       ExternalProject_Add(
         faisslib
         PREFIX faiss
-        DOWNLOAD_COMMAND git clone https://github.com/fantes/faiss
-        CONFIGURE_COMMAND cd ${CMAKE_BINARY_DIR}/faiss/src/faiss && ./configure ${CONFIGURE_OPTS}
-        BUILD_COMMAND cd ${CMAKE_BINARY_DIR}/faiss/src/faiss && make -j${N}
+        SOURCE_DIR ${CMAKE_BINARY_DIR}/faiss/src/faiss
+        GIT_REPOSITORY https://github.com/fantes/faiss
+        CONFIGURE_COMMAND ./configure ${CONFIGURE_OPTS}
         INSTALL_COMMAND ""
         BUILD_IN_SOURCE 1
-        )
+      )
 
       set(FAISS_INCLUDE_DIR ${CMAKE_BINARY_DIR}/faiss/src/)
       include_directories("${FAISS_INCLUDE_DIR}")
@@ -485,9 +485,10 @@ if (USE_TF)
     ExternalProject_Add(
       tensorflow_cc
       PREFIX tensorflow_cc
-      DOWNLOAD_COMMAND git clone --branch v1.15.0 https://github.com/FloopCZ/tensorflow_cc.git
-      CONFIGURE_COMMAND cd tensorflow_cc && mkdir -p build && cd build && cmake -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED=ON .. && make
-      BUILD_COMMAND ""
+      GIT_REPOSITORY https://github.com/FloopCZ/tensorflow_cc.git
+      GIT_TAG v1.15.0
+      SOURCE_SUBDIR tensorflow_cc
+      CMAKE_ARGS -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED=ON
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
       )
@@ -496,9 +497,10 @@ if (USE_TF)
     ExternalProject_Add(
       tensorflow_cc
       PREFIX tensorflow_cc
-      DOWNLOAD_COMMAND git clone --branch v1.15.0 https://github.com/FloopCZ/tensorflow_cc.git
-      CONFIGURE_COMMAND cd tensorflow_cc && mkdir -p build && cd build && cmake -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED=ON -DALLOW_CUDA=OFF .. && make
-      BUILD_COMMAND ""
+      GIT_REPOSITORY https://github.com/FloopCZ/tensorflow_cc.git
+      GIT_TAG v1.15.0
+      SOURCE_SUBDIR tensorflow_cc
+      CMAKE_ARGS -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED=ON -DALLOW_CUDA=OFF
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
       )
@@ -632,30 +634,9 @@ endif()
 
 # Caffe dependencies
 if (USE_CAFFE)
+  set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lopenblas -lcaffe)
   if (USE_HDF5)
-    set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lhdf5_hl -lhdf5 -lopenblas -lcaffe)
-  else()
-    set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lopenblas -lcaffe)
-  endif()
-endif()
-
-if (USE_TF)
-  if (USE_CAFFE)
-    add_dependencies(caffe_dd tensorflow_cc)
-  endif()
-endif()
-
-if (USE_TORCH)
-  if (USE_CAFFE)
-    add_dependencies(caffe_dd pytorch)
-  endif()
-endif()
-
-
-if (USE_CAFFE2)
-  if (USE_CAFFE)
-    add_dependencies(caffe_dd pytorch)
-    add_dependencies(caffe_dd detectron)
+    string(APPEND CAFFE_LIB_DEPS " -lhdf5_hl -lhdf5")
   endif()
 endif()
 
@@ -664,30 +645,25 @@ if (USE_NCNN)
   message(STATUS "Configuring NCNN")
   add_definitions(-DUSE_NCNN)
   include_directories(${CMAKE_CURRENT_BINARY_DIR})
-  set(NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src/libncnn.a)
+  set(NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn-build/src/libncnn.a)
   if (RPI3)
     ExternalProject_Add(
       ncnn
       PREFIX ncnn
-      DOWNLOAD_COMMAND git clone --recursive https://github.com/jolibrain/ncnn.git
-      CONFIGURE_COMMAND mkdir -p build && cd build && cmake .. -DPI3=ON -DCMAKE_TOOLCHAIN_FILE=../toolchains/pi3.toolchain.cmake
-      BUILD_COMMAND cd build/ && make -j${N}
+      GIT_REPOSITORY https://github.com/jolibrain/ncnn.git
+      CMAKE_ARGS -DPI3=ON -DCMAKE_TOOLCHAIN_FILE=../toolchains/pi3.toolchain.cmake
       INSTALL_COMMAND ""
-      BUILD_IN_SOURCE 1
     )
   else ()
     ExternalProject_Add(
       ncnn
       PREFIX ncnn
-      DOWNLOAD_COMMAND git clone --recursive https://github.com/jolibrain/ncnn.git && cd ncnn
-      CONFIGURE_COMMAND mkdir -p build && cd build && cmake ..
-      BUILD_COMMAND cd build/ && make -j${N}
+      GIT_REPOSITORY https://github.com/jolibrain/ncnn.git
       INSTALL_COMMAND ""
-      BUILD_IN_SOURCE 1
     )
   endif()
-  set(NCNN_INC_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/src ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src)
-  set(NCNN_LIB_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/build/src)
+  set(NCNN_INC_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/src ${CMAKE_BINARY_DIR}/ncnn/src/ncnn-build/src)
+  set(NCNN_LIB_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn-build/src)
   include_directories(${NCNN_INC_DIR})
 endif()
 
@@ -755,33 +731,54 @@ endif()
 if (USE_XGBOOST)
   message(STATUS "Configuring XGBoost")
   add_definitions(-DUSE_XGBOOST)
-  set(XGBOOST_LIB_DEPS -Wl,--whole-archive ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/lib/libxgboost.a -Wl,--no-whole-archive ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/dmlc-core/libdmlc.a ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/librabit.a)
+  set(XGBOOST_LIB_DEPS -Wl,--whole-archive ${CMAKE_BINARY_DIR}/xgboost/src/xgboost-build/libxgboost.a -Wl,--no-whole-archive ${CMAKE_BINARY_DIR}/xgboost/src/xgboost-build/dmlc-core/libdmlc.a ${CMAKE_BINARY_DIR}/xgboost/src/xgboost-build/librabit.a)
 
   if (CUDA_FOUND AND USE_XGBOOST_GPU)
     add_definitions(-DUSE_XGBOOST_GPU)
     list(APPEND XGBOOST_LIB_DEPS ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/CMakeFiles/gpuxgboost.dir/plugin/updater_gpu/src/gpuxgboost_generated_updater_gpu.cu.o ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/nccl/libnccl.a)
 #    set(XGB_NVCC_FLAGS,"--expt-extended-lambda;-gencode arch=compute_35,code=compute_35")
     ExternalProject_Add(
+      xgboost_cub
+      PREFIX xgboost_cub
+      URL https://github.com/NVlabs/cub/archive/1.6.4.zip
+      URL_HASH SHA256=4198e9c447a1e2a963b9e0e4d861df48baa47fb02e5e4fc507d1834afc99185a
+      INSTALL_COMMAND ""
+      BUILD_COMMAND ""
+      CONFIGURE_COMMAND ""
+    )
+    ExternalProject_Add(
       xgboost
       PREFIX xgboost
-      DOWNLOAD_COMMAND git clone https://github.com/dmlc/xgboost.git
-      CONFIGURE_COMMAND git checkout 84d992babcc370bff6cf4fe89985f072b0b91a64 && git submodule update --init --recursive && cd dmlc-core && git checkout 13d5acb8ba7e79550bbf2f730f1a3944ff0fa68b && cd .. && wget https://github.com/NVlabs/cub/archive/1.6.4.zip && unzip 1.6.4.zip && rm 1.6.4.zip && mkdir -p build && cd build &&
-      cmake .. -DPLUGIN_UPDATER_GPU=ON -DCUB_DIRECTORY=${CMAKE_BINARY_DIR}/xgboost/src/xgboost/cub-1.6.4/ -DCUDA_NVCC_FLAGS=-Xcompiler\ -fPIC\ --expt-extended-lambda\ -gencode\ arch=compute_30,code=compute_30\ -gencode\ arch=compute_35,code=compute_35\ -gencode\ arch=compute_50,code=compute_50\ -gencode\ arch=compute_52,code=compute_52\ -gencode\ arch=compute_61,code=compute_61 && make && make
+      GIT_REPOSITORY https://github.com/dmlc/xgboost.git
+      GIT_TAG 84d992babcc370bff6cf4fe89985f072b0b91a64
+      GIT_CONFIG advice.detachedHead=false
+      PATCH_COMMAND
+        git reset --hard &&
+        patch -p1 < ${CMAKE_SOURCE_DIR}/patches/xgboost/static-lib.patch &&
+        cd dmlc-core && git checkout 13d5acb8ba7e79550bbf2f730f1a3944ff0fa68b
+      CMAKE_ARGS
+        -DPLUGIN_UPDATER_GPU=ON
+        -DCUB_DIRECTORY=${CMAKE_BINARY_DIR}/xgboost_cub/src/xgboost_cub
+        -DCUDA_NVCC_FLAGS="-Xcompiler -fPIC --expt-extended-lambda -gencode arch=compute_30,code=compute_30 -gencode arch=compute_35,code=compute_35 -gencode arch=compute_50,code=compute_50 -gencode arch=compute_52,code=compute_52 -gencode arch=compute_61,code=compute_61"
       INSTALL_COMMAND ""
-      BUILD_IN_SOURCE 1
-      )
+      DEPENDS xgboost_cub
+    )
   else()
     ExternalProject_Add(
       xgboost
       PREFIX xgboost
-      DOWNLOAD_COMMAND git clone https://github.com/dmlc/xgboost.git
-      CONFIGURE_COMMAND git checkout 84d992babcc370bff6cf4fe89985f072b0b91a64 && git submodule update --init --recursive && cd dmlc-core && git checkout 13d5acb8ba7e79550bbf2f730f1a3944ff0fa68b && cd .. && mkdir build && cd build && cmake .. && make -j ${N}
+      GIT_REPOSITORY https://github.com/dmlc/xgboost.git
+      GIT_TAG 84d992babcc370bff6cf4fe89985f072b0b91a64
+      GIT_CONFIG advice.detachedHead=false
+      PATCH_COMMAND
+        git reset --hard &&
+        patch -p1 < ${CMAKE_SOURCE_DIR}/patches/xgboost/static-lib.patch &&
+        cd dmlc-core && git checkout 13d5acb8ba7e79550bbf2f730f1a3944ff0fa68b
       INSTALL_COMMAND ""
-      BUILD_IN_SOURCE 1
-      )
+    )
   endif()
   set(XGBOOST_INC_DIR ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/include ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/src ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/rabit/include ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/dmlc-core/include ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/dmlc-core/src/)
-  set(XGBOOST_LIB_DIR ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/lib ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/ ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/dmlc-core)
+  set(XGBOOST_LIB_DIR ${CMAKE_BINARY_DIR}/xgboost/src/xgboost-build/lib ${CMAKE_BINARY_DIR}/xgboost/src/xgboost-build/ ${CMAKE_BINARY_DIR}/xgboost/src/xgboost-build/dmlc-core)
 endif()
 
 if (USE_TSNE)
@@ -791,14 +788,13 @@ if (USE_TSNE)
   ExternalProject_Add(
       Multicore-TSNE
       PREFIX Multicore-TSNE
-      DOWNLOAD_COMMAND git clone https://github.com/beniz/Multicore-TSNE.git
-      CONFIGURE_COMMAND cd multicore_tsne && mkdir -p build && cd build && cmake ..
-      BUILD_COMMAND cd multicore_tsne/build/ && make
+      GIT_REPOSITORY https://github.com/beniz/Multicore-TSNE.git
+      SOURCE_SUBDIR multicore_tsne
+      CMAKE_ARGS -Wno-dev
       INSTALL_COMMAND ""
-      BUILD_IN_SOURCE 1
-      )
-    set(TSNE_INC_DIR ${CMAKE_BINARY_DIR}/Multicore-TSNE/src/Multicore-TSNE/multicore_tsne)
-    set(TSNE_LIB_DIR ${CMAKE_BINARY_DIR}/Multicore-TSNE/src/Multicore-TSNE/multicore_tsne/build)
+   )
+  set(TSNE_INC_DIR ${CMAKE_BINARY_DIR}/Multicore-TSNE/src/Multicore-TSNE/multicore_tsne)
+  set(TSNE_LIB_DIR ${CMAKE_BINARY_DIR}/Multicore-TSNE/src/Multicore-TSNE-build)
 endif()
 
 # add the binary tree to the search path for include files
@@ -888,8 +884,69 @@ if (USE_TENSORRT)
     include_directories(${TENSORRT_INC_DIR})
 endif()
 
-if (USE_HTTP_SERVER)
+if (USE_HTTP_SERVER_OATPP)
     ExternalProject_Add(
+        oatpp
+        PREFIX oatpp
+        URL https://github.com/oatpp/oatpp/archive/1.2.0.tar.gz
+        URL_HASH SHA256=7f55669827ece429b6d85f4403b76da717d3fdf0e92721e9a0229cf8168e8e37
+        BUILD_IN_SOURCE true
+        CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DOATPP_INSTALL=OFF -DOATPP_BUILD_TESTS=OFF
+        INSTALL_COMMAND ""
+    )
+    ExternalProject_Add(
+        oatpp-zlib
+        PREFIX oatpp-zlib
+        URL https://github.com/oatpp/oatpp-zlib/archive/1.2.0.tar.gz
+        URL_HASH SHA256=cf9a5815ce0e845e4353ecd537e34a414bcd6ca4f09d0f763224dc56163d6477
+        CMAKE_ARGS
+            -DCMAKE_BUILD_TYPE=Release
+            -DBUILD_SHARED_LIBS=OFF
+            -DOATPP_BUILD_TESTS=OFF
+            -DOATPP_INSTALL=OFF
+            -DOATPP_MODULES_LOCATION=CUSTOM
+            -DOATPP_DIR_SRC=${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src
+            -DOATPP_DIR_LIB=${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src
+        BUILD_IN_SOURCE true
+        INSTALL_COMMAND ""
+        DEPENDS oatpp
+    )
+    ExternalProject_Add(
+        oatpp-swagger
+        PREFIX oatpp-swagger
+        URL https://github.com/oatpp/oatpp-swagger/archive/1.2.0.tar.gz
+        URL_HASH SHA256=8457c9d6f13165428df66f8ff648d3970d0108d572cf8c42bb87122a05e507e6
+        BUILD_IN_SOURCE true
+        INSTALL_COMMAND ""
+        CMAKE_ARGS
+            -DCMAKE_BUILD_TYPE=Release
+            -DBUILD_SHARED_LIBS=OFF
+            -DOATPP_BUILD_TESTS=OFF
+            -DOATPP_INSTALL=OFF
+            -DOATPP_MODULES_LOCATION=CUSTOM
+            -DOATPP_DIR_SRC=${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src
+            -DOATPP_DIR_LIB=${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src
+        DEPENDS oatpp
+    )
+
+    # FIXME(sileht): we should copy res outside build dir and dynamically looks at runtime at different places
+    add_definitions("-DOATPP_SWAGGER_RES_PATH=\"${CMAKE_BINARY_DIR}/oatpp-swagger/src/oatpp-swagger/res/\"")
+
+    set(OATPP_LIB_DEPS
+        ${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src/liboatpp.a
+        ${CMAKE_BINARY_DIR}/oatpp-zlib/src/oatpp-zlib/src/liboatpp-zlib.a
+        ${CMAKE_BINARY_DIR}/oatpp-swagger/src/oatpp-swagger/src/liboatpp-swagger.a
+        z  # zlib
+    )
+    include_directories(
+        SYSTEM ${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src
+        SYSTEM ${CMAKE_BINARY_DIR}/oatpp-zlib/src/oatpp-zlib/src
+        SYSTEM ${CMAKE_BINARY_DIR}/oatpp-swagger/src/oatpp-swagger/src
+    )
+endif()
+
+if (USE_HTTP_SERVER)
+        ExternalProject_Add(
         cpp-netlib
         PREFIX cpp-netlib
         URL http://downloads.cpp-netlib.org/0.11.2/cpp-netlib-0.11.2-final.tar.gz
@@ -902,8 +959,8 @@ if (USE_HTTP_SERVER)
         INSTALL_COMMAND ""
     )
     set(HTTP_LIB_DEPS ${CMAKE_BINARY_DIR}/cpp-netlib/src/cpp-netlib/libs/network/src/libcppnetlib-uri.a crypto ssl)
-    set(HTTP_INCLUDE_DIR SYSTEM ${CMAKE_BINARY_DIR}/cpp-netlib/src/cpp-netlib)
-    include_directories(${HTTP_INCLUDE_DIR})
+    set(HTTP_INCLUDE_DIR ${CMAKE_BINARY_DIR}/cpp-netlib/src/cpp-netlib)
+    include_directories(SYSTEM ${HTTP_INCLUDE_DIR})
 endif()
 
 # main library, main & tests
@@ -935,6 +992,7 @@ set(COMMON_LINK_LIBS
     ${PROTOBUF_LIB_DEPS}
     ${HTTP_LIB_DEPS}
     ${SPDLOG_LIB_DEPS}
+    ${OATPP_LIB_DEPS}
     ${CAFFE_LIB_DEPS}
     ${CAFFE2_LIB_DEPS}
     ${TF_LIB_DEPS}
@@ -951,13 +1009,13 @@ endif()
 add_subdirectory(main)
 
 # templates
-file(COPY "templates" DESTINATION ".")
+execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/templates/ ${CMAKE_BINARY_DIR}/templates)
 
 # examples
-file(COPY "examples" DESTINATION ".")
+execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/examples/ ${CMAKE_BINARY_DIR}/examples)
 
 # patches
-file(COPY "patches" DESTINATION ".")
+execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/patches/ ${CMAKE_BINARY_DIR}/patches)
 
 # unit testing
 if (BUILD_TESTS)
@@ -1011,6 +1069,7 @@ message(STATUS "WARNING:               ${WARNING}")
 message(STATUS "USE_COMMAND_LINE:      ${USE_COMMAND_LINE}")
 message(STATUS "USE_JSON_API:          ${USE_JSON_API}")
 message(STATUS "USE_HTTP_SERVER:       ${USE_HTTP_SERVER}")
+message(STATUS "USE_HTTP_SERVER_OATPP: ${USE_HTTP_SERVER_OATPP}")
 message(STATUS "BUILD_TESTS:           ${BUILD_TESTS}")
 message(STATUS "BUILD_TOOLS:           ${BUILD_TOOLS}")
 message(STATUS "USE_CAFFE:             ${USE_CAFFE}")

@@ -54,8 +54,7 @@ namespace dd
                                          c10::optional<TorchBatch>>
   {
   private:
-    bool _shuffle = false; /**< shuffle dataset upon reset() */
-    long _seed = -1;       /**< shuffle seed*/
+    long _seed = -1; /**< shuffle seed*/
     int64_t _current_index
         = 0; /**< current index for batch parallel data extraction */
     std::string _backend; /**< db backend (currently only lmdb supported= */
@@ -66,7 +65,9 @@ namespace dd
     std::shared_ptr<spdlog::logger> _logger; /**< dd logger */
 
   public:
+    bool _shuffle = false;           /**< shuffle dataset upon reset() */
     std::shared_ptr<db::DB> _dbData; /**< db data */
+    db::Cursor *_dbCursor = nullptr; /**< db cursor */
     std::vector<int64_t> _indices;   /**< id/key  of data points */
     std::vector<std::pair<std::string, std::vector<double>>>
         _lfiles; /**< list of files */
@@ -77,6 +78,8 @@ namespace dd
     InputConnectorStrategy *_inputc
         = nullptr;               /**< back ptr to input connector. */
     bool _classification = true; /**< whether a classification dataset. */
+
+    bool _image = false; /**< whether an image dataset. */
 
     /**
      * \brief empty constructor
@@ -89,13 +92,20 @@ namespace dd
      * \brief copy constructor
      */
     TorchDataset(const TorchDataset &d)
-        : _shuffle(d._shuffle), _seed(d._seed),
-          _current_index(d._current_index), _backend(d._backend), _db(d._db),
+        : _seed(d._seed), _current_index(d._current_index),
+          _backend(d._backend), _db(d._db),
           _batches_per_transaction(d._batches_per_transaction), _txn(d._txn),
-          _logger(d._logger), _dbData(d._dbData), _indices(d._indices),
-          _lfiles(d._lfiles), _batches(d._batches), _dbFullName(d._dbFullName),
-          _inputc(d._inputc), _classification(d._classification)
+          _logger(d._logger), _shuffle(d._shuffle), _dbData(d._dbData),
+          _indices(d._indices), _lfiles(d._lfiles), _batches(d._batches),
+          _dbFullName(d._dbFullName), _inputc(d._inputc),
+          _classification(d._classification), _image(d._image)
     {
+    }
+
+    virtual ~TorchDataset()
+    {
+      if (_dbCursor)
+        delete _dbCursor;
     }
 
     /**
@@ -103,6 +113,19 @@ namespace dd
      */
     void add_batch(const std::vector<at::Tensor> &data,
                    const std::vector<at::Tensor> &target = {});
+
+    /**
+     * \brief add an encoded image to a batch, with an int target
+     */
+    void add_image_batch(const cv::Mat &bgr, const int &width,
+                         const int &height, const int &target);
+
+    /**
+     * \brief add an encoded image to a batch, with a vector of regression
+     * targets
+     */
+    void add_image_batch(const cv::Mat &bgr, const int &width,
+                         const int &height, const std::vector<double> &target);
 
     /**
      * \brief reset dataset reading status : ie start new epoch
@@ -229,14 +252,34 @@ namespace dd
     }
 
     /*-- image tools --*/
+
+    /**
+     * \brief adds image to batch, with an int target
+     */
     int add_image_file(const std::string &fname, const int &target,
                        const int &height, const int &width);
+
+    /**
+     * \brief adds image to batch, with a set of regression targets
+     */
     int add_image_file(const std::string &fname,
                        const std::vector<double> &target, const int &height,
                        const int &width);
+
+    /**
+     * \brief turns an image into a torch::Tensor
+     */
     at::Tensor image_to_tensor(const cv::Mat &bgr, const int &height,
                                const int &width);
+
+    /**
+     * \brief turns an int into a torch::Tensor
+     */
     at::Tensor target_to_tensor(const int &target);
+
+    /**
+     * \brief turns a vector of double into a torch::Tensor
+     */
     at::Tensor target_to_tensor(const std::vector<double> &target);
 
   private:
@@ -245,6 +288,18 @@ namespace dd
      */
     void write_tensors_to_db(const std::vector<at::Tensor> &data,
                              const std::vector<at::Tensor> &target);
+
+    /**
+     * \brief writes encoded image to db with a tensor target
+     */
+    void write_image_to_db(const cv::Mat &bgr, const torch::Tensor &target);
+
+    /**
+     * \brief reads an encoded image from db along with its tensor target
+     */
+    void read_image_from_db(const std::string &datas,
+                            const std::string &targets, cv::Mat &bgr,
+                            torch::Tensor &targett, const bool &bw);
   };
 
 }

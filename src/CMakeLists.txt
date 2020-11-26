@@ -1,4 +1,14 @@
 # main library
+
+set_source_files_properties(
+  ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
+  ${CMAKE_BINARY_DIR}/src/caffe.pb.h
+  PROPERTIES GENERATED TRUE)
+set_source_files_properties(
+  ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
+  ${CMAKE_BINARY_DIR}/src/caffe.pb.h
+  PROPERTIES COMPILE_FLAGS -Wno-unused-parameter)
+
 if (USE_DD_SYSLOG)
   add_definitions(-DUSE_DD_SYSLOG)
 endif()
@@ -12,12 +22,20 @@ set(ddetect_SOURCES deepdetect.h deepdetect.cc mllibstrategy.h mlmodel.h
     csvinputfileconn.cc csvtsinputfileconn.h csvtsinputfileconn.cc
     svminputfileconn.h svminputfileconn.cc txtinputfileconn.h
     txtinputfileconn.cc apidata.h apidata.cc chain_actions.h chain_actions.cc
-    service_stats.h service_stats.cc chain.h chain.cc ext/rmustache/mustache.h ext/rmustache/mustache.cc)
+    service_stats.h service_stats.cc chain.h chain.cc ext/rmustache/mustache.h ext/rmustache/mustache.cc
+    ${CMAKE_BINARY_DIR}/src/caffe.pb.cc)
+
 if (USE_JSON_API)
   list(APPEND ddetect_SOURCES jsonapi.h jsonapi.cc)
 endif()
 if (USE_HTTP_SERVER)
   list(APPEND ddetect_SOURCES httpjsonapi.cc httpjsonapi.h)
+endif()
+if (USE_HTTP_SERVER_OATPP)
+  list(APPEND ddetect_SOURCES oatppjsonapi.cc oatppjsonapi.h http/app_component.hpp http/swagger_component.hpp http/controller.hpp http/error_handler.hpp http/error_handler.cpp)
+endif()
+if (USE_HTTP_SERVER OR USE_HTTP_SERVER_OATPP)
+  list(APPEND ddetect_SOURCES http/flags.h)
 endif()
 if (USE_COMMAND_LINE AND USE_JSON_API)
   list(APPEND ddetect_SOURCES commandlinejsonapi.h commandlinejsonapi.cc)
@@ -59,18 +77,7 @@ if (USE_DLIB)
   list(APPEND ddetect_SOURCES backends/dlib/DNNStructures.h backends/dlib/dliblib.cc backends/dlib/dliblib.h backends/dlib/dlibmodel.cc backends/dlib/dlibmodel.h backends/dlib/dlibinputconns.h backends/dlib/dlib_actions.cpp backends/dlib/dlib_actions.h)
 endif()
 if (USE_NCNN)
-  list(APPEND ddetect_SOURCES
-    backends/ncnn/ncnnlib.cc
-    backends/ncnn/ncnnmodel.cc
-    backends/ncnn/caffe2ncnn.cc
-    backends/ncnn/upgrade_proto.cpp
-    )
-
-  if (NOT USE_CAFFE)
-    list(APPEND ddetect_SOURCES
-      ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
-      )
-  endif()
+  list(APPEND ddetect_SOURCES backends/ncnn/ncnnlib.cc backends/ncnn/ncnnmodel.cc backends/ncnn/caffe2ncnn.cc backends/ncnn/upgrade_proto.cpp)
 endif()
 if (USE_TORCH)
   list(APPEND ddetect_SOURCES
@@ -95,11 +102,6 @@ if (USE_TORCH)
     backends/torch/torchutils.cc
     backends/torch/optim/ranger.cc
 	)
-  if (NOT USE_CAFFE)
-    list(APPEND ddetect_SOURCES
-      ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
-      )
-  endif()
 endif()
 
 if (USE_TENSORRT)
@@ -113,50 +115,49 @@ if (USE_TENSORRT)
     backends/tensorrt/tensorrtmodel.h
     backends/tensorrt/tensorrtmodel.cc
     )
-
-  if (NOT USE_CAFFE)
-    list(APPEND ddetect_SOURCES
-      ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
-      )
-  endif()
 endif()
+
 
 add_library(ddetect ${ddetect_SOURCES})
+add_dependencies(ddetect protobuf caffe_pb_h)
 if (USE_DLIB)
-  add_dependencies(ddetect protobuf dlib)
+  add_dependencies(ddetect dlib)
 endif()
 if (USE_NCNN)
-  add_dependencies(ddetect protobuf ncnn)
+  add_dependencies(ddetect ncnn)
 endif()
 if (USE_CAFFE)
-  add_dependencies(ddetect protobuf caffe_dd)
+  add_dependencies(ddetect caffe_dd)
 endif()
 if (USE_TENSORRT)
   if (USE_CAFFE2)
-    add_dependencies(ddetect protobuf pytorch)
+    add_dependencies(ddetect pytorch)
   endif()
 endif()
 if (USE_TORCH)
-  add_dependencies(ddetect protobuf pytorch)
+  add_dependencies(ddetect pytorch)
 endif()
 if (USE_SIMSEARCH)
   if (USE_ANNOY)
-    add_dependencies(ddetect protobuf annoy)
+    add_dependencies(ddetect annoy)
   else()
-    add_dependencies(ddetect protobuf faisslib)
+    add_dependencies(ddetect faisslib)
   endif()
 endif()
 if (USE_TENSORRT_OSS)
-  add_dependencies(ddetect protobuf tensorrt-oss)
+  add_dependencies(ddetect tensorrt-oss)
 endif()
 if (USE_XGBOOST)
-  add_dependencies(ddetect protobuf xgboost)
+  add_dependencies(ddetect xgboost)
 endif()
 if (USE_TNSE)
-  add_dependencies(ddetect protobuf Multicore-TSNE)
+  add_dependencies(ddetect Multicore-TSNE)
 endif()
 if (USE_HTTP_SERVER)
-  add_dependencies(ddetect cpp-netlib)
+    add_dependencies(ddetect cpp-netlib)
+endif()
+if (USE_HTTP_SERVER_OATPP)
+  add_dependencies(ddetect oatpp oatpp-swagger oatpp-zlib)
 endif()
 if (BUILD_SPDLOG)
   add_dependencies(ddetect spdlog)

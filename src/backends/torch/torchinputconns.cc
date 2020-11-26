@@ -109,7 +109,7 @@ namespace dd
       std::vector<std::pair<std::string, int>> &lfiles,
       std::unordered_map<int, std::string> &hcorresp,
       std::unordered_map<std::string, int> &hcorresp_r,
-      const std::string &folderPath)
+      const std::string &folderPath, const bool &test)
   {
     _logger->info("Reading image folder {}", folderPath);
 
@@ -117,6 +117,7 @@ namespace dd
     // backends
     int cl = 0;
 
+    std::unordered_map<std::string, int>::const_iterator hcit;
     std::unordered_set<std::string> subdirs;
     if (fileops::list_directory(folderPath, false, true, false, subdirs))
       throw InputConnectorBadParamException(
@@ -130,8 +131,18 @@ namespace dd
           throw InputConnectorBadParamException(
               "failed reading image train data sub-directory " + (*uit));
         std::string cls = dd_utils::split((*uit), '/').back();
-        hcorresp.insert(std::pair<int, std::string>(cl, cls));
-        hcorresp_r.insert(std::pair<std::string, int>(cls, cl));
+        if (!test)
+          {
+            hcorresp.insert(std::pair<int, std::string>(cl, cls));
+            hcorresp_r.insert(std::pair<std::string, int>(cls, cl));
+          }
+        else
+          {
+            if ((hcit = hcorresp_r.find(cls)) != hcorresp_r.end())
+              cl = (*hcit).second;
+            else
+              _logger->warn("unknown class {} in test set", cls);
+          }
         auto fit = subdir_files.begin();
         while (
             fit
@@ -140,7 +151,8 @@ namespace dd
             lfiles.push_back(std::pair<std::string, int>((*fit), cl));
             ++fit;
           }
-        ++cl;
+        if (!test)
+          ++cl;
         ++uit;
       }
   }
@@ -249,16 +261,12 @@ namespace dd
                 read_image_folder(lfiles, hcorresp, hcorresp_r, _uris.at(0));
                 if (_uris.size() > 1)
                   {
-                    std::unordered_map<int, std::string>
-                        test_hcorresp; // correspondence class number / class
-                                       // name
-                    std::unordered_map<std::string, int>
-                        test_hcorresp_r; // reverse correspondence for test
-                                         // set.
-
-                    read_image_folder(test_lfiles, test_hcorresp,
-                                      test_hcorresp_r, _uris.at(1));
+                    read_image_folder(test_lfiles, hcorresp, hcorresp_r,
+                                      _uris.at(1), true);
                   }
+
+                if (_dataset._shuffle)
+                  shuffle_dataset<int>(lfiles);
 
                 bool has_test_data = test_lfiles.size() != 0;
                 if (_test_split > 0.0 && !has_test_data)
@@ -302,6 +310,9 @@ namespace dd
                 if (_uris.size() > 1)
                   read_image_list(test_lfiles, _uris.at(1));
 
+                if (_dataset._shuffle)
+                  shuffle_dataset<std::vector<double>>(lfiles);
+
                 bool has_test_data = test_lfiles.size() != 0;
                 if (_test_split > 0.0 && !has_test_data)
                   {
@@ -341,98 +352,10 @@ namespace dd
       }
   }
 
-  /*template <typename T>
-  int ImgTorchInputFileConn::add_image_file(TorchDataset &dataset,
-                                            const std::string &fname, T target)
-  {
-    DDImg dimg;
-    copy_parameters_to(dimg);
-
-    try
-      {
-        if (dimg.read_file(fname))
-          {
-            this->_logger->error("Uri failed: {}", fname);
-          }
-      }
-    catch (std::exception &e)
-      {
-        this->_logger->error("Uri failed: {}", fname);
-      }
-    if (dimg._imgs.size() != 0)
-      {
-        at::Tensor imgt = image_to_tensor(dimg._imgs[0]);
-        // at::Tensor targett{ torch::full(1, target, torch::kLong) };
-        at::Tensor targett = target_to_tensor(target);
-
-        dataset.add_batch({ imgt }, { targett });
-        return 0;
-      }
-    else
-      {
-        return -1;
-      }
-  }
-
-  at::Tensor ImgTorchInputFileConn::image_to_tensor(const cv::Mat &bgr)
-  {
-    std::vector<int64_t> sizes{ _height, _width, bgr.channels() };
-    at::TensorOptions options(at::ScalarType::Byte);
-
-    at::Tensor imgt = torch::from_blob(bgr.data, at::IntList(sizes), options);
-    imgt = imgt.toType(at::kFloat).permute({ 2, 0, 1 });
-    size_t nchannels = imgt.size(0);
-
-    if (_scale != 1.0)
-      imgt = imgt.mul(_scale);
-
-    if (!_mean.empty() && _mean.size() != nchannels)
-      throw InputConnectorBadParamException(
-          "mean vector be of size the number of channels ("
-          + std::to_string(nchannels) + ")");
-
-    for (size_t m = 0; m < _mean.size(); m++)
-      imgt[0][m] = imgt[0][m].sub_(_mean.at(m));
-
-    if (!_std.empty() && _std.size() != nchannels)
-      throw InputConnectorBadParamException(
-          "std vector be of size the number of channels ("
-          + std::to_string(nchannels) + ")");
-
-    for (size_t s = 0; s < _std.size(); s++)
-      imgt[0][s] = imgt[0][s].div_(_std.at(s));
-
-    return imgt;
-  }
-
-  at::Tensor ImgTorchInputFileConn::target_to_tensor(const int &target)
-  {
-    at::Tensor targett{ torch::full(1, target, torch::kLong) };
-    return targett;
-  }
-
-  at::Tensor
-  ImgTorchInputFileConn::target_to_tensor(const std::vector<double> &target)
-  {
-    int64_t tsize = target.size();
-
-    at::Tensor targett = torch::zeros(tsize, torch::kFloat32);
-    int n = 0;
-    for (auto i : target) // XXX: from_blob does not seem to work, fills up
-                          // with spurious values
-      {
-        targett[n] = i;
-        ++n;
-      }
-    return targett;
-    }*/
-
   template <typename T>
-  void ImgTorchInputFileConn::split_dataset(
-      std::vector<std::pair<std::string, T>> &lfiles,
-      std::vector<std::pair<std::string, T>> &test_lfiles)
+  void ImgTorchInputFileConn::shuffle_dataset(
+      std::vector<std::pair<std::string, T>> &lfiles)
   {
-    // shuffle
     std::mt19937 g;
     if (_seed >= 0)
       g = std::mt19937(_seed);
@@ -442,7 +365,13 @@ namespace dd
         g = std::mt19937(rd());
       }
     std::shuffle(lfiles.begin(), lfiles.end(), g);
+  }
 
+  template <typename T>
+  void ImgTorchInputFileConn::split_dataset(
+      std::vector<std::pair<std::string, T>> &lfiles,
+      std::vector<std::pair<std::string, T>> &test_lfiles)
+  {
     // Split
     int split_pos = std::floor(lfiles.size() * (1.0 - _test_split));
 
@@ -734,6 +663,50 @@ namespace dd
       _datadim = _csvtsdata_test[0][0]._v.size();
     else
       _datadim = _csvtsdata[0][0]._v.size();
+
+    std::vector<int> lpos = _label_pos;
+    _label_pos.clear();
+    for (int lp : lpos)
+      if (lp != -1)
+        _label_pos.push_back(lp);
+
+    _logger->info("whole data dimension : " + std::to_string(_datadim));
+
+    std::string ign;
+    for (std::string i : _ignored_columns)
+      ign += "'" + i + "' ";
+    _logger->info(std::to_string(_ignored_columns.size())
+                  + " ignored colums asked for: " + ign);
+
+    std::string labels;
+    for (std::string l : _label)
+      labels += "'" + l + "' ";
+    _logger->info(std::to_string(_label.size())
+                  + " labels (outputs) asked for: " + labels);
+
+    std::vector<std::string> col_vec;
+    for (std::string c : _columns)
+      col_vec.push_back(c);
+
+    std::string labels_found;
+    for (auto i : _label_pos)
+      labels_found += "'" + col_vec[i] + "' ";
+    _logger->info(std::to_string(_label_pos.size())
+                  + " labels (outputs) found: " + labels_found);
+
+    std::string inputs_found;
+    for (unsigned int i = 0; i < _columns.size(); ++i)
+      {
+        if (std::find(_label_pos.begin(), _label_pos.end(), i)
+                == _label_pos.end()
+            && std::find(_ignored_columns.begin(), _ignored_columns.end(),
+                         col_vec[i])
+                   == _ignored_columns.end())
+          inputs_found += "'" + col_vec[i] + "' ";
+      }
+
+    _logger->info(std::to_string(_datadim - _label_pos.size())
+                  + " inputs  : " + inputs_found);
   }
 
   void CSVTSTorchInputFileConn::transform(const APIData &ad)
