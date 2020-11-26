@@ -634,30 +634,9 @@ endif()
 
 # Caffe dependencies
 if (USE_CAFFE)
+  set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lopenblas -lcaffe)
   if (USE_HDF5)
-    set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lhdf5_hl -lhdf5 -lopenblas -lcaffe)
-  else()
-    set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lopenblas -lcaffe)
-  endif()
-endif()
-
-if (USE_TF)
-  if (USE_CAFFE)
-    add_dependencies(caffe_dd tensorflow_cc)
-  endif()
-endif()
-
-if (USE_TORCH)
-  if (USE_CAFFE)
-    add_dependencies(caffe_dd pytorch)
-  endif()
-endif()
-
-
-if (USE_CAFFE2)
-  if (USE_CAFFE)
-    add_dependencies(caffe_dd pytorch)
-    add_dependencies(caffe_dd detectron)
+    string(APPEND CAFFE_LIB_DEPS " -lhdf5_hl -lhdf5")
   endif()
 endif()
 
@@ -773,7 +752,6 @@ if (USE_XGBOOST)
       GIT_REPOSITORY https://github.com/dmlc/xgboost.git
       GIT_TAG 84d992babcc370bff6cf4fe89985f072b0b91a64
       GIT_CONFIG advice.detachedHead=false
-      GIT_SUBMODULES_RECURSE ON
       PATCH_COMMAND
         git reset --hard &&
         patch -p1 < ${CMAKE_SOURCE_DIR}/patches/xgboost/static-lib.patch &&
@@ -792,7 +770,6 @@ if (USE_XGBOOST)
       GIT_REPOSITORY https://github.com/dmlc/xgboost.git
       GIT_TAG 84d992babcc370bff6cf4fe89985f072b0b91a64
       GIT_CONFIG advice.detachedHead=false
-      GIT_SUBMODULES_RECURSE ON
       PATCH_COMMAND
         git reset --hard &&
         patch -p1 < ${CMAKE_SOURCE_DIR}/patches/xgboost/static-lib.patch &&

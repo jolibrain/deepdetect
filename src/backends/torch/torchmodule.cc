@@ -100,6 +100,11 @@ namespace dd
             _logger->error("unable to load " + tmodel._traced);
             throw;
           }
+        std::vector<int> idims = _graph->get_input_dims_from_loaded();
+        std::string idimss;
+        for (int i : idims)
+          idimss += std::to_string(i) + " ";
+        _logger->info("input dims of loaded model: " + idimss);
       }
   }
 
@@ -196,6 +201,10 @@ namespace dd
     if (_graph)
       {
         std::vector<long int> dims = inputc._dataset.datasize(0);
+        std::string d;
+        for (long int di : dims)
+          d += std::to_string(di) + " ";
+        _logger->info("input data dimensions : " + d);
         dims.insert(dims.begin(), 1); // dummy batch size
         _graph->finalize(dims);
         if (_graph->needs_reload())

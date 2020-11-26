@@ -663,6 +663,50 @@ namespace dd
       _datadim = _csvtsdata_test[0][0]._v.size();
     else
       _datadim = _csvtsdata[0][0]._v.size();
+
+    std::vector<int> lpos = _label_pos;
+    _label_pos.clear();
+    for (int lp : lpos)
+      if (lp != -1)
+        _label_pos.push_back(lp);
+
+    _logger->info("whole data dimension : " + std::to_string(_datadim));
+
+    std::string ign;
+    for (std::string i : _ignored_columns)
+      ign += "'" + i + "' ";
+    _logger->info(std::to_string(_ignored_columns.size())
+                  + " ignored colums asked for: " + ign);
+
+    std::string labels;
+    for (std::string l : _label)
+      labels += "'" + l + "' ";
+    _logger->info(std::to_string(_label.size())
+                  + " labels (outputs) asked for: " + labels);
+
+    std::vector<std::string> col_vec;
+    for (std::string c : _columns)
+      col_vec.push_back(c);
+
+    std::string labels_found;
+    for (auto i : _label_pos)
+      labels_found += "'" + col_vec[i] + "' ";
+    _logger->info(std::to_string(_label_pos.size())
+                  + " labels (outputs) found: " + labels_found);
+
+    std::string inputs_found;
+    for (unsigned int i = 0; i < _columns.size(); ++i)
+      {
+        if (std::find(_label_pos.begin(), _label_pos.end(), i)
+                == _label_pos.end()
+            && std::find(_ignored_columns.begin(), _ignored_columns.end(),
+                         col_vec[i])
+                   == _ignored_columns.end())
+          inputs_found += "'" + col_vec[i] + "' ";
+      }
+
+    _logger->info(std::to_string(_datadim - _label_pos.size())
+                  + " inputs  : " + inputs_found);
   }
 
   void CSVTSTorchInputFileConn::transform(const APIData &ad)
