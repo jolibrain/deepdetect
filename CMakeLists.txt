@@ -1029,16 +1029,18 @@ endif()
 file(GLOB_RECURSE ALL_SOURCE_FILES src/*.cpp src/*.hpp src/*.h src/*.c tests/*.cc src/*.cc)
 list(FILTER ALL_SOURCE_FILES EXCLUDE REGEX "^${CMAKE_SOURCE_DIR}/src/ext/.*$")
 
+
+find_program(CLANG_FORMAT_BIN clang-format-10 clang-format)
 add_custom_target(
         clang-format
-        COMMAND clang-format
+        COMMAND ${CLANG_FORMAT_BIN}
         -style=file
         -i
         ${ALL_SOURCE_FILES}
 )
 add_custom_target(
         clang-format-check
-        COMMAND clang-format
+        COMMAND ${CLANG_FORMAT_BIN}
         --dry-run
         --Werror
         --ferror-limit=10
