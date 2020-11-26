@@ -28,6 +28,7 @@
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <torch/torch.h>
 #pragma GCC diagnostic pop
+#include <torch/ordered_dict.h>
 
 namespace dd
 {
@@ -186,6 +187,12 @@ namespace dd
       return _allocation_done;
     }
 
+    /**
+     * return input dims from loaded tensor and not from
+     * specification/construction for info/debug purposes
+     */
+    std::vector<int> get_input_dims_from_loaded();
+
   protected:
     /**
      * internal torch module allocation, called whithin (finalize)
@@ -209,6 +216,10 @@ namespace dd
      * @param in   input tensor
      */
     void set_input(torch::Tensor in);
+
+    std::vector<int>
+    get_input_dims(std::string optype,
+                   torch::OrderedDict<std::string, torch::Tensor> params);
 
     torch::Dtype _dtype
         = torch::kFloat32; /**< type of data stored in tensors */

@@ -2700,6 +2700,8 @@ namespace dd
           ad_res.add("regression", _regression);
         if (inputc._ctc)
           ad_res.add("net_meas", true);
+        if (_autoencoder)
+          ad_res.add("autoencoder", true);
         if (inputc._timeserie)
           {
             ad_res.add("timeserie", true);

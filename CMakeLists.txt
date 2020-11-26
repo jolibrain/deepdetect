@@ -634,30 +634,9 @@ endif()
 
 # Caffe dependencies
 if (USE_CAFFE)
+  set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lopenblas -lcaffe)
   if (USE_HDF5)
-    set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lhdf5_hl -lhdf5 -lopenblas -lcaffe)
-  else()
-    set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lopenblas -lcaffe)
-  endif()
-endif()
-
-if (USE_TF)
-  if (USE_CAFFE)
-    add_dependencies(caffe_dd tensorflow_cc)
-  endif()
-endif()
-
-if (USE_TORCH)
-  if (USE_CAFFE)
-    add_dependencies(caffe_dd pytorch)
-  endif()
-endif()
-
-
-if (USE_CAFFE2)
-  if (USE_CAFFE)
-    add_dependencies(caffe_dd pytorch)
-    add_dependencies(caffe_dd detectron)
+    string(APPEND CAFFE_LIB_DEPS " -lhdf5_hl -lhdf5")
   endif()
 endif()
 
