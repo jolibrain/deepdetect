@@ -199,7 +199,9 @@ namespace dd
         : ImgInputFileConn(i), TorchInputInterface(i)
     {
       _dataset._inputc = this;
+      _dataset._image = true;
       _test_dataset._inputc = this;
+      _test_dataset._image = true;
       set_db_transaction_size(TORCH_IMG_TRANSACTION_SIZE);
     }
 
@@ -238,7 +240,8 @@ namespace dd
     void read_image_folder(std::vector<std::pair<std::string, int>> &lfiles,
                            std::unordered_map<int, std::string> &hcorresp,
                            std::unordered_map<std::string, int> &hcorresp_r,
-                           const std::string &folderPath);
+                           const std::string &folderPath,
+                           const bool &test = false);
 
     /**
      * \brief read images from txt list

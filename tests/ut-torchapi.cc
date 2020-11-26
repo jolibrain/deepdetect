@@ -334,7 +334,7 @@ TEST(torchapi, service_train_images_split_list)
   ASSERT_EQ(201, jd["status"]["code"]);
 
   ASSERT_TRUE(jd["body"]["measure"]["iteration"] == 2000) << "iterations";
-  ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() >= 0.6) << "eucll";
+  ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() >= 0.55) << "eucll";
 
   std::unordered_set<std::string> lfiles;
   fileops::list_directory(resnet50_train_repo, true, false, false, lfiles);
@@ -650,7 +650,7 @@ TEST(torchapi, service_train_csvts_nbeats)
   ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_998", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["out"][0].GetDouble()
-              >= -1.0);
+              >= -1.5);
 
   //  remove service
   jstr = "{\"clear\":\"full\"}";
@@ -891,7 +891,7 @@ TEST(torchapi, service_train_csvts_nbeats_gpu)
   ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_998", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["out"][0].GetDouble()
-              >= -1.1);
+              >= -1.5);
 
   joutstr = japi.jrender(japi.service_status(sname));
   std::cout << "joutstr=" << joutstr << std::endl;
@@ -993,7 +993,7 @@ TEST(torchapi, service_train_csvts_nbeats_multigpu)
   ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_998", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["out"][0].GetDouble()
-              >= -1.0);
+              >= -1.5);
 
   joutstr = japi.jrender(japi.service_status(sname));
   std::cout << "joutstr=" << joutstr << std::endl;
