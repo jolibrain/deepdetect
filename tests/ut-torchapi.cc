@@ -334,7 +334,7 @@ TEST(torchapi, service_train_images_split_list)
   ASSERT_EQ(201, jd["status"]["code"]);
 
   ASSERT_TRUE(jd["body"]["measure"]["iteration"] == 2000) << "iterations";
-  ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() >= 0.6) << "eucll";
+  ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() >= 0.55) << "eucll";
 
   std::unordered_set<std::string> lfiles;
   fileops::list_directory(resnet50_train_repo, true, false, false, lfiles);
@@ -647,10 +647,10 @@ TEST(torchapi, service_train_csvts_nbeats)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
-  ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_49", uri);
+  ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_998", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["out"][0].GetDouble()
-              >= -1.0);
+              >= -1.5);
 
   //  remove service
   jstr = "{\"clear\":\"full\"}";
@@ -707,6 +707,103 @@ TEST(torchapi, service_train_csvts_nbeats_resume_fail)
   ASSERT_EQ("Service Bad Request Error: resuming a model requires a "
             "solverstate file in model repository",
             jd["status"]["dd_msg"]);
+  //  remove service
+  jstr = "{\"clear\":\"full\"}";
+  joutstr = japi.jrender(japi.service_delete(sname, jstr));
+  ASSERT_EQ(ok_str, joutstr);
+  rmdir(csvts_nbeats_repo.c_str());
+}
+
+TEST(torchapi, service_train_csvts_nbeats_forecast)
+{
+  // create service
+  JsonAPI japi;
+  std::string sname = "nbeats";
+  std::string csvts_data = sinus + "train";
+  std::string csvts_test = sinus + "test";
+  std::string csvts_predict = sinus + "predict";
+  std::string csvts_nbeats_repo = "csvts_nbeats";
+  mkdir(csvts_nbeats_repo.c_str(), 0777);
+
+  std::string jstr
+      = "{\"mllib\":\"torch\",\"description\":\"nbeats\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+        + csvts_nbeats_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"csvts\","
+          "\"forecast_timesteps\":10,\"ignore\":[\"output\"],\"backcast_"
+          "timesteps\":40},"
+          "\"mllib\":"
+          "{\"template\":"
+          "\"nbeats\","
+          "\"template_params\":[\"t2\",\"s4\",\"g3\",\"b3\"],"
+          "\"loss\":\"L1\"}}}";
+
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // train
+  std::string jtrainstr
+      = "{\"service\":\"" + sname
+        + "\",\"async\":false,\"parameters\":{\"input\":{\"shuffle\":true,"
+          "\"separator\":\",\",\"scale\":true,\"backcast_timesteps\":40,"
+          "\"forecast_timesteps\":"
+          "10,\"ignore\":[\"output\"]},\"mllib\":{\"gpu\":false,\"solver\":{"
+          "\"iterations\":"
+        + iterations_nbeats_cpu
+        + ",\"test_interval\":10,\"base_lr\":0.1,\"snapshot\":500,\"test_"
+          "initialization\":false,\"solver_type\":\"ADAM\"},\"net\":{\"batch_"
+          "size\":2,\"test_batch_"
+          "size\":10}},\"output\":{\"measure\":[\"L1\",\"L2\"]}},\"data\":[\""
+        + csvts_data + "\",\"" + csvts_test + "\"]}";
+
+  std::cerr << "jtrainstr=" << jtrainstr << std::endl;
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  JDoc jd;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_TRUE(jd.HasMember("status"));
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
+  ASSERT_EQ("Created", jd["status"]["msg"]);
+  ASSERT_TRUE(jd.HasMember("head"));
+  ASSERT_EQ("/train", jd["head"]["method"]);
+  ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
+  ASSERT_TRUE(jd.HasMember("body"));
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
+  ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("L1_mean_error"));
+  ASSERT_TRUE(jd["body"]["measure"]["L1_max_error_0"].GetDouble() > 0.0);
+  ASSERT_TRUE(jd["body"]["parameters"]["input"].HasMember("max_vals"));
+  ASSERT_TRUE(jd["body"]["parameters"]["input"].HasMember("min_vals"));
+
+  std::string str_min_vals
+      = japi.jrender(jd["body"]["parameters"]["input"]["min_vals"]);
+  std::string str_max_vals
+      = japi.jrender(jd["body"]["parameters"]["input"]["max_vals"]);
+
+  //  predict
+  std::string jpredictstr = "{\"service\":\"" + sname
+                            + "\",\"parameters\":{\"input\":{\"backcast_"
+                              "timesteps\":40,\"connector\":"
+                              "\"csvts\",\"scale\":true,\"forecast_"
+                              "timesteps\":10,\"ignore\":[\"output\"],"
+                              "\"continuation\":"
+                              "true,\"min_vals\":"
+                            + str_min_vals + ",\"max_vals\":" + str_max_vals
+                            + "},\"output\":{}},\"data\":[\"" + csvts_predict
+                            + "\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
+  ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #959_1008", uri);
+  ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
+  ASSERT_EQ(jd["body"]["predictions"][0]["series"].Size(), 10);
+  ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["out"][0].GetDouble()
+              >= -1.0);
+
   //  remove service
   jstr = "{\"clear\":\"full\"}";
   joutstr = japi.jrender(japi.service_delete(sname, jstr));
@@ -791,10 +888,10 @@ TEST(torchapi, service_train_csvts_nbeats_gpu)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
-  ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_49", uri);
+  ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_998", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["out"][0].GetDouble()
-              >= -1.1);
+              >= -1.5);
 
   joutstr = japi.jrender(japi.service_status(sname));
   std::cout << "joutstr=" << joutstr << std::endl;
@@ -893,10 +990,10 @@ TEST(torchapi, service_train_csvts_nbeats_multigpu)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
-  ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_49", uri);
+  ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_998", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["out"][0].GetDouble()
-              >= -1.0);
+              >= -1.5);
 
   joutstr = japi.jrender(japi.service_status(sname));
   std::cout << "joutstr=" << joutstr << std::endl;
@@ -943,9 +1040,9 @@ TEST(torchapi, nbeats_extract_layers_simple)
   ASSERT_TRUE(nb.extractable("1:1:fc3"));
   ASSERT_TRUE(nb.extractable("2:0:end"));
 
-  torch::Tensor x = torch::randn({ 2, 50, 1 });
+  torch::Tensor x = torch::randn({ 2, 500, 1 });
   torch::Tensor y = nb.forward(x);
-  ASSERT_EQ(y.sizes(), std::vector<long int>({ 2, 2, 50, 1 }));
+  ASSERT_EQ(y.sizes(), std::vector<long int>({ 2, 550, 1 }));
   torch::Tensor z = nb.extract(x, "2:0:fc1");
   ASSERT_EQ(z.sizes(), std::vector<long int>({ 2, 10 }));
   torch::Tensor t = nb.extract(x, "1:1:end");
@@ -1028,7 +1125,7 @@ TEST(torchapi, nbeats_extract_layer_complete)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
-  ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_49", uri);
+  ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_998", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["vals"].IsArray());
   ASSERT_EQ(jd["body"]["predictions"].Size(), 20);
   ASSERT_EQ(jd["body"]["predictions"][0]["vals"].Size(), 10);
@@ -1118,7 +1215,7 @@ TEST(torchapi, nbeats_extract_layer_complete_gpu)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
-  ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_49", uri);
+  ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_998", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["vals"].IsArray());
   ASSERT_EQ(jd["body"]["predictions"].Size(), 20);
   ASSERT_EQ(jd["body"]["predictions"][0]["vals"].Size(), 10);

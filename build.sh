@@ -148,7 +148,7 @@ gpu_build() {
         "tf") extra_flags="-DUSE_TF=ON" ;;
         "caffe2") extra_flags="-DUSE_CAFFE2=ON" ;;
         "torch") extra_flags="-DUSE_TORCH=ON" ;;
-        "tensorrt") extra_flags="-DUSE_TENSORRT_OSS=ON" ;;
+        "tensorrt") extra_flags="-DUSE_TENSORRT=ON" ;;
     esac
     cmake .. $extra_flags -DUSE_FAISS=ON -DUSE_CUDNN=ON -DUSE_XGBOOST=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DCUDA_ARCH="${DEEPDETECT_CUDA_ARCH} -DRELEASE=${DEEPDETECT_RELEASE}"
     make

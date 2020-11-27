@@ -13,6 +13,11 @@ pull_request_rules:
       merge:
         strict: "smart"
         method: rebase
+      label:
+        add:
+          - process:merge-queued
+        remove_when_unmatch:
+          - process:merge-queued
 
   - name: "automatic merge with 2 reviews and docker tests"
     conditions:
@@ -29,6 +34,9 @@ pull_request_rules:
       merge:
         strict: "smart"
         method: rebase
+      label:
+        add:
+          - process:merge-queued
 
   - name: "automatic merge with label process:no-need-review"
     conditions:
@@ -43,6 +51,9 @@ pull_request_rules:
       merge:
         strict: "smart"
         method: rebase
+      label:
+        add:
+          - process:merge-queued
         
   - name: "automatic merge with labels process:no-need-review and ci:docker"
     conditions:
