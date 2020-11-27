@@ -49,8 +49,8 @@ namespace dd
       _transform_tstart = stats._transform_tstart;
 
       _avg_batch_size = stats._avg_batch_size;
-      _avg_predict_duration = stats._avg_predict_duration;
-      _avg_transform_duration = stats._avg_transform_duration;
+      _avg_predict_duration_ms = stats._avg_predict_duration_ms;
+      _avg_transform_duration_ms = stats._avg_transform_duration_ms;
     }
 
     ~ServiceStats()
@@ -74,14 +74,14 @@ namespace dd
     int _predict_failure = 0;
 
     std::chrono::steady_clock::time_point _predict_tstart;
-    std::chrono::duration<double> _predict_total_duration;
+    std::chrono::duration<double, std::milli> _predict_total_duration_ms;
 
     std::chrono::steady_clock::time_point _transform_tstart;
-    std::chrono::duration<double> _transform_total_duration;
+    std::chrono::duration<double, std::milli> _transform_total_duration_ms;
 
     double _avg_batch_size = -1;
-    double _avg_predict_duration = -1;
-    double _avg_transform_duration = -1;
+    double _avg_predict_duration_ms = -1;
+    double _avg_transform_duration_ms = -1;
 
     mutable std::mutex _mutex; /**< mutex for converting to APIData. */
   };
