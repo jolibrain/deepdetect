@@ -16,6 +16,8 @@ pull_request_rules:
       label:
         add:
           - process:merge-queued
+        remove_when_unmatch:
+          - process:merge-queued
 
   - name: "automatic merge with 2 reviews and docker tests"
     conditions:
@@ -108,31 +110,3 @@ pull_request_rules:
       label:
         add:
             - ci:docker
-
-  - name: cleanup merge-queued label
-    conditions:
-      - "label!=process:ready-to-review"
-      - "label!=process:no-need-review"
-    actions: {label: {remove: ["process:merge-queued"]}}
-
-  - name: cleanup merge-queued label
-    conditions:
-      - "#approved-reviews-by<2"
-      - "label!=process:no-need-review"
-    actions: {label: {remove: ["process:merge-queued"]}}
-
-  - name: cleanup merge-queued label
-    conditions:
-      - "#changes-requested-reviews-by>0"
-      - "label!=process:no-need-review"
-    actions: {label: {remove: ["process:merge-queued"]}}
-
-  - name: cleanup merge-queued label
-    conditions:
-      - "status-failure=Jenkins - Unit tests GPU"
-    actions: {label: {remove: ["process:merge-queued"]}}
-
-  - name: cleanup merge-queued label
-    conditions:
-      - "status-failure=Jenkins - Docker build"
-    actions: {label: {remove: ["process:merge-queued"]}}
