@@ -39,13 +39,13 @@ namespace dd
     std::vector<int> dim(input.sizes().begin(), input.sizes().end());
     this->set_input_dim(dim);
     _variables[_inputname] = input;
-    BaseGraph::finalize();
+    graph::BaseGraph::finalize();
     allocate_modules();
   }
 
   void TorchGraphBackend::finalize()
   {
-    BaseGraph::finalize();
+    graph::BaseGraph::finalize();
     allocate_modules();
   }
 
@@ -57,7 +57,7 @@ namespace dd
   void TorchGraphBackend::finalize(std::vector<int> dim)
   {
     this->set_input_dim(dim);
-    BaseGraph::finalize();
+    graph::BaseGraph::finalize();
     allocate_modules();
   }
 
@@ -71,7 +71,7 @@ namespace dd
 
   bool TorchGraphBackend::extractable(std::string extract_layer)
   {
-    for (BaseGraph::Vertex v : _sortedVars)
+    for (graph::Vertex v : _sortedVars)
       if (varname(v) == extract_layer)
         return true;
     return false;
@@ -80,7 +80,7 @@ namespace dd
   std::vector<std::string> TorchGraphBackend::extractable_layers() const
   {
     std::vector<std::string> allvars;
-    for (BaseGraph::Vertex v : _sortedVars)
+    for (graph::Vertex v : _sortedVars)
       allvars.push_back(varname(v));
     return allvars;
   }
@@ -89,10 +89,10 @@ namespace dd
                                            std::string extract_layer)
   {
     set_input(inputTensor);
-    for (BaseGraph::Vertex o : _sortedOps)
+    for (graph::Vertex o : _sortedOps)
       {
         std::vector<torch::Tensor> out = forward(o);
-        std::vector<BaseGraph::Vertex> outputVars = this->outputs(o);
+        std::vector<graph::Vertex> outputVars = this->outputs(o);
         for (unsigned int i = 0; i < outputVars.size(); ++i)
           {
             _variables[varname(outputVars[i])] = out[i];
@@ -109,10 +109,10 @@ namespace dd
   {
     set_input(inputTensor);
     bool output_computed = false;
-    for (BaseGraph::Vertex o : _sortedOps)
+    for (graph::Vertex o : _sortedOps)
       {
         std::vector<torch::Tensor> out = forward(o);
-        std::vector<BaseGraph::Vertex> outputVars = this->outputs(o);
+        std::vector<graph::Vertex> outputVars = this->outputs(o);
         for (unsigned int i = 0; i < outputVars.size(); ++i)
           {
             if (varname(outputVars[i]) == _outputname)
@@ -126,11 +126,11 @@ namespace dd
     return _variables[_outputname];
   }
 
-  std::vector<torch::Tensor> TorchGraphBackend::forward(BaseGraph::Vertex v)
+  std::vector<torch::Tensor> TorchGraphBackend::forward(graph::Vertex v)
   {
 
     std::vector<torch::Tensor> inputsTensor;
-    for (BaseGraph::Vertex vi : this->inputs(v))
+    for (graph::Vertex vi : this->inputs(v))
       {
         inputsTensor.push_back(_variables[varname(vi)]);
       }
@@ -204,7 +204,7 @@ namespace dd
   void TorchGraphBackend::allocate_modules()
   {
     _allocation_done = false;
-    for (BaseGraph::Vertex v : _sortedOps)
+    for (graph::Vertex v : _sortedOps)
       {
         if (!_graph[v].alloc_needed)
           continue;
@@ -354,7 +354,7 @@ namespace dd
 
   std::vector<int> TorchGraphBackend::get_input_dims_from_loaded()
   {
-    BaseGraph::Vertex o = _sortedOps[0];
+    graph::Vertex o = _sortedOps[0];
     auto opname_o = opname(o);
     torch::nn::AnyModule am = _modules[opname_o];
     std::shared_ptr<torch::nn::Module> m = am.ptr();

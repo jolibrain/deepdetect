@@ -34,48 +34,51 @@
 namespace dd
 {
 
-  /**
-   *  this class add from_proto trait to basegraph, ie allows to build a base
-   * graph from a prototxt file
-   */
-  class CaffeGraphInput : public virtual BaseGraph
+  namespace graph
   {
-  public:
     /**
-     *  simple contructor to build a basegraph from a prototxt
+     *  this class add from_proto trait to basegraph, ie allows to build a base
+     * graph from a prototxt file
      */
-    CaffeGraphInput(std::string filename)
+    class CaffeInput : public virtual BaseGraph
     {
-      from_proto(filename);
-    }
+    public:
+      /**
+       *  simple contructor to build a basegraph from a prototxt
+       */
+      CaffeInput(std::string filename)
+      {
+        from_proto(filename);
+      }
 
-  private:
-    /**
-     * create basegraph from proto
-     */
-    void from_proto(std::string filename);
+    private:
+      /**
+       * create basegraph from proto
+       */
+      void from_proto(std::string filename);
 
-    /**
-     * read protofile
-     */
-    bool read_proto(std::string filename, google::protobuf::Message *proto);
+      /**
+       * read protofile
+       */
+      bool read_proto(std::string filename, google::protobuf::Message *proto);
 
-    /**
-     * check if we are in all permute / ssplit / concat stuff needed by caffe
-     * before lstm
-     * @return
-     */
-    bool lstm_preparation(caffe::NetParameter &net, int i);
+      /**
+       * check if we are in all permute / ssplit / concat stuff needed by caffe
+       * before lstm
+       * @return
+       */
+      bool lstm_preparation(caffe::NetParameter &net, int i);
 
-    /**
-     * check if protofile is an lstm definition created by dede
-     */
-    bool is_simple_lstm(caffe::NetParameter &net);
+      /**
+       * check if protofile is an lstm definition created by dede
+       */
+      bool is_simple_lstm(caffe::NetParameter &net);
 
-    /**
-     * create basegraph from lstm protofile created by dede
-     */
-    bool parse_simple_lstm(caffe::NetParameter &net);
-  };
+      /**
+       * create basegraph from lstm protofile created by dede
+       */
+      bool parse_simple_lstm(caffe::NetParameter &net);
+    };
+  }
 }
 #endif
