@@ -21,10 +21,10 @@
 
 #include "graph.h"
 
-namespace dd
+namespace dd::graph
 {
   template <class TBackend>
-  Graph<CaffeGraphInput, TBackend>::Graph(std::string protofilename)
+  Graph<CaffeInput, TBackend>::Graph(std::string protofilename)
   {
     this->from_proto(protofilename);
   }

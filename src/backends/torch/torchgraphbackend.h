@@ -62,7 +62,8 @@ namespace dd
    * it only add torch::module traits ie to(), forward() parameters()...  to a
    * base graph
    */
-  class TorchGraphBackend : public virtual BaseGraph, public torch::nn::Module
+  class TorchGraphBackend : public virtual graph::BaseGraph,
+                            public torch::nn::Module
   {
   public:
     /**
@@ -209,7 +210,7 @@ namespace dd
      * @param v vertex to forward
      * @return all outpurs
      */
-    std::vector<torch::Tensor> forward(BaseGraph::Vertex v);
+    std::vector<torch::Tensor> forward(graph::Vertex v);
 
     /**
      * \brief internal set tensor input , used by forward
