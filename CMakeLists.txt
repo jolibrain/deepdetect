@@ -12,7 +12,7 @@ option(USE_TORCH "use libtorch backend" OFF)
 option(USE_HDF5 "use HDF5" ON)
 option(USE_CAFFE "use Caffe backend" ON)
 option(USE_TENSORRT "use TensorRT backend" OFF)
-option(USE_TENSORRT_OSS "use TensorRT OSS parts" OFF)
+option(USE_TENSORRT_OSS "alias of USE_TENSORRT" OFF)
 option(USE_XGBOOST "use XGBOOST backend" OFF)
 option(USE_XGBOOST_GPU "compile XGBOOST with CUDA" OFF)
 option(USE_DLIB "use Dlib backend" OFF)
@@ -831,11 +831,6 @@ if (USE_TENSORRT)
     message(STATUS "Found TensorRT libraries : ${TRTTESTDIR}/libnvinfer.so")
   endif()
 
-  if (NOT USE_TENSORRT_OSS)
-    include_directories(${CMAKE_CURRENT_BINARY_DIR})
-	set(TENSORRT_LIBS nvinfer nvparsers nvinfer_plugin nvonnxparser )
-
-  else()
     set(TENSORRT_LIB_DIR ${CMAKE_BINARY_DIR}/tensorrt-oss/bin/ ${TENSORRT_LIB_DIR})
     include_directories(${CMAKE_CURRENT_BINARY_DIR})
 	set(TENSORRT_LIBS nvinfer nvcaffeparser nvinfer_plugin nvonnxparser )
@@ -855,6 +850,7 @@ if (USE_TENSORRT)
     list(APPEND TRT_FLAGS
       -DTRT_OUT_DIR=${CMAKE_BINARY_DIR}/tensorrt-oss/bin
       -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc
+      -DBUILD_SAMPLES=OFF
     )
 
     if (JETSON)
@@ -879,7 +875,6 @@ if (USE_TENSORRT)
       BUILD_COMMAND test -f ${TRT_COMPLETE} && echo Skipping || make -j${N}
       INSTALL_COMMAND ""
     )
-    endif()
 
     include_directories(${TENSORRT_INC_DIR})
 endif()
@@ -1081,7 +1076,6 @@ message(STATUS "USE_TF:                ${USE_TF}")
 message(STATUS "USE_NCNN:              ${USE_NCNN}")
 message(STATUS "USE_HDF5:              ${USE_HDF5}")
 message(STATUS "USE_TENSORRT:          ${USE_TENSORRT}")
-message(STATUS "USE_TENSORRT_OSS:      ${USE_TENSORRT_OSS}")
 message(STATUS "USE_DLIB:              ${USE_DLIB}")
 message(STATUS "USE_ANNOY:             ${USE_ANNOY}")
 message(STATUS "USE_FAISS:             ${USE_FAISS}")

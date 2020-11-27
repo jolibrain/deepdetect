@@ -28,37 +28,27 @@
 namespace dd
 {
 
-  class BaseGraphException : public std::exception
-  {
-  public:
-    BaseGraphException(const std::string &s) : _s(s)
-    {
-    }
-    ~BaseGraphException()
-    {
-    }
-    const char *what() const noexcept
-    {
-      return _s.c_str();
-    }
-
-  private:
-    std::string _s;
-  };
-
-  /**
-   * base graph is the high level representation of the neural net and soon
-   * other ops (chains/ data aug)
-   *
-   */
-  class BaseGraph
+  namespace graph
   {
 
-  public:
-    /**
-     *  a vertex contains info about the operator on the computation flow
-     *  a vertex is also used for data blobs, in that case op is set to false
-     */
+    class BaseGraphException : public std::exception
+    {
+    public:
+      BaseGraphException(const std::string &s) : _s(s)
+      {
+      }
+      ~BaseGraphException()
+      {
+      }
+      const char *what() const noexcept
+      {
+        return _s.c_str();
+      }
+
+    private:
+      std::string _s;
+    };
+
     struct VertexProperty
     {
       bool op; /**< false if this vertex is data only (used for split / dup
@@ -87,8 +77,8 @@ namespace dd
     };
 
     /**
-     * \brief highly templated functor for having a string representation of a
-     * vertex
+     * \brief highly templated functor for having a string representation of
+     * a vertex
      *
      */
     template <class NameMap, class OpMap, class DimMap> class vertex_writer
@@ -140,255 +130,271 @@ namespace dd
         Edge; /**< append edge info (nothing atm) */
 
     /**
-     * \brief add layer / operator to the computational graph
+     * base graph is the high level representation of the neural net and soon
+     * other ops (chains/ data aug)
      *
-     * @param opname name of the layer
-     * @param optype type of the layer
-     * @param inputs name of inputs to connect
-     * @param outputs name of outputs
      */
-    void add_layer(std::string opname, std::string optype,
-                   std::vector<std::string> &inputs,
-                   std::vector<std::string> &outputs);
-
-    /**
-     * \brief add layer / operator to the computational graph, reduced version
-     * @param opname name of the layer
-     * @param optype type of the layer
-     * @return  added vertex
-     */
-    Vertex add_layer(std::string opname, std::string optype);
-
-    /**
-     * \brief set general input
-     * @param name name of input data/blob
-     * @param inputdim dimensions of the blob
-     * @return the added vertex
-     */
-    Vertex set_input(std::string name, std::vector<int> &inputdim);
-
-    /**
-     * \brief add/bind some inputs to a vertex
-     * if they already exist, they are bound, if not they are allocated
-     * @param v vertex to add inputs to
-     * @param inputs name of inputs
-     * @return list of data inputs
-     */
-    std::vector<Vertex> add_inputs(Vertex v, std::vector<std::string> &inputs);
-
-    /**
-     * \brief add/bind some inputs to a vertex
-     * if they already exist, they are bound, if not they are allocated
-     * @param opname name of operator to add inputs to
-     * @param inputs name of inputs
-     * @return list of data inputs
-     */
-    std::vector<Vertex> add_inputs(std::string opname,
-                                   std::vector<std::string> &inputs);
-
-    /**
-     * \brief add single input to a vertex, allocate data vertex if needed
-     * @param v vertex to add input to
-     * @param input name of data input
-     * @return input vertex
-     */
-    Vertex add_input(Vertex v, std::string input);
-
-    /**
-     * \brief add single input to a vertex, allocate data vertex if needed
-     * @param opname operator to add input to
-     * @param input name of data input
-     * @return input vertex
-     */
-    Vertex add_input(std::string opname, std::string inputs);
-
-    /**
-     * \brief add outputs to an operator vertex, allocates outputs if needed
-     * @param v vertex to add ouput to
-     * @param outputs name of data outputs
-     * @return vector of data vertices
-     */
-    std::vector<Vertex> add_outputs(Vertex v,
-                                    std::vector<std::string> &outputs);
-
-    /**
-     * \brief add outputs to an operator , allocates outputs if needed
-     * @param opname name of operator to add ouput to
-     * @param outputs name of data outputs
-     * @return vector of data vertices
-     */
-    std::vector<Vertex> add_outputs(std::string opname,
-                                    std::vector<std::string> &outputs);
-
-    /**
-     * \brief add output to an operator vertex, allocates output if needed
-     * @param v vertex to add ouput to
-     * @param varname name of data output
-     * @return data vertex
-     */
-    Vertex add_output(Vertex v, std::string varname);
-
-    /**
-     * \brief add output to an operator , allocates output if needed
-     * @param opnameto add ouput to
-     * @param varname name of data output
-     * @return data vertex
-     */
-    Vertex add_output(std::string opname, std::string varname);
-
-    /**
-     * \brief set loss to be used at learning
-     * @param name  loss name
-     */
-    void set_loss(std::string name)
+    class BaseGraph
     {
-      _loss = name;
-    }
 
-    /**
-     * topological_sort of vertices
-     */
-    void sort_all();
+    public:
+      /**
+       *  a vertex contains info about the operator on the computation flow
+       *  a vertex is also used for data blobs, in that case op is set to false
+       */
 
-    /**
-     * \brief gives a dot reprensention of the graph, for debgging purposes
-     * @param out ostream to put text to
-     */
-    void todot(std::ostream &out);
+      /**
+       * \brief add layer / operator to the computational graph
+       *
+       * @param opname name of the layer
+       * @param optype type of the layer
+       * @param inputs name of inputs to connect
+       * @param outputs name of outputs
+       */
+      void add_layer(std::string opname, std::string optype,
+                     std::vector<std::string> &inputs,
+                     std::vector<std::string> &outputs);
 
-    /**
-     * \brief check, sort, do some computations on blob sizes
-     */
-    void finalize();
+      /**
+       * \brief add layer / operator to the computational graph, reduced
+       * version
+       * @param opname name of the layer
+       * @param optype type of the layer
+       * @return  added vertex
+       */
+      Vertex add_layer(std::string opname, std::string optype);
 
-    /**
-     * \brief set input data dimensions
-     * @param inputdim
-     */
-    void set_input_dim(std::vector<int> &inputdim);
+      /**
+       * \brief set general input
+       * @param name name of input data/blob
+       * @param inputdim dimensions of the blob
+       * @return the added vertex
+       */
+      Vertex set_input(std::string name, std::vector<int> &inputdim);
 
-    /**
-     * \brief set ouput  data name
-     * @param output : data blob name
-     */
-    void set_output_name(std::string output)
-    {
-      _outputname = output;
-    }
+      /**
+       * \brief add/bind some inputs to a vertex
+       * if they already exist, they are bound, if not they are allocated
+       * @param v vertex to add inputs to
+       * @param inputs name of inputs
+       * @return list of data inputs
+       */
+      std::vector<Vertex> add_inputs(Vertex v,
+                                     std::vector<std::string> &inputs);
 
-    /**
-     * \brief get input vertices
-     * @param Vertex from which inputs are needed
-     * @return all inpit vertices
-     */
-    std::vector<Vertex> inputs(Vertex);
+      /**
+       * \brief add/bind some inputs to a vertex
+       * if they already exist, they are bound, if not they are allocated
+       * @param opname name of operator to add inputs to
+       * @param inputs name of inputs
+       * @return list of data inputs
+       */
+      std::vector<Vertex> add_inputs(std::string opname,
+                                     std::vector<std::string> &inputs);
 
-    /**
-     * \brief get output vertices
-     * @param Vertex from which outputs are needed
-     * @return all output vertices
-     */
-    std::vector<Vertex> outputs(Vertex);
+      /**
+       * \brief add single input to a vertex, allocate data vertex if needed
+       * @param v vertex to add input to
+       * @param input name of data input
+       * @return input vertex
+       */
+      Vertex add_input(Vertex v, std::string input);
 
-    /**
-     * \brief get some precise dimension of some inpit of a vertex
-     *
-     * @param v vertex from which some input dimension is needed
-     * @param num_input number of the input (generally 0 for first input)
-     * @param ndim number of dimension needed
-     *
-     * @return the dimension
-     */
-    int dim(Vertex v, int num_input, int ndim);
+      /**
+       * \brief add single input to a vertex, allocate data vertex if needed
+       * @param opname operator to add input to
+       * @param input name of data input
+       * @return input vertex
+       */
+      Vertex add_input(std::string opname, std::string inputs);
 
-    /**
-     * \brief gives number of outputs of a vertex
-     */
-    int num_output(Vertex v) const
-    {
-      return _graph[v].num_output;
-    }
+      /**
+       * \brief add outputs to an operator vertex, allocates outputs if needed
+       * @param v vertex to add ouput to
+       * @param outputs name of data outputs
+       * @return vector of data vertices
+       */
+      std::vector<Vertex> add_outputs(Vertex v,
+                                      std::vector<std::string> &outputs);
 
-    /**
-     * \brief accessor for an operator vertex name
-     */
-    std::string opname(Vertex v) const
-    {
-      return _graph[v].name;
-    }
+      /**
+       * \brief add outputs to an operator , allocates outputs if needed
+       * @param opname name of operator to add ouput to
+       * @param outputs name of data outputs
+       * @return vector of data vertices
+       */
+      std::vector<Vertex> add_outputs(std::string opname,
+                                      std::vector<std::string> &outputs);
 
-    /**
-     * \brief accessor for a varaible vertex name
-     */
-    std::string varname(Vertex v) const
-    {
-      return _graph[v].name;
-    }
+      /**
+       * \brief add output to an operator vertex, allocates output if needed
+       * @param v vertex to add ouput to
+       * @param varname name of data output
+       * @return data vertex
+       */
+      Vertex add_output(Vertex v, std::string varname);
 
-    /**
-     * \brief accessor for an operator vertex type
-     */
-    std::string optype(Vertex v) const
-    {
-      return _graph[v].type;
-    }
+      /**
+       * \brief add output to an operator , allocates output if needed
+       * @param opnameto add ouput to
+       * @param varname name of data output
+       * @return data vertex
+       */
+      Vertex add_output(std::string opname, std::string varname);
 
-  protected:
-    NNGraph _graph;          /**< the graph is here !  */
-    Vertex _input;           /**<  root input vertex */
-    std::string _inputname;  /**<  root input name */
-    std::string _outputname; /**<  ouput name */
-    std::string _loss;       /**< loss name */
+      /**
+       * \brief set loss to be used at learning
+       * @param name  loss name
+       */
+      void set_loss(std::string name)
+      {
+        _loss = name;
+      }
 
-    std::unordered_map<std::string, Vertex>
-        _varIndex; /**< to get a data vertex from its name */
-    std::unordered_map<std::string, Vertex>
-        _opIndex; /**< to get an operator vertex from its name */
+      /**
+       * topological_sort of vertices
+       */
+      void sort_all();
 
-    /**
-     * \brief helper to create a data vertex
-     * @param name
-     */
-    Vertex create_var(std::string name);
+      /**
+       * \brief gives a dot reprensention of the graph, for debgging purposes
+       * @param out ostream to put text to
+       */
+      void todot(std::ostream &out);
 
-    /**
-     * hleper to create an operator vertex
-     * @param name
-     * @param type
-     * @return
-     */
-    Vertex create_op(std::string name, std::string type);
+      /**
+       * \brief check, sort, do some computations on blob sizes
+       */
+      void finalize();
 
-    std::vector<Vertex> _sortedAll;  /**< all vertices, sorted  */
-    std::vector<Vertex> _sortedOps;  /**< all operators, sorted */
-    std::vector<Vertex> _sortedVars; /**< all data blobs, sorted */
+      /**
+       * \brief set input data dimensions
+       * @param inputdim
+       */
+      void set_input_dim(std::vector<int> &inputdim);
 
-    bool _finalized = false; /**< is laready finalized?  */
-    bool _sorted = false;    /**< is already sorted?  */
+      /**
+       * \brief set ouput  data name
+       * @param output : data blob name
+       */
+      void set_output_name(std::string output)
+      {
+        _outputname = output;
+      }
 
-    /**
-     * \brief compute dims (inputs and outputs) of an operator  vertex
-     * @param v
-     */
-    void compute_dims_operator(Vertex v);
+      /**
+       * \brief get input vertices
+       * @param Vertex from which inputs are needed
+       * @return all inpit vertices
+       */
+      std::vector<Vertex> inputs(Vertex);
 
-    /**
-     * \brief compute dims of a data  vertex
-     * @param v
-     */
-    void compute_dims_var(Vertex v);
+      /**
+       * \brief get output vertices
+       * @param Vertex from which outputs are needed
+       * @return all output vertices
+       */
+      std::vector<Vertex> outputs(Vertex);
 
-    /**
-     * compute all data vertices sizes
-     */
-    void compute_blob_sizes();
+      /**
+       * \brief get some precise dimension of some inpit of a vertex
+       *
+       * @param v vertex from which some input dimension is needed
+       * @param num_input number of the input (generally 0 for first input)
+       * @param ndim number of dimension needed
+       *
+       * @return the dimension
+       */
+      int dim(Vertex v, int num_input, int ndim);
 
-    /**
-     * check if everything is correclty allocated, ie do no need reallocation
-     * @return
-     */
-    bool allocated();
-  };
+      /**
+       * \brief gives number of outputs of a vertex
+       */
+      int num_output(Vertex v) const
+      {
+        return _graph[v].num_output;
+      }
+
+      /**
+       * \brief accessor for an operator vertex name
+       */
+      std::string opname(Vertex v) const
+      {
+        return _graph[v].name;
+      }
+
+      /**
+       * \brief accessor for a varaible vertex name
+       */
+      std::string varname(Vertex v) const
+      {
+        return _graph[v].name;
+      }
+
+      /**
+       * \brief accessor for an operator vertex type
+       */
+      std::string optype(Vertex v) const
+      {
+        return _graph[v].type;
+      }
+
+    protected:
+      NNGraph _graph;          /**< the graph is here !  */
+      Vertex _input;           /**<  root input vertex */
+      std::string _inputname;  /**<  root input name */
+      std::string _outputname; /**<  ouput name */
+      std::string _loss;       /**< loss name */
+
+      std::unordered_map<std::string, Vertex>
+          _varIndex; /**< to get a data vertex from its name */
+      std::unordered_map<std::string, Vertex>
+          _opIndex; /**< to get an operator vertex from its name */
+
+      /**
+       * \brief helper to create a data vertex
+       * @param name
+       */
+      Vertex create_var(std::string name);
+
+      /**
+       * hleper to create an operator vertex
+       * @param name
+       * @param type
+       * @return
+       */
+      Vertex create_op(std::string name, std::string type);
+
+      std::vector<Vertex> _sortedAll;  /**< all vertices, sorted  */
+      std::vector<Vertex> _sortedOps;  /**< all operators, sorted */
+      std::vector<Vertex> _sortedVars; /**< all data blobs, sorted */
+
+      bool _finalized = false; /**< is laready finalized?  */
+      bool _sorted = false;    /**< is already sorted?  */
+
+      /**
+       * \brief compute dims (inputs and outputs) of an operator  vertex
+       * @param v
+       */
+      void compute_dims_operator(Vertex v);
+
+      /**
+       * \brief compute dims of a data  vertex
+       * @param v
+       */
+      void compute_dims_var(Vertex v);
+
+      /**
+       * compute all data vertices sizes
+       */
+      void compute_blob_sizes();
+
+      /**
+       * check if everything is correclty allocated, ie do no need reallocation
+       * @return
+       */
+      bool allocated();
+    };
+  }
 }
-
 #endif

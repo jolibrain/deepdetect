@@ -93,8 +93,8 @@ if (USE_TORCH)
     backends/torch/native/templates/vit.cc
     backends/torch/native/native_factory.cc
 	graph/basegraph.cc
-    graph/baseoperators.cc
-	graph/caffegraphinput.cc
+    graph/operators.cc
+	graph/caffeinput.cc
 	backends/torch/torchgraphbackend.cc
 	graph/graph.cc
     backends/torch/torchsolver.cc
@@ -144,7 +144,7 @@ if (USE_SIMSEARCH)
     add_dependencies(ddetect faisslib)
   endif()
 endif()
-if (USE_TENSORRT_OSS)
+if (USE_TENSORRT)
   add_dependencies(ddetect tensorrt-oss)
 endif()
 if (USE_XGBOOST)

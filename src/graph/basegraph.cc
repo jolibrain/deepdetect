@@ -26,15 +26,15 @@
 #include <iterator>
 #include <climits>
 
-#include "baseoperators.h"
+#include "operators.h"
 
-namespace dd
+namespace dd::graph
 {
-  BaseGraph::Vertex BaseGraph::create_var(std::string name)
+  Vertex BaseGraph::create_var(std::string name)
   {
     _finalized = false;
     _sorted = false;
-    BaseGraph::Vertex varVertex = boost::add_vertex(_graph);
+    Vertex varVertex = boost::add_vertex(_graph);
     _graph[varVertex].name = name;
     _graph[varVertex].op = false;
     ;
@@ -42,11 +42,11 @@ namespace dd
     return varVertex;
   }
 
-  BaseGraph::Vertex BaseGraph::create_op(std::string name, std::string type)
+  Vertex BaseGraph::create_op(std::string name, std::string type)
   {
     _finalized = false;
     _sorted = false;
-    BaseGraph::Vertex l = boost::add_vertex(_graph);
+    Vertex l = boost::add_vertex(_graph);
     _graph[l].name = name;
     _graph[l].type = type;
     _graph[l].op = true;
@@ -62,8 +62,7 @@ namespace dd
     _finalized = false;
   }
 
-  BaseGraph::Vertex BaseGraph::set_input(std::string name,
-                                         std::vector<int> &inputdim)
+  Vertex BaseGraph::set_input(std::string name, std::vector<int> &inputdim)
   {
     _inputname = name;
     _finalized = false;
@@ -79,46 +78,43 @@ namespace dd
                             std::vector<std::string> &inputs,
                             std::vector<std::string> &outputs)
   {
-    BaseGraph::Vertex v = add_layer(opname, optype);
+    Vertex v = add_layer(opname, optype);
     add_inputs(v, inputs);
     add_outputs(v, outputs);
   }
 
-  BaseGraph::Vertex BaseGraph::add_layer(std::string opname,
-                                         std::string optype)
+  Vertex BaseGraph::add_layer(std::string opname, std::string optype)
   {
     return create_op(opname, optype);
   }
 
-  std::vector<BaseGraph::Vertex>
-  BaseGraph::add_outputs(std::string opname, std::vector<std::string> &outputs)
+  std::vector<Vertex> BaseGraph::add_outputs(std::string opname,
+                                             std::vector<std::string> &outputs)
   {
-    std::unordered_map<std::string, BaseGraph::Vertex>::iterator it
+    std::unordered_map<std::string, Vertex>::iterator it
         = _opIndex.find(opname);
     if (it == _opIndex.end())
       {
         std::cerr << "cannot add output to non existent layer " << opname
                   << std::endl;
-        std::vector<BaseGraph::Vertex> ev;
+        std::vector<Vertex> ev;
         return ev;
       }
     return add_outputs(it->second, outputs);
   }
 
-  std::vector<BaseGraph::Vertex>
-  BaseGraph::add_outputs(BaseGraph::Vertex v,
-                         std::vector<std::string> &outputs)
+  std::vector<Vertex> BaseGraph::add_outputs(Vertex v,
+                                             std::vector<std::string> &outputs)
   {
-    std::vector<BaseGraph::Vertex> outverts;
+    std::vector<Vertex> outverts;
     for (std::string output : outputs)
       outverts.push_back(add_output(v, output));
     return outverts;
   }
 
-  BaseGraph::Vertex BaseGraph::add_output(std::string opname,
-                                          std::string varname)
+  Vertex BaseGraph::add_output(std::string opname, std::string varname)
   {
-    std::unordered_map<std::string, BaseGraph::Vertex>::iterator it
+    std::unordered_map<std::string, Vertex>::iterator it
         = _opIndex.find(opname);
     if (it == _opIndex.end())
       {
@@ -129,12 +125,11 @@ namespace dd
     return add_output(it->second, varname);
   }
 
-  BaseGraph::Vertex BaseGraph::add_output(BaseGraph::Vertex v,
-                                          std::string varname)
+  Vertex BaseGraph::add_output(Vertex v, std::string varname)
   {
-    std::unordered_map<std::string, BaseGraph::Vertex>::iterator it
+    std::unordered_map<std::string, Vertex>::iterator it
         = _varIndex.find(varname);
-    BaseGraph::Vertex varVertex;
+    Vertex varVertex;
     if (it == _varIndex.end())
       varVertex = create_var(varname);
     else
@@ -150,34 +145,33 @@ namespace dd
     return varVertex;
   }
 
-  std::vector<BaseGraph::Vertex>
-  BaseGraph::add_inputs(std::string opname, std::vector<std::string> &inputs)
+  std::vector<Vertex> BaseGraph::add_inputs(std::string opname,
+                                            std::vector<std::string> &inputs)
   {
-    std::unordered_map<std::string, BaseGraph::Vertex>::iterator it
+    std::unordered_map<std::string, Vertex>::iterator it
         = _opIndex.find(opname);
     if (it == _opIndex.end())
       {
         std::cerr << "cannot add inputs to non existent layer " << opname
                   << std::endl;
-        std::vector<BaseGraph::Vertex> ev;
+        std::vector<Vertex> ev;
         return ev;
       }
     return add_inputs(it->second, inputs);
   }
 
-  std::vector<BaseGraph::Vertex>
-  BaseGraph::add_inputs(BaseGraph::Vertex v, std::vector<std::string> &inputs)
+  std::vector<Vertex> BaseGraph::add_inputs(Vertex v,
+                                            std::vector<std::string> &inputs)
   {
-    std::vector<BaseGraph::Vertex> iv;
+    std::vector<Vertex> iv;
     for (std::string input : inputs)
       iv.push_back(add_input(v, input));
     return iv;
   }
 
-  BaseGraph::Vertex BaseGraph::add_input(std::string opname,
-                                         std::string varname)
+  Vertex BaseGraph::add_input(std::string opname, std::string varname)
   {
-    std::unordered_map<std::string, BaseGraph::Vertex>::iterator it
+    std::unordered_map<std::string, Vertex>::iterator it
         = _opIndex.find(opname);
     if (it == _opIndex.end())
       {
@@ -188,12 +182,11 @@ namespace dd
     return add_input(it->second, varname);
   }
 
-  BaseGraph::Vertex BaseGraph::add_input(BaseGraph::Vertex v,
-                                         std::string varname)
+  Vertex BaseGraph::add_input(Vertex v, std::string varname)
   {
-    std::unordered_map<std::string, BaseGraph::Vertex>::iterator it
+    std::unordered_map<std::string, Vertex>::iterator it
         = _varIndex.find(varname);
-    BaseGraph::Vertex varVertex;
+    Vertex varVertex;
     if (it == _varIndex.end())
       varVertex = create_var(varname);
     else
@@ -211,7 +204,7 @@ namespace dd
     _sortedVars.clear();
     boost::topological_sort(_graph, std::back_inserter(_sortedAll));
     std::reverse(_sortedAll.begin(), _sortedAll.end());
-    for (BaseGraph::Vertex v : _sortedAll)
+    for (Vertex v : _sortedAll)
       {
         if (_graph[v].op)
           _sortedOps.push_back(v);
@@ -234,11 +227,11 @@ namespace dd
     _finalized = true;
   }
 
-  void BaseGraph::compute_dims_operator(BaseGraph::Vertex op)
+  void BaseGraph::compute_dims_operator(Vertex op)
   {
     std::vector<std::vector<int>> inputsdims;
 
-    std::vector<BaseGraph::Vertex> inputs;
+    std::vector<Vertex> inputs;
 
     auto es = boost::in_edges(op, _graph);
     for (auto eit = es.first; eit != es.second; ++eit)
@@ -254,21 +247,19 @@ namespace dd
 
     std::vector<std::vector<int>> outputsdims;
 
-    basegraph::op::dispatcher::compute_outputs_dims(_graph[op], inputsdims,
-                                                    outputsdims);
+    op::dispatcher::compute_outputs_dims(_graph[op], inputsdims, outputsdims);
 
-    basegraph::op::dispatcher::update_alloc_status(_graph[op], inputsdims,
-                                                   outputsdims);
+    op::dispatcher::update_alloc_status(_graph[op], inputsdims, outputsdims);
 
     _graph[op].outputsdims = outputsdims;
     _graph[op].inputsdims = inputsdims;
   }
 
-  void BaseGraph::compute_dims_var(BaseGraph::Vertex var)
+  void BaseGraph::compute_dims_var(Vertex var)
   {
     auto es = boost::in_edges(var, _graph);
     auto eit = es.first;
-    BaseGraph::Vertex producer = boost::source(*eit, _graph);
+    Vertex producer = boost::source(*eit, _graph);
 
     auto ies = boost::out_edges(producer, _graph);
     unsigned int outputindex = 0;
@@ -284,7 +275,7 @@ namespace dd
 
   void BaseGraph::compute_blob_sizes()
   {
-    for (BaseGraph::Vertex v : _sortedAll)
+    for (Vertex v : _sortedAll)
       {
         if (v == _input)
           continue;
@@ -304,9 +295,9 @@ namespace dd
                            boost::get(&VertexProperty::dim, _graph)));
   }
 
-  std::vector<BaseGraph::Vertex> BaseGraph::inputs(BaseGraph::Vertex v)
+  std::vector<Vertex> BaseGraph::inputs(Vertex v)
   {
-    std::vector<BaseGraph::Vertex> inputs;
+    std::vector<Vertex> inputs;
     NNGraph::in_edge_iterator eit, eend;
     auto es = boost::in_edges(v, _graph);
     for (auto eit = es.first; eit != es.second; ++eit)
@@ -314,9 +305,9 @@ namespace dd
     return inputs;
   }
 
-  std::vector<BaseGraph::Vertex> BaseGraph::outputs(BaseGraph::Vertex v)
+  std::vector<Vertex> BaseGraph::outputs(Vertex v)
   {
-    std::vector<BaseGraph::Vertex> outputs;
+    std::vector<Vertex> outputs;
     NNGraph::out_edge_iterator eit, eend;
     auto es = boost::out_edges(v, _graph);
     for (auto eit = es.first; eit != es.second; ++eit)
@@ -324,14 +315,14 @@ namespace dd
     return outputs;
   }
 
-  int BaseGraph::dim(BaseGraph::Vertex v, int num_input, int ndim)
+  int BaseGraph::dim(Vertex v, int num_input, int ndim)
   {
     return _graph[inputs(v)[num_input]].dim[ndim];
   }
 
   bool BaseGraph::allocated()
   {
-    for (BaseGraph::Vertex v : _sortedOps)
+    for (Vertex v : _sortedOps)
       if (_graph[v].alloc_needed)
         return false;
     return true;
