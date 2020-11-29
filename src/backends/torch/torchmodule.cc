@@ -296,7 +296,8 @@ namespace dd
 
   c10::IValue
   TorchModule::forward_on_devices(std::vector<c10::IValue> source,
-                                  const std::vector<torch::Device> &devices)
+                                  const std::vector<torch::Device> &devices,
+                                  const bool &replicate)
   {
     // Normal forward if only one device
     if (devices.size() <= 1)
@@ -314,8 +315,9 @@ namespace dd
       }
     if (_native)
       {
-        return torch::nn::parallel::data_parallel(
-            _native, torch_utils::to_tensor_safe(source[0]), devices, _device);
+        return parallel::dd_data_parallel(
+            _native, torch_utils::to_tensor_safe(source[0]), devices, _device,
+            0 /*dim*/, replicate);
       }
     if (_traced)
       {

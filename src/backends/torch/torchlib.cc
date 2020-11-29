@@ -624,8 +624,10 @@ namespace dd
             Tensor y_pred;
             try
               {
+                bool replicate
+                    = (batch_id == 0 || (batch_id + 1) % iter_size == 0);
                 y_pred = torch_utils::to_tensor_safe(
-                    _module.forward_on_devices(in_vals, _devices));
+                    _module.forward_on_devices(in_vals, _devices, replicate));
               }
             catch (std::exception &e)
               {

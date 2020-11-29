@@ -36,6 +36,7 @@
 #include <torch/script.h>
 #include <torch/nn/pimpl.h>
 #include <torch/nn/parallel/data_parallel.h>
+#include "data_parallel.h"
 
 namespace dd
 {
@@ -60,7 +61,8 @@ namespace dd
      * forward.
      */
     c10::IValue forward_on_devices(std::vector<c10::IValue> source,
-                                   const std::vector<torch::Device> &devices);
+                                   const std::vector<torch::Device> &devices,
+                                   const bool &replicate = false);
 
     /**
      * \brief forward (inference) until extract_layer, return value of

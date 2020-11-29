@@ -106,7 +106,7 @@ namespace dd
     typedef torch::nn::ModuleHolder<BlockImpl> Block;
 
     class SeasonalityBlockImpl : public BlockImpl,
-                                 public Cloneable<SeasonalityBlockImpl>
+                                 public DDCloneable<SeasonalityBlockImpl>
     {
     public:
       SeasonalityBlockImpl(int units, int thetas_dim, int backcast_length,
@@ -148,7 +148,7 @@ namespace dd
 
     typedef torch::nn::ModuleHolder<SeasonalityBlockImpl> SeasonalityBlock;
 
-    class TrendBlockImpl : public BlockImpl, public Cloneable<TrendBlockImpl>
+    class TrendBlockImpl : public BlockImpl, public DDCloneable<TrendBlockImpl>
     {
     public:
       TrendBlockImpl(int units, int thetas_dim, int backcast_length,
@@ -191,7 +191,7 @@ namespace dd
     typedef torch::nn::ModuleHolder<TrendBlockImpl> TrendBlock;
 
     class GenericBlockImpl : public BlockImpl,
-                             public Cloneable<GenericBlockImpl>
+                             public DDCloneable<GenericBlockImpl>
     {
     public:
       GenericBlockImpl(int units, int thetas_dim, int backcast_length,

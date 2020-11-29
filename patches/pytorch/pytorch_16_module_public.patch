@@ -1,0 +1,13 @@
+diff --git a/torch/csrc/api/include/torch/nn/module.h b/torch/csrc/api/include/torch/nn/module.h
+index 313e331da3..32bd2e3b8a 100644
+--- a/torch/csrc/api/include/torch/nn/module.h
++++ b/torch/csrc/api/include/torch/nn/module.h
+@@ -538,7 +538,7 @@ class TORCH_API Module : public std::enable_shared_from_this<Module> {
+       "`FORWARD_HAS_DEFAULT_ARGS` macro to do so.");
+   }
+ 
+- private:
++ public:
+   // Friend classes.
+ 
+   template <typename Derived>

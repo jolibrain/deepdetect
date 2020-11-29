@@ -36,7 +36,7 @@ namespace dd
   class ViT : public NativeModuleImpl<ViT>
   {
 
-    class MLPImpl : public torch::nn::Cloneable<MLPImpl>
+    class MLPImpl : public DDCloneable<MLPImpl>
     {
     public:
       MLPImpl(const int &input_dim, const int &hidden_dim,
@@ -82,7 +82,7 @@ namespace dd
 
     typedef torch::nn::ModuleHolder<MLPImpl> MLP;
 
-    class AttentionImpl : public torch::nn::Cloneable<AttentionImpl>
+    class AttentionImpl : public DDCloneable<AttentionImpl>
     {
     public:
       AttentionImpl(const int &dim, const int &num_heads = 8,
@@ -193,7 +193,7 @@ namespace dd
 
     typedef torch::nn::ModuleHolder<BlockImpl> Block;
 
-    class PatchEmbedImpl : public torch::nn::Cloneable<PatchEmbedImpl>
+    class PatchEmbedImpl : public DDCloneable<PatchEmbedImpl>
     {
     public:
       PatchEmbedImpl(const int &img_size = 224, const int &patch_size = 16,

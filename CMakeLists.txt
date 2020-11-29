@@ -713,6 +713,7 @@ if (USE_TORCH)
     ${PYTORCH_PATCHES_PATH}/pytorch_16_logging.patch
     ${PYTORCH_PATCHES_PATH}/pytorch_14_namespace.patch
     ${PYTORCH_PATCHES_PATH}/pytorch_16_fatbin.patch
+    ${PYTORCH_PATCHES_PATH}/pytorch_16_module_public.patch
   )
 
   message(STATUS "Configuring libtorch")
