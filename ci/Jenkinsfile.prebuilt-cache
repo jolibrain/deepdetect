@@ -19,6 +19,7 @@ mkdir -p build
 cd build
 cmake ..  \
     -DBUILD_TESTS=ON  \
+    -DUSE_HTTP_SERVER_OATPP=ON \
     -DUSE_CUDNN=ON  \
     -DUSE_FAISS=ON  \
     -DUSE_SIMSEARCH=ON  \
