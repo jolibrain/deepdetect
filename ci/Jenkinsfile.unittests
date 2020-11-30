@@ -71,7 +71,7 @@ ccache -s
     }
     stage('Tests GPU') {
       when {
-       expression { !env.CHANGE_ID || pullRequest.labels.findAll { it == "ci:skip" }.size() == 0 }
+       expression { !env.CHANGE_ID || pullRequest.labels.findAll { it == "ci:skip-tests" }.size() == 0 }
       }
       steps {
         lock(resource: null, label: "${NODE_NAME}-gpu", variable: 'LOCKED_GPU', quantity: 1) {
@@ -90,7 +90,7 @@ ccache -s
 /*
     stage('Tests multi-GPU') {
       when {
-       expression { !env.CHANGE_ID || pullRequest.labels.findAll { it == "ci:skip" }.size() == 0 }
+       expression { !env.CHANGE_ID || pullRequest.labels.findAll { it == "ci:skip-tests" }.size() == 0 }
       }
       steps {
         lock(resource: null, label: 'gpu', variable: 'LOCKED_GPU', quantity: 2) {
