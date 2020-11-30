@@ -802,7 +802,7 @@ TEST(torchapi, service_train_csvts_nbeats_forecast)
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
   ASSERT_EQ(jd["body"]["predictions"][0]["series"].Size(), 10);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["out"][0].GetDouble()
-              >= -1.0);
+              >= -1.5);
 
   //  remove service
   jstr = "{\"clear\":\"full\"}";
