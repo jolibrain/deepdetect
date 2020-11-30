@@ -24,12 +24,12 @@
 
 #include <boost/graph/adjacency_list.hpp>
 
-#include "caffegraphinput.h"
+#include "caffeinput.h"
 #ifdef USE_TORCH
 #include "backends/torch/torchgraphbackend.h"
 #endif
 
-namespace dd
+namespace dd::graph
 {
 
   /**
@@ -43,31 +43,31 @@ namespace dd
   };
 
   template <class TBackend>
-  class Graph<CaffeGraphInput, TBackend> : public CaffeGraphInput,
-                                           public TBackend
+  class Graph<CaffeInput, TBackend> : public CaffeInput, public TBackend
   {
   public:
     Graph(std::string protofilename);
   };
 #ifdef USE_TORCH
   template <>
-  class Graph<CaffeGraphInput, dd::TorchGraphBackend>
-      : public CaffeGraphInput, public TorchGraphBackend
+  class Graph<CaffeInput, dd::TorchGraphBackend> : public CaffeInput,
+                                                   public TorchGraphBackend
   {
   public:
     Graph(std::string protofilename, std::vector<int> inputdim)
-        : CaffeGraphInput(protofilename)
+        : CaffeInput(protofilename)
     {
       finalize(inputdim);
     }
-    Graph(std::string protofilename) : CaffeGraphInput(protofilename)
+    Graph(std::string protofilename) : CaffeInput(protofilename)
     {
       // we should no finalize in case input dims has not been specified
       //	  finalize();
     }
   };
 }
-template class dd::Graph<dd::CaffeGraphInput, dd::TorchGraphBackend>;
-typedef dd::Graph<dd::CaffeGraphInput, dd::TorchGraphBackend> CaffeToTorch;
+template class dd::graph::Graph<dd::graph::CaffeInput, dd::TorchGraphBackend>;
+typedef dd::graph::Graph<dd::graph::CaffeInput, dd::TorchGraphBackend>
+    CaffeToTorch;
 #endif
 #endif

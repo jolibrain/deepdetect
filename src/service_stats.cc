@@ -39,7 +39,7 @@ namespace dd
   void ServiceStats::transform_end()
   {
     auto tend = std::chrono::steady_clock::now();
-    _transform_total_duration += tend - _transform_tstart;
+    _transform_total_duration_ms += tend - _transform_tstart;
   }
 
   void ServiceStats::predict_start()
@@ -57,14 +57,14 @@ namespace dd
       _predict_failure++;
 
     auto tend = std::chrono::steady_clock::now();
-    _predict_total_duration += tend - _predict_tstart;
+    _predict_total_duration_ms += tend - _predict_tstart;
 
     int _predict_count = _predict_success + _predict_failure;
     _avg_batch_size = _inference_count / static_cast<double>(_predict_count);
-    _avg_transform_duration = _transform_total_duration.count()
-                              / static_cast<double>(_predict_count);
-    _avg_predict_duration = _predict_total_duration.count()
-                            / static_cast<double>(_predict_count);
+    _avg_transform_duration_ms = _transform_total_duration_ms.count()
+                                 / static_cast<double>(_predict_count);
+    _avg_predict_duration_ms = _predict_total_duration_ms.count()
+                               / static_cast<double>(_predict_count);
   }
 
   void ServiceStats::to(APIData &ad) const
@@ -78,8 +78,14 @@ namespace dd
     stats.add("predict_failure", _predict_failure);
     stats.add("predict_count", _predict_success + _predict_failure);
     stats.add("avg_batch_size", _avg_batch_size);
-    stats.add("avg_predict_duration", _avg_predict_duration);
-    stats.add("avg_transform_duration", _avg_transform_duration);
+    stats.add("avg_predict_duration_ms", _avg_predict_duration_ms);
+    stats.add("avg_transform_duration_ms", _avg_transform_duration_ms);
+    stats.add("avg_predict_duration_s", _avg_predict_duration_ms / 1000.0);
+    stats.add("avg_transform_duration_s", _avg_transform_duration_ms / 1000.0);
+
+    // FIXME(sileht): to deprecate
+    stats.add("avg_predict_duration", _avg_predict_duration_ms / 1000.0);
+    stats.add("avg_transform_duration", _avg_transform_duration_ms / 1000.0);
 
     ad.add("service_stats", stats);
   }

@@ -1,9 +1,9 @@
-#include "baseoperators.h"
+#include "operators.h"
 
 namespace dd
 {
 
-  namespace basegraph
+  namespace graph
 
   {
 
@@ -40,36 +40,33 @@ namespace dd
     }
 
     bool utils::n_in_blob_changed(
-        BaseGraph::VertexProperty &v,
-        const std::vector<std::vector<int>> &new_inputsdims)
+        VertexProperty &v, const std::vector<std::vector<int>> &new_inputsdims)
     {
       return nblobs_changed(v.inputsdims, new_inputsdims);
     }
 
     bool utils::n_out_blob_changed(
-        BaseGraph::VertexProperty &v,
+        VertexProperty &v,
         const std::vector<std::vector<int>> &new_outputsdims)
     {
       return nblobs_changed(v.outputsdims, new_outputsdims);
     }
 
     bool utils::in_blob_ndims_changed(
-        BaseGraph::VertexProperty &v,
-        const std::vector<std::vector<int>> &new_inputsdims)
+        VertexProperty &v, const std::vector<std::vector<int>> &new_inputsdims)
     {
       return blob_ndims_changed(new_inputsdims, v.inputsdims);
     }
 
     bool utils::out_blob_ndims_changed(
-        BaseGraph::VertexProperty &v,
+        VertexProperty &v,
         const std::vector<std::vector<int>> &new_outputsdims)
     {
       return blob_ndims_changed(new_outputsdims, v.outputsdims);
     }
 
     bool utils::general_shape_changed(
-        BaseGraph::VertexProperty &v,
-        const std::vector<std::vector<int>> &inputsdims,
+        VertexProperty &v, const std::vector<std::vector<int>> &inputsdims,
         const std::vector<std::vector<int>> &outputsdims)
     {
       return n_in_blob_changed(v, inputsdims)
@@ -82,7 +79,7 @@ namespace dd
     {
 
       void rnn::compute_outputs_dims(
-          const BaseGraph::VertexProperty &v,
+          const VertexProperty &v,
           const std::vector<std::vector<int>> &inputsdims,
           std::vector<std::vector<int>> &outputsdims)
       {
@@ -110,37 +107,35 @@ namespace dd
       }
 
       void rnn::update_alloc_status(
-          BaseGraph::VertexProperty &v,
-          const std::vector<std::vector<int>> &inputsdims,
+          VertexProperty &v, const std::vector<std::vector<int>> &inputsdims,
           const std::vector<std::vector<int>> &outputsdims)
       {
         if (inputsdims.size() > 1)
           throw new BaseGraphException(
               "LSTM/RNN layer has more than one input!!");
 
-        if (basegraph::utils::general_shape_changed(v, inputsdims,
-                                                    outputsdims))
+        if (utils::general_shape_changed(v, inputsdims, outputsdims))
           {
             v.alloc_needed = true;
             return;
           }
 
         std::vector<std::vector<int>> changed_inputs_dims
-            = basegraph::utils::get_changed_dims(v.inputsdims, inputsdims);
+            = utils::get_changed_dims(v.inputsdims, inputsdims);
 
         if (changed_inputs_dims[0][0] > 1)
           // 0 is batch size, 1 is timestep => no need to realloc
           v.alloc_needed = true;
 
         std::vector<std::vector<int>> changed_outputs_dims
-            = basegraph::utils::get_changed_dims(v.outputsdims, outputsdims);
+            = utils::get_changed_dims(v.outputsdims, outputsdims);
         if (changed_inputs_dims[0][0] > 1)
           // 0 is batch size, 1 is timestep => no need to realloc
           v.alloc_needed = true;
       }
 
       void
-      ip::compute_outputs_dims(const BaseGraph::VertexProperty &v,
+      ip::compute_outputs_dims(const VertexProperty &v,
                                const std::vector<std::vector<int>> &inputsdims,
                                std::vector<std::vector<int>> &outputsdims)
       {
@@ -155,32 +150,31 @@ namespace dd
       }
 
       void
-      ip::update_alloc_status(BaseGraph::VertexProperty &v,
+      ip::update_alloc_status(VertexProperty &v,
                               const std::vector<std::vector<int>> &inputsdims,
                               const std::vector<std::vector<int>> &outputsdims)
       {
-        if (basegraph::utils::general_shape_changed(v, inputsdims,
-                                                    outputsdims))
+        if (utils::general_shape_changed(v, inputsdims, outputsdims))
           {
             v.alloc_needed = true;
             return;
           }
 
         std::vector<std::vector<int>> changed_inputs_dims
-            = basegraph::utils::get_changed_dims(v.inputsdims, inputsdims);
+            = utils::get_changed_dims(v.inputsdims, inputsdims);
         if (changed_inputs_dims[0][0] > 0)
           // 0 is batch size => no need to realloc
           v.alloc_needed = true;
 
         std::vector<std::vector<int>> changed_outputs_dims
-            = basegraph::utils::get_changed_dims(v.outputsdims, outputsdims);
+            = utils::get_changed_dims(v.outputsdims, outputsdims);
         if (changed_outputs_dims[0][0] > 0)
           // 0 is batch size => no need to realloc
           v.alloc_needed = true;
       }
 
       void tile::compute_outputs_dims(
-          const BaseGraph::VertexProperty &v,
+          const VertexProperty &v,
           const std::vector<std::vector<int>> &inputsdims,
           std::vector<std::vector<int>> &outputsdims)
       {
@@ -194,8 +188,7 @@ namespace dd
       }
 
       void tile::update_alloc_status(
-          BaseGraph::VertexProperty &v,
-          const std::vector<std::vector<int>> &inputsdims,
+          VertexProperty &v, const std::vector<std::vector<int>> &inputsdims,
           const std::vector<std::vector<int>> &outputsdims)
       {
         (void)v;
@@ -204,7 +197,7 @@ namespace dd
       }
 
       void relu::compute_outputs_dims(
-          const BaseGraph::VertexProperty &v,
+          const VertexProperty &v,
           const std::vector<std::vector<int>> &inputsdims,
           std::vector<std::vector<int>> &outputsdims)
       {
@@ -213,8 +206,7 @@ namespace dd
       }
 
       void relu::update_alloc_status(
-          BaseGraph::VertexProperty &v,
-          const std::vector<std::vector<int>> &inputsdims,
+          VertexProperty &v, const std::vector<std::vector<int>> &inputsdims,
           const std::vector<std::vector<int>> &outputsdims)
       {
         (void)v;
@@ -223,7 +215,7 @@ namespace dd
       }
 
       void dispatcher::compute_outputs_dims(
-          const BaseGraph::VertexProperty &v,
+          const VertexProperty &v,
           const std::vector<std::vector<int>> &inputsdims,
           std::vector<std::vector<int>> &outputsdims)
       {
@@ -243,8 +235,7 @@ namespace dd
       }
 
       void dispatcher::update_alloc_status(
-          BaseGraph::VertexProperty &v,
-          const std::vector<std::vector<int>> &inputsdims,
+          VertexProperty &v, const std::vector<std::vector<int>> &inputsdims,
           const std::vector<std::vector<int>> &outputsdims)
       {
         std::string type = v.type;
