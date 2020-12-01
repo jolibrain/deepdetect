@@ -377,6 +377,16 @@ namespace dd
       if (loss == "L2" || loss == "l2" || loss == "eucl")
         return torch::mse_loss(y_pred, target)
                + torch::mse_loss(x_pred, input);
+      if (loss == "MAPE" || loss == "mape")
+        return torch::mean((target - y_pred).abs() / (target.abs() + 1e-3))
+               + torch::mean((input - x_pred).abs() / (input.abs() + 1e-3));
+      if (loss == "SMAPE" || loss == "smape" || loss == "sMAPE")
+        return 2.0
+                   * torch::mean((target - y_pred).abs()
+                                 / (target.abs() + y_pred.abs() + 1e-6))
+               + 2.0
+                     * torch::mean((input - x_pred).abs()
+                                   / (input.abs() + x_pred.abs() + 1e-6));
       throw MLLibBadParamException("unknown loss " + loss);
     }
 
