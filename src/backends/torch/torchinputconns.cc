@@ -807,12 +807,19 @@ namespace dd
   void CSVTSTorchInputFileConn::discard_warn(int vecindex,
                                              unsigned int seq_size, bool test)
   {
-    int tsteps = _timesteps > 0 ? _timesteps
-                                : _backcast_timesteps + _forecast_timesteps;
-    std::string errmsg = "data does not contains enough timesteps, "
-                         "discarding (seq_size:"
-                         + std::to_string(seq_size)
-                         + " timesteps:" + std::to_string(tsteps);
+    std::string errmsg;
+    if (_timesteps > 0)
+      errmsg = "data does not contains enough timesteps, "
+               "discarding (seq_size: "
+               + std::to_string(seq_size)
+               + "  timesteps: " + std::to_string(_timesteps) + " )";
+    else
+      errmsg = "data does not contains enough timesteps, "
+               "discarding (seq_size: "
+               + std::to_string(seq_size)
+               + "  backcast_timesteps: " + std::to_string(_backcast_timesteps)
+               + "   forecast_timesteps: "
+               + std::to_string(_forecast_timesteps) + " )";
     if (test)
       {
         if (static_cast<unsigned int>(vecindex) < _test_fnames.size())
