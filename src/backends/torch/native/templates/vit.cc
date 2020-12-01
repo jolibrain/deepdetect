@@ -71,10 +71,9 @@ namespace dd
 
   torch::Tensor ViT::AttentionImpl::forward(torch::Tensor x)
   {
-    std::vector<long int> shape = x.sizes().vec();
-    long int B = shape[0];
-    long int N = shape[1];
-    long int C = shape[2];
+    long int B = x.size(0);
+    long int N = x.size(1);
+    long int C = x.size(2);
     long int C2 = std::floor(C / _num_heads);
     auto qkv = _qkv(x)
                    .reshape({ B, N, 3, _num_heads, C2 })
@@ -117,7 +116,7 @@ namespace dd
   torch::Tensor ViT::BlockImpl::forward(torch::Tensor x)
   {
     x = x + _attn(_norm1(x));
-    x + _mlp(_norm2(x));
+    x = x + _mlp(_norm2(x));
     return x;
   }
 
@@ -271,7 +270,7 @@ namespace dd
 
   torch::Tensor ViT::forward_features(torch::Tensor x)
   {
-    unsigned int B = x.sizes()[0];
+    unsigned int B = x.size(0);
     x = _patch_embed(x);
 
     auto cls_tokens = _cls_token.expand({ B, -1, -1 });
@@ -295,7 +294,7 @@ namespace dd
   {
     x = forward_features(x);
     x = _head(x);
-    x = x.reshape({ x.sizes()[0], _num_classes }); // custom
+    x = x.reshape({ x.size(0), _num_classes }); // custom
     return x;
   }
 }

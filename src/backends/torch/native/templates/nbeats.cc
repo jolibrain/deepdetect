@@ -89,7 +89,7 @@ namespace dd
     torch::Tensor forecast = tffc.mm(_fS);
     return std::make_tuple(
         backcast.reshape({ backcast.size(0), _backcast_length, _data_size }),
-        forecast.reshape({ forecast.size(0), _backcast_length, _data_size }));
+        forecast.reshape({ forecast.size(0), _forecast_length, _data_size }));
   }
 
   torch::Tensor
@@ -244,7 +244,7 @@ namespace dd
 
     return std::make_tuple(
         backcast.reshape({ backcast.size(0), _backcast_length, _data_size }),
-        forecast.reshape({ forecast.size(0), _backcast_length, _data_size }));
+        forecast.reshape({ forecast.size(0), _forecast_length, _data_size }));
   }
 
   torch::Tensor NBeats::GenericBlockImpl::extract(torch::Tensor x,
@@ -280,14 +280,19 @@ namespace dd
     torch::Tensor forecast = _forecast_fc->forward(theta_f);
     return std::make_tuple(
         backcast.reshape({ backcast.size(0), _backcast_length, _data_size }),
-        forecast.reshape({ forecast.size(0), _backcast_length, _data_size }));
+        forecast.reshape({ forecast.size(0), _forecast_length, _data_size }));
   }
 
   void NBeats::update_params(const CSVTSTorchInputFileConn &inputc)
   {
-    _output_size = inputc._label.size();
-    _data_size = inputc._datadim - _output_size;
-    _backcast_length = inputc._timesteps;
+    _data_size = inputc._datadim - inputc._label.size();
+    if (inputc._forecast_timesteps > 0)
+      {
+        _forecast_length = inputc._forecast_timesteps;
+        _backcast_length = inputc._backcast_timesteps;
+      }
+    else
+      _forecast_length = _backcast_length = inputc._timesteps;
   }
 
   void NBeats::create_nbeats()
@@ -296,8 +301,8 @@ namespace dd
     float back_step = 1.0 / (float)(_backcast_length);
     for (unsigned int i = 0; i < _backcast_length; ++i)
       _backcast_linspace.push_back(back_step * static_cast<float>(i));
-    float fore_step = 1.0 / (float)(_backcast_length);
-    for (unsigned int i = 0; i < _backcast_length; ++i)
+    float fore_step = 1.0 / (float)(_forecast_length);
+    for (unsigned int i = 0; i < _forecast_length; ++i)
       _forecast_linspace.push_back(fore_step * static_cast<float>(i));
 
     std::tuple<torch::Tensor, torch::Tensor> S;
@@ -317,8 +322,9 @@ namespace dd
                   "seasonalityBlock_" + std::to_string(block_id) + "_stack_"
                       + std::to_string(stack_id),
                   SeasonalityBlock(_hidden_layer_units, _thetas_dims[stack_id],
-                                   _backcast_length, _data_size,
-                                   std::get<0>(S), std::get<1>(S)))));
+                                   _backcast_length, _forecast_length,
+                                   _data_size, std::get<0>(S),
+                                   std::get<1>(S)))));
             break;
           case trend:
             T = create_exp_basis(_thetas_dims[stack_id]);
@@ -328,8 +334,8 @@ namespace dd
                   "trendBlock_" + std::to_string(block_id) + "_stack_"
                       + std::to_string(stack_id),
                   TrendBlock(_hidden_layer_units, _thetas_dims[stack_id],
-                             _backcast_length, _data_size, std::get<0>(T),
-                             std::get<1>(T)))));
+                             _backcast_length, _forecast_length, _data_size,
+                             std::get<0>(T), std::get<1>(T)))));
             break;
           case generic:
             for (unsigned int block_id = 0; block_id < _nb_blocks_per_stack;
@@ -338,16 +344,16 @@ namespace dd
                   "genericBlock_" + std::to_string(block_id) + "_stack_"
                       + std::to_string(stack_id),
                   GenericBlock(_hidden_layer_units, _thetas_dims[stack_id],
-                               _backcast_length, _data_size))));
+                               _backcast_length, _forecast_length,
+                               _data_size))));
             break;
           default:
             break;
           }
         _stacks.push_back(s);
       }
-    _fcn = register_module("fcn", torch::nn::Linear(_data_size, _output_size));
     _finit = register_buffer(
-        "finit", torch::zeros({ 1, _backcast_length, _data_size }));
+        "finit", torch::zeros({ 1, _forecast_length, _data_size }));
   }
 
   void NBeats::reset()
@@ -371,7 +377,8 @@ namespace dd
           }
         stack_counter++;
       }
-    return torch::stack({ b, f }, 0);
+
+    return torch::cat({ b, f }, 1);
   }
 
   bool NBeats::extractable(std::string extract_layer) const
@@ -440,12 +447,12 @@ namespace dd
                 f = f + std::get<1>(bf);
                 if (num_stack == stack_counter && num_block == block_counter
                     && endofblock)
-                  return torch::stack({ b, f }, 0);
+                  return torch::cat({ b, f }, 1);
                 block_counter++;
               }
           }
         stack_counter++;
       }
-    return torch::stack({ b, f }, 0);
+    return torch::cat({ b, f }, 1);
   }
 }

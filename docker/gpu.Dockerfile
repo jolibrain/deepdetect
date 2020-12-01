@@ -114,10 +114,6 @@ FROM nvidia/cuda:10.2-cudnn7-runtime-ubuntu18.04 AS runtime
 
 ARG DEEPDETECT_ARCH=gpu
 
-# Copy Deepdetect binaries from previous step
-COPY --from=build /opt/deepdetect/build/main /opt/deepdetect/build/main
-COPY --from=build /opt/deepdetect/get_models.sh /opt/deepdetect/get_models.sh
-
 LABEL description="DeepDetect deep learning server & API / ${DEEPDETECT_ARCH} version"
 LABEL maintainer="emmanuel.benazera@jolibrain.com"
 
@@ -157,26 +153,27 @@ RUN useradd -ms /bin/bash dd && \
     chown dd:dd /opt
 USER dd
 
-# External volume to be mapped, e.g. for models or training data
-RUN mkdir /opt/models
+# Copy Deepdetect binaries from previous step
+COPY --from=build /opt/deepdetect/build/main /opt/deepdetect/build/main
+COPY --from=build --chown=dd /opt/deepdetect/datasets/imagenet/corresp_ilsvrc12.txt /opt/models/ggnet/corresp.txt
+COPY --from=build --chown=dd /opt/deepdetect/datasets/imagenet/corresp_ilsvrc12.txt /opt/models/resnet_50/corresp.txt
+COPY --from=build --chown=dd /opt/deepdetect/templates/caffe/googlenet/*prototxt /opt/models/ggnet/
+COPY --from=build --chown=dd /opt/deepdetect/templates/caffe/resnet_50/*prototxt /opt/models/resnet_50/
+COPY --from=build /tmp/lib/* /opt/deepdetect/build/lib/
+COPY --from=build /opt/deepdetect/templates /opt/deepdetect/build/templates
 
-# Include a few image models within the image
+COPY --from=build /opt/deepdetect/get_models.sh /opt/deepdetect/
+COPY --from=build /opt/deepdetect/docker/check-dede-deps.sh /opt/deepdetect/
+COPY --from=build /opt/deepdetect/docker/start-dede.sh /opt/deepdetect/
+
+# External volume to be mapped, e.g. for models or training data
 WORKDIR /opt/models
 RUN /opt/deepdetect/get_models.sh
 
-COPY --chown=dd --from=build /opt/deepdetect/datasets/imagenet/corresp_ilsvrc12.txt /opt/models/ggnet/corresp.txt
-COPY --chown=dd --from=build /opt/deepdetect/datasets/imagenet/corresp_ilsvrc12.txt /opt/models/resnet_50/corresp.txt
-COPY --chown=dd --from=build /opt/deepdetect/templates/caffe/googlenet/*prototxt /opt/models/ggnet/
-COPY --chown=dd --from=build /opt/deepdetect/templates/caffe/resnet_50/*prototxt /opt/models/resnet_50/
-COPY --from=build /tmp/lib/* /usr/lib/
-COPY --from=build /opt/deepdetect/templates /opt/deepdetect/build/templates
-COPY --from=build /opt/deepdetect/docker/check-dede-deps.sh /opt/deepdetect/
-
+# Ensure all libs are presents
 RUN /opt/deepdetect/check-dede-deps.sh
 
 WORKDIR /opt/deepdetect/build/main
+CMD /opt/deepdetect/start-dede.sh -host 0.0.0.0
 VOLUME ["/data"]
-
-# Set entrypoint
-CMD ./dede -host 0.0.0.0
 EXPOSE 8080

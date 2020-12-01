@@ -12,7 +12,7 @@ option(USE_TORCH "use libtorch backend" OFF)
 option(USE_HDF5 "use HDF5" ON)
 option(USE_CAFFE "use Caffe backend" ON)
 option(USE_TENSORRT "use TensorRT backend" OFF)
-option(USE_TENSORRT_OSS "use TensorRT OSS parts" OFF)
+option(USE_TENSORRT_OSS "alias of USE_TENSORRT" OFF)
 option(USE_XGBOOST "use XGBOOST backend" OFF)
 option(USE_XGBOOST_GPU "compile XGBOOST with CUDA" OFF)
 option(USE_DLIB "use Dlib backend" OFF)
@@ -597,7 +597,9 @@ elseif(USE_CAFFE)
         echo "LIBRARIES+=${SPDLOG_LIB_DEPS}" >> Makefile.config &&
         echo "INCLUDE_DIRS+=${PROTOBUF_INCLUDE_DIR}" >> Makefile.config &&
         echo "LIBRARY_DIRS+=${PROTOBUF_LIB_DIR}" >> Makefile.config
-    BUILD_COMMAND ${CMAKE_COMMAND} -E env LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR}:$ENV{LD_LIBRARY_PATH} PATH=${PROTOBUF_LIB_DIR}:$ENV{PATH} make -j${N} proto all
+    BUILD_COMMAND 
+        ${CMAKE_COMMAND} -E env LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR}:$ENV{LD_LIBRARY_PATH} PATH=${PROTOBUF_LIB_DIR}:$ENV{PATH} make -j${N} proto &&
+        ${CMAKE_COMMAND} -E env LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR}:$ENV{LD_LIBRARY_PATH} PATH=${PROTOBUF_LIB_DIR}:$ENV{PATH} make -j${N} all
     INSTALL_COMMAND ""
     BUILD_IN_SOURCE 1
     DEPENDS caffe_pb_h protobuf
@@ -831,11 +833,6 @@ if (USE_TENSORRT)
     message(STATUS "Found TensorRT libraries : ${TRTTESTDIR}/libnvinfer.so")
   endif()
 
-  if (NOT USE_TENSORRT_OSS)
-    include_directories(${CMAKE_CURRENT_BINARY_DIR})
-	set(TENSORRT_LIBS nvinfer nvparsers nvinfer_plugin nvonnxparser )
-
-  else()
     set(TENSORRT_LIB_DIR ${CMAKE_BINARY_DIR}/tensorrt-oss/bin/ ${TENSORRT_LIB_DIR})
     include_directories(${CMAKE_CURRENT_BINARY_DIR})
 	set(TENSORRT_LIBS nvinfer nvcaffeparser nvinfer_plugin nvonnxparser )
@@ -852,9 +849,10 @@ if (USE_TENSORRT)
     endif()
 
 
-    list(APPEND TRT_FLAGS
+    set(TRT_FLAGS
       -DTRT_OUT_DIR=${CMAKE_BINARY_DIR}/tensorrt-oss/bin
       -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc
+      -DBUILD_SAMPLES=OFF
     )
 
     if (JETSON)
@@ -863,7 +861,6 @@ if (USE_TENSORRT)
 
 	set(TRT_PATCHES_PATH ${CMAKE_BINARY_DIR}/patches/trt)
 	set(TRT_PATCHES ${TRT_PATCHES_PATH}/0001-support-for-refinedet.patch)
-    set(TRT_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/tensorrt-oss-complete)
 
     # Tensorrt uses its own protobuf version (3.0.0) and this cannot be overrided
     # At best we can set the version it will internally build
@@ -873,13 +870,10 @@ if (USE_TENSORRT)
       GIT_REPOSITORY https://github.com/NVIDIA/TensorRT.git
 	  GIT_TAG ${TENSORRT_COMMIT}
       GIT_CONFIG advice.detachedHead=false
-      UPDATE_DISCONNECTED 1
-	  PATCH_COMMAND test -f ${TRT_COMPLETE} && echo Skipping || git apply ${TRT_PATCHES} && echo Applying ${TRT_PATCHES}
-      CONFIGURE_COMMAND test -f ${TRT_COMPLETE} && echo Skipping || cmake ../tensorrt-oss ${TRT_FLAGS}
-      BUILD_COMMAND test -f ${TRT_COMPLETE} && echo Skipping || make -j${N}
+	  PATCH_COMMAND git reset --hard && git apply ${TRT_PATCHES}
+      CMAKE_ARGS ${TRT_FLAGS}
       INSTALL_COMMAND ""
     )
-    endif()
 
     include_directories(${TENSORRT_INC_DIR})
 endif()
@@ -1081,7 +1075,6 @@ message(STATUS "USE_TF:                ${USE_TF}")
 message(STATUS "USE_NCNN:              ${USE_NCNN}")
 message(STATUS "USE_HDF5:              ${USE_HDF5}")
 message(STATUS "USE_TENSORRT:          ${USE_TENSORRT}")
-message(STATUS "USE_TENSORRT_OSS:      ${USE_TENSORRT_OSS}")
 message(STATUS "USE_DLIB:              ${USE_DLIB}")
 message(STATUS "USE_ANNOY:             ${USE_ANNOY}")
 message(STATUS "USE_FAISS:             ${USE_FAISS}")
