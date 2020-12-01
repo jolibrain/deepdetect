@@ -7,7 +7,7 @@ if [ "$DEEPDETECT_DEFAULT_MODELS" = false ] ; then
 else
     echo "Downloading default Deepdetect models is enable"
     echo "To disable it set DEEPDETECT_DEFAULT_MODELS env variable to false : DEEPDETECT_DEFAULT_MODELS=false"
-    mkdir ggnet resnet_50
+    mkdir -p ggnet resnet_50
 
     pushd ggnet
         wget https://www.deepdetect.com/models/ggnet/bvlc_googlenet.caffemodel
