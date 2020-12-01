@@ -296,6 +296,11 @@ namespace dd
      */
     void scale_vals(std::vector<double> &vals)
     {
+      if (vals.size() > _min_vals.size())
+        throw InputConnectorBadParamException(
+            "number of values to unscale (" + std::to_string(vals.size())
+            + ") > number of scaling factors ("
+            + std::to_string(_min_vals.size()) + ")");
       auto lit = _columns.begin();
       for (int j = 0; j < (int)vals.size(); j++)
         {
