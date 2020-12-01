@@ -30,7 +30,7 @@ cmake ..  \
     -DUSE_TENSORRT=ON  \
     -DUSE_TENSORRT_OSS=ON  \
     -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61"
-schedtool -B -n 1 -e ionice -n 1 make -j24 protobuf caffe_dd pytorch Multicore-TSNE faisslib ncnn xgboost cpp-netlib tensorrt-oss oatpp oatpp-swagger oatpp-zlib
+schedtool -B -n 1 -e ionice -n 1 make -j24 protobuf caffe_dd pytorch Multicore-TSNE ncnn xgboost cpp-netlib tensorrt-oss oatpp oatpp-swagger oatpp-zlib
 ccache -s
 
 # Remove cmake files
@@ -52,7 +52,7 @@ rm -f prebuilt-cache-${GIT_COMMIT}
     }
     stage('Saving archive') {
       steps {
-        archiveArtifacts(artifacts: 'build/**/*')
+        archiveArtifacts(artifacts: 'build/**/*', onlyIfSuccessful: true, defaultExcludes: false)
       }
     }
   }

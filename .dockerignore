@@ -1,5 +1,6 @@
 docker/cpu.Dockerfile
-docker/cpu-armv7.Dockerfile
 docker/gpu.Dockerfile
-docker/gpu-xenial.Dockerfile
+docker/gpu_tensorrt.Dockerfile
+docker/cpu-arm.Dockerfile
 build/
+.git/
