@@ -84,7 +84,7 @@ ccache -s
           python3 -c 'import torch, sys; c=torch.cuda.device_count() ; print(f"CUDA VISIBLE GPU: {c}"); sys.exit(bool(c == 0 ))'
           echo
           echo "****************************"
-          cd build && ctest -V -E "http|multigpu"
+          cd build && ctest -V -E "multigpu"
           '''
           }
       }
@@ -103,7 +103,7 @@ ccache -s
           python3 -c 'import torch, sys; c=torch.cuda.device_count() ; print(f"CUDA VISIBLE GPU: {c}"); sys.exit(bool(c < 2))'
           echo
           echo "****************************"
-          cd build && ctest -V -E "http" -R "multigpu"
+          cd build && ctest -V -R "multigpu"
           '''
           }
       }
