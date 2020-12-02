@@ -31,8 +31,6 @@ namespace dd
 {
   class OatppJsonAPI : public JsonAPI
   {
-    std::shared_ptr<spdlog::logger> _logger;
-
   public:
     OatppJsonAPI();
     ~OatppJsonAPI();
@@ -40,6 +38,7 @@ namespace dd
     int boot(int argc, char *argv[]);
     void run();
     static void terminate(int signal);
+    static void abort(int param);
     std::string
     uri_query_to_json(oatpp::web::protocol::http::QueryParams queryParams);
     std::shared_ptr<oatpp::web::protocol::http::outgoing::Response>

@@ -20,6 +20,7 @@
  */
 
 #include <csignal>
+#include <boost/stacktrace.hpp>
 
 #include "oatppjsonapi.h"
 #include "http/app_component.hpp"
@@ -45,7 +46,6 @@ namespace dd
 
   OatppJsonAPI::OatppJsonAPI() : JsonAPI()
   {
-    _logger = spdlog::get("api-oatpp");
   }
 
   OatppJsonAPI::~OatppJsonAPI()
@@ -242,6 +242,13 @@ namespace dd
       }
   }
 
+  void OatppJsonAPI::abort(int signum)
+  {
+    std::signal(signum, SIG_DFL);
+    std::cout << boost::stacktrace::stacktrace() << std::endl;
+    std::raise(SIGABRT);
+  }
+
   void OatppJsonAPI::run()
   {
     AppComponent components; // Create scope Environment
@@ -275,9 +282,12 @@ namespace dd
       _logger->info("Allowing origin from {}", FLAGS_allow_origin);
 
     std::signal(SIGINT, terminate);
+    std::signal(SIGSEGV, abort);
+    std::signal(SIGABRT, abort);
     _server->run();
     _logger->info("DeepDetect HTTP server stopped");
   }
+
   int OatppJsonAPI::boot(int argc, char *argv[])
   {
     (void)argv;

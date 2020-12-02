@@ -802,7 +802,7 @@ TEST(torchapi, service_train_csvts_nbeats_forecast)
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
   ASSERT_EQ(jd["body"]["predictions"][0]["series"].Size(), 10);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["out"][0].GetDouble()
-              >= -1.0);
+              >= -1.5);
 
   //  remove service
   jstr = "{\"clear\":\"full\"}";
@@ -1417,7 +1417,7 @@ TEST(torchapi, service_train_clip)
   fileops::remove_dir(resnet50_train_repo + "test.lmdb");
 }
 
-TEST(torchapi, service_train_vit_images)
+TEST(torchapi, service_train_vit_images_gpu)
 {
   mkdir(vit_train_repo.c_str(), 0777);
 
@@ -1432,6 +1432,91 @@ TEST(torchapi, service_train_vit_images)
         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\","
           "\"width\":224,\"height\":224,\"db\":true},\"mllib\":{\"nclasses\":"
           "2,\"template\":\"vit\",\"gpu\":true}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // Train
+  std::string jtrainstr
+      = "{\"service\":\"imgserv\",\"async\":false,\"parameters\":{"
+        "\"mllib\":{\"solver\":{\"iterations\":"
+        + iterations_vit
+        + ",\"base_lr\":1e-5,\"iter_size\":4,\"solver_type\":\"RANGER\","
+          "\"lookahead\":true,\"rectified\":false,\"adabelief\":true,"
+          "\"gradient_centralization\":true,"
+          "\"test_"
+          "interval\":"
+        + iterations_vit
+        + "},\"net\":{\"batch_size\":4},\"nclasses\":2,\"resume\":false},"
+          "\"input\":{\"db\":true,\"shuffle\":true,\"test_split\":0.1},"
+          "\"output\":{\"measure\":[\"f1\",\"acc\"]}},\"data\":[\""
+        + resnet50_train_data + "\",\"" + resnet50_test_data + "\"]}";
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
+  JDoc jd;
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(201, jd["status"]["code"]);
+
+  ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() <= 1) << "accuracy";
+  ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() >= 0.45)
+      << "accuracy good";
+  ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() <= 1) << "f1";
+
+  // Predict
+  std::string jpredictstr
+      = "{\"service\":\"imgserv\",\"parameters\":{\"output\":{\"best\":1}},"
+        "\"data\":[\""
+        + resnet50_test_image + "\"]}";
+
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  jd = JDoc();
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+  std::string cl1
+      = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
+  // Not training for long enough to be 100% sure a cat will be detected
+  // ASSERT_TRUE(cl1 == "cats");
+  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
+              > 0.0);
+
+  std::unordered_set<std::string> lfiles;
+  fileops::list_directory(vit_train_repo, true, false, false, lfiles);
+  for (std::string ff : lfiles)
+    {
+      if (ff.find("checkpoint") != std::string::npos
+          || ff.find("solver") != std::string::npos)
+        remove(ff.c_str());
+    }
+  ASSERT_TRUE(!fileops::file_exists(vit_train_repo + "checkpoint-"
+                                    + iterations_vit + ".ptw"));
+  ASSERT_TRUE(!fileops::file_exists(vit_train_repo + "checkpoint-"
+                                    + iterations_vit + ".pt"));
+
+  fileops::clear_directory(vit_train_repo + "train.lmdb");
+  fileops::clear_directory(vit_train_repo + "test.lmdb");
+  fileops::remove_dir(vit_train_repo + "train.lmdb");
+  fileops::remove_dir(vit_train_repo + "test.lmdb");
+}
+
+TEST(torchapi, service_train_vit_images_multigpu)
+{
+  mkdir(vit_train_repo.c_str(), 0777);
+
+  // Create service
+  JsonAPI japi;
+  std::string sname = "imgserv";
+  std::string jstr
+      = "{\"mllib\":\"torch\",\"description\":\"image\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+
+        + vit_train_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\","
+          "\"width\":224,\"height\":224,\"db\":true},\"mllib\":{\"nclasses\":"
+          "2,\"vit_flavor\":\"vit_mini_patch16\",\"template\":\"vit\",\"gpu\":"
+          "true,\"gpuid\":[0, 1]}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
   ASSERT_EQ(created_str, joutstr);
 
