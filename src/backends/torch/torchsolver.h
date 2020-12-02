@@ -104,6 +104,8 @@ namespace dd
     }
 
   protected:
+    void override_options();
+
     std::vector<at::Tensor> _params; /**< list of parameter to optimize,
                    storing it here for gradient clipping */
 
