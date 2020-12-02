@@ -56,8 +56,8 @@ OPTION(BUILD_TESTS "Should the tests be built")
 OPTION(BUILD_TOOLS "Should the tools be built")
 OPTION(USE_COMMAND_LINE "build command line JSON API" ON)
 OPTION(USE_JSON_API "build internal JSON API" ON)
-OPTION(USE_HTTP_SERVER "build http JSON API " ON)
-OPTION(USE_HTTP_SERVER_OATPP "use OAT instead cpp-netlib" OFF)
+OPTION(USE_HTTP_SERVER "build cppnet-lib version of http JSON API " ON)
+OPTION(USE_HTTP_SERVER_OATPP "build oatpp version of http JSON API" ON)
 
 # Get the current working branch
 execute_process(
@@ -299,6 +299,9 @@ if (USE_TENSORRT)
   set(USE_CUDNN ON)
 endif()
 
+if (USE_CUDNN)
+  find_package(CUDNN REQUIRED)
+endif()
 
 # CUDA dependencies
 if (CUDA_FOUND)

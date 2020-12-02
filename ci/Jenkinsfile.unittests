@@ -29,7 +29,8 @@ pipeline {
       steps {
         sh '''
 export PATH="/usr/lib/ccache/:$PATH"
-mkdir -p build
+export TMPDIR=$(pwd)/build/tmp
+mkdir -p build/tmp
 cd build
 cmake .. \
     -DBUILD_TESTS=ON  \
@@ -61,6 +62,7 @@ cmake .. \
       steps {
         sh '''
 export PATH="/usr/lib/ccache/:$PATH"
+export TMPDIR=$(pwd)/build/tmp
 cd build
 schedtool -B -n 1 -e ionice -n 1 make -j24 protobuf caffe_dd pytorch Multicore-TSNE faisslib ncnn xgboost cpp-netlib tensorrt-oss oatpp oatpp-swagger oatpp-zlib
 # TODO(sileht): we should create the prebuilt artefacts here after each successful master branch build
