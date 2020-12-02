@@ -97,9 +97,7 @@ namespace dd
   void ViT::BlockImpl::init_block(const double &mlp_ratio,
                                   const bool &qkv_bias, const double &qk_scale,
                                   const double &drop_val,
-                                  const double &attn_drop_val,
-                                  const double &drop_path,
-                                  const std::string &act)
+                                  const double &attn_drop_val)
   {
     _norm1 = register_module(
         "norm1", torch::nn::LayerNorm(torch::nn::LayerNormOptions({ _dim })));
@@ -107,13 +105,12 @@ namespace dd
     _attn = register_module("attn",
                             Attention(_dim, _num_heads, qkv_bias, qk_scale,
                                       attn_drop_val, drop_val));
-    // no droppath for now
-    (void)drop_path;
     _norm2 = register_module(
         "norm2", torch::nn::LayerNorm(torch::nn::LayerNormOptions({ _dim })));
 
     unsigned int mlp_hidden_dim = static_cast<int>(_dim * mlp_ratio);
-    _mlp = register_module("mlp", MLP(_dim, mlp_hidden_dim, 0, act, drop_val));
+    _mlp = register_module("mlp",
+                           MLP(_dim, mlp_hidden_dim, 0, "gelu", drop_val));
   }
 
   torch::Tensor ViT::BlockImpl::forward(torch::Tensor x)
@@ -149,15 +146,15 @@ namespace dd
   void ViT::get_params_and_init_block(const ImgTorchInputFileConn &inputc,
                                       const APIData &ad_params)
   {
-    int patch_size = 16;
-    int in_chans = inputc._bw ? 1 : 3;
-    int embed_dim = 768;
-    int num_heads = 12;
-    double mlp_ratio = 4.0;
-    bool qkv_bias = false;
-    double qk_scale = -1.0;
-    double drop_rate = 0.0;
-    double attn_drop_rate = 0.0;
+    _patch_size = 16;
+    _in_chans = inputc._bw ? 1 : 3;
+    _embed_dim = 768;
+    _num_heads = 12;
+    _mlp_ratio = 4.0;
+    _qkv_bias = false;
+    _qk_scale = -1.0;
+    _drop_rate = 0.0;
+    _attn_drop_rate = 0.0;
 
     _img_size = inputc.width();
     _num_classes = 2;
@@ -166,7 +163,7 @@ namespace dd
     _depth = 12;
 
     if (ad_params.has("dropout"))
-      drop_rate = attn_drop_rate = ad_params.get("dropout").get<double>();
+      _drop_rate = _attn_drop_rate = ad_params.get("dropout").get<double>();
 
     std::string vit_flavor = "vit_base_patch16";
     if (ad_params.has("vit_flavor"))
@@ -175,67 +172,67 @@ namespace dd
     if (vit_flavor == "vit_small_patch16")
       {
         _depth = 8;
-        num_heads = 8;
-        mlp_ratio = 3.0;
+        _num_heads = 8;
+        _mlp_ratio = 3.0;
       }
     else if (vit_flavor == "vit_base_patch16")
       {
-        qkv_bias = true;
+        _qkv_bias = true;
       }
     else if (vit_flavor == "vit_base_patch32")
       {
-        patch_size = 32;
-        qkv_bias = true;
+        _patch_size = 32;
+        _qkv_bias = true;
       }
     else if (vit_flavor == "vit_large_patch16")
       {
-        embed_dim = 1024;
+        _embed_dim = 1024;
         _depth = 24;
-        num_heads = 16;
-        qkv_bias = true;
+        _num_heads = 16;
+        _qkv_bias = true;
       }
     else if (vit_flavor == "vit_large_patch32")
       {
-        patch_size = 32;
-        embed_dim = 1024;
+        _patch_size = 32;
+        _embed_dim = 1024;
         _depth = 24;
-        num_heads = 16;
-        qkv_bias = true;
+        _num_heads = 16;
+        _qkv_bias = true;
       }
     else if (vit_flavor == "vit_huge_patch16")
       {
-        embed_dim = 1280;
+        _embed_dim = 1280;
         _depth = 32;
-        num_heads = 16;
+        _num_heads = 16;
       }
     else if (vit_flavor == "vit_huge_patch32")
       {
-        patch_size = 32;
-        embed_dim = 1280;
+        _patch_size = 32;
+        _embed_dim = 1280;
         _depth = 32;
-        num_heads = 16;
+        _num_heads = 16;
       }
     else if (vit_flavor == "vit_mini_patch16")
       {
         _depth = 4;
-        num_heads = 4;
-        mlp_ratio = 1.0;
-        embed_dim = 256;
+        _num_heads = 4;
+        _mlp_ratio = 1.0;
+        _embed_dim = 256;
       }
     else if (vit_flavor == "vit_mini_patch32")
       {
-        patch_size = 32;
+        _patch_size = 32;
         _depth = 4;
-        num_heads = 4;
-        mlp_ratio = 1.0;
-        embed_dim = 256;
+        _num_heads = 4;
+        _mlp_ratio = 1.0;
+        _embed_dim = 256;
       }
     else
       {
         throw MLLibBadParamException("unknown ViT flavor " + vit_flavor);
       }
-    init_block(_img_size, patch_size, in_chans, embed_dim, num_heads,
-               mlp_ratio, qkv_bias, qk_scale, drop_rate, attn_drop_rate);
+    init_block(_img_size, _patch_size, _in_chans, _embed_dim, _num_heads,
+               _mlp_ratio, _qkv_bias, _qk_scale, _drop_rate, _attn_drop_rate);
   }
 
   void ViT::init_block(const int &img_size, const int &patch_size,
@@ -261,7 +258,7 @@ namespace dd
         _blocks.push_back(
             register_module("block_" + std::to_string(d),
                             Block(embed_dim, num_heads, mlp_ratio, qkv_bias,
-                                  qk_scale, drop_rate, attn_drop_rate, 0.0)));
+                                  qk_scale, drop_rate, attn_drop_rate)));
       }
     _norm = register_module(
         "norm",
