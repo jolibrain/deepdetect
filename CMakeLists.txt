@@ -299,6 +299,9 @@ if (USE_TENSORRT)
   set(USE_CUDNN ON)
 endif()
 
+if (USE_CUDNN)
+  find_package(CUDNN REQUIRED)
+endif()
 
 # CUDA dependencies
 if (CUDA_FOUND)
