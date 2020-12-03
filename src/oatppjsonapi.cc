@@ -31,6 +31,7 @@
 #include "oatpp/web/protocol/http/outgoing/ResponseFactory.hpp"
 #include "oatpp/web/server/HttpConnectionHandler.hpp"
 #include "oatpp/web/server/HttpRouter.hpp"
+#include "oatpp/web/server/api/ApiController.hpp"
 #include "oatpp/network/tcp/server/ConnectionProvider.hpp"
 #include "oatpp/parser/json/mapping/ObjectMapper.hpp"
 #include "oatpp/core/macro/component.hpp"
@@ -165,9 +166,11 @@ namespace dd
   }
 
   std::shared_ptr<oatpp::web::protocol::http::outgoing::Response>
-  OatppJsonAPI::jdoc_to_response(const JDoc &janswer)
+  OatppJsonAPI::jdoc_to_response(
+      const std::shared_ptr<
+          oatpp::web::server::api::ApiController::IncomingRequest> &request,
+      const JDoc &janswer)
   {
-
     int outcode = janswer["status"]["code"].GetInt();
     std::string stranswer;
     // if output template, fillup with rendered template.
@@ -218,6 +221,30 @@ namespace dd
               }
           }
       }
+
+    // TODO(sileht): START
+    // Replace hack by a oatpp ResponseInterceptor when 1.2.5 is released
+    if (request)
+      {
+        auto req = request->getStartingLine();
+        std::string access_log = req.protocol.std_str() + " \""
+                                 + req.method.std_str() + " "
+                                 + req.path.std_str() + "\"";
+        std::string service;
+        if (janswer.HasMember("head"))
+          {
+            if (janswer["head"].HasMember("service"))
+              service = janswer["head"]["service"].GetString();
+          }
+        if (!service.empty())
+          access_log += " " + service;
+        access_log += " " + std::to_string(outcode);
+        if (outcode == 200 || outcode == 201)
+          _logger->info(access_log);
+        else
+          _logger->error(access_log);
+      }
+    // TODO(sileht): END
 
     auto response = oatpp::web::protocol::http::outgoing::ResponseFactory::
         createResponse(oatpp::web::protocol::http::Status(outcode, ""),

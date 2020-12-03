@@ -276,7 +276,7 @@ if (USE_CAFFE)
         faisslib
         PREFIX faiss
         SOURCE_DIR ${CMAKE_BINARY_DIR}/faiss/src/faiss
-        GIT_REPOSITORY https://github.com/fantes/faiss
+        GIT_REPOSITORY https://github.com/jolibrain/faiss
         CONFIGURE_COMMAND ./configure ${CONFIGURE_OPTS}
         INSTALL_COMMAND ""
         BUILD_IN_SOURCE 1
