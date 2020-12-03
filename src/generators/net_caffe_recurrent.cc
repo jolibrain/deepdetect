@@ -353,6 +353,11 @@ namespace dd
             = ad_mllib.get("layers").get<std::vector<std::string>>();
         parse_recurrent_layers(apilayers, layers, osize);
       }
+    else
+      {
+        throw MLLibBadParamException(
+            "recurrent template selected w/o layer specification");
+      }
     if (ad_mllib.has("dropout"))
       {
         try
@@ -368,7 +373,7 @@ namespace dd
               }
             catch (std::exception &e)
               {
-                throw InputConnectorBadParamException(
+                throw MLLibBadParamException(
                     "wrong type for dropout parameter");
               }
           }
