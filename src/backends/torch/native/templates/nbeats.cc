@@ -299,9 +299,11 @@ namespace dd
   {
     _stacks.clear();
     float back_step = 1.0 / (float)(_backcast_length);
+    _backcast_linspace.clear();
     for (unsigned int i = 0; i < _backcast_length; ++i)
       _backcast_linspace.push_back(back_step * static_cast<float>(i));
     float fore_step = 1.0 / (float)(_forecast_length);
+    _forecast_linspace.clear();
     for (unsigned int i = 0; i < _forecast_length; ++i)
       _forecast_linspace.push_back(fore_step * static_cast<float>(i));
 
