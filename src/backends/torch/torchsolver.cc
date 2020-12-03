@@ -251,6 +251,58 @@ namespace dd
             "otherwise delete existing training state files (with clear=lib) "
             "to cleanup the model repository");
       }
+
+    override_options();
     return 0;
+  }
+
+  void TorchSolver::override_options()
+  {
+    for (auto &param_group : _optimizer->param_groups())
+      {
+        if (_solver_type == "RANGER" || _solver_type == "RANGER_PLUS")
+          {
+            auto &options
+                = static_cast<RangerOptions &>(param_group.options());
+            options.lr(_base_lr);
+            options.betas(std::make_tuple(_beta1, _beta2));
+            options.weight_decay(_weight_decay);
+            options.decoupled_wd(_decoupled_wd);
+            options.rectified(_rectified);
+            options.lookahead(_lookahead);
+            options.adabelief(_adabelief);
+            options.gradient_centralization(_gc);
+            options.lsteps(_lsteps);
+            options.lalpha(_lalpha);
+          }
+        else if (_solver_type == "ADAM")
+          {
+            auto &options = static_cast<torch::optim::AdamOptions &>(
+                param_group.options());
+            options.lr(_base_lr);
+            options.betas(std::make_tuple(_beta1, _beta2));
+            options.weight_decay(_weight_decay);
+          }
+        else if (_solver_type == "RMSPROP")
+          {
+            auto &options = static_cast<torch::optim::RMSpropOptions &>(
+                param_group.options());
+            options.lr(_base_lr);
+            options.weight_decay(_weight_decay);
+          }
+        else if (_solver_type == "ADAGRAD")
+          {
+            auto &options = static_cast<torch::optim::AdagradOptions &>(
+                param_group.options());
+            options.lr(_base_lr);
+            options.weight_decay(_weight_decay);
+          }
+        else
+          {
+            auto &options = static_cast<torch::optim::SGDOptions &>(
+                param_group.options());
+            options.lr(_base_lr);
+          }
+      }
   }
 }

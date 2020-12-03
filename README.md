@@ -32,7 +32,9 @@ Please join either the community on [Gitter](https://gitter.im/beniz/deepdetect)
 
 * [Models ready to use](#models)
 * Ecosystem
-  * [Platform](https://www.deepdetect.com/platform/)
+  * [Platform presentation](https://www.deepdetect.com/platform/)
+  * [Platform installation with docker-compose](https://github.com/jolibrain/dd_platform_docker)
+  * [Platform installation with helm (Kubenetes)](https://github.com/jolibrain/helm_chart)
   * [Tools and Clients](#tools-and-clients)
 * Documentation:
   * [Introduction](https://www.deepdetect.com/overview/introduction/)
