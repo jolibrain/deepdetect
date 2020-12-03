@@ -186,11 +186,44 @@ TEST(jsonapi, service_status)
 
   ASSERT_TRUE(jd["body"].HasMember("service_stats"));
   ASSERT_TRUE(jd["body"]["service_stats"].HasMember("predict_count"));
-  ASSERT_TRUE(jd["body"]["service_stats"]["predict_count"].GetInt() == 0);
-  ASSERT_TRUE(jd["body"]["service_stats"]["inference_count"].GetInt() == 0);
-  ASSERT_TRUE(jd["body"]["service_stats"]["predict_failure"].GetInt() == 0);
-  ASSERT_TRUE(jd["body"]["service_stats"]["predict_success"].GetInt() == 0);
-  ASSERT_TRUE(jd["body"]["service_stats"]["avg_batch_size"].GetDouble() == -1);
+  ASSERT_EQ(jd["body"]["service_stats"]["predict_count"].GetInt(), 0);
+  ASSERT_EQ(jd["body"]["service_stats"]["inference_count"].GetInt(), 0);
+  ASSERT_EQ(jd["body"]["service_stats"]["predict_failure"].GetInt(), 0);
+  ASSERT_EQ(jd["body"]["service_stats"]["predict_success"].GetInt(), 0);
+  ASSERT_EQ(
+      jd["body"]["service_stats"]["avg_transform_duration_ms"].GetDouble(),
+      -1);
+  ASSERT_EQ(jd["body"]["service_stats"]["avg_predict_duration_ms"].GetDouble(),
+            -1);
+  ASSERT_EQ(jd["body"]["service_stats"]["avg_batch_size"].GetDouble(), -1);
+
+  std::string jpredictstr
+      = "{\"service\":\"" + sname
+        + "\",\"parameters\":{\"input\":{\"bw\":true}},\"data\":[\""
+        + "../examples/caffe/mnist/sample_digit.png\"]}";
+  japi.service_predict(jpredictstr);
+
+  jstatstr = japi.jrender(japi.service_status(sname));
+  // std::cout << "jstatstr=" << jstatstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(jstatstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_TRUE(jd.HasMember("status"));
+  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ("OK", jd["status"]["msg"]);
+  ASSERT_TRUE(jd.HasMember("body"));
+  ASSERT_TRUE(jd["body"].HasMember("description"));
+
+  ASSERT_TRUE(jd["body"].HasMember("service_stats"));
+  ASSERT_TRUE(jd["body"]["service_stats"].HasMember("predict_count"));
+  ASSERT_EQ(jd["body"]["service_stats"]["predict_count"].GetInt(), 1);
+  ASSERT_EQ(jd["body"]["service_stats"]["inference_count"].GetInt(), 0);
+  ASSERT_EQ(jd["body"]["service_stats"]["predict_failure"].GetInt(), 1);
+  ASSERT_EQ(jd["body"]["service_stats"]["predict_success"].GetInt(), 0);
+  ASSERT_EQ(
+      jd["body"]["service_stats"]["avg_transform_duration_ms"].GetDouble(), 0);
+  ASSERT_GT(jd["body"]["service_stats"]["avg_predict_duration_ms"].GetDouble(),
+            0);
+  ASSERT_EQ(jd["body"]["service_stats"]["avg_batch_size"].GetDouble(), 0);
 }
 
 TEST(jsonapi, service_purge)
