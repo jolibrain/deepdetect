@@ -816,18 +816,18 @@ if (USE_TENSORRT)
 
   if (JETSON)
     set(TRTTESTDIR /usr/lib/aarch64-linux-gnu)
-      set(TENSORRT_LIB_DIR  /usr/lib/aarch64-linux-gnu)
-      set(TENSORRT_INC_DIR ${PROTOBUF_INCLUDE_DIR} /usr/include/aarch64-linux-gnu)
+    set(TENSORRT_LIB_DIR /usr/lib/aarch64-linux-gnu)
+    set(TENSORRT_INC_DIR /usr/include/aarch64-linux-gnu)
   elseif(DEFINED TENSORRT_DIR)
     set(TRTTESTDIR ${TENSORRT_DIR}/lib)
-      set(TENSORRT_LIB_DIR  ${TENSORRT_DIR}/lib )
-      set(TENSORRT_INC_DIR ${PROTOBUF_INCLUDE_DIR} ${TENSORRT_DIR}/include)
+    set(TENSORRT_LIB_DIR  ${TENSORRT_DIR}/lib )
+    set(TENSORRT_INC_DIR ${TENSORRT_DIR}/include)
   elseif (DEFINED TENSORRT_LIB_DIR AND DEFINED TENSORRT_INC_DIR)
     set(TRTTESTDIR TENSORRT_LIB_DIR)
   else()
     set(TRTTESTDIR /usr/lib/x86_64-linux-gnu)
-      set(TENSORRT_LIB_DIR  /usr/lib/x86_64-linux-gnu)
-      set(TENSORRT_INC_DIR ${PROTOBUF_INCLUDE_DIR} /usr/include/x86_64-linux-gnu)
+    set(TENSORRT_LIB_DIR  /usr/lib/x86_64-linux-gnu)
+    set(TENSORRT_INC_DIR /usr/include/x86_64-linux-gnu)
   endif()
 
   if (NOT EXISTS "${TRTTESTDIR}/libnvinfer.so")
@@ -878,6 +878,8 @@ if (USE_TENSORRT)
       INSTALL_COMMAND ""
     )
 
+    # Use our tensorrt-oss header versions first
+    include_directories(SYSTEM ${CMAKE_BINARY_DIR}/tensorrt-oss/src/tensorrt-oss/include)
     include_directories(${TENSORRT_INC_DIR})
 endif()
 
