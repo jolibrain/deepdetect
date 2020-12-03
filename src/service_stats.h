@@ -74,10 +74,12 @@ namespace dd
     int _predict_failure = 0;
 
     std::chrono::steady_clock::time_point _predict_tstart;
-    std::chrono::duration<double, std::milli> _predict_total_duration_ms;
+    std::chrono::duration<double, std::milli> _predict_total_duration_ms
+        = std::chrono::milliseconds(0);
 
     std::chrono::steady_clock::time_point _transform_tstart;
-    std::chrono::duration<double, std::milli> _transform_total_duration_ms;
+    std::chrono::duration<double, std::milli> _transform_total_duration_ms
+        = std::chrono::milliseconds(0);
 
     double _avg_batch_size = -1;
     double _avg_predict_duration_ms = -1;
