@@ -94,6 +94,14 @@ namespace dd
                         bool requires_grad = true);
 
     std::vector<c10::IValue> unwrap_c10_vector(const c10::IValue &output);
+
+    void copy_weights(const torch::jit::script::Module &from,
+                      torch::nn::Module &to, const torch::Device &device,
+                      std::shared_ptr<spdlog::logger> logger = nullptr);
+
+    void load_weights(torch::nn::Module &module, const std::string &filename,
+                      const torch::Device &device,
+                      std::shared_ptr<spdlog::logger> logger = nullptr);
   }
 }
 #endif
