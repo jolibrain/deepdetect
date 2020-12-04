@@ -141,6 +141,7 @@ namespace dd
   void TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy,
                 TMLModel>::init_mllib(const APIData &lib_ad)
   {
+    // Get parameters
     bool gpu = false;
     std::vector<int> gpuids;
     bool freeze_traced = false;
@@ -184,7 +185,10 @@ namespace dd
       freeze_traced = lib_ad.get("freeze_traced").get<bool>();
     if (lib_ad.has("loss"))
       _loss = lib_ad.get("loss").get<std::string>();
+    if (lib_ad.has("template_params"))
+      _template_params = lib_ad;
 
+    // Find GPU id
     if (!gpu)
       {
         _main_device = torch::Device(DeviceType::CPU);
@@ -214,12 +218,53 @@ namespace dd
             this->_logger->info("Running on multiple devices: " + devices_str);
           }
       }
+
+    // Set model type
+    if (_template == "bert")
+      {
+        if (!self_supervised.empty())
+          {
+            if (self_supervised != "mask")
+              {
+                throw MLLibBadParamException(
+                    "Bert does not support self_supervised type: "
+                    + self_supervised);
+              }
+            this->_logger->info("Masked Language model");
+            _masked_lm = true;
+            _seq_training = true;
+          }
+        else if (!_classification)
+          {
+            throw MLLibBadParamException(
+                "BERT only supports self-supervised or classification");
+          }
+      }
+    else if (_template == "gpt2")
+      {
+        _seq_training = true;
+      }
+    else if (_template.find("recurrent") != std::string::npos
+             || NativeFactory::is_timeserie(_template))
+      {
+        _timeserie = true;
+      }
+    if (!_regression && !_timeserie && self_supervised.empty())
+      _classification = true; // classification is default
+
+    // Set mltype
+    if (_classification)
+      this->_mltype = "classification";
+    else if (_regression)
+      this->_mltype = "regression";
+
+    // Create the model
     _module._device = _main_device;
     _module._logger = this->_logger;
 
-    if (_template.find("recurrent") != std::string::npos)
+    if (_template == "recurrent")
       {
-        // call caffe net generator before verything else
+        // call caffe net generator before everything else
         std::string dest_net
             = this->_mlmodel._repo + '/' + _template + ".prototxt";
         if (!fileops::file_exists(dest_net))
@@ -244,10 +289,13 @@ namespace dd
     if (unsupported_model_configuration)
       throw MLLibInternalException("Use of libtorch backend needs either: "
                                    "traced net, protofile or native template");
-    // Create the model
+
+    // FIXME(louis): out of if(bert) because we allow not to specify template
+    // at predict. Should we change this?
     this->_inputc._input_format = "bert";
     if (_template == "bert")
       {
+        // No allocation, use traced model in repo
         if (_classification)
           {
             _module._linear = nn::Linear(embedding_size, _nclasses);
@@ -255,69 +303,37 @@ namespace dd
             _module._hidden_states = true;
             _module._linear_in = 1;
           }
-        else if (!self_supervised.empty())
-          {
-            if (self_supervised != "mask")
-              {
-                throw MLLibBadParamException("self_supervised");
-              }
-            this->_logger->info("Masked Language model");
-            _masked_lm = true;
-            _seq_training = true;
-          }
-        else
-          {
-            throw MLLibBadParamException(
-                "BERT only supports self-supervised or classification");
-          }
       }
     else if (_template == "gpt2")
       {
+        // No allocation, use traced model in repo
         this->_inputc._input_format = "gpt2";
-        _seq_training = true;
-      }
-    else if (_template.find("recurrent") != std::string::npos
-             || NativeFactory::is_timeserie(_template))
-      {
-        _timeserie = true;
       }
     else if (!_template.empty())
       {
-        if (NativeFactory::valid_template_def(_template))
+        bool model_allocated_at_train = NativeFactory::is_timeserie(_template)
+                                        || _template == "recurrent";
+
+        if (model_allocated_at_train)
+          this->_logger->info("Model allocated during training");
+        else if (NativeFactory::valid_template_def(_template))
           _module.create_native_template<TInputConnectorStrategy>(
-              _template, lib_ad, this->_inputc, this->_mlmodel, _main_device);
+              _template, _template_params, this->_inputc, this->_mlmodel,
+              _main_device);
         else
           throw MLLibBadParamException("invalid torch model template "
                                        + _template);
       }
-
-    if (_classification)
+    if (_classification || _regression)
       {
-        this->_mltype = "classification";
         _module._nclasses = _nclasses;
 
         if (_finetuning)
           {
             _module._require_linear_layer = true;
-            this->_logger->info(
-                "Add classification layer on top of the traced model");
+            this->_logger->info("Add linear layer on top of the traced model");
           }
       }
-    else if (_regression)
-      {
-        this->_mltype = "regression";
-        _module._nclasses = _nclasses;
-
-        if (_finetuning)
-          {
-            _module._require_linear_layer = true;
-            this->_logger->info(
-                "Add regression layer on top of the traced model");
-          }
-      }
-
-    if (!_regression && !_timeserie && self_supervised.empty())
-      _classification = true; // classification is default
 
     // Load weights
     _module.load(this->_mlmodel);
@@ -326,9 +342,6 @@ namespace dd
     _best_metrics = { "map", "meaniou",  "mlacc", "delta_score_0.1", "bacc",
                       "f1",  "net_meas", "acc",   "L1_mean_error",   "eucll" };
     _best_metric_value = std::numeric_limits<double>::infinity();
-
-    if (lib_ad.has("template_params"))
-      _template_params = lib_ad;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
