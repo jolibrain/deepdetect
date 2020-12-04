@@ -572,7 +572,7 @@ namespace dd
           + std::to_string(nchannels) + ")");
 
     for (size_t m = 0; m < inputc->_mean.size(); m++)
-      imgt[0][m] = imgt[0][m].sub_(inputc->_mean.at(m));
+      imgt[m] = imgt[m].sub_(inputc->_mean.at(m));
 
     if (!inputc->_std.empty() && inputc->_std.size() != nchannels)
       throw InputConnectorBadParamException(
@@ -580,7 +580,7 @@ namespace dd
           + std::to_string(nchannels) + ")");
 
     for (size_t s = 0; s < inputc->_std.size(); s++)
-      imgt[0][s] = imgt[0][s].div_(inputc->_std.at(s));
+      imgt[s] = imgt[s].div_(inputc->_std.at(s));
 
     return imgt;
   }
