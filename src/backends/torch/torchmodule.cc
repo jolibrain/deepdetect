@@ -122,7 +122,8 @@ namespace dd
         _logger->info("loading " + tmodel._native);
         try
           {
-            torch::load(_native, tmodel._native, _device);
+            torch_utils::load_weights(*_native, tmodel._native, _device,
+                                      _logger);
           }
         catch (std::exception &e)
           {
