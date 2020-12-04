@@ -328,7 +328,7 @@ namespace dd
       {
         _module._nclasses = _nclasses;
 
-        if (_finetuning)
+        if (_finetuning && !_module._native)
           {
             _module._require_linear_layer = true;
             this->_logger->info("Add linear layer on top of the traced model");
