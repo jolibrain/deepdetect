@@ -186,7 +186,7 @@ histogram_equalization | bool | yes      | false   | Whether to equalize the ima
 mean           | float        | yes      | 128     | mean pixel value to be subtracted to input image
 mean           | array of int | yes      | N/A     | mean pixel value per channel to be subtracted to input image
 std            | float        | yes      | 128     | standard pixel value deviation to be applied to input image
-scale	       | float	      | yes	 | 1.0	   | Multiply value of each pixel by a factor
+scale	       | float	      | yes	 | 1.0	   | Multiply value of each pixel by a factor. By default pixel values are between 0 and 255.
 scale_min      | float        | yes	 | 600     | min scaling dim size
 scale_max      | float        | yes      | 1000    | max scaling dim size
 segmentation   | bool         | yes      | false   | whether to setup an image connector for a segmentation task (`caffe` only)
@@ -579,7 +579,7 @@ histogram_equalization | bool | yes      | false   | Whether to equalize the ima
 mean           | float        | yes      | 128     | mean pixel value to be subtracted to input image
 mean           | array of int | yes      | N/A     | mean pixel value per channel to be subtracted to input image
 std            | float        | yes      | 128     | standard pixel value deviation to be applied to input image
-scale	       | float	      | yes	 | 1.0	   | Multiply value of each pixel by a factor
+scale	       | float	      | yes	 | 1.0	   | Multiply value of each pixel by a factor. By default pixel values are between 0 and 255.
 scale_min      | float        | yes	 | 600     | min scaling dim size
 scale_max      | float        | yes      | 1000    | max scaling dim size
 test_split   | real | yes      | 0       | Test split part of the dataset
@@ -776,7 +776,7 @@ gradient_centralization | bool | yes | false for RANGER, true for RANGER_PLUS| f
 test_interval | int    | yes      | N/A     | Number of iterations between testing phases
 base_lr       | real   | yes      | N/A     | Initial learning rate
 iter_size     | int    | yes      | 1       | Number of passes (iter_size * batch_size) at every iteration
-resume        | bool   | yes      | false   | Whether to resume training from solver state 
+resume        | bool   | yes      | false   | Whether to resume training from solver state
 
 Net:
 
