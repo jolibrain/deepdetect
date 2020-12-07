@@ -69,7 +69,8 @@ namespace dd
     virtual torch::Tensor cleanup_output(torch::Tensor output) = 0;
 
     virtual torch::Tensor loss(std::string loss, torch::Tensor input,
-                               torch::Tensor output, torch::Tensor target)
+                               torch::Tensor output, torch::Tensor target,
+                               std::vector<double> &cwv)
         = 0;
   };
 

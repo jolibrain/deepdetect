@@ -313,12 +313,14 @@ namespace dd
     }
 
     virtual torch::Tensor loss(std::string loss, torch::Tensor input,
-                               torch::Tensor output, torch::Tensor target)
+                               torch::Tensor output, torch::Tensor target,
+                               std::vector<double> &cwv)
     {
       (void)loss;
       (void)input;
       (void)output;
       (void)target;
+      (void)cwv;
       return torch::Tensor();
     }
 

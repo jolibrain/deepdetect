@@ -367,12 +367,24 @@ namespace dd
     }
 
     virtual torch::Tensor loss(std::string loss, torch::Tensor input_real,
-                               torch::Tensor output, torch::Tensor target)
+                               torch::Tensor output, torch::Tensor target,
+                               std::vector<double> &cwv)
     {
       torch::Tensor x_pred = torch::slice(output, 1, 0, _backcast_length);
       torch::Tensor y_pred = torch::slice(output, 1, _backcast_length,
                                           _backcast_length + _forecast_length);
       torch::Tensor input_zeros = torch::zeros_like(input_real);
+      auto options = torch::TensorOptions().dtype(torch::kFloat64);
+      if (cwv.size() == static_cast<unsigned int>(y_pred.size(2)))
+        {
+          torch::Tensor cw
+              = torch::from_blob(cwv.data(), { y_pred.size(2) }, options)
+                    .to(torch::kFloat32)
+                    .to(y_pred.device());
+          y_pred.mul(cw);
+          x_pred.mul(cw);
+          target.mul(cw);
+        }
       if (loss.empty() || loss == "L1" || loss == "l1")
         return torch::l1_loss(y_pred, target)
                + torch::l1_loss(x_pred, input_zeros);
