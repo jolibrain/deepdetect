@@ -381,9 +381,13 @@ namespace dd
               = torch::from_blob(cwv.data(), { y_pred.size(2) }, options)
                     .to(torch::kFloat32)
                     .to(y_pred.device());
-          y_pred.mul(cw);
-          x_pred.mul(cw);
-          target.mul(cw);
+          torch::Tensor yp = y_pred.mul(cw);
+          torch::Tensor xp = x_pred.mul(cw);
+          torch::Tensor t = target.mul(cw);
+          if (loss.empty() || loss == "L1" || loss == "l1")
+            return torch::l1_loss(yp, t) + torch::l1_loss(xp, input_zeros);
+          if (loss == "L2" || loss == "l2" || loss == "eucl")
+            return torch::mse_loss(yp, t) + torch::mse_loss(xp, input_zeros);
         }
       if (loss.empty() || loss == "L1" || loss == "l1")
         return torch::l1_loss(y_pred, target)
