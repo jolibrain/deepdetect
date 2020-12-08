@@ -35,7 +35,7 @@ namespace dd
     _fc1 = register_module("fc1", torch::nn::Linear(_input_dim, _hidden_dim));
     _fc2 = register_module("fc2", torch::nn::Linear(_hidden_dim, _output_dim));
     _drop1 = register_module(
-        "drop1", torch::nn::Dropout(torch::nn::DropoutOptions(_drop)));
+        "drop", torch::nn::Dropout(torch::nn::DropoutOptions(_drop)));
   }
 
   torch::Tensor ViT::MLPImpl::forward(torch::Tensor x)
@@ -255,11 +255,10 @@ namespace dd
 
     for (unsigned int d = 0; d < _depth; ++d)
       {
-        _blocks.push_back(
-            register_module("block_" + std::to_string(d),
-                            Block(embed_dim, num_heads, mlp_ratio, qkv_bias,
-                                  qk_scale, drop_rate, attn_drop_rate)));
+        _blocks->push_back(Block(embed_dim, num_heads, mlp_ratio, qkv_bias,
+                                 qk_scale, drop_rate, attn_drop_rate));
       }
+    register_module("blocks", _blocks);
     _norm = register_module(
         "norm",
         torch::nn::LayerNorm(torch::nn::LayerNormOptions({ embed_dim })));
@@ -278,12 +277,8 @@ namespace dd
     x = x + _pos_embed;
     x = _pos_drop(x);
 
-    for (auto &blk : _blocks)
-      {
-        // blk->pretty_print(std::cout);
-        // x = blk->as<Block>()(x);
-        x = blk->forward(x);
-      }
+    for (const auto &blk : *_blocks)
+      x = blk->as<Block>()->forward(x);
 
     x = _norm(x);
     x = torch::narrow(x, 1, 0, 1); // x[:,0]

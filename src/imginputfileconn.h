@@ -550,6 +550,7 @@ namespace dd
 #ifdef USE_CUDA_CV
       dimg._cuda = _cuda;
 #endif
+      dimg._logger = _logger;
     }
 
     int feature_size() const

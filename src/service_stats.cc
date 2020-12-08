@@ -82,6 +82,9 @@ namespace dd
     stats.add("avg_transform_duration_ms", _avg_transform_duration_ms);
     stats.add("avg_predict_duration_s", _avg_predict_duration_ms / 1000.0);
     stats.add("avg_transform_duration_s", _avg_transform_duration_ms / 1000.0);
+    stats.add("total_predict_duration_ms", _predict_total_duration_ms.count());
+    stats.add("total_transform_duration_ms",
+              _transform_total_duration_ms.count());
 
     // FIXME(sileht): to deprecate
     stats.add("avg_predict_duration", _avg_predict_duration_ms / 1000.0);
@@ -89,5 +92,4 @@ namespace dd
 
     ad.add("service_stats", stats);
   }
-
 }
