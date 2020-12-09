@@ -26,7 +26,8 @@
 
 #include "ut-oatpp.h"
 
-const char *serv = "myserv";
+const std::string serv = "very_long_label_service_name_with_😀_inside";
+const std::string serv2 = "myserv2";
 #ifdef CPU_ONLY
 static std::string iterations_mnist = "10";
 #else
@@ -59,7 +60,7 @@ void test_services(std::shared_ptr<DedeApiTestClient> client)
         "\"layers\":[50,50,50],\"activation\":\"PReLU\"}},\"model\":{"
         "\"templates\":\"../templates/caffe/\",\"repository\":\".\"}}";
 
-  auto response = client->put_services(serv, serv_put.c_str());
+  auto response = client->put_services(serv.c_str(), serv_put.c_str());
   auto message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
   std::cout << "jstr=" << message.get()->std_str() << std::endl;
@@ -72,7 +73,7 @@ void test_services(std::shared_ptr<DedeApiTestClient> client)
   ASSERT_EQ(201, d["status"]["code"].GetInt());
 
   // service info
-  response = client->get_services(serv);
+  response = client->get_services(serv.c_str());
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
   std::cout << "jstr=" << message.get()->std_str() << std::endl;
@@ -82,7 +83,7 @@ void test_services(std::shared_ptr<DedeApiTestClient> client)
   ASSERT_TRUE(d.HasMember("status"));
   ASSERT_TRUE(d.HasMember("body"));
   ASSERT_EQ("caffe", d["body"]["mllib"]);
-  ASSERT_EQ("myserv", d["body"]["name"]);
+  ASSERT_EQ(serv.c_str(), d["body"]["name"]);
   ASSERT_TRUE(d["body"].HasMember("jobs"));
 
   // info call
@@ -97,7 +98,7 @@ void test_services(std::shared_ptr<DedeApiTestClient> client)
   ASSERT_EQ(1, d["head"]["services"].Size());
 
   // delete call
-  response = client->delete_services(serv, nullptr);
+  response = client->delete_services(serv.c_str(), nullptr);
   ASSERT_EQ(response->getStatusCode(), 200);
 
   // info call
@@ -112,7 +113,7 @@ void test_services(std::shared_ptr<DedeApiTestClient> client)
   ASSERT_EQ(0, d["head"]["services"].Size());
 
   // service info
-  response = client->get_services(serv);
+  response = client->get_services(serv.c_str());
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
   std::cout << "jstr=" << message.get()->std_str() << std::endl;
@@ -133,7 +134,7 @@ void test_train(std::shared_ptr<DedeApiTestClient> client)
           "\"nclasses\":10}}}";
 
   // service creation
-  auto response = client->put_services(serv, serv_put2.c_str());
+  auto response = client->put_services(serv.c_str(), serv_put2.c_str());
   auto message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
   std::cout << "jstr=" << message.get()->std_str() << std::endl;
@@ -145,7 +146,7 @@ void test_train(std::shared_ptr<DedeApiTestClient> client)
   ASSERT_EQ(201, d["status"]["code"].GetInt());
 
   // train blocking
-  std::string train_post = "{\"service\":\"" + std::string(serv)
+  std::string train_post = "{\"service\":\"" + serv
                            + "\",\"async\":false,\"parameters\":{\"mllib\":{"
                              "\"gpu\":true,\"solver\":{\"iterations\":"
                            + iterations_mnist + "}}}}";
@@ -165,11 +166,11 @@ void test_train(std::shared_ptr<DedeApiTestClient> client)
   ASSERT_TRUE(fabs(d["body"]["measure"]["train_loss"].GetDouble()) > 0.0);
 
   // remove service and trained model files
-  response = client->delete_services(serv, "lib");
+  response = client->delete_services(serv.c_str(), "lib");
   ASSERT_EQ(response->getStatusCode(), 200);
 
   // service creation
-  response = client->put_services(serv, serv_put2.c_str());
+  response = client->put_services(serv.c_str(), serv_put2.c_str());
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
   std::cout << "jstr=" << message.get()->std_str() << std::endl;
@@ -180,7 +181,7 @@ void test_train(std::shared_ptr<DedeApiTestClient> client)
   ASSERT_EQ(201, d["status"]["code"].GetInt());
 
   // train async
-  train_post = "{\"service\":\"" + std::string(serv)
+  train_post = "{\"service\":\"" + serv
                + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,"
                  "\"solver\":{\"iterations\":"
                + iterations_mnist + "}}}}";
@@ -195,7 +196,7 @@ void test_train(std::shared_ptr<DedeApiTestClient> client)
   sleep(1);
 
   // service info
-  response = client->get_services(serv);
+  response = client->get_services(serv.c_str());
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
   std::cout << "jstr=" << message.get()->std_str() << std::endl;
@@ -205,7 +206,7 @@ void test_train(std::shared_ptr<DedeApiTestClient> client)
   ASSERT_TRUE(d.HasMember("status"));
   ASSERT_TRUE(d.HasMember("body"));
   ASSERT_EQ("caffe", d["body"]["mllib"]);
-  ASSERT_EQ("myserv", d["body"]["name"]);
+  ASSERT_EQ(serv.c_str(), d["body"]["name"]);
   ASSERT_TRUE(d["body"].HasMember("jobs"));
   ASSERT_EQ("running", d["body"]["jobs"][0]["status"]);
 
@@ -213,7 +214,7 @@ void test_train(std::shared_ptr<DedeApiTestClient> client)
   bool running = true;
   while (running)
     {
-      response = client->get_train(serv, 1, 1, 100);
+      response = client->get_train(serv.c_str(), 1, 1, 100);
       message = response->readBodyToString();
       ASSERT_TRUE(message != nullptr);
       std::string jstr = message.get()->std_str();
@@ -247,7 +248,7 @@ void test_train(std::shared_ptr<DedeApiTestClient> client)
     }
 
   // remove service and trained model files
-  response = client->delete_services(serv, "lib");
+  response = client->delete_services(serv.c_str(), "lib");
   ASSERT_EQ(response->getStatusCode(), 200);
 }
 
@@ -263,7 +264,7 @@ void test_multiservices(std::shared_ptr<DedeApiTestClient> client)
           "\"nclasses\":10}}}";
 
   // service creation
-  auto response = client->put_services(serv, serv_put2.c_str());
+  auto response = client->put_services(serv.c_str(), serv_put2.c_str());
   auto message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
   std::cout << "jstr=" << message.get()->std_str() << std::endl;
@@ -275,8 +276,7 @@ void test_multiservices(std::shared_ptr<DedeApiTestClient> client)
   ASSERT_EQ(201, d["status"]["code"].GetInt());
 
   // service creation
-  const char *serv2 = "myserv2";
-  response = client->put_services(serv2, serv_put2.c_str());
+  response = client->put_services(serv2.c_str(), serv_put2.c_str());
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
   std::cout << "jstr=" << message.get()->std_str() << std::endl;
@@ -297,13 +297,13 @@ void test_multiservices(std::shared_ptr<DedeApiTestClient> client)
   d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
   ASSERT_TRUE(d["head"].HasMember("services"));
   ASSERT_EQ(2, d["head"]["services"].Size());
-  ASSERT_TRUE(jstr.find("\"name\":\"myserv\"") != std::string::npos);
+  ASSERT_TRUE(jstr.find("\"name\":\"" + serv + "\"") != std::string::npos);
   ASSERT_TRUE(jstr.find("\"name\":\"myserv2\"") != std::string::npos);
 
   // remove services and trained model files
-  response = client->delete_services(serv, "lib");
+  response = client->delete_services(serv.c_str(), "lib");
   ASSERT_EQ(response->getStatusCode(), 200);
-  response = client->delete_services(serv2, "lib");
+  response = client->delete_services(serv2.c_str(), "lib");
   ASSERT_EQ(response->getStatusCode(), 200);
 }
 
@@ -319,7 +319,7 @@ void test_concurrency(std::shared_ptr<DedeApiTestClient> client)
           "\"nclasses\":10}}}";
 
   // service creation
-  auto response = client->put_services(serv, serv_put2.c_str());
+  auto response = client->put_services(serv.c_str(), serv_put2.c_str());
   auto message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
   std::cout << "jstr=" << message.get()->std_str() << std::endl;
@@ -332,7 +332,7 @@ void test_concurrency(std::shared_ptr<DedeApiTestClient> client)
 
   // train async
   std::string train_post
-      = "{\"service\":\"" + std::string(serv)
+      = "{\"service\":\"" + serv
         + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,"
           "\"solver\":{\"iterations\":10000}}}}";
   response = client->post_train(train_post.c_str());
@@ -344,8 +344,7 @@ void test_concurrency(std::shared_ptr<DedeApiTestClient> client)
   ASSERT_FALSE(d.HasMember("body"));
 
   // service creation
-  const char *serv2 = "myserv2";
-  response = client->put_services(serv2, serv_put2.c_str());
+  response = client->put_services(serv2.c_str(), serv_put2.c_str());
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
   std::cout << "jstr=" << message.get()->std_str() << std::endl;
@@ -366,11 +365,11 @@ void test_concurrency(std::shared_ptr<DedeApiTestClient> client)
   d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
   ASSERT_TRUE(d["head"].HasMember("services"));
   ASSERT_EQ(2, d["head"]["services"].Size());
-  ASSERT_TRUE(jstr.find("\"name\":\"myserv\"") != std::string::npos);
-  ASSERT_TRUE(jstr.find("\"name\":\"myserv2\"") != std::string::npos);
+  ASSERT_TRUE(jstr.find("\"name\":\"" + serv + "\"") != std::string::npos);
+  ASSERT_TRUE(jstr.find("\"name\":\"" + serv2 + "\"") != std::string::npos);
 
   // train async second job
-  train_post = "{\"service\":\"" + std::string(serv2)
+  train_post = "{\"service\":\"" + serv2
                + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,"
                  "\"solver\":{\"iterations\":10000}}}}";
   response = client->post_train(train_post.c_str());
@@ -384,7 +383,7 @@ void test_concurrency(std::shared_ptr<DedeApiTestClient> client)
   sleep(1);
 
   // get info on job2
-  response = client->get_train(serv2, 1, nullptr, nullptr);
+  response = client->get_train(serv2.c_str(), 1, nullptr, nullptr);
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
   std::cout << "jstr=" << message.get()->std_str() << std::endl;
@@ -395,7 +394,7 @@ void test_concurrency(std::shared_ptr<DedeApiTestClient> client)
   bool running = true;
   while (running)
     {
-      response = client->get_train(serv2, 1, 1, nullptr);
+      response = client->get_train(serv2.c_str(), 1, 1, nullptr);
       message = response->readBodyToString();
       ASSERT_TRUE(message != nullptr);
       std::string jstr = message.get()->std_str();
@@ -427,7 +426,7 @@ void test_concurrency(std::shared_ptr<DedeApiTestClient> client)
     }
 
   // delete job1
-  response = client->delete_train(serv, 1);
+  response = client->delete_train(serv.c_str(), 1);
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
   std::cout << "jstr=" << message.get()->std_str() << std::endl;
@@ -440,11 +439,11 @@ void test_concurrency(std::shared_ptr<DedeApiTestClient> client)
   sleep(1);
 
   // get info on job1
-  response = client->get_train(serv, 1, nullptr, nullptr);
+  response = client->get_train(serv.c_str(), 1, nullptr, nullptr);
   ASSERT_EQ(response->getStatusCode(), 404);
 
   // delete job2
-  response = client->delete_train(serv2, 1);
+  response = client->delete_train(serv2.c_str(), 1);
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
   std::cout << "jstr=" << message.get()->std_str() << std::endl;
@@ -457,13 +456,13 @@ void test_concurrency(std::shared_ptr<DedeApiTestClient> client)
   sleep(1);
 
   // get info on job2
-  response = client->get_train(serv2, 1, nullptr, nullptr);
+  response = client->get_train(serv2.c_str(), 1, nullptr, nullptr);
   ASSERT_EQ(response->getStatusCode(), 404);
 
   // remove services and trained model files
-  response = client->delete_services(serv, "lib");
+  response = client->delete_services(serv.c_str(), "lib");
   ASSERT_EQ(response->getStatusCode(), 200);
-  response = client->delete_services(serv2, "lib");
+  response = client->delete_services(serv2.c_str(), "lib");
   ASSERT_EQ(response->getStatusCode(), 200);
 }
 
@@ -480,7 +479,7 @@ void test_predict(std::shared_ptr<DedeApiTestClient> client)
   // service creation
   std::string jstr;
 
-  auto response = client->put_services(serv, serv_put2.c_str());
+  auto response = client->put_services(serv.c_str(), serv_put2.c_str());
   auto message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
   std::cout << "jstr=" << message.get()->std_str() << std::endl;
@@ -493,7 +492,7 @@ void test_predict(std::shared_ptr<DedeApiTestClient> client)
 
   // train sync
   std::string train_post
-      = "{\"service\":\"" + std::string(serv)
+      = "{\"service\":\"" + serv
         + "\",\"async\":false,\"parameters\":{\"mllib\":{\"gpu\":true,"
           "\"solver\":{\"iterations\":"
         + iterations_mnist + ",\"snapshot_prefix\":\"" + mnist_repo
@@ -521,7 +520,7 @@ void test_predict(std::shared_ptr<DedeApiTestClient> client)
 
   // predict
   std::string predict_post
-      = "{\"service\":\"" + std::string(serv)
+      = "{\"service\":\"" + serv
         + "\",\"parameters\":{\"mllib\":{\"gpu\":true},\"input\":{\"bw\":true,"
           "\"width\":28,\"height\":28},\"output\":{\"best\":3}},\"data\":[\""
         + mnist_repo + "/sample_digit.png\",\"" + mnist_repo
@@ -535,6 +534,9 @@ void test_predict(std::shared_ptr<DedeApiTestClient> client)
   jd.Parse<rapidjson::kParseNanAndInfFlag>(message.get()->c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_TRUE(jd.HasMember("head"));
+  ASSERT_EQ(serv.c_str(), jd["head"]["service"]);
+  ASSERT_EQ("/predict", jd["head"]["method"]);
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
               > 0);
   ASSERT_TRUE(jd["body"]["predictions"][1]["classes"][0]["prob"].GetDouble()
@@ -546,7 +548,7 @@ void test_predict(std::shared_ptr<DedeApiTestClient> client)
         "status}}\\n{{#body}}{{#predictions}}*{{uri}}:\\n{{#classes}}{{cat}}->"
         "{{prob}}\\n{{/classes}}{{/predictions}}{{/body}}";
   predict_post
-      = "{\"service\":\"" + std::string(serv)
+      = "{\"service\":\"" + serv
         + "\",\"parameters\":{\"mllib\":{\"gpu\":true},\"input\":{\"bw\":true,"
           "\"width\":28,\"height\":28},\"output\":{\"best\":3,\"template\":\""
         + ot + "\"}},\"data\":[\"" + mnist_repo + "/sample_digit.png\",\""
@@ -559,7 +561,7 @@ void test_predict(std::shared_ptr<DedeApiTestClient> client)
   ASSERT_EQ(response->getStatusCode(), 200);
 
   // remove services and trained model files
-  response = client->delete_services(serv, "lib");
+  response = client->delete_services(serv.c_str(), "lib");
   ASSERT_EQ(response->getStatusCode(), 200);
 }
 
