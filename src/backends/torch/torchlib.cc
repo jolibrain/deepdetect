@@ -434,6 +434,9 @@ namespace dd
                  + std::to_string(elapsed_it) + ".pt")
                     .c_str());
     std::remove((this->_mlmodel._repo + "/checkpoint-"
+                 + std::to_string(elapsed_it) + ".npt")
+                    .c_str());
+    std::remove((this->_mlmodel._repo + "/checkpoint-"
                  + std::to_string(elapsed_it) + ".ptw")
                     .c_str());
   }
