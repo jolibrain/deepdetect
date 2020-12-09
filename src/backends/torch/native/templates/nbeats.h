@@ -354,20 +354,20 @@ namespace dd
         }
     }
 
-    virtual torch::Tensor forward(torch::Tensor x);
-    virtual torch::Tensor extract(torch::Tensor x, std::string extract_layer);
+    torch::Tensor forward(torch::Tensor x) override;
+    torch::Tensor extract(torch::Tensor x, std::string extract_layer) override;
 
-    virtual bool extractable(std::string extract_layer) const;
-    virtual std::vector<std::string> extractable_layers() const;
+    bool extractable(std::string extract_layer) const override;
+    std::vector<std::string> extractable_layers() const override;
 
-    virtual torch::Tensor cleanup_output(torch::Tensor output)
+    torch::Tensor cleanup_output(torch::Tensor output) override
     {
       return torch::slice(output, 1, _backcast_length,
                           _backcast_length + _forecast_length);
     }
 
-    virtual torch::Tensor loss(std::string loss, torch::Tensor input_real,
-                               torch::Tensor output, torch::Tensor target)
+    torch::Tensor loss(std::string loss, torch::Tensor input_real,
+                       torch::Tensor output, torch::Tensor target) override
     {
       torch::Tensor x_pred = torch::slice(output, 1, 0, _backcast_length);
       torch::Tensor y_pred = torch::slice(output, 1, _backcast_length,
@@ -382,7 +382,7 @@ namespace dd
       throw MLLibBadParamException("unknown loss " + loss);
     }
 
-    virtual ~NBeats()
+    ~NBeats() override
     {
     }
 
