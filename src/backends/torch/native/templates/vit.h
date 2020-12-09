@@ -319,7 +319,7 @@ namespace dd
       (void)input;
       (void)output;
       (void)target;
-      return torch::Tensor();
+      throw MLLibInternalException("ViT::loss not implemented");
     }
 
     virtual void update_input_connector(TorchInputInterface &inputc)
@@ -352,8 +352,7 @@ namespace dd
     torch::Tensor _cls_token;
     torch::Tensor _pos_embed;
     torch::nn::Dropout _pos_drop{ nullptr };
-    // torch::nn::ModuleList _blocks;
-    std::vector<Block> _blocks;
+    torch::nn::ModuleList _blocks;
     torch::nn::LayerNorm _norm{ nullptr };
     torch::nn::Linear _head{ nullptr };
   };
