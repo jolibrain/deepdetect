@@ -53,6 +53,7 @@ for name in $NAMES; do
         release="ON"
     fi
 
+    # BUILD
     docker build \
         -t $image_url:$TMP_TAG \
         --progress plain \
@@ -61,6 +62,29 @@ for name in $NAMES; do
         -f docker/${arch}.Dockerfile \
         .
 
+    # TEST
+    CONTAINER_NAME="ci_testing_deepdetect_${name}_${TMP_TAG}"
+    docker run -p 1025-65535:8080 -d --name $CONTAINER_NAME $image_url:$TMP_TAG
+    log_and_cleanup () {
+        docker logs $CONTAINER_NAME
+        docker stop $CONTAINER_NAME
+        docker rm $CONTAINER_NAME
+    }
+    trap log_and_cleanup EXIT
+
+    PORT=$(docker port $CONTAINER_NAME 8080/tcp | awk -F: '{print $2}')
+
+    timeout 60 sh -c "until nc -z localhost $PORT; do sleep 1; done"
+
+    sleep 5  # Wait dd start
+
+    curl -s --head --request GET http://localhost:$PORT/info | head -1 | grep 'HTTP/1.1 200'
+    trap - EXIT
+
+    docker stop $CONTAINER_NAME
+    docker rm $CONTAINER_NAME
+
+    # PUSH
     if [ "$TMP_TAG" != "trash" ]; then
         docker tag $image_url:$TMP_TAG ceres:5000/$image_url:$TMP_TAG
         docker push ceres:5000/$image_url:$TMP_TAG
