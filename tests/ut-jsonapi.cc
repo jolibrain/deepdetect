@@ -196,6 +196,11 @@ TEST(jsonapi, service_status)
   ASSERT_EQ(jd["body"]["service_stats"]["avg_predict_duration_ms"].GetDouble(),
             -1);
   ASSERT_EQ(jd["body"]["service_stats"]["avg_batch_size"].GetDouble(), -1);
+  ASSERT_EQ(
+      jd["body"]["service_stats"]["total_predict_duration_ms"].GetDouble(), 0);
+  ASSERT_EQ(
+      jd["body"]["service_stats"]["total_transform_duration_ms"].GetDouble(),
+      0);
 
   std::string jpredictstr
       = "{\"service\":\"" + sname
@@ -224,6 +229,11 @@ TEST(jsonapi, service_status)
   ASSERT_GT(jd["body"]["service_stats"]["avg_predict_duration_ms"].GetDouble(),
             0);
   ASSERT_EQ(jd["body"]["service_stats"]["avg_batch_size"].GetDouble(), 0);
+  ASSERT_GE(
+      jd["body"]["service_stats"]["total_predict_duration_ms"].GetDouble(), 0);
+  ASSERT_GE(
+      jd["body"]["service_stats"]["total_transform_duration_ms"].GetDouble(),
+      0);
 }
 
 TEST(jsonapi, service_purge)

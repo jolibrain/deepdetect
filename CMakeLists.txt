@@ -14,7 +14,6 @@ option(USE_CAFFE "use Caffe backend" ON)
 option(USE_TENSORRT "use TensorRT backend" OFF)
 option(USE_TENSORRT_OSS "alias of USE_TENSORRT" OFF)
 option(USE_XGBOOST "use XGBOOST backend" OFF)
-option(USE_XGBOOST_GPU "compile XGBOOST with CUDA" OFF)
 option(USE_DLIB "use Dlib backend" OFF)
 option(USE_CUDNN "enable CUDNN" OFF)
 option(USE_TSNE "enable TSNE" OFF)
@@ -40,7 +39,7 @@ if (USE_TORCH AND USE_CAFFE2)
   message(FATAL_ERROR "Building with torch AND caffe2 can't be build together")
 endif()
 
-if (USE_TF AND USE_CAFFE2)
+if (USE_TF AND USE_TORCH)
   message(FATAL_ERROR "Building with tensorflow AND torch can't be build together")
 endif()
 
@@ -211,24 +210,61 @@ endif()
 find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system iostreams stacktrace_backtrace)
 string(APPEND CMAKE_CXX_FLAGS " -DBOOST_STACKTRACE_USE_BACKTRACE -DBOOST_STACKTRACE_LINK")
 
-# optional packages
-if (USE_CPU_ONLY)
-  set(USE_CAFFE_CPU_ONLY ON)
-  if (USE_TF)
-    set(USE_TF_CPU_ONLY ON)
-  endif()
-  if (USE_DLIB)
-    set(USE_DLIB_CPU_ONLY ON)
-  endif()
-else()
-    if (USE_DLIB AND NOT USE_DLIB_CPU_ONLY)
-        message(STATUS "Dlib enabled with CUDA requires cuDNN - enabling cuDNN")
-        set(USE_CUDNN ON)
-      endif()
-cmake_minimum_required(VERSION 3.14)
-include(cmake/Cuda.cmake) # cuda + cudnn
+
+# CUDA OR CPU options
+option(USE_XGBOOST_CPU_ONLY "use XGBOOST without CUDA" ON)
+option(USE_TF_CPU_ONLY "use TF without CUDA" OFF)
+option(USE_TORCH_CPU_ONLY "use TORCH without CUDA" OFF)
+option(USE_CAFFE_CPU_ONLY "use CAFFE without CUDA" OFF)
+option(USE_DLIB_CPU_ONLY "use DLIB without CUDA" OFF)
+option(USE_CAFFE2_CPU_ONLY "use CAFFE2 without CUDA" OFF)
+option(USE_FAISS_CPU_ONLY "use FAISS without CUDA" OFF)
+
+# Deprecated flag
+if (USE_XGBOOST_GPU)
+  set(USE_XGBOOST_CPU_ONLY OFF)
 endif()
 
+if (USE_CPU_ONLY)
+  set(USE_XGBOOST_CPU_ONLY ON)
+  set(USE_CAFFE_CPU_ONLY ON)
+  set(USE_DLIB_CPU_ONLY ON)
+  set(USE_TF_CPU_ONLY ON)
+  set(USE_CAFFE2_CPU_ONLY ON)
+  set(USE_TORCH_CPU_ONLY ON)
+  set(USE_FAISS_CPU_ONLY ON)
+else()
+  cmake_minimum_required(VERSION 3.14)
+  include(cmake/Cuda.cmake) # cuda + cudnn
+endif()
+
+# CUDA validation
+if (NOT CUDA_FOUND)
+  if (USE_TENSORRT)
+      message(FATAL, "USE_TENSORRT=ON needs CUDA installed")
+  endif()
+  if (USE_TF AND NOT USE_TF_CPU_ONLY)
+      message(FATAL, "USE_TF=ON needs CUDA installed")
+  endif()
+  if (USE_CAFFE AND NOT USE_CAFFE_CPU_ONLY)
+      message(FATAL, "USE_CAFFE=ON needs CUDA installed")
+  endif()
+  if (USE_DLIB AND NOT USE_DLIB_CPU_ONLY)
+      message(FATAL, "USE_DLIB=ON needs CUDA installed")
+      if (USE_CUDNN)
+          message(FATAL "Dlib GPU enabled without cuDNN, please set -DUSE_CUDNN=ON")
+      endif()
+  endif()
+  if (USE_TORCH AND NOT USE_TORCH_CPU_ONLY)
+      message(FATAL, "USE_TORCH=ON needs CUDA installed")
+  endif()
+  if (USE_CAFFE2 AND NOT USE_CAFFE2_CPU_ONLY)
+      message(FATAL, "USE_CAFFE2=ON needs CUDA installed")
+  endif()
+  if (USE_FAISS AND NOT USE_FAISS_CPU_ONLY)
+      message(FATAL, "USE_FAISS=ON needs CUDA installed")
+  endif()
+endif()
 
 # annoy
 if (USE_CAFFE)
@@ -256,18 +292,18 @@ if (USE_CAFFE)
       )
 
       set(ANNOY_INCLUDE_DIR ${CMAKE_BINARY_DIR}/annoy/src/annoy/src/)
-      include_directories("${ANNOY_INCLUDE_DIR}")
+      include_directories(SYSTEM "${ANNOY_INCLUDE_DIR}")
     endif()
     if(USE_FAISS)
-      if (NOT USE_CPU_ONLY AND CUDA_FOUND)
+      if (USE_FAISS_CPU_ONLY)
+        set(CONFIGURE_OPTS "--without-cuda")
+      else()
         string(REPLACE "/include" "" CUDA_PREFIX ${CUDA_INCLUDE_DIRS})
         if (NOT CUDA_ARCH)
           string(REPLACE ";" " " CUDA_ARCH "${CUDA_NVCC_FLAGS}")
         endif()
         set(CONFIGURE_OPTS --with-cuda=${CUDA_PREFIX} --with-cuda-arch=${CUDA_ARCH})
         add_definitions(-DUSE_GPU_FAISS)
-      else()
-        set(CONFIGURE_OPTS "--without-cuda")
       endif()
       message(STATUS "Fetching FAISS")
       add_definitions(-DUSE_FAISS)
@@ -276,7 +312,7 @@ if (USE_CAFFE)
         faisslib
         PREFIX faiss
         SOURCE_DIR ${CMAKE_BINARY_DIR}/faiss/src/faiss
-        GIT_REPOSITORY https://github.com/fantes/faiss
+        GIT_REPOSITORY https://github.com/jolibrain/faiss
         CONFIGURE_COMMAND ./configure ${CONFIGURE_OPTS}
         INSTALL_COMMAND ""
         BUILD_IN_SOURCE 1
@@ -292,12 +328,6 @@ else()
   set(USE_SIMSEARCH OFF)
 endif()
 
-if (USE_TENSORRT)
-  add_definitions(-DUSE_TENSORRT)
-  message(STATUS "TensorRT backend requires CUDA + CUDNN, enabling GPU, CUDA and CUDNN")
-  set(USE_CPU_ONLY OFF)
-  set(USE_CUDNN ON)
-endif()
 
 if (USE_CUDNN)
   find_package(CUDNN REQUIRED)
@@ -312,9 +342,6 @@ if (CUDA_FOUND)
 else()
   set(CUDA_LIB_DEPS "")
   add_definitions(-DCPU_ONLY)
-  if (USE_TENSORRT)
-    message(FATAL_ERROR "Could not find CUDA, unable to build with TensorRT backend, aborting")
-  endif()
 endif()
 
 if (USE_DLIB)
@@ -326,7 +353,17 @@ if (USE_DLIB)
     add_definitions(-DUSE_DLIB)
     set(DLIB_LIB_DEPS -ldlib -lopenblas)
 
-    if (CUDA_FOUND AND NOT USE_DLIB_CPU_ONLY)
+    if (USE_DLIB_CPU_ONLY)
+        ExternalProject_Add(
+            dlib
+            PREFIX dlib
+            URL https://github.com/davisking/dlib/archive/${DLIB_RELEASE_VERSION}.tar.gz
+            CONFIGURE_COMMAND cd dlib && mkdir -p build && cd build && cmake .. -DDLIB_NO_GUI_SUPPORT=ON -DDLIB_USE_CUDA=OFF -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/dlib/build && cmake --build . --config Release --target install
+            BUILD_COMMAND ""
+            INSTALL_COMMAND ""
+            BUILD_IN_SOURCE 1
+        )
+    else()
         if (NOT USE_CUDNN)
             message(FATAL_ERROR "Dlib with CUDA must also enable cuDNN. Use -DUSE_CUDNN=ON")
         endif()
@@ -338,16 +375,6 @@ if (USE_DLIB)
           BUILD_COMMAND ""
           INSTALL_COMMAND ""
           BUILD_IN_SOURCE 1
-        )
-    else()
-        ExternalProject_Add(
-            dlib
-            PREFIX dlib
-            URL https://github.com/davisking/dlib/archive/${DLIB_RELEASE_VERSION}.tar.gz
-            CONFIGURE_COMMAND cd dlib && mkdir -p build && cd build && cmake .. -DDLIB_NO_GUI_SUPPORT=ON -DDLIB_USE_CUDA=OFF -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/dlib/build && cmake --build . --config Release --target install
-            BUILD_COMMAND ""
-            INSTALL_COMMAND ""
-            BUILD_IN_SOURCE 1
         )
     endif()
     set(DLIB_INC_DIR ${CMAKE_BINARY_DIR}/dlib/build/include)
@@ -365,7 +392,7 @@ if (USE_CAFFE2)
 
   add_definitions(-DUSE_CAFFE2)
   list(APPEND CAFFE2_LIB_DEPS -lcaffe2)
-  if (CUDA_FOUND AND NOT USE_CPU_ONLY)
+  if (NOT USE_CAFFE2_CPU_ONLY)
     list(APPEND CAFFE2_LIB_DEPS -lcaffe2_gpu)
   endif()
 
@@ -484,18 +511,8 @@ if (USE_TF)
   message(STATUS "Fetching Tensorflow")
   add_definitions(-DUSE_TF)
   set(TF_LIB_DEPS -ltensorflow_cc)
-  if (CUDA_FOUND AND NOT USE_TF_CPU_ONLY)
-    ExternalProject_Add(
-      tensorflow_cc
-      PREFIX tensorflow_cc
-      GIT_REPOSITORY https://github.com/FloopCZ/tensorflow_cc.git
-      GIT_TAG v1.15.0
-      SOURCE_SUBDIR tensorflow_cc
-      CMAKE_ARGS -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED=ON
-      INSTALL_COMMAND ""
-      BUILD_IN_SOURCE 1
-      )
-  else()
+
+  if (USE_TF_CPU_ONLY)
     add_definitions(-DUSE_TF_CPU_ONLY)
     ExternalProject_Add(
       tensorflow_cc
@@ -504,6 +521,17 @@ if (USE_TF)
       GIT_TAG v1.15.0
       SOURCE_SUBDIR tensorflow_cc
       CMAKE_ARGS -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED=ON -DALLOW_CUDA=OFF
+      INSTALL_COMMAND ""
+      BUILD_IN_SOURCE 1
+      )
+  else()
+    ExternalProject_Add(
+      tensorflow_cc
+      PREFIX tensorflow_cc
+      GIT_REPOSITORY https://github.com/FloopCZ/tensorflow_cc.git
+      GIT_TAG v1.15.0
+      SOURCE_SUBDIR tensorflow_cc
+      CMAKE_ARGS -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED=ON
       INSTALL_COMMAND ""
       BUILD_IN_SOURCE 1
       )
@@ -527,7 +555,8 @@ endif()
 set(OPENCV_VERSION ${OpenCV_VERSION_MAJOR})
 include_directories(${OpenCV_INCLUDE_DIRS})
 message(STATUS "OpenCV ${OPENCV_VERSION} (${OpenCV_VERSION}) found (${OpenCV_CONFIG_PATH})")
-if (CUDA_FOUND AND USE_CUDA_CV)
+
+if (USE_CUDA_CV)
   message(STATUS "Using CUDA OpenCV")
   string(APPEND CMAKE_CXX_FLAGS " -DUSE_CUDA_CV")
 endif()
@@ -546,7 +575,7 @@ elseif(USE_CAFFE)
 
 
   # Set cuda arch
-  if (CUDA_FOUND AND NOT USE_CAFFE_CPU_ONLY)
+  if (NOT USE_CAFFE_CPU_ONLY)
     if (NOT CUDA_ARCH)
       string(REPLACE ";" " " CUDA_ARCH "${CUDA_NVCC_FLAGS}")
     endif()
@@ -554,7 +583,10 @@ elseif(USE_CAFFE)
   endif()
 
   # Set config file
-  if (CUDA_FOUND AND NOT USE_CAFFE_CPU_ONLY)
+  if (USE_CAFFE_CPU_ONLY)
+    add_definitions(-DUSE_CAFFE_CPU_ONLY)
+    set(CAFFE_DD_CONFIG_FILE Makefile.config.cpu)
+  else()
     if (HAVE_CUDNN AND USE_CUDNN)
       if(JETSON)
 	set(CAFFE_DD_CONFIG_FILE Makefile.config.gpu.cudnn.jetson)
@@ -564,9 +596,6 @@ elseif(USE_CAFFE)
     else() # HAVE_CUDNN
       set(CAFFE_DD_CONFIG_FILE Makefile.config.gpu)
     endif() # HAVE_CUDNN
-  else() # CUDA_FOUND
-    add_definitions(-DUSE_CAFFE_CPU_ONLY)
-    set(CAFFE_DD_CONFIG_FILE Makefile.config.cpu)
   endif()
 
   if (RPI3)
@@ -619,20 +648,20 @@ elseif(USE_CAFFE)
   endif()
 
   if (USE_HDF5)
-    if (CUDA_FOUND)
-      set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${CUDA_INCLUDE_DIRS})
-      set(CAFFE_LIB_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${HDF5_LIB})
-    else()
+    if (USE_CAFFE_CPU_ONLY)
       set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src /usr/include/hdf5/serial)
       set(CAFFE_LIB_DIR $ENV{HOME}/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${HDF5_LIB})
+    else()
+      set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${CUDA_INCLUDE_DIRS})
+      set(CAFFE_LIB_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${HDF5_LIB})
     endif()
   else()
-    if (CUDA_FOUND)
-      set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${CUDA_INCLUDE_DIRS})
-      set(CAFFE_LIB_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src)
-    else()
+    if (USE_CAFFE_CPU_ONLY)
       set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src)
       set(CAFFE_LIB_DIR $ENV{HOME}/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src)
+    else()
+      set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${CUDA_INCLUDE_DIRS})
+      set(CAFFE_LIB_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src)
     endif()
   endif()
 endif()
@@ -696,10 +725,10 @@ if (USE_TORCH)
 	set(PYTORCH_COMMIT b31f58de6fa8bbda5353b3c77d9be4914399724d)  # 1.6
     set(PYTORCH_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch-complete)
 
-    if(NOT USE_CPU_ONLY AND CUDA_FOUND)
-      set(PYTORCH_USE_CUDA 1)
-    else()
+    if(USE_TORCH_CPU_ONLY)
       set(PYTORCH_USE_CUDA 0)
+    else()
+      set(PYTORCH_USE_CUDA 1)
     endif()
 
     ExternalProject_Add(
@@ -721,15 +750,37 @@ if (USE_TORCH)
 
   set(TORCH_LIB_DEPS ${TORCH_LOCATION}/lib/libtorch.so ${TORCH_LOCATION}/lib/libtorch_cpu.so ${TORCH_LOCATION}/lib/libc10.so -llmdb)
 
-  if (NOT USE_CPU_ONLY AND CUDA_FOUND)
-    list(APPEND TORCH_LIB_DEPS ${TORCH_LOCATION}/lib/libc10_cuda.so ${TORCH_LOCATION}/lib/libtorch_cuda.so)
-  else()
+  if (USE_TORCH_CPU_ONLY)
     list(APPEND TORCH_LIB_DEPS ${TORCH_LOCATION}/lib/libtorch_cpu.so iomp5)
+  else()
+    list(APPEND TORCH_LIB_DEPS ${TORCH_LOCATION}/lib/libc10_cuda.so ${TORCH_LOCATION}/lib/libtorch_cuda.so)
   endif()
 
   set(TORCH_INC_DIR ${TORCH_LOCATION}/include/ ${TORCH_LOCATION}/include/torch/csrc/api/include/ ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/include/torch/csrc/api/include ${TORCH_LOCATION}/.. ${CMAKE_BINARY_DIR}/src)
   set(TORCH_LIB_DIR ${TORCH_LOCATION}/lib/)
 
+  # TORCH VISION
+  message(STATUS "Configuring Pytorch Vision")
+  # set(PYTORCH_VISION_COMMIT "v0.6.0") # 0.6 & torch 1.5
+  set(PYTORCH_VISION_COMMIT "v0.7.0") # 0.7 & torch 1.6
+  set(TORCHVISION_LOCATION "${CMAKE_BINARY_DIR}/pytorch_vision/src/pytorch_vision-install")
+  ExternalProject_Add(
+    pytorch_vision
+    PREFIX pytorch_vision
+    INSTALL_DIR ${CMAKE_BINARY_DIR}
+    GIT_REPOSITORY https://github.com/pytorch/vision.git
+    GIT_TAG ${PYTORCH_VISION_COMMIT}
+    GIT_CONFIG advice.detachedHead=false
+    CMAKE_ARGS -DWITH_CUDA=${PYTORCH_USE_CUDA} -DCMAKE_PREFIX_PATH=${TORCH_LOCATION} -DCMAKE_INSTALL_PREFIX=${TORCHVISION_LOCATION}
+      -DCMAKE_INCLUDE_PATH=${PROJECT_INCLUDE_DIR} -DCMAKE_LIBRARY_PATH=${PROTOBUF_LIB_DIR}
+      "-DCMAKE_CXX_FLAGS=-isystem ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/" "-DCMAKE_CUDA_FLAGS=-isystem ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/"
+      -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc
+    DEPENDS protobuf pytorch
+  )
+
+  list(APPEND TORCH_INC_DIR "${TORCHVISION_LOCATION}/include/")
+  list(APPEND TORCH_LIB_DIR "${TORCHVISION_LOCATION}/lib/")
+  list(APPEND TORCH_LIB_DEPS torchvision)
 endif()
 
 # XGBoost
@@ -738,7 +789,7 @@ if (USE_XGBOOST)
   add_definitions(-DUSE_XGBOOST)
   set(XGBOOST_LIB_DEPS -Wl,--whole-archive ${CMAKE_BINARY_DIR}/xgboost/src/xgboost-build/libxgboost.a -Wl,--no-whole-archive ${CMAKE_BINARY_DIR}/xgboost/src/xgboost-build/dmlc-core/libdmlc.a ${CMAKE_BINARY_DIR}/xgboost/src/xgboost-build/librabit.a)
 
-  if (CUDA_FOUND AND USE_XGBOOST_GPU)
+  if (NOT USE_XGBOOST_CPU_ONLY)
     add_definitions(-DUSE_XGBOOST_GPU)
     list(APPEND XGBOOST_LIB_DEPS ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/CMakeFiles/gpuxgboost.dir/plugin/updater_gpu/src/gpuxgboost_generated_updater_gpu.cu.o ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/nccl/libnccl.a)
 #    set(XGB_NVCC_FLAGS,"--expt-extended-lambda;-gencode arch=compute_35,code=compute_35")
@@ -809,25 +860,25 @@ include_directories(${CAFFE_INC_DIR} ${XGBOOST_INC_DIR} ${TSNE_INC_DIR} ${TORCH_
 include_directories(${CMAKE_SOURCE_DIR}/src/backends/caffe ${CMAKE_SOURCE_DIR}/backends/xgb ${CMAKE_SOURCE_DIR}/backends/tf ${CMAKE_SOURCE_DIR}/backends/dlib ${CMAKE_SOURCE_DIR}/backends/tsne)
 
 if (USE_TENSORRT)
-
+  add_definitions(-DUSE_TENSORRT)
   if (EXISTS ${TENSORRT_DIR}/libprotobuf.a)
     message(ERROR "there is a protobuf in ${TENSORRT_DIR}, it is very likely to cause link problem, you should remove it, we use system or internal ones")
   endif()
 
   if (JETSON)
     set(TRTTESTDIR /usr/lib/aarch64-linux-gnu)
-      set(TENSORRT_LIB_DIR  /usr/lib/aarch64-linux-gnu)
-      set(TENSORRT_INC_DIR ${PROTOBUF_INCLUDE_DIR} /usr/include/aarch64-linux-gnu)
+    set(TENSORRT_LIB_DIR /usr/lib/aarch64-linux-gnu)
+    set(TENSORRT_INC_DIR /usr/include/aarch64-linux-gnu)
   elseif(DEFINED TENSORRT_DIR)
     set(TRTTESTDIR ${TENSORRT_DIR}/lib)
-      set(TENSORRT_LIB_DIR  ${TENSORRT_DIR}/lib )
-      set(TENSORRT_INC_DIR ${PROTOBUF_INCLUDE_DIR} ${TENSORRT_DIR}/include)
+    set(TENSORRT_LIB_DIR  ${TENSORRT_DIR}/lib )
+    set(TENSORRT_INC_DIR ${TENSORRT_DIR}/include)
   elseif (DEFINED TENSORRT_LIB_DIR AND DEFINED TENSORRT_INC_DIR)
     set(TRTTESTDIR TENSORRT_LIB_DIR)
   else()
     set(TRTTESTDIR /usr/lib/x86_64-linux-gnu)
-      set(TENSORRT_LIB_DIR  /usr/lib/x86_64-linux-gnu)
-      set(TENSORRT_INC_DIR ${PROTOBUF_INCLUDE_DIR} /usr/include/x86_64-linux-gnu)
+    set(TENSORRT_LIB_DIR  /usr/lib/x86_64-linux-gnu)
+    set(TENSORRT_INC_DIR /usr/include/x86_64-linux-gnu)
   endif()
 
   if (NOT EXISTS "${TRTTESTDIR}/libnvinfer.so")
@@ -878,6 +929,8 @@ if (USE_TENSORRT)
       INSTALL_COMMAND ""
     )
 
+    # Use our tensorrt-oss header versions first
+    include_directories(SYSTEM ${CMAKE_BINARY_DIR}/tensorrt-oss/src/tensorrt-oss/include)
     include_directories(${TENSORRT_INC_DIR})
 endif()
 
@@ -1029,16 +1082,18 @@ endif()
 file(GLOB_RECURSE ALL_SOURCE_FILES src/*.cpp src/*.hpp src/*.h src/*.c tests/*.cc src/*.cc)
 list(FILTER ALL_SOURCE_FILES EXCLUDE REGEX "^${CMAKE_SOURCE_DIR}/src/ext/.*$")
 
+
+find_program(CLANG_FORMAT_BIN clang-format-10 clang-format)
 add_custom_target(
         clang-format
-        COMMAND clang-format
+        COMMAND ${CLANG_FORMAT_BIN}
         -style=file
         -i
         ${ALL_SOURCE_FILES}
 )
 add_custom_target(
         clang-format-check
-        COMMAND clang-format
+        COMMAND ${CLANG_FORMAT_BIN}
         --dry-run
         --Werror
         --ferror-limit=10
@@ -1067,22 +1122,28 @@ message(STATUS "USE_COMMAND_LINE:      ${USE_COMMAND_LINE}")
 message(STATUS "USE_JSON_API:          ${USE_JSON_API}")
 message(STATUS "USE_HTTP_SERVER:       ${USE_HTTP_SERVER}")
 message(STATUS "USE_HTTP_SERVER_OATPP: ${USE_HTTP_SERVER_OATPP}")
+message(STATUS "BUILD_SPDLOG:          ${BUILD_SPDLOG}")
 message(STATUS "BUILD_TESTS:           ${BUILD_TESTS}")
 message(STATUS "BUILD_TOOLS:           ${BUILD_TOOLS}")
 message(STATUS "USE_CAFFE:             ${USE_CAFFE}")
+message(STATUS "USE_CAFFE_CPU_ONLY:    ${USE_CAFFE_CPU_ONLY}")
 message(STATUS "USE_CAFFE_DEBUG:       ${USE_CAFFE_DEBUG}")
 message(STATUS "USE_CAFFE2:            ${USE_CAFFE2}")
+message(STATUS "USE_CAFFE2_CPU_ONLY:   ${USE_CAFFE2_CPU_ONLY}")
 message(STATUS "USE_TORCH:             ${USE_TORCH}")
+message(STATUS "USE_TORCH_CPU_ONLY:    ${USE_TORCH_CPU_ONLY}")
 message(STATUS "USE_SIMSEARCH:         ${USE_SIMSEARCH}")
 message(STATUS "USE_TF:                ${USE_TF}")
+message(STATUS "USE_TF_CPU_ONLY:       ${USE_TF_CPU_ONLY}")
 message(STATUS "USE_NCNN:              ${USE_NCNN}")
 message(STATUS "USE_HDF5:              ${USE_HDF5}")
 message(STATUS "USE_TENSORRT:          ${USE_TENSORRT}")
 message(STATUS "USE_DLIB:              ${USE_DLIB}")
+message(STATUS "USE_DLIB_CPU_ONLY:     ${USE_DLIB_CPU_ONLY}")
 message(STATUS "USE_ANNOY:             ${USE_ANNOY}")
 message(STATUS "USE_FAISS:             ${USE_FAISS}")
+message(STATUS "USE_FAISS_CPU_ONLY:    ${USE_FAISS_CPU_ONLY}")
 message(STATUS "USE_CUDNN:             ${USE_CUDNN}")
 message(STATUS "USE_XGBOOST:           ${USE_XGBOOST}")
-message(STATUS "USE_XGBOOST_GPU:       ${USE_XGBOOST_GPU}")
+message(STATUS "USE_XGBOOST_CPU_ONLY:  ${USE_XGBOOST_CPU_ONLY}")
 message(STATUS "USE_TSNE:              ${USE_TSNE}")
-message(STATUS "BUILD_SPDLOG:          ${BUILD_SPDLOG}")

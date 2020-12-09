@@ -31,10 +31,11 @@ import logging
 parser = argparse.ArgumentParser(description="Trace image processing models from torchvision")
 parser.add_argument('models', type=str, nargs='*', help="Models to trace.")
 parser.add_argument('--print-models', action='store_true', help="Print all the available models names and exit")
+parser.add_argument('--to-dd-native', action='store_true', help="Prepare the model so that the weights can be loaded on native model with dede")
 parser.add_argument('-a', "--all", action='store_true', help="Export all available models")
 parser.add_argument('-v', "--verbose", action='store_true', help="Set logging level to INFO")
 parser.add_argument('-o', "--output-dir", default=".", type=str, help="Output directory for traced models")
-parser.add_argument('-p', "--not-pretrained", dest="pretrained", action='store_false', 
+parser.add_argument('-p', "--not-pretrained", dest="pretrained", action='store_false',
                     help="Whether the exported models should not be pretrained")
 parser.add_argument('--cpu', action='store_true', help="Force models to be exported for CPU device")
 
@@ -42,6 +43,19 @@ args = parser.parse_args()
 
 if args.verbose:
     logging.basicConfig(level=logging.INFO)
+
+
+class Wrapper(torch.nn.Module):
+    """
+    Dede native models are wrapped into a NativeModuleWrapper,
+    so we mimic the structure here.
+    """
+    def __init__(self, wrapped):
+        super(Wrapper, self).__init__()
+        self.wrapped = wrapped
+
+    def forward(self, x):
+        return self.wrapped(x)
 
 model_classes = {
     "alexnet": M.alexnet,
@@ -96,6 +110,11 @@ for mname in args.models:
 
     logging.info("Exporting model %s %s", mname, "(pretrained)" if args.pretrained else "")
     model = model_classes[mname](pretrained=args.pretrained, progress=args.verbose)
+
+    if args.to_dd_native:
+        # Make model NativeModuleWrapper compliant
+        model = Wrapper(model)
+
     model.eval()
 
     example = torch.rand(1, 3, 224, 224)

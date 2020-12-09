@@ -285,46 +285,41 @@ namespace dd
     void get_params_and_init_block(const ImgTorchInputFileConn &inputc,
                                    const APIData &ad_params);
 
-    virtual torch::Tensor forward(torch::Tensor x);
+    torch::Tensor forward(torch::Tensor x) override;
 
     torch::Tensor forward_features(torch::Tensor x);
 
-    virtual torch::Tensor extract(torch::Tensor x, std::string extract_layer)
+    torch::Tensor extract(torch::Tensor x, std::string extract_layer) override
     {
       (void)x;
       (void)extract_layer;
       return torch::Tensor();
     }
 
-    virtual bool extractable(std::string extract_layer) const
+    bool extractable(std::string extract_layer) const override
     {
       (void)extract_layer;
       return false;
     }
 
-    virtual std::vector<std::string> extractable_layers() const
+    std::vector<std::string> extractable_layers() const override
     {
       return std::vector<std::string>();
     }
 
-    virtual torch::Tensor cleanup_output(torch::Tensor output)
+    torch::Tensor cleanup_output(torch::Tensor output) override
     {
       return output;
     }
 
-    virtual torch::Tensor loss(std::string loss, torch::Tensor input,
-                               torch::Tensor output, torch::Tensor target)
+    torch::Tensor loss(std::string loss, torch::Tensor input,
+                       torch::Tensor output, torch::Tensor target) override
     {
       (void)loss;
       (void)input;
       (void)output;
       (void)target;
-      return torch::Tensor();
-    }
-
-    virtual void update_input_connector(TorchInputInterface &inputc)
-    {
-      (void)inputc;
+      throw MLLibInternalException("ViT::loss not implemented");
     }
 
   protected:
@@ -352,8 +347,7 @@ namespace dd
     torch::Tensor _cls_token;
     torch::Tensor _pos_embed;
     torch::nn::Dropout _pos_drop{ nullptr };
-    // torch::nn::ModuleList _blocks;
-    std::vector<Block> _blocks;
+    torch::nn::ModuleList _blocks;
     torch::nn::LayerNorm _norm{ nullptr };
     torch::nn::Linear _head{ nullptr };
   };

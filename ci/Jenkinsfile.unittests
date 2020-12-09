@@ -1,5 +1,11 @@
 pipeline {
-  agent { node { label 'gpu' } }
+  agent {
+    dockerfile {
+      label 'gpu'
+      filename 'ci/devel.Dockerfile'
+      args "-v /var/lib/jenkins/.ccache:/ccache -e CCACHE_DIR=/ccache --runtime nvidia"
+    }
+  }
   stages {
     stage('Init') {
       steps {
@@ -53,6 +59,7 @@ cmake .. \
         sh 'cd build && make clang-format-check'
       }
     }
+
     stage('Check python client') {
       steps {
         sh 'cd clients/python/ && tox -e pep8,py36,py27'
@@ -84,7 +91,7 @@ ccache -s
           python3 -c 'import torch, sys; c=torch.cuda.device_count() ; print(f"CUDA VISIBLE GPU: {c}"); sys.exit(bool(c == 0 ))'
           echo
           echo "****************************"
-          cd build && ctest -V -E "http|multigpu"
+          cd build && ctest -V -E "multigpu"
           '''
           }
       }
@@ -102,7 +109,7 @@ ccache -s
           python3 -c 'import torch, sys; c=torch.cuda.device_count() ; print(f"CUDA VISIBLE GPU: {c}"); sys.exit(bool(c < 2))'
           echo
           echo "****************************"
-          cd build && ctest -V -E "http" -R "multigpu"
+          cd build && ctest -V -R "multigpu"
           '''
           }
       }
