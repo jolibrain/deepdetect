@@ -124,7 +124,8 @@ namespace dd
   AnnoySE::AnnoySE(const int &f, const std::string &model_repo)
       : _f(f), _model_repo(model_repo)
   {
-    _aindex = new AnnoyIndex<int, double, Angular, Kiss32Random>(f);
+    _aindex = new AnnoyIndex<int, double, Angular, Kiss32Random,
+                             AnnoyIndexSingleThreadedBuildPolicy>(f);
     _db = caffe::db::GetDB(_db_backend);
   }
 

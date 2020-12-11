@@ -292,7 +292,7 @@ if (USE_CAFFE)
       )
 
       set(ANNOY_INCLUDE_DIR ${CMAKE_BINARY_DIR}/annoy/src/annoy/src/)
-      include_directories("${ANNOY_INCLUDE_DIR}")
+      include_directories(SYSTEM "${ANNOY_INCLUDE_DIR}")
     endif()
     if(USE_FAISS)
       if (USE_FAISS_CPU_ONLY)

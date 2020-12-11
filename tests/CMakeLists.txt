@@ -27,32 +27,39 @@ endfunction ()
 
 function (DOWNLOAD_DATASET _NAME _URL _WORKDIR _DEST _IN)
   set(_OUT "${ARGV5}") # Optional
+  set(_FORCE_RECREATE OFF)
 
   if (EXISTS "${_WORKDIR}/${_DEST}")
     message(STATUS "Reusing downloaded ${_NAME} dataset")
   else()
     message(STATUS "Downloading ${_NAME}")
     file(DOWNLOAD ${_URL} ${_WORKDIR}/${_DEST})
+    set(_FORCE_RECREATE ON)
   endif()
-  if (EXISTS "${_WORKDIR}/${_IN}")
-    message(STATUS "Reusing uncompressed ${_WORKDIR}/${_DEST}")
+  if (${_IN} STREQUAL ${_DEST})
+      message(STATUS "Skipping not compressed ${_WORKDIR}/${_IN}")
   else()
-    string(FIND ${_DEST} ".tar." _tar_index)
-    if (${_tar_index} EQUAL -1)
-      execute_process(
-        WORKING_DIRECTORY ${_WORKDIR}
-        COMMAND bzip2 -d ${_DEST}
-        RESULT_VARIABLE _UNCOMPRESS_RESULT
-      )
+    if (NOT ${_FORCE_RECREATE} AND EXISTS "${_WORKDIR}/${_IN}")
+      message(STATUS "Reusing uncompressed ${_WORKDIR}/${_DEST}")
     else()
-      execute_process(
-        WORKING_DIRECTORY ${_WORKDIR}
-        COMMAND ${CMAKE_COMMAND} -E tar xvf ${_DEST}
-        RESULT_VARIABLE _UNCOMPRESS_RESULT
-      )
-    endif()
-    if (NOT _UNCOMPRESS_RESULT EQUAL 0)
-      message(FATAL_ERROR "Untar ${_WORKDIR}/${_DEST} failed")
+      string(FIND ${_DEST} ".tar." _tar_index)
+      if (${_tar_index} EQUAL -1)
+        execute_process(
+          WORKING_DIRECTORY ${_WORKDIR}
+          COMMAND bzip2 -d ${_DEST}
+          RESULT_VARIABLE _UNCOMPRESS_RESULT
+        )
+      else()
+        execute_process(
+          WORKING_DIRECTORY ${_WORKDIR}
+          COMMAND ${CMAKE_COMMAND} -E tar xvf ${_DEST}
+          RESULT_VARIABLE _UNCOMPRESS_RESULT
+        )
+      endif()
+      if (NOT _UNCOMPRESS_RESULT EQUAL 0)
+        message(FATAL_ERROR "Untar ${_WORKDIR}/${_DEST} failed")
+      endif()
+      set(_FORCE_RECREATE ON)
     endif()
   endif()
   if (NOT ${_OUT} STREQUAL "")

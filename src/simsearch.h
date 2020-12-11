@@ -181,7 +181,9 @@ namespace dd
 
     int _f = 128;      /**< indexed vector length. */
     int _ntrees = 100; /**< number of trees. */
-    AnnoyIndex<int, double, Angular, Kiss32Random> *_aindex = nullptr;
+    AnnoyIndex<int, double, Angular, Kiss32Random,
+               AnnoyIndexSingleThreadedBuildPolicy> *_aindex
+        = nullptr;
     int _index_size = 0;
     std::string _model_repo; /**< model directory */
     const std::string _db_name = "names.bin";
