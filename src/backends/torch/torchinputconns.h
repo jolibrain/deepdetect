@@ -565,13 +565,18 @@ namespace dd
 
   private:
     void fill_dataset_forecast(TorchDataset &dataset, bool test);
-    void add_data_instance_forecast(const long int tstart, const int vecindex,
-                                    TorchDataset &dataset,
+    void add_data_instance_forecast(const unsigned long int tstart,
+                                    const int vecindex, TorchDataset &dataset,
                                     const std::vector<CSVline> &seq);
     void fill_dataset_labels(TorchDataset &dataset, bool test);
-    void add_data_instance_labels(const long int tstart, const int vecindex,
-                                  TorchDataset &dataset,
-                                  const std::vector<CSVline> &seq);
+    void add_data_instance_labels(const unsigned long int tstart,
+                                  const int vecindex, TorchDataset &dataset,
+                                  const std::vector<CSVline> &seq,
+                                  size_t seq_len);
+
+    void add_seq(const size_t ti, const std::vector<CSVline> &seq,
+                 std::vector<at::Tensor> &data_sequence,
+                 std::vector<at::Tensor> &label_sequence);
 
     void discard_warn(int vecindex, unsigned int seq_size, bool test);
 

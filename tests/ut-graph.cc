@@ -693,7 +693,7 @@ TEST(graphapi, complete_extract_layer)
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
   ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_998", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["vals"].IsArray());
-  ASSERT_EQ(jd["body"]["predictions"][0]["vals"].Size(), 200);
+  ASSERT_EQ(jd["body"]["predictions"][0]["vals"].Size(), 9990);
 
   //  remove service
   jstr = "{\"clear\":\"full\"}";
@@ -781,7 +781,7 @@ TEST(graphapi, complete_extract_layer_gpu)
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
   ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_998", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["vals"].IsArray());
-  ASSERT_EQ(jd["body"]["predictions"][0]["vals"].Size(), 200);
+  ASSERT_EQ(jd["body"]["predictions"][0]["vals"].Size(), 9990);
 
   //  remove service
   jstr = "{\"clear\":\"full\"}";

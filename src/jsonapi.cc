@@ -1159,7 +1159,9 @@ namespace dd
         = ad_data.getobj("parameters").getobj("output").has("measure");
     JVal jhead(rapidjson::kObjectType);
     jhead.AddMember("method", "/predict", jpred.GetAllocator());
-    jhead.AddMember("service", d["service"], jpred.GetAllocator());
+    rapidjson::Value service;
+    service.SetString(sname.c_str(), jpred.GetAllocator());
+    jhead.AddMember("service", service, jpred.GetAllocator());
     if (!has_measure)
       jhead.AddMember("time", jout["time"], jpred.GetAllocator());
     jpred.AddMember("head", jhead, jpred.GetAllocator());

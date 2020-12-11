@@ -758,15 +758,15 @@ namespace dd
   }
 
   void CSVTSTorchInputFileConn::add_data_instance_forecast(
-      const long int tstart, const int vecindex, TorchDataset &dataset,
-      const std::vector<CSVline> &seq)
+      const unsigned long int tstart, const int vecindex,
+      TorchDataset &dataset, const std::vector<CSVline> &seq)
   {
     std::vector<at::Tensor> data_sequence;
     if (_fnames.size() > static_cast<unsigned int>(vecindex))
       _ids.push_back(_fnames[vecindex] + " #" + std::to_string(tstart) + "_"
                      + std::to_string(tstart + _forecast_timesteps
                                       + _backcast_timesteps - 1));
-    for (long int ti = tstart; ti < tstart + _backcast_timesteps; ++ti)
+    for (size_t ti = tstart; ti < tstart + _backcast_timesteps; ++ti)
       {
         std::vector<double> datavec;
         for (int di = 0; di < this->_datadim; ++di)
@@ -780,11 +780,10 @@ namespace dd
       }
     at::Tensor dst = torch::stack(data_sequence);
 
-    if (static_cast<int>(seq.size())
-        >= _backcast_timesteps + _forecast_timesteps + tstart)
+    if (seq.size() >= _backcast_timesteps + _forecast_timesteps + tstart)
       {
         std::vector<at::Tensor> pred_sequence;
-        for (long int ti = tstart + _backcast_timesteps;
+        for (size_t ti = tstart + _backcast_timesteps;
              ti < tstart + _backcast_timesteps + _forecast_timesteps; ++ti)
           {
             std::vector<double> predvec;
@@ -848,40 +847,62 @@ namespace dd
     for (const std::vector<CSVline> &seq : data)
       {
         vecindex++;
-        if (_train)
+        long int tstart = 0;
+        if (static_cast<long int>(seq.size())
+            < _backcast_timesteps + _forecast_timesteps)
           {
-            long int tstart = 0;
-            if (static_cast<long int>(seq.size())
-                < _backcast_timesteps + _forecast_timesteps)
-              {
-                discard_warn(vecindex, seq.size(), test);
-                continue;
-              }
-            for (; tstart + _backcast_timesteps + _forecast_timesteps
-                   < static_cast<long int>(seq.size());
-                 tstart += _offset)
-              add_data_instance_forecast(tstart, vecindex, dataset, seq);
-            if (tstart < static_cast<long int>(seq.size()) - 1)
-              add_data_instance_forecast(seq.size() - _backcast_timesteps
-                                             - _forecast_timesteps,
-                                         vecindex, dataset, seq);
+            discard_warn(vecindex, seq.size(), test);
+            continue;
           }
-        else // predict
-          {
-            if (static_cast<long int>(seq.size()) < _backcast_timesteps)
-              {
-                discard_warn(vecindex, seq.size(), test);
-                continue;
-              }
-            add_data_instance_forecast(seq.size() - _backcast_timesteps,
-                                       vecindex, dataset, seq);
-          }
+        for (; tstart + _backcast_timesteps + _forecast_timesteps
+               < static_cast<long int>(seq.size());
+             tstart += _offset)
+          add_data_instance_forecast(tstart, vecindex, dataset, seq);
+        if (tstart < static_cast<long int>(seq.size()) - 1)
+          add_data_instance_forecast(seq.size() - _backcast_timesteps
+                                         - _forecast_timesteps,
+                                     vecindex, dataset, seq);
       }
   }
 
+  void
+  CSVTSTorchInputFileConn::add_seq(const size_t ti,
+                                   const std::vector<CSVline> &seq,
+                                   std::vector<at::Tensor> &data_sequence,
+                                   std::vector<at::Tensor> &label_sequence)
+  {
+    std::vector<double> datavec;
+    std::vector<double> labelvec;
+    size_t label_size = _label_pos.size();
+    size_t data_size = _datadim - label_size;
+
+    for (size_t li = 0; li < label_size; ++li)
+      labelvec.push_back(seq[ti]._v[_label_pos[li]]);
+    for (int di = 0; di < this->_datadim; ++di)
+      if (std::find(_label_pos.begin(), _label_pos.end(), di)
+          == _label_pos.end())
+        datavec.push_back(seq[ti]._v[di]);
+
+    at::Tensor data
+        = torch::from_blob(&datavec[0],
+                           at::IntList{ static_cast<long int>(data_size) },
+                           torch::kFloat64)
+              .clone()
+              .to(torch::kFloat32);
+    at::Tensor label
+        = torch::from_blob(&labelvec[0],
+                           at::IntList{ static_cast<long int>(label_size) },
+                           torch::kFloat64)
+              .clone()
+              .to(torch::kFloat32);
+    data_sequence.push_back(data);
+    label_sequence.push_back(label);
+  }
+
   void CSVTSTorchInputFileConn::add_data_instance_labels(
-      const long int tstart, const int vecindex, TorchDataset &dataset,
-      const std::vector<CSVline> &seq)
+      const unsigned long int tstart, const int vecindex,
+      TorchDataset &dataset, const std::vector<CSVline> &seq,
+      const size_t seq_len)
   {
     unsigned int label_size = _label_pos.size();
     if (static_cast<int>(label_size) >= _datadim)
@@ -893,43 +914,16 @@ namespace dd
         this->_logger->error(errmsg);
         throw InputConnectorBadParamException(errmsg);
       }
-    unsigned int data_size = _datadim - label_size;
     std::vector<at::Tensor> data_sequence;
     std::vector<at::Tensor> label_sequence;
     if (_fnames.size() > static_cast<unsigned int>(vecindex))
-      {
-        if (_train)
-          _ids.push_back(_fnames[vecindex] + " #" + std::to_string(tstart)
-                         + "_" + std::to_string(tstart + _timesteps - 1));
-        else // in predict mode we do not split
-          _ids.push_back(_fnames[vecindex] + " #" + std::to_string(tstart)
-                         + "_" + std::to_string(seq.size() - 1));
-      }
-    for (long int ti = tstart; ti < tstart + _timesteps; ++ti)
-      {
-        std::vector<double> datavec;
-        std::vector<double> labelvec;
+      _ids.push_back(_fnames[vecindex] + " #" + std::to_string(tstart) + "_"
+                     + std::to_string(tstart + seq_len - 1));
 
-        for (unsigned int li = 0; li < label_size; ++li)
-          labelvec.push_back(seq[ti]._v[_label_pos[li]]);
-        for (int di = 0; di < this->_datadim; ++di)
-          if (std::find(_label_pos.begin(), _label_pos.end(), di)
-              == _label_pos.end())
-            datavec.push_back(seq[ti]._v[di]);
+    for (size_t ti = tstart;
+         ti < static_cast<unsigned long int>(tstart + seq_len); ++ti)
+      add_seq(ti, seq, data_sequence, label_sequence);
 
-        at::Tensor data
-            = torch::from_blob(&datavec[0], at::IntList{ data_size },
-                               torch::kFloat64)
-                  .clone()
-                  .to(torch::kFloat32);
-        at::Tensor label
-            = torch::from_blob(&labelvec[0], at::IntList{ label_size },
-                               torch::kFloat64)
-                  .clone()
-                  .to(torch::kFloat32);
-        data_sequence.push_back(data);
-        label_sequence.push_back(label);
-      }
     at::Tensor dst = torch::stack(data_sequence);
     at::Tensor lst = torch::stack(label_sequence);
     dataset.add_batch({ dst }, { lst });
@@ -942,22 +936,33 @@ namespace dd
     std::vector<std::vector<CSVline>> &data
         = test ? this->_csvtsdata_test : this->_csvtsdata;
 
-    for (const std::vector<CSVline> &seq : data)
+    if (_train)
       {
-        vecindex++;
-        long int tstart = 0;
-        if (static_cast<long int>(seq.size()) < _timesteps)
+        for (const std::vector<CSVline> &seq : data)
           {
-            discard_warn(vecindex, seq.size(), test);
-            continue;
+            vecindex++;
+            long int tstart = 0;
+            if (static_cast<long int>(seq.size()) < _timesteps)
+              {
+                discard_warn(vecindex, seq.size(), test);
+                continue;
+              }
+            for (; tstart + _timesteps < static_cast<long int>(seq.size());
+                 tstart += _offset)
+              add_data_instance_labels(tstart, vecindex, dataset, seq,
+                                       static_cast<unsigned int>(_timesteps));
+            if (tstart < static_cast<long int>(seq.size()) - 1)
+              add_data_instance_labels(seq.size() - _timesteps, vecindex,
+                                       dataset, seq,
+                                       static_cast<unsigned int>(_timesteps));
           }
-        for (; tstart + _timesteps < static_cast<long int>(seq.size());
-             tstart += _offset)
-          add_data_instance_labels(tstart, vecindex, dataset, seq);
-        if (tstart < static_cast<long int>(seq.size()) - 1)
-          add_data_instance_labels(seq.size() - _timesteps, vecindex, dataset,
-                                   seq);
       }
+    else // do not split
+      for (const std::vector<CSVline> &seq : data)
+        {
+          vecindex++;
+          add_data_instance_labels(0, vecindex, dataset, seq, seq.size());
+        }
   }
 
   void CSVTSTorchInputFileConn::fill_dataset(TorchDataset &dataset,
