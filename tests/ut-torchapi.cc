@@ -641,8 +641,9 @@ TEST(torchapi, service_train_csvts_nbeats)
       = "{\"mllib\":\"torch\",\"description\":\"nbeats\",\"type\":"
         "\"supervised\",\"model\":{\"repository\":\""
         + csvts_nbeats_repo
-        + "\"},\"parameters\":{\"input\":{\"connector\":\"csvts\",\"label\":["
-          "\"output\"],\"timesteps\":50},\"mllib\":{\"template\":\"nbeats\","
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"csvts\",\"ignore\":["
+          "\"output\"],\"backcast_timesteps\":50,\"forecast_timesteps\":50},"
+          "\"mllib\":{\"template\":\"nbeats\","
           "\"template_params\":[\"t2\",\"s4\",\"g3\",\"b3\"],"
           "\"loss\":\"L1\"}}}";
 
@@ -653,7 +654,8 @@ TEST(torchapi, service_train_csvts_nbeats)
   std::string jtrainstr
       = "{\"service\":\"" + sname
         + "\",\"async\":false,\"parameters\":{\"input\":{\"shuffle\":true,"
-          "\"separator\":\",\",\"scale\":true,\"timesteps\":50,\"label\":["
+          "\"separator\":\",\",\"scale\":true,\"backcast_timesteps\":50,"
+          "\"forecast_timesteps\":50,\"ignore\":["
           "\"output\"]},\"mllib\":{\"gpu\":false,\"solver\":{\"iterations\":"
         + iterations_nbeats_cpu
         + ",\"test_interval\":10,\"base_lr\":0.1,\"snapshot\":500,\"test_"
@@ -690,8 +692,9 @@ TEST(torchapi, service_train_csvts_nbeats)
   //  predict
   std::string jpredictstr
       = "{\"service\":\"" + sname
-        + "\",\"parameters\":{\"input\":{\"timesteps\":50,\"connector\":"
-          "\"csvts\",\"scale\":true,\"label\":[\"output\"],\"continuation\":"
+        + "\",\"parameters\":{\"input\":{\"backcast_timesteps\":50,\"forecast_"
+          "timesteps\":50,\"connector\":"
+          "\"csvts\",\"scale\":true,\"ignore\":[\"output\"],\"continuation\":"
           "true,\"min_vals\":"
         + str_min_vals + ",\"max_vals\":" + str_max_vals
         + "},\"output\":{}},\"data\":[\"" + csvts_predict + "\"]}";
@@ -701,7 +704,7 @@ TEST(torchapi, service_train_csvts_nbeats)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
-  ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_998", uri);
+  ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_99", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["out"][0].GetDouble()
               >= -1.5);
@@ -728,8 +731,9 @@ TEST(torchapi, service_train_csvts_nbeats_resume_fail)
       = "{\"mllib\":\"torch\",\"description\":\"nbeats\",\"type\":"
         "\"supervised\",\"model\":{\"repository\":\""
         + csvts_nbeats_repo
-        + "\"},\"parameters\":{\"input\":{\"connector\":\"csvts\",\"label\":["
-          "\"output\"],\"timesteps\":50},\"mllib\":{\"template\":\"nbeats\","
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"csvts\",\"ignore\":["
+          "\"output\"],\"backcast_timesteps\":50,\"forecast_timesteps\":50},"
+          "\"mllib\":{\"template\":\"nbeats\","
           "\"template_params\":[\"t2\",\"s4\",\"g3\",\"b3\"],"
           "\"loss\":\"L1\"}}}";
 
@@ -740,7 +744,7 @@ TEST(torchapi, service_train_csvts_nbeats_resume_fail)
   std::string jtrainstr
       = "{\"service\":\"" + sname
         + "\",\"async\":false,\"parameters\":{\"input\":{\"shuffle\":true,"
-          "\"separator\":\",\",\"scale\":true,\"timesteps\":50,\"label\":["
+          "\"separator\":\",\",\"scale\":true,\"timesteps\":50,\"ignore\":["
           "\"output\"]},\"mllib\":{\"resume\":true,\"gpu\":false,\"solver\":{"
           "\"iterations\":"
         + iterations_nbeats_cpu
@@ -852,7 +856,7 @@ TEST(torchapi, service_train_csvts_nbeats_forecast)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
-  ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #959_1008", uri);
+  ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_49", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
   ASSERT_EQ(jd["body"]["predictions"][0]["series"].Size(), 10);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["out"][0].GetDouble()
@@ -882,8 +886,9 @@ TEST(torchapi, service_train_csvts_nbeats_gpu)
       = "{\"mllib\":\"torch\",\"description\":\"nbeats\",\"type\":"
         "\"supervised\",\"model\":{\"repository\":\""
         + csvts_nbeats_repo
-        + "\"},\"parameters\":{\"input\":{\"connector\":\"csvts\",\"label\":["
-          "\"output\"],\"timesteps\":50},\"mllib\":{\"template\":\"nbeats\","
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"csvts\",\"ignore\":["
+          "\"output\"],\"backcast_timesteps\":50,\"forecast_timesteps\":50},"
+          "\"mllib\":{\"template\":\"nbeats\","
           "\"template_params\":[\"t2\",\"s4\",\"g3\",\"b3\"],"
           "\"loss\":\"L1\",\"gpu\":true,\"gpuid\":0}}}";
 
@@ -894,7 +899,8 @@ TEST(torchapi, service_train_csvts_nbeats_gpu)
   std::string jtrainstr
       = "{\"service\":\"" + sname
         + "\",\"async\":false,\"parameters\":{\"input\":{\"shuffle\":true,"
-          "\"separator\":\",\",\"scale\":true,\"timesteps\":50,\"label\":["
+          "\"separator\":\",\",\"scale\":true,\"backcast_timesteps\":50,"
+          "\"forecast_timesteps\":50,\"ignore\":["
           "\"output\"]},\"mllib\":{\"gpu\":true,\"gpuid\":0,\"solver\":{"
           "\"iterations\":"
         + iterations_nbeats_gpu
@@ -932,8 +938,9 @@ TEST(torchapi, service_train_csvts_nbeats_gpu)
   //  predict
   std::string jpredictstr
       = "{\"service\":\"" + sname
-        + "\",\"parameters\":{\"input\":{\"timesteps\":50,\"connector\":"
-          "\"csvts\",\"scale\":true,\"label\":[\"output\"],\"min_vals\":"
+        + "\",\"parameters\":{\"input\":{\"backcast_timesteps\":50,\"forecast_"
+          "timesteps\":50,\"connector\":"
+          "\"csvts\",\"scale\":true,\"ignore\":[\"output\"],\"min_vals\":"
         + str_min_vals + ",\"max_vals\":" + str_max_vals
         + "},\"output\":{}},\"data\":[\"" + csvts_predict + "\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
@@ -942,7 +949,7 @@ TEST(torchapi, service_train_csvts_nbeats_gpu)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
-  ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_998", uri);
+  ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_99", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["out"][0].GetDouble()
               >= -1.5);
@@ -951,12 +958,12 @@ TEST(torchapi, service_train_csvts_nbeats_gpu)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse(joutstr.c_str());
   ASSERT_TRUE(jd["body"]["service_stats"].HasMember("predict_count"));
-  ASSERT_TRUE(jd["body"]["service_stats"]["inference_count"].GetInt() == 20);
+  ASSERT_TRUE(jd["body"]["service_stats"]["inference_count"].GetInt() == 10);
   ASSERT_TRUE(jd["body"]["service_stats"]["predict_count"].GetInt() == 1);
   ASSERT_TRUE(jd["body"]["service_stats"]["predict_failure"].GetInt() == 0);
   ASSERT_TRUE(jd["body"]["service_stats"]["predict_success"].GetInt() == 1);
   ASSERT_TRUE(jd["body"]["service_stats"]["avg_batch_size"].GetDouble()
-              == 20.0);
+              == 10.0);
   ASSERT_TRUE(jd["body"]["service_stats"]["avg_transform_duration"].GetDouble()
               > 0.0);
   ASSERT_TRUE(jd["body"]["service_stats"]["avg_predict_duration"].GetDouble()
@@ -984,8 +991,9 @@ TEST(torchapi, service_train_csvts_nbeats_multigpu)
       = "{\"mllib\":\"torch\",\"description\":\"nbeats\",\"type\":"
         "\"supervised\",\"model\":{\"repository\":\""
         + csvts_nbeats_repo
-        + "\"},\"parameters\":{\"input\":{\"connector\":\"csvts\",\"label\":["
-          "\"output\"],\"timesteps\":50},\"mllib\":{\"template\":\"nbeats\","
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"csvts\",\"ignore\":["
+          "\"output\"],\"backcast_timesteps\":50,\"forecast_timesteps\":50},"
+          "\"mllib\":{\"template\":\"nbeats\","
           "\"template_params\":[\"t2\",\"s4\",\"g3\",\"b3\"],"
           "\"loss\":\"L1\",\"gpu\":true,\"gpuid\":[0,1]}}}";
 
@@ -996,7 +1004,8 @@ TEST(torchapi, service_train_csvts_nbeats_multigpu)
   std::string jtrainstr
       = "{\"service\":\"" + sname
         + "\",\"async\":false,\"parameters\":{\"input\":{\"shuffle\":true,"
-          "\"separator\":\",\",\"scale\":true,\"timesteps\":50,\"label\":["
+          "\"separator\":\",\",\"scale\":true,\"backcast_timesteps\":50,"
+          "\"forecast_timesteps\":50,\"ignore\":["
           "\"output\"]},\"mllib\":{\"gpu\":true,\"gpuid\":[0, 1],\"solver\":{"
           "\"iterations\":"
         + iterations_nbeats_gpu
@@ -1034,8 +1043,9 @@ TEST(torchapi, service_train_csvts_nbeats_multigpu)
   //  predict
   std::string jpredictstr
       = "{\"service\":\"" + sname
-        + "\",\"parameters\":{\"input\":{\"timesteps\":50,\"connector\":"
-          "\"csvts\",\"scale\":true,\"label\":[\"output\"],\"min_vals\":"
+        + "\",\"parameters\":{\"input\":{\"backcast_timesteps\":50,\"forecast_"
+          "timesteps\":50,\"connector\":"
+          "\"csvts\",\"scale\":true,\"ignore\":[\"output\"],\"min_vals\":"
         + str_min_vals + ",\"max_vals\":" + str_max_vals
         + "},\"output\":{}},\"data\":[\"" + csvts_predict + "\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
@@ -1044,7 +1054,7 @@ TEST(torchapi, service_train_csvts_nbeats_multigpu)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
-  ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_998", uri);
+  ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_99", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["out"][0].GetDouble()
               >= -1.5);
@@ -1053,12 +1063,12 @@ TEST(torchapi, service_train_csvts_nbeats_multigpu)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse(joutstr.c_str());
   ASSERT_TRUE(jd["body"]["service_stats"].HasMember("predict_count"));
-  ASSERT_TRUE(jd["body"]["service_stats"]["inference_count"].GetInt() == 20);
+  ASSERT_TRUE(jd["body"]["service_stats"]["inference_count"].GetInt() == 10);
   ASSERT_TRUE(jd["body"]["service_stats"]["predict_count"].GetInt() == 1);
   ASSERT_TRUE(jd["body"]["service_stats"]["predict_failure"].GetInt() == 0);
   ASSERT_TRUE(jd["body"]["service_stats"]["predict_success"].GetInt() == 1);
   ASSERT_TRUE(jd["body"]["service_stats"]["avg_batch_size"].GetDouble()
-              == 20.0);
+              == 10.0);
   ASSERT_TRUE(jd["body"]["service_stats"]["avg_transform_duration"].GetDouble()
               > 0.0);
   ASSERT_TRUE(jd["body"]["service_stats"]["avg_predict_duration"].GetDouble()
@@ -1118,8 +1128,9 @@ TEST(torchapi, nbeats_extract_layer_complete)
       = "{\"mllib\":\"torch\",\"description\":\"nbeats\",\"type\":"
         "\"supervised\",\"model\":{\"repository\":\""
         + csvts_nbeats_repo
-        + "\"},\"parameters\":{\"input\":{\"connector\":\"csvts\",\"label\":["
-          "\"output\"],\"timesteps\":50},\"mllib\":{\"template\":\"nbeats\","
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"csvts\",\"ignore\":["
+          "\"output\"],\"forecast_timesteps\":50,\"backcast_timesteps\":50},"
+          "\"mllib\":{\"template\":\"nbeats\","
           "\"template_params\":[\"t2\",\"s4\",\"g3\",\"b3\"],"
           "\"loss\":\"L1\"}}}";
 
@@ -1130,7 +1141,8 @@ TEST(torchapi, nbeats_extract_layer_complete)
   std::string jtrainstr
       = "{\"service\":\"" + sname
         + "\",\"async\":false,\"parameters\":{\"input\":{\"shuffle\":true,"
-          "\"separator\":\",\",\"scale\":true,\"timesteps\":50,\"label\":["
+          "\"separator\":\",\",\"scale\":true,\"backcast_timesteps\":50,"
+          "\"forecast_timesteps\":50,\"ignore\":["
           "\"output\"]},\"mllib\":{\"gpu\":false,\"solver\":{\"iterations\":"
         + iterations_nbeats_cpu
         + ",\"test_interval\":10,\"base_lr\":0.1,\"snapshot\":500,\"test_"
@@ -1168,8 +1180,9 @@ TEST(torchapi, nbeats_extract_layer_complete)
   std::string jpredictstr
       = "{\"service\":\"" + sname
         + "\",\"parameters\":{\"mllib\":{\"extract_layer\":\"2:0:fc3\"},"
-          "\"input\":{\"timesteps\":50,\"connector\":"
-          "\"csvts\",\"scale\":true,\"label\":[\"output\"],\"continuation\":"
+          "\"input\":{\"backcast_timesteps\":50,\"forecast_timesteps\":50,"
+          "\"connector\":"
+          "\"csvts\",\"scale\":true,\"ignore\":[\"output\"],\"continuation\":"
           "true,\"min_vals\":"
         + str_min_vals + ",\"max_vals\":" + str_max_vals
         + "},\"output\":{}},\"data\":[\"" + csvts_predict + "\"]}";
@@ -1179,9 +1192,9 @@ TEST(torchapi, nbeats_extract_layer_complete)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
-  ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_998", uri);
+  ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_99", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["vals"].IsArray());
-  ASSERT_EQ(jd["body"]["predictions"].Size(), 20);
+  ASSERT_EQ(jd["body"]["predictions"].Size(), 10);
   ASSERT_EQ(jd["body"]["predictions"][0]["vals"].Size(), 10);
 
   //  remove service
@@ -1207,8 +1220,9 @@ TEST(torchapi, nbeats_extract_layer_complete_gpu)
       = "{\"mllib\":\"torch\",\"description\":\"nbeats\",\"type\":"
         "\"supervised\",\"model\":{\"repository\":\""
         + csvts_nbeats_repo
-        + "\"},\"parameters\":{\"input\":{\"connector\":\"csvts\",\"label\":["
-          "\"output\"],\"timesteps\":50},\"mllib\":{\"template\":\"nbeats\","
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"csvts\",\"ignore\":["
+          "\"output\"],\"forecast_timesteps\":50,\"backcast_timesteps\":50},"
+          "\"mllib\":{\"template\":\"nbeats\","
           "\"template_params\":[\"t2\",\"s4\",\"g3\",\"b3\"],"
           "\"loss\":\"L1\"}}}";
 
@@ -1219,7 +1233,8 @@ TEST(torchapi, nbeats_extract_layer_complete_gpu)
   std::string jtrainstr
       = "{\"service\":\"" + sname
         + "\",\"async\":false,\"parameters\":{\"input\":{\"shuffle\":true,"
-          "\"separator\":\",\",\"scale\":true,\"timesteps\":50,\"label\":["
+          "\"separator\":\",\",\"scale\":true,\"backcast_timesteps\":50,"
+          "\"forecast_timesteps\":50,\"ignore\":["
           "\"output\"]},\"mllib\":{\"gpu\":true,\"gpuid\":0,\"solver\":{"
           "\"iterations\":"
         + iterations_nbeats_cpu
@@ -1258,8 +1273,9 @@ TEST(torchapi, nbeats_extract_layer_complete_gpu)
   std::string jpredictstr
       = "{\"service\":\"" + sname
         + "\",\"parameters\":{\"mllib\":{\"extract_layer\":\"2:0:fc3\"},"
-          "\"input\":{\"timesteps\":50,\"connector\":"
-          "\"csvts\",\"scale\":true,\"label\":[\"output\"],\"continuation\":"
+          "\"input\":{\"backcast_timesteps\":50,\"forecast_timesteps\":50,"
+          "\"connector\":"
+          "\"csvts\",\"scale\":true,\"ignore\":[\"output\"],\"continuation\":"
           "true,\"min_vals\":"
         + str_min_vals + ",\"max_vals\":" + str_max_vals
         + "},\"output\":{}},\"data\":[\"" + csvts_predict + "\"]}";
@@ -1269,9 +1285,9 @@ TEST(torchapi, nbeats_extract_layer_complete_gpu)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
-  ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_998", uri);
+  ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_99", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["vals"].IsArray());
-  ASSERT_EQ(jd["body"]["predictions"].Size(), 20);
+  ASSERT_EQ(jd["body"]["predictions"].Size(), 10);
   ASSERT_EQ(jd["body"]["predictions"][0]["vals"].Size(), 10);
 
   //  remove service

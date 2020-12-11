@@ -679,8 +679,8 @@ gpuid         | int or array   | yes      | 0              | GPU id, use single 
 resume        | bool           | yes      | false          | Whether to resume training from .solverstate and .caffemodel files
 class_weights | array of float | yes      | 1.0 everywhere | Whether to weight some classes more / less than others, e.g. [1.0,0.1,1.0]
 ignore_label  | int            | yes      | N/A            | A single label to be ignored by the loss (i.e. no gradients)
-timesteps     | int            | yes      | N/A            | Number of timesteps for recurrence ('csvts', `ctc` OCR) models
-offset        | int            | yes      | N/A            | Offset beween start point of sequences with connector `cvsts`, defining the overlap of input series
+timesteps     | int            | yes      | N/A            | Number of timesteps for recurrence ('csvts', `ctc` OCR) models (in case of csvts, used only at train time)
+offset        | int            | yes      | N/A            | Offset beween start point of sequences with connector `cvsts`, defining the overlap of input series. For [0, n] steps a timestep of t and an offset of k, series [0..t-1], [k..t+k-1], [2k, 2k+t-1] ... will be cosntructed. If some elements at the end could not be taken using this, it will add a final [n-t+1..n] sequence (used only at train time).
 
 Solver:
 

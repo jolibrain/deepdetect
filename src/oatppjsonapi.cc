@@ -230,14 +230,13 @@ namespace dd
         std::string access_log = req.protocol.std_str() + " \""
                                  + req.method.std_str() + " "
                                  + req.path.std_str() + "\"";
-        std::string service;
-        if (janswer.HasMember("head"))
+        if (janswer.HasMember("head") && janswer["head"].HasMember("service"))
           {
-            if (janswer["head"].HasMember("service"))
-              service = janswer["head"]["service"].GetString();
+            std::string service = janswer["head"]["service"].GetString();
+            if (!service.empty())
+              access_log += " " + service;
           }
-        if (!service.empty())
-          access_log += " " + service;
+
         access_log += " " + std::to_string(outcode);
         if (outcode == 200 || outcode == 201)
           _logger->info(access_log);
