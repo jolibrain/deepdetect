@@ -191,108 +191,57 @@ public:
 
   ~CaffeLogger()
   {
-    if (_severity == "none" || _str.empty()) // ignore
+    if (_severity == "none" || _sstr.str().empty()) // ignore
       {
       }
     else if (_severity == INFO)
-      _console->info(_str);
+      _console->info(_sstr.str());
     else if (_severity == WARNING)
-      _console->warn(_str);
+      _console->warn(_sstr.str());
     else if (_severity == ERROR)
-      _console->error(_str);
+      _console->error(_sstr.str());
   }
 
-  friend CaffeLogger &operator<<(const CaffeLogger &cl,
-                                 const std::string &rstr)
+  std::stringstream &sstream()
   {
-    std::string str = rstr;
-    const_cast<CaffeLogger &>(cl)._str += str;
-    return const_cast<CaffeLogger &>(cl);
-  }
-
-  friend CaffeLogger &operator<<(const CaffeLogger &cl, const double &d)
-  {
-    std::string str = std::to_string(d);
-    boost::trim_right_if(str, boost::is_any_of("\n"));
-    const_cast<CaffeLogger &>(cl)._str += str;
-    return const_cast<CaffeLogger &>(cl);
-  }
-
-  friend CaffeLogger &operator<<(const CaffeLogger &cl,
-                                 const std::ostream &out)
-  {
-    std::stringstream sstr;
-    sstr << out.rdbuf();
-    const_cast<CaffeLogger &>(cl)._str += sstr.str();
-    return const_cast<CaffeLogger &>(cl);
+    if (_severity != FATAL)
+      return _sstr;
+    else
+      throw CaffeErrorException(
+          std::string(__FILE__) + ":" + SSTR(__LINE__)
+          + " / Fatal Caffe error"); // XXX: cannot report the exact location
+    // of the trigger...
   }
 
   std::string _severity = INFO;
   std::shared_ptr<spdlog::logger> _console;
-  std::string _str;
+  std::stringstream _sstr;
 };
 
-inline CaffeLogger LOG(const std::string &severity)
-{
-  if (severity != FATAL)
-    {
-      return CaffeLogger(severity);
-    }
-  else
-    {
-      throw CaffeErrorException(
-          std::string(__FILE__) + ":" + SSTR(__LINE__)
-          + " / Fatal Caffe error"); // XXX: cannot report the exact location
-                                     // of the trigger...
-    }
-}
+#define LOG(severity) CaffeLogger(severity).sstream()
 
-inline CaffeLogger LOG_IF(const std::string &severity, const bool &condition)
-{
-  if (condition)
-    return LOG(severity);
-  else
-    return CaffeLogger("none");
-}
+#define LOG_IF(severity, cond)                                                \
+  if (cond)                                                                   \
+  CaffeLogger(severity).sstream()
 
 #ifdef NDEBUG
-inline CaffeLogger DFATAL(const std::string &severity)
-{
-  (void)severity;
-  return CaffeLogger("none");
-}
-inline CaffeLogger LOG_DFATAL(const std::string &severity)
-{
-  (void)severity;
-  return CaffeLogger("none");
-}
-inline CaffeLogger DLOG(const std::string &severity)
-{
-  (void)severity;
-  return CaffeLogger("none");
-}
+
+#define DFATAL(severity) CaffeLogger("none").sstream()
+
+#define LOG_DFATAL(severity) CaffeLogger("none").sstream()
+
+#define DLOG(severity) CaffeLogger("none").sstream()
+
 #else
-inline CaffeLogger DFATAL(const std::string &severity)
-{
-  (void)severity;
-  return LOG(FATAL);
-}
-inline CaffeLogger LOG_DFATAL(const std::string &severity)
-{
-  (void)severity;
-  return LOG(FATAL);
-}
-inline CaffeLogger DLOG(const std::string &severity)
-{
-  return LOG(severity);
-}
+#define DFATAL(severity) CaffeLogger(FATAL).sstream()
+
+#define DFATAL(severity) CaffeLogger(FATAL).sstream()
+
+#define DLOG(severity) CaffeLogger(severity).sstream()
+
 #endif
 
 // Poor man's version...
-inline CaffeLogger LOG_EVERY_N(const std::string &severity, const int &n)
-{
-  (void)n;
-  return LOG(severity);
-}
+#define LOG_EVERY_N(severity, n) CaffeLogger(severity).sstream()
 
 #endif

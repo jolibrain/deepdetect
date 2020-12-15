@@ -710,7 +710,8 @@ if (USE_TORCH)
 
   set(PYTORCH_PATCHES
     ${PYTORCH_PATCHES_PATH}/pytorch_15_compile.patch
-    ${PYTORCH_PATCHES_PATH}/pytorch_16_logging.patch
+    ${PYTORCH_PATCHES_PATH}/pytorch_16_new_logger.patch
+    ${PYTORCH_PATCHES_PATH}/pytorch_16_use_new_logger.patch
     ${PYTORCH_PATCHES_PATH}/pytorch_14_namespace.patch
     ${PYTORCH_PATCHES_PATH}/pytorch_16_fatbin.patch
   )
@@ -741,7 +742,7 @@ if (USE_TORCH)
       PATCH_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || git apply ${PYTORCH_PATCHES} && echo Applying ${PYTORCH_PATCHES}
       CONFIGURE_COMMAND ""
       BUILD_COMMAND ""
-      COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || PATH=${PROTOBUF_LIB_DIR}:$ENV{PATH} BUILD_CUSTOM_PROTOBUF=0 GLIBCXX_USE_CXX11_ABI=1 BUILD_TEST=0 USE_CUDA=${PYTORCH_USE_CUDA} BUILD_CAFFE2_OPS=0 USE_GLOG=0 CAFFE2_LINK_LOCAL_PROTOBUF=0 MAX_JOBS=8 python3 ../pytorch/tools/build_libtorch.py
+      COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || PATH=${PROTOBUF_LIB_DIR}:$ENV{PATH} BUILD_CUSTOM_PROTOBUF=0 GLIBCXX_USE_CXX11_ABI=1 BUILD_TEST=0 USE_CUDA=${PYTORCH_USE_CUDA} BUILD_CAFFE2_OPS=0 USE_DDLOG=1 CAFFE2_LINK_LOCAL_PROTOBUF=0 MAX_JOBS=8 python3 ../pytorch/tools/build_libtorch.py
       INSTALL_COMMAND ""
     )
 

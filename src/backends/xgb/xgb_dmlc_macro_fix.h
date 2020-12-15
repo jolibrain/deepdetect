@@ -20,6 +20,11 @@
  */
 
 #ifndef DMLC_LOGGING_H_
+#undef LOG
+#undef LOG_IF
+#undef DFATAL
+#undef DLOG
+#undef LOG_EVERY_N
 #undef VLOG
 #undef CHECK
 #undef CHECK_NOTNULL
