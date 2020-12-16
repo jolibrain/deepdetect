@@ -42,10 +42,10 @@ namespace dd
     {
     }
 
-    int read_file(const std::string &fname);
+    int read_file(const std::string &fname, int test_id);
     int read_db(const std::string &fname);
     int read_mem(const std::string &content);
-    int read_dir(const std::string &dir);
+    int read_dir(const std::string &dir, int test_id);
 
     TxtInputFileConn *_ctfc = nullptr;
     std::shared_ptr<spdlog::logger> _logger;
@@ -314,7 +314,9 @@ namespace dd
     ~TxtInputFileConn()
     {
       destroy_txt_entries(_txt);
-      destroy_txt_entries(_test_txt);
+      for (auto te : _tests_txt)
+        destroy_txt_entries(te);
+      _tests_txt.clear();
     }
 
     void init(const APIData &ad)
@@ -382,9 +384,9 @@ namespace dd
       return _txt.size();
     }
 
-    int test_batch_size() const
+    int test_batch_size(size_t test_id) const
     {
-      return _test_txt.size();
+      return _tests_txt[test_id].size();
     }
 
     void transform(const APIData &ad)
@@ -407,21 +409,38 @@ namespace dd
       if (!_characters && (!_train || _ordered_words) && _vocab.empty())
         deserialize_vocab();
 
-      for (std::string u : _uris)
+      DataEl<DDTxt> dtxt(this->_input_timeout);
+      dtxt._ctype._ctfc = this;
+      if (dtxt.read_element(_uris[0], this->_logger, -1)
+          || (_txt.empty() && _db_fname.empty() && _ndbed == 0))
+        {
+          throw InputConnectorBadParamException("no data for text in "
+                                                + _uris[0]);
+        }
+
+      if (_ndbed == 0)
+        {
+          if (_db_fname.empty())
+            _txt.back()->_uri = _uris[0];
+          else
+            return; // single db
+        }
+
+      for (size_t i = 1; i < _uris.size(); ++i)
         {
           DataEl<DDTxt> dtxt(this->_input_timeout);
           dtxt._ctype._ctfc = this;
-          if (dtxt.read_element(u, this->_logger)
+          if (dtxt.read_element(_uris[i], this->_logger, i)
               || (_txt.empty() && _db_fname.empty() && _ndbed == 0))
             {
               throw InputConnectorBadParamException("no data for text in "
-                                                    + u);
+                                                    + _uris[i]);
             }
 
           if (_ndbed == 0)
             {
               if (_db_fname.empty())
-                _txt.back()->_uri = u;
+                _tests_txt[i].back()->_uri = _uris[i];
               else
                 return; // single db
             }
@@ -448,8 +467,9 @@ namespace dd
         }
 
       // split for test set
-      if (_train && _test_split > 0 && _ndbed == 0)
+      if (_train && _test_split > 0 && _ndbed == 0 && _tests_txt.size() == 0)
         {
+          _tests_txt.resize(1);
           int split_size = std::floor(_txt.size() * (1.0 - _test_split));
           auto chit = _txt.begin();
           auto dchit = chit;
@@ -460,7 +480,7 @@ namespace dd
                 {
                   if (dchit == _txt.begin())
                     dchit = chit;
-                  _test_txt.push_back((*chit));
+                  _tests_txt[0].push_back((*chit));
                 }
               else
                 ++cpos;
@@ -468,7 +488,7 @@ namespace dd
             }
           _txt.erase(dchit, _txt.end());
           _logger->info(
-              "data split test size=" + std::to_string(_test_txt.size())
+              "data split test size=" + std::to_string(_tests_txt[0].size())
               + " / remaining data size=" + std::to_string(_txt.size()));
         }
       if (_txt.empty() && _ndbed == 0)
@@ -479,8 +499,8 @@ namespace dd
 
     // text tokenization for BOW
     virtual void parse_content(const std::string &content,
-                               const float &target = -1,
-                               const bool &test = false);
+                               const float &target = -1, int test_id = -1);
+    // test -1 for train, 0 ,1  ... for test_id
 
     // serialization of vocabulary
     void serialize_vocab();
@@ -533,7 +553,7 @@ namespace dd
 
     // data
     std::vector<TxtEntry<double> *> _txt;
-    std::vector<TxtEntry<double> *> _test_txt;
+    std::vector<std::vector<TxtEntry<double> *>> _tests_txt;
     std::string _db_fname;
 
     int64_t _ndbed = 0;

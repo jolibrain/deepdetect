@@ -26,18 +26,23 @@
 namespace dd
 {
 
-  int DDCsvTS::read_file(const std::string &fname, bool is_test_data)
+  int DDCsvTS::read_file(const std::string &fname, int test_set_id)
   {
     if (_cifc)
       {
         _cifc->_columns.clear();
-        std::string testfname = _cifc->_csv_test_fname;
-        _cifc->_csv_test_fname = "";
+        std::vector<std::string> testfnames = _cifc->_csv_test_fnames;
+        _cifc->_csv_test_fnames.clear();
         _cifc->read_csv(fname, true);
-        _cifc->_csv_test_fname = testfname;
-        _cifc->push_csv_to_csvts(is_test_data);
-        if (is_test_data)
-          _cifc->_test_fnames.push_back(fname);
+        _cifc->_csv_test_fnames = testfnames;
+        _cifc->push_csv_to_csvts(test_set_id);
+        if (test_set_id >= 0)
+          {
+            if (_cifc->_test_fnames.size()
+                <= static_cast<unsigned int>(test_set_id))
+              _cifc->_test_fnames.resize(test_set_id + 1);
+            _cifc->_test_fnames[test_set_id].push_back(fname);
+          }
         else
           _cifc->_fnames.push_back(fname);
         return 0;
@@ -78,8 +83,9 @@ namespace dd
       return -1;
   }
 
-  int DDCsvTS::read_dir(const std::string &dir)
+  int DDCsvTS::read_dir(const std::string &dir, int test_id)
   {
+    (void)test_id;
     //- list all CSV files in directory
     std::unordered_set<std::string> trainfiles;
     int ret = fileops::list_directory(dir, true, false, true, trainfiles);
@@ -105,15 +111,22 @@ namespace dd
     _cifc->read_header(hline);
 
     //- read all test files
-    std::unordered_set<std::string> testfiles;
-    if (!_cifc->_csv_test_fname.empty())
-      fileops::list_directory(_cifc->_csv_test_fname, true, false, true,
-                              testfiles);
+    std::vector<std::unordered_set<std::string>> testsfiles;
+    if (!_cifc->_csv_test_fnames.empty())
+      {
+        for (std::string testdirname : _cifc->_csv_test_fnames)
+          {
+            std::unordered_set<std::string> testfiles;
+            fileops::list_directory(testdirname, true, false, true, testfiles);
+            testsfiles.push_back(testfiles);
+          }
+      }
 
     std::unordered_set<std::string> allfiles = trainfiles;
 
     //- aggregate all files = train + test
-    allfiles.insert(testfiles.begin(), testfiles.end());
+    for (auto testfiles : testsfiles)
+      allfiles.insert(testfiles.begin(), testfiles.end());
 
     //- read categoricals first if any as it affects the number of columns (and
     // thus bounds)
@@ -165,10 +178,12 @@ namespace dd
 
     //- read TS CSV data train/test
     for (auto fname : trainfiles) // train data
-      read_file(fname, false);
+      read_file(fname, -1);
     _cifc->shuffle_data_if_needed();
-    for (auto fname : testfiles) // test data
-      read_file(fname, true);
+    for (size_t test_id = 0; test_id < testsfiles.size(); ++test_id)
+      for (auto testfiles : testsfiles)
+        for (auto fname : testfiles) // test data
+          read_file(fname, test_id);
     _cifc->update_columns();
     return 0;
   }
@@ -227,8 +242,8 @@ namespace dd
         if (fileops::file_exists(_uris.at(0))) // training from dir
           {
             _csv_fname = _uris.at(0);
-            if (_uris.size() > 1)
-              _csv_test_fname = _uris.at(1);
+            for (unsigned int i = 1; i < _uris.size(); ++i)
+              _csv_test_fnames.push_back(_uris.at(i));
           }
         else // training from memory
           {
@@ -241,8 +256,9 @@ namespace dd
             ddcsvts._ctype._adconf = ad_input;
             ddcsvts.read_element(_csv_fname, this->_logger);
             // this read element will call read csvts_dir and scale and shuffle
+            // and also read test dirs
           }
-        else
+        else // reading from mem
           {
             for (size_t i = uri_offset; i < _uris.size(); i++)
               {
@@ -262,8 +278,10 @@ namespace dd
             shuffle_data(_csvtsdata);
             if (_test_split > 0.0)
               {
-                split_data(_csvtsdata, _csvtsdata_test);
-                std::cerr << "data split test size=" << _csvdata_test.size()
+                std::vector<std::vector<CSVline>> csvtsdata_test;
+                split_data(_csvtsdata, csvtsdata_test);
+                _csvtsdata_tests.push_back(csvtsdata_test);
+                std::cerr << "data split test size=" << csvtsdata_test.size()
                           << " / remaining data size=" << _csvdata.size()
                           << std::endl;
               }
@@ -324,24 +342,33 @@ namespace dd
     out.add("parameters", adparams);
   }
 
-  void CSVTSInputFileConn::push_csv_to_csvts(const bool &is_test_data)
+  void CSVTSInputFileConn::push_csv_to_csvts(int test_id)
   {
     if (_csvdata.size())
       {
-        if (is_test_data)
-          {
-            _csvtsdata_test.push_back(_csvdata);
-          }
+        if (test_id < 0)
+          _csvtsdata.push_back(_csvdata);
         else
           {
-            _csvtsdata.push_back(_csvdata);
+            if (_csvtsdata_tests.size()
+                < static_cast<unsigned int>(test_id + 1))
+              _csvtsdata_tests.resize(test_id + 1);
+            _csvtsdata_tests[test_id].push_back(_csvdata);
           }
         _csvdata.clear();
       }
-    if (_csvdata_test.size())
+
+    if (_csvdata_tests.size())
       {
-        _csvtsdata_test.push_back(_csvdata_test);
-        _csvdata_test.clear();
+        _logger->warn(
+            "pushing test csvdata to test csvtsdata, this should not happen");
+        for (size_t i = 0; i < _csvdata_tests.size(); ++i)
+          {
+            if (_csvtsdata_tests.size() < i + 1)
+              _csvtsdata_tests.resize(i + 1);
+            _csvtsdata_tests[i].push_back(_csvdata_tests[i]);
+            _csvdata_tests[i].clear();
+          }
       }
   }
 

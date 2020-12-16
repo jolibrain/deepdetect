@@ -81,8 +81,9 @@ namespace dd
   }
 
   /*- DDTxt -*/
-  int DDTxt::read_file(const std::string &fname)
+  int DDTxt::read_file(const std::string &fname, int test_id)
   {
+    (void)test_id;
     if (!_ctfc)
       {
         return -1;
@@ -113,7 +114,7 @@ namespace dd
     return 0;
   }
 
-  int DDTxt::read_dir(const std::string &dir)
+  int DDTxt::read_dir(const std::string &dir, int test_id)
   {
     if (!_ctfc)
       return -1;
@@ -224,7 +225,7 @@ namespace dd
         std::stringstream buffer;
         buffer << txt_file.rdbuf();
         std::string ct = buffer.str();
-        _ctfc->parse_content(ct, p.second, test_dir);
+        _ctfc->parse_content(ct, p.second, test_id);
       }
 
     // post-processing
@@ -316,7 +317,7 @@ namespace dd
 
   /*- TxtInputFileConn -*/
   void TxtInputFileConn::parse_content(const std::string &content,
-                                       const float &target, const bool &test)
+                                       const float &target, int test_id)
   {
     if (!_train && content.empty())
       throw InputConnectorBadParamException("no text data found");
@@ -396,10 +397,10 @@ namespace dd
                     towe->add_word(w);
                   }
 
-                if (!test)
+                if (test_id < 0)
                   _txt.push_back(towe);
                 else
-                  _test_txt.push_back(towe);
+                  _tests_txt[static_cast<size_t>(test_id)].push_back(towe);
               }
             else
               {
@@ -430,10 +431,10 @@ namespace dd
                       }
                     tbe->add_word(w, 1.0, _count);
                   }
-                if (!test)
+                if (test_id < 0)
                   _txt.push_back(tbe);
                 else
-                  _test_txt.push_back(tbe);
+                  _tests_txt[static_cast<size_t>(test_id)].push_back(tbe);
               }
           }
         else // character-level features
@@ -484,10 +485,10 @@ namespace dd
                   }
                 while (str_i < end && seq < _sequence);
               }
-            if (!test)
+            if (test_id < 0)
               _txt.push_back(tce);
             else
-              _test_txt.push_back(tce);
+              _tests_txt[static_cast<size_t>(test_id)].push_back(tce);
             std::cerr << "\rloaded text samples=" << _txt.size();
           }
       }

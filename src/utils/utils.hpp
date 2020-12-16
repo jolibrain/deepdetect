@@ -54,6 +54,17 @@ namespace dd
       return true;
     }
 
+    static bool unique(int64_t val, std::vector<int64_t> vec)
+    {
+      size_t count = 0;
+      for (int64_t v : vec)
+        {
+          if (v == val)
+            count++;
+        }
+      return count == 1;
+    }
+
 #ifdef WIN32
     static int my_hardware_concurrency()
     {

@@ -51,7 +51,7 @@ namespace dd
     }
 
     int read_element(const std::string &uri,
-                     std::shared_ptr<spdlog::logger> &logger)
+                     std::shared_ptr<spdlog::logger> &logger, int test_id = -1)
     {
       _ctype._logger = logger;
       bool dir = false;
@@ -81,9 +81,9 @@ namespace dd
             return _ctype.read_db(
                 uri); // XXX: db can acutally be a dir (e.g. lmdb)
           else if (dir)
-            return _ctype.read_dir(uri);
+            return _ctype.read_dir(uri, test_id);
           else
-            return _ctype.read_file(uri);
+            return _ctype.read_file(uri, test_id);
         }
       else
         return _ctype.read_mem(uri);

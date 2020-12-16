@@ -105,6 +105,8 @@ namespace dd
     {
     }
 
+    TorchDataset(TorchDataset &&d) = default;
+
     virtual ~TorchDataset()
     {
       if (_dbCursor)
@@ -305,6 +307,217 @@ namespace dd
                             torch::Tensor &targett, const bool &bw);
   };
 
+  /**
+   * \brief this class holds several datasets
+   */
+  class TorchMultipleDataset
+  {
+
+  public:
+    TorchMultipleDataset()
+    {
+    }
+
+    /*
+     * \brief copy constructor
+     */
+    TorchMultipleDataset(const TorchMultipleDataset &d)
+        : _inputc(d._inputc), _image(d._image),
+          _classification(d._classification), _db(d._db), _backend(d._backend),
+          _dbPrefix(d._dbPrefix), _dbFullNames(d._dbFullNames),
+          _logger(d._logger),
+          _batches_per_transaction(d._batches_per_transaction),
+          _datasets(d._datasets), _datasets_names(d._datasets_names)
+    {
+    }
+
+    /**
+     * \brief setter for db metadata
+     */
+    void set_db_params(const bool &db, const std::string &backend,
+                       const std::string &dbname)
+    {
+      _db = db;
+      _backend = backend;
+      _dbPrefix = dbname;
+    }
+
+    /**
+     * \brief setter for _logger
+     */
+    void set_logger(std::shared_ptr<spdlog::logger> logger)
+    {
+      _logger = logger;
+    }
+
+    /**
+     * \brief set transaction size on both dataset (train and test)
+     */
+    void set_db_transaction_size(int32_t tsize)
+    {
+      _batches_per_transaction = tsize;
+    }
+
+    /**
+     * \brief add one element to dataset
+     */
+    void add_db_elt(const size_t &set_id, const int64_t &index,
+                    const std::string &data, const std::string &target);
+
+    /**
+     * \brief commits final db transactions
+     */
+    void db_finalize()
+    {
+      for (auto &d : _datasets)
+        d.db_finalize();
+    }
+
+    /*
+     * \brief get db name as given in api or computed if not given
+     */
+    const std::string &dbFullName(const size_t i)
+    {
+      return _dbFullNames[i];
+    }
+
+    /**
+     * \brief adds image to batch, with an int target
+     */
+    int add_image_file(const size_t id, const std::string &fname,
+                       const int &target, const int &height, const int &width);
+
+    /**
+     * \brief adds image to batch, with a set of regression targets
+     */
+    int add_image_file(const size_t id, const std::string &test_name,
+                       const std::vector<double> &target, const int &height,
+                       const int &width);
+
+    /*
+     * \brief set list of files along with value, ie for regression
+     */
+    void set_list(const std::vector<std::vector<
+                      std::pair<std::string, std::vector<double>>>> &lsfiles);
+
+    /*
+     * \brief get one set
+     */
+    TorchDataset &operator[](const size_t id)
+    // TorchDataset &get(const size_t id)
+    {
+      return _datasets[id];
+    }
+
+    /*
+     * \brief get one set
+     */
+    const TorchDataset &operator[](const size_t id) const
+    // TorchDataset &get(const size_t id)
+    {
+      return _datasets[id];
+    }
+
+    /*
+     * \brief get all test set names (duh!)
+     */
+    std::vector<std::string> &names()
+    {
+      return _datasets_names;
+    }
+
+    /*
+     * \brief get all test set names (duh!)
+     */
+    std::string name(size_t i)
+    {
+      return _datasets_names[i];
+    }
+
+    /*
+     * \brief check if some set has db'ed data
+     */
+    bool has_db_data()
+    {
+      for (auto &s : _datasets)
+        if (s._dbData != nullptr)
+          return true;
+      return false;
+    }
+
+    void reset()
+    {
+      for (auto &s : _datasets)
+        s.reset();
+    }
+
+    size_t size() const
+    {
+      return _datasets.size();
+    }
+
+    /*
+     * \brief _allocate_ test sets given vector of names as found in API
+     */
+    void add_tests_names(const std::vector<std::string> &longnames);
+
+    /*
+     * \brief _allocate_ test set given name as found in API
+     */
+    void add_test_name(std::string longname);
+
+    /*
+     * \brief _allocate_ test set given db name as found in API
+     */
+    void add_db_name(std::string dblongname);
+
+  protected:
+    void test_name_from_db_name(size_t id)
+    {
+      _datasets_names[id] = fileops::shortname(_dbFullNames[id]);
+    }
+
+    void set_db_name(size_t id, std::string name = "")
+    {
+      if (name == "" || !fileops::is_db(name))
+        _dbFullNames[id] = _dbPrefix + "_"
+                           + std::to_string(_dbFullNames.size() - 1) + "."
+                           + _backend;
+      else
+        _dbFullNames[id] = name;
+    }
+
+    /*
+     * \brief copy attributes to new test set
+     */
+    void init_set(const size_t id)
+    {
+      _datasets[id]._inputc = _inputc;
+      _datasets[id]._image = _image;
+      _datasets[id]._classification = _classification;
+      _datasets[id].set_db_params(_db, _backend,
+                                  _dbPrefix + "_" + std::to_string(id));
+      _datasets[id].set_logger(_logger);
+      _datasets[id].set_db_transaction_size(_batches_per_transaction);
+    }
+
+  public:
+    InputConnectorStrategy *_inputc
+        = nullptr;               /**< back ptr to input connector. */
+    bool _image = false;         /**< whether an image dataset. */
+    bool _classification = true; /**< whether a classification dataset. */
+
+  protected:
+    bool _db = false;
+    std::string _backend = "lmdb";
+    std::string _dbPrefix;
+    std::vector<std::string> _dbFullNames;
+    std::shared_ptr<spdlog::logger> _logger; /**< dd logger */
+    int32_t _batches_per_transaction
+        = 10; /**< number of batches per db transaction */
+    std::vector<TorchDataset> _datasets;
+    std::vector<std::string> _datasets_names;
+  };
 }
 
 #endif

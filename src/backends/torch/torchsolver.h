@@ -77,8 +77,10 @@ namespace dd
      */
 
     int resume(const APIData &ad_mllib, const TorchModel &mlmodel,
-               const torch::Device &main_device, double &best_metric_value,
-               int64_t &best_iteration_number);
+               const torch::Device &main_device,
+               std::vector<double> &best_metric_values,
+               std::vector<int64_t> &best_iteration_number,
+               const std::vector<std::string> &set_names);
 
     /**
      * \brief zero_grad() indirection in order to mimic native optimizer
