@@ -3,7 +3,7 @@ pipeline {
     dockerfile {
       label 'gpu'
       filename 'ci/devel.Dockerfile'
-      args "-v /var/lib/jenkins/.ccache:/ccache -e CCACHE_DIR=/ccache --runtime nvidia"
+      args "-v /var/lib/jenkins/.ccache:/ccache -v /var/lib/jenkins/jobs/deepdetect-prebuilt-cache/branches/master/builds:/prebuilt -e CCACHE_DIR=/ccache --runtime nvidia"
     }
   }
   stages {
@@ -22,12 +22,10 @@ pipeline {
       }
       steps {
         script {
-          try {
-            copyArtifacts(projectName: 'deepdetect-prebuilt-cache/master')
-          } catch (err) {
-            echo "artefact copy fail, skipping it"
-            echo err.getMessage();
-          }
+          sh '''
+          prebuilt_version=$(awk '/^lastSuccessfulBuild/{print $2}' /prebuilt/permalinks)
+          rsync -a --progress /prebuilt/${prebuilt_version}/archive/build/ build/
+          '''
         }
       }
     }
