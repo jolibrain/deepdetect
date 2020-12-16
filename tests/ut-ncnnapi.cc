@@ -47,7 +47,8 @@ TEST(ncnnapi, service_predict)
         "\"supervised\",\"model\":{\"repository\":\""
         + incept_repo
         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
-          "300,\"width\":300},\"mllib\":{\"nclasses\":21}}}";
+          "300,\"width\":300},"
+          "\"mllib\":{\"nclasses\":21}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
   ASSERT_EQ(created_str, joutstr);
 
@@ -66,6 +67,22 @@ TEST(ncnnapi, service_predict)
   std::string cl1
       = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
   ASSERT_TRUE(cl1 == "15");
+  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
+              > 0.4);
+
+  // predict with mean and std, wrong values, for testing only
+  jpredictstr
+      = "{\"service\":\"imgserv\",\"parameters\":{\"input\":{\"height\":300,"
+        "\"width\":300,\"mean\":[128,128,128],\"std\":[255,255,255]},"
+        "\"output\":{\"bbox\":true}},\"data\":[\""
+        + incept_repo + "face.jpg\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+  cl1 = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
               > 0.4);
 }
