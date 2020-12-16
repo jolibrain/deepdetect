@@ -31,6 +31,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     git \
     ccache \
     automake \
+    rsync \
     clang-format-10 \
     build-essential \
     openjdk-8-jdk \
@@ -100,7 +101,9 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     libnvparsers7=${DD_TENSORRT_VERSION} \
     libnvparsers-dev=${DD_TENSORRT_VERSION} \
     libnvinfer7=${DD_TENSORRT_VERSION} \
-    libnvinfer-dev=${DD_TENSORRT_VERSION}
+    libnvinfer-dev=${DD_TENSORRT_VERSION} \
+    libnvinfer-plugin7=${DD_TENSORRT_VERSION} \
+    libnvinfer-plugin-dev=${DD_TENSORRT_VERSION}
 
 RUN for url in \
         https://github.com/bazelbuild/bazel/releases/download/0.24.1/bazel_0.24.1-linux-x86_64.deb \
