@@ -31,6 +31,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     git \
     ccache \
     automake \
+    rsync \
     clang-format-10 \
     build-essential \
     openjdk-8-jdk \
