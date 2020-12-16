@@ -274,8 +274,9 @@ namespace dd
     }
 
     // data acquisition
-    int read_file(const std::string &fname)
+    int read_file(const std::string &fname, int test_id)
     {
+      (void)test_id;
       cv::Mat img
           = cv::imread(fname, _unchanged_data ? CV_LOAD_IMAGE_UNCHANGED
                                               : (_bw ? CV_LOAD_IMAGE_GRAYSCALE
@@ -311,8 +312,9 @@ namespace dd
       return 0;
     }
 
-    int read_dir(const std::string &dir)
+    int read_dir(const std::string &dir, int test_id)
     {
+      (void)test_id;
       // list directories in dir
       std::unordered_set<std::string> subdirs;
       if (fileops::list_directory(dir, false, true, false, subdirs))

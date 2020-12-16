@@ -39,6 +39,7 @@ namespace dd
     auto seed = static_cast<long>(time(NULL));
     std::mt19937 rng(seed);
 
+    _test_datasets.add_test_name("split");
     for (int64_t i = 0; i < ntest; i++)
       {
         std::uniform_int_distribution<int64_t> index_distrib(
@@ -47,15 +48,16 @@ namespace dd
         std::string data;
         std::string target;
         _dataset.pop_db_elt(index, data, target);
-        _test_dataset.add_db_elt(index, data, target);
+        _test_datasets.add_db_elt(0, index, data, target);
       }
-    _test_dataset.db_finalize();
+    _test_datasets.db_finalize();
     _dataset.db_finalize();
   }
 
   bool TorchInputInterface::has_to_create_db(const APIData &ad,
                                              double test_split)
   {
+    bool rebuild = false;
     // here force db paths manually if given at call time
     std::vector<std::string> uris
         = ad.get("data").get<std::vector<std::string>>();
@@ -65,27 +67,42 @@ namespace dd
         if (fileops::dir_exists(uris[0]) && fileops::is_db(uris[0]))
           {
             _dataset._dbFullName = uris[0];
-            if (uris.size() == 2 && fileops::is_db(uris[1]))
-              _test_dataset._dbFullName = uris[1];
+          }
+        if (uris.size() == 1)
+          _test_datasets.add_test_name("split");
+        else
+          {
+            std::vector<std::string> testnames;
+            for (size_t i = 1; i < uris.size(); ++i)
+              testnames.push_back(uris[i]);
+            _test_datasets.add_tests_names(testnames);
           }
       }
     if (fileops::file_exists(_dataset._dbFullName))
       {
         _tilogger->warn("db {} already exists, not rebuilding it",
                         _dataset._dbFullName);
-        if (!fileops::file_exists(_test_dataset._dbFullName))
+        if (!fileops::file_exists(_test_datasets.dbFullName(0)))
           {
             if (test_split != 0.0)
-              build_test_datadb_from_full_datadb(test_split);
+              {
+                build_test_datadb_from_full_datadb(test_split);
+                return false;
+              }
           }
-        else
-          {
-            _tilogger->warn("test db {} already exists, not rebuilding it",
-                            _test_dataset._dbFullName);
-          }
-        return false;
       }
-    return true;
+    else
+      return true;
+    for (size_t i = 1; i < uris.size(); ++i)
+      {
+        if (fileops::file_exists(_test_datasets.dbFullName(i - 1)))
+          _tilogger->warn("test db {} already exists, not rebuilding it",
+                          _test_datasets.dbFullName(i - 1));
+        else
+          rebuild = true;
+      }
+
+    return rebuild;
   }
 
   std::vector<c10::IValue>
@@ -256,36 +273,68 @@ namespace dd
                     hcorresp_r; // reverse correspondence for test set.
                 std::vector<std::pair<std::string, int>>
                     lfiles; // labeled files
-                std::vector<std::pair<std::string, int>> test_lfiles;
+                std::vector<std::vector<std::pair<std::string, int>>>
+                    tests_lfiles;
 
                 read_image_folder(lfiles, hcorresp, hcorresp_r, _uris.at(0));
-                if (_uris.size() > 1)
-                  {
-                    read_image_folder(test_lfiles, hcorresp, hcorresp_r,
-                                      _uris.at(1), true);
-                  }
+                tests_lfiles.resize(_uris.size() - 1);
+                for (size_t i = 1; i < _uris.size(); ++i)
+                  read_image_folder(tests_lfiles[i - 1], hcorresp, hcorresp_r,
+                                    _uris.at(i), true);
 
                 if (_dataset._shuffle)
                   shuffle_dataset<int>(lfiles);
 
-                bool has_test_data = test_lfiles.size() != 0;
+                bool has_test_data = false;
+                for (auto test_lfiles : tests_lfiles)
+                  if (test_lfiles.size() != 0)
+                    {
+                      has_test_data = true;
+                      break;
+                    }
                 if (_test_split > 0.0 && !has_test_data)
                   {
-                    split_dataset<int>(lfiles, test_lfiles);
+                    tests_lfiles.resize(1);
+                    split_dataset<int>(lfiles, tests_lfiles[0]);
                   }
 
                 // Read data
                 for (const std::pair<std::string, int> &lfile : lfiles)
+                  _dataset.add_image_file(lfile.first, lfile.second, _height,
+                                          _width);
+
+                if (!_db)
+                  // in case of db, test sets are already allocated in
+                  // has_to_create_db
                   {
-                    _dataset.add_image_file(lfile.first, lfile.second, _height,
-                                            _width);
+                    if (tests_lfiles.size() > 0)
+                      {
+                        if (tests_lfiles.size() == 1)
+                          {
+                            if (_uris.size() == 1)
+                              _test_datasets.add_test_name("split");
+                            else
+                              _test_datasets.add_test_name(_uris[1]);
+                          }
+                        else
+                          {
+                            std::vector<std::string> testnames;
+                            for (size_t i = 0; i < tests_lfiles.size(); ++i)
+                              if (_uris.size() > i + 1)
+                                testnames.push_back(_uris[i + 1]);
+                              else
+                                testnames.push_back("test_"
+                                                    + std::to_string(i));
+                            _test_datasets.add_tests_names(testnames);
+                          }
+                      }
                   }
 
-                for (const std::pair<std::string, int> &lfile : test_lfiles)
-                  {
-                    _test_dataset.add_image_file(lfile.first, lfile.second,
-                                                 _height, _width);
-                  }
+                for (size_t i = 0; i < tests_lfiles.size(); ++i)
+                  for (const std::pair<std::string, int> &lfile :
+                       tests_lfiles[i])
+                    _test_datasets.add_image_file(i, lfile.first, lfile.second,
+                                                  _height, _width);
 
                 // Write corresp file
                 std::ofstream correspf(_model_repo + "/" + _correspname,
@@ -304,19 +353,33 @@ namespace dd
               {
                 std::vector<std::pair<std::string, std::vector<double>>>
                     lfiles; // labeled files
-                std::vector<std::pair<std::string, std::vector<double>>>
-                    test_lfiles;
+                std::vector<
+                    std::vector<std::pair<std::string, std::vector<double>>>>
+                    tests_lfiles;
                 read_image_list(lfiles, _uris.at(0));
-                if (_uris.size() > 1)
-                  read_image_list(test_lfiles, _uris.at(1));
+                for (size_t i = 1; i < _uris.size(); ++i)
+                  {
+                    if (tests_lfiles.size() < i)
+                      tests_lfiles.resize(i);
+                    read_image_list(tests_lfiles[i - 1], _uris.at(i));
+                  }
 
                 if (_dataset._shuffle)
                   shuffle_dataset<std::vector<double>>(lfiles);
 
-                bool has_test_data = test_lfiles.size() != 0;
+                // bool has_test_data = test_lfiles.size() != 0;
+                bool has_test_data = false;
+                for (auto test_lfiles : tests_lfiles)
+                  if (test_lfiles.size() != 0)
+                    {
+                      has_test_data = true;
+                      break;
+                    }
                 if (_test_split > 0.0 && !has_test_data)
                   {
-                    split_dataset<std::vector<double>>(lfiles, test_lfiles);
+                    tests_lfiles.resize(1);
+                    split_dataset<std::vector<double>>(lfiles,
+                                                       tests_lfiles[0]);
                   }
 
                 // Read data
@@ -329,17 +392,36 @@ namespace dd
                                                 _height, _width);
                       }
 
-                    for (const std::pair<std::string, std::vector<double>>
-                             &lfile : test_lfiles)
-                      {
-                        _test_dataset.add_image_file(lfile.first, lfile.second,
-                                                     _height, _width);
-                      }
+                    // in case of db, alloc of test sets already done in
+                    // has_to_create_db
+
+                    for (size_t i = 0; i < tests_lfiles.size(); ++i)
+                      for (const std::pair<std::string, std::vector<double>>
+                               &lfile : tests_lfiles[i])
+                        _test_datasets.add_image_file(
+                            i, lfile.first, lfile.second, _height, _width);
                   }
                 else
                   {
                     _dataset.set_list(lfiles);
-                    _test_dataset.set_list(test_lfiles);
+                    std::vector<std::string> test_names;
+                    if (_uris.size() > 1)
+                      for (size_t i = 1; i < _uris.size(); ++i)
+                        test_names.push_back(fileops::shortname(_uris[i]));
+                    else
+                      {
+                        if (tests_lfiles.size() == 1)
+                          {
+                            _logger->info("test set will be named \"split\"");
+                            test_names.push_back("split");
+                          }
+                        else
+                          _logger->error("unnamed test file list found, "
+                                         "should not happen");
+                      }
+                    check_tests_sizes(tests_lfiles.size(), test_names.size());
+                    _test_datasets.add_tests_names(test_names);
+                    _test_datasets.set_list(tests_lfiles);
                   }
               }
           }
@@ -347,7 +429,7 @@ namespace dd
         if (createDb)
           {
             _dataset.db_finalize();
-            _test_dataset.db_finalize();
+            _test_datasets.db_finalize();
           }
       }
   }
@@ -387,13 +469,12 @@ namespace dd
   // ===== TxtTorchInputFileConn
 
   void TxtTorchInputFileConn::parse_content(const std::string &content,
-                                            const float &target,
-                                            const bool &test)
+                                            const float &target, int test_id)
   {
     _ndbed = 0;
-    TxtInputFileConn::parse_content(content, target, test);
+    TxtInputFileConn::parse_content(content, target, test_id);
     if (_db)
-      push_to_db(test);
+      push_to_db(test_id);
   }
 
   void TxtTorchInputFileConn::fillup_parameters(const APIData &ad_input)
@@ -403,9 +484,9 @@ namespace dd
       _db = ad_input.get("db").get<bool>();
   }
 
-  void TxtTorchInputFileConn::push_to_db(bool test)
+  void TxtTorchInputFileConn::push_to_db(int test_id)
   {
-    if (!test)
+    if (test_id < 0)
       {
         _logger->info("pushing to train_db");
         fill_dataset(_dataset, _txt);
@@ -414,8 +495,8 @@ namespace dd
     else
       {
         _logger->info("pushing to test_db");
-        fill_dataset(_test_dataset, _test_txt);
-        destroy_txt_entries(_test_txt);
+        fill_dataset(_test_datasets[test_id], _tests_txt[test_id]);
+        destroy_txt_entries(_tests_txt[test_id]);
       }
   }
 
@@ -466,8 +547,8 @@ namespace dd
                 TxtInputFileConn::transform(ad);
                 _test_split = save_ts;
                 _dataset.db_finalize();
-                bool has_test_data = _test_dataset._dbData != nullptr;
-                _test_dataset.db_finalize();
+                bool has_test_data = _test_datasets.has_db_data();
+                _test_datasets.db_finalize();
                 if (_test_split != 0.0 && !has_test_data)
                   build_test_datadb_from_full_datadb(_test_split);
               }
@@ -486,11 +567,24 @@ namespace dd
       {
         fill_dataset(_dataset, _txt);
         destroy_txt_entries(_txt);
-        if (!_test_txt.empty())
+        if (!_tests_txt.empty())
           {
-            fill_dataset(_test_dataset, _test_txt);
-            destroy_txt_entries(_test_txt);
+            std::vector<std::string> dsetnames(_uris.begin() + 1, _uris.end());
+            if (dsetnames.size() == 0)
+              dsetnames.push_back("split");
+            check_tests_sizes(_tests_txt.size(), dsetnames.size());
+            _test_datasets.add_tests_names(dsetnames);
+
+            for (size_t i = 0; i < _tests_txt.size(); ++i)
+              {
+                if (!_tests_txt[i].empty())
+                  {
+                    fill_dataset(_test_datasets[i], _tests_txt[i]);
+                    destroy_txt_entries(_tests_txt[i]);
+                  }
+              }
           }
+        _tests_txt.clear();
       }
   }
 
@@ -668,7 +762,7 @@ namespace dd
     if (_datadim != -1)
       return;
     if (is_test_data)
-      _datadim = _csvtsdata_test[0][0]._v.size();
+      _datadim = _csvtsdata_tests[0][0][0]._v.size();
     else
       _datadim = _csvtsdata[0][0]._v.size();
 
@@ -738,22 +832,26 @@ namespace dd
 
     if (_train)
       {
-        fill_dataset(_dataset, false);
+        _ids.clear();
+        fill_dataset(_dataset, _csvtsdata);
         _csvtsdata.clear();
-        fill_dataset(_test_dataset, true);
-        _csvtsdata_test.clear();
+        check_tests_sizes(_csvtsdata_tests.size(), _csv_test_fnames.size());
+        _test_datasets.add_tests_names(_csv_test_fnames);
+        for (size_t i = 0; i < _csvtsdata_tests.size(); ++i)
+          fill_dataset(_test_datasets[i], _csvtsdata_tests[i], i);
+        _csvtsdata_tests.clear();
       }
     else
       {
-        // in test mode, prevent connector to create different series based on
-        // offset
+        // in test mode, prevent connector to create different series based
+        // on offset
         if (_timesteps > 0)
           _offset = _timesteps;
         else
           _offset = _backcast_timesteps + _forecast_timesteps;
-        fill_dataset(_dataset, false);
+        fill_dataset(_dataset, _csvtsdata);
         _csvtsdata.clear();
-        _csvtsdata_test.clear();
+        _csvtsdata_tests.clear();
       }
   }
 
@@ -804,7 +902,8 @@ namespace dd
   }
 
   void CSVTSTorchInputFileConn::discard_warn(int vecindex,
-                                             unsigned int seq_size, bool test)
+                                             unsigned int seq_size,
+                                             int test_id)
   {
     std::string errmsg;
     if (_timesteps > 0)
@@ -819,10 +918,10 @@ namespace dd
                + "  backcast_timesteps: " + std::to_string(_backcast_timesteps)
                + "   forecast_timesteps: "
                + std::to_string(_forecast_timesteps) + " )";
-    if (test)
+    if (test_id >= 0)
       {
         if (static_cast<unsigned int>(vecindex) < _test_fnames.size())
-          errmsg = "file " + _test_fnames[vecindex]
+          errmsg = "file " + _test_fnames[test_id][vecindex]
                    + " does not contains enough timesteps, "
                      "discarding";
       }
@@ -836,12 +935,10 @@ namespace dd
     _tilogger->warn(errmsg);
   }
 
-  void CSVTSTorchInputFileConn::fill_dataset_forecast(TorchDataset &dataset,
-                                                      bool test)
+  void CSVTSTorchInputFileConn::fill_dataset_forecast(
+      TorchDataset &dataset, const std::vector<std::vector<CSVline>> &data,
+      int test_id)
   {
-    std::vector<std::vector<CSVline>> &data
-        = test ? this->_csvtsdata_test : this->_csvtsdata;
-
     int vecindex = -1;
 
     for (const std::vector<CSVline> &seq : data)
@@ -852,7 +949,7 @@ namespace dd
                                     : _backcast_timesteps;
         if (static_cast<long int>(seq.size()) < timesteps)
           {
-            discard_warn(vecindex, seq.size(), test);
+            discard_warn(vecindex, seq.size(), test_id);
             continue;
           }
         for (; tstart + timesteps < static_cast<long int>(seq.size());
@@ -930,12 +1027,11 @@ namespace dd
     dataset.add_batch({ dst }, { lst });
   }
 
-  void CSVTSTorchInputFileConn::fill_dataset_labels(TorchDataset &dataset,
-                                                    bool test)
+  void CSVTSTorchInputFileConn::fill_dataset_labels(
+      TorchDataset &dataset, const std::vector<std::vector<CSVline>> &data,
+      int test_id)
   {
     int vecindex = -1;
-    std::vector<std::vector<CSVline>> &data
-        = test ? this->_csvtsdata_test : this->_csvtsdata;
 
     if (_train)
       {
@@ -945,7 +1041,7 @@ namespace dd
             long int tstart = 0;
             if (static_cast<long int>(seq.size()) < _timesteps)
               {
-                discard_warn(vecindex, seq.size(), test);
+                discard_warn(vecindex, seq.size(), test_id);
                 continue;
               }
             for (; tstart + _timesteps < static_cast<long int>(seq.size());
@@ -966,17 +1062,15 @@ namespace dd
         }
   }
 
-  void CSVTSTorchInputFileConn::fill_dataset(TorchDataset &dataset,
-                                             bool use_csvtsdata_test)
+  void CSVTSTorchInputFileConn::fill_dataset(
+      TorchDataset &dataset,
+      const std::vector<std::vector<CSVline>> &csvtsdata, int test_id)
   {
-    _ids.clear();
-    // we have _csvtsdata and csvtsdata_test to put into TorchDataset
-    // _dataset , _test_dataset
-
     if (_forecast_timesteps != -1)
-      fill_dataset_forecast(dataset, use_csvtsdata_test);
+      fill_dataset_forecast(dataset, csvtsdata, test_id);
     else
-      fill_dataset_labels(dataset, use_csvtsdata_test);
+      fill_dataset_labels(dataset, csvtsdata, test_id);
     dataset.reset();
   }
+
 }

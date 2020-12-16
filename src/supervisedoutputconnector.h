@@ -718,7 +718,8 @@ namespace dd
 
     // measure
     static void measure(const APIData &ad_res, const APIData &ad_out,
-                        APIData &out)
+                        APIData &out, size_t test_id = 0,
+                        const std::string test_name = "")
     {
       APIData meas_out;
       bool tloss = ad_res.has("train_loss");
@@ -1204,7 +1205,21 @@ namespace dd
       if (lr)
         meas_out.add("learning_rate",
                      ad_res.get("learning_rate").get<double>());
-      out.add("measure", meas_out);
+      meas_out.add("test_id", static_cast<int>(test_id));
+      meas_out.add("test_name", test_name);
+      if (test_id == 0)
+        {
+          out.add("measure", meas_out);
+          std::vector<APIData> measures;
+          measures.push_back(meas_out);
+          out.add("measures", measures);
+        }
+      else
+        {
+          std::vector<APIData> measures = out.getv("measures");
+          measures.push_back(meas_out);
+          out.add("measures", measures);
+        }
     }
 
     static void timeSeriesMetrics(const APIData &ad, const int timeseries,

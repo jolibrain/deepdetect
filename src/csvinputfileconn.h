@@ -46,11 +46,12 @@ namespace dd
     {
     }
 
-    int read_file(const std::string &fname);
+    int read_file(const std::string &fname, int test_id);
     int read_db(const std::string &fname);
     int read_mem(const std::string &content);
-    int read_dir(const std::string &dir)
+    int read_dir(const std::string &dir, int test_id)
     {
+      (void)test_id;
       throw InputConnectorBadParamException(
           "uri " + dir + " is a directory, requires a CSV file");
     }
@@ -449,10 +450,13 @@ namespace dd
      * @param id
      * @param vals
      */
-    virtual void add_test_csvline(const std::string &id,
+    virtual void add_test_csvline(const unsigned int test_set_id,
+                                  const std::string &id,
                                   std::vector<double> &vals)
     {
-      _csvdata_test.emplace_back(id, std::move(vals));
+      if (_csvdata_tests.size() <= test_set_id)
+        _csvdata_tests.resize(test_set_id + 1);
+      _csvdata_tests[test_set_id].emplace_back(id, std::move(vals));
     }
 
     /**
@@ -474,8 +478,8 @@ namespace dd
           if (fileops::file_exists(_uris.at(0))) // training from file
             {
               _csv_fname = _uris.at(0);
-              if (_uris.size() > 1)
-                _csv_test_fname = _uris.at(1);
+              for (unsigned int i = 1; i < _uris.size(); ++i)
+                _csv_test_fnames.push_back(_uris.at(i));
             }
           else // training from memory
             {
@@ -514,7 +518,14 @@ namespace dd
                 }
               shuffle_data(_csvdata);
               if (_test_split > 0.0)
-                split_data(_csvdata, _csvdata_test);
+                {
+                  std::vector<CSVline> testdata_split;
+                  split_data(_csvdata, testdata_split);
+                  // insert at first pos, so if user passses test sets + split,
+                  // splitted one is first
+                  _csvdata_tests.insert(_csvdata_tests.begin(),
+                                        testdata_split);
+                }
               // std::cerr << "data split test size=" << _csvdata_test.size()
               // << " / remaining data size=" << _csvdata.size() << std::endl;
               if (!_ignored_columns.empty() || !_categoricals.empty())
@@ -590,9 +601,9 @@ namespace dd
       return _csvdata.size();
     }
 
-    int test_batch_size() const
+    int test_batch_size(unsigned int test_set_id) const
     {
-      return _csvdata_test.size();
+      return _csvdata_tests[test_set_id].size();
     }
 
     int feature_size() const
@@ -752,8 +763,9 @@ namespace dd
     // options
     bool _shuffle = false;
     std::mt19937 _g;
-    std::string _csv_fname;          /**< csv main filename. */
-    std::string _csv_test_fname;     /**< csv test filename (optional). */
+    std::string _csv_fname; /**< csv main filename. */
+    std::vector<std::string>
+        _csv_test_fnames;            /**< csv test filename (optional). */
     std::list<std::string> _columns; /**< list of csv columns. */
     std::vector<std::string> _label; /**< list of label columns. */
     std::unordered_map<std::string, int> _label_set;
@@ -784,7 +796,7 @@ namespace dd
 
     // data
     std::vector<CSVline> _csvdata;
-    std::vector<CSVline> _csvdata_test;
+    std::vector<std::vector<CSVline>> _csvdata_tests;
     std::string _db_fname;
   };
 }

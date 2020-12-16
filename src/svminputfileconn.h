@@ -40,10 +40,11 @@ namespace dd
     {
     }
 
-    int read_file(const std::string &fname);
+    int read_file(const std::string &fname, int test_id);
     int read_mem(const std::string &content);
-    int read_dir(const std::string &dir)
+    int read_dir(const std::string &dir, int test_id)
     {
+      (void)test_id;
       throw InputConnectorBadParamException(
           "uri " + dir + " is a directory, requires a file in libSVM format");
     }
@@ -155,6 +156,16 @@ namespace dd
               _svm_fname = _uris.at(0);
               if (_uris.size() > 1)
                 _svm_test_fname = _uris.at(1);
+              if (_uris.size() > 2)
+                {
+                  _logger->error(
+                      "multiple test sets not supported for svm for "
+                      "any  backend yet");
+                  throw InputConnectorBadParamException(
+                      "multiple test sets not supported for svm for any  "
+                      "backend "
+                      "yet");
+                }
             }
           if (!_svm_fname.empty()) // when training from file
             {

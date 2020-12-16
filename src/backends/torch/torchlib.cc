@@ -71,7 +71,7 @@ namespace dd
     _seq_training = tl._seq_training;
     _finetuning = tl._finetuning;
     _best_metrics = tl._best_metrics;
-    _best_metric_value = tl._best_metric_value;
+    _best_metric_values = tl._best_metric_values;
     _classification = tl._classification;
     _regression = tl._regression;
     _timeserie = tl._timeserie;
@@ -345,7 +345,7 @@ namespace dd
 
     _best_metrics = { "map", "meaniou",  "mlacc", "delta_score_0.1", "bacc",
                       "f1",  "net_meas", "acc",   "L1_mean_error",   "eucll" };
-    _best_metric_value = std::numeric_limits<double>::infinity();
+    _best_metric_values.resize(1, std::numeric_limits<double>::infinity());
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
@@ -373,11 +373,11 @@ namespace dd
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel>
-  int64_t TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy,
-                   TMLModel>::save_if_best(APIData &meas_out,
-                                           int64_t elapsed_it,
-                                           TorchSolver &tsolver,
-                                           int64_t best_iteration_number)
+  int64_t
+  TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy,
+           TMLModel>::save_if_best(const size_t test_id, APIData &meas_out,
+                                   int64_t elapsed_it, TorchSolver &tsolver,
+                                   std::vector<int64_t> best_iteration_numbers)
   {
     double cur_meas = std::numeric_limits<double>::infinity();
     std::string meas;
@@ -397,24 +397,42 @@ namespace dd
             "could not find any value for measuring best model");
         return false;
       }
-    if (_best_metric_value == std::numeric_limits<double>::infinity()
-        || is_better(cur_meas, _best_metric_value, meas))
+    if (_best_metric_values[test_id] == std::numeric_limits<double>::infinity()
+        || is_better(cur_meas, _best_metric_values[test_id], meas))
       {
-        if (best_iteration_number != -1)
+        if (best_iteration_numbers[test_id] != -1
+            && dd_utils::unique(best_iteration_numbers[test_id],
+                                best_iteration_numbers))
           {
-            remove_model(best_iteration_number);
+            remove_model(best_iteration_numbers[test_id]);
           }
-        _best_metric_value = cur_meas;
+        _best_metric_values[test_id] = cur_meas;
         this->snapshot(elapsed_it, tsolver);
         try
           {
             std::ofstream bestfile;
             std::string bestfilename
-                = this->_mlmodel._repo + this->_mlmodel._best_model_filename;
+                = this->_mlmodel._repo
+                  + fileops::insert_suffix(
+                      "_test_" + std::to_string(test_id),
+                      this->_mlmodel._best_model_filename);
             bestfile.open(bestfilename, std::ios::out);
             bestfile << "iteration:" << elapsed_it << std::endl;
             bestfile << meas << ":" << cur_meas << std::endl;
+            bestfile << "test_name: ";
+            if (meas_out.has("test_name"))
+              bestfile << meas_out.get("test_name").get<std::string>();
+            else
+              bestfile << "noname_" + std::to_string(test_id);
+            bestfile << std::endl;
             bestfile.close();
+            if (test_id == 0)
+              fileops::copy_file(this->_mlmodel._repo
+                                     + fileops::insert_suffix(
+                                         "_test_" + std::to_string(test_id),
+                                         this->_mlmodel._best_model_filename),
+                                 this->_mlmodel._repo
+                                     + this->_mlmodel._best_model_filename);
           }
         catch (std::exception &e)
           {
@@ -422,7 +440,7 @@ namespace dd
           }
         return elapsed_it;
       }
-    return best_iteration_number;
+    return best_iteration_numbers[test_id];
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
@@ -471,7 +489,7 @@ namespace dd
     APIData ad_input = ad.getobj("parameters").getobj("input");
     if (ad_input.has("shuffle"))
       inputc._dataset.set_shuffle(ad_input.get("shuffle").get<bool>());
-    inputc._dataset._classification = inputc._test_dataset._classification
+    inputc._dataset._classification = inputc._test_datasets._classification
         = _classification;
 
     try
@@ -590,20 +608,19 @@ namespace dd
       batch_size *= gpu_count;
 
     // create dataset for evaluation during training
-    TorchDataset eval_dataset;
-    if (!inputc._test_dataset.empty())
-      {
-        eval_dataset = inputc._test_dataset;
-      }
-    else
+    TorchMultipleDataset &eval_dataset = inputc._test_datasets;
+    if (eval_dataset.size() == 0)
       throw MLLibBadParamException("empty test dataset");
 
     // create solver
     tsolver.create(_module);
-    int64_t best_iteration_number = -1;
+    std::vector<int64_t> best_iteration_numbers(eval_dataset.size(), -1);
+    _best_metric_values.resize(eval_dataset.size(),
+                               std::numeric_limits<double>::infinity());
 
     int it = tsolver.resume(ad_mllib, this->_mlmodel, _main_device,
-                            _best_metric_value, best_iteration_number);
+                            _best_metric_values, best_iteration_numbers,
+                            eval_dataset.names());
 
     bool skip_training = it >= iterations;
     if (skip_training)
@@ -622,7 +639,7 @@ namespace dd
     // create dataloader
     inputc._dataset.reset();
     auto dataloader = torch::data::make_data_loader(
-        std::move(inputc._dataset), data::DataLoaderOptions(batch_size));
+        inputc._dataset, data::DataLoaderOptions(batch_size));
 
     int batch_id = 0;
     double last_test_time = 0;
@@ -788,7 +805,8 @@ namespace dd
                 last_it_time = 0;
                 train_loss = 0;
 
-                if ((elapsed_it % test_interval == 0 && !eval_dataset.empty())
+                if ((elapsed_it % test_interval == 0
+                     && eval_dataset.size() != 0)
                     || elapsed_it == iterations)
                   {
                     // Free memory
@@ -805,43 +823,58 @@ namespace dd
                                          steady_clock::now() - tstart)
                                          .count();
 
-                    APIData meas_obj = meas_out.getobj("measure");
-                    std::vector<std::string> meas_names = meas_obj.list_keys();
-
-                    best_iteration_number = save_if_best(
-                        meas_obj, elapsed_it, tsolver, best_iteration_number);
-
-                    for (auto name : meas_names)
+                    for (size_t i = 0; i < eval_dataset.size(); ++i)
                       {
-                        if (name != "cmdiag" && name != "cmfull"
-                            && name != "labels")
+                        APIData meas_obj;
+                        if (i == 0)
+                          meas_obj = meas_out.getobj("measure");
+                        else
+                          meas_obj = meas_out.getv("measures")[i];
+                        std::vector<std::string> meas_names
+                            = meas_obj.list_keys();
+
+                        //                        if (i == 0)
+                        best_iteration_numbers[i]
+                            = save_if_best(i, meas_obj, elapsed_it, tsolver,
+                                           best_iteration_numbers);
+                        this->_logger->info("measures on test set "
+                                            + std::to_string(i) + " : "
+                                            + eval_dataset.name(i));
+
+                        for (auto name : meas_names)
                           {
-                            double mval = meas_obj.get(name).get<double>();
-                            this->_logger->info("{}={}", name, mval);
-                            this->add_meas(name, mval);
-                            this->add_meas_per_iter(name, mval);
-                          }
-                        else if (name == "cmdiag")
-                          {
-                            std::vector<double> mdiag
-                                = meas_obj.get(name)
-                                      .get<std::vector<double>>();
-                            std::vector<std::string> cnames;
-                            std::string mdiag_str;
-                            for (size_t i = 0; i < mdiag.size(); i++)
+                            if (name != "cmdiag" && name != "cmfull"
+                                && name != "labels" && name != "test_id"
+                                && name != "test_name")
                               {
-                                mdiag_str
-                                    += this->_mlmodel.get_hcorresp(i) + ":"
-                                       + std::to_string(mdiag.at(i)) + " ";
-                                this->add_meas_per_iter(
-                                    name + '_'
-                                        + this->_mlmodel.get_hcorresp(i),
-                                    mdiag.at(i));
-                                cnames.push_back(
-                                    this->_mlmodel.get_hcorresp(i));
+                                double mval = meas_obj.get(name).get<double>();
+                                this->_logger->info("{}={}", name, mval);
+                                this->add_meas(name, mval);
+                                this->add_meas_per_iter(name, mval);
                               }
-                            this->_logger->info("{}=[{}]", name, mdiag_str);
-                            this->add_meas(name, mdiag, cnames);
+                            else if (name == "cmdiag")
+                              {
+                                std::vector<double> mdiag
+                                    = meas_obj.get(name)
+                                          .get<std::vector<double>>();
+                                std::vector<std::string> cnames;
+                                std::string mdiag_str;
+                                for (size_t i = 0; i < mdiag.size(); i++)
+                                  {
+                                    mdiag_str
+                                        += this->_mlmodel.get_hcorresp(i) + ":"
+                                           + std::to_string(mdiag.at(i)) + " ";
+                                    this->add_meas_per_iter(
+                                        name + '_'
+                                            + this->_mlmodel.get_hcorresp(i),
+                                        mdiag.at(i));
+                                    cnames.push_back(
+                                        this->_mlmodel.get_hcorresp(i));
+                                  }
+                                this->_logger->info("{}=[{}]", name,
+                                                    mdiag_str);
+                                this->add_meas(name, mdiag, cnames);
+                              }
                           }
                       }
 
@@ -852,12 +885,20 @@ namespace dd
                 if ((save_period != 0 && elapsed_it % save_period == 0)
                     || elapsed_it == iterations)
                   {
-                    if (best_iteration_number == elapsed_it)
-                      // current model already snapshoted as best model,
-                      // do not remove regular snapshot if it is  best
-                      // model
-                      best_iteration_number = -1;
-                    else
+                    bool snapshotted = false;
+                    for (size_t i = 0; i < best_iteration_numbers.size(); ++i)
+                      {
+
+                        if (best_iteration_numbers[i] == elapsed_it)
+                          // current model already snapshoted as best model,
+                          // do not remove regular snapshot if it is  best
+                          // model
+                          {
+                            best_iteration_numbers[i] = -1;
+                            snapshotted = true;
+                          }
+                      }
+                    if (!snapshotted)
                       snapshot(elapsed_it, tsolver);
                   }
                 ++it;
@@ -883,7 +924,7 @@ namespace dd
       }
 
     if (skip_training)
-      test(ad, inputc, inputc._test_dataset, test_batch_size, out);
+      test(ad, inputc, inputc._test_datasets, test_batch_size, out);
     torch_utils::empty_cuda_cache();
 
     // Update model after training
@@ -1194,8 +1235,22 @@ namespace dd
   int TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy,
                TMLModel>::test(const APIData &ad,
                                TInputConnectorStrategy &inputc,
-                               TorchDataset &dataset, int batch_size,
+                               TorchMultipleDataset &testsets, int batch_size,
                                APIData &out)
+  {
+    for (size_t i = 0; i < testsets.size(); ++i)
+      test(ad, inputc, testsets[i], batch_size, out, i, testsets.name(i));
+    return 0;
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+            class TMLModel>
+  int TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy,
+               TMLModel>::test(const APIData &ad,
+                               TInputConnectorStrategy &inputc,
+                               TorchDataset &dataset, int batch_size,
+                               APIData &out, size_t test_id,
+                               const std::string &test_name)
   {
     APIData ad_res;
     APIData ad_out = ad.getobj("parameters").getobj("output");
@@ -1346,7 +1401,7 @@ namespace dd
       }
     ad_res.add("batch_size",
                entry_id); // here batch_size = tested entries count
-    SupervisedOutput::measure(ad_res, ad_out, out);
+    SupervisedOutput::measure(ad_res, ad_out, out, test_id, test_name);
     _module.train();
     return 0;
   }

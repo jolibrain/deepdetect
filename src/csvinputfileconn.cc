@@ -25,8 +25,9 @@ namespace dd
 {
 
   /*- DDCsv -*/
-  int DDCsv::read_file(const std::string &fname)
+  int DDCsv::read_file(const std::string &fname, int test_id)
   {
+    (void)test_id;
     if (_cifc)
       {
         _cifc->read_csv(fname);
@@ -415,49 +416,57 @@ namespace dd
     csv_file.close();
 
     // test file, if any.
-    if (!_csv_test_fname.empty())
+    if (!_csv_test_fnames.empty())
       {
-        nlines = 0;
-        std::ifstream csv_test_file(_csv_test_fname, std::ios::binary);
-        if (!csv_test_file.is_open())
-          throw InputConnectorBadParamException("cannot open test file "
-                                                + fname);
-        std::getline(csv_test_file, hline); // skip header line
-        while (std::getline(csv_test_file, hline))
+        unsigned int test_set_id = 0;
+        for (std::string csv_test_fname : _csv_test_fnames)
           {
-            hline.erase(std::remove(hline.begin(), hline.end(), '\r'),
-                        hline.end());
-            std::vector<double> vals;
-            std::string cid;
-            read_csv_line(hline, _delim, vals, cid, nlines);
-            if (_scale)
+            nlines = 0;
+            std::ifstream csv_test_file(csv_test_fname, std::ios::binary);
+            if (!csv_test_file.is_open())
+              throw InputConnectorBadParamException("cannot open test file "
+                                                    + fname);
+            std::getline(csv_test_file, hline); // skip header line
+            while (std::getline(csv_test_file, hline))
               {
-                scale_vals(vals);
-              }
-            if (!_id.empty())
-              add_test_csvline(cid, vals);
-            else
-              add_test_csvline(std::to_string(nlines), vals);
+                hline.erase(std::remove(hline.begin(), hline.end(), '\r'),
+                            hline.end());
+                std::vector<double> vals;
+                std::string cid;
+                read_csv_line(hline, _delim, vals, cid, nlines);
+                if (_scale)
+                  {
+                    scale_vals(vals);
+                  }
+                if (!_id.empty())
+                  add_test_csvline(test_set_id, cid, vals);
+                else
+                  add_test_csvline(test_set_id, std::to_string(nlines), vals);
 
-            // debug
-            /*std::cout << "csv test data line=";
-              std::copy(vals.begin(),vals.end(),std::ostream_iterator<double>(std::cout,"
-              ")); std::cout << std::endl;*/
-            // debug
+                // debug
+                /*std::cout << "csv test data line=";
+                  std::copy(vals.begin(),vals.end(),std::ostream_iterator<double>(std::cout,"
+                  ")); std::cout << std::endl;*/
+                // debug
+              }
+            _logger->info("read {} lines from {}", nlines,
+                          _csv_test_fnames[test_set_id]);
+            csv_test_file.close();
+            test_set_id++;
           }
-        _logger->info("read {} lines from {}", nlines, _csv_test_fname);
-        csv_test_file.close();
       }
 
     // shuffle before possible test data selection.
     if (!forbid_shuffle)
       shuffle_data(_csvdata);
 
-    if (_csv_test_fname.empty() && _test_split > 0)
+    if (_csv_test_fnames.empty() && _test_split > 0)
       {
-        split_data(_csvdata, _csvdata_test);
+        std::vector<CSVline> testdata;
+        split_data(_csvdata, testdata);
+        _csvdata_tests.push_back(testdata);
         _logger->info("data split test size={} / remaining data size={}",
-                      _csvdata_test.size(), _csvdata.size());
+                      _csvdata_tests[0].size(), _csvdata.size());
       }
     if (!_ignored_columns.empty() || !_categoricals.empty())
       update_columns();

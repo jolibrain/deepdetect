@@ -428,6 +428,43 @@ namespace dd
 
       return 0;
     }
+
+    /**
+     * gives id (for test set tpyically) from file or dir name
+     * ie   /path/to/test_data1  => test_data1
+     *      /path/to/test_data2/ => test_data2
+     */
+    static std::string shortname(const std::string &fullname)
+    {
+      bool trailing_slash = false;
+      std::size_t sepPos = fullname.rfind("/");
+
+      if (sepPos == fullname.size() - 1)
+        {
+          sepPos = fullname.substr(0, fullname.size() - 1).rfind("/");
+          trailing_slash = true;
+        }
+      if (sepPos != std::string::npos)
+        {
+          if (trailing_slash)
+            return fullname.substr(sepPos + 1, fullname.size() - sepPos - 2);
+          return fullname.substr(sepPos + 1, fullname.size() - sepPos - 1);
+        }
+      return fullname;
+    }
+
+    /**
+     * insert suffix before .ext ie  /path/to/filename.ext =>
+     * /path/to/filenamesuffix.ext
+     */
+    static std::string insert_suffix(std::string suffix, std::string filename)
+    {
+      size_t lastindex = filename.find_last_of(".");
+      std::string rawname = filename.substr(0, lastindex);
+      std::string ext = filename.substr(lastindex, filename.size());
+      return rawname + suffix + ext;
+    }
+
 #endif
   };
 }

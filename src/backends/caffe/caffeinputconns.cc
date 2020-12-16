@@ -611,6 +611,13 @@ namespace dd
         write_images_to_hdf5(img_lists.at(1), test_dbfullname, test_list,
                              alphabet, max_ocr_length, false);
       }
+    if (img_lists.size() > 2)
+      {
+        _logger->error(
+            "multiple test sets not supported by caffe backend yet");
+        throw InputConnectorBadParamException(
+            "multiple test sets not supported by caffe backend yet");
+      }
 
     // save the alphabet as corresp file
     std::ofstream correspf(_model_repo + "/" + _correspname, std::ios::binary);
@@ -1341,8 +1348,9 @@ namespace dd
   }
 
   /*- DDCCsv -*/
-  int DDCCsv::read_file(const std::string &fname)
+  int DDCCsv::read_file(const std::string &fname, int test_id)
   {
+    (void)test_id;
     if (_cifc)
       {
         _cifc->read_csv(fname);
@@ -1483,7 +1491,8 @@ namespace dd
   {
     if (!_db)
       {
-        CSVInputFileConn::add_test_csvline(id, vals);
+        // MULTIPLE TEST SETS : we consider here only 1 test set
+        CSVInputFileConn::add_test_csvline(0, id, vals);
         return;
       }
 
@@ -1535,8 +1544,9 @@ namespace dd
     if (!fileops::file_exists(_csv_fname))
       throw InputConnectorBadParamException("training CSV file " + _csv_fname
                                             + " does not exist");
+    // MULTIPLE TEST SETS : we consider here only 1 test set
     if (_uris.size() > 1)
-      _csv_test_fname = _uris.at(1);
+      _csv_test_fnames.push_back(_uris.at(1));
     /*if (ad_input.has("label"))
       _label = ad_input.get("label").get<std::string>();
     else if (_train && _label.empty()) throw
@@ -1644,13 +1654,27 @@ namespace dd
         // XXX: remove in-memory data, which pre-processing is useless and
         // should be avoided
         destroy_txt_entries(_txt);
-        destroy_txt_entries(_test_txt);
+        // MULTIPLE TEST SETS : we consider here only 1 test set
+        //        destroy_txt_entries(_test_txt);
+        for (auto tt : _tests_txt)
+          destroy_txt_entries(tt);
+        _tests_txt.clear();
 
         return 0;
       }
 
     _db_batchsize = _txt.size();
-    _db_testbatchsize = _test_txt.size();
+    // MULTIPLE TEST SETS : we consider here only 1 test set
+
+    if (_tests_txt.size() > 1)
+      {
+        _logger->error(
+            "multiple test sets not supported by caffe backend yet");
+        throw InputConnectorBadParamException(
+            "multiple test sets not supported by caffe backend yet");
+      }
+
+    _db_testbatchsize = _tests_txt[0].size();
 
     _logger->info("db_batchsize={} / db_testbatchsize={}", _db_batchsize,
                   _db_testbatchsize);
@@ -1661,13 +1685,19 @@ namespace dd
     else
       write_sparse_txt_to_db(dbfullname, _txt);
     destroy_txt_entries(_txt);
-    if (!_test_txt.empty())
+    // MULTIPLE TEST SETS : we consider here only 1 test set
+    if (!_tests_txt.empty() && !_tests_txt[0].empty())
       {
         if (!_sparse)
-          write_txt_to_db(testdbfullname, _test_txt);
+          // MULTIPLE TEST SETS : we consider here only 1 test set
+          write_txt_to_db(testdbfullname, _tests_txt[0]);
         else
-          write_sparse_txt_to_db(testdbfullname, _test_txt);
-        destroy_txt_entries(_test_txt);
+          // MULTIPLE TEST SETS : we consider here only 1 test set
+          write_sparse_txt_to_db(testdbfullname, _tests_txt[0]);
+        // MULTIPLE TEST SETS : we consider here only 1 test set
+        for (auto tt : _tests_txt)
+          destroy_txt_entries(tt);
+        _tests_txt.clear();
       }
 
     return 0;
@@ -1678,11 +1708,17 @@ namespace dd
     if (_cifc)
       {
         _cifc->_columns.clear();
-        std::string test_file = _cifc->_csv_test_fname;
-        _cifc->_csv_test_fname = "";
+        // MULTIPLE TEST SETS : we consider here only 1 test set
+        //        std::string test_file = _cifc->_csv_test_fname;
+        std::vector<std::string> test_files = _cifc->_csv_test_fnames;
+        // MULTIPLE TEST SETS : we consider here only 1 test set
+        //        _cifc->_csv_test_fname = "";
+        _cifc->_csv_test_fnames.clear();
         _cifc->read_csv(fname);
         _cifc->push_csv_to_csvts(is_test_data);
-        _cifc->_csv_test_fname = test_file;
+        // MULTIPLE TEST SETS : we consider here only 1 test set
+        //_cifc->_csv_test_fname = test_file;
+        _cifc->_csv_test_fnames = test_files;
         _cifc->_ids.push_back(fname);
         return 0;
       }
@@ -1728,8 +1764,10 @@ namespace dd
 
     //- read all test files
     std::unordered_set<std::string> testfiles;
-    if (!_cifc->_csv_test_fname.empty())
-      fileops::list_directory(_cifc->_csv_test_fname, true, false, true,
+    // MULTIPLE TEST SETS : we consider here only 1 test set
+    if (!_cifc->_csv_test_fnames.empty())
+      // MULTIPLE TEST SETS : we consider here only 1 test set
+      fileops::list_directory(_cifc->_csv_test_fnames[0], true, false, true,
                               testfiles);
 
     std::unordered_set<std::string> allfiles = trainfiles;
@@ -1809,15 +1847,19 @@ namespace dd
     if (_datadim != -1)
       return;
     if (is_test_data)
-      _datadim = _csvtsdata_test[0][0]._v.size() + 1;
+      // MULTIPLE TEST SETS : we consider here only 1 test set
+      _datadim = _csvtsdata_tests[0][0][0]._v.size() + 1;
     else
       _datadim = _csvtsdata[0][0]._v.size() + 1;
   }
 
   void CSVTSCaffeInputFileConn::push_csv_to_csvts(bool is_test_data)
   {
-
-    CSVTSInputFileConn::push_csv_to_csvts(is_test_data);
+    // MULTIPLE TEST SETS : we consider here only one test set
+    if (is_test_data)
+      CSVTSInputFileConn::push_csv_to_csvts(0);
+    else
+      CSVTSInputFileConn::push_csv_to_csvts(-1);
     set_datadim(is_test_data);
     dv_to_db(is_test_data);
   }
@@ -1875,14 +1917,26 @@ namespace dd
                 _db = true;
                 return; // done
               }
-            _csvtsdata_test = std::move(_csvtsdata);
+            // MULTIPLE TEST SETS : we consider here only 1 test set
+            //_csvtsdata_test = std::move(_csvtsdata);
+            _csvtsdata_tests.push_back(std::move(_csvtsdata));
           }
         else
           _csvtsdata.clear();
+
+        if (_csvtsdata_tests.size() > 1)
+          {
+            _logger->error(
+                "multiple test sets not supported by caffe backend yet");
+            throw InputConnectorBadParamException(
+                "multiple test sets not supported by caffe backend yet");
+          }
+
         csvts_to_dv(true, true, true, false, _continuation);
-        _csvtsdata_test.clear();
+        // MULTIPLE TEST SETS : we consider here only 1 test set
+        _csvtsdata_tests[0].clear();
       }
-    _csvtsdata_test.clear();
+    _csvtsdata_tests.clear();
   }
 
   void CSVTSCaffeInputFileConn::reset_dv_test()
@@ -2075,8 +2129,10 @@ namespace dd
     if (!fileops::dir_exists(_csv_fname))
       throw InputConnectorBadParamException("training CSV_TS dir " + _csv_fname
                                             + " does not exist");
+    // MULTIPLE TEST SETS : we consider here only 1 test set
     if (_uris.size() > 1)
-      _csv_test_fname = _uris.at(1);
+      //_csv_test_fname = _uris.at(1);
+      _csv_test_fnames.push_back(_uris.at(1));
     DDCCsvTS ddccsvts;
     ddccsvts._cifc = this;
     ddccsvts._adconf = ad_input;
@@ -2102,7 +2158,8 @@ namespace dd
       {
         dv = &_dv_test;
         index = &_dv_test_index;
-        data = &this->_csvtsdata_test;
+        // MULTIPLE TEST SETS : we consider here only 1 test set
+        data = &this->_csvtsdata_tests[0];
       }
     else
       {

@@ -182,9 +182,22 @@ namespace dd
         if (_m->Info().num_nonzero_ == 0)
           throw InputConnectorBadParamException(
               "no data could be found processing XGBoost CSV input");
-        _mtest = std::shared_ptr<xgboost::DMatrix>(
-            create_from_mat(_csvdata_test));
-        _csvdata_test.clear();
+        // MULTIPLE TEST SETS : we consider here only 1 test set
+        if (_csvdata_tests.size() > 1)
+          {
+            _logger->error(
+                "multiple test sets not supported by xgboost backend yet");
+            throw InputConnectorBadParamException(
+                "multiple test sets not supported by xgboost backend yet");
+          }
+
+        if (!_csvdata_tests.empty())
+          {
+            _mtest = std::shared_ptr<xgboost::DMatrix>(
+                create_from_mat(_csvdata_tests[0]));
+            _csvdata_tests[0].clear();
+            _csvdata_tests.clear();
+          }
       }
     else
       {
@@ -299,9 +312,23 @@ namespace dd
 
     _m = std::shared_ptr<xgboost::DMatrix>(create_from_mat(_txt));
     destroy_txt_entries(_txt);
-    if (!_test_txt.empty())
-      _mtest = std::shared_ptr<xgboost::DMatrix>(create_from_mat(_test_txt));
-    destroy_txt_entries(_test_txt);
+    // MULTIPLE TEST SETS : we consider here only 1 test set
+    if (_tests_txt.size() > 1)
+      {
+        _logger->error(
+            "multiple test sets not supported by xgboost backend yet");
+        throw InputConnectorBadParamException(
+            "multiple test sets not supported by xgboost backend yet");
+      }
+    if (!_tests_txt.empty() && !_tests_txt[0].empty())
+      _mtest
+          // MULTIPLE TEST SETS : we consider here only 1 test set
+          = std::shared_ptr<xgboost::DMatrix>(create_from_mat(_tests_txt[0]));
+    // MULTIPLE TEST SETS : we consider here only 1 test set
+    // destroy_txt_entries(_test_txt);
+    for (auto tt : _tests_txt)
+      destroy_txt_entries(tt);
+    _tests_txt.clear();
   }
 
   xgboost::DMatrix *TxtXGBInputFileConn::create_from_mat(
