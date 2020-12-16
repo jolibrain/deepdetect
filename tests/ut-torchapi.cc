@@ -174,6 +174,7 @@ TEST(inputconn, txt_tokenize_ordered_words)
 
 TEST(torchapi, service_train_images_split)
 {
+  setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
   at::globalContext().setDeterministic(true);
 
@@ -233,6 +234,7 @@ TEST(torchapi, service_train_images_split)
 
 TEST(torchapi, service_train_images)
 {
+  setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
   at::globalContext().setDeterministic(true);
 
@@ -268,7 +270,7 @@ TEST(torchapi, service_train_images)
   ASSERT_EQ(201, jd["status"]["code"]);
 
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() <= 1) << "accuracy";
-  ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() >= 0.57)
+  ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() >= 0.51)
       << "accuracy good";
   ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() <= 1) << "f1";
 
@@ -313,6 +315,7 @@ TEST(torchapi, service_train_images)
 
 TEST(torchapi, service_train_images_split_list)
 {
+  setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
   at::globalContext().setDeterministic(true);
 
@@ -372,6 +375,7 @@ TEST(torchapi, service_train_images_split_list)
 
 TEST(torchapi, service_train_images_split_regression_db_true)
 {
+  setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
   at::globalContext().setDeterministic(true);
 
@@ -432,6 +436,7 @@ TEST(torchapi, service_train_images_split_regression_db_true)
 
 TEST(torchapi, service_train_images_split_regression_db_false)
 {
+  setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
   at::globalContext().setDeterministic(true);
 
@@ -545,6 +550,7 @@ TEST(torchapi, service_train_images_native)
 
 TEST(torchapi, service_train_txt_lm)
 {
+  setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
   at::globalContext().setDeterministic(true);
 
@@ -600,6 +606,7 @@ TEST(torchapi, service_train_txt_lm)
 
 TEST(torchapi, service_train_txt_classification)
 {
+  setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
   at::globalContext().setDeterministic(true);
 
@@ -659,6 +666,7 @@ TEST(torchapi, service_train_txt_classification)
 
 TEST(torchapi, service_train_csvts_nbeats)
 {
+  setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
   at::globalContext().setDeterministic(true);
 
@@ -752,6 +760,7 @@ TEST(torchapi, service_train_csvts_nbeats)
 
 TEST(torchapi, service_train_csvts_nbeats_resume_fail)
 {
+  setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
   at::globalContext().setDeterministic(true);
 
@@ -910,6 +919,7 @@ TEST(torchapi, service_train_csvts_nbeats_forecast)
 
 TEST(torchapi, service_train_csvts_nbeats_gpu)
 {
+  setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
   at::globalContext().setDeterministic(true);
 
@@ -1018,6 +1028,7 @@ TEST(torchapi, service_train_csvts_nbeats_gpu)
 
 TEST(torchapi, service_train_csvts_nbeats_multigpu)
 {
+  setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
   at::globalContext().setDeterministic(true);
 
@@ -1157,6 +1168,7 @@ TEST(torchapi, nbeats_extract_layers_simple)
 
 TEST(torchapi, nbeats_extract_layer_complete)
 {
+  setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
   at::globalContext().setDeterministic(true);
 
@@ -1252,6 +1264,7 @@ TEST(torchapi, nbeats_extract_layer_complete)
 #ifndef CPU_ONLY
 TEST(torchapi, nbeats_extract_layer_complete_gpu)
 {
+  setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
   at::globalContext().setDeterministic(true);
 
@@ -1380,6 +1393,7 @@ TEST(torchapi, image_extract)
 
 TEST(torchapi, service_train_ranger)
 {
+  setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
   at::globalContext().setDeterministic(true);
 
@@ -1463,6 +1477,7 @@ TEST(torchapi, service_train_ranger)
 
 TEST(torchapi, service_train_vit_images_gpu)
 {
+  setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
   at::globalContext().setDeterministic(true);
 
