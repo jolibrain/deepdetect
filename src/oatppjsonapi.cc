@@ -278,8 +278,8 @@ namespace dd
   void OatppJsonAPI::abort(int signum)
   {
     std::signal(signum, SIG_DFL);
-    std::cout << boost::stacktrace::stacktrace() << std::endl;
-    std::raise(SIGABRT);
+    std::cerr << boost::stacktrace::stacktrace() << std::endl;
+    std::raise(signum);
   }
 
   void OatppJsonAPI::run()
