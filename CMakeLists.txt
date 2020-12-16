@@ -211,12 +211,11 @@ if (USE_HDF5)
 endif()
 
 # dependency on Boost
+find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system iostreams)
 if (USE_BOOST_BACKTRACE)
     add_definitions(-DUSE_BOOST_BACKTRACE)
-    find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system iostreams stacktrace_backtrace)
+    find_package(Boost 1.54 REQUIRED COMPONENTS stacktrace_backtrace)
     string(APPEND CMAKE_CXX_FLAGS " -DBOOST_STACKTRACE_USE_BACKTRACE -DBOOST_STACKTRACE_LINK")
-else()
-    find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system iostreams)
 endif()
 
 
