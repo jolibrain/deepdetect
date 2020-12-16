@@ -100,7 +100,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     libnvparsers7=${DD_TENSORRT_VERSION} \
     libnvparsers-dev=${DD_TENSORRT_VERSION} \
     libnvinfer7=${DD_TENSORRT_VERSION} \
-    libnvinfer-dev=${DD_TENSORRT_VERSION}
+    libnvinfer-dev=${DD_TENSORRT_VERSION} \
     libnvinfer-plugin7=${DD_TENSORRT_VERSION} \
     libnvinfer-plugin-dev=${DD_TENSORRT_VERSION}
 
