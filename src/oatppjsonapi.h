@@ -46,7 +46,9 @@ namespace dd
     jdoc_to_response(
         const std::shared_ptr<
             oatpp::web::server::api::ApiController::IncomingRequest> &request,
-        const JDoc &janswer);
+        const JDoc &janswer,
+        const std::chrono::time_point<std::chrono::steady_clock>
+            &req_start_time);
   };
 }
 
