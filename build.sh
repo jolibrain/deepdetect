@@ -126,17 +126,17 @@ cpu_build() {
 
     "tf")
         cmake .. -DUSE_TF=ON -DUSE_TF_CPU_ONLY=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_NCNN=OFF -DUSE_CPU_ONLY=ON -DRELEASE=${DEEPDETECT_RELEASE}
-        make -j4
+        make -j6
         ;;
 
     "armv7")
         cmake .. -DUSE_NCNN=ON -DRPI3=ON -DUSE_HDF5=OFF -DUSE_CAFFE=OFF -DRELEASE=${DEEPDETECT_RELEASE}
-        make -j4
+        make -j6
         ;;
 
     *)
         cmake .. -DUSE_XGBOOST=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_NCNN=ON -DUSE_CPU_ONLY=ON -DRELEASE=${DEEPDETECT_RELEASE}
-        make -j4
+        make -j6
         ;;
     esac
 
@@ -153,7 +153,7 @@ gpu_build() {
         *) extra_flags="$default_flags";;
     esac
     cmake .. $extra_flags -DCUDA_ARCH="${DEEPDETECT_CUDA_ARCH} -DRELEASE=${DEEPDETECT_RELEASE}"
-    make -j4
+    make -j6
 }
 
 # If no arguments provided, display usage information
