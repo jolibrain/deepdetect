@@ -138,6 +138,9 @@ namespace dd
     int _outputIndex0;
     int _outputIndex1;
 
+    bool _explicit_batch
+        = false; /**< whether TRT uses explicit batch model (ONNX). */
+
     std::vector<float> _floatOut;
     std::vector<int> _keepCount;
 
