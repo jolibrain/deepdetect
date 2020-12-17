@@ -204,14 +204,12 @@ public:
     return rep;
     }*/
 
-  void
-  fillup_response(http_server::response &response, const JDoc &janswer,
-                  std::string &access_log, int &code,
-                  std::chrono::time_point<std::chrono::system_clock> tstart,
-                  const std::string &encoding = "")
+  void fillup_response(
+      http_server::response &response, const JDoc &janswer,
+      std::string &access_log, int &code,
+      const std::chrono::time_point<std::chrono::steady_clock> &req_start_time,
+      const std::string &encoding = "")
   {
-    std::chrono::time_point<std::chrono::system_clock> tstop
-        = std::chrono::system_clock::now();
     std::string service;
     if (janswer.HasMember("head"))
       {
@@ -222,10 +220,7 @@ public:
       access_log += " " + service;
     code = janswer["status"]["code"].GetInt();
     access_log += " " + std::to_string(code);
-    int proctime
-        = std::chrono::duration_cast<std::chrono::milliseconds>(tstop - tstart)
-              .count();
-    access_log += " " + std::to_string(proctime);
+
     int outcode = code;
     std::string stranswer;
     if (janswer.HasMember(
@@ -314,6 +309,12 @@ public:
         response.headers[pos - 1].value = FLAGS_allow_origin;
       }
     response.status = static_cast<http_server::response::status_type>(code);
+
+    auto req_stop_time = std::chrono::steady_clock::now();
+    auto req_duration_ms
+        = std::chrono::duration_cast<std::chrono::milliseconds>(
+            req_stop_time - req_start_time);
+    access_log += " " + std::to_string(req_duration_ms.count()) + "ms";
   }
 
   void operator()(http_server::request const &request,
@@ -326,8 +327,8 @@ public:
     std::cerr << "body=" << request.body << std::endl;*/
     // debug
 
-    std::chrono::time_point<std::chrono::system_clock> tstart
-        = std::chrono::system_clock::now();
+    auto tstart = std::chrono::steady_clock::now();
+
     std::string access_log = request.source + " \"" + request.method + " "
                              + request.destination + "\"";
     int code;
