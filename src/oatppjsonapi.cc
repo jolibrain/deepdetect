@@ -169,7 +169,8 @@ namespace dd
   OatppJsonAPI::jdoc_to_response(
       const std::shared_ptr<
           oatpp::web::server::api::ApiController::IncomingRequest> &request,
-      const JDoc &janswer)
+      const JDoc &janswer,
+      const std::chrono::time_point<std::chrono::steady_clock> &req_start_time)
   {
     int outcode = janswer["status"]["code"].GetInt();
     std::string stranswer;
@@ -236,8 +237,14 @@ namespace dd
             if (!service.empty())
               access_log += " " + service;
           }
-
         access_log += " " + std::to_string(outcode);
+
+        auto req_stop_time = std::chrono::steady_clock::now();
+        auto req_duration_ms
+            = std::chrono::duration_cast<std::chrono::milliseconds>(
+                req_stop_time - req_start_time);
+        access_log += " " + std::to_string(req_duration_ms.count()) + "ms";
+
         if (outcode == 200 || outcode == 201)
           _logger->info(access_log);
         else
