@@ -1,5 +1,5 @@
 # syntax = docker/dockerfile:1.0-experimental
-FROM nvidia/cuda:10.2-cudnn7-devel-ubuntu18.04 AS build
+FROM nvidia/cuda:11.1-cudnn8-devel-ubuntu18.04 AS build
 
 ARG DEEPDETECT_RELEASE=OFF
 ARG DEEPDETECT_ARCH=gpu
@@ -115,7 +115,7 @@ RUN --mount=type=cache,target=/ccache/ mkdir build && cd build && ../build.sh
 RUN ./docker/get_libs.sh
 
 # Build final Docker image
-FROM nvidia/cuda:10.2-cudnn7-runtime-ubuntu18.04 AS runtime
+FROM nvidia/cuda:11.1-cudnn8-runtime-ubuntu18.04 AS runtime
 
 ARG DEEPDETECT_ARCH=gpu
 
