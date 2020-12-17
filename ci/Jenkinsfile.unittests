@@ -24,7 +24,7 @@ pipeline {
         script {
           sh '''
           prebuilt_version=$(awk '/^lastSuccessfulBuild/{print $2}' /prebuilt/permalinks)
-          rsync -a --progress /prebuilt/${prebuilt_version}/archive/build/ build/
+          rsync -av --link-dest=build/ /prebuilt/${prebuilt_version}/archive/build/ build/
           '''
         }
       }
