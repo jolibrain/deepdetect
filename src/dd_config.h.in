@@ -17,6 +17,7 @@
 
 #define DEPS_VERSION                                                          \
   "OPENCV_VERSION=@OpenCV_VERSION@ "                                          \
-  "CUDA_VERSION=@CUDA_VERSION_STRING@ CUDNN_VERSION=@CUDNN_VERSION@"
+  "CUDA_VERSION=@CUDA_VERSION_STRING@ CUDNN_VERSION=@CUDNN_VERSION@ "         \
+  "TENSORRT_VERSION=@TENSORRT_VERSION@"
 
 #endif
