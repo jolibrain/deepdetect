@@ -1,5 +1,5 @@
 # syntax = docker/dockerfile:1.0-experimental
-FROM ubuntu:18.04 AS build
+FROM ubuntu:20.04 AS build
 
 ARG DEEPDETECT_RELEASE=OFF
 ARG DEEPDETECT_ARCH=cpu
@@ -16,12 +16,13 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
 
 # CMake
 RUN curl https://apt.kitware.com/keys/kitware-archive-latest.asc | apt-key add -
-RUN apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
+RUN apt-add-repository 'deb https://apt.kitware.com/ubuntu/ focal main'
 
 # python2 pycompile + docker-buildkit is a bit buggy, it's slow as hell, so disable it for dev
 # bug closed as won't fix as python2 is eol: https://github.com/docker/for-linux/issues/502
 RUN cp /bin/true /usr/bin/pycompile
 
+# Don't install opencv-ml-dev, it will install libprotobuf dans link dede to 2 versions of protobuf
 RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     --mount=type=cache,id=dede_apt_lib,sharing=locked,target=/var/lib/apt \
     export DEBIAN_FRONTEND=noninteractive && \
@@ -66,18 +67,14 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     autoconf \
     libtool-bin \
     python-numpy \
-    python-future \
     python-yaml \
     python-typing \
     swig \
     curl \
     unzip \
-    libspdlog-dev \
     python-setuptools \
     python-dev \
     python3-dev \
-    python-wheel \
-    python-pip \
     python3-pip \
     python-six \
     python-enum34 \
@@ -85,7 +82,6 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     unzip \
     libgoogle-perftools-dev \
     curl \
-    libspdlog-dev \
     libarchive-dev \
     bash-completion
 
@@ -115,7 +111,7 @@ RUN --mount=type=cache,target=/ccache/ mkdir build && cd build && ../build.sh
 RUN ./docker/get_libs.sh
 
 # Build final Docker image
-FROM ubuntu:18.04 AS runtime
+FROM ubuntu:20.04 AS runtime
 
 ARG DEEPDETECT_ARCH=cpu
 
@@ -131,22 +127,23 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     curl \
 	libopenblas-base \
 	liblmdb0 \
-	libleveldb1v5 \
-    libboost-regex1.62.0 \
+	libleveldb1d \
+    libboost-regex1.71.0 \
 	libgoogle-glog0v5 \
-	libopencv3.2 \
+    libopencv4.2 \
 	libgflags2.2 \
 	libcurl4 \
 	libcurlpp0 \
-	libhdf5-cpp-100 \
-    libboost-atomic1.65.1 \
-    libboost-chrono1.65.1 \
-    libboost-date-time1.65.1 \
-	libboost-filesystem1.65.1 \
-	libboost-thread1.65.1 \
-	libboost-iostreams1.65.1 \
-    libboost-regex1.65.1 \
-    libboost-stacktrace1.65.1 \
+	libhdf5-cpp-103 \
+    libboost-atomic1.71.0 \
+    libboost-chrono1.71.0 \
+    libboost-date-time1.71.0 \
+	libboost-filesystem1.71.0 \
+	libboost-thread1.71.0 \
+	libboost-iostreams1.71.0 \
+    libboost-regex1.71.0 \
+    libboost-stacktrace1.71.0 \
+    libboost-system1.71.0 \
 	libarchive13
 
 # Fix permissions

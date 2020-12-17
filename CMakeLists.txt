@@ -55,7 +55,7 @@ OPTION(BUILD_TESTS "Should the tests be built")
 OPTION(BUILD_TOOLS "Should the tools be built")
 OPTION(USE_COMMAND_LINE "build command line JSON API" ON)
 OPTION(USE_JSON_API "build internal JSON API" ON)
-OPTION(USE_HTTP_SERVER "build cppnet-lib version of http JSON API " ON)
+OPTION(USE_HTTP_SERVER "build cppnet-lib version of http JSON API " OFF)
 OPTION(USE_HTTP_SERVER_OATPP "build oatpp version of http JSON API" ON)
 
 # Get the current working branch
@@ -554,12 +554,12 @@ if (USE_TF)
 endif() # USE_TF
 
 # OpenCV
-find_package(OpenCV 3 QUIET)
+find_package(OpenCV 3 QUIET COMPONENTS core imgproc highgui)
 if (NOT OpenCV_FOUND)
-  find_package(OpenCV 4 QUIET)
+  find_package(OpenCV 4 QUIET COMPONENTS core imgproc highgui)
 endif()
 if (NOT OpenCV_FOUND)
-  find_package(OpenCV 2 REQUIRED)
+  find_package(OpenCV 2 REQUIRED COMPONENTS core imgproc highgui)
 endif()
 set(OPENCV_VERSION ${OpenCV_VERSION_MAJOR})
 include_directories(${OpenCV_INCLUDE_DIRS})
@@ -920,8 +920,11 @@ if (USE_TENSORRT)
         if (EXISTS "${TRTTESTDIR}/libnvinfer.so.7.1.3")
             set(TENSORRT_VERSION 20.09)
             message(STATUS "Found TensorRT libraries version 7.1.3")
+        # TODO(sileht): Update trt-oss patches for 7.2.2
+        # elseif (EXISTS "${TRTTESTDIR}/libnvinfer.so.7.2.2")
+        #     set(TENSORRT_VERSION 20.12)
+        #     message(STATUS "Found TensorRT libraries version 7.2.2")
         elseif (EXISTS "${TRTTESTDIR}/libnvinfer.so.7")
-            # FIXME(sileht): remove this case when eris/ceres have been updated
             set(TENSORRT_VERSION 20.09)
             message(WARNING "No supported TensorRT version found assuming 20.09/7.1.3")
         else()
