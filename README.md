@@ -29,6 +29,7 @@ Please join the community on [Gitter](https://gitter.im/beniz/deepdetect), where
   * [From docker](https://github.com/jolibrain/deepdetect/tree/master/docs/docker.md)
   * [From source](https://github.com/jolibrain/deepdetect/tree/master/docs/source.md)
   * From Amazon AMI: [GPU](https://aws.amazon.com/marketplace/pp/B01N4D483M) and [CPU](https://aws.amazon.com/marketplace/pp/B01N1RGWQZ)
+  * [Mimic Continuous Integration testing](https://github.com/jolibrain/deepdetect/tree/master/docs/ci.md)
 
 * [Models ready to use](#models)
 * Ecosystem
