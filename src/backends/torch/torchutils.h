@@ -35,6 +35,8 @@
 #pragma GCC diagnostic pop
 #include <torch/script.h>
 
+#include <google/protobuf/message.h>
+
 namespace dd
 {
 
