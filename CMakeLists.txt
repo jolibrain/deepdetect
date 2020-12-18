@@ -710,7 +710,8 @@ if (USE_TORCH)
 
   set(PYTORCH_PATCHES
     ${PYTORCH_PATCHES_PATH}/pytorch_15_compile.patch
-    ${PYTORCH_PATCHES_PATH}/pytorch_16_logging.patch
+    ${PYTORCH_PATCHES_PATH}/pytorch_16_new_logger.patch
+    ${PYTORCH_PATCHES_PATH}/pytorch_16_use_new_logger.patch
     ${PYTORCH_PATCHES_PATH}/pytorch_14_namespace.patch
     ${PYTORCH_PATCHES_PATH}/pytorch_16_fatbin.patch
   )
@@ -741,7 +742,7 @@ if (USE_TORCH)
       PATCH_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || git apply ${PYTORCH_PATCHES} && echo Applying ${PYTORCH_PATCHES}
       CONFIGURE_COMMAND ""
       BUILD_COMMAND ""
-      COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || PATH=${PROTOBUF_LIB_DIR}:$ENV{PATH} BUILD_CUSTOM_PROTOBUF=0 GLIBCXX_USE_CXX11_ABI=1 BUILD_TEST=0 USE_CUDA=${PYTORCH_USE_CUDA} BUILD_CAFFE2_OPS=0 USE_GLOG=0 CAFFE2_LINK_LOCAL_PROTOBUF=0 MAX_JOBS=8 python3 ../pytorch/tools/build_libtorch.py
+      COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || PATH=${PROTOBUF_LIB_DIR}:$ENV{PATH} BUILD_CUSTOM_PROTOBUF=0 GLIBCXX_USE_CXX11_ABI=1 BUILD_TEST=0 USE_CUDA=${PYTORCH_USE_CUDA} BUILD_CAFFE2_OPS=0 USE_DDLOG=1 CAFFE2_LINK_LOCAL_PROTOBUF=0 MAX_JOBS=8 python3 ../pytorch/tools/build_libtorch.py
       INSTALL_COMMAND ""
     )
 
@@ -792,7 +793,6 @@ if (USE_XGBOOST)
   if (NOT USE_XGBOOST_CPU_ONLY)
     add_definitions(-DUSE_XGBOOST_GPU)
     list(APPEND XGBOOST_LIB_DEPS ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/CMakeFiles/gpuxgboost.dir/plugin/updater_gpu/src/gpuxgboost_generated_updater_gpu.cu.o ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/nccl/libnccl.a)
-#    set(XGB_NVCC_FLAGS,"--expt-extended-lambda;-gencode arch=compute_35,code=compute_35")
     ExternalProject_Add(
       xgboost_cub
       PREFIX xgboost_cub
@@ -815,7 +815,7 @@ if (USE_XGBOOST)
       CMAKE_ARGS
         -DPLUGIN_UPDATER_GPU=ON
         -DCUB_DIRECTORY=${CMAKE_BINARY_DIR}/xgboost_cub/src/xgboost_cub
-        -DCUDA_NVCC_FLAGS="-Xcompiler -fPIC --expt-extended-lambda -gencode arch=compute_30,code=compute_30 -gencode arch=compute_35,code=compute_35 -gencode arch=compute_50,code=compute_50 -gencode arch=compute_52,code=compute_52 -gencode arch=compute_61,code=compute_61"
+        -DCUDA_NVCC_FLAGS="-Xcompiler -fPIC --expt-extended-lambda $CUDA_ARCH"
       INSTALL_COMMAND ""
       DEPENDS xgboost_cub
     )
@@ -891,17 +891,19 @@ if (USE_TENSORRT)
     include_directories(${CMAKE_CURRENT_BINARY_DIR})
 	set(TENSORRT_LIBS nvinfer nvcaffeparser nvinfer_plugin nvonnxparser )
 
-    if (EXISTS "${TRTTESTDIR}/libnvinfer.so.7")
-      set(TENSORRT_COMMIT f693a6d723ef2766be36deb5e7987cd50159973a) # https://github.com/NVIDIA/TensorRT/releases/tag/20.09
-      message(STATUS "Found TensorRT libraries version 7")
-    elseif(EXISTS "${TRTTESTDIR}/libnvinfer.so.6")
-      set(TENSORRT_COMMIT 639d11abcc7d1f1a4933e87b95c126e6c82e2a5c)
-      message(STATUS "Found TensorRT libraries version 6")
-    elseif(EXISTS "${TRTTESTDIR}/libnvinfer.so.5")
-      set(TENSORRT_COMMIT 0d36bbb29732cdefbed6a60b51039ea1fa747742)
-      message(STATUS "Found TensorRT libraries version 5")
+    if (NOT TENSORRT_VERSION)
+        if (EXISTS "${TRTTESTDIR}/libnvinfer.so.7.1.3")
+            set(TENSORRT_VERSION 20.09)
+            message(STATUS "Found TensorRT libraries version 7.1.3")
+        elseif (EXISTS "${TRTTESTDIR}/libnvinfer.so.7")
+            # FIXME(sileht): remove this case when eris/ceres have been updated
+            set(TENSORRT_VERSION 20.09)
+            message(WARNING "No supported TensorRT version found assuming 20.09/7.1.3")
+        else()
+            message(FATAL_ERROR "No supported TensorRT version found")
+        endif()
     endif()
-
+    add_definitions(-DTENSORRT_VERSION=${TENSORRT_VERSION})
 
     set(TRT_FLAGS
       -DTRT_OUT_DIR=${CMAKE_BINARY_DIR}/tensorrt-oss/bin
@@ -922,7 +924,7 @@ if (USE_TENSORRT)
       tensorrt-oss
       PREFIX tensorrt-oss
       GIT_REPOSITORY https://github.com/NVIDIA/TensorRT.git
-	  GIT_TAG ${TENSORRT_COMMIT}
+      GIT_TAG ${TENSORRT_VERSION}
       GIT_CONFIG advice.detachedHead=false
 	  PATCH_COMMAND git reset --hard && git apply ${TRT_PATCHES}
       CMAKE_ARGS ${TRT_FLAGS}
