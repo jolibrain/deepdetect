@@ -66,7 +66,6 @@ namespace dd
     JDoc dd_bad_request_400(const std::string &msg = "") const;
     JDoc dd_forbidden_403() const;
     JDoc dd_not_found_404() const;
-    JDoc dd_conflict_409() const;
     JDoc dd_internal_error_500(const std::string &msg = "") const;
 
     // specific errors
@@ -84,6 +83,7 @@ namespace dd
     JDoc dd_sim_search_error_1011() const;
     JDoc dd_action_bad_request_1012(const std::string &what = "") const;
     JDoc dd_action_internal_error_1013(const std::string &what = "") const;
+    JDoc dd_service_already_exists_1014() const;
 
     // JSON rendering
     std::string jrender(const JDoc &jst) const;
