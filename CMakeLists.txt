@@ -713,7 +713,6 @@ if (USE_TORCH)
     ${PYTORCH_PATCHES_PATH}/pytorch_16_new_logger.patch
     ${PYTORCH_PATCHES_PATH}/pytorch_16_use_new_logger.patch
     ${PYTORCH_PATCHES_PATH}/pytorch_14_namespace.patch
-    ${PYTORCH_PATCHES_PATH}/pytorch_16_fatbin.patch
   )
 
   message(STATUS "Configuring libtorch")
@@ -723,7 +722,8 @@ if (USE_TORCH)
     #set(PYTORCH_COMMIT ee77ccbb6da4e2efd83673e798acf7081bc03564) # 1.3.1
     #set(PYTORCH_COMMIT 7f73f1d591afba823daa4a99a939217fb54d7688) # 1.4
     #set(PYTORCH_COMMIT 4ff3872a2099993bf7e8c588f7182f3df777205b)  # 1.5
-	set(PYTORCH_COMMIT b31f58de6fa8bbda5353b3c77d9be4914399724d)  # 1.6
+	#set(PYTORCH_COMMIT b31f58de6fa8bbda5353b3c77d9be4914399724d)  # 1.6
+	set(PYTORCH_COMMIT v1.7.1)
     set(PYTORCH_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch-complete)
 
     if(USE_TORCH_CPU_ONLY)
@@ -793,7 +793,6 @@ if (USE_XGBOOST)
   if (NOT USE_XGBOOST_CPU_ONLY)
     add_definitions(-DUSE_XGBOOST_GPU)
     list(APPEND XGBOOST_LIB_DEPS ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/CMakeFiles/gpuxgboost.dir/plugin/updater_gpu/src/gpuxgboost_generated_updater_gpu.cu.o ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/nccl/libnccl.a)
-#    set(XGB_NVCC_FLAGS,"--expt-extended-lambda;-gencode arch=compute_35,code=compute_35")
     ExternalProject_Add(
       xgboost_cub
       PREFIX xgboost_cub
@@ -816,7 +815,7 @@ if (USE_XGBOOST)
       CMAKE_ARGS
         -DPLUGIN_UPDATER_GPU=ON
         -DCUB_DIRECTORY=${CMAKE_BINARY_DIR}/xgboost_cub/src/xgboost_cub
-        -DCUDA_NVCC_FLAGS="-Xcompiler -fPIC --expt-extended-lambda -gencode arch=compute_30,code=compute_30 -gencode arch=compute_35,code=compute_35 -gencode arch=compute_50,code=compute_50 -gencode arch=compute_52,code=compute_52 -gencode arch=compute_61,code=compute_61"
+        -DCUDA_NVCC_FLAGS="-Xcompiler -fPIC --expt-extended-lambda $CUDA_ARCH"
       INSTALL_COMMAND ""
       DEPENDS xgboost_cub
     )

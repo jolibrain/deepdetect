@@ -195,14 +195,6 @@ namespace dd
     return jd;
   }
 
-  JDoc JsonAPI::dd_conflict_409() const
-  {
-    JDoc jd;
-    jd.SetObject();
-    render_status(jd, 409, "Conflict");
-    return jd;
-  }
-
   JDoc JsonAPI::dd_internal_error_500(const std::string &msg) const
   {
     JDoc jd;
@@ -234,7 +226,7 @@ namespace dd
   {
     JDoc jd;
     jd.SetObject();
-    render_status(jd, 400, "NotFound", 1002, "Service Not Found");
+    render_status(jd, 404, "NotFound", 1002, "Service Not Found");
     return jd;
   }
 
@@ -335,6 +327,14 @@ namespace dd
     JDoc jd;
     jd.SetObject();
     render_status(jd, 400, "InternalError", 1013, msg);
+    return jd;
+  }
+
+  JDoc JsonAPI::dd_service_already_exists_1014() const
+  {
+    JDoc jd;
+    jd.SetObject();
+    render_status(jd, 409, "Conflict", 1014, "Service already exists");
     return jd;
   }
 
@@ -442,6 +442,12 @@ namespace dd
       {
         _logger->error("missing service resource name: {}", sname);
         return dd_not_found_404();
+      }
+
+    if (this->service_exists(sname))
+      {
+        _logger->error("service `{}` already exists", sname);
+        return dd_service_already_exists_1014();
       }
 
     rapidjson::Document d;
@@ -1011,7 +1017,7 @@ namespace dd
     if (sname.empty())
       return dd_service_not_found_1002();
     if (!this->service_exists(sname))
-      return dd_not_found_404();
+      return dd_service_not_found_1002();
     auto hit = this->get_service_it(sname);
     APIData ad = mapbox::util::apply_visitor(visitor_status(), (*hit).second);
     JDoc jst = dd_ok_200();

@@ -65,9 +65,10 @@ public:
   {
     // TODO(sileht): why do serialize the query string to char*
     // to later get again a APIData...
+    auto req_start_time = std::chrono::steady_clock::now();
     std::string jsonstr = _oja->uri_query_to_json(queryParams);
     auto janswer = _oja->info(jsonstr);
-    return _oja->jdoc_to_response(req, janswer);
+    return _oja->jdoc_to_response(req, janswer, req_start_time);
   }
 
   ENDPOINT_INFO(get_service)
@@ -78,8 +79,9 @@ public:
            REQUEST(std::shared_ptr<IncomingRequest>, req),
            PATH(oatpp::String, service_name, "service-name"))
   {
+    auto req_start_time = std::chrono::steady_clock::now();
     auto janswer = _oja->service_status(service_name.get()->std_str());
-    return _oja->jdoc_to_response(req, janswer);
+    return _oja->jdoc_to_response(req, janswer, req_start_time);
   }
 
   ENDPOINT_INFO(create_service)
@@ -91,9 +93,10 @@ public:
            PATH(oatpp::String, service_name, "service-name"),
            BODY_STRING(oatpp::String, service_data))
   {
+    auto req_start_time = std::chrono::steady_clock::now();
     auto janswer = _oja->service_create(service_name.get()->std_str(),
                                         service_data.get()->std_str());
-    return _oja->jdoc_to_response(req, janswer);
+    return _oja->jdoc_to_response(req, janswer, req_start_time);
   }
 
   ENDPOINT_INFO(update_service)
@@ -106,9 +109,10 @@ public:
            PATH(oatpp::String, service_name, "service-name"),
            BODY_STRING(oatpp::String, service_data))
   {
+    auto req_start_time = std::chrono::steady_clock::now();
     auto janswer = _oja->service_create(service_name.get()->std_str(),
                                         service_data.get()->std_str());
-    return _oja->jdoc_to_response(req, janswer);
+    return _oja->jdoc_to_response(req, janswer, req_start_time);
   }
   ENDPOINT_INFO(delete_service)
   {
@@ -119,10 +123,11 @@ public:
            PATH(oatpp::String, service_name, "service-name"),
            QUERIES(QueryParams, queryParams))
   {
+    auto req_start_time = std::chrono::steady_clock::now();
     std::string jsonstr = _oja->uri_query_to_json(queryParams);
     auto janswer
         = _oja->service_delete(service_name.get()->std_str(), jsonstr);
-    return _oja->jdoc_to_response(req, janswer);
+    return _oja->jdoc_to_response(req, janswer, req_start_time);
   }
 
   ENDPOINT_INFO(predict)
@@ -133,8 +138,9 @@ public:
            REQUEST(std::shared_ptr<IncomingRequest>, req),
            BODY_STRING(oatpp::String, predict_data))
   {
+    auto req_start_time = std::chrono::steady_clock::now();
     auto janswer = _oja->service_predict(predict_data.get()->std_str());
-    return _oja->jdoc_to_response(req, janswer);
+    return _oja->jdoc_to_response(req, janswer, req_start_time);
   }
 
   ENDPOINT_INFO(get_train)
@@ -145,9 +151,10 @@ public:
            REQUEST(std::shared_ptr<IncomingRequest>, req),
            QUERIES(QueryParams, queryParams))
   {
+    auto req_start_time = std::chrono::steady_clock::now();
     std::string jsonstr = _oja->uri_query_to_json(queryParams);
     auto janswer = _oja->service_train_status(jsonstr);
-    return _oja->jdoc_to_response(req, janswer);
+    return _oja->jdoc_to_response(req, janswer, req_start_time);
   }
 
   ENDPOINT_INFO(post_train)
@@ -158,8 +165,9 @@ public:
            REQUEST(std::shared_ptr<IncomingRequest>, req),
            BODY_STRING(oatpp::String, train_data))
   {
+    auto req_start_time = std::chrono::steady_clock::now();
     auto janswer = _oja->service_train(train_data.get()->std_str());
-    return _oja->jdoc_to_response(req, janswer);
+    return _oja->jdoc_to_response(req, janswer, req_start_time);
   }
 
   ENDPOINT_INFO(put_train)
@@ -172,8 +180,9 @@ public:
 
            BODY_STRING(oatpp::String, train_data))
   {
+    auto req_start_time = std::chrono::steady_clock::now();
     auto janswer = _oja->service_train(train_data.get()->std_str());
-    return _oja->jdoc_to_response(req, janswer);
+    return _oja->jdoc_to_response(req, janswer, req_start_time);
   }
   ENDPOINT_INFO(delete_train)
   {
@@ -183,9 +192,10 @@ public:
            REQUEST(std::shared_ptr<IncomingRequest>, req),
            QUERIES(QueryParams, queryParams))
   {
+    auto req_start_time = std::chrono::steady_clock::now();
     std::string jsonstr = _oja->uri_query_to_json(queryParams);
     auto janswer = _oja->service_train_delete(jsonstr);
-    return _oja->jdoc_to_response(req, janswer);
+    return _oja->jdoc_to_response(req, janswer, req_start_time);
   }
 
   ENDPOINT_INFO(create_chain)
@@ -197,9 +207,10 @@ public:
            PATH(oatpp::String, chain_name, "chain-name"),
            BODY_STRING(oatpp::String, chain_data))
   {
+    auto req_start_time = std::chrono::steady_clock::now();
     auto janswer = _oja->service_chain(chain_name.get()->std_str(),
                                        chain_data.get()->std_str());
-    return _oja->jdoc_to_response(req, janswer);
+    return _oja->jdoc_to_response(req, janswer, req_start_time);
   }
 
   ENDPOINT_INFO(update_chain)
@@ -212,9 +223,10 @@ public:
            PATH(oatpp::String, chain_name, "chain-name"),
            BODY_STRING(oatpp::String, chain_data))
   {
+    auto req_start_time = std::chrono::steady_clock::now();
     auto janswer = _oja->service_chain(chain_name.get()->std_str(),
                                        chain_data.get()->std_str());
-    return _oja->jdoc_to_response(req, janswer);
+    return _oja->jdoc_to_response(req, janswer, req_start_time);
   }
 };
 
