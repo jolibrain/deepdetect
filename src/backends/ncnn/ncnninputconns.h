@@ -113,6 +113,20 @@ namespace dd
               _in.substract_mean_normalize(_mean.data(), _std.data());
             }
         }
+      else if (_scale != 1.0)
+        {
+          float norm = 1.0 / _scale;
+          if (_bw)
+            {
+              std::vector<float> vscale = { norm };
+              _in.substract_mean_normalize(0, vscale.data());
+            }
+          else
+            {
+              std::vector<float> vscale = { norm, norm, norm };
+              _in.substract_mean_normalize(0, vscale.data());
+            }
+        }
       _ids.push_back(this->_uris.at(0));
     }
 

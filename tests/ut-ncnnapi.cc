@@ -85,4 +85,20 @@ TEST(ncnnapi, service_predict)
   cl1 = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
               > 0.4);
+
+  // predict with scale, wrong value, for testing only
+  jpredictstr
+      = "{\"service\":\"imgserv\",\"parameters\":{\"input\":{\"height\":300,"
+        "\"width\":300,\"scale\":0.0039},"
+        "\"output\":{\"bbox\":true}},\"data\":[\""
+        + incept_repo + "face.jpg\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+  cl1 = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
+  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
+              > 0.4);
 }
