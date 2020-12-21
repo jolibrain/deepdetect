@@ -685,16 +685,19 @@ if (USE_NCNN)
       ncnn
       PREFIX ncnn
       GIT_REPOSITORY https://github.com/jolibrain/ncnn.git
-      CMAKE_ARGS -DPI3=ON -DCMAKE_TOOLCHAIN_FILE=../toolchains/pi3.toolchain.cmake
+      CMAKE_ARGS -DPI3=ON -DCMAKE_TOOLCHAIN_FILE=../toolchains/pi3.toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DProtobuf_INCLUDE_DIR=${CMAKE_BINARY_DIR}/protobuf/src/protobuf/src -DProtobuf_LIBRARIES=${PROTOBUF_LIB_DIR}/libprotobuf.so -DProtobuf_PROTOC_EXECUTABLE=${PROTOBUF_LIB_DIR}/protoc
       INSTALL_COMMAND ""
+      DEPENDS protobuf
     )
   else ()
     ExternalProject_Add(
       ncnn
       PREFIX ncnn
       GIT_REPOSITORY https://github.com/jolibrain/ncnn.git
+      CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DProtobuf_INCLUDE_DIR=${CMAKE_BINARY_DIR}/protobuf/src/protobuf/src -DProtobuf_LIBRARIES=${PROTOBUF_LIB_DIR}/libprotobuf.so -DProtobuf_PROTOC_EXECUTABLE=${PROTOBUF_LIB_DIR}/protoc
       INSTALL_COMMAND ""
-    )
+      DEPENDS protobuf
+      )
   endif()
   set(NCNN_INC_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/src ${CMAKE_BINARY_DIR}/ncnn/src/ncnn-build/src)
   set(NCNN_LIB_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn-build/src)
