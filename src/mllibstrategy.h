@@ -96,7 +96,10 @@ namespace dd
         : _inputc(mll._inputc), _outputc(mll._outputc), _mltype(mll._mltype),
           _mlmodel(mll._mlmodel), _meas(mll._meas),
           _meas_per_iter(mll._meas_per_iter), _stats(mll._stats),
-          _tjob_running(mll._tjob_running.load()), _logger(mll._logger)
+          _tjob_running(mll._tjob_running.load()), _logger(mll._logger),
+          _model_flops(mll._model_flops), _model_params(mll._model_params),
+          _mem_used_train(mll._mem_used_train),
+          _mem_used_test(mll._mem_used_test)
     {
     }
 
