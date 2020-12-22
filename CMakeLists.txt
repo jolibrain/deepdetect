@@ -696,7 +696,6 @@ if (USE_NCNN)
   message(STATUS "Configuring NCNN")
   add_definitions(-DUSE_NCNN)
   include_directories(${CMAKE_CURRENT_BINARY_DIR})
-
   set(NCNN_PATCHES_PATH ${CMAKE_BINARY_DIR}/patches/ncnn)
   set(NCNN_PATCHES
     ${NCNN_PATCHES_PATH}/ncnn_inner_keep_h.patch
@@ -709,7 +708,7 @@ if (USE_NCNN)
   set(NCNN_VERSION "20201218")
   set(NCNN_TARBALL_HASH "1dac4571168b83ee99efaba969c01e8054cd8e3d9b67ca4893f32b767ab4ec48")
   set(NCNN_BUILD_FLAGS -DCMAKE_BUILD_TYPE=Release -DNCNN_BUILD_EXAMPLES=OFF -DNCNN_BUILD_BENCHMARK=OFF -DNCNN_BUILD_TOOLS=OFF -DNCNN_BUILD_TESTS=OFF)
-
+  #set(NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn-build/src/libncnn.a)
   if (RPI3)
     ExternalProject_Add(
       ncnn
@@ -740,7 +739,6 @@ if (USE_NCNN)
     ExternalProject_Add(
       ncnn
       PREFIX ncnn
-<<<<<< HEAD
       URL https://github.com/Tencent/ncnn/releases/download/${NCNN_VERSION}/ncnn-${NCNN_VERSION}-full-source.zip
       URL_HASH SHA256=${NCNN_TARBALL_HASH}
       PATCH_COMMAND ${CMAKE_SOURCE_DIR}/cmake/patches-apply.sh ${NCNN_PATCHES}
