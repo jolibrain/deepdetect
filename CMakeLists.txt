@@ -737,11 +737,9 @@ if (USE_NCNN)
       URL https://github.com/Tencent/ncnn/releases/download/${NCNN_VERSION}/ncnn-${NCNN_VERSION}-full-source.zip
       URL_HASH SHA256=${NCNN_TARBALL_HASH}
       PATCH_COMMAND ${CMAKE_SOURCE_DIR}/cmake/patches-apply.sh ${NCNN_PATCHES}
-      #CMAKE_ARGS ${NCNN_BUILD_FLAGS}
       CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DCMAKE_SYSTEM_PROCESSOR=arm64 -DCMAKE_OSX_ARCHITECTURES=arm64 -DVulkan_INCLUDE_DIR=${CMAKE_BINARY_DIR}/vulkansdk-macos-1.2.162.0/MoltenVK/include -DVulkan_LIBRARY=${CMAKE_BINARY_DIR}/vulkansdk-macos-1.2.162.0/MoltenVK/dylib/macOS/libMoltenVK.dylib -DNCNN_VULKAN=ON -DNCNN_BUILD_TOOLS=OFF -DNCNN_BUILD_EXAMPLES=OFF -DProtobuf_INCLUDE_DIR=${CMAKE_BINARY_DIR}/protobuf/src/protobuf/src -DProtobuf_LIBRARIES=${PROTOBUF_LIB_DIR}/libprotobuf.dylib -DProtobuf_PROTOC_EXECUTABLE=${PROTOBUF_LIB_DIR}/protoc
       #-DNCNN_BUILD_EXAMPLES=OFF -DNCNN_BUILD_BENCHMARK=OFF -DNCNN_BUILD_TOOLS=OFF -DNCNN_BUILD_TESTS=OFF
       INSTALL_COMMAND ""
-      DEPENDS protobuf
       )
   else()
      ExternalProject_Add(
@@ -752,7 +750,6 @@ if (USE_NCNN)
       PATCH_COMMAND ${CMAKE_SOURCE_DIR}/cmake/patches-apply.sh ${NCNN_PATCHES}
       CMAKE_ARGS ${NCNN_BUILD_FLAGS}
       INSTALL_COMMAND ""
-      DEPENDS protobuf
     )
   endif()
 
