@@ -44,6 +44,26 @@ using google::protobuf::io::ZeroCopyOutputStream;
 namespace dd
 {
 
+  bool findInputDimensions(const std::string &source, int &width, int &height)
+  {
+    caffe::NetParameter net;
+    if (!TRTReadProtoFromTextFile(source.c_str(), &net))
+      return false;
+
+    for (int i = 0; i < net.layer_size(); ++i)
+      {
+        caffe::LayerParameter lparam = net.layer(i);
+        if (lparam.type() == "MemoryData")
+          {
+            width = lparam.memory_data_param().width();
+            height = lparam.memory_data_param().height();
+          }
+        break; // don't go further than first layer.
+      }
+
+    return true;
+  }
+
   int findNClasses(const std::string source, bool bbox)
   {
     caffe::NetParameter net;

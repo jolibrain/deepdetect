@@ -53,10 +53,21 @@ namespace dd
 
     int read_from_repository(const std::shared_ptr<spdlog::logger> &logger);
 
+    inline bool is_caffe_source() const
+    {
+      return _source_type == "caffe";
+    }
+
+    inline bool is_onnx_source() const
+    {
+      return _source_type == "onnx";
+    }
+
     std::string _model;
     std::string _def;
     std::string _weights;
     bool _has_mean_file = false;
+    std::string _source_type = "caffe"; // or "onnx"
   };
 }
 

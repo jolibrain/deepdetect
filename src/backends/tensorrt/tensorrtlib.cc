@@ -83,6 +83,8 @@ namespace dd
   {
     this->_libname = "tensorrt";
     _nclasses = tl._nclasses;
+    _width = tl._width;
+    _height = tl._height;
     _dla = tl._dla;
     _datatype = tl._datatype;
     _max_batch_size = tl._max_batch_size;
@@ -234,6 +236,23 @@ namespace dd
         else
           {
             // default is TF32 (aka 10-bit mantissas round-up)
+          }
+      }
+
+    // check on the input size
+    if (!_timeserie && this->_mlmodel.is_caffe_source())
+      {
+        if (_width == 0 || _height == 0)
+          {
+            this->_logger->info("trying to determine the input size...");
+            if (findInputDimensions(this->_mlmodel._def, _width, _height))
+              {
+                this->_logger->info("found {}x{} as input size", _width,
+                                    _height);
+              }
+            else
+              throw MLLibBadParamException("Could not detect the input size, "
+                                           "specify it from API instead");
           }
       }
   }
@@ -432,10 +451,15 @@ namespace dd
         else if (_regression)
           out_blob = "pred";
 
-        if (_nclasses == 0)
+        if (_nclasses == 0 && this->_mlmodel.is_caffe_source())
           {
-            this->_logger->info("try to determine number of classes...");
+            this->_logger->info("trying to determine number of classes...");
             _nclasses = findNClasses(this->_mlmodel._def, _bbox);
+            if (_nclasses < 0)
+              throw MLLibBadParamException(
+                  "failed detecting the number of classes, specify it through "
+                  "API with nclasses");
+            this->_logger->info("found {} classes", _nclasses);
           }
 
         if (_bbox)
@@ -604,6 +628,17 @@ namespace dd
     this->_stats.transform_end();
 
     this->_stats.inc_inference_count(inputc._batch_size);
+
+    if (!_timeserie && this->_mlmodel.is_caffe_source())
+      {
+        if (inputc.width() != _width || inputc.height() != _height)
+          {
+            throw MLLibBadParamException(
+                "Model height and/or width differ from the input data "
+                "size. Input data size should be "
+                + std::to_string(_width) + "x" + std::to_string(_height));
+          }
+      }
 
     int idoffset = 0;
     std::vector<APIData> vrad;

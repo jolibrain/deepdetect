@@ -71,6 +71,10 @@ namespace dd
                 modelf = (*hit);
                 model_t = wt;
               }
+            if ((*hit).find(caffe_model_name) != std::string::npos)
+              _source_type = "caffe";
+            else if ((*hit).find(onnx_model_name) != std::string::npos)
+              _source_type = "onnx";
           }
         else if ((*hit).find("~") != std::string::npos
                  || (*hit).find(".prototxt") == std::string::npos)
