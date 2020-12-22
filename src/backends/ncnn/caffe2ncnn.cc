@@ -571,7 +571,13 @@ int convert_caffe_to_ncnn(bool ocr, const char *caffeproto,
         }
 
       // layer specific params
-      if (layer.type() == "BatchNorm")
+      if (layer.type() == "Flatten")
+        {
+          const caffe::FlattenParameter &f_param = layer.flatten_param();
+          int axis = f_param.axis();
+          fprintf(pp, " 0=%d", axis);
+        }
+      else if (layer.type() == "BatchNorm")
         {
           const caffe::LayerParameter &binlayer = net.layer(netidx);
 

@@ -37,14 +37,12 @@ namespace dd
             class TMLModel>
   ncnn::UnlockedPoolAllocator
       NCNNLib<TInputConnectorStrategy, TOutputConnectorStrategy,
-              TMLModel>::_blob_pool_allocator
-      = ncnn::UnlockedPoolAllocator();
+              TMLModel>::_blob_pool_allocator;
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel>
   ncnn::PoolAllocator
       NCNNLib<TInputConnectorStrategy, TOutputConnectorStrategy,
-              TMLModel>::_workspace_pool_allocator
-      = ncnn::PoolAllocator();
+              TMLModel>::_workspace_pool_allocator;
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel>
@@ -85,7 +83,10 @@ namespace dd
   NCNNLib<TInputConnectorStrategy, TOutputConnectorStrategy,
           TMLModel>::~NCNNLib()
   {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdelete-non-virtual-dtor"
     delete _net;
+#pragma GCC diagnostic pop
     _net = nullptr;
   }
 

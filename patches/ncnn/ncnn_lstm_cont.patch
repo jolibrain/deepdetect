@@ -1,0 +1,203 @@
+diff --git a/src/layer/lstm.cpp b/src/layer/lstm.cpp
+index ad772008..758254c1 100644
+--- a/src/layer/lstm.cpp
++++ b/src/layer/lstm.cpp
+@@ -56,11 +56,10 @@ int LSTM::load_model(const ModelBin& mb)
+     return 0;
+ }
+ 
+-static int lstm(const Mat& bottom_blob, Mat& top_blob, int reverse, const Mat& weight_xc, const Mat& bias_c, const Mat& weight_hc, Mat& hidden_state, Mat& cell_state, const Option& opt)
++static int lstm(const Mat& bottom_blob, const Mat& cont_blob, Mat& top_blob, int reverse, const Mat& weight_xc, const Mat& bias_c, const Mat& weight_hc, Mat& hidden_state, Mat& cell_state, const Option& opt, bool use_cont_blob)
+ {
+     int size = bottom_blob.w;
+     int T = bottom_blob.h;
+-
+     int num_output = top_blob.w;
+ 
+     // 4 x num_output
+@@ -71,6 +70,8 @@ static int lstm(const Mat& bottom_blob, Mat& top_blob, int reverse, const Mat& w
+     // unroll
+     for (int t = 0; t < T; t++)
+     {
++        const int cont = use_cont_blob ? static_cast<int>(((const float*)cont_blob)[t]) : 1;
++
+         // clip hidden by continuation indicator
+         // h_cont_{t-1} = cont_t * h_{t-1}
+         // h_cont_{t-1} = h_{t-1} if cont_t == 1
+@@ -109,7 +110,6 @@ static int lstm(const Mat& bottom_blob, Mat& top_blob, int reverse, const Mat& w
+             for (int i = 0; i < size; i++)
+             {
+                 float xi = x[i];
+-
+                 I += weight_xc_I[i] * xi;
+                 F += weight_xc_F[i] * xi;
+                 O += weight_xc_O[i] * xi;
+@@ -120,10 +120,10 @@ static int lstm(const Mat& bottom_blob, Mat& top_blob, int reverse, const Mat& w
+             {
+                 float h_cont = hidden_state[i];
+ 
+-                I += weight_hc_I[i] * h_cont;
+-                F += weight_hc_F[i] * h_cont;
+-                O += weight_hc_O[i] * h_cont;
+-                G += weight_hc_G[i] * h_cont;
++                I += weight_hc_I[i] * (cont == 0 ? 0 : h_cont);
++                F += weight_hc_F[i] * (cont == 0 ? 0 : h_cont);
++                O += weight_hc_O[i] * (cont == 0 ? 0 : h_cont);
++                G += weight_hc_G[i] * (cont == 0 ? 0 : h_cont);
+             }
+ 
+             gates_data[0] = I;
+@@ -150,11 +150,11 @@ static int lstm(const Mat& bottom_blob, Mat& top_blob, int reverse, const Mat& w
+             float G = gates_data[3];
+ 
+             I = 1.f / (1.f + exp(-I));
+-            F = 1.f / (1.f + exp(-F));
++            F = cont ? 1.f / (1.f + exp(-F)) : 0.f;
+             O = 1.f / (1.f + exp(-O));
+             G = tanh(G);
+ 
+-            float cell2 = F * cell_state[q] + I * G;
++            float cell2 = cont ? F * cell_state[q] + I * G : I * G;
+             float H = O * tanh(cell2);
+             cell_state[q] = cell2;
+             hidden_state[q] = H;
+@@ -165,22 +165,20 @@ static int lstm(const Mat& bottom_blob, Mat& top_blob, int reverse, const Mat& w
+     return 0;
+ }
+ 
+-int LSTM::forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const
++int LSTM::forward(const Mat& bottom_blob, const Mat& cont_blob, Mat& top_blob, const Option& opt, bool use_cont_blob) const
+ {
+     int T = bottom_blob.h;
+ 
+     int num_directions = direction == 2 ? 2 : 1;
+ 
+-    // initial hidden state
+-    Mat hidden(num_output, 4u, opt.workspace_allocator);
++    // hidden state
++    hidden.create(num_output, 4u, opt.workspace_allocator);
+     if (hidden.empty())
+         return -100;
+-    hidden.fill(0.f);
+ 
+-    Mat cell(num_output, 4u, opt.workspace_allocator);
++    cell.create(num_output, 4u, opt.workspace_allocator);
+     if (cell.empty())
+         return -100;
+-    cell.fill(0.f);
+ 
+     top_blob.create(num_output * num_directions, T, 4u, opt.blob_allocator);
+     if (top_blob.empty())
+@@ -189,7 +187,7 @@ int LSTM::forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) cons
+     // Uni directional
+     if (direction == 0 || direction == 1)
+     {
+-        int ret = lstm(bottom_blob, top_blob, direction, weight_xc_data.channel(0), bias_c_data.channel(0), weight_hc_data.channel(0), hidden, cell, opt);
++        int ret = lstm(bottom_blob, cont_blob, top_blob, direction, weight_xc_data.channel(0), bias_c_data.channel(0), weight_hc_data.channel(0), hidden, cell, opt, use_cont_blob);
+         if (ret != 0)
+             return ret;
+     }
+@@ -204,14 +202,14 @@ int LSTM::forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) cons
+         if (top_blob_reverse.empty())
+             return -100;
+ 
+-        int ret0 = lstm(bottom_blob, top_blob_forward, 0, weight_xc_data.channel(0), bias_c_data.channel(0), weight_hc_data.channel(0), hidden, cell, opt);
++        int ret0 = lstm(bottom_blob, cont_blob, top_blob_forward, 0, weight_xc_data.channel(0), bias_c_data.channel(0), weight_hc_data.channel(0), hidden, cell, opt, use_cont_blob);
+         if (ret0 != 0)
+             return ret0;
+ 
+         hidden.fill(0.0f);
+         cell.fill(0.0f);
+ 
+-        int ret1 = lstm(bottom_blob, top_blob_reverse, 1, weight_xc_data.channel(1), bias_c_data.channel(1), weight_hc_data.channel(1), hidden, cell, opt);
++        int ret1 = lstm(bottom_blob, Mat(), top_blob_reverse, 1, weight_xc_data.channel(1), bias_c_data.channel(1), weight_hc_data.channel(1), hidden, cell, opt, false);
+         if (ret1 != 0)
+             return ret1;
+ 
+@@ -232,9 +230,14 @@ int LSTM::forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) cons
+ 
+ int LSTM::forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const
+ {
++    if (bottom_blobs.size() == 2) // special dede case were we give cont blob and use mutable h and c
++    {
++        return forward(bottom_blobs[0], bottom_blobs[1], top_blobs[0], opt, true);
++    }
++
+     if (bottom_blobs.size() != 3 || top_blobs.size() != 3)
+     {
+-        return forward(bottom_blobs[0], top_blobs[0], opt);
++        return forward(bottom_blobs[0], Mat(), top_blobs[0], opt, false);
+     }
+     const Mat& bottom_blob = bottom_blobs[0];
+     int T = bottom_blob.h;
+@@ -253,7 +256,7 @@ int LSTM::forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_bl
+     // Uni directional
+     if (direction == 0 || direction == 1)
+     {
+-        int ret = lstm(bottom_blob, top_blob, direction, weight_xc_data.channel(0), bias_c_data.channel(0), weight_hc_data.channel(0), hidden_state, cell_state, opt);
++        int ret = lstm(bottom_blob, Mat(), top_blob, direction, weight_xc_data.channel(0), bias_c_data.channel(0), weight_hc_data.channel(0), hidden_state, cell_state, opt, false);
+         if (ret != 0)
+             return ret;
+     }
+diff --git a/src/layer/lstm.h b/src/layer/lstm.h
+index 78d8366a..1fe96484 100644
+--- a/src/layer/lstm.h
++++ b/src/layer/lstm.h
+@@ -28,7 +28,7 @@ public:
+ 
+     virtual int load_model(const ModelBin& mb);
+ 
+-    virtual int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const;
++  virtual int forward(const Mat& bottom_blob,const Mat& cont_blob, Mat& top_blob, const Option& opt, bool use_cont_blob) const;
+ 
+     virtual int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const;
+ 
+@@ -40,6 +40,13 @@ public:
+     Mat weight_hc_data;
+     Mat weight_xc_data;
+     Mat bias_c_data;
++
++    // internal lstm state , mutable so that it can be changed by forward() const
++    // stored here so that successive calls to forward() may restart from previous
++    // state (if unwanted, set cont indicator  to zero at beginning of sequence)
++    mutable Mat hidden;
++    mutable Mat cell;
++
+ };
+ 
+ } // namespace ncnn
+diff --git a/src/layer/x86/lstm_x86.cpp b/src/layer/x86/lstm_x86.cpp
+index e9b14cc7..314a36f6 100644
+--- a/src/layer/x86/lstm_x86.cpp
++++ b/src/layer/x86/lstm_x86.cpp
+@@ -63,12 +63,6 @@ static int lstm_fp16(const Mat& bottom_blob, Mat& top_blob, int reverse, const M
+     // unroll
+     for (int t = 0; t < T; t++)
+     {
+-        // clip hidden by continuation indicator
+-        // h_cont_{t-1} = cont_t * h_{t-1}
+-        // h_cont_{t-1} = h_{t-1} if cont_t == 1
+-        //                0       otherwise
+-        // calculate hidden
+-        // gate_input_t := W_hc * h_conted_{t-1} + W_xc * x_t + b_c
+         int ti = reverse ? T - 1 - t : t;
+         int remain_output = (num_output >> 1) << 1;
+         for (int q = 0; q + 1 < num_output; q += 2)
+@@ -893,13 +887,16 @@ int LSTM_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt)
+ 
+     return 0;
+ #else
+-    return LSTM::forward(bottom_blob, top_blob, opt);
++    return LSTM::forward(bottom_blob, Mat(), top_blob, opt, false);
+ #endif
+ }
+ 
+ int LSTM_x86::forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const
+ {
+ #if __AVX__
++    if (bottom_blobs.size() == 2) // special dede case were we give cont blob and use mutable h and c
++        return LSTM::forward(bottom_blobs, top_blobs, opt);
++
+     if (bottom_blobs.size() != 3 || top_blobs.size() != 3)
+     {
+         return forward(bottom_blobs[0], top_blobs[0], opt);

@@ -1,0 +1,308 @@
+diff --git a/src/layer/arm/innerproduct_arm.cpp b/src/layer/arm/innerproduct_arm.cpp
+index caab529a..494d3ce9 100644
+--- a/src/layer/arm/innerproduct_arm.cpp
++++ b/src/layer/arm/innerproduct_arm.cpp
+@@ -86,7 +86,7 @@ int InnerProduct_arm::destroy_pipeline(const Option& opt)
+ 
+ int InnerProduct_arm::forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const
+ {
+-    if (opt.use_int8_inference && weight_data.elemsize == (size_t)1u)
++    if ((opt.use_int8_inference && weight_data.elemsize == (size_t)1u) || keep_h)
+     {
+         // TODO
+         return InnerProduct::forward(bottom_blob, top_blob, opt);
+@@ -148,7 +148,7 @@ int InnerProduct_arm::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
+     int nn_num_output = num_output >> 2;
+     int remain_num_output_start = nn_num_output << 2;
+ 
+-    #pragma omp parallel for num_threads(opt.num_threads)
++#pragma omp parallel for num_threads(opt.num_threads)
+     for (int pp = 0; pp < nn_num_output; pp++)
+     {
+         int p = pp * 4;
+@@ -294,8 +294,8 @@ int InnerProduct_arm::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
+         top_blob[p + 3] = sum3;
+     }
+ 
+-    // num_output
+-    #pragma omp parallel for num_threads(opt.num_threads)
++// num_output
++#pragma omp parallel for num_threads(opt.num_threads)
+     for (int p = remain_num_output_start; p < num_output; p++)
+     {
+         float sum = 0.f;
+@@ -337,15 +337,15 @@ int InnerProduct_arm::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
+                     "fmla       %4.4s, v1.4s, v3.4s       \n"
+                     "bne        0b                        \n"
+                     : "=r"(nn),   // %0
+-                    "=r"(m),    // %1
+-                    "=r"(w),    // %2
+-                    "=w"(_sum), // %3
+-                    "=w"(_sum2) // %4
++                      "=r"(m),    // %1
++                      "=r"(w),    // %2
++                      "=w"(_sum), // %3
++                      "=w"(_sum2) // %4
+                     : "0"(nn),
+-                    "1"(m),
+-                    "2"(w),
+-                    "3"(_sum),
+-                    "4"(_sum2)
++                      "1"(m),
++                      "2"(w),
++                      "3"(_sum),
++                      "4"(_sum2)
+                     : "cc", "memory", "v0", "v1", "v2", "v3");
+             }
+ #else
+@@ -362,15 +362,15 @@ int InnerProduct_arm::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
+                     "vmla.f32   %q4, q1, q3         \n"
+                     "bne        0b                  \n"
+                     : "=r"(nn),   // %0
+-                    "=r"(m),    // %1
+-                    "=r"(w),    // %2
+-                    "=w"(_sum), // %3
+-                    "=w"(_sum2) // %4
++                      "=r"(m),    // %1
++                      "=r"(w),    // %2
++                      "=w"(_sum), // %3
++                      "=w"(_sum2) // %4
+                     : "0"(nn),
+-                    "1"(m),
+-                    "2"(w),
+-                    "3"(_sum),
+-                    "4"(_sum2)
++                      "1"(m),
++                      "2"(w),
++                      "3"(_sum),
++                      "4"(_sum2)
+                     : "cc", "memory", "q0", "q1", "q2", "q3");
+             }
+ #endif // __aarch64__
+diff --git a/src/layer/innerproduct.cpp b/src/layer/innerproduct.cpp
+index b287a2aa..a81244ff 100644
+--- a/src/layer/innerproduct.cpp
++++ b/src/layer/innerproduct.cpp
+@@ -30,6 +30,7 @@ int InnerProduct::load_param(const ParamDict& pd)
+     bias_term = pd.get(1, 0);
+     weight_data_size = pd.get(2, 0);
+     int8_scale_term = pd.get(8, 0);
++    keep_h = pd.get(3, 0);
+     activation_type = pd.get(9, 0);
+     activation_params = pd.get(10, Mat());
+ 
+@@ -94,6 +95,8 @@ int InnerProduct::forward(const Mat& bottom_blob, Mat& top_blob, const Option& o
+ {
+     if (opt.use_int8_inference && weight_data.elemsize == (size_t)1u)
+     {
++        if (keep_h)
++            return -101;
+         return forward_int8(bottom_blob, top_blob, opt);
+     }
+ 
+@@ -103,12 +106,45 @@ int InnerProduct::forward(const Mat& bottom_blob, Mat& top_blob, const Option& o
+     size_t elemsize = bottom_blob.elemsize;
+     int size = w * h;
+ 
+-    top_blob.create(num_output, elemsize, opt.blob_allocator);
++    if (keep_h)
++        top_blob.create(num_output, h, elemsize, opt.blob_allocator);
++    else
++        top_blob.create(num_output, elemsize, opt.blob_allocator);
++
+     if (top_blob.empty())
+         return -100;
+ 
+     // num_output
+-    #pragma omp parallel for num_threads(opt.num_threads)
++
++    if (keep_h)
++    {
++#pragma omp parallel for num_threads(opt.num_threads)
++        for (int hi = 0; hi < h; ++hi)
++        {
++            for (int p = 0; p < num_output; p++)
++            {
++                float sum = 0.f;
++
++                if (bias_term)
++                    sum = bias_data[p];
++
++                for (int q = 0; q < channels; ++q)
++                {
++                    size = bottom_blob.w;
++                    const float* w = (const float*)weight_data + size * channels * p + size * q;
++                    const float* m = bottom_blob.channel(q).row(hi);
++                    for (int i = 0; i < bottom_blob.w; ++i)
++                    {
++                        sum += m[i] * w[i];
++                    }
++                }
++                top_blob.row(hi)[p] = sum;
++            }
++        }
++
++        return 0;
++    }
++#pragma omp parallel for num_threads(opt.num_threads)
+     for (int p = 0; p < num_output; p++)
+     {
+         float sum = 0.f;
+@@ -181,8 +217,8 @@ int InnerProduct::forward_int8(const Mat& bottom_blob, Mat& top_blob, const Opti
+     if (top_blob.empty())
+         return -100;
+ 
+-    // num_output
+-    #pragma omp parallel for num_threads(opt.num_threads)
++// num_output
++#pragma omp parallel for num_threads(opt.num_threads)
+     for (int p = 0; p < num_output; p++)
+     {
+         float* outptr = top_blob;
+diff --git a/src/layer/innerproduct.h b/src/layer/innerproduct.h
+index 2b715017..9acc8da3 100644
+--- a/src/layer/innerproduct.h
++++ b/src/layer/innerproduct.h
+@@ -42,6 +42,12 @@ public:
+ 
+     int int8_scale_term;
+ 
++    // if set to 1, do not flatten along h axis,
++    // instead build ouput of  h * num_outputs
++    // sames weights are applied for every h
++    // implemented only on non_vulkan non int8_inference
++    int keep_h;
++
+     // 0=none 1=relu 2=leakyrelu 3=clip 4=sigmoid
+     int activation_type;
+     Mat activation_params;
+diff --git a/src/layer/x86/innerproduct_x86.cpp b/src/layer/x86/innerproduct_x86.cpp
+index 19ad650b..fe4a78f2 100644
+--- a/src/layer/x86/innerproduct_x86.cpp
++++ b/src/layer/x86/innerproduct_x86.cpp
+@@ -127,6 +127,8 @@ int InnerProduct_x86::destroy_pipeline(const Option& opt)
+ 
+ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const
+ {
++    InnerProduct::forward(bottom_blob, top_blob, opt);
++    return 0;
+     if (opt.use_int8_inference && weight_data.elemsize == (size_t)1u)
+     {
+         // TODO
+@@ -175,8 +177,8 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
+ #if __AVX__
+     if (elempack == 8 && out_elempack == 8)
+     {
+-        // num_output
+-        #pragma omp parallel for num_threads(opt.num_threads)
++// num_output
++#pragma omp parallel for num_threads(opt.num_threads)
+         for (int p = 0; p < num_output / out_elempack; p++)
+         {
+             __m256 _sum = _mm256_set1_ps(0.f);
+@@ -231,8 +233,8 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
+ 
+     if (elempack == 1 && out_elempack == 8)
+     {
+-        // num_output
+-        #pragma omp parallel for num_threads(opt.num_threads)
++// num_output
++#pragma omp parallel for num_threads(opt.num_threads)
+         for (int p = 0; p < num_output / out_elempack; p++)
+         {
+             __m256 _sum = _mm256_set1_ps(0.f);
+@@ -265,8 +267,8 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
+ 
+     if (elempack == 4 && out_elempack == 8)
+     {
+-        // num_output
+-        #pragma omp parallel for num_threads(opt.num_threads)
++// num_output
++#pragma omp parallel for num_threads(opt.num_threads)
+         for (int p = 0; p < num_output / out_elempack; p++)
+         {
+             __m256 _sum = _mm256_set1_ps(0.f);
+@@ -309,8 +311,8 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
+ 
+     if (elempack == 8 && out_elempack == 1)
+     {
+-        // num_output
+-        #pragma omp parallel for num_threads(opt.num_threads)
++// num_output
++#pragma omp parallel for num_threads(opt.num_threads)
+         for (int p = 0; p < num_output / out_elempack; p++)
+         {
+             float sum = 0.f;
+@@ -347,8 +349,8 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
+ 
+     if (elempack == 8 && out_elempack == 4)
+     {
+-        // num_output
+-        #pragma omp parallel for num_threads(opt.num_threads)
++// num_output
++#pragma omp parallel for num_threads(opt.num_threads)
+         for (int p = 0; p < num_output / out_elempack; p++)
+         {
+             __m128 _sum = _mm_set1_ps(0.f);
+@@ -404,8 +406,8 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
+ 
+     if (elempack == 4 && out_elempack == 4)
+     {
+-        // num_output
+-        #pragma omp parallel for num_threads(opt.num_threads)
++// num_output
++#pragma omp parallel for num_threads(opt.num_threads)
+         for (int p = 0; p < num_output / out_elempack; p++)
+         {
+             __m128 _sum = _mm_set1_ps(0.f);
+@@ -448,8 +450,8 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
+ 
+     if (elempack == 1 && out_elempack == 4)
+     {
+-        // num_output
+-        #pragma omp parallel for num_threads(opt.num_threads)
++// num_output
++#pragma omp parallel for num_threads(opt.num_threads)
+         for (int p = 0; p < num_output / out_elempack; p++)
+         {
+             __m128 _sum = _mm_set1_ps(0.f);
+@@ -482,8 +484,8 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
+ 
+     if (elempack == 4 && out_elempack == 1)
+     {
+-        // num_output
+-        #pragma omp parallel for num_threads(opt.num_threads)
++// num_output
++#pragma omp parallel for num_threads(opt.num_threads)
+         for (int p = 0; p < num_output / out_elempack; p++)
+         {
+             float sum = 0.f;
+@@ -528,7 +530,7 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
+         int remain_num_output_start = 0;
+         int nn_num_output = num_output >> 3;
+ 
+-        #pragma omp parallel for num_threads(opt.num_threads)
++#pragma omp parallel for num_threads(opt.num_threads)
+         for (int pp = 0; pp < nn_num_output; pp++)
+         {
+             int p = pp * 8;
+@@ -643,7 +645,7 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
+         int nn_num_output = num_output >> 2;
+ #endif // __AVX__
+ 
+-        #pragma omp parallel for num_threads(opt.num_threads)
++#pragma omp parallel for num_threads(opt.num_threads)
+         for (int pp = 0; pp < nn_num_output; pp++)
+         {
+             int p = remain_num_output_start + (pp * 4);
+@@ -753,8 +755,8 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
+         int remain_num_output_start = 0;
+ #endif // __SSE2__
+ 
+-        // num_output
+-        #pragma omp parallel for num_threads(opt.num_threads)
++// num_output
++#pragma omp parallel for num_threads(opt.num_threads)
+         for (int p = remain_num_output_start; p < num_output; p++)
+         {
+             float sum = 0.f;
