@@ -131,8 +131,9 @@ namespace dd
 
     if (ad.has("maxWorkspaceSize"))
       {
-        _max_workspace_size
-            = ad.get("maxWorkspaceSize").get<int>() * (1 << 20);
+        _max_workspace_size = ad.get("maxWorkspaceSize").get<int>();
+        size_t meg = 1 << 20;
+        _max_workspace_size *= meg;
         this->_logger->info("setting max workspace size to {}",
                             _max_workspace_size);
       }
