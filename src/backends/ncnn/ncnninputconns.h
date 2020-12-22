@@ -153,7 +153,8 @@ namespace dd
     {
     }
     CSVTSNCNNInputFileConn(const CSVTSNCNNInputFileConn &i)
-        : CSVTSInputFileConn(i), NCNNInputInterface(i)
+        : CSVTSInputFileConn(i), NCNNInputInterface(i), _in(i._in),
+          _out(i._out), _height(i._height), _width(i._width), _ids(i._ids)
     {
     }
     ~CSVTSNCNNInputFileConn()
@@ -221,18 +222,18 @@ namespace dd
       for (unsigned int si = 0; si < this->_csvtsdata.size(); ++si)
         {
           if (_continuation)
-            _in[mati++] = 1;
+            _in[mati++] = 1.0;
           else
-            _in[mati++] = 0;
+            _in[mati++] = 0.0;
           for (int di = 0; di < _ntargets; ++di)
-            _in[mati++] = 0;
+            _in[mati++] = 0.0;
           for (unsigned int di : input_pos)
             _in[mati++] = this->_csvtsdata[si][0]._v[di];
           for (unsigned int ti = 1; ti < this->_csvtsdata[si].size(); ++ti)
             {
-              _in[mati++] = 1;
+              _in[mati++] = 1.0;
               for (int di = 0; di < _ntargets; ++di)
-                _in[mati++] = 0;
+                _in[mati++] = 0.0;
               for (unsigned int di : input_pos)
                 _in[mati++] = this->_csvtsdata[si][ti]._v[di];
             }

@@ -1,0 +1,48 @@
+diff --git a/src/layer.h b/src/layer.h
+index 373f4172..1a663784 100644
+--- a/src/layer.h
++++ b/src/layer.h
+@@ -48,6 +48,11 @@ public:
+     // return 0 if success
+     virtual int load_model(const ModelBin& mb);
+ 
++    virtual void set_h(int h)
++    {
++        (void)h;
++    }
++
+     // layer implementation specific setup
+     // return 0 if success
+     virtual int create_pipeline(const Option& opt);
+diff --git a/src/layer/input.h b/src/layer/input.h
+index bd7f31cc..53be06a4 100644
+--- a/src/layer/input.h
++++ b/src/layer/input.h
+@@ -28,6 +28,11 @@ public:
+ 
+     virtual int forward_inplace(Mat& bottom_top_blob, const Option& opt) const;
+ 
++    virtual void set_h(const int h)
++    {
++        this->h = h;
++    }
++
+ #if NCNN_VULKAN
+     virtual int forward_inplace(VkMat& bottom_top_blob, VkCompute& cmd, const Option& opt) const;
+     virtual int forward_inplace(VkImageMat& bottom_top_blob, VkCompute& cmd, const Option& opt) const;
+diff --git a/src/net.h b/src/net.h
+index a7c05bd0..ec8b8f29 100644
+--- a/src/net.h
++++ b/src/net.h
+@@ -72,6 +72,11 @@ public:
+ 
+     int load_model(const DataReader& dr);
+ 
++    void set_input_h(int h) const
++    {
++        layers[0]->set_h(h);
++    }
++
+ #if NCNN_STDIO
+ #if NCNN_STRING
+     // load network structure from plain param file
