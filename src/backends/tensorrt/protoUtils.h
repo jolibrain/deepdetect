@@ -33,6 +33,7 @@ namespace dd
      - it add "keep_count" top to DetectionOutput Layer
   */
   int fixProto(const std::string dest, const std::string source);
+  bool findInputDimensions(const std::string &source, int &width, int &height);
   int findNClasses(const std::string source, bool bbox);
   int findTopK(const std::string source);
   bool TRTReadProtoFromTextFile(const char *filename,

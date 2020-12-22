@@ -108,6 +108,8 @@ namespace dd
 
   public:
     int _nclasses = 0;
+    int _width = 0;  /**< default model width. */
+    int _height = 0; /**< default model height. */
     int _dla = -1;
     nvinfer1::DataType _datatype = nvinfer1::DataType::kFLOAT;
     int _max_batch_size = 48;

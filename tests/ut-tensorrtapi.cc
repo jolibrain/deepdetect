@@ -148,11 +148,18 @@ TEST(tensorrtapi, service_predict_refinedet)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
-  /*std::string cl1
-      = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
-  ASSERT_TRUE(cl1 == "1");
-  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
-  > 0.4);*/
+
+  // predict with wrong input size
+  jpredictstr
+      = "{\"service\":\"imgserv\",\"parameters\":{\"input\":{\"height\":300,"
+        "\"width\":300},\"output\":{\"bbox\":true}},\"data\":[\""
+        + squeez_repo + "face.jpg\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(400, jd["status"]["code"]);
+
   jstr = "{\"clear\":\"lib\"}";
   joutstr = japi.jrender(japi.service_delete(sname, jstr));
   ASSERT_EQ(ok_str, joutstr);
