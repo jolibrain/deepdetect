@@ -327,6 +327,13 @@ if (USE_TORCH)
     "resnet50_training_torch"
     )
   DOWNLOAD_DATASET(
+    "Torch native Resnet 50 model"
+    "https://www.deepdetect.com/dd/examples/torch/resnet50_native_torch.tar.gz"
+    "examples/torch"
+    "resnet50_native_torch.tar.gz"
+    "resnet50_native_torch"
+    )
+  DOWNLOAD_DATASET(
     "Torch BERT classification test model"
     "https://www.deepdetect.com/dd/examples/torch/bert_inference_torch.tar.gz"
     "examples/torch"
