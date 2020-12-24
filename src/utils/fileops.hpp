@@ -36,9 +36,7 @@
 #include <archive_entry.h>
 #endif
 
-#if defined(__APPLE__) || defined(__NetBSD__) 
-//#define st_atim st_atimespec
-//#define st_ctim st_ctimespec
+#if defined(__APPLE__) || defined(__NetBSD__)
 #define st_mtim st_mtimespec
 #endif
 
