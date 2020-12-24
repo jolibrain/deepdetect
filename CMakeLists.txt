@@ -22,6 +22,8 @@ option(USE_ANNOY "use annoy as indexer" OFF)
 option(USE_FAISS "use FAISS as indexer" ON)
 option(BUILD_SPDLOG "build SPDLOG instead of using system library" ON)
 option(USE_BOOST_BACKTRACE "use boost backtrace" ON)
+option(USE_OPENMP "use OpenMP" ON)
+option(USE_VULKAN "use Vulkan for GPU acceleration" OFF)
 
 if (USE_CAFFE)
   add_definitions(-DUSE_CAFFE)
@@ -87,7 +89,12 @@ if (NOT EXISTS ${CMAKE_BINARY_DIR}/src)
 	COMMAND  bash -c "mkdir ${CMAKE_BINARY_DIR}/src")
 endif()
 
-set(CMAKE_CXX_FLAGS "-g -O2 -Wall -Wextra -fopenmp -fPIC -std=c++14 -DUSE_OPENCV -DUSE_LMDB")
+if (USE_OPENMP)
+   set(FOPENMP "-fopenmp")
+else()
+   set(FOPENMP "")
+endif()
+set(CMAKE_CXX_FLAGS "-g -O2 -Wall -Wextra ${FOPENMP} -fPIC -std=c++14 -DUSE_OPENCV -DUSE_LMDB")
 
 if(WARNING)
   string(APPEND CMAKE_CXX_FLAGS " -Werror")
@@ -139,7 +146,7 @@ ExternalProject_Add(
 )
 set(PROTOBUF_INCLUDE_DIR ${CMAKE_BINARY_DIR}/protobuf/src/protobuf/src)
 set(PROTOBUF_LIB_DIR ${CMAKE_BINARY_DIR}/protobuf/src/protobuf-build/)
-set(PROTOBUF_LIB_DEPS ${PROTOBUF_LIB_DIR}/libprotobuf.so ${PROTOBUF_LIB_DIR}/libprotoc.so ${PROTOBUF_LIB_DIR}/libprotobuf-lite.so)
+set(PROTOBUF_LIB_DEPS ${PROTOBUF_LIB_DIR}/libprotobuf.dylib ${PROTOBUF_LIB_DIR}/libprotoc.dylib ${PROTOBUF_LIB_DIR}/libprotobuf-lite.dylib)
 link_directories(${PROTOBUF_LIB_DIR})
 include_directories(SYSTEM ${PROTOBUF_INCLUDE_DIR})
 
@@ -219,7 +226,7 @@ if (USE_BOOST_BACKTRACE)
 endif()
 
 
-# CUDA OR CPU options
+# CUDA/Vulkan OR CPU options
 option(USE_XGBOOST_CPU_ONLY "use XGBOOST without CUDA" ON)
 option(USE_TF_CPU_ONLY "use TF without CUDA" OFF)
 option(USE_TORCH_CPU_ONLY "use TORCH without CUDA" OFF)
@@ -227,6 +234,7 @@ option(USE_CAFFE_CPU_ONLY "use CAFFE without CUDA" OFF)
 option(USE_DLIB_CPU_ONLY "use DLIB without CUDA" OFF)
 option(USE_CAFFE2_CPU_ONLY "use CAFFE2 without CUDA" OFF)
 option(USE_FAISS_CPU_ONLY "use FAISS without CUDA" OFF)
+option(USE_NCNN_CPU_ONLY "use NCNN without Vulkan" ON)
 
 # Deprecated flag
 if (USE_XGBOOST_GPU)
@@ -241,6 +249,7 @@ if (USE_CPU_ONLY)
   set(USE_CAFFE2_CPU_ONLY ON)
   set(USE_TORCH_CPU_ONLY ON)
   set(USE_FAISS_CPU_ONLY ON)
+  set(USE_NCNN_CPU_ONLY ON)
 else()
   cmake_minimum_required(VERSION 3.14)
   include(cmake/Cuda.cmake) # cuda + cudnn
@@ -349,7 +358,9 @@ if (CUDA_FOUND)
   endif()
 else()
   set(CUDA_LIB_DEPS "")
-  add_definitions(-DCPU_ONLY)
+  if (NOT USE_VULKAN)
+     add_definitions(-DCPU_ONLY)
+  endif()
 endif()
 
 if (USE_DLIB)
@@ -705,8 +716,35 @@ if (USE_NCNN)
       CMAKE_ARGS -DPI3=ON -DCMAKE_TOOLCHAIN_FILE=../toolchains/pi3.toolchain.cmake ${NCNN_BUILD_FLAGS}
       INSTALL_COMMAND ""
     )
-  else ()
+  elseif (USE_VULKAN)
+    file(
+	DOWNLOAD https://www.deepdetect.com/stuff/vulkansdk-macos-1.2.162.0.dmg ${CMAKE_BINARY_DIR}/vulkansdk-macos-1.2.162.0.tar.gz
+    	EXPECTED_HASH SHA256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+	)
+    execute_process(
+	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    	COMMAND ${CMAKE_COMMAND} -E tar xvf vulkansdk-macos-1.2.162.0.tar.gz
+    	RESULT_VARIABLE _UNCOMPRESS_RESULT
+    )
+    if (NOT _UNCOMPRESS_RESULT EQUAL 0)
+       message(FATAL_ERROR "Untar vulkansdk-macos-1.2.162.0.tar.gz failed")
+    endif()
     ExternalProject_Add(
+      ncnn
+      PREFIX ncnn
+
+# master
+      URL https://github.com/Tencent/ncnn/releases/download/${NCNN_VERSION}/ncnn-${NCNN_VERSION}-full-source.zip
+      URL_HASH SHA256=${NCNN_TARBALL_HASH}
+      PATCH_COMMAND ${CMAKE_SOURCE_DIR}/cmake/patches-apply.sh ${NCNN_PATCHES}
+      #CMAKE_ARGS ${NCNN_BUILD_FLAGS}
+      CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DCMAKE_SYSTEM_PROCESSOR=arm64 -DCMAKE_OSX_ARCHITECTURES=arm64 -DVulkan_INCLUDE_DIR=${CMAKE_BINARY_DIR}/vulkansdk-macos-1.2.162.0/MoltenVK/include -DVulkan_LIBRARY=${CMAKE_BINARY_DIR}/vulkansdk-macos-1.2.162.0/MoltenVK/dylib/macOS/libMoltenVK.dylib -DNCNN_VULKAN=ON -DNCNN_BUILD_TOOLS=OFF -DNCNN_BUILD_EXAMPLES=OFF -DProtobuf_INCLUDE_DIR=${CMAKE_BINARY_DIR}/protobuf/src/protobuf/src -DProtobuf_LIBRARIES=${PROTOBUF_LIB_DIR}/libprotobuf.dylib -DProtobuf_PROTOC_EXECUTABLE=${PROTOBUF_LIB_DIR}/protoc
+      #-DNCNN_BUILD_EXAMPLES=OFF -DNCNN_BUILD_BENCHMARK=OFF -DNCNN_BUILD_TOOLS=OFF -DNCNN_BUILD_TESTS=OFF
+      INSTALL_COMMAND ""
+      DEPENDS protobuf
+      )
+  else()
+     ExternalProject_Add(
       ncnn
       PREFIX ncnn
       URL https://github.com/Tencent/ncnn/releases/download/${NCNN_VERSION}/ncnn-${NCNN_VERSION}-full-source.zip
@@ -714,13 +752,22 @@ if (USE_NCNN)
       PATCH_COMMAND ${CMAKE_SOURCE_DIR}/cmake/patches-apply.sh ${NCNN_PATCHES}
       CMAKE_ARGS ${NCNN_BUILD_FLAGS}
       INSTALL_COMMAND ""
-      )
+      DEPENDS protobuf
+    )
   endif()
 
   set(NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn-build/src/libncnn.a)
   set(NCNN_INC_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/src ${CMAKE_BINARY_DIR}/ncnn/src/ncnn-build/src)
   set(NCNN_LIB_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn-build/src)
   include_directories(${NCNN_INC_DIR})
+
+  # for ARM M1
+  list(APPEND NCNN_LIB_DIR ${CMAKE_BINARY_DIR}/vulkansdk-macos-1.2.162.0/MoltenVK/dylib/macOS/)
+  list(APPEND NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/vulkansdk-macos-1.2.162.0/MoltenVK/dylib/macOS/libMoltenVK.dylib)
+  list(APPEND NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn-build/glslang/glslang/libglslang.a)
+  list(APPEND NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn-build/glslang/OGLCompilersDLL/libOGLCompiler.a)
+  list(APPEND NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn-build/glslang/SPIRV/libSPIRV.a)
+  list(APPEND NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn-build/glslang/glslang/OSDependent/Unix/libOSDependent.a)
 endif()
 
 # Torch
@@ -1043,6 +1090,12 @@ if (USE_HTTP_SERVER)
 endif()
 
 # main library, main & tests
+include_directories("/opt/homebrew/include/")
+include_directories("/opt/homebrew/opt/libarchive/include/")
+include_directories("/opt/homebrew/include/eigen3")
+include_directories("/opt/homebrew/include/utf8cpp/")
+include_directories(${CMAKE_BINARY_DIR}/vulkansdk-macos-1.2.162.0/MoltenVK/include)
+
 include_directories("${PROJECT_SOURCE_DIR}/src")
 include_directories(${CMAKE_BINARY_DIR}/src)
 add_subdirectory(src)
@@ -1067,7 +1120,7 @@ set(COMMON_LINK_DIRS
 )
 
 set(COMMON_LINK_LIBS
-    ddetect ${DLIB_LIB_DEPS} ${TENSORRT_LIBS} ${CUDA_LIB_DEPS} glog gflags ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} archive
+    ddetect ${DLIB_LIB_DEPS} ${TENSORRT_LIBS} ${CUDA_LIB_DEPS} gflags ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} archive
     ${PROTOBUF_LIB_DEPS}
     ${HTTP_LIB_DEPS}
     ${SPDLOG_LIB_DEPS}
@@ -1151,6 +1204,7 @@ message(STATUS "USE_COMMAND_LINE:      ${USE_COMMAND_LINE}")
 message(STATUS "USE_JSON_API:          ${USE_JSON_API}")
 message(STATUS "USE_HTTP_SERVER:       ${USE_HTTP_SERVER}")
 message(STATUS "USE_HTTP_SERVER_OATPP: ${USE_HTTP_SERVER_OATPP}")
+message(STATUS "USE_CPU_ONLY:          ${USE_CPU_ONLY}")
 message(STATUS "BUILD_SPDLOG:          ${BUILD_SPDLOG}")
 message(STATUS "BUILD_TESTS:           ${BUILD_TESTS}")
 message(STATUS "BUILD_TOOLS:           ${BUILD_TOOLS}")
@@ -1165,6 +1219,7 @@ message(STATUS "USE_SIMSEARCH:         ${USE_SIMSEARCH}")
 message(STATUS "USE_TF:                ${USE_TF}")
 message(STATUS "USE_TF_CPU_ONLY:       ${USE_TF_CPU_ONLY}")
 message(STATUS "USE_NCNN:              ${USE_NCNN}")
+message(STATUS "USE_NCNN_CPU_ONLY:     ${USE_NCNN_CPU_ONLY}")
 message(STATUS "USE_HDF5:              ${USE_HDF5}")
 message(STATUS "USE_TENSORRT:          ${USE_TENSORRT}")
 message(STATUS "USE_DLIB:              ${USE_DLIB}")
@@ -1177,3 +1232,5 @@ message(STATUS "USE_XGBOOST:           ${USE_XGBOOST}")
 message(STATUS "USE_XGBOOST_CPU_ONLY:  ${USE_XGBOOST_CPU_ONLY}")
 message(STATUS "USE_TSNE:              ${USE_TSNE}")
 message(STATUS "USE_BOOST_BACKTRACE:   ${USE_BOOST_BACKTRACE}")
+message(STATUS "USE_OPENMP:            ${USE_OPENMP}")
+message(STATUS "USE_VULKAN:            ${USE_VULKAN}")

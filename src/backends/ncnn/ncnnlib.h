@@ -25,7 +25,8 @@
 // NCNN
 #include "net.h"
 #include "ncnnmodel.h"
-
+#include "cpu.h"
+#include "gpu.h"
 #include "apidata.h"
 
 namespace dd
@@ -56,6 +57,7 @@ namespace dd
     int _nclasses = 0;
     bool _timeserie = false;
     bool _lightmode = true;
+    int _gpu_device = -1;
 
   private:
     static ncnn::UnlockedPoolAllocator _blob_pool_allocator;

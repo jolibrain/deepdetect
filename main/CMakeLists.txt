@@ -1,5 +1,7 @@
 include_directories(${COMMON_INCLUDE_DIRS})
 link_directories(${COMMON_LINK_DIRS})
+link_directories("/opt/homebrew/lib/")
+#link_directories("/Users/emmanuelbenazera/dev/vulkansdk-macos-1.2.162.0/MoltenVK/dylib/macOS/")
 if (USE_COMMAND_LINE OR USE_HTTP_SERVER OR USE_HTTP_SERVER_OATPP)
 add_executable (dede dede.cc)
 add_dependencies(dede protobuf)
