@@ -90,7 +90,11 @@ if (NOT EXISTS ${CMAKE_BINARY_DIR}/src)
 endif()
 
 if (USE_OPENMP)
-   set(FOPENMP "-Xclang -fopenmp")
+   if (APPLE_M1)
+      set(FOPENMP "-Xclang -fopenmp")
+   else()
+	set(FOPENMP "-fopenmp")
+   endif()
 else()
    set(FOPENMP "")
 endif()
@@ -717,25 +721,26 @@ if (USE_NCNN)
       INSTALL_COMMAND ""
     )
   elseif (APPLE_M1 AND USE_VULKAN)
-  if (NOT EXISTS vulkansdk-macos-1.2.162.0)
-    if (NOT EXISTS ${CMAKE_BINARY_DIR}/vulkansdk-macos-1.2.162.0.tar.gz)
-     file(
-	DOWNLOAD https://www.deepdetect.com/stuff/vulkansdk-macos-1.2.162.0.tar.gz ${CMAKE_BINARY_DIR}/vulkansdk-macos-1.2.162.0.tar.gz
-    	EXPECTED_HASH SHA256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-	)
-    endif()
-    execute_process(
-	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    	COMMAND ${CMAKE_COMMAND} -E tar xvf vulkansdk-macos-1.2.162.0.tar.gz
-    	RESULT_VARIABLE _UNCOMPRESS_RESULT
-     )
-     if (NOT _UNCOMPRESS_RESULT EQUAL 0)
-       message(FATAL_ERROR "Untar vulkansdk-macos-1.2.162.0.tar.gz failed")
-     endif()
-    endif()
+  	 if (NOT EXISTS vulkansdk-macos-1.2.162.0)
+    	    if (NOT EXISTS ${CMAKE_BINARY_DIR}/vulkansdk-macos-1.2.162.0.tar.gz)
+     	       file(
+		DOWNLOAD https://www.deepdetect.com/stuff/vulkansdk-macos-1.2.162.0.tar.gz ${CMAKE_BINARY_DIR}/vulkansdk-macos-1.2.162.0.tar.gz
+    	        EXPECTED_HASH SHA256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+	       )
+    	   endif()
+    	   execute_process(
+		WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    		COMMAND ${CMAKE_COMMAND} -E tar xvf vulkansdk-macos-1.2.162.0.tar.gz
+    		RESULT_VARIABLE _UNCOMPRESS_RESULT
+     	   )
+     	   if (NOT _UNCOMPRESS_RESULT EQUAL 0)
+       	     message(FATAL_ERROR "Untar vulkansdk-macos-1.2.162.0.tar.gz failed")
+     	   endif()
+    	endif()
     ExternalProject_Add(
       ncnn
       PREFIX ncnn
+<<<<<< HEAD
       URL https://github.com/Tencent/ncnn/releases/download/${NCNN_VERSION}/ncnn-${NCNN_VERSION}-full-source.zip
       URL_HASH SHA256=${NCNN_TARBALL_HASH}
       PATCH_COMMAND ${CMAKE_SOURCE_DIR}/cmake/patches-apply.sh ${NCNN_PATCHES}
@@ -753,6 +758,7 @@ if (USE_NCNN)
       PATCH_COMMAND ${CMAKE_SOURCE_DIR}/cmake/patches-apply.sh ${NCNN_PATCHES}
       CMAKE_ARGS ${NCNN_BUILD_FLAGS}
       INSTALL_COMMAND ""
+      #DEPENDS protobuf
     )
   endif()
 
