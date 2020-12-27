@@ -202,7 +202,7 @@ def main():
         else:
             batch_size += 16
 
-    parameters_input = {}
+    parameters_input = {"width": args.img_width, "height": args.img_height}
     if not args.image_interp == "":
         parameters_input["interp"] = args.image_interp
     if args.gpu_resize:
