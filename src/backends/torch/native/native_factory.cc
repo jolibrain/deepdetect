@@ -47,9 +47,11 @@ namespace dd
     if (tdef.find("nbeats") != std::string::npos)
       {
         std::vector<std::string> p;
-        if (template_params.has("template_params"))
-          p = template_params.get("template_params")
-                  .get<std::vector<std::string>>();
+        if (template_params.has("stackdef"))
+          {
+            p = template_params.get("stackdef")
+                    .get<std::vector<std::string>>();
+          }
         return new NBeats(inputc, p);
       }
     else
