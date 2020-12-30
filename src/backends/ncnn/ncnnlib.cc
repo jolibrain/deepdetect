@@ -265,11 +265,13 @@ namespace dd
       }
 
     // Get best
-    int best = 1;
+    int best = -1;
     if (ad_output.has("best"))
       {
         best = ad_output.get("best").get<int>();
       }
+    if (best == -1 || best > _nclasses)
+      best = _nclasses;
 
     if (bbox == true)
       {
