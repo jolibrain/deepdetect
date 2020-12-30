@@ -99,7 +99,7 @@ namespace dd
 
     if (paramsf.empty() || weightsf.empty())
       {
-        if (caffe_params.empty() || caffe_weights.empty())
+        if (caffe_paramsf.empty() || caffe_weightsf.empty())
           {
             logger->error("could not find neither ncnn model nor caffe model "
                           "in repository {}",
@@ -108,9 +108,10 @@ namespace dd
           }
         else
           {
-            logger->info("could not find  ncnn model, converting caffe model "
-                         "in repository {}",
-                         _repo);
+            logger->info(
+                "could not find  ncnn model, converting caffe model {}"
+                "in repository {}",
+                caffe_weightsf, _repo);
           }
         // try to generate ncnn files from caffe files
         bool ocr = false;

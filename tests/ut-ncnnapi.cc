@@ -35,9 +35,11 @@ static std::string bad_param_str
 static std::string not_found_str
     = "{\"status\":{\"code\":404,\"msg\":\"NotFound\"}}";
 
-static std::string incept_repo = "../examples/ncnn/squeezenet_ssd_ncnn/";
+static std::string squeezenet_ssd_repo
+    = "../examples/ncnn/squeezenet_ssd_ncnn/";
+static std::string squeezenet_repo = "../examples/ncnn/squeezenet_ncnn/";
 
-TEST(ncnnapi, service_predict)
+TEST(ncnnapi, service_predict_bbox)
 {
   // create service
   JsonAPI japi;
@@ -45,7 +47,7 @@ TEST(ncnnapi, service_predict)
   std::string jstr
       = "{\"mllib\":\"ncnn\",\"description\":\"squeezenet-ssd\",\"type\":"
         "\"supervised\",\"model\":{\"repository\":\""
-        + incept_repo
+        + squeezenet_ssd_repo
         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
           "300,\"width\":300},"
           "\"mllib\":{\"nclasses\":21}}}";
@@ -56,7 +58,7 @@ TEST(ncnnapi, service_predict)
   std::string jpredictstr
       = "{\"service\":\"imgserv\",\"parameters\":{\"input\":{\"height\":300,"
         "\"width\":300},\"output\":{\"bbox\":true}},\"data\":[\""
-        + incept_repo + "face.jpg\"]}";
+        + squeezenet_ssd_repo + "face.jpg\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   JDoc jd;
   std::cout << "joutstr=" << joutstr << std::endl;
@@ -75,7 +77,7 @@ TEST(ncnnapi, service_predict)
       = "{\"service\":\"imgserv\",\"parameters\":{\"input\":{\"height\":300,"
         "\"width\":300,\"mean\":[128,128,128],\"std\":[255,255,255]},"
         "\"output\":{\"bbox\":true}},\"data\":[\""
-        + incept_repo + "face.jpg\"]}";
+        + squeezenet_ssd_repo + "face.jpg\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
@@ -91,7 +93,7 @@ TEST(ncnnapi, service_predict)
       = "{\"service\":\"imgserv\",\"parameters\":{\"input\":{\"height\":300,"
         "\"width\":300,\"scale\":0.0039},"
         "\"output\":{\"bbox\":true}},\"data\":[\""
-        + incept_repo + "face.jpg\"]}";
+        + squeezenet_ssd_repo + "face.jpg\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
@@ -101,4 +103,35 @@ TEST(ncnnapi, service_predict)
   cl1 = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
               > 0.4);
+}
+
+TEST(ncnnapi, service_predict_classification)
+{
+  // create service
+  JsonAPI japi;
+  std::string sname = "imgserv";
+  std::string jstr
+      = "{\"mllib\":\"ncnn\",\"description\":\"squeezenet\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+        + squeezenet_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
+          "224,\"width\":224,\"mean\":[128,128,128]},"
+          "\"mllib\":{\"nclasses\":1000}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // predict
+  std::string jpredictstr
+      = "{\"service\":\"imgserv\",\"parameters\":{\"input\":{\"height\":300,"
+        "\"width\":300},\"output\":{\"best\":-1}},\"data\":[\""
+        + squeezenet_ssd_repo + "face.jpg\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  JDoc jd;
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+  ASSERT_TRUE(jd["body"]["predictions"].Size() == 1);
+  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"].Size() == 1000);
 }
