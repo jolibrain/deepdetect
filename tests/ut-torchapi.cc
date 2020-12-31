@@ -211,7 +211,7 @@ TEST(torchapi, service_train_images_split)
   ASSERT_EQ(201, jd["status"]["code"]);
 
   ASSERT_TRUE(jd["body"]["measure"]["iteration"] == 200) << "iterations";
-  ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() <= 2.0)
+  ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() <= 3.0)
       << "loss";
 
   std::unordered_set<std::string> lfiles;
@@ -351,7 +351,7 @@ TEST(torchapi, service_train_images_split_list)
   ASSERT_EQ(201, jd["status"]["code"]);
 
   ASSERT_TRUE(jd["body"]["measure"]["iteration"] == 200) << "iterations";
-  ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() <= 2.0)
+  ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() <= 3.0)
       << "loss";
 
   std::unordered_set<std::string> lfiles;
