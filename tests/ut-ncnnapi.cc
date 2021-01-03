@@ -137,10 +137,10 @@ TEST(ncnnapi, service_predict_gpu)
   std::string jstr
       = "{\"mllib\":\"ncnn\",\"description\":\"squeezenet-ssd\",\"type\":"
         "\"supervised\",\"model\":{\"repository\":\""
-        + incept_repo
+        + squeezenet_ssd_repo
         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
           "300,\"width\":300},"
-          "\"mllib\":{\"nclasses\":21,\"gpu\":true}}}";
+          "\"mllib\":{\"nclasses\":21,\"gpu\":true,\"datatype\":\"fp32\"}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
   ASSERT_EQ(created_str, joutstr);
 
@@ -151,8 +151,9 @@ TEST(ncnnapi, service_predict_gpu)
     {
       jpredictstr = "{\"service\":\"imgserv\",\"parameters\":{\"input\":{"
                     "\"height\":300,"
-                    "\"width\":300},\"output\":{\"bbox\":true}},\"data\":[\""
-                    + incept_repo + "face.jpg\"]}";
+                    "\"width\":300},\"output\":{\"bbox\":true,\"confidence_"
+                    "threshold\":0.25}},\"data\":[\""
+                    + squeezenet_ssd_repo + "face.jpg\"]}";
       joutstr = japi.jrender(japi.service_predict(jpredictstr));
       ++i;
     }

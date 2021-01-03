@@ -90,7 +90,7 @@ if (NOT EXISTS ${CMAKE_BINARY_DIR}/src)
 endif()
 
 if (USE_OPENMP)
-   set(FOPENMP "-fopenmp")
+   set(FOPENMP "-Xclang -fopenmp")
 else()
    set(FOPENMP "")
 endif()
@@ -717,27 +717,31 @@ if (USE_NCNN)
       INSTALL_COMMAND ""
     )
   elseif (USE_VULKAN)
-    file(
-	DOWNLOAD https://www.deepdetect.com/stuff/vulkansdk-macos-1.2.162.0.dmg ${CMAKE_BINARY_DIR}/vulkansdk-macos-1.2.162.0.tar.gz
+  if (NOT EXISTS vulkansdk-macos-1.2.162.0)
+    if (NOT EXISTS ${CMAKE_BINARY_DIR}/vulkansdk-macos-1.2.162.0.tar.gz)
+     file(
+	DOWNLOAD https://www.deepdetect.com/stuff/vulkansdk-macos-1.2.162.0.tar.gz ${CMAKE_BINARY_DIR}/vulkansdk-macos-1.2.162.0.tar.gz
     	EXPECTED_HASH SHA256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
 	)
+    endif()
     execute_process(
 	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     	COMMAND ${CMAKE_COMMAND} -E tar xvf vulkansdk-macos-1.2.162.0.tar.gz
     	RESULT_VARIABLE _UNCOMPRESS_RESULT
-    )
-    if (NOT _UNCOMPRESS_RESULT EQUAL 0)
+     )
+     if (NOT _UNCOMPRESS_RESULT EQUAL 0)
        message(FATAL_ERROR "Untar vulkansdk-macos-1.2.162.0.tar.gz failed")
+     endif()
     endif()
     ExternalProject_Add(
       ncnn
       PREFIX ncnn
-
-# master
       URL https://github.com/Tencent/ncnn/releases/download/${NCNN_VERSION}/ncnn-${NCNN_VERSION}-full-source.zip
       URL_HASH SHA256=${NCNN_TARBALL_HASH}
       PATCH_COMMAND ${CMAKE_SOURCE_DIR}/cmake/patches-apply.sh ${NCNN_PATCHES}
-      CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DCMAKE_SYSTEM_PROCESSOR=arm64 -DCMAKE_OSX_ARCHITECTURES=arm64 -DVulkan_INCLUDE_DIR=${CMAKE_BINARY_DIR}/vulkansdk-macos-1.2.162.0/MoltenVK/include -DVulkan_LIBRARY=${CMAKE_BINARY_DIR}/vulkansdk-macos-1.2.162.0/MoltenVK/dylib/macOS/libMoltenVK.dylib -DNCNN_VULKAN=ON -DNCNN_BUILD_TOOLS=OFF -DNCNN_BUILD_EXAMPLES=OFF -DProtobuf_INCLUDE_DIR=${CMAKE_BINARY_DIR}/protobuf/src/protobuf/src -DProtobuf_LIBRARIES=${PROTOBUF_LIB_DIR}/libprotobuf.dylib -DProtobuf_PROTOC_EXECUTABLE=${PROTOBUF_LIB_DIR}/protoc
+#      GIT_REPOSITORY https://github.com/tencent/ncnn.git
+#      GIT_TAG "417b6874f8e96d662f0b58c4e0f76053295b2110"
+      CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DCMAKE_SYSTEM_PROCESSOR=arm64 -DCMAKE_OSX_ARCHITECTURES=arm64 -DVulkan_INCLUDE_DIR=${CMAKE_BINARY_DIR}/vulkansdk-macos-1.2.162.0/MoltenVK/include -DVulkan_LIBRARY=${CMAKE_BINARY_DIR}/vulkansdk-macos-1.2.162.0/MoltenVK/dylib/macOS/libMoltenVK.dylib -DNCNN_VULKAN=ON -DNCNN_BUILD_TOOLS=OFF -DNCNN_BUILD_EXAMPLES=OFF -DProtobuf_INCLUDE_DIR=${CMAKE_BINARY_DIR}/protobuf/src/protobuf/src -DProtobuf_LIBRARIES=${PROTOBUF_LIB_DIR}/libprotobuf.dylib -DProtobuf_PROTOC_EXECUTABLE=${PROTOBUF_LIB_DIR}/protoc -DOpenMP_C_FLAGS="-Xclang -fopenmp" -DOpenMP_CXX_FLAGS="-Xclang -fopenmp" -DOpenMP_C_LIB_NAMES="libomp" -DOpenMP_CXX_LIB_NAMES="libomp" -DOpenMP_libomp_LIBRARY="/opt/homebrew/lib/libomp.a"
       #-DNCNN_BUILD_EXAMPLES=OFF -DNCNN_BUILD_BENCHMARK=OFF -DNCNN_BUILD_TOOLS=OFF -DNCNN_BUILD_TESTS=OFF
       INSTALL_COMMAND ""
       )
@@ -1117,7 +1121,7 @@ set(COMMON_LINK_DIRS
 )
 
 set(COMMON_LINK_LIBS
-    ddetect ${DLIB_LIB_DEPS} ${TENSORRT_LIBS} ${CUDA_LIB_DEPS} gflags ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} archive
+    ddetect ${DLIB_LIB_DEPS} ${TENSORRT_LIBS} ${CUDA_LIB_DEPS} gflags ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} archive omp
     ${PROTOBUF_LIB_DEPS}
     ${HTTP_LIB_DEPS}
     ${SPDLOG_LIB_DEPS}
