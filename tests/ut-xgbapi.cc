@@ -130,7 +130,9 @@ TEST(xgbapi, service_train_csv)
                                        // with the label offset
   std::string cat1
       = jd["body"]["predictions"][0]["classes"][1]["cat"].GetString();
-  ASSERT_TRUE("2" == cat0 || "2" == cat1);
+  std::string cat2
+      = jd["body"]["predictions"][0]["classes"][2]["cat"].GetString();
+  ASSERT_TRUE("2" == cat0 || "2" == cat1 || "2" == cat2);
 
   // predict from data, omitting header and sample id
   std::string mem_data2
@@ -150,7 +152,8 @@ TEST(xgbapi, service_train_csv)
              .GetString(); // XXX: true cat is 3, which is 2 here with the
                            // label offset
   cat1 = jd["body"]["predictions"][0]["classes"][1]["cat"].GetString();
-  ASSERT_TRUE("2" == cat0 || "2" == cat1);
+  cat2 = jd["body"]["predictions"][0]["classes"][2]["cat"].GetString();
+  ASSERT_TRUE("2" == cat0 || "2" == cat1 || "2" == cat2);
 
   // remove service
   jstr = "{\"clear\":\"lib\"}";

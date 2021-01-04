@@ -1093,8 +1093,10 @@ namespace dd
           }
         else if (refinedet
                  && lparam->name().find("mbox_conf") != std::string::npos
-                 && lparam->name()[0] == 'P'
-                 && lparam->type() == "Convolution")
+                 && ((lparam->name()[0] == 'P'
+                      && lparam->type() == "Convolution")
+                     || (lparam->name().substr(0, 4) == "resP"
+                         && lparam->type() == "Convolution")))
           {
             int num_priors_per_location
                 = lparam->mutable_convolution_param()->num_output() / 2;
