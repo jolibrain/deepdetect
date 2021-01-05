@@ -55,7 +55,6 @@ namespace dd
   {
     this->_libname = "ncnn";
     _net = new ncnn::Net();
-    _net->opt.lightmode = true;
     _net->opt.num_threads = _threads;
     _net->opt.blob_allocator = &_blob_pool_allocator;
     _net->opt.workspace_allocator = &_workspace_pool_allocator;
@@ -94,6 +93,13 @@ namespace dd
   void NCNNLib<TInputConnectorStrategy, TOutputConnectorStrategy,
                TMLModel>::init_mllib(const APIData &ad)
   {
+    bool use_fp32 = (ad.has("datatype")
+                     && ad.get("datatype").get<std::string>()
+                            == "fp32"); // default is fp16
+    _net->opt.use_fp16_packed = !use_fp32;
+    _net->opt.use_fp16_storage = !use_fp32;
+    _net->opt.use_fp16_arithmetic = !use_fp32;
+
     int res = _net->load_param(this->_mlmodel._params.c_str());
     if (res != 0)
       {
@@ -279,7 +285,7 @@ namespace dd
           {
             const float *values = inputc._out.row(i);
             if (values[1] < confidence_threshold)
-              continue;
+              break; // output is sorted by confidence
 
             cats.push_back(this->_mlmodel.get_hcorresp(values[0]));
             probs.push_back(values[1]);
