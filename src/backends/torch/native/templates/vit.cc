@@ -212,20 +212,21 @@ namespace dd
         _depth = 32;
         _num_heads = 16;
       }
-    else if (vit_flavor == "vit_mini_patch16")
+    else if (vit_flavor == "vit_tiny_patch16")
       {
-        _depth = 4;
-        _num_heads = 4;
-        _mlp_ratio = 1.0;
-        _embed_dim = 256;
+        _depth = 12;
+        _num_heads = 3;
+        _mlp_ratio = 4.0;
+        _embed_dim = 192;
+        _qkv_bias = true;
       }
-    else if (vit_flavor == "vit_mini_patch32")
+    else if (vit_flavor == "vit_small_patch16")
       {
-        _patch_size = 32;
-        _depth = 4;
-        _num_heads = 4;
-        _mlp_ratio = 1.0;
-        _embed_dim = 256;
+        _depth = 12;
+        _num_heads = 6;
+        _mlp_ratio = 4.0;
+        _embed_dim = 384;
+        _qkv_bias = true;
       }
     else
       {

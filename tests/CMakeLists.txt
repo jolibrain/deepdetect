@@ -269,6 +269,14 @@ if (USE_NCNN)
     "examples/ncnn"
     "squeezenet-ssd-ncnn-caffe.tar.gz"
     "squeezenet_ssd_ncnn"
+    )
+
+    DOWNLOAD_DATASET(
+    "NCNN test Squeezenet classification model"
+    "https://www.deepdetect.com/dd/examples/ncnn/squeezenet-ncnn-caffe.tar.gz"
+    "examples/ncnn"
+    "squeezenet-ncnn-caffe.tar.gz"
+    "squeezenet_ncnn"
   )
 
   if(USE_JSON_API)
