@@ -55,6 +55,9 @@ static std::string resnet50_test_image
     = "../examples/torch/resnet50_training_torch_small/train/cats/"
       "cat.10097.jpg";
 
+static std::string resnet50_native_weights
+    = "../examples/torch/resnet50_native_torch/resnet50.npt";
+
 static std::string vit_train_repo = "../examples/torch/vit_training_torch/";
 
 static std::string bert_classif_repo
@@ -166,6 +169,90 @@ TEST(inputconn, txt_tokenize_ordered_words)
   std::vector<std::string> tokens{ "every", "##thing", "[UNK]", "fine",
                                    ",",     "right",   "?" };
   ASSERT_EQ(tokens, towe._v);
+}
+
+TEST(torchapi, load_weights_native_model)
+{
+  APIData template_params;
+  template_params.add("nclasses", 2);
+
+  auto logger = DD_SPDLOG_LOGGER("test");
+  ImgTorchInputFileConn inputc;
+  TorchModel mlmodel;
+  mlmodel._repo = ".";
+
+  // =====
+  // Fail if no weights are corresponding
+
+  TorchModule module;
+  module._logger = logger;
+  module.create_native_template<ImgTorchInputFileConn>(
+      "resnet50", template_params, inputc, mlmodel, torch::Device("cpu"));
+
+  mlmodel._native = "bad_weights.npt";
+
+  torch::nn::Sequential bad_weights{ torch::nn::Linear(3, 2) };
+  torch::save(bad_weights, mlmodel._native);
+
+  ASSERT_THROW(module.load(mlmodel), MLLibBadParamException);
+
+  fileops::remove_file(".", mlmodel._native);
+
+  // =====
+  // Succeed to load for finetuning (but exclude the two last weights)
+  // Check if the output tensor is of the right dimensions
+  mlmodel._native = resnet50_native_weights;
+
+  // I don't have the weights to finetune, need to make a new archive
+  module.load(mlmodel);
+  auto jit_weights = torch::jit::load(resnet50_native_weights);
+
+  std::string test_param_name = "wrapped.layer1.0.conv1.weight";
+  torch::Tensor target_value;
+  bool param_found = false;
+
+  for (const auto &item : jit_weights.named_parameters())
+    {
+      if (item.name == test_param_name)
+        {
+          target_value = item.value;
+          param_found = true;
+          break;
+        }
+    }
+  ASSERT_TRUE(param_found) << "Parameter not found in "
+                                  + resnet50_native_weights;
+
+  // <!> segfault if test_param_name is not in named_parameters
+  torch::Tensor tested_value
+      = *module._native->named_parameters().find(test_param_name);
+
+  ASSERT_TRUE(torch::allclose(target_value, tested_value));
+  auto output_size = module.forward({ torch::zeros({ 1, 3, 224, 224 }) })
+                         .toTensor()
+                         .sizes();
+  std::vector<long int> target_sizes = { 1, 2 };
+  ASSERT_EQ(output_size, target_sizes);
+
+  // =====
+  // Check if we can reload a checkpoint from native module without any
+  // problem.
+
+  test_param_name = "wrapped.fc.bias";
+  // <!> segfault if test_param_name is not in named_parameters
+  tested_value = *module._native->named_parameters().find(test_param_name);
+  torch::Tensor before_val = tested_value.clone();
+
+  module.save_checkpoint(mlmodel, "0");
+  mlmodel._native = "checkpoint-0.npt";
+  module.load(mlmodel);
+
+  // <!> segfault if test_param_name is not in named_parameters
+  tested_value = *module._native->named_parameters().find(test_param_name);
+  torch::Tensor after_val = tested_value.clone();
+  ASSERT_TRUE(torch::allclose(before_val, after_val));
+
+  fileops::remove_file(".", mlmodel._native);
 }
 
 // Training tests
