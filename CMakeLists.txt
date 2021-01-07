@@ -574,14 +574,6 @@ elseif(USE_CAFFE)
   endif()
 
 
-  # Set cuda arch
-  if (NOT USE_CAFFE_CPU_ONLY)
-    if (NOT CUDA_ARCH)
-      string(REPLACE ";" " " CUDA_ARCH "${CUDA_NVCC_FLAGS}")
-    endif()
-    list(APPEND CAFFE_DD_MAKE_ARG CUDA_ARCH=${CUDA_ARCH})
-  endif()
-
   # Set config file
   if (USE_CAFFE_CPU_ONLY)
     add_definitions(-DUSE_CAFFE_CPU_ONLY)
@@ -628,6 +620,7 @@ elseif(USE_CAFFE)
         echo "INCLUDE_DIRS+=${SPDLOG_INCLUDE_DIR}" >> Makefile.config &&
         echo "LIBRARIES+=${SPDLOG_LIB_DEPS}" >> Makefile.config &&
         echo "INCLUDE_DIRS+=${PROTOBUF_INCLUDE_DIR}" >> Makefile.config &&
+        echo "CUDA_ARCH:=${CUDA_ARCH}" >> Makefile.config &&
         echo "LIBRARY_DIRS+=${PROTOBUF_LIB_DIR}" >> Makefile.config
     BUILD_COMMAND 
         ${CMAKE_COMMAND} -E env LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR}:$ENV{LD_LIBRARY_PATH} PATH=${PROTOBUF_LIB_DIR}:$ENV{PATH} make -j${N} proto &&
