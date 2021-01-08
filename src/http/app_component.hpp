@@ -25,6 +25,7 @@
 #include "oatpp/web/protocol/http/incoming/SimpleBodyDecoder.hpp"
 #include "oatpp/web/server/HttpConnectionHandler.hpp"
 #include "oatpp/web/server/HttpRouter.hpp"
+#include "oatpp/web/server/interceptor/AllowCorsGlobal.hpp"
 #include "oatpp/network/ConnectionHandler.hpp"
 #include "oatpp/network/tcp/server/ConnectionProvider.hpp"
 #include "oatpp/parser/json/mapping/ObjectMapper.hpp"
@@ -38,6 +39,7 @@
 
 DECLARE_string(host);
 DECLARE_uint32(port);
+DECLARE_string(allow_origin);
 
 class AppComponent
 {
@@ -121,6 +123,20 @@ public:
     auto connectionHandler
         = std::make_shared<oatpp::web::server::HttpConnectionHandler>(
             components);
+
+    /* Add CORS interceptors */
+    if (!FLAGS_allow_origin.empty())
+      {
+        connectionHandler->addRequestInterceptor(
+            std::make_shared<
+                oatpp::web::server::interceptor::AllowOptionsGlobal>());
+        connectionHandler->addResponseInterceptor(
+            std::make_shared<oatpp::web::server::interceptor::AllowCorsGlobal>(
+                FLAGS_allow_origin.c_str(),
+                "GET, POST, PUT, HEAD, DELETE, PATCH, OPTIONS"));
+      }
+
+    /* Add Error Handler */
     connectionHandler->setErrorHandler(
         std::make_shared<ErrorHandler>(objectMapper));
 
