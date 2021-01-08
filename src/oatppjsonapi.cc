@@ -37,10 +37,6 @@
 #include "oatpp/core/macro/component.hpp"
 #include "oatpp-swagger/Controller.hpp"
 
-#include <gflags/gflags.h>
-
-DECLARE_string(allow_origin);
-
 namespace dd
 {
   oatpp::network::Server *_server = nullptr;
@@ -258,10 +254,6 @@ namespace dd
     response->putHeader(oatpp::web::protocol::http::Header::CONTENT_TYPE,
                         "application/json");
 
-    if (!FLAGS_allow_origin.empty())
-      response->putHeader("Access-Control-Allow-Origin",
-                          oatpp::base::StrBuffer::createFromCString(
-                              FLAGS_allow_origin.c_str()));
     return response;
   }
 
