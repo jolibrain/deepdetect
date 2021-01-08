@@ -654,7 +654,9 @@ namespace dd
       std::vector<std::string> meta_uris;
       std::vector<std::string> index_uris;
       std::vector<std::string> failed_uris;
+#ifdef USE_OPENMP
 #pragma omp parallel for
+#endif
       for (size_t i = 0; i < _uris.size(); i++)
         {
           bool no_img = false;
@@ -674,7 +676,9 @@ namespace dd
             }
           catch (std::exception &e)
             {
+#ifdef USE_OPENMP
 #pragma omp critical
+#endif
               {
                 ++catch_read;
                 catch_msg = e.what();
@@ -687,7 +691,9 @@ namespace dd
           if (!_db_fname.empty())
             continue;
 
+#ifdef USE_OPENMP
 #pragma omp critical
+#endif
           {
             _images.insert(_images.end(),
                            std::make_move_iterator(dimg._ctype._imgs.begin()),
