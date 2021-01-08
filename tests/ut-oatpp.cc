@@ -28,7 +28,7 @@
 
 const std::string serv = "very_long_label_service_name_with_😀_inside";
 const std::string serv2 = "myserv2";
-#ifdef CPU_ONLY
+#if defined(CPU_ONLY) || defined(USE_CAFFE_CPU_ONLY)
 static std::string iterations_mnist = "10";
 #else
 static std::string iterations_mnist = "10000";
@@ -158,7 +158,7 @@ void test_train(std::shared_ptr<DedeApiTestClient> client)
   d.Parse<rapidjson::kParseNanAndInfFlag>(message.get()->c_str());
   ASSERT_TRUE(d.HasMember("body"));
   ASSERT_TRUE(d["body"].HasMember("measure"));
-#ifdef CPU_ONLY
+#if defined(CPU_ONLY) || defined(USE_CAFFE_CPU_ONLY)
   ASSERT_EQ(9, d["body"]["measure"]["iteration"].GetDouble());
 #else
   ASSERT_EQ(9999, d["body"]["measure"]["iteration"].GetDouble());
@@ -297,8 +297,8 @@ void test_multiservices(std::shared_ptr<DedeApiTestClient> client)
   d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
   ASSERT_TRUE(d["head"].HasMember("services"));
   ASSERT_EQ(2, d["head"]["services"].Size());
-  ASSERT_TRUE(jstr.find("\"name\":\"" + serv + "\"") != std::string::npos);
-  ASSERT_TRUE(jstr.find("\"name\":\"myserv2\"") != std::string::npos);
+  ASSERT_EQ(serv2, d["head"]["services"][0]["name"].GetString());
+  ASSERT_EQ(serv, d["head"]["services"][1]["name"].GetString());
 
   // remove services and trained model files
   response = client->delete_services(serv.c_str(), "lib");
@@ -334,7 +334,8 @@ void test_concurrency(std::shared_ptr<DedeApiTestClient> client)
   std::string train_post
       = "{\"service\":\"" + serv
         + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,"
-          "\"solver\":{\"iterations\":10000}}}}";
+          "\"solver\":{\"iterations\": "
+        + iterations_mnist + "}}}}";
   response = client->post_train(train_post.c_str());
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
@@ -365,13 +366,14 @@ void test_concurrency(std::shared_ptr<DedeApiTestClient> client)
   d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
   ASSERT_TRUE(d["head"].HasMember("services"));
   ASSERT_EQ(2, d["head"]["services"].Size());
-  ASSERT_TRUE(jstr.find("\"name\":\"" + serv + "\"") != std::string::npos);
-  ASSERT_TRUE(jstr.find("\"name\":\"" + serv2 + "\"") != std::string::npos);
+  ASSERT_EQ(serv2, d["head"]["services"][0]["name"].GetString());
+  ASSERT_EQ(serv, d["head"]["services"][1]["name"].GetString());
 
   // train async second job
   train_post = "{\"service\":\"" + serv2
                + "\",\"async\":true,\"parameters\":{\"mllib\":{\"gpu\":true,"
-                 "\"solver\":{\"iterations\":10000}}}}";
+                 "\"solver\":{\"iterations\":"
+               + iterations_mnist + "}}}}";
   response = client->post_train(train_post.c_str());
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);

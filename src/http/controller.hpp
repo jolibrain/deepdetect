@@ -26,12 +26,16 @@
 #include <vector>
 #include <iostream>
 
+#include <boost/lexical_cast.hpp>
+
 #include "oatpp/web/server/api/ApiController.hpp"
 #include "oatpp/parser/json/mapping/ObjectMapper.hpp"
 #include "oatpp/core/macro/codegen.hpp"
 #include "oatpp/core/macro/component.hpp"
 
+#include "apidata.h"
 #include "oatppjsonapi.h"
+#include "http/dto/info.hpp"
 
 #include OATPP_CODEGEN_BEGIN(ApiController)
 
@@ -61,11 +65,31 @@ public:
   }
   ENDPOINT("GET", "info", get_info, QUERIES(QueryParams, queryParams))
   {
-    // TODO(sileht): why do serialize the query string to char*
-    // to later get again a APIData...
-    std::string jsonstr = _oja->uri_query_to_json(queryParams);
-    auto janswer = _oja->info(jsonstr);
-    return _oja->jdoc_to_response(janswer);
+    auto info_resp = InfoResponse::createShared();
+    info_resp->head = InfoHead::createShared();
+    info_resp->head->services = {};
+
+    auto qs_status = queryParams.get("status");
+    bool status = false;
+    if (qs_status)
+      status = boost::lexical_cast<bool>(qs_status->std_str());
+
+    auto hit = _oja->_mlservices.begin();
+    while (hit != _oja->_mlservices.end())
+      {
+        // TODO(sileht): update visitor_info to return directly a Service()
+        JDoc jd;
+        jd.SetObject();
+        mapbox::util::apply_visitor(dd::visitor_info(status), (*hit).second)
+            .toJDoc(jd);
+        auto json_str = _oja->jrender(jd);
+        auto service_info
+            = getDefaultObjectMapper()->readFromString<oatpp::Object<Service>>(
+                json_str.c_str());
+        info_resp->head->services->emplace_back(service_info);
+        ++hit;
+      }
+    return createDtoResponse(Status::CODE_200, info_resp);
   }
 
   ENDPOINT_INFO(get_service)
