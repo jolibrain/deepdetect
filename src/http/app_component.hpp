@@ -32,6 +32,7 @@
 #include "oatpp/core/macro/component.hpp"
 #include "oatpp-zlib/EncoderProvider.hpp"
 
+#include "http/access_log.hpp"
 #include "http/error_handler.hpp"
 #include "http/swagger_component.hpp"
 
@@ -43,7 +44,13 @@ DECLARE_string(allow_origin);
 
 class AppComponent
 {
+private:
+  std::shared_ptr<spdlog::logger> _logger;
+
 public:
+  AppComponent(const std::shared_ptr<spdlog::logger> &logger)
+      : _logger(logger){};
+
   /**
    *  Swagger component
    */
@@ -88,7 +95,7 @@ public:
    */
   OATPP_CREATE_COMPONENT(std::shared_ptr<oatpp::network::ConnectionHandler>,
                          serverConnectionHandler)
-  ([] {
+  ([this] {
     OATPP_COMPONENT(std::shared_ptr<oatpp::web::server::HttpRouter>,
                     router); // get Router component
     OATPP_COMPONENT(std::shared_ptr<oatpp::data::mapping::ObjectMapper>,
@@ -123,6 +130,12 @@ public:
     auto connectionHandler
         = std::make_shared<oatpp::web::server::HttpConnectionHandler>(
             components);
+
+    /* Add AccessLogResponseInterceptor */
+    connectionHandler->addRequestInterceptor(
+        std::make_shared<dd::http::AccessLogRequestInterceptor>());
+    connectionHandler->addResponseInterceptor(
+        std::make_shared<dd::http::AccessLogResponseInterceptor>(_logger));
 
     /* Add CORS interceptors */
     if (!FLAGS_allow_origin.empty())
