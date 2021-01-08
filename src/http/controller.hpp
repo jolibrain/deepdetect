@@ -202,7 +202,11 @@ public:
   {
     info->summary = "Run a chain";
   }
+<<<<<<< HEAD
   ENDPOINT("POST", "chain/{chain-name}", create_chain,
+=======
+  ENDPOINT("POST", "chains/{chain-name}", create_chain,
+>>>>>>> 29c03e00 (chore: use oatpp interceptors for logging)
            PATH(oatpp::String, chain_name, "chain-name"),
            BODY_STRING(oatpp::String, chain_data))
   {
