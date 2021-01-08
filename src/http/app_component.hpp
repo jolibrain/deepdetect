@@ -131,6 +131,7 @@ public:
         = std::make_shared<oatpp::web::server::HttpConnectionHandler>(
             components);
 
+
     /* Add AccessLogResponseInterceptor */
     connectionHandler->addRequestInterceptor(
         std::make_shared<dd::http::AccessLogRequestInterceptor>());
