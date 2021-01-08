@@ -140,7 +140,10 @@ public:
     dd::OatppJsonAPI oja;
     TestComponent component;
     oatpp::test::web::ClientServerTestRunner runner;
-    runner.addController(std::make_shared<DedeController>(&oja, nullptr));
+    std::shared_ptr<oatpp::data::mapping::ObjectMapper> defaultObjectMapper
+        = oatpp::parser::json::mapping::ObjectMapper::createShared();
+    runner.addController(
+        std::make_shared<DedeController>(&oja, defaultObjectMapper));
     runner.run(
         [this, &runner] {
           OATPP_COMPONENT(
