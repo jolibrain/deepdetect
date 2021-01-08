@@ -3186,8 +3186,8 @@ namespace dd
                       }
                     else
                       {
-                        this->_logger->error(
-                            "couldn't find original image size for {}", uri);
+                        throw MLLibInternalException(
+                            "Couldn't find original image size for " + uri);
                       }
                     bool leave = false;
                     int curi = -1;
