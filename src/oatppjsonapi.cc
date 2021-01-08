@@ -264,7 +264,10 @@ namespace dd
 
     auto router = components.httpRouter.getObject();
 
-    auto dedeController = DedeController::createShared(this);
+    std::shared_ptr<oatpp::data::mapping::ObjectMapper> defaultObjectMapper
+        = oatpp::parser::json::mapping::ObjectMapper::createShared();
+    auto dedeController
+        = DedeController::createShared(this, defaultObjectMapper);
     dedeController->addEndpointsToRouter(router);
 
     auto docEndpoints = oatpp::swagger::Controller::Endpoints::createShared();
