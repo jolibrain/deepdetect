@@ -716,7 +716,7 @@ if (USE_NCNN)
       CMAKE_ARGS -DPI3=ON -DCMAKE_TOOLCHAIN_FILE=../toolchains/pi3.toolchain.cmake ${NCNN_BUILD_FLAGS}
       INSTALL_COMMAND ""
     )
-  elseif (USE_VULKAN)
+  elseif (APPLE_M1 AND USE_VULKAN)
   if (NOT EXISTS vulkansdk-macos-1.2.162.0)
     if (NOT EXISTS ${CMAKE_BINARY_DIR}/vulkansdk-macos-1.2.162.0.tar.gz)
      file(
@@ -742,7 +742,6 @@ if (USE_NCNN)
 #      GIT_REPOSITORY https://github.com/tencent/ncnn.git
 #      GIT_TAG "417b6874f8e96d662f0b58c4e0f76053295b2110"
       CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DCMAKE_SYSTEM_PROCESSOR=arm64 -DCMAKE_OSX_ARCHITECTURES=arm64 -DVulkan_INCLUDE_DIR=${CMAKE_BINARY_DIR}/vulkansdk-macos-1.2.162.0/MoltenVK/include -DVulkan_LIBRARY=${CMAKE_BINARY_DIR}/vulkansdk-macos-1.2.162.0/MoltenVK/dylib/macOS/libMoltenVK.dylib -DNCNN_VULKAN=ON -DNCNN_BUILD_TOOLS=OFF -DNCNN_BUILD_EXAMPLES=OFF -DProtobuf_INCLUDE_DIR=${CMAKE_BINARY_DIR}/protobuf/src/protobuf/src -DProtobuf_LIBRARIES=${PROTOBUF_LIB_DIR}/libprotobuf.dylib -DProtobuf_PROTOC_EXECUTABLE=${PROTOBUF_LIB_DIR}/protoc -DOpenMP_C_FLAGS="-Xclang -fopenmp" -DOpenMP_CXX_FLAGS="-Xclang -fopenmp" -DOpenMP_C_LIB_NAMES="libomp" -DOpenMP_CXX_LIB_NAMES="libomp" -DOpenMP_libomp_LIBRARY="/opt/homebrew/lib/libomp.a"
-      #-DNCNN_BUILD_EXAMPLES=OFF -DNCNN_BUILD_BENCHMARK=OFF -DNCNN_BUILD_TOOLS=OFF -DNCNN_BUILD_TESTS=OFF
       INSTALL_COMMAND ""
       )
   else()
@@ -1091,11 +1090,13 @@ if (USE_HTTP_SERVER)
 endif()
 
 # main library, main & tests
-include_directories("/opt/homebrew/include/")
-include_directories("/opt/homebrew/opt/libarchive/include/")
-include_directories("/opt/homebrew/include/eigen3")
-include_directories("/opt/homebrew/include/utf8cpp/")
-include_directories(${CMAKE_BINARY_DIR}/vulkansdk-macos-1.2.162.0/MoltenVK/include)
+if (APPLE_M1)
+   include_directories("/opt/homebrew/include/")
+   include_directories("/opt/homebrew/opt/libarchive/include/")
+   include_directories("/opt/homebrew/include/eigen3")
+   include_directories("/opt/homebrew/include/utf8cpp/")
+   include_directories(${CMAKE_BINARY_DIR}/vulkansdk-macos-1.2.162.0/MoltenVK/include)
+endif()
 
 include_directories("${PROJECT_SOURCE_DIR}/src")
 include_directories(${CMAKE_BINARY_DIR}/src)
