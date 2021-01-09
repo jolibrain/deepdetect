@@ -137,6 +137,7 @@ namespace dd
         _dbData = std::shared_ptr<db::DB>(db::GetDB(_backend));
         _dbData->Open(_dbFullName, db::NEW);
         _txn = std::shared_ptr<db::Transaction>(_dbData->NewTransaction());
+        _logger->info("Preparing db of {}x{} images", bgr.cols, bgr.rows);
       }
 
     // data & target keys
@@ -296,7 +297,7 @@ namespace dd
     std::vector<BatchToStack> data, target;
     bool first_iter = true;
 
-    if (!_db)
+    if (!_db) // Note: no data augmentation if no db
       {
         if (!_lfiles.empty()) // prefetch batch from file list
           {
@@ -427,6 +428,9 @@ namespace dd
                 cv::Mat bgr;
                 torch::Tensor targett;
                 read_image_from_db(datas, targets, bgr, targett, inputc->_bw);
+
+                // data augmentation can apply here, with OpenCV
+                _img_rand_aug_cv.augment(bgr);
 
                 torch::Tensor imgt
                     = image_to_tensor(bgr, inputc->height(), inputc->width());
