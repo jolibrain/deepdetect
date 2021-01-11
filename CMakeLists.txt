@@ -22,6 +22,7 @@ option(USE_SIMSEARCH "build index and search services" OFF)
 option(USE_ANNOY "use annoy as indexer" OFF)
 option(USE_FAISS "use FAISS as indexer" ON)
 option(BUILD_SPDLOG "build SPDLOG instead of using system library" OFF)
+option(USE_BOOST_BACKTRACE "use boost backtrace" ON)
 
 if (USE_CAFFE)
   add_definitions(-DUSE_CAFFE)
@@ -207,8 +208,13 @@ if (USE_HDF5)
 endif()
 
 # dependency on Boost
-find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system iostreams stacktrace_backtrace)
-string(APPEND CMAKE_CXX_FLAGS " -DBOOST_STACKTRACE_USE_BACKTRACE -DBOOST_STACKTRACE_LINK")
+if (USE_BOOST_BACKTRACE)
+    add_definitions(-DUSE_BOOST_BACKTRACE)
+    find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system iostreams stacktrace_backtrace)
+    string(APPEND CMAKE_CXX_FLAGS " -DBOOST_STACKTRACE_USE_BACKTRACE -DBOOST_STACKTRACE_LINK")
+else()
+    find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system iostreams)
+endif()
 
 
 # CUDA OR CPU options
@@ -1145,3 +1151,4 @@ message(STATUS "USE_CUDNN:             ${USE_CUDNN}")
 message(STATUS "USE_XGBOOST:           ${USE_XGBOOST}")
 message(STATUS "USE_XGBOOST_CPU_ONLY:  ${USE_XGBOOST_CPU_ONLY}")
 message(STATUS "USE_TSNE:              ${USE_TSNE}")
+message(STATUS "USE_BOOST_BACKTRACE:   ${USE_BOOST_BACKTRACE}")
