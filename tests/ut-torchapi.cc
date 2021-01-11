@@ -1819,6 +1819,7 @@ TEST(torchapi, service_train_vit_images_gpu)
   setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
   at::globalContext().setDeterministic(true);
+  // torch::autograd::AnomalyMode::set_enabled(true);
 
   mkdir(vit_train_repo.c_str(), 0777);
 
@@ -1832,7 +1833,8 @@ TEST(torchapi, service_train_vit_images_gpu)
         + vit_train_repo
         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\","
           "\"width\":224,\"height\":224,\"db\":true},\"mllib\":{\"nclasses\":"
-          "2,\"template\":\"vit\",\"gpu\":true}}}";
+          "2,\"template\":\"vit\",\"gpu\":true,\"template_params\":{\"vit_"
+          "flavor\":\"vit_tiny_patch16\",\"realformer\":true}}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
   ASSERT_EQ(created_str, joutstr);
 
