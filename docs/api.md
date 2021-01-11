@@ -1070,6 +1070,7 @@ rois                 | string | yes      | empty                   | set the ROI
 index                | bool   | yes      | false                   | whether to index the output from prediction, for similarity search
 build_index          | bool   | yes      | false                   | whether to build similarity index after prediction, no more indexing can be done afterward
 search               | bool   | yes      | false                   | whether to use the predicted output for similarity search and return pre-indexed nearest neighbors
+search_nn            | int    | yes      | 10                      | number of similarity search results
 multibox_rois        | bool   | yes      | false                   | aggregates bounding boxes ROIs features (requires `rois`) for image similarity search
 index_type           | string | yes      | Flat                    | for faiss index indexing backend only : a FAISS index factory string , see https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index
 index_gpu            | bool   | yes      | false                   | for faiss indexing backend only : if available, build idnex on GPU
@@ -1250,6 +1251,7 @@ rois                 | string | yes      | empty                   | set the ROI
 index                | bool   | yes      | false                   | whether to index the output from prediction, for similarity search
 build_index          | bool   | yes      | false                   | whether to build similarity index after prediction, no more indexing can be done afterward
 search               | bool   | yes      | false                   | whether to use the predicted output for similarity search and return pre-indexed nearest neighbors
+search_nn            | int    | yes      | 10                      | number of similarity search results
 multibox_rois        | bool   | yes      | false                   | aggregates bounding boxes ROIs features (requires `rois`) for image similarity search
 index_type           | string | yes      | Flat                    | for faiss index indexing backend only : a FAISS index factory string , see https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index
 index_gpu            | bool   | yes      | false                   | for faiss indexing backend only : if available, build idnex on GPU
