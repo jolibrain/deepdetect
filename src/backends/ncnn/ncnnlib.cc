@@ -53,7 +53,6 @@ namespace dd
   {
     this->_libname = "ncnn";
     _net = new ncnn::Net();
-    _net->opt.lightmode = true;
     _net->opt.num_threads = _threads;
     _net->opt.blob_allocator = &_blob_pool_allocator;
     _net->opt.workspace_allocator = &_workspace_pool_allocator;
@@ -95,6 +94,13 @@ namespace dd
   void NCNNLib<TInputConnectorStrategy, TOutputConnectorStrategy,
                TMLModel>::init_mllib(const APIData &ad)
   {
+    bool use_fp32 = (ad.has("datatype")
+                     && ad.get("datatype").get<std::string>()
+                            == "fp32"); // default is fp16
+    _net->opt.use_fp16_packed = !use_fp32;
+    _net->opt.use_fp16_storage = !use_fp32;
+    _net->opt.use_fp16_arithmetic = !use_fp32;
+
     int res = _net->load_param(this->_mlmodel._params.c_str());
     if (res != 0)
       {
@@ -276,24 +282,35 @@ namespace dd
 
     if (bbox == true)
       {
+        std::string uri = inputc._ids.at(0);
+        auto bit = inputc._imgs_size.find(uri);
+        int rows = 1;
+        int cols = 1;
+        if (bit != inputc._imgs_size.end())
+          {
+            // original image size
+            rows = (*bit).second.first;
+            cols = (*bit).second.second;
+          }
+        else
+          {
+            throw MLLibInternalException(
+                "Couldn't find original image size for " + uri);
+          }
         for (int i = 0; i < inputc._out.h; i++)
           {
             const float *values = inputc._out.row(i);
             if (values[1] < confidence_threshold)
-              continue;
+              break; // output is sorted by confidence
 
             cats.push_back(this->_mlmodel.get_hcorresp(values[0]));
             probs.push_back(values[1]);
 
             APIData ad_bbox;
-            ad_bbox.add("xmin",
-                        static_cast<double>(values[2] * inputc.width()));
-            ad_bbox.add("ymin",
-                        static_cast<double>(values[3] * inputc.height()));
-            ad_bbox.add("xmax",
-                        static_cast<double>(values[4] * inputc.width()));
-            ad_bbox.add("ymax",
-                        static_cast<double>(values[5] * inputc.height()));
+            ad_bbox.add("xmin", static_cast<double>(values[2] * (cols - 1)));
+            ad_bbox.add("ymin", static_cast<double>(values[3] * (rows - 1)));
+            ad_bbox.add("xmax", static_cast<double>(values[4] * (cols - 1)));
+            ad_bbox.add("ymax", static_cast<double>(values[5] * (rows - 1)));
             bboxes.push_back(ad_bbox);
           }
       }

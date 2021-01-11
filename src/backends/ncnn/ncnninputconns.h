@@ -52,6 +52,8 @@ namespace dd
     std::vector<int> _timeseries_lengths;
     bool _continuation = false;
     int _ntargets;
+    std::unordered_map<std::string, std::pair<int, int>>
+        _imgs_size; /**< image sizes, used in detection. */
   };
 
   class ImgNCNNInputFileConn : public ImgInputFileConn,
@@ -128,6 +130,8 @@ namespace dd
             }
         }
       _ids.push_back(this->_uris.at(0));
+      _imgs_size.insert(std::pair<std::string, std::pair<int, int>>(
+          this->_ids.at(0), this->_images_size.at(0)));
     }
 
     double unscale_res(double res, int nout)

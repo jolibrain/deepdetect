@@ -41,7 +41,9 @@
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 #include <boost/iostreams/copy.hpp>
+#if USE_BOOST_BACKTRACE
 #include <boost/stacktrace.hpp>
+#endif
 #include <chrono>
 #include <ctime>
 
@@ -617,19 +619,23 @@ namespace dd
       }
   }
 
+#if USE_BOOST_BACKTRACE
   void HttpJsonAPI::abort(int signum)
   {
     std::signal(signum, SIG_DFL);
     std::cerr << boost::stacktrace::stacktrace() << std::endl;
     std::raise(signum);
   }
+#endif
 
   int HttpJsonAPI::boot(int argc, char *argv[])
   {
     google::ParseCommandLineFlags(&argc, &argv, true);
     std::signal(SIGINT, terminate);
+#if USE_BOOST_BACKTRACE
     std::signal(SIGSEGV, abort);
     std::signal(SIGABRT, abort);
+#endif
     JsonAPI::boot(argc, argv);
     return start_server(FLAGS_host, std::to_string(FLAGS_port),
                         FLAGS_nthreads);

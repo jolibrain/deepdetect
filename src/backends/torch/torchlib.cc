@@ -186,7 +186,11 @@ namespace dd
     if (lib_ad.has("loss"))
       _loss = lib_ad.get("loss").get<std::string>();
     if (lib_ad.has("template_params"))
-      _template_params = lib_ad;
+      {
+        _template_params = lib_ad.getobj("template_params");
+        if (lib_ad.has("nclasses"))
+          _template_params.add("nclasses", lib_ad.get("nclasses").get<int>());
+      }
 
     // Find GPU id
     if (!gpu)

@@ -67,7 +67,8 @@ TEST(ncnnapi, service_predict_bbox)
   // predict
   std::string jpredictstr
       = "{\"service\":\"imgserv\",\"parameters\":{\"input\":{\"height\":300,"
-        "\"width\":300},\"output\":{\"bbox\":true}},\"data\":[\""
+        "\"width\":300},\"output\":{\"bbox\":true,\"confidence_threshold\":0."
+        "25}},\"data\":[\""
         + squeezenet_ssd_repo + "face.jpg\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   JDoc jd;
@@ -81,6 +82,13 @@ TEST(ncnnapi, service_predict_bbox)
   ASSERT_TRUE(cl1 == "15");
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
               > 0.4);
+  for (size_t cl = 0; cl < jd["body"]["predictions"][0]["classes"].Size();
+       ++cl)
+    {
+      ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][cl]["bbox"]["xmin"]
+                      .GetDouble()
+                  > 0.0);
+    }
 
   // predict with mean and std, wrong values, for testing only
   jpredictstr
