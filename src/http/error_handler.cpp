@@ -30,8 +30,6 @@
 
 #include <gflags/gflags.h>
 
-DECLARE_string(allow_origin);
-
 ErrorHandler::ErrorHandler(
     const std::shared_ptr<oatpp::data::mapping::ObjectMapper> &objectMapper)
     : m_objectMapper(objectMapper)
@@ -73,11 +71,6 @@ ErrorHandler::handleError(const Status &status, const oatpp::String &message,
 
   response->putHeader(oatpp::web::protocol::http::Header::CONTENT_TYPE,
                       "application/json");
-
-  if (!FLAGS_allow_origin.empty())
-    response->putHeader(
-        "Access-Control-Allow-Origin",
-        oatpp::base::StrBuffer::createFromCString(FLAGS_allow_origin.c_str()));
 
   return response;
 }

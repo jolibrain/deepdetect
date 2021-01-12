@@ -27,6 +27,7 @@
 #include "oatppjsonapi.h"
 #include "http/app_component.hpp"
 #include "http/controller.hpp"
+#include "http/access_log.hpp"
 
 #include "oatpp/network/Server.hpp"
 #include "oatpp/web/protocol/http/Http.hpp"
@@ -38,10 +39,6 @@
 #include "oatpp/parser/json/mapping/ObjectMapper.hpp"
 #include "oatpp/core/macro/component.hpp"
 #include "oatpp-swagger/Controller.hpp"
-
-#include <gflags/gflags.h>
-
-DECLARE_string(allow_origin);
 
 namespace dd
 {
@@ -168,12 +165,17 @@ namespace dd
   }
 
   std::shared_ptr<oatpp::web::protocol::http::outgoing::Response>
-  OatppJsonAPI::jdoc_to_response(
-      const std::shared_ptr<
-          oatpp::web::server::api::ApiController::IncomingRequest> &request,
-      const JDoc &janswer,
-      const std::chrono::time_point<std::chrono::steady_clock> &req_start_time)
+  OatppJsonAPI::jdoc_to_response(const JDoc &janswer)
   {
+    // NOTE(sileht): Maybe not the best place to do this, but we need DTO in
+    // all calls before doing it otherwise
+    if (janswer.HasMember("head") && janswer["head"].HasMember("service"))
+      {
+        std::string service = janswer["head"]["service"].GetString();
+        if (!service.empty())
+          dd::http::setAccessLogServiceName(service);
+      }
+
     int outcode = janswer["status"]["code"].GetInt();
     std::string stranswer;
     // if output template, fillup with rendered template.
@@ -225,45 +227,12 @@ namespace dd
           }
       }
 
-    // TODO(sileht): START
-    // Replace hack by a oatpp ResponseInterceptor when 1.2.5 is released
-    if (request)
-      {
-        auto req = request->getStartingLine();
-        std::string access_log = req.protocol.std_str() + " \""
-                                 + req.method.std_str() + " "
-                                 + req.path.std_str() + "\"";
-        if (janswer.HasMember("head") && janswer["head"].HasMember("service"))
-          {
-            std::string service = janswer["head"]["service"].GetString();
-            if (!service.empty())
-              access_log += " " + service;
-          }
-        access_log += " " + std::to_string(outcode);
-
-        auto req_stop_time = std::chrono::steady_clock::now();
-        auto req_duration_ms
-            = std::chrono::duration_cast<std::chrono::milliseconds>(
-                req_stop_time - req_start_time);
-        access_log += " " + std::to_string(req_duration_ms.count()) + "ms";
-
-        if (outcode == 200 || outcode == 201)
-          _logger->info(access_log);
-        else
-          _logger->error(access_log);
-      }
-    // TODO(sileht): END
-
     auto response = oatpp::web::protocol::http::outgoing::ResponseFactory::
         createResponse(oatpp::web::protocol::http::Status(outcode, ""),
                        stranswer.c_str());
     response->putHeader(oatpp::web::protocol::http::Header::CONTENT_TYPE,
                         "application/json");
 
-    if (!FLAGS_allow_origin.empty())
-      response->putHeader("Access-Control-Allow-Origin",
-                          oatpp::base::StrBuffer::createFromCString(
-                              FLAGS_allow_origin.c_str()));
     return response;
   }
 
@@ -288,8 +257,7 @@ namespace dd
 
   void OatppJsonAPI::run()
   {
-    AppComponent components; // Create scope Environment
-                             // components
+    AppComponent components = AppComponent(this->_logger);
 
     /* create ApiControllers and add endpoints to router
      */
