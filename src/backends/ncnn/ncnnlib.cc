@@ -281,6 +281,21 @@ namespace dd
 
     if (bbox == true)
       {
+        std::string uri = inputc._ids.at(0);
+        auto bit = inputc._imgs_size.find(uri);
+        int rows = 1;
+        int cols = 1;
+        if (bit != inputc._imgs_size.end())
+          {
+            // original image size
+            rows = (*bit).second.first;
+            cols = (*bit).second.second;
+          }
+        else
+          {
+            throw MLLibInternalException(
+                "Couldn't find original image size for " + uri);
+          }
         for (int i = 0; i < inputc._out.h; i++)
           {
             const float *values = inputc._out.row(i);
@@ -291,14 +306,10 @@ namespace dd
             probs.push_back(values[1]);
 
             APIData ad_bbox;
-            ad_bbox.add("xmin",
-                        static_cast<double>(values[2] * inputc.width()));
-            ad_bbox.add("ymin",
-                        static_cast<double>(values[3] * inputc.height()));
-            ad_bbox.add("xmax",
-                        static_cast<double>(values[4] * inputc.width()));
-            ad_bbox.add("ymax",
-                        static_cast<double>(values[5] * inputc.height()));
+            ad_bbox.add("xmin", static_cast<double>(values[2] * (cols - 1)));
+            ad_bbox.add("ymin", static_cast<double>(values[3] * (rows - 1)));
+            ad_bbox.add("xmax", static_cast<double>(values[4] * (cols - 1)));
+            ad_bbox.add("ymax", static_cast<double>(values[5] * (rows - 1)));
             bboxes.push_back(ad_bbox);
           }
       }

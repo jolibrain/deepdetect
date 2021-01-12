@@ -20,7 +20,9 @@
  */
 
 #include <csignal>
+#if USE_BOOST_BACKTRACE
 #include <boost/stacktrace.hpp>
+#endif
 
 #include "oatppjsonapi.h"
 #include "http/app_component.hpp"
@@ -244,12 +246,14 @@ namespace dd
       }
   }
 
+#if USE_BOOST_BACKTRACE
   void OatppJsonAPI::abort(int signum)
   {
     std::signal(signum, SIG_DFL);
     std::cerr << boost::stacktrace::stacktrace() << std::endl;
     std::raise(signum);
   }
+#endif
 
   void OatppJsonAPI::run()
   {
@@ -283,8 +287,10 @@ namespace dd
       _logger->info("Allowing origin from {}", FLAGS_allow_origin);
 
     std::signal(SIGINT, terminate);
+#if USE_BOOST_BACKTRACE
     std::signal(SIGSEGV, abort);
     std::signal(SIGABRT, abort);
+#endif
     _server->run();
     _logger->info("DeepDetect HTTP server stopped");
   }
