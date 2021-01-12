@@ -741,6 +741,7 @@ ntargets   | int             | no (regression only)     | N/A     | Number of re
 self_supervised | string | yes      | ""      | self-supervised mode: "mask" for masked language model
 embedding_size  | int    | yes      | 768     | embedding size for NLP models
 freeze_traced   | bool   | yes      | false   | Freeze the traced part of the net during finetuning (e.g. for classification)
+retain_graph	| bool	 | yes	    | false   | Whether to use `retain_graph` with torch autograd
 template        | string | yes      | ""      | for language models, either "bert" or "gpt2", "recurrent" for LSTM-like models (including autoencoder), "nbeats" for nbeats model
 regression | bool            | yes                      | false   | Whether the model is a regressor
 timesteps     | int            | yes      | N/A            | Number of timesteps for time models (LSTM/NBEATS...) : this sets the length of sequences that will be given for learning, every timestep contains inputs and outputs as defined by the csv/csvts connector
