@@ -550,6 +550,10 @@ namespace dd
           }
       }
 
+    bool retain_graph = ad_mllib.has("retain_graph")
+                            ? ad_mllib.get("retain_graph").get<bool>()
+                            : false;
+
     if (iter_size <= 0)
       iter_size = 1;
 
@@ -692,7 +696,9 @@ namespace dd
 
             double loss_val = loss.item<double>();
             train_loss += loss_val;
-            loss.backward();
+            loss.backward({},
+                          /*retain_graph=*/c10::optional<bool>(retain_graph),
+                          /*create_graph=*/false);
             auto tstop = steady_clock::now();
             last_it_time
                 += duration_cast<milliseconds>(tstop - tstart).count();
