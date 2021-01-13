@@ -701,7 +701,7 @@ namespace dd
 
     std::string labels_found;
     for (auto i : _label_pos)
-      labels_found += "'" + col_vec[i] + "' ";
+      labels_found += "'" + col_vec.at(i) + "' ";
     _logger->info(std::to_string(_label_pos.size())
                   + " labels (outputs) found: " + labels_found);
 
