@@ -423,9 +423,17 @@ namespace dd
         else if (!encoded)
           enc = "";
 
-        status = ReadImageToDatum(lfiles[line_id].first,
-                                  lfiles[line_id].second, _height, _width,
-                                  !_bw, enc, &datum, this->_unchanged_data);
+        try
+          {
+            status = ReadImageToDatum(
+                lfiles[line_id].first, lfiles[line_id].second, _height, _width,
+                !_bw, enc, &datum, this->_unchanged_data);
+          }
+        catch (...)
+          {
+            throw InputConnectorBadParamException("Failed reading input image "
+                                                  + lfiles[line_id].first);
+          }
         if (status == false)
           continue;
 
