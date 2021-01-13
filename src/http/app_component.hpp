@@ -25,12 +25,14 @@
 #include "oatpp/web/protocol/http/incoming/SimpleBodyDecoder.hpp"
 #include "oatpp/web/server/HttpConnectionHandler.hpp"
 #include "oatpp/web/server/HttpRouter.hpp"
+#include "oatpp/web/server/interceptor/AllowCorsGlobal.hpp"
 #include "oatpp/network/ConnectionHandler.hpp"
 #include "oatpp/network/tcp/server/ConnectionProvider.hpp"
 #include "oatpp/parser/json/mapping/ObjectMapper.hpp"
 #include "oatpp/core/macro/component.hpp"
 #include "oatpp-zlib/EncoderProvider.hpp"
 
+#include "http/access_log.hpp"
 #include "http/error_handler.hpp"
 #include "http/swagger_component.hpp"
 
@@ -38,10 +40,17 @@
 
 DECLARE_string(host);
 DECLARE_uint32(port);
+DECLARE_string(allow_origin);
 
 class AppComponent
 {
+private:
+  std::shared_ptr<spdlog::logger> _logger;
+
 public:
+  AppComponent(const std::shared_ptr<spdlog::logger> &logger)
+      : _logger(logger){};
+
   /**
    *  Swagger component
    */
@@ -86,7 +95,7 @@ public:
    */
   OATPP_CREATE_COMPONENT(std::shared_ptr<oatpp::network::ConnectionHandler>,
                          serverConnectionHandler)
-  ([] {
+  ([this] {
     OATPP_COMPONENT(std::shared_ptr<oatpp::web::server::HttpRouter>,
                     router); // get Router component
     OATPP_COMPONENT(std::shared_ptr<oatpp::data::mapping::ObjectMapper>,
@@ -121,6 +130,26 @@ public:
     auto connectionHandler
         = std::make_shared<oatpp::web::server::HttpConnectionHandler>(
             components);
+
+    /* Add AccessLogResponseInterceptor */
+    connectionHandler->addRequestInterceptor(
+        std::make_shared<dd::http::AccessLogRequestInterceptor>());
+    connectionHandler->addResponseInterceptor(
+        std::make_shared<dd::http::AccessLogResponseInterceptor>(_logger));
+
+    /* Add CORS interceptors */
+    if (!FLAGS_allow_origin.empty())
+      {
+        connectionHandler->addRequestInterceptor(
+            std::make_shared<
+                oatpp::web::server::interceptor::AllowOptionsGlobal>());
+        connectionHandler->addResponseInterceptor(
+            std::make_shared<oatpp::web::server::interceptor::AllowCorsGlobal>(
+                FLAGS_allow_origin.c_str(),
+                "GET, POST, PUT, HEAD, DELETE, PATCH, OPTIONS"));
+      }
+
+    /* Add Error Handler */
     connectionHandler->setErrorHandler(
         std::make_shared<ErrorHandler>(objectMapper));
 
