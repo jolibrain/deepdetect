@@ -1,0 +1,61 @@
+diff --git a/src/layer/flatten.cpp b/src/layer/flatten.cpp
+index bdb00e60..d57aca8f 100644
+--- a/src/layer/flatten.cpp
++++ b/src/layer/flatten.cpp
+@@ -15,7 +15,6 @@
+ #include "flatten.h"
+ 
+ #include <string.h>
+-
+ namespace ncnn {
+ 
+ Flatten::Flatten()
+@@ -24,6 +23,12 @@ Flatten::Flatten()
+     support_inplace = false;
+ }
+ 
++int Flatten::load_param(const ParamDict& pd)
++{
++    axis = pd.get(0, 0);
++    return 0;
++}
++
+ int Flatten::forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const
+ {
+     int w = bottom_blob.w;
+@@ -32,11 +37,17 @@ int Flatten::forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) c
+     size_t elemsize = bottom_blob.elemsize;
+     int size = w * h;
+ 
++    if (axis == 2)
++    {
++        top_blob = bottom_blob.clone();
++        return 0;
++    }
++
+     top_blob.create(size * channels, elemsize, opt.blob_allocator);
+     if (top_blob.empty())
+         return -100;
+ 
+-    #pragma omp parallel for num_threads(opt.num_threads)
++#pragma omp parallel for num_threads(opt.num_threads)
+     for (int q = 0; q < channels; q++)
+     {
+         const unsigned char* ptr = bottom_blob.channel(q);
+diff --git a/src/layer/flatten.h b/src/layer/flatten.h
+index 22667a45..e389b75d 100644
+--- a/src/layer/flatten.h
++++ b/src/layer/flatten.h
+@@ -24,7 +24,12 @@ class Flatten : public Layer
+ public:
+     Flatten();
+ 
++    virtual int load_param(const ParamDict& pd);
++
+     virtual int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const;
++
++public:
++    int axis;
+ };
+ 
+ } // namespace ncnn
