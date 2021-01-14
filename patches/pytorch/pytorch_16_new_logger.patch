@@ -3,11 +3,12 @@ new file mode 100644
 index 0000000000..56ebbf9441
 --- /dev/null
 +++ b/c10/util/logging_is_dd_log.h
-@@ -0,0 +1,60 @@
+@@ -0,0 +1,61 @@
 +#ifndef DD_LOG_H
 +#define DD_LOG_H
 +#include <set>
 +#include <iomanip>
++#include <map>
 +
 +#include "caffe/llogging.h"
 +
@@ -69,7 +70,7 @@ new file mode 100644
 index 0000000000..ff97118ff2
 --- /dev/null
 +++ b/caffe/llogging.h
-@@ -0,0 +1,211 @@
+@@ -0,0 +1,217 @@
 +/**
 + * Author: Emmanuel Benazera <beniz@droidnik.fr>
 + */
@@ -78,8 +79,14 @@ index 0000000000..ff97118ff2
 +#define LLOGGING_H
 +
 +#include <spdlog/spdlog.h>
++#ifdef USE_SYSLOG
++#include <spdlog/sinks/syslog_sink.h>
++#else
++#include <spdlog/sinks/stdout_sinks.h>
++#endif
 +#include <boost/algorithm/string.hpp>
 +#include <iostream>
++#include <map>
 +
 +class DateLogger {
 + public:
