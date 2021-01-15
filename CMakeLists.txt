@@ -185,10 +185,9 @@ if (BUILD_SPDLOG)
     ExternalProject_Add(
         spdlog
         PREFIX spdlog
-        URL https://github.com/gabime/spdlog/archive/v1.8.1.tar.gz
-        URL_HASH SHA256=5197b3147cfcfaa67dd564db7b878e4a4b3d9f3443801722b3915cdeced656cb
+        URL https://github.com/gabime/spdlog/archive/v1.8.2.tar.gz
+        URL_HASH SHA256=e20e6bd8f57e866eaf25a5417f0a38a116e537f1a77ac7b5409ca2b180cec0d5
         BUILD_IN_SOURCE true
-        PATCH_COMMAND patch -p1 < ${CMAKE_SOURCE_DIR}/patches/spdlog/1818.patch
         INSTALL_COMMAND ""
     )
     set(SPDLOG_LIB_DEPS ${CMAKE_BINARY_DIR}/spdlog/src/spdlog/libspdlog.a)
