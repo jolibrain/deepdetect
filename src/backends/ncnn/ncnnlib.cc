@@ -211,11 +211,6 @@ namespace dd
         _net->set_input_h(_old_height);
       }
 
-    ncnn::Extractor ex = _net->create_extractor();
-
-    ex.set_num_threads(_threads);
-    ex.input(_inputBlob.c_str(), inputc._in);
-
     APIData ad_output = ad.getobj("parameters").getobj("output");
 
     // Get bbox
@@ -250,18 +245,8 @@ namespace dd
         else
           out_blob = "prob";
       }
-    ret = ex.extract(out_blob.c_str(), inputc._out);
-    if (ret == -1)
-      {
-        throw MLLibInternalException("NCNN internal error");
-      }
 
     std::vector<APIData> vrad;
-    std::vector<double> probs;
-    std::vector<std::string> cats;
-    std::vector<APIData> bboxes;
-    std::vector<APIData> series;
-    APIData rad;
 
     // Get confidence_threshold
     float confidence_threshold = 0.0;
@@ -280,133 +265,163 @@ namespace dd
     if (best == -1 || best > _nclasses)
       best = _nclasses;
 
-    if (bbox == true)
+      // for loop around batch size
+#pragma omp parallel for num_threads(_threads)
+    for (size_t b = 0; b < inputc._ids.size(); b++)
       {
-        std::string uri = inputc._ids.at(0);
-        auto bit = inputc._imgs_size.find(uri);
-        int rows = 1;
-        int cols = 1;
-        if (bit != inputc._imgs_size.end())
+        std::vector<double> probs;
+        std::vector<std::string> cats;
+        std::vector<APIData> bboxes;
+        std::vector<APIData> series;
+        APIData rad;
+
+        ncnn::Extractor ex = _net->create_extractor();
+        ex.set_num_threads(_threads);
+        ex.input(_inputBlob.c_str(), inputc._in.at(b));
+
+        ret = ex.extract(out_blob.c_str(), inputc._out.at(b));
+        if (ret == -1)
           {
-            // original image size
-            rows = (*bit).second.first;
-            cols = (*bit).second.second;
+            throw MLLibInternalException("NCNN internal error");
+          }
+
+        if (bbox == true)
+          {
+            std::string uri = inputc._ids.at(b);
+            auto bit = inputc._imgs_size.find(uri);
+            int rows = 1;
+            int cols = 1;
+            if (bit != inputc._imgs_size.end())
+              {
+                // original image size
+                rows = (*bit).second.first;
+                cols = (*bit).second.second;
+              }
+            else
+              {
+                throw MLLibInternalException(
+                    "Couldn't find original image size for " + uri);
+              }
+            for (int i = 0; i < inputc._out.at(b).h; i++)
+              {
+                const float *values = inputc._out.at(b).row(i);
+                if (values[1] < confidence_threshold)
+                  break; // output is sorted by confidence
+
+                cats.push_back(this->_mlmodel.get_hcorresp(values[0]));
+                probs.push_back(values[1]);
+
+                APIData ad_bbox;
+                ad_bbox.add("xmin",
+                            static_cast<double>(values[2] * (cols - 1)));
+                ad_bbox.add("ymin",
+                            static_cast<double>(values[3] * (rows - 1)));
+                ad_bbox.add("xmax",
+                            static_cast<double>(values[4] * (cols - 1)));
+                ad_bbox.add("ymax",
+                            static_cast<double>(values[5] * (rows - 1)));
+                bboxes.push_back(ad_bbox);
+              }
+          }
+        else if (ctc == true)
+          {
+            int alphabet = inputc._out.at(b).w;
+            int time_step = inputc._out.at(b).h;
+            std::vector<int> pred_label_seq_with_blank(time_step);
+            for (int t = 0; t < time_step; ++t)
+              {
+                const float *values = inputc._out.at(b).row(t);
+                pred_label_seq_with_blank[t] = std::distance(
+                    values, std::max_element(values, values + alphabet));
+              }
+
+            std::vector<int> pred_label_seq;
+            int prev = blank_label;
+            for (int t = 0; t < time_step; ++t)
+              {
+                int cur = pred_label_seq_with_blank[t];
+                if (cur != prev && cur != blank_label)
+                  pred_label_seq.push_back(cur);
+                prev = cur;
+              }
+            std::string outstr;
+            std::ostringstream oss;
+            for (auto l : pred_label_seq)
+              outstr
+                  += char(std::atoi(this->_mlmodel.get_hcorresp(l).c_str()));
+            cats.push_back(outstr);
+            probs.push_back(1.0);
+          }
+        else if (_timeserie)
+          {
+            std::vector<int> tsl = inputc._timeseries_lengths;
+            for (unsigned int tsi = 0; tsi < tsl.size(); ++tsi)
+              {
+                for (int ti = 0; ti < tsl[tsi]; ++ti)
+                  {
+                    std::vector<double> predictions;
+                    for (int k = 0; k < inputc._ntargets; ++k)
+                      {
+                        double res = inputc._out.at(b).row(ti)[k];
+                        predictions.push_back(inputc.unscale_res(res, k));
+                      }
+                    APIData ts;
+                    ts.add("out", predictions);
+                    series.push_back(ts);
+                  }
+              }
           }
         else
           {
-            throw MLLibInternalException(
-                "Couldn't find original image size for " + uri);
-          }
-        for (int i = 0; i < inputc._out.h; i++)
-          {
-            const float *values = inputc._out.row(i);
-            if (values[1] < confidence_threshold)
-              break; // output is sorted by confidence
+            std::vector<float> cls_scores;
 
-            cats.push_back(this->_mlmodel.get_hcorresp(values[0]));
-            probs.push_back(values[1]);
-
-            APIData ad_bbox;
-            ad_bbox.add("xmin", static_cast<double>(values[2] * (cols - 1)));
-            ad_bbox.add("ymin", static_cast<double>(values[3] * (rows - 1)));
-            ad_bbox.add("xmax", static_cast<double>(values[4] * (cols - 1)));
-            ad_bbox.add("ymax", static_cast<double>(values[5] * (rows - 1)));
-            bboxes.push_back(ad_bbox);
-          }
-      }
-    else if (ctc == true)
-      {
-        int alphabet = inputc._out.w;
-        int time_step = inputc._out.h;
-        std::vector<int> pred_label_seq_with_blank(time_step);
-        for (int t = 0; t < time_step; ++t)
-          {
-            const float *values = inputc._out.row(t);
-            pred_label_seq_with_blank[t] = std::distance(
-                values, std::max_element(values, values + alphabet));
-          }
-
-        std::vector<int> pred_label_seq;
-        int prev = blank_label;
-        for (int t = 0; t < time_step; ++t)
-          {
-            int cur = pred_label_seq_with_blank[t];
-            if (cur != prev && cur != blank_label)
-              pred_label_seq.push_back(cur);
-            prev = cur;
-          }
-        std::string outstr;
-        std::ostringstream oss;
-        for (auto l : pred_label_seq)
-          outstr += char(std::atoi(this->_mlmodel.get_hcorresp(l).c_str()));
-        cats.push_back(outstr);
-        probs.push_back(1.0);
-      }
-    else if (_timeserie)
-      {
-        std::vector<int> tsl = inputc._timeseries_lengths;
-        for (unsigned int tsi = 0; tsi < tsl.size(); ++tsi)
-          {
-            for (int ti = 0; ti < tsl[tsi]; ++ti)
+            cls_scores.resize(inputc._out.at(b).w);
+            for (int j = 0; j < inputc._out.at(b).w; j++)
               {
-                std::vector<double> predictions;
-                for (int k = 0; k < inputc._ntargets; ++k)
-                  {
-                    double res = inputc._out.row(ti)[k];
-                    predictions.push_back(inputc.unscale_res(res, k));
-                  }
-                APIData ts;
-                ts.add("out", predictions);
-                series.push_back(ts);
+                cls_scores[j] = inputc._out.at(b)[j];
+              }
+            int size = cls_scores.size();
+            std::vector<std::pair<float, int>> vec;
+            vec.resize(size);
+            for (int i = 0; i < size; i++)
+              {
+                vec[i] = std::make_pair(cls_scores[i], i);
+              }
+
+            std::partial_sort(vec.begin(), vec.begin() + best, vec.end(),
+                              std::greater<std::pair<float, int>>());
+
+            for (int i = 0; i < best; i++)
+              {
+                if (vec[i].first < confidence_threshold)
+                  continue;
+                cats.push_back(this->_mlmodel.get_hcorresp(vec[i].second));
+                probs.push_back(vec[i].first);
               }
           }
-      }
-    else
-      {
-        std::vector<float> cls_scores;
 
-        cls_scores.resize(inputc._out.w);
-        for (int j = 0; j < inputc._out.w; j++)
+        rad.add("uri", inputc._ids.at(b));
+        rad.add("loss", 0.0);
+        rad.add("cats", cats);
+        if (bbox == true)
+          rad.add("bboxes", bboxes);
+        if (_timeserie)
           {
-            cls_scores[j] = inputc._out[j];
+            rad.add("series", series);
+            rad.add("probs", std::vector<double>(series.size(), 1.0));
           }
-        int size = cls_scores.size();
-        std::vector<std::pair<float, int>> vec;
-        vec.resize(size);
-        for (int i = 0; i < size; i++)
-          {
-            vec[i] = std::make_pair(cls_scores[i], i);
-          }
+        else
+          rad.add("probs", probs);
 
-        std::partial_sort(vec.begin(), vec.begin() + best, vec.end(),
-                          std::greater<std::pair<float, int>>());
+        if (_timeserie)
+          out.add("timeseries", true);
 
-        for (int i = 0; i < best; i++)
-          {
-            if (vec[i].first < confidence_threshold)
-              continue;
-            cats.push_back(this->_mlmodel.get_hcorresp(vec[i].second));
-            probs.push_back(vec[i].first);
-          }
-      }
+#pragma omp critical
+        {
+          vrad.push_back(rad);
+        }
+      } // end for batch_size
 
-    rad.add("uri", inputc._ids.at(0));
-    rad.add("loss", 0.0);
-    rad.add("cats", cats);
-    if (bbox == true)
-      rad.add("bboxes", bboxes);
-    if (_timeserie)
-      {
-        rad.add("series", series);
-        rad.add("probs", std::vector<double>(series.size(), 1.0));
-      }
-    else
-      rad.add("probs", probs);
-
-    if (_timeserie)
-      out.add("timeseries", true);
-
-    vrad.push_back(rad);
     tout.add_results(vrad);
     out.add("nclasses", this->_nclasses);
     if (bbox == true)

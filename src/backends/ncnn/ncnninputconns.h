@@ -98,40 +98,48 @@ namespace dd
         {
           throw;
         }
-      cv::Mat bgr = this->_images.at(0);
-      _height = bgr.rows;
-      _width = bgr.cols;
 
-      _in = ncnn::Mat::from_pixels(bgr.data, ncnn::Mat::PIXEL_BGR, bgr.cols,
-                                   bgr.rows);
-      if (_has_mean_scalar)
+      for (size_t i = 0; i < _images.size(); ++i)
         {
-          if (_std.empty())
-            {
-              _in.substract_mean_normalize(_mean.data(), 0);
-            }
-          else
-            {
-              _in.substract_mean_normalize(_mean.data(), _std.data());
-            }
+          cv::Mat bgr = this->_images.at(i);
+          _height = bgr.rows;
+          _width = bgr.cols;
+
+          _in.push_back(ncnn::Mat::from_pixels(bgr.data, ncnn::Mat::PIXEL_BGR,
+                                               bgr.cols, bgr.rows));
+          {
+            if (_has_mean_scalar)
+              {
+                if (_std.empty())
+                  {
+                    _in.at(i).substract_mean_normalize(_mean.data(), 0);
+                  }
+                else
+                  {
+                    _in.at(i).substract_mean_normalize(_mean.data(),
+                                                       _std.data());
+                  }
+              }
+            else if (_scale != 1.0)
+              {
+                float norm = 1.0 / _scale;
+                if (_bw)
+                  {
+                    std::vector<float> vscale = { norm };
+                    _in.at(i).substract_mean_normalize(0, vscale.data());
+                  }
+                else
+                  {
+                    std::vector<float> vscale = { norm, norm, norm };
+                    _in.at(i).substract_mean_normalize(0, vscale.data());
+                  }
+              }
+            _ids.push_back(this->_uris.at(i));
+            _imgs_size.insert(std::pair<std::string, std::pair<int, int>>(
+                this->_ids.at(i), this->_images_size.at(i)));
+          }
+          _out = std::vector<ncnn::Mat>(_ids.size(), ncnn::Mat());
         }
-      else if (_scale != 1.0)
-        {
-          float norm = 1.0 / _scale;
-          if (_bw)
-            {
-              std::vector<float> vscale = { norm };
-              _in.substract_mean_normalize(0, vscale.data());
-            }
-          else
-            {
-              std::vector<float> vscale = { norm, norm, norm };
-              _in.substract_mean_normalize(0, vscale.data());
-            }
-        }
-      _ids.push_back(this->_uris.at(0));
-      _imgs_size.insert(std::pair<std::string, std::pair<int, int>>(
-          this->_ids.at(0), this->_images_size.at(0)));
     }
 
     double unscale_res(double res, int nout)
@@ -140,8 +148,8 @@ namespace dd
     }
 
   public:
-    ncnn::Mat _in;
-    ncnn::Mat _out;
+    std::vector<ncnn::Mat> _in;
+    std::vector<ncnn::Mat> _out;
     std::vector<std::string> _ids; /**< input ids (e.g. image ids) */
   };
 
@@ -207,7 +215,8 @@ namespace dd
           _height += l;
         }
       // Mat(w,h)
-      _in.create(_width, _height);
+      _in.emplace_back(_width, _height);
+      _out.emplace_back();
 
       int mati = 0;
 
@@ -222,20 +231,20 @@ namespace dd
       for (unsigned int si = 0; si < this->_csvtsdata.size(); ++si)
         {
           if (_continuation)
-            _in[mati++] = 1.0;
+            _in.at(0)[mati++] = 1.0;
           else
-            _in[mati++] = 0.0;
+            _in.at(0)[mati++] = 0.0;
           for (int di = 0; di < _ntargets; ++di)
-            _in[mati++] = 0.0;
+            _in.at(0)[mati++] = 0.0;
           for (unsigned int di : input_pos)
-            _in[mati++] = this->_csvtsdata[si][0]._v[di];
+            _in.at(0)[mati++] = this->_csvtsdata[si][0]._v[di];
           for (unsigned int ti = 1; ti < this->_csvtsdata[si].size(); ++ti)
             {
-              _in[mati++] = 1.0;
+              _in.at(0)[mati++] = 1.0;
               for (int di = 0; di < _ntargets; ++di)
-                _in[mati++] = 0.0;
+                _in.at(0)[mati++] = 0.0;
               for (unsigned int di : input_pos)
-                _in[mati++] = this->_csvtsdata[si][ti]._v[di];
+                _in.at(0)[mati++] = this->_csvtsdata[si][ti]._v[di];
             }
         }
       _ids.push_back(this->_uris.at(0));
@@ -255,8 +264,8 @@ namespace dd
     }
 
   public:
-    ncnn::Mat _in;
-    ncnn::Mat _out;
+    std::vector<ncnn::Mat> _in;
+    std::vector<ncnn::Mat> _out;
     int _height;
     int _width;
     std::vector<std::string> _ids; /**< input ids (e.g. image ids) */

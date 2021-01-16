@@ -94,7 +94,8 @@ TEST(ncnnapi, service_predict_bbox)
   jpredictstr
       = "{\"service\":\"imgserv\",\"parameters\":{\"input\":{\"height\":300,"
         "\"width\":300,\"mean\":[128,128,128],\"std\":[255,255,255]},"
-        "\"output\":{\"bbox\":true}},\"data\":[\""
+        "\"output\":{\"bbox\":true,\"confidence_threshold\":0.25}},\"data\":["
+        "\""
         + squeezenet_ssd_repo + "face.jpg\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
@@ -110,7 +111,8 @@ TEST(ncnnapi, service_predict_bbox)
   jpredictstr
       = "{\"service\":\"imgserv\",\"parameters\":{\"input\":{\"height\":300,"
         "\"width\":300,\"scale\":0.0039},"
-        "\"output\":{\"bbox\":true}},\"data\":[\""
+        "\"output\":{\"bbox\":true,\"confidence_threshold\":0.25}},\"data\":["
+        "\""
         + squeezenet_ssd_repo + "face.jpg\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;
@@ -120,6 +122,26 @@ TEST(ncnnapi, service_predict_bbox)
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   cl1 = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
+              > 0.4);
+
+  // predict with batch_size > 1
+  jpredictstr
+      = "{\"service\":\"imgserv\",\"parameters\":{\"input\":{\"height\":300,"
+        "\"width\":300},\"output\":{\"bbox\":true,\"confidence_threshold\":0."
+        "25}},\"data\":[\""
+        + squeezenet_ssd_repo + "face.jpg\",\"" + squeezenet_ssd_repo
+        + "cat.jpg\"]}";
+  // std::cerr << "predict=" << jpredictstr << std::endl;
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+  cl1 = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
+  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
+              > 0.4);
+  ASSERT_TRUE(jd["body"]["predictions"][1]["classes"][0]["prob"].GetDouble()
               > 0.4);
 }
 
