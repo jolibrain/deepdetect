@@ -291,6 +291,7 @@ class DD(object):
         parameters_mllib,
         parameters_output,
         use_base64=False,
+        parent_id="",
         index_uris=[],
     ):
         """
@@ -299,6 +300,7 @@ class DD(object):
         a post_chain API call. This basically eases the making
         of chain calls from Python.
         Parameters are the same as for a post_predict call
+        parent_id -- parent action id, when branching execution
         """
 
         if use_base64:
@@ -314,19 +316,24 @@ class DD(object):
         }
         if data:
             call["data"] = data
+        if parent_id:
+            call["parent_id"] = parent_id
         if index_uris:
             call["index_uris"] = index_uris
 
         return call
 
-    def make_action(self, action_type, parameters=[]):
+    def make_action(self, action_type, parameters=[], aid=""):
         """
         Creates a dictionary that holds a JSON chain action.
         Parameters:
         action_type -- "crop" or "filter" for now
         parameters -- action parameters
+        aid -- action id
         """
         action = {"action": {"type": action_type}}
+        if aid:
+            action["id"] = aid
         if parameters:
             action["action"]["parameters"] = parameters
         return action
