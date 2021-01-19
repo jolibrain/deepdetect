@@ -1116,7 +1116,8 @@ Parameter     | Type   | Optional | Default | Description
 ---------     | ----   | -------- | ------- | -----------
 gpu           | bool   | yes      | false   | Whether to use GPU
 gpuid         | int or array | yes | 0      | GPU id, use single int for single GPU, `-1` for using all GPUs, and array e.g. `[1,3]` for selecting among multiple GPUs
-extract_layer | string | yes      | ""      | in bert models "hidden_state" allows to extract raw hidden_states values to return as output. Requires the service to be declared as 'unsupervised'
+extract_layer | string | yes      | ""      | Returns tensor values from intermediate layers. In bert models "hidden_state" allows to extract raw hidden_states values to return as output. If set to 'last', simply returns the tensor values from last layer.
+forward_method | string | yes | "" | Executes a custom function from within a traced/JIT model, instead of the standard forward()
 
 
 - XGBoost
