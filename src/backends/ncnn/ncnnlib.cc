@@ -415,6 +415,29 @@ namespace dd
     out.add("multibox_rois", false);
     tout.finalize(ad.getobj("parameters").getobj("output"), out,
                   static_cast<MLModel *>(&this->_mlmodel));
+
+    // chain compliance
+    if (ad.has("chain") && ad.get("chain").get<bool>())
+      {
+        if (typeid(inputc) == typeid(ImgNCNNInputFileConn))
+          {
+            APIData chain_input;
+            if (!reinterpret_cast<ImgNCNNInputFileConn *>(&inputc)
+                     ->_orig_images.empty())
+              chain_input.add("imgs",
+                              reinterpret_cast<ImgNCNNInputFileConn *>(&inputc)
+                                  ->_orig_images);
+            else
+              chain_input.add(
+                  "imgs",
+                  reinterpret_cast<ImgNCNNInputFileConn *>(&inputc)->_images);
+            chain_input.add("imgs_size",
+                            reinterpret_cast<ImgNCNNInputFileConn *>(&inputc)
+                                ->_images_size);
+            out.add("input", chain_input);
+          }
+      }
+
     out.add("status", 0);
     return 0;
   }
