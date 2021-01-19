@@ -52,7 +52,8 @@ namespace dd
     /**
      * \brief forward (inference) pass over the network
      */
-    c10::IValue forward(std::vector<c10::IValue> source);
+    c10::IValue forward(std::vector<c10::IValue> source,
+                        const std::string &forward_method = "");
 
     /**
      * \brief forward pass using the devices given in parameters.
