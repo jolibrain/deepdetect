@@ -501,7 +501,7 @@ TEST(torchapi, service_train_images_split_regression_db_true)
   ASSERT_EQ(201, jd["status"]["code"]);
 
   ASSERT_TRUE(jd["body"]["measure"]["iteration"] == 200) << "iterations";
-  ASSERT_TRUE(jd["body"]["measure"]["eucll"].GetDouble() <= 10.0) << "eucll";
+  ASSERT_TRUE(jd["body"]["measure"]["eucll"].GetDouble() <= 12.0) << "eucll";
 
   std::unordered_set<std::string> lfiles;
   fileops::list_directory(resnet50_train_repo, true, false, false, lfiles);
@@ -562,7 +562,7 @@ TEST(torchapi, service_train_images_split_regression_db_false)
   ASSERT_EQ(201, jd["status"]["code"]);
 
   ASSERT_TRUE(jd["body"]["measure"]["iteration"] == 200) << "iterations";
-  ASSERT_TRUE(jd["body"]["measure"]["eucll"].GetDouble() <= 10.0) << "eucll";
+  ASSERT_TRUE(jd["body"]["measure"]["eucll"].GetDouble() <= 12.0) << "eucll";
 
   std::unordered_set<std::string> lfiles;
   fileops::list_directory(resnet50_train_repo, true, false, false, lfiles);
