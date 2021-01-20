@@ -782,7 +782,8 @@ if (USE_TORCH)
   # TORCH VISION
   message(STATUS "Configuring Pytorch Vision")
   # set(PYTORCH_VISION_COMMIT "v0.6.0") # 0.6 & torch 1.5
-  set(PYTORCH_VISION_COMMIT "v0.7.0") # 0.7 & torch 1.6
+  #set(PYTORCH_VISION_COMMIT "v0.7.0") # 0.7 & torch 1.6
+  set(PYTORCH_VISION_COMMIT "v0.8.2") # 0.8.2 & torch 1.7.1
   set(TORCHVISION_LOCATION "${CMAKE_BINARY_DIR}/pytorch_vision/src/pytorch_vision-install")
   ExternalProject_Add(
     pytorch_vision
