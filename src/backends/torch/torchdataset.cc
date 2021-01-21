@@ -256,8 +256,7 @@ namespace dd
 
     if (_shuffle)
       {
-        auto seed = _seed == -1 ? static_cast<long>(time(NULL)) : _seed;
-        std::shuffle(_indices.begin(), _indices.end(), std::mt19937(seed));
+        std::shuffle(_indices.begin(), _indices.end(), _rng);
       }
   }
 

@@ -140,6 +140,16 @@ namespace dd
     }
 
     /**
+     * \brief set seed for training dataset. This method should not
+     * be used at predict time.
+     */
+    void set_train_dataset_seed(long seed)
+    {
+      seed = seed == -1 ? std::random_device()() : seed;
+      _dataset.set_seed(seed);
+    }
+
+    /**
      * \brief holder for mask_id for mlm data generation
      */
     int64_t mask_id() const
