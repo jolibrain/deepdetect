@@ -56,6 +56,7 @@ namespace dd
   {
   private:
     long _seed = -1; /**< shuffle seed*/
+    std::mt19937 _rng;
     int64_t _current_index
         = 0; /**< current index for batch parallel data extraction */
     std::string _backend; /**< db backend (currently only lmdb supported= */
@@ -94,7 +95,7 @@ namespace dd
      * \brief copy constructor
      */
     TorchDataset(const TorchDataset &d)
-        : _seed(d._seed), _current_index(d._current_index),
+        : _seed(d._seed), _rng(d._rng), _current_index(d._current_index),
           _backend(d._backend), _db(d._db),
           _batches_per_transaction(d._batches_per_transaction), _txn(d._txn),
           _logger(d._logger), _shuffle(d._shuffle), _dbData(d._dbData),
@@ -143,6 +144,15 @@ namespace dd
     void set_shuffle(bool shuf)
     {
       _shuffle = shuf;
+    }
+
+    /**
+     * \brief setter for _seed & reinitialize random number generator
+     */
+    void set_seed(long seed)
+    {
+      _seed = seed;
+      _rng = std::mt19937(seed);
     }
 
     /**

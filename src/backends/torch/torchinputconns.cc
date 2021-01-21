@@ -236,6 +236,7 @@ namespace dd
                 fillup_parameters(ad_param.getobj("input"));
               }
           }
+        set_train_dataset_seed(_seed);
 
         // Read all parsed files and create tensor datasets
         bool createDb
@@ -503,11 +504,16 @@ namespace dd
   void TxtTorchInputFileConn::transform(const APIData &ad)
   {
     // if (_finetuning)
-    // XXX: Generating vocab from scratch is not currently
+    // XXX: Generating vocab from scratch is not currently supported
 
     if (!_ordered_words || _characters)
       throw InputConnectorBadParamException(
           "Need ordered_words = true with backend torch");
+
+    if (_train)
+      {
+        set_train_dataset_seed(_seed);
+      }
 
     _generate_vocab = false;
 
@@ -832,6 +838,11 @@ namespace dd
 
     if (_train)
       {
+        if (ad_input.has("seed"))
+          {
+            set_train_dataset_seed(ad_input.get("seed").get<int>());
+          }
+
         _ids.clear();
         fill_dataset(_dataset, _csvtsdata);
         _csvtsdata.clear();
