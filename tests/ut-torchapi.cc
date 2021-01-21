@@ -333,7 +333,7 @@ TEST(torchapi, service_train_images)
         "\"supervised\",\"model\":{\"repository\":\""
         + resnet50_train_repo
         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\","
-          "\"width\":224,\"height\":224,\"db\":true},\"mllib\":{\"nclasses\":"
+          "\"width\":256,\"height\":256,\"db\":true},\"mllib\":{\"nclasses\":"
           "2,\"finetuning\":true,\"gpu\":true}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
   ASSERT_EQ(created_str, joutstr);
@@ -345,7 +345,9 @@ TEST(torchapi, service_train_images)
         + iterations_resnet50 + ",\"base_lr\":" + torch_lr
         + ",\"iter_size\":4,\"solver_type\":\"ADAM\",\"test_"
           "interval\":200},\"net\":{\"batch_size\":4},"
-          "\"resume\":false},"
+          "\"resume\":false,\"mirror\":true,\"rotate\":true,\"crop_size\":224,"
+          "\"cutout\":0.5}"
+          ","
           "\"input\":{\"seed\":12345,\"db\":true,\"shuffle\":true},"
           "\"output\":{\"measure\":[\"f1\",\"acc\"]}},\"data\":[\""
         + resnet50_train_data + "\",\"" + resnet50_test_data + "\"]}";
