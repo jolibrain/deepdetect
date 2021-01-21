@@ -228,7 +228,7 @@ namespace dd
         if (shouldLoad)
           {
             if (_db)
-              _tilogger->info("Load from db");
+              _tilogger->info("Preparation for training from db");
             // Get files paths
             try
               {

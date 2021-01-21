@@ -485,7 +485,35 @@ namespace dd
         throw;
       }
 
+    // TODO: set inputc dataset data augmentation options
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
+    bool has_data_augmentation
+        = ad_mllib.has("mirror") || ad_mllib.has("rotate")
+          || ad_mllib.has("crop_size") || ad_mllib.has("cutout");
+    if (has_data_augmentation)
+      {
+        bool has_mirror
+            = ad_mllib.has("mirror") && ad_mllib.get("mirror").get<bool>();
+        this->_logger->info("mirror: {}", has_mirror);
+        bool has_rotate
+            = ad_mllib.has("rotate") && ad_mllib.get("rotate").get<bool>();
+        this->_logger->info("rotate: {}", has_rotate);
+        int crop_size = -1;
+        if (ad_mllib.has("crop_size"))
+          {
+            crop_size = ad_mllib.get("crop_size").get<int>();
+            this->_logger->info("crop_size : {}", crop_size);
+          }
+        float cutout = 0.0;
+        if (ad_mllib.has("cutout"))
+          {
+            cutout = ad_mllib.get("cutout").get<double>();
+            this->_logger->info("cutout: {}", cutout);
+          }
+        inputc._dataset._img_rand_aug_cv
+            = TorchImgRandAugCV(inputc.width(), inputc.height(), has_mirror,
+                                has_rotate, crop_size, cutout);
+      }
 
     // solver params
     int64_t iterations = 1;
@@ -610,7 +638,6 @@ namespace dd
 
         for (TorchBatch batch : *dataloader)
           {
-
             auto tstart = steady_clock::now();
             if (_masked_lm)
               {

@@ -33,6 +33,7 @@
 #include "backends/torch/db_lmdb.hpp"
 
 #include "inputconnectorstrategy.h"
+#include "torchdataaug.h"
 #include "torchutils.h"
 
 #include <opencv2/opencv.hpp>
@@ -79,7 +80,8 @@ namespace dd
         = nullptr;               /**< back ptr to input connector. */
     bool _classification = true; /**< whether a classification dataset. */
 
-    bool _image = false; /**< whether an image dataset. */
+    bool _image = false;                /**< whether an image dataset. */
+    TorchImgRandAugCV _img_rand_aug_cv; /**< image data augmentation policy. */
 
     /**
      * \brief empty constructor
@@ -98,7 +100,8 @@ namespace dd
           _logger(d._logger), _shuffle(d._shuffle), _dbData(d._dbData),
           _indices(d._indices), _lfiles(d._lfiles), _batches(d._batches),
           _dbFullName(d._dbFullName), _inputc(d._inputc),
-          _classification(d._classification), _image(d._image)
+          _classification(d._classification), _image(d._image),
+          _img_rand_aug_cv(d._img_rand_aug_cv)
     {
     }
 
