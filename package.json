@@ -1,7 +1,7 @@
 {
   "name": "deepdetect",
   "description": "Open Source Deep Learning Server & API",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "devDependencies": {
     "standard-version": "^9.0.0"
   },

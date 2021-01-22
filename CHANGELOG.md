@@ -1,5 +1,30 @@
 # DeepDetect: Open Source Deep Learning Server & API (Changelog)
 
+## 0.13.0 (2021-01-22)
+
+
+### Features
+
+* support for batches for NCNN image models ([b85d79e](https://github.com/jolibrain/deepdetect/commit/b85d79e673ac28d0f1bcf65a1773990bff6cd0b4))
+* **ml:** retain_graph control via API for torch autograd ([d109558](https://github.com/jolibrain/deepdetect/commit/d109558f20c7aba2eda6ef16eb884845bf816638))
+* **ml:** torch image basic data augmentation ([b9f8525](https://github.com/jolibrain/deepdetect/commit/b9f85251380c0483268488c07990db3a68f5a4ee))
+* **ncnn:** use master from tencent/ncnn ([044e181](https://github.com/jolibrain/deepdetect/commit/044e1811223c1c6843a35363cf4b29aed5394003))
+* upgrade oatpp to pre-1.2.5 ([596f6f4](https://github.com/jolibrain/deepdetect/commit/596f6f4c4098468ff3b2f3276bf5e6f8043edb27))
+
+
+### Bug Fixes
+
+* **torch:** csvts forecast mode needs sequence of length backcast during predict ([4c89a1c](https://github.com/jolibrain/deepdetect/commit/4c89a1c0e22a34afaf2433e675fb7fb9a32add43))
+* add missing spdlog patch ([4d0a4fa](https://github.com/jolibrain/deepdetect/commit/4d0a4fa1f281a1ab2067a3801ed49c0122c604a7))
+* caffe linkage with our spdlog ([967fdef](https://github.com/jolibrain/deepdetect/commit/967fdefb4497b71b3274ade8d64f50c019f3f034))
+* copy .git in docker image builder ([570323d](https://github.com/jolibrain/deepdetect/commit/570323d91518bb2f62e7555da80549e6521598cf))
+* deactivate the csvts NCNN test when caffe is not built ([5a5c8f1](https://github.com/jolibrain/deepdetect/commit/5a5c8f12227a629f656ca016e28d2a9f35d1e3d1))
+* missing support for parent_id in chains with Python client ([a5fad50](https://github.com/jolibrain/deepdetect/commit/a5fad50b2c698418f81cab9d714e4ddd13081839))
+* NCNN chain with images and actions ([38b1d07](https://github.com/jolibrain/deepdetect/commit/38b1d076ddddac0ef126e0eb63f08e019b62f15c))
+* throw if hard image read error in caffe classification input ([f1c0d09](https://github.com/jolibrain/deepdetect/commit/f1c0d09d511ea63f65def260cce5577455fb897e))
+* **doc:** similarity search_nn number of results API ([5eaf343](https://github.com/jolibrain/deepdetect/commit/5eaf3435d39db77ee0a4fed725eb257718805a45))
+* **torch:** remove potential segfault in csvts connector ([ba96b4e](https://github.com/jolibrain/deepdetect/commit/ba96b4ea4ff6315194e0d9150934a380bbac265e))
+
 ## 0.12.0 (2021-01-08)
 
 
