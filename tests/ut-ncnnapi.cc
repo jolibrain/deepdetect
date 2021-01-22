@@ -176,6 +176,7 @@ TEST(ncnnapi, service_predict_classification)
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"].Size() == 1000);
 }
 
+#ifdef USE_CAFFE
 TEST(ncnnapi, service_lstm)
 {
   // create service
@@ -297,3 +298,4 @@ TEST(ncnnapi, service_lstm)
   ASSERT_EQ(ok_str, joutstr);
   rmdir(csvts_repo.c_str());
 }
+#endif

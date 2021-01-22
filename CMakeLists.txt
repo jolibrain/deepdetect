@@ -10,7 +10,6 @@ option(USE_TF "use TF backend" OFF)
 option(USE_NCNN "use NCNN backend" OFF)
 option(USE_TORCH "use libtorch backend" OFF)
 option(USE_HDF5 "use HDF5" ON)
-option(USE_CAFFE "use Caffe backend" ON)
 option(USE_TENSORRT "use TensorRT backend" OFF)
 option(USE_TENSORRT_OSS "alias of USE_TENSORRT" OFF)
 option(USE_XGBOOST "use XGBOOST backend" OFF)
@@ -782,7 +781,8 @@ if (USE_TORCH)
   # TORCH VISION
   message(STATUS "Configuring Pytorch Vision")
   # set(PYTORCH_VISION_COMMIT "v0.6.0") # 0.6 & torch 1.5
-  set(PYTORCH_VISION_COMMIT "v0.7.0") # 0.7 & torch 1.6
+  #set(PYTORCH_VISION_COMMIT "v0.7.0") # 0.7 & torch 1.6
+  set(PYTORCH_VISION_COMMIT "v0.8.2") # 0.8.2 & torch 1.7.1
   set(TORCHVISION_LOCATION "${CMAKE_BINARY_DIR}/pytorch_vision/src/pytorch_vision-install")
   ExternalProject_Add(
     pytorch_vision
