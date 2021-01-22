@@ -186,36 +186,19 @@ namespace dd
       }
 
     APIData ad_output = ad.getobj("parameters").getobj("output");
-
-    // Get bbox
-    bool bbox = false;
-    if (ad_output.has("bbox"))
-      bbox = ad_output.get("bbox").get<bool>();
-
-    // Ctc model
-    bool ctc = false;
-    int blank_label = -1;
-    if (ad_output.has("ctc"))
-      {
-        ctc = ad_output.get("ctc").get<bool>();
-        if (ctc)
-          {
-            if (ad_output.has("blank_label"))
-              blank_label = ad_output.get("blank_label").get<int>();
-          }
-      }
+    auto output_params
+        = ad_output.createSharedDTO<PredictOutputParametersDto>();
 
     // Extract detection or classification
-    int ret = 0;
     std::string out_blob;
     if (_init_dto->outputBlob != nullptr)
       out_blob = _init_dto->outputBlob->std_str();
 
     if (out_blob.empty())
       {
-        if (bbox == true)
+        if (output_params->bbox == true)
           out_blob = "detection_out";
-        else if (ctc == true)
+        else if (output_params->ctc == true)
           out_blob = "probs";
         else if (_timeserie)
           out_blob = "rnn_pred";
@@ -223,26 +206,13 @@ namespace dd
           out_blob = "prob";
       }
 
+    // Get best
+    if (output_params->best == -1 || output_params->best > _init_dto->nclasses)
+      output_params->best = _init_dto->nclasses;
+
     std::vector<APIData> vrad;
 
-    // Get confidence_threshold
-    float confidence_threshold = 0.0;
-    if (ad_output.has("confidence_threshold"))
-      {
-        apitools::get_float(ad_output, "confidence_threshold",
-                            confidence_threshold);
-      }
-
-    // Get best
-    int best = -1;
-    if (ad_output.has("best"))
-      {
-        best = ad_output.get("best").get<int>();
-      }
-    if (best == -1 || best > _init_dto->nclasses)
-      best = _init_dto->nclasses;
-
-      // for loop around batch size
+    // for loop around batch size
 #pragma omp parallel for num_threads(*_init_dto->threads)
     for (size_t b = 0; b < inputc._ids.size(); b++)
       {
@@ -256,13 +226,13 @@ namespace dd
         ex.set_num_threads(_init_dto->threads);
         ex.input(_init_dto->inputBlob->c_str(), inputc._in.at(b));
 
-        ret = ex.extract(out_blob.c_str(), inputc._out.at(b));
+        int ret = ex.extract(out_blob.c_str(), inputc._out.at(b));
         if (ret == -1)
           {
             throw MLLibInternalException("NCNN internal error");
           }
 
-        if (bbox == true)
+        if (output_params->bbox == true)
           {
             std::string uri = inputc._ids.at(b);
             auto bit = inputc._imgs_size.find(uri);
@@ -282,7 +252,7 @@ namespace dd
             for (int i = 0; i < inputc._out.at(b).h; i++)
               {
                 const float *values = inputc._out.at(b).row(i);
-                if (values[1] < confidence_threshold)
+                if (values[1] < output_params->confidence_threshold)
                   break; // output is sorted by confidence
 
                 cats.push_back(this->_mlmodel.get_hcorresp(values[0]));
@@ -300,7 +270,7 @@ namespace dd
                 bboxes.push_back(ad_bbox);
               }
           }
-        else if (ctc == true)
+        else if (output_params->ctc == true)
           {
             int alphabet = inputc._out.at(b).w;
             int time_step = inputc._out.at(b).h;
@@ -313,11 +283,11 @@ namespace dd
               }
 
             std::vector<int> pred_label_seq;
-            int prev = blank_label;
+            int prev = output_params->blank_label;
             for (int t = 0; t < time_step; ++t)
               {
                 int cur = pred_label_seq_with_blank[t];
-                if (cur != prev && cur != blank_label)
+                if (cur != prev && cur != output_params->blank_label)
                   pred_label_seq.push_back(cur);
                 prev = cur;
               }
@@ -365,12 +335,13 @@ namespace dd
                 vec[i] = std::make_pair(cls_scores[i], i);
               }
 
-            std::partial_sort(vec.begin(), vec.begin() + best, vec.end(),
+            std::partial_sort(vec.begin(), vec.begin() + output_params->best,
+                              vec.end(),
                               std::greater<std::pair<float, int>>());
 
-            for (int i = 0; i < best; i++)
+            for (int i = 0; i < output_params->best; i++)
               {
-                if (vec[i].first < confidence_threshold)
+                if (vec[i].first < output_params->confidence_threshold)
                   continue;
                 cats.push_back(this->_mlmodel.get_hcorresp(vec[i].second));
                 probs.push_back(vec[i].first);
@@ -380,7 +351,7 @@ namespace dd
         rad.add("uri", inputc._ids.at(b));
         rad.add("loss", 0.0);
         rad.add("cats", cats);
-        if (bbox == true)
+        if (output_params->bbox == true)
           rad.add("bboxes", bboxes);
         if (_timeserie)
           {
@@ -402,7 +373,7 @@ namespace dd
     tout.add_results(vrad);
     int nclasses = this->_init_dto->nclasses;
     out.add("nclasses", nclasses);
-    if (bbox == true)
+    if (output_params->bbox == true)
       out.add("bbox", true);
     out.add("roi", false);
     out.add("multibox_rois", false);
