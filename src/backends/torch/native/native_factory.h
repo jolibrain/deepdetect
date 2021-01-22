@@ -25,6 +25,7 @@
 #include "native_net.h"
 #include "./templates/nbeats.h"
 #include "./templates/vit.h"
+#include "./templates/ttransformer.h"
 #include "../torchinputconns.h"
 #include "apidata.h"
 #include "templates/vision_models.h"
@@ -35,14 +36,16 @@ namespace dd
   {
   public:
     template <class TInputConnectorStrategy>
-    static NativeModule *from_template(const std::string tdef,
-                                       const APIData &template_params,
-                                       const TInputConnectorStrategy &inputc);
+    static NativeModule *
+    from_template(const std::string tdef, const APIData &template_params,
+                  const TInputConnectorStrategy &inputc,
+                  const std::shared_ptr<spdlog::logger> &logger);
 
     static bool valid_template_def(std::string tdef)
     {
       if (tdef.find("nbeats") != std::string::npos
-          || tdef.find("vit") != std::string::npos)
+          || tdef.find("vit") != std::string::npos
+          || tdef.find("ttransformer") != std::string::npos)
         return true;
       else if (VisionModelsFactory::is_vision_template(tdef))
         return true;
@@ -51,7 +54,8 @@ namespace dd
 
     static bool is_timeserie(std::string tdef)
     {
-      if (tdef.find("nbeats") != std::string::npos)
+      if (tdef.find("nbeats") != std::string::npos
+          || tdef.find("ttransformer") != std::string::npos)
         return true;
       return false;
     }

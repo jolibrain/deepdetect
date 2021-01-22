@@ -91,6 +91,11 @@ if (USE_TORCH)
     backends/torch/db_lmdb.cpp
     backends/torch/native/templates/nbeats.cc
     backends/torch/native/templates/vit.cc
+    backends/torch/native/templates/ttransformer.cc
+    backends/torch/native/templates/ttransformer/tembedder.cc
+    backends/torch/native/templates/ttransformer/positionalenc.cc
+    backends/torch/native/templates/ttransformer/tencoder.cc
+    backends/torch/native/templates/ttransformer/tdecoder.cc
     backends/torch/native/native_factory.cc
 	graph/basegraph.cc
     graph/operators.cc
