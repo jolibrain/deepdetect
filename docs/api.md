@@ -746,7 +746,8 @@ self_supervised | string | yes      | ""      | self-supervised mode: "mask" for
 embedding_size  | int    | yes      | 768     | embedding size for NLP models
 freeze_traced   | bool   | yes      | false   | Freeze the traced part of the net during finetuning (e.g. for classification)
 retain_graph	| bool	 | yes	    | false   | Whether to use `retain_graph` with torch autograd
-template        | string | yes      | ""      | for language models, either "bert" or "gpt2", "recurrent" for LSTM-like models (including autoencoder), "nbeats" for nbeats model, "vit" for vision transformer
+template        | string | yes      | ""      | for language models, either "bert" or "gpt2", "recurrent" for LSTM-like models (including autoencoder), "nbeats" for nbeats model, "vit" for vision transformer, "ttransformer" for transformer-based timeseries models
+template_params | dict   | yes      | template dependent | Model parameter for nbeats and ttransformer (see below)
 regression | bool            | yes                      | false   | Whether the model is a regressor
 timesteps     | int            | yes      | N/A            | Number of timesteps for time models (LSTM/NBEATS...) : this sets the length of sequences that will be given for learning, every timestep contains inputs and outputs as defined by the csv/csvts connector
 offset        | int            | yes      | N/A            | Offset beween start point of sequences with connector `cvsts`, defining the overlap of input series
@@ -754,14 +755,38 @@ forecast_timesteps      | int            | yes      | N/A       | for nbeats mod
 backcast_timesteps      | int            | yes      | N/A       | for nbeats model, this gives the length of the backcast
 
 
-Model instantiation parameters:
+Model instantiation parameters for recurrent template:
+
+Parameter       | Template  | Type            | Default                      | Description
+---------       | --------- | ------          | ---------------------------- | -----------
+layers          | recurrent | array of string | []                           | ["L50","L50"] means 2 layers of LSTMs with hidden size of 50. ["L100","L100", "T", "L300"] means an lstm autoencoder with encoder composed of 2 LSTM layers of hidden size 100 and decoder is one LSTM layer of hidden size 300
+
+
+Template parameters for native  templates (nbeats/ttransformer):
 
 Parameter       | Template  | Type            | Default                      | Description
 ---------       | --------- | ------          | ---------------------------- | -----------
 template_params.stackdef | nbeats    | array of string | ["t2","s8","g3","b3","h10" ] | default means: trend stack with theta = 2, seasonal stack with theta = 8 , generic stack with theta = 3, 3 blocks per stacks, hidden unit size of 10 everywhere
 template_params.vit_flavor | vit | string | vit_base_patch16 | Vision transformer architecture, from smaller to larger: vit_tiny_patch16, vit_small_patch16, vit_base_patch32, vit_base_patch16, vit_large_patch16, vit_large_patch32, vit_huge_patch16, vit_huge_patch32
 template_params.realformer | vit | bool | false | Whether to use the 'realformer' residual among attention heads
-layers          | recurrent | array of string | []                           | ["L50","L50"] means 2 layers of LSTMs with hidden size of 50. ["L100","L100", "T", "L300"] means an lstm autoencoder with encoder composed of 2 LSTM layers of hidden size 100 and decoder is one LSTM layer of hidden size 300
+template_params.positional_encoding.type | ttransformer | string | "sincos" | Positional encoding "sincos for original frequential encoding, "naive" for simple enumeration
+template_params.positional_encoding.learn | ttransformer | bool | false | learn or not positional encoding (starting from above value)
+template_params.positional_encoding.dropout | ttransformer | float | 0.1 | value of dropout in positional encodin
+template_params.embed.layers | ttransformer | int | 3 | Number of layers of MLP value embedder
+template_params.embed.activation | ttransformer | string | relu | "relu", "gelu" or "siren" : activation type of MLP embedder
+template_params.embed.dim | ttransformer | int | 32 | size of embedding for MLP embedder (per timestep) (embed.dim must be divisible by encoder.heads)
+template_params.embed.type | ttransformer | string | step | "step" embeds every step separately, "serie" embeds every serie separately, "all" embeds all timesteps of all serie at once (needs a lot of memory")
+template_params.embed.dropout | ttransformer | float | 0.1 | value of dropout in MLP embedder
+template_params.encoder.heads | ttransformer | int | 8 | number of heads for transformer encoder (embed.dim must be divisible by encoder.heads)
+template_params.encoder.layers | ttransformer | int | 1 | number of layers in transformer encoder
+template_params.encoder.hidden_dim | ttransformer | int | input_dim * embed.dim | internal dim of feedfoward net in encoder layer
+template_params.encoder.activation | ttransformer | string | relu | "relu" or "gelu"
+template_params.encoder.dropout | ttransformer | float | 0.1 | dropout value for encoder stack
+template_params.decoder.type | ttransformer | string | simple | simple is a MLP, "transformer" is attention based decoder
+template_params.decoder.heads | ttransformer | int | 8 | number of heads for transformer decoder (if any)
+template_params.decoder.layers | ttransformer | int | 1 | number of layers of decoder
+template_params.decoder.dropout | ttransformer | float | 0.1 | dropout value for decoder stack
+template_params.autoreg | ttransformer | bool | false | false for nbeats style decoding, ie gives a window of prediction at one, true for autoregressive, ie predicts value one after the others then use previsouly predicted values as a context
 
 
 Solver:
