@@ -39,6 +39,7 @@ static std::string squeezenet_ssd_repo
     = "../examples/ncnn/squeezenet_ssd_ncnn/";
 static std::string squeezenet_repo = "../examples/ncnn/squeezenet_ncnn/";
 static std::string incept_repo = "../examples/ncnn/squeezenet_ssd_ncnn/";
+static std::string ocr_repo = "../examples/ncnn/ocr/";
 static std::string sinus = "../examples/all/sinus/";
 static std::string model_templates_repo = "../templates/caffe/";
 static std::string gpuid = "0"; // change as needed
@@ -299,3 +300,33 @@ TEST(ncnnapi, service_lstm)
   rmdir(csvts_repo.c_str());
 }
 #endif
+
+TEST(ncnnapi, ocr)
+{
+  // create service
+  JsonAPI japi;
+  std::string sname = "ocr";
+  std::string jstr
+      = "{\"mllib\":\"ncnn\",\"description\":\"ocr\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+        + ocr_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"ctc\":"
+          "true, \"height\":136,\"width\":220},\"mllib\":{\"nclasses\":69}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // predict
+  std::string jpredictstr = "{\"service\":\"ocr\",\"parameters\":{\"input\":{}"
+                            ",\"output\":{\"confidence_threshold\":0,\"ctc\":"
+                            "true,\"blank_label\":0}},\"data\":[\""
+                            + ocr_repo + "word_ocr.jpg\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  JDoc jd;
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+  ASSERT_TRUE(jd["body"]["predictions"].Size() == 1);
+  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["cat"] == "beleved");
+}

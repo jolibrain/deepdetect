@@ -689,7 +689,8 @@ if (USE_NCNN)
     ${NCNN_PATCHES_PATH}/ncnn_lstm_cont.patch
     ${NCNN_PATCHES_PATH}/ncnn_variable_h.patch
     ${NCNN_PATCHES_PATH}/ncnn_flatten_axis.patch
-  )
+    ${NCNN_PATCHES_PATH}/ncnn_cont_indic.patch
+    )
 
   set(NCNN_VERSION "20201218")
   set(NCNN_TARBALL_HASH "1dac4571168b83ee99efaba969c01e8054cd8e3d9b67ca4893f32b767ab4ec48")
