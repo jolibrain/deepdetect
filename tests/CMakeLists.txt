@@ -277,7 +277,16 @@ if (USE_NCNN)
     "examples/ncnn"
     "squeezenet-ncnn-caffe.tar.gz"
     "squeezenet_ncnn"
-  )
+    )
+
+  DOWNLOAD_DATASET(
+    "NCNN OCR model"
+    "https://www.deepdetect.com/dd/examples/ncnn/multiword_ocr_ncnn.tar.gz"
+    "examples/ncnn"
+    "multiword_ocr_ncnn.tar.gz"
+    "ocr"
+    )
+
 
   if(USE_JSON_API)
     # REGISTER_TEST(ut_ncnnapi ut-ncnnapi.cc)
