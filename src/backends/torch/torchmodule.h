@@ -35,7 +35,9 @@
 #include "native/native_net.h"
 #include <torch/script.h>
 #include <torch/nn/pimpl.h>
+#if !defined(CPU_ONLY)
 #include <torch/nn/parallel/data_parallel.h>
+#endif
 
 namespace dd
 {

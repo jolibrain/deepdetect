@@ -316,13 +316,18 @@ namespace dd
                                   const std::vector<torch::Device> &devices)
   {
     // Normal forward if only one device
+#if !defined(CPU_ONLY)
     if (devices.size() <= 1)
       {
+#endif
         if (!devices.empty())
           to(devices[0]);
         return forward(source);
+#if !defined(CPU_ONLY)
       }
+#endif
 
+#if !defined(CPU_ONLY)
     // graph and native modules take only one tensor as input for now
     if (_graph)
       {
@@ -354,6 +359,7 @@ namespace dd
             _linear, torch_utils::to_tensor_safe(out_val), devices, _device);
       }
     return out_val;
+#endif
   }
 
   c10::IValue TorchModule::extract(std::vector<c10::IValue> source,

@@ -1732,6 +1732,7 @@ TEST(torchapi, image_extract)
   ASSERT_EQ(jd["body"]["predictions"][0]["vals"].Size(), 1000);
 }
 
+#ifndef CPU_ONLY
 TEST(torchapi, service_train_ranger)
 {
   setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
@@ -1988,3 +1989,5 @@ TEST(torchapi, service_train_vit_images_multigpu)
   fileops::remove_dir(vit_train_repo + "train.lmdb");
   fileops::remove_dir(vit_train_repo + "test_0.lmdb");
 }
+
+#endif
