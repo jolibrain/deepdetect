@@ -10,11 +10,10 @@
 #endif
 
 #include <spdlog/spdlog.h>
-
 #ifdef USE_DD_SYSLOG
-#if SPDLOG_VER_MAJOR > 0
-#include <spdlog/sinks/syslog_sinks.h>
-#endif
+#include <spdlog/sinks/syslog_sink.h>
+#else
+#include <spdlog/sinks/stdout_sinks.h>
 #endif
 
 #include <boost/algorithm/string.hpp>
