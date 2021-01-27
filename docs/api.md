@@ -204,6 +204,7 @@ label        | string          | no       | N/A     | Label column name
 ignore       | array of string | yes      | empty   | Array of column names to ignore
 label_offset | int             | yes      | 0       | Negative offset (e.g. -1) so that labels range from 0 onward
 separator    | string          | yes      | ','     | Column separator character
+quote	     | string	       | yes	  | '"'	    | Quote character in CSV file
 id           | string          | yes      | empty   | Column name of the training examples identifier field, if any
 scale        | bool            | yes      | false   | Whether to scale all values into [0,1]
 categoricals | array           | yes      | empty   | List of categorical variables
@@ -216,6 +217,7 @@ Parameter | Type            | Optional | Default | Description
 label     | string          | no       | N/A     | Label column name
 ignore    | array of string | yes      | empty   | Array of column names to ignore
 separator | string          | yes      | ','     | Column separator character
+quote	  | string	       | yes	  | '"'	    | Quote character in CSV file
 id        | string          | yes      | empty   | Column name of the training examples identifier field, if any
 scale     | bool            | yes      | false   | Whether to scale all values into [0,1]
 db        | bool            | yes      | false   | whether to gather data into a database, useful for very large datasets, allows treatment in constant-size memory
@@ -601,6 +603,7 @@ label                | string          | no       | N/A     | Label column name
 ignore               | array of string | yes      | empty   | Array of column names to ignore
 label_offset         | int             | yes      | 0       | Negative offset (e.g. -1) s othat labels range from 0 onward
 separator            | string          | yes      | ','     | Column separator character
+quote	             | string	       | yes	  | '"'	    | Quote character in CSV file
 id                   | string          | yes      | empty   | Column name of the training examples identifier field, if any
 scale                | bool            | yes      | false   | Whether to scale all values into [0,1]
 min_vals,max_vals    | array           | yes      | empty   | Instead of `scale`, provide the scaling parameters, as returned from a training call
@@ -619,6 +622,7 @@ label             | string          | no       | N/A     | Label column name
 ignore            | array of string | yes      | empty   | Array of column names to ignore
 label_offset      | int             | yes      | 0       | Negative offset (e.g. -1) s othat labels range from 0 onward
 separator         | string          | yes      | ','     | Column separator character
+quote	          | string	       | yes	  | '"'	    | Quote character in CSV file
 id                | string          | yes      | empty   | Column name of the training examples identifier field, if any
 scale             | bool            | yes      | false   | Whether to scale all values into [0,1]
 min_vals,max_vals | array           | yes      | empty   | Instead of `scale`, provide the scaling parameters, as returned from a training call
@@ -1034,6 +1038,7 @@ Parameter            | Type            | Optional | Default | Description
 ---------            | ----            | -------- | ------- | -----------
 ignore               | array of string | yes      | empty   | Array of column names to ignore
 separator            | string          | yes      | ','     | Column separator character
+quote	             | string	       | yes	  | '"'	    | Quote character in CSV file
 id                   | string          | yes      | empty   | Column name of the training examples identifier field, if any
 scale                | bool            | yes      | false   | Whether to scale all values into [0,1]
 min_vals,max_vals    | array           | yes      | empty   | Instead of `scale`, provide the scaling parameters, as returned from a training call
@@ -1204,6 +1209,7 @@ label                | string          | no       | N/A     | Label column name
 ignore               | array of string | yes      | empty   | Array of column names to ignore
 label_offset         | int             | yes      | 0       | Negative offset (e.g. -1) s othat labels range from 0 onward
 separator            | string          | yes      | ','     | Column separator character
+quote	             | string	       | yes	  | '"'	    | Quote character in CSV file
 id                   | string          | yes      | empty   | Column name of the training examples identifier field, if any
 scale                | bool            | yes      | false   | Whether to scale all values into [0,1]
 min_vals,max_vals    | array           | yes      | empty   | Instead of `scale`, provide the scaling parameters, as returned from a training call
