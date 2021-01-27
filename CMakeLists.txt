@@ -690,19 +690,17 @@ if (USE_NCNN)
 
   set(NCNN_VERSION "20201218")
   set(NCNN_TARBALL_HASH "1dac4571168b83ee99efaba969c01e8054cd8e3d9b67ca4893f32b767ab4ec48")
+  set(NCNN_BUILD_FLAGS -DCMAKE_BUILD_TYPE=Release -DNCNN_BUILD_EXAMPLES=OFF -DNCNN_BUILD_BENCHMARK=OFF -DNCNN_BUILD_TOOLS=OFF -DNCNN_BUILD_TESTS=OFF)
 
   if (RPI3)
     ExternalProject_Add(
       ncnn
       PREFIX ncnn
-      GIT_REPOSITORY https://github.com/tencent/ncnn.git
-      GIT_TAG ${NCNN_VERSION}
       URL https://github.com/Tencent/ncnn/releases/download/${NCNN_VERSION}/ncnn-${NCNN_VERSION}-full-source.zip
       URL_HASH SHA256=${NCNN_TARBALL_HASH}
       PATCH_COMMAND ${CMAKE_SOURCE_DIR}/cmake/patches-apply.sh ${NCNN_PATCHES}
-      CMAKE_ARGS -DPI3=ON -DCMAKE_TOOLCHAIN_FILE=../toolchains/pi3.toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DProtobuf_INCLUDE_DIR=${CMAKE_BINARY_DIR}/protobuf/src/protobuf/src -DProtobuf_LIBRARIES=${PROTOBUF_LIB_DIR}/libprotobuf.so -DProtobuf_PROTOC_EXECUTABLE=${PROTOBUF_LIB_DIR}/protoc -DNCNN_BUILD_EXAMPLES=OFF -DNCNN_BUILD_BENCHMARK=OFF -DNCNN_BUILD_TOOLS=OFF -DNCNN_BUILD_TESTS=OFF
+      CMAKE_ARGS -DPI3=ON -DCMAKE_TOOLCHAIN_FILE=../toolchains/pi3.toolchain.cmake ${NCNN_BUILD_FLAGS}
       INSTALL_COMMAND ""
-      DEPENDS protobuf
     )
   else ()
     ExternalProject_Add(
@@ -711,9 +709,8 @@ if (USE_NCNN)
       URL https://github.com/Tencent/ncnn/releases/download/${NCNN_VERSION}/ncnn-${NCNN_VERSION}-full-source.zip
       URL_HASH SHA256=${NCNN_TARBALL_HASH}
       PATCH_COMMAND ${CMAKE_SOURCE_DIR}/cmake/patches-apply.sh ${NCNN_PATCHES}
-      CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DProtobuf_INCLUDE_DIR=${CMAKE_BINARY_DIR}/protobuf/src/protobuf/src -DProtobuf_LIBRARIES=${PROTOBUF_LIB_DIR}/libprotobuf.so -DProtobuf_PROTOC_EXECUTABLE=${PROTOBUF_LIB_DIR}/protoc -DNCNN_BUILD_EXAMPLES=OFF -DNCNN_BUILD_BENCHMARK=OFF -DNCNN_BUILD_TOOLS=OFF -DNCNN_BUILD_TESTS=OFF
+      CMAKE_ARGS ${NCNN_BUILD_FLAGS}
       INSTALL_COMMAND ""
-      DEPENDS protobuf
       )
   endif()
 
