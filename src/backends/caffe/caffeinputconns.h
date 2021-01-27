@@ -358,6 +358,13 @@ namespace dd
                         "segmentation input test file " + _uris.at(1)
                         + " not found");
                 }
+              if (_uris.size() > 2)
+                {
+                  _logger->error(
+                      "multiple test sets not supported by caffe backend yet");
+                  throw InputConnectorBadParamException(
+                      "multiple test sets not supported by caffe backend yet");
+                }
 
               // class weights if any
               write_class_weights(_model_repo, ad_mllib);
@@ -389,6 +396,13 @@ namespace dd
                     throw InputConnectorBadParamException(
                         "object detection input test file " + _uris.at(1)
                         + " not found");
+                }
+              if (_uris.size() > 2)
+                {
+                  _logger->error(
+                      "multiple test sets not supported by caffe backend yet");
+                  throw InputConnectorBadParamException(
+                      "multiple test sets not supported by caffe backend yet");
                 }
 
               // - create lmdbs
@@ -450,6 +464,13 @@ namespace dd
                   /*if (!fileops::file_exists(_model_repo + "/" + _dbname))
                     throw ex;*/
                   return;
+                }
+              if (_uris.size() > 2)
+                {
+                  _logger->error(
+                      "multiple test sets not supported by caffe backend yet");
+                  throw InputConnectorBadParamException(
+                      "multiple test sets not supported by caffe backend yet");
                 }
               if (!this->_db)
                 {
@@ -611,11 +632,12 @@ namespace dd
     {
     }
 
-    int read_file(const std::string &fname);
+    int read_file(const std::string &fname, int test_id);
     int read_db(const std::string &fname);
     int read_mem(const std::string &content);
-    int read_dir(const std::string &dir)
+    int read_dir(const std::string &dir, int test_id)
     {
+      (void)test_id;
       throw InputConnectorBadParamException(
           "uri " + dir + " is a directory, requires a CSV file");
     }
@@ -754,12 +776,23 @@ namespace dd
                   _db = true;
                   return; // done
                 }
-              _csvdata_test = std::move(_csvdata);
+              // MULTIPLE TEST SETS : we consider here only 1 test set
+              _csvdata_tests.push_back(std::move(_csvdata));
             }
           else
             _csvdata.clear();
-          auto hit = _csvdata_test.begin();
-          while (hit != _csvdata_test.end())
+          if (_csvdata_tests.size() > 1)
+            {
+              _logger->error(
+                  "multiple test sets not supported by caffe backend yet");
+              throw InputConnectorBadParamException(
+                  "multiple test sets not supported by caffe backend yet");
+            }
+
+          // MULTIPLE TEST SETS : we consider here only 1 test set
+          auto hit = _csvdata_tests[0].begin();
+          // MULTIPLE TEST SETS : we consider here only 1 test set
+          while (hit != _csvdata_tests[0].end())
             {
               // no ids taken on the test set
               if (_label.size() == 1)
@@ -779,9 +812,11 @@ namespace dd
                 this->_ids.push_back((*hit)._str);
               ++hit;
             }
-          _csvdata_test.clear();
+          // MULTIPLE TEST SETS : we consider here only 1 test set
+          _csvdata_tests[0].clear();
         }
-      _csvdata_test.clear();
+      // MULTIPLE TEST SETS : we consider here only 1 test set
+      _csvdata_tests[0].clear();
     }
 
     std::vector<caffe::Datum> get_dv_test(const int &num,
@@ -1192,36 +1227,46 @@ namespace dd
                   _db = true;
                   return; // done
                 }
-              _test_txt = std::move(_txt);
+              // MULTIPLE TEST SETS : we consider here only 1 test set
+              //              _test_txt = std::move(_txt);
+              _tests_txt.resize(1);
+              _tests_txt.push_back(std::move(_txt));
             }
 
           int n = 0;
-          auto hit = _test_txt.begin();
-          while (hit != _test_txt.end())
+          // MULTIPLE TEST SETS: here we push all tests in dv_test w/o taking
+          // into account rank into request. this is okay for prediction, but
+          // will do weird stuff when multiple test sets will be implemented on
+          // caffe side
+          for (size_t i = 0; i < _tests_txt.size(); ++i)
             {
-              if (!_sparse)
+              auto hit = _tests_txt[i].begin();
+              while (hit != _tests_txt[i].end())
                 {
-                  if (_characters)
-                    _dv_test.push_back(std::move(to_datum<TxtCharEntry>(
-                        static_cast<TxtCharEntry *>((*hit)))));
-                  else
-                    _dv_test.push_back(std::move(to_datum<TxtBowEntry>(
-                        static_cast<TxtBowEntry *>((*hit)))));
-                }
-              else
-                {
-                  if (_characters)
+                  if (!_sparse)
                     {
-                      // TODO
+                      if (_characters)
+                        _dv_test.push_back(std::move(to_datum<TxtCharEntry>(
+                            static_cast<TxtCharEntry *>((*hit)))));
+                      else
+                        _dv_test.push_back(std::move(to_datum<TxtBowEntry>(
+                            static_cast<TxtBowEntry *>((*hit)))));
                     }
                   else
-                    _dv_test_sparse.push_back(std::move(
-                        to_sparse_datum(static_cast<TxtBowEntry *>((*hit)))));
+                    {
+                      if (_characters)
+                        {
+                          // TODO
+                        }
+                      else
+                        _dv_test_sparse.push_back(std::move(to_sparse_datum(
+                            static_cast<TxtBowEntry *>((*hit)))));
+                    }
+                  if (!_train)
+                    this->_ids.push_back(std::to_string(n));
+                  ++hit;
+                  ++n;
                 }
-              if (!_train)
-                this->_ids.push_back(std::to_string(n));
-              ++hit;
-              ++n;
             }
         }
     }

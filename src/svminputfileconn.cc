@@ -26,8 +26,9 @@ namespace dd
 {
 
   /*- DDSvm -*/
-  int DDSvm::read_file(const std::string &fname)
+  int DDSvm::read_file(const std::string &fname, int test_id)
   {
+    (void)test_id;
     if (_cifc)
       {
         _cifc->read_svm(_adconf, fname);

@@ -201,29 +201,41 @@ namespace dd
 
   int TorchSolver::resume(const APIData &ad_mllib, const TorchModel &mlmodel,
                           const torch::Device &main_device,
-                          double &best_metric_value,
-                          int64_t &best_iteration_number)
+                          std::vector<double> &best_metric_values,
+                          std::vector<int64_t> &best_iteration_numbers,
+                          const std::vector<std::string> &set_names)
   {
     // reload solver if asked for and set it value accordingly
     if (ad_mllib.has("resume") && ad_mllib.get("resume").get<bool>())
       {
-        std::string bestfilename
-            = mlmodel._repo + mlmodel._best_model_filename;
-        std::ifstream bestfile;
-        try
+        for (size_t test_id = 0; test_id < best_iteration_numbers.size();
+             ++test_id)
           {
-            std::string tmp;
-            std::string bin;
-            bestfile.open(bestfilename, std::ios::in);
-            // first three fields are thrown away
-            bestfile >> tmp >> bin >> tmp >> tmp;
-            bestfile.close();
-            best_iteration_number = std::atof(bin.c_str());
-            best_metric_value = std::atof(tmp.c_str());
-          }
-        catch (std::exception &e)
-          {
-            _logger->info("no previous best model file");
+            std::string bestfilename
+                = mlmodel._repo
+                  + fileops::insert_suffix("_test_" + std::to_string(test_id),
+                                           mlmodel._best_model_filename);
+            std::ifstream bestfile;
+            try
+              {
+                std::string tmp;
+                std::string bin;
+                std::string test_name;
+                bestfile.open(bestfilename, std::ios::in);
+                // first three fields are thrown away
+                bestfile >> tmp >> bin >> tmp >> tmp >> tmp >> test_name;
+                if (test_name != set_names[test_id])
+                  _logger->warn(
+                      "test names not matching: {} (API) vs {} (file)",
+                      set_names[test_id], test_name);
+                bestfile.close();
+                best_iteration_numbers[test_id] = std::atof(bin.c_str());
+                best_metric_values[test_id] = std::atof(tmp.c_str());
+              }
+            catch (std::exception &e)
+              {
+                _logger->info("no previous best model file");
+              }
           }
         if (mlmodel._sstate.empty())
           {

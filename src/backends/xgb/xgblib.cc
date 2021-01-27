@@ -352,9 +352,10 @@ namespace dd
             std::vector<std::string> meas_str = meas_obj.list_keys();
             for (auto m : meas_str)
               {
-                if (m != "cmdiag" && m != "cmfull"
-                    && m != "labels") // do not report confusion matrix in
-                                      // server logs
+                if (m != "cmdiag" && m != "cmfull" && m != "labels"
+                    && m != "test_id"
+                    && m != "test_name") // do not report confusion matrix in
+                                         // server logs
                   {
                     double mval = meas_obj.get(m).get<double>();
                     this->_logger->info("{}={}", m, mval);

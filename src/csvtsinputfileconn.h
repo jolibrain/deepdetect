@@ -47,10 +47,10 @@ namespace dd
     {
     }
 
-    int read_file(const std::string &fname, bool is_test_data = false);
+    int read_file(const std::string &fname, int test_set_id);
     int read_db(const std::string &fname);
     int read_mem(const std::string &content);
-    int read_dir(const std::string &dir);
+    int read_dir(const std::string &dir, int test_id);
 
     DDCsv _ddcsv;
     CSVTSInputFileConn *_cifc = nullptr;
@@ -77,7 +77,7 @@ namespace dd
 
     CSVTSInputFileConn(const CSVTSInputFileConn &i)
         : CSVInputFileConn(i), _csvtsdata(i._csvtsdata),
-          _csvtsdata_test(i._csvtsdata_test)
+          _csvtsdata_tests(i._csvtsdata_tests)
     {
       this->_scale_between_minus1_and_1 = i._scale_between_minus1_and_1;
       this->_dont_scale_labels = i._dont_scale_labels;
@@ -172,15 +172,15 @@ namespace dd
      * \brief transfers data read by the CSV connector to _csvtsdata holder
      * @param is_test_data whether data is from test set
      */
-    void push_csv_to_csvts(const bool &is_test_data = false);
+    void push_csv_to_csvts(int test_id = 0);
 
     std::string _boundsfname
         = "bounds.dat"; /**< variables min/max bounds filename. */
 
     std::vector<std::vector<CSVline>> _csvtsdata;
-    std::vector<std::vector<CSVline>> _csvtsdata_test;
+    std::vector<std::vector<std::vector<CSVline>>> _csvtsdata_tests;
     std::vector<std::string> _fnames;
-    std::vector<std::string> _test_fnames;
+    std::vector<std::vector<std::string>> _test_fnames;
   };
 }
 

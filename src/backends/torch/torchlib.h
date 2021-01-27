@@ -79,7 +79,11 @@ namespace dd
     int predict(const APIData &ad, APIData &out);
 
     int test(const APIData &ad, TInputConnectorStrategy &inputc,
-             TorchDataset &dataset, int batch_size, APIData &out);
+             TorchMultipleDataset &datasets, int batch_size, APIData &out);
+
+    int test(const APIData &ad, TInputConnectorStrategy &inputc,
+             TorchDataset &dataset, int batch_size, APIData &out,
+             size_t test_id = 0, const std::string &test_name = "");
 
   public:
     unsigned int _nclasses = 0; /**< number of classes*/
@@ -105,8 +109,8 @@ namespace dd
                             implementations (traced/native/graph...)*/
 
     std::vector<std::string>
-        _best_metrics;         /**< metric to use for saving best model */
-    double _best_metric_value; /**< best metric value  */
+        _best_metrics; /**< metric to use for saving best model */
+    std::vector<double> _best_metric_values; /**< best metric values  */
 
   private:
     /**
@@ -117,8 +121,9 @@ namespace dd
     /**
      * \brief generates a file containing best iteration so far
      */
-    int64_t save_if_best(APIData &meas_out, int64_t elapsed_it,
-                         TorchSolver &tsolver, int64_t best_to_remove);
+    int64_t save_if_best(const size_t test_id, APIData &meas_out,
+                         int64_t elapsed_it, TorchSolver &tsolver,
+                         std::vector<int64_t> best_iteration_numbers);
 
     /**
      * snapshop current optimizer state

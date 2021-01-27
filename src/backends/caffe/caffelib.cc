@@ -1856,7 +1856,8 @@ namespace dd
 
                 if (m != "cmdiag" && m != "cmfull" && m != "clacc"
                     && m != "labels" && m != "cliou" && m != "precisions"
-                    && m != "recalls" && m != "f1s")
+                    && m != "recalls" && m != "f1s" && m != "test_id"
+                    && m != "test_name")
                   // do not report confusion matrix in server logs
                   {
                     double mval = meas_obj.get(m).get<double>();

@@ -70,13 +70,27 @@ namespace dd
      */
     TorchInputInterface(const TorchInputInterface &i)
         : _lm_params(i._lm_params), _dataset(i._dataset),
-          _test_dataset(i._test_dataset), _input_format(i._input_format),
+          _test_datasets(i._test_datasets), _input_format(i._input_format),
           _ntargets(i._ntargets), _tilogger(i._tilogger), _db(i._db)
     {
     }
 
     ~TorchInputInterface()
     {
+    }
+
+    void check_tests_sizes(size_t tests_size, size_t names_size)
+    {
+      if (tests_size != names_size)
+        {
+          std::string msg
+              = "something wrong happened with datasets definitions: "
+                "ndatasets : "
+                + std::to_string(tests_size)
+                + " vs ndatasets names : " + std::to_string(names_size);
+          _tilogger->error(msg);
+          throw InputConnectorInternalException(msg);
+        }
     }
 
     /**
@@ -92,8 +106,8 @@ namespace dd
         _db = true;
       _dataset.set_db_params(_db, _backend, model_repo + "/train");
       _dataset.set_logger(logger);
-      _test_dataset.set_db_params(_db, _backend, model_repo + "/test");
-      _test_dataset.set_logger(logger);
+      _test_datasets.set_db_params(_db, _backend, model_repo + "/test");
+      _test_datasets.set_logger(logger);
     }
 
     /**
@@ -122,7 +136,7 @@ namespace dd
     void set_db_transaction_size(int32_t tsize)
     {
       _dataset.set_db_transaction_size(tsize);
-      _test_dataset.set_db_transaction_size(tsize);
+      _test_datasets.set_db_transaction_size(tsize);
     }
 
     /**
@@ -154,10 +168,10 @@ namespace dd
      */
     std::vector<c10::IValue> get_input_example(torch::Device device);
 
-    MaskedLMParams _lm_params;  /**< mlm data generation params */
-    TorchDataset _dataset;      /**< train dataset */
-    TorchDataset _test_dataset; /**< test dataset */
-    std::string _input_format;  /**< for text, "bert" or nothing */
+    MaskedLMParams _lm_params;           /**< mlm data generation params */
+    TorchDataset _dataset;               /**< train dataset */
+    TorchMultipleDataset _test_datasets; /**< test datasets */
+    std::string _input_format;           /**< for text, "bert" or nothing */
 
     unsigned int _ntargets
         = 0; /**< number of targets for regression / timeseries */
@@ -188,7 +202,7 @@ namespace dd
     ImgTorchInputFileConn() : ImgInputFileConn()
     {
       _dataset._inputc = this;
-      _test_dataset._inputc = this;
+      _test_datasets._inputc = this;
       set_db_transaction_size(TORCH_IMG_TRANSACTION_SIZE);
     }
 
@@ -200,8 +214,8 @@ namespace dd
     {
       _dataset._inputc = this;
       _dataset._image = true;
-      _test_dataset._inputc = this;
-      _test_dataset._image = true;
+      _test_datasets._inputc = this;
+      _test_datasets._image = true;
       set_db_transaction_size(TORCH_IMG_TRANSACTION_SIZE);
     }
 
@@ -282,7 +296,7 @@ namespace dd
     TxtTorchInputFileConn() : TxtInputFileConn()
     {
       _dataset._inputc = this;
-      _test_dataset._inputc = this;
+      _test_datasets._inputc = this;
       _vocab_sep = '\t';
       set_db_transaction_size(TORCH_TEXT_TRANSACTION_SIZE);
     }
@@ -294,7 +308,7 @@ namespace dd
           _height(i._height)
     {
       _dataset._inputc = this;
-      _test_dataset._inputc = this;
+      _test_datasets._inputc = this;
       set_db_transaction_size(TORCH_TEXT_TRANSACTION_SIZE);
     }
 
@@ -377,15 +391,16 @@ namespace dd
      * \brief override txtinputconn parse content in order to put data in db on
      * the fly if needed
      */
-    virtual void parse_content(const std::string &content,
-                               const float &target = -1,
-                               const bool &test = false);
+    void parse_content(const std::string &content, const float &target = -1,
+                       int test_id = -1) override;
 
   private:
     /**
      * push read data to db
+     * test < 0 => train
+     * else test_id
      */
-    void push_to_db(bool test);
+    void push_to_db(int test);
 
   public:
     unsigned int _width = 512; /**< width of the input tensor */
@@ -437,7 +452,7 @@ namespace dd
           _backcast_timesteps(i._backcast_timesteps)
     {
       _dataset._inputc = this;
-      _test_dataset._inputc = this;
+      _test_datasets._inputc = this;
     }
 
     ~CSVTSTorchInputFileConn()
@@ -457,7 +472,9 @@ namespace dd
     /**
      * \brief push data from csvts input conn to torch dataset
      */
-    void fill_dataset(TorchDataset &dataset, bool use_csvtsdata_test);
+    void fill_dataset(TorchDataset &dataset,
+                      const std::vector<std::vector<CSVline>> &csvtsdata,
+                      int test_id = -1);
 
     /**
      * \brief init the connector
@@ -564,11 +581,15 @@ namespace dd
     }
 
   private:
-    void fill_dataset_forecast(TorchDataset &dataset, bool test);
+    void fill_dataset_forecast(TorchDataset &dataset,
+                               const std::vector<std::vector<CSVline>> &data,
+                               int test_id);
     void add_data_instance_forecast(const unsigned long int tstart,
                                     const int vecindex, TorchDataset &dataset,
                                     const std::vector<CSVline> &seq);
-    void fill_dataset_labels(TorchDataset &dataset, bool test);
+    void fill_dataset_labels(TorchDataset &dataset,
+                             const std::vector<std::vector<CSVline>> &data,
+                             int test_id);
     void add_data_instance_labels(const unsigned long int tstart,
                                   const int vecindex, TorchDataset &dataset,
                                   const std::vector<CSVline> &seq,
@@ -578,7 +599,7 @@ namespace dd
                  std::vector<at::Tensor> &data_sequence,
                  std::vector<at::Tensor> &label_sequence);
 
-    void discard_warn(int vecindex, unsigned int seq_size, bool test);
+    void discard_warn(int vecindex, unsigned int seq_size, int test_id);
 
   public:
     int _offset = -1;    /**< default offset for building sequences: start of

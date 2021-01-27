@@ -217,7 +217,7 @@ TEST(graphapi, intermediate_lstm_train)
   inputc.transform(ad);
 
   ASSERT_EQ(inputc._dataset.cache_size(), 485);
-  ASSERT_EQ(inputc._test_dataset.cache_size(), 10);
+  ASSERT_EQ(inputc._test_datasets[0].cache_size(), 10);
 
   auto batchoptional
       = inputc._dataset.get_batch({ inputc._dataset.cache_size() });
