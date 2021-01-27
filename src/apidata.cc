@@ -107,12 +107,7 @@ namespace dd
   }
 
   /*- APIData -*/
-  APIData::APIData(const JVal &jval)
-  {
-    fromJVal(jval);
-  }
-
-  void APIData::fromJVal(const JVal &jval)
+  void APIData::fromRapidJson(const JVal &jval)
   {
     for (rapidjson::Value::ConstMemberIterator cit = jval.MemberBegin();
          cit != jval.MemberEnd(); ++cit)
@@ -126,7 +121,8 @@ namespace dd
           }
         else if (cit->value.IsObject())
           {
-            APIData ad(jval[cit->name.GetString()]);
+            APIData ad;
+            ad.fromRapidJson(jval[cit->name.GetString()]);
             std::vector<APIData> vad = { ad };
             add(cit->name.GetString(), vad);
           }
@@ -176,7 +172,7 @@ namespace dd
                     for (rapidjson::SizeType i = 0; i < jarr.Size(); i++)
                       {
                         APIData nad;
-                        nad.fromJVal(jarr[i]);
+                        nad.fromRapidJson(jarr[i]);
                         vad.push_back(nad);
                       }
                     add(cit->name.GetString(), vad);
