@@ -382,7 +382,7 @@ namespace dd
         APIData ad;
         try
           {
-            ad = APIData(d);
+            ad.fromRapidJson(d);
             if (ad.has("status"))
               status = ad.get("status").get<bool>();
           }
@@ -477,7 +477,7 @@ namespace dd
           description = d["description"].GetString();
 
         // model parameters (mandatory).
-        ad = APIData(d);
+        ad.fromRapidJson(d);
         ad_model = ad.getobj("model");
         APIData ad_param = ad.getobj("parameters");
         if (ad_param.has("output"))
@@ -1048,7 +1048,7 @@ namespace dd
     try
       {
         if (!jstr.empty())
-          ad = APIData(d);
+          ad.fromRapidJson(d);
       }
     catch (RapidjsonException &e)
       {
@@ -1104,7 +1104,7 @@ namespace dd
     APIData ad_data;
     try
       {
-        ad_data = APIData(d);
+        ad_data.fromRapidJson(d);
       }
     catch (RapidjsonException &e)
       {
@@ -1237,7 +1237,7 @@ namespace dd
     APIData ad;
     try
       {
-        ad = APIData(d);
+        ad.fromRapidJson(d);
       }
     catch (RapidjsonException &e)
       {
@@ -1340,7 +1340,7 @@ namespace dd
     APIData ad;
     try
       {
-        ad = APIData(d);
+        ad.fromRapidJson(d);
       }
     catch (RapidjsonException &e)
       {
@@ -1472,7 +1472,7 @@ namespace dd
     APIData ad;
     try
       {
-        ad = APIData(d);
+        ad.fromRapidJson(d);
       }
     catch (RapidjsonException &e)
       {
@@ -1523,7 +1523,7 @@ namespace dd
     APIData ad_data;
     try
       {
-        ad_data = APIData(d);
+        ad_data.fromRapidJson(d);
       }
     catch (RapidjsonException &e)
       {
@@ -1650,7 +1650,7 @@ namespace dd
       }
     try
       {
-        ad = APIData(d);
+        ad.fromRapidJson(d);
       }
     catch (RapidjsonException &e)
       {

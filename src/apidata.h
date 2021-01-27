@@ -137,29 +137,6 @@ namespace dd
   {
   public:
     /**
-     * \brief empty constructor
-     */
-    APIData()
-    {
-    }
-
-    /**
-     * \brief constructor from rapidjson JSON object, see dd_types.h
-     */
-    APIData(const JVal &jval);
-
-    APIData(const APIData &ad) : _data(ad._data)
-    {
-    }
-
-    /**
-     * \brief destructor
-     */
-    ~APIData()
-    {
-    }
-
-    /**
      * \brief add key / object to data object
      * @param key string unique key
      * @param val variant value
@@ -280,7 +257,7 @@ namespace dd
      * \brief converts rapidjson JSON to APIData
      * @param jval JSON object
      */
-    void fromJVal(const JVal &jval);
+    void fromRapidJson(const JVal &jval);
 
     /**
      * \brief converts APIData to rapidjson JSON document

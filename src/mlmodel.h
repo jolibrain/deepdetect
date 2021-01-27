@@ -318,7 +318,7 @@ namespace dd
       APIData adcj;
       try
         {
-          adcj = APIData(d);
+          adcj.fromRapidJson(d);
         }
       catch (RapidjsonException &e)
         {
