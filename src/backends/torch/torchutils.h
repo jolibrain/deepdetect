@@ -88,6 +88,8 @@ namespace dd
 
     /**
      * \brief recursively add module parameters to params
+     * \param requires_grad if true, collect only parameters that
+     * require grad (method Tensor::requires_grad())
      */
     void add_parameters(std::shared_ptr<torch::jit::script::Module> module,
                         std::vector<torch::Tensor> &params,
