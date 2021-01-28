@@ -69,7 +69,7 @@ cmake .. \
 export PATH="/usr/lib/ccache/:$PATH"
 export TMPDIR=$(pwd)/build/tmp
 cd build
-schedtool -B -n 1 -e ionice -n 1 make -j24 protobuf spdlog caffe_dd pytorch Multicore-TSNE faisslib ncnn xgboost cpp-netlib tensorrt-oss oatpp oatpp-swagger oatpp-zlib
+schedtool -B -n 1 -e ionice -n 1 make -j 6 protobuf spdlog caffe_dd pytorch Multicore-TSNE faisslib ncnn xgboost cpp-netlib tensorrt-oss oatpp oatpp-swagger oatpp-zlib
 # TODO(sileht): we should create the prebuilt artefacts here after each successful master branch build
 schedtool -B -n 1 -e ionice -n 1 make -j 6
 ccache -s
