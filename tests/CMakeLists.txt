@@ -280,7 +280,13 @@ if (USE_NCNN)
   )
 
   if(USE_JSON_API)
-    REGISTER_TEST(ut_ncnnapi ut-ncnnapi.cc)
+    # REGISTER_TEST(ut_ncnnapi ut-ncnnapi.cc)
+    # Temporary don't register the test, just compile it.
+    if (NOT TARGET $ut_ncnnapi)
+      add_executable(ut_ncnnapi ut-ncnnapi.cc)
+      add_dependencies(ut_ncnnapi protobuf)
+      target_link_libraries(ut_ncnnapi ${COMMON_LINK_LIBS} gtest gtest_main)
+    endif()
   endif()
 endif()
 
