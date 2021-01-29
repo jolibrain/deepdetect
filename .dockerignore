@@ -3,3 +3,4 @@ docker/gpu.Dockerfile
 docker/gpu_tensorrt.Dockerfile
 docker/cpu-arm.Dockerfile
 build/
+build-*/

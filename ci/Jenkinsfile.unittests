@@ -1,11 +1,9 @@
 pipeline {
-  agent {
-    dockerfile {
-      label 'gpu'
-      filename 'ci/devel.Dockerfile'
-      args "-v /var/lib/jenkins/.ccache:/ccache -v /var/lib/jenkins/jobs/deepdetect-prebuilt-cache/branches/master/builds:/prebuilt -e CCACHE_DIR=/ccache --runtime nvidia"
-    }
+  environment {
+    DOCKER_IMAGE = "ci-devel:${BRANCH_NAME}.${BUILD_ID}"
+    DOCKER_PARAMS = "-v ${WORKSPACE}:/app -v ${WORKSPACE}/build:/app/build -v /var/lib/jenkins/.ccache:/ccache --runtime nvidia"
   }
+  agent { node { label 'gpu' } }
   stages {
     stage('Init') {
       steps {
@@ -16,6 +14,15 @@ pipeline {
         sh 'printenv | sort'
       }
     }
+    stage('Prepare docker image') {
+      steps {
+        script {
+          docker.build(env.DOCKER_IMAGE, "-f ci/devel.Dockerfile .")
+        }
+        // post can't access to ${env.XX} so we have to use stupid hack, thx Jenkins...
+        sh '''echo ${DOCKER_IMAGE} > docker-image-name'''
+      }
+    }
     stage('Installing prebuilt cache') {
       when {
        expression { !env.CHANGE_ID || pullRequest.labels.findAll { it == "ci:full-build" }.size() == 0 }
@@ -23,18 +30,31 @@ pipeline {
       steps {
         script {
           sh '''
-          prebuilt_version=$(awk '/^lastSuccessfulBuild/{print $2}' /prebuilt/permalinks)
-          rsync -a --progress /prebuilt/${prebuilt_version}/archive/build/ build/
+          prebuilt_version=$(awk '/^lastSuccessfulBuild/{print $2}' /var/lib/jenkins/jobs/deepdetect-prebuilt-cache/branches/master/builds/permalinks)
+          # Create a copy on write filesystem instead of copying data
+          mkdir -p build-upper build-work build
+          sudo mount -t overlay overlay -o lowerdir=/var/lib/jenkins/jobs/deepdetect-prebuilt-cache/branches/master/builds/${prebuilt_version}/archive/build,upperdir=$(pwd)/build-upper,workdir=$(pwd)/build-work $(pwd)/build
+
+          # prebuilt_version=$(awk '/^lastSuccessfulBuild/{print $2}' /prebuilt/permalinks)
+          # rsync -a --progress /prebuilt/${prebuilt_version}/archive/build/ build/
           '''
         }
       }
     }
-    stage('Configure') {
+    stage('Configure && Build') {
       steps {
-        sh '''
+        script {
+          docker.image(env.DOCKER_IMAGE).inside(env.DOCKER_PARAMS) {
+            sh '''
+
+cd clients/python/
+tox -e pep8,py36,py27
+cd ../..
+
+export CCACHE_DIR=/ccache
 export PATH="/usr/lib/ccache/:$PATH"
 export TMPDIR=$(pwd)/build/tmp
-mkdir -p build/tmp
+mkdir build/tmp
 cd build
 cmake .. \
     -DBUILD_TESTS=ON  \
@@ -49,31 +69,14 @@ cmake .. \
     -DUSE_TENSORRT=ON  \
     -DUSE_TENSORRT_OSS=ON  \
     -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61"
-'''
-      }
-    }
-    stage('Check codestyle') {
-      steps {
-        sh 'cd build && make clang-format-check'
-      }
-    }
 
-    stage('Check python client') {
-      steps {
-        sh 'cd clients/python/ && tox -e pep8,py36,py27'
-      }
-    }
-    stage('Build GPU') {
-      steps {
-        sh '''
-export PATH="/usr/lib/ccache/:$PATH"
-export TMPDIR=$(pwd)/build/tmp
-cd build
+make clang-format-check
 schedtool -B -n 1 -e ionice -n 1 make -j 6 protobuf spdlog caffe_dd pytorch Multicore-TSNE faisslib ncnn xgboost cpp-netlib tensorrt-oss oatpp oatpp-swagger oatpp-zlib
-# TODO(sileht): we should create the prebuilt artefacts here after each successful master branch build
 schedtool -B -n 1 -e ionice -n 1 make -j 6
 ccache -s
 '''
+          }
+        }
       }
     }
     stage('Tests GPU') {
@@ -82,16 +85,20 @@ ccache -s
       }
       steps {
         lock(resource: null, label: "${NODE_NAME}-gpu", variable: 'LOCKED_GPU', quantity: 1) {
-          sh '''
-          export CUDA_VISIBLE_DEVICES=$(echo ${LOCKED_GPU} | sed -n -e "s/[^,]* GPU \([^[0-9,]]\)*/\1/gp")
-          echo "****************************"
-          echo
-          python3 -c 'import torch, sys; c=torch.cuda.device_count() ; print(f"CUDA VISIBLE GPU: {c}"); sys.exit(bool(c == 0 ))'
-          echo
-          echo "****************************"
-          cd build && ctest -V -E "multigpu"
-          '''
+          script {
+            docker.image(env.DOCKER_IMAGE).inside(env.DOCKER_PARAMS) {
+              sh '''
+              export CUDA_VISIBLE_DEVICES=$(echo ${LOCKED_GPU} | sed -n -e "s/[^,]* GPU \\([^[0-9,]]\\)*/\\1/gp")
+              echo "****************************"
+              echo
+              python3 -c 'import torch, sys; c=torch.cuda.device_count() ; print(f"CUDA VISIBLE GPU: {c}"); sys.exit(bool(c == 0 ))'
+              echo
+              echo "****************************"
+              cd build && ctest -V -E "multigpu"
+              '''
+            }
           }
+        }
       }
     }
     stage('Tests multi-GPU') {
@@ -100,21 +107,26 @@ ccache -s
       }
       steps {
         lock(resource: null, label: "${NODE_NAME}-gpu", variable: 'LOCKED_GPU', quantity: 2) {
-          sh '''
-          export CUDA_VISIBLE_DEVICES=$(echo ${LOCKED_GPU} | sed -n -e "s/[^,]* GPU \([^[0-9,]]\)*/\1/gp")
-          echo "****************************"
-          echo
-          python3 -c 'import torch, sys; c=torch.cuda.device_count() ; print(f"CUDA VISIBLE GPU: {c}"); sys.exit(bool(c < 2))'
-          echo
-          echo "****************************"
-          cd build && ctest -V -R "multigpu"
-          '''
+          script {
+            docker.image(env.DOCKER_IMAGE).inside(env.DOCKER_PARAMS) {
+              sh '''
+              export CUDA_VISIBLE_DEVICES=$(echo ${LOCKED_GPU} | sed -n -e "s/[^,]* GPU \\([^[0-9,]]\\)*/\\1/gp")
+              echo "****************************"
+              echo
+              python3 -c 'import torch, sys; c=torch.cuda.device_count() ; print(f"CUDA VISIBLE GPU: {c}"); sys.exit(bool(c < 2))'
+              echo
+              echo "****************************"
+              cd build && ctest -V -R "multigpu"
+              '''
+            }
           }
+        }
       }
     }
   }
   post {
     always {
+      sh '''[ -f docker-image-name] && docker image rm $(cat docker-image-name); sudo umount $(pwd)/build; '''
       cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
     }
     success {
