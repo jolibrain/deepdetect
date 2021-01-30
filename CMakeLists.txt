@@ -762,12 +762,16 @@ if (USE_NCNN)
   include_directories(${NCNN_INC_DIR})
 
   # for ARM M1
-  list(APPEND NCNN_LIB_DIR ${CMAKE_BINARY_DIR}/vulkansdk-macos-1.2.162.0/MoltenVK/dylib/macOS/)
-  list(APPEND NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/vulkansdk-macos-1.2.162.0/MoltenVK/dylib/macOS/libMoltenVK.dylib)
-  list(APPEND NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn-build/glslang/glslang/libglslang.a)
-  list(APPEND NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn-build/glslang/OGLCompilersDLL/libOGLCompiler.a)
-  list(APPEND NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn-build/glslang/SPIRV/libSPIRV.a)
-  list(APPEND NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn-build/glslang/glslang/OSDependent/Unix/libOSDependent.a)
+  if (APPLE_M1)
+     if (USE_VULKAN)
+     	list(APPEND NCNN_LIB_DIR ${CMAKE_BINARY_DIR}/vulkansdk-macos-1.2.162.0/MoltenVK/dylib/macOS/)
+	list(APPEND NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/vulkansdk-macos-1.2.162.0/MoltenVK/dylib/macOS/libMoltenVK.dylib)
+     endif()
+     list(APPEND NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn-build/glslang/glslang/libglslang.a)
+     list(APPEND NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn-build/glslang/OGLCompilersDLL/libOGLCompiler.a)
+     list(APPEND NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn-build/glslang/SPIRV/libSPIRV.a)
+     list(APPEND NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn-build/glslang/glslang/OSDependent/Unix/libOSDependent.a)
+  endif()
 endif()
 
 # Torch

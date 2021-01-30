@@ -215,14 +215,8 @@ namespace dd
           _height += l;
         }
       // Mat(w,h)
-<<<<<<< HEAD
       _in.emplace_back(_width, _height);
       _out.emplace_back();
-=======
-      ncnn::Mat min;
-      min.create(_width, _height);
-      _in.push_back(min);
->>>>>>> db8c894c (feat: support for batches for NCNN image models)
 
       int mati = 0;
 
