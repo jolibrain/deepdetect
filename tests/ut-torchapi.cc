@@ -664,7 +664,7 @@ TEST(torchapi, service_train_images_split_regression_db_true)
   ASSERT_EQ(201, jd["status"]["code"]);
 
   ASSERT_TRUE(jd["body"]["measure"]["iteration"] == 200) << "iterations";
-  ASSERT_TRUE(jd["body"]["measure"]["eucll"].GetDouble() <= 12.0) << "eucll";
+  ASSERT_TRUE(jd["body"]["measure"]["eucll"].GetDouble() <= 15.0) << "eucll";
 
   std::unordered_set<std::string> lfiles;
   fileops::list_directory(resnet50_train_repo, true, false, false, lfiles);
@@ -725,7 +725,7 @@ TEST(torchapi, service_train_images_split_regression_db_false)
   ASSERT_EQ(201, jd["status"]["code"]);
 
   ASSERT_TRUE(jd["body"]["measure"]["iteration"] == 200) << "iterations";
-  ASSERT_TRUE(jd["body"]["measure"]["eucll"].GetDouble() <= 12.0) << "eucll";
+  ASSERT_TRUE(jd["body"]["measure"]["eucll"].GetDouble() <= 15.0) << "eucll";
 
   std::unordered_set<std::string> lfiles;
   fileops::list_directory(resnet50_train_repo, true, false, false, lfiles);
@@ -1008,6 +1008,36 @@ TEST(torchapi, service_train_csvts_nbeats)
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["out"][0].GetDouble()
               >= -1.5);
+
+  // predict from memory
+  std::stringstream mem_data;
+  for (int i = 0; i < 50; ++i)
+    {
+      if (i != 0)
+        mem_data << "\\n";
+      mem_data << i << "," << i;
+    }
+
+  jpredictstr
+      = "{\"service\":\"" + sname
+        + "\",\"parameters\":{\"input\":{\"backcast_timesteps\":50,\"forecast_"
+          "timesteps\":50,\"connector\":"
+          "\"csvts\",\"scale\":true,\"ignore\":[\"output\"],\"continuation\":"
+          "true,\"min_vals\":"
+        + str_min_vals + ",\"max_vals\":" + str_max_vals
+        + "},\"output\":{}},\"data\":[\"input,output\", \"" + mem_data.str()
+        + "\"]}";
+
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  uri = jd["body"]["predictions"][0]["uri"].GetString();
+  ASSERT_EQ("0", uri);
+  ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
+  ASSERT_TRUE(jd["body"]["predictions"][0]["series"].Size() == 50);
+  ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["out"][0].IsDouble());
 
   //  remove service
   jstr = "{\"clear\":\"full\"}";

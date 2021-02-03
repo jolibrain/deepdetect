@@ -67,7 +67,26 @@ pull_request_rules:
       merge:
         strict: "smart"
         method: rebase
+
+  - name: "remove process:merge-queued, ci failures"
+    conditions:
+      - "base=master"
+      - "#status-failure>0"
+    actions:
+      label:
+        remove:
+          - process:merge-queued
         
+  - name: "remove process:merge-queued, missing reviews"
+    conditions:
+      - "base=master"
+      - "label!=process:no-need-review"
+      - "#approved-reviews-by<2"
+    actions:
+      label:
+        remove:
+          - process:merge-queued
+
   - name: "request review"
     conditions:
       - "label=process:ready-to-review"

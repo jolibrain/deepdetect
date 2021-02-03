@@ -55,10 +55,8 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     libssl-dev \
     libcurlpp-dev \
     libcurl4-openssl-dev \
-    protobuf-compiler \
     libopenblas-dev \
     libhdf5-dev \
-    libprotobuf-dev \
     libleveldb-dev \
     libsnappy-dev \
     liblmdb-dev \
@@ -148,8 +146,7 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
 	libboost-iostreams1.65.1 \
     libboost-regex1.65.1 \
     libboost-stacktrace1.65.1 \
-	libarchive13 \
-	libprotobuf10
+	libarchive13
 
 # Fix permissions
 RUN ln -sf /dev/stdout /var/log/deepdetect.log && \
