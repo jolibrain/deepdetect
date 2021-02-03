@@ -101,7 +101,8 @@ TEST(apidata, to_from_json)
   ASSERT_EQ(prob1, jd["classes"][0]["prob"].GetDouble());
 
   // to APIData
-  APIData nad(jd);
+  APIData nad;
+  nad.fromRapidJson(jd);
   ASSERT_EQ("string", nad.get("string").get<std::string>());
   ASSERT_EQ(2.3, nad.get("double").get<double>());
   ASSERT_EQ(true, nad.get("bool").get<bool>());
