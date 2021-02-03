@@ -178,7 +178,7 @@ namespace dd
      * \brief transfers data read by the CSV connector to _csvtsdata holder
      * @param is_test_data whether data is from test set
      */
-    void push_csv_to_csvts(int test_id = 0);
+    void push_csv_to_csvts(int test_id = -1);
 
     std::string _boundsfname
         = "bounds.dat"; /**< variables min/max bounds filename. */
