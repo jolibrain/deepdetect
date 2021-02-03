@@ -1069,7 +1069,7 @@ namespace dd
                       }
                     output = torch::stack(outputs);
                   }
-                if (_classification)
+                if (extract_layer.empty() && _classification)
                   output = torch::softmax(output, 1).to(cpu);
                 else
                   output = output.to(cpu);
@@ -1106,7 +1106,7 @@ namespace dd
 
                 double *startout = fo.data_ptr<double>();
                 std::vector<double> vals(startout,
-                                         startout + torch ::numel(fo));
+                                         startout + torch::numel(fo));
 
                 rad.add("vals", vals);
                 results_ads.push_back(rad);
