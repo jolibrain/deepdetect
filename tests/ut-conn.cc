@@ -633,7 +633,8 @@ TEST(inputconn, csv_read_categoricals)
   JDoc d;
   d.Parse<rapidjson::kParseNanAndInfFlag>(json_categorical_mapping.c_str());
   ASSERT_FALSE(d.HasParseError());
-  APIData ap(d);
+  APIData ap;
+  ap.fromRapidJson(d);
   ASSERT_EQ(1, ap.size());
   ASSERT_TRUE(ap.has("categoricals_mapping"));
   APIData ap_cm = ap.getobj("categoricals_mapping");
