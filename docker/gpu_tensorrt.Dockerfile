@@ -55,10 +55,8 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     libssl-dev \
     libcurlpp-dev \
     libcurl4-openssl-dev \
-    protobuf-compiler \
     libopenblas-dev \
     libhdf5-dev \
-    libprotobuf-dev \
     libleveldb-dev \
     libsnappy-dev \
     liblmdb-dev \
@@ -80,6 +78,7 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     python3-dev \
     python-wheel \
     python-pip \
+    python3-pip \
     python-six \
     python-enum34 \
     python3-yaml \
@@ -96,6 +95,10 @@ RUN for url in \
 
 # Fix "ImportError: No module named builtins"
 # RUN pip install future pyyaml typing
+
+# Fix  ModuleNotFoundError: No module named 'dataclasses' for torch 1.7.1
+RUN pip3 install dataclasses
+
 
 ADD . /opt/deepdetect
 WORKDIR /opt/deepdetect/
@@ -143,8 +146,7 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
 	libboost-iostreams1.65.1 \
     libboost-regex1.65.1 \
     libboost-stacktrace1.65.1 \
-	libarchive13 \
-	libprotobuf10
+	libarchive13
 
 # Fix permissions
 RUN ln -sf /dev/stdout /var/log/deepdetect.log && \
