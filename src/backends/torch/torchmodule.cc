@@ -266,7 +266,8 @@ namespace dd
       }
   }
 
-  c10::IValue TorchModule::forward(std::vector<c10::IValue> source)
+  c10::IValue TorchModule::forward(std::vector<c10::IValue> source,
+                                   const std::string &forward_method)
   {
     // graph and native modules take only one tensor as input for now
     if (_graph)
@@ -275,8 +276,23 @@ namespace dd
       return _native->forward(torch_utils::to_tensor_safe(source[0]));
     if (_traced)
       {
-        auto output = _traced->forward(source);
-        source = torch_utils::unwrap_c10_vector(output);
+        if (!forward_method.empty())
+          {
+            if (auto method = _traced->find_method(forward_method))
+              {
+                _logger->info("found forward method {}", method->name());
+                auto output = (*method)(std::move(source));
+                source = torch_utils::unwrap_c10_vector(output);
+              }
+            else
+              throw MLLibBadParamException("Method " + forward_method
+                                           + " not found in traced model");
+          }
+        else
+          {
+            auto output = _traced->forward(source);
+            source = torch_utils::unwrap_c10_vector(output);
+          }
       }
     c10::IValue out_val = source.at(_linear_in);
     if (_hidden_states)
@@ -300,13 +316,18 @@ namespace dd
                                   const std::vector<torch::Device> &devices)
   {
     // Normal forward if only one device
+#if !defined(CPU_ONLY)
     if (devices.size() <= 1)
       {
+#endif
         if (!devices.empty())
           to(devices[0]);
         return forward(source);
+#if !defined(CPU_ONLY)
       }
+#endif
 
+#if !defined(CPU_ONLY)
     // graph and native modules take only one tensor as input for now
     if (_graph)
       {
@@ -338,6 +359,7 @@ namespace dd
             _linear, torch_utils::to_tensor_safe(out_val), devices, _device);
       }
     return out_val;
+#endif
   }
 
   c10::IValue TorchModule::extract(std::vector<c10::IValue> source,

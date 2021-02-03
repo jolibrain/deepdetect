@@ -169,6 +169,12 @@ namespace dd
     void response_params(APIData &out);
 
     /**
+     * \brief read a csv file as a timeserie
+     * \param test_id id of test set, -1 for training set
+     */
+    void read_csvts_file(std::string &fname, int test_id);
+
+    /**
      * \brief transfers data read by the CSV connector to _csvtsdata holder
      * @param is_test_data whether data is from test set
      */

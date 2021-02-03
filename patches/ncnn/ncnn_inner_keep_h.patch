@@ -1,8 +1,16 @@
 diff --git a/src/layer/arm/innerproduct_arm.cpp b/src/layer/arm/innerproduct_arm.cpp
-index caab529a..494d3ce9 100644
+index caab529a..b03b68f1 100644
 --- a/src/layer/arm/innerproduct_arm.cpp
 +++ b/src/layer/arm/innerproduct_arm.cpp
-@@ -86,7 +86,7 @@ int InnerProduct_arm::destroy_pipeline(const Option& opt)
+@@ -36,6 +36,7 @@ InnerProduct_arm::InnerProduct_arm()
+     support_fp16_storage = true;
+ #endif
+ #endif // __ARM_NEON
++    support_packing = false;
+ 
+     support_bf16_storage = true;
+ 
+@@ -86,7 +87,7 @@ int InnerProduct_arm::destroy_pipeline(const Option& opt)
  
  int InnerProduct_arm::forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const
  {
@@ -11,7 +19,7 @@ index caab529a..494d3ce9 100644
      {
          // TODO
          return InnerProduct::forward(bottom_blob, top_blob, opt);
-@@ -148,7 +148,7 @@ int InnerProduct_arm::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
+@@ -148,7 +149,7 @@ int InnerProduct_arm::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
      int nn_num_output = num_output >> 2;
      int remain_num_output_start = nn_num_output << 2;
  
@@ -20,7 +28,7 @@ index caab529a..494d3ce9 100644
      for (int pp = 0; pp < nn_num_output; pp++)
      {
          int p = pp * 4;
-@@ -294,8 +294,8 @@ int InnerProduct_arm::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
+@@ -294,8 +295,8 @@ int InnerProduct_arm::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
          top_blob[p + 3] = sum3;
      }
  
@@ -31,7 +39,7 @@ index caab529a..494d3ce9 100644
      for (int p = remain_num_output_start; p < num_output; p++)
      {
          float sum = 0.f;
-@@ -337,15 +337,15 @@ int InnerProduct_arm::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
+@@ -337,15 +338,15 @@ int InnerProduct_arm::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
                      "fmla       %4.4s, v1.4s, v3.4s       \n"
                      "bne        0b                        \n"
                      : "=r"(nn),   // %0
@@ -55,7 +63,7 @@ index caab529a..494d3ce9 100644
                      : "cc", "memory", "v0", "v1", "v2", "v3");
              }
  #else
-@@ -362,15 +362,15 @@ int InnerProduct_arm::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
+@@ -362,15 +363,15 @@ int InnerProduct_arm::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
                      "vmla.f32   %q4, q1, q3         \n"
                      "bne        0b                  \n"
                      : "=r"(nn),   // %0
@@ -177,10 +185,18 @@ index 2b715017..9acc8da3 100644
      int activation_type;
      Mat activation_params;
 diff --git a/src/layer/x86/innerproduct_x86.cpp b/src/layer/x86/innerproduct_x86.cpp
-index 19ad650b..fe4a78f2 100644
+index 19ad650b..b792aa68 100644
 --- a/src/layer/x86/innerproduct_x86.cpp
 +++ b/src/layer/x86/innerproduct_x86.cpp
-@@ -127,6 +127,8 @@ int InnerProduct_x86::destroy_pipeline(const Option& opt)
+@@ -37,6 +37,7 @@ InnerProduct_x86::InnerProduct_x86()
+ #if __AVX__
+     support_weight_fp16_storage = true;
+ #endif
++    support_packing = false;
+ #endif // __SSE2__
+ 
+     flatten = 0;
+@@ -127,6 +128,8 @@ int InnerProduct_x86::destroy_pipeline(const Option& opt)
  
  int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const
  {
@@ -189,7 +205,7 @@ index 19ad650b..fe4a78f2 100644
      if (opt.use_int8_inference && weight_data.elemsize == (size_t)1u)
      {
          // TODO
-@@ -175,8 +177,8 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
+@@ -175,8 +178,8 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
  #if __AVX__
      if (elempack == 8 && out_elempack == 8)
      {
@@ -200,7 +216,7 @@ index 19ad650b..fe4a78f2 100644
          for (int p = 0; p < num_output / out_elempack; p++)
          {
              __m256 _sum = _mm256_set1_ps(0.f);
-@@ -231,8 +233,8 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
+@@ -231,8 +234,8 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
  
      if (elempack == 1 && out_elempack == 8)
      {
@@ -211,7 +227,7 @@ index 19ad650b..fe4a78f2 100644
          for (int p = 0; p < num_output / out_elempack; p++)
          {
              __m256 _sum = _mm256_set1_ps(0.f);
-@@ -265,8 +267,8 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
+@@ -265,8 +268,8 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
  
      if (elempack == 4 && out_elempack == 8)
      {
@@ -222,7 +238,7 @@ index 19ad650b..fe4a78f2 100644
          for (int p = 0; p < num_output / out_elempack; p++)
          {
              __m256 _sum = _mm256_set1_ps(0.f);
-@@ -309,8 +311,8 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
+@@ -309,8 +312,8 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
  
      if (elempack == 8 && out_elempack == 1)
      {
@@ -233,7 +249,7 @@ index 19ad650b..fe4a78f2 100644
          for (int p = 0; p < num_output / out_elempack; p++)
          {
              float sum = 0.f;
-@@ -347,8 +349,8 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
+@@ -347,8 +350,8 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
  
      if (elempack == 8 && out_elempack == 4)
      {
@@ -244,7 +260,7 @@ index 19ad650b..fe4a78f2 100644
          for (int p = 0; p < num_output / out_elempack; p++)
          {
              __m128 _sum = _mm_set1_ps(0.f);
-@@ -404,8 +406,8 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
+@@ -404,8 +407,8 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
  
      if (elempack == 4 && out_elempack == 4)
      {
@@ -255,7 +271,7 @@ index 19ad650b..fe4a78f2 100644
          for (int p = 0; p < num_output / out_elempack; p++)
          {
              __m128 _sum = _mm_set1_ps(0.f);
-@@ -448,8 +450,8 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
+@@ -448,8 +451,8 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
  
      if (elempack == 1 && out_elempack == 4)
      {
@@ -266,7 +282,7 @@ index 19ad650b..fe4a78f2 100644
          for (int p = 0; p < num_output / out_elempack; p++)
          {
              __m128 _sum = _mm_set1_ps(0.f);
-@@ -482,8 +484,8 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
+@@ -482,8 +485,8 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
  
      if (elempack == 4 && out_elempack == 1)
      {
@@ -277,7 +293,7 @@ index 19ad650b..fe4a78f2 100644
          for (int p = 0; p < num_output / out_elempack; p++)
          {
              float sum = 0.f;
-@@ -528,7 +530,7 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
+@@ -528,7 +531,7 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
          int remain_num_output_start = 0;
          int nn_num_output = num_output >> 3;
  
@@ -286,7 +302,7 @@ index 19ad650b..fe4a78f2 100644
          for (int pp = 0; pp < nn_num_output; pp++)
          {
              int p = pp * 8;
-@@ -643,7 +645,7 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
+@@ -643,7 +646,7 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
          int nn_num_output = num_output >> 2;
  #endif // __AVX__
  
@@ -295,7 +311,7 @@ index 19ad650b..fe4a78f2 100644
          for (int pp = 0; pp < nn_num_output; pp++)
          {
              int p = remain_num_output_start + (pp * 4);
-@@ -753,8 +755,8 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
+@@ -753,8 +756,8 @@ int InnerProduct_x86::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
          int remain_num_output_start = 0;
  #endif // __SSE2__
  

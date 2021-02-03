@@ -1373,7 +1373,7 @@ namespace dd
     std::vector<double> vals;
     std::string cid;
     int nlines = 0;
-    _cifc->read_csv_line(content, _cifc->_delim, vals, cid, nlines);
+    _cifc->read_csv_line(content, _cifc->_delim, vals, cid, nlines, false);
     if (_cifc->_scale)
       _cifc->scale_vals(vals);
     if (!cid.empty())

@@ -43,6 +43,7 @@ pipeline {
     }
     stage('Configure && Build') {
       steps {
+        sh '''mkdir -p build/tmp'''
         script {
           docker.image(env.DOCKER_IMAGE).inside(env.DOCKER_PARAMS) {
             sh '''
@@ -54,7 +55,6 @@ cd ../..
 export CCACHE_DIR=/ccache
 export PATH="/usr/lib/ccache/:$PATH"
 export TMPDIR=$(pwd)/build/tmp
-mkdir build/tmp
 cd build
 cmake .. \
     -DBUILD_TESTS=ON  \
@@ -126,7 +126,7 @@ ccache -s
   }
   post {
     always {
-      sh '''[ -f docker-image-name] && docker image rm $(cat docker-image-name); sudo umount $(pwd)/build; '''
+      sh '''[ -f docker-image-name ] && docker image rm $(cat docker-image-name); sudo umount $(pwd)/build || true ; '''
       cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
     }
     success {

@@ -945,6 +945,8 @@ namespace dd
     APIData params = ad.getobj("parameters");
     APIData output_params = params.getobj("output");
     std::string extract_layer;
+    bool extract_last = false;
+    std::string forward_method;
 
     if (params.has("mllib"))
       {
@@ -956,7 +958,13 @@ namespace dd
               predict_batch_size = ad_net.get("test_batch_size").get<int>();
           }
         if (ad_mllib.has("extract_layer"))
-          extract_layer = ad_mllib.get("extract_layer").get<std::string>();
+          {
+            extract_layer = ad_mllib.get("extract_layer").get<std::string>();
+            if (extract_layer == "last")
+              extract_last = true;
+          }
+        if (ad_mllib.has("forward_method"))
+          forward_method = ad_mllib.get("forward_method").get<std::string>();
       }
 
     bool lstm_continuation = false;
@@ -987,7 +995,8 @@ namespace dd
     torch::Device cpu("cpu");
     _module.eval();
 
-    if (!extract_layer.empty() && !_module.extractable(extract_layer))
+    if (!extract_last && !extract_layer.empty()
+        && !_module.extractable(extract_layer))
       {
         std::string els;
         for (const auto &el : _module.extractable_layers())
@@ -1033,8 +1042,9 @@ namespace dd
         Tensor output;
         try
           {
-            if (extract_layer.empty())
-              output = torch_utils::to_tensor_safe(_module.forward(in_vals));
+            if (extract_layer.empty() || extract_last)
+              output = torch_utils::to_tensor_safe(
+                  _module.forward(in_vals, forward_method));
             else
               output = torch_utils::to_tensor_safe(
                   _module.extract(in_vals, extract_layer));
@@ -1114,8 +1124,8 @@ namespace dd
                   best_count = output_params.get("best").get<int>();
                 std::tuple<Tensor, Tensor> sorted_output
                     = output.sort(1, true);
-                auto probs_acc
-                    = std::get<0>(sorted_output).accessor<float, 2>();
+                Tensor probsf = std::get<0>(sorted_output).to(torch::kFloat);
+                auto probs_acc = probsf.accessor<float, 2>();
                 auto indices_acc
                     = std::get<1>(sorted_output).accessor<int64_t, 2>();
 

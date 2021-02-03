@@ -69,7 +69,17 @@ namespace dd
         torch::nn::Dropout(torch::nn::DropoutOptions(_proj_drop_val)));
   }
 
-  torch::Tensor ViT::AttentionImpl::forward(torch::Tensor x)
+  torch::Tensor ViT::AttentionImpl::residual_mha(torch::Tensor x,
+                                                 torch::Tensor &prev)
+  {
+    if (prev.defined())
+      x = x + prev;
+    prev = x;
+    return x;
+  }
+
+  torch::Tensor ViT::AttentionImpl::forward(torch::Tensor x,
+                                            torch::Tensor &prev)
   {
     long int B = x.size(0);
     long int N = x.size(1);
@@ -83,6 +93,11 @@ namespace dd
     auto v = qkv[2];
 
     auto attn = q.matmul(k.transpose(-2, -1)) * _scale;
+
+    // if realformer, residual
+    if (_realformer)
+      attn = residual_mha(attn, prev);
+
     attn = torch::softmax(attn, -1);
     attn = _attn_drop(attn);
 
@@ -97,14 +112,15 @@ namespace dd
   void ViT::BlockImpl::init_block(const double &mlp_ratio,
                                   const bool &qkv_bias, const double &qk_scale,
                                   const double &drop_val,
-                                  const double &attn_drop_val)
+                                  const double &attn_drop_val,
+                                  const bool &realformer)
   {
     _norm1 = register_module(
         "norm1", torch::nn::LayerNorm(torch::nn::LayerNormOptions({ _dim })));
 
     _attn = register_module("attn",
                             Attention(_dim, _num_heads, qkv_bias, qk_scale,
-                                      attn_drop_val, drop_val));
+                                      attn_drop_val, drop_val, realformer));
     _norm2 = register_module(
         "norm2", torch::nn::LayerNorm(torch::nn::LayerNormOptions({ _dim })));
 
@@ -113,9 +129,9 @@ namespace dd
                            MLP(_dim, mlp_hidden_dim, 0, "gelu", drop_val));
   }
 
-  torch::Tensor ViT::BlockImpl::forward(torch::Tensor x)
+  torch::Tensor ViT::BlockImpl::forward(torch::Tensor x, torch::Tensor &prev)
   {
-    x = x + _attn(_norm1(x));
+    x = x + _attn(_norm1(x), prev);
     x = x + _mlp(_norm2(x));
     return x;
   }
@@ -165,17 +181,14 @@ namespace dd
     if (ad_params.has("dropout"))
       _drop_rate = _attn_drop_rate = ad_params.get("dropout").get<double>();
 
+    if (ad_params.has("realformer"))
+      _realformer = ad_params.get("realformer").get<bool>();
+
     std::string vit_flavor = "vit_base_patch16";
     if (ad_params.has("vit_flavor"))
       vit_flavor = ad_params.get("vit_flavor").get<std::string>();
 
-    if (vit_flavor == "vit_small_patch16")
-      {
-        _depth = 8;
-        _num_heads = 8;
-        _mlp_ratio = 3.0;
-      }
-    else if (vit_flavor == "vit_base_patch16")
+    if (vit_flavor == "vit_base_patch16")
       {
         _qkv_bias = true;
       }
@@ -233,14 +246,16 @@ namespace dd
         throw MLLibBadParamException("unknown ViT flavor " + vit_flavor);
       }
     init_block(_img_size, _patch_size, _in_chans, _embed_dim, _num_heads,
-               _mlp_ratio, _qkv_bias, _qk_scale, _drop_rate, _attn_drop_rate);
+               _mlp_ratio, _qkv_bias, _qk_scale, _drop_rate, _attn_drop_rate,
+               _realformer);
   }
 
   void ViT::init_block(const int &img_size, const int &patch_size,
                        const int &in_chans, const int &embed_dim,
                        const int &num_heads, const double &mlp_ratio,
                        const double &qkv_bias, const double &qk_scale,
-                       const double &drop_rate, const double &attn_drop_rate)
+                       const double &drop_rate, const double &attn_drop_rate,
+                       const bool &realformer)
   {
     _num_features = embed_dim;
     _patch_embed = register_module(
@@ -257,7 +272,8 @@ namespace dd
     for (unsigned int d = 0; d < _depth; ++d)
       {
         _blocks->push_back(Block(embed_dim, num_heads, mlp_ratio, qkv_bias,
-                                 qk_scale, drop_rate, attn_drop_rate));
+                                 qk_scale, drop_rate, attn_drop_rate,
+                                 realformer));
       }
     register_module("blocks", _blocks);
     _norm = register_module(
@@ -278,8 +294,11 @@ namespace dd
     x = x + _pos_embed;
     x = _pos_drop(x);
 
+    torch::Tensor prev_x;
     for (const auto &blk : *_blocks)
-      x = blk->as<Block>()->forward(x);
+      {
+        x = blk->as<Block>()->forward(x, prev_x);
+      }
 
     x = _norm(x);
     x = torch::narrow(x, 1, 0, 1); // x[:,0]

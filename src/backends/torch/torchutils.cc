@@ -86,14 +86,13 @@ namespace dd
     {
       for (const auto &tensor : module->parameters())
         {
-          if (tensor.requires_grad() && requires_grad)
+          if (tensor.requires_grad() || !requires_grad)
             params.push_back(tensor);
         }
       for (auto child : module->children())
         {
-          // XXX(louis): why is "requires_grad" not passed here?
           add_parameters(std::make_shared<torch::jit::script::Module>(child),
-                         params);
+                         params, requires_grad);
         }
     }
 

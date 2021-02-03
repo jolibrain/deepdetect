@@ -170,6 +170,8 @@ namespace dd
         _id = ad_input.get("id").get<std::string>();
       if (ad_input.has("separator"))
         _delim = ad_input.get("separator").get<std::string>();
+      if (ad_input.has("quote"))
+        _quote = ad_input.get("quote").get<std::string>();
 
       if (ad_input.has("ignore"))
         {
@@ -583,10 +585,11 @@ namespace dd
      * @param vals vector to be filled up with CSV data values
      * @param column_id stores the column that holds the line id
      * @param nlines current line counter
+     * @param test whether the line is from the test set
      */
     void read_csv_line(const std::string &hline, const std::string &delim,
                        std::vector<double> &vals, std::string &column_id,
-                       int &nlines);
+                       int &nlines, const bool &test);
 
     /**
      * \brief reads a full CSV data file, calls read_csv_line
@@ -770,6 +773,7 @@ namespace dd
     std::vector<std::string> _label; /**< list of label columns. */
     std::unordered_map<std::string, int> _label_set;
     std::string _delim = ",";
+    std::string _quote = "\"";
     int _id_pos = -1;
     std::vector<int> _label_pos;    /**< column positions of the labels. */
     std::vector<int> _label_offset; /**< negative offset so that labels range
@@ -793,6 +797,11 @@ namespace dd
         _categoricals;       /**< auto-converted categorical variables */
     double _test_split = -1; /**< dataset test split ratio (optional). */
     int _detect_cols = -1;   /**< number of detected csv columns. */
+    std::unordered_map<int, std::string>
+        _hcorresp; /**< correspondence class number / class name. */
+    std::unordered_map<std::string, int>
+        _hcorresp_r; /**< reverse correspondence class name / class number. */
+    std::string _correspname = "corresp.txt";
 
     // data
     std::vector<CSVline> _csvdata;

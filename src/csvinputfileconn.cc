@@ -20,6 +20,7 @@
  */
 
 #include "csvinputfileconn.h"
+#include "utils/csv_parser.hpp"
 
 namespace dd
 {
@@ -62,7 +63,7 @@ namespace dd
         std::vector<double> vals;
         std::string cid;
         int nlines = 0;
-        _cifc->read_csv_line(line, _cifc->_delim, vals, cid, nlines);
+        _cifc->read_csv_line(line, _cifc->_delim, vals, cid, nlines, false);
         if (_cifc->_scale)
           {
             if (!_cifc->_train) // in prediction mode, on-the-fly scaling
@@ -157,84 +158,116 @@ namespace dd
   void CSVInputFileConn::read_csv_line(const std::string &hline,
                                        const std::string &delim,
                                        std::vector<double> &vals,
-                                       std::string &column_id, int &nlines)
+                                       std::string &column_id, int &nlines,
+                                       const bool &test)
   {
     std::string col;
     std::unordered_set<int>::const_iterator hit;
     std::stringstream sh(hline);
     int c = -1;
     auto lit = _columns.begin();
-    while (std::getline(sh, col, delim[0]))
+    aria::csv::CsvParser parser = aria::csv::CsvParser(sh)
+                                      .delimiter(delim[0]) // default is ,
+                                      .quote(_quote[0]);   // default is"
+    for (auto &row : parser)
       {
-        ++c;
-        std::string col_name;
+        for (auto &col : row)
+          {
+            ++c;
+            std::string col_name;
 
-        // detect strings by looking for characters and for quotes
-        // convert to float unless it is string (ignore strings, aka
-        // categorical fields, for now)
-        if (!_columns.empty()) // in prediction mode, columns from header are
-                               // not mandatory
-          {
-            if ((hit = _ignored_columns_pos.find(c))
-                != _ignored_columns_pos.end())
+            // detect strings by looking for characters and for quotes
+            // convert to float unless it is string (ignore strings, aka
+            // categorical fields, for now)
+            if (!_columns.empty()) // in prediction mode, columns from header
+                                   // are not mandatory
               {
-                continue;
-              }
-            col_name = (*lit);
-            if (_id_pos == c)
-              {
-                column_id = col;
-              }
-          }
-        try
-          {
-            double val = 0.0;
-            if (!col.empty())
-              {
-                // one-hot vector encoding as required
-                if (!_columns.empty() && is_category(col_name))
+                if ((hit = _ignored_columns_pos.find(c))
+                    != _ignored_columns_pos.end())
                   {
-                    // - look up category
-                    std::unordered_map<std::string,
-                                       CCategorical>::const_iterator chit
-                        = _categoricals.find(col_name);
-                    int cnum = (*chit).second.get_cat_num(col);
-                    if (cnum < 0)
+                    continue;
+                  }
+                col_name = (*lit);
+                if (_id_pos == c)
+                  {
+                    column_id = col;
+                  }
+              }
+            try
+              {
+                double val = 0.0;
+                if (!col.empty())
+                  {
+                    // one-hot vector encoding as required
+                    if (!_columns.empty() && is_category(col_name))
                       {
-                        throw InputConnectorBadParamException(
-                            "unknown category " + col + " for variable "
-                            + col_name);
-                      }
+                        // - look up category
+                        std::unordered_map<std::string,
+                                           CCategorical>::const_iterator chit
+                            = _categoricals.find(col_name);
+                        int cnum = (*chit).second.get_cat_num(col);
+                        if (cnum < 0)
+                          {
+                            throw InputConnectorBadParamException(
+                                "unknown category " + col + " for variable "
+                                + col_name);
+                          }
 
-                    // - create one-hot vector
-                    int csize = (*chit).second._vals.size();
-                    std::vector<double> ohv = one_hot_vector(cnum, csize);
-                    vals.insert(vals.end(), ohv.begin(), ohv.end());
+                        // - create one-hot vector
+                        int csize = (*chit).second._vals.size();
+                        std::vector<double> ohv = one_hot_vector(cnum, csize);
+                        vals.insert(vals.end(), ohv.begin(), ohv.end());
+                      }
+                    else
+                      {
+                        val = std::stod(col);
+                        vals.push_back(val);
+                      }
+                  }
+              }
+            catch (std::invalid_argument &e)
+              {
+                // not a number, skip for now
+                if (column_id == col) // if id is string, replace with number /
+                  vals.push_back(c);
+                else if (std::find(_label_pos.begin(), _label_pos.end(), c)
+                         != _label_pos.end())
+                  {
+                    std::unordered_map<std::string, int>::iterator uit;
+                    if ((uit = _hcorresp_r.find(col)) == _hcorresp_r.end())
+                      {
+                        if (test)
+                          {
+                            throw InputConnectorBadParamException(
+                                "label " + col
+                                + " found in test set but not in train set");
+                          }
+                        int clsn = _hcorresp_r.size();
+                        vals.push_back(clsn);
+                        _hcorresp_r.insert(
+                            std::pair<std::string, int>(col, clsn));
+                        _hcorresp.insert(
+                            std::pair<int, std::string>(clsn, col));
+                      }
+                    else
+                      {
+                        vals.push_back((*uit).second);
+                      }
                   }
                 else
                   {
-                    val = std::stod(col);
-                    vals.push_back(val);
+                    _logger->error(
+                        "line {}: skipping column {} / not a number", nlines,
+                        col_name);
+                    _logger->error(hline);
+                    throw InputConnectorBadParamException(
+                        "column " + col_name
+                        + " is not a number, use categoricals or ignore "
+                          "parameters instead");
                   }
               }
+            ++lit;
           }
-        catch (std::invalid_argument &e)
-          {
-            // not a number, skip for now
-            if (column_id == col) // if id is string, replace with number /
-              vals.push_back(c);
-            else
-              {
-                _logger->error("line {}: skipping column {} / not a number",
-                               nlines, col_name);
-                _logger->error(hline);
-                throw InputConnectorBadParamException(
-                    "column " + col_name
-                    + " is not a number, use categoricals or ignore "
-                      "parameters instead");
-              }
-          }
-        ++lit;
       }
     ++nlines;
   }
@@ -254,27 +287,33 @@ namespace dd
     std::unordered_map<std::string, int>::const_iterator hit2;
     int i = 0;
     bool has_id = false;
-    while (std::getline(sg, col, _delim[0]))
+    aria::csv::CsvParser parser = aria::csv::CsvParser(sg)
+                                      .delimiter(_delim[0]) // default is ,
+                                      .quote(_quote[0]);    // default is"
+    for (auto &row : parser)
       {
-        if ((hit = _ignored_columns.find(col)) != _ignored_columns.end())
+        for (auto &col : row)
           {
-            _ignored_columns_pos.insert(i);
-            ++i;
-            continue;
-          }
-        else
-          _columns.push_back(col);
+            if ((hit = _ignored_columns.find(col)) != _ignored_columns.end())
+              {
+                _ignored_columns_pos.insert(i);
+                ++i;
+                continue;
+              }
+            else
+              _columns.push_back(col);
 
-        if ((hit2 = _label_set.find(col)) != _label_set.end())
-          _label_pos.at((*hit2).second) = i;
-        if (!has_id && !_id.empty() && col == _id)
-          {
-            _id_pos = i;
-            has_id = true;
+            if ((hit2 = _label_set.find(col)) != _label_set.end())
+              _label_pos.at((*hit2).second) = i;
+            if (!has_id && !_id.empty() && col == _id)
+              {
+                _id_pos = i;
+                has_id = true;
+              }
+            ++i;
           }
-        ++i;
+        _detect_cols = i;
       }
-    _detect_cols = i;
     for (size_t j = 0; j < _label_pos.size(); j++)
       if (_label_pos.at(j) < 0 && _train)
         throw InputConnectorBadParamException("cannot find label column "
@@ -298,26 +337,34 @@ namespace dd
         std::unordered_set<int>::const_iterator igit;
         std::stringstream sh(hline);
         int cu = 0;
-        while (std::getline(sh, col, _delim[0]))
+        // while (std::getline(sh, col, _delim[0]))
+        aria::csv::CsvParser parser = aria::csv::CsvParser(sh)
+                                          .delimiter(_delim[0]) // default is ,
+                                          .quote(_quote[0]);    // default is"
+        for (auto &row : parser)
           {
-            if (cu >= _detect_cols)
+            for (auto &col : row)
               {
-                _logger->error("line {} has more columns than headers / this "
-                               "line: {} / header: {}",
-                               l, cu, _detect_cols);
-                _logger->error(hline);
-                throw InputConnectorBadParamException(
-                    "line has more columns than headers");
-              }
-            if ((igit = _ignored_columns_pos.find(cu))
-                != _ignored_columns_pos.end())
-              {
+                if (cu >= _detect_cols)
+                  {
+                    _logger->error(
+                        "line {} has more columns than headers / this "
+                        "line: {} / header: {}",
+                        l, cu, _detect_cols);
+                    _logger->error(hline);
+                    throw InputConnectorBadParamException(
+                        "line has more columns than headers");
+                  }
+                if ((igit = _ignored_columns_pos.find(cu))
+                    != _ignored_columns_pos.end())
+                  {
+                    ++cu;
+                    continue;
+                  }
+                update_category((*hit), col);
+                ++hit;
                 ++cu;
-                continue;
               }
-            update_category((*hit), col);
-            ++hit;
-            ++cu;
           }
         ++l;
       }
@@ -336,7 +383,7 @@ namespace dd
                     hline.end());
         std::vector<double> vals;
         std::string cid;
-        read_csv_line(hline, _delim, vals, cid, nlines);
+        read_csv_line(hline, _delim, vals, cid, nlines, false);
         if (nlines == 1)
           _min_vals = _max_vals = vals;
         else
@@ -393,7 +440,7 @@ namespace dd
                     hline.end());
         std::vector<double> vals;
         std::string cid;
-        read_csv_line(hline, _delim, vals, cid, nlines);
+        read_csv_line(hline, _delim, vals, cid, nlines, false);
         if (_scale)
           {
             scale_vals(vals);
@@ -433,7 +480,7 @@ namespace dd
                             hline.end());
                 std::vector<double> vals;
                 std::string cid;
-                read_csv_line(hline, _delim, vals, cid, nlines);
+                read_csv_line(hline, _delim, vals, cid, nlines, true);
                 if (_scale)
                   {
                     scale_vals(vals);
@@ -470,5 +517,15 @@ namespace dd
       }
     if (!_ignored_columns.empty() || !_categoricals.empty())
       update_columns();
+
+    // write corresp file
+    std::ofstream correspf(_model_repo + "/" + _correspname, std::ios::binary);
+    auto hit = _hcorresp.begin();
+    while (hit != _hcorresp.end())
+      {
+        correspf << (*hit).first << " " << (*hit).second << std::endl;
+        ++hit;
+      }
+    correspf.close();
   }
 }
