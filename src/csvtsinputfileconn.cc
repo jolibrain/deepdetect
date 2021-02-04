@@ -276,7 +276,6 @@ namespace dd
       }
     else // prediction mode
       {
-
         for (size_t i = 0; i < _uris.size(); i++)
           {
             if (i == 0 && !fileops::file_exists(_uris.at(0))
