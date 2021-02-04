@@ -220,7 +220,8 @@ namespace dd
       bool exists = fileops::file_exists(_repo, isDir);
       if (exists && !isDir)
         {
-          std::string errmsg = "file exists with same name as repository";
+          std::string errmsg
+              = "file exists with same name as repository " + _repo;
           logger->error(errmsg);
           throw MLLibBadParamException(errmsg);
         }
@@ -229,7 +230,8 @@ namespace dd
 
       if (!fileops::is_directory_writable(_repo))
         {
-          std::string errmsg = "destination model directory is not writable";
+          std::string errmsg
+              = "destination model directory " + _repo + " is not writable";
           logger->error(errmsg);
           throw MLLibBadParamException(errmsg);
         }
