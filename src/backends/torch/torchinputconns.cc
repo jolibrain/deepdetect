@@ -963,6 +963,10 @@ namespace dd
             discard_warn(vecindex, seq.size(), test_id);
             continue;
           }
+        else
+          {
+            _tilogger->info("Add sequence of size {}", seq.size());
+          }
         for (; tstart + timesteps < static_cast<long int>(seq.size());
              tstart += _offset)
           {
