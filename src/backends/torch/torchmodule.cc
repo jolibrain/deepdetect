@@ -470,6 +470,12 @@ namespace dd
 
   void TorchModule::load(TorchModel &model)
   {
+    if (!model._native.empty() && !model._proto.empty())
+      {
+        throw MLLibBadParamException(
+            "Found both native and graph model in repository");
+      }
+
     if (!model._traced.empty() && model._proto.empty())
       traced_model_load(model);
 
