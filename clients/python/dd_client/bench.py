@@ -38,6 +38,12 @@ def main():
     parser.add_argument("--img-height", help="image height", type=int, default=224)
     parser.add_argument("--bw", help="whether images are bw", action="store_true")
     parser.add_argument(
+        "--scale",
+        help="Multiply all pixels value by a constant factor",
+        type=float,
+        default=1,
+    )
+    parser.add_argument(
         "--histogram-equalization",
         "--eqhist",
         help="whether we apply an histogram equalization to images",
@@ -45,7 +51,6 @@ def main():
     )
     parser.add_argument("--gpu", help="whether to bench GPU", action="store_true")
     parser.add_argument("--gpuid", help="gpu id to use", type=int, default=0)
-    parser.add_argument("--cpu", help="whether to bench CPU", action="store_true")
     parser.add_argument(
         "--remote-bench-data-dir",
         help="when bench data directory, when available remotely on the server",
@@ -144,6 +149,7 @@ def main():
                 "height": args.img_height,
                 "bw": args.bw,
                 "histogram_equalization": args.histogram_equalization,
+                "scale": args.scale,
             }
             if args.segmentation:
                 parameters_input["segmentation"] = True
@@ -158,6 +164,8 @@ def main():
                     "maxBatchSize": bs,
                     "dla": 0,
                     "maxWorkspaceSize": args.max_workspace_size,
+                    "gpu": args.gpu,
+                    "gpuid": args.gpuid,
                 }
             else:
                 parameters_mllib = {
@@ -167,6 +175,8 @@ def main():
                     "writeEngine": True,
                     "maxBatchSize": bs,
                     "maxWorkspaceSize": args.max_workspace_size,
+                    "gpu": args.gpu,
+                    "gpuid": args.gpuid,
                 }
             parameters_output = {}
             dd.put_service(
