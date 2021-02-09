@@ -357,6 +357,13 @@ if (USE_TORCH)
     "resnet50_native_torch"
     )
   DOWNLOAD_DATASET(
+    "Torchvision test Faster RCNN model"
+    "https://www.deepdetect.com/dd/examples/torch/fasterrcnn_torch.tar.gz"
+    "examples/torch"
+    "fasterrcnn_torch.tar.gz"
+    "fasterrcnn_torch"
+    )
+  DOWNLOAD_DATASET(
     "Torch BERT classification test model"
     "https://www.deepdetect.com/dd/examples/torch/bert_inference_torch.tar.gz"
     "examples/torch"

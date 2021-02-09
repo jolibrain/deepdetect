@@ -39,6 +39,7 @@ static std::string not_found_str
     = "{\"status\":{\"code\":404,\"msg\":\"NotFound\"}}";
 
 static std::string incept_repo = "../examples/torch/resnet50_torch/";
+static std::string detect_repo = "../examples/torch/fasterrcnn_torch/";
 static std::string resnet50_train_repo
     = "../examples/torch/resnet50_training_torch_small/";
 static std::string resnet50_train_data
@@ -113,6 +114,48 @@ TEST(torchapi, service_predict)
   ASSERT_TRUE(cl1 == "n02123045 tabby, tabby cat");
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
               > 0.3);
+}
+
+TEST(torchapi, service_predict_object_detection)
+{
+  JsonAPI japi;
+  std::string sname = "detectserv";
+  std::string jstr
+      = "{\"mllib\":\"torch\",\"description\":\"fasterrcnn\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+        + detect_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
+          "224,\"width\":224,\"rgb\":true,\"scale\":0.0039},\"mllib\":{"
+          "\"template\":\"fasterrcnn\"}}}";
+
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+  std::string jpredictstr = "{\"service\":\"detectserv\",\"parameters\":{"
+                            "\"input\":{\"height\":224,"
+                            "\"width\":224},\"output\":{\"bbox\":true, "
+                            "\"confidence_threshold\":0.8}},\"data\":[\""
+                            + detect_repo + "cat.jpg\"]}";
+  // TODO changer image test ?
+
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  JDoc jd;
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+
+  auto &preds = jd["body"]["predictions"][0]["classes"];
+  std::string cl1 = preds[0]["cat"].GetString();
+  ASSERT_TRUE(cl1 == "cat");
+  ASSERT_TRUE(preds[0]["prob"].GetDouble() > 0.9);
+  auto &bbox = preds[0]["bbox"];
+  // cat is approximately in bottom left corner of the image.
+  ASSERT_TRUE(bbox["xmin"].GetDouble() < 100 && bbox["xmax"].GetDouble() > 300
+              && bbox["ymin"].GetDouble() < 100
+              && bbox["ymax"].GetDouble() > 300);
+  // Check confidence threshold
+  ASSERT_TRUE(preds[preds.Size() - 1]["prob"].GetDouble() >= 0.8);
 }
 
 TEST(torchapi, service_predict_txt_classification)

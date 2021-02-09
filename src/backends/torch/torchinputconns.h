@@ -185,6 +185,8 @@ namespace dd
 
     unsigned int _ntargets
         = 0; /**< number of targets for regression / timeseries */
+    std::unordered_map<std::string, std::pair<int, int>>
+        _imgs_size; /**< image sizes, used in detection. */
 
     std::vector<int64_t>
         _lengths; /**< length of each sentence with txt connector. */
@@ -258,6 +260,13 @@ namespace dd
       ImgInputFileConn::init(ad);
     }
 
+    void fillup_parameters(const APIData &ad_input)
+    {
+      ImgInputFileConn::fillup_parameters(ad_input);
+      if (ad_input.has("bbox"))
+        _bbox = ad_input.get("bbox").get<bool>();
+    }
+
     /**
      * \brief read a whole dir
      */
@@ -291,6 +300,9 @@ namespace dd
      * \brief read data given apiData
      */
     void transform(const APIData &ad);
+
+  private:
+    bool _bbox = false;
   };
 
   /**
