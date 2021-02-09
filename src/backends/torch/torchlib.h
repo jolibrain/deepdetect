@@ -100,6 +100,7 @@ namespace dd
     bool _classification = false; /**< select classification type problem*/
     bool _regression = false;     /**< select regression type problem. */
     bool _timeserie = false;      /**< select timeserie type problem*/
+    bool _bbox = false;           /**< select detection type problem */
     std::string _loss = "";       /**< selected loss*/
 
     APIData _template_params; /**< template parameters, for recurrent and
