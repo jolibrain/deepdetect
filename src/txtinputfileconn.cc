@@ -516,8 +516,12 @@ namespace dd
     if (!fileops::file_exists(vocabfname))
       {
         if (required)
-          throw InputConnectorBadParamException("cannot find vocabulary file "
-                                                + vocabfname);
+          {
+            _logger->error("cannot find vocabulary file " + vocabfname);
+
+            throw InputConnectorBadParamException(
+                "cannot find vocabulary file " + vocabfname);
+          }
         else
           return;
       }
