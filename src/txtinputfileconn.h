@@ -430,7 +430,8 @@ namespace dd
         {
           DataEl<DDTxt> dtxt(this->_input_timeout);
           dtxt._ctype._ctfc = this;
-          if (dtxt.read_element(_uris[i], this->_logger, i)
+          _tests_txt.resize(i);
+          if (dtxt.read_element(_uris[i], this->_logger, i - 1)
               || (_txt.empty() && _db_fname.empty() && _ndbed == 0))
             {
               throw InputConnectorBadParamException("no data for text in "
@@ -440,7 +441,7 @@ namespace dd
           if (_ndbed == 0)
             {
               if (_db_fname.empty())
-                _tests_txt[i].back()->_uri = _uris[i];
+                _tests_txt[i - 1].back()->_uri = _uris[i];
               else
                 return; // single db
             }
