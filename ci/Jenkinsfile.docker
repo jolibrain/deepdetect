@@ -15,15 +15,11 @@ pipeline {
         sh 'printenv | sort'
       }
     }
-    stage('Build docker images') {
-      steps {
-        stage('cpu') { steps { sh 'ci/build-docker-images.sh cpu' } }
-        stage('gpu') { steps { sh 'ci/build-docker-images.sh gpu' } }
-        stage('gpu_torch') { steps { sh 'ci/build-docker-images.sh gpu_torch' } }
-        // stage('gpu_tf') { steps { sh 'ci/build-docker-images.sh gpu_tf' } }
-        // stage('gpu_tensorrt') { steps { sh 'ci/build-docker-images.sh gpu_tensorrt' } }
-      }
-    }
+    stage('Build docker cpu image') { steps { sh 'ci/build-docker-images.sh cpu' } }
+    stage('Build docker gpu image') { steps { sh 'ci/build-docker-images.sh gpu' } }
+    stage('Build docker gpu_torch image') { steps { sh 'ci/build-docker-images.sh gpu_torch' } }
+    //stage('Build docker gpu_tf image') { steps { sh 'ci/build-docker-images.sh gpu_tf' } }
+    //stage('Build docker gpu_tensorrt image') { steps { sh 'ci/build-docker-images.sh gpu_tensorrt' } }
     stage('Update dockerhub readme') {
       when {
        expression { BRANCH_NAME == "master" }
