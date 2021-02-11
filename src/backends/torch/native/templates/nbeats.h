@@ -78,6 +78,25 @@ namespace dd
       {
       }
 
+      BlockImpl &operator=(const BlockImpl &b)
+      {
+        torch::nn::Module::operator=(b);
+        _units = b._units;
+        _thetas_dim = b._thetas_dim;
+        _data_size = b._data_size;
+        _backcast_length = b._backcast_length;
+        _forecast_length = b._forecast_length;
+        _share_thetas = b._share_thetas;
+
+        _fc1 = b._fc1;
+        _fc2 = b._fc2;
+        _fc3 = b._fc3;
+        _fc4 = b._fc4;
+        _theta_b_fc = b._theta_b_fc;
+        _theta_f_fc = b._theta_f_fc;
+        return *this;
+      }
+
       void reset()
       {
         init_block();
@@ -123,13 +142,20 @@ namespace dd
       {
       }
 
+      SeasonalityBlockImpl &operator=(const SeasonalityBlockImpl &b)
+      {
+        BlockImpl::operator=(b);
+        _bS = b._bS;
+        _fS = b._fS;
+        return *this;
+      }
+
       SeasonalityBlockImpl &operator=(SeasonalityBlockImpl &&b)
       {
         // This operator is used when NBeats is cloned (e.g. for multigpu).
         // bT and fT are not copied because they are set by NBeats::reset()
         // With the default operator, unwanted copy of bT and fT resulting
         // in them having the wrong device id.
-        torch::nn::Module::operator=(b);
         BlockImpl::operator=(b);
         return *this;
       }
@@ -165,13 +191,20 @@ namespace dd
       {
       }
 
+      TrendBlockImpl &operator=(const TrendBlockImpl &b)
+      {
+        BlockImpl::operator=(b);
+        _bT = b._bT;
+        _fT = b._fT;
+        return *this;
+      }
+
       TrendBlockImpl &operator=(TrendBlockImpl &&b)
       {
         // This operator is used when NBeats is cloned (e.g. for multigpu).
         // bT and fT are not copied because they are set by NBeats::reset()
         // With the default operator, unwanted copy of bT and fT resulting
         // in them having the wrong device id.
-        torch::nn::Module::operator=(b);
         BlockImpl::operator=(b);
         return *this;
       }
@@ -203,10 +236,17 @@ namespace dd
       }
 
       GenericBlockImpl(const GenericBlockImpl &b)
-          : torch::nn::Module(b), BlockImpl(b)
+          : torch::nn::Module(b), BlockImpl(b), _backcast_fc(b._backcast_fc),
+            _forecast_fc(b._forecast_fc)
       {
-        _backcast_fc = b._backcast_fc;
+      }
+
+      GenericBlockImpl &operator=(const GenericBlockImpl &b)
+      {
+        BlockImpl::operator=(b);
         _forecast_fc = b._forecast_fc;
+        _backcast_fc = b._backcast_fc;
+        return *this;
       }
 
       void reset() override
