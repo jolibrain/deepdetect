@@ -55,8 +55,19 @@ namespace dd
       {
       }
 
-      ~MLPImpl()
+      MLPImpl &operator=(const MLPImpl &m)
       {
+        torch::nn::Module::operator=(m);
+        _input_dim = m._input_dim;
+        _hidden_dim = m._hidden_dim;
+        _output_dim = m._output_dim;
+        _act = m._act;
+        _drop = m._drop;
+
+        _fc1 = m._fc1;
+        _fc2 = m._fc2;
+        _drop1 = m._drop1;
+        return *this;
       }
 
       void reset()
@@ -106,8 +117,24 @@ namespace dd
       {
       }
 
-      ~AttentionImpl()
+      AttentionImpl &operator=(const AttentionImpl &a)
       {
+        torch::nn::Module::operator=(a);
+        _dim = a._dim;
+        _num_heads = a._num_heads;
+        _qkv_bias = a._qkv_bias;
+        _qk_scale = a._qk_scale;
+        _attn_drop_val = a._attn_drop_val;
+        _proj_drop_val = a._proj_drop_val;
+        _realformer = a._realformer;
+
+        _scale = a._scale;
+        _head_dim = a._head_dim;
+        _qkv = a._qkv;
+        _attn_drop = a._attn_drop;
+        _proj = a._proj;
+        _proj_drop = a._proj_drop;
+        return *this;
       }
 
       void reset()
@@ -132,12 +159,12 @@ namespace dd
       double _scale = 1.0;
       unsigned int _head_dim = 0;
 
+      bool _realformer = false;
+
       torch::nn::Linear _qkv{ nullptr };
       torch::nn::Dropout _attn_drop{ nullptr };
       torch::nn::Linear _proj{ nullptr };
       torch::nn::Dropout _proj_drop{ nullptr };
-
-      bool _realformer = false;
     };
 
     typedef torch::nn::ModuleHolder<AttentionImpl> Attention;
@@ -166,8 +193,23 @@ namespace dd
       {
       }
 
-      ~BlockImpl()
+      BlockImpl &operator=(const BlockImpl &b)
       {
+        torch::nn::Module::operator=(b);
+        _dim = b._dim;
+        _num_heads = b._num_heads;
+        _mlp_ratio = b._mlp_ratio;
+        _qkv_bias = b._qkv_bias;
+        _qk_scale = b._qk_scale;
+        _drop_val = b._drop_val;
+        _attn_drop_val = b._attn_drop_val;
+        _realformer = b._realformer;
+
+        _norm1 = b._norm1;
+        _attn = b._attn;
+        _norm2 = b._norm2;
+        _mlp = b._mlp;
+        return *this;
       }
 
       void reset()
@@ -222,8 +264,16 @@ namespace dd
       {
       }
 
-      ~PatchEmbedImpl()
+      PatchEmbedImpl &operator=(const PatchEmbedImpl &p)
       {
+        torch::nn::Module::operator=(p);
+        _img_size = p._img_size;
+        _patch_size = p._patch_size;
+        _in_chans = p._in_chans;
+        _embed_dim = p._embed_dim;
+
+        _proj = p._proj;
+        return *this;
       }
 
       void reset()
@@ -284,9 +334,33 @@ namespace dd
     {
     }
 
-    virtual ~ViT()
+    ViT &operator=(const ViT &v)
     {
+      torch::nn::Module::operator=(v);
+      _img_size = v._img_size;
+      _patch_size = v._patch_size;
+      _in_chans = v._in_chans;
+      _num_classes = v._num_classes;
+      _embed_dim = v._embed_dim;
+      _depth = v._depth;
+      _num_heads = v._num_heads;
+      _mlp_ratio = v._mlp_ratio;
+      _qkv_bias = v._qkv_bias;
+      _qk_scale = v._qk_scale;
+      _drop_rate = v._drop_rate;
+      _attn_drop_rate = v._attn_drop_rate;
+
+      _patch_embed = v._patch_embed;
+      _cls_token = v._cls_token;
+      _pos_embed = v._pos_embed;
+      _pos_drop = v._pos_drop;
+      _blocks = v._blocks;
+      _norm = v._norm;
+      _head = v._head;
+      return *this;
     }
+
+    virtual ~ViT() = default;
 
     void reset() override
     {
