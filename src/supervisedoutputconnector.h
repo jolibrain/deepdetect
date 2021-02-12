@@ -23,7 +23,7 @@
 #define SUPERVISEDOUTPUTCONNECTOR_H
 #define TS_METRICS_EPSILON 1E-2
 
-#include "http/dto/predict.hpp"
+#include "dto/output_connector.hpp"
 
 template <typename T>
 bool SortScorePairDescend(const std::pair<double, T> &pair1,
@@ -163,11 +163,9 @@ namespace dd
     void init(const APIData &ad)
     {
       APIData ad_out = ad.getobj("parameters").getobj("output");
-      auto output_params
-          = ad_out.createSharedDTO<PredictOutputParametersDto>();
-      _best = output_params->best;
-      if (_best == -1)
-        _best = output_params->nclasses;
+      auto output_params = ad_out.createSharedDTO<DTO::OutputConnector>();
+      if (output_params->best != nullptr)
+        _best = output_params->best;
     }
 
     /**
@@ -249,9 +247,7 @@ namespace dd
                    const int &nclasses, const bool &has_bbox,
                    const bool &has_roi, const bool &has_mask) const
     {
-      int best = _best;
-      if (output_param_best != -1)
-        best = output_param_best;
+      int best = output_param_best;
       if (best == -1)
         best = nclasses;
       if (!has_bbox && !has_roi && !has_mask)
@@ -402,7 +398,7 @@ namespace dd
      */
     void finalize(const APIData &ad_in, APIData &ad_out, MLModel *mlm)
     {
-      auto output_params = ad_in.createSharedDTO<PredictOutputParametersDto>();
+      auto output_params = ad_in.createSharedDTO<DTO::OutputConnector>();
 
 #ifndef USE_SIMSEARCH
       (void)mlm;
@@ -446,6 +442,9 @@ namespace dd
           ad_out.erase("nclasses");
           ad_out.erase("bbox");
         }
+
+      if (output_params->best == nullptr)
+        output_params->best = _best;
 
       if (!timeseries)
         best_cats(bcats, output_params->best, nclasses, has_bbox, has_roi,

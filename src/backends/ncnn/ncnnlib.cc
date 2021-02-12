@@ -90,11 +90,9 @@ namespace dd
   void NCNNLib<TInputConnectorStrategy, TOutputConnectorStrategy,
                TMLModel>::init_mllib(const APIData &ad)
   {
-    _init_dto = ad.createSharedDTO<NcnnInitDto>();
+    _init_dto = ad.createSharedDTO<DTO::MLLib>();
 
-    bool use_fp32 = (ad.has("datatype")
-                     && ad.get("datatype").get<std::string>()
-                            == "fp32"); // default is fp16
+    bool use_fp32 = (_init_dto->datatype == "fp32");
     _net->opt.use_fp16_packed = !use_fp32;
     _net->opt.use_fp16_storage = !use_fp32;
     _net->opt.use_fp16_arithmetic = !use_fp32;
@@ -186,8 +184,7 @@ namespace dd
       }
 
     APIData ad_output = ad.getobj("parameters").getobj("output");
-    auto output_params
-        = ad_output.createSharedDTO<PredictOutputParametersDto>();
+    auto output_params = ad_output.createSharedDTO<DTO::OutputConnector>();
 
     // Extract detection or classification
     std::string out_blob;
@@ -207,7 +204,8 @@ namespace dd
       }
 
     // Get best
-    if (output_params->best == -1 || output_params->best > _init_dto->nclasses)
+    if (output_params->best == nullptr || output_params->best == -1
+        || output_params->best > _init_dto->nclasses)
       output_params->best = _init_dto->nclasses;
 
     std::vector<APIData> vrad;
@@ -232,7 +230,7 @@ namespace dd
             throw MLLibInternalException("NCNN internal error");
           }
 
-        if (output_params->bbox == true)
+        if (output_params->bbox)
           {
             std::string uri = inputc._ids.at(b);
             auto bit = inputc._imgs_size.find(uri);
@@ -270,7 +268,7 @@ namespace dd
                 bboxes.push_back(ad_bbox);
               }
           }
-        else if (output_params->ctc == true)
+        else if (output_params->ctc)
           {
             int alphabet = inputc._out.at(b).w;
             int time_step = inputc._out.at(b).h;
@@ -351,7 +349,7 @@ namespace dd
         rad.add("uri", inputc._ids.at(b));
         rad.add("loss", 0.0);
         rad.add("cats", cats);
-        if (output_params->bbox == true)
+        if (output_params->bbox)
           rad.add("bboxes", bboxes);
         if (_timeserie)
           {
@@ -377,8 +375,7 @@ namespace dd
       out.add("bbox", true);
     out.add("roi", false);
     out.add("multibox_rois", false);
-    tout.finalize(ad.getobj("parameters").getobj("output"), out,
-                  static_cast<MLModel *>(&this->_mlmodel));
+    tout.finalize(ad_output, out, static_cast<MLModel *>(&this->_mlmodel));
 
     // chain compliance
     if (ad.has("chain") && ad.get("chain").get<bool>())
