@@ -25,6 +25,8 @@
 #include "dd_spdlog.h"
 #include "mlmodel.h"
 #include "apidata.h"
+#include "dto/model.hpp"
+#include "dto/service_create.hpp"
 
 namespace dd
 {
@@ -38,8 +40,10 @@ namespace dd
               const std::shared_ptr<spdlog::logger> &logger)
         : MLModel(ad, adg, logger)
     {
-      if (ad.has("repository"))
-        this->_repo = ad.get("repository").get<std::string>();
+      auto model_dto = ad.createSharedDTO<DTO::Model>();
+
+      if (model_dto->repository)
+        this->_repo = model_dto->repository->std_str();
       read_from_repository(spdlog::get("api"));
       read_corresp_file();
     }

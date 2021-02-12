@@ -25,7 +25,7 @@
 #include "apidata.h"
 #include "utils/utils.hpp"
 
-#include "dto/ncnn.hpp"
+#include "dto/mllib.hpp"
 
 // NCNN
 #include "net.h"
@@ -59,7 +59,7 @@ namespace dd
     bool _timeserie = false;
 
   private:
-    std::shared_ptr<NcnnInitDto> _init_dto;
+    oatpp::Object<DTO::MLLib> _init_dto;
     static ncnn::UnlockedPoolAllocator _blob_pool_allocator;
     static ncnn::PoolAllocator _workspace_pool_allocator;
 

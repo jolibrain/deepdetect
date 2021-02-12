@@ -35,7 +35,7 @@
 
 #include "apidata.h"
 #include "oatppjsonapi.h"
-#include "http/dto/info.hpp"
+#include "dto/info.hpp"
 
 #include OATPP_CODEGEN_BEGIN(ApiController)
 
@@ -65,8 +65,8 @@ public:
   }
   ENDPOINT("GET", "info", get_info, QUERIES(QueryParams, queryParams))
   {
-    auto info_resp = InfoResponse::createShared();
-    info_resp->head = InfoHead::createShared();
+    auto info_resp = dd::DTO::InfoResponse::createShared();
+    info_resp->head = dd::DTO::InfoHead::createShared();
     info_resp->head->services = {};
 
     auto qs_status = queryParams.get("status");
@@ -84,8 +84,9 @@ public:
             .toJDoc(jd);
         auto json_str = _oja->jrender(jd);
         auto service_info
-            = getDefaultObjectMapper()->readFromString<oatpp::Object<Service>>(
-                json_str.c_str());
+            = getDefaultObjectMapper()
+                  ->readFromString<oatpp::Object<dd::DTO::Service>>(
+                      json_str.c_str());
         info_resp->head->services->emplace_back(service_info);
         ++hit;
       }
