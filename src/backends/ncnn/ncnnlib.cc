@@ -30,6 +30,8 @@
 #include "net.h"
 #include <iostream>
 
+#include "dto/mllib.hpp"
+
 namespace dd
 {
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
@@ -88,13 +90,11 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel>
   void NCNNLib<TInputConnectorStrategy, TOutputConnectorStrategy,
-               TMLModel>::init_mllib(const APIData &ad)
+               TMLModel>::init_mllib(const oatpp::Object<DTO::MLLib> &init_dto)
   {
-    _init_dto = ad.createSharedDTO<NcnnInitDto>();
+    _init_dto = init_dto;
 
-    bool use_fp32 = (ad.has("datatype")
-                     && ad.get("datatype").get<std::string>()
-                            == "fp32"); // default is fp16
+    bool use_fp32 = (_init_dto->datatype == "fp32");
     _net->opt.use_fp16_packed = !use_fp32;
     _net->opt.use_fp16_storage = !use_fp32;
     _net->opt.use_fp16_arithmetic = !use_fp32;

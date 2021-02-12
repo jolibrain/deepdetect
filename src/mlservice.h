@@ -146,20 +146,23 @@ namespace dd
      *        - init of ML library
      * @param ad root data object
      */
-    void init(const APIData &ad)
+    void init(const oatpp::Object<DTO::ServiceCreate> &service_dto)
     {
-      this->_inputc._model_repo
-          = ad.getobj("model").get("repository").get<std::string>();
+      this->_inputc._model_repo = service_dto->model->repository->std_str();
       if (this->_inputc._model_repo.empty())
         throw MLLibBadParamException("empty repository");
 
       this->_inputc._logger = this->_logger;
       this->_outputc._logger = this->_logger;
-      _init_parameters = ad.getobj("parameters");
-      this->_inputc.init(_init_parameters.getobj("input"));
-      this->_outputc.init(_init_parameters.getobj("output"));
-      this->init_mllib(_init_parameters.getobj("mllib"));
-      this->fillup_measures_history(ad);
+      _init_parameters = service_dto->parameters;
+
+      // NOTE(sileht): Beware using fromDTO is a bit ricky because anything
+      // passed in the JSON but not present in the DTO description will not
+      // appear in the generated APIData neither
+      this->_inputc.init(APIData::fromDTO(_init_parameters->input));
+      this->_outputc.init(APIData::fromDTO(_init_parameters->output));
+      this->init_mllib(_init_parameters->mllib);
+      this->fillup_measures_history(APIData::fromDTO(service_dto));
     }
 
     /**
@@ -288,7 +291,7 @@ namespace dd
                               // platform use the new name
       ad.add("model_stats", stats);
       ad.add("jobs", vad);
-      ad.add("parameters", _init_parameters);
+      ad.add("parameters", APIData::fromDTO(_init_parameters));
       ad.add("repository", this->_inputc._model_repo);
       ad.add("mltype", this->_mltype);
       if (typeid(this->_outputc) == typeid(UnsupervisedOutput))
@@ -526,7 +529,7 @@ namespace dd
 
     std::string _sname;       /**< service name. */
     std::string _description; /**< optional description of the service. */
-    APIData _init_parameters; /**< service creation parameters. */
+    oatpp::Object<DTO::Parameters> _init_parameters; /**< service creation parameters. */
 
     mutable std::mutex _tjobs_mutex; /**< mutex around training jobs. */
     std::atomic<int> _tjobs_counter = { 0 }; /**< training jobs counter. */

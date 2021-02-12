@@ -92,7 +92,7 @@ namespace dd
     // resources
     // return a JSON document for every API call
     JDoc info(const std::string &jstr) const;
-    JDoc service_create(const std::string &sname, const std::string &jstr);
+    JDoc service_create(const std::string &sname, const oatpp::Object<DTO::ServiceCreate> &service_dto);
     JDoc service_status(const std::string &sname);
     JDoc service_delete(const std::string &sname, const std::string &jstr);
 
@@ -110,6 +110,13 @@ namespace dd
 
     static int store_json_config_blob(const std::string &model_repo,
                                       const std::string &jstr);
+
+    static int store_json_blob(const std::string &model_repo,
+                               const oatpp::Object<DTO::ServiceCreate> &dto,
+                               const std::string &jfilename = "");
+
+    static int store_json_config_blob(const std::string &model_repo,
+                                      const oatpp::Object<DTO::ServiceCreate> &dto);
 
     static int read_json_blob(const std::string &model_repo,
                               const std::string &jfilename, APIData &ad);

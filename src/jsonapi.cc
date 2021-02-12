@@ -84,6 +84,8 @@ namespace dd
         return dd_internal_error_500();
       }
 
+    std::shared_ptr<oatpp::data::mapping::ObjectMapper> json_object_mapper = oatpp::parser::json::mapping::ObjectMapper::createShared();
+
     std::vector<JDoc> calls_output;
     std::string line;
     int lines = 0;
@@ -106,7 +108,8 @@ namespace dd
           {
             std::string sname = elts.at(1);
             std::string body = elts.at(2);
-            calls_output.push_back(service_create(sname, body));
+            auto service_dto = json_object_mapper->readFromString<oatpp::Object<DTO::ServiceCreate>>(body.c_str());
+            calls_output.push_back(service_create(sname, service_dto));
             if (calls_output.back() != dd_created_201())
               {
                 _logger->error("Service creation failed for {}", sname);
@@ -435,8 +438,7 @@ namespace dd
     return jinfo;
   }
 
-  JDoc JsonAPI::service_create(const std::string &sname,
-                               const std::string &jstr)
+  JDoc JsonAPI::service_create(const std::string &sname, const oatpp::Object<DTO::ServiceCreate> &service_dto)
   {
     if (sname.empty())
       {
@@ -450,62 +452,26 @@ namespace dd
         return dd_service_already_exists_1014();
       }
 
-    rapidjson::Document d;
-    d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
-    if (d.HasParseError())
-      {
-        _logger->error("JSON parsing error on string: {}", jstr);
-        return dd_bad_request_400();
-      }
 
-    std::string mllib, input;
-    std::string type, description;
-    bool store_config = false;
-    APIData ad, ad_model;
-    try
-      {
-        // mandatory parameters.
-        mllib = d["mllib"].GetString();
-        input = d["parameters"]["input"]["connector"].GetString();
+    if (!service_dto->mllib) {
+       return dd_bad_request_400("mllib required");
+    }
+    if (!service_dto->parameters || !service_dto->parameters->input || !service_dto->parameters->input->connector) {
+       return dd_bad_request_400("parameters/input/connector required");
+    }
 
-        // optional parameters.
-        if (d.HasMember("type"))
-          type = d["type"].GetString();
-        else
-          type = "supervised"; // default
-        if (d.HasMember("description"))
-          description = d["description"].GetString();
-
-        // model parameters (mandatory).
-        ad.fromRapidJson(d);
-        ad_model = ad.getobj("model");
-        APIData ad_param = ad.getobj("parameters");
-        if (ad_param.has("output"))
-          {
-            APIData ad_output = ad_param.getobj("output");
-            if (ad_output.has("store_config"))
-              store_config = ad_output.get("store_config").get<bool>();
-          }
-      }
-    catch (RapidjsonException &e)
-      {
-        _logger->error("JSON error {}", e.what());
-        return dd_bad_request_400(e.what());
-      }
-    catch (...)
-      {
-        return dd_bad_request_400();
-      }
+    std::shared_ptr<oatpp::data::mapping::ObjectMapper> json_object_mapper = oatpp::parser::json::mapping::ObjectMapper::createShared();
+    std::string input = service_dto->parameters->input->connector->std_str();
 
     // create service.
     try
       {
-        if (mllib.empty())
+        if (!service_dto->mllib)
           {
             return dd_unknown_library_1000();
           }
 #ifdef USE_CAFFE
-        else if (mllib == "caffe")
+        else if (service_dto->mllib == "caffe")
           {
             CaffeModel cmodel(ad_model, ad, _logger);
             read_metrics_json(cmodel._repo, ad);
@@ -675,35 +641,37 @@ namespace dd
 #endif // USE_CAFFE2
 
 #ifdef USE_NCNN
-        else if (mllib == "ncnn")
+        else if (service_dto->mllib == "ncnn")
           {
-            NCNNModel ncnnmodel(ad_model, ad, _logger);
-            read_metrics_json(ncnnmodel._repo, ad);
-            if (type == "supervised")
+            NCNNModel ncnnmodel(service_dto->model, service_dto, _logger);
+            // TODO(sileht): Create a metrics DTO first
+            //read_metrics_json(ncnnmodel._repo, ad);
+            if (service_dto->type == "supervised")
               {
                 if (input == "image")
-                  add_service(
+                    add_service(
                       sname,
                       std::move(MLService<NCNNLib, ImgNCNNInputFileConn,
                                           SupervisedOutput, NCNNModel>(
-                          sname, ncnnmodel, description)),
-                      ad);
+                          sname, ncnnmodel, service_dto->description->std_str())),
+                      service_dto);
                 else if (input == "csv_ts" || input == "csvts")
                   add_service(
                       sname,
                       std::move(MLService<NCNNLib, CSVTSNCNNInputFileConn,
                                           SupervisedOutput, NCNNModel>(
-                          sname, ncnnmodel, description)),
-                      ad);
+                          sname, ncnnmodel, service_dto->description->std_str())),
+                      service_dto);
                 else
                   return dd_input_connector_not_found_1004();
-                if (JsonAPI::store_json_blob(ncnnmodel._repo, jstr))
+
+                if (JsonAPI::store_json_blob(ncnnmodel._repo, service_dto))
                   _logger->error(
                       "couldn't write {} file in model repository {}",
                       JsonAPI::_json_blob_fname, ncnnmodel._repo);
                 // store model configuration json blob
-                if (store_config
-                    && JsonAPI::store_json_config_blob(ncnnmodel._repo, jstr))
+                if (service_dto->parameters->output->store_config
+                    && JsonAPI::store_json_config_blob(ncnnmodel._repo, service_dto))
                   {
                     _logger->error(
                         "couldn't write {} file in model repository {}",
@@ -1616,8 +1584,17 @@ namespace dd
     return 0;
   }
 
+  int JsonAPI::store_json_blob(const std::string &model_repo,
+                               const oatpp::Object<DTO::ServiceCreate> &dto,
+                               const std::string &jfilename)
+  {
+    std::shared_ptr<oatpp::data::mapping::ObjectMapper> object_mapper = oatpp::parser::json::mapping::ObjectMapper::createShared();
+    oatpp::String json = object_mapper->writeToString(dto);
+    return JsonAPI::store_json_blob(model_repo, json->std_str(), jfilename);
+  }
+
   int JsonAPI::store_json_config_blob(const std::string &model_repo,
-                                      const std::string &jstr)
+                               const std::string &jstr)
   {
     std::ofstream outf;
     outf.open(model_repo + "/" + JsonAPI::_json_config_blob_fname,
@@ -1626,6 +1603,14 @@ namespace dd
       return 1;
     outf << jstr << std::endl;
     return 0;
+  }
+
+  int JsonAPI::store_json_config_blob(const std::string &model_repo,
+                                      const oatpp::Object<DTO::ServiceCreate> &dto)
+  {
+    std::shared_ptr<oatpp::data::mapping::ObjectMapper> object_mapper = oatpp::parser::json::mapping::ObjectMapper::createShared();
+    oatpp::String json = object_mapper->writeToString(dto);
+    return JsonAPI::store_json_config_blob(model_repo, json->std_str());
   }
 
   // read_json file blob to apidata
@@ -1659,6 +1644,7 @@ namespace dd
     return 0;
   }
 
+  // FIXME(sileht) create a metrics DTO
   // read_json file blob to apidata
   void JsonAPI::read_metrics_json(const std::string &model_repo, APIData &ad)
   {

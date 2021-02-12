@@ -35,6 +35,7 @@
 
 #include "apidata.h"
 #include "oatppjsonapi.h"
+#include "dto/service_create.hpp"
 #include "http/dto/info.hpp"
 
 #include OATPP_CODEGEN_BEGIN(ApiController)
@@ -109,10 +110,10 @@ public:
   }
   ENDPOINT("POST", "services/{service-name}", create_service,
            PATH(oatpp::String, service_name, "service-name"),
-           BODY_STRING(oatpp::String, service_data))
+           BODY_DTO(oatpp::Object<dd::DTO::ServiceCreate>, service_dto))
   {
     auto janswer = _oja->service_create(service_name.get()->std_str(),
-                                        service_data.get()->std_str());
+                                        service_dto);
     return _oja->jdoc_to_response(janswer);
   }
 
@@ -123,10 +124,10 @@ public:
   }
   ENDPOINT("PUT", "services/{service-name}", update_service,
            PATH(oatpp::String, service_name, "service-name"),
-           BODY_STRING(oatpp::String, service_data))
+           BODY_DTO(oatpp::Object<dd::DTO::ServiceCreate>, service_dto))
   {
     auto janswer = _oja->service_create(service_name.get()->std_str(),
-                                        service_data.get()->std_str());
+                                        service_dto);
     return _oja->jdoc_to_response(janswer);
   }
   ENDPOINT_INFO(delete_service)

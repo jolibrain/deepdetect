@@ -24,6 +24,7 @@
 #include <gtest/gtest.h>
 #include <stdio.h>
 #include <iostream>
+#include "dto/service_create.hpp"
 
 using namespace dd;
 
@@ -53,8 +54,6 @@ static std::string iterations_lstm = "20";
 TEST(ncnnapi, service_predict_bbox)
 {
   // create service
-  JsonAPI japi;
-  std::string sname = "imgserv";
   std::string jstr
       = "{\"mllib\":\"ncnn\",\"description\":\"squeezenet-ssd\",\"type\":"
         "\"supervised\",\"model\":{\"repository\":\""
@@ -62,7 +61,18 @@ TEST(ncnnapi, service_predict_bbox)
         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
           "300,\"width\":300},"
           "\"mllib\":{\"nclasses\":21}}}";
-  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+
+  JsonAPI japi;
+  std::string sname = "imgserv";
+  std::shared_ptr<oatpp::data::mapping::ObjectMapper> objectMapper
+      = oatpp::parser::json::mapping::ObjectMapper::createShared();
+
+  auto service_create
+      = objectMapper->readFromString<oatpp::Object<dd::DTO::ServiceCreate>>(
+          jstr.c_str());
+
+  std::string joutstr
+      = japi.jrender(japi.service_create(sname, service_create));
   ASSERT_EQ(created_str, joutstr);
 
   // predict
@@ -151,6 +161,7 @@ TEST(ncnnapi, service_predict_classification)
   // create service
   JsonAPI japi;
   std::string sname = "imgserv";
+
   std::string jstr
       = "{\"mllib\":\"ncnn\",\"description\":\"squeezenet\",\"type\":"
         "\"supervised\",\"model\":{\"repository\":\""
@@ -158,7 +169,16 @@ TEST(ncnnapi, service_predict_classification)
         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
           "224,\"width\":224,\"mean\":[128,128,128]},"
           "\"mllib\":{\"nclasses\":1000}}}";
-  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+
+  std::shared_ptr<oatpp::data::mapping::ObjectMapper> objectMapper
+      = oatpp::parser::json::mapping::ObjectMapper::createShared();
+
+  auto service_create
+      = objectMapper->readFromString<oatpp::Object<dd::DTO::ServiceCreate>>(
+          jstr.c_str());
+
+  std::string joutstr
+      = japi.jrender(japi.service_create(sname, service_create));
   ASSERT_EQ(created_str, joutstr);
 
   // predict
@@ -196,7 +216,17 @@ TEST(ncnnapi, service_lstm)
           "\"output\"]},\"mllib\":{\"template\":\"recurrent\",\"layers\":["
           "\"L10\",\"L10\"],\"dropout\":[0.0,0.0,0.0],\"regression\":true,"
           "\"sl1sigma\":100.0,\"loss\":\"L1\"}}}";
-  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+
+  std::shared_ptr<oatpp::data::mapping::ObjectMapper> objectMapper
+      = oatpp::parser::json::mapping::ObjectMapper::createShared();
+
+  auto service_create
+      = objectMapper->readFromString<oatpp::Object<dd::DTO::ServiceCreate>>(
+          jstr.c_str());
+
+  std::string joutstr
+      = japi.jrender(japi.service_create(sname, service_create));
+
   ASSERT_EQ(created_str, joutstr);
 
   // train
@@ -272,7 +302,15 @@ TEST(ncnnapi, service_lstm)
            "\"csvts\",\"label\":["
            "\"output\"]}"
            "}}";
-  joutstr = japi.jrender(japi.service_create(sname, jstr));
+
+  std::shared_ptr<oatpp::data::mapping::ObjectMapper> objectMapper
+      = oatpp::parser::json::mapping::ObjectMapper::createShared();
+
+  auto service_create
+      = objectMapper->readFromString<oatpp::Object<dd::DTO::ServiceCreate>>(
+          jstr.c_str());
+  joutstr = japi.jrender(japi.service_create(sname, service_create));
+
   ASSERT_EQ(created_str, joutstr);
 
   jpredictstr
@@ -312,7 +350,16 @@ TEST(ncnnapi, ocr)
         + ocr_repo
         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"ctc\":"
           "true, \"height\":136,\"width\":220},\"mllib\":{\"nclasses\":69}}}";
-  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+
+  std::shared_ptr<oatpp::data::mapping::ObjectMapper> objectMapper
+      = oatpp::parser::json::mapping::ObjectMapper::createShared();
+
+  auto service_create
+      = objectMapper->readFromString<oatpp::Object<dd::DTO::ServiceCreate>>(
+          jstr.c_str());
+
+  std::string joutstr
+      = japi.jrender(japi.service_create(sname, service_create));
   ASSERT_EQ(created_str, joutstr);
 
   // predict
