@@ -26,6 +26,8 @@
 #include <random>
 #include <algorithm>
 
+#include "dto/svm_connector.hpp"
+
 namespace dd
 {
   class SVMInputFileConn;
@@ -93,8 +95,11 @@ namespace dd
 
     void fillup_parameters(const APIData &ad_input)
     {
-      if (ad_input.has("test_split"))
-        _test_split = ad_input.get("test_split").get<double>();
+      auto params
+          = ad_input.createSharedDTO<dd::DTO::SVMInputConnectorParameters>();
+
+      if (params->test_split)
+        _test_split = params->test_split;
 
       // timeout
       this->set_timeout(ad_input);
@@ -102,12 +107,14 @@ namespace dd
 
     void shuffle_data(const APIData &ad)
     {
-      if (ad.has("shuffle") && ad.get("shuffle").get<bool>())
+      auto params = ad.createSharedDTO<dd::DTO::SVMInputConnectorParameters>();
+      if (params->shuffle)
         {
           std::mt19937 g;
-          if (ad.has("seed") && ad.get("seed").get<int>() >= 0)
+          if (params->seed)
             {
-              g = std::mt19937(ad.get("seed").get<int>());
+              int seed = params->seed;
+              g = std::mt19937(seed);
             }
           else
             {
