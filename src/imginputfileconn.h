@@ -43,6 +43,8 @@
 #include "utils/apitools.h"
 #include <random>
 
+#include "dto/img_connector.hpp"
+
 namespace dd
 {
 
@@ -455,81 +457,89 @@ namespace dd
 
     void fillup_parameters(const APIData &ad)
     {
+      auto params = ad.createSharedDTO<dd::DTO::ImgInputConnectorParameters>();
+
       // optional parameters.
-      if (ad.has("width"))
-        _width = ad.get("width").get<int>();
-      if (ad.has("height"))
-        _height = ad.get("height").get<int>();
-      if (ad.has("crop_width"))
+      if (params->width)
+        _width = params->width;
+      if (params->height)
+        _height = params->height;
+      if (params->crop_width)
         {
-          _crop_width = ad.get("crop_width").get<int>();
-          if (_crop_width > _width)
+          if (params->crop_width > _width)
             {
               _logger->error("Crop width must be less than or equal to width");
               throw InputConnectorBadParamException(
                   "Crop width must be less than or equal to width");
             }
+          _width = params->crop_width;
         }
-      if (ad.has("crop_height"))
+      if (params->crop_height)
         {
-          _crop_height = ad.get("crop_height").get<int>();
-          if (_crop_height > _height)
+          if (params->crop_height > _height)
             {
               _logger->error(
                   "Crop height must be less than or equal to height");
               throw InputConnectorBadParamException(
                   "Crop height must be less than or equal to height");
             }
+          _height = params->crop_height;
         }
-      if (ad.has("bw"))
-        _bw = ad.get("bw").get<bool>();
-      if (ad.has("rgb"))
-        _rgb = ad.get("rgb").get<bool>();
-      if (ad.has("histogram_equalization"))
-        _histogram_equalization = ad.get("histogram_equalization").get<bool>();
-      if (ad.has("unchanged_data"))
-        _unchanged_data = ad.get("unchanged_data").get<bool>();
-      if (ad.has("shuffle"))
-        _shuffle = ad.get("shuffle").get<bool>();
-      if (ad.has("seed"))
-        _seed = ad.get("seed").get<int>();
-      if (ad.has("test_split"))
-        _test_split = ad.get("test_split").get<double>();
-      if (ad.has("mean"))
+
+      _bw |= params->bw;
+      _rgb |= params->rgb;
+      _histogram_equalization |= params->histogram_equalization;
+      _unchanged_data |= params->unchanged_data;
+      _shuffle |= params->shuffle;
+      if (params->seed)
+        _seed = params->seed;
+      if (params->test_split)
+        _test_split = params->test_split;
+      if (params->mean)
         {
-          apitools::get_floats(ad, "mean", _mean);
+          // NOTE(sileht): if we have two much of this we can create
+          // an oat++ type that directly handle std::vector<float> instead
+          // of using the oatpp::Vector<oatpp::Float32>
+          _mean = std::vector<float>();
+          for (auto &v : *params->mean)
+            _mean.push_back(v);
           _has_mean_scalar = true;
         }
-      if (ad.has("std"))
+      if (params->std)
         {
-          apitools::get_floats(ad, "std", _std);
+          _std = std::vector<float>();
+          for (auto &v : *params->std)
+            _std.push_back(v);
         }
 
       // Variable size
-      if (ad.has("scale"))
-        _scale = ad.get("scale").get<double>();
-      if (ad.has("scaled") || ad.has("scale_min") || ad.has("scale_max"))
-        _scaled = true;
-      if (ad.has("scale_min"))
-        _scale_min = ad.get("scale_min").get<int>();
-      if (ad.has("scale_max"))
-        _scale_max = ad.get("scale_max").get<int>();
+      _scaled |= params->scaled;
+      if (params->scale)
+        _scale = params->scale;
+      if (params->scale_min)
+        {
+          _scaled = true;
+          _scale_min = params->scale_min;
+        }
+      if (params->scale_max)
+        {
+          _scaled = true;
+          _scale_max = params->scale_max;
+        }
 
       // whether to keep original image (for chained ops, e.g. cropping)
-      if (ad.has("keep_orig"))
-        _keep_orig = ad.get("keep_orig").get<bool>();
+      _keep_orig |= params->keep_orig;
 
       // image interpolation method
-      if (ad.has("interp"))
-        _interp = ad.get("interp").get<std::string>();
+      if (params->interp)
+        _interp = params->interp->std_str();
 
       // timeout
       this->set_timeout(ad);
 
 #ifdef USE_CUDA_CV
       // image resizing on GPU
-      if (ad.has("cuda"))
-        _cuda = ad.get("cuda").get<bool>();
+      _cuda |= params->cuda;
 #endif
     }
 
