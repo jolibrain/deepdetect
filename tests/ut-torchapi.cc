@@ -921,6 +921,64 @@ TEST(torchapi, service_train_txt_classification)
   ASSERT_TRUE(!fileops::file_exists(bert_train_repo + "solver-3.pt"));
 }
 
+TEST(torchapi, service_train_txt_classification_nosplit)
+{
+  setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
+  torch::manual_seed(torch_seed);
+  at::globalContext().setDeterministic(true);
+
+  // create service
+  JsonAPI japi;
+  std::string sname = "txtserv";
+  std::string jstr = "{\"mllib\":\"torch\",\"description\":\"bert\",\"type\":"
+                     "\"supervised\",\"model\":{\"repository\":\""
+                     + bert_train_repo
+                     + "\"},\"parameters\":{\"input\":{\"connector\":\"txt\","
+                       "\"ordered_words\":true,"
+                       "\"wordpiece_tokens\":true,\"punctuation_tokens\":true,"
+                       "\"sequence\":512},\"mllib\":{\"template\":\"bert\","
+                       "\"nclasses\":2,\"finetuning\":true,\"gpu\":true}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // train
+  std::string jtrainstr
+      = "{\"service\":\"txtserv\",\"async\":false,\"parameters\":{"
+        "\"mllib\":{\"solver\":{\"iterations\":3,\"base_lr\":"
+        + torch_lr
+        + ",\"iter_"
+          "size\":2,\"solver_type\":\"ADAM\"},\"net\":{\"batch_size\":2}},"
+          "\"input\":{\"seed\":12345,\"shuffle\":true},"
+          "\"output\":{\"measure\":[\"f1\",\"acc\",\"mcll\",\"cmdiag\","
+          "\"cmfull\"]}},\"data\":[\""
+        + bert_train_data + "\",\"" + bert_train_data + "\"]}";
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
+  JDoc jd;
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_TRUE(abs(jd["body"]["measure"]["iteration"].GetDouble() - 3)
+              < 0.00001)
+      << "iterations";
+  // This assertion is non-deterministic
+  // ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() > 1.0) <<
+  // "train_loss";
+  ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() <= 1) << "accuracy";
+  ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() <= 1) << "f1";
+
+  std::unordered_set<std::string> lfiles;
+  fileops::list_directory(bert_train_repo, true, false, false, lfiles);
+  for (std::string ff : lfiles)
+    {
+      if (ff.find("checkpoint") != std::string::npos
+          || ff.find("solver") != std::string::npos)
+        remove(ff.c_str());
+    }
+  ASSERT_TRUE(!fileops::file_exists(bert_train_repo + "checkpoint-3.pt"));
+  ASSERT_TRUE(!fileops::file_exists(bert_train_repo + "solver-3.pt"));
+}
+
 #endif
 
 TEST(torchapi, service_train_csvts_nbeats)
