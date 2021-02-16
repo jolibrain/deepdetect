@@ -179,8 +179,8 @@ namespace dd
   {
     _device = device; // TODO: should be set with set_device elsewhere
     this->_native = std::shared_ptr<NativeModule>(
-        NativeFactory::from_template<TInputConnectorStrategy>(tmpl, lib_ad,
-                                                              inputc));
+        NativeFactory::from_template<TInputConnectorStrategy>(
+            tmpl, lib_ad, inputc, _logger));
 
     if (_native)
       {

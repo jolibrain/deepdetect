@@ -73,6 +73,8 @@ static std::string sinus = "../examples/all/sinus/";
 
 static std::string iterations_nbeats_cpu = "100";
 static std::string iterations_nbeats_gpu = "1000";
+static std::string iterations_ttransformer_cpu = "100";
+static std::string iterations_ttransformer_gpu = "1000";
 
 static std::string iterations_resnet50 = "200";
 static std::string iterations_vit = "200";
@@ -919,6 +921,64 @@ TEST(torchapi, service_train_txt_classification)
   ASSERT_TRUE(!fileops::file_exists(bert_train_repo + "solver-3.pt"));
 }
 
+TEST(torchapi, service_train_txt_classification_nosplit)
+{
+  setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
+  torch::manual_seed(torch_seed);
+  at::globalContext().setDeterministic(true);
+
+  // create service
+  JsonAPI japi;
+  std::string sname = "txtserv";
+  std::string jstr = "{\"mllib\":\"torch\",\"description\":\"bert\",\"type\":"
+                     "\"supervised\",\"model\":{\"repository\":\""
+                     + bert_train_repo
+                     + "\"},\"parameters\":{\"input\":{\"connector\":\"txt\","
+                       "\"ordered_words\":true,"
+                       "\"wordpiece_tokens\":true,\"punctuation_tokens\":true,"
+                       "\"sequence\":512},\"mllib\":{\"template\":\"bert\","
+                       "\"nclasses\":2,\"finetuning\":true,\"gpu\":true}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // train
+  std::string jtrainstr
+      = "{\"service\":\"txtserv\",\"async\":false,\"parameters\":{"
+        "\"mllib\":{\"solver\":{\"iterations\":3,\"base_lr\":"
+        + torch_lr
+        + ",\"iter_"
+          "size\":2,\"solver_type\":\"ADAM\"},\"net\":{\"batch_size\":2}},"
+          "\"input\":{\"seed\":12345,\"shuffle\":true},"
+          "\"output\":{\"measure\":[\"f1\",\"acc\",\"mcll\",\"cmdiag\","
+          "\"cmfull\"]}},\"data\":[\""
+        + bert_train_data + "\",\"" + bert_train_data + "\"]}";
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
+  JDoc jd;
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_TRUE(abs(jd["body"]["measure"]["iteration"].GetDouble() - 3)
+              < 0.00001)
+      << "iterations";
+  // This assertion is non-deterministic
+  // ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() > 1.0) <<
+  // "train_loss";
+  ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() <= 1) << "accuracy";
+  ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() <= 1) << "f1";
+
+  std::unordered_set<std::string> lfiles;
+  fileops::list_directory(bert_train_repo, true, false, false, lfiles);
+  for (std::string ff : lfiles)
+    {
+      if (ff.find("checkpoint") != std::string::npos
+          || ff.find("solver") != std::string::npos)
+        remove(ff.c_str());
+    }
+  ASSERT_TRUE(!fileops::file_exists(bert_train_repo + "checkpoint-3.pt"));
+  ASSERT_TRUE(!fileops::file_exists(bert_train_repo + "solver-3.pt"));
+}
+
 #endif
 
 TEST(torchapi, service_train_csvts_nbeats)
@@ -1221,6 +1281,113 @@ TEST(torchapi, service_train_csvts_nbeats_forecast)
           "10,\"ignore\":[\"output\"]},\"mllib\":{\"gpu\":false,\"solver\":{"
           "\"iterations\":"
         + iterations_nbeats_cpu
+        + ",\"test_interval\":10,\"base_lr\":0.1,\"snapshot\":500,\"test_"
+          "initialization\":false,\"solver_type\":\"ADAM\"},\"net\":{\"batch_"
+          "size\":2,\"test_batch_"
+          "size\":10}},\"output\":{\"measure\":[\"L1\",\"L2\"]}},\"data\":[\""
+        + csvts_data + "\",\"" + csvts_test + "\"]}";
+
+  std::cerr << "jtrainstr=" << jtrainstr << std::endl;
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  JDoc jd;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_TRUE(jd.HasMember("status"));
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
+  ASSERT_EQ("Created", jd["status"]["msg"]);
+  ASSERT_TRUE(jd.HasMember("head"));
+  ASSERT_EQ("/train", jd["head"]["method"]);
+  ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
+  ASSERT_TRUE(jd.HasMember("body"));
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
+  ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("L1_mean_error"));
+  ASSERT_TRUE(jd["body"]["measure"]["L1_max_error_0"].GetDouble() > 0.0);
+  ASSERT_TRUE(jd["body"]["parameters"]["input"].HasMember("max_vals"));
+  ASSERT_TRUE(jd["body"]["parameters"]["input"].HasMember("min_vals"));
+
+  std::string str_min_vals
+      = japi.jrender(jd["body"]["parameters"]["input"]["min_vals"]);
+  std::string str_max_vals
+      = japi.jrender(jd["body"]["parameters"]["input"]["max_vals"]);
+
+  //  predict
+  std::string jpredictstr = "{\"service\":\"" + sname
+                            + "\",\"parameters\":{\"input\":{\"backcast_"
+                              "timesteps\":40,\"connector\":"
+                              "\"csvts\",\"scale\":true,\"forecast_"
+                              "timesteps\":10,\"ignore\":[\"output\"],"
+                              "\"continuation\":"
+                              "true,\"min_vals\":"
+                            + str_min_vals + ",\"max_vals\":" + str_max_vals
+                            + "},\"output\":{}},\"data\":[\"" + csvts_predict
+                            + "\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
+  ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_49", uri);
+  ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
+  ASSERT_EQ(jd["body"]["predictions"][0]["series"].Size(), 10);
+  ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["out"][0].GetDouble()
+              >= -1.5);
+
+  //  remove service
+  jstr = "{\"clear\":\"full\"}";
+  joutstr = japi.jrender(japi.service_delete(sname, jstr));
+  ASSERT_EQ(ok_str, joutstr);
+  rmdir(csvts_nbeats_repo.c_str());
+}
+
+TEST(torchapi, service_train_ttransformer_forecast)
+{
+  setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
+  torch::manual_seed(torch_seed);
+  at::globalContext().setDeterministic(true);
+
+  // create service
+  JsonAPI japi;
+  std::string sname = "ttransformer";
+  std::string csvts_data = sinus + "train";
+  std::string csvts_test = sinus + "test";
+  std::string csvts_predict = sinus + "predict";
+  std::string csvts_nbeats_repo = "ttransformer";
+  mkdir(csvts_nbeats_repo.c_str(), 0777);
+
+  std::string jstr
+      = "{\"mllib\":\"torch\",\"description\":\"ttransformer\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+        + csvts_nbeats_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"csvts\","
+          "\"forecast_timesteps\":10,\"ignore\":[\"output\"],\"backcast_"
+          "timesteps\":40},"
+          "\"mllib\":"
+          "{\"template\":\"ttransformer\",\"template_params\":{\"embed\": "
+          "{\"layers\": 2,\"activation\": "
+          "\"relu\",\"dim\": 2,\"type\": \"step\",\"dropout\": "
+          "0.0},\"encoder\":{\"heads\": 1,\"layers\": 2,\"hidden_dim\": "
+          "2,\"dropout\": 0.0},\"positional_encoding\":{\"type\": "
+          "\"naive\",\"learn\": false,\"dropout\": "
+          "0.0},\"decoder\":{\"type\": "
+          "\"simple\",\"dropout\": 0.0,\"layers\": 1}},"
+          "\"loss\":\"L1\"}}}";
+
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // train
+  std::string jtrainstr
+      = "{\"service\":\"" + sname
+        + "\",\"async\":false,\"parameters\":{\"input\":{\"seed\":12345,"
+          "\"shuffle\":true,"
+          "\"separator\":\",\",\"scale\":true,\"offset\":10,\"backcast_"
+          "timesteps\":40,\"forecast_timesteps\":"
+          "10,\"ignore\":[\"output\"]},\"mllib\":{\"gpu\":false,\"solver\":{"
+          "\"iterations\":"
+        + iterations_ttransformer_cpu
         + ",\"test_interval\":10,\"base_lr\":0.1,\"snapshot\":500,\"test_"
           "initialization\":false,\"solver_type\":\"ADAM\"},\"net\":{\"batch_"
           "size\":2,\"test_batch_"
