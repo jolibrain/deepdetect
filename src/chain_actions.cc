@@ -46,7 +46,6 @@ namespace dd
     double bratio = 0.0;
     if (_params.has("padding_ratio"))
       bratio = _params.get("padding_ratio").get<double>(); // e.g. 0.055
-    std::vector<APIData> cvad;
 
     bool save_crops = false;
     if (_params.has("save_crops"))
@@ -55,6 +54,22 @@ namespace dd
     std::string save_path;
     if (_params.has("save_path"))
       save_path = _params.get("save_path").get<std::string>() + "/";
+
+    bool to_rgb = false;
+    if (_params.has("to_rgb"))
+      to_rgb = _params.get("to_rgb").get<bool>();
+    bool to_bgr = false;
+    if (_params.has("to_bgr"))
+      to_bgr = _params.get("to_bgr").get<bool>();
+
+    int fixed_width = 0;
+    if (_params.has("fixed_width"))
+      fixed_width = _params.get("fixed_width").get<int>();
+    int fixed_height = 0;
+    if (_params.has("fixed_height"))
+      fixed_height = _params.get("fixed_height").get<int>();
+
+    std::vector<APIData> cvad;
 
     // iterate image batch
     for (size_t i = 0; i < vad.size(); i++)
@@ -95,6 +110,16 @@ namespace dd
             double cymax
                 = std::min(static_cast<double>(img.rows), ymax + deltay);
 
+            if (fixed_width > 0 || fixed_height > 0)
+              {
+                double xcenter = cxmin + (cxmax - cxmin) / 2.0;
+                double ycenter = cymin + (cymax - cymin) / 2.0;
+                cxmin = int(xcenter - fixed_width / 2.0);
+                cxmax = int(xcenter + fixed_width / 2.0);
+                cymin = int(ycenter - fixed_height / 2.0);
+                cymax = int(ycenter + fixed_height / 2.0);
+              }
+
             if (cxmin > img.cols || cymin > img.rows || cxmax < 0 || cymax < 0)
               {
                 _chain_logger->warn("bounding box does not intersect image, "
@@ -104,6 +129,12 @@ namespace dd
 
             cv::Rect roi(cxmin, cymin, cxmax - cxmin, cymax - cymin);
             cv::Mat cropped_img = img(roi);
+
+            // set channels as needed
+            if (to_rgb)
+              cv::cvtColor(cropped_img, cropped_img, CV_BGR2RGB);
+            if (to_bgr)
+              cv::cvtColor(cropped_img, cropped_img, CV_RGB2BGR);
 
             // adding bbox id
             std::string bbox_id = genid(uri, "bbox" + std::to_string(j));
