@@ -202,7 +202,7 @@ public:
   {
     info->summary = "Run a chain";
   }
-  ENDPOINT("POST", "chains/{chain-name}", create_chain,
+  ENDPOINT("POST", "chain/{chain-name}", create_chain,
            PATH(oatpp::String, chain_name, "chain-name"),
            BODY_STRING(oatpp::String, chain_data))
   {
