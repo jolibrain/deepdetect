@@ -50,12 +50,18 @@ namespace dd
     if (tdef.find("nbeats") != std::string::npos)
       {
         std::vector<std::string> p;
+        double bc_loss_coef = 1;
         if (template_params.has("stackdef"))
           {
             p = template_params.get("stackdef")
                     .get<std::vector<std::string>>();
           }
-        return new NBeats(inputc, p);
+        if (template_params.has("backcast_loss_coef"))
+          {
+            bc_loss_coef
+                = template_params.get("backcast_loss_coef").get<double>();
+          }
+        return new NBeats(inputc, p, bc_loss_coef);
       }
     else if (tdef.find("ttransformer") != std::string::npos)
       return new TTransformer(inputc, template_params, logger);
