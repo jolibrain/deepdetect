@@ -29,9 +29,11 @@
 
 #include "apidata.h"
 #include "torchmodule.h"
+#include "torchloss.h"
 
 #define DEFAULT_CLIP_VALUE 5.0
 #define DEFAULT_CLIP_NORM 100.0
+#define DEFAULT_SAM_RHO 0.05
 
 namespace dd
 {
@@ -46,7 +48,10 @@ namespace dd
     /**
      * \brief simple constructor
      */
-    TorchSolver(std::shared_ptr<spdlog::logger> logger) : _logger(logger)
+    TorchSolver(TorchModule &module, TorchLoss &loss,
+                std::vector<torch::Device> devices,
+                std::shared_ptr<spdlog::logger> logger)
+        : _module(module), _tloss(loss), _devices(devices), _logger(logger)
     {
     }
 
@@ -54,11 +59,6 @@ namespace dd
      * \brief configure solver from api data
      */
     void configure(APIData ad_solver);
-
-    /**
-     * \brief allocates solver for real
-     */
-    void create(TorchModule &module);
 
     /**
      * \brief reload solver state
@@ -106,7 +106,16 @@ namespace dd
     }
 
   protected:
+    /**
+     * \brief allocates solver for real
+     */
+    void create();
+    void real_step();
     void override_options();
+    void sam_first_step();
+    void sam_second_step();
+
+    std::vector<torch::Tensor> _sam_ew;
 
     std::vector<at::Tensor> _params; /**< list of parameter to optimize,
                    storing it here for gradient clipping */
@@ -129,7 +138,14 @@ namespace dd
     double _weight_decay = 0.0; /**< weight decay value*/
     bool _decoupled_wd = false; /**< for RANGER : use decoupled weight decay,
                                    NOT YET IMPLEMENTED */
+    bool _sam = false;
+    double _sam_rho = DEFAULT_SAM_RHO;
 
+    TorchModule &_module;
+    TorchLoss &_tloss;
+    std::vector<torch::Device>
+        _devices; /**< all the devices used during training (e.g. for multi-gpu
+                     training) */
     std::shared_ptr<spdlog::logger> _logger; /**< mllib logger. */
 
     std::unique_ptr<torch::optim::Optimizer>

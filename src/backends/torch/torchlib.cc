@@ -37,6 +37,7 @@
 
 #include "native/native.h"
 #include "torchsolver.h"
+#include "torchloss.h"
 #include "torchutils.h"
 
 using namespace torch;
@@ -540,8 +541,9 @@ namespace dd
     int64_t test_batch_size = 1;
     int64_t test_interval = 1;
     int64_t save_period = 0;
-    TorchSolver tsolver(this->_logger);
-
+    TorchLoss tloss(_loss, _seq_training, _timeserie, _regression,
+                    _classification, _module, this->_logger);
+    TorchSolver tsolver(_module, tloss, _devices, this->_logger);
     Tensor class_weights = {};
 
     // logging parameters
@@ -593,6 +595,7 @@ namespace dd
                 = torch::from_blob(cwv.data(), { _nclasses }, options)
                       .to(torch::kFloat32)
                       .to(_main_device);
+            tloss.set_class_weights(class_weights);
           }
       }
 
@@ -613,7 +616,6 @@ namespace dd
       throw MLLibBadParamException("empty test dataset");
 
     // create solver
-    tsolver.create(_module);
     std::vector<int64_t> best_iteration_numbers(eval_dataset.size(), -1);
     _best_metric_values.resize(eval_dataset.size(),
                                std::numeric_limits<double>::infinity());
@@ -687,54 +689,8 @@ namespace dd
                                              + e.what());
               }
 
-            Tensor loss;
-            // As CrossEntropy is not available (Libtorch 1.1) we use
-            // nllloss
-            // + log_softmax
-            if (_seq_training)
-              {
-                // Convert [n_batch, sequence_length, vocab_size] to
-                // [n_batch
-                // * sequence_length, vocab_size]
-                // + ignore non-masked tokens (== -1 in target)
-                loss = torch::nll_loss(
-                    torch::log_softmax(
-                        y_pred.view(IntList{ -1, y_pred.size(2) }), 1),
-                    y.view(IntList{ -1 }), class_weights, Reduction::Mean, -1);
-              }
-            else if (_timeserie)
-              {
-                if (_module._native != nullptr)
-                  loss = _module._native->loss(_loss, in_vals[0].toTensor(),
-                                               y_pred, y);
-                else
-                  {
-                    if (_loss.empty() || _loss == "L1" || _loss == "l1")
-                      loss = torch::l1_loss(y_pred, y);
-                    else if (_loss == "L2" || _loss == "l2" || _loss == "eucl")
-                      loss = torch::mse_loss(y_pred, y);
-                    else
-                      throw MLLibBadParamException("unknown loss " + _loss);
-                  }
-              }
-            else if (_regression)
-              {
-                if (_loss.empty() || _loss == "L1" || _loss == "l1")
-                  loss = torch::l1_loss(y_pred, y);
-                else if (_loss == "L2" || _loss == "l2" || _loss == "eucl")
-                  loss = torch::mse_loss(y_pred, y);
-                else
-                  throw MLLibBadParamException("unknown loss " + _loss);
-              }
-            else if (_classification)
-              {
-                loss = torch::nll_loss(torch::log_softmax(y_pred, 1),
-                                       y.view(IntList{ -1 }), class_weights);
-              }
-            else
-              {
-                throw MLLibBadParamException("unexpected model type");
-              }
+            Tensor loss = tloss.loss(y_pred, y, in_vals);
+
             if (iter_size > 1)
               loss /= iter_size;
 

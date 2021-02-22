@@ -66,13 +66,19 @@ namespace dd
       _weight_decay = ad_solver.get("weight_decay").get<double>();
     if (ad_solver.has("decoupled_wd"))
       _decoupled_wd = ad_solver.get("decoupled_wd").get<bool>();
+    if (ad_solver.has("sam"))
+      _sam = ad_solver.get("sam").get<bool>();
+    if (ad_solver.has("sam_rho"))
+      _sam_rho = ad_solver.get("sam_rho").get<double>();
+    create();
   }
 
-  void TorchSolver::create(TorchModule &module)
+  void TorchSolver::create()
   {
+
     this->_logger->info("Selected solver type: {}", _solver_type);
 
-    _params = module.parameters();
+    _params = _module.parameters();
 
     if (_solver_type == "ADAM")
       {
@@ -151,9 +157,66 @@ namespace dd
                 DEFAULT_CLIP_VALUE, DEFAULT_CLIP_NORM);
           }
       }
+    if (_sam)
+      this->_logger->info("using Sharpness Aware Minimization (SAM)");
+  }
+
+  void TorchSolver::sam_first_step()
+  {
+    at::AutoGradMode enable_grad(false);
+    _sam_ew.clear();
+    torch::Device dev = _optimizer->param_groups()[0].params()[0].device();
+    std::vector<torch::Tensor> to_stack;
+    for (auto &group : _optimizer->param_groups())
+      for (auto &p : group.params())
+        if (p.grad().defined())
+          to_stack.push_back(p.grad().norm(2).to(dev));
+    torch::Tensor n = torch::norm(torch::stack(to_stack), 2);
+
+    torch::Tensor scale = _sam_rho / (n + 1E-12);
+    for (auto &group : _optimizer->param_groups())
+      for (auto &p : group.params())
+        if (p.grad().defined())
+          {
+            torch::Tensor e_w = p.grad() * scale.to(p);
+            p.add_(e_w);
+            _sam_ew.push_back(e_w);
+          }
+    _optimizer->zero_grad();
+  }
+
+  void TorchSolver::sam_second_step()
+  {
+    at::AutoGradMode enable_grad(false);
+    size_t c = 0;
+    for (auto &group : _optimizer->param_groups())
+      for (auto &p : group.params())
+        if (p.grad().defined())
+          p.sub_(_sam_ew[c++]);
+    _optimizer->step();
   }
 
   void TorchSolver::step()
+  {
+    if (_sam)
+      {
+        sam_first_step();
+        {
+          at::AutoGradMode enable_grad(true);
+          torch::Tensor y_pred = torch_utils::to_tensor_safe(
+              _module.forward_on_devices(_tloss.getLastInputs(), _devices));
+          torch::Tensor loss = _tloss.reloss(y_pred);
+          loss.backward();
+        }
+        sam_second_step();
+      }
+    else
+      {
+        real_step();
+      }
+  }
+
+  void TorchSolver::real_step()
   {
     if (_clip)
       {
@@ -205,6 +268,12 @@ namespace dd
                           std::vector<int64_t> &best_iteration_numbers,
                           const std::vector<std::string> &set_names)
   {
+    if (!_optimizer)
+      {
+        throw MLLibBadParamException(
+            "Optimizer not created at resume time, this means that there are "
+            "no param.solver api data");
+      }
     // reload solver if asked for and set it value accordingly
     if (ad_mllib.has("resume") && ad_mllib.get("resume").get<bool>())
       {
