@@ -153,7 +153,7 @@ RUN ln -sf /dev/stdout /var/log/deepdetect.log && \
     ln -sf /dev/stderr /var/log/deepdetect.log
 
 RUN useradd -ms /bin/bash dd && \
-    chown dd:dd /opt
+    chown -R dd:dd /opt
 USER dd
 
 # Copy Deepdetect binaries from previous step
@@ -172,6 +172,11 @@ COPY --from=build /opt/deepdetect/docker/start-dede.sh /opt/deepdetect/
 
 # External volume to be mapped, e.g. for models or training data
 WORKDIR /opt/models
+
+USER root
+RUN chown -R dd:dd /opt/models
+
+USER dd
 RUN /opt/deepdetect/get_models.sh
 
 # Ensure all libs are presents
