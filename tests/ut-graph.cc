@@ -731,7 +731,7 @@ TEST(graphapi, complete_extract_layer_gpu)
       = "{\"service\":\"" + sname
         + "\",\"async\":false,\"parameters\":{\"input\":{\"shuffle\":true,"
           "\"separator\":\",\",\"scale\":true,\"timesteps\":200,\"label\":["
-          "\"output\"]},\"mllib\":{\"gpu\":true,\"gpuid\":0,\" solver\":{"
+          "\"output\"]},\"mllib\":{\"gpu\":true,\"gpuid\":0,\"solver\":{"
           "\"iterations\":"
         + iterations_lstm_cpu
         + ",\"test_interval\":10,\"base_lr\":0.1,\"snapshot\":500,\"test_"

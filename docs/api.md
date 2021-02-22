@@ -771,6 +771,8 @@ lookahead_steps | int  | yes      | 6       | for RANGER* : if lookahead enabled
 lookahead_alpha | real | yes      | 0.5     | for RANGER* : if lookahead enables, alpha param
 adabelief     | bool   | yes      | false for RANGER, true for RANGER_PLUS   | for RANGER* : enable/disable adabelief
 gradient_centralization | bool | yes | false for RANGER, true for RANGER_PLUS| for RANGER* : enable/disable gradient centralization
+sam           | bool   | yes      | false   | Sharpness Aware Minimization (https://arxiv.org/abs/2010.01412)
+sam_rho       | real   | yes      | 0.05    | neighborhood size for SAM (see above)
 test_interval | int    | yes      | N/A     | Number of iterations between testing phases
 base_lr       | real   | yes      | N/A     | Initial learning rate
 iter_size     | int    | yes      | 1       | Number of passes (iter_size * batch_size) at every iteration
