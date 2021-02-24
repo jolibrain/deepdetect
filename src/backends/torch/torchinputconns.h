@@ -102,8 +102,8 @@ namespace dd
       _tilogger = logger;
       if (ad_in.has("shuffle"))
         _dataset.set_shuffle(ad_in.get("shuffle").get<bool>());
-      if (ad_in.has("db") && ad_in.get("db").get<bool>())
-        _db = true;
+      if (ad_in.has("db"))
+        _db = ad_in.get("db").get<bool>();
       _dataset.set_db_params(_db, _backend, model_repo + "/train");
       _dataset.set_logger(logger);
       _test_datasets.set_db_params(_db, _backend, model_repo + "/test");
