@@ -28,6 +28,8 @@ namespace dd
 {
   void TorchDataset::db_finalize()
   {
+    if (!_db)
+      return;
     if (_current_index % _batches_per_transaction != 0)
       {
         _txn->Commit();
