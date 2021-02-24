@@ -124,14 +124,8 @@ namespace dd
      * \brief add an encoded image to a batch, with an int target
      */
     void add_image_batch(const cv::Mat &bgr, const int &width,
-                         const int &height, const int &target);
-
-    /**
-     * \brief add an encoded image to a batch, with a vector of regression
-     * targets
-     */
-    void add_image_batch(const cv::Mat &bgr, const int &width,
-                         const int &height, const std::vector<double> &target);
+                         const int &height,
+                         const std::vector<at::Tensor> &targett);
 
     /**
      * \brief reset dataset reading status : ie start new epoch
@@ -268,14 +262,18 @@ namespace dd
 
     /*-- image tools --*/
 
+    int add_image_file(const std::string &fname,
+                       const std::vector<at::Tensor> &target,
+                       const int &height, const int &width);
+
     /**
-     * \brief adds image to batch, with an int target
+     * \brief adds image from image filename, with an int target
      */
     int add_image_file(const std::string &fname, const int &target,
                        const int &height, const int &width);
 
     /**
-     * \brief adds image to batch, with a set of regression targets
+     * \brief adds image from image filename, with a set of regression targets
      */
     int add_image_file(const std::string &fname,
                        const std::vector<double> &target, const int &height,
@@ -307,14 +305,16 @@ namespace dd
     /**
      * \brief writes encoded image to db with a tensor target
      */
-    void write_image_to_db(const cv::Mat &bgr, const torch::Tensor &target);
+    void write_image_to_db(const cv::Mat &bgr,
+                           const std::vector<torch::Tensor> &target);
 
     /**
      * \brief reads an encoded image from db along with its tensor target
      */
     void read_image_from_db(const std::string &datas,
                             const std::string &targets, cv::Mat &bgr,
-                            torch::Tensor &targett, const bool &bw);
+                            std::vector<torch::Tensor> &targett,
+                            const bool &bw);
   };
 
   /**
@@ -369,12 +369,6 @@ namespace dd
     }
 
     /**
-     * \brief add one element to dataset
-     */
-    void add_db_elt(const size_t &set_id, const int64_t &index,
-                    const std::string &data, const std::string &target);
-
-    /**
      * \brief commits final db transactions
      */
     void db_finalize()
@@ -390,19 +384,6 @@ namespace dd
     {
       return _dbFullNames[i];
     }
-
-    /**
-     * \brief adds image to batch, with an int target
-     */
-    int add_image_file(const size_t id, const std::string &fname,
-                       const int &target, const int &height, const int &width);
-
-    /**
-     * \brief adds image to batch, with a set of regression targets
-     */
-    int add_image_file(const size_t id, const std::string &test_name,
-                       const std::vector<double> &target, const int &height,
-                       const int &width);
 
     /*
      * \brief set list of files along with value, ie for regression

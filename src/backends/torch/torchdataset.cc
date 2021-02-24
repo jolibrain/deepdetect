@@ -118,8 +118,9 @@ namespace dd
       }
   }
 
-  void TorchDataset::write_image_to_db(const cv::Mat &bgr,
-                                       const torch::Tensor &target)
+  void
+  TorchDataset::write_image_to_db(const cv::Mat &bgr,
+                                  const std::vector<torch::Tensor> &target)
   {
     // serialize image
     std::stringstream dstream;
@@ -163,7 +164,8 @@ namespace dd
 
   void TorchDataset::read_image_from_db(const std::string &datas,
                                         const std::string &targets,
-                                        cv::Mat &bgr, torch::Tensor &targett,
+                                        cv::Mat &bgr,
+                                        std::vector<torch::Tensor> &targett,
                                         const bool &bw)
   {
     std::vector<uint8_t> img_data(datas.begin(), datas.end());
@@ -176,38 +178,18 @@ namespace dd
 
   // add image batch
   void TorchDataset::add_image_batch(const cv::Mat &bgr, const int &width,
-                                     const int &height, const int &target)
-  {
-    if (!_db)
-      {
-        // to tensor
-        at::Tensor imgt = image_to_tensor(bgr, height, width);
-        at::Tensor targett = target_to_tensor(target);
-        add_batch({ imgt }, { targett });
-      }
-    else
-      {
-        // write to db
-        torch::Tensor targett = target_to_tensor(target);
-        write_image_to_db(bgr, targett);
-      }
-  }
-
-  void TorchDataset::add_image_batch(const cv::Mat &bgr, const int &width,
                                      const int &height,
-                                     const std::vector<double> &target)
+                                     const std::vector<at::Tensor> &targett)
   {
     if (!_db)
       {
         // to tensor
         at::Tensor imgt = image_to_tensor(bgr, height, width);
-        at::Tensor targett = target_to_tensor(target);
-        add_batch({ imgt }, { targett });
+        add_batch({ imgt }, targett);
       }
     else
       {
         // write to db
-        torch::Tensor targett = target_to_tensor(target);
         write_image_to_db(bgr, targett);
       }
   }
@@ -296,7 +278,6 @@ namespace dd
 
     typedef std::vector<torch::Tensor> BatchToStack;
     std::vector<BatchToStack> data, target;
-    bool first_iter = true;
 
     if (!_db) // Note: no data augmentation if no db
       {
@@ -321,12 +302,11 @@ namespace dd
                 _indices.pop_back();
               }
 
-            if (first_iter && !_batches.empty())
+            if (!_batches.empty())
               {
                 auto entry = _batches[0];
                 data.resize(entry.data.size());
                 target.resize(entry.target.size());
-                first_iter = false;
               }
 
             for (size_t id = 0; id < count; ++id)
@@ -346,6 +326,8 @@ namespace dd
           }
         else // batches
           {
+            bool first_iter = true;
+
             while (count != 0)
               {
                 auto id = _indices.back();
@@ -407,13 +389,6 @@ namespace dd
             std::vector<torch::Tensor> d;
             std::vector<torch::Tensor> t;
 
-            if (first_iter)
-              {
-                data.resize(d.size());
-                target.resize(t.size());
-                first_iter = false;
-              }
-
             if (!_image)
               {
                 std::stringstream datastream(datas);
@@ -428,7 +403,7 @@ namespace dd
 
                 cv::Mat bgr;
                 torch::Tensor targett;
-                read_image_from_db(datas, targets, bgr, targett, inputc->_bw);
+                read_image_from_db(datas, targets, bgr, t, inputc->_bw);
 
                 // data augmentation can apply here, with OpenCV
                 _img_rand_aug_cv.augment(bgr);
@@ -437,7 +412,6 @@ namespace dd
                     = image_to_tensor(bgr, inputc->height(), inputc->width());
 
                 d.push_back(imgt);
-                t.push_back(targett);
               }
 
             for (unsigned int i = 0; i < d.size(); ++i)
@@ -489,7 +463,8 @@ namespace dd
   }
 
   /*-- image tools --*/
-  int TorchDataset::add_image_file(const std::string &fname, const int &target,
+  int TorchDataset::add_image_file(const std::string &fname,
+                                   const std::vector<at::Tensor> &target,
                                    const int &height, const int &width)
   {
     ImgTorchInputFileConn *inputc
@@ -520,39 +495,17 @@ namespace dd
       }
   }
 
+  int TorchDataset::add_image_file(const std::string &fname, const int &target,
+                                   const int &height, const int &width)
+  {
+    return add_image_file(fname, { target_to_tensor(target) }, height, width);
+  }
+
   int TorchDataset::add_image_file(const std::string &fname,
                                    const std::vector<double> &target,
                                    const int &height, const int &width)
   {
-    ImgTorchInputFileConn *inputc
-        = reinterpret_cast<ImgTorchInputFileConn *>(_inputc);
-
-    DDImg dimg;
-    inputc->copy_parameters_to(dimg);
-
-    try
-      {
-        if (dimg.read_file(fname, -1))
-          {
-            this->_logger->error("Uri failed: {}", fname);
-          }
-      }
-    catch (std::exception &e)
-      {
-        this->_logger->error("Uri failed: {}", fname);
-      }
-    if (dimg._imgs.size() != 0)
-      {
-        /*at::Tensor imgt = image_to_tensor(dimg._imgs[0], height, width);
-        at::Tensor targett = target_to_tensor(target);
-        add_batch({ imgt }, { targett });*/
-        add_image_batch(dimg._imgs[0], height, width, target);
-        return 0;
-      }
-    else
-      {
-        return -1;
-      }
+    return add_image_file(fname, { target_to_tensor(target) }, height, width);
   }
 
   at::Tensor TorchDataset::image_to_tensor(const cv::Mat &bgr,
@@ -609,30 +562,6 @@ namespace dd
         ++n;
       }
     return targett;
-  }
-
-  void TorchMultipleDataset::add_db_elt(const size_t &set_id,
-                                        const int64_t &index,
-                                        const std::string &data,
-                                        const std::string &target)
-  {
-    _datasets[set_id].add_db_elt(index, data, target);
-  }
-
-  int TorchMultipleDataset::add_image_file(const size_t id,
-                                           const std::string &fname,
-                                           const int &target,
-                                           const int &height, const int &width)
-  {
-    return _datasets[id].add_image_file(fname, target, height, width);
-  }
-
-  int TorchMultipleDataset::add_image_file(const size_t id,
-                                           const std::string &fname,
-                                           const std::vector<double> &target,
-                                           const int &height, const int &width)
-  {
-    return _datasets[id].add_image_file(fname, target, height, width);
   }
 
   void TorchMultipleDataset::set_list(

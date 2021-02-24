@@ -48,7 +48,7 @@ namespace dd
         std::string data;
         std::string target;
         _dataset.pop_db_elt(index, data, target);
-        _test_datasets.add_db_elt(0, index, data, target);
+        _test_datasets[0].add_db_elt(index, data, target);
       }
     _test_datasets.db_finalize();
     _dataset.db_finalize();
@@ -336,8 +336,8 @@ namespace dd
                 for (size_t i = 0; i < tests_lfiles.size(); ++i)
                   for (const std::pair<std::string, int> &lfile :
                        tests_lfiles[i])
-                    _test_datasets.add_image_file(i, lfile.first, lfile.second,
-                                                  _height, _width);
+                    _test_datasets[i].add_image_file(lfile.first, lfile.second,
+                                                     _height, _width);
 
                 // Write corresp file
                 std::ofstream correspf(_model_repo + "/" + _correspname,
@@ -401,8 +401,8 @@ namespace dd
                     for (size_t i = 0; i < tests_lfiles.size(); ++i)
                       for (const std::pair<std::string, std::vector<double>>
                                &lfile : tests_lfiles[i])
-                        _test_datasets.add_image_file(
-                            i, lfile.first, lfile.second, _height, _width);
+                        _test_datasets[i].add_image_file(
+                            lfile.first, lfile.second, _height, _width);
                   }
                 else
                   {
