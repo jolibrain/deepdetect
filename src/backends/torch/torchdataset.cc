@@ -525,6 +525,75 @@ namespace dd
     return add_image_file(fname, { target_to_tensor(target) }, height, width);
   }
 
+  int TorchDataset::add_image_bbox_file(const std::string &fname,
+                                        const std::string &bboxfname,
+                                        const int &height, const int &width)
+  {
+    // read image before reading bboxes to get the size of the image
+    ImgTorchInputFileConn *inputc
+        = reinterpret_cast<ImgTorchInputFileConn *>(_inputc);
+
+    DDImg dimg;
+    inputc->copy_parameters_to(dimg);
+
+    try
+      {
+        if (dimg.read_file(fname, -1))
+          {
+            this->_logger->error("Uri failed: {}", fname);
+          }
+      }
+    catch (std::exception &e)
+      {
+        this->_logger->error("Uri failed: {}", fname);
+      }
+
+    if (dimg._imgs.size() == 0)
+      {
+        return -1;
+      }
+    int orig_height = dimg._imgs_size[0].first;
+    int orig_width = dimg._imgs_size[0].second;
+
+    // read bbox file
+    std::vector<at::Tensor> bboxes;
+    std::vector<at::Tensor> classes;
+
+    std::ifstream infile(bboxfname);
+    std::string line;
+    double wfactor
+        = static_cast<double>(width) / static_cast<double>(orig_width);
+    double hfactor
+        = static_cast<double>(height) / static_cast<double>(orig_height);
+
+    while (std::getline(infile, line))
+      {
+        std::istringstream iss(line);
+        std::string val;
+        iss >> val;
+        int cls = std::stoi(val);
+        classes.push_back(target_to_tensor(cls));
+
+        std::vector<double> bbox(4);
+
+        iss >> val; // xmin
+        bbox[0] = std::stod(val) * wfactor;
+        iss >> val; // ymin
+        bbox[1] = std::stod(val) * hfactor;
+        iss >> val; // xmax
+        bbox[2] = std::stod(val) * wfactor;
+        iss >> val; // ymax
+        bbox[3] = std::stod(val) * hfactor;
+        // using target_to_tensor<std::vector<double>> (used by regression)
+        bboxes.push_back(target_to_tensor(bbox));
+      }
+
+    // add image
+    add_image_batch(dimg._imgs[0], height, width,
+                    { torch::stack(bboxes), torch::cat(classes) });
+    return 0;
+  }
+
   at::Tensor TorchDataset::image_to_tensor(const cv::Mat &bgr,
                                            const int &height, const int &width)
   {

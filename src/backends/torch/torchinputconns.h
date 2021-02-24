@@ -93,6 +93,9 @@ namespace dd
         }
     }
 
+    void set_test_names(size_t test_count,
+                        const std::vector<std::string> &uris);
+
     /**
      * \brief init  generic parts of input connector
      */
@@ -222,7 +225,7 @@ namespace dd
      * \brief copy constructor
      */
     ImgTorchInputFileConn(const ImgTorchInputFileConn &i)
-        : ImgInputFileConn(i), TorchInputInterface(i)
+        : ImgInputFileConn(i), TorchInputInterface(i), _bbox(i._bbox)
     {
       _dataset._inputc = this;
       _dataset._image = true;
@@ -258,6 +261,8 @@ namespace dd
     {
       TorchInputInterface::init(ad, _model_repo, _logger);
       ImgInputFileConn::init(ad);
+      if (ad.has("bbox"))
+        _bbox = ad.get("bbox").get<bool>();
     }
 
     void fillup_parameters(const APIData &ad_input)
@@ -282,6 +287,13 @@ namespace dd
     void read_image_list(
         std::vector<std::pair<std::string, std::vector<double>>> &lfiles,
         const std::string &listfilePath);
+
+    /**
+     * \brief read images from txt list. Targets are bbox files.
+     */
+    void
+    read_image_bbox(std::vector<std::pair<std::string, std::string>> &lfiles,
+                    const std::string &listfilePath);
 
     /**
      * \brief shuffle dataset

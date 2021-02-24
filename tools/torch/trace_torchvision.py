@@ -20,13 +20,21 @@ You should have received a copy of the GNU Lesser General Public License
 along with deepdetect.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import torch
-import torchvision.models as M
-
 import sys
 import os
 import argparse
 import logging
+
+import torch
+
+# Use dede torchvision until randperm bug is solved
+# see https://github.com/pytorch/vision/issues/3469
+import importlib
+spec = importlib.util.find_spec("torchvision")
+torch.ops.load_library(os.path.join(os.path.dirname(spec.origin), "_C.so"))
+sys.path = [os.path.join(os.path.dirname(__file__), "../../build/pytorch_vision/src/pytorch_vision/")] + sys.path
+
+import torchvision.models as M
 
 parser = argparse.ArgumentParser(description="Trace image processing models from torchvision")
 parser.add_argument('models', type=str, nargs='*', help="Models to trace.")
@@ -67,13 +75,38 @@ class DetectionModel(torch.nn.Module):
         super(DetectionModel, self).__init__()
         self.model = model
 
-    def forward(self, x):
+    def forward(self, x, bboxes = None, labels = None):
+        # type: (Tensor, Optional[Tensor], Optional[Tensor]) -> Tuple[Tensor, List[Dict[str, Tensor]]]
         """
         Input format: one tensor of dimensions [batch size, channel count, width, height]
         """
         l_x = [x[i] for i in range(x.shape[0])]
-        return self.model(l_x)
+        if self.training:
+            assert bboxes is not None
+            assert labels is not None
+            l_targs = [{"boxes": bboxes[i], "labels": labels[i]} for i in range(x.shape[0])]
+            losses, predictions = self.model(l_x, l_targs)
 
+            # Sum of all losses for finetuning (as done in vision/references/detection/engine.py)
+            losses = [l for l in losses.values()]
+            loss = torch.zeros((1,), device=x.device, dtype=x.dtype)
+            for i in range(1, len(losses)):
+                loss += losses[i]
+        else:
+            losses, predictions = self.model(l_x)
+            loss = torch.zeros((1,), device=x.device, dtype=x.dtype)
+
+        return loss, predictions
+
+def get_detection_input():
+    """
+    Sample input for detection models, usable for tracing or testing
+    """
+    return (
+            torch.rand(1, 3, 224, 224),
+            torch.Tensor([1, 1, 200, 200]).unsqueeze(0).unsqueeze(0),
+            torch.full((1,1), 1).long()
+    )
 
 model_classes = {
     "alexnet": M.alexnet,
@@ -133,24 +166,46 @@ for mname in args.models:
         logging.warn("model %s is unknown and will not be exported", mname)
         continue
 
-    kwargs = {}
-    if args.num_classes:
-        logging.info("Using num_classes = %d" % args.num_classes)
-        kwargs["num_classes"] = args.num_classes
-
     logging.info("Exporting model %s %s", mname, "(pretrained)" if args.pretrained else "")
-    model = model_classes[mname](pretrained=args.pretrained, progress=args.verbose, **kwargs)
+    detection = mname in detection_model_classes
 
-    if args.to_dd_native:
-        # Make model NativeModuleWrapper compliant
-        model = Wrapper(model)
+    if detection:
+        model = model_classes[mname](pretrained=args.pretrained, progress=args.verbose)
 
-    model.eval()
+        if args.num_classes:
+            logging.info("Using num_classes = %d" % args.num_classes)
+            
+            if "fasterrcnn" in mname:
+                # get number of input features for the classifier
+                in_features = model.roi_heads.box_predictor.cls_score.in_features
+                # replace the pre-trained head with a new one
+                model.roi_heads.box_predictor = M.detection.faster_rcnn.FastRCNNPredictor(in_features, args.num_classes)
+            elif "retinanet" in mname:
+                in_channels = model.backbone.out_channels
+                num_anchors = model.head.classification_head.num_anchors
+                # replace pretrained head - does not work
+                # model.head = M.detection.retinanet.RetinaNetHead(in_channels, num_anchors, args.num_classes)
+                raise Exception("Retinanet with fixed number of classes is not yet supported")
 
-    if mname in detection_model_classes:
+        model.eval()
         detect_model = DetectionModel(model)
+        detect_model.train()
         script_module = torch.jit.script(detect_model)
+
     else:
+        kwargs = {}
+        if args.num_classes:
+            logging.info("Using num_classes = %d" % args.num_classes)
+            kwargs["num_classes"] = args.num_classes
+
+        model = model_classes[mname](pretrained=args.pretrained, progress=args.verbose, **kwargs)
+
+        if args.to_dd_native:
+            # Make model NativeModuleWrapper compliant
+            model = Wrapper(model)
+
+        model.eval()
+
         # TODO try scripting instead of tracing
         example = torch.rand(1, 3, 224, 224)
         script_module = torch.jit.trace(model, example)
