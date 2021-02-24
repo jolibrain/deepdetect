@@ -21,6 +21,10 @@
 
 #include "chain_actions.h"
 #include <opencv2/opencv.hpp>
+#if CV_VERSION_MAJOR >= 3
+#define CV_BGR2RGB cv::COLOR_BGR2RGB
+#define CV_RGB2BGR cv::COLOR_RGB2BGR
+#endif
 #include <unordered_set>
 #include "utils/utils.hpp"
 
