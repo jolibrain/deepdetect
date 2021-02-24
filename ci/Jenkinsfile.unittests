@@ -17,7 +17,7 @@ pipeline {
     stage('Prepare docker image') {
       steps {
         script {
-          docker.build(env.DOCKER_IMAGE, "-f ci/devel.Dockerfile .")
+          docker.build(env.DOCKER_IMAGE, "-f ci/devel.Dockerfile --no-cache .")
         }
         // post can't access to ${env.XX} so we have to use stupid hack, thx Jenkins...
         sh '''echo ${DOCKER_IMAGE} > docker-image-name'''
