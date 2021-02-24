@@ -364,6 +364,13 @@ if (USE_TORCH)
     "fasterrcnn_torch"
     )
   DOWNLOAD_DATASET(
+    "Torchvision training Faster RCNN model & cars dataset"
+    "https://www.deepdetect.com/dd/examples/torch/fasterrcnn_train_torch.tar.gz"
+    "examples/torch"
+    "fasterrcnn_train_torch.tar.gz"
+    "fasterrcnn_train_torch"
+    )
+  DOWNLOAD_DATASET(
     "Torch BERT classification test model"
     "https://www.deepdetect.com/dd/examples/torch/bert_inference_torch.tar.gz"
     "examples/torch"

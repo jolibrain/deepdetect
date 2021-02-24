@@ -804,6 +804,12 @@ if (USE_TORCH)
   #set(PYTORCH_VISION_COMMIT "v0.7.0") # 0.7 & torch 1.6
   #set(PYTORCH_VISION_COMMIT "v0.8.2") # 0.8.2 & torch 1.7.1
   set(PYTORCH_VISION_COMMIT "v0.9.0") # 0.9.0 & torch 1.8
+  set(PYTORCH_VISION_PATCHES_PATH ${CMAKE_BINARY_DIR}/patches/pytorch/vision)
+  set(PYTORCH_VISION_PATCHES
+      ${PYTORCH_VISION_PATCHES_PATH}/pytorch_vision_09_fasterrcnn.patch
+  )
+
+  set(PYTORCH_VISION_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch_vision-complete)
   set(TORCHVISION_LOCATION "${CMAKE_BINARY_DIR}/pytorch_vision/src/pytorch_vision-install")
   ExternalProject_Add(
     pytorch_vision
@@ -812,6 +818,7 @@ if (USE_TORCH)
     GIT_REPOSITORY https://github.com/pytorch/vision.git
     GIT_TAG ${PYTORCH_VISION_COMMIT}
     GIT_CONFIG advice.detachedHead=false
+    PATCH_COMMAND test -f ${PYTORCH_VISION_COMPLETE} && echo Skipping || git apply ${PYTORCH_VISION_PATCHES} && echo Applying ${PYTORCH_VISION_PATCHES}
     CMAKE_ARGS -DWITH_CUDA=${PYTORCH_USE_CUDA} -DCMAKE_PREFIX_PATH=${TORCH_LOCATION} -DCMAKE_INSTALL_PREFIX=${TORCHVISION_LOCATION}
       -DCMAKE_INCLUDE_PATH=${PROTOBUF_INCLUDE_DIR} -DCMAKE_LIBRARY_PATH=${PROTOBUF_LIB_DIR}
       "-DCMAKE_CXX_FLAGS=-isystem ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/ -isystem ${SPDLOG_INCLUDE_DIR} -isystem ${PROTOBUF_INCLUDE_DIR}"

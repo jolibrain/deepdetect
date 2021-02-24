@@ -85,6 +85,12 @@ namespace dd
              TorchDataset &dataset, int batch_size, APIData &out,
              size_t test_id = 0, const std::string &test_name = "");
 
+    std::vector<APIData> get_bbox_stats(const at::Tensor &targ_bboxes,
+                                        const at::Tensor &targ_labels,
+                                        const at::Tensor &bboxes_tensor,
+                                        const at::Tensor &labels_tensor,
+                                        const at::Tensor &score_tensor);
+
   public:
     unsigned int _nclasses = 0; /**< number of classes*/
     std::string _template; /**< template identifier (recurrent/bert/gpt2...)*/

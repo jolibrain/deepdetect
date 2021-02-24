@@ -29,6 +29,29 @@ namespace dd
 
   using namespace torch;
 
+  void
+  TorchInputInterface::set_test_names(size_t test_dataset_count,
+                                      const std::vector<std::string> &uris)
+  {
+    std::vector<std::string> test_names;
+    if (uris.size() > 1)
+      for (size_t i = 1; i < uris.size(); ++i)
+        test_names.push_back(fileops::shortname(uris[i]));
+    else
+      {
+        if (test_dataset_count == 1)
+          {
+            _tilogger->info("test set will be named \"split\"");
+            test_names.push_back("split");
+          }
+        else
+          _tilogger->error("unnamed test file list found, "
+                           "should not happen");
+      }
+    check_tests_sizes(test_dataset_count, test_names.size());
+    _test_datasets.add_tests_names(test_names);
+  }
+
   // XXX (beniz): to be moved into torchdataset
   void TorchInputInterface::build_test_datadb_from_full_datadb(double tsplit)
   {
@@ -181,7 +204,7 @@ namespace dd
     _logger->info("Reading image list file {}", listfilePath);
     std::ifstream infile(listfilePath);
     std::string line;
-    int line_num = 1;
+    int line_num = 0;
     while (std::getline(infile, line))
       {
         std::istringstream iss(line);
@@ -200,6 +223,28 @@ namespace dd
             std::pair<std::string, std::vector<double>>(filename, targets));
       }
     _logger->info("Read {} lines in image list file {}", line_num,
+                  listfilePath);
+  }
+
+  void ImgTorchInputFileConn::read_image_bbox(
+      std::vector<std::pair<std::string, std::string>> &lfiles,
+      const std::string &listfilePath)
+  {
+    _logger->info("Reading image & bbox list file {}", listfilePath);
+    std::ifstream infile(listfilePath);
+    std::string line;
+    int line_num = 0;
+    while (std::getline(infile, line))
+      {
+        std::istringstream iss(line);
+        string filename;
+        string bbox;
+        iss >> filename >> bbox;
+
+        ++line_num;
+        lfiles.emplace_back(filename, bbox);
+      }
+    _logger->info("Read {} lines in image & bbox list file {}", line_num,
                   listfilePath);
   }
 
@@ -351,6 +396,55 @@ namespace dd
                   }
                 correspf.close();
               }
+            else if (_bbox)
+              {
+                std::vector<std::pair<std::string, std::string>>
+                    lfiles; // labeled files
+                std::vector<std::vector<std::pair<std::string, std::string>>>
+                    tests_lfiles;
+
+                read_image_bbox(lfiles, _uris.at(0));
+                tests_lfiles.resize(_uris.size() - 1);
+                for (size_t i = 1; i < _uris.size(); ++i)
+                  {
+                    read_image_bbox(tests_lfiles[i - 1], _uris.at(i));
+                  }
+
+                if (_dataset._shuffle)
+                  shuffle_dataset<std::string>(lfiles);
+
+                bool has_test_data = false;
+                for (auto test_lfiles : tests_lfiles)
+                  if (test_lfiles.size() != 0)
+                    {
+                      has_test_data = true;
+                      break;
+                    }
+                if (_test_split > 0.0 && !has_test_data)
+                  {
+                    tests_lfiles.resize(1);
+                    split_dataset<std::string>(lfiles, tests_lfiles[0]);
+                  }
+
+                for (const std::pair<std::string, std::string> &lfile : lfiles)
+                  {
+                    _dataset.add_image_bbox_file(lfile.first, lfile.second,
+                                                 _height, _width);
+                  }
+
+                // in case of db, alloc of test sets already done in
+                // has_to_create_db
+                if (!_db)
+                  {
+                    set_test_names(tests_lfiles.size(), _uris);
+                  }
+
+                for (size_t i = 0; i < tests_lfiles.size(); ++i)
+                  for (const std::pair<std::string, std::string> &lfile :
+                       tests_lfiles[i])
+                    _test_datasets[i].add_image_bbox_file(
+                        lfile.first, lfile.second, _height, _width);
+              }
             else // file exists, expects a list of files and targets, for
                  // regression & multi-class
               {
@@ -407,23 +501,7 @@ namespace dd
                 else
                   {
                     _dataset.set_list(lfiles);
-                    std::vector<std::string> test_names;
-                    if (_uris.size() > 1)
-                      for (size_t i = 1; i < _uris.size(); ++i)
-                        test_names.push_back(fileops::shortname(_uris[i]));
-                    else
-                      {
-                        if (tests_lfiles.size() == 1)
-                          {
-                            _logger->info("test set will be named \"split\"");
-                            test_names.push_back("split");
-                          }
-                        else
-                          _logger->error("unnamed test file list found, "
-                                         "should not happen");
-                      }
-                    check_tests_sizes(tests_lfiles.size(), test_names.size());
-                    _test_datasets.add_tests_names(test_names);
+                    set_test_names(tests_lfiles.size(), _uris);
                     _test_datasets.set_list(tests_lfiles);
                   }
               }

@@ -43,12 +43,12 @@ namespace dd
     /**
      * \brief simple constructor
      */
-    TorchLoss(std::string loss, bool seq_training, bool timeserie,
-              bool regression, bool classification, TorchModule &module,
-              std::shared_ptr<spdlog::logger> logger)
-        : _loss(loss), _seq_training(seq_training), _timeserie(timeserie),
-          _regression(regression), _classification(classification),
-          _logger(logger)
+    TorchLoss(std::string loss, bool model_loss, bool seq_training,
+              bool timeserie, bool regression, bool classification,
+              TorchModule &module, std::shared_ptr<spdlog::logger> logger)
+        : _loss(loss), _model_loss(model_loss), _seq_training(seq_training),
+          _timeserie(timeserie), _regression(regression),
+          _classification(classification), _logger(logger)
     {
       _native = module._native;
     }
@@ -69,6 +69,7 @@ namespace dd
 
   protected:
     std::string _loss;
+    bool _model_loss; /** < wether loss is provided by the model */
     bool _seq_training;
     bool _timeserie;
     bool _regression;

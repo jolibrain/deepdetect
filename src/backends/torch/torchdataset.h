@@ -270,16 +270,29 @@ namespace dd
 
     /**
      * \brief adds image from image filename, with an int target
+     * \param width of preprocessed image
+     * \param height of preprocessed image
      */
     int add_image_file(const std::string &fname, const int &target,
                        const int &height, const int &width);
 
     /**
      * \brief adds image from image filename, with a set of regression targets
+     * \param width of preprocessed image
+     * \param height of preprocessed image
      */
     int add_image_file(const std::string &fname,
                        const std::vector<double> &target, const int &height,
                        const int &width);
+
+    /**
+     * \brief adds image to batch, with a bbox list file as target.
+     * \param width of preprocessed image
+     * \param height of preprocessed image
+     */
+    int add_image_bbox_file(const std::string &fname,
+                            const std::string &bboxfname, const int &height,
+                            const int &width);
 
     /**
      * \brief turns an image into a torch::Tensor
