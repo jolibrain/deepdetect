@@ -298,8 +298,6 @@ namespace dd
             ddcsvts.read_element(_uris.at(i), this->_logger);
           }
       }
-    if (_csvtsdata.empty() && _db_fname.empty())
-      throw InputConnectorBadParamException("no data could be found");
   }
 
   void CSVTSInputFileConn::response_params(APIData &out)
@@ -345,6 +343,8 @@ namespace dd
       }
     else
       _fnames.push_back(fname);
+
+    read_csvts_file_post_hook(test_id);
   }
 
   void CSVTSInputFileConn::push_csv_to_csvts(int test_id)

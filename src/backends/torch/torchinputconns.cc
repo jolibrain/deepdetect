@@ -755,7 +755,8 @@ namespace dd
         throw InputConnectorBadParamException(errmsg);
       }
 
-    if (_train && _ntargets != _label.size())
+    if (_train && (_forecast_timesteps < 0 || _backcast_timesteps < 0)
+        && _ntargets != _label.size()) // labels case (not forecast)
       {
         _logger->warn(
             "something went wrong in ntargets, computed  "
@@ -827,15 +828,87 @@ namespace dd
     APIData ad_input = ad.getobj("parameters").getobj("input");
 
     init(ad_input);
-
-    try
+    get_data(ad);
+    std::string csv_fname;
+    std::vector<std::string> csv_test_fnames;
+    if (fileops::file_exists(_uris.at(0))) // training from dir
       {
-        CSVTSInputFileConn::transform(ad);
-        set_datadim();
+        csv_fname = _uris.at(0);
+        for (unsigned int i = 1; i < _uris.size(); ++i)
+          csv_test_fnames.push_back(_uris.at(i));
       }
-    catch (std::exception &e)
+
+    bool has_to_read = true;
+
+    if (_db)
       {
-        throw;
+        bool train_db_exists = false;
+        // check if dbs exists, if so, reuse
+        if (fileops::file_exists(_dataset._dbFullName))
+          {
+            _logger->warn("train db already exists, skipping data read");
+            train_db_exists = true;
+          }
+        _test_datasets.add_tests_names(csv_test_fnames);
+        bool all_test_exist = true;
+        bool one_test_exist = false;
+        for (size_t i = 0; i < _test_datasets._dbFullNames.size(); ++i)
+          {
+            if (fileops::file_exists(_test_datasets._dbFullNames[i]))
+              {
+                std::string msg
+                    = "test db " + _test_datasets._datasets_names[i]
+                      + " already exists as " + _test_datasets._dbFullNames[i]
+                      + ", skipping data read";
+                _logger->warn(msg);
+                one_test_exist = true;
+              }
+            else
+              {
+                all_test_exist = false;
+              }
+          }
+        if (train_db_exists)
+          {
+            if (all_test_exist)
+              has_to_read = false;
+            else
+              throw InputConnectorBadParamException(
+                  "train db already exist but some test db are missing, "
+                  "remove all dbs for clean rebuild");
+          }
+        else
+          {
+            if (one_test_exist)
+              throw InputConnectorBadParamException(
+                  "train db do not exist but some test db do: "
+                  "remove all dbs for clean rebuild");
+            else
+              has_to_read = true;
+          }
+      }
+
+    if (has_to_read)
+      {
+        try
+          {
+            CSVTSInputFileConn::transform(ad);
+            set_datadim();
+          }
+        catch (std::exception &e)
+          {
+            throw;
+          }
+      }
+    else
+      {
+        // set _datadim from db !
+        _dataset.reset();
+        _datadim = _dataset.datasize(0)[1];
+        if (_forecast_timesteps > 0)
+          _ntargets = _datadim;
+        else
+          _ntargets = _dataset.targetsize(0)[1];
       }
 
     if (_train)
@@ -846,15 +919,24 @@ namespace dd
           }
 
         _ids.clear();
-        fill_dataset(_dataset, _csvtsdata);
-        _csvtsdata.clear();
-        _dataset.db_finalize();
         check_tests_sizes(_csvtsdata_tests.size(), _csv_test_fnames.size());
-        _test_datasets.add_tests_names(_csv_test_fnames);
-        for (size_t i = 0; i < _csvtsdata_tests.size(); ++i)
-          fill_dataset(_test_datasets[i], _csvtsdata_tests[i], i);
-        _test_datasets.db_finalize();
-        _csvtsdata_tests.clear();
+        if (!_db) // in case of db, already done in read_csvts_file_post_hook
+          {
+            _test_datasets.add_tests_names(_csv_test_fnames);
+            fill_dataset(_dataset, _csvtsdata);
+            _csvtsdata.clear();
+            for (size_t i = 0; i < _csvtsdata_tests.size(); ++i)
+              fill_dataset(_test_datasets[i], _csvtsdata_tests[i], i);
+            _csvtsdata_tests.clear();
+          }
+        else
+          {
+            if (has_to_read)
+              {
+                _dataset.db_finalize();
+                _test_datasets.db_finalize();
+              }
+          }
       }
     else
       {

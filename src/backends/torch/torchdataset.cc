@@ -244,6 +244,23 @@ namespace dd
       }
   }
 
+  std::vector<long int> TorchDataset::targetsize(long int i) const
+  {
+    if (!_db)
+      return _batches[0].target[i].sizes().vec();
+
+    auto id = _indices.back();
+    std::stringstream target_key;
+    target_key << id << "_target";
+    std::string targets;
+    _dbData->Get(target_key.str(), targets);
+    std::stringstream targetstream(targets);
+    std::vector<torch::Tensor> t;
+    torch::load(t, targetstream);
+
+    return t.at(i).sizes().vec();
+  }
+
   std::vector<long int> TorchDataset::datasize(long int i) const
   {
     if (!_db)
@@ -585,6 +602,25 @@ namespace dd
         set_db_name(_dbFullNames.size() - longnames.size() + i, longnames[i]);
         init_set(_datasets.size() - longnames.size() + i);
       }
+  }
+
+  void TorchMultipleDataset::add_test_name_if_necessary(std::string longname,
+                                                        int test_id)
+  {
+    std::string name = fileops::shortname(longname);
+    if (_datasets.size() >= static_cast<size_t>(test_id + 1)
+        && _datasets_names[test_id] == name)
+      return;
+    if (_datasets.size() >= static_cast<size_t>(test_id + 1)
+        && _datasets_names[test_id] != name)
+      {
+        std::string msg = "mismatch in adding test sets on the fly: test_id is"
+                          + std::to_string(test_id) + ", new name is " + name
+                          + ", old name is " + _datasets_names[test_id];
+        this->_logger->error(msg);
+        throw InputConnectorInternalException(msg);
+      }
+    add_test_name(longname);
   }
 
   void TorchMultipleDataset::add_test_name(std::string longname)
