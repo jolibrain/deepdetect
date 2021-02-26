@@ -499,6 +499,33 @@ namespace dd
                       int test_id = -1);
 
     /**
+     * \brief hook for push stuff into db
+     */
+    void read_csvts_file_post_hook(int test_id) override
+    {
+      if (!_db)
+        return;
+
+      this->update_columns();
+      set_datadim();
+      if (test_id == -1)
+        {
+          fill_dataset(_dataset, _csvtsdata);
+          _csvtsdata.clear();
+          _fnames.clear();
+        }
+      else
+        {
+          _test_datasets.add_test_name_if_necessary(_csv_test_fnames[test_id],
+                                                    test_id);
+          fill_dataset(_test_datasets[test_id], _csvtsdata_tests[test_id],
+                       test_id);
+          _csvtsdata_tests[test_id].clear();
+          _test_fnames[test_id].clear();
+        }
+    }
+
+    /**
      * \brief init the connector
      */
     void init(const APIData &ad)

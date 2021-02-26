@@ -110,8 +110,6 @@ namespace dd
 
     virtual ~TorchDataset()
     {
-      if (_dbCursor)
-        delete _dbCursor;
     }
 
     /**
@@ -192,6 +190,10 @@ namespace dd
      * \brief get tensor dims if data #i (of first element of dataset)
      */
     std::vector<long int> datasize(long int i) const;
+    /**
+     * \brief get tensor dims if data #i (of first element of dataset)
+     */
+    std::vector<long int> targetsize(long int i) const;
 
     /**
      * \brief Returns a batch containing all the cached data
@@ -333,11 +335,11 @@ namespace dd
      */
     TorchMultipleDataset(const TorchMultipleDataset &d)
         : _inputc(d._inputc), _image(d._image),
-          _classification(d._classification), _db(d._db), _backend(d._backend),
-          _dbPrefix(d._dbPrefix), _dbFullNames(d._dbFullNames),
-          _logger(d._logger),
+          _classification(d._classification), _dbFullNames(d._dbFullNames),
+          _datasets_names(d._datasets_names), _db(d._db), _backend(d._backend),
+          _dbPrefix(d._dbPrefix), _logger(d._logger),
           _batches_per_transaction(d._batches_per_transaction),
-          _datasets(d._datasets), _datasets_names(d._datasets_names)
+          _datasets(d._datasets)
     {
     }
 
@@ -458,6 +460,12 @@ namespace dd
     void add_test_name(std::string longname);
 
     /*
+     * allocate new test set if necessary (in case of on the fly adding , ie db
+     * case
+     */
+    void add_test_name_if_necessary(std::string longname, int test_id);
+
+    /*
      * \brief _allocate_ test set given db name as found in API
      */
     void add_db_name(std::string dblongname);
@@ -497,17 +505,17 @@ namespace dd
         = nullptr;               /**< back ptr to input connector. */
     bool _image = false;         /**< whether an image dataset. */
     bool _classification = true; /**< whether a classification dataset. */
+    std::vector<std::string> _dbFullNames;
+    std::vector<std::string> _datasets_names;
 
   protected:
     bool _db = false;
     std::string _backend = "lmdb";
     std::string _dbPrefix;
-    std::vector<std::string> _dbFullNames;
     std::shared_ptr<spdlog::logger> _logger; /**< dd logger */
     int32_t _batches_per_transaction
         = 10; /**< number of batches per db transaction */
     std::vector<TorchDataset> _datasets;
-    std::vector<std::string> _datasets_names;
   };
 }
 
