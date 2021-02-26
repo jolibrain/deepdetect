@@ -97,7 +97,8 @@ RUN for url in \
 # RUN pip install future pyyaml typing
 
 # Fix  ModuleNotFoundError: No module named 'dataclasses' for torch 1.7.1
-RUN pip3 install dataclasses
+RUN python3 -m pip install --upgrade pip
+RUN python3 -m pip install dataclasses
 
 
 ADD . /opt/deepdetect
