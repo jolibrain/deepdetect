@@ -39,8 +39,6 @@ pipeline {
     }}
     stage('Build docker gpu_tensorrt image') { steps {
       catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-        sh 'echo "gpu_tenssrrt build disabled"'
-        sh 'exit 1'
         sh 'ci/build-docker-images.sh gpu_tensorrt'
       }
     }}
