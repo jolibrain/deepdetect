@@ -221,6 +221,8 @@ namespace dd
 
         for (size_t i = 0; i < this->_images.size(); ++i)
           {
+            _imgs_size.insert(std::pair<std::string, std::pair<int, int>>(
+                this->_ids.at(i), this->_images_size.at(i)));
             _dataset.add_batch({ _dataset.image_to_tensor(this->_images[i],
                                                           _height, _width) });
           }
