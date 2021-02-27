@@ -38,6 +38,7 @@ parser.add_argument('-o', "--output-dir", default=".", type=str, help="Output di
 parser.add_argument('-p', "--not-pretrained", dest="pretrained", action='store_false',
                     help="Whether the exported models should not be pretrained")
 parser.add_argument('--cpu', action='store_true', help="Force models to be exported for CPU device")
+parser.add_argument('--num_classes', type=int, help="Number of classes")
 
 args = parser.parse_args()
 
@@ -56,6 +57,23 @@ class Wrapper(torch.nn.Module):
 
     def forward(self, x):
         return self.wrapped(x)
+
+
+class DetectionModel(torch.nn.Module):
+    """
+    Adapt input and output of detection model to make it usable by dede.
+    """
+    def __init__(self, model):
+        super(DetectionModel, self).__init__()
+        self.model = model
+
+    def forward(self, x):
+        """
+        Input format: one tensor of dimensions [batch size, channel count, width, height]
+        """
+        l_x = [x[i] for i in range(x.shape[0])]
+        return self.model(l_x)
+
 
 model_classes = {
     "alexnet": M.alexnet,
@@ -87,6 +105,13 @@ model_classes = {
     "resnext50_32x4d": M.resnext50_32x4d,
     "resnext101_32x8d": M.resnext101_32x8d,
 }
+detection_model_classes = {
+    "fasterrcnn_resnet50_fpn": M.detection.fasterrcnn_resnet50_fpn,
+    "retinanet_resnet50_fpn": M.detection.retinanet_resnet50_fpn,
+}
+model_classes.update(detection_model_classes)
+
+
 if args.all:
     args.models = model_classes.keys()
 
@@ -108,8 +133,13 @@ for mname in args.models:
         logging.warn("model %s is unknown and will not be exported", mname)
         continue
 
+    kwargs = {}
+    if args.num_classes:
+        logging.info("Using num_classes = %d" % args.num_classes)
+        kwargs["num_classes"] = args.num_classes
+
     logging.info("Exporting model %s %s", mname, "(pretrained)" if args.pretrained else "")
-    model = model_classes[mname](pretrained=args.pretrained, progress=args.verbose)
+    model = model_classes[mname](pretrained=args.pretrained, progress=args.verbose, **kwargs)
 
     if args.to_dd_native:
         # Make model NativeModuleWrapper compliant
@@ -117,11 +147,16 @@ for mname in args.models:
 
     model.eval()
 
-    example = torch.rand(1, 3, 224, 224)
-    traced_script_module = torch.jit.trace(model, example)
+    if mname in detection_model_classes:
+        detect_model = DetectionModel(model)
+        script_module = torch.jit.script(detect_model)
+    else:
+        # TODO try scripting instead of tracing
+        example = torch.rand(1, 3, 224, 224)
+        script_module = torch.jit.trace(model, example)
 
     filename = os.path.join(args.output_dir, mname + ("-pretrained" if args.pretrained else "") + ".pt")
     logging.info("Saving to %s", filename)
-    traced_script_module.save(filename)
+    script_module.save(filename)
 
 logging.info("Done")

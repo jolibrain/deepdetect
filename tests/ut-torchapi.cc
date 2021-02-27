@@ -39,6 +39,7 @@ static std::string not_found_str
     = "{\"status\":{\"code\":404,\"msg\":\"NotFound\"}}";
 
 static std::string incept_repo = "../examples/torch/resnet50_torch/";
+static std::string detect_repo = "../examples/torch/fasterrcnn_torch/";
 static std::string resnet50_train_repo
     = "../examples/torch/resnet50_training_torch_small/";
 static std::string resnet50_train_data
@@ -113,6 +114,48 @@ TEST(torchapi, service_predict)
   ASSERT_TRUE(cl1 == "n02123045 tabby, tabby cat");
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
               > 0.3);
+}
+
+TEST(torchapi, service_predict_object_detection)
+{
+  JsonAPI japi;
+  std::string sname = "detectserv";
+  std::string jstr
+      = "{\"mllib\":\"torch\",\"description\":\"fasterrcnn\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+        + detect_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
+          "224,\"width\":224,\"rgb\":true,\"scale\":0.0039},\"mllib\":{"
+          "\"template\":\"fasterrcnn\"}}}";
+
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+  std::string jpredictstr = "{\"service\":\"detectserv\",\"parameters\":{"
+                            "\"input\":{\"height\":224,"
+                            "\"width\":224},\"output\":{\"bbox\":true, "
+                            "\"confidence_threshold\":0.8}},\"data\":[\""
+                            + detect_repo + "cat.jpg\"]}";
+  // TODO changer image test ?
+
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  JDoc jd;
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+
+  auto &preds = jd["body"]["predictions"][0]["classes"];
+  std::string cl1 = preds[0]["cat"].GetString();
+  ASSERT_TRUE(cl1 == "cat");
+  ASSERT_TRUE(preds[0]["prob"].GetDouble() > 0.9);
+  auto &bbox = preds[0]["bbox"];
+  // cat is approximately in bottom left corner of the image.
+  ASSERT_TRUE(bbox["xmin"].GetDouble() < 100 && bbox["xmax"].GetDouble() > 300
+              && bbox["ymin"].GetDouble() < 100
+              && bbox["ymax"].GetDouble() > 300);
+  // Check confidence threshold
+  ASSERT_TRUE(preds[preds.Size() - 1]["prob"].GetDouble() >= 0.8);
 }
 
 TEST(torchapi, service_predict_txt_classification)
@@ -1087,6 +1130,136 @@ TEST(torchapi, service_train_csvts_nbeats)
         + str_min_vals + ",\"max_vals\":" + str_max_vals
         + "},\"output\":{}},\"data\":[\"input,output\", \"" + mem_data.str()
         + "\"]}";
+
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  uri = jd["body"]["predictions"][0]["uri"].GetString();
+  ASSERT_EQ("0", uri);
+  ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
+  ASSERT_TRUE(jd["body"]["predictions"][0]["series"].Size() == 50);
+  ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["out"][0].IsDouble());
+
+  //  remove service
+  jstr = "{\"clear\":\"full\"}";
+  joutstr = japi.jrender(japi.service_delete(sname, jstr));
+  ASSERT_EQ(ok_str, joutstr);
+  rmdir(csvts_nbeats_repo.c_str());
+}
+
+TEST(torchapi, service_train_csvts_nbeats_db)
+{
+  setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
+  torch::manual_seed(torch_seed);
+  at::globalContext().setDeterministic(true);
+
+  // create service
+  JsonAPI japi;
+  std::string sname = "nbeats";
+  std::string csvts_data = sinus + "train";
+  std::string csvts_test = sinus + "test";
+  std::string csvts_predict = sinus + "predict";
+  std::string csvts_nbeats_repo = "csvts_nbeats";
+  mkdir(csvts_nbeats_repo.c_str(), 0777);
+
+  std::string jstr
+      = "{\"mllib\":\"torch\",\"description\":\"nbeats\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+        + csvts_nbeats_repo
+        + "\"},\"parameters\":{\"input\":{\"db\":true,\"connector\":\"csvts\","
+          "\"ignore\":["
+          "\"output\"],\"backcast_timesteps\":50,\"forecast_timesteps\":50},"
+          "\"mllib\":{\"template\":\"nbeats\","
+          "\"template_params\":{\"stackdef\":[\"t2\",\"s4\",\"g3\",\"b3\"]},"
+          "\"loss\":\"L1\"}}}";
+
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // train
+  std::string jtrainstr
+      = "{\"service\":\"" + sname
+        + "\",\"async\":false,\"parameters\":{\"input\":{\"db\":true,\"seed\":"
+          "12345,\"shuffle\":true,"
+          "\"separator\":\",\",\"scale\":true,\"backcast_timesteps\":50,"
+          "\"forecast_timesteps\":50,\"ignore\":["
+          "\"output\"]},\"mllib\":{\"gpu\":false,\"solver\":{\"iterations\":"
+        + iterations_nbeats_cpu
+        + ",\"test_interval\":10,\"base_lr\":0.1,\"snapshot\":500,\"test_"
+          "initialization\":false,\"solver_type\":\"ADAM\"},\"net\":{\"batch_"
+          "size\":2,\"test_batch_"
+          "size\":10}},\"output\":{\"measure\":[\"L1\",\"L2\"]}},\"data\":[\""
+        + csvts_data + "\",\"" + csvts_test + "\"]}";
+
+  std::cerr << "jtrainstr=" << jtrainstr << std::endl;
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  JDoc jd;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_TRUE(jd.HasMember("status"));
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
+  ASSERT_EQ("Created", jd["status"]["msg"]);
+  ASSERT_TRUE(jd.HasMember("head"));
+  ASSERT_EQ("/train", jd["head"]["method"]);
+  ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
+  ASSERT_TRUE(jd.HasMember("body"));
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
+  ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("L1_mean_error"));
+  ASSERT_TRUE(jd["body"]["measure"]["L1_max_error_0"].GetDouble() > 0.0);
+  ASSERT_TRUE(jd["body"]["parameters"]["input"].HasMember("max_vals"));
+  ASSERT_TRUE(jd["body"]["parameters"]["input"].HasMember("min_vals"));
+
+  std::string str_min_vals
+      = japi.jrender(jd["body"]["parameters"]["input"]["min_vals"]);
+  std::string str_max_vals
+      = japi.jrender(jd["body"]["parameters"]["input"]["max_vals"]);
+
+  //  predict
+  std::string jpredictstr
+      = "{\"service\":\"" + sname
+        + "\",\"parameters\":{\"input\":{\"db\":false,\"backcast_timesteps\":"
+          "50,\"forecast_"
+          "timesteps\":50,\"connector\":"
+          "\"csvts\",\"scale\":true,\"ignore\":[\"output\"],\"continuation\":"
+          "true,\"min_vals\":"
+        + str_min_vals + ",\"max_vals\":" + str_max_vals
+        + "},\"output\":{}},\"data\":[\"" + csvts_predict + "\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
+  ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_99", uri);
+  ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
+  ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["out"][0].GetDouble()
+              >= -1.5);
+
+  // predict from memory
+  std::stringstream mem_data;
+  for (int i = 0; i < 50; ++i)
+    {
+      if (i != 0)
+        mem_data << "\\n";
+      mem_data << i << "," << i;
+    }
+
+  jpredictstr = "{\"service\":\"" + sname
+                + "\",\"parameters\":{\"input\":{\"db\":"
+                  "false,\"backcast_timesteps\":"
+                  "50,\"forecast_"
+                  "timesteps\":50,\"connector\":"
+                  "\"csvts\",\"scale\":true,"
+                  "\"ignore\":[\"output\"],"
+                  "\"continuation\":"
+                  "true,\"min_vals\":"
+                + str_min_vals + ",\"max_vals\":" + str_max_vals
+                + "},\"output\":{}},\"data\":[\"input,output\", \""
+                + mem_data.str() + "\"]}";
 
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   std::cout << "joutstr=" << joutstr << std::endl;

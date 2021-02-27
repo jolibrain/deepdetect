@@ -15,11 +15,33 @@ pipeline {
         sh 'printenv | sort'
       }
     }
-    stage('Build docker cpu image') { steps { sh 'ci/build-docker-images.sh cpu' } }
-    stage('Build docker gpu image') { steps { sh 'ci/build-docker-images.sh gpu' } }
-    stage('Build docker gpu_torch image') { steps { sh 'ci/build-docker-images.sh gpu_torch' } }
-    //stage('Build docker gpu_tf image') { steps { sh 'ci/build-docker-images.sh gpu_tf' } }
-    //stage('Build docker gpu_tensorrt image') { steps { sh 'ci/build-docker-images.sh gpu_tensorrt' } }
+    stage('Build docker cpu image') { steps {
+      catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+        sh 'ci/build-docker-images.sh cpu'
+      }
+    }}
+    stage('Build docker gpu image') { steps {
+      catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+        sh 'ci/build-docker-images.sh gpu'
+      }
+    }}
+    stage('Build docker gpu_torch image') { steps {
+      catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+        sh 'ci/build-docker-images.sh gpu_torch'
+      }
+    }}
+    stage('Build docker gpu_tf image') { steps {
+      catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+        sh 'echo "gpu_tf build disabled"'
+        sh 'exit 1'
+        sh 'ci/build-docker-images.sh gpu_tf'
+      }
+    }}
+    stage('Build docker gpu_tensorrt image') { steps {
+      catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+        sh 'ci/build-docker-images.sh gpu_tensorrt'
+      }
+    }}
     stage('Update dockerhub readme') {
       when {
        expression { BRANCH_NAME == "master" }
