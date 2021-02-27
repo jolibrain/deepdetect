@@ -221,6 +221,8 @@ namespace dd
 
         for (size_t i = 0; i < this->_images.size(); ++i)
           {
+            _imgs_size.insert(std::pair<std::string, std::pair<int, int>>(
+                this->_ids.at(i), this->_images_size.at(i)));
             _dataset.add_batch({ _dataset.image_to_tensor(this->_images[i],
                                                           _height, _width) });
           }
@@ -846,10 +848,12 @@ namespace dd
         _ids.clear();
         fill_dataset(_dataset, _csvtsdata);
         _csvtsdata.clear();
+        _dataset.db_finalize();
         check_tests_sizes(_csvtsdata_tests.size(), _csv_test_fnames.size());
         _test_datasets.add_tests_names(_csv_test_fnames);
         for (size_t i = 0; i < _csvtsdata_tests.size(); ++i)
           fill_dataset(_test_datasets[i], _csvtsdata_tests[i], i);
+        _test_datasets.db_finalize();
         _csvtsdata_tests.clear();
       }
     else
@@ -1087,5 +1091,4 @@ namespace dd
       fill_dataset_labels(dataset, csvtsdata, test_id);
     dataset.reset();
   }
-
 }
