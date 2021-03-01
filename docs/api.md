@@ -276,6 +276,7 @@ ssd_mining_type      | str             | yes                      | N/A       | 
 ssd_neg_pos_ratio    | float           | yes                      | N/A       | ratio of negative sampled examples wrt positive examples (bbox), e.g. 3.0
 ssd_neg_overlap      | float           | yes                      | N/A       | max overlap of negative samples with positive samples (bbox), between 0 and 1, e.g. 0.5
 ssd_keep_top_k       | float           | yes                      | N/A       | keep k examples after nms has finished
+ssd_overlap_threshold | float | yes | 0.5 | MAP-x threshold, default to 50% (0.5), takes values within ]0,1].
 
 See the [Model Templates](#model-templates) section for more details.
 
