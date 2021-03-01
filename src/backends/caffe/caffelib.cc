@@ -899,6 +899,7 @@ namespace dd
     double ssd_neg_pos_ratio = -1.0;
     double ssd_neg_overlap = -1.0;
     int ssd_keep_top_k = -1;
+    double ssd_overlap_threshold = 0.5;
     if (ad.has("ssd_expand_prob"))
       ssd_expand_prob = ad.get("ssd_expand_prob").get<double>();
     if (ad.has("ssd_max_expand_ratio"))
@@ -911,6 +912,8 @@ namespace dd
       ssd_neg_overlap = ad.get("ssd_neg_overlap").get<double>();
     if (ad.has("ssd_keep_top_k"))
       ssd_keep_top_k = ad.get("ssd_keep_top_k").get<int>();
+    if (ad.has("ssd_overlap_threshold"))
+      ssd_overlap_threshold = ad.get("ssd_overlap_threshold").get<double>();
 
     //- if finetuning, change the proper layer names
     std::string postfix = "_ftune";
@@ -1014,6 +1017,8 @@ namespace dd
           {
             lparam->mutable_detection_evaluate_param()->set_num_classes(
                 _nclasses);
+            lparam->mutable_detection_evaluate_param()->set_overlap_threshold(
+                ssd_overlap_threshold);
           }
         else if (lparam->name().find("mbox_conf_reshape") != std::string::npos
                  || lparam->name().find("odm_conf_reshape")
