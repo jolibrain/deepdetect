@@ -637,7 +637,7 @@ elseif(USE_CAFFE)
         ${CMAKE_COMMAND} -E env LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR}:$ENV{LD_LIBRARY_PATH} PATH=${PROTOBUF_LIB_DIR}:$ENV{PATH} make -j${N} all
     INSTALL_COMMAND ""
     BUILD_IN_SOURCE 1
-    DEPENDS caffe_pb_h protobuf
+    DEPENDS caffe_pb_h protobuf spdlog
   )
 
   if (USE_HDF5)
