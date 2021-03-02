@@ -470,10 +470,12 @@ namespace dd
         if (typeid(this->_inputc) == typeid(ImgCaffeInputFileConn))
           configure_image_augmentation(ad, net_param);
 
-#ifdef USE_CUDNN
+#ifndef USE_CUDNN
+        const_cast<APIData &>(ad).add("engine", std::string("DEFAULT"));
+#endif
+
         update_protofile_engine(net_param, ad);
         update_protofile_engine(deploy_net_param, ad);
-#endif
 
         // adapt number of neuron output
         update_protofile_classes(net_param);
@@ -897,6 +899,7 @@ namespace dd
     double ssd_neg_pos_ratio = -1.0;
     double ssd_neg_overlap = -1.0;
     int ssd_keep_top_k = -1;
+    double ssd_overlap_threshold = 0.5;
     if (ad.has("ssd_expand_prob"))
       ssd_expand_prob = ad.get("ssd_expand_prob").get<double>();
     if (ad.has("ssd_max_expand_ratio"))
@@ -909,6 +912,8 @@ namespace dd
       ssd_neg_overlap = ad.get("ssd_neg_overlap").get<double>();
     if (ad.has("ssd_keep_top_k"))
       ssd_keep_top_k = ad.get("ssd_keep_top_k").get<int>();
+    if (ad.has("ssd_overlap_threshold"))
+      ssd_overlap_threshold = ad.get("ssd_overlap_threshold").get<double>();
 
     //- if finetuning, change the proper layer names
     std::string postfix = "_ftune";
@@ -1012,6 +1017,8 @@ namespace dd
           {
             lparam->mutable_detection_evaluate_param()->set_num_classes(
                 _nclasses);
+            lparam->mutable_detection_evaluate_param()->set_overlap_threshold(
+                ssd_overlap_threshold);
           }
         else if (lparam->name().find("mbox_conf_reshape") != std::string::npos
                  || lparam->name().find("odm_conf_reshape")
@@ -1288,9 +1295,12 @@ namespace dd
       }
     else // model template instantiation is defered until training call
       {
-#ifdef USE_CUDNN
-        update_protofile_engine(ad);
+
+#ifndef USE_CUDNN
+        const_cast<APIData &>(ad).add("engine", std::string("DEFAULT"));
 #endif
+
+        update_protofile_engine(ad);
         create_model(true);
       }
 
@@ -1382,14 +1392,17 @@ namespace dd
             has_class_weights, ignore_label, timesteps, ad_mllib);
       }
 
-#ifdef USE_CUDNN
     caffe::NetParameter net_param;
     caffe::ReadProtoFromTextFile(this->_mlmodel._trainf,
                                  &net_param); // TODO: catch parsing error
                                               // (returns bool true on success)
+
+#ifndef USE_CUDNN
+    const_cast<APIData &>(ad_mllib).add("engine", std::string("DEFAULT"));
+#endif
+
     update_protofile_engine(net_param, ad_mllib);
     caffe::WriteProtoToTextFile(net_param, this->_mlmodel._trainf);
-#endif
 
     create_model(); // creates initial net.
 
@@ -4112,9 +4125,12 @@ namespace dd
 
     caffe::NetParameter deploy_net_param;
     caffe::ReadProtoFromTextFile(deploy_file, &deploy_net_param);
-#ifdef USE_CUDNN
-    update_protofile_engine(deploy_net_param, ad_mllib);
+
+#ifndef USE_CUDNN
+    const_cast<APIData &>(ad_mllib).add("engine", std::string("DEFAULT"));
 #endif
+
+    update_protofile_engine(deploy_net_param, ad_mllib);
 
     if (this->_inputc._ctc) // crnn
       {
@@ -4227,7 +4243,6 @@ namespace dd
     caffe::WriteProtoToTextFile(deploy_net_param, deploy_file);
   }
 
-#ifdef USE_CUDNN
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel>
   void CaffeLib<TInputConnectorStrategy, TOutputConnectorStrategy,
@@ -4331,6 +4346,7 @@ namespace dd
                 lparam->mutable_convolution_param()->set_cudnn_flavor(
                     ::caffe::ConvolutionParameter::SINGLE_HANDLE);
               }
+#ifdef USE_CUDNN
             else if (refinedet
                      || (ad.has("engine")
                          && ad.get("engine").get<std::string>()
@@ -4341,10 +4357,15 @@ namespace dd
                 lparam->mutable_convolution_param()->set_cudnn_flavor(
                     ::caffe::ConvolutionParameter::MIN_MEMORY);
               }
+#else
+            else
+              lparam->mutable_convolution_param()->set_engine(
+                  ::caffe::ConvolutionParameter::DEFAULT);
+            lparam->mutable_convolution_param()->clear_cudnn_flavor();
+#endif
           }
       }
   }
-#endif
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel>
