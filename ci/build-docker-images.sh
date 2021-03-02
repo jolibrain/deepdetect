@@ -86,10 +86,6 @@ for name in $NAMES; do
 
     # PUSH
     if [ "$TMP_TAG" != "trash" ]; then
-        docker tag $image_url:$TMP_TAG ceres:5000/$image_url:$TMP_TAG
-        docker push ceres:5000/$image_url:$TMP_TAG
-        docker image rm ceres:5000/$image_url:$TMP_TAG
-
         if [ "$TAG_NAME" ]; then
             docker tag $image_url:$TMP_TAG $image_url:${TAG_NAME}
             docker tag $image_url:$TMP_TAG $image_url:latest
