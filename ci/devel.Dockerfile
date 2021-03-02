@@ -60,10 +60,8 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     libgtest-dev \
     libcurlpp-dev \
     libcurl4-openssl-dev \
-    protobuf-compiler \
     libopenblas-dev \
     libhdf5-dev \
-    libprotobuf-dev \
     libleveldb-dev \
     libsnappy-dev \
     liblmdb-dev \

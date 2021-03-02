@@ -137,11 +137,11 @@ ExternalProject_Add(
     -Dprotobuf_BUILD_EXAMPLES:BOOL=OFF
    INSTALL_COMMAND ""
 )
-set(PROTOBUF_INCLUDE_DIR SYSTEM ${CMAKE_BINARY_DIR}/protobuf/src/protobuf/src)
+set(PROTOBUF_INCLUDE_DIR ${CMAKE_BINARY_DIR}/protobuf/src/protobuf/src)
 set(PROTOBUF_LIB_DIR ${CMAKE_BINARY_DIR}/protobuf/src/protobuf-build/)
 set(PROTOBUF_LIB_DEPS ${PROTOBUF_LIB_DIR}/libprotobuf.so ${PROTOBUF_LIB_DIR}/libprotoc.so ${PROTOBUF_LIB_DIR}/libprotobuf-lite.so)
 link_directories(${PROTOBUF_LIB_DIR})
-include_directories(${PROTOBUF_INCLUDE_DIR})
+include_directories(SYSTEM ${PROTOBUF_INCLUDE_DIR})
 
 file(
     DOWNLOAD https://raw.githubusercontent.com/jolibrain/caffe/master/src/caffe/proto/caffe.proto ${CMAKE_BINARY_DIR}/caffe.proto
@@ -637,7 +637,7 @@ elseif(USE_CAFFE)
         ${CMAKE_COMMAND} -E env LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR}:$ENV{LD_LIBRARY_PATH} PATH=${PROTOBUF_LIB_DIR}:$ENV{PATH} make -j${N} all
     INSTALL_COMMAND ""
     BUILD_IN_SOURCE 1
-    DEPENDS caffe_pb_h protobuf
+    DEPENDS caffe_pb_h protobuf spdlog
   )
 
   if (USE_HDF5)
@@ -765,13 +765,7 @@ if (USE_TORCH)
       PATCH_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || git apply ${PYTORCH_PATCHES} && echo Applying ${PYTORCH_PATCHES}
       CONFIGURE_COMMAND ""
       BUILD_COMMAND ""
-      COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping
-        || PATH=${PROTOBUF_LIB_DIR}:$ENV{PATH}
-        BUILD_CUSTOM_PROTOBUF=0 GLIBCXX_USE_CXX11_ABI=1 BUILD_TEST=0
-        USE_CUDA=${PYTORCH_USE_CUDA}
-        BUILD_CAFFE2_OPS=0 USE_DDLOG=1 CAFFE2_LINK_LOCAL_PROTOBUF=0
-        "CMAKE_CXX_FLAGS=-isystem${SPDLOG_INCLUDE_DIR}"
-        MAX_JOBS=8 python3 ../pytorch/tools/build_libtorch.py
+      COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || ${CMAKE_COMMAND} -E env PATH=${PROTOBUF_LIB_DIR}:$ENV{PATH} BUILD_CUSTOM_PROTOBUF=0 GLIBCXX_USE_CXX11_ABI=1 BUILD_TEST=0 USE_CUDA=${PYTORCH_USE_CUDA} BUILD_CAFFE2_OPS=0 USE_DDLOG=1 CAFFE2_LINK_LOCAL_PROTOBUF=0 "CMAKE_CXX_FLAGS=-isystem${SPDLOG_INCLUDE_DIR} -isystem${PROTOBUF_INCLUDE_DIR}" CMAKE_PREFIX_PATH=${PROTOBUF_LIB_DIR}/cmake MAX_JOBS=8 python3 ../pytorch/tools/build_libtorch.py
       INSTALL_COMMAND ""
     )
 
@@ -803,9 +797,9 @@ if (USE_TORCH)
     GIT_TAG ${PYTORCH_VISION_COMMIT}
     GIT_CONFIG advice.detachedHead=false
     CMAKE_ARGS -DWITH_CUDA=${PYTORCH_USE_CUDA} -DCMAKE_PREFIX_PATH=${TORCH_LOCATION} -DCMAKE_INSTALL_PREFIX=${TORCHVISION_LOCATION}
-      -DCMAKE_INCLUDE_PATH=${PROJECT_INCLUDE_DIR} -DCMAKE_LIBRARY_PATH=${PROTOBUF_LIB_DIR}
-      "-DCMAKE_CXX_FLAGS=-isystem ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/ -isystem ${SPDLOG_INCLUDE_DIR}"
-      "-DCMAKE_CUDA_FLAGS=-isystem ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/ -isystem ${SPDLOG_INCLUDE_DIR}"
+      -DCMAKE_INCLUDE_PATH=${PROTOBUF_INCLUDE_DIR} -DCMAKE_LIBRARY_PATH=${PROTOBUF_LIB_DIR}
+      "-DCMAKE_CXX_FLAGS=-isystem ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/ -isystem ${SPDLOG_INCLUDE_DIR} -isystem ${PROTOBUF_INCLUDE_DIR}"
+      "-DCMAKE_CUDA_FLAGS=-isystem ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/ -isystem ${SPDLOG_INCLUDE_DIR} -isystem ${PROTOBUF_INCLUDE_DIR}"
       -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc
     DEPENDS protobuf pytorch
   )

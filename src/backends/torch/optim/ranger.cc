@@ -221,7 +221,7 @@ namespace dd
                     p.add_(exp_avg, -step_size * options.lr());
                   }
               }
-            if (state.step() % options.lsteps() == 0)
+            if (state.step() % options.lsteps() == 0 && options.lookahead())
               {
                 auto slow_p = state.slow_buffer();
                 slow_p.add_(p.data() - slow_p, options.lalpha());

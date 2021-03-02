@@ -75,6 +75,7 @@ namespace dd
     _classification = tl._classification;
     _regression = tl._regression;
     _timeserie = tl._timeserie;
+    _bbox = tl._bbox;
     _loss = tl._loss;
     _template_params = tl._template_params;
   }
@@ -248,12 +249,16 @@ namespace dd
       {
         _seq_training = true;
       }
+    else if (_template == "fasterrcnn" || _template == "retinanet")
+      {
+        _bbox = true;
+      }
     else if (_template.find("recurrent") != std::string::npos
              || NativeFactory::is_timeserie(_template))
       {
         _timeserie = true;
       }
-    if (!_regression && !_timeserie && self_supervised.empty())
+    if (!_regression && !_timeserie && !_bbox && self_supervised.empty())
       _classification = true; // classification is default
 
     // Set mltype
@@ -261,6 +266,8 @@ namespace dd
       this->_mltype = "classification";
     else if (_regression)
       this->_mltype = "regression";
+    else if (_bbox)
+      this->_mltype = "detection";
 
     // Create the model
     _module._device = _main_device;
@@ -312,6 +319,12 @@ namespace dd
       {
         // No allocation, use traced model in repo
         this->_inputc._input_format = "gpt2";
+      }
+    // TorchVision detection models
+    else if (_template == "fasterrcnn" || _template == "retinanet")
+      {
+        // fasterrcnn output is a tuple (Loss, Predictions)
+        _module._linear_in = 1;
       }
     else if (!_template.empty())
       {
@@ -948,9 +961,12 @@ namespace dd
     bool extract_last = false;
     std::string forward_method;
 
+    bool bbox = _bbox;
+    double confidence_threshold = 0.0;
+
     if (params.has("mllib"))
       {
-        APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
+        APIData ad_mllib = params.getobj("mllib");
         if (ad_mllib.has("net"))
           {
             APIData ad_net = ad_mllib.getobj("net");
@@ -965,6 +981,25 @@ namespace dd
           }
         if (ad_mllib.has("forward_method"))
           forward_method = ad_mllib.get("forward_method").get<std::string>();
+      }
+
+    if (output_params.has("bbox") && output_params.get("bbox").get<bool>())
+      {
+        bbox = true;
+      }
+    if (output_params.has("confidence_threshold"))
+      {
+        try
+          {
+            confidence_threshold
+                = output_params.get("confidence_threshold").get<double>();
+          }
+        catch (std::exception &e)
+          {
+            // try from int
+            confidence_threshold = static_cast<double>(
+                output_params.get("confidence_threshold").get<int>());
+          }
       }
 
     bool lstm_continuation = false;
@@ -1039,21 +1074,20 @@ namespace dd
           }
         this->_stats.inc_inference_count(batch.data[0].size(0));
 
+        c10::IValue out_ivalue;
         Tensor output;
         try
           {
             if (extract_layer.empty() || extract_last)
-              output = torch_utils::to_tensor_safe(
-                  _module.forward(in_vals, forward_method));
+              out_ivalue = _module.forward(in_vals, forward_method);
             else
-              output = torch_utils::to_tensor_safe(
-                  _module.extract(in_vals, extract_layer));
-            if (_timeserie)
+              out_ivalue = _module.extract(in_vals, extract_layer);
+
+            if (!bbox)
               {
-                // DO NOTHING
-              }
-            else
-              {
+                output = torch_utils::to_tensor_safe(out_ivalue);
+
+                // TODO move this code somewhere else
                 if (_template == "gpt2")
                   {
                     // Keep only the prediction for the last token
@@ -1069,7 +1103,8 @@ namespace dd
                       }
                     output = torch::stack(outputs);
                   }
-                if (extract_layer.empty() && _classification)
+
+                if (extract_layer.empty() && _classification && !_timeserie)
                   output = torch::softmax(output, 1).to(cpu);
                 else
                   output = output.to(cpu);
@@ -1117,7 +1152,88 @@ namespace dd
             if (_module._native != nullptr)
               output = _module._native->cleanup_output(output);
 
-            if (_classification)
+            if (bbox)
+              {
+                // Supporting only Faster RCNN format at the moment.
+                auto out_dicts = out_ivalue.toList();
+
+                for (size_t i = 0; i < out_dicts.size(); ++i)
+                  {
+                    std::string uri = inputc._ids.at(i);
+                    auto bit = inputc._imgs_size.find(uri);
+                    int rows = 1;
+                    int cols = 1;
+                    if (bit != inputc._imgs_size.end())
+                      {
+                        // original image size
+                        rows = (*bit).second.first;
+                        cols = (*bit).second.second;
+                      }
+                    else
+                      {
+                        throw MLLibInternalException(
+                            "Couldn't find original image size for " + uri);
+                      }
+
+                    APIData results_ad;
+                    std::vector<double> probs;
+                    std::vector<std::string> cats;
+                    std::vector<APIData> bboxes;
+
+                    auto out_dict = out_dicts.get(i).toGenericDict();
+                    Tensor bboxes_tensor
+                        = torch_utils::to_tensor_safe(out_dict.at("boxes"));
+                    Tensor labels_tensor
+                        = torch_utils::to_tensor_safe(out_dict.at("labels"));
+                    Tensor score_tensor
+                        = torch_utils::to_tensor_safe(out_dict.at("scores"));
+
+                    auto bboxes_acc = bboxes_tensor.accessor<float, 2>();
+                    auto labels_acc = labels_tensor.accessor<int64_t, 1>();
+                    auto score_acc = score_tensor.accessor<float, 1>();
+
+                    for (int j = 0; j < labels_tensor.size(0); ++j)
+                      {
+                        double score = score_acc[j];
+                        if (score < confidence_threshold)
+                          continue;
+
+                        probs.push_back(score);
+                        cats.push_back(
+                            this->_mlmodel.get_hcorresp(labels_acc[j]));
+
+                        double bbox[] = {
+                          bboxes_acc[j][0] / inputc.width() * (cols - 1),
+                          bboxes_acc[j][1] / inputc.height() * (rows - 1),
+                          bboxes_acc[j][2] / inputc.width() * (cols - 1),
+                          bboxes_acc[j][3] / inputc.height() * (rows - 1),
+                        };
+
+                        // clamp bbox
+                        bbox[0] = std::max(0.0, bbox[0]);
+                        bbox[1] = std::max(0.0, bbox[1]);
+                        bbox[2]
+                            = std::min(static_cast<double>(cols - 1), bbox[2]);
+                        bbox[3]
+                            = std::min(static_cast<double>(cols - 1), bbox[3]);
+
+                        APIData ad_bbox;
+                        ad_bbox.add("xmin", bbox[0]);
+                        ad_bbox.add("ymin", bbox[1]);
+                        ad_bbox.add("xmax", bbox[2]);
+                        ad_bbox.add("ymax", bbox[3]);
+                        bboxes.push_back(ad_bbox);
+                      }
+
+                    results_ad.add("uri", inputc._uris.at(results_ads.size()));
+                    results_ad.add("loss", 0.0);
+                    results_ad.add("probs", probs);
+                    results_ad.add("cats", cats);
+                    results_ad.add("bboxes", bboxes);
+                    results_ads.push_back(results_ad);
+                  }
+              }
+            else if (_classification)
               {
                 int best_count = _nclasses;
                 if (output_params.has("best"))
@@ -1225,6 +1341,7 @@ namespace dd
           out.add("timeseries", true);
         if (_regression)
           out.add("regression", true);
+        out.add("bbox", bbox);
         out.add("nclasses", static_cast<int>(_nclasses));
         outputc.finalize(output_params, out,
                          static_cast<MLModel *>(&this->_mlmodel));
