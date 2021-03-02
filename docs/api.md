@@ -231,7 +231,7 @@ sentences          | bool   | yes      | false                                  
 characters         | bool   | yes      | false                                              | character-level text processing, as opposed to word-based text processing
 sequence           | int    | yes      | N/A                                                | for character-level text processing, the fixed length of each sample of text
 read_forward       | bool   | yes      | false                                              | for character-level text processing, whether to read content from left to right
-alphabet           | string | yes      | abcdefghijklmnopqrstuvwxyz 0123456789 ,;.!?:'"/\\\ | _@#$%^&*~`+-=<>()[]{} | for character-level text processing, the alphabet of recognized symbols
+alphabet           | string | yes      | abcdefghijklmnopqrstuvwxyz 0123456789 ,;.!?:'"/\\\ \|_@#$%^&*~\`+-=<>()[]{} | for character-level text processing, the alphabet of recognized symbols
 sparse             | bool   | yes      | false                                              | whether to use sparse features (and sparce computations with Caffe for huge memory savings, for xgboost use `svm` connector instead)
 ordered_words      | bool   | yes      | false                                              | enable word-based processing with positionnal information, mandatory for bert/gpt2 like models
 wordpiece_tokens   | bool   | yes      | false                                              | set to true if vocabulary contains partial words, ie like in bert/gpt2 models
@@ -278,7 +278,7 @@ ssd_neg_overlap      | float           | yes                      | N/A       | 
 ssd_keep_top_k       | float           | yes                      | N/A       | keep k examples after nms has finished
 ssd_overlap_threshold | float | yes | 0.5 | MAP-x threshold, default to 50% (0.5), takes values within ]0,1].
 
-See the [Model Templates](#model_templates) section for more details.
+See the [Model Templates](#model-templates) section for more details.
 
 Noise (images only):
 
@@ -378,7 +378,7 @@ measure      | array of string | yes | depending on problem type | measure to us
 
 
 Problem type | Default | Possible values | Description
------------- | ------- | --------------- |
+------------ | ------- | --------------- | -----------
 timeserie    |   L1    | L1, L2, mase, mape, smape, mase, owa | L1: mean error, L2: mean squared error, mase : mean absolute scaled error, mape: mean absolute percentage error, smape: symetric mean absolute percentage error, owa: overall weighted average.
 
 
@@ -645,7 +645,7 @@ sentences          | bool   | yes      | false                                  
 characters         | bool   | yes      | false                                              | character-level text processing, as opposed to word-based text processing
 sequence           | int    | yes      | N/A                                                | for character-level text processing, the fixed length of each sample of text
 read_forward       | bool   | yes      | false                                              | for character-level text processing, whether to read content from left to right
-alphabet           | string | yes      | abcdefghijklmnopqrstuvwxyz 0123456789 ,;.!?:'"/\\\ | _@#$%^&*~`+-=<>()[]{} | for character-level text processing, the alphabet of recognized symbols
+alphabet           | string | yes      | abcdefghijklmnopqrstuvwxyz 0123456789 ,;.!?:'"/\\\ \|_@#$%^&*~\`+-=<>()[]{} | for character-level text processing, the alphabet of recognized symbols
 test_split         | real   | yes      | 0                                                  | Test split part of the dataset
 shuffle            | bool   | yes      | false                                              | Whether to shuffle the training set (prior to splitting)
 seed               | int    | yes      | -1                                                 | Shuffling seed for reproducible results (-1 for random seeding)
@@ -709,7 +709,7 @@ warmup_lr            | real         | yes      | N/A     | warmup starting learn
 warmup_iter          | int          | yes      | 0       | number of warmup iterations
 gamma                | real         | yes      | N/A     | Learning rate drop factor
 stepsize             | int          | yes      | N/A     | Number of iterations between the dropping of the learning rate
-stepvalue            | array of int | yes      | N/A     | Iterations at which a learning rate change takes place, with `multistep` `lr_policy'
+stepvalue            | array of int | yes      | N/A     | Iterations at which a learning rate change takes place, with `multistep` `lr_policy`
 momentum             | real         | yes      | N/A     | Learning momentum
 period               | int          | yes      | -1      | N/A | Period in number of iterations with SGDR, best to use ncycles instead
 ncycles              | int          | yes      | 1       | Number of restart cycles with SGDR
@@ -747,48 +747,13 @@ self_supervised | string | yes      | ""      | self-supervised mode: "mask" for
 embedding_size  | int    | yes      | 768     | embedding size for NLP models
 freeze_traced   | bool   | yes      | false   | Freeze the traced part of the net during finetuning (e.g. for classification)
 retain_graph	| bool	 | yes	    | false   | Whether to use `retain_graph` with torch autograd
-template        | string | yes      | ""      | for language models, either "bert" or "gpt2", "recurrent" for LSTM-like models (including autoencoder), "nbeats" for nbeats model, "vit" for vision transformer, "ttransformer" for transformer-based timeseries models
-template_params | dict   | yes      | template dependent | Model parameter for nbeats and ttransformer (see below)
+template        | string | yes      | ""      | e.g. "bert", "gpt2", "recurrent", "nbeats", "vit", "ttransformer", "resnet50", ... All templates are listed in the [Model Templates](#model-templates) section.
+template_params | dict   | yes      | template dependent | Model parameter for templates. All parameters are listed in the [Model Templates](#model-templates) section.
 regression | bool            | yes                      | false   | Whether the model is a regressor
 timesteps     | int            | yes      | N/A            | Number of timesteps for time models (LSTM/NBEATS...) : this sets the length of sequences that will be given for learning, every timestep contains inputs and outputs as defined by the csv/csvts connector
 offset        | int            | yes      | N/A            | Offset beween start point of sequences with connector `cvsts`, defining the overlap of input series
 forecast_timesteps      | int            | yes      | N/A       | for nbeats model, this gives the length of the forecast
 backcast_timesteps      | int            | yes      | N/A       | for nbeats model, this gives the length of the backcast
-
-
-Model instantiation parameters for recurrent template:
-
-Parameter       | Template  | Type            | Default                      | Description
----------       | --------- | ------          | ---------------------------- | -----------
-layers          | recurrent | array of string | []                           | ["L50","L50"] means 2 layers of LSTMs with hidden size of 50. ["L100","L100", "T", "L300"] means an lstm autoencoder with encoder composed of 2 LSTM layers of hidden size 100 and decoder is one LSTM layer of hidden size 300
-
-
-Template parameters for native  templates (nbeats/ttransformer):
-
-Parameter       | Template  | Type            | Default                      | Description
----------       | --------- | ------          | ---------------------------- | -----------
-template_params.stackdef | nbeats    | array of string | ["t2","s8","g3","b3","h10" ] | default means: trend stack with theta = 2, seasonal stack with theta = 8 , generic stack with theta = 3, 3 blocks per stacks, hidden unit size of 10 everywhere
-template_params.vit_flavor | vit | string | vit_base_patch16 | Vision transformer architecture, from smaller to larger: vit_tiny_patch16, vit_small_patch16, vit_base_patch32, vit_base_patch16, vit_large_patch16, vit_large_patch32, vit_huge_patch16, vit_huge_patch32
-template_params.realformer | vit | bool | false | Whether to use the 'realformer' residual among attention heads
-template_params.positional_encoding.type | ttransformer | string | "sincos" | Positional encoding "sincos for original frequential encoding, "naive" for simple enumeration
-template_params.positional_encoding.learn | ttransformer | bool | false | learn or not positional encoding (starting from above value)
-template_params.positional_encoding.dropout | ttransformer | float | 0.1 | value of dropout in positional encodin
-template_params.embed.layers | ttransformer | int | 3 | Number of layers of MLP value embedder
-template_params.embed.activation | ttransformer | string | relu | "relu", "gelu" or "siren" : activation type of MLP embedder
-template_params.embed.dim | ttransformer | int | 32 | size of embedding for MLP embedder (per timestep) (embed.dim must be divisible by encoder.heads)
-template_params.embed.type | ttransformer | string | step | "step" embeds every step separately, "serie" embeds every serie separately, "all" embeds all timesteps of all serie at once (needs a lot of memory")
-template_params.embed.dropout | ttransformer | float | 0.1 | value of dropout in MLP embedder
-template_params.encoder.heads | ttransformer | int | 8 | number of heads for transformer encoder (embed.dim must be divisible by encoder.heads)
-template_params.encoder.layers | ttransformer | int | 1 | number of layers in transformer encoder
-template_params.encoder.hidden_dim | ttransformer | int | input_dim * embed.dim | internal dim of feedfoward net in encoder layer
-template_params.encoder.activation | ttransformer | string | relu | "relu" or "gelu"
-template_params.encoder.dropout | ttransformer | float | 0.1 | dropout value for encoder stack
-template_params.decoder.type | ttransformer | string | simple | simple is a MLP, "transformer" is attention based decoder
-template_params.decoder.heads | ttransformer | int | 8 | number of heads for transformer decoder (if any)
-template_params.decoder.layers | ttransformer | int | 1 | number of layers of decoder
-template_params.decoder.dropout | ttransformer | float | 0.1 | dropout value for decoder stack
-template_params.autoreg | ttransformer | bool | false | false for nbeats style decoding, ie gives a window of prediction at one, true for autoregressive, ie predicts value one after the others then use previsouly predicted values as a context
-
 
 Solver:
 
@@ -1002,7 +967,7 @@ curl -X POST "http://localhost:8080/predict" -d "{\"service\":\"covert\",\"param
 ```shell
 curl -X POST 'http://localhost:8080/predict' -d '{"service":"n20","parameters":{"mllib":{"gpu":true},"output":{"measure":["f1"]}},"data":["/path/to/news20/"]}'
 
-{"status":{"code":200,"msg":"OK"},"head":{"method":"/predict","time":18271.0,"service":"n20"},"body":{"measure":{"f1":0.8152690151793434,"recall":0.8219119954158582,precision":0.8087325557838578,"accp":0.815365025466893}}}
+{"status":{"code":200,"msg":"OK"},"head":{"method":"/predict","time":18271.0,"service":"n20"},"body":{"measure":{"f1":0.8152690151793434,"recall":0.8219119954158582,"precision":0.8087325557838578,"accp":0.815365025466893}}}
 ```
 
 ```python
@@ -1082,7 +1047,7 @@ sentences       | bool   | yes      | false                                     
 characters      | bool   | yes      | false                                              | character-level text processing, as opposed to word-based text processing
 sequence        | int    | yes      | N/A                                                | for character-level text processing, the fixed length of each sample of text
 read_forward    | bool   | yes      | false                                              | for character-level text processing, whether to read content from left to right
-alphabet        | string | yes      | abcdefghijklmnopqrstuvwxyz 0123456789 ,;.!?:'"/\\\ | _@#$%^&*~`+-=<>()[]{} | for character-level text processing, the alphabet of recognized symbols
+alphabet        | string | yes      | abcdefghijklmnopqrstuvwxyz 0123456789 ,;.!?:'"/\\\ \|_@#$%^&*~\`+-=<>()[]{} | for character-level text processing, the alphabet of recognized symbols
 sparse          | bool   | yes      | false                                              | whether to use sparse features (and sparce computations with Caffe for huge memory savings, for xgboost use `svm` connector instead)
 
 - SVM (`svm`)
@@ -1258,7 +1223,7 @@ sentences       | bool   | yes      | false                                     
 characters      | bool   | yes      | false                                              | character-level text processing, as opposed to word-based text processing
 sequence        | int    | yes      | N/A                                                | for character-level text processing, the fixed length of each sample of text
 read_forward    | bool   | yes      | false                                              | for character-level text processing, whether to read content from left to right
-alphabet        | string | yes      | abcdefghijklmnopqrstuvwxyz 0123456789 ,;.!?:'"/\\\ | _@#$%^&*~`+-=<>()[]{} | for character-level text processing, the alphabet of recognized symbols
+alphabet        | string | yes      | abcdefghijklmnopqrstuvwxyz 0123456789 ,;.!?:'"/\\\ \|_@#$%^&*~\`+-=<>()[]{} | for character-level text processing, the alphabet of recognized symbols
 test_split      | real   | yes      | 0                                                  | Test split part of the dataset
 shuffle         | bool   | yes      | false                                              | Whether to shuffle the training set (prior to splitting)
 seed            | int    | yes      | -1                                                 | Shuffling seed for reproducible results (-1 for random seeding)
@@ -1356,23 +1321,24 @@ Using Mustache, you can turn the JSON into anything, from XML to specialized for
 > Example of a 3-layer MLP with 512 hidden units in each layer and PReLU activations:
 
 ```json
-{"parameters":{"mllib":{"template":"mlp","nclasses":9,"layers":[512,512,512],"activation":"PReLU","nclasses":9}}
+{"parameters":{"mllib":{"template":"mlp","nclasses":9,"layers":[512,512,512],"activation":"PReLU","nclasses":9}}}
 ```
 
 > Example of GoogleNet for 1000 classes of images:
 
 ```json
-{"parameters":{"input":{"connector":"image","width":224,"height":224},"mllib":{"template":"googlenet","nclasses":1000}}
+{"parameters":{"input":{"connector":"image","width":224,"height":224},"mllib":{"template":"googlenet","nclasses":1000}}}
 ```
 
 The DeepDetect server and API come with a set of Machine Learning model templates.
 
-At the moment these templates are available for the [Caffe](https://caffe.berkeleyvision.org/) Deep Learning library. They include some of the most powerful deep neural net architectures for image classification, and other customizable classic and useful architectures.
+At the moment templates are available for [Caffe](https://caffe.berkeleyvision.org/) and [Pytorch](https://pytorch.org/) backends. They include some of the most powerful deep neural net architectures for image classification, and other customizable classic and useful architectures.
 
 ## Neural network templates
 
 All models below are used by passing their id to the `mllib/template` parameter in `PUT /services` calls:
 
+### Caffe
 Model ID    | Type                     | Input          | Description
 --------    | ----                     | -----          | -----------
 lregression | linear                   | CSV / Txt            | logistic regression
@@ -1425,9 +1391,65 @@ vdcnn_17 | deep neural net	       | Images   		| Convolutional network for text 
 vdcnn_9 | deep neural net	       | Images   		| Convolutional network for text classification
 vgg_16 | deep neural net	       | Images   		| Convolutional network for image classification
 
+### Pytorch
+
+#### Native models
+
+- LSTM-like models (including autoencoder): `recurrent`
+- NBEATS model: `nbeats`
+- Vision transformer: `vit`
+- Transformer-based timeseries models: `ttransformer`
+- [TorchVision image classification models](https://pytorch.org/vision/0.8/models.html):
+	- `resnet18`
+	- `resnet34`
+	- `resnet50`
+	- `resnet101`
+	- `resnet152`
+	- `resnext50_32x4d`
+	- `resnext101_32x8d`
+	- `wideresnet50_2`
+	- `wideresnet101_2`
+	- `alexnet`
+	- `vgg11`
+	- `vgg13`
+	- `vgg16`
+	- `vgg19`
+	- `vgg11bn`
+	- `vgg13bn`
+	- `vgg16bn`
+	- `vgg19bn`
+	- `mobilenetv2`
+	- `densenet121`
+	- `densenet169`
+	- `densenet201`
+	- `densenet161`
+	- `mnasnet0_5`
+	- `mnasnet0_75`
+	- `mnasnet1_0`
+	- `mnasnet1_3`
+	- `shufflenetv2_x0_5`
+	- `shufflenetv2_x1_0`
+	- `shufflenetv2_x1_5`
+	- `shufflenetv2_x2_0`
+	- `squeezenet1_0`
+	- `squeezenet1_1`
+
+#### Traced models
+
+These templates require an external traced model to work:
+- Language models:
+	- `bert`
+	- `gpt2`
+
 ## Parameters
 
-- Caffe
+Model instantiation parameters for recurrent template (applies to all backends supporting templates):
+
+Parameter       | Template  | Type            | Default                      | Description
+---------       | --------- | ------          | ---------------------------- | -----------
+layers          | recurrent | array of string | []                           | ["L50","L50"] means 2 layers of LSTMs with hidden size of 50. ["L100","L100", "T", "L300"] means an lstm autoencoder with encoder composed of 2 LSTM layers of hidden size 100 and decoder is one LSTM layer of hidden size 300
+
+### Caffe
 
 Parameter  | Type            | Optional                 | Default | Description
 ---------  | ----            | --------                 | ------- | -----------
@@ -1442,6 +1464,34 @@ regression | bool            | yes                      | false   | Whether the 
 crop_size  | int             | yes                      | N/A     | Size of random image crops as input images
 rotate     | bool            | yes                      | false   | Whether to apply random rotations to input images
 mirror     | bool            | yes                      | false   | Whether to apply random mirroring of input images
+
+### Pytorch
+
+Template parameters for native  templates (nbeats/ttransformer):
+
+Parameter       | Template  | Type            | Default                      | Description
+---------       | --------- | ------          | ---------------------------- | -----------
+template_params.stackdef | nbeats    | array of string | ["t2","s8","g3","b3","h10" ] | default means: trend stack with theta = 2, seasonal stack with theta = 8 , generic stack with theta = 3, 3 blocks per stacks, hidden unit size of 10 everywhere
+template_params.vit_flavor | vit | string | vit_base_patch16 | Vision transformer architecture, from smaller to larger: vit_tiny_patch16, vit_small_patch16, vit_base_patch32, vit_base_patch16, vit_large_patch16, vit_large_patch32, vit_huge_patch16, vit_huge_patch32
+template_params.realformer | vit | bool | false | Whether to use the 'realformer' residual among attention heads
+template_params.positional_encoding.type | ttransformer | string | "sincos" | Positional encoding "sincos for original frequential encoding, "naive" for simple enumeration
+template_params.positional_encoding.learn | ttransformer | bool | false | learn or not positional encoding (starting from above value)
+template_params.positional_encoding.dropout | ttransformer | float | 0.1 | value of dropout in positional encodin
+template_params.embed.layers | ttransformer | int | 3 | Number of layers of MLP value embedder
+template_params.embed.activation | ttransformer | string | relu | "relu", "gelu" or "siren" : activation type of MLP embedder
+template_params.embed.dim | ttransformer | int | 32 | size of embedding for MLP embedder (per timestep) (embed.dim must be divisible by encoder.heads)
+template_params.embed.type | ttransformer | string | step | "step" embeds every step separately, "serie" embeds every serie separately, "all" embeds all timesteps of all serie at once (needs a lot of memory")
+template_params.embed.dropout | ttransformer | float | 0.1 | value of dropout in MLP embedder
+template_params.encoder.heads | ttransformer | int | 8 | number of heads for transformer encoder (embed.dim must be divisible by encoder.heads)
+template_params.encoder.layers | ttransformer | int | 1 | number of layers in transformer encoder
+template_params.encoder.hidden_dim | ttransformer | int | input_dim * embed.dim | internal dim of feedfoward net in encoder layer
+template_params.encoder.activation | ttransformer | string | relu | "relu" or "gelu"
+template_params.encoder.dropout | ttransformer | float | 0.1 | dropout value for encoder stack
+template_params.decoder.type | ttransformer | string | simple | simple is a MLP, "transformer" is attention based decoder
+template_params.decoder.heads | ttransformer | int | 8 | number of heads for transformer decoder (if any)
+template_params.decoder.layers | ttransformer | int | 1 | number of layers of decoder
+template_params.decoder.dropout | ttransformer | float | 0.1 | dropout value for decoder stack
+template_params.autoreg | ttransformer | bool | false | false for nbeats style decoding, ie gives a window of prediction at one, true for autoregressive, ie predicts value one after the others then use previsouly predicted values as a context
 
 # Errors
 
