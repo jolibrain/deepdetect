@@ -76,7 +76,7 @@ for name in $NAMES; do
 
     timeout 60 sh -c "until nc -z localhost $PORT; do sleep 1; done"
 
-    sleep 5  # Wait dd start
+    sleep 10  # Wait dd start
 
     curl -s --head --request GET http://localhost:$PORT/info | head -1 | grep 'HTTP/1.1 200'
     trap - EXIT
@@ -86,10 +86,6 @@ for name in $NAMES; do
 
     # PUSH
     if [ "$TMP_TAG" != "trash" ]; then
-        docker tag $image_url:$TMP_TAG ceres:5000/$image_url:$TMP_TAG
-        docker push ceres:5000/$image_url:$TMP_TAG
-        docker image rm ceres:5000/$image_url:$TMP_TAG
-
         if [ "$TAG_NAME" ]; then
             docker tag $image_url:$TMP_TAG $image_url:${TAG_NAME}
             docker tag $image_url:$TMP_TAG $image_url:latest
