@@ -16,29 +16,29 @@ pipeline {
       }
     }
     stage('Build docker cpu image') { steps {
-      catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+      catchError(buildResult: 'FAILURE', stageResult: 'FAILURE', catchInterruptions: false) {
         sh 'ci/build-docker-images.sh cpu'
       }
     }}
     stage('Build docker gpu image') { steps {
-      catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+      catchError(buildResult: 'FAILURE', stageResult: 'FAILURE', catchInterruptions: false) {
         sh 'ci/build-docker-images.sh gpu'
       }
     }}
     stage('Build docker gpu_torch image') { steps {
-      catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+      catchError(buildResult: 'FAILURE', stageResult: 'FAILURE', catchInterruptions: false) {
         sh 'ci/build-docker-images.sh gpu_torch'
       }
     }}
     stage('Build docker gpu_tf image') { steps {
-      catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE', message: 'gpu_tf build disabled') {
+      catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE', message: 'gpu_tf build disabled', catchInterruptions: false) {
         sh 'echo "gpu_tf build disabled"'
         sh 'exit 1'
         sh 'ci/build-docker-images.sh gpu_tf'
       }
     }}
     stage('Build docker gpu_tensorrt image') { steps {
-      catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+      catchError(buildResult: 'FAILURE', stageResult: 'FAILURE', catchInterruptions: false) {
         sh 'ci/build-docker-images.sh gpu_tensorrt'
       }
     }}
