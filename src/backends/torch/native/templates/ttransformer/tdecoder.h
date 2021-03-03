@@ -53,6 +53,25 @@ namespace dd
       init();
     }
 
+    TDecoderImpl &operator=(const TDecoderImpl &d)
+    {
+      torch::nn::Module::operator=(d);
+      _simple = d._simple;
+      _embed_dim = d._embed_dim;
+      _input_len = d._input_len;
+      _output_dim = d._output_dim;
+      _output_len = d._output_len;
+      _nheads = d._nheads;
+      _nlayers = d._nlayers;
+      _hidden_dim = d._hidden_dim;
+      _dropout_ratio = d._dropout_ratio;
+      _dropout = d._dropout;
+      _activation = d._activation;
+      _lins = d._lins;
+      _transformer_decoder = d._transformer_decoder;
+      return *this;
+    }
+
     void reset() override
     {
       init();

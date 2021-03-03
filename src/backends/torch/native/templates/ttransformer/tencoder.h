@@ -54,6 +54,20 @@ namespace dd
       init();
     }
 
+    TEncoderImpl &operator=(const TEncoderImpl &e)
+    {
+      torch::nn::Module::operator=(e);
+      _input_len = e._input_len;
+      _embed_dim = e._embed_dim;
+      _nheads = e._nheads;
+      _nlayers = e._nlayers;
+      _hidden_dim = e._hidden_dim;
+      _dropout = e._dropout;
+      _activation = e._activation;
+      _encoder = e._encoder;
+      return *this;
+    }
+
     torch::Tensor forward(torch::Tensor x, torch::Tensor mask);
     void reset() override
     {
