@@ -3181,9 +3181,9 @@ namespace dd
                 int results_height = results[0]->height();
                 const int det_size = 7;
                 const float *outr = results[0]->cpu_data();
+                int k = 0; // iterates over number of bboxes found by net
                 for (int j = 0; j < batch_size; j++)
                   {
-                    int k = 0;
                     std::vector<double> probs;
                     std::vector<std::string> cats;
                     std::vector<APIData> bboxes;
