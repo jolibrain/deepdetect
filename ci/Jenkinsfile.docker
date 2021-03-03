@@ -31,7 +31,7 @@ pipeline {
       }
     }}
     stage('Build docker gpu_tf image') { steps {
-      catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+      catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE', message: 'gpu_tf build disabled') {
         sh 'echo "gpu_tf build disabled"'
         sh 'exit 1'
         sh 'ci/build-docker-images.sh gpu_tf'
