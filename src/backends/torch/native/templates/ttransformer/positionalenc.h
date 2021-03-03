@@ -48,6 +48,19 @@ namespace dd
       init();
     }
 
+    PositionalEncodingImpl &operator=(const PositionalEncodingImpl &p)
+    {
+      torch::nn::Module::operator=(p);
+      _pet = p._pet;
+      _dropout = p._dropout;
+      _seq_len = p._seq_len;
+      _datadim = p._datadim;
+      _et = p._et;
+      _dropout_ratio = p._dropout_ratio;
+      _learn = p._learn;
+      return *this;
+    }
+
     torch::Tensor forward();
     void reset() override
     {

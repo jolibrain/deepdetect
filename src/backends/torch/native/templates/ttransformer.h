@@ -300,6 +300,43 @@ namespace dd
       init();
     }
 
+    TTransformer &operator=(const TTransformer &t)
+    {
+      torch::nn::Module::operator=(t);
+      _embedder = t._embedder;
+      _encoder_mask = t._encoder_mask;
+      _decoder_mask = t._decoder_mask;
+      _simple_decoder = t._simple_decoder;
+      _pe = t._pe;
+      _encoder = t._encoder;
+      _decoder = t._decoder;
+      _input_len = t._input_len;
+      _input_dim = t._input_dim;
+      _output_len = t._output_len;
+      _output_dim = t._output_dim;
+      _petype = t._petype;
+      _pelearn = t._pelearn;
+      _peagg = t._peagg;
+      _pe_dropout = t._pe_dropout;
+      _embed_nlayers = t._embed_nlayers;
+      _embed_dim = t._embed_dim;
+      _embed_activation = t._embed_activation;
+      _embed_type = t._embed_type;
+      _embed_dropout = t._embed_dropout;
+      _encoder_nheads = t._encoder_nheads;
+      _encoder_nlayers = t._encoder_nlayers;
+      _encoder_hidden_dim = t._encoder_hidden_dim;
+      _encoder_activation = t._encoder_activation;
+      _encoder_dropout = t._encoder_dropout;
+      _decoder_nheads = t._decoder_nheads;
+      _decoder_nlayers = t._decoder_nlayers;
+      _decoder_hidden_dim = t._decoder_hidden_dim;
+      _decoder_dropout = t._decoder_dropout;
+      _decoder_activation = t._decoder_activation;
+      _autoreg = t._autoreg;
+      return *this;
+    }
+
     virtual ~TTransformer() override
     {
     }
