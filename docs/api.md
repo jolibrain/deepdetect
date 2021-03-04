@@ -379,7 +379,7 @@ measure      | array of string | yes | depending on problem type | measure to us
 
 Problem type | Default | Possible values | Description
 ------------ | ------- | --------------- | -----------
-timeserie    |   L1    | L1, L2, mase, mape, smape, mase, owa | L1: mean error, L2: mean squared error, mase : mean absolute scaled error, mape: mean absolute percentage error, smape: symetric mean absolute percentage error, owa: overall weighted average.
+timeserie    |   L1    | L1, L2, mase, mape, smape, mase, owa, mae, mse | L1: mean error, L2: mean squared error, mase : mean absolute scaled error, mape: mean absolute percentage error, smape: symetric mean absolute percentage error, owa: overall weighted average, mae: mean absolute error, mse: mean squarred error.
 
 
 

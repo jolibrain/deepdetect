@@ -335,7 +335,7 @@ namespace dd
             }
           vals.at(j) = (vals.at(j) - _min_vals.at(j))
                        / (_max_vals.at(j) - _min_vals.at(j));
-          if (_scale_between_minus1_and_1)
+          if (_scale_between_minus_half_and_half)
             vals.at(j) = vals.at(j) - 0.5;
           ++lit;
         }
@@ -787,7 +787,7 @@ namespace dd
     bool _dont_scale_labels
         = true; // original csv input conn does not scale labels, while it is
                 // needed for csv timeseries
-    bool _scale_between_minus1_and_1
+    bool _scale_between_minus_half_and_half
         = false; /**< whether to scale within [-1,1]. */
     std::vector<double>
         _min_vals; /**< upper bound used for auto-scaling data */
