@@ -16,6 +16,8 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     g++ \
     gcc-7 g++-7 \
     zlib1g-dev \
+    protobuf-compiler \
+    libprotobuf-dev \
     libgoogle-glog-dev \
     libgflags-dev \
     libeigen3-dev \
