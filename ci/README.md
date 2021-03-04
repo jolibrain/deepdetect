@@ -32,6 +32,16 @@ The docker container mount the prebuilt directory as copy-on-write volume
 
 trigger on pull request only
 
+## deepdetect-jetson-nano
+
+Build tensorrt backend and run tensorrt tests on a Jetson Nano
+
+Everything is done inside a docker image: ci/devel-jetsone-nano.Dockerfile
+
+> Jenkinsfile-jetson-nano.unittests
+
+trigger on pull request with ci:embedded only
+
 ## deepdetect-docker-build
 
 Build all docker images and push them on dockerhub.
