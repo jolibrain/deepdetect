@@ -2641,21 +2641,54 @@ namespace dd
                     else if (inputc._timeserie)
                       {
                         std::vector<double> target;
+                        std::vector<double> target_unscaled;
+                        CSVTSCaffeInputFileConn *cic
+                            = reinterpret_cast<CSVTSCaffeInputFileConn *>(
+                                &inputc);
                         for (size_t k = 0; k < dv_float_data.at(j).size(); k++)
                           {
-                            target.push_back(dv_float_data.at(j).at(k));
+                            float res = dv_float_data.at(j).at(k);
+                            target.push_back(res);
+                            if (cic->_scale && !cic->_dont_scale_labels)
+                              {
+                                int label_index = k % _ntargets;
+                                double max
+                                    = cic->_max_vals
+                                          [cic->_label_pos[label_index]];
+                                double min
+                                    = cic->_min_vals
+                                          [cic->_label_pos[label_index]];
+                                if (cic->_scale_between_minus_half_and_half)
+                                  res += 0.5;
+                                res = res * (max - min) + min;
+                              }
+                            target_unscaled.push_back(res);
                           }
                         bad.add("target", target);
+                        bad.add("target_unscaled", target_unscaled);
 
+                        std::vector<double> pred_unscaled;
                         for (int t = 0; t < inputc._timesteps; ++t)
                           {
                             for (int k = 0; k < nout; k++)
                               {
                                 std::vector<int> loc = { t, j, k };
-                                predictions.push_back(
-                                    lresults[slot]->data_at(loc));
+                                double res = lresults[slot]->data_at(loc);
+                                predictions.push_back(res);
+                                if (cic->_scale && !cic->_dont_scale_labels)
+                                  {
+                                    double max
+                                        = cic->_max_vals[cic->_label_pos[k]];
+                                    double min
+                                        = cic->_min_vals[cic->_label_pos[k]];
+                                    if (cic->_scale_between_minus_half_and_half)
+                                      res += 0.5;
+                                    res = res * (max - min) + min;
+                                  }
+                                pred_unscaled.push_back(res);
                               }
                           }
+                        bad.add("pred_unscaled", pred_unscaled);
                       }
                     else if ((!_regression && !_autoencoder) || _ntargets == 1)
                       {
@@ -3475,13 +3508,13 @@ namespace dd
                             else
                               {
                                 double res = results[slot]->data_at(loc);
-                                if (!ic->_dont_scale_labels)
+                                if (ic->_scale && !ic->_dont_scale_labels)
                                   {
                                     double max
                                         = ic->_max_vals[ic->_label_pos[k]];
                                     double min
                                         = ic->_min_vals[ic->_label_pos[k]];
-                                    if (ic->_scale_between_minus1_and_1)
+                                    if (ic->_scale_between_minus_half_and_half)
                                       res += 0.5;
                                     res = res * (max - min) + min;
                                   }
