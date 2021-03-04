@@ -37,6 +37,7 @@ cd build
 cmake .. \
     -DBUILD_TESTS=ON  \
     -DBUILD_SPDLOG=ON \
+    -DBUILD_PROTOBUF=OFF \
     -DUSE_HTTP_SERVER_OATPP=ON \
     -DUSE_CAFFE=OFF  \
     -DUSE_TENSORRT=ON  \
