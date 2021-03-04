@@ -96,3 +96,70 @@ root@4b4d72e9c8b4:/dd# cd build && make tests
 
 root@4b4d72e9c8b4:/dd# cd build/tests && ./ut_caffeapi
 ```
+
+# Adding a new slave node
+
+On the new slave node as root:
+
+```
+apt install -y openjdk-11-jre
+adduser jenkins --shell /bin/bash --disabled-password --home /var/lib/jenkins
+usermod jenkins -a -G docker
+mkdir /var/lib/jenkins/.ssh
+echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHmrxyMYsQL8HSKjq4ASmxtWUXl4395XswKmGXDtQpvk jenkins@jenkins" > /var/lib/jenkins/.ssh/authorized_keys
+chown -R jenkins:jenkins /var/lib/jenkins/.ssh
+chmod 500 /var/lib/jenkins/.ssh/authorized_keys
+```
+
+On x86 GPU node, ensure cuda nvidia drivers and docker are installed too.
+
+On jenkins Master nodes:
+
+```
+sudo -u jenkins -i
+ssh-keyscan 10.10.77.72 >> /var/lib/jenkins/.ssh/known_hosts
+```
+On Jenkins UI:
+
+* Click on `Manage Jenkins` -> `Manage Nodes and Clouds` -> `New Node`
+* Set the `Node name`, select `Permanent Agent` and click on `Add`
+* Set `Remote root directory` to `/var/lib/jenkins`
+* In `Labels` add 
+  * `gpu` for x86 nodes
+  * `nano` for jetson nano nodes
+* In `Usage`, select `Only build jobs with label expressions matching this node`
+* In `Launch method`, select `Launch agents via SSH`
+  * Set `Host` to the machine hostname or IP
+  * Use `Jenkins` Credentials
+* On x86, you can increse `# of executors` depending on RAM available.
+* Click `Save`
+* Click `Relaunch Agent`
+
+When you see `Agent successfully connected and online` you're good.
+
+For x86 GPU nodes only:
+
+* Click on `Manage Jenkins` -> `Configure System`
+* In `Lockable Resources Manager` section adds all GPUs the node have
+  The naming is important, `Jenkins.unittests` job use it to reserve GPU
+  For each GPU to must create a resources with:
+  * name and description: `<UPPERCASE NODE NAME> GPU <GPU_INDEX>` (example: `NEPTUNE05T GPU 0`)
+  * labels `<NODE NAME>-gpu` (example: `neptune05t-gpu`)
+* Click `Save`
+
+## How Jenkins jobs dispatch works
+
+Job dispatch use Jenkins Labels. We have `master`, `gpu` and `nano`.
+
+`master` is used mainly for sync prebuild cache and docker images
+`gpu` to run unittests on pull requests
+`nano` for jetson nano related jobs
+
+In Jenkins job file, the node is select by the agent section, eg:
+
+```
+pipeline {
+  agent { node { label 'gpu' } }
+  ...
+}
+```
