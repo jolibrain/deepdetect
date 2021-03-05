@@ -1,0 +1,94 @@
+pipeline {
+  environment {
+    DOCKER_IMAGE = "ci-devel-jetson-nano:${BRANCH_NAME}.${BUILD_ID}"
+    DOCKER_PARAMS = "-v ${WORKSPACE}:/app -v /var/lib/jenkins/.ccache:/ccache --runtime nvidia"
+  }
+  agent { node { label 'nano' } }
+  stages {
+    stage('Init') {
+      steps {
+        script {
+            def common = load("ci/Jenkinsfile.common")
+            common.cancelPreviousBuilds()
+        }
+        sh 'printenv | sort'
+      }
+    }
+    stage('Prepare docker image') {
+      steps {
+        script {
+          docker.build(env.DOCKER_IMAGE, "-f ci/devel-jetson-nano.Dockerfile .")
+        }
+        // post can't access to ${env.XX} so we have to use stupid hack, thx Jenkins...
+        sh '''echo ${DOCKER_IMAGE} > docker-image-name'''
+      }
+    }
+    stage('Configure && Build') {
+      steps {
+        script {
+          docker.image(env.DOCKER_IMAGE).inside(env.DOCKER_PARAMS) {
+            sh '''
+
+mkdir -p build/tmp
+export CCACHE_DIR=/ccache
+export PATH="/usr/lib/ccache/:$PATH"
+export TMPDIR=$(pwd)/build/tmp
+cd build
+cmake .. \
+    -DBUILD_TESTS=ON  \
+    -DBUILD_SPDLOG=ON \
+    -DUSE_HTTP_SERVER_OATPP=ON \
+    -DUSE_CAFFE=OFF  \
+    -DUSE_TENSORRT=ON  \
+    -DUSE_TENSORRT_OSS=ON  \
+    -DJETSON=ON
+
+schedtool -B -n 1 -e ionice -n 1 make
+ccache -s
+'''
+          }
+        }
+      }
+    }
+    stage('Tests GPU') {
+      when {
+       expression { !env.CHANGE_ID || pullRequest.labels.findAll { it == "ci:skip-tests" }.size() == 0 }
+      }
+      steps {
+        script {
+          docker.image(env.DOCKER_IMAGE).inside(env.DOCKER_PARAMS) {
+            sh '''
+            cd build && ctest -V -E "multigpu"
+            '''
+          }
+        }
+      }
+    }
+  }
+  post {
+    always {
+      sh '''[ -f docker-image-name ] && docker image rm $(cat docker-image-name); sudo umount $(pwd)/build || true ; '''
+      cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
+    }
+    success {
+      catchError {
+        rocketSend(channel: 'build', message: 'Build succeed' ,color: 'green' )
+      }
+    }
+    aborted {
+      catchError {
+        rocketSend(channel: 'build', message: 'Build superseded or aborted')
+      }
+    }
+    unstable {
+      catchError {
+        rocketSend(channel: 'build', message: 'Build failed', color: 'red')
+      }
+    }
+    failure {
+      catchError {
+        rocketSend(channel: 'build', message: 'Build failed', color: 'red')
+      }
+    }
+  }
+}
