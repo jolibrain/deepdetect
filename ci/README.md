@@ -57,9 +57,9 @@ trigger manually on release tag
 On a clean master branch with all tags fetched:
 
 ```
+$ git fetch --tags
 $ git checkout master
 $ git reset --hard origin/master
-$ git fetch --tags
 $ ci/release.sh
 ```
 
