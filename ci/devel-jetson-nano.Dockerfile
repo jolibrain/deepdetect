@@ -3,15 +3,14 @@ FROM nvcr.io/nvidia/deepstream-l4t:5.1-21.02-base
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update -y && apt-get install -y \
-    python-dev apt-transport-https ca-certificates gnupg software-properties-common wget curl \
+    wget \
+    curl \
     cmake \
     git \
     ccache \
     automake \
     rsync \
-    clang-format-10 \
     build-essential \
-    openjdk-8-jdk \
     pkg-config \
     zip \
     g++ \
@@ -46,36 +45,14 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     libmapbox-variant-dev \
     autoconf \
     libtool-bin \
-    python-numpy \
-    python-yaml \
-    python-typing \
     swig \
-    curl \
-    unzip \
-    python-setuptools \
-    python-dev \
-    python3-dev \
-    python3-pip \
-    tox \
-    python-six \
-    python-enum34 \
-    python3-yaml \
     unzip \
     libgoogle-perftools-dev \
-    curl \
-    git \
     libarchive-dev \
     bash-completion \
     schedtool \
+    python-numpy \
     util-linux
-
-    # Not packaged by nvidia, but already installed in base images
-    #libnvparsers7=${DD_TENSORRT_VERSION} \
-    #libnvparsers-dev=${DD_TENSORRT_VERSION} \
-    #libnvinfer7=${DD_TENSORRT_VERSION} \
-    #libnvinfer-dev=${DD_TENSORRT_VERSION} \
-    #libnvinfer-plugin7=${DD_TENSORRT_VERSION} \
-    #libnvinfer-plugin-dev=${DD_TENSORRT_VERSION}
 
 RUN apt clean -y
 
