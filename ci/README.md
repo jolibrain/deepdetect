@@ -52,9 +52,13 @@ trigger manually on release tag
 
 # Release process
 
+## DeepDetect it self
+
 On a clean master branch with all tags fetched:
 
 ```
+$ git checkout master
+$ git reset --hard origin/master
 $ git fetch --tags
 $ ci/release.sh
 ```
@@ -67,6 +71,22 @@ $ git push --tags
 
 The script `ci/release.sh` updates CHANGELOG.md, commit it, create a tag, and
 create the GitHub release.
+
+## Docker images
+
+On Jenkins in `deepdetect-docker-build` job, `Tags` tab, ran the released version
+
+## The platform
+
+When the docker images have been released, dd_platform_docker can be released:
+
+```
+$ git checkout master
+$ git reset --hard origin/master
+$ git fetch --tags
+$ ci/release.sh
+```
+
 
 # Building DeepDetect like the Jenkins  does:
 
