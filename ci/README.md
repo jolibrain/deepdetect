@@ -56,10 +56,11 @@ trigger manually on release tag
 
 On a clean master branch with all tags fetched:
 
-```
+```bash
 $ git fetch --tags
 $ git checkout master
 $ git reset --hard origin/master
+$ yarn
 $ ci/release.sh
 ```
 
