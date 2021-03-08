@@ -1,7 +1,7 @@
 pipeline {
   environment {
     DOCKER_IMAGE = "ci-devel-jetson-nano:${BRANCH_NAME}.${BUILD_ID}"
-    DOCKER_PARAMS = "-u root -v ${WORKSPACE}:/app -v /var/lib/jenkins/.ccache:/ccache --runtime nvidia"
+    DOCKER_PARAMS = "-v ${WORKSPACE}:/app -v /var/lib/jenkins/.ccache:/ccache --runtime nvidia"
   }
   agent { node { label 'nano' } }
   stages {

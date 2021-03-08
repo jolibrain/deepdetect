@@ -66,5 +66,12 @@ RUN cmake .
 RUN make -j8
 RUN make install
 
+# NOTE(sileht): docker nvidia on jetson is bugged with non-root account, we
+# have to configure the device access manually. The UID and GID must be the
+# same as the jenkins user on the jetson used by the CI.
+RUN addgroup --gid 1001 jenkins
+RUN useradd -M -s /bin/bash --uid 1001 --gid 1001 jenkins
+RUN usermod -a -G video jenkins
+
 ADD ci/gitconfig /etc/gitconfig
 WORKDIR /root
