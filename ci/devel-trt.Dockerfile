@@ -115,5 +115,9 @@ RUN python3 -m pip install --upgrade pip
 RUN python3 -m pip install torch
 
 RUN apt clean -y
+
+# Enable nvcc+ccache
+RUN ln -sf /usr/local/cuda/bin/nvcc /usr/lib/ccache/nvcc
+
 ADD ci/gitconfig /etc/gitconfig
 WORKDIR /root

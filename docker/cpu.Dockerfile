@@ -100,6 +100,7 @@ RUN python3 -m pip install dataclasses
 ADD . /opt/deepdetect
 WORKDIR /opt/deepdetect/
 
+RUN [ -e "/usr/local/cuda/bin/nvcc" ] && ln -sf /usr/local/cuda/bin/nvcc /usr/lib/ccache/nvcc
 ENV CCACHE_DIR=/ccache
 ENV PATH=/usr/lib/ccache:/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
