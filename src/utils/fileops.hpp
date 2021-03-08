@@ -36,6 +36,10 @@
 #include <archive_entry.h>
 #endif
 
+#if defined(__APPLE__) || defined(__NetBSD__)
+#define st_mtim st_mtimespec
+#endif
+
 namespace dd
 {
   class fileops

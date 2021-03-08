@@ -27,8 +27,6 @@
 // NCNN
 #include "ncnnlib.h"
 #include "ncnninputconns.h"
-#include "cpu.h"
-#include "net.h"
 #include <iostream>
 
 namespace dd
@@ -54,8 +52,6 @@ namespace dd
     this->_libname = "ncnn";
     _net = new ncnn::Net();
     _net->opt.num_threads = _threads;
-    _net->opt.blob_allocator = &_blob_pool_allocator;
-    _net->opt.workspace_allocator = &_workspace_pool_allocator;
     _net->opt.lightmode = _lightmode;
   }
 
@@ -72,6 +68,8 @@ namespace dd
     _nclasses = tl._nclasses;
     _threads = tl._threads;
     _timeserie = tl._timeserie;
+    _lightmode = tl._lightmode;
+    _gpu_device = tl._gpu_device;
     _old_height = tl._old_height;
     _inputBlob = tl._inputBlob;
     _outputBlob = tl._outputBlob;
@@ -94,12 +92,26 @@ namespace dd
   void NCNNLib<TInputConnectorStrategy, TOutputConnectorStrategy,
                TMLModel>::init_mllib(const APIData &ad)
   {
+
     bool use_fp32 = (ad.has("datatype")
                      && ad.get("datatype").get<std::string>()
                             == "fp32"); // default is fp16
     _net->opt.use_fp16_packed = !use_fp32;
     _net->opt.use_fp16_storage = !use_fp32;
     _net->opt.use_fp16_arithmetic = !use_fp32;
+
+    // GPU setup must be set before loading params and model
+    // GPU id is not yet handled here as it requires handling lower level
+    // vulkan memory allocators
+    if (ad.has("gpu") && ad.get("gpu").get<bool>())
+      _gpu_device = 0;
+
+    if (_gpu_device >= 0)
+      {
+        _net->opt.use_vulkan_compute = true;
+        _net->opt.use_winograd_convolution = true;
+        _net->opt.use_sgemm_convolution = true;
+      }
 
     int res = _net->load_param(this->_mlmodel._params.c_str());
     if (res != 0)
@@ -155,6 +167,7 @@ namespace dd
 
     _blob_pool_allocator.set_size_compare_ratio(0.0f);
     _workspace_pool_allocator.set_size_compare_ratio(0.5f);
+
     model_type(this->_mlmodel._params, this->_mltype);
   }
 

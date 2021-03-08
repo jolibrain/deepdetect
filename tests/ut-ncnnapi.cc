@@ -61,7 +61,7 @@ TEST(ncnnapi, service_predict_bbox)
         + squeezenet_ssd_repo
         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
           "300,\"width\":300},"
-          "\"mllib\":{\"nclasses\":21}}}";
+          "\"mllib\":{\"nclasses\":21,\"gpu\":false}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
   ASSERT_EQ(created_str, joutstr);
 
@@ -72,6 +72,7 @@ TEST(ncnnapi, service_predict_bbox)
         "25}},\"data\":[\""
         + squeezenet_ssd_repo + "face.jpg\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
+
   JDoc jd;
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
@@ -92,7 +93,7 @@ TEST(ncnnapi, service_predict_bbox)
     }
 
   // predict with mean and std, wrong values, for testing only
-  jpredictstr
+  /*jpredictstr
       = "{\"service\":\"imgserv\",\"parameters\":{\"input\":{\"height\":300,"
         "\"width\":300,\"mean\":[128,128,128],\"std\":[255,255,255]},"
         "\"output\":{\"bbox\":true,\"confidence_threshold\":0.25}},\"data\":["
@@ -106,10 +107,10 @@ TEST(ncnnapi, service_predict_bbox)
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   cl1 = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
-              > 0.4);
+  > 0.4);*/
 
   // predict with scale, wrong value, for testing only
-  jpredictstr
+  /*jpredictstr
       = "{\"service\":\"imgserv\",\"parameters\":{\"input\":{\"height\":300,"
         "\"width\":300,\"scale\":0.0039},"
         "\"output\":{\"bbox\":true,\"confidence_threshold\":0.25}},\"data\":["
@@ -122,6 +123,49 @@ TEST(ncnnapi, service_predict_bbox)
   ASSERT_EQ(200, jd["status"]["code"]);
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   cl1 = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
+  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
+  > 0.4);*/
+}
+
+#if !defined(CPU_ONLY)
+
+TEST(ncnnapi, service_predict_gpu)
+{
+  // create service
+  JsonAPI japi;
+  std::string sname = "imgserv";
+  std::string jstr
+      = "{\"mllib\":\"ncnn\",\"description\":\"squeezenet-ssd\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+        + squeezenet_ssd_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
+          "300,\"width\":300},"
+          "\"mllib\":{\"nclasses\":21,\"gpu\":true,\"datatype\":\"fp32\"}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // predict
+  std::string jpredictstr = "";
+  int i = 0;
+  while (i < 20)
+    {
+      jpredictstr = "{\"service\":\"imgserv\",\"parameters\":{\"input\":{"
+                    "\"height\":300,"
+                    "\"width\":300},\"output\":{\"bbox\":true,\"confidence_"
+                    "threshold\":0.25}},\"data\":[\""
+                    + squeezenet_ssd_repo + "face.jpg\"]}";
+      joutstr = japi.jrender(japi.service_predict(jpredictstr));
+      ++i;
+    }
+  JDoc jd;
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+  std::string cl1
+      = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
+  ASSERT_TRUE(cl1 == "15");
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
               > 0.4);
 
@@ -145,6 +189,7 @@ TEST(ncnnapi, service_predict_bbox)
   ASSERT_TRUE(jd["body"]["predictions"][1]["classes"][0]["prob"].GetDouble()
               > 0.4);
 }
+#endif
 
 TEST(ncnnapi, service_predict_classification)
 {
@@ -189,7 +234,7 @@ TEST(ncnnapi, service_lstm)
   mkdir(csvts_repo.c_str(), 0777);
   std::string sname = "my_service_csvts";
   std::string jstr
-      = "{\"mllib\":\"caffe\",\"description\":\"my ts "
+      = "{\"mllib\":\"ncnn\",\"description\":\"my ts "
         "regressor\",\"type\":\"supervised\",\"model\":{\"repository\":\""
         + csvts_repo + "\",\"templates\":\"" + model_templates_repo
         + "\"},\"parameters\":{\"input\":{\"connector\":\"csvts\",\"label\":["
@@ -240,7 +285,7 @@ TEST(ncnnapi, service_lstm)
   std::string jpredictstr
       = "{\"service\":\"" + sname
         + "\",\"parameters\":{\"input\":{\"timesteps\":999,\"connector\":"
-          "\"csvts\",\"scale\":true,\"min_vals\":"
+          "\"caffe\",\"scale\":true,\"min_vals\":"
         + str_min_vals + ",\"max_vals\":" + str_max_vals
         + "},\"output\":{}},\"data\":[\"" + csvts_predict + "\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));

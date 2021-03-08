@@ -47,12 +47,12 @@ private:
   if (!(x))                                                                   \
   throw RapidjsonException(RAPIDJSON_STRINGIFY(x))
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wterminate"
-#pragma GCC diagnostic ignored "-Wsign-compare"
-#pragma GCC diagnostic ignored "-Wunused-parameter"
+//#pragma GCC diagnostic push
+//#pragma GCC diagnostic ignored "-Wterminate"
+//#pragma GCC diagnostic ignored "-Wsign-compare"
+//#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <rapidjson/document.h>
-#pragma GCC diagnostic pop
+//#pragma GCC diagnostic pop
 
 typedef rapidjson::Document JDoc;
 typedef rapidjson::Value JVal;

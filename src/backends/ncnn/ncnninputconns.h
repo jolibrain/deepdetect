@@ -270,7 +270,6 @@ namespace dd
     int _width;
     std::vector<std::string> _ids; /**< input ids (e.g. image ids) */
   };
-
 }
 
 #endif

@@ -24,7 +24,7 @@
 
 #include <mapbox/variant.hpp>
 #pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wterminate"
+//#pragma GCC diagnostic ignored "-Wterminate"
 #pragma GCC diagnostic ignored "-Wsign-compare"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #include "ext/rmustache/mustache.h"
