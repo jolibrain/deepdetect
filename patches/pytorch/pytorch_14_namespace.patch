@@ -1,8 +1,8 @@
 diff --git a/caffe2/opt/converter.cc b/caffe2/opt/converter.cc
-index 44b8b0c190..970faf1d27 100644
+index 0545d3b78a..7e9a58c006 100644
 --- a/caffe2/opt/converter.cc
 +++ b/caffe2/opt/converter.cc
-@@ -125,7 +125,7 @@ class ConvConverter : public Converter {
+@@ -139,7 +139,7 @@ class ConvConverter : public Converter {
      std::unique_ptr<repr::NeuralNetOperator> nnOp;
      auto argMap = getArgumentsFromOperator(op);
      auto kernelShape = getKernelShape(argMap);
@@ -11,7 +11,7 @@ index 44b8b0c190..970faf1d27 100644
      auto c = dyn_cast<repr::Conv>(nnOp.get());
  
      c->setStrides(getStrides(argMap));
-@@ -146,7 +146,7 @@ class ConvTransposeConverter : public Converter {
+@@ -160,7 +160,7 @@ class ConvTransposeConverter : public Converter {
      std::unique_ptr<repr::NeuralNetOperator> nnOp;
      auto argMap = getArgumentsFromOperator(op);
      auto kernelShape = getKernelShape(argMap);
@@ -20,7 +20,7 @@ index 44b8b0c190..970faf1d27 100644
      auto c = dyn_cast<repr::ConvTranspose>(nnOp.get());
  
      c->setStrides(getStrides(argMap));
-@@ -193,7 +193,7 @@ class ClipConverter : public Converter {
+@@ -207,7 +207,7 @@ class ClipConverter : public Converter {
        max = static_cast<float>(argMap["max"].f());
      }
  
@@ -29,7 +29,7 @@ index 44b8b0c190..970faf1d27 100644
    }
    // Does not override default converter to OperatorDef
  
-@@ -207,7 +207,7 @@ class AveragePoolConverter : public Converter {
+@@ -221,7 +221,7 @@ class AveragePoolConverter : public Converter {
      std::unique_ptr<repr::NeuralNetOperator> nnOp;
      auto argMap = getArgumentsFromOperator(op);
      auto kernelShape = getKernelShape(argMap);
@@ -38,7 +38,7 @@ index 44b8b0c190..970faf1d27 100644
      return nnOp;
    }
    // Does not override default converter to OperatorDef
-@@ -222,7 +222,7 @@ class MaxPoolConverter : public Converter {
+@@ -236,7 +236,7 @@ class MaxPoolConverter : public Converter {
      std::unique_ptr<repr::NeuralNetOperator> nnOp;
      auto argMap = getArgumentsFromOperator(op);
      auto kernelShape = getKernelShape(argMap);
@@ -47,7 +47,7 @@ index 44b8b0c190..970faf1d27 100644
      return nnOp;
    }
    // Does not override default converter to OperatorDef
-@@ -235,7 +235,7 @@ class ConcatConverter : public Converter {
+@@ -249,7 +249,7 @@ class ConcatConverter : public Converter {
    std::unique_ptr<nom::repr::NeuralNetOperator> convertToNeuralNetOperator(
        const OperatorDef& op) override {
      std::unique_ptr<repr::NeuralNetOperator> nnOp =
@@ -56,7 +56,7 @@ index 44b8b0c190..970faf1d27 100644
      auto argMap = getArgumentsFromOperator(op);
  
      auto c = dyn_cast<repr::Concat>(nnOp.get());
-@@ -261,7 +261,7 @@ class FCConverter : public Converter {
+@@ -275,7 +275,7 @@ class FCConverter : public Converter {
    std::unique_ptr<nom::repr::NeuralNetOperator> convertToNeuralNetOperator(
        const OperatorDef& op) override {
      std::unique_ptr<repr::NeuralNetOperator> nnOp =
@@ -65,7 +65,7 @@ index 44b8b0c190..970faf1d27 100644
      auto argMap = getArgumentsFromOperator(op);
  
      auto c = dyn_cast<repr::FC>(nnOp.get());
-@@ -298,13 +298,13 @@ std::unique_ptr<repr::NeuralNetOperator> convertToNeuralNetOperator(
+@@ -312,13 +312,13 @@ std::unique_ptr<repr::NeuralNetOperator> convertToNeuralNetOperator(
    }
  
    if (!nnOp) {
@@ -81,7 +81,7 @@ index 44b8b0c190..970faf1d27 100644
    annotation->setOperatorDef(op);
  
    auto device_name = op.device_option().node_name();
-@@ -351,7 +351,7 @@ repr::NNModule convertToNNModule(
+@@ -365,7 +365,7 @@ repr::NNModule convertToNNModule(
      for (const auto& input : op.input()) {
        // If we've never seen this tensor, make one.
        if (!blobMap.count(input)) {
@@ -90,7 +90,7 @@ index 44b8b0c190..970faf1d27 100644
          blobMap[input] =
              dfg.createNode(unique_dyn_cast<repr::NeuralNetData>(tensor));
          if (externalInputNames.count(input)) {
-@@ -366,7 +366,7 @@ repr::NNModule convertToNNModule(
+@@ -380,7 +380,7 @@ repr::NNModule convertToNNModule(
  
      // Then save outputs into the blobMap for later consumption.
      for (const auto& output : op.output()) {
@@ -99,7 +99,7 @@ index 44b8b0c190..970faf1d27 100644
        auto tensorNode =
            dfg.createNode(unique_dyn_cast<repr::NeuralNetData>(tensor));
        dfg.createEdge(opNode, tensorNode);
-@@ -399,7 +399,7 @@ repr::NNModule convertToNNModule(
+@@ -413,7 +413,7 @@ repr::NNModule convertToNNModule(
        // Otherwise, we add the blobs to the graph as no-ops
      } else {
        for (const auto& input : externalInputNames) {
@@ -108,7 +108,7 @@ index 44b8b0c190..970faf1d27 100644
        }
      }
    }
-@@ -453,7 +453,7 @@ Caffe2Annotation* getOrAddCaffe2Annotation(
+@@ -467,7 +467,7 @@ Caffe2Annotation* getOrAddCaffe2Annotation(
    auto* nnOp = repr::nn::get<repr::NeuralNetOperator>(instrNode);
    auto* annotation = nnOp->getMutableAnnotation();
    if (!annotation) {
