@@ -75,5 +75,6 @@ RUN addgroup --gid 1001 jenkins
 RUN useradd -M -s /bin/bash --uid 1001 --gid 1001 jenkins
 RUN usermod -a -G video jenkins
 
+ADD ci/deviceQuery /deviceQuery
 ADD ci/gitconfig /etc/gitconfig
 WORKDIR /root
