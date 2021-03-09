@@ -569,12 +569,12 @@ if (USE_TF)
 endif() # USE_TF
 
 # OpenCV
-find_package(OpenCV 3 QUIET COMPONENTS core imgproc highgui)
+find_package(OpenCV 3 QUIET COMPONENTS core imgproc highgui imgcodecs)
 if (NOT OpenCV_FOUND)
-  find_package(OpenCV 4 QUIET COMPONENTS core imgproc highgui)
+  find_package(OpenCV 4 QUIET COMPONENTS core imgproc highgui imgcodecs)
 endif()
 if (NOT OpenCV_FOUND)
-  find_package(OpenCV 2 REQUIRED COMPONENTS core imgproc highgui)
+  find_package(OpenCV 2 REQUIRED COMPONENTS core imgproc highgui imgcodecs)
 endif()
 set(OPENCV_VERSION ${OpenCV_VERSION_MAJOR})
 include_directories(${OpenCV_INCLUDE_DIRS})
