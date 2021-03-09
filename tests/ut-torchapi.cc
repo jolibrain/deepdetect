@@ -1327,7 +1327,7 @@ TEST(torchapi, service_train_csvts_nbeats_db)
   ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_99", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["out"][0].GetDouble()
-              >= -1.5);
+              >= -2.0);
 
   // predict from memory
   std::stringstream mem_data;
