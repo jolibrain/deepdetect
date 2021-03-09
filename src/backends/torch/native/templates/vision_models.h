@@ -4,7 +4,7 @@
 
 #include <functional>
 
-#include <torchvision/vision.h>
+#include <torchvision/models/models.h>
 
 #include "../native_wrapper.h"
 

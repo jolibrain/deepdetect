@@ -1,5 +1,5 @@
 diff --git a/c10/CMakeLists.txt b/c10/CMakeLists.txt
-index 818226cdc8..92c1068a7a 100644
+index b175e5bdd6..384ffc5c1a 100644
 --- a/c10/CMakeLists.txt
 +++ b/c10/CMakeLists.txt
 @@ -15,6 +15,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -9,24 +9,24 @@ index 818226cdc8..92c1068a7a 100644
 +set(C10_USE_DDLOG ${USE_DDLOG}) # used in cmake_macros.h.in
  set(C10_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS}) # used in cmake_macros.h.in
  set(C10_USE_NUMA ${USE_NUMA})
- configure_file(
+ set(C10_USE_MSVC_STATIC_RUNTIME ${CAFFE2_USE_MSVC_STATIC_RUNTIME})
 diff --git a/c10/macros/cmake_macros.h.in b/c10/macros/cmake_macros.h.in
-index 5e42506f20..a837bb53cd 100644
+index 2845fa1cd8..ae1e35651e 100644
 --- a/c10/macros/cmake_macros.h.in
 +++ b/c10/macros/cmake_macros.h.in
-@@ -8,6 +8,7 @@
+@@ -6,6 +6,7 @@
+ 
+ #cmakedefine C10_BUILD_SHARED_LIBS
  #cmakedefine C10_USE_GLOG
++#cmakedefine C10_USE_DDLOG
  #cmakedefine C10_USE_GFLAGS
  #cmakedefine C10_USE_NUMA
-+#cmakedefine C10_USE_DDLOG
- 
- // Used by libtorch mobile build to enable features that are not enabled by
- // caffe2 mobile build. Should only use it when necessary as we are committed
+ #cmakedefine C10_USE_MSVC_STATIC_RUNTIME
 diff --git a/c10/util/Logging.cpp b/c10/util/Logging.cpp
-index 14b336a794..d8dc051ac7 100644
+index 89506329e8..4a6e4e7276 100644
 --- a/c10/util/Logging.cpp
 +++ b/c10/util/Logging.cpp
-@@ -135,6 +135,15 @@ C10_DEFINE_int32(v, 0, "Equivalent to glog verbose");
+@@ -153,6 +153,15 @@ C10_DEFINE_int32(v, 0, "Equivalent to glog verbose");
  C10_DEFINE_bool(logtostderr, false, "Equivalent to glog logtostderr");
  #endif // !defined(c10_USE_GLOG)
  
@@ -42,14 +42,14 @@ index 14b336a794..d8dc051ac7 100644
  #ifdef C10_USE_GLOG
  
  // Provide easy access to the above variables, regardless whether GLOG is
-@@ -318,3 +327,5 @@ MessageLogger::~MessageLogger() {
+@@ -336,3 +345,5 @@ MessageLogger::~MessageLogger() {
  } // namespace c10
  
  #endif // !C10_USE_GLOG
 +
 +#endif // !C10_USE_DDLOG
 diff --git a/c10/util/Logging.h b/c10/util/Logging.h
-index acab3cfecd..438cefeabf 100644
+index 9febbb8f61..11faca6bf5 100644
 --- a/c10/util/Logging.h
 +++ b/c10/util/Logging.h
 @@ -22,11 +22,15 @@
@@ -95,7 +95,7 @@ index acab3cfecd..438cefeabf 100644
    C10_UNUSED static bool C10_ANONYMOUS_VARIABLE(logFlag) = \
        ::c10::detail::LogAPIUsageFakeReturn(__VA_ARGS__);
  
-@@ -303,7 +307,7 @@ C10_API void LogAPIUsage(const std::string& context);
+@@ -328,7 +332,7 @@ C10_API void LogPyTorchDDPUsage(const c10::DDPLoggingData& ddpData);
  namespace detail {
  // Return value is needed to do the static variable initialization trick
  C10_API bool LogAPIUsageFakeReturn(const std::string& context);

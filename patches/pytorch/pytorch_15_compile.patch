@@ -1,8 +1,8 @@
 diff --git a/tools/setup_helpers/cmake.py b/tools/setup_helpers/cmake.py
-index f19606f81e..c631053100 100644
+index f1809552cd..0f3f2eeb89 100644
 --- a/tools/setup_helpers/cmake.py
 +++ b/tools/setup_helpers/cmake.py
-@@ -231,6 +231,7 @@ class CMake:
+@@ -236,6 +236,7 @@ class CMake:
               'CUDNN_LIBRARY',
               'CUDNN_INCLUDE_DIR',
               'CUDNN_ROOT',
