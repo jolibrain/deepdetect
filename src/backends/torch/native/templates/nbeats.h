@@ -45,6 +45,8 @@
 #define NBEATS_DEFAULT_SHARE_WEIGHTS false
 #define NBEATS_DEFAULT_HIDDEN_LAYER_UNITS 10
 
+#define NBEATS_DEFAULT_BACKCAST_LOSS_COEFF 0.0
+
 namespace dd
 {
   class NBeats : public NativeModuleImpl<NBeats>
@@ -297,7 +299,8 @@ namespace dd
     }
 
     NBeats(const CSVTSTorchInputFileConn &inputc,
-           std::vector<std::string> stackdef, double backcast_loss_coef = 1,
+           std::vector<std::string> stackdef,
+           double backcast_loss_coef = NBEATS_DEFAULT_BACKCAST_LOSS_COEFF,
            std::vector<BlockType> stackTypes = NBEATS_DEFAULT_STACK_TYPES,
            int nb_blocks_per_stack = NBEATS_DEFAULT_NB_BLOCKS,
            int data_size = NBEATS_DEFAULT_DATA_SIZE,
@@ -439,7 +442,8 @@ namespace dd
     std::vector<BlockType> _stack_types = NBEATS_DEFAULT_STACK_TYPES;
     std::vector<int> _thetas_dims = NBEATS_DEFAULT_THETAS;
     double _backcast_loss_coef
-        = 1; /** < Coefficient applied to backcast loss */
+        = NBEATS_DEFAULT_BACKCAST_LOSS_COEFF; /** < Coefficient applied to
+                                                 backcast loss */
 
     std::vector<Stack> _stacks;
     torch::nn::Linear _fcn{ nullptr };

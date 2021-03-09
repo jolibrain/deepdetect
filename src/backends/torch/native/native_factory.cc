@@ -49,7 +49,7 @@ namespace dd
     if (tdef.find("nbeats") != std::string::npos)
       {
         std::vector<std::string> p;
-        double bc_loss_coef = 1;
+        double bc_loss_coef = NBEATS_DEFAULT_BACKCAST_LOSS_COEFF;
         if (template_params.has("stackdef"))
           {
             p = template_params.get("stackdef")
