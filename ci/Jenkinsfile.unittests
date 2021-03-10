@@ -124,7 +124,12 @@ ccache -s
   }
   post {
     always {
-      sh '''[ -f docker-image-name ] && docker image rm $(cat docker-image-name); sudo umount $(pwd)/build || true ; '''
+      catchError {
+        sh '''[ -f docker-image-name ] && docker image rm $(cat docker-image-name)'''
+      }
+      catchError {
+        sh '''sudo umount $(pwd)/build || true'''
+      }
       cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
     }
     success {
