@@ -70,12 +70,16 @@ namespace dd
       _sam = ad_solver.get("sam").get<bool>();
     if (ad_solver.has("sam_rho"))
       _sam_rho = ad_solver.get("sam_rho").get<double>();
+    if (ad_solver.has("swa"))
+      _swa = ad_solver.get("swa").get<bool>();
     create();
   }
 
   void TorchSolver::create()
   {
 
+    bool want_swa = true;
+    _swa = false;
     this->_logger->info("Selected solver type: {}", _solver_type);
 
     _params = _module.parameters();
@@ -107,6 +111,8 @@ namespace dd
       }
     else if (_solver_type == "RANGER" || _solver_type == "RANGER_PLUS")
       {
+        if (want_swa)
+          _swa = true;
         _optimizer = std::unique_ptr<torch::optim::Optimizer>(
             new Ranger(_params, RangerOptions(_base_lr)
                                     .betas(std::make_tuple(_beta1, _beta2))
@@ -251,6 +257,7 @@ namespace dd
         try
           {
             torch::load(*_optimizer, sstate, device);
+            this->train();
           }
         catch (std::exception &e)
           {
