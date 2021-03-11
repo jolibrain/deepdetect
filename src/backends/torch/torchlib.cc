@@ -485,10 +485,13 @@ namespace dd
                 TMLModel>::snapshot(int64_t elapsed_it, TorchSolver &tsolver)
   {
     this->_logger->info("Saving checkpoint after {} iterations", elapsed_it);
+    // solver is allowed to modify net during eval()/train() => do this call
+    // before saving net itself
+    tsolver.eval();
     this->_module.save_checkpoint(this->_mlmodel, std::to_string(elapsed_it));
-    // Save optimizer
     tsolver.save(this->_mlmodel._repo + "/solver-" + std::to_string(elapsed_it)
                  + ".pt");
+    tsolver.train();
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
@@ -789,7 +792,9 @@ namespace dd
                     APIData meas_out;
                     this->_logger->info("Start test");
                     tstart = steady_clock::now();
+                    tsolver.eval();
                     test(ad, inputc, eval_dataset, test_batch_size, meas_out);
+                    tsolver.train();
                     last_test_time = duration_cast<milliseconds>(
                                          steady_clock::now() - tstart)
                                          .count();
@@ -870,7 +875,9 @@ namespace dd
                           }
                       }
                     if (!snapshotted)
-                      snapshot(elapsed_it, tsolver);
+                      {
+                        snapshot(elapsed_it, tsolver);
+                      }
                   }
                 ++it;
 
