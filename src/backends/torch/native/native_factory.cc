@@ -48,8 +48,15 @@ namespace dd
   {
     if (tdef.find("nbeats") != std::string::npos)
       {
-        std::vector<std::string> p;
         double bc_loss_coef = NBEATS_DEFAULT_BACKCAST_LOSS_COEFF;
+        // t2 means 1 trend stack  with two functions in basis
+        // s means 1 seasonalitystack with max number of functions in basis
+        // g3 means 1 generic stack of 3 * datadim width after backbone
+        // b3 means 3 blocksr stack
+        // h10 means a width of 10* datadim for the backbone (common to all
+        // blocks)
+        std::vector<std::string> p{ "t2", "s", "g3", "b3", "h10" };
+
         if (template_params.has("stackdef"))
           {
             p = template_params.get("stackdef")
