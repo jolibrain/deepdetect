@@ -1,18 +1,18 @@
 # DeepDetect installation from source
 
-Below are instructions for 18.04 LTS. For other Linux and Unix systems, steps may differ, CUDA, Caffe and other libraries may prove difficult to setup.
+Below are instructions for 20.04 LTS. For other Linux and Unix systems, steps may differ, CUDA, Caffe and other libraries may prove difficult to setup.
 
 Beware of [dependencies](https://github.com/jolibrain/deepdetect/tree/master/docs/dependencies.md), typically on Debian/Ubuntu Linux, do:
 ```
-sudo apt-get install build-essential libgoogle-glog-dev libgflags-dev libeigen3-dev libopencv-dev libboost-all-dev libboost-iostreams-dev libcurlpp-dev libcurl4-openssl-dev protobuf-compiler libopenblas-dev libhdf5-dev libprotobuf-dev libleveldb-dev libsnappy-dev liblmdb-dev libutfcpp-dev cmake libgoogle-perftools-dev unzip python-setuptools python-dev libspdlog-dev python-six python-enum34 libarchive-dev rapidjson-dev libmapbox-variant-dev wget libboost-test-dev libboost-stacktrace-dev
+sudo apt-get install build-essential libgoogle-glog-dev libgflags-dev libeigen3-dev libopencv-dev libboost-all-dev libboost-iostreams-dev libcurlpp-dev libcurl4-openssl-dev libopenblas-dev libhdf5-dev libprotobuf-dev libleveldb-dev libsnappy-dev liblmdb-dev libutfcpp-dev cmake libgoogle-perftools-dev unzip python-setuptools python-dev libspdlog-dev python-six python-enum34 libarchive-dev rapidjson-dev libmapbox-variant-dev wget libboost-test-dev libboost-stacktrace-dev
 ```
 
-With CUDA 10, a more recent version of cmake than that of Ubuntu 18.04 is required, and needs to be installed beforehand:
+With CUDA 11+, a more recent version of cmake than that of Ubuntu 20.04 is required, and needs to be installed beforehand:
 
 ```
 sudo apt-get install apt-transport-https ca-certificates gnupg software-properties-common
 wget -q -O- https://apt.kitware.com/keys/kitware-archive-latest.asc | sudo apt-key add -
-sudo apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
+sudo apt-add-repository 'deb https://apt.kitware.com/ubuntu/ focal main'
 sudo apt-get update
 sudo apt-get install cmake kitware-archive-keyring
 ```
@@ -30,11 +30,11 @@ cmake .. -DUSE_COMMAND_LINE=ON -DUSE_JSON_API=ON
 ```
 - as a REST server (using JSON API). To build the server executable use (`USE_JSON_API` is auto-selected):
 ```
-cmake .. -DUSE_HTTP_SERVER=ON
+cmake .. -DUSE_HTTP_SERVER_OATPP=ON
 ```
 - linked into another executable. To build only the library (and use a `dd::DeepDetect<dd::JSonAPI>` object in your own code) use:
 ```
-cmake .. -DUSE_JSON_API=ON -DUSE_HTTP_SERVER=OFF -DUSE_COMMAND_LINE=OFF
+cmake .. -DUSE_JSON_API=ON -DUSE_HTTP_SERVER_OATPP=OFF -DUSE_COMMAND_LINE=OFF
 
 ```
 
