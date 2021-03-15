@@ -21,7 +21,6 @@
 
 #include "native_factory.h"
 
-#include <torchvision/vision.h>
 #include "native_wrapper.h"
 
 namespace dd

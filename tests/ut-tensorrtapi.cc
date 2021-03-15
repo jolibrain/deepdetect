@@ -91,7 +91,7 @@ TEST(tensorrtapi, service_predict_best)
         + age_repo
         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
           "224,\"width\":224},\"mllib\":{\"datatype\":\"fp32\","
-          "\"maxBatchSize\":1,\"maxWorkspaceSize\":6096,"
+          "\"maxBatchSize\":1,\"maxWorkspaceSize\":256,"
           "\"tensorRTEngineFile\":\"TRTengine_bs\",\"gpuid\":0}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
   ASSERT_EQ(created_str, joutstr);
@@ -132,7 +132,7 @@ TEST(tensorrtapi, service_predict_refinedet)
         + refinedet_repo
         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
           "512,\"width\":512},\"mllib\":{\"nclasses\":2,\"datatype\":\"fp16\","
-          "\"maxBatchSize\":1,\"maxWorkSpaceSize\":6096}}}";
+          "\"maxBatchSize\":1,\"maxWorkSpaceSize\":256}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
   ASSERT_EQ(created_str, joutstr);
 
@@ -178,7 +178,7 @@ TEST(tensorrtapi, service_predict_onnx)
         + resnet_onnx_repo
         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
           "224,\"width\":224,\"rgb\":true,\"scale\":0.0039},\"mllib\":{"
-          "\"maxBatchSize\":1,\"maxWorkspaceSize\":6096,\"gpuid\":0,"
+          "\"maxBatchSize\":1,\"maxWorkspaceSize\":256,\"gpuid\":0,"
           "\"nclasses\":1000}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
   ASSERT_EQ(created_str, joutstr);
