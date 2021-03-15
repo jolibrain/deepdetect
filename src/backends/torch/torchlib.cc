@@ -108,6 +108,8 @@ namespace dd
   TorchLib<CSVTSTorchInputFileConn, SupervisedOutput, TorchModel>::unscale(
       double val, unsigned int k, const CSVTSTorchInputFileConn &inputc)
   {
+    if (!inputc._scale)
+      return val;
     if (inputc._min_vals.empty() || inputc._max_vals.empty())
       {
         this->_logger->info("not unscaling output because no bounds "
@@ -129,7 +131,7 @@ namespace dd
                 max = inputc._max_vals[k];
                 min = inputc._min_vals[k];
               }
-            if (inputc._scale_between_minus1_and_1)
+            if (inputc._scale_between_minus_half_and_half)
               val += 0.5;
             val = val * (max - min) + min;
           }
@@ -1398,15 +1400,23 @@ namespace dd
               {
                 std::vector<double> targets;
                 std::vector<double> predictions;
+                std::vector<double> targets_unscaled;
+                std::vector<double> predictions_unscaled;
                 for (int t = 0; t < labels.size(1); ++t)
                   for (unsigned int k = 0; k < inputc._ntargets; ++k)
                     {
                       targets.push_back(target_acc[j][t][k]);
                       predictions.push_back(output_acc[j][t][k]);
+                      targets_unscaled.push_back(
+                          unscale(target_acc[j][t][k], k, inputc));
+                      predictions_unscaled.push_back(
+                          unscale(output_acc[j][t][k], k, inputc));
                     }
                 APIData bad;
                 bad.add("target", targets);
                 bad.add("pred", predictions);
+                bad.add("target_unscaled", targets_unscaled);
+                bad.add("pred_unscaled", predictions_unscaled);
                 ad_res.add(std::to_string(entry_id), bad);
                 ++entry_id;
               }

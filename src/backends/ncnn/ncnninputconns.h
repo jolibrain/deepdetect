@@ -257,7 +257,7 @@ namespace dd
       if (_min_vals.empty() || _max_vals.empty())
         return res;
       double min = _min_vals[_label_pos[k]];
-      if (_scale_between_minus1_and_1)
+      if (_scale_between_minus_half_and_half)
         return (res + 0.5) * (_max_vals[_label_pos[k]] - min) + min;
       else
         return res * (_max_vals[_label_pos[k]] - min) + min;

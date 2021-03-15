@@ -92,10 +92,9 @@ RUN for url in \
 # Fix "ImportError: No module named builtins"
 # RUN pip install future pyyaml typing
 
-# Fix  ModuleNotFoundError: No module named 'dataclasses' for torch 1.7.1
+# Fix  ModuleNotFoundError: No module named 'dataclasses', 'typing_extensions' for torch 1.8.0
 RUN python3 -m pip install --upgrade pip
-RUN python3 -m pip install dataclasses
-
+RUN python3 -m pip install dataclasses typing_extensions
 
 ADD . /opt/deepdetect
 WORKDIR /opt/deepdetect/

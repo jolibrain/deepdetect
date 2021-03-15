@@ -1110,6 +1110,8 @@ namespace dd
               bool mape = false;
               bool mase = false;
               bool owa = false;
+              bool mae = false;
+              bool mse = false;
               if (ad_out.has("measure"))
                 {
                   std::vector<std::string> measures
@@ -1126,9 +1128,14 @@ namespace dd
                           != measures.end());
                   owa = (std::find(measures.begin(), measures.end(), "owa")
                          != measures.end());
+                  mae = (std::find(measures.begin(), measures.end(), "mae")
+                         != measures.end());
+                  mse = (std::find(measures.begin(), measures.end(), "mse")
+                         != measures.end());
                 }
 
-              if (!L1 && !L2 && !smape && !mape && !mase && !owa)
+              if (!L1 && !L2 && !smape && !mape && !mase && !owa && !mae
+                  && !mse)
                 L1 = true;
 
               if (L1)
@@ -1172,14 +1179,16 @@ namespace dd
                   meas_out.add("L2_mean_error", mean_error);
                   meas_out.add("eucll", mean_error);
                 }
-              if (mape || smape || mase || owa)
+              if (mape || smape || mase || owa || mae || mse)
                 {
                   std::vector<double> mapev(timeseries);
                   std::vector<double> smapev(timeseries);
                   std::vector<double> masev(timeseries);
                   std::vector<double> owav(timeseries);
+                  std::vector<double> maev(timeseries);
+                  std::vector<double> msev(timeseries);
                   timeSeriesMetrics(ad_res, timeseries, mapev, smapev, masev,
-                                    owav);
+                                    owav, maev, msev);
                   for (int i = 0; i < timeseries; ++i)
                     {
                       if (mape)
@@ -1190,6 +1199,10 @@ namespace dd
                         meas_out.add("MASE_" + std::to_string(i), masev[i]);
                       if (owa)
                         meas_out.add("OWA_" + std::to_string(i), owav[i]);
+                      if (mae)
+                        meas_out.add("MAE_" + std::to_string(i), maev[i]);
+                      if (mse)
+                        meas_out.add("MSE_" + std::to_string(i), msev[i]);
                     }
                 }
             }
@@ -1222,11 +1235,11 @@ namespace dd
         }
     }
 
-    static void timeSeriesMetrics(const APIData &ad, const int timeseries,
-                                  std::vector<double> &mape,
-                                  std::vector<double> &smape,
-                                  std::vector<double> &mase,
-                                  std::vector<double> &owa)
+    static void
+    timeSeriesMetrics(const APIData &ad, const int timeseries,
+                      std::vector<double> &mape, std::vector<double> &smape,
+                      std::vector<double> &mase, std::vector<double> &owa,
+                      std::vector<double> &mae, std::vector<double> &mse)
     {
       Eigen::Map<dVec> global_mape_vector = dVec::Map(mape.data(), timeseries);
       global_mape_vector.setZero();
@@ -1237,6 +1250,10 @@ namespace dd
       global_mase_vector.setZero();
       Eigen::Map<dVec> owa_vector = dVec::Map(owa.data(), timeseries);
       owa_vector.setZero();
+      Eigen::Map<dVec> mae_vector = dVec::Map(mae.data(), timeseries);
+      mae_vector.setZero();
+      Eigen::Map<dVec> mse_vector = dVec::Map(mse.data(), timeseries);
+      mse_vector.setZero();
 
       dVec global_smape_naive_vector(timeseries);
       global_smape_naive_vector.setZero();
@@ -1248,9 +1265,13 @@ namespace dd
           APIData bad = ad.getobj(std::to_string(i));
           std::vector<double> targets
               = bad.get("target").get<std::vector<double>>();
+          std::vector<double> targets_unscaled
+              = bad.get("target_unscaled").get<std::vector<double>>();
 
           std::vector<double> predictions
               = bad.get("pred").get<std::vector<double>>();
+          std::vector<double> predictions_unscaled
+              = bad.get("pred_unscaled").get<std::vector<double>>();
 
           nts += targets.size();
 
@@ -1260,11 +1281,22 @@ namespace dd
               dMat;
           dMat dpred = dMat::Map(&predictions.at(0), dataduration, timeseries);
           dMat dtarg = dMat::Map(&targets.at(0), dataduration, timeseries);
+          dMat dpred_unscaled = dMat::Map(&predictions_unscaled.at(0),
+                                          dataduration, timeseries);
+          dMat dtarg_unscaled
+              = dMat::Map(&targets_unscaled.at(0), dataduration, timeseries);
           // now can access dpred(timestep_number, serie_number)
           dMat error;
           error = (dpred - dtarg).cwiseAbs();
-          // error of first term is random in case of LSTM, which can be huge
-          // after normalization
+          dMat error_unscaled;
+          error_unscaled = (dpred_unscaled - dtarg_unscaled).cwiseAbs();
+          dMat square_error_unscaled;
+          square_error_unscaled = (dpred_unscaled - dtarg_unscaled).cwiseAbs();
+          square_error_unscaled
+              = square_error_unscaled.array().square().matrix();
+
+          // error of first term is random in case of LSTM, which can be
+          // huge after normalization
           error.row(0).setZero();
 
           dMat dprednaive(dataduration, timeseries);
@@ -1287,6 +1319,11 @@ namespace dd
 
           mape_vector /= static_cast<float>(dataduration);
           global_mape_vector += mape_vector;
+
+          mae_vector += error_unscaled.colwise().sum()
+                        / static_cast<float>(targets.size());
+          mse_vector += square_error_unscaled.colwise().sum()
+                        / static_cast<float>(targets.size());
 
           dVec smape_vector = (error.cwiseQuotient(((predAbs + targAbs).array()
                                                     + TS_METRICS_EPSILON)
@@ -1329,6 +1366,8 @@ namespace dd
                      .matrix())
              + global_mase_vector);
       owa_vector /= 2.0;
+      mae_vector /= static_cast<float>(batch_size);
+      mse_vector /= static_cast<float>(batch_size);
     }
 
     static void timeSeriesErrors(const APIData &ad, const int timeseries,
