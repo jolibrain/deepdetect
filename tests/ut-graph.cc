@@ -315,8 +315,9 @@ TEST(graphapi, complete_lstm_train)
         + iterations_lstm_cpu
         + ",\"test_interval\":10,\"base_lr\":0.1,\"snapshot\":500,\"test_"
           "initialization\":false},\"net\":{\"batch_size\":100,\"test_batch_"
-          "size\":10}},\"output\":{\"measure\":[\"L1\",\"L2\",\"mase\","
-          "\"smape\", \"mape\", \"owa\"]}},\"data\":[\""
+          "size\":10}},\"output\":{\"measure\":[\"L1_all\",\"L2_all\",\"mase_"
+          "all\","
+          "\"smape_all\", \"mape_all\", \"owa_all\"]}},\"data\":[\""
         + csvts_data + "\",\"" + csvts_test + "\"]}";
   std::cerr << "jtrainstr=" << jtrainstr << std::endl;
   joutstr = japi.jrender(japi.service_train(jtrainstr));
@@ -409,8 +410,9 @@ TEST(graphapi, complete_lstm_train_gpu)
         + iterations_lstm_gpu
         + ",\"test_interval\":500,\"base_lr\":0.1,\"snapshot\":500,\"test_"
           "initialization\":false},\"net\":{\"batch_size\":100,\"test_batch_"
-          "size\":10}},\"output\":{\"measure\":[\"L1\",\"L2\",\"mape\","
-          "\"smape\",\"mase\",\"owa\"]}},\"data\":[\""
+          "size\":10}},\"output\":{\"measure\":[\"L1_all\",\"L2_all\",\"mape_"
+          "all\","
+          "\"smape_all\",\"mase_all\",\"owa_all\"]}},\"data\":[\""
         + csvts_data + "\",\"" + csvts_test + "\"]}";
   std::cerr << "jtrainstr=" << jtrainstr << std::endl;
   joutstr = japi.jrender(japi.service_train(jtrainstr));
@@ -499,7 +501,8 @@ TEST(graphapi, lstm_autoencoder)
         + iterations_lstm_cpu
         + ",\"test_interval\":10,\"base_lr\":0.1,\"snapshot\":500,\"test_"
           "initialization\":false},\"net\":{\"batch_size\":100,\"test_batch_"
-          "size\":10}},\"output\":{\"measure\":[\"L1\",\"L2\"]}},\"data\":[\""
+          "size\":10}},\"output\":{\"measure\":[\"L1_all\",\"L2_all\"]}},"
+          "\"data\":[\""
         + csvts_data + "\",\"" + csvts_test + "\"]}";
   std::cerr << "jtrainstr=" << jtrainstr << std::endl;
   joutstr = japi.jrender(japi.service_train(jtrainstr));
@@ -563,7 +566,8 @@ TEST(graphapi, lstm_autoencoder_gpu)
         + iterations_lstm_gpu
         + ",\"test_interval\":100,\"base_lr\":0.1,\"snapshot\":500,\"test_"
           "initialization\":false},\"net\":{\"batch_size\":100,\"test_batch_"
-          "size\":10}},\"output\":{\"measure\":[\"L1\",\"L2\"]}},\"data\":[\""
+          "size\":10}},\"output\":{\"measure\":[\"L1_all\",\"L2_all\"]}},"
+          "\"data\":[\""
         + csvts_data + "\",\"" + csvts_test + "\"]}";
   std::cerr << "jtrainstr=" << jtrainstr << std::endl;
   joutstr = japi.jrender(japi.service_train(jtrainstr));
@@ -648,7 +652,8 @@ TEST(graphapi, complete_extract_layer)
         + iterations_lstm_cpu
         + ",\"test_interval\":10,\"base_lr\":0.1,\"snapshot\":500,\"test_"
           "initialization\":false},\"net\":{\"batch_size\":100,\"test_batch_"
-          "size\":10}},\"output\":{\"measure\":[\"L1\",\"L2\"]}},\"data\":["
+          "size\":10}},\"output\":{\"measure\":[\"L1_all\",\"L2_all\"]}},"
+          "\"data\":["
           "\""
         + csvts_data + "\",\"" + csvts_test + "\"]}";
   std::cerr << "jtrainstr=" << jtrainstr << std::endl;
@@ -736,7 +741,8 @@ TEST(graphapi, complete_extract_layer_gpu)
         + iterations_lstm_cpu
         + ",\"test_interval\":10,\"base_lr\":0.1,\"snapshot\":500,\"test_"
           "initialization\":false},\"net\":{\"batch_size\":100,\"test_batch_"
-          "size\":10}},\"output\":{\"measure\":[\"L1\",\"L2\"]}},\"data\":["
+          "size\":10}},\"output\":{\"measure\":[\"L1_all\",\"L2_all\"]}},"
+          "\"data\":["
           "\""
         + csvts_data + "\",\"" + csvts_test + "\"]}";
   std::cerr << "jtrainstr=" << jtrainstr << std::endl;
