@@ -1,7 +1,7 @@
 pipeline {
   environment {
     DOCKER_IMAGE = "ci-devel-jetson-nano:${BRANCH_NAME}.${BUILD_ID}"
-    DOCKER_PARAMS = "-v ${WORKSPACE}:/app -v /var/lib/jenkins/.ccache:/ccache --runtime nvidia"
+    DOCKER_PARAMS = "-v ${WORKSPACE}:/app -v /var/lib/jenkins/.ccache:/ccache --runtime nvidia -u 1001"
   }
   agent { node { label 'nano' } }
   stages {
@@ -28,6 +28,11 @@ pipeline {
         script {
           docker.image(env.DOCKER_IMAGE).inside(env.DOCKER_PARAMS) {
             sh '''
+
+# Check GPU is accessible
+id
+/deviceQuery
+
 
 mkdir -p build/tmp
 export CCACHE_DIR=/ccache

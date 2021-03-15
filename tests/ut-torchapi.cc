@@ -310,7 +310,7 @@ TEST(torchapi, service_train_images_split)
 {
   setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
-  at::globalContext().setDeterministic(true);
+  at::globalContext().setDeterministicCuDNN(true);
 
   // Create service
   JsonAPI japi;
@@ -370,7 +370,7 @@ TEST(torchapi, service_train_images)
 {
   setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
-  at::globalContext().setDeterministic(true);
+  at::globalContext().setDeterministicCuDNN(true);
 
   // Create service
   JsonAPI japi;
@@ -453,7 +453,7 @@ TEST(torchapi, service_train_images_sam)
 {
   setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
-  at::globalContext().setDeterministic(true);
+  at::globalContext().setDeterministicCuDNN(true);
 
   // Create service
   JsonAPI japi;
@@ -535,7 +535,7 @@ TEST(torchapi, service_train_images_sam)
 TEST(torchapi, service_train_images_multiple_testsets)
 {
   torch::manual_seed(torch_seed);
-  at::globalContext().setDeterministic(true);
+  at::globalContext().setDeterministicCuDNN(true);
 
   mkdir(resnet50_test_cats_data.c_str(), 0775);
   mkdir((resnet50_test_cats_data + "dogs").c_str(), 0775);
@@ -613,7 +613,7 @@ TEST(torchapi, service_train_images_multiple_testsets)
 TEST(torchapi, service_train_images_multiple_testsets_db)
 {
   torch::manual_seed(torch_seed);
-  at::globalContext().setDeterministic(true);
+  at::globalContext().setDeterministicCuDNN(true);
 
   mkdir(resnet50_test_cats_data.c_str(), 0775);
   mkdir((resnet50_test_cats_data + "dogs").c_str(), 0775);
@@ -695,7 +695,7 @@ TEST(torchapi, service_train_images_split_list)
 {
   setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
-  at::globalContext().setDeterministic(true);
+  at::globalContext().setDeterministicCuDNN(true);
 
   // Create service
   JsonAPI japi;
@@ -755,7 +755,7 @@ TEST(torchapi, service_train_images_split_regression_db_true)
 {
   setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
-  at::globalContext().setDeterministic(true);
+  at::globalContext().setDeterministicCuDNN(true);
 
   // Create service
   JsonAPI japi;
@@ -817,7 +817,7 @@ TEST(torchapi, service_train_images_split_regression_db_false)
 {
   setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
-  at::globalContext().setDeterministic(true);
+  at::globalContext().setDeterministicCuDNN(true);
 
   // Create service
   JsonAPI japi;
@@ -878,7 +878,7 @@ TEST(torchapi, service_train_images_native)
 {
   setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
-  at::globalContext().setDeterministic(true);
+  at::globalContext().setDeterministicCuDNN(true);
 
   // Create service
   JsonAPI japi;
@@ -937,7 +937,7 @@ TEST(torchapi, service_train_txt_lm)
 {
   setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
-  at::globalContext().setDeterministic(true);
+  at::globalContext().setDeterministicCuDNN(true);
 
   // create service
   JsonAPI japi;
@@ -993,7 +993,7 @@ TEST(torchapi, service_train_txt_classification)
 {
   setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
-  at::globalContext().setDeterministic(true);
+  at::globalContext().setDeterministicCuDNN(true);
 
   // create service
   JsonAPI japi;
@@ -1051,7 +1051,7 @@ TEST(torchapi, service_train_txt_classification_nosplit)
 {
   setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
-  at::globalContext().setDeterministic(true);
+  at::globalContext().setDeterministicCuDNN(true);
 
   // create service
   JsonAPI japi;
@@ -1111,7 +1111,7 @@ TEST(torchapi, service_train_csvts_nbeats)
 {
   setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
-  at::globalContext().setDeterministic(true);
+  at::globalContext().setDeterministicCuDNN(true);
 
   // create service
   JsonAPI japi;
@@ -1147,7 +1147,8 @@ TEST(torchapi, service_train_csvts_nbeats)
         + ",\"test_interval\":10,\"base_lr\":0.1,\"snapshot\":500,\"test_"
           "initialization\":false,\"solver_type\":\"ADAM\"},\"net\":{\"batch_"
           "size\":2,\"test_batch_"
-          "size\":10}},\"output\":{\"measure\":[\"L1\",\"L2\"]}},\"data\":[\""
+          "size\":10}},\"output\":{\"measure\":[\"L1\",\"L2\",\"mae\"]}},"
+          "\"data\":[\""
         + csvts_data + "\",\"" + csvts_test + "\"]}";
 
   std::cerr << "jtrainstr=" << jtrainstr << std::endl;
@@ -1167,6 +1168,12 @@ TEST(torchapi, service_train_csvts_nbeats)
   ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
   ASSERT_TRUE(jd["body"]["measure"].HasMember("L1_mean_error"));
   ASSERT_TRUE(jd["body"]["measure"]["L1_max_error_0"].GetDouble() > 0.0);
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("MAE_0"));
+  // below mae should be twice normalized error because signal values are
+  // between -1 and 1
+  ASSERT_NEAR(jd["body"]["measure"]["MAE_0"].GetDouble(),
+              jd["body"]["measure"]["L1_mean_error_0"].GetDouble() * 2.0,
+              1E-5);
   ASSERT_TRUE(jd["body"]["parameters"]["input"].HasMember("max_vals"));
   ASSERT_TRUE(jd["body"]["parameters"]["input"].HasMember("min_vals"));
 
@@ -1236,7 +1243,7 @@ TEST(torchapi, service_train_csvts_nbeats_db)
 {
   setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
-  at::globalContext().setDeterministic(true);
+  at::globalContext().setDeterministicCuDNN(true);
 
   // create service
   JsonAPI japi;
@@ -1320,7 +1327,7 @@ TEST(torchapi, service_train_csvts_nbeats_db)
   ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_99", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["out"][0].GetDouble()
-              >= -1.5);
+              >= -2.0);
 
   // predict from memory
   std::stringstream mem_data;
@@ -1365,7 +1372,7 @@ TEST(torchapi, service_train_csvts_nbeats_db)
 TEST(torchapi, service_train_csvts_nbeats_multiple_testsets)
 {
   torch::manual_seed(torch_seed);
-  at::globalContext().setDeterministic(true);
+  at::globalContext().setDeterministicCuDNN(true);
 
   // create service
   JsonAPI japi;
@@ -1439,7 +1446,7 @@ TEST(torchapi, service_train_csvts_nbeats_resume_fail)
 {
   setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
-  at::globalContext().setDeterministic(true);
+  at::globalContext().setDeterministicCuDNN(true);
 
   // create service
   JsonAPI japi;
@@ -1500,7 +1507,7 @@ TEST(torchapi, service_train_csvts_nbeats_forecast)
 {
   setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
-  at::globalContext().setDeterministic(true);
+  at::globalContext().setDeterministicCuDNN(true);
 
   // create service
   JsonAPI japi;
@@ -1602,7 +1609,7 @@ TEST(torchapi, service_train_ttransformer_forecast)
 {
   setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
-  at::globalContext().setDeterministic(true);
+  at::globalContext().setDeterministicCuDNN(true);
 
   // create service
   JsonAPI japi;
@@ -1711,7 +1718,7 @@ TEST(torchapi, service_train_csvts_nbeats_gpu)
 {
   setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
-  at::globalContext().setDeterministic(true);
+  at::globalContext().setDeterministicCuDNN(true);
 
   // create service
   JsonAPI japi;
@@ -1821,7 +1828,7 @@ TEST(torchapi, service_train_csvts_nbeats_multigpu)
 {
   setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
-  at::globalContext().setDeterministic(true);
+  at::globalContext().setDeterministicCuDNN(true);
 
   // create service
   JsonAPI japi;
@@ -1962,7 +1969,7 @@ TEST(torchapi, nbeats_extract_layer_complete)
 {
   setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
-  at::globalContext().setDeterministic(true);
+  at::globalContext().setDeterministicCuDNN(true);
 
   // create service
   JsonAPI japi;
@@ -2059,7 +2066,7 @@ TEST(torchapi, nbeats_extract_layer_complete_gpu)
 {
   setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
-  at::globalContext().setDeterministic(true);
+  at::globalContext().setDeterministicCuDNN(true);
 
   // create service
   JsonAPI japi;
@@ -2190,7 +2197,7 @@ TEST(torchapi, service_train_ranger)
 {
   setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
-  at::globalContext().setDeterministic(true);
+  at::globalContext().setDeterministicCuDNN(true);
 
   // Create service
   JsonAPI japi;
@@ -2272,7 +2279,7 @@ TEST(torchapi, service_train_vit_images_gpu)
 {
   setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
-  at::globalContext().setDeterministic(true);
+  at::globalContext().setDeterministicCuDNN(true);
   // torch::autograd::AnomalyMode::set_enabled(true);
 
   mkdir(vit_train_repo.c_str(), 0777);
@@ -2360,7 +2367,7 @@ TEST(torchapi, service_train_vit_images_multigpu)
 {
   setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
-  at::globalContext().setDeterministic(true);
+  at::globalContext().setDeterministicCuDNN(true);
 
   mkdir(vit_train_repo.c_str(), 0777);
 

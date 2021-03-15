@@ -67,7 +67,7 @@ namespace dd
     CSVTSInputFileConn() : CSVInputFileConn()
     {
       this->_dont_scale_labels = false;
-      this->_scale_between_minus1_and_1 = true;
+      this->_scale_between_minus_half_and_half = true;
       this->_timeserie = true;
     }
 
@@ -79,7 +79,8 @@ namespace dd
         : CSVInputFileConn(i), _csvtsdata(i._csvtsdata),
           _csvtsdata_tests(i._csvtsdata_tests)
     {
-      this->_scale_between_minus1_and_1 = i._scale_between_minus1_and_1;
+      this->_scale_between_minus_half_and_half
+          = i._scale_between_minus_half_and_half;
       this->_dont_scale_labels = i._dont_scale_labels;
       this->_min_vals = i._min_vals;
       this->_max_vals = i._max_vals;
