@@ -277,40 +277,12 @@ namespace dd
     // reload solver if asked for and set it value accordingly
     if (ad_mllib.has("resume") && ad_mllib.get("resume").get<bool>())
       {
-        for (size_t test_id = 0; test_id < best_iteration_numbers.size();
-             ++test_id)
-          {
-            std::string bestfilename
-                = mlmodel._repo
-                  + fileops::insert_suffix("_test_" + std::to_string(test_id),
-                                           mlmodel._best_model_filename);
-            std::ifstream bestfile;
-            try
-              {
-                std::string tmp;
-                std::string bin;
-                std::string test_name;
-                bestfile.open(bestfilename, std::ios::in);
-                // first three fields are thrown away
-                bestfile >> tmp >> bin >> tmp >> tmp >> tmp >> test_name;
-                if (test_name != set_names[test_id])
-                  _logger->warn(
-                      "test names not matching: {} (API) vs {} (file)",
-                      set_names[test_id], test_name);
-                bestfile.close();
-                best_iteration_numbers[test_id] = std::atof(bin.c_str());
-                best_metric_values[test_id] = std::atof(tmp.c_str());
-              }
-            catch (std::exception &e)
-              {
-                _logger->info("no previous best model file");
-              }
-          }
         if (mlmodel._sstate.empty())
           {
-            throw MLLibBadParamException(
-                "resuming a model requires a solverstate file in model "
-                "repository");
+            std::string msg = "resuming a model requires a solverstate "
+                              "(solver-xxx.pt) file in model repository";
+            _logger->error(msg);
+            throw MLLibBadParamException(msg);
           }
         else
           try
@@ -319,17 +291,55 @@ namespace dd
             }
           catch (std::exception &e)
             {
-              this->_logger->error("Failed to load solver state");
+              this->_logger->error("Failed to load solver state "
+                                   + mlmodel._sstate);
               throw;
             }
+
+        for (size_t test_id = 0; test_id < best_iteration_numbers.size();
+             ++test_id)
+          {
+            std::string bestfilename
+                = mlmodel._repo
+                  + fileops::insert_suffix("_test_" + std::to_string(test_id),
+                                           mlmodel._best_model_filename);
+            std::ifstream bestfile;
+            bestfile.open(bestfilename, std::ios::in);
+            if (!bestfile.is_open())
+              {
+                std::string msg
+                    = "could not find previous best model for test set "
+                      + std::to_string(test_id);
+                _logger->warn(msg);
+                best_iteration_numbers[test_id] = -1;
+                best_metric_values[test_id]
+                    = std::numeric_limits<double>::infinity();
+              }
+            else
+              {
+                std::string tmp;
+                std::string bin;
+                std::string test_name;
+                // first three fields are thrown away
+                bestfile >> tmp >> bin >> tmp >> tmp >> tmp >> test_name;
+                bestfile.close();
+                if (test_name != set_names[test_id])
+                  _logger->warn(
+                      "test names not matching: {} (API) vs {} (file)",
+                      set_names[test_id], test_name);
+                best_iteration_numbers[test_id] = std::atof(bin.c_str());
+                best_metric_values[test_id] = std::atof(tmp.c_str());
+              }
+          }
       }
     else if (!mlmodel._sstate.empty())
       {
         this->_logger->error("not resuming while a solverstate file remains "
                              "in model repository");
         throw MLLibBadParamException(
-            "a solverstate file requires a resume argument for training, "
-            "otherwise delete existing training state files (with clear=lib) "
+            "a solverstate (solver-xxx.pt) file is present in repo, dede "
+            "requires a resume argument for training, otherwise delete "
+            "existing training state files (with clear=lib) "
             "to cleanup the model repository");
       }
 
