@@ -100,7 +100,6 @@ pull_request_rules:
           - Bycob
           - beniz
           - fantes
-          - sileht
 
   - name: "warn on conflicts"
     conditions:
