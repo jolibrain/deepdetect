@@ -489,7 +489,7 @@ TEST(torchapi, service_train_images_sam)
   ASSERT_EQ(201, jd["status"]["code"]);
 
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() <= 1) << "accuracy";
-  ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() >= 0.49)
+  ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() >= 0.45)
       << "accuracy good";
   ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() <= 1) << "f1";
 
@@ -1494,7 +1494,7 @@ TEST(torchapi, service_train_csvts_nbeats_resume_fail)
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(400, jd["status"]["code"].GetInt());
   ASSERT_EQ("Service Bad Request Error: resuming a model requires a "
-            "solverstate file in model repository",
+            "solverstate (solver-xxx.pt) file in model repository",
             jd["status"]["dd_msg"]);
   //  remove service
   jstr = "{\"clear\":\"full\"}";
