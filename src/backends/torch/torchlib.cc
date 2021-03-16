@@ -889,7 +889,24 @@ namespace dd
 
     if (!this->_tjob_running.load())
       {
-        this->_logger->info("Training job interrupted at iteration {}", it);
+        int64_t elapsed_it = it + 1;
+        this->_logger->info("Training job interrupted at iteration {}",
+                            elapsed_it);
+        bool snapshotted = false;
+        for (size_t i = 0; i < best_iteration_numbers.size(); ++i)
+          {
+
+            if (best_iteration_numbers[i] == elapsed_it)
+              // current model already snapshoted as best model,
+              // do not remove regular snapshot if it is  best
+              // model
+              {
+                best_iteration_numbers[i] = -1;
+                snapshotted = true;
+              }
+          }
+        if (!snapshotted)
+          snapshot(elapsed_it, tsolver);
         torch_utils::empty_cuda_cache();
         return -1;
       }
