@@ -14,6 +14,7 @@ NAMES="$@"
 
 declare -A TARGETS
 TARGETS[cpu]="cpu/default"
+TARGETS[cpu_torch]="cpu/torch"
 TARGETS[gpu]="gpu/default"
 TARGETS[gpu_tf]="gpu/tf"
 TARGETS[gpu_torch]="gpu/torch"
