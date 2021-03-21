@@ -414,7 +414,7 @@ namespace dd
                     JVal().SetString(GIT_COMMIT_HASH, jinfo.GetAllocator()),
                     jinfo.GetAllocator());
     jhead.AddMember("compile_flags",
-                    JVal().SetString(COMPLIE_FLAGS, jinfo.GetAllocator()),
+                    JVal().SetString(COMPILE_FLAGS, jinfo.GetAllocator()),
                     jinfo.GetAllocator());
     jhead.AddMember("deps_version",
                     JVal().SetString(DEPS_VERSION, jinfo.GetAllocator()),
