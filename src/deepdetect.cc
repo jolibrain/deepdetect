@@ -48,7 +48,7 @@ namespace dd
   {
     std::cout << "DeepDetect " << GIT_VERSION << " (" << BUILD_TYPE << ")\n";
     std::cout << "GIT REF: " << GIT_BRANCH << ":" << GIT_COMMIT_HASH << "\n";
-    std::cout << "COMPILE_FLAGS: " << COMPLIE_FLAGS << "\n";
+    std::cout << "COMPILE_FLAGS: " << COMPILE_FLAGS << "\n";
     std::cout << "DEPS_VERSION: " << DEPS_VERSION << "\n";
   }
 

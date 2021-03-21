@@ -6,7 +6,7 @@
 #define GIT_BRANCH "@GIT_BRANCH@"
 #define GIT_COMMIT_HASH "@GIT_COMMIT_HASH@"
 
-#define COMPLIE_FLAGS                                                         \
+#define COMPILE_FLAGS                                                         \
   "USE_CAFFE2=@USE_CAFFE2@ USE_TF=@USE_TF@ USE_NCNN=@USE_NCNN@ "              \
   "USE_TORCH=@USE_TORCH@ USE_HDF5=@USE_HDF5@ USE_CAFFE=@USE_CAFFE@ "          \
   "USE_TENSORRT=@USE_TENSORRT@ USE_TENSORRT_OSS=@USE_TENSORRT_OSS@ "          \
