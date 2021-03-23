@@ -296,13 +296,27 @@ namespace dd
         this->_mlmodel._proto = dest_net;
       }
 
-    bool unsupported_model_configuration
-        = this->_mlmodel._traced.empty() && this->_mlmodel._proto.empty()
-          && !NativeFactory::valid_template_def(_template);
+    bool model_not_found = this->_mlmodel._traced.empty()
+                           && this->_mlmodel._proto.empty()
+                           && !NativeFactory::valid_template_def(_template);
 
-    if (unsupported_model_configuration)
+    if (model_not_found)
       throw MLLibInternalException("Use of libtorch backend needs either: "
                                    "traced net, protofile or native template");
+
+    bool multiple_models_found
+        = ((!this->_mlmodel._traced.empty()) + (!this->_mlmodel._proto.empty())
+           + NativeFactory::valid_template_def(_template))
+          > 1;
+    if (multiple_models_found)
+      {
+        this->_logger->error("traced: {}, proto: {}, template: {}",
+                             this->_mlmodel._traced, this->_mlmodel._proto,
+                             _template);
+        throw MLLibInternalException(
+            "Only one of these must be provided: traced net, protofile or "
+            "native template");
+      }
 
     // FIXME(louis): out of if(bert) because we allow not to specify template
     // at predict. Should we change this?
