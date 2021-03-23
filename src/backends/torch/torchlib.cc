@@ -152,6 +152,13 @@ namespace dd
     int embedding_size = 768;
     std::string self_supervised = "";
 
+    if (lib_ad.has("from_repository"))
+      {
+        this->_mlmodel.copy_to_target(
+            lib_ad.get("from_repository").get<std::string>(),
+            this->_mlmodel._repo, this->_logger);
+        this->_mlmodel.read_from_repository(this->_logger);
+      }
     if (lib_ad.has("template"))
       _template = lib_ad.get("template").get<std::string>();
     if (lib_ad.has("gpu"))
@@ -889,7 +896,24 @@ namespace dd
 
     if (!this->_tjob_running.load())
       {
-        this->_logger->info("Training job interrupted at iteration {}", it);
+        int64_t elapsed_it = it + 1;
+        this->_logger->info("Training job interrupted at iteration {}",
+                            elapsed_it);
+        bool snapshotted = false;
+        for (size_t i = 0; i < best_iteration_numbers.size(); ++i)
+          {
+
+            if (best_iteration_numbers[i] == elapsed_it)
+              // current model already snapshoted as best model,
+              // do not remove regular snapshot if it is  best
+              // model
+              {
+                best_iteration_numbers[i] = -1;
+                snapshotted = true;
+              }
+          }
+        if (!snapshotted)
+          snapshot(elapsed_it, tsolver);
         torch_utils::empty_cuda_cache();
         return -1;
       }

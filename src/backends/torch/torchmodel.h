@@ -63,6 +63,11 @@ namespace dd
      */
     int read_from_repository(const std::shared_ptr<spdlog::logger> &logger);
 
+    /** Copy source repository to target repository. */
+    int copy_to_target(const std::string &source_repo,
+                       const std::string &target_repo,
+                       const std::shared_ptr<spdlog::logger> &logger);
+
   public:
     std::string _traced;  /**< path of the traced part of the net. */
     std::string _weights; /**< path of the weights of the net. */

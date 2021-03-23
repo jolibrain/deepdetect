@@ -28,21 +28,27 @@ namespace dd
   void NBeats::BlockImpl::init_block()
   {
     _fc1 = register_module(
-        "fc1", torch::nn::Linear(_backcast_length * _data_size, _units));
-    _fc2 = register_module("fc2", torch::nn::Linear(_units, _units));
-    _fc3 = register_module("fc3", torch::nn::Linear(_units, _units));
-    _fc4 = register_module("fc4", torch::nn::Linear(_units, _units));
+        "fc1",
+        torch::nn::Linear(_backcast_length * _data_size, _units * _data_size));
+    _fc2 = register_module(
+        "fc2", torch::nn::Linear(_units * _data_size, _units * _data_size));
+    _fc3 = register_module(
+        "fc3", torch::nn::Linear(_units * _data_size, _units * _data_size));
+    _fc4 = register_module(
+        "fc4", torch::nn::Linear(_units * _data_size, _units * _data_size));
     _theta_f_fc = register_module(
         "theta_f_fc",
-        torch::nn::Linear(
-            torch::nn::LinearOptions(_units, _thetas_dim).bias(false)));
+        torch::nn::Linear(torch::nn::LinearOptions(_units * _data_size,
+                                                   _thetas_dim * _data_size)
+                              .bias(false)));
     if (_share_thetas)
       _theta_b_fc = _theta_f_fc;
     else
       _theta_b_fc = register_module(
           "theta_b_fc",
-          torch::nn::Linear(
-              torch::nn::LinearOptions(_units, _thetas_dim).bias(false)));
+          torch::nn::Linear(torch::nn::LinearOptions(_units * _data_size,
+                                                     _thetas_dim * _data_size)
+                                .bias(false)));
   }
 
   torch::Tensor NBeats::BlockImpl::first_forward(torch::Tensor x)
@@ -83,13 +89,13 @@ namespace dd
   NBeats::SeasonalityBlockImpl::forward(torch::Tensor x)
   {
     x = BlockImpl::first_forward(x);
-    torch::Tensor tbfc = _theta_b_fc->forward(x);
-    torch::Tensor backcast = tbfc.mm(_bS);
-    torch::Tensor tffc = _theta_f_fc->forward(x);
-    torch::Tensor forecast = tffc.mm(_fS);
-    return std::make_tuple(
-        backcast.reshape({ backcast.size(0), _backcast_length, _data_size }),
-        forecast.reshape({ forecast.size(0), _forecast_length, _data_size }));
+    torch::Tensor tbfc
+        = _theta_b_fc->forward(x).reshape({ -1, _data_size, _thetas_dim });
+    torch::Tensor backcast = tbfc.matmul(_bS).transpose(1, 2);
+    torch::Tensor tffc
+        = _theta_f_fc->forward(x).reshape({ -1, _data_size, _thetas_dim });
+    torch::Tensor forecast = tffc.matmul(_fS).transpose(1, 2);
+    return std::make_tuple(backcast, forecast);
   }
 
   torch::Tensor
@@ -99,13 +105,15 @@ namespace dd
     x = BlockImpl::first_extract(x, extract_layer);
     if (extract_layer != "theta_b_fc" && extract_layer != "theta_f_fc")
       return x;
-    torch::Tensor tbfc = _theta_b_fc->forward(x);
-    torch::Tensor backcast = tbfc.mm(_bS);
+    torch::Tensor tbfc
+        = _theta_b_fc->forward(x).reshape({ -1, _data_size, _thetas_dim });
+    torch::Tensor backcast = tbfc.matmul(_bS).transpose(1, 2);
     if (extract_layer == "theta_b_fc")
       return backcast;
 
-    torch::Tensor tffc = _theta_f_fc->forward(x);
-    torch::Tensor forecast = tffc.mm(_fS);
+    torch::Tensor tffc
+        = _theta_f_fc->forward(x).reshape({ -1, _data_size, _thetas_dim });
+    torch::Tensor forecast = tffc.matmul(_fS).transpose(1, 2);
     return forecast;
   }
 
@@ -120,26 +128,22 @@ namespace dd
 
     for (unsigned int i = 0; i < p1; ++i)
       for (unsigned int j = 0; j < _forecast_linspace.size(); ++j)
-        for (unsigned int d2 = 0; d2 < _data_size; ++d2)
-          tdata.push_back(std::cos(2 * M_PI * i * _forecast_linspace[j]));
+        tdata.push_back(std::cos(2 * M_PI * i * _forecast_linspace[j]));
     torch::Tensor s1
         = torch::from_blob(
               tdata.data(),
-              { p1, static_cast<long int>(_forecast_linspace.size())
-                        * _data_size },
+              { p1, static_cast<long int>(_forecast_linspace.size()) },
               options)
               .clone();
 
     tdata.clear();
     for (unsigned int i = 0; i < p2; ++i)
       for (unsigned int j = 0; j < _forecast_linspace.size(); ++j)
-        for (unsigned int d2 = 0; d2 < _data_size; ++d2)
-          tdata.push_back(std::sin(2 * M_PI * i * _forecast_linspace[j]));
+        tdata.push_back(std::sin(2 * M_PI * i * _forecast_linspace[j]));
     torch::Tensor s2
         = torch::from_blob(
               tdata.data(),
-              { p2, static_cast<long int>(_forecast_linspace.size())
-                        * _data_size },
+              { p2, static_cast<long int>(_forecast_linspace.size()) },
               options)
               .clone();
     torch::Tensor fS = register_buffer("fS", torch::cat({ s1, s2 }));
@@ -147,26 +151,22 @@ namespace dd
     tdata.clear();
     for (unsigned int i = 0; i < p1; ++i)
       for (unsigned int j = 0; j < _backcast_linspace.size(); ++j)
-        for (unsigned int d2 = 0; d2 < _data_size; ++d2)
-          tdata.push_back(std::cos(2 * M_PI * i * _backcast_linspace[j]));
+        tdata.push_back(std::cos(2 * M_PI * i * _backcast_linspace[j]));
     torch::Tensor ss1
         = torch::from_blob(
               tdata.data(),
-              { p1, static_cast<long int>(_backcast_linspace.size())
-                        * _data_size },
+              { p1, static_cast<long int>(_backcast_linspace.size()) },
               options)
               .clone();
 
     tdata.clear();
     for (unsigned int i = 0; i < p2; ++i)
       for (unsigned int j = 0; j < _backcast_linspace.size(); ++j)
-        for (unsigned int d2 = 0; d2 < _data_size; ++d2)
-          tdata.push_back(std::sin(2 * M_PI * i * _backcast_linspace[j]));
+        tdata.push_back(std::sin(2 * M_PI * i * _backcast_linspace[j]));
     torch::Tensor ss2
         = torch::from_blob(
               tdata.data(),
-              { p2, static_cast<long int>(_backcast_linspace.size())
-                        * _data_size },
+              { p2, static_cast<long int>(_backcast_linspace.size()) },
               options)
               .clone();
 
@@ -184,33 +184,29 @@ namespace dd
 
     for (unsigned int i = 0; i < p; ++i)
       for (unsigned int j = 0; j < _forecast_linspace.size(); ++j)
-        for (unsigned int d2 = 0; d2 < _data_size; ++d2)
-          {
-            tdata.push_back(static_cast<float>(
-                powf(_forecast_linspace[j], static_cast<float>(i))));
-            ;
-          }
+        {
+          tdata.push_back(static_cast<float>(
+              powf(_forecast_linspace[j], static_cast<float>(i))));
+          ;
+        }
     fT = register_buffer(
         "fT",
         torch::from_blob(tdata.data(),
                          { static_cast<long int>(p),
-                           static_cast<long int>(_forecast_linspace.size())
-                               * static_cast<long int>(_data_size) },
+                           static_cast<long int>(_forecast_linspace.size()) },
                          options)
             .clone());
 
     tdata.clear();
     for (unsigned int i = 0; i < p; ++i)
       for (unsigned int j = 0; j < _backcast_linspace.size(); ++j)
-        for (unsigned int d2 = 0; d2 < _data_size; ++d2)
-          tdata.push_back(static_cast<float>(
-              powf(_backcast_linspace[j], static_cast<float>(i))));
+        tdata.push_back(static_cast<float>(
+            powf(_backcast_linspace[j], static_cast<float>(i))));
     bT = register_buffer(
         "bT",
         torch::from_blob(tdata.data(),
                          { static_cast<long int>(p),
-                           static_cast<long int>(_backcast_linspace.size())
-                               * static_cast<long int>(_data_size) },
+                           static_cast<long int>(_backcast_linspace.size()) },
                          options)
             .clone());
     return std::make_tuple(bT, fT);
@@ -237,14 +233,15 @@ namespace dd
   NBeats::TrendBlockImpl::forward(torch::Tensor x)
   {
     x = BlockImpl::first_forward(x);
-    torch::Tensor tbfc = _theta_b_fc->forward(x);
-    torch::Tensor tffc = _theta_b_fc->forward(x);
-    torch::Tensor backcast = tbfc.mm(_bT);
-    torch::Tensor forecast = tffc.mm(_fT);
+    torch::Tensor tbfc
+        = _theta_b_fc->forward(x).reshape({ -1, _data_size, _thetas_dim });
+    torch::Tensor tffc
+        = _theta_b_fc->forward(x).reshape({ -1, _data_size, _thetas_dim });
 
-    return std::make_tuple(
-        backcast.reshape({ backcast.size(0), _backcast_length, _data_size }),
-        forecast.reshape({ forecast.size(0), _forecast_length, _data_size }));
+    torch::Tensor backcast = tbfc.matmul(_bT).transpose(1, 2);
+    torch::Tensor forecast = tffc.matmul(_fT).transpose(1, 2);
+
+    return std::make_tuple(backcast, forecast);
   }
 
   torch::Tensor NBeats::GenericBlockImpl::extract(torch::Tensor x,
@@ -298,17 +295,22 @@ namespace dd
   void NBeats::create_nbeats()
   {
     _stacks.clear();
-    float back_step = 1.0 / (float)(_backcast_length);
+    float step = 1.0 / (float)(_forecast_length);
     _backcast_linspace.clear();
-    for (unsigned int i = 0; i < _backcast_length; ++i)
-      _backcast_linspace.push_back(back_step * static_cast<float>(i));
-    float fore_step = 1.0 / (float)(_forecast_length);
+    for (size_t i = 0; i < _backcast_length; ++i)
+      {
+        _backcast_linspace.push_back(
+            -(float)(_backcast_length) / (float)(_forecast_length) + i * step);
+      }
     _forecast_linspace.clear();
-    for (unsigned int i = 0; i < _forecast_length; ++i)
-      _forecast_linspace.push_back(fore_step * static_cast<float>(i));
+    for (size_t i = 0; i < _forecast_length; ++i)
+      _forecast_linspace.push_back(i * step);
 
+    bool S_created = false;
+    bool T_created = false;
     std::tuple<torch::Tensor, torch::Tensor> S;
     std::tuple<torch::Tensor, torch::Tensor> T;
+    int nseason_funcs = -1;
 
     for (unsigned int stack_id = 0; stack_id < _stack_types.size(); ++stack_id)
       {
@@ -317,19 +319,30 @@ namespace dd
         switch (bt)
           {
           case seasonality:
-            S = create_sin_basis(_thetas_dims[stack_id]);
+            nseason_funcs = (_thetas_dims[stack_id] <= 0)
+                                ? _forecast_length
+                                : _thetas_dims[stack_id];
+            if (!S_created)
+              {
+                S = create_sin_basis(nseason_funcs);
+                S_created = true;
+              }
             for (unsigned int block_id = 0; block_id < _nb_blocks_per_stack;
                  ++block_id)
               s.push_back(torch::nn::AnyModule(register_module(
                   "seasonalityBlock_" + std::to_string(block_id) + "_stack_"
                       + std::to_string(stack_id),
-                  SeasonalityBlock(_hidden_layer_units, _thetas_dims[stack_id],
+                  SeasonalityBlock(_hidden_layer_units, nseason_funcs,
                                    _backcast_length, _forecast_length,
                                    _data_size, std::get<0>(S),
                                    std::get<1>(S)))));
             break;
           case trend:
-            T = create_exp_basis(_thetas_dims[stack_id]);
+            if (!T_created)
+              {
+                T = create_exp_basis(_thetas_dims[stack_id]);
+                T_created = true;
+              }
             for (unsigned block_id = 0; block_id < _nb_blocks_per_stack;
                  ++block_id)
               s.push_back(torch::nn::AnyModule(register_module(
