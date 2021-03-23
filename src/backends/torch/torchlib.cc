@@ -152,6 +152,13 @@ namespace dd
     int embedding_size = 768;
     std::string self_supervised = "";
 
+    if (lib_ad.has("from_repository"))
+      {
+        this->_mlmodel.copy_to_target(
+            lib_ad.get("from_repository").get<std::string>(),
+            this->_mlmodel._repo, this->_logger);
+        this->_mlmodel.read_from_repository(this->_logger);
+      }
     if (lib_ad.has("template"))
       _template = lib_ad.get("template").get<std::string>();
     if (lib_ad.has("gpu"))

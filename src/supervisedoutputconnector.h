@@ -1112,6 +1112,14 @@ namespace dd
               bool owa = false;
               bool mae = false;
               bool mse = false;
+              bool L1_all = false;
+              bool L2_all = false;
+              bool smape_all = false;
+              bool mape_all = false;
+              bool mase_all = false;
+              bool owa_all = false;
+              bool mae_all = false;
+              bool mse_all = false;
               if (ad_out.has("measure"))
                 {
                   std::vector<std::string> measures
@@ -1132,54 +1140,86 @@ namespace dd
                          != measures.end());
                   mse = (std::find(measures.begin(), measures.end(), "mse")
                          != measures.end());
+                  L1_all
+                      = (std::find(measures.begin(), measures.end(), "L1_all")
+                         != measures.end());
+                  L2_all
+                      = (std::find(measures.begin(), measures.end(), "L2_all")
+                         != measures.end());
+                  smape_all = (std::find(measures.begin(), measures.end(),
+                                         "smape_all")
+                               != measures.end());
+                  mape_all = (std::find(measures.begin(), measures.end(),
+                                        "mape_all")
+                              != measures.end());
+                  mase_all = (std::find(measures.begin(), measures.end(),
+                                        "mase_all")
+                              != measures.end());
+                  owa_all
+                      = (std::find(measures.begin(), measures.end(), "owa_all")
+                         != measures.end());
+                  mae_all
+                      = (std::find(measures.begin(), measures.end(), "mae_all")
+                         != measures.end());
+                  mse_all
+                      = (std::find(measures.begin(), measures.end(), "mse_all")
+                         != measures.end());
                 }
 
               if (!L1 && !L2 && !smape && !mape && !mase && !owa && !mae
-                  && !mse)
+                  && !mse && !L1_all && !L2_all && !smape_all && !mape_all
+                  && !mase_all && !owa_all && !mae_all && !mse_all)
                 L1 = true;
 
-              if (L1)
+              if (L1 || L1_all)
                 {
                   timeSeriesErrors(ad_res, timeseries, &max_errors[0],
                                    &indexes_max_error[0], &mean_errors[0],
                                    max_error, mean_error, true);
 
-                  for (int i = 0; i < timeseries; ++i)
+                  if (L1_all)
                     {
-                      meas_out.add("L1_max_error_" + std::to_string(i),
-                                   max_errors[i]);
-                      meas_out.add("L1_max_error_" + std::to_string(i)
-                                       + "_date",
-                                   (double)(indexes_max_error[i]));
-                      meas_out.add("L1_mean_error_" + std::to_string(i),
-                                   mean_errors[i]);
+                      for (int i = 0; i < timeseries; ++i)
+                        {
+                          meas_out.add("L1_max_error_" + std::to_string(i),
+                                       max_errors[i]);
+                          meas_out.add("L1_max_error_" + std::to_string(i)
+                                           + "_date",
+                                       (double)(indexes_max_error[i]));
+                          meas_out.add("L1_mean_error_" + std::to_string(i),
+                                       mean_errors[i]);
+                        }
                     }
                   meas_out.add("L1_max_error", max_error);
                   meas_out.add("L1_mean_error", mean_error);
-                  if (!L2)
+                  if (!L2 && !L2_all)
                     meas_out.add("eucll", mean_error);
                 }
 
-              if (L2)
+              if (L2 || L2_all)
                 {
                   timeSeriesErrors(ad_res, timeseries, &max_errors[0],
                                    &indexes_max_error[0], &mean_errors[0],
                                    max_error, mean_error, false);
-                  for (int i = 0; i < timeseries; ++i)
+                  if (L2_all)
                     {
-                      meas_out.add("L2_max_error_" + std::to_string(i),
-                                   max_errors[i]);
-                      meas_out.add("L2_max_error_" + std::to_string(i)
-                                       + "_date",
-                                   (double)(indexes_max_error[i]));
-                      meas_out.add("L2_mean_error_" + std::to_string(i),
-                                   mean_errors[i]);
+                      for (int i = 0; i < timeseries; ++i)
+                        {
+                          meas_out.add("L2_max_error_" + std::to_string(i),
+                                       max_errors[i]);
+                          meas_out.add("L2_max_error_" + std::to_string(i)
+                                           + "_date",
+                                       (double)(indexes_max_error[i]));
+                          meas_out.add("L2_mean_error_" + std::to_string(i),
+                                       mean_errors[i]);
+                        }
                     }
                   meas_out.add("L2_max_error", max_error);
                   meas_out.add("L2_mean_error", mean_error);
                   meas_out.add("eucll", mean_error);
                 }
-              if (mape || smape || mase || owa || mae || mse)
+              if (mape || smape || mase || owa || mae || mse || mape_all
+                  || smape_all || mase_all || owa_all || mae_all || mse_all)
                 {
                   std::vector<double> mapev(timeseries);
                   std::vector<double> smapev(timeseries);
@@ -1189,21 +1229,51 @@ namespace dd
                   std::vector<double> msev(timeseries);
                   timeSeriesMetrics(ad_res, timeseries, mapev, smapev, masev,
                                     owav, maev, msev);
+                  double maped = 0.0;
+                  double smaped = 0.0;
+                  double mased = 0.0;
+                  double owad = 0.0;
+                  double maed = 0.0;
+                  double msed = 0.0;
                   for (int i = 0; i < timeseries; ++i)
                     {
-                      if (mape)
+                      maped += mapev[i];
+                      smaped += smapev[i];
+                      mased += masev[i];
+                      owad += owav[i];
+                      maed += maev[i];
+                      msed += msev[i];
+                      if (mape_all)
                         meas_out.add("MAPE_" + std::to_string(i), mapev[i]);
-                      if (smape)
+                      if (smape_all)
                         meas_out.add("sMAPE_" + std::to_string(i), smapev[i]);
-                      if (mase)
+                      if (mase_all)
                         meas_out.add("MASE_" + std::to_string(i), masev[i]);
-                      if (owa)
+                      if (owa_all)
                         meas_out.add("OWA_" + std::to_string(i), owav[i]);
-                      if (mae)
+                      if (mae_all)
                         meas_out.add("MAE_" + std::to_string(i), maev[i]);
-                      if (mse)
+                      if (mse_all)
                         meas_out.add("MSE_" + std::to_string(i), msev[i]);
                     }
+                  maped /= timeseries;
+                  smaped /= timeseries;
+                  mased /= timeseries;
+                  owad /= timeseries;
+                  maed /= timeseries;
+                  msed /= timeseries;
+                  if (mape)
+                    meas_out.add("MAPE", maped);
+                  if (smape)
+                    meas_out.add("sMAPE", smaped);
+                  if (mase)
+                    meas_out.add("MASE", mased);
+                  if (owa)
+                    meas_out.add("OWA", owad);
+                  if (mae)
+                    meas_out.add("MAE", maed);
+                  if (mse)
+                    meas_out.add("MSE", msed);
                 }
             }
         }
