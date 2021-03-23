@@ -40,7 +40,7 @@
 #define NBEATS_DEFAULT_FORECAST_LENGTH 50
 #define NBEATS_DEFAULT_THETAS                                                 \
   {                                                                           \
-    2, 8, 3                                                                   \
+    2, -1, 3                                                                  \
   }
 #define NBEATS_DEFAULT_SHARE_WEIGHTS false
 #define NBEATS_DEFAULT_HIDDEN_LAYER_UNITS 10
@@ -264,11 +264,11 @@ namespace dd
       void init_generic_block()
       {
         _backcast_fc = register_module(
-            "backcast_fc",
-            torch::nn::Linear(_thetas_dim, _backcast_length * _data_size));
+            "backcast_fc", torch::nn::Linear(_thetas_dim * _data_size,
+                                             _backcast_length * _data_size));
         _forecast_fc = register_module(
-            "forecast_fc",
-            torch::nn::Linear(_thetas_dim, _forecast_length * _data_size));
+            "forecast_fc", torch::nn::Linear(_thetas_dim * _data_size,
+                                             _forecast_length * _data_size));
       }
 
       torch::nn::Linear _backcast_fc{ nullptr };
@@ -367,8 +367,24 @@ namespace dd
           else if ((pos = s.find(_season_str)) != std::string::npos)
             {
               _stack_types.push_back(seasonality);
-              _thetas_dims.push_back(
-                  std::stoi(s.substr(pos + _season_str.size())));
+              std::string suffix = s.substr(pos + _season_str.size());
+              int val = -1;
+              if (!suffix.empty())
+                {
+                  try
+                    {
+                      val = std::stoi(suffix);
+                    }
+                  catch (std::invalid_argument &e)
+                    {
+                      throw MLLibBadParamException(
+                          "invalid  seasonality definition " + s
+                          + "   valid definition is either 's' or 's50' "
+                            "(replace 50 "
+                            "by any int value)");
+                    }
+                }
+              _thetas_dims.push_back(val);
             }
           else if ((pos = s.find(_generic_str)) != std::string::npos)
             {
