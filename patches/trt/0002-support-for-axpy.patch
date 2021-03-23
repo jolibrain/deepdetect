@@ -1,0 +1,631 @@
+diff --git a/parsers/caffe/caffeParser/caffeParser.cpp b/parsers/caffe/caffeParser/caffeParser.cpp
+index 9fb28d6..baa27c2 100644
+--- a/parsers/caffe/caffeParser/caffeParser.cpp
++++ b/parsers/caffe/caffeParser/caffeParser.cpp
+@@ -361,9 +361,7 @@ const IBlobNameToTensor* CaffeParser::parse(const char* deployFile,
+     return parse(network, weightType, modelFile != nullptr);
+ }
+ 
+-const IBlobNameToTensor* CaffeParser::parse(INetworkDefinition& network,
+-                                            DataType weightType,
+-                                            bool hasModel)
++const IBlobNameToTensor* CaffeParser::parse(INetworkDefinition& network, DataType weightType, bool hasModel)
+ {
+     bool ok = true;
+     CaffeWeightFactory weights(*mModel.get(), weightType, mTmpAllocs, hasModel);
+@@ -391,25 +389,31 @@ const IBlobNameToTensor* CaffeParser::parse(INetworkDefinition& network,
+         {
+             if (mDeploy->input_shape_size())
+             {
+-                dims = DimsCHW{(int) mDeploy->input_shape().Get(i).dim().Get(1), (int) mDeploy->input_shape().Get(i).dim().Get(2), (int) mDeploy->input_shape().Get(i).dim().Get(3)};
++                dims = DimsCHW{(int) mDeploy->input_shape().Get(i).dim().Get(1),
++                    (int) mDeploy->input_shape().Get(i).dim().Get(2), (int) mDeploy->input_shape().Get(i).dim().Get(3)};
+             }
+             else
+             {
+                 // Deprecated, but still used in a lot of networks
+-                dims = DimsCHW{(int) mDeploy->input_dim().Get(i * 4 + 1), (int) mDeploy->input_dim().Get(i * 4 + 2), (int) mDeploy->input_dim().Get(i * 4 + 3)};
++                dims = DimsCHW{(int) mDeploy->input_dim().Get(i * 4 + 1), (int) mDeploy->input_dim().Get(i * 4 + 2),
++                    (int) mDeploy->input_dim().Get(i * 4 + 3)};
+             }
+         }
+         else
+         {
+-            std::cout << "Warning, setting batch size to 1. Update the dimension after parsing due to using explicit batch size." << std::endl;
++            std::cout << "Warning, setting batch size to 1. Update the dimension after parsing due to using explicit "
++                         "batch size."
++                      << std::endl;
+             if (mDeploy->input_shape_size())
+             {
+-                dims = DimsNCHW{1, (int) mDeploy->input_shape().Get(i).dim().Get(1), (int) mDeploy->input_shape().Get(i).dim().Get(2), (int) mDeploy->input_shape().Get(i).dim().Get(3)};
++                dims = DimsNCHW{1, (int) mDeploy->input_shape().Get(i).dim().Get(1),
++                    (int) mDeploy->input_shape().Get(i).dim().Get(2), (int) mDeploy->input_shape().Get(i).dim().Get(3)};
+             }
+             else
+             {
+                 // Deprecated, but still used in a lot of networks
+-                dims = DimsNCHW{1, (int) mDeploy->input_dim().Get(i * 4 + 1), (int) mDeploy->input_dim().Get(i * 4 + 2), (int) mDeploy->input_dim().Get(i * 4 + 3)};
++                dims = DimsNCHW{1, (int) mDeploy->input_dim().Get(i * 4 + 1), (int) mDeploy->input_dim().Get(i * 4 + 2),
++                    (int) mDeploy->input_dim().Get(i * 4 + 3)};
+             }
+         }
+         ITensor* tensor = network.addInput(mDeploy->input().Get(i).c_str(), DataType::kFLOAT, dims);
+@@ -436,7 +440,9 @@ const IBlobNameToTensor* CaffeParser::parse(INetworkDefinition& network,
+                     if (iter != nullptr && iter->isNetworkInput())
+                     {
+                         ok = false;
+-                        std::cout << "TensorRT does not support in-place operations on input tensors in a prototxt file." << std::endl;
++                        std::cout
++                            << "TensorRT does not support in-place operations on input tensors in a prototxt file."
++                            << std::endl;
+                     }
+                 }
+             }
+@@ -446,17 +452,20 @@ const IBlobNameToTensor* CaffeParser::parse(INetworkDefinition& network,
+         if (mPluginFactory && mPluginFactory->isPlugin(layerMsg.name().c_str()))
+         {
+             std::vector<Weights> w = weights.getAllWeights(layerMsg.name());
+-            IPlugin* plugin = mPluginFactory->createPlugin(layerMsg.name().c_str(), w.empty() ? nullptr : &w[0], w.size());
++            IPlugin* plugin
++                = mPluginFactory->createPlugin(layerMsg.name().c_str(), w.empty() ? nullptr : &w[0], w.size());
+             std::vector<ITensor*> inputs;
+             for (int i = 0, n = layerMsg.bottom_size(); i < n; i++)
+             {
+                 inputs.push_back((*mBlobNameToTensor)[layerMsg.bottom(i)]);
+             }
+ 
+-            bool isExt = mPluginFactoryIsExt && static_cast<IPluginFactoryExt*>(mPluginFactory)->isPluginExt(layerMsg.name().c_str());
++            bool isExt = mPluginFactoryIsExt
++                && static_cast<IPluginFactoryExt*>(mPluginFactory)->isPluginExt(layerMsg.name().c_str());
+ 
+-            ILayer* layer = isExt ? network.addPluginExt(&inputs[0], int(inputs.size()), *static_cast<IPluginExt*>(plugin))
+-                                  : network.addPlugin(&inputs[0], int(inputs.size()), *plugin);
++            ILayer* layer = isExt
++                ? network.addPluginExt(&inputs[0], int(inputs.size()), *static_cast<IPluginExt*>(plugin))
++                : network.addPlugin(&inputs[0], int(inputs.size()), *plugin);
+ 
+             layer->setName(layerMsg.name().c_str());
+             if (plugin->getNbOutputs() != layerMsg.top_size())
+@@ -483,10 +492,13 @@ const IBlobNameToTensor* CaffeParser::parse(INetworkDefinition& network,
+             {
+                 if (mPluginFactory)
+                 {
+-                    RETURN_AND_LOG_ERROR(nullptr, "Both IPluginFactory and IPluginFactoryV2 are set. If using TensorRT 5.0 or later, switch to IPluginFactoryV2");
++                    RETURN_AND_LOG_ERROR(nullptr,
++                        "Both IPluginFactory and IPluginFactoryV2 are set. If using TensorRT 5.0 or later, switch to "
++                        "IPluginFactoryV2");
+                 }
+                 std::vector<Weights> w = weights.getAllWeights(layerMsg.name());
+-                nvinfer1::IPluginV2* plugin = mPluginFactoryV2->createPlugin(layerMsg.name().c_str(), w.empty() ? nullptr : &w[0], w.size(), mPluginNamespace.c_str());
++                nvinfer1::IPluginV2* plugin = mPluginFactoryV2->createPlugin(
++                    layerMsg.name().c_str(), w.empty() ? nullptr : &w[0], w.size(), mPluginNamespace.c_str());
+                 std::vector<ITensor*> inputs;
+                 for (int i = 0, n = layerMsg.bottom_size(); i < n; i++)
+                 {
+@@ -513,66 +525,70 @@ const IBlobNameToTensor* CaffeParser::parse(INetworkDefinition& network,
+             }
+             // Use the TRT5 plugin creator method to check for built-in plugin support
+ 
++            std::string pluginName;
++            nvinfer1::PluginFieldCollection fc;
++            std::vector<nvinfer1::PluginField> f;
++            if (layerMsg.type() == "Normalize")
++            {
++                pluginName = "Normalize_TRT";
++                f = parseNormalizeParam(layerMsg, weights, *mBlobNameToTensor);
++            }
++            else if (layerMsg.type() == "PriorBox")
++            {
++                pluginName = "PriorBox_TRT";
++                f = parsePriorBoxParam(layerMsg, weights, *mBlobNameToTensor);
++            }
++            else if (layerMsg.type() == "DetectionOutput")
++            {
++                pluginName = "NMS_TRT";
++                f = parseDetectionOutputParam(layerMsg, weights, *mBlobNameToTensor);
++            }
++            else if (layerMsg.type() == "RPROI")
++            {
++                pluginName = "RPROI_TRT";
++                f = parseRPROIParam(layerMsg, weights, *mBlobNameToTensor);
++            }
++            else if (layerMsg.type() == "Axpy")
++            {
++                pluginName = "AXPY_TRT";
++                // no params, no weights
++            }
+ 
+-                std::string pluginName;
+-                nvinfer1::PluginFieldCollection fc;
+-                std::vector<nvinfer1::PluginField> f;
+-                if (layerMsg.type() == "Normalize")
+-                {
+-                    pluginName = "Normalize_TRT";
+-                    f = parseNormalizeParam(layerMsg, weights, *mBlobNameToTensor);
+-                }
+-                else if (layerMsg.type() == "PriorBox")
++            if (mPluginRegistry.find(pluginName) != mPluginRegistry.end())
++            {
++                // Set fc
++                fc.nbFields = f.size();
++                fc.fields = f.empty() ? nullptr : f.data();
++                nvinfer1::IPluginV2* pluginV2
++                    = mPluginRegistry.at(pluginName)->createPlugin(layerMsg.name().c_str(), &fc);
++                assert(pluginV2);
++                mNewPlugins.push_back(pluginV2);
++
++                std::vector<ITensor*> inputs;
++                for (int i = 0, n = layerMsg.bottom_size(); i < n; i++)
+                 {
+-                    pluginName = "PriorBox_TRT";
+-                    f = parsePriorBoxParam(layerMsg, weights, *mBlobNameToTensor);
++                    inputs.push_back((*mBlobNameToTensor)[layerMsg.bottom(i)]);
+                 }
+-                else if (layerMsg.type() == "DetectionOutput")
++
++                auto layer = network.addPluginV2(&inputs[0], int(inputs.size()), *pluginV2);
++                layer->setName(layerMsg.name().c_str());
++                if (pluginV2->getNbOutputs() != layerMsg.top_size())
+                 {
+-                    pluginName = "NMS_TRT";
+-                    f = parseDetectionOutputParam(layerMsg, weights, *mBlobNameToTensor);
++                    std::cout << "Plugin layer output count is not equal to caffe output count" << std::endl;
++                    ok = false;
+                 }
+-                else if (layerMsg.type() == "RPROI")
++                for (int i = 0, n = std::min(layer->getNbOutputs(), layerMsg.top_size()); i < n; i++)
+                 {
+-                    pluginName = "RPROI_TRT";
+-                    f = parseRPROIParam(layerMsg, weights, *mBlobNameToTensor);
++                    (*mBlobNameToTensor)[layerMsg.top(i)] = layer->getOutput(i);
+                 }
+ 
+-                if (mPluginRegistry.find(pluginName) != mPluginRegistry.end())
++                if (layer == nullptr)
+                 {
+-                    // Set fc
+-                    fc.nbFields = f.size();
+-                    fc.fields = f.empty() ? nullptr : f.data();
+-                    nvinfer1::IPluginV2* pluginV2 = mPluginRegistry.at(pluginName)->createPlugin(layerMsg.name().c_str(), &fc);
+-                    assert(pluginV2);
+-                    mNewPlugins.push_back(pluginV2);
+-
+-                    std::vector<ITensor*> inputs;
+-                    for (int i = 0, n = layerMsg.bottom_size(); i < n; i++)
+-                    {
+-                        inputs.push_back((*mBlobNameToTensor)[layerMsg.bottom(i)]);
+-                    }
+-
+-                    auto layer = network.addPluginV2(&inputs[0], int(inputs.size()), *pluginV2);
+-                    layer->setName(layerMsg.name().c_str());
+-                    if (pluginV2->getNbOutputs() != layerMsg.top_size())
+-                    {
+-                        std::cout << "Plugin layer output count is not equal to caffe output count" << std::endl;
+-                        ok = false;
+-                    }
+-                    for (int i = 0, n = std::min(layer->getNbOutputs(), layerMsg.top_size()); i < n; i++)
+-                    {
+-                        (*mBlobNameToTensor)[layerMsg.top(i)] = layer->getOutput(i);
+-                    }
+-
+-                    if (layer == nullptr)
+-                    {
+-                        std::cout << "error parsing layer type " << layerMsg.type() << " index " << i << std::endl;
+-                        ok = false;
+-                    }
+-                    continue;
++                    std::cout << "error parsing layer type " << layerMsg.type() << " index " << i << std::endl;
++                    ok = false;
+                 }
+-
++                continue;
++            }
+         }
+ 
+         if (layerMsg.type() == "Dropout")
+@@ -589,7 +605,8 @@ const IBlobNameToTensor* CaffeParser::parse(INetworkDefinition& network,
+                 const trtcaffe::BlobShape& shape = p.shape().Get(i);
+                 if (shape.dim_size() != 4)
+                 {
+-                    RETURN_AND_LOG_ERROR(nullptr, "error parsing input layer, TensorRT only supports 4 dimensional input");
++                    RETURN_AND_LOG_ERROR(
++                        nullptr, "error parsing input layer, TensorRT only supports 4 dimensional input");
+                 }
+                 else
+                 {
+@@ -632,7 +649,8 @@ const IBlobNameToTensor* CaffeParser::parse(INetworkDefinition& network,
+         }
+         else
+         {
+-            ILayer* layer = (*v->second)(network, layerMsg, weights, *static_cast<BlobNameToTensor*>(mBlobNameToTensor));
++            ILayer* layer
++                = (*v->second)(network, layerMsg, weights, *static_cast<BlobNameToTensor*>(mBlobNameToTensor));
+             if (layer == nullptr)
+             {
+                 std::cout << "error parsing layer type " << layerMsg.type() << " index " << i << std::endl;
+diff --git a/plugin/CMakeLists.txt b/plugin/CMakeLists.txt
+index 940392a..fb8eb6b 100644
+--- a/plugin/CMakeLists.txt
++++ b/plugin/CMakeLists.txt
+@@ -54,6 +54,7 @@ set(PLUGIN_LISTS
+     groupNormalizationPlugin
+     coordConvACPlugin
+     leakyReluPlugin
++    axpyPlugin
+     )
+ 
+ # Add BERT sources if ${BERT_GENCODES} was populated
+diff --git a/plugin/axpyPlugin/CMakeLists.txt b/plugin/axpyPlugin/CMakeLists.txt
+new file mode 100644
+index 0000000..77e2ec0
+--- /dev/null
++++ b/plugin/axpyPlugin/CMakeLists.txt
+@@ -0,0 +1,22 @@
++# DeepDetect
++# Copyright (c) 2019-2020 Jolibrain
++# Author:  Guillaume Infantes <guillaume.infantes@jolibrain.com>
++#
++# deepdetect is free software: you can redistribute it and/or modify
++# it under the terms of the GNU Lesser General Public License as published by
++# the Free Software Foundation, either version 3 of the License, or
++# (at your option) any later version.
++#
++# deepdetect is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU Lesser General Public License for more details.
++#
++# You should have received a copy of the GNU Lesser General Public License
++# along with deepdetect.  If not, see <http://www.gnu.org/licenses/>.
++file(GLOB SRCS *.cpp)
++set(PLUGIN_SOURCES ${PLUGIN_SOURCES} ${SRCS})
++set(PLUGIN_SOURCES ${PLUGIN_SOURCES} PARENT_SCOPE)
++file(GLOB CU_SRCS *.cu)
++set(BERT_CU_SOURCES ${BERT_CU_SOURCES} ${CU_SRCS})
++set(BERT_CU_SOURCES ${BERT_CU_SOURCES} PARENT_SCOPE)
+diff --git a/plugin/axpyPlugin/axpyPlugin.cpp b/plugin/axpyPlugin/axpyPlugin.cpp
+new file mode 100644
+index 0000000..b98c309
+--- /dev/null
++++ b/plugin/axpyPlugin/axpyPlugin.cpp
+@@ -0,0 +1,85 @@
++#include "axpyPlugin.h"
++
++using namespace nvinfer1;
++using nvinfer1::plugin::AxpyPlugin;
++using nvinfer1::plugin::AxpyPluginCreator;
++
++namespace
++{
++const char* AXPY_PLUGIN_VERSION{"1"};
++const char* AXPY_PLUGIN_NAME{"AXPY_TRT"};
++} // namespace
++
++PluginFieldCollection AxpyPluginCreator::mFC{};
++std::vector<PluginField> AxpyPluginCreator::mPluginAttributes;
++
++REGISTER_TENSORRT_PLUGIN(AxpyPluginCreator);
++
++Dims AxpyPlugin::getOutputDimensions(int index, const Dims* inputs, int nbInputDims)
++{
++    ASSERT(nbInputDims == 3);
++    ASSERT(index == 0);
++    ASSERT(inputs[0].nbDims == 1);
++    ASSERT(inputs[1].nbDims == 3);
++    ASSERT(inputs[2].nbDims == 3);
++    ASSERT(inputs[0].d[0] == inputs[1].d[0]);
++    ASSERT(inputs[0].d[0] == inputs[2].d[0]);
++    ASSERT(inputs[1].d[1] == inputs[2].d[1]);
++    ASSERT(inputs[1].d[2] == inputs[2].d[2]);
++
++    return DimsCHW(inputs[0].d[0], inputs[1].d[1], inputs[1].d[2]);
++}
++
++int AxpyPlugin::enqueue(int batchSize, const void* const* inputs, void** outputs, void* workspace, cudaStream_t stream)
++{
++    pluginStatus_t status
++        = axpyInference(stream, batchSize, _C, _H, _W, inputs[0], inputs[1], inputs[2], outputs[0], workspace);
++    ASSERT(status == STATUS_SUCCESS);
++    return 0;
++}
++
++void AxpyPlugin::configurePlugin(const PluginTensorDesc* in, int nbInput, const PluginTensorDesc* out, int nbOutput)
++{
++    ASSERT(nbInput == 3);
++    ASSERT(nbOutput == 1);
++    ASSERT(in[0].type == DataType::kFLOAT && in[0].format == TensorFormat::kLINEAR);
++    ASSERT(in[1].type == DataType::kFLOAT && in[1].format == TensorFormat::kLINEAR);
++    ASSERT(in[2].type == DataType::kFLOAT && in[2].format == TensorFormat::kLINEAR);
++    ASSERT(out[0].type == DataType::kFLOAT && out[0].format == TensorFormat::kLINEAR);
++    ASSERT(in[0].dims.nbDims == 1);
++    ASSERT(in[1].dims.nbDims == 3);
++    ASSERT(in[2].dims.nbDims == 3);
++    ASSERT(out[0].dims.nbDims == 3);
++    ASSERT(in[0].dims.d[0] == in[1].dims.d[0]);
++    ASSERT(in[0].dims.d[0] == in[2].dims.d[0]);
++    ASSERT(in[1].dims.d[1] == in[2].dims.d[1]);
++    ASSERT(in[1].dims.d[2] == in[2].dims.d[2]);
++    _C = in[0].dims.d[0];
++    _H = in[1].dims.d[1];
++    _W = in[1].dims.d[2];
++}
++
++const char* AxpyPlugin::getPluginType() const
++{
++    return AXPY_PLUGIN_NAME;
++}
++
++const char* AxpyPlugin::getPluginVersion() const
++{
++    return AXPY_PLUGIN_VERSION;
++}
++
++const char* AxpyPluginCreator::getPluginName() const
++{
++    return AXPY_PLUGIN_NAME;
++}
++
++const char* AxpyPluginCreator::getPluginVersion() const
++{
++    return AXPY_PLUGIN_VERSION;
++}
++
++const PluginFieldCollection* AxpyPluginCreator::getFieldNames()
++{
++    return &mFC;
++}
+diff --git a/plugin/axpyPlugin/axpyPlugin.cu b/plugin/axpyPlugin/axpyPlugin.cu
+new file mode 100644
+index 0000000..8a42fbe
+--- /dev/null
++++ b/plugin/axpyPlugin/axpyPlugin.cu
+@@ -0,0 +1,54 @@
++/**
++ * DeepDetect
++ * Copyright (c) 2019-2020 Jolibrain
++ * Author:  Guillaume Infantes <guillaume.infantes@jolibrain.com>
++ *
++ * deepdetect is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU Lesser General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * deepdetect is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public License
++ * along with deepdetect.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include "plugin.h"
++
++__global__ void axpyKernel(const int n, const int spatial_dim, const float* scale_data, const float* x_data,
++    const float* y_data, float* out_data)
++{
++    // this is exactly CUDA_KERNEL_LOOP(index, n)
++    for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < n; index += gridDim.x * blockDim.x)
++    {
++        out_data[index] = scale_data[index / spatial_dim] * x_data[index] + y_data[index];
++    }
++}
++
++namespace nvinfer1
++{
++namespace plugin
++{
++pluginStatus_t axpyInference(cudaStream_t stream, const int N, const int C, const int H, const int W, const void* ain,
++    const void* xin, const void* yin, void* outputData, void* workspace)
++{
++    const int dim = N * C * H * W;
++    const int spatial_vol = H * W;
++    float* a = (float*) const_cast<void*>(ain);
++    float* x = (float*) const_cast<void*>(xin);
++    float* y = (float*) const_cast<void*>(yin);
++    float* output = (float*) outputData;
++
++    constexpr int blockSize = 512;                    // CAFFE_CUDA_NUM_THREADS
++    int gridSize = (dim + blockSize - 1) / blockSize; // CAFFE_GET_BLOCKS(blockSize)
++
++    // below we also iterate over batch (N) directly, by setting dim to N x datadi (exactly like caffe impl)
++    axpyKernel<<<gridSize, blockSize, 0, stream>>>(dim, spatial_vol, a, x, y, output);
++    return STATUS_SUCCESS;
++}
++} // namespace plugin
++} // namespace nvinfer1
+diff --git a/plugin/axpyPlugin/axpyPlugin.h b/plugin/axpyPlugin/axpyPlugin.h
+new file mode 100644
+index 0000000..e4301fd
+--- /dev/null
++++ b/plugin/axpyPlugin/axpyPlugin.h
+@@ -0,0 +1,189 @@
++/**
++ * DeepDetect
++ * Copyright (c) 2019-2020 Jolibrain
++ * Author:  Guillaume Infantes <guillaume.infantes@jolibrain.com>
++ *
++ * deepdetect is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU Lesser General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * deepdetect is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public License
++ * along with deepdetect.  If not, see <http://www.gnu.org/licenses/>.
++ */
++#ifndef TRT_AXPY_PLUGIN_H
++#define TRT_AXPY_PLUGIN_H
++#include "cudnn.h"
++#include "plugin.h"
++#include <cublas_v2.h>
++#include <string>
++#include <vector>
++
++namespace nvinfer1
++{
++namespace plugin
++{
++// kernel header
++pluginStatus_t axpyInference(cudaStream_t stream, const int N, const int C, const int H, const int W, const void* ain,
++    const void* xin, const void* yin, void* outputData, void* workspace);
++
++class AxpyPlugin : public IPluginV2IOExt
++{
++public:
++    AxpyPlugin() {}
++
++    ~AxpyPlugin() override = default;
++
++    int getNbOutputs() const override
++    {
++        return 1;
++    }
++
++    Dims getOutputDimensions(int index, const Dims* inputs, int nbInputDims) override;
++
++    int initialize() override
++    {
++        return 0;
++    }
++
++    void terminate() override {}
++
++    size_t getWorkspaceSize(int maxBatchSize) const override
++    {
++        return (size_t) 0;
++    }
++
++    int enqueue(
++        int batchSize, const void* const* inputs, void** outputs, void* workspace, cudaStream_t stream) override;
++
++    size_t getSerializationSize() const override
++    {
++        return 0;
++    }
++
++    void serialize(void* buffer) const override
++    {
++        return;
++    }
++
++    bool supportsFormatCombination(int pos, const PluginTensorDesc* inOut, int nbInputs, int nbOutputs) const override
++
++    {
++        return inOut[pos].format == TensorFormat::kLINEAR && (inOut[pos].type == DataType::kFLOAT);
++    }
++
++    const char* getPluginType() const override;
++
++    const char* getPluginVersion() const override;
++
++    void destroy() override
++    {
++        delete this;
++    }
++
++    IPluginV2Ext* clone() const override
++    {
++        // Create a new instance
++        IPluginV2Ext* plugin = new AxpyPlugin();
++
++        // Set the namespace
++        plugin->setPluginNamespace(mNamespace.c_str());
++        return plugin;
++    }
++
++    void setPluginNamespace(const char* pluginNameSpace) override
++    {
++        mNamespace = pluginNameSpace;
++    }
++
++    const char* getPluginNamespace() const override
++    {
++        return mNamespace.c_str();
++    }
++
++    DataType getOutputDataType(int index, const nvinfer1::DataType* inputTypes, int nbInputs) const override
++    {
++        ASSERT(index == 0);
++        return DataType::kFLOAT;
++    }
++
++    bool isOutputBroadcastAcrossBatch(int outputIndex, const bool* inputIsBroadcasted, int nbInputs) const override
++    {
++        return false;
++    }
++
++    bool canBroadcastInputAcrossBatch(int inputIndex) const override
++    {
++        return false;
++    }
++
++    void attachToContext(cudnnContext* cudnnContext, cublasContext* cublasContext, IGpuAllocator* gpuAllocator) override
++    {
++        mCublas = cublasContext;
++    }
++
++    void configurePlugin(const PluginTensorDesc* in, int nbInput, const PluginTensorDesc* out, int nbOutput) override;
++
++    void detachFromContext() override {}
++
++private:
++    cublasHandle_t mCublas;
++
++    int _C{};
++    int _H{};
++    int _W{};
++    std::string mNamespace;
++};
++
++class AxpyPluginCreator : public IPluginCreator
++{
++public:
++    AxpyPluginCreator() {}
++
++    ~AxpyPluginCreator() override = default;
++
++    const char* getPluginName() const override;
++
++    const char* getPluginVersion() const override;
++
++    const PluginFieldCollection* getFieldNames() override;
++
++    IPluginV2Ext* deserializePlugin(const char* name, const void* serialData, size_t serialLength) override
++    {
++        AxpyPlugin* obj = new AxpyPlugin();
++        obj->setPluginNamespace(mPluginNamespace.c_str());
++        return obj;
++    }
++
++    IPluginV2IOExt* createPlugin(const char* name, const PluginFieldCollection* fc) override
++    {
++        AxpyPlugin* obj = new AxpyPlugin();
++        obj->setPluginNamespace(mPluginNamespace.c_str());
++        return obj;
++    }
++
++    void setPluginNamespace(const char* pluginNamespace) override
++    {
++        mPluginNamespace = pluginNamespace;
++    }
++
++    const char* getPluginNamespace() const override
++    {
++        return mPluginNamespace.c_str();
++    }
++
++private:
++    static PluginFieldCollection mFC;
++    static std::vector<PluginField> mPluginAttributes;
++    std::string mPluginNamespace;
++};
++
++} // namespace plugin
++} // namespace nvinfer1
++
++#endif
