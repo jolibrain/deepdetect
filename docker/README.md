@@ -25,18 +25,15 @@ Description : DEEPDETECT_BUILD build argument change cmake arguments in build.sh
 Expected values :
 
 * CPU
-  * caffe-tf
+  * tf
+  * torch
   * default
 * GPU
   * tf
   * tf-cpu
   * caffe-cpu-tf
   * caffe-tf
-  * caffe2 (Only with gpu-xenial.Dockerfile)
-  * p100
-  * volta
-  * volta-faiss
-  * faiss
+  * torch
   * default
 
 #### Prepare build environment

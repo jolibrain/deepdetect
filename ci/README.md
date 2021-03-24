@@ -26,7 +26,7 @@ Build and run all tests.
 
 Everything is done inside a docker image: ci/devel.Dockerfile
 
-The docker container mount the prebuilt directory as copy-on-write volume
+The docker container mounts the prebuilt directory as copy-on-write volume
 
 > Jenkinsfile.unittests
 
@@ -67,11 +67,11 @@ $ ci/release.sh
 If the result is OK, publish the release note on GitHub and push tags:
 
 ```
-$ git push --tags
+$ git push --follow-tags origin master
 ```
 
-The script `ci/release.sh` updates CHANGELOG.md, commit it, create a tag, and
-create the GitHub release.
+The script `ci/release.sh` updates CHANGELOG.md, commits it, creates a tag, and
+creates the GitHub release.
 
 ## Docker images
 
@@ -79,15 +79,16 @@ On Jenkins in `deepdetect-docker-build` job, `Tags` tab, ran the released versio
 
 ## The platform
 
-When the docker images have been released, dd_platform_docker can be released:
+When the docker images have been released, `platform_ui` and `dd_platform_docker` can be released:
 
-```
+```bash
+$ git fetch --tags
 $ git checkout master
 $ git reset --hard origin/master
-$ git fetch --tags
+$ yarn
 $ ci/release.sh
+$ git push --follow-tags origin master
 ```
-
 
 # Building DeepDetect like the Jenkins  does:
 

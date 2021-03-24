@@ -2219,7 +2219,7 @@ TEST(caffeapi, service_train_csvts_lstm)
         + ",\"timesteps\":20,\"solver\":{\"iterations\":" + iterations_lstm
         + ",\"test_interval\":500,\"base_lr\":0.001,\"snapshot\":500,\"test_"
           "initialization\":false},\"net\":{\"batch_size\":100}},\"output\":{"
-          "\"measure\":[\"L1\",\"L2\"]}},\"data\":[\""
+          "\"measure\":[\"L1_all\",\"L2_all\"]}},\"data\":[\""
         + csvts_data + "\",\"" + csvts_test + "\"]}";
   std::cerr << "jtrainstr=" << jtrainstr << std::endl;
   joutstr = japi.jrender(japi.service_train(jtrainstr));

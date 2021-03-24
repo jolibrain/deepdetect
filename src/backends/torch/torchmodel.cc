@@ -21,6 +21,8 @@
 
 #include "torchmodel.h"
 
+#include "utils/utils.hpp"
+
 namespace dd
 {
   int TorchModel::read_from_repository(
@@ -110,5 +112,110 @@ namespace dd
     _native = nativef;
 
     return 0;
+  }
+
+  int TorchModel::copy_to_target(const std::string &source_repo,
+                                 const std::string &target_repo,
+                                 const std::shared_ptr<spdlog::logger> &logger)
+  {
+    if (target_repo.empty())
+      {
+        logger->warn("empty string given as target repository, bypassing");
+        return 0;
+      }
+
+    if (!fileops::create_dir(target_repo,
+                             0755)) // create target repo as needed
+      logger->info("created target repository {}", target_repo);
+
+    std::string bfile = source_repo + this->_best_model_filename;
+    if (fileops::file_exists(bfile))
+      {
+        std::ifstream inp(bfile);
+        if (!inp.is_open())
+          return 1;
+        std::string line;
+        std::string best_checkpoint;
+        while (std::getline(inp, line))
+          {
+            std::vector<std::string> elts = dd_utils::split(line, ':');
+            if (elts.at(0).find("iteration") != std::string::npos)
+              {
+                best_checkpoint = "/checkpoint-" + elts.at(1);
+                break;
+              }
+          }
+        if (best_checkpoint.empty())
+          {
+            logger->error(
+                "best model file does not contains key \"iteration\": {}",
+                bfile);
+            return 1;
+          }
+
+        // Copy checkpoint
+        bool checkpoint_copied = false;
+        if (!fileops::copy_file(source_repo + best_checkpoint + ".pt",
+                                target_repo + best_checkpoint + ".pt"))
+          {
+            logger->info("sucessfully copied best model file {}.pt",
+                         source_repo + best_checkpoint);
+            checkpoint_copied = true;
+          }
+        if (!fileops::copy_file(source_repo + best_checkpoint + ".npt",
+                                target_repo + best_checkpoint + ".npt"))
+          {
+            logger->info("sucessfully copied best model file {}.npt",
+                         source_repo + best_checkpoint);
+            checkpoint_copied = true;
+          }
+        if (!fileops::copy_file(source_repo + best_checkpoint + ".ptw",
+                                target_repo + best_checkpoint + ".ptw"))
+          {
+            logger->info("sucessfully copied best model file {}.ptw",
+                         source_repo + best_checkpoint);
+            checkpoint_copied = true;
+          }
+
+        if (!checkpoint_copied)
+          {
+            logger->error("failed copying best model {} to {} (extensions: "
+                          ".pt, .npt, .ptw)",
+                          source_repo + best_checkpoint,
+                          target_repo + best_checkpoint);
+            return 1;
+          }
+
+        // copy other files
+        std::unordered_set<std::string> lfiles;
+        fileops::list_directory(source_repo, true, false, false, lfiles);
+        auto hit = lfiles.begin();
+        while (hit != lfiles.end())
+          {
+            if ((*hit).find("prototxt") != std::string::npos
+                || (*hit).find(".json") != std::string::npos
+                || (*hit).find(".txt") != std::string::npos
+                || (*hit).find("bounds.dat") != std::string::npos
+                || (*hit).find("vocab.dat") != std::string::npos)
+              {
+                std::vector<std::string> selts = dd_utils::split((*hit), '/');
+                fileops::copy_file((*hit), target_repo + '/' + selts.back());
+                if (selts.back().find(".json") != std::string::npos)
+                  fileops::replace_string_in_file(target_repo + '/'
+                                                      + selts.back(),
+                                                  "db\":true", "db\":false");
+              }
+            ++hit;
+          }
+
+        logger->info("successfully copied best model files from {} to {}",
+                     source_repo, target_repo);
+        return 0;
+      }
+    // else if best model file does not exist
+    logger->error(
+        "failed finding best model to copy from {} to target repository {}",
+        source_repo, target_repo);
+    return 1;
   }
 }
