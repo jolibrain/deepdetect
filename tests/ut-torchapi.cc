@@ -449,6 +449,113 @@ TEST(torchapi, service_train_images)
   fileops::remove_dir(resnet50_train_repo + "test_0.lmdb");
 }
 
+TEST(torchapi, service_publish_trained_model)
+{
+  setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
+  torch::manual_seed(torch_seed);
+  at::globalContext().setDeterministicCuDNN(true);
+
+  // Create service
+  JsonAPI japi;
+  std::string sname = "imgserv";
+  std::string jstr
+      = "{\"mllib\":\"torch\",\"description\":\"image\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+        + resnet50_train_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\","
+          "\"width\":256,\"height\":256,\"db\":true},\"mllib\":{\"nclasses\":"
+          "2,\"finetuning\":true,\"gpu\":true}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // Train for 1 iteration
+  std::string jtrainstr
+      = "{\"service\":\"imgserv\",\"async\":false,\"parameters\":{"
+        "\"mllib\":{\"solver\":{\"iterations\":1,\"base_lr\":"
+        + torch_lr
+        + ",\"iter_size\":4,\"solver_type\":\"ADAM\",\"test_"
+          "interval\":1},\"net\":{\"batch_size\":4},"
+          "\"resume\":false,\"mirror\":true,\"rotate\":true,\"crop_size\":224,"
+          "\"cutout\":0.5},\"input\":{\"seed\":12345,\"db\":true,\"shuffle\":"
+          "true},\"output\":{\"measure\":[\"f1\",\"acc\"]}},\"data\":[\""
+        + resnet50_train_data + "\",\"" + resnet50_test_data + "\"]}";
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
+  JDoc jd;
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(201, jd["status"]["code"]);
+
+  // Delete service
+  japi.service_delete(sname, "");
+
+  // Publish service somewhere
+  std::string published_repo = "published_resnet50";
+  jstr = "{\"mllib\":\"torch\",\"description\":\"image\",\"type\":"
+         "\"supervised\",\"model\":{\"repository\":\""
+         + published_repo
+         + "\",\"create_repository\":true},\"parameters\":{\"input\":{"
+           "\"connector\":\"image\","
+           "\"width\":256,\"height\":256,\"db\":true},\"mllib\":{\"nclasses\":"
+           "2,\"gpu\":true,\"from_repository\":\""
+         + resnet50_train_repo + "\"}}}";
+  joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  ASSERT_TRUE(fileops::file_exists(published_repo + "/checkpoint-1.ptw"));
+  ASSERT_TRUE(fileops::file_exists(published_repo + "/checkpoint-1.pt"));
+  ASSERT_TRUE(fileops::file_exists(published_repo + "/best_model.txt"));
+  ASSERT_TRUE(fileops::file_exists(published_repo + "/model.json"));
+  ASSERT_FALSE(fileops::file_exists(published_repo + "/resnet50.pt"));
+
+  // Clean up train repo
+  std::unordered_set<std::string> lfiles;
+  fileops::list_directory(resnet50_train_repo, true, false, false, lfiles);
+  for (std::string ff : lfiles)
+    {
+      if (ff.find("checkpoint") != std::string::npos
+          || ff.find("solver") != std::string::npos
+          || ff.find("best_model") != std::string::npos)
+        remove(ff.c_str());
+    }
+  ASSERT_TRUE(!fileops::file_exists(resnet50_train_repo + "checkpoint-1.ptw"));
+  ASSERT_TRUE(!fileops::file_exists(resnet50_train_repo + "checkpoint-1.pt"));
+
+  fileops::clear_directory(resnet50_train_repo + "train.lmdb");
+  fileops::clear_directory(resnet50_train_repo + "test_0.lmdb");
+  fileops::remove_dir(resnet50_train_repo + "train.lmdb");
+  fileops::remove_dir(resnet50_train_repo + "test_0.lmdb");
+
+  // Clean up published repo
+  fileops::clear_directory(published_repo);
+  fileops::remove_dir(published_repo);
+}
+
+TEST(torchapi, service_create_multiple_models_fails)
+{
+  // check that creating native model in a repo with a torchscript raise an
+  // exception
+  JsonAPI japi;
+  std::string sname = "imgserv";
+  std::string jstr
+      = "{\"mllib\":\"torch\",\"description\":\"image\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+        + resnet50_train_repo
+        + "\"},\"parameters\":{\"input\":{"
+          "\"connector\":\"image\",\"width\":224,\"height\":224,\"db\":true},"
+          "\"mllib\":{\"nclasses\":2,\"gpu\":true,\"template\":\"resnet50\"}}"
+          "}";
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  JDoc jd;
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_EQ(jd["status"]["code"], 500);
+  ASSERT_TRUE(std::string(jd["status"]["dd_msg"].GetString())
+                  .find("Only one of these must be provided: traced net, "
+                        "protofile or native template")
+              != std::string::npos);
+}
+
 TEST(torchapi, service_train_images_sam)
 {
   setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
@@ -930,7 +1037,7 @@ TEST(torchapi, service_train_images_native)
   jstr = "{\"clear\":\"full\"}";
   joutstr = japi.jrender(japi.service_delete(sname, jstr));
   ASSERT_EQ(ok_str, joutstr);
-  rmdir(native_resnet_repo.c_str());
+  fileops::remove_dir(native_resnet_repo);
 }
 
 TEST(torchapi, service_train_txt_lm)
