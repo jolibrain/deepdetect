@@ -333,6 +333,7 @@ TEST(torchapi, load_weights_native_model)
   mlmodel._native = resnet50_native_weights;
 
   // I don't have the weights to finetune, need to make a new archive
+  module._finetuning = true;
   module.load(mlmodel);
   auto jit_weights = torch::jit::load(resnet50_native_weights);
 
@@ -352,7 +353,7 @@ TEST(torchapi, load_weights_native_model)
   ASSERT_TRUE(param_found) << "Parameter not found in "
                                   + resnet50_native_weights;
 
-  // <!> segfault if test_param_name is not in named_parameters
+  // <!> this line segfaults if test_param_name is not in named_parameters
   torch::Tensor tested_value
       = *module._native->named_parameters().find(test_param_name);
 
@@ -367,6 +368,7 @@ TEST(torchapi, load_weights_native_model)
   // Check if we can reload a checkpoint from native module without any
   // problem.
 
+  module._finetuning = false;
   test_param_name = "wrapped.fc.bias";
   // <!> segfault if test_param_name is not in named_parameters
   tested_value = *module._native->named_parameters().find(test_param_name);

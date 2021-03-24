@@ -97,13 +97,25 @@ namespace dd
 
     std::vector<c10::IValue> unwrap_c10_vector(const c10::IValue &output);
 
+    /** Copy weights from a torchscript module to a native module.
+     * \param strict if false, some weights are allowed to mismatch, or be
+     * missing in either copy source or copy destination. If true, an exception
+     * will be thrown.
+     */
     void copy_weights(const torch::jit::script::Module &from,
                       torch::nn::Module &to, const torch::Device &device,
-                      std::shared_ptr<spdlog::logger> logger = nullptr);
+                      std::shared_ptr<spdlog::logger> logger = nullptr,
+                      bool strict = false);
 
+    /** Load weights from a model file to a native module.
+     * \param strict if false, some weights are allowed to mismatch, or be
+     * missing in either copy source or copy destination. If true, an exception
+     * will be thrown.
+     */
     void load_weights(torch::nn::Module &module, const std::string &filename,
                       const torch::Device &device,
-                      std::shared_ptr<spdlog::logger> logger = nullptr);
+                      std::shared_ptr<spdlog::logger> logger = nullptr,
+                      bool strict = false);
   }
 }
 #endif
