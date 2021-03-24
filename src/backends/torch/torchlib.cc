@@ -304,6 +304,7 @@ namespace dd
     // Create the model
     _module._device = _main_device;
     _module._logger = this->_logger;
+    _module._finetuning = _finetuning;
 
     if (_template == "recurrent")
       {

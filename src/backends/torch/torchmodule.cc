@@ -124,8 +124,9 @@ namespace dd
         _logger->info("loading " + tmodel._native);
         try
           {
+            // finetuning relaxes strictness when loading weights
             torch_utils::load_weights(*_native, tmodel._native, _device,
-                                      _logger);
+                                      _logger, !_finetuning);
           }
         catch (std::exception &e)
           {

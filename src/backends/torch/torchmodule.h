@@ -204,6 +204,7 @@ namespace dd
         _linear_layer_file;     /** < if require_linear_layer == true, this is
                                     the file where the weights are stored */
     unsigned int _nclasses = 0; /**< number of classes */
+    bool _finetuning = false;
 
     std::shared_ptr<spdlog::logger> _logger; /**< mllib logger. */
 
