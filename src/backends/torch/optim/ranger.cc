@@ -52,7 +52,8 @@ namespace dd
            && (lhs.lookahead() == rhs.lookahead())
            && (lhs.adabelief() == rhs.adabelief())
            && (lhs.gradient_centralization() == rhs.gradient_centralization())
-           && (lhs.lsteps() == rhs.lsteps()) && (lhs.lalpha() == rhs.lalpha());
+           && (lhs.lsteps() == rhs.lsteps()) && (lhs.lalpha() == rhs.lalpha())
+           && (lhs.swa() == rhs.swa());
   }
 
   void RangerOptions::serialize(torch::serialize::OutputArchive &archive) const
@@ -68,6 +69,7 @@ namespace dd
     _TORCH_OPTIM_SERIALIZE_TORCH_ARG(gradient_centralization);
     _TORCH_OPTIM_SERIALIZE_TORCH_ARG(lsteps);
     _TORCH_OPTIM_SERIALIZE_TORCH_ARG(lalpha);
+    _TORCH_OPTIM_SERIALIZE_TORCH_ARG(swa);
   }
 
   void RangerOptions::serialize(torch::serialize::InputArchive &archive)
@@ -83,6 +85,7 @@ namespace dd
     _TORCH_OPTIM_DESERIALIZE_TORCH_ARG(bool, gradient_centralization);
     _TORCH_OPTIM_DESERIALIZE_TORCH_ARG(int, lsteps);
     _TORCH_OPTIM_DESERIALIZE_TORCH_ARG(double, lalpha);
+    _TORCH_OPTIM_DESERIALIZE_TORCH_ARG(bool, swa);
   }
 
   bool operator==(const RangerParamState &lhs, const RangerParamState &rhs)
@@ -90,7 +93,8 @@ namespace dd
     return ((lhs.step() == rhs.step())
             && torch::equal(lhs.exp_avg(), rhs.exp_avg())
             && torch::equal(lhs.exp_avg_sq(), rhs.exp_avg_sq())
-            && torch::equal(lhs.slow_buffer(), rhs.slow_buffer()));
+            && torch::equal(lhs.slow_buffer(), rhs.slow_buffer())
+            && torch::equal(lhs.swa_buffer(), rhs.swa_buffer()));
   }
 
   void
@@ -100,6 +104,7 @@ namespace dd
     _TORCH_OPTIM_SERIALIZE_TORCH_ARG(exp_avg);
     _TORCH_OPTIM_SERIALIZE_TORCH_ARG(exp_avg_sq);
     _TORCH_OPTIM_SERIALIZE_TORCH_ARG(slow_buffer);
+    _TORCH_OPTIM_SERIALIZE_TORCH_ARG(swa_buffer);
   }
 
   void RangerParamState::serialize(torch::serialize::InputArchive &archive)
@@ -108,12 +113,14 @@ namespace dd
     _TORCH_OPTIM_DESERIALIZE_TORCH_ARG(torch::Tensor, exp_avg);
     _TORCH_OPTIM_DESERIALIZE_TORCH_ARG(torch::Tensor, exp_avg_sq);
     _TORCH_OPTIM_DESERIALIZE_TORCH_ARG(torch::Tensor, slow_buffer);
+    _TORCH_OPTIM_DESERIALIZE_TORCH_ARG(torch::Tensor, swa_buffer);
   }
 
   torch::Tensor Ranger::step(LossClosure closure)
   {
     torch::NoGradGuard no_grad;
     torch::Tensor loss = {};
+
     if (closure != nullptr)
       {
         at::AutoGradMode enable_grad(true);
@@ -151,6 +158,9 @@ namespace dd
                 state->slow_buffer().copy_(p.data());
                 state_[c10::guts::to_string(p.unsafeGetTensorImpl())]
                     = std::move(state);
+                if (options.swa())
+                  state->swa_buffer(torch::zeros_like(
+                      p.data(), torch::MemoryFormat::Preserve));
               }
 
             auto &state = static_cast<RangerParamState &>(
@@ -227,9 +237,38 @@ namespace dd
                 slow_p.add_(p.data() - slow_p, options.lalpha());
                 p.data().copy_(slow_p);
               }
+
+            if (options.swa())
+              {
+                auto &swa_buf = state.swa_buffer();
+                double swa_decay = 1.0 / (state.step() + 1);
+                torch::Tensor diff = (p.data() - swa_buf) * swa_decay;
+                swa_buf.add_(diff);
+              }
           }
       }
     return loss;
+  }
+
+  void Ranger::swap_swa_sgd()
+  {
+    for (auto &group : param_groups_)
+      {
+        auto &options = static_cast<RangerOptions &>(group.options());
+        if (!options.swa())
+          continue;
+        for (auto &p : group.params())
+          {
+            auto &state = static_cast<RangerParamState &>(
+                *state_[c10::guts::to_string(p.unsafeGetTensorImpl())]);
+            auto &swa_buf = state.swa_buffer();
+
+            auto tmp = torch::empty_like(p.data());
+            tmp.copy_(p.data());
+            p.data().copy_(swa_buf);
+            swa_buf.copy_(tmp);
+          }
+      }
   }
 
   void Ranger::save(torch::serialize::OutputArchive &archive) const

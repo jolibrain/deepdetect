@@ -773,6 +773,7 @@ adabelief     | bool   | yes      | false for RANGER, true for RANGER_PLUS   | f
 gradient_centralization | bool | yes | false for RANGER, true for RANGER_PLUS| for RANGER* : enable/disable gradient centralization
 sam           | bool   | yes      | false   | Sharpness Aware Minimization (https://arxiv.org/abs/2010.01412)
 sam_rho       | real   | yes      | 0.05    | neighborhood size for SAM (see above)
+swa           | bool   | yes      | false   | SWA https://arxiv.org/abs/1803.05407 , implemented  only for  RANGER / RANGER_PLUS solver types.
 test_interval | int    | yes      | N/A     | Number of iterations between testing phases
 base_lr       | real   | yes      | N/A     | Initial learning rate
 iter_size     | int    | yes      | 1       | Number of passes (iter_size * batch_size) at every iteration

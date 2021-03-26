@@ -30,6 +30,7 @@
 #include "apidata.h"
 #include "torchmodule.h"
 #include "torchloss.h"
+#include "optim/ranger.h"
 
 #define DEFAULT_CLIP_VALUE 5.0
 #define DEFAULT_CLIP_NORM 100.0
@@ -105,6 +106,16 @@ namespace dd
       return _base_lr;
     }
 
+    void eval()
+    {
+      swap_swa_sgd();
+    }
+
+    void train()
+    {
+      swap_swa_sgd();
+    }
+
   protected:
     /**
      * \brief allocates solver for real
@@ -114,6 +125,12 @@ namespace dd
     void override_options();
     void sam_first_step();
     void sam_second_step();
+
+    void swap_swa_sgd()
+    {
+      if (_swa)
+        (reinterpret_cast<Ranger *>(_optimizer.get()))->swap_swa_sgd();
+    }
 
     std::vector<torch::Tensor> _sam_ew;
 
@@ -140,6 +157,8 @@ namespace dd
                                    NOT YET IMPLEMENTED */
     bool _sam = false;
     double _sam_rho = DEFAULT_SAM_RHO;
+
+    bool _swa = false; /**< stochastic weights averaging 1803.05407 */
 
     TorchModule &_module;
     TorchLoss &_tloss;

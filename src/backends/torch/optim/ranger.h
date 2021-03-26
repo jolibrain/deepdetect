@@ -19,6 +19,9 @@
  * along with deepdetect.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef RANGER_H
+#define RANGER_H
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <torch/arg.h>
@@ -57,6 +60,7 @@ namespace dd
     TORCH_ARG(bool, gradient_centralization) = false;
     TORCH_ARG(int, lsteps) = 6;
     TORCH_ARG(double, lalpha) = 0.5;
+    TORCH_ARG(bool, swa) = false;
 
   public:
     void serialize(torch::serialize::InputArchive &archive) override;
@@ -73,6 +77,7 @@ namespace dd
     TORCH_ARG(torch::Tensor, exp_avg);
     TORCH_ARG(torch::Tensor, exp_avg_sq);
     TORCH_ARG(torch::Tensor, slow_buffer);
+    TORCH_ARG(torch::Tensor, swa_buffer);
 
   public:
     void serialize(torch::serialize::InputArchive &archive) override;
@@ -118,11 +123,16 @@ namespace dd
     void save(torch::serialize::OutputArchive &archive) const override;
     void load(torch::serialize::InputArchive &archive) override;
 
+    void swap_swa_sgd();
+
   private:
     template <typename Self, typename Archive>
     static void serialize(Self &self, Archive &archive)
     {
       _TORCH_OPTIM_SERIALIZE_WITH_TEMPLATE_ARG(Ranger);
     }
+    bool swa_in_params = false;
   };
 } // namespace dd
+
+#endif
