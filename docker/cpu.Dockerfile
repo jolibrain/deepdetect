@@ -70,7 +70,6 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     python-yaml \
     python-typing \
     swig \
-    curl \
     unzip \
     python-setuptools \
     python-dev \
@@ -83,7 +82,9 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     libgoogle-perftools-dev \
     curl \
     libarchive-dev \
-    bash-completion
+    bash-completion \
+    libomp-10-dev \
+    libomp5-10
 
 RUN for url in \
         https://github.com/bazelbuild/bazel/releases/download/0.24.1/bazel_0.24.1-linux-x86_64.deb \
@@ -124,26 +125,28 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     apt-get update -y && apt-get install -y \
     wget \
     curl \
-	libopenblas-base \
-	liblmdb0 \
-	libleveldb1d \
+    libopenblas-base \
+    liblmdb0 \
+    libleveldb1d \
     libboost-regex1.71.0 \
-	libgoogle-glog0v5 \
+    libgoogle-glog0v5 \
     libopencv4.2 \
-	libgflags2.2 \
-	libcurl4 \
-	libcurlpp0 \
-	libhdf5-cpp-103 \
+    libgflags2.2 \
+    libcurl4 \
+    libcurlpp0 \
+    libhdf5-cpp-103 \
     libboost-atomic1.71.0 \
     libboost-chrono1.71.0 \
     libboost-date-time1.71.0 \
-	libboost-filesystem1.71.0 \
-	libboost-thread1.71.0 \
-	libboost-iostreams1.71.0 \
+    libboost-filesystem1.71.0 \
+    libboost-thread1.71.0 \
+    libboost-iostreams1.71.0 \
     libboost-regex1.71.0 \
     libboost-stacktrace1.71.0 \
     libboost-system1.71.0 \
-	libarchive13
+    libarchive13 \
+    libomp-10-dev \
+    libomp5-10
 
 # Fix permissions
 RUN ln -sf /dev/stdout /var/log/deepdetect.log && \

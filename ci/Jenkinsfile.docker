@@ -25,6 +25,11 @@ pipeline {
         sh 'ci/build-docker-images.sh cpu'
       }
     }}
+    stage('Build docker cpu_torch image') { steps {
+      catchError(buildResult: 'FAILURE', stageResult: 'FAILURE', catchInterruptions: false) {
+        sh 'ci/build-docker-images.sh cpu_torch'
+      }
+    }}
     stage('Build docker gpu image') { steps {
       catchError(buildResult: 'FAILURE', stageResult: 'FAILURE', catchInterruptions: false) {
         sh 'ci/build-docker-images.sh gpu'

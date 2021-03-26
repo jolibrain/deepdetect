@@ -4,7 +4,7 @@ set -e
 
 # Deepdetect architecture and build profiles
 deepdetect_arch=(cpu gpu)
-deepdetect_cpu_build_profiles=(default tf armv7)
+deepdetect_cpu_build_profiles=(default torch tf armv7)
 deepdetect_gpu_build_profiles=(default torch tf caffe2 tensorrt)
 
 # NOTE(sileht): list of all supported card by CUDA 10.2
@@ -124,6 +124,11 @@ cpu_build() {
 
     case ${DEEPDETECT_BUILD} in
 
+    "torch")
+  	cmake .. -DUSE_TORCH=ON -DUSE_CPU_ONLY=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_NCNN=ON -DRELEASE=${DEEPDETECT_RELEASE}
+        make -j6
+        ;;
+	
     "tf")
         cmake .. -DUSE_TF=ON -DUSE_TF_CPU_ONLY=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_NCNN=OFF -DUSE_CPU_ONLY=ON -DRELEASE=${DEEPDETECT_RELEASE}
         make -j6

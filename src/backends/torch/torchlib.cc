@@ -152,6 +152,13 @@ namespace dd
     int embedding_size = 768;
     std::string self_supervised = "";
 
+    if (lib_ad.has("from_repository"))
+      {
+        this->_mlmodel.copy_to_target(
+            lib_ad.get("from_repository").get<std::string>(),
+            this->_mlmodel._repo, this->_logger);
+        this->_mlmodel.read_from_repository(this->_logger);
+      }
     if (lib_ad.has("template"))
       _template = lib_ad.get("template").get<std::string>();
     if (lib_ad.has("gpu"))
@@ -296,13 +303,27 @@ namespace dd
         this->_mlmodel._proto = dest_net;
       }
 
-    bool unsupported_model_configuration
-        = this->_mlmodel._traced.empty() && this->_mlmodel._proto.empty()
-          && !NativeFactory::valid_template_def(_template);
+    bool model_not_found = this->_mlmodel._traced.empty()
+                           && this->_mlmodel._proto.empty()
+                           && !NativeFactory::valid_template_def(_template);
 
-    if (unsupported_model_configuration)
+    if (model_not_found)
       throw MLLibInternalException("Use of libtorch backend needs either: "
                                    "traced net, protofile or native template");
+
+    bool multiple_models_found
+        = ((!this->_mlmodel._traced.empty()) + (!this->_mlmodel._proto.empty())
+           + NativeFactory::valid_template_def(_template))
+          > 1;
+    if (multiple_models_found)
+      {
+        this->_logger->error("traced: {}, proto: {}, template: {}",
+                             this->_mlmodel._traced, this->_mlmodel._proto,
+                             _template);
+        throw MLLibInternalException(
+            "Only one of these must be provided: traced net, protofile or "
+            "native template");
+      }
 
     // FIXME(louis): out of if(bert) because we allow not to specify template
     // at predict. Should we change this?
@@ -896,7 +917,24 @@ namespace dd
 
     if (!this->_tjob_running.load())
       {
-        this->_logger->info("Training job interrupted at iteration {}", it);
+        int64_t elapsed_it = it + 1;
+        this->_logger->info("Training job interrupted at iteration {}",
+                            elapsed_it);
+        bool snapshotted = false;
+        for (size_t i = 0; i < best_iteration_numbers.size(); ++i)
+          {
+
+            if (best_iteration_numbers[i] == elapsed_it)
+              // current model already snapshoted as best model,
+              // do not remove regular snapshot if it is  best
+              // model
+              {
+                best_iteration_numbers[i] = -1;
+                snapshotted = true;
+              }
+          }
+        if (!snapshotted)
+          snapshot(elapsed_it, tsolver);
         torch_utils::empty_cuda_cache();
         return -1;
       }

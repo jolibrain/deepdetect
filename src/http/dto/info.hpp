@@ -50,7 +50,7 @@ class InfoHead : public oatpp::DTO
   DTO_FIELD(String, version) = GIT_VERSION;
   DTO_FIELD(String, branch) = GIT_BRANCH;
   DTO_FIELD(String, commit) = GIT_COMMIT_HASH;
-  DTO_FIELD(String, compile_flags) = COMPLIE_FLAGS;
+  DTO_FIELD(String, compile_flags) = COMPILE_FLAGS;
   DTO_FIELD(String, deps_version) = DEPS_VERSION;
   DTO_FIELD(List<Object<Service>>, services);
 };
