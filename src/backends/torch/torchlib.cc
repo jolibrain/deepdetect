@@ -966,6 +966,7 @@ namespace dd
 
     bool bbox = _bbox;
     double confidence_threshold = 0.0;
+    int best_count = _nclasses;
 
     if (params.has("mllib"))
       {
@@ -1004,12 +1005,15 @@ namespace dd
                 output_params.get("confidence_threshold").get<int>());
           }
       }
+    if (output_params.has("best"))
+      best_count = output_params.get("best").get<int>();
 
     bool lstm_continuation = false;
     TInputConnectorStrategy inputc(this->_inputc);
 
     this->_stats.transform_start();
     TOutputConnectorStrategy outputc(this->_outputc);
+    outputc._best = best_count;
     try
       {
         inputc.transform(ad);
@@ -1238,9 +1242,6 @@ namespace dd
               }
             else if (_classification)
               {
-                int best_count = _nclasses;
-                if (output_params.has("best"))
-                  best_count = output_params.get("best").get<int>();
                 std::tuple<Tensor, Tensor> sorted_output
                     = output.sort(1, true);
                 Tensor probsf = std::get<0>(sorted_output).to(torch::kFloat);
@@ -1256,6 +1257,12 @@ namespace dd
 
                     for (int j = 0; j < best_count; ++j)
                       {
+                        if (probs_acc[i][j] < confidence_threshold)
+                          {
+                            // break because probs are sorted
+                            break;
+                          }
+
                         probs.push_back(probs_acc[i][j]);
                         int index = indices_acc[i][j];
                         if (_seq_training)
@@ -1353,7 +1360,7 @@ namespace dd
       {
         UnsupervisedOutput unsupo;
         unsupo.add_results(results_ads);
-        unsupo.finalize(ad.getobj("parameters").getobj("output"), out,
+        unsupo.finalize(output_params, out,
                         static_cast<MLModel *>(&this->_mlmodel));
       }
     out.add("status", 0);

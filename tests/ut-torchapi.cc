@@ -93,7 +93,8 @@ TEST(torchapi, service_predict)
         "\"supervised\",\"model\":{\"repository\":\""
         + incept_repo
         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
-          "224,\"width\":224,\"rgb\":true,\"scale\":0.0039}}}";
+          "224,\"width\":224,\"rgb\":true,\"scale\":0.0039},\"mllib\":{"
+          "\"nclasses\":1000}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
   ASSERT_EQ(created_str, joutstr);
 
@@ -109,11 +110,28 @@ TEST(torchapi, service_predict)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+  ASSERT_EQ(jd["body"]["predictions"][0]["classes"].Size(), 1);
   std::string cl1
       = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
   ASSERT_TRUE(cl1 == "n02123045 tabby, tabby cat");
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
               > 0.3);
+
+  // confidence threshold
+  jpredictstr
+      = "{\"service\":\"imgserv\",\"parameters\":{\"input\":{\"height\":224,"
+        "\"width\":224},\"output\":{\"confidence_threshold\":0.01}},\"data\":"
+        "[\""
+        + incept_repo + "cat.jpg\"]}";
+
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  jd = JDoc();
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+  ASSERT_EQ(jd["body"]["predictions"][0]["classes"].Size(), 8);
 }
 
 TEST(torchapi, service_predict_object_detection)
