@@ -48,6 +48,7 @@ namespace dd
 
   void TorchModule::to(torch::Dtype dtype)
   {
+    _dtype = dtype;
     if (_graph)
       _graph->to(dtype);
     if (_native)
@@ -61,6 +62,7 @@ namespace dd
   void TorchModule::to(torch::Device device, torch::Dtype dtype)
   {
     _device = device;
+    _dtype = dtype;
     if (_graph)
       _graph->to(device, dtype);
     if (_native)

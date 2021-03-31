@@ -79,6 +79,7 @@ namespace dd
     _bbox = tl._bbox;
     _loss = tl._loss;
     _template_params = tl._template_params;
+    _dtype = tl._dtype;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
@@ -201,6 +202,27 @@ namespace dd
         _template_params = lib_ad.getobj("template_params");
         if (lib_ad.has("nclasses"))
           _template_params.add("nclasses", lib_ad.get("nclasses").get<int>());
+      }
+    if (lib_ad.has("datatype"))
+      {
+        std::string dt = lib_ad.get("datatype").get<std::string>();
+        if (dt == "fp32")
+          {
+            _dtype = torch::kFloat32;
+            this->_logger->info("will predict in FP32");
+          }
+        else if (dt == "fp16")
+          {
+            _dtype = torch::kFloat16;
+            this->_logger->info("will predict in FP16");
+          }
+        else if (dt == "fp64")
+          {
+            _dtype = torch::kFloat64;
+            this->_logger->info("will predict in FP64");
+          }
+        else
+          throw MLLibBadParamException("unknown datatype " + dt);
       }
 
     // Find GPU id
@@ -985,6 +1007,24 @@ namespace dd
           }
         if (ad_mllib.has("forward_method"))
           forward_method = ad_mllib.get("forward_method").get<std::string>();
+
+        if (ad_mllib.has("datatype"))
+          {
+            std::string dt = ad_mllib.get("datatype").get<std::string>();
+            if (dt == "fp32")
+              _dtype = torch::kFloat32;
+            else if (dt == "fp16")
+              {
+                if (_main_device == torch::Device("cpu"))
+                  throw MLLibBadParamException(
+                      "fp16 inference can be done only on GPU");
+                _dtype = torch::kFloat16;
+              }
+            else if (dt == "fp64")
+              _dtype = torch::kFloat64;
+            else
+              throw MLLibBadParamException("unknown datatype " + dt);
+          }
       }
 
     if (output_params.has("bbox") && output_params.get("bbox").get<bool>())
@@ -1033,7 +1073,7 @@ namespace dd
         throw;
       }
     this->_stats.transform_end();
-
+    _module.to(_dtype);
     torch::Device cpu("cpu");
     _module.eval();
 
@@ -1077,6 +1117,8 @@ namespace dd
         std::vector<c10::IValue> in_vals;
         for (Tensor tensor : batch.data)
           {
+            if (tensor.scalar_type() == torch::kFloat32)
+              tensor = tensor.to(_dtype);
             in_vals.push_back(tensor.to(_main_device));
           }
         this->_stats.inc_inference_count(batch.data[0].size(0));
