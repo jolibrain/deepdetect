@@ -754,6 +754,7 @@ timesteps     | int            | yes      | N/A            | Number of timesteps
 offset        | int            | yes      | N/A            | Offset beween start point of sequences with connector `cvsts`, defining the overlap of input series
 forecast_timesteps      | int            | yes      | N/A       | for nbeats model, this gives the length of the forecast
 backcast_timesteps      | int            | yes      | N/A       | for nbeats model, this gives the length of the backcast
+datatype      | string | yes       | fp32 | Datatype used at prediction time, possible values are "fp16" (only if inference is done on GPU) , "fp32" and "fp64" (double)
 
 Solver:
 

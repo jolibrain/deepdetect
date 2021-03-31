@@ -195,6 +195,7 @@ namespace dd
     torch::nn::Linear _linear = nullptr;
 
     torch::Device _device;
+    torch::Dtype _dtype;
     int _linear_in = 0; /**<id of the input of the final linear layer */
     bool _hidden_states = false; /**< Take BERT hidden states as input. */
 

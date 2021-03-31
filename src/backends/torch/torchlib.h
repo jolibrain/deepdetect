@@ -113,6 +113,8 @@ namespace dd
         _best_metrics; /**< metric to use for saving best model */
     std::vector<double> _best_metric_values; /**< best metric values  */
 
+    torch::Dtype _dtype = torch::kFloat32;
+
   private:
     /**
      * \brief checks wether v1 is better than v2
