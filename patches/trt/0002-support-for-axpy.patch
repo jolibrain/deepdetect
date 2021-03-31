@@ -1,3 +1,68 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 4b5e148..41e5ca2 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -137,11 +137,7 @@ if (DEFINED GPU_ARCHS)
+   separate_arguments(GPU_ARCHS)
+ else()
+   list(APPEND GPU_ARCHS
+-      35
+-      53
+       61
+-      70
+-      75
+     )
+ 
+   string(REGEX MATCH "aarch64" IS_ARM "${TRT_PLATFORM_ID}")
+diff --git a/parsers/caffe/CMakeLists.txt b/parsers/caffe/CMakeLists.txt
+index 285da1b..10dffbf 100644
+--- a/parsers/caffe/CMakeLists.txt
++++ b/parsers/caffe/CMakeLists.txt
+@@ -73,7 +73,7 @@ target_compile_definitions(${SHARED_TARGET}
+     "-DGOOGLE_PROTOBUF_ARCH_64_BIT"
+ )
+ 
+-set_target_properties(${SHARED_TARGET} PROPERTIES LINK_FLAGS "-Wl,--exclude-libs,ALL")
++#set_target_properties(${SHARED_TARGET} PROPERTIES LINK_FLAGS "-Wl,--exclude-libs,ALL")
+ 
+ set_target_properties(${SHARED_TARGET} PROPERTIES DEBUG_POSTFIX ${TRT_DEBUG_POSTFIX})
+ 
+@@ -91,13 +91,13 @@ add_dependencies(${STATIC_TARGET} caffe_proto)
+ 
+ target_include_directories(${STATIC_TARGET}
+     PUBLIC ${PROJECT_SOURCE_DIR}/include
+-    PRIVATE .
+-    PRIVATE caffeParser
+-    PRIVATE caffeParser/opParsers
+-    PRIVATE caffeWeightFactory
+-    PRIVATE ../common
+-    PRIVATE ${Protobuf_INCLUDE_DIR}
+-    PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/proto
++    PUBLIC .
++    PUBLIC caffeParser
++    PUBLIC caffeParser/opParsers
++    PUBLIC caffeWeightFactory
++    PUBLIC ../common
++    PUBLIC ${Protobuf_INCLUDE_DIR}
++    PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/proto
+ )
+ 
+ set_target_properties(${STATIC_TARGET} 
+@@ -117,12 +117,12 @@ target_link_libraries(${STATIC_TARGET}
+ # modify google namespace to avoid namespace collision.
+ set(GOOGLE google_private)
+ target_compile_definitions(${STATIC_TARGET}
+-    PRIVATE 
++    PUBLIC
+     "-Dgoogle=${GOOGLE}"
+     "-DGOOGLE_PROTOBUF_ARCH_64_BIT"
+ )
+ 
+-set_target_properties(${STATIC_TARGET} PROPERTIES LINK_FLAGS "-Wl,--exclude-libs,ALL")
++#set_target_properties(${STATIC_TARGET} PROPERTIES LINK_FLAGS "-Wl,--exclude-libs,ALL")
+ 
+ set_target_properties(${STATIC_TARGET} PROPERTIES DEBUG_POSTFIX ${TRT_DEBUG_POSTFIX})
+ 
 diff --git a/parsers/caffe/caffeParser/caffeParser.cpp b/parsers/caffe/caffeParser/caffeParser.cpp
 index 9fb28d6..baa27c2 100644
 --- a/parsers/caffe/caffeParser/caffeParser.cpp
@@ -244,7 +309,7 @@ index 9fb28d6..baa27c2 100644
              {
                  std::cout << "error parsing layer type " << layerMsg.type() << " index " << i << std::endl;
 diff --git a/plugin/CMakeLists.txt b/plugin/CMakeLists.txt
-index 940392a..fb8eb6b 100644
+index 940392a..7420c14 100644
 --- a/plugin/CMakeLists.txt
 +++ b/plugin/CMakeLists.txt
 @@ -54,6 +54,7 @@ set(PLUGIN_LISTS
@@ -255,6 +320,68 @@ index 940392a..fb8eb6b 100644
      )
  
  # Add BERT sources if ${BERT_GENCODES} was populated
+@@ -99,9 +100,9 @@ add_library(${SHARED_TARGET} SHARED
+ target_include_directories(${SHARED_TARGET}
+     PUBLIC ${PROJECT_SOURCE_DIR}/include
+     PUBLIC ${CUB_ROOT_DIR}
+-    PRIVATE ${PROJECT_SOURCE_DIR}/common
++    PUBLIC ${PROJECT_SOURCE_DIR}/common
+     PUBLIC ${CUDA_INSTALL_DIR}/include
+-    PRIVATE ${TARGET_DIR}
++    PUBLIC ${TARGET_DIR}
+ )
+ 
+ set_target_properties(${SHARED_TARGET} PROPERTIES
+@@ -113,7 +114,7 @@ set_target_properties(${SHARED_TARGET} PROPERTIES
+     RUNTIME_OUTPUT_DIRECTORY "${TRT_OUT_DIR}"
+ )
+ 
+-set_target_properties(${SHARED_TARGET} PROPERTIES LINK_FLAGS "-Wl,--exclude-libs,ALL -Wl,--version-script=${PLUGIN_EXPORT_MAP} -Wl,--no-undefined")
++set_target_properties(${SHARED_TARGET} PROPERTIES LINK_FLAGS "-Wl,--no-undefined")
+ 
+ set_target_properties(${SHARED_TARGET} PROPERTIES DEBUG_POSTFIX ${TRT_DEBUG_POSTFIX})
+ 
+@@ -139,9 +140,9 @@ add_library(${STATIC_TARGET} STATIC
+ target_include_directories(${STATIC_TARGET}
+     PUBLIC ${PROJECT_SOURCE_DIR}/include
+     PUBLIC ${CUB_ROOT_DIR}
+-    PRIVATE ${PROJECT_SOURCE_DIR}/common
++    PUBLIC ${PROJECT_SOURCE_DIR}/common
+     PUBLIC ${CUDA_INSTALL_DIR}/include
+-    PRIVATE ${TARGET_DIR}
++    PUBLIC ${TARGET_DIR}
+ )
+ 
+ set_target_properties(${STATIC_TARGET} PROPERTIES
+@@ -153,7 +154,7 @@ set_target_properties(${STATIC_TARGET} PROPERTIES
+     RUNTIME_OUTPUT_DIRECTORY "${TRT_OUT_DIR}"
+ )
+ 
+-set_target_properties(${STATIC_TARGET} PROPERTIES LINK_FLAGS "-Wl,--exclude-libs,ALL")
++#set_target_properties(${STATIC_TARGET} PROPERTIES LINK_FLAGS "-Wl,--exclude-libs,ALL")
+ 
+ set_target_properties(${STATIC_TARGET} PROPERTIES DEBUG_POSTFIX ${TRT_DEBUG_POSTFIX})
+ 
+diff --git a/plugin/InferPlugin.cpp b/plugin/InferPlugin.cpp
+index b8e9121..8610e6f 100644
+--- a/plugin/InferPlugin.cpp
++++ b/plugin/InferPlugin.cpp
+@@ -26,6 +26,7 @@
+ using namespace nvinfer1;
+ using namespace nvinfer1::plugin;
+ 
++#include "axpyPlugin.h"
+ #include "batchTilePlugin.h"
+ #include "batchedNMSPlugin.h"
+ #include "coordConvACPlugin.h"
+@@ -182,6 +183,7 @@ bool initLibNvInferPlugins(void* logger, const char* libNamespace)
+     initializePlugin<nvinfer1::plugin::ResizeNearestPluginCreator>(logger, libNamespace);
+     initializePlugin<nvinfer1::plugin::RPROIPluginCreator>(logger, libNamespace);
+     initializePlugin<nvinfer1::plugin::SpecialSlicePluginCreator>(logger, libNamespace);
++    initializePlugin<nvinfer1::plugin::AxpyPluginCreator>(logger, libNamespace);
+     return true;
+ }
+ } // extern "C"
 diff --git a/plugin/axpyPlugin/CMakeLists.txt b/plugin/axpyPlugin/CMakeLists.txt
 new file mode 100644
 index 0000000..77e2ec0
@@ -285,11 +412,12 @@ index 0000000..77e2ec0
 +set(BERT_CU_SOURCES ${BERT_CU_SOURCES} PARENT_SCOPE)
 diff --git a/plugin/axpyPlugin/axpyPlugin.cpp b/plugin/axpyPlugin/axpyPlugin.cpp
 new file mode 100644
-index 0000000..b98c309
+index 0000000..31e9603
 --- /dev/null
 +++ b/plugin/axpyPlugin/axpyPlugin.cpp
-@@ -0,0 +1,85 @@
+@@ -0,0 +1,120 @@
 +#include "axpyPlugin.h"
++#include "iostream"
 +
 +using namespace nvinfer1;
 +using nvinfer1::plugin::AxpyPlugin;
@@ -310,12 +438,24 @@ index 0000000..b98c309
 +{
 +    ASSERT(nbInputDims == 3);
 +    ASSERT(index == 0);
-+    ASSERT(inputs[0].nbDims == 1);
++    std::cout << "i0 nb : " << inputs[0].nbDims << std::endl;
++    std::cout << "i0 d0 : " << inputs[0].d[0] << std::endl;
++    std::cout << "i0 d1 : " << inputs[0].d[1] << std::endl;
++    std::cout << "i0 d2 : " << inputs[0].d[2] << std::endl;
++    // dim is C x 1 x 1 ...
++    ASSERT(inputs[0].nbDims == 3);
++    std::cout << "i1 nb : " << inputs[1].nbDims << std::endl;
 +    ASSERT(inputs[1].nbDims == 3);
++    std::cout << "i2 nb : " << inputs[2].nbDims << std::endl;
 +    ASSERT(inputs[2].nbDims == 3);
++    std::cout << "i0 d0 : " << inputs[0].d[0] << std::endl;
++    std::cout << "i1 d0 : " << inputs[1].d[0] << std::endl;
++    std::cout << "i2 d0 : " << inputs[1].d[0] << std::endl;
 +    ASSERT(inputs[0].d[0] == inputs[1].d[0]);
 +    ASSERT(inputs[0].d[0] == inputs[2].d[0]);
++    std::cout << "i1 d1 : " << inputs[1].d[0] << std::endl;
 +    ASSERT(inputs[1].d[1] == inputs[2].d[1]);
++    std::cout << "i1 d2 : " << inputs[1].d[0] << std::endl;
 +    ASSERT(inputs[1].d[2] == inputs[2].d[2]);
 +
 +    return DimsCHW(inputs[0].d[0], inputs[1].d[1], inputs[1].d[2]);
@@ -323,9 +463,29 @@ index 0000000..b98c309
 +
 +int AxpyPlugin::enqueue(int batchSize, const void* const* inputs, void** outputs, void* workspace, cudaStream_t stream)
 +{
-+    pluginStatus_t status
-+        = axpyInference(stream, batchSize, _C, _H, _W, inputs[0], inputs[1], inputs[2], outputs[0], workspace);
-+    ASSERT(status == STATUS_SUCCESS);
++    float i0cpu[batchSize * _C];
++    float i1cpu[batchSize * _C * _H * _W];
++    float i2cpu[batchSize * _C * _H * _W];
++    //    float ocpu[batchSize * _C * _H * _W];
++    float* o = (float*) outputs[0];
++
++    // std::cout << "initted\n";
++
++    cudaMemcpy(i0cpu, inputs[0], batchSize * _C * sizeof(float), cudaMemcpyDeviceToHost);
++    cudaMemcpy(i1cpu, inputs[1], batchSize * _C * _H * _W * sizeof(float), cudaMemcpyDeviceToHost);
++    cudaMemcpy(i2cpu, inputs[2], batchSize * _C * _H * _W * sizeof(float), cudaMemcpyDeviceToHost);
++
++    for (int n = 0; n < batchSize; ++n)
++        for (int c = 0; c < _C; ++c)
++            for (int h = 0; h < _H; ++h)
++                for (int w = 0; w < _W; ++w)
++                {
++                    float res = i0cpu[n * _C + c] * i1cpu[n * _C * _H * _W + c * _H * _W + h * _W + w]
++                        + i2cpu[n * _C * _H * _W + c * _H * _W + h * _W + w];
++                    cudaMemcpy(
++                        &o[n * _C * _H * _W + c * _H * _W + h * _W + w], &res, sizeof(float), cudaMemcpyHostToDevice);
++                }
++    std::cerr << "computed\n";
 +    return 0;
 +}
 +
@@ -337,7 +497,8 @@ index 0000000..b98c309
 +    ASSERT(in[1].type == DataType::kFLOAT && in[1].format == TensorFormat::kLINEAR);
 +    ASSERT(in[2].type == DataType::kFLOAT && in[2].format == TensorFormat::kLINEAR);
 +    ASSERT(out[0].type == DataType::kFLOAT && out[0].format == TensorFormat::kLINEAR);
-+    ASSERT(in[0].dims.nbDims == 1);
++    // dim is C x 1 x 1 ...
++    ASSERT(in[0].dims.nbDims == 3);
 +    ASSERT(in[1].dims.nbDims == 3);
 +    ASSERT(in[2].dims.nbDims == 3);
 +    ASSERT(out[0].dims.nbDims == 3);
@@ -348,6 +509,7 @@ index 0000000..b98c309
 +    _C = in[0].dims.d[0];
 +    _H = in[1].dims.d[1];
 +    _W = in[1].dims.d[2];
++    std::cout << "configured: " << _C << " " << _H << " " << _W << std::endl;
 +}
 +
 +const char* AxpyPlugin::getPluginType() const
@@ -376,10 +538,10 @@ index 0000000..b98c309
 +}
 diff --git a/plugin/axpyPlugin/axpyPlugin.cu b/plugin/axpyPlugin/axpyPlugin.cu
 new file mode 100644
-index 0000000..8a42fbe
+index 0000000..8f2d169
 --- /dev/null
 +++ b/plugin/axpyPlugin/axpyPlugin.cu
-@@ -0,0 +1,54 @@
+@@ -0,0 +1,63 @@
 +/**
 + * DeepDetect
 + * Copyright (c) 2019-2020 Jolibrain
@@ -400,6 +562,7 @@ index 0000000..8a42fbe
 + */
 +
 +#include "plugin.h"
++#include <iostream>
 +
 +__global__ void axpyKernel(const int n, const int spatial_dim, const float* scale_data, const float* x_data,
 +    const float* y_data, float* out_data)
@@ -407,7 +570,8 @@ index 0000000..8a42fbe
 +    // this is exactly CUDA_KERNEL_LOOP(index, n)
 +    for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < n; index += gridDim.x * blockDim.x)
 +    {
-+        out_data[index] = scale_data[index / spatial_dim] * x_data[index] + y_data[index];
++        out_data[index] = // 1;
++            scale_data[index / spatial_dim] * x_data[index] + y_data[index];
 +    }
 +}
 +
@@ -429,17 +593,24 @@ index 0000000..8a42fbe
 +    int gridSize = (dim + blockSize - 1) / blockSize; // CAFFE_GET_BLOCKS(blockSize)
 +
 +    // below we also iterate over batch (N) directly, by setting dim to N x datadi (exactly like caffe impl)
++    // for (int n = 0; n < N; ++n)
++    // {
 +    axpyKernel<<<gridSize, blockSize, 0, stream>>>(dim, spatial_vol, a, x, y, output);
++    //     a += C;
++    //     x += dim;
++    //     y += dim;
++    //     output += dim;
++    // }
 +    return STATUS_SUCCESS;
 +}
 +} // namespace plugin
 +} // namespace nvinfer1
 diff --git a/plugin/axpyPlugin/axpyPlugin.h b/plugin/axpyPlugin/axpyPlugin.h
 new file mode 100644
-index 0000000..e4301fd
+index 0000000..0da2770
 --- /dev/null
 +++ b/plugin/axpyPlugin/axpyPlugin.h
-@@ -0,0 +1,189 @@
+@@ -0,0 +1,210 @@
 +/**
 + * DeepDetect
 + * Copyright (c) 2019-2020 Jolibrain
@@ -479,6 +650,23 @@ index 0000000..e4301fd
 +public:
 +    AxpyPlugin() {}
 +
++    AxpyPlugin(int C, int H, int W)
++        : _C(C)
++        , _H(H)
++        , _W(W)
++    {
++    }
++
++    AxpyPlugin(const void* buffer, size_t length)
++    {
++        const char* d = static_cast<const char*>(buffer);
++        const char* a = d;
++        _C = read<int>(d);
++        _H = read<int>(d);
++        _W = read<int>(d);
++        ASSERT(d == a + length);
++    }
++
 +    ~AxpyPlugin() override = default;
 +
 +    int getNbOutputs() const override
@@ -505,12 +693,16 @@ index 0000000..e4301fd
 +
 +    size_t getSerializationSize() const override
 +    {
-+        return 0;
++        return sizeof(int) * 3;
 +    }
 +
 +    void serialize(void* buffer) const override
 +    {
-+        return;
++        char *d = static_cast<char*>(buffer), *a = d;
++        write(d, _C);
++        write(d, _H);
++        write(d, _W);
++        ASSERT(d == a + getSerializationSize());
 +    }
 +
 +    bool supportsFormatCombination(int pos, const PluginTensorDesc* inOut, int nbInputs, int nbOutputs) const override
@@ -531,7 +723,7 @@ index 0000000..e4301fd
 +    IPluginV2Ext* clone() const override
 +    {
 +        // Create a new instance
-+        IPluginV2Ext* plugin = new AxpyPlugin();
++        IPluginV2Ext* plugin = new AxpyPlugin(_C, _H, _W);
 +
 +        // Set the namespace
 +        plugin->setPluginNamespace(mNamespace.c_str());
@@ -597,7 +789,7 @@ index 0000000..e4301fd
 +
 +    IPluginV2Ext* deserializePlugin(const char* name, const void* serialData, size_t serialLength) override
 +    {
-+        AxpyPlugin* obj = new AxpyPlugin();
++        AxpyPlugin* obj = new AxpyPlugin(serialData, serialLength);
 +        obj->setPluginNamespace(mPluginNamespace.c_str());
 +        return obj;
 +    }
