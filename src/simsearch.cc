@@ -24,7 +24,7 @@
 #include "utils/utils.hpp"
 #ifdef USE_FAISS
 #include "faiss/IndexIVF.h"
-#include "faiss/OnDiskInvertedLists.h"
+#include "faiss/invlists/OnDiskInvertedLists.h"
 #include "faiss/IndexPreTransform.h"
 #include "faiss/index_factory.h"
 #ifdef USE_GPU_FAISS
