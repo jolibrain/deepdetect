@@ -525,18 +525,30 @@ namespace dd
           out << " " << _label_pos[i] << " " << delim;
         out << " " << _label_pos[_label_pos.size() - 1] << std::endl;
       }
-    out << "min_vals: ";
-    for (unsigned int i = 0; i < _min_vals.size() - 1; ++i)
-      out << " " << std::setprecision(boundsprecision) << _min_vals[i] << " "
-          << delim;
-    out << " " << std::setprecision(boundsprecision)
-        << _min_vals[_min_vals.size() - 1] << std::endl;
-    out << "max_vals: ";
-    for (unsigned int i = 0; i < _max_vals.size() - 1; ++i)
-      out << " " << std::setprecision(boundsprecision) << _max_vals[i] << " "
-          << delim;
-    out << " " << std::setprecision(boundsprecision)
-        << _max_vals[_max_vals.size() - 1] << std::endl;
+    if (_min_vals.size() > 0)
+      {
+        out << "min_vals: ";
+        for (unsigned int i = 0; i < _min_vals.size() - 1; ++i)
+          out << " " << std::setprecision(boundsprecision) << _min_vals[i]
+              << " " << delim;
+        out << " " << std::setprecision(boundsprecision)
+            << _min_vals[_min_vals.size() - 1] << std::endl;
+      }
+    else
+      throw InputConnectorInternalException(
+          "No min_val to write in bounds file!");
+    if (_max_vals.size() > 0)
+      {
+        out << "max_vals: ";
+        for (unsigned int i = 0; i < _max_vals.size() - 1; ++i)
+          out << " " << std::setprecision(boundsprecision) << _max_vals[i]
+              << " " << delim;
+        out << " " << std::setprecision(boundsprecision)
+            << _max_vals[_max_vals.size() - 1] << std::endl;
+      }
+    else
+      throw InputConnectorInternalException(
+          "No max_val to write in bounds file!");
 
     out.close();
     deserialize_bounds(true);
