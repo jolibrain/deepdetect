@@ -69,7 +69,7 @@ execute_process(
 
 # Get the current version
 execute_process(
-  COMMAND git describe --tags --dirty --broken
+  COMMAND git describe --tags --broken
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
   OUTPUT_VARIABLE GIT_VERSION
   OUTPUT_STRIP_TRAILING_WHITESPACE
