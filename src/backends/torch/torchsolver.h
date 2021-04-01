@@ -140,6 +140,7 @@ namespace dd
     std::string _solver_type
         = "SGD"; /**< id of solver in {SGD, ADAM, RMSPROP, ADAGRAD, RANGER}*/
     double _base_lr = 0.0001; /**< base learning rate*/
+    double _momentum = 0.9;   /**< momentum for madgrad*/
     double _beta1 = 0.9;      /**< for ADAM and RANGER : beta1 param */
     double _beta2 = 0.999;    /**< for ADAM and RANGER : beta2 param */
     bool _rectified = true; /**< for RANGER : use rectified version, ie RADAM*/

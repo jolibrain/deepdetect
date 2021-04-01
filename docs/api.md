@@ -694,7 +694,7 @@ Parameter            | Type         | Optional | Default | Description
 iterations           | int          | yes      | N/A     | Max number of solver's iterations
 snapshot             | int          | yes      | N/A     | Iterations between model snapshots
 snapshot_prefix      | string       | yes      | empty   | Prefix to snapshot file, supports repository
-solver_type          | string       | yes      | SGD     | from "SGD", "ADAGRAD", "NESTEROV", "RMSPROP", "ADADELTA", "ADAM",  "AMSGRAD", "RANGER", "RANGER_PLUS", "ADAMW", "SGDW", "AMSGRADW" (*W version for decoupled weight decay, RANGER_PLUS is ranger + adabelief + centralized_gradient)
+solver_type          | string       | yes      | SGD     | from "SGD", "ADAGRAD", "NESTEROV", "RMSPROP", "ADADELTA", "ADAM",  "AMSGRAD",  "RANGER", "RANGER_PLUS", "ADAMW", "SGDW", "AMSGRADW" (*W version for decoupled weight decay, RANGER_PLUS is ranger + adabelief + centralized_gradient)
 clip                 | bool         | yes      | false (true if RANGER* selected) | gradients with absolute value greater than clip_value will be clipped to below values
 clip_value           | real         | yes      | 5.0     | gradients with absolute value greater than clip_value will be clipped to this value
 clip_norm            | real         | yes      | 100.0   | gradients with euclidean norm greater than clip_norm will be clipped to this value
@@ -761,19 +761,19 @@ Parameter     | Type   | Optional | Default | Description
 ---------     | ----   | -------- | ------- | -----------
 iterations    | int    | yes      | N/A     | Max number of solver's iterations
 snapshot      | int    | yes      | N/A     | Iterations between model snapshots
-solver_type   | string | yes      | SGD     | from "SGD", "ADAGRAD",  "RMSPROP", "ADAM", "RANGER", "RANGER_PLUS"
+solver_type   | string | yes      | SGD     | from "SGD", "ADAGRAD",  "RMSPROP", "ADAM", "RANGER", "RANGER_PLUS", "MADGRAD"
 beta1         | real   | yes      | 0.9     | for RANGER* : beta1 param
 beta2         | real   | yes      | 0.999   | for RANGER* : beta2 param
 weight_decay  | real   | yes      | 0.0     | for RANGER* : weight decay
 rectified     | bool   | yes      | true    | for RANGER* : enable/disable rectified ADAM
-lookahead     | bool   | yes      | true    | for RANGER* : enable/disable lookahead
-lookahead_steps | int  | yes      | 6       | for RANGER* : if lookahead enabled, number of steps
-lookahead_alpha | real | yes      | 0.5     | for RANGER* : if lookahead enables, alpha param
+lookahead     | bool   | yes      | true    | for RANGER* and MADGRAD : enable/disable lookahead
+lookahead_steps | int  | yes      | 6       | for RANGER* and MADGRAD : if lookahead enabled, number of steps
+lookahead_alpha | real | yes      | 0.5     | for RANGER* and MADGRAD : if lookahead enables, alpha param
 adabelief     | bool   | yes      | false for RANGER, true for RANGER_PLUS   | for RANGER* : enable/disable adabelief
 gradient_centralization | bool | yes | false for RANGER, true for RANGER_PLUS| for RANGER* : enable/disable gradient centralization
 sam           | bool   | yes      | false   | Sharpness Aware Minimization (https://arxiv.org/abs/2010.01412)
 sam_rho       | real   | yes      | 0.05    | neighborhood size for SAM (see above)
-swa           | bool   | yes      | false   | SWA https://arxiv.org/abs/1803.05407 , implemented  only for  RANGER / RANGER_PLUS solver types.
+swa           | bool   | yes      | false   | SWA https://arxiv.org/abs/1803.05407 , implemented  only for  RANGER / RANGER_PLUS / MADGRAD  solver types.
 test_interval | int    | yes      | N/A     | Number of iterations between testing phases
 base_lr       | real   | yes      | N/A     | Initial learning rate
 iter_size     | int    | yes      | 1       | Number of passes (iter_size * batch_size) at every iteration
