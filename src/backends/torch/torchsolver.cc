@@ -21,6 +21,7 @@
 
 #include "torchsolver.h"
 #include "optim/ranger.h"
+#include "optim/madgrad.h"
 
 namespace dd
 {
@@ -40,6 +41,8 @@ namespace dd
 
     if (ad_solver.has("base_lr"))
       _base_lr = ad_solver.get("base_lr").get<double>();
+    if (ad_solver.has("momentum"))
+      _momentum = ad_solver.get("momentum").get<double>();
     if (ad_solver.has("beta1"))
       _beta1 = ad_solver.get("beta1").get<double>();
     if (ad_solver.has("beta"))
@@ -78,7 +81,7 @@ namespace dd
   void TorchSolver::create()
   {
 
-    bool want_swa = true;
+    bool want_swa = _swa;
     _swa = false;
     this->_logger->info("Selected solver type: {}", _solver_type);
 
@@ -132,6 +135,27 @@ namespace dd
         this->_logger->info("lookahead: {}", _lookahead);
         this->_logger->info("adabelief: {}", _adabelief);
         this->_logger->info("gradient_centralization: {}", _gc);
+        if (_lookahead)
+          {
+            this->_logger->info("lookahead steps: {}", _lsteps);
+            this->_logger->info("lookahead alpha: {}", _lalpha);
+          }
+      }
+    else if (_solver_type == "MADGRAD")
+      {
+        if (want_swa)
+          _swa = true;
+        _optimizer = std::unique_ptr<torch::optim::Optimizer>(
+            new Madgrad(_params, MadgradOptions(_base_lr)
+                                     .momentum(_momentum)
+                                     .weight_decay(_weight_decay)
+                                     .lookahead(_lookahead)
+                                     .lsteps(_lsteps)
+                                     .lalpha(_lalpha)));
+        this->_logger->info("base_lr: {}", _base_lr);
+        this->_logger->info("momentum: {}", _momentum);
+        this->_logger->info("weight_decay: {}", _weight_decay);
+        this->_logger->info("lookahead: {}", _lookahead);
         if (_lookahead)
           {
             this->_logger->info("lookahead steps: {}", _lsteps);
