@@ -116,6 +116,16 @@ namespace dd
     for (auto testfiles : testsets)
       allfiles.insert(testfiles.begin(), testfiles.end());
 
+    if (allfiles.empty())
+      {
+        std::string testdirs;
+        for (std::string testdirname : _cifc->_csv_test_fnames)
+          testdirs += testdirname + " ";
+        throw InputConnectorBadParamException(
+            "unable to find any timeseries files while reading train " + dir
+            + " and tests : " + testdirs);
+      }
+
     //- read categoricals first if any as it affects the number of columns (and
     // thus bounds)
     if (!_cifc->_categoricals.empty())
@@ -515,18 +525,30 @@ namespace dd
           out << " " << _label_pos[i] << " " << delim;
         out << " " << _label_pos[_label_pos.size() - 1] << std::endl;
       }
-    out << "min_vals: ";
-    for (unsigned int i = 0; i < _min_vals.size() - 1; ++i)
-      out << " " << std::setprecision(boundsprecision) << _min_vals[i] << " "
-          << delim;
-    out << " " << std::setprecision(boundsprecision)
-        << _min_vals[_min_vals.size() - 1] << std::endl;
-    out << "max_vals: ";
-    for (unsigned int i = 0; i < _max_vals.size() - 1; ++i)
-      out << " " << std::setprecision(boundsprecision) << _max_vals[i] << " "
-          << delim;
-    out << " " << std::setprecision(boundsprecision)
-        << _max_vals[_max_vals.size() - 1] << std::endl;
+    if (_min_vals.size() > 0)
+      {
+        out << "min_vals: ";
+        for (unsigned int i = 0; i < _min_vals.size() - 1; ++i)
+          out << " " << std::setprecision(boundsprecision) << _min_vals[i]
+              << " " << delim;
+        out << " " << std::setprecision(boundsprecision)
+            << _min_vals[_min_vals.size() - 1] << std::endl;
+      }
+    else
+      throw InputConnectorInternalException(
+          "No min_val to write in bounds file!");
+    if (_max_vals.size() > 0)
+      {
+        out << "max_vals: ";
+        for (unsigned int i = 0; i < _max_vals.size() - 1; ++i)
+          out << " " << std::setprecision(boundsprecision) << _max_vals[i]
+              << " " << delim;
+        out << " " << std::setprecision(boundsprecision)
+            << _max_vals[_max_vals.size() - 1] << std::endl;
+      }
+    else
+      throw InputConnectorInternalException(
+          "No max_val to write in bounds file!");
 
     out.close();
     deserialize_bounds(true);
