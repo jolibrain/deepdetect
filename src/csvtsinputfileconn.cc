@@ -116,6 +116,16 @@ namespace dd
     for (auto testfiles : testsets)
       allfiles.insert(testfiles.begin(), testfiles.end());
 
+    if (allfiles.empty())
+      {
+        std::string testdirs;
+        for (std::string testdirname : _cifc->_csv_test_fnames)
+          testdirs += testdirname + " ";
+        throw InputConnectorBadParamException(
+            "unable to find any timeseries files while reading train " + dir
+            + " and tests : " + testdirs);
+      }
+
     //- read categoricals first if any as it affects the number of columns (and
     // thus bounds)
     if (!_cifc->_categoricals.empty())
