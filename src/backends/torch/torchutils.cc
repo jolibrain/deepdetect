@@ -57,7 +57,12 @@ namespace dd
       if (!value.isTensor())
         throw MLLibInternalException("Expected Tensor, found "
                                      + value.tagKind());
-      return value.toTensor();
+      torch::Tensor t = value.toTensor();
+      if (t.scalar_type() == torch::kFloat16
+          || t.scalar_type() == torch::kFloat64)
+        return t.to(torch::kFloat32);
+      else
+        return t;
     }
 
     void fill_one_hot(torch::Tensor &one_hot, torch::Tensor ids,
