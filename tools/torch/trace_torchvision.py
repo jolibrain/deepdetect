@@ -38,6 +38,7 @@ import torchvision.models as M
 
 parser = argparse.ArgumentParser(description="Trace image processing models from torchvision")
 parser.add_argument('models', type=str, nargs='*', help="Models to trace.")
+parser.add_argument('--backbone', type=str, help="Backbone for detection models")
 parser.add_argument('--print-models', action='store_true', help="Print all the available models names and exit")
 parser.add_argument('--to-dd-native', action='store_true', help="Prepare the model so that the weights can be loaded on native model with dede")
 parser.add_argument('-a', "--all", action='store_true', help="Export all available models")
@@ -139,7 +140,12 @@ model_classes = {
     "resnext101_32x8d": M.resnext101_32x8d,
 }
 detection_model_classes = {
+    "fasterrcnn": M.detection.FasterRCNN,
     "fasterrcnn_resnet50_fpn": M.detection.fasterrcnn_resnet50_fpn,
+    "fasterrcnn_mobilenet_v3_large_fpn": M.detection.fasterrcnn_mobilenet_v3_large_fpn,
+    "fasterrcnn_mobilenet_v3_large_320_fpn": M.detection.fasterrcnn_mobilenet_v3_large_320_fpn,
+
+    "retinanet": M.detection.RetinaNet,
     "retinanet_resnet50_fpn": M.detection.retinanet_resnet50_fpn,
 }
 model_classes.update(detection_model_classes)
@@ -170,22 +176,41 @@ for mname in args.models:
     detection = mname in detection_model_classes
 
     if detection:
-        model = model_classes[mname](pretrained=args.pretrained, progress=args.verbose)
+        if mname in ["fasterrcnn", "retinanet"]:
+            if args.backbone and args.backbone in model_classes:
+                if "resnet" in args.backbone or "resnext" in args.backbone:
+                    backbone = M.detection.backbone_utils.resnet_fpn_backbone(args.backbone, pretrained = args.pretrained)
+                elif "mobilenet" in args.backbone:
+                    backbone = M.detection.backbone_utils.mobilenet_backbone(args.backbone, pretrained = args.pretrained, fpn = True)
+                else:
+                    raise RuntimeError("Backbone not supported: %s. Supported backbones are resnet, resnext or mobilenet." % args.backbone)
+            else:
+                raise RuntimeError("Please specify a backbone for model %s" % mname)
 
-        if args.num_classes:
-            logging.info("Using num_classes = %d" % args.num_classes)
-            
-            if "fasterrcnn" in mname:
-                # get number of input features for the classifier
-                in_features = model.roi_heads.box_predictor.cls_score.in_features
-                # replace the pre-trained head with a new one
-                model.roi_heads.box_predictor = M.detection.faster_rcnn.FastRCNNPredictor(in_features, args.num_classes)
-            elif "retinanet" in mname:
-                in_channels = model.backbone.out_channels
-                num_anchors = model.head.classification_head.num_anchors
-                # replace pretrained head - does not work
-                # model.head = M.detection.retinanet.RetinaNetHead(in_channels, num_anchors, args.num_classes)
-                raise Exception("Retinanet with fixed number of classes is not yet supported")
+            if args.pretrained:
+                logging.warn("Pretrained models are not available for custom backbones. " +
+                            "Output model (except the backbone) will be untrained.")
+
+            model = model_classes[mname](backbone, args.num_classes)
+        else:
+            if args.backbone:
+                raise RuntimeError("--backbone is only supported with models \"fasterrcnn\" or \"retinanet\".")
+            model = model_classes[mname](pretrained=args.pretrained, progress=args.verbose)
+
+            if args.num_classes:
+                logging.info("Using num_classes = %d" % args.num_classes)
+ 
+                if "fasterrcnn" in mname:
+                    # get number of input features for the classifier
+                    in_features = model.roi_heads.box_predictor.cls_score.in_features
+                    # replace the pre-trained head with a new one
+                    model.roi_heads.box_predictor = M.detection.faster_rcnn.FastRCNNPredictor(in_features, args.num_classes)
+                elif "retinanet" in mname:
+                    in_channels = model.backbone.out_channels
+                    num_anchors = model.head.classification_head.num_anchors
+                    # replace pretrained head - does not work
+                    # model.head = M.detection.retinanet.RetinaNetHead(in_channels, num_anchors, args.num_classes)
+                    raise Exception("Retinanet with fixed number of classes is not yet supported")
 
         model.eval()
         detect_model = DetectionModel(model)
