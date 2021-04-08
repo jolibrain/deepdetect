@@ -134,6 +134,61 @@ TEST(torchapi, service_predict)
   ASSERT_EQ(jd["body"]["predictions"][0]["classes"].Size(), 8);
 }
 
+#if !defined(CPU_ONLY)
+TEST(torchapi, service_predict_fp16)
+{
+  // create service
+  JsonAPI japi;
+  std::string sname = "imgserv";
+  std::string jstr
+      = "{\"mllib\":\"torch\",\"description\":\"resnet-50\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+        + incept_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
+          "224,\"width\":224,\"rgb\":true,\"scale\":0.0039},\"mllib\":{"
+          "\"gpu\":true}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // predict fp32
+  std::string jpredictstr
+      = "{\"service\":\"imgserv\",\"parameters\":{\"input\":{\"height\":224,"
+        "\"width\":224},\"output\":{\"best\":1}},\"data\":[\""
+        + incept_repo + "cat.jpg\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  JDoc jd;
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+  std::string cl1
+      = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
+  ASSERT_TRUE(cl1 == "n02123045 tabby, tabby cat");
+  double v32 = jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble();
+  ASSERT_TRUE(v32 > 0.3);
+
+  // predict fp16
+  jpredictstr
+      = "{\"service\":\"imgserv\",\"parameters\":{\"input\":{\"height\":224,"
+        "\"width\":224},\"output\":{\"best\":1},\"mllib\":{\"datatype\":"
+        "\"fp16\"}},\"data\":[\""
+        + incept_repo + "cat.jpg\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+  std::string cl2
+      = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
+  ASSERT_TRUE(cl2 == "n02123045 tabby, tabby cat");
+  double v16 = jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble();
+  ASSERT_TRUE(v16 > 0.3);
+  ASSERT_TRUE(fabs(v32 - v16) < 0.01);
+}
+#endif
+
 TEST(torchapi, service_predict_object_detection)
 {
   JsonAPI japi;
@@ -1454,7 +1509,7 @@ TEST(torchapi, service_train_csvts_nbeats_db)
   ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_99", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["out"][0].GetDouble()
-              >= -2.0);
+              >= -10.0);
 
   // predict from memory
   std::stringstream mem_data;

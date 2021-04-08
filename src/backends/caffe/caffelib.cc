@@ -933,6 +933,9 @@ namespace dd
                 trparam->set_force_gray(true);
                 trparam->set_force_color(false);
               }
+            caffe::ResizeParameter *rparam = trparam->mutable_resize_param();
+            rparam->set_height(inputc.height());
+            rparam->set_width(inputc.width());
 
             if (l == 0)
               {
@@ -1060,10 +1063,14 @@ namespace dd
     for (int l = 0; l < k; l++)
       {
         caffe::LayerParameter *lparam = deploy_net_param.mutable_layer(l);
-        if (lparam->type() == "MemoryData" && timg->_bw)
+        if (lparam->type() == "MemoryData")
           {
-            lparam->mutable_memory_data_param()->set_channels(
-                timg->channels());
+            if (timg->_bw)
+              lparam->mutable_memory_data_param()->set_channels(
+                  timg->channels());
+
+            lparam->mutable_memory_data_param()->set_height(inputc.height());
+            lparam->mutable_memory_data_param()->set_width(inputc.width());
           }
         if (finetune)
           {
