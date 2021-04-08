@@ -128,7 +128,7 @@ namespace dd
 
     void copy_weights(const torch::jit::script::Module &from,
                       torch::nn::Module &to, const torch::Device &device,
-                      std::shared_ptr<spdlog::logger> logger)
+                      std::shared_ptr<spdlog::logger> logger, bool strict)
     {
       auto from_params = from.named_parameters();
       auto to_params = to.named_parameters();
@@ -145,6 +145,13 @@ namespace dd
                   logger->warn("skipped " + from_item.name
                                + ": not found in destination module");
                 }
+
+              if (strict)
+                {
+                  throw MLLibBadParamException(
+                      "Error during weight copying: missing " + from_item.name
+                      + " in destination model.");
+                }
               continue;
             }
           torch::Tensor &to_value = *to_value_ptr;
@@ -159,6 +166,11 @@ namespace dd
                           << from_item.value.sizes() << " into tensor of size "
                           << to_value.sizes();
                   logger->warn(sstream.str());
+                }
+              if (strict)
+                {
+                  throw MLLibBadParamException(
+                      "Error during weight copying: mismatching dimensions.");
                 }
               continue;
             }
@@ -179,17 +191,27 @@ namespace dd
         {
           if (copied_params.find(param_name) == copied_params.end())
             {
-              logger->warn(param_name + " was not found in source module.");
+              if (logger)
+                {
+                  logger->warn(param_name
+                               + " was not found in source module.");
+                }
+
+              if (strict)
+                {
+                  throw MLLibBadParamException(
+                      param_name + " was not found in source module.");
+                }
             }
         }
     }
 
     void load_weights(torch::nn::Module &module, const std::string &filename,
                       const torch::Device &device,
-                      std::shared_ptr<spdlog::logger> logger)
+                      std::shared_ptr<spdlog::logger> logger, bool strict)
     {
       auto jit_module = torch::jit::load(filename, device);
-      torch_utils::copy_weights(jit_module, module, device, logger);
+      torch_utils::copy_weights(jit_module, module, device, logger, strict);
     }
   }
 }

@@ -38,10 +38,12 @@ namespace dd
     torch::Tensor x = ivx[0].toTensor();
 
     torch::Tensor loss;
-    // As CrossEntropy is not available (Libtorch 1.1) we use
-    // nllloss
-    // + log_softmax
-    if (_seq_training)
+
+    if (_model_loss)
+      {
+        loss = y_pred;
+      }
+    else if (_seq_training)
       {
         // Convert [n_batch, sequence_length, vocab_size] to
         // [n_batch
@@ -78,6 +80,9 @@ namespace dd
       }
     else if (_classification)
       {
+        // As CrossEntropy is not available (Libtorch 1.1) we use
+        // nllloss
+        // + log_softmax
         loss = torch::nll_loss(torch::log_softmax(y_pred, 1),
                                y.view(torch::IntList{ -1 }), _class_weights);
       }

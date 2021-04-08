@@ -25,6 +25,7 @@
 #include <gtest/gtest.h>
 #include <stdio.h>
 #include <iostream>
+#include <numeric>
 #include "backends/torch/native/templates/nbeats.h"
 #include <torch/torch.h>
 
@@ -40,6 +41,8 @@ static std::string not_found_str
 
 static std::string incept_repo = "../examples/torch/resnet50_torch/";
 static std::string detect_repo = "../examples/torch/fasterrcnn_torch/";
+static std::string detect_train_repo
+    = "../examples/torch/fasterrcnn_train_torch";
 static std::string resnet50_train_repo
     = "../examples/torch/resnet50_training_torch_small/";
 static std::string resnet50_train_data
@@ -70,6 +73,11 @@ static std::string bert_train_repo
 static std::string bert_train_data
     = "../examples/torch/bert_training_torch_140_transformers_251/data/";
 
+static std::string fasterrcnn_train_data
+    = "../examples/torch/fasterrcnn_train_torch/train.txt";
+static std::string fasterrcnn_test_data
+    = "../examples/torch/fasterrcnn_train_torch/test.txt";
+
 static std::string sinus = "../examples/all/sinus/";
 
 static std::string iterations_nbeats_cpu = "100";
@@ -79,6 +87,7 @@ static std::string iterations_ttransformer_gpu = "1000";
 
 static std::string iterations_resnet50 = "200";
 static std::string iterations_vit = "200";
+static std::string iterations_detection = "200";
 
 static int torch_seed = 1235;
 static std::string torch_lr = "1e-5";
@@ -324,6 +333,7 @@ TEST(torchapi, load_weights_native_model)
   mlmodel._native = resnet50_native_weights;
 
   // I don't have the weights to finetune, need to make a new archive
+  module._finetuning = true;
   module.load(mlmodel);
   auto jit_weights = torch::jit::load(resnet50_native_weights);
 
@@ -343,7 +353,7 @@ TEST(torchapi, load_weights_native_model)
   ASSERT_TRUE(param_found) << "Parameter not found in "
                                   + resnet50_native_weights;
 
-  // <!> segfault if test_param_name is not in named_parameters
+  // <!> this line segfaults if test_param_name is not in named_parameters
   torch::Tensor tested_value
       = *module._native->named_parameters().find(test_param_name);
 
@@ -358,6 +368,7 @@ TEST(torchapi, load_weights_native_model)
   // Check if we can reload a checkpoint from native module without any
   // problem.
 
+  module._finetuning = false;
   test_param_name = "wrapped.fc.bias";
   // <!> segfault if test_param_name is not in named_parameters
   tested_value = *module._native->named_parameters().find(test_param_name);
@@ -373,6 +384,83 @@ TEST(torchapi, load_weights_native_model)
   ASSERT_TRUE(torch::allclose(before_val, after_val));
 
   fileops::remove_file(".", mlmodel._native);
+}
+
+TEST(torchapi, compute_bbox_stats)
+{
+  TorchModel torchmodel;
+  TorchLib<ImgTorchInputFileConn, SupervisedOutput, TorchModel> torchlib(
+      torchmodel);
+  torchlib._nclasses = 2;
+  // img dims are e.g. 1000, 1000
+  float targ_bboxes_data[] = {
+    10,  10,  100, 100, // matching
+    500, 500, 600, 600, // 2 preds for 1 targets
+    10,  500, 100, 600, // not matching
+    900, 900, 950, 950, // overlapping but iou < 0.5
+  };
+  at::Tensor targ_bboxes = torch::from_blob(targ_bboxes_data, { 4, 4 });
+
+  // TODO test with multiple labels
+  int64_t targ_labels_data[] = { 1, 1, 1, 1 };
+  at::Tensor targ_labels = torch::from_blob(targ_labels_data, 4, torch::kLong);
+
+  float bboxes_data[] = {
+    11,  11,  101, 101, // matching
+    900, 10,  950, 100, // false positive
+    510, 510, 610, 610, // 2 preds for 1 targets
+    490, 490, 590, 590, // --
+    940, 940, 990, 990, // overlapping but iou < 0.5 -> false positive
+  };
+  at::Tensor bboxes_tensor = torch::from_blob(bboxes_data, { 5, 4 });
+
+  int64_t labels_data[] = { 1, 1, 1, 1, 1 };
+  at::Tensor labels_tensor = torch::from_blob(labels_data, 5, torch::kLong);
+
+  float score_data[] = { 0.9, 0.8, 0.7, 0.6, 0.5 };
+  at::Tensor score_tensor = torch::from_blob(score_data, 5);
+
+  auto vbad = torchlib.get_bbox_stats(targ_bboxes, targ_labels, bboxes_tensor,
+                                      labels_tensor, score_tensor);
+
+  auto lbad = vbad.at(0);
+  auto tp_i = lbad.get("tp_i").get<std::vector<int>>();
+  auto tp_d = lbad.get("tp_d").get<std::vector<double>>();
+  auto fp_i = lbad.get("fp_i").get<std::vector<int>>();
+  auto fp_d = lbad.get("fp_d").get<std::vector<double>>();
+  ASSERT_EQ(std::accumulate(tp_i.begin(), tp_i.end(), 0), 2);
+  ASSERT_EQ(std::accumulate(fp_i.begin(), fp_i.end(), 0), 3);
+  ASSERT_TRUE(tp_i[2]);
+  ASSERT_FALSE(tp_i[3]);
+  for (int i = 0; i < 5; ++i)
+    {
+      ASSERT_TRUE(tp_i[i] != fp_i[i]) << std::to_string(i);
+      ASSERT_NEAR(tp_d[i], score_data[i],
+                  std::numeric_limits<float>::epsilon())
+          << std::to_string(i);
+      ASSERT_NEAR(fp_d[i], score_data[i],
+                  std::numeric_limits<float>::epsilon())
+          << std::to_string(i);
+    }
+  ASSERT_EQ(lbad.get("num_pos").get<int>(), 4);
+  ASSERT_EQ(lbad.get("label").get<int>(), 1);
+
+  // Get MAP
+  APIData ad_res;
+  ad_res.add("clnames", std::vector<std::string>{ "0", "1" });
+  ad_res.add("nclasses", static_cast<int>(torchlib._nclasses));
+  ad_res.add("bbox", true);
+  ad_res.add("pos_count", 1);
+  APIData ad_bbox;
+  ad_bbox.add("0", vbad);
+  ad_res.add("0", ad_bbox);
+  ad_res.add("batch_size", 1);
+  APIData ad_out;
+  ad_out.add("measure", std::vector<std::string>{ "map" });
+  APIData out;
+  SupervisedOutput::measure(ad_res, ad_out, out, 0, "test");
+  ASSERT_NEAR(out.getobj("measure").get("map").get<double>(), 5. / 12.,
+              std::numeric_limits<float>::epsilon());
 }
 
 // Training tests
@@ -1052,6 +1140,68 @@ TEST(torchapi, service_train_images_split_regression_db_false)
   fileops::clear_directory(resnet50_train_repo + "test_0.lmdb");
   fileops::remove_dir(resnet50_train_repo + "train.lmdb");
   fileops::remove_dir(resnet50_train_repo + "test_0.lmdb");
+}
+
+TEST(torchapi, service_train_object_detection)
+{
+  setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
+  torch::manual_seed(torch_seed);
+  at::globalContext().setDeterministicCuDNN(true);
+
+  JsonAPI japi;
+  std::string sname = "detectserv";
+  std::string jstr
+      = "{\"mllib\":\"torch\",\"description\":\"fasterrcnn\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+        + detect_train_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
+          "224,\"width\":224,\"rgb\":true,\"scale\":0.0039,\"bbox\":true},"
+          "\"mllib\":{\"template\":\"fasterrcnn\",\"gpu\":true,\"nclasses\":"
+          "2}}}";
+
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // Train
+  std::string jtrainstr
+      = "{\"service\":\"detectserv\",\"async\":false,\"parameters\":{"
+        "\"mllib\":{\"solver\":{\"iterations\":"
+        + iterations_detection + ",\"base_lr\":" + torch_lr
+        + ",\"iter_size\":4,\"solver_"
+          "type\":\"ADAM\",\"test_interval\":200},\"net\":{\"batch_size\":1},"
+          "\"resume\":false},"
+          "\"input\":{\"seed\":12347,\"db\":true,\"shuffle\":true},"
+          "\"output\":{\"measure\":[\"map\"]}},\"data\":[\""
+        + fasterrcnn_train_data + "\",\"" + fasterrcnn_test_data + "\"]}";
+
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
+  JDoc jd;
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(201, jd["status"]["code"]);
+
+  ASSERT_TRUE(jd["body"]["measure"]["iteration"] == 200) << "iterations";
+  ASSERT_TRUE(jd["body"]["measure"]["map"].GetDouble() <= 1.0) << "map";
+  ASSERT_TRUE(jd["body"]["measure"]["map"].GetDouble() > 0.0) << "map";
+
+  std::unordered_set<std::string> lfiles;
+  fileops::list_directory(detect_train_repo, true, false, false, lfiles);
+  for (std::string ff : lfiles)
+    {
+      if (ff.find("checkpoint") != std::string::npos
+          || ff.find("solver") != std::string::npos)
+        remove(ff.c_str());
+    }
+  ASSERT_TRUE(!fileops::file_exists(detect_train_repo + "checkpoint-"
+                                    + iterations_resnet50 + ".ptw"));
+  ASSERT_TRUE(!fileops::file_exists(detect_train_repo + "checkpoint-"
+                                    + iterations_resnet50 + ".pt"));
+
+  fileops::clear_directory(detect_train_repo + "train.lmdb");
+  fileops::clear_directory(detect_train_repo + "test_0.lmdb");
+  fileops::remove_dir(detect_train_repo + "train.lmdb");
+  fileops::remove_dir(detect_train_repo + "test_0.lmdb");
 }
 
 TEST(torchapi, service_train_images_native)

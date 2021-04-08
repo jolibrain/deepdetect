@@ -124,8 +124,9 @@ namespace dd
         _logger->info("loading " + tmodel._native);
         try
           {
+            // finetuning relaxes strictness when loading weights
             torch_utils::load_weights(*_native, tmodel._native, _device,
-                                      _logger);
+                                      _logger, !_finetuning);
           }
         catch (std::exception &e)
           {
@@ -296,7 +297,16 @@ namespace dd
             source = torch_utils::unwrap_c10_vector(output);
           }
       }
+
+    if (_training && _loss_id >= 0)
+      {
+        // if we are in training mode and model does output the loss (eg traced
+        // detection models), then we return the loss.
+        return source.at(_loss_id);
+      }
+
     c10::IValue out_val = source.at(_linear_in);
+
     if (_hidden_states)
       {
         // out_val is a tuple containing tensors of dimension n_batch *
@@ -398,6 +408,11 @@ namespace dd
     if (_traced)
       return extract_layer == "final";
     return false;
+  }
+
+  bool TorchModule::has_model_loss() const
+  {
+    return _loss_id >= 0;
   }
 
   std::vector<std::string> TorchModule::extractable_layers() const
@@ -512,6 +527,8 @@ namespace dd
       _linear->eval();
     if (_native)
       _native->eval();
+
+    _training = false;
   }
 
   void TorchModule::train()
@@ -524,6 +541,8 @@ namespace dd
       _linear->train();
     if (_native)
       _native->train();
+
+    _training = true;
   }
 
   void TorchModule::free()

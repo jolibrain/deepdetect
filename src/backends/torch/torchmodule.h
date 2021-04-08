@@ -83,6 +83,11 @@ namespace dd
     std::vector<std::string> extractable_layers() const;
 
     /**
+     * \brief return true if this model output its loss during training.
+     */
+    bool has_model_loss() const;
+
+    /**
      * \brief freeze traced net so that it is not updated during learning
      */
     void freeze_traced(bool freeze);
@@ -196,7 +201,10 @@ namespace dd
 
     torch::Device _device;
     torch::Dtype _dtype;
-    int _linear_in = 0; /**<id of the input of the final linear layer */
+    bool _training = false; /**<true if model is in training mode */
+    int _linear_in = 0;     /**<id of the input of the final linear layer */
+    int _loss_id = -1; /**<id of the loss output. If >= 0, forward returns this
+                          output only during training */
     bool _hidden_states = false; /**< Take BERT hidden states as input. */
 
     bool _require_linear_layer = false;
@@ -204,6 +212,7 @@ namespace dd
         _linear_layer_file;     /** < if require_linear_layer == true, this is
                                     the file where the weights are stored */
     unsigned int _nclasses = 0; /**< number of classes */
+    bool _finetuning = false;
 
     std::shared_ptr<spdlog::logger> _logger; /**< mllib logger. */
 
