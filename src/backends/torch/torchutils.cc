@@ -94,11 +94,6 @@ namespace dd
           if (tensor.requires_grad() || !requires_grad)
             params.push_back(tensor);
         }
-      for (auto child : module->children())
-        {
-          add_parameters(std::make_shared<torch::jit::script::Module>(child),
-                         params, requires_grad);
-        }
     }
 
     torch::Tensor toLongTensor(std::vector<int64_t> &values)
