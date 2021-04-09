@@ -30,7 +30,8 @@ namespace dd
     if (ad_solver.has("solver_type"))
       _solver_type = ad_solver.get("solver_type").get<std::string>();
 
-    if (_solver_type == "RANGER" || _solver_type == "RANGER_PLUS")
+    if (_solver_type == "RANGER" || _solver_type == "RANGER_PLUS"
+        || _solver_type == "MADGRAD")
       _clip = true;
 
     if (_solver_type == "RANGER_PLUS")
