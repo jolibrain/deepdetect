@@ -180,12 +180,10 @@ namespace dd
       }
     if (lib_ad.has("nclasses"))
       {
-        _classification = true;
         _nclasses = lib_ad.get("nclasses").get<int>();
       }
     else if (lib_ad.has("ntargets"))
       {
-        _regression = true;
         _nclasses = lib_ad.get("ntargets").get<int>();
       }
 
@@ -259,6 +257,15 @@ namespace dd
       }
 
     // Set model type
+    if (lib_ad.has("nclasses"))
+      {
+        _classification = true;
+      }
+    else if (lib_ad.has("ntargets"))
+      {
+        _regression = true;
+      }
+
     if (_template == "bert")
       {
         if (!self_supervised.empty())
@@ -286,6 +293,7 @@ namespace dd
     else if (_template == "fasterrcnn" || _template == "retinanet")
       {
         _bbox = true;
+        _classification = false;
       }
     else if (_template.find("recurrent") != std::string::npos
              || NativeFactory::is_timeserie(_template))
@@ -296,12 +304,14 @@ namespace dd
       _classification = true; // classification is default
 
     // Set mltype
-    if (_classification)
-      this->_mltype = "classification";
+    if (_bbox)
+      this->_mltype = "detection";
+    else if (_timeserie)
+      this->_mltype = "timeserie";
     else if (_regression)
       this->_mltype = "regression";
-    else if (_bbox)
-      this->_mltype = "detection";
+    else if (_classification)
+      this->_mltype = "classification";
 
     // Create the model
     _module._device = _main_device;
