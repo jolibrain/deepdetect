@@ -107,6 +107,7 @@ if (USE_TORCH)
     backends/torch/torchmodule.cc
     backends/torch/torchutils.cc
     backends/torch/optim/ranger.cc
+    backends/torch/optim/madgrad.cc
     backends/torch/torchdataaug.cc
 	)
 endif()
