@@ -817,8 +817,7 @@ namespace dd
                     += duration_cast<milliseconds>(tstop - tstart).count();
                 this->add_meas("iteration_duration_ms", last_it_time);
 
-                double remain_time_ms
-                    = last_it_time * iter_size * (iterations - it);
+                double remain_time_ms = last_it_time * (iterations - it);
 
                 if (test_interval > 0)
                   {
