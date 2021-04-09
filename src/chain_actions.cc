@@ -132,12 +132,12 @@ namespace dd
               }
 
             cv::Rect roi(cxmin, cymin, cxmax - cxmin, cymax - cymin);
-            cv::Mat cropped_img = img(roi);
+            cv::Mat cropped_img = img(roi).clone();
 
             // set channels as needed
             if (to_rgb)
               cv::cvtColor(cropped_img, cropped_img, CV_BGR2RGB);
-            if (to_bgr)
+            else if (to_bgr)
               cv::cvtColor(cropped_img, cropped_img, CV_RGB2BGR);
 
             // adding bbox id
