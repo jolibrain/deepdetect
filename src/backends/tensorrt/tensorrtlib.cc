@@ -564,52 +564,54 @@ namespace dd
                                          + out_blob);
           }
 
-        if (_bbox)
+        if (_first_predict)
           {
-            _outputIndex1 = _engine->getBindingIndex("keep_count");
-            _buffers.resize(3);
-            _floatOut.resize(_max_batch_size * _top_k * 7);
-            _keepCount.resize(_max_batch_size);
-            if (inputc._bw)
-              cudaMalloc(&_buffers.data()[_inputIndex],
-                         _max_batch_size * inputc._height * inputc._width
-                             * sizeof(float));
-            else
-              cudaMalloc(&_buffers.data()[_inputIndex],
-                         _max_batch_size * 3 * inputc._height * inputc._width
-                             * sizeof(float));
-            cudaMalloc(&_buffers.data()[_outputIndex0],
-                       _max_batch_size * _top_k * 7 * sizeof(float));
-            cudaMalloc(&_buffers.data()[_outputIndex1],
-                       _max_batch_size * sizeof(int));
-          }
-        else if (_ctc)
-          {
-            throw MLLibBadParamException(
-                "ocr not yet implemented over tensorRT backend");
-          }
-        else if (_timeserie)
-          {
-            throw MLLibBadParamException(
-                "timeseries not yet implemented over tensorRT backend");
-          }
-        else // classification / regression
-          {
-            if (_regression)
-              _buffers.resize(1);
-            else
-              _buffers.resize(2);
-            _floatOut.resize(_max_batch_size * this->_nclasses);
-            if (inputc._bw)
-              cudaMalloc(&_buffers.data()[_inputIndex],
-                         _max_batch_size * inputc._height * inputc._width
-                             * sizeof(float));
-            else
-              cudaMalloc(&_buffers.data()[_inputIndex],
-                         _max_batch_size * 3 * inputc._height * inputc._width
-                             * sizeof(float));
-            cudaMalloc(&_buffers.data()[_outputIndex0],
-                       _max_batch_size * _nclasses * sizeof(float));
+            _first_predict = false;
+
+            if (_bbox)
+              {
+                _outputIndex1 = _engine->getBindingIndex("keep_count");
+                _buffers.resize(3);
+                _floatOut.resize(_max_batch_size * _top_k * 7);
+                _keepCount.resize(_max_batch_size);
+                if (inputc._bw)
+                  cudaMalloc(&_buffers.data()[_inputIndex],
+                             _max_batch_size * inputc._height * inputc._width
+                                 * sizeof(float));
+                else
+                  cudaMalloc(&_buffers.data()[_inputIndex],
+                             _max_batch_size * 3 * inputc._height
+                                 * inputc._width * sizeof(float));
+                cudaMalloc(&_buffers.data()[_outputIndex0],
+                           _max_batch_size * _top_k * 7 * sizeof(float));
+                cudaMalloc(&_buffers.data()[_outputIndex1],
+                           _max_batch_size * sizeof(int));
+              }
+            else if (_ctc)
+              {
+                throw MLLibBadParamException(
+                    "ocr not yet implemented over tensorRT backend");
+              }
+            else if (_timeserie)
+              {
+                throw MLLibBadParamException(
+                    "timeseries not yet implemented over tensorRT backend");
+              }
+            else // classification / regression
+              {
+                _buffers.resize(2);
+                _floatOut.resize(_max_batch_size * this->_nclasses);
+                if (inputc._bw)
+                  cudaMalloc(&_buffers.data()[_inputIndex],
+                             _max_batch_size * inputc._height * inputc._width
+                                 * sizeof(float));
+                else
+                  cudaMalloc(&_buffers.data()[_inputIndex],
+                             _max_batch_size * 3 * inputc._height
+                                 * inputc._width * sizeof(float));
+                cudaMalloc(&_buffers.data()[_outputIndex0],
+                           _max_batch_size * _nclasses * sizeof(float));
+              }
           }
       }
 

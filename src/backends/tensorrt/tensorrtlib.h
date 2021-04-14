@@ -140,6 +140,9 @@ namespace dd
     int _outputIndex0;
     int _outputIndex1;
 
+    bool _first_predict
+        = true; // do some cuda allocations only at first predict
+
     bool _explicit_batch
         = false; /**< whether TRT uses explicit batch model (ONNX). */
 
@@ -154,6 +157,5 @@ namespace dd
 
     nvinfer1::ICudaEngine *read_engine_from_onnx();
   };
-
 }
 #endif
