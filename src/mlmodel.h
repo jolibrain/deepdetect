@@ -30,11 +30,14 @@
 #include <iostream>
 #include <unordered_map>
 #include "apidata.h"
+#include "dto/model.hpp"
 #include "utils/fileops.hpp"
 #ifndef WIN32
 #include "utils/httpclient.hpp"
 #endif
 #include "mllibstrategy.h"
+#include "dto/service_create.hpp"
+#include "dto/parameters.hpp"
 
 namespace dd
 {
@@ -45,26 +48,27 @@ namespace dd
     {
     }
 
-    MLModel(const APIData &ad, APIData &adg,
+    MLModel(const oatpp::Object<DTO::Model> &model_dto,
+            const oatpp::Object<DTO::ServiceCreate> &service_dto,
             const std::shared_ptr<spdlog::logger> &logger)
     {
-      init_repo_dir(ad, logger.get());
-      if (ad.has("init"))
-        read_config_json(adg, logger);
+      init_repo_dir(model_dto, logger.get());
+      if (model_dto->init)
+        read_config_json(service_dto);
     }
 
-    MLModel(const APIData &ad)
+    MLModel(const oatpp::Object<DTO::Model> &model_dto)
     {
-      init_repo_dir(ad, nullptr);
+      init_repo_dir(model_dto, nullptr);
     }
 
     MLModel(const std::string &repo) : _repo(repo)
     {
     }
 
-    MLModel(const APIData &ad, const std::string &repo) : _repo(repo)
+    MLModel(const oatpp::Object<DTO::Model> &model_dto, const std::string &repo) : _repo(repo)
     {
-      init_repo_dir(ad, nullptr);
+      init_repo_dir(model_dto, nullptr);
     }
 
     ~MLModel()
@@ -210,12 +214,11 @@ namespace dd
 #endif
 
   private:
-    void init_repo_dir(const APIData &ad, spdlog::logger *logger)
+    void init_repo_dir(const oatpp::Object<DTO::Model> &model_dto, spdlog::logger *logger)
     {
       // auto-creation of model directory
-      _repo = ad.get("repository").get<std::string>();
-      bool create = ad.has("create_repository")
-                    && ad.get("create_repository").get<bool>();
+      _repo = model_dto->repository->std_str();
+
       bool isDir;
       bool exists = fileops::file_exists(_repo, isDir);
       if (exists && !isDir)
@@ -225,7 +228,7 @@ namespace dd
           logger->error(errmsg);
           throw MLLibBadParamException(errmsg);
         }
-      if (!exists && create)
+      if (!exists && model_dto->create_repository)
         fileops::create_dir(_repo, 0775);
 
       if (!fileops::is_directory_writable(_repo))
@@ -237,13 +240,13 @@ namespace dd
         }
 
 #ifdef USE_SIMSEARCH
-      if (ad.has("index_preload") && ad.get("index_preload").get<bool>())
+      if (model_dto->index_preload)
         _index_preload = true;
 #endif
       // auto-install from model archive
-      if (ad.has("init"))
+      if (model_dto->init)
         {
-          std::string compressedf = ad.get("init").get<std::string>();
+          std::string compressedf = model_dto->init->std_str();
 
           // check whether already in the directory
           std::string base_model_fname
@@ -301,8 +304,7 @@ namespace dd
         }
     }
 
-    void read_config_json(APIData &adg,
-                          const std::shared_ptr<spdlog::logger> &logger)
+    void read_config_json(const oatpp::Object<DTO::ServiceCreate> service_create_dto)
     {
       const std::string cf = _repo + "/config.json";
       if (!fileops::file_exists(cf))
@@ -310,26 +312,13 @@ namespace dd
       std::ifstream is(cf);
       std::stringstream jbuf;
       jbuf << is.rdbuf();
-      rapidjson::Document d;
-      d.Parse<rapidjson::kParseNanAndInfFlag>(jbuf.str().c_str());
-      if (d.HasParseError())
-        {
-          logger->error("config.json parsing error on string: {}", jbuf.str());
-          throw MLLibBadParamException("Failed parsing config file " + cf);
-        }
-      APIData adcj;
-      try
-        {
-          adcj.fromRapidJson(d);
-        }
-      catch (RapidjsonException &e)
-        {
-          logger->error("JSON error {}", e.what());
-          throw MLLibBadParamException(
-              "Failed converting JSON file to internal data format");
-        }
-      APIData adcj_parameters = adcj.getobj("parameters");
-      adg.add("parameters", adcj_parameters);
+
+      // FIXME(sileht): Replacing the user provided data here doesn't look good
+      // to me
+      std::shared_ptr<oatpp::data::mapping::ObjectMapper> objectMapper
+        = oatpp::parser::json::mapping::ObjectMapper::createShared();
+      service_create_dto->parameters = objectMapper->readFromString<oatpp::Object<DTO::Parameters>>(
+                  jbuf.str().c_str());
     }
   };
 }

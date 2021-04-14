@@ -43,7 +43,7 @@
 #include "utils/apitools.h"
 #include <random>
 
-#include "dto/img_connector.hpp"
+#include "dto/input_connector.hpp"
 
 namespace dd
 {
@@ -457,7 +457,7 @@ namespace dd
 
     void fillup_parameters(const APIData &ad)
     {
-      auto params = ad.createSharedDTO<dd::DTO::ImgInputConnectorParameters>();
+      auto params = ad.createSharedDTO<dd::DTO::InputConnector>();
 
       // optional parameters.
       if (params->width)

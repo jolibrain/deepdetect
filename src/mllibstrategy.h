@@ -23,12 +23,14 @@
 #define MLLIBSTRATEGY_H
 
 #include "apidata.h"
+#include "dto/mllib.hpp"
 #include "service_stats.h"
 #include "utils/fileops.hpp"
 #include "dd_spdlog.h"
 #include <atomic>
 #include <exception>
 #include <mutex>
+
 
 namespace dd
 {
@@ -112,9 +114,9 @@ namespace dd
 
     /**
      * \brief initializes ML lib
-     * @param ad data object for "parameters/mllib"
+     * @param data transfert object for "parameters/mllib"
      */
-    void init_mllib(const APIData &ad);
+    void init_mllib(const DTO::MLLib &dto);
 
     /**
      * \brief clear the lib service from local model files etc...

@@ -273,16 +273,16 @@ namespace dd
     class v_init
     {
     public:
-      const APIData &_in;
+      const oatpp::Object<DTO::ServiceCreate> &_service_dto;
       template <typename T> void operator()(T &mllib)
       {
-        mllib.init(_in);
+        mllib.init(_service_dto);
       }
     };
 
-    template <typename T> static void init(T &mllib, const APIData &in)
+    template <typename T> static void init(T &mllib, const oatpp::Object<DTO::ServiceCreate> &service_dto)
     {
-      visitor_mllib::v_init v{ in };
+      visitor_mllib::v_init v{ service_dto };
       mapbox::util::apply_visitor(v, mllib);
     }
 
@@ -384,7 +384,7 @@ namespace dd
      * @param ad optional root data object holding service's parameters
      */
     void add_service(const std::string &sname, mls_variant_type &&mls,
-                     const APIData &ad = APIData())
+                     const oatpp::Object<DTO::ServiceCreate> &service_dto)
     {
       std::unordered_map<std::string, mls_variant_type>::const_iterator hit;
       if ((hit = _mlservices.find(sname)) != _mlservices.end())
@@ -395,7 +395,7 @@ namespace dd
       auto llog = spdlog::get(sname);
       try
         {
-          visitor_mllib::init(mls, ad);
+          visitor_mllib::init(mls, service_dto);
           std::lock_guard<std::mutex> lock(_mlservices_mtx);
           _mlservices.insert(
               std::pair<std::string, mls_variant_type>(sname, std::move(mls)));
