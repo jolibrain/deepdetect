@@ -222,10 +222,11 @@ namespace dd
     return jd;
   }
 
-  JDoc JsonAPI::dd_service_not_found_1002() const
+  JDoc JsonAPI::dd_service_not_found_1002(std::string sname) const
   {
     JDoc jd;
     jd.SetObject();
+    _logger->error("service not found: \"{}\"", sname);
     render_status(jd, 404, "NotFound", 1002, "Service Not Found");
     return jd;
   }
@@ -435,9 +436,12 @@ namespace dd
     return jinfo;
   }
 
-  JDoc JsonAPI::service_create(const std::string &sname,
+  JDoc JsonAPI::service_create(const std::string &snamein,
                                const std::string &jstr)
   {
+    std::string sname(snamein);
+    std::transform(snamein.begin(), snamein.end(), sname.begin(), ::tolower);
+
     if (sname.empty())
       {
         _logger->error("missing service resource name: {}", sname);
@@ -1012,12 +1016,15 @@ namespace dd
     return jsc;
   }
 
-  JDoc JsonAPI::service_status(const std::string &sname)
+  JDoc JsonAPI::service_status(const std::string &snamein)
   {
+    std::string sname(snamein);
+    std::transform(snamein.begin(), snamein.end(), sname.begin(), ::tolower);
+
     if (sname.empty())
-      return dd_service_not_found_1002();
+      return dd_service_not_found_1002(sname);
     if (!this->service_exists(sname))
-      return dd_service_not_found_1002();
+      return dd_service_not_found_1002(sname);
     auto hit = this->get_service_it(sname);
     APIData ad = mapbox::util::apply_visitor(visitor_status(), (*hit).second);
     JDoc jst = dd_ok_200();
@@ -1027,11 +1034,15 @@ namespace dd
     return jst;
   }
 
-  JDoc JsonAPI::service_delete(const std::string &sname,
+  JDoc JsonAPI::service_delete(const std::string &snamein,
                                const std::string &jstr)
   {
+
+    std::string sname(snamein);
+    std::transform(snamein.begin(), snamein.end(), sname.begin(), ::tolower);
+
     if (sname.empty())
-      return dd_service_not_found_1002();
+      return dd_service_not_found_1002(sname);
 
     rapidjson::Document d;
     if (!jstr.empty())
@@ -1093,7 +1104,7 @@ namespace dd
         sname = d["service"].GetString();
         std::transform(sname.begin(), sname.end(), sname.begin(), ::tolower);
         if (!this->service_exists(sname))
-          return dd_service_not_found_1002();
+          return dd_service_not_found_1002(sname);
       }
     catch (...)
       {
@@ -1226,7 +1237,7 @@ namespace dd
         sname = d["service"].GetString();
         std::transform(sname.begin(), sname.end(), sname.begin(), ::tolower);
         if (!this->service_exists(sname))
-          return dd_service_not_found_1002();
+          return dd_service_not_found_1002(sname);
       }
     catch (...)
       {
@@ -1329,7 +1340,7 @@ namespace dd
         sname = d["service"].GetString();
         std::transform(sname.begin(), sname.end(), sname.begin(), ::tolower);
         if (!this->service_exists(sname))
-          return dd_service_not_found_1002();
+          return dd_service_not_found_1002(sname);
       }
     catch (...)
       {
@@ -1461,7 +1472,7 @@ namespace dd
         sname = d["service"].GetString();
         std::transform(sname.begin(), sname.end(), sname.begin(), ::tolower);
         if (!this->service_exists(sname))
-          return dd_service_not_found_1002();
+          return dd_service_not_found_1002(sname);
       }
     catch (...)
       {
@@ -1508,9 +1519,12 @@ namespace dd
     return jd;
   }
 
-  JDoc JsonAPI::service_chain(const std::string &cname,
+  JDoc JsonAPI::service_chain(const std::string &cnamein,
                               const std::string &jstr)
   {
+    std::string cname(cnamein);
+    std::transform(cnamein.begin(), cnamein.end(), cname.begin(), ::tolower);
+
     rapidjson::Document d;
     d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
     if (d.HasParseError())
