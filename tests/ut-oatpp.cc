@@ -26,7 +26,10 @@
 
 #include "ut-oatpp.h"
 
-const std::string serv = "very_long_label_service_name_with_😀_inside";
+const std::string serv
+    = "very_long_label_service_name_with_😀_inside_and_some_MAJ";
+const std::string serv_lower
+    = "very_long_label_service_name_with_😀_inside_and_some_maj";
 const std::string serv2 = "myserv2";
 #if defined(CPU_ONLY) || defined(USE_CAFFE_CPU_ONLY)
 static std::string iterations_mnist = "10";
@@ -83,7 +86,7 @@ void test_services(std::shared_ptr<DedeApiTestClient> client)
   ASSERT_TRUE(d.HasMember("status"));
   ASSERT_TRUE(d.HasMember("body"));
   ASSERT_EQ("caffe", d["body"]["mllib"]);
-  ASSERT_EQ(serv.c_str(), d["body"]["name"]);
+  ASSERT_EQ(serv_lower.c_str(), d["body"]["name"]);
   ASSERT_TRUE(d["body"].HasMember("jobs"));
 
   // info call
@@ -206,7 +209,7 @@ void test_train(std::shared_ptr<DedeApiTestClient> client)
   ASSERT_TRUE(d.HasMember("status"));
   ASSERT_TRUE(d.HasMember("body"));
   ASSERT_EQ("caffe", d["body"]["mllib"]);
-  ASSERT_EQ(serv.c_str(), d["body"]["name"]);
+  ASSERT_EQ(serv_lower.c_str(), d["body"]["name"]);
   ASSERT_TRUE(d["body"].HasMember("jobs"));
   ASSERT_EQ("running", d["body"]["jobs"][0]["status"]);
 
@@ -298,7 +301,7 @@ void test_multiservices(std::shared_ptr<DedeApiTestClient> client)
   ASSERT_TRUE(d["head"].HasMember("services"));
   ASSERT_EQ(2, d["head"]["services"].Size());
   ASSERT_EQ(serv2, d["head"]["services"][0]["name"].GetString());
-  ASSERT_EQ(serv, d["head"]["services"][1]["name"].GetString());
+  ASSERT_EQ(serv_lower, d["head"]["services"][1]["name"].GetString());
 
   // remove services and trained model files
   response = client->delete_services(serv.c_str(), "lib");
@@ -367,7 +370,7 @@ void test_concurrency(std::shared_ptr<DedeApiTestClient> client)
   ASSERT_TRUE(d["head"].HasMember("services"));
   ASSERT_EQ(2, d["head"]["services"].Size());
   ASSERT_EQ(serv2, d["head"]["services"][0]["name"].GetString());
-  ASSERT_EQ(serv, d["head"]["services"][1]["name"].GetString());
+  ASSERT_EQ(serv_lower, d["head"]["services"][1]["name"].GetString());
 
   // train async second job
   train_post = "{\"service\":\"" + serv2
@@ -537,7 +540,7 @@ void test_predict(std::shared_ptr<DedeApiTestClient> client)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   ASSERT_TRUE(jd.HasMember("head"));
-  ASSERT_EQ(serv.c_str(), jd["head"]["service"]);
+  ASSERT_EQ(serv_lower.c_str(), jd["head"]["service"]);
   ASSERT_EQ("/predict", jd["head"]["method"]);
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
               > 0);
