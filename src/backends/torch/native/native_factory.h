@@ -59,6 +59,15 @@ namespace dd
         return true;
       return false;
     }
+
+    /**
+     * if tdef is a vision template, returns true if it supports greyscale
+     * input.
+     */
+    static bool template_supports_bw(const std::string &tdef)
+    {
+      return !VisionModelsFactory::is_vision_template(tdef);
+    }
   };
 }
 #endif
