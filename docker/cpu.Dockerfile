@@ -82,6 +82,7 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     libgoogle-perftools-dev \
     curl \
     libarchive-dev \
+    libtcmalloc-minimal4 \
     bash-completion \
     libomp-10-dev \
     libomp5-10
@@ -145,6 +146,7 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     libboost-stacktrace1.71.0 \
     libboost-system1.71.0 \
     libarchive13 \
+    libtcmalloc-minimal4 \
     libomp-10-dev \
     libomp5-10
 
