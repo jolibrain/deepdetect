@@ -91,7 +91,7 @@ class DetectionModel(torch.nn.Module):
             # Sum of all losses for finetuning (as done in vision/references/detection/engine.py)
             losses = [l for l in losses.values()]
             loss = torch.zeros((1,), device=x.device, dtype=x.dtype)
-            for i in range(1, len(losses)):
+            for i in range(len(losses)):
                 loss += losses[i]
         else:
             losses, predictions = self.model(l_x)
@@ -212,7 +212,6 @@ for mname in args.models:
                     # model.head = M.detection.retinanet.RetinaNetHead(in_channels, num_anchors, args.num_classes)
                     raise Exception("Retinanet with fixed number of classes is not yet supported")
 
-        model.eval()
         detect_model = DetectionModel(model)
         detect_model.train()
         script_module = torch.jit.script(detect_model)
