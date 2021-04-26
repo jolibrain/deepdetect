@@ -452,8 +452,33 @@ namespace dd
     for (const auto &vec : data)
       data_tensors.push_back(torch::stack(vec));
 
-    for (const auto &vec : target)
-      target_tensors.push_back(torch::stack(vec));
+    if (_bbox)
+      {
+        if (target.size() > 0)
+          {
+            // Concatenate instead of stacking, and index with tensor "ids"
+            // This allows different size of targets within a same batch.
+            const auto &vec0 = target[0];
+            std::vector<at::Tensor> ids;
+            ids.reserve(vec0.size());
+
+            int id = 0;
+            for (const at::Tensor &tensor : vec0)
+              {
+                ids.push_back(torch::full(tensor.size(0), id, at::kInt));
+                ++id;
+              }
+
+            target_tensors.push_back(torch::cat(ids));
+            for (const auto &vec : target)
+              target_tensors.push_back(torch::cat(vec));
+          }
+      }
+    else
+      {
+        for (const auto &vec : target)
+          target_tensors.push_back(torch::stack(vec));
+      }
 
     return TorchBatch{ data_tensors, target_tensors };
   }
