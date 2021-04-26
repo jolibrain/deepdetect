@@ -101,7 +101,7 @@ class DD(object):
             return None
 
     def get(self, method, json=None, params=None):
-        """GET to DeepDetect server """
+        """GET to DeepDetect server"""
         url = self.__ddurl + method
         r = requests.get(url=url, json=json, params=params, timeout=DD_TIMEOUT)
         r.raise_for_status()
