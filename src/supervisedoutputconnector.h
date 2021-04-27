@@ -23,6 +23,8 @@
 #define SUPERVISEDOUTPUTCONNECTOR_H
 #define TS_METRICS_EPSILON 1E-2
 
+#include "dto/output_connector.hpp"
+
 template <typename T>
 bool SortScorePairDescend(const std::pair<double, T> &pair1,
                           const std::pair<double, T> &pair2)
@@ -161,10 +163,9 @@ namespace dd
     void init(const APIData &ad)
     {
       APIData ad_out = ad.getobj("parameters").getobj("output");
-      if (ad_out.has("best"))
-        _best = ad_out.get("best").get<int>();
-      if (_best == -1)
-        _best = ad_out.get("nclasses").get<int>();
+      auto output_params = ad_out.createSharedDTO<DTO::OutputConnector>();
+      if (output_params->best != nullptr)
+        _best = output_params->best;
     }
 
     /**
@@ -242,13 +243,11 @@ namespace dd
      * @param ad_out output data object
      * @param bcats supervised output connector
      */
-    void best_cats(const APIData &ad_out, SupervisedOutput &bcats,
+    void best_cats(SupervisedOutput &bcats, const int &output_param_best,
                    const int &nclasses, const bool &has_bbox,
                    const bool &has_roi, const bool &has_mask) const
     {
-      int best = _best;
-      if (ad_out.has("best"))
-        best = ad_out.get("best").get<int>();
+      int best = output_param_best;
       if (best == -1)
         best = nclasses;
       if (!has_bbox && !has_roi && !has_mask)
@@ -399,6 +398,8 @@ namespace dd
      */
     void finalize(const APIData &ad_in, APIData &ad_out, MLModel *mlm)
     {
+      auto output_params = ad_in.createSharedDTO<DTO::OutputConnector>();
+
 #ifndef USE_SIMSEARCH
       (void)mlm;
 #endif
@@ -442,13 +443,17 @@ namespace dd
           ad_out.erase("bbox");
         }
 
+      if (output_params->best == nullptr)
+        output_params->best = _best;
+
       if (!timeseries)
-        best_cats(ad_in, bcats, nclasses, has_bbox, has_roi, has_mask);
+        best_cats(bcats, output_params->best, nclasses, has_bbox, has_roi,
+                  has_mask);
 
       std::unordered_set<std::string> indexed_uris;
 #ifdef USE_SIMSEARCH
       // index
-      if (ad_in.has("index") && ad_in.get("index").get<bool>())
+      if (output_params->index)
         {
           // check whether index has been created
           if (!mlm->_se)
@@ -553,7 +558,7 @@ namespace dd
         }
 
       // build index
-      if (ad_in.has("build_index") && ad_in.get("build_index").get<bool>())
+      if (output_params->build_index)
         {
           if (mlm->_se)
             mlm->build_index();
@@ -562,7 +567,7 @@ namespace dd
         }
 
       // search
-      if (ad_in.has("search") && ad_in.get("search").get<bool>())
+      if (output_params->search)
         {
           // check whether index has been created
           if (!mlm->_se)
@@ -582,11 +587,11 @@ namespace dd
           int search_nn = _best;
           if (has_roi)
             search_nn = _search_nn;
-          if (ad_in.has("search_nn"))
-            search_nn = ad_in.get("search_nn").get<int>();
+          if (output_params->search_nn)
+            search_nn = output_params->search_nn;
 #ifdef USE_FAISS
-          if (ad_in.has("nprobe"))
-            mlm->_se->_tse->_nprobe = ad_in.get("nprobe").get<int>();
+          if (output_params->nprobe)
+            mlm->_se->_tse->_nprobe = output_params->nprobe;
 #endif
           if (!has_roi)
             {

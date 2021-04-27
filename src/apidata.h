@@ -298,6 +298,20 @@ namespace dd
           .getPtr();
     }
 
+    template <typename T>
+    inline static APIData fromDTO(const oatpp::Object<T> &dto)
+    {
+      std::shared_ptr<oatpp::data::mapping::ObjectMapper> object_mapper
+          = oatpp::parser::json::mapping::ObjectMapper::createShared();
+
+      oatpp::String json = object_mapper->writeToString(dto);
+      APIData ad;
+      rapidjson::Document d;
+      d.Parse<rapidjson::kParseNanAndInfFlag>(json->c_str());
+      ad.fromRapidJson(d);
+      return ad;
+    }
+
   public:
     /**
      * \brief render Mustache template based on this APIData object

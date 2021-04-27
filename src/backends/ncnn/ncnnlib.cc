@@ -22,7 +22,6 @@
 #include "outputconnectorstrategy.h"
 #include <thread>
 #include <algorithm>
-#include "utils/utils.hpp"
 
 // NCNN
 #include "ncnnlib.h"
@@ -53,10 +52,10 @@ namespace dd
   {
     this->_libname = "ncnn";
     _net = new ncnn::Net();
-    _net->opt.num_threads = _threads;
+    _net->opt.num_threads = 1;
     _net->opt.blob_allocator = &_blob_pool_allocator;
     _net->opt.workspace_allocator = &_workspace_pool_allocator;
-    _net->opt.lightmode = _lightmode;
+    _net->opt.lightmode = true;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
@@ -69,12 +68,9 @@ namespace dd
     this->_libname = "ncnn";
     _net = tl._net;
     tl._net = nullptr;
-    _nclasses = tl._nclasses;
-    _threads = tl._threads;
     _timeserie = tl._timeserie;
     _old_height = tl._old_height;
-    _inputBlob = tl._inputBlob;
-    _outputBlob = tl._outputBlob;
+    _init_dto = tl._init_dto;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
@@ -94,9 +90,9 @@ namespace dd
   void NCNNLib<TInputConnectorStrategy, TOutputConnectorStrategy,
                TMLModel>::init_mllib(const APIData &ad)
   {
-    bool use_fp32 = (ad.has("datatype")
-                     && ad.get("datatype").get<std::string>()
-                            == "fp32"); // default is fp16
+    _init_dto = ad.createSharedDTO<DTO::MLLib>();
+
+    bool use_fp32 = (_init_dto->datatype == "fp32");
     _net->opt.use_fp16_packed = !use_fp32;
     _net->opt.use_fp16_storage = !use_fp32;
     _net->opt.use_fp16_arithmetic = !use_fp32;
@@ -124,35 +120,11 @@ namespace dd
     _old_height = this->_inputc.height();
     _net->set_input_h(_old_height);
 
-    if (ad.has("nclasses"))
-      _nclasses = ad.get("nclasses").get<int>();
-
-    if (ad.has("threads"))
-      _threads = ad.get("threads").get<int>();
-    else
-      _threads = dd_utils::my_hardware_concurrency();
-
     _timeserie = this->_inputc._timeserie;
     if (_timeserie)
       this->_mltype = "timeserie";
 
-    if (ad.has("lightmode"))
-      {
-        _lightmode = ad.get("lightmode").get<bool>();
-        _net->opt.lightmode = _lightmode;
-      }
-
-    // setting the value of Input Layer
-    if (ad.has("inputblob"))
-      {
-        _inputBlob = ad.get("inputblob").get<std::string>();
-      }
-    // setting the final Output Layer
-    if (ad.has("outputblob"))
-      {
-        _outputBlob = ad.get("outputblob").get<std::string>();
-      }
-
+    _net->opt.lightmode = _init_dto->lightmode;
     _blob_pool_allocator.set_size_compare_ratio(0.0f);
     _workspace_pool_allocator.set_size_compare_ratio(0.5f);
     model_type(this->_mlmodel._params, this->_mltype);
@@ -212,33 +184,18 @@ namespace dd
       }
 
     APIData ad_output = ad.getobj("parameters").getobj("output");
-
-    // Get bbox
-    bool bbox = false;
-    if (ad_output.has("bbox"))
-      bbox = ad_output.get("bbox").get<bool>();
-
-    // Ctc model
-    bool ctc = false;
-    int blank_label = -1;
-    if (ad_output.has("ctc"))
-      {
-        ctc = ad_output.get("ctc").get<bool>();
-        if (ctc)
-          {
-            if (ad_output.has("blank_label"))
-              blank_label = ad_output.get("blank_label").get<int>();
-          }
-      }
+    auto output_params = ad_output.createSharedDTO<DTO::OutputConnector>();
 
     // Extract detection or classification
-    int ret = 0;
-    std::string out_blob = _outputBlob;
+    std::string out_blob;
+    if (_init_dto->outputBlob != nullptr)
+      out_blob = _init_dto->outputBlob->std_str();
+
     if (out_blob.empty())
       {
-        if (bbox == true)
+        if (output_params->bbox == true)
           out_blob = "detection_out";
-        else if (ctc == true)
+        else if (output_params->ctc == true)
           out_blob = "probs";
         else if (_timeserie)
           out_blob = "rnn_pred";
@@ -246,27 +203,15 @@ namespace dd
           out_blob = "prob";
       }
 
+    // Get best
+    if (output_params->best == nullptr || output_params->best == -1
+        || output_params->best > _init_dto->nclasses)
+      output_params->best = _init_dto->nclasses;
+
     std::vector<APIData> vrad;
 
-    // Get confidence_threshold
-    float confidence_threshold = 0.0;
-    if (ad_output.has("confidence_threshold"))
-      {
-        apitools::get_float(ad_output, "confidence_threshold",
-                            confidence_threshold);
-      }
-
-    // Get best
-    int best = -1;
-    if (ad_output.has("best"))
-      {
-        best = ad_output.get("best").get<int>();
-      }
-    if (best == -1 || best > _nclasses)
-      best = _nclasses;
-
-      // for loop around batch size
-#pragma omp parallel for num_threads(_threads)
+    // for loop around batch size
+#pragma omp parallel for num_threads(*_init_dto->threads)
     for (size_t b = 0; b < inputc._ids.size(); b++)
       {
         std::vector<double> probs;
@@ -276,16 +221,16 @@ namespace dd
         APIData rad;
 
         ncnn::Extractor ex = _net->create_extractor();
-        ex.set_num_threads(_threads);
-        ex.input(_inputBlob.c_str(), inputc._in.at(b));
+        ex.set_num_threads(_init_dto->threads);
+        ex.input(_init_dto->inputBlob->c_str(), inputc._in.at(b));
 
-        ret = ex.extract(out_blob.c_str(), inputc._out.at(b));
+        int ret = ex.extract(out_blob.c_str(), inputc._out.at(b));
         if (ret == -1)
           {
             throw MLLibInternalException("NCNN internal error");
           }
 
-        if (bbox == true)
+        if (output_params->bbox)
           {
             std::string uri = inputc._ids.at(b);
             auto bit = inputc._imgs_size.find(uri);
@@ -305,7 +250,7 @@ namespace dd
             for (int i = 0; i < inputc._out.at(b).h; i++)
               {
                 const float *values = inputc._out.at(b).row(i);
-                if (values[1] < confidence_threshold)
+                if (values[1] < output_params->confidence_threshold)
                   break; // output is sorted by confidence
 
                 cats.push_back(this->_mlmodel.get_hcorresp(values[0]));
@@ -323,7 +268,7 @@ namespace dd
                 bboxes.push_back(ad_bbox);
               }
           }
-        else if (ctc == true)
+        else if (output_params->ctc)
           {
             int alphabet = inputc._out.at(b).w;
             int time_step = inputc._out.at(b).h;
@@ -336,11 +281,11 @@ namespace dd
               }
 
             std::vector<int> pred_label_seq;
-            int prev = blank_label;
+            int prev = output_params->blank_label;
             for (int t = 0; t < time_step; ++t)
               {
                 int cur = pred_label_seq_with_blank[t];
-                if (cur != prev && cur != blank_label)
+                if (cur != prev && cur != output_params->blank_label)
                   pred_label_seq.push_back(cur);
                 prev = cur;
               }
@@ -388,12 +333,13 @@ namespace dd
                 vec[i] = std::make_pair(cls_scores[i], i);
               }
 
-            std::partial_sort(vec.begin(), vec.begin() + best, vec.end(),
+            std::partial_sort(vec.begin(), vec.begin() + output_params->best,
+                              vec.end(),
                               std::greater<std::pair<float, int>>());
 
-            for (int i = 0; i < best; i++)
+            for (int i = 0; i < output_params->best; i++)
               {
-                if (vec[i].first < confidence_threshold)
+                if (vec[i].first < output_params->confidence_threshold)
                   continue;
                 cats.push_back(this->_mlmodel.get_hcorresp(vec[i].second));
                 probs.push_back(vec[i].first);
@@ -403,7 +349,7 @@ namespace dd
         rad.add("uri", inputc._ids.at(b));
         rad.add("loss", 0.0);
         rad.add("cats", cats);
-        if (bbox == true)
+        if (output_params->bbox)
           rad.add("bboxes", bboxes);
         if (_timeserie)
           {
@@ -423,13 +369,13 @@ namespace dd
       } // end for batch_size
 
     tout.add_results(vrad);
-    out.add("nclasses", this->_nclasses);
-    if (bbox == true)
+    int nclasses = this->_init_dto->nclasses;
+    out.add("nclasses", nclasses);
+    if (output_params->bbox == true)
       out.add("bbox", true);
     out.add("roi", false);
     out.add("multibox_rois", false);
-    tout.finalize(ad.getobj("parameters").getobj("output"), out,
-                  static_cast<MLModel *>(&this->_mlmodel));
+    tout.finalize(ad_output, out, static_cast<MLModel *>(&this->_mlmodel));
 
     // chain compliance
     if (ad.has("chain") && ad.get("chain").get<bool>())

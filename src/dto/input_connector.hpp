@@ -19,8 +19,8 @@
  * along with deepdetect.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HTTP_DTO_IMG_CONNECTOR_HPP
-#define HTTP_DTO_IMG_CONNECTOR_HPP
+#ifndef DTO_INPUT_CONNECTOR_HPP
+#define DTO_INPUT_CONNECTOR_HPP
 
 #include "dd_config.h"
 #include "oatpp/core/Types.hpp"
@@ -32,10 +32,13 @@ namespace dd
   {
 #include OATPP_CODEGEN_BEGIN(DTO)
 
-    class ImgInputConnectorParameters : public oatpp::DTO
+    class InputConnector : public oatpp::DTO
     {
-      DTO_INIT(ImgInputConnectorParameters, DTO /* extends */)
+      DTO_INIT(InputConnector, DTO /* extends */)
+      // Connector type
+      DTO_FIELD(String, connector);
 
+      // IMG Input Connector
       DTO_FIELD(Int32, width);
       DTO_FIELD(Int32, height);
       DTO_FIELD(Int32, crop_width);

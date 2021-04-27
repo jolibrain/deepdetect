@@ -22,11 +22,14 @@
 #ifndef NCNNLIB_H
 #define NCNNLIB_H
 
+#include "apidata.h"
+#include "utils/utils.hpp"
+
+#include "dto/mllib.hpp"
+
 // NCNN
 #include "net.h"
 #include "ncnnmodel.h"
-
-#include "apidata.h"
 
 namespace dd
 {
@@ -53,20 +56,17 @@ namespace dd
 
   public:
     ncnn::Net *_net = nullptr;
-    int _nclasses = 0;
     bool _timeserie = false;
-    bool _lightmode = true;
 
   private:
+    oatpp::Object<DTO::MLLib> _init_dto;
     static ncnn::UnlockedPoolAllocator _blob_pool_allocator;
     static ncnn::PoolAllocator _workspace_pool_allocator;
 
   protected:
-    int _threads = 1;
     int _old_height = -1;
-    std::string _inputBlob = "data";
-    std::string _outputBlob;
   };
+
 }
 
 #endif
