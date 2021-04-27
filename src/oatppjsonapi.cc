@@ -40,6 +40,8 @@
 #include "oatpp/core/macro/component.hpp"
 #include "oatpp-swagger/Controller.hpp"
 
+#include "utils/oatpp.hpp"
+
 namespace dd
 {
   oatpp::network::Server *_server = nullptr;
@@ -265,7 +267,7 @@ namespace dd
     auto router = components.httpRouter.getObject();
 
     std::shared_ptr<oatpp::data::mapping::ObjectMapper> defaultObjectMapper
-        = oatpp::parser::json::mapping::ObjectMapper::createShared();
+        = dd::oatpp_utils::createDDMapper();
     auto dedeController
         = DedeController::createShared(this, defaultObjectMapper);
     dedeController->addEndpointsToRouter(router);
