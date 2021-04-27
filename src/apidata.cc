@@ -123,8 +123,7 @@ namespace dd
           {
             APIData ad;
             ad.fromRapidJson(jval[cit->name.GetString()]);
-            std::vector<APIData> vad = { ad };
-            add(cit->name.GetString(), vad);
+            add(cit->name.GetString(), ad);
           }
         else if (cit->value.IsArray()) // only supports array that bears a
                                        // single type, number, string or object

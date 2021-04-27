@@ -23,7 +23,7 @@ set(ddetect_SOURCES deepdetect.h deepdetect.cc mllibstrategy.h mlmodel.h
     svminputfileconn.h svminputfileconn.cc txtinputfileconn.h
     txtinputfileconn.cc apidata.h apidata.cc chain_actions.h chain_actions.cc
     service_stats.h service_stats.cc chain.h chain.cc ext/rmustache/mustache.h ext/rmustache/mustache.cc
-    ${CMAKE_BINARY_DIR}/src/caffe.pb.cc)
+  utils/oatpp.cc dto/gpuid.cc ${CMAKE_BINARY_DIR}/src/caffe.pb.cc)
 
 if (USE_JSON_API)
   list(APPEND ddetect_SOURCES jsonapi.h jsonapi.cc)

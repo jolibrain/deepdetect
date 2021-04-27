@@ -40,6 +40,7 @@
 #include "torchloss.h"
 #include "torchutils.h"
 
+#include "dto/mllib.hpp"
 #include "utils/bbox.hpp"
 
 using namespace torch;
@@ -149,84 +150,69 @@ namespace dd
                 TMLModel>::init_mllib(const APIData &lib_ad)
   {
     // Get parameters
-    bool gpu = false;
-    std::vector<int> gpuids;
-    bool freeze_traced = false;
-    int embedding_size = 768;
-    std::string self_supervised = "";
+    auto mllib_dto = lib_ad.createSharedDTO<DTO::MLLib>();
 
-    if (lib_ad.has("from_repository"))
+    if (mllib_dto->from_repository != nullptr)
       {
-        this->_mlmodel.copy_to_target(
-            lib_ad.get("from_repository").get<std::string>(),
-            this->_mlmodel._repo, this->_logger);
+        this->_mlmodel.copy_to_target(mllib_dto->from_repository->std_str(),
+                                      this->_mlmodel._repo, this->_logger);
         this->_mlmodel.read_from_repository(this->_logger);
       }
-    if (lib_ad.has("template"))
-      _template = lib_ad.get("template").get<std::string>();
-    if (lib_ad.has("gpu"))
-      gpu = lib_ad.get("gpu").get<bool>();
-    if (gpu && !torch::cuda::is_available())
+    _template = mllib_dto->model_template->std_str();
+
+    if (mllib_dto->gpu && !torch::cuda::is_available())
       {
         throw MLLibBadParamException(
             "GPU is not available, service could not be created");
       }
-    if (lib_ad.has("gpuid"))
+
+    std::vector<int> gpuids = mllib_dto->gpuid->_ids;
+
+    if (mllib_dto->nclasses != 0)
       {
-        if (lib_ad.get("gpuid").is<int>())
-          gpuids = { lib_ad.get("gpuid").get<int>() };
-        else
-          gpuids = lib_ad.get("gpuid").get<std::vector<int>>();
+        _nclasses = mllib_dto->nclasses;
       }
-    if (lib_ad.has("nclasses"))
+    else if (mllib_dto->ntargets != 0)
       {
-        _nclasses = lib_ad.get("nclasses").get<int>();
-      }
-    else if (lib_ad.has("ntargets"))
-      {
-        _nclasses = lib_ad.get("ntargets").get<int>();
+        _nclasses = mllib_dto->ntargets;
       }
 
-    if (lib_ad.has("self_supervised"))
-      self_supervised = lib_ad.get("self_supervised").get<std::string>();
-    if (lib_ad.has("embedding_size"))
-      embedding_size = lib_ad.get("embedding_size").get<int>();
-    if (lib_ad.has("finetuning"))
-      _finetuning = lib_ad.get("finetuning").get<bool>();
-    if (lib_ad.has("freeze_traced"))
-      freeze_traced = lib_ad.get("freeze_traced").get<bool>();
-    if (lib_ad.has("loss"))
-      _loss = lib_ad.get("loss").get<std::string>();
-    if (lib_ad.has("template_params"))
+    std::string self_supervised = mllib_dto->self_supervised->std_str();
+    int embedding_size = mllib_dto->embedding_size;
+    bool freeze_traced = mllib_dto->freeze_traced;
+    _finetuning = mllib_dto->finetuning;
+    _loss = mllib_dto->loss->std_str();
+
+    auto template_params_dto = mllib_dto->template_params;
+    if (template_params_dto != nullptr)
       {
         _template_params = lib_ad.getobj("template_params");
-        if (lib_ad.has("nclasses"))
-          _template_params.add("nclasses", lib_ad.get("nclasses").get<int>());
-      }
-    if (lib_ad.has("datatype"))
-      {
-        std::string dt = lib_ad.get("datatype").get<std::string>();
-        if (dt == "fp32")
-          {
-            _dtype = torch::kFloat32;
-            this->_logger->info("will predict in FP32");
-          }
-        else if (dt == "fp16")
-          {
-            _dtype = torch::kFloat16;
-            this->_logger->info("will predict in FP16");
-          }
-        else if (dt == "fp64")
-          {
-            _dtype = torch::kFloat64;
-            this->_logger->info("will predict in FP64");
-          }
-        else
-          throw MLLibBadParamException("unknown datatype " + dt);
+        if (mllib_dto->nclasses != 0)
+          _template_params.add("nclasses",
+                               static_cast<int>(mllib_dto->nclasses));
       }
 
+    std::string dt = mllib_dto->datatype->std_str();
+    if (dt == "fp32")
+      {
+        _dtype = torch::kFloat32;
+        this->_logger->info("will predict in FP32");
+      }
+    else if (dt == "fp16")
+      {
+        _dtype = torch::kFloat16;
+        this->_logger->info("will predict in FP16");
+      }
+    else if (dt == "fp64")
+      {
+        _dtype = torch::kFloat64;
+        this->_logger->info("will predict in FP64");
+      }
+    else
+      throw MLLibBadParamException("unknown datatype " + dt);
+
     // Find GPU id
-    if (!gpu)
+    if (mllib_dto->gpu != true)
       {
         _main_device = torch::Device(DeviceType::CPU);
         _devices = { _main_device };
@@ -257,11 +243,11 @@ namespace dd
       }
 
     // Set model type
-    if (lib_ad.has("nclasses"))
+    if (mllib_dto->nclasses != 0)
       {
         _classification = true;
       }
-    else if (lib_ad.has("ntargets"))
+    else if (mllib_dto->ntargets != 0)
       {
         _regression = true;
       }

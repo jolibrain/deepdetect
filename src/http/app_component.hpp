@@ -38,6 +38,8 @@
 
 #include <gflags/gflags.h>
 
+#include "utils/oatpp.hpp"
+
 DECLARE_string(host);
 DECLARE_uint32(port);
 DECLARE_string(allow_origin);
@@ -63,8 +65,7 @@ public:
   OATPP_CREATE_COMPONENT(std::shared_ptr<oatpp::data::mapping::ObjectMapper>,
                          apiObjectMapper)
   ([] {
-    auto objectMapper
-        = oatpp::parser::json::mapping::ObjectMapper::createShared();
+    auto objectMapper = dd::oatpp_utils::createDDMapper();
     objectMapper->getDeserializer()->getConfig()->allowUnknownFields = false;
     return objectMapper;
   }());
