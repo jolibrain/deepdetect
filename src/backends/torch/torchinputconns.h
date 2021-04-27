@@ -216,8 +216,7 @@ namespace dd
      */
     ImgTorchInputFileConn() : ImgInputFileConn()
     {
-      _dataset._inputc = this;
-      _test_datasets._inputc = this;
+      update_dataset_parameters();
       set_db_transaction_size(TORCH_IMG_TRANSACTION_SIZE);
     }
 
@@ -227,15 +226,8 @@ namespace dd
     ImgTorchInputFileConn(const ImgTorchInputFileConn &i)
         : ImgInputFileConn(i), TorchInputInterface(i), _bbox(i._bbox)
     {
-      _dataset._inputc = this;
-      _dataset._image = true;
-      _test_datasets._inputc = this;
-      _test_datasets._image = true;
+      update_dataset_parameters();
       set_db_transaction_size(TORCH_IMG_TRANSACTION_SIZE);
-    }
-
-    ~ImgTorchInputFileConn()
-    {
     }
 
     /**
@@ -263,6 +255,8 @@ namespace dd
       ImgInputFileConn::init(ad);
       if (ad.has("bbox"))
         _bbox = ad.get("bbox").get<bool>();
+      _dataset._bbox = _bbox;
+      _test_datasets._bbox = _bbox;
     }
 
     void fillup_parameters(const APIData &ad_input)
@@ -270,6 +264,8 @@ namespace dd
       ImgInputFileConn::fillup_parameters(ad_input);
       if (ad_input.has("bbox"))
         _bbox = ad_input.get("bbox").get<bool>();
+      _dataset._bbox = _bbox;
+      _test_datasets._bbox = _bbox;
     }
 
     /**
@@ -315,6 +311,16 @@ namespace dd
 
   private:
     bool _bbox = false;
+
+    void update_dataset_parameters()
+    {
+      _dataset._inputc = this;
+      _dataset._image = true;
+      _dataset._bbox = _bbox;
+      _test_datasets._inputc = this;
+      _test_datasets._image = true;
+      _test_datasets._bbox = _bbox;
+    }
   };
 
   /**

@@ -1167,11 +1167,11 @@ TEST(torchapi, service_train_object_detection)
       = "{\"service\":\"detectserv\",\"async\":false,\"parameters\":{"
         "\"mllib\":{\"solver\":{\"iterations\":"
         + iterations_detection + ",\"base_lr\":" + torch_lr
-        + ",\"iter_size\":4,\"solver_"
-          "type\":\"ADAM\",\"test_interval\":200},\"net\":{\"batch_size\":1},"
-          "\"resume\":false},"
-          "\"input\":{\"seed\":12347,\"db\":true,\"shuffle\":true},"
-          "\"output\":{\"measure\":[\"map\"]}},\"data\":[\""
+        + ",\"iter_size\":2,\"solver_"
+          "type\":\"ADAM\",\"test_interval\":200},\"net\":{\"batch_size\":2,"
+          "\"test_batch_size\":2},\"resume\":false},\"input\":{\"seed\":12347,"
+          "\"db\":true,\"shuffle\":true},\"output\":{\"measure\":[\"map\"]}},"
+          "\"data\":[\""
         + fasterrcnn_train_data + "\",\"" + fasterrcnn_test_data + "\"]}";
 
   joutstr = japi.jrender(japi.service_train(jtrainstr));

@@ -1546,8 +1546,12 @@ namespace dd
           {
             // Supporting only Faster RCNN format at the moment.
             auto out_dicts = out_ivalue.toList();
-            Tensor targ_bboxes = batch.target.at(0);
-            Tensor targ_labels = batch.target.at(1);
+            Tensor targ_ids = batch.target.at(0);
+            auto targ_ids_acc = targ_ids.accessor<int, 1>();
+            Tensor targ_bboxes = batch.target.at(1);
+            Tensor targ_labels = batch.target.at(2);
+
+            int stop = 0;
 
             for (size_t i = 0; i < out_dicts.size(); ++i)
               {
@@ -1562,9 +1566,17 @@ namespace dd
                     = torch_utils::to_tensor_safe(out_dict.at("scores"))
                           .to(cpu);
 
-                auto vbad = get_bbox_stats(targ_bboxes[i], targ_labels[i],
-                                           bboxes_tensor, labels_tensor,
-                                           score_tensor);
+                int start = stop;
+                while (stop < static_cast<int>(targ_ids.size(0))
+                       && targ_ids_acc[stop] == static_cast<int>(i))
+                  {
+                    ++stop;
+                  }
+
+                auto vbad = get_bbox_stats(
+                    targ_bboxes.index({ torch::indexing::Slice(start, stop) }),
+                    targ_labels.index({ torch::indexing::Slice(start, stop) }),
+                    bboxes_tensor, labels_tensor, score_tensor);
                 ad_bbox.add(std::to_string(entry_id), vbad);
                 ++entry_id;
               }
