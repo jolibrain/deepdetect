@@ -208,9 +208,8 @@ for mname in args.models:
                 elif "retinanet" in mname:
                     in_channels = model.backbone.out_channels
                     num_anchors = model.head.classification_head.num_anchors
-                    # replace pretrained head - does not work
-                    # model.head = M.detection.retinanet.RetinaNetHead(in_channels, num_anchors, args.num_classes)
-                    raise Exception("Retinanet with fixed number of classes is not yet supported")
+                    # replace pretrained head
+                    model.head = M.detection.retinanet.RetinaNetHead(in_channels, num_anchors, args.num_classes)
 
         detect_model = DetectionModel(model)
         detect_model.train()
