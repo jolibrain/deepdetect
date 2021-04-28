@@ -143,7 +143,8 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     libboost-regex1.71.0 \
     libboost-stacktrace1.71.0 \
     libboost-system1.71.0 \
-	libarchive13
+	libarchive13 \
+    libtcmalloc-minimal4
 
 # Fix permissions
 RUN ln -sf /dev/stdout /var/log/deepdetect.log && \

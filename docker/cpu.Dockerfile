@@ -146,7 +146,8 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     libboost-system1.71.0 \
     libarchive13 \
     libomp-10-dev \
-    libomp5-10
+    libomp5-10 \
+    libtcmalloc-minimal4
 
 # Fix permissions
 RUN ln -sf /dev/stdout /var/log/deepdetect.log && \
