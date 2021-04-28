@@ -604,9 +604,35 @@ namespace dd
             cutout = ad_mllib.get("cutout").get<double>();
             this->_logger->info("cutout: {}", cutout);
           }
-        inputc._dataset._img_rand_aug_cv
-            = TorchImgRandAugCV(inputc.width(), inputc.height(), has_mirror,
-                                has_rotate, crop_size, cutout);
+        float geometry = 0.0;
+        bool geometry_persp_vertical = false;
+        bool geometry_persp_horizontal = false;
+        bool geometry_zoom_out = false;
+        bool geometry_zoom_in = false;
+        int geometry_pad_mode = 1;
+        APIData ad_geometry = ad_mllib.getobj("geometry");
+        if (!ad_geometry.empty())
+          {
+            geometry = ad_geometry.get("prob").get<double>();
+            this->_logger->info("geometry: {}", geometry);
+            if (ad_geometry.has("persp_vertical"))
+              geometry_persp_vertical
+                  = ad_geometry.get("persp_vertical").get<bool>();
+            if (ad_geometry.has("persp_horizontal"))
+              geometry_persp_horizontal
+                  = ad_geometry.get("persp_horizontal").get<bool>();
+            if (ad_geometry.has("zoom_out"))
+              geometry_zoom_out = ad_geometry.get("zoom_out").get<bool>();
+            if (ad_geometry.has("zoom_in"))
+              geometry_zoom_in = ad_geometry.get("zoom_in").get<bool>();
+            if (ad_geometry.has("pad_mode"))
+              geometry_pad_mode = ad_geometry.get("pad_mode").get<int>();
+          }
+        inputc._dataset._img_rand_aug_cv = TorchImgRandAugCV(
+            inputc.width(), inputc.height(), has_mirror, has_rotate, crop_size,
+            cutout, geometry, geometry_persp_horizontal,
+            geometry_persp_vertical, geometry_zoom_out, geometry_zoom_in,
+            geometry_pad_mode);
       }
 
     // solver params

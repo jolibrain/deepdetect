@@ -34,13 +34,21 @@ namespace dd
     {
     }
 
-    TorchImgRandAugCV(const int &img_width, const int &img_height,
-                      const bool &mirror, const bool &rotate,
-                      const int &crop_size, const bool &cutout)
+    TorchImgRandAugCV(
+        const int &img_width, const int &img_height, const bool &mirror,
+        const bool &rotate, const int &crop_size, const float &cutout,
+        const bool &geometry, const bool &geometry_persp_horizontal,
+        const bool &geometry_persp_vertical, const bool &geometry_zoom_out,
+        const bool &geometry_zoom_in, const int &geometry_pad_mode)
         : _img_width(img_width), _img_height(img_height), _mirror(mirror),
           _rotate(rotate), _crop_size(crop_size), _cutout(cutout),
-          _uniform_real_1(0.0, 1.0), _bernouilli(0.5),
-          _uniform_int_rotate(0, 3)
+          _geometry(geometry),
+          _geometry_persp_horizontal(geometry_persp_horizontal),
+          _geometry_persp_vertical(geometry_persp_vertical),
+          _geometry_zoom_out(geometry_zoom_out),
+          _geometry_zoom_in(geometry_zoom_in),
+          _geometry_pad_mode(geometry_pad_mode), _uniform_real_1(0.0, 1.0),
+          _bernouilli(0.5), _uniform_int_rotate(0, 3)
     {
       if (_crop_size > 0)
         {
@@ -69,6 +77,12 @@ namespace dd
     void applyRotate(cv::Mat &src);
     void applyCrop(cv::Mat &src);
     void applyCutout(cv::Mat &src);
+    void applyGeometry(cv::Mat &src);
+
+  private:
+    void getEnlargedImage(const cv::Mat &in_img, cv::Mat &in_img_enlarged);
+    void getQuads(const int &rows, const int &cols,
+                  cv::Point2f (&inputQuad)[4], cv::Point2f (&outputQuad)[4]);
 
   private:
     int _img_width = 224;
@@ -85,6 +99,20 @@ namespace dd
     float _cutout_rh = 3.0;  /**< max aspect ratio of erased area. */
     int _cutout_vl = 0;      /**< min erased area pixel value. */
     int _cutout_vh = 255;    /**< max erased area pixel value. */
+    float _geometry = 0.0;
+    bool _geometry_persp_horizontal
+        = true; /**< horizontal perspective change. */
+    bool _geometry_persp_vertical = true; /**< vertical perspective change. */
+    bool _geometry_zoom_out
+        = true; /**< distance change: look from further away. */
+    bool _geometry_zoom_in = true;      /**< distance change: look closer. */
+    float _geometry_zoom_factor = 0.25; /**< zoom factor: 0.25 means that image
+                                           can be *1.25 or /1.25. */
+    float _geometry_persp_factor
+        = 0.25;                     /**< persp factor: 0.25 means that new
+                                      image corners  be in 1.25 or 0.75. */
+    uint8_t _geometry_pad_mode = 1; /**< filling around images, 1: constant, 2:
+                                       mirrored, 3: repeat nearest. */
 
     // random generators
     std::default_random_engine _rnd_gen;
