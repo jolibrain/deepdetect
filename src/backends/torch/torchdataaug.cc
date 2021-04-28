@@ -31,6 +31,8 @@ namespace dd
       applyMirror(src);
     if (_rotate)
       applyRotate(src);
+    if (_geometry)
+      applyGeometry(src);
 
     // should be last, in this order
     if (_cutout > 0.0)
@@ -125,8 +127,163 @@ namespace dd
       // erase
       cv::Rect rect(rect_x, rect_y, w, h);
       cv::Mat selected_area = src(rect);
-      cv::randu(selected_area, cv::Scalar(_cutout_vl, _cutout_vl, _cutout_vl),
-                cv::Scalar(_cutout_vh, _cutout_vh, _cutout_vh)); // TODO: bw
+      if (selected_area.channels() == 3)
+        cv::randu(selected_area,
+                  cv::Scalar(_cutout_vl, _cutout_vl, _cutout_vl),
+                  cv::Scalar(_cutout_vh, _cutout_vh, _cutout_vh));
+      else
+        cv::randu(selected_area, cv::Scalar(_cutout_vl),
+                  cv::Scalar(_cutout_vh));
     }
+  }
+
+  void TorchImgRandAugCV::getEnlargedImage(const cv::Mat &in_img,
+                                           cv::Mat &in_img_enlarged)
+  {
+    int pad_mode = cv::BORDER_REFLECT101;
+    switch (_geometry_pad_mode)
+      {
+      case 1: // constant
+        pad_mode = cv::BORDER_CONSTANT;
+        break;
+      case 2: // mirrored
+        pad_mode = cv::BORDER_REFLECT101;
+        break;
+      case 3: // repeat nearest
+        pad_mode = cv::BORDER_REPLICATE;
+        break;
+      default:
+        break;
+      }
+    cv::copyMakeBorder(in_img, in_img_enlarged, in_img.rows, in_img.rows,
+                       in_img.cols, in_img.cols, pad_mode);
+  }
+
+  void TorchImgRandAugCV::getQuads(const int &rows, const int &cols,
+                                   cv::Point2f (&inputQuad)[4],
+                                   cv::Point2f (&outputQuad)[4])
+  {
+    // The 4 points that select quadilateral on the input , from top-left in
+    // clockwise order These four pts are the sides of the rect box used as
+    // input
+    float x0, x1, y0, y1;
+    x0 = cols;
+    x1 = 2 * cols - 1;
+    y0 = rows;
+    y1 = 2 * rows - 1;
+    if (_geometry_zoom_out || _geometry_zoom_in)
+      {
+        bool zoom_in = _geometry_zoom_in;
+        bool zoom_out = _geometry_zoom_out;
+        if (_geometry_zoom_out && _geometry_zoom_in)
+          {
+            if (_bernouilli(_rnd_gen))
+              zoom_in = false;
+            else
+              zoom_out = false;
+          }
+
+        float x0min, x0max, y0min, y0max;
+        if (zoom_in)
+          {
+            x0max = cols + cols * _geometry_zoom_factor;
+            y0max = rows + rows * _geometry_zoom_factor;
+          }
+        else
+          {
+            x0max = x0;
+            y0max = y0;
+          }
+        if (zoom_out)
+          {
+            x0min = cols - cols * _geometry_zoom_factor;
+            y0min = rows - rows * _geometry_zoom_factor;
+          }
+        else
+          {
+            x0min = x0;
+            y0min = y0;
+          }
+        x0 = ((x0max - x0min) * _uniform_real_1(_rnd_gen) + x0min);
+        x1 = 3 * cols - x0;
+        y0 = ((y0max - y0min) * _uniform_real_1(_rnd_gen) + y0min);
+        y1 = 3 * rows - y0;
+      }
+
+    inputQuad[0] = cv::Point2f(x0, y0);
+    inputQuad[1] = cv::Point2f(x1, y0);
+    inputQuad[2] = cv::Point2f(x1, y1);
+    inputQuad[3] = cv::Point2f(x0, y1);
+
+    // The 4 points where the mapping is to be done , from top-left in
+    // clockwise order
+    outputQuad[0] = cv::Point2f(0, 0);
+    outputQuad[1] = cv::Point2f(cols - 1, 0);
+    outputQuad[2] = cv::Point2f(cols - 1, rows - 1);
+    outputQuad[3] = cv::Point2f(0, rows - 1);
+    if (_geometry_persp_horizontal)
+      {
+        if (_bernouilli(_rnd_gen))
+          {
+            // seen from right
+            outputQuad[0].y
+                = rows * _geometry_persp_factor * _uniform_real_1(_rnd_gen);
+            outputQuad[3].y = rows - outputQuad[0].y;
+          }
+        else
+          {
+            // seen from left
+            outputQuad[1].y
+                = rows * _geometry_persp_factor * _uniform_real_1(_rnd_gen);
+            outputQuad[2].y = rows - outputQuad[1].y;
+          }
+      }
+    if (_geometry_persp_vertical)
+      {
+        if (_bernouilli(_rnd_gen))
+          {
+            // seen from above
+            outputQuad[3].x
+                = cols * _geometry_persp_factor * _uniform_real_1(_rnd_gen);
+            outputQuad[2].x = cols - outputQuad[3].x;
+          }
+        else
+          {
+            // seen from below
+            outputQuad[0].x
+                = cols * _geometry_persp_factor * _uniform_real_1(_rnd_gen);
+            outputQuad[1].x = cols - outputQuad[0].x;
+          }
+      }
+  }
+
+  void TorchImgRandAugCV::applyGeometry(cv::Mat &src)
+  {
+    // enlarge image
+    float g1 = 0.0;
+#pragma omp critical
+    {
+      g1 = _uniform_real_1(_rnd_gen);
+    }
+    if (g1 > _geometry)
+      return;
+
+    cv::Mat src_enlarged;
+    getEnlargedImage(src, src_enlarged);
+
+    // Input Quadilateral or Image plane coordinates
+    cv::Point2f inputQuad[4];
+    // Output Quadilateral or World plane coordinates
+    cv::Point2f outputQuad[4];
+
+    // get perpective matrix
+#pragma omp critical
+    {
+      getQuads(src.rows, src.cols, inputQuad, outputQuad);
+    }
+
+    // warp perspective
+    cv::Mat lambda = cv::getPerspectiveTransform(inputQuad, outputQuad);
+    cv::warpPerspective(src_enlarged, src, lambda, src.size());
   }
 }

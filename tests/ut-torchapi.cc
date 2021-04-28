@@ -590,8 +590,9 @@ TEST(torchapi, service_train_images)
         + ",\"iter_size\":4,\"solver_type\":\"ADAM\",\"test_"
           "interval\":200},\"net\":{\"batch_size\":4},"
           "\"resume\":false,\"mirror\":true,\"rotate\":true,\"crop_size\":224,"
-          "\"cutout\":0.5}"
-          ","
+          "\"cutout\":0.5,\"geometry\":{\"prob\":0.1,\"persp_horizontal\":"
+          "true,\"persp_vertical\":true,\"zoom_in\":true,\"zoom_out\":true,"
+          "\"pad_mode\":1}},"
           "\"input\":{\"seed\":12345,\"db\":true,\"shuffle\":true},"
           "\"output\":{\"measure\":[\"f1\",\"acc\"]}},\"data\":[\""
         + resnet50_train_data + "\",\"" + resnet50_test_data + "\"]}";
