@@ -24,6 +24,7 @@ import sys
 import os
 import argparse
 import logging
+from typing import Dict, List
 
 import torch
 
@@ -76,16 +77,33 @@ class DetectionModel(torch.nn.Module):
         super(DetectionModel, self).__init__()
         self.model = model
 
-    def forward(self, x, bboxes = None, labels = None):
-        # type: (Tensor, Optional[Tensor], Optional[Tensor]) -> Tuple[Tensor, List[Dict[str, Tensor]]]
+    def forward(self, x, ids = None, bboxes = None, labels = None):
+        # type: (Tensor, Optional[Tensor], Optional[Tensor], Optional[Tensor]) -> Tuple[Tensor, List[Dict[str, Tensor]]]
         """
-        Input format: one tensor of dimensions [batch size, channel count, width, height]
+        x: one image of dimensions [batch size, channel count, width, height]
+        ids: one tensor of dimension [sum(n_bbox_i)] containing id of batch for
+        each bbox.
+        bbox: one tensor of dimension [sum(n_bbox_i), 4]
+        labels: one tensor of dimension [sum(n_bbox_i)]
         """
         l_x = [x[i] for i in range(x.shape[0])]
         if self.training:
+            assert ids is not None
             assert bboxes is not None
             assert labels is not None
-            l_targs = [{"boxes": bboxes[i], "labels": labels[i]} for i in range(x.shape[0])]
+
+            l_targs : List[Dict[str, Tensor]] = []
+            stop = 0
+
+            for i in range(x.shape[0]):
+                start = stop
+
+                while stop < ids.shape[0] and ids[stop] == i:
+                    stop += 1
+
+                targ = {"boxes": bboxes[start:stop], "labels": labels[start:stop]}
+                l_targs.append(targ)
+
             losses, predictions = self.model(l_x, l_targs)
 
             # Sum of all losses for finetuning (as done in vision/references/detection/engine.py)
@@ -199,7 +217,7 @@ for mname in args.models:
 
             if args.num_classes:
                 logging.info("Using num_classes = %d" % args.num_classes)
- 
+
                 if "fasterrcnn" in mname:
                     # get number of input features for the classifier
                     in_features = model.roi_heads.box_predictor.cls_score.in_features
@@ -208,9 +226,8 @@ for mname in args.models:
                 elif "retinanet" in mname:
                     in_channels = model.backbone.out_channels
                     num_anchors = model.head.classification_head.num_anchors
-                    # replace pretrained head - does not work
-                    # model.head = M.detection.retinanet.RetinaNetHead(in_channels, num_anchors, args.num_classes)
-                    raise Exception("Retinanet with fixed number of classes is not yet supported")
+                    # replace pretrained head
+                    model.head = M.detection.retinanet.RetinaNetHead(in_channels, num_anchors, args.num_classes)
 
         detect_model = DetectionModel(model)
         detect_model.train()
