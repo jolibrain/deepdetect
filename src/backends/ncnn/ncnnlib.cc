@@ -22,13 +22,15 @@
 #include "outputconnectorstrategy.h"
 #include <thread>
 #include <algorithm>
+#include <iostream>
 
 // NCNN
-#include "ncnnlib.h"
-#include "ncnninputconns.h"
 #include "cpu.h"
 #include "net.h"
-#include <iostream>
+
+#include "ncnnlib.h"
+#include "ncnninputconns.h"
+#include "dto/service_predict.hpp"
 
 namespace dd
 {
@@ -153,6 +155,7 @@ namespace dd
   int NCNNLib<TInputConnectorStrategy, TOutputConnectorStrategy,
               TMLModel>::predict(const APIData &ad, APIData &out)
   {
+    auto predict_dto = ad.createSharedDTO<DTO::ServicePredict>();
 
     TInputConnectorStrategy inputc(this->_inputc);
     TOutputConnectorStrategy tout(this->_outputc);
@@ -183,8 +186,7 @@ namespace dd
         _net->set_input_h(_old_height);
       }
 
-    APIData ad_output = ad.getobj("parameters").getobj("output");
-    auto output_params = ad_output.createSharedDTO<DTO::OutputConnector>();
+    auto output_params = predict_dto->parameters->output;
 
     // Extract detection or classification
     std::string out_blob;
@@ -375,9 +377,12 @@ namespace dd
       out.add("bbox", true);
     out.add("roi", false);
     out.add("multibox_rois", false);
+    APIData ad_output = ad.getobj("parameters").getobj("output");
     tout.finalize(ad_output, out, static_cast<MLModel *>(&this->_mlmodel));
 
     // chain compliance
+    // XXX(louis): dynamic parameter added in MLService. With DTO, this
+    // parameter must be passed by other means.
     if (ad.has("chain") && ad.get("chain").get<bool>())
       {
         if (typeid(inputc) == typeid(ImgNCNNInputFileConn))
