@@ -632,6 +632,14 @@ namespace dd
     imgt = imgt.toType(at::kFloat).permute({ 2, 0, 1 });
     size_t nchannels = imgt.size(0);
 
+    if (!inputc->_supports_bw && nchannels == 1)
+      {
+        this->_logger->warn("Model needs 3 input channel, input will be "
+                            "duplicated to fit the model input format");
+        imgt = imgt.repeat({ 3, 1, 1 });
+        nchannels = 3;
+      }
+
     if (inputc->_scale != 1.0)
       imgt = imgt.mul(inputc->_scale);
 

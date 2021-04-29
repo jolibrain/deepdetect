@@ -394,9 +394,22 @@ namespace dd
         if (model_allocated_at_train)
           this->_logger->info("Model allocated during training");
         else if (NativeFactory::valid_template_def(_template))
-          _module.create_native_template<TInputConnectorStrategy>(
-              _template, _template_params, this->_inputc, this->_mlmodel,
-              _main_device);
+          {
+
+            _module.create_native_template<TInputConnectorStrategy>(
+                _template, _template_params, this->_inputc, this->_mlmodel,
+                _main_device);
+
+            // XXX: greyscale images are not supported by torchvision models
+            if (std::is_same<TInputConnectorStrategy,
+                             ImgTorchInputFileConn>::value
+                && !NativeFactory::template_supports_bw(_template))
+              {
+                dynamic_cast<ImgTorchInputFileConn *>(&this->_inputc)
+                    ->_supports_bw
+                    = false;
+              }
+          }
         else
           throw MLLibBadParamException("invalid torch model template "
                                        + _template);

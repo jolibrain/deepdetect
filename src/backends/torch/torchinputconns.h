@@ -224,7 +224,8 @@ namespace dd
      * \brief copy constructor
      */
     ImgTorchInputFileConn(const ImgTorchInputFileConn &i)
-        : ImgInputFileConn(i), TorchInputInterface(i), _bbox(i._bbox)
+        : ImgInputFileConn(i), TorchInputInterface(i), _bbox(i._bbox),
+          _supports_bw(i._supports_bw)
     {
       update_dataset_parameters();
       set_db_transaction_size(TORCH_IMG_TRANSACTION_SIZE);
@@ -321,6 +322,9 @@ namespace dd
       _test_datasets._image = true;
       _test_datasets._bbox = _bbox;
     }
+
+  public:
+    bool _supports_bw = true;
   };
 
   /**
