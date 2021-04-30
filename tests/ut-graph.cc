@@ -294,7 +294,7 @@ TEST(graphapi, complete_lstm_train)
   std::string csvts_repo = "csvts";
   mkdir(csvts_repo.c_str(), 0777);
   std::string sname = "my_service_csvts";
-  std::string jstr
+  std::string jcreatestr
       = "{\"mllib\":\"torch\",\"description\":\"my ts "
         "regressor\",\"type\":\"supervised\",\"model\":{\"repository\":\""
         + csvts_repo
@@ -303,7 +303,7 @@ TEST(graphapi, complete_lstm_train)
           "\"AR5\",\"L10\",\"L10\"],\"dropout\":[0.0,0.0,0.0],\"regression\":"
           "true,"
           "\"sl1sigma\":100.0,\"loss\":\"L1\"}}}";
-  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  std::string joutstr = japi.jrender(japi.service_create(sname, jcreatestr));
   ASSERT_EQ(created_str, joutstr);
 
   // train
@@ -371,7 +371,24 @@ TEST(graphapi, complete_lstm_train)
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"][0]["out"][0].GetDouble()
               >= -1.0);
 
-  //  remove service
+  // remove service (light)
+  std::string jstr = "{\"clear\":\"mem\"}";
+  joutstr = japi.jrender(japi.service_delete(sname, jstr));
+  ASSERT_EQ(ok_str, joutstr);
+
+  // recreate service (reload weights)
+  joutstr = japi.jrender(japi.service_create(sname, jcreatestr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  ASSERT_EQ(created_str, joutstr);
+
+  // run one predict with previous weights
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+
+  //  remove service (hard clear)
   jstr = "{\"clear\":\"full\"}";
   joutstr = japi.jrender(japi.service_delete(sname, jstr));
   ASSERT_EQ(ok_str, joutstr);

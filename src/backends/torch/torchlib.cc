@@ -347,7 +347,7 @@ namespace dd
                                    "traced net, protofile or native template");
 
     bool multiple_models_found
-        = ((!this->_mlmodel._traced.empty()) + (!this->_mlmodel._proto.empty())
+        = ((!this->_mlmodel._traced.empty() || !this->_mlmodel._proto.empty())
            + NativeFactory::valid_template_def(_template))
           > 1;
     if (multiple_models_found)
