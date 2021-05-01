@@ -25,6 +25,7 @@
 #include "native_net.h"
 #include "./templates/nbeats.h"
 #include "./templates/vit.h"
+#include "./templates/visformer.h"
 #include "./templates/ttransformer.h"
 #include "../torchinputconns.h"
 #include "apidata.h"
@@ -45,6 +46,7 @@ namespace dd
     {
       if (tdef.find("nbeats") != std::string::npos
           || tdef.find("vit") != std::string::npos
+          || tdef.find("visformer") != std::string::npos
           || tdef.find("ttransformer") != std::string::npos)
         return true;
       else if (VisionModelsFactory::is_vision_template(tdef))
