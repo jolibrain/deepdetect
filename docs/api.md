@@ -747,7 +747,7 @@ self_supervised | string | yes      | ""      | self-supervised mode: "mask" for
 embedding_size  | int    | yes      | 768     | embedding size for NLP models
 freeze_traced   | bool   | yes      | false   | Freeze the traced part of the net during finetuning (e.g. for classification)
 retain_graph	| bool	 | yes	    | false   | Whether to use `retain_graph` with torch autograd
-template        | string | yes      | ""      | e.g. "bert", "gpt2", "recurrent", "nbeats", "vit", "ttransformer", "resnet50", ... All templates are listed in the [Model Templates](#model-templates) section.
+template        | string | yes      | ""      | e.g. "bert", "gpt2", "recurrent", "nbeats", "vit", "visformer", "ttransformer", "resnet50", ... All templates are listed in the [Model Templates](#model-templates) section.
 template_params | dict   | yes      | template dependent | Model parameter for templates. All parameters are listed in the [Model Templates](#model-templates) section.
 regression | bool            | yes                      | false   | Whether the model is a regressor
 timesteps     | int            | yes      | N/A            | Number of timesteps for time models (LSTM/NBEATS...) : this sets the length of sequences that will be given for learning, every timestep contains inputs and outputs as defined by the csv/csvts connector
@@ -1401,7 +1401,7 @@ vgg_16 | deep neural net	       | Images   		| Convolutional network for image c
 
 - LSTM-like models (including autoencoder): `recurrent`
 - NBEATS model: `nbeats`
-- Vision transformer: `vit`
+- Vision transformer: `vit` and `visformer`
 - Transformer-based timeseries models: `ttransformer`
 - [TorchVision image classification models](https://pytorch.org/vision/0.8/models.html):
 	- `resnet18`
@@ -1480,6 +1480,7 @@ Parameter       | Template  | Type            | Default                      | D
 ---------       | --------- | ------          | ---------------------------- | -----------
 template_params.stackdef | nbeats    | array of string | ["t2","s","g3","b3","h10" ] | default means: trend stack with theta = 2, seasonal stack with theta maxed , generic stack with theta = 3, 3 blocks per stacks, hidden unit size of 10 everywhere
 template_params.vit_flavor | vit | string | vit_base_patch16 | Vision transformer architecture, from smaller to larger: vit_tiny_patch16, vit_small_patch16, vit_base_patch32, vit_base_patch16, vit_large_patch16, vit_large_patch32, vit_huge_patch16, vit_huge_patch32
+template_params.visformer_flavor | visformer | visformer_tiny | Visformer architecture, from visformer_tiny or visformer_small
 template_params.realformer | vit | bool | false | Whether to use the 'realformer' residual among attention heads
 template_params.positional_encoding.type | ttransformer | string | "sincos" | Positional encoding "sincos for original frequential encoding, "naive" for simple enumeration
 template_params.positional_encoding.learn | ttransformer | bool | false | learn or not positional encoding (starting from above value)

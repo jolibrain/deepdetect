@@ -92,6 +92,7 @@ if (USE_TORCH)
     backends/torch/db_lmdb.cpp
     backends/torch/native/templates/nbeats.cc
     backends/torch/native/templates/vit.cc
+    backends/torch/native/templates/visformer.cc
     backends/torch/native/templates/ttransformer.cc
     backends/torch/native/templates/ttransformer/tembedder.cc
     backends/torch/native/templates/ttransformer/positionalenc.cc
