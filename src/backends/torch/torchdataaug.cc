@@ -24,50 +24,136 @@
 namespace dd
 {
 
+  void write_image_with_bboxes(const cv::Mat &src,
+                               const std::vector<std::vector<float>> &bboxes,
+                               const std::string fpath, int &ii)
+  {
+    cv::Mat src_bb = src.clone();
+    for (size_t bb = 0; bb < bboxes.size(); ++bb)
+      {
+        cv::Rect r(bboxes[bb][0], bboxes[bb][1], bboxes[bb][2] - bboxes[bb][0],
+                   bboxes[bb][3] - bboxes[bb][1]);
+        cv::rectangle(src_bb, r, cv::Scalar(255, 0, 0), 1, 8, 0);
+      }
+    cv::imwrite(fpath + "/test_aug_" + std::to_string(ii) + ".png", src_bb);
+    ++ii;
+  }
+
   void TorchImgRandAugCV::augment(cv::Mat &src)
   {
     // apply augmentation
-    if (_mirror)
-      applyMirror(src);
-    if (_rotate)
-      applyRotate(src);
-    if (_geometry)
-      applyGeometry(src);
+    applyGeometry(src, _geometry_params);
+    applyCutout(src, _cutout_params);
 
-    // should be last, in this order
-    if (_cutout > 0.0)
-      applyCutout(src);
-    if (_crop_size > 0)
-      applyCrop(src);
+    // these transforms do affect dimensions
+    applyCrop(src, _crop_params);
+    applyMirror(src);
+    applyRotate(src);
   }
 
-  void TorchImgRandAugCV::applyMirror(cv::Mat &src)
+  void
+  TorchImgRandAugCV::augment_with_bbox(cv::Mat &src,
+                                       std::vector<torch::Tensor> &targets)
   {
+    torch::Tensor t = targets[0];
+    int nbbox = t.size(0);
+    std::vector<std::vector<float>> bboxes;
+    for (int bb = 0; bb < nbbox; ++bb)
+      {
+        std::vector<float> bbox;
+        for (int d = 0; d < 4; ++d)
+          {
+            bbox.push_back(t[bb][d].item<float>());
+          }
+        bboxes.push_back(bbox); // add (xmin, ymin, xmax, ymax)
+      }
+
+    bool mirror = applyMirror(src);
+    if (mirror)
+      {
+        applyMirrorBBox(bboxes, static_cast<float>(src.cols));
+      }
+    int rot = applyRotate(src);
+    if (rot > 0)
+      {
+        applyRotateBBox(bboxes, static_cast<float>(src.cols),
+                        static_cast<float>(src.rows), rot);
+      }
+    // XXX: no cutout with bboxes (yet)
+    GeometryParams geoparams = _geometry_params;
+    cv::Mat src_c = src.clone();
+    applyGeometry(src_c, geoparams, true);
+    if (!geoparams._lambda.empty())
+      {
+        // geometry on bboxes
+        std::vector<std::vector<float>> bboxes_c = bboxes;
+        applyGeometryBBox(bboxes_c, geoparams, src_c.cols, src_c.rows);
+        if (!bboxes_c.empty()) // some bboxes remain
+          {
+            src = src_c;
+            bboxes = bboxes_c;
+          }
+      }
+
+    // replacing the initial bboxes with the transformed ones.
+    nbbox = bboxes.size();
+    for (int bb = 0; bb < nbbox; ++bb)
+      {
+        for (int d = 0; d < 4; ++d)
+          {
+            t[bb][d] = bboxes.at(bb).at(d);
+          }
+      }
+  }
+
+  bool TorchImgRandAugCV::applyMirror(cv::Mat &src)
+  {
+    if (!_mirror)
+      return false;
+
+    bool mirror = false;
 #pragma omp critical
     {
-      if (_bernouilli(_rnd_gen))
-        {
-          cv::Mat dst;
-          cv::flip(src, dst, 1);
-          src = dst;
-        }
+      mirror = _bernouilli(_rnd_gen);
     }
+    if (mirror)
+      {
+        cv::Mat dst;
+        cv::flip(src, dst, 1);
+        src = dst;
+      }
+    return mirror;
   }
 
-  void TorchImgRandAugCV::applyRotate(cv::Mat &src)
+  void
+  TorchImgRandAugCV::applyMirrorBBox(std::vector<std::vector<float>> &bboxes,
+                                     const float &img_width)
   {
+    for (size_t i = 0; i < bboxes.size(); ++i)
+      {
+        float xmin = bboxes.at(i)[0];
+        bboxes.at(i)[0] = img_width - bboxes.at(i)[2]; // xmin = width - xmax
+        bboxes.at(i)[2] = img_width - xmin;
+      }
+  }
+
+  int TorchImgRandAugCV::applyRotate(cv::Mat &src)
+  {
+    if (!_rotate)
+      return -1;
+
     int rot = 0;
 #pragma omp critical
     {
       rot = _uniform_int_rotate(_rnd_gen);
     }
     if (rot == 0)
-      return;
-    else if (rot == 1) // 90
+      return rot;
+    else if (rot == 1) // 270
       {
         cv::Mat dst;
         cv::transpose(src, dst);
-        cv::flip(dst, src, 1);
+        cv::flip(dst, src, 0);
       }
     else if (rot == 2) // 180
       {
@@ -75,73 +161,137 @@ namespace dd
         cv::flip(src, dst, -1);
         src = dst;
       }
-    else if (rot == 3) // 270
+    else if (rot == 3) // 90
       {
         cv::Mat dst;
         cv::transpose(src, dst);
-        cv::flip(dst, src, 0);
+        cv::flip(dst, src, 1);
       }
+    return rot;
   }
 
-  void TorchImgRandAugCV::applyCrop(cv::Mat &src)
+  void
+  TorchImgRandAugCV::applyRotateBBox(std::vector<std::vector<float>> &bboxes,
+                                     const float &img_width,
+                                     const float &img_height, const int &rot)
   {
+    std::vector<std::vector<float>> nbboxes;
+    for (size_t i = 0; i < bboxes.size(); ++i)
+      {
+        std::vector<float> bbox = bboxes.at(i);
+        std::vector<float> nbox;
+        if (rot == 1) // 90
+          {
+            nbox.push_back(bbox[1]);              // xmin <- ymin
+            nbox.push_back(img_height - bbox[2]); // ymin <- height-xmax
+            nbox.push_back(bbox[3]);              // xmax <- ymax
+            nbox.push_back(img_height - bbox[0]); // ymax <- height-xmin
+          }
+        else if (rot == 2) // 180
+          {
+            nbox.push_back(img_width - bbox[2]);  // xmin <- width-xmax
+            nbox.push_back(img_height - bbox[3]); // ymin <- height-ymax
+            nbox.push_back(img_width - bbox[0]);  // xmax <- width-xmin
+            nbox.push_back(img_height - bbox[1]); // ymax <- height-ymin
+          }
+        else if (rot == 3) // 270
+          {
+            nbox.push_back(img_width - bbox[3]); // xmin <- width-ymax
+            nbox.push_back(bbox[0]);             // ymin <- xmin
+            nbox.push_back(img_width - bbox[1]); // xmax <- width-ymin
+            nbox.push_back(bbox[2]);             // ymax <- xmax
+          }
+        nbboxes.push_back(nbox);
+      }
+    bboxes = nbboxes;
+  }
+
+  void TorchImgRandAugCV::applyCrop(cv::Mat &src, CropParams &cp,
+                                    const bool &store_rparams)
+  {
+    if (cp._crop_size <= 0)
+      return;
+
     int crop_x = 0;
     int crop_y = 0;
 #pragma omp critical
     {
-      crop_x = _uniform_int_crop_x(_rnd_gen);
-      crop_y = _uniform_int_crop_y(_rnd_gen);
+      crop_x = cp._uniform_int_crop_x(_rnd_gen);
+      crop_y = cp._uniform_int_crop_y(_rnd_gen);
     }
-    cv::Rect crop(crop_x, crop_y, _crop_size, _crop_size);
+    cv::Rect crop(crop_x, crop_y, cp._crop_size, cp._crop_size);
     cv::Mat dst = src(crop).clone();
     src = dst;
+
+    if (store_rparams)
+      {
+        cp._crop_x = crop_x;
+        cp._crop_y = crop_y;
+      }
   }
 
-  void TorchImgRandAugCV::applyCutout(cv::Mat &src)
+  void TorchImgRandAugCV::applyCutout(cv::Mat &src, CutoutParams &cp,
+                                      const bool &store_rparams)
   {
+    if (cp._prob == 0.0)
+      return;
+
     // Draw random between 0 and 1
     float r1 = 0.0;
 #pragma omp critical
     {
       r1 = _uniform_real_1(_rnd_gen);
     }
-    if (r1 > _cutout)
+    if (r1 > cp._prob)
       return;
 
 #pragma omp critical
     {
       // get shape and area to erase
-      float s = _uniform_real_cutout_s(_rnd_gen) * _img_width
-                * _img_height;                    // area
-      float r = _uniform_real_cutout_r(_rnd_gen); // aspect ratio
+      int w = 0, h = 0, rect_x = 0, rect_y = 0;
+      if (cp._w == 0 && cp._h == 0)
+        {
+          float s = cp._uniform_real_cutout_s(_rnd_gen) * cp._img_width
+                    * cp._img_height;                    // area
+          float r = cp._uniform_real_cutout_r(_rnd_gen); // aspect ratio
 
-      int w = std::min(_img_width,
+          w = std::min(cp._img_width,
                        static_cast<int>(std::floor(std::sqrt(s / r))));
-      int h = std::min(_img_height,
+          h = std::min(cp._img_height,
                        static_cast<int>(std::floor(std::sqrt(s * r))));
-      std::uniform_int_distribution<int> distx(0, _img_width - w);
-      std::uniform_int_distribution<int> disty(0, _img_height - h);
-      int rect_x = distx(_rnd_gen);
-      int rect_y = disty(_rnd_gen);
+          std::uniform_int_distribution<int> distx(0, cp._img_width - w);
+          std::uniform_int_distribution<int> disty(0, cp._img_height - h);
+          rect_x = distx(_rnd_gen);
+          rect_y = disty(_rnd_gen);
+        }
 
       // erase
       cv::Rect rect(rect_x, rect_y, w, h);
       cv::Mat selected_area = src(rect);
       if (selected_area.channels() == 3)
         cv::randu(selected_area,
-                  cv::Scalar(_cutout_vl, _cutout_vl, _cutout_vl),
-                  cv::Scalar(_cutout_vh, _cutout_vh, _cutout_vh));
+                  cv::Scalar(cp._cutout_vl, cp._cutout_vl, cp._cutout_vl),
+                  cv::Scalar(cp._cutout_vh, cp._cutout_vh, cp._cutout_vh));
       else
-        cv::randu(selected_area, cv::Scalar(_cutout_vl),
-                  cv::Scalar(_cutout_vh));
+        cv::randu(selected_area, cv::Scalar(cp._cutout_vl),
+                  cv::Scalar(cp._cutout_vh));
+
+      if (store_rparams)
+        {
+          cp._w = w;
+          cp._h = h;
+          cp._rect_x = rect_x;
+          cp._rect_y = rect_y;
+        }
     }
   }
 
   void TorchImgRandAugCV::getEnlargedImage(const cv::Mat &in_img,
+                                           const GeometryParams &cp,
                                            cv::Mat &in_img_enlarged)
   {
     int pad_mode = cv::BORDER_REFLECT101;
-    switch (_geometry_pad_mode)
+    switch (cp._geometry_pad_mode)
       {
       case 1: // constant
         pad_mode = cv::BORDER_CONSTANT;
@@ -160,6 +310,7 @@ namespace dd
   }
 
   void TorchImgRandAugCV::getQuads(const int &rows, const int &cols,
+                                   const GeometryParams &cp,
                                    cv::Point2f (&inputQuad)[4],
                                    cv::Point2f (&outputQuad)[4])
   {
@@ -171,11 +322,11 @@ namespace dd
     x1 = 2 * cols - 1;
     y0 = rows;
     y1 = 2 * rows - 1;
-    if (_geometry_zoom_out || _geometry_zoom_in)
+    if (cp._geometry_zoom_out || cp._geometry_zoom_in)
       {
-        bool zoom_in = _geometry_zoom_in;
-        bool zoom_out = _geometry_zoom_out;
-        if (_geometry_zoom_out && _geometry_zoom_in)
+        bool zoom_in = cp._geometry_zoom_in;
+        bool zoom_out = cp._geometry_zoom_out;
+        if (cp._geometry_zoom_out && cp._geometry_zoom_in)
           {
             if (_bernouilli(_rnd_gen))
               zoom_in = false;
@@ -186,8 +337,8 @@ namespace dd
         float x0min, x0max, y0min, y0max;
         if (zoom_in)
           {
-            x0max = cols + cols * _geometry_zoom_factor;
-            y0max = rows + rows * _geometry_zoom_factor;
+            x0max = cols + cols * cp._geometry_zoom_factor;
+            y0max = rows + rows * cp._geometry_zoom_factor;
           }
         else
           {
@@ -196,8 +347,8 @@ namespace dd
           }
         if (zoom_out)
           {
-            x0min = cols - cols * _geometry_zoom_factor;
-            y0min = rows - rows * _geometry_zoom_factor;
+            x0min = cols - cols * cp._geometry_zoom_factor;
+            y0min = rows - rows * cp._geometry_zoom_factor;
           }
         else
           {
@@ -221,55 +372,59 @@ namespace dd
     outputQuad[1] = cv::Point2f(cols - 1, 0);
     outputQuad[2] = cv::Point2f(cols - 1, rows - 1);
     outputQuad[3] = cv::Point2f(0, rows - 1);
-    if (_geometry_persp_horizontal)
+    if (cp._geometry_persp_horizontal)
       {
         if (_bernouilli(_rnd_gen))
           {
             // seen from right
             outputQuad[0].y
-                = rows * _geometry_persp_factor * _uniform_real_1(_rnd_gen);
+                = rows * cp._geometry_persp_factor * _uniform_real_1(_rnd_gen);
             outputQuad[3].y = rows - outputQuad[0].y;
           }
         else
           {
             // seen from left
             outputQuad[1].y
-                = rows * _geometry_persp_factor * _uniform_real_1(_rnd_gen);
+                = rows * cp._geometry_persp_factor * _uniform_real_1(_rnd_gen);
             outputQuad[2].y = rows - outputQuad[1].y;
           }
       }
-    if (_geometry_persp_vertical)
+    if (cp._geometry_persp_vertical)
       {
         if (_bernouilli(_rnd_gen))
           {
             // seen from above
             outputQuad[3].x
-                = cols * _geometry_persp_factor * _uniform_real_1(_rnd_gen);
+                = cols * cp._geometry_persp_factor * _uniform_real_1(_rnd_gen);
             outputQuad[2].x = cols - outputQuad[3].x;
           }
         else
           {
             // seen from below
             outputQuad[0].x
-                = cols * _geometry_persp_factor * _uniform_real_1(_rnd_gen);
+                = cols * cp._geometry_persp_factor * _uniform_real_1(_rnd_gen);
             outputQuad[1].x = cols - outputQuad[0].x;
           }
       }
   }
 
-  void TorchImgRandAugCV::applyGeometry(cv::Mat &src)
+  void TorchImgRandAugCV::applyGeometry(cv::Mat &src, GeometryParams &cp,
+                                        const bool &store_rparams)
   {
+    if (!cp._prob)
+      return;
+
     // enlarge image
     float g1 = 0.0;
 #pragma omp critical
     {
       g1 = _uniform_real_1(_rnd_gen);
     }
-    if (g1 > _geometry)
+    if (g1 > cp._prob)
       return;
 
     cv::Mat src_enlarged;
-    getEnlargedImage(src, src_enlarged);
+    getEnlargedImage(src, cp, src_enlarged);
 
     // Input Quadilateral or Image plane coordinates
     cv::Point2f inputQuad[4];
@@ -279,11 +434,116 @@ namespace dd
     // get perpective matrix
 #pragma omp critical
     {
-      getQuads(src.rows, src.cols, inputQuad, outputQuad);
+      getQuads(src.rows, src.cols, cp, inputQuad, outputQuad);
     }
 
     // warp perspective
     cv::Mat lambda = cv::getPerspectiveTransform(inputQuad, outputQuad);
     cv::warpPerspective(src_enlarged, src, lambda, src.size());
+
+    if (store_rparams)
+      cp._lambda = lambda;
+  }
+
+  void TorchImgRandAugCV::warpBBoxes(std::vector<std::vector<float>> &bboxes,
+                                     cv::Mat lambda)
+  {
+    std::vector<std::vector<float>> nbboxes;
+    for (size_t i = 0; i < bboxes.size(); ++i)
+      {
+        std::vector<float> bbox = bboxes.at(i);
+        std::vector<cv::Point2f> origBBox;
+        std::vector<cv::Point2f> warpedBBox;
+
+        cv::Point2f p1;
+        p1.x = bbox[0]; // xmin
+        p1.y = bbox[1]; // ymin
+        origBBox.push_back(p1);
+        cv::Point2f p2;
+        p2.x = bbox[2]; // xmax
+        p2.y = bbox[3]; // ymax
+        origBBox.push_back(p2);
+        cv::Point2f p3;
+        p3.x = bbox[0]; // xmin
+        p3.y = bbox[3]; // ymax
+        origBBox.push_back(p3);
+        cv::Point2f p4;
+        p4.x = bbox[2]; // xmax
+        p4.y = bbox[1]; // ymin
+        origBBox.push_back(p4);
+
+        cv::perspectiveTransform(origBBox, warpedBBox, lambda);
+        float xmin = warpedBBox[0].x;
+        float ymin = warpedBBox[0].y;
+        float xmax = warpedBBox[0].x;
+        float ymax = warpedBBox[0].y;
+        for (int i = 1; i < 4; ++i)
+          {
+            if (warpedBBox[i].x < xmin)
+              xmin = warpedBBox[i].x;
+            if (warpedBBox[i].x > xmax)
+              xmax = warpedBBox[i].x;
+            if (warpedBBox[i].y < ymin)
+              ymin = warpedBBox[i].y;
+            if (warpedBBox[i].y > ymax)
+              ymax = warpedBBox[i].y;
+          }
+
+        std::vector<float> nbox = { xmin, ymin, xmax, ymax };
+        nbboxes.push_back(nbox);
+      }
+    bboxes = nbboxes;
+  }
+
+  void TorchImgRandAugCV::filterBBoxes(std::vector<std::vector<float>> &bboxes,
+                                       const GeometryParams &cp,
+                                       const int &img_width,
+                                       const int &img_height)
+  {
+    std::vector<std::vector<float>> nbboxes;
+    for (size_t i = 0; i < bboxes.size(); ++i)
+      {
+        std::vector<float> bbox = bboxes.at(i);
+        if (bbox[2] >= 0.0 && bbox[0] <= img_width && bbox[3] >= 0.0
+            && bbox[1] <= img_height)
+          {
+            std::vector<float> nbbox;
+            nbbox.push_back(std::max(0.0f, bbox[0])); // xmin
+            nbbox.push_back(std::max(0.0f, bbox[1])); // ymin
+            nbbox.push_back(
+                std::min(static_cast<float>(img_width), bbox[2])); // xmax
+            nbbox.push_back(
+                std::min(static_cast<float>(img_height), bbox[3])); // ymax
+            float surfbb = (bbox[2] - bbox[0]) * (bbox[3] - bbox[1]);
+            float surfnbb = (nbbox[2] - nbbox[0]) * (nbbox[3] - nbbox[1]);
+            if (surfnbb > cp._geometry_bbox_intersect
+                              * surfbb) // keep bboxes that are at least 75%
+                                        // as big as the original
+              {
+                nbboxes.push_back(nbbox);
+              }
+          }
+      }
+    bboxes = nbboxes;
+  }
+
+  void TorchImgRandAugCV::applyGeometryBBox(
+      std::vector<std::vector<float>> &bboxes, const GeometryParams &cp,
+      const int &img_width, const int &img_height)
+  {
+    // XXX: fix (enlarged bboxes for constant padding)
+    for (size_t i = 0; i < bboxes.size(); ++i)
+      {
+        bboxes[i][0] += img_width;
+        bboxes[i][2] += img_width;
+        bboxes[i][1] += img_height;
+        bboxes[i][3] += img_height;
+      }
+
+    // use cp lambda on bboxes
+    warpBBoxes(bboxes, cp._lambda);
+
+    // filter bboxes
+    filterBBoxes(bboxes, cp, img_width, img_height);
   }
 }
