@@ -1,6 +1,6 @@
 /**
  * DeepDetect
- * Copyright (c) 2019-2020 Jolibrain
+ * Copyright (c) 2019-2021 Jolibrain
  * Author:  Guillaume Infantes <guillaume.infantes@jolibrain.com>
  *          Louis Jean <louis.jean@jolibrain.com>
  *          Emmanuel Benazera <emmanuel.benazera@jolibrain.com>
@@ -166,7 +166,8 @@ namespace dd
                                         const std::string &targets,
                                         cv::Mat &bgr,
                                         std::vector<torch::Tensor> &targett,
-                                        const bool &bw)
+                                        const bool &bw, const int &width,
+                                        const int &height)
   {
     std::vector<uint8_t> img_data(datas.begin(), datas.end());
     bgr = cv::Mat(img_data, true);
@@ -174,6 +175,19 @@ namespace dd
                        bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR);
     std::stringstream targetstream(targets);
     torch::load(targett, targetstream);
+    if (bgr.cols != width || bgr.rows != height)
+      {
+        float w_ratio = static_cast<float>(width) / bgr.cols;
+        float h_ratio = static_cast<float>(height) / bgr.rows;
+        cv::resize(bgr, bgr, cv::Size(width, height), 0, 0, cv::INTER_CUBIC);
+        for (int bb = 0; bb < (int)targett[0].size(0); ++bb)
+          {
+            targett[0][bb][0] *= w_ratio;
+            targett[0][bb][1] *= h_ratio;
+            targett[0][bb][2] *= w_ratio;
+            targett[0][bb][3] *= h_ratio;
+          }
+      }
   }
 
   // add image batch
@@ -420,10 +434,17 @@ namespace dd
 
                 cv::Mat bgr;
                 torch::Tensor targett;
-                read_image_from_db(datas, targets, bgr, t, inputc->_bw);
+                read_image_from_db(datas, targets, bgr, t, inputc->_bw,
+                                   inputc->width(), inputc->height());
 
                 // data augmentation can apply here, with OpenCV
-                _img_rand_aug_cv.augment(bgr);
+                if (!_test)
+                  {
+                    if (_bbox)
+                      _img_rand_aug_cv.augment_with_bbox(bgr, t);
+                    else
+                      _img_rand_aug_cv.augment(bgr);
+                  }
 
                 torch::Tensor imgt
                     = image_to_tensor(bgr, inputc->height(), inputc->width());

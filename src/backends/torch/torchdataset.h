@@ -83,6 +83,7 @@ namespace dd
 
     bool _image = false;                /**< whether an image dataset. */
     bool _bbox = false;                 /**< true if bbox detection dataset */
+    bool _test = false;                 /**< whether a test set */
     TorchImgRandAugCV _img_rand_aug_cv; /**< image data augmentation policy. */
 
     /**
@@ -103,7 +104,7 @@ namespace dd
           _indices(d._indices), _lfiles(d._lfiles), _batches(d._batches),
           _dbFullName(d._dbFullName), _inputc(d._inputc),
           _classification(d._classification), _image(d._image), _bbox(d._bbox),
-          _img_rand_aug_cv(d._img_rand_aug_cv)
+          _test(d._test), _img_rand_aug_cv(d._img_rand_aug_cv)
     {
     }
 
@@ -330,7 +331,8 @@ namespace dd
     void read_image_from_db(const std::string &datas,
                             const std::string &targets, cv::Mat &bgr,
                             std::vector<torch::Tensor> &targett,
-                            const bool &bw);
+                            const bool &bw, const int &width,
+                            const int &height);
   };
 
   /**
@@ -350,8 +352,8 @@ namespace dd
     TorchMultipleDataset(const TorchMultipleDataset &d)
         : _inputc(d._inputc), _image(d._image), _bbox(d._bbox),
           _classification(d._classification), _dbFullNames(d._dbFullNames),
-          _datasets_names(d._datasets_names), _db(d._db), _backend(d._backend),
-          _dbPrefix(d._dbPrefix), _logger(d._logger),
+          _datasets_names(d._datasets_names), _test(d._test), _db(d._db),
+          _backend(d._backend), _dbPrefix(d._dbPrefix), _logger(d._logger),
           _batches_per_transaction(d._batches_per_transaction),
           _datasets(d._datasets)
     {
@@ -508,6 +510,7 @@ namespace dd
       _datasets[id]._inputc = _inputc;
       _datasets[id]._image = _image;
       _datasets[id]._bbox = _bbox;
+      _datasets[id]._test = _test;
       _datasets[id]._classification = _classification;
       _datasets[id].set_db_params(_db, _backend,
                                   _dbPrefix + "_" + std::to_string(id));
@@ -523,6 +526,7 @@ namespace dd
     bool _classification = true; /**< whether a classification dataset. */
     std::vector<std::string> _dbFullNames;
     std::vector<std::string> _datasets_names;
+    bool _test = false; /**< wheater a test set */
 
   protected:
     bool _db = false;

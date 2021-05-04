@@ -258,6 +258,7 @@ namespace dd
         _bbox = ad.get("bbox").get<bool>();
       _dataset._bbox = _bbox;
       _test_datasets._bbox = _bbox;
+      _test_datasets._test = true;
     }
 
     void fillup_parameters(const APIData &ad_input)
