@@ -1441,6 +1441,7 @@ vgg_16 | deep neural net	       | Images   		| Convolutional network for image c
 #### Traced models
 
 These templates require an external traced model to work:
+
 - Language models:
 	- `bert`
 	- `gpt2`
