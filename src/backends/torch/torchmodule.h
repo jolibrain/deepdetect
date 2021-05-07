@@ -188,6 +188,11 @@ namespace dd
      */
     void to(torch::Device device, torch::Dtype dtype);
 
+    /**
+     * \brief clone module to given device (e.g. for multigpu training)
+     **/
+    std::shared_ptr<TorchModule> clone(torch::Device device);
+
   public:
     std::shared_ptr<torch::jit::script::Module>
         _traced; /**< traced (torchscript) module, if any */

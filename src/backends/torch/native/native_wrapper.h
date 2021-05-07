@@ -28,35 +28,7 @@
 #pragma GCC diagnostic pop
 
 #include "native_net.h"
-
-namespace std
-{
-  // from
-  // https://stackoverflow.com/questions/47496358/c-lambdas-how-to-capture-variadic-parameter-pack-from-the-upper-scope
-  // see also:
-  // https://en.cppreference.com/w/cpp/experimental/apply
-  namespace detail
-  {
-    template <class F, class Tuple, std::size_t... I>
-    constexpr decltype(auto) apply_impl(F &&f, Tuple &&t,
-                                        std::index_sequence<I...>)
-    {
-      // return std::invoke(std::forward<F>(f),
-      //                   std::get<I>(std::forward<Tuple>(t))...);
-      // Note: std::invoke is a C++17 feature
-      return std::forward<F>(f)(std::get<I>(static_cast<Tuple &&>(t))...);
-    }
-  } // namespace detail
-
-  template <class F, class Tuple>
-  constexpr decltype(auto) apply(F &&f, Tuple &&t)
-  {
-    return detail::apply_impl(
-        std::forward<F>(f), std::forward<Tuple>(t),
-        std::make_index_sequence<
-            std::tuple_size<std::decay_t<Tuple>>::value>{});
-  }
-}
+#include "utils/utils.hpp"
 
 namespace dd
 {
@@ -72,13 +44,28 @@ namespace dd
     {
       _clone_function
           = [args = std::make_tuple(std::forward<Args>(args)...)]() {
-              return std::apply(
+              return dd_utils::apply(
                   [](auto &&... args) {
                     return new NativeModuleWrapper<TModule>(args...);
                   },
                   std::move(args));
             };
       this->register_module("wrapped", _module);
+    }
+
+    std::shared_ptr<torch::nn::Module>
+    clone(const c10::optional<torch::Device> &device
+          = c10::nullopt) const override
+    {
+      std::shared_ptr<NativeModuleWrapper<TModule>> result(_clone_function());
+
+      if (!device)
+        throw MLLibInternalException(
+            "A device must be provided when cloning the model");
+
+      result->to(*device);
+      torch_utils::copy_native_weights(*this, *result, *device);
+      return result;
     }
 
     void reset() override

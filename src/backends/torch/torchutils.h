@@ -107,6 +107,12 @@ namespace dd
                       std::shared_ptr<spdlog::logger> logger = nullptr,
                       bool strict = false);
 
+    /** Copy weights from a native module to another native module. This is
+     * used in multigpu settings. */
+    void copy_native_weights(const torch::nn::Module &from,
+                             torch::nn::Module &to,
+                             const torch::Device &device);
+
     /** Load weights from a model file to a native module.
      * \param strict if false, some weights are allowed to mismatch, or be
      * missing in either copy source or copy destination. If true, an exception

@@ -214,8 +214,7 @@ namespace dd
     // Find GPU id
     if (mllib_dto->gpu != true)
       {
-        _main_device = torch::Device(DeviceType::CPU);
-        _devices = { _main_device };
+        _devices = { torch::Device(DeviceType::CPU) };
       }
     else
       {
@@ -231,7 +230,6 @@ namespace dd
 
         for (int gpuid : gpuids)
           _devices.push_back(torch::Device(DeviceType::CUDA, gpuid));
-        _main_device = _devices[0];
 
         if (_devices.size() > 1)
           {
@@ -241,6 +239,8 @@ namespace dd
             this->_logger->info("Running on multiple devices: " + devices_str);
           }
       }
+
+    _main_device = _devices[0];
 
     // Set model type
     if (mllib_dto->nclasses != 0)
@@ -634,6 +634,30 @@ namespace dd
                                 cutout_params, geometry_params);
       }
 
+    Tensor class_weights = {};
+
+    if (ad_mllib.has("class_weights"))
+      {
+        std::vector<double> cwv
+            = ad_mllib.get("class_weights").get<std::vector<double>>();
+        if (cwv.size() != _nclasses)
+          {
+            this->_logger->error("class weights given, but number of "
+                                 "weights {} do not match "
+                                 "number of classes {}, ignoring",
+                                 cwv.size(), _nclasses);
+          }
+        else
+          {
+            this->_logger->info("using class weights");
+            auto options = torch::TensorOptions().dtype(torch::kFloat64);
+            class_weights
+                = torch::from_blob(cwv.data(), { _nclasses }, options)
+                      .to(torch::kFloat32)
+                      .to(_main_device);
+          }
+      }
+
     // solver params
     int64_t iterations = 1;
     int64_t batch_size = 1;
@@ -641,10 +665,11 @@ namespace dd
     int64_t test_batch_size = 1;
     int64_t test_interval = 1;
     int64_t save_period = 0;
+
     TorchLoss tloss(_loss, _module.has_model_loss(), _seq_training, _timeserie,
-                    _regression, _classification, _module, this->_logger);
-    TorchSolver tsolver(_module, tloss, _devices, this->_logger);
-    Tensor class_weights = {};
+                    _regression, _classification, class_weights, _module,
+                    this->_logger);
+    TorchSolver tsolver(_module, tloss, this->_logger);
 
     // logging parameters
     int64_t log_batch_period = 20;
@@ -655,6 +680,7 @@ namespace dd
     if (ad_mllib.has("solver"))
       {
         APIData ad_solver = ad_mllib.getobj("solver");
+
         tsolver.configure(ad_solver);
 
         if (ad_solver.has("iterations"))
@@ -676,29 +702,6 @@ namespace dd
           test_batch_size = ad_net.get("test_batch_size").get<int>();
       }
 
-    if (ad_mllib.has("class_weights"))
-      {
-        std::vector<double> cwv
-            = ad_mllib.get("class_weights").get<std::vector<double>>();
-        if (cwv.size() != _nclasses)
-          {
-            this->_logger->error("class weights given, but number of "
-                                 "weights {} do not match "
-                                 "number of classes {}, ignoring",
-                                 cwv.size(), _nclasses);
-          }
-        else
-          {
-            this->_logger->info("using class weights");
-            auto options = torch::TensorOptions().dtype(torch::kFloat64);
-            class_weights
-                = torch::from_blob(cwv.data(), { _nclasses }, options)
-                      .to(torch::kFloat32)
-                      .to(_main_device);
-            tloss.set_class_weights(class_weights);
-          }
-      }
-
     bool retain_graph = ad_mllib.has("retain_graph")
                             ? ad_mllib.get("retain_graph").get<bool>()
                             : false;
@@ -707,8 +710,6 @@ namespace dd
       iter_size = 1;
 
     size_t gpu_count = _devices.size();
-    if (gpu_count > 1)
-      batch_size *= gpu_count;
 
     // create dataset for evaluation during training
     TorchMultipleDataset &eval_dataset = inputc._test_datasets;
@@ -735,7 +736,30 @@ namespace dd
         this->_logger->info("Training for {} iterations", iterations - it);
       }
 
-    tsolver.zero_grad();
+    // [multigpu] initialize all module
+    typedef struct
+    {
+      std::shared_ptr<TorchModule> module;
+      std::shared_ptr<TorchLoss> loss;
+    } Rank;
+
+    std::vector<Rank> ranks;
+
+    for (size_t i = 0; i < _devices.size(); ++i)
+      {
+        ranks.emplace_back();
+        auto &r = ranks.back();
+        if (_devices[i] != _main_device)
+          {
+            r.module = _module.clone(_devices[i]);
+
+            r.module->train();
+            r.loss = std::make_shared<TorchLoss>(
+                _loss, r.module->has_model_loss(), _seq_training, _timeserie,
+                _regression, _classification, class_weights, *r.module,
+                this->_logger);
+          }
+      }
     _module.train();
 
     // create dataloader
@@ -744,34 +768,67 @@ namespace dd
         inputc._dataset, data::DataLoaderOptions(batch_size));
 
     int batch_id = 0;
+    double last_it_time = 0;
     double last_test_time = 0;
+    double train_loss = 0;
+    auto data_it = dataloader->begin();
 
-    // it is the iteration count (not epoch)
+    if (data_it == dataloader->end())
+      {
+        throw MLLibBadParamException("No data found in training dataset");
+      }
+
+    // `it` is the iteration count (not epoch)
     while (it < iterations)
       {
         if (!this->_tjob_running.load())
           break;
 
-        double train_loss = 0;
-        double last_it_time = 0;
+        auto tstart = steady_clock::now();
 
-        for (TorchBatch batch : *dataloader)
+        // load batches
+        std::vector<TorchBatch> batches;
+        batches.reserve(_devices.size());
+
+        for (size_t rank = 0; rank < _devices.size(); ++rank)
           {
-            auto tstart = steady_clock::now();
+            if (data_it == dataloader->end())
+              {
+                // +1 epoch
+                data_it = dataloader->begin();
+              }
+
+            batches.push_back(*data_it);
+            ++data_it;
+
             if (_masked_lm)
               {
-                batch = inputc.generate_masked_lm_batch(batch);
+                batches[rank] = inputc.generate_masked_lm_batch(batches[rank]);
               }
+          }
+
+#pragma omp parallel for num_threads(_devices.size())
+        for (size_t rank = 0; rank < _devices.size(); ++rank)
+          {
+            TorchBatch batch = batches[rank];
+
+            torch::Device device = _devices[rank];
+            TorchModule &rank_module
+                = device == _main_device ? _module : *ranks[rank].module;
+            TorchLoss &rank_tloss
+                = device == _main_device ? tloss : *ranks[rank].loss;
+
+            // Batch preprocessing
             std::vector<c10::IValue> in_vals;
             for (Tensor tensor : batch.data)
               {
-                in_vals.push_back(tensor.to(_main_device));
+                in_vals.push_back(tensor.to(device));
               }
-            if (_module.has_model_loss())
+            if (rank_module.has_model_loss())
               {
                 // if the model computes the loss then we pass target as input
                 for (Tensor tensor : batch.target)
-                  in_vals.push_back(tensor.to(_main_device));
+                  in_vals.push_back(tensor.to(device));
               }
 
             if (batch.target.size() == 0)
@@ -779,12 +836,14 @@ namespace dd
                 throw MLLibInternalException(
                     "Batch " + std::to_string(batch_id) + ": no target");
               }
-            Tensor y = batch.target.at(0).to(_main_device);
+            Tensor y = batch.target.at(0).to(device);
+
+            // Prediction
             Tensor y_pred;
             try
               {
                 y_pred = torch_utils::to_tensor_safe(
-                    _module.forward_on_devices(in_vals, _devices));
+                    rank_module.forward(in_vals));
               }
             catch (std::exception &e)
               {
@@ -794,190 +853,222 @@ namespace dd
                                              + e.what());
               }
 
-            Tensor loss = tloss.loss(y_pred, y, in_vals);
+            // Compute loss
+            Tensor loss = rank_tloss.loss(y_pred, y, in_vals);
 
             if (iter_size > 1)
               loss /= iter_size;
+            if (gpu_count > 1)
+              loss /= static_cast<double>(gpu_count);
 
-            double loss_val = loss.item<double>();
-            train_loss += loss_val;
+            // Backward
             loss.backward({},
                           /*retain_graph=*/c10::optional<bool>(retain_graph),
                           /*create_graph=*/false);
-            auto tstop = steady_clock::now();
-            last_it_time
-                += duration_cast<milliseconds>(tstop - tstart).count();
-
-            if ((batch_id + 1) % iter_size == 0)
-              {
-                tstart = steady_clock::now();
-
-                if (!this->_tjob_running.load())
-                  {
-                    // Interrupt training if the service was deleted
-                    break;
-                  }
-                try
-                  {
-                    tsolver.step();
-                    tsolver.zero_grad();
-                  }
-                catch (std::exception &e)
-                  {
-                    this->_logger->error(std::string("Libtorch error: ")
-                                         + e.what());
-                    throw MLLibInternalException(
-                        std::string("Libtorch error: ") + e.what());
-                  }
-                tstop = steady_clock::now();
-
-                this->add_meas("learning_rate", tsolver.base_lr());
-                this->add_meas("iteration", it);
-                // without solver time:
-                this->add_meas("batch_duration_ms", last_it_time / iter_size);
-                // for backward compatibility:
-                this->add_meas("iter_time", last_it_time / iter_size);
-                // with solver time:
-                last_it_time
-                    += duration_cast<milliseconds>(tstop - tstart).count();
-                this->add_meas("iteration_duration_ms", last_it_time);
-
-                double remain_time_ms = last_it_time * (iterations - it);
-
-                if (test_interval > 0)
-                  {
-                    int past_tests = (it / test_interval);
-                    int total_tests = ((iterations - 1) / test_interval) + 1;
-                    remain_time_ms
-                        += last_test_time * (total_tests - past_tests);
-                  }
-                this->add_meas("remain_time", remain_time_ms / 1000.0);
-                this->add_meas("train_loss", train_loss);
-                this->add_meas_per_iter("learning_rate", tsolver.base_lr());
-                this->add_meas_per_iter("train_loss", train_loss);
-                int64_t elapsed_it = it + 1;
-                if (log_batch_period != 0
-                    && elapsed_it % log_batch_period == 0)
-                  {
-                    this->_logger->info("Iteration {}/{}: loss is {}",
-                                        elapsed_it, iterations, train_loss);
-                  }
-                last_it_time = 0;
-                train_loss = 0;
-
-                if ((elapsed_it % test_interval == 0
-                     && eval_dataset.size() != 0)
-                    || elapsed_it == iterations)
-                  {
-                    // Free memory
-                    loss = torch::empty(1);
-                    y_pred = torch::empty(1);
-                    y = torch::empty(1);
-                    in_vals.clear();
-
-                    APIData meas_out;
-                    this->_logger->info("Start test");
-                    tstart = steady_clock::now();
-                    tsolver.eval();
-                    test(ad, inputc, eval_dataset, test_batch_size, meas_out);
-                    tsolver.train();
-                    last_test_time = duration_cast<milliseconds>(
-                                         steady_clock::now() - tstart)
-                                         .count();
-
-                    for (size_t i = 0; i < eval_dataset.size(); ++i)
-                      {
-                        APIData meas_obj;
-                        if (i == 0)
-                          meas_obj = meas_out.getobj("measure");
-                        else
-                          meas_obj = meas_out.getv("measures")[i];
-                        std::vector<std::string> meas_names
-                            = meas_obj.list_keys();
-
-                        //                        if (i == 0)
-                        best_iteration_numbers[i]
-                            = save_if_best(i, meas_obj, elapsed_it, tsolver,
-                                           best_iteration_numbers);
-                        this->_logger->info("measures on test set "
-                                            + std::to_string(i) + " : "
-                                            + eval_dataset.name(i));
-
-                        for (auto name : meas_names)
-                          {
-                            if (name != "cmdiag" && name != "cmfull"
-                                && name != "labels" && name != "test_id"
-                                && name != "test_name")
-                              {
-                                double mval = meas_obj.get(name).get<double>();
-                                this->_logger->info("{}={}", name, mval);
-                                this->add_meas(name, mval);
-                                this->add_meas_per_iter(name, mval);
-                              }
-                            else if (name == "cmdiag")
-                              {
-                                std::vector<double> mdiag
-                                    = meas_obj.get(name)
-                                          .get<std::vector<double>>();
-                                std::vector<std::string> cnames;
-                                std::string mdiag_str;
-                                for (size_t i = 0; i < mdiag.size(); i++)
-                                  {
-                                    mdiag_str
-                                        += this->_mlmodel.get_hcorresp(i) + ":"
-                                           + std::to_string(mdiag.at(i)) + " ";
-                                    this->add_meas_per_iter(
-                                        name + '_'
-                                            + this->_mlmodel.get_hcorresp(i),
-                                        mdiag.at(i));
-                                    cnames.push_back(
-                                        this->_mlmodel.get_hcorresp(i));
-                                  }
-                                this->_logger->info("{}=[{}]", name,
-                                                    mdiag_str);
-                                this->add_meas(name, mdiag, cnames);
-                              }
-                          }
-                      }
-
-                    if (elapsed_it == iterations)
-                      out = meas_out;
-                  }
-
-                if ((save_period != 0 && elapsed_it % save_period == 0)
-                    || elapsed_it == iterations)
-                  {
-                    bool snapshotted = false;
-                    for (size_t i = 0; i < best_iteration_numbers.size(); ++i)
-                      {
-
-                        if (best_iteration_numbers[i] == elapsed_it)
-                          // current model already snapshoted as best model,
-                          // do not remove regular snapshot if it is  best
-                          // model
-                          {
-                            best_iteration_numbers[i] = -1;
-                            snapshotted = true;
-                          }
-                      }
-                    if (!snapshotted)
-                      {
-                        snapshot(elapsed_it, tsolver);
-                      }
-                  }
-                ++it;
-
-                if (it >= iterations)
-                  break;
-              }
-
-            ++batch_id;
+#pragma omp critical
+            {
+              // Retain loss for statistics
+              double loss_val = loss.item<double>();
+              train_loss += loss_val;
+            }
           }
 
-        if (batch_id == 0
-            && iterations > 1) // no batch has run, empty dataset ?
-          throw MLLibBadParamException(
-              "couldn't fetch any data bach while training");
+        // Reduce gradients on device #0
+        auto params = _module.parameters();
+
+        for (size_t j = 0; j < _devices.size(); ++j)
+          {
+            if (_devices[j] == _main_device)
+              continue;
+
+            auto params_j = ranks[j].module->parameters();
+
+            for (size_t pi = 0; pi < params.size(); ++pi)
+              {
+                Tensor &grad = params[pi].mutable_grad();
+                Tensor gradj = params_j[pi].grad();
+                grad.add_(gradj.to(_main_device));
+              }
+          }
+        // End sync gradients
+
+        // Timing
+        auto tstop = steady_clock::now();
+        last_it_time += duration_cast<milliseconds>(tstop - tstart).count();
+
+        if ((batch_id + 1) % iter_size == 0)
+          {
+            if (!this->_tjob_running.load())
+              {
+                // Interrupt training if the service was deleted
+                break;
+              }
+
+            tstart = steady_clock::now();
+
+            try
+              {
+                tsolver.step();
+                tsolver.zero_grad();
+              }
+            catch (std::exception &e)
+              {
+                this->_logger->error(std::string("Libtorch error: ")
+                                     + e.what());
+                throw MLLibInternalException(std::string("Libtorch error: ")
+                                             + e.what());
+              }
+
+            // Broadcast weights to all
+            for (size_t j = 0; j < _devices.size(); ++j)
+              {
+                if (_devices[j] == _main_device)
+                  continue;
+
+                auto params_j = ranks[j].module->parameters();
+
+                for (size_t pi = 0; pi < params.size(); ++pi)
+                  {
+                    torch::NoGradGuard guard;
+                    Tensor weight = params[pi];
+                    params_j[pi].copy_(weight.to(_devices.at(j)));
+                    params_j[pi].grad().zero_();
+                  }
+              }
+
+            tstop = steady_clock::now();
+
+            double base_lr = tsolver.base_lr();
+
+            this->add_meas("learning_rate", base_lr);
+            this->add_meas("iteration", it);
+            // without solver time:
+            this->add_meas("batch_duration_ms", last_it_time / iter_size);
+            // for backward compatibility:
+            this->add_meas("iter_time", last_it_time / iter_size);
+            // with solver time:
+            last_it_time
+                += duration_cast<milliseconds>(tstop - tstart).count();
+            this->add_meas("iteration_duration_ms", last_it_time);
+
+            double remain_time_ms = last_it_time * (iterations - it);
+
+            if (test_interval > 0)
+              {
+                int past_tests = (it / test_interval);
+                int total_tests = ((iterations - 1) / test_interval) + 1;
+                remain_time_ms += last_test_time * (total_tests - past_tests);
+              }
+            this->add_meas("remain_time", remain_time_ms / 1000.0);
+            this->add_meas("train_loss", train_loss);
+            this->add_meas_per_iter("learning_rate", base_lr);
+            this->add_meas_per_iter("train_loss", train_loss);
+            int64_t elapsed_it = it + 1;
+            if (log_batch_period != 0 && elapsed_it % log_batch_period == 0)
+              {
+                this->_logger->info("Iteration {}/{}: loss is {}", elapsed_it,
+                                    iterations, train_loss);
+              }
+            last_it_time = 0;
+            train_loss = 0;
+
+            if ((elapsed_it % test_interval == 0 && eval_dataset.size() != 0)
+                || elapsed_it == iterations)
+              {
+                APIData meas_out;
+                this->_logger->info("Start test");
+                tstart = steady_clock::now();
+                tsolver.eval();
+                test(ad, inputc, eval_dataset, test_batch_size, meas_out);
+                tsolver.train();
+                last_test_time
+                    = duration_cast<milliseconds>(steady_clock::now() - tstart)
+                          .count();
+
+                for (size_t i = 0; i < eval_dataset.size(); ++i)
+                  {
+                    APIData meas_obj;
+                    if (i == 0)
+                      meas_obj = meas_out.getobj("measure");
+                    else
+                      meas_obj = meas_out.getv("measures")[i];
+                    std::vector<std::string> meas_names = meas_obj.list_keys();
+
+                    best_iteration_numbers[i]
+                        = save_if_best(i, meas_obj, elapsed_it, tsolver,
+                                       best_iteration_numbers);
+                    this->_logger->info("measures on test set "
+                                        + std::to_string(i) + " : "
+                                        + eval_dataset.name(i));
+
+                    for (auto name : meas_names)
+                      {
+                        if (name != "cmdiag" && name != "cmfull"
+                            && name != "labels" && name != "test_id"
+                            && name != "test_name")
+                          {
+                            double mval = meas_obj.get(name).get<double>();
+                            this->_logger->info("{}={}", name, mval);
+                            this->add_meas(name, mval);
+                            this->add_meas_per_iter(name, mval);
+                          }
+                        else if (name == "cmdiag")
+                          {
+                            std::vector<double> mdiag
+                                = meas_obj.get(name)
+                                      .get<std::vector<double>>();
+                            std::vector<std::string> cnames;
+                            std::string mdiag_str;
+                            for (size_t i = 0; i < mdiag.size(); i++)
+                              {
+                                mdiag_str
+                                    += this->_mlmodel.get_hcorresp(i) + ":"
+                                       + std::to_string(mdiag.at(i)) + " ";
+                                this->add_meas_per_iter(
+                                    name + '_'
+                                        + this->_mlmodel.get_hcorresp(i),
+                                    mdiag.at(i));
+                                cnames.push_back(
+                                    this->_mlmodel.get_hcorresp(i));
+                              }
+                            this->_logger->info("{}=[{}]", name, mdiag_str);
+                            this->add_meas(name, mdiag, cnames);
+                          }
+                      }
+                  }
+
+                if (elapsed_it == iterations)
+                  out = meas_out;
+              }
+
+            if ((save_period != 0 && elapsed_it % save_period == 0)
+                || elapsed_it == iterations)
+              {
+                bool snapshotted = false;
+                for (size_t i = 0; i < best_iteration_numbers.size(); ++i)
+                  {
+
+                    if (best_iteration_numbers[i] == elapsed_it)
+                      // current model already snapshoted as best model,
+                      // do not remove regular snapshot if it is  best
+                      // model
+                      {
+                        best_iteration_numbers[i] = -1;
+                        snapshotted = true;
+                      }
+                  }
+                if (!snapshotted)
+                  {
+                    snapshot(elapsed_it, tsolver);
+                  }
+              }
+            ++it;
+
+            if (it >= iterations)
+              break;
+          }
+
+        ++batch_id;
       }
 
     if (!this->_tjob_running.load())
