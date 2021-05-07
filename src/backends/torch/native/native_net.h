@@ -35,6 +35,8 @@ namespace dd
   class NativeModule : public virtual torch::nn::Module
   {
   public:
+    virtual ~NativeModule() = default;
+
     /**
      * \brief forward pass over the
      * @param input tensor
@@ -63,8 +65,6 @@ namespace dd
      * net
      */
     virtual std::vector<std::string> extractable_layers() const = 0;
-
-    virtual ~NativeModule() = default;
 
     virtual torch::Tensor cleanup_output(torch::Tensor output) = 0;
 

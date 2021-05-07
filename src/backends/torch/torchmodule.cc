@@ -553,6 +553,23 @@ namespace dd
     _native = nullptr;
   }
 
+  std::shared_ptr<TorchModule> TorchModule::clone(torch::Device device)
+  {
+    auto cloned = std::make_shared<TorchModule>(*this);
+    if (_native)
+      {
+        cloned->_native
+            = std::dynamic_pointer_cast<NativeModule>(_native->clone(device));
+      }
+    if (_linear || _graph || _traced)
+      {
+        throw MLLibBadParamException(
+            "MultiGPU is not supported on non cloneable models (including "
+            "graphs & traced models)");
+      }
+    return cloned;
+  }
+
   template void TorchModule::post_transform(
       const std::string tmpl, const APIData &template_params,
       const ImgTorchInputFileConn &inputc, const TorchModel &tmodel,

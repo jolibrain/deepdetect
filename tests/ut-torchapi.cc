@@ -1261,7 +1261,7 @@ TEST(torchapi, service_train_images_native)
         + native_resnet_repo
         + "\",\"create_repository\":true},\"parameters\":{\"input\":{"
           "\"connector\":\"image\",\"width\":224,\"height\":224,\"db\":true},"
-          "\"mllib\":{\"nclasses\":2,\"gpu\":true,\"template\":\"resnet50\"}}"
+          "\"mllib\":{\"nclasses\":2,\"gpu\":true,\"template\":\"resnet18\"}}"
           "}";
   std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
   ASSERT_EQ(created_str, joutstr);
@@ -1271,12 +1271,11 @@ TEST(torchapi, service_train_images_native)
       = "{\"service\":\"imgserv\",\"async\":false,\"parameters\":{"
         "\"mllib\":{\"solver\":{\"iterations\":"
         + std::to_string(iterations_native)
-        + ",\"base_lr\":1e-5,\"iter_size\":4,\"solver_type\":\"ADAM\",\"test_"
-          "interval\":100},\"net\":{\"batch_size\":4},\"nclasses\":2,"
-          "\"resume\":false},"
-          "\"input\":{\"seed\":12345,\"db\":true,\"shuffle\":true,\"test_"
-          "split\":0.1},"
-          "\"output\":{\"measure\":[\"f1\",\"acc\"]}},\"data\":[\""
+        + ",\"base_lr\":1e-5,\"iter_size\":2,\"solver_type\":\"ADAM\",\"test_"
+          "interval\":100},\"net\":{\"batch_size\":32},\"nclasses\":2,"
+          "\"resume\":false},\"input\":{\"seed\":12345,\"db\":true,"
+          "\"shuffle\":true,\"test_split\":0.1},\"output\":{\"measure\":["
+          "\"f1\",\"acc\"]}},\"data\":[\""
         + resnet50_train_data + "\"]}";
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   JDoc jd;
@@ -1997,8 +1996,7 @@ TEST(torchapi, service_train_ttransformer_forecast)
         + csvts_nbeats_repo
         + "\"},\"parameters\":{\"input\":{\"connector\":\"csvts\","
           "\"forecast_timesteps\":10,\"ignore\":[\"output\"],\"backcast_"
-          "timesteps\":40},"
-          "\"mllib\":"
+          "timesteps\":40},\"mllib\":"
           "{\"template\":\"ttransformer\",\"template_params\":{\"embed\": "
           "{\"layers\": 2,\"activation\": "
           "\"relu\",\"dim\": 2,\"type\": \"step\",\"dropout\": "
@@ -2306,6 +2304,64 @@ TEST(torchapi, service_train_csvts_nbeats_multigpu)
   joutstr = japi.jrender(japi.service_delete(sname, jstr));
   ASSERT_EQ(ok_str, joutstr);
   rmdir(csvts_nbeats_repo.c_str());
+}
+
+TEST(torchapi, service_train_resnet18_multigpu)
+{
+  setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
+  torch::manual_seed(torch_seed);
+  at::globalContext().setDeterministicCuDNN(true);
+
+  // Create service
+  JsonAPI japi;
+
+  std::string native_resnet_repo = "native_resnet";
+  int iterations_native = 100;
+  mkdir(native_resnet_repo.c_str(), 0777);
+
+  std::string sname = "imgserv";
+  std::string jstr
+      = "{\"mllib\":\"torch\",\"description\":\"image\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+        + native_resnet_repo
+        + "\",\"create_repository\":true},\"parameters\":{\"input\":{"
+          "\"connector\":\"image\",\"width\":224,\"height\":224,\"db\":true},"
+          "\"mllib\":{\"nclasses\":2,\"gpu\":true,\"gpuid\":[0,1],"
+          "\"template\":\"resnet18\"}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // Train
+  std::string jtrainstr
+      = "{\"service\":\"imgserv\",\"async\":false,\"parameters\":{"
+        "\"mllib\":{\"solver\":{\"iterations\":"
+        + std::to_string(iterations_native)
+        + ",\"base_lr\":1e-5,\"iter_size\":1,\"solver_type\":\"ADAM\",\"test_"
+          "interval\":100},\"net\":{\"batch_size\":32},\"nclasses\":2,"
+          "\"resume\":false},\"input\":{\"seed\":12345,\"db\":true,"
+          "\"shuffle\":true,\"test_split\":0.1},\"output\":{\"measure\":["
+          "\"f1\",\"acc\"]}},\"data\":[\""
+        + resnet50_train_data + "\"]}";
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
+  JDoc jd;
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(201, jd["status"]["code"]);
+
+  ASSERT_TRUE(jd["body"]["measure"]["iteration"] == iterations_native)
+      << "iterations";
+  ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() <= 1) << "accuracy";
+  // TODO test accuracy when it's no more random
+  // ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() >= 0.6)
+  //    << "accuracy good";
+  ASSERT_TRUE(jd["body"]["measure"]["f1"].GetDouble() <= 1) << "f1";
+
+  // clear directory
+  jstr = "{\"clear\":\"full\"}";
+  joutstr = japi.jrender(japi.service_delete(sname, jstr));
+  ASSERT_EQ(ok_str, joutstr);
+  fileops::remove_dir(native_resnet_repo);
 }
 #endif
 
