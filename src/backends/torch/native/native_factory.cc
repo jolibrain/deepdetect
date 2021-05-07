@@ -20,7 +20,6 @@
  */
 
 #include "native_factory.h"
-
 #include "native_wrapper.h"
 
 namespace dd
@@ -88,6 +87,10 @@ namespace dd
       {
 
         return new ViT(inputc, template_params);
+      }
+    else if (tdef.find("visformer") != std::string::npos)
+      {
+        return new Visformer(inputc, template_params);
       }
     else if (VisionModelsFactory::is_vision_template(tdef))
       {
