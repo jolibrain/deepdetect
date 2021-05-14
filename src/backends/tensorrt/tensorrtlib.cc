@@ -28,6 +28,7 @@
 #include "protoUtils.h"
 #include <cuda_runtime_api.h>
 #include <string>
+#include "dto/service_predict.hpp"
 
 namespace dd
 {
@@ -406,32 +407,31 @@ namespace dd
         _net_mutex); // no concurrent calls since the net is not
                      // re-instantiated
 
-    if (ad.getobj("parameters").getobj("mllib").has("gpuid"))
-      _gpuid = ad.getobj("parameters").getobj("mllib").get("gpuid").get<int>();
+    auto predict_dto = ad.createSharedDTO<DTO::ServicePredict>();
+
+    if (predict_dto->parameters->mllib->gpuid->_ids.size() == 0)
+      throw MLLibBadParamException("empty gpuid vector");
+
+    _gpuid = predict_dto->parameters->mllib->gpuid->_ids[0];
     cudaSetDevice(_gpuid);
 
-    APIData ad_output = ad.getobj("parameters").getobj("output");
+    auto output_params = predict_dto->parameters->output;
+
     std::string out_blob = "prob";
     TInputConnectorStrategy inputc(this->_inputc);
 
     if (!_TRTContextReady)
       {
-        if (ad_output.has("bbox"))
-          _bbox = ad_output.get("bbox").get<bool>();
-        if (ad_output.has("regression"))
-          _regression = ad_output.get("regression").get<bool>();
+        _bbox = output_params->bbox;
+        _regression = output_params->regression;
+        _ctc = output_params->ctc;
 
-        // Ctc model
-        if (ad_output.has("ctc"))
+        if (_ctc)
           {
-            _ctc = ad_output.get("ctc").get<bool>();
-            if (_ctc)
-              {
-                if (ad_output.has("blank_label"))
-                  throw MLLibBadParamException(
-                      "blank_label not yet implemented over tensorRT "
-                      "backend");
-              }
+            if (output_params->blank_label != -1)
+              throw MLLibBadParamException(
+                  "blank_label not yet implemented over tensorRT "
+                  "backend");
           }
 
         if (_bbox == true)
@@ -739,14 +739,6 @@ namespace dd
         std::vector<APIData> bboxes;
         std::vector<APIData> series;
 
-        // Get confidence_threshold
-        float confidence_threshold = 0.0;
-        if (ad_output.has("confidence_threshold"))
-          {
-            apitools::get_float(ad_output, "confidence_threshold",
-                                confidence_threshold);
-          }
-
         if (_bbox)
           {
             int results_height = _top_k;
@@ -795,7 +787,7 @@ namespace dd
                       break; // this belongs to next image
                     ++k;
                     outr += det_size;
-                    if (detection[2] < confidence_threshold)
+                    if (detection[2] < output_params->confidence_threshold)
                       continue;
 
                     // Fix border of bboxes
@@ -854,7 +846,8 @@ namespace dd
                 for (int i = 0; i < _nclasses; i++)
                   {
                     double prob = _floatOut.at(j * _nclasses + i);
-                    if (prob < confidence_threshold && !_regression)
+                    if (prob < output_params->confidence_threshold
+                        && !_regression)
                       continue;
                     probs.push_back(prob);
                     cats.push_back(this->_mlmodel.get_hcorresp(i));
