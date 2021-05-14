@@ -515,7 +515,17 @@ namespace dd
       // Variable size
       _scaled |= params->scaled;
       if (params->scale)
-        _scale = params->scale;
+        try
+          {
+            _scale = params->scale.retrieve<oatpp::Float64>();
+          }
+        catch (const std::runtime_error &error)
+          {
+            std::string msg
+                = "could not read double value for scale input parameter";
+            _logger->error(msg);
+            throw InputConnectorBadParamException(msg);
+          }
       if (params->scale_min)
         {
           _scaled = true;
