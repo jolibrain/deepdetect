@@ -227,7 +227,7 @@ TEST(ncnnapi, service_lstm)
   ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
   ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
   ASSERT_TRUE(jd["body"]["measure"].HasMember("L1_mean_error"));
-  ASSERT_TRUE(jd["body"]["measure"]["L1_max_error_0"].GetDouble() > 0.0);
+  ASSERT_TRUE(jd["body"]["measure"]["L1_max_error"].GetDouble() > 0.0);
   ASSERT_TRUE(jd["body"]["parameters"]["input"].HasMember("max_vals"));
   ASSERT_TRUE(jd["body"]["parameters"]["input"].HasMember("min_vals"));
 
