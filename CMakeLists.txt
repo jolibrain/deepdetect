@@ -803,7 +803,7 @@ if (USE_TORCH)
   set(PYTORCH_VISION_COMMIT "v0.9.0") # 0.9.0 & torch 1.8
   set(PYTORCH_VISION_PATCHES_PATH ${CMAKE_BINARY_DIR}/patches/pytorch/vision)
   set(PYTORCH_VISION_PATCHES
-      ${PYTORCH_VISION_PATCHES_PATH}/pytorch_vision_09_fasterrcnn.patch
+    ${PYTORCH_VISION_PATCHES_PATH}/pytorch_vision_09_fasterrcnn.patch
   )
 
   set(PYTORCH_VISION_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch_vision-complete)
@@ -937,16 +937,17 @@ if (USE_TENSORRT)
 	set(TENSORRT_LIBS nvinfer nvcaffeparser nvinfer_plugin nvonnxparser )
 
     if (NOT TENSORRT_VERSION)
-        if (EXISTS "${TRTTESTDIR}/libnvinfer.so.7.1.3")
-            set(TENSORRT_VERSION 20.09)
-            message(STATUS "Found TensorRT libraries version 7.1.3")
+        if (EXISTS "${TRTTESTDIR}/libnvinfer.so.8.0.0")
+            set(TENSORRT_VERSION 21.04)
+	  # TODO(beniz): changelog says 7.2.3.4
+            message(STATUS "Found TensorRT libraries version 8.0.0")
         # TODO(sileht): Update trt-oss patches for 7.2.2
         # elseif (EXISTS "${TRTTESTDIR}/libnvinfer.so.7.2.2")
         #     set(TENSORRT_VERSION 20.12)
         #     message(STATUS "Found TensorRT libraries version 7.2.2")
-        elseif (EXISTS "${TRTTESTDIR}/libnvinfer.so.7")
-            set(TENSORRT_VERSION 20.09)
-            message(WARNING "No supported TensorRT version found assuming 20.09/7.1.3")
+        elseif (EXISTS "${TRTTESTDIR}/libnvinfer.so.8")
+            set(TENSORRT_VERSION 21.04)
+            message(WARNING "No supported TensorRT version found assuming 21.04/8.0.0")
         else()
             message(FATAL_ERROR "No supported TensorRT version found")
         endif()
