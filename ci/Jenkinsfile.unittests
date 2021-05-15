@@ -64,8 +64,8 @@ cmake .. \
     -DUSE_XGBOOST=ON  \
     -DUSE_TORCH=ON  \
     -DUSE_NCNN=ON  \
-    -DUSE_TENSORRT=OFF  \
-    -DUSE_TENSORRT_OSS=OFF  \
+    -DUSE_TENSORRT=ON  \
+    -DUSE_TENSORRT_OSS=ON  \
     -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61"
 
 make clang-format-check
