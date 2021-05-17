@@ -110,7 +110,7 @@ namespace dd
           {
             logger->info(
                 "could not find  ncnn model, converting caffe model {}"
-                "in repository {}",
+                " in repository {}",
                 caffe_weightsf, _repo);
           }
         // try to generate ncnn files from caffe files
