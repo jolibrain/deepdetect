@@ -173,12 +173,8 @@ namespace dd
 
     model_type(this->_mlmodel._def, this->_mltype);
 
-    _builder = std::shared_ptr<nvinfer1::IBuilder>(
-        nvinfer1::createInferBuilder(trtLogger),
-        [=](nvinfer1::IBuilder *b) { b->destroy(); });
-    _builderc = std::shared_ptr<nvinfer1::IBuilderConfig>(
-        _builder->createBuilderConfig(),
-        [=](nvinfer1::IBuilderConfig *b) { b->destroy(); });
+    _builder = nvinfer1::createInferBuilder(trtLogger);
+    _builderc = _builder->createBuilderConfig();
 
     if (_dla != -1)
       {
@@ -349,10 +345,6 @@ namespace dd
     nvinfer1::ICudaEngine *engine
         = _builder->buildEngineWithConfig(*network, *_builderc);
 
-    network->destroy();
-    if (caffeParser != nullptr)
-      caffeParser->destroy();
-
     return engine;
   }
 
@@ -390,10 +382,6 @@ namespace dd
 
     nvinfer1::ICudaEngine *engine
         = _builder->buildEngineWithConfig(*network, *_builderc);
-
-    network->destroy();
-    if (onnxParser != nullptr)
-      onnxParser->destroy();
 
     return engine;
   }
@@ -497,11 +485,8 @@ namespace dd
                 file.close();
                 nvinfer1::IRuntime *runtime
                     = nvinfer1::createInferRuntime(trtLogger);
-                _engine = std::shared_ptr<nvinfer1::ICudaEngine>(
-                    runtime->deserializeCudaEngine(
-                        trtModelStream.data(), trtModelStream.size(), nullptr),
-                    [=](nvinfer1::ICudaEngine *e) { e->destroy(); });
-                runtime->destroy();
+                _engine = runtime->deserializeCudaEngine(
+                    trtModelStream.data(), trtModelStream.size(), nullptr);
                 engineRead = true;
               }
           }
@@ -527,8 +512,7 @@ namespace dd
                     "No model to parse for conversion to TensorRT");
               }
 
-            _engine = std::shared_ptr<nvinfer1::ICudaEngine>(
-                le, [=](nvinfer1::ICudaEngine *e) { e->destroy(); });
+            _engine = le;
 
             if (_writeEngine)
               {
@@ -538,7 +522,6 @@ namespace dd
                 nvinfer1::IHostMemory *trtModelStream = _engine->serialize();
                 p.write(reinterpret_cast<const char *>(trtModelStream->data()),
                         trtModelStream->size());
-                trtModelStream->destroy();
               }
           }
         else
@@ -548,9 +531,7 @@ namespace dd
               _explicit_batch = true;
           }
 
-        _context = std::shared_ptr<nvinfer1::IExecutionContext>(
-            _engine->createExecutionContext(),
-            [=](nvinfer1::IExecutionContext *e) { e->destroy(); });
+        _context = _engine->createExecutionContext();
         _TRTContextReady = true;
 
         try

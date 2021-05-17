@@ -926,7 +926,7 @@ if (USE_TENSORRT)
     set(TENSORRT_INC_DIR /usr/include/x86_64-linux-gnu)
   endif()
 
-  if (NOT EXISTS "${TRTTESTDIR}/libnvinfer.so")
+  if (NOT EXISTS "${TRTTESTDIR}/libnvinfer.so.8")
     message(FATAL_ERROR "Could not find TensorRT ${TENSORRT_LIB_DIR}/libnvinfer.so, please provide tensorRT location as TENSORRT_DIR or (TENSORRT_LIB_DIR _and_ TENSORRT_INC_DIR)")
   else()
     message(STATUS "Found TensorRT libraries : ${TRTTESTDIR}/libnvinfer.so")
@@ -938,7 +938,7 @@ if (USE_TENSORRT)
 
     if (NOT TENSORRT_VERSION)
         if (EXISTS "${TRTTESTDIR}/libnvinfer.so.8.0.0")
-            set(TENSORRT_VERSION 21.04)
+            set(TENSORRT_VERSION 21.05)
 	  # TODO(beniz): changelog says 7.2.3.4
             message(STATUS "Found TensorRT libraries version 8.0.0")
         # TODO(sileht): Update trt-oss patches for 7.2.2
@@ -946,8 +946,8 @@ if (USE_TENSORRT)
         #     set(TENSORRT_VERSION 20.12)
         #     message(STATUS "Found TensorRT libraries version 7.2.2")
         elseif (EXISTS "${TRTTESTDIR}/libnvinfer.so.8")
-            set(TENSORRT_VERSION 21.04)
-            message(WARNING "No supported TensorRT version found assuming 21.04/8.0.0")
+            set(TENSORRT_VERSION 21.05)
+            message(WARNING "No supported TensorRT version found assuming 21.05/8.0.0")
         else()
             message(FATAL_ERROR "No supported TensorRT version found")
         endif()
@@ -968,6 +968,9 @@ if (USE_TENSORRT)
 	set(TRT_PATCHES
       ${TRT_PATCHES_PATH}/0001-support-for-refinedet.patch
       ${TRT_PATCHES_PATH}/0003-c++14.patch
+      ${TRT_PATCHES_PATH}/0002-find-myelin.patch
+      ${TRT_PATCHES_PATH}/0007-find-8.patch
+      ${TRT_PATCHES_PATH}/0008-cuda13.patch
       )
 
     # Tensorrt uses its own protobuf version (3.0.0) and this cannot be overrided
@@ -978,7 +981,7 @@ if (USE_TENSORRT)
       GIT_REPOSITORY https://github.com/NVIDIA/TensorRT.git
       GIT_TAG ${TENSORRT_VERSION}
       GIT_CONFIG advice.detachedHead=false
-	  PATCH_COMMAND git reset --hard && git apply ${TRT_PATCHES}
+	  PATCH_COMMAND git reset --hard && git submodule foreach --recursive git reset --hard && git apply ${TRT_PATCHES}
       CMAKE_ARGS ${TRT_FLAGS}
       INSTALL_COMMAND ""
     )
