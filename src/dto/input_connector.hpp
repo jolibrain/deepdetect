@@ -52,7 +52,7 @@ namespace dd
       DTO_FIELD(Float64, test_split);
       DTO_FIELD(Vector<Float32>, mean);
       DTO_FIELD(Vector<Float32>, std);
-      DTO_FIELD(Float64, scale);
+      DTO_FIELD(Any, scale); // bool for csv/csvts , float for img
       DTO_FIELD(Boolean, scaled);
       DTO_FIELD(Int32, scale_min);
       DTO_FIELD(Int32, scale_max);
