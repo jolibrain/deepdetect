@@ -1,0 +1,14 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index a18cbd0..31b48c5 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -93,6 +93,9 @@ message(STATUS "cuDNN version set to ${CUDNN_VERSION}")
+ set_ifndef(PROTOBUF_VERSION ${DEFAULT_PROTOBUF_VERSION})
+ message(STATUS "Protobuf version set to ${PROTOBUF_VERSION}")
+ 
++set(CMAKE_FIND_LIBRARY_SUFFIXES ".so" ".so.7" ".a") #ugly hack to find libnvinfer.so.7 if no symlink 
++
++
+ find_package(Threads REQUIRED)
+ if (BUILD_PLUGINS OR BUILD_PARSERS)
+     include(third_party/zlib.cmake)
