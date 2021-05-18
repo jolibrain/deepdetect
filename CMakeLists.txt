@@ -963,7 +963,10 @@ if (USE_TENSORRT)
     endif()
 
 	set(TRT_PATCHES_PATH ${CMAKE_BINARY_DIR}/patches/trt)
-	set(TRT_PATCHES ${TRT_PATCHES_PATH}/0001-support-for-refinedet.patch)
+	set(TRT_PATCHES
+      ${TRT_PATCHES_PATH}/0001-support-for-refinedet.patch
+      ${TRT_PATCHES_PATH}/0003-c++14.patch
+      )
 
     # Tensorrt uses its own protobuf version (3.0.0) and this cannot be overrided
     # At best we can set the version it will internally build

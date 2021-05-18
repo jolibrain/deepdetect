@@ -1495,7 +1495,7 @@ TEST(torchapi, service_train_csvts_nbeats)
         + csvts_nbeats_repo
         + "\"},\"parameters\":{\"input\":{\"connector\":\"csvts\",\"ignore\":["
           "\"output\"],\"backcast_timesteps\":50,\"forecast_timesteps\":50},"
-          "\"mllib\":{\"template\":\"nbeats\","
+          "\"mllib\":{\"template\":\"nbeats\",\"gpuid\":0,"
           "\"template_params\":{\"stackdef\":[\"t2\",\"s\",\"g3\",\"b3\"]},"
           "\"loss\":\"L1\"}}}";
 
@@ -1759,7 +1759,7 @@ TEST(torchapi, service_train_csvts_nbeats_multiple_testsets)
         + "\"},\"parameters\":{\"input\":{\"connector\":\"csvts\",\"ignore\":["
           "\"output\"],\"backcast_timesteps\":50,\"forecast_timesteps\":50},"
           "\"mllib\":{\"template\":\"nbeats\","
-          "\"template_params\":[\"t2\",\"s\",\"g3\",\"b3\"],"
+          "\"template_params\":{\"stackdef\":[\"t2\",\"s\",\"g3\",\"b3\"]},"
           "\"loss\":\"L1\"}}}";
 
   std::string joutstr = japi.jrender(japi.service_create(sname, jstr));

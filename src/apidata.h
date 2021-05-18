@@ -36,8 +36,10 @@
 #include "dd_types.h"
 #include <unordered_map>
 #include <vector>
+#include <iostream>
 #include <sstream>
 #include <typeinfo>
+#include "utils/oatpp.hpp"
 #include "oatpp/parser/json/mapping/ObjectMapper.hpp"
 
 namespace dd
@@ -292,17 +294,16 @@ namespace dd
         throw DataConversionException("JSON rendering failed");
 
       std::shared_ptr<oatpp::data::mapping::ObjectMapper> object_mapper
-          = oatpp::parser::json::mapping::ObjectMapper::createShared();
+          = dd::oatpp_utils::createDDMapper();
       return object_mapper
           ->readFromString<oatpp::Object<T>>(buffer.GetString())
           .getPtr();
     }
 
-    template <typename T>
-    inline static APIData fromDTO(const oatpp::Object<T> &dto)
+    template <typename T> static APIData fromDTO(const oatpp::Void &dto)
     {
       std::shared_ptr<oatpp::data::mapping::ObjectMapper> object_mapper
-          = oatpp::parser::json::mapping::ObjectMapper::createShared();
+          = dd::oatpp_utils::createDDMapper();
 
       oatpp::String json = object_mapper->writeToString(dto);
       APIData ad;

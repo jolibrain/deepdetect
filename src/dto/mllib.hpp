@@ -26,6 +26,7 @@
 #include "utils/utils.hpp"
 #include "oatpp/core/Types.hpp"
 #include "oatpp/core/macro/codegen.hpp"
+#include "gpuid.hpp"
 
 namespace dd
 {
@@ -45,6 +46,97 @@ namespace dd
       };
       DTO_FIELD(Int32, nclasses) = 0;
 
+      DTO_FIELD_INFO(ntargets)
+      {
+        info->description
+            = "number of regression targets (`supervised` service "
+              "type), regression only";
+      };
+      DTO_FIELD(Int32, ntargets) = 0;
+
+      DTO_FIELD_INFO(from_repository)
+      {
+        info->description = "initialize model repository with checkpoint and "
+                            "configuration from another repository";
+      };
+      DTO_FIELD(String, from_repository);
+
+      DTO_FIELD_INFO(model_template)
+      {
+        info->description = "Model template";
+      };
+      DTO_FIELD(String, model_template, "template") = "";
+
+      DTO_FIELD_INFO(gpu)
+      {
+        info->description = "Whether to use GPU";
+      };
+      DTO_FIELD(Boolean, gpu) = false;
+
+      DTO_FIELD_INFO(gpuid)
+      {
+        info->description
+            = "GPU id, use single int for single GPU, -1 for using all GPUs, "
+              "and array e.g. [1,3] for selecting among multiple GPUs";
+      };
+      DTO_FIELD(GpuIds, gpuid) = { VGpuIds{} };
+
+      DTO_FIELD_INFO(finetuning)
+      {
+        // XXX: torch does not require weights since the weights are in the
+        // repo. But other mllib require weights (eg caffe).
+        info->description = "Whether to prepare neural net template for "
+                            "finetuning (requires `weights`)";
+      };
+      DTO_FIELD(Boolean, finetuning) = false;
+
+      DTO_FIELD_INFO(datatype)
+      {
+        info->description = "fp16 or fp32";
+      };
+
+      DTO_FIELD(String, datatype) = "fp32";
+
+      // =====
+      // Libtorch options
+      DTO_FIELD_INFO(self_supervised)
+      {
+        info->description
+            = "self-supervised mode: “mask” for masked language model";
+      };
+      DTO_FIELD(String, self_supervised) = "";
+
+      DTO_FIELD_INFO(embedding_size)
+      {
+        info->description = "embedding size for NLP models";
+      };
+      DTO_FIELD(Int32, embedding_size) = 768;
+
+      DTO_FIELD_INFO(freeze_traced)
+      {
+        info->description = "Freeze the traced part of the net during "
+                            "finetuning (e.g. for classification)";
+      };
+      DTO_FIELD(Boolean, freeze_traced) = false;
+
+      DTO_FIELD_INFO(loss)
+      {
+        // TODO add other losses.
+        info->description
+            = "Special network losses. (e.g. L1 & L2 for timeseries)";
+      };
+      DTO_FIELD(String, loss) = "";
+
+      // TODO template parameters depends on the template, so the DTO must be
+      // custom
+      DTO_FIELD_INFO(template_params)
+      {
+        info->description = "Model parameter for templates. All parameters "
+                            "are listed in the Model Templates section.";
+      };
+      DTO_FIELD(UnorderedFields<Any>, template_params);
+
+      // =====
       // NCNN Options
       DTO_FIELD_INFO(threads)
       {
@@ -71,13 +163,6 @@ namespace dd
                             "rnn_pred or probs or detection_out)";
       };
       DTO_FIELD(String, outputBlob);
-
-      DTO_FIELD_INFO(datatype)
-      {
-        info->description = "fp16 or fp32";
-      };
-
-      DTO_FIELD(String, datatype) = "fp16";
     };
 #include OATPP_CODEGEN_END(DTO) ///< End DTO codegen section
 
