@@ -747,6 +747,7 @@ if (USE_TORCH)
     ${PYTORCH_PATCHES_PATH}/pytorch_16_new_logger.patch
     ${PYTORCH_PATCHES_PATH}/pytorch_16_use_new_logger.patch
     ${PYTORCH_PATCHES_PATH}/pytorch_14_namespace.patch
+    ${PYTORCH_PATCHES_PATH}/pytorch_18_string_view.patch
   )
 
   message(STATUS "Configuring libtorch")
