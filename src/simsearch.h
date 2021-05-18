@@ -39,7 +39,7 @@
 #endif
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
-#include "caffe/util/db.hpp"
+#include "utils/db.hpp"
 #pragma GCC diagnostic pop
 #include <mutex>
 
@@ -188,8 +188,8 @@ namespace dd
     std::string _model_repo; /**< model directory */
     const std::string _db_name = "names.bin";
     const std::string _db_backend = "lmdb";
-    caffe::db::DB *_db = nullptr;
-    std::unique_ptr<caffe::db::Transaction> _txn;
+    db::DB *_db = nullptr;
+    std::unique_ptr<db::Transaction> _txn;
     int _count_put = 0;
     int _count_put_max = 1000;
     const std::string _index_name = "index.ann";
@@ -236,8 +236,8 @@ namespace dd
     const std::string _db_backend = "lmdb";
     const std::string _index_name = "index.faiss";
     const std::string _il_name = "index_mmap.faiss";
-    caffe::db::DB *_db = nullptr;
-    std::unique_ptr<caffe::db::Transaction> _txn;
+    db::DB *_db = nullptr;
+    std::unique_ptr<db::Transaction> _txn;
     int _count_put = 0;
     int _count_put_max = 1000;
     int _train_samples_size = 100000;
