@@ -51,6 +51,9 @@ namespace dd
       DTO_FIELD(Boolean, search) = false;
       DTO_FIELD(Int32, search_nn);
       DTO_FIELD(Int32, nprobe);
+
+      /* TRT */
+      DTO_FIELD(Boolean, regression) = false;
     };
 
 #include OATPP_CODEGEN_END(DTO) ///< End DTO codegen section
