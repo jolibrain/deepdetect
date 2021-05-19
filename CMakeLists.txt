@@ -341,7 +341,7 @@ if (USE_CAFFE OR USE_TORCH)
       set(FAISS_INCLUDE_DIR ${CMAKE_BINARY_DIR}/faiss/src/faiss)
       include_directories("${FAISS_INCLUDE_DIR}")
       set(FAISS_LIB_DIR ${CMAKE_BINARY_DIR}/faiss/src/faiss/build/faiss)
-      set(FAISS_LIB_DEPS faiss)
+      set(FAISS_LIB_DEPS openblas faiss)
     endif()
   endif()
 else()
@@ -747,6 +747,7 @@ if (USE_TORCH)
     ${PYTORCH_PATCHES_PATH}/pytorch_16_new_logger.patch
     ${PYTORCH_PATCHES_PATH}/pytorch_16_use_new_logger.patch
     ${PYTORCH_PATCHES_PATH}/pytorch_14_namespace.patch
+    ${PYTORCH_PATCHES_PATH}/pytorch_18_string_view.patch
   )
 
   message(STATUS "Configuring libtorch")

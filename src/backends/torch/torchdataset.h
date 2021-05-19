@@ -29,8 +29,8 @@
 #include <torch/torch.h>
 #pragma GCC diagnostic pop
 
-#include "backends/torch/db.hpp"
-#include "backends/torch/db_lmdb.hpp"
+#include "utils/db.hpp"
+#include "utils/db_lmdb.hpp"
 
 #include "inputconnectorstrategy.h"
 #include "torchdataaug.h"

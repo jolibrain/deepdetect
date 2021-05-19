@@ -126,7 +126,7 @@ namespace dd
   {
     _aindex = new AnnoyIndex<int, double, Angular, Kiss32Random,
                              AnnoyIndexSingleThreadedBuildPolicy>(f);
-    _db = caffe::db::GetDB(_db_backend);
+    _db = db::GetDB(_db_backend);
   }
 
   AnnoySE::~AnnoySE()
@@ -150,12 +150,12 @@ namespace dd
     if (fileops::file_exists(db_filename))
       {
         std::cerr << "open existing index db\n";
-        _db->Open(db_filename, caffe::db::WRITE);
+        _db->Open(db_filename, db::WRITE);
       }
     else
       {
         std::cerr << "create index db\n";
-        _db->Open(db_filename, caffe::db::NEW);
+        _db->Open(db_filename, db::NEW);
       }
   }
 
@@ -178,7 +178,7 @@ namespace dd
     if (_count_put % _count_put_max != 0)
       {
         _txn->Commit(); // last pending db commit
-        _txn = std::unique_ptr<caffe::db::Transaction>(_db->NewTransaction());
+        _txn = std::unique_ptr<db::Transaction>(_db->NewTransaction());
       }
     _aindex->build(_ntrees);
     _built_index = true;
@@ -237,13 +237,13 @@ namespace dd
   void AnnoySE::add_to_db(const int &idx, const URIData &fmap)
   {
     if (_count_put == 0)
-      _txn = std::unique_ptr<caffe::db::Transaction>(_db->NewTransaction());
+      _txn = std::unique_ptr<db::Transaction>(_db->NewTransaction());
     _txn->Put(std::to_string(idx), fmap.encode());
     ++_count_put;
     if (_count_put % _count_put_max == 0)
       {
         _txn->Commit(); // batch commit
-        _txn = std::unique_ptr<caffe::db::Transaction>(_db->NewTransaction());
+        _txn = std::unique_ptr<db::Transaction>(_db->NewTransaction());
       }
   }
 
@@ -261,7 +261,7 @@ namespace dd
   FaissSE::FaissSE(const int &f, const std::string &model_repo)
       : _f(f), _model_repo(model_repo)
   {
-    _db = caffe::db::GetDB(_db_backend);
+    _db = db::GetDB(_db_backend);
     _index_key = std::string("Flat");
   }
 
@@ -362,12 +362,12 @@ namespace dd
     if (fileops::file_exists(db_filename))
       {
         std::cerr << "open existing index db\n";
-        _db->Open(db_filename, caffe::db::WRITE);
+        _db->Open(db_filename, db::WRITE);
       }
     else
       {
         std::cerr << "create index db\n";
-        _db->Open(db_filename, caffe::db::NEW);
+        _db->Open(db_filename, db::NEW);
       }
   }
 
@@ -411,7 +411,7 @@ namespace dd
     faiss::write_index(_findex, index_path.c_str());
 #endif
     _txn->Commit();
-    _txn = std::unique_ptr<caffe::db::Transaction>(_db->NewTransaction());
+    _txn = std::unique_ptr<db::Transaction>(_db->NewTransaction());
   }
 
   void FaissSE::remove_index()
@@ -506,13 +506,13 @@ namespace dd
   void FaissSE::add_to_db(const int &idx, const URIData &fmap)
   {
     if (_count_put == 0)
-      _txn = std::unique_ptr<caffe::db::Transaction>(_db->NewTransaction());
+      _txn = std::unique_ptr<db::Transaction>(_db->NewTransaction());
     _txn->Put(std::to_string(idx), fmap.encode());
     ++_count_put;
     if (_count_put % _count_put_max == 0)
       {
         _txn->Commit(); // batch commit
-        _txn = std::unique_ptr<caffe::db::Transaction>(_db->NewTransaction());
+        _txn = std::unique_ptr<db::Transaction>(_db->NewTransaction());
       }
   }
 
