@@ -1,9 +1,9 @@
 # syntax = docker/dockerfile:1.0-experimental
 
 ARG DD_UBUNTU_VERSION=20.04
-ARG DD_CUDA_VERSION=11.1
+ARG DD_CUDA_VERSION=11.3.0
 ARG DD_CUDNN_VERSION=8
-ARG DD_TENSORRT_VERSION=7.2.2-1+cuda11.1
+ARG DD_TENSORRT_VERSION=8.0.0-1+cuda11.3
 
 FROM nvidia/cuda:${DD_CUDA_VERSION}-cudnn${DD_CUDNN_VERSION}-devel-ubuntu${DD_UBUNTU_VERSION}
 
@@ -97,18 +97,18 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     googletest \
     googletest-tools
 
-# TODO(sileht): Not yet in ubuntu20.04 nvidia machine learning repository
+# XXX(beniz): Now in nvidia machine learning repository
 # https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/
 # https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu2004/x86_64/
 #
-#RUN export DEBIAN_FRONTEND=noninteractive && \
-#    apt-get install -y \
-#    libnvparsers7=${DD_TENSORRT_VERSION} \
-#    libnvparsers-dev=${DD_TENSORRT_VERSION} \
-#    libnvinfer7=${DD_TENSORRT_VERSION} \
-#    libnvinfer-dev=${DD_TENSORRT_VERSION} \
-#    libnvinfer-plugin7=${DD_TENSORRT_VERSION} \
-#    libnvinfer-plugin-dev=${DD_TENSORRT_VERSION}
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    apt-get install -y \
+    libnvparsers8=${DD_TENSORRT_VERSION} \
+    libnvparsers-dev=${DD_TENSORRT_VERSION} \
+    libnvinfer8=${DD_TENSORRT_VERSION} \
+    libnvinfer-dev=${DD_TENSORRT_VERSION} \
+    libnvinfer-plugin8=${DD_TENSORRT_VERSION} \
+    libnvinfer-plugin-dev=${DD_TENSORRT_VERSION}
 
 RUN for url in \
         https://github.com/bazelbuild/bazel/releases/download/0.24.1/bazel_0.24.1-linux-x86_64.deb \

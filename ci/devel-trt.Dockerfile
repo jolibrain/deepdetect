@@ -1,9 +1,9 @@
 # syntax = docker/dockerfile:1.0-experimental
 
 ARG DD_UBUNTU_VERSION=20.04
-ARG DD_CUDA_VERSION=11.1
+ARG DD_CUDA_VERSION=11.3.0
 ARG DD_CUDNN_VERSION=8
-ARG DD_TENSORRT_VERSION=7.2.2-1+cuda11.1
+ARG DD_TENSORRT_VERSION=8.0.0-1+cuda11.3
 
 # FROM nvidia/cuda:${DD_CUDA_VERSION}-cudnn${DD_CUDNN_VERSION}-devel-ubuntu${DD_UBUNTU_VERSION}
 # TODO(sileht): tensorrt is not yet in ubuntu20.04 nvidia machine learning repository
@@ -11,7 +11,7 @@ ARG DD_TENSORRT_VERSION=7.2.2-1+cuda11.1
 # https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu2004/x86_64/
 # We temporary use another docker image just to build tensorrt
 
-FROM nvcr.io/nvidia/tensorrt:20.12-py3 AS build
+FROM nvcr.io/nvidia/tensorrt:21.05-py3 AS build
 
 ARG DD_UBUNTU_VERSION
 ARG DD_CUDA_VERSION
@@ -100,11 +100,11 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     bash-completion \
     schedtool \
     util-linux \
-    libnvparsers7=${DD_TENSORRT_VERSION} \
+    libnvparsers8=${DD_TENSORRT_VERSION} \
     libnvparsers-dev=${DD_TENSORRT_VERSION} \
-    libnvinfer7=${DD_TENSORRT_VERSION} \
+    libnvinfer8=${DD_TENSORRT_VERSION} \
     libnvinfer-dev=${DD_TENSORRT_VERSION} \
-    libnvinfer-plugin7=${DD_TENSORRT_VERSION} \
+    libnvinfer-plugin8=${DD_TENSORRT_VERSION} \
     libnvinfer-plugin-dev=${DD_TENSORRT_VERSION}
 
 RUN for url in \

@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 4b5e148..071e2eb 100644
+index a18cbd0..dbbad0b 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -57,7 +57,7 @@ option(BUILD_PLUGINS "Build TensorRT plugin" ON)
@@ -11,22 +11,13 @@ index 4b5e148..071e2eb 100644
  set(CMAKE_CXX_STANDARD_REQUIRED ON)
  set(CMAKE_CXX_EXTENSIONS OFF)
  set(CMAKE_CXX_FLAGS "-Wno-deprecated-declarations ${CMAKE_CXX_FLAGS} -DBUILD_SYSTEM=cmake_oss")
-@@ -173,7 +173,7 @@ set(GENCODES "${GENCODES} -gencode arch=compute_${LATEST_SM},code=compute_${LATE
- if (${LATEST_SM} GREATER_EQUAL 70)
-     set(BERT_GENCODES "${BERT_GENCODES} -gencode arch=compute_${LATEST_SM},code=compute_${LATEST_SM}")
- endif()
--set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler -Wno-deprecated-declarations")
-+set(CMAKE_CUDA_FLAGS "-std=c++14 ${CMAKE_CUDA_FLAGS} -Xcompiler -Wno-deprecated-declarations")
- 
- ############################################################################################
- # TensorRT
 diff --git a/parsers/caffe/CMakeLists.txt b/parsers/caffe/CMakeLists.txt
-index 285da1b..caed6ff 100644
+index 6d900ed..491c242 100644
 --- a/parsers/caffe/CMakeLists.txt
 +++ b/parsers/caffe/CMakeLists.txt
 @@ -52,7 +52,7 @@ target_include_directories(${SHARED_TARGET}
  
- set_target_properties(${SHARED_TARGET} 
+ set_target_properties(${SHARED_TARGET}
      PROPERTIES
 -    CXX_STANDARD 11
 +    CXX_STANDARD 14
@@ -35,7 +26,7 @@ index 285da1b..caed6ff 100644
      ARCHIVE_OUTPUT_DIRECTORY "${TRT_OUT_DIR}"
 @@ -102,7 +102,7 @@ target_include_directories(${STATIC_TARGET}
  
- set_target_properties(${STATIC_TARGET} 
+ set_target_properties(${STATIC_TARGET}
      PROPERTIES
 -    CXX_STANDARD 11
 +    CXX_STANDARD 14
@@ -43,23 +34,19 @@ index 285da1b..caed6ff 100644
      CXX_EXTENSIONS NO
      ARCHIVE_OUTPUT_DIRECTORY "${TRT_OUT_DIR}"
 diff --git a/plugin/CMakeLists.txt b/plugin/CMakeLists.txt
-index 940392a..70abeb1 100644
+index 806c3ad..e3803bd 100644
 --- a/plugin/CMakeLists.txt
 +++ b/plugin/CMakeLists.txt
-@@ -105,9 +105,9 @@ target_include_directories(${SHARED_TARGET}
+@@ -106,7 +106,7 @@ target_include_directories(${SHARED_TARGET}
  )
  
  set_target_properties(${SHARED_TARGET} PROPERTIES
 -    CXX_STANDARD "11"
--    CXX_STANDARD_REQUIRED "YES"
--    CXX_EXTENSIONS "NO"
-+    CXX_STANDARD 14
-+    CXX_STANDARD_REQUIRED YES
-+    CXX_EXTENSIONS NO
++    CXX_STANDARD "14"
+     CXX_STANDARD_REQUIRED "YES"
+     CXX_EXTENSIONS "NO"
      ARCHIVE_OUTPUT_DIRECTORY "${TRT_OUT_DIR}"
-     LIBRARY_OUTPUT_DIRECTORY "${TRT_OUT_DIR}"
-     RUNTIME_OUTPUT_DIRECTORY "${TRT_OUT_DIR}"
-@@ -119,7 +119,7 @@ set_target_properties(${SHARED_TARGET} PROPERTIES DEBUG_POSTFIX ${TRT_DEBUG_POST
+@@ -120,7 +120,7 @@ set_target_properties(${SHARED_TARGET} PROPERTIES DEBUG_POSTFIX ${TRT_DEBUG_POST
  
  set_target_properties(${SHARED_TARGET} PROPERTIES VERSION ${TRT_VERSION} SOVERSION ${TRT_SOVERSION} )
  
@@ -68,20 +55,16 @@ index 940392a..70abeb1 100644
  
  target_link_libraries(${SHARED_TARGET}
      ${CUBLAS_LIB}
-@@ -145,9 +145,9 @@ target_include_directories(${STATIC_TARGET}
+@@ -146,7 +146,7 @@ target_include_directories(${STATIC_TARGET}
  )
  
  set_target_properties(${STATIC_TARGET} PROPERTIES
 -    CXX_STANDARD "11"
--    CXX_STANDARD_REQUIRED "YES"
--    CXX_EXTENSIONS "NO"
-+    CXX_STANDARD 14
-+    CXX_STANDARD_REQUIRED YES
-+    CXX_EXTENSIONS NO
++    CXX_STANDARD "14"
+     CXX_STANDARD_REQUIRED "YES"
+     CXX_EXTENSIONS "NO"
      ARCHIVE_OUTPUT_DIRECTORY "${TRT_OUT_DIR}"
-     LIBRARY_OUTPUT_DIRECTORY "${TRT_OUT_DIR}"
-     RUNTIME_OUTPUT_DIRECTORY "${TRT_OUT_DIR}"
-@@ -159,7 +159,7 @@ set_target_properties(${STATIC_TARGET} PROPERTIES DEBUG_POSTFIX ${TRT_DEBUG_POST
+@@ -160,7 +160,7 @@ set_target_properties(${STATIC_TARGET} PROPERTIES DEBUG_POSTFIX ${TRT_DEBUG_POST
  
  set_target_properties(${STATIC_TARGET} PROPERTIES VERSION ${TRT_VERSION} SOVERSION ${TRT_SOVERSION} )
  
