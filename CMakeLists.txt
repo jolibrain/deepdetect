@@ -1115,6 +1115,12 @@ if (USE_HDF5)
     list(APPEND COMMON_LINK_LIBS hdf5_cpp)
 endif()
 
+# configure config.cmake for external application
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/DeepDetectConfig.cmake.in
+    ${CMAKE_BINARY_DIR}/DeepDetectConfig.cmake
+)
+
 add_subdirectory(main)
 
 # templates
