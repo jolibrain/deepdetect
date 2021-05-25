@@ -1,0 +1,9 @@
+set(USE_CPU_ONLY @USE_CPU_ONLY@)
+if (NOT USE_CPU_ONLY)
+    include(@PROJECT_SOURCE_DIR@/cmake/Cuda.cmake) # cuda + cudnn
+endif()
+
+set(DeepDetect_CXX_FLAGS "-fopenmp -pthread")
+set(DeepDetect_INCLUDE_DIR @COMMON_INCLUDE_DIRS@)
+set(DeepDetect_LIBRARY_DIR @COMMON_LINK_DIRS@ @CMAKE_BINARY_DIR@/src)
+set(DeepDetect_LIBRARIES @COMMON_LINK_LIBS@ @HTTP_LIB_DEPS@ @OATPP_LIB_DEPS@)

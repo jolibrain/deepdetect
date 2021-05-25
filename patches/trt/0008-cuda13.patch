@@ -1,0 +1,22 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index a18cbd0..d23c936 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -80,7 +80,7 @@ endif()
+ ############################################################################################
+ # Dependencies
+ 
+-set(DEFAULT_CUDA_VERSION 11.1)
++set(DEFAULT_CUDA_VERSION 11.3)
+ set(DEFAULT_CUDNN_VERSION 8.0)
+ set(DEFAULT_PROTOBUF_VERSION 3.0.0)
+ set(DEFAULT_CUB_VERSION 1.8.0)
+@@ -152,7 +152,7 @@ else()
+ 
+   if (CUDA_VERSION VERSION_GREATER_EQUAL 11.0)
+     # Ampere GPU (SM80) support is only available in CUDA versions > 11.0
+-    list(APPEND GPU_ARCHS 80)
++    list(APPEND GPU_ARCHS 80 86)
+   else()
+     message(WARNING "Detected CUDA version is < 11.0. SM80 not supported.")
+   endif()
