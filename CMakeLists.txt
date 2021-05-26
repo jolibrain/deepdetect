@@ -754,11 +754,7 @@ if (USE_TORCH)
   add_definitions(-DUSE_TORCH)
 
   if (NOT TORCH_LOCATION)
-    #set(PYTORCH_COMMIT ee77ccbb6da4e2efd83673e798acf7081bc03564) # 1.3.1
-    #set(PYTORCH_COMMIT 7f73f1d591afba823daa4a99a939217fb54d7688) # 1.4
-    #set(PYTORCH_COMMIT 4ff3872a2099993bf7e8c588f7182f3df777205b)  # 1.5
-	#set(PYTORCH_COMMIT b31f58de6fa8bbda5353b3c77d9be4914399724d)  # 1.6
-    set(PYTORCH_COMMIT v1.8.0)
+    set(PYTORCH_COMMIT v1.8.1)
     set(PYTORCH_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch-complete)
 
     if(USE_TORCH_CPU_ONLY)
@@ -797,10 +793,7 @@ if (USE_TORCH)
 
   # TORCH VISION
   message(STATUS "Configuring Pytorch Vision")
-  # set(PYTORCH_VISION_COMMIT "v0.6.0") # 0.6 & torch 1.5
-  #set(PYTORCH_VISION_COMMIT "v0.7.0") # 0.7 & torch 1.6
-  #set(PYTORCH_VISION_COMMIT "v0.8.2") # 0.8.2 & torch 1.7.1
-  set(PYTORCH_VISION_COMMIT "v0.9.0") # 0.9.0 & torch 1.8
+  set(PYTORCH_VISION_COMMIT "v0.9.1") # 0.9.1 & torch 1.8.1
   set(PYTORCH_VISION_PATCHES_PATH ${CMAKE_BINARY_DIR}/patches/pytorch/vision)
   set(PYTORCH_VISION_PATCHES
       ${PYTORCH_VISION_PATCHES_PATH}/pytorch_vision_09_fasterrcnn.patch
