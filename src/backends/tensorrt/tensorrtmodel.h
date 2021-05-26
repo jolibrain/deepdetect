@@ -67,7 +67,7 @@ namespace dd
     std::string _def;
     std::string _weights;
     bool _has_mean_file = false;
-    std::string _source_type = "caffe"; // or "onnx"
+    std::string _source_type; //"caffe" or "onnx"
   };
 }
 

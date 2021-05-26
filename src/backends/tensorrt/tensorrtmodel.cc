@@ -25,13 +25,13 @@ namespace dd
       const std::shared_ptr<spdlog::logger> &logger)
   {
     static std::string deploy = "deploy.prototxt";
-    static std::string weights = ".caffemodel";
+    static std::string caffe_weights = ".caffemodel";
+    static std::string onnx_weights = ".onnx";
     static std::string corresp = "corresp";
     static std::string meanf = "mean.binaryproto";
 
     static std::string model_name = "net_tensorRT";
     static std::string caffe_model_name = model_name + ".proto";
-    static std::string onnx_model_name = model_name + ".onnx";
 
     std::unordered_set<std::string> lfiles;
     int e = fileops::list_directory(_repo, true, false, false, lfiles);
@@ -50,7 +50,7 @@ namespace dd
           {
             _has_mean_file = true;
           }
-        else if ((*hit).find(weights) != std::string::npos)
+        else if ((*hit).find(caffe_weights) != std::string::npos)
           {
             // stat file to pick the latest one
             long int wt = fileops::file_last_modif((*hit));
@@ -59,11 +59,16 @@ namespace dd
                 weightsf = (*hit);
                 weight_t = wt;
               }
+            _source_type = "caffe";
+          }
+        else if ((*hit).find(onnx_weights) != std::string::npos)
+          {
+            _source_type = "onnx";
+            modelf = (*hit);
           }
         else if ((*hit).find(corresp) != std::string::npos)
           correspf = (*hit);
-        else if ((*hit).find(caffe_model_name) != std::string::npos
-                 || (*hit).find(onnx_model_name) != std::string::npos)
+        else if ((*hit).find(caffe_model_name) != std::string::npos)
           {
             long int wt = fileops::file_last_modif(*hit);
             if (wt > model_t)
@@ -71,10 +76,7 @@ namespace dd
                 modelf = (*hit);
                 model_t = wt;
               }
-            if ((*hit).find(caffe_model_name) != std::string::npos)
-              _source_type = "caffe";
-            else if ((*hit).find(onnx_model_name) != std::string::npos)
-              _source_type = "onnx";
+            _source_type = "caffe";
           }
         else if ((*hit).find("~") != std::string::npos
                  || (*hit).find(".prototxt") == std::string::npos)
@@ -85,6 +87,16 @@ namespace dd
         else if ((*hit).find(deploy) != std::string::npos)
           deployf = (*hit);
         ++hit;
+      }
+
+    if (_source_type.empty())
+      {
+        logger->error(
+            "cannot find caffe or onnx model in repository, make sure there's "
+            "a net_tensorRT.proto or net_tensorRT.onnx file in repository {}",
+            _repo);
+        // XXX: error is repeated and caught in tensorrtlib::init
+        return 1;
       }
 
     if (_def.empty())
