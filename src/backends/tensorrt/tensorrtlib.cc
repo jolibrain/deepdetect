@@ -24,7 +24,7 @@
 #include "tensorrtinputconns.h"
 #include "utils/apitools.h"
 #include "NvInferPlugin.h"
-#include "NvOnnxParser.h"
+#include "../parsers/onnx/NvOnnxParser.h"
 #include "protoUtils.h"
 #include <cuda_runtime_api.h>
 #include <string>
