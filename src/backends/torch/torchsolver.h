@@ -50,9 +50,8 @@ namespace dd
      * \brief simple constructor
      */
     TorchSolver(TorchModule &module, TorchLoss &loss,
-                std::vector<torch::Device> devices,
                 std::shared_ptr<spdlog::logger> logger)
-        : _module(module), _tloss(loss), _devices(devices), _logger(logger)
+        : _module(module), _tloss(loss), _logger(logger)
     {
     }
 
@@ -163,9 +162,6 @@ namespace dd
 
     TorchModule &_module;
     TorchLoss &_tloss;
-    std::vector<torch::Device>
-        _devices; /**< all the devices used during training (e.g. for multi-gpu
-                     training) */
     std::shared_ptr<spdlog::logger> _logger; /**< mllib logger. */
 
     std::unique_ptr<torch::optim::Optimizer>

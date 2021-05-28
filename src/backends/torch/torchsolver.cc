@@ -235,7 +235,7 @@ namespace dd
         {
           at::AutoGradMode enable_grad(true);
           torch::Tensor y_pred = torch_utils::to_tensor_safe(
-              _module.forward_on_devices(_tloss.getLastInputs(), _devices));
+              _module.forward(_tloss.getLastInputs()));
           torch::Tensor loss = _tloss.reloss(y_pred);
           loss.backward();
         }

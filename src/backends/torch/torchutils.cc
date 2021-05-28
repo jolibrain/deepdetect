@@ -201,6 +201,32 @@ namespace dd
         }
     }
 
+    /** Copy weights from a native module to another native module. This is
+     * used in multigpu settings. */
+    void copy_native_weights(const torch::nn::Module &from,
+                             torch::nn::Module &to,
+                             const torch::Device &device)
+    {
+      torch::NoGradGuard guard;
+
+      auto from_params = from.parameters();
+      auto to_params = to.parameters();
+
+      for (size_t i = 0; i < from_params.size(); ++i)
+        {
+          torch::Tensor from_param = from_params[i];
+          torch::Tensor to_param = to_params[i];
+
+          if (from_param.sizes() != to_param.sizes())
+            {
+              // this is not supposed to happen
+              throw MLLibInternalException(
+                  "Size not matching while cloning native model weights");
+            }
+          to_param.copy_(from_param.to(device));
+        }
+    }
+
     void load_weights(torch::nn::Module &module, const std::string &filename,
                       const torch::Device &device,
                       std::shared_ptr<spdlog::logger> logger, bool strict)

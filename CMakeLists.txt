@@ -88,7 +88,8 @@ if (NOT EXISTS ${CMAKE_BINARY_DIR}/src)
 	COMMAND  bash -c "mkdir ${CMAKE_BINARY_DIR}/src")
 endif()
 
-set(CMAKE_CXX_FLAGS "-g -O2 -Wall -Wextra -fopenmp -fPIC -std=c++14 -DUSE_OPENCV -DUSE_LMDB  -Wl,--no-as-needed -ltcmalloc_minimal")
+set(CMAKE_CXX_FLAGS "-g -O2 -Wall -Wextra -fopenmp -fPIC -std=c++14 -Wl,--no-as-needed -ltcmalloc_minimal")
+add_definitions("-DUSE_OPENCV" "-DUSE_LMDB")
 
 if(WARNING)
   string(APPEND CMAKE_CXX_FLAGS " -Werror")
@@ -692,7 +693,6 @@ endif()
 if (USE_NCNN)
   message(STATUS "Configuring NCNN")
   add_definitions(-DUSE_NCNN)
-  include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
   set(NCNN_PATCHES_PATH ${CMAKE_BINARY_DIR}/patches/ncnn)
   set(NCNN_PATCHES
@@ -732,7 +732,6 @@ if (USE_NCNN)
   set(NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn-build/src/libncnn.a)
   set(NCNN_INC_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/src ${CMAKE_BINARY_DIR}/ncnn/src/ncnn-build/src)
   set(NCNN_LIB_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn-build/src)
-  include_directories(${NCNN_INC_DIR})
 endif()
 
 # Torch
@@ -891,12 +890,6 @@ if (USE_TSNE)
   set(TSNE_LIB_DIR ${CMAKE_BINARY_DIR}/Multicore-TSNE/src/Multicore-TSNE-build)
 endif()
 
-# add the binary tree to the search path for include files
-# so that we will find dd_config.h
-include_directories("${PROJECT_BINARY_DIR}")
-include_directories(${CAFFE_INC_DIR} ${XGBOOST_INC_DIR} ${TSNE_INC_DIR} ${TORCH_INC_DIR})
-include_directories(${CMAKE_SOURCE_DIR}/src/backends/caffe ${CMAKE_SOURCE_DIR}/backends/xgb ${CMAKE_SOURCE_DIR}/backends/tf ${CMAKE_SOURCE_DIR}/backends/dlib ${CMAKE_SOURCE_DIR}/backends/tsne)
-
 if (USE_TENSORRT)
   add_definitions(-DUSE_TENSORRT)
   if (EXISTS ${TENSORRT_DIR}/libprotobuf.a)
@@ -926,7 +919,6 @@ if (USE_TENSORRT)
   endif()
 
     set(TENSORRT_LIB_DIR ${CMAKE_BINARY_DIR}/tensorrt-oss/bin/ ${TENSORRT_LIB_DIR})
-    include_directories(${CMAKE_CURRENT_BINARY_DIR})
 	set(TENSORRT_LIBS /usr/lib/x86_64-linux-gnu/libnvinfer.so.7 nvcaffeparser nvinfer_plugin nvonnxparser )
 
     if (NOT TENSORRT_VERSION)
@@ -980,7 +972,6 @@ if (USE_TENSORRT)
 
     # Use our tensorrt-oss header versions first
     include_directories(SYSTEM ${CMAKE_BINARY_DIR}/tensorrt-oss/src/tensorrt-oss/include)
-    include_directories(${TENSORRT_INC_DIR})
 endif()
 
 if (USE_HTTP_SERVER_OATPP)
@@ -1067,10 +1058,48 @@ endif()
 
 # main library, main & tests
 include_directories("${PROJECT_SOURCE_DIR}/src")
+# add the binary tree to the search path for include files
+# so that we will find dd_config.h
+include_directories("${PROJECT_BINARY_DIR}")
+# caffe.pb.h, ...
 include_directories(${CMAKE_BINARY_DIR}/src)
+
+include_directories(
+    ${CAFFE_INC_DIR}
+    ${XGBOOST_INC_DIR}
+    ${TSNE_INC_DIR}
+    ${TORCH_INC_DIR}
+    ${TENSORRT_INC_DIR}
+    ${NCNN_INC_DIR}
+)
+include_directories(
+    ${CMAKE_SOURCE_DIR}/src/backends/caffe
+    ${CMAKE_SOURCE_DIR}/backends/xgb
+    ${CMAKE_SOURCE_DIR}/backends/tf
+    ${CMAKE_SOURCE_DIR}/backends/dlib
+    ${CMAKE_SOURCE_DIR}/backends/tsne
+)
+
 add_subdirectory(src)
 
-set(COMMON_INCLUDE_DIRS ${Boost_INCLUDE_DIRS} ${HTTP_INCLUDE_DIR} ${PROTOBUF_INCLUDE_DIR} ${SPDLOG_INCLUDE_DIR})
+set(COMMON_INCLUDE_DIRS
+    ${Boost_INCLUDE_DIRS}
+    ${HTTP_INCLUDE_DIR}
+    ${PROTOBUF_INCLUDE_DIR}
+    ${SPDLOG_INCLUDE_DIR}
+    ${CAFFE_INC_DIR}
+    ${XGBOOST_INC_DIR}
+    ${TSNE_INC_DIR}
+    ${TORCH_INC_DIR}
+    ${TENSORRT_INC_DIR}
+    ${NCNN_INC_DIR}
+
+    ${CMAKE_SOURCE_DIR}/src/backends/caffe
+    ${CMAKE_SOURCE_DIR}/backends/xgb
+    ${CMAKE_SOURCE_DIR}/backends/tf
+    ${CMAKE_SOURCE_DIR}/backends/dlib
+    ${CMAKE_SOURCE_DIR}/backends/tsne
+)
 
 if (CUDA_FOUND)
     list(APPEND COMMON_INCLUDE_DIRS ${CUDA_INCLUDE_DIRS})
@@ -1109,6 +1138,8 @@ if (USE_HDF5)
 endif()
 
 # configure config.cmake for external application
+get_directory_property(COMMON_DEFINITIONS COMPILE_DEFINITIONS)
+
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/cmake/DeepDetectConfig.cmake.in
     ${CMAKE_BINARY_DIR}/DeepDetectConfig.cmake

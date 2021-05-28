@@ -28,6 +28,7 @@
 #pragma GCC diagnostic pop
 
 #include "native_net.h"
+#include "utils/utils.hpp"
 
 namespace dd
 {
@@ -41,7 +42,30 @@ namespace dd
     template <typename... Args>
     NativeModuleWrapper(Args &&... args) : _module(args...)
     {
+      _clone_function
+          = [args = std::make_tuple(std::forward<Args>(args)...)]() {
+              return dd_utils::apply(
+                  [](auto &&... args) {
+                    return new NativeModuleWrapper<TModule>(args...);
+                  },
+                  std::move(args));
+            };
       this->register_module("wrapped", _module);
+    }
+
+    std::shared_ptr<torch::nn::Module>
+    clone(const c10::optional<torch::Device> &device
+          = c10::nullopt) const override
+    {
+      std::shared_ptr<NativeModuleWrapper<TModule>> result(_clone_function());
+
+      if (!device)
+        throw MLLibInternalException(
+            "A device must be provided when cloning the model");
+
+      result->to(*device);
+      torch_utils::copy_native_weights(*this, *result, *device);
+      return result;
     }
 
     void reset() override
@@ -86,6 +110,9 @@ namespace dd
       throw MLLibInternalException(
           "NativeModuleWrapper::loss not implemented");
     }
+
+  private:
+    std::function<NativeModuleWrapper<TModule> *()> _clone_function;
   };
 }
 
