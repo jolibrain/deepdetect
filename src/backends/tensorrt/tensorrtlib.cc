@@ -172,6 +172,13 @@ namespace dd
     cudaSetDevice(_gpuid);
 
     model_type(this->_mlmodel._def, this->_mltype);
+    if (this->_mlmodel._source_type.empty())
+      {
+        throw MLLibBadParamException(
+            "cannot find caffe or onnx model in repository, make sure there's "
+            "a net_tensorRT.proto or net_tensorRT.onnx file in repository"
+            + this->_mlmodel._repo);
+      }
 
     _builder = std::shared_ptr<nvinfer1::IBuilder>(
         nvinfer1::createInferBuilder(trtLogger),
@@ -516,8 +523,7 @@ namespace dd
               {
                 le = read_engine_from_caffe(out_blob);
               }
-            else if (this->_mlmodel._model.find("net_tensorRT.onnx")
-                     != std::string::npos)
+            else if (this->_mlmodel._source_type == "onnx")
               {
                 le = read_engine_from_onnx();
               }
