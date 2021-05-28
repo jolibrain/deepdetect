@@ -959,14 +959,15 @@ if (USE_TENSORRT)
 
     # Tensorrt uses its own protobuf version (3.0.0) and this cannot be overrided
     # At best we can set the version it will internally build
+    set(TENSORRT_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/tensorrt-oss-complete)
     ExternalProject_Add(
       tensorrt-oss
       PREFIX tensorrt-oss
       GIT_REPOSITORY https://github.com/NVIDIA/TensorRT.git
       GIT_TAG ${TENSORRT_VERSION}
       GIT_CONFIG advice.detachedHead=false
-	  PATCH_COMMAND git reset --hard && git submodule foreach --recursive git reset --hard && git apply ${TRT_PATCHES}
-      CMAKE_ARGS ${TRT_FLAGS}
+      PATCH_COMMAND git reset --hard && git submodule foreach --recursive git reset --hard && git apply ${TRT_PATCHES}
+      BUILD_COMMAND test -f ${TENSORRT_COMPLETE} || cmake ${TRT_FLAGS}
       INSTALL_COMMAND ""
     )
 
