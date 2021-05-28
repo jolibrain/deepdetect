@@ -97,6 +97,15 @@ namespace dd
 
       DTO_FIELD(String, datatype) = "fp32";
 
+      DTO_FIELD_INFO(extract_layer)
+      {
+        info->description
+            = "Returns tensor values from an intermediate layer. If set to "
+              "'last', returns the values from last layer.";
+      }
+
+      DTO_FIELD(String, extract_layer);
+
       // =====
       // Libtorch options
       DTO_FIELD_INFO(self_supervised)

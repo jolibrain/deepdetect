@@ -39,6 +39,8 @@ static std::string squeez_repo = "../examples/trt/squeezenet_ssd_trt/";
 static std::string refinedet_repo = "../examples/trt/faces_512/";
 static std::string age_repo = "../examples/trt/age_real/";
 static std::string resnet_onnx_repo = "../examples/trt/resnet_onnx_trt/";
+static std::string cyclegan_onnx_repo
+    = "../examples/trt/cyclegan_resnet_attn_onnx_trt/";
 
 TEST(tensorrtapi, service_predict)
 {
@@ -204,4 +206,44 @@ TEST(tensorrtapi, service_predict_onnx)
             << std::endl;
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
               > 0.3);
+}
+
+TEST(tensorrtapi, service_predict_gan_onnx)
+{
+  // create service
+  JsonAPI japi;
+  std::string sname = "onnx";
+  std::string jstr
+      = "{\"mllib\":\"tensorrt\",\"description\":\"Test gan onnx "
+        "import\",\"type\":\"supervised\",\"model\":{\"repository\":\""
+        + cyclegan_onnx_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
+          "360,\"width\":360},\"mllib\":{"
+          "\"maxBatchSize\":1,\"maxWorkspaceSize\":256,\"gpuid\":0,"
+          "\"datatype\":\"fp16\"}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // predict
+  std::string jpredictstr
+      = "{\"service\":\"" + sname
+        + "\",\"parameters\":{\"input\":{\"height\":360,"
+          "\"width\":360,\"rgb\":true,\"scale\":0.00392,\"mean\":[0.5,0.5,0.5]"
+          ",\"std\":[0.5,0.5,0.5]},\"output\":{},\"mllib\":{\"extract_layer\":"
+          "\"last\"}},\"data\":[\""
+        + cyclegan_onnx_repo + "horse.jpg\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  JDoc jd;
+  // std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+  ASSERT_TRUE(jd["body"]["predictions"][0]["vals"].IsArray());
+  ASSERT_EQ(jd["body"]["predictions"][0]["vals"].Size(), 360 * 360 * 3);
+
+  jstr = "{\"clear\":\"lib\"}";
+  joutstr = japi.jrender(japi.service_delete(sname, jstr));
+  ASSERT_EQ(ok_str, joutstr);
+  ASSERT_TRUE(!fileops::file_exists(cyclegan_onnx_repo + "TRTengine_bs1"));
 }

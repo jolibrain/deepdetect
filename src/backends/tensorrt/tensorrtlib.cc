@@ -108,6 +108,7 @@ namespace dd
     _explicit_batch = tl._explicit_batch;
     _floatOut = tl._floatOut;
     _keepCount = tl._keepCount;
+    _dims = tl._dims;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
@@ -425,6 +426,13 @@ namespace dd
     auto output_params = predict_dto->parameters->output;
 
     std::string out_blob = "prob";
+    std::string extract_layer;
+    if (predict_dto->parameters->mllib->extract_layer != nullptr)
+      {
+        extract_layer
+            = predict_dto->parameters->mllib->extract_layer->std_str();
+      }
+
     TInputConnectorStrategy inputc(this->_inputc);
 
     if (!_TRTContextReady)
@@ -457,6 +465,8 @@ namespace dd
           }
         else if (_regression)
           out_blob = "pred";
+        else if (!extract_layer.empty())
+          out_blob = extract_layer;
 
         if (_nclasses == 0 && this->_mlmodel.is_caffe_source())
           {
@@ -561,8 +571,17 @@ namespace dd
 
         try
           {
-            _inputIndex = _engine->getBindingIndex("data");
-            _outputIndex0 = _engine->getBindingIndex(out_blob.c_str());
+            _inputIndex = 0;
+            if (out_blob == "last")
+              _outputIndex0 = _engine->getNbBindings() - 1;
+            else
+              _outputIndex0 = _engine->getBindingIndex(out_blob.c_str());
+            _dims = _engine->getBindingDimensions(_outputIndex0);
+            if (_dims.nbDims >= 2)
+              this->_logger->info("detected output dimensions: [{}, {} {} {}]",
+                                  _dims.d[0], _dims.d[1],
+                                  _dims.nbDims > 2 ? _dims.d[2] : 0,
+                                  _dims.nbDims > 3 ? _dims.d[3] : 0);
           }
         catch (...)
           {
@@ -602,6 +621,28 @@ namespace dd
               {
                 throw MLLibBadParamException(
                     "timeseries not yet implemented over tensorRT backend");
+              }
+            // GAN / raw output
+            else if (!extract_layer.empty())
+              {
+                _buffers.resize(2);
+                if (_dims.nbDims == 4)
+                  _floatOut.resize(_max_batch_size * _dims.d[1] * _dims.d[2]
+                                   * _dims.d[3]);
+                else
+                  throw MLLibBadParamException(
+                      "raw/image output model requires 4 output dimensions");
+                if (inputc._bw)
+                  cudaMalloc(&_buffers.data()[_inputIndex],
+                             _max_batch_size * inputc._height * inputc._width
+                                 * sizeof(float));
+                else
+                  cudaMalloc(&_buffers.data()[_inputIndex],
+                             _max_batch_size * 3 * inputc._height
+                                 * inputc._width * sizeof(float));
+                cudaMalloc(&_buffers.data()[_outputIndex0],
+                           _max_batch_size * _dims.d[1] * _dims.d[2]
+                               * _dims.d[3] * sizeof(float));
               }
             else // classification / regression
               {
@@ -665,26 +706,27 @@ namespace dd
 
         try
           {
+            if (inputc._bw)
+              cudaMemcpyAsync(_buffers.data()[_inputIndex], inputc.data(),
+                              num_processed * inputc._height * inputc._width
+                                  * sizeof(float),
+                              cudaMemcpyHostToDevice, cstream);
+            else
+              cudaMemcpyAsync(_buffers.data()[_inputIndex], inputc.data(),
+                              num_processed * 3 * inputc._height
+                                  * inputc._width * sizeof(float),
+                              cudaMemcpyHostToDevice, cstream);
+            if (!_explicit_batch)
+              enqueue_success = _context->enqueue(
+                  num_processed, _buffers.data(), cstream, nullptr);
+            else
+              enqueue_success
+                  = _context->enqueueV2(_buffers.data(), cstream, nullptr);
+            if (!enqueue_success)
+              throw MLLibInternalException("Failed TRT enqueue call");
+
             if (_bbox)
               {
-                if (inputc._bw)
-                  cudaMemcpyAsync(_buffers.data()[_inputIndex], inputc.data(),
-                                  num_processed * inputc._height
-                                      * inputc._width * sizeof(float),
-                                  cudaMemcpyHostToDevice, cstream);
-                else
-                  cudaMemcpyAsync(_buffers.data()[_inputIndex], inputc.data(),
-                                  num_processed * 3 * inputc._height
-                                      * inputc._width * sizeof(float),
-                                  cudaMemcpyHostToDevice, cstream);
-                if (!_explicit_batch)
-                  enqueue_success = _context->enqueue(
-                      num_processed, _buffers.data(), cstream, nullptr);
-                else
-                  enqueue_success
-                      = _context->enqueueV2(_buffers.data(), cstream, nullptr);
-                if (!enqueue_success)
-                  throw MLLibInternalException("Failed TRT enqueue call");
                 cudaMemcpyAsync(_floatOut.data(),
                                 _buffers.data()[_outputIndex0],
                                 num_processed * _top_k * 7 * sizeof(float),
@@ -705,26 +747,17 @@ namespace dd
                 throw MLLibBadParamException(
                     "timeseries not yet implemented over tensorRT backend");
               }
+            // GAN/raw output
+            else if (!extract_layer.empty())
+              {
+                cudaMemcpyAsync(
+                    _floatOut.data(), _buffers.data()[_outputIndex0],
+                    num_processed * _floatOut.size() * sizeof(float),
+                    cudaMemcpyDeviceToHost, cstream);
+                cudaStreamSynchronize(cstream);
+              }
             else // classification / regression
               {
-                if (inputc._bw)
-                  cudaMemcpyAsync(_buffers.data()[_inputIndex], inputc.data(),
-                                  num_processed * inputc._height
-                                      * inputc._width * sizeof(float),
-                                  cudaMemcpyHostToDevice, cstream);
-                else
-                  cudaMemcpyAsync(_buffers.data()[_inputIndex], inputc.data(),
-                                  num_processed * 3 * inputc._height
-                                      * inputc._width * sizeof(float),
-                                  cudaMemcpyHostToDevice, cstream);
-                if (!_explicit_batch)
-                  enqueue_success = _context->enqueue(
-                      num_processed, _buffers.data(), cstream, nullptr);
-                else
-                  enqueue_success
-                      = _context->enqueueV2(_buffers.data(), cstream, nullptr);
-                if (!enqueue_success)
-                  throw MLLibInternalException("Failed TRT enqueue call");
                 cudaMemcpyAsync(_floatOut.data(),
                                 _buffers.data()[_outputIndex0],
                                 num_processed * _nclasses * sizeof(float),
@@ -836,6 +869,21 @@ namespace dd
             throw MLLibBadParamException(
                 "timeseries not yet implemented over tensorRT backend");
           }
+        else if (!extract_layer.empty())
+          {
+            for (int j = 0; j < num_processed; j++)
+              {
+                APIData rad;
+                if (!inputc._ids.empty())
+                  rad.add("uri", inputc._ids.at(idoffset + j));
+                else
+                  rad.add("uri", std::to_string(idoffset + j));
+                rad.add("loss", 0.0);
+                std::vector<double> vals(_floatOut.begin(), _floatOut.end());
+                rad.add("vals", vals);
+                vrad.push_back(rad);
+              }
+          }
         else // classification / regression
           {
             for (int j = 0; j < num_processed; j++)
@@ -869,17 +917,28 @@ namespace dd
 
     cudaStreamDestroy(cstream);
 
-    tout.add_results(vrad);
-
-    out.add("nclasses", this->_nclasses);
-    if (_bbox)
-      out.add("bbox", true);
-    if (_regression)
-      out.add("regression", true);
-    out.add("roi", false);
-    out.add("multibox_rois", false);
-    tout.finalize(ad.getobj("parameters").getobj("output"), out,
-                  static_cast<MLModel *>(&this->_mlmodel));
+    if (extract_layer.empty())
+      {
+        tout.add_results(vrad);
+        out.add("nclasses", this->_nclasses);
+        if (_bbox)
+          out.add("bbox", true);
+        if (_regression)
+          out.add("regression", true);
+        out.add("roi", false);
+        out.add("multibox_rois", false);
+        tout.finalize(ad.getobj("parameters").getobj("output"),
+                      out, // TODO; to output_params DTO
+                      static_cast<MLModel *>(&this->_mlmodel));
+      }
+    else
+      {
+        UnsupervisedOutput unsupo;
+        unsupo.add_results(vrad);
+        unsupo.finalize(ad.getobj("parameters").getobj("output"),
+                        out, // TODO: to output_params DTO
+                        static_cast<MLModel *>(&this->_mlmodel));
+      }
 
     if (ad.has("chain") && ad.get("chain").get<bool>())
       {
