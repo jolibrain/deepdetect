@@ -122,9 +122,31 @@ namespace dd
                 cxmax = int(xcenter + fixed_width / 2.0);
                 cymin = int(ycenter - fixed_height / 2.0);
                 cymax = int(ycenter + fixed_height / 2.0);
+
+                if (cxmin < 0)
+                  {
+                    cxmax += -cxmin;
+                    cxmin = 0;
+                  }
+                if (cymin < 0)
+                  {
+                    cymax += -cymin;
+                    cymin = 0;
+                  }
+                if (cxmax > img.cols)
+                  {
+                    cxmin -= cxmax - img.cols;
+                    cxmax = img.cols;
+                  }
+                if (cymax > img.rows)
+                  {
+                    cymin -= cymax - img.rows;
+                    cymax = img.rows;
+                  }
               }
 
-            if (cxmin > img.cols || cymin > img.rows || cxmax < 0 || cymax < 0)
+            if (cxmin >= img.cols || cymin >= img.rows || cxmax < 0
+                || cymax < 0)
               {
                 _chain_logger->warn("bounding box does not intersect image, "
                                     "skipping crop action");
