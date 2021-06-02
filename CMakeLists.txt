@@ -966,8 +966,9 @@ if (USE_TENSORRT)
       GIT_REPOSITORY https://github.com/NVIDIA/TensorRT.git
       GIT_TAG ${TENSORRT_VERSION}
       GIT_CONFIG advice.detachedHead=false
-      PATCH_COMMAND git reset --hard && git submodule foreach --recursive git reset --hard && git apply ${TRT_PATCHES}
-      BUILD_COMMAND test -f ${TENSORRT_COMPLETE} || cmake ${TRT_FLAGS}
+      PATCH_COMMAND sh ${CMAKE_SOURCE_DIR}/cmake/patch_external.sh TENSORRT ${CMAKE_BINARY_DIR}/tensorrt-oss/src/tensorrt-oss-stamp tensorrt-oss-download tensorrt-oss-patch ${CMAKE_BINARY_DIR}/tensorrt-oss/src/tensorrt-oss ${TRT_PATCHES}
+      CONFIGURE_COMMAND ""
+      BUILD_COMMAND sh ${CMAKE_SOURCE_DIR}/cmake/build_external.sh TENSORRT ${CMAKE_BINARY_DIR}/tensorrt-oss ${TENSORRT_COMPLETE} src/tensorrt-oss src/tensorrt-oss-build ${N} ${CMAKE_COMMAND} ${TRT_FLAGS}
       INSTALL_COMMAND ""
     )
 
