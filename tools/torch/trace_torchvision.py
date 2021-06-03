@@ -154,8 +154,15 @@ model_classes = {
     "shufflenet_v2_x1_5": M.shufflenet_v2_x1_5,
     "shufflenet_v2_x2_0": M.shufflenet_v2_x1_0,
     "mobilenet_v2": M.mobilenet_v2,
+    "mobilenet_v3_small": M.mobilenet_v3_small,
+    "mobilenet_v3_large": M.mobilenet_v3_large,
     "resnext50_32x4d": M.resnext50_32x4d,
     "resnext101_32x8d": M.resnext101_32x8d,
+    "wide_resnet50_2": M.wide_resnet50_2,
+    "mnasnet0_5": M.mnasnet0_5,
+    "mnasnet0_75": M.mnasnet0_75,
+    "mnasnet1_0": M.mnasnet1_0,
+    "mnasnet1_3": M.mnasnet1_3
 }
 detection_model_classes = {
     "fasterrcnn": M.detection.FasterRCNN,
@@ -208,6 +215,7 @@ for mname in args.models:
             if args.pretrained:
                 logging.warn("Pretrained models are not available for custom backbones. " +
                             "Output model (except the backbone) will be untrained.")
+                args.pretrained = False
 
             model = model_classes[mname](backbone, args.num_classes)
         else:
@@ -251,7 +259,7 @@ for mname in args.models:
         example = torch.rand(1, 3, 224, 224)
         script_module = torch.jit.trace(model, example)
 
-    filename = os.path.join(args.output_dir, mname + ("-pretrained" if args.pretrained else "") + ".pt")
+    filename = os.path.join(args.output_dir, mname + ("-pretrained" if args.pretrained else "") + ("-" + args.backbone if args.backbone else "") + "-cls" + str(args.num_classes) + ".pt")
     logging.info("Saving to %s", filename)
     script_module.save(filename)
 
