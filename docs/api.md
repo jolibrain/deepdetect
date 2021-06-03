@@ -755,6 +755,7 @@ offset        | int            | yes      | N/A            | Offset beween start
 forecast_timesteps      | int            | yes      | N/A       | for nbeats model, this gives the length of the forecast
 backcast_timesteps      | int            | yes      | N/A       | for nbeats model, this gives the length of the backcast
 datatype      | string | yes       | fp32 | Datatype used at prediction time, possible values are "fp16" (only if inference is done on GPU) , "fp32" and "fp64" (double)
+dataloader_threads | int | yes | 1 | How many threads should be used to load data. 0 means no prefetch.
 
 Solver:
 
@@ -763,15 +764,15 @@ Parameter     | Type   | Optional | Default | Description
 iterations    | int    | yes      | N/A     | Max number of solver's iterations
 snapshot      | int    | yes      | N/A     | Iterations between model snapshots
 solver_type   | string | yes      | SGD     | from "SGD", "ADAGRAD",  "RMSPROP", "ADAM", "RANGER", "RANGER_PLUS", "MADGRAD"
-beta1         | real   | yes      | 0.9     | for RANGER* : beta1 param
-beta2         | real   | yes      | 0.999   | for RANGER* : beta2 param
-weight_decay  | real   | yes      | 0.0     | for RANGER* : weight decay
-rectified     | bool   | yes      | true    | for RANGER* : enable/disable rectified ADAM
-lookahead     | bool   | yes      | true    | for RANGER* and MADGRAD : enable/disable lookahead
-lookahead_steps | int  | yes      | 6       | for RANGER* and MADGRAD : if lookahead enabled, number of steps
-lookahead_alpha | real | yes      | 0.5     | for RANGER* and MADGRAD : if lookahead enables, alpha param
-adabelief     | bool   | yes      | false for RANGER, true for RANGER_PLUS   | for RANGER* : enable/disable adabelief
-gradient_centralization | bool | yes | false for RANGER, true for RANGER_PLUS| for RANGER* : enable/disable gradient centralization
+beta1         | real   | yes      | 0.9     | for RANGER\* : beta1 param
+beta2         | real   | yes      | 0.999   | for RANGER\* : beta2 param
+weight_decay  | real   | yes      | 0.0     | for RANGER\* : weight decay
+rectified     | bool   | yes      | true    | for RANGER\* : enable/disable rectified ADAM
+lookahead     | bool   | yes      | true    | for RANGER\* and MADGRAD : enable/disable lookahead
+lookahead_steps | int  | yes      | 6       | for RANGER\* and MADGRAD : if lookahead enabled, number of steps
+lookahead_alpha | real | yes      | 0.5     | for RANGER\* and MADGRAD : if lookahead enables, alpha param
+adabelief     | bool   | yes      | false for RANGER, true for RANGER_PLUS   | for RANGER\* : enable/disable adabelief
+gradient_centralization | bool | yes | false for RANGER, true for RANGER_PLUS| for RANGER\* : enable/disable gradient centralization
 sam           | bool   | yes      | false   | Sharpness Aware Minimization (https://arxiv.org/abs/2010.01412)
 sam_rho       | real   | yes      | 0.05    | neighborhood size for SAM (see above)
 swa           | bool   | yes      | false   | SWA https://arxiv.org/abs/1803.05407 , implemented  only for  RANGER / RANGER_PLUS / MADGRAD  solver types.
