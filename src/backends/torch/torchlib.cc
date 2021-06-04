@@ -1542,6 +1542,22 @@ namespace dd
         unsupo.finalize(output_params, out,
                         static_cast<MLModel *>(&this->_mlmodel));
       }
+
+    if (ad.has("chain") && ad.get("chain").get<bool>())
+      {
+        if (typeid(inputc) == typeid(ImgTorchInputFileConn))
+          {
+            auto *img_ic = reinterpret_cast<ImgTorchInputFileConn *>(&inputc);
+            APIData chain_input;
+            if (!img_ic->_orig_images.empty())
+              chain_input.add("imgs", img_ic->_orig_images);
+            else
+              chain_input.add("imgs", img_ic->_images);
+            chain_input.add("imgs_size", img_ic->_images_size);
+            out.add("input", chain_input);
+          }
+      }
+
     out.add("status", 0);
     return 0;
   }
