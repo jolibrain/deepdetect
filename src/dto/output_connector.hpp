@@ -43,6 +43,7 @@ namespace dd
       DTO_FIELD(Boolean, ctc) = false;
       DTO_FIELD(Float32, confidence_threshold) = 0.0;
       DTO_FIELD(Int32, best);
+      DTO_FIELD(Int32, best_bbox) = -1;
 
       /* ncnn */
       DTO_FIELD(Int32, blank_label) = -1;
