@@ -253,7 +253,6 @@ TEST(torchapi, service_predict_object_detection)
                             "\"width\":224},\"output\":{\"bbox\":true, "
                             "\"confidence_threshold\":0.8}},\"data\":[\""
                             + detect_repo + "cat.jpg\"]}";
-  // TODO changer image test ?
 
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   JDoc jd;
@@ -274,6 +273,23 @@ TEST(torchapi, service_predict_object_detection)
               && bbox["ymax"].GetDouble() > 300);
   // Check confidence threshold
   ASSERT_TRUE(preds[preds.Size() - 1]["prob"].GetDouble() >= 0.8);
+
+  // best
+  jpredictstr = "{\"service\":\"detectserv\",\"parameters\":{"
+                "\"input\":{\"height\":224,"
+                "\"width\":224},\"output\":{\"bbox\":true, "
+                "\"best_bbox\":3}},\"data\":[\""
+                + detect_repo + "cat.jpg\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+
+  auto &preds_best = jd["body"]["predictions"][0]["classes"];
+  ASSERT_EQ(preds_best.Size(), 3);
 }
 
 TEST(torchapi, service_predict_txt_classification)

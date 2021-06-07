@@ -2802,6 +2802,7 @@ namespace dd
     int blank_label = -1;
     std::string roi_layer;
     double confidence_threshold = 0.0;
+    int best_bbox = -1;
     if (ad_output.has("confidence_threshold"))
       {
         try
@@ -2816,6 +2817,8 @@ namespace dd
                 ad_output.get("confidence_threshold").get<int>());
           }
       }
+    if (ad_output.has("best_bbox"))
+      best_bbox = ad_output.get("best_bbox").get<int>();
 
     if (inputc._timeserie
         && ad.getobj("parameters").getobj("input").has("timesteps"))
@@ -3247,6 +3250,9 @@ namespace dd
                     int curi = -1;
                     while (true && k < results_height)
                       {
+                        if (best_bbox > 0
+                            && bboxes.size() >= static_cast<size_t>(best_bbox))
+                          break;
                         if (outr[0] == -1)
                           {
                             // skipping invalid detection
