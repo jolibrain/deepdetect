@@ -633,7 +633,7 @@ namespace dd
             = TorchImgRandAugCV(has_mirror, has_rotate, crop_params,
                                 cutout_params, geometry_params);
       }
-    int dataloader_threads = 2;
+    int dataloader_threads = 1;
     if (ad_mllib.has("dataloader_threads"))
       dataloader_threads = ad_mllib.get("dataloader_threads").get<int>();
 
