@@ -813,6 +813,7 @@ if (USE_TORCH)
       "-DCMAKE_CXX_FLAGS=-isystem ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/ -isystem ${SPDLOG_INCLUDE_DIR} -isystem ${PROTOBUF_INCLUDE_DIR}"
       "-DCMAKE_CUDA_FLAGS=-isystem ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/ -isystem ${SPDLOG_INCLUDE_DIR} -isystem ${PROTOBUF_INCLUDE_DIR}"
       -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc
+    BUILD_COMMAND ""
     DEPENDS protobuf pytorch
   )
 
@@ -973,7 +974,7 @@ if (USE_TENSORRT)
     )
 
     # Use our tensorrt-oss header versions first
-    include_directories(SYSTEM ${CMAKE_BINARY_DIR}/tensorrt-oss/src/tensorrt-oss/include)
+    list(INSERT TENSORRT_INC_DIR 0 ${CMAKE_BINARY_DIR}/tensorrt-oss/src/tensorrt-oss/include)
 endif()
 
 if (USE_HTTP_SERVER_OATPP)
@@ -1076,8 +1077,10 @@ include_directories(
     ${XGBOOST_INC_DIR}
     ${TSNE_INC_DIR}
     ${TORCH_INC_DIR}
-    ${TENSORRT_INC_DIR}
     ${NCNN_INC_DIR}
+)
+include_directories(
+    SYSTEM ${TENSORRT_INC_DIR}
 )
 include_directories(
     ${CMAKE_SOURCE_DIR}/src/backends/caffe
