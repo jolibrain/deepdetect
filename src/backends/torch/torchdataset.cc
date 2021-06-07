@@ -219,6 +219,7 @@ namespace dd
 
   void TorchDataset::reset(bool shuffle, db::Mode dbmode)
   {
+    std::lock_guard<std::mutex> guard(_mutex);
     _shuffle = shuffle;
     if (!_db)
       {
@@ -297,71 +298,82 @@ namespace dd
   c10::optional<TorchBatch> TorchDataset::get_batch(BatchRequestType request)
   {
     size_t count = request[0];
-    std::vector<torch::Tensor> data_tensors;
-    std::vector<torch::Tensor> target_tensors;
-
-    count = count < _indices.size() ? count : _indices.size();
-
-    if (count == 0)
-      {
-        return torch::nullopt;
-      }
 
     typedef std::vector<torch::Tensor> BatchToStack;
     std::vector<BatchToStack> data, target;
 
     if (!_db) // Note: no data augmentation if no db
       {
+        std::vector<int64_t> ids;
+        {
+          std::lock_guard<std::mutex> guard(_mutex);
+          count = count < _indices.size() ? count : _indices.size();
+
+          if (count == 0)
+            {
+              return torch::nullopt;
+            }
+
+          // extract ids
+          ids.reserve(count);
+
+          while (count != 0)
+            {
+              auto id = _indices.back();
+              ids.push_back(id);
+              _indices.pop_back();
+              --count;
+            }
+        }
+
         if (!_lfiles.empty()) // prefetch batch from file list
           {
             ImgTorchInputFileConn *inputc
                 = reinterpret_cast<ImgTorchInputFileConn *>(_inputc);
+            bool first_iter = true;
 
-            size_t nlfiles = 0;
-            while (nlfiles < count)
+            for (int64_t id : ids)
               {
-                auto id = _indices.back();
                 auto lfile = _lfiles.at(id);
+                std::vector<torch::Tensor> targetts;
                 if (_classification)
-                  add_image_file(lfile.first,
-                                 static_cast<int>(lfile.second.at(0)),
-                                 inputc->height(), inputc->width());
+                  targetts.push_back(
+                      target_to_tensor(static_cast<int>(lfile.second.at(0))));
                 else // vector generic type, including regression
-                  add_image_file(lfile.first, lfile.second, inputc->height(),
-                                 inputc->width());
-                ++nlfiles;
-                _indices.pop_back();
-              }
+                  targetts.push_back(target_to_tensor(lfile.second));
 
-            if (!_batches.empty())
-              {
-                auto entry = _batches[0];
-                data.resize(entry.data.size());
-                target.resize(entry.target.size());
-              }
-
-            for (size_t id = 0; id < count; ++id)
-              {
-                auto entry = _batches[id];
-
-                for (unsigned int i = 0; i < entry.data.size(); ++i)
+                cv::Mat dimg;
+                int res = read_image_file(lfile.first, dimg);
+                if (res == 0)
                   {
-                    data[i].push_back(entry.data.at(i));
+                    if (first_iter)
+                      {
+                        data.resize(1);
+                        target.resize(targetts.size());
+                        first_iter = false;
+                      }
+
+                    data[0].push_back(image_to_tensor(dimg, inputc->height(),
+                                                      inputc->width()));
+
+                    for (unsigned int i = 0; i < targetts.size(); ++i)
+                      {
+                        target.at(i).push_back(targetts[i]);
+                      }
                   }
-                for (unsigned int i = 0; i < entry.target.size(); ++i)
+                else
                   {
-                    target[i].push_back(entry.target.at(i));
+                    this->_logger->warn("Skip file {}: not found",
+                                        lfile.first);
                   }
               }
-            _batches.clear();
           }
         else // batches
           {
             bool first_iter = true;
 
-            while (count != 0)
+            for (auto id : ids)
               {
-                auto id = _indices.back();
                 auto entry = _batches[id];
 
                 if (first_iter)
@@ -379,43 +391,54 @@ namespace dd
                   {
                     target[i].push_back(entry.target.at(i));
                   }
-
-                _indices.pop_back();
-                count--;
               }
           }
       }
     else // below db case
       {
-        while (count != 0)
+        bool has_data = false;
+
+        while (count > 0)
           {
             std::stringstream data_key;
             std::stringstream target_key;
 
-            if (!_dbCursor->valid())
-              {
-                delete _dbCursor;
-                _dbCursor = _dbData->NewCursor();
-              }
-            std::string key = _dbCursor->key();
-            size_t pos = key.find("_data");
-            if (pos != std::string::npos)
-              {
-                data_key << key;
-                std::string sid = key.substr(0, pos);
-                target_key << sid << "_target";
-              }
-            else // skip targets
-              {
-                _dbCursor->Next();
-                continue;
-              }
-
             std::string targets;
             std::string datas;
-            _dbData->Get(data_key.str(), datas);
-            _dbData->Get(target_key.str(), targets);
-            _dbCursor->Next();
+
+            {
+              std::lock_guard<std::mutex> guard(_mutex);
+
+              if (_indices.empty())
+                // end of the dataset
+                break;
+
+              if (!_dbCursor->valid())
+                {
+                  delete _dbCursor;
+                  _dbCursor = _dbData->NewCursor();
+                }
+              std::string key = _dbCursor->key();
+              size_t pos = key.find("_data");
+              if (pos != std::string::npos)
+                {
+                  data_key << key;
+                  std::string sid = key.substr(0, pos);
+                  target_key << sid << "_target";
+                }
+              else // skip targets
+                {
+                  _dbCursor->Next();
+                  continue;
+                }
+              _dbData->Get(data_key.str(), datas);
+              _dbData->Get(target_key.str(), targets);
+              _dbCursor->Next();
+
+              --count;
+              _indices.pop_back();
+              has_data = true;
+            }
 
             std::vector<torch::Tensor> d;
             std::vector<torch::Tensor> t;
@@ -433,7 +456,6 @@ namespace dd
                     = reinterpret_cast<ImgTorchInputFileConn *>(_inputc);
 
                 cv::Mat bgr;
-                torch::Tensor targett;
                 read_image_from_db(datas, targets, bgr, t, inputc->_bw,
                                    inputc->width(), inputc->height());
 
@@ -456,19 +478,25 @@ namespace dd
               {
                 while (i >= data.size())
                   data.emplace_back();
-                data[i].push_back(d.at(i));
+                data.at(i).push_back(d[i]);
               }
             for (unsigned int i = 0; i < t.size(); ++i)
               {
                 while (i >= target.size())
                   target.emplace_back();
-                target[i].push_back(t.at(i));
+                target.at(i).push_back(t[i]);
               }
+          }
 
-            _indices.pop_back();
-            count--;
+        if (!has_data)
+          {
+            return torch::nullopt;
           }
       }
+
+    // tensors from ids
+    std::vector<torch::Tensor> data_tensors;
+    std::vector<torch::Tensor> target_tensors;
 
     for (const auto &vec : data)
       data_tensors.push_back(torch::stack(vec));
@@ -526,9 +554,7 @@ namespace dd
   }
 
   /*-- image tools --*/
-  int TorchDataset::add_image_file(const std::string &fname,
-                                   const std::vector<at::Tensor> &target,
-                                   const int &height, const int &width)
+  int TorchDataset::read_image_file(const std::string &fname, cv::Mat &out)
   {
     ImgTorchInputFileConn *inputc
         = reinterpret_cast<ImgTorchInputFileConn *>(_inputc);
@@ -549,13 +575,23 @@ namespace dd
       }
     if (dimg._imgs.size() != 0)
       {
-        add_image_batch(dimg._imgs[0], height, width, target);
+        out = dimg._imgs[0];
         return 0;
       }
-    else
+    return -1;
+  }
+
+  int TorchDataset::add_image_file(const std::string &fname,
+                                   const std::vector<at::Tensor> &target,
+                                   const int &height, const int &width)
+  {
+    cv::Mat img;
+    int res = read_image_file(fname, img);
+    if (res == 0)
       {
-        return -1;
+        add_image_batch(img, height, width, target);
       }
+    return res;
   }
 
   int TorchDataset::add_image_file(const std::string &fname, const int &target,

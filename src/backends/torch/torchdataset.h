@@ -66,6 +66,8 @@ namespace dd
     std::shared_ptr<db::Transaction> _txn;   /**< db transaction pointer */
     std::shared_ptr<spdlog::logger> _logger; /**< dd logger */
 
+    std::mutex _mutex; /**< lock to keep the dataset synchronized */
+
   public:
     bool _shuffle = false;           /**< shuffle dataset upon reset() */
     std::shared_ptr<db::DB> _dbData; /**< db data */
@@ -265,6 +267,7 @@ namespace dd
     }
 
     /*-- image tools --*/
+    int read_image_file(const std::string &fname, cv::Mat &out);
 
     int add_image_file(const std::string &fname,
                        const std::vector<at::Tensor> &target,
