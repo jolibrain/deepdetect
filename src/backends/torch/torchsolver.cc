@@ -62,6 +62,8 @@ namespace dd
       _adabelief = ad_solver.get("adabelief").get<bool>();
     if (ad_solver.has("gradient_centralization"))
       _gc = ad_solver.get("gradient_centralization").get<bool>();
+    if (ad_solver.has("adamp"))
+      _adamp = ad_solver.get("adamp").get<bool>();
     if (ad_solver.has("lookahead_steps"))
       _lsteps = ad_solver.get("lookahead_steps").get<int>();
     if (ad_solver.has("lookahead_alpha"))
@@ -126,6 +128,7 @@ namespace dd
                                     .lookahead(_lookahead)
                                     .adabelief(_adabelief)
                                     .gradient_centralization(_gc)
+                                    .adamp(_adamp)
                                     .lsteps(_lsteps)
                                     .lalpha(_lalpha)));
         this->_logger->info("base_lr: {}", _base_lr);
@@ -136,6 +139,12 @@ namespace dd
         this->_logger->info("lookahead: {}", _lookahead);
         this->_logger->info("adabelief: {}", _adabelief);
         this->_logger->info("gradient_centralization: {}", _gc);
+        this->_logger->info("adamp: {}", _adamp);
+        if (_adamp && _adabelief)
+          this->_logger->warn(
+              "both adabelief and adamp seletected, preliminary tests show "
+              "that adamp works better w/o adabelief, please double check "
+              "your parameters");
         if (_lookahead)
           {
             this->_logger->info("lookahead steps: {}", _lsteps);
@@ -395,6 +404,7 @@ namespace dd
             options.lookahead(_lookahead);
             options.adabelief(_adabelief);
             options.gradient_centralization(_gc);
+            options.adamp(_adamp);
             options.lsteps(_lsteps);
             options.lalpha(_lalpha);
           }

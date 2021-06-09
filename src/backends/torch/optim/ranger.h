@@ -58,6 +58,7 @@ namespace dd
     TORCH_ARG(bool, lookahead) = true;
     TORCH_ARG(bool, adabelief) = false;
     TORCH_ARG(bool, gradient_centralization) = false;
+    TORCH_ARG(bool, adamp) = false;
     TORCH_ARG(int, lsteps) = 6;
     TORCH_ARG(double, lalpha) = 0.5;
     TORCH_ARG(bool, swa) = false;
@@ -124,6 +125,10 @@ namespace dd
     void load(torch::serialize::InputArchive &archive) override;
 
     void swap_swa_sgd();
+
+    float projection(torch::Tensor p, torch::Tensor grad,
+                     torch::Tensor perturb, float eps, float delta = 0.1,
+                     float wd = 0.1); // delta and wd_ratio from paper
 
   private:
     template <typename Self, typename Archive>

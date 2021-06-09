@@ -146,6 +146,7 @@ namespace dd
     bool _lookahead = true; /**< for RANGER : use hinton's lookahead */
     bool _adabelief = false; /**< for RANGER : use  ADABELIEF version */
     bool _gc = false;        /**< for RANGER : use gradient centralization */
+    bool _adamp = false;     /**< for RANGER : ADAMP variant */
     int _lsteps
         = 5; /**< for RANGER, if lookahead: number of lookahead steps */
     double _lalpha = 0.5; /**< for RANGER, if lookahead: weight of lookahead */
