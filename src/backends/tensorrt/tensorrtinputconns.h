@@ -96,8 +96,6 @@ namespace dd
         _imgs_size; /**< image sizes, used in detection. */
 
   private:
-    void applyMeanToRTBuf(int channels, int i);
-    void applyMeanToRTBuf(float *mean, int channels, int i);
     void CVMatToRTBuffer(cv::Mat &img, int i);
   };
 
