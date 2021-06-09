@@ -2651,7 +2651,8 @@ TEST(torchapi, service_train_ranger)
         + iterations_resnet50 + ",\"base_lr\":" + torch_lr
         + ",\"iter_size\":4,\"solver_type\":\"RANGER\","
           "\"lookahead\":true,\"rectified\":true,\"adabelief\":true,"
-          "\"gradient_centralization\":true,\"clip\":false,\"test_interval\":"
+          "\"gradient_centralization\":true,\"adamp\":true,\"clip\":false,"
+          "\"test_interval\":"
         + iterations_resnet50
         + "},\"net\":{\"batch_size\":4},\"nclasses\":2,\"resume\":false},"
           "\"input\":{\"seed\":12345,\"db\":true,\"shuffle\":true,\"test_"

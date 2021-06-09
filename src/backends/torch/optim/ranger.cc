@@ -25,6 +25,10 @@
 #include "./ranger.h"
 #include <torch/csrc/autograd/variable.h>
 #include <torch/nn/module.h>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#include <torch/nn/functional.h>
+#pragma GCC diagnostic pop
 #include <torch/serialize/archive.h>
 #include <torch/utils.h>
 
@@ -52,8 +56,8 @@ namespace dd
            && (lhs.lookahead() == rhs.lookahead())
            && (lhs.adabelief() == rhs.adabelief())
            && (lhs.gradient_centralization() == rhs.gradient_centralization())
-           && (lhs.lsteps() == rhs.lsteps()) && (lhs.lalpha() == rhs.lalpha())
-           && (lhs.swa() == rhs.swa());
+           && (lhs.adamp() == rhs.adamp()) && (lhs.lsteps() == rhs.lsteps())
+           && (lhs.lalpha() == rhs.lalpha()) && (lhs.swa() == rhs.swa());
   }
 
   void RangerOptions::serialize(torch::serialize::OutputArchive &archive) const
@@ -67,6 +71,7 @@ namespace dd
     _TORCH_OPTIM_SERIALIZE_TORCH_ARG(lookahead);
     _TORCH_OPTIM_SERIALIZE_TORCH_ARG(adabelief);
     _TORCH_OPTIM_SERIALIZE_TORCH_ARG(gradient_centralization);
+    _TORCH_OPTIM_SERIALIZE_TORCH_ARG(adamp);
     _TORCH_OPTIM_SERIALIZE_TORCH_ARG(lsteps);
     _TORCH_OPTIM_SERIALIZE_TORCH_ARG(lalpha);
     _TORCH_OPTIM_SERIALIZE_TORCH_ARG(swa);
@@ -83,6 +88,7 @@ namespace dd
     _TORCH_OPTIM_DESERIALIZE_TORCH_ARG(bool, lookahead);
     _TORCH_OPTIM_DESERIALIZE_TORCH_ARG(bool, adabelief);
     _TORCH_OPTIM_DESERIALIZE_TORCH_ARG(bool, gradient_centralization);
+    _TORCH_OPTIM_DESERIALIZE_TORCH_ARG(bool, adamp);
     _TORCH_OPTIM_DESERIALIZE_TORCH_ARG(int, lsteps);
     _TORCH_OPTIM_DESERIALIZE_TORCH_ARG(double, lalpha);
     _TORCH_OPTIM_DESERIALIZE_TORCH_ARG(bool, swa);
@@ -114,6 +120,48 @@ namespace dd
     _TORCH_OPTIM_DESERIALIZE_TORCH_ARG(torch::Tensor, exp_avg_sq);
     _TORCH_OPTIM_DESERIALIZE_TORCH_ARG(torch::Tensor, slow_buffer);
     _TORCH_OPTIM_DESERIALIZE_TORCH_ARG(torch::Tensor, swa_buffer);
+  }
+
+  float Ranger::projection(torch::Tensor p, torch::Tensor grad,
+                           torch::Tensor perturb, float eps, float delta,
+                           float wd)
+  {
+    std::vector<long int> expand_size(p.sizes().size(), 1);
+    expand_size[0] = -1;
+
+    std::vector<std::function<torch::Tensor(torch::Tensor)>> view_funcs{
+      [](torch::Tensor x) {
+        return x.view({ x.size(0), -1L });
+      },
+      [](torch::Tensor x) {
+        return x.view({ 1L, -1L });
+      }
+    };
+
+    for (auto view_func : view_funcs)
+      {
+        torch::Tensor p_data_view = view_func(p.data());
+        torch::Tensor cosine_similarity
+            = torch::nn::functional::cosine_similarity(
+                  view_func(grad), p_data_view,
+                  torch::nn::functional::CosineSimilarityFuncOptions()
+                      .dim(1)
+                      .eps(eps))
+                  .abs_();
+
+        if (cosine_similarity.max().item<double>()
+            < delta / std::sqrt(p_data_view.size(1)))
+          {
+            torch::Tensor p_n
+                = p.data()
+                  / p_data_view.norm({ 1 }).view(expand_size).add_(eps);
+            perturb
+                -= p_n * view_func(p_n * perturb).sum({ 1 }).view(expand_size);
+            return wd;
+          }
+      }
+
+    return 1.0;
   }
 
   torch::Tensor Ranger::step(LossClosure closure)
@@ -175,7 +223,8 @@ namespace dd
             auto bias_correction1 = 1.0 - std::pow(beta1, state.step());
             auto bias_correction2 = 1.0 - std::pow(beta2, state.step());
 
-            if (options.weight_decay() != 0) // weight decay not decoupled !!
+            if (options.weight_decay() != 0
+                && !options.adamp()) // weight decay not decoupled !!
               grad = grad.add(p, options.weight_decay());
 
             if (options.gradient_centralization())
@@ -201,7 +250,19 @@ namespace dd
                             .add_(options.eps());
 
                 auto step_size = options.lr() / bias_correction1;
-                p.addcdiv_(exp_avg, denom, -step_size);
+                auto perturb = exp_avg / denom;
+                // below  adamp
+                if (options.adamp())
+                  {
+                    double wd_ratio = 1;
+                    if (p.sizes().size() > 1)
+                      wd_ratio = projection(p, grad, perturb, options.eps());
+                    if (options.weight_decay() != 0)
+                      p.data().mul_(1.0
+                                    - options.lr() * options.weight_decay()
+                                          * wd_ratio);
+                  }
+                p.add_(perturb, -step_size);
               }
             else
               {
@@ -223,12 +284,41 @@ namespace dd
                                   .add_(options.eps());
                     else
                       denom = exp_avg_sq.sqrt().add_(options.eps());
-                    p.addcdiv_(exp_avg, denom, -step_size * options.lr());
+                    auto perturb = exp_avg / denom;
+                    step_size *= options.lr();
+                    // below adamp
+                    if (options.adamp())
+                      {
+                        double wd_ratio = 1;
+                        if (p.sizes().size() > 1)
+                          wd_ratio
+                              = projection(p, grad, perturb, options.eps());
+                        if (options.weight_decay() != 0)
+                          p.data().mul_(1.0
+                                        - options.lr() * options.weight_decay()
+                                              * wd_ratio);
+                      }
+
+                    p.add_(perturb, -step_size);
                   }
                 else
                   {
-                    step_size = 1.0 / bias_correction1;
-                    p.add_(exp_avg, -step_size * options.lr());
+                    step_size = options.lr() / bias_correction1;
+                    auto perturb = exp_avg;
+                    // below adamp
+                    if (options.adamp())
+                      {
+                        double wd_ratio = 1;
+                        if (p.sizes().size() > 1)
+                          wd_ratio
+                              = projection(p, grad, perturb, options.eps());
+                        if (options.weight_decay() != 0)
+                          p.data().mul_(1.0
+                                        - options.lr() * options.weight_decay()
+                                              * wd_ratio);
+                      }
+
+                    p.add_(perturb, -step_size);
                   }
               }
             if (state.step() % options.lsteps() == 0 && options.lookahead())
