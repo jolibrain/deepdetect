@@ -25,6 +25,9 @@
 #include "oatpp/web/protocol/http/outgoing/Response.hpp"
 #include "oatpp/web/protocol/http/incoming/Request.hpp"
 #include "oatpp/web/server/interceptor/ResponseInterceptor.hpp"
+#include "oatpp/web/server/interceptor/RequestInterceptor.hpp"
+
+#include "dd_spdlog.h"
 
 namespace dd
 {
@@ -39,13 +42,13 @@ namespace dd
       std::chrono::time_point<std::chrono::steady_clock> req_start_time;
     };
 
-    thread_local static AccessLogContext _context;
+    thread_local extern AccessLogContext _context;
 
-    void initAccessLogRequestStartTime()
+    inline void initAccessLogRequestStartTime()
     {
       _context.req_start_time = std::chrono::steady_clock::now();
     }
-    void setAccessLogServiceName(std::string service_name)
+    inline void setAccessLogServiceName(std::string service_name)
     {
       _context.service_name = service_name;
     }
