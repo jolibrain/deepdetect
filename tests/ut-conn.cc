@@ -506,6 +506,55 @@ TEST(inputconn, csv_mem2)
   ASSERT_EQ(2590, cifc._csvdata.at(0)._v.at(1));
 }
 
+TEST(inputconn, csv_znorm)
+{
+  std::string header = "id,val1,val2,val3";
+  std::string d1 = "1,2590,56,2";
+  std::string d2 = "2,4000,25,10";
+  std::vector<std::string> vdata = { header, d1, d2 };
+  APIData ad;
+  ad.add("data", vdata);
+  APIData pad, pinp;
+  pinp.add("label", std::string("val3"));
+  pinp.add("scale", true);
+  pinp.add("scale_type", std::string("znorm"));
+  std::vector<APIData> vpinp = { pinp };
+  pad.add("input", vpinp);
+  std::vector<APIData> vpad = { pad };
+  ad.add("parameters", vpad);
+  CSVInputFileConn cifc;
+  cifc._logger = spdlog::stdout_logger_mt("test_znorm");
+  cifc._train = true;
+  try
+    {
+      cifc.transform(ad);
+    }
+  catch (std::exception &e)
+    {
+      std::cerr << "exception=" << e.what() << std::endl;
+      ASSERT_FALSE(true);
+    }
+  ASSERT_EQ(1.5, cifc._mean_vals[0]);
+  ASSERT_EQ(3295, cifc._mean_vals[1]);
+  ASSERT_EQ(40.5, cifc._mean_vals[2]);
+  ASSERT_EQ(6, cifc._mean_vals[3]);
+
+  ASSERT_EQ(0.25, cifc._variance_vals[0]);
+  ASSERT_EQ(497025, cifc._variance_vals[1]);
+  ASSERT_EQ(240.25, cifc._variance_vals[2]);
+  ASSERT_EQ(16, cifc._variance_vals[3]);
+
+  ASSERT_EQ(-1, cifc._csvdata[0]._v[0]);
+  ASSERT_EQ(-1, cifc._csvdata[0]._v[1]);
+  ASSERT_EQ(1, cifc._csvdata[0]._v[2]);
+  ASSERT_EQ(2, cifc._csvdata[0]._v[3]); // labels are not scaled as a default
+
+  ASSERT_EQ(1, cifc._csvdata[1]._v[0]);
+  ASSERT_EQ(1, cifc._csvdata[1]._v[1]);
+  ASSERT_EQ(-1, cifc._csvdata[1]._v[2]);
+  ASSERT_EQ(10, cifc._csvdata[1]._v[3]); // labels are not scaled as a default
+}
+
 TEST(inputconn, csv_copy)
 {
   std::string header = "id,val1,val2,val3,val4,val5";

@@ -114,7 +114,15 @@ namespace dd
   {
     if (!inputc._scale)
       return val;
-    if (inputc._min_vals.empty() || inputc._max_vals.empty())
+    if (inputc._scale_type == MINMAX
+        && (inputc._min_vals.empty() || inputc._max_vals.empty()))
+      {
+        this->_logger->info("not unscaling output because no bounds "
+                            "data found");
+        return val;
+      }
+    else if (inputc._scale_type == ZNORM
+             && (inputc._mean_vals.empty() || inputc._variance_vals.empty()))
       {
         this->_logger->info("not unscaling output because no bounds "
                             "data found");
@@ -124,21 +132,42 @@ namespace dd
       {
         if (!inputc._dont_scale_labels)
           {
-            double max, min;
-            if (inputc._label_pos.size() > 0) // labels case
+            if (inputc._scale_type == MINMAX)
               {
-                max = inputc._max_vals[inputc._label_pos[k]];
-                min = inputc._min_vals[inputc._label_pos[k]];
+                double max, min;
+                if (inputc._label_pos.size() > 0) // labels case
+                  {
+                    max = inputc._max_vals[inputc._label_pos[k]];
+                    min = inputc._min_vals[inputc._label_pos[k]];
+                  }
+                else // forecast case
+                  {
+                    max = inputc._max_vals[k];
+                    min = inputc._min_vals[k];
+                  }
+                if (inputc._scale_between_minus_half_and_half)
+                  val += 0.5;
+                val = val * (max - min) + min;
               }
-            else // forecast case
+            else if (inputc._scale_type == ZNORM)
               {
-                max = inputc._max_vals[k];
-                min = inputc._min_vals[k];
+                double mean, variance;
+                if (inputc._label_pos.size() > 0) // labels case
+                  {
+                    mean = inputc._mean_vals[inputc._label_pos[k]];
+                    variance = inputc._variance_vals[inputc._label_pos[k]];
+                  }
+                else // forecast case
+                  {
+                    mean = inputc._mean_vals[k];
+                    variance = inputc._variance_vals[k];
+                  }
+                val = val * (sqrt(variance)) + mean;
               }
-            if (inputc._scale_between_minus_half_and_half)
-              val += 0.5;
-            val = val * (max - min) + min;
+            else
+              throw MLLibInternalException("unknwon scale type");
           }
+
         return val;
       }
   }

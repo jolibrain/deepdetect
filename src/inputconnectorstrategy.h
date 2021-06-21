@@ -33,6 +33,12 @@
 namespace dd
 {
 
+  enum ScaleType
+  {
+    MINMAX,
+    ZNORM
+  };
+
   /**
    * \brief fetched data element
    * Note: functions read_mem and read_file must be defined in template type
