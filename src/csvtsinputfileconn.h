@@ -84,6 +84,10 @@ namespace dd
       this->_dont_scale_labels = i._dont_scale_labels;
       this->_min_vals = i._min_vals;
       this->_max_vals = i._max_vals;
+      this->_mean_vals = i._mean_vals;
+      this->_variance_vals = i._variance_vals;
+      this->_scale_type = i._scale_type;
+      this->_scale = i._scale;
       this->_timeserie = true;
     }
 
@@ -98,6 +102,7 @@ namespace dd
         {
           _scale = true;
         }
+
       deserialize_bounds();
       CSVInputFileConn::fillup_parameters(ad_input);
 
@@ -141,6 +146,20 @@ namespace dd
         std::unordered_map<std::string, CCategorical> &categoricals);
 
     /**
+     * \brief merge the local mean values into the argument vectors
+     * @param mean_vals mean vals to be updated
+     */
+    float merge_mean(std::vector<double> &mean_vals, float old_weight,
+                     float new_weight);
+
+    /**
+     * \brief merge the local variance values into the argument vectors
+     * @param variance_vals variance vals  to be updated
+     */
+    float merge_variance(std::vector<double> &variance_vals, float old_weight,
+                         float new_weight);
+
+    /**
      * \brief merge the local min/max values into the argument vectors
      * @param min_vals min bounds to be updated
      * @param max_vals max bounds to be updated
@@ -149,19 +168,6 @@ namespace dd
                        std::vector<double> &max_vals);
 
     // read min max values, return false if not present
-
-    /**
-     * \brief read min/max per variable bounds from file
-     * @param force to update the bounds even if they do already exist in
-     *        memory
-     * @return true if successful, false otherwise
-     */
-    bool deserialize_bounds(const bool &force = false);
-
-    /**
-     * \brief serializes per variable min/max bounds to file, throws on error
-     */
-    void serialize_bounds();
 
     /**
      * \brief fills out response params from input connector values
@@ -188,9 +194,6 @@ namespace dd
      * @param is_test_data whether data is from test set
      */
     void push_csv_to_csvts(int test_id = -1);
-
-    std::string _boundsfname
-        = "bounds.dat"; /**< variables min/max bounds filename. */
 
     std::vector<std::vector<CSVline>> _csvtsdata;
     std::vector<std::vector<std::vector<CSVline>>> _csvtsdata_tests;

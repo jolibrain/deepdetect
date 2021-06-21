@@ -2659,15 +2659,31 @@ namespace dd
                             if (cic->_scale && !cic->_dont_scale_labels)
                               {
                                 int label_index = k % _ntargets;
-                                double max
-                                    = cic->_max_vals
-                                          [cic->_label_pos[label_index]];
-                                double min
-                                    = cic->_min_vals
-                                          [cic->_label_pos[label_index]];
-                                if (cic->_scale_between_minus_half_and_half)
-                                  res += 0.5;
-                                res = res * (max - min) + min;
+                                if (cic->_scale_type == MINMAX)
+                                  {
+                                    double max
+                                        = cic->_max_vals
+                                              [cic->_label_pos[label_index]];
+                                    double min
+                                        = cic->_min_vals
+                                              [cic->_label_pos[label_index]];
+                                    if (cic->_scale_between_minus_half_and_half)
+                                      res += 0.5;
+                                    res = res * (max - min) + min;
+                                  }
+                                else if (cic->_scale_type == ZNORM)
+                                  {
+                                    double mean
+                                        = cic->_mean_vals
+                                              [cic->_label_pos[label_index]];
+                                    double variance
+                                        = cic->_variance_vals
+                                              [cic->_label_pos[label_index]];
+                                    res = res * (sqrt(variance)) + mean;
+                                  }
+                                else
+                                  throw MLLibInternalException(
+                                      "unknown scale type");
                               }
                             target_unscaled.push_back(res);
                           }
@@ -2684,13 +2700,28 @@ namespace dd
                                 predictions.push_back(res);
                                 if (cic->_scale && !cic->_dont_scale_labels)
                                   {
-                                    double max
-                                        = cic->_max_vals[cic->_label_pos[k]];
-                                    double min
-                                        = cic->_min_vals[cic->_label_pos[k]];
-                                    if (cic->_scale_between_minus_half_and_half)
-                                      res += 0.5;
-                                    res = res * (max - min) + min;
+                                    if (cic->_scale_type == MINMAX)
+                                      {
+                                        double max = cic->_max_vals
+                                                         [cic->_label_pos[k]];
+                                        double min = cic->_min_vals
+                                                         [cic->_label_pos[k]];
+                                        if (cic->_scale_between_minus_half_and_half)
+                                          res += 0.5;
+                                        res = res * (max - min) + min;
+                                      }
+                                    else if (cic->_scale_type == ZNORM)
+                                      {
+                                        double mean = cic->_mean_vals
+                                                          [cic->_label_pos[k]];
+                                        double variance
+                                            = cic->_variance_vals
+                                                  [cic->_label_pos[k]];
+                                        res = res * (sqrt(variance)) + mean;
+                                      }
+                                    else
+                                      throw MLLibInternalException(
+                                          "unknown scale type");
                                   }
                                 pred_unscaled.push_back(res);
                               }
@@ -3510,7 +3541,19 @@ namespace dd
                         for (int k = 0; k < nout; ++k)
                           {
                             std::vector<int> loc = { t, j, k };
-                            if (ic->_min_vals.empty() || ic->_max_vals.empty())
+                            if (ic->_scale_type == MINMAX
+                                && (ic->_min_vals.empty()
+                                    || ic->_max_vals.empty()))
+                              {
+                                this->_logger->info(
+                                    "not unscaling output because no bounds "
+                                    "data found");
+                                predictions.push_back(
+                                    results[slot]->data_at(loc));
+                              }
+                            else if (ic->_scale_type == ZNORM
+                                     && (ic->_mean_vals.empty()
+                                         || ic->_variance_vals.empty()))
                               {
                                 this->_logger->info(
                                     "not unscaling output because no bounds "
@@ -3523,13 +3566,28 @@ namespace dd
                                 double res = results[slot]->data_at(loc);
                                 if (ic->_scale && !ic->_dont_scale_labels)
                                   {
-                                    double max
-                                        = ic->_max_vals[ic->_label_pos[k]];
-                                    double min
-                                        = ic->_min_vals[ic->_label_pos[k]];
-                                    if (ic->_scale_between_minus_half_and_half)
-                                      res += 0.5;
-                                    res = res * (max - min) + min;
+                                    if (ic->_scale_type == MINMAX)
+                                      {
+                                        double max
+                                            = ic->_max_vals[ic->_label_pos[k]];
+                                        double min
+                                            = ic->_min_vals[ic->_label_pos[k]];
+                                        if (ic->_scale_between_minus_half_and_half)
+                                          res += 0.5;
+                                        res = res * (max - min) + min;
+                                      }
+                                    else if (ic->_scale_type == ZNORM)
+                                      {
+                                        double mean = ic->_mean_vals
+                                                          [ic->_label_pos[k]];
+                                        double variance
+                                            = ic->_variance_vals
+                                                  [ic->_label_pos[k]];
+                                        res = res * (sqrt(variance)) + mean;
+                                      }
+                                    else
+                                      throw MLLibInternalException(
+                                          "unknown scale type");
                                   }
                                 predictions.push_back(res);
                               }
