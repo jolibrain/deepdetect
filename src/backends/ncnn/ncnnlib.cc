@@ -252,6 +252,10 @@ namespace dd
             for (int i = 0; i < inputc._out.at(b).h; i++)
               {
                 const float *values = inputc._out.at(b).row(i);
+                if (output_params->best_bbox > 0
+                    && bboxes.size()
+                           >= static_cast<size_t>(output_params->best_bbox))
+                  break;
                 if (values[1] < output_params->confidence_threshold)
                   break; // output is sorted by confidence
 

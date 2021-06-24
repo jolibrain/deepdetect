@@ -31,28 +31,34 @@ namespace dd
   {
     cv::Mat converted;
     int channels = img.channels();
+
+    if (_has_mean_scalar && _mean.size() != size_t(channels))
+      throw InputConnectorBadParamException(
+          "mean vector be of size the number of channels ("
+          + std::to_string(channels) + ")");
+
+    if (!_std.empty() && _std.size() != size_t(channels))
+      throw InputConnectorBadParamException(
+          "std vector be of size the number of channels ("
+          + std::to_string(channels) + ")");
+
+    bool has_std = !_std.empty();
     int offset = channels * _height * _width * i;
     img.convertTo(converted, CV_32F);
     boost::float32_t *fbuf = (boost::float32_t *)(_buf.data());
     boost::float32_t *cvbuf = (boost::float32_t *)converted.data;
-    for (int c = 0; c < channels; ++c)
-      for (int h = 0; h < _height; ++h)
-        for (int w = 0; w < _width; ++w)
-          fbuf[offset++]
-              = _scale * cvbuf[(converted.cols * h + w) * channels + c];
-  }
 
-  void ImgTensorRTInputFileConn::applyMeanToRTBuf(int channels, int i)
-  {
-    int offset = channels * _height * _width * i;
     for (int c = 0; c < channels; ++c)
       for (int h = 0; h < _height; ++h)
         for (int w = 0; w < _width; ++w)
           {
-            int data_index = (c * _height + h) * _width + w;
-            boost::float32_t *fbuf
-                = static_cast<boost::float32_t *>(_buf.data());
-            fbuf[offset + data_index] -= _mean[c];
+            fbuf[offset]
+                = _scale * cvbuf[(converted.cols * h + w) * channels + c];
+            if (_has_mean_scalar)
+              fbuf[offset] -= _mean[c];
+            if (has_std)
+              fbuf[offset] /= _std[c];
+            ++offset;
           }
   }
 
@@ -102,10 +108,6 @@ namespace dd
       {
         cv::Mat img = this->_images.at(_batch_index);
         CVMatToRTBuffer(img, i);
-        if (_has_mean_scalar)
-          {
-            applyMeanToRTBuf(img.channels(), i);
-          }
       }
     return i;
   }

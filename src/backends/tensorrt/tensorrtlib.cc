@@ -811,6 +811,11 @@ namespace dd
                 int curi = -1;
                 while (true && k < results_height)
                   {
+                    if (output_params->best_bbox > 0
+                        && bboxes.size() >= static_cast<size_t>(
+                               output_params->best_bbox))
+                      break;
+
                     if (outr[0] == -1)
                       {
                         // skipping invalid detection

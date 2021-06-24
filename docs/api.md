@@ -1053,7 +1053,7 @@ sentences       | bool   | yes      | false                                     
 characters      | bool   | yes      | false                                              | character-level text processing, as opposed to word-based text processing
 sequence        | int    | yes      | N/A                                                | for character-level text processing, the fixed length of each sample of text
 read_forward    | bool   | yes      | false                                              | for character-level text processing, whether to read content from left to right
-alphabet        | string | yes      | abcdefghijklmnopqrstuvwxyz 0123456789 ,;.!?:'"/\\\ \|_@#$%^&*~\`+-=<>()[]{} | for character-level text processing, the alphabet of recognized symbols
+alphabet        | string | yes      | abcdefghijklmnopqrstuvwxyz 0123456789 ,;.!?:'"/\\\ \|\_@#$%^&\*~\`+-=<>()[]{} | for character-level text processing, the alphabet of recognized symbols
 sparse          | bool   | yes      | false                                              | whether to use sparse features (and sparce computations with Caffe for huge memory savings, for xgboost use `svm` connector instead)
 
 - SVM (`svm`)
@@ -1070,6 +1070,7 @@ network              | object | yes      | empty                   | Output netw
 measure              | array  | yes      | empty                   | Output measures requested, from `acc`: accuracy, `acc-k`: top-k accuracy, replace k with number (e.g. `acc-5`), `f1`: f1, precision and recall, `mcll`: multi-class log loss, `auc`: area under the curve, `cmdiag`: diagonal of confusion matrix (requires `f1`), `cmfull`: full confusion matrix (requires `f1`), `mcc`: Matthews correlation coefficient
 confidence_threshold | double | yes      | 0.0                     | only returns classifications or detections with probability strictly above threshold
 bbox                 | bool   | yes      | false                   | returns bounding boxes around object when using an object detection model, such that (xmin,ymax) yields the top left corner and (xmax,ymin) the lower right corner of a box.
+best_bbox            | int    | yes      | -1                      | if > 0, returns only the `best_bbox` with highest confidence
 regression           | bool   | yes      | false   | whether the output of a model is a regression target (i.e. vector of one or more floats)
 rois                 | string | yes      | empty                   | set the ROI layer from which to extract the features from bounding boxes. Both the boxes and features ar returned when using an object detection model with ROI pooling layer
 index                | bool   | yes      | false                   | whether to index the output from prediction, for similarity search

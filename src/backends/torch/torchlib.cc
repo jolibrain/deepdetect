@@ -1131,6 +1131,7 @@ namespace dd
     bool bbox = _bbox;
     double confidence_threshold = 0.0;
     int best_count = _nclasses;
+    int best_bbox = -1;
 
     if (params.has("mllib"))
       {
@@ -1188,7 +1189,13 @@ namespace dd
           }
       }
     if (output_params.has("best"))
-      best_count = output_params.get("best").get<int>();
+      {
+        best_count = output_params.get("best").get<int>();
+      }
+    if (output_params.has("best_bbox"))
+      {
+        best_bbox = output_params.get("best_bbox").get<int>();
+      }
 
     bool lstm_continuation = false;
     TInputConnectorStrategy inputc(this->_inputc);
@@ -1388,6 +1395,10 @@ namespace dd
 
                     for (int j = 0; j < labels_tensor.size(0); ++j)
                       {
+                        if (best_bbox > 0
+                            && bboxes.size() >= static_cast<size_t>(best_bbox))
+                          break;
+
                         double score = score_acc[j];
                         if (score < confidence_threshold)
                           continue;
