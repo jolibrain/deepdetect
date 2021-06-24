@@ -36,6 +36,8 @@
 #include "apidata.h"
 #include "oatppjsonapi.h"
 #include "dto/info.hpp"
+#include "dto/service_predict.hpp"
+#include "dto/service_create.hpp"
 
 #include OATPP_CODEGEN_BEGIN(ApiController)
 
@@ -61,7 +63,9 @@ public:
 
   ENDPOINT_INFO(get_info)
   {
-    info->summary = "Retreive server information";
+    info->summary = "Retrieve server information";
+    info->addResponse<Object<dd::DTO::InfoResponse>>(Status::CODE_200,
+                                                     "application/json");
   }
   ENDPOINT("GET", "info", get_info, QUERIES(QueryParams, queryParams))
   {
@@ -95,7 +99,7 @@ public:
 
   ENDPOINT_INFO(get_service)
   {
-    info->summary = "Retreive a service detail";
+    info->summary = "Retrieve a service detail";
   }
   ENDPOINT("GET", "services/{service-name}", get_service,
            PATH(oatpp::String, service_name, "service-name"))
@@ -107,6 +111,7 @@ public:
   ENDPOINT_INFO(create_service)
   {
     info->summary = "Create a service";
+    info->addConsumes<Object<dd::DTO::ServiceCreate>>("application/json");
   }
   ENDPOINT("POST", "services/{service-name}", create_service,
            PATH(oatpp::String, service_name, "service-name"),
@@ -147,6 +152,7 @@ public:
   ENDPOINT_INFO(predict)
   {
     info->summary = "Predict";
+    info->addConsumes<Object<dd::DTO::ServicePredict>>("application/json");
   }
   ENDPOINT("POST", "predict", predict,
            BODY_STRING(oatpp::String, predict_data))
@@ -157,7 +163,7 @@ public:
 
   ENDPOINT_INFO(get_train)
   {
-    info->summary = "Retreive a training status";
+    info->summary = "Retrieve a training status";
   }
   ENDPOINT("GET", "train", get_train, QUERIES(QueryParams, queryParams))
   {

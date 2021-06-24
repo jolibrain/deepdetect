@@ -34,6 +34,8 @@ namespace dd
           = oatpp::parser::json::mapping::ObjectMapper::createShared();
       object_mapper->getDeserializer()->setDeserializerMethod(
           DTO::GpuIds::Class::CLASS_ID, DTO::gpuIdsDeserialize);
+      object_mapper->getSerializer()->setSerializerMethod(
+          DTO::GpuIds::Class::CLASS_ID, DTO::gpuIdsSerialize);
       return object_mapper;
     }
   }
