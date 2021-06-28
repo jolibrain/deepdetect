@@ -743,17 +743,15 @@ if (USE_TORCH)
 
   set(PYTORCH_PATCHES
     ${PYTORCH_PATCHES_PATH}/pytorch_15_compile.patch
-    ${PYTORCH_PATCHES_PATH}/pytorch_16_new_logger.patch
-    ${PYTORCH_PATCHES_PATH}/pytorch_16_use_new_logger.patch
-    ${PYTORCH_PATCHES_PATH}/pytorch_14_namespace.patch
-    ${PYTORCH_PATCHES_PATH}/pytorch_18_string_view.patch
+    ${PYTORCH_PATCHES_PATH}/pytorch_19_new_logger.patch
+    ${PYTORCH_PATCHES_PATH}/pytorch_19_use_new_logger.patch
   )
 
   message(STATUS "Configuring libtorch")
   add_definitions(-DUSE_TORCH)
 
   if (NOT TORCH_LOCATION)
-    set(PYTORCH_COMMIT v1.8.1)
+    set(PYTORCH_COMMIT v1.9.0)
     set(PYTORCH_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch-complete)
 
     if(USE_TORCH_CPU_ONLY)
@@ -769,7 +767,7 @@ if (USE_TORCH)
       GIT_TAG ${PYTORCH_COMMIT}
       GIT_CONFIG advice.detachedHead=false
       UPDATE_DISCONNECTED 1
-      PATCH_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || git apply ${PYTORCH_PATCHES} && echo Applying ${PYTORCH_PATCHES}
+      PATCH_COMMAND "" test -f ${PYTORCH_COMPLETE} && echo Skipping || git apply ${PYTORCH_PATCHES} && echo Applying ${PYTORCH_PATCHES}
       CONFIGURE_COMMAND ""
       BUILD_COMMAND ""
       COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || ${CMAKE_COMMAND} -E env PATH=${PROTOBUF_LIB_DIR}:$ENV{PATH} BUILD_CUSTOM_PROTOBUF=0 GLIBCXX_USE_CXX11_ABI=1 BUILD_TEST=0 USE_CUDA=${PYTORCH_USE_CUDA} BUILD_CAFFE2_OPS=0 USE_DDLOG=1 CAFFE2_LINK_LOCAL_PROTOBUF=0 "CMAKE_CXX_FLAGS=-isystem${SPDLOG_INCLUDE_DIR} -isystem${PROTOBUF_INCLUDE_DIR}" CMAKE_PREFIX_PATH=${PROTOBUF_LIB_DIR}/cmake MAX_JOBS=8 python3 ../pytorch/tools/build_libtorch.py
@@ -792,11 +790,11 @@ if (USE_TORCH)
 
   # TORCH VISION
   message(STATUS "Configuring Pytorch Vision")
-  set(PYTORCH_VISION_COMMIT "v0.9.1") # 0.9.1 & torch 1.8.1
+  set(PYTORCH_VISION_COMMIT "v0.10.0") # 0.10.0 & torch 1.9.0
   set(PYTORCH_VISION_PATCHES_PATH ${CMAKE_BINARY_DIR}/patches/pytorch/vision)
-  set(PYTORCH_VISION_PATCHES
-      ${PYTORCH_VISION_PATCHES_PATH}/pytorch_vision_09_fasterrcnn.patch
-  )
+  #set(PYTORCH_VISION_PATCHES
+  #    ${PYTORCH_VISION_PATCHES_PATH}/xxx.patch # add patches here
+  #)
 
   set(PYTORCH_VISION_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch_vision-complete)
   set(TORCHVISION_LOCATION "${CMAKE_BINARY_DIR}/pytorch_vision/src/pytorch_vision-install")
@@ -807,7 +805,7 @@ if (USE_TORCH)
     GIT_REPOSITORY https://github.com/pytorch/vision.git
     GIT_TAG ${PYTORCH_VISION_COMMIT}
     GIT_CONFIG advice.detachedHead=false
-    PATCH_COMMAND test -f ${PYTORCH_VISION_COMPLETE} && echo Skipping || git apply ${PYTORCH_VISION_PATCHES} && echo Applying ${PYTORCH_VISION_PATCHES}
+    PATCH_COMMAND "" #test -f ${PYTORCH_VISION_COMPLETE} && echo Skipping || git apply ${PYTORCH_VISION_PATCHES} && echo Applying ${PYTORCH_VISION_PATCHES}
     CMAKE_ARGS -DWITH_CUDA=${PYTORCH_USE_CUDA} -DCMAKE_PREFIX_PATH=${TORCH_LOCATION} -DCMAKE_INSTALL_PREFIX=${TORCHVISION_LOCATION}
       -DCMAKE_INCLUDE_PATH=${PROTOBUF_INCLUDE_DIR} -DCMAKE_LIBRARY_PATH=${PROTOBUF_LIB_DIR}
       "-DCMAKE_CXX_FLAGS=-isystem ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/ -isystem ${SPDLOG_INCLUDE_DIR} -isystem ${PROTOBUF_INCLUDE_DIR}"
