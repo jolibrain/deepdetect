@@ -703,6 +703,7 @@ clip_norm            | real         | yes      | 100.0   | gradients with euclid
 rectified            | bool         | yes      | false   | rectified momentum variance ie https://arxiv.org/abs/1908.03265 valid for ADAM[W] and AMSGRAD[W]
 adabelief            | bool         | yes      | false   | adabelief mod for ADAM https://arxiv.org/abs/2010.07468
 gradient_centralization | bool         | yes      | false   | centralized gradient mod for ADAM ie https://arxiv.org/abs/2004.01461v2
+adamp                | bool         | yes      | false   | enable ADAMP version https://arxiv.org/abs/2006.08217
 test_interval        | int          | yes      | N/A     | Number of iterations between testing phases
 test_initialization  | bool         | true     | N/A     | Whether to start training by testing the network
 lr_policy            | string       | yes      | N/A     | learning rate policy ("step", "inv", "fixed", "sgdr", ...)
