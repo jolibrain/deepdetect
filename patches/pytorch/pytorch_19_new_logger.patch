@@ -1,6 +1,6 @@
 diff --git a/c10/util/logging_is_dd_log.h b/c10/util/logging_is_dd_log.h
 new file mode 100644
-index 0000000000..56ebbf9441
+index 0000000000..8f72861a08
 --- /dev/null
 +++ b/c10/util/logging_is_dd_log.h
 @@ -0,0 +1,61 @@
@@ -67,10 +67,10 @@ index 0000000000..56ebbf9441
 +#endif
 diff --git a/caffe/llogging.h b/caffe/llogging.h
 new file mode 100644
-index 0000000000..ff97118ff2
+index 0000000000..7b83630f10
 --- /dev/null
 +++ b/caffe/llogging.h
-@@ -0,0 +1,217 @@
+@@ -0,0 +1,236 @@
 +/**
 + * Author: Emmanuel Benazera <beniz@droidnik.fr>
 + */
@@ -100,15 +100,20 @@ index 0000000000..ff97118ff2
 +    _strtime_s(buffer_, sizeof(buffer_));
 +#else
 +    time_t time_value = time(NULL);
-+    struct tm *pnow;
++    struct tm* pnow;
 +#if !defined(_WIN32)
 +    struct tm now;
 +    pnow = localtime_r(&time_value, &now);
 +#else
-+    pnow = localtime(&time_value);  // NOLINT(*)
++    pnow = localtime(&time_value); // NOLINT(*)
 +#endif
-+    snprintf(buffer_, sizeof(buffer_), "%02d:%02d:%02d",
-+             pnow->tm_hour, pnow->tm_min, pnow->tm_sec);
++    snprintf(
++        buffer_,
++        sizeof(buffer_),
++        "%02d:%02d:%02d",
++        pnow->tm_hour,
++        pnow->tm_min,
++        pnow->tm_sec);
 +#endif
 +    return buffer_;
 +  }
@@ -223,6 +228,20 @@ index 0000000000..ff97118ff2
 +class CaffeLogger {
 + public:
 +  CaffeLogger(const std::string& severity) : _severity(severity) {
++    _console = spdlog::get("pytorch");
++    if (!_console)
++#ifdef USE_SYSLOG
++      _console = spdlog::syslog_logger("pytorch");
++#else
++      _console = spdlog::stdout_logger_mt("pytorch");
++#endif
++  }
++
++  CaffeLogger(const int& ddl) {
++    if (ddl == 0)
++      _severity = "none"; // OFF to none
++    else
++      _severity = INFO; // translates DETAIL and INFO to INFO
 +    _console = spdlog::get("pytorch");
 +    if (!_console)
 +#ifdef USE_SYSLOG

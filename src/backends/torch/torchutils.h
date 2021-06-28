@@ -36,6 +36,7 @@
 #include <torch/script.h>
 
 #include <google/protobuf/message.h>
+#include "dd_spdlog.h"
 
 namespace dd
 {
