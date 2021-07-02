@@ -90,6 +90,28 @@ namespace dd
                   .staticCast<oatpp::Int32>() });
         }
     }
+
+    static inline void
+    gpuIdsSerialize(oatpp::parser::json::mapping::Serializer *serializer,
+                    oatpp::data::stream::ConsistentOutputStream *stream,
+                    const oatpp::Void &obj)
+    {
+      auto gpuid = obj.staticCast<GpuIds>();
+      if (gpuid->_ids.size() == 1)
+        {
+          oatpp::Int32 id = gpuid->_ids[0];
+          serializer->serializeToStream(stream, id);
+        }
+      else
+        {
+          oatpp::Vector<oatpp::Int32> ids;
+          for (auto i : gpuid->_ids)
+            {
+              ids->push_back(i);
+            }
+          serializer->serializeToStream(stream, ids);
+        }
+    }
   }
 }
 

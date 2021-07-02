@@ -272,12 +272,36 @@ namespace dd
         = DedeController::createShared(this, defaultObjectMapper);
     dedeController->addEndpointsToRouter(router);
 
+    // Initialize swagger
     auto docEndpoints = oatpp::swagger::Controller::Endpoints::createShared();
     docEndpoints->pushBackAll(dedeController->getEndpoints());
 
-    auto swaggerController
-        = oatpp::swagger::Controller::createShared(docEndpoints);
+    OATPP_COMPONENT(std::shared_ptr<oatpp::swagger::DocumentInfo>,
+                    documentInfo);
+    OATPP_COMPONENT(std::shared_ptr<oatpp::swagger::Resources>, resources);
+
+    std::shared_ptr<oatpp::swagger::Generator::Config> generatorConfig;
+    try
+      {
+        generatorConfig = OATPP_GET_COMPONENT(
+            std::shared_ptr<oatpp::swagger::Generator::Config>);
+      }
+    catch (std::runtime_error &e)
+      {
+        generatorConfig
+            = std::make_shared<oatpp::swagger::Generator::Config>();
+      }
+
+    oatpp::swagger::Generator generator(generatorConfig);
+    auto document = generator.generateDocument(documentInfo, docEndpoints);
+
+    auto swaggerMapper = dd::oatpp_utils::createDDMapper();
+    swaggerMapper->getSerializer()->getConfig()->includeNullFields = false;
+    swaggerMapper->getDeserializer()->getConfig()->allowUnknownFields = false;
+    auto swaggerController = std::make_shared<oatpp::swagger::Controller>(
+        swaggerMapper, document, resources);
     swaggerController->addEndpointsToRouter(router);
+    // ===
 
     auto scp = components.serverConnectionProvider.getObject();
     auto sch = components.serverConnectionHandler.getObject();

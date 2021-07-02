@@ -206,7 +206,8 @@ label_offset | int             | yes      | 0       | Negative offset (e.g. -1) 
 separator    | string          | yes      | ','     | Column separator character
 quote	     | string	       | yes	  | '"'	    | Quote character in CSV file
 id           | string          | yes      | empty   | Column name of the training examples identifier field, if any
-scale        | bool            | yes      | false   | Whether to scale all values into [0,1]
+scale        | bool            | yes      | false   | Whether to scale all values internally into uniform range
+scale_type   | string          | yes      | "minmax" | scaling type in "minmax", "znorm"
 categoricals | array           | yes      | empty   | List of categorical variables
 db           | bool            | yes      | false   | whether to gather data into a database, useful for very large datasets, allows treatment in constant-size memory
 
@@ -219,7 +220,8 @@ ignore    | array of string | yes      | empty   | Array of column names to igno
 separator | string          | yes      | ','     | Column separator character
 quote	  | string	       | yes	  | '"'	    | Quote character in CSV file
 id        | string          | yes      | empty   | Column name of the training examples identifier field, if any
-scale     | bool            | yes      | false   | Whether to scale all values into [0,1]
+scale     | bool            | yes      | false   | Whether to scale all values 
+scale_type | string          | yes      | "minmax" | scaling type in "minmax" (scales into [-0.5,0.5]), "znorm"
 db        | bool            | yes      | false   | whether to gather data into a database, useful for very large datasets, allows treatment in constant-size memory
 
 
@@ -701,6 +703,7 @@ clip_norm            | real         | yes      | 100.0   | gradients with euclid
 rectified            | bool         | yes      | false   | rectified momentum variance ie https://arxiv.org/abs/1908.03265 valid for ADAM[W] and AMSGRAD[W]
 adabelief            | bool         | yes      | false   | adabelief mod for ADAM https://arxiv.org/abs/2010.07468
 gradient_centralization | bool         | yes      | false   | centralized gradient mod for ADAM ie https://arxiv.org/abs/2004.01461v2
+adamp                | bool         | yes      | false   | enable ADAMP version https://arxiv.org/abs/2006.08217
 test_interval        | int          | yes      | N/A     | Number of iterations between testing phases
 test_initialization  | bool         | true     | N/A     | Whether to start training by testing the network
 lr_policy            | string       | yes      | N/A     | learning rate policy ("step", "inv", "fixed", "sgdr", ...)

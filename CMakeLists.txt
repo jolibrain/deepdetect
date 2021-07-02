@@ -976,14 +976,14 @@ if (USE_TENSORRT)
 endif()
 
 if (USE_HTTP_SERVER_OATPP)
-    set(OATPP_VERSION "6b4413552acf4ebcd0d3df411d6a2a6fc78cabc1") # pre-1.2.5
-    set(OATPP_SWAGGER_VERSION "8b70945f0e9bcf09e16b5cb4be08e752097b0288") # pre-1.2.5
-    set(OATPP_ZLIB_VERSION "1846f759b7483e2386236a75728c1cbbb935b2a6") # pre-1.2.5
+    set(OATPP_VERSION "1.2.5")
+    set(OATPP_SWAGGER_VERSION "1.2.5")
+    set(OATPP_ZLIB_VERSION "1.2.5")
     ExternalProject_Add(
         oatpp
         PREFIX oatpp
         URL https://github.com/oatpp/oatpp/archive/${OATPP_VERSION}.tar.gz
-        URL_HASH SHA256=4517457270d0fb0096ea2796297f6901c619650843d242c2748284d89450217b
+        URL_HASH SHA256=36276e8b23e68ece1e6093c3f06fc80e3d42a5f4e47cdeef5e7e63f36eeddaad
         BUILD_IN_SOURCE true
         CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DOATPP_INSTALL=OFF -DOATPP_BUILD_TESTS=OFF
         INSTALL_COMMAND ""
@@ -992,7 +992,7 @@ if (USE_HTTP_SERVER_OATPP)
         oatpp-zlib
         PREFIX oatpp-zlib
         URL https://github.com/oatpp/oatpp-zlib/archive/${OATPP_ZLIB_VERSION}.tar.gz
-        URL_HASH SHA256=405961fda17ae8fd1be1381e505b0a078b92d11c6f743a01e1827ab95c1ee810
+        URL_HASH SHA256=0009bc160605e804ae69e3627e2279cd27fedabe27fd16f552ea2af6a6f5433d
         CMAKE_ARGS
             -DCMAKE_BUILD_TYPE=Release
             -DBUILD_SHARED_LIBS=OFF
@@ -1009,7 +1009,7 @@ if (USE_HTTP_SERVER_OATPP)
         oatpp-swagger
         PREFIX oatpp-swagger
         URL https://github.com/oatpp/oatpp-swagger/archive/${OATPP_SWAGGER_VERSION}.tar.gz
-        URL_HASH SHA256=561a98c54550a703c3c2bde9658ab426d4da92345a4841ba68f5477feece42dc
+        URL_HASH SHA256=56dd44f3b041fe432c27b52f741bb98f1ef97b3c6c4095dc8b9d76e840639ac8
         BUILD_IN_SOURCE true
         INSTALL_COMMAND ""
         CMAKE_ARGS

@@ -25,6 +25,7 @@
 #include "inputconnectorstrategy.h"
 #include "utils/fileops.hpp"
 #include <fstream>
+#include <istream>
 #include <unordered_set>
 #include <algorithm>
 #include <random>
@@ -268,6 +269,19 @@ namespace dd
     }
 
     /**
+     * \brief serializes per variable min/max bounds to file, throws on error
+     */
+    void serialize_bounds();
+
+    /**
+     * \brief read min/max per variable bounds from file
+     * @param force to update the bounds even if they do already exist in
+     *        memory
+     * @return true if successful, false otherwise
+     */
+    bool deserialize_bounds(const bool &force = false);
+
+    /**
      * \brief reads a categorical value mapping from inputs
      *        this most often applies when the mapping is provided at inference
      *        time.
@@ -299,11 +313,17 @@ namespace dd
      */
     void scale_vals(std::vector<double> &vals)
     {
-      if (vals.size() > _min_vals.size())
+      if (_scale_type == MINMAX && vals.size() > _min_vals.size())
         throw InputConnectorBadParamException(
             "number of values to unscale (" + std::to_string(vals.size())
             + ") > number of scaling factors ("
             + std::to_string(_min_vals.size()) + ")");
+      if (_scale_type == ZNORM && vals.size() > _mean_vals.size())
+        throw InputConnectorBadParamException(
+            "number of values to unscale (" + std::to_string(vals.size())
+            + ") > number of scaling factors ("
+            + std::to_string(_mean_vals.size()) + ")");
+
       auto lit = _columns.begin();
       for (int j = 0; j < (int)vals.size(); j++)
         {
@@ -314,11 +334,14 @@ namespace dd
               ++lit;
               continue;
             }
-          bool equal_bounds = (_max_vals.at(j) == _min_vals.at(j));
-          if (equal_bounds)
+          if (_scale_type == MINMAX)
             {
-              ++lit;
-              continue;
+              bool equal_bounds = (_max_vals.at(j) == _min_vals.at(j));
+              if (equal_bounds)
+                {
+                  ++lit;
+                  continue;
+                }
             }
           if (_dont_scale_labels)
             {
@@ -333,10 +356,21 @@ namespace dd
                   continue;
                 }
             }
-          vals.at(j) = (vals.at(j) - _min_vals.at(j))
-                       / (_max_vals.at(j) - _min_vals.at(j));
-          if (_scale_between_minus_half_and_half)
-            vals.at(j) = vals.at(j) - 0.5;
+          if (_scale_type == MINMAX)
+            {
+              vals.at(j) = (vals.at(j) - _min_vals.at(j))
+                           / (_max_vals.at(j) - _min_vals.at(j));
+              if (_scale_between_minus_half_and_half)
+                vals.at(j) = vals.at(j) - 0.5;
+            }
+          else if (_scale_type == ZNORM)
+            {
+              vals.at(j) = (vals.at(j) - _mean_vals.at(j))
+                           / (sqrt(_variance_vals.at(j)));
+            }
+          else
+            throw InputConnectorBadParamException("unknwon scale type");
+
           ++lit;
         }
     }
@@ -351,32 +385,80 @@ namespace dd
       if (ad_input.has("scale") && ad_input.get("scale").get<bool>())
         {
           _scale = true;
-          if (ad_input.has("min_vals"))
+          if (ad_input.has("scale_type"))
             {
-              try
+              std::string stype
+                  = ad_input.get("scale_type").get<std::string>();
+              if (stype == "minmax")
+                _scale_type = MINMAX;
+              else if (stype == "znorm")
+                _scale_type = ZNORM;
+              else
+                throw InputConnectorBadParamException("unknown scale type: "
+                                                      + stype);
+            }
+          if (_scale_type == MINMAX)
+            {
+              if (ad_input.has("min_vals"))
                 {
-                  _min_vals
-                      = ad_input.get("min_vals").get<std::vector<double>>();
+                  try
+                    {
+                      _min_vals = ad_input.get("min_vals")
+                                      .get<std::vector<double>>();
+                    }
+                  catch (...)
+                    {
+                      std::vector<int> vi
+                          = ad_input.get("min_vals").get<std::vector<int>>();
+                      _min_vals = std::vector<double>(vi.begin(), vi.end());
+                    }
                 }
-              catch (...)
+              if (ad_input.has("max_vals"))
                 {
-                  std::vector<int> vi
-                      = ad_input.get("min_vals").get<std::vector<int>>();
-                  _min_vals = std::vector<double>(vi.begin(), vi.end());
+                  try
+                    {
+                      _max_vals = ad_input.get("max_vals")
+                                      .get<std::vector<double>>();
+                    }
+                  catch (...)
+                    {
+                      std::vector<int> vi
+                          = ad_input.get("max_vals").get<std::vector<int>>();
+                      _max_vals = std::vector<double>(vi.begin(), vi.end());
+                    }
                 }
             }
-          if (ad_input.has("max_vals"))
+          else
             {
-              try
+              if (ad_input.has("mean_vals"))
                 {
-                  _max_vals
-                      = ad_input.get("max_vals").get<std::vector<double>>();
+                  try
+                    {
+                      _mean_vals = ad_input.get("mean_vals")
+                                       .get<std::vector<double>>();
+                    }
+                  catch (...)
+                    {
+                      std::vector<int> vi
+                          = ad_input.get("mean_vals").get<std::vector<int>>();
+                      _mean_vals = std::vector<double>(vi.begin(), vi.end());
+                    }
                 }
-              catch (...)
+
+              if (ad_input.has("variance_vals"))
                 {
-                  std::vector<int> vi
-                      = ad_input.get("max_vals").get<std::vector<int>>();
-                  _max_vals = std::vector<double>(vi.begin(), vi.end());
+                  try
+                    {
+                      _variance_vals = ad_input.get("variance_vals")
+                                           .get<std::vector<double>>();
+                    }
+                  catch (...)
+                    {
+                      std::vector<int> vi = ad_input.get("variance_vals")
+                                                .get<std::vector<int>>();
+                      _variance_vals
+                          = std::vector<double>(vi.begin(), vi.end());
+                    }
                 }
             }
 
@@ -388,9 +470,15 @@ namespace dd
           ")); std::cout << std::endl;*/
           // debug
 
-          if (!_train && (_max_vals.empty() || _min_vals.empty()))
+          if (!_train && _scale_type == MINMAX
+              && (_max_vals.empty() || _min_vals.empty()))
             throw InputConnectorBadParamException(
                 "predict: failed acquiring scaling min_vals or max_vals");
+          if (!_train && _scale_type == ZNORM
+              && (_mean_vals.empty() || _variance_vals.empty()))
+            throw InputConnectorBadParamException(
+                "predict: failed acquiring scaling mean_vals or "
+                "variance_vals");
         }
     }
 
@@ -513,6 +601,19 @@ namespace dd
                 }
               if (_scale)
                 {
+                  if (_scale_type == MINMAX)
+                    {
+                      find_min_max();
+                    }
+                  else if (_scale_type == ZNORM)
+                    {
+                      find_mean();
+                      find_variance();
+                    }
+                  else
+                    throw InputConnectorBadParamException("unkown scale type");
+                  serialize_bounds();
+
                   for (size_t j = 0; j < _csvdata.size(); j++)
                     {
                       scale_vals(_csvdata.at(j)._v);
@@ -640,8 +741,18 @@ namespace dd
       APIData adinput = adparams.getobj("input");
       if (_scale)
         {
-          adinput.add("min_vals", _min_vals);
-          adinput.add("max_vals", _max_vals);
+          if (_scale_type == MINMAX)
+            {
+              adinput.add("min_vals", _min_vals);
+              adinput.add("max_vals", _max_vals);
+            }
+          else if (_scale_type == ZNORM)
+            {
+              adinput.add("mean_vals", _mean_vals);
+              adinput.add("variance_vals", _variance_vals);
+            }
+          else
+            throw InputConnectorBadParamException("unknown scale type");
         }
       if (!_categoricals.empty())
         {
@@ -706,6 +817,33 @@ namespace dd
     }
 
     /**
+     *  \brief find mean of values given
+     */
+    int find_mean(std::istream &csv_file);
+
+    /**
+     *  \brief find mean of values already stored
+     */
+    void find_mean();
+
+    /**
+     *  \brief find variance of values given
+     */
+    int find_variance(std::istream &csv_file,
+                      const std::vector<double> &means);
+
+    /**
+     *  \brief find variance of values already stored
+     */
+    void find_variance();
+
+    /**
+     * \brief finds min/max variable values across already stored data
+     * @param fname CSV filename
+     */
+    void find_min_max();
+
+    /**
      * \brief finds min/max variable values across a CSV dataset
      * @param fname CSV filename
      */
@@ -729,7 +867,7 @@ namespace dd
      * \brief finds min/max variable values across a CSV dataset
      * @param csv_file CSV file stream
      */
-    void find_min_max(std::ifstream &csv_file);
+    void find_min_max(std::istream &csv_file);
 
     /**
      * \brief removes min/max values for the CSV dataset variables
@@ -738,6 +876,15 @@ namespace dd
     {
       _min_vals.clear();
       _max_vals.clear();
+    }
+
+    /**
+     * \brief removes mean/variance values for the CSV dataset variables
+     */
+    void clear_mean_variance()
+    {
+      _mean_vals.clear();
+      _variance_vals.clear();
     }
 
     /**
@@ -784,6 +931,7 @@ namespace dd
         _ignored_columns_pos; /**< ignored columns indexes. */
     std::string _id;
     bool _scale = false; /**< whether to scale all data between 0 and 1 */
+    ScaleType _scale_type = MINMAX; /**< how to scale data */
     bool _dont_scale_labels
         = true; // original csv input conn does not scale labels, while it is
                 // needed for csv timeseries
@@ -793,6 +941,10 @@ namespace dd
         _min_vals; /**< upper bound used for auto-scaling data */
     std::vector<double>
         _max_vals; /**< lower bound used for auto-scaling data */
+    std::vector<double> _mean_vals; /**< mean used for auto-scaling data */
+    std::vector<double>
+        _variance_vals; /**< variance used for auto-scaling data */
+
     std::unordered_map<std::string, CCategorical>
         _categoricals;       /**< auto-converted categorical variables */
     double _test_split = -1; /**< dataset test split ratio (optional). */
@@ -802,6 +954,8 @@ namespace dd
     std::unordered_map<std::string, int>
         _hcorresp_r; /**< reverse correspondence class name / class number. */
     std::string _correspname = "corresp.txt";
+    std::string _boundsfname
+        = "bounds.dat"; /**< variables min/max bounds filename. */
 
     // data
     std::vector<CSVline> _csvdata;

@@ -254,13 +254,27 @@ namespace dd
     {
       if (_dont_scale_labels)
         return res;
-      if (_min_vals.empty() || _max_vals.empty())
+      if (_scale_type == MINMAX && (_min_vals.empty() || _max_vals.empty()))
         return res;
-      double min = _min_vals[_label_pos[k]];
-      if (_scale_between_minus_half_and_half)
-        return (res + 0.5) * (_max_vals[_label_pos[k]] - min) + min;
+      if (_scale_type == ZNORM
+          && (_mean_vals.empty() || _variance_vals.empty()))
+        return res;
+
+      if (_scale_type == MINMAX)
+        {
+          double min = _min_vals[_label_pos[k]];
+          if (_scale_between_minus_half_and_half)
+            return (res + 0.5) * (_max_vals[_label_pos[k]] - min) + min;
+          else
+            return res * (_max_vals[_label_pos[k]] - min) + min;
+        }
+      else if (_scale_type == ZNORM)
+        {
+          return res * (sqrt(_variance_vals[_label_pos[k]]))
+                 + _mean_vals[_label_pos[k]];
+        }
       else
-        return res * (_max_vals[_label_pos[k]] - min) + min;
+        throw InputConnectorBadParamException("unknwon scale type");
     }
 
   public:

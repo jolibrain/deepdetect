@@ -21,6 +21,8 @@
 
 #include "csvinputfileconn.h"
 #include "utils/csv_parser.hpp"
+#include "utils/utils.hpp"
+#include <iomanip>
 
 namespace dd
 {
@@ -48,6 +50,7 @@ namespace dd
   {
     if (!_cifc)
       return -1;
+
     std::stringstream sh(content);
     std::string line;
     int l = 0;
@@ -64,26 +67,11 @@ namespace dd
         std::string cid;
         int nlines = 0;
         _cifc->read_csv_line(line, _cifc->_delim, vals, cid, nlines, false);
-        if (_cifc->_scale)
-          {
-            if (!_cifc->_train) // in prediction mode, on-the-fly scaling
-              {
-                _cifc->scale_vals(vals);
-              }
-            else // in training mode, collect bounds, then scale in another
-                 // pass over the data
-              {
-                if (_cifc->_min_vals.empty() && _cifc->_max_vals.empty())
-                  _cifc->_min_vals = _cifc->_max_vals = vals;
-                for (size_t j = 0; j < vals.size(); j++)
-                  {
-                    _cifc->_min_vals.at(j)
-                        = std::min(vals.at(j), _cifc->_min_vals.at(j));
-                    _cifc->_max_vals.at(j)
-                        = std::max(vals.at(j), _cifc->_max_vals.at(j));
-                  }
-              }
-          }
+        // scale on the fly in predict mode
+        // in train mode, will be scaled into transform() after everything is
+        // read
+        if (_cifc->_scale && !_cifc->_train)
+          _cifc->scale_vals(vals);
         if (!cid.empty())
           _cifc->add_train_csvline(cid, vals);
         else
@@ -373,7 +361,108 @@ namespace dd
     std::getline(csv_file, hline); // skip header line
   }
 
-  void CSVInputFileConn::find_min_max(std::ifstream &csv_file)
+  int CSVInputFileConn::find_mean(std::istream &csv_file)
+  {
+    int nlines = 0;
+    std::string hline;
+    unsigned int nvals = 0;
+    while (std::getline(csv_file, hline))
+      {
+        hline.erase(std::remove(hline.begin(), hline.end(), '\r'),
+                    hline.end());
+        std::vector<double> vals;
+        std::string cid;
+        read_csv_line(hline, _delim, vals, cid, nlines, false);
+        nvals = vals.size();
+        if (nlines == 1)
+          _mean_vals = vals;
+        else
+          for (size_t j = 0; j < vals.size(); j++)
+            _mean_vals.at(j) += vals.at(j);
+      }
+    for (size_t j = 0; j < nvals; j++)
+      _mean_vals.at(j) /= nlines;
+
+    csv_file.clear();
+    csv_file.seekg(0, std::ios::beg);
+    std::getline(csv_file, hline); // skip header line
+
+    return nlines;
+  }
+
+  int CSVInputFileConn::find_variance(std::istream &csv_file,
+                                      const std::vector<double> &mean)
+  {
+    int nlines = 0;
+    std::string hline;
+    unsigned int nvals = 0;
+
+    _variance_vals.clear();
+    _variance_vals.resize(mean.size(), 0.0);
+    while (std::getline(csv_file, hline))
+      {
+        hline.erase(std::remove(hline.begin(), hline.end(), '\r'),
+                    hline.end());
+        std::vector<double> vals;
+        std::string cid;
+        read_csv_line(hline, _delim, vals, cid, nlines, false);
+
+        for (size_t j = 0; j < vals.size(); j++)
+          _variance_vals.at(j)
+              += (vals.at(j) - mean.at(j)) * (vals.at(j) - mean.at(j));
+      }
+    for (size_t j = 0; j < nvals; j++)
+      {
+        _variance_vals.at(j) /= nlines;
+      }
+
+    csv_file.clear();
+    csv_file.seekg(0, std::ios::beg);
+    std::getline(csv_file, hline); // skip header line
+
+    return nlines;
+  }
+
+  void CSVInputFileConn::find_min_max()
+  {
+    if (_min_vals.empty() && _max_vals.empty())
+      if (_csvdata.size() > 0)
+        _min_vals = _max_vals = _csvdata.at(0)._v;
+    for (size_t i = 0; i < _csvdata.size(); ++i)
+      for (size_t j = 0; j < _csvdata.at(i)._v.size(); j++)
+        {
+          _min_vals.at(j) = std::min(_csvdata.at(i)._v[j], _min_vals.at(j));
+          _max_vals.at(j) = std::max(_csvdata.at(i)._v[j], _max_vals.at(j));
+        }
+  }
+
+  void CSVInputFileConn::find_mean()
+  {
+    if (!_mean_vals.empty())
+      return;
+    if (_csvdata.size() < 1)
+      return;
+    _mean_vals = _csvdata.at(0)._v;
+    for (size_t i = 1; i < _csvdata.size(); ++i)
+      for (size_t j = 0; j < _csvdata.at(i)._v.size(); ++j)
+        _mean_vals.at(j) += _csvdata.at(i)._v.at(j);
+    for (size_t j = 0; j < _csvdata.at(0)._v.size(); ++j)
+      _mean_vals.at(j) /= _csvdata.size();
+  }
+
+  void CSVInputFileConn::find_variance()
+  {
+    _variance_vals.clear();
+    _variance_vals.resize(_mean_vals.size(), 0.0);
+    for (size_t i = 0; i < _csvdata.size(); ++i)
+      for (size_t j = 0; j < _csvdata.at(i)._v.size(); ++j)
+        _variance_vals.at(j) += (_csvdata.at(i)._v.at(j) - _mean_vals.at(j))
+                                * (_csvdata.at(i)._v.at(j) - _mean_vals.at(j));
+    for (size_t j = 0; j < _csvdata.at(0)._v.size(); ++j)
+      _variance_vals.at(j) /= _csvdata.size();
+  }
+
+  void CSVInputFileConn::find_min_max(std::istream &csv_file)
   {
     int nlines = 0;
     std::string hline;
@@ -428,9 +517,16 @@ namespace dd
 
     // scaling to [0,1]
     int nlines = 0;
-    if (_scale && (_min_vals.empty() || _max_vals.empty()))
+    if (_scale && _scale_type == MINMAX
+        && (_min_vals.empty() || _max_vals.empty()))
       {
         find_min_max(csv_file);
+      }
+    if (_scale && _scale_type == ZNORM
+        && (_mean_vals.empty() || _variance_vals.empty()))
+      {
+        find_mean(csv_file);
+        find_variance(csv_file, _mean_vals);
       }
 
     // read data
@@ -528,4 +624,167 @@ namespace dd
       }
     correspf.close();
   }
+
+  void CSVInputFileConn::serialize_bounds()
+  {
+    static int boundsprecision = 15;
+    std::string boundsfname;
+    if (_model_repo.empty())
+      boundsfname = _boundsfname;
+    else
+      boundsfname = _model_repo + "/" + _boundsfname;
+    std::string delim = ":";
+    std::ofstream out;
+    out.open(boundsfname);
+    if (!out.is_open())
+      throw InputConnectorBadParamException(
+          "failed opening for writing bounds file " + boundsfname);
+
+    if (this->_scale_type == MINMAX)
+      out << "ncols: " << _min_vals.size() << std::endl;
+    else
+      out << "ncols: " << _mean_vals.size() << std::endl;
+    out << "nlabels: " << _label_pos.size() << std::endl;
+    if (_label_pos.size() > 0)
+      {
+        out << "label_pos: ";
+        for (unsigned int i = 0; i < _label_pos.size() - 1; ++i)
+          out << " " << _label_pos[i] << " " << delim;
+        out << " " << _label_pos[_label_pos.size() - 1] << std::endl;
+      }
+    if (this->_scale_type == MINMAX)
+      {
+        if (_min_vals.size() > 0)
+          {
+            out << "min_vals: ";
+            for (unsigned int i = 0; i < _min_vals.size() - 1; ++i)
+              out << " " << std::setprecision(boundsprecision) << _min_vals[i]
+                  << " " << delim;
+            out << " " << std::setprecision(boundsprecision)
+                << _min_vals[_min_vals.size() - 1] << std::endl;
+          }
+        else
+          throw InputConnectorInternalException(
+              "No min_val to write in bounds file!");
+
+        if (_max_vals.size() > 0)
+          {
+            out << "max_vals: ";
+            for (unsigned int i = 0; i < _max_vals.size() - 1; ++i)
+              out << " " << std::setprecision(boundsprecision) << _max_vals[i]
+                  << " " << delim;
+            out << " " << std::setprecision(boundsprecision)
+                << _max_vals[_max_vals.size() - 1] << std::endl;
+          }
+        else
+          throw InputConnectorInternalException(
+              "No max_val to write in bounds file!");
+      }
+
+    if (this->_scale_type == ZNORM)
+      {
+        if (_mean_vals.size() > 0)
+          {
+            out << "mean_vals: ";
+            for (unsigned int i = 0; i < _mean_vals.size() - 1; ++i)
+              out << " " << std::setprecision(boundsprecision) << _mean_vals[i]
+                  << " " << delim;
+            out << " " << std::setprecision(boundsprecision)
+                << _mean_vals[_mean_vals.size() - 1] << std::endl;
+          }
+        else
+          throw InputConnectorInternalException(
+              "No mean_val to write in bounds file!");
+
+        if (_variance_vals.size() > 0)
+          {
+            out << "variance_vals: ";
+            for (unsigned int i = 0; i < _variance_vals.size() - 1; ++i)
+              out << " " << std::setprecision(boundsprecision)
+                  << _variance_vals[i] << " " << delim;
+            out << " " << std::setprecision(boundsprecision)
+                << _variance_vals[_variance_vals.size() - 1] << std::endl;
+          }
+        else
+          throw InputConnectorInternalException(
+              "No variance_val to write in bounds file!");
+      }
+    out.close();
+    deserialize_bounds(true);
+  }
+
+  bool CSVInputFileConn::deserialize_bounds(const bool &force)
+  {
+    if (!force && _scale_type == MINMAX && !_min_vals.empty()
+        && !_max_vals.empty())
+      return true;
+    if (!force && _scale_type == ZNORM && !_mean_vals.empty()
+        && !_variance_vals.empty())
+      return true;
+    std::string boundsfname = _model_repo + "/" + _boundsfname;
+    if (!fileops::file_exists(boundsfname))
+      {
+        _logger->info("no bounds file {}", boundsfname);
+        return false;
+      }
+    std::ifstream in;
+    in.open(boundsfname);
+    if (!in.is_open())
+      {
+        _logger->warn("bounds file {} detected but cannot be opened",
+                      boundsfname);
+        return false;
+      }
+    std::string line;
+    std::vector<std::string> tokens;
+    int ncols = -1;
+    int nlabels = -1;
+
+    while (getline(in, line))
+      {
+        tokens = dd_utils::split(line, ':');
+        if (tokens.empty())
+          continue;
+        std::string key = tokens.at(0);
+
+        if (key == "ncols")
+          ncols = std::atoi(tokens.at(1).c_str());
+        else if (key == "nlabels")
+          nlabels = std::atoi(tokens.at(1).c_str());
+        else if (key == "label_pos")
+          {
+            _label_pos.clear();
+            for (int i = 0; i < nlabels; ++i)
+              _label_pos.push_back(std::atoi(tokens.at(i + 1).c_str()));
+          }
+        else if (key == "min_vals")
+          {
+            _min_vals.clear();
+            for (int i = 0; i < ncols; ++i)
+              _min_vals.push_back(std::atof(tokens.at(i + 1).c_str()));
+          }
+        else if (key == "max_vals")
+          {
+            _max_vals.clear();
+            for (int i = 0; i < ncols; ++i)
+              _max_vals.push_back(std::atof(tokens.at(i + 1).c_str()));
+          }
+        else if (key == "mean_vals")
+          {
+            _mean_vals.clear();
+            for (int i = 0; i < ncols; ++i)
+              _mean_vals.push_back(std::atof(tokens.at(i + 1).c_str()));
+          }
+        else if (key == "variance_vals")
+          {
+            _variance_vals.clear();
+            for (int i = 0; i < ncols; ++i)
+              _variance_vals.push_back(std::atof(tokens.at(i + 1).c_str()));
+          }
+      }
+    this->_logger->info("bounds loaded");
+    in.close();
+    return true;
+  }
+
 }
