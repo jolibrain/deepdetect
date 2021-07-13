@@ -74,12 +74,13 @@ TEST(tensorrtapi, service_predict)
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
               > 0.4);
   // ASSERT_TRUE(!fileops::remove_file(squeez_repo, "net_tensorRT.proto"));
-  // ASSERT_TRUE(!fileops::remove_file(squeez_repo, "TRTengine_bs48"));
+  // ASSERT_TRUE(!fileops::remove_file(squeez_repo, "TRTengine_archXX_bs48"));
   jstr = "{\"clear\":\"lib\"}";
   joutstr = japi.jrender(japi.service_delete(sname, jstr));
   ASSERT_EQ(ok_str, joutstr);
   ASSERT_TRUE(!fileops::file_exists(squeez_repo + "net_tensorRT.proto"));
-  ASSERT_TRUE(!fileops::file_exists(squeez_repo + "TRTengine_bs48"));
+  // XXX: can't infer name of engine without knowing CUDA architecture
+  // ASSERT_TRUE(!fileops::file_exists(squeez_repo + "TRTengine_archXX_bs48"));
 }
 
 TEST(tensorrtapi, service_predict_best)
@@ -120,7 +121,8 @@ TEST(tensorrtapi, service_predict_best)
   joutstr = japi.jrender(japi.service_delete(sname, jstr));
   ASSERT_EQ(ok_str, joutstr);
   ASSERT_TRUE(!fileops::file_exists(age_repo + "net_tensorRT.proto"));
-  ASSERT_TRUE(!fileops::file_exists(age_repo + "TRTengine_bs_bs1"));
+  // XXX: can't infer name of engine without knowing CUDA architecture
+  // ASSERT_TRUE(!fileops::file_exists(age_repo + "TRTengine_bs_bs1"));
 }
 
 TEST(tensorrtapi, service_predict_refinedet)
@@ -166,7 +168,8 @@ TEST(tensorrtapi, service_predict_refinedet)
   joutstr = japi.jrender(japi.service_delete(sname, jstr));
   ASSERT_EQ(ok_str, joutstr);
   ASSERT_TRUE(!fileops::file_exists(squeez_repo + "net_tensorRT.proto"));
-  ASSERT_TRUE(!fileops::file_exists(squeez_repo + "TRTengine_bs48"));
+  // XXX: can't infer name of engine without knowing CUDA architecture
+  // ASSERT_TRUE(!fileops::file_exists(squeez_repo + "TRTengine_bs48"));
 }
 
 TEST(tensorrtapi, service_predict_onnx)
@@ -245,5 +248,6 @@ TEST(tensorrtapi, service_predict_gan_onnx)
   jstr = "{\"clear\":\"lib\"}";
   joutstr = japi.jrender(japi.service_delete(sname, jstr));
   ASSERT_EQ(ok_str, joutstr);
-  ASSERT_TRUE(!fileops::file_exists(cyclegan_onnx_repo + "TRTengine_bs1"));
+  // XXX: can't infer name of engine without knowing CUDA architecture
+  // ASSERT_TRUE(!fileops::file_exists(cyclegan_onnx_repo + "TRTengine_bs1"));
 }
