@@ -981,74 +981,72 @@ if (USE_TENSORRT)
     list(INSERT TENSORRT_INC_DIR 0 ${CMAKE_BINARY_DIR}/tensorrt-oss/src/tensorrt-oss/include)
 endif()
 
-if (USE_HTTP_SERVER_OATPP)
-    set(OATPP_VERSION "1.2.5")
-    set(OATPP_SWAGGER_VERSION "1.2.5")
-    set(OATPP_ZLIB_VERSION "1.2.5")
-    ExternalProject_Add(
-        oatpp
-        PREFIX oatpp
-        URL https://github.com/oatpp/oatpp/archive/${OATPP_VERSION}.tar.gz
-        URL_HASH SHA256=36276e8b23e68ece1e6093c3f06fc80e3d42a5f4e47cdeef5e7e63f36eeddaad
-        BUILD_IN_SOURCE true
-        CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DOATPP_INSTALL=OFF -DOATPP_BUILD_TESTS=OFF
-        INSTALL_COMMAND ""
-    )
-    ExternalProject_Add(
-        oatpp-zlib
-        PREFIX oatpp-zlib
-        URL https://github.com/oatpp/oatpp-zlib/archive/${OATPP_ZLIB_VERSION}.tar.gz
-        URL_HASH SHA256=0009bc160605e804ae69e3627e2279cd27fedabe27fd16f552ea2af6a6f5433d
-        CMAKE_ARGS
-            -DCMAKE_BUILD_TYPE=Release
-            -DBUILD_SHARED_LIBS=OFF
-            -DOATPP_BUILD_TESTS=OFF
-            -DOATPP_INSTALL=OFF
-            -DOATPP_MODULES_LOCATION=CUSTOM
-            -DOATPP_DIR_SRC=${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src
-            -DOATPP_DIR_LIB=${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src
-        BUILD_IN_SOURCE true
-        INSTALL_COMMAND ""
-        DEPENDS oatpp
-    )
-    ExternalProject_Add(
-        oatpp-swagger
-        PREFIX oatpp-swagger
-        URL https://github.com/oatpp/oatpp-swagger/archive/${OATPP_SWAGGER_VERSION}.tar.gz
-        URL_HASH SHA256=56dd44f3b041fe432c27b52f741bb98f1ef97b3c6c4095dc8b9d76e840639ac8
-        BUILD_IN_SOURCE true
-        INSTALL_COMMAND ""
-        CMAKE_ARGS
-            -DCMAKE_BUILD_TYPE=Release
-            -DBUILD_SHARED_LIBS=OFF
-            -DOATPP_BUILD_TESTS=OFF
-            -DOATPP_INSTALL=OFF
-            -DOATPP_MODULES_LOCATION=CUSTOM
-            -DOATPP_DIR_SRC=${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src
-            -DOATPP_DIR_LIB=${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src
-        DEPENDS oatpp
-    )
+set(OATPP_VERSION "1.2.5")
+set(OATPP_SWAGGER_VERSION "1.2.5")
+set(OATPP_ZLIB_VERSION "1.2.5")
+ExternalProject_Add(
+    oatpp
+    PREFIX oatpp
+    URL https://github.com/oatpp/oatpp/archive/${OATPP_VERSION}.tar.gz
+    URL_HASH SHA256=36276e8b23e68ece1e6093c3f06fc80e3d42a5f4e47cdeef5e7e63f36eeddaad
+    BUILD_IN_SOURCE true
+    CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DOATPP_INSTALL=OFF -DOATPP_BUILD_TESTS=OFF
+    INSTALL_COMMAND ""
+)
+ExternalProject_Add(
+    oatpp-zlib
+    PREFIX oatpp-zlib
+    URL https://github.com/oatpp/oatpp-zlib/archive/${OATPP_ZLIB_VERSION}.tar.gz
+    URL_HASH SHA256=0009bc160605e804ae69e3627e2279cd27fedabe27fd16f552ea2af6a6f5433d
+    CMAKE_ARGS
+        -DCMAKE_BUILD_TYPE=Release
+        -DBUILD_SHARED_LIBS=OFF
+        -DOATPP_BUILD_TESTS=OFF
+        -DOATPP_INSTALL=OFF
+        -DOATPP_MODULES_LOCATION=CUSTOM
+        -DOATPP_DIR_SRC=${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src
+        -DOATPP_DIR_LIB=${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src
+    BUILD_IN_SOURCE true
+    INSTALL_COMMAND ""
+    DEPENDS oatpp
+)
+ExternalProject_Add(
+    oatpp-swagger
+    PREFIX oatpp-swagger
+    URL https://github.com/oatpp/oatpp-swagger/archive/${OATPP_SWAGGER_VERSION}.tar.gz
+    URL_HASH SHA256=56dd44f3b041fe432c27b52f741bb98f1ef97b3c6c4095dc8b9d76e840639ac8
+    BUILD_IN_SOURCE true
+    INSTALL_COMMAND ""
+    CMAKE_ARGS
+        -DCMAKE_BUILD_TYPE=Release
+        -DBUILD_SHARED_LIBS=OFF
+        -DOATPP_BUILD_TESTS=OFF
+        -DOATPP_INSTALL=OFF
+        -DOATPP_MODULES_LOCATION=CUSTOM
+        -DOATPP_DIR_SRC=${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src
+        -DOATPP_DIR_LIB=${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src
+    DEPENDS oatpp
+)
 
-    # FIXME(sileht): we should copy res outside build dir and dynamically looks at runtime at different places
-    add_definitions("-DOATPP_SWAGGER_RES_PATH=\"${CMAKE_BINARY_DIR}/oatpp-swagger/src/oatpp-swagger/res/\"")
+# FIXME(sileht): we should copy res outside build dir and dynamically looks at runtime at different places
+add_definitions("-DOATPP_SWAGGER_RES_PATH=\"${CMAKE_BINARY_DIR}/oatpp-swagger/src/oatpp-swagger/res/\"")
 
-    set(OATPP_LIB_DEPS
-        ${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src/liboatpp.a
-        ${CMAKE_BINARY_DIR}/oatpp-zlib/src/oatpp-zlib/src/liboatpp-zlib.a
-        ${CMAKE_BINARY_DIR}/oatpp-swagger/src/oatpp-swagger/src/liboatpp-swagger.a
-        z  # zlib
-    )
-    include_directories(
-        SYSTEM ${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src
-        SYSTEM ${CMAKE_BINARY_DIR}/oatpp-zlib/src/oatpp-zlib/src
-        SYSTEM ${CMAKE_BINARY_DIR}/oatpp-swagger/src/oatpp-swagger/src
-    )
-    set(OATPP_INCLUDE_DIRS
-        ${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src
-        ${CMAKE_BINARY_DIR}/oatpp-zlib/src/oatpp-zlib/src
-        ${CMAKE_BINARY_DIR}/oatpp-swagger/src/oatpp-swagger/src
-    )
-endif()
+set(OATPP_LIB_DEPS
+    ${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src/liboatpp.a
+    ${CMAKE_BINARY_DIR}/oatpp-zlib/src/oatpp-zlib/src/liboatpp-zlib.a
+    ${CMAKE_BINARY_DIR}/oatpp-swagger/src/oatpp-swagger/src/liboatpp-swagger.a
+    z  # zlib
+)
+include_directories(
+    SYSTEM ${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src
+    SYSTEM ${CMAKE_BINARY_DIR}/oatpp-zlib/src/oatpp-zlib/src
+    SYSTEM ${CMAKE_BINARY_DIR}/oatpp-swagger/src/oatpp-swagger/src
+)
+set(OATPP_INCLUDE_DIRS
+    ${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src
+    ${CMAKE_BINARY_DIR}/oatpp-zlib/src/oatpp-zlib/src
+    ${CMAKE_BINARY_DIR}/oatpp-swagger/src/oatpp-swagger/src
+)
 
 if (USE_HTTP_SERVER)
         ExternalProject_Add(
