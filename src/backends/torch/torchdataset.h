@@ -132,7 +132,13 @@ namespace dd
     /**
      * \brief reset dataset reading status : ie start new epoch
      */
-    void reset(bool shuffle = true, db::Mode dbmode = db::READ);
+    void reset(db::Mode dbmode = db::READ);
+
+    void reset(bool shuffle, db::Mode dbMode = db::READ)
+    {
+      _shuffle = shuffle;
+      reset(dbMode);
+    }
 
     /**
      * \brief setter for _shuffle
