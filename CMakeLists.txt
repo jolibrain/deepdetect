@@ -798,20 +798,25 @@ if (USE_TORCH)
 
   set(PYTORCH_VISION_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch_vision-complete)
   set(TORCHVISION_LOCATION "${CMAKE_BINARY_DIR}/pytorch_vision/src/pytorch_vision-install")
-  ExternalProject_Add(
-    pytorch_vision
-    PREFIX pytorch_vision
-    INSTALL_DIR ${CMAKE_BINARY_DIR}
-    GIT_REPOSITORY https://github.com/pytorch/vision.git
-    GIT_TAG ${PYTORCH_VISION_COMMIT}
-    GIT_CONFIG advice.detachedHead=false
-    PATCH_COMMAND "" #test -f ${PYTORCH_VISION_COMPLETE} && echo Skipping || git apply ${PYTORCH_VISION_PATCHES} && echo Applying ${PYTORCH_VISION_PATCHES}
-    CMAKE_ARGS -DWITH_CUDA=${PYTORCH_USE_CUDA} -DCMAKE_PREFIX_PATH=${TORCH_LOCATION} -DCMAKE_INSTALL_PREFIX=${TORCHVISION_LOCATION}
+
+  set(PYTORCH_VISION_FLAGS
+      -DWITH_CUDA=${PYTORCH_USE_CUDA} -DCMAKE_PREFIX_PATH=${TORCH_LOCATION} -DCMAKE_INSTALL_PREFIX=${TORCHVISION_LOCATION}
       -DCMAKE_INCLUDE_PATH=${PROTOBUF_INCLUDE_DIR} -DCMAKE_LIBRARY_PATH=${PROTOBUF_LIB_DIR}
       "-DCMAKE_CXX_FLAGS=-isystem ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/ -isystem ${SPDLOG_INCLUDE_DIR} -isystem ${PROTOBUF_INCLUDE_DIR}"
       "-DCMAKE_CUDA_FLAGS=-isystem ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/ -isystem ${SPDLOG_INCLUDE_DIR} -isystem ${PROTOBUF_INCLUDE_DIR}"
-      -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc
-    BUILD_COMMAND ""
+      -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc)
+
+  ExternalProject_Add(
+    pytorch_vision
+    PREFIX pytorch_vision
+    GIT_REPOSITORY https://github.com/pytorch/vision.git
+    GIT_TAG ${PYTORCH_VISION_COMMIT}
+    GIT_CONFIG advice.detachedHead=false
+    UPDATE_DISCONNECTED 1
+    PATCH_COMMAND "" #test -f ${PYTORCH_VISION_COMPLETE} && echo Skipping || git apply ${PYTORCH_VISION_PATCHES} && echo Applying ${PYTORCH_VISION_PATCHES}
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND sh ${CMAKE_SOURCE_DIR}/cmake/build_external.sh PYTORCH_VISION ${CMAKE_BINARY_DIR}/pytorch_vision ${PYTORCH_VISION_COMPLETE} src/pytorch_vision src/pytorch_vision-build ${N} "install" ${CMAKE_COMMAND} ${PYTORCH_VISION_FLAGS}
+    INSTALL_COMMAND ""
     DEPENDS protobuf pytorch
   )
 
@@ -965,9 +970,10 @@ if (USE_TENSORRT)
       GIT_REPOSITORY https://github.com/NVIDIA/TensorRT.git
       GIT_TAG ${TENSORRT_VERSION}
       GIT_CONFIG advice.detachedHead=false
+      UPDATE_DISCONNECTED 1
       PATCH_COMMAND sh ${CMAKE_SOURCE_DIR}/cmake/patch_external.sh TENSORRT ${CMAKE_BINARY_DIR}/tensorrt-oss/src/tensorrt-oss-stamp tensorrt-oss-download tensorrt-oss-patch ${CMAKE_BINARY_DIR}/tensorrt-oss/src/tensorrt-oss ${TRT_PATCHES}
       CONFIGURE_COMMAND ""
-      BUILD_COMMAND sh ${CMAKE_SOURCE_DIR}/cmake/build_external.sh TENSORRT ${CMAKE_BINARY_DIR}/tensorrt-oss ${TENSORRT_COMPLETE} src/tensorrt-oss src/tensorrt-oss-build ${N} ${CMAKE_COMMAND} ${TRT_FLAGS}
+      BUILD_COMMAND sh ${CMAKE_SOURCE_DIR}/cmake/build_external.sh TENSORRT ${CMAKE_BINARY_DIR}/tensorrt-oss ${TENSORRT_COMPLETE} src/tensorrt-oss src/tensorrt-oss-build ${N} "" ${CMAKE_COMMAND} ${TRT_FLAGS}
       INSTALL_COMMAND ""
     )
 
