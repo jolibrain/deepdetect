@@ -419,9 +419,19 @@ namespace dd
 
     if (predict_dto->parameters->mllib->gpuid->_ids.size() == 0)
       throw MLLibBadParamException("empty gpuid vector");
+    if (predict_dto->parameters->mllib->gpuid->_ids.size() > 1)
+      throw MLLibBadParamException(
+          "TensorRT: Multi-GPU inference is not applicable");
 
     _gpuid = predict_dto->parameters->mllib->gpuid->_ids[0];
     cudaSetDevice(_gpuid);
+
+    // detect architecture
+    cudaDeviceProp prop;
+    cudaGetDeviceProperties(&prop, _gpuid);
+    std::string arch = std::to_string(prop.major) + std::to_string(prop.minor);
+    if (_first_predict)
+      this->_logger->info("GPU {} architecture = compute_{}", _gpuid, arch);
 
     auto output_params = predict_dto->parameters->output;
 
@@ -500,7 +510,8 @@ namespace dd
                     + std::to_string(bs));
               }
             std::ifstream file(this->_mlmodel._repo + "/" + _engineFileName
-                                   + "_bs" + std::to_string(bs),
+                                   + "_arch" + arch + "_bs"
+                                   + std::to_string(bs),
                                std::ios::binary);
             if (file.good())
               {
@@ -517,8 +528,16 @@ namespace dd
                 _engine = std::shared_ptr<nvinfer1::ICudaEngine>(
                     runtime->deserializeCudaEngine(
                         trtModelStream.data(), trtModelStream.size(), nullptr),
-                    [=](nvinfer1::ICudaEngine *e) { e->destroy(); });
+                    [=](nvinfer1::ICudaEngine *e) {
+                      if (e != nullptr)
+                        e->destroy();
+                    });
                 runtime->destroy();
+
+                if (_engine == nullptr)
+                  throw MLLibInternalException(
+                      "Engine could not be deserialized");
+
                 engineRead = true;
               }
           }
@@ -549,7 +568,8 @@ namespace dd
             if (_writeEngine)
               {
                 std::ofstream p(this->_mlmodel._repo + "/" + _engineFileName
-                                    + "_bs" + std::to_string(_max_batch_size),
+                                    + "_arch" + arch + "_bs"
+                                    + std::to_string(_max_batch_size),
                                 std::ios::binary);
                 nvinfer1::IHostMemory *trtModelStream = _engine->serialize();
                 p.write(reinterpret_cast<const char *>(trtModelStream->data()),
@@ -566,7 +586,10 @@ namespace dd
 
         _context = std::shared_ptr<nvinfer1::IExecutionContext>(
             _engine->createExecutionContext(),
-            [=](nvinfer1::IExecutionContext *e) { e->destroy(); });
+            [=](nvinfer1::IExecutionContext *e) {
+              if (e != nullptr)
+                e->destroy();
+            });
         _TRTContextReady = true;
 
         try
