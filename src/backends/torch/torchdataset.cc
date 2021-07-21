@@ -217,25 +217,20 @@ namespace dd
       write_tensors_to_db(data, target);
   }
 
-  void TorchDataset::reset(bool shuffle, db::Mode dbmode)
+  void TorchDataset::reset(db::Mode dbmode)
   {
     std::lock_guard<std::mutex> guard(_mutex);
-    _shuffle = shuffle;
+    size_t data_size = 0;
+
     if (!_db)
       {
         if (!_lfiles.empty()) // list of files
           {
-            _indices = std::vector<int64_t>(_lfiles.size());
-            std::iota(std::begin(_indices), std::end(_indices), 0);
+            data_size = _lfiles.size();
           }
         else if (!_batches.empty())
           {
-            _indices = std::vector<int64_t>(_batches.size());
-            std::iota(std::begin(_indices), std::end(_indices), 0);
-          }
-        else
-          {
-            _indices.clear();
+            data_size = _batches.size();
           }
       }
     else // below db case
@@ -249,10 +244,11 @@ namespace dd
         if (!_dbCursor)
           _dbCursor = _dbData->NewCursor();
 
-        _indices = std::vector<int64_t>(_dbData->Count());
-        std::iota(std::begin(_indices), std::end(_indices), 0);
+        data_size = _dbData->Count();
       }
 
+    _indices.resize(data_size);
+    std::iota(std::rbegin(_indices), std::rend(_indices), 0);
     if (_shuffle)
       {
         std::shuffle(_indices.begin(), _indices.end(), _rng);

@@ -141,6 +141,34 @@ TEST(torchapi, service_predict)
   ASSERT_EQ(200, jd["status"]["code"]);
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   ASSERT_EQ(jd["body"]["predictions"][0]["classes"].Size(), 8);
+
+  // batch size == 2
+  jpredictstr
+      = "{\"service\":\"imgserv\",\"parameters\":{\"input\":{\"height\":224,"
+        "\"width\":224},\"mllib\":{\"net\":{\"test_batch_size\":2}},"
+        "\"output\":{\"best\":1}},\"data\":[\""
+        + incept_repo + "cat.jpg\",\"" + incept_repo + "dog.jpg\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  jd = JDoc();
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+  ASSERT_EQ(jd["body"]["predictions"].Size(), 2);
+  cl1 = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
+  std::string cl2
+      = jd["body"]["predictions"][1]["classes"][0]["cat"].GetString();
+  std::string cl_cat = jd["body"]["predictions"][0]["uri"].GetString()
+                               == incept_repo + "cat.jpg"
+                           ? cl1
+                           : cl2;
+  std::string cl_dog = jd["body"]["predictions"][1]["uri"].GetString()
+                               == incept_repo + "dog.jpg"
+                           ? cl2
+                           : cl1;
+  ASSERT_EQ(cl_cat, "n02123045 tabby, tabby cat");
+  ASSERT_EQ(cl_dog, "n02096051 Airedale, Airedale terrier");
 }
 
 TEST(torchapi, service_predict_native_bw)
