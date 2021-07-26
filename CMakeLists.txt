@@ -973,7 +973,7 @@ if (USE_TENSORRT)
       UPDATE_DISCONNECTED 1
       PATCH_COMMAND sh ${CMAKE_SOURCE_DIR}/cmake/patch_external.sh TENSORRT ${CMAKE_BINARY_DIR}/tensorrt-oss/src/tensorrt-oss-stamp tensorrt-oss-download tensorrt-oss-patch ${CMAKE_BINARY_DIR}/tensorrt-oss/src/tensorrt-oss ${TRT_PATCHES}
       CONFIGURE_COMMAND ""
-      BUILD_COMMAND sh ${CMAKE_SOURCE_DIR}/cmake/build_external.sh TENSORRT ${CMAKE_BINARY_DIR}/tensorrt-oss ${TENSORRT_COMPLETE} src/tensorrt-oss src/tensorrt-oss-build ${N} "" ${CMAKE_COMMAND} ${TRT_FLAGS}
+      BUILD_COMMAND sh ${CMAKE_SOURCE_DIR}/cmake/build_external.sh TENSORRT ${CMAKE_BINARY_DIR}/tensorrt-oss ${TENSORRT_COMPLETE} src/tensorrt-oss src/tensorrt-oss-build ${N} all ${CMAKE_COMMAND} ${TRT_FLAGS}
       INSTALL_COMMAND ""
     )
 
