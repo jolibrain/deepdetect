@@ -426,13 +426,6 @@ namespace dd
     _gpuid = predict_dto->parameters->mllib->gpuid->_ids[0];
     cudaSetDevice(_gpuid);
 
-    // detect architecture
-    cudaDeviceProp prop;
-    cudaGetDeviceProperties(&prop, _gpuid);
-    std::string arch = std::to_string(prop.major) + std::to_string(prop.minor);
-    if (_first_predict)
-      this->_logger->info("GPU {} architecture = compute_{}", _gpuid, arch);
-
     auto output_params = predict_dto->parameters->output;
 
     std::string out_blob = "prob";
@@ -442,6 +435,13 @@ namespace dd
         extract_layer
             = predict_dto->parameters->mllib->extract_layer->std_str();
       }
+
+    // detect architecture
+    cudaDeviceProp prop;
+    cudaGetDeviceProperties(&prop, _gpuid);
+    std::string arch = std::to_string(prop.major) + std::to_string(prop.minor);
+    if (_first_predict)
+      this->_logger->info("GPU {} architecture = compute_{}", _gpuid, arch);
 
     TInputConnectorStrategy inputc(this->_inputc);
 
@@ -907,8 +907,57 @@ namespace dd
                 else
                   rad.add("uri", std::to_string(idoffset + j));
                 rad.add("loss", 0.0);
-                std::vector<double> vals(_floatOut.begin(), _floatOut.end());
-                rad.add("vals", vals);
+                if (output_params->image)
+                  {
+                    size_t img_chan = size_t(_dims.d[1]);
+                    size_t img_width = size_t(_dims.d[2]),
+                           img_height = size_t(_dims.d[3]);
+                    auto cv_type = img_chan == 3 ? CV_8UC3 : CV_8UC1;
+                    cv::Mat vals_mat(img_width, img_height, cv_type);
+
+                    size_t chan_offset = img_width * img_height;
+
+                    for (size_t y = 0; y < img_height; ++y)
+                      {
+                        for (size_t x = 0; x < img_width; ++x)
+                          {
+                            if (cv_type == CV_8UC3)
+                              {
+                                vals_mat.at<cv::Vec3b>(y, x) = cv::Vec3b(
+                                    static_cast<int8_t>(
+                                        (_floatOut[2 * chan_offset
+                                                   + y * img_width + x]
+                                         + 1)
+                                        * 255.0 / 2.0),
+                                    static_cast<int8_t>(
+                                        (_floatOut[1 * chan_offset
+                                                   + y * img_width + x]
+                                         + 1)
+                                        * 255.0 / 2.0),
+                                    static_cast<int8_t>(
+                                        (_floatOut[0 * chan_offset
+                                                   + y * img_width + x]
+                                         + 1)
+                                        * 255.0 / 2.0));
+                              }
+                            else
+                              {
+                                vals_mat.at<int8_t>(y, x)
+                                    = static_cast<int8_t>(
+                                        (_floatOut[y * img_width + x] + 1)
+                                        * 255.0 / 2.0);
+                              }
+                          }
+                      }
+
+                    rad.add("vals", std::vector<cv::Mat>{ vals_mat });
+                  }
+                else
+                  {
+                    std::vector<double> vals(_floatOut.begin(),
+                                             _floatOut.end());
+                    rad.add("vals", vals);
+                  }
                 vrad.push_back(rad);
               }
           }

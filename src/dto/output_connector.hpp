@@ -45,6 +45,13 @@ namespace dd
       DTO_FIELD(Int32, best);
       DTO_FIELD(Int32, best_bbox) = -1;
 
+      DTO_FIELD_INFO(image)
+      {
+        info->description = "wether to convert result to a cv::Mat (e.g. for "
+                            "GANs or segmentation)";
+      };
+      DTO_FIELD(Boolean, image) = false;
+
       /* ncnn */
       DTO_FIELD(Int32, blank_label) = -1;
       DTO_FIELD(Boolean, index) = false;

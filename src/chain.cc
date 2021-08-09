@@ -131,7 +131,12 @@ namespace dd
                   {
                     APIData vout;
                     APIData vals;
-                    vals.add("vals", p.get("vals").get<std::vector<double>>());
+                    if (p.get("vals").is<std::vector<cv::Mat>>())
+                      vals.add("vals",
+                               p.get("vals").get<std::vector<cv::Mat>>());
+                    else
+                      vals.add("vals",
+                               p.get("vals").get<std::vector<double>>());
                     if (p.has("nns"))
                       vals.add("nns", p.getv("nns"));
                     vout.add(model_name, vals);
