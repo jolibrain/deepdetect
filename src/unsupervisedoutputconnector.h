@@ -70,6 +70,7 @@ namespace dd
     std::vector<double> _vals;
     std::vector<bool> _bvals;
     std::string _str;
+    std::vector<cv::Mat> _images;
 #ifdef USE_SIMSEARCH
     bool _indexed = false;
     std::multimap<double, std::string> _nns; /**< nearest neigbors. */
@@ -120,7 +121,12 @@ namespace dd
                   "unsupervised output needs mllib.extract_layer param");
               return;
             }
-          std::vector<double> vals = ad.get("vals").get<std::vector<double>>();
+
+          std::vector<double> vals;
+          if (ad.get("vals").is<std::vector<double>>())
+            {
+              vals = ad.get("vals").get<std::vector<double>>();
+            }
           if ((hit = _vres.find(uri)) == _vres.end())
             {
               _vres.insert(std::pair<std::string, int>(uri, _vvres.size()));
@@ -135,6 +141,11 @@ namespace dd
               else if (ad.has("meta_uri"))
                 meta_uri = ad.get("meta_uri").get<std::string>();
               _vvres.push_back(unsup_result(uri, vals, extra, meta_uri));
+              if (ad.get("vals").is<std::vector<cv::Mat>>())
+                {
+                  _vvres.back()._images
+                      = ad.get("vals").get<std::vector<cv::Mat>>();
+                }
             }
         }
     }
@@ -266,7 +277,9 @@ namespace dd
         {
           APIData adpred;
           adpred.add("uri", _vvres.at(i)._uri);
-          if (_bool_binarized)
+          if (_vvres.at(i)._images.size() != 0)
+            adpred.add("vals", _vvres.at(i)._images);
+          else if (_bool_binarized)
             adpred.add("vals", _vvres.at(i)._bvals);
           else if (_string_binarized)
             adpred.add("vals", _vvres.at(i)._str);
