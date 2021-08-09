@@ -25,16 +25,10 @@ import os
 import argparse
 import logging
 from typing import Dict, List
+from packaging import version
 
 import torch
-
-# Use dede torchvision until randperm bug is solved
-# see https://github.com/pytorch/vision/issues/3469
-import importlib
-spec = importlib.util.find_spec("torchvision")
-torch.ops.load_library(os.path.join(os.path.dirname(spec.origin), "_C.so"))
-sys.path = [os.path.join(os.path.dirname(__file__), "../../build/pytorch_vision/src/pytorch_vision/")] + sys.path
-
+import torchvision
 import torchvision.models as M
 
 parser = argparse.ArgumentParser(description="Trace image processing models from torchvision")
@@ -123,8 +117,9 @@ def get_detection_input():
     """
     return (
             torch.rand(1, 3, 224, 224),
-            torch.Tensor([1, 1, 200, 200]).unsqueeze(0).unsqueeze(0),
-            torch.full((1,1), 1).long()
+            torch.full((1,), 0).long(),
+            torch.Tensor([1, 1, 200, 200]).unsqueeze(0),
+            torch.full((1,), 1).long(),
     )
 
 model_classes = {
@@ -201,6 +196,9 @@ for mname in args.models:
     detection = mname in detection_model_classes
 
     if detection:
+        if "fasterrcnn" in mname and version.parse(torchvision.__version__) < version.parse("0.10.0"):
+            raise RuntimeError("Fasterrcnn needs torchvision >= 0.10.0 (current = %s)" % torchvision.__version__)
+
         if mname in ["fasterrcnn", "retinanet"]:
             if args.backbone and args.backbone in model_classes:
                 if "resnet" in args.backbone or "resnext" in args.backbone:
