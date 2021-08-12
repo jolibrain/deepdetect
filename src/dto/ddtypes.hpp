@@ -45,36 +45,6 @@ namespace dd
       }
     };
 
-    template <typename T> struct VVector
-    {
-      std::vector<T> _vec;
-
-      VVector() = default;
-
-      VVector(const std::vector<T> &vec) : _vec(vec)
-      {
-      }
-      VVector(std::vector<T> &&vec) : _vec(vec)
-      {
-      }
-      std::vector<T> &operator*()
-      {
-        return _vec;
-      }
-      const std::vector<T> &operator*() const
-      {
-        return _vec;
-      }
-      std::vector<T> *operator->()
-      {
-        return &_vec;
-      }
-      const std::vector<T> operator->() const
-      {
-        return &_vec;
-      }
-    };
-
     namespace __class
     {
       class GpuIdsClass;
@@ -86,7 +56,7 @@ namespace dd
         GpuIds;
     template <typename T>
     using DTOVector
-        = oatpp::data::mapping::type::Primitive<VVector<T>,
+        = oatpp::data::mapping::type::Primitive<std::vector<T>,
                                                 __class::DTOVectorClass<T>>;
 
     namespace __class
@@ -258,7 +228,7 @@ namespace dd
       stream->writeCharSimple('[');
       bool first = true;
 
-      for (auto val : vec->_vec)
+      for (auto val : *vec)
         {
           if (first)
             first = false;

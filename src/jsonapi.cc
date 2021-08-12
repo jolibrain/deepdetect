@@ -1171,7 +1171,10 @@ namespace dd
       }
     JDoc jpred = dd_ok_200();
     JVal jout(rapidjson::kObjectType);
-    out.toJVal(jpred, jout);
+    if (out.has("dto"))
+      oatpp_utils::dtoToJVal(out.get("dto").get<oatpp::Any>(), jpred, jout);
+    else
+      out.toJVal(jpred, jout);
     bool has_measure
         = ad_data.getobj("parameters").getobj("output").has("measure");
     JVal jhead(rapidjson::kObjectType);
@@ -1550,10 +1553,10 @@ namespace dd
       }
 
     // chained predictions
-    APIData out;
+    oatpp::Object<DTO::ChainBody> chain_body;
     try
       {
-        this->chain(ad_data, cname, out);
+        chain_body = this->chain(ad_data, cname);
       }
     catch (InputConnectorBadParamException &e)
       {
@@ -1600,7 +1603,7 @@ namespace dd
 
     JDoc jpred = dd_ok_200();
     JVal jout(rapidjson::kObjectType);
-    out.toJVal(jpred, jout);
+    oatpp_utils::dtoToJVal(chain_body, jpred, jout);
     JVal jhead(rapidjson::kObjectType);
     jhead.AddMember("method", "/chain", jpred.GetAllocator());
     jhead.AddMember("time", jout["time"], jpred.GetAllocator());

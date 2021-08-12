@@ -54,7 +54,7 @@ namespace dd
       std::vector<bool>, std::vector<cv::Mat>,
       std::vector<std::pair<int, int>>,
       mapbox::util::recursive_wrapper<APIData>,
-      mapbox::util::recursive_wrapper<std::vector<APIData>>>
+      mapbox::util::recursive_wrapper<std::vector<APIData>>, oatpp::Any>
       ad_variant_type;
 
   /**
@@ -125,6 +125,7 @@ namespace dd
     vout operator()(const std::vector<std::pair<int, int>> &vpi);
     vout operator()(const APIData &ad);
     vout operator()(const std::vector<APIData> &vad);
+    vout operator()(const oatpp::Any &dto);
 
     /*template<typename T>
       vout operator() (const T &t)
@@ -523,6 +524,11 @@ namespace dd
         _jd->AddMember(_jvkey, jov, _jd->GetAllocator());
       else
         _jv->AddMember(_jvkey, jov, _jd->GetAllocator());
+    }
+
+    void operator()(const oatpp::Any &dto)
+    {
+      (void)dto;
     }
 
     /*template<typename T>

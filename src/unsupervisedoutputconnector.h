@@ -22,20 +22,29 @@
 #ifndef UNSUPERVISEDOUTPUTCONNECTOR_H
 #define UNSUPERVISEDOUTPUTCONNECTOR_H
 
+#include "dto/predict_out.hpp"
+
 namespace dd
 {
 
-  class unsup_result
+  class UnsupervisedExtra
   {
   public:
-    unsup_result(const std::string &uri, const std::vector<double> &vals,
-                 const APIData &extra = APIData(),
-                 const std::string &meta_uri = "")
-        : _uri(uri), _vals(vals), _extra(extra), _meta_uri(meta_uri)
+    oatpp::Object<DTO::Dimensions> _imgsize;
+    oatpp::UnorderedFields<DTO::DTOVector<double>> _confidences;
+  };
+
+  class UnsupervisedResult
+  {
+  public:
+    UnsupervisedResult()
     {
     }
 
-    ~unsup_result()
+    UnsupervisedResult(const std::string &uri, const std::vector<double> &vals,
+                       const UnsupervisedExtra &extra = UnsupervisedExtra(),
+                       const std::string &meta_uri = "")
+        : _uri(uri), _vals(vals), _extra(extra), _meta_uri(meta_uri)
     {
     }
 
@@ -75,7 +84,10 @@ namespace dd
     bool _indexed = false;
     std::multimap<double, std::string> _nns; /**< nearest neigbors. */
 #endif
-    APIData _extra;        /**< other metadata, e.g. image size.*/
+    // XXX(louis): this looks unused
+    double _loss;
+    // other metadata, e.g. image size.
+    UnsupervisedExtra _extra;
     std::string _meta_uri; // used for indexing from a chain
   };
 
@@ -109,6 +121,11 @@ namespace dd
         _string_binarized = ad_out.get("string_binarized").get<bool>();
     }
 
+    void set_results(std::vector<UnsupervisedResult> &&results)
+    {
+      _vvres = std::move(results);
+    }
+
     void add_results(const std::vector<APIData> &vrad)
     {
       std::unordered_map<std::string, int>::iterator hit;
@@ -123,24 +140,44 @@ namespace dd
             }
 
           std::vector<double> vals;
-          if (ad.get("vals").is<std::vector<double>>())
+          if (!ad.get("vals").is<std::vector<cv::Mat>>())
             {
               vals = ad.get("vals").get<std::vector<double>>();
             }
           if ((hit = _vres.find(uri)) == _vres.end())
             {
               _vres.insert(std::pair<std::string, int>(uri, _vvres.size()));
-              APIData extra;
+              UnsupervisedExtra extra;
+
               if (ad.has("imgsize"))
-                extra.add("imgsize", ad.getobj("imgsize"));
+                {
+                  auto imgsize = ad.getobj("imgsize");
+                  extra._imgsize = DTO::Dimensions::createShared();
+                  extra._imgsize->width = imgsize.get("width").get<int>();
+                  extra._imgsize->height = imgsize.get("height").get<int>();
+                }
+
               if (ad.has("confidences"))
-                extra.add("confidences", ad.getobj("confidences"));
+                {
+                  extra._confidences = oatpp::UnorderedFields<
+                      DTO::DTOVector<double>>::createShared();
+                  auto confidences = ad.getobj("confidences");
+
+                  for (std::string key : confidences.list_keys())
+                    {
+                      auto vec
+                          = confidences.get(key).get<std::vector<double>>();
+                      extra._confidences->emplace(std::make_pair(
+                          key.c_str(),
+                          DTO::DTOVector<double>(std::move(vec))));
+                    }
+                }
               std::string meta_uri;
               if (ad.has("index_uri"))
                 meta_uri = ad.get("index_uri").get<std::string>();
               else if (ad.has("meta_uri"))
                 meta_uri = ad.get("meta_uri").get<std::string>();
-              _vvres.push_back(unsup_result(uri, vals, extra, meta_uri));
+              _vvres.push_back(UnsupervisedResult(uri, vals, extra, meta_uri));
               if (ad.get("vals").is<std::vector<cv::Mat>>())
                 {
                   _vvres.back()._images
@@ -271,55 +308,56 @@ namespace dd
 #ifndef USE_SIMSEARCH
       (void)indexed_uris;
 #endif
+      auto out_dto = DTO::PredictBody::createShared();
+
       std::unordered_set<std::string>::const_iterator hit;
-      std::vector<APIData> vpred;
       for (size_t i = 0; i < _vvres.size(); i++)
         {
-          APIData adpred;
-          adpred.add("uri", _vvres.at(i)._uri);
+          auto pred_dto = DTO::Prediction::createShared();
+          pred_dto->uri = _vvres.at(i)._uri.c_str();
           if (_vvres.at(i)._images.size() != 0)
-            adpred.add("vals", _vvres.at(i)._images);
-          else if (_bool_binarized)
-            adpred.add("vals", _vvres.at(i)._bvals);
+            pred_dto->_images = _vvres.at(i)._images;
+          if (_bool_binarized)
+            pred_dto->vals
+                = DTO::DTOVector<bool>(std::move(_vvres.at(i)._bvals));
           else if (_string_binarized)
-            adpred.add("vals", _vvres.at(i)._str);
+            pred_dto->vals = oatpp::String(_vvres.at(i)._str.c_str());
           else
-            adpred.add("vals", _vvres.at(i)._vals);
-          if (_vvres.at(i)._extra.has("imgsize"))
-            adpred.add("imgsize", _vvres.at(i)._extra.getobj("imgsize"));
-          if (_vvres.at(i)._extra.has("confidences"))
-            adpred.add("confidences",
-                       _vvres.at(i)._extra.getobj("confidences"));
+            pred_dto->vals
+                = DTO::DTOVector<double>(std::move(_vvres.at(i)._vals));
+          if (_vvres.at(i)._extra._imgsize)
+            pred_dto->imgsize = _vvres.at(i)._extra._imgsize;
+          if (_vvres.at(i)._extra._confidences != nullptr)
+            pred_dto->confidences = _vvres.at(i)._extra._confidences;
           if (i == _vvres.size() - 1)
-            adpred.add("last", true);
+            pred_dto->last = true;
 #ifdef USE_SIMSEARCH
           if (!indexed_uris.empty()
               && (hit = indexed_uris.find(_vvres.at(i)._uri))
                      != indexed_uris.end())
-            adpred.add("indexed", true);
+            pred_dto->indexed = true;
           if (!_vvres.at(i)._nns.empty())
             {
-              std::vector<APIData> ad_nns;
+              pred_dto->nns = oatpp::Vector<oatpp::Any>::createShared();
               auto mit = _vvres.at(i)._nns.begin();
               while (mit != _vvres.at(i)._nns.end())
                 {
-                  APIData ad_nn;
-                  ad_nn.add("uri", (*mit).second);
-                  ad_nn.add("dist", (*mit).first);
-                  ad_nns.push_back(ad_nn);
+                  auto nn = oatpp::UnorderedFields<oatpp::Any>::createShared();
+                  nn->emplace("uri", oatpp::String((*mit).second.c_str()));
+                  nn->emplace("dist", oatpp::Float64((*mit).first));
+                  pred_dto->nns->push_back(nn);
                   ++mit;
                 }
-              adpred.add("nns", ad_nns);
             }
 #endif
-          vpred.push_back(adpred);
+          out_dto->predictions->push_back(pred_dto);
         }
-      out.add("predictions", vpred);
+      out.add("dto", out_dto);
     }
 
     std::unordered_map<std::string, int>
-        _vres;                        /**< batch of results index, per uri. */
-    std::vector<unsup_result> _vvres; /**< ordered results, per uri. */
+        _vres; /**< batch of results index, per uri. */
+    std::vector<UnsupervisedResult> _vvres; /**< ordered results, per uri. */
     bool _binarized = false; /**< binary representation of output values. */
     bool _bool_binarized
         = false; /**< boolean binary representation of output values. */
@@ -329,7 +367,6 @@ namespace dd
     int _search_nn = 10; /**< default nearest neighbors per search. */
 #endif
   };
-
 }
 
 #endif
