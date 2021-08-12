@@ -347,7 +347,7 @@ if (USE_TORCH)
     "https://www.deepdetect.com/dd/examples/torch/resnet50_training_torch_small.tar.gz"
     "examples/torch"
     "resnet50_training_torch_small.tar.gz"
-    "resnet50_training_torch"
+    "resnet50_training_torch_small"
     )
   DOWNLOAD_DATASET(
     "Torch native Resnet 50 model"
