@@ -703,6 +703,7 @@ namespace dd
 
     int idoffset = 0;
     std::vector<APIData> vrad;
+    std::vector<UnsupervisedResult> unsup_results;
 
     cudaSetDevice(_gpuid);
     cudaStream_t cstream;
@@ -890,12 +891,13 @@ namespace dd
           {
             for (int j = 0; j < num_processed; j++)
               {
-                APIData rad;
+                UnsupervisedResult result;
                 if (!inputc._ids.empty())
-                  rad.add("uri", inputc._ids.at(idoffset + j));
+                  result._uri = inputc._ids.at(idoffset + j);
                 else
-                  rad.add("uri", std::to_string(idoffset + j));
-                rad.add("loss", 0.0);
+                  result._uri = std::to_string(idoffset + j);
+                result._loss = 0.0;
+
                 if (output_params->image)
                   {
                     size_t img_chan = size_t(_dims.d[1]);
@@ -939,15 +941,14 @@ namespace dd
                           }
                       }
 
-                    rad.add("vals", std::vector<cv::Mat>{ vals_mat });
+                    result._images.push_back(vals_mat);
                   }
                 else
                   {
-                    std::vector<double> vals(_floatOut.begin(),
-                                             _floatOut.end());
-                    rad.add("vals", vals);
+                    result._vals = std::vector<double>(_floatOut.begin(),
+                                                       _floatOut.end());
                   }
-                vrad.push_back(rad);
+                unsup_results.push_back(std::move(result));
               }
           }
         else // classification / regression
@@ -1000,7 +1001,7 @@ namespace dd
     else
       {
         UnsupervisedOutput unsupo;
-        unsupo.add_results(vrad);
+        unsupo.set_results(std::move(unsup_results));
         unsupo.finalize(ad.getobj("parameters").getobj("output"),
                         out, // TODO: to output_params DTO
                         static_cast<MLModel *>(&this->_mlmodel));

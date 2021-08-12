@@ -284,8 +284,11 @@ TEST(chain, chain_trt_detection_gan)
   joutstr = japi.jrender(japi.service_chain("chain", jchainstr));
   JDoc jd;
   // very long outstr is truncated
-  std::cout << "joutstr=" << joutstr.substr(0, 500) << " ... "
-            << joutstr.substr(joutstr.size() - 500) << std::endl;
+  std::cout << "joutstr=" << joutstr.substr(0, 500)
+            << (joutstr.size() > 500
+                    ? " ... " + joutstr.substr(joutstr.size() - 500)
+                    : "")
+            << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);

@@ -22,8 +22,10 @@
 #ifndef CHAIN_H
 #define CHAIN_H
 
-#include "apidata.h"
 #include <iostream>
+
+#include "apidata.h"
+#include "dto/chain.hpp"
 
 namespace dd
 {
@@ -91,7 +93,7 @@ namespace dd
         return std::string();
     }
 
-    APIData nested_chain_output();
+    oatpp::Object<DTO::ChainBody> nested_chain_output();
 
     std::unordered_map<std::string, APIData> _model_data;
     std::unordered_map<std::string, APIData> _action_data;
@@ -99,76 +101,6 @@ namespace dd
     // std::string _first_sname;
     std::string _first_id;
   };
-
-  /**
-   * \brief building the chained model nested output
-   */
-  class visitor_nested
-  {
-  public:
-    visitor_nested(std::unordered_multimap<std::string, APIData> *r)
-        : _replacements(r)
-    {
-    }
-    ~visitor_nested()
-    {
-    }
-
-    void operator()(const std::string &str)
-    {
-      (void)str;
-    }
-    void operator()(const double &d)
-    {
-      (void)d;
-    }
-    void operator()(const int &i)
-    {
-      (void)i;
-    }
-    void operator()(const long int &i)
-    {
-      (void)i;
-    }
-    void operator()(const long long int &i)
-    {
-      (void)i;
-    }
-    void operator()(const bool &b)
-    {
-      (void)b;
-    }
-    void operator()(const std::vector<double> &vd)
-    {
-      (void)vd;
-    }
-    void operator()(const std::vector<int> &vd)
-    {
-      (void)vd;
-    }
-    void operator()(const std::vector<bool> &vd)
-    {
-      (void)vd;
-    }
-    void operator()(const std::vector<std::string> &vs)
-    {
-      (void)vs;
-    }
-    void operator()(const std::vector<cv::Mat> &vcv)
-    {
-      (void)vcv;
-    }
-    void operator()(const std::vector<std::pair<int, int>> &vpi)
-    {
-      (void)vpi;
-    }
-    void operator()(const APIData &ad);
-    void operator()(const std::vector<APIData> &vad);
-
-    std::unordered_multimap<std::string, APIData> *_replacements = nullptr;
-    std::vector<APIData> _vad;
-  };
-
 }
 
 #endif

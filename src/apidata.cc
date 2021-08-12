@@ -106,6 +106,12 @@ namespace dd
     return vout(vad);
   }
 
+  vout visitor_vad::operator()(const oatpp::Any &dto)
+  {
+    (void)dto;
+    return vout();
+  }
+
   /*- APIData -*/
   void APIData::fromRapidJson(const JVal &jval)
   {

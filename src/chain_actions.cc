@@ -165,8 +165,7 @@ namespace dd
             // adding bbox id
             std::string bbox_id = genid(uri, "bbox" + std::to_string(j));
             bbox_ids.push_back(bbox_id);
-            APIData ad_cid;
-            ad_cls.at(j).add(bbox_id, ad_cid);
+            ad_cls.at(j).add("class_id", bbox_id);
             cad_cls.push_back(ad_cls.at(j));
 
             // save crops if requested

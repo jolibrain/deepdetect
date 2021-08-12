@@ -653,7 +653,15 @@ namespace dd
       double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                            tstop - tstart)
                            .count();
-      ad_out.add("time", elapsed);
+      if (ad_out.has("dto"))
+        {
+          auto pred_dto = ad_out.get("dto")
+                              .get<oatpp::Any>()
+                              .retrieve<oatpp::Object<DTO::PredictBody>>();
+          pred_dto->time = elapsed;
+        }
+      else
+        ad_out.add("time", elapsed);
       return status;
     }
 
@@ -730,48 +738,98 @@ namespace dd
           throw;
         }
 
-      // check on results
-      std::vector<APIData> vad = pred_out.getv("predictions");
-      if (vad.empty())
-        {
-          chain_logger->info("[" + std::to_string(chain_pos)
-                             + "]  no predictions");
-          return 1;
-        }
-
       int classes_size = 0;
       int vals_size = 0;
       std::vector<std::string> nmeta_uris;
       std::vector<std::string> nindex_uris;
-      for (size_t j = 0; j < vad.size(); j++)
+
+      if (pred_out.has("dto"))
         {
-          size_t npred_classes = std::max(vad.at(j).getv("classes").size(),
-                                          vad.at(j).getv("vector").size());
-          classes_size += npred_classes;
-          vals_size += static_cast<int>(vad.at(j).has("vals"));
-          if (chain_pos == 0) // first call's response contains uniformized
-                              // top level URIs.
+          auto dto = pred_out.get("dto")
+                         .get<oatpp::Any>()
+                         .retrieve<oatpp::Object<DTO::PredictBody>>();
+
+          auto predictions = dto->predictions;
+          if (predictions->empty())
             {
-              for (size_t k = 0; k < npred_classes; k++)
-                {
-                  nmeta_uris.push_back(
-                      vad.at(j).get("uri").get<std::string>());
-                  if (vad.at(j).has("index_uri"))
-                    nindex_uris.push_back(
-                        vad.at(j).get("index_uri").get<std::string>());
-                }
+              chain_logger->info("[" + std::to_string(chain_pos)
+                                 + "]  no predictions");
+              return 1;
             }
-          else // update meta uris to batch size at the current level of
-               // the chain
+
+          for (size_t j = 0; j < predictions->size(); j++)
             {
-              for (size_t k = 0; k < npred_classes; k++)
+              auto pred = predictions->at(j);
+              // TODO add vectors
+              size_t npred_classes
+                  = pred->classes != nullptr ? pred->classes->size() : 0;
+              classes_size += npred_classes;
+              vals_size += static_cast<int>(pred->vals != nullptr);
+
+              if (chain_pos == 0) // first call's response contains uniformized
+                                  // top level URIs.
                 {
-                  nmeta_uris.push_back(meta_uris.at(j));
-                  if (!index_uris.empty())
-                    nindex_uris.push_back(index_uris.at(j));
+                  for (size_t k = 0; k < npred_classes; k++)
+                    {
+                      nmeta_uris.push_back(pred->uri->std_str());
+                      if (pred->index_uri)
+                        nindex_uris.push_back(pred->index_uri->std_str());
+                    }
+                }
+              else // update meta uris to batch size at the current level
+                   // of the chain
+                {
+                  for (size_t k = 0; k < npred_classes; k++)
+                    {
+                      nmeta_uris.push_back(meta_uris.at(j));
+                      if (!index_uris.empty())
+                        nindex_uris.push_back(index_uris.at(j));
+                    }
                 }
             }
         }
+      else
+        {
+          // check on results
+          std::vector<APIData> vad = pred_out.getv("predictions");
+          if (vad.empty())
+            {
+              chain_logger->info("[" + std::to_string(chain_pos)
+                                 + "]  no predictions");
+              return 1;
+            }
+
+          for (size_t j = 0; j < vad.size(); j++)
+            {
+              size_t npred_classes = std::max(vad.at(j).getv("classes").size(),
+                                              vad.at(j).getv("vector").size());
+              classes_size += npred_classes;
+              vals_size += static_cast<int>(vad.at(j).has("vals"));
+              if (chain_pos == 0) // first call's response contains
+                                  // uniformized top level URIs.
+                {
+                  for (size_t k = 0; k < npred_classes; k++)
+                    {
+                      nmeta_uris.push_back(
+                          vad.at(j).get("uri").get<std::string>());
+                      if (vad.at(j).has("index_uri"))
+                        nindex_uris.push_back(
+                            vad.at(j).get("index_uri").get<std::string>());
+                    }
+                }
+              else // update meta uris to batch size at the current level of
+                   // the chain
+                {
+                  for (size_t k = 0; k < npred_classes; k++)
+                    {
+                      nmeta_uris.push_back(meta_uris.at(j));
+                      if (!index_uris.empty())
+                        nindex_uris.push_back(index_uris.at(j));
+                    }
+                }
+            }
+        }
+
       meta_uris = nmeta_uris;
       index_uris = nindex_uris;
 
@@ -783,6 +841,7 @@ namespace dd
                                pred_out); // store empty model output
           return 1;
         }
+
       ++npredicts;
 
       // store model output
@@ -845,8 +904,10 @@ namespace dd
       return 0;
     }
 
-    int chain(const APIData &ad, const std::string &cname, APIData &out)
+    oatpp::Object<DTO::ChainBody> chain(const APIData &ad,
+                                        const std::string &cname)
     {
+      oatpp::Object<DTO::ChainBody> chain_dto;
       try
         {
           auto chain_logger = DD_SPDLOG_LOGGER(cname);
@@ -931,20 +992,30 @@ namespace dd
             }
 
           // producing a nested output
-          APIData nested_out;
           if (npredicts > 1)
-            nested_out = cdata.nested_chain_output();
+            chain_dto = cdata.nested_chain_output();
           else
-            nested_out = cdata.get_model_data(cdata._first_id);
+            {
+              // XXX(louis): fix this when chains will be entirely DTO (needs
+              // supervised output connector to DTO)
+              auto first_model_dto = cdata.get_model_data(cdata._first_id)
+                                         .createSharedDTO<DTO::PredictBody>();
+              chain_dto = DTO::ChainBody::createShared();
 
-          out = nested_out;
+              for (auto &pred : *first_model_dto->predictions)
+                {
+                  chain_dto->predictions->push_back(
+                      oatpp_utils::dtoToUFields(pred));
+                }
+            }
+
           std::chrono::time_point<std::chrono::system_clock> tstop
               = std::chrono::system_clock::now();
           double elapsed
               = std::chrono::duration_cast<std::chrono::milliseconds>(tstop
                                                                       - tstart)
                     .count();
-          out.add("time", elapsed);
+          chain_dto->time = elapsed;
         }
       catch (...)
         {
@@ -953,7 +1024,7 @@ namespace dd
         }
       spdlog::drop(cname);
 
-      return 0;
+      return chain_dto;
     }
 
     std::unordered_map<std::string, mls_variant_type>

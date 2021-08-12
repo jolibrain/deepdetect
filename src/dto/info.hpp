@@ -26,6 +26,8 @@
 #include "oatpp/core/Types.hpp"
 #include "oatpp/core/macro/codegen.hpp"
 
+#include "common.hpp"
+
 namespace dd
 {
   namespace DTO
@@ -62,15 +64,6 @@ namespace dd
     class InfoBody : public oatpp::DTO
     {
       DTO_INIT(InfoBody, DTO /* extends */)
-    };
-
-    class Status : public oatpp::DTO
-    {
-      DTO_INIT(Status, DTO /* extends */)
-      DTO_FIELD(Int32, code);
-      DTO_FIELD(String, msg);
-      DTO_FIELD(Int32, dd_code);
-      DTO_FIELD(String, dd_msg);
     };
 
     class InfoResponse : public oatpp::DTO

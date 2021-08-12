@@ -24,6 +24,8 @@
 
 #include "oatpp/parser/json/mapping/ObjectMapper.hpp"
 
+#include "dd_types.h"
+
 namespace dd
 {
   namespace oatpp_utils
@@ -32,6 +34,15 @@ namespace dd
      * methods for custom types. */
     std::shared_ptr<oatpp::parser::json::mapping::ObjectMapper>
     createDDMapper();
+
+    /** Convert a DTO into dynamic structure */
+    oatpp::UnorderedFields<oatpp::Any>
+    dtoToUFields(const oatpp::Void &polymorph);
+
+    void dtoToJDoc(const oatpp::Void &polymorph, JDoc &jdoc,
+                   bool ignore_null = true);
+    void dtoToJVal(const oatpp::Void &polymorph, JDoc &jdoc, JVal &jval,
+                   bool ignore_null = true);
   }
 }
 
