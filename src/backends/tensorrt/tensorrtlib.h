@@ -51,7 +51,8 @@ namespace dd
     {
     }
 
-    void log(nvinfer1::ILogger::Severity severity, const char *msg) override
+    void log(nvinfer1::ILogger::Severity severity,
+             const char *msg) noexcept override
     {
       switch (severity)
         {
@@ -126,6 +127,7 @@ namespace dd
     std::shared_ptr<nvinfer1::IBuilder> _builder = nullptr;
     std::shared_ptr<nvinfer1::IExecutionContext> _context = nullptr;
     std::shared_ptr<nvinfer1::IBuilderConfig> _builderc = nullptr;
+    std::shared_ptr<nvinfer1::IRuntime> _runtime = nullptr;
 
     bool _bbox = false;
     bool _ctc = false;
