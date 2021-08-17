@@ -155,6 +155,20 @@ if (USE_CAFFE)
     "voc0712_dd.tar.gz"
     "voc"
   )
+  DOWNLOAD_DATASET(
+    "word detection test model"
+    "https://www.deepdetect.com/dd/examples/caffe/ocr/word_detect_v2_test.tar.gz"
+    "examples/caffe/word_detect_v2"
+    "word_detect_v2_test.tar.gz"
+    "word_detect_v2"
+  )
+  DOWNLOAD_DATASET(
+    "ocr test model"
+    "https://deepdetect.com/models/init/desktop/images/ocr/multiword_ocr.tar.gz"
+    "examples/caffe/multiword_ocr"
+    "multiword_ocr.tar.gz"
+    "multiword_ocr"
+  )
 endif()
 
 DOWNLOAD_DATASET(
@@ -390,6 +404,10 @@ if (USE_TORCH)
     REGISTER_TEST_MULTIGPU(ut_torchapi ut-torchapi.cc)
   endif()
   REGISTER_TEST(ut_graph ut-graph.cc)
+endif()
+
+if(USE_TORCH OR USE_CAFFE OR USE_TENSORRT)
+  REGISTER_TEST(ut_chain ut-chain.cc)
 endif()
 
 if (USE_CAFFE2)
