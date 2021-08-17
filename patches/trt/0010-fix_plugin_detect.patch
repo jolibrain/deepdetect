@@ -1,0 +1,13 @@
+diff --git a/parsers/onnx/CMakeLists.txt b/parsers/onnx/CMakeLists.txt
+index 4ea7fe6..2c2ad82 100644
+--- a/parsers/onnx/CMakeLists.txt
++++ b/parsers/onnx/CMakeLists.txt
+@@ -99,7 +99,7 @@ find_library(TENSORRT_LIBRARY_INFER nvinfer
+ find_library(TENSORRT_LIBRARY_INFER_PLUGIN nvinfer_plugin
+   HINTS  ${TENSORRT_ROOT} ${TENSORRT_BUILD} ${CUDA_TOOLKIT_ROOT_DIR}
+   PATH_SUFFIXES lib lib64 lib/x64)
+-set(TENSORRT_LIBRARY ${TENSORRT_LIBRARY_INFER} ${TENSORRT_LIBRARY_INFER_PLUGIN})
++set(TENSORRT_LIBRARY nvinfer nvinfer_plugin)
+ MESSAGE(STATUS "Find TensorRT libs at ${TENSORRT_LIBRARY}")
+ find_package_handle_standard_args(
+   TENSORRT DEFAULT_MSG TENSORRT_INCLUDE_DIR TENSORRT_LIBRARY)

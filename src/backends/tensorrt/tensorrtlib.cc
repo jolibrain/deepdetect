@@ -109,6 +109,7 @@ namespace dd
     _floatOut = tl._floatOut;
     _keepCount = tl._keepCount;
     _dims = tl._dims;
+    _runtime = tl._runtime;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
@@ -125,6 +126,8 @@ namespace dd
   {
     trtLogger.setLogger(this->_logger);
     initLibNvInferPlugins(&trtLogger, "");
+    _runtime = std::shared_ptr<nvinfer1::IRuntime>(
+        nvinfer1::createInferRuntime(trtLogger));
 
     if (ad.has("tensorRTEngineFile"))
       _engineFileName = ad.get("tensorRTEngineFile").get<std::string>();
@@ -168,6 +171,15 @@ namespace dd
           _datatype = nvinfer1::DataType::kINT8;
       }
 
+    if (this->_mlmodel.is_caffe_source() && isRefinedet(this->_mlmodel._def))
+      {
+        if (_datatype != nvinfer1::DataType::kFLOAT)
+          {
+            this->_logger->warn("refinedet detected : forcing fp32");
+            _datatype = nvinfer1::DataType::kFLOAT;
+          }
+      }
+
     if (ad.has("gpuid"))
       _gpuid = ad.get("gpuid").get<int>();
     cudaSetDevice(_gpuid);
@@ -182,11 +194,9 @@ namespace dd
       }
 
     _builder = std::shared_ptr<nvinfer1::IBuilder>(
-        nvinfer1::createInferBuilder(trtLogger),
-        [=](nvinfer1::IBuilder *b) { b->destroy(); });
+        nvinfer1::createInferBuilder(trtLogger));
     _builderc = std::shared_ptr<nvinfer1::IBuilderConfig>(
-        _builder->createBuilderConfig(),
-        [=](nvinfer1::IBuilderConfig *b) { b->destroy(); });
+        _builder->createBuilderConfig());
 
     if (_dla != -1)
       {
@@ -354,14 +364,10 @@ namespace dd
       }
     // force output to be float32
     outl->setPrecision(nvinfer1::DataType::kFLOAT);
-    nvinfer1::ICudaEngine *engine
-        = _builder->buildEngineWithConfig(*network, *_builderc);
+    nvinfer1::IHostMemory *n
+        = _builder->buildSerializedNetwork(*network, *_builderc);
 
-    network->destroy();
-    if (caffeParser != nullptr)
-      caffeParser->destroy();
-
-    return engine;
+    return _runtime->deserializeCudaEngine(n->data(), n->size());
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
@@ -396,14 +402,10 @@ namespace dd
     _builder->setMaxBatchSize(_max_batch_size);
     _builderc->setMaxWorkspaceSize(_max_workspace_size);
 
-    nvinfer1::ICudaEngine *engine
-        = _builder->buildEngineWithConfig(*network, *_builderc);
+    nvinfer1::IHostMemory *n
+        = _builder->buildSerializedNetwork(*network, *_builderc);
 
-    network->destroy();
-    if (onnxParser != nullptr)
-      onnxParser->destroy();
-
-    return engine;
+    return _runtime->deserializeCudaEngine(n->data(), n->size());
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
@@ -523,16 +525,9 @@ namespace dd
                 trtModelStream.resize(size);
                 file.read(trtModelStream.data(), size);
                 file.close();
-                nvinfer1::IRuntime *runtime
-                    = nvinfer1::createInferRuntime(trtLogger);
                 _engine = std::shared_ptr<nvinfer1::ICudaEngine>(
-                    runtime->deserializeCudaEngine(
-                        trtModelStream.data(), trtModelStream.size(), nullptr),
-                    [=](nvinfer1::ICudaEngine *e) {
-                      if (e != nullptr)
-                        e->destroy();
-                    });
-                runtime->destroy();
+                    _runtime->deserializeCudaEngine(trtModelStream.data(),
+                                                    trtModelStream.size()));
 
                 if (_engine == nullptr)
                   throw MLLibInternalException(
@@ -562,8 +557,7 @@ namespace dd
                     "No model to parse for conversion to TensorRT");
               }
 
-            _engine = std::shared_ptr<nvinfer1::ICudaEngine>(
-                le, [=](nvinfer1::ICudaEngine *e) { e->destroy(); });
+            _engine = std::shared_ptr<nvinfer1::ICudaEngine>(le);
 
             if (_writeEngine)
               {
@@ -574,7 +568,6 @@ namespace dd
                 nvinfer1::IHostMemory *trtModelStream = _engine->serialize();
                 p.write(reinterpret_cast<const char *>(trtModelStream->data()),
                         trtModelStream->size());
-                trtModelStream->destroy();
               }
           }
         else
@@ -585,11 +578,7 @@ namespace dd
           }
 
         _context = std::shared_ptr<nvinfer1::IExecutionContext>(
-            _engine->createExecutionContext(),
-            [=](nvinfer1::IExecutionContext *e) {
-              if (e != nullptr)
-                e->destroy();
-            });
+            _engine->createExecutionContext());
         _TRTContextReady = true;
 
         try

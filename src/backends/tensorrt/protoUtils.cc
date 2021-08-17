@@ -107,6 +107,22 @@ namespace dd
     return -1;
   }
 
+  bool isRefinedet(const std::string source)
+  {
+    caffe::NetParameter net;
+    if (!TRTReadProtoFromTextFile(source.c_str(), &net))
+      return -1;
+    int nlayers = net.layer_size();
+
+    for (int i = nlayers - 1; i >= 0; --i)
+      {
+        caffe::LayerParameter lparam = net.layer(i);
+        if (lparam.type() == "DetectionOutput" && lparam.bottom_size() > 3)
+          return true;
+      }
+    return false;
+  }
+
   int fixProto(const std::string dest, const std::string source)
   {
     caffe::NetParameter source_net;

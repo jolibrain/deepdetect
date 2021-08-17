@@ -918,26 +918,19 @@ if (USE_TENSORRT)
     set(TENSORRT_INC_DIR /usr/include/x86_64-linux-gnu)
   endif()
 
-  if (NOT EXISTS "${TRTTESTDIR}/libnvinfer.so.7")
-    message(FATAL_ERROR "Could not find TensorRT ${TENSORRT_LIB_DIR}/libnvinfer.so.7, please provide tensorRT location as TENSORRT_DIR or (TENSORRT_LIB_DIR _and_ TENSORRT_INC_DIR)")
+  if (NOT EXISTS "${TRTTESTDIR}/libnvinfer.so.8")
+    message(FATAL_ERROR "Could not find TensorRT ${TENSORRT_LIB_DIR}/libnvinfer.so.8, please provide tensorRT location as TENSORRT_DIR or (TENSORRT_LIB_DIR _and_ TENSORRT_INC_DIR)")
   else()
     message(STATUS "Found TensorRT libraries : ${TRTTESTDIR}/libnvinfer.so")
   endif()
 
     set(TENSORRT_LIB_DIR ${CMAKE_BINARY_DIR}/tensorrt-oss/bin/ ${TENSORRT_LIB_DIR})
-	set(TENSORRT_LIBS /usr/lib/x86_64-linux-gnu/libnvinfer.so.7 nvcaffeparser nvinfer_plugin nvonnxparser )
+	set(TENSORRT_LIBS nvinfer nvcaffeparser nvinfer_plugin nvonnxparser )
 
     if (NOT TENSORRT_VERSION)
-        if (EXISTS "${TRTTESTDIR}/libnvinfer.so.7.2.3")
-            set(TENSORRT_VERSION 21.04)
-            message(STATUS "Found TensorRT libraries version 7.2.3")
-        # TODO(sileht): Update trt-oss patches for 7.2.2
-        # elseif (EXISTS "${TRTTESTDIR}/libnvinfer.so.7.2.2")
-        #     set(TENSORRT_VERSION 20.12)
-        #     message(STATUS "Found TensorRT libraries version 7.2.2")
-        elseif (EXISTS "${TRTTESTDIR}/libnvinfer.so.7")
-            set(TENSORRT_VERSION 21.04)
-            message(WARNING "No supported TensorRT version found assuming 21.04/7.2.3")
+        if (EXISTS "${TRTTESTDIR}/libnvinfer.so.8")
+            set(TENSORRT_VERSION 21.08)
+            message(STATUS "Found TensorRT libraries version 8.x")
         else()
             message(FATAL_ERROR "No supported TensorRT version found")
         endif()
@@ -958,9 +951,9 @@ if (USE_TENSORRT)
 	set(TRT_PATCHES
       ${TRT_PATCHES_PATH}/0001-support-for-refinedet.patch
       ${TRT_PATCHES_PATH}/0003-c++14.patch
-      ${TRT_PATCHES_PATH}/0002-find-myelin.patch
-      ${TRT_PATCHES_PATH}/0006-find-7.patch
       ${TRT_PATCHES_PATH}/0008-cuda13.patch
+      ${TRT_PATCHES_PATH}/0009-fix_compil_order.patch
+      ${TRT_PATCHES_PATH}/0010-fix_plugin_detect.patch
       )
 
     # Tensorrt uses its own protobuf version (3.0.0) and this cannot be overrided

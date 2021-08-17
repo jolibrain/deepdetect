@@ -1,0 +1,17 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index ba3af18..8c8ede2 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -185,7 +185,11 @@ else()
+ endif()
+ 
+ if(BUILD_PARSERS)
+-    add_subdirectory(parsers)
++  add_subdirectory(parsers)
++  if (BUILD_PLUGINS)
++    add_dependencies(nvonnxparser nvinfer_plugin)
++    add_dependencies(nvcaffeparserlibs nvinfer_plugin)
++  endif()
+ else()
+     find_library_create_target(nvcaffeparser nvparsers SHARED ${TRT_OUT_DIR} ${TRT_LIB_DIR})
+     find_library_create_target(nvonnxparser nvonnxparser SHARED ${TRT_OUT_DIR} ${TRT_LIB_DIR})

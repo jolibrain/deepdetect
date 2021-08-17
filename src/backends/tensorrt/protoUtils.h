@@ -40,5 +40,6 @@ namespace dd
                                 google::protobuf::Message *proto);
   bool TRTWriteProtoToTextFile(const google::protobuf::Message &proto,
                                const char *filename);
+  bool isRefinedet(const std::string source);
 }
 #endif
