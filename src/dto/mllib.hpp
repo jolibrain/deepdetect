@@ -26,7 +26,7 @@
 #include "utils/utils.hpp"
 #include "oatpp/core/Types.hpp"
 #include "oatpp/core/macro/codegen.hpp"
-#include "gpuid.hpp"
+#include "ddtypes.hpp"
 
 namespace dd
 {
