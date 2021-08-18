@@ -21,7 +21,7 @@
 
 #include "oatpp.hpp"
 
-#include "dto/gpuid.hpp"
+#include "dto/ddtypes.hpp"
 
 namespace dd
 {
@@ -32,10 +32,20 @@ namespace dd
     {
       std::shared_ptr<oatpp::parser::json::mapping::ObjectMapper> object_mapper
           = oatpp::parser::json::mapping::ObjectMapper::createShared();
-      object_mapper->getDeserializer()->setDeserializerMethod(
-          DTO::GpuIds::Class::CLASS_ID, DTO::gpuIdsDeserialize);
-      object_mapper->getSerializer()->setSerializerMethod(
-          DTO::GpuIds::Class::CLASS_ID, DTO::gpuIdsSerialize);
+      auto deser = object_mapper->getDeserializer();
+      deser->setDeserializerMethod(DTO::GpuIds::Class::CLASS_ID,
+                                   DTO::gpuIdsDeserialize);
+      deser->setDeserializerMethod(DTO::DTOVector<double>::Class::CLASS_ID,
+                                   DTO::vectorDeserialize<double>);
+      deser->setDeserializerMethod(DTO::DTOVector<bool>::Class::CLASS_ID,
+                                   DTO::vectorDeserialize<bool>);
+      auto ser = object_mapper->getSerializer();
+      ser->setSerializerMethod(DTO::GpuIds::Class::CLASS_ID,
+                               DTO::gpuIdsSerialize);
+      ser->setSerializerMethod(DTO::DTOVector<double>::Class::CLASS_ID,
+                               DTO::vectorSerialize<double>);
+      ser->setSerializerMethod(DTO::DTOVector<bool>::Class::CLASS_ID,
+                               DTO::vectorSerialize<bool>);
       return object_mapper;
     }
   }

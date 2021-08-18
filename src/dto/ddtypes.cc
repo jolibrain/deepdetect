@@ -19,7 +19,7 @@
  * along with deepdetect.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "gpuid.hpp"
+#include "ddtypes.hpp"
 
 namespace dd
 {
@@ -28,6 +28,12 @@ namespace dd
     namespace __class
     {
       const oatpp::ClassId GpuIdsClass::CLASS_ID("GpuIds");
+
+      template <>
+      const oatpp::ClassId DTOVectorClass<double>::CLASS_ID("vector<double>");
+
+      template <>
+      const oatpp::ClassId DTOVectorClass<bool>::CLASS_ID("vector<bool>");
     }
   }
 }
