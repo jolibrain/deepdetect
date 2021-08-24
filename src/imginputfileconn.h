@@ -801,6 +801,25 @@ namespace dd
         throw InputConnectorBadParamException("no image could be found");
     }
 
+    static std::vector<double>
+    img_resize_vector(const std::vector<double> &vals, const int height_net,
+                      const int width_net, const int height_dest,
+                      const int width_dest, bool resize_nn)
+    {
+      cv::Mat segimg = cv::Mat(height_net, width_net, CV_64FC1);
+      std::memcpy(segimg.data, vals.data(), vals.size() * sizeof(double));
+      cv::Mat segimg_res;
+      if (resize_nn)
+        cv::resize(segimg, segimg_res, cv::Size(width_dest, height_dest), 0, 0,
+                   cv::INTER_NEAREST);
+      else
+        cv::resize(segimg, segimg_res, cv::Size(width_dest, height_dest), 0, 0,
+                   cv::INTER_LINEAR);
+      return std::vector<double>((double *)segimg_res.data,
+                                 (double *)segimg_res.data
+                                     + segimg_res.rows * segimg_res.cols);
+    }
+
     // data
     std::vector<cv::Mat> _images;
     std::vector<cv::Mat> _orig_images; /**< stored upon request. */

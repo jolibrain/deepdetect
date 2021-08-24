@@ -54,6 +54,12 @@ namespace dd
       };
       DTO_FIELD(Int32, ntargets) = 0;
 
+      DTO_FIELD_INFO(segmentation)
+      {
+        info->description = "whether the model type is segmentation";
+      };
+      DTO_FIELD(Boolean, segmentation) = false;
+
       DTO_FIELD_INFO(from_repository)
       {
         info->description = "initialize model repository with checkpoint and "

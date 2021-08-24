@@ -3221,20 +3221,21 @@ namespace dd
                                * (*bit).second.second) // resizing output
                                                        // segmentation array
                       {
-                        vals = img_resize(vals, inputc.height(),
-                                          inputc.width(), (*bit).second.first,
-                                          (*bit).second.second, true);
+                        vals = ImgInputFileConn::img_resize_vector(
+                            vals, inputc.height(), inputc.width(),
+                            (*bit).second.first, (*bit).second.second, true);
                         if (conf_best)
-                          conf_map_best
-                              = img_resize(conf_map_best, inputc.height(),
-                                           inputc.width(), (*bit).second.first,
-                                           (*bit).second.second, false);
+                          conf_map_best = ImgInputFileConn::img_resize_vector(
+                              conf_map_best, inputc.height(), inputc.width(),
+                              (*bit).second.first, (*bit).second.second,
+                              false);
                         for (int ci = 0; ci < _nclasses; ++ci)
                           if (confidences[ci])
-                            confidence_maps[ci] = img_resize(
-                                confidence_maps[ci], inputc.height(),
-                                inputc.width(), (*bit).second.first,
-                                (*bit).second.second, false);
+                            confidence_maps[ci]
+                                = ImgInputFileConn::img_resize_vector(
+                                    confidence_maps[ci], inputc.height(),
+                                    inputc.width(), (*bit).second.first,
+                                    (*bit).second.second, false);
                       }
                     rad.add("vals", vals);
                     if (conf_best || !confidence_maps.empty())
@@ -5193,29 +5194,6 @@ namespace dd
           return net->blobs()[i];
       }
     return nullptr;
-  }
-
-  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
-            class TMLModel>
-  std::vector<double>
-  CaffeLib<TInputConnectorStrategy, TOutputConnectorStrategy,
-           TMLModel>::img_resize(const std::vector<double> &vals,
-                                 const int height_net, const int width_net,
-                                 const int height_dest, const int width_dest,
-                                 bool resize_nn)
-  {
-    cv::Mat segimg = cv::Mat(height_net, width_net, CV_64FC1);
-    std::memcpy(segimg.data, vals.data(), vals.size() * sizeof(double));
-    cv::Mat segimg_res;
-    if (resize_nn)
-      cv::resize(segimg, segimg_res, cv::Size(width_dest, height_dest), 0, 0,
-                 cv::INTER_NEAREST);
-    else
-      cv::resize(segimg, segimg_res, cv::Size(width_dest, height_dest), 0, 0,
-                 cv::INTER_LINEAR);
-    return std::vector<double>((double *)segimg_res.data,
-                               (double *)segimg_res.data
-                                   + segimg_res.rows * segimg_res.cols);
   }
 
   template class CaffeLib<ImgCaffeInputFileConn, SupervisedOutput, CaffeModel>;

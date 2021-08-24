@@ -1,7 +1,9 @@
 /**
  * DeepDetect
- * Copyright (c) 2019 Jolibrain
- * Author: Louis Jean <ljean@etud.insa-toulouse.fr>
+ * Copyright (c) 2019-2021 Jolibrain
+ * Author: Louis Jean <louis.jean@jolibrain.com>
+ *         Guillaume Infantes <guillaume.infantes@jolibrain.com>
+ *         Emmanuel Benazera <emmanuel.benazera@jolibrain.com>
  *
  * This file is part of deepdetect.
  *
@@ -41,6 +43,7 @@ static std::string not_found_str
 
 static std::string incept_repo = "../examples/torch/resnet50_torch/";
 static std::string detect_repo = "../examples/torch/fasterrcnn_torch/";
+static std::string seg_repo = "../examples/torch/deeplabv3_torch/";
 static std::string detect_train_repo
     = "../examples/torch/fasterrcnn_train_torch";
 static std::string resnet50_train_repo
@@ -318,6 +321,43 @@ TEST(torchapi, service_predict_object_detection)
 
   auto &preds_best = jd["body"]["predictions"][0]["classes"];
   ASSERT_EQ(preds_best.Size(), 3);
+}
+
+TEST(torchapi, service_predict_segmentation)
+{
+  JsonAPI japi;
+  std::string sname = "segserv";
+  std::string jstr
+      = "{\"mllib\":\"torch\",\"description\":\"deeplabv3\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+        + seg_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
+          "224,\"width\":224,\"rgb\":true,\"scale\":0.0039},\"mllib\":{"
+          "\"segmentation\":true,\"nclasses\":21}}}";
+
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+  std::string jpredictstr
+      = "{\"service\":\"segserv\",\"parameters\":{"
+        "\"input\":{\"height\":224,"
+        "\"width\":224},\"output\":{\"segmentation\":true, "
+        "\"confidences\":[\"best\"]}},\"data\":[\""
+        + seg_repo + "cat.jpg\"]}";
+
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  JDoc jd;
+  // std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+
+  auto &preds = jd["body"]["predictions"][0]["vals"];
+  auto &confs = jd["body"]["predictions"][0]["confidences"]["best"];
+  ASSERT_TRUE(preds.IsArray());
+  ASSERT_TRUE(confs.IsArray());
+  ASSERT_TRUE(preds.Size() == 500 * 374);
+  ASSERT_TRUE(confs.Size() == 500 * 374);
 }
 
 TEST(torchapi, service_predict_txt_classification)
