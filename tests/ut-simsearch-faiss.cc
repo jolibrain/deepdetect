@@ -37,6 +37,8 @@ static std::string not_found_str
 static std::string mnist_repo = "../examples/caffe/mnist/";
 static std::string iterations_mnist = "2";
 static std::string voc_repo = "../examples/caffe/voc_roi/voc_roi/";
+static std::string caffe_word_detect_repo
+    = "../examples/caffe/word_detect_v2/";
 
 TEST(faissse, index_search)
 {
@@ -373,4 +375,118 @@ TEST(simsearch, predict_roi_simsearch)
   // assert non-existence of index
   ASSERT_TRUE(!fileops::file_exists(voc_repo + "index.faiss"));
   ASSERT_TRUE(!fileops::file_exists(voc_repo + "names.bin/data.mdb"));
+}
+
+TEST(simsearch, predict_chain)
+{
+  // create detection service
+  JsonAPI japi;
+  std::string detect_sname = "detect";
+  std::string jstr
+      = "{\"mllib\":\"caffe\",\"description\":\"detection model\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+        + caffe_word_detect_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"width\":"
+          "512,\"height\":512},\"mllib\":{\"nclasses\":2}}}";
+  std::string joutstr = japi.jrender(japi.service_create(detect_sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // create simsearch service
+  std::string mnist_sname = "simsearch";
+  jstr = "{\"mllib\":\"caffe\",\"description\":\"similarity model\",\"type\":"
+         "\"unsupervised\",\"model\":{\"repository\":\""
+         + mnist_repo
+         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"width\":"
+           "28,\"height\":28},\"mllib\":{\"nclasses\":10}}}";
+  joutstr = japi.jrender(japi.service_create(mnist_sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // train simsearch model
+  std::string gpuid = "0";
+  std::string jtrainstr
+      = "{\"service\":\"" + mnist_sname
+        + "\",\"async\":false,\"parameters\":{\"mllib\":{\"gpu\":true,"
+          "\"gpuid\":"
+        + gpuid + ",\"solver\":{\"iterations\":" + iterations_mnist
+        + ",\"snapshot\":200,\"snapshot_prefix\":\"" + mnist_repo
+        + "/mylenet\",\"test_interval\":2}},\"output\":{\"measure_hist\":true,"
+          "\"measure\":[\"f1\"]}}}";
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  JDoc jd;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_TRUE(jd.HasMember("status"));
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
+  ASSERT_EQ("Created", jd["status"]["msg"]);
+  ASSERT_TRUE(jd.HasMember("head"));
+  ASSERT_EQ("/train", jd["head"]["method"]);
+  ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
+  ASSERT_TRUE(jd.HasMember("body"));
+  ASSERT_TRUE(jd["body"].HasMember("measure"));
+  ASSERT_TRUE(fabs(jd["body"]["measure"]["train_loss"].GetDouble()) > 0);
+  ASSERT_EQ(jd["body"]["measure_hist"]["iteration_hist"].Size(),
+            jd["body"]["measure_hist"]["f1_hist"].Size());
+
+  // build & save index
+  std::string jpredictstr
+      = "{\"service\":\"" + mnist_sname
+        + "\",\"parameters\":{\"input\":{\"bw\":true,\"width\":28,"
+          "\"height\":28},\"mllib\":{\"extract_layer\":\"ip2\"},"
+          "\"output\":{\"index\":true,\"index_type\":\"Flat\",\"index_"
+          "gpu\":false,\"build_index\":true}},\"data\":[\""
+        + mnist_repo + "sample_digit.png\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr predict build index=" << joutstr << std::endl;
+  jd = JDoc();
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+
+  // chain predict
+  std::string jchainstr
+      = "{\"chain\":{\"name\":\"chain\",\"calls\":["
+        "{\"service\":\""
+        + detect_sname
+        + "\",\"parameters\":{\"input\":{\"keep_orig\":true},\"output\":{"
+          "\"bbox\":true,\"confidence_threshold\":0.2}},\"data\":[\""
+        + caffe_word_detect_repo
+        + "word.png\"]},"
+          "{\"id\":\"filter\",\"action\":{\"type\":\"filter\",\"parameters\":{"
+          "\"classes\":[\"1\"]}}},"
+          "{\"id\":\"crop\",\"parent_id\":\"filter\",\"action\":{\"type\":"
+          "\"crop\"}},"
+          "{\"service\":\""
+        + mnist_sname
+        + "\",\"parent_id\":\"crop\",\"parameters\":{\"input\":{\"bw\":true},"
+          "\"mllib\":{\"extract_layer\":\"ip2\"},\"output\":{\"confidence_"
+          "threshold\":0.1,\"search\":true,\"search_nn\":1}}}"
+          "]}}";
+  joutstr = japi.jrender(japi.service_chain("chain", jchainstr));
+  jd = JDoc();
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+  ASSERT_EQ(jd["body"]["predictions"].Size(), 1);
+  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"].IsArray());
+  ASSERT_EQ(jd["body"]["predictions"][0]["classes"].Size(), 1);
+  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0][mnist_sname.c_str()]
+                  .IsObject());
+  auto &nn_pred
+      = jd["body"]["predictions"][0]["classes"][0][mnist_sname.c_str()];
+  ASSERT_EQ(nn_pred["nns"].Size(), 1);
+  ASSERT_TRUE(nn_pred["nns"][0]["dist"].GetDouble() > 0);
+  ASSERT_EQ(nn_pred["nns"][0]["uri"].GetString(),
+            mnist_repo + "sample_digit.png");
+
+  // remove service
+  jstr = "{\"clear\":\"lib\"}";
+  joutstr = japi.jrender(japi.service_delete(mnist_sname, jstr));
+  ASSERT_EQ(ok_str, joutstr);
+
+  // assert non-existence of index
+  ASSERT_TRUE(!fileops::file_exists(mnist_repo + "index.faiss"));
+  ASSERT_TRUE(!fileops::file_exists(mnist_repo + "names.bin/data.mdb"));
 }
