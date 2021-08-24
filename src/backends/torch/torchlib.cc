@@ -80,6 +80,7 @@ namespace dd
     _regression = tl._regression;
     _timeserie = tl._timeserie;
     _bbox = tl._bbox;
+    _segmentation = tl._segmentation;
     _loss = tl._loss;
     _template_params = tl._template_params;
     _dtype = tl._dtype;
@@ -272,7 +273,11 @@ namespace dd
     _main_device = _devices[0];
 
     // Set model type
-    if (mllib_dto->nclasses != 0)
+    if (mllib_dto->segmentation)
+      {
+        _segmentation = true;
+      }
+    else if (mllib_dto->nclasses != 0)
       {
         _classification = true;
       }
@@ -315,7 +320,8 @@ namespace dd
       {
         _timeserie = true;
       }
-    if (!_regression && !_timeserie && !_bbox && self_supervised.empty())
+    if (!_regression && !_timeserie && !_bbox && !_segmentation
+        && self_supervised.empty())
       _classification = true; // classification is default
 
     // Set mltype
@@ -327,6 +333,8 @@ namespace dd
       this->_mltype = "regression";
     else if (_classification)
       this->_mltype = "classification";
+    else if (_segmentation)
+      this->_mltype = "segmentation";
 
     // Create the model
     _module._device = _main_device;
@@ -429,7 +437,7 @@ namespace dd
           throw MLLibBadParamException("invalid torch model template "
                                        + _template);
       }
-    if (_classification || _regression)
+    if (_classification || _regression || _segmentation)
       {
         _module._nclasses = _nclasses;
 
@@ -1161,6 +1169,7 @@ namespace dd
     double confidence_threshold = 0.0;
     int best_count = _nclasses;
     int best_bbox = -1;
+    std::vector<std::string> confidences;
 
     if (params.has("mllib"))
       {
@@ -1224,6 +1233,11 @@ namespace dd
     if (output_params.has("best_bbox"))
       {
         best_bbox = output_params.get("best_bbox").get<int>();
+      }
+    if (output_params.has("confidences"))
+      {
+        confidences
+            = output_params.get("confidences").get<std::vector<std::string>>();
       }
 
     bool lstm_continuation = false;
@@ -1310,7 +1324,7 @@ namespace dd
             else
               out_ivalue = _module.extract(in_vals, extract_layer);
 
-            if (!bbox)
+            if (!bbox && !_segmentation)
               {
                 output = torch_utils::to_tensor_safe(out_ivalue);
 
@@ -1511,6 +1525,82 @@ namespace dd
                     results_ads.push_back(results_ad);
                   }
               }
+            else if (_segmentation)
+              {
+                auto out_dict = out_ivalue.toGenericDict();
+                output = torch_utils::to_tensor_safe(out_dict.at("out"));
+                output = torch::softmax(output, 1);
+
+                int imgsize = inputc.width() * inputc.height();
+                torch::Tensor segmap;
+                torch::Tensor confmap;
+                std::tuple<torch::Tensor, torch::Tensor> maxmap;
+                if (!confidences.empty()) // applies "best" confidence lookup
+                  {
+                    maxmap = torch::max(output.clone().squeeze(), 0, false);
+                    confmap = torch::flatten(std::get<0>(maxmap))
+                                  .contiguous()
+                                  .to(torch::kFloat64)
+                                  .to(cpu);
+                    segmap = torch::flatten(std::get<1>(maxmap))
+                                 .contiguous()
+                                 .to(torch::kFloat64)
+                                 .to(cpu);
+                  }
+                else
+                  segmap = torch::flatten(torch::argmax(output.squeeze(), 0))
+                               .contiguous()
+                               .to(torch::kFloat64)
+                               .to(cpu); // squeeze removes the batch size
+
+                APIData rad;
+                std::string uri;
+                if (!inputc._ids.empty())
+                  uri = inputc._ids.at(results_ads.size());
+                else
+                  uri = std::to_string(results_ads.size());
+                rad.add("uri", uri);
+                rad.add("loss", static_cast<double>(0.0));
+                double *startout = segmap.data_ptr<double>();
+                std::vector<double> vals(startout,
+                                         startout + torch::numel(segmap));
+                std::vector<double> confs;
+                if (!confidences.empty())
+                  {
+                    startout = confmap.data_ptr<double>();
+                    confs = std::vector<double>(
+                        startout, startout + torch::numel(confmap));
+                  }
+
+                auto bit = inputc._imgs_size.find(uri);
+                APIData ad_imgsize;
+                ad_imgsize.add("height", (*bit).second.first);
+                ad_imgsize.add("width", (*bit).second.second);
+                rad.add("imgsize", ad_imgsize);
+
+                if (imgsize
+                    != (*bit).second.first
+                           * (*bit).second.second) // resizing output
+                  // segmentation array
+                  {
+                    vals = ImgInputFileConn::img_resize_vector(
+                        vals, inputc.height(), inputc.width(),
+                        (*bit).second.first, (*bit).second.second, true);
+                    if (!confidences.empty())
+                      confs = ImgInputFileConn::img_resize_vector(
+                          confs, inputc.height(), inputc.width(),
+                          (*bit).second.first, (*bit).second.second, false);
+                  }
+
+                rad.add("vals", vals);
+                if (!confidences.empty())
+                  {
+                    APIData vconfs;
+                    vconfs.add("best", confs);
+                    rad.add("confidences", vconfs);
+                  }
+                results_ads.push_back(rad);
+              }
             else if (_regression)
               {
                 auto probs_acc = output.accessor<float, 2>();
@@ -1570,7 +1660,7 @@ namespace dd
           }
       }
 
-    if (extract_layer.empty())
+    if (extract_layer.empty() && !_segmentation)
       {
         outputc.add_results(results_ads);
 

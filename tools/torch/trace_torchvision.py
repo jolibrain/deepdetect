@@ -43,6 +43,7 @@ parser.add_argument('-p', "--not-pretrained", dest="pretrained", action='store_f
                     help="Whether the exported models should not be pretrained")
 parser.add_argument('--cpu', action='store_true', help="Force models to be exported for CPU device")
 parser.add_argument('--num_classes', type=int, help="Number of classes")
+parser.add_argument('--trace', action='store_true', help="Whether to trace model instead of scripting")
 
 args = parser.parse_args()
 
@@ -169,6 +170,15 @@ detection_model_classes = {
     "retinanet_resnet50_fpn": M.detection.retinanet_resnet50_fpn,
 }
 model_classes.update(detection_model_classes)
+segmentation_model_classes = {
+    "fcn_resnet50": M.segmentation.fcn_resnet50,
+    "fcn_resnet101": M.segmentation.fcn_resnet101,
+    "deeplabv3_resnet50": M.segmentation.deeplabv3_resnet50,
+    "deeplabv3_resnet101": M.segmentation.deeplabv3_resnet101,
+    "deeplabv3_mobilenet_v3_large": M.segmentation.deeplabv3_mobilenet_v3_large,
+    "lraspp_mobilenet_v3_large": M.segmentation.lraspp_mobilenet_v3_large
+}
+model_classes.update(segmentation_model_classes)
 
 
 if args.all:
@@ -194,7 +204,8 @@ for mname in args.models:
 
     logging.info("Exporting model %s %s", mname, "(pretrained)" if args.pretrained else "")
     detection = mname in detection_model_classes
-
+    segmentation = mname in segmentation_model_classes
+    
     if detection:
         if "fasterrcnn" in mname and version.parse(torchvision.__version__) < version.parse("0.10.0"):
             raise RuntimeError("Fasterrcnn needs torchvision >= 0.10.0 (current = %s)" % torchvision.__version__)
@@ -253,10 +264,14 @@ for mname in args.models:
 
         model.eval()
 
-        # TODO try scripting instead of tracing
-        example = torch.rand(1, 3, 224, 224)
-        script_module = torch.jit.trace(model, example)
 
+        # tracing or scripting model (default)
+        if args.trace:
+            example = torch.rand(1, 3, 224, 224)
+            script_module = torch.jit.trace(model, example)
+        else:
+            script_module = torch.jit.script(model)
+        
     filename = os.path.join(args.output_dir, mname + ("-pretrained" if args.pretrained else "") + ("-" + args.backbone if args.backbone else "") + "-cls" + str(args.num_classes) + ".pt")
     logging.info("Saving to %s", filename)
     script_module.save(filename)
