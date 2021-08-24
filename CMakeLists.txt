@@ -333,8 +333,9 @@ if (USE_CAFFE OR USE_TORCH)
         PREFIX faiss
         SOURCE_DIR ${CMAKE_BINARY_DIR}/faiss/src/faiss
         GIT_REPOSITORY https://github.com/facebookresearch/faiss
+        UPDATE_DISCONNECTED 1
         CONFIGURE_COMMAND cmake ${CONFIGURE_OPTS} -B build .
-	BUILD_COMMAND make -C build -j${N}
+        BUILD_COMMAND make -C build -j${N}
         INSTALL_COMMAND ""
         BUILD_IN_SOURCE 1
       )
