@@ -94,6 +94,7 @@ find_package(PythonInterp 2.7 REQUIRED)
 
 if (USE_JSON_API)
   REGISTER_TEST(ut_apidata ut-apidata.cc)
+  REGISTER_TEST(ut_dto ut-dto.cc)
 endif()
 if (USE_CAFFE)
   if (USE_JSON_API)
@@ -154,6 +155,20 @@ if (USE_CAFFE)
     "examples/caffe/voc"
     "voc0712_dd.tar.gz"
     "voc"
+  )
+  DOWNLOAD_DATASET(
+    "word detection test model"
+    "https://www.deepdetect.com/dd/examples/caffe/ocr/word_detect_v2_test.tar.gz"
+    "examples/caffe/word_detect_v2"
+    "word_detect_v2_test.tar.gz"
+    "deploy.prototxt"
+  )
+  DOWNLOAD_DATASET(
+    "ocr test model"
+    "https://deepdetect.com/models/init/desktop/images/ocr/multiword_ocr.tar.gz"
+    "examples/caffe/multiword_ocr"
+    "multiword_ocr.tar.gz"
+    "deploy.prototxt"
   )
 endif()
 
@@ -390,6 +405,10 @@ if (USE_TORCH)
     REGISTER_TEST_MULTIGPU(ut_torchapi ut-torchapi.cc)
   endif()
   REGISTER_TEST(ut_graph ut-graph.cc)
+endif()
+
+if(USE_TORCH OR USE_CAFFE OR USE_TENSORRT)
+  REGISTER_TEST(ut_chain ut-chain.cc)
 endif()
 
 if (USE_CAFFE2)
