@@ -38,6 +38,8 @@
 #include "outputconnectorstrategy.h"
 #include "chain.h"
 #include "chain_actions.h"
+#include "dto/service_predict.hpp"
+#include "dto/chain.hpp"
 #ifdef USE_CAFFE
 #include "backends/caffe/caffelib.h"
 #endif
@@ -1025,6 +1027,370 @@ namespace dd
       spdlog::drop(cname);
 
       return chain_dto;
+    }
+
+    // =====
+    //
+    // Chains with DTO input
+
+    int chain_service(const std::string &cname,
+                      const std::shared_ptr<spdlog::logger> &chain_logger,
+                      oatpp::Object<DTO::ChainCall> &call_dto,
+                      ChainData &cdata, const std::string &pred_id,
+                      std::vector<std::string> &meta_uris,
+                      std::vector<std::string> &index_uris,
+                      const std::string &parent_id, const int chain_pos,
+                      int &npredicts)
+    {
+      std::string sname = call_dto->service->std_str();
+      chain_logger->info("[" + std::to_string(chain_pos)
+                         + "] / executing predict on service " + sname);
+
+      // need to check that service exists
+      if (!service_exists(sname))
+        {
+          spdlog::drop(cname);
+          throw ServiceNotFoundException("Service " + sname
+                                         + " does not exist");
+        }
+
+      // if not first predict call in the chain, need to setup the input
+      // data!
+      if (chain_pos != 0)
+        {
+          // take data from the previous action
+          APIData act_data = cdata.get_action_data(parent_id);
+          if (act_data.empty())
+            {
+              spdlog::drop(cname);
+              throw InputConnectorBadParamException(
+                  "no action data for action id " + parent_id);
+            }
+          if (act_data.has("data"))
+            {
+              // action output data must be string for now (more types to be
+              // supported / auto-detected)
+              for (auto d :
+                   act_data.get("data").get<std::vector<std::string>>())
+                {
+                  call_dto->data->push_back(d.c_str());
+                }
+            }
+          else if (act_data.has("data_raw_img")) // raw images
+            {
+              call_dto->_data_raw_img
+                  = act_data.get("data_raw_img").get<std::vector<cv::Mat>>();
+            }
+          call_dto->_ids
+              = act_data.get("cids")
+                    .get<std::vector<std::string>>(); // chain ids of
+                                                      // processed elements
+          call_dto->_meta_uris = meta_uris;
+          call_dto->_index_uris = index_uris;
+        }
+      else
+        {
+          cdata._first_id = pred_id;
+        }
+
+      call_dto->_chain = true;
+
+      APIData pred_in;
+      pred_in.add("dto", call_dto);
+      APIData pred_out;
+      try
+        {
+          predict(pred_in, sname, pred_out, true);
+        }
+      catch (...)
+        {
+          spdlog::drop(cname);
+          throw;
+        }
+
+      int classes_size = 0;
+      int vals_size = 0;
+      std::vector<std::string> nmeta_uris;
+      std::vector<std::string> nindex_uris;
+
+      if (pred_out.has("dto"))
+        {
+          auto dto = pred_out.get("dto")
+                         .get<oatpp::Any>()
+                         .retrieve<oatpp::Object<DTO::PredictBody>>();
+
+          auto predictions = dto->predictions;
+          if (predictions->empty())
+            {
+              chain_logger->info("[" + std::to_string(chain_pos)
+                                 + "]  no predictions");
+              return 1;
+            }
+
+          for (size_t j = 0; j < predictions->size(); j++)
+            {
+              auto pred = predictions->at(j);
+              // TODO add vectors
+              size_t npred_classes
+                  = pred->classes != nullptr ? pred->classes->size() : 0;
+              classes_size += npred_classes;
+              vals_size += static_cast<int>(pred->vals != nullptr);
+
+              if (chain_pos == 0) // first call's response contains uniformized
+                                  // top level URIs.
+                {
+                  for (size_t k = 0; k < npred_classes; k++)
+                    {
+                      nmeta_uris.push_back(pred->uri->std_str());
+                      if (pred->index_uri)
+                        nindex_uris.push_back(pred->index_uri->std_str());
+                    }
+                }
+              else // update meta uris to batch size at the current level
+                   // of the chain
+                {
+                  for (size_t k = 0; k < npred_classes; k++)
+                    {
+                      nmeta_uris.push_back(meta_uris.at(j));
+                      if (!index_uris.empty())
+                        nindex_uris.push_back(index_uris.at(j));
+                    }
+                }
+            }
+        }
+      else
+        {
+          // check on results
+          std::vector<APIData> vad = pred_out.getv("predictions");
+          if (vad.empty())
+            {
+              chain_logger->info("[" + std::to_string(chain_pos)
+                                 + "]  no predictions");
+              return 1;
+            }
+
+          for (size_t j = 0; j < vad.size(); j++)
+            {
+              size_t npred_classes = std::max(vad.at(j).getv("classes").size(),
+                                              vad.at(j).getv("vector").size());
+              classes_size += npred_classes;
+              vals_size += static_cast<int>(vad.at(j).has("vals"));
+              if (chain_pos == 0) // first call's response contains
+                                  // uniformized top level URIs.
+                {
+                  for (size_t k = 0; k < npred_classes; k++)
+                    {
+                      nmeta_uris.push_back(
+                          vad.at(j).get("uri").get<std::string>());
+                      if (vad.at(j).has("index_uri"))
+                        nindex_uris.push_back(
+                            vad.at(j).get("index_uri").get<std::string>());
+                    }
+                }
+              else // update meta uris to batch size at the current level of
+                   // the chain
+                {
+                  for (size_t k = 0; k < npred_classes; k++)
+                    {
+                      nmeta_uris.push_back(meta_uris.at(j));
+                      if (!index_uris.empty())
+                        nindex_uris.push_back(index_uris.at(j));
+                    }
+                }
+            }
+        }
+
+      meta_uris = nmeta_uris;
+      index_uris = nindex_uris;
+
+      if (!classes_size && !vals_size)
+        {
+          chain_logger->info("[" + std::to_string(chain_pos)
+                             + "] / no result from prediction");
+          cdata.add_model_data(pred_id,
+                               pred_out); // store empty model output
+          return 1;
+        }
+
+      ++npredicts;
+
+      // store model output
+      cdata.add_model_data(pred_id, pred_out);
+      return 0;
+    }
+
+    int chain_action(const std::shared_ptr<spdlog::logger> &chain_logger,
+                     oatpp::Object<DTO::ChainCall> call_dto, ChainData &cdata,
+                     const int &chain_pos, const std::string &prec_pred_id)
+    {
+      std::string action_type = call_dto->action->type->std_str();
+
+      APIData prev_data = cdata.get_model_data(prec_pred_id);
+      if (!prev_data.getv("predictions").size())
+        {
+          // no prediction to work from
+          chain_logger->info("no prediction to act on");
+          return 1;
+        }
+
+      // call chain action factory
+      chain_logger->info("[" + std::to_string(chain_pos)
+                         + "] / executing action " + action_type);
+      ChainActionFactory caf(call_dto);
+      caf.apply_action(action_type, prev_data, cdata, chain_logger);
+
+      // replace prev_data in cdata for prec_pred_id
+      cdata.add_model_data(prec_pred_id, prev_data);
+
+      std::vector<APIData> vad = prev_data.getv("predictions");
+      if (vad.empty())
+        {
+          // no prediction to work from
+          chain_logger->info("no prediction to act on after applying action "
+                             + action_type);
+          return 1;
+        }
+
+      int classes_size = 0;
+      int vals_size = 0;
+      for (size_t i = 0; i < vad.size(); i++)
+        {
+          int npred_classes = std::max(vad.at(i).getv("classes").size(),
+                                       vad.at(i).getv("vector").size());
+          classes_size += npred_classes;
+          vals_size += static_cast<int>(vad.at(i).has("vals"));
+        }
+
+      if (!classes_size && !vals_size)
+        {
+          chain_logger->info("[" + std::to_string(chain_pos)
+                             + "] / no result after applying action "
+                             + action_type);
+          return 1;
+        }
+
+      return 0;
+    }
+
+    oatpp::Object<DTO::ChainBody>
+    chain(oatpp::Object<DTO::ServiceChain> input_dto, const std::string &cname)
+    {
+      oatpp::Object<DTO::ChainBody> out_dto;
+      try
+        {
+          auto chain_logger = DD_SPDLOG_LOGGER(cname);
+
+          std::chrono::time_point<std::chrono::system_clock> tstart
+              = std::chrono::system_clock::now();
+
+          // - iterate chain of calls
+          // - if predict call, use the visitor to execute it
+          //      - this requires storing output into mlservice object /
+          //      have a flag for telling the called service it's part of a
+          //      chain
+          // - if action call, execute the generic code for it
+          auto calls_vec = input_dto->chain->calls;
+          chain_logger->info("number of calls="
+                             + std::to_string(calls_vec->size()));
+
+          ChainData cdata;
+          std::vector<std::string> meta_uris;
+          std::vector<std::string> index_uris;
+          std::unordered_map<std::string, std::vector<std::string>>
+              um_meta_uris;
+          std::unordered_map<std::string, std::vector<std::string>>
+              um_index_uris;
+          int npredicts = 0;
+          std::string prec_pred_id;
+          std::string prec_action_id;
+          int aid = 0;
+
+          for (size_t i = 0; i < calls_vec->size(); i++)
+            {
+              auto call = calls_vec->at(i);
+              std::string call_id = call->id != nullptr ? call->id->std_str()
+                                                        : std::to_string(i);
+              std::string parent_id = call->parent_id != nullptr
+                                          ? call->parent_id->std_str()
+                                          : prec_action_id;
+
+              if (call->service != nullptr)
+                {
+                  if (call->action != nullptr)
+                    {
+                      throw ChainBadParamException(
+                          "Chain call #" + call_id
+                          + " defines both a service and an action");
+                    }
+
+                  auto hit = um_meta_uris.find(parent_id);
+                  if (hit != um_meta_uris.end())
+                    meta_uris = (*hit).second;
+                  hit = um_index_uris.find(parent_id);
+                  if (hit != um_index_uris.end())
+                    index_uris = (*hit).second;
+                  cdata.add_model_sname(call_id, call->service->std_str());
+                  if (chain_service(cname, chain_logger, call, cdata, call_id,
+                                    meta_uris, index_uris, parent_id, i,
+                                    npredicts))
+                    break;
+                  prec_pred_id = call_id;
+                }
+              else if (call->action != nullptr)
+                {
+                  if (chain_action(chain_logger, call, cdata, i, prec_pred_id))
+                    break;
+
+                  prec_action_id = call_id;
+                  um_meta_uris.insert(
+                      std::pair<std::string, std::vector<std::string>>(
+                          prec_action_id, meta_uris));
+                  um_index_uris.insert(
+                      std::pair<std::string, std::vector<std::string>>(
+                          prec_action_id, index_uris));
+                  ++aid;
+                }
+              else
+                {
+                  throw ChainBadParamException(
+                      "no services nor action found in chain call #"
+                      + std::to_string(i));
+                }
+            }
+
+          // producing a nested output
+          if (npredicts > 1)
+            out_dto = cdata.nested_chain_output();
+          else
+            {
+              // XXX(louis): fix this when chains will be entirely DTO
+              // (needs supervised output connector to DTO)
+              auto first_model_dto = cdata.get_model_data(cdata._first_id)
+                                         .createSharedDTO<DTO::PredictBody>();
+              out_dto = DTO::ChainBody::createShared();
+
+              for (auto &pred : *first_model_dto->predictions)
+                {
+                  out_dto->predictions->push_back(
+                      oatpp_utils::dtoToUFields(pred));
+                }
+            }
+
+          std::chrono::time_point<std::chrono::system_clock> tstop
+              = std::chrono::system_clock::now();
+          double elapsed
+              = std::chrono::duration_cast<std::chrono::milliseconds>(tstop
+                                                                      - tstart)
+                    .count();
+          out_dto->time = elapsed;
+        }
+      catch (...)
+        {
+          spdlog::drop(cname);
+          throw;
+        }
+      spdlog::drop(cname);
+      return out_dto;
     }
 
     std::unordered_map<std::string, mls_variant_type>

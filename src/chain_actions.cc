@@ -47,31 +47,18 @@ namespace dd
     std::vector<std::string> bbox_ids;
 
     // check for action parameters
-    double bratio = 0.0;
-    if (_params.has("padding_ratio"))
-      bratio = _params.get("padding_ratio").get<double>(); // e.g. 0.055
+    double bratio = _params->padding_ratio;
+    bool save_crops = _params->save_crops;
 
-    bool save_crops = false;
-    if (_params.has("save_crops"))
-      save_crops = _params.get("save_crops").get<bool>();
+    std::string save_path = _params->save_path->std_str();
+    if (!save_path.empty())
+      save_path += "/";
 
-    std::string save_path;
-    if (_params.has("save_path"))
-      save_path = _params.get("save_path").get<std::string>() + "/";
+    bool to_rgb = _params->to_rgb;
+    bool to_bgr = _params->to_bgr;
 
-    bool to_rgb = false;
-    if (_params.has("to_rgb"))
-      to_rgb = _params.get("to_rgb").get<bool>();
-    bool to_bgr = false;
-    if (_params.has("to_bgr"))
-      to_bgr = _params.get("to_bgr").get<bool>();
-
-    int fixed_width = 0;
-    if (_params.has("fixed_width"))
-      fixed_width = _params.get("fixed_width").get<int>();
-    int fixed_height = 0;
-    if (_params.has("fixed_height"))
-      fixed_height = _params.get("fixed_height").get<int>();
+    int fixed_width = _params->fixed_width;
+    int fixed_height = _params->fixed_height;
 
     std::vector<APIData> cvad;
 
@@ -209,17 +196,12 @@ namespace dd
     std::vector<std::string> uris;
 
     // check for action parameters
-    std::string orientation = "relative"; // other: absolute
-    if (_params.has("orientation"))
-      orientation = _params.get("orientation").get<std::string>();
+    std::string orientation = _params->orientation->std_str();
+    bool save_img = _params->save_img;
 
-    bool save_img = false;
-    if (_params.has("save_img"))
-      save_img = _params.get("save_img").get<bool>();
-
-    std::string save_path;
-    if (_params.has("save_path"))
-      save_path = _params.get("save_path").get<std::string>() + "/";
+    std::string save_path = _params->save_path->std_str();
+    if (!save_path.empty())
+      save_path += "/";
 
     for (size_t i = 0; i < vad.size(); i++) // iterate predictions
       {
@@ -281,16 +263,14 @@ namespace dd
 
   void ClassFilter::apply(APIData &model_out, ChainData &cdata)
   {
-    if (!_params.has("classes"))
+    if (_params->classes == nullptr)
       {
         throw ActionBadParamException(
             "filter action is missing classes parameter");
       }
-    std::vector<std::string> on_classes
-        = _params.get("classes").get<std::vector<std::string>>();
     std::unordered_set<std::string> on_classes_us;
-    for (auto s : on_classes)
-      on_classes_us.insert(s);
+    for (auto s : *_params->classes)
+      on_classes_us.insert(s->std_str());
     std::unordered_set<std::string>::const_iterator usit;
 
     std::vector<APIData> vad = model_out.getv("predictions");
@@ -329,24 +309,22 @@ namespace dd
       const std::string &action_type, APIData &model_out, ChainData &cdata,
       const std::shared_ptr<spdlog::logger> &chain_logger)
   {
-    std::string action_id;
-    if (_adc.has("id"))
-      action_id = _adc.get("id").get<std::string>();
-    else
-      action_id = std::to_string(cdata._action_data.size());
+    std::string action_id = _call_dto->id != nullptr
+                                ? _call_dto->id->std_str()
+                                : std::to_string(cdata._action_data.size());
     if (action_type == "crop")
       {
-        ImgsCropAction act(_adc, action_id, action_type, chain_logger);
+        ImgsCropAction act(_call_dto, action_id, action_type, chain_logger);
         act.apply(model_out, cdata);
       }
     else if (action_type == "rotate")
       {
-        ImgsRotateAction act(_adc, action_id, action_type, chain_logger);
+        ImgsRotateAction act(_call_dto, action_id, action_type, chain_logger);
         act.apply(model_out, cdata);
       }
     else if (action_type == "filter")
       {
-        ClassFilter act(_adc, action_id, action_type, chain_logger);
+        ClassFilter act(_call_dto, action_id, action_type, chain_logger);
         act.apply(model_out, cdata);
       }
 #ifdef USE_DLIB

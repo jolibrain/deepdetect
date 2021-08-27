@@ -35,6 +35,7 @@
 #include "utils/httpclient.hpp"
 #endif
 #include "mllibstrategy.h"
+#include "dto/output_connector.hpp"
 
 namespace dd
 {
@@ -112,51 +113,32 @@ namespace dd
     /**
      * \brief create similarity search engine
      */
-    void create_sim_search(const int &dim, const APIData ad)
+    void create_sim_search(const int &dim,
+                           oatpp::Object<DTO::OutputConnector> output_params)
     {
       if (!_se)
         {
 #ifdef USE_ANNOY
-          (void)ad;
+          (void)output_params;
           _se = new SearchEngine<AnnoySE>(dim, _repo);
           _se->_tse->_map_populate = _index_preload;
 #endif
 #ifdef USE_FAISS
           _se = new SearchEngine<FaissSE>(dim, _repo);
-          if (ad.has("index_type"))
-            _se->_tse->_index_key = ad.get("index_type").get<std::string>();
-          if (ad.has("train_samples"))
-            _se->_tse->_train_samples_size
-                = ad.get("train_samples").get<int>();
-          if (ad.has("ondisk"))
-            _se->_tse->_ondisk = ad.get("ondisk").get<bool>();
-          if (ad.has("nprobe"))
-            _se->_tse->_nprobe = ad.get("nprobe").get<int>();
+          if (output_params->index_type != nullptr)
+            _se->_tse->_index_key = output_params->index_type->std_str();
+          if (output_params->train_samples != nullptr)
+            _se->_tse->_train_samples_size = output_params->train_samples;
+          if (output_params->ondisk != nullptr)
+            _se->_tse->_ondisk = output_params->ondisk;
+          if (output_params->nprobe != nullptr)
+            _se->_tse->_nprobe = output_params->nprobe;
 #ifdef USE_GPU_FAISS
-          if (ad.has("index_gpu"))
-            _se->_tse->_gpu = ad.get("index_gpu").get<bool>();
-          if (ad.has("index_gpuid"))
+          _se->_tse->_gpu = output_params->index_gpu;
+          if (output_params->index_gpuid != nullptr)
             {
               _se->_tse->_gpu = true;
-              try
-                {
-                  int gpuid = ad.get("index_gpuid").get<int>();
-                  _se->_tse->_gpuids.push_back(gpuid);
-                }
-              catch (std::exception &e)
-                {
-                  try
-                    {
-                      _se->_tse->_gpuids
-                          = ad.get("index_gpuid").get<std::vector<int>>();
-                    }
-                  catch (std::exception &e)
-                    {
-                      throw MLLibBadParamException(
-                          "wrong type for index_gpuid : id or [id0, id1, "
-                          "...]");
-                    }
-                }
+              _se->_tse->_gpuids = output_params->index_gpuid->_ids;
             }
 #endif
 #endif

@@ -417,7 +417,35 @@ namespace dd
         _net_mutex); // no concurrent calls since the net is not
                      // re-instantiated
 
-    auto predict_dto = ad.createSharedDTO<DTO::ServicePredict>();
+    oatpp::Object<DTO::ServicePredict> predict_dto;
+    // XXX: until everything is DTO, we consider the two cases:
+    // - either ad embeds a DTO, so we just have to retrieve it
+    // - or it's an APIData that must be converted to DTO
+    if (ad.has("dto"))
+      {
+        // cast to ServicePredict...
+        auto any = ad.get("dto").get<oatpp::Any>();
+        predict_dto = oatpp::Object<DTO::ServicePredict>(
+            std::static_pointer_cast<typename DTO::ServicePredict>(any->ptr));
+      }
+    else
+      {
+        predict_dto = ad.createSharedDTO<DTO::ServicePredict>();
+
+        if (ad.has("chain") && ad.get("chain").get<bool>())
+          predict_dto->_chain = true;
+        if (ad.has("data_raw_img"))
+          predict_dto->_data_raw_img
+              = ad.get("data_raw_img").get<std::vector<cv::Mat>>();
+        if (ad.has("ids"))
+          predict_dto->_ids = ad.get("ids").get<std::vector<std::string>>();
+        if (ad.has("meta_uris"))
+          predict_dto->_meta_uris
+              = ad.get("meta_uris").get<std::vector<std::string>>();
+        if (ad.has("index_uris"))
+          predict_dto->_index_uris
+              = ad.get("index_uris").get<std::vector<std::string>>();
+      }
 
     if (predict_dto->parameters->mllib->gpuid->_ids.size() == 0)
       throw MLLibBadParamException("empty gpuid vector");
@@ -438,17 +466,16 @@ namespace dd
             = predict_dto->parameters->mllib->extract_layer->std_str();
       }
 
-    // detect architecture
-    cudaDeviceProp prop;
-    cudaGetDeviceProperties(&prop, _gpuid);
-    std::string arch = std::to_string(prop.major) + std::to_string(prop.minor);
-    if (_first_predict)
-      this->_logger->info("GPU {} architecture = compute_{}", _gpuid, arch);
-
     TInputConnectorStrategy inputc(this->_inputc);
 
     if (!_TRTContextReady)
       {
+        // detect architecture
+        cudaDeviceProp prop;
+        cudaGetDeviceProperties(&prop, _gpuid);
+        _arch = std::to_string(prop.major) + std::to_string(prop.minor);
+        this->_logger->info("GPU {} architecture = compute_{}", _gpuid, _arch);
+
         _bbox = output_params->bbox;
         _regression = output_params->regression;
         _ctc = output_params->ctc;
@@ -512,7 +539,7 @@ namespace dd
                     + std::to_string(bs));
               }
             std::ifstream file(this->_mlmodel._repo + "/" + _engineFileName
-                                   + "_arch" + arch + "_bs"
+                                   + "_arch" + _arch + "_bs"
                                    + std::to_string(bs),
                                std::ios::binary);
             if (file.good())
@@ -562,7 +589,7 @@ namespace dd
             if (_writeEngine)
               {
                 std::ofstream p(this->_mlmodel._repo + "/" + _engineFileName
-                                    + "_arch" + arch + "_bs"
+                                    + "_arch" + _arch + "_bs"
                                     + std::to_string(_max_batch_size),
                                 std::ios::binary);
                 nvinfer1::IHostMemory *trtModelStream = _engine->serialize();
@@ -674,13 +701,11 @@ namespace dd
           }
       }
 
-    APIData cad = ad;
-
     TOutputConnectorStrategy tout(this->_outputc);
     this->_stats.transform_start();
     try
       {
-        inputc.transform(cad);
+        inputc.transform(predict_dto);
       }
     catch (...)
       {
@@ -994,20 +1019,20 @@ namespace dd
           out.add("regression", true);
         out.add("roi", false);
         out.add("multibox_rois", false);
-        tout.finalize(ad.getobj("parameters").getobj("output"),
-                      out, // TODO; to output_params DTO
+        tout.finalize(predict_dto->parameters->output,
+                      out, // TODO; to output DTO
                       static_cast<MLModel *>(&this->_mlmodel));
       }
     else
       {
         UnsupervisedOutput unsupo;
         unsupo.set_results(std::move(unsup_results));
-        unsupo.finalize(ad.getobj("parameters").getobj("output"),
-                        out, // TODO: to output_params DTO
+        unsupo.finalize(predict_dto->parameters->output,
+                        out, // TODO: to output DTO
                         static_cast<MLModel *>(&this->_mlmodel));
       }
 
-    if (ad.has("chain") && ad.get("chain").get<bool>())
+    if (predict_dto->_chain)
       {
         if (typeid(inputc) == typeid(ImgTensorRTInputFileConn))
           {

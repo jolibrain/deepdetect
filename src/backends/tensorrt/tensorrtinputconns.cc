@@ -84,15 +84,15 @@ namespace dd
       }
   }
 
-  void ImgTensorRTInputFileConn::transform(const APIData &ad)
+  void ImgTensorRTInputFileConn::transform(
+      oatpp::Object<DTO::ServicePredict> input_dto)
   {
-
-    if (ad.has("has_mean_file"))
+    if (input_dto->has_mean_file)
       _logger->warn("mean file cannot be used with tensorRT backend");
 
     try
       {
-        ImgInputFileConn::transform(ad);
+        ImgInputFileConn::transform(input_dto);
       }
     catch (const std::exception &e)
       {

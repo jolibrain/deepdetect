@@ -59,6 +59,9 @@ OPTION(USE_JSON_API "build internal JSON API" ON)
 OPTION(USE_HTTP_SERVER "build cppnet-lib version of http JSON API " OFF)
 OPTION(USE_HTTP_SERVER_OATPP "build oatpp version of http JSON API" ON)
 
+# user set variables
+set(USE_OPENCV_VERSION CACHE STRING "OpenCV Version used by DeepDetect")
+
 # Get the current working branch
 execute_process(
   COMMAND git rev-parse --abbrev-ref HEAD
@@ -568,12 +571,16 @@ if (USE_TF)
 endif() # USE_TF
 
 # OpenCV
-find_package(OpenCV 3 QUIET COMPONENTS core imgproc highgui imgcodecs)
-if (NOT OpenCV_FOUND)
-  find_package(OpenCV 4 QUIET COMPONENTS core imgproc highgui imgcodecs)
-endif()
-if (NOT OpenCV_FOUND)
-  find_package(OpenCV 2 REQUIRED COMPONENTS core imgproc highgui imgcodecs)
+if (USE_OPENCV_VERSION STREQUAL "")
+  find_package(OpenCV 3 QUIET COMPONENTS core imgproc highgui imgcodecs)
+  if (NOT OpenCV_FOUND)
+    find_package(OpenCV 4 QUIET COMPONENTS core imgproc highgui imgcodecs)
+  endif()
+  if (NOT OpenCV_FOUND)
+    find_package(OpenCV 2 REQUIRED COMPONENTS core imgproc highgui imgcodecs)
+  endif()
+else()
+  find_package(OpenCV ${USE_OPENCV_VERSION} REQUIRED COMPONENTS core imgproc highgui imgcodecs)
 endif()
 set(OPENCV_VERSION ${OpenCV_VERSION_MAJOR})
 include_directories(${OpenCV_INCLUDE_DIRS})

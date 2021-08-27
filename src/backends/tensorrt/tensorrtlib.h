@@ -120,6 +120,7 @@ namespace dd
     std::string _engineFileName = "TRTengine";
     bool _readEngine = true;
     bool _writeEngine = true;
+    std::string _arch;
     int _gpuid = 0;
 
     //!< The TensorRT engine used to run the network

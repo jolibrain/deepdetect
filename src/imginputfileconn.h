@@ -458,7 +458,11 @@ namespace dd
     void fillup_parameters(const APIData &ad)
     {
       auto params = ad.createSharedDTO<dd::DTO::InputConnector>();
+      fillup_parameters(params);
+    }
 
+    void fillup_parameters(oatpp::Object<DTO::InputConnector> params)
+    {
       // optional parameters.
       if (params->width)
         _width = params->width;
@@ -545,7 +549,7 @@ namespace dd
         _interp = params->interp->std_str();
 
       // timeout
-      this->set_timeout(ad);
+      this->set_timeout(params);
 
 #ifdef USE_CUDA_CV
       // image resizing on GPU
@@ -605,6 +609,50 @@ namespace dd
       return _test_images.size();
     }
 
+    void get_data(oatpp::Object<DTO::ServicePredict> pred_in)
+    {
+      if (!pred_in->_data_raw_img.empty())
+        {
+          _ids = pred_in->_ids;
+          _meta_uris = pred_in->_meta_uris;
+          _index_uris = pred_in->_index_uris;
+          _images = pred_in->_data_raw_img;
+
+          std::vector<cv::Mat> rimgs;
+          std::vector<std::string> uris;
+          int i = 0;
+          for (auto img : _images)
+            {
+              cv::Mat rimg;
+              resize(img, rimg, cv::Size(_width, _height), 0, 0);
+
+              if (_bw && rimg.channels() > 1)
+                {
+                  cv::Mat bwimg;
+                  cv::cvtColor(rimg, bwimg, CV_BGR2GRAY);
+                  rimg = bwimg;
+                }
+              _images_size.push_back(std::pair<int, int>(img.rows, img.cols));
+              if (_keep_orig)
+                _orig_images.push_back(std::move(img));
+              if (!_ids.empty())
+                uris.push_back(_ids.at(i));
+              else
+                {
+                  _ids.push_back(std::to_string(i));
+                  uris.push_back(_ids.back());
+                }
+              rimgs.push_back(std::move(rimg));
+              ++i;
+            }
+          _images = rimgs;
+          if (!uris.empty())
+            _uris = uris;
+        }
+      else
+        InputConnectorStrategy::get_data(pred_in);
+    }
+
     void get_data(const APIData &ad)
     {
       // check for raw cv::Mat
@@ -618,6 +666,7 @@ namespace dd
             _index_uris = ad.get("index_uris").get<std::vector<std::string>>();
 
           _images = ad.get("data_raw_img").get<std::vector<cv::Mat>>();
+
           std::vector<cv::Mat> rimgs;
           std::vector<std::string> uris;
           int i = 0;
@@ -665,11 +714,23 @@ namespace dd
         }
 
       get_data(ad);
+      transform(nullptr);
+    }
+
+    void transform(oatpp::Object<DTO::ServicePredict> input_dto)
+    {
+
+      if (input_dto != nullptr) // [temporary] == nullptr if called from
+                                // transform(APIData)
+        {
+          fillup_parameters(input_dto->parameters->input);
+          get_data(input_dto);
+        }
+
       if (!_images.empty()) // got ready raw images
         {
           return;
         }
-
       int catch_read = 0;
       std::string catch_msg;
       std::vector<std::string> uris;

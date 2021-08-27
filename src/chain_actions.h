@@ -69,14 +69,13 @@ namespace dd
   class ChainAction
   {
   public:
-    ChainAction(const APIData &adc, const std::string &action_id,
-                const std::string &action_type,
+    ChainAction(oatpp::Object<DTO::ChainCall> call_dto,
+                const std::string &action_id, const std::string &action_type,
                 const std::shared_ptr<spdlog::logger> chain_logger)
         : _action_id(action_id), _action_type(action_type),
           _chain_logger(chain_logger)
     {
-      APIData action_adc = adc.getobj("action");
-      _params = action_adc.getobj("parameters");
+      _params = call_dto->action->parameters;
     }
 
     ~ChainAction()
@@ -93,7 +92,7 @@ namespace dd
 
     std::string _action_id;
     std::string _action_type;
-    APIData _params;
+    oatpp::Object<DTO::ChainActionParams> _params;
     bool _in_place = false;
     std::shared_ptr<spdlog::logger> _chain_logger;
   };
@@ -101,10 +100,11 @@ namespace dd
   class ImgsCropAction : public ChainAction
   {
   public:
-    ImgsCropAction(const APIData &adc, const std::string &action_id,
+    ImgsCropAction(oatpp::Object<DTO::ChainCall> call_dto,
+                   const std::string &action_id,
                    const std::string &action_type,
                    const std::shared_ptr<spdlog::logger> chain_logger)
-        : ChainAction(adc, action_id, action_type, chain_logger)
+        : ChainAction(call_dto, action_id, action_type, chain_logger)
     {
     }
 
@@ -118,10 +118,11 @@ namespace dd
   class ImgsRotateAction : public ChainAction
   {
   public:
-    ImgsRotateAction(const APIData &adc, const std::string &action_id,
+    ImgsRotateAction(oatpp::Object<DTO::ChainCall> call_dto,
+                     const std::string &action_id,
                      const std::string &action_type,
                      const std::shared_ptr<spdlog::logger> chain_logger)
-        : ChainAction(adc, action_id, action_type, chain_logger)
+        : ChainAction(call_dto, action_id, action_type, chain_logger)
     {
     }
 
@@ -135,10 +136,10 @@ namespace dd
   class ClassFilter : public ChainAction
   {
   public:
-    ClassFilter(const APIData &adc, const std::string &action_id,
-                const std::string &action_type,
+    ClassFilter(oatpp::Object<DTO::ChainCall> call_dto,
+                const std::string &action_id, const std::string &action_type,
                 const std::shared_ptr<spdlog::logger> chain_logger)
-        : ChainAction(adc, action_id, action_type, chain_logger)
+        : ChainAction(call_dto, action_id, action_type, chain_logger)
     {
       _in_place = true;
     }
@@ -152,7 +153,13 @@ namespace dd
   class ChainActionFactory
   {
   public:
-    ChainActionFactory(const APIData &adc) : _adc(adc)
+    ChainActionFactory(APIData adc)
+        : _call_dto(adc.createSharedDTO<DTO::ChainCall>())
+    {
+    }
+
+    ChainActionFactory(oatpp::Object<DTO::ChainCall> call_dto)
+        : _call_dto(call_dto)
     {
     }
     ~ChainActionFactory()
@@ -163,7 +170,7 @@ namespace dd
                       ChainData &cdata,
                       const std::shared_ptr<spdlog::logger> &chain_logger);
 
-    APIData _adc; /**< action ad object. */
+    oatpp::Object<DTO::ChainCall> _call_dto;
   };
 
 } // end of namespace
