@@ -180,13 +180,15 @@ namespace dd
         float w_ratio = static_cast<float>(width) / bgr.cols;
         float h_ratio = static_cast<float>(height) / bgr.rows;
         cv::resize(bgr, bgr, cv::Size(width, height), 0, 0, cv::INTER_CUBIC);
-        for (int bb = 0; bb < (int)targett[0].size(0); ++bb)
-          {
-            targett[0][bb][0] *= w_ratio;
-            targett[0][bb][1] *= h_ratio;
-            targett[0][bb][2] *= w_ratio;
-            targett[0][bb][3] *= h_ratio;
-          }
+
+        if (_bbox)
+          for (int bb = 0; bb < (int)targett[0].size(0); ++bb)
+            {
+              targett[0][bb][0] *= w_ratio;
+              targett[0][bb][1] *= h_ratio;
+              targett[0][bb][2] *= w_ratio;
+              targett[0][bb][3] *= h_ratio;
+            }
       }
   }
 

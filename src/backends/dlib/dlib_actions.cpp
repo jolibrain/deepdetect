@@ -47,23 +47,12 @@ namespace dd
     std::vector<std::string> bbox_ids;
 
     // check for action parameters
-    double bratio = 0.25;
-    int chip_size = 150;
-    if (_params.has("padding_ratio"))
-      {
-        bratio = _params.get("padding_ratio").get<double>(); // e.g. 0.055
-      }
-    if (_params.has("chip_size"))
-      {
-        chip_size = _params.get("chip_size").get<int>(); // in pixels
-      }
+    double bratio
+        = _params->padding_ratio != nullptr ? _params->padding_ratio : 0.25;
+    int chip_size = _params->chip_size;
     std::vector<APIData> cvad;
 
-    bool save_crops = false;
-    if (_params.has("save_crops"))
-      {
-        save_crops = _params.get("save_crops").get<bool>();
-      }
+    bool save_crops = _params->save_crops;
 
     // iterate image batch
     for (size_t i = 0; i < vad.size(); i++)

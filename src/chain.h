@@ -29,6 +29,26 @@
 
 namespace dd
 {
+  /**
+   * \brief Chain bad parameter exception
+   */
+  class ChainBadParamException : public std::exception
+  {
+  public:
+    ChainBadParamException(const std::string &s) : _s(s)
+    {
+    }
+    ~ChainBadParamException()
+    {
+    }
+    const char *what() const noexcept
+    {
+      return _s.c_str();
+    }
+
+  private:
+    std::string _s;
+  };
 
   /**
    * \brief chain temporary data in between service calls

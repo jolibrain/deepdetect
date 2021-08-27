@@ -24,6 +24,7 @@
 
 #include "apidata.h"
 #include "utils/fileops.hpp"
+#include "dto/service_predict.hpp"
 #ifndef WIN32
 #include "utils/httpclient.hpp"
 #endif
@@ -216,10 +217,31 @@ namespace dd
         }
     }
 
+    // TODO: inheritance between pred dto & train dto
+    void get_data(oatpp::Object<DTO::ServicePredict> pred_dto)
+    {
+      _uris.clear();
+      for (auto &uri : *pred_dto->data)
+        _uris.push_back(uri->std_str());
+      _ids = pred_dto->_ids;
+      _meta_uris = pred_dto->_meta_uris;
+      _index_uris = pred_dto->_index_uris;
+
+      if (_uris.empty())
+        {
+          throw InputConnectorBadParamException("missing data");
+        }
+    }
+
     void set_timeout(const APIData &ad)
     {
       if (ad.has("timeout"))
         _input_timeout = ad.get("timeout").get<int>();
+    }
+
+    void set_timeout(oatpp::Object<DTO::InputConnector> input_dto)
+    {
+      _input_timeout = input_dto->timeout;
     }
 
     /**

@@ -36,7 +36,19 @@ namespace dd
     {
       DTO_INIT(InputConnector, DTO /* extends */)
       // Connector type
+      DTO_FIELD_INFO(connector)
+      {
+        info->description
+            = "Type of the input connector, eg image, csv, text...";
+      }
       DTO_FIELD(String, connector);
+
+      DTO_FIELD_INFO(timeout)
+      {
+        info->description = "timeout on input data retrieval: -1 means using "
+                            "default (600sec)";
+      }
+      DTO_FIELD(Int32, timeout) = -1;
 
       // IMG Input Connector
       DTO_FIELD(Int32, width);

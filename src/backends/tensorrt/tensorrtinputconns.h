@@ -85,7 +85,7 @@ namespace dd
       ImgInputFileConn::init(ad);
     }
 
-    void transform(const APIData &ad);
+    void transform(oatpp::Object<DTO::ServicePredict> input_dto);
 
     std::string _meanfname = "mean.binaryproto";
     std::string _correspname = "corresp.txt";

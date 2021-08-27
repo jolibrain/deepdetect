@@ -37,9 +37,30 @@ namespace dd
     {
       DTO_INIT(ServicePredict, DTO /* extends */)
 
+      DTO_FIELD_INFO(service)
+      {
+        info->description = "Name of the service to use for prediction.";
+      }
       DTO_FIELD(String, service);
+
+      DTO_FIELD_INFO(parameters)
+      {
+        info->description = "Predict parameters of the service.";
+      }
       DTO_FIELD(Object<Parameters>, parameters) = Parameters::createShared();
-      DTO_FIELD(List<String>, data);
+      DTO_FIELD(Vector<String>, data) = Vector<String>::createShared();
+
+      DTO_FIELD(Boolean, has_mean_file) = false;
+
+    public:
+      /// Whether this service predict is part of a chain call or not
+      bool _chain = false;
+
+      // fields from previous chain data
+      std::vector<cv::Mat> _data_raw_img;
+      std::vector<std::string> _ids;
+      std::vector<std::string> _meta_uris;
+      std::vector<std::string> _index_uris;
     };
 
 #include OATPP_CODEGEN_END(DTO) ///< End DTO codegen section

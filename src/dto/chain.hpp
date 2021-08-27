@@ -25,7 +25,8 @@
 #include "oatpp/core/Types.hpp"
 #include "oatpp/core/macro/codegen.hpp"
 
-#include "common.hpp"
+#include "dto/service_predict.hpp"
+#include "dto/common.hpp"
 
 namespace dd
 {
@@ -33,11 +34,152 @@ namespace dd
   {
 #include OATPP_CODEGEN_BEGIN(DTO) ///< Begin DTO codegen section
 
+    // INPUT
+
+    class ChainActionParams : public oatpp::DTO
+    {
+      DTO_INIT(ChainActionParams, DTO)
+
+      // image
+      DTO_FIELD_INFO(to_rgb)
+      {
+        info->description = "Convert image to RGB";
+      }
+      DTO_FIELD(Boolean, to_rgb) = false;
+
+      DTO_FIELD_INFO(to_bgr)
+      {
+        info->description = "Convert image to BGR";
+      }
+      DTO_FIELD(Boolean, to_bgr) = false;
+
+      DTO_FIELD_INFO(save_path)
+      {
+        info->description = "Path to save chain output, eg for debugging";
+      }
+      DTO_FIELD(String, save_path) = "";
+
+      // image - crop
+      DTO_FIELD_INFO(fixed_width)
+      {
+        info->description = "[crop] if != 0, the crop will be centered on the "
+                            "center of the bbox and of width `fixed_width`";
+      }
+      DTO_FIELD(Int32, fixed_width) = 0;
+
+      DTO_FIELD_INFO(fixed_height)
+      {
+        info->description = "[crop] if != 0, the crop will be centered on the "
+                            "center of the bbox and of height `fixed_height`";
+      }
+      DTO_FIELD(Int32, fixed_height) = 0;
+
+      DTO_FIELD_INFO(padding_ratio)
+      {
+        info->description
+            = "[crop] how larger the crop should be relatively to the bbox. "
+              "eg a padding_ratio of 0.1 means 10% of the size of the bbox "
+              "will be added on each side of the crop";
+      }
+      DTO_FIELD(Float64, padding_ratio) = 0.0;
+
+      DTO_FIELD_INFO(save_crops)
+      {
+        info->description = "[crop] whether to save crops to `save_path`";
+      }
+      DTO_FIELD(Boolean, save_crops) = false;
+
+      // image - rotate
+      DTO_FIELD_INFO(orientation)
+      {
+        info->description
+            = "[rotate] whether rotation angle is `relative` or `absolute`";
+      }
+      DTO_FIELD(String, orientation) = "relative";
+
+      DTO_FIELD_INFO(save_img)
+      {
+        info->description
+            = "[rotate] whether to save image to `save_path` after rotation";
+      }
+      DTO_FIELD(Boolean, save_img) = false;
+
+      // filter
+      DTO_FIELD_INFO(classes)
+      {
+        info->description
+            = "[filter] classes NOT present in this list will be filtered out";
+      }
+      DTO_FIELD(Vector<String>, classes);
+
+      // dlib image align
+      DTO_FIELD(Int32, chip_size) = 150;
+    };
+
+    class ChainAction : public oatpp::DTO
+    {
+      DTO_INIT(ChainAction, DTO)
+
+      DTO_FIELD_INFO(type)
+      {
+        info->description = "Action type, one of `crop`,`filter`,[...]";
+      }
+      DTO_FIELD(String, type) = "";
+
+      DTO_FIELD(Object<ChainActionParams>, parameters)
+          = ChainActionParams::createShared();
+    };
+
+    class ChainCall : public ServicePredict
+    {
+      DTO_INIT(ChainCall, dd::DTO::ServicePredict)
+
+      DTO_FIELD_INFO(id)
+      {
+        info->description = "Chain call id, as referenced by `parent_id`";
+      }
+      DTO_FIELD(String, id);
+
+      DTO_FIELD_INFO(parent_id)
+      {
+        info->description = "Set the input data of this calls to the "
+                            "outputs of `parent_id`";
+      }
+      DTO_FIELD(String, parent_id);
+
+      // action
+      DTO_FIELD_INFO(action)
+      {
+        info->description = "Chain action in between service calls, to "
+                            "perform various operation on raw/transformed "
+                            "data. Mutually exclusive with `service`.";
+      }
+      DTO_FIELD(Object<ChainAction>, action);
+    };
+
+    class Chain : public oatpp::DTO
+    {
+      DTO_INIT(Chain, DTO)
+
+      DTO_FIELD(Vector<Object<ChainCall>>, calls)
+          = Vector<Object<ChainCall>>::createShared();
+    };
+
+    class ServiceChain : public oatpp::DTO
+    {
+      DTO_INIT(ServiceChain, DTO)
+
+      DTO_FIELD(Object<Chain>, chain);
+    };
+
+    // OUTPUT
+
     class ChainHead : public oatpp::DTO
     {
       DTO_INIT(ChainHead, DTO)
     };
 
+    // TODO rename chain output body
     class ChainBody : public oatpp::DTO
     {
       DTO_INIT(ChainBody, DTO)

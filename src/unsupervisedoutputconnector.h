@@ -189,15 +189,20 @@ namespace dd
 
     void finalize(const APIData &ad_in, APIData &ad_out, MLModel *mlm)
     {
+      auto output_params = ad_in.createSharedDTO<DTO::OutputConnector>();
+      finalize(output_params, ad_out, mlm);
+    }
+
+    void finalize(oatpp::Object<DTO::OutputConnector> output_params,
+                  APIData &ad_out, MLModel *mlm)
+    {
 #ifndef USE_SIMSEARCH
       (void)mlm;
 #endif
-      if (ad_in.has("binarized"))
-        _binarized = ad_in.get("binarized").get<bool>();
-      else if (ad_in.has("bool_binarized"))
-        _bool_binarized = ad_in.get("bool_binarized").get<bool>();
-      else if (ad_in.has("string_binarized"))
-        _string_binarized = ad_in.get("string_binarized").get<bool>();
+      _binarized = output_params->binarized;
+      _bool_binarized = output_params->bool_binarized;
+      _string_binarized = output_params->string_binarized;
+
       if (_binarized)
         {
           for (size_t i = 0; i < _vvres.size(); i++)
@@ -222,7 +227,7 @@ namespace dd
 
       std::unordered_set<std::string> indexed_uris;
 #ifdef USE_SIMSEARCH
-      if (ad_in.has("index") && ad_in.get("index").get<bool>())
+      if (output_params->index)
         {
           // check whether index has been created
           if (!mlm->_se)
@@ -231,7 +236,7 @@ namespace dd
                   = _vvres.at(0)._vals.size(); // XXX: lookup to the batch's
                                                // first output, as they should
                                                // all have the same size
-              mlm->create_sim_search(index_dim, ad_in);
+              mlm->create_sim_search(index_dim, output_params);
             }
 
             // index output content -> vector (XXX: will need to flatten in
@@ -259,7 +264,7 @@ namespace dd
           mlm->_se->index(urids, vvals);
 #endif
         }
-      if (ad_in.has("build_index") && ad_in.get("build_index").get<bool>())
+      if (output_params->build_index)
         {
           if (mlm->_se)
             mlm->build_index();
@@ -267,7 +272,7 @@ namespace dd
             throw SimIndexException("Cannot build index if not created");
         }
 
-      if (ad_in.has("search") && ad_in.get("search").get<bool>())
+      if (output_params->search)
         {
           if (!mlm->_se)
             {
@@ -275,15 +280,15 @@ namespace dd
                   = _vvres.at(0)._vals.size(); // XXX: lookup to the batch's
                                                // first output, as they should
                                                // all have the same size
-              mlm->create_sim_search(index_dim, ad_in);
+              mlm->create_sim_search(index_dim, output_params);
             }
 
-          int search_nn = _search_nn;
-          if (ad_in.has("search_nn"))
-            search_nn = ad_in.get("search_nn").get<int>();
+          int search_nn = output_params->search_nn != nullptr
+                              ? int(output_params->search_nn)
+                              : _search_nn;
 #ifdef USE_FAISS
-          if (ad_in.has("nprobe"))
-            mlm->_se->_tse->_nprobe = ad_in.get("nprobe").get<int>();
+          if (output_params->nprobe != nullptr)
+            mlm->_se->_tse->_nprobe = output_params->nprobe;
 #endif
           for (size_t i = 0; i < _vvres.size(); i++)
             {

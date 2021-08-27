@@ -29,10 +29,11 @@ namespace dd
   class DlibAlignCropAction : public ChainAction
   {
   public:
-    DlibAlignCropAction(const APIData &adc, const std::string &action_id,
+    DlibAlignCropAction(oatpp::Object<DTO::ChainCall> call_dto,
+                        const std::string &action_id,
                         const std::string &action_type,
                         const std::shared_ptr<spdlog::logger> chain_logger)
-        : ChainAction(adc, action_id, action_type, chain_logger)
+        : ChainAction(call_dto, action_id, action_type, chain_logger)
     {
     }
 
