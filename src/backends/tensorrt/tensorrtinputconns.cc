@@ -54,12 +54,34 @@ namespace dd
           {
             fbuf[offset]
                 = _scale * cvbuf[(converted.cols * h + w) * channels + c];
-            if (_has_mean_scalar)
-              fbuf[offset] -= _mean[c];
-            if (has_std)
-              fbuf[offset] /= _std[c];
             ++offset;
           }
+
+    if (_has_mean_scalar)
+      {
+        offset = channels * _height * _width * i;
+
+        for (int c = 0; c < channels; ++c)
+          for (int h = 0; h < _height; ++h)
+            for (int w = 0; w < _width; ++w)
+              {
+                fbuf[offset] -= _mean[c];
+                ++offset;
+              }
+      }
+
+    if (has_std)
+      {
+        offset = channels * _height * _width * i;
+
+        for (int c = 0; c < channels; ++c)
+          for (int h = 0; h < _height; ++h)
+            for (int w = 0; w < _width; ++w)
+              {
+                fbuf[offset] /= _std[c];
+                ++offset;
+              }
+      }
   }
 
   void ImgTensorRTInputFileConn::transform(const APIData &ad)
