@@ -250,7 +250,7 @@ TEST(chain, chain_trt_detection_gan)
         + trt_detect_repo
         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
           "300,\"width\":300},\"mllib\":{\"maxBatchSize\":1,"
-          "\"maxWorkspaceSize\":256,\"gpuid\":0,\"datatype\":\"fp16\"}}}";
+          "\"maxWorkspaceSize\":256,\"gpuid\":0}}}"; //,\"datatype\":\"fp16\"
   std::string joutstr = japi.jrender(japi.service_create(detect_sname, jstr));
   ASSERT_EQ(created_str, joutstr);
 
