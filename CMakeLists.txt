@@ -333,8 +333,10 @@ if (USE_CAFFE OR USE_TORCH)
         PREFIX faiss
         SOURCE_DIR ${CMAKE_BINARY_DIR}/faiss/src/faiss
         GIT_REPOSITORY https://github.com/facebookresearch/faiss
+        GIT_TAG main
+        UPDATE_DISCONNECTED 1
         CONFIGURE_COMMAND cmake ${CONFIGURE_OPTS} -B build .
-	BUILD_COMMAND make -C build -j${N}
+        BUILD_COMMAND make -C build -j${N}
         INSTALL_COMMAND ""
         BUILD_IN_SOURCE 1
       )
@@ -772,7 +774,6 @@ if (USE_TORCH)
       BUILD_COMMAND ""
       COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || ${CMAKE_COMMAND} -E env PATH=${PROTOBUF_LIB_DIR}:$ENV{PATH} BUILD_CUSTOM_PROTOBUF=0 GLIBCXX_USE_CXX11_ABI=1 BUILD_TEST=0 USE_CUDA=${PYTORCH_USE_CUDA} BUILD_CAFFE2_OPS=0 USE_DDLOG=1 CAFFE2_LINK_LOCAL_PROTOBUF=0 "CMAKE_CXX_FLAGS=-isystem${SPDLOG_INCLUDE_DIR} -isystem${PROTOBUF_INCLUDE_DIR}" CMAKE_PREFIX_PATH=${PROTOBUF_LIB_DIR}/cmake MAX_JOBS=8 python3 ../pytorch/tools/build_libtorch.py
       INSTALL_COMMAND ""
-      DEPENDS spdlog
     )
 
     set(TORCH_LOCATION ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch)
@@ -918,26 +919,19 @@ if (USE_TENSORRT)
     set(TENSORRT_INC_DIR /usr/include/x86_64-linux-gnu)
   endif()
 
-  if (NOT EXISTS "${TRTTESTDIR}/libnvinfer.so.7")
-    message(FATAL_ERROR "Could not find TensorRT ${TENSORRT_LIB_DIR}/libnvinfer.so.7, please provide tensorRT location as TENSORRT_DIR or (TENSORRT_LIB_DIR _and_ TENSORRT_INC_DIR)")
+  if (NOT EXISTS "${TRTTESTDIR}/libnvinfer.so.8")
+    message(FATAL_ERROR "Could not find TensorRT ${TENSORRT_LIB_DIR}/libnvinfer.so.8, please provide tensorRT location as TENSORRT_DIR or (TENSORRT_LIB_DIR _and_ TENSORRT_INC_DIR)")
   else()
     message(STATUS "Found TensorRT libraries : ${TRTTESTDIR}/libnvinfer.so")
   endif()
 
     set(TENSORRT_LIB_DIR ${CMAKE_BINARY_DIR}/tensorrt-oss/bin/ ${TENSORRT_LIB_DIR})
-	set(TENSORRT_LIBS /usr/lib/x86_64-linux-gnu/libnvinfer.so.7 nvcaffeparser nvinfer_plugin nvonnxparser )
+	set(TENSORRT_LIBS nvinfer nvcaffeparser nvinfer_plugin nvonnxparser )
 
     if (NOT TENSORRT_VERSION)
-        if (EXISTS "${TRTTESTDIR}/libnvinfer.so.7.2.3")
-            set(TENSORRT_VERSION 21.04)
-            message(STATUS "Found TensorRT libraries version 7.2.3")
-        # TODO(sileht): Update trt-oss patches for 7.2.2
-        # elseif (EXISTS "${TRTTESTDIR}/libnvinfer.so.7.2.2")
-        #     set(TENSORRT_VERSION 20.12)
-        #     message(STATUS "Found TensorRT libraries version 7.2.2")
-        elseif (EXISTS "${TRTTESTDIR}/libnvinfer.so.7")
-            set(TENSORRT_VERSION 21.04)
-            message(WARNING "No supported TensorRT version found assuming 21.04/7.2.3")
+        if (EXISTS "${TRTTESTDIR}/libnvinfer.so.8")
+            set(TENSORRT_VERSION 21.08)
+            message(STATUS "Found TensorRT libraries version 8.x")
         else()
             message(FATAL_ERROR "No supported TensorRT version found")
         endif()
@@ -958,9 +952,9 @@ if (USE_TENSORRT)
 	set(TRT_PATCHES
       ${TRT_PATCHES_PATH}/0001-support-for-refinedet.patch
       ${TRT_PATCHES_PATH}/0003-c++14.patch
-      ${TRT_PATCHES_PATH}/0002-find-myelin.patch
-      ${TRT_PATCHES_PATH}/0006-find-7.patch
       ${TRT_PATCHES_PATH}/0008-cuda13.patch
+      ${TRT_PATCHES_PATH}/0009-fix_compil_order.patch
+      ${TRT_PATCHES_PATH}/0010-fix_plugin_detect.patch
       )
 
     # Tensorrt uses its own protobuf version (3.0.0) and this cannot be overrided

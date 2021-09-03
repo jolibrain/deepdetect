@@ -105,7 +105,7 @@ TEST(tensorrtapi, service_predict_best)
         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
           "224,\"width\":224},\"mllib\":{\"datatype\":\"fp32\","
           "\"maxBatchSize\":1,\"maxWorkspaceSize\":256,"
-          "\"tensorRTEngineFile\":\"TRTengine_bs\",\"gpuid\":0}}}";
+          "\"tensorRTEngineFile\":\"TRTengine\",\"gpuid\":0}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
   ASSERT_EQ(created_str, joutstr);
 
@@ -125,6 +125,8 @@ TEST(tensorrtapi, service_predict_best)
   std::string age
       = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
   ASSERT_TRUE(age == "29");
+  std::cout << "looking for " << age_repo << "TRTengine_arch"
+            << get_trt_archi() << "_bs1" << std::endl;
   ASSERT_TRUE(fileops::file_exists(age_repo + "TRTengine_arch"
                                    + get_trt_archi() + "_bs1"));
   /*ASSERT_TRUE(!fileops::remove_file(age_repo, "net_tensorRT.proto"));
@@ -176,14 +178,14 @@ TEST(tensorrtapi, service_predict_refinedet)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(400, jd["status"]["code"]);
 
-  ASSERT_TRUE(fileops::file_exists(squeez_repo + "TRTengine_arch"
-                                   + get_trt_archi() + "_bs48"));
+  ASSERT_TRUE(fileops::file_exists(refinedet_repo + "TRTengine_arch"
+                                   + get_trt_archi() + "_bs1"));
   jstr = "{\"clear\":\"lib\"}";
   joutstr = japi.jrender(japi.service_delete(sname, jstr));
   ASSERT_EQ(ok_str, joutstr);
-  ASSERT_TRUE(!fileops::file_exists(squeez_repo + "net_tensorRT.proto"));
-  ASSERT_TRUE(!fileops::file_exists(squeez_repo + "TRTengine_arch"
-                                    + get_trt_archi() + "_bs48"));
+  ASSERT_TRUE(!fileops::file_exists(refinedet_repo + "net_tensorRT.proto"));
+  ASSERT_TRUE(!fileops::file_exists(refinedet_repo + "TRTengine_arch"
+                                    + get_trt_archi() + "_bs1"));
 }
 
 TEST(tensorrtapi, service_predict_onnx)
