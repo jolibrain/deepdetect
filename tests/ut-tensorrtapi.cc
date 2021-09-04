@@ -38,7 +38,7 @@ static std::string not_found_str
 
 static std::string squeez_repo = "../examples/trt/squeezenet_ssd_trt/";
 static std::string refinedet_repo = "../examples/trt/faces_512/";
-static std::string age_repo = "../examples/trt/age_real/";
+static std::string squeezv1_repo = "../examples/trt/squeezenet_v1/";
 static std::string resnet_onnx_repo = "../examples/trt/resnet_onnx_trt/";
 static std::string cyclegan_onnx_repo
     = "../examples/trt/cyclegan_resnet_attn_onnx_trt/";
@@ -97,13 +97,13 @@ TEST(tensorrtapi, service_predict_best)
 {
   // create service
   JsonAPI japi;
-  std::string sname = "age";
+  std::string sname = "imagenet";
   std::string jstr
       = "{\"mllib\":\"tensorrt\",\"description\":\"age_classif\",\"type\":"
         "\"supervised\",\"model\":{\"repository\":\""
-        + age_repo
+        + squeezv1_repo
         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
-          "224,\"width\":224},\"mllib\":{\"datatype\":\"fp32\","
+          "227,\"width\":227},\"mllib\":{\"datatype\":\"fp32\","
           "\"maxBatchSize\":1,\"maxWorkspaceSize\":256,"
           "\"tensorRTEngineFile\":\"TRTengine\",\"gpuid\":0}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
@@ -111,8 +111,8 @@ TEST(tensorrtapi, service_predict_best)
 
   // predict
   std::string jpredictstr
-      = "{\"service\":\"age\",\"parameters\":{\"input\":{\"height\":224,"
-        "\"width\":224},\"output\":{\"best\":2}},\"data\":[\""
+      = "{\"service\":\"imagenet\",\"parameters\":{\"input\":{\"height\":227,"
+        "\"width\":227},\"output\":{\"best\":2}},\"data\":[\""
         + squeez_repo + "face.jpg\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   JDoc jd;
@@ -122,20 +122,18 @@ TEST(tensorrtapi, service_predict_best)
   ASSERT_EQ(200, jd["status"]["code"]);
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   ASSERT_EQ(2, jd["body"]["predictions"][0]["classes"].Size());
-  std::string age
+  std::string cls
       = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
-  ASSERT_TRUE(age == "29");
-  std::cout << "looking for " << age_repo << "TRTengine_arch"
+  ASSERT_TRUE(cls == "n04357314 sunscreen, sunblock, sun blocker");
+  std::cout << "looking for " << squeezv1_repo << "TRTengine_arch"
             << get_trt_archi() << "_bs1" << std::endl;
-  ASSERT_TRUE(fileops::file_exists(age_repo + "TRTengine_arch"
+  ASSERT_TRUE(fileops::file_exists(squeezv1_repo + "TRTengine_arch"
                                    + get_trt_archi() + "_bs1"));
-  /*ASSERT_TRUE(!fileops::remove_file(age_repo, "net_tensorRT.proto"));
-    ASSERT_TRUE(!fileops::remove_file(age_repo, "TRTengine_bs_bs1"));*/
   jstr = "{\"clear\":\"lib\"}";
   joutstr = japi.jrender(japi.service_delete(sname, jstr));
   ASSERT_EQ(ok_str, joutstr);
-  ASSERT_TRUE(!fileops::file_exists(age_repo + "net_tensorRT.proto"));
-  ASSERT_TRUE(!fileops::file_exists(age_repo + "TRTengine_arch"
+  ASSERT_TRUE(!fileops::file_exists(squeezv1_repo + "net_tensorRT.proto"));
+  ASSERT_TRUE(!fileops::file_exists(squeezv1_repo + "TRTengine_arch"
                                     + get_trt_archi() + "_bs1"));
 }
 
