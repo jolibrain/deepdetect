@@ -323,10 +323,10 @@ if (USE_TENSORRT)
     "faces_512"
   )
   DOWNLOAD_DATASET(
-    "Age test set"
-    "https://deepdetect.com/models/init/desktop/images/classification/age_real.tar.gz"
-    "examples/trt/age_real"
-    "age_real.tar.gz"
+    "Embedded ImageNet classification"
+    "https://deepdetect.com/models/init/embedded/images/classification/squeezenet_v1.tar.gz"
+    "examples/trt/squeezenet_v1"
+    "squeezenet_v1.tar.gz"
     "deploy.prototxt"
   )
   DOWNLOAD_DATASET(
