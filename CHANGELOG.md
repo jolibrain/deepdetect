@@ -1,30 +1,27 @@
 # DeepDetect: Open Source Deep Learning Server & API (Changelog)
 
-## [0.18.0](https://github.com/jolibrain/deepdetect/compare/v0.17.0...v0.18.0) (2021-06-11)
+## [0.19.0](https://github.com/jolibrain/deepdetect/compare/v0.18.0...v0.19.0) (2021-09-06)
 
 
 ### Features
 
-* **build:** CMake config file to link with dede ([dd71a35](https://github.com/jolibrain/deepdetect/commit/dd71a35df831bab5382e4ee5885b425d5364a3b9))
-* add multigpu support for external native models ([90dcadd](https://github.com/jolibrain/deepdetect/commit/90dcaddc064a17275ddb709a4fe26ee690c7fc58))
-* **ml:** inference for GAN generators with TensorRT backend ([c93188c](https://github.com/jolibrain/deepdetect/commit/c93188c7a89d7efbea0269345e32c90df29ef74a))
-* **ml:** python script to trace timm vision models ([055fdfe](https://github.com/jolibrain/deepdetect/commit/055fdfe49d08a99b6b9379d3e2863dfff9ff8c1c))
-* **predict:** add best_bbox for torch, trt, caffe, ncnn backend ([7890401](https://github.com/jolibrain/deepdetect/commit/7890401e1751d3ca855a48a1a5badd48fcac833f))
-* **torch:** add dataloader_threads in API ([74a036d](https://github.com/jolibrain/deepdetect/commit/74a036d58b98059f4592102b7e54d90490773258))
-* **torch:** add multigpu for torch models ([447dd53](https://github.com/jolibrain/deepdetect/commit/447dd532c8e8d996675a091c7f3875fecd793aed))
-* **torch:** support detection models in chains ([7bb9705](https://github.com/jolibrain/deepdetect/commit/7bb9705fa4eeac3af34e0dd8bc94eab0224fc120))
-* **TRT:** port to TensorRT 21.04/7.2.3 ([4377451](https://github.com/jolibrain/deepdetect/commit/4377451dcbad488d3ee30a6083a3f82fdee2b196))
+* add DTO schemas to swagger automatic doc ([9180ff4](https://github.com/jolibrain/deepdetect/commit/9180ff4b8f0d71995bffff58cd497121ae3ea98a))
+* add z-normalisation option ([82d7cc5](https://github.com/jolibrain/deepdetect/commit/82d7cc57011180d2836efffed919f68200d1ff24))
+* **dto:** add custom dto vector type ([01222db](https://github.com/jolibrain/deepdetect/commit/01222db2bc8663a959de57e8c27a715d97add163))
+* **torch:** add ADAMP variant of adam in RANGER (2006.08217) ([e26ed77](https://github.com/jolibrain/deepdetect/commit/e26ed77744e302c8fbae597f51864c78a411a903))
+* **trt:** add return cv::Mat instead of vector for GAN output ([4990e7b](https://github.com/jolibrain/deepdetect/commit/4990e7bc39e663ed1a96af2391d1d9e4e3b21f55))
+* torch segmentation model prediction ([d72a138](https://github.com/jolibrain/deepdetect/commit/d72a138b7f39aa300f273e252d20fd0afb473369))
 
 
 ### Bug Fixes
 
-* moving back to FAISS master ([916338b](https://github.com/jolibrain/deepdetect/commit/916338b9611d7285dea6dec92cfdd6d3699d37dc))
-* **build:** add required definitions and include directory for building external dd api ([a059428](https://github.com/jolibrain/deepdetect/commit/a059428357b01836f9efa0c83be0e79549d9774c))
-* **build:** do not patch/rebuild tensorrt if not needed ([bfd29ec](https://github.com/jolibrain/deepdetect/commit/bfd29ec071207cb9d528c462046889f8a6cdcd3c))
-* **build:** torch 1.8 with cuda 11.3 string_view patch ([5002308](https://github.com/jolibrain/deepdetect/commit/50023087bda036118b18c2fd8733a991be3ab39b))
-* **chain:** fixed_size crops now work at the edges of images ([8e38e35](https://github.com/jolibrain/deepdetect/commit/8e38e35fc242db0459664ba13e90b0c16f18b5b5))
-* **dto:** allow scale input param to be either bool for csv/csvts or float for img ([168fc7c](https://github.com/jolibrain/deepdetect/commit/168fc7cb0c1b018c7408cba01184543e89b64c58))
-* **log:** typo in ncnn model log ([0163b02](https://github.com/jolibrain/deepdetect/commit/0163b02de3639fce9e9746335f7a96188b99ffa2))
-* **ncnn:** fix ncnnapi deserialization error ([089aacd](https://github.com/jolibrain/deepdetect/commit/089aacde7693435b2c90952d4961b8d41d9668ea))
-* **ncnn:** fix typo in ut ([893217b](https://github.com/jolibrain/deepdetect/commit/893217b1de938d2465ee72d14dd168ffed1a7800))
-* **trt:** apply std to input image correctly ([23bd913](https://github.com/jolibrain/deepdetect/commit/23bd913ac180b56eddbf90c71d1f2e8bc2310c54))
+* always depend on oatpp ([f262114](https://github.com/jolibrain/deepdetect/commit/f262114381d7a06ba99d5c7fc679a2188d7133b6))
+* **test:** tar archive was decompressed at each cmake call ([910a0ee](https://github.com/jolibrain/deepdetect/commit/910a0ee5080260f2dbda8f78698e3db14fa5fe5c))
+* **torch:** predictions handled correctly when data count > 1 ([5a95c29](https://github.com/jolibrain/deepdetect/commit/5a95c29a8a100f1a6dec4427a041a98185a19d2c))
+* **trt:** detect architecture and rebuild model if necessary ([5c9ff89](https://github.com/jolibrain/deepdetect/commit/5c9ff896b3bc868f4ba493af7db7d432ff587722))
+* **TRT:** fix build wrt new external build script ([7121dfe](https://github.com/jolibrain/deepdetect/commit/7121dfed3fdcce3672342a62ee38770c011cb709))
+* **TRT:** make refinedet great again, also upgrades to TRT8.0.0/TRT-OSS21.08 ([bdff2ae](https://github.com/jolibrain/deepdetect/commit/bdff2aedc2e0f2cb5e4110bda928f53e1c4cbdb4))
+* CI on Jetson nano with lighter classification model ([1673a99](https://github.com/jolibrain/deepdetect/commit/1673a99ecc922e01dd7cc8845098291ef46a8902))
+* dont rebuild torchvision everytime ([4f17897](https://github.com/jolibrain/deepdetect/commit/4f178973aac93e9616fe7d9449c1326c402b2ef8))
+* remove linking errors on oatpp access_log ([ed276b3](https://github.com/jolibrain/deepdetect/commit/ed276b30385be690923404f4052a30fbde94e5f1))
+* torch build with custom spdlog and C++14 ([4435540](https://github.com/jolibrain/deepdetect/commit/44355402f6f5f2b9b5093625e0e08b0f448565ea))
