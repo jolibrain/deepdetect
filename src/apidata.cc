@@ -95,6 +95,14 @@ namespace dd
     return vout();
   }
 
+#ifdef USE_CUDA_CV
+  vout visitor_vad::operator()(const std::vector<cv::cuda::GpuMat> &vcv)
+  {
+    (void)vcv;
+    return vout();
+  }
+#endif
+
   vout visitor_vad::operator()(const std::vector<std::pair<int, int>> &vpi)
   {
     (void)vpi;

@@ -21,6 +21,9 @@
 
 #include "chain_actions.h"
 #include <opencv2/opencv.hpp>
+#ifdef USE_CUDA_CV
+#include <opencv2/cudaimgproc.hpp>
+#endif
 #if CV_VERSION_MAJOR >= 3
 #define CV_BGR2RGB cv::COLOR_BGR2RGB
 #define CV_RGB2BGR cv::COLOR_RGB2BGR
@@ -37,14 +40,27 @@ namespace dd
   void ImgsCropAction::apply(APIData &model_out, ChainData &cdata)
   {
     std::vector<APIData> vad = model_out.getv("predictions");
-    std::vector<cv::Mat> imgs
-        = model_out.getobj("input").get("imgs").get<std::vector<cv::Mat>>();
+    APIData input_ad = model_out.getobj("input");
     std::vector<std::pair<int, int>> imgs_size
-        = model_out.getobj("input")
-              .get("imgs_size")
-              .get<std::vector<std::pair<int, int>>>();
-    std::vector<cv::Mat> cropped_imgs;
+        = input_ad.get("imgs_size").get<std::vector<std::pair<int, int>>>();
     std::vector<std::string> bbox_ids;
+
+    std::vector<cv::Mat> imgs;
+    std::vector<cv::Mat> cropped_imgs;
+#ifdef USE_CUDA_CV
+    std::vector<cv::cuda::GpuMat> cuda_imgs;
+    std::vector<cv::cuda::GpuMat> cropped_cuda_imgs;
+
+    if (input_ad.has("cuda_imgs"))
+      {
+        cuda_imgs
+            = input_ad.get("cuda_imgs").get<std::vector<cv::cuda::GpuMat>>();
+      }
+    else
+#endif
+      {
+        imgs = input_ad.get("imgs").get<std::vector<cv::Mat>>();
+      }
 
     // check for action parameters
     double bratio = _params->padding_ratio;
@@ -53,9 +69,6 @@ namespace dd
     std::string save_path = _params->save_path->std_str();
     if (!save_path.empty())
       save_path += "/";
-
-    bool to_rgb = _params->to_rgb;
-    bool to_bgr = _params->to_bgr;
 
     int fixed_width = _params->fixed_width;
     int fixed_height = _params->fixed_height;
@@ -67,7 +80,19 @@ namespace dd
       {
         std::string uri = vad.at(i).get("uri").get<std::string>();
 
-        cv::Mat img = imgs.at(i);
+        int im_cols, im_rows;
+#ifdef USE_CUDA_CV
+        if (!cuda_imgs.empty())
+          {
+            im_cols = cuda_imgs.at(i).cols;
+            im_rows = cuda_imgs.at(i).rows;
+          }
+        else
+#endif
+          {
+            im_cols = imgs.at(i).cols;
+            im_rows = imgs.at(i).rows;
+          }
         int orig_cols = imgs_size.at(i).second;
         int orig_rows = imgs_size.at(i).first;
 
@@ -82,24 +107,20 @@ namespace dd
               throw ActionBadParamException(
                   "crop action cannot find bbox object for uri " + uri);
 
-            double xmin
-                = bbox.get("xmin").get<double>() / orig_cols * img.cols;
-            double ymin
-                = bbox.get("ymin").get<double>() / orig_rows * img.rows;
-            double xmax
-                = bbox.get("xmax").get<double>() / orig_cols * img.cols;
-            double ymax
-                = bbox.get("ymax").get<double>() / orig_rows * img.rows;
+            double xmin = bbox.get("xmin").get<double>() / orig_cols * im_cols;
+            double ymin = bbox.get("ymin").get<double>() / orig_rows * im_rows;
+            double xmax = bbox.get("xmax").get<double>() / orig_cols * im_cols;
+            double ymax = bbox.get("ymax").get<double>() / orig_rows * im_rows;
 
             double deltax = bratio * (xmax - xmin);
             double deltay = bratio * (ymax - ymin);
 
             double cxmin = std::max(0.0, xmin - deltax);
             double cxmax
-                = std::min(static_cast<double>(img.cols), xmax + deltax);
+                = std::min(static_cast<double>(im_cols), xmax + deltax);
             double cymin = std::max(0.0, ymin - deltay);
             double cymax
-                = std::min(static_cast<double>(img.rows), ymax + deltay);
+                = std::min(static_cast<double>(im_rows), ymax + deltay);
 
             if (fixed_width > 0 || fixed_height > 0)
               {
@@ -120,20 +141,19 @@ namespace dd
                     cymax += -cymin;
                     cymin = 0;
                   }
-                if (cxmax > img.cols)
+                if (cxmax > im_cols)
                   {
-                    cxmin -= cxmax - img.cols;
-                    cxmax = img.cols;
+                    cxmin -= cxmax - im_cols;
+                    cxmax = im_cols;
                   }
-                if (cymax > img.rows)
+                if (cymax > im_rows)
                   {
-                    cymin -= cymax - img.rows;
-                    cymax = img.rows;
+                    cymin -= cymax - im_rows;
+                    cymax = im_rows;
                   }
               }
 
-            if (cxmin >= img.cols || cymin >= img.rows || cxmax < 0
-                || cymax < 0)
+            if (cxmin >= im_cols || cymin >= im_rows || cxmax < 0 || cymax < 0)
               {
                 _chain_logger->warn("bounding box does not intersect image, "
                                     "skipping crop action");
@@ -141,29 +161,36 @@ namespace dd
               }
 
             cv::Rect roi(cxmin, cymin, cxmax - cxmin, cymax - cymin);
-            cv::Mat cropped_img = img(roi).clone();
 
-            // set channels as needed
-            if (to_rgb)
-              cv::cvtColor(cropped_img, cropped_img, CV_BGR2RGB);
-            else if (to_bgr)
-              cv::cvtColor(cropped_img, cropped_img, CV_RGB2BGR);
+#ifdef USE_CUDA_CV
+            if (!cuda_imgs.empty())
+              {
+                cv::cuda::GpuMat cropped_img = cuda_imgs.at(i)(roi).clone();
+                // TODO save crops if requested
+
+                cropped_cuda_imgs.push_back(std::move(cropped_img));
+              }
+            else
+#endif
+              {
+                cv::Mat cropped_img = imgs.at(i)(roi).clone();
+
+                // save crops if requested
+                if (save_crops)
+                  {
+                    std::string puri = dd_utils::split(uri, '/').back();
+                    cv::imwrite(save_path + "crop_" + puri + "_"
+                                    + std::to_string(j) + ".png",
+                                cropped_img);
+                  }
+                cropped_imgs.push_back(std::move(cropped_img));
+              }
 
             // adding bbox id
             std::string bbox_id = genid(uri, "bbox" + std::to_string(j));
             bbox_ids.push_back(bbox_id);
             ad_cls.at(j).add("class_id", bbox_id);
             cad_cls.push_back(ad_cls.at(j));
-
-            // save crops if requested
-            if (save_crops)
-              {
-                std::string puri = dd_utils::split(uri, '/').back();
-                cv::imwrite(save_path + "crop_" + puri + "_"
-                                + std::to_string(j) + ".png",
-                            cropped_img);
-              }
-            cropped_imgs.push_back(std::move(cropped_img));
           }
         APIData ccls;
         ccls.add("uri", uri);
@@ -175,6 +202,10 @@ namespace dd
     // store crops into action output store
     APIData action_out;
     action_out.add("data_raw_img", cropped_imgs);
+#ifdef USE_CUDA_CV
+    if (!cropped_cuda_imgs.empty())
+      action_out.add("data_cuda_img", cropped_cuda_imgs);
+#endif
     action_out.add("cids", bbox_ids);
     cdata.add_action_data(_action_id, action_out);
 

@@ -572,24 +572,30 @@ if (USE_TF)
 endif() # USE_TF
 
 # OpenCV
+set(OPENCV_MODULES core imgproc highgui imgcodecs)
+if (USE_CUDA_CV)
+  list(APPEND OPENCV_MODULES cudaimgproc cudaarithm cudawarping)
+endif()
+
 if (USE_OPENCV_VERSION STREQUAL "")
-  find_package(OpenCV 3 QUIET COMPONENTS core imgproc highgui imgcodecs)
+  find_package(OpenCV 3 QUIET COMPONENTS ${OPENCV_MODULES})
   if (NOT OpenCV_FOUND)
-    find_package(OpenCV 4 QUIET COMPONENTS core imgproc highgui imgcodecs)
+    find_package(OpenCV 4 QUIET COMPONENTS ${OPENCV_MODULES})
   endif()
   if (NOT OpenCV_FOUND)
-    find_package(OpenCV 2 REQUIRED COMPONENTS core imgproc highgui imgcodecs)
+    find_package(OpenCV 2 REQUIRED COMPONENTS ${OPENCV_MODULES})
   endif()
 else()
-  find_package(OpenCV ${USE_OPENCV_VERSION} REQUIRED COMPONENTS core imgproc highgui imgcodecs)
+  find_package(OpenCV ${USE_OPENCV_VERSION} REQUIRED COMPONENTS ${OPENCV_MODULES})
 endif()
+
 set(OPENCV_VERSION ${OpenCV_VERSION_MAJOR})
 include_directories(${OpenCV_INCLUDE_DIRS})
 message(STATUS "OpenCV ${OPENCV_VERSION} (${OpenCV_VERSION}) found (${OpenCV_CONFIG_PATH})")
 
 if (USE_CUDA_CV)
   message(STATUS "Using CUDA OpenCV")
-  string(APPEND CMAKE_CXX_FLAGS " -DUSE_CUDA_CV")
+  add_definitions(-DUSE_CUDA_CV)
 endif()
 
 # customized Caffe as external project
