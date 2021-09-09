@@ -64,7 +64,7 @@ ccache -s
         script {
           docker.image(env.DOCKER_IMAGE).inside(env.DOCKER_PARAMS) {
             sh '''
-            cd build && ctest -V -E "multigpu"
+            cd build && ctest -V -E "multigpu|python" 
             '''
           }
         }

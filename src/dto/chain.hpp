@@ -43,13 +43,15 @@ namespace dd
       // image
       DTO_FIELD_INFO(to_rgb)
       {
-        info->description = "Convert image to RGB";
+        info->description = "*Removed - use `parameters.input.rgb` instead*\n"
+                            "Convert image to RGB";
       }
       DTO_FIELD(Boolean, to_rgb) = false;
 
       DTO_FIELD_INFO(to_bgr)
       {
-        info->description = "Convert image to BGR";
+        info->description = "*Removed - use `parameters.input.rgb` instead*\n"
+                            "Convert image to BGR";
       }
       DTO_FIELD(Boolean, to_bgr) = false;
 

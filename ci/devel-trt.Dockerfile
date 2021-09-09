@@ -112,7 +112,7 @@ RUN for url in \
         ; do curl -L -s -o /tmp/p.deb $url && dpkg -i /tmp/p.deb && rm -rf /tmp/p.deb; done
 
 RUN python3 -m pip install --upgrade pip
-RUN python3 -m pip install torch torchvision
+RUN python3 -m pip install torch
 
 # Build OpenCV 4 with CUDA
 WORKDIR /tmp

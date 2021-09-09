@@ -13,7 +13,8 @@
   "USE_DLIB=@USE_DLIB@ USE_CUDA_CV=@USE_CUDA_CV@ "                            \
   "USE_SIMSEARCH=@USE_SIMSEARCH@ USE_ANNOY=@USE_ANNOY@ "                      \
   "USE_FAISS=@USE_FAISS@ USE_COMMAND_LINE=@USE_COMMAND_LINE@ "                \
-  "USE_JSON_API=@USE_JSON_API@ USE_HTTP_SERVER=@USE_HTTP_SERVER@"
+  "USE_JSON_API=@USE_JSON_API@ USE_HTTP_SERVER=@USE_HTTP_SERVER@ "            \
+  "USE_CUDA_CV=@USE_CUDA_CV@"
 
 #define DEPS_VERSION                                                          \
   "OPENCV_VERSION=@OpenCV_VERSION@ "                                          \

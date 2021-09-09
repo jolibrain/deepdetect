@@ -38,6 +38,7 @@ cmake .. \
     -DBUILD_TESTS=ON  \
     -DBUILD_SPDLOG=ON \
     -DUSE_HTTP_SERVER_OATPP=ON \
+    -DUSE_CUDA_CV=ON  \
     -DUSE_CAFFE=OFF  \
     -DUSE_TENSORRT=ON  \
     -DUSE_TENSORRT_OSS=ON  \
@@ -68,7 +69,7 @@ ccache -s
               python3 -c 'import torch, sys; c=torch.cuda.device_count() ; print(f"CUDA VISIBLE GPU: {c}"); sys.exit(bool(c == 0 ))'
               echo
               echo "****************************"
-              cd build && ctest -V -E "multigpu"
+              cd build && ctest -V -E "multigpu|python"
               '''
             }
           }

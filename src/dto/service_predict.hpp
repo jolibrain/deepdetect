@@ -58,6 +58,9 @@ namespace dd
 
       // fields from previous chain data
       std::vector<cv::Mat> _data_raw_img;
+#ifdef USE_CUDA_CV
+      std::vector<cv::cuda::GpuMat> _data_raw_img_cuda;
+#endif
       std::vector<std::string> _ids;
       std::vector<std::string> _meta_uris;
       std::vector<std::string> _index_uris;
