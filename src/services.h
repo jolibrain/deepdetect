@@ -1076,6 +1076,14 @@ namespace dd
                   call_dto->data->push_back(d.c_str());
                 }
             }
+#ifdef USE_CUDA_CV
+          else if (act_data.has("data_cuda_img"))
+            {
+              call_dto->_data_raw_img_cuda
+                  = act_data.get("data_cuda_img")
+                        .get<std::vector<cv::cuda::GpuMat>>();
+            }
+#endif
           else if (act_data.has("data_raw_img")) // raw images
             {
               call_dto->_data_raw_img

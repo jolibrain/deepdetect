@@ -23,6 +23,9 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <boost/math/cstdfloat/cstdfloat_types.hpp>
+#ifdef USE_CUDA_CV
+#include <opencv2/core/cuda_stream_accessor.hpp>
+#endif
 
 namespace dd
 {
@@ -84,6 +87,56 @@ namespace dd
       }
   }
 
+#ifdef USE_CUDA_CV
+  void ImgTensorRTInputFileConn::GpuMatToRTBuffer(cv::cuda::GpuMat &img, int i)
+  {
+    cv::cuda::GpuMat converted;
+    int channels = img.channels();
+
+    if (_cuda_buf == nullptr)
+      throw InputConnectorInternalException(
+          "No cuda buffer available to copy the data");
+    if (_has_mean_scalar && _mean.size() != size_t(channels))
+      throw InputConnectorBadParamException(
+          "mean vector be of size the number of channels ("
+          + std::to_string(channels) + ")");
+
+    if (!_std.empty() && _std.size() != size_t(channels))
+      throw InputConnectorBadParamException(
+          "std vector be of size the number of channels ("
+          + std::to_string(channels) + ")");
+
+    bool has_std = !_std.empty();
+
+    // TODO use stream for asynchronous version
+    // TODO Maybe preallocation too?
+    img.convertTo(converted, CV_32F);
+
+    std::vector<cv::cuda::GpuMat> vec_channels;
+    cv::cuda::split(converted, vec_channels, *_cuda_stream);
+
+    for (int c = 0; c < channels; ++c)
+      {
+        auto &channel = vec_channels.at(c);
+        cv::cuda::multiply(channel, _scale, channel, 1, -1, *_cuda_stream);
+
+        if (_has_mean_scalar)
+          cv::cuda::add(channel, -_mean[c], channel, cv::noArray(), -1,
+                        *_cuda_stream);
+        if (has_std)
+          cv::cuda::multiply(channel, 1.0 / _std[c], channel, 1, -1,
+                             *_cuda_stream);
+
+        int offset = _height * _width * (i * channels + c);
+        cudaMemcpy2DAsync(_cuda_buf + offset, _width * sizeof(float),
+                          channel.ptr<float>(), channel.step,
+                          _width * sizeof(float), _height,
+                          cudaMemcpyDeviceToDevice,
+                          cv::cuda::StreamAccessor::getStream(*_cuda_stream));
+      }
+  }
+#endif
+
   void ImgTensorRTInputFileConn::transform(
       oatpp::Object<DTO::ServicePredict> input_dto)
   {
@@ -103,8 +156,13 @@ namespace dd
     bool set_ids = false;
     if (this->_ids.empty())
       set_ids = true;
+    size_t img_count =
+#ifdef USE_CUDA_CV
+        _cuda ? this->_cuda_images.size() :
+#endif
+              this->_images.size();
 
-    for (int i = 0; i < (int)this->_images.size(); i++)
+    for (size_t i = 0; i < img_count; i++)
       {
         if (set_ids)
           this->_ids.push_back(this->_uris.at(i));
@@ -125,13 +183,29 @@ namespace dd
       _buf.resize(batch_size * height() * width());
     else
       _buf.resize(batch_size * 3 * height() * width());
-    for (i = 0; i < batch_size && _batch_index < (int)this->_images.size();
+
+    size_t img_count =
+#ifdef USE_CUDA_CV
+        _cuda ? this->_cuda_images.size() :
+#endif
+              this->_images.size();
+
+    for (i = 0; i < batch_size && _batch_index < (int)img_count;
          i++, _batch_index++)
       {
-        cv::Mat img = this->_images.at(_batch_index);
-        CVMatToRTBuffer(img, i);
+#ifdef USE_CUDA_CV
+        if (_cuda)
+          {
+            cv::cuda::GpuMat img = this->_cuda_images.at(_batch_index);
+            GpuMatToRTBuffer(img, i);
+          }
+        else
+#endif
+          {
+            cv::Mat img = this->_images.at(_batch_index);
+            CVMatToRTBuffer(img, i);
+          }
       }
     return i;
   }
-
 }

@@ -33,6 +33,9 @@
 #include <rapidjson/writer.h>
 #pragma GCC diagnostic pop
 #include <opencv2/core/core.hpp>
+#ifdef USE_CUDA_CV
+#include <opencv2/cudaimgproc.hpp>
+#endif
 #include "dd_types.h"
 #include <unordered_map>
 #include <vector>
@@ -52,6 +55,9 @@ namespace dd
       std::string, double, int, long int, long long int, bool,
       std::vector<std::string>, std::vector<double>, std::vector<int>,
       std::vector<bool>, std::vector<cv::Mat>,
+#ifdef USE_CUDA_CV
+      std::vector<cv::cuda::GpuMat>,
+#endif
       std::vector<std::pair<int, int>>,
       mapbox::util::recursive_wrapper<APIData>,
       mapbox::util::recursive_wrapper<std::vector<APIData>>, oatpp::Any>
@@ -122,6 +128,9 @@ namespace dd
     vout operator()(const std::vector<bool> &vd);
     vout operator()(const std::vector<std::string> &vs);
     vout operator()(const std::vector<cv::Mat> &vcv);
+#ifdef USE_CUDA_CV
+    vout operator()(const std::vector<cv::cuda::GpuMat> &vcv);
+#endif
     vout operator()(const std::vector<std::pair<int, int>> &vpi);
     vout operator()(const APIData &ad);
     vout operator()(const std::vector<APIData> &vad);
@@ -494,6 +503,13 @@ namespace dd
       // ignore this datatype for output, until output JSON API structure is
       // automatically validated.
     }
+
+#ifdef USE_CUDA_CV
+    void operator()(const std::vector<cv::cuda::GpuMat> &vcv)
+    {
+      (void)vcv;
+    }
+#endif
 
     void operator()(const std::vector<std::pair<int, int>> &vpi)
     {

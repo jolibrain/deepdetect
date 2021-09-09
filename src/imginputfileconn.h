@@ -26,6 +26,8 @@
 #include <opencv2/opencv.hpp>
 #ifdef USE_CUDA_CV
 #include <opencv2/cudaimgproc.hpp>
+#include <opencv2/cudawarping.hpp>
+#include <opencv2/cudaarithm.hpp>
 #endif
 #if CV_VERSION_MAJOR >= 3
 #define CV_LOAD_IMAGE_COLOR cv::IMREAD_COLOR
@@ -90,121 +92,21 @@ namespace dd
         return false;
     }
 
-    void resize(const cv::Mat &src, cv::Mat &dst, const cv::Size &cvsize,
-                const double &fx, const double &fy) const
+    /** apply preprocessing to image */
+    void prepare(const cv::Mat &src, cv::Mat &dst,
+                 const std::string &img_name) const
     {
-#ifdef USE_CUDA_CV
-      if (_cuda)
-        {
-          cv::cuda::GpuMat d_src;
-          d_src.upload(src);
-          cv::cuda::GpuMat d_dst;
-          cv::cuda::resize(d_src, d_dst, cvsize, fx, fy, select_cv_interp());
-
-          if (_histogram_equalization)
-            {
-              if (_bw)
-                {
-                  cv::cuda::equalizeHist(d_dst, d_dst);
-                  if (_rgb)
-                    cv::cuda::cvtColor(d_dst, d_dst, CV_GRAY2RGB);
-                }
-              else
-                {
-                  // We don't apply equalizeHist on each BGR channels to keep
-                  // the color balance of the image. equalizeHist(V) of HSV can
-                  // works too, the result is almost the same
-                  cv::cuda::cvtColor(d_dst, d_dst, CV_BGR2YCrCb);
-                  std::vector<cv::cuda::GpuMat> vec_channels;
-                  cv::cuda::split(d_dst, vec_channels);
-                  cv::cuda::equalizeHist(vec_channels[0], vec_channels[0]);
-                  cv::cuda::merge(vec_channels, d_dst);
-                  if (_rgb)
-                    cv::cuda::cvtColor(d_dst, d_dst, CV_YCrCb2RGB);
-                  else
-                    cv::cuda::cvtColor(d_dst, d_dst, CV_YCrCb2BGR);
-                }
-            }
-          else if (_rgb)
-            {
-              if (_bw)
-                cv::cuda::cvtColor(d_dst, d_dst, CV_GRAY2RGB);
-              else:
-            cv::cuda::cvtColor(d_dst, d_dst, CV_BGR2RGB);
-            }
-          d_dst.download(dst);
-        }
-      else
-#endif
-        {
-          cv::resize(src, dst, cvsize, fx, fy, select_cv_interp());
-          if (_histogram_equalization)
-            {
-              if (_bw)
-                {
-                  cv::equalizeHist(dst, dst);
-                  if (_rgb)
-                    cv::cvtColor(dst, dst, CV_GRAY2RGB);
-                }
-              else
-                {
-                  // We don't apply equalizeHist on each BGR channels to keep
-                  // the color balance of the image. equalizeHist(V) of HSV can
-                  // works too, the result is almost the same
-                  cv::cvtColor(dst, dst, CV_BGR2YCrCb);
-                  std::vector<cv::Mat> vec_channels;
-                  cv::split(dst, vec_channels);
-                  cv::equalizeHist(vec_channels[0], vec_channels[0]);
-                  cv::merge(vec_channels, dst);
-                  if (_rgb)
-                    cv::cvtColor(dst, dst, CV_YCrCb2RGB);
-                  else
-                    cv::cvtColor(dst, dst, CV_YCrCb2BGR);
-                }
-            }
-          else if (_rgb)
-            {
-              if (_bw)
-                cv::cvtColor(dst, dst, CV_GRAY2RGB);
-              else
-                cv::cvtColor(dst, dst, CV_BGR2RGB);
-            }
-        }
-    }
-
-    void scale(const cv::Mat &src, cv::Mat &dst) const
-    {
-      float coef = std::min(
-          static_cast<float>(_scale_max) / std::max(src.rows, src.cols),
-          static_cast<float>(_scale_min) / std::min(src.rows, src.cols));
-
-      resize(src, dst, cv::Size(), coef, coef);
-    }
-
-    /// Apply preprocessing to image and add it to the list of images
-    /// img_name: name of the image as displayed in error messages
-    int add_image(const cv::Mat &img, const std::string &img_name)
-    {
-      if (_keep_orig)
-        _orig_imgs.push_back(img);
-      if (img.empty())
-        {
-          _logger->error("empty image {}", img_name);
-          return -1;
-        }
-      _imgs_size.push_back(std::pair<int, int>(img.rows, img.cols));
-      cv::Mat rimg;
       try
         {
           if (_scaled)
-            scale(img, rimg);
+            scale(src, dst);
           else if (_width == 0 || _height == 0)
             {
               if (_width == 0 && _height == 0)
                 {
                   // Do nothing and keep native resolution. May cause issues if
                   // batched images are different resolutions
-                  rimg = img;
+                  dst = src;
                 }
               else
                 {
@@ -212,16 +114,18 @@ namespace dd
                   // (width or height) is non-zero, maintaining aspect ratio
                   // XXX - This may cause issues if batch images are different
                   // resolutions
-                  size_t currMaxDim = std::max(img.rows, img.cols);
+                  size_t currMaxDim = std::max(src.rows, src.cols);
                   double scale = static_cast<double>(std::max(_width, _height))
                                  / static_cast<double>(currMaxDim);
-                  resize(img, rimg, cv::Size(), scale, scale);
+                  cv::resize(src, dst, cv::Size(), scale, scale,
+                             select_cv_interp());
                 }
             }
           else
             {
               // Resize normally to the specified width and height
-              resize(img, rimg, cv::Size(_width, _height), 0, 0);
+              cv::resize(src, dst, cv::Size(_width, _height), 0, 0,
+                         select_cv_interp());
             }
         }
       catch (...)
@@ -229,14 +133,16 @@ namespace dd
           throw InputConnectorBadParamException("failed resizing image "
                                                 + img_name);
         }
+
+      // cropping
       if (_crop_width != 0 && _crop_height != 0)
         {
           int widthBorder = (_width - _crop_width) / 2;
           int heightBorder = (_height - _crop_height) / 2;
           try
             {
-              rimg = rimg(cv::Rect(widthBorder, heightBorder, _crop_width,
-                                   _crop_height));
+              dst = dst(cv::Rect(widthBorder, heightBorder, _crop_width,
+                                 _crop_height));
             }
           catch (...)
             {
@@ -245,9 +151,210 @@ namespace dd
             }
         }
 
-      _imgs.push_back(std::move(rimg));
+      // color adjustments
+      if (_histogram_equalization)
+        {
+          if (_bw)
+            {
+              cv::equalizeHist(dst, dst);
+              if (_rgb)
+                cv::cvtColor(dst, dst, CV_GRAY2RGB);
+            }
+          else
+            {
+              // We don't apply equalizeHist on each BGR channels to keep
+              // the color balance of the image. equalizeHist(V) of HSV can
+              // works too, the result is almost the same
+              cv::cvtColor(dst, dst, CV_BGR2YCrCb);
+              std::vector<cv::Mat> vec_channels;
+              cv::split(dst, vec_channels);
+              cv::equalizeHist(vec_channels[0], vec_channels[0]);
+              cv::merge(vec_channels, dst);
+              if (_rgb)
+                cv::cvtColor(dst, dst, CV_YCrCb2RGB);
+              else
+                cv::cvtColor(dst, dst, CV_YCrCb2BGR);
+            }
+        }
+      else if (_rgb)
+        {
+          if (_bw)
+            cv::cvtColor(dst, dst, CV_GRAY2RGB);
+          else
+            cv::cvtColor(dst, dst, CV_BGR2RGB);
+        }
+    }
+
+#ifdef USE_CUDA_CV
+    /** apply preprocessing to cuda image */
+    void prepare_cuda(const cv::cuda::GpuMat &src, cv::cuda::GpuMat &dst,
+                      const std::string &img_name) const
+    {
+      try
+        {
+          if (_scaled)
+            scale_cuda(src, dst);
+          else if (_width == 0 || _height == 0)
+            {
+              if (_width == 0 && _height == 0)
+                {
+                  // Do nothing and keep native resolution. May cause issues if
+                  // batched images are different resolutions
+                  dst = src;
+                }
+              else
+                {
+                  // Resize so that the larger dimension is set to whichever
+                  // (width or height) is non-zero, maintaining aspect ratio
+                  // XXX - This may cause issues if batch images are different
+                  // resolutions
+                  size_t currMaxDim = std::max(src.rows, src.cols);
+                  double scale = static_cast<double>(std::max(_width, _height))
+                                 / static_cast<double>(currMaxDim);
+                  cv::cuda::resize(src, dst, cv::Size(), scale, scale,
+                                   select_cv_interp(), *_cuda_stream);
+                }
+            }
+          else
+            {
+              // Resize normally to the specified width and height
+              cv::cuda::resize(src, dst, cv::Size(_width, _height), 0, 0,
+                               select_cv_interp(), *_cuda_stream);
+            }
+        }
+      catch (...)
+        {
+          throw InputConnectorBadParamException("failed resizing image "
+                                                + img_name);
+        }
+
+      // cropping
+      if (_crop_width != 0 && _crop_height != 0)
+        {
+          int widthBorder = (_width - _crop_width) / 2;
+          int heightBorder = (_height - _crop_height) / 2;
+          try
+            {
+              // TODO cuda crop with stream
+              dst = dst(cv::Rect(widthBorder, heightBorder, _crop_width,
+                                 _crop_height));
+            }
+          catch (...)
+            {
+              throw InputConnectorBadParamException("failed cropping image "
+                                                    + img_name);
+            }
+        }
+
+      if (_histogram_equalization)
+        {
+          if (_bw)
+            {
+              cv::cuda::equalizeHist(dst, dst, *_cuda_stream);
+              if (_rgb)
+                cv::cuda::cvtColor(dst, dst, CV_GRAY2RGB, 0, *_cuda_stream);
+            }
+          else
+            {
+              // We don't apply equalizeHist on each BGR channels to keep
+              // the color balance of the image. equalizeHist(V) of HSV can
+              // works too, the result is almost the same
+              cv::cuda::cvtColor(dst, dst, CV_BGR2YCrCb, 0, *_cuda_stream);
+              std::vector<cv::cuda::GpuMat> vec_channels;
+              cv::cuda::split(dst, vec_channels, *_cuda_stream);
+              cv::cuda::equalizeHist(vec_channels[0], vec_channels[0],
+                                     *_cuda_stream);
+              cv::cuda::merge(vec_channels, dst, *_cuda_stream);
+              if (_rgb)
+                cv::cuda::cvtColor(dst, dst, CV_YCrCb2RGB, 0, *_cuda_stream);
+              else
+                cv::cuda::cvtColor(dst, dst, CV_YCrCb2BGR, 0, *_cuda_stream);
+            }
+        }
+      else if (_rgb)
+        {
+          if (_bw)
+            cv::cuda::cvtColor(dst, dst, CV_GRAY2RGB, 0, *_cuda_stream);
+          else
+            cv::cuda::cvtColor(dst, dst, CV_BGR2RGB, 0, *_cuda_stream);
+        }
+    }
+#endif
+
+    void scale(const cv::Mat &src, cv::Mat &dst) const
+    {
+      float coef = std::min(
+          static_cast<float>(_scale_max) / std::max(src.rows, src.cols),
+          static_cast<float>(_scale_min) / std::min(src.rows, src.cols));
+
+      cv::resize(src, dst, cv::Size(), coef, coef, select_cv_interp());
+    }
+
+#ifdef USE_CUDA_CV
+    void scale_cuda(const cv::cuda::GpuMat &src, cv::cuda::GpuMat &dst) const
+    {
+      float coef = std::min(
+          static_cast<float>(_scale_max) / std::max(src.rows, src.cols),
+          static_cast<float>(_scale_min) / std::min(src.rows, src.cols));
+
+      cv::cuda::resize(src, dst, cv::Size(), coef, coef, select_cv_interp(),
+                       *_cuda_stream);
+    }
+#endif
+
+    /// Apply preprocessing to image and add it to the list of images
+    /// img_name: name of the image as displayed in error messages
+    int add_image(const cv::Mat &img, const std::string &img_name)
+    {
+      if (img.empty())
+        {
+          _logger->error("empty image {}", img_name);
+          return -1;
+        }
+      _imgs_size.push_back(std::pair<int, int>(img.rows, img.cols));
+
+#ifdef USE_CUDA_CV
+      if (_cuda)
+        {
+          cv::cuda::GpuMat d_src;
+          d_src.upload(img);
+
+          if (_keep_orig)
+            _cuda_orig_imgs.push_back(d_src);
+
+          cv::cuda::GpuMat d_dst;
+          prepare_cuda(d_src, d_dst, img_name);
+
+          _cuda_imgs.push_back(std::move(d_dst));
+        }
+      else
+#endif
+        {
+          if (_keep_orig)
+            _orig_imgs.push_back(img);
+
+          cv::Mat rimg;
+          prepare(img, rimg, img_name);
+          _imgs.push_back(std::move(rimg));
+        }
       return 0;
     }
+
+#ifdef USE_CUDA_CV
+    /// add_image but directly from a cv::cuda::GpuMat
+    int add_image_cuda(const cv::cuda::GpuMat &d_src,
+                       const std::string &img_name)
+    {
+      _imgs_size.push_back(std::pair<int, int>(d_src.rows, d_src.cols));
+      if (_keep_orig)
+        _cuda_orig_imgs.push_back(d_src);
+
+      cv::cuda::GpuMat d_dst;
+      prepare_cuda(d_src, d_dst, img_name);
+      _cuda_imgs.push_back(std::move(d_dst));
+      return 0;
+    }
+#endif
 
     // decode image
     void decode(const std::string &str)
@@ -420,6 +527,9 @@ namespace dd
     std::string _interp = "cubic";
 #ifdef USE_CUDA_CV
     bool _cuda = false;
+    std::vector<cv::cuda::GpuMat> _cuda_imgs;
+    std::vector<cv::cuda::GpuMat> _cuda_orig_imgs;
+    cv::cuda::Stream *_cuda_stream = nullptr;
 #endif
     std::string _db_fname;
     std::shared_ptr<spdlog::logger> _logger;
@@ -490,11 +600,18 @@ namespace dd
           _height = params->crop_height;
         }
 
-      _bw |= params->bw;
-      _rgb |= params->rgb;
-      _histogram_equalization |= params->histogram_equalization;
-      _unchanged_data |= params->unchanged_data;
-      _shuffle |= params->shuffle;
+      // XXX(louis) We cannot set these parameters to false if they are already
+      // true
+      if (params->bw != nullptr)
+        _bw = params->bw;
+      if (params->rgb != nullptr)
+        _rgb = params->rgb;
+      if (params->histogram_equalization != nullptr)
+        _histogram_equalization = params->histogram_equalization;
+      if (params->unchanged_data != nullptr)
+        _unchanged_data = params->unchanged_data;
+      if (params->shuffle != nullptr)
+        _shuffle = params->shuffle;
       if (params->seed)
         _seed = params->seed;
       if (params->test_split)
@@ -575,6 +692,7 @@ namespace dd
       dimg._interp = _interp;
 #ifdef USE_CUDA_CV
       dimg._cuda = _cuda;
+      dimg._cuda_stream = _cuda_stream;
 #endif
       dimg._logger = _logger;
     }
@@ -611,30 +729,25 @@ namespace dd
 
     void get_data(oatpp::Object<DTO::ServicePredict> pred_in)
     {
-      if (!pred_in->_data_raw_img.empty())
+      if (!pred_in->_data_raw_img.empty()
+#ifdef USE_CUDA_CV
+          || !pred_in->_data_raw_img_cuda.empty()
+#endif
+      )
         {
           _ids = pred_in->_ids;
           _meta_uris = pred_in->_meta_uris;
           _index_uris = pred_in->_index_uris;
-          _images = pred_in->_data_raw_img;
 
-          std::vector<cv::Mat> rimgs;
           std::vector<std::string> uris;
+          DataEl<DDImg> dimg(this->_input_timeout);
+          copy_parameters_to(dimg._ctype);
           int i = 0;
-          for (auto img : _images)
-            {
-              cv::Mat rimg;
-              resize(img, rimg, cv::Size(_width, _height), 0, 0);
 
-              if (_bw && rimg.channels() > 1)
-                {
-                  cv::Mat bwimg;
-                  cv::cvtColor(rimg, bwimg, CV_BGR2GRAY);
-                  rimg = bwimg;
-                }
-              _images_size.push_back(std::pair<int, int>(img.rows, img.cols));
-              if (_keep_orig)
-                _orig_images.push_back(std::move(img));
+          // preprocess
+#ifdef USE_CUDA_CV
+          for (auto cuda_img : pred_in->_data_raw_img_cuda)
+            {
               if (!_ids.empty())
                 uris.push_back(_ids.at(i));
               else
@@ -642,10 +755,47 @@ namespace dd
                   _ids.push_back(std::to_string(i));
                   uris.push_back(_ids.back());
                 }
-              rimgs.push_back(std::move(rimg));
+
+              dimg._ctype.add_image_cuda(cuda_img, _ids.back());
               ++i;
             }
-          _images = rimgs;
+#endif
+
+          for (auto img : pred_in->_data_raw_img)
+            {
+              if (!_ids.empty())
+                uris.push_back(_ids.at(i));
+              else
+                {
+                  _ids.push_back(std::to_string(i));
+                  uris.push_back(_ids.back());
+                }
+              dimg._ctype.add_image(img, _ids.back());
+              ++i;
+            }
+
+            // add preprocessed images
+#ifdef USE_CUDA_CV
+          if (_cuda)
+            {
+              if (_keep_orig)
+                _cuda_orig_images.insert(_cuda_orig_images.end(),
+                                         dimg._ctype._cuda_orig_imgs.begin(),
+                                         dimg._ctype._cuda_orig_imgs.end());
+              _cuda_images.insert(_cuda_images.end(),
+                                  dimg._ctype._cuda_imgs.begin(),
+                                  dimg._ctype._cuda_imgs.end());
+            }
+          else
+#endif
+            {
+              if (_keep_orig)
+                _orig_images = dimg._ctype._orig_imgs;
+              _images = dimg._ctype._imgs;
+            }
+          _images_size.insert(_images_size.end(),
+                              dimg._ctype._imgs_size.begin(),
+                              dimg._ctype._imgs_size.end());
           if (!uris.empty())
             _uris = uris;
         }
@@ -727,7 +877,11 @@ namespace dd
           get_data(input_dto);
         }
 
-      if (!_images.empty()) // got ready raw images
+      if (!_images.empty() // got ready raw images
+#ifdef USE_CUDA_CV
+          || !_cuda_images.empty() // got ready cuda images
+#endif
+      )
         {
           return;
         }
@@ -772,14 +926,34 @@ namespace dd
 
 #pragma omp critical
           {
-            _images.insert(_images.end(),
-                           std::make_move_iterator(dimg._ctype._imgs.begin()),
-                           std::make_move_iterator(dimg._ctype._imgs.end()));
-            if (_keep_orig)
-              _orig_images.insert(
-                  _orig_images.end(),
-                  std::make_move_iterator(dimg._ctype._orig_imgs.begin()),
-                  std::make_move_iterator(dimg._ctype._orig_imgs.end()));
+#ifdef USE_CUDA_CV
+            if (_cuda)
+              {
+                _cuda_images.insert(
+                    _cuda_images.end(),
+                    std::make_move_iterator(dimg._ctype._cuda_imgs.begin()),
+                    std::make_move_iterator(dimg._ctype._cuda_imgs.end()));
+                _cuda_orig_images.insert(
+                    _cuda_orig_images.end(),
+                    std::make_move_iterator(
+                        dimg._ctype._cuda_orig_imgs.begin()),
+                    std::make_move_iterator(
+                        dimg._ctype._cuda_orig_imgs.end()));
+              }
+            else
+#endif
+              {
+                _images.insert(
+                    _images.end(),
+                    std::make_move_iterator(dimg._ctype._imgs.begin()),
+                    std::make_move_iterator(dimg._ctype._imgs.end()));
+                if (_keep_orig)
+                  _orig_images.insert(
+                      _orig_images.end(),
+                      std::make_move_iterator(dimg._ctype._orig_imgs.begin()),
+                      std::make_move_iterator(dimg._ctype._orig_imgs.end()));
+              }
+
             _images_size.insert(
                 _images_size.end(),
                 std::make_move_iterator(dimg._ctype._imgs_size.begin()),
@@ -858,7 +1032,11 @@ namespace dd
           _logger->info("data split test size={} / remaining data size={}",
                         _test_images.size(), _images.size());
         }
-      if (_images.empty())
+      if (_images.empty()
+#ifdef USE_CUDA_CV
+          && _cuda_images.empty()
+#endif
+      )
         throw InputConnectorBadParamException("no image could be found");
     }
 
@@ -887,6 +1065,12 @@ namespace dd
     std::vector<cv::Mat> _test_images;
     std::vector<int> _test_labels;
     std::vector<std::pair<int, int>> _images_size;
+#ifdef USE_CUDA_CV
+    std::vector<cv::cuda::GpuMat>
+        _cuda_images; /**< cuda images for full-GPU processing. */
+    std::vector<cv::cuda::GpuMat>
+        _cuda_orig_images; /**< original images stored on GPU */
+#endif
 
     // image parameters
     int _width = 224;
@@ -913,6 +1097,7 @@ namespace dd
     std::string _interp = "cubic";
 #ifdef USE_CUDA_CV
     bool _cuda = false;
+    cv::cuda::Stream *_cuda_stream = &cv::cuda::Stream::Null();
 #endif
   };
 }

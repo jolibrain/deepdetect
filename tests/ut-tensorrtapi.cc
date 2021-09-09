@@ -81,6 +81,25 @@ TEST(tensorrtapi, service_predict)
   ASSERT_TRUE(cl1 == "15");
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
               > 0.4);
+
+#ifdef USE_CUDA_CV
+  // predict with cuda input pipeline
+  jpredictstr
+      = "{\"service\":\"imgserv\",\"parameters\":{\"input\":{\"height\":300,"
+        "\"width\":300,\"cuda\":true},\"output\":{\"bbox\":true}},\"data\":[\""
+        + squeez_repo + "face.jpg\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  jd = JDoc();
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  cl1 = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
+  ASSERT_TRUE(cl1 == "15");
+  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
+              > 0.4);
+#endif
+
   ASSERT_TRUE(fileops::file_exists(squeez_repo + "TRTengine_arch"
                                    + get_trt_archi() + "_bs48"));
   // ASSERT_TRUE(!fileops::remove_file(squeez_repo, "net_tensorRT.proto"));

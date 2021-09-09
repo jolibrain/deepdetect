@@ -30,6 +30,16 @@
 
 namespace dd
 {
+  /** Data passed from an mllib to the next step in the chain */
+  class ChainInputData
+  {
+    std::vector<cv::Mat> _imgs;
+    std::vector<std::pair<double, double>> _img_sizes;
+#ifdef USE_CUDA_CV
+    std::vector<cv::cuda::GpuMat> _cuda_imgs;
+#endif
+  };
+
   namespace DTO
   {
 #include OATPP_CODEGEN_BEGIN(DTO) ///< Begin DTO codegen section
@@ -145,6 +155,10 @@ namespace dd
         info->description = "Total prediction time";
       }
       DTO_FIELD(Float64, time);
+
+    public:
+      /// chain input data
+      ChainInputData _chain_input;
     };
 
     class PredictResponse : public oatpp::DTO
