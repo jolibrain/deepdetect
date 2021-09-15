@@ -747,6 +747,7 @@ if (USE_TORCH)
     ${PYTORCH_PATCHES_PATH}/pytorch_15_compile.patch
     ${PYTORCH_PATCHES_PATH}/pytorch_19_new_logger.patch
     ${PYTORCH_PATCHES_PATH}/pytorch_19_use_new_logger.patch
+    ${PYTORCH_PATCHES_PATH}/pytorch_19_thrust_include.patch
   )
 
   message(STATUS "Configuring libtorch")
