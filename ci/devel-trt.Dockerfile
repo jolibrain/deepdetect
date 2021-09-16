@@ -112,7 +112,7 @@ RUN for url in \
         ; do curl -L -s -o /tmp/p.deb $url && dpkg -i /tmp/p.deb && rm -rf /tmp/p.deb; done
 
 RUN python3 -m pip install --upgrade pip
-RUN python3 -m pip install torch
+RUN python3 -m pip install torch torchvision
 
 RUN apt clean -y
 ADD ci/gitconfig /etc/gitconfig
