@@ -36,6 +36,8 @@ parser.add_argument('models', type=str, nargs='*', help="Models to trace.")
 parser.add_argument('--backbone', type=str, help="Backbone for detection models")
 parser.add_argument('--print-models', action='store_true', help="Print all the available models names and exit")
 parser.add_argument('--to-dd-native', action='store_true', help="Prepare the model so that the weights can be loaded on native model with dede")
+parser.add_argument('--to-onnx', action="store_true", help="If specified, export to onnx instead of jit.")
+parser.add_argument('--weights', type=str, help="If not None, these weights will be embedded in the model before exporting")
 parser.add_argument('-a', "--all", action='store_true', help="Export all available models")
 parser.add_argument('-v', "--verbose", action='store_true', help="Set logging level to INFO")
 parser.add_argument('-o', "--output-dir", default=".", type=str, help="Output directory for traced models")
@@ -44,6 +46,9 @@ parser.add_argument('-p', "--not-pretrained", dest="pretrained", action='store_f
 parser.add_argument('--cpu', action='store_true', help="Force models to be exported for CPU device")
 parser.add_argument('--num_classes', type=int, help="Number of classes")
 parser.add_argument('--trace', action='store_true', help="Whether to trace model instead of scripting")
+parser.add_argument('--batch_size', type=int, default=1, help="When exporting with fixed batch size, this will be the batch size of the model")
+parser.add_argument('--img_width', type=int, default=224, help="Width of the image when exporting with fixed image size")
+parser.add_argument('--img_height', type=int, default=224, help="Height of the image when exporting with fixed image size")
 
 args = parser.parse_args()
 
@@ -112,15 +117,43 @@ class DetectionModel(torch.nn.Module):
 
         return loss, predictions
 
-def get_detection_input():
+
+class DetectionModel_PredictOnly(torch.nn.Module):
+    """
+    Adapt input and output of the model to make it exportable to
+    ONNX
+    """
+    def __init__(self, model):
+        super(DetectionModel_PredictOnly, self).__init__()
+        self.model = model
+
+    def forward(self, x):
+        l_x = [x[i] for i in range(x.shape[0])]
+        predictions = self.model(l_x)
+        # To dede format
+        pred_list = list()
+        for i in range(x.shape[0]):
+            pred_list.append(
+                    torch.cat((
+                        torch.full(predictions[i]["labels"].shape, i, dtype=float).unsqueeze(1),
+                        predictions[i]["labels"].unsqueeze(1).float(),
+                        predictions[i]["scores"].unsqueeze(1),
+                        predictions[i]["boxes"]), dim=1))
+
+        return torch.cat(pred_list)
+
+def get_image_input(batch_size=1, img_width=224, img_height=224):
+    return torch.rand(batch_size, 3, img_width, img_height)
+
+def get_detection_input(batch_size=1, img_width=224, img_height=224):
     """
     Sample input for detection models, usable for tracing or testing
     """
     return (
-            torch.rand(1, 3, 224, 224),
-            torch.full((1,), 0).long(),
-            torch.Tensor([1, 1, 200, 200]).unsqueeze(0),
-            torch.full((1,), 1).long(),
+            torch.rand(batch_size, 3, img_width, img_height),
+            torch.arange(0, batch_size).long(),
+            torch.Tensor([1, 1, 200, 200]).repeat((batch_size, 1)),
+            torch.full((batch_size,), 1).long(),
     )
 
 model_classes = {
@@ -230,7 +263,7 @@ for mname in args.models:
         else:
             if args.backbone:
                 raise RuntimeError("--backbone is only supported with models \"fasterrcnn\" or \"retinanet\".")
-            model = model_classes[mname](pretrained=args.pretrained, progress=args.verbose)
+            model = model_classes[mname](pretrained=args.pretrained, pretrained_backbone=args.pretrained, progress=args.verbose)
 
             if args.num_classes:
                 logging.info("Using num_classes = %d" % args.num_classes)
@@ -246,9 +279,17 @@ for mname in args.models:
                     # replace pretrained head
                     model.head = M.detection.retinanet.RetinaNetHead(in_channels, num_anchors, args.num_classes)
 
-        detect_model = DetectionModel(model)
-        detect_model.train()
-        script_module = torch.jit.script(detect_model)
+        if args.to_onnx:
+            model = DetectionModel_PredictOnly(model)
+            model.eval()
+        else:
+            model = DetectionModel(model)
+            model.train()
+            script_module = torch.jit.script(model)
+
+        if args.num_classes is None:
+            # TODO dont hard code this
+            args.num_classes = 91
 
     else:
         kwargs = {}
@@ -264,16 +305,45 @@ for mname in args.models:
 
         model.eval()
 
-
         # tracing or scripting model (default)
         if args.trace:
-            example = torch.rand(1, 3, 224, 224)
+            example = get_image_input(args.batch_size, args.img_width, args.img_height) 
             script_module = torch.jit.trace(model, example)
         else:
             script_module = torch.jit.script(model)
+
+    filename = os.path.join(
+            args.output_dir,
+            mname
+            + ("-pretrained" if args.pretrained else "")
+            + ("-" + args.backbone if args.backbone else "")
+            + ("-cls" + str(args.num_classes) if args.num_classes else "")
+            + ".pt")
+    
+    if args.weights:
+        # load weights
+        weights = torch.jit.load(args.weights).state_dict()
         
-    filename = os.path.join(args.output_dir, mname + ("-pretrained" if args.pretrained else "") + ("-" + args.backbone if args.backbone else "") + "-cls" + str(args.num_classes) + ".pt")
-    logging.info("Saving to %s", filename)
-    script_module.save(filename)
+        if args.to_onnx:
+            logging.info("Apply weights from %s to the onnx model" % args.weights)
+            model.load_state_dict(weights, strict=True)
+        else:
+            logging.info("Apply weights from %s to the jit model" % args.weights)
+            script_module.load_state_dict(weights, strict=True)
+
+    if args.to_onnx:
+        logging.info("Export model to onnx (%s)" % filename)
+        # remove extension
+        filename = filename[:-3] + ".onnx"
+        example = get_image_input(args.batch_size, args.img_width, args.img_height) 
+        torch.onnx.export(
+                model, example, filename,
+                export_params=True, verbose=args.verbose,
+                opset_version=11, do_constant_folding=True,
+                input_names=["input"], output_names=["output"])
+        # dynamic_axes={"input":{0:"batch_size"},"output":{0:"batch_size"}}
+    else:
+        logging.info("Saving to %s", filename)
+        script_module.save(filename)
 
 logging.info("Done")

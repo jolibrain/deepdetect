@@ -483,3 +483,8 @@ if (USE_SIMSEARCH)
   endif()
 
 endif()
+
+# Python tests
+add_test(NAME ut_python
+       WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/tests"
+       COMMAND python3 -m unittest ut_python -v)
