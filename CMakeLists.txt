@@ -258,6 +258,7 @@ if (USE_CPU_ONLY)
   set(USE_CAFFE2_CPU_ONLY ON)
   set(USE_TORCH_CPU_ONLY ON)
   set(USE_FAISS_CPU_ONLY ON)
+  set(USE_CUDNN OFF)
 else()
   cmake_minimum_required(VERSION 3.14)
   include(cmake/Cuda.cmake) # cuda + cudnn
