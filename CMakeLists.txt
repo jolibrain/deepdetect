@@ -261,6 +261,7 @@ if (USE_CPU_ONLY)
   set(USE_CAFFE2_CPU_ONLY ON)
   set(USE_TORCH_CPU_ONLY ON)
   set(USE_FAISS_CPU_ONLY ON)
+  set(USE_CUDNN OFF)
 else()
   cmake_minimum_required(VERSION 3.14)
   include(cmake/Cuda.cmake) # cuda + cudnn
@@ -754,6 +755,7 @@ if (USE_TORCH)
     ${PYTORCH_PATCHES_PATH}/pytorch_15_compile.patch
     ${PYTORCH_PATCHES_PATH}/pytorch_19_new_logger.patch
     ${PYTORCH_PATCHES_PATH}/pytorch_19_use_new_logger.patch
+    ${PYTORCH_PATCHES_PATH}/pytorch_19_thrust_include.patch
   )
 
   message(STATUS "Configuring libtorch")
