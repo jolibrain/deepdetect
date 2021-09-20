@@ -310,7 +310,8 @@ namespace dd
       {
         _seq_training = true;
       }
-    else if (_template == "fasterrcnn" || _template == "retinanet")
+    else if (_template == "fasterrcnn" || _template == "retinanet"
+             || _template == "detr")
       {
         _bbox = true;
         _classification = false;
@@ -408,6 +409,9 @@ namespace dd
         // torchvision models output is a tuple (Loss, Predictions)
         _module._loss_id = 0;
         _module._linear_in = 1;
+      }
+    else if (_template == "detr")
+      {
       }
     else if (!_template.empty())
       {
