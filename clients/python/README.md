@@ -24,7 +24,7 @@ pip install .
 or directly with:
 
 ```
-pip install git+https://github.com/deepdetect.git#egg=dd_client&subdirectory=dd_client
+pip install 'git+https://github.com/jolibrain/deepdetect.git#egg=dd_client&subdirectory=clients/python'
 ```
 
 The DD client may post images through they base64 representation if those are
