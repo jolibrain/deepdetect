@@ -46,6 +46,8 @@ static std::string torch_classif_repo = "../examples/torch/resnet50_torch";
 
 static std::string caffe_word_detect_repo = "../examples/caffe/word_detect_v2";
 static std::string caffe_ocr_repo = "../examples/caffe/multiword_ocr";
+static std::string caffe_faces_detect_repo = "../examples/caffe/faces_512";
+static std::string caffe_age_repo = "../examples/caffe/age_real";
 
 static std::string trt_detect_repo = "../examples/trt/squeezenet_ssd_trt";
 static std::string trt_gan_repo
@@ -79,14 +81,16 @@ TEST(chain, chain_torch_detection_classification)
   ASSERT_EQ(created_str, joutstr);
 
   // chain predict
+  std::string uri1 = torch_classif_repo + "/cat.jpg";
+  std::string uri2 = torch_classif_repo + "/dog.jpg";
   std::string jchainstr
       = "{\"chain\":{\"name\":\"chain\",\"calls\":["
         "{\"service\":\""
         + detect_sname
         + "\",\"parameters\":{\"input\":{\"keep_orig\":true},\"output\":{"
           "\"bbox\":true,\"confidence_threshold\":0.2}},\"data\":[\""
-        + torch_classif_repo
-        + "/cat.jpg\"]},"
+        + uri1 + "\",\"" + uri2
+        + "\"]},"
           "{\"id\":\"crop\",\"action\":{\"type\":\"crop\",\"parameters\":{"
           "\"padding_ratio\":0.05}}},"
           "{\"service\":\""
@@ -100,14 +104,26 @@ TEST(chain, chain_torch_detection_classification)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
-  ASSERT_EQ(jd["body"]["predictions"].Size(), 1);
+  ASSERT_EQ(jd["body"]["predictions"].Size(), 2);
+
+  auto &pred1 = jd["body"]["predictions"][0]["uri"].GetString() == uri1
+                    ? jd["body"]["predictions"][0]
+                    : jd["body"]["predictions"][1];
+  auto &pred2 = jd["body"]["predictions"][0]["uri"].GetString() == uri2
+                    ? jd["body"]["predictions"][0]
+                    : jd["body"]["predictions"][1];
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"].IsArray());
-  ASSERT_EQ(jd["body"]["predictions"][0]["classes"].Size(), 2);
-  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0][classif_sname.c_str()]
-                  .IsObject());
-  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0][classif_sname.c_str()]
-                ["classes"]
-                    .IsArray());
+  ASSERT_EQ(pred1["classes"].Size(), 2);
+  ASSERT_EQ(pred2["classes"].Size(), 4);
+  ASSERT_TRUE(pred1["classes"][0][classif_sname.c_str()].IsObject());
+  ASSERT_TRUE(pred1["classes"][0][classif_sname.c_str()]["classes"].IsArray());
+
+  ASSERT_EQ(pred1["classes"][0][classif_sname.c_str()]["classes"][0]["cat"]
+                .GetString(),
+            std::string("n02123597 Siamese cat, Siamese"));
+  ASSERT_EQ(pred2["classes"][0][classif_sname.c_str()]["classes"][0]["cat"]
+                .GetString(),
+            std::string("n02085782 Japanese spaniel"));
 
   // multiple models (tree)
   std::string classif2_sname = "classif2";
@@ -227,6 +243,71 @@ TEST(chain, chain_caffe_detection_ocr)
   // cleanup
   fileops::remove_file(caffe_word_detect_repo, "model.json");
   fileops::remove_file(caffe_ocr_repo, "model.json");
+}
+
+TEST(chain, chain_caffe_faces_classification)
+{
+  JsonAPI japi;
+  std::string detect_sname = "detect";
+  std::string jstr
+      = "{\"mllib\":\"caffe\",\"description\":\"face detection "
+        "model\",\"type\":\"supervised\",\"model\":{\"repository\":\""
+        + caffe_faces_detect_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"width\":"
+          "512,\"height\":512},\"mllib\":{\"nclasses\":1,\"best\":-1,"
+          "\"gpu\":true,\"gpuid\":0,\"net\":{\"test_batch_size\":1}}}}";
+  std::string joutstr = japi.jrender(japi.service_create(detect_sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  std::string age_sname = "age";
+  jstr = "{\"mllib\":\"caffe\",\"description\":\"face detection "
+         "model\",\"type\":\"supervised\",\"model\":{\"repository\":\""
+         + caffe_age_repo
+         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"width\":"
+           "224,\"height\":224},\"mllib\":{\"nclasses\": "
+           "101,\"gpu\":true,\"gpuid\": 0}}}";
+  joutstr = japi.jrender(japi.service_create(age_sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  std::string uri1 = "https://icour.fr/ELeveSeconde/ajout/yann_lecum_vidal/"
+                     "images/yann_LeCun.jpg";
+  std::string uri2 = "https://picsum.photos/id/10/600/600";
+
+  std::string jchainstr
+      = "{\"chain\": {\"calls\": [{\"parameters\": {\"input\": "
+        "{\"keep_orig\": true,\"connector\": \"image\"},\"output\": "
+        "{\"confidence_threshold\": 0.5,\"bbox\": true},\"mllib\": {\"net\": "
+        "{\"test_batch_size\": 2}}},\"service\":\""
+        + detect_sname + "\",\"data\":[\"" + uri1 + "\",\"" + uri2
+        + "\"]},{\"id\": "
+          "\"face_detection_crop\",\"action\": {\"parameters\": "
+          "{\"padding_ratio\": 0.0},\"type\": \"crop\"}},{\"parent_id\": "
+          "\"face_detection_crop\",\"parameters\": {\"input\": "
+          "{\"keep_orig\":true,\"connector\": \"image\"},\"output\": "
+          "{\"best\":1},\"mllib\": "
+          "{\"net\": {\"test_batch_size\": 2}}},\"service\": \""
+        + age_sname + "\"}]}}";
+
+  joutstr = japi.jrender(japi.service_chain("chain", jchainstr));
+  JDoc jd;
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+  ASSERT_EQ(jd["body"]["predictions"].Size(), 2);
+
+  auto &pred1 = jd["body"]["predictions"][0]["uri"].GetString() == uri1
+                    ? jd["body"]["predictions"][0]
+                    : jd["body"]["predictions"][1];
+  auto &pred2 = jd["body"]["predictions"][0]["uri"].GetString() == uri2
+                    ? jd["body"]["predictions"][0]
+                    : jd["body"]["predictions"][1];
+  ASSERT_EQ(pred1["classes"].Size(), 1);
+  ASSERT_EQ(pred2["classes"].Size(), 0);
+  ASSERT_EQ(pred1["classes"][0]["age"]["classes"][0]["cat"].GetString(),
+            std::string("48"));
 }
 #endif
 

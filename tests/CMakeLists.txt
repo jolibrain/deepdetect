@@ -170,6 +170,20 @@ if (USE_CAFFE)
     "multiword_ocr.tar.gz"
     "deploy.prototxt"
   )
+  DOWNLOAD_DATASET(
+    "face detection test model"
+    "https://deepdetect.com/models/init/desktop/images/detection/faces_512.tar.gz"
+    "examples/caffe/faces_512"
+    "faces_512.tar.gz"
+    "deploy.prototxt"
+  )
+  DOWNLOAD_DATASET(
+    "age estimation test model"
+    "https://deepdetect.com/models/init/desktop/images/classification/age_real.tar.gz"
+    "examples/caffe/age_real"
+    "age_real.tar.gz"
+    "deploy.prototxt"
+  )
 endif()
 
 DOWNLOAD_DATASET(
