@@ -29,6 +29,9 @@
 #include <cuda_runtime_api.h>
 #include <string>
 #include "dto/service_predict.hpp"
+#ifdef USE_CUDA_CV
+#include <opencv2/core/cuda_stream_accessor.hpp>
+#endif
 
 namespace dd
 {
@@ -701,8 +704,18 @@ namespace dd
           }
       }
 
+    cudaSetDevice(_gpuid);
+    cudaStream_t cstream;
+    cudaStreamCreate(&cstream);
+
     TOutputConnectorStrategy tout(this->_outputc);
     this->_stats.transform_start();
+#ifdef USE_CUDA_CV
+    inputc._cuda_buf = static_cast<float *>(_buffers.data()[_inputIndex]);
+    auto cv_stream = cv::cuda::StreamAccessor::wrapStream(cstream);
+    inputc._cuda_stream = &cv_stream;
+#endif
+
     try
       {
         inputc.transform(predict_dto);
@@ -730,10 +743,6 @@ namespace dd
     std::vector<APIData> vrad;
     std::vector<UnsupervisedResult> unsup_results;
 
-    cudaSetDevice(_gpuid);
-    cudaStream_t cstream;
-    cudaStreamCreate(&cstream);
-
     bool enqueue_success = false;
     while (true)
       {
@@ -744,16 +753,22 @@ namespace dd
 
         try
           {
-            if (inputc._bw)
-              cudaMemcpyAsync(_buffers.data()[_inputIndex], inputc.data(),
-                              num_processed * inputc._height * inputc._width
-                                  * sizeof(float),
-                              cudaMemcpyHostToDevice, cstream);
-            else
-              cudaMemcpyAsync(_buffers.data()[_inputIndex], inputc.data(),
-                              num_processed * 3 * inputc._height
-                                  * inputc._width * sizeof(float),
-                              cudaMemcpyHostToDevice, cstream);
+#ifdef USE_CUDA_CV
+            if (!inputc._cuda)
+#endif
+              {
+                if (inputc._bw)
+                  cudaMemcpyAsync(_buffers.data()[_inputIndex], inputc.data(),
+                                  num_processed * inputc._height
+                                      * inputc._width * sizeof(float),
+                                  cudaMemcpyHostToDevice, cstream);
+                else
+                  cudaMemcpyAsync(_buffers.data()[_inputIndex], inputc.data(),
+                                  num_processed * 3 * inputc._height
+                                      * inputc._width * sizeof(float),
+                                  cudaMemcpyHostToDevice, cstream);
+              }
+
             if (!_explicit_batch)
               enqueue_success = _context->enqueue(
                   num_processed, _buffers.data(), cstream, nullptr);
@@ -1036,20 +1051,26 @@ namespace dd
       {
         if (typeid(inputc) == typeid(ImgTensorRTInputFileConn))
           {
+            auto *img_ic
+                = reinterpret_cast<ImgTensorRTInputFileConn *>(&inputc);
             APIData chain_input;
-            if (!reinterpret_cast<ImgTensorRTInputFileConn *>(&inputc)
-                     ->_orig_images.empty())
-              chain_input.add(
-                  "imgs", reinterpret_cast<ImgTensorRTInputFileConn *>(&inputc)
-                              ->_orig_images);
+#ifdef USE_CUDA_CV
+            if (!img_ic->_cuda_images.empty())
+              {
+                if (img_ic->_orig_images.empty())
+                  chain_input.add("cuda_imgs", img_ic->_cuda_orig_images);
+                else
+                  chain_input.add("cuda_imgs", img_ic->_cuda_images);
+              }
             else
-              chain_input.add(
-                  "imgs", reinterpret_cast<ImgTensorRTInputFileConn *>(&inputc)
-                              ->_images);
-            chain_input.add(
-                "imgs_size",
-                reinterpret_cast<ImgTensorRTInputFileConn *>(&inputc)
-                    ->_images_size);
+#endif
+              {
+                if (!img_ic->_orig_images.empty())
+                  chain_input.add("imgs", img_ic->_orig_images);
+                else
+                  chain_input.add("imgs", img_ic->_images);
+              }
+            chain_input.add("imgs_size", img_ic->_images_size);
             out.add("input", chain_input);
           }
       }

@@ -44,6 +44,7 @@ namespace dd
 
     bool _has_mean_file = false; /**< image model mean.binaryproto. */
     std::vector<float> _buf;
+    float *_cuda_buf = nullptr;
 
     float *data()
     {
@@ -87,16 +88,21 @@ namespace dd
 
     void transform(oatpp::Object<DTO::ServicePredict> input_dto);
 
+    int process_batch(const unsigned int batch_size);
+
     std::string _meanfname = "mean.binaryproto";
     std::string _correspname = "corresp.txt";
     int _batch_index = 0;
     int _batch_size = 0;
-    int process_batch(const unsigned int batch_size);
     std::unordered_map<std::string, std::pair<int, int>>
         _imgs_size; /**< image sizes, used in detection. */
 
   private:
     void CVMatToRTBuffer(cv::Mat &img, int i);
+
+#ifdef USE_CUDA_CV
+    void GpuMatToRTBuffer(cv::cuda::GpuMat &img, int i);
+#endif
   };
 
 }
