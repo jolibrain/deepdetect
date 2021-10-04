@@ -50,7 +50,6 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     libgoogle-glog-dev \
     libgflags-dev \
     libeigen3-dev \
-    libopencv-dev \
     libprotobuf-dev \
     protobuf-compiler \
     libboost-dev \
@@ -100,6 +99,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     bash-completion \
     schedtool \
     util-linux \
+    libgstreamer1.0-dev \
     libnvparsers8=${DD_TENSORRT_VERSION} \
     libnvparsers-dev=${DD_TENSORRT_VERSION} \
     libnvinfer8=${DD_TENSORRT_VERSION} \
@@ -113,6 +113,38 @@ RUN for url in \
 
 RUN python3 -m pip install --upgrade pip
 RUN python3 -m pip install torch torchvision
+
+# Build OpenCV 4 with CUDA
+WORKDIR /tmp
+RUN mkdir opencv && cd opencv && wget -O opencv.zip https://github.com/opencv/opencv/archive/refs/tags/4.5.3.zip && wget -O opencv_contrib.zip https://github.com/opencv/opencv_contrib/archive/refs/tags/4.5.3.zip && unzip opencv.zip && unzip opencv_contrib.zip
+RUN cd /tmp/opencv/opencv-4.5.3 && mkdir build && cd build && cmake -D CMAKE_BUILD_TYPE=RELEASE \
+-D CMAKE_INSTALL_PREFIX=/usr/local/ \
+-D WITH_TBB=ON \
+-D ENABLE_FAST_MATH=1 \
+-D CUDA_FAST_MATH=1 \
+-D WITH_CUBLAS=1 \
+-D WITH_CUDA=ON \
+-D BUILD_opencv_cudacodec=OFF \
+-D WITH_CUDNN=ON \
+-D OPENCV_DNN_CUDA=OFF \
+-D CUDA_ARCH_BIN=6.1 \
+-D WITH_V4L=ON \
+-D WITH_QT=OFF \
+-D WITH_OPENGL=ON \
+-D WITH_GSTREAMER=ON \
+-D OPENCV_GENERATE_PKGCONFIG=ON \
+-D OPENCV_PC_FILE_NAME=opencv.pc \
+-D OPENCV_ENABLE_NONFREE=ON \
+-D BUILD_opencv_python2=OFF \
+-D BUILD_opencv_python3=OFF \
+-D OPENCV_EXTRA_MODULES_PATH=/tmp/opencv/opencv_contrib-4.5.3/modules \
+-D INSTALL_PYTHON_EXAMPLES=OFF \
+-D INSTALL_C_EXAMPLES=OFF \
+-D BUILD_EXAMPLES=OFF ..
+
+WORKDIR /tmp/opencv/opencv-4.5.3/build
+RUN make -j20
+RUN make install
 
 RUN apt clean -y
 ADD ci/gitconfig /etc/gitconfig

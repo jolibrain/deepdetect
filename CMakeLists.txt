@@ -92,6 +92,7 @@ if (NOT EXISTS ${CMAKE_BINARY_DIR}/src)
 endif()
 
 set(CMAKE_CXX_FLAGS "-g -O2 -Wall -Wextra -fopenmp -fPIC -std=c++14 -Wl,--no-as-needed -ltcmalloc_minimal")
+set(CMAKE_CXX_STANDARD 14)
 add_definitions("-DUSE_OPENCV" "-DUSE_LMDB")
 
 if(WARNING)
