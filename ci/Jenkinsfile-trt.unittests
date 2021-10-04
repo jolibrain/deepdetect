@@ -42,6 +42,8 @@ cmake .. \
     -DUSE_CAFFE=OFF  \
     -DUSE_TENSORRT=ON  \
     -DUSE_TENSORRT_OSS=ON  \
+    -DUSE_OPENCV_VERSION=4 \
+    -DOpenCV_DIR=/tmp/opencv/opencv-5.4.3/build \
     -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61"
 
 make clang-format-check

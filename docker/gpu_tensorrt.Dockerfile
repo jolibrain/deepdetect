@@ -3,8 +3,10 @@ FROM nvcr.io/nvidia/tensorrt:21.07-py3 AS build
 
 ARG DEEPDETECT_RELEASE=OFF
 ARG DEEPDETECT_ARCH=gpu
-ARG DEEPDETECT_BUILD=tensorrt
+ARG DEEPDETECT_BUILD=tensorrt-cv4-cuda
 ARG DEEPDETECT_DEFAULT_MODELS=true
+ARG DEEPDETECT_OPENCV4_BUILD_PATH=/opt/deepdetect/opencv/opencv-4.5.3/build
+#ARG DEEPDETECT_OPENCV4_BUILD_PATH=/tmp
 
 # Install build dependencies
 RUN rm -f /etc/apt/apt.conf.d/docker-clean; echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
@@ -41,7 +43,6 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     libgoogle-glog-dev \
     libgflags-dev \
     libeigen3-dev \
-    libopencv-dev \
     libboost-dev \
     libboost-filesystem-dev \
     libboost-thread-dev \
@@ -83,6 +84,18 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     libgoogle-perftools-dev \
     curl \
     libarchive-dev \
+    libgstreamer1.0-dev \
+    libgstreamer-plugins-base1.0-dev \
+    libgstreamer-plugins-bad1.0-dev \
+    gstreamer1.0-plugins-base \
+    gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-bad \
+    gstreamer1.0-plugins-ugly \
+    gstreamer1.0-libav \
+    gstreamer1.0-doc \
+    gstreamer1.0-tools \
+    gstreamer1.0-x \
+    gstreamer1.0-gl \
     bash-completion
 
 RUN for url in \
@@ -102,7 +115,39 @@ WORKDIR /opt/deepdetect/
 ENV CCACHE_DIR=/ccache
 ENV PATH=/usr/lib/ccache:/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
+# Build OpenCV 4 with CUDA
+RUN mkdir opencv && cd opencv && wget -O opencv.zip https://github.com/opencv/opencv/archive/refs/tags/4.5.3.zip && wget -O opencv_contrib.zip https://github.com/opencv/opencv_contrib/archive/refs/tags/4.5.3.zip && unzip opencv.zip && unzip opencv_contrib.zip
+RUN cd /opt/deepdetect/opencv/opencv-4.5.3 && mkdir build && cd build && cmake -D CMAKE_BUILD_TYPE=RELEASE \
+-D CMAKE_INSTALL_PREFIX=/tmp/ \
+-D WITH_TBB=ON \
+-D ENABLE_FAST_MATH=1 \
+-D CUDA_FAST_MATH=1 \
+-D WITH_CUBLAS=1 \
+-D WITH_CUDA=ON \
+-D BUILD_opencv_cudacodec=OFF \
+-D WITH_CUDNN=ON \
+-D OPENCV_DNN_CUDA=OFF \
+-D CUDA_ARCH_BIN=6.1 \
+-D WITH_V4L=ON \
+-D WITH_QT=OFF \
+-D WITH_OPENGL=ON \
+-D WITH_GSTREAMER=ON \
+-D OPENCV_GENERATE_PKGCONFIG=ON \
+-D OPENCV_PC_FILE_NAME=opencv.pc \
+-D OPENCV_ENABLE_NONFREE=ON \
+-D BUILD_opencv_python2=OFF \
+-D BUILD_opencv_python3=OFF \
+-D OPENCV_EXTRA_MODULES_PATH=/opt/deepdetect/opencv/opencv_contrib-4.5.3/modules \
+-D INSTALL_PYTHON_EXAMPLES=OFF \
+-D INSTALL_C_EXAMPLES=OFF \
+-D BUILD_EXAMPLES=OFF ..
+
+WORKDIR /opt/deepdetect/opencv/opencv-4.5.3/build
+RUN make -j20
+RUN make install
+
 # Build Deepdetect
+WORKDIR /opt/deepdetect
 ENV TERM=xterm
 RUN --mount=type=cache,target=/ccache/ mkdir build && cd build && ../build.sh
 
@@ -143,7 +188,8 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     libboost-regex1.71.0 \
     libboost-stacktrace1.71.0 \
     libboost-system1.71.0 \
-	libarchive13
+	libarchive13 \
+	libgstreamer1.0-0
 
 # Fix permissions
 RUN ln -sf /dev/stdout /var/log/deepdetect.log && \

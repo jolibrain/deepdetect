@@ -58,7 +58,6 @@ cmake .. \
     -DBUILD_SPDLOG=ON \
     -DUSE_HTTP_SERVER_OATPP=ON \
     -DUSE_CUDNN=ON  \
-    -DUSE_CUDA_CV=ON  \
     -DUSE_FAISS=ON  \
     -DUSE_SIMSEARCH=ON  \
     -DUSE_TSNE=ON  \
