@@ -28,15 +28,16 @@ namespace dd
 {
   namespace bbox_utils
   {
-    double area(const std::vector<double> &bbox)
+    template <typename T> inline T area(const std::vector<T> &bbox)
     {
       return (bbox[2] - bbox[0]) * (bbox[3] - bbox[1]);
     }
 
-    std::vector<double> intersect(const std::vector<double> &bbox1,
-                                  const std::vector<double> &bbox2)
+    template <typename T>
+    inline std::vector<T> intersect(const std::vector<T> &bbox1,
+                                    const std::vector<T> &bbox2)
     {
-      std::vector<double> inter{
+      std::vector<T> inter{
         std::max(bbox1[0], bbox2[0]),
         std::max(bbox1[1], bbox2[1]),
         std::min(bbox1[2], bbox2[2]),
@@ -45,20 +46,91 @@ namespace dd
       // if xmin > xmax or ymin > ymax, intersection is empty
       if (inter[0] >= inter[2] || inter[1] >= inter[3])
         {
-          return { 0., 0., 0., 0. };
+          return { T(0), T(0), T(0), T(0) };
         }
       else
         return inter;
     }
 
-    double iou(const std::vector<double> &bbox1,
-               const std::vector<double> &bbox2)
+    template <typename T>
+    inline T iou(const std::vector<T> &bbox1, const std::vector<T> &bbox2)
     {
-      double a1 = area(bbox1);
-      double a2 = area(bbox2);
+      auto a1 = area(bbox1);
+      auto a2 = area(bbox2);
       auto inter = intersect(bbox1, bbox2);
-      double ainter = area(inter);
+      auto ainter = area(inter);
       return ainter / (a1 + a2 - ainter);
+    }
+
+    /** bboxes: list of bboxes in the format { xmin, ymin, xmax, ymax } sorted
+     * by decreasing confidence
+     *
+     * picked: vector used as output containing indices of bboxes kept by nms.
+     */
+    template <typename T>
+    inline void nms_sorted_bboxes(const std::vector<std::vector<T>> &bboxes,
+                                  std::vector<size_t> &picked, T nms_threshold)
+    {
+      picked.clear();
+      const size_t n = bboxes.size();
+
+      for (size_t i = 0; i < n; i++)
+        {
+          const std::vector<T> &bbox_a = bboxes[i];
+
+          bool keep = true;
+          for (size_t j = 0; j < picked.size(); j++)
+            {
+              const std::vector<T> &bbox_b = bboxes[picked[j]];
+
+              // intersection over union
+              auto iou = bbox_utils::iou(bbox_a, bbox_b);
+              if (iou > nms_threshold)
+                keep = false;
+            }
+
+          if (keep)
+            picked.push_back(i);
+        }
+    }
+
+    inline void nms_sorted_bboxes(std::vector<APIData> &bboxes,
+                                  std::vector<double> &probs,
+                                  std::vector<std::string> &cats,
+                                  double nms_threshold, int best_bbox)
+    {
+      std::vector<std::vector<double>> sorted_boxes;
+      std::vector<size_t> picked;
+
+      for (size_t l = 0; l < bboxes.size(); ++l)
+        {
+          std::vector<double> bbox_vec{ bboxes[l].get("xmin").get<double>(),
+                                        bboxes[l].get("ymin").get<double>(),
+                                        bboxes[l].get("xmax").get<double>(),
+                                        bboxes[l].get("ymax").get<double>() };
+          sorted_boxes.push_back(bbox_vec);
+        }
+      // We assume that bboxes are already sorted in model output
+
+      bbox_utils::nms_sorted_bboxes(sorted_boxes, picked, nms_threshold);
+      std::vector<APIData> nbboxes;
+      std::vector<double> nprobs;
+      std::vector<std::string> ncats;
+
+      for (size_t pick : picked)
+        {
+          nbboxes.push_back(bboxes.at(pick));
+          nprobs.push_back(probs.at(pick));
+          ncats.push_back(cats.at(pick));
+
+          if (best_bbox > 0
+              && nbboxes.size() >= static_cast<size_t>(best_bbox))
+            break;
+        }
+
+      bboxes = nbboxes;
+      probs = nprobs;
+      cats = ncats;
     }
   }
 }

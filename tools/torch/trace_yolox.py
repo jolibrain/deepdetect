@@ -6,8 +6,10 @@ import argparse
 import logging
 import torch
 
-import torchvision
+import torch.nn as nn
 import torch.nn.functional as F
+
+import torchvision
 from torchvision import transforms
 
 def main():
@@ -15,10 +17,12 @@ def main():
     parser.add_argument("model", type=str, help="Model to export")
     parser.add_argument("-o", "--output_dir", type=str, default="", help="Output directory")
     parser.add_argument('-v', "--verbose", action='store_true', help="Set logging level to INFO")
-    parser.add_argument('--weights', type=str, help="yolo-x weights file (.pth)")
+    parser.add_argument('--weights', type=str, help="yolo-x weights file (.pth or .pt)")
+    parser.add_argument('--backbone_weights', type=str, help="yolo-x weights file, but will be applied only to backbone")
     parser.add_argument('--yolox_path', type=str, help="Path of yolo-x repository")
     parser.add_argument('--num_classes', type=int, default=80, help="Number of classes of the model")
     parser.add_argument('--gpu', type=int, help="GPU id to run on GPU")
+    parser.add_argument('--to_onnx', action="store_true", help="Export model to onnx")
 
     args = parser.parse_args()
 
@@ -34,7 +38,9 @@ def main():
     sys.path.insert(0, args.yolox_path)
     import yolox
     from yolox.exp import get_exp
-    from yolox.utils import get_model_info, postprocess
+    from yolox.utils import get_model_info, postprocess, replace_module
+
+    from yolox.models.network_blocks import SiLU
 
     exp = get_exp(None, args.model)
     exp.num_classes = args.num_classes
@@ -49,27 +55,51 @@ def main():
         try:
             # state_dict
             weights = torch.load(args.weights)["model"]
-            weights = {k : w for k, w in weights.items() if "backbone" in k}
         except:
             # torchscript
             logging.info("Detected torchscript weights")
             weights = torch.jit.load(args.weights).state_dict()
-            weights = {k[6:] : w for k, w in weights.items()} # skip "model."
+            weights = {k[6:] : w for k, w in weights.items()} # skip "model." prefix
+
+        model.load_state_dict(weights, strict=True)
+
+    elif args.backbone_weights:
+        logging.info("Load weights from %s" % args.backbone_weights)
+
+        weights = torch.load(args.backbone_weights)["model"]
+        weights = {k : w for k, w in weights.items() if "backbone" in k}
 
         model.load_state_dict(weights, strict=False)
 
     logging.info("Model Summary: {}".format(get_model_info(model, exp.test_size)))
 
-    # wrap model
-    model = YoloXWrapper(model, args.num_classes, postprocess)
-    model.to(device)
-    model.eval()
-
     filename = os.path.join(args.output_dir, args.model)
 
-    script_module = torch.jit.script(model)
-    logging.info("Save jit model at %s" % filename)
-    script_module.save(filename)
+    if args.to_onnx:
+        model = replace_module(model, nn.SiLU, SiLU)
+
+        model = YoloXWrapper_TRT(model)
+        model.to(device)
+        model.eval()
+
+        filename += ".onnx"
+        example = get_image_input(1, 640, 640)
+        torch.onnx.export(
+                model, example, filename,
+                export_params=True, verbose=args.verbose,
+                opset_version=11, do_constant_folding=True,
+                input_names=["input"], output_names=["detection_out", "keep_count"])
+        #,      dynamic_axes={"input": {0: "batch"}})
+    else:
+        # wrap model
+        model = YoloXWrapper(model, args.num_classes, postprocess)
+        model.to(device)
+        model.eval()
+
+        filename += ".pt"
+        script_module = torch.jit.script(model)
+        logging.info("Save jit model at %s" % filename)
+        script_module.save(filename)
 
 # ====
 
@@ -81,6 +111,9 @@ class YoloXWrapper(torch.nn.Module):
         self.num_classes = num_classes
         self.postprocess = postprocess
         self.nms_threshold = 0.45
+
+        # Better convergence with 15
+        self.model.head.reg_weight = 15.0
 
     def convert_targs(self, bboxes):
         """
@@ -128,7 +161,6 @@ class YoloXWrapper(torch.nn.Module):
 
             l_targs = [F.pad(targ, (0, 0, 0, max_count - targ.shape[0])) for targ in l_targs]
             targs = torch.stack(l_targs, dim=0)
-
             output, losses = self.model(x, targs)
             loss = losses["total_loss"]
             preds = [placeholder]
@@ -153,6 +185,50 @@ class YoloXWrapper(torch.nn.Module):
                     })
 
         return loss, preds
+
+class YoloXWrapper_TRT(torch.nn.Module):
+
+    def __init__(self, model, topk=200):
+        super(YoloXWrapper_TRT, self).__init__()
+        self.model = model
+        self.topk = topk
+
+    def to_xyxy(self, boxes):
+        xyxy_boxes = boxes.new_zeros(boxes.shape)
+        xyxy_boxes[...,0] = boxes[...,0] - boxes[...,2] / 2
+        xyxy_boxes[...,1] = boxes[...,1] - boxes[...,3] / 2
+        xyxy_boxes[...,2] = boxes[...,0] + boxes[...,2] / 2
+        xyxy_boxes[...,3] = boxes[...,1] + boxes[...,3] / 2
+        return xyxy_boxes
+
+    def forward(self, x):
+        # xmin, ymin, xmax, ymax, objectness, conf cls1, conf cl2...
+        output = self.model(x)[0]
+
+        box_count = output.shape[1]
+        cls_scores, cls_pred = output[:,:,6:].max(dim=2, keepdim=True)
+        batch_ids = torch.arange(output.shape[0], device=x.device).view(
+                -1, 1).repeat(1, output.shape[1]).unsqueeze(2)
+
+        # to dede format: batch id, class id, confidence, xmin, ymin, xmax, ymax
+        scores = cls_scores * output[:,:,4].unsqueeze(2)
+        output = torch.cat((batch_ids.to(x.dtype), cls_pred.to(x.dtype),
+            scores, output[:,:,:4]), dim = 2)
+
+        # Return sorted topk values
+        sort_indices = scores.topk(self.topk, dim=1).indices.reshape(-1)
+        sort_indices += batch_ids[:,:self.topk,:].reshape(-1).to(torch.int64) * box_count
+        output = output.reshape(-1, 7)[sort_indices.squeeze(0)].contiguous()
+
+        # convert bboxes to dd format
+        output[:,3:7] = self.to_xyxy(output[:,3:7])
+        output[:,3] /= x.shape[2] - 1
+        output[:,4] /= x.shape[3] - 1
+        output[:,5] /= x.shape[2] - 1
+        output[:,6] /= x.shape[3] - 1
+        
+        # detection_out, keep_count
+        return output, output[:,0]
 
 from PIL import Image
 

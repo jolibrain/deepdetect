@@ -600,8 +600,6 @@ namespace dd
           _height = params->crop_height;
         }
 
-      // XXX(louis) We cannot set these parameters to false if they are already
-      // true
       if (params->bw != nullptr)
         _bw = params->bw;
       if (params->rgb != nullptr)

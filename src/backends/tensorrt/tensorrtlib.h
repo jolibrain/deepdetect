@@ -135,6 +135,9 @@ namespace dd
     bool _regression = false;
     bool _timeserie = false;
 
+    // detection
+    bool _need_nms = false;
+
     std::vector<void *> _buffers;
 
     bool _TRTContextReady = false;

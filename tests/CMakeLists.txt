@@ -351,6 +351,13 @@ if (USE_TENSORRT)
     "resnet_onnx_trt"
     )
   DOWNLOAD_DATASET(
+    "ONNX yolox model"
+    "https://deepdetect.com/models/init/desktop/images/detection/yolox_onnx_trt.tar.gz"
+    "examples/trt"
+    "yolox_onnx_trt.tar.gz"
+    "yolox_onnx_trt"
+    )
+  DOWNLOAD_DATASET(
     "ONNX CycleGAN model"
     "https://deepdetect.com/dd/examples/tensorrt/cyclegan_resnet_attn_onnx_trt.tar.gz"
     "examples/trt"
