@@ -225,15 +225,15 @@ namespace dd
      * @param hist measure history vector
      * @param npoints max number of output points
      */
-    std::vector<double> subsample_hist(const std::vector<double> &hist,
-                                       const int &npoints) const
+    int subsample_hist(const std::vector<double> &hist,
+                       std::vector<double> &sub_hist, const int &npoints) const
     {
-      std::vector<double> sub_hist;
+      sub_hist.clear();
       sub_hist.reserve(npoints);
-      int rpoints = std::ceil(hist.size() / npoints) + 1;
+      int rpoints = static_cast<int>(std::ceil(hist.size() / (double)npoints));
       for (size_t i = 0; i < hist.size(); i += rpoints)
         sub_hist.push_back(hist.at(i));
-      return sub_hist;
+      return rpoints;
     }
 
     /**
@@ -249,8 +249,12 @@ namespace dd
       while (hit != _meas_per_iter.end())
         {
           if (npoints > 0 && (int)(*hit).second.size() > npoints)
-            meas_hist.add((*hit).first + "_hist",
-                          subsample_hist((*hit).second, npoints));
+            {
+              std::vector<double> sub_hist;
+              int sampling = subsample_hist((*hit).second, sub_hist, npoints);
+              meas_hist.add((*hit).first + "_hist", sub_hist);
+              meas_hist.add((*hit).first + "_sampling", sampling);
+            }
           else
             meas_hist.add((*hit).first + "_hist", (*hit).second);
           ++hit;
