@@ -856,6 +856,8 @@ namespace dd
               }
           }
 
+        std::exception_ptr eptr;
+
 #pragma omp parallel for num_threads(_devices.size())
         for (size_t rank = 0; rank < _devices.size(); ++rank)
           {
@@ -894,12 +896,12 @@ namespace dd
                 y_pred = torch_utils::to_tensor_safe(
                     rank_module.forward(in_vals));
               }
-            catch (std::exception &e)
+            catch (...)
               {
-                this->_logger->error(std::string("Libtorch error: ")
-                                     + e.what());
-                throw MLLibInternalException(std::string("Libtorch error: ")
-                                             + e.what());
+#pragma omp critical
+                {
+                  eptr = std::current_exception();
+                }
               }
 
             // Compute loss
@@ -920,6 +922,20 @@ namespace dd
               double loss_val = loss.item<double>();
               train_loss += loss_val;
             }
+          }
+
+        try
+          {
+            if (eptr)
+              {
+                std::rethrow_exception(eptr);
+              }
+          }
+        catch (const std::exception &e)
+          {
+            this->_logger->error(std::string("Libtorch error: ") + e.what());
+            throw MLLibInternalException(std::string("Libtorch error: ")
+                                         + e.what());
           }
 
         // Reduce gradients on device #0
