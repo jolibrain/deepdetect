@@ -780,6 +780,10 @@ namespace dd
         this->_logger->info("Training for {} iterations", iterations - it);
       }
 
+    bool resume = it > 0;
+    if (!resume)
+      this->clear_all_meas_per_iter();
+
     // [multigpu] initialize all module
     typedef struct
     {
@@ -826,6 +830,11 @@ namespace dd
       {
         throw MLLibBadParamException("No data found in training dataset");
       }
+    auto training_start = steady_clock::now();
+
+    double prev_elapsed_time_ms = this->get_meas("elapsed_time_ms");
+    if (std::isnan(prev_elapsed_time_ms))
+      prev_elapsed_time_ms = 0;
 
     // `it` is the iteration count (not epoch)
     while (it < iterations)
@@ -1026,6 +1035,12 @@ namespace dd
               }
             this->add_meas("remain_time", remain_time_ms / 1000.0);
             this->add_meas("train_loss", train_loss);
+            int64_t elapsed_time_ms
+                = prev_elapsed_time_ms
+                  + duration_cast<milliseconds>(tstop - training_start)
+                        .count();
+            this->add_meas("elapsed_time_ms", elapsed_time_ms);
+            this->add_meas_per_iter("elapsed_time_ms", elapsed_time_ms);
             this->add_meas_per_iter("learning_rate", base_lr);
             this->add_meas_per_iter("train_loss", train_loss);
             int64_t elapsed_it = it + 1;

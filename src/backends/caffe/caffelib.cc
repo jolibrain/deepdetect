@@ -1839,6 +1839,12 @@ namespace dd
     if (!ad_mllib.has("resume") || !ad_mllib.get("resume").get<bool>())
       this->clear_all_meas_per_iter();
     float smoothed_loss = 0.0;
+
+    auto training_start = std::chrono::steady_clock::now();
+    double prev_elapsed_time_ms = this->get_meas("elapsed_time_ms");
+    if (std::isnan(prev_elapsed_time_ms))
+      prev_elapsed_time_ms = 0;
+
     while (solver->iter_ < solver->param_.max_iter()
            && this->_tjob_running.load())
       {
@@ -1962,7 +1968,15 @@ namespace dd
         this->add_meas("train_loss", smoothed_loss);
         this->add_meas_per_iter("train_loss", smoothed_loss);
         this->add_meas("iter_time", avg_fb_time);
+        this->add_meas("iteration_duration_ms", avg_fb_time);
         this->add_meas("remain_time", est_remain_time);
+        int64_t elapsed_time_ms
+            = prev_elapsed_time_ms
+              + std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - training_start)
+                    .count();
+        this->add_meas("elapsed_time_ms", elapsed_time_ms);
+        this->add_meas_per_iter("elapsed_time_ms", elapsed_time_ms);
 
         caffe::SGDSolver<float> *sgd_solver
             = static_cast<caffe::SGDSolver<float> *>(solver.get());
