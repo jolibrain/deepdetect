@@ -1420,7 +1420,8 @@ namespace dd
 
                 for (size_t i = 0; i < out_dicts.size(); ++i)
                   {
-                    std::string uri = inputc._ids.at(i);
+                    int img_id = results_ads.size();
+                    std::string uri = inputc._ids.at(img_id);
                     auto bit = inputc._imgs_size.find(uri);
                     int rows = 1;
                     int cols = 1;
