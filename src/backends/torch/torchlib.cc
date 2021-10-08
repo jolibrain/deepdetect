@@ -764,6 +764,7 @@ namespace dd
     std::vector<int64_t> best_iteration_numbers(eval_dataset.size(), -1);
     _best_metric_values.resize(eval_dataset.size(),
                                std::numeric_limits<double>::infinity());
+    this->_test_names = eval_dataset.names();
 
     int it = tsolver.resume(ad_mllib, this->_mlmodel, _main_device,
                             _best_metric_values, best_iteration_numbers,
@@ -1083,14 +1084,17 @@ namespace dd
 
                     for (auto name : meas_names)
                       {
+                        std::string metric_name
+                            = name + "_test" + std::to_string(i);
+
                         if (name != "cmdiag" && name != "cmfull"
                             && name != "labels" && name != "test_id"
                             && name != "test_name")
                           {
                             double mval = meas_obj.get(name).get<double>();
-                            this->_logger->info("{}={}", name, mval);
-                            this->add_meas(name, mval);
-                            this->add_meas_per_iter(name, mval);
+                            this->_logger->info("{}={}", metric_name, mval);
+                            this->add_meas(metric_name, mval);
+                            this->add_meas_per_iter(metric_name, mval);
                           }
                         else if (name == "cmdiag")
                           {
@@ -1105,14 +1109,15 @@ namespace dd
                                     += this->_mlmodel.get_hcorresp(i) + ":"
                                        + std::to_string(mdiag.at(i)) + " ";
                                 this->add_meas_per_iter(
-                                    name + '_'
+                                    metric_name + '_'
                                         + this->_mlmodel.get_hcorresp(i),
                                     mdiag.at(i));
                                 cnames.push_back(
                                     this->_mlmodel.get_hcorresp(i));
                               }
-                            this->_logger->info("{}=[{}]", name, mdiag_str);
-                            this->add_meas(name, mdiag, cnames);
+                            this->_logger->info("{}=[{}]", metric_name,
+                                                mdiag_str);
+                            this->add_meas(metric_name, mdiag, cnames);
                           }
                       }
                   }

@@ -367,6 +367,13 @@ namespace dd
 
       meas.add("flops", this->_model_flops);
 
+      APIData test_names;
+      for (size_t i = 0; i < _test_names.size(); ++i)
+        {
+          test_names.add(std::to_string(i), _test_names[i]);
+        }
+      meas.add("test_names", test_names);
+
       ad.add("measure", meas);
     }
 
@@ -387,6 +394,7 @@ namespace dd
         _meas; /**< model measures, used as a per service value. */
     std::unordered_map<std::string, std::vector<double>>
         _meas_per_iter; /**< model measures per iteration. */
+    std::vector<std::string> _test_names;
 
     ServiceStats _stats; /**< service statistics/metrics .*/
 
