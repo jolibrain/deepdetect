@@ -44,7 +44,7 @@ pipeline {
     }}
     stage('Build docker gpu_tensorrt image') { steps {
       catchError(buildResult: 'FAILURE', stageResult: 'FAILURE', catchInterruptions: false) {
-        sh 'ci/build-docker-images.sh gpu_tensorrt'
+        sh 'ci/build-docker-images.sh gpu_tensorrt_cv4_cuda'
       }
     }}
     stage('Update dockerhub readme') {
