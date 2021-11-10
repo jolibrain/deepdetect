@@ -38,6 +38,7 @@ def main():
 
     exp = get_exp(None, args.model)
     exp.num_classes = args.num_classes
+    logging.info("num_classes == %d" % args.num_classes)
 
     model = exp.get_model()
     model.eval()
