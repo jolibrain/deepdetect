@@ -872,40 +872,61 @@ namespace dd
 #pragma omp parallel for num_threads(_devices.size())
         for (size_t rank = 0; rank < _devices.size(); ++rank)
           {
-            TorchBatch batch = batches[rank];
-
-            torch::Device device = _devices[rank];
-            TorchModule &rank_module
-                = device == _main_device ? _module : *ranks[rank].module;
-            TorchLoss &rank_tloss
-                = device == _main_device ? tloss : *ranks[rank].loss;
-
-            // Batch preprocessing
-            std::vector<c10::IValue> in_vals;
-            for (Tensor tensor : batch.data)
-              {
-                in_vals.push_back(tensor.to(device));
-              }
-            if (rank_module.has_model_loss())
-              {
-                // if the model computes the loss then we pass target as input
-                for (Tensor tensor : batch.target)
-                  in_vals.push_back(tensor.to(device));
-              }
-
-            if (batch.target.size() == 0)
-              {
-                throw MLLibInternalException(
-                    "Batch " + std::to_string(batch_id) + ": no target");
-              }
-            Tensor y = batch.target.at(0).to(device);
-
-            // Prediction
-            Tensor y_pred;
+            double loss_val = 0;
             try
               {
-                y_pred = torch_utils::to_tensor_safe(
+                TorchBatch batch = batches[rank];
+
+                torch::Device device = _devices[rank];
+                TorchModule &rank_module
+                    = device == _main_device ? _module : *ranks[rank].module;
+                TorchLoss &rank_tloss
+                    = device == _main_device ? tloss : *ranks[rank].loss;
+
+                // Batch preprocessing
+                std::vector<c10::IValue> in_vals;
+                for (Tensor tensor : batch.data)
+                  {
+                    in_vals.push_back(tensor.to(device));
+                  }
+                if (rank_module.has_model_loss())
+                  {
+                    // if the model computes the loss then we pass target as
+                    // input
+                    for (Tensor tensor : batch.target)
+                      in_vals.push_back(tensor.to(device));
+                  }
+
+                if (batch.target.size() == 0)
+                  {
+                    throw MLLibInternalException(
+                        "Batch " + std::to_string(batch_id) + ": no target");
+                  }
+                Tensor y = batch.target.at(0).to(device);
+
+                // Prediction
+                Tensor y_pred = torch_utils::to_tensor_safe(
                     rank_module.forward(in_vals));
+
+                // sanity check
+                if (!y_pred.defined() || y_pred.numel() == 0)
+                  throw MLLibInternalException(
+                      "The model returned an empty tensor");
+
+                // Compute loss
+                Tensor loss = rank_tloss.loss(y_pred, y, in_vals);
+
+                if (iter_size > 1)
+                  loss /= iter_size;
+                if (gpu_count > 1)
+                  loss /= static_cast<double>(gpu_count);
+
+                // Backward
+                loss.backward(
+                    {},
+                    /*retain_graph=*/c10::optional<bool>(retain_graph),
+                    /*create_graph=*/false);
+                loss_val = loss.item<double>();
               }
             catch (...)
               {
@@ -913,24 +934,12 @@ namespace dd
                 {
                   eptr = std::current_exception();
                 }
+                continue;
               }
 
-            // Compute loss
-            Tensor loss = rank_tloss.loss(y_pred, y, in_vals);
-
-            if (iter_size > 1)
-              loss /= iter_size;
-            if (gpu_count > 1)
-              loss /= static_cast<double>(gpu_count);
-
-            // Backward
-            loss.backward({},
-                          /*retain_graph=*/c10::optional<bool>(retain_graph),
-                          /*create_graph=*/false);
 #pragma omp critical
             {
               // Retain loss for statistics
-              double loss_val = loss.item<double>();
               train_loss += loss_val;
             }
           }
