@@ -244,6 +244,7 @@ namespace dd
     void collect_measures_history(APIData &ad, const int &npoints = -1) const
     {
       APIData meas_hist;
+      APIData meas_sampling;
       std::lock_guard<std::mutex> lock(_meas_per_iter_mutex);
       auto hit = _meas_per_iter.begin();
       while (hit != _meas_per_iter.end())
@@ -253,13 +254,14 @@ namespace dd
               std::vector<double> sub_hist;
               int sampling = subsample_hist((*hit).second, sub_hist, npoints);
               meas_hist.add((*hit).first + "_hist", sub_hist);
-              meas_hist.add((*hit).first + "_sampling", sampling);
+              meas_sampling.add((*hit).first + "_sampling", sampling);
             }
           else
             meas_hist.add((*hit).first + "_hist", (*hit).second);
           ++hit;
         }
       ad.add("measure_hist", meas_hist);
+      ad.add("measure_sampling", meas_sampling);
     }
 
     /**

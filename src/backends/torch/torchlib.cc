@@ -311,7 +311,7 @@ namespace dd
         _seq_training = true;
       }
     else if (_template == "fasterrcnn" || _template == "retinanet"
-             || _template == "detr")
+             || _template == "detr" || _template == "yolox")
       {
         _bbox = true;
         _classification = false;
@@ -404,7 +404,8 @@ namespace dd
         this->_inputc._input_format = "gpt2";
       }
     // TorchVision detection models
-    else if (_template == "fasterrcnn" || _template == "retinanet")
+    else if (_template == "fasterrcnn" || _template == "retinanet"
+             || _template == "yolox")
       {
         // torchvision models output is a tuple (Loss, Predictions)
         _module._loss_id = 0;

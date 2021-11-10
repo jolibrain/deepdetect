@@ -762,14 +762,13 @@ if (USE_TORCH)
     ${PYTORCH_PATCHES_PATH}/pytorch_15_compile.patch
     ${PYTORCH_PATCHES_PATH}/pytorch_19_new_logger.patch
     ${PYTORCH_PATCHES_PATH}/pytorch_19_use_new_logger.patch
-    ${PYTORCH_PATCHES_PATH}/pytorch_19_thrust_include.patch
   )
 
   message(STATUS "Configuring libtorch")
   add_definitions(-DUSE_TORCH)
 
   if (NOT TORCH_LOCATION)
-    set(PYTORCH_COMMIT v1.9.0)
+    set(PYTORCH_COMMIT v1.10.0)
     set(PYTORCH_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch-complete)
 
     if(USE_TORCH_CPU_ONLY)
@@ -808,7 +807,7 @@ if (USE_TORCH)
 
   # TORCH VISION
   message(STATUS "Configuring Pytorch Vision")
-  set(PYTORCH_VISION_COMMIT "v0.10.0") # 0.10.0 & torch 1.9.0
+  set(PYTORCH_VISION_COMMIT "v0.11.1") # 0.11.1 & torch 1.10.0
   set(PYTORCH_VISION_PATCHES_PATH ${CMAKE_BINARY_DIR}/patches/pytorch/vision)
   #set(PYTORCH_VISION_PATCHES
   #    ${PYTORCH_VISION_PATCHES_PATH}/xxx.patch # add patches here
