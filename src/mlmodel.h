@@ -213,7 +213,7 @@ namespace dd
       if (!fileops::is_directory_writable(_repo))
         {
           std::string errmsg
-              = "destination model directory " + _repo + " is not writable";
+              = "destination model directory " + _repo + " is not writable or does not exist.";
           logger->error(errmsg);
           throw MLLibBadParamException(errmsg);
         }
