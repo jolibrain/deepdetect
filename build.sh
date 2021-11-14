@@ -154,8 +154,8 @@ gpu_build() {
         "tf") extra_flags="$default_flags -DUSE_TF=ON" ;;
         "caffe2") extra_flags="$default_flags -DUSE_CAFFE2=ON" ;;
         "torch") extra_flags="$default_flags -DUSE_TORCH=ON" ;;
-        "tensorrt") extra_flags="-DUSE_TENSORRT=ON -DUSE_CAFFE=OFF" ;;
-	"tensorrt-cv4-cuda") extra_flags="-DUSE_TENSORRT=ON -DUSE_CAFFE=OFF -DUSE_CUDA_CV=ON -DUSE_OPENCV_VERSION=4 -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}";;
+        "tensorrt") extra_flags="-DUSE_SIMSEARCH=ON -DUSE_TENSORRT=ON -DUSE_CAFFE=OFF" ;;
+	"tensorrt-cv4-cuda") extra_flags="-DUSE_SIMSEARCH=ON -DUSE_TENSORRT=ON -DUSE_CAFFE=OFF -DUSE_CUDA_CV=ON -DUSE_OPENCV_VERSION=4 -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}";;
         *) extra_flags="$default_flags";;
     esac
     cmake .. $extra_flags -DCUDA_ARCH="${DEEPDETECT_CUDA_ARCH} -DRELEASE=${DEEPDETECT_RELEASE}"
