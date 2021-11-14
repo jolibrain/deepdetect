@@ -19,7 +19,6 @@ TARGETS[gpu]="gpu/default"
 TARGETS[gpu_tf]="gpu/tf"
 TARGETS[gpu_torch]="gpu/torch"
 TARGETS[gpu_tensorrt]="gpu_tensorrt/tensorrt"
-TARGETS[gpu_tensorrt_cv4_cuda]="gpu_tensorrt/tensorrt-cv4-cuda"
 
 PR_NUMBER=$(echo $GIT_BRANCH | sed -n '/^PR-/s/PR-//gp')
 if [ "$TAG_NAME" ]; then
