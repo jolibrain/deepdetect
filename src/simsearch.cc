@@ -281,8 +281,7 @@ namespace dd
     if (fileops::file_exists(index_filename))
       {
         if (_ondisk)
-          _findex
-              = faiss::read_index(index_filename.c_str(), faiss::IO_FLAG_MMAP);
+          _findex = faiss::read_index(index_filename.c_str());
         else
           _findex = faiss::read_index(index_filename.c_str());
         _index_size = _findex->ntotal;
