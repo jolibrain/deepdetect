@@ -63,6 +63,15 @@ static std::string resnet50_test_cats_data
 static std::string resnet50_test_image
     = "../examples/torch/resnet50_training_torch_small/train/cats/"
       "cat.10097.jpg";
+static std::string deeplabv3_train_repo
+    = "../examples/torch/deeplabv3_training_torch/";
+static std::string deeplabv3_train_data
+    = "../examples/torch/deeplabv3_training_torch/CamVid_square/train.txt";
+static std::string deeplabv3_test_data
+    = "../examples/torch/deeplabv3_training_torch/CamVid_square/test50.txt";
+static std::string deeplabv3_test_image
+    = "../examples/torch/deeplabv3_training_torch/CamVid_square/test/"
+      "Seq05VD_f00330.png";
 
 static std::string resnet50_native_weights
     = "../examples/torch/resnet50_native_torch/resnet50.npt";
@@ -91,6 +100,7 @@ static std::string iterations_ttransformer_gpu = "1000";
 static std::string iterations_resnet50 = "200";
 static std::string iterations_vit = "200";
 static std::string iterations_detection = "200";
+static std::string iterations_deeplabv3 = "200";
 
 static int torch_seed = 1235;
 static std::string torch_lr = "1e-5";
@@ -729,6 +739,85 @@ TEST(torchapi, service_train_images)
   fileops::clear_directory(resnet50_train_repo + "test_0.lmdb");
   fileops::remove_dir(resnet50_train_repo + "train.lmdb");
   fileops::remove_dir(resnet50_train_repo + "test_0.lmdb");
+}
+
+TEST(torchapi, service_train_image_segmentation)
+{
+  setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
+  torch::manual_seed(torch_seed);
+  at::globalContext().setDeterministicCuDNN(true);
+
+  // Create service
+  JsonAPI japi;
+  std::string sname = "imgserv";
+  std::string jstr
+      = "{\"mllib\":\"torch\",\"description\":\"image\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+        + deeplabv3_train_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\","
+          "\"width\":480,\"height\":480,\"db\":true,\"segmentation\":true},"
+          "\"mllib\":{\"nclasses\":"
+          "13,\"gpu\":true,\"segmentation\":true}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // Train
+  std::string jtrainstr
+      = "{\"service\":\"imgserv\",\"async\":false,\"parameters\":{"
+        "\"mllib\":{\"solver\":{\"iterations\":"
+        + iterations_deeplabv3 + ",\"base_lr\":" + torch_lr
+        + ",\"iter_size\":1,\"solver_type\":\"ADAM\",\"test_"
+          "interval\":100},\"net\":{\"batch_size\":4},"
+          "\"resume\":false},"
+          "\"input\":{\"seed\":12345,\"db\":true,\"shuffle\":true,"
+          "\"segmentation\":true,\"scale\":0.0039,\"mean\":[0.485,0.456,0.406]"
+          ",\"std\":[0.229,0.224,0.225]},"
+          "\"output\":{\"measure\":[\"meaniou\",\"acc\"]}},\"data\":[\""
+        + deeplabv3_train_data + "\",\"" + deeplabv3_test_data + "\"]}";
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
+  JDoc jd;
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(201, jd["status"]["code"]);
+
+  ASSERT_TRUE(jd["body"]["measure"]["meanacc"].GetDouble() <= 1) << "accuracy";
+  ASSERT_TRUE(jd["body"]["measure"]["meanacc"].GetDouble() >= 0.01)
+      << "accuracy good";
+  ASSERT_TRUE(jd["body"]["measure"]["meaniou"].GetDouble() <= 1) << "meaniou";
+
+  std::string jpredictstr
+      = "{\"service\":\"imgserv\",\"parameters\":{"
+        "\"input\":{\"height\":480,"
+        "\"width\":480,\"scale\":0.0039,\"mean\":[0.485,0.456,0.406],\"std\":["
+        "0.229,0.224,0.225]},\"output\":{\"segmentation\":true, "
+        "\"confidences\":[\"best\"]}},\"data\":[\""
+        + deeplabv3_test_image + "\"]}";
+
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+
+  std::unordered_set<std::string> lfiles;
+  fileops::list_directory(deeplabv3_train_repo, true, false, false, lfiles);
+  for (std::string ff : lfiles)
+    {
+      if (ff.find("checkpoint") != std::string::npos
+          || ff.find("solver") != std::string::npos)
+        remove(ff.c_str());
+    }
+  ASSERT_TRUE(!fileops::file_exists(deeplabv3_train_repo + "checkpoint-"
+                                    + iterations_deeplabv3 + ".ptw"));
+  ASSERT_TRUE(!fileops::file_exists(deeplabv3_train_repo + "checkpoint-"
+                                    + iterations_deeplabv3 + ".pt"));
+
+  fileops::clear_directory(deeplabv3_train_repo + "train.lmdb");
+  fileops::clear_directory(deeplabv3_train_repo + "test_0.lmdb");
+  fileops::remove_dir(deeplabv3_train_repo + "train.lmdb");
+  fileops::remove_dir(deeplabv3_train_repo + "test_0.lmdb");
 }
 
 TEST(torchapi, service_publish_trained_model)

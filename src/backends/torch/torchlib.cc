@@ -712,8 +712,8 @@ namespace dd
     int64_t save_period = 0;
 
     TorchLoss tloss(_loss, _module.has_model_loss(), _seq_training, _timeserie,
-                    _regression, _classification, class_weights, _module,
-                    this->_logger);
+                    _regression, _classification, _segmentation, class_weights,
+                    _module, this->_logger);
     TorchSolver tsolver(_module, tloss, this->_logger);
 
     // logging parameters
@@ -806,8 +806,8 @@ namespace dd
             r.module->train();
             r.loss = std::make_shared<TorchLoss>(
                 _loss, r.module->has_model_loss(), _seq_training, _timeserie,
-                _regression, _classification, class_weights, *r.module,
-                this->_logger);
+                _regression, _classification, _segmentation, class_weights,
+                *r.module, this->_logger);
           }
       }
     _module.train();
@@ -905,8 +905,18 @@ namespace dd
                 Tensor y = batch.target.at(0).to(device);
 
                 // Prediction
-                Tensor y_pred = torch_utils::to_tensor_safe(
-                    rank_module.forward(in_vals));
+                Tensor y_pred;
+                if (_segmentation)
+                  {
+                    auto out_dict
+                        = rank_module.forward(in_vals).toGenericDict();
+                    y_pred = torch_utils::to_tensor_safe(out_dict.at("out"));
+                  }
+                else
+                  {
+                    y_pred = torch_utils::to_tensor_safe(
+                        rank_module.forward(in_vals));
+                  }
 
                 // sanity check
                 if (!y_pred.defined() || y_pred.numel() == 0)
@@ -1098,6 +1108,7 @@ namespace dd
                             = name + "_test" + std::to_string(i);
 
                         if (name != "cmdiag" && name != "cmfull"
+                            && name != "clacc" && name != "cliou"
                             && name != "labels" && name != "test_id"
                             && name != "test_name")
                           {
@@ -1106,7 +1117,8 @@ namespace dd
                             this->add_meas(metric_name, mval);
                             this->add_meas_per_iter(metric_name, mval);
                           }
-                        else if (name == "cmdiag")
+                        else if (name == "cmdiag" || name == "clacc"
+                                 || name == "cliou")
                           {
                             std::vector<double> mdiag
                                 = meas_obj.get(name)
@@ -1811,7 +1823,7 @@ namespace dd
         try
           {
             out_ivalue = _module.forward(in_vals);
-            if (!_bbox)
+            if (!_bbox && !_segmentation)
               {
                 output = torch_utils::to_tensor_safe(out_ivalue);
               }
@@ -1902,6 +1914,37 @@ namespace dd
                 ++entry_id;
               }
           }
+        else if (_segmentation)
+          {
+            auto out_dict = out_ivalue.toGenericDict();
+            output = torch_utils::to_tensor_safe(out_dict.at("out"));
+            output = torch::softmax(output, 1);
+            torch::Tensor target = batch.target.at(0).to(torch::kFloat64);
+            torch::Tensor segmap
+                = torch::flatten(torch::argmax(output.squeeze(), 1))
+                      .contiguous()
+                      .to(torch::kFloat64)
+                      .to(cpu); // squeeze removes the batch size
+            double *startout = segmap.data_ptr<double>();
+            double *target_arr = target.data_ptr<double>();
+            int tensormap_size = output.size(2) * output.size(3);
+
+            for (int j = 0; j < output.size(0); ++j)
+              {
+                APIData bad;
+                std::vector<double> vals(
+                    startout,
+                    startout + tensormap_size); // TODO: classes as channels ?
+                startout += tensormap_size;
+                std::vector<double> targs(target_arr,
+                                          target_arr + tensormap_size);
+                target_arr += tensormap_size;
+                bad.add("target", targs);
+                bad.add("pred", vals);
+                ad_res.add(std::to_string(entry_id), bad);
+                ++entry_id;
+              }
+          }
         else
           {
             labels = batch.target[0].view(IntList{ -1 });
@@ -1958,7 +2001,8 @@ namespace dd
         // test_size);
       }
 
-    ad_res.add("iteration", this->get_meas("iteration") + 1);
+    ad_res.add("iteration",
+               static_cast<double>(this->get_meas("iteration") + 1));
     ad_res.add("train_loss", this->get_meas("train_loss"));
     if (_timeserie)
       {
@@ -1979,6 +2023,8 @@ namespace dd
         ad_res.add("pos_count", entry_id);
         ad_res.add("0", ad_bbox);
       }
+    else if (_segmentation)
+      ad_res.add("segmentation", true);
     ad_res.add("batch_size",
                entry_id); // here batch_size = tested entries count
     SupervisedOutput::measure(ad_res, ad_out, out, test_id, test_name);

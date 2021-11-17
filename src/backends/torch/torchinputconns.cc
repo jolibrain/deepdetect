@@ -226,26 +226,25 @@ namespace dd
                   listfilePath);
   }
 
-  void ImgTorchInputFileConn::read_image_bbox(
+  void ImgTorchInputFileConn::read_image_file2file(
       std::vector<std::pair<std::string, std::string>> &lfiles,
       const std::string &listfilePath)
   {
-    _logger->info("Reading image & bbox list file {}", listfilePath);
+    _logger->info("Reading image & target file {}", listfilePath);
     std::ifstream infile(listfilePath);
     std::string line;
     int line_num = 0;
     while (std::getline(infile, line))
       {
         std::istringstream iss(line);
-        string filename;
-        string bbox;
-        iss >> filename >> bbox;
+        string filename1;
+        string filename2;
+        iss >> filename1 >> filename2;
 
         ++line_num;
-        lfiles.emplace_back(filename, bbox);
+        lfiles.emplace_back(filename1, filename2);
       }
-    _logger->info("Read {} lines in image & bbox list file {}", line_num,
-                  listfilePath);
+    _logger->info("Read {} lines in image & files {}", line_num, listfilePath);
   }
 
   void ImgTorchInputFileConn::transform(const APIData &ad)
@@ -403,11 +402,11 @@ namespace dd
                 std::vector<std::vector<std::pair<std::string, std::string>>>
                     tests_lfiles;
 
-                read_image_bbox(lfiles, _uris.at(0));
+                read_image_file2file(lfiles, _uris.at(0));
                 tests_lfiles.resize(_uris.size() - 1);
                 for (size_t i = 1; i < _uris.size(); ++i)
                   {
-                    read_image_bbox(tests_lfiles[i - 1], _uris.at(i));
+                    read_image_file2file(tests_lfiles[i - 1], _uris.at(i));
                   }
 
                 if (_dataset._shuffle)
@@ -443,6 +442,56 @@ namespace dd
                   for (const std::pair<std::string, std::string> &lfile :
                        tests_lfiles[i])
                     _test_datasets[i].add_image_bbox_file(
+                        lfile.first, lfile.second, _height, _width);
+              }
+            else if (_segmentation) // expects a file list of image filepath
+                                    // and target image filepath
+              {
+                std::vector<std::pair<std::string, std::string>>
+                    lfiles; // labeled files
+                std::vector<std::vector<std::pair<std::string, std::string>>>
+                    tests_lfiles;
+
+                read_image_file2file(lfiles, _uris.at(0));
+                tests_lfiles.resize(_uris.size() - 1);
+                for (size_t i = 1; i < _uris.size(); ++i)
+                  {
+                    read_image_file2file(tests_lfiles[i - 1], _uris.at(i));
+                  }
+
+                if (_dataset._shuffle)
+                  shuffle_dataset<std::string>(lfiles);
+
+                bool has_test_data = false;
+                for (auto test_lfiles : tests_lfiles)
+                  if (test_lfiles.size() != 0)
+                    {
+                      has_test_data = true;
+                      break;
+                    }
+                if (_test_split > 0.0 && !has_test_data)
+                  {
+                    tests_lfiles.resize(1);
+                    split_dataset<std::string>(lfiles, tests_lfiles[0]);
+                  }
+
+                for (const std::pair<std::string, std::string> &lfile : lfiles)
+                  {
+                    _dataset.add_image_image_file(lfile.first, lfile.second,
+                                                  _height, _width);
+                  }
+
+                // in case of db, alloc of test sets already done in
+                // has_to_create_db
+                if (!_db)
+                  {
+                    set_test_names(tests_lfiles.size(), _uris);
+                  }
+
+                for (size_t i = 0; i < tests_lfiles.size(); ++i)
+                  for (const std::pair<std::string, std::string> &lfile :
+                       tests_lfiles[i])
+                    _test_datasets[i].add_image_image_file(
                         lfile.first, lfile.second, _height, _width);
               }
             else // file exists, expects a list of files and targets, for

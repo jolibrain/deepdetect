@@ -400,11 +400,18 @@ if (USE_TORCH)
     "fasterrcnn_train_torch"
     )
   DOWNLOAD_DATASET(
-    "Torchvision training DeepLabV3 Resnet50 model"
+    "Torchvision inference DeepLabV3 Resnet50 model"
     "https://www.deepdetect.com/dd/examples/torch/deeplabv3_torch.tar.gz"
     "examples/torch"
     "deeplabv3_torch.tar.gz"
     "deeplabv3_torch"
+    )
+    DOWNLOAD_DATASET(
+    "Torchvision training DeepLabV3 Resnet50 model"
+    "https://www.deepdetect.com/dd/examples/torch/deeplabv3_training_torch.tar.gz"
+    "examples/torch"
+    "deeplabv3_training_torch.tar.gz"
+    "deeplabv3_training_torch"
     )
   DOWNLOAD_DATASET(
     "Torch BERT classification test model"
