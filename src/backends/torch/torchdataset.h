@@ -69,7 +69,7 @@ namespace dd
     std::mutex _mutex; /**< lock to keep the dataset synchronized */
 
   public:
-    bool _shuffle = false;           /**< shuffle dataset upon reset() */
+    bool _shuffle = true;            /**< shuffle dataset upon reset() */
     std::shared_ptr<db::DB> _dbData; /**< db data */
     db::Cursor *_dbCursor = nullptr; /**< db cursor */
     std::vector<int64_t> _indices;   /**< id/key  of data points */
