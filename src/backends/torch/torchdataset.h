@@ -84,7 +84,8 @@ namespace dd
     bool _classification = true; /**< whether a classification dataset. */
 
     bool _image = false;                /**< whether an image dataset. */
-    bool _bbox = false;                 /**< true if bbox detection dataset */
+    bool _bbox = false;                 /**< true if bbox detection dataset. */
+    bool _segmentation = false;         /**< true if segmentation dataset. */
     bool _test = false;                 /**< whether a test set */
     TorchImgRandAugCV _img_rand_aug_cv; /**< image data augmentation policy. */
 
@@ -106,7 +107,8 @@ namespace dd
           _indices(d._indices), _lfiles(d._lfiles), _batches(d._batches),
           _dbFullName(d._dbFullName), _inputc(d._inputc),
           _classification(d._classification), _image(d._image), _bbox(d._bbox),
-          _test(d._test), _img_rand_aug_cv(d._img_rand_aug_cv)
+          _segmentation(d._segmentation), _test(d._test),
+          _img_rand_aug_cv(d._img_rand_aug_cv)
     {
     }
 
@@ -128,6 +130,9 @@ namespace dd
     void add_image_batch(const cv::Mat &bgr, const int &width,
                          const int &height,
                          const std::vector<at::Tensor> &targett);
+
+    void add_image_batch(const cv::Mat &bgr, const int &width,
+                         const int &height, const cv::Mat &bw_target);
 
     /**
      * \brief reset dataset reading status : ie start new epoch
@@ -273,7 +278,8 @@ namespace dd
     }
 
     /*-- image tools --*/
-    int read_image_file(const std::string &fname, cv::Mat &out);
+    int read_image_file(const std::string &fname, cv::Mat &out,
+                        const bool &target = false);
 
     int add_image_file(const std::string &fname,
                        const std::vector<at::Tensor> &target,
@@ -297,6 +303,15 @@ namespace dd
                        const int &width);
 
     /**
+     * \brief adds image from image filename, with an image as target
+     * \param width of preprocessed image
+     * \param height of preprocessed image
+     */
+    int add_image_image_file(const std::string &fname,
+                             const std::string &fname_target,
+                             const int &height, const int &width);
+
+    /**
      * \brief adds image to batch, with a bbox list file as target.
      * \param width of preprocessed image
      * \param height of preprocessed image
@@ -307,9 +322,13 @@ namespace dd
 
     /**
      * \brief turns an image into a torch::Tensor
+     * \param bgr input image
+     * \param height image height
+     * \param width image width
+     * \param target whether the image is a label/target
      */
     at::Tensor image_to_tensor(const cv::Mat &bgr, const int &height,
-                               const int &width);
+                               const int &width, const bool &target = false);
 
     /**
      * \brief turns an int into a torch::Tensor
@@ -329,10 +348,29 @@ namespace dd
                              const std::vector<at::Tensor> &target);
 
     /**
+     * \brief converts and image to a serialized string
+     */
+    void image_to_stringstream(const cv::Mat &img,
+                               std::ostringstream &dstream);
+
+    /**
      * \brief writes encoded image to db with a tensor target
      */
     void write_image_to_db(const cv::Mat &bgr,
                            const std::vector<torch::Tensor> &target);
+
+    /**
+     * \brief writes encoded images to db, one as input, the other as target
+     */
+    void write_image_to_db(const cv::Mat &bgr, const cv::Mat &bw_target);
+
+    /**
+     * \brief write two stringstreams to db, as key and value.
+     *        width and height are for logging purposes
+     */
+    void write_image_to_db(const std::ostringstream &dstream,
+                           const std::ostringstream &tstream,
+                           const int &height, const int &width);
 
     /**
      * \brief reads an encoded image from db along with its tensor target
@@ -360,9 +398,10 @@ namespace dd
      */
     TorchMultipleDataset(const TorchMultipleDataset &d)
         : _inputc(d._inputc), _image(d._image), _bbox(d._bbox),
-          _classification(d._classification), _dbFullNames(d._dbFullNames),
-          _datasets_names(d._datasets_names), _test(d._test), _db(d._db),
-          _backend(d._backend), _dbPrefix(d._dbPrefix), _logger(d._logger),
+          _classification(d._classification), _segmentation(d._segmentation),
+          _dbFullNames(d._dbFullNames), _datasets_names(d._datasets_names),
+          _test(d._test), _db(d._db), _backend(d._backend),
+          _dbPrefix(d._dbPrefix), _logger(d._logger),
           _batches_per_transaction(d._batches_per_transaction),
           _datasets(d._datasets)
     {
@@ -519,6 +558,7 @@ namespace dd
       _datasets[id]._inputc = _inputc;
       _datasets[id]._image = _image;
       _datasets[id]._bbox = _bbox;
+      _datasets[id]._segmentation = _segmentation;
       _datasets[id]._test = _test;
       _datasets[id]._classification = _classification;
       _datasets[id].set_db_params(_db, _backend,
@@ -533,6 +573,7 @@ namespace dd
     bool _image = false;         /**< whether an image dataset. */
     bool _bbox = false;          /**< true if bbox detection dataset */
     bool _classification = true; /**< whether a classification dataset. */
+    bool _segmentation = false;  /**< whether a segmentation dataset. */
     std::vector<std::string> _dbFullNames;
     std::vector<std::string> _datasets_names;
     bool _test = false; /**< wheater a test set */

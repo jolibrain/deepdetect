@@ -45,12 +45,12 @@ namespace dd
      */
     TorchLoss(std::string loss, bool model_loss, bool seq_training,
               bool timeserie, bool regression, bool classification,
-              torch::Tensor class_weights, TorchModule &module,
-              std::shared_ptr<spdlog::logger> logger)
+              bool segmentation, torch::Tensor class_weights,
+              TorchModule &module, std::shared_ptr<spdlog::logger> logger)
         : _loss(loss), _model_loss(model_loss), _seq_training(seq_training),
           _timeserie(timeserie), _regression(regression),
-          _classification(classification), _class_weights(class_weights),
-          _logger(logger)
+          _classification(classification), _segmentation(segmentation),
+          _class_weights(class_weights), _logger(logger)
     {
       _native = module._native;
     }
@@ -71,6 +71,7 @@ namespace dd
     bool _timeserie;
     bool _regression;
     bool _classification;
+    bool _segmentation;
     torch::Tensor _class_weights = {};
     std::shared_ptr<NativeModule> _native;
     std::shared_ptr<spdlog::logger> _logger;

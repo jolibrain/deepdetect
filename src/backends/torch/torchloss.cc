@@ -86,6 +86,11 @@ namespace dd
         loss = torch::nll_loss(torch::log_softmax(y_pred, 1),
                                y.view(torch::IntList{ -1 }), _class_weights);
       }
+    else if (_segmentation)
+      {
+        loss = torch::nn::functional::cross_entropy(
+            y_pred, y.squeeze(1).to(torch::kLong)); // TODO: options
+      }
     else
       {
         throw MLLibBadParamException("unexpected model type");

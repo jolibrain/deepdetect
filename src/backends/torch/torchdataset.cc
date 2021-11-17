@@ -118,29 +118,56 @@ namespace dd
       }
   }
 
+  void TorchDataset::image_to_stringstream(const cv::Mat &img,
+                                           std::ostringstream &dstream)
+  {
+    std::vector<uint8_t> buffer;
+    std::vector<int> param = { cv::IMWRITE_JPEG_QUALITY, 100 };
+    cv::imencode(".jpg", img, buffer, param);
+    for (uint8_t c : buffer)
+      dstream << c;
+  }
+
   void
   TorchDataset::write_image_to_db(const cv::Mat &bgr,
                                   const std::vector<torch::Tensor> &target)
   {
     // serialize image
-    std::stringstream dstream;
-    std::vector<uint8_t> buffer;
-    std::vector<int> param = { cv::IMWRITE_JPEG_QUALITY, 100 };
-    cv::imencode(".jpg", bgr, buffer, param);
-    for (uint8_t c : buffer)
-      dstream << c;
+    std::ostringstream dstream;
+    image_to_stringstream(bgr, dstream);
 
     // serialize target
     std::ostringstream tstream;
     torch::save(target, tstream);
 
+    write_image_to_db(dstream, tstream, bgr.rows, bgr.cols);
+  }
+
+  void TorchDataset::write_image_to_db(const cv::Mat &bgr,
+                                       const cv::Mat &bw_target)
+  {
+    // serialize image
+    std::ostringstream dstream;
+    image_to_stringstream(bgr, dstream);
+
+    // serialize target
+    std::ostringstream tstream;
+    image_to_stringstream(bw_target, tstream);
+
+    write_image_to_db(dstream, tstream, bgr.rows, bgr.cols);
+  }
+
+  void TorchDataset::write_image_to_db(const std::ostringstream &dstream,
+                                       const std::ostringstream &tstream,
+                                       const int &height, const int &width)
+  {
     // check on db
     if (_dbData == nullptr)
       {
         _dbData = std::shared_ptr<db::DB>(db::GetDB(_backend));
         _dbData->Open(_dbFullName, db::NEW);
         _txn = std::shared_ptr<db::Transaction>(_dbData->NewTransaction());
-        _logger->info("Preparing db of {}x{} images", bgr.cols, bgr.rows);
+        _logger->info("Preparing db of {}x{} images", width, height);
       }
 
     // data & target keys
@@ -173,8 +200,20 @@ namespace dd
     bgr = cv::Mat(img_data, true);
     bgr = cv::imdecode(bgr,
                        bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR);
-    std::stringstream targetstream(targets);
-    torch::load(targett, targetstream);
+    cv::Mat bw_target; // for segmentation only.
+
+    if (_segmentation)
+      {
+        std::vector<uint8_t> img_target_data(targets.begin(), targets.end());
+        bw_target = cv::Mat(img_target_data, true);
+        bw_target = cv::imdecode(bw_target, CV_LOAD_IMAGE_GRAYSCALE);
+      }
+    else
+      {
+        std::stringstream targetstream(targets);
+        torch::load(targett, targetstream);
+      }
+
     if (bgr.cols != width || bgr.rows != height)
       {
         float w_ratio = static_cast<float>(width) / bgr.cols;
@@ -189,6 +228,19 @@ namespace dd
               targett[0][bb][2] *= w_ratio;
               targett[0][bb][3] *= h_ratio;
             }
+
+        if (_segmentation)
+          {
+            cv::resize(bw_target, bw_target, cv::Size(width, height), 0, 0,
+                       cv::INTER_NEAREST);
+          }
+      }
+
+    if (_segmentation)
+      {
+        at::Tensor targett_seg
+            = image_to_tensor(bw_target, height, width, true);
+        targett.push_back(targett_seg);
       }
   }
 
@@ -207,6 +259,25 @@ namespace dd
       {
         // write to db
         write_image_to_db(bgr, targett);
+      }
+  }
+
+  // add image batch
+  void TorchDataset::add_image_batch(const cv::Mat &bgr, const int &width,
+                                     const int &height,
+                                     const cv::Mat &bw_target)
+  {
+    if (!_db)
+      {
+        // to tensor
+        at::Tensor imgt = image_to_tensor(bgr, height, width);
+        at::Tensor imgt_tgt = image_to_tensor(bw_target, height, width, true);
+        add_batch({ imgt }, { imgt_tgt });
+      }
+    else
+      {
+        // write to db
+        write_image_to_db(bgr, bw_target);
       }
   }
 
@@ -462,6 +533,10 @@ namespace dd
                   {
                     if (_bbox)
                       _img_rand_aug_cv.augment_with_bbox(bgr, t);
+                    else if (_segmentation)
+                      {
+                        // TODO: augment for segmentation
+                      }
                     else
                       _img_rand_aug_cv.augment(bgr);
                   }
@@ -552,13 +627,16 @@ namespace dd
   }
 
   /*-- image tools --*/
-  int TorchDataset::read_image_file(const std::string &fname, cv::Mat &out)
+  int TorchDataset::read_image_file(const std::string &fname, cv::Mat &out,
+                                    const bool &target)
   {
     ImgTorchInputFileConn *inputc
         = reinterpret_cast<ImgTorchInputFileConn *>(_inputc);
 
     DDImg dimg;
     inputc->copy_parameters_to(dimg);
+    if (target) // used for segmentation masks
+      dimg._bw = true;
 
     try
       {
@@ -603,6 +681,22 @@ namespace dd
                                    const int &height, const int &width)
   {
     return add_image_file(fname, { target_to_tensor(target) }, height, width);
+  }
+
+  int TorchDataset::add_image_image_file(const std::string &fname,
+                                         const std::string &fname_target,
+                                         const int &height, const int &width)
+  {
+    cv::Mat img;
+    int res = read_image_file(fname, img);
+    if (res != 0)
+      return res;
+    cv::Mat img_tgt;
+    res = read_image_file(fname_target, img_tgt, true);
+    if (res != 0)
+      return res;
+    add_image_batch(img, height, width, img_tgt);
+    return res;
   }
 
   int TorchDataset::add_image_bbox_file(const std::string &fname,
@@ -675,7 +769,8 @@ namespace dd
   }
 
   at::Tensor TorchDataset::image_to_tensor(const cv::Mat &bgr,
-                                           const int &height, const int &width)
+                                           const int &height, const int &width,
+                                           const bool &target)
   {
     ImgTorchInputFileConn *inputc
         = reinterpret_cast<ImgTorchInputFileConn *>(_inputc);
@@ -687,35 +782,40 @@ namespace dd
     imgt = imgt.toType(at::kFloat).permute({ 2, 0, 1 });
     size_t nchannels = imgt.size(0);
 
-    if (!inputc->_supports_bw && nchannels == 1)
+    if (!target)
       {
-        this->_logger->warn("Model needs 3 input channel, input will be "
-                            "duplicated to fit the model input format");
-        imgt = imgt.repeat({ 3, 1, 1 });
-        nchannels = 3;
+        if (!inputc->_supports_bw && nchannels == 1)
+          {
+            this->_logger->warn("Model needs 3 input channel, input will be "
+                                "duplicated to fit the model input format");
+            imgt = imgt.repeat({ 3, 1, 1 });
+            nchannels = 3;
+          }
+
+        if (inputc->_scale != 1.0)
+          imgt = imgt.mul(inputc->_scale);
+
+        if (!inputc->_mean.empty() && inputc->_mean.size() != nchannels)
+          throw InputConnectorBadParamException(
+              "mean vector be of size the number of channels ("
+              + std::to_string(nchannels) + ")");
+
+        for (size_t m = 0; m < inputc->_mean.size(); m++)
+          imgt[m] = imgt[m].sub_(inputc->_mean.at(m));
+
+        if (!inputc->_std.empty() && inputc->_std.size() != nchannels)
+          throw InputConnectorBadParamException(
+              "std vector be of size the number of channels ("
+              + std::to_string(nchannels) + ")");
+
+        for (size_t s = 0; s < inputc->_std.size(); s++)
+          imgt[s] = imgt[s].div_(inputc->_std.at(s));
       }
-
-    if (inputc->_scale != 1.0)
-      imgt = imgt.mul(inputc->_scale);
-
-    if (!inputc->_mean.empty() && inputc->_mean.size() != nchannels)
-      throw InputConnectorBadParamException(
-          "mean vector be of size the number of channels ("
-          + std::to_string(nchannels) + ")");
-
-    for (size_t m = 0; m < inputc->_mean.size(); m++)
-      imgt[m] = imgt[m].sub_(inputc->_mean.at(m));
-
-    if (!inputc->_std.empty() && inputc->_std.size() != nchannels)
-      throw InputConnectorBadParamException(
-          "std vector be of size the number of channels ("
-          + std::to_string(nchannels) + ")");
-
-    for (size_t s = 0; s < inputc->_std.size(); s++)
-      imgt[s] = imgt[s].div_(inputc->_std.at(s));
 
     return imgt;
   }
+
+  // TODO: segmentation target image to tensor
 
   at::Tensor TorchDataset::target_to_tensor(const int &target)
   {
