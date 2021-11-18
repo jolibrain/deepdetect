@@ -388,6 +388,9 @@ namespace dd
                 max_hist_points
                     = ad_params_out.get("max_hist_points").get<int>();
               this->collect_measures_history(out, max_hist_points);
+              out.add("mltype", this->_mltype);
+              out.add("sname", this->_sname);
+              out.add("description", this->_description);
             }
           else if (status == std::future_status::ready)
             {
