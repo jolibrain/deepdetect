@@ -38,6 +38,8 @@
 #include "dto/info.hpp"
 #include "dto/service_predict.hpp"
 #include "dto/service_create.hpp"
+#include "dto/stream.hpp"
+#include "dto/resource.hpp"
 
 #include OATPP_CODEGEN_BEGIN(ApiController)
 
@@ -230,6 +232,76 @@ public:
     auto janswer = _oja->service_chain(chain_name.get()->std_str(),
                                        chain_data.get()->std_str());
     return _oja->jdoc_to_response(janswer);
+  }
+
+  ENDPOINT_INFO(create_resource)
+  {
+    info->summary = "Create/Open a resource for multiple predict calls";
+    info->addResponse<Object<dd::DTO::ResourceResponse>>(Status::CODE_201,
+                                                         "application/json");
+  }
+  ENDPOINT("PUT", "resources/{resource-name}", create_resource,
+           PATH(oatpp::String, resource_name, "resource-name"),
+           BODY_DTO(Object<dd::DTO::Resource>, resource_data))
+  {
+    return createDtoResponse(
+        Status::CODE_201,
+        _oja->create_resource(resource_name->std_str(), resource_data));
+  }
+
+  ENDPOINT_INFO(delete_resource)
+  {
+    info->summary = "Close and delete an opened resource";
+    info->addResponse<Object<dd::DTO::GenericResponse>>(Status::CODE_200,
+                                                        "application/json");
+  }
+  ENDPOINT("DELETE", "resources/{resource-name}", delete_resource,
+           PATH(oatpp::String, resource_name, "resource-name"))
+  {
+    int status = _oja->delete_resource(resource_name->std_str());
+    return _oja->create_response(status, "");
+  }
+
+  ENDPOINT_INFO(create_stream)
+  {
+    info->summary = "Create a streaming prediction, ie prediction on "
+                    "streaming resource with a streamed output.";
+    info->addResponse<Object<dd::DTO::StreamResponse>>(Status::CODE_201,
+                                                       "application/json");
+  }
+  ENDPOINT("PUT", "stream/{stream-name}", create_stream,
+           PATH(oatpp::String, stream_name, "stream-name"),
+           BODY_DTO(Object<dd::DTO::Stream>, stream_data))
+  {
+    return createDtoResponse(
+        Status::CODE_201,
+        _oja->create_stream(stream_name->std_str(), stream_data));
+  }
+
+  ENDPOINT_INFO(get_stream_info)
+  {
+    info->summary = "Get information on running stream";
+    info->addResponse<Object<dd::DTO::StreamResponse>>(Status::CODE_200,
+                                                       "application/json");
+  }
+  ENDPOINT("GET", "stream/{stream-name}", get_stream_info,
+           PATH(oatpp::String, stream_name, "stream-name"))
+  {
+    return createDtoResponse(Status::CODE_200,
+                             _oja->get_stream_info(stream_name->std_str()));
+  }
+
+  ENDPOINT_INFO(delete_stream)
+  {
+    info->summary = "Stop and remove a running stream";
+    info->addResponse<Object<dd::DTO::GenericResponse>>(Status::CODE_200,
+                                                        "application/json");
+  }
+  ENDPOINT("DELETE", "stream/{stream-name}", delete_stream,
+           PATH(oatpp::String, stream_name, "stream-name"))
+  {
+    int status = _oja->delete_stream(stream_name->std_str());
+    return _oja->create_response(status, "");
   }
 };
 

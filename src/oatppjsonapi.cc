@@ -238,6 +238,41 @@ namespace dd
     return response;
   }
 
+  oatpp::Object<DTO::Status>
+  OatppJsonAPI::create_status_dto(const uint32_t &code, const std::string &msg,
+                                  const uint32_t &dd_code,
+                                  const std::string &dd_msg) const
+  {
+    auto status = DTO::Status::createShared();
+    status->code = code;
+    status->msg = msg.c_str();
+
+    if (dd_code > 0)
+      {
+        status->dd_code = dd_code;
+        if (!dd_msg.empty())
+          status->dd_msg = dd_msg.c_str();
+      }
+    return status;
+  }
+
+  std::shared_ptr<oatpp::web::protocol::http::outgoing::Response>
+  OatppJsonAPI::create_response(const uint32_t &code, const std::string &msg,
+                                const uint32_t &dd_code,
+                                const std::string &dd_msg) const
+  {
+    auto response_dto = DTO::GenericResponse::createShared();
+    response_dto->status = create_status_dto(code, msg, dd_code, dd_msg);
+
+    auto json_mapper = dd::oatpp_utils::createDDMapper();
+    auto response = oatpp::web::protocol::http::outgoing::ResponseFactory::
+        createResponse(oatpp::web::protocol::http::Status(code, ""),
+                       response_dto, json_mapper);
+    response->putHeader(oatpp::web::protocol::http::Header::CONTENT_TYPE,
+                        "application/json");
+    return response;
+  }
+
   void OatppJsonAPI::terminate(int signal)
   {
     (void)signal;

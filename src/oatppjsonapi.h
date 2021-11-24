@@ -27,6 +27,7 @@
 #include "oatpp/web/protocol/http/Http.hpp"
 #include "oatpp/web/protocol/http/outgoing/Response.hpp"
 #include "oatpp/web/server/api/ApiController.hpp"
+#include "dto/common.hpp"
 
 namespace dd
 {
@@ -44,6 +45,16 @@ namespace dd
     uri_query_to_json(oatpp::web::protocol::http::QueryParams queryParams);
     std::shared_ptr<oatpp::web::protocol::http::outgoing::Response>
     jdoc_to_response(const JDoc &janswer);
+
+    oatpp::Object<DTO::Status>
+    create_status_dto(const uint32_t &code, const std::string &msg,
+                      const uint32_t &dd_code = 0,
+                      const std::string &dd_msg = "") const;
+
+    std::shared_ptr<oatpp::web::protocol::http::outgoing::Response>
+    create_response(const uint32_t &code, const std::string &msg,
+                    const uint32_t &dd_code = 0,
+                    const std::string &dd_msg = "") const;
   };
 }
 
