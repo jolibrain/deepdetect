@@ -40,6 +40,13 @@ namespace dd
       DTO_FIELD(String, dd_msg);
     };
 
+    class GenericResponse : public oatpp::DTO
+    {
+      DTO_INIT(GenericResponse, DTO)
+
+      DTO_FIELD(Object<Status>, status) = Status::createShared();
+    };
+
     class BBox : public oatpp::DTO
     {
       DTO_INIT(BBox, oatpp::DTO)

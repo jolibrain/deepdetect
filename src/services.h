@@ -40,6 +40,8 @@
 #include "chain_actions.h"
 #include "dto/service_predict.hpp"
 #include "dto/chain.hpp"
+#include "dto/stream.hpp"
+#include "dto/resource.hpp"
 #ifdef USE_CAFFE
 #include "backends/caffe/caffelib.h"
 #endif
@@ -1384,6 +1386,46 @@ namespace dd
         }
       spdlog::drop(cname);
       return out_dto;
+    }
+
+    oatpp::Object<DTO::ResourceResponse>
+    create_resource(const std::string &resource_name,
+                    oatpp::Object<DTO::Resource> resource_data)
+    {
+      (void)resource_name;
+      (void)resource_data;
+      auto response = DTO::ResourceResponse::createShared();
+      return response;
+    }
+
+    int delete_resource(const std::string &resource_name)
+    {
+      (void)resource_name;
+      return 200;
+    }
+
+    oatpp::Object<DTO::StreamResponse>
+    create_stream(std::string stream_name,
+                  oatpp::Object<DTO::Stream> stream_data)
+    {
+      (void)stream_name;
+      (void)stream_data;
+      auto response = DTO::StreamResponse::createShared();
+      return response;
+    }
+
+    oatpp::Object<DTO::StreamResponse>
+    get_stream_info(const std::string &stream_name)
+    {
+      (void)stream_name;
+      auto response = DTO::StreamResponse::createShared();
+      return response;
+    }
+
+    int delete_stream(const std::string stream_name)
+    {
+      (void)stream_name;
+      return 200;
     }
 
     std::unordered_map<std::string, mls_variant_type>
