@@ -225,7 +225,7 @@ namespace dd
      */
     ImgTorchInputFileConn(const ImgTorchInputFileConn &i)
         : ImgInputFileConn(i), TorchInputInterface(i), _bbox(i._bbox),
-          _supports_bw(i._supports_bw)
+          _segmentation(i._segmentation), _supports_bw(i._supports_bw)
     {
       update_dataset_parameters();
       set_db_transaction_size(TORCH_IMG_TRANSACTION_SIZE);
@@ -256,8 +256,12 @@ namespace dd
       ImgInputFileConn::init(ad);
       if (ad.has("bbox"))
         _bbox = ad.get("bbox").get<bool>();
+      else if (ad.has("segmentation"))
+        _segmentation = ad.get("segmentation").get<bool>();
       _dataset._bbox = _bbox;
+      _dataset._segmentation = _segmentation;
       _test_datasets._bbox = _bbox;
+      _test_datasets._segmentation = _segmentation;
       _test_datasets._test = true;
     }
 
@@ -287,11 +291,12 @@ namespace dd
         const std::string &listfilePath);
 
     /**
-     * \brief read images from txt list. Targets are bbox files.
+     * \brief read images from txt list. Targets are segmentation or bbox
+     * files.
      */
-    void
-    read_image_bbox(std::vector<std::pair<std::string, std::string>> &lfiles,
-                    const std::string &listfilePath);
+    void read_image_file2file(
+        std::vector<std::pair<std::string, std::string>> &lfiles,
+        const std::string &listfilePath);
 
     /**
      * \brief shuffle dataset
@@ -313,15 +318,18 @@ namespace dd
 
   private:
     bool _bbox = false;
+    bool _segmentation = false;
 
     void update_dataset_parameters()
     {
       _dataset._inputc = this;
       _dataset._image = true;
       _dataset._bbox = _bbox;
+      _dataset._segmentation = _segmentation;
       _test_datasets._inputc = this;
       _test_datasets._image = true;
       _test_datasets._bbox = _bbox;
+      _test_datasets._segmentation = _segmentation;
     }
 
   public:
