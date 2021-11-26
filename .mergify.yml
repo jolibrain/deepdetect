@@ -1,63 +1,36 @@
+defaults:
+  actions:
+    queue:
+      name: default
+      method: rebase
+
+queue_rules:
+  - name: default
+    conditions:
+      - "status-success=Semantic Pull Request"
+      - "status-success=Jenkins - Unit tests GPU"
+      - or:
+        - "label!=ci:docker"
+        - "status-success=Jenkins - Docker build"
+      
 pull_request_rules:
   - name: "automatic merge with 2 reviews"
     conditions:
       - "base=master"
-      - "status-success=Semantic Pull Request"
-      - "status-success=Jenkins - Unit tests GPU"
-      - "label=process:ready-to-review"
-      - "label!=ci:docker"
-      - "label!=process:manual-merge"
-      - "#approved-reviews-by>=2"
-      - "#changes-requested-reviews-by=0"
-    actions:
-      merge:
-        strict: "smart"
-        method: rebase
-
-  - name: "automatic merge with 2 reviews and docker tests"
-    conditions:
-      - "base=master"
-      - "status-success=Semantic Pull Request"
-      - "status-success=Jenkins - Unit tests GPU"
-      - "status-success=Jenkins - Docker build"
-      - "label=process:ready-to-review"
-      - "label=ci:docker"
-      - "label!=process:manual-merge"
-      - "#approved-reviews-by>=2"
-      - "#changes-requested-reviews-by=0"
-    actions:
-      merge:
-        strict: "smart"
-        method: rebase
-
-  - name: "automatic merge with label process:no-need-review"
-    conditions:
-      - "base=master"
-      - "status-success=Semantic Pull Request"
-      - "status-success=Jenkins - Unit tests GPU"
-      - "label=process:no-need-review"
-      - "label!=ci:docker"
       - "label!=process:manual-merge"
       - "#changes-requested-reviews-by=0"
-    actions:
-      merge:
-        strict: "smart"
-        method: rebase
-        
-  - name: "automatic merge with labels process:no-need-review and ci:docker"
-    conditions:
-      - "base=master"
       - "status-success=Semantic Pull Request"
       - "status-success=Jenkins - Unit tests GPU"
-      - "status-success=Jenkins - Docker build"
-      - "label=process:no-need-review"
-      - "label=ci:docker"
-      - "label!=process:manual-merge"
-      - "#changes-requested-reviews-by=0"
+      - or:
+        - "label!=ci:docker"
+        - "status-success=Jenkins - Docker build"
+      - or:
+        - "label=process:no-need-review"
+        - and:
+          - "#approved-reviews-by>=2"
+          - "label=process:ready-to-review"
     actions:
-      merge:
-        strict: "smart"
-        method: rebase
+      queue:
 
   - name: "request review"
     conditions:
