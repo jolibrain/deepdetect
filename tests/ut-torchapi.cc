@@ -768,7 +768,10 @@ TEST(torchapi, service_train_image_segmentation)
         + iterations_deeplabv3 + ",\"base_lr\":" + torch_lr
         + ",\"iter_size\":1,\"solver_type\":\"ADAM\",\"test_"
           "interval\":100},\"net\":{\"batch_size\":4},"
-          "\"resume\":false},"
+          "\"resume\":false,\"mirror\":true,\"rotate\":true,\"crop_size\":224,"
+          "\"cutout\":0.5,\"geometry\":{\"prob\":0.1,\"persp_horizontal\":"
+          "true,\"persp_vertical\":true,\"zoom_in\":true,\"zoom_out\":true,"
+          "\"pad_mode\":1}},"
           "\"input\":{\"seed\":12345,\"db\":true,\"shuffle\":true,"
           "\"segmentation\":true,\"scale\":0.0039,\"mean\":[0.485,0.456,0.406]"
           ",\"std\":[0.229,0.224,0.225]},"
@@ -782,7 +785,7 @@ TEST(torchapi, service_train_image_segmentation)
   ASSERT_EQ(201, jd["status"]["code"]);
 
   ASSERT_TRUE(jd["body"]["measure"]["meanacc"].GetDouble() <= 1) << "accuracy";
-  ASSERT_TRUE(jd["body"]["measure"]["meanacc"].GetDouble() >= 0.01)
+  ASSERT_TRUE(jd["body"]["measure"]["meanacc"].GetDouble() >= 0.007)
       << "accuracy good";
   ASSERT_TRUE(jd["body"]["measure"]["meaniou"].GetDouble() <= 1) << "meaniou";
 

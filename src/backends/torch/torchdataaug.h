@@ -161,7 +161,7 @@ namespace dd
         = 0.25;                     /**< persp factor: 0.25 means that new
                                       image corners  be in 1.25 or 0.75. */
     uint8_t _geometry_pad_mode = 1; /**< filling around images, 1: constant, 2:
-                                       mirrored, 3: repeat nearest. */
+                                       repeat nearest (replicate). */
     float _geometry_bbox_intersect
         = 0.75; /**< warped bboxes must at least have a 75% intersect with the
                    original bbox, otherwise they are filtered out.*/
@@ -192,12 +192,13 @@ namespace dd
 
     void augment(cv::Mat &src);
     void augment_with_bbox(cv::Mat &src, std::vector<torch::Tensor> &targets);
+    void augment_with_segmap(cv::Mat &src, cv::Mat &tgt);
 
   protected:
-    bool applyMirror(cv::Mat &src);
+    bool applyMirror(cv::Mat &src, const bool &sample = true);
     void applyMirrorBBox(std::vector<std::vector<float>> &bboxes,
                          const float &img_width);
-    int applyRotate(cv::Mat &src);
+    int applyRotate(cv::Mat &src, const bool &sample = true, int rot = 0);
     void applyRotateBBox(std::vector<std::vector<float>> &bboxes,
                          const float &img_width, const float &img_height,
                          const int &rot);
@@ -206,7 +207,8 @@ namespace dd
     void applyCutout(cv::Mat &src, CutoutParams &cp,
                      const bool &store_rparams = false);
     void applyGeometry(cv::Mat &src, GeometryParams &cp,
-                       const bool &store_rparams = false);
+                       const bool &store_rparams = false,
+                       const bool &sample = true);
     void applyGeometryBBox(std::vector<std::vector<float>> &bboxes,
                            const GeometryParams &cp, const int &img_width,
                            const int &img_height);
