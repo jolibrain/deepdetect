@@ -87,8 +87,9 @@ namespace dd
       {
         // geometry on bboxes
         std::vector<std::vector<float>> bboxes_c = bboxes;
-        applyGeometryBBox(bboxes_c, geoparams, src_c.cols, src_c.rows);
-        if (!bboxes_c.empty()) // some bboxes remain
+        applyGeometryBBox(bboxes_c, geoparams, src_c.cols,
+                          src_c.rows); // uses the stored lambda
+        if (!bboxes_c.empty())         // some bboxes remain
           {
             src = src_c;
             bboxes = bboxes_c;
@@ -106,7 +107,24 @@ namespace dd
       }
   }
 
-  bool TorchImgRandAugCV::applyMirror(cv::Mat &src)
+  void TorchImgRandAugCV::augment_with_segmap(cv::Mat &src, cv::Mat &tgt)
+  {
+    GeometryParams geoparams = _geometry_params;
+    applyGeometry(src, geoparams, true, true);
+    if (!geoparams._lambda.empty())
+      applyGeometry(tgt, geoparams, false, false); // reuses geoparams
+
+    applyCutout(src, _cutout_params);
+    bool mirrored = applyMirror(src);
+    if (mirrored)
+      applyMirror(tgt, false);
+    int rot = applyRotate(src);
+    if (rot != 0)
+      applyRotate(tgt, false, rot);
+  }
+
+  /*- transforms -*/
+  bool TorchImgRandAugCV::applyMirror(cv::Mat &src, const bool &sample)
   {
     if (!_mirror)
       return false;
@@ -114,7 +132,10 @@ namespace dd
     bool mirror = false;
 #pragma omp critical
     {
-      mirror = _bernouilli(_rnd_gen);
+      if (sample)
+        mirror = _bernouilli(_rnd_gen);
+      else
+        mirror = true;
     }
     if (mirror)
       {
@@ -137,15 +158,15 @@ namespace dd
       }
   }
 
-  int TorchImgRandAugCV::applyRotate(cv::Mat &src)
+  int TorchImgRandAugCV::applyRotate(cv::Mat &src, const bool &sample, int rot)
   {
     if (!_rotate)
       return -1;
 
-    int rot = 0;
 #pragma omp critical
     {
-      rot = _uniform_int_rotate(_rnd_gen);
+      if (sample)
+        rot = _uniform_int_rotate(_rnd_gen);
     }
     if (rot == 0)
       return rot;
@@ -355,6 +376,7 @@ namespace dd
             x0min = x0;
             y0min = y0;
           }
+
         x0 = ((x0max - x0min) * _uniform_real_1(_rnd_gen) + x0min);
         x1 = 3 * cols - x0;
         y0 = ((y0max - y0min) * _uniform_real_1(_rnd_gen) + y0min);
@@ -409,19 +431,23 @@ namespace dd
   }
 
   void TorchImgRandAugCV::applyGeometry(cv::Mat &src, GeometryParams &cp,
-                                        const bool &store_rparams)
+                                        const bool &store_rparams,
+                                        const bool &sample)
   {
     if (!cp._prob)
       return;
 
     // enlarge image
-    float g1 = 0.0;
+    if (sample)
+      {
+        float g1 = 0.0;
 #pragma omp critical
-    {
-      g1 = _uniform_real_1(_rnd_gen);
-    }
-    if (g1 > cp._prob)
-      return;
+        {
+          g1 = _uniform_real_1(_rnd_gen);
+        }
+        if (g1 > cp._prob)
+          return;
+      }
 
     cv::Mat src_enlarged;
     getEnlargedImage(src, cp, src_enlarged);
@@ -434,12 +460,20 @@ namespace dd
     // get perpective matrix
 #pragma omp critical
     {
-      getQuads(src.rows, src.cols, cp, inputQuad, outputQuad);
+      if (sample)
+        getQuads(src.rows, src.cols, cp, inputQuad, outputQuad);
     }
 
     // warp perspective
-    cv::Mat lambda = cv::getPerspectiveTransform(inputQuad, outputQuad);
-    cv::warpPerspective(src_enlarged, src, lambda, src.size());
+    cv::Mat lambda
+        = (sample ? cv::getPerspectiveTransform(inputQuad, outputQuad)
+                  : cp._lambda);
+    int inter_flag
+        = cv::INTER_NEAREST; //(sample ? cv::INTER_LINEAR : cv::INTER_NEAREST);
+    int border_mode = (cp._geometry_pad_mode == 1 ? cv::BORDER_CONSTANT
+                                                  : cv::BORDER_REPLICATE);
+    cv::warpPerspective(src_enlarged, src, lambda, src.size(), inter_flag,
+                        border_mode);
 
     if (store_rparams)
       cp._lambda = lambda;

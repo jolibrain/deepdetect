@@ -350,8 +350,8 @@ namespace dd
     /**
      * \brief converts and image to a serialized string
      */
-    void image_to_stringstream(const cv::Mat &img,
-                               std::ostringstream &dstream);
+    void image_to_stringstream(const cv::Mat &img, std::ostringstream &dstream,
+                               const bool &lossless = true);
 
     /**
      * \brief writes encoded image to db with a tensor target
@@ -378,8 +378,8 @@ namespace dd
     void read_image_from_db(const std::string &datas,
                             const std::string &targets, cv::Mat &bgr,
                             std::vector<torch::Tensor> &targett,
-                            const bool &bw, const int &width,
-                            const int &height);
+                            cv::Mat &bw_target, const bool &bw,
+                            const int &width, const int &height);
   };
 
   /**

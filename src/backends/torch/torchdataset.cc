@@ -119,11 +119,23 @@ namespace dd
   }
 
   void TorchDataset::image_to_stringstream(const cv::Mat &img,
-                                           std::ostringstream &dstream)
+                                           std::ostringstream &dstream,
+                                           const bool &lossless)
   {
     std::vector<uint8_t> buffer;
-    std::vector<int> param = { cv::IMWRITE_JPEG_QUALITY, 100 };
-    cv::imencode(".jpg", img, buffer, param);
+    std::vector<int> param;
+    std::string ext;
+    if (!lossless)
+      {
+        ext = ".jpg";
+        param = { cv::IMWRITE_JPEG_QUALITY, 100 };
+      }
+    else
+      {
+        ext = ".png";
+        param = { cv::IMWRITE_PNG_COMPRESSION, 1 };
+      }
+    cv::imencode(ext, img, buffer, param);
     for (uint8_t c : buffer)
       dstream << c;
   }
@@ -134,7 +146,7 @@ namespace dd
   {
     // serialize image
     std::ostringstream dstream;
-    image_to_stringstream(bgr, dstream);
+    image_to_stringstream(bgr, dstream, true);
 
     // serialize target
     std::ostringstream tstream;
@@ -148,11 +160,11 @@ namespace dd
   {
     // serialize image
     std::ostringstream dstream;
-    image_to_stringstream(bgr, dstream);
+    image_to_stringstream(bgr, dstream, true);
 
     // serialize target
     std::ostringstream tstream;
-    image_to_stringstream(bw_target, tstream);
+    image_to_stringstream(bw_target, tstream, false);
 
     write_image_to_db(dstream, tstream, bgr.rows, bgr.cols);
   }
@@ -193,14 +205,13 @@ namespace dd
                                         const std::string &targets,
                                         cv::Mat &bgr,
                                         std::vector<torch::Tensor> &targett,
-                                        const bool &bw, const int &width,
-                                        const int &height)
+                                        cv::Mat &bw_target, const bool &bw,
+                                        const int &width, const int &height)
   {
     std::vector<uint8_t> img_data(datas.begin(), datas.end());
     bgr = cv::Mat(img_data, true);
     bgr = cv::imdecode(bgr,
                        bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR);
-    cv::Mat bw_target; // for segmentation only.
 
     if (_segmentation)
       {
@@ -231,6 +242,7 @@ namespace dd
 
         if (_segmentation)
           {
+
             cv::resize(bw_target, bw_target, cv::Size(width, height), 0, 0,
                        cv::INTER_NEAREST);
           }
@@ -524,9 +536,10 @@ namespace dd
                 ImgTorchInputFileConn *inputc
                     = reinterpret_cast<ImgTorchInputFileConn *>(_inputc);
 
-                cv::Mat bgr;
-                read_image_from_db(datas, targets, bgr, t, inputc->_bw,
-                                   inputc->width(), inputc->height());
+                cv::Mat bgr, bw_target;
+                read_image_from_db(datas, targets, bgr, t, bw_target,
+                                   inputc->_bw, inputc->width(),
+                                   inputc->height());
 
                 // data augmentation can apply here, with OpenCV
                 if (!_test)
@@ -535,7 +548,7 @@ namespace dd
                       _img_rand_aug_cv.augment_with_bbox(bgr, t);
                     else if (_segmentation)
                       {
-                        // TODO: augment for segmentation
+                        _img_rand_aug_cv.augment_with_segmap(bgr, bw_target);
                       }
                     else
                       _img_rand_aug_cv.augment(bgr);
@@ -543,8 +556,14 @@ namespace dd
 
                 torch::Tensor imgt
                     = image_to_tensor(bgr, inputc->height(), inputc->width());
-
                 d.push_back(imgt);
+
+                if (_segmentation)
+                  {
+                    at::Tensor targett_seg = image_to_tensor(
+                        bw_target, inputc->height(), inputc->width(), true);
+                    t.push_back(targett_seg);
+                  }
               }
 
             for (unsigned int i = 0; i < d.size(); ++i)
