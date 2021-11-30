@@ -622,58 +622,70 @@ namespace dd
 
     // TODO: set inputc dataset data augmentation options
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
-    bool has_data_augmentation
-        = ad_mllib.has("mirror") || ad_mllib.has("rotate")
-          || ad_mllib.has("crop_size") || ad_mllib.has("cutout");
-    if (has_data_augmentation)
+    if (typeid(inputc) == typeid(ImgTorchInputFileConn))
       {
-        bool has_mirror
-            = ad_mllib.has("mirror") && ad_mllib.get("mirror").get<bool>();
-        this->_logger->info("mirror: {}", has_mirror);
-        bool has_rotate
-            = ad_mllib.has("rotate") && ad_mllib.get("rotate").get<bool>();
-        this->_logger->info("rotate: {}", has_rotate);
-        CropParams crop_params;
-        if (ad_mllib.has("crop_size"))
+        bool has_data_augmentation
+            = ad_mllib.has("mirror") || ad_mllib.has("rotate")
+              || ad_mllib.has("crop_size") || ad_mllib.has("cutout");
+        if (has_data_augmentation)
           {
-            int crop_size = ad_mllib.get("crop_size").get<int>();
-            crop_params
-                = CropParams(crop_size, inputc.width(), inputc.height());
-            this->_logger->info("crop_size : {}", crop_size);
+            bool has_mirror
+                = ad_mllib.has("mirror") && ad_mllib.get("mirror").get<bool>();
+            this->_logger->info("mirror: {}", has_mirror);
+            bool has_rotate
+                = ad_mllib.has("rotate") && ad_mllib.get("rotate").get<bool>();
+            this->_logger->info("rotate: {}", has_rotate);
+            CropParams crop_params;
+            if (ad_mllib.has("crop_size"))
+              {
+                int crop_size = ad_mllib.get("crop_size").get<int>();
+                crop_params
+                    = CropParams(crop_size, inputc.width(), inputc.height());
+                this->_logger->info("crop_size : {}", crop_size);
+              }
+            CutoutParams cutout_params;
+            if (ad_mllib.has("cutout"))
+              {
+                float cutout = ad_mllib.get("cutout").get<double>();
+                cutout_params
+                    = CutoutParams(cutout, inputc.width(), inputc.height());
+                this->_logger->info("cutout: {}", cutout);
+              }
+            GeometryParams geometry_params;
+            APIData ad_geometry = ad_mllib.getobj("geometry");
+            if (!ad_geometry.empty())
+              {
+                geometry_params._prob = ad_geometry.get("prob").get<double>();
+                this->_logger->info("geometry: {}", geometry_params._prob);
+                if (ad_geometry.has("persp_vertical"))
+                  geometry_params._geometry_persp_vertical
+                      = ad_geometry.get("persp_vertical").get<bool>();
+                if (ad_geometry.has("persp_horizontal"))
+                  geometry_params._geometry_persp_horizontal
+                      = ad_geometry.get("persp_horizontal").get<bool>();
+                if (ad_geometry.has("zoom_out"))
+                  geometry_params._geometry_zoom_out
+                      = ad_geometry.get("zoom_out").get<bool>();
+                if (ad_geometry.has("zoom_in"))
+                  geometry_params._geometry_zoom_in
+                      = ad_geometry.get("zoom_in").get<bool>();
+                if (ad_geometry.has("pad_mode"))
+                  geometry_params._geometry_pad_mode
+                      = ad_geometry.get("pad_mode").get<int>();
+              }
+            auto *img_ic = reinterpret_cast<ImgTorchInputFileConn *>(&inputc);
+            NoiseParams noise_params;
+            noise_params._rgb = img_ic->_rgb;
+            APIData ad_noise = ad_mllib.getobj("noise");
+            if (!ad_noise.empty())
+              {
+                noise_params._prob = ad_noise.get("prob").get<double>();
+                this->_logger->info("noise: {}", noise_params._prob);
+              }
+            inputc._dataset._img_rand_aug_cv = TorchImgRandAugCV(
+                has_mirror, has_rotate, crop_params, cutout_params,
+                geometry_params, noise_params);
           }
-        CutoutParams cutout_params;
-        if (ad_mllib.has("cutout"))
-          {
-            float cutout = ad_mllib.get("cutout").get<double>();
-            cutout_params
-                = CutoutParams(cutout, inputc.width(), inputc.height());
-            this->_logger->info("cutout: {}", cutout);
-          }
-        GeometryParams geometry_params;
-        APIData ad_geometry = ad_mllib.getobj("geometry");
-        if (!ad_geometry.empty())
-          {
-            geometry_params._prob = ad_geometry.get("prob").get<double>();
-            this->_logger->info("geometry: {}", geometry_params._prob);
-            if (ad_geometry.has("persp_vertical"))
-              geometry_params._geometry_persp_vertical
-                  = ad_geometry.get("persp_vertical").get<bool>();
-            if (ad_geometry.has("persp_horizontal"))
-              geometry_params._geometry_persp_horizontal
-                  = ad_geometry.get("persp_horizontal").get<bool>();
-            if (ad_geometry.has("zoom_out"))
-              geometry_params._geometry_zoom_out
-                  = ad_geometry.get("zoom_out").get<bool>();
-            if (ad_geometry.has("zoom_in"))
-              geometry_params._geometry_zoom_in
-                  = ad_geometry.get("zoom_in").get<bool>();
-            if (ad_geometry.has("pad_mode"))
-              geometry_params._geometry_pad_mode
-                  = ad_geometry.get("pad_mode").get<int>();
-          }
-        inputc._dataset._img_rand_aug_cv
-            = TorchImgRandAugCV(has_mirror, has_rotate, crop_params,
-                                cutout_params, geometry_params);
       }
     int dataloader_threads = 1;
     if (ad_mllib.has("dataloader_threads"))
