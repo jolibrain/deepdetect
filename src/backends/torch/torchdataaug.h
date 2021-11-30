@@ -168,6 +168,42 @@ namespace dd
     cv::Mat _lambda; /**< warp perspective matrix. */
   };
 
+  class NoiseParams
+  {
+  public:
+    NoiseParams()
+    {
+    }
+
+    NoiseParams(const bool &hist_eq, const bool &inverse,
+                const bool &decolorize, const bool &gauss_blur,
+                const bool &jpg, const bool &posterize, const bool &erosion,
+                const bool &saltpepper, const bool &clahe,
+                const bool &convert_to_hsv, const bool &convert_to_lab)
+        : _hist_eq(hist_eq), _inverse(inverse), _decolorize(decolorize),
+          _gauss_blur(gauss_blur), _jpg(jpg), _posterize(posterize),
+          _erosion(erosion), _saltpepper(saltpepper), _clahe(clahe),
+          _convert_to_hsv(convert_to_hsv), _convert_to_lab(convert_to_lab)
+    {
+    }
+
+    // default params
+    float _prob = 0.0;                /**< effect probability. */
+    bool _hist_eq = true;             /**< histogram equalized. */
+    bool _inverse = true;             /**< color inversion. */
+    bool _decolorize = true;          /**< grayscape. */
+    bool _gauss_blur = true;          /**< Gaussian blur. */
+    bool _jpg = true;                 /**< JPEG compression quality. */
+    bool _posterize = true;           /**< posterization. */
+    bool _erosion = true;             /**< erosion. */
+    bool _saltpepper = true;          /**< salt & pepper. */
+    float _saltpepper_fraction = 0.1; /**< percentage of pixels. */
+    bool _clahe = true;               /**< local histogram equalizaion. */
+    bool _convert_to_hsv = true;      /**< color space conversion. */
+    bool _convert_to_lab = true;      /**< color space conversion. */
+    bool _rgb = false;                /**< whether reference space is RGB. */
+  };
+
   class TorchImgRandAugCV
   {
   public:
@@ -178,11 +214,12 @@ namespace dd
     TorchImgRandAugCV(const bool &mirror, const bool &rotate,
                       const CropParams &crop_params,
                       const CutoutParams &cutout_params,
-                      const GeometryParams &geometry_params)
+                      const GeometryParams &geometry_params,
+                      const NoiseParams &noise_params)
         : _mirror(mirror), _rotate(rotate), _crop_params(crop_params),
           _cutout_params(cutout_params), _geometry_params(geometry_params),
-          _uniform_real_1(0.0, 1.0), _bernouilli(0.5),
-          _uniform_int_rotate(0, 3)
+          _noise_params(noise_params), _uniform_real_1(0.0, 1.0),
+          _bernouilli(0.5), _uniform_int_rotate(0, 3)
     {
     }
 
@@ -195,6 +232,7 @@ namespace dd
     void augment_with_segmap(cv::Mat &src, cv::Mat &tgt);
 
   protected:
+    bool roll_weighted_dice(const float &prob);
     bool applyMirror(cv::Mat &src, const bool &sample = true);
     void applyMirrorBBox(std::vector<std::vector<float>> &bboxes,
                          const float &img_width);
@@ -212,6 +250,7 @@ namespace dd
     void applyGeometryBBox(std::vector<std::vector<float>> &bboxes,
                            const GeometryParams &cp, const int &img_width,
                            const int &img_height);
+    void applyNoise(cv::Mat &src);
 
   private:
     void getEnlargedImage(const cv::Mat &in_img, const GeometryParams &cp,
@@ -222,6 +261,17 @@ namespace dd
     void filterBBoxes(std::vector<std::vector<float>> &bboxes,
                       const GeometryParams &cp, const int &img_width,
                       const int &img_height);
+    void applyNoiseDecolorize(cv::Mat &src);
+    void applyNoiseGaussianBlur(cv::Mat &src);
+    void applyNoiseHistEq(cv::Mat &src);
+    void applyNoiseClahe(cv::Mat &src);
+    void applyNoiseJPG(cv::Mat &src);
+    void applyNoiseErosion(cv::Mat &src);
+    void applyNoisePosterize(cv::Mat &src);
+    void applyNoiseInverse(cv::Mat &src);
+    void applyNoiseSaltpepper(cv::Mat &src);
+    void applyNoiseConvertHSV(cv::Mat &src);
+    void applyNoiseConvertLAB(cv::Mat &src);
 
   private:
     // augmentation options & parameter
@@ -231,6 +281,7 @@ namespace dd
     CropParams _crop_params;
     CutoutParams _cutout_params;
     GeometryParams _geometry_params;
+    NoiseParams _noise_params;
 
     // random generators
     std::default_random_engine _rnd_gen;
