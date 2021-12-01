@@ -204,6 +204,52 @@ namespace dd
     bool _rgb = false;                /**< whether reference space is RGB. */
   };
 
+  class DistortParams
+  {
+  public:
+    DistortParams()
+    {
+    }
+
+    DistortParams(const bool &brightness, const bool &contrast,
+                  const bool &saturation, const bool &hue,
+                  const bool &channel_order)
+        : _brightness(brightness), _contrast(contrast),
+          _saturation(saturation), _hue(hue), _channel_order(channel_order)
+    {
+      _uniform_real_brightness = std::uniform_real_distribution<float>(
+          -_brightness_delta, _brightness_delta);
+      _uniform_real_contrast = std::uniform_real_distribution<float>(
+          _contrast_lower, _contrast_upper);
+      _uniform_real_saturation = std::uniform_real_distribution<float>(
+          _saturation_lower, _saturation_upper);
+      _uniform_real_hue
+          = std::uniform_real_distribution<float>(-_hue_delta, _hue_delta);
+    }
+
+    // default params
+    float _prob = 0.0; /**< effect probability. */
+    bool _brightness = true;
+    float _brightness_delta = 32; /**< amount to add to the pixel values within
+                                    [-delta, delta], in [0,255]. */
+    bool _contrast = true;
+    float _contrast_upper = 1.5;
+    float _contrast_lower = 0.5;
+    bool _saturation = true;
+    float _saturation_upper = 1.5;
+    float _saturation_lower = 0.5;
+    bool _hue = true;
+    float _hue_delta
+        = 36; /**< amount to add to the hue channel, within [0,180]. */
+    bool _channel_order = true;
+
+    std::uniform_real_distribution<float> _uniform_real_brightness;
+    std::uniform_real_distribution<float> _uniform_real_contrast;
+    std::uniform_real_distribution<float> _uniform_real_saturation;
+    std::uniform_real_distribution<float> _uniform_real_hue;
+    bool _rgb = false; /**< whether reference space is RGB. */
+  };
+
   class TorchImgRandAugCV
   {
   public:
@@ -215,11 +261,13 @@ namespace dd
                       const CropParams &crop_params,
                       const CutoutParams &cutout_params,
                       const GeometryParams &geometry_params,
-                      const NoiseParams &noise_params)
+                      const NoiseParams &noise_params,
+                      const DistortParams &distort_params)
         : _mirror(mirror), _rotate(rotate), _crop_params(crop_params),
           _cutout_params(cutout_params), _geometry_params(geometry_params),
-          _noise_params(noise_params), _uniform_real_1(0.0, 1.0),
-          _bernouilli(0.5), _uniform_int_rotate(0, 3)
+          _noise_params(noise_params), _distort_params(distort_params),
+          _uniform_real_1(0.0, 1.0), _bernouilli(0.5),
+          _uniform_int_rotate(0, 3)
     {
     }
 
@@ -251,6 +299,7 @@ namespace dd
                            const GeometryParams &cp, const int &img_width,
                            const int &img_height);
     void applyNoise(cv::Mat &src);
+    void applyDistort(cv::Mat &src);
 
   private:
     void getEnlargedImage(const cv::Mat &in_img, const GeometryParams &cp,
@@ -272,6 +321,11 @@ namespace dd
     void applyNoiseSaltpepper(cv::Mat &src);
     void applyNoiseConvertHSV(cv::Mat &src);
     void applyNoiseConvertLAB(cv::Mat &src);
+    void applyDistortBrightness(cv::Mat &src);
+    void applyDistortContrast(cv::Mat &src);
+    void applyDistortSaturation(cv::Mat &src);
+    void applyDistortHue(cv::Mat &src);
+    void applyDistortOrderChannel(cv::Mat &src);
 
   private:
     // augmentation options & parameter
@@ -282,6 +336,7 @@ namespace dd
     CutoutParams _cutout_params;
     GeometryParams _geometry_params;
     NoiseParams _noise_params;
+    DistortParams _distort_params;
 
     // random generators
     std::default_random_engine _rnd_gen;

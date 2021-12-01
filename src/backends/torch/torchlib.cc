@@ -682,9 +682,17 @@ namespace dd
                 noise_params._prob = ad_noise.get("prob").get<double>();
                 this->_logger->info("noise: {}", noise_params._prob);
               }
+            DistortParams distort_params;
+            distort_params._rgb = img_ic->_rgb;
+            APIData ad_distort = ad_mllib.getobj("distort");
+            if (!ad_distort.empty())
+              {
+                distort_params._prob = ad_distort.get("prob").get<double>();
+                this->_logger->info("noise: {}", distort_params._prob);
+              }
             inputc._dataset._img_rand_aug_cv = TorchImgRandAugCV(
                 has_mirror, has_rotate, crop_params, cutout_params,
-                geometry_params, noise_params);
+                geometry_params, noise_params, distort_params);
           }
       }
     int dataloader_threads = 1;
