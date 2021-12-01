@@ -50,6 +50,7 @@ namespace dd
     applyMirror(src);
     applyRotate(src);
     applyNoise(src);
+    applyDistort(src);
   }
 
   void
@@ -107,6 +108,7 @@ namespace dd
           }
       }
     applyNoise(src);
+    applyDistort(src);
   }
 
   void TorchImgRandAugCV::augment_with_segmap(cv::Mat &src, cv::Mat &tgt)
@@ -124,6 +126,7 @@ namespace dd
     if (rot != 0)
       applyRotate(tgt, false, rot);
     applyNoise(src);
+    applyDistort(src);
   }
 
   bool TorchImgRandAugCV::roll_weighted_dice(const float &prob)
@@ -589,6 +592,9 @@ namespace dd
 
   void TorchImgRandAugCV::applyNoise(cv::Mat &src)
   {
+    if (_noise_params._prob == 0.0)
+      return;
+
     if (_noise_params._rgb)
       {
         cv::Mat bgr;
@@ -620,6 +626,58 @@ namespace dd
       applyNoiseConvertLAB(src);
 
     if (_noise_params._rgb)
+      {
+        cv::Mat rgb;
+        cv::cvtColor(src, rgb, cv::COLOR_BGR2RGB);
+        src = rgb;
+      }
+  }
+
+  void TorchImgRandAugCV::applyDistort(cv::Mat &src)
+  {
+    if (_distort_params._prob == 0.0)
+      return;
+
+    if (_distort_params._rgb)
+      {
+        cv::Mat bgr;
+        cv::cvtColor(src, bgr, cv::COLOR_RGB2BGR);
+        src = bgr;
+      }
+
+    float lprob;
+#pragma omp critical
+    {
+      lprob = _uniform_real_1(_rnd_gen);
+    }
+    if (lprob > 0.5)
+      {
+        if (_distort_params._brightness)
+          applyDistortBrightness(src);
+        if (_distort_params._contrast)
+          applyDistortContrast(src);
+        if (_distort_params._saturation)
+          applyDistortSaturation(src);
+        if (_distort_params._hue)
+          applyDistortHue(src);
+        if (_distort_params._channel_order)
+          applyDistortOrderChannel(src);
+      }
+    else
+      {
+        if (_distort_params._brightness)
+          applyDistortBrightness(src);
+        if (_distort_params._saturation)
+          applyDistortSaturation(src);
+        if (_distort_params._hue)
+          applyDistortHue(src);
+        if (_distort_params._contrast)
+          applyDistortContrast(src);
+        if (_distort_params._channel_order)
+          applyDistortOrderChannel(src);
+      }
+
+    if (_distort_params._rgb)
       {
         cv::Mat rgb;
         cv::cvtColor(src, rgb, cv::COLOR_BGR2RGB);
@@ -813,5 +871,113 @@ namespace dd
     cv::cvtColor(lab_image, src, cv::COLOR_BGR2Lab);
     src.convertTo(lab_image, orig_depth);
     src = lab_image;
+  }
+
+  void TorchImgRandAugCV::applyDistortBrightness(cv::Mat &src)
+  {
+    if (!roll_weighted_dice(_distort_params._prob))
+      return;
+    float delta;
+#pragma omp critical
+    {
+      delta = _distort_params._uniform_real_brightness(_rnd_gen);
+    }
+    if (delta > 0)
+      {
+        cv::Mat tmp;
+        src.convertTo(tmp, -1, 1, delta);
+        src = tmp;
+      }
+  }
+
+  void TorchImgRandAugCV::applyDistortContrast(cv::Mat &src)
+  {
+    if (!roll_weighted_dice(_distort_params._prob))
+      return;
+    float delta;
+#pragma omp critical
+    {
+      delta = _distort_params._uniform_real_contrast(_rnd_gen);
+    }
+    if (fabs(delta - 1.f) > 1e-3)
+      {
+        cv::Mat tmp;
+        src.convertTo(tmp, -1, delta, 0);
+        src = tmp;
+      }
+  }
+
+  void TorchImgRandAugCV::applyDistortSaturation(cv::Mat &src)
+  {
+    if (!roll_weighted_dice(_distort_params._prob))
+      return;
+    float delta;
+#pragma omp critical
+    {
+      delta = _distort_params._uniform_real_saturation(_rnd_gen);
+    }
+    if (fabs(delta - 1.f) != 1e-3)
+      {
+        cv::Mat tmp;
+
+        // Convert to HSV colorspace.
+        cv::cvtColor(src, tmp, cv::COLOR_BGR2HSV);
+
+        // Split the image to 3 channels.
+        std::vector<cv::Mat> channels;
+        cv::split(tmp, channels);
+
+        // Adjust the saturation.
+        channels[1].convertTo(channels[1], -1, delta, 0);
+        cv::merge(channels, tmp);
+
+        // Back to BGR colorspace.
+        cvtColor(tmp, src, cv::COLOR_HSV2BGR);
+      }
+  }
+
+  void TorchImgRandAugCV::applyDistortHue(cv::Mat &src)
+  {
+    if (!roll_weighted_dice(_distort_params._prob))
+      return;
+    float delta;
+#pragma omp critical
+    {
+      delta = _distort_params._uniform_real_hue(_rnd_gen);
+    }
+    if (fabs(delta) > 0)
+      {
+        cv::Mat tmp;
+
+        // Convert to HSV colorspace.
+        cv::cvtColor(src, tmp, cv::COLOR_BGR2HSV);
+
+        // Split the image to 3 channels.
+        std::vector<cv::Mat> channels;
+        cv::split(tmp, channels);
+
+        // Adjust the hue.
+        channels[0].convertTo(channels[0], -1, 1, delta);
+        cv::merge(channels, tmp);
+
+        // Back to BGR colorspace.
+        cvtColor(tmp, src, cv::COLOR_HSV2BGR);
+      }
+  }
+
+  void TorchImgRandAugCV::applyDistortOrderChannel(cv::Mat &src)
+  {
+    if (!roll_weighted_dice(_distort_params._prob))
+      return;
+    if (src.channels() == 3)
+      {
+        // Split the image to 3 channels;
+        std::vector<cv::Mat> channels;
+        cv::split(src, channels);
+
+        // Shuffle the channels
+        std::random_shuffle(channels.begin(), channels.end());
+        cv::merge(channels, src);
+      }
   }
 }
