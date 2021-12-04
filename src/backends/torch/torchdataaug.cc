@@ -81,7 +81,7 @@ namespace dd
         applyRotateBBox(bboxes, static_cast<float>(src.cols),
                         static_cast<float>(src.rows), rot);
       }
-    // XXX: no cutout with bboxes (yet)
+    applyCutout(src, _cutout_params);
     GeometryParams geoparams = _geometry_params;
     cv::Mat src_c = src.clone();
     applyGeometry(src_c, geoparams, true);
