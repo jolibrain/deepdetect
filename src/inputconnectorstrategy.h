@@ -158,7 +158,7 @@ namespace dd
           _input_timeout(i._input_timeout)
     {
     }
-    ~InputConnectorStrategy()
+    virtual ~InputConnectorStrategy()
     {
     }
 

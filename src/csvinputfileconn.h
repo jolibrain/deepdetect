@@ -964,12 +964,4 @@ namespace dd
   };
 }
 
-#ifdef USE_XGBOOST
-#include "backends/xgb/xgbinputconns.h"
-#endif
-
-#ifdef USE_TSNE
-#include "backends/tsne/tsneinputconns.h"
-#endif
-
 #endif

@@ -167,7 +167,7 @@ namespace dd
   }
 
   std::shared_ptr<oatpp::web::protocol::http::outgoing::Response>
-  OatppJsonAPI::jdoc_to_response(const JDoc &janswer)
+  OatppJsonAPI::jdoc_to_response(const JDoc &janswer) const
   {
     // NOTE(sileht): Maybe not the best place to do this, but we need DTO in
     // all calls before doing it otherwise
@@ -256,21 +256,56 @@ namespace dd
     return status;
   }
 
-  std::shared_ptr<oatpp::web::protocol::http::outgoing::Response>
-  OatppJsonAPI::create_response(const uint32_t &code, const std::string &msg,
-                                const uint32_t &dd_code,
-                                const std::string &dd_msg) const
+  OatppJsonAPI::Response_ptr OatppJsonAPI::dto_to_response(
+      oatpp::Void dto, const uint32_t &code, const std::string &msg,
+      const uint32_t &dd_code, const std::string &dd_msg) const
   {
-    auto response_dto = DTO::GenericResponse::createShared();
-    response_dto->status = create_status_dto(code, msg, dd_code, dd_msg);
+    auto generic_dto = dto.staticCast<oatpp::Object<DTO::GenericResponse>>();
+    generic_dto->status = create_status_dto(code, msg, dd_code, dd_msg);
 
     auto json_mapper = dd::oatpp_utils::createDDMapper();
+    json_mapper->getSerializer()->getConfig()->includeNullFields = false;
     auto response = oatpp::web::protocol::http::outgoing::ResponseFactory::
-        createResponse(oatpp::web::protocol::http::Status(code, ""),
-                       response_dto, json_mapper);
+        createResponse(oatpp::web::protocol::http::Status(code, ""), dto,
+                       json_mapper);
     response->putHeader(oatpp::web::protocol::http::Header::CONTENT_TYPE,
                         "application/json");
     return response;
+  }
+
+  OatppJsonAPI::Response_ptr
+  OatppJsonAPI::response_bad_request_400(const std::string &msg) const
+  {
+    if (msg.empty())
+      return dto_to_response(dd::DTO::GenericResponse::createShared(), 400,
+                             "Bad request");
+    else
+      return dto_to_response(dd::DTO::GenericResponse::createShared(), 400,
+                             "Bad request", 400, msg);
+  }
+
+  OatppJsonAPI::Response_ptr OatppJsonAPI::response_not_found_404() const
+  {
+    return dto_to_response(dd::DTO::GenericResponse::createShared(), 404,
+                           "Not Found");
+  }
+
+  OatppJsonAPI::Response_ptr
+  OatppJsonAPI::response_internal_error_500(const std::string &msg) const
+  {
+    if (msg.empty())
+      return dto_to_response(dd::DTO::GenericResponse::createShared(), 500,
+                             "Internal Error");
+    else
+      return dto_to_response(dd::DTO::GenericResponse::createShared(), 500,
+                             "Internal Error", 500, msg);
+  }
+
+  OatppJsonAPI::Response_ptr
+  OatppJsonAPI::response_resource_already_exists_1015() const
+  {
+    return dto_to_response(dd::DTO::GenericResponse::createShared(), 409,
+                           "Conflict", 1015, "Resource already exists!");
   }
 
   void OatppJsonAPI::terminate(int signal)

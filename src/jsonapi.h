@@ -84,6 +84,7 @@ namespace dd
     JDoc dd_action_bad_request_1012(const std::string &what = "") const;
     JDoc dd_action_internal_error_1013(const std::string &what = "") const;
     JDoc dd_service_already_exists_1014() const;
+    JDoc dd_resource_exhausted_1016() const;
 
     // JSON rendering
     std::string jrender(const JDoc &jst) const;

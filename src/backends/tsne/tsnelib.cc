@@ -20,7 +20,7 @@
  */
 
 #include "tsnelib.h"
-#include "csvinputfileconn.h"
+#include "allconnectors.hpp"
 #include "outputconnectorstrategy.h"
 #include <thread>
 #include "utils/utils.hpp"

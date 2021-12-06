@@ -20,7 +20,7 @@
  */
 
 #include "xgblib.h"
-#include "csvinputfileconn.h"
+#include "allconnectors.hpp"
 #include "outputconnectorstrategy.h"
 #include <iomanip>
 #include <iostream>

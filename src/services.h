@@ -35,9 +35,11 @@
 #include "csvinputfileconn.h"
 #include "txtinputfileconn.h"
 #include "svminputfileconn.h"
+#include "allconnectors.hpp"
 #include "outputconnectorstrategy.h"
 #include "chain.h"
 #include "chain_actions.h"
+#include "resources.h"
 #include "dto/service_predict.hpp"
 #include "dto/chain.hpp"
 #include "dto/stream.hpp"
@@ -152,6 +154,8 @@ namespace dd
       ,
 #endif
       MLService<TorchLib, ImgTorchInputFileConn, SupervisedOutput, TorchModel>,
+      MLService<TorchLib, VideoTorchInputFileConn, SupervisedOutput,
+                TorchModel>,
       MLService<TorchLib, TxtTorchInputFileConn, SupervisedOutput, TorchModel>,
       MLService<TorchLib, CSVTSTorchInputFileConn, SupervisedOutput,
                 TorchModel>
@@ -624,7 +628,55 @@ namespace dd
         {
           auto hit = get_service_it(sname);
           auto &mllib = (*hit).second;
+
+          // check for resource in data field
+          std::vector<std::string> data_vec;
+          if (ad_in.has("dto"))
+            {
+              auto any = ad_in.get("dto").get<oatpp::Any>();
+
+              oatpp::Object<DTO::ServicePredict> predict_dto(
+                  std::static_pointer_cast<typename DTO::ServicePredict>(
+                      any->ptr));
+              if (!predict_dto->data->empty())
+                {
+                  for (auto &val : *predict_dto->data)
+                    data_vec.push_back(val->std_str());
+                }
+            }
+          else
+            {
+              if (ad_in.has("data"))
+                data_vec = ad_in.get("data").get<std::vector<std::string>>();
+            }
+
+          std::vector<oatpp::Object<DTO::ResourceResponseBody>> res_infos;
+
+          for (const auto &data_uri : data_vec)
+            {
+              auto rit = _resources.find(data_uri);
+              if (rit != _resources.end())
+                {
+                  auto res_info = DTO::ResourceResponseBody::createShared();
+                  visitor_resources::apply(
+                      rit->second, const_cast<APIData &>(ad_in), res_info);
+                  res_infos.push_back(res_info);
+                }
+            }
+
+          // predict call
           status = visitor_mllib::predict_job(mllib, ad_in, ad_out, chain);
+
+          // update result with resource info
+          if (!res_infos.empty())
+            {
+              std::vector<APIData> res_vad;
+              for (auto res_info : res_infos)
+                res_vad.push_back(
+                    APIData::fromDTO<DTO::ResourceResponseBody>(res_info));
+
+              ad_out.add("resources", res_vad);
+            }
         }
       catch (InputConnectorBadParamException &e)
         {
@@ -1407,16 +1459,72 @@ namespace dd
     create_resource(const std::string &resource_name,
                     oatpp::Object<DTO::Resource> resource_data)
     {
-      (void)resource_name;
-      (void)resource_data;
+      std::unordered_map<std::string, res_variant_type>::const_iterator hit;
+      if ((hit = _resources.find(resource_name)) != _resources.end())
+        {
+          throw ResourceForbiddenException("Resource already exists");
+        }
+
+      res_variant_type res
+          = ResourceFactory::create(resource_name, resource_data);
+
+      auto llog = spdlog::get(resource_name);
       auto response = DTO::ResourceResponse::createShared();
+      response->body = DTO::ResourceResponseBody::createShared();
+      try
+        {
+          visitor_resources::init(res, resource_data);
+          // get resource info
+          visitor_resources::get_info(res, response->body);
+
+          std::lock_guard<std::mutex> lock(_resources_mtx);
+          _resources.insert(std::pair<std::string, res_variant_type>(
+              resource_name, std::move(res)));
+        }
+      catch (...)
+        {
+          llog->error("Resource creation call failed: {}",
+                      boost::current_exception_diagnostic_information());
+          throw;
+        }
+
       return response;
     }
 
-    int delete_resource(const std::string &resource_name)
+    oatpp::Object<DTO::ResourceResponse>
+    get_resource(const std::string &resource_name)
     {
-      (void)resource_name;
-      return 200;
+      auto llog = spdlog::get(resource_name);
+      auto it = _resources.find(resource_name);
+
+      if (it == _resources.end())
+        throw ResourceNotFoundException("Resource with name " + resource_name
+                                        + " does not exist");
+      auto response = DTO::ResourceResponse::createShared();
+      response->body = DTO::ResourceResponseBody::createShared();
+      try
+        {
+          visitor_resources::get_info(it->second, response->body);
+        }
+      catch (...)
+        {
+          llog->error("Resource creation call failed: {}",
+                      boost::current_exception_diagnostic_information());
+          throw;
+        }
+      return response;
+    }
+
+    void delete_resource(const std::string &resource_name)
+    {
+      auto llog = spdlog::get(resource_name);
+      auto it = _resources.find(resource_name);
+
+      if (it == _resources.end())
+        throw ResourceNotFoundException("Resource with name " + resource_name
+                                        + " does not exist");
+
+      _resources.erase(it);
     }
 
     oatpp::Object<DTO::StreamResponse>
@@ -1446,8 +1554,12 @@ namespace dd
     std::unordered_map<std::string, mls_variant_type>
         _mlservices; /**< container of instanciated services. */
 
+    std::unordered_map<std::string, res_variant_type>
+        _resources; /**< container of instanciated resources */
+
   protected:
     std::mutex _mlservices_mtx; /**< mutex around adding/removing services. */
+    std::mutex _resources_mtx;  /**< mutex around adding/removing resources. */
   };
 }
 

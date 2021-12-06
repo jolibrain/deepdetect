@@ -9,7 +9,7 @@ function (REGISTER_TEST _NAME _FILE)
   if (NOT TARGET ${_NAME})
     add_executable(${_NAME} ${_FILE} ${ARGN})
     add_dependencies(${_NAME} protobuf)
-    target_link_libraries(${_NAME} ${COMMON_LINK_LIBS} gtest gtest_main)
+    target_link_libraries(${_NAME} ${COMMON_LINK_LIBS} gtest gtest_main ${OATPP_LIB_DEPS})
   endif()
 
   add_test(NAME ${_NAME} COMMAND ${_NAME} "--gtest_filter=-*multigpu*")
@@ -208,6 +208,13 @@ DOWNLOAD_DATASET(
   "news20.tar.bz2"
   "news20"
   )
+DOWNLOAD_DATASET(
+  "Test videos"
+  "http://www.deepdetect.com/dd/examples/all/video/video1.tar.gz"
+  "examples/all/video"
+  "video1.tar.gz"
+  "video1.mp4"
+)
 
 set(SINUS_EXAMPLE_PATH ${CMAKE_SOURCE_DIR}/examples/all/sinus/)
 set(SINUS_EXAMPLE_OUT "examples/all/sinus")
@@ -465,6 +472,7 @@ endif()
 
 if(USE_TORCH OR USE_CAFFE OR USE_TENSORRT)
   REGISTER_TEST(ut_chain ut-chain.cc)
+  REGISTER_TEST(ut_video ut-video.cc)
 endif()
 
 if (USE_CAFFE2)

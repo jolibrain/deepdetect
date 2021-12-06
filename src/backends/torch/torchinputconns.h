@@ -33,6 +33,7 @@
 #include "imginputfileconn.h"
 #include "txtinputfileconn.h"
 #include "csvtsinputfileconn.h"
+#include "videoinputfileconn.h"
 #include "torchdataset.h"
 #include "torchutils.h"
 
@@ -207,7 +208,7 @@ namespace dd
   /**
    * \brief image connector to torch backend
    */
-  class ImgTorchInputFileConn : public ImgInputFileConn,
+  class ImgTorchInputFileConn : virtual public ImgInputFileConn,
                                 public TorchInputInterface
   {
   public:
@@ -334,6 +335,28 @@ namespace dd
 
   public:
     bool _supports_bw = true;
+  };
+
+  class VideoTorchInputFileConn : public ImgTorchInputFileConn,
+                                  public VideoInputFileConn
+  {
+  public:
+    VideoTorchInputFileConn()
+        : ImgInputFileConn(), ImgTorchInputFileConn(), VideoInputFileConn()
+    {
+    }
+
+    /**
+     * \brief copy constructor
+     */
+    VideoTorchInputFileConn(const VideoTorchInputFileConn &i)
+        : ImgInputFileConn(i), ImgTorchInputFileConn(i), VideoInputFileConn(i)
+    {
+    }
+
+    ~VideoTorchInputFileConn()
+    {
+    }
   };
 
   /**

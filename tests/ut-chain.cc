@@ -92,8 +92,7 @@ TEST(chain, chain_torch_detection_classification)
         + uri1 + "\",\"" + uri2
         + "\"]},"
           "{\"id\":\"crop\",\"action\":{\"type\":\"crop\",\"parameters\":{"
-          "\"padding_ratio\":0.05}}},"
-          "{\"service\":\""
+          "\"padding_ratio\":0.05}}},{\"service\":\""
         + classif_sname
         + "\",\"parent_id\":\"crop\",\"parameters\":{\"output\":{\"best\":1}}}"
           "]}}";
@@ -118,12 +117,13 @@ TEST(chain, chain_torch_detection_classification)
   ASSERT_TRUE(pred1["classes"][0][classif_sname.c_str()].IsObject());
   ASSERT_TRUE(pred1["classes"][0][classif_sname.c_str()]["classes"].IsArray());
 
-  ASSERT_EQ(pred1["classes"][0][classif_sname.c_str()]["classes"][0]["cat"]
-                .GetString(),
-            std::string("n02123597 Siamese cat, Siamese"));
+  ASSERT_EQ(
+      pred1["classes"][0][classif_sname.c_str()]["classes"][0]["cat"]
+          .GetString(),
+      std::string("n02120505 grey fox, gray fox, Urocyon cinereoargenteus"));
   ASSERT_EQ(pred2["classes"][0][classif_sname.c_str()]["classes"][0]["cat"]
                 .GetString(),
-            std::string("n02085782 Japanese spaniel"));
+            std::string("n02086079 Pekinese, Pekingese, Peke"));
 
   // multiple models (tree)
   std::string classif2_sname = "classif2";
@@ -307,7 +307,7 @@ TEST(chain, chain_caffe_faces_classification)
   ASSERT_EQ(pred1["classes"].Size(), 1);
   ASSERT_EQ(pred2["classes"].Size(), 0);
   ASSERT_EQ(pred1["classes"][0]["age"]["classes"][0]["cat"].GetString(),
-            std::string("48"));
+            std::string("52"));
 }
 #endif
 

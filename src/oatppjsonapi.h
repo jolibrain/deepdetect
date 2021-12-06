@@ -37,24 +37,35 @@ namespace dd
     OatppJsonAPI();
     ~OatppJsonAPI();
 
+    typedef oatpp::web::protocol::http::outgoing::Response Response;
+    typedef std::shared_ptr<Response> Response_ptr;
+
     int boot(int argc, char *argv[]);
     void run();
     static void terminate(int signal);
     static void abort(int param);
     std::string
     uri_query_to_json(oatpp::web::protocol::http::QueryParams queryParams);
-    std::shared_ptr<oatpp::web::protocol::http::outgoing::Response>
-    jdoc_to_response(const JDoc &janswer);
+    Response_ptr jdoc_to_response(const JDoc &janswer) const;
 
     oatpp::Object<DTO::Status>
     create_status_dto(const uint32_t &code, const std::string &msg,
                       const uint32_t &dd_code = 0,
                       const std::string &dd_msg = "") const;
 
-    std::shared_ptr<oatpp::web::protocol::http::outgoing::Response>
-    create_response(const uint32_t &code, const std::string &msg,
-                    const uint32_t &dd_code = 0,
-                    const std::string &dd_msg = "") const;
+    Response_ptr dto_to_response(oatpp::Void dto, const uint32_t &code,
+                                 const std::string &msg,
+                                 const uint32_t &dd_code = 0,
+                                 const std::string &dd_msg = "") const;
+
+    // Oatpp responses
+    Response_ptr response_bad_request_400(const std::string &msg = "") const;
+    Response_ptr response_not_found_404() const;
+    Response_ptr response_internal_error_500(const std::string &msg
+                                             = "") const;
+
+    // dede error responses
+    Response_ptr response_resource_already_exists_1015() const;
   };
 }
 

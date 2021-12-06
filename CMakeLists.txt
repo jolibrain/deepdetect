@@ -573,9 +573,9 @@ if (USE_TF)
 endif() # USE_TF
 
 # OpenCV
-set(OPENCV_MODULES core imgproc highgui imgcodecs)
+set(OPENCV_MODULES core imgproc highgui imgcodecs videoio)
 if (USE_CUDA_CV)
-  list(APPEND OPENCV_MODULES cudaimgproc cudaarithm cudawarping)
+  list(APPEND OPENCV_MODULES cudaimgproc cudaarithm cudawarping cudacodec)
 endif()
 
 if (USE_OPENCV_VERSION STREQUAL "")

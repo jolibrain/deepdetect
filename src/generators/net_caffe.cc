@@ -22,7 +22,7 @@
 
 #include "net_caffe.h"
 #include "utils/utils.hpp"
-#include "imginputfileconn.h"
+#include "allconnectors.hpp"
 
 namespace dd
 {
@@ -256,6 +256,13 @@ namespace dd
   void NetInputCaffe<ImgTorchInputFileConn>::configure_inputs(
       __attribute__((unused)) const APIData &ad_mllib,
       __attribute__((unused)) const ImgTorchInputFileConn &inputc)
+  {
+  }
+
+  template <>
+  void NetInputCaffe<VideoTorchInputFileConn>::configure_inputs(
+      __attribute__((unused)) const APIData &ad_mllib,
+      __attribute__((unused)) const VideoTorchInputFileConn &inputc)
   {
   }
 
@@ -647,6 +654,7 @@ namespace dd
 #ifdef USE_TORCH
   template class NetInputCaffe<CSVTSTorchInputFileConn>;
   template class NetInputCaffe<ImgTorchInputFileConn>;
+  template class NetInputCaffe<VideoTorchInputFileConn>;
   template class NetInputCaffe<TxtTorchInputFileConn>;
 #endif
 

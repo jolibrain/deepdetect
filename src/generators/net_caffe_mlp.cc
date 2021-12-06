@@ -21,6 +21,7 @@
 
 #include "net_caffe_mlp.h"
 #include "imginputfileconn.h"
+#include "allconnectors.hpp"
 
 namespace dd
 {

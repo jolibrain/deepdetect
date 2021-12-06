@@ -21,6 +21,7 @@
 
 #include "net_caffe_recurrent.h"
 #include "imginputfileconn.h"
+#include "allconnectors.hpp"
 #include "mllibstrategy.h"
 
 namespace dd
@@ -599,6 +600,10 @@ namespace dd
       bool expose_hidden);
   template void configure_recurrent_template<ImgTorchInputFileConn>(
       const APIData &ad, ImgTorchInputFileConn &inputc,
+      caffe::NetParameter &net_param, std::shared_ptr<spdlog::logger> &logger,
+      bool expose_hidden);
+  template void configure_recurrent_template<VideoTorchInputFileConn>(
+      const APIData &ad, VideoTorchInputFileConn &inputc,
       caffe::NetParameter &net_param, std::shared_ptr<spdlog::logger> &logger,
       bool expose_hidden);
   template void configure_recurrent_template<TxtTorchInputFileConn>(

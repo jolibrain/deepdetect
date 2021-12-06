@@ -21,6 +21,7 @@
 
 #include "net_caffe_convnet.h"
 #include "imginputfileconn.h"
+#include "allconnectors.hpp"
 #include "mllibstrategy.h"
 
 namespace dd
