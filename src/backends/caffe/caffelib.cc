@@ -20,7 +20,7 @@
  */
 
 #include "caffelib.h"
-#include "imginputfileconn.h"
+#include "allconnectors.hpp"
 #include "outputconnectorstrategy.h"
 #include "generators/net_caffe.h"
 #include "generators/net_caffe_convnet.h"

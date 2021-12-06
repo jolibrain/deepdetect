@@ -100,6 +100,16 @@ namespace dd
     return nullptr;
   }
 
+  template <>
+  NativeModule *NativeFactory::from_template<VideoTorchInputFileConn>(
+      const std::string tdef, const APIData &template_params,
+      const VideoTorchInputFileConn &inputc,
+      const std::shared_ptr<spdlog::logger> &logger)
+  {
+    return from_template<ImgTorchInputFileConn>(tdef, template_params, inputc,
+                                                logger);
+  }
+
   template NativeModule *
   NativeFactory::from_template(const std::string tdef,
                                const APIData &template_params,

@@ -1,6 +1,6 @@
 /**
  * DeepDetect
- * Copyright (c) 2021 Emmanuel Benazera
+ * Copyright (c) 2021 Jolibrain
  * Author: Louis Jean <louis.jean@jolibrain.com>
  *
  * This file is part of deepdetect.
@@ -19,26 +19,32 @@
  * along with deepdetect.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef VIDEOINPUTFILECONN_H
-#define VIDEOINPUTFILECONN_H
+#ifndef DD_UTILS_CVUTILS_HPP
+#define DD_UTILS_CVUTILS_HPP
 
-#include "imginputfileconn.h"
-#include "dto/input_connector.hpp"
+#include <vector>
 
 namespace dd
 {
-  class VideoInputFileConn : virtual public ImgInputFileConn
+  namespace cv_utils
   {
-  public:
-    VideoInputFileConn() : ImgInputFileConn()
+    /** Convert an int fourcc (from a video) to string format */
+    std::string fourcc_to_string(int fourcc)
     {
+      union
+      {
+        int u32;
+        unsigned char c[4];
+      } i32_c;
+      i32_c.u32 = fourcc;
+      return cv::format(
+          "%c%c%c%c",
+          (i32_c.c[0] >= ' ' && i32_c.c[0] < 128) ? i32_c.c[0] : '?',
+          (i32_c.c[1] >= ' ' && i32_c.c[1] < 128) ? i32_c.c[1] : '?',
+          (i32_c.c[2] >= ' ' && i32_c.c[2] < 128) ? i32_c.c[2] : '?',
+          (i32_c.c[3] >= ' ' && i32_c.c[3] < 128) ? i32_c.c[3] : '?');
     }
-    VideoInputFileConn(const VideoInputFileConn &i) : ImgInputFileConn(i)
-    {
-    }
-
-    ~VideoInputFileConn() override = default;
-  };
+  }
 }
 
-#endif
+#endif // DD_UTILS_CVUTILS_HPP

@@ -339,6 +339,14 @@ namespace dd
     return jd;
   }
 
+  JDoc JsonAPI::dd_resource_exhausted_1016() const
+  {
+    JDoc jd;
+    jd.SetObject();
+    render_status(jd, 403, "Forbidden", 1016, "Resource is exhausted");
+    return jd;
+  }
+
   std::string JsonAPI::jrender(const JDoc &jst) const
   {
     rapidjson::StringBuffer buffer;
@@ -710,6 +718,13 @@ namespace dd
                   add_service(
                       sname,
                       std::move(MLService<TorchLib, ImgTorchInputFileConn,
+                                          SupervisedOutput, TorchModel>(
+                          sname, torchmodel, description)),
+                      ad);
+                else if (input == "video")
+                  add_service(
+                      sname,
+                      std::move(MLService<TorchLib, VideoTorchInputFileConn,
                                           SupervisedOutput, TorchModel>(
                           sname, torchmodel, description)),
                       ad);
@@ -1093,6 +1108,10 @@ namespace dd
       {
         return dd_train_predict_conflict_1008();
       }
+    catch (ResourceForbiddenException &e)
+      {
+        return dd_resource_exhausted_1016();
+      }
 #ifdef USE_SIMSEARCH
     catch (SimIndexException &e)
       {
@@ -1132,6 +1151,8 @@ namespace dd
     if (jout.HasMember("predictions"))
       jbody.AddMember("predictions", jout["predictions"],
                       jpred.GetAllocator());
+    if (jout.HasMember("resources"))
+      jbody.AddMember("resources", jout["resources"], jpred.GetAllocator());
     jpred.AddMember("body", jbody, jpred.GetAllocator());
     if (ad_data.getobj("parameters").getobj("output").has("template")
         && ad_data.getobj("parameters")

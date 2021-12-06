@@ -104,12 +104,10 @@ namespace dd
       DTO_INIT(StreamResponseBody, DTO)
     };
 
-    class StreamResponse : public oatpp::DTO
+    class StreamResponse : public GenericResponse
     {
-      DTO_INIT(StreamResponse, DTO)
+      DTO_INIT(StreamResponse, GenericResponse)
 
-      DTO_FIELD(String, dd_msg);
-      DTO_FIELD(Object<Status>, status);
       DTO_FIELD(Object<StreamResponseHead>, head);
       DTO_FIELD(Object<StreamResponseBody>, body);
     };

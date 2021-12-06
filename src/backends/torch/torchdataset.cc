@@ -402,7 +402,7 @@ namespace dd
         if (!_lfiles.empty()) // prefetch batch from file list
           {
             ImgTorchInputFileConn *inputc
-                = reinterpret_cast<ImgTorchInputFileConn *>(_inputc);
+                = dynamic_cast<ImgTorchInputFileConn *>(_inputc);
             bool first_iter = true;
 
             for (int64_t id : ids)
@@ -526,7 +526,7 @@ namespace dd
             else
               {
                 ImgTorchInputFileConn *inputc
-                    = reinterpret_cast<ImgTorchInputFileConn *>(_inputc);
+                    = dynamic_cast<ImgTorchInputFileConn *>(_inputc);
 
                 cv::Mat bgr, bw_target;
                 read_image_from_db(datas, targets, bgr, t, bw_target,
@@ -652,7 +652,7 @@ namespace dd
                                     const bool &target)
   {
     ImgTorchInputFileConn *inputc
-        = reinterpret_cast<ImgTorchInputFileConn *>(_inputc);
+        = dynamic_cast<ImgTorchInputFileConn *>(_inputc);
 
     DDImg dimg;
     inputc->copy_parameters_to(dimg);
@@ -730,7 +730,7 @@ namespace dd
   {
     // read image before reading bboxes to get the size of the image
     ImgTorchInputFileConn *inputc
-        = reinterpret_cast<ImgTorchInputFileConn *>(_inputc);
+        = dynamic_cast<ImgTorchInputFileConn *>(_inputc);
 
     DDImg dimg;
     inputc->copy_parameters_to(dimg);
@@ -798,7 +798,7 @@ namespace dd
                                            const bool &target)
   {
     ImgTorchInputFileConn *inputc
-        = reinterpret_cast<ImgTorchInputFileConn *>(_inputc);
+        = dynamic_cast<ImgTorchInputFileConn *>(_inputc);
 
     std::vector<int64_t> sizes{ height, width, bgr.channels() };
     at::TensorOptions options(at::ScalarType::Byte);

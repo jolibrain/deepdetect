@@ -587,6 +587,21 @@ namespace dd
 
   template void TorchModule::post_transform(
       const std::string tmpl, const APIData &template_params,
+      const VideoTorchInputFileConn &inputc, const TorchModel &tmodel,
+      const torch::Device &device);
+
+  template void TorchModule::post_transform_train(
+      const std::string tmpl, const APIData &template_params,
+      const VideoTorchInputFileConn &inputc, const TorchModel &tmodel,
+      const torch::Device &device);
+
+  template void TorchModule::post_transform_predict(
+      const std::string tmpl, const APIData &template_params,
+      const VideoTorchInputFileConn &inputc, const TorchModel &tmodel,
+      const torch::Device &device, const APIData &ad);
+
+  template void TorchModule::post_transform(
+      const std::string tmpl, const APIData &template_params,
       const TxtTorchInputFileConn &inputc, const TorchModel &tmodel,
       const torch::Device &device);
 

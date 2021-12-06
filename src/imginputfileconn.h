@@ -152,6 +152,11 @@ namespace dd
         }
 
       // color adjustments
+      if (_bw && dst.channels() > 1)
+        {
+          cv::cvtColor(dst, dst, CV_BGR2GRAY);
+        }
+
       if (_histogram_equalization)
         {
           if (_bw)
@@ -244,6 +249,12 @@ namespace dd
               throw InputConnectorBadParamException("failed cropping image "
                                                     + img_name);
             }
+        }
+
+      // color adjustment
+      if (_bw && dst.channels() > 1)
+        {
+          cv::cuda::cvtColor(dst, dst, CV_BGR2GRAY, 0, *_cuda_stream);
         }
 
       if (_histogram_equalization)
@@ -725,6 +736,75 @@ namespace dd
       return _test_images.size();
     }
 
+    // add cuda raw images
+    void add_raw_images(const std::vector<cv::Mat> &imgs
+#ifdef USE_CUDA_CV
+                        ,
+                        const std::vector<cv::cuda::GpuMat> &cuda_imgs
+#endif
+    )
+    {
+
+      std::vector<std::string> uris;
+      DataEl<DDImg> dimg(this->_input_timeout);
+      copy_parameters_to(dimg._ctype);
+      int i = 0;
+
+      // preprocess
+#ifdef USE_CUDA_CV
+      for (auto cuda_img : cuda_imgs)
+        {
+          if (!_ids.empty())
+            uris.push_back(_ids.at(i));
+          else
+            {
+              _ids.push_back(std::to_string(i));
+              uris.push_back(_ids.back());
+            }
+
+          dimg._ctype.add_image_cuda(cuda_img, _ids.back());
+          ++i;
+        }
+#endif
+
+      for (auto img : imgs)
+        {
+          if (!_ids.empty())
+            uris.push_back(_ids.at(i));
+          else
+            {
+              _ids.push_back(std::to_string(i));
+              uris.push_back(_ids.back());
+            }
+          dimg._ctype.add_image(img, _ids.back());
+          ++i;
+        }
+
+        // add preprocessed images
+#ifdef USE_CUDA_CV
+      if (_cuda)
+        {
+          if (_keep_orig)
+            _cuda_orig_images.insert(_cuda_orig_images.end(),
+                                     dimg._ctype._cuda_orig_imgs.begin(),
+                                     dimg._ctype._cuda_orig_imgs.end());
+          _cuda_images.insert(_cuda_images.end(),
+                              dimg._ctype._cuda_imgs.begin(),
+                              dimg._ctype._cuda_imgs.end());
+        }
+      else
+#endif
+        {
+          if (_keep_orig)
+            _orig_images = dimg._ctype._orig_imgs;
+          _images = dimg._ctype._imgs;
+        }
+      _images_size.insert(_images_size.end(), dimg._ctype._imgs_size.begin(),
+                          dimg._ctype._imgs_size.end());
+      if (!uris.empty())
+        _uris = uris;
+    }
+
     void get_data(oatpp::Object<DTO::ServicePredict> pred_in)
     {
       if (!pred_in->_data_raw_img.empty()
@@ -737,65 +817,12 @@ namespace dd
           _meta_uris = pred_in->_meta_uris;
           _index_uris = pred_in->_index_uris;
 
-          std::vector<std::string> uris;
-          DataEl<DDImg> dimg(this->_input_timeout);
-          copy_parameters_to(dimg._ctype);
-          int i = 0;
-
-          // preprocess
+          add_raw_images(pred_in->_data_raw_img
 #ifdef USE_CUDA_CV
-          for (auto cuda_img : pred_in->_data_raw_img_cuda)
-            {
-              if (!_ids.empty())
-                uris.push_back(_ids.at(i));
-              else
-                {
-                  _ids.push_back(std::to_string(i));
-                  uris.push_back(_ids.back());
-                }
-
-              dimg._ctype.add_image_cuda(cuda_img, _ids.back());
-              ++i;
-            }
+                         ,
+                         pred_in->_data_raw_img_cuda
 #endif
-
-          for (auto img : pred_in->_data_raw_img)
-            {
-              if (!_ids.empty())
-                uris.push_back(_ids.at(i));
-              else
-                {
-                  _ids.push_back(std::to_string(i));
-                  uris.push_back(_ids.back());
-                }
-              dimg._ctype.add_image(img, _ids.back());
-              ++i;
-            }
-
-            // add preprocessed images
-#ifdef USE_CUDA_CV
-          if (_cuda)
-            {
-              if (_keep_orig)
-                _cuda_orig_images.insert(_cuda_orig_images.end(),
-                                         dimg._ctype._cuda_orig_imgs.begin(),
-                                         dimg._ctype._cuda_orig_imgs.end());
-              _cuda_images.insert(_cuda_images.end(),
-                                  dimg._ctype._cuda_imgs.begin(),
-                                  dimg._ctype._cuda_imgs.end());
-            }
-          else
-#endif
-            {
-              if (_keep_orig)
-                _orig_images = dimg._ctype._orig_imgs;
-              _images = dimg._ctype._imgs;
-            }
-          _images_size.insert(_images_size.end(),
-                              dimg._ctype._imgs_size.begin(),
-                              dimg._ctype._imgs_size.end());
-          if (!uris.empty())
-            _uris = uris;
+          );
         }
       else
         InputConnectorStrategy::get_data(pred_in);
@@ -804,7 +831,11 @@ namespace dd
     void get_data(const APIData &ad)
     {
       // check for raw cv::Mat
-      if (ad.has("data_raw_img"))
+      if (ad.has("data_raw_img")
+#ifdef USE_CUDA_CV
+          || ad.has("data_raw_img_cuda")
+#endif
+      )
         {
           if (ad.has("ids"))
             _ids = ad.get("ids").get<std::vector<std::string>>();
@@ -813,37 +844,20 @@ namespace dd
           if (ad.has("index_uris"))
             _index_uris = ad.get("index_uris").get<std::vector<std::string>>();
 
-          _images = ad.get("data_raw_img").get<std::vector<cv::Mat>>();
-
-          std::vector<cv::Mat> rimgs;
-          std::vector<std::string> uris;
-          int i = 0;
-          for (auto img : _images)
-            {
-              cv::Mat rimg;
-              resize(img, rimg, cv::Size(_width, _height), 0, 0);
-              if (_bw && rimg.channels() > 1)
-                {
-                  cv::Mat bwimg;
-                  cv::cvtColor(rimg, bwimg, CV_BGR2GRAY);
-                  rimg = bwimg;
-                }
-              _images_size.push_back(std::pair<int, int>(img.rows, img.cols));
-              if (_keep_orig)
-                _orig_images.push_back(std::move(img));
-              if (!_ids.empty())
-                uris.push_back(_ids.at(i));
-              else
-                {
-                  _ids.push_back(std::to_string(i));
-                  uris.push_back(_ids.back());
-                }
-              rimgs.push_back(std::move(rimg));
-              ++i;
-            }
-          _images = rimgs;
-          if (!uris.empty())
-            _uris = uris;
+          std::vector<cv::Mat> imgs
+              = ad.has("data_raw_img")
+                    ? ad.get("data_raw_img").get<std::vector<cv::Mat>>()
+                    : std::vector<cv::Mat>();
+#ifdef USE_CUDA_CV
+          std::vector<cv::cuda::GpuMat> cuda_imgs
+              = ad.has("data_raw_img_cuda")
+                    ? ad.get("data_raw_img_cuda")
+                          .get<std::vector<cv::cuda::GpuMat>>()
+                    : std::vector<cv::cuda::GpuMat>();
+          add_raw_images(imgs, cuda_imgs);
+#else
+          add_raw_images(imgs);
+#endif
         }
       else
         InputConnectorStrategy::get_data(ad);
@@ -1099,33 +1113,5 @@ namespace dd
 #endif
   };
 }
-
-#ifdef USE_CAFFE
-#include "caffeinputconns.h"
-#endif
-
-#ifdef USE_TF
-#include "backends/tf/tfinputconns.h"
-#endif
-
-#ifdef USE_DLIB
-#include "backends/dlib/dlibinputconns.h"
-#endif
-
-#ifdef USE_NCNN
-#include "backends/ncnn/ncnninputconns.h"
-#endif
-
-#ifdef USE_CAFFE2
-#include "backends/caffe2/caffe2inputconns.h"
-#endif
-
-#ifdef USE_TENSORRT
-#include "backends/tensorrt/tensorrtinputconns.h"
-#endif
-
-#ifdef USE_TORCH
-#include "backends/torch/torchinputconns.h"
-#endif
 
 #endif

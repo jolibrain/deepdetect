@@ -1812,9 +1812,12 @@ namespace dd
 
     if (ad.has("chain") && ad.get("chain").get<bool>())
       {
-        if (typeid(inputc) == typeid(ImgTorchInputFileConn))
+        if (std::is_same<TInputConnectorStrategy,
+                         ImgTorchInputFileConn>::value)
           {
-            auto *img_ic = reinterpret_cast<ImgTorchInputFileConn *>(&inputc);
+            // can't do reinterpret_cast because virtual inheritance
+            InputConnectorStrategy *inputc_base = &inputc;
+            auto *img_ic = dynamic_cast<ImgTorchInputFileConn *>(inputc_base);
             APIData chain_input;
             if (!img_ic->_orig_images.empty())
               chain_input.add("imgs", img_ic->_orig_images);
@@ -2218,6 +2221,8 @@ namespace dd
   }
 
   template class TorchLib<ImgTorchInputFileConn, SupervisedOutput, TorchModel>;
+  template class TorchLib<VideoTorchInputFileConn, SupervisedOutput,
+                          TorchModel>;
   template class TorchLib<TxtTorchInputFileConn, SupervisedOutput, TorchModel>;
   template class TorchLib<CSVTSTorchInputFileConn, SupervisedOutput,
                           TorchModel>;

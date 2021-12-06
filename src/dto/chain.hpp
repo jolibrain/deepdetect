@@ -219,12 +219,11 @@ namespace dd
       DTO_FIELD(Float64, time);
     };
 
-    class ChainResponse : public oatpp::DTO
+    class ChainResponse : public GenericResponse
     {
-      DTO_INIT(ChainResponse, DTO)
+      DTO_INIT(ChainResponse, GenericResponse)
 
       DTO_FIELD(String, dd_msg);
-      DTO_FIELD(Object<Status>, status);
       DTO_FIELD(Object<ChainHead>, head);
       DTO_FIELD(Object<ChainBody>, body);
     };

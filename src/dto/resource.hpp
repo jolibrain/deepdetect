@@ -34,6 +34,68 @@ namespace dd
   {
 #include OATPP_CODEGEN_BEGIN(DTO) ///< Begin DTO codegen section
 
+    /** Information on video source */
+    class VideoInfo : public oatpp::DTO
+    {
+      DTO_INIT(VideoInfo, DTO)
+
+      DTO_FIELD(Int32, width) = -1;
+      DTO_FIELD(Int32, height) = -1;
+      DTO_FIELD(Float32, fps) = -1;
+
+      DTO_FIELD_INFO(fourcc)
+      {
+        info->description
+            = "Video codec, as a 4-letter code. eg YUYV, MJPEG, H264...";
+      }
+      DTO_FIELD(String, fourcc) = "";
+
+      DTO_FIELD_INFO(frame_count)
+      {
+        info->description = "Video frame count";
+      }
+      DTO_FIELD(Int32, frame_count) = -1;
+
+      DTO_FIELD_INFO(current_frame)
+      {
+        info->description = "Id of current frame";
+      }
+      DTO_FIELD(Int32, current_frame) = -1;
+    };
+
+    /** Video requirements for cameras */
+    class VideoRequirements : public oatpp::DTO
+    {
+      DTO_INIT(VideoRequirements, DTO);
+
+      DTO_FIELD_INFO(fps)
+      {
+        info->description = "Requested camera FPS";
+      }
+      DTO_FIELD(Int32, fps) = -1;
+
+      DTO_FIELD_INFO(width)
+      {
+        info->description = "Requested video width";
+      }
+      DTO_FIELD(Int32, width) = -1;
+
+      DTO_FIELD_INFO(height)
+      {
+        info->description = "Requested video height";
+      }
+      DTO_FIELD(Int32, height) = -1;
+
+      DTO_FIELD_INFO(fourcc)
+      {
+        info->description
+            = "Requested codec, as a 4-letter code. eg YUYV, MJPEG, H264...";
+      }
+      DTO_FIELD(String, fourcc) = "";
+    };
+
+    // INPUT
+
     class Resource : public oatpp::DTO
     {
       DTO_INIT(Resource, DTO);
@@ -44,12 +106,13 @@ namespace dd
       }
       DTO_FIELD(String, type);
 
+      // video
       DTO_FIELD_INFO(video_backend)
       {
         info->description
             = "For video sources, what backend is prefered for decoding";
       }
-      DTO_FIELD(String, video_backend);
+      DTO_FIELD(String, video_backend) = "any";
 
       DTO_FIELD_INFO(source)
       {
@@ -58,6 +121,14 @@ namespace dd
               "local device (camera...), custom gstreamer pipeline";
       }
       DTO_FIELD(String, source);
+
+      DTO_FIELD_INFO(video_requirements)
+      {
+        info->description = "Requirements when multiple formats are available "
+                            "for a source (e.g. for cameras)";
+      }
+      DTO_FIELD(Object<VideoRequirements>, video_requirements)
+          = VideoRequirements::createShared();
     };
 
     // OUTPUT
@@ -70,14 +141,32 @@ namespace dd
     class ResourceResponseBody : public oatpp::DTO
     {
       DTO_INIT(ResourceResponseBody, DTO)
+
+      DTO_FIELD_INFO(name)
+      {
+        info->description = "Name of the resource";
+      }
+      DTO_FIELD(String, name);
+
+      DTO_FIELD_INFO(status)
+      {
+        info->description = "Resource status: open, ended, error";
+      }
+      DTO_FIELD(String, status);
+
+      DTO_FIELD_INFO(message)
+      {
+        info->description = "Message that can go with an \"error\" status";
+      }
+      DTO_FIELD(String, message);
+
+      DTO_FIELD(Object<VideoInfo>, video);
     };
 
-    class ResourceResponse : public oatpp::DTO
+    class ResourceResponse : public GenericResponse
     {
-      DTO_INIT(ResourceResponse, DTO)
+      DTO_INIT(ResourceResponse, GenericResponse)
 
-      DTO_FIELD(String, dd_msg);
-      DTO_FIELD(Object<Status>, status);
       DTO_FIELD(Object<ResourceResponseHead>, head);
       DTO_FIELD(Object<ResourceResponseBody>, body);
     };

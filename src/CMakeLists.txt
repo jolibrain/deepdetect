@@ -22,7 +22,7 @@ set(ddetect_SOURCES deepdetect.h deepdetect.cc mllibstrategy.h mlmodel.h
     csvinputfileconn.cc csvtsinputfileconn.h csvtsinputfileconn.cc
     svminputfileconn.h svminputfileconn.cc txtinputfileconn.h
     txtinputfileconn.cc apidata.h apidata.cc chain_actions.h chain_actions.cc
-    service_stats.h service_stats.cc chain.h chain.cc ext/rmustache/mustache.h ext/rmustache/mustache.cc
+    service_stats.h service_stats.cc chain.h chain.cc resources.cc ext/rmustache/mustache.h ext/rmustache/mustache.cc
     utils/oatpp.cc dto/ddtypes.cc utils/db.cpp utils/db_lmdb.cpp ${CMAKE_BINARY_DIR}/src/caffe.pb.cc)
 
 if (USE_JSON_API)

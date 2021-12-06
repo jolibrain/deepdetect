@@ -244,9 +244,50 @@ public:
            PATH(oatpp::String, resource_name, "resource-name"),
            BODY_DTO(Object<dd::DTO::Resource>, resource_data))
   {
-    return createDtoResponse(
-        Status::CODE_201,
-        _oja->create_resource(resource_name->std_str(), resource_data));
+    try
+      {
+        return _oja->dto_to_response(
+            _oja->create_resource(resource_name->std_str(), resource_data),
+            201, "Created");
+      }
+    catch (dd::ResourceBadParamException &e)
+      {
+        return _oja->response_bad_request_400(e.what());
+      }
+    catch (dd::ResourceForbiddenException &e)
+      {
+        return _oja->response_resource_already_exists_1015();
+      }
+    catch (std::exception &e)
+      {
+        return _oja->response_internal_error_500(e.what());
+      }
+    return _oja->response_internal_error_500();
+  }
+
+  ENDPOINT_INFO(get_resource)
+  {
+    info->summary = "Get resource information and status";
+    info->addResponse<Object<dd::DTO::ResourceResponse>>(Status::CODE_200,
+                                                         "application/json");
+  }
+  ENDPOINT("GET", "resources/{resource-name}", get_resource,
+           PATH(oatpp::String, resource_name, "resource-name"))
+  {
+    try
+      {
+        auto res_dto = _oja->get_resource(resource_name->std_str());
+        return _oja->dto_to_response(res_dto, 200, "OK");
+      }
+    catch (dd::ResourceNotFoundException &e)
+      {
+        return _oja->response_not_found_404();
+      }
+    catch (std::exception &e)
+      {
+        return _oja->response_internal_error_500(e.what());
+      }
+    return _oja->response_internal_error_500();
   }
 
   ENDPOINT_INFO(delete_resource)
@@ -258,8 +299,21 @@ public:
   ENDPOINT("DELETE", "resources/{resource-name}", delete_resource,
            PATH(oatpp::String, resource_name, "resource-name"))
   {
-    int status = _oja->delete_resource(resource_name->std_str());
-    return _oja->create_response(status, "");
+    try
+      {
+        _oja->delete_resource(resource_name->std_str());
+        return _oja->dto_to_response(dd::DTO::GenericResponse::createShared(),
+                                     200, "OK");
+      }
+    catch (dd::ResourceNotFoundException &e)
+      {
+        return _oja->response_not_found_404();
+      }
+    catch (std::exception &e)
+      {
+        return _oja->response_internal_error_500(e.what());
+      }
+    return _oja->response_internal_error_500();
   }
 
   ENDPOINT_INFO(create_stream)
@@ -287,8 +341,8 @@ public:
   ENDPOINT("GET", "stream/{stream-name}", get_stream_info,
            PATH(oatpp::String, stream_name, "stream-name"))
   {
-    return createDtoResponse(Status::CODE_200,
-                             _oja->get_stream_info(stream_name->std_str()));
+    return _oja->dto_to_response(_oja->get_stream_info(stream_name->std_str()),
+                                 200, "");
   }
 
   ENDPOINT_INFO(delete_stream)
@@ -301,7 +355,8 @@ public:
            PATH(oatpp::String, stream_name, "stream-name"))
   {
     int status = _oja->delete_stream(stream_name->std_str());
-    return _oja->create_response(status, "");
+    return _oja->dto_to_response(dd::DTO::GenericResponse::createShared(),
+                                 status, "");
   }
 };
 
