@@ -112,6 +112,11 @@ if (USE_TORCH)
 endif()
 
 if (USE_TENSORRT)
+  set_source_files_properties(
+    ${CMAKE_BINARY_DIR}/src/onnx.pb.cc
+    ${CMAKE_BINARY_DIR}/src/onnx.pb.h
+    PROPERTIES GENERATED TRUE)
+
   list(APPEND ddetect_SOURCES
     backends/tensorrt/tensorrtlib.h
     backends/tensorrt/tensorrtlib.cc
@@ -121,7 +126,8 @@ if (USE_TENSORRT)
     backends/tensorrt/tensorrtinputconns.cc
     backends/tensorrt/tensorrtmodel.h
     backends/tensorrt/tensorrtmodel.cc
-    )
+    ${CMAKE_BINARY_DIR}/src/onnx.pb.cc
+  )
 endif()
 
 
@@ -140,6 +146,7 @@ if (USE_CAFFE)
   add_dependencies(ddetect caffe_dd)
 endif()
 if (USE_TENSORRT)
+  add_dependencies(ddetect onnx_pb_h)
   if (USE_CAFFE2)
     add_dependencies(ddetect pytorch)
   endif()

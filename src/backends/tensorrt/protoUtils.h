@@ -27,19 +27,32 @@
 
 namespace dd
 {
-  /* fixProto converts generic deploy.prototxt to tensorRT readable ones; it :
-     - translate memoryDataLayer to Input
-     - translate flatten layer to corresponding reshape layer
-     - it add "keep_count" top to DetectionOutput Layer
-  */
-  int fixProto(const std::string dest, const std::string source);
-  bool findInputDimensions(const std::string &source, int &width, int &height);
-  int findNClasses(const std::string source, bool bbox);
-  int findTopK(const std::string source);
+  namespace caffe_proto
+  {
+    /* fixProto converts generic deploy.prototxt to tensorRT readable ones; it
+       :
+       - translate memoryDataLayer to Input
+       - translate flatten layer to corresponding reshape layer
+       - it add "keep_count" top to DetectionOutput Layer
+    */
+    int fixProto(const std::string dest, const std::string source);
+    bool findInputDimensions(const std::string &source, int &width,
+                             int &height);
+    int findNClasses(const std::string source, bool bbox);
+    int findTopK(const std::string source);
+    bool isRefinedet(const std::string source);
+  }
+
+  namespace onnx_proto
+  {
+    int findTopK(const std::string &source, const std::string &out_name);
+  }
+
   bool TRTReadProtoFromTextFile(const char *filename,
                                 google::protobuf::Message *proto);
   bool TRTWriteProtoToTextFile(const google::protobuf::Message &proto,
                                const char *filename);
-  bool isRefinedet(const std::string source);
+  bool TRTReadProtoFromBinaryFile(const char *filename,
+                                  google::protobuf::Message *proto);
 }
 #endif

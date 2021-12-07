@@ -177,7 +177,8 @@ namespace dd
           _datatype = nvinfer1::DataType::kINT8;
       }
 
-    if (this->_mlmodel.is_caffe_source() && isRefinedet(this->_mlmodel._def))
+    if (this->_mlmodel.is_caffe_source()
+        && caffe_proto::isRefinedet(this->_mlmodel._def))
       {
         if (_datatype != nvinfer1::DataType::kFLOAT)
           {
@@ -201,7 +202,8 @@ namespace dd
 
     // XXX(louis): this default value should be moved out of trt lib when
     // init_mllib will be changed to DTOs
-    _top_k = ad.has("topk") ? ad.get("topk").get<int>() : 200;
+    if (ad.has("topk"))
+      _top_k = ad.get("topk").get<int>();
 
     if (ad.has("template"))
       {
@@ -288,7 +290,8 @@ namespace dd
         if (_width == 0 || _height == 0)
           {
             this->_logger->info("trying to determine the input size...");
-            if (findInputDimensions(this->_mlmodel._def, _width, _height))
+            if (caffe_proto::findInputDimensions(this->_mlmodel._def, _width,
+                                                 _height))
               {
                 this->_logger->info("found {}x{} as input size", _width,
                                     _height);
@@ -334,8 +337,9 @@ namespace dd
   TensorRTLib<TInputConnectorStrategy, TOutputConnectorStrategy,
               TMLModel>::read_engine_from_caffe(const std::string &out_blob)
   {
-    int fixcode = fixProto(this->_mlmodel._repo + "/" + "net_tensorRT.proto",
-                           this->_mlmodel._def);
+    int fixcode = caffe_proto::fixProto(this->_mlmodel._repo + "/"
+                                            + "net_tensorRT.proto",
+                                        this->_mlmodel._def);
     switch (fixcode)
       {
       case 1:
@@ -538,7 +542,7 @@ namespace dd
         if (_nclasses == 0 && this->_mlmodel.is_caffe_source())
           {
             this->_logger->info("trying to determine number of classes...");
-            _nclasses = findNClasses(this->_mlmodel._def, _bbox);
+            _nclasses = caffe_proto::findNClasses(this->_mlmodel._def, _bbox);
             if (_nclasses < 0)
               throw MLLibBadParamException(
                   "failed detecting the number of classes, specify it through "
@@ -546,8 +550,13 @@ namespace dd
             this->_logger->info("found {} classes", _nclasses);
           }
 
-        if (_bbox && !this->_mlmodel._def.empty())
-          _top_k = findTopK(this->_mlmodel._def);
+        if (_bbox)
+          {
+            if (this->_mlmodel.is_onnx_source())
+              _top_k = onnx_proto::findTopK(this->_mlmodel._model, out_blob);
+            else if (!this->_mlmodel._def.empty())
+              _top_k = caffe_proto::findTopK(this->_mlmodel._def);
+          }
 
         if (_nclasses <= 0)
           this->_logger->error("could not determine number of classes");
