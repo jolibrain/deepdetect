@@ -40,7 +40,7 @@ static std::string squeez_repo = "../examples/trt/squeezenet_ssd_trt/";
 static std::string refinedet_repo = "../examples/trt/faces_512/";
 static std::string squeezv1_repo = "../examples/trt/squeezenet_v1/";
 static std::string resnet_onnx_repo = "../examples/trt/resnet_onnx_trt/";
-static std::string yolox_onnx_repo = "../examples/trt/yolox_onnx_trt/";
+static std::string yolox_onnx_repo = "../examples/trt/yolox_onnx_trt_nowrap/";
 static std::string cyclegan_onnx_repo
     = "../examples/trt/cyclegan_resnet_attn_onnx_trt/";
 
@@ -256,7 +256,7 @@ TEST(tensorrtapi, service_predict_bbox_onnx)
         + yolox_onnx_repo
         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
           "640,\"width\":640,\"rgb\":true},\"mllib\":{\"template\":\"yolox\","
-          "\"maxBatchSize\":1,\"maxWorkspaceSize\":256,\"gpuid\":0,"
+          "\"maxBatchSize\":2,\"maxWorkspaceSize\":256,\"gpuid\":0,"
           "\"nclasses\":80}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
   ASSERT_EQ(created_str, joutstr);
@@ -266,7 +266,7 @@ TEST(tensorrtapi, service_predict_bbox_onnx)
       = "{\"service\":\"" + sname
         + "\",\"parameters\":{\"input\":{},\"output\":{\"bbox\":true,"
           "\"confidence_threshold\":0.8}},\"data\":[\""
-        + resnet_onnx_repo + "cat.jpg\"]}";
+        + resnet_onnx_repo + "cat.jpg\",\"" + yolox_onnx_repo + "dog.jpg\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   JDoc jd;
   std::cout << "joutstr=" << joutstr << std::endl;
@@ -274,12 +274,19 @@ TEST(tensorrtapi, service_predict_bbox_onnx)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+  ASSERT_EQ(jd["body"]["predictions"].Size(), 2);
 
-  auto &preds = jd["body"]["predictions"][0]["classes"];
+  uint32_t cat_id = jd["body"]["predictions"][0]["uri"].GetString()
+                            == (resnet_onnx_repo + "cat.jpg")
+                        ? 0
+                        : 1;
+  uint32_t dog_id = 1 - cat_id;
+
+  auto &preds = jd["body"]["predictions"][cat_id]["classes"];
   ASSERT_EQ(preds.Size(), 1);
   std::string cl1 = preds[0]["cat"].GetString();
-  ASSERT_TRUE(cl1 == "14");
-  ASSERT_TRUE(preds[0]["prob"].GetDouble() > 0.85);
+  ASSERT_EQ(cl1, "15");
+  ASSERT_TRUE(preds[0]["prob"].GetDouble() > 0.9);
   auto &bbox = preds[0]["bbox"];
   ASSERT_TRUE(bbox["xmin"].GetDouble() < 50 && bbox["xmax"].GetDouble() > 200
               && bbox["ymin"].GetDouble() < 50
@@ -287,13 +294,24 @@ TEST(tensorrtapi, service_predict_bbox_onnx)
   // Check confidence threshold
   ASSERT_TRUE(preds[preds.Size() - 1]["prob"].GetDouble() >= 0.8);
 
+  // Check second pred
+  auto &preds2 = jd["body"]["predictions"][dog_id]["classes"];
+  ASSERT_EQ(preds2.Size(), 1);
+  std::string cl2 = preds2[0]["cat"].GetString();
+  ASSERT_EQ(cl2, "16");
+  ASSERT_TRUE(preds2[0]["prob"].GetDouble() > 0.8);
+  auto &bbox2 = preds[0]["bbox"];
+  ASSERT_TRUE(bbox2["xmin"].GetDouble() < 50 && bbox2["xmax"].GetDouble() > 200
+              && bbox2["ymin"].GetDouble() < 50
+              && bbox2["ymax"].GetDouble() > 200);
+
   ASSERT_TRUE(fileops::file_exists(yolox_onnx_repo + "TRTengine_arch"
-                                   + get_trt_archi() + "_bs1"));
+                                   + get_trt_archi() + "_bs2"));
   jstr = "{\"clear\":\"lib\"}";
   joutstr = japi.jrender(japi.service_delete(sname, jstr));
   ASSERT_EQ(ok_str, joutstr);
   ASSERT_TRUE(!fileops::file_exists(yolox_onnx_repo + "TRTengine_arch"
-                                    + get_trt_archi() + "_bs1"));
+                                    + get_trt_archi() + "_bs2"));
 }
 
 TEST(tensorrtapi, service_predict_gan_onnx)

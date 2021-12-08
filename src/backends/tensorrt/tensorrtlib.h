@@ -122,6 +122,8 @@ namespace dd
     bool _writeEngine = true;
     std::string _arch;
     int _gpuid = 0;
+    std::string
+        _template; /**< template for models that require specific treatment */
 
     //!< The TensorRT engine used to run the network
     std::shared_ptr<nvinfer1::ICudaEngine> _engine = nullptr;

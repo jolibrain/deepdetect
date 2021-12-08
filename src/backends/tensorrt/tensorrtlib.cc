@@ -32,6 +32,7 @@
 #include <opencv2/core/cuda_stream_accessor.hpp>
 #endif
 #include "utils/bbox.hpp"
+#include "models/yolo.hpp"
 
 namespace dd
 {
@@ -108,6 +109,7 @@ namespace dd
     _timeserie = tl._timeserie;
     _regression = tl._regression;
     _need_nms = tl._need_nms;
+    _template = tl._template;
     _inputIndex = tl._inputIndex;
     _outputIndex0 = tl._outputIndex0;
     _outputIndex1 = tl._outputIndex1;
@@ -200,23 +202,21 @@ namespace dd
             + this->_mlmodel._repo);
       }
 
-    // XXX(louis): this default value should be moved out of trt lib when
-    // init_mllib will be changed to DTOs
     if (ad.has("topk"))
       _top_k = ad.get("topk").get<int>();
 
     if (ad.has("template"))
       {
-        std::string tmplate = ad.get("template").get<std::string>();
-        this->_logger->info("Model template is {}", tmplate);
+        _template = ad.get("template").get<std::string>();
+        this->_logger->info("Model template is {}", _template);
 
-        if (tmplate == "yolox")
+        if (_template == "yolox")
           {
             this->_mltype = "detection";
             _need_nms = true;
           }
         else
-          throw MLLibBadParamException("Unknown template " + tmplate);
+          throw MLLibBadParamException("Unknown template " + _template);
       }
 
     _builder = std::shared_ptr<nvinfer1::IBuilder>(
@@ -544,9 +544,9 @@ namespace dd
             this->_logger->info("trying to determine number of classes...");
             _nclasses = caffe_proto::findNClasses(this->_mlmodel._def, _bbox);
             if (_nclasses < 0)
-              throw MLLibBadParamException(
-                  "failed detecting the number of classes, specify it through "
-                  "API with nclasses");
+              throw MLLibBadParamException("failed detecting the number of "
+                                           "classes, specify it through "
+                                           "API with nclasses");
             this->_logger->info("found {} classes", _nclasses);
           }
 
@@ -636,8 +636,7 @@ namespace dd
           }
         else
           {
-            if (this->_mlmodel._model.find("net_tensorRT.onnx")
-                != std::string::npos)
+            if (this->_mlmodel.is_onnx_source())
               _explicit_batch = true;
           }
 
@@ -671,9 +670,16 @@ namespace dd
 
             if (_bbox)
               {
+                if (_dims.nbDims < 3)
+                  throw MLLibBadParamException(
+                      "Bbox model requires 3 output dimensions, found "
+                      + std::to_string(_dims.nbDims));
+
                 _outputIndex1 = _engine->getBindingIndex("keep_count");
                 _buffers.resize(3);
-                _floatOut.resize(_max_batch_size * _top_k * 7);
+                int det_out_size = _max_batch_size * _top_k * _dims.d[2];
+                // int det_out_size = _max_batch_size * _top_k * 7;
+                _floatOut.resize(det_out_size);
                 _keepCount.resize(_max_batch_size);
                 if (inputc._bw)
                   cudaMalloc(&_buffers.data()[_inputIndex],
@@ -684,7 +690,7 @@ namespace dd
                              _max_batch_size * 3 * inputc._height
                                  * inputc._width * sizeof(float));
                 cudaMalloc(&_buffers.data()[_outputIndex0],
-                           _max_batch_size * _top_k * 7 * sizeof(float));
+                           det_out_size * sizeof(float));
                 cudaMalloc(&_buffers.data()[_outputIndex1],
                            _max_batch_size * sizeof(int));
               }
@@ -816,7 +822,7 @@ namespace dd
               {
                 cudaMemcpyAsync(_floatOut.data(),
                                 _buffers.data()[_outputIndex0],
-                                num_processed * _top_k * 7 * sizeof(float),
+                                _floatOut.size() * sizeof(float),
                                 cudaMemcpyDeviceToHost, cstream);
                 cudaMemcpyAsync(_keepCount.data(),
                                 _buffers.data()[_outputIndex1],
@@ -837,10 +843,10 @@ namespace dd
             // GAN/raw output
             else if (!extract_layer.empty())
               {
-                cudaMemcpyAsync(
-                    _floatOut.data(), _buffers.data()[_outputIndex0],
-                    num_processed * _floatOut.size() * sizeof(float),
-                    cudaMemcpyDeviceToHost, cstream);
+                cudaMemcpyAsync(_floatOut.data(),
+                                _buffers.data()[_outputIndex0],
+                                _floatOut.size() * sizeof(float),
+                                cudaMemcpyDeviceToHost, cstream);
                 cudaStreamSynchronize(cstream);
               }
             else // classification / regression
@@ -868,12 +874,21 @@ namespace dd
         if (_bbox)
           {
             int results_height = _top_k;
-            const int det_size = 7;
 
+            // preproc yolox
+            if (_template == "yolox")
+              {
+                _floatOut = yolo_utils::parse_yolo_output(
+                    _floatOut, num_processed, results_height, _nclasses,
+                    inputc._width, inputc._height);
+              };
+
+            const int det_size = 7;
             const float *outr = _floatOut.data();
 
             for (int j = 0; j < num_processed; j++)
               {
+
                 int k = 0;
                 std::vector<double> probs;
                 std::vector<std::string> cats;

@@ -23,6 +23,11 @@ def main():
     parser.add_argument('--num_classes', type=int, default=80, help="Number of classes of the model")
     parser.add_argument('--gpu', type=int, help="GPU id to run on GPU")
     parser.add_argument('--to_onnx', action="store_true", help="Export model to onnx")
+    parser.add_argument('--use_wrapper', action="store_true", help="In case of onnx export, if this option is present, the model will be wrapped so that its output match dede expectations")
+    parser.add_argument('--top_k', type=int, default=200, help="When exporting to onnx, specify maximum returned prediction count")
+    parser.add_argument('--batch_size', type=int, default=1, help="When exporting to onnx, batch size of model")
+    parser.add_argument('--img_width', type=int, default=640, help="Width of the image when exporting with fixed image size")
+    parser.add_argument('--img_height', type=int, default=640, help="Height of the image when exporting with fixed image size")
 
     args = parser.parse_args()
 
@@ -78,18 +83,21 @@ def main():
     if args.to_onnx:
         model = replace_module(model, nn.SiLU, SiLU)
 
-        model = YoloXWrapper_TRT(model)
+        model = YoloXWrapper_TRT(model, topk = args.top_k, raw_output = not args.use_wrapper)
         model.to(device)
         model.eval()
 
         filename += ".onnx"
-        example = get_image_input(1, 640, 640)
+        example = get_image_input(args.batch_size, args.img_width, args.img_height)
+        # XXX: dynamic batch size not supported with wrapper
+        # XXX: dynamic batch size not yet supported in dede as well
+        dynamic_axes = None # {"input": {0: "batch"}} if not args.use_wrapper else None
         torch.onnx.export(
                 model, example, filename,
                 export_params=True, verbose=args.verbose,
                 opset_version=11, do_constant_folding=True,
-                input_names=["input"], output_names=["detection_out", "keep_count"])
-        #,      dynamic_axes={"input": {0: "batch"}})
+                input_names=["input"], output_names=["detection_out", "keep_count"],
+                dynamic_axes = dynamic_axes)
     else:
         # wrap model
         model = YoloXWrapper(model, args.num_classes, postprocess)
@@ -187,10 +195,11 @@ class YoloXWrapper(torch.nn.Module):
 
 class YoloXWrapper_TRT(torch.nn.Module):
 
-    def __init__(self, model, topk=200):
+    def __init__(self, model, topk=200, raw_output=False):
         super(YoloXWrapper_TRT, self).__init__()
         self.model = model
         self.topk = topk
+        self.raw_output = raw_output
 
     def to_xyxy(self, boxes):
         xyxy_boxes = boxes.new_zeros(boxes.shape)
@@ -204,8 +213,11 @@ class YoloXWrapper_TRT(torch.nn.Module):
         # xmin, ymin, xmax, ymax, objectness, conf cls1, conf cl2...
         output = self.model(x)[0]
 
+        if self.raw_output:
+            return output, torch.zeros(output.shape[0])
+
         box_count = output.shape[1]
-        cls_scores, cls_pred = output[:,:,6:].max(dim=2, keepdim=True)
+        cls_scores, cls_pred = output[:,:,5:].max(dim=2, keepdim=True)
         batch_ids = torch.arange(output.shape[0], device=x.device).view(
                 -1, 1).repeat(1, output.shape[1]).unsqueeze(2)
 
