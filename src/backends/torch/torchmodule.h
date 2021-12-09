@@ -62,8 +62,10 @@ namespace dd
      * If more than one device is given, this method performs a multigpu
      * forward.
      */
-    c10::IValue forward_on_devices(std::vector<c10::IValue> source,
-                                   const std::vector<torch::Device> &devices);
+    [[deprecated("Multigpu does not need this method anymore, cf "
+                 "torchlib.cc:train()")]] c10::IValue
+    forward_on_devices(std::vector<c10::IValue> source,
+                       const std::vector<torch::Device> &devices);
 
     /**
      * \brief forward (inference) until extract_layer, return value of

@@ -43,11 +43,17 @@ class TestTorchvisionExport(unittest.TestCase):
         # Test inference
         rfcnn = torch.jit.load(model_file)
         rfcnn.train()
-        model_loss, model_preds = rfcnn(*get_detection_input())
-        self.assertTrue(model_loss > 0)
+        model_losses, model_preds = rfcnn(*get_detection_input())
+        self.assertTrue("total_loss" in model_losses)
+        self.assertTrue(model_losses["total_loss"] > 0)
+        self.assertAlmostEqual(
+                model_losses["total_loss"].item(),
+                sum([model_losses[l].item() for l in model_losses if l != "total_loss"]),
+                delta = 0.0001
+            )
 
         rfcnn.eval()
-        model_loss, model_preds = rfcnn(torch.rand(1, 3, 224, 224))
+        model_losses, model_preds = rfcnn(torch.rand(1, 3, 224, 224))
         self.assertTrue("boxes" in model_preds[0])
 
         # Export to onnx
