@@ -79,7 +79,7 @@ class DetectionModel(torch.nn.Module):
         self.model = model
 
     def forward(self, x, ids = None, bboxes = None, labels = None):
-        # type: (Tensor, Optional[Tensor], Optional[Tensor], Optional[Tensor]) -> Tuple[Tensor, List[Dict[str, Tensor]]]
+        # type: (Tensor, Optional[Tensor], Optional[Tensor], Optional[Tensor]) -> Tuple[Dict[str,Tensor], List[Dict[str, Tensor]]]
         """
         x: one image of dimensions [batch size, channel count, width, height]
         ids: one tensor of dimension [sum(n_bbox_i)] containing id of batch for
@@ -108,15 +108,11 @@ class DetectionModel(torch.nn.Module):
             losses, predictions = self.model(l_x, l_targs)
 
             # Sum of all losses for finetuning (as done in vision/references/detection/engine.py)
-            losses = [l for l in losses.values()]
-            loss = torch.zeros((1,), device=x.device, dtype=x.dtype)
-            for i in range(len(losses)):
-                loss += losses[i]
+            losses["total_loss"] = torch.sum(torch.stack(losses.values()))
         else:
             losses, predictions = self.model(l_x)
-            loss = torch.zeros((1,), device=x.device, dtype=x.dtype)
 
-        return loss, predictions
+        return losses, predictions
 
 
 class DetectionModel_PredictOnly(torch.nn.Module):

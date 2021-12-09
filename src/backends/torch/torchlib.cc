@@ -688,7 +688,7 @@ namespace dd
             if (!ad_distort.empty())
               {
                 distort_params._prob = ad_distort.get("prob").get<double>();
-                this->_logger->info("noise: {}", distort_params._prob);
+                this->_logger->info("distort: {}", distort_params._prob);
               }
             inputc._dataset._img_rand_aug_cv = TorchImgRandAugCV(
                 has_mirror, has_rotate, crop_params, cutout_params,
@@ -723,17 +723,37 @@ namespace dd
           }
       }
 
+    // net params
+    int64_t batch_size = 1;
+    int64_t test_batch_size = 1;
+
+    if (ad_mllib.has("net"))
+      {
+        APIData ad_net = ad_mllib.getobj("net");
+        if (ad_net.has("batch_size"))
+          batch_size = ad_net.get("batch_size").get<int>();
+        if (ad_net.has("test_batch_size"))
+          test_batch_size = ad_net.get("test_batch_size").get<int>();
+        if (ad_net.has("reg_weight"))
+          {
+            _reg_weight = ad_net.get("reg_weight").get<double>();
+            this->_logger->info("reg_weight={}", _reg_weight);
+          }
+      }
+
     // solver params
     int64_t iterations = 1;
-    int64_t batch_size = 1;
     int64_t iter_size = 1;
-    int64_t test_batch_size = 1;
     int64_t test_interval = 1;
     int64_t save_period = 0;
 
+    // loss specific to the model
+    if (_module.has_model_loss())
+      _loss = _template;
+
     TorchLoss tloss(_loss, _module.has_model_loss(), _seq_training, _timeserie,
                     _regression, _classification, _segmentation, class_weights,
-                    _module, this->_logger);
+                    _reg_weight, _module, this->_logger);
     TorchSolver tsolver(_module, tloss, this->_logger);
 
     // logging parameters
@@ -756,15 +776,6 @@ namespace dd
           iter_size = ad_solver.get("iter_size").get<int>();
         if (ad_solver.has("snapshot"))
           save_period = ad_solver.get("snapshot").get<int>();
-      }
-
-    if (ad_mllib.has("net"))
-      {
-        APIData ad_net = ad_mllib.getobj("net");
-        if (ad_net.has("batch_size"))
-          batch_size = ad_net.get("batch_size").get<int>();
-        if (ad_net.has("test_batch_size"))
-          test_batch_size = ad_net.get("test_batch_size").get<int>();
       }
 
     bool retain_graph = ad_mllib.has("retain_graph")
@@ -827,7 +838,7 @@ namespace dd
             r.loss = std::make_shared<TorchLoss>(
                 _loss, r.module->has_model_loss(), _seq_training, _timeserie,
                 _regression, _classification, _segmentation, class_weights,
-                *r.module, this->_logger);
+                _reg_weight, *r.module, this->_logger);
           }
       }
     _module.train();
@@ -846,6 +857,8 @@ namespace dd
     double last_it_time = 0;
     double last_test_time = 0;
     double train_loss = 0;
+    std::unordered_map<std::string, double> sub_losses;
+    double loss_divider = iter_size * gpu_count;
     auto data_it = dataloader->begin();
 
     if (data_it == dataloader->end())
@@ -893,6 +906,7 @@ namespace dd
         for (size_t rank = 0; rank < _devices.size(); ++rank)
           {
             double loss_val = 0;
+            c10::IValue out_val;
             try
               {
                 TorchBatch batch = batches[rank];
@@ -925,31 +939,13 @@ namespace dd
                 Tensor y = batch.target.at(0).to(device);
 
                 // Prediction
-                Tensor y_pred;
-                if (_segmentation)
-                  {
-                    auto out_dict
-                        = rank_module.forward(in_vals).toGenericDict();
-                    y_pred = torch_utils::to_tensor_safe(out_dict.at("out"));
-                  }
-                else
-                  {
-                    y_pred = torch_utils::to_tensor_safe(
-                        rank_module.forward(in_vals));
-                  }
-
-                // sanity check
-                if (!y_pred.defined() || y_pred.numel() == 0)
-                  throw MLLibInternalException(
-                      "The model returned an empty tensor");
+                out_val = rank_module.forward(in_vals);
 
                 // Compute loss
-                Tensor loss = rank_tloss.loss(y_pred, y, in_vals);
+                Tensor loss = rank_tloss.loss(out_val, y, in_vals);
 
-                if (iter_size > 1)
-                  loss /= iter_size;
-                if (gpu_count > 1)
-                  loss /= static_cast<double>(gpu_count);
+                if (loss_divider != 1)
+                  loss = loss / loss_divider;
 
                 // Backward
                 loss.backward(
@@ -969,8 +965,31 @@ namespace dd
 
 #pragma omp critical
             {
-              // Retain loss for statistics
+              // Retain loss and useful values for statistics
               train_loss += loss_val;
+
+              if (out_val.isGenericDict())
+                {
+                  auto out_dict = out_val.toGenericDict();
+                  for (const auto &e : out_dict)
+                    {
+                      std::string key = e.key().toStringRef();
+                      if (!e.value().isTensor())
+                        continue;
+                      auto val_t = e.value().toTensor();
+
+                      // all scalar values are considered as metrics
+                      if (val_t.numel() != 1)
+                        continue;
+                      double value = val_t.item<double>();
+                      if (loss_divider != 1)
+                        value /= loss_divider;
+                      if (sub_losses.find(key) != sub_losses.end())
+                        sub_losses[key] += value;
+                      else
+                        sub_losses[key] = value;
+                    }
+                }
             }
           }
 
@@ -1084,14 +1103,20 @@ namespace dd
             this->add_meas_per_iter("elapsed_time_ms", elapsed_time_ms);
             this->add_meas_per_iter("learning_rate", base_lr);
             this->add_meas_per_iter("train_loss", train_loss);
+            for (auto e : sub_losses)
+              {
+                this->add_meas(e.first, e.second);
+                this->add_meas_per_iter(e.first, e.second);
+              }
             int64_t elapsed_it = it + 1;
             if (log_batch_period != 0 && elapsed_it % log_batch_period == 0)
               {
                 this->_logger->info("Iteration {}/{}: loss is {}", elapsed_it,
                                     iterations, train_loss);
+                for (auto e : sub_losses)
+                  this->_logger->info("\t{}={}", e.first, e.second);
               }
             last_it_time = 0;
-            train_loss = 0;
 
             if ((elapsed_it % test_interval == 0 && eval_dataset.size() != 0)
                 || elapsed_it == iterations)
@@ -1106,9 +1131,13 @@ namespace dd
                     = duration_cast<milliseconds>(steady_clock::now() - tstart)
                           .count();
 
+                APIData meas_obj = meas_out.getobj("measure");
+                for (const auto &e : sub_losses)
+                  meas_obj.add(e.first, e.second);
+                meas_out.add("measure", meas_obj);
+
                 for (size_t i = 0; i < eval_dataset.size(); ++i)
                   {
-                    APIData meas_obj;
                     if (i == 0)
                       meas_obj = meas_out.getobj("measure");
                     else
@@ -1167,6 +1196,9 @@ namespace dd
                 if (elapsed_it == iterations)
                   out = meas_out;
               }
+
+            train_loss = 0;
+            sub_losses.clear();
 
             if ((save_period != 0 && elapsed_it % save_period == 0)
                 || elapsed_it == iterations)

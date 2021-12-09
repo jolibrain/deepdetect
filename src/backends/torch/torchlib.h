@@ -109,6 +109,8 @@ namespace dd
     bool _bbox = false;           /**< select detection type problem */
     bool _segmentation = false;   /**< select segmentation type problem */
     std::string _loss = "";       /**< selected loss*/
+    double _reg_weight
+        = 1; /**< for detection models, weight for bbox regression loss. */
 
     APIData _template_params; /**< template parameters, for recurrent and
                                  native models*/

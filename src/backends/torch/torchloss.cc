@@ -24,12 +24,12 @@
 
 namespace dd
 {
-  torch::Tensor TorchLoss::reloss(torch::Tensor y_pred)
+  torch::Tensor TorchLoss::reloss(c10::IValue y_pred)
   {
     return loss(y_pred, _y, _ivx);
   }
 
-  torch::Tensor TorchLoss::loss(torch::Tensor y_pred, torch::Tensor y,
+  torch::Tensor TorchLoss::loss(c10::IValue model_out, torch::Tensor y,
                                 std::vector<c10::IValue> &ivx)
   {
     // blow memorize to be able to redo loss call (in case of solver.sam)
@@ -37,7 +37,37 @@ namespace dd
     _ivx = ivx;
     torch::Tensor x = ivx[0].toTensor();
 
+    torch::Tensor y_pred;
     torch::Tensor loss;
+
+    if (model_out.isGenericDict())
+      {
+        auto out_dict = model_out.toGenericDict();
+        if (_segmentation)
+          y_pred = torch_utils::to_tensor_safe(out_dict.at("out"));
+        else if (_loss == "yolox")
+          {
+            torch::Tensor iou_loss
+                = torch_utils::to_tensor_safe(out_dict.at("iou_loss"));
+            torch::Tensor l1_loss
+                = torch_utils::to_tensor_safe(out_dict.at("l1_loss"));
+            torch::Tensor conf_loss
+                = torch_utils::to_tensor_safe(out_dict.at("conf_loss"));
+            torch::Tensor cls_loss
+                = torch_utils::to_tensor_safe(out_dict.at("cls_loss"));
+            y_pred = iou_loss * _reg_weight + l1_loss + conf_loss + cls_loss;
+          }
+        else // _model_loss = true
+          y_pred = torch_utils::to_tensor_safe(out_dict.at("total_loss"));
+      }
+    else
+      {
+        y_pred = torch_utils::to_tensor_safe(model_out);
+      }
+
+    // sanity check
+    if (!y_pred.defined() || y_pred.numel() == 0)
+      throw MLLibInternalException("The model returned an empty tensor");
 
     if (_model_loss)
       {
