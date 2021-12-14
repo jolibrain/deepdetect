@@ -82,6 +82,7 @@ namespace dd
     torch::Tensor _y_pred;
     torch::Tensor _y;
     std::vector<c10::IValue> _ivx;
+    long int _num_batches = 0;
   };
 }
 #endif

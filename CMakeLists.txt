@@ -990,6 +990,20 @@ if (USE_TENSORRT)
 
     # Use our tensorrt-oss header versions first
     list(INSERT TENSORRT_INC_DIR 0 ${CMAKE_BINARY_DIR}/tensorrt-oss/src/tensorrt-oss/include)
+
+    # onnx.pb.h
+    set(ONNX_PROTO ${CMAKE_BINARY_DIR}/tensorrt-oss/src/tensorrt-oss/parsers/onnx/third_party/onnx/onnx/onnx.proto)
+    add_custom_command(
+        OUTPUT ${CMAKE_BINARY_DIR}/src/onnx.pb.h ${CMAKE_BINARY_DIR}/src/onnx.pb.cc
+        COMMAND LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR} ${PROTOBUF_PROTOC} --proto_path=${CMAKE_BINARY_DIR}/tensorrt-oss/src/tensorrt-oss/parsers/onnx/third_party/onnx/onnx/ --cpp_out=${CMAKE_BINARY_DIR}/src ${ONNX_PROTO}
+        COMMENT Generating onnx.pb.h and onnx.pb.cc
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        DEPENDS protobuf tensorrt-oss
+    )
+    add_custom_target(
+        onnx_pb_h
+        DEPENDS ${CMAKE_BINARY_DIR}/src/onnx.pb.h ${CMAKE_BINARY_DIR}/src/onnx.pb.cc
+    )
 endif()
 
 set(OATPP_VERSION "1.2.5")
