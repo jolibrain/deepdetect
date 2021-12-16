@@ -136,7 +136,7 @@ class YoloXWrapper(torch.nn.Module):
         return yolox_boxes
 
     def forward(self, x, ids = None, bboxes = None, labels = None):
-        # type: (Tensor, Optional[Tensor], Optional[Tensor], Optional[Tensor]) -> Tuple[Tensor, List[Dict[str, Tensor]]]
+        # type: (Tensor, Optional[Tensor], Optional[Tensor], Optional[Tensor]) -> Tuple[Dict[str,Tensor], List[Dict[str, Tensor]]]
 
         placeholder = {
             "boxes": torch.zeros((0,4), device=x.device),
@@ -170,10 +170,9 @@ class YoloXWrapper(torch.nn.Module):
             l_targs = [F.pad(targ, (0, 0, 0, max_count - targ.shape[0])) for targ in l_targs]
             targs = torch.stack(l_targs, dim=0)
             output, losses = self.model(x, targs)
-            loss = losses["total_loss"]
             preds = [placeholder]
         else:
-            loss = torch.zeros((1,), device=x.device, dtype=x.dtype)
+            losses = {}
             with torch.no_grad():
                 output = self.model(x)[0]
                 preds_list = self.postprocess(output, self.num_classes, 0.01, self.nms_threshold)
@@ -192,7 +191,7 @@ class YoloXWrapper(torch.nn.Module):
                         "labels": pred[:,6].to(torch.int64)
                     })
 
-        return loss, preds
+        return losses, preds
 
 class YoloXWrapper_TRT(torch.nn.Module):
 

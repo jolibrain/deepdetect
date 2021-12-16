@@ -46,18 +46,20 @@ namespace dd
     TorchLoss(std::string loss, bool model_loss, bool seq_training,
               bool timeserie, bool regression, bool classification,
               bool segmentation, torch::Tensor class_weights,
-              TorchModule &module, std::shared_ptr<spdlog::logger> logger)
+              double reg_weight, TorchModule &module,
+              std::shared_ptr<spdlog::logger> logger)
         : _loss(loss), _model_loss(model_loss), _seq_training(seq_training),
           _timeserie(timeserie), _regression(regression),
           _classification(classification), _segmentation(segmentation),
-          _class_weights(class_weights), _logger(logger)
+          _class_weights(class_weights), _reg_weight(reg_weight),
+          _logger(logger)
     {
       _native = module._native;
     }
 
-    torch::Tensor loss(torch::Tensor y_pred, torch::Tensor y,
+    torch::Tensor loss(c10::IValue model_out, torch::Tensor target,
                        std::vector<c10::IValue> &x);
-    torch::Tensor reloss(torch::Tensor y_pred);
+    torch::Tensor reloss(c10::IValue model_out);
 
     std::vector<c10::IValue> getLastInputs()
     {
@@ -73,11 +75,14 @@ namespace dd
     bool _classification;
     bool _segmentation;
     torch::Tensor _class_weights = {};
+    double _reg_weight = 1; /** < on detection models, weight to apply to bbox
+                               regression loss */
     std::shared_ptr<NativeModule> _native;
     std::shared_ptr<spdlog::logger> _logger;
     torch::Tensor _y_pred;
     torch::Tensor _y;
     std::vector<c10::IValue> _ivx;
+    long int _num_batches = 0;
   };
 }
 #endif

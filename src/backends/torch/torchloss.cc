@@ -21,15 +21,16 @@
 
 #include "torchloss.h"
 #pragma GCC diagnostic pop
+#include <iostream>
 
 namespace dd
 {
-  torch::Tensor TorchLoss::reloss(torch::Tensor y_pred)
+  torch::Tensor TorchLoss::reloss(c10::IValue y_pred)
   {
     return loss(y_pred, _y, _ivx);
   }
 
-  torch::Tensor TorchLoss::loss(torch::Tensor y_pred, torch::Tensor y,
+  torch::Tensor TorchLoss::loss(c10::IValue model_out, torch::Tensor y,
                                 std::vector<c10::IValue> &ivx)
   {
     // blow memorize to be able to redo loss call (in case of solver.sam)
@@ -37,7 +38,37 @@ namespace dd
     _ivx = ivx;
     torch::Tensor x = ivx[0].toTensor();
 
+    torch::Tensor y_pred;
     torch::Tensor loss;
+
+    if (model_out.isGenericDict())
+      {
+        auto out_dict = model_out.toGenericDict();
+        if (_segmentation)
+          y_pred = torch_utils::to_tensor_safe(out_dict.at("out"));
+        else if (_loss == "yolox")
+          {
+            torch::Tensor iou_loss
+                = torch_utils::to_tensor_safe(out_dict.at("iou_loss"));
+            torch::Tensor l1_loss
+                = torch_utils::to_tensor_safe(out_dict.at("l1_loss"));
+            torch::Tensor conf_loss
+                = torch_utils::to_tensor_safe(out_dict.at("conf_loss"));
+            torch::Tensor cls_loss
+                = torch_utils::to_tensor_safe(out_dict.at("cls_loss"));
+            y_pred = iou_loss * _reg_weight + l1_loss + conf_loss + cls_loss;
+          }
+        else // _model_loss = true
+          y_pred = torch_utils::to_tensor_safe(out_dict.at("total_loss"));
+      }
+    else
+      {
+        y_pred = torch_utils::to_tensor_safe(model_out);
+      }
+
+    // sanity check
+    if (!y_pred.defined() || y_pred.numel() == 0)
+      throw MLLibInternalException("The model returned an empty tensor");
 
     if (_model_loss)
       {
@@ -88,8 +119,72 @@ namespace dd
       }
     else if (_segmentation)
       {
-        loss = torch::nn::functional::cross_entropy(
-            y_pred, y.squeeze(1).to(torch::kLong)); // TODO: options
+        if (_loss.empty())
+          {
+
+            loss = torch::nn::functional::cross_entropy(
+                y_pred, y.squeeze(1).to(torch::kLong)); // TODO: options
+          }
+        else if (_loss == "dice" || _loss == "dice_multiclass"
+                 || _loss == "dice_weighted" || _loss == "dice_weighted_batch"
+                 || _loss == "dice_weighted_all")
+          {
+            // see https://arxiv.org/abs/1707.03237
+            double smooth = 1e-7;
+            torch::Tensor y_true_f
+                = torch::one_hot(y.to(torch::kInt64), y_pred.size(1))
+                      .squeeze(1)
+                      .permute({ 0, 3, 1, 2 })
+                      .flatten(2)
+                      .to(torch::kFloat32);
+            torch::Tensor y_pred_f = torch::flatten(torch::sigmoid(y_pred), 2);
+
+            torch::Tensor intersect;
+            torch::Tensor denom;
+
+            if (_loss == "dice" || _loss == "dice_multiclass")
+              {
+                intersect = y_true_f * y_pred_f;
+                denom = y_true_f + y_pred_f;
+              }
+            else if (_loss == "dice_weighted")
+              {
+                torch::Tensor sum = torch::sum(y_true_f, { 2 }) + 1.0;
+                torch::Tensor weights = 1.0 / sum / sum;
+                intersect = torch::sum(y_true_f * y_pred_f, { 2 }) * weights;
+                denom = torch::sum(y_true_f + y_pred_f, { 2 }) * weights;
+              }
+            else if (_loss == "dice_weighted_batch"
+                     || _loss == "dice_weighted_all")
+              {
+                torch::Tensor sum
+                    = torch::sum(y_true_f, std::vector<int64_t>({ 0, 2 }))
+                      + 1.0;
+                torch::Tensor weights = 1.0 / sum / sum;
+                if (_loss == "dice_weighted_all")
+                  {
+                    if (_num_batches == 0)
+                      _class_weights = weights;
+                    else
+                      {
+                        weights = (_class_weights * _num_batches + weights)
+                                  / (_num_batches + 1);
+                        _class_weights = weights;
+                      }
+                    _num_batches++;
+                  }
+                intersect = torch::sum(y_true_f * y_pred_f,
+                                       std::vector<int64_t>({ 0, 2 }))
+                            * weights;
+                denom = torch::sum(y_true_f + y_pred_f,
+                                   std::vector<int64_t>({ 0, 2 }))
+                        * weights;
+              }
+
+            return 1.0 - torch::mean(2.0 * intersect / (denom + smooth));
+          }
+        else
+          throw MLLibBadParamException("unknown loss: " + _loss);
       }
     else
       {
