@@ -1642,8 +1642,13 @@ namespace dd
               }
             else if (_segmentation)
               {
-                auto out_dict = out_ivalue.toGenericDict();
-                output = torch_utils::to_tensor_safe(out_dict.at("out"));
+                if (out_ivalue.isGenericDict())
+                  {
+                    auto out_dict = out_ivalue.toGenericDict();
+                    output = torch_utils::to_tensor_safe(out_dict.at("out"));
+                  }
+                else
+                  output = torch_utils::to_tensor_safe(out_ivalue);
                 output = torch::softmax(output, 1);
 
                 int imgsize = inputc.width() * inputc.height();
@@ -1968,8 +1973,13 @@ namespace dd
           }
         else if (_segmentation)
           {
-            auto out_dict = out_ivalue.toGenericDict();
-            output = torch_utils::to_tensor_safe(out_dict.at("out"));
+            if (out_ivalue.isGenericDict())
+              {
+                auto out_dict = out_ivalue.toGenericDict();
+                output = torch_utils::to_tensor_safe(out_dict.at("out"));
+              }
+            else
+              output = torch_utils::to_tensor_safe(out_ivalue);
             output = torch::softmax(output, 1);
             torch::Tensor target = batch.target.at(0).to(torch::kFloat64);
             torch::Tensor segmap
