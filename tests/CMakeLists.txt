@@ -434,6 +434,13 @@ if (USE_TORCH)
     "deeplabv3_training_torch.tar.gz"
     "deeplabv3_training_torch"
     )
+   DOWNLOAD_DATASET(
+    "Torch training Segformer model"
+    "https://www.deepdetect.com/dd/examples/torch/segformer_training_torch.tar.gz"
+    "examples/torch"
+    "segformer_training_torch.tar.gz"
+    "segformer_training_torch"
+    )
   DOWNLOAD_DATASET(
     "Torch BERT classification test model"
     "https://www.deepdetect.com/dd/examples/torch/bert_inference_torch.tar.gz"
