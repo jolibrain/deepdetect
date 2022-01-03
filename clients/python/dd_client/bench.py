@@ -37,6 +37,7 @@ def main():
     parser.add_argument("--img-width", help="image width", type=int, default=224)
     parser.add_argument("--img-height", help="image height", type=int, default=224)
     parser.add_argument("--bw", help="whether images are bw", action="store_true")
+    parser.add_argument("--rgb", help="whether images are rgb", action="store_true")
     parser.add_argument(
         "--scale",
         help="Multiply all pixels value by a constant factor",
@@ -148,6 +149,7 @@ def main():
                 "width": args.img_width,
                 "height": args.img_height,
                 "bw": args.bw,
+                "rgb": args.rgb,
                 "histogram_equalization": args.histogram_equalization,
                 "scale": args.scale,
             }
@@ -262,6 +264,7 @@ def main():
                 )
         mean_ptime = 0
         mean_ptime_per_img = 0
+        start_transform_time = -1
         for i in range(0, args.npasses + 1):
             print("testing batch size = %s" % len(data))
             classif = dd.post_predict(
@@ -269,6 +272,11 @@ def main():
             )
             if classif["status"]["code"] == 200:
                 if i == 0:
+                    # initialize total transform time
+                    sinfo = dd.get_service(args.sname)
+                    start_transform_time = sinfo["body"]["service_stats"][
+                        "total_transform_duration_ms"
+                    ]
                     continue  # skipping first pass so that the batch resize does not affect timing
                 ptime = classif["head"]["time"]
                 ptime_per_img = ptime / b
@@ -291,14 +299,21 @@ def main():
                 )
                 fail = True
                 break
+        sinfo = dd.get_service(args.sname)
+        mean_transform_time = (
+            sinfo["body"]["service_stats"]["total_transform_duration_ms"]
+            - start_transform_time
+        ) / args.npasses
         mean_processing_time = mean_ptime / args.npasses
         mean_time_per_img = mean_ptime_per_img / args.npasses
         print(
-            ">>> batch size = %s / mean processing time = %s / mean time per image = %s / fps = %s / fail = %s"
+            ">>> batch size = %s / mean processing time = %s / mean time per image = %s / mean transform time = %s / mean transform time per image = %s / fps = %s / fail = %s"
             % (
                 b,
                 mean_ptime / args.npasses,
                 mean_ptime_per_img / args.npasses,
+                mean_transform_time,
+                mean_transform_time / b,
                 1000 / (mean_ptime_per_img / args.npasses),
                 fail,
             ),
