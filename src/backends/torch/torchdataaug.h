@@ -79,10 +79,6 @@ namespace dd
     int _crop_size = -1;
     std::uniform_int_distribution<int> _uniform_int_crop_x;
     std::uniform_int_distribution<int> _uniform_int_crop_y;
-
-    // randomized params
-    int _crop_x = 0;
-    int _crop_y = 0;
   };
 
   class CutoutParams : public ImgAugParams
@@ -288,8 +284,8 @@ namespace dd
     void applyRotateBBox(std::vector<std::vector<float>> &bboxes,
                          const float &img_width, const float &img_height,
                          const int &rot);
-    void applyCrop(cv::Mat &src, CropParams &cp,
-                   const bool &store_rparams = false);
+    bool applyCrop(cv::Mat &src, CropParams &cp, int &crop_x, int &crop_y,
+                   const bool &sample = true);
     void applyCutout(cv::Mat &src, CutoutParams &cp,
                      const bool &store_rparams = false);
     void applyGeometry(cv::Mat &src, GeometryParams &cp,
