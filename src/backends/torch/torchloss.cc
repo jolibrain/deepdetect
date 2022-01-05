@@ -144,8 +144,8 @@ namespace dd
 
             if (_loss == "dice" || _loss == "dice_multiclass")
               {
-                intersect = y_true_f * y_pred_f;
-                denom = y_true_f + y_pred_f;
+                intersect = torch::sum(y_true_f * y_pred_f, { 2 });
+                denom = torch::sum(y_true_f + y_pred_f, { 2 });
               }
             else if (_loss == "dice_weighted")
               {
