@@ -121,7 +121,6 @@ namespace dd
       {
         if (_loss.empty())
           {
-
             loss = torch::nn::functional::cross_entropy(
                 y_pred, y.squeeze(1).to(torch::kLong)); // TODO: options
           }

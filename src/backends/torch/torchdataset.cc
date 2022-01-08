@@ -242,17 +242,9 @@ namespace dd
 
         if (_segmentation)
           {
-
             cv::resize(bw_target, bw_target, cv::Size(width, height), 0, 0,
                        cv::INTER_NEAREST);
           }
-      }
-
-    if (_segmentation)
-      {
-        at::Tensor targett_seg
-            = image_to_tensor(bw_target, height, width, true);
-        targett.push_back(targett_seg);
       }
   }
 
@@ -554,14 +546,13 @@ namespace dd
                       _img_rand_aug_cv.augment(bgr);
                   }
 
-                torch::Tensor imgt
-                    = image_to_tensor(bgr, inputc->height(), inputc->width());
+                torch::Tensor imgt = image_to_tensor(bgr, bgr.rows, bgr.cols);
                 d.push_back(imgt);
 
                 if (_segmentation)
                   {
                     at::Tensor targett_seg = image_to_tensor(
-                        bw_target, inputc->height(), inputc->width(), true);
+                        bw_target, bw_target.rows, bw_target.cols, true);
                     t.push_back(targett_seg);
                   }
               }
@@ -833,8 +824,6 @@ namespace dd
 
     return imgt;
   }
-
-  // TODO: segmentation target image to tensor
 
   at::Tensor TorchDataset::target_to_tensor(const int &target)
   {
