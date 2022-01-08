@@ -620,7 +620,7 @@ namespace dd
         throw;
       }
 
-    // TODO: set inputc dataset data augmentation options
+    // set inputc dataset data augmentation options
     APIData ad_mllib = ad.getobj("parameters").getobj("mllib");
     if (typeid(inputc) == typeid(ImgTorchInputFileConn))
       {
