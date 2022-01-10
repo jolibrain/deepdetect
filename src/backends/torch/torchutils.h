@@ -44,6 +44,15 @@ namespace dd
   namespace torch_utils
   {
 
+    inline void cerr_tensor_shape(const std::string &tname,
+                                  const torch::Tensor t)
+    {
+      std::cerr << tname << " shape=";
+      for (auto d : t.sizes())
+        std::cerr << d << " ";
+      std::cerr << std::endl;
+    }
+
     /**
      * \brief empty cuda caching allocator, This should be called after every
      * job that allocates a model. Pytorch keeps cuda memory allocated even

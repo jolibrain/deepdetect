@@ -122,7 +122,9 @@ namespace dd
         if (_loss.empty())
           {
             loss = torch::nn::functional::cross_entropy(
-                y_pred, y.squeeze(1).to(torch::kLong)); // TODO: options
+                y_pred, y.squeeze(1).to(torch::kLong),
+                torch::nn::functional::CrossEntropyFuncOptions().weight(
+                    _class_weights));
           }
         else if (_loss == "dice" || _loss == "dice_multiclass"
                  || _loss == "dice_weighted" || _loss == "dice_weighted_batch"

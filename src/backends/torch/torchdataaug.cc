@@ -55,6 +55,13 @@ namespace dd
     applyDistort(src);
   }
 
+  void TorchImgRandAugCV::augment_test(cv::Mat &src)
+  {
+    int crop_x = 0;
+    int crop_y = 0;
+    applyCrop(src, _crop_params, crop_x, crop_y);
+  }
+
   void
   TorchImgRandAugCV::augment_with_bbox(cv::Mat &src,
                                        std::vector<torch::Tensor> &targets)
@@ -136,6 +143,15 @@ namespace dd
       applyRotate(tgt, false, rot);
     applyNoise(src);
     applyDistort(src);
+  }
+
+  void TorchImgRandAugCV::augment_test_with_segmap(cv::Mat &src, cv::Mat &tgt)
+  {
+    int crop_x = 0;
+    int crop_y = 0;
+    bool cropped = applyCrop(src, _crop_params, crop_x, crop_y);
+    if (cropped)
+      applyCrop(tgt, _crop_params, crop_x, crop_y, false);
   }
 
   bool TorchImgRandAugCV::roll_weighted_dice(const float &prob)

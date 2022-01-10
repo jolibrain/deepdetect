@@ -626,7 +626,8 @@ namespace dd
       {
         bool has_data_augmentation
             = ad_mllib.has("mirror") || ad_mllib.has("rotate")
-              || ad_mllib.has("crop_size") || ad_mllib.has("cutout");
+              || ad_mllib.has("crop_size") || ad_mllib.has("cutout")
+              || ad_mllib.has("geometry");
         if (has_data_augmentation)
           {
             bool has_mirror
@@ -670,8 +671,8 @@ namespace dd
                   geometry_params._geometry_zoom_in
                       = ad_geometry.get("zoom_in").get<bool>();
                 if (ad_geometry.has("pad_mode"))
-                  geometry_params._geometry_pad_mode
-                      = ad_geometry.get("pad_mode").get<int>();
+                  geometry_params.set_pad_mode(
+                      ad_geometry.get("pad_mode").get<std::string>());
               }
             auto *img_ic = reinterpret_cast<ImgTorchInputFileConn *>(&inputc);
             NoiseParams noise_params;
@@ -693,6 +694,10 @@ namespace dd
             inputc._dataset._img_rand_aug_cv = TorchImgRandAugCV(
                 has_mirror, has_rotate, crop_params, cutout_params,
                 geometry_params, noise_params, distort_params);
+            inputc._test_datasets.set_img_rand_aug_cv(TorchImgRandAugCV(
+                has_mirror, has_rotate, crop_params, cutout_params,
+                geometry_params, noise_params,
+                distort_params)); // only uses cropping if enable
           }
       }
     int dataloader_threads = 1;
@@ -1983,7 +1988,7 @@ namespace dd
             output = torch::softmax(output, 1);
             torch::Tensor target = batch.target.at(0).to(torch::kFloat64);
             torch::Tensor segmap
-                = torch::flatten(torch::argmax(output.squeeze(), 1))
+                = torch::flatten(torch::argmax(output.squeeze(), 0))
                       .contiguous()
                       .to(torch::kFloat64)
                       .to(cpu); // squeeze removes the batch size
