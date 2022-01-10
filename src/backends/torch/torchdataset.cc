@@ -160,11 +160,11 @@ namespace dd
   {
     // serialize image
     std::ostringstream dstream;
-    image_to_stringstream(bgr, dstream, true);
+    image_to_stringstream(bgr, dstream, false);
 
     // serialize target
     std::ostringstream tstream;
-    image_to_stringstream(bw_target, tstream, false);
+    image_to_stringstream(bw_target, tstream, true);
 
     write_image_to_db(dstream, tstream, bgr.rows, bgr.cols);
   }
@@ -539,11 +539,22 @@ namespace dd
                     if (_bbox)
                       _img_rand_aug_cv.augment_with_bbox(bgr, t);
                     else if (_segmentation)
-                      {
-                        _img_rand_aug_cv.augment_with_segmap(bgr, bw_target);
-                      }
+                      _img_rand_aug_cv.augment_with_segmap(bgr, bw_target);
                     else
                       _img_rand_aug_cv.augment(bgr);
+                  }
+                else
+                  {
+                    // cropping requires test set 'augmentation'
+                    if (_bbox)
+                      {
+                        // no cropping yet with bboxes
+                      }
+                    if (_segmentation)
+                      _img_rand_aug_cv.augment_test_with_segmap(bgr,
+                                                                bw_target);
+                    else
+                      _img_rand_aug_cv.augment_test(bgr);
                   }
 
                 torch::Tensor imgt = image_to_tensor(bgr, bgr.rows, bgr.cols);
@@ -646,7 +657,10 @@ namespace dd
     DDImg dimg;
     inputc->copy_parameters_to(dimg);
     if (target) // used for segmentation masks
-      dimg._bw = true;
+      {
+        dimg._bw = true;
+        dimg._interp = "nearest";
+      }
 
     try
       {
@@ -703,9 +717,10 @@ namespace dd
       return res;
     cv::Mat img_tgt;
     res = read_image_file(fname_target, img_tgt, true);
+
     if (res != 0)
       return res;
-    add_image_batch(img, height, width, img_tgt);
+    add_image_batch(img, width, height, img_tgt);
     return res;
   }
 

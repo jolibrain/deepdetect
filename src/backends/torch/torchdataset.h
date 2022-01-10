@@ -435,6 +435,15 @@ namespace dd
     }
 
     /**
+     * \brief sets image data augmenter across test datasets
+     */
+    void set_img_rand_aug_cv(const TorchImgRandAugCV &tiracv)
+    {
+      for (size_t i = 0; i < _datasets.size(); ++i)
+        _datasets.at(i)._img_rand_aug_cv = tiracv;
+    }
+
+    /**
      * \brief commits final db transactions
      */
     void db_finalize()

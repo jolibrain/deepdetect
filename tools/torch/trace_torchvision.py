@@ -30,6 +30,7 @@ from packaging import version
 import torch
 import torchvision
 import torchvision.models as M
+from torchvision.models.segmentation.deeplabv3 import DeepLabHead
 
 parser = argparse.ArgumentParser(description="Trace image processing models from torchvision")
 parser.add_argument('models', type=str, nargs='*', help="Models to trace.")
@@ -290,12 +291,15 @@ for mname in args.models:
 
     else:
         kwargs = {}
-        if args.num_classes:
+        if args.num_classes and not segmentation:
             logging.info("Using num_classes = %d" % args.num_classes)
             kwargs["num_classes"] = args.num_classes
 
         model = model_classes[mname](pretrained=args.pretrained, progress=args.verbose, **kwargs)
 
+        if segmentation and 'deeplabv3' in mname:
+            model.classifier = DeepLabHead(2048, args.num_classes)
+        
         if args.to_dd_native:
             # Make model NativeModuleWrapper compliant
             model = Wrapper(model)

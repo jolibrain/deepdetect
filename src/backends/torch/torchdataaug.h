@@ -131,17 +131,27 @@ namespace dd
     GeometryParams(const float &prob, const bool &geometry_persp_horizontal,
                    const bool &geometry_persp_vertical,
                    const bool &geometry_zoom_out, const bool &geometry_zoom_in,
-                   const int &geometry_pad_mode)
+                   const std::string &geometry_pad_mode_str)
         : _prob(prob), _geometry_persp_horizontal(geometry_persp_horizontal),
           _geometry_persp_vertical(geometry_persp_vertical),
           _geometry_zoom_out(geometry_zoom_out),
-          _geometry_zoom_in(geometry_zoom_in),
-          _geometry_pad_mode(geometry_pad_mode)
+          _geometry_zoom_in(geometry_zoom_in)
     {
+      set_pad_mode(geometry_pad_mode_str);
     }
 
     ~GeometryParams()
     {
+    }
+
+    void set_pad_mode(const std::string &geometry_pad_mode_str)
+    {
+      if (geometry_pad_mode_str == "constant")
+        _geometry_pad_mode = 1;
+      else if (geometry_pad_mode_str == "mirrored")
+        _geometry_pad_mode = 2;
+      else if (geometry_pad_mode_str == "repeat_nearest")
+        _geometry_pad_mode = 3;
     }
 
     float _prob = 0.0;
@@ -274,6 +284,9 @@ namespace dd
     void augment(cv::Mat &src);
     void augment_with_bbox(cv::Mat &src, std::vector<torch::Tensor> &targets);
     void augment_with_segmap(cv::Mat &src, cv::Mat &tgt);
+
+    void augment_test(cv::Mat &src);
+    void augment_test_with_segmap(cv::Mat &src, cv::Mat &tgt);
 
   protected:
     bool roll_weighted_dice(const float &prob);
