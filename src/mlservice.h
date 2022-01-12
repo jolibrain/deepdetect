@@ -311,7 +311,6 @@ namespace dd
       APIData jmrepo;
       jmrepo.add("repository", this->_mlmodel._repo);
       out.add("model", jmrepo);
-      // this->fillup_measures_history(ad);
       if (!ad.has("async") || (ad.has("async") && ad.get("async").get<bool>()))
         {
           std::lock_guard<std::mutex> lock(_tjobs_mutex);
@@ -342,8 +341,8 @@ namespace dd
       else
         {
           boost::unique_lock<boost::shared_mutex> lock(_train_mutex);
+          this->_has_predict = false;
           int status = this->train(ad, out);
-          // this->collect_measures(out);
           APIData ad_params_out = ad.getobj("parameters").getobj("output");
           if (ad_params_out.has("measure_hist")
               && ad_params_out.get("measure_hist").get<bool>())

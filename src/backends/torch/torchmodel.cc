@@ -20,8 +20,10 @@
  */
 
 #include "torchmodel.h"
-
 #include "utils/utils.hpp"
+
+#include <rapidjson/document.h>
+#include <rapidjson/filereadstream.h>
 
 namespace dd
 {
@@ -200,16 +202,17 @@ namespace dd
               {
                 std::vector<std::string> selts = dd_utils::split((*hit), '/');
                 fileops::copy_file((*hit), target_repo + '/' + selts.back());
-                if (selts.back().find(".json") != std::string::npos)
-                  fileops::replace_string_in_file(target_repo + '/'
-                                                      + selts.back(),
-                                                  "db\":true", "db\":false");
+                logger->info("successfully copied model file {} to {}", (*hit),
+                             target_repo + '/' + selts.back());
               }
             ++hit;
           }
 
         logger->info("successfully copied best model files from {} to {}",
                      source_repo, target_repo);
+
+        update_config_json_parameters(target_repo, logger);
+
         return 0;
       }
     // else if best model file does not exist
@@ -217,5 +220,95 @@ namespace dd
         "failed finding best model to copy from {} to target repository {}",
         source_repo, target_repo);
     return 1;
+  }
+
+  void TorchModel::update_config_json_parameters(
+      const std::string &target_repo,
+      const std::shared_ptr<spdlog::logger> &logger)
+  {
+    // parse config.json and model.json
+    std::string config_path = target_repo + "/config.json";
+    std::string model_path = target_repo + "/model.json";
+    std::ifstream ifs_config(config_path.c_str(), std::ios::binary);
+    if (!ifs_config.is_open())
+      {
+        logger->error("could not find config file {} for export update",
+                      config_path);
+        return;
+      }
+    std::stringstream config_sstr;
+    config_sstr << ifs_config.rdbuf();
+    ifs_config.close();
+    std::ifstream ifs_model(model_path.c_str(), std::ios::binary);
+    if (!ifs_model.is_open())
+      {
+        logger->error("could not find model file {} for export update",
+                      config_path);
+        return;
+      }
+    std::stringstream model_sstr;
+    model_sstr << ifs_model.rdbuf();
+    ifs_model.close();
+
+    rapidjson::Document d_config;
+    d_config.Parse<rapidjson::kParseNanAndInfFlag>(config_sstr.str().c_str());
+    rapidjson::Document d_model;
+    d_model.Parse<rapidjson::kParseNanAndInfFlag>(model_sstr.str().c_str());
+
+    // apply changes
+    bool config_update = false;
+    //- crop_size
+    try
+      {
+        int crop_size = d_model["parameters"]["mllib"]["crop_size"].GetInt();
+        if (crop_size > 0)
+          {
+            d_config["parameters"]["input"]["width"].SetInt(crop_size);
+            d_config["parameters"]["input"]["height"].SetInt(crop_size);
+          }
+        config_update = true;
+      }
+    catch (RapidjsonException &e)
+      {
+        config_update = false;
+      }
+    //- db
+    try
+      {
+        auto d_input = d_config["parameters"]["input"].GetObject();
+        if (d_input.HasMember("db"))
+          d_input["db"].SetBool(false);
+        auto d_mllib = d_config["parameters"]["mllib"].GetObject();
+        if (d_mllib.HasMember("db"))
+          d_input["db"].SetBool(false);
+        config_update = true;
+      }
+    catch (RapidjsonException &e)
+      {
+        config_update |= false;
+      }
+
+    if (!config_update)
+      {
+        logger->warn("no update required to config.json");
+        return;
+      }
+
+    // save updated config.json
+    rapidjson::StringBuffer buffer;
+    rapidjson::Writer<rapidjson::StringBuffer, rapidjson::UTF8<>,
+                      rapidjson::UTF8<>, rapidjson::CrtAllocator,
+                      rapidjson::kWriteNanAndInfFlag>
+        writer(buffer);
+    bool done = d_config.Accept(writer);
+    if (!done)
+      throw DataConversionException("JSON rendering failed");
+    std::string config_str = buffer.GetString();
+    std::ofstream config_out(config_path.c_str(), std::ios::out
+                                                      | std::ios::binary
+                                                      | std::ios::trunc);
+    config_out << config_str;
+    config_out.close();
+    logger->info("successfully updated {}", config_path);
   }
 }

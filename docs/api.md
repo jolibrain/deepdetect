@@ -375,7 +375,6 @@ datatype           | string | true     | "fp32"      | datatype inside compiled 
 
 Parameter    | Type | Optional | Default | Description
 ---------    | ---- | -------- | ------- | -----------
-store_config | bool | yes      | false   | stores the creation call in a `config.json` file in the model directory
 measure      | array of string | yes | depending on problem type | measure to use at test time
 
 
