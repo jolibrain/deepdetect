@@ -768,7 +768,7 @@ if (USE_TORCH)
   add_definitions(-DUSE_TORCH)
 
   if (NOT TORCH_LOCATION)
-    set(PYTORCH_COMMIT v1.10.0)
+    set(PYTORCH_COMMIT v1.10.1)
     set(PYTORCH_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch-complete)
 
     if(USE_TORCH_CPU_ONLY)
@@ -807,7 +807,7 @@ if (USE_TORCH)
 
   # TORCH VISION
   message(STATUS "Configuring Pytorch Vision")
-  set(PYTORCH_VISION_COMMIT "v0.11.1") # 0.11.1 & torch 1.10.0
+  set(PYTORCH_VISION_COMMIT "v0.11.2") # 0.11.2 & torch 1.10.1
   set(PYTORCH_VISION_PATCHES_PATH ${CMAKE_BINARY_DIR}/patches/pytorch/vision)
   #set(PYTORCH_VISION_PATCHES
   #    ${PYTORCH_VISION_PATCHES_PATH}/xxx.patch # add patches here
