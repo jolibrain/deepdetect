@@ -644,6 +644,9 @@ TEST(torchapi, service_train_images_split)
   ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() <= 3.0)
       << "loss";
 
+  ASSERT_TRUE(fileops::file_exists(resnet50_train_repo + "config.json"));
+  ASSERT_TRUE(fileops::file_exists(resnet50_train_repo + "model.json"));
+
   std::unordered_set<std::string> lfiles;
   fileops::list_directory(resnet50_train_repo, true, false, false, lfiles);
   for (std::string ff : lfiles)

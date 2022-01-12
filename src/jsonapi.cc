@@ -464,8 +464,8 @@ namespace dd
 
     std::string mllib, input;
     std::string type, description;
-    bool store_config = false;
     APIData ad, ad_model;
+    bool store_config = true;
     try
       {
         // mandatory parameters.
@@ -484,11 +484,12 @@ namespace dd
         ad.fromRapidJson(d);
         ad_model = ad.getobj("model");
         APIData ad_param = ad.getobj("parameters");
-        if (ad_param.has("output"))
+
+        if (ad_param.has("mllib"))
           {
-            APIData ad_output = ad_param.getobj("output");
-            if (ad_output.has("store_config"))
-              store_config = ad_output.get("store_config").get<bool>();
+            APIData ad_mllib = ad_param.getobj("mllib");
+            if (ad_mllib.has("from_repository"))
+              store_config = false;
           }
       }
     catch (RapidjsonException &e)
@@ -552,16 +553,11 @@ namespace dd
                       ad);
                 else
                   return dd_input_connector_not_found_1004();
-                if (JsonAPI::store_json_blob(
-                        cmodel._repo, jstr)) // store successful call json blob
+                if (store_config
+                    && JsonAPI::store_json_config_blob(cmodel._repo, jstr))
                   _logger->error(
                       "couldn't write {} file in model repository {}",
-                      JsonAPI::_json_blob_fname, cmodel._repo);
-                if (store_config)
-                  if (JsonAPI::store_json_config_blob(cmodel._repo, jstr))
-                    _logger->error(
-                        "couldn't write {} file in model repository {}",
-                        JsonAPI::_json_config_blob_fname, cmodel._repo);
+                      JsonAPI::_json_config_blob_fname, cmodel._repo);
               }
             else if (type == "unsupervised")
               {
@@ -602,16 +598,11 @@ namespace dd
                       ad);
                 else
                   return dd_input_connector_not_found_1004();
-                if (JsonAPI::store_json_blob(
-                        cmodel._repo, jstr)) // store successful call json blob
+                if (store_config
+                    && JsonAPI::store_json_config_blob(cmodel._repo, jstr))
                   _logger->error(
                       "couldn't write {} file in model repository {}",
-                      JsonAPI::_json_blob_fname, cmodel._repo);
-                if (store_config)
-                  if (JsonAPI::store_json_config_blob(cmodel._repo, jstr))
-                    _logger->error(
-                        "couldn't write {} file in model repository {}",
-                        JsonAPI::_json_config_blob_fname, cmodel._repo);
+                      JsonAPI::_json_config_blob_fname, cmodel._repo);
               }
             else
               {
@@ -658,15 +649,6 @@ namespace dd
               }
             else
               return dd_service_bad_request_1006(); // unknown service type
-
-            // store successful call json blob
-            if (JsonAPI::store_json_blob(c2model._repo, jstr))
-              {
-                _logger->error("couldn't write {} file in model repository {}",
-                               JsonAPI::_json_blob_fname, c2model._repo);
-              }
-
-            // store model configuration json blob
             if (store_config
                 && JsonAPI::store_json_config_blob(c2model._repo, jstr))
               {
@@ -701,11 +683,6 @@ namespace dd
                       ad);
                 else
                   return dd_input_connector_not_found_1004();
-                if (JsonAPI::store_json_blob(ncnnmodel._repo, jstr))
-                  _logger->error(
-                      "couldn't write {} file in model repository {}",
-                      JsonAPI::_json_blob_fname, ncnnmodel._repo);
-                // store model configuration json blob
                 if (store_config
                     && JsonAPI::store_json_config_blob(ncnnmodel._repo, jstr))
                   {
@@ -752,11 +729,6 @@ namespace dd
                       ad);
                 else
                   return dd_input_connector_not_found_1004();
-                if (JsonAPI::store_json_blob(torchmodel._repo, jstr))
-                  _logger->error(
-                      "couldn't write {} file in model repository {}",
-                      JsonAPI::_json_blob_fname, torchmodel._repo);
-                // store model configuration json blob
                 if (store_config
                     && JsonAPI::store_json_config_blob(torchmodel._repo, jstr))
                   {
@@ -788,12 +760,6 @@ namespace dd
                               ad);
                 else
                   return dd_input_connector_not_found_1004();
-                if (JsonAPI::store_json_blob(
-                        tfmodel._repo,
-                        jstr)) // store successful call json blob
-                  _logger->error(
-                      "couldn't write {} file in model repository {}",
-                      JsonAPI::_json_blob_fname, tfmodel._repo);
               }
             else if (type == "unsupervised")
               {
@@ -805,23 +771,16 @@ namespace dd
                               ad);
                 else
                   return dd_input_connector_not_found_1004();
-                if (JsonAPI::store_json_blob(
-                        tfmodel._repo,
-                        jstr)) // store successful call json blob
-                  _logger->error(
-                      "couldn't write {} file in model repository {}",
-                      JsonAPI::_json_blob_fname, tfmodel._repo);
-                if (store_config)
-                  if (JsonAPI::store_json_config_blob(tfmodel._repo, jstr))
-                    _logger->error(
-                        "couldn't write {} file in model repository {}",
-                        JsonAPI::_json_config_blob_fname, tfmodel._repo);
               }
             else
               {
                 // unknown type
                 return dd_service_bad_request_1006();
               }
+            if (store_config
+                && JsonAPI::store_json_config_blob(tfmodel._repo, jstr))
+              _logger->error("couldn't write {} file in model repository {}",
+                             JsonAPI::_json_config_blob_fname, tfmodel._repo);
           }
 #endif
 #ifdef USE_DLIB
@@ -844,12 +803,6 @@ namespace dd
                   {
                     return dd_input_connector_not_found_1004();
                   }
-                if (JsonAPI::store_json_blob(dlibmodel._repo, jstr))
-                  { // store successful call json blob
-                    _logger->error(
-                        "couldn't write {} file in model repository {}",
-                        JsonAPI::_json_blob_fname, dlibmodel._repo);
-                  }
               }
             else if (type == "unsupervised")
               {
@@ -866,18 +819,16 @@ namespace dd
                   {
                     return dd_input_connector_not_found_1004();
                   }
-                if (JsonAPI::store_json_blob(dlibmodel._repo, jstr))
-                  { // store successful call json blob
-                    _logger->error(
-                        "couldn't write {} file in model repository {}",
-                        JsonAPI::_json_blob_fname, dlibmodel._repo);
-                  }
               }
             else
               {
                 // unknown type
                 return dd_service_bad_request_1006();
               }
+            if (store_config
+                && JsonAPI::store_json_config_blob(tfmodel._repo, jstr))
+              _logger->error("couldn't write {} file in model repository {}",
+                             JsonAPI::_json_config_blob_fname, tfmodel._repo);
           }
 #endif
 #ifdef USE_XGBOOST
@@ -905,14 +856,10 @@ namespace dd
                           ad);
             else
               return dd_input_connector_not_found_1004();
-            if (JsonAPI::store_json_blob(
-                    xmodel._repo, jstr)) // store successful call json blob
+            if (store_config
+                && JsonAPI::store_json_config_blob(xmodel._repo, jstr))
               _logger->error("couldn't write {} file in model repository {}",
-                             JsonAPI::_json_blob_fname, xmodel._repo);
-            if (store_config)
-              if (JsonAPI::store_json_config_blob(xmodel._repo, jstr))
-                _logger->error("couldn't write {} file in model repository {}",
-                               JsonAPI::_json_config_blob_fname, xmodel._repo);
+                             JsonAPI::_json_config_blob_fname, xmodel._repo);
           }
 #endif
 #ifdef USE_TSNE
@@ -934,14 +881,10 @@ namespace dd
                           ad);
             else
               return dd_input_connector_not_found_1004();
-            if (JsonAPI::store_json_blob(
-                    tmodel._repo, jstr)) // store successful call json blob
+            if (store_config
+                && JsonAPI::store_json_config_blob(tmodel._repo, jstr))
               _logger->error("couldn't write {} file in model repository {}",
-                             JsonAPI::_json_blob_fname, tmodel._repo);
-            if (store_config)
-              if (JsonAPI::store_json_config_blob(tmodel._repo, jstr))
-                _logger->error("couldn't write {} file in model repository {}",
-                               JsonAPI::_json_config_blob_fname, tmodel._repo);
+                             JsonAPI::_json_config_blob_fname, tmodel._repo);
           }
 #endif
 #ifdef USE_TENSORRT
@@ -962,11 +905,6 @@ namespace dd
                       ad);
                 else
                   return dd_input_connector_not_found_1004();
-                if (JsonAPI::store_json_blob(tensorRTmodel._repo, jstr))
-                  _logger->error(
-                      "couldn't write {} file in model repository {}",
-                      JsonAPI::_json_blob_fname, tensorRTmodel._repo);
-                // store model configuration json blob
                 if (store_config
                     && JsonAPI::store_json_config_blob(tensorRTmodel._repo,
                                                        jstr))
