@@ -1319,10 +1319,6 @@ namespace dd
         jtrain.AddMember("body", jout, jtrain.GetAllocator());
       }
     jtrain.AddMember("head", jhead, jtrain.GetAllocator());
-    if (JsonAPI::store_json_blob(
-            mrepo, jrender(jtrain))) // store successful call json blob
-      _logger->error("couldn't write to {} file in model repository {}",
-                     JsonAPI::_json_blob_fname, mrepo);
     return jtrain;
   }
 
