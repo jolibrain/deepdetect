@@ -30,6 +30,7 @@
 #endif
 #include <unordered_set>
 #include "utils/utils.hpp"
+#include "dto/predict_out.hpp"
 
 #ifdef USE_DLIB
 #include "backends/dlib/dlib_actions.h"
@@ -292,6 +293,129 @@ namespace dd
     cdata.add_action_data(_action_id, action_out);
   }
 
+  cv::Scalar bbox_palette[]
+      = { { 82, 188, 227 }, { 196, 110, 49 }, { 39, 54, 227 },
+          { 68, 227, 81 },  { 77, 157, 255 }, { 255, 112, 207 },
+          { 240, 228, 65 }, { 94, 242, 151 }, { 236, 121, 242 },
+          { 28, 77, 120 } };
+  size_t bbox_palette_size = 10;
+
+  void ImgsDrawBBoxAction::apply(APIData &model_out, ChainData &cdata)
+  {
+    std::vector<APIData> vad = model_out.getv("predictions");
+    APIData input_ad = model_out.getobj("input");
+
+    std::vector<cv::Mat> imgs
+        = model_out.getobj("input").get("imgs").get<std::vector<cv::Mat>>();
+    std::vector<std::pair<int, int>> imgs_size
+        = model_out.getobj("input")
+              .get("imgs_size")
+              .get<std::vector<std::pair<int, int>>>();
+    std::vector<cv::Mat> rimgs;
+    std::vector<std::string> uris;
+    auto pred_body = DTO::PredictBody::createShared();
+
+    bool save_img = _params->save_img;
+    int ref_thickness = _params->thickness;
+
+    std::string save_path = _params->save_path->std_str();
+    if (!save_path.empty())
+      save_path += "/";
+
+    for (size_t i = 0; i < vad.size(); i++)
+      {
+        std::string uri = vad.at(i).get("uri").get<std::string>();
+        uris.push_back(uri);
+
+        int im_cols = imgs.at(i).cols;
+        int im_rows = imgs.at(i).rows;
+        int orig_cols = imgs_size.at(i).second;
+        int orig_rows = imgs_size.at(i).first;
+
+        std::vector<APIData> ad_cls = vad.at(i).getv("classes");
+        cv::Mat rimg = imgs.at(i).clone();
+
+        // iterate bboxes per image
+        for (size_t j = 0; j < ad_cls.size(); j++)
+          {
+            APIData bbox = ad_cls.at(j).getobj("bbox");
+            std::string cat = ad_cls.at(j).get("cat").get<std::string>();
+            if (bbox.empty())
+              throw ActionBadParamException(
+                  "draw action cannot find bbox object for uri " + uri);
+
+            double xmin = bbox.get("xmin").get<double>() / orig_cols * im_cols;
+            double ymin = bbox.get("ymin").get<double>() / orig_rows * im_rows;
+            double xmax = bbox.get("xmax").get<double>() / orig_cols * im_cols;
+            double ymax = bbox.get("ymax").get<double>() / orig_rows * im_rows;
+
+            // draw bbox
+            cv::Point pt1{ int(xmin), int(ymin) };
+            cv::Point pt2{ int(xmax), int(ymax) };
+            size_t cls_hash = std::hash<std::string>{}(cat);
+            cv::Scalar color = bbox_palette[cls_hash % bbox_palette_size];
+            cv::rectangle(rimg, pt1, pt2, cv::Scalar(255, 255, 255),
+                          ref_thickness + 2);
+            cv::rectangle(rimg, pt1, pt2, color, ref_thickness);
+
+            // draw class & confidences
+            std::string label;
+            if (_params->write_cat)
+              label = cat;
+            if (_params->write_cat && _params->write_prob)
+              label += " - ";
+            if (_params->write_prob)
+              label += std::to_string(ad_cls.at(j).get("prob").get<double>());
+
+            // font size relatively to base opencv font size
+            float font_size = 2;
+            int x_txt = static_cast<int>(xmin + 5);
+            if (x_txt > im_cols - 15)
+              x_txt = im_cols - 15;
+            int y_txt = std::min(im_rows - 20,
+                                 static_cast<int>(ymax + 2 + font_size * 12));
+
+            cv::putText(rimg, label, cv::Point(x_txt, y_txt),
+                        cv::FONT_HERSHEY_PLAIN, font_size,
+                        cv::Scalar(255, 255, 255), ref_thickness + 2);
+            cv::putText(rimg, label, cv::Point(x_txt, y_txt),
+                        cv::FONT_HERSHEY_PLAIN, font_size, color,
+                        ref_thickness);
+          }
+
+        rimgs.push_back(rimg);
+
+        // save image if requested
+        if (save_img)
+          {
+            std::string puri = dd_utils::split(uri, '/').back();
+            std::string rimg_path = save_path + "bbox_" + puri + ".png";
+            this->_chain_logger->info("draw_bbox: Saved image to path {}",
+                                      rimg_path);
+            cv::imwrite(rimg_path, rimg);
+          }
+
+        if (_params->output_images)
+          {
+            auto action_pred = DTO::Prediction::createShared();
+
+            action_pred->vals = DTO::DTOVector<uint8_t>(std::vector<uint8_t>(
+                rimg.data, rimg.data + (rimg.total() * rimg.elemSize())));
+            action_pred->uri = uri.c_str();
+            pred_body->predictions->push_back(action_pred);
+          }
+      }
+
+    APIData action_out;
+    action_out.add("data_raw_img", rimgs);
+    action_out.add("cids", uris);
+    if (_params->output_images)
+      {
+        action_out.add("output", pred_body);
+      }
+    cdata.add_action_data(_action_id, action_out);
+  }
+
   void ClassFilter::apply(APIData &model_out, ChainData &cdata)
   {
     if (_params->classes == nullptr)
@@ -376,6 +500,7 @@ namespace dd
 
   CHAIN_ACTION("crop", ImgsCropAction)
   CHAIN_ACTION("rotate", ImgsRotateAction)
+  CHAIN_ACTION("draw_bbox", ImgsDrawBBoxAction)
   CHAIN_ACTION("filter", ClassFilter)
 #ifdef USE_DLIB
   CHAIN_ACTION("dlib_align_crop", DlibAlignCropAction)

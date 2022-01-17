@@ -25,6 +25,28 @@
 
 namespace dd
 {
+
+  void embed_model_output(
+      oatpp::UnorderedFields<oatpp::Any> &dest,
+      std::unordered_multimap<std::string, oatpp::Object<DTO::Prediction>>
+          &other_models_out,
+      const std::string &uri)
+  {
+    auto rhit_range = other_models_out.equal_range(uri);
+
+    for (auto rhit = rhit_range.first; rhit != rhit_range.second; ++rhit)
+      {
+        oatpp::String model_name = rhit->second->uri;
+        rhit->second->uri = nullptr;
+        if (dest->find(model_name) != dest->end())
+          throw ChainBadParamException(
+              "This key already exists and cannot be used to reference "
+              "model output: "
+              + model_name->std_str());
+        (*dest)[model_name] = rhit->second;
+      }
+  }
+
   oatpp::Object<DTO::ChainBody> ChainData::nested_chain_output()
   {
     // pre-compile models != first model
@@ -38,6 +60,7 @@ namespace dd
       {
         std::string model_id = (*hit).first;
         std::string model_name = get_model_sname(model_id);
+
         if (model_id == _first_id)
           {
             if ((*hit).second.has("dto"))
@@ -84,6 +107,33 @@ namespace dd
         ++hit;
       }
 
+    // actions
+    std::unordered_map<std::string, APIData>::const_iterator ahit
+        = _action_data.begin();
+
+    while (ahit != _action_data.end())
+      {
+        std::string action_id = ahit->first;
+        const APIData &action_data = ahit->second;
+
+        if (action_data.has("output"))
+          {
+            auto out_body = ahit->second.get("output")
+                                .get<oatpp::Any>()
+                                .retrieve<oatpp::Object<DTO::PredictBody>>();
+
+            for (auto p : *out_body->predictions)
+              {
+                std::string uri = p->uri->std_str();
+                p->uri = action_id.c_str();
+                other_models_out.insert(
+                    std::pair<std::string, oatpp::Object<DTO::Prediction>>(uri,
+                                                                           p));
+              }
+          }
+        ++ahit;
+      }
+
     // Return a DTO
     auto chain_dto = DTO::ChainBody::createShared();
     for (auto pred : *first_model_out->predictions)
@@ -91,22 +141,22 @@ namespace dd
         oatpp::UnorderedFields<oatpp::Any> chain_pred
             = oatpp_utils::dtoToUFields(pred);
 
+        // chain result at uri level
+        embed_model_output(chain_pred, other_models_out, pred->uri->std_str());
+
+        // chain results at prediction level
         auto classes = oatpp::Vector<oatpp::Any>::createShared();
 
         for (auto cls : *pred->classes)
           {
-            std::string uri = cls->class_id->std_str();
-            cls->class_id = nullptr;
             oatpp::UnorderedFields<oatpp::Any> class_preds
                 = oatpp_utils::dtoToUFields(cls);
-            auto rhit_range = other_models_out.equal_range(uri);
 
-            for (auto rhit = rhit_range.first; rhit != rhit_range.second;
-                 ++rhit)
+            if (cls->class_id != nullptr)
               {
-                oatpp::String model_name = rhit->second->uri;
-                rhit->second->uri = nullptr;
-                (*class_preds)[model_name] = rhit->second;
+                std::string uri = cls->class_id->std_str();
+                cls->class_id = nullptr;
+                embed_model_output(class_preds, other_models_out, uri);
               }
             classes->push_back(class_preds);
           }

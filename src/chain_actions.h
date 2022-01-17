@@ -129,6 +129,22 @@ namespace dd
     void apply(APIData &model_out, ChainData &cdata);
   };
 
+  class ImgsDrawBBoxAction : public ChainAction
+  {
+  public:
+    ImgsDrawBBoxAction(oatpp::Object<DTO::ChainCall> call_dto,
+                       const std::shared_ptr<spdlog::logger> chain_logger)
+        : ChainAction(call_dto, chain_logger)
+    {
+    }
+
+    ~ImgsDrawBBoxAction()
+    {
+    }
+
+    void apply(APIData &model_out, ChainData &cdata);
+  };
+
   class ClassFilter : public ChainAction
   {
   public:
