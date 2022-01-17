@@ -33,6 +33,10 @@ namespace dd
       const oatpp::ClassId DTOVectorClass<double>::CLASS_ID("vector<double>");
 
       template <>
+      const oatpp::ClassId
+          DTOVectorClass<uint8_t>::CLASS_ID("vector<uint8_t>");
+
+      template <>
       const oatpp::ClassId DTOVectorClass<bool>::CLASS_ID("vector<bool>");
     }
   }

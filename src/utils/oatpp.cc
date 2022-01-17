@@ -37,6 +37,8 @@ namespace dd
                                    DTO::gpuIdsDeserialize);
       deser->setDeserializerMethod(DTO::DTOVector<double>::Class::CLASS_ID,
                                    DTO::vectorDeserialize<double>);
+      deser->setDeserializerMethod(DTO::DTOVector<uint8_t>::Class::CLASS_ID,
+                                   DTO::vectorDeserialize<uint8_t>);
       deser->setDeserializerMethod(DTO::DTOVector<bool>::Class::CLASS_ID,
                                    DTO::vectorDeserialize<bool>);
       auto ser = object_mapper->getSerializer();
@@ -44,6 +46,8 @@ namespace dd
                                DTO::gpuIdsSerialize);
       ser->setSerializerMethod(DTO::DTOVector<double>::Class::CLASS_ID,
                                DTO::vectorSerialize<double>);
+      ser->setSerializerMethod(DTO::DTOVector<uint8_t>::Class::CLASS_ID,
+                               DTO::vectorSerialize<uint8_t>);
       ser->setSerializerMethod(DTO::DTOVector<bool>::Class::CLASS_ID,
                                DTO::vectorSerialize<bool>);
       return object_mapper;
@@ -138,6 +142,16 @@ namespace dd
       else if (polymorph.valueType == DTO::DTOVector<double>::Class::getType())
         {
           auto vec = polymorph.staticCast<DTO::DTOVector<double>>();
+          jval = JVal(rapidjson::kArrayType);
+          for (size_t i = 0; i < vec->size(); ++i)
+            {
+              jval.PushBack(vec->at(i), jdoc.GetAllocator());
+            }
+        }
+      else if (polymorph.valueType
+               == DTO::DTOVector<uint8_t>::Class::getType())
+        {
+          auto vec = polymorph.staticCast<DTO::DTOVector<uint8_t>>();
           jval = JVal(rapidjson::kArrayType);
           for (size_t i = 0; i < vec->size(); ++i)
             {

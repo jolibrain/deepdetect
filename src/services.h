@@ -994,22 +994,7 @@ namespace dd
             }
 
           // producing a nested output
-          if (npredicts > 1)
-            chain_dto = cdata.nested_chain_output();
-          else
-            {
-              // XXX(louis): fix this when chains will be entirely DTO (needs
-              // supervised output connector to DTO)
-              auto first_model_dto = cdata.get_model_data(cdata._first_id)
-                                         .createSharedDTO<DTO::PredictBody>();
-              chain_dto = DTO::ChainBody::createShared();
-
-              for (auto &pred : *first_model_dto->predictions)
-                {
-                  chain_dto->predictions->push_back(
-                      oatpp_utils::dtoToUFields(pred));
-                }
-            }
+          chain_dto = cdata.nested_chain_output();
 
           std::chrono::time_point<std::chrono::system_clock> tstop
               = std::chrono::system_clock::now();
