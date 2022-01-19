@@ -336,39 +336,49 @@ namespace dd
     model_out.add("predictions", cvad);
   }
 
+  void *ChainActionFactory::add_chain_action(const std::string &action_name,
+                                             const action_function &func)
+  {
+    auto &registry = ChainActionFactory::get_action_registry();
+    registry[action_name] = func;
+    return nullptr;
+  }
+
+  std::unordered_map<std::string, action_function> &
+  ChainActionFactory::get_action_registry()
+  {
+    static std::unordered_map<std::string, action_function> registry;
+    return registry;
+  }
+
   void ChainActionFactory::apply_action(
       const std::string &action_type, APIData &model_out, ChainData &cdata,
       const std::shared_ptr<spdlog::logger> &chain_logger)
   {
-    std::string action_id = _call_dto->id != nullptr
-                                ? _call_dto->id->std_str()
-                                : std::to_string(cdata._action_data.size());
-    if (action_type == "crop")
+    if (_call_dto->id == nullptr)
       {
-        ImgsCropAction act(_call_dto, action_id, action_type, chain_logger);
-        act.apply(model_out, cdata);
+        std::string action_id = std::to_string(cdata._action_data.size());
+        _call_dto->id = action_id.c_str();
       }
-    else if (action_type == "rotate")
+
+    auto &registry = get_action_registry();
+    auto hit = registry.find(action_type);
+
+    if (hit != registry.end())
       {
-        ImgsRotateAction act(_call_dto, action_id, action_type, chain_logger);
-        act.apply(model_out, cdata);
+        hit->second(_call_dto, model_out, cdata, chain_logger);
       }
-    else if (action_type == "filter")
-      {
-        ClassFilter act(_call_dto, action_id, action_type, chain_logger);
-        act.apply(model_out, cdata);
-      }
-#ifdef USE_DLIB
-    else if (action_type == "dlib_align_crop")
-      {
-        DlibAlignCropAction act(_adc, action_id, action_type, chain_logger);
-        act.apply(model_out, cdata);
-      }
-#endif
     else
       {
         throw ActionBadParamException("unknown action " + action_type);
       }
   }
+
+  CHAIN_ACTION("crop", ImgsCropAction)
+  CHAIN_ACTION("rotate", ImgsRotateAction)
+  CHAIN_ACTION("filter", ClassFilter)
+#ifdef USE_DLIB
+  CHAIN_ACTION("dlib_align_crop", DlibAlignCropAction)
+#endif
 
 } // end of namespace
