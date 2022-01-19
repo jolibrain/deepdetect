@@ -70,11 +70,11 @@ namespace dd
   {
   public:
     ChainAction(oatpp::Object<DTO::ChainCall> call_dto,
-                const std::string &action_id, const std::string &action_type,
                 const std::shared_ptr<spdlog::logger> chain_logger)
-        : _action_id(action_id), _action_type(action_type),
-          _chain_logger(chain_logger)
+        : _chain_logger(chain_logger)
     {
+      _action_id = call_dto->id->std_str();
+      _action_type = call_dto->action->type->std_str();
       _params = call_dto->action->parameters;
     }
 
@@ -101,10 +101,8 @@ namespace dd
   {
   public:
     ImgsCropAction(oatpp::Object<DTO::ChainCall> call_dto,
-                   const std::string &action_id,
-                   const std::string &action_type,
                    const std::shared_ptr<spdlog::logger> chain_logger)
-        : ChainAction(call_dto, action_id, action_type, chain_logger)
+        : ChainAction(call_dto, chain_logger)
     {
     }
 
@@ -119,10 +117,8 @@ namespace dd
   {
   public:
     ImgsRotateAction(oatpp::Object<DTO::ChainCall> call_dto,
-                     const std::string &action_id,
-                     const std::string &action_type,
                      const std::shared_ptr<spdlog::logger> chain_logger)
-        : ChainAction(call_dto, action_id, action_type, chain_logger)
+        : ChainAction(call_dto, chain_logger)
     {
     }
 
@@ -137,9 +133,8 @@ namespace dd
   {
   public:
     ClassFilter(oatpp::Object<DTO::ChainCall> call_dto,
-                const std::string &action_id, const std::string &action_type,
                 const std::shared_ptr<spdlog::logger> chain_logger)
-        : ChainAction(call_dto, action_id, action_type, chain_logger)
+        : ChainAction(call_dto, chain_logger)
     {
       _in_place = true;
     }
@@ -150,8 +145,30 @@ namespace dd
     void apply(APIData &model_out, ChainData &cdata);
   };
 
+  template <typename T>
+  inline void apply_action(oatpp::Object<DTO::ChainCall> call_dto,
+                           APIData &model_out, ChainData &cdata,
+                           const std::shared_ptr<spdlog::logger> &chain_logger)
+  {
+    T act(call_dto, chain_logger);
+    act.apply(model_out, cdata);
+  }
+
+  typedef std::function<void(oatpp::Object<DTO::ChainCall>, APIData &,
+                             ChainData &,
+                             const std::shared_ptr<spdlog::logger> &)>
+      action_function;
+
   class ChainActionFactory
   {
+  public:
+    static void *add_chain_action(const std::string &action_name,
+                                  const action_function &func);
+
+  private:
+    static std::unordered_map<std::string, action_function> &
+    get_action_registry();
+
   public:
     ChainActionFactory(APIData adc)
         : _call_dto(adc.createSharedDTO<DTO::ChainCall>())
@@ -172,6 +189,14 @@ namespace dd
 
     oatpp::Object<DTO::ChainCall> _call_dto;
   };
+
+#define CHAIN_ACTION(ActionName, ActionType)                                  \
+  namespace                                                                   \
+  {                                                                           \
+    void *_register_action_##ActionType                                       \
+        = ChainActionFactory::add_chain_action(ActionName,                    \
+                                               apply_action<ActionType>);     \
+  }
 
 } // end of namespace
 
