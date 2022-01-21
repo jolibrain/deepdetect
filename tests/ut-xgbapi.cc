@@ -61,9 +61,10 @@ TEST(xgbapi, service_train_csv)
   ASSERT_EQ(created_str, joutstr);
 
   // assert json blob file
-  std::cerr << forest_repo + "/" + JsonAPI::_json_blob_fname << std::endl;
-  ASSERT_TRUE(
-      fileops::file_exists(forest_repo + "/" + JsonAPI::_json_blob_fname));
+  std::cerr << forest_repo + "/" + JsonAPI::_json_config_blob_fname
+            << std::endl;
+  ASSERT_TRUE(fileops::file_exists(forest_repo + "/"
+                                   + JsonAPI::_json_config_blob_fname));
 
   // train
   std::string jtrainstr

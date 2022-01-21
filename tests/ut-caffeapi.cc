@@ -476,8 +476,8 @@ TEST(caffeapi, service_train_csv)
   ASSERT_EQ(created_str, joutstr);
 
   // assert json blob file
-  ASSERT_TRUE(
-      fileops::file_exists(forest_repo + "/" + JsonAPI::_json_blob_fname));
+  ASSERT_TRUE(fileops::file_exists(forest_repo + "/"
+                                   + JsonAPI::_json_config_blob_fname));
 
   // train
   std::string jtrainstr
@@ -626,8 +626,8 @@ TEST(caffeapi, service_train_csv_in_memory)
   ASSERT_EQ(created_str, joutstr);
 
   // assert json blob file
-  ASSERT_TRUE(
-      fileops::file_exists(forest_repo + "/" + JsonAPI::_json_blob_fname));
+  ASSERT_TRUE(fileops::file_exists(forest_repo + "/"
+                                   + JsonAPI::_json_config_blob_fname));
 
   // read CSV file
   std::string mem_data_str;
@@ -712,8 +712,8 @@ TEST(caffeapi, service_train_csv_resnet)
   ASSERT_EQ(created_str, joutstr);
 
   // assert json blob file
-  ASSERT_TRUE(
-      fileops::file_exists(forest_repo + "/" + JsonAPI::_json_blob_fname));
+  ASSERT_TRUE(fileops::file_exists(forest_repo + "/"
+                                   + JsonAPI::_json_config_blob_fname));
 
   // train
   std::string jtrainstr
@@ -864,8 +864,8 @@ TEST(caffeapi, service_train_svm)
   ASSERT_EQ(created_str, joutstr);
 
   // assert json blob file
-  ASSERT_TRUE(
-      fileops::file_exists(farm_repo_loc + "/" + JsonAPI::_json_blob_fname));
+  ASSERT_TRUE(fileops::file_exists(farm_repo_loc + "/"
+                                   + JsonAPI::_json_config_blob_fname));
 
   // train
   std::string jtrainstr
@@ -1032,8 +1032,8 @@ TEST(caffeapi, service_train_svm_resnet)
   ASSERT_EQ(created_str, joutstr);
 
   // assert json blob file
-  ASSERT_TRUE(
-      fileops::file_exists(farm_repo_loc + "/" + JsonAPI::_json_blob_fname));
+  ASSERT_TRUE(fileops::file_exists(farm_repo_loc + "/"
+                                   + JsonAPI::_json_config_blob_fname));
 
   // train
   std::string jtrainstr

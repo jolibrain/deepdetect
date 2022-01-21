@@ -644,6 +644,9 @@ TEST(torchapi, service_train_images_split)
   ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() <= 3.0)
       << "loss";
 
+  ASSERT_TRUE(fileops::file_exists(resnet50_train_repo + "config.json"));
+  ASSERT_TRUE(fileops::file_exists(resnet50_train_repo + "model.json"));
+
   std::unordered_set<std::string> lfiles;
   fileops::list_directory(resnet50_train_repo, true, false, false, lfiles);
   for (std::string ff : lfiles)
@@ -965,7 +968,7 @@ TEST(torchapi, service_train_image_segmentation_segformer)
   ASSERT_EQ(201, jd["status"]["code"]);
 
   ASSERT_TRUE(jd["body"]["measure"]["meanacc"].GetDouble() <= 1) << "accuracy";
-  ASSERT_TRUE(jd["body"]["measure"]["meanacc"].GetDouble() >= 0.006)
+  ASSERT_TRUE(jd["body"]["measure"]["meanacc"].GetDouble() >= 0.003)
       << "accuracy good";
   ASSERT_TRUE(jd["body"]["measure"]["meaniou"].GetDouble() <= 1) << "meaniou";
 

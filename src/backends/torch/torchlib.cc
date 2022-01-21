@@ -1199,7 +1199,10 @@ namespace dd
                   }
 
                 if (elapsed_it == iterations)
-                  out = meas_out;
+                  {
+                    out.add("measure", meas_out.getobj("measure"));
+                    out.add("measures", meas_out.getv("measures"));
+                  }
               }
 
             train_loss = 0;
@@ -1269,6 +1272,7 @@ namespace dd
 
     inputc.response_params(out);
     this->_logger->info("Training done.");
+
     return 0;
   }
 

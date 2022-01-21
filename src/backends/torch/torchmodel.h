@@ -68,6 +68,10 @@ namespace dd
                        const std::string &target_repo,
                        const std::shared_ptr<spdlog::logger> &logger);
 
+    void update_config_json_parameters(
+        const std::string &target_repo,
+        const std::shared_ptr<spdlog::logger> &logger);
+
   public:
     std::string _traced;  /**< path of the traced part of the net. */
     std::string _weights; /**< path of the weights of the net. */
