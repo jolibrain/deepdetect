@@ -968,7 +968,7 @@ TEST(torchapi, service_train_image_segmentation_segformer)
   ASSERT_EQ(201, jd["status"]["code"]);
 
   ASSERT_TRUE(jd["body"]["measure"]["meanacc"].GetDouble() <= 1) << "accuracy";
-  ASSERT_TRUE(jd["body"]["measure"]["meanacc"].GetDouble() >= 0.006)
+  ASSERT_TRUE(jd["body"]["measure"]["meanacc"].GetDouble() >= 0.003)
       << "accuracy good";
   ASSERT_TRUE(jd["body"]["measure"]["meaniou"].GetDouble() <= 1) << "meaniou";
 
