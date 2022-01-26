@@ -41,6 +41,13 @@ namespace dd
       DTO_INIT(ChainActionParams, DTO)
 
       // image
+      DTO_FIELD_INFO(output_images)
+      {
+        info->description = "If true, this action will add its result images "
+                            "to the response body of the chain call";
+      }
+      DTO_FIELD(Boolean, output_images) = false;
+
       DTO_FIELD_INFO(to_rgb)
       {
         info->description = "*Removed - use `parameters.input.rgb` instead*\n"
@@ -60,6 +67,13 @@ namespace dd
         info->description = "Path to save chain output, eg for debugging";
       }
       DTO_FIELD(String, save_path) = "";
+
+      DTO_FIELD_INFO(save_img)
+      {
+        info->description
+            = "whether to save image to `save_path` after action";
+      }
+      DTO_FIELD(Boolean, save_img) = false;
 
       // image - crop
       DTO_FIELD_INFO(fixed_width)
@@ -99,18 +113,32 @@ namespace dd
       }
       DTO_FIELD(String, orientation) = "relative";
 
-      DTO_FIELD_INFO(save_img)
+      // image - draw bbox
+      DTO_FIELD_INFO(thickness)
+      {
+        info->description = "[draw_bbox] thickness of bbox rectangle";
+      }
+      DTO_FIELD(Int32, thickness) = 2;
+
+      DTO_FIELD_INFO(write_cat)
       {
         info->description
-            = "[rotate] whether to save image to `save_path` after rotation";
+            = "[draw_bbox] Write the found best class beside the bbox";
       }
-      DTO_FIELD(Boolean, save_img) = false;
+      DTO_FIELD(Boolean, write_cat) = true;
+
+      DTO_FIELD_INFO(write_prob)
+      {
+        info->description
+            = "[draw_bbox] Write the prediction score beside the bbox";
+      }
+      DTO_FIELD(Boolean, write_prob) = false;
 
       // filter
       DTO_FIELD_INFO(classes)
       {
-        info->description
-            = "[filter] classes NOT present in this list will be filtered out";
+        info->description = "[filter] classes NOT present in this list will "
+                            "be filtered out";
       }
       DTO_FIELD(Vector<String>, classes);
 

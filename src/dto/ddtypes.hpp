@@ -144,6 +144,12 @@ namespace dd
       return caret.parseFloat64();
     }
 
+    template <>
+    inline uint8_t readVecElement<uint8_t>(oatpp::parser::Caret &caret)
+    {
+      return static_cast<uint8_t>(caret.parseUnsignedInt());
+    }
+
     template <> inline bool readVecElement<bool>(oatpp::parser::Caret &caret)
     {
       if (caret.isAtText("true"))

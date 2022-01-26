@@ -309,6 +309,53 @@ TEST(chain, chain_caffe_faces_classification)
   ASSERT_EQ(pred1["classes"][0]["age"]["classes"][0]["cat"].GetString(),
             std::string("52"));
 }
+
+TEST(chain, chain_caffe_detect_draw_bboxes)
+{
+  JsonAPI japi;
+  std::string detect_sname = "detect";
+  std::string jstr
+      = "{\"mllib\":\"caffe\",\"description\":\"face detection "
+        "model\",\"type\":\"supervised\",\"model\":{\"repository\":\""
+        + caffe_faces_detect_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"width\":"
+          "512,\"height\":512},\"mllib\":{\"nclasses\":1,\"best\":-1,"
+          "\"gpu\":true,\"gpuid\":0,\"net\":{\"test_batch_size\":1}}}}";
+  std::string joutstr = japi.jrender(japi.service_create(detect_sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // TODO prendre l'image de gens qqpart dans le repo test
+  std::string uri1 = "https://icour.fr/ELeveSeconde/ajout/yann_lecum_vidal/"
+                     "images/yann_LeCun.jpg";
+
+  std::string jchainstr
+      = "{\"chain\": {\"calls\": [{\"parameters\": {\"input\": "
+        "{\"keep_orig\": true,\"connector\": \"image\"},\"output\": "
+        "{\"confidence_threshold\": 0.5,\"bbox\": true},\"mllib\": {\"net\": "
+        "{\"test_batch_size\": 2}}},\"service\":\""
+        + detect_sname + "\",\"data\":[\"" + uri1
+        + "\"]},{\"id\":\"face_detection_bbox\",\"action\":{\"parameters\": "
+          "{\"padding_ratio\":0.0,\"output_images\":true,\"write_prob\":true}"
+          ",\"type\":\"draw_bbox\"}}]}}";
+  joutstr = japi.jrender(japi.service_chain("chain", jchainstr));
+  JDoc jd;
+  // very long outstr is truncated
+  std::cout << "joutstr=" << joutstr.substr(0, 500)
+            << (joutstr.size() > 500
+                    ? " ... " + joutstr.substr(joutstr.size() - 500)
+                    : "")
+            << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"].IsArray());
+  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"].Size() == 1);
+  auto &bbox_images = jd["body"]["predictions"][0]["face_detection_bbox"];
+  ASSERT_TRUE(bbox_images["vals"].IsArray());
+  ASSERT_EQ(bbox_images["vals"].Size(), 3 * 1000 * 562);
+}
 #endif
 
 #ifdef USE_TENSORRT
