@@ -12,6 +12,8 @@ import torch.nn.functional as F
 import torchvision
 from torchvision import transforms
 
+
+
 def main():
     parser = argparse.ArgumentParser(description="")
     parser.add_argument("model", type=str, help="Model to export")
@@ -104,7 +106,7 @@ def main():
         model.to(device)
         model.eval()
 
-        filename += ".pt"
+        filename += "_cls" + str(args.num_classes) + ".pt"
         script_module = torch.jit.script(model)
         logging.info("Save jit model at %s" % filename)
         script_module.save(filename)
@@ -120,9 +122,9 @@ class YoloXWrapper(torch.nn.Module):
         self.postprocess = postprocess
         self.nms_threshold = 0.45
 
-        # Better convergence with 15
-        self.model.head.reg_weight = 15.0
-
+        self.model.head.reg_weight = 5.0
+        self.model.head.use_l1 = True
+        
     def convert_targs(self, bboxes):
         """
         Converts bboxes from box corners (dd format) to center + size
